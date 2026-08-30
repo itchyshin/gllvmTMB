@@ -34,6 +34,12 @@ test_that("animal rho one is exactly released animal_slope for both bars", {
       expect_no_warning(coef_fit <- .fit_animal_coef_test(fx, pair$coef))
       expect_no_warning(slope_fit <- .fit_animal_coef_test(fx, pair$slope))
       .expect_animal_route_identical(coef_fit, slope_fit, diagnostics)
+      # Identical aliases can return the same invalid endpoint. Reuse the
+      # gradients already evaluated by the equivalence helper to check health.
+      expect_identical(coef_fit$opt$convergence, 0L)
+      expect_identical(slope_fit$opt$convergence, 0L)
+      expect_lt(max(abs(diagnostics$endpoint_gradients$coef)), 1e-2)
+      expect_lt(max(abs(diagnostics$endpoint_gradients$slope)), 1e-2)
       expect_true(isTRUE(coef_fit$use$response_column_coef))
       expect_identical(coef_fit$use$response_column_coef_source, "animal")
       expect_identical(coef_fit$use$response_column_coef_rho_status, "fixed")

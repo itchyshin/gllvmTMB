@@ -346,6 +346,55 @@ The helper is private implementation, with compiled tests in
 coefficient implementation is outside this bounded repair and requires its own
 numerical review.
 
+
+### Gaussian response-column coefficient coordinates
+
+For eligible nonspatial Gaussian identity ML compositions, the internal
+coefficient random variables are standardized before constructing the Laplace
+objective. The statistical model remains
+
+$$
+B=U L_b^\top,\qquad U\sim\operatorname{MN}(0,K_\rho,I),\qquad
+\Sigma_b=L_bL_b^\top.
+$$
+
+Here $U$ denotes coefficient random variables, not the source eigenvector
+matrix used above. Its negative log prior is
+
+$$
+\tfrac12\{nC\log(2\pi)+C\log|K_\rho|
+ +\operatorname{tr}(U^\top K_\rho^{-1}U)\}.
+$$
+
+The coefficient determinant is absent because the density is now with respect
+to $U$; the change of variables cancels the corresponding determinant in the
+centred density. The linear predictor uses physical $B$. Thus the marginal
+Gaussian likelihood is unchanged, while the random-effect prior no longer
+contains the inverse of a nearly singular $L_b$. The prior on the source axis,
+including estimated-rho diagonal scaling, is unchanged.
+
+| Quantity | Internal operation | Preserved contract |
+|---|---|---|
+| $\Sigma_b=L_bL_b^\top$ | Same packed Cholesky parameters | Same covariance and rho reports |
+| $B=U L_b^\top$ | Reconstruct before predictor/report | Same fitted coefficient effects |
+| Physical start $B_0$ | $U_0=B_0L_{b,0}^{-\top}$ | Same physical initial coefficients |
+| Fixed/tied physical $B$ maps | Keep centred path when incompatible | Never reinterpret constraints as maps on $U$ |
+| Uncertainty of $B$ | Differentiate reconstructed $B$ through retained random and outer parameters | First-order physical-effect uncertainty |
+
+Unlike the analytically eliminated singleton cell effect, $U$ remains a random
+effect. Its transformed uncertainty therefore needs no added conditional
+variance. Raw standardized-effect precision must not be presented as physical
+coefficient precision. Warm starts must recover physical coefficients before
+conversion to the target coordinates.
+
+The intended admission is complete, unit-weight Gaussian identity ML for the
+existing nonspatial response-column sources and their supported aliases.
+Spatial coefficients, non-Gaussian models, other augmented-slope channels and
+unsupported compositions retain the centred path. This is a numerical repair,
+not a new estimator or a claim of interval coverage. Implementation and
+validation status are tracked in the tree-axis after-task report; approval
+alone does not establish that the new checks pass.
+
 ## SPDE / GMRF spatial integration
 
 When `spatial_*(0 + trait | sites, mesh = mesh)` is in the

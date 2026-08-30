@@ -401,3 +401,47 @@ CARRIED-OVER: codex/tree-axis-latent-repaired-20260830, local evidence commit
 ahead of draftPR1229 because the coefficient repair/ceiling41 is unapproved.
 Resume: read WINDOWS-COEFFICIENT-PROPOSAL.md, verify new user authority and
 claim this lane before implementation. Do not reuse ceiling33 as new slots.
+
+## 2026-08-30 — Coefficient standardization approved
+
+Shinichi approved the finalized proposal: scoped coefficient-standardization
+repair, output/uncertainty compatibility, eight additional standalone fits
+(cumulative ceiling41), and one revised primary article render (three fits,
+separately counted). All frozen settings and acceptance gates are unchanged.
+Landing requires separate approval. This supersedes the proposal-only status,
+not the retained failures. Starting count33; eight slots remain.
+
+Execute the existing ultra-plan, without another planning/approval round:
+1. Gauss implements src/gllvmTMB.cpp, R/fit-multi.R and R/init-warmstart.R.
+2. Noether prepares independent saved-point/output/uncertainty checks and
+   audits consumer compatibility; core code and test files have separate owners.
+3. Root binds source/fixtures/starts and immutable receipts, then runs three
+   starts for each community long model; only both passing admit two wide fits.
+4. Revised primary render, focused/full package checks, bounded reviews,
+   exact-head three-OS CI and PR1229 preparation follow; landing stays gated.
+
+Reused existing agents, no new committee. Existing Gauss/Noether proposal
+review supplies the plan review. Root owns build/run serialization. No agent
+may independently spend standalone fits or launch builds. Estimates: build
+1–3min; fixed-point checks under60s each; eight articlefits2–5min total,
+five-minute cap per call; render1–3min; package20–30min; CI20–75min. Stop and
+report overruns. Local bounded work; DRAC/Totoro only if needed, existing
+ControlMaster only, no campaigns.
+
+Prior work reused: ad89a9dc6 saved Gaussian oracle and Windows coordinates,
+cell-integration compatibility/output helpers, existing frozen fixture and
+runner. Fresh origin/main255cedd6c has no overlapping production changes.
+Brain search for tree-axis/Gaussian returned unrelated material; local
+checkpoint/proposal are technical truth. Deterministic brain log/decision
+search for noncent/column-standard/tree-axis had no relevant hit. No new
+literature or novelty claim; no sibling implementation is imported.
+
+Coefficient prefit gates PASS: freshinstall85.778s;84 compiled fixed-point,
+physical start/map/warmstart/output/uncertainty assertions2.092s;four retained
+morphology points1.959s,objective deltas<7e-12;234 focused animal/rho assertions
+4.952s. The formerWindows test retains no-warning assertions and nowchecks
+code0/gradient<1e-2 using alreadycomputed gradients. First fixed-point run
+2.144s had two names-only testdifferences and one expectedweightwarning;
+retained and corrected onlytestbookkeeping. No production change afterbuild.
+Gauss/Noether prefitreviewPASS; source/DLL manifest and gate bound. No new
+standalonearticlefit yet; count33/41. Ready Q2 thenQ3; wideconditional.

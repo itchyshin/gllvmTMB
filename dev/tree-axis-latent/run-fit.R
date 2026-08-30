@@ -4,13 +4,13 @@
 ##
 ## Example:
 ##   GLLVM_TREE_AXIS_RESULTS=/private/tmp/.../results \
-##   /private/tmp/.../bounded.py 300 /private/tmp/.../fit-C1.log \
-##   Rscript --vanilla dev/tree-axis-latent/run-fit.R C1
+##   /private/tmp/.../bounded.py 300 /private/tmp/.../fit-Q2.log \
+##   Rscript --vanilla dev/tree-axis-latent/run-fit.R --coefficient Q2
 
 args <- commandArgs(trailingOnly = TRUE)
-if (length(args) != 1L) {
-  stop("Usage: Rscript --vanilla dev/tree-axis-latent/run-fit.R <fit-id>")
-}
+coefficient_mode <- length(args) == 2L && identical(args[[1L]], "--coefficient")
+if (!(length(args) == 1L || coefficient_mode))
+  stop("Usage: run-fit.R <cell-fit-id> OR run-fit.R --coefficient <Q2|Q3|QW2|QW3>")
 
 script_arg <- grep("^--file=", commandArgs(FALSE), value = TRUE)
 script_path <- normalizePath(sub("^--file=", "", script_arg[[1L]]))
@@ -18,6 +18,10 @@ source(file.path(dirname(script_path), "fixture.R"))
 library(gllvmTMB)
 
 FIT_PLAN <- list(
+  Q2 = list(model = "community_iid", shape = "long", size = "target", starts = 3L, original = "M2"),
+  Q3 = list(model = "community_phylo", shape = "long", size = "target", starts = 3L, original = "M3"),
+  QW2 = list(model = "community_iid", shape = "wide", size = "target", start = 1L, original = "M2"),
+  QW3 = list(model = "community_phylo", shape = "wide", size = "target", start = 1L, original = "M3"),
   G1 = list(model = "morphology", shape = "long", size = "target", starts = 3L, original = "M1"),
   G2 = list(model = "community_iid", shape = "long", size = "target", starts = 3L, original = "M2"),
   G3 = list(model = "community_phylo", shape = "long", size = "target", starts = 3L, original = "M3"),
@@ -46,9 +50,10 @@ FIT_PLAN <- list(
   B3 = list(model = "community_phylo", shape = "long", size = "target", starts = 3L, optimizer = "optim")
 )
 
-fit_id <- args[[1L]]
-if (!fit_id %in% c("G1", "G2", "G3", "GW1", "GW2", "GW3")) {
-  stop("Historical fit IDs are closed. Only the approved cell-integration block may run.")
+fit_id <- args[[if (coefficient_mode) 2L else 1L]]
+allowed_ids <- if (coefficient_mode) c("Q2", "Q3", "QW2", "QW3") else c("G1", "G2", "G3", "GW1", "GW2", "GW3")
+if (!fit_id %in% allowed_ids) {
+  stop("Fit ID is not admitted in the requested block. Historical fit IDs remain closed.")
 }
 if (!fit_id %in% names(FIT_PLAN)) {
   stop("Unknown fit ID. Use one of: ", paste(names(FIT_PLAN), collapse = ", "))
@@ -163,6 +168,25 @@ start_spec <- list(seed = 202608501L, init_jitter = 0.15)
   out
 }
 
+.tree_axis_physical_coefficients <- function(fit) {
+  if (!isTRUE(fit$standardized_column_coef)) return(list(pass = FALSE, standardized = FALSE))
+  par <- fit$tmb_obj$env$last.par.best
+  dims <- dim(fit$tmb_params$b_phy_aug)
+  stopifnot(length(dims) == 3L, length(par[names(par) == "b_phy_aug"]) == prod(dims))
+  U <- array(par[names(par) == "b_phy_aug"], dim = dims)
+  theta <- par[names(par) == "theta_dep_chol"]
+  C <- dims[2L]
+  stopifnot(length(theta) == C * (C + 1L) / 2L)
+  L <- diag(exp(theta[seq_len(C)]), C)
+  if (C > 1L) L[lower.tri(L)] <- theta[-seq_len(C)]
+  B <- array(0, dim = dims)
+  for (k in seq_len(dims[3L])) B[, , k] <- matrix(U[, , k], dims[1L], C) %*% t(L)
+  physical <- fit$report$b_phy_aug_physical
+  difference <- if (identical(dim(physical), dims)) max(abs(physical - B)) else Inf
+  list(pass = all(is.finite(B)) && all(is.finite(physical)) && difference <= 1e-8,
+    standardized = TRUE, physical = physical, expected = B, max_difference = difference)
+}
+
 ## Private instrumentation is confined to this developer runner. It does not
 ## alter the likelihood, optimizer, starts, or installed source. Capture actual
 ## optimizer attempts; no restart may disappear behind the selected fit.
@@ -200,9 +224,10 @@ start_spec <- list(seed = 202608501L, init_jitter = 0.15)
     } else {
       covariance$column_coef <- extract_Sigma(transient, level = "column_coef")
     }
+    physical <- if (isTRUE(coefficient_mode)) .tree_axis_physical_coefficients(transient) else NULL
     list(start = call$start, par = opt$par, objective = opt$objective,
          convergence = opt$convergence, max_gradient = max(abs(obj$gr(opt$par))),
-         covariance = covariance)
+         covariance = covariance, physical_coefficients = physical)
   })
   reference <- original_public[intersect(c("unit", "phy", "column_coef"),
                                         names(original_public))]
@@ -230,6 +255,38 @@ dir.create(result_dir, recursive = TRUE, showWarnings = FALSE)
 out <- file.path(result_dir, paste0("fit-", fit_id, ".rds"))
 if (file.exists(out)) stop("Refusing to overwrite retained receipt: ", out)
 provenance <- NULL
+if (coefficient_mode) {
+  stopifnot(identical(normalizePath(result_dir),
+    "/private/tmp/gllvm-tree-axis-latent-20260830/coefficient-standardization-7c88"),
+    identical(normalizePath(Sys.getenv("GLLVM_TREE_AXIS_ORIGINAL")),
+      "/private/tmp/gllvm-tree-axis-latent-20260830/results"))
+  provenance_path <- file.path(result_dir, "provenance.json")
+  provenance <- jsonlite::read_json(provenance_path, simplifyVector = TRUE)
+  expected_sources <- c(list.files("R", pattern = "[.]R$", full.names = TRUE),
+    "src/gllvmTMB.cpp", "inst/include/gllvmTMB/detail/column_prior.hpp", "NAMESPACE", "DESCRIPTION")
+  stopifnot(identical(provenance$fixture_md5, "6c3bae640dd86491171cb20fbb56b0e4"),
+    identical(unname(tools::md5sum(file.path(dirname(script_path), "fixture.R"))), provenance$fixture_md5),
+    identical(normalizePath(find.package("gllvmTMB")), provenance$library),
+    identical(digest::digest(file = file.path(provenance$library, "libs/gllvmTMB.so"), algo = "sha256"), provenance$dll_sha256),
+    setequal(names(provenance$source_sha256), expected_sources), !anyDuplicated(names(provenance$source_sha256)))
+  for (path in expected_sources) stopifnot(identical(digest::digest(file = path, algo = "sha256"), provenance$source_sha256[[path]]))
+  prefit <- readRDS(file.path(result_dir, "prefit-gate.rds"))
+  required <- c("windows_oracle", "physical_outputs", "physical_uncertainty", "starts_and_maps", "morphology_continuity", "review")
+  stopifnot(identical(prefit$schema, "tree-axis-coefficient-prefit-v1"), isTRUE(prefit$pass),
+    identical(prefit$provenance_md5, unname(tools::md5sum(provenance_path))),
+    setequal(names(prefit$checks), required), all(prefit$checks %in% TRUE))
+  if (startsWith(fit_id, "QW")) for (id in c("Q2", "Q3")) {
+    gate <- readRDS(file.path(result_dir, paste0("gate-", id, ".rds")))
+    stopifnot(identical(gate$schema, "tree-axis-coefficient-long-gate-v1"),
+      identical(gate$id, id), isTRUE(gate$pass),
+      identical(gate$provenance_md5, unname(tools::md5sum(provenance_path))),
+      identical(gate$receipt_md5, unname(tools::md5sum(file.path(result_dir, paste0("fit-", id, ".rds"))))))
+  }
+  already <- length(list.files(result_dir, pattern = "^Q(W)?[23]-attempt-[123]-start[.]rds$"))
+  stopifnot(33L + already + .tree_axis_attempt_limit <= 41L)
+  if (!dir.create(file.path(result_dir, paste0("admission-", fit_id)), showWarnings = FALSE))
+    stop("Coefficient fit ID already admitted: ", fit_id)
+}
 if (fit_id %in% c("G1", "G2", "G3", "GW1", "GW2", "GW3")) {
   stopifnot(identical(normalizePath(result_dir),
     "/private/tmp/gllvm-tree-axis-latent-20260830/cell-integration-7c88"))
@@ -307,6 +364,13 @@ trace(trace_name, where = trace_where, print = FALSE,
     if (.GlobalEnv$.tree_axis_call_entries > .GlobalEnv$.tree_axis_attempt_limit)
       stop("Optimizer-attempt budget exceeded; no additional optimization allowed")
     .tree_axis_start_copy <- if (.GlobalEnv$trace_name == "optim") par else args$start
+    if (isTRUE(.GlobalEnv$coefficient_mode)) {
+      stopifnot(identical(args$control, list(eval.max = 2000, iter.max = 1500)),
+        identical(names(args), c("start", "objective", "gradient", "control")))
+      entered <- length(list.files(.GlobalEnv$result_dir,
+        pattern = "^Q(W)?[23]-attempt-[123]-start[.]rds$"))
+      stopifnot(33L + entered + 1L <= 41L)
+    }
     if (!is.null(.GlobalEnv$spec$original)) {
       original <- readRDS(file.path(Sys.getenv("GLLVM_TREE_AXIS_ORIGINAL"),
         paste0("fit-", .GlobalEnv$spec$original, ".rds")))$optimizer_calls[[.GlobalEnv$.tree_axis_call_entries]]$start
@@ -329,6 +393,10 @@ trace(trace_name, where = trace_where, print = FALSE,
         evaluations = unname(raw$counts[["gradient"]]))
     }
     captured <- list(start = .tree_axis_start_copy, result = normalized, raw = raw)
+    if (isTRUE(.GlobalEnv$coefficient_mode)) {
+      captured$control <- args$control
+      captured$argument_names <- names(args)
+    }
     .GlobalEnv$.tree_axis_calls[[length(.GlobalEnv$.tree_axis_calls) + 1L]] <- captured
     exit_path <- file.path(.GlobalEnv$result_dir, paste0(.GlobalEnv$fit_id,
       "-attempt-", .GlobalEnv$.tree_axis_call_entries, "-result.rds"))
@@ -366,6 +434,7 @@ restart_snapshots <- if (is.null(fit)) NULL else tryCatch(
 )
 receipt <- list(
   schema = "tree-axis-latent-fit-v1",
+  validation_block = if (coefficient_mode) "coefficient-standardization-v1" else "cell-integration-v1",
   id = fit_id,
   spec = spec,
   start = start_spec,
@@ -391,6 +460,9 @@ receipt <- list(
   runner_checksum = unname(tools::md5sum(script_path)),
   provenance = provenance,
   integrated_gaussian_diag_B = if (is.null(fit)) FALSE else isTRUE(fit$integrated_gaussian_diag_B),
+  standardized_column_coef = if (is.null(fit)) FALSE else isTRUE(fit$standardized_column_coef),
+  physical_coefficients = if (is.null(fit) || !coefficient_mode) NULL else tryCatch(
+    .tree_axis_physical_coefficients(fit), error = function(e) list(pass = FALSE, error = conditionMessage(e))),
   restart_history = if (is.null(fit)) NULL else fit$restart_history
 )
 saveRDS(receipt, out)

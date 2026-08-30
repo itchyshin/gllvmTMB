@@ -496,9 +496,15 @@ test_that("estimated rho and coefficient covariance recover a deterministic Gaus
   ))
   got <- gllvmTMB::extract_Sigma(fit, level = "column_coef")
   gradient <- fit$tmb_obj$gr(fit$opt$par)
-  joint <- fit$tmb_obj$env$last.par.best
-  b_hat_vector <- unname(joint[names(joint) == "b_phy_aug"])
-  B_hat <- array(b_hat_vector, dim = c(n_traits, 4L))
+  if (isTRUE(fit$standardized_column_coef)) {
+    # Eligible Gaussian tapes retain standardized U in the private random
+    # vector. Recovery concerns physical species coefficients B = U L'.
+    B_hat <- matrix(fit$report$b_phy_aug_physical, n_traits, 4L)
+  } else {
+    joint <- fit$tmb_obj$env$last.par.best
+    b_hat_vector <- unname(joint[names(joint) == "b_phy_aug"])
+    B_hat <- array(b_hat_vector, dim = c(n_traits, 4L))
+  }
   expect_identical(fit$opt$convergence, 0L)
   expect_true(all(is.finite(gradient)))
   expect_lt(max(abs(gradient)), 1e-2)

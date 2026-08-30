@@ -889,6 +889,21 @@ Type objective_function<Type>::operator()()
   // term-local RHS-resolved fields above rather than the shared cluster tier.
   DATA_INTEGER(use_phylo_column_slope);
   DATA_INTEGER(use_column_coef_estimated_rho);
+  // Old serialized payloads retain centred B coordinates when this private
+  // flag is absent. Admitted new fits use b_phy_aug as standardized U instead.
+  SEXP column_standardization_flag = getListElement(
+    TMB_OBJECTIVE_PTR->data, "standardize_column_coef");
+  int standardize_column_coef = 0;
+  if (!Rf_isNull(column_standardization_flag)) {
+    if (Rf_length(column_standardization_flag) != 1 ||
+        !(Rf_isInteger(column_standardization_flag) ||
+          Rf_isReal(column_standardization_flag)))
+      error("gllvmTMB_multi: standardize_column_coef must be scalar 0 or 1");
+    double flag = Rf_asReal(column_standardization_flag);
+    if (flag != 0.0 && flag != 1.0)
+      error("gllvmTMB_multi: standardize_column_coef must be 0 or 1");
+    standardize_column_coef = static_cast<int>(flag);
+  }
   DATA_MATRIX(column_coef_source_U);
   DATA_VECTOR(column_coef_source_lambda);
   DATA_VECTOR(column_coef_source_inv_d);
@@ -1251,6 +1266,41 @@ Type objective_function<Type>::operator()()
   int mspl_family_mode = 0; // 0 unused, 1 Bernoulli, 2 Gaussian FA (pick C)
   if (estimator_id != 0 && estimator_id != 1 && estimator_id != 2)
     error("gllvmTMB_multi: estimator_id must be 0 (ML), 1 (MSPL), or 2 (internal penalty-off MSPL)");
+
+  // Nonspatial Gaussian response-column coefficients only. The coefficient
+  // covariance/source parameters and the observation model remain unchanged;
+  // the private R gate additionally excludes fixed or tied physical-B maps.
+  if (standardize_column_coef == 1) {
+    SEXP reml_data = getListElement(TMB_OBJECTIVE_PTR->data, "REML");
+    bool gaussian_reml = !Rf_isNull(reml_data) && Rf_asLogical(reml_data) != 0;
+    if (use_phylo_column_slope != 1 || use_phylo_slope_correlated != 1 ||
+        use_phylo_dep_slope != 1 || estimator_id != 0 || gaussian_reml ||
+        use_aghq != 0 || has_mi != 0 || use_equalto != 0 || use_lv_B != 0 ||
+        use_rr_W != 0 || use_diag_W != 0 || use_rr_B_slope != 0 ||
+        use_diag_B_slope != 0 || use_propto != 0 || use_diag_species != 0 ||
+        use_diag_cluster2 != 0 || use_spde != 0 ||
+        use_spatial_column_slope != 0 || use_spde_slope != 0 ||
+        use_spde_dep_slope != 0 || use_spde_latent_slope != 0 ||
+        n_kernel_tiers != 0 || use_phylo_latent_slope != 0 || use_re_int != 0)
+      error("gllvmTMB_multi: unsupported standardized Gaussian coefficient composition");
+    if (n_traits < 1 || n_sites < 1 || y.size() != n_traits * n_sites ||
+        family_id_vec.size() != y.size() || link_id_vec.size() != y.size() ||
+        is_y_observed.size() != y.size() || weights_i.size() != y.size() ||
+        trait_id.size() != y.size() || site_id.size() != y.size())
+      error("gllvmTMB_multi: coefficient standardization requires a complete cell matrix");
+    vector<int> cell_counts(n_traits * n_sites);
+    cell_counts.setZero();
+    for (int o = 0; o < y.size(); ++o) {
+      if (family_id_vec(o) != 0 || link_id_vec(o) != 0 ||
+          is_y_observed(o) != 1 || asDouble(weights_i(o)) != 1.0 ||
+          trait_id(o) < 0 || trait_id(o) >= n_traits ||
+          site_id(o) < 0 || site_id(o) >= n_sites)
+        error("gllvmTMB_multi: coefficient standardization requires observed unit-weight identity Gaussian rows");
+      int cell = trait_id(o) + n_traits * site_id(o);
+      if (++cell_counts(cell) != 1)
+        error("gllvmTMB_multi: coefficient standardization requires one observation per cell");
+    }
+  }
 
   // Exact scalar Gaussian convolution is admitted only for complete independent
   // cell effects in the reviewed ordinary/phylogenetic ML compositions. Keep
@@ -2009,6 +2059,9 @@ Type objective_function<Type>::operator()()
                   + quad / sigma_slope2);
     REPORT(sigma_slope);
   }
+  // Physical coefficients enter predictors and reports even when the private
+  // parameter block contains standardized U. Preserve the centred fallback.
+  array<Type> b_phy_aug_physical = b_phy_aug;
   // Augmented path (live): vec(B) ~ N(0, Sigma_b \otimes A_phy), where
   // Sigma_b is block-local across LHS columns (1 = legacy slope-only;
   // 2 = intercept + slope). Driven by the phylo_unique / phylo_indep /
@@ -2107,6 +2160,21 @@ Type objective_function<Type>::operator()()
           cor_b_mat(a, bcol) = Sigma_b_dep(a, bcol) / (sd_b(a) * sd_b(bcol));
       REPORT(cor_b_mat);
       REPORT(Sigma_b_dep);
+      matrix<Type> prior_L = Lb;
+      if (standardize_column_coef == 1) {
+        // B = U L'. Independent source-prior columns of U have identity
+        // coefficient covariance: no inverse L enters their random Hessian.
+        prior_L.setZero();
+        for (int j = 0; j < C; ++j) prior_L(j, j) = Type(1);
+        for (int k = 0; k < b_phy_aug.dim[2]; ++k)
+          for (int i = 0; i < n_aug_phy_aug; ++i)
+            for (int j = 0; j < C; ++j) {
+              Type value = Type(0);
+              for (int l = 0; l <= j; ++l)
+                value += b_phy_aug(i, l, k) * Lb(j, l);
+              b_phy_aug_physical(i, j, k) = value;
+            }
+      }
       Type column_coef_rho = invlogit(eta_column_coef_rho);
       Type column_coef_logdet_K_rho = log_det_A_phy_slope;
       if (use_column_coef_estimated_rho == 1) {
@@ -2120,19 +2188,23 @@ Type objective_function<Type>::operator()()
         ADREPORT(column_coef_rho);
         REPORT(column_coef_logdet_K_rho);
       }
-      // -log p(vec(B)) = 0.5 [ n*C*log(2pi) + n*logdet(Sigma_b)
-      //                        + C*logdet(A) + tr(Sigma_b^{-1} B' A^{-1} B) ].
+      // Centred: -log p(B) = .5[n*C*log(2pi) + n*logdet(Sigma_b)
+      //                         + C*logdet(K) + tr(Sigma_b^{-1} B' K^-1 B)].
+      // Standardized: p(U) is normalized with identity coefficient covariance.
+      // The change-of-variable Jacobian cancels the coefficient determinant;
+      // adding it again would alter the marginal likelihood.
       for (int k = 0; k < b_phy_aug.dim[2]; k++) {
         // Gather the source-by-coefficient deviations for this block.
         matrix<Type> Bmat(n_aug_phy_aug, C);
         for (int j = 0; j < C; j++)
           for (int i = 0; i < n_aug_phy_aug; i++) Bmat(i, j) = b_phy_aug(i, j, k);
         Type quad = gll_column_coef_quad(
-          Bmat, Lb, use_phylo_column_slope == 1 ? Ainv_phy_slope : Ainv_phy_rr,
+          Bmat, prior_L, use_phylo_column_slope == 1 ? Ainv_phy_slope : Ainv_phy_rr,
           use_column_coef_estimated_rho, column_coef_source_U,
           column_coef_source_lambda, column_coef_source_inv_d, column_coef_rho);
         nll += Type(0.5) * (Type(n_aug_phy_aug * C) * log(2.0 * M_PI)
-                            + Type(n_aug_phy_aug) * logdet_Sigma_b
+                            + (standardize_column_coef == 1 ? Type(0) :
+                               Type(n_aug_phy_aug) * logdet_Sigma_b)
                             + Type(C) * (use_column_coef_estimated_rho == 1 ?
                               column_coef_logdet_K_rho :
                               (use_phylo_column_slope == 1 ? log_det_A_phy_slope : log_det_A_phy_rr))
@@ -2191,6 +2263,13 @@ Type objective_function<Type>::operator()()
       }
     }
     }  // end closed-form (use_phylo_dep_slope == 0) branch
+  }
+
+  if (standardize_column_coef == 1) {
+    REPORT(b_phy_aug_physical);
+    // U remains a random effect. Delta-method propagation through U and L
+    // includes their joint uncertainty; there is no eliminated-effect add-on.
+    ADREPORT(b_phy_aug_physical);
   }
 
   // -------- phylo_latent slope (Design 56 Sec. 5.3 / 9.5a) -------------
@@ -2789,7 +2868,7 @@ Type objective_function<Type>::operator()()
       Type contrib_aug = 0;
       for (int k = 0; k < b_phy_aug.dim[2]; k++)
         for (int j = 0; j < n_lhs_cols; j++)
-          contrib_aug += b_phy_aug(
+          contrib_aug += b_phy_aug_physical(
             use_phylo_column_slope == 1 ? phylo_slope_aug_id(o) : species_aug_id(o),
             j, k
           ) * Z_phy_aug(o, j, k);

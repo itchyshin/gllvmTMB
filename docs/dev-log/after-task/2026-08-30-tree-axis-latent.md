@@ -1,8 +1,9 @@
 # Tree-axis article correction: validation and publication record
 
-Date: 2026-08-30. Current status: **all twelve repaired-source validation
-fits, primary article render and full local package check pass; exact-head
-Windows CI has two warning-assertion failures; landing/deployment remain gated**. No corrected article has been published or claimed complete.
+Date: 2026-08-30. Current status: **approved coefficient-standardization repair
+in progress; its new validation has not yet run. The preceding cell repair
+passed twelve fits, the article render and local package check, but Windows
+CI failed. Landing/deployment remain gated**. No corrected article has been published or claimed complete.
 Sections1–19 retain historical failures and superseded checkpoints verbatim.
 Sections20 onward record the approved Gaussian integration and final evidence.
 
@@ -839,3 +840,24 @@ CARRIED-OVER as one local checkpoint commit, deliberately not pushed: another
 full Ubuntu run would not repair the known Windows failure. Resume by reading
 WINDOWS-COEFFICIENT-PROPOSAL.md and checking the actual user approval before
 any implementation or additional fit. Current authority remains ceiling33.
+
+## 26. Approved coefficient-standardization repair
+
+Shinichi approved the finalized repair, output/uncertainty compatibility,
+eight additional standalone fits (ceiling41), and one revised primary article
+render. Preserve all frozen settings and acceptance gates; landing separate.
+Gauss owns the three core files; Noether owns independent tests and read-only
+output review; the existing validation worker owns the immutable runner.
+Root owns build/fit serialization, documentation, rendering and PR preparation.
+The existing ultra-plan is being executed, not reopened for another approval.
+At entry33standalone attempts are spent; no new fit or build has yet run.
+
+Coefficient prefit gates PASS: freshinstall85.778s;84 compiled fixed-point,
+physical start/map/warmstart/output/uncertainty assertions2.092s;four retained
+morphology points1.959s,objective deltas<7e-12;234 focused animal/rho assertions
+4.952s. The formerWindows test retains no-warning assertions and nowchecks
+code0/gradient<1e-2 using alreadycomputed gradients. First fixed-point run
+2.144s had two names-only testdifferences and one expectedweightwarning;
+retained and corrected onlytestbookkeeping. No production change afterbuild.
+Gauss/Noether prefitreviewPASS; source/DLL manifest and gate bound. No new
+standalonearticlefit yet; count33/41. Ready Q2 thenQ3; wideconditional.

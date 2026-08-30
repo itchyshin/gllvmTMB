@@ -1,7 +1,7 @@
 # Proposed next repair after the Windows coefficient failure
 
-Status: proposal only, 2026-08-30. No production implementation or new fit
-allowance is authorized by this document. The full two-example article goal
+Status: APPROVED by Shinichi on 2026-08-30, including eight standalone fits
+(ceiling41) and one revised primary render. Historical proposal text follows. The full two-example article goal
 remains open; landing still needs separate approval.
 
 ## What the retained evidence establishes

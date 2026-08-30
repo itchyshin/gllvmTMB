@@ -160,3 +160,59 @@ by a private-oracle result alone. No diagnostic optimizer call has been run.
 Copy-ready decision: "Approve one exact-Gaussian oracle nlminb diagnostic from
 the frozen N2 start1, with unchanged controls and a60-second cap; add one attempt
 without borrowing wide slots (ceiling23). No production changes or gate waiver."
+
+## 17. Approved single-oracle optimizer diagnostic — completed
+
+The user approved one independent exact-Gaussian nlminb attempt from the frozen
+IID start, unchanged controls,60s cap, cumulative ceiling23 without borrowing
+the wide slots. That approval supersedes the prior pending-authorization text.
+The isolated lease was reclaimed; main remained9c265e76, and the existing PR
+census was unchanged. No production R/C++/header/API or article source changed.
+
+`dev/tree-axis-latent/oracle-nlminb.R` loads only the hash-bound pure Gaussian
+algebra from endpoint-score.R, never its endpoint execution loop. It verifies
+the source/DLL/fixture hashes and N2 receipt MD5, and matches its start exactly
+to N2-start1 and historical M2-start1. The original package argument builder
+sets eval.max2000 and iter.max1500; empty optArgs retains default bounds,
+scale and tolerances. The Gaussian stabilizer and all maps are unchanged.
+Gauss/Noether reviewed controls, algebra loading, single admission and trace.
+
+Command: OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1
+R_LIBS=/private/tmp/gllvm-tree-axis-latent-20260830/repaired-library
+python3 /private/tmp/gllvm-tree-axis-latent-20260830/bounded.py 60
+/private/tmp/gllvm-tree-axis-latent-20260830/repaired-nlminb-7c88/oracle-N2-start1.log
+Rscript --vanilla dev/tree-axis-latent/oracle-nlminb.R
+
+Exit0,2.571s wall process time (estimate10-60s,cap60s),1.094702s optimizer time.
+Exactly one optimizer entered and returned. It returned code0, "relative
+convergence (4)",253 iterations; NLL5039.69128021751, max analytic gradient
+.001182399. nlminb reports269 function and254 gradient evaluations. The actual
+trace contains270 objective and254 gradient calls (the initial objective is
+additional),524 records total, all finite, no warnings/errors. The atomic
+admission and every evaluation record survive independently of final summaries.
+
+Against the three saved package endpoints, exact-Gaussian NLL differences are
+-7.961235e-7,-1.561357e-7,-8.863844e-8. Unit covariance relative-norm differences
+are at most4.295e-5 and coefficient covariance differences at most4.119e-6.
+This is a closely matching endpoint under the unchanged optimizer/start/control
+settings with a different evaluator. It supports evaluator/path sensitivity;
+it does not identify the mechanism, prove identifiability, or justify deleting
+failed package convergence codes. N2 remains FAILED; NW2/NW3 remain blocked.
+No article, recovery or inference acceptance is granted by this private oracle.
+
+Cumulative attempts:21 entered,20 returned plus the historical interrupted
+BFGS attempt; ceiling23. Exactly the two conditional-wide slots remain unused.
+No further optimizer run, publication, push, merge, deployment or production
+repair occurred. Compact evidence is
+`dev/tree-axis-latent/evidence/2026-08-30-oracle-nlminb.json`; raw receipts and
+trace are under repaired-nlminb-7c88/oracle-N2-start1/. The full article goal
+remains incomplete at G2. Existing fixed-endpoint diagnostics are evidence,
+not permissions to replace the package route or loosen its gates.
+
+Final reviewer independently checked all524 evaluation records and terminal receipt;
+no remaining record defects. No additional endpoint check is warranted for this
+narrow conclusion. Native numerical-stopping investigation is a separate scope;
+no derivative defect or specific production repair has been established.
+Oracle script parse and git diff --check pass; production source, frozen fixture
+and article are unchanged. After-task structure passes; combined checker still
+exits1 because the full article acceptance ledger remains unmet.

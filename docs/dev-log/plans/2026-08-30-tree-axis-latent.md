@@ -203,3 +203,15 @@ model/seed/truth/threshold/API/engine change or interpretive waiver is authorize
 Reuse check-gaussian-likelihood.R's covariance algebra; compare independent
 analytic scores and directional finite differences at all six saved N2/N3
 endpoints with repaired TMB values/scores. Estimate5-30s, process cap30s.
+
+## 2026-08-30 — single exact-Gaussian oracle attempt explicitly approved
+
+User: "Approve one exact-Gaussian oracle `nlminb` diagnostic from the frozen IID
+start, with unchanged controls and a 60-second cap. Raise the ceiling to 23
+without borrowing wide slots. No production changes or gate waiver."
+This supersedes the earlier pending-approval paragraph. Cumulative before20;
+exactly one diagnostic attempt admitted, ceiling23. The two wide slots remain
+conditional and untouched. Estimate10-60s, external60s cap. Use exact N2 start1,
+original eval.max2000/iter.max1500, default bounds/scale/tolerances; replace only
+the evaluator with the previously reviewed exact Gaussian value/analytic score.
+Retain every evaluation and terminal return. No package source or API edits.

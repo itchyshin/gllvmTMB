@@ -1,563 +1,553 @@
 ---
-title: "Where does the phylogeny belong?"
-description: "Use one phylogeny in two different ways: among sampled plant species or among plant-species response columns."
+title: "Where does the tree go?"
+description: "Worked examples for phylogenetic and ordinary covariance on distinct model axes."
 tier: 1
 output:
   rmarkdown::html_vignette:
     toc: true
-    toc_depth: 2
 vignette: >
-  %\VignetteIndexEntry{Where does the phylogeny belong?}
+  %\VignetteIndexEntry{Where does the tree go?}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
 
-```{r, include = FALSE}
-knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
-library(ggplot2)
-
-theme_article <- theme_minimal(base_size = 12) +
-  theme(
-    panel.grid = element_blank(),
-    strip.text = element_text(face = "bold", colour = "#17324D"),
-    plot.title = element_text(face = "bold", colour = "#17324D"),
-    plot.caption = element_text(hjust = 0, colour = "#555555"),
-    axis.title = element_text(colour = "#17324D")
-  )
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse=TRUE, comment="#>")
 ```
 
-<style>
-.table-responsive {
-  display: block;
-  width: 100%;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-}
-</style>
+# The tree belongs to the axis it explains
 
-## The decision
+A phylogeny supplies covariance for species labels on a particular model axis.
+It does not replace the other covariance sources in the scientific model.
+Here species are the **rows** of a morphology matrix, but the **columns** of a
+community matrix. Both examples use synthetic Gaussian responses.
 
-Suppose you have a phylogeny for a set of alpine plant species. Before putting
-the tree in a model, ask one question: **do its tip labels identify the sampled
-species, or the response columns?** The answer changes the model.
+**Working draft:** the morphology checks passed, but the community fits have
+unresolved convergence warnings. This revision is not ready for publication.
 
-<div class="table-responsive">
-
-| Your data question | The tree relates | Use |
-|---|---|---|
-| Do related species have similar leaf and seed traits? | sampled species | a phylogenetic intercept term |
-| Do related species have similar deviations from a C3/C4 latitude gradient? | species response columns | `phylo_coef(... | trait)` |
-
-</div>
-
-The two examples below use simulated Gaussian data and a fixed tree. They show
-which variable the tree connects, not uncertainty calibration. Start with the
-row whose tree tips match the variable on the right of the model term.
-
-```{r packages, message = FALSE}
+```{r packages}
 library(gllvmTMB)
 library(ape)
+library(ggplot2)
 ```
 
-## Example 1: a tree among sampled species
+<details>
+<summary>Simulation helpers: run this code once before the examples</summary>
 
-**Question.** How do I include a tree when each sampled plant species has four
-morphology traits, each measured across several populations?
+The code below fixes the trees, predictors, loading matrices and diagonal
+variances before fitting. It generates one realization, not a recovery study.
 
-Here the response columns are four measured traits. `species` is a grouping
-variable: each long-format row records one trait at one population of one
-species. Therefore the tree belongs to `species`, not to `trait`.
+```{r simulation-helpers}
+## Synthetic data construction; all seeds and covariance parameters are fixed.
 
-<div class="table-responsive">
-
-| Long-data variable | Meaning | Does the tree tip match it? |
-|---|---|---|
-| `plot_id` | one sampled population | no |
-| `trait` | leaf area, leaf mass, seed mass, or stem height | no |
-| `species` | the plant species sampled at each population | **yes** |
-
-</div>
-
-```{r species-axis-data}
-set.seed(24)
-species <- sprintf("plant_%02d", 1:12)
-traits <- c("leaf_area", "leaf_mass", "seed_mass", "stem_height")
-tree <- rcoal(length(species))
-tree$tip.label <- species
-K_tree <- vcv.phylo(tree, corr = TRUE)[species, species]
-A <- K_tree + diag(1e-8, length(species))
-
-populations <- expand.grid(
-  species = species, population = 1:5, KEEP.OUT.ATTRS = FALSE
-)
-populations$plot_id <- sprintf("%s_%s", populations$species, populations$population)
-populations$elevation <- rep(seq(-1, 1, length.out = 5), each = length(species))
-species_by_trait <- t(chol(A)) %*% matrix(rnorm(length(species) * length(traits)),
-  nrow = length(species), dimnames = list(species, traits)
+TREE_AXIS_FIXTURE_VERSION <- "tree-axis-latent-v1"
+TREE_AXIS_SEEDS <- list(
+  morphology_tree = 202608301L,
+  morphology_phy = 202608302L,
+  morphology_non = 202608303L,
+  morphology_elevation = 202608304L,
+  community_tree = 202608401L,
+  community_latitude = 202608402L,
+  community_coef = 202608403L,
+  community_site = 202608404L
 )
 
-morphology <- do.call(rbind, lapply(traits, function(trait_name) {
-  i <- match(populations$species, species)
-  data.frame(
-    plot_id = populations$plot_id,
-    species = factor(populations$species, levels = species),
-    elevation = populations$elevation,
-    trait = factor(trait_name, levels = traits),
-    value = 0.35 * populations$elevation + species_by_trait[i, trait_name] +
-      rnorm(nrow(populations), sd = 0.35)
+.tree_axis_unit_height <- function(tree) {
+  height <- max(ape::node.depth.edgelength(tree))
+  if (!is.finite(height) || height <= 0) stop("Tree height must be positive.")
+  tree$edge.length <- tree$edge.length / height
+  tree
+}
+
+.tree_axis_tree_covariance <- function(tree, labels) {
+  tip_heights <- ape::node.depth.edgelength(tree)[seq_along(tree$tip.label)]
+  if (max(abs(tip_heights - 1)) > 1e-10) {
+    stop("The frozen tree must be ultrametric with unit tip height.")
+  }
+  K <- ape::vcv.phylo(tree, corr = TRUE)[labels, labels, drop = FALSE]
+  K_unit_height <- ape::vcv.phylo(tree, corr = FALSE)[labels, labels, drop = FALSE]
+  if (max(abs(K - K_unit_height)) > 1e-8) {
+    stop("Tree covariance changed scale after unit-height normalization.")
+  }
+  K
+}
+
+.tree_axis_draw_source <- function(K, Lambda, Psi, seed) {
+  set.seed(seed)
+  n <- nrow(K)
+  p <- nrow(Lambda)
+  L_K <- t(chol(K))
+  shared <- L_K %*% matrix(rnorm(n * ncol(Lambda)), n, ncol(Lambda)) %*%
+    t(Lambda)
+  unique <- L_K %*% matrix(rnorm(n * p), n, p) %*% chol(Psi)
+  list(shared = shared, unique = unique, total = shared + unique)
+}
+
+.tree_axis_draw_iid <- function(n, Lambda, Psi, seed) {
+  set.seed(seed)
+  p <- nrow(Lambda)
+  shared <- matrix(rnorm(n * ncol(Lambda)), n, ncol(Lambda)) %*% t(Lambda)
+  unique <- matrix(rnorm(n * p), n, p) %*% chol(Psi)
+  list(shared = shared, unique = unique, total = shared + unique)
+}
+
+.tree_axis_morphology <- function(size = c("target", "canary")) {
+  size <- match.arg(size)
+  set.seed(TREE_AXIS_SEEDS$morphology_tree)
+  n_species <- if (identical(size, "target")) 80L else 20L
+  species <- sprintf("morph_%03d", seq_len(n_species))
+  traits <- c(
+    "leaf_area", "specific_leaf_area", "leaf_dry_matter",
+    "stem_height", "seed_mass", "root_depth"
   )
-}))
-```
+  tree <- .tree_axis_unit_height(ape::rcoal(n_species))
+  tree$tip.label <- species
+  K <- .tree_axis_tree_covariance(tree, species)
 
-```{r species-axis-fit}
-fit_species <- gllvmTMB(
-  value ~ 0 + trait + trait:elevation +
-    phylo_latent(0 + trait | species, tree = tree, d = 1, unique = TRUE),
-  data = morphology, trait = "trait", unit = "plot_id", family = gaussian(),
-  silent = TRUE
-)
-Sigma_species_traits <- extract_Sigma(fit_species, level = "phy", part = "total")$Sigma
-round(Sigma_species_traits, 2)
-```
+  ## Two deliberately non-collinear trait contrasts.  Their signs label a
+  ## synthetic fixture; they do not assert mechanisms in real plants.
+  Lambda_phy <- matrix(c(
+    0.62, 0.10,
+    0.48, 0.34,
+   -0.18, 0.58,
+    0.71,-0.08,
+    0.10, 0.64,
+    0.42,-0.38
+  ), nrow = length(traits), byrow = TRUE,
+  dimnames = list(traits, c("leaf_stature", "reproductive_structure")))
+  Lambda_non <- matrix(c(
+    0.22, 0.46,
+    0.54,-0.16,
+    0.63, 0.28,
+   -0.15, 0.52,
+    0.48,-0.24,
+    0.08, 0.57
+  ), nrow = length(traits), byrow = TRUE,
+  dimnames = list(traits, c("resource_axis", "independent_axis")))
+  psi_phy <- c(0.20, 0.16, 0.24, 0.18, 0.22, 0.14)
+  psi_non <- c(0.18, 0.25, 0.17, 0.21, 0.15, 0.23)
+  Psi_phy <- diag(psi_phy)
+  Psi_non <- diag(psi_non)
+  dimnames(Psi_phy) <- dimnames(Psi_non) <- list(traits, traits)
 
-`trait:elevation` gives every measured trait its own average elevation effect.
-`phylo_latent(... | species)` then models covariance among the **sampled plant
-species**. Its extracted matrix describes which morphology traits tend to vary
-together across phylogenetically related species: positive diagonal entries are
-trait-specific variation, while off-diagonal entries are cross-trait
-association. It is not a model of species-specific elevation slopes.
+  phy <- .tree_axis_draw_source(K, Lambda_phy, Psi_phy, TREE_AXIS_SEEDS$morphology_phy)
+  non <- .tree_axis_draw_iid(n_species, Lambda_non, Psi_non,
+                              TREE_AXIS_SEEDS$morphology_non)
+  set.seed(TREE_AXIS_SEEDS$morphology_elevation)
+  elevation <- as.numeric(scale(seq(-1.6, 1.6, length.out = n_species) +
+    rnorm(n_species, sd = 0.20)))
+  trait_intercept <- c(0.25, 0.05, -0.15, 0.40, -0.25, 0.10)
+  trait_elevation <- c(0.20, 0.32, -0.18, 0.38, -0.10, 0.14)
+  Y <- sweep(phy$total + non$total, 2L, trait_intercept, "+") +
+    tcrossprod(elevation, trait_elevation)
+  colnames(Y) <- traits
 
-```{r morphology-data, echo = FALSE, fig.width = 8.4, fig.height = 6.8, fig.cap = "Example 1 in the observed long-data layout. Grey points are five population measurements within each sampled species; amber points are species means. The four panels are the morphology response columns, while the tree belongs to the sampled-species axis.", fig.alt = "Four panels showing leaf area, leaf mass, seed mass, and stem height. Each panel has five pale grey population observations for each of twelve plant species and one amber species mean."}
-morphology_plot <- transform(
-  morphology,
-  trait_label = factor(
-    tools::toTitleCase(gsub("_", " ", trait)),
-    levels = tools::toTitleCase(gsub("_", " ", traits))
+  wide <- data.frame(species = factor(species, levels = species), elevation = elevation,
+                     check.names = FALSE)
+  wide[traits] <- as.data.frame(Y, check.names = FALSE)
+  long <- data.frame(
+    species = factor(rep(species, each = length(traits)), levels = species),
+    elevation = rep(elevation, each = length(traits)),
+    trait = factor(rep(traits, times = n_species), levels = traits),
+    value = as.vector(t(Y))
   )
-)
-
-ggplot(morphology_plot, aes(x = species, y = value)) +
-  geom_hline(yintercept = 0, linewidth = 0.3, colour = "#AAB7C4") +
-  geom_point(colour = "#7A8FA0", alpha = 0.55, size = 1.7) +
-  stat_summary(
-    fun = mean, geom = "point", shape = 21, size = 3.3, stroke = 0.7,
-    fill = "#E9A34F", colour = "#173B5E"
-  ) +
-  facet_wrap(~ trait_label, ncol = 2, scales = "free_y") +
-  labs(
-    title = "Morphology is observed repeatedly within sampled species",
-    subtitle = "Grey points: five populations per species;\namber circles: species means",
-    x = "Sampled plant species", y = "Simulated morphology value"
-  ) +
-  theme_article +
-  theme(
-    plot.title = element_text(face = "bold", colour = "#173B5E"),
-    plot.subtitle = element_text(colour = "#4B5563"),
-    axis.text.x = element_text(angle = 45, hjust = 1),
-    strip.text = element_text(face = "bold", colour = "#173B5E")
+  list(
+    species = species, traits = traits, tree = tree, K = K, long = long, wide = wide,
+    truth = list(
+      Lambda_phy = Lambda_phy, Psi_phy = Psi_phy,
+      Sigma_phy_shared = tcrossprod(Lambda_phy),
+      Sigma_phy_total = tcrossprod(Lambda_phy) + Psi_phy,
+      Lambda_non = Lambda_non, Psi_non = Psi_non,
+      Sigma_non_shared = tcrossprod(Lambda_non),
+      Sigma_non_total = tcrossprod(Lambda_non) + Psi_non,
+      elevation = trait_elevation
+    )
   )
+}
+
+.tree_axis_community <- function(size = c("target", "canary")) {
+  size <- match.arg(size)
+  n_sites <- if (identical(size, "target")) 150L else 50L
+  n_species <- if (identical(size, "target")) 50L else 20L
+  species <- sprintf("plant_%03d", seq_len(n_species))
+  set.seed(TREE_AXIS_SEEDS$community_latitude)
+  sites <- data.frame(
+    site_id = sprintf("site_%03d", seq_len(n_sites)),
+    latitude = as.numeric(scale(seq(38, 62, length.out = n_sites) +
+      rnorm(n_sites, sd = 0.7)))
+  )
+  set.seed(TREE_AXIS_SEEDS$community_tree)
+  tree <- .tree_axis_unit_height(ape::rcoal(n_species))
+  tree$tip.label <- species
+  K <- .tree_axis_tree_covariance(tree, species)
+  pathway <- factor(rep(c("C3", "C4"), length.out = n_species), levels = c("C3", "C4"))
+  column_data <- data.frame(trait = species, pathway = pathway)
+
+  pathway_intercept <- c(C3 = 0.85, C4 = 0.45)
+  pathway_slope <- c(C3 = -0.30, C4 = 0.55)
+  rho_truth <- 0.60
+  K_rho <- rho_truth * K + (1 - rho_truth) * diag(diag(K))
+  coefficient_sd <- c(`(Intercept)` = 0.18, latitude = 0.55)
+  coefficient_cor <- -0.25
+  Sigma_coef <- outer(coefficient_sd, coefficient_sd) *
+    matrix(c(1, coefficient_cor, coefficient_cor, 1), 2L,
+           dimnames = list(names(coefficient_sd), names(coefficient_sd)))
+  set.seed(TREE_AXIS_SEEDS$community_coef)
+  coefficient_draw <- t(chol(K_rho)) %*%
+    matrix(rnorm(n_species * 2L), n_species, 2L) %*% chol(Sigma_coef)
+  colnames(coefficient_draw) <- names(coefficient_sd)
+  rownames(coefficient_draw) <- species
+
+  ## Conditional residual association across species at a site.  There is no
+  ## fifth Gaussian noise term: Psi_site is the cell-level independent part.
+  Lambda_site <- cbind(
+    0.48 * (sin(seq_len(n_species) * 0.22) + 0.20),
+    -0.32 * (cos(seq_len(n_species) * 0.31) - 0.15)
+  )
+  rownames(Lambda_site) <- species
+  colnames(Lambda_site) <- c("cooccurrence_axis_1", "cooccurrence_axis_2")
+  psi_site <- seq(0.12, 0.28, length.out = n_species)
+  Psi_site <- diag(psi_site)
+  dimnames(Psi_site) <- list(species, species)
+  residual <- .tree_axis_draw_iid(n_sites, Lambda_site, Psi_site,
+                                   TREE_AXIS_SEEDS$community_site)$total
+  alpha <- pathway_intercept[as.character(pathway)] + coefficient_draw[, "(Intercept)"]
+  beta <- pathway_slope[as.character(pathway)] + coefficient_draw[, "latitude"]
+  Y <- outer(rep(1, n_sites), alpha) + tcrossprod(sites$latitude, beta) + residual
+  colnames(Y) <- species
+
+  wide <- data.frame(site_id = sites$site_id, latitude = sites$latitude,
+                     check.names = FALSE)
+  wide[species] <- as.data.frame(Y, check.names = FALSE)
+  long <- data.frame(
+    site_id = factor(rep(sites$site_id, each = n_species), levels = sites$site_id),
+    latitude = rep(sites$latitude, each = n_species),
+    trait = factor(rep(species, times = n_sites), levels = species),
+    pathway = factor(rep(as.character(pathway), times = n_sites), levels = c("C3", "C4")),
+    value = as.vector(t(Y))
+  )
+  list(
+    species = species, sites = sites, tree = tree, K = K,
+    long = long, wide = wide, column_data = column_data,
+    truth = list(
+      pathway_intercept = pathway_intercept, pathway_slope = pathway_slope,
+      rho = rho_truth, K_rho = K_rho, Sigma_coef = Sigma_coef,
+      coefficient_draw = coefficient_draw, Lambda_site = Lambda_site,
+      Psi_site = Psi_site, Sigma_site_shared = tcrossprod(Lambda_site),
+      Sigma_site_total = tcrossprod(Lambda_site) + Psi_site
+    )
+  )
+}
+
+make_tree_axis_fixture <- function(size = c("target", "canary")) {
+  size <- match.arg(size)
+  out <- list(
+    version = TREE_AXIS_FIXTURE_VERSION,
+    morphology = .tree_axis_morphology(size),
+    community = .tree_axis_community(size)
+  )
+  stopifnot(
+    identical(levels(out$morphology$long$species), out$morphology$tree$tip.label),
+    identical(levels(out$community$long$trait), out$community$tree$tip.label),
+    nrow(out$morphology$long) == length(out$morphology$species) * length(out$morphology$traits),
+    nrow(out$community$long) == nrow(out$community$sites) * length(out$community$species),
+    qr(out$community$truth$Lambda_site)$rank == 2L
+  )
+  out
+}
+
 ```
 
-```{r morphology-wide, echo = FALSE, fig.width = 8.4, fig.height = 6.5, fig.cap = "The same Example 1 data after a wide-data summary: each row is a sampled species and each morphology trait is a response column. Cells show standardised species means across the five population measurements; the plot is a data-layout guide, not the fitted model input.", fig.alt = "A twelve by four heatmap. Rows are sampled plant species and columns are leaf area, leaf mass, seed mass, and stem height. Each labelled tile gives a standardised species mean."}
-morphology_means <- aggregate(value ~ species + trait, data = morphology, FUN = mean)
-morphology_wide <- reshape(
-  morphology_means, idvar = "species", timevar = "trait", direction = "wide"
-)
-morphology_wide <- morphology_wide[, c("species", paste0("value.", traits))]
-names(morphology_wide)[-1] <- traits
-morphology_standardised <- as.data.frame(scale(morphology_wide[-1]))
-morphology_standardised$species <- morphology_wide$species
-morphology_wide_plot <- reshape(
-  morphology_standardised, varying = traits, v.names = "value",
-  timevar = "trait", times = traits, direction = "long"
-)
-morphology_wide_plot$trait <- factor(
-  morphology_wide_plot$trait, levels = traits,
-  labels = tools::toTitleCase(gsub("_", " ", traits))
-)
-morphology_wide_plot$species <- factor(morphology_wide_plot$species, levels = rev(species))
-morphology_wide_plot$text_colour <- ifelse(abs(morphology_wide_plot$value) >= 1.45, "white", "#102A43")
+</details>
 
-ggplot(morphology_wide_plot, aes(x = trait, y = species, fill = value)) +
-  geom_tile(colour = "white", linewidth = 0.8) +
-  geom_text(
-    aes(label = sprintf("%.1f", value), colour = text_colour),
-    size = 3.1, show.legend = FALSE
-  ) +
-  scale_fill_gradient2(
-    low = "#2166AC", mid = "white", high = "#B2182B", midpoint = 0,
-    name = "Standardised\nspecies mean"
-  ) +
-  scale_colour_identity() +
-  labs(
-    title = "Morphology data in wide form",
-    subtitle = "Each row is one sampled plant species;\nthe four trait measurements are response columns",
-    x = "Response columns: morphology traits", y = "Rows: sampled plant species"
-  ) +
-  theme_article +
-  theme(
-    plot.title = element_text(face = "bold", colour = "#173B5E"),
-    plot.subtitle = element_text(colour = "#4B5563"),
-    panel.grid = element_blank(),
-    axis.text.x = element_text(face = "bold"),
-    legend.title = element_text(face = "bold")
-  )
+```{r plot-helper}
+corplot <- function(S, title) {
+  z <- as.data.frame(as.table(stats::cov2cor(S)))
+  names(z) <- c("first", "second", "r")
+  p <- ggplot(z, aes(first, second, fill = r)) +
+    geom_tile(colour = "white", linewidth = 0.15) +
+    scale_fill_gradient2(low = "#b2182b", mid = "white", high = "#2166ac",
+                         limits = c(-1, 1)) +
+    coord_equal() + labs(title = title, x = NULL, y = NULL, fill = "Correlation") +
+    theme_minimal(base_size = 10) +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  if (nrow(S) <= 12) {
+    p <- p + geom_text(aes(label = sprintf("%.2f", r)), size = 2.6)
+  } else {
+    keep <- rownames(S)[unique(c(1L, seq(10L, nrow(S), by = 10L)))]
+    p <- p + scale_x_discrete(breaks = keep) + scale_y_discrete(breaks = keep)
+  }
+  p
+}
 ```
 
-Use this form when the data table contains species as repeated sampling units.
-If instead species name the response columns, use the next model.
+```{r axis-map, fig.width=8, fig.height=3.5}
+axes <- data.frame(
+  example = c("1. Species × traits", "2. Sites × species"),
+  rows = c("Species rows: tree A", "Site rows: ordinary latent()"),
+  columns = c("Trait columns", "Species columns: tree K for coefficients"),
+  components = c("phylo_latent() + latent()\nBoth group by species",
+                 "phylo_coef() + latent()\nCoefficients by species; residuals by site")
+)
+ggplot(axes) +
+  annotate("rect", xmin = 0, xmax = 3, ymin = 0, ymax = 2,
+           fill = "#e4edf2", colour = "#31576b") +
+  geom_text(aes(x = 1.5, y = 1, label = components), size = 3.2) +
+  geom_text(aes(x = 1.5, y = 2.4, label = columns), size = 3) +
+  geom_text(aes(x = -0.4, y = 1, label = rows), angle = 90, size = 3) +
+  facet_wrap(~ example) + coord_cartesian(xlim = c(-0.8, 3.3), ylim = c(-0.1, 2.8)) +
+  labs(caption = "Schematic response matrices. Each tree follows species labels; the ordinary source remains in the model.") +
+  theme_void(base_size = 11) + theme(strip.text = element_text(face = "bold"))
+```
 
-## Example 2: a tree among species response columns
+# Example 1: six traits, one measurement per species
 
-**Question.** Do C3 and C4 plants differ in both average biomass and their
-average response to latitude, and how much do individual plant species vary
-around those pathway averages? Do related species have similar deviations?
-
-Each site is now a row of the community matrix and each plant species is a
-response column. To stay inside the currently tested scope, the response is a
-continuous Gaussian intensity: a simulated log-biomass index. Presence–absence
-and count responses need a future non-Gaussian coefficient extension.
-
-The example separates four different jobs. C3 and C4 are photosynthetic
-pathways; contrasting their latitude responses is a simple way to ask whether
-two ecological strategies follow different environmental gradients.
-`latitude` changes among sites. `pathway` is species-column metadata copied
-down the long data for each species. The package calls its response-column
-identifier `trait`; here each `trait` level is a plant species. The fixed
-`0 + pathway` term estimates separate C3 and C4 mean intercepts, while
-`latitude:pathway` estimates separate pathway mean gradients.
-`phylo_coef(1 + latitude | trait)` then gives every plant species its own
-random intercept and latitude slope around the corresponding pathway means.
-Related species receive correlated deviations, and the default `rho = NULL`
-estimates how strongly both coefficient deviations follow the supplied tree.
-The companion `column_coef()` fit is the IID baseline: it estimates the same
-random-intercept and random-slope covariance without a relationship among
-plant species.
-
-These are different model components. `pathway` and `latitude:pathway` are
-**fixed effects** for the two pathway averages;
-`phylo_coef(1 + latitude | trait)` is a **random-effect distribution** for the
-remaining species-specific intercept and slope deviations. Response-column
-metadata such as `pathway` enters the fixed-effects formula directly: pathway
-is observed species information, not a site-level random coefficient. `rho`
-changes the correlation among species coefficients while preserving the
-marginal scale of the supplied tree covariance.
-
-For plant species (j) in pathway (g(j)), the fitted mean is
+We simulate 80 species and six standardized traits: leaf area, specific leaf
+area, leaf dry matter content, stem height, seed mass, and root depth. Each
+species has exactly one multivariate observation: there are no populations and
+no within-species variance.
 
 \[
-E(y_{ij} \mid a_j,b_j) = \{\alpha_{g(j)} + a_j\}
-  + \{\beta_{g(j)} + b_j\}\,\mathrm{latitude}_i.
+Y=XB+U_{\rm phy}+U_{\rm non}, \qquad
+\Sigma_k=\Lambda_k\Lambda_k^\mathsf T+\Psi_k,
+\]
+\[
+\operatorname{Cov}\{\operatorname{vec}(Y^\mathsf T)\}
+=A\otimes\Sigma_{\rm phy}+I\otimes\Sigma_{\rm non}.
 \]
 
-The fixed coefficients \(\alpha_{g(j)}\) and \(\beta_{g(j)}\) are the C3 or C4
-pathway averages. The random coefficients \(a_j\) and \(b_j\) are the plant
-species deviations around those averages. `column_coef()` treats deviations
-from different species as unrelated; `phylo_coef()` gives their coefficient
-matrix the phylogenetic row covariance \(K_\rho\).
+Both sources are among species. The fixed effects in $XB$ are trait means
+and trait-specific effects of standardized species elevation. $A$ is the
+unit-diagonal tree covariance; $I$ makes different species independent in the
+ordinary source. $\Psi_k$ is a diagonal matrix of positive trait-specific
+variances. The vectorization above stacks all traits for each species together.
+Two latent dimensions alone do not establish separation of the sources.
 
-<div class="table-responsive">
-
-| Long-data variable | Meaning | Does the tree tip match it? |
-|---|---|---|
-| `site_id` | one vegetation plot | no |
-| `trait` | the plant species response column | **yes** |
-| `latitude` | a site-level predictor, repeated for every species at that site | no |
-| `pathway` | a C3/C4 attribute of each species column | no — it groups tips, but does not identify them |
-
-</div>
-
-```{r column-axis-data}
-set.seed(25)
-sites <- data.frame(
-  site_id = sprintf("site_%02d", 1:50),
-  latitude = as.numeric(scale(seq(38, 62, length.out = 50) + rnorm(50, sd = 0.7)))
-)
-species_info <- data.frame(
-  trait = factor(species, levels = species),
-  pathway = factor(rep(c("C3", "C4"), each = 6), levels = c("C3", "C4"))
-)
-pathway_intercept <- c(C3 = 0.85, C4 = 0.45)
-pathway_slope <- c(C3 = -0.30, C4 = 0.55)
-set.seed(8) # a reproducible interior-rho phylogenetic coefficient draw
-rho_truth <- 0.60
-A_rho <- rho_truth * K_tree + (1 - rho_truth) * diag(diag(K_tree))
-coefficient_sd <- c(intercept = 0.18, latitude = 0.55)
-coefficient_cor <- -0.25
-Sigma_coef_truth <- outer(coefficient_sd, coefficient_sd) *
-  matrix(c(1, coefficient_cor, coefficient_cor, 1), nrow = 2)
-coefficient_deviation <- t(chol(A_rho)) %*%
-  matrix(rnorm(length(species) * 2), nrow = length(species)) %*%
-  chol(Sigma_coef_truth)
-colnames(coefficient_deviation) <- c("intercept", "latitude")
-species_intercept <- pathway_intercept[as.character(species_info$pathway)] +
-  coefficient_deviation[, "intercept"]
-species_slope <- pathway_slope[as.character(species_info$pathway)] +
-  coefficient_deviation[, "latitude"]
-
-community <- do.call(rbind, lapply(seq_along(species), function(j) {
-  pathway_j <- as.character(species_info$pathway[[j]])
-  data.frame(
-    site_id = sites$site_id,
-    latitude = sites$latitude,
-    trait = factor(species[[j]], levels = species),
-    pathway = factor(pathway_j, levels = c("C3", "C4")),
-    log_biomass = species_intercept[[j]] +
-      species_slope[[j]] * sites$latitude +
-      rnorm(nrow(sites), sd = 0.12)
-  )
-}))
-
-head(species_info, 4)
-head(community[c("site_id", "trait", "pathway", "latitude", "log_biomass")], 6)
+```{r morphology-dgp}
+fixture <- make_tree_axis_fixture("target")
+traits_morph <- fixture$morphology$traits
+tree_morph <- fixture$morphology$tree
+morphology <- fixture$morphology$long
+morphology_wide <- fixture$morphology$wide
+truth_morphology <- fixture$morphology$truth
+A <- fixture$morphology$K
+I <- diag(nrow(A))
+source_columns <- cbind(A[lower.tri(A, diag = TRUE)], I[lower.tri(I, diag = TRUE)])
+source_columns <- sweep(source_columns, 2, sqrt(colSums(source_columns^2)), "/")
+c(source_rank = qr(source_columns)$rank,
+  normalized_condition = kappa(source_columns, exact = TRUE))
 ```
 
-```{r column-axis-fit}
-fit_columns_iid <- gllvmTMB(
-  log_biomass ~ 0 + pathway + latitude:pathway +
-    column_coef(1 + latitude | trait),
-  data = community, trait = "trait", unit = "site_id", family = gaussian(),
-  control = gllvmTMBcontrol(se = FALSE), silent = TRUE
+This check distinguishes the two covariance patterns algebraically. It does
+not guarantee accurate variance estimates from 80 species.
+
+```{r morphology-long}
+fit_morphology <- gllvmTMB(
+ value ~ 0+trait+trait:elevation+
+   phylo_latent(0+trait|species,tree=tree_morph,d=2,unique=TRUE)+
+   latent(0+trait|species,d=2,unique=TRUE),
+ data=morphology,trait="trait",unit="species",cluster="species",
+ family=gaussian(),silent=TRUE,control=gllvmTMBcontrol(se=FALSE)
 )
+```
+
+The matching wide-data call uses the same public entry point.
+
+```{r morphology-wide, eval=FALSE}
+fit_morphology_wide <- gllvmTMB(
+ traits(all_of(traits_morph)) ~ 1+elevation+
+   phylo_latent(1|species,tree=tree_morph,d=2,unique=TRUE)+
+   latent(1|species,d=2,unique=TRUE),
+ data=morphology_wide,unit="species",cluster="species",family=gaussian(),silent=TRUE,control=gllvmTMBcontrol(se=FALSE)
+)
+```
+
+```{r morphology-figure, fig.width=8, fig.height=6}
+Sphy <- extract_Sigma(fit_morphology,level="phy",part="total",link_residual="none")$Sigma
+Snon <- extract_Sigma(fit_morphology,level="unit",part="total",link_residual="none")$Sigma
+Sps <- extract_Sigma(fit_morphology,level="phy",part="shared",link_residual="none")$Sigma
+Sns <- extract_Sigma(fit_morphology,level="unit",part="shared",link_residual="none")$Sigma
+pp <- extract_Sigma(fit_morphology,level="phy",part="unique",link_residual="none")$s
+pn <- extract_Sigma(fit_morphology,level="unit",part="unique",link_residual="none")$s
+parts <- data.frame(trait=rep(traits_morph,4),
+ component=rep(c("phylo shared","phylo diagonal","ordinary shared","ordinary diagonal"),each=6),
+ variance=c(diag(Sps),pp,diag(Sns),pn))
+p1 <- corplot(Sphy,"Fitted phylogenetic trait correlation")
+p2 <- corplot(Snon,"Fitted ordinary trait correlation")
+parts$trait <- factor(parts$trait, levels = traits_morph)
+p3 <- ggplot(parts,aes(trait,variance,fill=component))+geom_col()+
+  scale_fill_manual(values = c("phylo shared" = "#156b42", "phylo diagonal" = "#a6dba0",
+                              "ordinary shared" = "#70569b", "ordinary diagonal" = "#c5afd9"))+
+  labs(title="Fitted four-part variance decomposition",x=NULL,y="Variance")+
+  theme_minimal(base_size=10)+theme(axis.text.x=element_text(angle=45,hjust=1))
+grid::grid.newpage(); grid::pushViewport(grid::viewport(layout=grid::grid.layout(2,2)))
+print(p1,vp=grid::viewport(layout.pos.row=1,layout.pos.col=1))
+print(p2,vp=grid::viewport(layout.pos.row=1,layout.pos.col=2))
+print(p3,vp=grid::viewport(layout.pos.row=2,layout.pos.col=1:2))
+```
+
+```{r morphology-truth-estimate}
+truth_estimate <- data.frame(
+  trait = traits_morph,
+  phylo_total_truth = diag(truth_morphology$Sigma_phy_total),
+  phylo_total_fitted = diag(Sphy),
+  ordinary_total_truth = diag(truth_morphology$Sigma_non_total),
+  ordinary_total_fitted = diag(Snon),
+  phylo_communality_truth = diag(truth_morphology$Sigma_phy_shared) / diag(truth_morphology$Sigma_phy_total),
+  phylo_communality_fitted = extract_communality(fit_morphology, level = "phy", link_residual = "none"),
+  ordinary_communality_truth = diag(truth_morphology$Sigma_non_shared) / diag(truth_morphology$Sigma_non_total),
+  ordinary_communality_fitted = extract_communality(fit_morphology, level = "unit", link_residual = "none")
+)
+knitr::kable(truth_estimate, digits = 3,
+  caption = "One synthetic realization: truth and fitted covariance summaries, not recovery evidence.")
+```
+
+The table describes one synthetic realization; it is not recovery evidence.
+Communality is the shared fraction of variance **within one source**, not that
+source's share of total variance. The four-part bars show the latter components
+on the original variance scale. The phylogenetic diagonal estimates approach
+zero in this realization even though their planted values are positive; the
+stable fit does not establish recovery of that decomposition.
+
+The ordinary component is between-species variation not structured by this
+tree. It is not automatically plot-level variation, convergence,
+microevolution, or measurement error. A near-zero fitted diagonal for a
+pre-specified source is reported, not used to alter the frozen model.
+
+# Example 2: species coefficients and residual association at sites
+
+We simulate 150 sites and 50 species. C3 and C4 fixed pathway intercepts are
+.85 and .45; their latitude slopes are -.30 and .55. Species have intercept
+and slope deviations around those expectations. Both coefficient models retain
+a two-dimensional ordinary site residual component. Here $z_i$ denotes
+standardized latitude, $C_s$ is species $s$'s pathway, and
+$b_s=(b_{0s},b_{1s})^\mathsf T$ contains its coefficient deviations.
+The response is a synthetic continuous community measurement, not a count.
+The contrasting pathway slopes are design assumptions, not a general claim
+about C3 and C4 distributions.
+
+\[
+y_{is}=\alpha_{C_s}+\beta_{C_s}z_i+b_{0s}+b_{1s}z_i+e_{is},\qquad
+\operatorname{Cov}(e_i)=\Lambda_{\rm site}\Lambda_{\rm site}^{\mathsf T}+\Psi_{\rm site}.
+\]
+
+For the phylogenetic coefficient model,
+\[
+\operatorname{Cov}(b_s,b_t)=(K_\rho)_{st}\Sigma_b,\qquad
+K_\rho=\rho K+(1-\rho)\operatorname{diag}\{\operatorname{diag}(K)\}.
+\]
+We plant $\rho=0.60$ and estimate it with `rho = NULL`. The tree is scaled
+exactly as in Example 1, so $K$ has unit diagonal. The coefficient standard
+deviations are 0.18 and 0.55, with correlation -0.25. The IID comparator uses
+$I$ in place of $K_\rho$, while retaining the same site covariance model.
+The coefficient mixture does not describe residual co-occurrence at sites.
+
+```{r community-dgp}
+community <- fixture$community$long
+community_wide <- fixture$community$wide
+column_data <- fixture$community$column_data
+tree_columns <- fixture$community$tree
+species_comm <- fixture$community$species
+truth_community <- fixture$community$truth
+```
+
+```{r community-long, eval=FALSE}
 fit_columns <- gllvmTMB(
-  log_biomass ~ 0 + pathway + latitude:pathway +
-    phylo_coef(1 + latitude | trait, tree = tree, rho = NULL),
-  data = community, trait = "trait", unit = "site_id", family = gaussian(),
-  control = gllvmTMBcontrol(se = FALSE), silent = TRUE
+ value ~ 0+pathway+latitude:pathway+column_coef(1+latitude|trait)+
+   latent(0+trait|site_id,d=2,unique=TRUE),
+ data=community,trait="trait",unit="site_id",family=gaussian(),silent=TRUE,control=gllvmTMBcontrol(se=FALSE)
 )
-fixed_pathway_intercepts <- coef(fit_columns)[
-  names(coef(fit_columns)) %in% c("pathwayC3", "pathwayC4")
-]
-fixed_pathway_slopes <- coef(fit_columns)[
-  grepl("^pathway.+:latitude$", names(coef(fit_columns)))
-]
-intercept_difference <- unname(
-  fixed_pathway_intercepts[["pathwayC4"]] -
-    fixed_pathway_intercepts[["pathwayC3"]]
+fit_phylo_coef <- gllvmTMB(
+ value ~ 0+pathway+latitude:pathway+
+   phylo_coef(1+latitude|trait,tree=tree_columns,rho=NULL)+
+   latent(0+trait|site_id,d=2,unique=TRUE),
+ data=community,trait="trait",unit="site_id",family=gaussian(),silent=TRUE,control=gllvmTMBcontrol(se=FALSE)
 )
-slope_difference <- unname(
-  fixed_pathway_slopes[["pathwayC4:latitude"]] -
-    fixed_pathway_slopes[["pathwayC3:latitude"]]
-)
-round(c(
-  fixed_pathway_intercepts,
-  `C4 minus C3 intercept` = intercept_difference,
-  fixed_pathway_slopes,
-  `C4 minus C3 slope` = slope_difference
-), 2)
-
-coef_iid <- extract_Sigma(fit_columns_iid, level = "column_coef")
-coef_phylo <- extract_Sigma(fit_columns, level = "column_coef")
-round(c(
-  `IID intercept SD` = sqrt(coef_iid$Sigma["(Intercept)", "(Intercept)"]),
-  `IID slope SD` = sqrt(coef_iid$Sigma["latitude", "latitude"]),
-  `phylogenetic intercept SD` =
-    sqrt(coef_phylo$Sigma["(Intercept)", "(Intercept)"]),
-  `phylogenetic slope SD` = sqrt(coef_phylo$Sigma["latitude", "latitude"]),
-  `intercept-slope correlation` =
-    coef_phylo$R["(Intercept)", "latitude"],
-  `estimated rho` = coef_phylo$rho
-), 2)
 ```
 
-The first block reports the C3 and C4 average intercepts and latitude slopes.
-The two `C4 minus C3` values describe the fitted pathway differences in this
-simulated sample; this article does not calculate tests or intervals for those
-contrasts. The extracted standard deviations describe the remaining
-between-species variation in baseline biomass and latitude response after the
-pathway means have been fitted. The intercept-slope correlation asks whether
-species with higher-than-expected baseline biomass also tend to have steeper
-or shallower latitude responses. The IID baseline treats species deviations
-as unrelated. The phylogenetic fit estimates `rho` between zero and one:
-values nearer zero remove most between-species correlation, while values
-nearer one follow the supplied tree more strongly. These are point estimates;
-this article does not provide an interval or test for `rho`, the pathway
-contrasts, or the coefficient covariance.
-The simulation planted `rho = 0.60`; one finite sample need not return exactly
-that value.
-
-The example deliberately fits no second site-level covariance term. That keeps
-the model aligned with its question: the only structured random component is
-the variation in intercept and latitude coefficients across species columns.
-Add other covariance tiers only when the sampling design and scientific question need
-them, then re-check whether `rho` remains identifiable.
-
-```{r community-data, echo = FALSE, fig.width = 8.4, fig.height = 5.8, fig.cap = "Example 2 for six selected species. Pale points are observed site-by-species log-biomass values. Thin lines are the planted species-specific latitude responses; thick lines are the C3 and C4 pathway means. The phylogenetic coefficient term models the deviations of thin lines from their pathway mean.", fig.alt = "Two panels labelled C3 and C4. Each contains site-by-species observations, thin species-specific trend lines, and one thick pathway-average line. The C3 mean decreases with latitude and the C4 mean increases."}
-focal_species <- c("plant_01", "plant_03", "plant_05", "plant_07", "plant_09", "plant_11")
-community_focus <- subset(community, trait %in% focal_species)
-community_focus$trait <- factor(as.character(community_focus$trait), levels = focal_species)
-species_effects <- data.frame(
-  trait = factor(focal_species, levels = focal_species),
-  pathway = species_info$pathway[match(focal_species, species)],
-  intercept = species_intercept[match(focal_species, species)],
-  latitude_slope = species_slope[match(focal_species, species)]
-)
-latitude_grid <- seq(min(sites$latitude), max(sites$latitude), length.out = 150)
-community_lines <- do.call(rbind, lapply(seq_len(nrow(species_effects)), function(i) {
-  data.frame(
-    trait = species_effects$trait[i], pathway = species_effects$pathway[i],
-    latitude = latitude_grid,
-    log_biomass = species_effects$intercept[i] +
-      species_effects$latitude_slope[i] * latitude_grid
-  )
-}))
-pathway_lines <- do.call(rbind, lapply(levels(species_info$pathway), function(p) {
-  data.frame(
-    pathway = factor(p, levels = levels(species_info$pathway)),
-    latitude = latitude_grid,
-    log_biomass = pathway_intercept[[p]] +
-      pathway_slope[[p]] * latitude_grid
-  )
-}))
-pathway_colours <- c(C3 = "#0072B2", C4 = "#D55E00")
-
-ggplot(community_focus, aes(x = latitude, y = log_biomass)) +
-  geom_hline(yintercept = 0, linewidth = 0.3, colour = "#C8CDD2") +
-  geom_point(colour = "#7A8FA0", alpha = 0.30, size = 1.25) +
-  geom_line(
-    data = community_lines, aes(group = trait),
-    colour = "#667788", linewidth = 0.55, alpha = 0.75
-  ) +
-  geom_line(
-    data = pathway_lines, aes(colour = pathway),
-    linewidth = 1.6, show.legend = FALSE
-  ) +
-  facet_wrap(~ pathway, nrow = 1) +
-  scale_colour_manual(values = pathway_colours) +
-  labs(
-    title = "The simulated C3 and C4 gradients differ by design",
-    subtitle = "Thin lines: species-specific responses;\nthick lines: pathway means",
-    x = "Latitude (centred and scaled)", y = "Simulated log-biomass index"
-  ) +
-  theme_article +
-  theme(
-    plot.title = element_text(face = "bold", colour = "#173B5E"),
-    plot.subtitle = element_text(colour = "#4B5563"),
-    panel.grid.minor = element_blank(), panel.grid.major.x = element_blank(),
-    legend.position = "none"
-  )
-```
-
-```{r community-wide, echo = FALSE, fig.width = 8.4, fig.height = 7.2, fig.cap = "The same Example 2 data in wide form for eight selected species. Each row is a site, latitude is the row-level predictor, and the remaining columns are species responses. C3/C4 pathway labels belong to species columns, not to sites. Values are standardised within columns only to reveal the data layout.", fig.alt = "A heatmap with sites as rows and nine columns. The first column is latitude; the other eight are plant species labelled C3 or C4. Sites are ordered from low to high latitude."}
-wide_species <- c("plant_01", "plant_02", "plant_04", "plant_06", "plant_07", "plant_08", "plant_10", "plant_12")
-community_wide_source <- subset(community, trait %in% wide_species)
-community_wide <- reshape(
-  community_wide_source[, c("site_id", "latitude", "trait", "log_biomass")],
-  idvar = c("site_id", "latitude"), timevar = "trait", direction = "wide"
-)
-community_wide <- community_wide[order(community_wide$latitude), ]
-community_columns <- c("latitude", paste0("log_biomass.", wide_species))
-community_standardised <- as.data.frame(scale(community_wide[community_columns]))
-names(community_standardised) <- c("latitude", wide_species)
-community_standardised$site_id <- factor(community_wide$site_id, levels = rev(community_wide$site_id))
-community_wide_plot <- reshape(
-  community_standardised,
-  varying = c("latitude", wide_species), v.names = "value",
-  timevar = "column", times = c("latitude", wide_species), direction = "long"
-)
-wide_pathway <- as.character(species_info$pathway[match(wide_species, species)])
-community_wide_plot$column <- factor(
-  community_wide_plot$column,
-  levels = c("latitude", wide_species),
-  labels = c("latitude\n(site predictor)", paste0(wide_species, "\n", wide_pathway))
-)
-
-ggplot(community_wide_plot, aes(x = column, y = site_id, fill = value)) +
-  geom_tile(colour = "white", linewidth = 0.25) +
-  geom_vline(xintercept = 1.5, colour = "#173B5E", linewidth = 0.8) +
-  scale_fill_gradient2(
-    low = "#2166AC", mid = "white", high = "#B2182B", midpoint = 0,
-    name = "Standardised\nvalue"
-  ) +
-  labs(
-    title = "Sites are rows; plant species are response columns",
-    subtitle = "Rows run from low to high latitude;\nC3/C4 is metadata attached to species columns",
-    x = "Columns", y = "Rows: sites"
-  ) +
-  theme_article +
-  theme(
-    plot.title = element_text(face = "bold", colour = "#173B5E"),
-    plot.subtitle = element_text(colour = "#4B5563"),
-    panel.grid = element_blank(),
-    axis.text.x = element_text(face = "bold"),
-    axis.text.y = element_blank(), axis.ticks.y = element_blank(),
-    legend.title = element_text(face = "bold")
-  )
-```
-
-The same hierarchical model can be fitted directly from a wide data frame.
-The `pathway` column in `species_info` supplies the two fixed pathway
-intercepts and, through `latitude:pathway`, the two fixed pathway slopes.
-The coefficient term supplies the plant-species random intercepts and slopes.
-It is therefore the same model as the long formula, not a slope-only
-approximation.
-
-```{r column-axis-wide-fit}
-community_wide_fit <- reshape(
-  community[, c("site_id", "latitude", "trait", "log_biomass")],
-  idvar = c("site_id", "latitude"), timevar = "trait", direction = "wide"
-)
-names(community_wide_fit) <- sub("^log_biomass\\.", "", names(community_wide_fit))
-
+```{r community-wide, eval=FALSE}
 fit_columns_wide <- gllvmTMB(
-  traits(
-    plant_01, plant_02, plant_03, plant_04, plant_05, plant_06,
-    plant_07, plant_08, plant_09, plant_10, plant_11, plant_12
-  ) ~ 0 + pathway + latitude:pathway +
-    phylo_coef(1 + latitude | trait, tree = tree, rho = NULL),
-  data = community_wide_fit,
-  column_data = species_info,
-  unit = "site_id", family = gaussian(),
-  control = gllvmTMBcontrol(se = FALSE), silent = TRUE
+ traits(all_of(species_comm)) ~ 0+pathway+latitude:pathway+
+   column_coef(1+latitude|trait)+latent(1|site_id,d=2,unique=TRUE),
+ data=community_wide,column_data=column_data,unit="site_id",family=gaussian(),control=gllvmTMBcontrol(se=FALSE)
 )
-round(extract_Sigma(fit_columns_wide, level = "column_coef")$rho, 2)
+fit_phylo_coef_wide <- gllvmTMB(
+ traits(all_of(species_comm)) ~ 0+pathway+latitude:pathway+
+   phylo_coef(1+latitude|trait,tree=tree_columns,rho=NULL)+latent(1|site_id,d=2,unique=TRUE),
+ data=community_wide,column_data=column_data,unit="site_id",family=gaussian(),control=gllvmTMBcontrol(se=FALSE)
+)
 ```
 
-The fixed intercepts above vary only between C3 and C4, whereas the random
-intercepts vary among plant species. Replacing `0 + pathway` with one fixed
-intercept per plant species would duplicate the random-intercept space, so the
-overlap guard rejects that unidentified model.
+The target community fits have unresolved convergence warnings. Their formulas
+and plotting code are retained in this working draft, but their numerical
+results are not rendered or interpreted. The code below uses planted species
+curves to illustrate the simulated coefficient deviations. The current public
+API provides fitted coefficient covariance, not individual species coefficient
+modes; the curves must not be read as estimates of those modes.
 
-With several site-level predictors, `|` estimates their full coefficient
-covariance and `||` fixes their covariance to zero while retaining one variance
-per predictor. This article demonstrates `column_coef()` and `phylo_coef()` for
-Gaussian point models in long and `traits(...)` wide form. The parallel
-`animal_coef()` fixed-strength, dense-`kernel_coef()` fixed/estimated-strength,
-and `spatial_coef()` fixed-`rho = 1` point routes are public but are not worked
-examples here; the API keyword grid shows their syntax. The spatial helper is
-for a labelled coordinate pair attached to every response column, rather than
-a tree. Non-Gaussian or mixed-family coefficients, latent coefficient
-covariance, simultaneous coefficient sources, spatial IID mixtures, and
-intervals are deliberately deferred. Current `*_slope()` helpers remain
-available and warning-free.
-
-One numerical compatibility seam is deliberate. A no-intercept dense-`vcv`
-call with `rho = 1` dispatches through the released `phylo_slope()` engine and
-therefore uses its `K + 1e-8 I` conditioning. Tree sources use the released
-sparse precision; interior or estimated `rho` and intercept-bearing endpoint
-fits use the raw covariance-scale mixture. This keeps existing slope fits
-exactly unchanged.
-
-## Choose the axis before the helper
-
-The name after the bar is the practical check:
-
-```r
-# Tree among sampled species: species is the grouping axis
-phylo_latent(0 + trait | species, tree = tree, d = 1, unique = TRUE)
-
-# Tree among response columns: latitude varies by site,
-# while its intercept and latitude coefficient vary by species column
-phylo_coef(1 + latitude | trait, tree = tree, rho = NULL)
+```{r community-pathway-coefficients, eval=FALSE, fig.width=8, fig.height=3.6}
+fixed <- coef(fit_columns)
+curve <- expand.grid(latitude=seq(-2,2,length.out=100), pathway=factor(c("C3","C4"),levels=c("C3","C4")))
+X_curve <- model.matrix(~0+pathway+latitude:pathway, data=curve)
+curve$mean <- drop(X_curve %*% fixed[colnames(X_curve)])
+planted <- expand.grid(latitude = seq(-2, 2, length.out = 100),
+                       trait = species_comm, stringsAsFactors = FALSE)
+planted$pathway <- column_data$pathway[match(planted$trait, column_data$trait)]
+b <- truth_community$coefficient_draw[planted$trait, , drop = FALSE]
+planted$mean <- truth_community$pathway_intercept[as.character(planted$pathway)] +
+  b[, "(Intercept)"] + planted$latitude *
+  (truth_community$pathway_slope[as.character(planted$pathway)] + b[, "latitude"])
+p1 <- ggplot() +
+  geom_line(data = planted, aes(latitude, mean, group = trait, colour = pathway),
+            alpha = 0.18, linewidth = 0.3) +
+  geom_line(data = curve, aes(latitude, mean, colour = pathway),
+            linewidth = 1.1, linetype = "dashed") +
+  labs(title = "Species deviations around pathway expectations",
+       x = "Standardized latitude", y = "Synthetic Gaussian mean",
+       caption = "Thin: planted species curves. Dashed: fitted IID pathway means.\nOne synthetic realization; species curves are not fitted random effects.") +
+  theme_minimal(base_size = 10)
+coefphy <- extract_Sigma(fit_phylo_coef,level="column_coef")
+p2 <- corplot(coefphy$Sigma,"Fitted phylogenetic coefficient correlation")
+grid::grid.newpage(); grid::pushViewport(grid::viewport(layout=grid::grid.layout(1,2)))
+print(p1,vp=grid::viewport(layout.pos.row=1,layout.pos.col=1))
+print(p2,vp=grid::viewport(layout.pos.row=1,layout.pos.col=2))
 ```
 
-If your scientific question is about trait covariance among sampled species,
-begin with the first form. If it is about environmental-response coefficients
-varying across species columns, begin with the second. A species attribute such
-as C3/C4 pathway belongs in a fixed interaction such as `latitude:pathway`, not
-inside `phylo_coef()`. Thus the ordinary formula supplies the fixed group
-contrast. For this model, pathway metadata enters fixed terms such as
-`0 + pathway + latitude:pathway`, while `column_coef()` or `phylo_coef()`
-supplies random response-column deviations around those pathway means. For the source ×
-trait-covariance lookup, see the
-[Formula keyword grid](api-keyword-grid.html).
+```{r community-residual-ordination, eval=FALSE, fig.width=8, fig.height=3.6}
+Ssite <- extract_Sigma(fit_columns,level="unit",part="total",link_residual="none")$Sigma
+p3 <- corplot(Ssite,"Residual correlation among all 50 species")
+ord <- extract_ordination(fit_columns,level="unit")
+scores <- as.data.frame(ord$scores); names(scores)[1:2] <- c("LV1","LV2")
+p4 <- ggplot(scores,aes(LV1,LV2))+geom_point(alpha=.65)+coord_equal()+
+ labs(title="Site ordination from ordinary residual fit")+theme_minimal()
+grid::grid.newpage(); grid::pushViewport(grid::viewport(layout=grid::grid.layout(1,2)))
+print(p3,vp=grid::viewport(layout.pos.row=1,layout.pos.col=1))
+print(p4,vp=grid::viewport(layout.pos.row=1,layout.pos.col=2))
+```
+
+The residual matrix describes association among species responses at a site,
+not correlation between sites. All 50 species are shown in their fixed fixture
+order; only selected axis labels are printed for readability.
+
+Residual association can arise from unmeasured environment, sampling, or shared
+responses. It is not proof of direct species interactions. Ordination axes can
+rotate or change sign and are interpreted within a fit only.
+
+## Gaussian diagonal components and scope
+
+`unique = TRUE` adds a trait-specific diagonal companion to each latent
+source. The phylogenetic companion still follows the tree; it is not an
+independent nonphylogenetic source. The ordinary companion groups by species
+in Example 1 and by site in Example 2. With one value per group and response,
+it also absorbs independent cell-level Gaussian variation. Estimating a second
+free observation variance would duplicate that diagonal contribution.
+
+The package therefore fixes the separate Gaussian residual standard deviation
+to `max(1e-3 * sd(y), 1e-6)` for these fits, as verified during validation.
+This small numerical stabilizer is not an estimated biological component or
+separately identified measurement error. `control = gllvmTMBcontrol(se = FALSE)`
+omits standard-error calculations; it does not itself set that residual scale.
+
+The morphology fit passes the bounded numerical screen. The community
+interpretation is withheld until its all-start convergence gate passes. Neither
+example makes a recovery, interval, or causal interaction claim.

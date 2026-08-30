@@ -56216,3 +56216,75 @@ reader-facing paths, stable qualification/smoke/experiment manifest hashes,
 the merged PR identity, and released closeout lease. These are landing checks;
 they do not enter the fit harness or alter an estimand, attempt, signal, or
 threshold.
+
+## 2026-08-30 -- tree-axis latent article: incomplete numerical checkpoint
+
+Bounded lane `codex/tree-axis-latent-correction-20260830`, based on PR1229's
+handover `739213bfd`; fetched main `9c265e76`. No package API/engine changes.
+The approved species morphology and coefficient-plus-site compositions are
+supported by the small fits and exact covariance/map checks. Publication is
+**HELD**: M2 has convergence codes `(1,1,0)` and M3 `(0,0,1)`; the nonzero
+codes are `false convergence (8)`. All six community gradients and covariance
+stability checks pass, but these do not waive the required convergence gate.
+
+Twelve of fourteen allowed optimizer attempts ran: C1, C2, three each inside
+M1/M2/M3, and W1. S1-S6 are aliases of actual retained restarts, not extra fits.
+W2/W3 remain unrun. No failed render, additional render fit, or package-check
+fit has run. No seed/model/threshold change, BFGS attempt, push, CI dispatch,
+PR edit, merge or deployment has occurred. Earlier PR1229 Ubuntu success is
+handover-only evidence. Three-OS and deployed-page gates remain unmet.
+
+Receipts and exact executed source copies are retained under
+`/private/tmp/gllvm-tree-axis-latent-20260830/`; the compact tracked evidence is
+`dev/tree-axis-latent/evidence/2026-08-30-validation.json`. The isolated source
+install passed in 84.574 seconds with four retained compiler warnings. C1/C2
+fit times were 0.787/1.464 seconds. Target process times were 5.193, 60.881 and
+137.179 seconds. Estimates and process timeouts preceded all fits.
+
+Commands and outcomes (no-fit checks below do not consume optimizer attempts):
+
+```sh
+R_LIBS=/private/tmp/gllvm-tree-axis-latent-20260830/library Rscript --vanilla dev/tree-axis-latent/validate.R --self-test
+# PASS: positive canary plus rejection of corrupt gradient, decomposition,
+# and fixture checksum. Two additional saved-object controls reject covariance
+# instability and duplicate long/wide keys; see validator-extra-negative-controls.log.
+
+GLLVM_TREE_AXIS_REQUIRE_COMPLETE=false R_LIBS=/private/tmp/gllvm-tree-axis-latent-20260830/library Rscript --vanilla dev/tree-axis-latent/validate.R
+# EXPECTED EXIT 1: M2/M3 convergence gate failure; W2/W3 unavailable.
+
+R_LIBS=/private/tmp/gllvm-tree-axis-latent-20260830/library Rscript --vanilla dev/tree-axis-latent/check-article.R
+# PASS: exact article/frozen fixture equality; all six displayed calls match
+# public formal arguments; morphology public extracts and plots from saved M1;
+# finite public coef()/model-matrix route. No model fit or article render.
+
+R_LIBS=/private/tmp/gllvm-tree-axis-latent-20260830/library Rscript --vanilla -e 'pkgdown::check_pkgdown()'
+# PASS: no problems found.
+
+# Existing source tree-precision test: 21 assertions passed (no model fitting).
+# Full article render, documentation generation, package check and CI held.
+```
+
+Exact final source scan:
+
+```sh
+rg -n 'populations|within-species|unique equals|se=FALSE|rho|interaction|recovery|Draft|Working draft|extract_ordination|link_residual' vignettes/articles/where-does-the-tree-go.Rmd
+rg -n ':::|log_sigma_eps|last.par|tmb_obj|gllvmTMB_wide|spatial_latent' vignettes/articles/where-does-the-tree-go.Rmd
+# First scan: intended scopes, correct control(se=FALSE), explicit rho mixture
+# and public extracts. Second: no matches. No private engine extraction in article.
+git diff --check
+# PASS.
+```
+
+Gauss/Noether/Fisher reviewed composition and optimizer evidence. Rose/Pat's
+source review caught hidden simulation helpers and misplaced `se=FALSE` in the
+article; root fixed both and independently tested the corrected source without
+refitting. Root also caught a hand-copied simulation mismatch before any article
+render: the final article now uses the exact frozen fixture functions. The
+fit fixtures and their receipts did not change. Final reader review accepts
+retaining the explicitly incomplete checkpoint, not publication. Full figure
+review at desktop/mobile widths awaits a successful article render.
+
+Requested next step, **not executed**: six additional BFGS attempts, three per
+community model, with unchanged data/model/gates and a five-minute timeout per
+model call. This needs approval under the agreed attempt/instability stop rule.
+See `docs/dev-log/after-task/2026-08-30-tree-axis-latent.md` for full limits.

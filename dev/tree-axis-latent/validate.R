@@ -131,6 +131,10 @@ wide_check <- function(l,w) {
 }
 
 argv <- commandArgs(trailingOnly = TRUE)
+if (length(argv) && identical(argv[[1L]], "--repaired")) {
+  source(file.path(dirname(script_path), "validate-repaired.R"))
+  quit(status = if (isTRUE(repaired_ledger$pass)) 0L else 1L)
+}
 if (length(argv) && identical(argv[[1L]], "--repair-public")) {
   repair_ids <- if (length(argv) > 1L) argv[-1L] else c("C1", "C2")
   if (!all(repair_ids %in% c("C1", "C2"))) stop("Only C1/C2 can receive a no-fit public extraction repair.")

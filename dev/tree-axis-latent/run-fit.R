@@ -18,6 +18,10 @@ source(file.path(dirname(script_path), "fixture.R"))
 library(gllvmTMB)
 
 FIT_PLAN <- list(
+  N2 = list(model = "community_iid", shape = "long", size = "target", starts = 3L, original = "M2"),
+  N3 = list(model = "community_phylo", shape = "long", size = "target", starts = 3L, original = "M3"),
+  NW2 = list(model = "community_iid", shape = "wide", size = "target", start = 1L, original = "M2"),
+  NW3 = list(model = "community_phylo", shape = "wide", size = "target", start = 1L, original = "M3"),
   C1 = list(model = "morphology", shape = "long", size = "canary", start = 1L),
   C2 = list(model = "community_phylo", shape = "long", size = "canary", start = 1L),
   M1 = list(model = "morphology", shape = "long", size = "target", starts = 3L),
@@ -37,6 +41,9 @@ FIT_PLAN <- list(
 )
 
 fit_id <- args[[1L]]
+if (!fit_id %in% c("N2", "N3", "NW2", "NW3")) {
+  stop("Historical fit IDs are closed. Only the approved repaired-source block may run.")
+}
 if (!fit_id %in% names(FIT_PLAN)) {
   stop("Unknown fit ID. Use one of: ", paste(names(FIT_PLAN), collapse = ", "))
 }
@@ -216,6 +223,29 @@ result_dir <- Sys.getenv(
 dir.create(result_dir, recursive = TRUE, showWarnings = FALSE)
 out <- file.path(result_dir, paste0("fit-", fit_id, ".rds"))
 if (file.exists(out)) stop("Refusing to overwrite retained receipt: ", out)
+provenance <- NULL
+if (fit_id %in% c("N2", "N3", "NW2", "NW3")) {
+  stopifnot(identical(normalizePath(result_dir),
+    "/private/tmp/gllvm-tree-axis-latent-20260830/repaired-nlminb-7c88"))
+  provenance_path <- file.path(result_dir, "provenance.json")
+  provenance <- jsonlite::read_json(provenance_path, simplifyVector = TRUE)
+  stopifnot(identical(unname(tools::md5sum(file.path(dirname(script_path), "fixture.R"))),
+    "6c3bae640dd86491171cb20fbb56b0e4"),
+    identical(provenance$fixture_md5, "6c3bae640dd86491171cb20fbb56b0e4"))
+  stopifnot(identical(normalizePath(find.package("gllvmTMB")), provenance$library),
+    identical(digest::digest(file = file.path(provenance$library, "libs/gllvmTMB.so"), algo = "sha256"), provenance$dll_sha256))
+  for (path in names(provenance$source_sha256)) {
+    stopifnot(identical(digest::digest(file = path, algo = "sha256"), provenance$source_sha256[[path]]))
+  }
+  if (fit_id %in% c("NW2", "NW3")) {
+    gate <- readRDS(file.path(result_dir, "validation-long.rds"))
+    stopifnot(isTRUE(gate$long_pass))
+    for (id in c("N2", "N3")) stopifnot(identical(gate$receipt_md5[[id]],
+      unname(tools::md5sum(file.path(result_dir, paste0("fit-", id, ".rds"))))))
+  }
+  admission <- file.path(result_dir, paste0("admission-", fit_id))
+  if (!dir.create(admission, showWarnings = FALSE)) stop("Fit ID already admitted: ", fit_id)
+}
 if (!is.null(spec$alias_of)) {
   parent_path <- file.path(result_dir, paste0("fit-", spec$alias_of, ".rds"))
   if (!file.exists(parent_path)) {
@@ -258,6 +288,11 @@ trace(trace_name, where = trace_where, print = FALSE,
     if (.GlobalEnv$.tree_axis_call_entries > .GlobalEnv$.tree_axis_attempt_limit)
       stop("Optimizer-attempt budget exceeded; no additional optimization allowed")
     .tree_axis_start_copy <- if (.GlobalEnv$trace_name == "optim") par else args$start
+    if (!is.null(.GlobalEnv$spec$original)) {
+      original <- readRDS(file.path(Sys.getenv("GLLVM_TREE_AXIS_ORIGINAL"),
+        paste0("fit-", .GlobalEnv$spec$original, ".rds")))$optimizer_calls[[.GlobalEnv$.tree_axis_call_entries]]$start
+      stopifnot(identical(.tree_axis_start_copy, original))
+    }
     message("OPTIMIZER_ATTEMPT_ENTER id=", .GlobalEnv$fit_id,
             " attempt=", .GlobalEnv$.tree_axis_call_entries)
     entry_path <- file.path(.GlobalEnv$result_dir, paste0(.GlobalEnv$fit_id,
@@ -335,6 +370,7 @@ receipt <- list(
   optimizer_calls = .tree_axis_calls,
   optimizer_entries = .tree_axis_call_entries,
   runner_checksum = unname(tools::md5sum(script_path)),
+  provenance = provenance,
   restart_history = if (is.null(fit)) NULL else fit$restart_history
 )
 saveRDS(receipt, out)

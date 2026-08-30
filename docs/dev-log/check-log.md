@@ -56415,3 +56415,128 @@ lookup change selects the exact tested header. Gauss/Noether qualified repair
 review and Rose/Pat narrow checkpoint consistency review pass; neither waives
 G2 or publication. The lifecycle checker requires a fresh task before another
 substantial block; continuation is at numerical-investigation/CHECKPOINT.md.
+
+## 2026-08-30 — eight repaired-source attempts approved; fresh continuation
+
+Shinichi explicitly approved: "Approve the eight fits in a fresh task."
+This supersedes pending-approval wording above and in the numerical checkpoint.
+The six unspent old slots are replaced by eight repaired-source nlminb attempts;
+total ceiling 22, with 14 entered before this continuation. N2/N3 each comprise
+three unchanged deterministic starts; NW2/NW3 each one, only after BOTH long
+models pass every original gate. No BFGS, changed starts, changed thresholds,
+new model or campaign. Five-minute cap per model call. Estimates: IID 1-3min,
+phylogenetic 2-5min, each wide 1-3min; block 5-14min.
+
+The released lane is resumed in isolated 7c88/gllvmTMB on
+`codex/tree-axis-latent-repaired-20260830`, preserving commit 2e10e3fb.
+SSH fetch verified origin/main 9c265e76 and no main commits missing from HEAD.
+PR1229 is OPEN/DRAFT at 739213bfd; prefer extending it. No landing authority.
+Fresh immutable result directory: /private/tmp/gllvm-tree-axis-latent-20260830/repaired-nlminb-7c88.
+Source/header/DLL hashes match the saved production build; old results remain untouched.
+The own lease and acceptance ledger retain ALL article/package/CI/deployed gates.
+
+### Repaired-source block: exact commands and retained results
+
+Common environment: OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1;
+R_LIBS=/private/tmp/gllvm-tree-axis-latent-20260830/repaired-library;
+GLLVM_TREE_AXIS_ORIGINAL=/private/tmp/gllvm-tree-axis-latent-20260830/results;
+GLLVM_TREE_AXIS_RESULTS=/private/tmp/gllvm-tree-axis-latent-20260830/repaired-nlminb-7c88.
+The existing bounded.py wraps each process and retains COMMAND/exit/elapsed.
+
+- Rscript --vanilla dev/tree-axis-latent/check-morphology-continuity.R:
+  exit0,1.126s; estimate<1min,cap60s. All M1/W1 frozen endpoints pass on the
+  repaired DLL; no outer optimizer. Max objective delta9.10e-13, covariance0.
+- Rscript --vanilla <results>/frozen-runner/run-fit.R N2:
+  bounded.py300,exit0,58.828s; estimate1-3min. Three returned attempts,
+  codes1/1/1 false convergence(8). Each gradient<1e-2; covariance/objective
+  agreement passes. CODE GATE FAILS. Process success is not fit acceptance.
+- Rscript --vanilla <results>/frozen-runner/run-fit.R N3:
+  bounded.py300,exit0,137.751s; estimate2-5min. Three returned attempts,
+  codes0/0/0; all long gates pass. Selected rho1.501305e-7, planted.60;
+  no recovery or phylogenetic-effect claim. No overrun in either model call.
+- Rscript --vanilla dev/tree-axis-latent/validate.R --repaired:
+  exit1 as required; LONG_PASS=FALSE MORPHOLOGY_PASS=TRUE. New6 entries,
+  cumulative20; NW2/NW3 withheld. Raw starts match original M2/M3 exactly.
+- Rscript --vanilla dev/tree-axis-latent/validate.R --self-test, with original
+  results directory: exit0; gradient/decomposition/fixture/impossible-NLL
+  negative controls pass; no fits or writes to original receipts.
+- Rscript --vanilla <results>/test-validator.R: exit0; one fabricated positive
+  and five negative receipt controls pass. Committed reusable counterpart:
+  dev/tree-axis-latent/test-repaired-validator.R. Mock directories are clearly
+  labelled validator-mock-* and never used as scientific evidence.
+- Rscript --vanilla -e 'pkgdown::check_pkgdown(); cat("TREE_AXIS_METADATA_PASS\n")':
+  exit0, No problems found. No render or outer fit.
+- Rscript --vanilla ~/shinichi-brain/tools/check-after-task.R
+  docs/dev-log/after-task/2026-08-30-tree-axis-latent.md: structure passes,
+  checker exits1 because full acceptance gates remain unmet. No abandonment.
+- node ~/.codex/skills/unlazy/scripts/gate-check.mjs --status
+  .unlazy/tree-axis-latent/GATES.md:2 met,7 unmet. Status inspection only;
+  no render/other inherited checks were executed automatically.
+- git diff --check:pass. Exact scan:
+  rg -n 'incomplete|withheld|not yet|convergence|latent\('
+  vignettes/articles/where-does-the-tree-go.Rmd: both latent components and
+  public incomplete/withheld wording remain intact. No article/example/Rd
+  source change in this continuation. NAMESPACE/fixture/package source hashes
+  are unchanged; no convention cascade, register promotion or ROADMAP tick.
+
+Gauss/Noether qualified runner review passed after two guards were repaired
+before fitting. Fisher/Gauss confirmed the numerical verdict and rho limit.
+Root applied prose/after-task and Shannon coordination checks: current branch
+contains only this continuation's files; historical lanes and seven open PRs
+are untouched; PR1229 remains draft. No competing current lease was found.
+No push, PR mutation, full package check, article render, exact-head CI, merge,
+deployment or more numerical probes ran. CARRIED-OVER: local correction history
+and checkpoint remain unmerged because G2 fails; separate landing approval
+still required. Recommended next separate task: exact-Gaussian value/score
+comparison at saved IID/phylogenetic endpoints, no refits or changed gates.
+
+## 2026-08-30 — saved-endpoint diagnostic authority clarified
+
+Coordinator confirms that the exact-Gaussian saved-endpoint value/gradient
+check is covered by Shinichi's prior "Yes please go ahead" numerical-investigation
+approval. Earlier text proposing another authorization is superseded; no new
+permission is needed for this bounded no-optimizer diagnostic. No new fit block,
+model/seed/truth/threshold/API/engine change or interpretive waiver is authorized.
+Reuse check-gaussian-likelihood.R's covariance algebra; compare independent
+analytic scores and directional finite differences at all six saved N2/N3
+endpoints with repaired TMB values/scores. Estimate5-30s, process cap30s.
+
+### Authorized endpoint diagnostic completed — no optimizer calls
+
+The coordinator clarified that this diagnostic is within the existing focused
+numerical-investigation approval; the earlier proposed reauthorization is
+superseded. Reused check-gaussian-likelihood.R's exact Gaussian covariance.
+endpoint-score.R projects the two-column site design with a thin QR, evaluates
+the same marginal density and differentiates it analytically in the native
+parameter coordinates. Raw loading diagonals, log coefficient-Cholesky
+diagonals, log unique SDs and logistic rho have distinct correct chain rules.
+Gauss/Noether reviewed row-major ordering, QR covariance blocks and derivatives
+before execution; unknown parameter blocks are rejected explicitly.
+
+Command: OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1
+R_LIBS=/private/tmp/gllvm-tree-axis-latent-20260830/repaired-library
+python3 /private/tmp/gllvm-tree-axis-latent-20260830/bounded.py 30
+/private/tmp/gllvm-tree-axis-latent-20260830/repaired-nlminb-7c88/endpoint-score.log
+Rscript --vanilla dev/tree-axis-latent/endpoint-score.R
+
+Exit0,2.645s (estimate5-30s,cap30s). All six saved N2/N3 endpoints were checked;
+zero outer optimizer calls, cumulative attempts unchanged at20. Independent
+QR minus inherited spectral value <=2.73e-11; QR minus repaired TMB value
+<=2.09e-8; analytic score minus TMB score <=1.43e-8. Independent directional
+central differences agree within1.68e-6 at h=1e-4 and1.14e-6 at h=1e-5.
+These are measured discrepancies, not new article acceptance thresholds.
+Covariance reconstruction and source/order provenance checks all passed.
+
+This diagnostic finds no endpoint objective/gradient defect. It does not
+explain the optimizer trajectory, erase false-convergence(8), establish rho
+recovery, or admit the two wide fits. No extreme BFGS point was revisited.
+The full article still fails G2. Added source: dev/tree-axis-latent/endpoint-score.R;
+compact evidence: dev/tree-axis-latent/evidence/2026-08-30-endpoint-score.json.
+All raw endpoint RDS/JSON receipts and the process log remain in the immutable
+continuation evidence directory. No new optimizer or production repair follows
+from these results without a separate consequential decision.
+
+Next choice is recorded precisely in CHECKPOINT.md: one separately authorized
+exact-Gaussian oracle nlminb run from unchanged N2 start1, extra attempt ceiling23
+without borrowing wide slots,60s cap. It has NOT run and cannot certify article
+acceptance. No more optimizer calls under the fixed-endpoint diagnostic approval.

@@ -173,3 +173,33 @@ Prior three-start timings were60.881s IID and137.179s phylogenetic. Estimate
 limit per call and no BFGS. Total estimated5-14min. All original gates apply;
 a failed long model stops wide fits, interpretation and rendering. No seed,
 rank, diagonal, tolerance, optimizer limit or model change is proposed.
+
+## 2026-08-30 — eight repaired-source attempts approved; fresh continuation
+
+Shinichi explicitly approved: "Approve the eight fits in a fresh task."
+This supersedes pending-approval wording above and in the numerical checkpoint.
+The six unspent old slots are replaced by eight repaired-source nlminb attempts;
+total ceiling 22, with 14 entered before this continuation. N2/N3 each comprise
+three unchanged deterministic starts; NW2/NW3 each one, only after BOTH long
+models pass every original gate. No BFGS, changed starts, changed thresholds,
+new model or campaign. Five-minute cap per model call. Estimates: IID 1-3min,
+phylogenetic 2-5min, each wide 1-3min; block 5-14min.
+
+The released lane is resumed in isolated 7c88/gllvmTMB on
+`codex/tree-axis-latent-repaired-20260830`, preserving commit 2e10e3fb.
+SSH fetch verified origin/main 9c265e76 and no main commits missing from HEAD.
+PR1229 is OPEN/DRAFT at 739213bfd; prefer extending it. No landing authority.
+Fresh immutable result directory: /private/tmp/gllvm-tree-axis-latent-20260830/repaired-nlminb-7c88.
+Source/header/DLL hashes match the saved production build; old results remain untouched.
+The own lease and acceptance ledger retain ALL article/package/CI/deployed gates.
+
+## 2026-08-30 — saved-endpoint diagnostic authority clarified
+
+Coordinator confirms that the exact-Gaussian saved-endpoint value/gradient
+check is covered by Shinichi's prior "Yes please go ahead" numerical-investigation
+approval. Earlier text proposing another authorization is superseded; no new
+permission is needed for this bounded no-optimizer diagnostic. No new fit block,
+model/seed/truth/threshold/API/engine change or interpretive waiver is authorized.
+Reuse check-gaussian-likelihood.R's covariance algebra; compare independent
+analytic scores and directional finite differences at all six saved N2/N3
+endpoints with repaired TMB values/scores. Estimate5-30s, process cap30s.

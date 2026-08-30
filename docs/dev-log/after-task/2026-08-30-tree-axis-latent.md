@@ -3,7 +3,8 @@
 Date: 2026-08-30. Status: **INCOMPLETE; community optimizer gate failed**.
 No corrected article has been published or claimed complete. The approved BFGS
 follow-up also failed: it returned an impossible objective and was stopped.
-Section 14 records the latest evidence and remaining scope decision.
+Sections 15-16 record the arithmetic repair and approved repaired-source validation.
+The latest continuation remains subject to every original numerical gate.
 
 ## 1. Goal
 
@@ -311,3 +312,161 @@ Compiled regression rerun:14 assertions passed in19.469s; three Eigen compiler
 warnings and TMB's three-pointer cleanup notice retained. After-task structural
 check passes, but the combined checker exits1 because G2-G8 are still unmet;
 this is an incomplete checkpoint, not an after-task completion certificate.
+
+## 16. Fresh continuation: eight repaired-source attempts approved
+
+The user explicitly approved "Approve the eight fits in a fresh task."
+This replaces six unspent old slots with eight repaired-source nlminb attempts;
+14 attempts had already entered and the cumulative ceiling is 22. The frozen
+fixture MD5 remains 6c3bae640dd86491171cb20fbb56b0e4. Source task 01a05267 released
+its lease; root claimed only the correction paths in isolated 7c88/gllvmTMB,
+on codex/tree-axis-latent-repaired-20260830. SSH fetch verified main9c265e76;
+PR1229 remains OPEN/DRAFT at739213bfd. No other lane was changed.
+
+The same-model numerical repair is inherited from2e10e3fb. This continuation
+changes only developer validation and its records, not package R/C++ source,
+parameter maps, starts, frozen data, thresholds, API or advertised capability.
+Hash verification matched118 source files against the saved build checkout,
+the private installed/worktree header, and its compiled installed DLL.
+Fresh receipts live at /private/tmp/gllvm-tree-axis-latent-20260830/repaired-nlminb-7c88.
+
+New runner IDs are N2/N3 (three nlminb starts each), and NW2/NW3 (one each,
+conditional on both new long receipts passing). Historical IDs are closed to
+execution. A fixed result directory and atomic per-ID admission prevent reruns;
+every entering start is checked against the original M2/M3 optimizer_calls.
+All six original long-start gates are retained. New validation never borrows
+historical M2/M3 or BFGS pass flags. Failed and interrupted historical attempts
+remain untouched. The morphology continuity check re-evaluates all three M1
+starts and W1 with no outer optimization.
+
+Files changed in this continuation: run-fit.R, validate.R, validate-repaired.R,
+check-morphology-continuity.R and test-repaired-validator.R under
+dev/tree-axis-latent/, this after-task report, the approved plan and check-log.
+Compact final evidence and numerical CHECKPOINT.md are updated at closeout.
+No example file, generated Rd, README, NEWS, ROADMAP or namespace changed in
+this continuation. No convention cascade or validation-debt promotion applies.
+
+Gauss/Noether performed the bounded runner review. They caught missing
+pre-admission fixture checking and a missing final wide-start identity guard;
+both were corrected before fits. Their final static review found no remaining
+P0-P3 findings. This review qualifies runner logic, not optimizer outcomes.
+Root applied the prose-style and after-task checks for the next maintainer:
+the arithmetic repair must not be confused with a validated article model.
+
+Tests of the tests: the existing validator rejected altered gradients,
+decomposition, fixture and impossible Gaussian NLL. Separate clearly labelled
+mock receipts passed a positive control and rejected a nonzero start code,
+wide-start drift, missing provenance, missing long model and altered covariance.
+No mock fit is biological evidence and no optimizer ran in these controls.
+
+Morphology continuity passed in1.126s (estimate<1min,60s cap): NLL differences
+at most9.10e-13, unchanged source/shared/unique covariance, gradients below1e-2.
+The IID N2 call completed in58.828s (estimate1-3min,300s cap), with codes1/1/1,
+all reporting false convergence(8). This fails the unchanged all-start gate.
+The phylogenetic N3 call was estimated2-5min with300s cap; final results follow.
+
+The full two-example goal is still INCOMPLETE. Wide fits, numerical
+interpretation, article render, full package checks, final three-OS CI and
+publication cannot be admitted through a failed long-model gate. No public
+claim, PR mutation, push, merge or deployment has occurred. The one successful
+primary render allowance remains unspent. ROADMAP: N/A; no row changed.
+Issue ledger: inspected existing PR1229 and the seven-open-PR census; no new
+issue or comment was sent. Landing still requires separate approval.
+
+Final block verdict: N3 completed in137.751s with codes0/0/0 and all long gates
+passing. Its largest gradient is.003354453 and objective spread9.236701e-11.
+N2 fails only the convergence-code gate: gradient, objective agreement and
+covariance agreement all pass (max covariance relative difference8.15e-5).
+There are now20 cumulative entries (14 historical+6 new),19 returned plus the
+historical interrupted BFGS attempt. NW2/NW3 remain unspent and inadmissible.
+No overrun occurred. Validation exits1, LONG_PASS=FALSE, MORPHOLOGY_PASS=TRUE.
+Compact evidence: dev/tree-axis-latent/evidence/2026-08-30-repaired-nlminb.json.
+
+The next recommendation is an independent exact-Gaussian objective/score check
+at saved IID endpoints before any more optimizer attempts. It is not approval
+for new fits or for changing thresholds. The repaired prior passed its earlier
+arithmetic checks; the current evidence does not establish why nlminb emits
+false convergence. This distinction preserves both the arithmetic evidence
+and the failed optimizer screen. No inference about biological truth follows.
+
+All changed scripts parse; metadata passes; git diff --check passes. The
+structural after-task checker passes but exits1 at the full acceptance ledger,
+which deliberately retains unmet article/package/CI/deployment gates. A
+one-off summary-export command initially had a parse typo; it was corrected
+without rerunning a fit. The global lifecycle audit flags older sessions;
+it is not a reason to relabel this numerical block or the full goal complete.
+
+N3 selected rho=1.501305e-7 versus planted0.60. Its numerical pass is not
+rho recovery or evidence of a phylogenetic effect. Fisher/Gauss retained this
+limit explicitly; the near-diagonal source boundary is a diagnostic lead,
+not biological interpretation or authority to alter the frozen fixture.
+
+## 2026-08-30 — saved-endpoint diagnostic authority clarified
+
+Coordinator confirms that the exact-Gaussian saved-endpoint value/gradient
+check is covered by Shinichi's prior "Yes please go ahead" numerical-investigation
+approval. Earlier text proposing another authorization is superseded; no new
+permission is needed for this bounded no-optimizer diagnostic. No new fit block,
+model/seed/truth/threshold/API/engine change or interpretive waiver is authorized.
+Reuse check-gaussian-likelihood.R's covariance algebra; compare independent
+analytic scores and directional finite differences at all six saved N2/N3
+endpoints with repaired TMB values/scores. Estimate5-30s, process cap30s.
+
+### Authorized endpoint diagnostic completed — no optimizer calls
+
+The coordinator clarified that this diagnostic is within the existing focused
+numerical-investigation approval; the earlier proposed reauthorization is
+superseded. Reused check-gaussian-likelihood.R's exact Gaussian covariance.
+endpoint-score.R projects the two-column site design with a thin QR, evaluates
+the same marginal density and differentiates it analytically in the native
+parameter coordinates. Raw loading diagonals, log coefficient-Cholesky
+diagonals, log unique SDs and logistic rho have distinct correct chain rules.
+Gauss/Noether reviewed row-major ordering, QR covariance blocks and derivatives
+before execution; unknown parameter blocks are rejected explicitly.
+
+Command: OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1
+R_LIBS=/private/tmp/gllvm-tree-axis-latent-20260830/repaired-library
+python3 /private/tmp/gllvm-tree-axis-latent-20260830/bounded.py 30
+/private/tmp/gllvm-tree-axis-latent-20260830/repaired-nlminb-7c88/endpoint-score.log
+Rscript --vanilla dev/tree-axis-latent/endpoint-score.R
+
+Exit0,2.645s (estimate5-30s,cap30s). All six saved N2/N3 endpoints were checked;
+zero outer optimizer calls, cumulative attempts unchanged at20. Independent
+QR minus inherited spectral value <=2.73e-11; QR minus repaired TMB value
+<=2.09e-8; analytic score minus TMB score <=1.43e-8. Independent directional
+central differences agree within1.68e-6 at h=1e-4 and1.14e-6 at h=1e-5.
+These are measured discrepancies, not new article acceptance thresholds.
+Covariance reconstruction and source/order provenance checks all passed.
+
+This diagnostic finds no endpoint objective/gradient defect. It does not
+explain the optimizer trajectory, erase false-convergence(8), establish rho
+recovery, or admit the two wide fits. No extreme BFGS point was revisited.
+The full article still fails G2. Added source: dev/tree-axis-latent/endpoint-score.R;
+compact evidence: dev/tree-axis-latent/evidence/2026-08-30-endpoint-score.json.
+All raw endpoint RDS/JSON receipts and the process log remain in the immutable
+continuation evidence directory. No new optimizer or production repair follows
+from these results without a separate consequential decision.
+
+### Precise next consequential choice — NOT YET AUTHORIZED
+
+Gauss/Noether recommend one controlled diagnostic optimizer call: use nlminb
+with the independent exact-Gaussian objective AND analytic score, byte-identical
+N2 start1, and identical original bounds/scales/controls/maps. Retain the full
+value/gradient evaluation trace. It changes only evaluator arithmetic for a
+private diagnostic; it introduces no production engine/API and is not a new
+estimator or an article substitute. Estimate10-60s, external60s cap (based on
+2.645s for the six-endpoint diagnostic); stop/report an overrun.
+
+This is ONE additional optimizer attempt requiring explicit authority. It must
+not borrow the two conditional-wide slots: cumulative ceiling would increase
+from22 to23, with20 already entered. No BFGS, tolerance change, changed fixture,
+changed start, or further retry is proposed. Oracle code0 at the same solution
+would support evaluator/path sensitivity; code1 would show it survives evaluator
+replacement, not prove non-identifiability. A different solution requires review.
+In every case N2 remains failed until the actual package route independently
+passes its original gates; no wide fit or article interpretation is unlocked
+by a private-oracle result alone. No diagnostic optimizer call has been run.
+
+Copy-ready decision: "Approve one exact-Gaussian oracle nlminb diagnostic from
+the frozen N2 start1, with unchanged controls and a60-second cap; add one attempt
+without borrowing wide slots (ceiling23). No production changes or gate waiver."

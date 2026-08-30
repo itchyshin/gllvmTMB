@@ -5,12 +5,14 @@
 ## | Symbol | Formula term | DGP / source | Engine object | Truth |
 ## |--------|--------------|--------------|---------------|-------|
 ## | K_rho | phylo_coef(..., rho=rho) | rho K + (1-rho) diag(K) | solve(Ainv_phy_slope) | exact K_rho |
-## | B[,1] | phylo_coef(1 + x | trait) | matrix-normal intercept deviation | b_phy_aug[,1,1] | Sigma_coef[1,1] |
-## | B[,2] | phylo_coef(1 + x | trait) | matrix-normal slope deviation | b_phy_aug[,2,1] | Sigma_coef[2,2] |
+## | B[,1] | phylo_coef(1 + x | trait) | matrix-normal intercept deviation | report$b_phy_aug_physical[,1,1] | Sigma_coef[1,1] |
+## | B[,2] | phylo_coef(1 + x | trait) | matrix-normal slope deviation | report$b_phy_aug_physical[,2,1] | Sigma_coef[2,2] |
 ## | Sigma_coef[1,2] | single bar | shared coefficient covariance | Sigma_b_dep[1,2] | planted covariance |
 ##
 ## With trait-major b = vec(B^T), Cov(b) = K_rho %x% Sigma_coef and
 ## eta[o] gains z[o,] B[trait[o],]. rho is fixed R data in this slice.
+## The physical report applies to standardized tapes; centred fallback tapes
+## retain physical B in b_phy_aug. Standardized b_phy_aug itself contains U.
 
 .make_phylo_coef_fixture <- function(seed = 13121L, n_traits = 6L,
                                      n_unit = 18L) {

@@ -445,3 +445,39 @@ code0/gradient<1e-2 using alreadycomputed gradients. First fixed-point run
 retained and corrected onlytestbookkeeping. No production change afterbuild.
 Gauss/Noether prefitreviewPASS; source/DLL manifest and gate bound. No new
 standalonearticlefit yet; count33/41. Ready Q2 thenQ3; wideconditional.
+
+All8 coefficient-standardization standalone attempts passed: Q2three22.383s,
+Q3three49.325s,QW2one6.378s,QW3one16.443s. Everycode0; longmaxgradients
+.003522236/.003911533; relativeobjectivespread4.04e-12/6.01e-11; allshared,
+unique,total/coefficient/sourcecovariance gatespass. WideNLLdifferences0/
+4.21e-11,fittedresponseSDdifferences0/6.08e-11. Immutablevalidation-Q2-Q3-QW2-QW3
+receiptPASS withfreshnegativecontrols. Count41/41 (40returned+1historical
+interruption); no morestandalonefits. Revisedprimaryrender is separately
+approved3first-start fits, nowrunning. Gauss finalsource/math reviewPASS.
+
+Revised primary render COMPLETED PASS41.375s with3separately authorized
+first-startfits; presentation-onlyrender1PASS12.724s,zerooptimizer calls.
+check-coefficient-article.R PASS: exactfrozenDGP,sixcalls/starts,source/DLL,
+primaryfit/HTMLreceipts verified withzero fits/plots/renders. Currentarticle
+SHA2562ae642a05451b6568d8017c5f852a0893dc6695f6ca7f0189ab85102792e7052;
+HTML2666a646bbeb366eb37254abe2759a79842b240c910a9a78f41c57c2baa9c733.
+Desktop1440/mobile390: nooverflow,20MathMLequations,4loadedfigures withalttext,
+noJSerrors. All4renderedfigures inspected. Fittedrho3.11e-7 vsplanted0.60
+retains explicitnon-recovery interpretation. Forty-one standalone attempts
+spent; newprimary3 andpriorprimary3 accounted separately. C5passes.
+Fullpackagecheckrunning session71789,1800scap,estimate20–30min. CI/landing
+stillunmet. Roseprepublishreview foundstalerender-status tail, nowcorrected;
+publicsource/API/scopeauditPASS. No production,model,start,tolerancechanges.
+
+
+Full local package check COMPLETED PASS in 1327.051 s: 0 errors, 0 R CMD check
+warnings, 3 notes (clock verification, existing logLik namespace note, xcrun_db).
+Test summary: 16067 PASS, 0 FAIL, 54 WARN, 1190 SKIP. All 54 warning headers
+and messages match the previous passing local check exactly; skips are unchanged.
+The 92 added assertions are the 84 new coordinate checks and 8 convergence
+checks. All 881 R/native/header/help/test files compared with the checked
+source archive match the worktree. Receipts: package-check-1.rds,
+package-source-comparison.json and package-warning-comparison.json under the
+coefficient-standardization evidence root. No further fit or render was run.
+Existing draft PR1229 will receive the final candidate; exact-head manual
+three-OS CI remains required. Landing and live deployment remain unapproved.

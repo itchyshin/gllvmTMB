@@ -4,12 +4,14 @@
 ##
 ## | Symbol | Formula term | DGP draw | Engine object | Truth |
 ## |--------|--------------|----------|---------------|-------|
-## | B[,1] | column_coef(1 + x | trait) | response-column intercept deviation | b_phy_aug[,1,1] | Sigma_coef[1,1] |
-## | B[,2] | column_coef(1 + x | trait) | response-column slope deviation | b_phy_aug[,2,1] | Sigma_coef[2,2] |
+## | B[,1] | column_coef(1 + x | trait) | response-column intercept deviation | report$b_phy_aug_physical[,1,1] | Sigma_coef[1,1] |
+## | B[,2] | column_coef(1 + x | trait) | response-column slope deviation | report$b_phy_aug_physical[,2,1] | Sigma_coef[2,2] |
 ## | Cov(B[,1], B[,2]) | single bar | same IID matrix-normal draw | Sigma_b_dep[1,2] | Sigma_coef[1,2] |
 ##
 ## With trait-major b = vec(B^T), the contract is
 ## Cov(b) = I_trait %x% Sigma_coef and eta[o] gains z[o,] B[trait[o],].
+## The physical report applies to standardized tapes; centred fallback tapes
+## retain physical B in b_phy_aug. Standardized b_phy_aug itself contains U.
 
 .make_iid_column_coef_fixture <- function(
     seed = 13101L, n_traits = 5L, n_unit = 12L) {

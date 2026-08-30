@@ -1,9 +1,8 @@
 # Tree-axis article correction: validation and publication record
 
-Date: 2026-08-30. Current status: **approved coefficient-standardization repair
-in progress; its new validation has not yet run. The preceding cell repair
-passed twelve fits, the article render and local package check, but Windows
-CI failed. Landing/deployment remain gated**. No corrected article has been published or claimed complete.
+Date: 2026-08-30. Current status: **coefficient-standardization repair passes all eight new
+standalone fits and the revised article render. Full local package checking
+passes; the prior Windows failure still awaits exact-head verification. Landing/deployment remain gated**. No corrected article has been published or claimed complete.
 Sections1–19 retain historical failures and superseded checkpoints verbatim.
 Sections20 onward record the approved Gaussian integration and final evidence.
 
@@ -843,21 +842,100 @@ any implementation or additional fit. Current authority remains ceiling33.
 
 ## 26. Approved coefficient-standardization repair
 
-Shinichi approved the finalized repair, output/uncertainty compatibility,
-eight additional standalone fits (ceiling41), and one revised primary article
-render. Preserve all frozen settings and acceptance gates; landing separate.
-Gauss owns the three core files; Noether owns independent tests and read-only
-output review; the existing validation worker owns the immutable runner.
-Root owns build/fit serialization, documentation, rendering and PR preparation.
-The existing ultra-plan is being executed, not reopened for another approval.
-At entry33standalone attempts are spent; no new fit or build has yet run.
+Shinichi approved the finalized repair, output and uncertainty compatibility,
+eight additional standalone fits (cumulative ceiling 41), and one revised
+primary article render. All frozen settings and acceptance gates remain
+unchanged. Landing requires separate approval. The existing ultra-plan was
+continued without another approval round.
 
-Coefficient prefit gates PASS: freshinstall85.778s;84 compiled fixed-point,
-physical start/map/warmstart/output/uncertainty assertions2.092s;four retained
-morphology points1.959s,objective deltas<7e-12;234 focused animal/rho assertions
-4.952s. The formerWindows test retains no-warning assertions and nowchecks
-code0/gradient<1e-2 using alreadycomputed gradients. First fixed-point run
-2.144s had two names-only testdifferences and one expectedweightwarning;
-retained and corrected onlytestbookkeeping. No production change afterbuild.
-Gauss/Noether prefitreviewPASS; source/DLL manifest and gate bound. No new
-standalonearticlefit yet; count33/41. Ready Q2 thenQ3; wideconditional.
+Gauss implemented `src/gllvmTMB.cpp`, `R/fit-multi.R`, and `R/init-warmstart.R`.
+Noether wrote independent tests and audited output consumers. The existing
+validation worker adapted the immutable runner. Root serialized all builds
+and fits, updated documentation, rendered the article, and checked the page.
+No new public API, formula grammar, family, estimator or spatial path was added.
+
+The new coordinates use B = U L transpose. Gaussian constants, source
+normalization and rho diagonal scaling are unchanged. The predictor and
+reports use physical B; ADREPORT propagates first-order uncertainty through
+both random effects and covariance parameters. Physical starts convert once,
+after maps and warm starts. Fixed or tied physical coefficient maps retain
+the centred path, as do unsupported compositions.
+
+Validation before article fitting:
+
+| Check | Result | Time |
+|---|---|---|
+| Fresh installation | PASS | 85.778 s |
+| Fixed-point, start/map, warm-start, output and uncertainty tests | 84 assertions pass; no warnings | 2.092 s |
+| Four retained morphology endpoints, no outer optimization | PASS; objective differences below 7e-12 | 1.959 s |
+| Focused animal and estimated-rho tests | 234 assertions pass | 4.952 s |
+
+The first fixed-point run took 2.144 s and exposed two test attribute
+mismatches and an expected weight warning. Those failures are retained.
+Only test bookkeeping changed: numeric comparison strips irrelevant row
+names, and the weighted case explicitly expects its documented warning.
+No numerical tolerance changed. The original Windows test retains every
+assertion and additionally checks convergence code 0 and gradient below
+1e-2, using gradients it already computed.
+
+All eight new standalone attempts pass the original gates:
+
+| Block | Attempts | Time | Largest gradient |
+|---|---:|---:|---:|
+| IID community long | 3 | 22.383 s | 0.003522236 |
+| Phylogenetic community long | 3 | 49.325 s | 0.003911533 |
+| IID community wide | 1 | 6.378 s | See retained receipt |
+| Phylogenetic community wide | 1 | 16.443 s | See retained receipt |
+
+Relative objective spreads are 4.04e-12 and 6.01e-11. Every shared, unique,
+total, coefficient and source covariance agreement check passes. Long/wide
+normalized NLL differences are 0 and 4.21e-11; fitted differences are 0 and
+6.08e-11 response SD. Fresh negative controls verify that the validator still
+rejects failed codes, gradients, objective spread and covariance agreement.
+The cumulative count is **41/41 standalone attempts**: 40 returned and one
+historical interruption. No standalone slots remain.
+
+The revised primary render passed in 41.375 s with exactly three separately
+approved first-start fits. The earlier primary render also used three fits;
+these render executions are not hidden in the standalone denominator. A
+presentation-only rebuild took 12.724 s and prohibited optimizer calls.
+The current-article checker then verified source/DLL, fixture, six displayed
+calls, starts and saved output with no fits, plots or rendering.
+
+The article source is unchanged: its inline results and figures are generated
+from the new fits. The displayed rho is 3.11e-7 despite planted rho = 0.60;
+the existing non-recovery explanation still applies. Desktop width 1440 and
+mobile width 390 have no horizontal overflow. All 20 equations and four
+figures render; figure alt text is present and there are no JavaScript errors.
+Root inspected all four current figure files.
+
+Gauss and Noether passed the source/math and output reviews. Rose passed the
+cross-file review after a stale running-render status was corrected in the
+checkpoint and check-log. Three private-coordinate comments in the IID,
+phylogenetic fixed-rho and public-API test files now distinguish physical B
+from internal U; their executable code is unchanged.
+
+Roxygen/documentation commands exit 0 with no generated-file changes, and
+pkgdown metadata checks pass. Three existing S3-export messages refer to
+`R/aghq-report.R`, unchanged from current origin/main. The reader-surface
+checker still finds the previously recorded PVT-02 identifier at
+`man/profile_ci_total_variance.Rd:49`, also unchanged from origin/main. Neither
+unrelated baseline issue is represented as fixed by this PR.
+
+Full local package check COMPLETED PASS in 1327.051 s: 0 errors, 0 R CMD check
+warnings, 3 notes (clock verification, existing logLik namespace note, xcrun_db).
+Test summary: 16067 PASS, 0 FAIL, 54 WARN, 1190 SKIP. All 54 warning headers
+and messages match the previous passing local check exactly; skips are unchanged.
+The 92 added assertions are the 84 new coordinate checks and 8 convergence
+checks. All 881 R/native/header/help/test files compared with the checked
+source archive match the worktree. Receipts: package-check-1.rds,
+package-source-comparison.json and package-warning-comparison.json under the
+coefficient-standardization evidence root. No further fit or render was run.
+Existing draft PR1229 will receive the final candidate; exact-head manual
+three-OS CI remains required. Landing and live deployment remain unapproved.
+
+This is not a completed-correction claim.
+
+Evidence: `dev/tree-axis-latent/evidence/2026-08-30-coefficient-standardization.json`
+and `/private/tmp/gllvm-tree-axis-latent-20260830/coefficient-standardization-7c88/`.
+The source archive is bound to implementation commit `8cd7a18d6`.

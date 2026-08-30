@@ -38,7 +38,10 @@
   .receipt_hash(path)
 }
 .receipt_manifest_hash <- function(manifest) {
-  manifest <- manifest[order(manifest$path), c("path", "sha256"), drop = FALSE]
+  manifest <- manifest[
+    order(enc2utf8(manifest$path), method = "radix"),
+    c("path", "sha256"), drop = FALSE
+  ]
   payload <- paste0(manifest$path, "\t", tolower(manifest$sha256), "\n",
                     collapse = "")
   path <- tempfile()

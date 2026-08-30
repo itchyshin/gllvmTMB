@@ -4,15 +4,29 @@ source(file.path(diag_dir, "record.R"), local = TRUE)
 
 test_that("installed manifest hash is canonical across data-frame metadata", {
   manifest <- data.frame(
-    path = c("libs/gllvmTMB.so", "DESCRIPTION"),
-    sha256 = c(strrep("a", 64L), strrep("b", 64L)),
+    path = c("libs/gllvmTMB.so", "DESCRIPTION", "Meta/package.rds",
+             "R/gllvmTMB.rdb", "help/aliases.rds"),
+    sha256 = vapply(letters[1:5], function(x) strrep(x, 64L), character(1L)),
     stringsAsFactors = FALSE
   )
-  reordered <- manifest[2:1, , drop = FALSE]
-  row.names(reordered) <- c("linux-2", "linux-1")
+  reordered <- manifest[5:1, , drop = FALSE]
+  row.names(reordered) <- paste0("linux-", 5:1)
 
   expect_identical(diagnostic_manifest_hash(manifest),
                    diagnostic_manifest_hash(reordered))
+
+  old_collate <- Sys.getlocale("LC_COLLATE")
+  on.exit(Sys.setlocale("LC_COLLATE", old_collate), add = TRUE)
+  expect_false(is.na(Sys.setlocale("LC_COLLATE", "C")))
+  c_hash <- diagnostic_manifest_hash(manifest)
+  utf_locale <- c("en_US.UTF-8", "en_CA.UTF-8", "C.UTF-8")
+  utf_locale <- utf_locale[vapply(utf_locale, function(x) {
+    value <- suppressWarnings(Sys.setlocale("LC_COLLATE", x))
+    !is.na(value) && nzchar(value) && value != "C"
+  }, logical(1L))]
+  skip_if(!length(utf_locale), "no UTF-8 collation locale is available")
+  suppressWarnings(Sys.setlocale("LC_COLLATE", utf_locale[[1L]]))
+  expect_identical(diagnostic_manifest_hash(manifest), c_hash)
 })
 
 .runner_test_env <- function() {

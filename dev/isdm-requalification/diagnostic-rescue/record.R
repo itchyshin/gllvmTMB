@@ -37,7 +37,8 @@ diagnostic_manifest_hash <- function(manifest) {
     diagnostic_abort("installed manifest is malformed",
                      "isdm_diagnostic_hash_error")
   }
-  manifest <- manifest[order(manifest$path), required, drop = FALSE]
+  manifest <- manifest[order(enc2utf8(manifest$path), method = "radix"),
+                       required, drop = FALSE]
   payload <- paste0(manifest$path, "\t", tolower(manifest$sha256), "\n",
                     collapse = "")
   path <- tempfile()

@@ -30,6 +30,22 @@ diagnostic_object_hash <- function(object) {
   unname(diagnostic_sha256(path))
 }
 
+diagnostic_manifest_hash <- function(manifest) {
+  required <- c("path", "sha256")
+  if (!is.data.frame(manifest) || !all(required %in% names(manifest)) ||
+      anyNA(manifest[required]) || anyDuplicated(manifest$path)) {
+    diagnostic_abort("installed manifest is malformed",
+                     "isdm_diagnostic_hash_error")
+  }
+  manifest <- manifest[order(manifest$path), required, drop = FALSE]
+  payload <- paste0(manifest$path, "\t", tolower(manifest$sha256), "\n",
+                    collapse = "")
+  path <- tempfile()
+  on.exit(unlink(path), add = TRUE)
+  writeBin(charToRaw(payload), path)
+  unname(diagnostic_sha256(path))
+}
+
 diagnostic_atomic_save <- function(object, path) {
   dir.create(dirname(path), recursive = TRUE, showWarnings = FALSE)
   lock <- paste0(path, ".lock")

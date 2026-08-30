@@ -56,7 +56,7 @@ diagnostic_verify_runtime_identity <- function(qualification) {
   if (!identical(package_path, qualification$package_path) ||
       !identical(dll_path, qualification$dll_path) ||
       !identical(observed_dll, qualification$dll_sha256) ||
-      !identical(diagnostic_object_hash(installed_manifest),
+      !identical(diagnostic_manifest_hash(installed_manifest),
                  qualification$installed_manifest_sha256)) {
     diagnostic_abort("loaded package/DLL differs from qualification",
                      "isdm_diagnostic_source_unavailable")

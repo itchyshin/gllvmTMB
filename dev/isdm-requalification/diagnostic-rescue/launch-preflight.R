@@ -40,7 +40,7 @@ installed_manifest <- data.frame(
   sha256 = unname(diagnostic_sha256(installed_files)),
   stringsAsFactors = FALSE
 )
-if (!identical(diagnostic_object_hash(installed_manifest),
+if (!identical(diagnostic_manifest_hash(installed_manifest),
                qualification$installed_manifest_sha256)) {
   stop("installed package bytes differ from qualification")
 }

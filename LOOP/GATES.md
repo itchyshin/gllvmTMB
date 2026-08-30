@@ -4,30 +4,30 @@ OWNS: LOOP/**, dev/isdm-requalification/diagnostic-rescue/**, tests/testthat/tes
 
 Scope: retain and adjudicate the approved 52-fit public-route diagnostic experiment and name one evidence-bounded next action
 
-- [ ] G1: the frozen diagnostic contract contains exactly 16 nonspatial and 36 spatial tasks with unique immutable task identifiers
+- [x] G1: the frozen diagnostic contract contains exactly 16 nonspatial and 36 spatial tasks with unique immutable task identifiers
   CHECK: Rscript --vanilla dev/isdm-requalification/diagnostic-rescue/verify-contract.R
   EXPECT: DIAGNOSTIC_CONTRACT_VERIFIED
-  EVIDENCE: pending
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/z3437171/local-scratch/lanes/gllvmTMB-isdm-identifiability-diagnostic; path=1c6be4364d72/34 entries; output=[1] 36 | DIAGNOSTIC_CONTRACT_VERIFIED
 
-- [ ] G2: deterministic tests verify replication, estimand decomposition, seed-selection refusal, curvature extraction, watchdog process-group stopping, and all-attempt reconciliation
+- [x] G2: deterministic tests verify replication, estimand decomposition, seed-selection refusal, curvature extraction, watchdog process-group stopping, and all-attempt reconciliation
   CHECK: Rscript --vanilla -e 'devtools::test(filter = "isdm-diagnostic", stop_on_failure = TRUE)'
   EXPECT: FAIL 0
-  EVIDENCE: pending
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/z3437171/local-scratch/lanes/gllvmTMB-isdm-identifiability-diagnostic; path=1c6be4364d72/34 entries; output=ℹ Testing gllvmTMB | gllvmTMB is EXPERIMENTAL (lifecycle: experimental). Use at your own risk: the package is not complete, is not fully human-verified, and needs extensive further validation. Point estimates are the primary inferential out
 
-- [ ] G3: the source pin and diagnostic harness manifest are exact and contain no package R or C++ edits
+- [x] G3: the source pin and diagnostic harness manifest are exact and contain no package R or C++ edits
   CHECK: Rscript --vanilla dev/isdm-requalification/diagnostic-rescue/verify-source.R
   EXPECT: DIAGNOSTIC_SOURCE_VERIFIED
-  EVIDENCE: pending
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/z3437171/local-scratch/lanes/gllvmTMB-isdm-identifiability-diagnostic; path=1c6be4364d72/34 entries; output=DIAGNOSTIC_SOURCE_VERIFIED
 
-- [ ] G4: the seed selector reproduces the frozen rule from checksum-verified immutable production records
+- [x] G4: the seed selector reproduces the frozen rule from checksum-verified immutable production records
   CHECK: Rscript --vanilla dev/isdm-requalification/diagnostic-rescue/verify-seed-selection.R
   EXPECT: DIAGNOSTIC_SEED_SELECTION_VERIFIED
-  EVIDENCE: pending
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/z3437171/local-scratch/lanes/gllvmTMB-isdm-identifiability-diagnostic; path=1c6be4364d72/34 entries; output=DIAGNOSTIC_SEED_SELECTION_VERIFIED
 
-- [ ] G5: Curie, Gauss, and Rose reviews contain no unresolved blocking finding
+- [x] G5: Curie, Gauss, and Rose reviews contain no unresolved blocking finding
   CHECK: Rscript --vanilla dev/isdm-requalification/diagnostic-rescue/verify-reviews.R plan
   EXPECT: DIAGNOSTIC_PLAN_REVIEWS_VERIFIED
-  EVIDENCE: pending
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/z3437171/local-scratch/lanes/gllvmTMB-isdm-identifiability-diagnostic; path=1c6be4364d72/34 entries; output=DIAGNOSTIC_PLAN_REVIEWS_VERIFIED
 
 - [ ] G6: the Totoro diagnostic install matches the frozen source and harness identity
   CHECK: Rscript --vanilla dev/isdm-requalification/diagnostic-rescue/verify-remote-receipt.R qualification

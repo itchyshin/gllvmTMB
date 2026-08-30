@@ -2,6 +2,19 @@ diag_dir <- testthat::test_path("..", "..", "dev", "isdm-requalification",
                                "diagnostic-rescue")
 source(file.path(diag_dir, "record.R"), local = TRUE)
 
+test_that("installed manifest hash is canonical across data-frame metadata", {
+  manifest <- data.frame(
+    path = c("libs/gllvmTMB.so", "DESCRIPTION"),
+    sha256 = c(strrep("a", 64L), strrep("b", 64L)),
+    stringsAsFactors = FALSE
+  )
+  reordered <- manifest[2:1, , drop = FALSE]
+  row.names(reordered) <- c("linux-2", "linux-1")
+
+  expect_identical(diagnostic_manifest_hash(manifest),
+                   diagnostic_manifest_hash(reordered))
+})
+
 .runner_test_env <- function() {
   env <- new.env(parent = globalenv())
   runner <- normalizePath(file.path(diag_dir, "runner.R"), mustWork = TRUE)

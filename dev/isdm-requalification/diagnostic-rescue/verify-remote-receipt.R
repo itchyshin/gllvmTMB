@@ -37,6 +37,15 @@
   saveRDS(object, path, version = 3)
   .receipt_hash(path)
 }
+.receipt_manifest_hash <- function(manifest) {
+  manifest <- manifest[order(manifest$path), c("path", "sha256"), drop = FALSE]
+  payload <- paste0(manifest$path, "\t", tolower(manifest$sha256), "\n",
+                    collapse = "")
+  path <- tempfile()
+  on.exit(unlink(path), add = TRUE)
+  writeBin(charToRaw(payload), path)
+  .receipt_hash(path)
+}
 
 isdm_diag_verify_bundle_manifest <- function(bundle) {
   bundle <- normalizePath(bundle, mustWork = TRUE)
@@ -106,7 +115,7 @@ isdm_diag_verify_bundle_manifest <- function(bundle) {
       any(!vapply(x$installed_manifest$sha256, .receipt_hex, logical(1L))) ||
       !.receipt_hex(x$installed_manifest_sha256) ||
       !identical(tolower(x$installed_manifest_sha256),
-                 .receipt_object_hash(x$installed_manifest)) ||
+                 .receipt_manifest_hash(x$installed_manifest)) ||
       !.receipt_hex(x$dll_sha256) ||
       !.receipt_hex(x$install_receipt_sha256) ||
       !.receipt_hex(x$seed_manifest_sha256) ||

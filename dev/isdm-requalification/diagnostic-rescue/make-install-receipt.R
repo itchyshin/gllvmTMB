@@ -100,7 +100,7 @@ receipt <- list(
   source_sha = pin, source_tree = tree, source_status = character(),
   package_path = package_path,
   installed_manifest = installed_manifest,
-  installed_manifest_sha256 = diagnostic_object_hash(installed_manifest),
+  installed_manifest_sha256 = diagnostic_manifest_hash(installed_manifest),
   dll_path = dll_path,
   dll_sha256 = unname(diagnostic_sha256(dll_path)),
   session_info = capture.output(utils::sessionInfo())

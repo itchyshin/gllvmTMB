@@ -75,7 +75,7 @@ if (!is.list(install_receipt) ||
     !identical(install_receipt$source_tree, tree) ||
     !identical(install_receipt$package_path, package_path) ||
     !identical(install_receipt$installed_manifest_sha256,
-               diagnostic_object_hash(installed_manifest)) ||
+               diagnostic_manifest_hash(installed_manifest)) ||
     !identical(install_receipt$installed_manifest, installed_manifest) ||
     !identical(unname(diagnostic_sha256(install_receipt$install_log_path)),
                install_receipt$install_log_sha256) ||
@@ -96,7 +96,7 @@ qualification <- list(
   package_version = as.character(utils::packageVersion("gllvmTMB")),
   package_path = package_path,
   installed_manifest = installed_manifest,
-  installed_manifest_sha256 = diagnostic_object_hash(installed_manifest),
+  installed_manifest_sha256 = diagnostic_manifest_hash(installed_manifest),
   install_receipt_path = install_receipt_path,
   install_receipt_sha256 = unname(diagnostic_sha256(install_receipt_path)),
   dll_path = dll_path,

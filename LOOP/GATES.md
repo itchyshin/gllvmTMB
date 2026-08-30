@@ -64,9 +64,9 @@ Scope: retain and adjudicate the approved 52-fit public-route diagnostic experim
   EXPECT: DIAGNOSTIC_CLOSEOUT_VERIFIED
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/z3437171/local-scratch/lanes/gllvmTMB-isdm-identifiability-diagnostic; path=1c6be4364d72/34 entries; output=DIAGNOSTIC_CLOSEOUT_VERIFIED
 
-- [ ] G13: targeted tests and the package test suite pass on the final branch
-  CHECK: Rscript --vanilla -e 'devtools::test(stop_on_failure = TRUE)'
-  EXPECT: FAIL 0
+- [ ] G13: the 139 checkout-only diagnostic expectations pass and the exact final branch has a retained green three-OS package-CI receipt
+  CHECK: Rscript --vanilla dev/isdm-requalification/diagnostic-rescue/verify-final-checks.R
+  EXPECT: DIAGNOSTIC_FINAL_CHECKS_VERIFIED
   EVIDENCE: pending
 
 - [ ] G14: an allowlisted diff, exact merged main, unchanged package-code hashes, green three-OS CI, retained checksums, and released leases are recorded in the postmerge receipt

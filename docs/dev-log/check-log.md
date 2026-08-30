@@ -56205,3 +56205,14 @@ Rscript --vanilla -e 'testthat::test_file("tests/testthat/test-isdm-diagnostic-r
 # PASS from the fresh built source tree: each developer-only file skipped once;
 # 0 failures and 0 warnings.
 ```
+
+Final review required an executable protected landing gate and an honest
+reconciliation of G13. `make-ci-receipt.R` and `verify-final-checks.R` require
+the 139 checkout-only expectations plus one exact-head GitHub Actions run with
+successful Ubuntu, macOS, and Windows jobs. `make-postmerge-receipt.R` and
+`verify-postmerge.R` then require the feature head to be an ancestor of exact
+`origin/main`, no change from the qualified source across package-code and
+reader-facing paths, stable qualification/smoke/experiment manifest hashes,
+the merged PR identity, and released closeout lease. These are landing checks;
+they do not enter the fit harness or alter an estimand, attempt, signal, or
+threshold.

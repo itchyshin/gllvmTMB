@@ -81,7 +81,9 @@ they did not change the model, truth, scoring target, or thresholds.
 - `dev/isdm-requalification/diagnostic-rescue/`: frozen contract, task/seed
   plans, public-route runner, diagnostics, source/install qualification,
   watchdog, reconciliation, independent summarizer, verifiers, and SHA-256
-  harness manifest.
+  harness manifest. Pre-merge CI and post-merge receipt makers/verifiers bind
+  the final branch, three operating systems, merged main, manifest hashes, and
+  released lease without changing the claim-bearing fit harness.
 - `dev/isdm-requalification/diagnostic-rescue/evidence/`: two seed-selection
   files, a three-file qualification bundle plus manifest, 21 smoke payload
   files plus plan/qualification/projection/manifest, and 143 experiment payload
@@ -129,8 +131,10 @@ the two named dev-log paths.
 
 `devtools::document()`, article rendering, and pkgdown checks were deliberately
 not run because no package code, roxygen, Rd, vignette, reader-facing prose, or
-navigation changed. Three-OS CI remains required before merge because the
-branch adds package tests; it is not used for simulation compute.
+navigation changed. Three-OS CI remains required before merge to check package
+regressions and the built-package boundary. It does not execute the 139
+developer-harness expectations, which run only from a repository checkout; CI
+is not used for simulation compute.
 
 ## 6. Tests of the Tests
 
@@ -197,7 +201,9 @@ closeout files existed, so G8 onward recorded expected early failures. They
 must be reverified against final evidence rather than treated as scientific
 failures. The full package suite exceeded the ledger's original 120-second
 per-gate timeout. A separate local run was stopped at its stated eight-minute
-overrun boundary; three-OS PR CI supplies the authoritative broad check.
+overrun boundary. G13 was formally reconciled to require both the 139
+checkout-only harness expectations and a retained green three-OS package-CI
+receipt at the exact branch head; it does not weaken a scientific threshold.
 
 The pre-push CI review then reproduced a source-tarball failure in two tests
 that sourced `dev/`, which `.Rbuildignore` excludes. The package-test boundary
@@ -246,7 +252,9 @@ and public promotion.
 **Grace** contributes a remaining boundary: the qualification retained the
 exact successful Ubuntu CI run at the execution source, but it is not itself a
 three-OS certification of this dev/test branch. Branch CI must be green before
-landing.
+landing. The final verifier therefore binds all three successful platform jobs
+to the exact feature head, and the post-merge verifier separately binds that
+head to `origin/main` and the released lease.
 
 ## 12. Cross-Product Coverage
 

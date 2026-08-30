@@ -131,12 +131,25 @@ cat("ARTICLE_FROZEN_DGP_EXPRESSIONS_AND_VALUES_PASS\n",
 # Bind installed code and DLL to the completed validation block, then bind
 # today's presentation render to the exact source, HTML and primary fits.
 manifest <- jsonlite::read_json(file.path(root, "provenance-v2.json"), simplifyVector = TRUE)
+current_manifest <- manifest
+bridge_path <- file.path(root, "package-source-bridge-v2.rds")
+if (!file.exists(bridge_path) && file.exists(file.path(root, "package-source-bridge.rds"))) {
+  stop("The old source bridge must be extended with retained-payload and DLL-section evidence")
+}
+if (file.exists(bridge_path)) {
+  bridge_env <- new.env(parent = globalenv())
+  sys.source("dev/tree-axis-latent/build-cell-package-bridge.R", envir = bridge_env)
+  bridge <- bridge_env$.cell_bridge_validate(readRDS(bridge_path))
+  current_manifest <- bridge$current_manifest
+  cat("ARTICLE_PACKAGE_SOURCE_BRIDGE_REVALIDATED_SIX_PAYLOADS_TWELVE_STARTS\n")
+}
 expected_sources <- c(list.files("R", pattern = "[.]R$", full.names = TRUE),
   "src/gllvmTMB.cpp", "inst/include/gllvmTMB/detail/column_prior.hpp", "NAMESPACE", "DESCRIPTION")
 stopifnot(setequal(names(manifest$source_sha256), expected_sources),
-  identical(normalizePath(find.package("gllvmTMB")), manifest$library),
-  identical(sha(file.path(manifest$library, "libs/gllvmTMB.so")), manifest$dll_sha256))
-for (path in expected_sources) stopifnot(identical(sha(path), manifest$source_sha256[[path]]))
+  setequal(names(current_manifest$source_sha256), expected_sources),
+  identical(normalizePath(find.package("gllvmTMB")), current_manifest$library),
+  identical(sha(file.path(current_manifest$library, "libs/gllvmTMB.so")), current_manifest$dll_sha256))
+for (path in expected_sources) stopifnot(identical(sha(path), current_manifest$source_sha256[[path]]))
 primary_path <- file.path(root, "primary-render-1/receipt.rds")
 primary <- readRDS(primary_path)
 stopifnot(primary$primary_render_entries == 3L, primary$standalone_count == 33L)

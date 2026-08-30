@@ -56737,3 +56737,36 @@ fits, objective calls, plotting or rendering. First invocation hid user-library
 dependencies and failed before loading assertthat; failure retained separately.
 Historical check-article.R is now labelled for its old pre-integration source.
 Final presentation3 passed12.801s; final Chrome layout3 passes both widths.
+
+Full check1: devtools::check(args="--no-manual",quiet=TRUE,error_on="never")
+finished1353.213s, exit1,1ERROR/3NOTEs. Tests15913PASS/11FAIL/55WARN/1190SKIP.
+The normal heavy-test flag remained unset. Seven Xcoef_fixed atomic-input
+errors and one warm-start source-output failure are integration compatibility
+regressions; three rho finite-difference assertions are under old/new package
+comparison. Baseline-only is not assumed. Package/PR/CI gates remain unmet.
+
+Compatibility follow-up: install-v2.log PASS82.413s; compatibility-tests-v2-2.log
+PASS3.414s for Gaussian collapse/warmstart, Xcoef, standard_errors and start_method
+files with NOT_CRAN=true. First compatibility-tests-v2.log skipped some relevant
+tests and is retained as partial. Continuity captures2.745/2.847s and comparison
+0.459s prove6payloads/12starts exact, zero tapes/optimizers. Old manifests unchanged.
+Unchanged FD regression oldPASS3.337s/newFAIL2.955s; single existing regression
+fixture rerun retained failure endpoint1.545s. Fixed-point old/new/dense checks
+use no outer optimizers and establish analytic scores within5e-4 at all3rhos,
+but nativeFD at h1e-4 loses precision on the near-singular covariance. No article
+fit slot was used; these are routine package regression/evaluation checks.
+
+Rho reference correction: test-column-coef-phylo-estimated-rho.R passes3.139s
+withoutwarnings. No outer optimizer is used in the two derivative tests. Gauss
+independently reviewed covariance/stacking/Cholesky/logistic-derivative/trace
+algebra and retainedprobevalues/steps/tolerances: PASS. Diagnostic scripts and
+compact exact-coordinate evidence are preserved under numerical-investigation/
+package-rho-{capture,evaluate}.R and evidence/2026-08-30-package-rho-reference.json.
+
+Current package-source bridge2 validates24 direct retainedpayload comparisons,
+6 complete old/new payloads and12 original starts. check-cell-dll-equivalence.py
+proves15 file-backed executable/data sections and5dyldpayloads identical;81
+changedbytes are restricted toUUID/objecttimestamp/code-signature metadata.
+Auditor0.408s, bridgebuild4.199s, currentarticlechecker3.423s, no model evaluations.
+Originalbridge1/oldmanifests remain immutable. pkgdown::check_pkgdown() passes
+withcell-library-v2. Second full packagecheck is underway under1800s cap.

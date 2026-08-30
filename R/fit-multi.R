@@ -6523,7 +6523,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     data = tmb_data, map = tmb_map, parameters = tmb_params,
     REML = REML, estimator = estimator, control = control,
     known_V = known_V, lambda_constraint = lambda_constraint,
-    Xcoef_fixed = Xcoef_fixed
+    Xcoef_fixed = xcoef_fixed
   )
   tmb_data$integrate_gaussian_diag_B <- as.integer(integrated_gaussian_diag_B)
   if (integrated_gaussian_diag_B) {

@@ -67,7 +67,8 @@ test_that("Gaussian cell integration admits complete cells and keeps fallback ca
   d <- .cell_collapse_data()
   d$value <- as.numeric(seq_len(nrow(d)) %% 4)
   counts <- .cell_collapse_capture(d, family = poisson())
-  for (payload in list(repeated, weighted, missing, counts)) {
+  fixed_coef <- .cell_collapse_capture(Xcoef_fixed = c(traita = 0))
+  for (payload in list(repeated, weighted, missing, counts, fixed_coef)) {
     expect_identical(payload$data$integrate_gaussian_diag_B, 0L)
     expect_true("s_B" %in% payload$random)
   }

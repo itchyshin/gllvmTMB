@@ -674,3 +674,50 @@ CI, landing and deployment. Reader-surface PVT-02 issue is unchanged on main,
 not introduced by this correction.
 
 Final bounded Rose review PASS: no unresolved P0/P1/P2 findings. It verified article/source/help/defaults/capability boundaries and current no-fit checker. Package and cross-platform evidence remain separate.
+
+## 22. Full package check caught compatibility regressions
+
+Package check1 completed1353.213s (22.6min), within the1800s cap, with1ERROR
+and3NOTEs. Test totals:15913 pass,11 failures,55 warnings,1190 skips under
+the unchanged default non-heavy suite. Seven failures arise from passing raw
+atomic Xcoef_fixed into the new predicate expecting its normalized list; one
+from copying mapped s_B placeholders rather than reconstructed conditional
+means for start_method="indep". Three estimated-rho finite-difference failures
+require baseline comparison; they have no ordinary cell effects, so Gaussian
+cell integration is inactive. All failures and warnings retained. No package
+pass, push or CI admission is claimed. Repair of the two compatibility paths
+and no-optimizer continuity proof for frozen article inputs are underway.
+
+Compatibility follow-up: fresh cell-library-v2 build passes82.413s. The predicate
+now receives normalized xcoef_fixed; start_from copies reconstructed means for
+integrated Gaussian s_B and retains legacy shape/finite guards. Five affected
+regression files pass3.414s with NOT_CRAN=true, including the original failing
+Xcoef/SE/warm-start tests. A first direct test_file invocation skipped CRAN-only
+exclusions and is retained as partial, not used as proof of the fixed failures.
+Curie's two no-tape captures and comparison prove all6 frozen model inputs,
+maps/random blocks/RNG states and all12 deterministic starts byte-identical
+across old and new libraries. No additional article optimizer call ran.
+
+The unchanged rho regression passes against the old library and fails against
+the repaired one. Its retained fitted endpoint has code1 false convergence and
+coefficient covariance condition about2.16e11. Both DLLs fail native finite
+differences at that SAME endpoint. Repaired analytic-vs-dense exact Gaussian
+score discrepancy is8.77e-6 (old3.35e-6), below the unchanged5e-4 tolerance;
+dense analytic-vs-FD discrepancy is3.22e-10. Thus the reference finite difference
+loses precision; this is not evidence of a wrong repaired analytic derivative.
+The boundary failure and limitations remain recorded. A corrected unit test
+uses a declared well-conditioned native-FD point plus the difficult endpoint
+against the independent dense oracle, keeping3rho values,h1e-4,5e-4 tolerance.
+This changes no frozen article fit/acceptance gate and makes no general
+near-boundary optimizer-reliability claim. Full package check remains pending.
+
+Gauss independently reviewed the corrected derivative tests: covariance packing,
+observation order and Gaussian score trace agree; all three probes/steps/bounds
+are unchanged. Target file passes3.139s without warnings. Final bridge2 adds24
+captured-versus-retained input assertions and independently rechecks all DLL
+executable/data/linkage bytes, permitting only recorded build metadata changes.
+The bridge and article checker pass4.199s/3.423s without model evaluations.
+Old manifests, original bridge and failures remain immutable. No generalized
+near-boundary optimizer claim follows from the unit-test correction.
+
+Gauss final durable-bridge review PASS: independently reran binary audit and source bridge, including24retained input bindings and all12starts. No cachedpassflag inheritance; originalbridgev1 remains. Package2/CI/landing/deployment still separate.

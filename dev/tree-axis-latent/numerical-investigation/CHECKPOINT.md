@@ -322,3 +322,34 @@ is running; local browser and final consistency review underway. No additional
 standalone fit is authorized. Next: finish local/package checks, prepare
 existing draftPR1229 and exact-final-head manual three-OS checks. Landing
 requires separate approval. Full deployed two-example goal remains incomplete.
+
+Package check1 completed22.6min with11 failures:7 raw-Xcoef predicateerrors,
+1 mapped-placeholder warmstartcopy,3 rho finite-difference failures on a model
+without ordinary cell effects. Fixing scoped output/eligibility regressions;
+comparing unchanged old/new rho tests. Frozen article inputs must be proved
+identical without newouterfits; old33fitreceipts/manifest remain immutable.
+No packagepass/push/CI yet. All failures retained.
+
+## 21. Compatibility regressions fixed; second package check running
+
+Fresh cell-library-v2 buildPASS82.413s. R/fit-multi.R passes normalized
+xcoef_fixed into eligibility; R/init-warmstart.R copies reconstructed cell
+means when source s_B was analytically integrated. Five relevant test files
+pass3.414s with NOT_CRAN=true. All6 frozenpayloads and12starts match old/new
+exactly (zero tapes/optimizers); currentarticle provenancebridge passes3.041s.
+Gauss confirms executableDLLsections/dynamiclinkage byte-identical; differing
+UUID/N_OSOobjecttimestamp/signature metadata is being bound in bridge2.
+
+Three coefficient-only rho FD failures were traced to native finite-difference
+precision loss at a false-converged nearly singular covariance. Both DLLs fail
+nativeFD at SAMEendpoint; analytic scores match independentdenseGaussian within
+8.77e-6<5e-4. Corrected unit tests retain seed/data,3rhos,h1e-4,tolerance5e-4,
+use declaredwell-conditionednativeFD plus exactsavedboundary againstdenseoracle.
+No production optimizer/likelihood change or articlegatewaiver. TargettestPASS
+3.139s. All oldfailures retained, including originalpackagecheck1ERROR/3NOTEs.
+
+Secondfullpackagecheck running session94317 under1800scap, estimated20–30min.
+No additionalstandalonearticlefit allowed; count33/33 plus3primaryrenderfits
+(separateallowance). ExistingPR1229 stillremoteunchanged/draft. Next finish
+package/continuityreview, commitrecords, extendPR and exact-headthreeOSCI.
+Landingapproval and deployedverification stillrequired.

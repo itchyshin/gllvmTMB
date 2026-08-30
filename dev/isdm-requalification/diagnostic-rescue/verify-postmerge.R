@@ -51,7 +51,7 @@ observed <- stats::setNames(vapply(manifests, hash, character(1L)),
                             basename(dirname(manifests)))
 if (!identical(observed, x$manifest_sha256)) stop("retained manifest hash changed")
 lease <- system2("bash", c(
-  "/Users/z3437171/Dropbox/Github Local/Shinichi/tools/lane_lease.sh",
+  shQuote("/Users/z3437171/Dropbox/Github Local/Shinichi/tools/lane_lease.sh"),
   "--list", "gllvmTMB-isdm-identifiability-diagnostic"),
   stdout = TRUE, stderr = TRUE)
 if (!is.null(attr(lease, "status"))) stop("lane lease query failed")

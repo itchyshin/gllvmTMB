@@ -28,7 +28,7 @@ if (!identical(info$state, "MERGED") || !identical(info$mergeCommit$oid, main))
 if (!identical(ci$head_sha, info$headRefOid))
   stop("CI receipt is not bound to the merged PR head")
 lease <- system2("bash", c(
-  "/Users/z3437171/Dropbox/Github Local/Shinichi/tools/lane_lease.sh",
+  shQuote("/Users/z3437171/Dropbox/Github Local/Shinichi/tools/lane_lease.sh"),
   "--list", "gllvmTMB-isdm-identifiability-diagnostic"),
   stdout = TRUE, stderr = TRUE)
 if (!is.null(attr(lease, "status"))) stop("lane lease query failed")

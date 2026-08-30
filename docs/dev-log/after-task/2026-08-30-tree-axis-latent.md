@@ -2,7 +2,7 @@
 
 Date: 2026-08-30. Current status: **all twelve repaired-source validation
 fits, primary article render and full local package check pass; exact-head
-CI/landing/deployment remain separate gates**. No corrected article has been published or claimed complete.
+Windows CI has two warning-assertion failures; landing/deployment remain gated**. No corrected article has been published or claimed complete.
 Sections1–19 retain historical failures and superseded checkpoints verbatim.
 Sections20 onward record the approved Gaussian integration and final evidence.
 
@@ -758,3 +758,39 @@ its linked workflow receipt, without moving the commit being checked merely
 to record that result. This local closeout does NOT authorize landing and is
 not a completed deployed-correction claim. Main deployment and live verification
 of both examples remain required after separate maintainer approval.
+
+## 24. Windows CI failure: no landing or completion claim
+
+At candidate f2dd63b12, manual run33332985540 passed full macOS and Ubuntu
+package checks; Windows failed two no-warning assertions in the unchanged
+animal coefficient/slope equivalence test. All equivalence assertions passed.
+The routine Ubuntu PR check also passed. Detailed counts and immutable log
+hashes are recorded in evidence/2026-08-30-windows-warning.json.
+
+The last baseline three-platform run passed this unchanged test. Local old
+and current libraries each pass all122 assertions without fit warnings in
+3.502s/2.418s. Current local endpoints converge with small gradients but
+covariance near a boundary; the fixture plants no coefficient effects. This
+is context, not proof that the Windows warning is harmless. Both bars use the
+prior-arithmetic repair; neither uses Gaussian cell integration. The transient
+Windows trial is not yet available, so no source fix or test relaxation is
+justified. Capture limitations are explicitly retained in the evidence file.
+
+Gauss/Noether review is continuing through the existing review_runner. The
+next scoped action observes existing evaluations in the exact failing test,
+without changing models, seeds, starts, controls, assertions, or evaluation
+counts. This is routine package diagnostics, not another article fit block.
+The full two-example/deployed-article goal, all frozen numerical gates, and
+separate landing approval remain in force. G7 is failed, G8 is unstarted.
+
+Diagnostic logging now changes only tests/testthat/helper-column-coef-animal.R
+and tests/testthat/test-column-coef-animal-equivalence.R. Existing122 assertions
+pass2.754s with0warnings. Pure-R smoke0.626s proves one fake nonfinite objective
+return is logged, warning delivery is preserved, and namespace binding restored.
+No additional real optimizer or objective/gradient evaluation was introduced.
+Root reviewed exact call order and original expectations. R parsing and
+git diff --check pass. After-task structure passes; its completion checker
+correctly fails because G7/G8 remain unmet. No ABANDONED or pass waiver applied.
+No production/article/fixture source change, recompile or article rerender.
+Next manual CI is expected20–75min, with existing75min job cap, to capture
+the Windows trial; this is not a claimed repair or a blind rerun.

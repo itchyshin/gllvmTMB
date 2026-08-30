@@ -56788,3 +56788,43 @@ source and HTML remain2ae642a0/f2694992(SHA256prefixes). Desktop/mobile review
 and pkgdown metadata pass. Final exact-headthreeOSCI receipt belongs inPR1229
 and linkedworkflow, without advancingtestedcommitto merelyrecordtheverdict.
 Landing and livearticleverification remain separately gated.
+
+## 2026-08-30 — Windows warning regression retained; diagnostic only
+
+Manual full_matrix run33332985540 at f2dd63b12 passes actual package checks
+on macOS and Ubuntu, but Windows fails two expect_no_warning assertions in
+test-column-coef-animal-equivalence.R:32/33 (NA/NaN function evaluation).
+All route-equivalence assertions pass; Windows16456PASS/2FAIL/53WARN/1131SKIP.
+Routine Ubuntu33332962246 passes16458 assertions. Full logs and exact-head
+metadata retained under cell-integration-7c88; compact hashes in
+dev/tree-axis-latent/evidence/2026-08-30-windows-warning.json. G7 remains failed.
+
+The unchanged test/helper passed prior three-OS run33262647988 at c5bb0b80;
+baseline logs now return HTTP410, so no transient baseline claim is made.
+Existing targeted package test reruns, estimated3–15s with60s process caps,
+pass122 assertions without fit warnings: old library3.502s/current2.418s.
+Original old capture lacks endpoints; current post-test parameters field is
+invalid due to an incorrect full-vector parList inspection. Those capture
+limitations are retained, not used as evidence. Correct opt/data/map/report
+and gradient snapshots are retained. Neither test used the Gaussian cell
+integration path. Both covariance bars use the repaired coefficient prior.
+
+Next change is diagnostic test instrumentation only: record existing nonfinite
+objective trials and warnings, retain all original expectations/inputs/controls,
+and add no fits or evaluations. No production fix is justified from the Windows
+warning alone. Article count33/33 and all frozen gates remain unchanged.
+Scans: rg 'Status:|\[ FAIL [0-9]+ \| WARN' on retained full CI log;
+rg 'NA/NaN function evaluation|column-coef-animal-equivalence' on failure log;
+git diff origin/main -- tests/testthat/test-column-coef-animal-equivalence.R.
+
+Diagnostic logging now changes only tests/testthat/helper-column-coef-animal.R
+and tests/testthat/test-column-coef-animal-equivalence.R. Existing122 assertions
+pass2.754s with0warnings. Pure-R smoke0.626s proves one fake nonfinite objective
+return is logged, warning delivery is preserved, and namespace binding restored.
+No additional real optimizer or objective/gradient evaluation was introduced.
+Root reviewed exact call order and original expectations. R parsing and
+git diff --check pass. After-task structure passes; its completion checker
+correctly fails because G7/G8 remain unmet. No ABANDONED or pass waiver applied.
+No production/article/fixture source change, recompile or article rerender.
+Next manual CI is expected20–75min, with existing75min job cap, to capture
+the Windows trial; this is not a claimed repair or a blind rerun.

@@ -1,0 +1,73 @@
+{
+  "candidate": "f2dd63b124669c813e90b0f8d31cabe99fb3b917",
+  "manual_run": 33332985540,
+  "routine_run": 33332962246,
+  "manual": {
+    "windows": {
+      "status": "failure",
+      "pass": 16456,
+      "fail": 2,
+      "warnings": 53,
+      "skips": 1131
+    },
+    "macos": {
+      "status": "success",
+      "pass": 16457,
+      "fail": 0,
+      "warnings": 55,
+      "skips": 1132
+    },
+    "ubuntu": {
+      "status": "success",
+      "pass": 16458,
+      "fail": 0,
+      "warnings": 53,
+      "skips": 1131
+    }
+  },
+  "failure": "Two expect_no_warning assertions at test-column-coef-animal-equivalence.R:32/33; NA/NaN function evaluation. All route-equivalence assertions pass.",
+  "baseline": {
+    "run": 33262647988,
+    "head": "c5bb0b80a0a733c6d7cb1bab826003bbaa589fe4",
+    "three_os": "success",
+    "logs": "HTTP410 expired"
+  },
+  "local_unchanged_target": {
+    "old": {
+      "seconds": 3.502,
+      "assertions": 122,
+      "warnings": 0,
+      "capture": "Endpoints missing; helper auto-loading replaced capture wrapper."
+    },
+    "current": {
+      "seconds": 2.418,
+      "assertions": 122,
+      "warnings": 0,
+      "capture": "parameters field invalid because post-test parList invocation used full vector; do not use that field. Fits/data/map/reports/gradients valid."
+    }
+  },
+  "standalone_article_attempts": 33,
+  "ceiling": 33,
+  "production_changes_after_candidate": false,
+  "next": "Test-only observation of existing Windows trial evaluations; retain warning and original assertions. No causal repair yet.",
+  "files": {
+    "ci-manual-attempt-1.json": "2962a897f13f3963a2c731275955c288320ed6a47790348658a3a646b3cc271f",
+    "ci-windows-failed-1.log": "35d8617b2aed13e8a68008ec6b7cafbb3f12bad9b252703877f4dfb1a1513ea3",
+    "ci-manual-all-1.log": "fb11682452b3e96b16a83843070f778e00d791d057dea9ee8b0cfdedb90a8404",
+    "ci-routine-ubuntu.log": "dfc71839e9c25612392a947ab7044b370b240365bb1b061d66e7b202ee673d5b",
+    "animal-warning-review-1/old.log": "f886f0759d9ef8959d695b6d5b65ca32ecde320a44ef4f5b3134fe8f5a9abbec",
+    "animal-warning-review-1/new.log": "8fdfa474e994cbe10cbe2098b8dfea9f724f24d487e6a2300095987e866ca9b3",
+    "animal-warning-review-1/diagnostic-test.log": "2d698d9ce0f4a402aef9edcfbadc2f16b98caad0e597539d0202da9c16e6f6fa",
+    "animal-warning-review-1/diagnostic-warning.log": "c574af08bddcf4404604bda95ffbfcb5381e16f1c5d6a540b79563cdc55dd980",
+    "animal-warning-review-1/verify-diagnostic-warning.R": "a49f07eacebed00b418ecca5accd9a5d5823eae03cff4563e50e77f8c5cca68e"
+  },
+  "instrumentation_verification": {
+    "target_seconds": 2.754,
+    "assertions": 122,
+    "warnings": 0,
+    "pure_R_smoke_seconds": 0.626,
+    "pure_R_objective_calls": 1,
+    "extra_real_fits_or_evaluations": 0,
+    "namespace_restored": true
+  }
+}

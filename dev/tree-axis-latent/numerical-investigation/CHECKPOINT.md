@@ -358,3 +358,17 @@ Second packagecheckPASS1363.420s:0errors/0warnings/3documentednotes;15975asserti
 pass,0fail. Sourceidentityagainstcheckedpackageverified. Alllocalarticle/package
 preparationgatespass; next extendexistingdraftPR1229 and exact-final-headmanual
 3OSCI. No merge/deploy withoutseparatelandingapproval. Count33/33unchanged.
+
+## 22. Windows CI warning regression — active diagnostic continuation
+
+Candidate f2dd63b12 local gates passed. Manual three-OS33332985540 failed
+Windows only: two no-warning assertions in animal coefficient equivalence;
+all numerical route comparisons passed. macOS/Ubuntu and routine PR Ubuntu
+passed. Failure/log hashes retained in evidence/2026-08-30-windows-warning.json.
+Both old/current unchanged targeted tests pass122 assertions locally in
+3.502s/2.418s; no causal source fix identified. Existing reviewer owns test-only
+logging of the original nonfinite Windows trial, with all assertions and
+evaluations preserved. Root owns logs/PR/CI. Do not suppress warnings, change
+fixture/starts/controls, or spend article fits. Production remains f2dd63b12;
+33/33 standalone slots spent. Continue diagnostic CI, then fix only on evidence;
+landing and deployed verification remain separately gated.

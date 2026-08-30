@@ -39,30 +39,30 @@ Scope: retain and adjudicate the approved 52-fit public-route diagnostic experim
   EXPECT: DIAGNOSTIC_SMOKE_VERIFIED
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/z3437171/local-scratch/lanes/gllvmTMB-isdm-identifiability-diagnostic; path=1c6be4364d72/34 entries; output=DIAGNOSTIC_SMOKE_VERIFIED
 
-- [ ] G8: all 52 planned task identities have exactly one worker or coordinator terminal disposition with no replacement attempts
+- [x] G8: all 52 planned task identities have exactly one worker or coordinator terminal disposition with no replacement attempts
   CHECK: Rscript --vanilla dev/isdm-requalification/diagnostic-rescue/verify-remote-receipt.R experiment
   EXPECT: DIAGNOSTIC_52_ATTEMPTS_VERIFIED
-  EVIDENCE: pending
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/z3437171/local-scratch/lanes/gllvmTMB-isdm-identifiability-diagnostic; path=1c6be4364d72/34 entries; output=DIAGNOSTIC_52_ATTEMPTS_VERIFIED
 
-- [ ] G9: the frozen raw manifest verifies and a separate pure reader reproduces all task, status, target-availability, and contrast denominators
+- [x] G9: the frozen raw manifest verifies and a separate pure reader reproduces all task, status, target-availability, and contrast denominators
   CHECK: Rscript --vanilla dev/isdm-requalification/diagnostic-rescue/verify-remote-receipt.R summary
   EXPECT: DIAGNOSTIC_SUMMARY_VERIFIED
-  EVIDENCE: pending
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/z3437171/local-scratch/lanes/gllvmTMB-isdm-identifiability-diagnostic; path=1c6be4364d72/34 entries; output=DIAGNOSTIC_SUMMARY_VERIFIED
 
-- [ ] G10: a deliberate corrupted-manifest control is rejected by the same verifier
+- [x] G10: a deliberate corrupted-manifest control is rejected by the same verifier
   CHECK: Rscript --vanilla dev/isdm-requalification/diagnostic-rescue/verify-negative-control.R
   EXPECT: DIAGNOSTIC_NEGATIVE_CONTROL_VERIFIED
-  EVIDENCE: pending
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/z3437171/local-scratch/lanes/gllvmTMB-isdm-identifiability-diagnostic; path=1c6be4364d72/34 entries; output=DIAGNOSTIC_NEGATIVE_CONTROL_VERIFIED
 
-- [ ] G11: terminal method, numerical, and scope reviews agree that the next action follows from retained evidence without promotion or threshold changes
+- [x] G11: terminal method, numerical, and scope reviews agree that the next action follows from retained evidence without promotion or threshold changes
   CHECK: Rscript --vanilla dev/isdm-requalification/diagnostic-rescue/verify-reviews.R terminal
   EXPECT: DIAGNOSTIC_TERMINAL_REVIEWS_VERIFIED
-  EVIDENCE: pending
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/z3437171/local-scratch/lanes/gllvmTMB-isdm-identifiability-diagnostic; path=1c6be4364d72/34 entries; output=DIAGNOSTIC_TERMINAL_REVIEWS_VERIFIED
 
-- [ ] G12: the after-task report passes the repository validator, reconciles plan versus actual work, and records a fresh shared-doc lease
+- [x] G12: the after-task report passes the repository validator, reconciles plan versus actual work, and records a fresh shared-doc lease
   CHECK: Rscript --vanilla dev/isdm-requalification/diagnostic-rescue/verify-closeout.R
   EXPECT: DIAGNOSTIC_CLOSEOUT_VERIFIED
-  EVIDENCE: pending
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/z3437171/local-scratch/lanes/gllvmTMB-isdm-identifiability-diagnostic; path=1c6be4364d72/34 entries; output=DIAGNOSTIC_CLOSEOUT_VERIFIED
 
 - [ ] G13: targeted tests and the package test suite pass on the final branch
   CHECK: Rscript --vanilla -e 'devtools::test(stop_on_failure = TRUE)'

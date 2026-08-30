@@ -56107,3 +56107,86 @@ tar -tf gllvmTMB_0.7.1.tar.gz | rg 'helper-isdm-requalification-terminal-evidenc
 Rscript --vanilla -e 'testthat::test_file("/private/tmp/isdm-built-test-46bc6ae83/gllvmTMB/tests/testthat/test-isdm-requalification-terminal-evidence.R", reporter = "summary", stop_on_failure = TRUE)'
 # PASS: 13 expectations from the freshly built tarball.
 ```
+
+## 2026-08-29 — Integrated-JSDM identifiability diagnostic
+
+The approved diagnostic used public `gllvmTMB(..., family =
+isdm_sources(...))` fits only, source
+`09eca7b1eb9018958bad367be824871161a60af1`, tree
+`fb979daa5d9a93d0804a053ff1bb00eced47ad09`, and an independently verified
+17-file harness. The retained four-fit smoke completed in 15 seconds and
+projected 38.3 seconds for production at 16 one-thread workers. The exact
+52-task experiment completed once in 33 seconds on Totoro.
+
+Denominators are 52 planned, 52 started, 52 terminal worker records, and zero
+coordinator substitutions or replacements. All 52 fits returned; errors,
+interruptions, and unavailable outcomes are zero. The split is 16 nonspatial
+and 36 spatial. All target-availability denominators are complete.
+
+All five preregistered signals are false, so the frozen result is `MIXED`
+because zero mechanisms fired. Response replication improved full-surface
+nRMSE in 8/8 pairs (median reduction 0.1283) and full-surface correlation in
+8/8 (median increase 0.0795), but species-1 `Psi` improved only 4/8 and its
+median change was -0.0355. The estimand screen passed 0/8. Five-start `nlminb`
+and BFGS continuation each passed 0/8 spatial rescue comparisons. Curvature
+rankings agreed, but `theta_rr_spde_lv` dominated 8/12 rather than the required
+9/12; `log_kappa_spde` dominated all four converged/non-PD sentinels.
+
+Fisher, Gauss, and Rose independently returned PASS. The only earned next
+action is a new approval packet for a nonspatial paired multi-seed
+baseline-versus-rep3 discrimination experiment, reporting shared/full surfaces
+and all three `Psi` components separately. This record does not authorise that
+fit, retune a threshold, change an optimizer or engine, start interval or
+structured-source work, or promote a public claim.
+
+Protected closeout used lease `codex:isdm-identifiability-diagnostic` on
+`docs/dev-log/check-log.md` and
+`docs/dev-log/after-task/2026-08-29-isdm-identifiability-diagnostic.md`, granted
+after the coefficient lane released its shared paths.
+
+Checks:
+
+```sh
+Rscript --vanilla dev/isdm-requalification/diagnostic-rescue/verify-source.R
+# PASS: DIAGNOSTIC_SOURCE_VERIFIED; 17/17 harness entries.
+
+Rscript --vanilla -e 'devtools::test(filter = "isdm-diagnostic", stop_on_failure = TRUE)'
+# PASS: 139 passed, 0 failed, 0 warned, 0 skipped.
+
+Rscript --vanilla dev/isdm-requalification/diagnostic-rescue/verify-remote-receipt.R qualification
+# PASS: DIAGNOSTIC_REMOTE_QUALIFICATION_VERIFIED.
+Rscript --vanilla dev/isdm-requalification/diagnostic-rescue/verify-remote-receipt.R smoke
+# PASS: DIAGNOSTIC_SMOKE_VERIFIED.
+Rscript --vanilla dev/isdm-requalification/diagnostic-rescue/verify-remote-receipt.R experiment
+# PASS: DIAGNOSTIC_52_ATTEMPTS_VERIFIED.
+Rscript --vanilla dev/isdm-requalification/diagnostic-rescue/verify-remote-receipt.R summary
+# PASS: DIAGNOSTIC_SUMMARY_VERIFIED.
+Rscript --vanilla dev/isdm-requalification/diagnostic-rescue/verify-negative-control.R
+# PASS: DIAGNOSTIC_NEGATIVE_CONTROL_VERIFIED.
+Rscript --vanilla dev/isdm-requalification/diagnostic-rescue/verify-reviews.R terminal
+# PASS: DIAGNOSTIC_TERMINAL_REVIEWS_VERIFIED.
+
+Rscript --vanilla '/Users/z3437171/Dropbox/Github Local/Shinichi/tools/check-after-task.R' docs/dev-log/after-task/2026-08-29-isdm-identifiability-diagnostic.md
+# PASS: after-task structure check passed.
+
+git diff --name-only origin/main...HEAD | rg '^(R/|src/|NEWS.md|NAMESPACE|man/|vignettes/|_pkgdown.yml)'
+# PASS: no package/API/likelihood/reader-doc surface changed.
+rg -n 'MIXED|REPLICATION_SIGNAL|ESTIMAND_SIGNAL|BASIN_SIGNAL|TERMINATION_SIGNAL|CURVATURE_SIGNAL' LOOP dev/isdm-requalification/diagnostic-rescue
+# PASS: plan, implementation, tests, summary, and reviews use the same five
+# frozen labels and MIXED rule.
+rg -n 'interval|structured-source|threshold|promotion|replacement' LOOP/GOAL.md LOOP/ultra-plan.md dev/isdm-requalification/diagnostic-rescue/reviews/terminal-*.md
+# PASS: remaining matches are explicit deferrals and no-promotion boundaries.
+rg -n 'planned|started|terminal|worker|coordinator|fit_returned|unavailable' dev/isdm-requalification/diagnostic-rescue/reviews/terminal-*.md
+# PASS: all reviews reproduce the 52/52/52 worker denominator and zero
+# unavailable/coordinator outcomes.
+
+git diff --check
+# PASS.
+```
+
+The final local `devtools::test(stop_on_failure = TRUE)` was stopped after it
+exceeded the stated eight-minute estimate while running unrelated compiled
+objective tests. Ctrl-C interrupted one compilation, so that emitted failure is
+an artificial stop artifact, not a package verdict. The focused diagnostic
+suite remained green. Full package verification is delegated to the required
+three-OS PR CI before merge; simulation compute did not use GitHub Actions.

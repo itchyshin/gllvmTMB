@@ -56770,3 +56770,21 @@ changedbytes are restricted toUUID/objecttimestamp/code-signature metadata.
 Auditor0.408s, bridgebuild4.199s, currentarticlechecker3.423s, no model evaluations.
 Originalbridge1/oldmanifests remain immutable. pkgdown::check_pkgdown() passes
 withcell-library-v2. Second full packagecheck is underway under1800s cap.
+
+## 2026-08-30 — local tree-axis package gates pass
+
+Second devtools::check(args="--no-manual",quiet=TRUE,error_on="never") passed
+1363.420s, exit0,0ERRORS/0WARNINGS/3NOTEs. Tests15975PASS/0FAIL/54WARN/1190SKIP.
+Full logs and rcmdcheck object retained undercell-integration-7c88/package-check-2.
+Notes: sandbox clock verification, baseline deviance.gllvmTMB_multi logLik
+import (git show origin/main:R/methods-gllvmTMB.R), macOSxcrun_db detritus.
+Normal heavy-test flag unchanged/unset; no failures or warnings discarded.
+Checked R/native/header/Rd/test source identity verified against00_pkg_src.
+
+Original12standalone validation and3primaryrender calls remain immutable;
+source bridge proves final package compatibility changes preserveall6inputs/
+12starts and numericalexecutablebytes. No more standalone fits. Final article
+source and HTML remain2ae642a0/f2694992(SHA256prefixes). Desktop/mobile review
+and pkgdown metadata pass. Final exact-headthreeOSCI receipt belongs inPR1229
+and linkedworkflow, without advancingtestedcommitto merelyrecordtheverdict.
+Landing and livearticleverification remain separately gated.

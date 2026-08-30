@@ -1,0 +1,29 @@
+{
+  "package_errors": [],
+  "package_warnings": [],
+  "package_notes": ["checking for future file timestamps ... NOTE\nUnable to verify current time.  To disable remote verification,\nset environment variable _R_CHECK_SYSTEM_CLOCK_ to a false value.", "checking R code for possible problems ... [36s/38s] NOTE\ndeviance.gllvmTMB_multi: no visible global function definition for\n  ‘logLik’\nUndefined global functions or variables:\n  logLik\nConsider adding\n  importFrom(\"stats\", \"logLik\")\nto your NAMESPACE file.", "checking for detritus in the temp directory ... NOTE\nFound the following files/directories:\n  ‘xcrun_db’"],
+  "elapsed_seconds": 1363.42,
+  "test_counts": {
+    "pass": 15975,
+    "fail": 0,
+    "warn": 54,
+    "skip": 1190
+  },
+  "source_identity": {
+    "pass": true,
+    "files_compared": 863,
+    "checked_source": "/private/tmp/gllvm-tree-axis-latent-20260830/cell-integration-7c88/package-check-2/gllvmTMB.Rcheck/00_pkg_src/gllvmTMB",
+    "source_commit": "008a679e1",
+    "missing": [],
+    "changed": []
+  },
+  "article_sha256": "2ae642a05451b6568d8017c5f852a0893dc6695f6ca7f0189ab85102792e7052",
+  "html_sha256": "f2694992511e45bbaee23a053c36828eeb95a525a575b85139f89fec2d482aed",
+  "bridge_sha256": "bebd588316a5fac6023040008b77be26e5ee020a656c818fe1e53c46d0d244a0",
+  "checks": {
+    "local_package": "pass_with_documented_notes",
+    "exact_head_three_os": "pending",
+    "landing": "separate_approval_required",
+    "deployed_article": "not_yet_verified"
+  }
+}

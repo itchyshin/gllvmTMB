@@ -1,8 +1,8 @@
 # Tree-axis article correction: validation and publication record
 
 Date: 2026-08-30. Current status: **all twelve repaired-source validation
-fits and the primary article render pass; package/CI/landing/deployment remain
-separate gates**. No corrected article has been published or claimed complete.
+fits, primary article render and full local package check pass; exact-head
+CI/landing/deployment remain separate gates**. No corrected article has been published or claimed complete.
 Sections1–19 retain historical failures and superseded checkpoints verbatim.
 Sections20 onward record the approved Gaussian integration and final evidence.
 
@@ -721,3 +721,40 @@ Old manifests, original bridge and failures remain immutable. No generalized
 near-boundary optimizer claim follows from the unit-test correction.
 
 Gauss final durable-bridge review PASS: independently reran binary audit and source bridge, including24retained input bindings and all12starts. No cachedpassflag inheritance; originalbridgev1 remains. Package2/CI/landing/deployment still separate.
+
+Team learning from package regression: checking named s_B consumers was not
+enough; generic parameter-copy loops also need reconstructed effects. Public
+constraint inputs must be normalized before internal eligibility predicates.
+A derivative reference must be numerically reliable at its chosen point:
+retain difficult endpoints, and compare against independent marginal algebra
+rather than infer derivative failure from cancelling likelihood differences.
+These are focused test lessons, not new permissions or weaker acceptance gates.
+
+## 23. Local package and article preparation complete; landing not authorized
+
+Second full devtools::check completed1363.420s within its1800s cap:0ERRORS,
+0WARNINGS,3NOTEs. Tests:15975PASS,0FAIL,54WARN,1190SKIP under the unchanged
+normal non-heavy suite. Test warnings are retained in testthat.Rout; none is
+an R CMD check warning. Both regular and donttest examples, package vignette
+rebuild, compiled-code checks and documentation consistency pass. The three
+notes are unavailable remote-clock verification, an existing unqualified
+logLik call in deviance.gllvmTMB_multi (verified on origin/main), and macOS
+xcrun_db compiler detritus. No note was hidden or check setting weakened.
+
+All package R/native/header/Rd/test sources were byte-compared against the
+checked source tree; package-check-2-source-identity.json records the count.
+The article has independently passed its primary run, all6 long/wide call
+checks,4figure/desktop/mobile review, and post-compatibility source/DLL/input/
+start continuity. Code is at008a679e1; remaining edits record evidence only.
+
+Gauss/Noether likelihood and derivative-reference reviews, Curie bounded
+reader/test checks and Rose consistency review pass. Shannon coordination:
+owned7c88 lane only; existing draftPR1229 is the target. Newly activePR1230
+changes only pkgdown.yaml, not this scope; no merge ordering conflict found.
+Main remains9c265e76. Dirty mission-control checkout was never used or cleaned.
+
+The exact-final-commit three-OS verdict will be recorded in PR1229's body and
+its linked workflow receipt, without moving the commit being checked merely
+to record that result. This local closeout does NOT authorize landing and is
+not a completed deployed-correction claim. Main deployment and live verification
+of both examples remain required after separate maintainer approval.

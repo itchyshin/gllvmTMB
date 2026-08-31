@@ -56216,3 +56216,734 @@ reader-facing paths, stable qualification/smoke/experiment manifest hashes,
 the merged PR identity, and released closeout lease. These are landing checks;
 they do not enter the fit harness or alter an estimand, attempt, signal, or
 threshold.
+
+## 2026-08-30 -- tree-axis latent article: incomplete numerical checkpoint
+
+Bounded lane `codex/tree-axis-latent-correction-20260830`, based on PR1229's
+handover `739213bfd`; fetched main `9c265e76`. No package API/engine changes.
+The approved species morphology and coefficient-plus-site compositions are
+supported by the small fits and exact covariance/map checks. Publication is
+**HELD**: M2 has convergence codes `(1,1,0)` and M3 `(0,0,1)`; the nonzero
+codes are `false convergence (8)`. All six community gradients and covariance
+stability checks pass, but these do not waive the required convergence gate.
+
+Twelve of fourteen allowed optimizer attempts ran: C1, C2, three each inside
+M1/M2/M3, and W1. S1-S6 are aliases of actual retained restarts, not extra fits.
+W2/W3 remain unrun. No failed render, additional render fit, or package-check
+fit has run. No seed/model/threshold change, BFGS attempt, push, CI dispatch,
+PR edit, merge or deployment has occurred. Earlier PR1229 Ubuntu success is
+handover-only evidence. Three-OS and deployed-page gates remain unmet.
+
+Receipts and exact executed source copies are retained under
+`/private/tmp/gllvm-tree-axis-latent-20260830/`; the compact tracked evidence is
+`dev/tree-axis-latent/evidence/2026-08-30-validation.json`. The isolated source
+install passed in 84.574 seconds with four retained compiler warnings. C1/C2
+fit times were 0.787/1.464 seconds. Target process times were 5.193, 60.881 and
+137.179 seconds. Estimates and process timeouts preceded all fits.
+
+Commands and outcomes (no-fit checks below do not consume optimizer attempts):
+
+```sh
+R_LIBS=/private/tmp/gllvm-tree-axis-latent-20260830/library Rscript --vanilla dev/tree-axis-latent/validate.R --self-test
+# PASS: positive canary plus rejection of corrupt gradient, decomposition,
+# and fixture checksum. Two additional saved-object controls reject covariance
+# instability and duplicate long/wide keys; see validator-extra-negative-controls.log.
+
+GLLVM_TREE_AXIS_REQUIRE_COMPLETE=false R_LIBS=/private/tmp/gllvm-tree-axis-latent-20260830/library Rscript --vanilla dev/tree-axis-latent/validate.R
+# EXPECTED EXIT 1: M2/M3 convergence gate failure; W2/W3 unavailable.
+
+R_LIBS=/private/tmp/gllvm-tree-axis-latent-20260830/library Rscript --vanilla dev/tree-axis-latent/check-article.R
+# PASS: exact article/frozen fixture equality; all six displayed calls match
+# public formal arguments; morphology public extracts and plots from saved M1;
+# finite public coef()/model-matrix route. No model fit or article render.
+
+R_LIBS=/private/tmp/gllvm-tree-axis-latent-20260830/library Rscript --vanilla -e 'pkgdown::check_pkgdown()'
+# PASS: no problems found.
+
+# Existing source tree-precision test: 21 assertions passed (no model fitting).
+# Full article render, documentation generation, package check and CI held.
+```
+
+Exact final source scan:
+
+```sh
+rg -n 'populations|within-species|unique equals|se=FALSE|rho|interaction|recovery|Draft|Working draft|extract_ordination|link_residual' vignettes/articles/where-does-the-tree-go.Rmd
+rg -n ':::|log_sigma_eps|last.par|tmb_obj|gllvmTMB_wide|spatial_latent' vignettes/articles/where-does-the-tree-go.Rmd
+# First scan: intended scopes, correct control(se=FALSE), explicit rho mixture
+# and public extracts. Second: no matches. No private engine extraction in article.
+git diff --check
+# PASS.
+```
+
+Gauss/Noether/Fisher reviewed composition and optimizer evidence. Rose/Pat's
+source review caught hidden simulation helpers and misplaced `se=FALSE` in the
+article; root fixed both and independently tested the corrected source without
+refitting. Root also caught a hand-copied simulation mismatch before any article
+render: the final article now uses the exact frozen fixture functions. The
+fit fixtures and their receipts did not change. Final reader review accepts
+retaining the explicitly incomplete checkpoint, not publication. Full figure
+review at desktop/mobile widths awaits a successful article render.
+
+Requested next step, **not executed**: six additional BFGS attempts, three per
+community model, with unchanged data/model/gates and a five-minute timeout per
+model call. This needs approval under the agreed attempt/instability stop rule.
+See `docs/dev-log/after-task/2026-08-30-tree-axis-latent.md` for full limits.
+
+### BFGS follow-up: approved, then stopped on an impossible objective
+
+The maintainer approved six extra attempts and automatic continuation if they
+pass. Gauss/Noether passed the public BFGS route and process-local tracing.
+The runner now retains immutable per-attempt start/result files immediately,
+so an interrupted model cannot erase the attempt denominator. A quadratic
+instrumentation unit test verifies identical raw optim results and exact
+starts, and refuses a fourth call before its objective executes. This unit
+check is not a model fit.
+
+B2 (IID community), estimated 1-5 minutes for three starts, ran under a
+300-second process cap with the unchanged DGP/seeds/model. Attempt 1 returned
+code 0 but objective `-5.34842345053399e29`. The model's 7,500 Gaussian rows
+and fixed sigma 0.0008459331 imply NLL >= -46,170.9882. The reported value is
+numerically invalid. Root stopped the verified B2 R process group with SIGTERM
+while attempt 2 was running; wrapper elapsed 76.514 seconds. The attempt-1
+start/result and attempt-2 start were preserved. Both starts exactly match
+their original M2 counterparts. A coordinator interruption receipt explicitly
+records no completed model fit; it does not fabricate outputs or convergence.
+
+Total: **14 model optimizer attempts entered**, of which 13 returned and one
+was interrupted. B2 start 3, all B3 starts and W2/W3 remain unrun. The original
+M2/M3 failures remain visible historical failures. No threshold was relaxed,
+no new fit started after the stop, and no engine/API change was made.
+
+```sh
+OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 GLLVM_TREE_AXIS_RESULTS=/private/tmp/gllvm-tree-axis-latent-20260830/results R_LIBS=/private/tmp/gllvm-tree-axis-latent-20260830/library python3 /private/tmp/gllvm-tree-axis-latent-20260830/bounded.py 300 /private/tmp/gllvm-tree-axis-latent-20260830/fit-B2.log Rscript --vanilla /private/tmp/gllvm-tree-axis-latent-20260830/frozen-BFGS/run-fit.R B2
+# STOPPED after invalid attempt1, attempt2 interrupted: BOUNDED_EXIT=-15, 76.514s.
+
+GLLVM_TREE_AXIS_RESULTS=/private/tmp/gllvm-tree-axis-latent-20260830/results R_LIBS=/private/tmp/gllvm-tree-axis-latent-20260830/library Rscript --vanilla dev/tree-axis-latent/validate.R --self-test
+# PASS: adds rejection of an impossible Gaussian objective to earlier controls.
+# This is an algebraic sanity bound, not retuning an optimizer threshold.
+
+GLLVM_TREE_AXIS_RESULTS=/private/tmp/gllvm-tree-axis-latent-20260830/results R_LIBS=/private/tmp/gllvm-tree-axis-latent-20260830/library Rscript --vanilla dev/tree-axis-latent/validate.R
+# EXPECTED EXIT 1: B2 interrupted/invalid; B3, W2, W3 unrun.
+```
+
+Compact evidence: `dev/tree-axis-latent/evidence/2026-08-30-BFGS-interruption.json`.
+Raw logs, source copies and interruption recorder remain in the scratch receipt
+directory. Method review confirms a numerical pathology, not a coefficient-rho
+endpoint or biological result. Further numerical investigation needs its own
+bounded authorization; article rendering, checks, PR updates and deployment
+remain held. The full two-example objective has not been reduced or completed.
+
+No-fit follow-up: `dev/tree-axis-latent/check-gaussian-likelihood.R` rebuilds
+the exact marginal Gaussian covariance from the frozen design, public fitted
+site/column covariance and fixed-effect coefficients. It uses Kronecker
+spectral algebra, not TMB evaluation or optimization. Gauss/Noether checked
+its site-major stacking, whitening, fixed mean and fitted stabilizer. The
+reported oracle-minus-TMB NLL differences are `1.370699e-8` (M2) and
+`-2.982233e-9` (M3). The initial comparison took 1.218 seconds. The reviewed
+script explicitly checks response/species order and uses log1p; it reports
+these discrepancies without creating a new acceptance threshold. This is
+evidence for the original model/objective alignment, not a waiver of any
+convergence screen and not validation of the invalid BFGS result.
+
+## 2026-08-30 — approved focused coefficient-prior numerical investigation
+
+User approved with "Yes please go ahead". No outer optimizer runs were added;
+total remains14 entered. Root preserved the old library and every failed fit.
+Gauss/Noether isolated inverse/trace cancellation at condition(L)=1.10e24 and
+reviewed the same-model triangular-whitening repair. Terra implemented the
+compiled regression fixture; root integrated and ran it. No API, parameter map,
+source scaling, reported covariance, optimizer tolerance or fixture changed.
+
+Commands (from this isolated worktree; each computation used the existing
+`/private/tmp/gllvm-tree-axis-latent-20260830/bounded.py` process-group wrapper,
+`OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1`, and retained individual logs):
+
+- Original `R_LIBS=.../library`, `Rscript --vanilla
+  dev/tree-axis-latent/numerical-investigation/replay-joint.R`: exit0,0.951s.
+  `replay-marginal.R`: exit0,3.975s, two fixed-outer evaluations with inner
+  mode calculations but no outer optimization. `isolate-prior.R`: exit0,0.892s.
+  Failed prior isolated as-4.33e27 versus positive2.22e26 triangular oracle.
+- `R CMD INSTALL --preclean
+  --library=/private/tmp/gllvm-tree-axis-latent-20260830/repaired-library .`:
+  exit0,80.627s; estimate1-3min,300s cap. Four compiler warnings retained.
+- Repaired `R_LIBS=.../repaired-library`, `Rscript --vanilla
+  dev/tree-axis-latent/numerical-investigation/check-repair.R`: exit0,2.107s;
+  estimate<1min,120s cap. Bad-point joint/oracle relative error8.63e-14;
+  M2/M3 NLL changes-5.09e-11/+1.17e-9. No outer optimization.
+- Same library, `Rscript --vanilla
+  dev/tree-axis-latent/numerical-investigation/check-repaired-marginal.R`:
+  exit0,30.517s; estimate<30s,60s cap. The diagnostic records NaN marginal
+  and inner gradient3.77e30, not success. It slightly exceeded its estimate;
+  no further such replay was run. The negative-prior defect is fixed, but
+  this extreme BFGS point still has no usable inner mode.
+- Same library, `Rscript --vanilla -e 'library(gllvmTMB);
+  source("tests/testthat/helper-tmb-compile.R");
+  testthat::test_file("tests/testthat/test-column-coef-triangular-density.R",
+  reporter="summary", stop_on_failure=TRUE)'`: initial exit1,19.837s
+  (estimate30-90s,180s cap), solely gradient matrix/vector attributes. Root
+  corrected as.numeric comparison and ordered cleanup. Rerun exit0,19.469s
+  (estimate20s,60s cap),14 assertions. Three Eigen compiler warnings and
+  TMB's three-external-pointer cleanup notice remain in the retained log.
+- `Rscript --vanilla ~/shinichi-brain/tools/check-after-task.R
+  docs/dev-log/after-task/2026-08-30-tree-axis-latent.md`: structure passed;
+  command exited1 because the full article acceptance ledger is still unmet.
+  It was not relabelled complete or abandoned to bypass that check.
+- `git diff --check`: pass. `rg -n 'Sigma_b|coefficient.*prior|estimated.*rho|matrix.normal'
+  docs/design/03-likelihoods.md` selected the aligned likelihood note.
+  `rg -n 'LaplaceNonZeroGradient|inner.control|newtonOption' R/gllvmTMB.R R`
+  found no public native inner-control route; no new one was added.
+
+Repair evidence: `dev/tree-axis-latent/evidence/2026-08-30-numerical-repair.json`.
+The private shared helper is installed only for compiled regression access;
+it is not a new public modeling API. No new capability/recovery claim or debt
+coverage promotion is made. Separate spatial_dep inverse arithmetic was noticed
+and left for another scoped review. No article render, full package check,
+remote push, CI, merge or deployment was run. Eight repaired-source nlminb
+attempts are proposed (3+3 long,1+1 wide conditional on long gates), replacing
+six unspent previous slots; total ceiling would become22, pending approval.
+
+The earlier tree-axis entries are historical receipts, not current instructions:
+"no engine changes" applied before this approved numerical investigation, and
+the six-BFGS proposal was superseded by its failed execution and the request
+above. Final test review also changed header lookup to prefer the worktree
+copy over an installed copy, avoiding stale-header tests in devtools runs.
+
+Final no-fit `pkgdown::check_pkgdown()` and regression-file parse: pass,
+"No problems found" / METADATA_AND_TEST_PARSE_PASS. Worktree/installed private
+header SHA1 bothdd29092fbff03d0b0e850bf44de800d3fc0a7821, so the final source-first
+lookup change selects the exact tested header. Gauss/Noether qualified repair
+review and Rose/Pat narrow checkpoint consistency review pass; neither waives
+G2 or publication. The lifecycle checker requires a fresh task before another
+substantial block; continuation is at numerical-investigation/CHECKPOINT.md.
+
+## 2026-08-30 — eight repaired-source attempts approved; fresh continuation
+
+Shinichi explicitly approved: "Approve the eight fits in a fresh task."
+This supersedes pending-approval wording above and in the numerical checkpoint.
+The six unspent old slots are replaced by eight repaired-source nlminb attempts;
+total ceiling 22, with 14 entered before this continuation. N2/N3 each comprise
+three unchanged deterministic starts; NW2/NW3 each one, only after BOTH long
+models pass every original gate. No BFGS, changed starts, changed thresholds,
+new model or campaign. Five-minute cap per model call. Estimates: IID 1-3min,
+phylogenetic 2-5min, each wide 1-3min; block 5-14min.
+
+The released lane is resumed in isolated 7c88/gllvmTMB on
+`codex/tree-axis-latent-repaired-20260830`, preserving commit 2e10e3fb.
+SSH fetch verified origin/main 9c265e76 and no main commits missing from HEAD.
+PR1229 is OPEN/DRAFT at 739213bfd; prefer extending it. No landing authority.
+Fresh immutable result directory: /private/tmp/gllvm-tree-axis-latent-20260830/repaired-nlminb-7c88.
+Source/header/DLL hashes match the saved production build; old results remain untouched.
+The own lease and acceptance ledger retain ALL article/package/CI/deployed gates.
+
+### Repaired-source block: exact commands and retained results
+
+Common environment: OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1;
+R_LIBS=/private/tmp/gllvm-tree-axis-latent-20260830/repaired-library;
+GLLVM_TREE_AXIS_ORIGINAL=/private/tmp/gllvm-tree-axis-latent-20260830/results;
+GLLVM_TREE_AXIS_RESULTS=/private/tmp/gllvm-tree-axis-latent-20260830/repaired-nlminb-7c88.
+The existing bounded.py wraps each process and retains COMMAND/exit/elapsed.
+
+- Rscript --vanilla dev/tree-axis-latent/check-morphology-continuity.R:
+  exit0,1.126s; estimate<1min,cap60s. All M1/W1 frozen endpoints pass on the
+  repaired DLL; no outer optimizer. Max objective delta9.10e-13, covariance0.
+- Rscript --vanilla <results>/frozen-runner/run-fit.R N2:
+  bounded.py300,exit0,58.828s; estimate1-3min. Three returned attempts,
+  codes1/1/1 false convergence(8). Each gradient<1e-2; covariance/objective
+  agreement passes. CODE GATE FAILS. Process success is not fit acceptance.
+- Rscript --vanilla <results>/frozen-runner/run-fit.R N3:
+  bounded.py300,exit0,137.751s; estimate2-5min. Three returned attempts,
+  codes0/0/0; all long gates pass. Selected rho1.501305e-7, planted.60;
+  no recovery or phylogenetic-effect claim. No overrun in either model call.
+- Rscript --vanilla dev/tree-axis-latent/validate.R --repaired:
+  exit1 as required; LONG_PASS=FALSE MORPHOLOGY_PASS=TRUE. New6 entries,
+  cumulative20; NW2/NW3 withheld. Raw starts match original M2/M3 exactly.
+- Rscript --vanilla dev/tree-axis-latent/validate.R --self-test, with original
+  results directory: exit0; gradient/decomposition/fixture/impossible-NLL
+  negative controls pass; no fits or writes to original receipts.
+- Rscript --vanilla <results>/test-validator.R: exit0; one fabricated positive
+  and five negative receipt controls pass. Committed reusable counterpart:
+  dev/tree-axis-latent/test-repaired-validator.R. Mock directories are clearly
+  labelled validator-mock-* and never used as scientific evidence.
+- Rscript --vanilla -e 'pkgdown::check_pkgdown(); cat("TREE_AXIS_METADATA_PASS\n")':
+  exit0, No problems found. No render or outer fit.
+- Rscript --vanilla ~/shinichi-brain/tools/check-after-task.R
+  docs/dev-log/after-task/2026-08-30-tree-axis-latent.md: structure passes,
+  checker exits1 because full acceptance gates remain unmet. No abandonment.
+- node ~/.codex/skills/unlazy/scripts/gate-check.mjs --status
+  .unlazy/tree-axis-latent/GATES.md:2 met,7 unmet. Status inspection only;
+  no render/other inherited checks were executed automatically.
+- git diff --check:pass. Exact scan:
+  rg -n 'incomplete|withheld|not yet|convergence|latent\('
+  vignettes/articles/where-does-the-tree-go.Rmd: both latent components and
+  public incomplete/withheld wording remain intact. No article/example/Rd
+  source change in this continuation. NAMESPACE/fixture/package source hashes
+  are unchanged; no convention cascade, register promotion or ROADMAP tick.
+
+Gauss/Noether qualified runner review passed after two guards were repaired
+before fitting. Fisher/Gauss confirmed the numerical verdict and rho limit.
+Root applied prose/after-task and Shannon coordination checks: current branch
+contains only this continuation's files; historical lanes and seven open PRs
+are untouched; PR1229 remains draft. No competing current lease was found.
+No push, PR mutation, full package check, article render, exact-head CI, merge,
+deployment or more numerical probes ran. CARRIED-OVER: local correction history
+and checkpoint remain unmerged because G2 fails; separate landing approval
+still required. Recommended next separate task: exact-Gaussian value/score
+comparison at saved IID/phylogenetic endpoints, no refits or changed gates.
+
+## 2026-08-30 — saved-endpoint diagnostic authority clarified
+
+Coordinator confirms that the exact-Gaussian saved-endpoint value/gradient
+check is covered by Shinichi's prior "Yes please go ahead" numerical-investigation
+approval. Earlier text proposing another authorization is superseded; no new
+permission is needed for this bounded no-optimizer diagnostic. No new fit block,
+model/seed/truth/threshold/API/engine change or interpretive waiver is authorized.
+Reuse check-gaussian-likelihood.R's covariance algebra; compare independent
+analytic scores and directional finite differences at all six saved N2/N3
+endpoints with repaired TMB values/scores. Estimate5-30s, process cap30s.
+
+### Authorized endpoint diagnostic completed — no optimizer calls
+
+The coordinator clarified that this diagnostic is within the existing focused
+numerical-investigation approval; the earlier proposed reauthorization is
+superseded. Reused check-gaussian-likelihood.R's exact Gaussian covariance.
+endpoint-score.R projects the two-column site design with a thin QR, evaluates
+the same marginal density and differentiates it analytically in the native
+parameter coordinates. Raw loading diagonals, log coefficient-Cholesky
+diagonals, log unique SDs and logistic rho have distinct correct chain rules.
+Gauss/Noether reviewed row-major ordering, QR covariance blocks and derivatives
+before execution; unknown parameter blocks are rejected explicitly.
+
+Command: OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1
+R_LIBS=/private/tmp/gllvm-tree-axis-latent-20260830/repaired-library
+python3 /private/tmp/gllvm-tree-axis-latent-20260830/bounded.py 30
+/private/tmp/gllvm-tree-axis-latent-20260830/repaired-nlminb-7c88/endpoint-score.log
+Rscript --vanilla dev/tree-axis-latent/endpoint-score.R
+
+Exit0,2.645s (estimate5-30s,cap30s). All six saved N2/N3 endpoints were checked;
+zero outer optimizer calls, cumulative attempts unchanged at20. Independent
+QR minus inherited spectral value <=2.73e-11; QR minus repaired TMB value
+<=2.09e-8; analytic score minus TMB score <=1.43e-8. Independent directional
+central differences agree within1.68e-6 at h=1e-4 and1.14e-6 at h=1e-5.
+These are measured discrepancies, not new article acceptance thresholds.
+Covariance reconstruction and source/order provenance checks all passed.
+
+This diagnostic finds no endpoint objective/gradient defect. It does not
+explain the optimizer trajectory, erase false-convergence(8), establish rho
+recovery, or admit the two wide fits. No extreme BFGS point was revisited.
+The full article still fails G2. Added source: dev/tree-axis-latent/endpoint-score.R;
+compact evidence: dev/tree-axis-latent/evidence/2026-08-30-endpoint-score.json.
+All raw endpoint RDS/JSON receipts and the process log remain in the immutable
+continuation evidence directory. No new optimizer or production repair follows
+from these results without a separate consequential decision.
+
+Next choice is recorded precisely in CHECKPOINT.md: one separately authorized
+exact-Gaussian oracle nlminb run from unchanged N2 start1, extra attempt ceiling23
+without borrowing wide slots,60s cap. It has NOT run and cannot certify article
+acceptance. No more optimizer calls under the fixed-endpoint diagnostic approval.
+
+## 2026-08-30 — single exact-Gaussian oracle attempt explicitly approved
+
+User: "Approve one exact-Gaussian oracle `nlminb` diagnostic from the frozen IID
+start, with unchanged controls and a 60-second cap. Raise the ceiling to 23
+without borrowing wide slots. No production changes or gate waiver."
+This supersedes the earlier pending-approval paragraph. Cumulative before20;
+exactly one diagnostic attempt admitted, ceiling23. The two wide slots remain
+conditional and untouched. Estimate10-60s, external60s cap. Use exact N2 start1,
+original eval.max2000/iter.max1500, default bounds/scale/tolerances; replace only
+the evaluator with the previously reviewed exact Gaussian value/analytic score.
+Retain every evaluation and terminal return. No package source or API edits.
+
+## 17. Approved single-oracle optimizer diagnostic — completed
+
+The user approved one independent exact-Gaussian nlminb attempt from the frozen
+IID start, unchanged controls,60s cap, cumulative ceiling23 without borrowing
+the wide slots. That approval supersedes the prior pending-authorization text.
+The isolated lease was reclaimed; main remained9c265e76, and the existing PR
+census was unchanged. No production R/C++/header/API or article source changed.
+
+`dev/tree-axis-latent/oracle-nlminb.R` loads only the hash-bound pure Gaussian
+algebra from endpoint-score.R, never its endpoint execution loop. It verifies
+the source/DLL/fixture hashes and N2 receipt MD5, and matches its start exactly
+to N2-start1 and historical M2-start1. The original package argument builder
+sets eval.max2000 and iter.max1500; empty optArgs retains default bounds,
+scale and tolerances. The Gaussian stabilizer and all maps are unchanged.
+Gauss/Noether reviewed controls, algebra loading, single admission and trace.
+
+Command: OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1
+R_LIBS=/private/tmp/gllvm-tree-axis-latent-20260830/repaired-library
+python3 /private/tmp/gllvm-tree-axis-latent-20260830/bounded.py 60
+/private/tmp/gllvm-tree-axis-latent-20260830/repaired-nlminb-7c88/oracle-N2-start1.log
+Rscript --vanilla dev/tree-axis-latent/oracle-nlminb.R
+
+Exit0,2.571s wall process time (estimate10-60s,cap60s),1.094702s optimizer time.
+Exactly one optimizer entered and returned. It returned code0, "relative
+convergence (4)",253 iterations; NLL5039.69128021751, max analytic gradient
+.001182399. nlminb reports269 function and254 gradient evaluations. The actual
+trace contains270 objective and254 gradient calls (the initial objective is
+additional),524 records total, all finite, no warnings/errors. The atomic
+admission and every evaluation record survive independently of final summaries.
+
+Against the three saved package endpoints, exact-Gaussian NLL differences are
+-7.961235e-7,-1.561357e-7,-8.863844e-8. Unit covariance relative-norm differences
+are at most4.295e-5 and coefficient covariance differences at most4.119e-6.
+This is a closely matching endpoint under the unchanged optimizer/start/control
+settings with a different evaluator. It supports evaluator/path sensitivity;
+it does not identify the mechanism, prove identifiability, or justify deleting
+failed package convergence codes. N2 remains FAILED; NW2/NW3 remain blocked.
+No article, recovery or inference acceptance is granted by this private oracle.
+
+Cumulative attempts:21 entered,20 returned plus the historical interrupted
+BFGS attempt; ceiling23. Exactly the two conditional-wide slots remain unused.
+No further optimizer run, publication, push, merge, deployment or production
+repair occurred. Compact evidence is
+`dev/tree-axis-latent/evidence/2026-08-30-oracle-nlminb.json`; raw receipts and
+trace are under repaired-nlminb-7c88/oracle-N2-start1/. The full article goal
+remains incomplete at G2. Existing fixed-endpoint diagnostics are evidence,
+not permissions to replace the package route or loosen its gates.
+
+Final reviewer independently checked all524 evaluation records and terminal receipt;
+no remaining record defects. No additional endpoint check is warranted for this
+narrow conclusion. Native numerical-stopping investigation is a separate scope;
+no derivative defect or specific production repair has been established.
+Oracle script parse and git diff --check pass; production source, frozen fixture
+and article are unchanged. After-task structure passes; combined checker still
+exits1 because the full article acceptance ledger remains unmet.
+
+## 2026-08-30 — twelve-point repeatability diagnostic authorized
+
+Coordinator authorizes max12 fixed parameter-point evaluations, no outer
+optimizer, same failed IID endpoint, unchanged controls,60s process cap.
+Frozen endpoint: N2 start1; direction: its saved independent analytic gradient
+normalized to unit Euclidean length. Matrix fixed before execution: six fresh
+tapes at steps0,0,+1e-4,-1e-4,+1e-6,-1e-6; one reused tape at steps
+0,+1e-4,-1e-4,+1e-6,-1e-6,0. Every tape begins from the same retained parameter
+list; fresh means newly constructed tape, not zero latent effects. TMB's existing
+random.start=last.par.best[random] and inner Newton controls are unchanged.
+Each point pairs fn/gr at that exact outer vector; after-fn mode/joint/score
+are saved BEFORE gr changes state. Record full modes, inner scores, values,
+outer gradients, oracle differences and inferred half-logdet contribution.
+Estimate5-60s, external60s cap. No solution search or selected-fit replacement.
+If no actionable cause is located, stop with one concrete next choice.
+
+## 18. Twelve-point repeatability result — source localization still owed
+
+The authorized repeatability check completed in5.234s, exit0, below the60s cap
+(estimate5-60s). Exactly12 declared fixed parameter points were evaluated;
+zero outer optimizer calls. The count remains21 entered out of ceiling23.
+No production code, optimizer/inner controls, frozen data or gates changed.
+
+Command: OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1
+R_LIBS=/private/tmp/gllvm-tree-axis-latent-20260830/repaired-library
+python3 /private/tmp/gllvm-tree-axis-latent-20260830/bounded.py 60
+/private/tmp/gllvm-tree-axis-latent-20260830/repaired-nlminb-7c88/repeatability.log
+Rscript --vanilla dev/tree-axis-latent/repeatability.R
+
+Baseline repetitions agree exactly. Matched fresh/reused objective values
+agree within7.276e-12 and gradients within1.420e-13. Inner scores are at most
+1.458e-8. Therefore this local matrix finds no material state-reuse effect.
+TMB-oracle objective discrepancies vary across the tiny perturbations, reaching
+2.028e-8, while analytic outer gradients agree within1.549e-8. At h=1e-6,
+TMB objective differences imply directional derivatives.0150394/.0150430;
+the independent Gaussian value gives.007000835 and its base analytic score
+.006999691. At h=1e-4, TMB gives.007012532 versus oracle.007000062.
+This is evidence of local marginal-value precision loss at small steps.
+It does not identify a log-determinant bug or another production expression.
+No gate waiver, model interpretation or alternative selected fit follows.
+
+Gauss/Noether reviewed the predeclared matrix, unchanged default inner-state
+policy, and correct separation of after-fn and after-gr modes before launch.
+They independently reviewed all12 retained results and found no record defect.
+All full modes, inner scores, outer values/scores and oracle differences are
+retained in repaired-nlminb-7c88/repeatability-N2-start1/receipt.rds.
+Source: dev/tree-axis-latent/repeatability.R. Compact evidence:
+dev/tree-axis-latent/evidence/2026-08-30-repeatability.json. Script parse and
+git diff --check pass; no package/article/production source changed.
+
+Stop condition honored: these points locate a numerical precision issue but
+not an actionable production expression. No additional probes ran. One concrete
+next choice is a bounded source-localization audit of the existing native
+Gaussian marginal-value arithmetic, using these saved12 points and the exact
+oracle. It must identify a file:line cause and an algebraically equivalent
+repair proposal BEFORE production edits; if none can be localized, report that
+and stop. No warm-start, tolerance or stabilizer change, new engine/API, extra
+fit, or gate waiver is authorized. A specific patch is not yet justified.
+The existing goal/acceptance ledger remains authoritative; creating another
+goal would not resolve G2. Full two-example delivery remains INCOMPLETE.
+# 2026-08-30 — scoped Gaussian cell integration, prefit checkpoint
+
+Maintainer approved exact Gaussian ordinary-cell integration and staged12fits,
+ceiling33;21 already entered. Landing remains separately gated. Preserves Psi,
+stabilizer, frozen fixture, starts, model components and all convergence gates.
+Native/R source now integrates eligible singleton Gaussian cells, reconstructs
+cell means/full eta, and combines ADREPORT mean variance with conditional cell
+variance in getREsd. Existing unsupported paths retain their prior evaluation.
+
+Commands: isolated `R CMD INSTALL --preclean --library=.../cell-library .`
+passed85.323s; `testthat::test_file("tests/testthat/test-gaussian-cell-collapse.R",
+reporter="summary",stop_on_failure=TRUE)` final clean68 assertions1.699s;
+`Rscript --vanilla dev/tree-axis-latent/check-cell-collapse.R` final6.139s,
+all10 saved endpoints and5 signed-step points per evaluator pass. All checks
+use external caps and zero outer optimizers. Earlier warning/test-state and
+unnamed-manifest failures remain in immutable logs; corrected source binding
+uses provenance-v2.json. `roxygen2::roxygenise(".",roclets="rd",
+load_code=roxygen2::load_installed)` regenerated only man/getREsd.Rd.
+
+Source scans: `rg -n 's_B|report\$eta|par_list\$s_B' R --glob '*.R'`;
+`rg -n 'REPORT\(eta|REPORT\(s_B|REPORT\(sd_B|ADREPORT|Sigma_B' src/gllvmTMB.cpp`;
+`rg -n 'column_coef|phylo_coef|unsupported|covstruct|structured' R/julia-bridge.R`.
+Gauss/Noether qualified prefit review passes, including corrected118 source
+hashes and derivative/uncertainty math. No article render, full package check,
+CI, push, merge, deployment or additional fit has yet run at this checkpoint.
+
+## 2026-08-30 — Gaussian integration: twelve fits and article pass
+
+All12 approved standalone fits pass unchanged thresholds, count33/33. G1/G2/G3
+run times4.543/21.757/49.641s; wide GW1/GW2/GW3 times2.508/6.315/15.947s.
+Commands used run-fit.R with each immutable ID under the external300s model
+cap, and validate.R --cell after each stage. Original failed receipts retained.
+Compact results: dev/tree-axis-latent/evidence/2026-08-30-cell-integration.json.
+Likelihood equivalence, conditional output/uncertainty and exact-start checks
+preceded the fits. No additional standalone slots remain.
+
+Primary render command: Rscript --vanilla dev/tree-axis-latent/render-cell-article.R
+under bounded.py; passed41.714s with exactly3 separately authorized first starts.
+Presentation-only commands: render-cell-presentation.R 1,2,3, each external60s
+cap, saved primary fits, optimizer calls forbidden. Rebuilds1/2 took12.130/
+11.997s. Final3 corrects scientific notation identified by Curie; receipts retain
+article/HTML/fitted-object hashes. Layout checks use installed Chrome with
+Playwright at1440x1000 and390x844. Final layouts have scrollWidth equal to
+viewport width,20 MathML nodes,4 valid article images/alt text and no JS errors.
+
+Metadata: pkgdown::check_pkgdown() passes. Reader-surface checker reports one
+unrelated baseline issue: PVT-02 in man/profile_ci_total_variance.Rd:49,
+verified identical using git show origin/main:man/profile_ci_total_variance.Rd.
+No baseline file was changed. Exact scoped stale scan:
+rg -n 'working draft|held|incomplete|S_B|S_W|meta_known_V|gllvmTMB_wide|causal|recovery|rho' vignettes/articles/where-does-the-tree-go.Rmd
+Verdict: no stale draft/unsupported API/notation; causal/recovery/rho hits are
+explicit limitations or frozen DGP/model expressions. git diff --check passes.
+Rd tail confirms one internal keyword; no new export or argument/default change.
+
+Capability trace remains FG-20 partial, PHY-02/PHY-08 existing covered scope.
+New tests/receipt establish bounded same-model numerical composition, not a
+promotion to recovery/interval/general newdata support. Final full package check,
+exact-head three-OS CI, separate landing authority and deployed verification
+remain outstanding at this entry. No merge or public completion claim.
+
+Current no-fit article guard: R_LIBS=.../cell-library Rscript --vanilla
+ dev/tree-axis-latent/check-cell-article.R passed1.873s (60s cap). It checks all6
+call/formula/seed/control contracts, exact regenerated frozen data, all118
+source/DLL hashes and final source/HTML/primary-fit receipt identity. Zero
+fits, objective calls, plotting or rendering. First invocation hid user-library
+dependencies and failed before loading assertthat; failure retained separately.
+Historical check-article.R is now labelled for its old pre-integration source.
+Final presentation3 passed12.801s; final Chrome layout3 passes both widths.
+
+Full check1: devtools::check(args="--no-manual",quiet=TRUE,error_on="never")
+finished1353.213s, exit1,1ERROR/3NOTEs. Tests15913PASS/11FAIL/55WARN/1190SKIP.
+The normal heavy-test flag remained unset. Seven Xcoef_fixed atomic-input
+errors and one warm-start source-output failure are integration compatibility
+regressions; three rho finite-difference assertions are under old/new package
+comparison. Baseline-only is not assumed. Package/PR/CI gates remain unmet.
+
+Compatibility follow-up: install-v2.log PASS82.413s; compatibility-tests-v2-2.log
+PASS3.414s for Gaussian collapse/warmstart, Xcoef, standard_errors and start_method
+files with NOT_CRAN=true. First compatibility-tests-v2.log skipped some relevant
+tests and is retained as partial. Continuity captures2.745/2.847s and comparison
+0.459s prove6payloads/12starts exact, zero tapes/optimizers. Old manifests unchanged.
+Unchanged FD regression oldPASS3.337s/newFAIL2.955s; single existing regression
+fixture rerun retained failure endpoint1.545s. Fixed-point old/new/dense checks
+use no outer optimizers and establish analytic scores within5e-4 at all3rhos,
+but nativeFD at h1e-4 loses precision on the near-singular covariance. No article
+fit slot was used; these are routine package regression/evaluation checks.
+
+Rho reference correction: test-column-coef-phylo-estimated-rho.R passes3.139s
+withoutwarnings. No outer optimizer is used in the two derivative tests. Gauss
+independently reviewed covariance/stacking/Cholesky/logistic-derivative/trace
+algebra and retainedprobevalues/steps/tolerances: PASS. Diagnostic scripts and
+compact exact-coordinate evidence are preserved under numerical-investigation/
+package-rho-{capture,evaluate}.R and evidence/2026-08-30-package-rho-reference.json.
+
+Current package-source bridge2 validates24 direct retainedpayload comparisons,
+6 complete old/new payloads and12 original starts. check-cell-dll-equivalence.py
+proves15 file-backed executable/data sections and5dyldpayloads identical;81
+changedbytes are restricted toUUID/objecttimestamp/code-signature metadata.
+Auditor0.408s, bridgebuild4.199s, currentarticlechecker3.423s, no model evaluations.
+Originalbridge1/oldmanifests remain immutable. pkgdown::check_pkgdown() passes
+withcell-library-v2. Second full packagecheck is underway under1800s cap.
+
+## 2026-08-30 — local tree-axis package gates pass
+
+Second devtools::check(args="--no-manual",quiet=TRUE,error_on="never") passed
+1363.420s, exit0,0ERRORS/0WARNINGS/3NOTEs. Tests15975PASS/0FAIL/54WARN/1190SKIP.
+Full logs and rcmdcheck object retained undercell-integration-7c88/package-check-2.
+Notes: sandbox clock verification, baseline deviance.gllvmTMB_multi logLik
+import (git show origin/main:R/methods-gllvmTMB.R), macOSxcrun_db detritus.
+Normal heavy-test flag unchanged/unset; no failures or warnings discarded.
+Checked R/native/header/Rd/test source identity verified against00_pkg_src.
+
+Original12standalone validation and3primaryrender calls remain immutable;
+source bridge proves final package compatibility changes preserveall6inputs/
+12starts and numericalexecutablebytes. No more standalone fits. Final article
+source and HTML remain2ae642a0/f2694992(SHA256prefixes). Desktop/mobile review
+and pkgdown metadata pass. Final exact-headthreeOSCI receipt belongs inPR1229
+and linkedworkflow, without advancingtestedcommitto merelyrecordtheverdict.
+Landing and livearticleverification remain separately gated.
+
+## 2026-08-30 — Windows warning regression retained; diagnostic only
+
+Manual full_matrix run33332985540 at f2dd63b12 passes actual package checks
+on macOS and Ubuntu, but Windows fails two expect_no_warning assertions in
+test-column-coef-animal-equivalence.R:32/33 (NA/NaN function evaluation).
+All route-equivalence assertions pass; Windows16456PASS/2FAIL/53WARN/1131SKIP.
+Routine Ubuntu33332962246 passes16458 assertions. Full logs and exact-head
+metadata retained under cell-integration-7c88; compact hashes in
+dev/tree-axis-latent/evidence/2026-08-30-windows-warning.json. G7 remains failed.
+
+The unchanged test/helper passed prior three-OS run33262647988 at c5bb0b80;
+baseline logs now return HTTP410, so no transient baseline claim is made.
+Existing targeted package test reruns, estimated3–15s with60s process caps,
+pass122 assertions without fit warnings: old library3.502s/current2.418s.
+Original old capture lacks endpoints; current post-test parameters field is
+invalid due to an incorrect full-vector parList inspection. Those capture
+limitations are retained, not used as evidence. Correct opt/data/map/report
+and gradient snapshots are retained. Neither test used the Gaussian cell
+integration path. Both covariance bars use the repaired coefficient prior.
+
+Next change is diagnostic test instrumentation only: record existing nonfinite
+objective trials and warnings, retain all original expectations/inputs/controls,
+and add no fits or evaluations. No production fix is justified from the Windows
+warning alone. Article count33/33 and all frozen gates remain unchanged.
+Scans: rg 'Status:|\[ FAIL [0-9]+ \| WARN' on retained full CI log;
+rg 'NA/NaN function evaluation|column-coef-animal-equivalence' on failure log;
+git diff origin/main -- tests/testthat/test-column-coef-animal-equivalence.R.
+
+Diagnostic logging now changes only tests/testthat/helper-column-coef-animal.R
+and tests/testthat/test-column-coef-animal-equivalence.R. Existing122 assertions
+pass2.754s with0warnings. Pure-R smoke0.626s proves one fake nonfinite objective
+return is logged, warning delivery is preserved, and namespace binding restored.
+No additional real optimizer or objective/gradient evaluation was introduced.
+Root reviewed exact call order and original expectations. R parsing and
+git diff --check pass. After-task structure passes; its completion checker
+correctly fails because G7/G8 remain unmet. No ABANDONED or pass waiver applied.
+No production/article/fixture source change, recompile or article rerender.
+Next manual CI is expected20–75min, with existing75min job cap, to capture
+the Windows trial; this is not a claimed repair or a blind rerun.
+
+## 2026-08-30 — Windows failure localized to centred coefficient numerics
+
+Diagnostic commit d1e2ce3fc, manual33335896752: macOS PASS25m40s, Ubuntu
+PASS42m13s, Windows FAIL50m42s with the same2 warning assertions. Routine
+PR33335891536 PASS. The retained diagnostic shows full-bar animal_coef and
+animal_slope both code1/false convergence8, maxgradient0.963221115; all
+route-equality assertions still pass. Warning suppression is not justified.
+
+The exact Gaussian likelihood is finite at the Windows nonfinite trial
+(NLL50.71574, maxgradient9.70e-5, min marginal eigenvalue0.19888); both old
+and current nativeDLLs returnNaN at those same coordinates. At the returned
+endpoint exactNLL50.71682/maxgradient0.7993, currentnative error-0.003151
+and oldnative error-0.103207. This is numerical failure in centred coefficient
+evaluation, not an invalid Gaussian covariance or a converged optimum.
+
+Commands: bounded.py60 env R_LIBS=cell-library-v2 Rscript windows-trial-2/
+evaluate-3.R current; corresponding immutable oldlibrary invocation. Each
+completed1.106s after2–10s estimates. Four nativefn calls,2nativegr,2inner
+scores,4exact value/gradient calls; zero outer optimizers. Two earlier
+signature checks failed before tapes (1.067s/1.052s): inactive site_species_id
+index differs in fresh capture. Used verbatim retained data plus fresh valid
+params and identical maps; randomonlyb_phy_aug, all unitflags0. The earlier
+invalid parameters field was never used. All failures/scripts/logs retained.
+
+Gauss/Noether evaluator algebra review PASS; no additional numerical probes.
+Current source remains unchanged. A scoped noncentred coefficient proposal is
+ready at numerical-investigation/WINDOWS-COEFFICIENT-PROPOSAL.md. It requests
+8future standalone fits (ceiling41) and1revised primary article render; neither
+is authorized yet. Active ceiling remains33, all33spent. No threshold, seed,
+model, start, warning assertion or landing gate waived. Full article goal open.
+
+Closeout verification: git status --short --branch, git diff --check, R parse
+of windows-coefficient-evaluate.R and JSON parsing of saved-point evidence;
+after-task structural check only. No new evaluation, fit, render or build.
+Shannon WARN: seven open PRs and Windows failure; no new owned-file collision.
+PR1230 merged workflow-only; fetched origin/main255cedd6cc7af6792cc794712c33853f17fc51ec.
+Evidence/proposal remain in a local commit ahead of draftPR1229; no docs-only
+push, merge or deployment. Resume at the explicit scope/budget decision.
+
+## 2026-08-30 — Coefficient standardization approved
+
+Shinichi approved the finalized proposal: scoped coefficient-standardization
+repair, output/uncertainty compatibility, eight additional standalone fits
+(cumulative ceiling41), and one revised primary article render (three fits,
+separately counted). All frozen settings and acceptance gates are unchanged.
+Landing requires separate approval. This supersedes the proposal-only status,
+not the retained failures. Starting count33; eight slots remain.
+
+Execute the existing ultra-plan, without another planning/approval round:
+1. Gauss implements src/gllvmTMB.cpp, R/fit-multi.R and R/init-warmstart.R.
+2. Noether prepares independent saved-point/output/uncertainty checks and
+   audits consumer compatibility; core code and test files have separate owners.
+3. Root binds source/fixtures/starts and immutable receipts, then runs three
+   starts for each community long model; only both passing admit two wide fits.
+4. Revised primary render, focused/full package checks, bounded reviews,
+   exact-head three-OS CI and PR1229 preparation follow; landing stays gated.
+
+Reused existing agents, no new committee. Existing Gauss/Noether proposal
+review supplies the plan review. Root owns build/run serialization. No agent
+may independently spend standalone fits or launch builds. Estimates: build
+1–3min; fixed-point checks under60s each; eight articlefits2–5min total,
+five-minute cap per call; render1–3min; package20–30min; CI20–75min. Stop and
+report overruns. Local bounded work; DRAC/Totoro only if needed, existing
+ControlMaster only, no campaigns.
+
+Prior work reused: ad89a9dc6 saved Gaussian oracle and Windows coordinates,
+cell-integration compatibility/output helpers, existing frozen fixture and
+runner. Fresh origin/main255cedd6c has no overlapping production changes.
+Brain search for tree-axis/Gaussian returned unrelated material; local
+checkpoint/proposal are technical truth. Deterministic brain log/decision
+search for noncent/column-standard/tree-axis had no relevant hit. No new
+literature or novelty claim; no sibling implementation is imported.
+
+Coefficient prefit gates PASS: freshinstall85.778s;84 compiled fixed-point,
+physical start/map/warmstart/output/uncertainty assertions2.092s;four retained
+morphology points1.959s,objective deltas<7e-12;234 focused animal/rho assertions
+4.952s. The formerWindows test retains no-warning assertions and nowchecks
+code0/gradient<1e-2 using alreadycomputed gradients. First fixed-point run
+2.144s had two names-only testdifferences and one expectedweightwarning;
+retained and corrected onlytestbookkeeping. No production change afterbuild.
+Gauss/Noether prefitreviewPASS; source/DLL manifest and gate bound. No new
+standalonearticlefit yet; count33/41. Ready Q2 thenQ3; wideconditional.
+
+All8 coefficient-standardization standalone attempts passed: Q2three22.383s,
+Q3three49.325s,QW2one6.378s,QW3one16.443s. Everycode0; longmaxgradients
+.003522236/.003911533; relativeobjectivespread4.04e-12/6.01e-11; allshared,
+unique,total/coefficient/sourcecovariance gatespass. WideNLLdifferences0/
+4.21e-11,fittedresponseSDdifferences0/6.08e-11. Immutablevalidation-Q2-Q3-QW2-QW3
+receiptPASS withfreshnegativecontrols. Count41/41 (40returned+1historical
+interruption); no morestandalonefits. Revisedprimaryrender is separately
+approved3first-start fits, nowrunning. Gauss finalsource/math reviewPASS.
+
+Revised primary render COMPLETED PASS41.375s with3separately authorized
+first-startfits; presentation-onlyrender1PASS12.724s,zerooptimizer calls.
+check-coefficient-article.R PASS: exactfrozenDGP,sixcalls/starts,source/DLL,
+primaryfit/HTMLreceipts verified withzero fits/plots/renders. Currentarticle
+SHA2562ae642a05451b6568d8017c5f852a0893dc6695f6ca7f0189ab85102792e7052;
+HTML2666a646bbeb366eb37254abe2759a79842b240c910a9a78f41c57c2baa9c733.
+Desktop1440/mobile390: nooverflow,20MathMLequations,4loadedfigures withalttext,
+noJSerrors. All4renderedfigures inspected. Fittedrho3.11e-7 vsplanted0.60
+retains explicitnon-recovery interpretation. Forty-one standalone attempts
+spent; newprimary3 andpriorprimary3 accounted separately. C5passes.
+Fullpackagecheckrunning session71789,1800scap,estimate20–30min. CI/landing
+stillunmet. Roseprepublishreview foundstalerender-status tail, nowcorrected;
+publicsource/API/scopeauditPASS. No production,model,start,tolerancechanges.
+
+
+Full local package check COMPLETED PASS in 1327.051 s: 0 errors, 0 R CMD check
+warnings, 3 notes (clock verification, existing logLik namespace note, xcrun_db).
+Test summary: 16067 PASS, 0 FAIL, 54 WARN, 1190 SKIP. All 54 warning headers
+and messages match the previous passing local check exactly; skips are unchanged.
+The 92 added assertions are the 84 new coordinate checks and 8 convergence
+checks. All 881 R/native/header/help/test files compared with the checked
+source archive match the worktree. Receipts: package-check-1.rds,
+package-source-comparison.json and package-warning-comparison.json under the
+coefficient-standardization evidence root. No further fit or render was run.
+Existing draft PR1229 will receive the final candidate; exact-head manual
+three-OS CI remains required. Landing and live deployment remain unapproved.

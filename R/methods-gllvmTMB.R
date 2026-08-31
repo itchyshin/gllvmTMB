@@ -2601,11 +2601,15 @@ predict.gllvmTMB_multi <- function(
         added <- c(added, "rr_B")
       }
       if (object$use$diag_B) {
-        s_B <- matrix(
-          par[names(par) == "s_B"],
-          nrow = object$n_traits,
-          ncol = object$n_sites
-        )
+        s_B <- if (isTRUE(object$integrated_gaussian_diag_B)) {
+          object$report$s_B_conditional_mean
+        } else {
+          matrix(par[names(par) == "s_B"],
+                 nrow = object$n_traits, ncol = object$n_sites)
+        }
+        if (!identical(dim(s_B), c(object$n_traits, object$n_sites))) {
+          cli::cli_abort("The fitted unit-level diagonal effects have incompatible dimensions.")
+        }
         for (i in seq_along(eta)) {
           s <- st_id[i]
           t <- tr_id[i]

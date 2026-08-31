@@ -29,18 +29,28 @@ test_that("animal rho one is exactly released animal_slope for both bars", {
   )
 
   for (pair in pairs) {
-    expect_no_warning(coef_fit <- .fit_animal_coef_test(fx, pair$coef))
-    expect_no_warning(slope_fit <- .fit_animal_coef_test(fx, pair$slope))
-    .expect_animal_route_identical(coef_fit, slope_fit)
-    expect_true(isTRUE(coef_fit$use$response_column_coef))
-    expect_identical(coef_fit$use$response_column_coef_source, "animal")
-    expect_identical(coef_fit$use$response_column_coef_rho_status, "fixed")
-    expect_identical(coef_fit$use$response_column_coef_rho, 1)
-    expect_equal(
-      gllvmTMB::extract_Sigma(coef_fit, level = "column_coef")$K_rho,
-      fx$A + diag(1e-8, nrow(fx$A)),
-      tolerance = 1e-14
-    )
+    diagnostics <- new.env(parent = emptyenv())
+    .with_animal_trial_diagnostics({
+      expect_no_warning(coef_fit <- .fit_animal_coef_test(fx, pair$coef))
+      expect_no_warning(slope_fit <- .fit_animal_coef_test(fx, pair$slope))
+      .expect_animal_route_identical(coef_fit, slope_fit, diagnostics)
+      # Identical aliases can return the same invalid endpoint. Reuse the
+      # gradients already evaluated by the equivalence helper to check health.
+      expect_identical(coef_fit$opt$convergence, 0L)
+      expect_identical(slope_fit$opt$convergence, 0L)
+      expect_lt(max(abs(diagnostics$endpoint_gradients$coef)), 1e-2)
+      expect_lt(max(abs(diagnostics$endpoint_gradients$slope)), 1e-2)
+      expect_true(isTRUE(coef_fit$use$response_column_coef))
+      expect_identical(coef_fit$use$response_column_coef_source, "animal")
+      expect_identical(coef_fit$use$response_column_coef_rho_status, "fixed")
+      expect_identical(coef_fit$use$response_column_coef_rho, 1)
+      expect_equal(
+        gllvmTMB::extract_Sigma(coef_fit, level = "column_coef")$K_rho,
+        fx$A + diag(1e-8, nrow(fx$A)),
+        tolerance = 1e-14
+      )
+    }, label = paste(deparse(pair$coef), collapse = " "),
+    diagnostics = diagnostics)
   }
 })
 

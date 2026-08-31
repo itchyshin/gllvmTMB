@@ -15,6 +15,11 @@ Model Builder.
 > `docs/dev-log/handover/2026-07-25-active-lane-split.md` (read **every** lane row). CRAN 0.7
 > Codex baton: `docs/dev-log/handover/2026-08-08-codex-handover.md`. Do not treat a single
 > snapshot bullet as the whole project. Milestone state is re-derived from `git`.
+> **Article-model handover (2026-08-30):** the multi-lane split above remains
+> the ownership entrypoint. For the requested phylogeny-article latent-component
+> correction, also read `docs/dev-log/handover/2026-08-30-codex-tree-axis-latent-handover.md`
+> on `codex/tree-axis-latent-handover-20260830`. This handover changes no model
+> or capability claim; article implementation and validation remain owed.
 > **0.6 hardening completion / next Codex intake (2026-08-12):**
 > `docs/dev-log/handover/2026-08-12-codex-handover.md`. It succeeds the 0.6
 > artifact evidence phase and starts a read-first 0.7 integration intake; it

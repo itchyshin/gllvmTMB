@@ -1,0 +1,51 @@
+list(label = "value ~ 0 + trait + animal_coef(0 + x + z | trait, A = fx$A,      rho = 1)", 
+    calls = list(list(controls = list(control = list(eval.max = 2000, 
+        iter.max = 1500)), warnings = "NA/NaN function evaluation", 
+        start = c(b_fix = 0.193808594400149, b_fix = 0.283805011763304, 
+        b_fix = 0.306888436438018, b_fix = 0.414052631019971, 
+        b_fix = 0.137226791479324, log_sigma_eps = -0.767418539213906, 
+        theta_dep_chol = -0.693147180559945, theta_dep_chol = -0.693147180559945, 
+        theta_dep_chol = 0), result = list(par = c(b_fix = 0.19606999234788, 
+        b_fix = 0.292570121154014, b_fix = 0.291790291009749, 
+        b_fix = 0.520411637157738, b_fix = 0.068230748463446, 
+        log_sigma_eps = -0.807474951103855, theta_dep_chol = -2.72818260859478, 
+        theta_dep_chol = -18.2551280354576, theta_dep_chol = 0.103093194124248
+        ), objective = 50.6965331408142, convergence = 1L, iterations = 65L, 
+            evaluations = c(`function` = 94L, gradient = 65L), 
+            message = "false convergence (8)"), nonfinite_trials = list(
+            list(evaluation = 74L, par = c(b_fix = 0.196069931847525, 
+            b_fix = 0.292569719712437, b_fix = 0.291790247657287, 
+            b_fix = 0.520410381192265, b_fix = 0.0682316351688025, 
+            log_sigma_eps = -0.807527229701107, theta_dep_chol = -2.72826837232887, 
+            theta_dep_chol = -27.5954199925794, theta_dep_chol = 0.105815559867905
+            ), value = NaN)), objective_calls = 95L), list(controls = list(
+        control = list(eval.max = 2000, iter.max = 1500)), warnings = "NA/NaN function evaluation", 
+        start = c(b_fix = 0.193808594400149, b_fix = 0.283805011763304, 
+        b_fix = 0.306888436438018, b_fix = 0.414052631019971, 
+        b_fix = 0.137226791479324, log_sigma_eps = -0.767418539213906, 
+        theta_dep_chol = -0.693147180559945, theta_dep_chol = -0.693147180559945, 
+        theta_dep_chol = 0), result = list(par = c(b_fix = 0.19606999234788, 
+        b_fix = 0.292570121154014, b_fix = 0.291790291009749, 
+        b_fix = 0.520411637157738, b_fix = 0.068230748463446, 
+        log_sigma_eps = -0.807474951103855, theta_dep_chol = -2.72818260859478, 
+        theta_dep_chol = -18.2551280354576, theta_dep_chol = 0.103093194124248
+        ), objective = 50.6965331408142, convergence = 1L, iterations = 65L, 
+            evaluations = c(`function` = 94L, gradient = 65L), 
+            message = "false convergence (8)"), nonfinite_trials = list(
+            list(evaluation = 74L, par = c(b_fix = 0.196069931847525, 
+            b_fix = 0.292569719712437, b_fix = 0.291790247657287, 
+            b_fix = 0.520410381192265, b_fix = 0.0682316351688025, 
+            log_sigma_eps = -0.807527229701107, theta_dep_chol = -2.72826837232887, 
+            theta_dep_chol = -27.5954199925794, theta_dep_chol = 0.105815559867905
+            ), value = NaN)), objective_calls = 95L)), endpoint_gradients = list(
+        at = c(b_fix = 0.19606999234788, b_fix = 0.292570121154014, 
+        b_fix = 0.291790291009749, b_fix = 0.520411637157738, 
+        b_fix = 0.068230748463446, log_sigma_eps = -0.807474951103855, 
+        theta_dep_chol = -2.72818260859478, theta_dep_chol = -18.2551280354576, 
+        theta_dep_chol = 0.103093194124248), coef = c(0.00809008712100829, 
+        0.0322177453753282, -0.00114485609304056, 0.118159783792563, 
+        -0.0796837231305601, -0.0254149328585534, 0.0441105182552306, 
+        0.0134108563995844, -0.963221115056029), slope = c(0.00809008712100829, 
+        0.0322177453753282, -0.00114485609304056, 0.118159783792563, 
+        -0.0796837231305601, -0.0254149328585534, 0.0441105182552306, 
+        0.0134108563995844, -0.963221115056029)))

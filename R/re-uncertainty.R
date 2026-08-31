@@ -61,6 +61,13 @@
 #' NOT give cross-block or random-vs-fixed covariance (that needs
 #' `sdreport(getJointPrecision = TRUE)`, which this fit's single production
 #' `sdreport()` call does not request).
+#' For eligible Gaussian fits, the ordinary cell effects are integrated out
+#' analytically. Their standard errors combine the propagated uncertainty of
+#' their reconstructed conditional means with their conditional variances.
+#' This preserves the same first-order uncertainty convention.
+#' Their removed coordinates are not present in the reduced tape's raw joint
+#' precision; cross-covariances involving these cells also require conditional
+#' reconstruction, rather than only `getJointPrecision = TRUE`.
 #'
 #' Because of that fixed-effect-uncertainty propagation, a near-saturated or
 #' otherwise degenerate design (e.g. an `indep()` diagonal term at a grouping
@@ -163,9 +170,14 @@ getREsd <- function(
     ), class = "gllvmTMB_getREsd_block_absent")
   }
 
-  par_names <- names(sd_rep$par.random)
-  idx <- which(par_names == spec$par_name)
+  integrated <- identical(block, "diag_unit") &&
+    isTRUE(fit$integrated_gaussian_diag_B)
+  par_names <- if (integrated) names(sd_rep$value) else names(sd_rep$par.random)
+  idx <- which(par_names == if (integrated) "s_B_conditional_mean" else spec$par_name)
   if (length(idx) == 0L) {
+    if (integrated) {
+      cli::cli_abort("The sdreport lacks the reconstructed Gaussian cell means.")
+    }
     cli::cli_abort(c(
       "Could not locate the {.field {spec$par_name}} random-effect block in {.code sd_report$par.random}.",
       "i" = "{.field fit$use${block}} is {.code TRUE} but the parameter is absent from the fit's {.field sd_report}.",
@@ -183,7 +195,17 @@ getREsd <- function(
     ## pmax(., 0) guards against floating-point noise producing a
     ## microscopically negative variance for an entry that is truly ~0
     ## (same guard `.getLV_se()` uses, R/output-methods.R).
-    se_vec <- sqrt(pmax(sd_rep$diag.cov.random[idx], 0))
+    variance <- if (integrated) {
+      conditional <- as.numeric(fit$report$s_B_conditional_variance)
+      if (length(conditional) != length(idx) || any(!is.finite(conditional)) ||
+          any(conditional < 0)) {
+        cli::cli_abort("The reconstructed Gaussian cell variances are missing or invalid.")
+      }
+      as.numeric(sd_rep$sd[idx])^2 + conditional
+    } else {
+      sd_rep$diag.cov.random[idx]
+    }
+    se_vec <- sqrt(pmax(variance, 0))
   }
 
   if (block == "re_int") {

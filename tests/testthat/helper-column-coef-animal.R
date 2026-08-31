@@ -51,7 +51,8 @@
   })
 }
 
-.expect_animal_route_identical <- function(coef_fit, slope_fit) {
+.expect_animal_route_identical <- function(coef_fit, slope_fit,
+                                          diagnostics = NULL) {
   expect_identical(coef_fit$tmb_data, slope_fit$tmb_data)
   expect_identical(coef_fit$tmb_obj$env$random, slope_fit$tmb_obj$env$random)
   expect_identical(names(coef_fit$opt$par), names(slope_fit$opt$par))
@@ -61,13 +62,68 @@
   )
   common <- slope_fit$opt$par
   expect_identical(coef_fit$tmb_obj$fn(common), slope_fit$tmb_obj$fn(common))
-  expect_identical(coef_fit$tmb_obj$gr(common), slope_fit$tmb_obj$gr(common))
+  coef_gradient <- coef_fit$tmb_obj$gr(common)
+  slope_gradient <- slope_fit$tmb_obj$gr(common)
+  expect_identical(coef_gradient, slope_gradient)
+  if (!is.null(diagnostics)) {
+    diagnostics$endpoint_gradients <- list(
+      at = common, coef = coef_gradient, slope = slope_gradient
+    )
+  }
   expect_identical(coef_fit$opt$objective, slope_fit$opt$objective)
   expect_identical(coef_fit$opt$par, slope_fit$opt$par)
   expect_identical(coef_fit$report, slope_fit$report)
   expect_identical(
     suppressMessages(stats::fitted(coef_fit)),
     suppressMessages(stats::fitted(slope_fit))
+  )
+}
+
+# Diagnostic only: preserve the original optimizer calls and warning delivery.
+# This runs around the existing two-bar equivalence test, without adding fits
+# or evaluating its objective/gradient outside the calls already made there.
+.with_animal_trial_diagnostics <- function(code, label, diagnostics) {
+  diagnostics$label <- label
+  diagnostics$calls <- list()
+  original <- get(".gllvmTMB_run_nlminb", asNamespace("gllvmTMB"))
+  wrapped <- function(args) {
+    record <- new.env(parent = emptyenv())
+    record$start <- args$start
+    record$controls <- args[intersect(
+      names(args), c("control", "lower", "upper", "scale")
+    )]
+    record$objective_calls <- 0L
+    record$nonfinite_trials <- list()
+    record$warnings <- character()
+    diagnostics$calls[[length(diagnostics$calls) + 1L]] <- record
+    objective <- args$objective
+    args$objective <- function(par, ...) {
+      value <- objective(par, ...)
+      record$objective_calls <- record$objective_calls + 1L
+      if (any(!is.finite(value))) {
+        record$nonfinite_trials[[length(record$nonfinite_trials) + 1L]] <- list(
+          evaluation = record$objective_calls, par = par, value = value
+        )
+      }
+      value
+    }
+    result <- withCallingHandlers(original(args), warning = function(w) {
+      record$warnings <- c(record$warnings, conditionMessage(w))
+    })
+    record$result <- result
+    result
+  }
+  on.exit({
+    calls <- lapply(diagnostics$calls, as.list.environment)
+    if (any(vapply(calls, function(x) length(x$warnings) > 0L, logical(1)))) {
+      cat("\nANIMAL_TRIAL_DIAGNOSTICS_BEGIN\n")
+      dput(list(label = diagnostics$label, calls = calls,
+                endpoint_gradients = diagnostics$endpoint_gradients))
+      cat("ANIMAL_TRIAL_DIAGNOSTICS_END\n")
+    }
+  }, add = TRUE)
+  testthat::with_mocked_bindings(
+    force(code), .gllvmTMB_run_nlminb = wrapped, .package = "gllvmTMB"
   )
 }
 

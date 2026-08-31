@@ -59,6 +59,58 @@
   ))
 }
 
+# Obtain the public model's unchanged data/maps without entering an optimizer.
+# Derivative checks should not depend on the covariance reached by fitting a
+# noise-only fixture, whose coefficient covariance can approach a boundary.
+.capture_public_phylo_coef <- function(fx, formula) {
+  payload <- NULL
+  optimizer_entries <- 0L
+  testthat::local_mocked_bindings(
+    MakeADFun = function(data, parameters, map, random, ...) {
+      payload <<- list(data = data, parameters = parameters, map = map,
+                        random = random)
+      stop("phylo-coef-payload-captured", call. = FALSE)
+    }, .package = "TMB")
+  testthat::local_mocked_bindings(
+    .gllvmTMB_run_nlminb = function(...) {
+      optimizer_entries <<- optimizer_entries + 1L
+      stop("No outer optimizer is permitted in this derivative check")
+    }, .package = "gllvmTMB")
+  err <- tryCatch(.fit_public_phylo_coef(fx, formula), error = identity)
+  expect_s3_class(err, "error")
+  expect_match(conditionMessage(err), "phylo-coef-payload-captured", fixed = TRUE)
+  expect_identical(optimizer_entries, 0L)
+  expect_type(payload, "list")
+  payload
+}
+
+# Independent marginal Gaussian reference, assembled in observation order from
+# the raw fixture K, rather than the engine's spectral source or joint prior.
+# V_ij = K_rho[trait_i,trait_j] x_i' Sigma_coef x_j + sigma_eps^2 1{i=j}.
+# d nll / d eta = tr[(V^-1 - aa') dV/deta] / 2, a = V^-1(y - X beta).
+.public_phylo_coef_dense_rho <- function(fx, par) {
+  theta <- par[names(par) == "theta_dep_chol"]
+  L <- matrix(c(exp(theta[1L]), theta[3L], 0, exp(theta[2L])), 2L)
+  Sigma <- tcrossprod(L)
+  rho <- stats::plogis(par[names(par) == "eta_column_coef_rho"])
+  D <- diag(diag(fx$K))
+  K_rho <- rho * fx$K + (1 - rho) * D
+  trait_id <- as.integer(fx$data$trait)
+  X <- cbind(1, fx$data$x)
+  coefficient_cells <- X %*% Sigma %*% t(X)
+  sigma_eps <- exp(par[names(par) == "log_sigma_eps"])
+  V <- K_rho[trait_id, trait_id] * coefficient_cells +
+    diag(sigma_eps^2, nrow(fx$data))
+  C <- chol(V)
+  Vi <- chol2inv(C)
+  residual <- fx$data$value - par[names(par) == "b_fix"]
+  a <- drop(Vi %*% residual)
+  dV <- rho * (1 - rho) * (fx$K - D)[trait_id, trait_id] * coefficient_cells
+  list(value = .5 * (length(residual) * log(2 * pi) +
+         2 * sum(log(diag(C))) + sum(residual * a)),
+       gradient = .5 * sum((Vi - tcrossprod(a)) * dV))
+}
+
 test_that("spectral source data reproduce the raw covariance mixture", {
   fx <- .make_public_phylo_coef_fixture()
   source <- gllvmTMB:::.resolve_phylo_coef_spectral_source(
@@ -195,13 +247,22 @@ test_that("estimated rho is exposed through the transformed sdreport", {
   )
 })
 
-test_that("estimated-rho objective has finite-difference gradient oracles away from the optimum", {
+test_that("estimated-rho objective has finite-difference oracles at declared covariance points", {
   fx <- .make_public_phylo_coef_fixture(n_traits = 8L, n_unit = 20L)
-  fit <- .fit_public_phylo_coef(
+  payload <- .capture_public_phylo_coef(
     fx,
     value ~ 1 + phylo_coef(1 + x | trait, vcv = fx$K, rho = NULL)
   )
-  par <- fit$opt$par
+  # These interior values are declared before evaluation. The seed/data, three
+  # rho probes, finite-difference step and 5e-4 acceptance bound are unchanged.
+  payload$parameters$b_fix[] <- .2
+  payload$parameters$log_sigma_eps[] <- log(.45)
+  payload$parameters$theta_dep_chol <- c(log(.25), log(.35), .08)
+  payload$parameters$b_phy_aug[] <- 0
+  obj <- TMB::MakeADFun(payload$data, payload$parameters, map = payload$map,
+    random = payload$random, DLL = "gllvmTMB", silent = TRUE)
+  on.exit(TMB::FreeADFun(obj), add = TRUE)
+  par <- obj$par
   pos <- which(names(par) == "eta_column_coef_rho")
   expect_length(pos, 1L)
   h <- 1e-4
@@ -212,10 +273,52 @@ test_that("estimated-rho objective has finite-difference gradient oracles away f
     upper[[pos]] <- upper[[pos]] + h
     lower[[pos]] <- lower[[pos]] - h
     fd <- as.numeric(
-      (fit$tmb_obj$fn(upper) - fit$tmb_obj$fn(lower)) / (2 * h)
+      (obj$fn(upper) - obj$fn(lower)) / (2 * h)
     )
-    ad <- as.numeric(fit$tmb_obj$gr(probe)[[pos]])
+    ad <- as.numeric(obj$gr(probe)[[pos]])
     expect_lt(abs(ad - fd), 5e-4)
+    reference <- .public_phylo_coef_dense_rho(fx, probe)
+    expect_lt(abs(ad - reference$gradient), 5e-4)
+    expect_lt(abs(obj$fn(probe) - reference$value), 1e-7)
+  }
+})
+
+test_that("retained near-boundary rho scores agree with a dense Gaussian reference", {
+  fx <- .make_public_phylo_coef_fixture(n_traits = 8L, n_unit = 20L)
+  payload <- .capture_public_phylo_coef(
+    fx,
+    value ~ 1 + phylo_coef(1 + x | trait, vcv = fx$K, rho = NULL)
+  )
+  obj <- TMB::MakeADFun(payload$data, payload$parameters, map = payload$map,
+    random = payload$random, DLL = "gllvmTMB", silent = TRUE)
+  on.exit(TMB::FreeADFun(obj), add = TRUE)
+  # Exact retained coordinates from the 2026-08-30 failed package regression.
+  # That optimizer returned code 1 (false convergence), NOT an accepted fit.
+  # kappa(L) was about 4.65e5. At these same coordinates both pre-repair and
+  # repaired DLLs lost likelihood-value precision under native finite
+  # differences, while their analytic scores agreed with the dense marginal
+  # reference. Keep this boundary case rather than erase it or relax a gate.
+  par <- c(b_fix = 0.26039412670818357,
+    log_sigma_eps = -0.89520155323613737,
+    theta_dep_chol = -3.3815872222419534,
+    theta_dep_chol = -15.222643670799755,
+    theta_dep_chol = 0.052073322883550752,
+    eta_column_coef_rho = -16.103341074839214)
+  expect_identical(names(par), names(obj$par))
+  pos <- which(names(par) == "eta_column_coef_rho")
+  h <- 1e-4
+  for (eta in c(-1.2, -0.15, 0.9)) {
+    probe <- par
+    probe[[pos]] <- eta
+    upper <- lower <- probe
+    upper[[pos]] <- eta + h
+    lower[[pos]] <- eta - h
+    reference <- .public_phylo_coef_dense_rho(fx, probe)
+    fd <- (.public_phylo_coef_dense_rho(fx, upper)$value -
+             .public_phylo_coef_dense_rho(fx, lower)$value) / (2 * h)
+    ad <- as.numeric(obj$gr(probe)[[pos]])
+    expect_lt(abs(reference$gradient - fd), 5e-4)
+    expect_lt(abs(ad - reference$gradient), 5e-4)
   }
 })
 
@@ -393,9 +496,15 @@ test_that("estimated rho and coefficient covariance recover a deterministic Gaus
   ))
   got <- gllvmTMB::extract_Sigma(fit, level = "column_coef")
   gradient <- fit$tmb_obj$gr(fit$opt$par)
-  joint <- fit$tmb_obj$env$last.par.best
-  b_hat_vector <- unname(joint[names(joint) == "b_phy_aug"])
-  B_hat <- array(b_hat_vector, dim = c(n_traits, 4L))
+  if (isTRUE(fit$standardized_column_coef)) {
+    # Eligible Gaussian tapes retain standardized U in the private random
+    # vector. Recovery concerns physical species coefficients B = U L'.
+    B_hat <- matrix(fit$report$b_phy_aug_physical, n_traits, 4L)
+  } else {
+    joint <- fit$tmb_obj$env$last.par.best
+    b_hat_vector <- unname(joint[names(joint) == "b_phy_aug"])
+    B_hat <- array(b_hat_vector, dim = c(n_traits, 4L))
+  }
   expect_identical(fit$opt$convergence, 0L)
   expect_true(all(is.finite(gradient)))
   expect_lt(max(abs(gradient)), 1e-2)

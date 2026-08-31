@@ -4,10 +4,12 @@
 ##
 ## | Symbol | Public syntax | Engine object | Required public object |
 ## |--------|---------------|---------------|------------------------|
-## | B | column_coef(1 + x | trait) | b_phy_aug[, , 1] | extract_Sigma(level = "column_coef")$basis |
+## | B | column_coef(1 + x | trait) | report$b_phy_aug_physical[, , 1] | extract_Sigma(level = "column_coef")$basis |
 ## | Sigma_coef | single bar | Sigma_b_dep | $Sigma and $R |
 ## | diag(Sigma_coef) | double bar | mapped theta_dep_chol | diagonal $Sigma |
 ## | I_T | column_coef() source | Ainv_phy_slope = I | source$type = "iid" |
+## The physical report applies to standardized tapes; centred fallback tapes
+## retain physical B in b_phy_aug. Standardized b_phy_aug itself contains U.
 
 .make_public_column_coef_fixture <- function(seed = 13131L,
                                              n_traits = 5L,

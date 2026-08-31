@@ -4985,6 +4985,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     n_lv_B           = as.integer(n_lv_B),
     X_lv_B           = X_lv_B,
     use_diag_B       = as.integer(use_diag_B),
+    integrate_gaussian_diag_B = 0L,
     ## Per-trait between-unit Psi skip mask. Filled in below when the
     ## identifiability gate pins individual traits; all-zero means every trait
     ## keeps its Psi and contributes its density term as usual.
@@ -5090,6 +5091,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     phylo_slope_aug_id = as.integer(phylo_slope_aug_id),
     ## Slope-only response-column submode of the shared matrix-normal engine.
     use_phylo_column_slope = as.integer(use_fixed_column_slope),
+    standardize_column_coef = 0L,
     use_column_coef_estimated_rho = as.integer(use_column_coef_estimated_rho),
     column_coef_source_U = column_coef_source_U,
     column_coef_source_lambda = as.numeric(column_coef_source_lambda),
@@ -6513,6 +6515,41 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     length(tmb_data$diag_B_skip) == n_traits &&
     isTRUE(all(tmb_data$diag_B_skip == 1L))
 
+  ## Exact convolution of the ordinary Gaussian cell effect and observation
+  ## error avoids the small-stabilizer precision in the inner Hessian. This
+  ## changes neither Psi nor sigma_eps, and every outer start stays unchanged.
+  ## Mapped s_B values are retained as provenance but are unused on this tape;
+  ## conditional modes/variances are reconstructed in the native report.
+  integrated_gaussian_diag_B <- .gllvmTMB_gaussian_diag_B_eligible(
+    data = tmb_data, map = tmb_map, parameters = tmb_params,
+    REML = REML, estimator = estimator, control = control,
+    known_V = known_V, lambda_constraint = lambda_constraint,
+    Xcoef_fixed = xcoef_fixed
+  )
+  tmb_data$integrate_gaussian_diag_B <- as.integer(integrated_gaussian_diag_B)
+  if (integrated_gaussian_diag_B) {
+    tmb_map$s_B <- factor(rep(NA_integer_, length(tmb_params$s_B)))
+  }
+
+  ## Change only the internal coefficient coordinates, after physical warm
+  ## starts and all covariance maps have been resolved. b_phy_aug holds U on
+  ## this tape, while B = U L' remains the predictor/report coefficient. A map
+  ## constraining physical B cannot be reinterpreted as a constraint on U.
+  standardized_column_coef <- .gllvmTMB_gaussian_column_coef_eligible(
+    data = tmb_data, map = tmb_map, parameters = tmb_params,
+    REML = REML, estimator = estimator, control = control,
+    known_V = known_V, lambda_constraint = lambda_constraint,
+    Xcoef_fixed = xcoef_fixed
+  )
+  tmb_data$standardize_column_coef <- as.integer(standardized_column_coef)
+  column_coef_physical_start <- NULL
+  if (standardized_column_coef) {
+    column_coef_physical_start <- tmb_params$b_phy_aug
+    tmb_params$b_phy_aug <- .gllvmTMB_column_coef_standardize_start(
+      column_coef_physical_start, tmb_params$theta_dep_chol
+    )
+  }
+
   ## The TMB engine is compiled at install time as src/gllvmTMB.cpp; the
   ## DLL is registered via NAMESPACE useDynLib() and loaded automatically.
   ## (Earlier versions compiled the engine at runtime under
@@ -6528,7 +6565,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   if (isTRUE(REML)) random <- c(random, "b_fix")
   if (use_rr_B)   random <- c(random, "z_B")
   if (use_rr_B_slope) random <- c(random, "z_B_slope")
-  if (use_diag_B && !diag_B_all_skipped) random <- c(random, "s_B")
+  if (use_diag_B && !diag_B_all_skipped && !integrated_gaussian_diag_B)
+    random <- c(random, "s_B")
   if (use_diag_B_slope) random <- c(random, "s_B_slope")
   if (use_rr_W)   random <- c(random, "z_W")
   if (use_diag_W) random <- c(random, "s_W")
@@ -7830,8 +7868,12 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     NULL
   } else {
     tryCatch(
+      ## Cell means add n_traits * n_sites ADREPORT entries. Their marginal
+      ## variances suffice for getREsd(); avoid allocating their dense joint
+      ## report covariance while retaining all fixed-parameter covariance.
       TMB::sdreport(obj, par.fixed = opt$par,
-                    getJointPrecision = FALSE),
+                    getJointPrecision = FALSE,
+                    getReportCovariance = !integrated_gaussian_diag_B),
       error = function(e) {
         sdreport_error <<- conditionMessage(e)
         NULL
@@ -7862,6 +7904,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       tmb_data     = tmb_data,
       tmb_params   = tmb_params,
       tmb_map      = tmb_map,
+      integrated_gaussian_diag_B = integrated_gaussian_diag_B,
+      standardized_column_coef = standardized_column_coef,
+      column_coef_physical_start = column_coef_physical_start,
       REML         = REML,
       estimator    = if (identical(estimator, "mspl")) {
         "MSPL"
@@ -8285,7 +8330,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         warm_sdreport_error <- NULL
         warm_sd_report <- tryCatch(
           TMB::sdreport(obj, par.fixed = warm_opt$par,
-                        getJointPrecision = FALSE),
+                        getJointPrecision = FALSE,
+                        getReportCovariance = !integrated_gaussian_diag_B),
           error = function(e) {
             warm_sdreport_error <<- conditionMessage(e)
             NULL
@@ -8395,7 +8441,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
           newton_sdreport_error <- NULL
           newton_sd_report <- tryCatch(
             TMB::sdreport(obj, par.fixed = newton_par,
-                          getJointPrecision = FALSE),
+                          getJointPrecision = FALSE,
+                          getReportCovariance = !integrated_gaussian_diag_B),
             error = function(e) {
               newton_sdreport_error <<- conditionMessage(e)
               NULL
@@ -10258,6 +10305,123 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
 ## nothing, and the un-`factr`'d lbfgsb hazard the table's own comment warns
 ## about is unreachable from quadrature. Wiring it through would be a
 ## results-changing edit with no measured benefit behind it.
+## Private admission for an exact Gaussian convolution, not an integration
+## engine or user control. Keep unreviewed compositions on their existing path.
+## In particular, a fixed/tied s_B map changes its distribution and must never
+## be silently replaced by independent cell integration. Loading/fixed-effect
+## constraints are conservatively left on the existing route as well.
+.gllvmTMB_gaussian_diag_B_eligible <- function(
+    data, map, parameters, REML, estimator, control,
+    known_V = NULL, lambda_constraint = NULL, Xcoef_fixed = NULL) {
+  if (!identical(estimator, "ml") || isTRUE(REML) ||
+      !identical(control$integration %||% "laplace", "laplace") ||
+      !(is.null(control$aghq) || identical(control$aghq, FALSE)) ||
+      !is.null(known_V) || length(lambda_constraint) > 0L ||
+      isTRUE(Xcoef_fixed$has_fixed) ||
+      !is.null(map[["s_B", exact = TRUE]])) return(FALSE)
+  if (!identical(data$use_diag_B, 1L) ||
+      !isTRUE(all(data$diag_B_skip == 0L)) ||
+      length(data$diag_B_skip) != data$n_traits) return(FALSE)
+  inactive <- c(
+    "use_lv_B", "use_rr_W", "use_diag_W", "use_rr_B_slope",
+    "use_diag_B_slope", "use_propto", "use_diag_species",
+    "use_diag_cluster2", "use_equalto", "use_spde",
+    "use_spatial_column_slope", "use_spde_slope", "use_spde_dep_slope",
+    "use_spde_latent_slope", "n_kernel_tiers", "use_phylo_latent_slope",
+    "use_re_int", "has_mi", "use_aghq"
+  )
+  if (!all(vapply(data[inactive], function(x) identical(x, 0L), logical(1))))
+    return(FALSE)
+  if (data$use_phylo_slope != 0L && data$use_phylo_column_slope != 1L)
+    return(FALSE)
+  n <- length(data$y)
+  if (n == 0L || n != data$n_traits * data$n_sites ||
+      !identical(dim(parameters$s_B), c(data$n_traits, data$n_sites)) ||
+      length(data$family_id_vec) != n || length(data$link_id_vec) != n ||
+      length(data$is_y_observed) != n || length(data$weights_i) != n ||
+      length(data$trait_id) != n || length(data$site_id) != n ||
+      !isTRUE(all(data$family_id_vec == 0L & data$link_id_vec == 0L &
+                  data$is_y_observed == 1L & data$weights_i == 1)) ||
+      !isTRUE(all(is.finite(data$y))) ||
+      !isTRUE(all(data$trait_id >= 0L & data$trait_id < data$n_traits &
+                  data$site_id >= 0L & data$site_id < data$n_sites))) return(FALSE)
+  cells <- data$trait_id + data$n_traits * data$site_id
+  !anyDuplicated(cells)
+}
+
+## Internal coordinate choice for complete Gaussian nonspatial coefficients.
+## Existing aliases resolve to the same flags, irrespective of source label.
+## Unreviewed compositions and physical-B constraints keep the centred path.
+.gllvmTMB_gaussian_column_coef_eligible <- function(
+    data, map, parameters, REML, estimator, control,
+    known_V = NULL, lambda_constraint = NULL, Xcoef_fixed = NULL) {
+  if (!identical(estimator, "ml") || isTRUE(REML) ||
+      !identical(control$integration %||% "laplace", "laplace") ||
+      !(is.null(control$aghq) || identical(control$aghq, FALSE)) ||
+      !is.null(known_V) || length(lambda_constraint) > 0L ||
+      isTRUE(Xcoef_fixed$has_fixed) ||
+      !is.null(map[["b_phy_aug", exact = TRUE]])) return(FALSE)
+  if (!identical(data$use_phylo_column_slope, 1L) ||
+      !identical(data$use_phylo_slope_correlated, 1L) ||
+      !identical(data$use_phylo_dep_slope, 1L)) return(FALSE)
+  inactive <- c(
+    "use_lv_B", "use_rr_W", "use_diag_W", "use_rr_B_slope",
+    "use_diag_B_slope", "use_propto", "use_diag_species",
+    "use_diag_cluster2", "use_equalto", "use_spde",
+    "use_spatial_column_slope", "use_spde_slope", "use_spde_dep_slope",
+    "use_spde_latent_slope", "n_kernel_tiers", "use_phylo_latent_slope",
+    "use_re_int", "has_mi", "use_aghq"
+  )
+  if (!all(vapply(data[inactive], function(x) identical(x, 0L), logical(1))))
+    return(FALSE)
+  n <- length(data$y)
+  dims <- dim(parameters[["b_phy_aug", exact = TRUE]])
+  if (length(dims) != 3L || dims[1L] != data$n_aug_phy_slope ||
+      dims[2L] != data$n_lhs_cols || any(dims < 1L) ||
+      length(parameters$theta_dep_chol) != data$n_lhs_cols * (data$n_lhs_cols + 1L) / 2L ||
+      n == 0L || n != data$n_traits * data$n_sites ||
+      length(data$family_id_vec) != n || length(data$link_id_vec) != n ||
+      length(data$is_y_observed) != n || length(data$weights_i) != n ||
+      length(data$trait_id) != n || length(data$site_id) != n ||
+      !isTRUE(all(data$family_id_vec == 0L & data$link_id_vec == 0L &
+                  data$is_y_observed == 1L & data$weights_i == 1)) ||
+      !isTRUE(all(is.finite(data$y))) ||
+      !isTRUE(all(data$trait_id >= 0L & data$trait_id < data$n_traits &
+                  data$site_id >= 0L & data$site_id < data$n_sites))) return(FALSE)
+  !anyDuplicated(data$trait_id + data$n_traits * data$site_id)
+}
+
+## Physical B starts are transformed once: solve L U' = B', using the same
+## log-diagonal/column-major lower-triangle packing as the native coefficient
+## covariance. Never form or invert L L'. All outer starts remain untouched.
+.gllvmTMB_column_coef_standardize_start <- function(B, theta) {
+  dims <- dim(B)
+  if (!is.numeric(B) || length(dims) != 3L || any(dims < 1L) ||
+      any(!is.finite(B))) {
+    cli::cli_abort("Physical coefficient starts must be a finite three-dimensional array.")
+  }
+  C <- dims[2L]
+  if (!is.numeric(theta) || length(theta) != C * (C + 1L) / 2L ||
+      any(!is.finite(theta))) {
+    cli::cli_abort("Coefficient covariance starts have invalid Cholesky coordinates.")
+  }
+  L <- matrix(0, C, C)
+  diag(L) <- exp(theta[seq_len(C)])
+  L[lower.tri(L)] <- theta[-seq_len(C)]
+  if (any(!is.finite(L)) || any(diag(L) <= 0)) {
+    cli::cli_abort("Coefficient covariance starts must have finite positive Cholesky diagonals.")
+  }
+  U <- B
+  for (k in seq_len(dims[3L])) {
+    physical <- matrix(B[, , k], nrow = dims[1L], ncol = C)
+    U[, , k] <- t(forwardsolve(L, t(physical)))
+  }
+  if (any(!is.finite(U))) {
+    cli::cli_abort("Physical coefficient starts could not be standardized to finite values.")
+  }
+  U
+}
+
 .gllvmTMB_aghq_k <- function(control, d_B, family = NULL, n_traits = NA_integer_) {
   a <- control$aghq
   if (is.null(a) || identical(a, FALSE)) return(NULL)

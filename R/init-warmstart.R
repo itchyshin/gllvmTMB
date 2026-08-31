@@ -403,6 +403,19 @@
   if (is.null(source_params)) {
     cli::cli_abort("Could not extract TMB parameters from {.arg start_from}.")
   }
+  if (isTRUE(start_from$integrated_gaussian_diag_B)) {
+    ## Analytically integrated cell effects remain mapped placeholders on the
+    ## source tape. Their reconstructed conditional means are the estimated
+    ## effects that an independent-model warm start promises to copy.
+    source_params[["s_B"]] <-
+      start_from$report[["s_B_conditional_mean", exact = TRUE]]
+  }
+  if (isTRUE(start_from$standardized_column_coef)) {
+    ## The source tape holds U, but target starts are still physical B at this
+    ## stage. Its final covariance maps determine any later B-to-U transform.
+    source_params[["b_phy_aug"]] <-
+      start_from$report[["b_phy_aug_physical", exact = TRUE]]
+  }
 
   copied <- character(0)
   for (nm in intersect(names(tmb_params), names(source_params))) {

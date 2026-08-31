@@ -318,6 +318,83 @@ legacy/shared path returns `phy_unique_slope`. Validation is
 family-by-route specific (PHY-11--PHY-18 and RE-14), not a universal
 family or interval-calibration claim.
 
+### Stable coefficient-prior evaluation
+
+The full coefficient channel above, also used by `column_coef()` and
+`phylo_coef()`, evaluates its Gaussian quadratic through the parameterized
+lower-triangular factor. With $\Sigma_b=L_bL_b^\top$, define
+$W=B L_b^{-\top}$ by forward substitution. Then
+
+$$
+\operatorname{tr}(\Sigma_b^{-1}B^\top A^{-1}B)
+=\operatorname{tr}(W^\top A^{-1}W).
+$$
+
+For estimated `rho`, the same column whitening precedes the existing source
+transform $U^\top D^{-1}W$. If $K=D U\operatorname{diag}(\lambda)U^\top D$,
+the quadratic is the sum of squared transformed entries divided by
+$1-\rho+\rho\lambda_r$. This preserves
+$K_\rho=\rho K+(1-\rho)\operatorname{diag}\{\operatorname{diag}(K)\}$,
+all normalization constants, and the reported $\Sigma_b$.
+
+Forming and inverting $L_bL_b^\top$ is avoided in this prior because it squares
+the factor's condition number. An ill-conditioned retained article attempt
+produced a negative quadratic under that arithmetic; the same point provides
+a regression check, not a biological result or a convergence guarantee.
+The helper is private implementation, with compiled tests in
+`tests/testthat/test-column-coef-triangular-density.R`. The separate spatial
+coefficient implementation is outside this bounded repair and requires its own
+numerical review.
+
+
+### Gaussian response-column coefficient coordinates
+
+For eligible nonspatial Gaussian identity ML compositions, the internal
+coefficient random variables are standardized before constructing the Laplace
+objective. The statistical model remains
+
+$$
+B=U L_b^\top,\qquad U\sim\operatorname{MN}(0,K_\rho,I),\qquad
+\Sigma_b=L_bL_b^\top.
+$$
+
+Here $U$ denotes coefficient random variables, not the source eigenvector
+matrix used above. Its negative log prior is
+
+$$
+\tfrac12\{nC\log(2\pi)+C\log|K_\rho|
+ +\operatorname{tr}(U^\top K_\rho^{-1}U)\}.
+$$
+
+The coefficient determinant is absent because the density is now with respect
+to $U$; the change of variables cancels the corresponding determinant in the
+centred density. The linear predictor uses physical $B$. Thus the marginal
+Gaussian likelihood is unchanged, while the random-effect prior no longer
+contains the inverse of a nearly singular $L_b$. The prior on the source axis,
+including estimated-rho diagonal scaling, is unchanged.
+
+| Quantity | Internal operation | Preserved contract |
+|---|---|---|
+| $\Sigma_b=L_bL_b^\top$ | Same packed Cholesky parameters | Same covariance and rho reports |
+| $B=U L_b^\top$ | Reconstruct before predictor/report | Same fitted coefficient effects |
+| Physical start $B_0$ | $U_0=B_0L_{b,0}^{-\top}$ | Same physical initial coefficients |
+| Fixed/tied physical $B$ maps | Keep centred path when incompatible | Never reinterpret constraints as maps on $U$ |
+| Uncertainty of $B$ | Differentiate reconstructed $B$ through retained random and outer parameters | First-order physical-effect uncertainty |
+
+Unlike the analytically eliminated singleton cell effect, $U$ remains a random
+effect. Its transformed uncertainty therefore needs no added conditional
+variance. Raw standardized-effect precision must not be presented as physical
+coefficient precision. Warm starts must recover physical coefficients before
+conversion to the target coordinates.
+
+The intended admission is complete, unit-weight Gaussian identity ML for the
+existing nonspatial response-column sources and their supported aliases.
+Spatial coefficients, non-Gaussian models, other augmented-slope channels and
+unsupported compositions retain the centred path. This is a numerical repair,
+not a new estimator or a claim of interval coverage. Implementation and
+validation status are tracked in the tree-axis after-task report; approval
+alone does not establish that the new checks pass.
+
 ## SPDE / GMRF spatial integration
 
 When `spatial_*(0 + trait | sites, mesh = mesh)` is in the
@@ -769,6 +846,59 @@ AIC/BIC/LRT or interval route is licensed by a finite penalised Hessian.
   when Phase 0B evidence arrives.
 
 ## How this doc grows
+
+### Gaussian singleton-cell integration (2026-08-30; bounded validation)
+
+The ordinary unit-level diagonal effect can be integrated analytically when
+each cell has one observed Gaussian response. Write its variance as
+`psi = exp(2 * theta_diag_B)` and keep the observation variance
+`e = sigma_eps^2` separate. The identity is
+
+\[
+ s_i\sim N(0,\psi_t),\quad y_i\mid s_i\sim N(\eta_{0i}+s_i,e)
+ \quad\Longrightarrow\quad y_i\sim N(\eta_{0i},\psi_t+e).
+\]
+
+This changes integration arithmetic, not the marginal model. In particular,
+the documented fixed stabilizer is retained; it is not set to zero or absorbed
+into the reported Psi. Ordinary shared latent variation, phylogenetic shared
+and diagonal variation, and response-column coefficient variation remain
+separate components with unchanged parameters.
+
+| Quantity | Native implementation | Output meaning |
+|---|---|---|
+| Cell variance `psi` | `exp(2 * theta_diag_B)` | Ordinary unique covariance |
+| Observation variance `e` | Fixed `exp(2 * log_sigma_eps)` | Same stabilizer as before |
+| Integrated density | Gaussian variance `psi + e` | Same marginal likelihood |
+| Conditional cell mean `m` | `psi/(psi+e) * (y-eta0)` | Reconstructed ordinary cell effect |
+| Conditional cell variance `v` | `psi*e/(psi+e)` | Remaining uncertainty conditional on other parameters/effects |
+
+The reconstructed predictor is `eta0 + m`. Prediction for existing units uses
+the saved reconstructed cell effects. Unconditional simulation continues to
+draw the original separate components. `extract_ordination(level="unit")`
+continues to read the retained ordinary latent scores.
+
+For uncertainty, ADREPORT of `m` propagates uncertainty from the remaining
+random effects and fixed/covariance parameters. `getREsd(block="diag_unit")`
+adds `v` to that propagated variance before taking square roots. Adding only
+the variance of `m` would omit conditional uncertainty. No additional variance
+of the estimated `v` is added: the original TMB first-order convention uses
+conditional variance evaluated at fitted covariance parameters. Removed cell
+coordinates are not fabricated in the reduced tape's raw joint precision.
+
+The initial implementation is restricted to complete, unit-weight Gaussian ML
+models with singleton ordinary cells and the supported ordinary/phylogenetic
+latent or response-column coefficient composition. Other families, repeated
+cells, missingness, incompatible maps, and other excluded model paths retain
+the existing integration route. This restriction is computational eligibility,
+not a new model keyword or public engine. Compiled likelihood/gradient/output
+checks and all twelve approved frozen fits pass. Evidence is recorded in
+`dev/tree-axis-latent/evidence/2026-08-30-cell-integration.json` and
+`tests/testthat/test-gaussian-cell-collapse.R`. This validates the named
+Gaussian compositions and first-order conditional uncertainty calculation;
+it does not establish parameter recovery or interval coverage. FG-20 remains
+partial for response-column coefficients. Package, publication and landing
+receipts remain separate gates.
 
 drmTMB's `03-likelihoods.md` is 1374 lines because they've
 validated many families. gllvmTMB's lives at this thinner

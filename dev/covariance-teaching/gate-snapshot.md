@@ -11,7 +11,7 @@ OWNS: vignettes/articles/covariance-correlation.Rmd, vignettes/articles/cross-fa
 - [x] G3: Static verification preserves evaluated R expressions and extractor numerical behavior
   CHECK: Rscript --vanilla dev/covariance-teaching/verify-invariants.R
   EXPECT: INVARIANTS_VERIFIED
-  EVIDENCE: invariants.log PASS; Luna negative controls detect expression edits and accidental evaluation.
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/z3437171/.codex/worktrees/4568/gllvmTMB; path=e453f830a327/38 entries; output=Spatial counterexample: same total covariance, different shared covariance and positive diagonals | INVARIANTS_VERIFIED
 
 - [x] G4: Spatial counterexample and final Noether mathematical review pass
   EVIDENCE: verify-invariants.R counterexample PASS; noether-review.md exact algebra and scope PASS.
@@ -25,11 +25,13 @@ OWNS: vignettes/articles/covariance-correlation.Rmd, vignettes/articles/cross-fa
 - [x] G7: Rendered corrections, wide labels and four actual alt attributes verified; Pat review passes
   EVIDENCE: verify-rendered.py PASS actual4 alts and local assets; direct4 PNG inspections; Pat PASS; browser local-file navigation policy-blocked, no workaround.
 
-- [ ] G8: One bounded local package check passes with retained receipt
-  EVIDENCE: pending
+- [x] G8: One bounded local package check passes with retained receipt
+  EVIDENCE: package-check.json PASS1311.453s;0E/0W/1unchanged-source NOTE; testthat FAIL0 WARN54 SKIP1190 PASS16067.
 
 - [x] G9: Rose consistency review and after-task/check-log evidence complete
   EVIDENCE: Rose source report PASS; after-task structural checker PASS; own check-log append after exact lease grant. Package and CI gates remain separate.
 
 - [ ] G10: Focused PR prepared; final candidate three-OS CI green; no merge or landing
   EVIDENCE: pending
+
+Post-push G10 evidence is stored on the PR and in local receipts/final-ci.json.

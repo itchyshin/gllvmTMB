@@ -10,6 +10,7 @@ dev/covariance-teaching/gate-snapshot.md
 dev/covariance-teaching/mechanical-review.md
 dev/covariance-teaching/noether-review.md
 dev/covariance-teaching/pat-review.md
+dev/covariance-teaching/plan-actual.md
 dev/covariance-teaching/receipt-summary.json
 dev/covariance-teaching/render.R
 dev/covariance-teaching/rendered-verification.json

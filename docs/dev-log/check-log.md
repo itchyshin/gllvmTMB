@@ -56972,8 +56972,10 @@ remain unchanged. SPA-02/FAM-20B/FG-18/RE-13 remain partial; no capability
 register promotion. Existing extract-Sigma commensurability wording is deferred
 outside this five-file slice.
 
-Package check is running with its separate30-minute cap; final-candidate
-manual3OS CI remains owed. No extra fits, recovery study, bootstrap/profile,
+Package check PASS in1311.453s within its separate30-minute cap:0 errors,
+0 warnings,1 unchanged-source logLik-import NOTE; testthat FAIL0/WARN54/
+SKIP1190/PASS16067. Final-candidate manual3OS CI is recorded on the PR
+and local final-ci receipt before readiness. No extra fits, recovery study, bootstrap/profile,
 release, deployment, merge or landing. See
 `docs/dev-log/after-task/2026-08-31-covariance-teaching.md` for receipts,
 failed setup attempts, Noether/Pat/Rose reviews and completion updates.

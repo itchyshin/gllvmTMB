@@ -1,7 +1,7 @@
 # Mechanical review: covariance teaching correction
 
-**Reviewer:** Luna  
-**Baseline:** `da6398a9d8df78c04dc4645dfa3fd4c3bd8d75e3`  
+**Reviewer:** Luna
+**Baseline:** `da6398a9d8df78c04dc4645dfa3fd4c3bd8d75e3`
 **Scope:** static review only; no R execution, fitting, compilation, commit, or source edit.
 
 ## Verdict

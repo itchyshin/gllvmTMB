@@ -1,8 +1,8 @@
 # After Task: covariance teaching correction
 
-**Branch:** `codex/covariance-teaching-20260831`  
-**Date:** 2026-08-30 local / 2026-08-31 UTC  
-**Status:** verification in progress; PR preparation only, no landing authorized.
+**Branch:** `codex/covariance-teaching-20260831`
+**Date:** 2026-08-30 local / 2026-08-31 UTC
+**Status:** local verification complete; final-candidate CI is recorded on the PR. No landing authorized.
 
 ## 1. Goal
 
@@ -100,9 +100,14 @@ explicitly different Psi companions.
   policy blocked local-file navigation; no workaround was attempted, so
   browser viewport/wrapping inspection is not claimed.
 - One `devtools::check(args="--no-manual", document=FALSE)` with a separate
-  30-minute cap: running; result pending.
-- Final-commit three-OS manual CI: pending. Routine workflow verified to be
-  Ubuntu-only; manual `full_matrix=true` is required for all three OSes.
+  30-minute cap: PASS in 1311.453 seconds (21.9 minutes), 0 errors / 0 warnings /
+  1 NOTE for the unchanged `deviance.gllvmTMB_multi` use of unimported `logLik`.
+  Testthat: FAIL0 / WARN54 / SKIP1190 / PASS16067. Test warnings are retained
+  separately from the zero R CMD check warnings.
+- Final-commit three-OS manual CI is the post-push gate: the exact SHA/run
+  and outcome are recorded on the PR and in local `receipts/final-ci.json`.
+  Routine workflow is Ubuntu-only; manual `full_matrix=true` is required.
+  No three-OS result is inferred from this local check.
 
 No standalone fit/test campaign, added wide fit, bootstrap, profile, model
 restart, deployment, release or merge was run. Existing focused checks for
@@ -156,7 +161,9 @@ rerun. A rendered-text verifier initially expected wording stronger than the
 approved requirement; it was corrected to check the actual target statement,
 with Noether/Rose's manual no-stability-overclaim review retained. A mechanical
 review briefly mistook a diff context heading for roxygen ownership; exact
-function-block and Rd inspection corrected the report.
+function-block and Rd inspection corrected the report. The staged whitespace
+check exposed hard-break spaces in two evidence files; these were removed
+before the final candidate. No package source or models changed after rendering.
 
 ## 11. Team Learning
 
@@ -182,8 +189,10 @@ for Noether; model labels were dispatch settings, not inferred from prose.
 
 ## 10. Known Residuals
 
-Complete the bounded package check, prepare the focused PR and obtain green
-three-OS CI on its final candidate commit. **STOP BEFORE MERGE/LANDING.**
+The bounded local package check is complete. The PR must have green
+three-OS CI on its final candidate commit before being marked ready. The
+post-push receipt lives on the PR and in local `receipts/final-ci.json`.
+**STOP BEFORE MERGE/LANDING.**
 No public site has been deployed or checked here; after separate landing
 approval, verify all three deployed pages. Raw logs and local rendered pages
 remain in this worktree. No models or confidence-interval claims were validated

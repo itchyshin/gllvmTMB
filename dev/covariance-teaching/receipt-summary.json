@@ -52,7 +52,9 @@
     "cwd": "/Users/z3437171/.codex/worktrees/4568/gllvmTMB",
     "cap_seconds": 1800,
     "started": "2026-08-30T20:28:10-0600",
-    "status": "running"
+    "status": "passed",
+    "exit_code": 0,
+    "elapsed_seconds": 1311.453
   },
   "spatial-models": {
     "name": "spatial-models",

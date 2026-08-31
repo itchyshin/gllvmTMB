@@ -24,15 +24,17 @@ shared ordinary unit tier (\code{latent(0 + trait | unit, d)}).}
 \item{contrasts}{if \code{TRUE}, also return the per-contrast (K-1)-vector (as a
 list column).}
 
-\item{link_residual}{passed to \code{\link[=extract_Sigma]{extract_Sigma()}}; \code{"auto"} (default) puts the
-nominal block on the observation scale via the \eqn{(\pi^2/6)(I+J)} softmax
-residual, making \code{multiple_r} commensurable with single-scale partners;
+\item{link_residual}{passed to \code{\link[=extract_Sigma]{extract_Sigma()}}; \code{"auto"} (default) adds the
+\eqn{(\pi^2/6)(I+J)} softmax residual to form a residual-augmented
+latent-liability (model-scale) association, not a correlation of observed
+responses; it applies the documented residual convention to the nominal
+block and each admitted partner;
 \code{"none"} uses the latent (loadings) scale. Note: with \code{"none"} and a
 loadings-only fit whose shared factor the contrast block spans (e.g. the
 block dimension >= the partner's), \code{multiple_r} degenerates to 1 (the
 partner is then a deterministic function of the block). This is correct but
 uninformative, which is why \code{"auto"} (full-rank via the residual) is the
-sensible default for the single-number summary; read the per-pair latent
+sensible default for the model-scale single-number summary; read the per-pair latent
 correlations from \code{\link[=extract_Sigma]{extract_Sigma()}} / \code{\link[=extract_correlations]{extract_correlations()}} instead.
 An ordinal-probit partner is not admitted with \code{"auto"}: its latent
 residual is already fixed at 1 by the threshold model, so adding another

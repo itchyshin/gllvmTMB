@@ -1,0 +1,131 @@
+{
+  "cross-family-correlations": {
+    "name": "cross-family-correlations",
+    "command": [
+      "Rscript",
+      "--vanilla",
+      "dev/covariance-teaching/render.R",
+      "cross-family-correlations"
+    ],
+    "cwd": "/Users/z3437171/.codex/worktrees/4568/gllvmTMB",
+    "cap_seconds": 300,
+    "started": "2026-08-30T20:26:51-0600",
+    "status": "passed",
+    "exit_code": 0,
+    "elapsed_seconds": 20.226
+  },
+  "setup": {
+    "name": "setup",
+    "command": [
+      "Rscript",
+      "--vanilla",
+      "dev/covariance-teaching/setup.R"
+    ],
+    "cwd": "/Users/z3437171/.codex/worktrees/4568/gllvmTMB",
+    "cap_seconds": 300,
+    "started": "2026-08-30T20:17:55-0600",
+    "status": "failed",
+    "exit_code": 1,
+    "elapsed_seconds": 35.326
+  },
+  "setup-library-argument": {
+    "name": "setup-library-argument",
+    "command": [
+      "Rscript",
+      "--vanilla",
+      "dev/covariance-teaching/setup.R"
+    ],
+    "cwd": "/Users/z3437171/.codex/worktrees/4568/gllvmTMB",
+    "cap_seconds": 300,
+    "started": "2026-08-30T20:21:11-0600",
+    "status": "passed",
+    "exit_code": 0,
+    "elapsed_seconds": 98.701
+  },
+  "package-check": {
+    "name": "package-check",
+    "command": [
+      "Rscript",
+      "--vanilla",
+      "dev/covariance-teaching/check-package.R"
+    ],
+    "cwd": "/Users/z3437171/.codex/worktrees/4568/gllvmTMB",
+    "cap_seconds": 1800,
+    "started": "2026-08-30T20:28:10-0600",
+    "status": "running"
+  },
+  "spatial-models": {
+    "name": "spatial-models",
+    "command": [
+      "Rscript",
+      "--vanilla",
+      "dev/covariance-teaching/render.R",
+      "spatial-models"
+    ],
+    "cwd": "/Users/z3437171/.codex/worktrees/4568/gllvmTMB",
+    "cap_seconds": 300,
+    "started": "2026-08-30T20:27:44-0600",
+    "status": "passed",
+    "exit_code": 0,
+    "elapsed_seconds": 10.254
+  },
+  "covariance-correlation": {
+    "name": "covariance-correlation",
+    "command": [
+      "Rscript",
+      "--vanilla",
+      "dev/covariance-teaching/render.R",
+      "covariance-correlation"
+    ],
+    "cwd": "/Users/z3437171/.codex/worktrees/4568/gllvmTMB",
+    "cap_seconds": 600,
+    "started": "2026-08-30T20:24:27-0600",
+    "status": "failed",
+    "exit_code": 1,
+    "elapsed_seconds": 12.012
+  },
+  "setup-direct-install": {
+    "name": "setup-direct-install",
+    "command": [
+      "Rscript",
+      "--vanilla",
+      "dev/covariance-teaching/setup.R"
+    ],
+    "cwd": "/Users/z3437171/.codex/worktrees/4568/gllvmTMB",
+    "cap_seconds": 300,
+    "started": "2026-08-30T20:20:09-0600",
+    "status": "failed",
+    "exit_code": 1,
+    "elapsed_seconds": 11.498
+  },
+  "setup-corrected": {
+    "name": "setup-corrected",
+    "command": [
+      "Rscript",
+      "--vanilla",
+      "dev/covariance-teaching/setup.R"
+    ],
+    "cwd": "/Users/z3437171/.codex/worktrees/4568/gllvmTMB",
+    "cap_seconds": 300,
+    "started": "2026-08-30T20:19:13-0600",
+    "status": "failed",
+    "exit_code": 1,
+    "elapsed_seconds": 26.973
+  },
+  "covariance-reconciliation": {
+    "raw_attempt": "covariance-correlation.json",
+    "raw_status": "failed after successful HTML render due to entry-count oracle",
+    "render_status": "passed",
+    "render_attempts": 1,
+    "top_level_fits": 3,
+    "convergence": [
+      0,
+      0,
+      0
+    ],
+    "elapsed_seconds": 12.012,
+    "nested_forwarding_source": "R/gllvmTMB.R:762-874",
+    "html_sha256": "7478a2be8d896588655dcd842fa6bec61d6397f00163215129370d663853d87e",
+    "rerendered": false
+  }
+}

@@ -1,6 +1,6 @@
 ---
 title: "Cross-family correlations and environmental predictors"
-description: "Fit one predictor-informed latent model across five response families, recover shared correlations, and interpret rotation-invariant trait effects."
+description: "Fit one predictor-informed latent model across five response families, use one seeded known-truth check, and interpret rotation-invariant trait effects."
 tier: 1
 output:
   rmarkdown::html_vignette:
@@ -31,8 +31,9 @@ responses use different distributions? Yes: one ordinary `latent()` block can
 couple continuous, binary, count, ordered, and unordered traits, while
 `lv = ~ x` associates the shared axes with a unit-level predictor.
 
-The long-data call is the canonical form; the equivalent wide-data formula
-uses `traits(...)` through the same `gllvmTMB()` entry point:
+The long-data call is the canonical worked path. The unevaluated wide-data
+illustration below is a structural translation through the same `gllvmTMB()`
+entry point; this article does not demonstrate long/wide fit parity.
 
 ```{r first-look, eval=FALSE}
 fit_long <- gllvmTMB(
@@ -58,14 +59,16 @@ and can the model report the correlations *between* those families?
 
 This page covers only the **ordinary-unit cross-family route**: one
 `multinomial()` trait and its non-nominal partners share
-`latent(0 + trait | unit, d, lv = ~ x)`. A powered simulation demonstrates
-point recovery for the shared covariance and predictor effect. Separate
+`latent(0 + trait | unit, d, lv = ~ x)`. One seeded realization provides a
+known-truth teaching check for the shared covariance and predictor effect; it
+is not repeated-simulation recovery evidence. Separate
 route-health canaries exercise every registered native family, but they are not
 recovery or interval studies. This page does not admit multiple nominal traits,
 structured tiers, augmented slopes, fixed `X + X_lv`, missing responses or LV
 predictors, REML, or calibrated arbitrary-composition intervals. The five-family latent
-covariance is valid, but the one-number observation-scale nominal summary is
-shown on a non-ordinal subset because the current automatic residual convention
+covariance is valid, but the one-number residual-augmented latent-liability
+(model-scale) nominal summary is shown on a non-ordinal subset because the
+current automatic residual convention
 is not coherent for an ordinal-probit partner.
 
 ## Why put different families on one latent scale
@@ -74,7 +77,7 @@ The motivation is the same one that drives joint species distribution models and
 phenotypic-integration analyses: the interesting quantity is not each response
 on its own but how they **covary**. If a species that is more abundant is also
 more likely to be present, and its dominant habitat class shifts with both, that
-joint structure is the signal. A shared latent factor $\mathbf u_i$ is the
+joint structure is the signal. A shared latent factor $\mathbf z_i$ is the
 device that couples the families: every response loads on the same axes, so a
 correlation *between families* is well-defined even though the families live on
 different observation scales.
@@ -99,7 +102,7 @@ Each pseudo-trait $t$ uses its own response family and link:
 $$
 \eta_{it} = \mu_t + \boldsymbol\lambda_t^{\!\top}\mathbf z_i,
 \qquad
-y_{it} \mid \mathbf u_i \sim \text{family}_t(\,g_t^{-1}(\eta_{it})\,).
+y_{it} \mid \mathbf z_i \sim \text{family}_t(\,g_t^{-1}(\eta_{it})\,).
 $$
 
 Gaussian, binomial, and Poisson traits each occupy a single row of the loading
@@ -317,14 +320,16 @@ data.frame(
 )
 ```
 
-The recovered correlations track the truth across all five families,
-including the two nominal contrasts `cat:2` and `cat:3` and their sign — a
-strong positive `g ~ cat:2`, a negative `g ~ cat:3`. The remaining error is
-sampling noise at this `N`; larger `N` (or more replicates per unit) shrinks it.
+In this seeded realization, the estimated correlations track the known truth
+across all five families, including the two nominal contrasts `cat:2` and
+`cat:3` and their sign — a strong positive `g ~ cat:2`, a negative
+`g ~ cat:3`. Differences here can reflect sampling, estimation, and
+optimization. They do not establish repeated-simulation recovery or guarantee
+that increasing the number of units or replicates will reduce a discrepancy.
 Every off-diagonal pair, not just the eight highlighted here, is available in
 `R_hat`.
 
-```{r recover-plot, fig.width = 5.2, fig.height = 5.2, fig.cap = "True versus recovered latent cross-family correlations, all off-diagonal pairs. The line is the identity; points near it indicate faithful recovery in this powered run."}
+```{r recover-plot, fig.width = 5.2, fig.height = 5.2, fig.cap = "Known versus estimated latent cross-family correlations in one seeded realization, for all off-diagonal pairs. The line is the identity.", fig.alt = "Scatterplot of estimated versus known off-diagonal latent correlations for one seeded realization. A dashed diagonal identity line runs from minus one to one; points close to it have similar estimated and known correlations in this realization."}
 offd <- upper.tri(R_true)
 plot(R_true[offd], R_hat[offd],
      xlab = "true correlation", ylab = "recovered correlation",
@@ -347,7 +352,8 @@ already fixes the latent residual at one, so an `"auto"` summary would add that
 unit residual a second time. `extract_cross_correlations()` therefore refuses
 that combination rather than attenuating the reported association. We retain
 the valid five-family latent-covariance result above, then refit the same data
-without the ordinal trait for the observation-scale one-number summary.
+without the ordinal trait for the residual-augmented latent-liability
+(model-scale) one-number summary.
 
 ```{r cross-cor}
 ordinal_refusal <- tryCatch(
@@ -375,7 +381,25 @@ xc <- extract_cross_correlations(
 xc
 ```
 
-The single-number summary is reported on the **observation scale**. The
+For wide data, the non-ordinal summary subset has the following unevaluated
+structural translation. It is an illustration only: this article fits the
+summary subset in long form and does not demonstrate long/wide parity.
+
+```{r cross-cor-wide, eval = FALSE}
+dat_summary_wide <- dat_wide[c("unit", "replicate", "x", "g", "b", "p", "cat")]
+fit_summary_wide <- gllvmTMB(
+  traits(g, b, p, cat) ~
+    1 + latent(1 | unit, d = 3, unique = FALSE, lv = ~ x),
+  data = dat_summary_wide,
+  family = list(g = gaussian(), b = binomial(), p = poisson(),
+                cat = multinomial()),
+  unit = "unit",
+  silent = TRUE
+)
+```
+
+The single-number summary is a **residual-augmented latent-liability
+(model-scale) association**, not a correlation of observed responses. The
 `"auto"` route adds the applicable family-specific residual for each admitted
 partner and the full softmax residual matrix for the nominal block. This is the
 deliberate default, and the reason is in the next section.
@@ -387,40 +411,41 @@ These are limits of the capability as it stands at 0.6, not incidental notes.
 - **Fitted $\boldsymbol\Psi$ and the fixed link residual are different objects.**
   The **between-unit** $\boldsymbol\Psi$ inside `latent()` is an estimated
   among-unit diagonal companion. The extractor's $R_{\mathrm{link}}$ is a
-  separate family-specific observation-scale addition; for the nominal block it
-  is $(\pi^2/6)(\mathbf I+\mathbf J)$. With one categorical draw per unit the
+  separate family-specific residual addition on the latent-liability/model
+  scale; for the nominal block it is $(\pi^2/6)(\mathbf I+\mathbf J)$. With one categorical draw per unit the
   nominal contrast $\boldsymbol\Psi$ is not identified. Replication can identify
   it in principle, but the current engine conservatively maps it off even in the
   replicated design here; admitted partner diagonals remain fitted where the
   model identifies them. A replication-aware multinomial refinement is future
   work. Either way the pairwise latent correlations (the matrix) are the
-  recovered quantities. See
+  quantities compared with known truth in this teaching check. See
   [the vocabulary of $\boldsymbol\Psi$](gllvm-vocabulary.html) and
   [covariance and correlation](covariance-correlation.html).
 
-- **The single-number summary belongs on the observation scale.** For an
-  admitted non-ordinal partner set, the reference-invariant multiple correlation
-  uses each applicable family-specific residual and the softmax residual
+- **The single-number summary is residual-augmented latent-liability (model)
+  scale, not observed-response scale.** For an admitted non-ordinal partner
+  set, the reference-invariant multiple correlation uses each applicable
+  family-specific residual and the softmax residual
   $(\pi^2/6)(\mathbf I + \mathbf J)$ — the
   covariance of the differenced Gumbel errors in the random-utility
   representation of the softmax (McFadden 1974), which reduces to the binomial's
   $\pi^2/3$ when $K = 2$. On the **latent** scale (`link_residual = "none"`) the
   multiple correlation degenerates toward 1 whenever the $K-1$ contrast block
   spans the partner, because a $(K-1)$-dimensional block can align with almost
-  any single direction. That is why the observation scale is the sensible default
-  for the one-number summary, while the per-pair latent correlations remain the
-  right object for the matrix. Ordinal-probit is not admitted on this automatic
+  any single direction. That is why the residual-augmented model-scale
+  association is the sensible default for the one-number summary, while the
+  per-pair latent correlations remain the right object for the matrix.
+  Ordinal-probit is not admitted on this automatic
   summary route because its residual is already fixed by the threshold model;
   the typed refusal above prevents double counting.
 
-- **Recovering a nominal trait's covariance is data-hungry.** A single
-  categorical draw carries little information about a $(K-1)$-dimensional
-  liability. With one draw per unit the reduced-rank estimate can rail at
-  $\pm 1$; this is an information limitation, not a bug. It resolves with
-  replication (multiple draws per unit, as here) or many units. The powered
-  regime in this article — `r 500` units $\times$ `r 6` replicates — is what
-  makes the recovery above possible; do not expect the same at one observation
-  per unit.
+- **Nominal-trait covariance can be weakly informed.** A single categorical
+  draw carries little information about a $(K-1)$-dimensional liability, and a
+  reduced-rank estimate can rail at $\pm 1$. This article's `r 500` units
+  $\times$ `r 6` replicates provide one seeded teaching realization, not
+  repeated-simulation evidence about the effects of more units or replication.
+  Do not extrapolate its agreement with known truth to one observation per unit
+  or to a new data-generating regime.
 
 - **Intervals are cell-specific, not universal.** Existing evidence calibrates
   selected rank-1 Gaussian-anchor `B_lv` cells. It does not calibrate the

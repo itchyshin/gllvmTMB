@@ -56947,3 +56947,33 @@ package-source-comparison.json and package-warning-comparison.json under the
 coefficient-standardization evidence root. No further fit or render was run.
 Existing draft PR1229 will receive the final candidate; exact-head manual
 three-OS CI remains required. Landing and live deployment remain unapproved.
+
+## 2026-08-31 — approved covariance teaching correction (Codex; PR only)
+
+Branch `codex/covariance-teaching-20260831`, baseline `da6398a9`.
+Exact-path lease `codex:covariance-teaching-4568` was refreshed and granted
+before this append. Tree-axis and older Cursor PR files are unchanged.
+Five scientific corrections and three reader issues are mapped in
+`dev/covariance-teaching/requirement-map.md`; no numerical/model/API change.
+
+Executed `Rscript --vanilla dev/covariance-teaching/verify-invariants.R`,
+`devtools::document(quiet=TRUE)`, `pkgdown::check_pkgdown()`, no-fit harness
+checks and the three approved `pkgdown::build_article` calls. Nine model fits,
+all optimizer convergence0; process42.492s/block207.254s. Covariance raw wrapper
+failure remains retained: nested wide forwarding produced four entries for
+three model fits, independently reconciled without rerender/refit. All four
+actual HTML alt attributes and local presentation assets verified; four PNGs
+inspected. No browser wrapping claim after local-file policy refusal.
+
+Exact `rg` patterns and matches: `dev/covariance-teaching/static-scans.txt`
+(reproducible with `sh dev/covariance-teaching/static-scans.sh`). The ordinary
+extractor roxygen/Rd, Sigma help, src, fixtures, tests and keyword defaults
+remain unchanged. SPA-02/FAM-20B/FG-18/RE-13 remain partial; no capability
+register promotion. Existing extract-Sigma commensurability wording is deferred
+outside this five-file slice.
+
+Package check is running with its separate30-minute cap; final-candidate
+manual3OS CI remains owed. No extra fits, recovery study, bootstrap/profile,
+release, deployment, merge or landing. See
+`docs/dev-log/after-task/2026-08-31-covariance-teaching.md` for receipts,
+failed setup attempts, Noether/Pat/Rose reviews and completion updates.

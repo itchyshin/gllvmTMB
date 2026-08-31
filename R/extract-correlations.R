@@ -806,15 +806,17 @@ extract_correlations <- function(
 #' @param level covariance tier. Only the ordinary `"unit"` tier is admitted.
 #' @param contrasts if `TRUE`, also return the per-contrast (K-1)-vector (as a
 #'   list column).
-#' @param link_residual passed to [extract_Sigma()]; `"auto"` (default) puts the
-#'   nominal block on the observation scale via the \eqn{(\pi^2/6)(I+J)} softmax
-#'   residual, making `multiple_r` commensurable with single-scale partners;
+#' @param link_residual passed to [extract_Sigma()]; `"auto"` (default) adds the
+#'   \eqn{(\pi^2/6)(I+J)} softmax residual to form a residual-augmented
+#'   latent-liability (model-scale) association, not a correlation of observed
+#'   responses; it applies the documented residual convention to the nominal
+#'   block and each admitted partner;
 #'   `"none"` uses the latent (loadings) scale. Note: with `"none"` and a
 #'   loadings-only fit whose shared factor the contrast block spans (e.g. the
 #'   block dimension >= the partner's), `multiple_r` degenerates to 1 (the
 #'   partner is then a deterministic function of the block). This is correct but
 #'   uninformative, which is why `"auto"` (full-rank via the residual) is the
-#'   sensible default for the single-number summary; read the per-pair latent
+#'   sensible default for the model-scale single-number summary; read the per-pair latent
 #'   correlations from [extract_Sigma()] / [extract_correlations()] instead.
 #'   An ordinal-probit partner is not admitted with `"auto"`: its latent
 #'   residual is already fixed at 1 by the threshold model, so adding another
@@ -922,7 +924,7 @@ extract_cross_correlations <- function(fit, level = "unit", contrasts = FALSE,
     ordinal_traits <- .cross_ordinal_partner_traits(fit)
     if (length(ordinal_traits) > 0L) {
       cli::cli_abort(c(
-        "The observation-scale nominal summary is unavailable with an ordinal-probit partner.",
+        "The residual-augmented model-scale nominal summary is unavailable with an ordinal-probit partner.",
         "i" = "Ordinal-probit partner traits: {paste(ordinal_traits, collapse = ', ')}.",
         "i" = "The threshold model already fixes each ordinal latent residual at 1; {.code link_residual = \"auto\"} would add it again.",
         ">" = "Use a supported non-ordinal partner set for {.fn extract_cross_correlations}, or report latent-scale pairwise quantities with {.code extract_Sigma(..., part = \"shared\", link_residual = \"none\")}."

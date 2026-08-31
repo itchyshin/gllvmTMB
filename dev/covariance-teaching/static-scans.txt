@@ -1,0 +1,106 @@
+PATTERN: observation.scale|commensurab|sampling variation|resolves with replication|makes the recovery
+vignettes/articles/cross-family-correlations.Rmd:83:different observation scales.
+PATTERN: fig.alt|eval *= *FALSE|structural translation|parity
+vignettes/articles/cross-family-correlations.Rmd:35:illustration below is a structural translation through the same `gllvmTMB()`
+vignettes/articles/cross-family-correlations.Rmd:36:entry point; this article does not demonstrate long/wide fit parity.
+vignettes/articles/cross-family-correlations.Rmd:38:```{r first-look, eval=FALSE}
+vignettes/articles/cross-family-correlations.Rmd:332:```{r recover-plot, fig.width = 5.2, fig.height = 5.2, fig.cap = "Known versus estimated latent cross-family correlations in one seeded realization, for all off-diagonal pairs. The line is the identity.", fig.alt = "Scatterplot of estimated versus known off-diagonal latent correlations for one seeded realization. A dashed diagonal identity line runs from minus one to one; points close to it have similar estimated and known correlations in this realization."}
+vignettes/articles/cross-family-correlations.Rmd:385:structural translation. It is an illustration only: this article fits the
+vignettes/articles/cross-family-correlations.Rmd:386:summary subset in long form and does not demonstrate long/wide parity.
+vignettes/articles/cross-family-correlations.Rmd:388:```{r cross-cor-wide, eval = FALSE}
+vignettes/articles/covariance-correlation.Rmd:71:```{r early-fit-pattern, eval = FALSE}
+vignettes/articles/covariance-correlation.Rmd:88:```{r early-fit-pattern-wide, eval = FALSE}
+vignettes/articles/covariance-correlation.Rmd:101:These are unevaluated structural translations only; the worked long/wide
+vignettes/articles/covariance-correlation.Rmd:103:parity for the no-residual subset.
+vignettes/articles/covariance-correlation.Rmd:166:```{r load-example, eval = FALSE}
+vignettes/articles/covariance-correlation.Rmd:290:```{r corr-comparison, fig.width = 7.5, fig.height = 5.2, fig.cap = "Trait-pair correlation errors for the no-residual latent subset and the ordinary latent model with Psi. Positive values mean the fitted correlation is larger than truth; zero means exact recovery for that pair.", fig.alt = "Comparison plot of trait-pair correlation errors for two fitted models. Each point is a trait pair; values above zero overestimate the known correlation and values below zero underestimate it."}
+vignettes/articles/covariance-correlation.Rmd:375:```{r sigma-table-plot, fig.width = 7, fig.height = 3.8, fig.cap = "Upper-triangle off-diagonal entries of Sigma_unit from the ordinary latent model with Psi. Open points mark point estimates without finite interval bounds; this figure does not add uncertainty beyond the rows supplied to the plot.", fig.alt = "Dot plot of upper-triangle off-diagonal unit-level covariance estimates for trait pairs. Open points denote estimates with no finite interval bounds."}
+vignettes/articles/covariance-correlation.Rmd:435:```{r communality-correlation-matrix, fig.width = 7.4, fig.height = 5.1, fig.cap = "Pairwise correlations from the ordinary latent model with Psi. Upper cells show point estimates; lower cells display the Fisher-z interval columns already present in the extractor output.", fig.alt = "Square trait-by-trait correlation matrix. Upper-triangle cells show point estimates; lower-triangle cells show the Fisher-z interval columns supplied by the extractor."}
+vignettes/articles/covariance-correlation.Rmd:494:```{r binomial-demo, eval = FALSE}
+vignettes/articles/covariance-correlation.Rmd:533:The matching wide-data formula is an unevaluated structural translation, not a
+vignettes/articles/covariance-correlation.Rmd:534:demonstration of long/wide parity. Here `df_wide_repeated` denotes a wide data
+vignettes/articles/covariance-correlation.Rmd:537:```{r two-level-wide, eval = FALSE}
+vignettes/articles/spatial-models.Rmd:43:```{r quick-start, eval = FALSE}
+vignettes/articles/spatial-models.Rmd:87:```{r project-coordinates, eval = FALSE}
+vignettes/articles/spatial-models.Rmd:161:```{r plot-mesh, fig.cap = "SPDE mesh triangulating the simulated sites: edges show the triangulation, vertices carry the spatial field. Axes are in the site coordinate units.", fig.alt = "Triangulated mesh of many small triangles covering a scatter of site locations, with a coarser buffer of triangles around the edge."}
+vignettes/articles/spatial-models.Rmd:174:```{r wide-mesh-data, eval = FALSE}
+vignettes/articles/spatial-models.Rmd:264:```{r range-plot, fig.cap = "The fitted isotropic practical range drawn as a circle around the origin. Equal axes reflect the assumed isotropic model (H = I); the plot displays a model assumption plus one fitted range, not an estimate of directional anisotropy.", fig.alt = "A single circle centred on the origin with equal x and y axes, whose radius is the fitted practical range."}
+vignettes/articles/spatial-models.Rmd:330:The matching wide-data formulas are unevaluated structural translations. They
+vignettes/articles/spatial-models.Rmd:332:does not demonstrate long/wide fit parity for either correlated alternative:
+vignettes/articles/spatial-models.Rmd:334:```{r correlated-spatial-fits-wide, eval = FALSE}
+PATTERN: Sigma_B|Sigma_W|Lambda_B|Lambda_W|latent\(|unique\(|indep\(|dep\(
+vignettes/articles/cross-family-correlations.Rmd:30:responses use different distributions? Yes: one ordinary `latent()` block can
+vignettes/articles/cross-family-correlations.Rmd:40:  value ~ 0 + trait + latent(0 + trait | unit, d = 3, unique = FALSE, lv = ~ x),
+vignettes/articles/cross-family-correlations.Rmd:44:  traits(g, b, p, o, cat) ~ 1 + latent(1 | unit, d = 3, unique = FALSE, lv = ~ x),
+vignettes/articles/cross-family-correlations.Rmd:62:`latent(0 + trait | unit, d, lv = ~ x)`. One seeded realization provides a
+vignettes/articles/cross-family-correlations.Rmd:129:`latent()` can carry a **between-unit** trait-specific variance $\boldsymbol\Psi$
+vignettes/articles/cross-family-correlations.Rmd:254:  value ~ 0 + trait + latent(0 + trait | unit, d = 3, unique = FALSE, lv = ~ x),
+vignettes/articles/cross-family-correlations.Rmd:370:  value ~ 0 + trait + latent(0 + trait | unit, d = 3, unique = FALSE, lv = ~ x),
+vignettes/articles/cross-family-correlations.Rmd:392:    1 + latent(1 | unit, d = 3, unique = FALSE, lv = ~ x),
+vignettes/articles/cross-family-correlations.Rmd:412:  The **between-unit** $\boldsymbol\Psi$ inside `latent()` is an estimated
+man/extract_cross_correlations.Rd:20:shared ordinary unit tier (\code{latent(0 + trait | unit, d)}).}
+man/extract_cross_correlations.Rd:119:  value ~ 0 + trait + latent(0 + trait | unit, d = 1, unique = TRUE),
+vignettes/articles/spatial-models.Rmd:37:uses `spatial_indep()`: *spatial* identifies the
+vignettes/articles/spatial-models.Rmd:45:  value ~ 0 + trait + spatial_indep(0 + trait | site),
+vignettes/articles/spatial-models.Rmd:204:  value ~ 0 + trait + spatial_indep(0 + trait | site),
+vignettes/articles/spatial-models.Rmd:214:formula uses `spatial_indep(1 | site)`; the formula expander creates the same
+vignettes/articles/spatial-models.Rmd:231:    1 + spatial_indep(1 | site),
+vignettes/articles/spatial-models.Rmd:294:| `spatial_indep(..., common = TRUE)` | Should all traits have one common spatial-field variance, with no cross-trait spatial covariance? |
+vignettes/articles/spatial-models.Rmd:295:| `spatial_indep()` | Should traits have separate spatial-field variances but zero cross-trait spatial covariance? |
+vignettes/articles/spatial-models.Rmd:296:| `spatial_latent(..., d = K)` | Can $K$ shared spatial axes describe cross-trait spatial covariance? |
+vignettes/articles/spatial-models.Rmd:297:| `spatial_dep()` | Should the model estimate a full cross-trait spatial covariance? |
+vignettes/articles/spatial-models.Rmd:300:first row. Use `spatial_indep(..., common = TRUE)` in new code.
+vignettes/articles/spatial-models.Rmd:303:`spatial_indep()` to `spatial_latent()` or `spatial_dep()` in the same formula;
+vignettes/articles/spatial-models.Rmd:312:    spatial_latent(0 + trait | site, d = 2, unique = TRUE),
+vignettes/articles/spatial-models.Rmd:321:  value ~ 0 + trait + spatial_dep(0 + trait | site),
+vignettes/articles/spatial-models.Rmd:337:    1 + spatial_latent(1 | site, d = 2, unique = TRUE),
+vignettes/articles/spatial-models.Rmd:345:  traits(trait_1, trait_2, trait_3) ~ 1 + spatial_dep(1 | site),
+vignettes/articles/spatial-models.Rmd:386:`spatial_dep()` estimates the full
+vignettes/articles/spatial-models.Rmd:420:| How does the SPDE keyword map to the engine? | [`spatial_indep()` reference](../reference/spatial_indep.html) |
+vignettes/articles/covariance-correlation.Rmd:60:In ordinary `latent()` fits, gllvmTMB estimates both the shared
+vignettes/articles/covariance-correlation.Rmd:62:`latent(..., unique = FALSE)` only when you deliberately want the
+vignettes/articles/covariance-correlation.Rmd:66:This article is about `Psi` in a decomposed `latent()` model. It is not a
+vignettes/articles/covariance-correlation.Rmd:69:use `indep()` so the intent is visible in the formula.
+vignettes/articles/covariance-correlation.Rmd:74:    latent(0 + trait | individual, d = 2, unique = FALSE),
+vignettes/articles/covariance-correlation.Rmd:79:  value ~ 0 + trait + latent(0 + trait | individual, d = 2),
+vignettes/articles/covariance-correlation.Rmd:91:    1 + latent(1 | individual, d = 2),
+vignettes/articles/covariance-correlation.Rmd:96:    1 + latent(1 | individual, d = 2, unique = FALSE),
+vignettes/articles/covariance-correlation.Rmd:102:comparison below evaluates the ordinary `latent()` model and does not establish
+vignettes/articles/covariance-correlation.Rmd:108:you extract. For the ordinary `latent()` model, the implied trait covariance is
+vignettes/articles/covariance-correlation.Rmd:118:`latent()` term. $\boldsymbol\Psi$ is the $T \times T$ diagonal matrix of
+vignettes/articles/covariance-correlation.Rmd:140:| Gaussian model | `value ~ 0 + trait + latent(0 + trait | individual, d = 2)` | A reduced-rank multivariate model for the observed traits. |
+vignettes/articles/covariance-correlation.Rmd:142:| $\boldsymbol\Lambda_\text{level}$ | `latent(..., d = K)` | Shared axes: traits that rise and fall together across units. |
+vignettes/articles/covariance-correlation.Rmd:144:| $\boldsymbol\Psi_\text{level}$ and $\psi_{tt}$ | default `latent()` Psi; `extract_Sigma_table(fit, level = "unit", part = "unique")` | Trait-specific variance that keeps correlation denominators honest. |
+vignettes/articles/covariance-correlation.Rmd:158:* `Model A`: `latent(0 + trait | individual, d = 2, unique = FALSE)` (no Psi)
+vignettes/articles/covariance-correlation.Rmd:159:* `Model B`: `latent(0 + trait | individual, d = 2)` (default Psi)
+vignettes/articles/covariance-correlation.Rmd:212:# (latent() carries the per-trait Psi). Written explicitly so the contrast is
+vignettes/articles/covariance-correlation.Rmd:213:# unambiguous under the 0.2.0 grammar where latent() carries Psi by default.
+vignettes/articles/covariance-correlation.Rmd:214:form_A <- value ~ 0 + trait + latent(0 + trait | individual, d = 2, unique = FALSE)
+vignettes/articles/covariance-correlation.Rmd:215:form_B <- value ~ 0 + trait + latent(0 + trait | individual, d = 2)
+vignettes/articles/covariance-correlation.Rmd:225:  1 + latent(1 | individual, d = 2)
+vignettes/articles/covariance-correlation.Rmd:412:identically 1 and tells you nothing. Ordinary `latent()` gives the
+vignettes/articles/covariance-correlation.Rmd:464:appropriate to the estimand. Use `latent()` at a level when its cross-trait
+vignettes/articles/covariance-correlation.Rmd:466:$\Sigma = \Lambda\Lambda^{\!\top} + \boldsymbol\Psi$; use `indep()` when
+vignettes/articles/covariance-correlation.Rmd:501:`latent()`, which includes the diagonal Psi companion by default. For count, mixed-family,
+vignettes/articles/covariance-correlation.Rmd:506:## Two-level (between + within) models: two `latent()` terms
+vignettes/articles/covariance-correlation.Rmd:508:For repeated-measures data, use `latent()` at a level when a shared
+vignettes/articles/covariance-correlation.Rmd:516:    latent(0 + trait | individual, d = d_B) +
+vignettes/articles/covariance-correlation.Rmd:517:    latent(0 + trait | obs_id, d = d_W),
+vignettes/articles/covariance-correlation.Rmd:530:If a participating level is intended to be diagonal, specify `indep()` there
+vignettes/articles/covariance-correlation.Rmd:540:    1 + latent(1 | individual, d = d_B) +
+vignettes/articles/covariance-correlation.Rmd:541:    latent(1 | obs_id, d = d_W),
+vignettes/articles/covariance-correlation.Rmd:565:row), include `indep(0 + trait | obs_id)` in the formula, pass
+vignettes/articles/covariance-correlation.Rmd:575:| Cross-trait correlations on a Gaussian / lognormal / Gamma fit | `latent()` at levels where shared cross-trait structure is intended; `indep()` for diagonal levels | `latent(..., unique = FALSE)` omits Psi and can inflate correlations. |
+vignettes/articles/covariance-correlation.Rmd:576:| Correlations on a binary fit | Choose `latent()` for shared cross-trait structure or `indep()` for a diagonal tier; use `link_residual = "auto"` for the marginal latent scale | Implicit residual depends on link (π²/3, 1, π²/6); additional variance components need an estimand and evidence. |
+vignettes/articles/covariance-correlation.Rmd:577:| Phylogenetic decomposition | folded `phylo_latent(..., unique = TRUE)` for the phylogenetic tier; ordinary `latent()` for the non-phylogenetic species tier | $\Omega = \Sigma_\text{phy} + \Sigma_\text{non}$, with each $\Sigma$ using shared + `Psi` pieces. |
+R/extract-correlations.R:317:#'       directly with no link-residual addition. For ordinary `latent()`
+R/extract-correlations.R:374:#'   Lambda_B = matrix(c(0.9, 0.4, -0.3, 0.5), 4, 1),
+R/extract-correlations.R:378:#'   value ~ 0 + trait + latent(0 + trait | site, d = 1),
+R/extract-correlations.R:480:      "i" = "Add a {.code phylo_latent(species, d = K)} term (among-category phylogenetic surface) or a shared {.code latent(0 + trait | unit, d = k)} term (cross-family nominal <-> other correlations).",
+R/extract-correlations.R:571:      "i" = "Add a {.code latent() / indep() / phylo_*() / spatial_*()} term to the formula."
+R/extract-correlations.R:618:    boot_levels <- unique(intersect(tier, c("B", "W", "phy")))
+R/extract-correlations.R:805:#'   shared ordinary unit tier (`latent(0 + trait | unit, d)`).
+R/extract-correlations.R:880:#'   value ~ 0 + trait + latent(0 + trait | unit, d = 1, unique = TRUE),
+R/extract-correlations.R:917:      ">" = "Fit one shared {.code latent(0 + trait | unit, d = k)} term and request {.code level = \"unit\"}."
+R/extract-correlations.R:947:  mn_bases <- unique(base[is_mn])
+PATTERN: phylo\(|gr\(|meta\(|block_V\(|phylo_rr\(|in prep|in preparation

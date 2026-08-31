@@ -50,10 +50,12 @@ axes are fitted. `Sigma` is not the model itself; it is the trait
 covariance implied by that model.
 
 The shared axes are identified only up to an orthogonal rotation and sign flip,
-so the individual loadings $\boldsymbol{\lambda}_t$ are not uniquely defined. But
-$\boldsymbol\Lambda\boldsymbol\Lambda^{\!\top}$ — and therefore $\boldsymbol\Sigma$,
-the correlations, and communality — are rotation-invariant, and are the
-quantities to report.
+so the individual loadings $\boldsymbol{\lambda}_t$ are not uniquely defined.
+$\boldsymbol\Lambda\boldsymbol\Lambda^{\!\top}$ is rotation-invariant, but
+that property alone does not establish a unique split between shared and
+diagonal variance. Report the total $\boldsymbol\Sigma$ for covariance and
+correlation targets; interpret shared components and communality as a chosen
+decomposition.
 
 In ordinary `latent()` fits, gllvmTMB estimates both the shared
 loading part and the diagonal Psi part by default. Use
@@ -89,7 +91,16 @@ fit_latent_default <- gllvmTMB(
     1 + latent(1 | individual, d = 2),
   data = df_wide, unit = "individual"
 )
+fit_no_residual_wide <- gllvmTMB(
+  traits(boldness, exploration, activity, aggression, sociability) ~
+    1 + latent(1 | individual, d = 2, unique = FALSE),
+  data = df_wide, unit = "individual"
+)
 ```
+
+These are unevaluated structural translations only; the worked long/wide
+comparison below evaluates the ordinary `latent()` model and does not establish
+parity for the no-residual subset.
 
 ## From model to Sigma
 
@@ -276,7 +287,7 @@ ext_A$note  # advisory: diagonal Psi omitted by unique = FALSE
 
 ## The correlations side by side
 
-```{r corr-comparison, fig.width = 7.5, fig.height = 5.2, fig.cap = "Trait-pair correlation errors for the no-residual latent subset and the ordinary latent model with Psi. Positive values mean the fitted correlation is larger than truth; zero means exact recovery for that pair."}
+```{r corr-comparison, fig.width = 7.5, fig.height = 5.2, fig.cap = "Trait-pair correlation errors for the no-residual latent subset and the ordinary latent model with Psi. Positive values mean the fitted correlation is larger than truth; zero means exact recovery for that pair.", fig.alt = "Comparison plot of trait-pair correlation errors for two fitted models. Each point is a trait pair; values above zero overestimate the known correlation and values below zero underestimate it."}
 cmp_A <- compare_Sigma_table(
   fit_A,
   truth = Sigma_true,
@@ -361,17 +372,18 @@ extract_Sigma(fit_B, level = "unit", part = "unique")$s |> round(2)
 extract_Sigma(fit_B, level = "unit", part = "total")$Sigma |> round(2)
 ```
 
-```{r sigma-table-plot, fig.width = 7, fig.height = 3.8, fig.cap = "Upper-triangle off-diagonal entries of Sigma_unit from the ordinary latent model with Psi. Open points mark point estimates without finite interval bounds; this figure does not add uncertainty beyond the rows supplied to the plot."}
+```{r sigma-table-plot, fig.width = 7, fig.height = 3.8, fig.cap = "Upper-triangle off-diagonal entries of Sigma_unit from the ordinary latent model with Psi. Open points mark point estimates without finite interval bounds; this figure does not add uncertainty beyond the rows supplied to the plot.", fig.alt = "Dot plot of upper-triangle off-diagonal unit-level covariance estimates for trait pairs. Open points denote estimates with no finite interval bounds."}
 plot_Sigma_table(sigma_rows_B, sort = "magnitude")
 ```
 
-## Communality and ICC need the full $\Sigma$ too
+## Communality and ICC use the covariance specified by the model
 
-Two trait-level summaries used in behavioural-syndromes and
-phenotypic-integration workflows both depend
-on the *full* $\boldsymbol\Sigma = \boldsymbol\Lambda \boldsymbol\Lambda^{\!\top} + \boldsymbol\Psi$
-decomposition. If you compute them from a no-residual latent fit you get the
-wrong answer.
+These trait-level summaries answer different questions. Communality uses the
+chosen shared-plus-diagonal decomposition; ICC uses the variances at its
+participating levels. In this worked example, the data-generating model has
+nonzero Psi, so omitting it changes the covariance target and these summaries.
+A deliberately specified loadings-only covariance is a different model, not
+an automatic error.
 
 ### Communality
 
@@ -398,8 +410,9 @@ For a reader-facing table, the alignment is:
 **The catch**: with no-residual latent fits, $\psi_{tt} = 0$ for every trait by
 construction, so $c_t^2 = 1$ for every trait — the communality is
 identically 1 and tells you nothing. Ordinary `latent()` gives the
-denominator a per-trait $\psi_{tt}$ slot by default, and communality becomes
-informative.
+denominator a per-trait $\psi_{tt}$ slot by default, so communality need not
+be fixed at one. Its interpretation still depends on the chosen decomposition
+and whether that decomposition is identifiable.
 
 ```{r communality}
 extract_communality(fit_A, level = "unit")  # no-residual fit: all = 1
@@ -419,7 +432,7 @@ corr_B <- extract_correlations(
 corr_B
 ```
 
-```{r communality-correlation-matrix, fig.width = 7.4, fig.height = 5.1, fig.cap = "Pairwise correlations from the ordinary latent model with Psi. Upper cells show point estimates; lower cells display the Fisher-z interval columns already present in the extractor output."}
+```{r communality-correlation-matrix, fig.width = 7.4, fig.height = 5.1, fig.cap = "Pairwise correlations from the ordinary latent model with Psi. Upper cells show point estimates; lower cells display the Fisher-z interval columns already present in the extractor output.", fig.alt = "Square trait-by-trait correlation matrix. Upper-triangle cells show point estimates; lower-triangle cells show the Fisher-z interval columns supplied by the extractor."}
 plot_correlations(
   corr_B,
   style = "heatmap",
@@ -447,11 +460,12 @@ R_t \;=\; \frac{(\boldsymbol\Sigma_{\text{unit}})_{tt}}{(\boldsymbol\Sigma_{\tex
 $$
 
 i.e. the proportion of total trait variance attributable to between-
-unit differences. Each piece needs the full decomposition for its
-level — $\Sigma_{\text{unit}} = \Lambda_{\text{unit}} \Lambda_{\text{unit}}^{\!\top} + \boldsymbol\Psi_{\text{unit}}$ and
-$\Sigma_{\text{unit\_obs}} = \Lambda_{\text{unit\_obs}} \Lambda_{\text{unit\_obs}}^{\!\top} + \boldsymbol\Psi_{\text{unit\_obs}}$. Ordinary `latent()` supplies
-that diagonal Psi at each level by default, so each level needs its own
-`latent()` term for $R_t$ to be honest.
+unit differences. Each participating level needs a covariance model
+appropriate to the estimand. Use `latent()` at a level when its cross-trait
+shared structure is part of the question, giving
+$\Sigma = \Lambda\Lambda^{\!\top} + \boldsymbol\Psi$; use `indep()` when
+that level is intended to be diagonal. Shared factors are therefore not
+required at every level for an ICC.
 
 In gllvmTMB this is (pattern, not run in this article)
 
@@ -459,16 +473,18 @@ In gllvmTMB this is (pattern, not run in this article)
 extract_ICC_site(fit)
 ```
 
-— see the recommended **two-level `latent()`** pattern below.
+— see the two-level example below, which uses shared structure at both levels
+because that is its scientific question.
 
 ## Binomial responses: the link's implicit residual
 
 Binary outcomes (`family = binomial()`) are a special case. The
 link function fixes a latent-scale residual variance: $\pi^2/3$
-for `logit`, $1$ for `probit`, $\pi^2/6$ for `cloglog`. This
-implicit residual already plays the role of $\boldsymbol\Psi$ on the
-latent scale, so an explicit `indep()` diagonal term on top of a binary
-fit is typically not identified.
+for `logit`, $1$ for `probit`, $\pi^2/6$ for `cloglog`. This fixed family/link
+residual is distinct from an estimated between-unit $\boldsymbol\Psi$ or an
+observation-level random effect. Whether an additional diagonal component is
+identifiable depends on the estimand, model specification, and supporting
+evidence; this article does not establish that question.
 
 `extract_Sigma()` has a `link_residual = "auto"` option that adds
 the link-specific implicit residual to
@@ -489,9 +505,10 @@ examples.
 
 ## Two-level (between + within) models: two `latent()` terms
 
-For repeated-measures data the recommended pattern is one ordinary `latent()`
-term at each covariance level (Nakagawa & Schielzeth 2010; Nakagawa,
-Johnson & Schielzeth 2017):
+For repeated-measures data, use `latent()` at a level when a shared
+cross-trait covariance is intended there (Nakagawa & Schielzeth 2010;
+Nakagawa, Johnson & Schielzeth 2017). The following unrun illustration chooses
+that structure at both levels:
 
 ```r
 fit_two_level <- gllvmTMB(
@@ -505,28 +522,45 @@ fit_two_level <- gllvmTMB(
 )
 ```
 
-giving
+giving, for this shared-structure illustration,
 $\boldsymbol\Sigma_{\text{unit}} = \boldsymbol\Lambda_{\text{unit}} \boldsymbol\Lambda_{\text{unit}}^{\!\top} + \boldsymbol\Psi_{\text{unit}}$
 (behavioural syndromes — between-individual covariance) and
 $\boldsymbol\Sigma_{\text{unit\_obs}} = \boldsymbol\Lambda_{\text{unit\_obs}} \boldsymbol\Lambda_{\text{unit\_obs}}^{\!\top} + \boldsymbol\Psi_{\text{unit\_obs}}$
 (integrated plasticity — within-individual covariance).
-**Each level has its own default diagonal Psi**.
+If a participating level is intended to be diagonal, specify `indep()` there
+instead; its covariance then enters the ICC denominator without shared axes.
+
+The matching wide-data formula is an unevaluated structural translation, not a
+demonstration of long/wide parity. Here `df_wide_repeated` denotes a wide data
+frame with the `individual` and `obs_id` columns required by the two levels:
+
+```{r two-level-wide, eval = FALSE}
+fit_two_level_wide <- gllvmTMB(
+  traits(boldness, exploration, activity, aggression, sociability) ~
+    1 + latent(1 | individual, d = d_B) +
+    latent(1 | obs_id, d = d_W),
+  data = df_wide_repeated,
+  unit = "individual",
+  unit_obs = "obs_id"
+)
+```
 
 ## Observation-level random effects for non-Gaussian fits
 
-**Overdispersed Poisson is the one family that carries both** an estimated
-observation-level random effect (OLRE) and a link residual, so it is the case
-where adding a latent-scale diagonal component makes sense (Nakagawa &
-Schielzeth 2010). For `nbinom2`, `tweedie`, and the other overdispersed count
-families the overdispersion is already baked into the single
-distribution-specific residual $\sigma^2_d$ — adding an OLRE on top would
-double-count it. The OLRE pattern is described here but not run in this article:
+An observation-level random effect (OLRE), a between-unit Psi, and a fixed
+family/link residual represent different variance conventions. An OLRE can be
+part of a separately defined model and estimand, but this article does not
+advertise support or identifiability for NB/Tweedie-plus-OLRE combinations.
+The following Poisson OLRE pattern is described here but not run in this
+article:
 
 $$
 \ln \lambda_{ij} = \eta_{ij} + e_{ij}, \qquad e_{ij} \sim \mathcal N(0, \sigma_e^2).
 $$
 
-The $\sigma_e^2$ on the latent log scale plays the role of $\boldsymbol\Psi$.
+The $\sigma_e^2$ is an estimated diagonal covariance at the observation tier;
+it is distinct from a between-unit $\boldsymbol\Psi$ and from a fixed
+family/link residual.
 Native OLRE support is available: add an `obs_id` column (one level per
 row), include `indep(0 + trait | obs_id)` in the formula, pass
 `unit_obs = "obs_id"`, and use `extract_residual_split(fit)` to separate
@@ -538,8 +572,8 @@ Nakagawa, Johnson & Schielzeth 2017).
 
 | You want… | You need | Notes |
 |---|---|---|
-| Cross-trait correlations on a Gaussian / lognormal / Gamma fit | ordinary `latent()` at every level | `latent(..., unique = FALSE)` omits Psi and can inflate correlations. |
-| Correlations on a binary fit | `latent()` only; `link_residual = "auto"` for marginal scale | Implicit residual depends on link (π²/3, 1, π²/6). |
+| Cross-trait correlations on a Gaussian / lognormal / Gamma fit | `latent()` at levels where shared cross-trait structure is intended; `indep()` for diagonal levels | `latent(..., unique = FALSE)` omits Psi and can inflate correlations. |
+| Correlations on a binary fit | Choose `latent()` for shared cross-trait structure or `indep()` for a diagonal tier; use `link_residual = "auto"` for the marginal latent scale | Implicit residual depends on link (π²/3, 1, π²/6); additional variance components need an estimand and evidence. |
 | Phylogenetic decomposition | folded `phylo_latent(..., unique = TRUE)` for the phylogenetic tier; ordinary `latent()` for the non-phylogenetic species tier | $\Omega = \Sigma_\text{phy} + \Sigma_\text{non}$, with each $\Sigma$ using shared + `Psi` pieces. |
 | Communality | `extract_communality(fit)` + the right Psi-aware pattern | Communality formula uses Σ; needs full Σ to be meaningful. |
 | `Lambda Lambda^T` only | `extract_Sigma(fit, part = "shared")` | Useful for ordination. |

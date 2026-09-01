@@ -4,9 +4,7 @@ ROOT=${1:?usage: prepare-runtime.sh <source-root> <R-library>}
 LIB=${2:?usage: prepare-runtime.sh <source-root> <R-library>}
 cd "$ROOT"
 mkdir -p "$LIB"
-BUILD=$(mktemp -d)
-trap 'rm -rf "$BUILD"' EXIT
-(cd "$BUILD"; R CMD build "$ROOT"; R CMD INSTALL -l "$LIB" gllvmTMB_*.tar.gz)
+R CMD INSTALL -l "$LIB" "$ROOT"
 Rscript --vanilla dev/isdm-requalification/response-information/verify-contract.R
 Rscript --vanilla dev/isdm-requalification/response-information/verify-tests.R
 test -z "$(git status --porcelain)"

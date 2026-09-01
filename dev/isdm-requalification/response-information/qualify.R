@@ -5,7 +5,7 @@ plan_path <- args[[1L]]; id <- as.integer(args[[2L]]); output <- args[[3L]]
 script_dir <- dirname(normalizePath(sys.frame(1)$ofile, mustWork = TRUE)); root <- normalizePath(file.path(script_dir, "..", "..", ".."), mustWork = TRUE)
 source(file.path(script_dir, "contract.R"), local = TRUE); source(file.path(script_dir, "runner.R"), local = TRUE)
 dir.create(output, recursive = TRUE, showWarnings = FALSE)
-plan <- readRDS(plan_path); task <- plan[plan$qualification_id == id, , drop = FALSE]
+plan <- readRDS(plan_path); isdm_respinfo_validate_qualification_plan(plan); task <- plan[plan$qualification_id == id, , drop = FALSE]
 if (nrow(task) != 1L) stop("qualification identity not found", call. = FALSE)
 suppressPackageStartupMessages(library(gllvmTMB))
 dll <- getLoadedDLLs()[["gllvmTMB"]][["path"]]

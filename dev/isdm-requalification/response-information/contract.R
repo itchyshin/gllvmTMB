@@ -68,7 +68,35 @@ isdm_respinfo_qualification_plan <- function() {
   out$optimizer_seed <- ISDM_RESPINFO_QUALIFICATION_SEED_BASE + 200L + host_index
   out$rep3_seed_1 <- ifelse(out$variant == "rep3", ISDM_RESPINFO_QUALIFICATION_SEED_BASE + 300L + 2L * host_index - 1L, NA_integer_)
   out$rep3_seed_2 <- ifelse(out$variant == "rep3", ISDM_RESPINFO_QUALIFICATION_SEED_BASE + 300L + 2L * host_index, NA_integer_)
+  isdm_respinfo_validate_qualification_plan(out)
   out
+}
+
+isdm_respinfo_validate_qualification_plan <- function(plan) {
+  required <- c("qualification_id", "task_id", "host", "variant", "n_sources", "n_cells", "overlap",
+                "structure_seed", "observation_seed", "optimizer_seed", "rep3_seed_1", "rep3_seed_2")
+  if (!is.data.frame(plan) || !all(required %in% names(plan)) || nrow(plan) != 4L ||
+      !identical(sort(as.integer(plan$qualification_id)), 1:4) ||
+      !identical(sort(as.integer(plan$task_id)), 900001:900004) ||
+      !identical(sort(unique(as.character(plan$host))), c("drac", "totoro")) ||
+      !identical(sort(unique(as.character(plan$variant))), c("baseline", "rep3"))) {
+    .isdm_respinfo_abort("qualification plan is malformed", "isdm_respinfo_qualification_plan_invalid")
+  }
+  pairs <- split(plan, plan$host)
+  nested <- vapply(pairs, function(x) {
+    x <- x[match(c("baseline", "rep3"), x$variant), , drop = FALSE]
+    identical(as.character(x$variant), c("baseline", "rep3")) &&
+      all(vapply(c("n_sources", "n_cells", "overlap", "structure_seed", "observation_seed", "optimizer_seed"),
+                 function(name) length(unique(x[[name]])) == 1L, logical(1L))) &&
+      is.na(x$rep3_seed_1[[1L]]) && is.na(x$rep3_seed_2[[1L]]) &&
+      is.finite(x$rep3_seed_1[[2L]]) && is.finite(x$rep3_seed_2[[2L]])
+  }, logical(1L))
+  seeds <- c(plan$structure_seed, plan$observation_seed, plan$optimizer_seed,
+             plan$rep3_seed_1[!is.na(plan$rep3_seed_1)], plan$rep3_seed_2[!is.na(plan$rep3_seed_2)])
+  if (!all(nested) || any(seeds >= ISDM_RESPINFO_SEED_BASE)) {
+    .isdm_respinfo_abort("qualification plan violates its isolated seed contract", "isdm_respinfo_qualification_plan_invalid")
+  }
+  invisible(TRUE)
 }
 
 isdm_respinfo_validate_plan <- function(plan) {

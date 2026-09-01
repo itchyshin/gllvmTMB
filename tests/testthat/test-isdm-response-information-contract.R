@@ -28,6 +28,13 @@ if (!file.exists(contract_path)) {
     expect_silent(isdm_respinfo_validate_plan(plan))
   })
 
+  test_that("qualification identities are isolated and nested by host", {
+    qualification <- isdm_respinfo_qualification_plan()
+    expect_silent(isdm_respinfo_validate_qualification_plan(qualification))
+    expect_true(all(qualification$optimizer_seed < ISDM_RESPINFO_SEED_BASE))
+    expect_equal(length(unique(qualification$host)), 2L)
+  })
+
   test_that("paired arms retain identical truth and baseline response streams", {
     plan <- isdm_respinfo_plan()
     paired <- split(plan, plan$dataset_id)

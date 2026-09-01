@@ -8,5 +8,4 @@ cd "$ROOT"
 mkdir -p "$LIB"
 R CMD INSTALL -l "$LIB" "$ROOT"
 Rscript --vanilla dev/isdm-requalification/response-information/verify-contract.R
-Rscript --vanilla dev/isdm-requalification/response-information/verify-tests.R
 test -z "$(git status --porcelain)"

@@ -2,7 +2,9 @@
 args <- commandArgs(trailingOnly = TRUE)
 if (length(args) != 3L) stop("usage: Rscript qualify.R <qualification-plan.rds> <qualification-id> <output-dir>", call. = FALSE)
 plan_path <- args[[1L]]; id <- as.integer(args[[2L]]); output <- args[[3L]]
-script_dir <- dirname(normalizePath(sys.frame(1)$ofile, mustWork = TRUE)); root <- normalizePath(file.path(script_dir, "..", "..", ".."), mustWork = TRUE)
+file_arg <- sub("^--file=", "", commandArgs()[grepl("^--file=", commandArgs())])
+if (length(file_arg) != 1L || !nzchar(file_arg)) stop("cannot locate qualification script", call. = FALSE)
+script_dir <- dirname(normalizePath(file_arg, mustWork = TRUE)); root <- normalizePath(file.path(script_dir, "..", "..", ".."), mustWork = TRUE)
 source(file.path(script_dir, "contract.R"), local = TRUE); source(file.path(script_dir, "runner.R"), local = TRUE)
 dir.create(output, recursive = TRUE, showWarnings = FALSE)
 plan <- readRDS(plan_path); isdm_respinfo_validate_qualification_plan(plan); task <- plan[plan$qualification_id == id, , drop = FALSE]

@@ -14,7 +14,8 @@ source(file.path(.respinfo_dir, "records.R"), local = TRUE)
 
 isdm_respinfo_verify_runtime_identity <- function(qualification) {
   required <- c("schema", "source_sha", "source_tree", "package_path", "dll_path", "dll_sha256", "harness_manifest_path", "harness_manifest_sha256", "harness_root")
-  if (!is.list(qualification) || !all(required %in% names(qualification)) || !identical(qualification$schema, "isdm-response-information-qualification-v2")) stop("qualification is malformed", call. = FALSE)
+  allowed_schema <- c("isdm-response-information-qualification-v2", "isdm-response-information-runtime-identity-v1")
+  if (!is.list(qualification) || !all(required %in% names(qualification)) || !qualification$schema %in% allowed_schema) stop("qualification is malformed", call. = FALSE)
   suppressPackageStartupMessages(library(gllvmTMB))
   package_path <- normalizePath(find.package("gllvmTMB"), mustWork = TRUE)
   dlls <- getLoadedDLLs(); dll_path <- if ("gllvmTMB" %in% names(dlls)) normalizePath(dlls[["gllvmTMB"]][["path"]], mustWork = TRUE) else NA_character_

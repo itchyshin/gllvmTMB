@@ -17,5 +17,6 @@ if (!file.exists(runner_path)) {
     expect_match(text, "baseline_data_sha256", fixed = TRUE)
     expect_match(text, "fixed_truth", fixed = TRUE)
     expect_match(text, "trait = trait", fixed = TRUE)
+    expect_match(text, "runtime-identity-v1", fixed = TRUE)
   })
 }

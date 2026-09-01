@@ -1,6 +1,6 @@
 # Final spatial recovery adjudication
 
-**Date:** 2026-08-31  
+**Date:** 2026-08-31
 **Evidence reviewed:** frozen fixture manifest
 `692380327512a8ede39849eab813319469948d96c477f86b190e4f85d90181c3`;
 `full-evidence/attempts.csv`, `full-evidence/cells.csv`, and

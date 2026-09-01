@@ -472,3 +472,22 @@ A TRUE paired round-trip (both engines, same data, logLik tolerance) is NOT poss
 - Y is silently rounded to Int inside the Julia no-X and X routes (round.(Int, Yf) / round.(Int, Ydata), src/bridge.jl:1368, 1553) with no validation that the input is actually non-negative-integer count data -- passing continuous or negative response values would not error, it would silently coerce, which could hide a user data-shape mistake specific to this family (Poisson-family routes elsewhere in the bridge presumably have the same behavior, but it is worth confirming this isn't a NEW gap introduced only for zip).
 - Grepping alone cannot resolve the r_family_constructors and dispersion_public_parameter questions because the thing being grepped for (a native R zip family) does not exist -- this scout's answers to those two questions are necessarily 'nothing found' plus a recommendation by analogy to external R conventions (pscl/VGAM), not a citation of existing gllvmTMB precedent; flag this explicitly to whoever consumes this spec so 'grounded in code' claims aren't overstated for those two fields specifically.
 
+
+## Implementation dispositions (2026-09-01, this lane)
+
+- lognormal: EXPOSED (5c94daa08), fit-only, live paired round-trip green.
+- truncated_poisson: EXPOSED (this slice), fit-only, log-link guard, no
+  dispersion label (family has none); CI setdiff defect fixed for BOTH
+  lognormal and truncated_poisson via .GLLVM_JULIA_NO_CI_FAMILIES.
+- betabinomial: EXPOSED (this slice), fit-only + load-bearing trials-N
+  marshalling (.GLLVM_JULIA_TRIALS_FAMILIES at both cbind/N gate sites),
+  logit-only guard, grouped-dispersion labeling as phi_betabinom.
+  X/masks deferred to a separately evidenced follow-up (nb1 precedent).
+- zip / zinb / zib: PARKED — MAINTAINER DECISION REQUIRED. All three scouts
+  found no native R family constructor exists; exposure would create
+  engine-julia-only public families with no R-native fallback and (per the
+  Julia twin fence) no parity claim permitted, breaking the 1:1 convention
+  every exposed family follows. Not to be added silently inside a routine
+  bridge-expansion slice. Decision options: (a) add native R ZI families
+  first (own programme), (b) expose as explicitly engine-restricted families
+  with loud documentation, (c) leave to the delta/hurdle track.

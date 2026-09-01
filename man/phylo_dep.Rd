@@ -29,7 +29,8 @@ strength for one Gaussian structured trait-intercept block with complete
 replicated multivariate observations and no competing ordinary covariance.
 Estimated latent terms require rank one and at least four traits. The same
 strength applies to the entire latent-plus-Psi covariance. This parameter
-is not a variance-share summary; recovery validation is still in progress.}
+is not a variance-share summary. Fixed attenuation and the admitted Gaussian
+estimator have implementation checks; recovery is regime-specific.}
 }
 \value{
 A formula marker; never evaluated.

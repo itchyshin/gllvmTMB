@@ -59,7 +59,8 @@
 #'   replicated multivariate observations and no competing ordinary covariance.
 #'   Estimated latent terms require rank one and at least four traits. The same
 #'   strength applies to the entire latent-plus-Psi covariance. This parameter
-#'   is not a variance-share summary; recovery validation is still in progress.
+#'   is not a variance-share summary. Fixed attenuation and the admitted
+#'   Gaussian estimator have implementation checks; recovery is regime-specific.
 kernel_latent <- function(unit, K, d = 1, name = "kernel", unique = FALSE, rho = 1) {
   invisible(NULL)
 }

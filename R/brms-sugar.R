@@ -765,7 +765,8 @@ NULL
 #'   replicated multivariate observations and no competing ordinary covariance.
 #'   Estimated latent terms require rank one and at least four traits. The same
 #'   strength applies to the entire latent-plus-Psi covariance. This parameter
-#'   is not a variance-share summary; recovery validation is still in progress.
+#'   is not a variance-share summary. Fixed attenuation and the admitted
+#'   Gaussian estimator have implementation checks; recovery is regime-specific.
 phylo_latent <- function(
   species,
   d = 1,
@@ -1361,7 +1362,8 @@ spatial_scalar <- function(formula, coords = NULL, mesh = NULL) {
 #'   marginal variance at each modeled location and applies to the whole trait
 #'   covariance, including Psi. The grouping column must identify locations
 #'   consistently across replicates. Estimated latent models require rank one
-#'   and at least four traits. Spatial recovery and rho intervals are unvalidated;
+#'   and at least four traits. The frozen spatial study found no passing recovery
+#'   cell (14 partial and 2 blocked); rho intervals remain unvalidated.
 #'   new-location prediction is not supported for attenuated models.
 spatial_latent <- function(formula, d = 1, unique = FALSE,
                            coords = NULL, mesh = NULL, rho = 1) {
@@ -1779,7 +1781,8 @@ scalar <- function(formula) {
 #'   replicated multivariate observations and no competing ordinary covariance.
 #'   Estimated latent terms require rank one and at least four traits. The same
 #'   strength applies to the entire latent-plus-Psi covariance. This parameter
-#'   is not a variance-share summary; recovery validation is still in progress.
+#'   is not a variance-share summary. Fixed attenuation and the admitted
+#'   Gaussian estimator have implementation checks; recovery is regime-specific.
 phylo_indep <- function(
   formula,
   tree = NULL,
@@ -1861,7 +1864,8 @@ phylo_indep <- function(
 #'   marginal variance at each modeled location and applies to the whole trait
 #'   covariance, including Psi. The grouping column must identify locations
 #'   consistently across replicates. Estimated latent models require rank one
-#'   and at least four traits. Spatial recovery and rho intervals are unvalidated;
+#'   and at least four traits. The frozen spatial study found no passing recovery
+#'   cell (14 partial and 2 blocked); rho intervals remain unvalidated.
 #'   new-location prediction is not supported for attenuated models.
 spatial_indep <- function(formula, coords = NULL, mesh = NULL, common = FALSE, rho = 1) {
   invisible(NULL)
@@ -2020,7 +2024,8 @@ dep <- function(formula) {
 #'   replicated multivariate observations and no competing ordinary covariance.
 #'   Estimated latent terms require rank one and at least four traits. The same
 #'   strength applies to the entire latent-plus-Psi covariance. This parameter
-#'   is not a variance-share summary; recovery validation is still in progress.
+#'   is not a variance-share summary. Fixed attenuation and the admitted
+#'   Gaussian estimator have implementation checks; recovery is regime-specific.
 phylo_dep <- function(formula, tree = NULL, vcv = NULL, A = NULL, Ainv = NULL, rho = 1) {
   invisible(NULL)
 }
@@ -2088,7 +2093,8 @@ phylo_dep <- function(formula, tree = NULL, vcv = NULL, A = NULL, Ainv = NULL, r
 #'   marginal variance at each modeled location and applies to the whole trait
 #'   covariance, including Psi. The grouping column must identify locations
 #'   consistently across replicates. Estimated latent models require rank one
-#'   and at least four traits. Spatial recovery and rho intervals are unvalidated;
+#'   and at least four traits. The frozen spatial study found no passing recovery
+#'   cell (14 partial and 2 blocked); rho intervals remain unvalidated.
 #'   new-location prediction is not supported for attenuated models.
 spatial_dep <- function(formula, coords = NULL, mesh = NULL, rho = 1) {
   invisible(NULL)

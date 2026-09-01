@@ -16,7 +16,7 @@ name its candidate bundle hash and frozen-fixture manifest hash.
 | G3 | Eight toy attempts terminal; one optimizer each; complete finite records | met | bundle `30434660f3`; fixture `70b7a9ea57`; 8/8 returned, 6/8 strict successes, 2 boundary/non-PD failures retained; peak 279,504 KiB |
 | G4 | First 32 retained attempts terminal; timing, memory, failures, and projection reported | met | `PILOT.md`; 32/32 returned, 31 strict; 16.71 s; peak 420,728 KiB; remainder projected below 20 min |
 | G5 | Exactly 1,600 terminal retained attempts; no retries or replacements | met | `full-evidence/attempts.csv`; 1,600/1,600 terminal rows, 32 pilot plus 1,568 remainder rows |
-| G6 | Joint rho/kappa and covariance summaries plus Fisher verdicts complete | met | `RESULTS.md`; Fisher/Rose reconciliation: 1,600/1,600 terminal rows, 1,494 strict successes, 14 partial cells, 2 blocked cells, and no passing estimated-rho cell |
+| G6 | Joint rho/kappa and covariance summaries plus Fisher verdicts complete | met | `RESULTS.md`; `FINAL-ADJUDICATION.md`; Fisher/Rose reconciliation: 1,600/1,600 terminal rows, 1,494 strict successes, 14 partial cells, 2 blocked cells, and no passing estimated-rho cell |
 | G7 | Clean landing branch descends from refreshed main and reconciles imported/excluded files | pending | landing manifest |
 | G8 | Exact landing SHA passes source, test, documentation, render, Rd, and local package gates | pending | check receipts |
 | G9 | Two Terra-high and one Sol-high reviewers report no unresolved finding | pending | review files |

@@ -383,11 +383,11 @@ remains accepted as compatibility syntax. The duplicate pair
 double-counting the same diagonal $\boldsymbol\Psi$. Multi-kernel fits
 with two or more named `kernel_latent()` tiers remain the existing
 latent-only first wave; explicit multi-kernel `kernel_unique()` Psi
-remains deferred. The spatial source is the remaining exception: the
-total-covariance decomposition `spatial_latent + spatial_unique` still
-relies on the **explicit paired spelling** because the SPDE diagonal
-companion engine slot is blocked, and its total-covariance fold stays
-`partial` under SPA-02 (see the keyword table above).
+remains deferred. For spatial terms,
+`spatial_latent(..., unique = TRUE)` is the canonical total-covariance
+spelling; the explicit `spatial_latent(..., unique = FALSE) +
+spatial_unique()` pair remains compatibility syntax. Its broader recovery
+evidence remains partial (see the keyword table above).
 
 ## Predictor-informed latent-score means (`lv = ~ ...`)
 
@@ -887,20 +887,22 @@ not enter later releases:
 - AGENTS.md Design Rule #3 — no formula-grammar change without
   updating this document first.
 
-## Structured rho execution arc (2026-08-31; not yet complete)
+## Structured rho execution arc (2026-08-31)
 
 Canonical phylo/animal/kernel/spatial indep, dep and latent helpers gain a trailing
 `rho = 1`. Omitted/explicit one preserves all legacy endpoints, including
 multi-kernel models. Numeric values in [0,1] request fixed attenuation of the
 resolved source covariance; `rho = NULL` is reserved for the admitted Gaussian
 estimated-source-strength route implemented in this arc. Core likelihood,
-gradient, workflow and family-equivalence gates pass. The24-attempt retained
-pilot returned24fits with23 meeting numerical criteria; broader recovery and
-final candidate review remain outstanding. The worked example is
-`vignettes/articles/structured-source-strength.Rmd`.
+gradient, workflow and family-equivalence gates pass. The frozen spatial
+study completed 1,600 retained attempts: 14 cells are `partial`, 2 are
+`blocked`, and none passes the predeclared range--rho recovery criteria.
+This supports the implemented estimator only at that limited evidence scope.
+The worked example is `vignettes/articles/structured-source-strength.Rmd`.
 Spatial helpers use the same attenuation weight, separately from estimated
-range; see `dev/structured-rho/SPATIAL-ADDENDUM.md`. Deprecated scalar/unique
-aliases accept old calls but require canonical replacement for new attenuation.
+range; see `dev/structured-rho/spatial-recovery/PLAN.md`. Deprecated
+scalar/unique aliases accept old calls but require canonical replacement for
+new attenuation.
 
 Capture strength and term identity before desugaring (which can otherwise drop
 literal NULL). A folded latent(unique=TRUE) is one covariance block; separate
@@ -909,4 +911,5 @@ Psi covariance and common=TRUE. Reject new attenuation before unsupported
 Julia/VA/MSPL/AGHQ or augmented-slope routes. Estimated rho uses the resolved
 `unit_obs` observation-vector key, requires at least two traits (four for rank-one
 latent estimation), and requires all modeled source levels to be observed; unused levels cannot supply identifying source contrast. See
-`dev/structured-rho/PLAN.md` for the full approved scope, budgets and gates.
+`dev/structured-rho/spatial-recovery/PLAN.md` for the approved spatial scope,
+budgets and gates.

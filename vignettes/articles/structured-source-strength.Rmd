@@ -292,7 +292,11 @@ The generating values were rho 0.6 and kappa 2. This dataset estimates rho
 scale can compete; complete replication separates observation noise but does
 not guarantee precise separation of those parameters. The local geometry
 diagnostic checks a specific weakness, not global identification or recovery.
-Spatial recovery has not been established by the nonspatial simulation study.
+The frozen spatial recovery study jointly estimated range and rho in two
+geometries, four trait-covariance forms, and two strengths. It classified 14
+cells as partial and 2 as blocked; no cell passed its predeclared recovery
+criteria. Treat this output as a fitted point estimate and sensitivity tool,
+not as evidence of generally reliable spatial range--rho separation.
 
 For a fixed sensitivity value, replace `rho=NULL` with a number in [0,1].
 At zero, mesh effects disappear, but range still affects the projected marginal

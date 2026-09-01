@@ -54,8 +54,13 @@ Model Builder.
   `rho = NULL` is restricted to complete replicated Gaussian observations
   without competing covariance. Source strength is separate from trait mode,
   ordinary variance components, coefficient rho, and variance-share summaries.
-  The full workflow/recovery arc is still in progress; contract and evidence:
-  `dev/structured-rho/PLAN.md`, `.unlazy/structured-rho/GATES.md`.
+  Fixed attenuation and the admitted Gaussian estimator have completed their
+  implementation/workflow gates. The spatial recovery study has 14 `partial`
+  and 2 `blocked` cells, with no passing cell; range--rho recovery is therefore
+  not a broad public claim. Contract and evidence:
+  `dev/structured-rho/spatial-recovery/PLAN.md`,
+  `dev/structured-rho/spatial-recovery/RESULTS.md`, and
+  `.unlazy/structured-rho-spatial/GATES.md`.
 
 - **`scalar` and `unique` are MODIFIERS, not modes.** `scalar` is
   `indep` with the trait variances tied to one shared value --

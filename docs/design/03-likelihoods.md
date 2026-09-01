@@ -918,7 +918,7 @@ evidence accumulate; promote claims to covered as it lands.
 
 ## Structured source attenuation (development arc, 2026-08-31)
 
-The approved contract is `dev/structured-rho/PLAN.md`; the implementation is
+The approved contract is `dev/structured-rho/spatial-recovery/PLAN.md`; the implementation is
 not yet a completed capability. For the legacy-resolved source covariance K,
 define D = diag(diag(K)) and K_rho = rho K + (1-rho)D. The entire trait
 covariance S = Lambda Lambda' + Psi receives the same source strength.
@@ -952,12 +952,14 @@ contrast. Competing ordinary covariance and other unproved configurations are
 rejected. Rank-one latent admission with four traits is generic: weak/zero
 loading configurations still need diagnostics and do not prove Psi separation.
 Downstream methods and full fixed-family equivalence now have passing scoped
-checks. Retained recovery evidence and final candidate acceptance remain open. The separate coefficient-rho
-parameter and defaults are unchanged.
+checks. The retained spatial study completed with 14 partial and 2 blocked
+cells, so it makes no broad joint range--rho recovery claim. The separate
+coefficient-rho parameter and defaults are unchanged.
 
 ### Spatial extension (maintainer addendum, 2026-08-31)
 
-`SPATIAL-ADDENDUM.md` supersedes the original spatial exclusion. With one
+The approved spatial contract is retained in
+`dev/structured-rho/spatial-recovery/PLAN.md`. With one
 projection row per modeled location, K(kappa) = A_g Q(kappa)^(-1) A_g', where
 Q(kappa) = kappa^4 M0 + 2 kappa^2 M1 + M2 uses the existing mesh scale.
 The same K_rho formula applies, with its diagonal recomputed as kappa changes.

@@ -197,7 +197,8 @@ animal_unique <- function(id, pedigree = NULL, A = NULL, Ainv = NULL) {
 #'   replicated multivariate observations and no competing ordinary covariance.
 #'   Estimated latent terms require rank one and at least four traits. The same
 #'   strength applies to the entire latent-plus-Psi covariance. This parameter
-#'   is not a variance-share summary; recovery validation is still in progress.
+#'   is not a variance-share summary. Fixed attenuation and the admitted
+#'   Gaussian estimator have implementation checks; recovery is regime-specific.
 animal_indep <- function(formula, pedigree = NULL, A = NULL, Ainv = NULL,
                          common = FALSE, rho = 1) {
   invisible(NULL)
@@ -261,7 +262,8 @@ animal_indep <- function(formula, pedigree = NULL, A = NULL, Ainv = NULL,
 #'   replicated multivariate observations and no competing ordinary covariance.
 #'   Estimated latent terms require rank one and at least four traits. The same
 #'   strength applies to the entire latent-plus-Psi covariance. This parameter
-#'   is not a variance-share summary; recovery validation is still in progress.
+#'   is not a variance-share summary. Fixed attenuation and the admitted
+#'   Gaussian estimator have implementation checks; recovery is regime-specific.
 animal_latent <- function(
   id,
   d = 1,
@@ -318,7 +320,8 @@ animal_latent <- function(
 #'   replicated multivariate observations and no competing ordinary covariance.
 #'   Estimated latent terms require rank one and at least four traits. The same
 #'   strength applies to the entire latent-plus-Psi covariance. This parameter
-#'   is not a variance-share summary; recovery validation is still in progress.
+#'   is not a variance-share summary. Fixed attenuation and the admitted
+#'   Gaussian estimator have implementation checks; recovery is regime-specific.
 animal_dep <- function(formula, pedigree = NULL, A = NULL, Ainv = NULL, rho = 1) {
   invisible(NULL)
 }

@@ -49,7 +49,8 @@ all-attempt table, paired diagnostics, and per-cell metrics are in
 
 No estimated-rho cell passes every bounded recovery requirement. The frozen
 rules and independent Fisher/Rose reconciliation classify 14 cells as `partial`
-and two cells as `blocked`:
+and two cells as `blocked`; the signed cell-level mapping is
+`FINAL-ADJUDICATION.md`:
 
 | Regime | Mode | rho | Mechanical result | Reason for blocked result where applicable |
 | --- | --- | ---: | --- | --- |
@@ -69,7 +70,8 @@ estimated spatial rho recovery has passed in any regime.
 ## Independent review verdict
 
 The Noether mathematical review confirms that the two blocked cells and 14
-partial cells follow the frozen predicates. The Fisher/Rose evidence review
+partial cells follow the frozen predicates. `FINAL-ADJUDICATION.md` records
+the final Fisher/Rose cell-level verdicts. The Fisher/Rose evidence review
 independently reconciles all 1,600 frozen job IDs and metadata: 32 pilot plus
 1,568 remainder attempts, each returned once with one optimizer entry. It
 confirms the 1,494 strict successes and 106 numerical failures, with no

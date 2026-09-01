@@ -27,7 +27,8 @@ remains a separate estimated parameter. Attenuation preserves the projected
 marginal variance at each modeled location and applies to the whole trait
 covariance, including Psi. The grouping column must identify locations
 consistently across replicates. Estimated latent models require rank one
-and at least four traits. Spatial recovery and rho intervals are unvalidated;
+and at least four traits. The frozen spatial study found no passing recovery
+cell (14 partial and 2 blocked); rho intervals remain unvalidated;
 new-location prediction is not supported for attenuated models.}
 }
 \value{

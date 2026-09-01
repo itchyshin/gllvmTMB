@@ -1,17 +1,18 @@
-# Structured source strength: implementation and evidence checkpoint
+# Structured source strength: development implementation and evidence checkpoint
 
-**Status:** local candidate acceptance, 2026-08-31. The final scoped documentation-repair audit is recorded separately; this is not merge or release readiness.
+**Status:** development-branch checkpoint, 2026-08-31. This historical report
+does not certify the clean landing candidate or remote CI; those receipts are
+recorded separately after exact-SHA verification. It is not merge or release
+readiness.
 **Branch:** `codex/structured-term-rho-20260831`, worktree `87fa`.
 **Ownership:** root is the only implementation writer. Specialist reviews were
-bounded and read-only. The final independent panel reviewed candidate
-`db68f7732`: two Terra-high reviewers and one Sol-high mathematical reviewer.
-The later package delta is exactly three roxygen paragraphs and their Rd text,
-with identical executable R expressions and separate validation.
+bounded and read-only. Its cited development candidate is `db68f7732`; it is
+not the clean landing candidate.
 
 ## 1. Goal
 
 Complete the approved fixed-plus-estimated structured-rho arc in
-`dev/structured-rho/PLAN.md`, preserving ordinary components, resolved source
+the approved structured-rho contract, preserving ordinary components, resolved source
 scales and coefficient defaults. Fixed support alone does not close the goal.
 No push, merge, release, version bump, publication or other-repository edits
 are authorized. The frozen recovery study and approved extra package check are complete.
@@ -84,9 +85,11 @@ six-trait admitted fits.
 
 ## 4. Files Touched
 
-The complete path/hash/size inventory is `dev/structured-rho/changed-files.csv`;
-raw ignored datasets and full check directories stay local. Individual gate
-receipts record the source and installed-package versions actually used.
+The development-branch inventory and raw gate receipts are preserved in the
+development bundle recorded by
+`dev/structured-rho/spatial-recovery/LANDING-MANIFEST.csv`; raw datasets and
+full check directories stay local. Individual gate receipts record the source
+and installed-package versions actually used.
 
 Implementation: `R/structured-rho.R`, `R/structured-rho-spatial.R`, `R/brms-sugar.R`, `R/animal-keyword.R`,
 `R/kernel-keywords.R`, `R/gllvmTMB.R`, `R/fit-multi.R`, `src/gllvmTMB.cpp`,
@@ -120,7 +123,8 @@ remain untouched. Coefficient defaults and unrelated softmax wording are intact.
 ## 5. Checks Run
 
 Exact commands, expected markers, candidate hashes, exit codes and logs are in
-`dev/structured-rho/evidence/` and the tracked GATES.md. The scoped oracles used
+the preserved development bundle and the tracked spatial acceptance ledger.
+The scoped oracles used
 `install-spatial-sparse-02` (21.050 seconds), following the sparse spatial compile
 in 83.291 seconds. The complete final regression check built candidate db68f7732.
 Its later help-only repair is documented below; no repaired full-check pass is claimed.

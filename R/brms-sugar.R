@@ -758,6 +758,15 @@ NULL
 #'   )
 #' }
 #' @export
+#' @param rho Source strength: a number in `[0,1]` fixes
+#'   `rho * K + (1-rho) * diag(diag(K))` on the legacy-resolved source scale.
+#'   Omitted or explicit `1` preserves the existing model. `NULL` estimates
+#'   strength for one Gaussian structured trait-intercept block with complete
+#'   replicated multivariate observations and no competing ordinary covariance.
+#'   Estimated latent terms require rank one and at least four traits. The same
+#'   strength applies to the entire latent-plus-Psi covariance. This parameter
+#'   is not a variance-share summary. Fixed attenuation and the admitted
+#'   Gaussian estimator have implementation checks; recovery is regime-specific.
 phylo_latent <- function(
   species,
   d = 1,
@@ -765,7 +774,8 @@ phylo_latent <- function(
   vcv = NULL,
   A = NULL,
   Ainv = NULL,
-  unique = FALSE
+  unique = FALSE,
+  rho = 1
 ) {
   invisible(NULL)
 }
@@ -1345,8 +1355,18 @@ spatial_scalar <- function(formula, coords = NULL, mesh = NULL) {
 #'   )
 #' }
 #' @export
+#' @param rho Source-strength attenuation between 0 and 1, or `NULL` to estimate it
+#'   in a complete replicated multivariate Gaussian model without competing
+#'   covariance. Omitted or explicit `1` preserves the existing model. Range
+#'   remains a separate estimated parameter. Attenuation preserves the projected
+#'   marginal variance at each modeled location and applies to the whole trait
+#'   covariance, including Psi. The grouping column must identify locations
+#'   consistently across replicates. Estimated latent models require rank one
+#'   and at least four traits. The frozen spatial study found no passing recovery
+#'   cell (14 partial and 2 blocked); rho intervals remain unvalidated.
+#'   new-location prediction is not supported for attenuated models.
 spatial_latent <- function(formula, d = 1, unique = FALSE,
-                           coords = NULL, mesh = NULL) {
+                           coords = NULL, mesh = NULL, rho = 1) {
   invisible(NULL)
 }
 
@@ -1754,13 +1774,23 @@ scalar <- function(formula) {
 #'                 unit    = "species",
 #'                 cluster = "species")
 #' }
+#' @param rho Source strength: a number in `[0,1]` fixes
+#'   `rho * K + (1-rho) * diag(diag(K))` on the legacy-resolved source scale.
+#'   Omitted or explicit `1` preserves the existing model. `NULL` estimates
+#'   strength for one Gaussian structured trait-intercept block with complete
+#'   replicated multivariate observations and no competing ordinary covariance.
+#'   Estimated latent terms require rank one and at least four traits. The same
+#'   strength applies to the entire latent-plus-Psi covariance. This parameter
+#'   is not a variance-share summary. Fixed attenuation and the admitted
+#'   Gaussian estimator have implementation checks; recovery is regime-specific.
 phylo_indep <- function(
   formula,
   tree = NULL,
   vcv = NULL,
   A = NULL,
   Ainv = NULL,
-  common = FALSE
+  common = FALSE,
+  rho = 1
 ) {
   invisible(NULL)
 }
@@ -1827,7 +1857,17 @@ phylo_indep <- function(
 #'   )
 #' }
 #' @export
-spatial_indep <- function(formula, coords = NULL, mesh = NULL, common = FALSE) {
+#' @param rho Source-strength attenuation between 0 and 1, or `NULL` to estimate it
+#'   in a complete replicated multivariate Gaussian model without competing
+#'   covariance. Omitted or explicit `1` preserves the existing model. Range
+#'   remains a separate estimated parameter. Attenuation preserves the projected
+#'   marginal variance at each modeled location and applies to the whole trait
+#'   covariance, including Psi. The grouping column must identify locations
+#'   consistently across replicates. Estimated latent models require rank one
+#'   and at least four traits. The frozen spatial study found no passing recovery
+#'   cell (14 partial and 2 blocked); rho intervals remain unvalidated.
+#'   new-location prediction is not supported for attenuated models.
+spatial_indep <- function(formula, coords = NULL, mesh = NULL, common = FALSE, rho = 1) {
   invisible(NULL)
 }
 
@@ -1977,7 +2017,16 @@ dep <- function(formula) {
 #'   )
 #' }
 #' @export
-phylo_dep <- function(formula, tree = NULL, vcv = NULL, A = NULL, Ainv = NULL) {
+#' @param rho Source strength: a number in `[0,1]` fixes
+#'   `rho * K + (1-rho) * diag(diag(K))` on the legacy-resolved source scale.
+#'   Omitted or explicit `1` preserves the existing model. `NULL` estimates
+#'   strength for one Gaussian structured trait-intercept block with complete
+#'   replicated multivariate observations and no competing ordinary covariance.
+#'   Estimated latent terms require rank one and at least four traits. The same
+#'   strength applies to the entire latent-plus-Psi covariance. This parameter
+#'   is not a variance-share summary. Fixed attenuation and the admitted
+#'   Gaussian estimator have implementation checks; recovery is regime-specific.
+phylo_dep <- function(formula, tree = NULL, vcv = NULL, A = NULL, Ainv = NULL, rho = 1) {
   invisible(NULL)
 }
 
@@ -2037,7 +2086,17 @@ phylo_dep <- function(formula, tree = NULL, vcv = NULL, A = NULL, Ainv = NULL) {
 #'   )
 #' }
 #' @export
-spatial_dep <- function(formula, coords = NULL, mesh = NULL) {
+#' @param rho Source-strength attenuation between 0 and 1, or `NULL` to estimate it
+#'   in a complete replicated multivariate Gaussian model without competing
+#'   covariance. Omitted or explicit `1` preserves the existing model. Range
+#'   remains a separate estimated parameter. Attenuation preserves the projected
+#'   marginal variance at each modeled location and applies to the whole trait
+#'   covariance, including Psi. The grouping column must identify locations
+#'   consistently across replicates. Estimated latent models require rank one
+#'   and at least four traits. The frozen spatial study found no passing recovery
+#'   cell (14 partial and 2 blocked); rho intervals remain unvalidated.
+#'   new-location prediction is not supported for attenuated models.
+spatial_dep <- function(formula, coords = NULL, mesh = NULL, rho = 1) {
   invisible(NULL)
 }
 

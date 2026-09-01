@@ -307,6 +307,8 @@
 #' under a constraint in pure R.
 #'
 #' This wrapper profiles direct TMB parameters and fixed linear combinations.
+#' Structured-term source-strength intervals are not supported: requests for
+#' its raw logit parameter, by name, index, or linear combination, are rejected.
 #' Nonlinear targets such as communality, full-covariance repeatability, and
 #' correlations are not routed through this function. The phylogenetic-signal
 #' extractor documents its narrower two-component profile route; other
@@ -381,6 +383,7 @@ tmbprofile_wrapper <- function(
   if (!inherits(fit, "gllvmTMB_multi")) {
     cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
   }
+  .structured_rho_interval_assert(fit,name,which,lincomb)
   .gllvmTMB_mspl_assert_inference(fit, "tmbprofile_wrapper")
   .gllvmTMB_require_unweighted_inference(fit, "tmbprofile_wrapper")
   profile_checkpoint <- .gllvmTMB_profile_tmb_checkpoint(fit$tmb_obj)

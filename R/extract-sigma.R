@@ -617,6 +617,22 @@ link_residual_per_trait <- function(fit) {
 #'   For `part = "unique"`: a list with `s` (length-T named numeric
 #'   vector of unique variances), `level`, `part`, `note`.
 #'
+#'   A structured trait-intercept fit with fixed `rho < 1` or estimated
+#'   `rho = NULL` also returns `source_strength` at `level = "phy"` (or its
+#'   named kernel alias), or `level = "spatial"` for spatial terms. It contains `term`, `source`, `grouping`, `labels`,
+#'   `resolved_scale`, `source_diagonal`, `value`, and `status` (fixed or
+#'   estimated), plus mode and diagnostic metadata. Spatial metadata also
+#'   reports `kappa`; its source diagonal is evaluated at that fitted inverse
+#'   range, without normalization. `Sigma` remains the
+#'   trait covariance; the covariance across source levels is
+#'   \eqn{K_\rho = \rho K + (1-\rho)\mathrm{diag}(\mathrm{diag}(K))}.
+#'   The source covariance is not materialized for extraction. Strength is
+#'   distinct from a variance share; source-strength intervals are unavailable.
+#'   Estimated fits report `nll_score_logit` and `nll_score_rho`, derivatives
+#'   of the negative log likelihood on the fitted logit and physical strength
+#'   scales. A small logit derivative alone is not evidence of an interior
+#'   optimum near zero or one; an unrepresentable physical score is `NA`.
+#'
 #'   For `level = "column_slope"`: a list with the named `1 x 1` or `P x P`
 #'   predictor covariance `Sigma`, its correlation matrix `R`, `level`,
 #'   `part`, `predictors`, `column_labels`, `source`, and `note`. `source`
@@ -1477,11 +1493,13 @@ extract_Sigma <- function(
   } else if (identical(level, "phy")) {
     has_phy_rr <- isTRUE(fit$use$phylo_rr)
     has_phy_diag <- isTRUE(fit$use$phylo_diag)
-    if (!has_phy_rr && !has_phy_diag) {
+    has_rho_common <- !is.null(fit$source_strength) && isTRUE(fit$use$propto)
+    if (!has_phy_rr && !has_phy_diag && !has_rho_common) {
       cli::cli_abort(
         "Fit has no {.code phylo_latent()} term -- nothing to extract at level {.val phy}."
       )
     }
+    if (has_rho_common) L <- diag(sqrt(as.numeric(fit$report$lam_phy)),T)
     if (has_phy_rr) {
       L <- fit$report$Lambda_phy
     }
@@ -1496,7 +1514,7 @@ extract_Sigma <- function(
     } else {
       S <- NULL
       if (
-        !isTRUE(fit$use$phylo_unique) &&
+        !has_rho_common && !isTRUE(fit$use$phylo_unique) &&
           !isTRUE(fit$use$phylo_dep)
       ) {
         has_multinomial <- !is.null(fit$tmb_data$family_id_vec) &&
@@ -1602,13 +1620,20 @@ extract_Sigma <- function(
       class = "gllvmTMB_Sigma_phy_slope"
     ))
   } else if (identical(level, "spde")) {
-    if (!isTRUE(fit$use$spatial_latent)) {
+    rho_indep <- identical(fit$source_strength$source,"spatial") &&
+      isTRUE(fit$tmb_data$spde_lv_k==0L)
+    if (!isTRUE(fit$use$spatial_latent) && !rho_indep) {
       cli::cli_abort(
         "Fit has no {.code spatial_latent()} term -- nothing to extract at level {.val spde}."
       )
     }
-    L <- fit$report$Lambda_spde
-    if (isTRUE(fit$use$spatial_latent_unique) &&
+    L <- if(rho_indep) NULL else fit$report$Lambda_spde
+    if(rho_indep) {
+      pars <- fit$tmb_obj$env$parList(par=fit$tmb_obj$env$last.par.best)
+      S <- exp(-2*pars$log_tau_spde)
+      names(S) <- trait_names
+      notes <- c(notes,"Spatial trait covariance is on the legacy SPDE parameter scale; multiply its diagonal by source_strength$source_diagonal for fitted location variances.")
+    } else if (isTRUE(fit$use$spatial_latent_unique) &&
         !is.null(fit$report$sd_spde_unique)) {
       S <- as.numeric(fit$report$sd_spde_unique)^2
       names(S) <- trait_names
@@ -1828,6 +1853,10 @@ extract_Sigma <- function(
     )
   }
 
+  if (!is.null(fit$source_strength) &&
+      identical(level,if(identical(fit$source_strength$source,"spatial")) "spde" else "phy")) {
+    out$source_strength <- .structured_rho_metadata(fit)
+  }
   ## Surface notes via cli at most once
   for (msg in notes) {
     cli::cli_inform(msg)

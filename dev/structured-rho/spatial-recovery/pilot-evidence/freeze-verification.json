@@ -1,0 +1,14 @@
+{
+  "command": "remote fail-closed fixture hash and job-count validation recorded at measured checkpoint",
+  "expected": "800 datasets; 1600 unique jobs; 32 pilot jobs; all frozen MD5 records match; bundle and install receipts match",
+  "candidate_head": "9c6746cb58c6a83726b194bf87068c7921809570",
+  "candidate_bundle_hash": "78e17ceb0c4589fff1c7983949a9f7cdfaa80e4e4699d0ab75870764d15d3383",
+  "fixture_manifest_sha256": "692380327512a8ede39849eab813319469948d96c477f86b190e4f85d90181c3",
+  "exit_status": 0,
+  "dataset_rows": 800,
+  "job_rows": 1600,
+  "pilot_jobs": 32,
+  "attempt_ledger_rows_after_pilot": 54,
+  "retained_attempts_after_pilot": 32,
+  "evidence": "Totoro /home/snakagaw/spatial-rho-recovery-9c6746cb5 and compact local receipts"
+}

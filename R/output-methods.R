@@ -458,6 +458,10 @@ ordiplot.gllvmTMB_multi <- function(
 #'
 #' Mirrors `gllvm::VP()` / `gllvm::plotVP()`.
 #'
+#'
+#' Structured trait-intercept rho fits are excluded; use `extract_Sigma()` and
+#' its `source_strength` metadata.
+#'
 #' @param fit A fitted multivariate model returned by [gllvmTMB()].
 #' @return An `n_traits × n_components` matrix of variance shares (rows
 #'   sum to 1). Columns are only those active in `fit$use`.
@@ -468,6 +472,7 @@ ordiplot.gllvmTMB_multi <- function(
 #' @keywords internal
 #' @export
 VP <- function(fit) {
+  .structured_rho_source_allocation_assert(fit, "VP")
   comps <- list()
   if (fit$use$rr_B) {
     LL_B <- fit$report$Lambda_B %*% t(fit$report$Lambda_B)

@@ -1,0 +1,20 @@
+{
+  "kind": "remainder",
+  "attempts": 1568,
+  "seconds": 678.656508859247,
+  "bundle_hash": "688e8533931bc21032d6c7b5ab797017a4076eaf14d7915a5a34a0d72d976ac3",
+  "fixture_manifest_sha256": "692380327512a8ede39849eab813319469948d96c477f86b190e4f85d90181c3",
+  "counts": {
+    "planned": 1568,
+    "launched": 1568,
+    "returned": 1568,
+    "numerical_success": 1463,
+    "numerical_failure": 105,
+    "fit_errors": 0,
+    "timeout": 0,
+    "optimizer_entry_violations": 0,
+    "missing_result": 0,
+    "not_launched": 0
+  },
+  "peak_rss_kib": 429316
+}

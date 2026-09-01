@@ -52,7 +52,16 @@
 #' }
 #'
 #' @export
-kernel_latent <- function(unit, K, d = 1, name = "kernel", unique = FALSE) {
+#' @param rho Source strength: a number in `[0,1]` fixes
+#'   `rho * K + (1-rho) * diag(diag(K))` on the legacy-resolved source scale.
+#'   Omitted or explicit `1` preserves the existing model. `NULL` estimates
+#'   strength for one Gaussian structured trait-intercept block with complete
+#'   replicated multivariate observations and no competing ordinary covariance.
+#'   Estimated latent terms require rank one and at least four traits. The same
+#'   strength applies to the entire latent-plus-Psi covariance. This parameter
+#'   is not a variance-share summary. Fixed attenuation and the admitted
+#'   Gaussian estimator have implementation checks; recovery is regime-specific.
+kernel_latent <- function(unit, K, d = 1, name = "kernel", unique = FALSE, rho = 1) {
   invisible(NULL)
 }
 
@@ -79,13 +88,13 @@ kernel_unique <- function(unit, K, name = "kernel") {
 #'   trait (`kernel_indep`); `TRUE` ties all traits to one shared variance,
 #'   the canonical spelling for the soft-deprecated [kernel_scalar()].
 #' @export
-kernel_indep <- function(unit, K, name = "kernel", common = FALSE) {
+kernel_indep <- function(unit, K, name = "kernel", common = FALSE, rho = 1) {
   invisible(NULL)
 }
 
 #' @rdname kernel_latent
 #' @export
-kernel_dep <- function(unit, K, name = "kernel") {
+kernel_dep <- function(unit, K, name = "kernel", rho = 1) {
   invisible(NULL)
 }
 

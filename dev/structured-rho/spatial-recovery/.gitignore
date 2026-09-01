@@ -1,0 +1,6 @@
+fixtures/data/
+local-evidence/
+results/
+library/
+package/
+*.tar.gz

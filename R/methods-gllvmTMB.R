@@ -625,6 +625,7 @@
 #' @export
 print.gllvmTMB_multi <- function(x, ...) {
   cat("Stacked-trait gllvmTMB fit\n")
+  .structured_rho_print(x$source_strength)
   unit_label <- if (!is.null(x$unit_col)) x$unit_col else "sites"
   ## B-tier line: always show (there is always a B-tier grouping for the unit)
   dim_line <- sprintf(
@@ -860,6 +861,7 @@ summary.gllvmTMB_multi <- function(object, ...) {
     list(available = TRUE, reason = NULL)
   }
 
+  if (!is.null(object$source_strength)) out$source_strength <- .structured_rho_metadata(object)
   class(out) <- "summary.gllvmTMB_multi"
   out
 }
@@ -867,6 +869,7 @@ summary.gllvmTMB_multi <- function(object, ...) {
 #' @rdname gllvmTMB_multi-methods
 #' @export
 print.summary.gllvmTMB_multi <- function(x, digits = 3, ...) {
+  .structured_rho_print(x$source_strength)
   ## Header block: dimensions, covstructs, optimiser convergence.
   with(x$header, {
     cat("Stacked-trait gllvmTMB summary\n")
@@ -1384,6 +1387,12 @@ tidy.gllvmTMB_multi <- function(
 #' which reuses the fitted random-effect modes and only adds residual noise.
 #'
 #' @param object A fit returned by [gllvmTMB()].
+#' @details For rho-enabled structured trait intercepts, unconditional draws
+#'   use the attenuated source covariance for both loadings and folded Psi,
+#'   with independent observation residuals retained. Unsupported additional
+#'   components produce an error instead of a conditional fallback. This
+#'   supports simulation; automatic covariance bootstrap refits are not yet
+#'   supported for these fits.
 #' @param nsim Number of replicate response vectors to draw. Default 1.
 #' @param seed Optional RNG seed.
 #' @param newdata Optional new data frame; if supplied, predictions are
@@ -1492,6 +1501,11 @@ simulate.gllvmTMB_multi <- function(
   ## fall back to conditional with a one-shot warning.
   ok <- .check_simulate_unconditional(object)
   if (!ok$can_redraw) {
+    if (!is.null(object$source_strength)) cli::cli_abort(c(
+      "Unconditional simulation cannot redraw every component of this rho-enabled fit.",
+      "x" = "Unsupported components: {.val {ok$unhandled}}.",
+      "i" = "Use {.code condition_on_RE = TRUE} only when conditional simulation is intended."
+    ), class = "gllvmTMB_structured_rho_simulation_unsupported")
     cli::cli_warn(c(
       "Unconditional {.fn simulate} does not yet redraw RE tiers: {.val {ok$unhandled}}.",
       "!" = "Falling back to conditional simulation, which reuses the fitted random-effect modes. It understates between-unit variability, so simulate-based intervals for this fit (e.g. from {.fn bootstrap_Sigma}) are too narrow and are not calibrated.",
@@ -1859,8 +1873,15 @@ simulate.gllvmTMB_multi <- function(
 .check_simulate_unconditional <- function(fit) {
   handled <- c(
     "rr_B", "diag_B", "rr_W", "diag_W", "propto",
-    "lv_B", "phylo_rr", "diag_species"
+    "lv_B", "phylo_rr", "phylo_diag", "diag_species", "re_int"
   )
+  if(identical(fit$source_strength$source,"spatial")) handled <- c(handled,"spde")
+  if (is.list(fit$tmb_data)) {
+    # Mode descriptors do not add another field. Actual engine flags are the
+    # authority, so folded Psi and indep/dep cannot force a silent fallback.
+    return(list(can_redraw = !length(.gllvmTMB_predict_unhandled_re_tiers(fit,handled)),
+      unhandled = .gllvmTMB_predict_unhandled_re_tiers(fit,handled)))
+  }
   active <- names(fit$use)[vapply(fit$use, isTRUE, logical(1))]
   unhandled <- setdiff(active, handled)
   list(
@@ -1944,11 +1965,15 @@ simulate.gllvmTMB_multi <- function(
     sp_id <- fit$tmb_data$species_id + 1L
     n_species <- fit$tmb_data$n_species
     lam_phy <- as.numeric(fit$report$lam_phy)
-    P <- as.matrix(fit$tmb_data$Cphy_inv)
-    U <- chol(P)
-    p_phy_new <- matrix(0, n_species, n_traits)
-    for (t in seq_len(n_traits)) {
-      p_phy_new[, t] <- sqrt(lam_phy) * backsolve(U, stats::rnorm(n_species))
+    if (!is.null(fit$source_strength)) {
+      p_phy_new <- sqrt(lam_phy)*.structured_rho_scores(fit,n_traits,redraw=TRUE)
+    } else {
+      P <- as.matrix(fit$tmb_data$Cphy_inv)
+      U <- chol(P)
+      p_phy_new <- matrix(0, n_species, n_traits)
+      for (t in seq_len(n_traits)) {
+        p_phy_new[, t] <- sqrt(lam_phy) * backsolve(U, stats::rnorm(n_species))
+      }
     }
     eta <- eta + p_phy_new[cbind(sp_id, trait_id)]
   }
@@ -1957,7 +1982,13 @@ simulate.gllvmTMB_multi <- function(
   ## on the augmented node set (precision Ainv_phy_rr = A^{-1}); mapped to obs via
   ## species_aug_id and the phylo loadings Lambda_phy. Draw via the precision
   ## Cholesky: backsolve(chol(A^{-1}), z) has covariance (A^{-1})^{-1} = A.
-  if (isTRUE(fit$use$phylo_rr)) {
+  if (identical(fit$source_strength$source,"spatial")) {
+    effect <- .structured_rho_spatial_contribution(fit,redraw=TRUE)
+    eta <- eta + effect[cbind(fit$tmb_data$spatial_rho_group_id+1L,trait_id)]
+  } else if (!is.null(fit$source_strength)) {
+    effect <- .structured_rho_contribution(fit,redraw=TRUE)
+    eta <- eta + effect[cbind(fit$tmb_data$species_id+1L,trait_id)]
+  } else if (isTRUE(fit$use$phylo_rr)) {
     d_phy <- fit$tmb_data$d_phy
     n_aug <- fit$tmb_data$n_aug_phy
     Lambda_phy <- fit$report$Lambda_phy # (n_traits x d_phy)
@@ -1972,6 +2003,19 @@ simulate.gllvmTMB_multi <- function(
         g_phy_new[sp_aug_id, , drop = FALSE]
     )
     eta <- eta + contrib
+  }
+
+  if (is.null(fit$source_strength) && isTRUE(fit$use$phylo_diag)) {
+    scores <- .structured_rho_scores(fit,n_traits,"g_phy_diag","g_phy_diag_iid",redraw=TRUE)
+    eta <- eta + scores[cbind(fit$tmb_data$species_id+1L,trait_id)]*fit$report$sd_phy_diag[trait_id]
+  }
+
+  if (isTRUE(fit$use$re_int)) {
+    td <- fit$tmb_data
+    for (k in seq_len(td$n_re_int_terms)) {
+      effect <- stats::rnorm(td$re_int_n_groups[k],sd=exp(fit$report$log_sigma_re_int[k]))
+      eta <- eta + effect[td$re_int_group_id[,k]+1L]
+    }
   }
 
   ## diag_species: non-phylogenetic species random effect (Stage-3, cpp l.959):
@@ -2239,6 +2283,24 @@ sanity_multi <- function(object, gradient_thresh = 1e-2, se_thresh = 100) {
 #' @noRd
 .gllvmTMB_spde_newdata_contrib <- function(object, nd, tr_id) {
   if (!isTRUE(object$use$spde)) return(NULL)
+  if(identical(object$source_strength$source,"spatial")) {
+    strength <- object$source_strength
+    ids <- match(as.character(nd[[strength$grouping]]),strength$labels)
+    if(length(ids)!=nrow(nd) || anyNA(ids)) cli::cli_abort(c(
+      "Prediction for an attenuated spatial source currently requires known location groups.",
+      "i"="Supply the fitted location identifier; prediction at new locations is not yet supported for rho-enabled spatial models."
+    ),class="gllvmTMB_structured_rho_spatial_prediction")
+    xy <- object$mesh$xy_cols
+    if(all(xy %in% names(nd))) {
+      original <- object$data[match(strength$labels,as.character(object$data[[strength$grouping]])),xy,drop=FALSE]
+      if(!isTRUE(all.equal(unname(as.matrix(nd[,xy,drop=FALSE])),
+          unname(as.matrix(original[ids,,drop=FALSE])),tolerance=1e-12)))
+        cli::cli_abort("Known spatial location identifiers must retain their fitted coordinates.",
+          class="gllvmTMB_structured_rho_spatial_prediction")
+    }
+    effect <- .structured_rho_spatial_contribution(object)
+    return(effect[cbind(ids,tr_id+1L)])
+  }
   mesh <- object$mesh
   if (is.null(mesh) || is.null(mesh$mesh) || is.null(mesh$xy_cols)) return(NULL)
   if (!all(mesh$xy_cols %in% names(nd))) return(NULL)
@@ -2386,7 +2448,9 @@ sanity_multi <- function(object, gradient_thresh = 1e-2, se_thresh = 100) {
 #'
 #'   On `newdata`, `predict()` rebuilds the linear predictor in R and can
 #'   re-add only some of the model's random-effect tiers (the unit-level
-#'   `rr`/`diag` terms, `propto`, and the spatial SPDE field). A fit
+#'   `rr`/`diag` terms, `propto`, and the spatial SPDE field). Structured
+#'   intercepts also include their shared and folded Psi effects
+#'   at known source levels; ancestral prediction is not added. A fit
 #'   carrying any other active tier gets a warning naming exactly what was
 #'   omitted; `newdata = NULL` always returns the full conditional
 #'   predictor.
@@ -2638,6 +2702,13 @@ predict.gllvmTMB_multi <- function(
           }
         }
         added <- c(added, "propto")
+      }
+      if (isTRUE(object$use$phylo_rr) || isTRUE(object$use$phylo_diag)) {
+        effects <- .structured_rho_contribution(object)
+        ok <- !is.na(sp_id) & sp_id >= 0 & sp_id < object$n_species & !is.na(tr_id)
+        eta[ok] <- eta[ok] + effects[cbind(sp_id[ok]+1L,tr_id[ok]+1L)]
+        added <- c(added, if (isTRUE(object$use$phylo_rr)) "phylo_rr",
+          if (isTRUE(object$use$phylo_diag)) "phylo_diag")
       }
       ## diag_species: per-(trait, species) random intercept.
       ## src/gllvmTMB.cpp:2513 -- eta(o) += q_sp(t, species_id(o)). Note the
@@ -3597,6 +3668,7 @@ deviance.gllvmTMB_multi <- function(object, ...) {
 ## the ORIGINAL fit's logLik to full numerical precision on both a
 ## long-format fixture and the wide `traits()` campaign fixture.
 .gllvmTMB_predict_missing_boot_refit_spec <- function(fit) {
+  .structured_rho_refit_assert(fit, ".gllvmTMB_predict_missing_boot_refit_spec")
   other_flags <- c(
     "diag_B", "rr_W", "diag_W", "rr_B_slope", "diag_B_slope",
     "phylo_rr", "phylo_latent_slope", "phylo_diag", "phylo_unique",

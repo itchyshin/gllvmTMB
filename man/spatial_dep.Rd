@@ -4,7 +4,7 @@
 \alias{spatial_dep}
 \title{Full unstructured spatial trait covariance: \code{spatial_dep(0 + trait | coords)}}
 \usage{
-spatial_dep(formula, coords = NULL, mesh = NULL)
+spatial_dep(formula, coords = NULL, mesh = NULL, rho = 1)
 }
 \arguments{
 \item{formula}{\code{0 + trait | coords} style formula (LHS is the trait
@@ -19,6 +19,17 @@ the coordinates via the formula RHS.}
 \item{mesh}{An \code{fmesher} mesh object built via \code{\link[=make_mesh]{make_mesh()}}. It may be
 supplied here or through the top-level \verb{mesh =} argument to \code{\link[=gllvmTMB]{gllvmTMB()}}.
 The engine does not construct a mesh automatically from \code{coords}.}
+
+\item{rho}{Source-strength attenuation between 0 and 1, or \code{NULL} to estimate it
+in a complete replicated multivariate Gaussian model without competing
+covariance. Omitted or explicit \code{1} preserves the existing model. Range
+remains a separate estimated parameter. Attenuation preserves the projected
+marginal variance at each modeled location and applies to the whole trait
+covariance, including Psi. The grouping column must identify locations
+consistently across replicates. Estimated latent models require rank one
+and at least four traits. The frozen spatial study found no passing recovery
+cell (14 partial and 2 blocked); rho intervals remain unvalidated.
+new-location prediction is not supported for attenuated models.}
 }
 \value{
 A formula marker; never evaluated.

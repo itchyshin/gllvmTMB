@@ -70,6 +70,8 @@ navbar:
         href: articles/spatial-models.html
       - text: Phylogenetic covariance among traits
         href: articles/phylogenetic-gllvm.html
+      - text: "Strength of a known source"
+        href: articles/structured-source-strength.html
       - text: "Where does the phylogeny belong?"
         href: articles/where-does-the-tree-go.html
       - text: Phylogenetic ordinal and nominal PGLMMs
@@ -154,6 +156,7 @@ articles:
     - articles/mspl-binary-jsdm
     - articles/spatial-models
     - articles/phylogenetic-gllvm
+    - articles/structured-source-strength
     - articles/where-does-the-tree-go
     - articles/phylogenetic-categorical-pglmm
     - articles/missing-data

@@ -6,11 +6,11 @@
 \alias{kernel_dep}
 \title{Generic dense-kernel covariance keywords}
 \usage{
-kernel_latent(unit, K, d = 1, name = "kernel", unique = FALSE)
+kernel_latent(unit, K, d = 1, name = "kernel", unique = FALSE, rho = 1)
 
-kernel_indep(unit, K, name = "kernel", common = FALSE)
+kernel_indep(unit, K, name = "kernel", common = FALSE, rho = 1)
 
-kernel_dep(unit, K, name = "kernel")
+kernel_dep(unit, K, name = "kernel", rho = 1)
 }
 \arguments{
 \item{unit}{Unquoted grouping column whose levels align with \code{rownames(K)}.}
@@ -26,6 +26,16 @@ matrix aligned to the grouping levels.}
 \item{unique}{Logical; \code{TRUE} auto-includes the kernel-structured diagonal
 trait-specific \eqn{\boldsymbol\Psi} companion for a single dense-kernel
 tier. The default \code{FALSE} preserves the loadings-only subset.}
+
+\item{rho}{Source strength: a number in \verb{[0,1]} fixes
+\code{rho * K + (1-rho) * diag(diag(K))} on the legacy-resolved source scale.
+Omitted or explicit \code{1} preserves the existing model. \code{NULL} estimates
+strength for one Gaussian structured trait-intercept block with complete
+replicated multivariate observations and no competing ordinary covariance.
+Estimated latent terms require rank one and at least four traits. The same
+strength applies to the entire latent-plus-Psi covariance. This parameter
+is not a variance-share summary. Fixed attenuation and the admitted
+Gaussian estimator have implementation checks; recovery is regime-specific.}
 
 \item{common}{\code{FALSE} (default) for a separate dense-kernel variance per
 trait (\code{kernel_indep}); \code{TRUE} ties all traits to one shared variance,

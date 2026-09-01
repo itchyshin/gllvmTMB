@@ -55,6 +55,10 @@ species-level case; \code{\link[=extract_communality]{extract_communality()}} gi
 "shared" proportion at one tier; \code{\link[=extract_ICC_site]{extract_ICC_site()}} gives the
 between-vs-within proportion. \code{extract_proportions()} returns all of
 these in one tidy frame.
+
+Structured trait-intercept rho fits are excluded because this source-
+allocation summary does not account for attenuation. Use \code{extract_Sigma()}
+and its \code{source_strength} metadata.
 }
 \examples{
 \dontrun{

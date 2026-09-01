@@ -102,6 +102,51 @@ link-residual / OLRE caveats.
 
 #### `extract_Sigma(fit, level = c("unit", "unit_slope", "unit_obs", "cluster", "cluster2", "phy", "phy_slope", "column_slope", "spatial", "spde_slope"), part = c("total", "shared", "unique"))`
 
+**Structured source strength (STR-RHO-WORKFLOW, partial):** New rho-enabled
+trait-intercept fits append `source_strength` to the existing list at `level =
+"phy"` or the named single-kernel alias, or `level = "spatial"`. Fields are `term`, `source`, `grouping`,
+`mode`, `folded_psi`, `common`, `labels`, `resolved_scale`, `source_diagonal`,
+`representation`, `value`, and `status`; estimated fits add descriptive boundary
+and weak-signal diagnostics. Existing `Sigma`, `R`, `s`, `level`, `part`, and
+`note` contracts remain unchanged. Omitted rho and explicit one add no field.
+`Sigma` describes trait covariance, not source correlation. Reconstructing a
+particular source covariance requires the same legacy-resolved K and
+K_rho = rho K + (1-rho) diag(diag K); extraction never densifies an augmented
+precision. Common indep uses its retained scalar trait variance on the diagonal.
+
+For spatial attenuation, `kappa` remains a separate inverse-range parameter.
+`source_diagonal` is diag(A_g Q(kappa)^(-1) A_g') at the fitted kappa; no new
+normalization is applied. `Sigma` stays on the legacy SPDE parameter scale,
+so a location's marginal trait covariance is its source diagonal times Sigma.
+The fitted geometry diagnostic is descriptive and bounded to at most 64
+deterministically selected locations, with their indices reported. Fixed zero
+retains range and warns that diagonal scaling can confound it with trait scale.
+The new-rho independent spatial extractor reports diagonal 1/tau^2; legacy
+endpoint extractor behavior is unchanged. No dense source matrix is constructed
+by printing or extraction. New-rho spatial predictions require known location
+identifiers and unchanged coordinates; simulation redraws both spatial fields
+and their location-level IID companions before observation replication.
+
+`extract_phylo_signal`, direct `profile_ci_phylo_signal`, `extract_proportions`, and `VP` give typed limitations
+for new attenuation. Automatic bootstrap and two-Psi comparison refits also
+fail before fitting because their older formula reconstruction omits rho.
+Covariance and communality point summaries remain distinct from source strength.
+No rho intervals or new spatial variance shares are defined. Raw
+`tmbprofile_wrapper()` requests for `eta_structured_rho`, its index, or a
+linear combination involving it fail with a typed limitation before profiling.
+Estimated metadata includes `nll_score_logit` and `nll_score_rho`, derivatives
+of the negative log likelihood. The physical score divides the logit score
+by rho(1-rho), using stable complementary weights; it is NA if the divisor
+is unrepresentable. This distinguishes a near-boundary logit plateau from
+an interior stationary point; these scores do not establish global optimality.
+
+Estimated rank-one plus Psi diagnostics flag fewer than three absolute
+standardized loadings above .05 as weak separation, not proof of nonidentification.
+This rule does not apply to loadings-only covariance. Total-source and shared
+component weakness use a maximum Gaussian variance share below 1e-4, separately;
+positive Psi can preserve total source strength when the shared component is weak.
+These predeclared heuristics do not remove terms or change rank.
+
 **Return**: ordinary covariance levels return a `T x T` symmetric
 positive-semidefinite matrix with row and column names equal to trait labels.
 Augmented random-regression levels are explicit shape exceptions:

@@ -915,3 +915,81 @@ subsections grow with:
 A mature `03-likelihoods.md` at v0.3.x will look much like
 drmTMB's today. The path is: write the structure now; let
 evidence accumulate; promote claims to covered as it lands.
+
+## Structured source attenuation (development arc, 2026-08-31)
+
+The approved contract is `dev/structured-rho/spatial-recovery/PLAN.md`. Fixed
+attenuation and the admitted Gaussian estimator are implemented with scoped
+workflow checks. Spatial recovery evidence remains limited: 14 cells are
+partial, 2 are blocked, and none passes the predeclared joint range--rho gate.
+For the legacy-resolved source covariance K,
+define D = diag(diag(K)) and K_rho = rho K + (1-rho)D. The entire trait
+covariance S = Lambda Lambda' + Psi receives the same source strength.
+Ordinary variance components and Gaussian observation noise stay separate.
+
+Dense sources are mixed after existing scaling and diagonal conditioning,
+before inversion/determinant calculation. Sparse augmented sources retain Q
+and their ancestor map: at modeled source level j, the effective score is
+sqrt(rho) g_aug[j] + sqrt(1-rho) sqrt(D[j]) e[j]. Independent e lives at
+source levels, not observations. Separate factor and Psi scores share rho.
+At rho=0 augmented scores and their priors are inactive; their loading/SD
+parameters remain active. Omitted/explicit rho=1 follows the old engine branch.
+The common-variance propto route retains its own legacy marginal resolution.
+
+Source diagonals are selected entries of the inverse FULL precision, obtained
+with a reusable sparse factorization. Neither reciprocal precision diagonals
+nor the inverse of a tip-only precision submatrix gives the required marginal
+variance when ancestors are retained. Existing phylo(Ainv=) sugar resolves
+densely; animal(Ainv=) retains sparse precision. Do not silently equate them.
+
+`test-structured-rho-fixed-oracle.R` independently constructs the Gaussian
+observation covariance, including replication and residual noise, to check
+fixed-point likelihoods. No recovery claim follows from this check. Estimated
+rho uses a separate outer logit parameter initialized at zero (rho=.5). The
+dense prior uses an eigendecomposition of D^-1/2 K D^-1/2, with eigenvalues
+(1-rho)+rho*lambda and log determinant sum(log(D))+sum(log(eigenvalues)).
+Sparse estimated strength uses stable square-root logistic weights on both
+fields. Observation-level admission requires at least two traits and complete repeated vectors on
+unit_obs, every modeled group observed, positive diagonals and observed source
+contrast. Competing ordinary covariance and other unproved configurations are
+rejected. Rank-one latent admission with four traits is generic: weak/zero
+loading configurations still need diagnostics and do not prove Psi separation.
+Downstream methods and full fixed-family equivalence now have passing scoped
+checks. The retained spatial study completed with 14 partial and 2 blocked
+cells, so it makes no broad joint range--rho recovery claim. The separate
+coefficient-rho parameter and defaults are unchanged.
+
+### Spatial extension (maintainer addendum, 2026-08-31)
+
+The approved spatial contract is retained in
+`dev/structured-rho/spatial-recovery/PLAN.md`. With one
+projection row per modeled location, K(kappa) = A_g Q(kappa)^(-1) A_g', where
+Q(kappa) = kappa^4 M0 + 2 kappa^2 M1 + M2 uses the existing mesh scale.
+The same K_rho formula applies, with its diagonal recomputed as kappa changes.
+For latent scores, use sqrt(rho) A_g omega + sqrt(1-rho) sqrt(D) e before
+the loading map. For independent/Psi effects, the mesh field already includes
+1/tau; the IID companion receives exactly one 1/tau. Replication happens last.
+
+Sparse projections stay sparse, and one differentiated sparse factorization
+computes selected projected diagonals by location-wise solves. Neither dense
+Q inverse nor full location covariance is needed by the likelihood. Omitted
+and explicit rho one retain the literal old path. At fixed zero the mesh fields
+are mapped off, but kappa stays active because D(kappa) still depends on it.
+Proportional diagonal changes can confound range with trait scale at this endpoint.
+
+Estimated spatial strength retains Gaussian replicated-vector admission and
+adds a local source-shape check. H=K_rho/trace(K) removes amplitude; finite
+differences in log(kappa) and the analytic rho derivative must have numerically
+independent normalized columns (relative singular value >1e-8). Reference
+kappa values are .5,1,2 and rho=.5, independent of data-generation truth.
+Geometry uses at most 64 deterministically spaced modeled rows to bound memory.
+Failure at all three points rejects this admission test, not a claimed theorem
+of global nonidentification. Fitted diagnostics report the selected indices,
+conditioning, and the fixed-rho range-shape derivative norm. Ancillary failures
+return an unavailable reason rather than discard the fit.
+
+Independent spatial tests vary both kappa and rho and construct the full
+Gaussian observation covariance separately. Fixed-family comparison must
+preserve spatial Psi even when the phylogenetic reference family maps its own
+Psi companion off: encode that whole trait covariance through dense `dep()`.
+The frozen nonspatial recovery study supplies no spatial recovery claim.

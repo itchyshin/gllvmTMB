@@ -150,6 +150,10 @@ When a categorical family (fid 14/16) is present and
 \code{link_residual = "auto"}; the default is unchanged for backward
 compatibility. \code{ci = TRUE} is not yet implemented for the
 liability-scale denominator and refuses with a typed error.
+
+Structured trait-intercept rho fits are excluded: source strength is not
+phylogenetic variance share. Use \code{extract_Sigma()} and its \code{source_strength}
+metadata.
 }
 
 \examples{

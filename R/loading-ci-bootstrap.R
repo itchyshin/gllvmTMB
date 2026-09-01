@@ -91,6 +91,7 @@
                                   conf_level = 0.95,
                                   nsim       = 999L,
                                   seed       = NULL) {
+  .structured_rho_refit_assert(fit, ".loading_ci_bootstrap")
 
   if (!inherits(fit, "gllvmTMB_multi"))
     cli::cli_abort("{.code fit} must be a multi-trait {.fun gllvmTMB} fit.")

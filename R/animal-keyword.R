@@ -190,8 +190,17 @@ animal_unique <- function(id, pedigree = NULL, A = NULL, Ainv = NULL) {
 #' )
 #' }
 #' @export
+#' @param rho Source strength: a number in `[0,1]` fixes
+#'   `rho * K + (1-rho) * diag(diag(K))` on the legacy-resolved source scale.
+#'   Omitted or explicit `1` preserves the existing model. `NULL` estimates
+#'   strength for one Gaussian structured trait-intercept block with complete
+#'   replicated multivariate observations and no competing ordinary covariance.
+#'   Estimated latent terms require rank one and at least four traits. The same
+#'   strength applies to the entire latent-plus-Psi covariance. This parameter
+#'   is not a variance-share summary. Fixed attenuation and the admitted
+#'   Gaussian estimator have implementation checks; recovery is regime-specific.
 animal_indep <- function(formula, pedigree = NULL, A = NULL, Ainv = NULL,
-                         common = FALSE) {
+                         common = FALSE, rho = 1) {
   invisible(NULL)
 }
 
@@ -246,13 +255,23 @@ animal_indep <- function(formula, pedigree = NULL, A = NULL, Ainv = NULL,
 #' )
 #' }
 #' @export
+#' @param rho Source strength: a number in `[0,1]` fixes
+#'   `rho * K + (1-rho) * diag(diag(K))` on the legacy-resolved source scale.
+#'   Omitted or explicit `1` preserves the existing model. `NULL` estimates
+#'   strength for one Gaussian structured trait-intercept block with complete
+#'   replicated multivariate observations and no competing ordinary covariance.
+#'   Estimated latent terms require rank one and at least four traits. The same
+#'   strength applies to the entire latent-plus-Psi covariance. This parameter
+#'   is not a variance-share summary. Fixed attenuation and the admitted
+#'   Gaussian estimator have implementation checks; recovery is regime-specific.
 animal_latent <- function(
   id,
   d = 1,
   pedigree = NULL,
   A = NULL,
   Ainv = NULL,
-  unique = FALSE
+  unique = FALSE,
+  rho = 1
 ) {
   invisible(NULL)
 }
@@ -294,7 +313,16 @@ animal_latent <- function(
 #' )
 #' }
 #' @export
-animal_dep <- function(formula, pedigree = NULL, A = NULL, Ainv = NULL) {
+#' @param rho Source strength: a number in `[0,1]` fixes
+#'   `rho * K + (1-rho) * diag(diag(K))` on the legacy-resolved source scale.
+#'   Omitted or explicit `1` preserves the existing model. `NULL` estimates
+#'   strength for one Gaussian structured trait-intercept block with complete
+#'   replicated multivariate observations and no competing ordinary covariance.
+#'   Estimated latent terms require rank one and at least four traits. The same
+#'   strength applies to the entire latent-plus-Psi covariance. This parameter
+#'   is not a variance-share summary. Fixed attenuation and the admitted
+#'   Gaussian estimator have implementation checks; recovery is regime-specific.
+animal_dep <- function(formula, pedigree = NULL, A = NULL, Ainv = NULL, rho = 1) {
   invisible(NULL)
 }
 

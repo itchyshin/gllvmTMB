@@ -1075,6 +1075,11 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     cli::cli_abort("{.arg REML} must be a single {.code TRUE} or {.code FALSE} value.")
   }
   estimator <- match.arg(estimator, c("ml", "mspl"))
+  structured_rho <- parsed$structured_rho
+  .structured_rho_dispatch_fence(structured_rho, engine,
+    control$integration %||% "laplace", estimator, control$aghq %||% FALSE)
+  structured_rho_estimated <- !is.null(structured_rho) &&
+    identical(structured_rho$status, "estimated")
 
   ## Family arg can be:
   ##   * a single family object (as before): same family for all rows.
@@ -4233,6 +4238,36 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ">" = "Add a {.code phylo_*()} term (e.g. {.code phylo_latent(species, d = 2, tree = tree)}), or drop {.arg {supplied_arg}} if you did not mean to fit a phylogenetic model."
     ))
   }
+  structured_rho_sparse <- FALSE
+  structured_rho_spatial <- !is.null(structured_rho) && identical(structured_rho$source,"spatial")
+  structured_rho_value <- 1
+  structured_rho_diagonal <- rep(1, n_species)
+  structured_rho_field_active <- TRUE
+  structured_rho_eigenvectors <- matrix(1,1,1)
+  structured_rho_eigenvalues <- 1
+  if (!is.null(structured_rho)) {
+    rho_common_propto <- use_propto && structured_rho$mode == "indep" &&
+      isTRUE(structured_rho$common)
+    if ((!use_phylo_rr && !rho_common_propto && !(structured_rho_spatial && use_spde)) || use_phylo_slope || use_phylo_latent_slope ||
+        use_rr_B_slope || use_diag_B_slope || use_mi_phylo || use_kernel_multi || (use_propto && !rho_common_propto)) {
+      cli::cli_abort("This structured {.arg rho} configuration does not resolve to one trait-intercept covariance block.",
+        class = "gllvmTMB_structured_rho_blocks")
+    }
+    structured_rho_value <- if (structured_rho_estimated) .5 else structured_rho$value
+    if (structured_rho_estimated && !structured_rho_spatial) {
+      .structured_rho_assert_estimation(structured_rho, family_id_vec,
+        group_id=species_id, observation_id=site_species_id, trait_id=trait_id,
+        n_traits=n_traits, is_observed=is_y_observed %||% rep(1L,nrow(data)),
+        n_groups=n_species,
+        competing=c(use_rr_B, use_diag_B, use_rr_W, use_diag_W,
+          use_rr_B_slope, use_diag_B_slope, use_diag_species, use_diag_cluster2,
+          use_equalto, use_spde, use_spde_slope, use_spde_latent_slope,
+          use_re_int, use_mi_predictor, use_lv_B,
+          !is.null(known_V), !is.null(lambda_constraint$phy),
+          any(weights != 1), (missing_meta$n_missing_response %||% 0L) > 0L),
+        REML=REML)
+    }
+  }
   if (use_shared_phy_term) {
     if (!is.null(phylo_tree)) {
       ## --- Stage 40: TRUE Hadfield sparse-A^-1 trick ----------------------
@@ -4301,11 +4336,43 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       )
       Aphy <- phylo_vcv[levs, levs, drop = FALSE]
       Aphy <- Aphy + diag(1e-8, nrow = nrow(Aphy))
+      if (!is.null(structured_rho)) {
+        structured_rho_diagonal <- diag(Aphy)
+        # Resolve the old scale and conditioning BEFORE attenuation.
+        if (structured_rho_estimated) {
+          spectral <- .structured_rho_spectral(Aphy)
+          structured_rho_eigenvectors <- spectral$vectors
+          structured_rho_eigenvalues <- spectral$values
+          .structured_rho_assert_source(diag(Aphy), max(abs(Aphy[row(Aphy)!=col(Aphy)])))
+        } else Aphy <- .structured_rho_covariance(Aphy, structured_rho_value)
+      }
       Ainv_phy_rr      <- Matrix::Matrix(solve(Aphy), sparse = TRUE)
       log_det_A_phy_rr <- as.numeric(determinant(Aphy, logarithm = TRUE)$modulus)
       n_aug_phy        <- n_species
       species_aug_id   <- species_id    # tip-only path: identity
     }
+  }
+
+  if (!is.null(structured_rho) && !use_propto && !structured_rho_spatial) {
+    structured_rho_sparse <- !is.null(phylo_tree) || inherits(phylo_vcv, "sparseMatrix")
+    if (structured_rho_sparse) {
+      marginal <- .structured_rho_marginal_diagonal(Ainv_phy_rr, levs)
+      structured_rho_diagonal <- marginal$diagonal
+      if (structured_rho_estimated) {
+        .structured_rho_assert_source(marginal$diagonal, marginal$contrast)
+      }
+    }
+    if (any(!is.finite(structured_rho_diagonal) | structured_rho_diagonal <= 0)) {
+      cli::cli_abort("Structured {.arg rho} requires positive finite resolved source diagonals.",
+        class = "gllvmTMB_structured_rho_source")
+    }
+    structured_rho_field_active <- !structured_rho_sparse || structured_rho_value > 0
+    structured_rho$labels <- levs
+    structured_rho$source_diagonal <- setNames(as.numeric(structured_rho_diagonal), levs)
+    structured_rho$resolved_scale <- if (structured_rho_sparse) {
+      "legacy augmented precision, marginalized to modeled levels"
+    } else "legacy dense source with diagonal conditioning of 1e-8"
+    structured_rho$representation <- if (structured_rho_sparse) "sparse" else "dense"
   }
 
   ## PR-0: do not let the legacy slope-only field borrow the top-level
@@ -4480,6 +4547,27 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         log_det_Cphy <- as.numeric(determinant(Cphy, logarithm = TRUE)$modulus)
       }
     }
+    if (!is.null(structured_rho)) {
+      # common=TRUE retains the legacy propto marginal source (including its
+      # ancestor marginalization/conditioning). That route already stores a
+      # dense modeled-level precision; do not silently normalize it anew.
+      resolved <- solve(Cphy_inv)
+      structured_rho_diagonal <- diag(resolved)
+      if (structured_rho_estimated) {
+        spectral <- .structured_rho_spectral(resolved)
+        structured_rho_eigenvectors <- spectral$vectors
+        structured_rho_eigenvalues <- spectral$values
+        .structured_rho_assert_source(diag(resolved), max(abs(resolved[row(resolved)!=col(resolved)])))
+      } else {
+        attenuated <- .structured_rho_covariance(resolved, structured_rho_value)
+        Cphy_inv <- solve(attenuated)
+        log_det_Cphy <- as.numeric(determinant(attenuated, logarithm=TRUE)$modulus)
+      }
+      structured_rho$labels <- levs
+      structured_rho$source_diagonal <- setNames(as.numeric(structured_rho_diagonal), levs)
+      structured_rho$resolved_scale <- "legacy propto marginal covariance and conditioning"
+      structured_rho$representation <- "dense"
+    }
   }
 
   ## ---- Guard: structurally-unreachable phylogenetic variance (diagonal
@@ -4595,6 +4683,33 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     spde_M0  <- mesh$spde$c0
     spde_M1  <- mesh$spde$g1
     spde_M2  <- mesh$spde$g2
+  }
+
+  spatial_rho_group_id <- rep(0L,n_obs)
+  spatial_rho_A <- Matrix::Matrix(0,1,1,sparse=TRUE)
+  spatial_rho_n_groups <- 1L
+  spatial_rho_field_active <- TRUE
+  if (structured_rho_spatial) {
+    spatial_source <- .structured_rho_spatial_prepare(structured_rho,data,A_proj)
+    spatial_rho_group_id <- spatial_source$id
+    spatial_rho_A <- spatial_source$A
+    spatial_rho_n_groups <- length(spatial_source$labels)
+    spatial_rho_field_active <- structured_rho_estimated || structured_rho_value > 0
+    if (structured_rho_estimated) {
+      .structured_rho_assert_estimation(structured_rho,family_id_vec,
+        group_id=spatial_rho_group_id,observation_id=site_species_id,trait_id=trait_id,
+        n_traits=n_traits,is_observed=is_y_observed %||% rep(1L,nrow(data)),
+        n_groups=spatial_rho_n_groups,
+        competing=c(use_rr_B,use_diag_B,use_rr_W,use_diag_W,use_diag_species,
+          use_diag_cluster2,use_equalto,use_spde_slope,use_spde_latent_slope,
+          use_re_int,use_mi_predictor,use_lv_B,!is.null(known_V),
+          !is.null(lambda_constraint$spde),any(weights != 1),
+          (missing_meta$n_missing_response %||% 0L)>0L),REML=REML)
+      .structured_rho_spatial_admit(spatial_rho_A,spde_M0,spde_M1,spde_M2)
+    }
+    structured_rho$labels <- spatial_source$labels
+    structured_rho$representation <- "spatial_sparse"
+    structured_rho$resolved_scale <- "legacy projected SPDE marginal covariance at fitted kappa; no normalization"
   }
 
   ## ---- BASE augmented SPDE slope (Design 60 §3.4) -----------------------
@@ -5064,6 +5179,15 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     Ainv_phy_rr      = Ainv_phy_rr,
     log_det_A_phy_rr = log_det_A_phy_rr,
     species_aug_id   = as.integer(species_aug_id),
+    structured_rho_sparse = as.integer(structured_rho_sparse),
+    structured_rho_spatial = as.integer(structured_rho_spatial),
+    spatial_rho_group_id = as.integer(spatial_rho_group_id),
+    spatial_rho_A = spatial_rho_A,
+    structured_rho_value = structured_rho_value,
+    structured_rho_diagonal = as.numeric(structured_rho_diagonal),
+    structured_rho_estimated = as.integer(structured_rho_estimated),
+    structured_rho_eigenvectors = structured_rho_eigenvectors,
+    structured_rho_eigenvalues = as.numeric(structured_rho_eigenvalues),
     ## Design 65 C3.1: fixed dense named kernel tiers. This block is active
     ## only when two or more distinct `kernel_*()` names are supplied; the
     ## one-name path stays on the phylo-equivalent KER-02 engine above.
@@ -5277,6 +5401,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     log_tau_spde = if (use_spde) rep(0.0, n_traits) else 0.0,
     log_kappa_spde = 0.0,
     omega_spde   = matrix(0, nrow = n_mesh, ncol = if (use_spde) n_traits else 1L),
+    omega_spde_iid = matrix(0,spatial_rho_n_groups,
+      if (structured_rho_spatial && (!is_spatial_latent || use_spde_latent_diag)) n_traits else 1L),
+    omega_spde_lv_iid = matrix(0,spatial_rho_n_groups,
+      if (structured_rho_spatial && is_spatial_latent) d_spde_lv else 1L),
     ## spatial_latent: packed lower-triangular Lambda_spde (n_traits x K_S)
     ## and K_S shared spatial fields. Allocated with dim 1 when not in use
     ## so TMB can still read a valid (mapped-off) matrix.
@@ -5316,6 +5444,11 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                      init_rr_theta(n_traits, d_phy)
                    } else 0.0,
     g_phy        = matrix(0, nrow = n_aug_phy, ncol = if (use_phylo_rr) d_phy else 1L),
+    g_phy_iid = matrix(0, if (structured_rho_sparse) n_species else 1L,
+                      if (structured_rho_sparse && use_phylo_rr) d_phy else 1L),
+    g_phy_diag_iid = matrix(0, if (structured_rho_sparse) n_species else 1L,
+                           if (structured_rho_sparse && use_phylo_diag) n_traits else 1L),
+    eta_structured_rho = 0, # rho=.5, independent of simulation truth
     ## Paired phylogenetic PGLLVM: per-trait phylogenetic random intercept
     ## (psi_phy diag).
     ## When use_phylo_diag = 0 these are mapped off below.
@@ -5939,6 +6072,28 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   if (!use_phylo_diag) {
     tmb_map$log_sd_phy_diag <- factor(rep(NA_integer_, length(tmb_params$log_sd_phy_diag)))
     tmb_map$g_phy_diag      <- factor(rep(NA_integer_, length(tmb_params$g_phy_diag)))
+  }
+  if (!structured_rho_sparse || !use_phylo_rr) {
+    tmb_map$g_phy_iid <- factor(rep(NA_integer_, length(tmb_params$g_phy_iid)))
+  }
+  if (!structured_rho_sparse || !use_phylo_diag) {
+    tmb_map$g_phy_diag_iid <- factor(rep(NA_integer_, length(tmb_params$g_phy_diag_iid)))
+  }
+  if (!structured_rho_field_active) {
+    tmb_map$g_phy <- factor(rep(NA_integer_, length(tmb_params$g_phy)))
+    tmb_map$g_phy_diag <- factor(rep(NA_integer_, length(tmb_params$g_phy_diag)))
+  }
+  if (!structured_rho_estimated) tmb_map$eta_structured_rho <- factor(NA_integer_)
+  if (!structured_rho_spatial || (is_spatial_latent && !use_spde_latent_diag)) {
+    tmb_map$omega_spde_iid <- factor(rep(NA_integer_,length(tmb_params$omega_spde_iid)))
+  }
+  if (!structured_rho_spatial || !is_spatial_latent) {
+    tmb_map$omega_spde_lv_iid <- factor(rep(NA_integer_,length(tmb_params$omega_spde_lv_iid)))
+  }
+  if (!spatial_rho_field_active) {
+    tmb_map$omega_spde <- factor(rep(NA_integer_,length(tmb_params$omega_spde)))
+    tmb_map$omega_spde_lv <- factor(rep(NA_integer_,length(tmb_params$omega_spde_lv)))
+    # kappa stays active: diag(A Q(kappa)^-1 A') still depends on range.
   }
   if (!use_kernel_multi) {
     tmb_map$theta_rr_kernel <- factor(rep(NA_integer_, length(tmb_params$theta_rr_kernel)))
@@ -6574,14 +6729,18 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   if (use_diag_species) random <- c(random, "q_sp")
   if (use_diag_cluster2) random <- c(random, "r_c2")
   if (use_equalto) random <- c(random, "e_eq")
-  if (use_spde && (!is_spatial_latent || use_spde_latent_diag)) {
+  if (use_spde && spatial_rho_field_active && (!is_spatial_latent || use_spde_latent_diag)) {
     random <- c(random, "omega_spde")
   }
-  if (is_spatial_latent)              random <- c(random, "omega_spde_lv")
+  if (is_spatial_latent && spatial_rho_field_active) random <- c(random, "omega_spde_lv")
+  if (structured_rho_spatial && (!is_spatial_latent || use_spde_latent_diag)) random <- c(random,"omega_spde_iid")
+  if (structured_rho_spatial && is_spatial_latent) random <- c(random,"omega_spde_lv_iid")
   if (use_spde_slope)                 random <- c(random, "omega_spde_aug")
   if (use_spde_latent_slope)          random <- c(random, "g_spde_slope")
-  if (use_phylo_rr) random <- c(random, "g_phy")
-  if (use_phylo_diag) random <- c(random, "g_phy_diag")
+  if (use_phylo_rr && structured_rho_field_active) random <- c(random, "g_phy")
+  if (use_phylo_diag && structured_rho_field_active) random <- c(random, "g_phy_diag")
+  if (use_phylo_rr && structured_rho_sparse) random <- c(random, "g_phy_iid")
+  if (use_phylo_diag && structured_rho_sparse) random <- c(random, "g_phy_diag_iid")
   if (use_kernel_multi) random <- c(random, "g_kernel")
   if (use_kernel_multi && any(kernel_has_diag == 1L)) {
     random <- c(random, "g_kernel_diag")
@@ -8643,6 +8802,31 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     fit$tmb_obj, fit$opt, fit$aghq
   )
   fit$fit_health <- .gllvmTMB_build_fit_health(fit)
+  if (structured_rho_estimated) {
+    structured_rho$value <- as.numeric(stats::plogis(fit$opt$par[names(fit$opt$par)=="eta_structured_rho"]))
+    structured_rho$boundary <- structured_rho$value < 1e-4 || structured_rho$value > 1-1e-4
+  }
+  if (!is.null(structured_rho)) {
+    if (structured_rho_spatial) {
+      structured_rho$source_diagonal <- setNames(as.numeric(fit$report$spatial_rho_diagonal),structured_rho$labels)
+      structured_rho$kappa <- as.numeric(fit$report$kappa)
+    }
+    fit$source_strength <- structured_rho
+    if(structured_rho_spatial && !structured_rho_estimated && structured_rho_value==0) {
+      fit$source_strength$diagnostics <- list(
+        range_strength_geometry=.structured_rho_spatial_diagnostic(fit),
+        messages="At fixed rho zero, range affects only projected marginal variances. It can be confounded with trait scale when those variances change proportionally; no spatial correlation identifies range at this endpoint.")
+    }
+    if (structured_rho_estimated) {
+      score <- tryCatch(as.numeric(obj$gr(opt$par)[names(opt$par)=="eta_structured_rho"]),
+        error=function(e) NA_real_)
+      weights <- .structured_rho_weights(fit)
+      jacobian <- (weights[1L]*weights[2L])^2
+      fit$source_strength$nll_score_logit <- score
+      fit$source_strength$nll_score_rho <- if (jacobian>0) score/jacobian else NA_real_
+      fit$source_strength$diagnostics <- .structured_rho_diagnostics(fit)
+    }
+  }
   fit
 }
 

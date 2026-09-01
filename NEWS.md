@@ -1,3 +1,28 @@
+# Development (unreleased)
+
+* Structured trait-intercept `phylo_*`, `animal_*`, `kernel_*` and `spatial_*` terms accept
+  fixed `rho` between zero and one. This reduces covariance between source
+  levels while preserving their marginal variances and the full trait
+  covariance, including a latent term's Psi companion. Ordinary intercept
+  effects remain separate. Omitted rho and explicit one retain the existing
+  fitted model; coefficient-helper defaults are unchanged.
+* `rho = NULL` estimates one source strength in the admitted native Gaussian
+  design: complete replicated trait vectors, one known source with nonzero
+  between-group relationships, retained observation residuals, and no competing
+  ordinary covariance. Estimated latent terms initially require rank one and
+  at least four traits. Optimizer success does not establish identification
+  or accurate recovery; source-specific recovery evidence remains limited.
+* Simulation, known-level prediction and `extract_Sigma()` account for the
+  whole attenuated covariance. The extractor reports source strength separately
+  from trait covariance. Source-allocation summaries and automatic refits that
+  do not preserve attenuation give typed limitations. Source-strength intervals,
+  augmented slopes and new ancestral predictions are not included. Spatial
+  range remains separately estimated. In the frozen Gaussian spatial study,
+  every estimated-rho cell was partial or blocked (14 partial, 2 blocked; no
+  passing cell), so this release makes no spatial range–rho recovery claim.
+  Attenuated spatial prediction requires known locations. See the new
+  source-strength worked example for long and wide calls.
+
 # gllvmTMB 0.7.1 (release candidate)
 
 This candidate is a narrow trust-release closure. It adds no new response

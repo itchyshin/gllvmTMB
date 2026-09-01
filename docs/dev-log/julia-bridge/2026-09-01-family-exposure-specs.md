@@ -491,3 +491,14 @@ A TRUE paired round-trip (both engines, same data, logLik tolerance) is NOT poss
   bridge-expansion slice. Decision options: (a) add native R ZI families
   first (own programme), (b) expose as explicitly engine-restricted families
   with loud documentation, (c) leave to the delta/hurdle track.
+
+## Verification close (2026-09-01)
+
+Pure-R bridge test file: 585 pass / 0 fail / 22 skip. Live (paired with the
+core070 GLLVM.jl lane): 1468 pass / 14 fail, the 14 being exactly the three
+PRE-EXISTING pairing tests (capabilities drift vs a broader-than-shipping
+Julia lane; grouped-dispersion routing; Gaussian logLik) whose failure count
+and names are unchanged from the pre-slice baseline. All three exposures
+(lognormal, truncated_poisson, betabinomial) carry green live paired
+round-trips vs engine="tmb". Lane remains local/unpushed; landing is the
+maintainer's gate.

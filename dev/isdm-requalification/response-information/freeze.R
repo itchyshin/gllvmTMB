@@ -1,0 +1,16 @@
+## Materialize the immutable scientific and qualification plans plus source hashes.
+args <- commandArgs(trailingOnly = TRUE)
+out <- if (length(args)) args[[1L]] else file.path("dev", "isdm-requalification", "response-information", "compute-inputs")
+dir.create(out, recursive = TRUE, showWarnings = FALSE)
+source(file.path("dev", "isdm-requalification", "response-information", "contract.R"), local = TRUE)
+plan <- isdm_respinfo_plan(); pilot <- isdm_respinfo_pilot_plan(plan); qualification <- isdm_respinfo_qualification_plan()
+saveRDS(plan, file.path(out, "scientific-plan.rds"), version = 3); utils::write.csv(plan, file.path(out, "scientific-plan.csv"), row.names = FALSE)
+saveRDS(pilot, file.path(out, "pilot-plan.rds"), version = 3); utils::write.csv(pilot, file.path(out, "pilot-plan.csv"), row.names = FALSE)
+saveRDS(qualification, file.path(out, "qualification-plan.rds"), version = 3); utils::write.csv(qualification, file.path(out, "qualification-plan.csv"), row.names = FALSE)
+root <- normalizePath(".", mustWork = TRUE)
+files <- sort(list.files(file.path(root, "dev", "isdm-requalification", "response-information"), recursive = TRUE, full.names = TRUE))
+files <- files[!grepl("HARNESS_SHA256[.]txt$|compute-inputs/", files)]
+relative <- sub(paste0("^", root, "/"), "", files)
+lines <- vapply(seq_along(files), function(i) sprintf("%s  %s", sub("[[:space:]].*$", "", system2("sha256sum", files[[i]], stdout = TRUE)), relative[[i]]), character(1L))
+writeLines(lines, file.path(out, "HARNESS_SHA256.txt"))
+cat("response information freeze passed\n")

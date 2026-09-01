@@ -1,0 +1,6 @@
+args <- commandArgs(trailingOnly = TRUE); if (length(args) != 3L) stop("usage: verify-study.R <scientific-plan.rds> <output-dir> <summary.rds>", call. = FALSE)
+source("dev/isdm-requalification/response-information/summarise-independent.R", local = TRUE)
+summary <- isdm_respinfo_independent_summary(args[[1L]], args[[2L]])
+if (summary$denominators$planned != 800L || summary$denominators$terminal != 800L) stop("study does not reconcile exactly 800 terminal identities", call. = FALSE)
+saveRDS(summary, args[[3L]], version = 3)
+cat("response information study verification passed\n")

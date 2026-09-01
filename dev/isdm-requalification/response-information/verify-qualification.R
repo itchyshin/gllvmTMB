@@ -1,0 +1,5 @@
+args <- commandArgs(trailingOnly = TRUE); if (length(args) != 2L) stop("usage: verify-qualification.R <qualification-plan.rds> <output-dir>", call. = FALSE)
+source("dev/isdm-requalification/response-information/contract.R", local = TRUE); source("dev/isdm-requalification/response-information/records.R", local = TRUE)
+plan <- readRDS(args[[1L]]); records <- lapply(plan$task_id, function(id) readRDS(file.path(args[[2L]], "attempts", isdm_respinfo_leaf(id))))
+if (length(records) != 4L || any(vapply(records, function(x) !identical(x$status, "fit_returned") || !isTRUE(x$optimizer_entered) || !isTRUE(x$diagnostics$finite) || is.null(x$raw) || !is.finite(x$diagnostics$max_gradient), logical(1L)))) stop("engineering qualification did not yield four finite entered fits", call. = FALSE)
+cat("response information qualification verification passed\n")

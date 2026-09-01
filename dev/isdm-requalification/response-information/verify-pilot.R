@@ -1,0 +1,6 @@
+args <- commandArgs(trailingOnly = TRUE); if (length(args) != 2L) stop("usage: verify-pilot.R <pilot-plan.rds> <output-dir>", call. = FALSE)
+source("dev/isdm-requalification/response-information/contract.R", local = TRUE); source("dev/isdm-requalification/response-information/records.R", local = TRUE)
+plan <- readRDS(args[[1L]]); records <- isdm_respinfo_terminal_dispositions(plan, args[[2L]])
+ok <- vapply(records, function(x) identical(x$status, "fit_returned") && isTRUE(x$optimizer_entered) && isTRUE(x$diagnostics$pd_hessian) && isTRUE(x$diagnostics$finite) && is.finite(x$diagnostics$max_gradient) && x$diagnostics$max_gradient <= ISDM_RESPINFO_GRADIENT_MAX && !is.null(x$raw) && is.finite(x$diagnostics$peak_rss_bytes) && x$diagnostics$peak_rss_bytes <= 8 * 1024^3, logical(1L))
+if (length(records) != 16L || !all(ok)) stop("retained pilot gate failed", call. = FALSE)
+cat("response information pilot verification passed\n")

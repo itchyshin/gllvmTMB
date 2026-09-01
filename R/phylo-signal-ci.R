@@ -50,6 +50,7 @@
   if (!inherits(fit, "gllvmTMB_multi")) {
     cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
   }
+  .structured_rho_source_allocation_assert(fit, "profile_ci_phylo_signal")
   has_phy <- isTRUE(fit$use$phylo_rr) || isTRUE(fit$use$phylo_diag)
   if (!has_phy) {
     cli::cli_abort(c(

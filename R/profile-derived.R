@@ -161,6 +161,9 @@ profile_ci_repeatability <- function(fit, trait_idx = NULL, level = 0.95) {
 #' current `method = "profile"` entry point returns the existing numerical
 #' delta-method Wald bounds with a clear `method = "wald(numeric)"` label
 #' rather than returning empty bounds.
+#' New structured source attenuation is excluded: this source-allocation
+#' interval does not account for rho. Use [extract_Sigma()] for point trait
+#' covariance and source-strength metadata.
 #'
 #' @param fit A fit returned by [gllvmTMB()].
 #' @param trait_idx Integer index of the trait, or `NULL` for all.
@@ -174,6 +177,7 @@ profile_ci_phylo_signal <- function(fit, trait_idx = NULL, level = 0.95) {
   if (!inherits(fit, "gllvmTMB_multi")) {
     cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
   }
+  .structured_rho_source_allocation_assert(fit, "profile_ci_phylo_signal")
   .gllvmTMB_mspl_assert_inference(fit, "profile_ci_phylo_signal")
   .gllvmTMB_require_unweighted_inference(fit, "profile_ci_phylo_signal")
   has_phy <- isTRUE(fit$use$phylo_rr) || isTRUE(fit$use$phylo_diag)

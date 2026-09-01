@@ -833,6 +833,15 @@ Type objective_function<Type>::operator()()
   DATA_SPARSE_MATRIX(Ainv_phy_rr);   // n_aug_phy x n_aug_phy (sparse)
   DATA_SCALAR(log_det_A_phy_rr);     // precomputed
   DATA_IVECTOR(species_aug_id);      // n_obs, 0-indexed row in g_phy (== species_id in legacy path)
+  DATA_INTEGER(structured_rho_sparse);
+  DATA_INTEGER(structured_rho_spatial);
+  DATA_IVECTOR(spatial_rho_group_id);
+  DATA_SPARSE_MATRIX(spatial_rho_A);
+  DATA_SCALAR(structured_rho_value);
+  DATA_VECTOR(structured_rho_diagonal);
+  DATA_INTEGER(structured_rho_estimated);
+  DATA_MATRIX(structured_rho_eigenvectors);
+  DATA_VECTOR(structured_rho_eigenvalues);
 
   // Design 65 C3.1: generic fixed dense multi-kernel tiers. This is active
   // only for two or more named kernel_* tiers; the one-name path stays in the
@@ -1127,6 +1136,8 @@ Type objective_function<Type>::operator()()
   PARAMETER_VECTOR(log_tau_spde);                // length n_traits (or 1 if unused)
   PARAMETER(log_kappa_spde);                     // shared
   PARAMETER_MATRIX(omega_spde);                  // n_mesh x n_traits
+  PARAMETER_MATRIX(omega_spde_iid);              // modeled locations x traits
+  PARAMETER_MATRIX(omega_spde_lv_iid);           // modeled locations x rank
 
   // spatial_latent: low-rank SPDE loadings + K_S shared spatial fields.
   // Same packed lower-triangular layout as theta_rr_B / theta_rr_W /
@@ -1163,6 +1174,9 @@ Type objective_function<Type>::operator()()
   // Stage-35 PGLLVM: phylogenetic reduced-rank loadings + species factors.
   PARAMETER_VECTOR(theta_rr_phy);                // packed lower-triangular Lambda_phy
   PARAMETER_MATRIX(g_phy);                       // n_species x d_phy
+  PARAMETER_MATRIX(g_phy_iid);                   // modeled levels only
+  PARAMETER_MATRIX(g_phy_diag_iid);              // folded Psi companion
+  PARAMETER(eta_structured_rho);                 // distinct outer parameter
   // Two-U PGLLVM: per-trait phylogenetic random intercepts and their log-SDs.
   // log_sd_phy_diag is length n_traits (or 1 if unused); g_phy_diag is
   // n_aug_phy x n_traits (or n_aug_phy x 1 if unused). Each trait column is
@@ -1823,6 +1837,46 @@ Type objective_function<Type>::operator()()
     }
   }
 
+  // Source strength for the single admitted structured trait-intercept block.
+  // All branching is on fixed DATA; estimated weights stay on the AD tape.
+  bool structured_rho_field_active = structured_rho_estimated == 1 ||
+    structured_rho_sparse == 0 || asDouble(structured_rho_value) > 0;
+  Type structured_rho_wK = Type(1), structured_rho_wD = Type(0);
+  Type rho_structured = structured_rho_value;
+  if (structured_rho_estimated == 1) {
+    structured_rho_wK = exp(-Type(0.5) * logspace_add(Type(0), -eta_structured_rho));
+    structured_rho_wD = exp(-Type(0.5) * logspace_add(Type(0), eta_structured_rho));
+    rho_structured = structured_rho_wK * structured_rho_wK;
+    REPORT(rho_structured); // point estimate only; no interval contract
+  } else if (structured_rho_sparse == 1 || structured_rho_spatial == 1) {
+    structured_rho_wK = sqrt(structured_rho_value);
+    structured_rho_wD = sqrt(Type(1) - structured_rho_value);
+  }
+  bool structured_rho_dense_estimated = structured_rho_estimated == 1 &&
+    structured_rho_sparse == 0 && structured_rho_spatial == 0;
+  vector<Type> structured_rho_spectral_var(structured_rho_eigenvalues.size());
+  Type structured_rho_logdet = Type(0);
+  if (structured_rho_dense_estimated) {
+    for (int j = 0; j < n_species; j++) {
+      structured_rho_spectral_var(j) = structured_rho_wD * structured_rho_wD +
+        rho_structured * structured_rho_eigenvalues(j);
+      structured_rho_logdet += log(structured_rho_diagonal(j)) +
+        log(structured_rho_spectral_var(j));
+    }
+  }
+  auto structured_rho_quad = [&](const vector<Type>& field) -> Type {
+    Type quad = Type(0);
+    for (int j = 0; j < n_species; j++) {
+      Type projected = Type(0);
+      for (int i = 0; i < n_species; i++) {
+        projected += structured_rho_eigenvectors(i,j) * field(i) /
+          sqrt(structured_rho_diagonal(i));
+      }
+      quad += projected * projected / structured_rho_spectral_var(j);
+    }
+    return quad;
+  };
+
   // -------- propto phylogenetic random effect (per trait) ---------------
   // For each trait t, p_phy.col(t) ~ MVN(0, exp(loglambda_phy) * Cphy)
   // -log p = 0.5 * (n_species*log(2*pi) + n_species*loglambda_phy + log_det_Cphy
@@ -1833,9 +1887,10 @@ Type objective_function<Type>::operator()()
     for (int t = 0; t < n_traits; t++) {
       vector<Type> p_t = p_phy.col(t);
       Type quad = (p_t.matrix().transpose() * Cphy_inv * p_t.matrix())(0, 0);
+      if (structured_rho_dense_estimated) quad = structured_rho_quad(p_t);
       nll += 0.5 * (Type(n_species) * log(2.0 * M_PI)
                     + Type(n_species) * loglambda_phy
-                    + log_det_Cphy
+                    + (structured_rho_dense_estimated ? structured_rho_logdet : log_det_Cphy)
                     + inv_lam * quad);
     }
     REPORT(lam_phy);
@@ -1882,11 +1937,17 @@ Type objective_function<Type>::operator()()
     // one row per EDGE of the tree (tips + internal nodes, root excluded) --
     // 2*n_tips - 2 only when the tree is fully bifurcating, and never
     // 2*n_tips - 1. In the legacy dense path n_aug_phy == n_species.
-    for (int k = 0; k < d_phy; k++) {
+    if (structured_rho_field_active) for (int k = 0; k < d_phy; k++) {
       vector<Type> g_k = g_phy.col(k);
       Type quad = (g_k.matrix().transpose() * Ainv_phy_rr * g_k.matrix())(0, 0);
+      if (structured_rho_dense_estimated) quad = structured_rho_quad(g_k);
       nll += 0.5 * (Type(n_aug_phy) * log(2.0 * M_PI)
-                    + log_det_A_phy_rr + quad);
+                    + (structured_rho_dense_estimated ? structured_rho_logdet : log_det_A_phy_rr) + quad);
+    }
+    if (structured_rho_sparse == 1) {
+      for (int j = 0; j < n_species; j++)
+        for (int k = 0; k < d_phy; k++)
+          nll -= dnorm(g_phy_iid(j, k), Type(0), Type(1), true);
     }
     REPORT(Lambda_phy);
     matrix<Type> Sigma_phy = Lambda_phy * Lambda_phy.transpose();
@@ -1915,11 +1976,17 @@ Type objective_function<Type>::operator()()
     REPORT(Sigma_phy_diag);
     // Prior: each column ~ N(0, A).
     // -log p(g_t) = 0.5 * (n_aug_phy * log(2pi) + log_det_A + g_t' Ainv g_t)
-    for (int t = 0; t < n_traits; t++) {
+    if (structured_rho_field_active) for (int t = 0; t < n_traits; t++) {
       vector<Type> g_t = g_phy_diag.col(t);
       Type quad = (g_t.matrix().transpose() * Ainv_phy_rr * g_t.matrix())(0, 0);
+      if (structured_rho_dense_estimated) quad = structured_rho_quad(g_t);
       nll += 0.5 * (Type(n_aug_phy) * log(2.0 * M_PI)
-                    + log_det_A_phy_rr + quad);
+                    + (structured_rho_dense_estimated ? structured_rho_logdet : log_det_A_phy_rr) + quad);
+    }
+    if (structured_rho_sparse == 1) {
+      for (int j = 0; j < n_species; j++)
+        for (int t = 0; t < n_traits; t++)
+          nll -= dnorm(g_phy_diag_iid(j, t), Type(0), Type(1), true);
     }
   }
 
@@ -2357,18 +2424,39 @@ Type objective_function<Type>::operator()()
   //     the diagonal Psi_spde companion.
   matrix<Type> Lambda_spde(n_traits, std::max(spde_lv_k, 1));
   Lambda_spde.setZero();
+  vector<Type> spatial_rho_diagonal(spatial_rho_A.rows());
+  spatial_rho_diagonal.setOnes();
+  bool spatial_rho_field_active = structured_rho_spatial == 0 ||
+    structured_rho_estimated == 1 || asDouble(structured_rho_value) > 0;
   if (use_spde == 1) {
     Type kappa  = exp(log_kappa_spde);
     Type kappa2 = kappa * kappa;
     Type kappa4 = kappa2 * kappa2;
     Eigen::SparseMatrix<Type> Q_base =
       kappa4 * spde_M0 + Type(2.0) * kappa2 * spde_M1 + spde_M2;
+    if (structured_rho_spatial == 1) {
+      // One sparse factorization, one projected-variance solve per location.
+      // Keep kappa on the AD tape; neither Q^-1 nor a full K is materialized.
+      Eigen::SimplicialLDLT< Eigen::SparseMatrix<Type> > spatial_ldlt(Q_base);
+      Eigen::SparseMatrix<Type> spatial_rho_At = spatial_rho_A.transpose();
+      for (int j=0; j<spatial_rho_A.rows(); j++) {
+        matrix<Type> a(Q_base.rows(),1);
+        a.setZero();
+        for (typename Eigen::SparseMatrix<Type>::InnerIterator it(spatial_rho_At,j); it; ++it)
+          a(it.row(),0) = it.value();
+        matrix<Type> solved = spatial_ldlt.solve(a);
+        spatial_rho_diagonal(j) = (a.transpose()*solved)(0,0);
+      }
+      REPORT(spatial_rho_diagonal);
+    }
     if (spde_lv_k == 0 || spde_lv_unique == 1) {
       // Per-trait path, or diagonal Psi companion for spatial_latent(unique=TRUE).
       for (int t = 0; t < n_traits; t++) {
         Type tau = exp(log_tau_spde(t));
         vector<Type> omega_t = omega_spde.col(t);
-        nll += SCALE(GMRF(Q_base), Type(1.0) / tau)(omega_t);
+        if (spatial_rho_field_active) nll += SCALE(GMRF(Q_base), Type(1.0) / tau)(omega_t);
+        if (structured_rho_spatial == 1) for(int j=0;j<omega_spde_iid.rows();j++)
+          nll -= dnorm(omega_spde_iid(j,t),Type(0),Type(1),true);
       }
       REPORT(log_tau_spde);
     }
@@ -2382,7 +2470,9 @@ Type objective_function<Type>::operator()()
       // absorbed into Lambda_spde).
       for (int k = 0; k < spde_lv_k; k++) {
         vector<Type> omega_k = omega_spde_lv.col(k);
-        nll += GMRF(Q_base)(omega_k);
+        if (spatial_rho_field_active) nll += GMRF(Q_base)(omega_k);
+        if (structured_rho_spatial == 1) for(int j=0;j<omega_spde_lv_iid.rows();j++)
+          nll -= dnorm(omega_spde_lv_iid(j,k),Type(0),Type(1),true);
       }
       REPORT(Lambda_spde);
       matrix<Type> Sigma_spde_shared = Lambda_spde * Lambda_spde.transpose();
@@ -2701,14 +2791,28 @@ Type objective_function<Type>::operator()()
       for (int t = 0; t < n_traits; t++) {
         vector<Type> omega_t = omega_spde.col(t);
         vector<Type> Ao_t = A_proj * omega_t;
-        for (int o = 0; o < y.size(); o++) A_omega(o, t) = Ao_t(o);
+        for (int o = 0; o < y.size(); o++) {
+          A_omega(o,t) = Ao_t(o);
+          if (structured_rho_spatial == 1) {
+            int j = spatial_rho_group_id(o);
+            A_omega(o,t) = structured_rho_wK*Ao_t(o) + structured_rho_wD*
+              sqrt(spatial_rho_diagonal(j))*exp(-log_tau_spde(t))*omega_spde_iid(j,t);
+          }
+        }
       }
     }
     if (spde_lv_k > 0) {
       for (int k = 0; k < spde_lv_k; k++) {
         vector<Type> omega_k = omega_spde_lv.col(k);
         vector<Type> Ao_k = A_proj * omega_k;
-        for (int o = 0; o < y.size(); o++) A_omega_lv(o, k) = Ao_k(o);
+        for (int o = 0; o < y.size(); o++) {
+          A_omega_lv(o,k) = Ao_k(o);
+          if (structured_rho_spatial == 1) {
+            int j = spatial_rho_group_id(o);
+            A_omega_lv(o,k) = structured_rho_wK*Ao_k(o) + structured_rho_wD*
+              sqrt(spatial_rho_diagonal(j))*omega_spde_lv_iid(j,k);
+          }
+        }
       }
     }
   }
@@ -2836,13 +2940,22 @@ Type objective_function<Type>::operator()()
     }
     if (use_phylo_rr == 1) {
       Type contrib = 0;
-      for (int k = 0; k < d_phy; k++)
-        contrib += Lambda_phy(t, k) * g_phy(species_aug_id(o), k);
+      for (int k = 0; k < d_phy; k++) {
+        Type score = g_phy(species_aug_id(o), k);
+        if (structured_rho_sparse == 1)
+          score = structured_rho_wK * score + structured_rho_wD *
+            sqrt(structured_rho_diagonal(species_id(o))) * g_phy_iid(species_id(o), k);
+        contrib += Lambda_phy(t, k) * score;
+      }
       eta(o) += contrib;
     }
     if (use_phylo_diag == 1) {
       // Per-trait phylogenetic random intercept.
-      eta(o) += exp(log_sd_phy_diag(t)) * g_phy_diag(species_aug_id(o), t);
+      Type score = g_phy_diag(species_aug_id(o), t);
+      if (structured_rho_sparse == 1)
+        score = structured_rho_wK * score + structured_rho_wD *
+          sqrt(structured_rho_diagonal(species_id(o))) * g_phy_diag_iid(species_id(o), t);
+      eta(o) += exp(log_sd_phy_diag(t)) * score;
     }
     if (n_kernel_tiers > 0) {
       int kid = kernel_group_id(o);

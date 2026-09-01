@@ -47,7 +47,9 @@ regardless of \code{re_form}.
 
 On \code{newdata}, \code{predict()} rebuilds the linear predictor in R and can
 re-add only some of the model's random-effect tiers (the unit-level
-\code{rr}/\code{diag} terms, \code{propto}, and the spatial SPDE field). A fit
+\code{rr}/\code{diag} terms, \code{propto}, and the spatial SPDE field). Structured
+intercepts also include their shared and folded Psi effects
+at known source levels; ancestral prediction is not added. A fit
 carrying any other active tier gets a warning naming exactly what was
 omitted; \code{newdata = NULL} always returns the full conditional
 predictor.}

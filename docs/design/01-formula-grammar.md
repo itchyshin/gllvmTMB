@@ -886,3 +886,27 @@ not enter later releases:
   matrix.
 - AGENTS.md Design Rule #3 — no formula-grammar change without
   updating this document first.
+
+## Structured rho execution arc (2026-08-31; not yet complete)
+
+Canonical phylo/animal/kernel/spatial indep, dep and latent helpers gain a trailing
+`rho = 1`. Omitted/explicit one preserves all legacy endpoints, including
+multi-kernel models. Numeric values in [0,1] request fixed attenuation of the
+resolved source covariance; `rho = NULL` is reserved for the admitted Gaussian
+estimated-source-strength route implemented in this arc. Core likelihood,
+gradient, workflow and family-equivalence gates pass. The24-attempt retained
+pilot returned24fits with23 meeting numerical criteria; broader recovery and
+final candidate review remain outstanding. The worked example is
+`vignettes/articles/structured-source-strength.Rmd`.
+Spatial helpers use the same attenuation weight, separately from estimated
+range; see `dev/structured-rho/SPATIAL-ADDENDUM.md`. Deprecated scalar/unique
+aliases accept old calls but require canonical replacement for new attenuation.
+
+Capture strength and term identity before desugaring (which can otherwise drop
+literal NULL). A folded latent(unique=TRUE) is one covariance block; separate
+structured terms cannot be combined with new attenuation. Preserve the complete
+Psi covariance and common=TRUE. Reject new attenuation before unsupported
+Julia/VA/MSPL/AGHQ or augmented-slope routes. Estimated rho uses the resolved
+`unit_obs` observation-vector key, requires at least two traits (four for rank-one
+latent estimation), and requires all modeled source levels to be observed; unused levels cannot supply identifying source contrast. See
+`dev/structured-rho/PLAN.md` for the full approved scope, budgets and gates.

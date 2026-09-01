@@ -56979,3 +56979,450 @@ and local final-ci receipt before readiness. No extra fits, recovery study, boot
 release, deployment, merge or landing. See
 `docs/dev-log/after-task/2026-08-31-covariance-teaching.md` for receipts,
 failed setup attempts, Noether/Pat/Rose reviews and completion updates.
+
+## 2026-08-31 — structured rho core checkpoint (arc still active)
+
+User approved the full fixed-plus-estimated arc and separate fit budgets in
+`dev/structured-rho/PLAN.md`. Sole writer in worktree87fa on
+`codex/structured-term-rho-20260831`, baseline101fafcc3; read-only Boole/Pat and
+Gauss/Noether reviews. Existing teaching/article and older slope/MSPL branches
+remain untouched. No push, merge, release, version bump or publication.
+
+Core fixed dense/sparse mixtures and Gaussian estimated rho are implemented.
+The whole latent-plus-Psi covariance shares strength, preserving legacy source
+scale and ordinary components. Estimated rho is an outer parameter starting
+at .5, with replication/source-contrast/rank guards. Generic latent admission
+does not prove decomposition identification at weak/zero loadings; diagnostics
+and retained recovery remain owed.
+
+Retained commands, hashes, exit status and output:
+`dev/structured-rho/evidence/`. Latest source/test hash
+47906bb4523f4ce9ca9d037ad74f99ac4e9edc65c5ed6e29ee6c6ff734c893d3.
+`R CMD INSTALL --no-multiarch --library=/tmp/structured-rho-library .` passed
+(install-core-04); earlier C++ builds passed in83.557/86.495seconds. Exact R/src
+build dependency is checked by run-gate.py before installed-package tests.
+
+`Rscript --vanilla dev/structured-rho/test-contract.R`,
+`test-estimation-contract.R`, `test-fixed-oracle.R`, and
+`test-estimated-oracle.R` all passed their success markers and exit0; latest
+receipts are core-contract-03, core-estimation-contract-03,
+core-fixed-oracle-06 and core-estimated-oracle-03. Fixed oracle covers60 points;
+estimated covers100 plus explicit unit_obs and long/wide comparisons. Direct
+Gaussian marginal covariance and numerical gradients are independent of the
+native precision implementation. All latest summaries report FAIL0/WARN0/SKIP0.
+
+`Rscript --vanilla -e 'devtools::document(quiet=TRUE)'` completed in11.261seconds,
+changing only ten scoped helper Rd files. Three S3 export-tag diagnostics refer
+to untouched R/aghq-report.R. `git diff --check` passed. Exact discovery scans:
+`rg -n 'gll_unpack_rr_loadings' src`,
+`rg -n 'shared_marker_active|shared_rewrite <-' R`,
+`rg -n 'site_species_id' R/fit-multi.R`, and
+`rg -n 'g_phy' R`. They located packing, literal-NULL deletion, replicate-vector
+identity, and downstream consumers respectively; they are not full stale-prose
+or downstream correctness audits.
+
+Retained failures: initial missing-function red tests, Matrix::diag test-harness
+dispatch, expect_lt(info=) misuse, a sparse fixture incorrectly using the legacy
+dense phylo(Ainv=) sugar, and the public NULL request lost by shared() rewriting.
+No tolerance was loosened. No source-resolving or coefficient defaults changed.
+Independent review found unused-level-only contrast could falsely identify rho
+and explicit unit_obs replication was falsely rejected. Guards/regression tests
+now address both. The unused-unit_obs warning is also fixed for estimated rho.
+
+Optimizer attempt counters remain0 in every bucket: these are model-assembly
+and fixed-point Laplace checks, not outer optimization or recovery fits.
+No local pre-run, Totoro pilot/campaign, teaching render, full package check or
+final independent candidate panel has run. Workflow/extractor/interval fences,
+weak-loading diagnostics, Poisson/every-family equivalence, exact legacy
+compatibility and runnable teaching remain outstanding. Goal remains active;
+see live after-task report and `.unlazy/structured-rho/GATES.md`.
+
+## 2026-08-31 — structured rho workflow checkpoint (before optimizer pre-run)
+
+`workflow-04` passes216 assertions; `workflow-core-{contract,estimation-contract,
+fixed-oracle,estimated-oracle}` pass619 combined. Commands are the corresponding
+`Rscript --vanilla dev/structured-rho/test-*.R` runners through run-gate.py, all
+with successful install-workflow-04 as exact R/src dependency. Workflow04
+elapsed7.326seconds; core reruns2.051/1.007/3.664/6.269seconds. Full commands,
+hashes, outputs and exit0 receipts retained. These are declared parameter points
+and simulation checks, not outer optimization or recovery fits.
+
+Implemented whole-source simulation, known-level structured prediction,
+extract_Sigma source_strength metadata and common-variance extraction, typed
+allocation/automatic-refit limitations and descriptive source/loading diagnostics.
+Sparse draws retain ancestors and independent modeled-level fields. Boundary
+weights use stable complementary logits; unused levels map by source labels.
+216 workflow assertions include4000 Gaussian response draws per sparse/dense
+rank-one+Psi fixture, six predeclared covariance Monte Carlo SEs per entry.
+
+Retained workflow-red failed on missing helper. Workflow02 failed because its
+common-kernel reference assumed propto rather than the legacy tied rr path;
+corrected reference, no change to source resolution or tolerance. Gauss/Noether
+reviewed algebra/maps/weak-loading thresholds. Boole/Pat found refit/summary
+losses and reviewed the approved pre-run harness. No final-panel signoff.
+
+`devtools::document(quiet=TRUE)` passed in12.574seconds and regenerated seven
+scoped help files; the same three unrelated S3 export-tag diagnostics in
+R/aghq-report.R remain. Extractor contract synchronized. Exact scans:
+`rg -n 'g_phy' R`, `rg -n 'parList|source_strength|phylo_diag' R/fit-multi.R`,
+`rg -n 'reconstruct_multi_formula|refit_inputs' R/bootstrap-sigma.R R/extract-two-psi-cross-check.R`.
+`git diff --check -- . ':!dev/structured-rho/evidence'` passes. Raw evidence logs
+retain testthat/compiler trailing whitespace intentionally; the earlier full
+cached diff check reported that whitespace before local commit30e8e3de5.
+Do not confuse that raw-log exception with a passing full cached diff check.
+
+`Rscript --vanilla dev/structured-rho/freeze-prerun.R dev/structured-rho/prerun-fixtures`
+passed in0.589seconds, generating the approved frozen40group×3rep×4trait design.
+No optimizer attempt yet. Pre-run runner reserves cleanup within24minutes,
+charges each launch before execution and refuses any second optimizer call.
+Existing Totoro/Fir ControlMaster checks returned live master PIDs; no new login.
+Goal remains active; no push/merge/publication. Full campaign needs pilot-based
+approval, and all parent acceptance gates remain open.
+
+## 2026-08-31 — structured rho pre-run, endpoint and family evidence
+
+Goal active; no full-arc completion claim. Prerun12/12 spent; engineering7/192;
+retained0/2400; teaching0/24; package-check0 passes. All launched attempts remain
+in dev/structured-rho/attempts.csv. PRERUN.md details12 returned fits, all conv0
+and pdHess, but macOS time-l wrapper failures (sysctl kern.clockrate) on every
+attempt. Wrapper failed statuses remain unchanged. Four of six estimated fits
+land near0; independent Gaussian NLL and physical-rho score audits support local
+boundary solutions, not recovery or global optimality. No tree/seed replacement.
+
+Receipts (all commands run via dev/structured-rho/run-gate.py; exact arguments,
+source hashes, exit status and raw output retained): family-oracle02 passes1876
+assertions over372 interior evaluations and8 legacy rejections; expanded
+family-oracle-endpoints01 passes5628 assertions over1116 evaluations and24
+legacy rejections at rho0/.35/1,118.093seconds. All17 native familyIDs plus two
+additional binomial links; default estimated-df Student used in expanded run.
+This uses declared parameter points and real Laplace evaluations, no outer fits.
+Original interior run retained CSV errors; expanded run retained full test log.
+Tolerances unchanged: scaled NLL1e-7,gradient2e-5,eta1e-6.
+
+compat-snapshot.R/check-compat.R compare archived baseline101fafcc3 against
+omitted and explicitone current calls:11 cases,active payloads/maps/parameters,
+objective,gradient,report,covariance,logLik,fitted,coefficient defaults and seeded
+already-supported loadings-only unconditional simulation. compat-check02 passes.
+Baseline executable provenance is install-baseline/baseline-source.json; the
+install-baseline-command context hash itself describes the current worktree,
+not the archived baseline. Existing unsupported common endpoint extraction is
+preserved. Previously unsupported endpoint Psi simulation and known-level
+prediction are repaired without changing fit assembly or already-supported draws.
+
+Seven real fits in engineering-batch01 (7.407seconds total): baseline/omitted/
+explicitone Gaussian fits and two Poisson fixed-rho/effective-K pairs. Every fit
+returned withconv0,pdHessTRUE,no warnings and exactlyone optimizer invocation.
+check-engineering.R passes after comparing the numeric est column separately
+from group/trait labels; initial checker tried arithmetic on a data frame.
+No refits and no tolerance changes. Poisson evidence is software equivalence,
+not recovery. Sparse/ancestor/Psi and ordinary-component workflow also passed:
+endpoint-workflow01=221 assertions; ordinary-slope-fence-green02=18 assertions;
+interval guard5 assertions. R/src builddependency recorded by each gate.
+
+Gauss/Noether found fixedrho ordinary augmented-slope admission beyond scope;
+now use_rr_B_slope and use_diag_B_slope are fenced before TMB dispatch. Red
+fixtures exposed wrong unit/syntax, then a helper that discarded typed classes;
+helper now rethrows the original condition. No optimizer invoked by these tests.
+Document-diagnostics01 passed12.348seconds, same three untouched aghq-report S3
+tag diagnostics. Updates: physical/logit NLL scores and raw-rho profile refusal,
+plus endpoint simulation/prediction wording. Final docs/article/renders owed.
+
+Retained fixtures frozen by freeze-study.R in4.457seconds, no optimizer:
+1200 independent datasets,2400paired fits,24 predetermined pilot jobs. Manifest
+7580cdca135874199b740c025764a4bc512da5f0f769164908e27bedf4afc504 covers sources,
+labels,data,seeds,geometry and scale. Raw datasets retained locally (ignored),
+hashes tracked. Pedigree210nodes retains90parents and120offspring; Q generated
+independently from Mendelian innovations and compared to additive recurrence.
+All12 source/form payloads match independent marginal source covariance in
+study-sources02. First harness requested nonexistent Q_phy; corrected to actual
+Ainv_phy_rr after reading payload assembly. Pilot runner not launched yet.
+
+Exact scans: rg -n 'g_phy' R; rg -n 'source_strength|nll_score|interval'
+R/extract-sigma.R R/profile-ci.R docs/design/06-extractors-contract.md;
+rg -n 'Q_phy|rho_diag' R/fit-multi.R; rg -n 'Payload capture failed' tests/testthat.
+Open PR census unchanged1209/1198/1077/1070/1065/981; six-hour all-ref log shows
+only this lane and the closed baseline article merge. No foreign live ownership
+claimed. No push/merge/publication/version or closed-article edits.
+
+## Pilot, teaching and admission checkpoint — 2026-08-31 10:41 MDT
+
+The 24 Totoro pilot attempts returned in 34.408 seconds with 12 workers and
+BLAS threads fixed at one. Twenty-three met the frozen numerical criteria;
+the fixed animal loadings-only fit had maximum gradient .015651 > .01 and
+remains a failure. Peak per-process RSS was 4.752 GiB. PILOT.md records the
+manifest, bundle and installed-package hashes and the measured 20–60 minute
+projection. Explicit approval for the remaining 2,376 attempts was requested;
+none has been received. No campaign remainder or replacement fit has run.
+
+The new worked article, its long/wide calls, NEWS and pkgdown navigation are
+implemented. Two renders used eight teaching fits, all convergence code zero;
+the second was clean after moving the Sass cache to task-local temporary space.
+The teaching estimate (.338 versus generating .6) is explicitly described as
+an example, not evidence of accurate recovery. The keyword-grid note rendered
+without optimizer calls. A third four-fit render is running after the final
+admission wording change. Closed articles remain untouched.
+
+The exported profile_ci_phylo_signal() bypass reached an old Wald calculation
+in a negative spy test. The source-allocation guard now stops it before either
+Wald or profile dispatch; the internal signal helper is also guarded. Its help
+and extractor contract agree. Valid total trait-covariance and communality
+profile targets were not disabled. A separate red test found that the new
+estimated indep/dep path still admitted one trait; it now requires at least two.
+The 15-assertion estimation contract passes. This narrows unsupported inputs;
+the frozen six-trait study estimator and source bundle stay unchanged.
+
+Current installed source receipt is install-multivariate-01, successful in
+23.852 seconds. Repeated fixed (150 assertions), estimated (389) and workflow
+(221) independent point checks pass with its verified R/src dependency. Family
+point checks and teaching-render-03 are running. The first full package check
+is still running its suite within the 30-minute cap. Its code note about an
+unqualified logLik call is present in baseline methods-gllvmTMB.R:2914; a
+future-file timestamp note is also recorded. These are not a clean-check claim.
+The test optimizer instrumentation works, but devtools/rcmdcheck cleared R_TESTS
+for example subprocesses. Therefore first-pass example optimizer counts are
+unmeasured. The prepared one allowed repair check explicitly passes startup
+through child env; Boole/Pat reviewed this read-only. No extra full pass is
+hidden in dedicated engineering or teaching budgets.
+
+Current non-regression counts: pre-run12, engineering7, retained24, teaching8
+before the running third render. All historical failures remain retained.
+Remaining work: settle full package checks, freeze final candidate, obtain
+remaining-study approval, retain full evidence, then run the one final panel
+(two Terra-high reviewers and one Sol-high mathematical/evidence reviewer).
+All parent gates remain open. This checkpoint does NOT cover merge, release,
+publication, three-OS validation, rho intervals or non-Gaussian recovery.
+
+
+## Structured rho local-check outcome and approval checkpoint — 2026-08-31
+
+First full check: package-check-01 exit0,1533.295seconds,0errors/0warnings/3notes.
+Testthat FAIL0/WARN54/SKIP1190/PASS22558. 3889 test optimizer entries logged;
+build/example calls unmeasured because rcmdcheck cleared R_TESTS. Its snapshot
+predates direct-signal-CI and two-trait admission guards. Current-source fixed,
+estimated, workflow, components, interval, family and compatibility gates all
+pass with install-multivariate-01 dependency. Family gate117.625seconds;
+compat-check-03 compares new snapshots to preserved baseline-02. No extra fits.
+
+Teaching-render-03 passes19.293seconds,4optimizer calls, allconv0. HTML andsource
+hash retained. Cumulative teaching12/24; engineering7/192; prerun12/12;
+retained24/2400. Totoro pilot and study manifests remain immutable.
+
+The permitted repair fullcheck failed after238.255seconds during DESCRIPTION
+validation: trace-installation output polluted R metadata subprocesses. It
+built/installed but never ran tests. Two build-vignette nlminb calls are logged,
+separate from teaching/study. A logger-lifetime amendment during build, before
+any fit, retained old/new hashes and original receipt; no process restarted.
+Current external startup uses an option-backed logger and silently captures
+trace-installation messages. check-metadata-startup-01 invokes R's actual
+strict metadata validator with R_TESTS: exit0,exactstdout,emptystderr,zerooptimizer
+entries. check-startup-silence-01 and cleanup self-test also pass. This is not a
+third fullcheck. The original one-pass+one-repair allowance is now spent.
+
+Remaining approvals requested:2376 frozen Totoro attempts at12workers/BLAS1,
+hard60minutes; and one additional localfullcheck,25–30minuteestimate/hard30min.
+No approval file exists for either. The prepared runners refuse without actual
+maintainer authorization. No fits/builds/checks currently running. Goal active;
+all parentgates open and final2Terra-high+1Sol-highpanel owed after fullevidence.
+
+Exact scans this checkpoint:
+- rg -n 'deviance.gllvmTMB_multi|logLik' R/methods-gllvmTMB.R and git show
+  101fafcc3:R/methods-gllvmTMB.R: baseline unqualified logLik at2914 confirmed.
+- rg -n 'rho.*(confidence|interval)|confidence.*rho|single.trait|two traits'
+  vignettes/articles/structured-source-strength.Rmd NEWS.md
+  docs/design/01-formula-grammar.md docs/design/06-extractors-contract.md:
+  admitted minima and no-rho-interval scope agree.
+- rg -n 'structured.*rho|source strength' README.md ROADMAP.md
+  docs/design/00-vision.md docs/dev-log/known-limitations.md: no staleclaimhits.
+  An initial scan named a nonexistent known-limitations article; corrected to
+  the actual dev-log file rather than reporting that failedscan asclean.
+- rg -n 'untrace\(|trace\(' tests/testthat filtered for nlminb/optim/stats:
+  no test removes the optimizer logger directly.
+- Runtime share/R/examples-header.R:38-39 proves cleanEx removes allglobals;
+  Boole/Pat subsequently reviewed the surviving option-backed logger.
+- git diff --check: clean. PR census unchanged1209/1198/1077/1070/1065/981.
+  Sole active lease remains codex:structured-rho-87fa; old register snapshots
+  remove this lane's rho rows and contain unrelated historical work. Only the
+  existing STR-RHO rows were updated; no foreign lane was modified.
+
+The after-task report has been consolidated, with its old text archived
+verbatim under dev/structured-rho/report-history-before-local-checkpoint.md.
+Shape-only validation is separate from acceptance closure. No three-OS, merge,
+publication, release,version or other-repository action occurred.
+
+
+Maintainer steering after the local-check checkpoint: phylogenetic source rho
+normally stays one while separate phylogenetic/nonphylogenetic covariance is
+interpreted; spatial dependence may instead justify estimated attenuation.
+SCIENTIFIC-STEERING.md records the distinction and bounded Gauss/Noether review.
+The supplied tutorial PDF path is absent; no claim of reading it. No code,
+default, model scope, estimator or campaign was changed by this discussion.
+The remaining-study gate stays paused while scientific purpose is clarified.
+
+Staged whitespace audit: source/docs/scripts pass after normalizing the generated
+changed-files.csv to LF. Raw retained stdout and rendered HTML contain original
+trailing whitespace; they are deliberately preserved byte-for-byte with their
+recorded hashes, not cleaned to manufacture a whole-tree whitespace pass.
+Scoped command: git diff --cached --check -- . ':!dev/structured-rho/evidence/**'.
+No source archive, raw check tree, compiled object or approval file is staged.
+
+
+## Structured rho continuation: source-specific teaching clarification
+
+The preceding goal turn made progress: checkpoint cb3716db3 saved implementation,
+pilot evidence, check outcomes and the user's scientific clarification. This
+continuation adds the confirmed distinction to the worked article: rho one
+within phylo does not imply phylogenetic variance share one; flexible separate
+trait covariances differ from the proportional components in K_rho tensorSigma.
+No new API, spatial support, defaults or source estimator changed. PDF still
+absent; no claim to its contents. Both compute approval files remain absent.
+
+teaching-render-04: exit0,20.641seconds,verified install-multivariate-01 dependency,
+four optimizer calls all returned convergence0. Cumulative teaching16/24;
+prerun12,engineering7,retained24 unchanged. HTML/source hashes retained. Exact
+scan: rg -n 'scientific question|trait covariance matrices|not a substitute'
+/tmp/structured-rho-rendered/articles/structured-source-strength.html; allthree
+clarifications present in rendered text. No full check/campaign/final panel ran.
+PR census unchanged1209/1198/1077/1070/1065/981; recent all-ref commits are this
+lane. All parent gates remain open. Next substantive work needs the tutorial
+and/or scientific direction plus explicit compute approval; do not restart any
+spent fit or fullcheck while waiting.
+# 2026-08-31 — approved spatial extension and completed retained rho study
+
+Maintainer authorization: “approve these things an dwhat do you need?”,
+“spatial stuff is OK - just make all rho the same way”, “keep going as planned”.
+The measured campaign and extra-check approvals are now retained as JSON;
+SPATIAL-ADDENDUM.md supersedes the earlier spatial exclusion. Root remains the
+only implementation writer. No push, merge, release or other-repository edits.
+
+Uniform spatial attenuation uses the legacy projected SPDE covariance, with
+range-dependent diagonals from differentiated sparse solves. Shared loadings
+and Psi receive the same weight; IID effects live at modeled locations before
+replication. Rho zero maps off mesh fields, not range. Geometry checks are
+local numerical diagnostics over at most64 deterministic locations; they do
+not establish global identification or spatial recovery. Ancillary diagnostic
+failure cannot discard a fit. Gauss/Noether reviewed these choices read-only.
+
+Commands and exact receipts under dev/structured-rho/evidence:
+
+- `python3 dev/structured-rho/run-remaining.py <frozen Totoro task>`:2376
+  remaining attempts in982.008s; all2400 including pilot returned once,
+ 2248 numerical successes,152 gradient-limit failures, zero retries/timeouts.
+  Frozen fixture/package hashes unchanged. Raw archive SHA256
+  85b5821e455695de39f76aad0ffae9ffd565abe11b02bfd3a983f35ddc38e3d3;
+  raw local+remote store, all-attempt summaries and Fisher verdict retained.
+- `Rscript --vanilla dev/structured-rho/test-spatial.R`:spatial-oracle-06
+  passes184 assertions in13.202s, including
+ 42 direct Gaussian likelihood/joint-gradient points, endpoint maps,
+  geometry controls, unequal Psi, simulation and long/wide workflows.
+- `Rscript --vanilla dev/structured-rho/test-spatial-family.R`:
+  spatial-family-04 passes1128 assertions,27.967s, including multinomial
+  boundaries. Delta/ordinal reference composes the full spatial Psi via dep;
+  no model component or tolerance was removed to obtain equivalence.
+- Current nonspatial contract, estimation, fixed/estimated oracles, workflow,
+  components and interval scripts pass in final-*-01 receipts. Final native
+  family sweep passes in106.402s. These are point checks, not outer fit attempts.
+- `Rscript --vanilla dev/structured-rho/check-compat.R -04 -04` passes14
+  baseline/omitted/one cases; new inert fields are explicitly checked mapped
+  off before removal from comparison. Coefficient defaults stay unchanged.
+- `python3 dev/structured-rho/run-spatial-engineering.py <installed receipt>`:
+  eight fits returned with PD Hessians, convergence zero, max gradient
+  <=.001066 and known-location prediction error <=4.5e-16. JSON serialization
+  then failed on the retained original call. All wrapper exits remain1;
+  result.rds was saved first and check-spatial-engineering.R validates it
+  without any retry. Serializer repaired, as-run runner retained.
+- `devtools::document(quiet=TRUE)` passes document-spatial-01 in11.277s;
+  three existing untouched aghq S3 export diagnostics remain visible.
+- `render-example.R articles/structured-source-strength teaching-render-05
+  dev/structured-rho/evidence/install-spatial-sparse-02/receipt.json` passes
+  in21.987s,6 optimizer calls all convergence zero; cumulative teaching22/24.
+  Updated keyword grid render teaching-grid-02 passes15.244s with zero fits.
+
+Current installation is install-spatial-sparse-02. Build history retains the
+initial Eigen RHS type failure, its successful correction, the sparse R t()
+dispatch failure and Matrix::t repair. spatial-wide-point-01 accidentally ran
+only invisible(NULL); NOT-A-TEST.md explicitly excludes it from acceptance.
+No evidence or failure receipt was deleted or relabelled as a passing run.
+
+Scan: `rg -n 'Spatial attenuation|spatial.*endpoint one only|spatial.*accept.*only|Spatial.*estimation.*not supported' R/brms-sugar.R docs/design/01-formula-grammar.md docs/design/03-likelihoods.md docs/design/06-extractors-contract.md NEWS.md AGENTS.md CLAUDE.md vignettes/articles/structured-source-strength.Rmd vignettes/articles/api-keyword-grid.Rmd`.
+Remaining matches describe legacy source scope or unified-wrapper intercept
+syntax, not the superseded rho restriction. `git diff --check -- .
+':!dev/structured-rho/evidence/**'` passes; raw evidence whitespace preserved.
+
+Budgets: pre-run12/12, engineering15/192, retained2400/2400, teaching22/24.
+The expressly approved extra full check and final independent candidate panel
+remain next. No spatial recovery, rho intervals, exact-candidate3OS proof or
+publication gate has been claimed.
+
+
+## 2026-08-31 — structured rho local acceptance and scoped Rd repair
+
+Candidate `db68f7732` completed the approved extra full check in 1,456.340s
+(24.3min, hard1,800s): 0 errors,1 WARNING category (three spatial Rd links),
+3 NOTEs. Testthat: FAIL0/WARN54/SKIP1190/PASS23875. The notes are time
+verification, baseline unqualified logLik and xcrun temporary detritus. All
+3,908 optimizer entries were logged:3,889 tests,15 examples,4 vignette calls.
+Raw check tree/archive remain locally ignored; compact logs, hashes and
+process accounting are retained in evidence/package-check-repair-02.
+
+Command: `python3 dev/structured-rho/run-gate.py --id package-check-repair-02 --timeout 1800 -- Rscript --vanilla dev/structured-rho/check-package-repair.R package-check-repair-02`; exit0, candidate SHA256
+2bf7ed75d7f1abc3766a50f14efb8770a5283c65a87e8a512543bf41e8ac426e.
+
+The warning arose because roxygen treated `[0, 1]` as a link in three new
+spatial rho paragraphs. Changed only that phrase to plain text and ran
+`Rscript --vanilla -e 'devtools::document(quiet=TRUE)'` through gate
+document-rd-repair-01: exit0,10.181s; only three expected Rd files generated.
+The three pre-existing aghq S3-export diagnostics remain, with no unrelated
+source/help edits. `Rscript --vanilla dev/structured-rho/check-rd-repair.R`,
+gate rd-repair-02: exit0,2.048s. It executes tools:::.check_Rd_xrefs, proves
+zero unresolved refs, exact usage/parameter synchronization and identical
+parsed R code. rd-repair-01 retains a harness failure: an overly broad empty
+checkRdContents assertion rejected a quiet, unchanged S3 topic diagnostic.
+The repaired checker requires no owned-topic issues and proves every other
+diagnostic topic byte-identical. No numerical tolerance changed.
+
+This is a scoped documentation repair accepted by final Rose review, NOT
+an exact-repaired full-check pass. No install/example/test rerun followed the
+help-only delta. No additional fits or full-check attempt were spent.
+
+Final panel: final_math (Sol high, Noether/Gauss/Fisher), final_api (Terra high,
+Boole/Pat/Emmy), final_audit (Terra high, Rose/Grace), all read-only. No
+unresolved model-code/API finding. The API reviewer withdrew an initial HEAD
+mismatch objection after verifying the file SHA256 manifests for tested
+uncommitted content. Rose's plan/register cross-reference findings and stale
+report scope were corrected. The exact help-only exception was independently
+rechecked after the full run. Reviews are retained under dev/structured-rho/reviews.
+
+`python3 dev/structured-rho/verify-closure.py`, gate closure-evidence-01,
+exit0: retained outcome/marker/hash/budget checks pass with no fits.
+`node ~/.codex/skills/unlazy/scripts/gate-check.mjs --status .unlazy/structured-rho/GATES.md`: ALL MET (31 met):23 executable subgates
+and8 manual parent gates. No abandoned gates. Executable fit/render runners
+were not automatically replayed, because they consume attempt budgets.
+
+Final counters: pre-run12/12, engineering15/192, retained2400/2400,
+teaching22/24. Study2248 numerical successes/152 gradient-rule failures, all
+returned once, no missing fits or retries. Retained Fisher verdicts and Monte
+Carlo uncertainty remain conditional on success where stated. No spatial
+recovery, interval calibration or loading/Psi-separation recovery claim.
+
+Exact closing scans:
+
+- `git diff --check -- . ':!dev/structured-rho/evidence/**'`: clean; raw logs/HTML
+  keep original bytes and are not claimed whitespace-clean.
+- `rg -n 'spatial attenuation/estimation|Spatial supports endpoint1 only|parent gates remain open|final panel remains owed|Final independent candidate panel remains owed' dev/structured-rho/PLAN.md dev/structured-rho/STATUS.md docs/dev-log/after-task/2026-08-31-structured-rho.md docs/design/35-validation-debt-register.md`: no hits (expected rg exit1).
+- `git diff --name-only -- R src man tests vignettes`: only R/brms-sugar.R and
+  man/spatial_{dep,indep,latent}.Rd after db68, exactly the help repair.
+
+STR-RHO-FIX and STR-RHO-WORKFLOW now have local software coverage;
+STR-RHO-EST and STR-RHO-SPA retain partial recovery status. The approved arc
+closes at the local candidate. No push, merge, publication, version bump,
+release, closed-article edits, other-repository writes or three-OS claim.
+
+Final root coordination audit using the Shannon checklist: WARN for the six
+pre-existing open PRs and global duplicate design slots; neither is introduced
+or changed here. Current branch is codex/structured-term-rho-20260831; the only
+active lease is codex:structured-rho-87fa. All current edits belong to this
+arc; no foreign checkout/PR/CI action occurred. Direct authenticated gh census
+corrected the sandboxed preflight's inconclusive “none or unauthenticated” PR
+line. Recent main CI belongs to baseline101fafcc3, not this candidate, and is
+not counted as candidate/three-OS proof. Closing action: save this local
+checkpoint and release only this lane's lease; no integration order is proposed.

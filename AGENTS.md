@@ -48,6 +48,15 @@ Model Builder.
 | spatial | `spatial_indep()` | `spatial_dep()` | `spatial_latent()` |
 | kernel  | `kernel_indep()`  | `kernel_dep()`  | `kernel_latent()`  |
 
+- Structured-rho development arc (2026-08-31): canonical phylo/animal/kernel/spatial
+  helpers have trailing `rho = 1`; spatial range stays separately estimated.
+  New attenuation is one trait-intercept block (including folded Psi), and
+  `rho = NULL` is restricted to complete replicated Gaussian observations
+  without competing covariance. Source strength is separate from trait mode,
+  ordinary variance components, coefficient rho, and variance-share summaries.
+  The full workflow/recovery arc is still in progress; contract and evidence:
+  `dev/structured-rho/PLAN.md`, `.unlazy/structured-rho/GATES.md`.
+
 - **`scalar` and `unique` are MODIFIERS, not modes.** `scalar` is
   `indep` with the trait variances tied to one shared value --
   `indep(..., common = TRUE)`. `unique` is `latent` with its

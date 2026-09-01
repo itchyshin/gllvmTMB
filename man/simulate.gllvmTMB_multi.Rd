@@ -77,3 +77,11 @@ conditional simulation with a warning, and intervals derived from it are too
 narrow. Set \code{condition_on_RE = TRUE} for the older conditional behaviour,
 which reuses the fitted random-effect modes and only adds residual noise.
 }
+\details{
+For rho-enabled structured trait intercepts, unconditional draws
+use the attenuated source covariance for both loadings and folded Psi,
+with independent observation residuals retained. Unsupported additional
+components produce an error instead of a conditional fallback. This
+supports simulation; automatic covariance bootstrap refits are not yet
+supported for these fits.
+}

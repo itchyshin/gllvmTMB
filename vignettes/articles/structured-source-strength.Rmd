@@ -1,0 +1,326 @@
+---
+title: "How strongly does a known source connect groups?"
+description: "Separate source correlation from trait covariance using fixed attenuation and the admitted replicated Gaussian estimator."
+tier: 1
+output:
+  rmarkdown::html_vignette:
+    toc: true
+vignette: >
+  %\VignetteIndexEntry{How strongly does a known source connect groups?}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse=TRUE,comment="#>")
+library(gllvmTMB)
+```
+
+Suppose we measure six continuous traits in three individuals from each species.
+A phylogenetic tree supplies the pattern of relationships between species.
+We want to distinguish two questions: how much species vary in their traits,
+and how closely correlations between species follow that supplied pattern.
+
+Structured-term `rho` addresses the second question. Fixed values are supported
+for one phylogenetic, animal, dense-kernel or spatial trait-intercept covariance block.
+The initial estimator requires at least two traits, complete replicated Gaussian
+observations, one known source, and an independent observation residual. It does not admit a
+competing ordinary covariance on those units. Spatial range remains a separate
+estimated parameter; spatial range–rho recovery is not established. Augmented
+slopes and source-strength confidence intervals are outside this workflow.
+The examples illustrate use; a single simulated dataset does not establish
+recovery accuracy.
+
+## What rho changes
+
+Let $K$ be the source covariance after the package's existing source resolution,
+and let $D$ contain its diagonal. The covariance used between source levels is
+
+\[
+K_\rho=\rho K+(1-\rho)D.
+\]
+
+At `rho = 1`, the supplied relationships remain unchanged. At `rho = 0`,
+different species are independent at this tier. Interior values reduce the
+between-species covariance while preserving each species' marginal variance.
+Non-unit diagonals remain non-unit: rho introduces no new normalization.
+
+The trait covariance is separate. With `phylo_dep()` it is an unrestricted
+matrix $\Sigma$. With `phylo_latent(..., unique = TRUE)` it is
+$\Sigma=\Lambda\Lambda^\top+\Psi$. In both cases the full covariance is
+$K_\rho\otimes\Sigma$. The same rho acts on the shared loading component and
+the diagonal Psi component. An ordinary random effect remains a separate
+component; its variance is not absorbed into rho.
+
+If the scientific question is how phylogenetic and non-phylogenetic variation
+differ, keep the phylogenetic source at `rho = 1` and use separate covariance
+components. At the species tier, that model has covariance
+
+\[
+K\otimes\Sigma_{\mathrm{phy}}+I\otimes\Sigma_{\mathrm{non}}.
+\]
+
+The two trait covariance matrices can have different correlations, loadings
+and variance patterns. Setting the phylogenetic term's rho to one does not
+set the phylogenetic share of total variance to one: the non-phylogenetic
+component and observation residuals still contribute variation.
+
+The single-rho model below answers a more restricted question. When $D=I$,
+its two species-tier components have trait covariances $\rho\Sigma$ and
+$(1-\rho)\Sigma$: they differ in scale but share the same trait correlations.
+With non-unit $D$, the independent component also inherits its known
+species-specific variance scaling. Estimated rho is therefore an optional
+source-strength model, not a substitute for estimating flexible, separate
+phylogenetic and non-phylogenetic covariance components.
+
+## Make a replicated example
+
+This example generates the data directly from the covariance equation. The
+three individuals per species share a species effect but have independent
+Gaussian observation errors. Here `obs` identifies an individual's complete
+six-trait vector; `species` identifies the levels connected by the tree.
+
+```{r data}
+set.seed(8301)
+n_species <- 80L
+n_traits <- 6L
+tree <- ape::rcoal(n_species)
+tree$tip.label <- sprintf("sp%03d",seq_len(n_species))
+K <- ape::vcv(tree,corr=TRUE)
+K_rho <- .6*K
+diag(K_rho) <- diag(K)
+loading <- c(.7,.65,-.6,.8,-.55,.75)
+psi <- c(.18,.25,.22,.2,.3,.16)
+Sigma <- tcrossprod(loading)+diag(psi)
+species_effect <- t(chol(K_rho)) %*%
+  matrix(rnorm(n_species*n_traits),n_species,n_traits) %*% chol(Sigma)
+
+long <- expand.grid(trait=paste0("t",seq_len(n_traits)),individual=1:3,
+                    species=rownames(K))
+long$species <- factor(long$species,levels=rownames(K))
+long$obs <- interaction(long$species,long$individual,drop=TRUE)
+mu <- c(.1,-.2,.25,.05,-.15,.2)
+long$value <- mu[as.integer(long$trait)] +
+  species_effect[cbind(as.integer(long$species),as.integer(long$trait))] +
+  rnorm(nrow(long),sd=.6)
+wide <- reshape(long[c("obs","species","trait","value")],
+                idvar=c("obs","species"),timevar="trait",direction="wide")
+names(wide) <- sub("^value\\.","",names(wide))
+```
+
+## Fix the source strength
+
+For a sensitivity analysis, hold rho at a chosen value and estimate the trait
+covariance and observation residual. These long and wide calls describe the
+same model. `traits()` supplies the trait intercepts in the wide formula.
+
+```{r fixed-long}
+set.seed(8401)
+fixed_long <- gllvmTMB(
+  value ~ 0+trait+phylo_dep(0+trait|species,tree=tree,rho=.6),
+  data=long,trait="trait",unit="obs",cluster="species",family=gaussian(),
+  control=gllvmTMBcontrol(n_init=1))
+```
+
+```{r fixed-wide}
+set.seed(8401)
+fixed_wide <- gllvmTMB(
+  traits(t1,t2,t3,t4,t5,t6) ~ 1+phylo_dep(1|species,tree=tree,rho=.6),
+  data=wide,unit="obs",cluster="species",family=gaussian(),
+  control=gllvmTMBcontrol(n_init=1))
+```
+
+Fixing rho at its generating value is useful for checking this example.
+In an application, that value is usually unknown: a sensitivity value should
+come from the scientific question, rather than being treated as an estimate.
+Omitting rho, or writing `rho = 1`, preserves the existing model.
+
+## Estimate source strength in the admitted Gaussian design
+
+`rho = NULL` requests estimation. It does not remove the Gaussian observation
+residual. The estimator starts at rho one-half independently of the generating
+value. Replication distinguishes the shared species effect from observation
+noise; the source also needs nonzero relationships between modeled species.
+
+```{r estimated-long}
+set.seed(8402)
+estimated_long <- gllvmTMB(
+  value ~ 0+trait+phylo_dep(0+trait|species,tree=tree,rho=NULL),
+  data=long,trait="trait",unit="obs",cluster="species",family=gaussian(),
+  control=gllvmTMBcontrol(n_init=1))
+```
+
+```{r estimated-wide}
+set.seed(8402)
+estimated_wide <- gllvmTMB(
+  traits(t1,t2,t3,t4,t5,t6) ~ 1+phylo_dep(1|species,tree=tree,rho=NULL),
+  data=wide,unit="obs",cluster="species",family=gaussian(),
+  control=gllvmTMBcontrol(n_init=1))
+```
+
+```{r agreement}
+c(long=as.numeric(logLik(estimated_long)),
+  wide=as.numeric(logLik(estimated_wide)))
+```
+
+An estimated latent alternative is initially restricted to rank one and at
+least four traits. The matching terms are
+`phylo_latent(species, tree=tree, d=1, unique=TRUE, rho=NULL)` in either formula.
+`unique=FALSE` requests loadings only. A triangular loading convention fixes a
+representation; it does not establish that the loading/Psi decomposition is
+well identified. Weak or nearly zero loadings deserve particular caution.
+
+## Read the two kinds of output separately
+
+```{r extraction}
+source_result <- extract_Sigma(estimated_long,level="phy",link_residual="none")
+round(source_result$Sigma,3)
+strength <- source_result$source_strength
+strength[c("source","grouping","value","status","resolved_scale")]
+strength$diagnostics
+```
+
+The generating strength was 0.6; this dataset gives an estimate of
+`r round(strength$value,2)`. That difference remains even when the optimizer
+converges and no weak-signal diagnostic is triggered. Those diagnostics flag
+specific problems; their absence does not certify accurate recovery.
+
+`Sigma` is the covariance among traits at the species tier. `source_strength`
+reports rho, its fixed or estimated status, source labels and preserved scale.
+It does not construct a large dense covariance merely to print a result.
+A value near zero or one needs the boundary diagnostics and fit-health checks;
+a small derivative on the logit scale can conceal a substantial slope on the
+physical rho scale. The two scores are descriptive checks, not confidence
+intervals or proof of a global optimum.
+
+`extract_phylo_signal()` answers a different variance-allocation question.
+For these attenuated fits it gives a typed limitation rather than reporting
+an allocation that ignores attenuation. Use the covariance and source-strength
+output above. Automatic bootstrap refits and rho profiles are also excluded
+from this initial workflow; do not interpret an unavailable interval as zero
+uncertainty.
+
+## Predict and simulate at known levels
+
+```{r workflow}
+known <- predict(estimated_long,newdata=long)
+head(known)
+simulated <- simulate(estimated_long,nsim=2,seed=8501,condition_on_RE=FALSE)
+head(simulated)
+```
+
+Known-level predictions include the fitted structured species effects.
+Unconditional simulation redraws the whole species covariance, including Psi
+when requested, then applies observation replication and residual noise.
+This extension does not add prediction for unseen species or ancestral levels.
+
+## Use the same rho for spatial dependence
+
+For `spatial_*()` terms, rho has exactly the same meaning: it attenuates
+between-location covariance while preserving each location's marginal variance.
+Spatial **range** is a separate estimated parameter, reported through inverse
+range `kappa`. Here the source is
+$K(\kappa)=A Q(\kappa)^{-1}A^\top$, projected from the mesh to the modeled
+locations. Its diagonal is recomputed as range changes; rho adds no normalization.
+
+The following example has four traits and three individuals at each of 40
+locations. It generates the whole latent-plus-Psi covariance directly. The
+location identifier after the bar must refer to the same coordinates across
+traits and individuals. The mesh is built on the long observation rows; those
+same projected rows also match the wide call's expansion.
+
+```{r spatial-data}
+locations <- expand.grid(x=seq(0,2,length.out=8),ycoord=seq(0,2,length.out=5))
+locations$location <- sprintf("s%02d",seq_len(nrow(locations)))
+spatial_long <- expand.grid(trait=paste0("t",1:4),individual=1:3,
+                            location=locations$location)
+spatial_long$location <- factor(spatial_long$location,levels=locations$location)
+spatial_long$obs <- interaction(spatial_long$location,spatial_long$individual,drop=TRUE)
+spatial_long$x <- locations$x[match(spatial_long$location,locations$location)]
+spatial_long$ycoord <- locations$ycoord[match(spatial_long$location,locations$location)]
+mesh <- make_mesh(spatial_long,c("x","ycoord"),cutoff=.12)
+A <- as.matrix(mesh$A_st[match(locations$location,spatial_long$location),,drop=FALSE])
+kappa_truth <- 2
+Q <- as.matrix(kappa_truth^4*mesh$spde$c0+
+                 2*kappa_truth^2*mesh$spde$g1+mesh$spde$g2)
+K_spatial <- A %*% solve(Q,t(A))
+K_spatial_rho <- .6*K_spatial
+diag(K_spatial_rho) <- diag(K_spatial)
+spatial_loading <- c(.9,.7,-.8,.6)/sqrt(mean(diag(K_spatial)))
+spatial_psi <- c(.3,.2,.25,.35)/mean(diag(K_spatial))
+Sigma_spatial <- tcrossprod(spatial_loading)+diag(spatial_psi)
+set.seed(319905)
+spatial_effect <- t(chol(K_spatial_rho)) %*%
+  matrix(rnorm(160),40,4) %*% chol(Sigma_spatial)
+spatial_long$value <- .1*as.integer(spatial_long$trait)+
+  spatial_effect[cbind(as.integer(spatial_long$location),as.integer(spatial_long$trait))]+
+  rnorm(nrow(spatial_long),sd=.4)
+spatial_wide <- reshape(spatial_long[c("obs","location","x","ycoord","trait","value")],
+  idvar=c("obs","location","x","ycoord"),timevar="trait",direction="wide")
+names(spatial_wide) <- sub("^value\\.","",names(spatial_wide))
+```
+
+The generating loading and Psi scales above make the location effects visible
+relative to observation noise. They do not change the model's source normalization.
+
+```{r spatial-long}
+set.seed(319928)
+spatial_fit_long <- gllvmTMB(
+  value ~ 0+trait+spatial_latent(0+trait|location,mesh=mesh,d=1,unique=TRUE,rho=NULL),
+  data=spatial_long,trait="trait",unit="obs",family=gaussian(),
+  control=gllvmTMBcontrol(n_init=1))
+```
+
+```{r spatial-wide}
+set.seed(319928)
+spatial_fit_wide <- gllvmTMB(
+  traits(t1,t2,t3,t4) ~ 1+spatial_latent(1|location,mesh=mesh,d=1,unique=TRUE,rho=NULL),
+  data=spatial_wide,unit="obs",family=gaussian(),
+  control=gllvmTMBcontrol(n_init=1))
+```
+
+```{r spatial-output}
+c(long=as.numeric(logLik(spatial_fit_long)),wide=as.numeric(logLik(spatial_fit_wide)))
+spatial_result <- extract_Sigma(spatial_fit_long,level="spatial",link_residual="none")
+spatial_result$source_strength[c("value","status","kappa","resolved_scale")]
+spatial_result$source_strength$diagnostics
+```
+
+The generating values were rho 0.6 and kappa 2. This dataset estimates rho
+`r round(spatial_result$source_strength$value,2)` and kappa
+`r round(spatial_result$source_strength$kappa,2)`. Range, attenuation and trait
+scale can compete; complete replication separates observation noise but does
+not guarantee precise separation of those parameters. The local geometry
+diagnostic checks a specific weakness, not global identification or recovery.
+Spatial recovery has not been established by the nonspatial simulation study.
+
+For a fixed sensitivity value, replace `rho=NULL` with a number in [0,1].
+At zero, mesh effects disappear, but range still affects the projected marginal
+variances and can be confounded with trait scale. Omitted rho and explicit one
+keep the previous spatial model, with range still estimated. Attenuated spatial
+models currently predict only at known location identifiers with unchanged
+coordinates. Unconditional simulation redraws both the spatial field and its
+independent location companion, with the same rho for loadings and Psi.
+
+## When to stop and change the question
+
+With $D=I$, an ordinary unrestricted covariance $T$ on the same units can trade
+variance with the structured covariance $S$:
+
+\[
+K_\rho\otimes S+I\otimes T
+=K_{\rho'}\otimes\frac{\rho}{\rho'}S+
+I\otimes\left[T+\left(1-\frac{\rho}{\rho'}\right)S\right],
+\]
+
+when the alternative covariances are admissible. Optimizer convergence cannot
+resolve that ambiguity. Fix rho for a scientifically justified sensitivity
+analysis, or use a design/model with an admitted identification argument.
+Do not drop a scientific component or reduce latent rank simply to obtain a
+successful fit. Source separation and loading/Psi decomposition are distinct
+identification questions.
+
+The animal, kernel and spatial helpers use the same rho convention. Fixed attenuation
+retains the existing native Laplace family restrictions. The non-Gaussian
+checks establish equivalence to an effective source covariance; they do not
+establish recovery of rho outside Gaussian models.

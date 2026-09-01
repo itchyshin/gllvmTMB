@@ -10,7 +10,8 @@ animal_latent(
   pedigree = NULL,
   A = NULL,
   Ainv = NULL,
-  unique = FALSE
+  unique = FALSE,
+  rho = 1
 )
 }
 \arguments{
@@ -32,6 +33,15 @@ preserved for the sparse engine route.}
 \item{unique}{Logical; when \code{TRUE}, include the per-trait diagonal
 additive-genetic \eqn{\boldsymbol\Psi} companion. The default \code{FALSE}
 preserves the loadings-only subset.}
+
+\item{rho}{Source strength: a number in \verb{[0,1]} fixes
+\code{rho * K + (1-rho) * diag(diag(K))} on the legacy-resolved source scale.
+Omitted or explicit \code{1} preserves the existing model. \code{NULL} estimates
+strength for one Gaussian structured trait-intercept block with complete
+replicated multivariate observations and no competing ordinary covariance.
+Estimated latent terms require rank one and at least four traits. The same
+strength applies to the entire latent-plus-Psi covariance. This parameter
+is not a variance-share summary; recovery validation is still in progress.}
 }
 \value{
 See \code{\link[=animal_scalar]{animal_scalar()}}.

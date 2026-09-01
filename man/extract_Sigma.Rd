@@ -65,6 +65,22 @@ advisory messages, e.g. about a no-Psi \code{unique = FALSE} fit).
 For \code{part = "unique"}: a list with \code{s} (length-T named numeric
 vector of unique variances), \code{level}, \code{part}, \code{note}.
 
+A structured trait-intercept fit with fixed \code{rho < 1} or estimated
+\code{rho = NULL} also returns \code{source_strength} at \code{level = "phy"} (or its
+named kernel alias), or \code{level = "spatial"} for spatial terms. It contains \code{term}, \code{source}, \code{grouping}, \code{labels},
+\code{resolved_scale}, \code{source_diagonal}, \code{value}, and \code{status} (fixed or
+estimated), plus mode and diagnostic metadata. Spatial metadata also
+reports \code{kappa}; its source diagonal is evaluated at that fitted inverse
+range, without normalization. \code{Sigma} remains the
+trait covariance; the covariance across source levels is
+\eqn{K_\rho = \rho K + (1-\rho)\mathrm{diag}(\mathrm{diag}(K))}.
+The source covariance is not materialized for extraction. Strength is
+distinct from a variance share; source-strength intervals are unavailable.
+Estimated fits report \code{nll_score_logit} and \code{nll_score_rho}, derivatives
+of the negative log likelihood on the fitted logit and physical strength
+scales. A small logit derivative alone is not evidence of an interior
+optimum near zero or one; an unrepresentable physical score is \code{NA}.
+
 For \code{level = "column_slope"}: a list with the named \verb{1 x 1} or \verb{P x P}
 predictor covariance \code{Sigma}, its correlation matrix \code{R}, \code{level},
 \code{part}, \code{predictors}, \code{column_labels}, \code{source}, and \code{note}. \code{source}

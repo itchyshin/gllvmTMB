@@ -24,6 +24,9 @@ link-implicit residual shares are handled by \code{\link[=extract_proportions]{e
 }
 \details{
 Mirrors \code{gllvm::VP()} / \code{gllvm::plotVP()}.
+
+Structured trait-intercept rho fits are excluded; use \code{extract_Sigma()} and
+its \code{source_strength} metadata.
 }
 \seealso{
 \code{\link[=extract_proportions]{extract_proportions()}} for the canonical per-trait

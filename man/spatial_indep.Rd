@@ -4,7 +4,7 @@
 \alias{spatial_indep}
 \title{Per-trait spatial marginal field: \code{spatial_indep(0 + trait | coords)}}
 \usage{
-spatial_indep(formula, coords = NULL, mesh = NULL, common = FALSE)
+spatial_indep(formula, coords = NULL, mesh = NULL, common = FALSE, rho = 1)
 }
 \arguments{
 \item{formula}{\code{0 + trait | coords} style formula (LHS is the trait
@@ -25,6 +25,16 @@ trait; \code{TRUE} ties all traits to one shared spatial variance
 (intercept-only). \code{spatial_indep(0 + trait | coords, common = TRUE)} is the
 canonical one-shared-variance spelling and fits the same model as the
 soft-deprecated \code{spatial_scalar()}.}
+
+\item{rho}{Source-strength attenuation between 0 and 1, or \code{NULL} to estimate it
+in a complete replicated multivariate Gaussian model without competing
+covariance. Omitted or explicit \code{1} preserves the existing model. Range
+remains a separate estimated parameter. Attenuation preserves the projected
+marginal variance at each modeled location and applies to the whole trait
+covariance, including Psi. The grouping column must identify locations
+consistently across replicates. Estimated latent models require rank one
+and at least four traits. Spatial recovery and rho intervals are unvalidated;
+new-location prediction is not supported for attenuated models.}
 }
 \value{
 A formula marker; never evaluated.

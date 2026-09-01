@@ -458,6 +458,14 @@ does NOT do" section), see
   trait-covariance **modes** (`indep`, `dep`, `latent`). Every cell is a
   live keyword. Canonical surface:
   `vignettes/articles/api-keyword-grid.Rmd`.
+- Structured-rho development arc (2026-08-31): canonical phylo/animal/kernel/spatial
+  helpers have trailing `rho = 1`; spatial range stays separately estimated.
+  New attenuation is one trait-intercept block (including folded Psi), and
+  `rho = NULL` is restricted to complete replicated Gaussian observations
+  without competing covariance. Source strength is separate from trait mode,
+  ordinary variance components, coefficient rho, and variance-share summaries.
+  The full workflow/recovery arc is still in progress; contract and evidence:
+  `dev/structured-rho/PLAN.md`, `.unlazy/structured-rho/GATES.md`.
 - **`scalar` and `unique` are MODIFIERS, not modes.** `scalar` is
   `indep(..., common = TRUE)` (trait variances tied to one shared
   value); `unique` is `latent(..., unique = TRUE)` (the trait-diagonal

@@ -145,6 +145,10 @@ Multicore is dispatched via \code{future} + \code{future.apply}; pass
 use \code{future.apply}'s L'Ecuyer-CMRG seed stream so the answers are
 reproducible given a fixed \code{seed}, but they are NOT bit-identical to
 an \code{n_cores = 1} run with the same seed (different RNG streams).
+
+Automatic refits of structured trait-intercept rho fits are not supported.
+Use point covariance and source-strength extraction; no rho interval is
+provided.
 }
 \section{Caveats}{
 

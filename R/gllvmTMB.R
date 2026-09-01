@@ -678,6 +678,11 @@ gllvmTMB <- function(
   ## engine = "julia" routes through the experimental GLLVM.jl bridge fitting
   ## path via JuliaCall; "tmb" (default) keeps the native TMB engine below.
   engine <- match.arg(engine)
+  structured_rho_capture <- .parse_structured_rho_formula(formula, trait_col = trait, strip = FALSE)
+  .structured_rho_dispatch_fence(structured_rho_capture$spec, engine = engine,
+    integration = control$integration %||% "laplace", estimator = estimator,
+    aghq = control$aghq %||% FALSE)
+  formula <- structured_rho_capture$formula
   if (isTRUE(REML) && !estimator_missing) {
     cli::cli_abort(c(
       "Do not combine an explicit {.arg estimator} with {.code REML = TRUE}.",
@@ -1050,6 +1055,8 @@ gllvmTMB <- function(
   ## response-column coefficient markers. All five public sources are rewritten
   ## below into their admitted matrix-normal / projected-SPDE engine routes;
   ## any future reserved source still meets the fail-closed engine fence.
+  structured_rho_capture <- .parse_structured_rho_formula(formula, trait_col = trait)
+  formula <- structured_rho_capture$formula
   .column_data_assert_fixed_only(formula[[3L]], column_vars)
   if (.shared_marker_active(environment(formula))) {
     formula[[3L]] <- .shared_rewrite(
@@ -1137,6 +1144,9 @@ gllvmTMB <- function(
   ## spatial = "off"; that path is removed in 0.2.0 because the
   ## single-response sdmTMB() engine is no longer bundled.
   parsed <- parse_multi_formula(formula)
+  if (!is.null(structured_rho_capture$spec)) {
+    parsed$structured_rho <- structured_rho_capture$spec
+  }
   ## An explicitly named optional grouping slot is useful only when a
   ## covariance keyword routes through it.  Warn at the R boundary rather than
   ## changing the assembled TMB inputs: unused slots remain exactly the same
@@ -1148,6 +1158,11 @@ gllvmTMB <- function(
   covstruct_columns <- unique(unlist(lapply(parsed$covstructs, function(cs) {
     c(all.vars(cs$lhs), all.vars(cs$group))
   }), use.names = FALSE))
+  if (!is.null(parsed$structured_rho) && parsed$structured_rho$status == "estimated") {
+    # Replicate-vector identity is an actual admission input for estimated
+    # source strength even without an ordinary covariance term on unit_obs.
+    covstruct_columns <- union(covstruct_columns, unit_obs)
+  }
   unused_slots <- c(
     if (unit_obs_supplied && !unit_obs %in% covstruct_columns) "unit_obs",
     if (cluster_supplied && !cluster %in% covstruct_columns) "cluster"

@@ -13,6 +13,7 @@
 #' @keywords internal
 #' @noRd
 .reconstruct_multi_formula <- function(fit) {
+  .structured_rho_refit_assert(fit, ".reconstruct_multi_formula")
   ## Rebuild a covstruct expression from the parsed list element.
   build_one <- function(cs) {
     bar <- call("|", cs$lhs, cs$group)
@@ -69,6 +70,11 @@
 #' use `future.apply`'s L'Ecuyer-CMRG seed stream so the answers are
 #' reproducible given a fixed `seed`, but they are NOT bit-identical to
 #' an `n_cores = 1` run with the same seed (different RNG streams).
+#'
+#'
+#' Automatic refits of structured trait-intercept rho fits are not supported.
+#' Use point covariance and source-strength extraction; no rho interval is
+#' provided.
 #'
 #' @param fit A fit returned by [gllvmTMB()].
 #' @param n_boot Integer; number of bootstrap replicates. Default 999.
@@ -205,6 +211,7 @@ bootstrap_Sigma <- function(
   keep_draws = FALSE,
   link_residual = c("auto", "none")
 ) {
+  .structured_rho_refit_assert(fit, "bootstrap_Sigma")
   if (!inherits(fit, "gllvmTMB_multi")) {
     cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
   }

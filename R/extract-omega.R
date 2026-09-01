@@ -413,6 +413,11 @@ extract_Omega <- function(
 #' compatibility. `ci = TRUE` is not yet implemented for the
 #' liability-scale denominator and refuses with a typed error.
 #'
+#'
+#' Structured trait-intercept rho fits are excluded: source strength is not
+#' phylogenetic variance share. Use `extract_Sigma()` and its `source_strength`
+#' metadata.
+#'
 #' @param fit A fit returned by [gllvmTMB()] with a `phylo_latent()` term.
 #' @param ci Logical. When `TRUE`, adds confidence-interval columns to
 #'   the output for the H^2 column. Default `FALSE` for backward
@@ -469,6 +474,7 @@ extract_phylo_signal <- function(
   seed = NULL,
   link_residual = c("none", "auto")
 ) {
+  .structured_rho_source_allocation_assert(fit, "extract_phylo_signal")
   if (!inherits(fit, "gllvmTMB_multi")) {
     cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
   }
@@ -688,6 +694,11 @@ extract_phylo_signal <- function(
 #' between-vs-within proportion. `extract_proportions()` returns all of
 #' these in one tidy frame.
 #'
+#'
+#' Structured trait-intercept rho fits are excluded because this source-
+#' allocation summary does not account for attenuation. Use `extract_Sigma()`
+#' and its `source_strength` metadata.
+#'
 #' @param fit A fit returned by [gllvmTMB()].
 #' @param link_residual For non-Gaussian fits: `"auto"` (default) adds the
 #'   link's implicit residual as its own per-trait component (e.g.
@@ -727,6 +738,7 @@ extract_proportions <- function(
   link_residual = c("auto", "none"),
   format = c("long", "wide")
 ) {
+  .structured_rho_source_allocation_assert(fit, "extract_proportions")
   if (!inherits(fit, "gllvmTMB_multi")) {
     cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
   }

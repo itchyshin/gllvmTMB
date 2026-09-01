@@ -4,7 +4,14 @@
 \alias{animal_indep}
 \title{Independent per-trait animal-model random intercepts: \code{animal_indep(0 + trait | id)}}
 \usage{
-animal_indep(formula, pedigree = NULL, A = NULL, Ainv = NULL, common = FALSE)
+animal_indep(
+  formula,
+  pedigree = NULL,
+  A = NULL,
+  Ainv = NULL,
+  common = FALSE,
+  rho = 1
+)
 }
 \arguments{
 \item{formula}{An lme4-bar formula of the form \code{0 + trait | id}.}
@@ -16,6 +23,15 @@ trait; \code{TRUE} ties all traits to one shared additive-genetic variance
 (intercept-only). \code{animal_indep(0 + trait | id, common = TRUE)} is the
 canonical one-shared-variance spelling and fits the same model as the
 soft-deprecated \code{animal_scalar(id)}.}
+
+\item{rho}{Source strength: a number in \verb{[0,1]} fixes
+\code{rho * K + (1-rho) * diag(diag(K))} on the legacy-resolved source scale.
+Omitted or explicit \code{1} preserves the existing model. \code{NULL} estimates
+strength for one Gaussian structured trait-intercept block with complete
+replicated multivariate observations and no competing ordinary covariance.
+Estimated latent terms require rank one and at least four traits. The same
+strength applies to the entire latent-plus-Psi covariance. This parameter
+is not a variance-share summary; recovery validation is still in progress.}
 }
 \value{
 See \code{\link[=animal_scalar]{animal_scalar()}}.

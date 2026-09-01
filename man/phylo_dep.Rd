@@ -4,7 +4,7 @@
 \alias{phylo_dep}
 \title{Full unstructured phylogenetic trait covariance: \code{phylo_dep(0 + trait | species)}}
 \usage{
-phylo_dep(formula, tree = NULL, vcv = NULL, A = NULL, Ainv = NULL)
+phylo_dep(formula, tree = NULL, vcv = NULL, A = NULL, Ainv = NULL, rho = 1)
 }
 \arguments{
 \item{formula}{\code{0 + trait | species} style formula, an admitted
@@ -21,6 +21,15 @@ intercept-and-slope form, or the Gaussian slope-only response-column form
 argument naming.}
 
 \item{Ainv}{Sparse precision matrix (inverse of \code{A}).}
+
+\item{rho}{Source strength: a number in \verb{[0,1]} fixes
+\code{rho * K + (1-rho) * diag(diag(K))} on the legacy-resolved source scale.
+Omitted or explicit \code{1} preserves the existing model. \code{NULL} estimates
+strength for one Gaussian structured trait-intercept block with complete
+replicated multivariate observations and no competing ordinary covariance.
+Estimated latent terms require rank one and at least four traits. The same
+strength applies to the entire latent-plus-Psi covariance. This parameter
+is not a variance-share summary; recovery validation is still in progress.}
 }
 \value{
 A formula marker; never evaluated.

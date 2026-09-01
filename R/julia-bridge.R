@@ -2619,6 +2619,7 @@ gllvm_julia_fit <- function(
   X_lv = NULL,
   coef_fixed = NULL,
   mask = NULL,
+  sources = NULL,
   units_are_rows = FALSE,
   ci_method = c("none", "wald", "profile", "bootstrap"),
   ci_level = 0.95,
@@ -2864,6 +2865,9 @@ gllvm_julia_fit <- function(
   }
   if (!is.null(mask)) {
     args$mask <- mask
+  }
+  if (!is.null(sources)) {
+    args$sources <- sources
   }
   bridge_options <- list()
   if (ci_method != "none") {
@@ -3632,10 +3636,63 @@ print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
     }
   }
 
+  ## Resolve the parser's deferred `d = .deferred_n_traits` (every *_dep()
+  ## spelling) for the Julia path. Only the TMB path resolved it before, so a
+  ## lone dep() died in as.integer(<symbol>) — an unlabeled crash past the
+  ## capability gate (EARLY-GENERIC-ERROR in the coverage matrix).
+  n_traits_resolved <- nlevels(factor(data[[trait]]))
+  cs <- lapply(cs, function(z) {
+    dv <- z$extra$d
+    if (
+      !is.null(dv) && is.symbol(dv) &&
+        identical(as.character(dv), ".deferred_n_traits")
+    ) {
+      z$extra$d <- n_traits_resolved
+    }
+    z
+  })
+  parsed$covstructs <- cs
+
   kinds <- if (length(cs)) {
     vapply(cs, function(z) z$kind, character(1))
   } else {
     character(0)
+  }
+
+  ## --- structured-covariance carve-out (Slice A, 2026-09-01) --------------
+  ## A LONE ordinary dep() or indep()/scalar() term on a Gaussian fit routes to
+  ## GLLVM.jl's structured-sources payload (identity covariance over the group
+  ## levels + a per-unit grouping). Everything else keeps the existing gates.
+  structured_source_term <- NULL
+  fam_str_pre <- tryCatch(.gllvm_julia_family(family), error = function(e) NULL)
+  if (
+    length(cs) == 1L && identical(fam_str_pre, "gaussian")
+  ) {
+    z1 <- cs[[1L]]
+    z1_dep <- identical(z1$kind, "rr") && isTRUE(z1$extra$.dep)
+    z1_diag <- identical(z1$kind, "diag") && !isTRUE(z1$extra$.auto_unique)
+    if (z1_dep || z1_diag) {
+      structured_source_term <- z1
+      kinds <- character(0)
+    }
+  }
+
+  ## dep() is admitted only through the Gaussian structured-sources carve-out
+  ## above. Anywhere else it must refuse with a NAMED gate: before the
+  ## deferred-d resolution it crashed in as.integer(<symbol>); silently
+  ## continuing down the plain-rr path would substitute a different model.
+  if (
+    is.null(structured_source_term) &&
+      any(vapply(cs, function(z) isTRUE(z$extra$.dep), logical(1)))
+  ) {
+    stop(
+      .gllvm_julia_gate_message(
+        "GJL-GATE-STRUCTURED-TERMS",
+        "engine = 'julia' supports dep() only as a lone structured term on a ",
+        "gaussian fit. Use engine = 'tmb' for this dep() design."
+      ),
+      call. = FALSE
+    )
   }
 
   ## --- capability guard: only the reduced-rank latent block (rr) is mapped ---
@@ -3651,7 +3708,7 @@ print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
       call. = FALSE
     )
   }
-  rr_terms <- cs[kinds == "rr"]
+  rr_terms <- if (is.null(structured_source_term)) cs[kinds == "rr"] else list()
   if (length(rr_terms) > 1L) {
     stop(
       .gllvm_julia_gate_message(
@@ -3885,6 +3942,61 @@ print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
 
   ## --- binomial trials: cbind(successes, failures) totals take precedence, then
   ## per-row n_trials (weights API), else Bernoulli (N = 1). ---
+  sources_arg <- NULL
+  if (!is.null(structured_source_term)) {
+    z <- structured_source_term
+    grp_var <- deparse(z$group)
+    if (!grp_var %in% names(data)) {
+      stop(
+        .gllvm_julia_gate_message(
+          "GJL-GATE-STRUCTURED-TERMS",
+          "engine = 'julia': grouping variable '", grp_var,
+          "' for the structured covariance term was not found in `data`."
+        ),
+        call. = FALSE
+      )
+    }
+    unit_first <- match(levels(fu), as.character(fu))
+    gvals <- data[[grp_var]][unit_first]
+    consistent <- vapply(
+      levels(fu),
+      function(u) length(unique(data[[grp_var]][as.character(fu) == u])) == 1L,
+      logical(1)
+    )
+    if (!all(consistent)) {
+      stop(
+        .gllvm_julia_gate_message(
+          "GJL-GATE-STRUCTURED-TERMS",
+          "engine = 'julia': the structured-term grouping '", grp_var,
+          "' must be constant within each unit."
+        ),
+        call. = FALSE
+      )
+    }
+    grpf <- factor(gvals)
+    is_dep <- identical(z$kind, "rr") && isTRUE(z$extra$.dep)
+    spec <- list(
+      name = if (is_dep) "ordinary_dep" else "ordinary_indep",
+      covariance = diag(1, nlevels(grpf)),
+      groups = as.integer(grpf),
+      mode = if (is_dep) "dep" else "indep",
+      unique = FALSE,
+      common = isTRUE(z$extra$common)
+    )
+    sources_arg <- list(spec)
+    if (ci_method != "none") {
+      stop(
+        .gllvm_julia_gate_message(
+          "GJL-GATE-STRUCTURED-CI",
+          "engine = 'julia' does not provide confidence intervals for ",
+          "structured covariance fits yet. Use ci_method = \"none\" or ",
+          "engine = 'tmb'."
+        ),
+        call. = FALSE
+      )
+    }
+  }
+
   Narg <- NULL
   if (any(fam_str %in% .GLLVM_JULIA_TRIALS_FAMILIES)) {
     if (!is.null(cbind_trials)) {
@@ -3905,6 +4017,7 @@ print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
     family = family,
     num.lv = K,
     N = Narg,
+    sources = sources_arg,
     X = Xarg,
     X_lv = Xlv_arg,
     coef_fixed = coef_fixed_arg,

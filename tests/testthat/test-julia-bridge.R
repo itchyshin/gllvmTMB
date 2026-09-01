@@ -4335,3 +4335,60 @@ test_that("betabinomial round-trips through engine = 'julia' (live)", {
   expect_true(is.finite(logLik(fit_j)))
   expect_lt(abs(as.numeric(logLik(fit_j)) - as.numeric(logLik(fit_r))), 1e-3)
 })
+
+test_that("lone ordinary dep()/indep() structured terms route to Julia sources (live)", {
+  skip_if_no_julia()
+  set.seed(9101)
+  n_unit <- 36L
+  df <- expand.grid(
+    unit = factor(seq_len(n_unit)),
+    trait = factor(c("t1", "t2", "t3")),
+    KEEP.OUT.ATTRS = FALSE
+  )
+  df$grp <- factor(rep(rep(1:12, each = 3), 3))
+  lam <- c(0.5, -0.3, 0.4)[as.integer(df$trait)]
+  z <- rnorm(12)[as.integer(df$grp)]
+  df$value <- 0.2 + lam * z + 0.55 * rnorm(nrow(df))
+
+  for (term in c("dep(0 + trait | grp)", "indep(0 + trait | grp)",
+                 "scalar(0 + trait | grp)")) {
+    fml <- stats::as.formula(paste0(
+      "value ~ 0 + trait + ", term))
+    fit_j <- gllvmTMB(fml, data = df, unit = "unit", trait = "trait",
+                      family = gaussian(), engine = "julia",
+                      ci_method = "none")
+    fit_r <- gllvmTMB(fml, data = df, unit = "unit", trait = "trait",
+                      family = gaussian())
+    expect_s3_class(fit_j, "gllvmTMB_julia")
+    expect_true(is.finite(logLik(fit_j)))
+    expect_lt(
+      abs(as.numeric(logLik(fit_j)) - as.numeric(logLik(fit_r))), 1e-3)
+  }
+})
+
+test_that("dep() on the Julia path never dies in a raw coercion error", {
+  # Pure R: a lone dep() with a NON-gaussian family must hit a NAMED gate,
+  # not "cannot coerce type symbol" (the pre-fix EARLY-GENERIC-ERROR).
+  df <- make_long()
+  df$grp <- factor(rep_len(1:5, nrow(df)))
+  df$value <- rpois(nrow(df), 3)
+  err <- tryCatch(
+    gllvmTMB(value ~ 0 + trait + dep(0 + trait | grp), data = df,
+             unit = "unit", trait = "trait", family = poisson(),
+             engine = "julia", ci_method = "none"),
+    error = function(e) conditionMessage(e)
+  )
+  expect_false(grepl("cannot coerce type", err, fixed = TRUE))
+  expect_true(grepl("GJL-GATE", err, fixed = TRUE))
+})
+
+test_that("phylo/kernel/animal structured terms stay gated", {
+  df <- make_long()
+  df$value <- rnorm(nrow(df))
+  expect_error(
+    gllvmTMB(value ~ 0 + trait + kernel_latent(unit, K = diag(10), d = 1),
+             data = df, unit = "unit", trait = "trait", family = gaussian(),
+             engine = "julia", ci_method = "none"),
+    "GJL-GATE-STRUCTURED-TERMS"
+  )
+})

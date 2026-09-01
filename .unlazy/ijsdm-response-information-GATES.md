@@ -36,4 +36,4 @@ OWNS: dev/isdm-requalification/response-information/, tests/testthat/test-isdm-r
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/private/tmp/gllvmtmb-isdm-response-information-20260901; path=92301ffe9a62/34 entries; output=response information wording verification passed
 
 - [ ] G7: Scoped checks, independent reviews, provenance reconciliation, and a draft PR leave no P0/P1 finding.
-  EVIDENCE: pending
+  EVIDENCE: focused contract/test/wording checks pass; evidence and reproducibility reviews pass after correcting scoreable denominators, write-once summaries, runtime binding, and `/project` manifest provenance. Draft PR pending exact-current-origin synchronization.

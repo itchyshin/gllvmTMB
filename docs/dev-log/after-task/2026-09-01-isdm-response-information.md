@@ -113,7 +113,10 @@ small; `EVIDENCE_INCOMPLETE` prevents an unavailable contrast becoming
 summaries are sufficient for Git provenance and avoid importing a bulky archive.
 
 **Rose:** evidence, ledger, plan, register, and check log must tell the same
-story about the recovery amendment and its no-public-claim boundary.
+story about the recovery amendment and its no-public-claim boundary. The final
+read-only evidence and reproducibility reviews found and then confirmed repair
+of three P1 gaps: truthful cell denominators, write-once/runtime-bound summary
+receipts, and durable file-level archive provenance.
 
 ## 10. Known Limitations And Next Actions
 

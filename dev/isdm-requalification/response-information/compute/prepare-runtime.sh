@@ -6,8 +6,7 @@ cd "$ROOT"
 mkdir -p "$LIB"
 BUILD=$(mktemp -d)
 trap 'rm -rf "$BUILD"' EXIT
-R CMD build -o "$BUILD" "$ROOT"
-R CMD INSTALL -l "$LIB" "$BUILD"/gllvmTMB_*.tar.gz
+(cd "$BUILD"; R CMD build "$ROOT"; R CMD INSTALL -l "$LIB" gllvmTMB_*.tar.gz)
 Rscript --vanilla dev/isdm-requalification/response-information/verify-contract.R
 Rscript --vanilla dev/isdm-requalification/response-information/verify-tests.R
 test -z "$(git status --porcelain)"

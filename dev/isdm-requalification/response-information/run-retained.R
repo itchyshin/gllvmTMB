@@ -2,7 +2,9 @@
 args <- commandArgs(trailingOnly = TRUE)
 if (length(args) != 4L) stop("usage: Rscript run-retained.R <scientific-plan.rds> <task-id> <output-dir> <runtime-identity.rds>", call. = FALSE)
 plan_path <- args[[1L]]; task_id <- as.integer(args[[2L]]); output_dir <- args[[3L]]; runtime_path <- args[[4L]]
-script_dir <- dirname(normalizePath(sys.frame(1)$ofile, mustWork = TRUE))
+file_arg <- sub("^--file=", "", commandArgs()[grepl("^--file=", commandArgs())])
+if (length(file_arg) != 1L || !nzchar(file_arg)) stop("cannot locate retained-run script", call. = FALSE)
+script_dir <- dirname(normalizePath(file_arg, mustWork = TRUE))
 source(file.path(script_dir, "contract.R"), local = TRUE); source(file.path(script_dir, "runner.R"), local = TRUE)
 plan <- readRDS(plan_path); isdm_respinfo_validate_plan(plan)
 task <- plan[plan$task_id == task_id, , drop = FALSE]

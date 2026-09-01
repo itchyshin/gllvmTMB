@@ -1,6 +1,6 @@
 ## Append-only worker receipts and non-overwriting coordinator dispositions.
 
-ISDM_RESPINFO_RECORD_SCHEMA <- "isdm-response-information-record-v2"
+ISDM_RESPINFO_RECORD_SCHEMA <- "isdm-response-information-record-v3"
 ISDM_RESPINFO_COORDINATOR_SCHEMA <- "isdm-response-information-coordinator-v1"
 
 .isdm_respinfo_record_abort <- function(message, class = "isdm_respinfo_record_error") {

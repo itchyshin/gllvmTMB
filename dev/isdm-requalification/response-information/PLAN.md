@@ -11,7 +11,9 @@ The earlier `PILOT_INFRASTRUCTURE_STOP` remains immutable: 800 planned fits,
 16 terminal pre-optimizer errors, zero fitted pairs, and 784 unstarted
 identities. This study has a distinct campaign identifier, seed namespace,
 output root, record schema, and denominator. No old task, seed, record, or
-result may be reused.
+result may be reused. A second frozen campaign follows the retained-pilot
+launcher repair under seed namespace `209110001L`; it is a new denominator,
+not a retry or amendment of the stopped campaign.
 
 ## Frozen scientific contract
 

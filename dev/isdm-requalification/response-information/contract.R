@@ -1,9 +1,9 @@
 ## Immutable contract for the fresh iJSDM response-information campaign.
 ## Qualification identities are deliberately outside the scientific denominator.
 
-ISDM_RESPINFO_SCHEMA <- "isdm-response-information-contract-v2"
-ISDM_RESPINFO_RECORD_SCHEMA <- "isdm-response-information-record-v2"
-ISDM_RESPINFO_SEED_BASE <- 209010001L
+ISDM_RESPINFO_SCHEMA <- "isdm-response-information-contract-v3"
+ISDM_RESPINFO_RECORD_SCHEMA <- "isdm-response-information-record-v3"
+ISDM_RESPINFO_SEED_BASE <- 209110001L
 ISDM_RESPINFO_QUALIFICATION_SEED_BASE <- 209000001L
 ISDM_RESPINFO_N_SEEDS <- 50L
 ISDM_RESPINFO_BOOTSTRAP_SEED <- 209019999L

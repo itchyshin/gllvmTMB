@@ -26,6 +26,8 @@
   "beta",
   "gamma",
   "lognormal",
+  "betabinomial",
+  "truncated_poisson",
   "ordinal",
   "ordinal_probit"
 )
@@ -34,11 +36,20 @@
   "binomial_probit",
   "binomial_cloglog"
 )
+# Families whose response may arrive as cbind(successes, failures) and whose
+# bridge payload carries a p x n trials matrix N (GLLVM.jl
+# _BRIDGE_TRIALS_FAMILIES). Trials marshalling is load-bearing for
+# betabinomial: without N the Julia route silently fits N = 1.
+.GLLVM_JULIA_TRIALS_FAMILIES <- c(
+  .GLLVM_JULIA_BINOMIAL_FAMILIES,
+  "betabinomial"
+)
 .GLLVM_JULIA_GROUPED_DISPERSION_FAMILIES <- c(
   "negbinomial",
   "nb1",
   "beta",
-  "gamma"
+  "gamma",
+  "betabinomial"
 )
 .GLLVM_JULIA_PERTRAIT_GROUPED_DISPERSION_FAMILIES <- c(
   "negbinomial",
@@ -96,9 +107,12 @@
   "poisson",
   "binomial"
 )
+# Families whose Julia bridge route rejects every ci_method != "none"
+# (GLLVM.jl _BRIDGE_NO_CI_FAMILIES): must never be advertised as CI-capable.
+.GLLVM_JULIA_NO_CI_FAMILIES <- c("lognormal", "truncated_poisson")
 .GLLVM_JULIA_CI_NO_X_FAMILIES <- setdiff(
   .GLLVM_JULIA_BRIDGE_FAMILIES,
-  .GLLVM_JULIA_PERTRAIT_ORDINAL_FAMILIES
+  c(.GLLVM_JULIA_PERTRAIT_ORDINAL_FAMILIES, .GLLVM_JULIA_NO_CI_FAMILIES)
 )
 .GLLVM_JULIA_MASK_CI_FAMILIES <- setdiff(
   .GLLVM_JULIA_MASK_FAMILIES,
@@ -339,7 +353,7 @@ gllvm_julia_capabilities <- function() {
     fit_no_x = TRUE,
     fixed_effect_X = families %in% .GLLVM_JULIA_X_FAMILIES,
     missing_response = families %in% .GLLVM_JULIA_MASK_FAMILIES,
-    cbind_binomial = families %in% .GLLVM_JULIA_BINOMIAL_FAMILIES,
+    cbind_binomial = families %in% .GLLVM_JULIA_TRIALS_FAMILIES,
     predictor_informed_lv = families %in% .GLLVM_JULIA_XLV_FAMILIES,
     ci_no_x_wald = families %in% .GLLVM_JULIA_CI_NO_X_FAMILIES,
     ci_no_x_profile = families %in% .GLLVM_JULIA_CI_NO_X_FAMILIES,
@@ -431,19 +445,40 @@ gllvm_julia_capabilities <- function() {
 }
 
 .gllvm_julia_expected_capability_drifts <- function() {
-  ## No registered drifts remain: the cbind(successes, failures) binomial route
-  ## is now marshalled and parity-tested, so the R and engine capability
-  ## surfaces agree. Keep returning the canonical 0-row frame so the drift
-  ## matcher's `allowed$<col>[m]` lookups stay well-typed.
-  data.frame(
-    family = character(0),
-    capability = character(0),
-    direction = character(0),
-    gate_id = character(0),
-    issue = character(0),
-    validation_row = character(0),
-    reason = character(0),
-    stringsAsFactors = FALSE
+  ## Registered, deliberate R-narrower-than-Julia gates for the 2026-09-01
+  ## family exposures (fit-only precedent: Julia-side support alone does not
+  ## earn R exposure; each capability is wired and evidenced separately).
+  reg <- function(family, capability, gate_id, reason) {
+    data.frame(
+      family = family, capability = capability,
+      direction = "julia_broader_than_r", gate_id = gate_id,
+      issue = NA_character_, validation_row = NA_character_,
+      reason = reason, stringsAsFactors = FALSE
+    )
+  }
+  rbind(
+    reg("lognormal", "postfit_predict", "GJL-GATE-POSTFIT",
+        "generic predict exists engine-side; R exposure awaits paired evidence"),
+    reg("truncated_poisson", "postfit_predict", "GJL-GATE-POSTFIT",
+        "truncated-mean linkinv double-apply risk documented in the exposure spec"),
+    reg("betabinomial", "fixed_effect_X", "GJL-GATE-X-FAMILY",
+        "Julia grouped_cov X route tested engine-side; R marshalling deferred (nb1 precedent)"),
+    reg("betabinomial", "ci_x_wald", "GJL-GATE-X-FAMILY",
+        "follows fixed_effect_X deferral"),
+    reg("betabinomial", "ci_x_profile", "GJL-GATE-X-FAMILY",
+        "follows fixed_effect_X deferral"),
+    reg("betabinomial", "ci_x_bootstrap", "GJL-GATE-X-FAMILY",
+        "follows fixed_effect_X deferral"),
+    reg("betabinomial", "missing_response", "GJL-GATE-MASK",
+        "mask placeholder + paired R test deferred with X"),
+    reg("betabinomial", "ci_mask_wald", "GJL-GATE-MASK",
+        "follows missing_response deferral"),
+    reg("betabinomial", "ci_mask_profile", "GJL-GATE-MASK",
+        "follows missing_response deferral"),
+    reg("betabinomial", "ci_mask_bootstrap", "GJL-GATE-MASK",
+        "follows missing_response deferral"),
+    reg("betabinomial", "postfit_predict", "GJL-GATE-POSTFIT",
+        "flat predict path unverified for beta-binomial trials scaling")
   )
 }
 
@@ -702,6 +737,28 @@ gllvm_julia_capabilities <- function() {
         )
       ))
     }
+    if (identical(family$family, "betabinomial") &&
+        !identical(tolower(family$link %||% "logit"), "logit")) {
+      stop(
+        .gllvm_julia_gate_message(
+          "GJL-GATE-FAMILY",
+          "engine = 'julia': betabinomial supports only the logit link ",
+          "(matching the native engine); got '", family$link, "'."
+        ),
+        call. = FALSE
+      )
+    }
+    if (identical(family$family, "truncated_poisson") &&
+        !identical(tolower(family$link %||% "log"), "log")) {
+      stop(
+        .gllvm_julia_gate_message(
+          "GJL-GATE-FAMILY",
+          "engine = 'julia': truncated_poisson supports only the log link ",
+          "(matching the native engine); got '", family$link, "'."
+        ),
+        call. = FALSE
+      )
+    }
     family <- family$family
   }
   fam <- tolower(as.character(family))
@@ -732,6 +789,8 @@ gllvm_julia_capabilities <- function() {
     beta = "beta",
     gamma = "gamma",
     lognormal = "lognormal",
+    betabinomial = "betabinomial",
+    truncated_poisson = "truncated_poisson",
     ordinal = "ordinal",
     ordinal_probit = "ordinal_probit",
     {
@@ -742,7 +801,7 @@ gllvm_julia_capabilities <- function() {
           fam,
           "'. Supported: gaussian, poisson, ",
           "binomial, binomial_probit, binomial_cloglog, nbinom2, nbinom1, ",
-          "beta, gamma, lognormal, ordinal, ordinal_probit ",
+          "beta, gamma, lognormal, betabinomial, truncated_poisson, ordinal, ordinal_probit ",
           "(or a narrow list for mixed gaussian/poisson/binomial responses)."
         ),
         call. = FALSE
@@ -852,6 +911,7 @@ gllvm_julia_capabilities <- function() {
     beta = "sigma",
     gamma = "sigma",
     lognormal = "sigma",
+    betabinomial = "phi_betabinom",
     "dispersion"
   )
 }
@@ -3648,12 +3708,12 @@ print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
   }
   cbind_trials <- NULL
   if (is.matrix(yraw) && ncol(yraw) == 2L) {
-    if (!any(fam_str %in% .GLLVM_JULIA_BINOMIAL_FAMILIES)) {
+    if (!any(fam_str %in% .GLLVM_JULIA_TRIALS_FAMILIES)) {
       stop(
         .gllvm_julia_gate_message(
           "GJL-GATE-FAMILY",
           "engine = 'julia' only admits two-column cbind(successes, failures) ",
-          "responses with a binomial family; the supplied response has two ",
+          "responses with a binomial or betabinomial family; the supplied response has two ",
           "columns but the family maps to '",
           paste(fam_str, collapse = ", "),
           "'. Use a single-column response or engine = 'tmb'."
@@ -3826,7 +3886,7 @@ print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
   ## --- binomial trials: cbind(successes, failures) totals take precedence, then
   ## per-row n_trials (weights API), else Bernoulli (N = 1). ---
   Narg <- NULL
-  if (any(fam_str %in% .GLLVM_JULIA_BINOMIAL_FAMILIES)) {
+  if (any(fam_str %in% .GLLVM_JULIA_TRIALS_FAMILIES)) {
     if (!is.null(cbind_trials)) {
       Narg <- matrix(1, p, n)
       Narg[cbind(as.integer(ft), as.integer(fu))] <- as.numeric(cbind_trials)

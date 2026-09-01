@@ -523,6 +523,38 @@ test_that("family mapping rejects unsupported families loudly", {
   expect_true("lognormal" %in% .GLLVM_JULIA_BRIDGE_FAMILIES)
   # Post-fit surfaces stay conservatively gated until their parity evidence:
   expect_false("lognormal" %in% .GLLVM_JULIA_SCORE_POSTFIT_FAMILIES)
+  # truncated_poisson exposed (2026-09-01, slice 2): native twin exists
+  # (families.R truncated_poisson(), fit-multi fid=10), Julia route tested.
+  expect_identical(.gllvm_julia_family("truncated_poisson"), "truncated_poisson")
+  expect_identical(.gllvm_julia_family(truncated_poisson()), "truncated_poisson")
+  expect_true("truncated_poisson" %in% .GLLVM_JULIA_BRIDGE_FAMILIES)
+  expect_false("truncated_poisson" %in% .GLLVM_JULIA_X_FAMILIES)
+  expect_false("truncated_poisson" %in% .GLLVM_JULIA_SCORE_POSTFIT_FAMILIES)
+  expect_false("truncated_poisson" %in% .GLLVM_JULIA_MASK_FAMILIES)
+  expect_false("truncated_poisson" %in% .GLLVM_JULIA_GROUPED_DISPERSION_FAMILIES)
+  # Julia rejects any ci_method != "none" for lognormal and truncated_poisson;
+  # the setdiff-based CI list must not advertise them (scout-found defect in
+  # the same-day lognormal landing).
+  expect_false("lognormal" %in% .GLLVM_JULIA_CI_NO_X_FAMILIES)
+  expect_false("truncated_poisson" %in% .GLLVM_JULIA_CI_NO_X_FAMILIES)
+  # betabinomial exposed (2026-09-01, slice 3): native twin exists; trials-N
+  # marshalling is load-bearing (ships in the same slice, per the scout spec).
+  expect_identical(.gllvm_julia_family("betabinomial"), "betabinomial")
+  expect_identical(.gllvm_julia_family(betabinomial()), "betabinomial")
+  expect_error(
+    .gllvm_julia_family(betabinomial(link = "cloglog")),
+    "GJL-GATE-FAMILY"
+  )
+  expect_true("betabinomial" %in% .GLLVM_JULIA_BRIDGE_FAMILIES)
+  expect_true("betabinomial" %in% .GLLVM_JULIA_TRIALS_FAMILIES)
+  expect_true("betabinomial" %in% .GLLVM_JULIA_GROUPED_DISPERSION_FAMILIES)
+  expect_false("betabinomial" %in% .GLLVM_JULIA_X_FAMILIES)
+  expect_false("betabinomial" %in% .GLLVM_JULIA_MASK_FAMILIES)
+  expect_false("betabinomial" %in% .GLLVM_JULIA_SCORE_POSTFIT_FAMILIES)
+  expect_identical(
+    .gllvm_julia_public_dispersion_parameter("betabinomial"),
+    "phi_betabinom"
+  )
   expect_error(.gllvm_julia_family("tweedie"), "GJL-GATE-FAMILY")
   expect_error(.gllvm_julia_family("nonsense"), "GJL-GATE-FAMILY")
   expect_error(
@@ -2859,11 +2891,13 @@ test_that("live GLLVM.jl bridge capabilities drift only through registered gates
   gllvm_julia_setup()
   engine_caps <- JuliaCall::julia_eval("GLLVM.bridge_capabilities()")
   drift <- .gllvm_julia_capability_drift(julia_caps = engine_caps)
-  ## The cbind(successes, failures) binomial route is now marshalled and
-  ## parity-tested on both sides, so the R and engine capability surfaces
-  ## agree: no registered drifts remain, and crucially nothing is unregistered.
+  ## Contract (2026-09-01): deliberate R-narrower-than-Julia gates are
+  ## REGISTERED in .gllvm_julia_expected_capability_drifts() with a gate id and
+  ## reason; the invariant is that nothing drifts UNREGISTERED. The fit-only
+  ## family exposures (lognormal, truncated_poisson, betabinomial) keep X /
+  ## masks / predict deliberately gated, so those rows appear here as "gated".
   expect_false(any(drift$status == "unregistered"))
-  expect_equal(nrow(drift), 0L)
+  expect_true(all(drift$status %in% "gated"))
   expect_false("cbind_binomial" %in% drift$capability)
 })
 
@@ -4227,4 +4261,75 @@ test_that("lognormal round-trips through engine = 'julia' (live)", {
   expect_s3_class(fit_j, "gllvmTMB_julia")
   expect_true(is.finite(logLik(fit_j)))
   expect_lt(abs(as.numeric(logLik(fit_j)) - as.numeric(logLik(fit_r))), 1e-4)
+})
+
+test_that("truncated_poisson round-trips through engine = 'julia' (live)", {
+  skip_if_no_julia()
+  set.seed(419)
+  n_unit <- 40L
+  df <- expand.grid(
+    unit = factor(seq_len(n_unit)),
+    trait = factor(c("t1", "t2", "t3")),
+    KEEP.OUT.ATTRS = FALSE
+  )
+  beta <- c(0.9, 0.7, 1.1)[as.integer(df$trait)]
+  lam <- c(0.35, -0.3, 0.25)[as.integer(df$trait)]
+  z <- rnorm(n_unit)[as.integer(df$unit)]
+  mu <- exp(beta + lam * z)
+  rtpois <- function(mu) {
+    y <- rpois(length(mu), mu)
+    while (any(y == 0L)) {
+      z0 <- y == 0L
+      y[z0] <- rpois(sum(z0), mu[z0])
+    }
+    y
+  }
+  df$value <- rtpois(mu)
+  fit_j <- gllvmTMB(
+    value ~ 0 + trait + latent(1 | unit, d = 1, unique = FALSE),
+    data = df, unit = "unit", trait = "trait",
+    family = truncated_poisson(), engine = "julia", ci_method = "none"
+  )
+  fit_r <- gllvmTMB(
+    value ~ 0 + trait + latent(1 | unit, d = 1, unique = FALSE),
+    data = df, unit = "unit", trait = "trait",
+    family = truncated_poisson()
+  )
+  expect_s3_class(fit_j, "gllvmTMB_julia")
+  expect_true(is.finite(logLik(fit_j)))
+  expect_lt(abs(as.numeric(logLik(fit_j)) - as.numeric(logLik(fit_r))), 1e-4)
+})
+
+test_that("betabinomial round-trips through engine = 'julia' (live)", {
+  skip_if_no_julia()
+  set.seed(77)
+  n_unit <- 40L
+  df <- expand.grid(
+    unit = factor(seq_len(n_unit)),
+    trait = factor(c("t1", "t2", "t3")),
+    KEEP.OUT.ATTRS = FALSE
+  )
+  beta <- c(-0.3, 0.2, 0.5)[as.integer(df$trait)]
+  lam <- c(0.5, -0.35, 0.3)[as.integer(df$trait)]
+  z <- rnorm(n_unit)[as.integer(df$unit)]
+  ntrials <- 12L
+  mu <- plogis(beta + lam * z)
+  phi <- 8
+  a <- mu * phi; b <- (1 - mu) * phi
+  pr <- rbeta(nrow(df), a, b)
+  df$succ <- rbinom(nrow(df), ntrials, pr)
+  df$fail <- ntrials - df$succ
+  fit_j <- gllvmTMB(
+    cbind(succ, fail) ~ 0 + trait + latent(1 | unit, d = 1, unique = FALSE),
+    data = df, unit = "unit", trait = "trait",
+    family = betabinomial(), engine = "julia", ci_method = "none"
+  )
+  fit_r <- gllvmTMB(
+    cbind(succ, fail) ~ 0 + trait + latent(1 | unit, d = 1, unique = FALSE),
+    data = df, unit = "unit", trait = "trait",
+    family = betabinomial()
+  )
+  expect_s3_class(fit_j, "gllvmTMB_julia")
+  expect_true(is.finite(logLik(fit_j)))
+  expect_lt(abs(as.numeric(logLik(fit_j)) - as.numeric(logLik(fit_r))), 1e-3)
 })

@@ -2,19 +2,20 @@
 source("dev/isdm-requalification/response-information/contract.R", local = TRUE)
 source("dev/isdm-requalification/response-information/records.R", local = TRUE)
 source("dev/isdm-requalification/response-information/classify.R", local = TRUE)
+source("dev/isdm-requalification/response-information/recompute.R", local = TRUE)
 
 isdm_respinfo_independent_summary <- function(plan_path, output_dir) {
   plan <- readRDS(plan_path); isdm_respinfo_validate_plan(plan)
   records <- isdm_respinfo_terminal_dispositions(plan, output_dir)
   rows <- lapply(seq_len(nrow(plan)), function(i) {
     task <- plan[i, , drop = FALSE]; x <- records[[i]]; returned <- identical(x$status, "fit_returned")
-    raw <- x$raw %||% list(); m <- x$metrics %||% list()
+    raw <- x$raw %||% list(); score <- if (returned) isdm_respinfo_recompute_raw(raw) else list()
     data.frame(task_id = task$task_id, dataset_id = task$dataset_id, cell_index = task$cell_index, seed_index = task$seed_index, variant = task$variant,
       status = x$status, optimizer_entered = isTRUE(x$optimizer_entered), runtime_s = if (is.finite(x$runtime_s)) x$runtime_s else NA_real_,
       peak_rss_bytes = if (returned) x$diagnostics$peak_rss_bytes %||% NA_real_ else NA_real_,
-      shared_error = if (returned) m$shared$normalized_rmse %||% NA_real_ else NA_real_, full_error = if (returned) m$full$normalized_rmse %||% NA_real_ else NA_real_,
-      psi1_error = if (returned) m$Psi_relative_error[[1L]] %||% NA_real_ else NA_real_, psi2_error = if (returned) m$Psi_relative_error[[2L]] %||% NA_real_ else NA_real_, psi3_error = if (returned) m$Psi_relative_error[[3L]] %||% NA_real_ else NA_real_,
-      sigma_error = if (returned) m$Sigma_relative_frobenius %||% NA_real_ else NA_real_, source_coefficient_rmse = if (returned) m$source_coefficient_rmse %||% NA_real_ else NA_real_,
+      shared_error = if (returned) score$shared_error else NA_real_, full_error = if (returned) score$full_error else NA_real_,
+      psi1_error = if (returned) score$psi_error[[1L]] else NA_real_, psi2_error = if (returned) score$psi_error[[2L]] else NA_real_, psi3_error = if (returned) score$psi_error[[3L]] else NA_real_,
+      sigma_error = if (returned) score$sigma_error else NA_real_, source_coefficient_rmse = if (returned) score$source_coefficient_rmse else NA_real_,
       valid_fit = returned && isTRUE(x$diagnostics$pd_hessian) && identical(as.integer(x$diagnostics$convergence), 0L) && isTRUE(x$diagnostics$finite) && is.finite(x$diagnostics$max_gradient) && x$diagnostics$max_gradient <= ISDM_RESPINFO_GRADIENT_MAX && !is.null(raw), stringsAsFactors = FALSE)
   })
   fits <- do.call(rbind, rows); pairs <- split(fits, fits$dataset_id)

@@ -64,7 +64,7 @@ isdm_respinfo_payload <- function(fit, fixture) {
   aligned <- intersect(names(fixed), names(fixed_truth)); source_terms <- grep("^isdm_source:", aligned, value = TRUE)
   source_error <- if (length(source_terms)) sqrt(mean((fixed[source_terms] - fixed_truth[source_terms])^2)) else NA_real_
   list(diagnostics = list(convergence = as.integer(fit$opt$convergence), pd_hessian = isTRUE(fit$sd_report$pdHess), objective = as.numeric(fit$opt$objective), max_gradient = max(abs(fit$tmb_obj$gr(fit$opt$par))), finite = is.finite(fit$opt$objective), peak_rss_bytes = .isdm_respinfo_peak_rss_bytes()),
-       raw = list(surfaces = estimate[c("fixed", "shared", "full")], Sigma = sigma, Psi = psi, fixed = fixed, fixed_truth = fixed_truth,
+       raw = list(surfaces = estimate[c("fixed", "shared", "full")], trait = trait, Sigma = sigma, Psi = psi, fixed = fixed, fixed_truth = fixed_truth,
                   truth_surfaces = truth_vectors, truth_Sigma = fixture$truth$Sigma, truth_Psi = fixture$truth$Psi,
                   baseline_data_sha256 = fixture$design$baseline_data_sha256),
        metrics = c(metrics, list(Sigma_relative_frobenius = .isdm_respinfo_relative_frobenius(sigma, fixture$truth$Sigma), Psi_relative_error = diag(abs(psi - fixture$truth$Psi) / diag(fixture$truth$Psi)), source_coefficient_rmse = source_error, full_public_identity_error = estimate$identity_error, sign_invariance_error = estimate$sign_invariance$max_error)),

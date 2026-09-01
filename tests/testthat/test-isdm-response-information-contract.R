@@ -8,14 +8,15 @@ if (!file.exists(contract_path)) {
     skip("developer-only response-information sources are absent")
   })
 
+} else {
+  source(contract_path, local = TRUE)
+
   test_that("qualification seeds cannot enter the retained denominator", {
     qualification <- isdm_respinfo_qualification_plan()
     plan <- isdm_respinfo_plan()
     expect_true(all(qualification$structure_seed < ISDM_RESPINFO_SEED_BASE))
     expect_true(all(plan$structure_seed >= ISDM_RESPINFO_SEED_BASE))
   })
-} else {
-  source(contract_path, local = TRUE)
 
   test_that("prospective plan has 400 paired datasets and 800 fit identities", {
     plan <- isdm_respinfo_plan()

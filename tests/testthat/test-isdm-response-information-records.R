@@ -24,7 +24,6 @@ if (!file.exists(record_path) || !file.exists(contract_path)) {
     expect_identical(readRDS(file.path(output, "attempts", isdm_respinfo_leaf(1L)))$status,
                      "unavailable")
   })
-}
 
 test_that("malformed terminal receipts are rejected before writing", {
   task <- isdm_respinfo_plan()[1L, , drop = FALSE]
@@ -73,9 +72,10 @@ test_that("pilot array indices resolve through the frozen pilot plan", {
   root <- normalizePath(file.path(testthat::test_path(), "..", ".."))
   plan_path <- file.path(root, "dev/isdm-requalification/response-information/compute-inputs/pilot-plan.rds")
   script <- file.path(root, "dev/isdm-requalification/response-information/compute/pilot-task-id.R")
-  task_id <- suppressWarnings(system2("Rscript", c("--vanilla", script, plan_path, "3"), stdout = TRUE, stderr = TRUE))
+  task_id <- suppressWarnings(system2(file.path(R.home("bin"), "Rscript"), c("--vanilla", script, plan_path, "3"), stdout = TRUE, stderr = TRUE))
   expect_identical(task_id, "101")
-  bad <- suppressWarnings(system2("Rscript", c("--vanilla", script, plan_path, "17"), stdout = TRUE, stderr = TRUE))
+  bad <- suppressWarnings(system2(file.path(R.home("bin"), "Rscript"), c("--vanilla", script, plan_path, "17"), stdout = TRUE, stderr = TRUE))
   expect_identical(as.integer(attr(bad, "status")), 1L)
   expect_match(paste(bad, collapse = "\n"), "outside the frozen pilot plan")
 })
+}

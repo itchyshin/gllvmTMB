@@ -51,7 +51,8 @@ null result.
 ## 4. Checks Run
 
 - `Rscript --vanilla dev/isdm-requalification/response-information/verify-contract.R` — passed.
-- `Rscript --vanilla dev/isdm-requalification/response-information/verify-tests.R` — 45 pass, 0 fail/warn/skip.
+- `Rscript --vanilla dev/isdm-requalification/response-information/verify-tests.R` — 48 pass, 0 fail/warn/skip.
+- Installed-layout simulation without `dev/` — both developer-only test files skip cleanly, 0 failures.
 - `Rscript --vanilla dev/isdm-requalification/response-information/verify-wording.R` — passed.
 - Tamia `verify-study.R` against the frozen 800-row plan — passed; 800/800 terminal records.
 - `git diff --check origin/main...HEAD` — passed.
@@ -94,7 +95,9 @@ kept, and only the 14 missing intended IDs were subsequently run. A later
 bulk transfer stopped at 143 remote records; raw records remain safely on
 Tamia and the independent scorer was run there, with only its compact summary
 copied locally. The study result itself is incomplete because two otherwise
-healthy `rep3` fits narrowly miss the gradient gate.
+healthy `rep3` fits narrowly miss the gradient gate. The first Ubuntu CI run
+also exposed developer-only tests that escaped their missing-source guard; the
+repair is locally simulated and awaits the exact-SHA rerun.
 
 ## 9. Team Learning
 

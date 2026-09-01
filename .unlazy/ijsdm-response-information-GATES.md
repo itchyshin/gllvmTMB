@@ -24,9 +24,10 @@ OWNS: dev/isdm-requalification/response-information/, tests/testthat/test-isdm-r
   EXPECT: response information pilot verification passed; response information pilot checkpoint passed
   EVIDENCE: Tamia job 434826 first 16 task positions plus approved job 434931 missing intended IDs; 30/30 terminal records; intended pilot 16/16 valid; max gradient=0.009472; peak RSS=343.8 MiB; max runtime=8.551 s; remaining=770; conservative projection=418.998 s.
 
-- [ ] G5: The remaining 770 identities run only after the explicit repaired-pilot checkpoint is accepted and reconcile to exactly 800 terminal records.
-  COMMAND WHEN EVIDENCE EXISTS: Rscript --vanilla dev/isdm-requalification/response-information/verify-study.R <scientific-plan.rds> <study-output> <summary.rds>
-  EVIDENCE: awaiting explicit scale-up acceptance; 30/800 retained terminal records already preserved.
+- [x] G5: The remaining 770 identities ran after the repaired-pilot checkpoint and reconcile to exactly 800 terminal records.
+  CHECK: Tamia job 434945; Rscript --vanilla dev/isdm-requalification/response-information/verify-study.R <scientific-plan.rds> <Tamia archive> <independent-summary.rds>
+  EXPECT: response information study verification passed
+  EVIDENCE: 800/800 terminal and returned fits; 398/400 scoreable pairs; classifier=EVIDENCE_INCOMPLETE because task 624 and 632 have max gradients 0.01036609 and 0.01108690 (>0.01). Raw archive manifest SHA-256=6ac8b1aa246f913e2403d3373d6a115542ce4b03b026fd8204f6facb732112d8; compact summary SHA-256=2c5b587acee3fe6cb503d8c4dee85da4908e227de57dff63878786efefa33368.
 
 - [x] G6: Internal wording retains scope and makes no public response-information claim.
   CHECK: Rscript --vanilla dev/isdm-requalification/response-information/verify-wording.R

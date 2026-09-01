@@ -918,8 +918,11 @@ evidence accumulate; promote claims to covered as it lands.
 
 ## Structured source attenuation (development arc, 2026-08-31)
 
-The approved contract is `dev/structured-rho/spatial-recovery/PLAN.md`; the implementation is
-not yet a completed capability. For the legacy-resolved source covariance K,
+The approved contract is `dev/structured-rho/spatial-recovery/PLAN.md`. Fixed
+attenuation and the admitted Gaussian estimator are implemented with scoped
+workflow checks. Spatial recovery evidence remains limited: 14 cells are
+partial, 2 are blocked, and none passes the predeclared joint range--rho gate.
+For the legacy-resolved source covariance K,
 define D = diag(diag(K)) and K_rho = rho K + (1-rho)D. The entire trait
 covariance S = Lambda Lambda' + Psi receives the same source strength.
 Ordinary variance components and Gaussian observation noise stay separate.

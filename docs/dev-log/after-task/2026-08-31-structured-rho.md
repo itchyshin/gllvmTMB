@@ -304,12 +304,9 @@ was subsequently re-reviewed, without fits or edits by the reviewer.
 
 **Downstream inventory:** Luna-medium read-only inspection mapped consumers and
 old tests; it was not a final mathematical or candidate review. No unengaged
-specialist is credited with signoff. The final panel receipts are
-reviews/final-math-20260831.md, final-api-20260831.md and final-audit-20260831.md.
-The API reviewer withdrew an initial commit-label objection after checking
-file hashes; tested uncommitted bytes were preserved in receipt manifests.
-Rose found the Rd links and accepted the precise scoped repair. Earlier report text is preserved verbatim
-in `dev/structured-rho/report-history-before-local-checkpoint.md`.
+specialist is credited with signoff. This development record does not retain
+the later clean-candidate API, reproducibility, and mathematical/evidence
+panel receipts; they belong to the exact landing candidate and its draft PR.
 
 ## 12. Cross-Product Coverage
 

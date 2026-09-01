@@ -1,7 +1,8 @@
-args <- commandArgs(trailingOnly = TRUE); if (length(args) != 2L) stop("usage: verify-qualification.R <qualification-plan.rds> <output-dir>", call. = FALSE)
+args <- commandArgs(trailingOnly = TRUE); if (length(args) != 3L) stop("usage: verify-qualification.R <qualification-plan.rds> <totoro-output> <drac-output>", call. = FALSE)
 source("dev/isdm-requalification/response-information/contract.R", local = TRUE); source("dev/isdm-requalification/response-information/records.R", local = TRUE); source("dev/isdm-requalification/response-information/recompute.R", local = TRUE)
 plan <- readRDS(args[[1L]]); isdm_respinfo_validate_qualification_plan(plan)
-records <- lapply(plan$task_id, function(id) readRDS(file.path(args[[2L]], "attempts", isdm_respinfo_leaf(id))))
+output_for <- function(host) if (identical(host, "totoro")) args[[2L]] else args[[3L]]
+records <- lapply(seq_len(nrow(plan)), function(i) readRDS(file.path(output_for(plan$host[[i]]), "attempts", isdm_respinfo_leaf(plan$task_id[[i]]))))
 valid <- vapply(seq_along(records), function(i) {
   x <- records[[i]]; task <- plan[i, , drop = FALSE]
   identical(as.integer(x$task_id), as.integer(task$task_id)) && identical(x$status, "fit_returned") &&

@@ -27,7 +27,7 @@ OWNS: dev/isdm-requalification/response-information/, tests/testthat/test-isdm-r
 - [x] G5: The remaining 770 identities ran after the repaired-pilot checkpoint and reconcile to exactly 800 terminal records.
   CHECK: Tamia job 434945; Rscript --vanilla dev/isdm-requalification/response-information/verify-study.R <scientific-plan.rds> <Tamia archive> <independent-summary.rds>
   EXPECT: response information study verification passed
-  EVIDENCE: 800/800 terminal and returned fits; 398/400 scoreable pairs; classifier=EVIDENCE_INCOMPLETE because task 624 and 632 have max gradients 0.01036609 and 0.01108690 (>0.01). Raw archive manifest SHA-256=6ac8b1aa246f913e2403d3373d6a115542ce4b03b026fd8204f6facb732112d8; compact summary SHA-256=2c5b587acee3fe6cb503d8c4dee85da4908e227de57dff63878786efefa33368.
+  EVIDENCE: 800/800 terminal and returned fits; 398/400 scoreable pairs; per-cell scoreable counts=50,50,50,50,50,50,48,50; classifier=EVIDENCE_INCOMPLETE because task 624 and 632 have max gradients 0.01036609 and 0.01108690 (>0.01). Raw archive manifest SHA-256=6ac8b1aa246f913e2403d3373d6a115542ce4b03b026fd8204f6facb732112d8; compact summary SHA-256=a9c123847ba0122b411dd7b01381abdd9f3243301842cfc1754b5c863b4f74d6.
 
 - [x] G6: Internal wording retains scope and makes no public response-information claim.
   CHECK: Rscript --vanilla dev/isdm-requalification/response-information/verify-wording.R

@@ -9,7 +9,9 @@ if (!file.exists(classifier_path) || !file.exists(contract_path)) {
     expect_identical(isdm_respinfo_classify(make_pairs(psi = .01), B = 20)$classification, "SURFACE_ONLY")
     expect_identical(isdm_respinfo_classify(make_pairs(psi = -.20), B = 20)$classification, "JOINT")
     expect_identical(isdm_respinfo_classify(make_pairs(value = .01, psi = -.20), B = 20)$classification, "MIXED_OR_NULL")
-    incomplete <- make_pairs(); incomplete$full_D[[1L]] <- NA_real_
-    expect_identical(isdm_respinfo_classify(incomplete, B = 20)$classification, "EVIDENCE_INCOMPLETE")
+    incomplete <- make_pairs(); incomplete$full_D[[301L]] <- NA_real_; incomplete$psi1_D[[316L]] <- NA_real_
+    result <- isdm_respinfo_classify(incomplete, B = 20)
+    expect_identical(result$classification, "EVIDENCE_INCOMPLETE")
+    expect_identical(unname(result$n_scoreable), as.integer(c(50, 50, 50, 50, 50, 50, 48, 50)))
   })
 }

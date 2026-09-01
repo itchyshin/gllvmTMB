@@ -14,7 +14,7 @@ and positive-definite Hessians. Their maximum gradients were 0.01036609 and
 0.01108690, respectively, above the predeclared 0.01 gate. No identity was
 rerun, replaced, discarded, or reclassified.
 
-Raw receipts remain in the Tamia `/project` archive. The 800-file receipt
+Raw receipts remain in the Tamia `/project/6114083` archive. The 800-file receipt
 manifest has SHA-256 `6ac8b1aa246f913e2403d3373d6a115542ce4b03b026fd8204f6facb732112d8`.
 The independent compact summary has SHA-256
-`2c5b587acee3fe6cb503d8c4dee85da4908e227de57dff63878786efefa33368`.
+`a9c123847ba0122b411dd7b01381abdd9f3243301842cfc1754b5c863b4f74d6`.

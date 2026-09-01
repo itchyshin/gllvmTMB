@@ -57426,3 +57426,14 @@ corrected the sandboxed preflight's inconclusive “none or unauthenticated” P
 line. Recent main CI belongs to baseline101fafcc3, not this candidate, and is
 not counted as candidate/three-OS proof. Closing action: save this local
 checkpoint and release only this lane's lease; no integration order is proposed.
+
+
+## 2026-09-01 — fresh iJSDM response-information campaign
+
+Fresh campaign source `6219a478c8e5a7ce6f05f859ae6d04e126034ad7` completed on Tamia: qualification and retained receipt verification passed, all 800 frozen identities returned exactly once, and the raw 800-file archive manifest is SHA-256 `6ac8b1aa246f913e2403d3373d6a115542ce4b03b026fd8204f6facb732112d8`. Independent raw-record summary SHA-256 `a9c123847ba0122b411dd7b01381abdd9f3243301842cfc1754b5c863b4f74d6` gives 398/400 scoreable pairs and frozen verdict `EVIDENCE_INCOMPLETE`: task IDs 624 and 632 are finite convergence-zero positive-Hessian `rep3` fits but exceed the fixed 0.01 gradient gate (0.01036609, 0.01108690). No task was rerun, replaced, excluded, or relabelled as a null result.
+
+Checks: `Rscript --vanilla dev/isdm-requalification/response-information/verify-contract.R` (passed); `Rscript --vanilla dev/isdm-requalification/response-information/verify-tests.R` (45 pass, 0 fail/warn/skip); `Rscript --vanilla dev/isdm-requalification/response-information/verify-wording.R` (passed); remote `verify-study.R` (passed, 800/800 terminal records).
+
+Scope scan: `rg -n -i "response information|response-information|baseline.*rep3|rep3.*baseline" README.md NEWS.md ROADMAP.md _pkgdown.yml vignettes R man`. Verdict: no public package, documentation, or generated-help claim was added. This commit changes only internal `dev/`, tests, acceptance ledger, validation register, check log, and after-task material.
+
+Correction before PR: the first compact summary's classifier recorded row counts as per-cell scoreable counts. The v3 scorer fixes this without touching retained fits: cell 7 is 48/50 and all other cells are 50/50, hence 398/400 overall. It also verifies every record source/harness identity against `runtime-identity.rds` and writes the new summary once. The durable raw archive is `/project/6114083/isdm-response-information/response-information-6219a478-tamia`; its committed 800-entry manifest is `dev/isdm-requalification/response-information/evidence/tamia-attempts.sha256`, aggregate SHA-256 `6ac8b1aa246f913e2403d3373d6a115542ce4b03b026fd8204f6facb732112d8`, and `sha256sum -c` passes at the archive root. V3 summary SHA-256 `a9c123847ba0122b411dd7b01381abdd9f3243301842cfc1754b5c863b4f74d6`.

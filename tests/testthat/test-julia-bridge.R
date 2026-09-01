@@ -734,7 +734,9 @@ test_that("Julia bridge capability ledger marks admitted CI rows explicitly", {
   )))
   ## cbind(successes, failures) binomial marshaling is routed for every admitted
   ## standard binary link; the mixed-family vector route stays gated.
-  expect_equal(caps$family[caps$cbind_binomial], .GLLVM_JULIA_BINOMIAL_FAMILIES)
+  # cbind(successes, failures) marshalling now also serves betabinomial
+  # (trials-N is load-bearing for that family; 2026-09-01 exposure).
+  expect_equal(caps$family[caps$cbind_binomial], .GLLVM_JULIA_TRIALS_FAMILIES)
   expect_false(caps$cbind_binomial[caps$family == .GLLVM_JULIA_MIXED_FAMILY])
 })
 

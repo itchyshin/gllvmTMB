@@ -92,3 +92,23 @@ isdm_respinfo_terminal_dispositions <- function(plan, output_dir) {
   lapply(records, isdm_respinfo_validate_terminal_record)
   records[match(plan$task_id, ids)]
 }
+
+## A retained pilot is a frozen 16-row subset of the scientific plan, not a
+## prematurely reconciled 800-row study.  Read only its worker terminals.
+isdm_respinfo_pilot_dispositions <- function(pilot_plan, output_dir) {
+  expected <- isdm_respinfo_pilot_plan(isdm_respinfo_plan())
+  if (!identical(pilot_plan, expected)) {
+    .isdm_respinfo_record_abort("pilot plan is not the frozen scientific subset", "isdm_respinfo_pilot_plan_invalid")
+  }
+  paths <- file.path(output_dir, "attempts", isdm_respinfo_leaf(expected$task_id))
+  if (any(!file.exists(paths))) {
+    .isdm_respinfo_record_abort("pilot identities do not all have worker terminal receipts", "isdm_respinfo_disposition_invalid")
+  }
+  records <- lapply(paths, readRDS)
+  ids <- vapply(records, function(x) as.integer(x$task_id), integer(1L))
+  if (anyDuplicated(ids) || !identical(ids, as.integer(expected$task_id))) {
+    .isdm_respinfo_record_abort("pilot terminal receipts do not match frozen identities", "isdm_respinfo_disposition_invalid")
+  }
+  lapply(records, isdm_respinfo_validate_terminal_record, worker_only = TRUE)
+  records
+}

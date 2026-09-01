@@ -24,8 +24,13 @@ observation truth, including `Sigma = Lambda Lambda' + Psi`; `rep3` preserves
 baseline rows byte-for-byte and appends two disjoint conditional response
 streams. Pair members use the same optimizer seed.
 
-The 16 identities with `seed_index = 1` form the retained DRAC pilot. All other
-784 identities remain unstarted until the checkpoint is explicitly accepted.
+The 16 identities with `seed_index = 1` form the retained DRAC pilot. The first
+array launcher mistakenly treated array positions as task identities and produced
+terminal records for `1:16`: two intended pilot identities plus fourteen valid
+extra retained identities. The immutable repair runs only the missing intended
+IDs `101,102,...,701,702`, leaving 30 terminal retained records and 770
+unstarted identities. It does not repeat, replace, or discard any fit. Scale-up
+remains blocked until the repaired checkpoint is explicitly accepted.
 A worker writes exactly one started record and one terminal record. A
 coordinator may add an unavailable/interrupted disposition only when no worker
 terminal exists; it never overwrites a worker record.

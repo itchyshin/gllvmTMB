@@ -51,3 +51,31 @@ test_that("coordinator dispositions fill only identities without worker terminal
   expect_identical(terminal[[1L]]$disposition_source, "worker")
   expect_identical(terminal[[2L]]$disposition_source, "coordinator")
 })
+
+test_that("pilot reader requires exactly the frozen worker-terminal subset", {
+  plan <- isdm_respinfo_plan()
+  pilot <- isdm_respinfo_pilot_plan(plan)
+  output <- tempfile("response-information-pilot-")
+  qualification <- list(source_sha = "abc", source_tree = "def", harness_manifest_sha256 = "ghi")
+  for (i in seq_len(nrow(pilot))) {
+    task <- pilot[i, , drop = FALSE]
+    started <- isdm_respinfo_write_started(task, output, qualification)
+    terminal <- isdm_respinfo_terminal_record(started, "fit_returned", 1,
+      payload = list(raw = list(ok = TRUE)), optimizer_entered = TRUE)
+    isdm_respinfo_write_terminal(terminal, output)
+  }
+  terminal <- isdm_respinfo_pilot_dispositions(pilot, output)
+  expect_equal(length(terminal), 16L)
+  expect_true(all(vapply(terminal, function(x) identical(x$disposition_source, "worker"), logical(1L))))
+})
+
+test_that("pilot array indices resolve through the frozen pilot plan", {
+  root <- normalizePath(file.path(testthat::test_path(), "..", ".."))
+  plan_path <- file.path(root, "dev/isdm-requalification/response-information/compute-inputs/pilot-plan.rds")
+  script <- file.path(root, "dev/isdm-requalification/response-information/compute/pilot-task-id.R")
+  task_id <- suppressWarnings(system2("Rscript", c("--vanilla", script, plan_path, "3"), stdout = TRUE, stderr = TRUE))
+  expect_identical(task_id, "101")
+  bad <- suppressWarnings(system2("Rscript", c("--vanilla", script, plan_path, "17"), stdout = TRUE, stderr = TRUE))
+  expect_identical(as.integer(attr(bad, "status")), 1L)
+  expect_match(paste(bad, collapse = "\n"), "outside the frozen pilot plan")
+})

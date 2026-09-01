@@ -4,4 +4,4 @@
 #SBATCH --output=logs/isdm-ri-pilot-%A_%a.out
 set -euo pipefail
 mkdir -p logs
-bash "$1/dev/isdm-requalification/response-information/compute/run-retained.sh" "$1" "$2" "$SLURM_ARRAY_TASK_ID" "$3"
+bash "$1/dev/isdm-requalification/response-information/compute/run-pilot.sh" "$1" "$2" "$SLURM_ARRAY_TASK_ID" "$3"

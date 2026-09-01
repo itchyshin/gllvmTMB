@@ -9,14 +9,20 @@ source("dev/isdm-requalification/response-information/recompute.R", local = TRUE
 isdm_respinfo_pilot_checkpoint <- function(plan_path, output_dir,
                                            max_concurrent = 16L,
                                            remaining_fits = 784L) {
-  if (!identical(as.integer(max_concurrent), 16L) || !identical(as.integer(remaining_fits), 784L)) {
-    stop("pilot checkpoint must use the frozen 16-worker / 784-fit scale-up contract", call. = FALSE)
+  remaining_fits <- as.integer(remaining_fits)
+  if (!identical(as.integer(max_concurrent), 16L) || !remaining_fits %in% c(784L, 770L)) {
+    stop("pilot checkpoint must use 16 workers and either the original 784 or approved 770 remaining-fit contract", call. = FALSE)
   }
   plan <- readRDS(plan_path)
   if (nrow(plan) != 16L || !all(plan$seed_index == 1L)) {
     stop("pilot checkpoint requires the frozen 16-identity pilot plan", call. = FALSE)
   }
-  records <- isdm_respinfo_terminal_dispositions(plan, output_dir)
+  records <- isdm_respinfo_pilot_dispositions(plan, output_dir)
+  worker_paths <- list.files(file.path(output_dir, "attempts"), pattern = "^task-[0-9]{6}[.]rds$", full.names = TRUE)
+  worker_ids <- unname(sort(vapply(worker_paths, function(path) as.integer(readRDS(path)$task_id), integer(1L))))
+  recovery_ids <- as.integer(c(1:16, 101, 102, 201, 202, 301, 302, 401, 402, 501, 502, 601, 602, 701, 702))
+  expected_worker_ids <- if (identical(remaining_fits, 784L)) sort(as.integer(plan$task_id)) else recovery_ids
+  if (!identical(worker_ids, expected_worker_ids)) stop("pilot checkpoint worker receipts do not match its frozen allocation", call. = FALSE)
   valid <- vapply(records, function(x) {
     identical(x$status, "fit_returned") &&
       identical(x$disposition_source, "worker") &&
@@ -45,11 +51,13 @@ isdm_respinfo_pilot_checkpoint <- function(plan_path, output_dir,
   gradients <- vapply(records, function(x) x$diagnostics$max_gradient, numeric(1L))
   projected_s <- max(runtime_s) * ceiling(as.integer(remaining_fits) / as.integer(max_concurrent))
   receipt <- list(
-    schema = "isdm-response-information-pilot-checkpoint-v1",
+    schema = "isdm-response-information-pilot-checkpoint-v2",
     source_sha = records[[1L]]$source_sha,
     harness_manifest_sha256 = records[[1L]]$harness_manifest_sha256,
     planned_pilot_fits = 16L,
     valid_pilot_fits = sum(valid),
+    pre_scaleup_terminal_fits = length(worker_ids),
+    pilot_mapping_recovery = identical(remaining_fits, 770L),
     maximum_gradient = max(gradients),
     peak_rss_bytes = max(rss_bytes),
     max_task_runtime_s = max(runtime_s),
@@ -66,8 +74,9 @@ isdm_respinfo_pilot_checkpoint <- function(plan_path, output_dir,
 
 args <- commandArgs(trailingOnly = TRUE)
 if (length(args)) {
-  if (length(args) != 3L) stop("usage: pilot-checkpoint.R <pilot-plan.rds> <output-dir> <checkpoint.rds>", call. = FALSE)
-  receipt <- isdm_respinfo_pilot_checkpoint(args[[1L]], args[[2L]])
+  if (!length(args) %in% c(3L, 4L)) stop("usage: pilot-checkpoint.R <pilot-plan.rds> <output-dir> <checkpoint.rds> [remaining-fits]", call. = FALSE)
+  remaining_fits <- if (length(args) == 4L) as.integer(args[[4L]]) else 784L
+  receipt <- isdm_respinfo_pilot_checkpoint(args[[1L]], args[[2L]], remaining_fits = remaining_fits)
   saveRDS(receipt, args[[3L]], version = 3)
   cat("response information pilot checkpoint passed\n")
 }

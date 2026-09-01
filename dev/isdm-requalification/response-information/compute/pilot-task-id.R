@@ -1,0 +1,8 @@
+args <- commandArgs(trailingOnly = TRUE)
+if (length(args) != 2L) stop("usage: pilot-task-id.R <pilot-plan.rds> <array-index>", call. = FALSE)
+plan <- readRDS(args[[1L]])
+index <- suppressWarnings(as.integer(args[[2L]]))
+if (is.na(index) || index < 1L || index > nrow(plan)) stop("array index is outside the frozen pilot plan", call. = FALSE)
+id <- suppressWarnings(as.integer(plan$task_id[[index]]))
+if (is.na(id)) stop("frozen pilot plan has an invalid task ID", call. = FALSE)
+cat(id, "\n", sep = "")

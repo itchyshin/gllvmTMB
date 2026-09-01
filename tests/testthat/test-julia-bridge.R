@@ -4392,3 +4392,51 @@ test_that("phylo/kernel/animal structured terms stay gated", {
     "GJL-GATE-STRUCTURED-TERMS"
   )
 })
+
+test_that("lone kernel structured terms route to Julia sources (live, Slice B)", {
+  skip_if_no_julia()
+  set.seed(1123)
+  n_unit <- 30L
+  df <- expand.grid(
+    unit = factor(paste0("u", sprintf("%02d", seq_len(n_unit)))),
+    trait = factor(c("t1", "t2", "t3")),
+    KEEP.OUT.ATTRS = FALSE
+  )
+  # A valid dense kernel over the units: exactly symmetric PD with dimnames.
+  set.seed(7)
+  Zk <- matrix(rnorm(n_unit * 3), n_unit, 3)
+  Kmat <- tcrossprod(Zk) / 3 + diag(0.75, n_unit)
+  Kmat <- (Kmat + t(Kmat)) / 2
+  dimnames(Kmat) <- list(levels(df$unit), levels(df$unit))
+  lam <- c(0.5, -0.35, 0.3)[as.integer(df$trait)]
+  zread <- as.vector(t(chol(Kmat)) %*% rnorm(n_unit))
+  df$value <- 0.1 + lam * zread[as.integer(df$unit)] + 0.5 * rnorm(nrow(df))
+
+  for (term in c("kernel_latent(unit, K = Kmat, d = 1, unique = FALSE)",
+                 "kernel_indep(unit, K = Kmat)",
+                 "kernel_dep(unit, K = Kmat)")) {
+    fml <- stats::as.formula(paste0("value ~ 0 + trait + ", term))
+    fit_j <- gllvmTMB(fml, data = df, unit = "unit", trait = "trait",
+                      family = gaussian(), engine = "julia",
+                      ci_method = "none")
+    fit_r <- gllvmTMB(fml, data = df, unit = "unit", trait = "trait",
+                      family = gaussian())
+    expect_s3_class(fit_j, "gllvmTMB_julia")
+    expect_true(is.finite(logLik(fit_j)))
+    expect_lt(
+      abs(as.numeric(logLik(fit_j)) - as.numeric(logLik(fit_r))), 1e-3)
+  }
+})
+
+test_that("kernel marshalling validates K and keeps animal/phylo gated", {
+  df <- make_long()
+  df$value <- rnorm(nrow(df))
+  Kbad <- matrix(rnorm(100), 10, 10)   # no dimnames, not symmetric
+  expect_error(
+    gllvmTMB(value ~ 0 + trait + kernel_latent(unit, K = Kbad, d = 1,
+                                               unique = FALSE),
+             data = df, unit = "unit", trait = "trait", family = gaussian(),
+             engine = "julia", ci_method = "none"),
+    "GJL-GATE-STRUCTURED-TERMS"
+  )
+})

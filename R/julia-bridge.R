@@ -3671,7 +3671,17 @@ print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
     z1 <- cs[[1L]]
     z1_dep <- identical(z1$kind, "rr") && isTRUE(z1$extra$.dep)
     z1_diag <- identical(z1$kind, "diag") && !isTRUE(z1$extra$.auto_unique)
-    if (z1_dep || z1_diag) {
+    ## Slice B: kernel_* terms carry the literal dense covariance in
+    ## extra$vcv (kernel-keywords docs) — the SAFE half of the phylo_rr kind.
+    ## Tree/pedigree-sourced phylo_rr (animal_*/phylo_*) stays gated: their
+    ## covariance-vs-precision (Ainv) conversion lives in the TMB engine and
+    ## marshalling it without that logic risks fitting the wrong model.
+    z1_kernel <- identical(z1$kind, "phylo_rr") &&
+      !is.null(z1$extra$.kernel_mode) &&
+      is.matrix(z1$extra$vcv) &&
+      z1$extra$.kernel_mode %in% c("latent", "indep", "scalar", "dep") &&
+      !isTRUE(z1$extra$.animal_source)
+    if (z1_dep || z1_diag || z1_kernel) {
       structured_source_term <- z1
       kinds <- character(0)
     }
@@ -3974,15 +3984,68 @@ print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
       )
     }
     grpf <- factor(gvals)
-    is_dep <- identical(z$kind, "rr") && isTRUE(z$extra$.dep)
-    spec <- list(
-      name = if (is_dep) "ordinary_dep" else "ordinary_indep",
-      covariance = diag(1, nlevels(grpf)),
-      groups = as.integer(grpf),
-      mode = if (is_dep) "dep" else "indep",
-      unique = FALSE,
-      common = isTRUE(z$extra$common)
-    )
+    kmode <- z$extra$.kernel_mode
+    if (!is.null(kmode)) {
+      Kmat <- z$extra$vcv
+      if (
+        !is.matrix(Kmat) || !is.numeric(Kmat) ||
+          nrow(Kmat) != ncol(Kmat) || is.null(rownames(Kmat)) ||
+          !identical(rownames(Kmat), colnames(Kmat))
+      ) {
+        stop(
+          .gllvm_julia_gate_message(
+            "GJL-GATE-STRUCTURED-TERMS",
+            "engine = 'julia': kernel terms need a square numeric K with ",
+            "matching row and column names."
+          ),
+          call. = FALSE
+        )
+      }
+      missing_lv <- setdiff(levels(grpf), rownames(Kmat))
+      if (length(missing_lv)) {
+        stop(
+          .gllvm_julia_gate_message(
+            "GJL-GATE-STRUCTURED-TERMS",
+            "engine = 'julia': kernel K is missing rows for grouping ",
+            "level(s): ", paste(missing_lv, collapse = ", "), "."
+          ),
+          call. = FALSE
+        )
+      }
+      Kal <- Kmat[levels(grpf), levels(grpf), drop = FALSE]
+      if (!isSymmetric(unname(Kal), tol = 0)) {
+        stop(
+          .gllvm_julia_gate_message(
+            "GJL-GATE-STRUCTURED-TERMS",
+            "engine = 'julia': kernel K must be exactly symmetric ",
+            "(no jitter is applied on the Julia path)."
+          ),
+          call. = FALSE
+        )
+      }
+      kd <- z$extra$d
+      spec <- list(
+        name = paste0("kernel_", kmode),
+        covariance = unname(Kal),
+        groups = as.integer(grpf),
+        mode = switch(kmode, latent = "latent", dep = "dep", "indep"),
+        unique = FALSE,
+        common = identical(kmode, "scalar")
+      )
+      if (identical(kmode, "latent")) {
+        spec$rank <- as.integer(if (is.null(kd)) 1L else kd)
+      }
+    } else {
+      is_dep <- identical(z$kind, "rr") && isTRUE(z$extra$.dep)
+      spec <- list(
+        name = if (is_dep) "ordinary_dep" else "ordinary_indep",
+        covariance = diag(1, nlevels(grpf)),
+        groups = as.integer(grpf),
+        mode = if (is_dep) "dep" else "indep",
+        unique = FALSE,
+        common = isTRUE(z$extra$common)
+      )
+    }
     sources_arg <- list(spec)
     if (ci_method != "none") {
       stop(

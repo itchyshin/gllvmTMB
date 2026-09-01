@@ -515,7 +515,14 @@ test_that("family mapping is element-wise over a mixed list", {
 })
 
 test_that("family mapping rejects unsupported families loudly", {
-  expect_error(.gllvm_julia_family("lognormal"), "GJL-GATE-FAMILY")
+  # lognormal is EXPOSED (2026-09-01, julia-bridge expansion slice 1): the
+  # paired GLLVM.jl bridge has carried a tested "lognormal" payload route for
+  # some time; the R map simply never sent it.
+  expect_identical(.gllvm_julia_family("lognormal"), "lognormal")
+  expect_identical(.gllvm_julia_family(lognormal()), "lognormal")
+  expect_true("lognormal" %in% .GLLVM_JULIA_BRIDGE_FAMILIES)
+  # Post-fit surfaces stay conservatively gated until their parity evidence:
+  expect_false("lognormal" %in% .GLLVM_JULIA_SCORE_POSTFIT_FAMILIES)
   expect_error(.gllvm_julia_family("tweedie"), "GJL-GATE-FAMILY")
   expect_error(.gllvm_julia_family("nonsense"), "GJL-GATE-FAMILY")
   expect_error(
@@ -599,7 +606,9 @@ test_that("Julia bridge capability ledger marks admitted CI rows explicitly", {
     caps$family,
     c(.GLLVM_JULIA_BRIDGE_FAMILIES, .GLLVM_JULIA_MIXED_FAMILY)
   )
-  expect_false("lognormal" %in% caps$family)
+  # lognormal exposed 2026-09-01 (fit-only; X and post-fit stay gated).
+  expect_true("lognormal" %in% caps$family)
+  expect_false("lognormal" %in% .GLLVM_JULIA_X_FAMILIES)
   expect_equal(caps$family[caps$fit_no_x], caps$family)
   expect_equal(caps$family[caps$fixed_effect_X], .GLLVM_JULIA_X_FAMILIES)
   expect_equal(
@@ -4191,4 +4200,31 @@ test_that("gllvm_julia_fit transposes a matrix N under units_are_rows = TRUE (#5
   expect_equal(dim(captured$args$y), c(2L, 3L))
   expect_equal(dim(captured$args$N), c(2L, 3L))
   expect_equal(unname(captured$args$N), unname(t(N)))
+})
+
+test_that("lognormal round-trips through engine = 'julia' (live)", {
+  skip_if_no_julia()
+  set.seed(42)
+  n_unit <- 40L
+  df <- expand.grid(
+    unit = factor(seq_len(n_unit)),
+    trait = factor(c("t1", "t2", "t3")),
+    KEEP.OUT.ATTRS = FALSE
+  )
+  lam <- c(0.6, -0.4, 0.3)[as.integer(df$trait)]
+  z <- rnorm(n_unit)[as.integer(df$unit)]
+  df$value <- exp(0.4 + lam * z + 0.3 * rnorm(nrow(df)))
+  fit_j <- gllvmTMB(
+    value ~ 0 + trait + latent(1 | unit, d = 1, unique = FALSE),
+    data = df, unit = "unit", trait = "trait",
+    family = lognormal(), engine = "julia", ci_method = "none"
+  )
+  fit_r <- gllvmTMB(
+    value ~ 0 + trait + latent(1 | unit, d = 1, unique = FALSE),
+    data = df, unit = "unit", trait = "trait",
+    family = lognormal()
+  )
+  expect_s3_class(fit_j, "gllvmTMB_julia")
+  expect_true(is.finite(logLik(fit_j)))
+  expect_lt(abs(as.numeric(logLik(fit_j)) - as.numeric(logLik(fit_r))), 1e-4)
 })

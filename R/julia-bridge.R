@@ -25,6 +25,7 @@
   "nb1",
   "beta",
   "gamma",
+  "lognormal",
   "ordinal",
   "ordinal_probit"
 )
@@ -730,6 +731,7 @@ gllvm_julia_capabilities <- function() {
     nb1 = "nb1",
     beta = "beta",
     gamma = "gamma",
+    lognormal = "lognormal",
     ordinal = "ordinal",
     ordinal_probit = "ordinal_probit",
     {
@@ -740,7 +742,7 @@ gllvm_julia_capabilities <- function() {
           fam,
           "'. Supported: gaussian, poisson, ",
           "binomial, binomial_probit, binomial_cloglog, nbinom2, nbinom1, ",
-          "beta, gamma, ordinal, ordinal_probit ",
+          "beta, gamma, lognormal, ordinal, ordinal_probit ",
           "(or a narrow list for mixed gaussian/poisson/binomial responses)."
         ),
         call. = FALSE
@@ -849,6 +851,7 @@ gllvm_julia_capabilities <- function() {
     nb1 = "phi",
     beta = "sigma",
     gamma = "sigma",
+    lognormal = "sigma",
     "dispersion"
   )
 }

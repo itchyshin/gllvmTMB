@@ -74,7 +74,11 @@ Per the task brief's "Known name collisions to resolve explicitly":
    capability, `missing` on Julia's own ledger. The row name matches
    (`AGHQ estimator`), the status genuinely disagrees (R `scope-limited`
    opt-in vs Julia `missing`), and `NOTED_DIVERGENCES` explains why that
-   status disagreement is a real finding, not an artifact.
+   status disagreement is a real finding, not an artifact. (Post-fix
+   confirmation, 2026-09-02: the corrected tool prints this row `DIFFER`,
+   not `AGREE` -- fixing the B1 status-inflation bug that had previously
+   made it print `R=implemented`. See `dev/gapclose/B1-B2-report.md`'s
+   CORRECTION section.)
 6. **`unique`** -- per CLAUDE.md's modifier doctrine, `unique` is a modifier
    of `latent()` (the diagonal Psi companion), not a separate mode. It never
    appears as its own grid cell in either ledger; R's `unique()`/`*_unique()`

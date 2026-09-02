@@ -99,12 +99,26 @@ strip_md <- function(x) {
   trimws(x)
 }
 
-normalize_status <- function(raw) {
+# `canonical` is the set of first-class status words accepted AS-IS for the
+# side being parsed. Julia's ledger vocabulary is `implemented / planned /
+# missing / rejected`. The R ledger's is WIDER -- it also has the register's
+# own honesty statuses `scope-limited` and `point-fit-recovery`
+# (dev/gapclose/build-capability-status.R's Vocabulary section) -- and those
+# must survive the join as first-class values, not be coerced into
+# `implemented`. Collapsing them was a real bug (Opus adversarial review,
+# finding B1, 2026-09-02): it silently rewrote 24 of 44 matched rows'
+# R-side status to `implemented`, so a matched R `scope-limited` row read as
+# `AGREE` against Julia's real `implemented`, and made the R-NARROWER branch
+# below dead code (0 rows could ever reach it, since rr$status was always
+# "implemented" after normalization). The fallback to `implemented` for a
+# truly non-canonical cell (Julia's "**observed**"/"Fisher" markers, per the
+# B2 brief) still applies -- but only for words outside THIS side's own
+# canonical set, never for the other side's legitimate vocabulary.
+normalize_status <- function(raw, canonical) {
   raw <- strip_md(raw)
   # first token/word run at the start of the cell
   m <- regmatches(raw, regexec("^([A-Za-z][A-Za-z-]*)", raw))[[1]]
   word <- if (length(m) >= 2) tolower(m[2]) else tolower(raw)
-  canonical <- c("implemented", "planned", "missing", "rejected")
   if (word %in% canonical) {
     list(word = word, note = if (nchar(raw) > nchar(word)) trimws(sub(paste0("^", word), "", raw, ignore.case = TRUE)) else "")
   } else {
@@ -112,9 +126,14 @@ normalize_status <- function(raw) {
   }
 }
 
+JULIA_CANONICAL <- c("implemented", "planned", "missing", "rejected")
+R_CANONICAL <- c("implemented", "scope-limited", "point-fit-recovery", "planned", "rejected")
+
 # Parse a markdown file into: for each "## <group>" section, each pipe-table
 # whose header row's first two non-empty cells are "Capability" and "Status".
-parse_capability_tables <- function(lines) {
+# `canonical` (JULIA_CANONICAL or R_CANONICAL) is threaded through to
+# normalize_status() so each side keeps its OWN first-class vocabulary.
+parse_capability_tables <- function(lines, canonical) {
   rows <- list()
   cur_group <- NA_character_
   in_target_table <- FALSE
@@ -152,7 +171,7 @@ parse_capability_tables <- function(lines) {
         aliases_raw <- if (length(raw_cells) >= 3) raw_cells[3] else ""
         reg_rows_raw <- if (length(raw_cells) >= 4) raw_cells[4] else ""
         note_raw <- if (length(raw_cells) >= 5) raw_cells[5] else ""
-        st <- normalize_status(st_raw)
+        st <- normalize_status(st_raw, canonical)
         rows[[length(rows) + 1]] <- list(
           group = cur_group, name = name, status = st$word, status_note = st$note,
           status_raw = st_raw, aliases = aliases_raw, register_rows = reg_rows_raw, note = note_raw
@@ -170,8 +189,8 @@ parse_capability_tables <- function(lines) {
 
 `%||%` <- function(a, b) if (is.null(a) || length(a) == 0) b else a
 
-julia_rows <- parse_capability_tables(julia_text)
-r_rows <- parse_capability_tables(r_text)
+julia_rows <- parse_capability_tables(julia_text, JULIA_CANONICAL)
+r_rows <- parse_capability_tables(r_text, R_CANONICAL)
 
 if (length(julia_rows) == 0) stop("parsed 0 capability rows from the Julia ledger -- check the source/parser")
 if (length(r_rows) == 0) stop("parsed 0 capability rows from the R ledger -- run the B1 generator first")
@@ -409,25 +428,73 @@ cat(sprintf("R ledger:     %s (%d rows)\n", R_LEDGER_PATH, length(r_rows)))
 cat(sprintf("Julia ledger: %s (%d rows)\n", julia_source_desc, length(julia_rows)))
 cat("\n")
 
-cat(sprintf("COUNTS: %d matched, %d R-only, %d Julia-only\n",
-            length(matched), length(r_only_idx), length(julia_only_idx)))
+# Flag definitions (Opus review finding B1 fix, 2026-09-02): now computed
+# over each side's OWN un-mangled status word (R_CANONICAL for rr$status,
+# JULIA_CANONICAL for jr$status -- see normalize_status()/parse_capability_tables()
+# above), not a field that was silently coerced to `implemented` for both
+# sides.
+#   AGREE       - identical canonical status word on both sides.
+#   R-NARROWER  - Julia says `implemented`, R hedges (`scope-limited` /
+#                 `point-fit-recovery`): the R ledger's own honesty
+#                 vocabulary is doing its job, and this row must not print
+#                 as AGREE.
+#   J-NARROWER  - the reverse: R says `implemented`, Julia says
+#                 `planned`/`missing`/`rejected` -- R is ahead here.
+#   DIFFER      - any other mismatch (e.g. R `scope-limited` vs Julia
+#                 `planned`, or `rejected` vs `implemented`); neither
+#                 R-NARROWER nor J-NARROWER cleanly describes it, so it is
+#                 reported plainly rather than forced into one bucket.
+matched_flags <- character(length(matched))
+for (mi in seq_along(matched)) {
+  m <- matched[[mi]]
+  jr <- julia_rows[[m$julia_idx]]; rr <- r_rows[[m$r_idx]]
+  matched_flags[mi] <-
+    if (identical(jr$status, rr$status)) {
+      "AGREE"
+    } else if (identical(jr$status, "implemented") && rr$status %in% c("scope-limited", "point-fit-recovery")) {
+      "R-NARROWER"
+    } else if (identical(rr$status, "implemented") && jr$status %in% c("planned", "missing", "rejected")) {
+      "J-NARROWER"
+    } else {
+      "DIFFER"
+    }
+}
+n_agree <- sum(matched_flags == "AGREE")
+n_r_narrower <- sum(matched_flags == "R-NARROWER")
+n_j_narrower <- sum(matched_flags == "J-NARROWER")
+n_differ <- sum(matched_flags == "DIFFER")
+r_narrower_idx <- which(matched_flags == "R-NARROWER")
+
+cat(sprintf("COUNTS: %d matched (%d AGREE, %d R-NARROWER, %d J-NARROWER, %d DIFFER), %d R-only, %d Julia-only\n",
+            length(matched), n_agree, n_r_narrower, n_j_narrower, n_differ,
+            length(r_only_idx), length(julia_only_idx)))
 cat("\n")
 
 cat(sprintf("MATCHED ROWS (%d)\n", length(matched)))
-for (m in matched) {
+for (mi in seq_along(matched)) {
+  m <- matched[[mi]]
   jr <- julia_rows[[m$julia_idx]]; rr <- r_rows[[m$r_idx]]
-  agree <- identical(
-    sub(" .*$", "", jr$status),
-    sub(" .*$", "", rr$status)
-  )
-  # `implemented` on both sides still agrees; anything else needing nuance
-  # (e.g. R `scope-limited` vs Julia `implemented`) is flagged.
-  flag <- if (jr$status == rr$status) "AGREE" else if (jr$status == "implemented" && rr$status %in% c("scope-limited", "point-fit-recovery")) "R-NARROWER" else if (rr$status == "implemented" && jr$status != "implemented") "R-AHEAD" else "DIFFER"
   dv <- divergence_note_for(rr$name)
   cat(sprintf("  [%-11s] %-70s R=%-20s Julia=%s%s\n",
-              flag, rr$name, rr$status, jr$status,
+              matched_flags[mi], rr$name, rr$status, jr$status,
               if (nzchar(dv)) paste0("\n      divergence: ", dv) else ""))
 }
+cat("\n")
+
+# Printed UNCONDITIONALLY (not gated behind --check-names or any other flag)
+# so an R-NARROWER row can never be hidden inside the matched table alone --
+# the exact failure mode the Opus review's finding B1 flagged ("the
+# R-NARROWER branch ... is dead code"). closure_ok below cross-checks this
+# section's line count against r_narrower_idx by construction.
+cat(sprintf("R-NARROWER ROWS (%d) -- Julia claims `implemented`, R honestly hedges\n", length(r_narrower_idx)))
+r_narrower_printed <- 0L
+for (mi in r_narrower_idx) {
+  m <- matched[[mi]]
+  jr <- julia_rows[[m$julia_idx]]; rr <- r_rows[[m$r_idx]]
+  cat(sprintf("  %-70s R=%-20s Julia=%s\n", rr$name, rr$status, jr$status))
+  r_narrower_printed <- r_narrower_printed + 1L
+}
+if (length(r_narrower_idx) == 0) cat("  (none)\n")
 cat("\n")
 
 cat(sprintf("AHEAD OF gllvmTMB, ACCOUNTED FOR IN WRITING -- Julia-only rows with a disposition (%d)\n", length(julia_only_idx)))
@@ -467,18 +534,29 @@ if (CHECK_NAMES) {
   cat("\n")
 }
 
+# CLOSURE must not be PASS merely because every Julia-only row has a
+# disposition (that is what silently passed with the B1 status-inflation
+# bug in place). It now ALSO requires every R-NARROWER row to have been
+# printed in its own un-hideable section above -- checked structurally here,
+# not just by convention, by re-deriving the count from `matched_flags`
+# (the same vector the printing loop iterated over) and asserting it matches
+# what was actually printed.
+r_narrower_not_hidden <- identical(r_narrower_printed, length(r_narrower_idx))
+
 closure_ok <- length(undispositioned) == 0 && length(near_misses) == 0 &&
-  length(missing_grouping) == 0 && length(collision_failures) == 0
+  length(missing_grouping) == 0 && length(collision_failures) == 0 &&
+  r_narrower_not_hidden
 
 if (closure_ok) {
-  cat(sprintf("CLOSURE: PASS -- every one of %d Julia-only rows carries a port/accounted/divergence disposition, 0 near-misses, all 4 grouping-level rows present, collision rows join correctly\n",
-              length(julia_only_idx)))
+  cat(sprintf("CLOSURE: PASS -- every one of %d Julia-only rows carries a port/accounted/divergence disposition, 0 near-misses, all 4 grouping-level rows present, collision rows join correctly, all %d R-NARROWER row(s) listed (not hidden)\n",
+              length(julia_only_idx), length(r_narrower_idx)))
 } else {
   cat("CLOSURE: FAIL\n")
   if (length(undispositioned) > 0) cat(sprintf("  %d Julia-only row(s) have no disposition: %s\n", length(undispositioned), paste(undispositioned, collapse = "; ")))
   if (length(near_misses) > 0) cat(sprintf("  %d near-miss name(s)\n", length(near_misses)))
   if (length(missing_grouping) > 0) cat(sprintf("  missing grouping-level rows: %s\n", paste(missing_grouping, collapse = ", ")))
   if (length(collision_failures) > 0) cat(sprintf("  collision failures: %s\n", paste(collision_failures, collapse = "; ")))
+  if (!r_narrower_not_hidden) cat("  R-NARROWER rows were not all listed\n")
 }
 
 quit(status = if (closure_ok) 0L else 1L, save = "no")

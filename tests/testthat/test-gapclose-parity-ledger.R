@@ -99,3 +99,83 @@ test_that("(5) collision rows never join to the wrong Julia row", {
   # not have silently matched anything of R's imputation-family collision.
   expect_true(any(grepl("^  \\[PORT", res$lines) & grepl("ordinal_probit / cumulative_logit", res$lines)))
 })
+
+test_that("(6) the tool's printed R status equals the R ledger's own Status column, for every matched row (Opus review finding B1)", {
+  testthat::skip_if_not(file.exists(parity_script), "parity_ledger.R missing")
+  testthat::skip_if_not(file.exists(ledger_path), "capability-status.md not generated yet")
+  testthat::skip_if_not(file.exists(scratchpad_julia), "scratchpad Julia copy missing")
+
+  # Independently parse the R ledger's own | Capability | Status | ... | rows
+  # (deliberately re-implemented here rather than sourcing the tool's own
+  # parser, so this test cannot pass merely because the tool's parser and
+  # this test share the same bug).
+  ledger <- readLines(ledger_path, warn = FALSE)
+  ledger_status <- character(0)
+  for (ln in ledger) {
+    if (!grepl("^\\|", ln)) next
+    cells <- strsplit(ln, "\\|")[[1]]
+    if (length(cells) >= 2) cells <- cells[-1]
+    if (length(cells) >= 1 && trimws(cells[length(cells)]) == "") cells <- cells[-length(cells)]
+    cells <- trimws(cells)
+    if (length(cells) < 2) next
+    name <- cells[1]
+    status_raw <- cells[2]
+    if (tolower(name) %in% c("capability", "")) next
+    if (grepl("^-+$", gsub("[: ]", "", name))) next
+    # first status word only, matching the tool's own tokenisation
+    m <- regmatches(status_raw, regexec("^([A-Za-z][A-Za-z-]*)", status_raw))[[1]]
+    word <- if (length(m) >= 2) tolower(m[2]) else tolower(status_raw)
+    if (!word %in% c("implemented", "scope-limited", "point-fit-recovery", "planned", "rejected")) next
+    ledger_status[[trimws(gsub("`", "", name))]] <- word
+  }
+  expect_gt(length(ledger_status), 0)
+
+  res <- run_rscript(parity_script, c("--julia", shQuote(scratchpad_julia)))
+  expect_identical(res$status, 0L, info = res$output)
+  matched_lines <- grep("^  \\[(AGREE|R-NARROWER|J-NARROWER|DIFFER)\\s*\\]", res$lines, value = TRUE)
+  expect_gt(length(matched_lines), 0)
+
+  mismatches <- character(0)
+  checked <- 0L
+  for (ln in matched_lines) {
+    m <- regmatches(ln, regexec("^  \\[[A-Z-]+\\s*\\]\\s+(.*?)\\s+R=(\\S+)\\s+Julia=", ln))[[1]]
+    if (length(m) < 3) next
+    name <- trimws(gsub("`", "", m[2]))
+    printed_status <- m[3]
+    if (!name %in% names(ledger_status)) next  # name normalization differences (e.g. trailing punctuation) -- skip, not the bug under test
+    checked <- checked + 1L
+    if (!identical(printed_status, ledger_status[[name]])) {
+      mismatches <- c(mismatches, sprintf("%s: printed R=%s but ledger says %s", name, printed_status, ledger_status[[name]]))
+    }
+  }
+  expect_gt(checked, 20)  # sanity: most of the 44 matched rows should have joined by exact name
+  expect_length(mismatches, 0)
+})
+
+test_that("(7) at least one R-NARROWER row exists given the current ledgers", {
+  testthat::skip_if_not(file.exists(parity_script), "parity_ledger.R missing")
+  testthat::skip_if_not(file.exists(scratchpad_julia), "scratchpad Julia copy missing")
+
+  res <- run_rscript(parity_script, c("--julia", shQuote(scratchpad_julia)))
+  expect_identical(res$status, 0L, info = res$output)
+
+  counts_line <- grep("^COUNTS:", res$lines, value = TRUE)
+  expect_length(counts_line, 1)
+  m <- regmatches(counts_line, regexec("(\\d+) R-NARROWER", counts_line))[[1]]
+  expect_length(m, 2)
+  n_r_narrower <- as.integer(m[2])
+  expect_gt(n_r_narrower, 0)
+
+  section_start <- which(grepl("^R-NARROWER ROWS", res$lines))
+  expect_length(section_start, 1)
+  # A real, currently-true example: `binomial` is `implemented` on the Julia
+  # ledger and `scope-limited` on the R ledger (FAM-02/03/04 split by link).
+  # NOTE: AGHQ is NOT an R-NARROWER example -- it is R=scope-limited vs
+  # Julia=missing, which is DIFFER (R has partial capability Julia lacks
+  # entirely, the opposite relationship), confirmed by this same run. See
+  # dev/gapclose/B1-B2-report.md for the correction against the coordinator's
+  # initial assumption that AGHQ was the R-NARROWER example.
+  r_narrower_block <- res$lines[section_start:length(res$lines)]
+  r_narrower_block <- r_narrower_block[seq_len(min(length(r_narrower_block), n_r_narrower + 3))]
+  expect_true(any(grepl("^  binomial\\s", r_narrower_block)))
+})

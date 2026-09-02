@@ -584,8 +584,9 @@ or individual article rewrites against an approved snippet. For
 **high-risk** changes -- deletions of public exports, API changes,
 formula-grammar changes, likelihood / TMB / family changes, broad
 article rewrites -- the agent must ask the maintainer before merging.
-The `ROADMAP.md` "Discussion Checkpoints" list is the authoritative
-high-risk set; the merge rule mirrors it.
+The high-risk set is exactly the list above: deletions of public exports,
+API changes, formula-grammar changes, likelihood / TMB / family changes,
+and broad article rewrites.
 
 ### Integrate before adding
 

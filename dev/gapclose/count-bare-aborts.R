@@ -1,8 +1,12 @@
-## Re-derives the "bare abort" count using the same rule as the original
-## abort-inventory scout: a `cli::cli_abort()` (or bare `cli_abort()`) call
-## whose message is a literal character vector carrying no "i"/"x"/"*"/">"
-## bullet name AND whose text does not match
-## "Use |Try |Pass |Set |Choose |Supply |Instead|see \\?".
+## Re-derives the "bare abort" count.
+##
+## S1 correction (adversarial review 2026-09-02): the first cut counted an
+## "i" (information-only) or "x" (what-went-wrong) bullet as "has a next
+## step", which is not true -- neither one tells the reader what to DO.
+## Only a ">" (explicit next-step) or "*" bullet, or a
+## `Use |Try |Pass |Set |Choose |Supply |Instead|see \\?` verb anywhere in
+## the message, counts as actionable now. This is strictly stricter than
+## the first cut, so the honest count only ever goes UP relative to it.
 ##
 ## Used both to compute the number for the ratchet test and standalone from
 ## the CLI for auditing.
@@ -12,7 +16,9 @@ count_bare_aborts <- function(r_dir = "R") {
   bare_hits <- character()
 
   keyword_re <- "Use |Try |Pass |Set |Choose |Supply |Instead|see \\?"
-  bullet_names <- c("i", "x", "*", ">")
+  ## S1 correction (adversarial review 2026-09-02): "i"/"x" bullets are
+  ## information-only, not a next step -- only ">"/"*" count now.
+  bullet_names <- c("*", ">")
 
   for (f in files) {
     expr <- tryCatch(parse(f, keep.source = FALSE), error = function(e) NULL)

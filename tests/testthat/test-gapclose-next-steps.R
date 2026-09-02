@@ -67,13 +67,15 @@ test_that("multinomial() with a multi-column response names the fix", {
 test_that("the package-wide bare-abort count has not gone up", {
   testthat::skip_if_not(dir.exists(testthat::test_path("..", "..", "R")), "R/ not present")
   hits <- count_bare_aborts(testthat::test_path("..", "..", "R"))
-  ## ratchet: may only go down. 658 is the count after this slice's fixes
-  ## (R/gllvmTMB.R all bare rows; R/parse-multi-formula.R:342;
-  ## R/isdm-sources.R all bare + Internal rows; R/family-cdf-args.R:60/65/71;
-  ## R/fit-multi.R's "only one X" ceiling family + its Internal rows;
-  ## R/suggest-lambda-constraint.R:191; R/methods-gllvmTMB.R's Internal row).
-  ## The package-wide rescan (658) is far larger than the original 318
-  ## because that count was scoped to the 12 files the abort-inventory
-  ## scout enumerated; this ratchet scans the whole of R/, per the brief.
-  expect_lte(length(hits), 658L)
+  ## ratchet: may only go down. 999 is the HONEST count under the S1
+  ## correction (adversarial review 2026-09-02): the ratchet's original
+  ## rule counted an "i"/"x" bullet as "has a next step", which is not
+  ## true. Tightening the rule to require ">"/"*"/a Use-Try-Pass-... verb
+  ## makes the honest count go UP from the first cut's 658 to 1004, not
+  ## down -- the earlier 658 undercounted true bare aborts by measuring
+  ## the wrong thing, not by there being fewer of them. R1's five
+  ## targeted fixes (Sparse phylo_vcv/Ainv rownames x3, mixed-family
+  ## duplicate names, phylo_slope tree type) then brought the honest
+  ## count from 1004 down to 999. 999 is the correct current ceiling.
+  expect_lte(length(hits), 999L)
 })

@@ -2439,10 +2439,30 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL, rho = 1) {
   ## a slope LHS -- naming them here was the bug.
   rhs <- bar[[3L]]
   rhs_is_trait <- is.symbol(rhs) && as.character(rhs) %in% c(trait_col, "trait")
+  is_spatial <- startsWith(fn, "spatial_")
+  ## #1196 B2 correction (adversarial review 2026-09-02): `phylo_slope`/
+  ## `animal_slope` require a genuine phylogenetic/pedigree relatedness
+  ## axis -- naming them for an ordinary column (`site`) or the spatial
+  ## placeholder (`coords`) points at a route that REFUSES (no tree covers
+  ## those levels; a pedigree over coordinates is meaningless), and
+  ## `.warn_spatial_grouping_token()` already says `coords` is decorative,
+  ## contradicting a `tree =` recommendation there. The single-slope form
+  ## `1 + x | group` DOES fit via `latent()`/`unique()`'s own augmented
+  ## random-regression engine (verified: `latent(1 + x | site, d = K)` and
+  ## `unique(1 + x | site)` both converge) -- that is the actual working
+  ## route for non-spatial, non-trait groupings. More than one slope
+  ## covariate (`1 + x1 + x2 | g`) has no supported single-term route at
+  ## all, spatial or not.
+  is_single_slope <- .gllvmTMB_lhs_form(lhs)$lhs_form %in%
+    c("wide_intercept_slope", "long_intercept_slope")
   next_step <- if (rhs_is_trait) {
     "Use the response-column slope grammar instead: {.fn slope}, {.fn phylo_slope}, or {.fn animal_slope}, e.g. {.code phylo_slope(x | trait, tree = tree)}."
+  } else if (is_spatial) {
+    "There is no supported route for more than one slope covariate here; fit separate models, one covariate per {.fn {fn}} term."
+  } else if (is_single_slope) {
+    "Use {.code latent(1 + x | {deparse(rhs)}, d = K)} or {.code unique(1 + x | {deparse(rhs)})} instead -- {.fn {fn}} itself does not support a slope term."
   } else {
-    "Use the group-axis slope grammar instead, e.g. {.code phylo_slope(x | {deparse(rhs)}, tree = tree)} or {.fn animal_slope} with a pedigree."
+    "There is no supported route for more than one slope covariate here; fit separate models, one covariate per term."
   }
   cli::cli_abort(c(
     "{.fn {fn}} augmented LHS is not yet supported.",

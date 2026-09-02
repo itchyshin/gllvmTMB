@@ -945,7 +945,7 @@ gllvmTMB <- function(
     } else {
       cli::cli_abort(c(
         "{.arg unit = ...} is required.",
-        "i" = "Pass the name of the column that identifies the sampling unit (site, individual, paper, ...)."
+        ">" = "Pass the name of the column that identifies the sampling unit (site, individual, paper, ...)."
       ))
     }
   }
@@ -1228,13 +1228,19 @@ gllvmTMB <- function(
   ## collision rather than a useful random effect. Scoped to the
   ## intercept-only covstruct kinds that take a real `lhs | group` bar
   ## (`latent`/`indep`/`dep`/`unique`/`scalar` desugar to
-  ## `rr`/`diag`/`propto`/`equalto`). `phylo_rr` is EXCLUDED: its `$group`
-  ## is a synthetic literal `trait` symbol manufactured by
-  ## `parse_covstruct_call()` for the bare `phylo_latent(species, ...)`
-  ## spelling (not a user-chosen grouping column), so it would always
-  ## false-positive here. `phylo_slope`/`slope`/`kernel_slope`/
+  ## `rr`/`diag`/`propto`/`equalto`). `phylo_slope`/`slope`/`kernel_slope`/
   ## `spatial_slope` are excluded because grouping by `trait` is their
   ## intended, supported response-column-slope form.
+  ##
+  ## A group symbol whose NAME is literally the trait column is also
+  ## excluded outright (not just `phylo_rr`, which was the first case
+  ## found): several desugar rewrites -- `phylo_rr`'s bare-species form,
+  ## AND `animal_scalar()`/`phylo_scalar()`'s `common = TRUE` collapse to
+  ## `propto(0 + species | trait, Ainv)` (found via testing R7's animal_*
+  ## examples) -- manufacture a SYNTHETIC literal `trait` symbol as
+  ## `$group` that is an engine marker, not a user-chosen column; comparing
+  ## `data[["trait"]]` to itself is trivially a false "collision" for any
+  ## covstruct kind that pattern reaches, not just `phylo_rr`.
   if (trait %in% all.vars(parsed$fixed)) {
     trait_values <- as.character(data[[trait]])
     collision_kinds <- c("rr", "diag", "propto", "equalto")
@@ -1244,6 +1250,9 @@ gllvmTMB <- function(
       }
       grp_vars <- all.vars(cs$group)
       if (length(grp_vars) != 1L || !grp_vars %in% names(data)) {
+        return(NULL)
+      }
+      if (identical(grp_vars, trait) || identical(grp_vars, "trait")) {
         return(NULL)
       }
       if (identical(as.character(data[[grp_vars]]), trait_values)) grp_vars else NULL

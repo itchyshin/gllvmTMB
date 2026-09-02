@@ -77,7 +77,7 @@
 #' )
 #' fit <- gllvmTMB(
 #'   value ~ 0 + trait + animal_scalar(species, pedigree = ped),
-#'   data = df, family = gaussian()
+#'   data = df, unit = "species", family = gaussian()
 #' )
 #' }
 #'
@@ -140,7 +140,7 @@ animal_scalar <- function(id, pedigree = NULL, A = NULL, Ainv = NULL) {
 #' )
 #' fit <- gllvmTMB(
 #'   value ~ 0 + trait + animal_unique(species, pedigree = ped),
-#'   data = df, family = gaussian()
+#'   data = df, unit = "species", family = gaussian()
 #' )
 #' }
 #' @export
@@ -186,7 +186,7 @@ animal_unique <- function(id, pedigree = NULL, A = NULL, Ainv = NULL) {
 #' )
 #' fit <- gllvmTMB(
 #'   value ~ 0 + trait + animal_indep(0 + trait | species, A = A),
-#'   data = df, family = gaussian()
+#'   data = df, unit = "species", family = gaussian()
 #' )
 #' }
 #' @export
@@ -251,7 +251,7 @@ animal_indep <- function(formula, pedigree = NULL, A = NULL, Ainv = NULL,
 #' fit <- gllvmTMB(
 #'   value ~ 0 + trait + animal_latent(species, d = 1, pedigree = ped,
 #'                                    unique = TRUE),
-#'   data = df, family = gaussian()
+#'   data = df, unit = "species", family = gaussian()
 #' )
 #' }
 #' @export
@@ -309,7 +309,7 @@ animal_latent <- function(
 #' )
 #' fit <- gllvmTMB(
 #'   value ~ 0 + trait + animal_dep(0 + trait | species, A = A),
-#'   data = df, family = gaussian()
+#'   data = df, unit = "species", family = gaussian()
 #' )
 #' }
 #' @export

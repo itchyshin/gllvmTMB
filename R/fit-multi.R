@@ -214,7 +214,10 @@
     ))
   }
   if (anyDuplicated(family_names)) {
-    cli::cli_abort("Mixed-family {.arg family} list names must be unique.")
+    cli::cli_abort(c(
+      "Mixed-family {.arg family} list names must be unique.",
+      ">" = "Rename the duplicate entries in the {.code family = list(...)} argument."
+    ))
   }
 
   missing_levels <- setdiff(fam_levels, family_names)
@@ -597,7 +600,10 @@
 
 .resolve_sparse_propto_precision <- function(Ainv, levs, jitter = 1e-8) {
   if (is.null(rownames(Ainv))) {
-    cli::cli_abort("Sparse {.arg phylo_vcv}/{.arg Ainv} must have rownames matching levels of {.var species}.")
+    cli::cli_abort(c(
+      "Sparse {.arg phylo_vcv}/{.arg Ainv} must have rownames matching levels of {.var species}.",
+      ">" = "Set {.code rownames(Ainv) <- levels(data$species)} (or the equivalent for {.arg phylo_vcv})."
+    ))
   }
   if (is.null(colnames(Ainv))) {
     colnames(Ainv) <- rownames(Ainv)
@@ -639,7 +645,10 @@
     cli::cli_abort("Sparse {.arg phylo_vcv}/{.arg Ainv} must be square.")
   }
   if (is.null(rownames(Ainv))) {
-    cli::cli_abort("Sparse {.arg phylo_vcv}/{.arg Ainv} must have rownames matching levels of {.var species}.")
+    cli::cli_abort(c(
+      "Sparse {.arg phylo_vcv}/{.arg Ainv} must have rownames matching levels of {.var species}.",
+      ">" = "Set {.code rownames(Ainv) <- levels(data$species)} (or the equivalent for {.arg phylo_vcv})."
+    ))
   }
   if (is.null(colnames(Ainv))) {
     colnames(Ainv) <- rownames(Ainv)
@@ -690,7 +699,10 @@
 
   if (!is.null(phylo_tree)) {
     if (!inherits(phylo_tree, "phylo")) {
-      cli::cli_abort("The {.arg tree} supplied to {.fn phylo_slope} must be an {.cls ape::phylo} tree.")
+      cli::cli_abort(c(
+      "The {.arg tree} supplied to {.fn phylo_slope} must be an {.cls ape::phylo} tree.",
+      ">" = "Pass an object read by {.fn ape::read.tree} or {.fn ape::read.nexus}, e.g. {.code phylo_slope(x | species, tree = my_tree)}."
+    ))
     }
     .gllvm_abort_uncovered_species_levels(
       levs, phylo_tree$tip.label, data, group,
@@ -1616,14 +1628,14 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   if (length(rr_B_slope_idx) > 1L) {
     cli::cli_abort(c(
       "Only one augmented ordinary {.fn latent} random-regression term is supported at the {.arg unit} tier.",
-      ">" = "Combine the covariates into one term, e.g. {.code latent(1 + x1 + x2 | unit, d = K)}, or fit separate models."
+      ">" = "There is no supported multi-covariate route here (only a single slope covariate is supported); fit separate models."
     ))
   }
   diag_B_slope_idx <- which(diag_is_unique_augmented & groupings == site)
   if (length(diag_B_slope_idx) > 1L) {
     cli::cli_abort(c(
       "Only one augmented ordinary diagonal-compatibility random-regression term is supported at the {.arg unit} tier.",
-      ">" = "Combine the covariates into one term, e.g. {.code unique(1 + x1 + x2 | unit)}, or fit separate models."
+      ">" = "There is no supported multi-covariate route here (only a single slope covariate is supported); fit separate models."
     ))
   }
   use_rr_B_slope <- length(rr_B_slope_idx) > 0L
@@ -1763,7 +1775,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   if (length(spde_aug_idx) > 1L) {
     cli::cli_abort(c(
       "Only one augmented spatial random-regression term is supported per formula.",
-      ">" = "Combine the covariates into one term, e.g. {.code spatial_indep(1 + x1 + x2 | coords)}, or fit separate models."
+      ">" = "There is no supported multi-covariate route here (only a single slope covariate is supported); fit separate models."
     ))
   }
   spde_slope_cs <- if (use_spde_slope) parsed$covstructs[[spde_aug_idx[1L]]] else NULL
@@ -1847,7 +1859,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   if (length(spde_lat_aug_idx) > 1L) {
     cli::cli_abort(c(
       "Only one augmented {.fn spatial_latent} (random-slope) term is supported per formula.",
-      ">" = "Combine the covariates into one term, e.g. {.code spatial_latent(1 + x1 + x2 | coords, d = K)}, or fit separate models."
+      ">" = "There is no supported multi-covariate route here (only a single slope covariate is supported); fit separate models."
     ))
   }
   spde_latent_slope_cs <- if (use_spde_latent_slope) {
@@ -4368,7 +4380,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ## precision would condition on the dropped nodes, not marginalize
       ## them.
       if (is.null(rownames(phylo_vcv)))
-        cli::cli_abort("Sparse {.arg phylo_vcv}/{.arg Ainv} must have rownames matching levels of {.var {species}}.")
+        cli::cli_abort(c(
+          "Sparse {.arg phylo_vcv}/{.arg Ainv} must have rownames matching levels of {.var {species}}.",
+          ">" = "Set {.code rownames(phylo_vcv) <- levels(data[[species]])} (or the equivalent for {.arg Ainv})."
+        ))
       levs <- levels(data[[species]])
       .gllvm_abort_uncovered_species_levels(
         levs, rownames(phylo_vcv), data, species,

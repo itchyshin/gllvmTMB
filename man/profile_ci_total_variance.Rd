@@ -46,7 +46,7 @@ diagonal of the requested covariance tier. This is the same functional
 \section{What the coverage evidence does and does not cover}{
 
 The 2026-07-29 Gaussian \code{n_units = 150}, \code{d} in \verb{\{1, 2\}} campaign and the
-2026-08-25 PVT-02 \code{n_units = 400}, \code{d = 2} campaign both measured the
+2026-08-25 \code{n_units = 400}, \code{d = 2} campaign both measured the
 implemented penalty-profile approximation. The numerical coverage gates
 passed in those cells, but the retained endpoints do not establish that
 every constrained refit converged and attained its requested \code{log(V_t)}

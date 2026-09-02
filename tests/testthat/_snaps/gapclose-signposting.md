@@ -9,16 +9,16 @@
       x This wrapper accepts only intercept-only `0 + trait | g` or `1 | g` forms.
       > Use the response-column slope grammar instead: `slope()`, `phylo_slope()`, or `animal_slope()`, e.g. `phylo_slope(x | trait, tree = tree)`.
 
-# indep(1 + x | species) redirects to the group-axis slope grammar
+# indep(1 + x | site) redirects to latent()/unique(), not phylo_slope()
 
     Code
-      gllvmTMB:::desugar_brms_sugar(value ~ 0 + trait + indep(1 + x | species))
+      gllvmTMB:::desugar_brms_sugar(value ~ 0 + trait + indep(1 + x | site))
     Condition
       Error in `.assert_no_augmented_lhs()`:
       ! `indep()` augmented LHS is not yet supported.
-      i You wrote `indep(1 + x | species)`.
+      i You wrote `indep(1 + x | site)`.
       x This wrapper accepts only intercept-only `0 + trait | g` or `1 | g` forms.
-      > Use the group-axis slope grammar instead, e.g. `phylo_slope(x | species, tree = tree)` or `animal_slope()` with a pedigree.
+      > Use `latent(1 + x | site, d = K)` or `unique(1 + x | site)` instead -- `indep()` itself does not support a slope term.
 
 # phylo_indep(0 + trait + trait:x | trait) redirects to the response-column slope grammar
 

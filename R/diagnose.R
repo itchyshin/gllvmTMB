@@ -736,7 +736,7 @@
     if (!identical(status, "WARN")) {
       "none"
     } else if (runaway_hit) {
-      "treat the fit as unusable rather than interpreting it: this is quasi-complete separation, which lowering the rank does not resolve; try gllvmTMBcontrol(loading_ridge = tau) with a small tau to shrink runaway loadings, or gllvmTMBcontrol(integration = 'va') as a tuning-free alternative -- either makes the result a penalised (MAP) or variational estimate, so logLik(), AIC() and BIC() no longer apply to it"
+      "treat the fit as unusable rather than interpreting it: this is quasi-complete separation, which lowering the rank does not resolve; try gllvmTMBcontrol(loading_ridge = 0.25) (0.25 to 0.5; larger tau shrinks less) to shrink runaway loadings, or gllvmTMBcontrol(integration = 'va') for latent(..., unique = FALSE) fits with at least 100 units and d <= 2 -- either makes the result a penalised (MAP) or variational estimate, so logLik(), AIC() and BIC() no longer apply to it"
     } else {
       "remove or re-code the near-constant binary indicator; lowering rank will not resolve quasi-separation by itself"
     }
@@ -1335,7 +1335,7 @@
   action <- if (!identical(status, "WARN")) {
     "none"
   } else {
-    "treat the fit as unusable rather than interpreting it: the S1 probe found this is the same quasi-complete-separation geometry the binomial screen catches (24/24 dichotomised refits fired binomial_prevalence_loading); try gllvmTMBcontrol(loading_ridge = tau) with a small tau to shrink runaway loadings, or gllvmTMBcontrol(integration = 'va') as a tuning-free alternative -- either makes the result a penalised (MAP) or variational estimate, so logLik(), AIC() and BIC() no longer apply to it"
+    "treat the fit as unusable rather than interpreting it: the S1 probe found this is the same quasi-complete-separation geometry the binomial screen catches (24/24 dichotomised refits fired binomial_prevalence_loading); try gllvmTMBcontrol(loading_ridge = 0.25) (0.25 to 0.5; larger tau shrinks less) to shrink runaway loadings, or gllvmTMBcontrol(integration = 'va') for latent(..., unique = FALSE) fits with at least 100 units and d <= 2 -- either makes the result a penalised (MAP) or variational estimate, so logLik(), AIC() and BIC() no longer apply to it"
   }
 
   .gllvmTMB_check_row(

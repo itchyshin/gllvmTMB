@@ -37,6 +37,7 @@ Mission Control input for the R side of the gllvmTMB <-> GLLVM.jl twin board. Ev
 | truncated_nbinom1 | planned |  | FAM-16 | FAM-16 also names `censored_poisson` as blocked prose, but gllvmTMB has no censored_poisson constructor at all; that family is tracked purely as a Julia-only port target, not aliased here, so the gap stays visible. |
 | delta_gamma | implemented |  | FAM-17 |  |
 | delta_lognormal | implemented |  | FAM-17 |  |
+| zi_poisson / zi_nbinom2 / zi_binomial (zero-inflated count families) | scope-limited | zip / zinb / zib | FAM-21, FAM-22, FAM-23 | DIVERGENCE: gllvmTMB's zi_nbinom2 REUSES the ordinary per-trait nbinom2() dispersion (log_phi_nbinom2, one value per trait); GLLVM.jl's ZINB/ZINegBin uses ONE SHARED SCALAR NB2 dispersion r across all species (its ZINBCovFit docstring). Both `implemented`-shaped statuses describe different parameterisations, same as the `student` nu divergence above. |
 | multinomial / categorical (response family) | scope-limited | multinomial / categorical | FAM-20, FAM-20A, FAM-20B, FAM-20C, FAM-20D, FAM-20E, FAM-20F | COLLISION guard: this is gllvmTMB's RESPONSE family `multinomial()`. Do not confuse with the unrelated `categorical` register row MIS-31, which is a missing-PREDICTOR imputation family (see the Missing data group). |
 | Mixed-family response vector | scope-limited |  | MIX-01, MIX-02, MIX-03, MIX-04, MIX-05, MIX-06, MIX-07, MIX-08, MIX-09, MIX-10 |  |
 

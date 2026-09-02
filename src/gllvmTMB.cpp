@@ -1256,6 +1256,19 @@ Type objective_function<Type>::operator()()
   // Mapped off when no row has fid 11.
   PARAMETER_VECTOR(log_phi_truncnb2);            // length n_traits (or 1 if unused)
 
+  // Zero-inflated families (fid 17 zi_poisson, 18 zi_nbinom2, 19
+  // zi_binomial; Design 62 reserves the zi_* name for a TRUE mixture, not
+  // the delta/hurdle families above). logit_zi is a per-trait, intercept-
+  // only structural-zero probability: zi = invlogit(logit_zi), NO
+  // covariates and NO random effects on the zero part (recon Decision 2 --
+  // matches GLLVM.jl's v1 scope, Lambda_z = 0). Mapped off (per-trait) when
+  // the trait has no zi_* row, same convention as every other dispersion
+  // vector above. zi_nbinom2 REUSES log_phi_nbinom2 above for its count-
+  // process dispersion rather than adding a second NB2 phi vector (recon
+  // open question 2 -- a deliberate per-trait departure from GLLVM.jl's
+  // single shared-scalar r).
+  PARAMETER_VECTOR(logit_zi);                    // length n_traits (or 1 if unused)
+
   // Delta (hurdle) families: per-trait dispersion of the *positive*
   // component only. The Bernoulli presence component has no extra
   // dispersion. Mapped off when fid 12/13 is absent.
@@ -3276,6 +3289,53 @@ Type objective_function<Type>::operator()()
     } else if (fid == 16) {
       error("gllvmTMB_multi: multinomial (fid 16) is evaluated as a grouped "
             "softmax at its anchor row, not per-row via obs_loglik");
+    } else if (fid == 17) {
+      // zi_poisson: TRUE zero-inflation mixture (Design 62 -- not the
+      // fid 12/13 hurdle path; the count process is active at y == 0 too).
+      //   P(y=0) = pi + (1-pi)*dpois(0, mu);  P(y=k>0) = (1-pi)*dpois(k, mu)
+      // logit_zi is per-trait, intercept-only (recon Decision 2).
+      // log(sigmoid(x)) = -logspace_add(0,-x); log(1-sigmoid(x)) =
+      // -logspace_add(0,x) -- same numerically-stable idiom drmTMB uses for
+      // its zi_poisson (recon section D).
+      int t = trait_id(o);
+      Type log_zi          = -logspace_add(Type(0.0), -logit_zi(t));
+      Type log_one_minus_zi = -logspace_add(Type(0.0), logit_zi(t));
+      Type mu = exp(eta_o);
+      if (asDouble(y(o)) == 0.0) {
+        ll += logspace_add(log_zi, log_one_minus_zi - mu);   // dpois(0,mu,log=T) = -mu
+      } else {
+        ll += log_one_minus_zi + dpois(y(o), mu, true);
+      }
+    } else if (fid == 18) {
+      // zi_nbinom2: same mixture, NB2 count kernel. REUSES log_phi_nbinom2
+      // (per-trait) rather than a new shared-scalar dispersion (recon open
+      // question 2 -- a deliberate departure from GLLVM.jl's shared r).
+      int t = trait_id(o);
+      Type log_zi          = -logspace_add(Type(0.0), -logit_zi(t));
+      Type log_one_minus_zi = -logspace_add(Type(0.0), logit_zi(t));
+      Type log_mu = eta_o;
+      Type log_v_minus_mu = Type(2.0) * log_mu - log_phi_nbinom2(t);
+      if (asDouble(y(o)) == 0.0) {
+        Type log_p0 = dnbinom_robust(Type(0.0), log_mu, log_v_minus_mu, true);
+        ll += logspace_add(log_zi, log_one_minus_zi + log_p0);
+      } else {
+        ll += log_one_minus_zi + dnbinom_robust(y(o), log_mu, log_v_minus_mu, true);
+      }
+    } else if (fid == 19) {
+      // zi_binomial: mixture over a multi-trial Binomial(N_i, p) count part,
+      // logit link only. Admission (R/fit-multi.R) refuses N_i == 1 rows --
+      // the single-trial mixture is not identified (recon Decision 6 /
+      // alignment-zi.md). dbinom_robust takes logit(p) directly, matching
+      // the fid 12/13 hurdle presence term's idiom elsewhere in this file.
+      int t = trait_id(o);
+      Type log_zi          = -logspace_add(Type(0.0), -logit_zi(t));
+      Type log_one_minus_zi = -logspace_add(Type(0.0), logit_zi(t));
+      if (asDouble(y(o)) == 0.0) {
+        Type log_p0 = dbinom_robust(Type(0.0), n_trials(o), eta_o, true);
+        ll += logspace_add(log_zi, log_one_minus_zi + log_p0);
+      } else {
+        ll += log_one_minus_zi + dbinom_robust(y(o), n_trials(o), eta_o, true);
+      }
     } else {
       error("gllvmTMB_multi: unknown family_id");
     }
@@ -3961,6 +4021,12 @@ Type objective_function<Type>::operator()()
   REPORT(p_tweedie);
   REPORT(phi_beta);
   REPORT(phi_betabinom);
+
+  // Zero-inflated families (fid 17/18/19): per-trait structural-zero
+  // probability. REPORT only (not ADREPORT), matching every other
+  // dispersion vector above -- none of them get a delta-method SE either.
+  vector<Type> zi = invlogit(logit_zi);
+  REPORT(zi);
 
   // Student-t per-trait sigma and df (df = 1 + exp(log_df_student)).
   vector<Type> sigma_student = exp(log_sigma_student);

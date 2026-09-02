@@ -16,6 +16,9 @@
 \alias{student}
 \alias{tweedie}
 \alias{censored_poisson}
+\alias{zi_poisson}
+\alias{zi_nbinom2}
+\alias{zi_binomial}
 \alias{delta_gamma}
 \alias{delta_gamma_mix}
 \alias{delta_gengamma}
@@ -56,6 +59,12 @@ student(link = "identity", df = NULL)
 tweedie(link = "log", p = NULL)
 
 censored_poisson(link = "log")
+
+zi_poisson(link = "log")
+
+zi_nbinom2(link = "log")
+
+zi_binomial(link = "logit")
 
 delta_gamma(link1, link2 = "log", type = c("standard", "poisson-link"))
 
@@ -219,6 +228,28 @@ NB1 has variance \eqn{\mu(1 + \phi)}, so its extra variance grows linearly
 with the mean.
 
 \code{student()} estimates degrees of freedom unless \code{df} is supplied.
+
+\code{zi_poisson()}, \code{zi_nbinom2()}, and \code{zi_binomial()} are
+TRUE zero-inflation mixtures: the count process (log-link mean, or
+logit-link probability for \code{zi_binomial()}) is active at every
+observation, including \code{y = 0}, on top of a per-trait,
+intercept-only structural-zero probability \code{zi} (logit link, no
+covariates and no random effects on the zero part). This is different
+from \code{\link{delta_lognormal}()}/\code{\link{delta_gamma}()}, which
+are hurdle models -- a strictly positive component conditional on
+presence, with no second zero-generating process (see
+\code{vignette("current-limits", package = "gllvmTMB")} and Design 62 for
+the naming rationale). \strong{Boundary:} the count process (its fixed
+effects, \code{\link{latent}()} structure, and every correlation gllvmTMB
+reports) is conditional on the non-structural component; \code{zi} itself
+carries no covariates, no random effects, and no reported interval.
+\code{zi_nbinom2()} reuses the ordinary \code{\link{nbinom2}()} per-trait
+dispersion convention (not a shared scalar across traits).
+\code{zi_binomial()} requires multi-trial data (\code{cbind(successes,
+failures)} or a trials column) with at least one row per trait carrying
+\code{n_trials >= 2}; single-trial (0/1) responses do not identify the
+mixture and are refused with \code{\link{binomial}()} named as the
+working alternative.
 }
 \examples{
 Beta(link = "logit")
@@ -270,6 +301,35 @@ student(link = "identity") # estimate df
 student(link = "identity", df = 3) # fix df at 3
 tweedie(link = "log")
 censored_poisson(link = "log")
+zi_poisson()
+zi_nbinom2()
+zi_binomial()
+\donttest{
+## A small simulated rank-1 GLLVM fit with one zero-inflated trait.
+set.seed(1)
+n_site <- 60L
+n_trait <- 3L
+u <- rnorm(n_site)
+lambda <- c(0.8, -0.6, 0.5)
+beta <- c(0.3, -0.2, 0.5)
+pi_true <- 0.25
+eta <- outer(u, lambda) + matrix(beta, n_site, n_trait, byrow = TRUE)
+mu <- exp(eta)
+z <- matrix(rbinom(n_site * n_trait, 1L, 1 - pi_true), n_site, n_trait)
+y <- matrix(rpois(n_site * n_trait, mu), n_site, n_trait) * z
+dat <- data.frame(
+  site  = factor(rep(seq_len(n_site), n_trait)),
+  trait = factor(rep(seq_len(n_trait), each = n_site)),
+  y     = as.vector(y)
+)
+fit <- gllvmTMB(
+  y ~ 0 + trait + latent(0 + trait | site, d = 1),
+  data = dat, family = zi_poisson(), unit = "site"
+)
+fit$report$zi  # per-trait fitted structural-zero probability
+}
+zi_nbinom2()
+zi_binomial()
 delta_gamma()
 delta_gamma_mix()
 delta_gengamma()

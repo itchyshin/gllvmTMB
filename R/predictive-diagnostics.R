@@ -378,6 +378,7 @@ residuals.gllvmTMB_multi <- function(
   sigma_student <- object$report$sigma_student
   df_student <- object$report$df_student
   phi_truncnb2 <- object$report$phi_truncnb2
+  zi <- object$report$zi # length n_traits (fid 17/18/19)
 
   ## ordinal_probit (fid 14): the report carries only the K-2 free cutpoints
   ## tau_2 .. tau_{K-1} per trait, flattened and split by
@@ -734,6 +735,47 @@ residuals.gllvmTMB_multi <- function(
         stats::pnbinom(y_i - 1, size = size, mu = mu)
       }
       upper[i] <- stats::pnbinom(y_i, size = size, mu = mu)
+      u[i] <- stats::runif(1L, min = lower[i], max = upper[i])
+    } else if (fid %in% c(17L, 18L, 19L)) {
+      ## Zero-inflated families (Arc D / Design 62): TRUE mixture, so the
+      ## mixture CDF has the closed form F_mix(y) = zi + (1-zi)*F_count(y)
+      ## for y >= 0 (derived in dev/gapclose/arcD/alignment-zi.md) -- the
+      ## same shape for all three count kernels, so one branch covers them.
+      if (y_i < 0 || y_i != floor(y_i)) {
+        status[i] <- "invalid_observed"
+        next
+      }
+      zi_t <- zi[tid]
+      if (!is.finite(zi_t) || zi_t < 0 || zi_t > 1) {
+        status[i] <- "missing_phi"
+        next
+      }
+      Fc <- if (fid == 17L) {
+        mu <- exp(eta[i])
+        function(k) stats::ppois(k, lambda = mu)
+      } else if (fid == 18L) {
+        phi <- phi_nbinom2[tid]
+        if (!is.finite(phi) || phi <= 0) {
+          status[i] <- "missing_phi"
+          next
+        }
+        mu <- exp(eta[i])
+        function(k) stats::pnbinom(k, size = phi, mu = mu)
+      } else {
+        Nt <- n_trials[i]
+        if (!is.finite(Nt) || Nt <= 0 || Nt != floor(Nt)) {
+          status[i] <- "missing_trials"
+          next
+        }
+        if (y_i > Nt) {
+          status[i] <- "invalid_observed"
+          next
+        }
+        p_i <- stats::plogis(eta[i])
+        function(k) stats::pbinom(k, size = Nt, prob = p_i)
+      }
+      lower[i] <- if (y_i <= 0) 0 else zi_t + (1 - zi_t) * Fc(y_i - 1)
+      upper[i] <- zi_t + (1 - zi_t) * Fc(y_i)
       u[i] <- stats::runif(1L, min = lower[i], max = upper[i])
     } else {
       ## Deliberately NOT implemented (fall through to "unsupported_family"):
@@ -1491,7 +1533,10 @@ residuals.gllvmTMB_multi <- function(
     "12" = "delta_lognormal",
     "13" = "delta_gamma",
     "14" = "ordinal_probit",
-    "15" = "nbinom1"
+    "15" = "nbinom1",
+    "17" = "zi_poisson",
+    "18" = "zi_nbinom2",
+    "19" = "zi_binomial"
   )
   out <- unname(labels[as.character(family_id)])
   out[is.na(out)] <- paste0("family_id_", family_id[is.na(out)])

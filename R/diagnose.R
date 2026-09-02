@@ -1970,6 +1970,51 @@ check_gllvmTMB <- function(
     }
   }
 
+  ## Zero-inflated families (fid 17/18/19, Arc D): a boundary-pinned
+  ## structural-zero probability means the mixture has effectively
+  ## collapsed to its ordinary (zi -> 0) or all-structural (zi -> 1) limit,
+  ## which is worth flagging the same way other boundary parameters are.
+  zi_report <- as.numeric(object$report$zi %||% numeric(0L))
+  fid_zi <- as.integer(object$tmb_data$family_id_vec %||% integer(0L))
+  tid_zi <- as.integer(object$tmb_data$trait_id %||% integer(0L))
+  zi_traits <- if (length(fid_zi) && length(tid_zi) == length(fid_zi)) {
+    sort(unique(tid_zi[fid_zi %in% c(17L, 18L, 19L)]))
+  } else {
+    integer(0L)
+  }
+  if (length(zi_traits) > 0L && length(zi_report) >= max(zi_traits) + 1L) {
+    trait_names_zi <- .gllvmTMB_trait_names(object)
+    for (t in zi_traits) {
+      zi_t <- zi_report[t + 1L]
+      status_zi <- if (!is.finite(zi_t)) {
+        "WARN"
+      } else if (zi_t < 0.01 || zi_t > 0.95) {
+        "WARN"
+      } else {
+        "PASS"
+      }
+      rows <- c(
+        rows,
+        list(.gllvmTMB_check_row(
+          paste0("boundary_zi_", .gllvmTMB_trait_label(trait_names_zi, t + 1L)),
+          status_zi,
+          .gllvmTMB_fmt_num(zi_t, digits = 4L),
+          "0.01 / 0.95",
+          if (!is.finite(zi_t)) {
+            "zi (structural-zero probability) is not finite"
+          } else if (zi_t < 0.01) {
+            "zi has collapsed toward 0: the fit is indistinguishable from the ordinary (non-inflated) count family"
+          } else if (zi_t > 0.95) {
+            "zi has run toward 1: almost every observation is being explained as a structural zero"
+          } else {
+            "zi (structural-zero probability) is within the interior of (0, 1)"
+          },
+          "if pinned at a boundary, consider the plain (non-zi) family, or check for a data-entry issue producing excess zeros"
+        ))
+      )
+    }
+  }
+
   out <- do.call(rbind, rows)
   rownames(out) <- NULL
   out

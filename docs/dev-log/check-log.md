@@ -57441,3 +57441,31 @@ Correction before PR: the first compact summary's classifier recorded row counts
 Draft PR #1233 opened from `codex/isdm-response-information-20260901` at candidate `45f0013bb` after `git fetch origin` found no unseen `origin/main` commits. It remains a draft and has no merge/release/public-capability authority.
 
 CI repair: PR #1233 run 33567149346 failed only because `test-isdm-response-information-contract.R` and `test-isdm-response-information-records.R` executed developer-only assertions when installed package checks omitted `dev/`. Moved every assertion under the existing source-availability guard and use `file.path(R.home("bin"), "Rscript")` in the mapper test. `verify-tests.R` passes 48/48; a temporary installed-layout test with no `dev/` yields only the intended two skips. New exact-SHA CI is required before marking G7 met.
+
+## 2026-09-01 — iJSDM response-information forensic audit
+
+Post-campaign audit only; no retained fit was rerun, replaced, reclassified, or
+removed. The committed scripts under
+`dev/isdm-requalification/response-information-forensics/` re-read all 800
+Tamia `/project` receipts. The focal task hashes match the predecessor manifest:
+`task-000624.rds` =
+`4cd131568f075234f429fe2558c9737080cd0d4f51b9853207ef7fc3159d0572` and
+`task-000632.rds` =
+`11e4e0421906211072d5667ed46e71d31e257e138c89fc13de488f366e008d88`.
+
+The independent forensic table preserves 798/800 valid fits and 398/400
+scoreable pairs. Task 624 and 632 are ranks 49/50 and 50/50 among cell-7
+`rep3` gradients; their matched baselines have gradients 0.00506980 and
+0.00346187, and the largest cell-7 baseline gradient is 0.00999407. The focal
+surface/covariance errors, runtime, and resident memory are not a common
+outlier pattern. The supported result is a narrow near-threshold gradient tail;
+the scalar retained diagnostics cannot identify a parameter/component cause.
+The receipt decision is `NO_FRESH_CAMPAIGN_YET`: first run a non-retained
+engineering qualification with component-labelled gradients and optimizer
+termination information. `EVIDENCE_INCOMPLETE` remains unchanged.
+
+Checks: `Rscript --vanilla dev/isdm-requalification/response-information-forensics/analyse.R ...` regenerated the 800-fit, 400-pair, and focal tables from read-only
+archive copies; `Rscript --vanilla dev/isdm-requalification/response-information-forensics/verify-forensics.R integrity|table|boundary|receipt` all passed;
+`Rscript --vanilla -e 'testthat::test_file("tests/testthat/test-isdm-response-information-forensics.R", reporter = "summary")'` passed 5 expectations; Unlazy G0--G3 all passed.
+
+Scope scan: `rg -n -i 'response-information|rep3|EVIDENCE_INCOMPLETE|NO_FRESH_CAMPAIGN_YET' README.md NEWS.md ROADMAP.md _pkgdown.yml vignettes R man`. Expected result: no public user-facing implementation or capability claim. This internal audit touches only `dev/`, its focused tests, internal ledger/register, check log, and after-task report.

@@ -28,26 +28,9 @@ The keywords below are live API, but a valid formula does not guarantee that a
 complex covariance is estimable from a particular data set. Fit health,
 replication, trait count, and the scientific covariance question still matter.
 
-## Source strength within a structured term
-
-Canonical `phylo_*`, `animal_*` and `kernel_*` indep/dep/latent terms also
-accept trailing `rho = 1`. Fixed values between zero and one attenuate
-between-level source covariance while preserving the resolved source diagonal.
-This does not add a grid row or mode. With `unique = TRUE`, the same strength
-applies to both the loadings and Psi; ordinary intercept effects stay separate.
-Omitted rho and explicit one preserve existing models, including multi-kernel
-endpoints. New attenuation initially admits one structured trait-intercept
-block per fit.
-
-`rho = NULL` estimates one strength only in the admitted complete, replicated
-Gaussian design with retained observation noise and no competing ordinary
-covariance. Estimated latent terms require rank one and at least four traits.
-Spatial terms use the same attenuation weight while range stays separately
-estimated. Spatial recovery remains unvalidated. Augmented slopes and
-source-strength intervals are not included. A converged optimizer does not establish identification or recovery.
-See [Strength of a known source](structured-source-strength.html) for runnable
-long and wide examples, extraction and interpretation. These defaults do not
-change the separate response-column coefficient helpers.
+Most readers only need the two choices below; the optional `rho` setting on a
+structured term is covered later, in [Advanced: estimating the source
+strength](#advanced-estimating-the-source-strength).
 
 ## Choose in two steps
 
@@ -334,7 +317,11 @@ model, and intervals are deliberately deferred. Group-indexed
 `phylo_slope(x | species)` and `animal_slope(x | id)` remain current and
 warning-free for models whose coefficients vary across sampled units. They
 answer a different grouping-axis question from the response-column slope
-helpers described here.
+helpers described here. In short: use `phylo_slope(x | trait, tree = tree)`
+when the slope of `x` should vary **across response columns** (e.g. across
+traits or species treated as responses) and use `phylo_slope(x | species)`
+when the slope of `x` should vary **across the sampled grouping units**
+(e.g. across individuals or sites) that the tree relates.
 
 ### Intercepts and slopes by response column
 
@@ -434,6 +421,27 @@ story:
 Different grouping levels can carry different covariance terms—for example, a
 between-individual `latent()` term and a within-individual `indep()` term—when
 the design identifies both.
+
+## Advanced: estimating the source strength
+
+Canonical `phylo_*`, `animal_*` and `kernel_*` indep/dep/latent terms also
+accept trailing `rho = 1`. Fixed values between zero and one attenuate
+between-level source covariance while preserving the resolved source diagonal.
+This does not add a grid row or mode. With `unique = TRUE`, the same strength
+applies to both the loadings and Psi; ordinary intercept effects stay separate.
+Omitted rho and explicit one preserve existing models, including multi-kernel
+endpoints. New attenuation initially admits one structured trait-intercept
+block per fit.
+
+`rho = NULL` estimates one strength only in the admitted complete, replicated
+Gaussian design with retained observation noise and no competing ordinary
+covariance. Estimated latent terms require rank one and at least four traits.
+Spatial terms use the same attenuation weight while range stays separately
+estimated. Spatial recovery remains unvalidated. Augmented slopes and
+source-strength intervals are not included. A converged optimizer does not establish identification or recovery.
+See [Strength of a known source](structured-source-strength.html) for runnable
+long and wide examples, extraction and interpretation. These defaults do not
+change the separate response-column coefficient helpers.
 
 ## If the first choice is too complex
 

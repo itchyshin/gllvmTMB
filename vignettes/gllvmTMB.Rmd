@@ -41,13 +41,15 @@ the API matures.
 
 Before choosing a family, covariance source, estimator, or interval method,
 read [Current limitations and boundaries](https://itchyshin.github.io/gllvmTMB/articles/current-limits.html). That
-page distinguishes narrow tested-regime evidence from experimental or partial
-routes and states what each result can and cannot support. The Gaussian latent
-model below is retained as a teaching example for the covariance decomposition
-and rotation-invariant summaries. Its production pair remains
-characterization-only, so this tutorial is not a dependable-core claim. The
-narrow tested-regime Gaussian point evidence starts with `indep()` or `dep()`,
-with fit-health checks and no general interval certificate.
+page distinguishes evidence limited to the specific conditions we tested from
+experimental or partial routes, and states what each result can and cannot
+support. The Gaussian latent model below is retained as a teaching example for
+the covariance decomposition and rotation-invariant summaries. For the two
+model shapes recommended for real analyses, we have so far only measured how
+they behave — we have not yet shown they recover known parameters — so this
+tutorial is not proof that the method works. Gaussian point estimates have
+only been checked to recover known parameters starting with `indep()` or
+`dep()`, with fit-health checks and no general interval certificate.
 
 The fitted Gaussian model starts with observations, not with the
 covariance matrix. For each individual and trait, the teaching model is:

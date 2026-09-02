@@ -31,10 +31,10 @@ interval, does `gllvmTMB` actually compute one for your target?
 Direct parameters and simple linear contrasts can use likelihood profiles.
 Most nonlinear derived quantities do not currently have profile intervals
 because the constrained fits cannot yet be checked reliably in every case.
-Per-trait total variance through `profile_ci_total_variance()` is also
-`route-only`: historical and new numerical gates passed in several Gaussian
-cells, but the retained penalty-profile endpoints cannot establish exact
-constrained-refit convergence and target attainment. Empirical coverage has
+Per-trait total variance through `profile_ci_total_variance()` is also only an
+approximate calculation: historical and new numerical gates passed in several
+Gaussian cells, but the retained penalty-profile endpoints cannot establish
+exact constrained-refit convergence and target attainment. Empirical coverage has
 not been established for an exact profile across supported models, so this
 page does not call any interval method universally best or publication-ready.
 
@@ -56,7 +56,7 @@ request now; it is not a claim about empirical coverage.
 | Target | Start here | Current behavior |
 |:-------|:-----------|:-----------------|
 | Direct fixed effect, dispersion, or variance component | `profile_targets(fit)` followed by `confint(fit, parm = ..., method = "profile")` | Direct likelihood profile when the target is marked ready. |
-| Per-trait total variance | `profile_ci_total_variance()` | Penalty-based fix-and-refit approximation. Historical `n_units = 150`, `d` in `{1, 2}` and new `n_units = 400`, `d = 2` Gaussian cells passed their numerical gates, but retained endpoints do not prove exact constrained-refit convergence and target attainment. Every computed interval is labelled `route-only`; unavailable rows are `none`. |
+| Per-trait total variance | `profile_ci_total_variance()` | Penalty-based fix-and-refit approximation. Historical `n_units = 150`, `d` in `{1, 2}` and new `n_units = 400`, `d = 2` Gaussian cells passed their numerical gates, but retained endpoints do not prove exact constrained-refit convergence and target attainment. Every computed interval carries a status marking it as calculated but not proven to match the exact profile-likelihood answer; unavailable rows are `none`. |
 | Repeatability | `extract_repeatability()` | Wald is the default; requesting profile stops with a typed withdrawal because no full-covariance profile route is available. |
 | Trait correlation | `extract_correlations()` | Point-only is the default. Fisher-z and bootstrap bounds are opt-in; a profile interval is not currently available. |
 | Communality | `extract_communality()` | Point estimates are the default; Wald and bootstrap bounds are opt-in; a profile interval is not currently available. |

@@ -15,8 +15,9 @@
 > pinned, unrotated ordinary-Gaussian standardized-loading Wald cells have
 > target-specific certificates only in one frozen DGP, conditional on eligible fits;
 > other parameter regimes and neighbouring cells do not inherit them.
-> Total-variance penalty profiles remain `route-only`, including historically
-> measured cells, because exact constrained-refit fidelity was not retained.
+> Total-variance penalty profiles are still only an approximate calculation:
+> even for historically measured cells, we have not confirmed that the
+> retained fix-and-refit endpoints match the exact profile-likelihood answer.
 
 `gllvmTMB` fits multivariate models for data where each site,
 individual, species, or study has several responses: body traits,
@@ -45,10 +46,13 @@ calibration remains incomplete.
 `gllvmTMB` is under active development and has lifecycle **experimental**: the
 formula grammar, defaults, and extractor output may still change as the API
 matures. The public path above is deliberately bounded. For Gaussian models,
-the narrow tested-regime point evidence starts with `indep()` or `dep()`; inspect
+point estimates have only been checked to recover known parameters under the
+specific conditions tested so far, starting with `indep()` or `dep()`; inspect
 the covariance point estimate. The latent model below remains the clearest way
-to teach `Sigma = Lambda Lambda^T + Psi`, but its production pair is
-characterization-only rather than a dependable-core claim. Bare-bar
+to teach `Sigma = Lambda Lambda^T + Psi`, but for the two model shapes
+recommended for real analyses, we have so far only measured how they behave —
+we have not yet shown they recover known parameters — so treat this as a
+teaching example, not a proven method. Bare-bar
 `(1 + x | g)` slopes remain reserved.
 
 ## What the model does
@@ -218,7 +222,7 @@ If you use gllvmTMB, please cite the package and its TMB engine.
 Run `citation("gllvmTMB")` for formatted entries:
 
 - **gllvmTMB**: Nakagawa S (2026). *gllvmTMB: Fit Multivariate
-  Models from Wide Response Data.* R package version 0.6.0.
+  Models from Wide Response Data.* R package version 0.7.1.
   <https://itchyshin.github.io/gllvmTMB/>
 - **TMB engine**: Kristensen K, Nielsen A, Berg CW, Skaug H,
   Bell BM (2016). *TMB: Automatic Differentiation and Laplace

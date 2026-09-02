@@ -12,12 +12,17 @@
   packageStartupMessage(
     "gllvmTMB is EXPERIMENTAL (lifecycle: experimental). Use at your own risk: ",
     "the package is not complete, is not fully human-verified, and needs ",
-    "extensive further validation. Point estimates are the primary inferential ",
-    "output, but evidence is route- and regime-specific. Broad interval ",
-    "coverage is not certified. Three exact native pinned unrotated ordinary-Gaussian ",
-    "standardized-loading Wald cells have target-specific certificates only ",
-    "in one frozen DGP, conditional on eligible fits; ",
-    "total-variance penalty profiles remain route-only. ",
+    "extensive further validation. Point estimates are the primary output, ",
+    "and how well they are supported depends on the exact model and route ",
+    "used. Broad interval coverage is not yet confirmed. A handful of ",
+    "interval calculations for standardized factor loadings have been ",
+    "checked and shown accurate, but only for one Gaussian model, in a few ",
+    "fixed sample-size and rank combinations, fitted to one fixed simulated ",
+    "dataset with known true values, and only for fits that converge ",
+    "cleanly; this does not carry over to any other sample size, rank, or ",
+    "dataset. Total-variance penalty profiles are still only an ",
+    "approximate calculation: even in previously checked cases, we have ",
+    "not confirmed they match the exact answer. ",
     "See the Current limitations and boundaries page for scope."
   )
 }

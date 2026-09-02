@@ -10,14 +10,16 @@
 > **`gllvmTMB` is experimental — use at your own risk.** It is not complete, is
 > not fully human-verified, and needs extensive further validation. CRAN
 > availability is not a statement of scientific maturity. Point estimates are the
-> primary inferential output, but their evidence is route- and regime-specific.
-> Broad package-wide interval coverage is not certified. Three exact native,
-> pinned, unrotated ordinary-Gaussian standardized-loading Wald cells have
-> target-specific certificates only in one frozen DGP, conditional on eligible fits;
-> other parameter regimes and neighbouring cells do not inherit them.
+> primary output, and how well they are supported depends on the exact model
+> and route used. Broad package-wide interval coverage is not yet confirmed.
+> A handful of interval calculations for standardized factor loadings have
+> been checked and shown accurate, but only for one Gaussian model, in a few
+> fixed sample-size and rank combinations, fitted to one fixed simulated
+> dataset with known true values, and only for fits that converge cleanly;
+> this does not carry over to any other sample size, rank, or dataset.
 > Total-variance penalty profiles are still only an approximate calculation:
-> even for historically measured cells, we have not confirmed that the
-> retained fix-and-refit endpoints match the exact profile-likelihood answer.
+> even in previously checked cases, we have not confirmed they match the
+> exact answer.
 
 `gllvmTMB` fits multivariate models for data where each site,
 individual, species, or study has several responses: body traits,
@@ -49,11 +51,13 @@ matures. The public path above is deliberately bounded. For Gaussian models,
 point estimates have only been checked to recover known parameters under the
 specific conditions tested so far, starting with `indep()` or `dep()`; inspect
 the covariance point estimate. The latent model below remains the clearest way
-to teach `Sigma = Lambda Lambda^T + Psi`, but for the two model shapes
-recommended for real analyses, we have so far only measured how they behave —
-we have not yet shown they recover known parameters — so treat this as a
-teaching example, not a proven method. Bare-bar
-`(1 + x | g)` slopes remain reserved.
+to teach `Sigma = Lambda Lambda^T + Psi`, but for the two specific latent-model
+shapes tested in production — Gaussian `latent(unique = TRUE)` and NB2-log
+`latent(unique = TRUE)` — we have so far only measured how they behave, not
+shown they recover known parameters, so treat this as a teaching example, not
+a proven method. The lme4-style bare-bar spelling `(1 + x | g)` is not
+accepted yet; for a random-slope model, use `latent(1 + x | g, d = K)`
+instead.
 
 ## What the model does
 

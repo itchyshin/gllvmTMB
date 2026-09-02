@@ -45,10 +45,11 @@ page distinguishes evidence limited to the specific conditions we tested from
 experimental or partial routes, and states what each result can and cannot
 support. The Gaussian latent model below is retained as a teaching example for
 the covariance decomposition and rotation-invariant summaries. For the two
-model shapes recommended for real analyses, we have so far only measured how
-they behave — we have not yet shown they recover known parameters — so this
-tutorial is not proof that the method works. Gaussian point estimates have
-only been checked to recover known parameters starting with `indep()` or
+specific latent-model shapes tested in production — Gaussian
+`latent(unique = TRUE)` and NB2-log `latent(unique = TRUE)` — we have so far
+only measured how they behave, not shown they recover known parameters, so
+this tutorial is not proof that the method works. Gaussian point estimates
+have only been checked to recover known parameters starting with `indep()` or
 `dep()`, with fit-health checks and no general interval certificate.
 
 The fitted Gaussian model starts with observations, not with the

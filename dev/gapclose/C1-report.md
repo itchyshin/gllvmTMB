@@ -339,3 +339,32 @@ not a change I made deliberately. The pre-existing `unit = ...` required
 error surfacing in `R/gllvmTMB.R` (noted under items 2 and 5) is likewise
 someone else's in-progress work, not mine, and `R/gllvmTMB.R` was on the
 explicit do-not-touch list for this task.
+
+## Addendum 2026-09-02 — NEWS.md (per coordinator, post-Opus-review R4/R6)
+
+Opus review flagged four gaps: no NEWS entry for the two removed exports, none
+for the COE-02 register downgrade, none for the two new direct-call
+deprecation warnings, and a stale VA precondition-free claim at NEWS.md:15-17.
+Fixed all four in the "Development (unreleased)" section:
+
+1. Fixed the existing `gllvmTMB_diagnose()` bullet: `integration = "va"` is
+   now qualified as applying only to `latent(..., unique = FALSE)` fits with
+   at least 100 units and latent rank <= 2 (matches the hard admission fence
+   in `R/integration-fence.R`: `unique = TRUE` aborts, `n < 100` aborts,
+   `q > 2` aborts).
+2. New bullet: removed `.proportions_wald_ci()` / `.proportions_bootstrap_ci()`,
+   names the public replacement route (`confint(fit, parm = "proportion...",
+   method = "wald"/"bootstrap")`, `extract_proportions()` for point estimates).
+3. New bullet: `meta_known_V()` / `kernel_unique()` direct-call deprecation
+   warnings.
+4. New bullet: corrected internal evidence citation for the cross-lineage
+   coevolution extractor (`extract_Gamma()`) — plain language, no register
+   code, per the coordinator's explicit instruction (NEWS.md is one of the
+   surfaces `test-reader-facing-no-register-codes.R` checks).
+
+Verified `test-reader-facing-no-register-codes.R` still passes with
+`NOT_CRAN=true` (the file's own `skip_on_cran()` otherwise skips it):
+`[ FAIL 0 | WARN 0 | SKIP 0 | PASS 1 ]`.
+
+`git diff --stat NEWS.md`: `NEWS.md | 26 ++++++++++++++++++++++++--` (24
+insertions, 2 deletions).

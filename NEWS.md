@@ -14,11 +14,33 @@
   spelling, since that token is always ignored -- the field is driven only by
   `mesh =`/`coords =`. `gllvmTMB_diagnose()`'s runaway-loading advice now
   names `loading_ridge` (the integration-neutral spelling) instead of the
-  AGHQ-specific `aghq_ridge`, and mentions `integration = "va"` as a
-  tuning-free alternative. A further batch of bare aborts across
+  AGHQ-specific `aghq_ridge`, and, only for fits where it actually applies --
+  `latent(..., unique = FALSE)` models with at least 100 units and a latent
+  rank of 2 or fewer -- mentions `integration = "va"` as a tuning-free
+  alternative. A further batch of bare aborts across
   `R/gllvmTMB.R`, `R/parse-multi-formula.R`, `R/isdm-sources.R`,
   `R/family-cdf-args.R`, `R/fit-multi.R`, `R/methods-gllvmTMB.R` and
   `R/suggest-lambda-constraint.R` now say what to try next.
+* Removed the accidentally-exported internal helpers `.proportions_wald_ci()`
+  and `.proportions_bootstrap_ci()` (dot-prefixed, undocumented, no known
+  external caller). The same numbers stay reachable through the public route:
+  `confint(fit, parm = "proportion[:trait]", method = "wald")` or
+  `method = "bootstrap"` returns the same per-(trait, component) variance-
+  proportion intervals, and `extract_proportions()` returns the point
+  estimates they are built from.
+* `meta_known_V()` and `kernel_unique()` now warn, once per session, when
+  called directly (via `lifecycle::deprecate_soft()`), naming their current
+  replacements `meta_V()` and `kernel_indep()` /
+  `kernel_latent(..., unique = TRUE)`. Both remain accepted compatibility
+  syntax and keep fitting the same model; used inside a formula,
+  `kernel_unique()` still separately warns the way it already did, which is
+  unchanged by this.
+* Corrected an internal evidence citation for the cross-lineage coevolution
+  extractor (`extract_Gamma()`): it had pointed at an internal example
+  article that was actually removed when the public article set was
+  finalized at 0.5.0. The test-based evidence for this feature is unaffected
+  and the feature itself has not changed; only the stale citation, and the
+  internal tracking status it supported, are corrected.
 * `gllvmTMB()`'s `unit` argument no longer defaults to `"site"`. For one
   release, omitting `unit` when `data` has a literal `"site"` column still
   works via a deprecated implicit fallback (a one-time warning); pass

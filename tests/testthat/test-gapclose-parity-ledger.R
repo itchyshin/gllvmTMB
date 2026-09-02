@@ -2,16 +2,53 @@
 #   dev/gapclose/build-capability-status.R (B1, the R-side ledger generator)
 #   tools/parity_ledger.R                  (B2, the R<->Julia parity tool)
 #
-# Pure R, nothing skipped: both scripts are plain Rscript CLIs invoked via
-# system2() (the established pattern in this test suite, see
-# helper-bfgs-exact-gradient.R), so these tests exercise the real generated
-# artifacts rather than re-implementing their logic.
+# Pure R, invoked via system2() (the established pattern in this test suite,
+# see helper-bfgs-exact-gradient.R), so these tests exercise the real
+# generated artifacts rather than re-implementing their logic.
+#
+# INSTALLED-PACKAGE ROBUSTNESS (2026-09-02): R CMD check runs tests from the
+# BUILT TARBALL, which does not carry dev/ or tools/ (both are excluded from
+# the build, per .Rbuildignore-style packaging) -- so a hardcoded
+# testthat::test_path("..", "..") that assumes the source-tree layout finds
+# a package root with no dev/gapclose/build-capability-status.R and no
+# tools/parity_ledger.R, and every test_that() block below would fail
+# rather than skip. find_repo_root() instead walks UP from the test file's
+# own location looking for a directory that contains both DESCRIPTION and
+# tools/parity_ledger.R -- the source repo, not just any package root -- and
+# returns NULL if none is found within a bounded number of levels (an
+# installed/tarball tree, or any directory outside the repo entirely, e.g.
+# a temp dir used to simulate that case). Every test_that() block starts
+# with skip_repo_tools_missing(), so the whole file degrades to "skipped"
+# rather than "failed" when running from an installed copy, while every
+# assertion is unchanged when the repo tools ARE present.
 
-pkg_root <- normalizePath(testthat::test_path("..", ".."), mustWork = TRUE)
-gen_script <- file.path(pkg_root, "dev", "gapclose", "build-capability-status.R")
-parity_script <- file.path(pkg_root, "tools", "parity_ledger.R")
-ledger_path <- file.path(pkg_root, "docs", "design", "capability-status.md")
+find_repo_root <- function(start, max_up = 8L) {
+  dir <- tryCatch(normalizePath(start, mustWork = TRUE), error = function(e) NA_character_)
+  if (is.na(dir)) return(NULL)
+  for (i in seq_len(max_up + 1L)) {
+    if (file.exists(file.path(dir, "DESCRIPTION")) &&
+        file.exists(file.path(dir, "tools", "parity_ledger.R"))) {
+      return(dir)
+    }
+    parent <- dirname(dir)
+    if (identical(parent, dir)) break  # reached filesystem root
+    dir <- parent
+  }
+  NULL
+}
+
+pkg_root <- find_repo_root(testthat::test_path())
+gen_script <- if (!is.null(pkg_root)) file.path(pkg_root, "dev", "gapclose", "build-capability-status.R") else NA_character_
+parity_script <- if (!is.null(pkg_root)) file.path(pkg_root, "tools", "parity_ledger.R") else NA_character_
+ledger_path <- if (!is.null(pkg_root)) file.path(pkg_root, "docs", "design", "capability-status.md") else NA_character_
 scratchpad_julia <- "/private/tmp/claude-503/-Users-z3437171-Dropbox-Github-Local-gllvmTMB/46df980d-b0f8-4444-a181-ed4b4a683bbe/scratchpad/gllvmjl-capability-status-main.md"
+
+# Call at the top of every test_that() block below. Skips (does not fail)
+# when the repo's dev/tools scripts are not reachable from this test file's
+# location -- exactly the R CMD check / installed-tarball case.
+skip_repo_tools_missing <- function() {
+  testthat::skip_if(is.null(pkg_root), "repo tools not available (installed copy)")
+}
 
 run_rscript <- function(script, args = character(0)) {
   out <- suppressWarnings(system2("Rscript", c(shQuote(script), args),
@@ -22,11 +59,13 @@ run_rscript <- function(script, args = character(0)) {
 }
 
 test_that("build-capability-status.R and parity_ledger.R exist", {
+  skip_repo_tools_missing()
   expect_true(file.exists(gen_script))
   expect_true(file.exists(parity_script))
 })
 
 test_that("(1) the generator's --check passes on the committed ledger", {
+  skip_repo_tools_missing()
   testthat::skip_if_not(file.exists(gen_script), "generator script missing")
   # Regenerate first so the committed file reflects the CURRENT register (the
   # register is a live document other lanes may be editing; the generator is
@@ -41,6 +80,7 @@ test_that("(1) the generator's --check passes on the committed ledger", {
 })
 
 test_that("(2) the four grouping-level rows exist in the generated ledger", {
+  skip_repo_tools_missing()
   testthat::skip_if_not(file.exists(ledger_path), "capability-status.md not generated yet")
   ledger <- readLines(ledger_path, warn = FALSE)
   required <- c("grouping level × unit", "grouping level × unit_obs",
@@ -52,6 +92,7 @@ test_that("(2) the four grouping-level rows exist in the generated ledger", {
 })
 
 test_that("(3) --check-names reports 0 near-miss against the scratchpad Julia copy", {
+  skip_repo_tools_missing()
   testthat::skip_if_not(file.exists(parity_script), "parity_ledger.R missing")
   testthat::skip_if_not(file.exists(scratchpad_julia), "scratchpad Julia copy missing")
   res <- run_rscript(parity_script, c("--julia", shQuote(scratchpad_julia), "--check-names"))
@@ -62,6 +103,7 @@ test_that("(3) --check-names reports 0 near-miss against the scratchpad Julia co
 })
 
 test_that("(4) the parity tool ends with CLOSURE: PASS", {
+  skip_repo_tools_missing()
   testthat::skip_if_not(file.exists(parity_script), "parity_ledger.R missing")
   testthat::skip_if_not(file.exists(scratchpad_julia), "scratchpad Julia copy missing")
   res <- run_rscript(parity_script, c("--julia", shQuote(scratchpad_julia)))
@@ -70,6 +112,7 @@ test_that("(4) the parity tool ends with CLOSURE: PASS", {
 })
 
 test_that("(5) collision rows never join to the wrong Julia row", {
+  skip_repo_tools_missing()
   testthat::skip_if_not(file.exists(parity_script), "parity_ledger.R missing")
   testthat::skip_if_not(file.exists(ledger_path), "capability-status.md not generated yet")
   testthat::skip_if_not(file.exists(scratchpad_julia), "scratchpad Julia copy missing")
@@ -101,6 +144,7 @@ test_that("(5) collision rows never join to the wrong Julia row", {
 })
 
 test_that("(6) the tool's printed R status equals the R ledger's own Status column, for every matched row (Opus review finding B1)", {
+  skip_repo_tools_missing()
   testthat::skip_if_not(file.exists(parity_script), "parity_ledger.R missing")
   testthat::skip_if_not(file.exists(ledger_path), "capability-status.md not generated yet")
   testthat::skip_if_not(file.exists(scratchpad_julia), "scratchpad Julia copy missing")
@@ -153,6 +197,7 @@ test_that("(6) the tool's printed R status equals the R ledger's own Status colu
 })
 
 test_that("(7) at least one R-NARROWER row exists given the current ledgers", {
+  skip_repo_tools_missing()
   testthat::skip_if_not(file.exists(parity_script), "parity_ledger.R missing")
   testthat::skip_if_not(file.exists(scratchpad_julia), "scratchpad Julia copy missing")
 

@@ -1242,11 +1242,20 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     if (fid == 16L && !identical(f$link, "logit"))
       cli::cli_abort("multinomial: only the baseline-category logit link is supported.")
     if (fid == 17L && !identical(f$link, "log"))
-      cli::cli_abort("zi_poisson: only the log link is currently supported.")
+      cli::cli_abort(c(
+        "zi_poisson: only the log link is currently supported.",
+        ">" = "Use {.code zi_poisson(link = \"log\")} (the default)."
+      ))
     if (fid == 18L && !identical(f$link, "log"))
-      cli::cli_abort("zi_nbinom2: only the log link is currently supported.")
+      cli::cli_abort(c(
+        "zi_nbinom2: only the log link is currently supported.",
+        ">" = "Use {.code zi_nbinom2(link = \"log\")} (the default)."
+      ))
     if (fid == 19L && !identical(f$link, "logit"))
-      cli::cli_abort("zi_binomial: only the logit link is currently supported.")
+      cli::cli_abort(c(
+        "zi_binomial: only the logit link is currently supported.",
+        ">" = "Use {.code zi_binomial(link = \"logit\")} (the default)."
+      ))
     c(fid, lid)
   }
   ## Per-row family list (length = nrow(data)). Used downstream to read
@@ -3786,7 +3795,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         any(y[zi_count_rows] != round(y[zi_count_rows])))
       cli::cli_abort(c(
         "{.fn zi_poisson}/{.fn zi_nbinom2} rows: {.code y} must be a non-negative integer.",
-        "i" = "The structural-zero mixture still requires an ordinary count response."
+        "i" = "The structural-zero mixture still requires an ordinary count response.",
+        ">" = "Round or recode {.code y} to non-negative integers before fitting."
       ))
   }
   ## zi_binomial (fid 19): y in [0, n_trials], same support as binomial()/
@@ -3802,7 +3812,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         any(y[zi_binom_rows] != round(y[zi_binom_rows])))
       cli::cli_abort(c(
         "{.fn zi_binomial} rows: {.code y} (successes) must satisfy 0 <= y <= n_trials.",
-        "i" = "If you used {.code cbind(succ, fail)}, both columns must be non-negative integers."
+        "i" = "If you used {.code cbind(succ, fail)}, both columns must be non-negative integers.",
+        ">" = "Check {.code succ}/{.code fail} (or {.arg weights}/trials column) for negative values or a mismatch with {.arg n_trials}."
       ))
     zi_binom_traits <- sort(unique(trait_id[zi_binom_rows]))
     single_trial_traits <- vapply(zi_binom_traits, function(t) {

@@ -377,25 +377,62 @@ test_that("aghq DECLINES (does not error/refuse) for zi_poisson/zi_nbinom2/zi_bi
   ## none error. NEWS/Design 02/03/register previously (incorrectly)
   ## called this a "refusal" -- corrected.
   ##
-  ## S2: the warning's action line must be REASON-SPECIFIC. Captured via
-  ## the cli `.frequency = "once"` mechanism's FIRST firing in this file
-  ## (a later `expect_warning()` on the identical code path would see
-  ## nothing, since it only fires once per R session) -- this is that
-  ## first firing.
-  w <- expect_warning(
-    fit <- gllvmTMB(
+  ## CI fix (2026-09-02, second review): the decline warning is
+  ## `cli_warn(.frequency = "once", .frequency_id =
+  ## "gllvmTMB-aghq-ineligible")`, which fires AT MOST ONCE PER R SESSION
+  ## across the ENTIRE test suite, not just this file -- `rlang` tracks it
+  ## in `warning_freq_env`, keyed by `.frequency_id`, independent of which
+  ## test triggered it first. Under `R CMD check` (one process for the
+  ## whole suite) some OTHER test elsewhere routinely exercises this exact
+  ## decline path first (any AGHQ-ineligible fit shares the same id, e.g.
+  ## a `latent()`-with-default-Psi + `aghq` fit for an unrelated family),
+  ## so by the time this file's own test ran, the warning was already
+  ## silent -- reproduced: `expect_warning()` saw `w <- NULL`. Locally,
+  ## `testthat::test_file()` on this file ALONE never hits that (this is
+  ## the first and only trigger in an isolated process), which is why it
+  ## passed there and failed only under the full suite.
+  ##
+  ## Fixed two ways: (1) `rlang::reset_warning_verbosity()` clears this
+  ## file's OWN prior use of the id (defence in depth against reordering
+  ## within the file) and, more importantly, makes this test not depend on
+  ## whether anything ELSE in the session already consumed it -- resetting
+  ## the id is a documented rlang/cli mechanism (`?rlang::reset_warning_verbosity`),
+  ## not a private hack, and it only clears state cli itself owns; (2) the
+  ## PRIMARY assertions are now structural (`fit$aghq$used`, `fit$aghq$reason`),
+  ## which do not depend on the warning firing at all -- the warning-text
+  ## checks are additional, not load-bearing, per the review's own
+  ## instruction not to rely solely on a warning.
+  rlang::reset_warning_verbosity("gllvmTMB-aghq-ineligible")
+  w <- NULL
+  fit <- withCallingHandlers(
+    gllvmTMB(
       y ~ 0 + trait + latent(0 + trait | site, d = 1, unique = FALSE),
       data = dat, family = zi_poisson(), unit = "site",
       control = gllvmTMBcontrol(aghq = 5L, se = FALSE)
     ),
-    "AGHQ did not run"
+    warning = function(cond) {
+      if (is.null(w) && grepl("AGHQ did not run", conditionMessage(cond))) {
+        w <<- cond
+      }
+      invokeRestart("muffleWarning")
+    }
   )
+  ## Structural assertions -- true regardless of whether the once-per-
+  ## session warning fired (deterministic even if the reset above ever
+  ## stops working, e.g. a future rlang change).
+  expect_s3_class(fit, "gllvmTMB_multi")
   expect_false(isTRUE(fit$aghq$used))
   expect_match(fit$aghq$reason, "zero-inflated")
-  expect_match(conditionMessage(w), "not yet supported by AGHQ")
-  ## Regression guard: the OLD action line named unique = FALSE, which this
-  ## fit already used -- must not appear for the zi reason.
-  expect_false(grepl("Use.*latent.*unique = FALSE", conditionMessage(w)))
+  ## Warning-text assertions -- should hold given the reset above; failing
+  ## HERE (with the structural checks above still green) would mean the
+  ## reset itself stopped working, not that AGHQ started erroring.
+  expect_false(is.null(w), info = "the once-per-session AGHQ decline warning did not fire even after rlang::reset_warning_verbosity()")
+  if (!is.null(w)) {
+    expect_match(conditionMessage(w), "not yet supported by AGHQ")
+    ## Regression guard: the OLD action line named unique = FALSE, which
+    ## this fit already used -- must not appear for the zi reason.
+    expect_false(grepl("Use.*latent.*unique = FALSE", conditionMessage(w)))
+  }
 })
 
 test_that("a mixed-family fit with one zi_poisson trait alongside a poisson trait fits", {

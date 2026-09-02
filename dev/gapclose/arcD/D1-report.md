@@ -656,3 +656,99 @@ test-predictive-diagnostics.R             : 158/158 (after updating one pre-exis
                                              still correctly refused by the rootogram)
 test-integration-fence.R                  : 57/57
 ```
+
+---
+
+# CI fixes (2026-09-02, PR #1240 CI failure)
+
+CI on PR #1240 (retargeted to `main`, commit `2ad0a0454`) failed with 3
+assertions, both from this branch's own tests; the local single-file
+suite was green. Root cause for both: environment/ordering differences
+between an isolated `testthat::test_file()` run and the full-suite,
+one-process `R CMD check` run CI uses.
+
+## 1. Bare-abort ratchet: 999 -> 1004
+
+`Rscript dev/gapclose/count-bare-aborts.R` on this tree: **1004**. On
+`origin/main` (`c39c1a13b`, via a temp `git worktree add -d`): **999**
+(matches the ratchet). Diffing the file:line hit lists (sorted, `diff`)
+found exactly 5 new bare-abort sites, all in `R/fit-multi.R`, all added
+by this arc's zi_* work and following the pre-existing (also-bare)
+sibling pattern used by every other family's link-check/y-validation
+abort -- so the sibling messages (e.g. `nbinom2: only the log link...`,
+`Binomial rows: y (successes) must satisfy...`) were NOT touched (out of
+scope; they are pre-existing, already inside the 999 baseline).
+
+Fixed by adding a `">"` next-step bullet to each of the 5, naming a route
+that actually works (Boole rule):
+
+1. `R/fit-multi.R` zi_poisson link check -- `">" = "Use {.code
+   zi_poisson(link = \"log\")} (the default)."`
+2. `R/fit-multi.R` zi_nbinom2 link check -- `">" = "Use {.code
+   zi_nbinom2(link = \"log\")} (the default)."`
+3. `R/fit-multi.R` zi_binomial link check -- `">" = "Use {.code
+   zi_binomial(link = \"logit\")} (the default)."`
+4. `R/fit-multi.R` zi_poisson/zi_nbinom2 non-negative-integer `y`
+   validation -- `">" = "Round or recode {.code y} to non-negative
+   integers before fitting."`
+5. `R/fit-multi.R` zi_binomial `0 <= y <= n_trials` validation --
+   `">" = "Check {.code succ}/{.code fail} (or {.arg weights}/trials
+   column) for negative values or a mismatch with {.arg n_trials}."`
+
+Re-ran `Rscript dev/gapclose/count-bare-aborts.R`: **999**. Ratchet
+number in the test was NOT raised.
+
+## 2. `test-zi-families.R:385/:395` -- AGHQ decline warning silent on CI
+
+**Root cause, confirmed by direct reproduction** (not merely inferred):
+the decline warning is `cli::cli_warn(..., .frequency = "once",
+.frequency_id = "gllvmTMB-aghq-ineligible")`. `rlang` tracks this in an
+internal `warning_freq_env`, keyed ONLY by `.frequency_id`, shared across
+EVERY call site and EVERY test in the process -- not scoped to this test,
+this file, or even this specific ineligibility reason. Reproduced
+directly: firing the decline path once via an UNRELATED scenario
+(`multinomial()` + `aghq`, sharing the identical warning/id) silently
+consumes the slot; `test-zi-families.R`'s own AGHQ-decline test then sees
+`w <- NULL` even though it had never itself run before. Under `R CMD
+check` (one process for the whole suite), some earlier test anywhere in
+the suite routinely exercises this shared decline path first, so by the
+time this file's test runs, the warning is already silent -- exactly the
+CI symptom (`expect_warning` saw no warning). Locally,
+`testthat::test_file()` on this ONE file never showed the bug because it
+was the first and only trigger in an isolated process.
+
+**Fixed:** the test now calls `rlang::reset_warning_verbosity(
+"gllvmTMB-aghq-ineligible")` before triggering the fit (a documented
+rlang mechanism, `?rlang::reset_warning_verbosity`, not a private hack --
+it only clears state cli/rlang itself owns), AND asserts the decline
+STRUCTURALLY (`fit$aghq$used` is `FALSE`, `fit$aghq$reason` matches
+`"zero-inflated"`) as the PRIMARY, load-bearing checks, independent of
+whether the warning fires at all. The warning-text checks
+(`conditionMessage(w)` names AGHQ and not the wrong `unique = FALSE`
+advice) are now secondary, gated behind `expect_false(is.null(w))` so a
+future regression in the reset mechanism itself would show up as ONE
+targeted failure rather than a silent pass.
+
+**Verified three ways, each proving the fix handles the exact CI
+failure mode, not just the reported symptom:**
+
+1. `testthat::test_file("test-zi-families.R")` called TWICE in one R
+   process (the warning slot is definitely consumed by run 1's own AGHQ
+   test before run 2 starts): **43/43 pass, both runs.**
+2. A synthetic "earlier unrelated consumer" -- fit `multinomial()` +
+   `aghq = 5` (an unrelated family sharing the identical
+   `.frequency_id`) BEFORE running the test file in the same process,
+   confirming `warning_freq_env` already held
+   `"gllvmTMB-aghq-ineligible"` at that point: **43/43 pass.**
+3. `devtools::test(filter = "zi-|gapclose-next-steps")`: see the
+   summary line below.
+
+## Regression after both fixes
+
+```
+devtools::test(filter = "zi-|gapclose-next-steps")
+gapclose-next-steps: ....... (7/7)
+zi-families: ........................................... (43/43)
+zi-recovery: .............S (13/13, +1 heavy skip)
+```
+All green.

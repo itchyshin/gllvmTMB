@@ -58,3 +58,14 @@ AGENTS.md "tell the reader what to try next".
   (ledger drift); ordinary `dep()` under `engine = "julia"` fails before the labelled gate
   (`FIT-MODE-ORD-DEP-PUBLIC-R-BRIDGE`) — bridge lane (#1236) work; `offset()` rejected by the bridge;
   `latent(unique = TRUE)` Psi dropped with only a warning.
+
+### Facts received from the GLLVM.jl lane, 2026-09-02 (recorded, not verified here)
+- NB2 second-order hole on the Julia side: `confint`'s finite-difference joint Hessian goes singular
+  at a degenerate huge-dispersion optimum where R's `sdreport` still returns finite SEs; CI on Julia
+  1.12.7 shows NaN Wald endpoints on the NB2 grouped-covariate bridge cell (`test_bridge_x.jl:350`).
+  Do not count NB2 Wald through `engine = "julia"` as receipted; the R ledger's bridge CI rows stay
+  `scope-limited`.
+- Their zero-inflated ADEMP recovery campaign finished on Totoro (6,000 fits, 0 errors; findings doc in
+  flight): ARC D (issue 1 above) has a working Julia oracle and a DGP grid to mirror.
+- Both handoffs above are tickets T13/T14 in GLLVM.jl `docs/dev-log/core070/true-parity-decision-map.md`;
+  their `mi()` row stays `planned` until a pasted test receipt.

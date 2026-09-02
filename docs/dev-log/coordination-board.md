@@ -19,7 +19,15 @@ questions" should be edited as state changes. The "Recently
 resolved" section is a 24-48 hour rolling window; older items
 move to per-PR after-task reports or the check-log.
 
-## 2026-09-02 Claude lane: gllvmTMB gap closure (`claude/gapclose-20260902`)
+## 2026-09-02 Claude lane: gllvmTMB gap closure (`claude/gapclose-20260902`) — DRAFT PR #1239
+
+**State (10:30):** ARC A/B/C landed on the branch (15 commits), reviewed adversarially, corrected, and
+re-verified; final full suite + R CMD check running on `b1004636a`. 🔴 Owner call: Decision 3 shipped
+staged (`unit = NULL` with a deprecation when an implicit `site` column is used; hard requirement in
+0.8) because a hard abort touched 628 test call sites in 178 files across other lanes. Owed after
+merge: mission-control `projects.json` repoint, B3 issues (`dev/gapclose/B3-issues.md`), ARC D
+(zip/zinb/zib) as its own checkpoint. GLLVM.jl lane told of its `mi()` ledger drift and the bridge
+`dep()`/`offset()`/`unique` leads (for the #1236 lane).
 
 Approved ultra-plan (owner sign-off 2026-09-02): close the first-reader signposting holes
 (refusals that name a route that fits, next-step bullets, plain-language front page,

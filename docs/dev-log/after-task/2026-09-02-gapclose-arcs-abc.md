@@ -1,7 +1,7 @@
 # After Task: gllvmTMB gap closure — ARC A (signposting), ARC B (twin ledger + parity tool), ARC C (0.7 hygiene)
 
 **Date:** 2026-09-02
-**Branch:** `claude/gapclose-20260902` (worktree outside Dropbox, from `origin/main` `a15f9e46a`)
+**Branch:** `claude/gapclose-20260902` (worktree outside Dropbox, from `origin/main` `a15f9e46a`) · **Draft PR:** [#1239](https://github.com/itchyshin/gllvmTMB/pull/1239)
 **Roles engaged:** Ada (orchestration), Boole (messages/API), Pat (first-reader prose), Wickham (twin
 ledger naming), Rose (hygiene + plan review), Fisher (tau pre-run), Shannon (lane preflight), a fresh
 Opus adversarial reviewer, Melissa (reconcile). Builders ran as fresh-context Sonnet/Haiku children.
@@ -61,7 +61,22 @@ clean. `Rscript dev/gapclose/build-capability-status.R --check` idempotent after
 `Rscript tools/parity_ledger.R --check-names` 0 near-miss. G-ALL (full `devtools::test()` +
 `devtools::check(args = "--no-manual")`): PENDING — filled in below when the run completes.
 
-G-ALL RESULT: _pending_
+Verify-then-fix loop (recorded so the numbers below are read in context): a fresh Opus adversarial
+review of the first A–C state returned PASS-WITH-CORRECTIONS (2 blocking: the parity tool normalised
+`scope-limited`/`point-fit-recovery` to `implemented`, inflating 24/44 matched rows; the group-axis
+redirect named `phylo_slope(x | site)`, which refuses, while `latent(1 + x | site)` fits; 8 required).
+Gates G-A1/G-A2/G-B2 were un-ticked, the four producers fixed their own files, the reviewer's probe
+scripts were re-run on the fixed tree (all consistent), and the gates re-ticked with G-A2's claim
+re-scoped honestly (ratchet 999 bare aborts package-wide, may only fall). The first full suite then
+showed 9 failures: 2 from the `unit` staging firing before the data check / an older expected message,
+4 from tests pinning the removed jargon, 4 from one 2-second child-process deadline test under a load
+of 76 caused by another lane's runaway hook (passed solo afterwards). R CMD check (tests run from the
+tarball) added a real regression the suite had not reached: `suggest_lambda_constraint()` and
+`ridge_path()` lost their grouping under `unit = NULL` (the latter silently, into an all-NA table);
+both now share `.gllvmTMB_resolve_unit_staged()` with `gllvmTMB()`. New tests that read repo files skip
+on an installed copy.
+
+G-ALL RESULT (final commit `b1004636a`): _pending — filled when the final run completes_
 
 ## 5. Tests of the tests
 
@@ -104,6 +119,16 @@ addressed here; #1189 gets the measured tau/VA guidance; #1190 gains a register 
 
 ## 9. What did not go smoothly
 
+- The adversarial review found two blocking defects the builders' own tests had passed: a status
+  normalisation that made the parity tool lie in the reassuring direction, and a redirect verified
+  only on the one grouping where it happened to work. Both were fixed by the original builders.
+- `unit = NULL` reached two helpers that derive a grouping from it; one failed loudly, one silently.
+  R CMD check, not the suite, exposed them (different skip set).
+- A looping after-task hook in the DRM.jl lane spawned ~650 R processes (load 76 on 20 cores),
+  timing out a 2 s child-deadline test here; the owner authorised killing the orphans; the other lane
+  fixed its hook and is adding a recursion guard to the shared checker.
+- The GitHub GraphQL API hit a secondary limit; the draft PR was created through the REST endpoint.
+
 - The first `git worktree add` hit the 2-minute tool timeout (object store on Dropbox); recreated in
   the background.
 - RECON-0 found 495 abort calls (318 bare) in 14 files, not the ~30 the scout sampled; A2 was
@@ -127,6 +152,12 @@ would have caught it. **Fisher:** the first simulated dataset was too easy; a pr
 reproduce the pathology before its numbers can ground advice.
 
 ## 11. Limitations and next action
+
+- Pre-existing, not this lane: roxygen note that `AIC.gllvmTMB_multi`/`BIC.gllvmTMB_multi` in
+  `R/aghq-report.R` lack `@export`/`@exportS3Method` tags.
+- README hard-codes the version string (static markdown); CITATION now reads `meta$Version`.
+- Bare aborts: 999 remain package-wide behind the ratchet; the user-reachable set and all
+  "Internal:" aborts were fixed; the rest is a filed issue.
 
 - 🔴 Owner flag: Decision 3 shipped staged (implicit `site` still works with a deprecation); the
   forced explicitness is deferred to 0.8 because of the 628-site blast radius.

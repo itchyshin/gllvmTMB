@@ -76,7 +76,9 @@ tarball) added a real regression the suite had not reached: `suggest_lambda_cons
 both now share `.gllvmTMB_resolve_unit_staged()` with `gllvmTMB()`. New tests that read repo files skip
 on an installed copy.
 
-G-ALL RESULT (final commit `b1004636a`): _pending — filled when the final run completes_
+G-ALL RESULT (final commit `b1004636a`): full `devtools::test()` with the failure cap lifted →
+**FAIL 0 | WARN 55 | SKIP 879 | PASS 26948**. `devtools::check(args = "--no-manual")` on the same
+commit: _pending — see the line below once the run completes_
 
 ## 5. Tests of the tests
 

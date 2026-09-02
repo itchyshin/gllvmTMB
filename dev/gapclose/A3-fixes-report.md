@@ -182,3 +182,137 @@ $ git diff --stat -- README.md DESCRIPTION R/zzz.R man/gllvmTMB-package.Rd vigne
 `vignettes/articles/current-limits.Rmd`, and
 `vignettes/articles/profile-likelihood-ci.Rmd` also carry changes from the
 earlier report, `dev/gapclose/A3-report.md`.)
+
+---
+
+## Follow-up — verifier scripts pinned the old jargon (coordinator round 3)
+
+Full-suite run flagged four failures: the boundary was removed from the prose
+but two test surfaces still pinned the literal old strings — `dev/interval-calibration/verify-claims.R`
+(source of `tests/testthat/test-interval-calibration-claims.R:22-36`, the
+"interval claim verification" test that shells out to it) and the "CI-13
+certificates" test at `tests/testthat/test-interval-calibration-claims.R:126-179`
+itself. Fixed both so the boundary claim is still enforced, in the new plain
+words. No commit, no `document()`, no `load_all()`.
+
+### What changed and why
+
+**`vignettes/articles/profile-likelihood-ci.Rmd` needle** (verifier's own
+requirement, `dev/interval-calibration/verify-claims.R`): `"Every computed
+interval is labelled \`route-only\`"` → `"Every computed interval carries a
+status marking it as calculated but not proven to match the exact
+profile-likelihood answer"` (the exact sentence now in the article; the
+second needle, `"exact constrained-refit convergence"`, was untouched by A3
+and still matches, so it was left alone).
+
+**The "frozen DGP" / "conditional on eligible fits" checks.** These two
+phrases are pinned in far more places than the four surfaces I rewrote —
+`grep -rl "frozen DGP"` finds it in 27 files, `grep -rl "conditional on
+eligible fits"` in 23. Only four of those (`R/zzz.R`, `DESCRIPTION`,
+`README.md`, `man/gllvmTMB-package.Rd`) got the A3 plain-language rewrite; the
+rest (`NEWS.md`, `R/loading-ci.R`, `vignettes/articles/current-limits.Rmd`,
+`docs/design/*.md`, `docs/dev-log/**/*.md`, `_pkgdown.yml`,
+`cran-comments.md`, `man/loading_ci.Rd`, `docs/dev-log/artifacts/interval-calibration/public-route-census.csv`)
+are untouched and still say "frozen DGP" / "conditional on eligible fits"
+verbatim. So a blanket string swap would have broken the check for those 13
+untouched files. Both verifier surfaces were split instead:
+
+- **`dev/interval-calibration/verify-claims.R`**: the 5-file for-loop was
+  split into a `c("DESCRIPTION", "README.md", "man/gllvmTMB-package.Rd")`
+  group (now requires the two plain-language needles) and a
+  `c("man/loading_ci.Rd", "docs/design/75-inference-route-truth-matrix.md")`
+  group (still requires the two original needles, unchanged). The
+  `R/zzz.R`-specific `require_fixed()` block also needed its own two
+  R/zzz.R-only needles updated — `"pinned unrotated ordinary-Gaussian"` →
+  `"for one Gaussian model"` and `"standardized-loading Wald cells"` →
+  `"standardized factor loadings"` — since that sentence was rewritten too
+  and the old needles no longer matched. The `_pkgdown.yml`/`cran-comments.md`
+  loop, and every other `require_fixed()` call in the file, are untouched.
+- **`tests/testthat/test-interval-calibration-claims.R`** ("CI-13
+  certificates" test, :126-179): `claim_surfaces` was split into
+  `plain_language_surfaces` (the same four files) and
+  `original_wording_surfaces` (the other 13, unchanged list), each checked
+  against the phrasing it actually contains. The `detailed` block
+  (`R/loading-ci.R`, `NEWS.md`, `vignettes/articles/current-limits.Rmd`,
+  checking the three numeric loading vectors) was not touched.
+
+**Canonical plain-language needles used everywhere** (identical across
+`R/zzz.R`, `DESCRIPTION`, `README.md`, `man/gllvmTMB-package.Rd` — confirmed
+by grep below):
+
+- `"one fixed simulated dataset with known true values"` (replaces "frozen
+  DGP")
+- `"only for fits that converge cleanly"` (replaces "conditional on eligible
+  fits")
+
+These two phrases previously straddled a markdown/roxygen line-wrap in
+`README.md`, `DESCRIPTION`, and `R/zzz.R` (they were intact as a single
+line only in the unwrapped `man/gllvmTMB-package.Rd`), so `grepl(...,
+fixed = TRUE)` over the newline-joined text could not find them. Rewrapped
+the paragraph at different line breaks in those three files — wording
+unchanged, only where the line breaks fall — so each phrase now sits on one
+physical line in every file. Re-verified both files still parse
+(`read.dcf("DESCRIPTION")`, `parse("R/zzz.R")`) and the rendered message /
+field content is unchanged apart from the wrap points.
+
+### Verification
+
+```
+$ Rscript --vanilla dev/interval-calibration/verify-claims.R
+INTERVAL_CLAIMS_OK
+$ echo $?
+0
+```
+
+```
+$ Rscript -e 'testthat::test_file("tests/testthat/test-interval-calibration-claims.R", reporter = "summary")'
+interval-calibration-claims: .....................
+
+══ DONE ════════════════════════════════════════════════════════════════════════
+```
+
+Per-test breakdown (via `as.data.frame(test_file(..., reporter = "silent"))`):
+6 test_that blocks, **0 failed, 0 error, 0 warning** — including "interval
+claim verification passes on the synchronized surfaces" and "CI-13
+certificates name the frozen DGP and eligible-fit condition", the two that
+were failing before this fix.
+
+Confirmed the four plain-language surfaces are identical (not just each
+individually non-empty):
+
+```
+$ for f in R/zzz.R DESCRIPTION README.md man/gllvmTMB-package.Rd; do
+    grep -c "one fixed simulated dataset with known true values" "$f"
+    grep -c "only for fits that converge cleanly" "$f"
+  done
+1
+1
+1
+1
+1
+1
+1
+1
+```
+
+Not weakened: `require_fixed()`/`expect_true(all(grepl(...)))` are the same
+fail-closed functions as before — only the needle strings changed, and each
+file is still checked against a real sentence that is actually present, so
+deleting the boundary sentence from any of the four files (or from
+`profile-likelihood-ci.Rmd`) will still make the corresponding check fail.
+
+### Diff stat (this follow-up round)
+
+```
+$ git diff --stat -- README.md DESCRIPTION R/zzz.R man/gllvmTMB-package.Rd dev/interval-calibration/verify-claims.R tests/testthat/test-interval-calibration-claims.R
+ DESCRIPTION                                       |  9 ++--
+ R/zzz.R                                           |  9 ++--
+ README.md                                         |  5 +-
+ dev/interval-calibration/verify-claims.R          | 28 ++++++++---
+ tests/testthat/test-interval-calibration-claims.R | 61 ++++++++++++++++++++---
+ 5 files changed, 88 insertions(+), 24 deletions(-)
+```
+
+(`man/gllvmTMB-package.Rd` shows no diff in this round because it was already
+fixed in the previous round and needed no further rewrap — it is a single
+unwrapped line, so it never had the line-break problem.)

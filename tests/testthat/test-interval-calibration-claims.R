@@ -125,15 +125,23 @@ test_that("route-census promotion fails closed on the exact route/state map", {
 
 test_that("CI-13 certificates name the frozen DGP and eligible-fit condition", {
   repo_root <- normalizePath(testthat::test_path("..", ".."))
-  claim_surfaces <- c(
-    "R/loading-ci.R",
+  ## A3-gapclose (see dev/gapclose/A3-fixes-report.md) rewrote the "frozen
+  ## DGP" / "conditional on eligible fits" boundary into plain language on
+  ## these four reader-first surfaces; every other surface still carries the
+  ## original wording. Both groups are checked with the phrasing they
+  ## actually contain, so the test still fails if either boundary sentence
+  ## is deleted or the two groups drift apart.
+  plain_language_surfaces <- c(
     "R/zzz.R",
     "DESCRIPTION",
     "README.md",
+    "man/gllvmTMB-package.Rd"
+  )
+  original_wording_surfaces <- c(
+    "R/loading-ci.R",
     "NEWS.md",
     "_pkgdown.yml",
     "cran-comments.md",
-    "man/gllvmTMB-package.Rd",
     "man/loading_ci.Rd",
     "vignettes/articles/current-limits.Rmd",
     "docs/design/35-validation-debt-register.md",
@@ -144,6 +152,7 @@ test_that("CI-13 certificates name the frozen DGP and eligible-fit condition", {
     "docs/dev-log/artifacts/interval-calibration/2026-08-25-terminal-campaign-evidence.md",
     "docs/dev-log/artifacts/interval-calibration/public-route-census.csv"
   )
+  claim_surfaces <- c(plain_language_surfaces, original_wording_surfaces)
   text <- vapply(
     file.path(repo_root, claim_surfaces),
     function(path) paste(readLines(path, warn = FALSE), collapse = "\n"),
@@ -151,15 +160,51 @@ test_that("CI-13 certificates name the frozen DGP and eligible-fit condition", {
   )
   names(text) <- claim_surfaces
 
+  plain_text <- text[plain_language_surfaces]
+  original_text <- text[original_wording_surfaces]
+
   expect_true(
-    all(grepl("frozen DGP", text, fixed = TRUE)),
-    info = paste(claim_surfaces[!grepl("frozen DGP", text, fixed = TRUE)], collapse = "\n")
+    all(grepl(
+      "one fixed simulated dataset with known true values",
+      plain_text,
+      fixed = TRUE
+    )),
+    info = paste(
+      plain_language_surfaces[!grepl(
+        "one fixed simulated dataset with known true values",
+        plain_text,
+        fixed = TRUE
+      )],
+      collapse = "\n"
+    )
   )
   expect_true(
-    all(grepl("conditional on eligible fits", text, fixed = TRUE)),
+    all(grepl(
+      "only for fits that converge cleanly",
+      plain_text,
+      fixed = TRUE
+    )),
     info = paste(
-      claim_surfaces[
-        !grepl("conditional on eligible fits", text, fixed = TRUE)
+      plain_language_surfaces[!grepl(
+        "only for fits that converge cleanly",
+        plain_text,
+        fixed = TRUE
+      )],
+      collapse = "\n"
+    )
+  )
+  expect_true(
+    all(grepl("frozen DGP", original_text, fixed = TRUE)),
+    info = paste(
+      original_wording_surfaces[!grepl("frozen DGP", original_text, fixed = TRUE)],
+      collapse = "\n"
+    )
+  )
+  expect_true(
+    all(grepl("conditional on eligible fits", original_text, fixed = TRUE)),
+    info = paste(
+      original_wording_surfaces[
+        !grepl("conditional on eligible fits", original_text, fixed = TRUE)
       ],
       collapse = "\n"
     )

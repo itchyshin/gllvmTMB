@@ -24,7 +24,8 @@ check_gllvmTMB(
   multinomial_rail_thresh = 0.99,
   multinomial_range_collapse_thresh = 0.02,
   ordinal_loading_runaway_thresh = Inf,
-  ordinal_loading_absolute_thresh = Inf
+  ordinal_loading_absolute_thresh = Inf,
+  phi_nbinom2_ceiling_thresh = 10000
 )
 }
 \arguments{

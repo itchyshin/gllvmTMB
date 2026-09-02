@@ -197,9 +197,13 @@ carries the full grammar: fixed effects, `latent()`, and every covariance
 tier, with correlations reported on the count-process scale conditional on
 the non-structural component. `zi_nbinom2` reuses the ordinary per-trait
 `nbinom2()` dispersion convention rather than a shared scalar across
-traits. Laplace estimation only: `integration = "va"`, `aghq`, and
-`estimator = "mspl"` all refuse these three family ids with a named
-reason. `zi_binomial()` refuses single-trial (0/1) response data (the
+traits. Laplace estimation only: `integration = "va"` and
+`estimator = "mspl"` both refuse these three family ids with a named
+reason; `aghq` DECLINES to a plain Laplace fit with a warning instead of
+erroring (AGHQ's whole eligibility chain declines rather than refuses for
+every ineligible model -- e.g. `multinomial()` rows get the identical
+treatment -- so this is consistent with AGHQ's existing architecture, not
+a zi-specific gap; corrected 2026-09-02, review R3). `zi_binomial()` refuses single-trial (0/1) response data (the
 mixture is not identified there) and names plain `binomial()` as the
 working alternative. Evidence: exact TMB-vs-hand-density identity (1e-8),
 a finite-difference gradient check, and a known-DGP recovery test per
@@ -473,7 +477,7 @@ NOT in the registry today:
   delta families' two-scales latent-structure restriction (Decision 2
   above): `latent()` and the full covariance grid apply to the count part
   directly. What remains `partial`, not `covered`: no calibrated interval
-  on `zi`, and no VA/AGHQ/MSPL route (Laplace only).
+  on `zi`; VA and MSPL refuse (Laplace only); AGHQ declines to Laplace with a warning rather than refusing.
 - **Skew-normal / skew-t** for skewed continuous-response
   modelling (planned; post-CRAN).
 - **Compound Poisson-Gamma direct parameterisation** (the Tweedie

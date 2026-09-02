@@ -2932,11 +2932,31 @@ predict.gllvmTMB_multi <- function(
       per_row <- .gllvmTMB_newdata_family_ids(object, nd)
       tids_train <- object$tmb_data$trait_id
       if (!is.null(per_row)) {
+        ## S1 (2026-09-02 review): zi_* rows here previously got NO zi
+        ## lookup at all, so this branch silently returned the naive
+        ## count-only mean `mu` instead of `(1-zi)*mu` -- unlike the
+        ## training-row branch above. .gllvmTMB_newdata_family_ids() keys
+        ## on the family-selector column, not the trait, but object$report
+        ## $zi is indexed by TRAIT, so the lookup goes through
+        ## object$trait_col on `out` (present whenever newdata carries a
+        ## trait column, which every mixed-family predict() requires).
+        zi_row_nd <- if (!is.null(object$report$zi) &&
+                         !is.null(object$trait_col) &&
+                         object$trait_col %in% names(out)) {
+          tr_nd <- as.integer(out[[object$trait_col]])
+          out_zi <- rep(NA_real_, length(tr_nd))
+          in_range <- !is.na(tr_nd) & tr_nd >= 1L & tr_nd <= length(object$report$zi)
+          out_zi[in_range] <- object$report$zi[tr_nd[in_range]]
+          out_zi
+        } else {
+          NULL
+        }
         out$est <- .apply_linkinv_per_row(
           out$est,
           per_row$fid,
           per_row$lid,
-          sigma_eps = object$report$sigma_eps
+          sigma_eps = object$report$sigma_eps,
+          zi = zi_row_nd
         )
       } else if (!is.null(fid_vec) && !is.null(tids_train) &&
             object$trait_col %in% names(out)) {

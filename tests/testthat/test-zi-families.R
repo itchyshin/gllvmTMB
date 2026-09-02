@@ -360,7 +360,7 @@ test_that("integration = \"va\" refuses zi_poisson/zi_nbinom2/zi_binomial", {
   )
 })
 
-test_that("aghq is declined (falls back to laplace) for zi_poisson/zi_nbinom2/zi_binomial", {
+test_that("aghq DECLINES (does not error/refuse) for zi_poisson/zi_nbinom2/zi_binomial, with a reason-specific warning (R3/S2)", {
   skip_on_cran()
   set.seed(26)
   n_site <- 20L
@@ -369,13 +369,33 @@ test_that("aghq is declined (falls back to laplace) for zi_poisson/zi_nbinom2/zi
     trait = factor(rep(1:2, each = n_site)),
     y     = c(rpois(n_site, 2), rpois(n_site, 3))
   )
-  fit <- suppressMessages(suppressWarnings(gllvmTMB(
-    y ~ 0 + trait + latent(0 + trait | site, d = 1, unique = FALSE),
-    data = dat, family = zi_poisson(), unit = "site",
-    control = gllvmTMBcontrol(aghq = 5L, se = FALSE)
-  )))
+  ## R3 (2026-09-02 review): AGHQ DECLINES to a plain Laplace fit here --
+  ## it does not error/refuse, unlike integration = "va" and
+  ## estimator = "mspl". This is consistent with AGHQ's existing
+  ## architecture: every OTHER ineligible model (e.g. multinomial rows,
+  ## one clause above this one in R/fit-multi.R) declines the same way,
+  ## none error. NEWS/Design 02/03/register previously (incorrectly)
+  ## called this a "refusal" -- corrected.
+  ##
+  ## S2: the warning's action line must be REASON-SPECIFIC. Captured via
+  ## the cli `.frequency = "once"` mechanism's FIRST firing in this file
+  ## (a later `expect_warning()` on the identical code path would see
+  ## nothing, since it only fires once per R session) -- this is that
+  ## first firing.
+  w <- expect_warning(
+    fit <- gllvmTMB(
+      y ~ 0 + trait + latent(0 + trait | site, d = 1, unique = FALSE),
+      data = dat, family = zi_poisson(), unit = "site",
+      control = gllvmTMBcontrol(aghq = 5L, se = FALSE)
+    ),
+    "AGHQ did not run"
+  )
   expect_false(isTRUE(fit$aghq$used))
   expect_match(fit$aghq$reason, "zero-inflated")
+  expect_match(conditionMessage(w), "not yet supported by AGHQ")
+  ## Regression guard: the OLD action line named unique = FALSE, which this
+  ## fit already used -- must not appear for the zi reason.
+  expect_false(grepl("Use.*latent.*unique = FALSE", conditionMessage(w)))
 })
 
 test_that("a mixed-family fit with one zi_poisson trait alongside a poisson trait fits", {
@@ -425,4 +445,163 @@ test_that("fitted() applies (1 - zi) * mu for zi_poisson", {
   fv <- fitted(fit)
   mu <- exp(fit$report$eta[1])
   expect_equal(fv$est[1], (1 - fit$report$zi[1]) * mu, tolerance = 1e-8)
+})
+
+## ---------------------------------------------------------------------
+## Review fixes (2026-09-02 Opus verification, dev/gapclose/arcD/D1-report.md
+## "Review fixes" section has the full findings table).
+## ---------------------------------------------------------------------
+
+## R1: predictive_check(type = "rootogram") previously refused zi_poisson/
+## zi_nbinom2 outright (R/predictive-diagnostics.R's count_rows filter
+## never included fid 17/18). The rootogram is draws-based (simulate() vs
+## observed), and simulate() already drew the mixture correctly, so the
+## fix is the filter alone.
+test_that("rootogram works on zi_poisson and its zero bar reflects the mixture, not the naive count-only expectation", {
+  skip_on_cran()
+  set.seed(41)
+  n_site <- 60L
+  ## A high structural-zero trait so the "mixture zero bar > naive Poisson
+  ## zero bar" contrast is unambiguous.
+  pi_true <- 0.5
+  mu_true <- 3
+  y <- rpois(n_site, mu_true) * rbinom(n_site, 1L, 1 - pi_true)
+  dat <- data.frame(
+    site  = factor(seq_len(n_site)),
+    trait = factor(rep(1, n_site)),
+    y     = y
+  )
+  ## Needs >= 2 trait levels for `0 + trait` model.matrix(); pad with a
+  ## second, unrelated zi_poisson trait so this stays a pure zi_poisson fit.
+  dat2 <- rbind(
+    dat,
+    data.frame(site = dat$site, trait = factor(rep(2, n_site)),
+               y = rpois(n_site, 4))
+  )
+  fit <- suppressMessages(suppressWarnings(gllvmTMB(
+    y ~ 0 + trait, data = dat2, family = zi_poisson(), unit = "site",
+    control = gllvmTMBcontrol(se = FALSE)
+  )))
+  expect_equal(fit$opt$convergence, 0L)
+
+  p_root <- predictive_check(
+    fit, type = "rootogram", ndraws = 30L, seed = 42L, max_count = 8L
+  )
+  expect_s3_class(p_root, "ggplot")
+  root_meta <- attr(p_root, "gllvmTMB_diagnostic")
+  expect_true(all(root_meta$data$family == "zi_poisson"))
+  expect_silent(ggplot2::ggplot_build(p_root))
+
+  ## The zero bar's "expected" (simulated-mean) count must exceed a naive
+  ## Poisson-only expectation at the fitted mu for trait 1 -- i.e. the
+  ## rootogram's expected zero count reflects zi + (1-zi)*exp(-mu), not
+  ## just exp(-mu). trait 1 is the high-zi trait built above.
+  zero_row <- root_meta$data[
+    root_meta$data$trait == "1" & root_meta$data$count_label == "0",
+  ]
+  expect_equal(nrow(zero_row), 1L)
+  tid1 <- which(levels(dat2$trait) == "1") - 1L
+  mu1 <- exp(fit$report$eta[fit$tmb_data$trait_id == tid1][1])
+  naive_zero_expected <- n_site * dpois(0, mu1)
+  expect_gt(zero_row$expected, naive_zero_expected * 1.5)
+})
+
+## R2: extract_Sigma(link_residual = "auto") (the default) previously fell
+## through link_residual_per_trait()'s terminal `else` for fid 17/18/19,
+## returning NA with a warning -- unlike every other admitted family.
+test_that("extract_Sigma() reports a finite link residual for zi_poisson/zi_nbinom2/zi_binomial, no warning", {
+  skip_on_cran()
+  set.seed(43)
+  n_site <- 60L
+  dat <- data.frame(
+    site  = factor(rep(seq_len(n_site), 2)),
+    trait = factor(rep(1:2, each = n_site)),
+    y     = c(rpois(n_site, 3) * rbinom(n_site, 1, 0.7), rpois(n_site, 2) * rbinom(n_site, 1, 0.8))
+  )
+  fit <- suppressMessages(suppressWarnings(gllvmTMB(
+    y ~ 0 + trait + latent(0 + trait | site, d = 1, unique = FALSE),
+    data = dat, family = zi_poisson(), unit = "site",
+    control = gllvmTMBcontrol(se = FALSE)
+  )))
+  expect_no_warning(sig <- suppressMessages(extract_Sigma(fit, link_residual = "auto")))
+  expect_true(all(is.finite(diag(sig$Sigma))))
+})
+
+## S1: predict(type = "response") on newdata, via the per-row-family
+## branch (.gllvmTMB_newdata_family_ids(), the branch every MIXED-family
+## fit's newdata prediction must take, since mixed fits require a family
+## column), previously did not apply (1 - zi) and returned the naive
+## count-only mean for zi_* rows.
+test_that("predict(type = 'response') on newdata applies (1 - zi) for a mixed zi_poisson/poisson fit", {
+  skip_on_cran()
+  set.seed(44)
+  n_site <- 40L
+  dat <- data.frame(
+    site  = factor(rep(seq_len(n_site), 2)),
+    trait = factor(rep(1:2, each = n_site)),
+    y     = c(rpois(n_site, 3) * rbinom(n_site, 1, 0.6), rpois(n_site, 2))
+  )
+  dat$family <- ifelse(dat$trait == "1", "zi_poisson", "poisson")
+  famlist <- list(zi_poisson = zi_poisson(), poisson = poisson())
+  fit <- suppressMessages(suppressWarnings(gllvmTMB(
+    y ~ 0 + trait, data = dat, family = famlist, trait = "trait", unit = "site",
+    control = gllvmTMBcontrol(se = FALSE)
+  )))
+  nd <- data.frame(
+    site = factor(1, levels = levels(dat$site)),
+    trait = factor("1", levels = levels(dat$trait)),
+    family = "zi_poisson"
+  )
+  pr <- predict(fit, newdata = nd, type = "response")
+  tid1 <- which(levels(dat$trait) == "1") - 1L
+  eta1 <- fit$report$eta[fit$tmb_data$trait_id == tid1][1]
+  mu1 <- exp(eta1)
+  zi1 <- fit$report$zi[1]
+  expect_equal(pr$est[1], (1 - zi1) * mu1, tolerance = 1e-6)
+  ## Regression guard: this used to equal the NAIVE mu (no (1-zi) factor).
+  expect_false(isTRUE(all.equal(pr$est[1], mu1, tolerance = 1e-6)))
+})
+
+## R4: check_gllvmTMB() previously had NO detector for a runaway per-trait
+## NB2 dispersion (phi -> Poisson boundary); a fit with a 2.66e6 phi against
+## a true 6 reported ZERO non-PASS rows. New boundary_phi_nbinom2_<trait>
+## row, WARN when phi >= phi_nbinom2_ceiling_thresh (default 1e4).
+test_that("check_gllvmTMB() flags a phi_nbinom2 runaway at the numerical ceiling", {
+  skip_on_cran()
+  chk_ok <- gllvmTMB:::.gllvmTMB_check_row(
+    "boundary_phi_nbinom2_x", "PASS", "5", "1e4", "", ""
+  )
+  expect_true("component" %in% names(chk_ok))
+
+  set.seed(303)
+  n_site <- 400L
+  n_trait <- 6L
+  beta_true <- c(1.4, 1.1, 1.7, 1.2, 1.5, 1.0)
+  lambda_true <- c(0.5, -0.4, 0.35, -0.3, 0.4, -0.35)
+  pi_true <- c(0.1, 0.2, 0.3, 0.4, 0.15, 0.25)
+  phi_true <- c(4, 5, 3, 6, 4, 5)
+  u <- rnorm(n_site)
+  eta <- outer(u, lambda_true) + matrix(beta_true, n_site, n_trait, byrow = TRUE)
+  mu <- exp(eta)
+  z <- matrix(rbinom(n_site * n_trait, 1, rep(1 - pi_true, each = n_site)), n_site, n_trait)
+  Y <- matrix(
+    rnbinom(n_site * n_trait, mu = as.vector(mu), size = rep(phi_true, each = n_site)),
+    n_site, n_trait
+  ) * z
+  dat <- data.frame(
+    site  = factor(rep(seq_len(n_site), n_trait)),
+    trait = factor(rep(seq_len(n_trait), each = n_site)),
+    y     = as.vector(Y)
+  )
+  fit <- suppressMessages(suppressWarnings(gllvmTMB(
+    y ~ 0 + trait + latent(0 + trait | site, d = 1, unique = FALSE),
+    data = dat, family = zi_nbinom2(), unit = "site",
+    control = gllvmTMBcontrol(se = FALSE)
+  )))
+  chk <- check_gllvmTMB(fit)
+  phi_rows <- chk[grepl("^boundary_phi_nbinom2_", chk$component), ]
+  expect_equal(nrow(phi_rows), 6L)
+  ## This exact seed reproduces a real runaway (trait 4, phi_hat ~ 2.66e6
+  ## against true 6) -- at least one WARN is expected, not a tautology.
+  expect_true(any(phi_rows$status == "WARN"))
 })

@@ -12,9 +12,11 @@
   reuses the ordinary per-trait `nbinom2()` dispersion convention; Laplace
   estimation only. **Not in scope:** no covariates or random effects on the
   structural-zero probability itself (`zi` is one logit-scale number per
-  trait); no `integration = "va"`, `aghq`, or `estimator = "mspl"` route (all
-  three refuse zi_* families with a named reason); no reported interval on
-  `zi`; `zi_binomial()` refuses single-trial (0/1) response data (the mixture
+  trait); `integration = "va"` and `estimator = "mspl"` both refuse zi_*
+  families with a named reason; `aghq` DECLINES to a plain Laplace fit with
+  a warning (it does not error) -- AGHQ's eligibility chain always declines
+  rather than refuses, for every ineligible model, not only zi_*; no
+  reported interval on `zi`; `zi_binomial()` refuses single-trial (0/1) response data (the mixture
   is not identified there) and names plain `binomial()` as the working
   alternative. `fitted()`/`predict(type = "response")` report
   `(1 - zi) * mu`; `simulate()` and `residuals(type = "randomized_quantile")`

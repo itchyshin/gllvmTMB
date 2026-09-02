@@ -372,6 +372,41 @@ link_residual_per_trait <- function(fit) {
       ## via .multinomial_link_residual_offdiag(); this scalar path carries the
       ## diagonal only (McFadden 1974; Nakagawa & Schielzeth 2010).
       out[t] <- pi^2 / 3
+    } else if (fid == 17L) {
+      # zi_poisson (fid 17), log link
+      ## Review R2 (2026-09-02): the 14-slot registry contract names a
+      ## link_residual_rule for every family; zi_poisson had none, so
+      ## extract_Sigma(link_residual = "auto") silently returned NA here.
+      ## Rule: the zi mixture's count-scale residual is the CONDITIONAL
+      ## count family's rule (Decision 3, dev/gapclose/arcD/alignment-zi.md)
+      ## -- i.e. exactly the fid == 2 (plain Poisson) branch above, applied
+      ## to the same mu_t = mean(exp(eta)) across the trait's rows. This is
+      ## deliberately the count-process residual, NOT a residual that also
+      ## incorporates the extra between-observation variance the mixture
+      ## itself contributes (Var(Y) = (1-zi)*mu*(1 + zi*mu), fitted_response
+      ## _rule / variance_rule in alignment-zi.md) -- documented as a scope
+      ## boundary, not silently narrowed.
+      if (is.null(eta) || length(eta) < max(rows_t)) {
+        out[t] <- NA_real_
+      } else {
+        mu_t <- mean(exp(eta[rows_t]))
+        out[t] <- if (is.finite(mu_t) && mu_t > 0) log1p(1 / mu_t) else NA_real_
+      }
+    } else if (fid == 18L) {
+      # zi_nbinom2 (fid 18), log link
+      ## Same "conditional count family's rule" choice as fid 17 above,
+      ## applied to fid 5's NB2 trigamma(phi) form (log_phi_nbinom2 is
+      ## REUSED for zi_nbinom2, per Decision 4 -- so the same dispersion
+      ## vector and the same rule apply unchanged).
+      phi_vec <- as.numeric(fit$report$phi_nbinom2 %||% rep(1, Tn))
+      phi_t <- if (length(phi_vec) >= t) phi_vec[t] else phi_vec[1]
+      out[t] <- trigamma(max(phi_t, 1e-12))
+    } else if (fid == 19L) {
+      # zi_binomial (fid 19), logit link only (R/families.R restricts it)
+      ## Same "conditional count family's rule" choice as fid 17/18 above,
+      ## applied to fid 1's logit-binomial constant pi^2/3 -- zi_binomial
+      ## has no probit/cloglog route, so no link_id dispatch is needed here.
+      out[t] <- pi^2 / 3
     } else {
       out[t] <- NA_real_
     }

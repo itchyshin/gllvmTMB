@@ -779,10 +779,14 @@ verification runs):
   branch (`src/drmTMB.cpp`) and GLLVM.jl's `src/families/twopart.jl` are
   the two independent oracle derivations the density form was checked
   against (recon, `dev/gapclose/arcD/recon-zi.md`).
-- Not established: `integration = "va"`, `aghq`, and `estimator = "mspl"`
-  all refuse the three family ids (`R/va-routing.R`'s `0:15` allow-list;
-  `R/fit-multi.R`'s AGHQ eligibility chain; the MSPL registry has no
-  matching rows) -- no evidence exists for any of those routes here.
+- Not established: `integration = "va"` and `estimator = "mspl"` both
+  refuse the three family ids (`R/va-routing.R`'s `0:15` allow-list; the
+  MSPL registry has no matching rows) -- no evidence exists for either
+  route here. `aghq` DECLINES to a plain Laplace fit with a warning
+  instead (`R/fit-multi.R`'s eligibility chain -- consistent with how
+  every OTHER ineligible model is handled there, e.g. `multinomial()`
+  rows; corrected 2026-09-02, review R3, was previously stated as a
+  refusal).
 - Test file: `tests/testthat/test-zi-families.R`,
   `tests/testthat/test-zi-recovery.R`.
 

@@ -1131,7 +1131,7 @@ residuals.gllvmTMB_multi <- function(
   dat <- .gllvmTMB_rootogram_data(draws, max_count = max_count)
   if (nrow(dat) == 0L) {
     cli::cli_abort(c(
-      "{.arg type = \"rootogram\"} requires Poisson, NB1, or NB2 rows.",
+      "{.arg type = \"rootogram\"} requires Poisson, NB1, NB2, zi_poisson, or zi_nbinom2 rows.",
       "i" = "Use {.arg type = \"rq_qq\"} for exact residual Q-Q checks on other families."
     ))
   }
@@ -1154,8 +1154,14 @@ residuals.gllvmTMB_multi <- function(
 }
 
 .gllvmTMB_rootogram_data <- function(draws, max_count = NULL) {
+  ## fid 17/18 (zi_poisson/zi_nbinom2) added (2026-09-02 review R1): the
+  ## rootogram is entirely draws-based (compares OBSERVED vs SIMULATED
+  ## counts, both already family-aware -- simulate() draws the mixture
+  ## correctly for these two fids), so no other change is needed here.
+  ## zi_binomial (fid 19) is deliberately excluded, matching binomial
+  ## (fid 1) staying excluded from the plain-count rootogram already.
   count_rows <- draws$row_data$family_id %in%
-    c(2L, 5L, 15L) &
+    c(2L, 5L, 15L, 17L, 18L) &
     is.finite(draws$observed) &
     draws$observed >= 0 &
     draws$observed == floor(draws$observed)

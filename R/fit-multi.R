@@ -3811,11 +3811,14 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     }, logical(1))
     if (any(single_trial_traits)) {
       bad_traits <- zi_binom_traits[single_trial_traits] + 1L  # 1-indexed for the message
+      ## S3 (2026-09-02 review): subject-verb agreement for the >1-trait
+      ## case ("Trait 1, 2 has" -> "have").
+      trait_verb <- if (length(bad_traits) > 1L) "have" else "has"
       cli::cli_abort(c(
         "{.fn zi_binomial}: single-trial (0/1) responses do not identify the model.",
         "x" = paste0(
           "Trait ", paste(bad_traits, collapse = ", "),
-          " has no row with n_trials >= 2 (via {.code cbind(successes, failures)} or a trials column)."
+          " ", trait_verb, " no row with n_trials >= 2 (via {.code cbind(successes, failures)} or a trials column)."
         ),
         "i" = "With N = 1, P(y = 1) = (1 - zi) * p collapses the structural-zero probability and the count probability into one free product -- there is no curvature to separate them.",
         ">" = "Supply multi-trial data (N >= 2 for at least one row per trait), or use {.code binomial()} if the data really are single-trial."
@@ -7370,10 +7373,26 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ## the documented, intended behaviour (one node IS the Laplace rule), not a
       ## silently unmet request.
       if (!identical(aghq_k_req, 1L)) {
+        ## S2 (2026-09-02 review): the action line below used to be a
+        ## SINGLE fixed sentence naming the Psi/unique=FALSE fix -- correct
+        ## for the "Stage 1a requires z_B" reason, but printed unchanged
+        ## for every OTHER decline reason too (multinomial rows,
+        ## zero-inflated rows, mi() predictors, predictor-informed latent
+        ## scores, the gate table, the n_traits auto-decline), where it is
+        ## irrelevant or actively misleading -- reproduced verbatim on a
+        ## fit that ALREADY used `unique = FALSE` and still got told to use
+        ## it. Pick the action line from the actual reason instead.
+        aghq_action <- if (grepl("^Stage 1a requires z_B", ineligible)) {
+          "Ordinary {.fn latent} carries a per-trait Psi by default, which puts {.code s_B} in the random vector; AGHQ Stage 1a is loadings-only. Use {.code latent(..., unique = FALSE)} to make the model eligible, or drop {.arg aghq}."
+        } else if (grepl("^(multinomial rows|zero-inflated rows|mi\\(\\) predictors|predictor-informed latent scores)", ineligible)) {
+          "This model class is not yet supported by AGHQ. Drop {.arg aghq} (the default {.code integration = \"laplace\"} fits it)."
+        } else {
+          "Drop {.arg aghq}, or use {.code integration = \"laplace\"} (the default) for this model."
+        }
         cli::cli_warn(c(
           "{.arg aghq} was requested but AGHQ did not run; this is a plain Laplace fit.",
           "i" = "Reason: {ineligible}.",
-          ">" = "Ordinary {.fn latent} carries a per-trait Psi by default, which puts {.code s_B} in the random vector; AGHQ Stage 1a is loadings-only. Use {.code latent(..., unique = FALSE)} to make the model eligible, or drop {.arg aghq}."
+          ">" = aghq_action
         ), .frequency = "once", .frequency_id = "gllvmTMB-aghq-ineligible")
       }
     } else {

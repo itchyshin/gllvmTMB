@@ -106,13 +106,51 @@ the AGHQ per-node loop), NOT a reuse of the fid 12/13 branches.
 ## Fitted-response / variance rules
 
 - `fitted_response_rule`: $E[Y_{it}] = (1-\pi_t)\mu_{it}$ (Decision 5).
-- `variance_rule`:
+- `variance_rule` (on the SAME scale `fitted_response_rule` reports --
+  zi_binomial's is the success-COUNT scale, $E[Y]=(1-\pi)Np$, matching
+  the $Np$ inside every term below; see S6 in the 2026-09-02 review, D1
+  report "Review fixes"):
   - zi_poisson: $\text{Var}(Y) = (1-\pi)\mu[1 + \pi\mu]$
   - zi_nbinom2: $\text{Var}(Y) = (1-\pi)\mu\left[1 + \mu\left(\pi + \frac{1}{\phi}\right)\right]$
   - zi_binomial: $\text{Var}(Y) = (1-\pi)Np[1-(1-\pi)Np/N + \pi N p]$ i.e.
     $(1-\pi)N p (1 - p) + \pi(1-\pi)(Np)^2$ (standard ZI-variance
     decomposition $\text{Var} = (1-\pi)\text{Var}_c + \pi(1-\pi)\mu_c^2$
-    applied to each count kernel's own $\text{Var}_c$/$\mu_c$).
+    applied to each count kernel's own $\text{Var}_c$/$\mu_c$). NOTE:
+    `R/methods-gllvmTMB.R`'s `fitted()`/`predict(type="response")`
+    implementation reports zi_binomial on the per-TRIAL PROBABILITY scale
+    $(1-\pi)p$ (matching plain `binomial()`'s own response-scale
+    convention exactly), not the count scale shown here -- both are valid
+    parameterisations of the same fit; a caller wanting the count-scale
+    mean multiplies by $N$.
+
+## `link_residual_rule` (14-slot contract; review R2, 2026-09-02)
+
+**Rule: the zi mixture's link residual is the CONDITIONAL COUNT FAMILY's
+own rule**, applied unchanged (`R/extract-sigma.R:link_residual_per_trait()`,
+fid 17/18/19 branches, added alongside the fid 2/5/1 branches they reuse):
+
+- zi_poisson: identical to plain Poisson (fid 2) -- $\sigma^2_d =
+  \log(1 + 1/\mu_t)$, $\mu_t$ the trait's mean `exp(eta)`.
+- zi_nbinom2: identical to plain nbinom2 (fid 5) -- $\sigma^2_d =
+  \psi'(\phi_t)$ (trigamma), using the SAME `log_phi_nbinom2` vector
+  zi_nbinom2 already reuses (Decision 4).
+- zi_binomial: identical to logit-link binomial (fid 1) -- $\sigma^2_d =
+  \pi^2/3$ (zi_binomial has no probit/cloglog route, so no link_id
+  dispatch is needed).
+
+**Scope boundary, stated rather than silently narrowed:** this is
+deliberately the count-PROCESS residual only. It does NOT additionally
+incorporate the extra between-observation variance the zero-inflation
+mixture itself contributes on top of the conditional count process
+(`variance_rule` above is the full mixture variance; `link_residual_rule`
+is the narrower quantity `extract_Sigma()`'s mixed-family correlation
+machinery consumes, matching how every other admitted family's
+`link_residual_rule` is ALSO a link-scale approximation, not the family's
+full response-scale variance). Before this fix,
+`link_residual_per_trait()` fell through to its terminal `else { NA_real_
+}` for fid 17/18/19, so `extract_Sigma(link_residual = "auto")` (the
+DEFAULT) silently reported NA on every zi trait -- found by adversarial
+review, not by this arc's own tests.
 
 ## Simulator draw
 
@@ -155,3 +193,16 @@ exports.
    `R/dispersion-trait-map.R` usage in `R/fit-multi.R`, the
    `family_to_id()` error enumeration) are updated in this arc; see
    `dev/gapclose/arcD/D1-report.md` for the exact line ranges touched.
+   **CORRECTED 2026-09-02 (review R1):** this resolution was INCOMPLETE
+   as first written. `R/predictive-diagnostics.R` has a SECOND per-family
+   gating list beyond the randomized-quantile-residual branch this item
+   originally checked -- `.gllvmTMB_rootogram_data()`'s `count_rows`
+   filter (`family_id %in% c(2L, 5L, 15L)`), which the rootogram diagnostic
+   depends on. That list was NOT extended in the first pass, so
+   `predictive_check(type = "rootogram")` refused fid 17/18 outright
+   (`"requires Poisson, NB1, or NB2 rows"`) despite the rootogram existing
+   specifically to visualise excess zeros. Fixed in the review-fixes pass
+   (`R/predictive-diagnostics.R`, `count_rows` extended to
+   `c(2L, 5L, 15L, 17L, 18L)`; fid 19/zi_binomial deliberately excluded,
+   matching plain binomial fid 1 staying excluded already). Test:
+   `tests/testthat/test-zi-families.R`, "rootogram works on zi_poisson...".

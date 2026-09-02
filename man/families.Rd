@@ -301,17 +301,19 @@ student(link = "identity") # estimate df
 student(link = "identity", df = 3) # fix df at 3
 tweedie(link = "log")
 censored_poisson(link = "log")
-zi_poisson()
-zi_nbinom2()
-zi_binomial()
 \donttest{
 ## A small simulated rank-1 GLLVM fit with one zero-inflated trait.
+## Calibrated to converge cleanly (2026-09-02 review R5: the previous
+## DGP -- n_site = 60, beta = c(0.3, -0.2, 0.5) -- did NOT converge,
+## fit$opt$convergence == 1 with NaNs produced; larger n_site, larger
+## (less zero-inflation-confounded) trait means, and unique = FALSE
+## fix it, verified by running this block verbatim).
 set.seed(1)
-n_site <- 60L
+n_site <- 100L
 n_trait <- 3L
 u <- rnorm(n_site)
-lambda <- c(0.8, -0.6, 0.5)
-beta <- c(0.3, -0.2, 0.5)
+lambda <- c(0.6, -0.5, 0.4)
+beta <- c(1.2, 0.9, 1.4)
 pi_true <- 0.25
 eta <- outer(u, lambda) + matrix(beta, n_site, n_trait, byrow = TRUE)
 mu <- exp(eta)
@@ -323,13 +325,12 @@ dat <- data.frame(
   y     = as.vector(y)
 )
 fit <- gllvmTMB(
-  y ~ 0 + trait + latent(0 + trait | site, d = 1),
+  y ~ 0 + trait + latent(0 + trait | site, d = 1, unique = FALSE),
   data = dat, family = zi_poisson(), unit = "site"
 )
+stopifnot(fit$opt$convergence == 0)  # verified 0 on this exact seed
 fit$report$zi  # per-trait fitted structural-zero probability
 }
-zi_nbinom2()
-zi_binomial()
 delta_gamma()
 delta_gamma_mix()
 delta_gengamma()

@@ -352,3 +352,307 @@ the other lane should review this diff before it lands.
   per the task's own DGP spec); no reason to expect it doesn't work
   (nothing in the new fid branches interacts with slope machinery), but
   it is unverified.
+
+---
+
+# Review fixes (2026-09-02, Opus adversarial verification)
+
+Source review: `verify-arcD.md` (Gauss/Noether/Fisher/Boole personas),
+verdict **PASS-WITH-CORRECTIONS**, 0 BLOCKING / 6 REQUIRED / 6 SUGGESTION.
+The likelihood itself was independently re-derived and held exactly
+(density 0.000e+00 / 2.132e-14 / 1.137e-13; gradient ~1e-8 relative
+off-optimum; a mixed 3-trait `zi_poisson`/`poisson`/`zi_nbinom2` sandwich
+with a permutation control proving 54 nll units of discriminating power).
+Every REQUIRED/SUGGESTION finding was about the surrounding surface
+(diagnostics, docs, an example, a warning's action text, recovery-bar
+generalisation) or a false claim on a reader-facing doc, not the density.
+All items below are now fixed and tested.
+
+## R1 — rootogram refused zi_poisson/zi_nbinom2
+
+`R/predictive-diagnostics.R`: `.gllvmTMB_rootogram_data()`'s `count_rows`
+filter extended `c(2L, 5L, 15L)` -> `c(2L, 5L, 15L, 17L, 18L)` (fid 19
+zi_binomial deliberately excluded, matching plain binomial fid 1 staying
+excluded already); the `type = "rootogram"` error message text updated to
+match. Purely draws-based (observed vs `simulate()`), so the filter
+change alone fixes it -- `simulate()` already drew the mixture correctly.
+Corrected the false claim in `dev/gapclose/arcD/alignment-zi.md` item 7
+(originally said this location was "updated in this arc" when only the
+randomized-quantile-residual list had been, not the separate rootogram
+list) and in FAM-21's register row.
+
+Test: `test-zi-families.R` "rootogram works on zi_poisson and its zero
+bar reflects the mixture, not the naive count-only expectation" --
+asserts the rootogram builds, and that its zero-count bar's simulated
+expectation exceeds a naive Poisson-only `n * dpois(0, mu)` by > 50% on a
+pi=0.5 trait (i.e. genuinely reflects the mixture, not just the count
+kernel).
+
+## R2 — `link_residual_rule` unimplemented for fid 17/18/19
+
+`R/extract-sigma.R`: `link_residual_per_trait()` gained fid 17/18/19
+branches, each REUSING the conditional count family's own rule unchanged
+(fid 17 -> fid 2's Poisson `log1p(1/mu)`; fid 18 -> fid 5's NB2
+`trigamma(phi)`, on the SAME `log_phi_nbinom2` vector zi_nbinom2 already
+reuses; fid 19 -> fid 1's logit-binomial `pi^2/3`, zi_binomial has no
+other link). Documented as a stated scope boundary (the count-PROCESS
+residual only, not a residual incorporating the mixture's own extra
+variance) in `dev/gapclose/arcD/alignment-zi.md`'s new `link_residual_rule`
+section, `docs/design/02-family-registry.md`, and `docs/design/
+03-likelihoods.md`'s new zero-inflated-families subsection.
+
+Test: `test-zi-families.R` "extract_Sigma() reports a finite link
+residual ... no warning" -- fits a `zi_poisson` + `latent()` model,
+asserts `extract_Sigma(link_residual = "auto")` emits no warning and
+every diagonal entry is finite (previously NA with a warning).
+
+## R3 — "VA/AGHQ/MSPL all refuse" false for AGHQ
+
+**Decision taken: corrected the docs, did NOT make AGHQ hard-error.**
+Verified AGHQ's entire eligibility chain (`R/fit-multi.R`, the `ineligible
+<- if (...) ... else if (...) ...` cascade) declines to a plain Laplace
+fit with a warning for EVERY ineligibility reason -- `k = 1`, wrong random
+block, no B-tier `latent()`, `use_lv_B`, `mi()` predictors, multinomial
+rows, the gate table, the `n_traits` auto-decline -- none of them ever
+abort. Making zi_* uniquely hard-error would be a special case
+inconsistent with AGHQ's own established architecture (multinomial rows
+get the textually-identical treatment one clause above the zi one), a
+larger and riskier change than the finding requires, for a decline-vs-
+refuse framing distinction that VA's genuinely different architecture
+(which DOES abort on ineligibility, by design) does not share. Fixed
+instead: `NEWS.md`, `docs/design/02-family-registry.md` (both the prose
+paragraph and the roadmap-bullet summary line), `docs/design/
+03-likelihoods.md`, and register rows FAM-21/22/23 all now say VA and
+MSPL refuse while AGHQ declines to Laplace with a warning, explaining why
+that is not zi-specific.
+
+Test: merged into the existing `test-zi-families.R` "aghq is declined"
+test (renamed "aghq DECLINES (does not error/refuse) for zi_poisson/
+zi_nbinom2/zi_binomial, with a reason-specific warning (R3/S2)") --
+`gllvmTMBcontrol(aghq = 5L)` on a zi_poisson fit returns a real
+`gllvmTMB_multi` fit (not an error) with `fit$aghq$used == FALSE`.
+
+## S2 — AGHQ decline warning's action line was wrong for zi
+
+`R/fit-multi.R`: the warning's `>` action-line was a single fixed
+sentence naming the `latent(..., unique = FALSE)` fix -- correct for the
+"Stage 1a requires z_B" reason, printed UNCHANGED for every other decline
+reason too, including on a fit that had ALREADY used `unique = FALSE`.
+Now dispatches on `ineligible`: the Psi/`unique=FALSE` advice only for
+that one reason; "This model class is not yet supported by AGHQ. Drop
+`aghq`..." for multinomial/zero-inflated/`mi()`/predictor-informed-LV
+rows; a generic "drop `aghq` or use `integration = \"laplace\"`" fallback
+otherwise.
+
+Test: the same R3 test above asserts
+`conditionMessage(w)` contains "not yet supported by AGHQ" and does NOT
+contain the `unique = FALSE` sentence (regression guard, reproduced
+verbatim from the review's repro: a fit that already used
+`unique = FALSE` and was still told to use it).
+
+## R4 — FAM-22's phi caveat understated; no runaway detector
+
+**Re-measured exactly as the review specified** (n_site = 400, seeds
+101/202/303, shipped DGP):
+
+| seed | conv | int_err | zi_err | rel_frob | median phi relerr | #traits >30% | per-trait phi relerr |
+|---|---|---|---|---|---|---|---|
+| 101 | 0 | 0.0701 | 0.0336 | 0.1941 | 0.189 | 2/6 | 0.083, 0.934, 0.126, 1.038, 0.039, 0.253 |
+| 202 | 0 | 0.0732 | 0.0491 | 0.1784 | 0.219 | 2/6 | 0.192, 0.174, 0.431, 0.246, 0.601, 0.058 |
+| 303 | 0 | 0.1372 | 0.0944 | 0.3611 | 0.157 | 2/6 | 0.226, 1.266, 0.028, 443780, 0.087, 0.084 |
+
+**Confirms the review's finding exactly: 2/6, not "one trait", in EVERY
+seed tried.** Seed 303 trait 4's `phi_hat` reaches the same ~2.66e6
+runaway the review measured (443780x relative error against phi_true=6),
+on a fit that reports clean convergence, a PD Hessian, and passed
+`max_gradient` -- and, before this fix, ZERO `check_gllvmTMB()` rows
+flagged it.
+
+**Fixed:** `R/diagnose.R` gained a `boundary_phi_nbinom2_<trait>` row
+(new `phi_nbinom2_ceiling_thresh = 1e4` parameter), WARN when a trait's
+`phi_nbinom2` (fid 5 nbinom2 OR fid 18 zi_nbinom2, which share the same
+`log_phi_nbinom2` vector) is not finite or sits at/above the ceiling.
+1e4 is two orders of magnitude past `.clamp_log_phi()`'s own [0.01, 100]
+sane-starting-range upper bound (`R/fit-multi.R`) -- unambiguously a
+runaway, not a plausible large dispersion. Verified on the seed-303
+fixture: trait 4 now reports `WARN 2663000` while the other five report
+`PASS`.
+
+Register FAM-22 and this report's earlier "Honest caveat" section were
+BOTH corrected in place (`docs/design/35-validation-debt-register.md`)
+to the measured 2/6-in-every-seed number, replacing the earlier "one
+trait can still exceed it" understatement, and to record the new
+detector.
+
+Test: `test-zi-families.R` "check_gllvmTMB() flags a phi_nbinom2 runaway
+at the numerical ceiling" -- reproduces the seed-303 n=400 fixture,
+asserts 6 `boundary_phi_nbinom2_*` rows exist and at least one is WARN
+(not a tautology; this exact seed is known to produce a real runaway).
+
+## R5 — shipped `\donttest{}` example did not converge
+
+Root cause (confirmed, not just inferred): `n_site = 60`, 3 traits,
+`beta = c(0.3, -0.2, 0.5)` (mu in [0.67, 1.65] -- too much overlap
+between structural and sampling zeros to identify `zi` cleanly) and the
+DEFAULT `latent(0 + trait | site, d = 1)` (carries per-trait Psi, adding
+random-effect flexibility that competes with `zi` for explaining excess
+zeros -- documented mechanism, same one `test-zi-recovery.R`'s header
+comment already names). Re-ran the ORIGINAL example verbatim to confirm:
+`fit$opt$convergence == 1`.
+
+**Fixed and verified by running the NEW example verbatim:**
+
+```
+CONVERGENCE CODE: 0
+```
+
+(`n_site = 100`, `beta = c(1.2, 0.9, 1.4)`, `unique = FALSE`; full output
+in the "Reply" section below.) The example now also asserts
+`stopifnot(fit$opt$convergence == 0)` inline, so a future regression
+fails loud in `R CMD check --run-donttest`, not silently.
+
+## S5 — duplicated example lines in `man/families.Rd`
+
+The bare `zi_poisson()`/`zi_nbinom2()`/`zi_binomial()` calls were
+removed from `zi_poisson()`'s own `@examples` block (replaced entirely by
+the fixed `\donttest{}` fit) and from `zi_nbinom2()`/`zi_binomial()`'s
+now-empty `@examples` tags (dropped entirely -- the shared `Families` page
+does not need every constructor to repeat a one-line call).
+`devtools::document()` confirms no `zi_poisson()`/`zi_nbinom2()`/
+`zi_binomial()` bare-call lines remain anywhere in `man/families.Rd`.
+
+## R6 — single-seed recovery bars did not generalise
+
+**Re-measured exactly as specified, n_site = 150, seeds 101/202/303/404:**
+
+zi_poisson:
+
+| seed | int_err (<0.15) | zi_err (<0.08) | rel_frob (<0.25) |
+|---|---|---|---|
+| 101 | 0.0794 | 0.0655 | 0.1241 |
+| 202 | 0.0671 | **0.1089** | 0.1852 |
+| 303 | 0.0926 | **0.1118** | 0.1720 |
+| 404 | **0.1632** | 0.0348 | **0.2776** |
+
+zi_binomial:
+
+| seed | int_err (<0.15) | zi_err (<0.08) | rel_frob (<0.25) |
+|---|---|---|---|
+| 101 | 0.0774 | 0.0709 | 0.2368 |
+| 202 | 0.0649 | 0.0662 | 0.1410 |
+| 303 | 0.1221 | **0.0945** | **0.2703** |
+| 404 | 0.1034 | 0.0379 | 0.1930 |
+
+**Confirms the review's finding: 3 of 4 zi_poisson seeds and 1 of 4
+zi_binomial seeds breach at least one predeclared bar at n = 150.**
+
+**Fix taken: raised n rather than widening the bars** (per the review's
+own stated preference). Re-measured at several n:
+
+zi_poisson, n = 200 (all 4 original seeds, plus 102/103/104/105 for the
+heavy block):
+
+| seed | int_err | zi_err | rel_frob |
+|---|---|---|---|
+| 101 | 0.1044 | 0.0470 | 0.0427 |
+| 102 | 0.1346 | 0.0526 | 0.1629 |
+| 103 | 0.1322 | 0.0460 | 0.1071 |
+| 104 | 0.1013 | 0.0382 | 0.1818 |
+| 105 | 0.1246 | 0.0474 | 0.2143 |
+| 202 | 0.1165 | 0.0583 | 0.1176 |
+| 303 | 0.0973 | 0.0614 | 0.1126 |
+| 404 | 0.0882 | 0.0550 | 0.1631 |
+
+All 8 seeds hold all 3 original bars at n = 200 (n = 150 did not; n = 200
+was chosen over n = 250/350, which hold with larger margins but cost
+more runtime, because 200 already clears every measured seed).
+
+zi_binomial, n = 200 did NOT generalise (seed 202 int_err 0.1990, seed
+404 int_err 0.1617, both > 0.15); n = 250 does, all 4 seeds:
+
+| seed | int_err | zi_err | rel_frob |
+|---|---|---|---|
+| 101 | 0.0707 | 0.0652 | 0.1693 |
+| 202 | 0.0982 | 0.0353 | 0.1430 |
+| 303 | 0.1155 | 0.0551 | 0.2104 |
+| 404 | 0.1095 | 0.0130 | 0.2043 |
+
+**Applied:** `test-zi-recovery.R`'s zi_poisson test raised to n_site =
+200; zi_binomial to n_site = 250 (zi_nbinom2's n = 400 was already
+established and is unaffected). The heavy 5-seed block (seeds 101:105)
+now runs at n_site = 200 too and asserts `zi` (< 0.08) and loadings
+(rel. Frobenius < 0.25) in addition to intercepts and convergence -- it
+previously asserted ONLY convergence and a loose 0.30 intercept bar,
+never checking `zi` or loadings across seeds at all. Register rows
+FAM-21/FAM-23 and this report's earlier recovery table were corrected in
+place to the new n_site.
+
+Total wall time for `test-zi-recovery.R`: 28.8s fast-only,
+36.5s with `GLLVMTMB_HEAVY_TESTS=1` (both well under the 2-minute budget).
+
+## S1 — `predict(type="response")` newdata per-row-family branch missed `zi`
+
+`R/methods-gllvmTMB.R`: the `.gllvmTMB_newdata_family_ids()` branch (the
+one EVERY mixed-family fit's newdata prediction takes, since
+`gllvmTMB()` requires a `family` column on any mixed fit) built no `zi`
+lookup at all, so it silently returned the naive `mu` for zi_* rows
+instead of `(1-zi)*mu`. Fixed: looks `zi` up via `object$trait_col` on
+the output rows (present whenever newdata carries a trait column, which
+every mixed-family `predict()` requires) and passes it through to
+`.apply_linkinv_per_row()`.
+
+Test: `test-zi-families.R` "predict(type = 'response') on newdata applies
+(1 - zi) for a mixed zi_poisson/poisson fit" -- fits a mixed 2-trait
+model, predicts on one newdata row, asserts the result equals
+`(1-zi)*mu` (not the naive `mu`) to 1e-6.
+
+## S3 — refusal grammar ("Trait 1, 2 has")
+
+`R/fit-multi.R`: the single-trial `zi_binomial` refusal now uses "has"/
+"have" correctly (`trait_verb <- if (length(bad_traits) > 1L) "have" else
+"has"`). Covered incidentally by the existing single-trial-refusal test
+(2-trait fixture), which now exercises the plural branch.
+
+## S6 — scale mismatch between `fitted_response_rule` and `variance_rule` for zi_binomial
+
+`dev/gapclose/arcD/alignment-zi.md`: added one clarifying sentence next
+to the `variance_rule` table -- the count-scale `variance_rule` shown
+there and the per-trial-probability-scale `fitted_response_rule` /
+`R/methods-gllvmTMB.R` implementation are both valid, on DIFFERENT
+scales of the same fit (multiply the probability-scale mean by `N` to
+reach the count scale shown in `variance_rule`); not a contradiction,
+but previously unstated.
+
+## S4 — not actioned (explicitly deferred by the review itself)
+
+"`zi_binomial` admission needs only one row per trait with `n_trials >=
+2`" was filed as a SUGGESTION the review itself said should not be
+re-litigated ("Decision 6 as written, so not re-litigated"). No change
+made.
+
+## Not actioned: housekeeping note on `docs/dev-log/after-task/...`
+
+The review's §6 housekeeping note ("`docs/dev-log/after-task/
+2026-09-02-gapclose-arcD-zero-inflated.md` exists in the worktree but is
+untracked ... the repo's closure rule wants it committed with the PR")
+is a git/process matter for whoever commits and opens the PR, not a code
+or doc-correctness fix; not actioned here (this arc's instructions were
+to fix findings with tests, not to manage commit/PR mechanics).
+
+## Full regression after all fixes
+
+```
+devtools::test(filter = "zi-")            : zi-families 42/42, zi-recovery 13/13 (+1 heavy skip)
+GLLVMTMB_HEAVY_TESTS=1, zi-recovery       : 33/33 (heavy block included), 36.5s total
+test-extract-sigma.R                      : 37/37 (2 pre-existing deprecation warnings, unrelated)
+test-extract-sigma-augmented-unique.R     : 0/0 (3 heavy-gated skips)
+test-extract-sigma-slope.R                : 0/0 (2 heavy-gated skips)
+test-extract-sigma-spde-base-slope.R      : 0/0 (3 heavy-gated skips)
+test-extract-sigma-table.R                : 65/65
+test-m1-3-extract-sigma-mixed-family.R    : 0/0 (6 heavy-gated skips)
+test-predictive-diagnostics.R             : 158/158 (after updating one pre-existing test's
+                                             expected error-message substring to match R1's
+                                             extended message text -- a gaussian() fixture,
+                                             still correctly refused by the rootogram)
+test-integration-fence.R                  : 57/57
+```

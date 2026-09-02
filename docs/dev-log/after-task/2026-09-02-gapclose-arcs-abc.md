@@ -78,7 +78,7 @@ on an installed copy.
 
 G-ALL RESULT (final commit `b1004636a`): full `devtools::test()` with the failure cap lifted →
 **FAIL 0 | WARN 55 | SKIP 879 | PASS 26948**. `devtools::check(args = "--no-manual")` on the same
-commit: _pending — see the line below once the run completes_
+commit: **0 errors | 0 warnings | 0 notes** (26 m 56 s).
 
 ## 5. Tests of the tests
 

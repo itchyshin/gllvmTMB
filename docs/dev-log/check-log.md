@@ -57499,7 +57499,8 @@ Commands run (worktree `~/local-scratch/lanes/gllvmTMB-gapclose-20260902`, R 4.6
   0 warnings, 1 NOTE (bare `logLik` in `deviance.gllvmTMB_multi`, fixed), test failures 15 (7 the
   `suggest_lambda_constraint()` regression, 1 pinned alias, 5 installed-copy file reads, 2 already fixed).
 - Final suite on `b1004636a` (`options(testthat.progress.max_fails = Inf)`): **FAIL 0 | WARN 55 |
-  SKIP 879 | PASS 26948**. Final R CMD check on `b1004636a`: _pending_.
+  SKIP 879 | PASS 26948**. Final R CMD check on `b1004636a` (`devtools::check(args = "--no-manual")`): **0 errors | 0 warnings |
+  0 notes**, 26 m 56 s.
 
 Deliberately not run: vignette rendering beyond `check_pkgdown()` (articles changed prose only; the
 CI pkgdown build covers rendering); no Totoro/DRAC compute (ARC D is the next checkpoint).

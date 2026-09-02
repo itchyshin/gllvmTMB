@@ -41,7 +41,7 @@ pkg_root <- find_repo_root(testthat::test_path())
 gen_script <- if (!is.null(pkg_root)) file.path(pkg_root, "dev", "gapclose", "build-capability-status.R") else NA_character_
 parity_script <- if (!is.null(pkg_root)) file.path(pkg_root, "tools", "parity_ledger.R") else NA_character_
 ledger_path <- if (!is.null(pkg_root)) file.path(pkg_root, "docs", "design", "capability-status.md") else NA_character_
-scratchpad_julia <- if (!is.null(repo_root <- find_repo_root())) file.path(repo_root, "dev", "gapclose", "gllvmjl-capability-status-2026-09-02.md") else ""  # tracked snapshot of GLLVM.jl origin/main docs/design/capability-status.md (888f38fa)
+scratchpad_julia <- if (!is.null(pkg_root)) file.path(pkg_root, "dev", "gapclose", "gllvmjl-capability-status-2026-09-02.md") else ""  # tracked snapshot of GLLVM.jl origin/main docs/design/capability-status.md (888f38fa)
 
 # Call at the top of every test_that() block below. Skips (does not fail)
 # when the repo's dev/tools scripts are not reachable from this test file's

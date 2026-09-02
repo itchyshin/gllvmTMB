@@ -21,10 +21,12 @@ whole covariance grid; the zero part is per-trait intercept-only (Design 62 Deci
 105/106/108). `zi_binomial()` is admitted only when at least one row per trait carries trials ≥ 2,
 because the single-trial mixture collapses to one parameter. Family ids 17/18/19. Full table:
 `dev/gapclose/arcD/alignment-zi.md`.
+AGHQ **declines** zi fits to plain Laplace with a reason-specific warning (the same mechanism as every
+other ineligible model); VA and MSPL refuse.
 
 ## 3. Findings and files
 
-23 files, +2008/−19 in commit `7e043040a`: `src/gllvmTMB.cpp` (three cases, `logit_zi` parameter
+23 files, +2008/−19 in commit `7e043040a`, plus the review round `52043b3db` (18 files, +866/−61): `src/gllvmTMB.cpp` (three cases, `logit_zi` parameter
 vector mapped per trait), `R/families.R` (constructors), `R/enum.R`, `R/fit-multi.R` (admission,
 starting values from the observed zero excess, parameter map), `R/dispersion-trait-map.R`,
 `R/methods-gllvmTMB.R` (`fitted()`, `simulate()`), `R/predictive-diagnostics.R` (mixture-CDF
@@ -44,8 +46,22 @@ zi_poisson n = 150: intercepts 0.079, zi 0.066, loadings rel. Frobenius 0.124; z
 0.070 / 0.034 / 0.194, phi median 19% with 2/6 traits above the 30% bar; zi_binomial n = 150, N = 10:
 0.077 / 0.071 / 0.237), 20 neighbouring test files re-run green. Orchestrator re-run via
 `devtools::test(filter = "zi-")`: 26/26 and 13/13 (+1 heavy skip); ledger `--check` 77 rows /
-0 unmapped; parity CLOSURE PASS. Opus adversarial review: _pending_. Full suite and check: run at
-merge time on the rebased branch (R/ and src/ changed).
+0 unmapped; parity CLOSURE PASS. Opus adversarial review (Gauss/Noether/Fisher/Boole, fresh): **PASS-WITH-CORRECTIONS, 0 blocking,
+6 required, 6 suggestions** — the density, phi convention, per-trait `logit_zi` indexing, masking,
+gradient and mixture CDF all held against independent R computations (0 / 2.1e-14 / 1.1e-13); the
+findings were about the surrounding surface: the rootogram refused zi count families, the 14-slot
+`link_residual_rule` was unimplemented (so `extract_Sigma()` returned NA on zi traits), AGHQ was
+documented as refusing when it declines to Laplace, the FAM-22 caveat understated (2/6 traits exceed
+the 30% phi bar on each of three seeds) and no phi-runaway detector existed, the help-page example did
+not converge, and the single-seed recovery bars were breached on 3 of 4 extra seeds. All were fixed in
+`52043b3db` by the same builder (n raised to 200/250 so the bars hold across seeds 101–404, heavy
+5-seed block now asserts `zi` and loadings, `boundary_phi_nbinom2` detector, `predict(newdata)` applies
+(1 − π)). Orchestrator re-run against the development package after the fixes: `test-zi-families` 42,
+`test-zi-recovery` 13 (+1 heavy skip), `test-extract-sigma` 34, `test-extract-sigma-table` 65,
+`test-predictive-diagnostics` 158, `test-integration-fence` 57 — all FAIL 0; the families help page's
+check-visible examples (38 expressions, `\donttest` on, `\dontrun` off) all run and the zero-inflated
+example converges (code 0). Full suite and R CMD check: run at merge time on the rebased branch
+(R/ and src/ changed); CI on the stacked PR provides the ubuntu check.
 
 ## 5. Tests of the tests
 

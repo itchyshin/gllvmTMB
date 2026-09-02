@@ -326,3 +326,152 @@ tests/testthat/test-null-tier-defaults.R (Fix 2: regexp updated to the new messa
 ```
 
 Not committed (per brief).
+
+---
+
+# R CMD check follow-up (tarball run, NOT_CRAN unset, tree as of ~09:47)
+
+## Fix 1 (REGRESSION) — `suggest_lambda_constraint()`/`suggest_lambda_constraints()`/`ridge_path()` lost their grouping under `unit = NULL`
+
+**Root cause**: `suggest_lambda_constraint()`'s formula branch computed
+`target_group <- if (level == "B") unit else "site_species"` and matched
+covstructs against it; with the new `unit = NULL` default and no
+resolution step, `target_group` was `NULL`, so `groups == target_group`
+never matched and every call aborted "Formula has no `latent(... | ,
+...)` term". `ridge_path()` had the SAME underlying defect one level
+removed: it passes `unit` straight through to its own per-grid-point
+`gllvmTMB()` calls, which each hit the `unit`-required abort and had it
+silently swallowed by `ridge_path()`'s own `tryCatch`, returning an
+all-`NA` table with the real cause buried in an unread `$fit_error`
+column (confirmed empirically before the fix: `ridge_path()` on data
+whose sampling-unit column is not literally `"site"` returned six `NA`
+rows with `fit_error = "unit = ... is required."` on every one, no
+visible error at all).
+
+**Fix**: refactored `gllvmTMB()`'s inline staged-rollout block into a
+shared, exported-nowhere internal helper,
+`.gllvmTMB_resolve_unit_staged(unit, data)` (`R/gllvmTMB.R`) — same
+one-time deprecation warning (one shared `getOption()` key across all
+call sites), same "unit is required" abort when no `site` column exists.
+`gllvmTMB()` itself now calls it (behavior-preserving refactor, re-verified
+against `test-gllvmTMB-args.R`/`test-null-tier-defaults.R`). Applied it in
+two more places:
+- `suggest_lambda_constraint()`'s formula branch (`R/suggest-lambda-constraint.R`):
+  resolves `unit` via the helper ONLY when `level == "B"` (the only case
+  that uses `unit` as `target_group`; `level == "unit_obs"`/`"W"` always
+  targets the fixed `"site_species"` group and never touches `unit`, so
+  it must not be forced to resolve/abort needlessly). `suggest_lambda_constraints()`
+  (plural) delegates to the singular function per method and needed no
+  separate fix.
+- `ridge_path()` (`R/ridge-path.R`): resolves `unit` immediately after tau
+  validation, before `.screen_prepare_formula_data()` and before any grid
+  point is fit — turns N silently-identical buried `fit_error` rows into
+  one clear, immediate abort (or, when `data` has a `site` column, silent
+  correct resolution exactly as `gllvmTMB()` itself now does).
+
+**Placement bug found and fixed while doing this**: my first attempt
+inserted `.gllvmTMB_resolve_unit_staged()`'s definition in the middle of
+`gllvmTMB()`'s own `@examples` `\dontrun{}` block (a bad string-match
+target), which silently mis-attached that roxygen block's `@export` tag
+to the new internal helper and produced a mismatched-brace `\dontrun{}` —
+`devtools::document()` wrote `NAMESPACE` with a stray
+`export(.gllvmTMB_resolve_unit_staged)` and a new
+`man/dot-gllvmTMB_resolve_unit_staged.Rd`. Caught immediately by running
+`devtools::document()` and reading its output rather than assuming
+success; relocated the helper to a verified-safe non-roxygen-adjacent
+spot (between `gllvmTMBcontrol()`'s closing brace and the existing
+`.gllvmTMB_normalize_aghq()` internal helper, mirroring that file's own
+established pattern for internal helpers). Re-ran `devtools::document()`
+twice to confirm: `NAMESPACE` and `man/gllvmTMB.Rd` now show **zero diff**
+against their pre-session state (`git status --porcelain` clean on both),
+and the stray `.Rd` page is gone.
+
+Verified via `tests/testthat/test-suggest-lambda-constraint.R` (all 7
+originally-failing tests, plus the other 33 in that file) and manual
+checks of the `ridge_path()` silent-failure case (now a clear immediate
+abort) and the working case (a `site` column resolves silently, `fit_error`
+all `NA`).
+
+## Fix 2 — `test-runaway-warning.R:58` expected `"aghq_ridge"`, message now says `loading_ridge` by design
+
+One-line expectation update: `expect_match(w, "aghq_ridge")` ->
+`expect_match(w, "loading_ridge")`. This is the R3 message change from
+the earlier adversarial-review pass, working as intended; nothing else in
+that test changed.
+
+## Fix 3 — `deviance.gllvmTMB_multi`: no visible global function definition for `'logLik'`
+
+`R/methods-gllvmTMB.R`: `-2 * as.numeric(logLik(object, ...))` ->
+`-2 * as.numeric(stats::logLik(object, ...))`. One-token fix; confirmed
+no other bare (non-`stats::`) `logLik(` call sits inside that method, and
+`devtools::document()` reports no new roxygen/NAMESPACE issue from this
+change (no `@importFrom` needed since the call is now fully qualified).
+
+## Fix 4 — new gapclose tests read repo files by relative path, erroring under `R CMD check`'s installed-tarball execution
+
+Added `tests/testthat/helper-gapclose-repo-root.R` (auto-sourced by
+testthat, shared by every `test-gapclose-*.R` file): `.gapclose_repo_root()`
+walks up from `testthat::test_path()` looking for a directory that has
+BOTH `DESCRIPTION` and `dev/gapclose/`, returning `NULL` (never erroring)
+when neither is found (i.e. running from an installed copy, where
+`dev/gapclose/` and the raw `.R` sources are not shipped).
+
+- `test-gapclose-next-steps.R:8`: the top-level `source(testthat::test_path(
+  "..", "..", "dev", "gapclose", "count-bare-aborts.R"))` (which ran at
+  file-parse time, before any `test_that()`, so it could not be wrapped in
+  `skip()`) moved INSIDE the one `test_that()` block that uses it; that
+  block now resolves the repo root first, `testthat::skip_if(is.null(root),
+  ...)`, and only then `source()`s the file (`local = TRUE`, so
+  `count_bare_aborts()` is available for the very next line) and reads
+  `file.path(root, "R")`. Assertions unchanged.
+- `test-gapclose-signposting.R:259,270` (the two `readLines(testthat::
+  test_path("..", "..", "R", "diagnose.R"))` calls, inside two
+  `test_that()` blocks already): each now resolves the repo root first and
+  skips if not found, then reads `file.path(root, "R", "diagnose.R")`.
+  Assertions unchanged.
+
+## Commands and output
+
+```
+$ NOT_CRAN=true Rscript -e 'testthat::test_file("tests/testthat/test-suggest-lambda-constraint.R")'
+[ FAIL 0 | WARN 1 | SKIP 0 | PASS 40 ]
+$ NOT_CRAN=true Rscript -e 'testthat::test_file("tests/testthat/test-runaway-warning.R")'
+[ FAIL 0 | WARN 0 | SKIP 0 | PASS 17 ]
+$ NOT_CRAN=true Rscript -e 'testthat::test_file("tests/testthat/test-gapclose-next-steps.R")'
+[ FAIL 0 | WARN 0 | SKIP 0 | PASS 7 ]
+$ NOT_CRAN=true Rscript -e 'testthat::test_file("tests/testthat/test-gapclose-signposting.R")'
+[ FAIL 0 | WARN 0 | SKIP 0 | PASS 22 ]
+$ NOT_CRAN=true Rscript -e 'testthat::test_file("tests/testthat/test-gllvmTMB-args.R")'
+[ FAIL 0 | WARN 0 | SKIP 4 | PASS 28 ]
+$ NOT_CRAN=true Rscript -e 'testthat::test_file("tests/testthat/test-null-tier-defaults.R")'
+[ FAIL 0 | WARN 0 | SKIP 0 | PASS 17 ]
+$ Rscript -e 'devtools::document(quiet = TRUE)'
+Writing 'gllvmTMB.Rd'   # content unchanged vs pre-session (git diff empty)
+(3 pre-existing, unrelated aghq-report.R @exportS3Method warnings only)
+$ git status --porcelain NAMESPACE man/gllvmTMB.Rd
+(clean -- no output)
+```
+
+The 1 WARN in `test-suggest-lambda-constraint.R` is the shared staged-unit
+deprecation notice firing once (that test's fixtures have a `site` column
+and omit `unit=`), consistent with the earlier `test-gllvmTMB-args.R`
+run's WARN 1 for the same reason. It fired only once across this whole
+run's process (once-per-session), which is why `test-gllvmTMB-args.R`
+shows `WARN 0` here despite showing `WARN 1` in the previous, separate
+round — the option was already set by an earlier file in this same
+process, not a regression.
+
+## Files touched this pass
+
+```
+R/gllvmTMB.R                               (Fix 1: .gllvmTMB_resolve_unit_staged() extracted + relocated)
+R/methods-gllvmTMB.R                       (Fix 3: stats::logLik())
+R/ridge-path.R                             (Fix 1: resolve unit before the grid loop)
+R/suggest-lambda-constraint.R              (Fix 1: resolve unit when level == "B")
+tests/testthat/helper-gapclose-repo-root.R (Fix 4: new shared helper)
+tests/testthat/test-gapclose-next-steps.R  (Fix 4: source() moved inside test_that + skip)
+tests/testthat/test-gapclose-signposting.R (Fix 4: readLines() calls skip when repo files absent)
+tests/testthat/test-runaway-warning.R      (Fix 2: aghq_ridge -> loading_ridge)
+```
+
+Not committed (per brief).

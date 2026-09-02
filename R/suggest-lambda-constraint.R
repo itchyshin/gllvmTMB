@@ -178,6 +178,13 @@ suggest_lambda_constraint <- function(
       function(cs) deparse(cs$group),
       character(1)
     )
+    ## #1196 (2026-09-02 full-suite follow-up): `unit` has no default, so
+    ## resolve it via the same staged rule as gllvmTMB() itself -- only
+    ## needed when level == "B" (the between-unit tier), since the
+    ## within-unit tier always targets the fixed "site_species" group.
+    if (level == "B") {
+      unit <- .gllvmTMB_resolve_unit_staged(unit, data)
+    }
     target_group <- if (level == "B") unit else "site_species"
     idx <- which(kinds == "rr" & groups == target_group)
     if (length(idx) == 0L) {

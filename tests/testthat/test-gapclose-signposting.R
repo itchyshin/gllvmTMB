@@ -256,8 +256,10 @@ test_that("phylo_latent(1 + x1 + x2 | species, d = K, tree = tree) -- the one ro
 ## arm that cleared the flag) and state VA's precondition in one clause. ---
 
 test_that("the diagnose.R runaway-loading messages name a runnable ridge literal, not `tau`", {
+  root <- .gapclose_repo_root()
+  testthat::skip_if(is.null(root), "repo files not available (installed copy)")
   txt <- paste(
-    readLines(testthat::test_path("..", "..", "R", "diagnose.R"), warn = FALSE),
+    readLines(file.path(root, "R", "diagnose.R"), warn = FALSE),
     collapse = "\n"
   )
   expect_false(grepl("loading_ridge = tau\\)", txt, fixed = FALSE))
@@ -267,8 +269,10 @@ test_that("the diagnose.R runaway-loading messages name a runnable ridge literal
 })
 
 test_that("the diagnose.R runaway-loading messages state VA's precondition, not an unconditional offer", {
+  root <- .gapclose_repo_root()
+  testthat::skip_if(is.null(root), "repo files not available (installed copy)")
   txt <- paste(
-    readLines(testthat::test_path("..", "..", "R", "diagnose.R"), warn = FALSE),
+    readLines(file.path(root, "R", "diagnose.R"), warn = FALSE),
     collapse = "\n"
   )
   expect_true(grepl(

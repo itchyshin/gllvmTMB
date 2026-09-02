@@ -2983,7 +2983,7 @@ fitted.gllvmTMB_multi <- function(object, type = c("response", "link"), ...) {
 #'   is inherited unchanged.
 #' @export
 deviance.gllvmTMB_multi <- function(object, ...) {
-  -2 * as.numeric(logLik(object, ...))
+  -2 * as.numeric(stats::logLik(object, ...))
 }
 
 ## Internal-only reconstruction-uncertainty helper for `predict_missing(se =

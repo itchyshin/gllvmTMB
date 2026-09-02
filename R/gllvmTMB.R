@@ -924,39 +924,11 @@ gllvmTMB <- function(
   ## silently risks fitting the wrong grouping. Mirrors the `unit_obs` /
   ## `cluster` NULL handling above: a required slot names itself rather
   ## than failing on a downstream `%in%` with an unhelpful message.
-  ##
-  ## Staged rollout (coordinator adaptive deviation, 2026-09-02): a hard
-  ## abort here would break ~628 existing test call sites across other
-  ## live lanes that omit `unit=` and rely on the historical implicit
-  ## "site" default (D-88 -- a mechanical rewrite would bleed into files
-  ## other lanes own). So for one release the implicit default still
-  ## resolves when `data` has a literal "site" column, with a one-time
-  ## deprecation warning; the abort fires only when that fallback column
-  ## does not exist. The implicit fallback is removed in 0.8.0 (NEWS).
-  if (is.null(unit)) {
-    if ("site" %in% names(data)) {
-      ## `cli::cli_warn(.frequency = "once")`'s internal throttle is not
-      ## resettable from tests (see R/normalise-level.R for the same
-      ## finding); an `getOption()`-cached one-shot, resettable via
-      ## `withr::local_options()`, mirrors that established pattern.
-      if (!isTRUE(getOption("gllvmTMB.warned_unit_implicit_site"))) {
-        cli::cli_warn(
-          c(
-            "!" = "Relying on the implicit {.code unit = \"site\"} default is deprecated.",
-            "i" = "Pass {.arg unit = \"site\"} explicitly; the implicit default is removed in 0.8.0."
-          ),
-          class = "lifecycle_warning_deprecated"
-        )
-        options(gllvmTMB.warned_unit_implicit_site = TRUE)
-      }
-      unit <- "site"
-    } else {
-      cli::cli_abort(c(
-        "{.arg unit = ...} is required.",
-        ">" = "Pass the name of the column that identifies the sampling unit (site, individual, paper, ...)."
-      ))
-    }
-  }
+  ## Shared with `suggest_lambda_constraint()`/`suggest_lambda_constraints()`
+  ## and `ridge_path()` via `.gllvmTMB_resolve_unit_staged()` (2026-09-02
+  ## full-suite follow-up) -- see that function for the staged-rollout
+  ## rationale.
+  unit <- .gllvmTMB_resolve_unit_staged(unit, data)
   ## Engine-internal name remains `site` to avoid touching every line in
   ## the parser / TMB template / extractors. User-facing argument is `unit`.
   site <- unit
@@ -2347,6 +2319,48 @@ gllvmTMBcontrol <- function(
     allow_nongaussian_reml = isTRUE(allow_nongaussian_reml)
   )
 }
+
+## #1196 staged-rollout resolver for `unit` (2026-09-02 full-suite
+## follow-up). `unit` has no default -- every caller must name the column
+## that identifies the sampling unit -- but a hard abort here would break
+## every existing call site (across `gllvmTMB()` and, discovered later,
+## `suggest_lambda_constraint()`/`suggest_lambda_constraints()` and
+## `ridge_path()`) that omits `unit=` and relies on the historical
+## implicit "site" default (D-88 -- a mechanical rewrite would bleed into
+## files other lanes own). So for one release the implicit default still
+## resolves when `data` has a literal "site" column, with a one-time
+## deprecation warning shared across all four entry points (one
+## `getOption()` key); the abort fires only when that fallback column
+## does not exist. The implicit fallback is removed in 0.8.0 (NEWS).
+##
+## Returns the resolved `unit` string, or aborts naming `{.arg unit}`.
+.gllvmTMB_resolve_unit_staged <- function(unit, data) {
+  if (!is.null(unit)) {
+    return(unit)
+  }
+  if ("site" %in% names(data)) {
+    ## `cli::cli_warn(.frequency = "once")`'s internal throttle is not
+    ## resettable from tests (see R/normalise-level.R for the same
+    ## finding); an `getOption()`-cached one-shot, resettable via
+    ## `withr::local_options()`, mirrors that established pattern.
+    if (!isTRUE(getOption("gllvmTMB.warned_unit_implicit_site"))) {
+      cli::cli_warn(
+        c(
+          "!" = "Relying on the implicit {.code unit = \"site\"} default is deprecated.",
+          "i" = "Pass {.arg unit = \"site\"} explicitly; the implicit default is removed in 0.8.0."
+        ),
+        class = "lifecycle_warning_deprecated"
+      )
+      options(gllvmTMB.warned_unit_implicit_site = TRUE)
+    }
+    return("site")
+  }
+  cli::cli_abort(c(
+    "{.arg unit = ...} is required.",
+    ">" = "Pass the name of the column that identifies the sampling unit (site, individual, paper, ...)."
+  ))
+}
+
 
 ## `aghq` accepts FALSE (Laplace, the current default), "auto" (let the package
 ## decide), or a positive integer node count. Anything else is a user error and is

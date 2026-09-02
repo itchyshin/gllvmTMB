@@ -5,7 +5,10 @@
 ## messages below, plus a package-wide RATCHET on everything not touched
 ## in this slice.
 
-source(testthat::test_path("..", "..", "dev", "gapclose", "count-bare-aborts.R"))
+## `.gapclose_repo_root()` is defined in
+## tests/testthat/helper-gapclose-repo-root.R (auto-sourced by testthat)
+## -- it locates the git checkout root robustly, returning NULL (never
+## erroring) when running from an installed copy under R CMD check.
 
 ## ---- Snapshot 1: gllvmTMB() REML type guard -----------------------------
 
@@ -65,8 +68,10 @@ test_that("multinomial() with a multi-column response names the fix", {
 ## ---- Ratchet: everything NOT fixed in this slice ------------------------
 
 test_that("the package-wide bare-abort count has not gone up", {
-  testthat::skip_if_not(dir.exists(testthat::test_path("..", "..", "R")), "R/ not present")
-  hits <- count_bare_aborts(testthat::test_path("..", "..", "R"))
+  root <- .gapclose_repo_root()
+  testthat::skip_if(is.null(root), "repo files not available (installed copy)")
+  source(file.path(root, "dev", "gapclose", "count-bare-aborts.R"), local = TRUE)
+  hits <- count_bare_aborts(file.path(root, "R"))
   ## ratchet: may only go down. 999 is the HONEST count under the S1
   ## correction (adversarial review 2026-09-02): the ratchet's original
   ## rule counted an "i"/"x" bullet as "has a next step", which is not

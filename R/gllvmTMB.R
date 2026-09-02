@@ -888,6 +888,14 @@ gllvmTMB <- function(
     return(fit)
   }
 
+  ## `data` must be a data.frame before ANY of the grouping-argument checks
+  ## below inspect it via `names(data)` -- on a non-data-frame `data`,
+  ## `names()` returns NULL/something else, so `"site" %in% names(data)`
+  ## silently evaluates FALSE rather than erroring, which let the #1196
+  ## `unit` requirement below fire first with a misleading "unit is
+  ## required" instead of the real "data is not a data.frame" complaint.
+  assertthat::assert_that(is.data.frame(data))
+
   ## ---- Honour deprecated `site = ...` alias for `unit = ...` -------------
   ## The package was originally written for site × species data, so the
   ## between-unit grouping argument was named `site`. The unit × trait
@@ -1027,7 +1035,12 @@ gllvmTMB <- function(
   }
 
   ## ---- Validate input ----------------------------------------------------
-  assertthat::assert_that(is.data.frame(data))
+  ## `is.data.frame(data)` now runs earlier (see the comment above the
+  ## `site =`/`unit =` alias block) so it fires before the #1196 `unit`
+  ## requirement, whose own `"site" %in% names(data)` check silently
+  ## returns FALSE (not an error) for a non-data-frame `data` -- that
+  ## masked the real "not a data.frame" complaint behind an unrelated
+  ## "unit is required" one (found in the full suite, 2026-09-02).
   if (!trait %in% names(data)) {
     cli::cli_abort(c(
       "{.arg trait = {.val {trait}}} is not a column in {.arg data}.",

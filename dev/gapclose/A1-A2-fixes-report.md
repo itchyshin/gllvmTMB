@@ -256,3 +256,73 @@ Not touched (per instruction): `README.md`, `NEWS.md`, `DESCRIPTION`,
 `R/zzz.R`, `vignettes/`.
 
 Not committed (per brief).
+
+---
+
+# Full-suite follow-up (aa704f8ed: FAIL 9 / PASS 26898, 2 attributed here)
+
+## Fix 1 — `test-gllvmTMB-args.R:24`: data.frame check ran after the `unit` requirement
+
+`expect_error(gllvmTMB(value ~ 0 + trait, data = 1:10), <data.frame message>)`
+was instead getting `"unit = ...` is required."`. Root cause: the #1196
+`unit`-required block (`R/gllvmTMB.R`, ~line 908) tests `"site" %in%
+names(data)`, which on a non-data-frame `data` (e.g. `1:10`) silently
+evaluates `FALSE` rather than erroring — so the unrelated "unit is
+required" abort fired first, masking the real "not a data.frame"
+complaint, because `assertthat::assert_that(is.data.frame(data))` ran much
+later, inside the "Validate input" section.
+
+**Fix**: moved `assertthat::assert_that(is.data.frame(data))` to run
+immediately before the `site =`/`unit =` alias-handling block (i.e.
+before ANY code inspects `data` via `names(data)`), and removed it from
+its later position in "Validate input" (no duplicate check; message text
+unchanged — assertthat's own default `"data is not a data frame"`).
+Nothing else in the function's ordering changed: the trait-column check
+and the explicit-`unit=`-column-not-found check both stay exactly where
+they were.
+
+## Fix 2 — `test-null-tier-defaults.R:137`: stale #1191-era message expectation
+
+`"a missing `unit` column aborts naming the `unit` argument"` renames the
+`site` column to `loc` and calls `gllvmTMB(value ~ 0 + trait, data = dat)`
+with no `unit=`. Under the OLD default (`unit = "site"`), that produced
+the #1191 message `` `unit = "site"` is not a column in `data` ``. Under
+this slice's staged rollout, `unit` defaults to `NULL`, and `dat` has no
+`"site"` column to fall back to, so the CORRECT and INTENDED behaviour is
+the new `` `unit = ...` is required. `` abort (`R/gllvmTMB.R`) — this is
+exactly the design decided in task (f): omitting `unit` with no `site`
+column present should abort naming the argument, not silently guess.
+
+**Fix**: updated the test's `regexp` from
+`"unit.*=.*\"site\".*is not a column"` to match the new message
+(`` "unit = \.\.\.`? is required" ``, accounting for cli's backtick
+around the code span). The test's structure, fixture, and all other
+assertions in the file are unchanged — this is a pure expectation update
+reflecting the intended new behaviour, not a behaviour change.
+
+## Commands and output
+
+```
+$ NOT_CRAN=true Rscript -e 'testthat::test_file("tests/testthat/test-gllvmTMB-args.R")'
+[ FAIL 0 | WARN 1 | SKIP 4 | PASS 28 ]
+$ NOT_CRAN=true Rscript -e 'testthat::test_file("tests/testthat/test-null-tier-defaults.R")'
+[ FAIL 0 | WARN 0 | SKIP 0 | PASS 17 ]
+$ NOT_CRAN=true Rscript -e 'testthat::test_file("tests/testthat/test-gapclose-next-steps.R")'
+[ FAIL 0 | WARN 0 | SKIP 0 | PASS 7 ]
+$ NOT_CRAN=true Rscript -e 'testthat::test_file("tests/testthat/test-gapclose-signposting.R")'
+[ FAIL 0 | WARN 0 | SKIP 0 | PASS 22 ]
+```
+
+The 1 WARN in `test-gllvmTMB-args.R` is the staged-unit deprecation
+notice firing as an incidental side effect of an unrelated pre-existing
+test (`data` has a `site` column, no `unit=` given) — not a failure; the
+test's own `expect_error(regexp = "trait")` still passes.
+
+## Files touched this pass
+
+```
+R/gllvmTMB.R                             (Fix 1: is.data.frame() reordered earlier)
+tests/testthat/test-null-tier-defaults.R (Fix 2: regexp updated to the new message)
+```
+
+Not committed (per brief).

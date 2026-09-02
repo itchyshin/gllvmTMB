@@ -11,7 +11,7 @@ suggest_lambda_constraint(
   convention = c("lower_triangular", "pin_top_one", "none", "varimax_threshold",
     "wald_retention", "profile_retention"),
   trait = "trait",
-  unit = "site",
+  unit = NULL,
   threshold = 0.3,
   retention_prob = 0.9,
   sigma_d2 = 1,

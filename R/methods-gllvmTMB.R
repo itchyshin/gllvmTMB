@@ -1854,7 +1854,8 @@ simulate.gllvmTMB_multi <- function(
     if (is.null(mgid)) {
       cli::cli_abort(c(
         "Internal: multinomial rows present but {.code fit$tmb_data$multinom_group_id} is missing.",
-        "i" = "Cannot group the softmax contrast rows for a categorical draw."
+        "i" = "Cannot group the softmax contrast rows for a categorical draw.",
+        ">" = "Check that {.arg fit} was returned by {.fn gllvmTMB} unmodified; if it was, file an issue at https://github.com/itchyshin/gllvmTMB/issues with a reproducible example and {.code sessionInfo()}."
       ), class = "gllvmTMB_simulate_multinomial_group_missing")
     }
     for (g in split(mn_rows, mgid[mn_rows])) {

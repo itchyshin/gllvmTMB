@@ -9,7 +9,7 @@ ridge_path(
   data,
   family,
   tau = c(0.5, 1, 2, 4, 8, Inf),
-  unit = "site",
+  unit = NULL,
   trait = "trait",
   weights = NULL,
   missing = miss_control(),
@@ -20,8 +20,8 @@ ridge_path(
 \arguments{
 \item{formula, data, family, unit, trait, weights, missing}{Passed to
 \code{\link[=gllvmTMB]{gllvmTMB()}} at every grid point, exactly as you would call it
-directly. \code{unit} defaults to \code{"site"}, matching \code{\link[=gllvmTMB]{gllvmTMB()}}'s own
-default.}
+directly. \code{unit} has no default -- it must name the sampling-unit
+column, matching \code{\link[=gllvmTMB]{gllvmTMB()}}'s own required argument.}
 
 \item{tau}{Numeric vector of ridge scales to sweep. Order does not
 matter: the function sorts internally, both for refitting and for the

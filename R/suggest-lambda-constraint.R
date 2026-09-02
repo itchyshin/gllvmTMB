@@ -100,7 +100,7 @@ suggest_lambda_constraint <- function(
     "profile_retention"
   ),
   trait = "trait",
-  unit = "site",
+  unit = NULL,
   threshold = 0.30, # Comrey-Lee convention on standardised loading
   retention_prob = 0.90, # Unified across `wald_retention` and `profile_retention`:
   #   * wald_retention: pin if Pr(|rho| > threshold) < retention_prob
@@ -188,7 +188,10 @@ suggest_lambda_constraint <- function(
     cs <- parsed$covstructs[[idx[1]]]
     K <- as.integer(cs$extra$d %||% 1L)
     if (!trait %in% names(data)) {
-      cli::cli_abort("Column {.val {trait}} not found in {.arg data}.")
+      cli::cli_abort(c(
+        "Column {.val {trait}} not found in {.arg data}.",
+        ">" = "Pass the correct trait column name via {.arg trait = ...}."
+      ))
     }
     tcol <- data[[trait]]
     trait_names <- if (is.factor(tcol)) {
@@ -547,7 +550,7 @@ suggest_lambda_constraints <- function(
   level = "unit",
   methods = c("varimax_threshold", "wald_retention"),
   trait = "trait",
-  unit = "site",
+  unit = NULL,
   threshold = 0.30,
   retention_prob = 0.90,
   sigma_d2 = 1,

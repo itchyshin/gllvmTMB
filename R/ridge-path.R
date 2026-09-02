@@ -73,8 +73,8 @@
 #'
 #' @param formula,data,family,unit,trait,weights,missing Passed to
 #'   [gllvmTMB()] at every grid point, exactly as you would call it
-#'   directly. `unit` defaults to `"site"`, matching [gllvmTMB()]'s own
-#'   default.
+#'   directly. `unit` has no default -- it must name the sampling-unit
+#'   column, matching [gllvmTMB()]'s own required argument.
 #' @param tau Numeric vector of ridge scales to sweep. Order does not
 #'   matter: the function sorts internally, both for refitting and for the
 #'   printed classification. Every entry must be a positive number; `Inf`
@@ -130,7 +130,7 @@ ridge_path <- function(
   data,
   family,
   tau = c(0.5, 1, 2, 4, 8, Inf),
-  unit = "site",
+  unit = NULL,
   trait = "trait",
   weights = NULL,
   missing = miss_control(),

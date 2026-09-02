@@ -1523,6 +1523,21 @@ spatial <- function(
 #' @export
 #' @keywords internal
 meta_known_V <- function(V, type = "exact") {
+  ## Fire-on-use notice for the meta_known_V() -> meta_V() rename (0.2.0).
+  ## This is a formula MARKER: its body is never evaluated when the keyword
+  ## appears inside a `~` formula (the parser recognises "meta_known_V" by
+  ## name and desugars it directly; see the `fn == "meta_V" || fn ==
+  ## "meta_known_V"` branch in brms-sugar.R). lifecycle::deprecate_soft()
+  ## therefore only reaches the user when this function is called directly
+  ## (console/script top level, or from a test); mirrors the once-per-session
+  ## tracker `.gllvmTMB_warn_scalar_family_deprecated()` /
+  ## `.gllvmTMB_warn_latent_residual_alias()` already use.
+  if (!isTRUE(getOption("gllvmTMB.quiet_grammar_notes", FALSE))) {
+    if (!isTRUE(.gllvmTMB_deprecation_seen[["meta_known_V"]])) {
+      lifecycle::deprecate_soft("0.2.0", "meta_known_V()", "meta_V()")
+      .gllvmTMB_deprecation_seen[["meta_known_V"]] <- TRUE
+    }
+  }
   invisible(NULL)
 }
 
@@ -2415,12 +2430,61 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL, rho = 1) {
   if (is_intercept_only || is_zero_plus_trait) {
     return(invisible(NULL))
   }
+  ## #1196: point at a route that actually fits, conditioned on the RHS
+  ## (right of `|`) the caller supplied. Grouping by the trait column
+  ## itself (`fn(x | trait)`) is almost always someone reaching for the
+  ## response-column slope grammar; grouping by an ordinary column
+  ## (species/site/...) is the group-axis random-slope grammar instead.
+  ## Neither of those is `*_indep`/`*_latent`/`*_dep`, which also refuse
+  ## a slope LHS -- naming them here was the bug.
+  rhs <- bar[[3L]]
+  rhs_is_trait <- is.symbol(rhs) && as.character(rhs) %in% c(trait_col, "trait")
+  next_step <- if (rhs_is_trait) {
+    "Use the response-column slope grammar instead: {.fn slope}, {.fn phylo_slope}, or {.fn animal_slope}, e.g. {.code phylo_slope(x | trait, tree = tree)}."
+  } else {
+    "Use the group-axis slope grammar instead, e.g. {.code phylo_slope(x | {deparse(rhs)}, tree = tree)} or {.fn animal_slope} with a pedigree."
+  }
   cli::cli_abort(c(
     "{.fn {fn}} augmented LHS is not yet supported.",
     "i" = "You wrote {.code {fn}({deparse(bar)})}.",
     "x" = "This wrapper accepts only intercept-only {.code 0 + {trait_col} | g} or {.code 1 | g} forms.",
-    ">" = "Use the source-specific {.fn *_indep}, {.fn *_latent}, or {.fn *_dep} keyword when you need a supported intercept-and-slope covariance."
+    ">" = next_step
   ))
+}
+
+## #1163: the RHS of the `|` in a spatial_*() keyword is a fixed
+## placeholder (canonically spelled `coords`) -- the spatial field is always
+## driven by `mesh =` (or `coords =`, naming real columns) passed as an
+## argument, never by this token. `spatial_scalar(0 + trait | banana)`
+## therefore fits identically to `| coords`; warn once so silence is not
+## mistaken for the token doing anything.
+.warn_spatial_grouping_token <- function(fn, e) {
+  if (
+    !is.call(e) || length(e) < 2L || !is.call(e[[2L]]) ||
+      !identical(e[[2L]][[1L]], as.name("|")) || length(e[[2L]]) != 3L
+  ) {
+    return(invisible(NULL))
+  }
+  rhs <- e[[2L]][[3L]]
+  if (is.symbol(rhs) && identical(as.character(rhs), "coords")) {
+    return(invisible(NULL))
+  }
+  ## The package's own env-based one-shot tracker (used throughout this
+  ## file for grammar notices) rather than `cli_warn(.frequency = "once")`,
+  ## whose internal throttle is not resettable from tests.
+  if (isTRUE(getOption("gllvmTMB.quiet_grammar_notes", FALSE))) {
+    return(invisible(NULL))
+  }
+  key <- sprintf("spatial-grouping-token-%s", fn)
+  if (!isTRUE(.gllvmTMB_deprecation_seen[[key]])) {
+    cli::cli_warn(c(
+      "{.fn {fn}}'s {.code | {deparse(rhs)}} grouping token is ignored.",
+      "i" = "Spatial keywords always read locations from {.arg mesh} (or {.arg coords}), never from the token right of {.code |}.",
+      ">" = "Write {.code {fn}(..., | coords)} for clarity, and pass {.code mesh = ...} (or {.code coords = ...}) to supply the actual locations."
+    ))
+    .gllvmTMB_deprecation_seen[[key]] <- TRUE
+  }
+  invisible(NULL)
 }
 
 normalise_spatial_orientation <- function(e) {
@@ -4323,6 +4387,7 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
       ## when it sees the marker.
       if (fn == "spatial_scalar") {
         .gllvmTMB_warn_scalar_family_deprecated(fn)
+        .warn_spatial_grouping_token(fn, e)
         extras <- .pass_through_extras(e, c("coords", "mesh"))
         new_call <- as.call(c(
           list(as.name("spde"), e[[2L]]),
@@ -4335,6 +4400,7 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
       ## fit-multi.R flips the cpp template's `spde_lv_k` switch to d and
       ## allocates Lambda_spde (T x K_S) plus K_S shared spatial fields.
       if (fn == "spatial_latent") {
+        .warn_spatial_grouping_token(fn, e)
         d_val <- .named_or_positional_arg(e, "d", 3L, default = 1L)
         unique_arg <- .named_or_positional_arg(
           e, "unique", 4L, default = FALSE
@@ -4560,10 +4626,21 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
         ## is reserved for trait-specific phylogenetic random slopes. Recognise
         ## the syntax but error gracefully for now.
         if (!.is_zero_plus_trait(lhs_bar)) {
+          ## #1196: name a route that fits, conditioned on the RHS. Grouping
+          ## by the trait column itself is someone reaching for the
+          ## response-column slope grammar; an ordinary grouping column is
+          ## the group-axis grammar instead.
+          species_is_trait <- is.symbol(species_arg) &&
+            as.character(species_arg) %in% c(trait_col, "trait")
+          phylo_indep_next_step <- if (species_is_trait) {
+            "Use the response-column slope grammar instead: {.fn slope}, {.fn phylo_slope}, or {.fn animal_slope}, e.g. {.code phylo_slope(x | trait, tree = tree)}."
+          } else {
+            "Use the group-axis slope grammar instead, e.g. {.code phylo_slope(x | {deparse(species_arg)}, tree = tree)}; {.code phylo_indep(0 + trait | species)} remains the per-trait phylogenetic variance fit."
+          }
           cli::cli_abort(c(
             "{.fn phylo_indep} LHS richer than {.code 0 + trait} is not yet supported.",
             "i" = "Got LHS: {.code {deparse(lhs_bar)}}.",
-            ">" = "Trait-specific phylogenetic random slopes (e.g. {.code phylo_indep(0 + trait + trait:x | species)}) are reserved for a future release; use {.code phylo_indep(0 + trait | species)} for the per-trait phylogenetic variance fit."
+            ">" = phylo_indep_next_step
           ))
         }
         extras <- .pass_through_extras(e, c("tree", "vcv", "A", "Ainv"))
@@ -4580,6 +4657,7 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
       ## changes the printed label and triggers the spatial_indep+spatial_latent
       ## over-parameterisation guard.
       if (fn == "spatial_indep") {
+        .warn_spatial_grouping_token(fn, e)
         extras <- .pass_through_extras(e, c("coords", "mesh"))
         ## `common = TRUE` (Design 79 scalar-collapse): tie the T per-trait
         ## spatial-field variances to ONE shared variance -- byte-identical to the
@@ -4769,6 +4847,7 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
       ## packed-triangular Lambda_spde at full rank acting as the Cholesky
       ## factor of unstructured Sigma_spatial.
       if (fn == "spatial_dep") {
+        .warn_spatial_grouping_token(fn, e)
         ## Design 64 §2: augmented spatial_dep(1 + x | coords) random regression.
         ## The augmented intercept+slope LHS (`1 + x | coords` wide or
         ## `0 + trait + (0 + trait):x | coords` long) routes through the

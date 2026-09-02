@@ -47,7 +47,10 @@
 #' @export
 isdm_source <- function(family, observation) {
   if (!inherits(family, "family")) {
-    cli::cli_abort("{.arg family} must be an R {.cls family} object, such as {.code poisson(link = \"log\")}.")
+    cli::cli_abort(c(
+      "{.arg family} must be an R {.cls family} object.",
+      ">" = "Pass a family constructor, e.g. {.code poisson(link = \"log\")} or {.code binomial(\"cloglog\")}."
+    ))
   }
   if (!inherits(observation, "formula") || length(observation) != 2L) {
     cli::cli_abort(c(
@@ -129,7 +132,10 @@ isdm_sources <- function(...) {
     ))
   }
   if (anyDuplicated(nms)) {
-    cli::cli_abort("Source names must be unique; {.val {nms[duplicated(nms)][1]}} is declared twice.")
+    cli::cli_abort(c(
+      "Source names must be unique; {.val {nms[duplicated(nms)][1]}} is declared twice.",
+      ">" = "Rename one of the {.fn isdm_sources} arguments so every source has a distinct name."
+    ))
   }
   ids <- lapply(laws, .isdm_admitted_law_id)
   bad <- nms[vapply(ids, is.null, logical(1L))]
@@ -181,7 +187,10 @@ isdm_sources <- function(...) {
   }
   source_names <- names(family_input)
   if (is.null(names(observations)) || !identical(names(observations), source_names)) {
-    cli::cli_abort("Internal: iSDM observation formulas are not aligned with declared sources.")
+    cli::cli_abort(c(
+      "Internal: iSDM observation formulas are not aligned with declared sources.",
+      ">" = "This should not happen from ordinary use; check your formula and data for anything unusual, and file an issue at https://github.com/itchyshin/gllvmTMB/issues with a reproducible example and `sessionInfo()`."
+    ))
   }
   source_blocks <- list()
   source_basis <- list()
@@ -190,7 +199,10 @@ isdm_sources <- function(...) {
     if (is.null(form)) next
     rows <- which(as.character(source) == src)
     if (!length(rows)) {
-      cli::cli_abort("Internal: declared iSDM source {.val {src}} has no rows after filtering.")
+      cli::cli_abort(c(
+      "Internal: declared iSDM source {.val {src}} has no rows after filtering.",
+      ">" = "This should not happen from ordinary use; check your formula and data for anything unusual, and file an issue at https://github.com/itchyshin/gllvmTMB/issues with a reproducible example and `sessionInfo()`."
+    ))
     }
     vars <- all.vars(form)
     missing_vars <- setdiff(vars, names(data))
@@ -278,16 +290,25 @@ isdm_sources <- function(...) {
   ]
   if (is.null(observations)) {
     if (length(target_source)) {
-      cli::cli_abort("Internal: fitted source-observation columns lack their declaration.")
+      cli::cli_abort(c(
+      "Internal: fitted source-observation columns lack their declaration.",
+      ">" = "This should not happen from ordinary use; check your formula and data for anything unusual, and file an issue at https://github.com/itchyshin/gllvmTMB/issues with a reproducible example and `sessionInfo()`."
+    ))
     }
     return(X_fix)
   }
   if (any(startsWith(colnames(X_fix), "isdm_source:"))) {
-    cli::cli_abort("Internal: prediction design already contains iSDM source columns.")
+    cli::cli_abort(c(
+      "Internal: prediction design already contains iSDM source columns.",
+      ">" = "This should not happen from ordinary use; check your formula and data for anything unusual, and file an issue at https://github.com/itchyshin/gllvmTMB/issues with a reproducible example and `sessionInfo()`."
+    ))
   }
   source_names <- names(family_input)
   if (is.null(names(observations)) || !identical(names(observations), source_names)) {
-    cli::cli_abort("Internal: iSDM observation formulas are not aligned with declared sources.")
+    cli::cli_abort(c(
+      "Internal: iSDM observation formulas are not aligned with declared sources.",
+      ">" = "This should not happen from ordinary use; check your formula and data for anything unusual, and file an issue at https://github.com/itchyshin/gllvmTMB/issues with a reproducible example and `sessionInfo()`."
+    ))
   }
   source_chr <- as.character(source)
   unknown <- setdiff(unique(source_chr[!is.na(source_chr)]), source_names)
@@ -315,7 +336,10 @@ isdm_sources <- function(...) {
     }
     training_rows <- which(as.character(training_data$isdm_source) == src)
     if (!length(training_rows)) {
-      cli::cli_abort("Internal: fitted iSDM source {.val {src}} has no training rows.")
+      cli::cli_abort(c(
+      "Internal: fitted iSDM source {.val {src}} has no training rows.",
+      ">" = "This should not happen from ordinary use; check your formula and data for anything unusual, and file an issue at https://github.com/itchyshin/gllvmTMB/issues with a reproducible example and `sessionInfo()`."
+    ))
     }
     frozen <- basis[[src]] %||% NULL
     if (is.null(frozen)) {
@@ -425,7 +449,10 @@ isdm_sources <- function(...) {
   is_observed <- as.integer(is_observed)
   if (length(source) != length(trait) ||
       length(source) != length(is_observed)) {
-    cli::cli_abort("Internal: integrated-source observation mask is misaligned.")
+    cli::cli_abort(c(
+      "Internal: integrated-source observation mask is misaligned.",
+      ">" = "This should not happen from ordinary use; check your formula and data for anything unusual, and file an issue at https://github.com/itchyshin/gllvmTMB/issues with a reproducible example and `sessionInfo()`."
+    ))
   }
   arms <- expand.grid(
     source = declared_sources,

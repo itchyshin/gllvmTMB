@@ -243,7 +243,7 @@
 #'   families).
 #'
 #' @keywords internal
-#' @export
+#' @noRd
 .proportions_wald_ci <- function(
   fit,
   components = NULL,
@@ -419,7 +419,7 @@
 #'   rows, `"(unavailable)"` for link-residual rows.
 #'
 #' @keywords internal
-#' @export
+#' @noRd
 .proportions_bootstrap_ci <- function(
   fit,
   components = NULL,

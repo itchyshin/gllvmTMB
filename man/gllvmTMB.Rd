@@ -8,7 +8,7 @@ gllvmTMB(
   formula,
   data,
   trait = "trait",
-  unit = "site",
+  unit = NULL,
   unit_obs = NULL,
   cluster = NULL,
   cluster2 = NULL,
@@ -82,7 +82,13 @@ still error; explicitly modelled missing predictors use \code{mi(x)} with
 factor (the "unit" dimension of the unit × trait response matrix).
 Examples: \code{"site"} for site × species data, \code{"individual"} for
 behavioural-syndrome data, \code{"species"} for PGLLVM, \code{"paper"} for
-systematic mapping. Default \code{"site"}.}
+systematic mapping. Required — every dataset has its own natural
+sampling-unit column, and \code{\link[=gllvmTMB]{gllvmTMB()}} aborts naming \code{unit = ...} if
+it is omitted and \code{data} has no \code{"site"} column to fall back to.
+For one release, omitting \code{unit} when \code{data} DOES have a \code{"site"}
+column still works via a deprecated implicit fallback (a one-time
+warning); pass \code{unit = "site"} explicitly to silence it. The implicit
+fallback is removed in 0.8.0.}
 
 \item{unit_obs}{Optional. Name of the column holding the \strong{within-unit}
 grouping factor — one level per (unit, replicate) cell — used by

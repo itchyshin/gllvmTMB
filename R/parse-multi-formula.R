@@ -339,6 +339,9 @@ parse_re_int_call <- function(bar) {
     ))
   }
   if (!is.name(cov_group))
-    cli::cli_abort("Right-hand side of {.code (1 | group)} must be a single column name.")
+    cli::cli_abort(c(
+      "Right-hand side of {.code (1 | group)} must be a single column name.",
+      ">" = "Build a combined column first, e.g. {.code interaction(a, b)} or {.code paste(a, b)}, and group by that column instead."
+    ))
   list(kind = "re_int", lhs = cov_lhs, group = cov_group, extra = list())
 }

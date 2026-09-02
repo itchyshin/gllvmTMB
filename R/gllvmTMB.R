@@ -103,7 +103,13 @@
 #'   factor (the "unit" dimension of the unit × trait response matrix).
 #'   Examples: `"site"` for site × species data, `"individual"` for
 #'   behavioural-syndrome data, `"species"` for PGLLVM, `"paper"` for
-#'   systematic mapping. Default `"site"`.
+#'   systematic mapping. Required — every dataset has its own natural
+#'   sampling-unit column, and [gllvmTMB()] aborts naming `unit = ...` if
+#'   it is omitted and `data` has no `"site"` column to fall back to.
+#'   For one release, omitting `unit` when `data` DOES have a `"site"`
+#'   column still works via a deprecated implicit fallback (a one-time
+#'   warning); pass `unit = "site"` explicitly to silence it. The implicit
+#'   fallback is removed in 0.8.0.
 #' @param unit_obs Optional. Name of the column holding the **within-unit**
 #'   grouping factor — one level per (unit, replicate) cell — used by
 #'   `latent(0 + trait | unit_obs, ...)` and
@@ -622,7 +628,7 @@ gllvmTMB <- function(
   formula,
   data,
   trait = "trait",
-  unit = "site",
+  unit = NULL,
   unit_obs = NULL,
   cluster = NULL,
   cluster2 = NULL,
@@ -673,7 +679,10 @@ gllvmTMB <- function(
   estimator <- match.arg(estimator)
 
   if (!is.logical(REML) || length(REML) != 1L || is.na(REML)) {
-    cli::cli_abort("{.arg REML} must be a single {.code TRUE} or {.code FALSE} value.")
+    cli::cli_abort(c(
+      "{.arg REML} must be a single {.code TRUE} or {.code FALSE} value.",
+      ">" = "Pass {.code REML = TRUE} or {.code REML = FALSE}."
+    ))
   }
   ## engine = "julia" routes through the experimental GLLVM.jl bridge fitting
   ## path via JuliaCall; "tmb" (default) keeps the native TMB engine below.
@@ -879,6 +888,14 @@ gllvmTMB <- function(
     return(fit)
   }
 
+  ## `data` must be a data.frame before ANY of the grouping-argument checks
+  ## below inspect it via `names(data)` -- on a non-data-frame `data`,
+  ## `names()` returns NULL/something else, so `"site" %in% names(data)`
+  ## silently evaluates FALSE rather than erroring, which let the #1196
+  ## `unit` requirement below fire first with a misleading "unit is
+  ## required" instead of the real "data is not a data.frame" complaint.
+  assertthat::assert_that(is.data.frame(data))
+
   ## ---- Honour deprecated `site = ...` alias for `unit = ...` -------------
   ## The package was originally written for site × species data, so the
   ## between-unit grouping argument was named `site`. The unit × trait
@@ -886,7 +903,7 @@ gllvmTMB <- function(
   ## sites, individuals, species, papers); `site` is now a deprecated
   ## alias that emits a one-shot soft warning and is forwarded to `unit`.
   if (!is.null(site)) {
-    if (!missing(unit) && !identical(unit, "site")) {
+    if (!missing(unit) && !is.null(unit)) {
       cli::cli_abort(
         "Pass either {.arg unit} or {.arg site}, not both. {.arg site} is the deprecated alias."
       )
@@ -902,6 +919,16 @@ gllvmTMB <- function(
     )
     unit <- site
   }
+  ## #1196: `unit` has no default -- every dataset has its own natural
+  ## sampling-unit column (site, individual, paper, ...) and guessing one
+  ## silently risks fitting the wrong grouping. Mirrors the `unit_obs` /
+  ## `cluster` NULL handling above: a required slot names itself rather
+  ## than failing on a downstream `%in%` with an unhelpful message.
+  ## Shared with `suggest_lambda_constraint()`/`suggest_lambda_constraints()`
+  ## and `ridge_path()` via `.gllvmTMB_resolve_unit_staged()` (2026-09-02
+  ## full-suite follow-up) -- see that function for the staged-rollout
+  ## rationale.
+  unit <- .gllvmTMB_resolve_unit_staged(unit, data)
   ## Engine-internal name remains `site` to avoid touching every line in
   ## the parser / TMB template / extractors. User-facing argument is `unit`.
   site <- unit
@@ -980,7 +1007,12 @@ gllvmTMB <- function(
   }
 
   ## ---- Validate input ----------------------------------------------------
-  assertthat::assert_that(is.data.frame(data))
+  ## `is.data.frame(data)` now runs earlier (see the comment above the
+  ## `site =`/`unit =` alias block) so it fires before the #1196 `unit`
+  ## requirement, whose own `"site" %in% names(data)` check silently
+  ## returns FALSE (not an error) for a non-data-frame `data` -- that
+  ## masked the real "not a data.frame" complaint behind an unrelated
+  ## "unit is required" one (found in the full suite, 2026-09-02).
   if (!trait %in% names(data)) {
     cli::cli_abort(c(
       "{.arg trait = {.val {trait}}} is not a column in {.arg data}.",
@@ -1173,6 +1205,50 @@ gllvmTMB <- function(
       "i" = "No formula covariance keyword uses {cli::cli_vec(unused_slots)}.",
       ">" = "Remove the unused optional grouping argument(s), or use its column in a covariance keyword."
     ))
+  }
+  ## #1196: a plain random-effect grouping column whose VALUES are
+  ## identical to the trait column collides with the fixed per-trait
+  ## intercepts (`0 + trait`) -- every random level ends up pinned to one
+  ## trait's worth of data, which is a silent fixed/random intercept
+  ## collision rather than a useful random effect. Scoped to the
+  ## intercept-only covstruct kinds that take a real `lhs | group` bar
+  ## (`latent`/`indep`/`dep`/`unique`/`scalar` desugar to
+  ## `rr`/`diag`/`propto`/`equalto`). `phylo_slope`/`slope`/`kernel_slope`/
+  ## `spatial_slope` are excluded because grouping by `trait` is their
+  ## intended, supported response-column-slope form.
+  ##
+  ## A group symbol whose NAME is literally the trait column is also
+  ## excluded outright (not just `phylo_rr`, which was the first case
+  ## found): several desugar rewrites -- `phylo_rr`'s bare-species form,
+  ## AND `animal_scalar()`/`phylo_scalar()`'s `common = TRUE` collapse to
+  ## `propto(0 + species | trait, Ainv)` (found via testing R7's animal_*
+  ## examples) -- manufacture a SYNTHETIC literal `trait` symbol as
+  ## `$group` that is an engine marker, not a user-chosen column; comparing
+  ## `data[["trait"]]` to itself is trivially a false "collision" for any
+  ## covstruct kind that pattern reaches, not just `phylo_rr`.
+  if (trait %in% all.vars(parsed$fixed)) {
+    trait_values <- as.character(data[[trait]])
+    collision_kinds <- c("rr", "diag", "propto", "equalto")
+    colliding_group_cols <- unique(unlist(lapply(parsed$covstructs, function(cs) {
+      if (!cs$kind %in% collision_kinds) {
+        return(NULL)
+      }
+      grp_vars <- all.vars(cs$group)
+      if (length(grp_vars) != 1L || !grp_vars %in% names(data)) {
+        return(NULL)
+      }
+      if (identical(grp_vars, trait) || identical(grp_vars, "trait")) {
+        return(NULL)
+      }
+      if (identical(as.character(data[[grp_vars]]), trait_values)) grp_vars else NULL
+    })))
+    if (length(colliding_group_cols) > 0L) {
+      cli::cli_abort(c(
+        "A random-effect grouping column is identical to {.arg trait = {.val {trait}}}.",
+        "i" = "{.field {colliding_group_cols}} takes exactly the same values as {.var {trait}}, so its random effect collides with the fixed per-trait intercepts.",
+        ">" = "Use the response-column slope grammar instead (e.g. {.code slope(x | trait)}, {.code phylo_slope(x | trait, tree = tree)}), or group by a different column."
+      ))
+    }
   }
   ## ---- Phase 2a: validate mi() BEFORE any model.frame on parsed$fixed ----
   ## drop_missing_response_rows() (below) builds a model.frame on parsed$fixed.
@@ -1451,7 +1527,10 @@ expand_multinomial_response <- function(formula, data, family, trait_col) {
   if (!inherits(family, "family") && is.list(family) && length(family) > 1L) {
     resp <- all.vars(formula[[2L]])
     if (length(resp) != 1L || !(resp %in% names(data))) {
-      cli::cli_abort("multinomial(): the response must be a single column on the formula LHS.")
+      cli::cli_abort(c(
+        "multinomial(): the response must be a single column on the formula LHS.",
+        ">" = "Write the formula as {.code category ~ ...}, not {.code cbind(a, b, c) ~ ...}."
+      ))
     }
     mn_family <- fams[[which(fam_is_mn)[1L]]]
     requested_baseline <- if (inherits(mn_family, "family")) mn_family$baseline else NULL
@@ -1478,7 +1557,10 @@ expand_multinomial_response <- function(formula, data, family, trait_col) {
     mn_level   <- if (!is.null(fam_names) && all(nzchar(fam_names))) fam_names[mn_pos] else fam_levels[mn_pos]
     mn_rows    <- which(as.character(fam_col) == as.character(mn_level))
     if (length(mn_rows) == 0L) {
-      cli::cli_abort("No rows map to the {.fn multinomial} family level {.val {mn_level}} in {.var {fam_var}}.")
+      cli::cli_abort(c(
+        "No rows map to the {.fn multinomial} family level {.val {mn_level}} in {.var {fam_var}}.",
+        ">" = "Check {.var {fam_var}}'s values against the names of the mixed-family {.code list(...)}."
+      ))
     }
     mn_trait_lvls <- unique(as.character(data[[trait_col]])[mn_rows])
     if (length(mn_trait_lvls) != 1L) {
@@ -1499,13 +1581,19 @@ expand_multinomial_response <- function(formula, data, family, trait_col) {
     if (!is.null(requested_baseline)) {
       requested_baseline <- as.character(requested_baseline)
       if (!(requested_baseline %in% levels(yf))) {
-        cli::cli_abort("{.fn multinomial}: baseline {.val {requested_baseline}} is not a category.")
+        cli::cli_abort(c(
+          "{.fn multinomial}: baseline {.val {requested_baseline}} is not a category.",
+          ">" = "Choose {.arg baseline} from the response's observed categories: {.val {levels(yf)}}."
+        ))
       }
       yf <- stats::relevel(yf, ref = requested_baseline)
     }
     cats <- levels(yf); K <- length(cats)
     if (K < 3L) {
-      cli::cli_abort("{.fn multinomial} requires an unordered response with >= 3 categories.")
+      cli::cli_abort(c(
+        "{.fn multinomial} requires an unordered response with >= 3 categories.",
+        ">" = "Use {.fn binomial} for a two-category response, or {.fn ordinal_probit} if the categories are ordered."
+      ))
     }
     L <- K - 1L
     yint <- as.integer(yf)
@@ -1538,7 +1626,10 @@ expand_multinomial_response <- function(formula, data, family, trait_col) {
   requested_baseline <- if (inherits(mn_family, "family")) mn_family$baseline else NULL
   resp <- all.vars(formula[[2L]])
   if (length(resp) != 1L || !(resp %in% names(data))) {
-    cli::cli_abort("multinomial(): the response must be a single categorical variable on the formula LHS.")
+    cli::cli_abort(c(
+      "multinomial(): the response must be a single categorical variable on the formula LHS.",
+      ">" = "Write the formula as {.code category ~ ...}, where {.code category} is a factor."
+    ))
   }
   y_raw <- data[[resp]]
   ## NA categorical responses are admitted: as.integer(yf) is NA for them, so
@@ -2183,7 +2274,10 @@ gllvmTMBcontrol <- function(
     ))
   }
   if (!is.logical(se) || length(se) != 1L || is.na(se)) {
-    cli::cli_abort("{.arg se} must be a single {.code TRUE} or {.code FALSE} value.")
+    cli::cli_abort(c(
+      "{.arg se} must be a single {.code TRUE} or {.code FALSE} value.",
+      ">" = "Pass {.code se = TRUE} or {.code se = FALSE} to {.fn gllvmTMBcontrol}."
+    ))
   }
   if (...length() > 0L) {
     cli::cli_warn(
@@ -2225,6 +2319,48 @@ gllvmTMBcontrol <- function(
     allow_nongaussian_reml = isTRUE(allow_nongaussian_reml)
   )
 }
+
+## #1196 staged-rollout resolver for `unit` (2026-09-02 full-suite
+## follow-up). `unit` has no default -- every caller must name the column
+## that identifies the sampling unit -- but a hard abort here would break
+## every existing call site (across `gllvmTMB()` and, discovered later,
+## `suggest_lambda_constraint()`/`suggest_lambda_constraints()` and
+## `ridge_path()`) that omits `unit=` and relies on the historical
+## implicit "site" default (D-88 -- a mechanical rewrite would bleed into
+## files other lanes own). So for one release the implicit default still
+## resolves when `data` has a literal "site" column, with a one-time
+## deprecation warning shared across all four entry points (one
+## `getOption()` key); the abort fires only when that fallback column
+## does not exist. The implicit fallback is removed in 0.8.0 (NEWS).
+##
+## Returns the resolved `unit` string, or aborts naming `{.arg unit}`.
+.gllvmTMB_resolve_unit_staged <- function(unit, data) {
+  if (!is.null(unit)) {
+    return(unit)
+  }
+  if ("site" %in% names(data)) {
+    ## `cli::cli_warn(.frequency = "once")`'s internal throttle is not
+    ## resettable from tests (see R/normalise-level.R for the same
+    ## finding); an `getOption()`-cached one-shot, resettable via
+    ## `withr::local_options()`, mirrors that established pattern.
+    if (!isTRUE(getOption("gllvmTMB.warned_unit_implicit_site"))) {
+      cli::cli_warn(
+        c(
+          "!" = "Relying on the implicit {.code unit = \"site\"} default is deprecated.",
+          "i" = "Pass {.arg unit = \"site\"} explicitly; the implicit default is removed in 0.8.0."
+        ),
+        class = "lifecycle_warning_deprecated"
+      )
+      options(gllvmTMB.warned_unit_implicit_site = TRUE)
+    }
+    return("site")
+  }
+  cli::cli_abort(c(
+    "{.arg unit = ...} is required.",
+    ">" = "Pass the name of the column that identifies the sampling unit (site, individual, paper, ...)."
+  ))
+}
+
 
 ## `aghq` accepts FALSE (Laplace, the current default), "auto" (let the package
 ## decide), or a positive integer node count. Anything else is a user error and is
@@ -2360,7 +2496,10 @@ miss_control <- function(
     start_method <- list(method = start_method)
   }
   if (!is.list(start_method)) {
-    cli::cli_abort("{.arg start_method} must be a list, e.g. {.code list(method = \"res\", jitter.sd = 0.2)}.")
+    cli::cli_abort(c(
+      "{.arg start_method} must be a list.",
+      ">" = "Omit {.arg start_method} for the default start, or pass e.g. {.code list(method = \"res\", jitter.sd = 0.2)} for the soft-deprecated residual start."
+    ))
   }
 
   method <- start_method$method
@@ -2369,7 +2508,10 @@ miss_control <- function(
     method <- NULL
   } else {
     if (!is.character(method) || length(method) != 1L) {
-      cli::cli_abort("{.arg start_method$method} must be NULL or the string {.val res}.")
+      cli::cli_abort(c(
+        "{.arg start_method$method} must be NULL or the string {.val res}.",
+        ">" = "Omit {.arg start_method} for the default start (recommended); {.val res} is the only other accepted value, and it is soft-deprecated."
+      ))
     }
     if (!method %in% c("res", "indep")) {
       cli::cli_abort(c(
@@ -2389,7 +2531,10 @@ miss_control <- function(
   jitter.sd <- start_method$jitter.sd %||% 0
   if (!is.numeric(jitter.sd) || length(jitter.sd) != 1L ||
       !is.finite(jitter.sd) || jitter.sd < 0) {
-    cli::cli_abort("{.arg start_method$jitter.sd} must be one finite non-negative number.")
+    cli::cli_abort(c(
+      "{.arg start_method$jitter.sd} must be one finite non-negative number.",
+      ">" = "{.arg jitter.sd} only applies with the soft-deprecated {.code method = \"res\"} start; pass e.g. {.code 0.2}, or {.code 0} for no jitter."
+    ))
   }
   list(method = method, jitter.sd = as.numeric(jitter.sd))
 }

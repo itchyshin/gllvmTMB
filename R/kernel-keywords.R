@@ -80,6 +80,26 @@ kernel_latent <- function(unit, K, d = 1, name = "kernel", unique = FALSE, rho =
 #' @return A formula marker; never evaluated as a regular R function.
 #' @export
 kernel_unique <- function(unit, K, name = "kernel") {
+  ## Fire-on-use notice when this marker is called directly. The formula
+  ## parser already warns on `kernel_unique(...)` used inside a `~` formula
+  ## via the shared `.gllvmTMB_warn_unique_family_deprecated()` cli_warn
+  ## tracker (R/brms-sugar.R) -- that path is unaffected. This function's own
+  ## BODY, though, is never evaluated when the keyword appears inside a
+  ## formula (only its name is matched), so a direct call to
+  ## `kernel_unique()` -- outside a formula, e.g. in a script or test -- was
+  ## previously silent. Mirrors the once-per-session tracker
+  ## `.gllvmTMB_warn_scalar_family_deprecated()` /
+  ## `.gllvmTMB_warn_latent_residual_alias()` use in R/brms-sugar.R.
+  if (!isTRUE(getOption("gllvmTMB.quiet_grammar_notes", FALSE))) {
+    if (!isTRUE(.gllvmTMB_deprecation_seen[["kernel_unique_direct_call"]])) {
+      lifecycle::deprecate_soft(
+        "0.2.0",
+        "kernel_unique()",
+        "kernel_indep()"
+      )
+      .gllvmTMB_deprecation_seen[["kernel_unique_direct_call"]] <- TRUE
+    }
+  }
   invisible(NULL)
 }
 

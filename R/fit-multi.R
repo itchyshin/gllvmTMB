@@ -214,7 +214,10 @@
     ))
   }
   if (anyDuplicated(family_names)) {
-    cli::cli_abort("Mixed-family {.arg family} list names must be unique.")
+    cli::cli_abort(c(
+      "Mixed-family {.arg family} list names must be unique.",
+      ">" = "Rename the duplicate entries in the {.code family = list(...)} argument."
+    ))
   }
 
   missing_levels <- setdiff(fam_levels, family_names)
@@ -597,7 +600,10 @@
 
 .resolve_sparse_propto_precision <- function(Ainv, levs, jitter = 1e-8) {
   if (is.null(rownames(Ainv))) {
-    cli::cli_abort("Sparse {.arg phylo_vcv}/{.arg Ainv} must have rownames matching levels of {.var species}.")
+    cli::cli_abort(c(
+      "Sparse {.arg phylo_vcv}/{.arg Ainv} must have rownames matching levels of {.var species}.",
+      ">" = "Set {.code rownames(Ainv) <- levels(data$species)} (or the equivalent for {.arg phylo_vcv})."
+    ))
   }
   if (is.null(colnames(Ainv))) {
     colnames(Ainv) <- rownames(Ainv)
@@ -639,7 +645,10 @@
     cli::cli_abort("Sparse {.arg phylo_vcv}/{.arg Ainv} must be square.")
   }
   if (is.null(rownames(Ainv))) {
-    cli::cli_abort("Sparse {.arg phylo_vcv}/{.arg Ainv} must have rownames matching levels of {.var species}.")
+    cli::cli_abort(c(
+      "Sparse {.arg phylo_vcv}/{.arg Ainv} must have rownames matching levels of {.var species}.",
+      ">" = "Set {.code rownames(Ainv) <- levels(data$species)} (or the equivalent for {.arg phylo_vcv})."
+    ))
   }
   if (is.null(colnames(Ainv))) {
     colnames(Ainv) <- rownames(Ainv)
@@ -690,7 +699,10 @@
 
   if (!is.null(phylo_tree)) {
     if (!inherits(phylo_tree, "phylo")) {
-      cli::cli_abort("The {.arg tree} supplied to {.fn phylo_slope} must be an {.cls ape::phylo} tree.")
+      cli::cli_abort(c(
+      "The {.arg tree} supplied to {.fn phylo_slope} must be an {.cls ape::phylo} tree.",
+      ">" = "Pass an object read by {.fn ape::read.tree} or {.fn ape::read.nexus}, e.g. {.code phylo_slope(x | species, tree = my_tree)}."
+    ))
     }
     .gllvm_abort_uncovered_species_levels(
       levs, phylo_tree$tip.label, data, group,
@@ -699,7 +711,10 @@
     phy_prec <- .gllvm_phylo_tree_precision(phylo_tree, correlation = TRUE)
     tip_to_aug <- match(levs, rownames(phy_prec$precision))
     if (anyNA(tip_to_aug)) {
-      cli::cli_abort("Internal: phylo_slope() group labels were not found in the tree precision row names.")
+      cli::cli_abort(c(
+      "Internal: phylo_slope() group labels were not found in the tree precision row names.",
+      ">" = "This should not happen from ordinary use; check your formula and data for anything unusual, and file an issue at https://github.com/itchyshin/gllvmTMB/issues with a reproducible example and `sessionInfo()`."
+    ))
     }
     return(list(
       Ainv = phy_prec$precision,
@@ -778,9 +793,10 @@
     K_full <- solve(as.matrix(tree_precision$precision))
     tip_index <- unname(tree_precision$tip_node_index[levs])
     if (anyNA(tip_index)) {
-      cli::cli_abort(
-        "Internal: {.fn {helper}} response-column labels did not map to tree tips."
-      )
+      cli::cli_abort(c(
+        "Internal: {.fn {helper}} response-column labels did not map to tree tips.",
+        ">" = "Check that the response-column levels are among {.arg tree}'s tip labels, and file an issue at https://github.com/itchyshin/gllvmTMB/issues with a reproducible example and {.code sessionInfo()}."
+      ))
     }
     K <- K_full[tip_index, tip_index, drop = FALSE]
     dimnames(K) <- list(levs, levs)
@@ -822,9 +838,10 @@
       K_full <- chol2inv(Q_chol)
       tip_index <- match(levs, rownames(Q))
       if (anyNA(tip_index)) {
-        cli::cli_abort(
-          "Internal: the sparse source for {.fn {helper}} did not map every response-column level."
-        )
+        cli::cli_abort(c(
+          "Internal: the sparse source for {.fn {helper}} did not map every response-column level.",
+          ">" = "Check that the response-column levels are among the sparse source's row names, and file an issue at https://github.com/itchyshin/gllvmTMB/issues with a reproducible example and {.code sessionInfo()}."
+        ))
       }
       K <- K_full[tip_index, tip_index, drop = FALSE]
       dimnames(K) <- list(levs, levs)
@@ -1609,11 +1626,17 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   }, logical(1L))
   rr_B_slope_idx <- which(rr_is_latent_augmented & groupings == site)
   if (length(rr_B_slope_idx) > 1L) {
-    cli::cli_abort("Only one augmented ordinary {.fn latent} random-regression term is supported at the {.arg unit} tier.")
+    cli::cli_abort(c(
+      "Only one augmented ordinary {.fn latent} random-regression term is supported at the {.arg unit} tier.",
+      ">" = "There is no supported multi-covariate route here (only a single slope covariate is supported); fit separate models."
+    ))
   }
   diag_B_slope_idx <- which(diag_is_unique_augmented & groupings == site)
   if (length(diag_B_slope_idx) > 1L) {
-    cli::cli_abort("Only one augmented ordinary diagonal-compatibility random-regression term is supported at the {.arg unit} tier.")
+    cli::cli_abort(c(
+      "Only one augmented ordinary diagonal-compatibility random-regression term is supported at the {.arg unit} tier.",
+      ">" = "There is no supported multi-covariate route here (only a single slope covariate is supported); fit separate models."
+    ))
   }
   use_rr_B_slope <- length(rr_B_slope_idx) > 0L
   use_diag_B_slope <- length(diag_B_slope_idx) > 0L
@@ -1750,7 +1773,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   }, logical(1L)))
   use_spde_slope <- length(spde_aug_idx) > 0L
   if (length(spde_aug_idx) > 1L) {
-    cli::cli_abort("Only one augmented spatial random-regression term is supported per formula.")
+    cli::cli_abort(c(
+      "Only one augmented spatial random-regression term is supported per formula.",
+      ">" = "There is no supported multi-covariate route here (only a single slope covariate is supported); fit separate models."
+    ))
   }
   spde_slope_cs <- if (use_spde_slope) parsed$covstructs[[spde_aug_idx[1L]]] else NULL
   use_spde_slope_indep <- isTRUE(spde_slope_cs$extra[[".spatial_indep_augmented"]])
@@ -1779,7 +1805,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   spde_slope_xcol <- if (use_spde_slope) {
     sc <- spde_slope_cs$extra$slope_col
     if (is.null(sc) || !nzchar(sc)) {
-      cli::cli_abort("Internal: augmented spatial random regression is missing {.code slope_col}.")
+      cli::cli_abort(c(
+      "Internal: augmented spatial random regression is missing {.code slope_col}.",
+      ">" = "This should not happen from ordinary use; check your formula and data for anything unusual, and file an issue at https://github.com/itchyshin/gllvmTMB/issues with a reproducible example and `sessionInfo()`."
+    ))
     }
     sc
   } else NA_character_
@@ -1828,7 +1857,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   }, logical(1L)))
   use_spde_latent_slope <- length(spde_lat_aug_idx) > 0L
   if (length(spde_lat_aug_idx) > 1L) {
-    cli::cli_abort("Only one augmented {.fn spatial_latent} (random-slope) term is supported per formula.")
+    cli::cli_abort(c(
+      "Only one augmented {.fn spatial_latent} (random-slope) term is supported per formula.",
+      ">" = "There is no supported multi-covariate route here (only a single slope covariate is supported); fit separate models."
+    ))
   }
   spde_latent_slope_cs <- if (use_spde_latent_slope) {
     parsed$covstructs[[spde_lat_aug_idx[1L]]]
@@ -1885,7 +1917,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   spde_latent_slope_xcol <- if (use_spde_latent_slope) {
     sc <- spde_latent_slope_cs$extra$slope_col
     if (is.null(sc) || !nzchar(sc)) {
-      cli::cli_abort("Internal: augmented spatial_latent random regression is missing {.code slope_col}.")
+      cli::cli_abort(c(
+      "Internal: augmented spatial_latent random regression is missing {.code slope_col}.",
+      ">" = "This should not happen from ordinary use; check your formula and data for anything unusual, and file an issue at https://github.com/itchyshin/gllvmTMB/issues with a reproducible example and `sessionInfo()`."
+    ))
     }
     sc
   } else NA_character_
@@ -2089,7 +2124,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   phylo_rr_idx   <- phy_idx_main[!phy_is_unique & !phy_is_kernel_multi]   # phylo_latent + phylo_dep terms
   phylo_diag_idx <- phy_idx_main[ phy_is_unique & !phy_is_kernel_multi]   # phylo_unique terms (incl. phylo_indep)
   if (length(phylo_latent_slope_idx) > 1L)
-    cli::cli_abort("Only one augmented {.fn phylo_latent} (random-slope) term is supported per formula.")
+    cli::cli_abort(c(
+      "Only one augmented {.fn phylo_latent} (random-slope) term is supported per formula.",
+      ">" = "Combine the covariates into one term, e.g. {.code phylo_latent(1 + x1 + x2 | species, d = K, tree = tree)}, or fit separate models."
+    ))
   ## ---- phylo_dep over-parameterisation guards --------------------------
   ## `phylo_dep(0+trait|species)` rewrites to `phylo_rr(species, d = n_traits,
   ## .dep = TRUE)`. Same engine path as `phylo_latent(species, d = n_traits)`
@@ -2123,9 +2161,15 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     }
   }
   if (length(phylo_rr_idx) > 1L)
-    cli::cli_abort("Only one {.fn phylo_latent} term is supported per formula.")
+    cli::cli_abort(c(
+      "Only one {.fn phylo_latent} term is supported per formula.",
+      ">" = "Combine the terms (e.g. raise {.code d}), or fit separate models."
+    ))
   if (length(phylo_diag_idx) > 1L)
-    cli::cli_abort("Only one {.fn phylo_unique} term is supported per formula.")
+    cli::cli_abort(c(
+      "Only one {.fn phylo_unique} term is supported per formula.",
+      ">" = "Combine the terms, or fit separate models."
+    ))
   ## ---- phylo_indep over-parameterisation guards ------------------------
   ## phylo_indep is the marginal-only canonical for phylogenetic fits;
   ## same engine as phylo_unique-alone, the .indep marker only changes
@@ -2367,7 +2411,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     isTRUE(phylo_slope_cs$extra$.column_coef_estimated_rho)
   if (use_phylo_column_slope &&
       !phylo_column_slope_source %in% c("ordinary", "phylo", "animal", "kernel", "spatial")) {
-    cli::cli_abort("Internal: unknown response-column slope source {.val {phylo_column_slope_source}}.")
+    cli::cli_abort(c(
+      "Internal: unknown response-column slope source {.val {phylo_column_slope_source}}.",
+      ">" = "This should not happen from ordinary use; check your formula and data for anything unusual, and file an issue at https://github.com/itchyshin/gllvmTMB/issues with a reproducible example and `sessionInfo()`."
+    ))
   }
   ## The spatial response-column helper has the same public predictor-basis
   ## contract, but it cannot use the fixed Ainv matrix-normal implementation:
@@ -2577,7 +2624,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     } else if (use_phylo_slope_correlated) {
       slope_col <- phylo_slope_cs$extra$slope_col
       if (is.null(slope_col) || !nzchar(slope_col)) {
-        cli::cli_abort("Internal: augmented phylogenetic random regression is missing {.code slope_col}.")
+        cli::cli_abort(c(
+      "Internal: augmented phylogenetic random regression is missing {.code slope_col}.",
+      ">" = "This should not happen from ordinary use; check your formula and data for anything unusual, and file an issue at https://github.com/itchyshin/gllvmTMB/issues with a reproducible example and `sessionInfo()`."
+    ))
       }
       slope_col
     } else {
@@ -2588,7 +2638,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   phylo_column_slope_cols <- if (use_phylo_column_slope) {
     cols <- phylo_slope_cs$extra$column_slope_cols
     if (is.null(cols) || length(cols) < 1L || !all(nzchar(cols))) {
-      cli::cli_abort("Internal: column-slope term is missing its predictor columns.")
+      cli::cli_abort(c(
+      "Internal: column-slope term is missing its predictor columns.",
+      ">" = "This should not happen from ordinary use; check your formula and data for anything unusual, and file an issue at https://github.com/itchyshin/gllvmTMB/issues with a reproducible example and `sessionInfo()`."
+    ))
     }
     as.character(cols)
   } else character(0L)
@@ -2606,7 +2659,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   } else if (use_phylo_dep_slope) {
     sc <- phylo_slope_cs$extra$slope_cols %||% phylo_slope_cs$extra$slope_col
     if (is.null(sc) || length(sc) < 1L || !all(nzchar(sc))) {
-      cli::cli_abort("Internal: augmented phylo_dep random regression is missing {.code slope_cols}.")
+      cli::cli_abort(c(
+      "Internal: augmented phylo_dep random regression is missing {.code slope_cols}.",
+      ">" = "This should not happen from ordinary use; check your formula and data for anything unusual, and file an issue at https://github.com/itchyshin/gllvmTMB/issues with a reproducible example and `sessionInfo()`."
+    ))
     }
     as.character(sc)
   } else if (!is.na(phylo_slope_xcol)) {
@@ -2677,7 +2733,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   phylo_latent_slope_xcol <- if (use_phylo_latent_slope) {
     sc <- phylo_latent_slope_cs$extra$slope_col
     if (is.null(sc) || !nzchar(sc)) {
-      cli::cli_abort("Internal: augmented phylo_latent random regression is missing {.code slope_col}.")
+      cli::cli_abort(c(
+      "Internal: augmented phylo_latent random regression is missing {.code slope_col}.",
+      ">" = "This should not happen from ordinary use; check your formula and data for anything unusual, and file an issue at https://github.com/itchyshin/gllvmTMB/issues with a reproducible example and `sessionInfo()`."
+    ))
     }
     sc
   } else NA_character_
@@ -2698,7 +2757,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   rr_B_slope_xcol <- if (use_rr_B_slope) {
     sc <- rr_B_slope_cs$extra$slope_col
     if (is.null(sc) || !nzchar(sc)) {
-      cli::cli_abort("Internal: augmented ordinary latent random regression is missing {.code slope_col}.")
+      cli::cli_abort(c(
+      "Internal: augmented ordinary latent random regression is missing {.code slope_col}.",
+      ">" = "This should not happen from ordinary use; check your formula and data for anything unusual, and file an issue at https://github.com/itchyshin/gllvmTMB/issues with a reproducible example and `sessionInfo()`."
+    ))
     }
     sc
   } else NA_character_
@@ -2740,7 +2802,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   diag_B_slope_xcol <- if (use_diag_B_slope) {
     sc <- diag_B_slope_cs$extra$slope_col
     if (is.null(sc) || !nzchar(sc)) {
-      cli::cli_abort("Internal: augmented ordinary diagonal-compatibility random regression is missing {.code slope_col}.")
+      cli::cli_abort(c(
+      "Internal: augmented ordinary diagonal-compatibility random regression is missing {.code slope_col}.",
+      ">" = "This should not happen from ordinary use; check your formula and data for anything unusual, and file an issue at https://github.com/itchyshin/gllvmTMB/issues with a reproducible example and `sessionInfo()`."
+    ))
     }
     sc
   } else NA_character_
@@ -3226,7 +3291,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   if (isTRUE(isdm_declared)) {
     family_var <- attr(family_input, "family_var", exact = TRUE)
     if (is.null(family_var) || !family_var %in% names(data)) {
-      cli::cli_abort("Internal: declared integrated-source selector is unavailable.")
+      cli::cli_abort(c(
+      "Internal: declared integrated-source selector is unavailable.",
+      ">" = "This should not happen from ordinary use; check your formula and data for anything unusual, and file an issue at https://github.com/itchyshin/gllvmTMB/issues with a reproducible example and `sessionInfo()`."
+    ))
     }
     .gllvmTMB_assert_isdm_observed_arms(
       source = data[[family_var]],
@@ -4292,7 +4360,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ## A^-1. Tips carry their tip labels in the precision row names.
       tip_to_aug <- match(levs, rownames(Ainv_phy_rr))
       if (anyNA(tip_to_aug))
-        cli::cli_abort("Internal: tip names not all found in the phylo precision row names.")
+        cli::cli_abort(c(
+      "Internal: tip names not all found in the phylo precision row names.",
+      ">" = "This should not happen from ordinary use; check your formula and data for anything unusual, and file an issue at https://github.com/itchyshin/gllvmTMB/issues with a reproducible example and `sessionInfo()`."
+    ))
       species_aug_id <- tip_to_aug[species_id + 1L] - 1L  # 0-indexed for C++
     } else if (inherits(phylo_vcv, "sparseMatrix")) {
       ## --- Sparse Ainv direct engine path (Design 47 follow-on,
@@ -4309,7 +4380,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ## precision would condition on the dropped nodes, not marginalize
       ## them.
       if (is.null(rownames(phylo_vcv)))
-        cli::cli_abort("Sparse {.arg phylo_vcv}/{.arg Ainv} must have rownames matching levels of {.var {species}}.")
+        cli::cli_abort(c(
+          "Sparse {.arg phylo_vcv}/{.arg Ainv} must have rownames matching levels of {.var {species}}.",
+          ">" = "Set {.code rownames(phylo_vcv) <- levels(data[[species]])} (or the equivalent for {.arg Ainv})."
+        ))
       levs <- levels(data[[species]])
       .gllvm_abort_uncovered_species_levels(
         levs, rownames(phylo_vcv), data, species,

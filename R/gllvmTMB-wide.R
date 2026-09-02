@@ -248,6 +248,7 @@ gllvmTMB_wide <- function(
   gllvmTMB(
     fmla,
     data = long_df,
+    unit = "site",
     family = family,
     phylo_vcv = phylo_vcv,
     weights = w_long,

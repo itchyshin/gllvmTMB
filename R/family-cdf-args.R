@@ -56,21 +56,27 @@
 #' @noRd
 .gllvmTMB_family_cdf_args <- function(fit, trait_id, eta = NULL) {
   trait_id <- as.integer(trait_id)
+  n_traits <- length(unique(as.integer(fit$tmb_data$trait_id)))
   if (length(trait_id) != 1L || is.na(trait_id) || trait_id < 1L) {
-    cli::cli_abort("{.arg trait_id} must be a single positive integer.")
+    cli::cli_abort(c(
+      "{.arg trait_id} must be a single positive integer.",
+      ">" = "Pass a value from 1 to {n_traits} (this fit's number of traits), matching {.code fit$tmb_data$trait_id + 1L}."
+    ))
   }
   tid_rows <- as.integer(fit$tmb_data$trait_id) + 1L
   rows <- which(tid_rows == trait_id)
   if (length(rows) == 0L) {
-    cli::cli_abort(
-      "No rows with trait_id {trait_id} in {.code fit$tmb_data$trait_id}."
-    )
+    cli::cli_abort(c(
+      "No rows with trait_id {trait_id} in {.code fit$tmb_data$trait_id}.",
+      ">" = "This fit has {n_traits} trait(s); pass a {.arg trait_id} from 1 to {n_traits}."
+    ))
   }
   fid <- unique(as.integer(fit$tmb_data$family_id_vec[rows]))
   if (length(fid) != 1L || is.na(fid)) {
-    cli::cli_abort(
-      "Trait {trait_id} does not map to a single known family_id."
-    )
+    cli::cli_abort(c(
+      "Trait {trait_id} does not map to a single known family_id.",
+      ">" = "This usually means mixed families were assigned inconsistently within the trait; check {.code fit$family_input} for this trait."
+    ))
   }
   lid <- unique(as.integer(fit$tmb_data$link_id_vec[rows]))
   lid <- if (length(lid) == 1L) lid else NA_integer_

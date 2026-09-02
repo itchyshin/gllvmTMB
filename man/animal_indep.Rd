@@ -65,7 +65,7 @@ df <- data.frame(
 )
 fit <- gllvmTMB(
   value ~ 0 + trait + animal_indep(0 + trait | species, A = A),
-  data = df, family = gaussian()
+  data = df, unit = "species", family = gaussian()
 )
 }
 }

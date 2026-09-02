@@ -75,7 +75,7 @@ df <- data.frame(
 )
 fit <- gllvmTMB(
   value ~ 0 + trait + animal_unique(species, pedigree = ped),
-  data = df, family = gaussian()
+  data = df, unit = "species", family = gaussian()
 )
 }
 }

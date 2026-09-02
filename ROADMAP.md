@@ -1,5 +1,9 @@
 # gllvmTMB Live Roadmap
 
+*Reconciled 2026-09-02 against `_pkgdown.yml`; this file no longer tracks a
+0.6/0.7 checklist — the live boundary is
+`docs/design/35-validation-debt-register.md`.*
+
 *Reset: 2026-05-20. The previous long roadmap is archived at
 `docs/dev-log/roadmap-archive/2026-05-20-pre-reset-roadmap.md`.*
 
@@ -241,19 +245,27 @@ to reverse-engineer it from long setup chunks.
 
 ## Restoration Queue
 
+**Reconciled 2026-09-02:** four entries below are RESTORED — they are live in
+`_pkgdown.yml`'s navbar and reference index, not hidden. Seven entries were
+never restored; they were removed outright at the 0.5.0 public-article-estate
+finalization (`eacbd0f65`, 2026-07-12) along with eight other retired
+articles, and are not queued for return under their old return conditions.
+The original return-condition text is kept below as history; do not read
+either group as still-pending work.
+
 | Hidden article | Return condition |
 |---|---|
-| `random-regression-reaction-norms` | Buildable internal draft after #466. The article now uses a shipped behavioural-syndrome example object with `individual` as unit and `session_id` as repeated occasion, long and wide formulas, diagnostics, augmented-covariance recovery, and repeatability curves, but it stays hidden until the reader path is plain-language and fully reviewed. |
-| `random-slopes-nongaussian` | Buildable internal structured-slope workflow. Keep hidden until the phylogenetic GLLVM / structured-dependence reader path is ready; do not present it as an interval-calibration article. |
-| `behavioural-syndromes` | Internal Tier 3 candidate Tier 1 after the 2026-06-18 article-council gate. Needs runnable long + wide where meaningful; between/within covariance; repeatability; truth recovery; diagnostic table; Florence figure review; rendered HTML review before public article prose expansion. |
-| `mixed-family-extractors` | Keep internal until the broader mixed-response teaching story covers Gaussian, binomial, Poisson/NB, beta/proportion, and the route-only delta/hurdle cases (designed, convergence-gated — MIX-10) with report-ready extractor tables. This is not the loading-constraint lane. |
-| `animal-model` | Larger pedigree fixture; A/Ainv truth; genetic covariance recovery. |
-| `phylogenetic-gllvm` | Phylo helper; phylo versus non-phylo split; validation rows. |
-| `psychometrics-irt` | Preview/internal until after the binary lambda/JSDM article is coherent and the `mirt` comparator path is explicitly designed. The current page is not the final IRT article. |
-| `lambda-constraint` | First rework target for binary loading constraints: binary species/JSDM-style example, separate from mixed-family response teaching, with interval-aware matrix figures via `plot_correlations(..., style = "heatmap", matrix_layout = "estimate_ci")` whenever CI columns are displayed. |
-| `simulation-recovery-validated` | M3 target-explicit statistical gate passes. |
-| `cross-package-validation` | Phase 5.5 comparator evidence exists. |
-| `functional-biogeography` | Final capstone; component helpers and M3 evidence complete. |
+| `random-regression-reaction-norms` | **RESTORED** — live in `_pkgdown.yml` (navbar `model_guides` menu and reference index). Original return condition (history): Buildable internal draft after #466. The article now uses a shipped behavioural-syndrome example object with `individual` as unit and `session_id` as repeated occasion, long and wide formulas, diagnostics, augmented-covariance recovery, and repeatability curves, but it stays hidden until the reader path is plain-language and fully reviewed. |
+| `random-slopes-nongaussian` | **RESTORED** — live in `_pkgdown.yml` (navbar `model_guides` menu and reference index). Original return condition (history): Buildable internal structured-slope workflow. Keep hidden until the phylogenetic GLLVM / structured-dependence reader path is ready; do not present it as an interval-calibration article. |
+| `behavioural-syndromes` | **RESTORED** — live in `_pkgdown.yml` (navbar `model_guides` menu and reference index). Original return condition (history): Internal Tier 3 candidate Tier 1 after the 2026-06-18 article-council gate. Needs runnable long + wide where meaningful; between/within covariance; repeatability; truth recovery; diagnostic table; Florence figure review; rendered HTML review before public article prose expansion. |
+| `mixed-family-extractors` | **Removed at 0.5.0 (`eacbd0f65`); not queued.** Original return condition (history): Keep internal until the broader mixed-response teaching story covers Gaussian, binomial, Poisson/NB, beta/proportion, and the route-only delta/hurdle cases (designed, convergence-gated — MIX-10) with report-ready extractor tables. This is not the loading-constraint lane. |
+| `animal-model` | **Removed at 0.5.0 (`eacbd0f65`); not queued.** Original return condition (history): Larger pedigree fixture; A/Ainv truth; genetic covariance recovery. |
+| `phylogenetic-gllvm` | **RESTORED** — live in `_pkgdown.yml` (navbar `model_guides` menu and reference index). Original return condition (history): Phylo helper; phylo versus non-phylo split; validation rows. |
+| `psychometrics-irt` | **Removed at 0.5.0 (`eacbd0f65`); not queued.** Original return condition (history): Preview/internal until after the binary lambda/JSDM article is coherent and the `mirt` comparator path is explicitly designed. The current page is not the final IRT article. |
+| `lambda-constraint` | **Removed at 0.5.0 (`eacbd0f65`); not queued.** (A separate, later article `lambda-constraint-suggest.Rmd` exists under public review; it is not this queue entry.) Original return condition (history): First rework target for binary loading constraints: binary species/JSDM-style example, separate from mixed-family response teaching, with interval-aware matrix figures via `plot_correlations(..., style = "heatmap", matrix_layout = "estimate_ci")` whenever CI columns are displayed. |
+| `simulation-recovery-validated` | **Removed at 0.5.0 (`eacbd0f65`); not queued.** Original return condition (history): M3 target-explicit statistical gate passes. |
+| `cross-package-validation` | **Removed at 0.5.0 (`eacbd0f65`); not queued.** Original return condition (history): Phase 5.5 comparator evidence exists. |
+| `functional-biogeography` | **Removed at 0.5.0 (`eacbd0f65`); not queued.** Original return condition (history): Final capstone; component helpers and M3 evidence complete. |
 
 Blocked articles have no navbar entry, no README routing, and no
 recommended-next-step link from visible pages. Partial articles may return

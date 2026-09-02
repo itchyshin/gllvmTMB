@@ -1,5 +1,54 @@
 # Development (unreleased)
 
+* Several refusals now name a route that actually fits, instead of pointing at
+  keywords that refuse the same input. An augmented-LHS formula such as
+  `indep(1 + x | trait)` or `phylo_indep(0 + trait + trait:x | species)` now
+  redirects to the response-column slope grammar (`slope()`/`phylo_slope()`/
+  `animal_slope()`) when grouped by the trait column, or to the group-axis
+  form (`phylo_slope(x | group, tree = tree)`) otherwise -- previously both
+  cases pointed at `*_indep`/`*_latent`/`*_dep`, which also refuse a slope
+  LHS. A random-effect grouping column whose values are identical to the
+  trait column now aborts explaining the fixed/random intercept collision,
+  instead of fitting a silently meaningless model. `spatial_*()` keywords
+  warn once when their `| token` grouping is not the canonical `coords`
+  spelling, since that token is always ignored -- the field is driven only by
+  `mesh =`/`coords =`. `gllvmTMB_diagnose()`'s runaway-loading advice now
+  names `loading_ridge` (the integration-neutral spelling) instead of the
+  AGHQ-specific `aghq_ridge`, and, only for fits where it actually applies --
+  `latent(..., unique = FALSE)` models with at least 100 units and a latent
+  rank of 2 or fewer -- mentions `integration = "va"` as a tuning-free
+  alternative. A further batch of bare aborts across
+  `R/gllvmTMB.R`, `R/parse-multi-formula.R`, `R/isdm-sources.R`,
+  `R/family-cdf-args.R`, `R/fit-multi.R`, `R/methods-gllvmTMB.R` and
+  `R/suggest-lambda-constraint.R` now say what to try next.
+* Removed the accidentally-exported internal helpers `.proportions_wald_ci()`
+  and `.proportions_bootstrap_ci()` (dot-prefixed, undocumented, no known
+  external caller). The same numbers stay reachable through the public route:
+  `confint(fit, parm = "proportion[:trait]", method = "wald")` or
+  `method = "bootstrap"` returns the same per-(trait, component) variance-
+  proportion intervals, and `extract_proportions()` returns the point
+  estimates they are built from.
+* `meta_known_V()` and `kernel_unique()` now warn, once per session, when
+  called directly (via `lifecycle::deprecate_soft()`), naming their current
+  replacements `meta_V()` and `kernel_indep()` /
+  `kernel_latent(..., unique = TRUE)`. Both remain accepted compatibility
+  syntax and keep fitting the same model; used inside a formula,
+  `kernel_unique()` still separately warns the way it already did, which is
+  unchanged by this.
+* Corrected an internal evidence citation for the cross-lineage coevolution
+  extractor (`extract_Gamma()`): it had pointed at an internal example
+  article that was actually removed when the public article set was
+  finalized at 0.5.0. The test-based evidence for this feature is unaffected
+  and the feature itself has not changed; only the stale citation, and the
+  internal tracking status it supported, are corrected.
+* `gllvmTMB()`'s `unit` argument no longer defaults to `"site"`. For one
+  release, omitting `unit` when `data` has a literal `"site"` column still
+  works via a deprecated implicit fallback (a one-time warning); pass
+  `unit = "site"` explicitly to silence it. When `data` has no `"site"`
+  column, omitting `unit` now aborts naming the argument, instead of failing
+  later with an opaque "column not found" error. The implicit fallback is
+  removed in 0.8.0. `ridge_path()` and `suggest_lambda_constraint(s)()` carry
+  the same change through their own `unit` defaults.
 * Structured trait-intercept `phylo_*`, `animal_*`, `kernel_*` and `spatial_*` terms accept
   fixed `rho` between zero and one. This reduces covariance between source
   levels while preserving their marginal variances and the full trait

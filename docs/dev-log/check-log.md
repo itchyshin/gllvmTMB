@@ -57469,3 +57469,38 @@ archive copies; `Rscript --vanilla dev/isdm-requalification/response-information
 `Rscript --vanilla -e 'testthat::test_file("tests/testthat/test-isdm-response-information-forensics.R", reporter = "summary")'` passed 5 expectations; Unlazy G0--G3 all passed.
 
 Scope scan: `rg -n -i 'response-information|rep3|EVIDENCE_INCOMPLETE|NO_FRESH_CAMPAIGN_YET' README.md NEWS.md ROADMAP.md _pkgdown.yml vignettes R man`. Expected result: no public user-facing implementation or capability claim. This internal audit touches only `dev/`, its focused tests, internal ledger/register, check log, and after-task report.
+
+## 2026-09-02 — gap closure ARC A/B/C (Claude lane `claude/gapclose-20260902`, draft PR #1239)
+
+Commands run (worktree `~/local-scratch/lanes/gllvmTMB-gapclose-20260902`, R 4.6.0, TMB 1.9.21):
+
+- Per-slice: `Rscript -e 'testthat::test_file("tests/testthat/<file>", reporter = "summary")'` for
+  `test-gapclose-signposting.R` (22), `test-gapclose-next-steps.R` (7), `test-gapclose-parity-ledger.R`
+  (32 assertions; skips on an installed copy), `test-register-evidence-paths.R`,
+  `test-direct-marker-call-deprecations.R`, `test-no-deprecated-recommendations.R`,
+  `test-null-tier-defaults.R` (17), `test-gllvmTMB-args.R` (28), `test-suggest-lambda-constraint.R`
+  (40), `test-runaway-warning.R` (17), `test-interval-calibration-claims.R` (6 blocks),
+  `test-paper1-spde-slope-gauge-trust-region-materializer.R` (solo, after the load incident).
+- `Rscript dev/gapclose/build-capability-status.R --check` → `capability-status.md up to date; 76 rows;
+  0 unmapped register rows` (idempotent, re-run after the register edits).
+- `Rscript tools/parity_ledger.R --check-names` → `0 near-miss`, four grouping-level rows present.
+- `Rscript tools/parity_ledger.R --ref origin/main` → matched 44 (AGREE 15 / R-NARROWER 16 /
+  J-NARROWER 4 / DIFFER 9), R-only 32, Julia-only 29 all dispositioned, `CLOSURE: PASS`.
+- `Rscript -e 'pkgdown::check_pkgdown()'` → No problems found.
+- `Rscript -e 'devtools::document()'` (twice; second after the banner/DESCRIPTION rewrap).
+- Stale-wording scans: `grep -rnE "dependable-core claim|characterization-only|tested-regime
+  evidence|production pair|route-only" README.md DESCRIPTION R/zzz.R vignettes/ --exclude=current-limits.Rmd`
+  → no matches; `grep -nE "0\.6\.0" README.md inst/CITATION` → none;
+  `grep -c '^export(\.proportions' NAMESPACE` → 0; `grep -rnE "\b[A-Z]{2,4}-[0-9]{2}\b"` over README,
+  NEWS, vignettes and roxygen → clean (the one `PVT-02` leak removed).
+- Full suite #1 (`devtools::test()`, `aa704f8ed`): FAIL 9 | WARN 56 | SKIP 879 | PASS 26898 — all nine
+  classified and fixed or shown load-induced (see after-task §4).
+- R CMD check #1 (`devtools::check(args = "--no-manual")`, tarball from the ~09:47 tree): 0 errors,
+  0 warnings, 1 NOTE (bare `logLik` in `deviance.gllvmTMB_multi`, fixed), test failures 15 (7 the
+  `suggest_lambda_constraint()` regression, 1 pinned alias, 5 installed-copy file reads, 2 already fixed).
+- Final suite on `b1004636a` (`options(testthat.progress.max_fails = Inf)`): **FAIL 0 | WARN 55 |
+  SKIP 879 | PASS 26948**. Final R CMD check on `b1004636a` (`devtools::check(args = "--no-manual")`): **0 errors | 0 warnings |
+  0 notes**, 26 m 56 s.
+
+Deliberately not run: vignette rendering beyond `check_pkgdown()` (articles changed prose only; the
+CI pkgdown build covers rendering); no Totoro/DRAC compute (ARC D is the next checkpoint).

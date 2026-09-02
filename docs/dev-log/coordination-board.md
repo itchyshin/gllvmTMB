@@ -19,6 +19,39 @@ questions" should be edited as state changes. The "Recently
 resolved" section is a 24-48 hour rolling window; older items
 move to per-PR after-task reports or the check-log.
 
+## 2026-09-02 Claude lane: gllvmTMB gap closure (`claude/gapclose-20260902`) — DRAFT PR #1239
+
+**State (10:30):** ARC A/B/C landed on the branch (15 commits), reviewed adversarially, corrected, and
+re-verified; final full suite + R CMD check running on `b1004636a`. 🔴 Owner call: Decision 3 shipped
+staged (`unit = NULL` with a deprecation when an implicit `site` column is used; hard requirement in
+0.8) because a hard abort touched 628 test call sites in 178 files across other lanes. Owed after
+merge: mission-control `projects.json` repoint, B3 issues (`dev/gapclose/B3-issues.md`), ARC D
+(zip/zinb/zib) as its own checkpoint. GLLVM.jl lane told of its `mi()` ledger drift and the bridge
+`dep()`/`offset()`/`unique` leads (for the #1236 lane).
+
+Approved ultra-plan (owner sign-off 2026-09-02): close the first-reader signposting holes
+(refusals that name a route that fits, next-step bullets, plain-language front page,
+`unit = NULL`), give the R twin a machine-checked `docs/design/capability-status.md` and
+`tools/parity_ledger.R` matching GLLVM.jl row names byte-for-byte (four grouping levels as keys),
+and clear the forgotten 0.7 hygiene items (CITATION/README version, accidental dot-exports,
+pkgdown index, three dangling register `covered` rows, silent deprecations, ROADMAP reconcile).
+Decisions locked by Shinichi: parity both ways for user-facing capabilities, bridge stays
+R->Julia; `zip`/`zinb`/`zib` come to R in a later checkpoint; both twins carry
+`unit/unit_obs/cluster/cluster2`. Decision map:
+`docs/dev-log/2026-09-02-true-parity-decision-map-gllvmtmb.md`.
+Files claimed (lease `claude:gllvmTMB:91412`, 4 h): `R/brms-sugar.R`, `R/diagnose.R`,
+`R/gllvmTMB.R`, `R/ridge-path.R`, `R/suggest-lambda-constraint.R`, `R/isdm-sources.R`,
+`R/parse-multi-formula.R`, `R/family-cdf-args.R`, `R/fit-multi.R` (message text only),
+`R/proportions-ci.R`, `R/kernel-keywords.R`, `NAMESPACE`, `inst/CITATION`, `README.md`,
+`_pkgdown.yml`, `ROADMAP.md`, `CLAUDE.md`, `NEWS.md`, `vignettes/**`,
+`tests/testthat/test-gapclose-*.R`, `docs/design/35-validation-debt-register.md`,
+`docs/design/capability-status.md`, `tools/parity_ledger.R`, `dev/gapclose/**`.
+NOT touched: PR #1236 files (`R/julia-bridge.R`, `tests/testthat/test-julia-bridge.R`,
+`docs/dev-log/julia-bridge/**`), Cursor MSPL lanes, Codex random-slope and iJSDM lanes.
+For the #1236 lane, three leads from the GLLVM.jl side to pick up after merge: `offset()` rejected
+unconditionally by the bridge; ordinary `dep()` under `engine = "julia"` fails before the labelled
+gate; `latent(unique = TRUE)` silently drops the Psi companion with only a warning.
+
 ## 2026-06-16 Twin Finish Programme Reset
 
 Current Codex state:

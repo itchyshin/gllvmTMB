@@ -55,7 +55,7 @@ test_that("a runaway fit warns by default, and the warning is actionable", {
     gllvmTMB::gllvmTMB(d$fml, data = d$df, family = stats::binomial()); NULL
   }, warning = function(x) conditionMessage(x))
   if (!is.null(w)) {
-    expect_match(w, "aghq_ridge")
+    expect_match(w, "loading_ridge")  # 2026-09-02: message now names loading_ridge, not aghq_ridge, by design
     expect_match(w, "MAP|penalised")     # says the remedy changes the estimand
     expect_match(w, "warn_runaway")      # says how to silence it
   }

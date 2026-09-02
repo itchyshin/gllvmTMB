@@ -74,7 +74,7 @@ require_fixed(
 require_fixed(
   "vignettes/articles/profile-likelihood-ci.Rmd",
   c(
-    "Every computed interval is labelled `route-only`",
+    "Every computed interval carries a status marking it as calculated but not proven to match the exact profile-likelihood answer",
     "exact constrained-refit convergence"
   )
 )
@@ -133,10 +133,26 @@ require_fixed(
   "docs/dev-log/artifacts/interval-calibration/2026-08-25-terminal-campaign-evidence.md",
   c("frozen DGP", "conditional on eligible fits")
 )
+## These three surfaces carry the A3-gapclose plain-language rewrite of the
+## "frozen DGP" / "conditional on eligible fits" boundary; the needles below
+## are the exact plain phrases, kept identical across all three so the check
+## still proves they agree (see dev/gapclose/A3-fixes-report.md).
 for (claim_surface in c(
   "DESCRIPTION",
   "README.md",
-  "man/gllvmTMB-package.Rd",
+  "man/gllvmTMB-package.Rd"
+)) {
+  require_fixed(
+    claim_surface,
+    c(
+      "one fixed simulated dataset with known true values",
+      "only for fits that converge cleanly"
+    )
+  )
+}
+## These two surfaces are untouched by the plain-language rewrite and still
+## carry the original wording.
+for (claim_surface in c(
   "man/loading_ci.Rd",
   "docs/design/75-inference-route-truth-matrix.md"
 )) {
@@ -159,10 +175,10 @@ for (claim_surface in c("_pkgdown.yml", "cran-comments.md")) {
 require_fixed(
   "R/zzz.R",
   c(
-    "pinned unrotated ordinary-Gaussian",
-    "standardized-loading Wald cells",
-    "frozen DGP",
-    "conditional on eligible fits"
+    "for one Gaussian model",
+    "standardized factor loadings",
+    "one fixed simulated dataset with known true values",
+    "only for fits that converge cleanly"
   )
 )
 

@@ -4,6 +4,12 @@
 ##   Update the DOI / journal / volume / pages when the paper lands.
 ## - Recommended companion: cite TMB (Kristensen et al. 2016) for any
 ##   gllvmTMB fit.
+##
+## `meta` is bound by citation()/readCitationFile() to the package's
+## DESCRIPTION metadata, so the version string below tracks
+## DESCRIPTION's Version field automatically.
+
+pkg_version <- if (!is.null(meta$Version)) meta$Version else "unknown"
 
 bibentry(
   bibtype  = "Manual",
@@ -14,12 +20,12 @@ bibentry(
     person("Shinichi", "Nakagawa")
   ),
   year     = "2026",
-  note     = "R package version 0.6.0; methods paper in preparation",
+  note     = paste0("R package version ", pkg_version, "; methods paper in preparation"),
   url      = "https://itchyshin.github.io/gllvmTMB/",
   textVersion = paste(
     "Nakagawa S (2026).",
     "gllvmTMB: Fit Multivariate Models from Wide Response Data.",
-    "R package version 0.6.0; methods paper in preparation.",
+    paste0("R package version ", pkg_version, "; methods paper in preparation."),
     "https://itchyshin.github.io/gllvmTMB/"
   ),
   header   = paste(

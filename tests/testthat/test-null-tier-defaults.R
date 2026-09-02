@@ -134,9 +134,14 @@ test_that("a missing `unit` column aborts naming the `unit` argument", {
   dat <- .null_tier_fixture()
   names(dat)[names(dat) == "site"] <- "loc"
 
+  ## #1196 (2026-09-02): `unit` no longer defaults to "site" -- omitting
+  ## it on data with no "site" column now aborts with the "unit is
+  ## required" message (R/gllvmTMB.R), not the old #1191
+  ## "unit = \"site\" is not a column" message that only fired when
+  ## "site" WAS the (implicit) argument value being looked up.
   expect_error(
     gllvmTMB(value ~ 0 + trait, data = dat),
-    regexp = "unit.*=.*\"site\".*is not a column"
+    regexp = "unit = \\.\\.\\.`? is required"
   )
 })
 

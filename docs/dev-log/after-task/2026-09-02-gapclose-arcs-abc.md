@@ -78,7 +78,9 @@ on an installed copy.
 
 G-ALL RESULT (final commit `b1004636a`): full `devtools::test()` with the failure cap lifted →
 **FAIL 0 | WARN 55 | SKIP 879 | PASS 26948**. `devtools::check(args = "--no-manual")` on the same
-commit: **0 errors | 0 warnings | 0 notes** (26 m 56 s).
+commit: **0 errors | 0 warnings | 0 notes** (26 m 56 s). GitHub Actions `R-CMD-check` (ubuntu, release)
+on PR #1239 @ `ab790aca5`: **success** (after two CI-only fixes: `R.home()/bin/Rscript` in the
+parity-ledger test, and a tracked GLLVM.jl ledger snapshot replacing a session scratchpad path).
 
 ## 5. Tests of the tests
 

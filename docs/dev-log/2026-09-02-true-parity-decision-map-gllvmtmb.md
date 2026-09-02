@@ -24,6 +24,11 @@ term, and every refusal names a route that fits.
 - 2026-09-02 (Shinichi; recorded in the approved plan `~/.claude/plans/read-agents-md-and-docs-dev-log-handover-lovely-grove.md`):
   parity is both ways for user-facing capabilities; the bridge stays R->Julia; `zip`/`zinb`/`zib` come
   to R; `unit` defaults to `NULL` like `unit_obs`/`cluster`; both twins must carry the four grouping levels.
+- **D-204 (vault, 2026-09-02, Shinichi in the drmTMB session, verbatim "both ways for user-facing; keep the
+  legacy rewrite; file the issues"):** twin parity is BOTH WAYS for user-facing capabilities as the standing
+  rule across the twin pairs — Julia-first user-facing models get ported to R; engine-internal Julia-only
+  machinery is accounted for in writing; the bridge stays one-way. This map's direction line now cites a
+  recorded decision, not an analogy.
 - D-157 (2026-08-17): MSPL parked; one outer penalty per fit; never stack ridge and MSPL.
 - Brain note 2026-08-20 (Iwo ridge sensitivity): runaway loading -> ridge/VA lane; tau needs evidence
   before it becomes guidance.

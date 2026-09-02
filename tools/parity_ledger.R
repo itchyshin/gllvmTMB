@@ -36,7 +36,7 @@ ROOT <- normalizePath(file.path(dirname(this_file), ".."), mustWork = TRUE)
 R_LEDGER_PATH <- file.path(ROOT, "docs", "design", "capability-status.md")
 
 JULIA_REPO_DEFAULT <- "/Users/z3437171/Dropbox/Github Local/GLLVM.jl"
-SCRATCHPAD_FALLBACK <- "/private/tmp/claude-503/-Users-z3437171-Dropbox-Github-Local-gllvmTMB/46df980d-b0f8-4444-a181-ed4b4a683bbe/scratchpad/gllvmjl-capability-status-main.md"
+SCRATCHPAD_FALLBACK <- file.path("dev", "gapclose", "gllvmjl-capability-status-2026-09-02.md")
 
 julia_path_arg <- get_flag("--julia")
 julia_repo <- get_flag("--julia-repo", JULIA_REPO_DEFAULT)

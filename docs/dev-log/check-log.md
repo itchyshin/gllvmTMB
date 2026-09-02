@@ -57504,3 +57504,25 @@ Commands run (worktree `~/local-scratch/lanes/gllvmTMB-gapclose-20260902`, R 4.6
 
 Deliberately not run: vignette rendering beyond `check_pkgdown()` (articles changed prose only; the
 CI pkgdown build covers rendering); no Totoro/DRAC compute (ARC D is the next checkpoint).
+
+## 2026-09-02 — ARC D1 zero-inflated families (Claude lane `claude/gapclose-arcD-zi-20260902`, draft PR #1240, stacked on #1239)
+
+Commands run (worktree `~/local-scratch/lanes/gllvmTMB-arcD-zi-20260902`, R 4.6.0, TMB 1.9.21, `pkgbuild::compile_dll()` once):
+
+- Builder (Sonnet, high): `devtools::load_all()`; `devtools::test(filter = "zi-")` → zi-families 26 → 42 after the
+  review round, zi-recovery 13 (+1 heavy skip; `GLLVMTMB_HEAVY_TESTS=1` → 33/33 in 36.5 s); 20 neighbouring
+  files re-run green; density identity vs R mixtures (max error 0 / 0 / 5.1e-13); finite-difference gradients
+  (1.9e-8 / 1.3e-8 / 3.9e-6); known-DGP recovery per family with predeclared bars (per-seed numbers in
+  `dev/gapclose/arcD/D1-report.md`, "Review fixes").
+- Opus adversarial review (`scratchpad/verify-arcD.md`): PASS-WITH-CORRECTIONS, 0 blocking / 6 required /
+  6 suggestions; independent density checks 0 / 2.1e-14 / 1.1e-13; three extra recovery seeds.
+- Orchestrator re-run after the fixes: `devtools::test(filter = "zi-|extract-sigma$|extract-sigma-table|predictive-diagnostics|integration-fence")`
+  → 42 / 13(+1) / 34 / 65 / 158 / 57, FAIL 0. `tools::Rd2ex("man/families.Rd", commentDontrun = TRUE,
+  commentDonttest = FALSE)` sourced expression by expression: 38 expressions OK, zi example `convergence 0`.
+  `Rscript dev/gapclose/build-capability-status.R --check` → 77 rows / 0 unmapped;
+  `Rscript tools/parity_ledger.R --ref origin/main` → CLOSURE: PASS.
+- Stale-wording scans: register codes on reader-facing surfaces (Opus grep) → none.
+
+Deliberately not run: full `devtools::test()` / `R CMD check` on this branch (run at merge on the rebased
+branch; CI on #1240 covers ubuntu); no Totoro/DRAC multi-seed recovery yet (owed before any FAM-21..23 row
+leaves `partial`; D-139 estimate first).

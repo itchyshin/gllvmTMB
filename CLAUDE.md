@@ -11,6 +11,33 @@ This repository is shared by humans, Codex, and Claude Code. Read
 > current handover. Read it before any repository mutation. Milestone state is not in
 > either place and must be re-derived from `git`.
 
+- **2026-08-20 — D-113 TRACK 6 RE-SCOPED (11/16 FAMILIES ALREADY MET) + REAL EXTERNAL BUG
+  LANE (iwogross/terrapin-systematic-map#1) + MSPL FOUND UNTESTED AT REAL SCALE.**
+  Merged: [#1164](https://github.com/itchyshin/gllvmTMB/pull/1164) (rand-slope board
+  correction + Design 128 campaign design, corrected mid-arc by ~3 orders of magnitude — the
+  cited "2.5-3.5h" was arc time, not fit time; real fits are ~10-20s),
+  [#1166](https://github.com/itchyshin/gllvmTMB/pull/1166) (new export `slope_sd_ci()`,
+  slice 1), [#1171](https://github.com/itchyshin/gllvmTMB/pull/1171) (`truncated_poisson`
+  D-139 pre-run test PASS). A real external user (`iwogross`) hit two genuine bugs while
+  fitting a binary systematic-map ordination: `.assert_no_augmented_lhs()` compared against
+  the literal string `"trait"` instead of his resolved `trait=` argument, forcing him onto a
+  single-shared-intercept model whose LV1 loadings tracked item prevalence at R^2 = 0.742
+  (fix in draft PR [#1193](https://github.com/itchyshin/gllvmTMB/pull/1193)); and
+  `unit_obs`/`cluster` defaulted to ecology nouns presented as required, so he manufactured
+  a meaningless column to satisfy them (fix in draft PR
+  [#1191](https://github.com/itchyshin/gllvmTMB/pull/1191)). Both draft, both need
+  maintainer sign-off before merge (public API/behaviour changes). Issues filed:
+  [#1187](https://github.com/itchyshin/gllvmTMB/issues/1187),
+  [#1188](https://github.com/itchyshin/gllvmTMB/issues/1188),
+  [#1189](https://github.com/itchyshin/gllvmTMB/issues/1189),
+  [#1190](https://github.com/itchyshin/gllvmTMB/issues/1190),
+  [#1194](https://github.com/itchyshin/gllvmTMB/issues/1194). A separation-estimator sweep
+  (`estimator = "mspl"`) found its entire 39-file test base is toy-scale (modal fixture 8
+  sites) and essentially untested on `probit` (1 of 39 files), which is the link both real
+  systematic-map datasets use; MSPL was never run on the already-characterised Ayumi map at
+  all. Not yet a conclusion — needs a second pass. **START HERE:**
+  `docs/dev-log/handover/2026-08-20-codex-handover-rand-slope-terrapin-mspl.md`.
+
 - **2026-08-20 — SDM ARTICLE SET IS LIVE; PREDICTION-UNCERTAINTY ARC AT ~45%; FOUR API
   GAPS FILED WITH MEASUREMENTS.** `main` @ `147da385`. Merged: the **reader-first SDM
   article set** ([#1180](https://github.com/itchyshin/gllvmTMB/pull/1180) — new

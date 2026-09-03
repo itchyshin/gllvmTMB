@@ -38,7 +38,7 @@ jobs:
     # compatibility.
     timeout-minutes: 75
 
-    name: ${{ matrix.config.os }} (${{ matrix.config.r }})
+    name: ${{ matrix.config.os }} (${{ matrix.config.r }})${{ matrix.shard != 0 && format(' shard {0}/4', matrix.shard) || '' }}
 
     strategy:
       fail-fast: false
@@ -58,10 +58,24 @@ jobs:
       # GitHub Actions jobs (D-50): they run on Totoro/DRAC with local keepers.
       matrix:
         config: ${{ fromJSON((github.event_name == 'workflow_dispatch' && inputs.full_matrix) && '[{"os":"ubuntu-latest","r":"release"},{"os":"macos-latest","r":"release"},{"os":"windows-latest","r":"release"}]' || '[{"os":"ubuntu-latest","r":"release"}]') }}
+        # Routine runs shard the (already heavy-gated) suite 4 ways; the
+        # full_matrix/pre-release runs stay unsharded (shard 0), one job per OS.
+        #
+        # Measured 2026-09-03, because the comment above had drifted: this
+        # workflow says routine PR CI is "~12 min", but the last 12 successful
+        # R-CMD-check runs took 42-47 min on BOTH push and pull_request, and the
+        # check log for run 33701375238 puts `checking tests` at 31m37s
+        # (01:04:39 -> 01:36:16) against 186s to install and 49s of examples.
+        # The heavy-test gate is working; the fast suite simply grew.
+        shard: ${{ fromJSON((github.event_name == 'workflow_dispatch' && inputs.full_matrix) && '[0]' || '[1,2,3,4]') }}
 
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
       R_KEEP_PKG_SOURCE: yes
+      # "k/4" on routine runs, empty on the unsharded pre-release combos above.
+      # tests/testthat.R treats an unset/empty value as "run everything", so
+      # devtools::test() and full-check.yaml are unaffected.
+      GLLVMTMB_TEST_SHARD: ${{ matrix.shard != 0 && format('{0}/4', matrix.shard) || '' }}
 
     steps:
       - uses: actions/checkout@v5

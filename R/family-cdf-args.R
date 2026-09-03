@@ -278,6 +278,29 @@
       "Threshold model with unit link-scale variance: P(y <= k) =",
       "pnorm(tau_k - eta), tau_1 = 0 fixed."
     )
+  } else if (fid == 20L) {
+    ## ordinal_logit: identical cutpoint reconstruction to fid 14, with the
+    ## logistic CDF instead of pnorm (link-scale variance pi^2/3, not 1).
+    n_cuts <- as.integer(fit$tmb_data$n_ordinal_cuts_per_trait %||% integer(0))
+    offsets <- as.integer(fit$tmb_data$ordinal_offset_per_trait %||% integer(0))
+    flat <- as.numeric(rep_$ordinal_cutpoints %||% numeric(0))
+    cuts <- if (t <= length(n_cuts) && !is.na(n_cuts[t]) && n_cuts[t] >= 0L) {
+      extra <- if (n_cuts[t] > 0L) {
+        flat[(offsets[t] + 1L):(offsets[t] + n_cuts[t])]
+      } else {
+        numeric(0)
+      }
+      c(0, extra)
+    } else {
+      NULL
+    }
+    out$report <- list(ordinal_cutpoints = cuts)
+    out$args <- list(cutpoints = cuts)
+    if (has_eta) out$args$mean <- eta
+    out$note <- paste(
+      "Threshold model with pi^2/3 link-scale variance: P(y <= k) =",
+      "plogis(tau_k - eta), tau_1 = 0 fixed."
+    )
   } else if (fid == 15L) {
     ## NB1: linear mean-variance Var = mu * (1 + phi); the NB size is
     ## mu / phi, so it is mean-dependent.

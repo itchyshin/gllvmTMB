@@ -143,7 +143,7 @@
       "Mixed-family {.arg family} list is unnamed and ambiguous.",
       "x" = "Level(s) {.val {bad}} of {.var {fam_var}} match more than one family \\
              object's own name.",
-      "i" = "Name the list explicitly: {.code list(<level> = <family>(), ...)}."
+      ">" = "Name the list explicitly: {.code list(<level> = <family>(), ...)}."
     ), class = "gllvmTMB_mixed_family_unnamed_ambiguous")
   }
 
@@ -156,7 +156,7 @@
       "Mixed-family {.arg family} list is unnamed and ambiguous.",
       "x" = "Level(s) {.val {with_ev}} of {.var {fam_var}} match a family object's own \\
              name; level(s) {.val {without_ev}} match none.",
-      "i" = "Name the list explicitly so every level resolves the same way: \\
+      ">" = "Name the list explicitly so every level resolves the same way: \\
              {.code list(<level> = <family>(), ...)}."
     ), class = "gllvmTMB_mixed_family_unnamed_ambiguous")
   }
@@ -196,7 +196,7 @@
     "Mixed-family {.arg family} list order does not match what the level names imply.",
     "x" = "Your list order implies: {pos_desc}",
     "x" = "The level names of {.var {fam_var}} imply: {name_desc}",
-    "i" = "Name the list explicitly to say which you mean: \\
+    ">" = "Name the list explicitly to say which you mean: \\
            {.code list(<level> = <family>(), ...)}."
   ), class = "gllvmTMB_mixed_family_unnamed_ambiguous")
 }
@@ -226,7 +226,8 @@
     cli::cli_abort(c(
       "Mixed-family {.arg family} list names must match the levels of {.var {fam_var}}.",
       "x" = "Missing family entries for: {paste(missing_levels, collapse = ', ')}",
-      "x" = "Unused family entries for: {paste(extra_names, collapse = ', ')}"
+      "x" = "Unused family entries for: {paste(extra_names, collapse = ', ')}",
+      ">" = "Add or rename entries in {.code family = list(...)} so its names exactly match {.code levels({fam_var})}."
     ))
   }
 
@@ -416,10 +417,10 @@
     error = function(e) NA_real_
   )
   if (length(likelihood_nll) != 1L || !is.finite(likelihood_nll)) {
-    cli::cli_abort(
+    cli::cli_abort(c(
       "Could not evaluate the unpenalised likelihood objective at the selected fit.",
-      class = "gllvmTMB_objective_components_unavailable"
-    )
+      ">" = "The fit is unusable; try a different {.arg start_method} or check the data for near-degenerate columns."
+    ), class = "gllvmTMB_objective_components_unavailable")
   }
 
   ridge_tau <- aghq$ridge_tau %||% Inf
@@ -610,10 +611,16 @@
   }
 
   if (!setequal(rownames(Ainv), colnames(Ainv))) {
-    cli::cli_abort("Sparse {.arg phylo_vcv}/{.arg Ainv} rownames and colnames must name the same levels.")
+    cli::cli_abort(c(
+      "Sparse {.arg phylo_vcv}/{.arg Ainv} rownames and colnames must name the same levels.",
+      ">" = "Set matching {.code rownames()} and {.code colnames()} on {.arg Ainv} (or {.arg phylo_vcv})."
+    ))
   }
   if (!all(levs %in% rownames(Ainv))) {
-    cli::cli_abort("Sparse {.arg phylo_vcv}/{.arg Ainv} rownames do not cover all species levels.")
+    cli::cli_abort(c(
+      "Sparse {.arg phylo_vcv}/{.arg Ainv} rownames do not cover all species levels.",
+      ">" = "Supply a tree/vcv that covers every level of the species grouping column."
+    ))
   }
 
   Ainv <- Ainv[, match(rownames(Ainv), colnames(Ainv)), drop = FALSE]
@@ -642,7 +649,10 @@
 
 .resolve_sparse_phylo_precision <- function(Ainv, levs, species_id) {
   if (nrow(Ainv) != ncol(Ainv)) {
-    cli::cli_abort("Sparse {.arg phylo_vcv}/{.arg Ainv} must be square.")
+    cli::cli_abort(c(
+      "Sparse {.arg phylo_vcv}/{.arg Ainv} must be square.",
+      ">" = "Pass a square matrix with matching row and column names."
+    ))
   }
   if (is.null(rownames(Ainv))) {
     cli::cli_abort(c(
@@ -654,13 +664,22 @@
     colnames(Ainv) <- rownames(Ainv)
   }
   if (anyDuplicated(rownames(Ainv)) || anyDuplicated(colnames(Ainv))) {
-    cli::cli_abort("Sparse {.arg phylo_vcv}/{.arg Ainv} rownames and colnames must be unique.")
+    cli::cli_abort(c(
+      "Sparse {.arg phylo_vcv}/{.arg Ainv} rownames and colnames must be unique.",
+      ">" = "Deduplicate the {.arg Ainv}/{.arg phylo_vcv} row and column names before fitting."
+    ))
   }
   if (!setequal(rownames(Ainv), colnames(Ainv))) {
-    cli::cli_abort("Sparse {.arg phylo_vcv}/{.arg Ainv} rownames and colnames must name the same levels.")
+    cli::cli_abort(c(
+      "Sparse {.arg phylo_vcv}/{.arg Ainv} rownames and colnames must name the same levels.",
+      ">" = "Set matching {.code rownames()} and {.code colnames()} on {.arg Ainv} (or {.arg phylo_vcv})."
+    ))
   }
   if (!all(levs %in% rownames(Ainv))) {
-    cli::cli_abort("Sparse {.arg phylo_vcv}/{.arg Ainv} rownames do not cover all species levels.")
+    cli::cli_abort(c(
+      "Sparse {.arg phylo_vcv}/{.arg Ainv} rownames do not cover all species levels.",
+      ">" = "Supply a tree/vcv that covers every level of the species grouping column."
+    ))
   }
 
   Ainv <- Ainv[, match(rownames(Ainv), colnames(Ainv)), drop = FALSE]
@@ -742,7 +761,10 @@
     ))
   }
   if (is.null(rownames(phylo_vcv))) {
-    cli::cli_abort("{.arg vcv} for {.fn phylo_slope} must have row names matching levels of {.var {group}}.")
+    cli::cli_abort(c(
+      "{.arg vcv} for {.fn phylo_slope} must have row names matching levels of {.var {group}}.",
+      ">" = "Set {.code rownames(vcv) <- levels(data${group})}."
+    ))
   }
   .gllvm_abort_uncovered_species_levels(
     levs, rownames(phylo_vcv), data, group,
@@ -768,20 +790,20 @@
                                           helper = "phylo_coef") {
   if (!is.numeric(rho) || length(rho) != 1L || !is.finite(rho) ||
       rho < 0 || rho > 1) {
-    cli::cli_abort(
+    cli::cli_abort(c(
       "{.arg rho} for the internal fixed {.fn {helper}} route must be one finite numeric value in [0, 1].",
-      class = "gllvmTMB_column_coef_invalid_syntax"
-    )
+      ">" = "Pass a single number between 0 and 1, e.g. {.code rho = 0.5}."
+    ), class = "gllvmTMB_column_coef_invalid_syntax")
   }
   levs <- levels(data[[group]])
   group_id <- as.integer(data[[group]]) - 1L
 
   if (!is.null(phylo_tree)) {
     if (!inherits(phylo_tree, "phylo")) {
-      cli::cli_abort(
+      cli::cli_abort(c(
         "The {.arg tree} supplied to {.fn {helper}} must be an {.cls ape::phylo} tree.",
-        class = "gllvmTMB_column_coef_source_invalid"
-      )
+        ">" = "Pass an object read by {.fn ape::read.tree} or {.fn ape::read.nexus}."
+      ), class = "gllvmTMB_column_coef_source_invalid")
     }
     .gllvm_abort_uncovered_species_levels(
       levs, phylo_tree$tip.label, data, group,
@@ -822,18 +844,18 @@
       q_tol <- sqrt(.Machine$double.eps) * max(1, q_scale)
       if (any(!is.finite(Q_dense)) ||
           max(abs(Q_dense - t(Q_dense)), na.rm = TRUE) > q_tol) {
-        cli::cli_abort(
+        cli::cli_abort(c(
           "The sparse precision for {.fn {helper}} must be finite and symmetric.",
-          class = "gllvmTMB_column_coef_source_invalid"
-        )
+          ">" = "Check the sparse matrix passed as {.arg Ainv} for asymmetry or non-finite entries."
+        ), class = "gllvmTMB_column_coef_source_invalid")
       }
       Q_dense <- (Q_dense + t(Q_dense)) / 2
       Q_chol <- tryCatch(chol(Q_dense), error = function(e) NULL)
       if (is.null(Q_chol)) {
-        cli::cli_abort(
+        cli::cli_abort(c(
           "The sparse precision for {.fn {helper}} must be positive definite before inversion.",
-          class = "gllvmTMB_column_coef_source_invalid"
-        )
+          ">" = "Check the sparse matrix passed as {.arg Ainv} is a valid precision matrix."
+        ), class = "gllvmTMB_column_coef_source_invalid")
       }
       K_full <- chol2inv(Q_chol)
       tip_index <- match(levs, rownames(Q))
@@ -849,10 +871,10 @@
       if (!is.matrix(phylo_vcv) || !is.numeric(phylo_vcv) ||
           nrow(phylo_vcv) != ncol(phylo_vcv) ||
           any(!is.finite(phylo_vcv))) {
-        cli::cli_abort(
+        cli::cli_abort(c(
           "The source for {.fn {helper}} must be a finite square numeric matrix.",
-          class = "gllvmTMB_column_coef_source_invalid"
-        )
+          ">" = "Pass a finite, square numeric matrix for {.arg vcv}/{.arg A}."
+        ), class = "gllvmTMB_column_coef_source_invalid")
       }
       rn <- rownames(phylo_vcv)
       cn <- colnames(phylo_vcv)
@@ -865,9 +887,15 @@
           anyDuplicated(cn) || !labels_match) {
         cli::cli_abort(
           if (isTRUE(allow_label_superset)) {
-            "The source labels must cover every response-column level."
+            c(
+              "The source labels must cover every response-column level.",
+              ">" = "Add row/column names for every level of the response-column factor."
+            )
           } else {
-            "The source labels for {.fn {helper}} must match the response-column levels exactly."
+            c(
+              "The source labels for {.fn {helper}} must match the response-column levels exactly.",
+              ">" = "Set matching row and column names on the source that name exactly the response-column levels."
+            )
           },
           class = "gllvmTMB_column_coef_source_labels"
         )
@@ -878,17 +906,17 @@
 
   symmetry_tol <- sqrt(.Machine$double.eps) * max(1, max(abs(K)))
   if (max(abs(K - t(K))) > symmetry_tol) {
-    cli::cli_abort(
+    cli::cli_abort(c(
       "The response-column covariance for {.fn {helper}} must be symmetric.",
-      class = "gllvmTMB_column_coef_source_invalid"
-    )
+      ">" = "Check the source matrix passed to {.fn {helper}} for asymmetry."
+    ), class = "gllvmTMB_column_coef_source_invalid")
   }
   K <- (K + t(K)) / 2
   if (is.null(tryCatch(chol(K), error = function(e) NULL))) {
-    cli::cli_abort(
+    cli::cli_abort(c(
       "The source covariance for {.fn {helper}} must be positive definite before mixing.",
-      class = "gllvmTMB_column_coef_source_invalid"
-    )
+      ">" = "Check the source matrix passed to {.fn {helper}} is a valid covariance matrix."
+    ), class = "gllvmTMB_column_coef_source_invalid")
   }
   K_diag <- diag(diag(K), nrow(K))
   dimnames(K_diag) <- dimnames(K)
@@ -896,10 +924,10 @@
   K_rho <- (K_rho + t(K_rho)) / 2
   R <- tryCatch(chol(K_rho), error = function(e) NULL)
   if (is.null(R)) {
-    cli::cli_abort(
+    cli::cli_abort(c(
       "The mixed response-column covariance for {.fn {helper}} must be positive definite.",
-      class = "gllvmTMB_column_coef_source_invalid"
-    )
+      ">" = "Try a different {.arg rho}, or check the source matrix passed to {.fn {helper}} is a valid covariance matrix."
+    ), class = "gllvmTMB_column_coef_source_invalid")
   }
   Q_rho <- chol2inv(R)
   dimnames(Q_rho) <- dimnames(K_rho)
@@ -1153,13 +1181,19 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       } else {
         cli::cli_abort(c(
           "Unsupported delta family: {.val {paste(f$family, collapse = '/')}}.",
-          "i" = "Currently supported delta families: {.code delta_lognormal()}, {.code delta_gamma()}."
+          ">" = "Use {.code delta_lognormal()} or {.code delta_gamma()}."
         ))
       }
       if (!identical(f$link[1], "logit"))
-        cli::cli_abort("delta_lognormal/delta_gamma: only logit (presence) is currently supported.")
+        cli::cli_abort(c(
+          "delta_lognormal/delta_gamma: only logit (presence) is currently supported.",
+          ">" = "Use {.code delta_lognormal(link1 = \"logit\")} or {.code delta_gamma(link1 = \"logit\")} (the default)."
+        ))
       if (!identical(f$link[2], "log"))
-        cli::cli_abort("delta_lognormal/delta_gamma: only log (positive component) is currently supported.")
+        cli::cli_abort(c(
+          "delta_lognormal/delta_gamma: only log (positive component) is currently supported.",
+          ">" = "Use {.code delta_lognormal(link2 = \"log\")} or {.code delta_gamma(link2 = \"log\")} (the default)."
+        ))
       return(c(delta_id, 0L))
     }
     fid <- switch(
@@ -1187,7 +1221,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       zi_binomial       = 19L,
       cli::cli_abort(c(
         "Unsupported family: {.val {f$family}}.",
-        "i" = "Currently supported: {.code gaussian()}, {.code binomial()}, {.code poisson()}, {.code lognormal()}, {.code Gamma()}, {.code nbinom2()}, {.code nbinom1()}, {.code tweedie()}, {.code Beta()}, {.code betabinomial()}, {.code student()}, {.code truncated_poisson()}, {.code truncated_nbinom2()}, {.code delta_lognormal()}, {.code delta_gamma()}, {.code ordinal_probit()}, {.code multinomial()}, {.code zi_poisson()}, {.code zi_nbinom2()}, {.code zi_binomial()}."
+        ">" = "Use one of {.code gaussian()}, {.code binomial()}, {.code poisson()}, {.code lognormal()}, {.code Gamma()}, {.code nbinom2()}, {.code nbinom1()}, {.code tweedie()}, {.code Beta()}, {.code betabinomial()}, {.code student()}, {.code truncated_poisson()}, {.code truncated_nbinom2()}, {.code delta_lognormal()}, {.code delta_gamma()}, {.code ordinal_probit()}, {.code multinomial()}, {.code zi_poisson()}, {.code zi_nbinom2()}, {.code zi_binomial()}."
       ))
     )
     lid <- 0L
@@ -1216,31 +1250,67 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         "i" = "Use {.code gaussian()}. For a multiplicative mean on positive data, {.code lognormal()} or {.code Gamma(link = \"log\")} model the log scale directly."
       ))
     if (fid == 2L && !identical(f$link, "log"))
-      cli::cli_abort("poisson: only the log link is currently supported.")
+      cli::cli_abort(c(
+        "poisson: only the log link is currently supported.",
+        ">" = "Use {.code poisson(link = \"log\")} (the default)."
+      ))
     if (fid == 3L && !identical(f$link, "log"))
-      cli::cli_abort("lognormal: only the log link is currently supported.")
+      cli::cli_abort(c(
+        "lognormal: only the log link is currently supported.",
+        ">" = "Use {.code lognormal(link = \"log\")} (the default)."
+      ))
     if (fid == 4L && !identical(f$link, "log"))
       cli::cli_abort("Gamma: only the log link is currently supported. Use {.code Gamma(link = \"log\")}.")
     if (fid == 5L && !identical(f$link, "log"))
-      cli::cli_abort("nbinom2: only the log link is currently supported.")
+      cli::cli_abort(c(
+        "nbinom2: only the log link is currently supported.",
+        ">" = "Use {.code nbinom2(link = \"log\")} (the default)."
+      ))
     if (fid == 6L && !identical(f$link, "log"))
-      cli::cli_abort("tweedie: only the log link is currently supported.")
+      cli::cli_abort(c(
+        "tweedie: only the log link is currently supported.",
+        ">" = "Use {.code tweedie(link = \"log\")} (the default)."
+      ))
     if (fid == 7L && !identical(f$link, "logit"))
-      cli::cli_abort("Beta: only the logit link is currently supported.")
+      cli::cli_abort(c(
+        "Beta: only the logit link is currently supported.",
+        ">" = "Use {.code Beta(link = \"logit\")} (the default)."
+      ))
     if (fid == 8L && !identical(f$link, "logit"))
-      cli::cli_abort("betabinomial: only the logit link is currently supported.")
+      cli::cli_abort(c(
+        "betabinomial: only the logit link is currently supported.",
+        ">" = "Use {.code betabinomial(link = \"logit\")} (the default) or {.code betabinomial(link = \"cloglog\")}."
+      ))
     if (fid == 9L && !identical(f$link, "identity"))
-      cli::cli_abort("student: only the identity link is currently supported.")
+      cli::cli_abort(c(
+        "student: only the identity link is currently supported.",
+        ">" = "Use {.code student(link = \"identity\")} (the default)."
+      ))
     if (fid == 10L && !identical(f$link, "log"))
-      cli::cli_abort("truncated_poisson: only the log link is currently supported.")
+      cli::cli_abort(c(
+        "truncated_poisson: only the log link is currently supported.",
+        ">" = "Use {.code truncated_poisson(link = \"log\")} (the default)."
+      ))
     if (fid == 11L && !identical(f$link, "log"))
-      cli::cli_abort("truncated_nbinom2: only the log link is currently supported.")
+      cli::cli_abort(c(
+        "truncated_nbinom2: only the log link is currently supported.",
+        ">" = "Use {.code truncated_nbinom2(link = \"log\")} (the default)."
+      ))
     if (fid == 14L && !identical(f$link, "probit"))
-      cli::cli_abort("ordinal_probit: only the probit link is supported.")
+      cli::cli_abort(c(
+        "ordinal_probit: only the probit link is supported.",
+        ">" = "Use {.code ordinal_probit(link = \"probit\")} (the default)."
+      ))
     if (fid == 15L && !identical(f$link, "log"))
-      cli::cli_abort("nbinom1: only the log link is currently supported.")
+      cli::cli_abort(c(
+        "nbinom1: only the log link is currently supported.",
+        ">" = "Use {.code nbinom1(link = \"log\")} (the default)."
+      ))
     if (fid == 16L && !identical(f$link, "logit"))
-      cli::cli_abort("multinomial: only the baseline-category logit link is supported.")
+      cli::cli_abort(c(
+        "multinomial: only the baseline-category logit link is supported.",
+        ">" = "Omit {.arg link} to use the default {.code \"logit\"}."
+      ))
     if (fid == 17L && !identical(f$link, "log"))
       cli::cli_abort(c(
         "zi_poisson: only the log link is currently supported.",

@@ -1124,7 +1124,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                                estimator = "ml",
                                engine = "tmb") {
   if (!is.logical(REML) || length(REML) != 1L || is.na(REML)) {
-    cli::cli_abort("{.arg REML} must be a single {.code TRUE} or {.code FALSE} value.")
+    cli::cli_abort(c(
+      "{.arg REML} must be a single {.code TRUE} or {.code FALSE} value.",
+      ">" = "Pass {.code REML = TRUE} or {.code REML = FALSE}."
+    ))
   }
   estimator <- match.arg(estimator, c("ml", "mspl"))
   structured_rho <- parsed$structured_rho
@@ -1999,9 +2002,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     d_req <- as.integer(spde_latent_slope_cs$extra$d %||% 1L)
     n_traits <- .n_traits_for_dep
     if (d_req > n_traits) {
-      cli::cli_abort(
-        "spatial_latent(d = {d_req}) exceeds the number of traits ({n_traits}); the latent rank must satisfy d <= n_traits."
-      )
+      cli::cli_abort(c(
+        "spatial_latent(d = {d_req}) exceeds the number of traits ({n_traits}); the latent rank must satisfy d <= n_traits.",
+        ">" = "Pass {.code d} at most {n_traits} in {.fn spatial_latent}."
+      ))
     }
     d_req
   } else 1L
@@ -2198,9 +2202,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ))
     }
     if (any(!nzchar(phy_kernel_name))) {
-      cli::cli_abort(
-        "{.arg name} in {.fn kernel_*} terms must be a non-empty string."
-      )
+      cli::cli_abort(c(
+        "{.arg name} in {.fn kernel_*} terms must be a non-empty string.",
+        ">" = "Pass e.g. {.code kernel_indep(x | trait, name = \"my_kernel\", K = K)}."
+      ))
     }
     unique_kernel_names <- unique(phy_kernel_name)
     use_kernel_multi <- length(unique_kernel_names) > 1L
@@ -2460,9 +2465,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       d_req <- as.integer(cs$extra$d %||% 1L)
       n_traits <- .n_traits_for_dep
       if (d_req > n_traits) {
-        cli::cli_abort(
-          "phylo_latent(d = {d_req}) exceeds the number of traits ({n_traits}); the latent rank must satisfy d <= n_traits."
-        )
+        cli::cli_abort(c(
+          "phylo_latent(d = {d_req}) exceeds the number of traits ({n_traits}); the latent rank must satisfy d <= n_traits.",
+          ">" = "Pass {.code d} at most {n_traits} in {.fn phylo_latent}."
+        ))
       }
       d_req
     }
@@ -2474,7 +2480,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   phylo_slope_idx <- which(kinds == "phylo_slope")
   use_phylo_slope <- length(phylo_slope_idx) > 0L
   if (length(phylo_slope_idx) > 1L) {
-    cli::cli_abort("Only one phylogenetic random-regression term is supported per formula.")
+    cli::cli_abort(c(
+      "Only one phylogenetic random-regression term is supported per formula.",
+      ">" = "Combine your terms into a single {.fn phylo_slope}/{.fn phylo_latent}/{.fn phylo_dep} call, or drop the extra term."
+    ))
   }
   phylo_slope_cs <- if (use_phylo_slope) {
     parsed$covstructs[[phylo_slope_idx[1L]]]
@@ -2550,7 +2559,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       identical(phylo_column_slope_source, "kernel")) {
     nm <- phylo_slope_cs$extra$.kernel_name %||% "kernel"
     if (!is.character(nm) || length(nm) != 1L || is.na(nm) || !nzchar(nm)) {
-      cli::cli_abort("{.arg name} in {.fn kernel_slope} must be one non-empty string.")
+      cli::cli_abort(c(
+        "{.arg name} in {.fn kernel_slope} must be one non-empty string.",
+        ">" = "Pass e.g. {.code kernel_slope(x | trait, name = \"my_kernel\", K = K)}."
+      ))
     }
     nm
   } else NULL
@@ -2815,9 +2827,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     d_req <- as.integer(phylo_latent_slope_cs$extra$d %||% 1L)
     n_traits <- .n_traits_for_dep
     if (d_req > n_traits) {
-      cli::cli_abort(
-        "phylo_latent(d = {d_req}) exceeds the number of traits ({n_traits}); the latent rank must satisfy d <= n_traits."
-      )
+      cli::cli_abort(c(
+        "phylo_latent(d = {d_req}) exceeds the number of traits ({n_traits}); the latent rank must satisfy d <= n_traits.",
+        ">" = "Pass {.code d} at most {n_traits} in {.fn phylo_latent}."
+      ))
     }
     d_req
   } else 1L
@@ -2863,9 +2876,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   d_B_slope <- if (use_rr_B_slope) {
     d_req <- as.integer(rr_B_slope_cs$extra$d %||% 1L)
     if (d_req > n_lhs_cols_B_lat) {
-      cli::cli_abort(
-        "latent(d = {d_req}) exceeds the augmented random-regression coefficient dimension ({n_lhs_cols_B_lat}); the latent rank must satisfy d <= 2 * n_traits for a single-slope augmented B-tier fit."
-      )
+      cli::cli_abort(c(
+        "latent(d = {d_req}) exceeds the augmented random-regression coefficient dimension ({n_lhs_cols_B_lat}); the latent rank must satisfy d <= 2 * n_traits for a single-slope augmented B-tier fit.",
+        ">" = "Pass {.code d} at most {n_lhs_cols_B_lat} in {.fn latent}."
+      ))
     }
     d_req
   } else 1L
@@ -2923,9 +2937,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     d_req <- as.integer(cs$extra$d %||% 1L)
     n_traits <- .n_traits_for_dep
     if (d_req > n_traits) {
-      cli::cli_abort(
-        "latent(d = {d_req}) exceeds the number of traits ({n_traits}); the latent rank must satisfy d <= n_traits."
-      )
+      cli::cli_abort(c(
+        "latent(d = {d_req}) exceeds the number of traits ({n_traits}); the latent rank must satisfy d <= n_traits.",
+        ">" = "Pass {.code d} at most {n_traits} in {.fn latent}."
+      ))
     }
     d_req
   } else 1L
@@ -2934,9 +2949,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     d_req <- as.integer(cs$extra$d %||% 1L)
     n_traits <- .n_traits_for_dep
     if (d_req > n_traits) {
-      cli::cli_abort(
-        "latent(d = {d_req}) exceeds the number of traits ({n_traits}); the latent rank must satisfy d <= n_traits."
-      )
+      cli::cli_abort(c(
+        "latent(d = {d_req}) exceeds the number of traits ({n_traits}); the latent rank must satisfy d <= n_traits.",
+        ">" = "Pass {.code d} at most {n_traits} in {.fn latent}."
+      ))
     }
     d_req
   } else 1L
@@ -2946,7 +2962,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   if (any(unrecognised)) {
     cli::cli_abort(c(
       "Unsupported covstruct(s) {.val {kinds[unrecognised]}}.",
-      "i" = "Supported: {.fn latent}, {.fn indep}, {.fn propto}, {.fn equalto}, {.fn spatial}, {.fn phylo_latent}, {.fn phylo_slope}."
+      ">" = "Use one of {.fn latent}, {.fn indep}, {.fn propto}, {.fn equalto}, {.fn spatial}, {.fn phylo_latent}, {.fn phylo_slope}."
     ))
   }
   ## PGLLVM foot-gun detector (run BEFORE the generic `bad_groups`
@@ -3047,7 +3063,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       if (!gname %in% names(data))
         cli::cli_abort(c(
           "{.code (1 | {gname})} found in formula but {.var {gname}} is not a column in {.arg data}.",
-          "i" = "Add a {.var {gname}} column to {.arg data} or rename the grouping factor."
+          ">" = "Add a {.var {gname}} column to {.arg data} or rename the grouping factor."
         ))
       ## A missing group LABEL is not a group. Left unchecked, the NA rows were
       ## absorbed rather than rejected: the fit ran, `nobs` was unchanged, and
@@ -4313,9 +4329,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         cli::cli_abort("{.arg d} for {.fn kernel_latent} tier {.val {nm}} must be a positive integer.")
       }
       if (rank_r > n_traits) {
-        cli::cli_abort(
-          "{.fn kernel_latent}(name = {nm}, d = {rank_r}) exceeds the number of traits ({n_traits}); the latent rank must satisfy d <= n_traits."
-        )
+        cli::cli_abort(c(
+          "{.fn kernel_latent}(name = {nm}, d = {rank_r}) exceeds the number of traits ({n_traits}); the latent rank must satisfy d <= n_traits.",
+          ">" = "Pass {.code d} at most {n_traits} in {.fn kernel_latent}."
+        ))
       }
       K <- cs_lat$extra$vcv
       kernel_meta <- .cross_kernel_metadata(K)

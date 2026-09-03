@@ -3837,7 +3837,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     if (any(y[bin_rows] < 0) || any(y[bin_rows] > n_trials[bin_rows]))
       cli::cli_abort(c(
         "Binomial rows: `y` (successes) must satisfy 0 <= y <= n_trials.",
-        "i" = "If you used {.code cbind(succ, fail)}, both columns must be non-negative integers."
+        ">" = "If you used {.code cbind(succ, fail)}, both columns must be non-negative integers."
       ))
   }
   ## Beta rows: y must be in the open unit interval (0, 1). The likelihood
@@ -3849,7 +3849,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     if (any(y[beta_rows] <= 0) || any(y[beta_rows] >= 1))
       cli::cli_abort(c(
         "Beta rows: {.code y} must satisfy 0 < y < 1.",
-        "i" = "Exact 0s or 1s require a zero-/one-inflated Beta variant."
+        ">" = "Rescale exact 0s/1s away from the boundary, or switch to a family that admits them."
       ))
   }
   ## Lognormal and Gamma rows require strictly positive observed responses.
@@ -3860,7 +3860,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     if (any(y[positive_rows] <= 0))
       cli::cli_abort(c(
         "Lognormal and Gamma rows: {.code y} must be strictly positive.",
-        "i" = "Exact zeros need a hurdle/delta, zero-inflated, or count-family model."
+        ">" = "Exact zeros need {.fn delta_lognormal}/{.fn delta_gamma}, a zero-inflated family, or a count family."
       ))
   }
   ## Beta-binomial rows: y must be in [0, n_trials], same as binomial.
@@ -3869,7 +3869,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     if (any(y[bb_rows] < 0) || any(y[bb_rows] > n_trials[bb_rows]))
       cli::cli_abort(c(
         "Beta-binomial rows: `y` (successes) must satisfy 0 <= y <= n_trials.",
-        "i" = "If you used {.code cbind(succ, fail)}, both columns must be non-negative integers."
+        ">" = "If you used {.code cbind(succ, fail)}, both columns must be non-negative integers."
       ))
   }
   ## Sanity check: y >= 1 for zero-truncated count families.
@@ -3894,7 +3894,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     if (any(y[delta_rows] < 0))
       cli::cli_abort(c(
         "Delta families: response must be non-negative (zero or positive).",
-        "i" = "{.fn delta_lognormal}/{.fn delta_gamma} are hurdle models with an exact zero point mass + continuous positive part."
+        "i" = "{.fn delta_lognormal}/{.fn delta_gamma} are hurdle models with an exact zero point mass + continuous positive part.",
+        ">" = "Check the response column for negative values before fitting."
       ))
   }
 
@@ -3992,12 +3993,13 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     if (any(y[ordinal_obs_rows] != round(y[ordinal_obs_rows])))
       cli::cli_abort(c(
         "ordinal_probit: response must be integer-valued (categories 1..K).",
-        "i" = "Coerce {.var y} via {.code as.integer(factor(y))} or pass an ordered factor."
+        ">" = "Coerce {.var y} via {.code as.integer(factor(y))} or pass an ordered factor."
       ))
     if (any(y[ordinal_obs_rows] < 1))
       cli::cli_abort(c(
         "ordinal_probit: response must be in {.val 1..K} (1-indexed).",
-        "i" = "Smallest observed category was {min(y[ordinal_obs_rows])}; categories must start at 1."
+        "x" = "Smallest observed category was {min(y[ordinal_obs_rows])}; categories must start at 1.",
+        ">" = "Recode categories to start at 1, e.g. {.code as.integer(factor(y))}."
       ))
     cum_offset <- 0L
     for (t in seq_len(n_traits)) {
@@ -4013,13 +4015,13 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       if (any(family_id_vec[rows_t_all] != 14L))
         cli::cli_abort(c(
           "ordinal_probit on trait {t}: other rows of this trait use a different family.",
-          "i" = "ordinal_probit must own all rows of a trait (cutpoints are estimated per trait)."
+          ">" = "Give this trait its own single family in the mixed-family {.code list(...)}; ordinal_probit must own all rows of a trait."
         ))
       Kt <- max(as.integer(y[rows_t]))
       if (Kt < 2L)
         cli::cli_abort(c(
           "ordinal_probit: trait {t} has only {Kt} observed categor{?y/ies}.",
-          "i" = "Need at least K = 2 categories to define a likelihood."
+          ">" = "Need at least K = 2 categories to define a likelihood; use {.fn binomial} or {.fn poisson} for a trait with fewer."
         ))
       if (Kt == 2L) {
         ## Hadfield (2015) eqn 10: K = 2 ordinal_probit reduces EXACTLY to
@@ -4035,7 +4037,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       if (any(y[rows_t] > Kt))
         cli::cli_abort(c(
           "ordinal_probit: trait {t} response exceeds inferred K = {Kt}.",
-          "i" = "All observed categories must lie in 1..K; check for missing intermediate levels."
+          ">" = "All observed categories must lie in 1..K; check for missing intermediate levels."
         ))
       ordinal_K_per_trait[t]      <- Kt
       n_ordinal_cuts_per_trait[t] <- Kt - 2L

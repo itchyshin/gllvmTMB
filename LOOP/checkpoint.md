@@ -26,7 +26,11 @@ NEXT:
 - O6 #1243 ordination_uncertainty()  (builder running, branch claude/overnight-ordination-uncertainty)
 - O7 #1244 censored_poisson() engine (builder running, branch claude/overnight-censored-poisson)
 
-OPEN GATES (need human): none. D-216 signed off #1249/#1250; D-210 covers the rest of the run.
+STOP INSTRUCTION (Shinichi, 2026-09-03 ~06:50 local): scope ENDS AT PARITY — the two ports close it,
+nothing beyond. STOP AROUND NOON LOCAL and re-evaluate the situation with him. Do not open new arcs
+after the ports.
+
+OPEN GATES (need human): re-evaluation at noon. D-216 signed off #1249/#1250; D-210 covers the rest of the run.
 
 THE TRAP TO RE-CHECK BEFORE EVERY MERGE FROM HERE: once #1251 lands the ratchet ceiling on main is
 828 and `test-gapclose-next-steps.R` only lets it fall. Any branch adding a refusal without a ">"

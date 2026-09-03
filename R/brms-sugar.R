@@ -3057,7 +3057,7 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
         }
         cli::cli_abort(c(
           "{.code ||} on {.fn {fn}} did not resolve to a random-slope term.",
-          "i" = "`||` requires an intercept-and-slope LHS, e.g. {.code {fn}(1 + x || g)}."
+          ">" = "`||` requires an intercept-and-slope LHS, e.g. {.code {fn}(1 + x || g)}."
         ))
       }
       if (length(fn) == 1L && fn %in% .source_specific_lv_keywords) {
@@ -3231,7 +3231,7 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
           if (!mode_str %in% valid_modes) {
             cli::cli_abort(c(
               "{.code mode = {.val {mode_str}}} is not a recognised mode.",
-              "i" = "Current modes for LHS = {.code 0 + trait} are {.val indep}, {.val latent}, and {.val dep}."
+              ">" = "Current modes for LHS = {.code 0 + trait} are {.val indep}, {.val latent}, and {.val dep}."
             ))
           }
 
@@ -3299,7 +3299,7 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
           if ("vcv" %in% nm) {
             cli::cli_abort(c(
               "{.fn {fn}} got both {.arg A} and {.arg vcv}.",
-              "i" = "These are aliases -- supply only one."
+              ">" = "These are aliases -- supply only one."
             ))
           }
           e[["vcv"]] <- e[[which(nm == "A")]]
@@ -3310,7 +3310,7 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
           if ("vcv" %in% nm) {
             cli::cli_abort(c(
               "{.fn {fn}} got both {.arg Ainv} and {.arg vcv}.",
-              "i" = "These are aliases -- supply only one."
+              ">" = "These are aliases -- supply only one."
             ))
           }
           Ainv_expr <- e[[which(nm == "Ainv")]]
@@ -4302,7 +4302,7 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
         if (!mode_str %in% valid_modes) {
           cli::cli_abort(c(
             "{.code mode = {.val {mode_str}}} is not a recognised mode.",
-            "i" = "Current modes for LHS = {.code 0 + trait} are {.val indep}, {.val latent}, and {.val dep}."
+            ">" = "Current modes for LHS = {.code 0 + trait} are {.val indep}, {.val latent}, and {.val dep}."
           ))
         }
 

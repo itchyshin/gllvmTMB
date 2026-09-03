@@ -310,9 +310,18 @@ REGISTER_MAP <- list(
   ROW("Post-fit summary, comparison, and plotting extractor surface", "Post-fit and extractors",
       c("EXT-05", "EXT-06", "EXT-07", "EXT-08", "EXT-09", "EXT-10", "EXT-12",
         "EXT-15", "EXT-19", "EXT-25", "EXT-26", "EXT-27", "EXT-28", "EXT-29",
-        "EXT-30", "EXT-32", "EXT-33", "EXT-35", "EXT-36", "EXT-37",
+        "EXT-30", "EXT-32", "EXT-33", "EXT-35", "EXT-36", "EXT-37", "EXT-38",
         "PHY-07", "PHY-08", "ANI-07", "ANI-08", "SPA-08",
         "LAM-01", "LAM-02", "LAM-03", "LAM-04")),
+  # Arc O5 (2026-09-03, issue #1242): latent-rank selection and boundary
+  # likelihood-ratio inference. Julia twin: `select_lv()` <-> GLLVM.jl
+  # `src/model_selection.jl`'s `select_lv()`; `chibar2_pvalue()`/
+  # `variance_lrt()` <-> `src/boundary_inference.jl`'s functions of the same
+  # name. One combined ledger row (mirrors the zi_* FAM-21/22/23 precedent
+  # above), since the two register rows are one arc's evidence.
+  ROW("select_lv() rank selection + anova() boundary likelihood-ratio test",
+      "Post-fit and extractors", c("MS-01", "MS-02"),
+      aliases = "select_lv / chibar2_pvalue / variance_lrt"),
 
   # --- Diagnostics -----------------------------------------------------------
   ROW("Diagnostics and fit-health surface", "Diagnostics",

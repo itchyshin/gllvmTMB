@@ -42,6 +42,64 @@
   and does not carry over to logit's `pi^2/3` without its own calibration
   campaign (both thresholds already default to `Inf`, so this changes no
   shipped behaviour).
+* New `select_lv()` and an expanded `anova.gllvmTMB_multi()` for choosing and
+  testing the latent rank (number of ordination axes, `d`) of an ordinary
+  `latent()` term (issue #1242). `select_lv(formula, data, ..., d_max,
+  criterion = c("bic", "aic", "aicc"))` fits `d = 1, ..., d_max` by sweeping
+  the formula's single `latent(...)` term and reports a tidy table (`npar`,
+  `logLik`, AIC/BIC/AICc, convergence, positive-definite-Hessian, seconds)
+  with the criterion-minimising `d` marked; a fit that fails to converge or
+  land on a positive-definite Hessian is excluded from selection (with a
+  warning) but still shown. `anova.gllvmTMB_multi(object, ..., test =
+  c("chibar", "chisq", "none"))` performs a sequential nested
+  likelihood-ratio comparison: an ordinary fixed-effect (interior) step uses
+  plain Wilks chi-square, and a rank step of exactly one new latent
+  dimension uses the Self & Liang (1987) chi-bar-square mixture (new
+  exported `chibar2_pvalue()`/`variance_lrt()`) as a documented
+  approximation -- see `?anova.gllvmTMB_multi` for the exact caveat and
+  `dev/gapclose/arcD/O5-report.md` for its measured empirical size. **In
+  scope:** ML-only comparisons (REML, LA-MSPL, mismatched integration
+  engines/loading ridges, mismatched data or families, and non-nested fixed
+  effects are all refused, naming the reason); a single-dimension rank step
+  gets the chi-bar-square correction; `select_lv()` guards `d_max` against
+  the number of traits before fitting. **Not in scope:** no interval on the
+  selected `d`; no automatic model averaging across `d`; a rank step
+  spanning more than one new dimension, or a step that changes both fixed
+  effects and rank at once, is refused rather than approximated (compare in
+  separate steps, or use `select_lv()`); structured source-specific latent
+  terms (`phylo_latent()`, `spatial_latent()`, `kernel_latent()`,
+  `animal_latent()`) are not swept by `select_lv()`. `AIC.gllvmTMB_multi`
+  and `BIC.gllvmTMB_multi` are now exported via roxygen `@export` (an
+  idiomatic NAMESPACE `S3method()` entry) instead of the previous manual
+  `registerS3method()` call in `.onLoad()`, which is removed as redundant.
+* New `ordination_uncertainty()` (issue #1243, D-204 parity with GLLVM.jl's
+  function of the same name) reports the per-unit covariance of ordination
+  (latent) scores, not just a point estimate -- the object needed to draw an
+  uncertainty ellipse (not just an axis-aligned error bar) around a site in
+  a biplot. **Estimand, stated plainly:** the conditional (posterior)
+  covariance of a unit's latent-score random effect given the data and the
+  fitted parameters -- a prediction-uncertainty statement about a random
+  effect, not a sampling-distribution SE of a fixed quantity -- read from
+  the fit's joint (fixed + random) precision matrix
+  (`TMB::sdreport(getJointPrecision = TRUE)`). It generalises the existing
+  `getLV(se = TRUE)` per-cell marginal SE to the full per-unit `K x K`
+  covariance, including the cross-axis entry `getLV(se = TRUE)` cannot
+  produce. **Rotation:** gllvmTMB's `latent()` loadings are pinned by a
+  structural lower-triangular constraint up to a per-axis SIGN FLIP only
+  (never a continuous rotation), so the returned covariance is valid for
+  drawing ellipses around this fit's own (`rotate = "none"`) scores;
+  rotated (`varimax`/`promax`) scores are not supported, matching
+  `getLV(se = TRUE)`'s existing restriction. `ordiplot(ellipse = TRUE)`
+  now draws that ellipse directly. **Scope boundary, stated honestly:** no
+  `lower`/`upper` interval bound is returned and no repeated-sampling
+  coverage has been measured for `se` or `cov` -- both are Wald/delta
+  -method quantities, verified against an independent dense joint-precision
+  inversion to numerical (not calibration) accuracy. Refused, each naming a
+  working alternative, for `engine = "julia"` bridge fits,
+  `integration = "va"` fits, `estimator = "mspl"` fits, likelihood-weighted
+  fits, and predictor-informed `latent(..., lv = ~x)` fits. Neither the
+  standard deviations nor the covariances have measured coverage; both are
+  asymptotic-normal quantities.
 * Three zero-inflated count families: `zi_poisson()`, `zi_nbinom2()`, and
   `zi_binomial()`. These are TRUE zero-inflation mixtures -- the ordinary
   count process is active at every observation, including `y = 0` -- and are

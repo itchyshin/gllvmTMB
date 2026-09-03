@@ -152,8 +152,9 @@ column matches).}
 \item{family}{A \code{family} object. The multivariate engine
 (formulas with \code{latent()}, \code{indep()}, etc.) supports \code{gaussian()},
 \code{binomial()} (logit / probit / cloglog), \code{poisson()} (log link),
-\code{\link[=ordinal_probit]{ordinal_probit()}} (the gllvmTMB-native ordinal threshold family
-with sigma_d = 1 fixed exactly; no delta-method approximation),
+\code{\link[=ordinal_probit]{ordinal_probit()}} and \code{\link[=ordinal_logit]{ordinal_logit()}} (the gllvmTMB-native ordinal
+threshold families with sigma_d fixed exactly -- 1 for probit,
+pi^2/3 for logit; no delta-method approximation),
 \code{lognormal()} (log link), \code{Gamma(link = "log")},
 \code{nbinom2()} (NB2 negative binomial; log link),
 \code{nbinom1()} (NB1 negative binomial; log link),
@@ -692,6 +693,6 @@ for the screen-first LA-MSPL workflow; \code{\link[=traits]{traits()}} for wide 
 generating recovery test data;
 \code{\link[=extract_Sigma]{extract_Sigma()}} for the unified post-fit covariance API;
 \code{\link[=gllvmTMB_diagnose]{gllvmTMB_diagnose()}} for a one-stop convergence + identifiability
-health check; \code{\link[=ordinal_probit]{ordinal_probit()}} for the gllvmTMB-native ordinal
-threshold family.
+health check; \code{\link[=ordinal_probit]{ordinal_probit()}} and \code{\link[=ordinal_logit]{ordinal_logit()}} for the
+gllvmTMB-native ordinal threshold families.
 }

@@ -407,6 +407,14 @@ link_residual_per_trait <- function(fit) {
       ## applied to fid 1's logit-binomial constant pi^2/3 -- zi_binomial
       ## has no probit/cloglog route, so no link_id dispatch is needed here.
       out[t] <- pi^2 / 3
+    } else if (fid == 20L) {
+      # ordinal_logit
+      ## The cumulative-logit analogue of fid 14 (ordinal_probit): the
+      ## latent residual is standard LOGISTIC by construction (epsilon ~
+      ## Logistic(0, 1), Var = pi^2/3), so sigma_d^2 = pi^2/3 EXACTLY under
+      ## the logit-liability convention -- no trigamma / delta-method
+      ## approximation is needed, same as the probit case's sigma_d^2 = 1.
+      out[t] <- pi^2 / 3
     } else {
       out[t] <- NA_real_
     }
@@ -1791,6 +1799,7 @@ extract_Sigma <- function(
           "14" = "ordinal_probit",
           "15" = "nbinom1",
           "16" = "multinomial",
+          "20" = "ordinal_logit",
           sprintf("family_id %s", fid)
         )
       }

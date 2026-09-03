@@ -3302,11 +3302,17 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     ## gated out of the likelihood in TMB, so validate only observed rows
     ## (na.rm) and sentinel-fill their y / n_trials below.
     if (any(succ < 0, na.rm = TRUE) || any(fail < 0, na.rm = TRUE))
-      cli::cli_abort("cbind(successes, failures): both columns must be non-negative.")
+      cli::cli_abort(c(
+        "cbind(successes, failures): both columns must be non-negative.",
+        ">" = "Check the successes and failures columns for negative values before fitting."
+      ))
     y         <- succ
     n_trials  <- succ + fail
     if (any(n_trials <= 0, na.rm = TRUE))
-      cli::cli_abort("cbind(successes, failures): rows with zero trials are not allowed.")
+      cli::cli_abort(c(
+        "cbind(successes, failures): rows with zero trials are not allowed.",
+        ">" = "Drop rows where successes + failures == 0, or check for a data-entry error."
+      ))
   } else {
     y <- as.numeric(y_raw)
     ## Optional API (B): when binomial / beta-binomial rows are present,
@@ -3320,7 +3326,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         length(weights) == nrow(data)) {
       n_trials <- as.numeric(weights)
       if (any(!is.finite(n_trials)) || any(n_trials <= 0))
-        cli::cli_abort("`weights` (used as binomial size) must be positive and finite.")
+        cli::cli_abort(c(
+          "`weights` (used as binomial size) must be positive and finite.",
+          ">" = "Pass a positive finite trial count per row, e.g. {.code weights = n_trials}."
+        ))
     } else {
       n_trials <- rep(1, length(y))
     }
@@ -3437,12 +3446,19 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     if (!is.numeric(weights) || length(weights) != n_obs)
       cli::cli_abort(c(
         "`weights` must be a numeric vector of length nrow(data).",
-        "i" = "Got length {length(weights)}; expected {n_obs}."
+        "x" = "Got length {length(weights)}; expected {n_obs}.",
+        ">" = "Pass one weight per row of {.arg data}."
       ))
     if (any(!is.finite(weights)))
-      cli::cli_abort("`weights` must be finite.")
+      cli::cli_abort(c(
+      "`weights` must be finite.",
+      ">" = "Check {.arg weights} for NA/NaN/Inf values."
+    ))
     if (any(weights < 0))
-      cli::cli_abort("`weights` must be non-negative.")
+      cli::cli_abort(c(
+      "`weights` must be non-negative.",
+      ">" = "Check {.arg weights} for negative values."
+    ))
     weights_i <- as.numeric(weights)
     weights_i[family_id_vec %in% c(1L, 8L)] <- 1.0
   } else {
@@ -3674,7 +3690,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       cli::cli_abort(c(
         "The {.fn phylo} covariate grouping must be the species (cluster) grouping {.val {species}}.",
         "x" = "Found {.code phylo(1 | {mi_model$phylo$group})}, but the fit's species grouping is {.val {species}}.",
-        "i" = "The covariate phylogenetic field reuses the species tree; group it by {.val {species}}."
+        ">" = "The covariate phylogenetic field reuses the species tree; group it by {.val {species}}."
       ))
     }
     cov_tree <- mi_model$phylo$tree
@@ -3686,13 +3702,16 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     }
     if (!is.null(cov_tree)) {
       if (!inherits(cov_tree, "phylo"))
-        cli::cli_abort("The {.fn phylo} covariate {.code tree =} must be an {.cls ape::phylo} tree.")
+        cli::cli_abort(c(
+          "The {.fn phylo} covariate {.code tree =} must be an {.cls ape::phylo} tree.",
+          ">" = "Pass an object read by {.fn ape::read.tree} or {.fn ape::read.nexus}."
+        ))
       if (is.null(phylo_tree)) {
         phylo_tree <- cov_tree
       } else if (!identical(phylo_tree$tip.label, cov_tree$tip.label)) {
         cli::cli_abort(c(
           "The {.fn phylo} covariate tree differs from the response phylogenetic tree.",
-          "i" = "One tree per fit in this version; the covariate and response phylo terms must share a tree (multi-tree is a later phase)."
+          ">" = "One tree per fit in this version; the covariate and response phylo terms must share a tree (multi-tree is a later phase)."
         ))
       }
     }
@@ -3701,13 +3720,13 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   if (any(is.na(y[!masked_response]))) {
     cli::cli_abort(c(
       "NA in an observed response reached the fitting engine.",
-      "i" = "Public {.fn gllvmTMB} drops (response = \"drop\") or masks (response = \"include\") missing response rows before fitting; please report this internal preprocessing failure."
+      ">" = "Public {.fn gllvmTMB} drops (response = \"drop\") or masks (response = \"include\") missing response rows before fitting; please report this internal preprocessing failure at https://github.com/itchyshin/gllvmTMB/issues."
     ))
   }
   if (any(is.na(X_fix))) {
     cli::cli_abort(c(
       "NA in the fixed-effect design matrix.",
-      "i" = "Missing response rows are allowed and dropped before fitting; missing predictors still need to be removed or imputed before fitting (or declared with {.code mi()} under {.code missing = miss_control(predictor = \"model\")})."
+      ">" = "Missing response rows are allowed and dropped before fitting; missing predictors still need to be removed or imputed before fitting (or declared with {.code mi()} under {.code missing = miss_control(predictor = \"model\")})."
     ))
   }
   if (isTRUE(REML)) {
@@ -3798,7 +3817,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       cli::cli_abort(c(
         "{.arg REML = TRUE} requires a full-rank fixed-effect design matrix.",
         "x" = "The observed-row fixed-effect design has rank {qr(X_reml)$rank}, but {ncol(X_reml)} column{?s}.",
-        "i" = "Remove redundant fixed-effect columns or use {.code REML = FALSE}."
+        ">" = "Remove redundant fixed-effect columns or use {.code REML = FALSE}."
       ))
     }
     if (nrow(X_reml) <= ncol(X_reml)) {

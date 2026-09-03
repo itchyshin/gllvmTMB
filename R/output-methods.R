@@ -366,11 +366,20 @@ extract_residual_cor <- function(fit, level = "unit") {
 #'   arrows (default `TRUE`).
 #' @param rotate Rotation after fitting: `"none"` (default), `"varimax"`, or
 #'   `"promax"`.
+#' @param ellipse Logical; if `TRUE`, draw an asymptotic-normal score
+#'   -uncertainty ellipse around every site, from [ordination_uncertainty()].
+#'   Only supported with `rotate = "none"` (the default) -- see
+#'   [ordination_uncertainty()]'s Rotation section for why. The ellipse
+#'   level is unmeasured for coverage; it is a standard Wald construction,
+#'   not a certified interval.
+#' @param ellipse_level Nominal confidence level for the `ellipse` outline
+#'   (default `0.95`). Only used when `ellipse = TRUE`.
 #' @param ... Passed to `plot()`.
 #' @return Invisibly, a list with the plotted `scores` matrix and the
 #'   corresponding `loadings` matrix. The function is primarily called for its
 #'   plotting side effect.
-#' @seealso [plot.gllvmTMB_multi()] for the available `type` choices.
+#' @seealso [plot.gllvmTMB_multi()] for the available `type` choices;
+#'   [ordination_uncertainty()] for the covariance `ellipse = TRUE` draws.
 #' @keywords internal
 #' @export
 #' @rawNamespace if (requireNamespace("gllvm", quietly = TRUE)) S3method(gllvm::ordiplot, gllvmTMB_multi)
@@ -387,6 +396,8 @@ ordiplot.gllvmTMB_multi <- function(
   axes = c(1, 2),
   biplot = TRUE,
   rotate = c("none", "varimax", "promax"),
+  ellipse = FALSE,
+  ellipse_level = 0.95,
   ...
 ) {
   level <- match.arg(level, c("unit", "unit_obs", "B", "W"))
@@ -395,6 +406,13 @@ ordiplot.gllvmTMB_multi <- function(
   rotate <- match.arg(rotate)
   if (length(axes) != 2L) {
     cli::cli_abort("axes must be length 2.")
+  }
+  if (isTRUE(ellipse) && rotate != "none") {
+    cli::cli_abort(c(
+      "{.code ellipse = TRUE} is not supported together with {.code rotate != \"none\"}.",
+      "i" = "Rotating scores changes their covariance, which {.fn ordination_uncertainty} does not propagate.",
+      ">" = "Request {.code rotate = \"none\", ellipse = TRUE} for uncertainty ellipses."
+    ), class = "gllvmTMB_ordiplot_ellipse_rotated_unsupported")
   }
 
   scores <- getLV(fit, canonical_level, rotate)
@@ -418,6 +436,23 @@ ordiplot.gllvmTMB_multi <- function(
     ...
   )
   graphics::abline(h = 0, v = 0, lty = 2, col = "grey80")
+
+  if (isTRUE(ellipse)) {
+    unc <- ordination_uncertainty(fit, canonical_level)
+    if (is.null(unc)) {
+      cli::cli_abort(c(
+        "{.fn ordination_uncertainty} returned {.code NULL} for {.code level = \"{canonical_level}\"}.",
+        ">" = "Request {.code ellipse = FALSE}, or fit a {.fn latent} term at this level."
+      ), class = "gllvmTMB_ordiplot_ellipse_no_uncertainty")
+    }
+    for (s in seq_len(nrow(scores))) {
+      mu <- c(xs[s], ys[s])
+      Sigma2 <- unc$cov[axes, axes, s]
+      if (anyNA(Sigma2)) next
+      poly <- .gllvmTMB_ellipse_xy(mu, Sigma2, conf = ellipse_level)
+      graphics::lines(poly[, "x"], poly[, "y"], col = "grey40", lwd = 1)
+    }
+  }
 
   if (isTRUE(biplot) && !is.null(loadings) && ncol(loadings) >= max(axes)) {
     sc <- max(abs(rng(xs)), abs(rng(ys))) /

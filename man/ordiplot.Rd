@@ -13,6 +13,8 @@ ordiplot(fit, ...)
   axes = c(1, 2),
   biplot = TRUE,
   rotate = c("none", "varimax", "promax"),
+  ellipse = FALSE,
+  ellipse_level = 0.95,
   ...
 )
 }
@@ -32,6 +34,16 @@ arrows (default \code{TRUE}).}
 
 \item{rotate}{Rotation after fitting: \code{"none"} (default), \code{"varimax"}, or
 \code{"promax"}.}
+
+\item{ellipse}{Logical; if \code{TRUE}, draw an asymptotic-normal score
+-uncertainty ellipse around every site, from \code{\link[=ordination_uncertainty]{ordination_uncertainty()}}.
+Only supported with \code{rotate = "none"} (the default) -- see
+\code{\link[=ordination_uncertainty]{ordination_uncertainty()}}'s Rotation section for why. The ellipse
+level is unmeasured for coverage; it is a standard Wald construction,
+not a certified interval.}
+
+\item{ellipse_level}{Nominal confidence level for the \code{ellipse} outline
+(default \code{0.95}). Only used when \code{ellipse = TRUE}.}
 }
 \value{
 Invisibly, a list with the plotted \code{scores} matrix and the
@@ -52,6 +64,7 @@ methods registered, either generic correctly routes a multi-response
 fit through the gllvmTMB ordination method.
 }
 \seealso{
-\code{\link[=plot.gllvmTMB_multi]{plot.gllvmTMB_multi()}} for the available \code{type} choices.
+\code{\link[=plot.gllvmTMB_multi]{plot.gllvmTMB_multi()}} for the available \code{type} choices;
+\code{\link[=ordination_uncertainty]{ordination_uncertainty()}} for the covariance \code{ellipse = TRUE} draws.
 }
 \keyword{internal}

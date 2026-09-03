@@ -164,21 +164,58 @@ sustains.
 
 ## Comparison with GLLVM.jl
 
-Checked `/Users/z3437171/Dropbox/Github Local/GLLVM.jl` at `origin/main`
-(`9f8378aa`) and its `codex/core070-aghq-20260830` branch. Both are
-**readable**. GLLVM.jl has independently-built `zip`/`zinb`/`zib`
-engines (Julia-forward; `docs/dev-log/decisions/2026-08-09-zip-x-
-identity.md` and siblings), but its own after-task reports for those
-engines list, verbatim, **"Not OK: twin ZIP/ZINB parity, light RCall
-delta, ADEMP/coverage"** (`docs/dev-log/after-task/2026-08-09-zip-x-
-engine.md`, `...2026-08-14-zinb-x-engine.md`) -- i.e. **no ADEMP or
-recovery/coverage campaign exists there either**, for any of the three
-families. There is nothing to compare numbers against; this campaign is
-the first multi-seed recovery evidence for zero-inflated families in
-either codebase. (Separately, GLLVM.jl's ZINB parameterises dispersion
-as one shared scalar `r`, unlike gllvmTMB's per-trait `phi_nbinom2` --
-already recorded as a deliberate divergence in Arc D1's capability
-ledger, not something this campaign needed to reconcile.)
+**CORRECTED 2026-09-03 after the GLLVM.jl lane replied.** This section
+first reported that no ADEMP or recovery campaign existed on the Julia
+side. That was wrong, and the way it was wrong is worth recording: the
+search found dated August after-task reports
+(`docs/dev-log/after-task/2026-08-09-zip-x-engine.md:40`,
+`...-zip-x-identity.md:38`, `...2026-08-14-zinb-x-engine.md:54`) whose
+"Not OK: ADEMP/coverage" lines were that day's honest status, and read
+them as a live ledger. They are not; that lane does not rewrite past
+reports. **A narrow search returning nothing is not evidence of absence.**
+
+The Julia campaign DID run: Totoro, 2026-09-02 11:57-14:07Z, 240 chunks,
+**6,000 fits, 0 errors**, summarised in
+`docs/dev-log/core070/zi-ademp-recovery-findings.md` (commit `14364043`)
+on branch `codex/core070-aghq-20260830`, with raw per-fit CSVs under
+`docs/dev-log/core070/zi-ademp-out/`. It is not on their `origin/main`
+because nothing from that programme lands until their draft PR #277
+merges -- which is why a `git show origin/main:` search could not see it.
+
+**The two campaigns vary different axes, so they corroborate by regime,
+not cell-for-cell.** Theirs: p in {5, 25} x n in {50, 200} x 500 seeds,
+intercept-only zero inflation by construction, dispersion `r = 2` shared
+(their parameterisation), estimands beta_z / beta_c / Lambda Lambda';
+ours: p = 6 x n in {150 ... 800} x 50 seeds, per-trait `phi_nbinom2`.
+They varied the number of responses; we varied the number of units.
+
+Where they agree, and it is the conclusion that matters:
+
+1. **Recovery holds only once n is large relative to p.** Their
+   convergence collapses at (p=25, n=50) -- zip 35.0%, zinb 70.0% -- and
+   recovers at n=200 (96.2% / 98.6%); ours holds for >=90% of seeds only
+   at n=400 (zi_poisson) and n=800 (zi_nbinom2) with p = 6. Same shape,
+   two implementations, two grids.
+2. **The zinb dispersion problem is small-sample identifiability, not
+   zero-inflation.** They reach this independently and tie it to the same
+   class we do -- a "healthy" per-trait NB2 fixture sitting at the Poisson
+   limit (`docs/dev-log/core070/t14-nb2-wald-nan-diagnosis.md`). Our
+   register text made this claim from the R side alone; it now has
+   independent support from a separate codebase.
+3. **zi_binomial is the well-behaved one of the three** in both: 100%
+   convergence in all four of their cells, and the only family here whose
+   shipped test size already clears a 90%-of-seeds standard.
+
+Neither campaign evaluated standard errors or interval coverage, so
+neither supports any interval claim. If a same-DGP comparison is wanted
+later, their worker is `tools/core070_zi_ademp_chunk.jl`
+(argv: family p n seed_start seed_end outdir) and runs unchanged under a
+Slurm array -- that would be a new arc, with its own estimate, not a
+re-reading of either result.
+
+(Separately, GLLVM.jl's ZINB parameterises dispersion as one shared
+scalar `r`, unlike gllvmTMB's per-trait `phi_nbinom2` -- already recorded
+as a deliberate divergence in Arc D1's capability ledger.)
 
 ## Proposed register wording
 

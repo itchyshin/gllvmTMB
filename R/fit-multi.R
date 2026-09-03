@@ -1230,9 +1230,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       zi_nbinom2        = 18L,
       zi_binomial       = 19L,
       ordinal_logit     = 20L,
+      censored_poisson  = 21L,
       cli::cli_abort(c(
         "Unsupported family: {.val {f$family}}.",
-        ">" = "Use one of {.code gaussian()}, {.code binomial()}, {.code poisson()}, {.code lognormal()}, {.code Gamma()}, {.code nbinom2()}, {.code nbinom1()}, {.code tweedie()}, {.code Beta()}, {.code betabinomial()}, {.code student()}, {.code truncated_poisson()}, {.code truncated_nbinom2()}, {.code delta_lognormal()}, {.code delta_gamma()}, {.code ordinal_probit()}, {.code ordinal_logit()}, {.code multinomial()}, {.code zi_poisson()}, {.code zi_nbinom2()}, {.code zi_binomial()}."
+        ">" = "Use one of {.code gaussian()}, {.code binomial()}, {.code poisson()}, {.code lognormal()}, {.code Gamma()}, {.code nbinom2()}, {.code nbinom1()}, {.code tweedie()}, {.code Beta()}, {.code betabinomial()}, {.code student()}, {.code truncated_poisson()}, {.code truncated_nbinom2()}, {.code delta_lognormal()}, {.code delta_gamma()}, {.code ordinal_probit()}, {.code ordinal_logit()}, {.code multinomial()}, {.code zi_poisson()}, {.code zi_nbinom2()}, {.code zi_binomial()}, {.code censored_poisson()}."
       ))
     )
     lid <- 0L
@@ -1341,6 +1342,11 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       cli::cli_abort(c(
         "zi_binomial: only the logit link is currently supported.",
         ">" = "Use {.code zi_binomial(link = \"logit\")} (the default)."
+      ))
+    if (fid == 21L && !identical(f$link, "log"))
+      cli::cli_abort(c(
+        "censored_poisson: only the log link is currently supported.",
+        ">" = "Use {.code censored_poisson(link = \"log\")} (the default)."
       ))
     c(fid, lid)
   }
@@ -3302,25 +3308,58 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   )
 
   y_raw <- stats::model.response(mf)
+  ## censored_poisson (fid 21, renumbered 2026-09-03 from 20 --
+  ## ordinal_logit, PR #1250, holds 20) rows: default every row to
+  ## uncensored (cens_limit = 0), overridden below only for rows whose LHS
+  ## supplies a `cbind(y, censored)` right-censoring indicator (Arc E,
+  ## #1244; see dev/gapclose/arcE/alignment-censored-poisson.md). This is
+  ## filled in BEFORE the 2-column branch below so a single-column
+  ## response on a censored_poisson trait (the "all-uncensored convenience
+  ## path") is a well-defined no-op, matching plain poisson().
+  cens_limit <- rep(0, nrow(data))
+  cens_rows  <- family_id_vec == 21L
   ## Multi-trial binomial via Wilkinson `cbind(succ, fail) ~ ...`:
   ## `model.response()` returns a 2-column matrix. Split into a length-n
   ## success vector `y` and a length-n trial-count vector `n_trials`. For
   ## any other LHS, default to `n_trials = 1` (Bernoulli for binomial
   ## rows; unused inside TMB for non-binomial families).
+  ##
+  ## censored_poisson rows reuse the SAME 2-column LHS shape but with
+  ## different per-row semantics: column 2 is a strict {0,1} right-
+  ## censoring indicator, not a failure count, so those rows are routed
+  ## around the succ/fail -> n_trials arithmetic below (which would
+  ## otherwise misinterpret a valid uncensored y = 0, censored = 0 row as
+  ## "zero trials" and abort).
   if (is.matrix(y_raw) && ncol(y_raw) == 2L) {
     succ <- as.numeric(y_raw[, 1L])
     fail <- as.numeric(y_raw[, 2L])
+    if (any(cens_rows)) {
+      cens_flag <- fail[cens_rows]
+      if (any(!cens_flag[!is.na(cens_flag)] %in% c(0, 1)))
+        cli::cli_abort(c(
+          "{.fn censored_poisson} rows: the second {.code cbind(y, censored)} column must be a strict 0/1 indicator.",
+          ">" = "Recode {.code censored} to exactly 0 (uncensored) or 1 (right-censored)."
+        ))
+      y_cens <- succ[cens_rows]
+      if (any(y_cens[!is.na(y_cens) & cens_flag %in% 1] <= 0, na.rm = TRUE))
+        cli::cli_abort(c(
+          "{.fn censored_poisson} rows: a right-censored row (censored = 1) needs a censoring limit {.code y >= 1}.",
+          ">" = "A limit of 0 is uninformative ({.code P(Y >= 0) = 1}); drop the row or set {.code censored = 0}."
+        ))
+      cens_limit[cens_rows] <- ifelse(!is.na(cens_flag) & cens_flag == 1, y_cens, 0)
+    }
     ## Masked rows (response = "include") carry NA in both columns; they are
     ## gated out of the likelihood in TMB, so validate only observed rows
     ## (na.rm) and sentinel-fill their y / n_trials below.
-    if (any(succ < 0, na.rm = TRUE) || any(fail < 0, na.rm = TRUE))
+    if (any(succ[!cens_rows] < 0, na.rm = TRUE) || any(fail[!cens_rows] < 0, na.rm = TRUE))
       cli::cli_abort(c(
         "cbind(successes, failures): both columns must be non-negative.",
         ">" = "Check the successes and failures columns for negative values before fitting."
       ))
     y         <- succ
     n_trials  <- succ + fail
-    if (any(n_trials <= 0, na.rm = TRUE))
+    n_trials[cens_rows] <- 1  # unused by fid 21; keep out of the zero-trials check below
+    if (any(n_trials[!cens_rows] <= 0, na.rm = TRUE))
       cli::cli_abort(c(
         "cbind(successes, failures): rows with zero trials are not allowed.",
         ">" = "Drop rows where successes + failures == 0, or check for a data-entry error."
@@ -3442,6 +3481,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     ## them a safe positive sentinel so nothing downstream chokes. The row is
     ## gated out of the likelihood regardless.
     n_trials[masked_response] <- 1
+    cens_limit[masked_response] <- 0  # safe uncensored sentinel; row gated out
   }
 
   ## ---- lme4 / glmmTMB-style observation weights -------------------------
@@ -3960,6 +4000,21 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         ">" = "Supply multi-trial data (N >= 2 for at least one row per trait), or use {.code binomial()} if the data really are single-trial."
       ))
     }
+  }
+
+  ## censored_poisson (fid 21, Arc E #1244; renumbered from 20):
+  ## uncensored rows (cens_limit == 0) carry an ordinary Poisson count,
+  ## same support check as fid 2. The censoring-limit / indicator itself
+  ## was already validated where the `cbind(y, censored)` LHS was parsed
+  ## above.
+  cp_uncensored_rows <- (family_id_vec == 21L) & !masked_response & (cens_limit == 0)
+  if (any(cp_uncensored_rows)) {
+    if (any(y[cp_uncensored_rows] < 0) ||
+        any(y[cp_uncensored_rows] != round(y[cp_uncensored_rows])))
+      cli::cli_abort(c(
+        "{.fn censored_poisson} rows: uncensored {.code y} must be a non-negative integer.",
+        ">" = "Round or recode {.code y} to non-negative integers, or set {.code censored = 1} for a right-censored row."
+      ))
   }
 
   ## ---- ordinal_probit / ordinal_logit (fid 14 / 20): cutpoint metadata --
@@ -5402,6 +5457,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     y                = as.numeric(y),
     is_y_observed    = as.integer(is_y_observed),
     n_trials         = as.numeric(n_trials),
+    cens_limit       = as.numeric(cens_limit),
     X_fix            = X_fix,
     trait_id         = trait_id,
     site_id          = site_id,
@@ -7526,6 +7582,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       "multinomial rows not supported yet"
     } else if (any(family_id_vec %in% c(17L, 18L, 19L))) {
       "zero-inflated rows (zi_poisson/zi_nbinom2/zi_binomial) not supported yet"
+    } else if (any(family_id_vec == 21L)) {
+      "censored_poisson rows not supported yet"
     } else if (!is.null(aghq_block) && is.data.frame(aghq_block) &&
                "route" %in% names(aghq_block) &&
                !any(aghq_block$route == "quadrature")) {

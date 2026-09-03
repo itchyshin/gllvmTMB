@@ -403,9 +403,51 @@ tweedie <- function(link = "log", p = NULL) {
                 list(p = p))
 }
 
+#' @details
+#' \code{censored_poisson()} is a right-censored Poisson family (log link
+#' only): each row is either an ordinary observed count, or is only known
+#' to satisfy \code{Y >= C} for some censoring limit \code{C} (e.g. a
+#' detection ceiling). Supply the response as \code{cbind(y, censored) ~
+#' ...}, where column 1 is the observed count (uncensored rows) or the
+#' censoring limit \code{C} (censored rows), and column 2 is a strict
+#' \code{\{0, 1\}} right-censoring indicator per row. A plain \code{y ~
+#' ...} response is also accepted and treats every row as uncensored
+#' (identical to \code{\link{poisson}()}). Left-censoring and
+#' interval-censoring are \strong{not} supported -- right-censoring only.
+#' \code{fitted()}/\code{predict(type = "response")} report the mean of
+#' the underlying uncensored Poisson process (\code{exp(eta)}), not a
+#' censoring-adjusted expectation, matching how \code{\link{truncated_poisson}()}
+#' reports its untruncated mean.
 #' @export
 #' @examples
 #' censored_poisson(link = "log")
+#' \donttest{
+#' ## A small simulated rank-1 GLLVM fit with one right-censored trait
+#' ## (censoring limit C = 6).
+#' set.seed(1)
+#' n_site <- 100L
+#' n_trait <- 3L
+#' u <- rnorm(n_site)
+#' lambda <- c(0.6, -0.5, 0.4)
+#' beta <- c(1.2, 0.9, 1.4)
+#' C <- 6
+#' eta <- outer(u, lambda) + matrix(beta, n_site, n_trait, byrow = TRUE)
+#' mu <- exp(eta)
+#' y_true <- matrix(rpois(n_site * n_trait, mu), n_site, n_trait)
+#' censored <- y_true >= C
+#' y_obs <- ifelse(censored, C, y_true)
+#' dat <- data.frame(
+#'   site     = factor(rep(seq_len(n_site), n_trait)),
+#'   trait    = factor(rep(seq_len(n_trait), each = n_site)),
+#'   y        = as.vector(y_obs),
+#'   censored = as.integer(as.vector(censored))
+#' )
+#' fit <- gllvmTMB(
+#'   cbind(y, censored) ~ 0 + trait + latent(0 + trait | site, d = 1, unique = FALSE),
+#'   data = dat, family = censored_poisson(), unit = "site"
+#' )
+#' stopifnot(fit$opt$convergence == 0)  # verified 0 on this exact seed
+#' }
 #' @rdname families
 censored_poisson <- function(link = "log") {
   .gllvm_family("censored_poisson", substitute(link), link, "log", full = FALSE)

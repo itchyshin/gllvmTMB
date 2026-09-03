@@ -190,8 +190,15 @@ REGISTER_MAP <- list(
       note = "Closes the B3-issues.md #2 gap: the cumulative-logit ordinal response family, distinct from R's cumulative_logit() (a missing-PREDICTOR family; COLLISION guard on that row below). Link swap on ordinal_probit's (FAM-14) apparatus -- same cutpoint machinery, standard logistic CDF in place of the normal CDF; sigma_d^2 = pi^2/3 exact vs. FAM-14's exact 1."),
   ROW("truncated_poisson", "Response families", "FAM-15"),
   ROW("truncated_nbinom2", "Response families", "FAM-15"),
-  ROW("truncated_nbinom1", "Response families", "FAM-16",
-      note = "FAM-16 also names `censored_poisson` as blocked prose, but gllvmTMB has no censored_poisson constructor at all; that family is tracked purely as a Julia-only port target, not aliased here, so the gap stays visible."),
+  ROW("truncated_nbinom1", "Response families", "FAM-16"),
+  # censored_poisson MOVED here from the FAM-16 note (Arc E, issue #1244,
+  # 2026-09-03) -- it now has a runtime id and matches Julia's
+  # `censored_poisson` row (GLLVM.jl's ledger, "Response families" table)
+  # by exact name. Right-censoring only (Julia's own v1 scope too).
+  # RENUMBERED 2026-09-03: was FAM-24 / runtime id 20 until the sibling
+  # ordinal_logit branch (PR #1250, merges first) was found to
+  # independently claim both -- now FAM-25 / runtime id 21.
+  ROW("censored_poisson", "Response families", "FAM-25"),
   ROW("delta_gamma", "Response families", "FAM-17"),
   ROW("delta_lognormal", "Response families", "FAM-17"),
   # GLLVM.jl's ledger combines all three into ONE row named exactly
@@ -303,9 +310,18 @@ REGISTER_MAP <- list(
   ROW("Post-fit summary, comparison, and plotting extractor surface", "Post-fit and extractors",
       c("EXT-05", "EXT-06", "EXT-07", "EXT-08", "EXT-09", "EXT-10", "EXT-12",
         "EXT-15", "EXT-19", "EXT-25", "EXT-26", "EXT-27", "EXT-28", "EXT-29",
-        "EXT-30", "EXT-32", "EXT-33", "EXT-35", "EXT-36", "EXT-37",
+        "EXT-30", "EXT-32", "EXT-33", "EXT-35", "EXT-36", "EXT-37", "EXT-38",
         "PHY-07", "PHY-08", "ANI-07", "ANI-08", "SPA-08",
         "LAM-01", "LAM-02", "LAM-03", "LAM-04")),
+  # Arc O5 (2026-09-03, issue #1242): latent-rank selection and boundary
+  # likelihood-ratio inference. Julia twin: `select_lv()` <-> GLLVM.jl
+  # `src/model_selection.jl`'s `select_lv()`; `chibar2_pvalue()`/
+  # `variance_lrt()` <-> `src/boundary_inference.jl`'s functions of the same
+  # name. One combined ledger row (mirrors the zi_* FAM-21/22/23 precedent
+  # above), since the two register rows are one arc's evidence.
+  ROW("select_lv() rank selection + anova() boundary likelihood-ratio test",
+      "Post-fit and extractors", c("MS-01", "MS-02"),
+      aliases = "select_lv / chibar2_pvalue / variance_lrt"),
 
   # --- Diagnostics -----------------------------------------------------------
   ROW("Diagnostics and fit-health surface", "Diagnostics",

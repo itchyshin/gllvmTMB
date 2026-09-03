@@ -185,6 +185,16 @@ REGISTER_MAP <- list(
       note = "FAM-16 also names `censored_poisson` as blocked prose, but gllvmTMB has no censored_poisson constructor at all; that family is tracked purely as a Julia-only port target, not aliased here, so the gap stays visible."),
   ROW("delta_gamma", "Response families", "FAM-17"),
   ROW("delta_lognormal", "Response families", "FAM-17"),
+  # GLLVM.jl's ledger combines all three into ONE row named exactly
+  # "zip / zinb / zib" (its "## Response families" table); parity_ledger.R
+  # joins by exact normalized name/alias match, so this stays ONE ledger
+  # row (not three separate ones per FAM id) with that exact alias, or the
+  # join silently falls through to "R-only" instead of "matched". FAM-21/
+  # 22/23 are the three underlying register rows (Arc D, 2026-09-02).
+  ROW("zi_poisson / zi_nbinom2 / zi_binomial (zero-inflated count families)",
+      "Response families", c("FAM-21", "FAM-22", "FAM-23"),
+      aliases = "zip / zinb / zib",
+      note = "DIVERGENCE: gllvmTMB's zi_nbinom2 REUSES the ordinary per-trait nbinom2() dispersion (log_phi_nbinom2, one value per trait); GLLVM.jl's ZINB/ZINegBin uses ONE SHARED SCALAR NB2 dispersion r across all species (its ZINBCovFit docstring). Both `implemented`-shaped statuses describe different parameterisations, same as the `student` nu divergence above."),
   ROW("multinomial / categorical (response family)", "Response families",
       c("FAM-20", "FAM-20A", "FAM-20B", "FAM-20C", "FAM-20D", "FAM-20E", "FAM-20F"),
       aliases = "multinomial / categorical",

@@ -728,6 +728,68 @@ verification runs):
 - Density: compound Poisson-Gamma with $\Pr(y = 0) > 0$ and
   continuous-positive for $y > 0$.
 
+### Zero-inflated families (zi_poisson / zi_nbinom2 / zi_binomial)
+
+- Status: `partial` (FAM-21/22/23, Arc D). Point recovery evidence only; no
+  interval on `zi`.
+- Parameters: `mu` (log for zi_poisson/zi_nbinom2, logit for zi_binomial),
+  `sigma` for zi_nbinom2 (log; reuses the ordinary `nbinom2()` per-trait
+  dispersion convention, not a new vector), `zi` (logit; per-trait,
+  intercept-only -- no covariates, no random effects).
+- TMB template: `src/gllvmTMB.cpp`, `obs_loglik` fid 17/18/19 blocks (the
+  same per-row lambda the plain Laplace loop and the AGHQ per-node loop both
+  call -- though AGHQ itself refuses these three family ids, see below).
+  `PARAMETER_VECTOR(logit_zi)`.
+- R constructor: `R/families.R` (`zi_poisson()`, `zi_nbinom2()`,
+  `zi_binomial()`).
+- Density: a TRUE mixture (Design 62 -- not the delta/hurdle shared-`eta`
+  architecture below; the count process is active at every row, including
+  $y = 0$):
+  $$
+  P(Y=0) = \pi_t + (1-\pi_t) f_c(0 \mid \mu, \ldots), \qquad
+  P(Y=k>0) = (1-\pi_t) f_c(k \mid \mu, \ldots)
+  $$
+  with $f_c$ the ordinary Poisson / NB2 / Binomial($N_i$, $p$) pmf and
+  $\pi_t = \text{invlogit}(\text{logit\_zi}_t)$. Consequently the mixture
+  CDF has the closed form $F_{\text{mix}}(y) = \pi_t + (1-\pi_t) F_c(y)$,
+  used by the randomized-quantile residual.
+- Numerical: `logspace_add`/the log-sigmoid identity
+  ($\log \pi = -\text{logspace\_add}(0, -\text{logit\_zi})$), matching
+  drmTMB's `zi_poisson`/`zi_nbinom2` idiom (its `model_type == 6` branch)
+  exactly; `zi_nbinom2` reuses the plain `nbinom2()` `dnbinom_robust` call;
+  `zi_binomial` reuses `dbinom_robust` (logit-parameterised), the same
+  numerically-stable primitive the delta-family presence term uses.
+- Identifiability: `zi_binomial` is refused at parse time
+  (`R/fit-multi.R`) for single-trial (0/1) response data -- with $N=1$,
+  $P(y=1) = (1-\pi)p$ collapses $\pi$ and $p$ into one free product, with
+  no curvature to separate them. At least one row per trait must carry
+  $N \ge 2$.
+- Boundary cases tested: exact TMB-vs-hand-density identity (1e-8) and a
+  finite-difference gradient check at the starting values, both on a tiny
+  fixed-effects-only fixture (`tests/testthat/test-zi-families.R`); a
+  known-DGP rank-1-latent recovery test per family
+  (`tests/testthat/test-zi-recovery.R`) -- see
+  `dev/gapclose/arcD/D1-report.md` for the exact numbers, including a
+  documented small-sample limit on `zi_nbinom2`'s per-trait dispersion
+  recovery at n = 150 (not zero-inflation-specific; the same limit
+  reproduces on plain `nbinom2()` under the identical DGP).
+- Comparator-test alignment: `dev/gapclose/arcD/alignment-zi.md`'s
+  symbolic derivation, checked against `stats::dpois`/`dnbinom`/`dbinom`
+  directly in the exactness test; drmTMB's `model_type == 6` zi_poisson
+  branch (`src/drmTMB.cpp`) and GLLVM.jl's `src/families/twopart.jl` are
+  the two independent oracle derivations the density form was checked
+  against (recon, `dev/gapclose/arcD/recon-zi.md`).
+- Not established: `integration = "va"` and `estimator = "mspl"` both
+  refuse the three family ids (`R/va-routing.R`'s `0:15` allow-list; the
+  MSPL registry has no matching rows) -- no evidence exists for either
+  route here. `aghq` DECLINES to a plain Laplace fit with a warning
+  instead (`R/fit-multi.R`'s eligibility chain -- consistent with how
+  every OTHER ineligible model is handled there, e.g. `multinomial()`
+  rows; corrected 2026-09-02, review R3, was previously stated as a
+  refusal).
+- Test file: `tests/testthat/test-zi-families.R`,
+  `tests/testthat/test-zi-recovery.R`.
+
 ### Delta / hurdle families
 
 **Status: `covered` for the standard fixed-effect family routes; `partial` for

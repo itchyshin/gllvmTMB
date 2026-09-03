@@ -24,7 +24,8 @@ check_gllvmTMB(
   multinomial_rail_thresh = 0.99,
   multinomial_range_collapse_thresh = 0.02,
   ordinal_loading_runaway_thresh = Inf,
-  ordinal_loading_absolute_thresh = Inf
+  ordinal_loading_absolute_thresh = Inf,
+  phi_nbinom2_ceiling_thresh = 10000
 )
 }
 \arguments{
@@ -194,6 +195,13 @@ under the Wright/Falconer/Hadfield threshold convention, so a loading
 is the trait's latent standard deviation in liability units, mirroring
 \code{loading_absolute_thresh}'s binomial justification. Default \code{Inf}
 (disarmed pending the detector-S2 calibration campaign).}
+
+\item{phi_nbinom2_ceiling_thresh}{Numeric scalar. A negative-binomial dispersion
+estimate at or above this value is reported as a \verb{boundary_phi_nbinom2_<trait>}
+warning: the trait has run to the Poisson limit (no overdispersion left to
+estimate), which usually means the data cannot separate dispersion from the
+zero-inflation or latent structure. Try a plain \code{poisson()} / \code{zi_poisson()} for
+that trait, or more sites.}
 }
 \value{
 A data frame with columns \code{component}, \code{status}, \code{value},

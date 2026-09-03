@@ -495,7 +495,10 @@ test_that("public predictive diagnostic argument validation is explicit", {
     "must name a column"
   )
   expect_error(
+    ## R1 (2026-09-02 review, Arc D): the message grew zi_poisson/
+    ## zi_nbinom2 when the rootogram's family filter was extended to
+    ## admit them; `fit` here is gaussian(), still correctly refused.
     predictive_check(fit, type = "rootogram", ndraws = 8L),
-    "requires Poisson, NB1, or NB2 rows"
+    "requires Poisson, NB1, NB2, zi_poisson, or zi_nbinom2 rows"
   )
 })

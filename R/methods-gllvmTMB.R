@@ -312,7 +312,8 @@
   out
 }
 
-.apply_linkinv_per_row <- function(eta, family_id, link_id, sigma_eps = NULL) {
+.apply_linkinv_per_row <- function(eta, family_id, link_id, sigma_eps = NULL,
+                                   zi = NULL) {
   n <- length(eta)
   out <- eta
   sigma_eps <- as.numeric(sigma_eps %||% 0)
@@ -320,6 +321,13 @@
   sigma_lognormal <- if (length(sigma_eps) >= 2L) {
     sigma_eps[[2L]]
   } else if (length(sigma_eps)) sigma_eps[[1L]] else 0
+  ## Zero-inflated families (fid 17/18/19, Arc D): fitted_response_rule is
+  ## E[y] = (1 - zi) * mu (Decision 5). `zi` is a PER-ROW vector (already
+  ## resolved by the caller, one value per observation, mirroring `eta`) --
+  ## NULL means "caller did not supply it", in which case these rows fall
+  ## through to the naive count-only mean below (a graceful default, not
+  ## the documented rule; every in-package caller supplies `zi`).
+  zi_row <- if (is.null(zi)) rep(NA_real_, n) else as.numeric(zi)
   for (i in seq_len(n)) {
     fid <- family_id[i]
     lid <- link_id[i]
@@ -344,6 +352,17 @@
       ## lognormal: eta is the mean on the log scale, so exp(eta) is the
       ## median; the conditional response mean includes sigma_eps^2 / 2.
       out[i] <- exp(e + 0.5 * sigma_lognormal^2)
+    } else if (fid %in% c(17L, 18L)) {
+      ## zi_poisson / zi_nbinom2: E[y] = (1 - zi) * exp(eta).
+      mu_c <- exp(e)
+      out[i] <- if (is.finite(zi_row[i])) (1 - zi_row[i]) * mu_c else mu_c
+    } else if (fid == 19L) {
+      ## zi_binomial: E[y] = (1 - zi) * N * plogis(eta) on the SUCCESS-COUNT
+      ## scale would need n_trials here too; this function reports the
+      ## per-trial probability scale like plain binomial() does, so
+      ## E[y/N] = (1 - zi) * plogis(eta).
+      mu_c <- stats::plogis(e)
+      out[i] <- if (is.finite(zi_row[i])) (1 - zi_row[i]) * mu_c else mu_c
     } else {
       ## log-link families (poisson, Gamma, nbinom1/2, tweedie,
       ## truncated, delta): the conditional mean is exp(eta).
@@ -360,7 +379,8 @@
 ## `.apply_linkinv_per_row()`; a family added there without an entry here
 ## would silently fall through to the log-link default, so keep the two
 ## functions' family/link dispatch in sync.
-.dlinkinv_per_row <- function(eta, family_id, link_id, sigma_eps = NULL) {
+.dlinkinv_per_row <- function(eta, family_id, link_id, sigma_eps = NULL,
+                              zi = NULL) {
   n <- length(eta)
   out <- eta
   sigma_eps <- as.numeric(sigma_eps %||% 0)
@@ -368,6 +388,7 @@
   sigma_lognormal <- if (length(sigma_eps) >= 2L) {
     sigma_eps[[2L]]
   } else if (length(sigma_eps)) sigma_eps[[1L]] else 0
+  zi_row <- if (is.null(zi)) rep(NA_real_, n) else as.numeric(zi)
   for (i in seq_len(n)) {
     fid <- family_id[i]
     lid <- link_id[i]
@@ -392,6 +413,17 @@
       ## lognormal: out was exp(e + 0.5 * sigma_eps^2); sigma_eps does not
       ## depend on e, so the derivative keeps the same multiplier.
       out[i] <- exp(e + 0.5 * sigma_lognormal^2)
+    } else if (fid %in% c(17L, 18L)) {
+      ## zi_poisson / zi_nbinom2: out was (1 - zi) * exp(eta); zi does not
+      ## depend on eta (intercept-only, Decision 2), so the derivative
+      ## keeps the same (1 - zi) multiplier.
+      d <- exp(e)
+      out[i] <- if (is.finite(zi_row[i])) (1 - zi_row[i]) * d else d
+    } else if (fid == 19L) {
+      ## zi_binomial: out was (1 - zi) * plogis(eta).
+      p <- stats::plogis(e)
+      d <- p * (1 - p)
+      out[i] <- if (is.finite(zi_row[i])) (1 - zi_row[i]) * d else d
     } else {
       ## log-link families (poisson, Gamma, nbinom1/2, tweedie,
       ## truncated, delta): d/de exp(e) = exp(e).
@@ -1574,6 +1606,7 @@ simulate.gllvmTMB_multi <- function(
   phi_truncnb2 <- fit$report$phi_truncnb2 # length n_traits (NOT phi_nbinom2)
   sigma_lognormal_delta <- fit$report$sigma_lognormal_delta # length n_traits
   phi_gamma_delta <- fit$report$phi_gamma_delta # length n_traits
+  zi <- fit$report$zi # length n_traits (fid 17/18/19, Arc D)
   n_trials <- fit$tmb_data$n_trials # length n; default 1 (Bernoulli) when not multi-trial
 
   ## ordinal_probit (fid 14) cutpoint reconstruction -- the SAME convention
@@ -1615,7 +1648,8 @@ simulate.gllvmTMB_multi <- function(
   ## grouped pass after the per-row loop (one categorical draw per observation-
   ## group, not per contrast row); the per-row loop leaves those rows at 0.
   supported <- c(
-    0L, 1L, 2L, 3L, 4L, 5L, 7L, 8L, 9L, 10L, 11L, 12L, 13L, 14L, 15L, 16L
+    0L, 1L, 2L, 3L, 4L, 5L, 7L, 8L, 9L, 10L, 11L, 12L, 13L, 14L, 15L, 16L,
+    17L, 18L, 19L
   )
   unsupp <- setdiff(uniq_fids, supported)
   if (length(unsupp) > 0L) {
@@ -1623,7 +1657,7 @@ simulate.gllvmTMB_multi <- function(
       c(
         "Family-aware {.fn simulate} not yet implemented for family_id values: {.val {unsupp}}.",
         "i" = "Affected rows are drawn as {.val NA}, not a Gaussian-on-link-scale substitute -- a wrong number is worse than a missing one.",
-        ">" = "Currently supported: gaussian (0), binomial (1), poisson (2), lognormal (3), Gamma (4), nbinom2 (5), Beta (7), betabinomial (8), student-t (9), truncated_poisson (10), truncated_nbinom2 (11), delta_lognormal (12), delta_gamma (13), ordinal_probit (14), nbinom1 (15), multinomial (16). Tweedie (6) has no exact draw implemented."
+        ">" = "Currently supported: gaussian (0), binomial (1), poisson (2), lognormal (3), Gamma (4), nbinom2 (5), Beta (7), betabinomial (8), student-t (9), truncated_poisson (10), truncated_nbinom2 (11), delta_lognormal (12), delta_gamma (13), ordinal_probit (14), nbinom1 (15), multinomial (16), zi_poisson (17), zi_nbinom2 (18), zi_binomial (19). Tweedie (6) has no exact draw implemented."
       ),
       class = "gllvmTMB_simulate_unsupported_family"
     )
@@ -1834,6 +1868,31 @@ simulate.gllvmTMB_multi <- function(
       ## Multinomial (softmax) — drawn in the grouped pass below, one categorical
       ## draw per observation-group. Leave y[i] = 0 so it isn't left as NA by
       ## the terminal fallback below (panel Slice-1 correctness).
+    } else if (fid == 17L || fid == 18L || fid == 19L) {
+      ## Zero-inflated families (Arc D / Design 62): draw a structural zero
+      ## with probability zi_t, else draw from the ordinary count kernel
+      ## (matches the mixture density in dev/gapclose/arcD/alignment-zi.md
+      ## by construction -- the standard ZI simulation identity).
+      zi_t <- if (!is.null(zi) && length(zi) >= tid_1) zi[tid_1] else 0
+      structural_zero <- stats::rbinom(1L, 1L, zi_t) == 1L
+      if (structural_zero) {
+        y[i] <- 0
+      } else if (fid == 17L) {
+        y[i] <- stats::rpois(1L, lambda = exp(eta_i))
+      } else if (fid == 18L) {
+        mu <- exp(eta_i)
+        size <- if (!is.null(phi_nbinom2) && length(phi_nbinom2) >= tid_1) {
+          phi_nbinom2[tid_1]
+        } else {
+          1
+        }
+        y[i] <- stats::rnbinom(1L, mu = mu, size = size)
+      } else {
+        p <- stats::plogis(eta_i)
+        Nt <- if (!is.null(n_trials) && length(n_trials) >= i) n_trials[i] else 1
+        if (!is.finite(Nt) || Nt < 1) Nt <- 1
+        y[i] <- stats::rbinom(1L, size = as.integer(round(Nt)), prob = p)
+      }
     } else {
       ## Unsupported family (currently only tweedie, fid 6, and anything
       ## unrecognised) — NA, not a Gaussian-on-link-scale substitute
@@ -2843,11 +2902,22 @@ predict.gllvmTMB_multi <- function(
       ## Training-row prediction: eta is row-aligned with family_id_vec /
       ## link_id_vec (both length n_obs).
       if (!is.null(fid_vec) && length(fid_vec) == nrow(out)) {
+        ## Per-row structural-zero probability for zi_* families (fid
+        ## 17/18/19): object$report$zi is per-TRAIT (length n_traits),
+        ## looked up here via the training rows' trait_id.
+        tids_row <- object$tmb_data$trait_id
+        zi_row <- if (!is.null(object$report$zi) && !is.null(tids_row) &&
+                     length(tids_row) == length(fid_vec)) {
+          object$report$zi[tids_row + 1L]
+        } else {
+          NULL
+        }
         out$est <- .apply_linkinv_per_row(
           out$est,
           fid_vec,
           lid_vec,
-          sigma_eps = object$report$sigma_eps
+          sigma_eps = object$report$sigma_eps,
+          zi = zi_row
         )
       } else if (!is.null(object$family$linkinv)) {
         out$est <- object$family$linkinv(out$est)
@@ -2862,11 +2932,31 @@ predict.gllvmTMB_multi <- function(
       per_row <- .gllvmTMB_newdata_family_ids(object, nd)
       tids_train <- object$tmb_data$trait_id
       if (!is.null(per_row)) {
+        ## S1 (2026-09-02 review): zi_* rows here previously got NO zi
+        ## lookup at all, so this branch silently returned the naive
+        ## count-only mean `mu` instead of `(1-zi)*mu` -- unlike the
+        ## training-row branch above. .gllvmTMB_newdata_family_ids() keys
+        ## on the family-selector column, not the trait, but object$report
+        ## $zi is indexed by TRAIT, so the lookup goes through
+        ## object$trait_col on `out` (present whenever newdata carries a
+        ## trait column, which every mixed-family predict() requires).
+        zi_row_nd <- if (!is.null(object$report$zi) &&
+                         !is.null(object$trait_col) &&
+                         object$trait_col %in% names(out)) {
+          tr_nd <- as.integer(out[[object$trait_col]])
+          out_zi <- rep(NA_real_, length(tr_nd))
+          in_range <- !is.na(tr_nd) & tr_nd >= 1L & tr_nd <= length(object$report$zi)
+          out_zi[in_range] <- object$report$zi[tr_nd[in_range]]
+          out_zi
+        } else {
+          NULL
+        }
         out$est <- .apply_linkinv_per_row(
           out$est,
           per_row$fid,
           per_row$lid,
-          sigma_eps = object$report$sigma_eps
+          sigma_eps = object$report$sigma_eps,
+          zi = zi_row_nd
         )
       } else if (!is.null(fid_vec) && !is.null(tids_train) &&
             object$trait_col %in% names(out)) {
@@ -2893,11 +2983,22 @@ predict.gllvmTMB_multi <- function(
         ## Rows whose trait is unknown to the training factor fall back to the
         ## first trait's link (NA trait index).
         tr_out[is.na(tr_out)] <- 1L
+        ## Per-trait zi (fid 17/18/19), same modal-fallback shape as
+        ## fid_by_trait/lid_by_trait above: object$report$zi is already
+        ## indexed by trait, so no modal step is needed, just the same
+        ## trait-index lookup.
+        zi_by_trait <- if (!is.null(object$report$zi) &&
+                           length(object$report$zi) == n_tr) {
+          object$report$zi
+        } else {
+          rep(NA_real_, n_tr)
+        }
         out$est <- .apply_linkinv_per_row(
           out$est,
           fid_by_trait[tr_out],
           lid_by_trait[tr_out],
-          sigma_eps = object$report$sigma_eps
+          sigma_eps = object$report$sigma_eps,
+          zi = zi_by_trait[tr_out]
         )
       } else if (!is.null(object$family$linkinv)) {
         out$est <- object$family$linkinv(out$est)
@@ -2914,9 +3015,17 @@ predict.gllvmTMB_multi <- function(
       fid_vec <- object$tmb_data$family_id_vec
       lid_vec <- object$tmb_data$link_id_vec
       if (!is.null(fid_vec) && length(fid_vec) == length(eta)) {
+        tids_se <- object$tmb_data$trait_id
+        zi_row_se <- if (!is.null(object$report$zi) && !is.null(tids_se) &&
+                         length(tids_se) == length(fid_vec)) {
+          object$report$zi[tids_se + 1L]
+        } else {
+          NULL
+        }
         deriv <- .dlinkinv_per_row(
           eta, fid_vec, lid_vec,
-          sigma_eps = object$report$sigma_eps
+          sigma_eps = object$report$sigma_eps,
+          zi = zi_row_se
         )
         out$se.fit <- se_link * abs(deriv)
       } else {

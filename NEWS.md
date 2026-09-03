@@ -1,5 +1,26 @@
 # Development (unreleased)
 
+* Three zero-inflated count families: `zi_poisson()`, `zi_nbinom2()`, and
+  `zi_binomial()`. These are TRUE zero-inflation mixtures -- the ordinary
+  count process is active at every observation, including `y = 0` -- and are
+  distinct from the existing `delta_lognormal()`/`delta_gamma()` hurdle
+  families, which have no second zero-generating process (see the family
+  help and `vignette("current-limits", package = "gllvmTMB")` for the
+  distinction). **In scope:** the count part carries everything the grammar
+  allows (fixed effects, `latent()`, the full covariance grid, all three
+  families' correlations reported on the count-process scale); `zi_nbinom2`
+  reuses the ordinary per-trait `nbinom2()` dispersion convention; Laplace
+  estimation only. **Not in scope:** no covariates or random effects on the
+  structural-zero probability itself (`zi` is one logit-scale number per
+  trait); `integration = "va"` and `estimator = "mspl"` both refuse zi_*
+  families with a named reason; `aghq` DECLINES to a plain Laplace fit with
+  a warning (it does not error) -- AGHQ's eligibility chain always declines
+  rather than refuses, for every ineligible model, not only zi_*; no
+  reported interval on `zi`; `zi_binomial()` refuses single-trial (0/1) response data (the mixture
+  is not identified there) and names plain `binomial()` as the working
+  alternative. `fitted()`/`predict(type = "response")` report
+  `(1 - zi) * mu`; `simulate()` and `residuals(type = "randomized_quantile")`
+  are wired for all three; `check_gllvmTMB()` flags a `zi` pinned near 0 or 1.
 * Several refusals now name a route that actually fits, instead of pointing at
   keywords that refuse the same input. An augmented-LHS formula such as
   `indep(1 + x | trait)` or `phylo_indep(0 + trait + trait:x | species)` now

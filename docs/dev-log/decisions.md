@@ -2955,3 +2955,15 @@ Shinichi (chat, 2026-08-18): *"1 approve 2 do it and 3 merge"* against the three
 3. **PR #1125 merge authorized** (probe + tests + Design 126 + ISDM-03), and
    with it the Design 126 §5 issue filings (A: three predict-newdata defects;
    B: prediction-map API).
+
+## 2026-09-02 — Zero-inflated families approved; gap-closure PRs merged in order (Shinichi; vault D-207, D-204)
+
+Verbatim: *"approve all four points, merge #1239 then #1240."* The four ARC D1 points approved as built:
+(1) `zi_poisson()` / `zi_nbinom2()` / `zi_binomial()` carry a per-trait, intercept-only zero-inflation
+probability on the logit scale; latent variables and the covariance grid act on the count linear
+predictor only (Design 62 Decision 2); (2) `zi_binomial()` requires trials ≥ 2 and names `binomial()`
+otherwise; (3) AGHQ declines these families to Laplace with a reason-specific warning, VA and MSPL
+refuse; (4) FAM-22 stays `partial` with the measured 2/6-trait dispersion caveat. Standing rule
+behind it (D-204): twin parity is both ways for user-facing capabilities; the bridge stays R → Julia.
+Owed before any FAM-21..23 row leaves `partial`: Totoro pre-run then DRAC job-array multi-seed recovery
+against GLLVM.jl's ADEMP campaign.

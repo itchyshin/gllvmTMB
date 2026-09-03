@@ -180,12 +180,12 @@ truth for whether a family is `covered`, `partial`, or `blocked`.
 | Truncated Poisson | `truncated_poisson()` | `mu` | log | $\{1, 2, 3, \ldots\}$ (no zeros) | partial |
 | Truncated nbinom1 | `truncated_nbinom1()` | `mu`, `sigma` | log, log | $\{1, 2, 3, \ldots\}$ | blocked constructor-only |
 | Truncated nbinom2 | `truncated_nbinom2()` | `mu`, `sigma` | log, log | $\{1, 2, 3, \ldots\}$ | partial |
-| Censored Poisson | `censored_poisson()` | `mu` | log | $\{0, 1, 2, \ldots\}$, right-censoring only | partial (FAM-24) |
+| Censored Poisson | `censored_poisson()` | `mu` | log | $\{0, 1, 2, \ldots\}$, right-censoring only | partial (FAM-25) |
 | Zero-inflated Poisson | `zi_poisson()` | `mu`, `zi` | log, logit | $\{0, 1, 2, \ldots\}$ | partial (FAM-21) |
 | Zero-inflated NB2 | `zi_nbinom2()` | `mu`, `sigma`, `zi` | log, log, logit | $\{0, 1, 2, \ldots\}$ | partial (FAM-22) |
 | Zero-inflated binomial | `zi_binomial()` | `mu`, `zi` | logit, logit | $\{0, 1, \ldots, n_\text{trials}\}$, $n_\text{trials} \ge 2$ for at least one row per trait | partial (FAM-23) |
 
-**Censored Poisson (FAM-24, Arc E, issue #1244).** `censored_poisson()`
+**Censored Poisson (FAM-25, Arc E, issue #1244; runtime id 21 -- renumbered 2026-09-03 from FAM-24 / id 20 because the sibling `ordinal_logit` branch, PR #1250, independently claimed both).** `censored_poisson()`
 is right-censored Poisson only (log link): each row is either an
 ordinary count or is only known to satisfy $Y \ge C$ for a per-row
 censoring limit $C$. Supply the response as `cbind(y, censored) ~ ...`

@@ -552,7 +552,7 @@ Type objective_function<Type>::operator()()
                                    // is 1.0; for binomial(k-of-n) rows it is
                                    // the trial count and y is the success count.
   DATA_VECTOR(cens_limit);         // length n_obs; right-censoring limit for
-                                   // censored_poisson (fid 20; Arc E, #1244).
+                                   // censored_poisson (fid 21; Arc E, #1244). ordinal_logit holds fid 20 (PR #1250).
                                    // 0 = uncensored (y holds the count); C >= 1
                                    // = right-censored at Y >= C (y is unused on
                                    // that branch). For every other family the
@@ -3344,13 +3344,13 @@ Type objective_function<Type>::operator()()
       } else {
         ll += log_one_minus_zi + dbinom_robust(y(o), n_trials(o), eta_o, true);
       }
-    } else if (fid == 20) {
+    } else if (fid == 21) {
       // censored_poisson (Arc E, issue #1244): right-censoring only, log
       // link only (Identity lock -- see
-      // dev/gapclose/arcE/alignment-censored-poisson.md). NOTE: family_id
-      // 20 is also independently claimed by an unmerged ordinal_logit
-      // branch (o4-ordinal-logit) -- a known, disclosed collision left for
-      // whoever merges second to shift to 21.
+      // dev/gapclose/arcE/alignment-censored-poisson.md). RENUMBERED
+      // 2026-09-03 from fid 20 to fid 21: family_id 20 is now reserved for
+      // ordinal_logit (PR #1250, maintainer-approved, merges first) --
+      // this branch loses the tie and moves to the next free id.
       //   cens_limit(o) == 0: ordinary Poisson row, y(o) is the count.
       //   cens_limit(o) == C >= 1: right-censored, only Y >= C known; y(o)
       //     is UNUSED on this branch (R sets it equal to C by convention).

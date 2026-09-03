@@ -183,10 +183,13 @@ REGISTER_MAP <- list(
   ROW("truncated_nbinom2", "Response families", "FAM-15"),
   ROW("truncated_nbinom1", "Response families", "FAM-16"),
   # censored_poisson MOVED here from the FAM-16 note (Arc E, issue #1244,
-  # 2026-09-03) -- it now has a runtime id (20) and matches Julia's
+  # 2026-09-03) -- it now has a runtime id and matches Julia's
   # `censored_poisson` row (GLLVM.jl's ledger, "Response families" table)
   # by exact name. Right-censoring only (Julia's own v1 scope too).
-  ROW("censored_poisson", "Response families", "FAM-24"),
+  # RENUMBERED 2026-09-03: was FAM-24 / runtime id 20 until the sibling
+  # ordinal_logit branch (PR #1250, merges first) was found to
+  # independently claim both -- now FAM-25 / runtime id 21.
+  ROW("censored_poisson", "Response families", "FAM-25"),
   ROW("delta_gamma", "Response families", "FAM-17"),
   ROW("delta_lognormal", "Response families", "FAM-17"),
   # GLLVM.jl's ledger combines all three into ONE row named exactly

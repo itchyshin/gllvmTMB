@@ -129,7 +129,7 @@ is NOT reported, the untruncated `exp(eta)` is).
    rather than the single `cens_limit` scalar-per-row encoding used here.
 2. **No dispersion, no zero-inflation.** This is plain censored Poisson,
    not a censored-and-zero-inflated hybrid.
-3. **Laplace only.** AGHQ is refused (new `family_id_vec == 20L` clause
+3. **Laplace only.** AGHQ is refused (new `family_id_vec == 21L` clause
    in `R/fit-multi.R`'s AGHQ-eligibility chain, mirroring the existing
    `multinomial`/`zi_*` refusal one line above it) because the
    quadrature-vs-Laplace tiering in `docs/design/105-va-family-densities.md`
@@ -144,7 +144,7 @@ is NOT reported, the untruncated `exp(eta)` is).
    censoring-corrected one**, per the Link restriction section above and
    the `link_residual_rule` slot below.
 5. **Rootogram (`predictive-diagnostics.R`'s `type = "rootogram"`) is
-   NOT extended** to `family_id` 20 — left excluded, matching how plain
+   NOT extended** to `family_id` 21 — left excluded, matching how plain
    `binomial` (fid 1) and `zi_binomial` (fid 19) are deliberately excluded
    already; a rootogram compares observed vs. simulated *count* histograms
    and censored rows do not carry an observed count (the design doc
@@ -188,8 +188,8 @@ bullet per the gapclose discipline):
 
 | Slot | Location | Status |
 |---|---|---|
-| TMB density | `src/gllvmTMB.cpp`, `obs_loglik` lambda, new `fid == 20` branch | Built |
-| `family_to_id()` | `R/fit-multi.R` | Built (`censored_poisson = 20L`) |
+| TMB density | `src/gllvmTMB.cpp`, `obs_loglik` lambda, new `fid == 21` branch | Built |
+| `family_to_id()` | `R/fit-multi.R` | Built (`censored_poisson = 21L`) |
 | Link check | `R/fit-multi.R` | Built (log only) |
 | `y`/`censored` validation | `R/fit-multi.R` | Built |
 | `cens_limit` DATA_VECTOR wiring | `R/fit-multi.R` `tmb_data` list + `src/gllvmTMB.cpp` `DATA_VECTOR` | Built |
@@ -200,7 +200,7 @@ bullet per the gapclose discipline):
 | `fitted()` / `predict(type="response")` rule | `R/methods-gllvmTMB.R` `.apply_linkinv_per_row()` | Falls through to existing log-link default (no change needed, documented) |
 | `se.fit` derivative | `R/methods-gllvmTMB.R` `.dlinkinv_per_row()` | Falls through to existing log-link default (no change needed, documented) |
 | `simulate()` | `R/methods-gllvmTMB.R` `.draw_y_per_family()` | Built (draws latent Poisson, re-applies the row's own censoring design) |
-| Exact/randomized-quantile residuals | `R/predictive-diagnostics.R` | Built (new `fid == 20` branch: exact Poisson CDF on uncensored rows, `Uniform(F(C-1), 1)` on censored rows) |
+| Exact/randomized-quantile residuals | `R/predictive-diagnostics.R` | Built (new `fid == 21` branch: exact Poisson CDF on uncensored rows, `Uniform(F(C-1), 1)` on censored rows) |
 | `link_residual_rule` | `R/extract-sigma.R` | Built (reuses `fid == 2` Poisson rule, `log1p(1/mu_t)`) |
 | Family label | `R/predictive-diagnostics.R` `.gllvmTMB_family_label_from_id()` | Built |
 | `.valid_family` enum mirror | `R/enum.R` | Built |
@@ -209,12 +209,22 @@ bullet per the gapclose discipline):
 
 ## Runtime family id
 
-**`family_id = 20`**, the next free id above every id used on `main` at
-the time this arc started (`0`-`19`; `17`-`19` are the `zi_*` families
-landed two days prior). **Coordination note:** a sibling unmerged branch
-(`o4-ordinal-logit`) is independently building `ordinal_logit` and — per
-this arc's own task brief — is ALSO expected to claim id `20`. This is a
-known, disclosed collision left for whoever merges second to resolve
-(shift to `21`); flagged here, in the `src/gllvmTMB.cpp` comment at the
-`fid == 20` branch, and in this arc's final report so neither branch
-silently overwrites runtime ids at merge time.
+**`family_id = 21`.** Originally built at `family_id = 20` (the next free
+id above every id used on `main` at the time this arc started, `0`-`19`;
+`17`-`19` are the `zi_*` families landed two days prior), then
+**RENUMBERED to 21 on 2026-09-03**: a sibling unmerged branch
+(`o4-ordinal-logit`) independently claimed the same id `20` for
+`ordinal_logit()`, and its PR (#1250) was maintainer-approved and merges
+first, so `censored_poisson` loses the tie and moves to the next free id.
+This is the resolution of the collision this file itself flagged before
+it reached merge time; the site was found and fixed here rather than at
+a merge conflict. Every code site, test, and doc that named `20` for
+`censored_poisson` was updated to `21` in the same commit that made this
+edit (`src/gllvmTMB.cpp`, `R/enum.R`, `R/fit-multi.R`,
+`R/extract-sigma.R`, `R/predictive-diagnostics.R`,
+`R/methods-gllvmTMB.R`, `tests/testthat/test-enum-runtime-ids.R`,
+`tests/testthat/test-censored-poisson.R`); density identity, the FD
+gradient, the all-uncensored-equals-`poisson()` check, and the recovery
+seeds were all re-measured after the renumber (see this arc's final
+report for the re-measured numbers, not merely a claim that renumbering
+is cosmetic).

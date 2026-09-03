@@ -23,7 +23,7 @@
   zi_poisson        = 17L,
   zi_nbinom2        = 18L,
   zi_binomial       = 19L,
-  censored_poisson  = 20L
+  censored_poisson  = 21L
 )
 
 .valid_link <- c(

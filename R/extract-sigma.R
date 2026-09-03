@@ -407,8 +407,9 @@ link_residual_per_trait <- function(fit) {
       ## applied to fid 1's logit-binomial constant pi^2/3 -- zi_binomial
       ## has no probit/cloglog route, so no link_id dispatch is needed here.
       out[t] <- pi^2 / 3
-    } else if (fid == 20L) {
-      # censored_poisson (fid 20, Arc E #1244), log link.
+    } else if (fid == 21L) {
+      # censored_poisson (fid 21, Arc E #1244; renumbered 2026-09-03 from
+      # 20 -- ordinal_logit, PR #1250, holds 20), log link.
       ## Reuses fid == 2's plain-Poisson rule unchanged, applied to the
       ## trait's mean UNDER THE UNDERLYING PROCESS (mean(exp(eta)) across
       ## all of the trait's rows, censored or not) -- this is the

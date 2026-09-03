@@ -46,7 +46,7 @@ test_that("censored_poisson: TMB objective matches hand-computed density to 1e-1
     control = gllvmTMBcontrol(se = FALSE)
   )))
   expect_equal(fit$opt$convergence, 0L)
-  expect_equal(fit$tmb_data$family_id_vec[1], 20L)
+  expect_equal(fit$tmb_data$family_id_vec[1], 21L)
 
   par <- fit$tmb_obj$par
   nll_tmb <- as.numeric(fit$tmb_obj$fn(par))
@@ -143,7 +143,7 @@ test_that("censored_poisson() parses cbind(y, censored) and a plain y column", {
     cbind(y, censored) ~ 1, data = dat, family = censored_poisson(), unit = "site",
     control = gllvmTMBcontrol(se = FALSE)
   )))
-  expect_equal(fit_cbind$tmb_data$family_id_vec[1], 20L)
+  expect_equal(fit_cbind$tmb_data$family_id_vec[1], 21L)
   expect_equal(sum(fit_cbind$tmb_data$cens_limit > 0), 5L)
 
   dat_plain <- data.frame(site = factor(seq_len(10)), trait = factor("t1"), y = 0:9)

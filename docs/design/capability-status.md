@@ -35,7 +35,7 @@ Mission Control input for the R side of the gllvmTMB <-> GLLVM.jl twin board. Ev
 | truncated_poisson | scope-limited |  | FAM-15 |  |
 | truncated_nbinom2 | scope-limited |  | FAM-15 |  |
 | truncated_nbinom1 | planned |  | FAM-16 |  |
-| censored_poisson | scope-limited |  | FAM-24 |  |
+| censored_poisson | scope-limited |  | FAM-25 |  |
 | delta_gamma | implemented |  | FAM-17 |  |
 | delta_lognormal | implemented |  | FAM-17 |  |
 | zi_poisson / zi_nbinom2 / zi_binomial (zero-inflated count families) | scope-limited | zip / zinb / zib | FAM-21, FAM-22, FAM-23 | DIVERGENCE: gllvmTMB's zi_nbinom2 REUSES the ordinary per-trait nbinom2() dispersion (log_phi_nbinom2, one value per trait); GLLVM.jl's ZINB/ZINegBin uses ONE SHARED SCALAR NB2 dispersion r across all species (its ZINBCovFit docstring). Both `implemented`-shaped statuses describe different parameterisations, same as the `student` nu divergence above. |

@@ -778,8 +778,9 @@ residuals.gllvmTMB_multi <- function(
       lower[i] <- if (y_i <= 0) 0 else zi_t + (1 - zi_t) * Fc(y_i - 1)
       upper[i] <- zi_t + (1 - zi_t) * Fc(y_i)
       u[i] <- stats::runif(1L, min = lower[i], max = upper[i])
-    } else if (fid == 20L) {
-      ## censored_poisson (Arc E, #1244). Uncensored rows (cens_limit == 0)
+    } else if (fid == 21L) {
+      ## censored_poisson (Arc E, #1244; renumbered 2026-09-03 from 20 --
+      ## ordinal_logit, PR #1250, holds 20). Uncensored rows (cens_limit == 0)
       ## are exactly plain Poisson (fid 2's branch, restated here since the
       ## dispatch is on cens_limit, not a separate row type). Right-censored
       ## rows (cens_limit == C >= 1) only tell us Y >= C -- the CDF value
@@ -1567,7 +1568,7 @@ residuals.gllvmTMB_multi <- function(
     "17" = "zi_poisson",
     "18" = "zi_nbinom2",
     "19" = "zi_binomial",
-    "20" = "censored_poisson"
+    "21" = "censored_poisson"
   )
   out <- unname(labels[as.character(family_id)])
   out[is.na(out)] <- paste0("family_id_", family_id[is.na(out)])

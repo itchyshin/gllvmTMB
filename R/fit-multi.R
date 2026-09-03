@@ -4891,7 +4891,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   }
   if (has_spatial_term) {
     if (is.null(mesh))
-      cli::cli_abort("A spatial term was found in the formula but {.arg mesh} is NULL.")
+      cli::cli_abort(c(
+        "A spatial term was found in the formula but {.arg mesh} is NULL.",
+        ">" = "Build one with {.fn make_mesh} and pass it as {.code gllvmTMB(..., mesh = my_mesh)}."
+      ))
     mesh <- .gllvm_normalize_mesh(mesh)
     if (use_spatial_column_slope) {
       trait_labels <- levels(data[[trait]])
@@ -4914,13 +4917,15 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         cli::cli_abort(c(
           "The labelled mesh rows must match the response-column levels exactly.",
           "x" = "Missing label{?s}: {.val {missing_labels}}.",
-          "x" = "Extra label{?s}: {.val {extra_labels}}."
+          "x" = "Extra label{?s}: {.val {extra_labels}}.",
+          ">" = "Rebuild the mesh so its {.arg id_col} labels are exactly the response-column levels."
         ), class = "gllvmTMB_spatial_column_slope_mesh_labels")
       }
       if (anyDuplicated(as.data.frame(mesh$loc_xy))) {
         cli::cli_abort(c(
           "{.fn spatial_slope} requires a unique coordinate pair for every response column.",
-          "x" = "At least two labelled response columns share the same coordinates."
+          "x" = "At least two labelled response columns share the same coordinates.",
+          ">" = "Give each response column its own coordinate row when building the mesh."
         ), class = "gllvmTMB_spatial_column_slope_coordinates")
       }
       label_order <- match(trait_labels, mesh$row_labels)
@@ -4933,7 +4938,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       if (!isTRUE(nrow(mesh$A_st) == n_obs))
         cli::cli_abort(c(
           "make_mesh() projection has {nrow(mesh$A_st)} rows but the long-format data has {n_obs}.",
-          "i" = "Build the mesh on the same long-format data passed to gllvmTMB()."
+          ">" = "Build the mesh on the same long-format data passed to gllvmTMB()."
         ))
       A_proj <- mesh$A_st
     }
@@ -5014,7 +5019,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     if (length(bad_type)) {
       cli::cli_abort(c(
         "Column-slope predictors must be numeric columns.",
-        "i" = "Non-numeric predictor{?s}: {.val {bad_type}}."
+        "x" = "Non-numeric predictor{?s}: {.val {bad_type}}.",
+        ">" = "Convert the predictor before fitting; factor and transformed bases are not in this V1 grammar."
       ))
     }
     Z_spde_aug <- vapply(phylo_column_slope_cols, function(col) {
@@ -5048,7 +5054,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     if (!spde_slope_xcol %in% names(data)) {
       cli::cli_abort(c(
         "The augmented spatial random-regression term references column {.val {spde_slope_xcol}}, which is not in {.arg data}.",
-        "i" = "Add the covariate column to the data frame."
+        ">" = "Add the covariate column to the data frame."
       ))
     }
     if (use_spde_dep_slope) {
@@ -5083,7 +5089,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     if (!spde_latent_slope_xcol %in% names(data)) {
       cli::cli_abort(c(
         "{.code spatial_latent(1 + {spde_latent_slope_xcol} | coords, d = K)} references column {.val {spde_latent_slope_xcol}}, which is not in {.arg data}.",
-        "i" = "Add the covariate column to the data frame."
+        ">" = "Add the covariate column to the data frame."
       ))
     }
     Z_spde_lat <- .spde_latent_slope_design(data, spde_latent_slope_xcol)

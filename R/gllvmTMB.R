@@ -696,7 +696,7 @@ gllvmTMB <- function(
   if (isTRUE(REML) && !estimator_missing) {
     cli::cli_abort(c(
       "Do not combine an explicit {.arg estimator} with {.code REML = TRUE}.",
-      "i" = "Omit {.arg estimator} to retain the existing Gaussian REML route, or set {.code REML = FALSE}."
+      ">" = "Omit {.arg estimator} to retain the existing Gaussian REML route, or set {.code REML = FALSE}."
     ), class = "gllvmTMB_estimator_reml_conflict")
   }
   if (identical(estimator, "mspl")) {
@@ -764,7 +764,7 @@ gllvmTMB <- function(
   if (!identical(engine, "julia") && !ci_defaults) {
     cli::cli_abort(c(
       "{.arg ci_method}, {.arg ci_level}, {.arg ci_nboot}, and {.arg ci_seed} are currently fit-time controls only for {.code engine = \"julia\"}.",
-      "i" = "For native {.code engine = \"tmb\"} fits, fit the model first and call {.fn confint} with the desired method."
+      ">" = "For native {.code engine = \"tmb\"} fits, fit the model first and call {.fn confint} with the desired method."
     ))
   }
 
@@ -787,7 +787,7 @@ gllvmTMB <- function(
       cli::cli_abort(c(
         "Wide {.fn traits} input uses the synthetic response-column key {.field trait}.",
         "x" = "A non-default {.arg trait = {.val {trait}}} was supplied.",
-        "i" = "Omit {.arg trait} for wide input and key {.arg column_data} by a column named {.field trait}."
+        ">" = "Omit {.arg trait} for wide input and key {.arg column_data} by a column named {.field trait}."
       ), class = "gllvmTMB_traits_custom_trait_unsupported")
     }
     if (.traits_has_column_slope(formula[[3L]])) {
@@ -1003,7 +1003,7 @@ gllvmTMB <- function(
   if (!identical(unit_obs, "site_species") && !unit_obs %in% names(data)) {
     cli::cli_abort(c(
       "{.arg unit_obs = {.val {unit_obs}}} is not a column in {.arg data}.",
-      "i" = "If you don't have a within-unit replicate column, omit {.arg unit_obs}; the engine will synthesise the default {.field site_species} from {.arg unit} and {.arg species}."
+      ">" = "If you don't have a within-unit replicate column, omit {.arg unit_obs}; the engine will synthesise the default {.field site_species} from {.arg unit} and {.arg species}."
     ))
   }
 
@@ -1168,7 +1168,7 @@ gllvmTMB <- function(
     cli::cli_abort(c(
       "Covariance-structure terms not yet supported:",
       "x" = "Found {.fn {unsupported}} in formula.",
-      "i" = "{.fn exp}/{.fn gau}/{.fn ar1}/{.fn ou}/{.fn cs}/{.fn toep}/{.fn us} are not in scope; use {.fn spde} for fast spatial fields."
+      ">" = "{.fn exp}/{.fn gau}/{.fn ar1}/{.fn ou}/{.fn cs}/{.fn toep}/{.fn us} are not in scope; use {.fn spde} for fast spatial fields."
     ))
   }
   ## A formula with no covstruct keyword still routes through the
@@ -1517,7 +1517,7 @@ expand_multinomial_response <- function(formula, data, family, trait_col) {
   if (sum(fam_is_mn) > 1L) {
     cli::cli_abort(c(
       "More than one {.fn multinomial} trait in a single fit is not supported yet.",
-      "i" = "Fit one categorical response per model (item 2a-ii admits exactly one)."
+      ">" = "Fit one categorical response per model (item 2a-ii admits exactly one)."
     ))
   }
   ## A mixed-family list with exactly one multinomial: expand ONLY the
@@ -1539,7 +1539,7 @@ expand_multinomial_response <- function(formula, data, family, trait_col) {
     if (!(fam_var %in% names(data))) {
       cli::cli_abort(c(
         "A mixed-family {.code list(...)} needs a {.var {fam_var}} column mapping each row to a family.",
-        "i" = "Set {.code attr(family, 'family_var') <- 'colname'} or add a {.var family} column."
+        ">" = "Add a {.var {fam_var}} column, or set {.code attr(family, 'family_var') <- 'colname'} to point at an existing one."
       ))
     }
     ## Identify the multinomial family level, matching the fit's family_var ->
@@ -1567,7 +1567,8 @@ expand_multinomial_response <- function(formula, data, family, trait_col) {
     if (length(mn_trait_lvls) != 1L) {
       cli::cli_abort(c(
         "The {.fn multinomial} family must map to exactly one trait.",
-        "i" = "Found trait(s) {paste(mn_trait_lvls, collapse = ', ')} on multinomial rows."
+        "x" = "Found trait(s) {paste(mn_trait_lvls, collapse = ', ')} on multinomial rows.",
+        ">" = "Check every row where {.var {fam_var}} is {.val {mn_level}} shares one {.arg trait} level."
       ))
     }
     mn_trait <- mn_trait_lvls
@@ -1645,7 +1646,7 @@ expand_multinomial_response <- function(formula, data, family, trait_col) {
   if (K < 3L) {
     cli::cli_abort(c(
       "{.fn multinomial} requires an unordered response with >= 3 categories.",
-      "i" = "A 2-category response is {.fn binomial}; use {.code family = binomial(link = \"logit\")}."
+      ">" = "A 2-category response is {.fn binomial}; use {.code family = binomial(link = \"logit\")}."
     ))
   }
   ## Honour multinomial(baseline=): pin the requested category at eta = 0 by
@@ -1656,7 +1657,7 @@ expand_multinomial_response <- function(formula, data, family, trait_col) {
     if (length(requested_baseline) != 1L || !(requested_baseline %in% cats)) {
       cli::cli_abort(c(
         "{.fn multinomial}: {.code baseline = {requested_baseline}} is not a category of the response.",
-        "i" = "Response categories are {.val {cats}}."
+        ">" = "Choose {.arg baseline} from the response's observed categories: {.val {cats}}."
       ))
     }
     yf   <- stats::relevel(yf, ref = requested_baseline)
@@ -1715,7 +1716,7 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
     if (!any(!response_missing)) {
       cli::cli_abort(c(
         "All response rows are missing.",
-        "i" = "At least one observed response value is required to fit a model."
+        ">" = "Check the response column was read correctly; at least one observed value is required to fit a model."
       ))
     }
     return(list(
@@ -1743,7 +1744,7 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
   if (!any(keep)) {
     cli::cli_abort(c(
       "All response rows are missing.",
-      "i" = "At least one observed response value is required to fit a model."
+      ">" = "Check the response column was read correctly; at least one observed value is required to fit a model."
     ))
   }
 
@@ -1752,20 +1753,22 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
     if (!is.null(w_dim)) {
       cli::cli_abort(c(
         "{.arg weights} must be a length-{nrow(data)} numeric vector in the long-format API.",
-        "i" = "Got {.code dim(weights)} = c({paste(w_dim, collapse = ', ')}).",
-        "i" = "For per-cell weights aligned with a wide response matrix, use {.fn gllvmTMB_wide}."
+        "x" = "Got {.code dim(weights)} = c({paste(w_dim, collapse = ', ')}).",
+        ">" = "For per-cell weights aligned with a wide response matrix, use {.fn gllvmTMB_wide}."
       ))
     }
     if (!is.numeric(weights)) {
       cli::cli_abort(c(
         "{.arg weights} must be numeric.",
-        "i" = "Got class {.cls {class(weights)[1]}}."
+        "x" = "Got class {.cls {class(weights)[1]}}.",
+        ">" = "Pass a numeric vector, e.g. {.code as.numeric(weights)}."
       ))
     }
     if (length(weights) != nrow(data)) {
       cli::cli_abort(c(
         "{.arg weights} must be a length-{nrow(data)} numeric vector in the long-format API.",
-        "i" = "Got length {length(weights)}."
+        "x" = "Got length {length(weights)}.",
+        ">" = "Pass one weight per row of {.arg data}."
       ))
     }
     weights <- as.numeric(weights)[keep]
@@ -2384,7 +2387,7 @@ gllvmTMBcontrol <- function(
     "{.arg aghq} must be {.code FALSE}, {.val auto}, or a single positive integer.",
     "i" = "{.code aghq = FALSE} uses the Laplace approximation (the current default).",
     "i" = "{.code aghq = \"auto\"} lets the package choose the node count.",
-    "i" = "{.code aghq = 9} uses a fixed 9-node rule per latent dimension."
+    ">" = "Pass {.code aghq = 9} for a fixed 9-node rule per latent dimension, or omit {.arg aghq} for the default."
   ))
 }
 
@@ -2473,12 +2476,12 @@ miss_control <- function(
     if (engine %in% c("em", "profile")) {
       cli::cli_abort(c(
         "{.code engine = {.val {engine}}} is a reserved name, not yet supported.",
-        "i" = "This version supports {.code engine = \"laplace\"} only."
+        ">" = "Omit {.arg engine} or pass {.code engine = \"laplace\"} (the only supported value)."
       ))
     }
     cli::cli_abort(c(
       "Unknown {.arg engine}: {.val {engine}}.",
-      "i" = "This version supports {.code engine = \"laplace\"} only ({.val em} / {.val profile} are reserved names)."
+      ">" = "Omit {.arg engine} or pass {.code engine = \"laplace\"} ({.val em} / {.val profile} are reserved names)."
     ))
   }
 
@@ -2517,7 +2520,7 @@ miss_control <- function(
     if (!method %in% c("res", "indep")) {
       cli::cli_abort(c(
         "Unknown {.arg start_method$method}: {.val {method}}.",
-        "i" = "Currently supported: {.code NULL} (default), {.code \"res\"}, or {.code \"indep\"}."
+        ">" = "Pass {.code NULL} (default), {.code \"res\"}, or {.code \"indep\"}."
       ))
     }
     ## `"res"` remains accepted compatibility syntax but warns once per session:

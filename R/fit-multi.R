@@ -143,7 +143,7 @@
       "Mixed-family {.arg family} list is unnamed and ambiguous.",
       "x" = "Level(s) {.val {bad}} of {.var {fam_var}} match more than one family \\
              object's own name.",
-      "i" = "Name the list explicitly: {.code list(<level> = <family>(), ...)}."
+      ">" = "Name the list explicitly: {.code list(<level> = <family>(), ...)}."
     ), class = "gllvmTMB_mixed_family_unnamed_ambiguous")
   }
 
@@ -156,7 +156,7 @@
       "Mixed-family {.arg family} list is unnamed and ambiguous.",
       "x" = "Level(s) {.val {with_ev}} of {.var {fam_var}} match a family object's own \\
              name; level(s) {.val {without_ev}} match none.",
-      "i" = "Name the list explicitly so every level resolves the same way: \\
+      ">" = "Name the list explicitly so every level resolves the same way: \\
              {.code list(<level> = <family>(), ...)}."
     ), class = "gllvmTMB_mixed_family_unnamed_ambiguous")
   }
@@ -196,7 +196,7 @@
     "Mixed-family {.arg family} list order does not match what the level names imply.",
     "x" = "Your list order implies: {pos_desc}",
     "x" = "The level names of {.var {fam_var}} imply: {name_desc}",
-    "i" = "Name the list explicitly to say which you mean: \\
+    ">" = "Name the list explicitly to say which you mean: \\
            {.code list(<level> = <family>(), ...)}."
   ), class = "gllvmTMB_mixed_family_unnamed_ambiguous")
 }
@@ -226,7 +226,8 @@
     cli::cli_abort(c(
       "Mixed-family {.arg family} list names must match the levels of {.var {fam_var}}.",
       "x" = "Missing family entries for: {paste(missing_levels, collapse = ', ')}",
-      "x" = "Unused family entries for: {paste(extra_names, collapse = ', ')}"
+      "x" = "Unused family entries for: {paste(extra_names, collapse = ', ')}",
+      ">" = "Add or rename entries in {.code family = list(...)} so its names exactly match {.code levels({fam_var})}."
     ))
   }
 
@@ -416,10 +417,10 @@
     error = function(e) NA_real_
   )
   if (length(likelihood_nll) != 1L || !is.finite(likelihood_nll)) {
-    cli::cli_abort(
+    cli::cli_abort(c(
       "Could not evaluate the unpenalised likelihood objective at the selected fit.",
-      class = "gllvmTMB_objective_components_unavailable"
-    )
+      ">" = "The fit is unusable; try a different {.arg start_method} or check the data for near-degenerate columns."
+    ), class = "gllvmTMB_objective_components_unavailable")
   }
 
   ridge_tau <- aghq$ridge_tau %||% Inf
@@ -610,10 +611,16 @@
   }
 
   if (!setequal(rownames(Ainv), colnames(Ainv))) {
-    cli::cli_abort("Sparse {.arg phylo_vcv}/{.arg Ainv} rownames and colnames must name the same levels.")
+    cli::cli_abort(c(
+      "Sparse {.arg phylo_vcv}/{.arg Ainv} rownames and colnames must name the same levels.",
+      ">" = "Set matching {.code rownames()} and {.code colnames()} on {.arg Ainv} (or {.arg phylo_vcv})."
+    ))
   }
   if (!all(levs %in% rownames(Ainv))) {
-    cli::cli_abort("Sparse {.arg phylo_vcv}/{.arg Ainv} rownames do not cover all species levels.")
+    cli::cli_abort(c(
+      "Sparse {.arg phylo_vcv}/{.arg Ainv} rownames do not cover all species levels.",
+      ">" = "Supply a tree/vcv that covers every level of the species grouping column."
+    ))
   }
 
   Ainv <- Ainv[, match(rownames(Ainv), colnames(Ainv)), drop = FALSE]
@@ -642,7 +649,10 @@
 
 .resolve_sparse_phylo_precision <- function(Ainv, levs, species_id) {
   if (nrow(Ainv) != ncol(Ainv)) {
-    cli::cli_abort("Sparse {.arg phylo_vcv}/{.arg Ainv} must be square.")
+    cli::cli_abort(c(
+      "Sparse {.arg phylo_vcv}/{.arg Ainv} must be square.",
+      ">" = "Pass a square matrix with matching row and column names."
+    ))
   }
   if (is.null(rownames(Ainv))) {
     cli::cli_abort(c(
@@ -654,13 +664,22 @@
     colnames(Ainv) <- rownames(Ainv)
   }
   if (anyDuplicated(rownames(Ainv)) || anyDuplicated(colnames(Ainv))) {
-    cli::cli_abort("Sparse {.arg phylo_vcv}/{.arg Ainv} rownames and colnames must be unique.")
+    cli::cli_abort(c(
+      "Sparse {.arg phylo_vcv}/{.arg Ainv} rownames and colnames must be unique.",
+      ">" = "Deduplicate the {.arg Ainv}/{.arg phylo_vcv} row and column names before fitting."
+    ))
   }
   if (!setequal(rownames(Ainv), colnames(Ainv))) {
-    cli::cli_abort("Sparse {.arg phylo_vcv}/{.arg Ainv} rownames and colnames must name the same levels.")
+    cli::cli_abort(c(
+      "Sparse {.arg phylo_vcv}/{.arg Ainv} rownames and colnames must name the same levels.",
+      ">" = "Set matching {.code rownames()} and {.code colnames()} on {.arg Ainv} (or {.arg phylo_vcv})."
+    ))
   }
   if (!all(levs %in% rownames(Ainv))) {
-    cli::cli_abort("Sparse {.arg phylo_vcv}/{.arg Ainv} rownames do not cover all species levels.")
+    cli::cli_abort(c(
+      "Sparse {.arg phylo_vcv}/{.arg Ainv} rownames do not cover all species levels.",
+      ">" = "Supply a tree/vcv that covers every level of the species grouping column."
+    ))
   }
 
   Ainv <- Ainv[, match(rownames(Ainv), colnames(Ainv)), drop = FALSE]
@@ -742,7 +761,10 @@
     ))
   }
   if (is.null(rownames(phylo_vcv))) {
-    cli::cli_abort("{.arg vcv} for {.fn phylo_slope} must have row names matching levels of {.var {group}}.")
+    cli::cli_abort(c(
+      "{.arg vcv} for {.fn phylo_slope} must have row names matching levels of {.var {group}}.",
+      ">" = "Set {.code rownames(vcv) <- levels(data${group})}."
+    ))
   }
   .gllvm_abort_uncovered_species_levels(
     levs, rownames(phylo_vcv), data, group,
@@ -768,20 +790,20 @@
                                           helper = "phylo_coef") {
   if (!is.numeric(rho) || length(rho) != 1L || !is.finite(rho) ||
       rho < 0 || rho > 1) {
-    cli::cli_abort(
+    cli::cli_abort(c(
       "{.arg rho} for the internal fixed {.fn {helper}} route must be one finite numeric value in [0, 1].",
-      class = "gllvmTMB_column_coef_invalid_syntax"
-    )
+      ">" = "Pass a single number between 0 and 1, e.g. {.code rho = 0.5}."
+    ), class = "gllvmTMB_column_coef_invalid_syntax")
   }
   levs <- levels(data[[group]])
   group_id <- as.integer(data[[group]]) - 1L
 
   if (!is.null(phylo_tree)) {
     if (!inherits(phylo_tree, "phylo")) {
-      cli::cli_abort(
+      cli::cli_abort(c(
         "The {.arg tree} supplied to {.fn {helper}} must be an {.cls ape::phylo} tree.",
-        class = "gllvmTMB_column_coef_source_invalid"
-      )
+        ">" = "Pass an object read by {.fn ape::read.tree} or {.fn ape::read.nexus}."
+      ), class = "gllvmTMB_column_coef_source_invalid")
     }
     .gllvm_abort_uncovered_species_levels(
       levs, phylo_tree$tip.label, data, group,
@@ -822,18 +844,18 @@
       q_tol <- sqrt(.Machine$double.eps) * max(1, q_scale)
       if (any(!is.finite(Q_dense)) ||
           max(abs(Q_dense - t(Q_dense)), na.rm = TRUE) > q_tol) {
-        cli::cli_abort(
+        cli::cli_abort(c(
           "The sparse precision for {.fn {helper}} must be finite and symmetric.",
-          class = "gllvmTMB_column_coef_source_invalid"
-        )
+          ">" = "Check the sparse matrix passed as {.arg Ainv} for asymmetry or non-finite entries."
+        ), class = "gllvmTMB_column_coef_source_invalid")
       }
       Q_dense <- (Q_dense + t(Q_dense)) / 2
       Q_chol <- tryCatch(chol(Q_dense), error = function(e) NULL)
       if (is.null(Q_chol)) {
-        cli::cli_abort(
+        cli::cli_abort(c(
           "The sparse precision for {.fn {helper}} must be positive definite before inversion.",
-          class = "gllvmTMB_column_coef_source_invalid"
-        )
+          ">" = "Check the sparse matrix passed as {.arg Ainv} is a valid precision matrix."
+        ), class = "gllvmTMB_column_coef_source_invalid")
       }
       K_full <- chol2inv(Q_chol)
       tip_index <- match(levs, rownames(Q))
@@ -849,10 +871,10 @@
       if (!is.matrix(phylo_vcv) || !is.numeric(phylo_vcv) ||
           nrow(phylo_vcv) != ncol(phylo_vcv) ||
           any(!is.finite(phylo_vcv))) {
-        cli::cli_abort(
+        cli::cli_abort(c(
           "The source for {.fn {helper}} must be a finite square numeric matrix.",
-          class = "gllvmTMB_column_coef_source_invalid"
-        )
+          ">" = "Pass a finite, square numeric matrix for {.arg vcv}/{.arg A}."
+        ), class = "gllvmTMB_column_coef_source_invalid")
       }
       rn <- rownames(phylo_vcv)
       cn <- colnames(phylo_vcv)
@@ -865,9 +887,15 @@
           anyDuplicated(cn) || !labels_match) {
         cli::cli_abort(
           if (isTRUE(allow_label_superset)) {
-            "The source labels must cover every response-column level."
+            c(
+              "The source labels must cover every response-column level.",
+              ">" = "Add row/column names for every level of the response-column factor."
+            )
           } else {
-            "The source labels for {.fn {helper}} must match the response-column levels exactly."
+            c(
+              "The source labels for {.fn {helper}} must match the response-column levels exactly.",
+              ">" = "Set matching row and column names on the source that name exactly the response-column levels."
+            )
           },
           class = "gllvmTMB_column_coef_source_labels"
         )
@@ -878,17 +906,17 @@
 
   symmetry_tol <- sqrt(.Machine$double.eps) * max(1, max(abs(K)))
   if (max(abs(K - t(K))) > symmetry_tol) {
-    cli::cli_abort(
+    cli::cli_abort(c(
       "The response-column covariance for {.fn {helper}} must be symmetric.",
-      class = "gllvmTMB_column_coef_source_invalid"
-    )
+      ">" = "Check the source matrix passed to {.fn {helper}} for asymmetry."
+    ), class = "gllvmTMB_column_coef_source_invalid")
   }
   K <- (K + t(K)) / 2
   if (is.null(tryCatch(chol(K), error = function(e) NULL))) {
-    cli::cli_abort(
+    cli::cli_abort(c(
       "The source covariance for {.fn {helper}} must be positive definite before mixing.",
-      class = "gllvmTMB_column_coef_source_invalid"
-    )
+      ">" = "Check the source matrix passed to {.fn {helper}} is a valid covariance matrix."
+    ), class = "gllvmTMB_column_coef_source_invalid")
   }
   K_diag <- diag(diag(K), nrow(K))
   dimnames(K_diag) <- dimnames(K)
@@ -896,10 +924,10 @@
   K_rho <- (K_rho + t(K_rho)) / 2
   R <- tryCatch(chol(K_rho), error = function(e) NULL)
   if (is.null(R)) {
-    cli::cli_abort(
+    cli::cli_abort(c(
       "The mixed response-column covariance for {.fn {helper}} must be positive definite.",
-      class = "gllvmTMB_column_coef_source_invalid"
-    )
+      ">" = "Try a different {.arg rho}, or check the source matrix passed to {.fn {helper}} is a valid covariance matrix."
+    ), class = "gllvmTMB_column_coef_source_invalid")
   }
   Q_rho <- chol2inv(R)
   dimnames(Q_rho) <- dimnames(K_rho)
@@ -932,16 +960,16 @@
   eig <- eigen(R, symmetric = TRUE)
   tol <- sqrt(.Machine$double.eps) * max(1, max(abs(eig$values)))
   if (any(!is.finite(eig$values)) || any(eig$values <= tol)) {
-    cli::cli_abort(
+    cli::cli_abort(c(
       "The standardized response-column covariance for {.fn phylo_coef} must be positive definite.",
-      class = "gllvmTMB_column_coef_source_invalid"
-    )
+      ">" = "Check the {.arg tree}/{.arg vcv} source is a valid covariance/relatedness structure."
+    ), class = "gllvmTMB_column_coef_source_invalid")
   }
   if (nrow(R) < 2L || max(abs(eig$values - 1)) <= tol) {
     cli::cli_abort(c(
       "{.arg rho} is not identifiable from this {.fn phylo_coef} source.",
       "x" = "After marginal-scale standardisation, the source has no between-column correlation contrast.",
-      "i" = "Fix {.arg rho} to a numeric value, or use {.fn column_coef} for an IID source."
+      ">" = "Fix {.arg rho} to a numeric value, or use {.fn column_coef} for an IID source."
     ), class = "gllvmTMB_column_coef_rho_unidentified")
   }
   list(
@@ -968,12 +996,14 @@
       nrow(K) != ncol(K)) {
     cli::cli_abort(c(
       "{.arg K} for {.fn kernel_slope} must be a square numeric matrix.",
-      "i" = "Source {.val {source_name}} is indexed by {length(levs)} response-column level{?s}."
+      ">" = "Source {.val {source_name}} is indexed by {length(levs)} response-column level{?s}; pass a {length(levs)} x {length(levs)} numeric matrix."
     ), class = "gllvmTMB_column_slope_kernel_invalid")
   }
   if (any(!is.finite(K))) {
-    cli::cli_abort("{.arg K} for {.fn kernel_slope} must contain only finite values.",
-                   class = "gllvmTMB_column_slope_kernel_invalid")
+    cli::cli_abort(c(
+      "{.arg K} for {.fn kernel_slope} must contain only finite values.",
+      ">" = "Check {.arg K} for NA/NaN/Inf entries before fitting."
+    ), class = "gllvmTMB_column_slope_kernel_invalid")
   }
   rn <- rownames(K)
   cn <- colnames(K)
@@ -988,20 +1018,25 @@
       length(rn) != length(levs) || length(cn) != length(levs)) {
     cli::cli_abort(c(
       "{.arg K} labels for {.fn kernel_slope} must match the response-column levels exactly.",
-      "i" = "Expected {.val {levs}}; row labels are {.val {rn}} and column labels are {.val {cn}}."
+      "x" = "Expected {.val {levs}}; row labels are {.val {rn}} and column labels are {.val {cn}}.",
+      ">" = "Set matching {.code rownames(K)} and {.code colnames(K)} to the response-column levels."
     ), class = "gllvmTMB_column_slope_kernel_labels")
   }
   A <- K[levs, levs, drop = FALSE]
   symmetry_tol <- sqrt(.Machine$double.eps) * max(1, max(abs(A)))
   if (max(abs(A - t(A))) > symmetry_tol) {
-    cli::cli_abort("{.arg K} for {.fn kernel_slope} must be symmetric.",
-                   class = "gllvmTMB_column_slope_kernel_invalid")
+    cli::cli_abort(c(
+      "{.arg K} for {.fn kernel_slope} must be symmetric.",
+      ">" = "Pass a symmetric kernel matrix, e.g. {.code K <- (K + t(K)) / 2}."
+    ), class = "gllvmTMB_column_slope_kernel_invalid")
   }
   A <- (A + t(A)) / 2
   R <- tryCatch(chol(A), error = function(e) NULL)
   if (is.null(R)) {
-    cli::cli_abort("{.arg K} for {.fn kernel_slope} must be positive definite.",
-                   class = "gllvmTMB_column_slope_kernel_invalid")
+    cli::cli_abort(c(
+      "{.arg K} for {.fn kernel_slope} must be positive definite.",
+      ">" = "Check {.arg K} is a valid covariance/kernel matrix, or add a small ridge, e.g. {.code K + diag(1e-6, nrow(K))}."
+    ), class = "gllvmTMB_column_slope_kernel_invalid")
   }
   Ainv <- chol2inv(R)
   dimnames(Ainv) <- list(levs, levs)
@@ -1040,16 +1075,16 @@
   eig <- eigen(R, symmetric = TRUE)
   tol <- sqrt(.Machine$double.eps) * max(1, max(abs(eig$values)))
   if (any(!is.finite(eig$values)) || any(eig$values <= tol)) {
-    cli::cli_abort(
+    cli::cli_abort(c(
       "The standardized response-column covariance for {.fn kernel_coef} must be positive definite.",
-      class = "gllvmTMB_column_coef_source_invalid"
-    )
+      ">" = "Check the {.arg K} kernel matrix is a valid covariance structure."
+    ), class = "gllvmTMB_column_coef_source_invalid")
   }
   if (nrow(R) < 2L || max(abs(eig$values - 1)) <= tol) {
     cli::cli_abort(c(
       "{.arg rho} is not identifiable from this {.fn kernel_coef} source.",
       "x" = "After marginal-scale standardisation, the kernel has no between-column correlation contrast.",
-      "i" = "Fix {.arg rho} to a numeric value, or use {.fn column_coef} for an IID source."
+      ">" = "Fix {.arg rho} to a numeric value, or use {.fn column_coef} for an IID source."
     ), class = "gllvmTMB_column_coef_rho_unidentified")
   }
   list(
@@ -1089,7 +1124,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                                estimator = "ml",
                                engine = "tmb") {
   if (!is.logical(REML) || length(REML) != 1L || is.na(REML)) {
-    cli::cli_abort("{.arg REML} must be a single {.code TRUE} or {.code FALSE} value.")
+    cli::cli_abort(c(
+      "{.arg REML} must be a single {.code TRUE} or {.code FALSE} value.",
+      ">" = "Pass {.code REML = TRUE} or {.code REML = FALSE}."
+    ))
   }
   estimator <- match.arg(estimator, c("ml", "mspl"))
   structured_rho <- parsed$structured_rho
@@ -1153,13 +1191,19 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       } else {
         cli::cli_abort(c(
           "Unsupported delta family: {.val {paste(f$family, collapse = '/')}}.",
-          "i" = "Currently supported delta families: {.code delta_lognormal()}, {.code delta_gamma()}."
+          ">" = "Use {.code delta_lognormal()} or {.code delta_gamma()}."
         ))
       }
       if (!identical(f$link[1], "logit"))
-        cli::cli_abort("delta_lognormal/delta_gamma: only logit (presence) is currently supported.")
+        cli::cli_abort(c(
+          "delta_lognormal/delta_gamma: only logit (presence) is currently supported.",
+          ">" = "Use {.code delta_lognormal(link1 = \"logit\")} or {.code delta_gamma(link1 = \"logit\")} (the default)."
+        ))
       if (!identical(f$link[2], "log"))
-        cli::cli_abort("delta_lognormal/delta_gamma: only log (positive component) is currently supported.")
+        cli::cli_abort(c(
+          "delta_lognormal/delta_gamma: only log (positive component) is currently supported.",
+          ">" = "Use {.code delta_lognormal(link2 = \"log\")} or {.code delta_gamma(link2 = \"log\")} (the default)."
+        ))
       return(c(delta_id, 0L))
     }
     fid <- switch(
@@ -1188,7 +1232,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ordinal_logit     = 20L,
       cli::cli_abort(c(
         "Unsupported family: {.val {f$family}}.",
-        "i" = "Currently supported: {.code gaussian()}, {.code binomial()}, {.code poisson()}, {.code lognormal()}, {.code Gamma()}, {.code nbinom2()}, {.code nbinom1()}, {.code tweedie()}, {.code Beta()}, {.code betabinomial()}, {.code student()}, {.code truncated_poisson()}, {.code truncated_nbinom2()}, {.code delta_lognormal()}, {.code delta_gamma()}, {.code ordinal_probit()}, {.code ordinal_logit()}, {.code multinomial()}, {.code zi_poisson()}, {.code zi_nbinom2()}, {.code zi_binomial()}."
+        ">" = "Use one of {.code gaussian()}, {.code binomial()}, {.code poisson()}, {.code lognormal()}, {.code Gamma()}, {.code nbinom2()}, {.code nbinom1()}, {.code tweedie()}, {.code Beta()}, {.code betabinomial()}, {.code student()}, {.code truncated_poisson()}, {.code truncated_nbinom2()}, {.code delta_lognormal()}, {.code delta_gamma()}, {.code ordinal_probit()}, {.code ordinal_logit()}, {.code multinomial()}, {.code zi_poisson()}, {.code zi_nbinom2()}, {.code zi_binomial()}."
       ))
     )
     lid <- 0L
@@ -1217,36 +1261,72 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         "i" = "Use {.code gaussian()}. For a multiplicative mean on positive data, {.code lognormal()} or {.code Gamma(link = \"log\")} model the log scale directly."
       ))
     if (fid == 2L && !identical(f$link, "log"))
-      cli::cli_abort("poisson: only the log link is currently supported.")
+      cli::cli_abort(c(
+        "poisson: only the log link is currently supported.",
+        ">" = "Use {.code poisson(link = \"log\")} (the default)."
+      ))
     if (fid == 3L && !identical(f$link, "log"))
-      cli::cli_abort("lognormal: only the log link is currently supported.")
+      cli::cli_abort(c(
+        "lognormal: only the log link is currently supported.",
+        ">" = "Use {.code lognormal(link = \"log\")} (the default)."
+      ))
     if (fid == 4L && !identical(f$link, "log"))
       cli::cli_abort("Gamma: only the log link is currently supported. Use {.code Gamma(link = \"log\")}.")
     if (fid == 5L && !identical(f$link, "log"))
-      cli::cli_abort("nbinom2: only the log link is currently supported.")
+      cli::cli_abort(c(
+        "nbinom2: only the log link is currently supported.",
+        ">" = "Use {.code nbinom2(link = \"log\")} (the default)."
+      ))
     if (fid == 6L && !identical(f$link, "log"))
-      cli::cli_abort("tweedie: only the log link is currently supported.")
+      cli::cli_abort(c(
+        "tweedie: only the log link is currently supported.",
+        ">" = "Use {.code tweedie(link = \"log\")} (the default)."
+      ))
     if (fid == 7L && !identical(f$link, "logit"))
-      cli::cli_abort("Beta: only the logit link is currently supported.")
+      cli::cli_abort(c(
+        "Beta: only the logit link is currently supported.",
+        ">" = "Use {.code Beta(link = \"logit\")} (the default)."
+      ))
     if (fid == 8L && !identical(f$link, "logit"))
-      cli::cli_abort("betabinomial: only the logit link is currently supported.")
+      cli::cli_abort(c(
+        "betabinomial: only the logit link is currently supported.",
+        ">" = "Use {.code betabinomial(link = \"logit\")} (the default) or {.code betabinomial(link = \"cloglog\")}."
+      ))
     if (fid == 9L && !identical(f$link, "identity"))
-      cli::cli_abort("student: only the identity link is currently supported.")
+      cli::cli_abort(c(
+        "student: only the identity link is currently supported.",
+        ">" = "Use {.code student(link = \"identity\")} (the default)."
+      ))
     if (fid == 10L && !identical(f$link, "log"))
-      cli::cli_abort("truncated_poisson: only the log link is currently supported.")
+      cli::cli_abort(c(
+        "truncated_poisson: only the log link is currently supported.",
+        ">" = "Use {.code truncated_poisson(link = \"log\")} (the default)."
+      ))
     if (fid == 11L && !identical(f$link, "log"))
-      cli::cli_abort("truncated_nbinom2: only the log link is currently supported.")
+      cli::cli_abort(c(
+        "truncated_nbinom2: only the log link is currently supported.",
+        ">" = "Use {.code truncated_nbinom2(link = \"log\")} (the default)."
+      ))
     if (fid == 14L && !identical(f$link, "probit"))
-      cli::cli_abort("ordinal_probit: only the probit link is supported.")
+      cli::cli_abort(c(
+        "ordinal_probit: only the probit link is supported.",
+        ">" = "Use {.code ordinal_probit(link = \"probit\")} (the default), or {.fn ordinal_logit} for the logit link."
+      ))
     if (fid == 20L && !identical(f$link, "logit"))
       cli::cli_abort(c(
         "ordinal_logit: only the logit link is supported.",
-        "i" = "Use {.fn ordinal_probit} for the probit link."
+        ">" = "Use {.code ordinal_logit(link = \"logit\")} (the default), or {.fn ordinal_probit} for the probit link."
       ))
     if (fid == 15L && !identical(f$link, "log"))
-      cli::cli_abort("nbinom1: only the log link is currently supported.")
+      cli::cli_abort(c(
+        "nbinom1: only the log link is currently supported.",
+        ">" = "Use {.code nbinom1(link = \"log\")} (the default)."
+      ))
     if (fid == 16L && !identical(f$link, "logit"))
-      cli::cli_abort("multinomial: only the baseline-category logit link is supported.")
+      cli::cli_abort(c(
+        "multinomial: only the baseline-category logit link is supported.",
+        ">" = "Omit {.arg link} to use the default {.code \"logit\"}."
+      ))
     if (fid == 17L && !identical(f$link, "log"))
       cli::cli_abort(c(
         "zi_poisson: only the log link is currently supported.",
@@ -1300,7 +1380,11 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     fam_levels <- if (is.factor(data[[fam_var]])) levels(data[[fam_var]])
                   else sort(unique(as.character(data[[fam_var]])))
     if (length(fam_levels) != length(family))
-      cli::cli_abort("length(family) must match the number of distinct levels in {.var {fam_var}}.")
+      cli::cli_abort(c(
+        "length(family) must match the number of distinct levels in {.var {fam_var}}.",
+        "x" = "Got {length(family)} famil{?y/ies} for {length(fam_levels)} level{?s}.",
+        ">" = "Supply one family per level of {.var {fam_var}}, e.g. {.code list(<level> = <family>(), ...)}."
+      ))
     family <- .align_mixed_family_list(family, fam_levels, fam_var)
     fl_pairs <- vapply(family, family_to_id, integer(2))
     fids     <- fl_pairs[1, ]
@@ -1930,9 +2014,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     d_req <- as.integer(spde_latent_slope_cs$extra$d %||% 1L)
     n_traits <- .n_traits_for_dep
     if (d_req > n_traits) {
-      cli::cli_abort(
-        "spatial_latent(d = {d_req}) exceeds the number of traits ({n_traits}); the latent rank must satisfy d <= n_traits."
-      )
+      cli::cli_abort(c(
+        "spatial_latent(d = {d_req}) exceeds the number of traits ({n_traits}); the latent rank must satisfy d <= n_traits.",
+        ">" = "Pass {.code d} at most {n_traits} in {.fn spatial_latent}."
+      ))
     }
     d_req
   } else 1L
@@ -2129,9 +2214,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ))
     }
     if (any(!nzchar(phy_kernel_name))) {
-      cli::cli_abort(
-        "{.arg name} in {.fn kernel_*} terms must be a non-empty string."
-      )
+      cli::cli_abort(c(
+        "{.arg name} in {.fn kernel_*} terms must be a non-empty string.",
+        ">" = "Pass e.g. {.code kernel_indep(x | trait, name = \"my_kernel\", K = K)}."
+      ))
     }
     unique_kernel_names <- unique(phy_kernel_name)
     use_kernel_multi <- length(unique_kernel_names) > 1L
@@ -2391,9 +2477,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       d_req <- as.integer(cs$extra$d %||% 1L)
       n_traits <- .n_traits_for_dep
       if (d_req > n_traits) {
-        cli::cli_abort(
-          "phylo_latent(d = {d_req}) exceeds the number of traits ({n_traits}); the latent rank must satisfy d <= n_traits."
-        )
+        cli::cli_abort(c(
+          "phylo_latent(d = {d_req}) exceeds the number of traits ({n_traits}); the latent rank must satisfy d <= n_traits.",
+          ">" = "Pass {.code d} at most {n_traits} in {.fn phylo_latent}."
+        ))
       }
       d_req
     }
@@ -2405,7 +2492,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   phylo_slope_idx <- which(kinds == "phylo_slope")
   use_phylo_slope <- length(phylo_slope_idx) > 0L
   if (length(phylo_slope_idx) > 1L) {
-    cli::cli_abort("Only one phylogenetic random-regression term is supported per formula.")
+    cli::cli_abort(c(
+      "Only one phylogenetic random-regression term is supported per formula.",
+      ">" = "Combine your terms into a single {.fn phylo_slope}/{.fn phylo_latent}/{.fn phylo_dep} call, or drop the extra term."
+    ))
   }
   phylo_slope_cs <- if (use_phylo_slope) {
     parsed$covstructs[[phylo_slope_idx[1L]]]
@@ -2481,7 +2571,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       identical(phylo_column_slope_source, "kernel")) {
     nm <- phylo_slope_cs$extra$.kernel_name %||% "kernel"
     if (!is.character(nm) || length(nm) != 1L || is.na(nm) || !nzchar(nm)) {
-      cli::cli_abort("{.arg name} in {.fn kernel_slope} must be one non-empty string.")
+      cli::cli_abort(c(
+        "{.arg name} in {.fn kernel_slope} must be one non-empty string.",
+        ">" = "Pass e.g. {.code kernel_slope(x | trait, name = \"my_kernel\", K = K)}."
+      ))
     }
     nm
   } else NULL
@@ -2746,9 +2839,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     d_req <- as.integer(phylo_latent_slope_cs$extra$d %||% 1L)
     n_traits <- .n_traits_for_dep
     if (d_req > n_traits) {
-      cli::cli_abort(
-        "phylo_latent(d = {d_req}) exceeds the number of traits ({n_traits}); the latent rank must satisfy d <= n_traits."
-      )
+      cli::cli_abort(c(
+        "phylo_latent(d = {d_req}) exceeds the number of traits ({n_traits}); the latent rank must satisfy d <= n_traits.",
+        ">" = "Pass {.code d} at most {n_traits} in {.fn phylo_latent}."
+      ))
     }
     d_req
   } else 1L
@@ -2794,9 +2888,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   d_B_slope <- if (use_rr_B_slope) {
     d_req <- as.integer(rr_B_slope_cs$extra$d %||% 1L)
     if (d_req > n_lhs_cols_B_lat) {
-      cli::cli_abort(
-        "latent(d = {d_req}) exceeds the augmented random-regression coefficient dimension ({n_lhs_cols_B_lat}); the latent rank must satisfy d <= 2 * n_traits for a single-slope augmented B-tier fit."
-      )
+      cli::cli_abort(c(
+        "latent(d = {d_req}) exceeds the augmented random-regression coefficient dimension ({n_lhs_cols_B_lat}); the latent rank must satisfy d <= 2 * n_traits for a single-slope augmented B-tier fit.",
+        ">" = "Pass {.code d} at most {n_lhs_cols_B_lat} in {.fn latent}."
+      ))
     }
     d_req
   } else 1L
@@ -2854,9 +2949,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     d_req <- as.integer(cs$extra$d %||% 1L)
     n_traits <- .n_traits_for_dep
     if (d_req > n_traits) {
-      cli::cli_abort(
-        "latent(d = {d_req}) exceeds the number of traits ({n_traits}); the latent rank must satisfy d <= n_traits."
-      )
+      cli::cli_abort(c(
+        "latent(d = {d_req}) exceeds the number of traits ({n_traits}); the latent rank must satisfy d <= n_traits.",
+        ">" = "Pass {.code d} at most {n_traits} in {.fn latent}."
+      ))
     }
     d_req
   } else 1L
@@ -2865,9 +2961,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     d_req <- as.integer(cs$extra$d %||% 1L)
     n_traits <- .n_traits_for_dep
     if (d_req > n_traits) {
-      cli::cli_abort(
-        "latent(d = {d_req}) exceeds the number of traits ({n_traits}); the latent rank must satisfy d <= n_traits."
-      )
+      cli::cli_abort(c(
+        "latent(d = {d_req}) exceeds the number of traits ({n_traits}); the latent rank must satisfy d <= n_traits.",
+        ">" = "Pass {.code d} at most {n_traits} in {.fn latent}."
+      ))
     }
     d_req
   } else 1L
@@ -2877,7 +2974,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   if (any(unrecognised)) {
     cli::cli_abort(c(
       "Unsupported covstruct(s) {.val {kinds[unrecognised]}}.",
-      "i" = "Supported: {.fn latent}, {.fn indep}, {.fn propto}, {.fn equalto}, {.fn spatial}, {.fn phylo_latent}, {.fn phylo_slope}."
+      ">" = "Use one of {.fn latent}, {.fn indep}, {.fn propto}, {.fn equalto}, {.fn spatial}, {.fn phylo_latent}, {.fn phylo_slope}."
     ))
   }
   ## PGLLVM foot-gun detector (run BEFORE the generic `bad_groups`
@@ -2978,7 +3075,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       if (!gname %in% names(data))
         cli::cli_abort(c(
           "{.code (1 | {gname})} found in formula but {.var {gname}} is not a column in {.arg data}.",
-          "i" = "Add a {.var {gname}} column to {.arg data} or rename the grouping factor."
+          ">" = "Add a {.var {gname}} column to {.arg data} or rename the grouping factor."
         ))
       ## A missing group LABEL is not a group. Left unchecked, the NA rows were
       ## absorbed rather than rejected: the fit ran, `nobs` was unchanged, and
@@ -3217,11 +3314,17 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     ## gated out of the likelihood in TMB, so validate only observed rows
     ## (na.rm) and sentinel-fill their y / n_trials below.
     if (any(succ < 0, na.rm = TRUE) || any(fail < 0, na.rm = TRUE))
-      cli::cli_abort("cbind(successes, failures): both columns must be non-negative.")
+      cli::cli_abort(c(
+        "cbind(successes, failures): both columns must be non-negative.",
+        ">" = "Check the successes and failures columns for negative values before fitting."
+      ))
     y         <- succ
     n_trials  <- succ + fail
     if (any(n_trials <= 0, na.rm = TRUE))
-      cli::cli_abort("cbind(successes, failures): rows with zero trials are not allowed.")
+      cli::cli_abort(c(
+        "cbind(successes, failures): rows with zero trials are not allowed.",
+        ">" = "Drop rows where successes + failures == 0, or check for a data-entry error."
+      ))
   } else {
     y <- as.numeric(y_raw)
     ## Optional API (B): when binomial / beta-binomial rows are present,
@@ -3235,7 +3338,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         length(weights) == nrow(data)) {
       n_trials <- as.numeric(weights)
       if (any(!is.finite(n_trials)) || any(n_trials <= 0))
-        cli::cli_abort("`weights` (used as binomial size) must be positive and finite.")
+        cli::cli_abort(c(
+          "`weights` (used as binomial size) must be positive and finite.",
+          ">" = "Pass a positive finite trial count per row, e.g. {.code weights = n_trials}."
+        ))
     } else {
       n_trials <- rep(1, length(y))
     }
@@ -3352,12 +3458,19 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     if (!is.numeric(weights) || length(weights) != n_obs)
       cli::cli_abort(c(
         "`weights` must be a numeric vector of length nrow(data).",
-        "i" = "Got length {length(weights)}; expected {n_obs}."
+        "x" = "Got length {length(weights)}; expected {n_obs}.",
+        ">" = "Pass one weight per row of {.arg data}."
       ))
     if (any(!is.finite(weights)))
-      cli::cli_abort("`weights` must be finite.")
+      cli::cli_abort(c(
+      "`weights` must be finite.",
+      ">" = "Check {.arg weights} for NA/NaN/Inf values."
+    ))
     if (any(weights < 0))
-      cli::cli_abort("`weights` must be non-negative.")
+      cli::cli_abort(c(
+      "`weights` must be non-negative.",
+      ">" = "Check {.arg weights} for negative values."
+    ))
     weights_i <- as.numeric(weights)
     weights_i[family_id_vec %in% c(1L, 8L)] <- 1.0
   } else {
@@ -3589,7 +3702,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       cli::cli_abort(c(
         "The {.fn phylo} covariate grouping must be the species (cluster) grouping {.val {species}}.",
         "x" = "Found {.code phylo(1 | {mi_model$phylo$group})}, but the fit's species grouping is {.val {species}}.",
-        "i" = "The covariate phylogenetic field reuses the species tree; group it by {.val {species}}."
+        ">" = "The covariate phylogenetic field reuses the species tree; group it by {.val {species}}."
       ))
     }
     cov_tree <- mi_model$phylo$tree
@@ -3601,13 +3714,16 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     }
     if (!is.null(cov_tree)) {
       if (!inherits(cov_tree, "phylo"))
-        cli::cli_abort("The {.fn phylo} covariate {.code tree =} must be an {.cls ape::phylo} tree.")
+        cli::cli_abort(c(
+          "The {.fn phylo} covariate {.code tree =} must be an {.cls ape::phylo} tree.",
+          ">" = "Pass an object read by {.fn ape::read.tree} or {.fn ape::read.nexus}."
+        ))
       if (is.null(phylo_tree)) {
         phylo_tree <- cov_tree
       } else if (!identical(phylo_tree$tip.label, cov_tree$tip.label)) {
         cli::cli_abort(c(
           "The {.fn phylo} covariate tree differs from the response phylogenetic tree.",
-          "i" = "One tree per fit in this version; the covariate and response phylo terms must share a tree (multi-tree is a later phase)."
+          ">" = "One tree per fit in this version; the covariate and response phylo terms must share a tree (multi-tree is a later phase)."
         ))
       }
     }
@@ -3616,13 +3732,13 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   if (any(is.na(y[!masked_response]))) {
     cli::cli_abort(c(
       "NA in an observed response reached the fitting engine.",
-      "i" = "Public {.fn gllvmTMB} drops (response = \"drop\") or masks (response = \"include\") missing response rows before fitting; please report this internal preprocessing failure."
+      ">" = "Public {.fn gllvmTMB} drops (response = \"drop\") or masks (response = \"include\") missing response rows before fitting; please report this internal preprocessing failure at https://github.com/itchyshin/gllvmTMB/issues."
     ))
   }
   if (any(is.na(X_fix))) {
     cli::cli_abort(c(
       "NA in the fixed-effect design matrix.",
-      "i" = "Missing response rows are allowed and dropped before fitting; missing predictors still need to be removed or imputed before fitting (or declared with {.code mi()} under {.code missing = miss_control(predictor = \"model\")})."
+      ">" = "Missing response rows are allowed and dropped before fitting; missing predictors still need to be removed or imputed before fitting (or declared with {.code mi()} under {.code missing = miss_control(predictor = \"model\")})."
     ))
   }
   if (isTRUE(REML)) {
@@ -3713,7 +3829,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       cli::cli_abort(c(
         "{.arg REML = TRUE} requires a full-rank fixed-effect design matrix.",
         "x" = "The observed-row fixed-effect design has rank {qr(X_reml)$rank}, but {ncol(X_reml)} column{?s}.",
-        "i" = "Remove redundant fixed-effect columns or use {.code REML = FALSE}."
+        ">" = "Remove redundant fixed-effect columns or use {.code REML = FALSE}."
       ))
     }
     if (nrow(X_reml) <= ncol(X_reml)) {
@@ -3733,7 +3849,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     if (any(y[bin_rows] < 0) || any(y[bin_rows] > n_trials[bin_rows]))
       cli::cli_abort(c(
         "Binomial rows: `y` (successes) must satisfy 0 <= y <= n_trials.",
-        "i" = "If you used {.code cbind(succ, fail)}, both columns must be non-negative integers."
+        ">" = "If you used {.code cbind(succ, fail)}, both columns must be non-negative integers."
       ))
   }
   ## Beta rows: y must be in the open unit interval (0, 1). The likelihood
@@ -3745,7 +3861,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     if (any(y[beta_rows] <= 0) || any(y[beta_rows] >= 1))
       cli::cli_abort(c(
         "Beta rows: {.code y} must satisfy 0 < y < 1.",
-        "i" = "Exact 0s or 1s require a zero-/one-inflated Beta variant."
+        ">" = "Rescale exact 0s/1s away from the boundary, or switch to a family that admits them."
       ))
   }
   ## Lognormal and Gamma rows require strictly positive observed responses.
@@ -3756,7 +3872,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     if (any(y[positive_rows] <= 0))
       cli::cli_abort(c(
         "Lognormal and Gamma rows: {.code y} must be strictly positive.",
-        "i" = "Exact zeros need a hurdle/delta, zero-inflated, or count-family model."
+        ">" = "Exact zeros need {.fn delta_lognormal}/{.fn delta_gamma}, a zero-inflated family, or a count family."
       ))
   }
   ## Beta-binomial rows: y must be in [0, n_trials], same as binomial.
@@ -3765,7 +3881,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     if (any(y[bb_rows] < 0) || any(y[bb_rows] > n_trials[bb_rows]))
       cli::cli_abort(c(
         "Beta-binomial rows: `y` (successes) must satisfy 0 <= y <= n_trials.",
-        "i" = "If you used {.code cbind(succ, fail)}, both columns must be non-negative integers."
+        ">" = "If you used {.code cbind(succ, fail)}, both columns must be non-negative integers."
       ))
   }
   ## Sanity check: y >= 1 for zero-truncated count families.
@@ -3790,7 +3906,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     if (any(y[delta_rows] < 0))
       cli::cli_abort(c(
         "Delta families: response must be non-negative (zero or positive).",
-        "i" = "{.fn delta_lognormal}/{.fn delta_gamma} are hurdle models with an exact zero point mass + continuous positive part."
+        "i" = "{.fn delta_lognormal}/{.fn delta_gamma} are hurdle models with an exact zero point mass + continuous positive part.",
+        ">" = "Check the response column for negative values before fitting."
       ))
   }
 
@@ -3890,12 +4007,13 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     if (any(y[ordinal_obs_rows] != round(y[ordinal_obs_rows])))
       cli::cli_abort(c(
         "ordinal_probit()/ordinal_logit(): response must be integer-valued (categories 1..K).",
-        "i" = "Coerce {.var y} via {.code as.integer(factor(y))} or pass an ordered factor."
+        ">" = "Coerce {.var y} via {.code as.integer(factor(y))} or pass an ordered factor."
       ))
     if (any(y[ordinal_obs_rows] < 1))
       cli::cli_abort(c(
         "ordinal_probit()/ordinal_logit(): response must be in {.val 1..K} (1-indexed).",
-        "i" = "Smallest observed category was {min(y[ordinal_obs_rows])}; categories must start at 1."
+        "x" = "Smallest observed category was {min(y[ordinal_obs_rows])}; categories must start at 1.",
+        ">" = "Recode categories to start at 1, e.g. {.code as.integer(factor(y))}."
       ))
     cum_offset <- 0L
     for (t in seq_len(n_traits)) {
@@ -3917,13 +4035,13 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       if (length(fam_t) > 1L || any(family_id_vec[rows_t_all] != fam_t))
         cli::cli_abort(c(
           "{fam_label_t} on trait {t}: other rows of this trait use a different family.",
-          "i" = "{fam_label_t} must own all rows of a trait (cutpoints are estimated per trait)."
+          ">" = "Give this trait its own single family in the mixed-family {.code list(...)}; {fam_label_t} must own all rows of a trait (cutpoints are estimated per trait)."
         ))
       Kt <- max(as.integer(y[rows_t]))
       if (Kt < 2L)
         cli::cli_abort(c(
           "{fam_label_t}: trait {t} has only {Kt} observed categor{?y/ies}.",
-          "i" = "Need at least K = 2 categories to define a likelihood."
+          ">" = "Need at least K = 2 categories to define a likelihood; use {.fn binomial} or {.fn poisson} for a trait with fewer."
         ))
       if (Kt == 2L) {
         ## Hadfield (2015) eqn 10 (probit) / the analogous logit reduction:
@@ -3940,7 +4058,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       if (any(y[rows_t] > Kt))
         cli::cli_abort(c(
           "{fam_label_t}: trait {t} response exceeds inferred K = {Kt}.",
-          "i" = "All observed categories must lie in 1..K; check for missing intermediate levels."
+          ">" = "All observed categories must lie in 1..K; check for missing intermediate levels."
         ))
       ordinal_K_per_trait[t]      <- Kt
       n_ordinal_cuts_per_trait[t] <- Kt - 2L
@@ -4261,9 +4379,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         cli::cli_abort("{.arg d} for {.fn kernel_latent} tier {.val {nm}} must be a positive integer.")
       }
       if (rank_r > n_traits) {
-        cli::cli_abort(
-          "{.fn kernel_latent}(name = {nm}, d = {rank_r}) exceeds the number of traits ({n_traits}); the latent rank must satisfy d <= n_traits."
-        )
+        cli::cli_abort(c(
+          "{.fn kernel_latent}(name = {nm}, d = {rank_r}) exceeds the number of traits ({n_traits}); the latent rank must satisfy d <= n_traits.",
+          ">" = "Pass {.code d} at most {n_traits} in {.fn kernel_latent}."
+        ))
       }
       K <- cs_lat$extra$vcv
       kernel_meta <- .cross_kernel_metadata(K)
@@ -4440,7 +4559,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ## sparse matvecs. correlation = TRUE matches MCMCglmm::inverseA's default
       ## unit-root-to-tip scaling (the phylo variance parameter absorbs the scale).
       if (!inherits(phylo_tree, "phylo"))
-        cli::cli_abort("{.arg phylo_tree} must be an {.cls ape::phylo} tree.")
+        cli::cli_abort(c(
+          "{.arg phylo_tree} must be an {.cls ape::phylo} tree.",
+          ">" = "Pass an object read by {.fn ape::read.tree} or {.fn ape::read.nexus}."
+        ))
       levs <- levels(data[[species]])
       .gllvm_abort_uncovered_species_levels(
         levs, phylo_tree$tip.label, data, species, "{.arg phylo_tree} tip labels"
@@ -4495,9 +4617,15 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     } else {
       ## --- Legacy dense path: invert tip-only Cphy and store sparse-format
       if (is.null(phylo_vcv))
-        cli::cli_abort("phylo_latent() / phylo_slope() found in formula but {.arg phylo_vcv} (or {.arg phylo_tree}) is NULL.")
+        cli::cli_abort(c(
+          "phylo_latent() / phylo_slope() found in formula but {.arg phylo_vcv} (or {.arg phylo_tree}) is NULL.",
+          ">" = "Pass {.code tree = ...} or {.code vcv = ...} inside the keyword, or supply {.arg phylo_tree}/{.arg phylo_vcv} to {.fn gllvmTMB}."
+        ))
       if (is.null(rownames(phylo_vcv)))
-        cli::cli_abort("phylo_vcv must have rownames matching levels of {.var {species}}.")
+        cli::cli_abort(c(
+          "phylo_vcv must have rownames matching levels of {.var {species}}.",
+          ">" = "Set {.code rownames(phylo_vcv) <- levels(data${species})}."
+        ))
       levs <- levels(data[[species]])
       .gllvm_abort_uncovered_species_levels(
         levs, rownames(phylo_vcv), data, species, "{.arg phylo_vcv} rownames"
@@ -4531,8 +4659,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       }
     }
     if (any(!is.finite(structured_rho_diagonal) | structured_rho_diagonal <= 0)) {
-      cli::cli_abort("Structured {.arg rho} requires positive finite resolved source diagonals.",
-        class = "gllvmTMB_structured_rho_source")
+      cli::cli_abort(c(
+        "Structured {.arg rho} requires positive finite resolved source diagonals.",
+        ">" = "Check the tree/vcv/kernel source supplied has strictly positive, finite marginal variances."
+      ), class = "gllvmTMB_structured_rho_source")
     }
     structured_rho_field_active <- !structured_rho_sparse || structured_rho_value > 0
     structured_rho$labels <- levs
@@ -4677,7 +4807,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ## observed tips via .resolve_sparse_propto_precision() -- the same
       ## routine already used for the sparse-Ainv branch just below.
       if (!inherits(phylo_tree, "phylo"))
-        cli::cli_abort("{.arg phylo_tree} must be an {.cls ape::phylo} tree.")
+        cli::cli_abort(c(
+          "{.arg phylo_tree} must be an {.cls ape::phylo} tree.",
+          ">" = "Pass an object read by {.fn ape::read.tree} or {.fn ape::read.nexus}."
+        ))
       .gllvm_abort_uncovered_species_levels(
         levs, phylo_tree$tip.label, data, species, "{.arg phylo_tree} tip labels"
       )
@@ -4693,7 +4826,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
           ">" = "Pass {.code tree = my_tree} (or {.code vcv = Cphy}) inside the keyword, or supply {.arg phylo_tree}/{.arg phylo_vcv} to {.fn gllvmTMB}."
         ))
       if (is.null(rownames(phylo_vcv)))
-        cli::cli_abort("phylo_vcv must have rownames matching levels of {.var {species}}.")
+        cli::cli_abort(c(
+          "phylo_vcv must have rownames matching levels of {.var {species}}.",
+          ">" = "Set {.code rownames(phylo_vcv) <- levels(data${species})}."
+        ))
       .gllvm_abort_uncovered_species_levels(
         levs, rownames(phylo_vcv), data, species, "{.arg phylo_vcv} rownames"
       )
@@ -4801,7 +4937,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   }
   if (has_spatial_term) {
     if (is.null(mesh))
-      cli::cli_abort("A spatial term was found in the formula but {.arg mesh} is NULL.")
+      cli::cli_abort(c(
+        "A spatial term was found in the formula but {.arg mesh} is NULL.",
+        ">" = "Build one with {.fn make_mesh} and pass it as {.code gllvmTMB(..., mesh = my_mesh)}."
+      ))
     mesh <- .gllvm_normalize_mesh(mesh)
     if (use_spatial_column_slope) {
       trait_labels <- levels(data[[trait]])
@@ -4824,13 +4963,15 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         cli::cli_abort(c(
           "The labelled mesh rows must match the response-column levels exactly.",
           "x" = "Missing label{?s}: {.val {missing_labels}}.",
-          "x" = "Extra label{?s}: {.val {extra_labels}}."
+          "x" = "Extra label{?s}: {.val {extra_labels}}.",
+          ">" = "Rebuild the mesh so its {.arg id_col} labels are exactly the response-column levels."
         ), class = "gllvmTMB_spatial_column_slope_mesh_labels")
       }
       if (anyDuplicated(as.data.frame(mesh$loc_xy))) {
         cli::cli_abort(c(
           "{.fn spatial_slope} requires a unique coordinate pair for every response column.",
-          "x" = "At least two labelled response columns share the same coordinates."
+          "x" = "At least two labelled response columns share the same coordinates.",
+          ">" = "Give each response column its own coordinate row when building the mesh."
         ), class = "gllvmTMB_spatial_column_slope_coordinates")
       }
       label_order <- match(trait_labels, mesh$row_labels)
@@ -4843,7 +4984,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       if (!isTRUE(nrow(mesh$A_st) == n_obs))
         cli::cli_abort(c(
           "make_mesh() projection has {nrow(mesh$A_st)} rows but the long-format data has {n_obs}.",
-          "i" = "Build the mesh on the same long-format data passed to gllvmTMB()."
+          ">" = "Build the mesh on the same long-format data passed to gllvmTMB()."
         ))
       A_proj <- mesh$A_st
     }
@@ -4924,7 +5065,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     if (length(bad_type)) {
       cli::cli_abort(c(
         "Column-slope predictors must be numeric columns.",
-        "i" = "Non-numeric predictor{?s}: {.val {bad_type}}."
+        "x" = "Non-numeric predictor{?s}: {.val {bad_type}}.",
+        ">" = "Convert the predictor before fitting; factor and transformed bases are not in this V1 grammar."
       ))
     }
     Z_spde_aug <- vapply(phylo_column_slope_cols, function(col) {
@@ -4958,7 +5100,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     if (!spde_slope_xcol %in% names(data)) {
       cli::cli_abort(c(
         "The augmented spatial random-regression term references column {.val {spde_slope_xcol}}, which is not in {.arg data}.",
-        "i" = "Add the covariate column to the data frame."
+        ">" = "Add the covariate column to the data frame."
       ))
     }
     if (use_spde_dep_slope) {
@@ -4993,7 +5135,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     if (!spde_latent_slope_xcol %in% names(data)) {
       cli::cli_abort(c(
         "{.code spatial_latent(1 + {spde_latent_slope_xcol} | coords, d = K)} references column {.val {spde_latent_slope_xcol}}, which is not in {.arg data}.",
-        "i" = "Add the covariate column to the data frame."
+        ">" = "Add the covariate column to the data frame."
       ))
     }
     Z_spde_lat <- .spde_latent_slope_design(data, spde_latent_slope_xcol)
@@ -5004,10 +5146,16 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   log_det_V <- 0
   if (use_equalto) {
     if (is.null(known_V))
-      cli::cli_abort("equalto() found in formula but {.arg known_V} is NULL.")
+      cli::cli_abort(c(
+        "equalto() found in formula but {.arg known_V} is NULL.",
+        ">" = "Pass {.code known_V = V} to {.fn gllvmTMB} (e.g. built with {.fn block_V})."
+      ))
     V <- as.matrix(known_V)
     if (!isTRUE(all.equal(nrow(V), n_obs)) || !isTRUE(all.equal(ncol(V), n_obs)))
-      cli::cli_abort("known_V must be n_obs x n_obs (got {nrow(V)} x {ncol(V)}).")
+      cli::cli_abort(c(
+        "known_V must be n_obs x n_obs (got {nrow(V)} x {ncol(V)}).",
+        ">" = "Pass a square {.arg known_V} matrix with one row/column per observation."
+      ))
     V <- V + diag(1e-8, nrow = nrow(V))
     V_inv     <- solve(V)
     log_det_V <- as.numeric(determinant(V, logarithm = TRUE)$modulus)
@@ -5027,7 +5175,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     if (!phylo_slope_xcol %in% names(data))
       cli::cli_abort(c(
         "{.arg phylo_slope({phylo_slope_xcol} | {species})} references column {.val {phylo_slope_xcol}}, which is not in {.arg data}.",
-        "i" = "Add the covariate column to the data frame."))
+        ">" = "Add the covariate column to the data frame."))
     as.numeric(data[[phylo_slope_xcol]])
   } else rep(0.0, n_obs)
   ## Design 130: predictor design for slope-only response-column fields.
@@ -5082,7 +5230,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       if (length(missing_cols) > 0L) {
         cli::cli_abort(c(
           "{.fn phylo_dep} slope covariate{?s} {.val {missing_cols}} not found in {.arg data}.",
-          "i" = "Add the covariate column{?s} to the data frame."))
+          ">" = "Add the covariate column{?s} to the data frame."))
       }
       matrix(
         as.numeric(unlist(lapply(phylo_slope_xcols, function(col) as.numeric(data[[col]])))),
@@ -5177,7 +5325,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     if (!phylo_latent_slope_xcol %in% names(data)) {
       cli::cli_abort(c(
         "{.code phylo_latent(1 + {phylo_latent_slope_xcol} | {species})} references column {.val {phylo_latent_slope_xcol}}, which is not in {.arg data}.",
-        "i" = "Add the covariate column to the data frame."
+        ">" = "Add the covariate column to the data frame."
       ))
     }
     Z_phy_lat[, 1L] <- 1.0
@@ -5205,7 +5353,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     if (!rr_B_slope_xcol %in% names(data)) {
       cli::cli_abort(c(
         "{.code latent(1 + {rr_B_slope_xcol} | {site}, d = K)} references column {.val {rr_B_slope_xcol}}, which is not in {.arg data}.",
-        "i" = "Add the covariate column to the data frame."
+        ">" = "Add the covariate column to the data frame."
       ))
     }
     x_B_slope <- as.numeric(data[[rr_B_slope_xcol]])
@@ -5237,7 +5385,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     if (!diag_B_slope_xcol %in% names(data)) {
       cli::cli_abort(c(
         "The augmented ordinary random-regression term references column {.val {diag_B_slope_xcol}}, which is not in {.arg data}.",
-        "i" = "Add the covariate column to the data frame."
+        ">" = "Add the covariate column to the data frame."
       ))
     }
     x_B_diag <- as.numeric(data[[diag_B_slope_xcol]])
@@ -6554,7 +6702,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       }, numeric(1))
       if (all(!is.na(df_vals)) && length(unique(df_vals)) == 1L) {
         if (df_vals[1] <= 1)
-          cli::cli_abort("student(): {.code df} must be > 1 (got {df_vals[1]}).")
+          cli::cli_abort(c(
+            "student(): {.code df} must be > 1 (got {df_vals[1]}).",
+            ">" = "Pass e.g. {.code df = 3}, or omit {.arg df} to estimate it."
+          ))
         df_pin[t] <- df_vals[1]
       }
     }

@@ -82,5 +82,13 @@ test_that("the package-wide bare-abort count has not gone up", {
   ## targeted fixes (Sparse phylo_vcv/Ainv rownames x3, mixed-family
   ## duplicate names, phylo_slope tree type) then brought the honest
   ## count from 1004 down to 999. 999 is the correct current ceiling.
-  expect_lte(length(hits), 999L)
+  ##
+  ## O1 (2026-09-03, gap-closure programme issue #1247): 171 user-reachable
+  ## bare aborts fixed across R/gllvmTMB.R, R/brms-sugar.R, R/fit-multi.R,
+  ## R/families.R, R/mesh.R, R/crs.R, and R/parse-multi-formula.R (the
+  ## formula/admission parser paths, spatial setup, and family/link
+  ## validation a user reaches by writing a formula or calling an exported
+  ## function). Brought the honest count from 999 down to 828. 828 is the
+  ## correct current ceiling; it may only fall further.
+  expect_lte(length(hits), 828L)
 })

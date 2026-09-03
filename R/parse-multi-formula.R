@@ -157,7 +157,8 @@ parse_multi_formula <- function(formula) {
           cli::cli_abort(c(
             "{.fn offset} takes one expression in a long-format formula.",
             "x" = "Got {.code {deparse(e)}}.",
-            "i" = "The per-trait form {.code offset(e1, e2, ...)} is wide-format only; in long format each row already names its trait, so one column carries the whole offset."
+            "i" = "The per-trait form {.code offset(e1, e2, ...)} is wide-format only; in long format each row already names its trait, so one column carries the whole offset.",
+            ">" = "Write {.code offset(one_column)}, e.g. {.code offset(log_effort)}."
           ))
         if (!is.null(offset_expr))
           cli::cli_abort(c(
@@ -168,7 +169,7 @@ parse_multi_formula <- function(formula) {
         if (sign < 0)
           cli::cli_abort(c(
             "A subtracted {.fn offset} term is not supported.",
-            "i" = "Negate the column itself, e.g. {.code offset(-log_effort)}."
+            ">" = "Negate the column itself, e.g. {.code offset(-log_effort)}."
           ))
         offset_expr <<- e[[2L]]
         return(invisible())
@@ -332,10 +333,26 @@ parse_re_int_call <- function(bar) {
             (is.call(cov_lhs) && identical(cov_lhs[[1L]], as.name("(")) &&
              length(cov_lhs) == 2L && is.numeric(cov_lhs[[2L]]) && cov_lhs[[2L]] == 1)
   if (!is_one) {
+    ## Point at a route that actually fits, mirroring the #1196 branching
+    ## used for the sibling *_indep/*_latent/*_dep slope-LHS guard
+    ## (R/brms-sugar.R): grouping by the trait column itself is the
+    ## response-column slope grammar; grouping by an ordinary column with
+    ## a single intercept+slope LHS is the augmented latent()/unique()
+    ## random-regression grammar; anything else has no supported route.
+    rhs_is_trait <- is.name(cov_group) && identical(as.character(cov_group), "trait")
+    is_single_slope <- .gllvmTMB_lhs_form(cov_lhs)$lhs_form %in%
+      c("wide_intercept_slope", "long_intercept_slope")
+    next_step <- if (rhs_is_trait) {
+      "Use the response-column slope grammar instead: {.fn slope}, {.fn phylo_slope}, or {.fn animal_slope}, e.g. {.code phylo_slope(x | trait, tree = tree)}."
+    } else if (is_single_slope) {
+      "Use {.code latent(1 + x | {deparse(cov_group)}, d = K)} or {.code unique(1 + x | {deparse(cov_group)})} instead."
+    } else {
+      "There is no supported route for a bare slope-only term; fit separate models, one covariate per group."
+    }
     cli::cli_abort(c(
       "Bar-syntax {.code ({deparse(cov_lhs)} | {deparse(cov_group)})} is not yet implemented.",
       "i" = "Currently only random intercepts {.code (1 | group)} are supported.",
-      "i" = "Random slopes {.code (0 + x | group)} and correlated intercept+slope {.code (1 + x | group)} are coming in a future release."
+      ">" = next_step
     ))
   }
   if (!is.name(cov_group))

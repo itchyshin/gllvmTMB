@@ -2,13 +2,13 @@
 % Please edit documentation in R/extract-cutpoints.R
 \name{extract_cutpoints}
 \alias{extract_cutpoints}
-\title{Extract ordinal-probit cutpoints from a fitted gllvmTMB model}
+\title{Extract ordinal cutpoints from a fitted gllvmTMB model}
 \usage{
 extract_cutpoints(fit, quiet = FALSE)
 }
 \arguments{
 \item{fit}{A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}} with at least one
-\code{\link[=ordinal_probit]{ordinal_probit()}} trait.}
+\code{\link[=ordinal_probit]{ordinal_probit()}} or \code{\link[=ordinal_logit]{ordinal_logit()}} trait.}
 
 \item{quiet}{Suppress the note emitted when \code{tau_se} cannot be filled in
 because the fit has no \code{sd_report}. Internal callers that display only the
@@ -21,19 +21,21 @@ A data frame with columns
 \item{\code{trait}}{Trait label (factor level from \code{data[[trait]]}).}
 \item{\code{cutpoint_index}}{Integer index \eqn{k \in \{2, \ldots, K-1\}}.}
 \item{\code{cutpoint_label}}{Character label \code{"cutpoint_<k>"}.}
-\item{\code{tau_estimate}}{Estimated \eqn{\tau_k} on the latent (probit)
-scale.}
+\item{\code{tau_estimate}}{Estimated \eqn{\tau_k} on the trait's own
+latent scale (probit for an \code{\link[=ordinal_probit]{ordinal_probit()}} trait, logit for
+an \code{\link[=ordinal_logit]{ordinal_logit()}} trait).}
 \item{\code{tau_se}}{Standard error from the joint sdreport, or \code{NA} if
 the report is unavailable.}
 }
 
-If the fit contains no \code{ordinal_probit()} traits, returns a
-zero-row data frame with the same columns.
+If the fit contains no \code{ordinal_probit()} or \code{ordinal_logit()}
+traits, returns a zero-row data frame with the same columns.
 }
 \description{
-For traits fitted with \code{\link[=ordinal_probit]{ordinal_probit()}}, returns a tidy data frame
-with the K - 2 estimated cutpoints \eqn{\tau_2, \ldots, \tau_{K-1}}
-per trait, with optional standard errors from the joint sdreport.
+For traits fitted with \code{\link[=ordinal_probit]{ordinal_probit()}} or \code{\link[=ordinal_logit]{ordinal_logit()}}, returns
+a tidy data frame with the K - 2 estimated cutpoints
+\eqn{\tau_2, \ldots, \tau_{K-1}} per trait, with optional standard
+errors from the joint sdreport.
 }
 \details{
 Convention: \code{gllvmTMB} follows Hadfield (2015) — \eqn{\tau_1 = 0} is

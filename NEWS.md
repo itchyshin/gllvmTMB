@@ -1,5 +1,47 @@
 # Development (unreleased)
 
+* A new ordinal response family, `ordinal_logit()` -- the cumulative-**logit**
+  analogue of the existing `ordinal_probit()` threshold model, family_id 20.
+  It is a link swap on `ordinal_probit()`'s already-shipped
+  Wright/Falconer/Hadfield cumulative-threshold machinery: the same
+  per-trait cutpoint packing, reconstruction, and reporting
+  (`extract_cutpoints()`, `report$ordinal_cutpoints`), the same
+  `tau_1 = 0` fixed / `K - 2` free-cutpoint convention (Hadfield 2015 MEE
+  6:706-714, eqn 9), and the same `K = 2` reduction (to
+  `binomial(link = "logit")` here, vs. `binomial(link = "probit")` for
+  `ordinal_probit()`) -- with the standard logistic CDF in place of the
+  normal CDF. Its link-residual variance is `pi^2/3` exactly (vs.
+  `ordinal_probit()`'s exact `1`), so `extract_Sigma(link_residual =
+  "auto")` and `extract_phylo_signal()` add the correct fixed constant for
+  each family. **Not to be confused with `cumulative_logit()`**, an
+  unrelated *predictor*-model family for an ordered categorical missing
+  covariate inside `mi()`/`impute_model()` -- `ordinal_logit()` is a
+  *response* family for `gllvmTMB()`'s `family = ` argument; the two share
+  no code path (see the naming note on both functions' help pages).
+  **In scope:** Laplace estimation (the package's default and only shipped
+  estimator), the full covariance grid on the linear predictor (identical
+  to every other family), fixed/random-effect recovery, cutpoint
+  estimation and Wald standard errors via `extract_cutpoints()` (unchanged
+  machinery, not a new interval method), and `fitted()`/
+  `predict()`/`predict_missing()`/`simulate()`/
+  `residuals(type = "randomized_quantile")`/`gllvmTMB_diagnose()` plumbing
+  parity with `ordinal_probit()`. A trait must be owned entirely by one
+  ordinal family; mixing `ordinal_probit()` and `ordinal_logit()` rows
+  within one trait is refused, matching the existing refusal for mixing an
+  ordinal family with a non-ordinal one. **Not in scope:** no NEW interval
+  work on the cutpoints beyond what `ordinal_probit()` already has;
+  `integration = "va"`, `aghq`, and `estimator = "mspl"` all remain
+  unadmitted for `ordinal_logit()` by omission from their respective
+  allowlists (the same default-refuse behaviour every unlisted family
+  gets); the augmented (intercept + slope) random-regression path does not
+  admit `ordinal_logit()` (a separate capability gate needing its own
+  evidence); `gllvmTMB_diagnose()`'s ordinal loading-degeneracy screen
+  (`ordinal_loading_runaway_thresh`/`ordinal_loading_absolute_thresh`)
+  stays scoped to `ordinal_probit()` only -- its O2 arm's scale-free
+  argument is specific to the probit link's exact unit residual variance
+  and does not carry over to logit's `pi^2/3` without its own calibration
+  campaign (both thresholds already default to `Inf`, so this changes no
+  shipped behaviour).
 * Three zero-inflated count families: `zi_poisson()`, `zi_nbinom2()`, and
   `zi_binomial()`. These are TRUE zero-inflation mixtures -- the ordinary
   count process is active at every observation, including `y = 0` -- and are

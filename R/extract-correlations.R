@@ -781,7 +781,7 @@ extract_correlations <- function(
   tids <- tids + 1L
   trait_names[vapply(seq_along(trait_names), function(t) {
     rows_t <- which(tids == t)
-    length(rows_t) > 0L && all(fids[rows_t] == 14L)
+    length(rows_t) > 0L && all(fids[rows_t] %in% c(14L, 20L))
   }, logical(1))]
 }
 
@@ -924,9 +924,9 @@ extract_cross_correlations <- function(fit, level = "unit", contrasts = FALSE,
     ordinal_traits <- .cross_ordinal_partner_traits(fit)
     if (length(ordinal_traits) > 0L) {
       cli::cli_abort(c(
-        "The residual-augmented model-scale nominal summary is unavailable with an ordinal-probit partner.",
-        "i" = "Ordinal-probit partner traits: {paste(ordinal_traits, collapse = ', ')}.",
-        "i" = "The threshold model already fixes each ordinal latent residual at 1; {.code link_residual = \"auto\"} would add it again.",
+        "The residual-augmented model-scale nominal summary is unavailable with an ordinal (probit/logit) partner.",
+        "i" = "Ordinal partner traits: {paste(ordinal_traits, collapse = ', ')}.",
+        "i" = "The threshold model already fixes each ordinal latent residual by construction (1 for ordinal_probit, pi^2/3 for ordinal_logit); {.code link_residual = \"auto\"} would add it again.",
         ">" = "Use a supported non-ordinal partner set for {.fn extract_cross_correlations}, or report latent-scale pairwise quantities with {.code extract_Sigma(..., part = \"shared\", link_residual = \"none\")}."
       ), class = c(
         "gllvmTMB_cross_auto_ordinal_unsupported",

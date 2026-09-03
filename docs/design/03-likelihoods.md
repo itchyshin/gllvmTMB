@@ -720,6 +720,57 @@ verification runs):
   unfixed engine** — an earlier version that pushed cutpoints instead of
   $\eta$ passed against the defect and guarded nothing.
 
+### Ordinal logit (FAM-24, Arc O4)
+
+- Status: `partial` (FAM-24). Point recovery + density/gradient evidence
+  only; no NEW interval work beyond `ordinal_probit()`'s existing
+  cutpoint SEs.
+- Family_id **20** — the cumulative-**logit** analogue of `ordinal_probit`
+  (family_id 14, above). A link swap on the SAME threshold apparatus, not
+  a new architecture: identical `n_ordinal_cuts_per_trait` /
+  `ordinal_offset_per_trait` / `ordinal_log_increments` DATA/PARAMETER
+  vectors, identical per-trait cutpoint reconstruction and
+  `extract_cutpoints()` reporting.
+- Parameters: latent `mu` (identity; the underlying continuous liability
+  on the logistic scale), `cutpoints` (vector; ordered, same
+  log-difference reconstruction as `ordinal_probit`).
+- Density: $\Pr(y_i = k) = F(c_k - \eta_i) - F(c_{k-1} - \eta_i)$ with
+  $F = \operatorname{plogis}$ (the standard logistic CDF) in place of
+  $\Phi$. $K = 2$ reduces exactly to `binomial(link = "logit")`, the
+  logit analogue of the probit family's Hadfield (2015) eqn 10 reduction.
+- Numerical: latent residual variance fixed at $\pi^2/3$ by construction
+  (vs. `ordinal_probit`'s exact $1$); cutpoints estimated on log-difference
+  scale to preserve ordering, unchanged from `ordinal_probit`.
+  Implemented via the existing `gll_log_inv_logit` /
+  `gll_log_inv_logit_diff` helpers (`src/gllvmTMB.cpp:69-79,514-532`,
+  originally built for the `cumulative_logit()` missing-PREDICTOR family
+  and reused here for a different, response-side family — see the
+  naming note on both constructors).
+- **Why no separate far-tail asymptotic branch is needed, unlike
+  `gll_log_pnorm`'s Mills-ratio expansion at $x < -20$.** `pnorm(x)`
+  rounds to exactly $1.0$ once $x > 8.2924$ because the Gaussian tail
+  decays like $e^{-x^2/2}$ (double-exponential), underflowing the double
+  unit roundoff by $x \approx 8.3$. The logistic complement
+  $1 - F(x) = 1/(1+e^x)$ decays only like $e^{-x}$ (single exponential),
+  so it does not round to exactly $1.0$ until $x \approx 36.7$ — over
+  four times further out — and `logspace_add(0, x) = \log(1+e^x)` (what
+  `gll_log_inv_logit`/`gll_log_inv_logit_diff` are built on) is already
+  the standard numerically-stable form across that whole range, with no
+  analogue of `gll_log_pnorm`'s explicit $-20$ switch point.
+- **The adjacent-cutpoint collision guard IS still reachable here**,
+  exactly as documented above for `ordinal_probit`: two free cutpoints
+  landing within $\sim10^{-16}$ of each other on the $\eta$ scale makes
+  `gll_log_inv_logit_diff` underflow via `gll_log1mexp`'s existing
+  input-ceiling guard before the shared `log(1e-300)` residual floor
+  catches it — the SAME mechanism, already covering both ordinal
+  families (see `gll_log_inv_logit_diff`'s own comment, added when it
+  was first built for `cumulative_logit()`). Nothing new was added for
+  fid 20.
+- Evidence: `dev/gapclose/arcD/alignment-ordinal-logit.md` (the symbolic
+  alignment table), `dev/gapclose/arcD/O4-report.md` (density identity,
+  FD gradient, per-seed recovery numbers),
+  `tests/testthat/test-ordinal-logit.R`.
+
 ### Tweedie
 
 - Status: `claimed`.

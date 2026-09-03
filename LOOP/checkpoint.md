@@ -1,7 +1,7 @@
-GOAL: see GOAL.md.   STATE: COLD START — kit written 2026-09-02 evening; #1240's merge gate (local suite+check) and CI were running in the planning session.
-ARCS DONE (verified): none in this lane. Prior checkpoints: PR #1239 MERGED into main (c39c1a13b); PR #1240 (zi families) verified locally + Opus review, awaiting its final suite/check + CI.
-ARC IN PROGRESS: O0 — check `gh pr view 1240` (CI green?) and the local gate logs at /private/tmp/claude-503/-Users-z3437171-Dropbox-Github-Local-gllvmTMB/46df980d-b0f8-4444-a181-ed4b4a683bbe/scratchpad/g-all-arcD/{test.log,check.log} (SUITE line; check status) — if the planning session already merged #1240, O0 is just `git merge origin/main`.
-NEXT: O1.
-OPEN GATES (need human): none (D-207 merge of #1240 pre-approved; D-210 overnight rules).
-TRUTH LIVES IN: origin/main; branch claude/gapclose-arcD-zi-20260902 (PR #1240); this lane branch; LOOP/ultra-plan.md; vault D-204/D-207/D-210; after-task reports docs/dev-log/after-task/2026-09-02-gapclose-*.md.
-RESUME: You are the gllvmTMB overnight lane (arc-loop). READ LOOP/GOAL.md -> LOOP/checkpoint.md -> LOOP/arcs.md -> LOOP/ultra-plan.md -> AGENTS.md. Continue from NEXT; verify by log; checkpoint every arc; pause only at the gates in GOAL.md.
+GOAL: see GOAL.md.   STATE: O0 DONE — PR #1239 merged (c39c1a13b) and PR #1240 merged (5855e2ad9, merge commit, CI green, local suite FAIL 0 + check clean after fixes); origin/main merged into this lane branch. Next is O1.
+ARCS DONE (verified): O0 — `gh api repos/itchyshin/gllvmTMB/pulls/1240` merged=true; `git log origin/main -1` = 5855e2ad9; this lane branch contains origin/main.
+ARC IN PROGRESS: none.
+NEXT: O1 — #1247 bare aborts batch 1 (see arcs.md): inventory with dev/gapclose/count-bare-aborts.R (currently 999 package-wide), fix the ~150 most user-reachable, snapshot tests, lower the ratchet, branch claude/overnight-aborts-1 from origin/main, full suite + check, draft PR → auto-merge on green CI (low-risk).
+OPEN GATES (need human): none (D-210 rules apply; API arcs O4–O7 open DRAFT PRs and wait).
+TRUTH LIVES IN: origin/main @ 5855e2ad9; this lane branch (pushed); LOOP/ultra-plan.md; vault D-204/D-207/D-210; after-task reports docs/dev-log/after-task/2026-09-02-gapclose-*.md; issues #1241–#1247.
+RESUME: You are the gllvmTMB overnight lane (arc-loop). READ LOOP/GOAL.md -> LOOP/checkpoint.md -> LOOP/arcs.md -> LOOP/ultra-plan.md -> AGENTS.md. Continue from NEXT (O1); verify by log; checkpoint every arc; pause only at the gates in GOAL.md.

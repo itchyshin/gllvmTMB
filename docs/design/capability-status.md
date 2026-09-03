@@ -31,7 +31,8 @@ Mission Control input for the R side of the gllvmTMB <-> GLLVM.jl twin board. Ev
 | lognormal | implemented |  | FAM-11 |  |
 | student | implemented |  | FAM-12 | COLLISION (divergence, not a false join): both packages call this family `student`, but gllvmTMB's `student()` ESTIMATES the degrees-of-freedom `nu` per trait (`R/families.R`, `log_df_student` in gllvmTMB.cpp) while GLLVM.jl's Student-t parity is paid only at a FIXED nu on both sides -- see the parity tool's NOTED_DIVERGENCES table. |
 | tweedie | implemented |  | FAM-13 |  |
-| ordinal_probit | implemented |  | FAM-14 | COLLISION guard: this is the probit-link ordinal cumulative model only. Julia's row is the COMBINED `ordinal_probit / cumulative_logit`; gllvmTMB has no logit-link ordinal response family, so that half is a genuine port gap (see parity tool disposition table). |
+| ordinal_probit | implemented |  | FAM-14 | COLLISION guard: this is the probit-link ordinal cumulative model only. Julia's row is the COMBINED `ordinal_probit / cumulative_logit`. The logit half (Julia's `Ordinal`) is NO LONGER a port gap as of Arc O4 -- see the `ordinal_logit` row below, FAM-24. |
+| ordinal_logit | scope-limited | Ordinal | FAM-24 | Closes the B3-issues.md #2 gap: the cumulative-logit ordinal response family, distinct from R's cumulative_logit() (a missing-PREDICTOR family; COLLISION guard on that row below). Link swap on ordinal_probit's (FAM-14) apparatus -- same cutpoint machinery, standard logistic CDF in place of the normal CDF; sigma_d^2 = pi^2/3 exact vs. FAM-14's exact 1. |
 | truncated_poisson | scope-limited |  | FAM-15 |  |
 | truncated_nbinom2 | scope-limited |  | FAM-15 |  |
 | truncated_nbinom1 | planned |  | FAM-16 | FAM-16 also names `censored_poisson` as blocked prose, but gllvmTMB has no censored_poisson constructor at all; that family is tracked purely as a Julia-only port target, not aliased here, so the gap stays visible. |

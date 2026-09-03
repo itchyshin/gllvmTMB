@@ -97,8 +97,8 @@ check_auto_residual <- function(fit) {
           "."
         )
       )
-    } else if (identical(fams_t, 14L)) {
-      ## Ordinal-probit single-family trait.
+    } else if (fams_t %in% c(14L, 20L)) {
+      ## Ordinal (probit or logit) single-family trait.
       ordinal_traits <- c(ordinal_traits, trait_names[t])
     }
   }
@@ -115,10 +115,13 @@ check_auto_residual <- function(fit) {
     )
   }
 
-  ## ---- check (b): ordinal-probit traits ---------------------------------
+  ## ---- check (b): ordinal-probit / ordinal-logit traits ------------------
+  ## Class name kept as `..._ordinal_probit_overcount` for compatibility
+  ## with existing callers/tests that match on it (R/extract-correlations.R
+  ## included); it now fires for either ordinal family, not probit alone.
   if (length(ordinal_traits) > 0L) {
     msg <- paste0(
-      "Ordinal-probit trait",
+      "Ordinal (probit/logit) trait",
       if (length(ordinal_traits) > 1L) "s" else "",
       " present: ",
       paste(paste0("{.val ", ordinal_traits, "}"), collapse = ", "),
@@ -126,18 +129,18 @@ check_auto_residual <- function(fit) {
     )
     cli::cli_warn(
       c(
-        "{.code link_residual = \"auto\"} over-counts the latent residual for ordinal-probit traits.",
+        "{.code link_residual = \"auto\"} over-counts the latent residual for ordinal traits.",
         "i" = msg,
-        "i" = "The probit link's latent residual is already {.val 1} by construction of the threshold model (cutpoints absorb location; latent variance is standardised).",
-        ">" = "Pass {.code link_residual = \"none\"} for ordinal-probit fits, or extract per tier and adjust manually."
+        "i" = "The threshold model's latent residual is already fixed by construction (1 for {.fn ordinal_probit}, pi^2/3 for {.fn ordinal_logit}; cutpoints absorb location, latent variance is standardised).",
+        ">" = "Pass {.code link_residual = \"none\"} for ordinal fits, or extract per tier and adjust manually."
       ),
       class = "gllvmTMB_auto_residual_ordinal_probit_overcount"
     )
     return(invisible(list(
       status = "warn",
       messages = paste(
-        "Ordinal-probit traits present;",
-        "link_residual = 'auto' over-counts the latent residual (already 1 by construction)."
+        "Ordinal (probit/logit) traits present;",
+        "link_residual = 'auto' over-counts the latent residual (already fixed by construction)."
       )
     )))
   }
@@ -165,7 +168,8 @@ check_auto_residual <- function(fit) {
     "12" = "delta_lognormal",
     "13" = "delta_gamma",
     "14" = "ordinal_probit",
-    "15" = "nbinom1"
+    "15" = "nbinom1",
+    "20" = "ordinal_logit"
   )
   unname(names[as.character(ids)])
 }

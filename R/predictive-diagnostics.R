@@ -714,6 +714,29 @@ residuals.gllvmTMB_multi <- function(
       lower[i] <- if (yk <= 1L) 0 else stats::pnorm(cuts_t[yk - 1L] - eta[i])
       upper[i] <- if (yk >= K_t) 1 else stats::pnorm(cuts_t[yk] - eta[i])
       u[i] <- stats::runif(1L, min = lower[i], max = upper[i])
+    } else if (fid == 20L) {
+      ## ordinal_logit: identical structure to fid 14 above, with the
+      ## standard logistic CDF (stats::plogis) in place of pnorm. Same
+      ## cutpoint reconstruction (ordinal_full_cuts is shared across both
+      ## ordinal families; see its construction above).
+      cuts_t <- if (tid >= 1L && tid <= length(ordinal_full_cuts)) {
+        ordinal_full_cuts[[tid]]
+      } else {
+        NULL
+      }
+      if (is.null(cuts_t)) {
+        status[i] <- "missing_cutpoints"
+        next
+      }
+      K_t <- length(cuts_t) + 1L
+      if (y_i < 1 || y_i > K_t || y_i != floor(y_i)) {
+        status[i] <- "invalid_observed"
+        next
+      }
+      yk <- as.integer(y_i)
+      lower[i] <- if (yk <= 1L) 0 else stats::plogis(cuts_t[yk - 1L] - eta[i])
+      upper[i] <- if (yk >= K_t) 1 else stats::plogis(cuts_t[yk] - eta[i])
+      u[i] <- stats::runif(1L, min = lower[i], max = upper[i])
     } else if (fid == 15L) {
       if (y_i < 0 || y_i != floor(y_i)) {
         status[i] <- "invalid_observed"
@@ -1542,7 +1565,8 @@ residuals.gllvmTMB_multi <- function(
     "15" = "nbinom1",
     "17" = "zi_poisson",
     "18" = "zi_nbinom2",
-    "19" = "zi_binomial"
+    "19" = "zi_binomial",
+    "20" = "ordinal_logit"
   )
   out <- unname(labels[as.character(family_id)])
   out[is.na(out)] <- paste0("family_id_", family_id[is.na(out)])

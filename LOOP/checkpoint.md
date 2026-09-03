@@ -1,44 +1,35 @@
-GOAL: see GOAL.md.   STATE: Shinichi signed off the two draft API PRs (D-216); merging them and
-building the last two ports.
+GOAL: see GOAL.md.   STATE: COMPLETE. Reverse parity is closed; every arc landed on main.
 
-ARCS DONE (verified):
-- O0  #1240 merged (5855e2ad9) — verified by `gh pr view` mergedAt + main's log.
-- O3  zi multi-seed recovery, 450 fits on Totoro -> PR #1248 MERGED. Verified by recounting the
-      450-row per-seed CSV myself; two cells came out stricter than the agent's table because I also
-      required convergence. Register rows FAM-21/22/23 quote the measured fractions.
-- O1  bare aborts 999 -> 828 across 7 R files, 16 snapshot tests -> PR #1251. Verified by running
-      count_bare_aborts() (828) and spot-checking the two riskiest bullets by fitting the named route.
-      Full suite on the branch: FAIL 0 | WARN 55 | SKIP 880 | PASS 27020.
-- O4  ordinal_logit() at runtime id 20 -> DRAFT PR #1250. Density identity 5.684e-14 on a
-      fixed-effects-only fit (exact NLL, not Laplace); FD gradient 2.786e-08. SIGNED OFF (D-216).
-- O5  select_lv() + anova.gllvmTMB_multi() with the chi-bar boundary mixture -> DRAFT PR #1249.
-      Empirical size 0.095 (MCSE 0.021) at nominal 0.05, reported not buried. My own brief had the
-      direction of the naive test WRONG (it is conservative, not anticonservative); the agent caught
-      it, proved it, and pinned it with a test. SIGNED OFF (D-216).
-- O8  morning brief written, committed 43fd76573, pushed, delivered to Shinichi.
+ARCS DONE (verified — each by reading the artifact, never a "DONE" line):
+- O0  #1240 zero-inflated families
+- O3  #1248 450-fit Totoro recovery campaign; register rows quote measured seed-fractions
+- O1  #1251 bare aborts 999 -> 828, ratchet lowered
+- O4  #1250 ordinal_logit() at runtime family id 20
+- O5  #1249 select_lv() + anova() with the chi-bar boundary mixture
+- O6  #1253 ordination_uncertainty()
+- O7  #1254 censored_poisson() engine at runtime family id 21
+- O8  morning brief + after-task report
 
-ARC IN PROGRESS:
-- Merge chain (background): wait #1251 CI -> squash-merge -> merge main into the two signed-off
-  branches -> recount bare aborts against the new 828 ceiling. Landed when `gh pr view` shows all
-  three merged and main's count is <= 828.
+main @ 073d197e8. Nothing of this lane's is open.
 
-NEXT:
-- O6 #1243 ordination_uncertainty()  (builder running, branch claude/overnight-ordination-uncertainty)
-- O7 #1244 censored_poisson() engine (builder running, branch claude/overnight-censored-poisson)
+OPEN GATES: none. D-216 signed off #1249/#1250; D-217 approved #1253/#1254.
 
-STOP INSTRUCTION (Shinichi, 2026-09-03 ~06:50 local): scope ENDS AT PARITY — the two ports close it,
-nothing beyond. STOP AROUND NOON LOCAL and re-evaluate the situation with him. Do not open new arcs
-after the ports.
+STILL OWED (deliberately NOT started — Shinichi's "we can stop at the parity" fence):
+- 828 refusals still lacking a next step (#1247), behind a ratchet that only falls.
+- Multi-seed campaigns for ordinal_logit() and censored_poisson(); both ship on few-seed
+  regression guards and their register rows say so.
+- No coverage evidence for ordination_uncertainty(); both returned quantities are Wald.
 
-OPEN GATES (need human): re-evaluation at noon. D-216 signed off #1249/#1250; D-210 covers the rest of the run.
+LESSONS THIS LANE PAID FOR (all three cost real time; all three recur):
+1. testthat prints "DONE" over a file where every assertion skipped behind skip_on_cran().
+   Read the counts; set NOT_CRAN.
+2. A merge watcher logged "#1249 MERGED" when no merge had happened — it checked CI but never
+   the merge command's own result. Read the PR state back.
+3. A conflict marker makes an R file unparseable; the bare-abort counter silently skips such a
+   file, so the count comes out BELOW the ceiling and reads as a pass. Check every file parses
+   before trusting any count. This fired three times.
 
-THE TRAP TO RE-CHECK BEFORE EVERY MERGE FROM HERE: once #1251 lands the ratchet ceiling on main is
-828 and `test-gapclose-next-steps.R` only lets it fall. Any branch adding a refusal without a ">"
-next-step bullet fails CI after taking main. This reddened #1240 (five new zi refusals -> 1004).
+TRUTH LIVES IN: origin/main @ 073d197e8; docs/dev-log/after-task/2026-09-03-gapclose-overnight-arcs.md;
+docs/dev-log/2026-09-03-morning-brief.md; vault D-216/D-217.
 
-TRUTH LIVES IN: origin/main; PRs #1249 #1250 #1251; branches claude/overnight-*;
-docs/dev-log/2026-09-03-morning-brief.md; the plan's EXECUTION LOG at
-~/.claude/plans/read-agents-md-and-docs-dev-log-handover-lovely-grove.md.
-
-RESUME: read LOOP/GOAL.md then this file; check `gh pr list`; finish the merge chain; collect the O6
-and O7 builder reports; ratchet-check each before its PR; after-task report + board refresh.
+RESUME: nothing pending. A future lane starts from the STILL OWED list above.

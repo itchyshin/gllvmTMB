@@ -960,16 +960,16 @@
   eig <- eigen(R, symmetric = TRUE)
   tol <- sqrt(.Machine$double.eps) * max(1, max(abs(eig$values)))
   if (any(!is.finite(eig$values)) || any(eig$values <= tol)) {
-    cli::cli_abort(
+    cli::cli_abort(c(
       "The standardized response-column covariance for {.fn phylo_coef} must be positive definite.",
-      class = "gllvmTMB_column_coef_source_invalid"
-    )
+      ">" = "Check the {.arg tree}/{.arg vcv} source is a valid covariance/relatedness structure."
+    ), class = "gllvmTMB_column_coef_source_invalid")
   }
   if (nrow(R) < 2L || max(abs(eig$values - 1)) <= tol) {
     cli::cli_abort(c(
       "{.arg rho} is not identifiable from this {.fn phylo_coef} source.",
       "x" = "After marginal-scale standardisation, the source has no between-column correlation contrast.",
-      "i" = "Fix {.arg rho} to a numeric value, or use {.fn column_coef} for an IID source."
+      ">" = "Fix {.arg rho} to a numeric value, or use {.fn column_coef} for an IID source."
     ), class = "gllvmTMB_column_coef_rho_unidentified")
   }
   list(
@@ -996,12 +996,14 @@
       nrow(K) != ncol(K)) {
     cli::cli_abort(c(
       "{.arg K} for {.fn kernel_slope} must be a square numeric matrix.",
-      "i" = "Source {.val {source_name}} is indexed by {length(levs)} response-column level{?s}."
+      ">" = "Source {.val {source_name}} is indexed by {length(levs)} response-column level{?s}; pass a {length(levs)} x {length(levs)} numeric matrix."
     ), class = "gllvmTMB_column_slope_kernel_invalid")
   }
   if (any(!is.finite(K))) {
-    cli::cli_abort("{.arg K} for {.fn kernel_slope} must contain only finite values.",
-                   class = "gllvmTMB_column_slope_kernel_invalid")
+    cli::cli_abort(c(
+      "{.arg K} for {.fn kernel_slope} must contain only finite values.",
+      ">" = "Check {.arg K} for NA/NaN/Inf entries before fitting."
+    ), class = "gllvmTMB_column_slope_kernel_invalid")
   }
   rn <- rownames(K)
   cn <- colnames(K)
@@ -1016,20 +1018,25 @@
       length(rn) != length(levs) || length(cn) != length(levs)) {
     cli::cli_abort(c(
       "{.arg K} labels for {.fn kernel_slope} must match the response-column levels exactly.",
-      "i" = "Expected {.val {levs}}; row labels are {.val {rn}} and column labels are {.val {cn}}."
+      "x" = "Expected {.val {levs}}; row labels are {.val {rn}} and column labels are {.val {cn}}.",
+      ">" = "Set matching {.code rownames(K)} and {.code colnames(K)} to the response-column levels."
     ), class = "gllvmTMB_column_slope_kernel_labels")
   }
   A <- K[levs, levs, drop = FALSE]
   symmetry_tol <- sqrt(.Machine$double.eps) * max(1, max(abs(A)))
   if (max(abs(A - t(A))) > symmetry_tol) {
-    cli::cli_abort("{.arg K} for {.fn kernel_slope} must be symmetric.",
-                   class = "gllvmTMB_column_slope_kernel_invalid")
+    cli::cli_abort(c(
+      "{.arg K} for {.fn kernel_slope} must be symmetric.",
+      ">" = "Pass a symmetric kernel matrix, e.g. {.code K <- (K + t(K)) / 2}."
+    ), class = "gllvmTMB_column_slope_kernel_invalid")
   }
   A <- (A + t(A)) / 2
   R <- tryCatch(chol(A), error = function(e) NULL)
   if (is.null(R)) {
-    cli::cli_abort("{.arg K} for {.fn kernel_slope} must be positive definite.",
-                   class = "gllvmTMB_column_slope_kernel_invalid")
+    cli::cli_abort(c(
+      "{.arg K} for {.fn kernel_slope} must be positive definite.",
+      ">" = "Check {.arg K} is a valid covariance/kernel matrix, or add a small ridge, e.g. {.code K + diag(1e-6, nrow(K))}."
+    ), class = "gllvmTMB_column_slope_kernel_invalid")
   }
   Ainv <- chol2inv(R)
   dimnames(Ainv) <- list(levs, levs)
@@ -1068,16 +1075,16 @@
   eig <- eigen(R, symmetric = TRUE)
   tol <- sqrt(.Machine$double.eps) * max(1, max(abs(eig$values)))
   if (any(!is.finite(eig$values)) || any(eig$values <= tol)) {
-    cli::cli_abort(
+    cli::cli_abort(c(
       "The standardized response-column covariance for {.fn kernel_coef} must be positive definite.",
-      class = "gllvmTMB_column_coef_source_invalid"
-    )
+      ">" = "Check the {.arg K} kernel matrix is a valid covariance structure."
+    ), class = "gllvmTMB_column_coef_source_invalid")
   }
   if (nrow(R) < 2L || max(abs(eig$values - 1)) <= tol) {
     cli::cli_abort(c(
       "{.arg rho} is not identifiable from this {.fn kernel_coef} source.",
       "x" = "After marginal-scale standardisation, the kernel has no between-column correlation contrast.",
-      "i" = "Fix {.arg rho} to a numeric value, or use {.fn column_coef} for an IID source."
+      ">" = "Fix {.arg rho} to a numeric value, or use {.fn column_coef} for an IID source."
     ), class = "gllvmTMB_column_coef_rho_unidentified")
   }
   list(

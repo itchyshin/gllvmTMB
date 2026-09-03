@@ -1374,7 +1374,11 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     fam_levels <- if (is.factor(data[[fam_var]])) levels(data[[fam_var]])
                   else sort(unique(as.character(data[[fam_var]])))
     if (length(fam_levels) != length(family))
-      cli::cli_abort("length(family) must match the number of distinct levels in {.var {fam_var}}.")
+      cli::cli_abort(c(
+        "length(family) must match the number of distinct levels in {.var {fam_var}}.",
+        "x" = "Got {length(family)} famil{?y/ies} for {length(fam_levels)} level{?s}.",
+        ">" = "Supply one family per level of {.var {fam_var}}, e.g. {.code list(<level> = <family>(), ...)}."
+      ))
     family <- .align_mixed_family_list(family, fam_levels, fam_var)
     fl_pairs <- vapply(family, family_to_id, integer(2))
     fids     <- fl_pairs[1, ]
@@ -4530,7 +4534,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ## sparse matvecs. correlation = TRUE matches MCMCglmm::inverseA's default
       ## unit-root-to-tip scaling (the phylo variance parameter absorbs the scale).
       if (!inherits(phylo_tree, "phylo"))
-        cli::cli_abort("{.arg phylo_tree} must be an {.cls ape::phylo} tree.")
+        cli::cli_abort(c(
+          "{.arg phylo_tree} must be an {.cls ape::phylo} tree.",
+          ">" = "Pass an object read by {.fn ape::read.tree} or {.fn ape::read.nexus}."
+        ))
       levs <- levels(data[[species]])
       .gllvm_abort_uncovered_species_levels(
         levs, phylo_tree$tip.label, data, species, "{.arg phylo_tree} tip labels"
@@ -4585,9 +4592,15 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     } else {
       ## --- Legacy dense path: invert tip-only Cphy and store sparse-format
       if (is.null(phylo_vcv))
-        cli::cli_abort("phylo_latent() / phylo_slope() found in formula but {.arg phylo_vcv} (or {.arg phylo_tree}) is NULL.")
+        cli::cli_abort(c(
+          "phylo_latent() / phylo_slope() found in formula but {.arg phylo_vcv} (or {.arg phylo_tree}) is NULL.",
+          ">" = "Pass {.code tree = ...} or {.code vcv = ...} inside the keyword, or supply {.arg phylo_tree}/{.arg phylo_vcv} to {.fn gllvmTMB}."
+        ))
       if (is.null(rownames(phylo_vcv)))
-        cli::cli_abort("phylo_vcv must have rownames matching levels of {.var {species}}.")
+        cli::cli_abort(c(
+          "phylo_vcv must have rownames matching levels of {.var {species}}.",
+          ">" = "Set {.code rownames(phylo_vcv) <- levels(data${species})}."
+        ))
       levs <- levels(data[[species]])
       .gllvm_abort_uncovered_species_levels(
         levs, rownames(phylo_vcv), data, species, "{.arg phylo_vcv} rownames"
@@ -4621,8 +4634,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       }
     }
     if (any(!is.finite(structured_rho_diagonal) | structured_rho_diagonal <= 0)) {
-      cli::cli_abort("Structured {.arg rho} requires positive finite resolved source diagonals.",
-        class = "gllvmTMB_structured_rho_source")
+      cli::cli_abort(c(
+        "Structured {.arg rho} requires positive finite resolved source diagonals.",
+        ">" = "Check the tree/vcv/kernel source supplied has strictly positive, finite marginal variances."
+      ), class = "gllvmTMB_structured_rho_source")
     }
     structured_rho_field_active <- !structured_rho_sparse || structured_rho_value > 0
     structured_rho$labels <- levs
@@ -4767,7 +4782,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ## observed tips via .resolve_sparse_propto_precision() -- the same
       ## routine already used for the sparse-Ainv branch just below.
       if (!inherits(phylo_tree, "phylo"))
-        cli::cli_abort("{.arg phylo_tree} must be an {.cls ape::phylo} tree.")
+        cli::cli_abort(c(
+          "{.arg phylo_tree} must be an {.cls ape::phylo} tree.",
+          ">" = "Pass an object read by {.fn ape::read.tree} or {.fn ape::read.nexus}."
+        ))
       .gllvm_abort_uncovered_species_levels(
         levs, phylo_tree$tip.label, data, species, "{.arg phylo_tree} tip labels"
       )
@@ -4783,7 +4801,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
           ">" = "Pass {.code tree = my_tree} (or {.code vcv = Cphy}) inside the keyword, or supply {.arg phylo_tree}/{.arg phylo_vcv} to {.fn gllvmTMB}."
         ))
       if (is.null(rownames(phylo_vcv)))
-        cli::cli_abort("phylo_vcv must have rownames matching levels of {.var {species}}.")
+        cli::cli_abort(c(
+          "phylo_vcv must have rownames matching levels of {.var {species}}.",
+          ">" = "Set {.code rownames(phylo_vcv) <- levels(data${species})}."
+        ))
       .gllvm_abort_uncovered_species_levels(
         levs, rownames(phylo_vcv), data, species, "{.arg phylo_vcv} rownames"
       )

@@ -137,6 +137,18 @@ parse_capability_tables <- function(lines, canonical) {
   rows <- list()
   cur_group <- NA_character_
   in_target_table <- FALSE
+  # An HTML comment block (`<!-- ... -->`, possibly spanning many lines)
+  # annotating one table row is common in both ledgers (e.g. GLLVM.jl's
+  # "Response families" table: a long <!-- ... --> comment sits between the
+  # `multinomial / categorical` row and `delta_gamma`, `zip / zinb / zib`,
+  # etc.). GitHub renders it invisibly, so the table reads as continuous --
+  # but the line-by-line state machine below previously treated the
+  # comment's non-`|`-prefixed lines as "table ended", silently dropping
+  # every row after the comment for the rest of that table (found while
+  # wiring FAM-21/22/23: delta_gamma/delta_lognormal/hurdle_poisson/
+  # zip-zinb-zib/ordered_beta/exponential/com_poisson were ALL missing from
+  # every parity_ledger.R output -- not matched, not Julia-only, nowhere).
+  in_html_comment <- FALSE
   n <- length(lines)
   i <- 1
   while (i <= n) {
@@ -179,6 +191,18 @@ parse_capability_tables <- function(lines, canonical) {
       } else if (!grepl("^-+$", gsub("[: ]", "", raw_cells[1] %||% "-"))) {
         in_target_table <- FALSE
       }
+    } else if (in_html_comment) {
+      # Mid-comment line: keep in_target_table exactly as it was. Close the
+      # comment if this line carries its closer (single-line `<!-- ... -->`
+      # already closes on the SAME branch below, so this covers only a
+      # multi-line comment's closing line).
+      if (grepl("-->", ln, fixed = TRUE)) in_html_comment <- FALSE
+      # in_target_table untouched
+    } else if (grepl("^\\s*<!--", ln)) {
+      # Comment opens here. If it also closes on this line, treat it as a
+      # single opaque line (does not end the table); otherwise enter
+      # multi-line comment mode, ALSO without ending the table.
+      if (!grepl("-->", ln, fixed = TRUE)) in_html_comment <- TRUE
     } else {
       in_target_table <- FALSE
     }
@@ -246,7 +270,9 @@ NOTED_DIVERGENCES <- list(
   list(pattern = "^kernel",
        reason = "kernel PSD-vs-PD: R's kernel_* keyword family documents a PSD requirement on the supplied K; GLLVM.jl's dense-kernel fitter's positive-definiteness contract has not been cross-checked against that requirement -- treat a status match here as unverified equivalence, not confirmed parity."),
   list(pattern = "^aghq estimator$",
-       reason = "AGHQ shape: gllvmTMB's `aghq` is a public opt-in knob (`gllvmTMBcontrol(aghq = ...)`); GLLVM.jl's own AGHQ-shaped kernel (src/families/aghq_grid.jl) is internal-only, unreceipted as a public capability, and its own ledger keeps 'AGHQ estimator' at `missing` -- a genuine status disagreement, not merely a naming collision.")
+       reason = "AGHQ shape: gllvmTMB's `aghq` is a public opt-in knob (`gllvmTMBcontrol(aghq = ...)`); GLLVM.jl's own AGHQ-shaped kernel (src/families/aghq_grid.jl) is internal-only, unreceipted as a public capability, and its own ledger keeps 'AGHQ estimator' at `missing` -- a genuine status disagreement, not merely a naming collision."),
+  list(pattern = "^zi_poisson / zi_nbinom2 / zi_binomial",
+       reason = "zi_nbinom2 dispersion shape: gllvmTMB REUSES the ordinary per-trait nbinom2() dispersion (one log_phi_nbinom2 value per trait); GLLVM.jl's ZINB/ZINegBin uses ONE SHARED SCALAR NB2 dispersion r across every trait (its own ZINBCovFit docstring). Both `implemented`-shaped statuses describe different parameterisations, the same divergence shape as the `student` nu row above. Also: gllvmTMB's structural-zero probability is intercept-only for all three (matches GLLVM.jl's v1 scope, Lambda_z = 0); neither side has covariates on the zero part.")
 )
 
 divergence_note_for <- function(name) {
@@ -267,7 +293,17 @@ divergence_note_for <- function(name) {
 # ---------------------------------------------------------------------------
 
 PORT <- list(
-  "zip / zinb / zib" = "zero-inflated Poisson/NB/Binomial trio: gllvmTMB cut ZIP/ZINB/ZIB; genuinely owed if the maintainer wants them back",
+  # RESOLVED 2026-09-02 (Arc D): gllvmTMB now ships zi_poisson()/
+  # zi_nbinom2()/zi_binomial() (FAM-21/22/23). This key is no longer
+  # consulted for that row -- it now MATCHES the R ledger's "zi_poisson /
+  # zi_nbinom2 / zi_binomial (zero-inflated count families)" row (see
+  # NOTED_DIVERGENCES above) -- kept only so a stale re-add of the OLD R
+  # ledger name would still get a sensible message rather than silence.
+  "zip / zinb / zib" = "zero-inflated Poisson/NB/Binomial trio: RESOLVED -- gllvmTMB built zi_poisson()/zi_nbinom2()/zi_binomial() (Arc D, FAM-21/22/23); if this fires, the R ledger's zero-inflation row name/alias has drifted and no longer joins this Julia row.",
+  "hurdle_poisson / hurdle_nbinom2" = "count hurdle families (zero-truncated count conditional on a separate presence draw): gllvmTMB's only hurdle families are delta_lognormal/delta_gamma (continuous positive part, not a truncated count); a Poisson/NB2 count hurdle is a genuine port target, newly visible after the 2026-09-02 HTML-comment table-parsing fix (see the comment on parse_capability_tables() above)",
+  "ordered_beta / beta_hurdle" = "ordered-beta / beta-hurdle proportion family: no register row found; genuinely owed, newly visible after the 2026-09-02 HTML-comment table-parsing fix",
+  "exponential (gamma shape=1 path)" = "exponential as a fixed-shape Gamma special case: gllvmTMB's Gamma() always estimates the per-trait shape (FAM-09); no fixed-shape-1 exponential entry point exists; genuinely owed, newly visible after the 2026-09-02 HTML-comment table-parsing fix",
+  "com_poisson" = "Conway-Maxwell-Poisson (flexible under/over-dispersion count family): no register row found; genuinely owed, newly visible after the 2026-09-02 HTML-comment table-parsing fix",
   "ordinal_probit / cumulative_logit" = "logit-link cumulative ordinal response: gllvmTMB only ships ordinal_probit (FAM-14); the logit-link variant is a genuine port target",
   "censored_poisson" = "right-censored Poisson response family: gllvmTMB has no censored_poisson constructor at all (FAM-16 tracks only truncated_nbinom1); genuinely owed",
   "fourth-corner / trait–environment" = "fourth-corner / trait-environment estimand: no dedicated register row found; genuinely owed",

@@ -19,7 +19,12 @@ questions" should be edited as state changes. The "Recently
 resolved" section is a 24-48 hour rolling window; older items
 move to per-PR after-task reports or the check-log.
 
-## 2026-09-02 Claude lane: gllvmTMB gap closure (`claude/gapclose-20260902`) — DRAFT PR #1239
+## 2026-09-02 Claude lane: gllvmTMB gap closure (`claude/gapclose-20260902`) — DRAFT PR #1239 · ARC D DRAFT PR #1240
+
+**Checkpoint 2 (ARC D1, 15:50):** `zi_poisson()`, `zi_nbinom2()`, `zi_binomial()` built on
+`claude/gapclose-arcD-zi-20260902` (stacked on #1239): Laplace, per-trait intercept-only zero part,
+Opus review PASS-WITH-CORRECTIONS (fixed), register FAM-21..23 partial. 🔴 New TMB likelihoods:
+maintainer sign-off before merge (four points listed in the PR). CI on #1239 is green.
 
 **State (10:30):** ARC A/B/C landed on the branch (15 commits), reviewed adversarially, corrected, and
 re-verified; final full suite + R CMD check running on `b1004636a`. 🔴 Owner call: Decision 3 shipped

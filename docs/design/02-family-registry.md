@@ -181,6 +181,34 @@ truth for whether a family is `covered`, `partial`, or `blocked`.
 | Truncated nbinom1 | `truncated_nbinom1()` | `mu`, `sigma` | log, log | $\{1, 2, 3, \ldots\}$ | blocked constructor-only |
 | Truncated nbinom2 | `truncated_nbinom2()` | `mu`, `sigma` | log, log | $\{1, 2, 3, \ldots\}$ | partial |
 | Censored Poisson | `censored_poisson()` | `mu` | log | $\{0, 1, 2, \ldots\}$ with interval censoring | blocked constructor-only |
+| Zero-inflated Poisson | `zi_poisson()` | `mu`, `zi` | log, logit | $\{0, 1, 2, \ldots\}$ | partial (FAM-21) |
+| Zero-inflated NB2 | `zi_nbinom2()` | `mu`, `sigma`, `zi` | log, log, logit | $\{0, 1, 2, \ldots\}$ | partial (FAM-22) |
+| Zero-inflated binomial | `zi_binomial()` | `mu`, `zi` | logit, logit | $\{0, 1, \ldots, n_\text{trials}\}$, $n_\text{trials} \ge 2$ for at least one row per trait | partial (FAM-23) |
+
+**Zero-inflated families (FAM-21/22/23, Arc D).** `zi_poisson()`,
+`zi_nbinom2()`, and `zi_binomial()` are TRUE zero-inflation mixtures
+(Design 62 reserves `zi_*` for exactly this): the count process is active
+at every observation, including $y = 0$, unlike the hurdle/delta families
+below whose positive-part likelihood is simply absent there. The
+structural-zero probability `zi` is per-trait and intercept-only --
+$\text{logit}(\text{zi}_t)$, no covariates and no random effects on the
+zero part -- while the count part (`mu`, and `sigma` for `zi_nbinom2`)
+carries the full grammar: fixed effects, `latent()`, and every covariance
+tier, with correlations reported on the count-process scale conditional on
+the non-structural component. `zi_nbinom2` reuses the ordinary per-trait
+`nbinom2()` dispersion convention rather than a shared scalar across
+traits. Laplace estimation only: `integration = "va"` and
+`estimator = "mspl"` both refuse these three family ids with a named
+reason; `aghq` DECLINES to a plain Laplace fit with a warning instead of
+erroring (AGHQ's whole eligibility chain declines rather than refuses for
+every ineligible model -- e.g. `multinomial()` rows get the identical
+treatment -- so this is consistent with AGHQ's existing architecture, not
+a zi-specific gap; corrected 2026-09-02, review R3). `zi_binomial()` refuses single-trial (0/1) response data (the
+mixture is not identified there) and names plain `binomial()` as the
+working alternative. Evidence: exact TMB-vs-hand-density identity (1e-8),
+a finite-difference gradient check, and a known-DGP recovery test per
+family -- see `dev/gapclose/arcD/D1-report.md` and
+`docs/design/35-validation-debt-register.md` FAM-21/22/23.
 
 ### Ordinal families
 
@@ -438,11 +466,18 @@ NOT in the registry today:
   above. It does not establish arbitrary delta mixtures, default `+ Psi`,
   response masks, response-scale marginal effects, or an automatic per-row
   delta link residual.
-- **Zero-inflated count families on multi-trait fits** (planned;
-  post-CRAN). Single-trait zero-inflated count via the delta-*
-  hurdle path is in the engine but its multi-trait correlation
-  surface is `planned (post-CRAN)` for the same two-scales reason
-  as the delta families.
+- **Zero-inflated count families are now in the engine** (`zi_poisson()`,
+  `zi_nbinom2()`, `zi_binomial()`; FAM-21/22/23, Arc D) -- see the Count
+  families table above. This supersedes the earlier "planned; post-CRAN"
+  note here, which described a different, since-abandoned idea (routing
+  zero-inflation through the delta/hurdle path); Design 62 clarified that
+  the delta/hurdle families have no second zero source and are not
+  zero-inflation at all, and the families actually built are a TRUE
+  mixture with a single count-process scale, so they do not carry the
+  delta families' two-scales latent-structure restriction (Decision 2
+  above): `latent()` and the full covariance grid apply to the count part
+  directly. What remains `partial`, not `covered`: no calibrated interval
+  on `zi`; VA and MSPL refuse (Laplace only); AGHQ declines to Laplace with a warning rather than refusing.
 - **Skew-normal / skew-t** for skewed continuous-response
   modelling (planned; post-CRAN).
 - **Compound Poisson-Gamma direct parameterisation** (the Tweedie

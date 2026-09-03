@@ -1182,9 +1182,12 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ordinal_probit    = 14L,
       nbinom1           = 15L,
       multinomial       = 16L,
+      zi_poisson        = 17L,
+      zi_nbinom2        = 18L,
+      zi_binomial       = 19L,
       cli::cli_abort(c(
         "Unsupported family: {.val {f$family}}.",
-        "i" = "Currently supported: {.code gaussian()}, {.code binomial()}, {.code poisson()}, {.code lognormal()}, {.code Gamma()}, {.code nbinom2()}, {.code nbinom1()}, {.code tweedie()}, {.code Beta()}, {.code betabinomial()}, {.code student()}, {.code truncated_poisson()}, {.code truncated_nbinom2()}, {.code delta_lognormal()}, {.code delta_gamma()}, {.code ordinal_probit()}, {.code multinomial()}."
+        "i" = "Currently supported: {.code gaussian()}, {.code binomial()}, {.code poisson()}, {.code lognormal()}, {.code Gamma()}, {.code nbinom2()}, {.code nbinom1()}, {.code tweedie()}, {.code Beta()}, {.code betabinomial()}, {.code student()}, {.code truncated_poisson()}, {.code truncated_nbinom2()}, {.code delta_lognormal()}, {.code delta_gamma()}, {.code ordinal_probit()}, {.code multinomial()}, {.code zi_poisson()}, {.code zi_nbinom2()}, {.code zi_binomial()}."
       ))
     )
     lid <- 0L
@@ -1238,6 +1241,21 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       cli::cli_abort("nbinom1: only the log link is currently supported.")
     if (fid == 16L && !identical(f$link, "logit"))
       cli::cli_abort("multinomial: only the baseline-category logit link is supported.")
+    if (fid == 17L && !identical(f$link, "log"))
+      cli::cli_abort(c(
+        "zi_poisson: only the log link is currently supported.",
+        ">" = "Use {.code zi_poisson(link = \"log\")} (the default)."
+      ))
+    if (fid == 18L && !identical(f$link, "log"))
+      cli::cli_abort(c(
+        "zi_nbinom2: only the log link is currently supported.",
+        ">" = "Use {.code zi_nbinom2(link = \"log\")} (the default)."
+      ))
+    if (fid == 19L && !identical(f$link, "logit"))
+      cli::cli_abort(c(
+        "zi_binomial: only the logit link is currently supported.",
+        ">" = "Use {.code zi_binomial(link = \"logit\")} (the default)."
+      ))
     c(fid, lid)
   }
   ## Per-row family list (length = nrow(data)). Used downstream to read
@@ -3768,6 +3786,57 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ))
   }
 
+  ## Zero-inflated count families (fid 17/18/19, Design 62 -- a TRUE mixture,
+  ## not the fid 12/13 hurdle above). zi_poisson/zi_nbinom2: non-negative
+  ## integer y, same support as their non-inflated counterparts.
+  zi_count_rows <- (family_id_vec %in% c(17L, 18L)) & !masked_response
+  if (any(zi_count_rows)) {
+    if (any(y[zi_count_rows] < 0) ||
+        any(y[zi_count_rows] != round(y[zi_count_rows])))
+      cli::cli_abort(c(
+        "{.fn zi_poisson}/{.fn zi_nbinom2} rows: {.code y} must be a non-negative integer.",
+        "i" = "The structural-zero mixture still requires an ordinary count response.",
+        ">" = "Round or recode {.code y} to non-negative integers before fitting."
+      ))
+  }
+  ## zi_binomial (fid 19): y in [0, n_trials], same support as binomial()/
+  ## betabinomial(). Additionally -- Decision 6 / recon open question 6,
+  ## resolved in dev/gapclose/arcD/alignment-zi.md -- with single-trial
+  ## (0/1) data the mixture is NOT identified: P(y=1) = (1-pi)*p collapses
+  ## pi and p into one free product. Refuse per trait unless at least one
+  ## row of that trait carries n_trials >= 2.
+  zi_binom_rows <- (family_id_vec == 19L) & !masked_response
+  if (any(zi_binom_rows)) {
+    if (any(y[zi_binom_rows] < 0) ||
+        any(y[zi_binom_rows] > n_trials[zi_binom_rows]) ||
+        any(y[zi_binom_rows] != round(y[zi_binom_rows])))
+      cli::cli_abort(c(
+        "{.fn zi_binomial} rows: {.code y} (successes) must satisfy 0 <= y <= n_trials.",
+        "i" = "If you used {.code cbind(succ, fail)}, both columns must be non-negative integers.",
+        ">" = "Check {.code succ}/{.code fail} (or {.arg weights}/trials column) for negative values or a mismatch with {.arg n_trials}."
+      ))
+    zi_binom_traits <- sort(unique(trait_id[zi_binom_rows]))
+    single_trial_traits <- vapply(zi_binom_traits, function(t) {
+      rows_t <- zi_binom_rows & (trait_id == t)
+      !any(n_trials[rows_t] >= 2)
+    }, logical(1))
+    if (any(single_trial_traits)) {
+      bad_traits <- zi_binom_traits[single_trial_traits] + 1L  # 1-indexed for the message
+      ## S3 (2026-09-02 review): subject-verb agreement for the >1-trait
+      ## case ("Trait 1, 2 has" -> "have").
+      trait_verb <- if (length(bad_traits) > 1L) "have" else "has"
+      cli::cli_abort(c(
+        "{.fn zi_binomial}: single-trial (0/1) responses do not identify the model.",
+        "x" = paste0(
+          "Trait ", paste(bad_traits, collapse = ", "),
+          " ", trait_verb, " no row with n_trials >= 2 (via {.code cbind(successes, failures)} or a trials column)."
+        ),
+        "i" = "With N = 1, P(y = 1) = (1 - zi) * p collapses the structural-zero probability and the count probability into one free product -- there is no curvature to separate them.",
+        ">" = "Supply multi-trial data (N >= 2 for at least one row per trait), or use {.code binomial()} if the data really are single-trial."
+      ))
+    }
+  }
+
   ## ---- ordinal_probit (fid 14): cutpoint metadata ---------------------
   ## For each ordinal trait t, count K_t = number of distinct categories
   ## observed (1..K_t after coercing to integer). The engine estimates
@@ -5609,6 +5678,11 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     ## log(phi) starts at 0 (gamma CV = 1, ~Exponential).
     log_sigma_lognormal_delta = rep(0.0, n_traits),
     log_phi_gamma_delta       = .clamp_log_phi(rep(0.0, n_traits)),
+    ## Zero-inflated families (fid 17/18/19): per-trait structural-zero
+    ## probability, method-of-moments start (zi_logit_start(), R/dispersion-
+    ## trait-map.R) from the observed excess of zeros over the naive count-
+    ## process zero expectation, clamped to logit(0.02..0.8).
+    logit_zi = zi_logit_start(y, trait_id, family_id_vec, n_trials, n_traits),
     ## ordinal_probit cutpoint log-increments. Length = sum(K_t - 2) over
     ## ordinal traits (or 1 stub when no trait is ordinal). Initialised
     ## from MASS::polr(method = "probit") per ordinal trait when sample
@@ -6365,7 +6439,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## gradient and a singular joint Hessian. `dispersion_trait_map()` returns
   ## NULL (leave `tmb_map` untouched) when every trait uses the family, so
   ## single-family fits are byte-identical to before this fix.
-  mask_nbinom2 <- dispersion_trait_family_mask(trait_id, family_id_vec, 5L, n_traits)
+  ## fid 18 (zi_nbinom2) REUSES log_phi_nbinom2 (recon open question 2 /
+  ## Arc D Decision 4), so its mask joins plain nbinom2's (fid 5) -- a trait
+  ## using EITHER family needs the vector entry free.
+  mask_nbinom2 <- dispersion_trait_family_mask(trait_id, family_id_vec, c(5L, 18L), n_traits)
   mask_nbinom1 <- dispersion_trait_family_mask(trait_id, family_id_vec, 15L, n_traits)
   mask_gamma   <- dispersion_trait_family_mask(trait_id, family_id_vec, 4L, n_traits)
   mask_tweedie <- dispersion_trait_family_mask(trait_id, family_id_vec, 6L, n_traits)
@@ -6373,6 +6450,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   mask_betabinom <- dispersion_trait_family_mask(trait_id, family_id_vec, 8L, n_traits)
   mask_delta_lognormal <- dispersion_trait_family_mask(trait_id, family_id_vec, 12L, n_traits)
   mask_delta_gamma     <- dispersion_trait_family_mask(trait_id, family_id_vec, 13L, n_traits)
+  ## Zero-inflated families (fid 17/18/19): logit_zi is estimated on any
+  ## trait using any of the three (Arc D).
+  mask_zi <- dispersion_trait_family_mask(trait_id, family_id_vec, c(17L, 18L, 19L), n_traits)
   m_nbinom2 <- dispersion_trait_map(mask_nbinom2)
   if (!is.null(m_nbinom2)) tmb_map$log_phi_nbinom2 <- m_nbinom2
   m_nbinom1 <- dispersion_trait_map(mask_nbinom1)
@@ -6466,6 +6546,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   if (!is.null(m_delta_lognormal)) tmb_map$log_sigma_lognormal_delta <- m_delta_lognormal
   m_delta_gamma <- dispersion_trait_map(mask_delta_gamma)
   if (!is.null(m_delta_gamma)) tmb_map$log_phi_gamma_delta <- m_delta_gamma
+  m_zi <- dispersion_trait_map(mask_zi)
+  if (!is.null(m_zi)) tmb_map$logit_zi <- m_zi
   ## ordinal_probit: cutpoint log-increments. When no trait uses fid 14
   ## (or every ordinal trait is K = 2 with no free cutpoints) the
   ## parameter is a length-1 stub and must be mapped off.
@@ -7263,6 +7345,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       "mi() predictors not supported yet"
     } else if (any(family_id_vec == 16L)) {
       "multinomial rows not supported yet"
+    } else if (any(family_id_vec %in% c(17L, 18L, 19L))) {
+      "zero-inflated rows (zi_poisson/zi_nbinom2/zi_binomial) not supported yet"
     } else if (!is.null(aghq_block) && is.data.frame(aghq_block) &&
                "route" %in% names(aghq_block) &&
                !any(aghq_block$route == "quadrature")) {
@@ -7300,10 +7384,26 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ## the documented, intended behaviour (one node IS the Laplace rule), not a
       ## silently unmet request.
       if (!identical(aghq_k_req, 1L)) {
+        ## S2 (2026-09-02 review): the action line below used to be a
+        ## SINGLE fixed sentence naming the Psi/unique=FALSE fix -- correct
+        ## for the "Stage 1a requires z_B" reason, but printed unchanged
+        ## for every OTHER decline reason too (multinomial rows,
+        ## zero-inflated rows, mi() predictors, predictor-informed latent
+        ## scores, the gate table, the n_traits auto-decline), where it is
+        ## irrelevant or actively misleading -- reproduced verbatim on a
+        ## fit that ALREADY used `unique = FALSE` and still got told to use
+        ## it. Pick the action line from the actual reason instead.
+        aghq_action <- if (grepl("^Stage 1a requires z_B", ineligible)) {
+          "Ordinary {.fn latent} carries a per-trait Psi by default, which puts {.code s_B} in the random vector; AGHQ Stage 1a is loadings-only. Use {.code latent(..., unique = FALSE)} to make the model eligible, or drop {.arg aghq}."
+        } else if (grepl("^(multinomial rows|zero-inflated rows|mi\\(\\) predictors|predictor-informed latent scores)", ineligible)) {
+          "This model class is not yet supported by AGHQ. Drop {.arg aghq} (the default {.code integration = \"laplace\"} fits it)."
+        } else {
+          "Drop {.arg aghq}, or use {.code integration = \"laplace\"} (the default) for this model."
+        }
         cli::cli_warn(c(
           "{.arg aghq} was requested but AGHQ did not run; this is a plain Laplace fit.",
           "i" = "Reason: {ineligible}.",
-          ">" = "Ordinary {.fn latent} carries a per-trait Psi by default, which puts {.code s_B} in the random vector; AGHQ Stage 1a is loadings-only. Use {.code latent(..., unique = FALSE)} to make the model eligible, or drop {.arg aghq}."
+          ">" = aghq_action
         ), .frequency = "once", .frequency_id = "gllvmTMB-aghq-ineligible")
       }
     } else {

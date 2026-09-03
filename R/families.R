@@ -405,6 +405,77 @@ censored_poisson <- function(link = "log") {
   .gllvm_family("censored_poisson", substitute(link), link, "log", full = FALSE)
 }
 
+#' @details
+#' \code{zi_poisson()}, \code{zi_nbinom2()}, and \code{zi_binomial()} are
+#' TRUE zero-inflation mixtures: the count process (log-link mean, or
+#' logit-link probability for \code{zi_binomial()}) is active at every
+#' observation, including \code{y = 0}, on top of a per-trait,
+#' intercept-only structural-zero probability \code{zi} (logit link, no
+#' covariates and no random effects on the zero part). This is different
+#' from \code{\link{delta_lognormal}()}/\code{\link{delta_gamma}()}, which
+#' are hurdle models -- a strictly positive component conditional on
+#' presence, with no second zero-generating process (see
+#' \code{vignette("current-limits", package = "gllvmTMB")} and Design 62 for
+#' the naming rationale). \strong{Boundary:} the count process (its fixed
+#' effects, \code{\link{latent}()} structure, and every correlation gllvmTMB
+#' reports) is conditional on the non-structural component; \code{zi} itself
+#' carries no covariates, no random effects, and no reported interval.
+#' \code{zi_nbinom2()} reuses the ordinary \code{\link{nbinom2}()} per-trait
+#' dispersion convention (not a shared scalar across traits).
+#' \code{zi_binomial()} requires multi-trial data (\code{cbind(successes,
+#' failures)} or a trials column) with at least one row per trait carrying
+#' \code{n_trials >= 2}; single-trial (0/1) responses do not identify the
+#' mixture and are refused with \code{\link{binomial}()} named as the
+#' working alternative.
+#' @export
+#' @examples
+#' \donttest{
+#' ## A small simulated rank-1 GLLVM fit with one zero-inflated trait.
+#' ## Calibrated to converge cleanly (2026-09-02 review R5: the previous
+#' ## DGP -- n_site = 60, beta = c(0.3, -0.2, 0.5) -- did NOT converge,
+#' ## fit$opt$convergence == 1 with NaNs produced; larger n_site, larger
+#' ## (less zero-inflation-confounded) trait means, and unique = FALSE
+#' ## fix it, verified by running this block verbatim).
+#' set.seed(1)
+#' n_site <- 100L
+#' n_trait <- 3L
+#' u <- rnorm(n_site)
+#' lambda <- c(0.6, -0.5, 0.4)
+#' beta <- c(1.2, 0.9, 1.4)
+#' pi_true <- 0.25
+#' eta <- outer(u, lambda) + matrix(beta, n_site, n_trait, byrow = TRUE)
+#' mu <- exp(eta)
+#' z <- matrix(rbinom(n_site * n_trait, 1L, 1 - pi_true), n_site, n_trait)
+#' y <- matrix(rpois(n_site * n_trait, mu), n_site, n_trait) * z
+#' dat <- data.frame(
+#'   site  = factor(rep(seq_len(n_site), n_trait)),
+#'   trait = factor(rep(seq_len(n_trait), each = n_site)),
+#'   y     = as.vector(y)
+#' )
+#' fit <- gllvmTMB(
+#'   y ~ 0 + trait + latent(0 + trait | site, d = 1, unique = FALSE),
+#'   data = dat, family = zi_poisson(), unit = "site"
+#' )
+#' stopifnot(fit$opt$convergence == 0)  # verified 0 on this exact seed
+#' fit$report$zi  # per-trait fitted structural-zero probability
+#' }
+#' @rdname families
+zi_poisson <- function(link = "log") {
+  .gllvm_family("zi_poisson", substitute(link), link, "log", full = FALSE)
+}
+
+#' @export
+#' @rdname families
+zi_nbinom2 <- function(link = "log") {
+  .gllvm_family("zi_nbinom2", substitute(link), link, "log", full = FALSE)
+}
+
+#' @export
+#' @rdname families
+zi_binomial <- function(link = "logit") {
+  .gllvm_family("zi_binomial", substitute(link), link, "logit", full = FALSE)
+}
+
 #' @export
 #' @importFrom stats Gamma binomial
 #' @examples

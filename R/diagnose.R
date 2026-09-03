@@ -1538,6 +1538,12 @@
 #'   is the trait's latent standard deviation in liability units, mirroring
 #'   `loading_absolute_thresh`'s binomial justification. Default `Inf`
 #'   (disarmed pending the detector-S2 calibration campaign).
+#' @param phi_nbinom2_ceiling_thresh Numeric scalar. A negative-binomial dispersion
+#'   estimate at or above this value is reported as a `boundary_phi_nbinom2_<trait>`
+#'   warning: the trait has run to the Poisson limit (no overdispersion left to
+#'   estimate), which usually means the data cannot separate dispersion from the
+#'   zero-inflation or latent structure. Try a plain `poisson()` / `zi_poisson()` for
+#'   that trait, or more sites.
 #' @return A data frame with columns `component`, `status`, `value`,
 #'   `threshold`, `message`, and `action`. Status values are `"PASS"`,
 #'   `"WARN"`, or `"FAIL"`.
@@ -1568,7 +1574,19 @@ check_gllvmTMB <- function(
   multinomial_rail_thresh = 0.99,
   multinomial_range_collapse_thresh = 0.02,
   ordinal_loading_runaway_thresh = Inf,
-  ordinal_loading_absolute_thresh = Inf
+  ordinal_loading_absolute_thresh = Inf,
+  ## R4 (2026-09-02 review): a per-trait NB2 dispersion (fid 5 nbinom2 OR
+  ## fid 18 zi_nbinom2, which REUSES the same log_phi_nbinom2 vector) can
+  ## run to the Poisson boundary (phi -> Inf) while reporting
+  ## convergence = 0, a PD Hessian, and max_gradient well under threshold
+  ## -- a small-sample identifiability collapse with NO existing detector
+  ## (found on the zi_nbinom2 recovery DGP: phi_hat = 2.66e6 against a
+  ## true phi = 6, zero non-PASS rows before this fix). Design 48's own
+  ## STARTING-value clamp treats [0.01, 100] as the sane range (R/fit-
+  ## multi.R's `.clamp_log_phi()`); two orders of magnitude beyond its
+  ## upper bound is unambiguously a runaway, not a plausible large but
+  ## real dispersion, hence 1e4.
+  phi_nbinom2_ceiling_thresh = 1e4
 ) {
   if (!inherits(object, "gllvmTMB_multi")) {
     cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
@@ -1965,6 +1983,93 @@ check_gllvmTMB <- function(
             paste0("estimated ", scale_names[[j]], " residual scale")
           },
           "if estimated near zero, check row-level unique terms or residual-scale identifiability"
+        ))
+      )
+    }
+  }
+
+  ## Zero-inflated families (fid 17/18/19, Arc D): a boundary-pinned
+  ## structural-zero probability means the mixture has effectively
+  ## collapsed to its ordinary (zi -> 0) or all-structural (zi -> 1) limit,
+  ## which is worth flagging the same way other boundary parameters are.
+  zi_report <- as.numeric(object$report$zi %||% numeric(0L))
+  fid_zi <- as.integer(object$tmb_data$family_id_vec %||% integer(0L))
+  tid_zi <- as.integer(object$tmb_data$trait_id %||% integer(0L))
+  zi_traits <- if (length(fid_zi) && length(tid_zi) == length(fid_zi)) {
+    sort(unique(tid_zi[fid_zi %in% c(17L, 18L, 19L)]))
+  } else {
+    integer(0L)
+  }
+  if (length(zi_traits) > 0L && length(zi_report) >= max(zi_traits) + 1L) {
+    trait_names_zi <- .gllvmTMB_trait_names(object)
+    for (t in zi_traits) {
+      zi_t <- zi_report[t + 1L]
+      status_zi <- if (!is.finite(zi_t)) {
+        "WARN"
+      } else if (zi_t < 0.01 || zi_t > 0.95) {
+        "WARN"
+      } else {
+        "PASS"
+      }
+      rows <- c(
+        rows,
+        list(.gllvmTMB_check_row(
+          paste0("boundary_zi_", .gllvmTMB_trait_label(trait_names_zi, t + 1L)),
+          status_zi,
+          .gllvmTMB_fmt_num(zi_t, digits = 4L),
+          "0.01 / 0.95",
+          if (!is.finite(zi_t)) {
+            "zi (structural-zero probability) is not finite"
+          } else if (zi_t < 0.01) {
+            "zi has collapsed toward 0: the fit is indistinguishable from the ordinary (non-inflated) count family"
+          } else if (zi_t > 0.95) {
+            "zi has run toward 1: almost every observation is being explained as a structural zero"
+          } else {
+            "zi (structural-zero probability) is within the interior of (0, 1)"
+          },
+          "if pinned at a boundary, consider the plain (non-zi) family, or check for a data-entry issue producing excess zeros"
+        ))
+      )
+    }
+  }
+
+  ## NB2 dispersion boundary (fid 5 nbinom2 and fid 18 zi_nbinom2 share
+  ## log_phi_nbinom2, R4 above): flag any trait whose ESTIMATED phi (not
+  ## masked off, i.e. the trait actually uses one of those two families)
+  ## sits at or above the numerical ceiling.
+  phi_nbinom2_report <- as.numeric(object$report$phi_nbinom2 %||% numeric(0L))
+  fid_phi <- as.integer(object$tmb_data$family_id_vec %||% integer(0L))
+  tid_phi <- as.integer(object$tmb_data$trait_id %||% integer(0L))
+  phi_nbinom2_traits <- if (length(fid_phi) && length(tid_phi) == length(fid_phi)) {
+    sort(unique(tid_phi[fid_phi %in% c(5L, 18L)]))
+  } else {
+    integer(0L)
+  }
+  if (length(phi_nbinom2_traits) > 0L &&
+      length(phi_nbinom2_report) >= max(phi_nbinom2_traits) + 1L) {
+    trait_names_phi <- .gllvmTMB_trait_names(object)
+    for (t in phi_nbinom2_traits) {
+      phi_t <- phi_nbinom2_report[t + 1L]
+      status_phi <- if (!is.finite(phi_t) || phi_t >= phi_nbinom2_ceiling_thresh) {
+        "WARN"
+      } else {
+        "PASS"
+      }
+      rows <- c(
+        rows,
+        list(.gllvmTMB_check_row(
+          paste0("boundary_phi_nbinom2_", .gllvmTMB_trait_label(trait_names_phi, t + 1L)),
+          status_phi,
+          .gllvmTMB_fmt_num(phi_t, digits = 4L),
+          phi_nbinom2_ceiling_thresh,
+          if (!is.finite(phi_t)) {
+            "NB2 dispersion (phi) is not finite"
+          } else if (phi_t >= phi_nbinom2_ceiling_thresh) {
+            "phi has run to the numerical ceiling: the fit is indistinguishable from the Poisson limit (phi -> Inf) for this trait"
+          } else {
+            "NB2 dispersion (phi) is within the sane range"
+          },
+          "if phi is at the ceiling, the NB2 overdispersion is not identified for this trait at this sample size; consider poisson()/zi_poisson() instead, or more data"
         ))
       )
     }

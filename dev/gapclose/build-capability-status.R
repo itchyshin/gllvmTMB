@@ -190,8 +190,15 @@ REGISTER_MAP <- list(
       note = "Closes the B3-issues.md #2 gap: the cumulative-logit ordinal response family, distinct from R's cumulative_logit() (a missing-PREDICTOR family; COLLISION guard on that row below). Link swap on ordinal_probit's (FAM-14) apparatus -- same cutpoint machinery, standard logistic CDF in place of the normal CDF; sigma_d^2 = pi^2/3 exact vs. FAM-14's exact 1."),
   ROW("truncated_poisson", "Response families", "FAM-15"),
   ROW("truncated_nbinom2", "Response families", "FAM-15"),
-  ROW("truncated_nbinom1", "Response families", "FAM-16",
-      note = "FAM-16 also names `censored_poisson` as blocked prose, but gllvmTMB has no censored_poisson constructor at all; that family is tracked purely as a Julia-only port target, not aliased here, so the gap stays visible."),
+  ROW("truncated_nbinom1", "Response families", "FAM-16"),
+  # censored_poisson MOVED here from the FAM-16 note (Arc E, issue #1244,
+  # 2026-09-03) -- it now has a runtime id and matches Julia's
+  # `censored_poisson` row (GLLVM.jl's ledger, "Response families" table)
+  # by exact name. Right-censoring only (Julia's own v1 scope too).
+  # RENUMBERED 2026-09-03: was FAM-24 / runtime id 20 until the sibling
+  # ordinal_logit branch (PR #1250, merges first) was found to
+  # independently claim both -- now FAM-25 / runtime id 21.
+  ROW("censored_poisson", "Response families", "FAM-25"),
   ROW("delta_gamma", "Response families", "FAM-17"),
   ROW("delta_lognormal", "Response families", "FAM-17"),
   # GLLVM.jl's ledger combines all three into ONE row named exactly

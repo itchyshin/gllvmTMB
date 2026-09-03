@@ -415,6 +415,21 @@ link_residual_per_trait <- function(fit) {
       ## the logit-liability convention -- no trigamma / delta-method
       ## approximation is needed, same as the probit case's sigma_d^2 = 1.
       out[t] <- pi^2 / 3
+    } else if (fid == 21L) {
+      # censored_poisson (fid 21, Arc E #1244; renumbered 2026-09-03 from
+      # 20 -- ordinal_logit, PR #1250, holds 20), log link.
+      ## Reuses fid == 2's plain-Poisson rule unchanged, applied to the
+      ## trait's mean UNDER THE UNDERLYING PROCESS (mean(exp(eta)) across
+      ## all of the trait's rows, censored or not) -- this is the
+      ## count-process residual, not one that also incorporates the extra
+      ## variance right-censoring itself contributes. Stated scope boundary,
+      ## see dev/gapclose/arcE/alignment-censored-poisson.md.
+      if (is.null(eta) || length(eta) < max(rows_t)) {
+        out[t] <- NA_real_
+      } else {
+        mu_t <- mean(exp(eta[rows_t]))
+        out[t] <- if (is.finite(mu_t) && mu_t > 0) log1p(1 / mu_t) else NA_real_
+      }
     } else {
       out[t] <- NA_real_
     }

@@ -97,8 +97,9 @@
   inversion to numerical (not calibration) accuracy. Refused, each naming a
   working alternative, for `engine = "julia"` bridge fits,
   `integration = "va"` fits, `estimator = "mspl"` fits, likelihood-weighted
-  fits, and predictor-informed `latent(..., lv = ~x)` fits. See
-  `docs/design/35-validation-debt-register.md` row EXT-38.
+  fits, and predictor-informed `latent(..., lv = ~x)` fits. Neither the
+  standard deviations nor the covariances have measured coverage; both are
+  asymptotic-normal quantities.
 * Three zero-inflated count families: `zi_poisson()`, `zi_nbinom2()`, and
   `zi_binomial()`. These are TRUE zero-inflation mixtures -- the ordinary
   count process is active at every observation, including `y = 0` -- and are

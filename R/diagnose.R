@@ -1538,6 +1538,12 @@
 #'   is the trait's latent standard deviation in liability units, mirroring
 #'   `loading_absolute_thresh`'s binomial justification. Default `Inf`
 #'   (disarmed pending the detector-S2 calibration campaign).
+#' @param phi_nbinom2_ceiling_thresh Numeric scalar. A negative-binomial dispersion
+#'   estimate at or above this value is reported as a `boundary_phi_nbinom2_<trait>`
+#'   warning: the trait has run to the Poisson limit (no overdispersion left to
+#'   estimate), which usually means the data cannot separate dispersion from the
+#'   zero-inflation or latent structure. Try a plain `poisson()` / `zi_poisson()` for
+#'   that trait, or more sites.
 #' @return A data frame with columns `component`, `status`, `value`,
 #'   `threshold`, `message`, and `action`. Status values are `"PASS"`,
 #'   `"WARN"`, or `"FAIL"`.

@@ -112,6 +112,7 @@ Mission Control input for the R side of the gllvmTMB <-> GLLVM.jl twin board. Ev
 | Capability | Status | Aliases | Register rows | Note |
 |---|---|---|---|---|
 | Post-fit summary, comparison, and plotting extractor surface | implemented |  | EXT-05, EXT-06, EXT-07, EXT-08, EXT-09, EXT-10, EXT-12, EXT-15, EXT-19, EXT-25, EXT-26, EXT-27, EXT-28, EXT-29, EXT-30, EXT-32, EXT-33, EXT-35, EXT-36, EXT-37, PHY-07, PHY-08, ANI-07, ANI-08, SPA-08, LAM-01, LAM-02, LAM-03, LAM-04 |  |
+| select_lv() rank selection + anova() boundary likelihood-ratio test | scope-limited | select_lv / chibar2_pvalue / variance_lrt | MS-01, MS-02 |  |
 
 ## Diagnostics
 

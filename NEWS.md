@@ -42,6 +42,36 @@
   and does not carry over to logit's `pi^2/3` without its own calibration
   campaign (both thresholds already default to `Inf`, so this changes no
   shipped behaviour).
+* New `select_lv()` and an expanded `anova.gllvmTMB_multi()` for choosing and
+  testing the latent rank (number of ordination axes, `d`) of an ordinary
+  `latent()` term (issue #1242). `select_lv(formula, data, ..., d_max,
+  criterion = c("bic", "aic", "aicc"))` fits `d = 1, ..., d_max` by sweeping
+  the formula's single `latent(...)` term and reports a tidy table (`npar`,
+  `logLik`, AIC/BIC/AICc, convergence, positive-definite-Hessian, seconds)
+  with the criterion-minimising `d` marked; a fit that fails to converge or
+  land on a positive-definite Hessian is excluded from selection (with a
+  warning) but still shown. `anova.gllvmTMB_multi(object, ..., test =
+  c("chibar", "chisq", "none"))` performs a sequential nested
+  likelihood-ratio comparison: an ordinary fixed-effect (interior) step uses
+  plain Wilks chi-square, and a rank step of exactly one new latent
+  dimension uses the Self & Liang (1987) chi-bar-square mixture (new
+  exported `chibar2_pvalue()`/`variance_lrt()`) as a documented
+  approximation -- see `?anova.gllvmTMB_multi` for the exact caveat and
+  `dev/gapclose/arcD/O5-report.md` for its measured empirical size. **In
+  scope:** ML-only comparisons (REML, LA-MSPL, mismatched integration
+  engines/loading ridges, mismatched data or families, and non-nested fixed
+  effects are all refused, naming the reason); a single-dimension rank step
+  gets the chi-bar-square correction; `select_lv()` guards `d_max` against
+  the number of traits before fitting. **Not in scope:** no interval on the
+  selected `d`; no automatic model averaging across `d`; a rank step
+  spanning more than one new dimension, or a step that changes both fixed
+  effects and rank at once, is refused rather than approximated (compare in
+  separate steps, or use `select_lv()`); structured source-specific latent
+  terms (`phylo_latent()`, `spatial_latent()`, `kernel_latent()`,
+  `animal_latent()`) are not swept by `select_lv()`. `AIC.gllvmTMB_multi`
+  and `BIC.gllvmTMB_multi` are now exported via roxygen `@export` (an
+  idiomatic NAMESPACE `S3method()` entry) instead of the previous manual
+  `registerS3method()` call in `.onLoad()`, which is removed as redundant.
 * New `ordination_uncertainty()` (issue #1243, D-204 parity with GLLVM.jl's
   function of the same name) reports the per-unit covariance of ordination
   (latent) scores, not just a point estimate -- the object needed to draw an

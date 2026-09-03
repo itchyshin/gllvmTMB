@@ -22,7 +22,8 @@
   multinomial       = 16L,
   zi_poisson        = 17L,
   zi_nbinom2        = 18L,
-  zi_binomial       = 19L
+  zi_binomial       = 19L,
+  ordinal_logit     = 20L
 )
 
 .valid_link <- c(

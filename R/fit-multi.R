@@ -1185,9 +1185,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       zi_poisson        = 17L,
       zi_nbinom2        = 18L,
       zi_binomial       = 19L,
+      ordinal_logit     = 20L,
       cli::cli_abort(c(
         "Unsupported family: {.val {f$family}}.",
-        "i" = "Currently supported: {.code gaussian()}, {.code binomial()}, {.code poisson()}, {.code lognormal()}, {.code Gamma()}, {.code nbinom2()}, {.code nbinom1()}, {.code tweedie()}, {.code Beta()}, {.code betabinomial()}, {.code student()}, {.code truncated_poisson()}, {.code truncated_nbinom2()}, {.code delta_lognormal()}, {.code delta_gamma()}, {.code ordinal_probit()}, {.code multinomial()}, {.code zi_poisson()}, {.code zi_nbinom2()}, {.code zi_binomial()}."
+        "i" = "Currently supported: {.code gaussian()}, {.code binomial()}, {.code poisson()}, {.code lognormal()}, {.code Gamma()}, {.code nbinom2()}, {.code nbinom1()}, {.code tweedie()}, {.code Beta()}, {.code betabinomial()}, {.code student()}, {.code truncated_poisson()}, {.code truncated_nbinom2()}, {.code delta_lognormal()}, {.code delta_gamma()}, {.code ordinal_probit()}, {.code ordinal_logit()}, {.code multinomial()}, {.code zi_poisson()}, {.code zi_nbinom2()}, {.code zi_binomial()}."
       ))
     )
     lid <- 0L
@@ -1237,6 +1238,11 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       cli::cli_abort("truncated_nbinom2: only the log link is currently supported.")
     if (fid == 14L && !identical(f$link, "probit"))
       cli::cli_abort("ordinal_probit: only the probit link is supported.")
+    if (fid == 20L && !identical(f$link, "logit"))
+      cli::cli_abort(c(
+        "ordinal_logit: only the logit link is supported.",
+        "i" = "Use {.fn ordinal_probit} for the probit link."
+      ))
     if (fid == 15L && !identical(f$link, "log"))
       cli::cli_abort("nbinom1: only the log link is currently supported.")
     if (fid == 16L && !identical(f$link, "logit"))
@@ -1529,17 +1535,19 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## the BETWEEN-UNIT residual, identified for the main families given
   ## replication and separable from the family's own dispersion phi. The two
   ## families where the design doc marks the default Psi as "off" are
-  ## ordinal_probit (scale-absorbed: the threshold model fixes sigma2_d = 1)
-  ## and the delta / hurdle families (the residual mixes presence and
-  ## abundance noise on the shared linear predictor). For a fit whose
-  ## response is ENTIRELY one of those families, drop the auto-emitted Psi so
-  ## the new default does not silently add a scale-absorbed / OLRE-suspect
-  ## variance the user did not ask for. Mixed-family fits keep it (the other
-  ## traits identify it; the existing per-row OLRE block handles per-trait
-  ## skips). An EXPLICIT residual was retired with `unique()`, so this only
-  ## governs the default. No new identifiability logic beyond the design
-  ## doc's per-family table; mirrors the C3.2 drop-and-rederive pattern above.
-  auto_unique_off_family <- all(family_id_vec %in% c(12L, 13L, 14L))
+  ## ordinal_probit / ordinal_logit (scale-absorbed: the threshold model
+  ## fixes the link-residual variance -- 1 for probit, pi^2/3 for logit --
+  ## either way a FIXED constant, not a free parameter) and the delta /
+  ## hurdle families (the residual mixes presence and abundance noise on the
+  ## shared linear predictor). For a fit whose response is ENTIRELY one of
+  ## those families, drop the auto-emitted Psi so the new default does not
+  ## silently add a scale-absorbed / OLRE-suspect variance the user did not
+  ## ask for. Mixed-family fits keep it (the other traits identify it; the
+  ## existing per-row OLRE block handles per-trait skips). An EXPLICIT
+  ## residual was retired with `unique()`, so this only governs the default.
+  ## No new identifiability logic beyond the design doc's per-family table;
+  ## mirrors the C3.2 drop-and-rederive pattern above.
+  auto_unique_off_family <- all(family_id_vec %in% c(12L, 13L, 14L, 20L))
   ## Mark the auto-emitted residual Psi covstructs.
   is_auto_psi <- vapply(seq_along(parsed$covstructs), function(i) {
     cs <- parsed$covstructs[[i]]
@@ -3837,14 +3845,16 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     }
   }
 
-  ## ---- ordinal_probit (fid 14): cutpoint metadata ---------------------
+  ## ---- ordinal_probit / ordinal_logit (fid 14 / 20): cutpoint metadata --
   ## For each ordinal trait t, count K_t = number of distinct categories
   ## observed (1..K_t after coercing to integer). The engine estimates
   ## K_t - 2 free cutpoints per trait (tau_1 = 0 fixed). Build the flat
   ## n_ordinal_cuts_per_trait + ordinal_offset_per_trait vectors so the
   ## engine can index into ordinal_log_increments per trait. Reference:
-  ## Hadfield (2015) MEE 6:706-714, eqn 9.
-  any_ordinal_probit <- any(family_id_vec == 14L)
+  ## Hadfield (2015) MEE 6:706-714, eqn 9. fid 14 (probit) and fid 20
+  ## (logit) share this metadata block byte-for-byte -- only the CDF used
+  ## inside the TMB likelihood differs between them.
+  any_ordinal_probit <- any(family_id_vec %in% c(14L, 20L))
   n_ordinal_cuts_per_trait  <- integer(n_traits)
   ordinal_offset_per_trait  <- integer(n_traits)
   ordinal_K_per_trait       <- integer(n_traits)
@@ -3873,56 +3883,63 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     }
   }
   if (any_ordinal_probit) {
-    ordinal_rows <- family_id_vec == 14L
+    ordinal_rows <- family_id_vec %in% c(14L, 20L)
     ## Validate the observed ordinal responses only; masked rows carry the
     ## sentinel y = 0 (gated out of the likelihood) and must not trip these.
     ordinal_obs_rows <- ordinal_rows & !masked_response
     if (any(y[ordinal_obs_rows] != round(y[ordinal_obs_rows])))
       cli::cli_abort(c(
-        "ordinal_probit: response must be integer-valued (categories 1..K).",
+        "ordinal_probit()/ordinal_logit(): response must be integer-valued (categories 1..K).",
         "i" = "Coerce {.var y} via {.code as.integer(factor(y))} or pass an ordered factor."
       ))
     if (any(y[ordinal_obs_rows] < 1))
       cli::cli_abort(c(
-        "ordinal_probit: response must be in {.val 1..K} (1-indexed).",
+        "ordinal_probit()/ordinal_logit(): response must be in {.val 1..K} (1-indexed).",
         "i" = "Smallest observed category was {min(y[ordinal_obs_rows])}; categories must start at 1."
       ))
     cum_offset <- 0L
     for (t in seq_len(n_traits)) {
-      rows_t <- which(trait_id == (t - 1L) & family_id_vec == 14L)
+      rows_t <- which(trait_id == (t - 1L) & family_id_vec %in% c(14L, 20L))
       if (length(rows_t) == 0L) {
         ordinal_offset_per_trait[t] <- cum_offset
         next
       }
-      ## Mixing ordinal_probit with another family on the SAME trait makes
-      ## no sense (cutpoints are per-trait). The mixed-family API allows
-      ## one family per row, but ordinal_probit must own its trait entirely.
+      ## Every ordinal row of a trait must share the SAME ordinal family
+      ## (cutpoints are per-trait, and probit/logit put them on different
+      ## scales). fam_t is 14L (ordinal_probit) or 20L (ordinal_logit).
+      fam_t <- unique(family_id_vec[rows_t])
+      fam_label_t <- if (identical(fam_t, 14L)) "ordinal_probit" else "ordinal_logit"
+      ## Mixing an ordinal family with another family (including the OTHER
+      ## ordinal family) on the SAME trait makes no sense (cutpoints are
+      ## per-trait). The mixed-family API allows one family per row, but an
+      ## ordinal family must own its trait entirely.
       rows_t_all <- which(trait_id == (t - 1L))
-      if (any(family_id_vec[rows_t_all] != 14L))
+      if (length(fam_t) > 1L || any(family_id_vec[rows_t_all] != fam_t))
         cli::cli_abort(c(
-          "ordinal_probit on trait {t}: other rows of this trait use a different family.",
-          "i" = "ordinal_probit must own all rows of a trait (cutpoints are estimated per trait)."
+          "{fam_label_t} on trait {t}: other rows of this trait use a different family.",
+          "i" = "{fam_label_t} must own all rows of a trait (cutpoints are estimated per trait)."
         ))
       Kt <- max(as.integer(y[rows_t]))
       if (Kt < 2L)
         cli::cli_abort(c(
-          "ordinal_probit: trait {t} has only {Kt} observed categor{?y/ies}.",
+          "{fam_label_t}: trait {t} has only {Kt} observed categor{?y/ies}.",
           "i" = "Need at least K = 2 categories to define a likelihood."
         ))
       if (Kt == 2L) {
-        ## Hadfield (2015) eqn 10: K = 2 ordinal_probit reduces EXACTLY to
-        ## binomial(link = "probit") with no free cutpoints (tau_1 = 0 is
-        ## the only threshold). We allow this for backward-compatibility
-        ## checks and to verify the mathematical reduction empirically,
-        ## but recommend the binomial form for clarity.
+        ## Hadfield (2015) eqn 10 (probit) / the analogous logit reduction:
+        ## K = 2 collapses to binomial() with no free cutpoints (tau_1 = 0
+        ## is the only threshold). We allow this for backward-compatibility
+        ## checks and to verify the mathematical reduction empirically, but
+        ## recommend the binomial form for clarity.
+        bin_link_t <- if (identical(fam_t, 14L)) "probit" else "logit"
         cli::cli_inform(c(
-          "i" = "{.fn ordinal_probit} with K = 2 reduces exactly to {.code binomial(link = \"probit\")} (Hadfield 2015 eqn 10).",
-          "*" = "Both forms give identical likelihoods; consider using {.code binomial(link = \"probit\")} for clarity."
+          "i" = "{.fn {fam_label_t}} with K = 2 reduces exactly to {.code binomial(link = \"{bin_link_t}\")} (Hadfield 2015 eqn 10 for the probit case).",
+          "*" = "Both forms give identical likelihoods; consider using {.code binomial(link = \"{bin_link_t}\")} for clarity."
         ))
       }
       if (any(y[rows_t] > Kt))
         cli::cli_abort(c(
-          "ordinal_probit: trait {t} response exceeds inferred K = {Kt}.",
+          "{fam_label_t}: trait {t} response exceeds inferred K = {Kt}.",
           "i" = "All observed categories must lie in 1..K; check for missing intermediate levels."
         ))
       ordinal_K_per_trait[t]      <- Kt
@@ -3932,14 +3949,18 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ## Initialise log-spacings via MASS::polr (uses zeta, the cutpoints).
       ## Convert zeta to log-increments respecting our convention: shift so
       ## zeta_1 -> 0, then log-difference. With Kt = 3 there's exactly one
-      ## free cutpoint and the increment is log(zeta_2 - zeta_1).
+      ## free cutpoint and the increment is log(zeta_2 - zeta_1). polr's
+      ## method matches the trait's own CDF (probit for fid 14, the
+      ## logistic default for fid 20) so the initial spacing sits on the
+      ## right scale for each link.
+      polr_method_t <- if (identical(fam_t, 14L)) "probit" else "logistic"
       init_log_incs_t <- if (requireNamespace("MASS", quietly = TRUE) &&
                               length(rows_t) >= max(20L, 4L * Kt)) {
         polr_dat <- data.frame(
           y_factor = factor(y[rows_t], levels = seq_len(Kt), ordered = TRUE)
         )
         polr_fit <- tryCatch(
-          MASS::polr(y_factor ~ 1, data = polr_dat, method = "probit"),
+          MASS::polr(y_factor ~ 1, data = polr_dat, method = polr_method_t),
           error = function(e) NULL
         )
         if (!is.null(polr_fit)) {
@@ -3992,11 +4013,15 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## starting b_fix than raw y on the (0,1) scale (the latter can leave the
   ## inner Newton stuck when mu = invlogit(eta) is far from y).
   beta_only <- all(family_id_vec == 7L)
-  ## ordinal_probit init: project y onto the latent probit scale via
-  ## qnorm((y - 0.5) / K) per trait. This puts categories on the same scale
-  ## as eta + N(0,1) and avoids fit_lm starting b_fix at the integer-mean
-  ## scale (e.g. 2.5 for K=4), which is far from the probit-link interior.
-  ordinal_only <- all(family_id_vec == 14L)
+  ## ordinal_probit / ordinal_logit init: project y onto the latent probit
+  ## scale via qnorm((y - 0.5) / K) per trait. This puts categories on the
+  ## same scale as eta + N(0,1) and avoids fit_lm starting b_fix at the
+  ## integer-mean scale (e.g. 2.5 for K=4), which is far from the
+  ## probit-link interior. Reused as-is for ordinal_logit (fid 20): it is
+  ## only an approximate rank-based starting scale for the outer optimiser,
+  ## not the exact logistic quantile, and nlminb is insensitive to the
+  ## ~pi/sqrt(3) scale mismatch at this stage.
+  ordinal_only <- all(family_id_vec %in% c(14L, 20L))
   if (has_multi_trial || has_betabinom_trial) {
     p_emp  <- pmin(pmax(y / n_trials, 0.5 / pmax(n_trials, 1)),
                    1 - 0.5 / pmax(n_trials, 1))
@@ -5683,10 +5708,11 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     ## trait-map.R) from the observed excess of zeros over the naive count-
     ## process zero expectation, clamped to logit(0.02..0.8).
     logit_zi = zi_logit_start(y, trait_id, family_id_vec, n_trials, n_traits),
-    ## ordinal_probit cutpoint log-increments. Length = sum(K_t - 2) over
-    ## ordinal traits (or 1 stub when no trait is ordinal). Initialised
-    ## from MASS::polr(method = "probit") per ordinal trait when sample
-    ## size permits, else equal-spaced 0.5 (log-increment = log(0.5)).
+    ## ordinal_probit / ordinal_logit cutpoint log-increments. Length =
+    ## sum(K_t - 2) over ordinal traits (or 1 stub when no trait is
+    ## ordinal). Initialised from MASS::polr() per ordinal trait (method =
+    ## "probit" or "logistic", matching each trait's own family) when
+    ## sample size permits, else equal-spaced 0.5 (log-increment = log(0.5)).
     ordinal_log_increments = if (any_ordinal_probit && length(ordinal_init_log_incs) > 0L)
                                ordinal_init_log_incs else 0.0
   )
@@ -6635,16 +6661,18 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       isTRUE(all(family_id_vec[rows_t] == 1L) &&
              all(n_trials[rows_t] == 1))
     }, logical(1))
-    ## ordinal_probit (fid 14): OLRE is unidentifiable for the same scale-
-    ## absorbing reason as single-trial Bernoulli. The threshold model fixes
-    ## sigma2_d = 1 by convention to identify the cutpoint scale; adding
-    ## sd_W on top introduces an extra scale factor that the cutpoints
-    ## absorb (tau_k -> tau_k / sqrt(sd_W^2 + 1)), so sd_W is not separately
-    ## identifiable. Same auto-skip as bernoulli_only_per_trait.
+    ## ordinal_probit / ordinal_logit (fid 14 / 20): OLRE is unidentifiable
+    ## for the same scale-absorbing reason as single-trial Bernoulli. The
+    ## threshold model fixes the link-residual variance (1 for probit,
+    ## pi^2/3 for logit) by convention to identify the cutpoint scale;
+    ## adding sd_W on top introduces an extra scale factor that the
+    ## cutpoints absorb (tau_k -> tau_k / sqrt(sd_W^2 + sigma2_d)), so sd_W
+    ## is not separately identifiable for either link. Same auto-skip as
+    ## bernoulli_only_per_trait.
     ordinal_only_per_trait <- vapply(seq_len(n_traits), function(t) {
       rows_t <- which(trait_id == (t - 1L))
       if (length(rows_t) == 0L) return(FALSE)
-      isTRUE(all(family_id_vec[rows_t] == 14L))
+      isTRUE(all(family_id_vec[rows_t] %in% c(14L, 20L)))
     }, logical(1))
     ## Multinomial (fid 16): each baseline-contrast pseudo-trait is a one-hot
     ## 0/1 per row, so a per-row OLRE is unidentified for the same scale-
@@ -6715,9 +6743,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       if (length(ordinal_skipped_labs) > 0L) {
         n_ord <- length(ordinal_skipped_labs)
         cli::cli_inform(c(
-          "i" = "Skipping OLRE for {n_ord} ordinal_probit trait{?s}: sd_W is structurally unidentifiable in the threshold model.",
+          "i" = "Skipping OLRE for {n_ord} ordinal (probit/logit) trait{?s}: sd_W is structurally unidentifiable in the threshold model.",
           "i" = "Trait{?s} affected: {.val {ordinal_skipped_labs}}.",
-          "*" = "The threshold model fixes sigma2_d = 1 by convention; adding sd_W introduces an extra scale factor that the cutpoints absorb. {.code theta_diag_W[t]} and the corresponding {.code s_W} column are mapped off."
+          "*" = "The threshold model fixes the link-residual variance by convention (1 for ordinal_probit, pi^2/3 for ordinal_logit); adding sd_W introduces an extra scale factor that the cutpoints absorb. {.code theta_diag_W[t]} and the corresponding {.code s_W} column are mapped off."
         ))
       }
     }

@@ -174,8 +174,9 @@
 #' @param family A `family` object. The multivariate engine
 #'   (formulas with `latent()`, `indep()`, etc.) supports `gaussian()`,
 #'   `binomial()` (logit / probit / cloglog), `poisson()` (log link),
-#'   [ordinal_probit()] (the gllvmTMB-native ordinal threshold family
-#'   with sigma_d = 1 fixed exactly; no delta-method approximation),
+#'   [ordinal_probit()] and [ordinal_logit()] (the gllvmTMB-native ordinal
+#'   threshold families with sigma_d fixed exactly -- 1 for probit,
+#'   pi^2/3 for logit; no delta-method approximation),
 #'   `lognormal()` (log link), `Gamma(link = "log")`,
 #'   `nbinom2()` (NB2 negative binomial; log link),
 #'   `nbinom1()` (NB1 negative binomial; log link),
@@ -586,8 +587,8 @@
 #'   generating recovery test data;
 #'   [extract_Sigma()] for the unified post-fit covariance API;
 #'   [gllvmTMB_diagnose()] for a one-stop convergence + identifiability
-#'   health check; [ordinal_probit()] for the gllvmTMB-native ordinal
-#'   threshold family.
+#'   health check; [ordinal_probit()] and [ordinal_logit()] for the
+#'   gllvmTMB-native ordinal threshold families.
 #'
 #' @export
 #' @examples

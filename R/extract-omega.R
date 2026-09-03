@@ -514,10 +514,10 @@ extract_phylo_signal <- function(
   ## sigma^2_d, which the default excludes. Advisory only -- the default is
   ## unchanged for backward compatibility.
   fids <- unique(as.integer(fit$tmb_data$family_id_vec %||% integer(0)))
-  if (link_residual == "none" && any(fids %in% c(14L, 16L))) {
+  if (link_residual == "none" && any(fids %in% c(14L, 16L, 20L))) {
     cli::cli_inform(c(
-      "Categorical liability family detected ({.code ordinal_probit()} / {.code multinomial()}).",
-      "i" = "The default denominator excludes the fixed latent residual sigma^2_d (1 for ordinal probit; pi^2/3 per multinomial contrast), so a phylogenetic-only fit reports H2 = 1.",
+      "Categorical liability family detected ({.code ordinal_probit()} / {.code ordinal_logit()} / {.code multinomial()}).",
+      "i" = "The default denominator excludes the fixed latent residual sigma^2_d (1 for ordinal probit; pi^2/3 for ordinal logit or per multinomial contrast), so a phylogenetic-only fit reports H2 = 1.",
       ">" = "For the liability-scale phylogenetic heritability H^2 = V_a / (V_a + sigma^2_d) use {.code extract_phylo_signal(fit, link_residual = \"auto\")}."
     ))
   }

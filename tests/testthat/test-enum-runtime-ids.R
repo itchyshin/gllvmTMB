@@ -19,7 +19,8 @@ test_that("internal enum mirrors multivariate runtime ids", {
     multinomial       = 16L,
     zi_poisson        = 17L,
     zi_nbinom2        = 18L,
-    zi_binomial       = 19L
+    zi_binomial       = 19L,
+    censored_poisson  = 20L
   )
   runtime_link <- c(logit = 0L, probit = 1L, cloglog = 2L)
 
@@ -28,9 +29,11 @@ test_that("internal enum mirrors multivariate runtime ids", {
 
   expect_equal(family_enum, runtime_family)
   expect_equal(link_enum, runtime_link)
+  ## censored_poisson (fid 20, Arc E #1244) is admitted -- removed from the
+  ## still-blocked list below; every OTHER constructor-only name stays.
   expect_false(any(c(
     "gamma_mix", "lognormal_mix", "nbinom2_mix", "gengamma",
-    "censored_poisson", "truncated_nbinom1", "delta_gamma_mix",
+    "truncated_nbinom1", "delta_gamma_mix",
     "delta_lognormal_mix", "delta_gengamma", "delta_truncated_nbinom1",
     "delta_truncated_nbinom2", "delta_beta"
   ) %in% names(family_enum)))
@@ -48,7 +51,6 @@ test_that("constructor-only families fail loud before runtime admission", {
     nbinom2_mix = nbinom2_mix(),
     gengamma = gengamma(),
     truncated_nbinom1 = truncated_nbinom1(),
-    censored_poisson = censored_poisson(),
     delta_gamma_mix = delta_gamma_mix(),
     delta_lognormal_mix = delta_lognormal_mix(),
     delta_gengamma = delta_gengamma(),

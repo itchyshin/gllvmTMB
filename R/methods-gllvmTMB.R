@@ -1608,6 +1608,7 @@ simulate.gllvmTMB_multi <- function(
   phi_gamma_delta <- fit$report$phi_gamma_delta # length n_traits
   zi <- fit$report$zi # length n_traits (fid 17/18/19, Arc D)
   n_trials <- fit$tmb_data$n_trials # length n; default 1 (Bernoulli) when not multi-trial
+  cens_limit <- fit$tmb_data$cens_limit # length n; 0 = uncensored (fid 20, Arc E #1244)
 
   ## ordinal_probit (fid 14) cutpoint reconstruction -- the SAME convention
   ## .gllvmTMB_exact_rq_residuals() uses (R/predictive-diagnostics.R):
@@ -1649,7 +1650,7 @@ simulate.gllvmTMB_multi <- function(
   ## group, not per contrast row); the per-row loop leaves those rows at 0.
   supported <- c(
     0L, 1L, 2L, 3L, 4L, 5L, 7L, 8L, 9L, 10L, 11L, 12L, 13L, 14L, 15L, 16L,
-    17L, 18L, 19L
+    17L, 18L, 19L, 20L
   )
   unsupp <- setdiff(uniq_fids, supported)
   if (length(unsupp) > 0L) {
@@ -1657,7 +1658,7 @@ simulate.gllvmTMB_multi <- function(
       c(
         "Family-aware {.fn simulate} not yet implemented for family_id values: {.val {unsupp}}.",
         "i" = "Affected rows are drawn as {.val NA}, not a Gaussian-on-link-scale substitute -- a wrong number is worse than a missing one.",
-        ">" = "Currently supported: gaussian (0), binomial (1), poisson (2), lognormal (3), Gamma (4), nbinom2 (5), Beta (7), betabinomial (8), student-t (9), truncated_poisson (10), truncated_nbinom2 (11), delta_lognormal (12), delta_gamma (13), ordinal_probit (14), nbinom1 (15), multinomial (16), zi_poisson (17), zi_nbinom2 (18), zi_binomial (19). Tweedie (6) has no exact draw implemented."
+        ">" = "Currently supported: gaussian (0), binomial (1), poisson (2), lognormal (3), Gamma (4), nbinom2 (5), Beta (7), betabinomial (8), student-t (9), truncated_poisson (10), truncated_nbinom2 (11), delta_lognormal (12), delta_gamma (13), ordinal_probit (14), nbinom1 (15), multinomial (16), zi_poisson (17), zi_nbinom2 (18), zi_binomial (19), censored_poisson (20). Tweedie (6) has no exact draw implemented."
       ),
       class = "gllvmTMB_simulate_unsupported_family"
     )
@@ -1893,6 +1894,17 @@ simulate.gllvmTMB_multi <- function(
         if (!is.finite(Nt) || Nt < 1) Nt <- 1
         y[i] <- stats::rbinom(1L, size = as.integer(round(Nt)), prob = p)
       }
+    } else if (fid == 20L) {
+      ## censored_poisson (Arc E, #1244): draw the LATENT (uncensored)
+      ## Poisson count, then re-apply this row's OWN censoring design --
+      ## the censoring limit is a fixed property of the observation
+      ## mechanism (e.g. a detection ceiling), not part of the random draw
+      ## itself, so a resimulated dataset keeps the same row-level limits
+      ## and only redraws whether each replicate happens to exceed them
+      ## (dev/gapclose/arcE/alignment-censored-poisson.md).
+      C_i <- if (!is.null(cens_limit) && length(cens_limit) >= i) cens_limit[i] else 0
+      y_latent <- stats::rpois(1L, lambda = exp(eta_i))
+      y[i] <- if (is.finite(C_i) && C_i >= 1 && y_latent >= C_i) C_i else y_latent
     } else {
       ## Unsupported family (currently only tweedie, fid 6, and anything
       ## unrecognised) — NA, not a Gaussian-on-link-scale substitute

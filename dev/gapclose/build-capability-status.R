@@ -181,8 +181,12 @@ REGISTER_MAP <- list(
       note = "COLLISION guard: this is the probit-link ordinal cumulative model only. Julia's row is the COMBINED `ordinal_probit / cumulative_logit`; gllvmTMB has no logit-link ordinal response family, so that half is a genuine port gap (see parity tool disposition table)."),
   ROW("truncated_poisson", "Response families", "FAM-15"),
   ROW("truncated_nbinom2", "Response families", "FAM-15"),
-  ROW("truncated_nbinom1", "Response families", "FAM-16",
-      note = "FAM-16 also names `censored_poisson` as blocked prose, but gllvmTMB has no censored_poisson constructor at all; that family is tracked purely as a Julia-only port target, not aliased here, so the gap stays visible."),
+  ROW("truncated_nbinom1", "Response families", "FAM-16"),
+  # censored_poisson MOVED here from the FAM-16 note (Arc E, issue #1244,
+  # 2026-09-03) -- it now has a runtime id (20) and matches Julia's
+  # `censored_poisson` row (GLLVM.jl's ledger, "Response families" table)
+  # by exact name. Right-censoring only (Julia's own v1 scope too).
+  ROW("censored_poisson", "Response families", "FAM-24"),
   ROW("delta_gamma", "Response families", "FAM-17"),
   ROW("delta_lognormal", "Response families", "FAM-17"),
   # GLLVM.jl's ledger combines all three into ONE row named exactly

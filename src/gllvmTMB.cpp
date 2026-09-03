@@ -551,6 +551,14 @@ Type objective_function<Type>::operator()()
                                    // (set to 1.0 by R). For Bernoulli rows it
                                    // is 1.0; for binomial(k-of-n) rows it is
                                    // the trial count and y is the success count.
+  DATA_VECTOR(cens_limit);         // length n_obs; right-censoring limit for
+                                   // censored_poisson (fid 20; Arc E, #1244).
+                                   // 0 = uncensored (y holds the count); C >= 1
+                                   // = right-censored at Y >= C (y is unused on
+                                   // that branch). For every other family the
+                                   // entry is unused (set to 0.0 by R), same
+                                   // no-op convention as n_trials above. See
+                                   // dev/gapclose/arcE/alignment-censored-poisson.md.
   DATA_MATRIX(X_fix);              // fixed-effects design matrix (n_obs x p)
   DATA_IVECTOR(trait_id);          // 0-indexed trait per row
   DATA_IVECTOR(site_id);           // 0-indexed site per row
@@ -3335,6 +3343,29 @@ Type objective_function<Type>::operator()()
         ll += logspace_add(log_zi, log_one_minus_zi + log_p0);
       } else {
         ll += log_one_minus_zi + dbinom_robust(y(o), n_trials(o), eta_o, true);
+      }
+    } else if (fid == 20) {
+      // censored_poisson (Arc E, issue #1244): right-censoring only, log
+      // link only (Identity lock -- see
+      // dev/gapclose/arcE/alignment-censored-poisson.md). NOTE: family_id
+      // 20 is also independently claimed by an unmerged ordinal_logit
+      // branch (o4-ordinal-logit) -- a known, disclosed collision left for
+      // whoever merges second to shift to 21.
+      //   cens_limit(o) == 0: ordinary Poisson row, y(o) is the count.
+      //   cens_limit(o) == C >= 1: right-censored, only Y >= C known; y(o)
+      //     is UNUSED on this branch (R sets it equal to C by convention).
+      // Right-censored log-density via the Poisson-Gamma duality:
+      //   log P(Y >= C | mu) = log pgamma(mu, shape = C, scale = 1)
+      // (the lower-tail regularized incomplete gamma at mu; TMB's pgamma
+      // is AD-differentiable through the D_incpl_gamma_shape atomic, so no
+      // hand-coded score/weight is needed here, unlike the Julia oracle's
+      // custom Newton core).
+      Type mu = exp(eta_o);
+      Type C  = cens_limit(o);
+      if (C > Type(0.0)) {
+        ll += log(pgamma(mu, C, Type(1.0)));
+      } else {
+        ll += dpois(y(o), mu, true);
       }
     } else {
       error("gllvmTMB_multi: unknown family_id");

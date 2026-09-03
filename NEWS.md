@@ -21,6 +21,25 @@
   alternative. `fitted()`/`predict(type = "response")` report
   `(1 - zi) * mu`; `simulate()` and `residuals(type = "randomized_quantile")`
   are wired for all three; `check_gllvmTMB()` flags a `zi` pinned near 0 or 1.
+* `censored_poisson()` is now a runtime-admitted family (log link only), not
+  a constructor-only stub -- it previously failed loud with "Unsupported
+  family" (register FAM-16). **In scope: right-censoring only.** Supply the
+  response as `cbind(y, censored) ~ ...`, where column 1 is the observed
+  count (uncensored rows) or the censoring limit (right-censored rows) and
+  column 2 is a strict `{0, 1}` right-censoring indicator; a plain
+  `y ~ ...` response treats every row as uncensored, reproducing
+  `poisson()` exactly (verified numerically identical). The density uses the
+  Poisson-Gamma duality `log P(Y >= C) = log pgamma(mu, shape = C, scale =
+  1)`; `fitted()`/`predict(type = "response")` report the mean of the
+  underlying uncensored process (`exp(eta)`), matching how
+  `truncated_poisson()` already reports its untruncated mean, not a
+  censoring-adjusted expectation. **Not in scope:** left-censoring and
+  interval-censoring; a calibrated interval; `integration = "va"` and
+  `estimator = "mspl"` both refuse this family (by omission, same mechanism
+  as the zi_* families above); `aghq` DECLINES to a plain Laplace fit with a
+  warning; `predictive_check(type = "rootogram")` does not admit it
+  (censored rows carry no observed count to histogram). `simulate()` and
+  `residuals(type = "randomized_quantile")` are wired.
 * Several refusals now name a route that actually fits, instead of pointing at
   keywords that refuse the same input. An augmented-LHS formula such as
   `indep(1 + x | trait)` or `phylo_indep(0 + trait + trait:x | species)` now

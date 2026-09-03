@@ -360,6 +360,7 @@ residuals.gllvmTMB_multi <- function(
   observed_mask <- observed_mask[keep]
   row_meta <- row_meta[keep, , drop = FALSE]
   n_trials <- as.numeric(object$tmb_data$n_trials)[keep]
+  cens_limit <- as.numeric(object$tmb_data$cens_limit %||% rep(0, length(keep)))[keep]
   n <- length(observed)
 
   lower <- rep(NA_real_, n)
@@ -776,6 +777,29 @@ residuals.gllvmTMB_multi <- function(
       }
       lower[i] <- if (y_i <= 0) 0 else zi_t + (1 - zi_t) * Fc(y_i - 1)
       upper[i] <- zi_t + (1 - zi_t) * Fc(y_i)
+      u[i] <- stats::runif(1L, min = lower[i], max = upper[i])
+    } else if (fid == 20L) {
+      ## censored_poisson (Arc E, #1244). Uncensored rows (cens_limit == 0)
+      ## are exactly plain Poisson (fid 2's branch, restated here since the
+      ## dispatch is on cens_limit, not a separate row type). Right-censored
+      ## rows (cens_limit == C >= 1) only tell us Y >= C -- the CDF value
+      ## itself is known to lie in [F(C-1), 1), so the randomized quantile
+      ## residual draws uniformly from that interval, the same "known CDF
+      ## interval" idiom every other interval-typed branch in this function
+      ## already uses (ordinal_probit above; the zi mixture above).
+      C_i <- cens_limit[i]
+      mu <- exp(eta[i])
+      if (C_i >= 1) {
+        lower[i] <- stats::ppois(C_i - 1, lambda = mu)
+        upper[i] <- 1
+      } else {
+        if (y_i < 0 || y_i != floor(y_i)) {
+          status[i] <- "invalid_observed"
+          next
+        }
+        lower[i] <- if (y_i <= 0) 0 else stats::ppois(y_i - 1, lambda = mu)
+        upper[i] <- stats::ppois(y_i, lambda = mu)
+      }
       u[i] <- stats::runif(1L, min = lower[i], max = upper[i])
     } else {
       ## Deliberately NOT implemented (fall through to "unsupported_family"):
@@ -1542,7 +1566,8 @@ residuals.gllvmTMB_multi <- function(
     "15" = "nbinom1",
     "17" = "zi_poisson",
     "18" = "zi_nbinom2",
-    "19" = "zi_binomial"
+    "19" = "zi_binomial",
+    "20" = "censored_poisson"
   )
   out <- unname(labels[as.character(family_id)])
   out[is.na(out)] <- paste0("family_id_", family_id[is.na(out)])

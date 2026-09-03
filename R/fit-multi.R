@@ -5100,10 +5100,16 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   log_det_V <- 0
   if (use_equalto) {
     if (is.null(known_V))
-      cli::cli_abort("equalto() found in formula but {.arg known_V} is NULL.")
+      cli::cli_abort(c(
+        "equalto() found in formula but {.arg known_V} is NULL.",
+        ">" = "Pass {.code known_V = V} to {.fn gllvmTMB} (e.g. built with {.fn block_V})."
+      ))
     V <- as.matrix(known_V)
     if (!isTRUE(all.equal(nrow(V), n_obs)) || !isTRUE(all.equal(ncol(V), n_obs)))
-      cli::cli_abort("known_V must be n_obs x n_obs (got {nrow(V)} x {ncol(V)}).")
+      cli::cli_abort(c(
+        "known_V must be n_obs x n_obs (got {nrow(V)} x {ncol(V)}).",
+        ">" = "Pass a square {.arg known_V} matrix with one row/column per observation."
+      ))
     V <- V + diag(1e-8, nrow = nrow(V))
     V_inv     <- solve(V)
     log_det_V <- as.numeric(determinant(V, logarithm = TRUE)$modulus)
@@ -5123,7 +5129,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     if (!phylo_slope_xcol %in% names(data))
       cli::cli_abort(c(
         "{.arg phylo_slope({phylo_slope_xcol} | {species})} references column {.val {phylo_slope_xcol}}, which is not in {.arg data}.",
-        "i" = "Add the covariate column to the data frame."))
+        ">" = "Add the covariate column to the data frame."))
     as.numeric(data[[phylo_slope_xcol]])
   } else rep(0.0, n_obs)
   ## Design 130: predictor design for slope-only response-column fields.
@@ -5178,7 +5184,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       if (length(missing_cols) > 0L) {
         cli::cli_abort(c(
           "{.fn phylo_dep} slope covariate{?s} {.val {missing_cols}} not found in {.arg data}.",
-          "i" = "Add the covariate column{?s} to the data frame."))
+          ">" = "Add the covariate column{?s} to the data frame."))
       }
       matrix(
         as.numeric(unlist(lapply(phylo_slope_xcols, function(col) as.numeric(data[[col]])))),
@@ -5273,7 +5279,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     if (!phylo_latent_slope_xcol %in% names(data)) {
       cli::cli_abort(c(
         "{.code phylo_latent(1 + {phylo_latent_slope_xcol} | {species})} references column {.val {phylo_latent_slope_xcol}}, which is not in {.arg data}.",
-        "i" = "Add the covariate column to the data frame."
+        ">" = "Add the covariate column to the data frame."
       ))
     }
     Z_phy_lat[, 1L] <- 1.0
@@ -5301,7 +5307,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     if (!rr_B_slope_xcol %in% names(data)) {
       cli::cli_abort(c(
         "{.code latent(1 + {rr_B_slope_xcol} | {site}, d = K)} references column {.val {rr_B_slope_xcol}}, which is not in {.arg data}.",
-        "i" = "Add the covariate column to the data frame."
+        ">" = "Add the covariate column to the data frame."
       ))
     }
     x_B_slope <- as.numeric(data[[rr_B_slope_xcol]])
@@ -5333,7 +5339,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     if (!diag_B_slope_xcol %in% names(data)) {
       cli::cli_abort(c(
         "The augmented ordinary random-regression term references column {.val {diag_B_slope_xcol}}, which is not in {.arg data}.",
-        "i" = "Add the covariate column to the data frame."
+        ">" = "Add the covariate column to the data frame."
       ))
     }
     x_B_diag <- as.numeric(data[[diag_B_slope_xcol]])
@@ -6649,7 +6655,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       }, numeric(1))
       if (all(!is.na(df_vals)) && length(unique(df_vals)) == 1L) {
         if (df_vals[1] <= 1)
-          cli::cli_abort("student(): {.code df} must be > 1 (got {df_vals[1]}).")
+          cli::cli_abort(c(
+            "student(): {.code df} must be > 1 (got {df_vals[1]}).",
+            ">" = "Pass e.g. {.code df = 3}, or omit {.arg df} to estimate it."
+          ))
         df_pin[t] <- df_vals[1]
       }
     }

@@ -1,5 +1,32 @@
 # Development (unreleased)
 
+* New `ordination_uncertainty()` (issue #1243, D-204 parity with GLLVM.jl's
+  function of the same name) reports the per-unit covariance of ordination
+  (latent) scores, not just a point estimate -- the object needed to draw an
+  uncertainty ellipse (not just an axis-aligned error bar) around a site in
+  a biplot. **Estimand, stated plainly:** the conditional (posterior)
+  covariance of a unit's latent-score random effect given the data and the
+  fitted parameters -- a prediction-uncertainty statement about a random
+  effect, not a sampling-distribution SE of a fixed quantity -- read from
+  the fit's joint (fixed + random) precision matrix
+  (`TMB::sdreport(getJointPrecision = TRUE)`). It generalises the existing
+  `getLV(se = TRUE)` per-cell marginal SE to the full per-unit `K x K`
+  covariance, including the cross-axis entry `getLV(se = TRUE)` cannot
+  produce. **Rotation:** gllvmTMB's `latent()` loadings are pinned by a
+  structural lower-triangular constraint up to a per-axis SIGN FLIP only
+  (never a continuous rotation), so the returned covariance is valid for
+  drawing ellipses around this fit's own (`rotate = "none"`) scores;
+  rotated (`varimax`/`promax`) scores are not supported, matching
+  `getLV(se = TRUE)`'s existing restriction. `ordiplot(ellipse = TRUE)`
+  now draws that ellipse directly. **Scope boundary, stated honestly:** no
+  `lower`/`upper` interval bound is returned and no repeated-sampling
+  coverage has been measured for `se` or `cov` -- both are Wald/delta
+  -method quantities, verified against an independent dense joint-precision
+  inversion to numerical (not calibration) accuracy. Refused, each naming a
+  working alternative, for `engine = "julia"` bridge fits,
+  `integration = "va"` fits, `estimator = "mspl"` fits, likelihood-weighted
+  fits, and predictor-informed `latent(..., lv = ~x)` fits. See
+  `docs/design/35-validation-debt-register.md` row EXT-38.
 * Three zero-inflated count families: `zi_poisson()`, `zi_nbinom2()`, and
   `zi_binomial()`. These are TRUE zero-inflation mixtures -- the ordinary
   count process is active at every observation, including `y = 0` -- and are

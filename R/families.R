@@ -818,6 +818,84 @@ ordinal_probit <- function(link = "probit") {
                 full = FALSE, class = c("ordinal_probit", "family"))
 }
 
+#' Ordinal-logit threshold family for the multivariate engine
+#'
+#' The cumulative-**logit** analogue of [ordinal_probit()]: the same
+#' Wright/Falconer/Dempster-Lerner threshold model for K-category ordinal
+#' data with K >= 3, fitted on the latent (logistic) scale instead of the
+#' probit scale. The latent variable representation is
+#' \eqn{y^* = \eta + \varepsilon}, with \eqn{\varepsilon \sim
+#' \text{Logistic}(0, 1)} and the observed category \eqn{y = k} iff
+#' \eqn{\tau_{k-1} < y^* \le \tau_k}, using cutpoints \eqn{\tau_0 =
+#' -\infty}, \eqn{\tau_1 = 0} (fixed for identifiability), \eqn{\tau_2,
+#' \ldots, \tau_{K-1}}, \eqn{\tau_K = +\infty}. A K-category trait
+#' therefore estimates K - 2 free cutpoints, reconstructed and reported
+#' via the SAME [extract_cutpoints()] convention as `ordinal_probit()`.
+#'
+#' Because the standard logistic distribution has variance
+#' \eqn{\pi^2 / 3}, the link-residual variance
+#' \eqn{\sigma^2_d = \pi^2 / 3} *exactly* -- the logit analogue of
+#' `ordinal_probit()`'s \eqn{\sigma^2_d = 1}. As with `ordinal_probit()`,
+#' this fixes the ordinal liability scale; it does not by itself make
+#' estimates directly comparable with an observed continuous response.
+#'
+#' The K = 2 case reduces exactly to `binomial(link = "logit")`, the
+#' logit analogue of the probit family's Hadfield (2015) eqn 10 reduction
+#' (`ordinal_probit()` with K = 2 reduces to `binomial(link = "probit")`).
+#' Use `binomial()` for binary outcomes and `ordinal_logit()` for K >= 3.
+#'
+#' \strong{Not to be confused with `cumulative_logit()`.}
+#' [cumulative_logit()] is an unrelated \emph{predictor}-model family tag
+#' consumed by `impute_model(family = cumulative_logit())` for an ORDERED
+#' CATEGORICAL missing covariate inside `mi()`; it declares no response
+#' family and never appears in the top-level `family = ` argument of
+#' [gllvmTMB()]. `ordinal_logit()`, declared here, is a RESPONSE family
+#' for [gllvmTMB()]'s `family = ` argument, exactly parallel to
+#' `ordinal_probit()`. Both happen to use a cumulative-logit cell
+#' probability, but one models a missing predictor's marginal distribution
+#' and the other models the observed multivariate response; they are not
+#' interchangeable and share no code path.
+#'
+#' Cross-engine note: `GLLVM.jl`'s ordinal family is a cumulative-logit
+#' model, so `ordinal_logit()` is the gllvmTMB family that is directly
+#' comparable to it on the link scale (unlike `ordinal_probit()`, which
+#' differs by a factor of roughly \eqn{\pi / \sqrt{3}}; see the
+#' cross-engine note on [ordinal_probit()]).
+#'
+#' @param link Always `"logit"`; provided for API symmetry with the
+#'   other family constructors.
+#'
+#' @return A family object with class `c("ordinal_logit", "family")`.
+#'   The cutpoints are estimated as part of the model fit; recover them
+#'   with [extract_cutpoints()].
+#'
+#' @references
+#' Hadfield, J. D. (2015). Increasing the efficiency of MCMC for
+#'   hierarchical phylogenetic models of categorical traits using
+#'   reduced mixed models. *Methods Ecol. Evol.* 6:706-714.
+#'   \doi{10.1111/2041-210X.12354}
+#'
+#' @seealso [ordinal_probit()] for the probit threshold family;
+#'   [extract_cutpoints()] to recover \eqn{\tau_2, \ldots, \tau_{K-1}}
+#'   after fitting; [cumulative_logit()] for the UNRELATED
+#'   missing-predictor family of the same name shape.
+#'
+#' @export
+#' @examples
+#' ordinal_logit()
+ordinal_logit <- function(link = "logit") {
+  link_name <- .gllvm_link(substitute(link), link, "logit",
+                           "ordinal_logit()")$name
+  if (!identical(link_name, "logit")) {
+    cli::cli_abort(c(
+      "{.fn ordinal_logit} supports only the logit link.",
+      "i" = "Use {.fn ordinal_probit} for the probit link."
+    ))
+  }
+  .gllvm_family("ordinal_logit", "logit", "logit", "logit",
+                full = FALSE, class = c("ordinal_logit", "family"))
+}
+
 #' Multinomial (baseline-category logit) family
 #'
 #' Baseline-category logit / softmax family for a single \strong{unordered}

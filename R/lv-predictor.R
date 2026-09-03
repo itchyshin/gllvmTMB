@@ -542,7 +542,7 @@ gll_prepare_lv_predictor_setup <- function(
       if (all(family_rows == 1L) && all(n_trials[rows] == 1L)) return(FALSE)
       TRUE
     }, logical(1L))
-    if (all(family_id_vec %in% c(12L, 13L, 14L))) {
+    if (all(family_id_vec %in% c(12L, 13L, 14L, 20L))) {
       psi_is_free[] <- FALSE
     }
     n_physical_response_traits <- n_response_traits

@@ -178,7 +178,16 @@ REGISTER_MAP <- list(
       note = "COLLISION (divergence, not a false join): both packages call this family `student`, but gllvmTMB's `student()` ESTIMATES the degrees-of-freedom `nu` per trait (`R/families.R`, `log_df_student` in gllvmTMB.cpp) while GLLVM.jl's Student-t parity is paid only at a FIXED nu on both sides -- see the parity tool's NOTED_DIVERGENCES table."),
   ROW("tweedie", "Response families", "FAM-13"),
   ROW("ordinal_probit", "Response families", "FAM-14",
-      note = "COLLISION guard: this is the probit-link ordinal cumulative model only. Julia's row is the COMBINED `ordinal_probit / cumulative_logit`; gllvmTMB has no logit-link ordinal response family, so that half is a genuine port gap (see parity tool disposition table)."),
+      note = "COLLISION guard: this is the probit-link ordinal cumulative model only. Julia's row is the COMBINED `ordinal_probit / cumulative_logit`. The logit half (Julia's `Ordinal`) is NO LONGER a port gap as of Arc O4 -- see the `ordinal_logit` row below, FAM-24."),
+  # B3-issues.md #2 (this gap; Arc O4, 2026-09-03): R previously shipped
+  # ordinal_probit() only, with cumulative_logit() reserved for the
+  # UNRELATED missing-predictor family, so the cumulative-LOGIT response
+  # family needed a distinct name. `ordinal_logit()` is that name.
+  # `Ordinal` is GLLVM.jl's own short spelling for this capability
+  # (dev/gapclose/B3-issues.md:19-21, `src/families/ordinal.jl`).
+  ROW("ordinal_logit", "Response families", "FAM-24",
+      aliases = "Ordinal",
+      note = "Closes the B3-issues.md #2 gap: the cumulative-logit ordinal response family, distinct from R's cumulative_logit() (a missing-PREDICTOR family; COLLISION guard on that row below). Link swap on ordinal_probit's (FAM-14) apparatus -- same cutpoint machinery, standard logistic CDF in place of the normal CDF; sigma_d^2 = pi^2/3 exact vs. FAM-14's exact 1."),
   ROW("truncated_poisson", "Response families", "FAM-15"),
   ROW("truncated_nbinom2", "Response families", "FAM-15"),
   ROW("truncated_nbinom1", "Response families", "FAM-16"),

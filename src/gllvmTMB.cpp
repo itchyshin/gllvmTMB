@@ -737,6 +737,15 @@ Type objective_function<Type>::operator()()
   //                        multinom_group_id; the softmax density is evaluated
   //                        ONCE at the group's anchor (first) row, NOT per row.
   //                        See multinom_group_id / multinom_K_per_trait below.
+  //  20 = ordinal_logit   (cumulative-LOGIT threshold model; same
+  //                        Hadfield/Wright/Falconer threshold apparatus as
+  //                        fid 14 -- same n_ordinal_cuts_per_trait /
+  //                        ordinal_offset_per_trait / ordinal_log_increments
+  //                        DATA and PARAMETER vectors -- but the cell
+  //                        probability uses the standard logistic CDF
+  //                        instead of Phi, so the link-residual variance is
+  //                        pi^2/3, not 1. See fid == 20 below; 17/18/19 are
+  //                        the zero-inflated families (Design 62).
   // For single-family fits the vector is filled with the same value.
   // sigma_eps is mapped off when no row has family_id_vec(o) in {0, 3}.
   // Ordinary Gamma (fid 4) has its own per-trait shape/CV parameter below.
@@ -3278,6 +3287,67 @@ Type objective_function<Type>::operator()()
       } else {
         logp_k = gll_log_pnorm_diff(cuts(yk - 1) - eta_o,
                                     cuts(yk - 2) - eta_o);
+      }
+      Type log_tiny_ord = Type(-690.7755278982137);   // log(1e-300)
+      logp_k = CppAD::CondExpLt(logp_k, log_tiny_ord, log_tiny_ord, logp_k);
+      ll += logp_k;
+    } else if (fid == 20) {
+      // ordinal_logit: the SAME cumulative-threshold apparatus as fid 14
+      // (ordinal_probit) -- identical n_ordinal_cuts_per_trait /
+      // ordinal_offset_per_trait / ordinal_log_increments cutpoint
+      // reconstruction, byte-for-byte -- with the standard LOGISTIC CDF in
+      // place of Phi:
+      //   y* = eta + e,  e ~ Logistic(0, 1)   (link-residual variance = pi^2/3)
+      //   y = k iff tau_{k-1} < y* <= tau_k
+      //   tau_0 = -Inf, tau_1 = 0, tau_K = +Inf
+      //   Free params: tau_2, ..., tau_{K-1}  (K - 2 cutpoints)
+      // P(y = k | eta) = F(tau_k - eta) - F(tau_{k-1} - eta), F = plogis.
+      // K = 2 reduces to binomial(logit) by the same eqn-10-style argument
+      // as the probit case. y is 1-indexed (1, 2, ..., K).
+      int t       = trait_id(o);
+      int K_minus_2 = n_ordinal_cuts_per_trait(t);   // = K_t - 2
+      int offset  = ordinal_offset_per_trait(t);
+      int K       = K_minus_2 + 2;                   // number of categories
+      // Cutpoint reconstruction is IDENTICAL to fid 14 -- same flat
+      // ordinal_log_increments vector, same per-trait offset, same
+      // guarantee tau_1 = 0 < tau_2 < tau_3 < ... by construction.
+      vector<Type> cuts(K - 1);
+      cuts(0) = Type(0.0);   // tau_1 fixed at 0 for identifiability
+      for (int j = 1; j < K - 1; j++) {
+        cuts(j) = cuts(j - 1) + exp(ordinal_log_increments(offset + j - 1));
+      }
+      int yk = CppAD::Integer(y(o));   // observed category, 1..K
+      // log P(y = yk) = log( F(upper - eta) - F(lower - eta) ), via
+      // gll_log_inv_logit / gll_log_inv_logit_diff (already used by the
+      // cumulative-logit missing-PREDICTOR family; NOT the same family as
+      // this RESPONSE family -- see the naming note at those definitions).
+      //
+      // Why no separate ~8.3-style far-tail switch is needed here, unlike
+      // gll_log_pnorm's Mills-ratio branch: pnorm(x) rounds to EXACTLY 1.0
+      // once x > 8.2924 because the Gaussian tail 1 - Phi(x) decays like
+      // exp(-x^2/2) -- doubly-exponential in x, so it drops below the
+      // double unit roundoff (~1.1e-16) by x ~ 8.3. The logistic complement
+      // 1 - F(x) = 1/(1+exp(x)) decays only like exp(-x) -- a single
+      // exponential -- so it does not underflow to the same roundoff until
+      // x ~ -log(1.1e-16) ~ 36.7. gll_log_inv_logit / logspace_add already
+      // handle that full range without a separate asymptotic expansion
+      // (log1p(exp(x)) is the standard stable form for all real x). The
+      // adjacent-cutpoint collision this DOES still reach -- two free
+      // cutpoints landing within ~1e-16 of each other on the eta scale, so
+      // logp_k underflows to log(0) = -Inf before the -log(1e-300) floor
+      // below catches it -- is exactly the gll_log1mexp input-ceiling case
+      // documented at that function's definition and at
+      // gll_log_inv_logit_diff's own comment; nothing new is needed here.
+      Type logp_k;
+      if (yk >= K) {
+        // Top category: P = 1 - F(lower - eta) = F(eta - lower).
+        logp_k = gll_log_inv_logit(eta_o - cuts(yk - 2));
+      } else if (yk <= 1) {
+        // Bottom category: P = F(upper - eta).
+        logp_k = gll_log_inv_logit(cuts(yk - 1) - eta_o);
+      } else {
+        logp_k = gll_log_inv_logit_diff(cuts(yk - 1) - eta_o,
+                                        cuts(yk - 2) - eta_o);
       }
       Type log_tiny_ord = Type(-690.7755278982137);   // log(1e-300)
       logp_k = CppAD::CondExpLt(logp_k, log_tiny_ord, log_tiny_ord, logp_k);

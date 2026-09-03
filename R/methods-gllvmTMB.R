@@ -30,6 +30,7 @@
   out <- character(Tn)
   ## Family-id -> default link mapping when link_id is unavailable.
   ## fid 14 (ordinal_probit) carries no per-trait link; tag as "probit".
+  ## fid 20 (ordinal_logit) is the same situation, tagged "logit".
   default_link <- function(fid) {
     switch(
       as.character(fid),
@@ -49,6 +50,7 @@
       "13" = "log", # delta_gamma
       "14" = "probit", # ordinal_probit
       "15" = "log", # nbinom1
+      "20" = "logit", # ordinal_logit
       NA_character_
     )
   }
@@ -348,6 +350,10 @@
       ## ordinal_probit carries no single-row response mean; keep the latent
       ## (probit) scale rather than fabricate one.
       out[i] <- stats::pnorm(e)
+    } else if (fid == 20L) {
+      ## ordinal_logit: same "no single-row response mean" situation as
+      ## fid 14, on the latent (logit) scale instead of probit.
+      out[i] <- stats::plogis(e)
     } else if (fid == 3L) {
       ## lognormal: eta is the mean on the log scale, so exp(eta) is the
       ## median; the conditional response mean includes sigma_eps^2 / 2.
@@ -409,6 +415,10 @@
     } else if (fid == 14L) {
       ## ordinal_probit: out was pnorm(e).
       out[i] <- stats::dnorm(e)
+    } else if (fid == 20L) {
+      ## ordinal_logit: out was plogis(e); d/de plogis(e) = plogis(e)*(1-plogis(e)).
+      p <- stats::plogis(e)
+      out[i] <- p * (1 - p)
     } else if (fid == 3L) {
       ## lognormal: out was exp(e + 0.5 * sigma_eps^2); sigma_eps does not
       ## depend on e, so the derivative keeps the same multiplier.
@@ -752,15 +762,16 @@ print.gllvmTMB_multi <- function(x, ...) {
       paste(flagged, collapse = "/")
     ))
   }
-  ## ordinal_probit cutpoints, when at least one trait uses fid 14.
+  ## ordinal_probit / ordinal_logit cutpoints, when at least one trait uses
+  ## fid 14 or fid 20.
   fids_x <- x$tmb_data$family_id_vec
-  if (!is.null(fids_x) && any(fids_x == 14L)) {
+  if (!is.null(fids_x) && any(fids_x %in% c(14L, 20L))) {
     ## quiet = TRUE: these callers show cutpoint ESTIMATES only, with no
     ## `tau_se` column, so the missing-standard-error note would explain a
     ## column the reader is not looking at.
     cuts <- tryCatch(extract_cutpoints(x, quiet = TRUE), error = function(e) NULL)
     if (!is.null(cuts) && nrow(cuts) > 0L) {
-      cat("  Cutpoints (ordinal_probit, tau_1 = 0 fixed):\n")
+      cat("  Cutpoints (ordinal_probit/ordinal_logit, tau_1 = 0 fixed):\n")
       cuts_show <- cuts[,
         c("trait", "cutpoint_label", "tau_estimate"),
         drop = FALSE
@@ -1190,16 +1201,16 @@ nobs.gllvmTMB_multi <- function(object, ...) {
 #' Returns a tibble (or data.frame) of either the fixed-effect coefficient
 #' table, the random-effects variance / covariance terms, or the ordinal
 #' threshold cutpoints. Mirrors the `tidy.sdmTMB()` API but augmented for
-#' the additional covstructs and the gllvmTMB-native `ordinal_probit()`
-#' family.
+#' the additional covstructs and the gllvmTMB-native `ordinal_probit()` /
+#' `ordinal_logit()` families.
 #'
 #' @param x A fit returned by [gllvmTMB()].
 #' @param effects One of `"fixed"` (default), `"ran_pars"`, or
-#'   `"cutpoint"`. The `"cutpoint"` class returns the ordinal-probit
+#'   `"cutpoint"`. The `"cutpoint"` class returns the ordinal
 #'   cutpoints (one row per (trait, threshold) pair); it is empty for
-#'   fits with no `ordinal_probit()` traits. (Earlier releases lumped
-#'   the cutpoints into `"ran_pars"` as a categorisation hack — see
-#'   *NEWS*.)
+#'   fits with no `ordinal_probit()` / `ordinal_logit()` traits. (Earlier
+#'   releases lumped the cutpoints into `"ran_pars"` as a categorisation
+#'   hack — see *NEWS*.)
 #' @param conf.int Whether to add `conf.low` / `conf.high` columns.
 #' @param conf.level Confidence level for the CI.
 #' @param ... Currently unused.
@@ -1254,12 +1265,12 @@ tidy.gllvmTMB_multi <- function(
     }
     out
   } else if (effects == "cutpoint") {
-    ## Dedicated effect class for ordinal_probit cutpoints. Earlier
-    ## releases routed these into ran_pars, which is a categorisation
-    ## hack: cutpoints are not variance components. Returns the empty
-    ## data.frame when the fit has no ordinal_probit traits.
+    ## Dedicated effect class for ordinal_probit / ordinal_logit cutpoints.
+    ## Earlier releases routed these into ran_pars, which is a
+    ## categorisation hack: cutpoints are not variance components. Returns
+    ## the empty data.frame when the fit has no ordinal traits.
     fids_x <- x$tmb_data$family_id_vec
-    if (is.null(fids_x) || !any(fids_x == 14L)) {
+    if (is.null(fids_x) || !any(fids_x %in% c(14L, 20L))) {
       return(data.frame(
         term = character(0),
         estimate = numeric(0),
@@ -1650,7 +1661,7 @@ simulate.gllvmTMB_multi <- function(
   ## group, not per contrast row); the per-row loop leaves those rows at 0.
   supported <- c(
     0L, 1L, 2L, 3L, 4L, 5L, 7L, 8L, 9L, 10L, 11L, 12L, 13L, 14L, 15L, 16L,
-    17L, 18L, 19L, 21L
+    17L, 18L, 19L, 20L, 21L
   )
   unsupp <- setdiff(uniq_fids, supported)
   if (length(unsupp) > 0L) {
@@ -1658,7 +1669,7 @@ simulate.gllvmTMB_multi <- function(
       c(
         "Family-aware {.fn simulate} not yet implemented for family_id values: {.val {unsupp}}.",
         "i" = "Affected rows are drawn as {.val NA}, not a Gaussian-on-link-scale substitute -- a wrong number is worse than a missing one.",
-        ">" = "Currently supported: gaussian (0), binomial (1), poisson (2), lognormal (3), Gamma (4), nbinom2 (5), Beta (7), betabinomial (8), student-t (9), truncated_poisson (10), truncated_nbinom2 (11), delta_lognormal (12), delta_gamma (13), ordinal_probit (14), nbinom1 (15), multinomial (16), zi_poisson (17), zi_nbinom2 (18), zi_binomial (19), censored_poisson (21). Tweedie (6) has no exact draw implemented."
+        ">" = "Currently supported: gaussian (0), binomial (1), poisson (2), lognormal (3), Gamma (4), nbinom2 (5), Beta (7), betabinomial (8), student-t (9), truncated_poisson (10), truncated_nbinom2 (11), delta_lognormal (12), delta_gamma (13), ordinal_probit (14), nbinom1 (15), multinomial (16), zi_poisson (17), zi_nbinom2 (18), zi_binomial (19), ordinal_logit (20), censored_poisson (21). Tweedie (6) has no exact draw implemented."
       ),
       class = "gllvmTMB_simulate_unsupported_family"
     )
@@ -1848,6 +1859,21 @@ simulate.gllvmTMB_multi <- function(
         y[i] <- NA_real_
       } else {
         ystar <- eta_i + stats::rnorm(1L)
+        y[i] <- 1L + sum(ystar > cuts_t)
+      }
+    } else if (fid == 20L) {
+      ## ordinal_logit (src/gllvmTMB.cpp fid == 20): identical draw
+      ## mechanics to fid 14 above, with the latent error drawn from the
+      ## standard logistic distribution (stats::rlogis) instead of N(0, 1).
+      cuts_t <- if (tid_1 >= 1L && tid_1 <= length(ordinal_full_cuts)) {
+        ordinal_full_cuts[[tid_1]]
+      } else {
+        NULL
+      }
+      if (is.null(cuts_t)) {
+        y[i] <- NA_real_
+      } else {
+        ystar <- eta_i + stats::rlogis(1L)
         y[i] <- 1L + sum(ystar > cuts_t)
       }
     } else if (fid == 15L) {
@@ -4130,18 +4156,21 @@ deviance.gllvmTMB_multi <- function(object, ...) {
 #' as calibrated uncertainty in any user-facing output until the Design 119
 #' sec.4 coverage campaign clears a route and family for export.
 #'
-#' For [ordinal_probit()] traits, `type = "response"` is the **expected
-#' category** \eqn{E[k] = \sum_k k \cdot P(\mathrm{category}\ k \mid \eta,
-#' \tau)}, computed from the fitted cutpoints (Hadfield 2015 convention:
-#' \eqn{\tau_1 = 0} fixed, \eqn{\tau_2, \ldots, \tau_{K-1}} estimated; see
-#' [extract_cutpoints()]) -- not a probability. It is not an elementwise
-#' `pnorm(eta)`, which is not a category quantity once \eqn{K > 2}.
-#' `type = "link"` is unchanged: the probit-scale linear predictor.
+#' For [ordinal_probit()] / [ordinal_logit()] traits, `type = "response"`
+#' is the **expected category** \eqn{E[k] = \sum_k k \cdot
+#' P(\mathrm{category}\ k \mid \eta, \tau)}, computed from the fitted
+#' cutpoints (Hadfield 2015 convention: \eqn{\tau_1 = 0} fixed,
+#' \eqn{\tau_2, \ldots, \tau_{K-1}} estimated; see [extract_cutpoints()])
+#' -- not a probability. It is not an elementwise `pnorm(eta)` /
+#' `plogis(eta)`, which is not a category quantity once \eqn{K > 2}.
+#' `type = "link"` is unchanged: the probit- or logit-scale linear
+#' predictor (per the trait's own family).
 #'
 #' @param object A fit returned by [gllvmTMB()].
 #' @param type One of `"link"` (default; the linear predictor) or
-#'   `"response"` (the inverse-link conditional mean; for [ordinal_probit()]
-#'   traits, the expected category instead -- see Details).
+#'   `"response"` (the inverse-link conditional mean; for
+#'   [ordinal_probit()] / [ordinal_logit()] traits, the expected category
+#'   instead -- see Details).
 #' @param se EXPERIMENTAL, internal-only. If `TRUE`, appends `se_confidence`
 #'   (delta-method SE of the reconstructed mean) and `se_prediction`
 #'   (`se_confidence` combined with the family noise variance) columns.
@@ -4312,15 +4341,17 @@ predict_missing <- function(
 
   out <- base[masked, , drop = FALSE]
 
-  ## ordinal_probit (fid 14) has no single-row response mean, so
-  ## `predict(object, type = "response")` (via `.apply_linkinv_per_row()`)
-  ## falls back to the latent probit-scale `pnorm(eta)` -- not a category
-  ## quantity once K > 2. Scoped to predict_missing()'s masked-row output
-  ## only: replace those rows' `est` with the expected category. The
-  ## generic predict() path is untouched.
+  ## ordinal_probit / ordinal_logit (fid 14 / 20) have no single-row
+  ## response mean, so `predict(object, type = "response")` (via
+  ## `.apply_linkinv_per_row()`) falls back to the latent probit/logit-scale
+  ## `pnorm(eta)`/`plogis(eta)` -- not a category quantity once K > 2.
+  ## Scoped to predict_missing()'s masked-row output only: replace those
+  ## rows' `est` with the expected category. The generic predict() path is
+  ## untouched.
   if (identical(type, "response")) {
     fid_vec <- object$tmb_data$family_id_vec
-    if (!is.null(fid_vec) && length(fid_vec) == n_model && any(fid_vec == 14L)) {
+    if (!is.null(fid_vec) && length(fid_vec) == n_model &&
+        any(fid_vec %in% c(14L, 20L))) {
       out <- .predict_missing_ordinal_response(object, out, fid_vec, trait_lbl)
     }
   }
@@ -4329,19 +4360,21 @@ predict_missing <- function(
   out
 }
 
-## For fid == 14 (ordinal_probit) rows in `predict_missing(type =
-## "response")`'s output, replace the pnorm(eta) placeholder with the
-## EXPECTED CATEGORY E[k] = sum_k k * P(category k | eta, cutpoints),
-## following the Hadfield (2015) convention also used by extract_cutpoints():
-## tau_1 = 0 fixed for identifiability, tau_2 .. tau_{K-1} estimated. Built
-## directly from `object$tmb_data`/`object$report` (the same fields
-## `extract_cutpoints()` reads) rather than calling `extract_cutpoints()`
-## itself, so a K = 2 trait (Hadfield eqn 10: ordinal_probit with K = 2
-## reduces exactly to binomial(link = "probit"), zero free cutpoints) is
-## still handled -- `extract_cutpoints()` omits such traits from its
-## per-cutpoint data frame entirely. Non-ordinal rows in `out` are untouched.
+## For fid == 14 (ordinal_probit) / fid == 20 (ordinal_logit) rows in
+## `predict_missing(type = "response")`'s output, replace the
+## pnorm(eta)/plogis(eta) placeholder with the EXPECTED CATEGORY
+## E[k] = sum_k k * P(category k | eta, cutpoints), following the Hadfield
+## (2015) convention also used by extract_cutpoints(): tau_1 = 0 fixed for
+## identifiability, tau_2 .. tau_{K-1} estimated. Built directly from
+## `object$tmb_data`/`object$report` (the same fields `extract_cutpoints()`
+## reads) rather than calling `extract_cutpoints()` itself, so a K = 2 trait
+## (Hadfield eqn 10 / its logit analogue: K = 2 reduces exactly to
+## binomial(), zero free cutpoints) is still handled -- `extract_cutpoints()`
+## omits such traits from its per-cutpoint data frame entirely. The CDF
+## (pnorm for fid 14, plogis for fid 20) is chosen per-row from its own
+## family; non-ordinal rows in `out` are untouched.
 .predict_missing_ordinal_response <- function(object, out, fid_vec, trait_lbl) {
-  ord_idx <- which(fid_vec[out$model_row] == 14L)
+  ord_idx <- which(fid_vec[out$model_row] %in% c(14L, 20L))
   if (length(ord_idx) == 0L || is.null(trait_lbl) || !trait_lbl %in% names(out)) {
     return(out)
   }
@@ -4365,7 +4398,8 @@ predict_missing <- function(
     }
     bnds <- c(-Inf, 0, tau_free, Inf)
     e <- eta[out$model_row[i]]
-    probs <- diff(stats::pnorm(bnds - e))
+    cdf_fun <- if (fid_vec[out$model_row[i]] == 20L) stats::plogis else stats::pnorm
+    probs <- diff(cdf_fun(bnds - e))
     out$est[i] <- sum(seq_along(probs) * probs)
   }
   out

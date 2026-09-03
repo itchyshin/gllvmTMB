@@ -110,6 +110,7 @@ cases:
 | `Beta` | logit | $\sigma^2_d = \psi'(a) + \psi'(b)$ where $a, b$ are the beta shape parameters |
 | `lognormal` | identity (of log-y) | $0$ (since the linear predictor is on the log-y scale, this is just Gaussian on log-y) |
 | `ordinal_probit` | probit (latent) | $1$ (by construction; probit latent residual is unit-Gaussian) |
+| `ordinal_logit` | logit (latent) | $\pi^2/3$ (by construction; standard logistic latent residual, the logit analogue of `ordinal_probit`'s exact $1$) |
 
 These values are computed by `link_residual_per_trait()` in
 `R/extract-sigma.R:99–280`. Phase 0B verifies each formula in
@@ -225,6 +226,62 @@ family -- see `dev/gapclose/arcD/D1-report.md` and
 | Family | R constructor | `dpars` | Links | Bounds | Status |
 |--------|---------------|---------|-------|--------|--------|
 | Ordinal probit | `ordinal_probit()` | latent `mu`, `cutpoints` (vector) | probit (latent), identity (cutpoints on log-difference scale) | $\{1, 2, \ldots, K\}$ ordered categories | claimed |
+| Ordinal logit | `ordinal_logit()` | latent `mu`, `cutpoints` (vector) | logit (latent), identity (cutpoints on log-difference scale) | $\{1, 2, \ldots, K\}$ ordered categories | partial (FAM-24) |
+
+**Ordinal logit (FAM-24, Arc O4).** `ordinal_logit()` is the cumulative-logit
+analogue of `ordinal_probit()`, family_id 20 -- a link swap on the same
+Wright/Falconer/Hadfield threshold apparatus, not a new architecture. The
+14 required-field slots, relative to `ordinal_probit()`'s (identical
+except where noted):
+
+- `name`: `"ordinal_logit"`.
+- `n_response`: 1 (stacked per row, like every family here).
+- `dpars`: latent `mu` (the linear predictor `eta`) and `cutpoints`
+  (the flat per-trait vector of `K_t - 2` free thresholds
+  $\tau_2, \ldots, \tau_{K_t-1}$; $\tau_1 = 0$ fixed).
+- `links`: `mu` on the logit (latent) scale -- the ONLY change from
+  `ordinal_probit()` (probit) -- `cutpoints` on the log-difference scale
+  (unchanged: $\tau_{j+1} = \tau_j + e^{\delta_j}$, guaranteeing strict
+  ordering by construction).
+- `inverse_links`: `plogis` for `mu` (vs. `pnorm` for `ordinal_probit()`);
+  cutpoints reconstructed by cumulative `exp()`-sum, unchanged.
+- `bounds`: $\{1, 2, \ldots, K\}$ ordered categories, $K \ge 2$ (identical
+  to `ordinal_probit()`; $K = 2$ reduces exactly to
+  `binomial(link = "logit")`, the logit analogue of Hadfield 2015 eqn 10).
+- `density_id`: family_id **20** in `src/gllvmTMB.cpp` (14 is
+  `ordinal_probit`; 17/18/19 are the zero-inflated families).
+- `simulate`: draws the latent score `eta + rlogis(1)` (vs. `eta + rnorm(1)`
+  for probit) and bins it against the reconstructed cutpoints -- same
+  mechanism, different error distribution
+  (`R/methods-gllvmTMB.R:simulate.gllvmTMB_multi`).
+- `starting_values`: `MASS::polr(method = "logistic")` per ordinal trait
+  when sample size permits (vs. `method = "probit"`), else the same
+  equal-spacing fallback; `b_fix` uses the same qnorm-projection
+  approximation as `ordinal_probit()` (an approximate rank-based starting
+  scale, not the exact logistic quantile -- immaterial to the outer
+  optimiser).
+- `check_data`: identical integer-category / 1-indexed / trait-ownership
+  validation as `ordinal_probit()` (`R/fit-multi.R`), generalised to admit
+  either ordinal family id but refuse a trait mixing both.
+- `native_parameter_meaning`: `mu` = the latent linear predictor on the
+  logistic scale; `cutpoints` = thresholds on that same latent scale.
+- `fitted_response_rule`: no single-row response mean (matching
+  `ordinal_probit()`); `fitted()`/`predict(type = "response")` report the
+  latent-scale `plogis(eta)`, not a category probability;
+  `predict_missing(type = "response")` computes the genuine expected
+  category $E[k] = \sum_k k \cdot P(k \mid \eta, \tau)$ using `plogis`.
+- `variance_rule`: not applicable in closed form (ordinal categorical);
+  matches `ordinal_probit()`.
+- **`link_residual_rule`**: $\sigma^2_d = \pi^2/3$ exactly (the standard
+  logistic variance), vs. `ordinal_probit()`'s exact $1$ -- see the Link
+  Residual Contract table above.
+
+Evidence: exact TMB-vs-hand-density identity (1e-8) using the standard
+logistic CDF, a finite-difference gradient check, and a known-DGP recovery
+test (4 traits, $K = 4$, rank-1 shared latent factor) -- see
+`dev/gapclose/arcD/alignment-ordinal-logit.md` and
+`dev/gapclose/arcD/O4-report.md`, cross-referenced from
+`docs/design/35-validation-debt-register.md` FAM-24.
 
 ### Unordered categorical (multinomial) families
 

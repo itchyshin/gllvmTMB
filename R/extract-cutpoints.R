@@ -1,14 +1,18 @@
-## Extractor for ordinal_probit cutpoints.
+## Extractor for ordinal_probit() / ordinal_logit() cutpoints.
 ##
 ## Implements Hadfield's (2015) convention: tau_1 = 0 fixed for
 ## identifiability, K - 2 free cutpoints {tau_2, ..., tau_{K-1}} estimated
-## per ordinal trait. Returns one row per (trait, cutpoint) pair.
+## per ordinal trait. Returns one row per (trait, cutpoint) pair. fid 14
+## (ordinal_probit) and fid 20 (ordinal_logit) share this extractor
+## unchanged -- the cutpoint metadata is family-agnostic; only the link
+## scale the tau's live on differs (probit vs logit).
 
-#' Extract ordinal-probit cutpoints from a fitted gllvmTMB model
+#' Extract ordinal cutpoints from a fitted gllvmTMB model
 #'
-#' For traits fitted with [ordinal_probit()], returns a tidy data frame
-#' with the K - 2 estimated cutpoints \eqn{\tau_2, \ldots, \tau_{K-1}}
-#' per trait, with optional standard errors from the joint sdreport.
+#' For traits fitted with [ordinal_probit()] or [ordinal_logit()], returns
+#' a tidy data frame with the K - 2 estimated cutpoints
+#' \eqn{\tau_2, \ldots, \tau_{K-1}} per trait, with optional standard
+#' errors from the joint sdreport.
 #'
 #' Convention: `gllvmTMB` follows Hadfield (2015) — \eqn{\tau_1 = 0} is
 #' fixed for identifiability and the K - 2 free cutpoints are reported
@@ -20,21 +24,22 @@
 #' estimates, but weighted-objective uncertainty is not calibrated.
 #'
 #' @param fit A fit returned by [gllvmTMB()] with at least one
-#'   [ordinal_probit()] trait.
+#'   [ordinal_probit()] or [ordinal_logit()] trait.
 #'
 #' @return A data frame with columns
 #'   \describe{
 #'     \item{`trait`}{Trait label (factor level from `data[[trait]]`).}
 #'     \item{`cutpoint_index`}{Integer index \eqn{k \in \{2, \ldots, K-1\}}.}
 #'     \item{`cutpoint_label`}{Character label `"cutpoint_<k>"`.}
-#'     \item{`tau_estimate`}{Estimated \eqn{\tau_k} on the latent (probit)
-#'       scale.}
+#'     \item{`tau_estimate`}{Estimated \eqn{\tau_k} on the trait's own
+#'       latent scale (probit for an [ordinal_probit()] trait, logit for
+#'       an [ordinal_logit()] trait).}
 #'     \item{`tau_se`}{Standard error from the joint sdreport, or `NA` if
 #'       the report is unavailable.}
 #'   }
 #'
-#'   If the fit contains no `ordinal_probit()` traits, returns a
-#'   zero-row data frame with the same columns.
+#'   If the fit contains no `ordinal_probit()` or `ordinal_logit()`
+#'   traits, returns a zero-row data frame with the same columns.
 #'
 #' @references
 #' Hadfield, J. D. (2015). Increasing the efficiency of MCMC for
@@ -77,7 +82,7 @@ extract_cutpoints <- function(fit, quiet = FALSE) {
   }
   .gllvmTMB_require_unweighted_inference(fit, "extract_cutpoints()")
   fids <- fit$tmb_data$family_id_vec
-  if (!any(fids == 14L)) {
+  if (!any(fids %in% c(14L, 20L))) {
     return(out_empty)
   }
   n_cuts_pt <- as.integer(fit$tmb_data$n_ordinal_cuts_per_trait)

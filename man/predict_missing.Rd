@@ -21,8 +21,9 @@ predict_missing(
 \item{object}{A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}.}
 
 \item{type}{One of \code{"link"} (default; the linear predictor) or
-\code{"response"} (the inverse-link conditional mean; for \code{\link[=ordinal_probit]{ordinal_probit()}}
-traits, the expected category instead -- see Details).}
+\code{"response"} (the inverse-link conditional mean; for
+\code{\link[=ordinal_probit]{ordinal_probit()}} / \code{\link[=ordinal_logit]{ordinal_logit()}} traits, the expected category
+instead -- see Details).}
 
 \item{se}{EXPERIMENTAL, internal-only. If \code{TRUE}, appends \code{se_confidence}
 (delta-method SE of the reconstructed mean) and \code{se_prediction}
@@ -153,13 +154,15 @@ Do not surface \code{se_confidence} / \code{se_prediction} / the quantile column
 as calibrated uncertainty in any user-facing output until the Design 119
 sec.4 coverage campaign clears a route and family for export.
 
-For \code{\link[=ordinal_probit]{ordinal_probit()}} traits, \code{type = "response"} is the \strong{expected
-category} \eqn{E[k] = \sum_k k \cdot P(\mathrm{category}\ k \mid \eta,
-\tau)}, computed from the fitted cutpoints (Hadfield 2015 convention:
-\eqn{\tau_1 = 0} fixed, \eqn{\tau_2, \ldots, \tau_{K-1}} estimated; see
-\code{\link[=extract_cutpoints]{extract_cutpoints()}}) -- not a probability. It is not an elementwise
-\code{pnorm(eta)}, which is not a category quantity once \eqn{K > 2}.
-\code{type = "link"} is unchanged: the probit-scale linear predictor.
+For \code{\link[=ordinal_probit]{ordinal_probit()}} / \code{\link[=ordinal_logit]{ordinal_logit()}} traits, \code{type = "response"}
+is the \strong{expected category} \eqn{E[k] = \sum_k k \cdot
+P(\mathrm{category}\ k \mid \eta, \tau)}, computed from the fitted
+cutpoints (Hadfield 2015 convention: \eqn{\tau_1 = 0} fixed,
+\eqn{\tau_2, \ldots, \tau_{K-1}} estimated; see \code{\link[=extract_cutpoints]{extract_cutpoints()}})
+-- not a probability. It is not an elementwise \code{pnorm(eta)} /
+\code{plogis(eta)}, which is not a category quantity once \eqn{K > 2}.
+\code{type = "link"} is unchanged: the probit- or logit-scale linear
+predictor (per the trait's own family).
 }
 \seealso{
 \code{\link[=gllvmTMB]{gllvmTMB()}}, \code{\link[=miss_control]{miss_control()}}, \code{\link[=predict.gllvmTMB_multi]{predict.gllvmTMB_multi()}}.

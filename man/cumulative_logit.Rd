@@ -26,12 +26,19 @@ uses \code{\link[=binomial]{binomial()}} (the binary route).
 \details{
 This is a predictor-model family tag consumed by \code{impute_model(family = )},
 NOT a response family for \code{\link[=gllvmTMB]{gllvmTMB()}}. The predictor cumulative-logit link is DISTINCT from the
-\code{\link[=ordinal_probit]{ordinal_probit()}} RESPONSE family (a probit threshold model).
+\code{\link[=ordinal_probit]{ordinal_probit()}} RESPONSE family (a probit threshold model) AND from
+\code{\link[=ordinal_logit]{ordinal_logit()}} (the cumulative-\strong{logit} RESPONSE family, fitted on
+the multivariate response via \code{gllvmTMB(family = ordinal_logit())}).
+\code{cumulative_logit()} and \code{ordinal_logit()} share no code path: one
+declares a missing covariate's marginal distribution inside \code{mi()}, the
+other is a \verb{family = } argument for the observed response.
 }
 \examples{
 impute_model(score ~ z, family = cumulative_logit())
 }
 \seealso{
 \code{\link[=impute_model]{impute_model()}}, \code{\link[=binomial]{binomial()}} for a binary missing predictor,
-and \code{\link[=ordinal_probit]{ordinal_probit()}} for the ordinal RESPONSE family.
+\code{\link[=ordinal_probit]{ordinal_probit()}} and \code{\link[=ordinal_logit]{ordinal_logit()}} for the ordinal RESPONSE
+families (UNRELATED to this predictor-model family despite the
+similar name).
 }

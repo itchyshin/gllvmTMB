@@ -23,6 +23,7 @@
   zi_poisson        = 17L,
   zi_nbinom2        = 18L,
   zi_binomial       = 19L,
+  ordinal_logit     = 20L,
   censored_poisson  = 21L
 )
 

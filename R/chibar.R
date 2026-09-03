@@ -94,13 +94,19 @@ chibar2_pvalue <- function(LRT, q) {
   if (!is.numeric(q) || length(q) != 1L || is.na(q) ||
       q != as.integer(q) || q < 1L) {
     cli::cli_abort(
-      "{.arg q} (number of boundary variance components) must be a single integer >= 1; got {q}.",
+      c(
+        "{.arg q} (number of boundary variance components) must be a single integer >= 1; got {q}.",
+        ">" = "Pass how many variance components sit on the boundary under the null as one whole number, e.g. {.code q = 1} when a single variance is fixed at zero."
+      ),
       class = "gllvmTMB_chibar2_bad_q"
     )
   }
   if (!is.numeric(LRT) || length(LRT) != 1L || is.na(LRT)) {
     cli::cli_abort(
-      "{.arg LRT} must be a single, non-missing numeric value.",
+      c(
+        "{.arg LRT} must be a single, non-missing numeric value.",
+        ">" = "Pass one likelihood-ratio statistic, e.g. {.code 2 * (as.numeric(logLik(fit_full)) - as.numeric(logLik(fit_reduced)))}."
+      ),
       class = "gllvmTMB_chibar2_bad_LRT"
     )
   }
@@ -139,7 +145,10 @@ variance_lrt <- function(ll_full, ll_reduced, n_boundary = 1L) {
   if (!is.numeric(ll_full) || length(ll_full) != 1L || is.na(ll_full) ||
       !is.numeric(ll_reduced) || length(ll_reduced) != 1L || is.na(ll_reduced)) {
     cli::cli_abort(
-      "{.arg ll_full} and {.arg ll_reduced} must each be a single, non-missing numeric value.",
+      c(
+        "{.arg ll_full} and {.arg ll_reduced} must each be a single, non-missing numeric value.",
+        ">" = "Pass plain numbers, e.g. {.code as.numeric(logLik(fit_full))} and {.code as.numeric(logLik(fit_reduced))}; a {.cls logLik} object carries attributes and is not a bare numeric."
+      ),
       class = "gllvmTMB_variance_lrt_bad_loglik"
     )
   }

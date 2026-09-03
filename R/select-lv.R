@@ -167,7 +167,10 @@ select_lv <- function(formula, data, ..., d_max, criterion = c("bic", "aic", "ai
   if (!is.numeric(d_max) || length(d_max) != 1L || is.na(d_max) ||
       d_max != as.integer(d_max) || d_max < 1L) {
     cli::cli_abort(
-      "{.arg d_max} must be a single integer >= 1; got {d_max}.",
+      c(
+        "{.arg d_max} must be a single integer >= 1; got {d_max}.",
+        ">" = "Pass one whole number giving the largest latent rank to try, e.g. {.code d_max = 3}."
+      ),
       class = "gllvmTMB_select_lv_bad_args"
     )
   }
@@ -302,7 +305,10 @@ select_lv <- function(formula, data, ..., d_max, criterion = c("bic", "aic", "ai
   crit_col[!eligible] <- NA_real_
   if (all(is.na(crit_col))) {
     cli::cli_abort(
-      "{.arg criterion} = {.val {criterion}} is not available (NA) for every eligible fit.",
+      c(
+        "{.arg criterion} = {.val {criterion}} is not available (NA) for every eligible fit.",
+        ">" = "Try another criterion ({.code criterion = \"aic\"}, {.code \"bic\"} or {.code \"aicc\"}), or lower {.arg d_max} -- the criterion is NA when no fit up to that rank converged, so a smaller rank is usually what is fittable on this data."
+      ),
       class = "gllvmTMB_select_lv_criterion_unavailable"
     )
   }

@@ -11,7 +11,10 @@
   }
   if (!is.character(candidate) || length(candidate) != 1L || is.na(candidate) ||
       !nzchar(candidate)) {
-    cli::cli_abort("{.fn {caller}} requires one link name.")
+    cli::cli_abort(c(
+      "{.fn {caller}} requires one link name.",
+      ">" = "Pass a single unquoted or quoted link name, e.g. {.code {caller}(link = \"log\")}."
+    ))
   }
   tryCatch(
     stats::make.link(candidate),
@@ -44,9 +47,10 @@
 .gllvm_probability <- function(x, argument, caller) {
   if (is.null(x)) return(NULL)
   if (!is.numeric(x) || length(x) != 1L || !is.finite(x) || x <= 0 || x >= 1) {
-    cli::cli_abort(
-      "{.fn {caller}} requires {.arg {argument}} to be NULL or one number strictly between 0 and 1."
-    )
+    cli::cli_abort(c(
+      "{.fn {caller}} requires {.arg {argument}} to be NULL or one number strictly between 0 and 1.",
+      ">" = "Omit {.arg {argument}} to use the default, or pass a single value like {.code 0.5}."
+    ))
   }
   as.numeric(x)
 }
@@ -367,9 +371,10 @@ truncated_nbinom1 <- function(link = "log") {
 student <- function(link = "identity", df = NULL) {
   if (!is.null(df) &&
       (!is.numeric(df) || length(df) != 1L || !is.finite(df) || df <= 1)) {
-    cli::cli_abort(
-      "student(): {.code df} must be one finite number greater than 1 (got {df})."
-    )
+    cli::cli_abort(c(
+      "student(): {.code df} must be one finite number greater than 1 (got {df}).",
+      ">" = "Pass e.g. {.code df = 3}, or omit {.arg df} to estimate it."
+    ))
   }
 
   if (is.null(df)) {
@@ -389,9 +394,10 @@ student <- function(link = "identity", df = NULL) {
 tweedie <- function(link = "log", p = NULL) {
   if (!is.null(p) &&
       (!is.numeric(p) || length(p) != 1L || !is.finite(p) || p <= 1 || p >= 2)) {
-    cli::cli_abort(
-      "tweedie(): {.code p} (the power) must be a single number strictly between 1 and 2 (got {p})."
-    )
+    cli::cli_abort(c(
+      "tweedie(): {.code p} (the power) must be a single number strictly between 1 and 2 (got {p}).",
+      ">" = "Pass e.g. {.code p = 1.5}, or omit {.arg p} to estimate it."
+    ))
   }
   .gllvm_family("tweedie", substitute(link), link, c("log", "identity"),
                 list(p = p))
@@ -625,7 +631,10 @@ delta_truncated_nbinom1 <- function(link1 = "logit", link2 = "log") {
 #' @keywords internal
 delta_poisson_link_gamma <- function(link1 = "log", link2 = "log") {
   if (!identical(link1, "log") || !identical(link2, "log")) {
-    cli::cli_abort("The deprecated Poisson-link wrapper accepts only log links.")
+    cli::cli_abort(c(
+      "The deprecated Poisson-link wrapper accepts only log links.",
+      ">" = "Use {.code delta_gamma(link1 = \"logit\", link2 = \"log\", type = \"poisson-link\")} directly instead."
+    ))
   }
   lifecycle::deprecate_warn("0.4.2.9000", "delta_poisson_link_gamma()", "delta_gamma(type)")
   delta_gamma(link1 = "logit", link2 = "log", type = "poisson-link")
@@ -636,7 +645,10 @@ delta_poisson_link_gamma <- function(link1 = "log", link2 = "log") {
 #' @keywords internal
 delta_poisson_link_lognormal <- function(link1 = "log", link2 = "log") {
   if (!identical(link1, "log") || !identical(link2, "log")) {
-    cli::cli_abort("The deprecated Poisson-link wrapper accepts only log links.")
+    cli::cli_abort(c(
+      "The deprecated Poisson-link wrapper accepts only log links.",
+      ">" = "Use {.code delta_lognormal(link1 = \"logit\", link2 = \"log\", type = \"poisson-link\")} directly instead."
+    ))
   }
   lifecycle::deprecate_warn("0.4.2.9000", "delta_poisson_link_lognormal()", "delta_lognormal(type)")
   delta_lognormal(link1 = "logit", link2 = "log", type = "poisson-link")
@@ -652,7 +664,8 @@ betabinomial <- function(link = "logit") {
   if (!link_name %in% c("logit", "cloglog")) {
     cli::cli_abort(c(
       "{.fn betabinomial} supports only logit and cloglog links.",
-      "i" = "Received {.val {link_name}}."
+      "i" = "Received {.val {link_name}}.",
+      ">" = "Pass {.code link = \"logit\"} (the default) or {.code link = \"cloglog\"}."
     ))
   }
   .gllvm_family("betabinomial", link_name, link_name,
@@ -754,7 +767,10 @@ ordinal_probit <- function(link = "probit") {
   link_name <- .gllvm_link(substitute(link), link, "probit",
                            "ordinal_probit()")$name
   if (!identical(link_name, "probit")) {
-    cli::cli_abort("{.fn ordinal_probit} supports only the probit link.")
+    cli::cli_abort(c(
+      "{.fn ordinal_probit} supports only the probit link.",
+      ">" = "Omit {.arg link} to use the default {.code \"probit\"}."
+    ))
   }
   .gllvm_family("ordinal_probit", "probit", "probit", "probit",
                 full = FALSE, class = c("ordinal_probit", "family"))
@@ -884,10 +900,16 @@ ordinal_probit <- function(link = "probit") {
 multinomial <- function(link = "logit", baseline = NULL) {
   link_name <- .gllvm_link(substitute(link), link, "logit", "multinomial()")$name
   if (!identical(link_name, "logit")) {
-    cli::cli_abort("{.fn multinomial} supports only the baseline-category logit link.")
+    cli::cli_abort(c(
+      "{.fn multinomial} supports only the baseline-category logit link.",
+      ">" = "Omit {.arg link} to use the default {.code \"logit\"}."
+    ))
   }
   if (!is.null(baseline) && (length(baseline) != 1L || is.na(baseline))) {
-    cli::cli_abort("{.fn multinomial} requires {.arg baseline} to be NULL or one category value.")
+    cli::cli_abort(c(
+      "{.fn multinomial} requires {.arg baseline} to be NULL or one category value.",
+      ">" = "Omit {.arg baseline} to use the first factor level, or pass one existing category, e.g. {.code baseline = \"a\"}."
+    ))
   }
   out <- .gllvm_family(
     "multinomial", "logit", "logit", "logit", full = FALSE,

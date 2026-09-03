@@ -1,8 +1,13 @@
 on:
-  workflow_run:
-    workflows: ["R-CMD-check"]
-    types: [completed]
-    branches: [main, master]
+  # NOT on every successful main check any more. Measured 2026-09-03: each run
+  # is 13-16 min, and on a repo merging dozens of PRs a day the site rebuild
+  # becomes a backlog that is always behind and never useful. A daily build plus
+  # tags plus on-demand keeps the published site at most a day stale, and
+  # exactly current at every release.
+  push:
+    tags: ["v*"]
+  schedule:
+    - cron: "17 11 * * *"   # daily, after the overnight lanes have landed
   workflow_dispatch:
 
 name: pkgdown
@@ -40,7 +45,6 @@ jobs:
   # reject) while only deploy touches the environment, and only from main. The
   # artifact is the interface between them.
   build:
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
 
@@ -55,8 +59,9 @@ jobs:
           # commit a4310885 (before #394 indexed impute_model / imputed) failed
           # with "2 topics missing from index" even though main was already
           # fixed. Checking out the branch ref deploys whatever is currently on
-          # main; workflow_dispatch falls back to the dispatched ref.
-          ref: ${{ github.event.workflow_run.head_branch || github.ref }}
+          # main; schedule, tag and workflow_dispatch all give the right ref
+          # directly now that the workflow_run trigger is gone.
+          ref: ${{ github.ref }}
 
       - uses: actions/configure-pages@v6
 
@@ -165,12 +170,11 @@ jobs:
     # SKIPS this job cleanly instead of failing it on the protection rule, so a
     # branch build reports green on what it actually did — it built the site.
     #
-    # The two trigger shapes expose the branch differently: workflow_run gives
-    # `workflow_run.head_branch`, workflow_dispatch gives `github.ref`. A
-    # workflow_run always executes in the default-branch context, so its
-    # `github.ref` is refs/heads/main regardless; the trigger's own `branches:`
-    # filter is what actually restricts it.
-    if: ${{ github.event.workflow_run.head_branch == 'main' || github.ref == 'refs/heads/main' }}
+    # Deploy from main (schedule / dispatch) AND from a release tag. The tag case
+    # is easy to lose here: `github.ref` on a tag build is refs/tags/v*, not
+    # refs/heads/main, so a main-only condition would build the site on a release
+    # and then silently skip publishing it -- green, and nothing deployed.
+    if: ${{ github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v') }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
 

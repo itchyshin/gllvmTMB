@@ -294,7 +294,10 @@ BIC.gllvmTMB_multi <- function(object, ...) {
   }
   if (length(objs) < 2L) {
     cli::cli_abort(
-      "{.fn anova} needs at least two {.cls gllvmTMB_multi} fits to compare.",
+      c(
+        "{.fn anova} needs at least two {.cls gllvmTMB_multi} fits to compare.",
+        ">" = "Pass the fits you want compared, e.g. {.code anova(fit_d1, fit_d2)}, or use {.fn select_lv} to fit and compare a range of latent ranks in one call."
+      ),
       class = "gllvmTMB_anova_not_comparable"
     )
   }
@@ -462,7 +465,10 @@ anova.gllvmTMB_multi <- function(object, ..., test = c("chibar", "chisq", "none"
   npar_v <- vapply(ll_list, attr, numeric(1L), which = "df")
   if (anyDuplicated(npar_v)) {
     cli::cli_abort(
-      "Two or more fits have the same number of free parameters ({unique(npar_v[duplicated(npar_v)])}); {.fn anova} cannot order them for a sequential comparison.",
+      c(
+        "Two or more fits have the same number of free parameters ({unique(npar_v[duplicated(npar_v)])}); {.fn anova} cannot order them for a sequential comparison.",
+        ">" = "Compare fits that differ in free parameters -- e.g. a different {.arg d} in {.fn latent} -- or drop the duplicate from the call. Equally sized models are not nested, so a sequential likelihood-ratio test does not apply to them."
+      ),
       class = "gllvmTMB_anova_not_comparable"
     )
   }

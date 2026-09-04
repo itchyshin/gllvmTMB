@@ -25,6 +25,9 @@
   "nb1",
   "beta",
   "gamma",
+  "lognormal",
+  "betabinomial",
+  "truncated_poisson",
   "ordinal",
   "ordinal_probit"
 )
@@ -33,11 +36,20 @@
   "binomial_probit",
   "binomial_cloglog"
 )
+# Families whose response may arrive as cbind(successes, failures) and whose
+# bridge payload carries a p x n trials matrix N (GLLVM.jl
+# _BRIDGE_TRIALS_FAMILIES). Trials marshalling is load-bearing for
+# betabinomial: without N the Julia route silently fits N = 1.
+.GLLVM_JULIA_TRIALS_FAMILIES <- c(
+  .GLLVM_JULIA_BINOMIAL_FAMILIES,
+  "betabinomial"
+)
 .GLLVM_JULIA_GROUPED_DISPERSION_FAMILIES <- c(
   "negbinomial",
   "nb1",
   "beta",
-  "gamma"
+  "gamma",
+  "betabinomial"
 )
 .GLLVM_JULIA_PERTRAIT_GROUPED_DISPERSION_FAMILIES <- c(
   "negbinomial",
@@ -95,9 +107,12 @@
   "poisson",
   "binomial"
 )
+# Families whose Julia bridge route rejects every ci_method != "none"
+# (GLLVM.jl _BRIDGE_NO_CI_FAMILIES): must never be advertised as CI-capable.
+.GLLVM_JULIA_NO_CI_FAMILIES <- c("lognormal", "truncated_poisson")
 .GLLVM_JULIA_CI_NO_X_FAMILIES <- setdiff(
   .GLLVM_JULIA_BRIDGE_FAMILIES,
-  .GLLVM_JULIA_PERTRAIT_ORDINAL_FAMILIES
+  c(.GLLVM_JULIA_PERTRAIT_ORDINAL_FAMILIES, .GLLVM_JULIA_NO_CI_FAMILIES)
 )
 .GLLVM_JULIA_MASK_CI_FAMILIES <- setdiff(
   .GLLVM_JULIA_MASK_FAMILIES,
@@ -338,7 +353,7 @@ gllvm_julia_capabilities <- function() {
     fit_no_x = TRUE,
     fixed_effect_X = families %in% .GLLVM_JULIA_X_FAMILIES,
     missing_response = families %in% .GLLVM_JULIA_MASK_FAMILIES,
-    cbind_binomial = families %in% .GLLVM_JULIA_BINOMIAL_FAMILIES,
+    cbind_binomial = families %in% .GLLVM_JULIA_TRIALS_FAMILIES,
     predictor_informed_lv = families %in% .GLLVM_JULIA_XLV_FAMILIES,
     ci_no_x_wald = families %in% .GLLVM_JULIA_CI_NO_X_FAMILIES,
     ci_no_x_profile = families %in% .GLLVM_JULIA_CI_NO_X_FAMILIES,
@@ -430,19 +445,40 @@ gllvm_julia_capabilities <- function() {
 }
 
 .gllvm_julia_expected_capability_drifts <- function() {
-  ## No registered drifts remain: the cbind(successes, failures) binomial route
-  ## is now marshalled and parity-tested, so the R and engine capability
-  ## surfaces agree. Keep returning the canonical 0-row frame so the drift
-  ## matcher's `allowed$<col>[m]` lookups stay well-typed.
-  data.frame(
-    family = character(0),
-    capability = character(0),
-    direction = character(0),
-    gate_id = character(0),
-    issue = character(0),
-    validation_row = character(0),
-    reason = character(0),
-    stringsAsFactors = FALSE
+  ## Registered, deliberate R-narrower-than-Julia gates for the 2026-09-01
+  ## family exposures (fit-only precedent: Julia-side support alone does not
+  ## earn R exposure; each capability is wired and evidenced separately).
+  reg <- function(family, capability, gate_id, reason) {
+    data.frame(
+      family = family, capability = capability,
+      direction = "julia_broader_than_r", gate_id = gate_id,
+      issue = NA_character_, validation_row = NA_character_,
+      reason = reason, stringsAsFactors = FALSE
+    )
+  }
+  rbind(
+    reg("lognormal", "postfit_predict", "GJL-GATE-POSTFIT",
+        "generic predict exists engine-side; R exposure awaits paired evidence"),
+    reg("truncated_poisson", "postfit_predict", "GJL-GATE-POSTFIT",
+        "truncated-mean linkinv double-apply risk documented in the exposure spec"),
+    reg("betabinomial", "fixed_effect_X", "GJL-GATE-X-FAMILY",
+        "Julia grouped_cov X route tested engine-side; R marshalling deferred (nb1 precedent)"),
+    reg("betabinomial", "ci_x_wald", "GJL-GATE-X-FAMILY",
+        "follows fixed_effect_X deferral"),
+    reg("betabinomial", "ci_x_profile", "GJL-GATE-X-FAMILY",
+        "follows fixed_effect_X deferral"),
+    reg("betabinomial", "ci_x_bootstrap", "GJL-GATE-X-FAMILY",
+        "follows fixed_effect_X deferral"),
+    reg("betabinomial", "missing_response", "GJL-GATE-MASK",
+        "mask placeholder + paired R test deferred with X"),
+    reg("betabinomial", "ci_mask_wald", "GJL-GATE-MASK",
+        "follows missing_response deferral"),
+    reg("betabinomial", "ci_mask_profile", "GJL-GATE-MASK",
+        "follows missing_response deferral"),
+    reg("betabinomial", "ci_mask_bootstrap", "GJL-GATE-MASK",
+        "follows missing_response deferral"),
+    reg("betabinomial", "postfit_predict", "GJL-GATE-POSTFIT",
+        "flat predict path unverified for beta-binomial trials scaling")
   )
 }
 
@@ -701,6 +737,28 @@ gllvm_julia_capabilities <- function() {
         )
       ))
     }
+    if (identical(family$family, "betabinomial") &&
+        !identical(tolower(family$link %||% "logit"), "logit")) {
+      stop(
+        .gllvm_julia_gate_message(
+          "GJL-GATE-FAMILY",
+          "engine = 'julia': betabinomial supports only the logit link ",
+          "(matching the native engine); got '", family$link, "'."
+        ),
+        call. = FALSE
+      )
+    }
+    if (identical(family$family, "truncated_poisson") &&
+        !identical(tolower(family$link %||% "log"), "log")) {
+      stop(
+        .gllvm_julia_gate_message(
+          "GJL-GATE-FAMILY",
+          "engine = 'julia': truncated_poisson supports only the log link ",
+          "(matching the native engine); got '", family$link, "'."
+        ),
+        call. = FALSE
+      )
+    }
     family <- family$family
   }
   fam <- tolower(as.character(family))
@@ -730,6 +788,9 @@ gllvm_julia_capabilities <- function() {
     nb1 = "nb1",
     beta = "beta",
     gamma = "gamma",
+    lognormal = "lognormal",
+    betabinomial = "betabinomial",
+    truncated_poisson = "truncated_poisson",
     ordinal = "ordinal",
     ordinal_probit = "ordinal_probit",
     {
@@ -740,7 +801,7 @@ gllvm_julia_capabilities <- function() {
           fam,
           "'. Supported: gaussian, poisson, ",
           "binomial, binomial_probit, binomial_cloglog, nbinom2, nbinom1, ",
-          "beta, gamma, ordinal, ordinal_probit ",
+          "beta, gamma, lognormal, betabinomial, truncated_poisson, ordinal, ordinal_probit ",
           "(or a narrow list for mixed gaussian/poisson/binomial responses)."
         ),
         call. = FALSE
@@ -849,6 +910,8 @@ gllvm_julia_capabilities <- function() {
     nb1 = "phi",
     beta = "sigma",
     gamma = "sigma",
+    lognormal = "sigma",
+    betabinomial = "phi_betabinom",
     "dispersion"
   )
 }
@@ -2556,6 +2619,7 @@ gllvm_julia_fit <- function(
   X_lv = NULL,
   coef_fixed = NULL,
   mask = NULL,
+  sources = NULL,
   units_are_rows = FALSE,
   ci_method = c("none", "wald", "profile", "bootstrap"),
   ci_level = 0.95,
@@ -2801,6 +2865,9 @@ gllvm_julia_fit <- function(
   }
   if (!is.null(mask)) {
     args$mask <- mask
+  }
+  if (!is.null(sources)) {
+    args$sources <- sources
   }
   bridge_options <- list()
   if (ci_method != "none") {
@@ -3569,10 +3636,73 @@ print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
     }
   }
 
+  ## Resolve the parser's deferred `d = .deferred_n_traits` (every *_dep()
+  ## spelling) for the Julia path. Only the TMB path resolved it before, so a
+  ## lone dep() died in as.integer(<symbol>) — an unlabeled crash past the
+  ## capability gate (EARLY-GENERIC-ERROR in the coverage matrix).
+  n_traits_resolved <- nlevels(factor(data[[trait]]))
+  cs <- lapply(cs, function(z) {
+    dv <- z$extra$d
+    if (
+      !is.null(dv) && is.symbol(dv) &&
+        identical(as.character(dv), ".deferred_n_traits")
+    ) {
+      z$extra$d <- n_traits_resolved
+    }
+    z
+  })
+  parsed$covstructs <- cs
+
   kinds <- if (length(cs)) {
     vapply(cs, function(z) z$kind, character(1))
   } else {
     character(0)
+  }
+
+  ## --- structured-covariance carve-out (Slice A, 2026-09-01) --------------
+  ## A LONE ordinary dep() or indep()/scalar() term on a Gaussian fit routes to
+  ## GLLVM.jl's structured-sources payload (identity covariance over the group
+  ## levels + a per-unit grouping). Everything else keeps the existing gates.
+  structured_source_term <- NULL
+  fam_str_pre <- tryCatch(.gllvm_julia_family(family), error = function(e) NULL)
+  if (
+    length(cs) == 1L && identical(fam_str_pre, "gaussian")
+  ) {
+    z1 <- cs[[1L]]
+    z1_dep <- identical(z1$kind, "rr") && isTRUE(z1$extra$.dep)
+    z1_diag <- identical(z1$kind, "diag") && !isTRUE(z1$extra$.auto_unique)
+    ## Slice B: kernel_* terms carry the literal dense covariance in
+    ## extra$vcv (kernel-keywords docs) — the SAFE half of the phylo_rr kind.
+    ## Tree/pedigree-sourced phylo_rr (animal_*/phylo_*) stays gated: their
+    ## covariance-vs-precision (Ainv) conversion lives in the TMB engine and
+    ## marshalling it without that logic risks fitting the wrong model.
+    z1_kernel <- identical(z1$kind, "phylo_rr") &&
+      !is.null(z1$extra$.kernel_mode) &&
+      is.matrix(z1$extra$vcv) &&
+      z1$extra$.kernel_mode %in% c("latent", "indep", "scalar", "dep") &&
+      !isTRUE(z1$extra$.animal_source)
+    if (z1_dep || z1_diag || z1_kernel) {
+      structured_source_term <- z1
+      kinds <- character(0)
+    }
+  }
+
+  ## dep() is admitted only through the Gaussian structured-sources carve-out
+  ## above. Anywhere else it must refuse with a NAMED gate: before the
+  ## deferred-d resolution it crashed in as.integer(<symbol>); silently
+  ## continuing down the plain-rr path would substitute a different model.
+  if (
+    is.null(structured_source_term) &&
+      any(vapply(cs, function(z) isTRUE(z$extra$.dep), logical(1)))
+  ) {
+    stop(
+      .gllvm_julia_gate_message(
+        "GJL-GATE-STRUCTURED-TERMS",
+        "engine = 'julia' supports dep() only as a lone structured term on a ",
+        "gaussian fit. Use engine = 'tmb' for this dep() design."
+      ),
+      call. = FALSE
+    )
   }
 
   ## --- capability guard: only the reduced-rank latent block (rr) is mapped ---
@@ -3588,7 +3718,7 @@ print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
       call. = FALSE
     )
   }
-  rr_terms <- cs[kinds == "rr"]
+  rr_terms <- if (is.null(structured_source_term)) cs[kinds == "rr"] else list()
   if (length(rr_terms) > 1L) {
     stop(
       .gllvm_julia_gate_message(
@@ -3645,12 +3775,12 @@ print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
   }
   cbind_trials <- NULL
   if (is.matrix(yraw) && ncol(yraw) == 2L) {
-    if (!any(fam_str %in% .GLLVM_JULIA_BINOMIAL_FAMILIES)) {
+    if (!any(fam_str %in% .GLLVM_JULIA_TRIALS_FAMILIES)) {
       stop(
         .gllvm_julia_gate_message(
           "GJL-GATE-FAMILY",
           "engine = 'julia' only admits two-column cbind(successes, failures) ",
-          "responses with a binomial family; the supplied response has two ",
+          "responses with a binomial or betabinomial family; the supplied response has two ",
           "columns but the family maps to '",
           paste(fam_str, collapse = ", "),
           "'. Use a single-column response or engine = 'tmb'."
@@ -3822,8 +3952,116 @@ print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
 
   ## --- binomial trials: cbind(successes, failures) totals take precedence, then
   ## per-row n_trials (weights API), else Bernoulli (N = 1). ---
+  sources_arg <- NULL
+  if (!is.null(structured_source_term)) {
+    z <- structured_source_term
+    grp_var <- deparse(z$group)
+    if (!grp_var %in% names(data)) {
+      stop(
+        .gllvm_julia_gate_message(
+          "GJL-GATE-STRUCTURED-TERMS",
+          "engine = 'julia': grouping variable '", grp_var,
+          "' for the structured covariance term was not found in `data`."
+        ),
+        call. = FALSE
+      )
+    }
+    unit_first <- match(levels(fu), as.character(fu))
+    gvals <- data[[grp_var]][unit_first]
+    consistent <- vapply(
+      levels(fu),
+      function(u) length(unique(data[[grp_var]][as.character(fu) == u])) == 1L,
+      logical(1)
+    )
+    if (!all(consistent)) {
+      stop(
+        .gllvm_julia_gate_message(
+          "GJL-GATE-STRUCTURED-TERMS",
+          "engine = 'julia': the structured-term grouping '", grp_var,
+          "' must be constant within each unit."
+        ),
+        call. = FALSE
+      )
+    }
+    grpf <- factor(gvals)
+    kmode <- z$extra$.kernel_mode
+    if (!is.null(kmode)) {
+      Kmat <- z$extra$vcv
+      if (
+        !is.matrix(Kmat) || !is.numeric(Kmat) ||
+          nrow(Kmat) != ncol(Kmat) || is.null(rownames(Kmat)) ||
+          !identical(rownames(Kmat), colnames(Kmat))
+      ) {
+        stop(
+          .gllvm_julia_gate_message(
+            "GJL-GATE-STRUCTURED-TERMS",
+            "engine = 'julia': kernel terms need a square numeric K with ",
+            "matching row and column names."
+          ),
+          call. = FALSE
+        )
+      }
+      missing_lv <- setdiff(levels(grpf), rownames(Kmat))
+      if (length(missing_lv)) {
+        stop(
+          .gllvm_julia_gate_message(
+            "GJL-GATE-STRUCTURED-TERMS",
+            "engine = 'julia': kernel K is missing rows for grouping ",
+            "level(s): ", paste(missing_lv, collapse = ", "), "."
+          ),
+          call. = FALSE
+        )
+      }
+      Kal <- Kmat[levels(grpf), levels(grpf), drop = FALSE]
+      if (!isSymmetric(unname(Kal), tol = 0)) {
+        stop(
+          .gllvm_julia_gate_message(
+            "GJL-GATE-STRUCTURED-TERMS",
+            "engine = 'julia': kernel K must be exactly symmetric ",
+            "(no jitter is applied on the Julia path)."
+          ),
+          call. = FALSE
+        )
+      }
+      kd <- z$extra$d
+      spec <- list(
+        name = paste0("kernel_", kmode),
+        covariance = unname(Kal),
+        groups = as.integer(grpf),
+        mode = switch(kmode, latent = "latent", dep = "dep", "indep"),
+        unique = FALSE,
+        common = identical(kmode, "scalar")
+      )
+      if (identical(kmode, "latent")) {
+        spec$rank <- as.integer(if (is.null(kd)) 1L else kd)
+      }
+    } else {
+      is_dep <- identical(z$kind, "rr") && isTRUE(z$extra$.dep)
+      spec <- list(
+        name = if (is_dep) "ordinary_dep" else "ordinary_indep",
+        covariance = diag(1, nlevels(grpf)),
+        groups = as.integer(grpf),
+        mode = if (is_dep) "dep" else "indep",
+        unique = FALSE,
+        common = isTRUE(z$extra$common)
+      )
+    }
+    sources_arg <- list(spec)
+    if (ci_method != "none") {
+      stop(
+        .gllvm_julia_gate_message(
+          "GJL-GATE-STRUCTURED-CI",
+          "engine = 'julia' does not provide confidence intervals for ",
+          "structured covariance fits yet. Use ci_method = \"none\" or ",
+          "engine = 'tmb'."
+        ),
+        call. = FALSE
+      )
+    }
+  }
+
   Narg <- NULL
-  if (any(fam_str %in% .GLLVM_JULIA_BINOMIAL_FAMILIES)) {
+  if (any(fam_str %in% .GLLVM_JULIA_TRIALS_FAMILIES)) {
     if (!is.null(cbind_trials)) {
       Narg <- matrix(1, p, n)
       Narg[cbind(as.integer(ft), as.integer(fu))] <- as.numeric(cbind_trials)
@@ -3842,6 +4080,7 @@ print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
     family = family,
     num.lv = K,
     N = Narg,
+    sources = sources_arg,
     X = Xarg,
     X_lv = Xlv_arg,
     coef_fixed = coef_fixed_arg,

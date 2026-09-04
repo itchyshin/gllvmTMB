@@ -515,7 +515,46 @@ test_that("family mapping is element-wise over a mixed list", {
 })
 
 test_that("family mapping rejects unsupported families loudly", {
-  expect_error(.gllvm_julia_family("lognormal"), "GJL-GATE-FAMILY")
+  # lognormal is EXPOSED (2026-09-01, julia-bridge expansion slice 1): the
+  # paired GLLVM.jl bridge has carried a tested "lognormal" payload route for
+  # some time; the R map simply never sent it.
+  expect_identical(.gllvm_julia_family("lognormal"), "lognormal")
+  expect_identical(.gllvm_julia_family(lognormal()), "lognormal")
+  expect_true("lognormal" %in% .GLLVM_JULIA_BRIDGE_FAMILIES)
+  # Post-fit surfaces stay conservatively gated until their parity evidence:
+  expect_false("lognormal" %in% .GLLVM_JULIA_SCORE_POSTFIT_FAMILIES)
+  # truncated_poisson exposed (2026-09-01, slice 2): native twin exists
+  # (families.R truncated_poisson(), fit-multi fid=10), Julia route tested.
+  expect_identical(.gllvm_julia_family("truncated_poisson"), "truncated_poisson")
+  expect_identical(.gllvm_julia_family(truncated_poisson()), "truncated_poisson")
+  expect_true("truncated_poisson" %in% .GLLVM_JULIA_BRIDGE_FAMILIES)
+  expect_false("truncated_poisson" %in% .GLLVM_JULIA_X_FAMILIES)
+  expect_false("truncated_poisson" %in% .GLLVM_JULIA_SCORE_POSTFIT_FAMILIES)
+  expect_false("truncated_poisson" %in% .GLLVM_JULIA_MASK_FAMILIES)
+  expect_false("truncated_poisson" %in% .GLLVM_JULIA_GROUPED_DISPERSION_FAMILIES)
+  # Julia rejects any ci_method != "none" for lognormal and truncated_poisson;
+  # the setdiff-based CI list must not advertise them (scout-found defect in
+  # the same-day lognormal landing).
+  expect_false("lognormal" %in% .GLLVM_JULIA_CI_NO_X_FAMILIES)
+  expect_false("truncated_poisson" %in% .GLLVM_JULIA_CI_NO_X_FAMILIES)
+  # betabinomial exposed (2026-09-01, slice 3): native twin exists; trials-N
+  # marshalling is load-bearing (ships in the same slice, per the scout spec).
+  expect_identical(.gllvm_julia_family("betabinomial"), "betabinomial")
+  expect_identical(.gllvm_julia_family(betabinomial()), "betabinomial")
+  expect_error(
+    .gllvm_julia_family(betabinomial(link = "cloglog")),
+    "GJL-GATE-FAMILY"
+  )
+  expect_true("betabinomial" %in% .GLLVM_JULIA_BRIDGE_FAMILIES)
+  expect_true("betabinomial" %in% .GLLVM_JULIA_TRIALS_FAMILIES)
+  expect_true("betabinomial" %in% .GLLVM_JULIA_GROUPED_DISPERSION_FAMILIES)
+  expect_false("betabinomial" %in% .GLLVM_JULIA_X_FAMILIES)
+  expect_false("betabinomial" %in% .GLLVM_JULIA_MASK_FAMILIES)
+  expect_false("betabinomial" %in% .GLLVM_JULIA_SCORE_POSTFIT_FAMILIES)
+  expect_identical(
+    .gllvm_julia_public_dispersion_parameter("betabinomial"),
+    "phi_betabinom"
+  )
   expect_error(.gllvm_julia_family("tweedie"), "GJL-GATE-FAMILY")
   expect_error(.gllvm_julia_family("nonsense"), "GJL-GATE-FAMILY")
   expect_error(
@@ -599,7 +638,9 @@ test_that("Julia bridge capability ledger marks admitted CI rows explicitly", {
     caps$family,
     c(.GLLVM_JULIA_BRIDGE_FAMILIES, .GLLVM_JULIA_MIXED_FAMILY)
   )
-  expect_false("lognormal" %in% caps$family)
+  # lognormal exposed 2026-09-01 (fit-only; X and post-fit stay gated).
+  expect_true("lognormal" %in% caps$family)
+  expect_false("lognormal" %in% .GLLVM_JULIA_X_FAMILIES)
   expect_equal(caps$family[caps$fit_no_x], caps$family)
   expect_equal(caps$family[caps$fixed_effect_X], .GLLVM_JULIA_X_FAMILIES)
   expect_equal(
@@ -693,7 +734,9 @@ test_that("Julia bridge capability ledger marks admitted CI rows explicitly", {
   )))
   ## cbind(successes, failures) binomial marshaling is routed for every admitted
   ## standard binary link; the mixed-family vector route stays gated.
-  expect_equal(caps$family[caps$cbind_binomial], .GLLVM_JULIA_BINOMIAL_FAMILIES)
+  # cbind(successes, failures) marshalling now also serves betabinomial
+  # (trials-N is load-bearing for that family; 2026-09-01 exposure).
+  expect_equal(caps$family[caps$cbind_binomial], .GLLVM_JULIA_TRIALS_FAMILIES)
   expect_false(caps$cbind_binomial[caps$family == .GLLVM_JULIA_MIXED_FAMILY])
 })
 
@@ -2850,11 +2893,13 @@ test_that("live GLLVM.jl bridge capabilities drift only through registered gates
   gllvm_julia_setup()
   engine_caps <- JuliaCall::julia_eval("GLLVM.bridge_capabilities()")
   drift <- .gllvm_julia_capability_drift(julia_caps = engine_caps)
-  ## The cbind(successes, failures) binomial route is now marshalled and
-  ## parity-tested on both sides, so the R and engine capability surfaces
-  ## agree: no registered drifts remain, and crucially nothing is unregistered.
+  ## Contract (2026-09-01): deliberate R-narrower-than-Julia gates are
+  ## REGISTERED in .gllvm_julia_expected_capability_drifts() with a gate id and
+  ## reason; the invariant is that nothing drifts UNREGISTERED. The fit-only
+  ## family exposures (lognormal, truncated_poisson, betabinomial) keep X /
+  ## masks / predict deliberately gated, so those rows appear here as "gated".
   expect_false(any(drift$status == "unregistered"))
-  expect_equal(nrow(drift), 0L)
+  expect_true(all(drift$status %in% "gated"))
   expect_false("cbind_binomial" %in% drift$capability)
 })
 
@@ -4191,4 +4236,207 @@ test_that("gllvm_julia_fit transposes a matrix N under units_are_rows = TRUE (#5
   expect_equal(dim(captured$args$y), c(2L, 3L))
   expect_equal(dim(captured$args$N), c(2L, 3L))
   expect_equal(unname(captured$args$N), unname(t(N)))
+})
+
+test_that("lognormal round-trips through engine = 'julia' (live)", {
+  skip_if_no_julia()
+  set.seed(42)
+  n_unit <- 40L
+  df <- expand.grid(
+    unit = factor(seq_len(n_unit)),
+    trait = factor(c("t1", "t2", "t3")),
+    KEEP.OUT.ATTRS = FALSE
+  )
+  lam <- c(0.6, -0.4, 0.3)[as.integer(df$trait)]
+  z <- rnorm(n_unit)[as.integer(df$unit)]
+  df$value <- exp(0.4 + lam * z + 0.3 * rnorm(nrow(df)))
+  fit_j <- gllvmTMB(
+    value ~ 0 + trait + latent(1 | unit, d = 1, unique = FALSE),
+    data = df, unit = "unit", trait = "trait",
+    family = lognormal(), engine = "julia", ci_method = "none"
+  )
+  fit_r <- gllvmTMB(
+    value ~ 0 + trait + latent(1 | unit, d = 1, unique = FALSE),
+    data = df, unit = "unit", trait = "trait",
+    family = lognormal()
+  )
+  expect_s3_class(fit_j, "gllvmTMB_julia")
+  expect_true(is.finite(logLik(fit_j)))
+  expect_lt(abs(as.numeric(logLik(fit_j)) - as.numeric(logLik(fit_r))), 1e-4)
+})
+
+test_that("truncated_poisson round-trips through engine = 'julia' (live)", {
+  skip_if_no_julia()
+  set.seed(419)
+  n_unit <- 40L
+  df <- expand.grid(
+    unit = factor(seq_len(n_unit)),
+    trait = factor(c("t1", "t2", "t3")),
+    KEEP.OUT.ATTRS = FALSE
+  )
+  beta <- c(0.9, 0.7, 1.1)[as.integer(df$trait)]
+  lam <- c(0.35, -0.3, 0.25)[as.integer(df$trait)]
+  z <- rnorm(n_unit)[as.integer(df$unit)]
+  mu <- exp(beta + lam * z)
+  rtpois <- function(mu) {
+    y <- rpois(length(mu), mu)
+    while (any(y == 0L)) {
+      z0 <- y == 0L
+      y[z0] <- rpois(sum(z0), mu[z0])
+    }
+    y
+  }
+  df$value <- rtpois(mu)
+  fit_j <- gllvmTMB(
+    value ~ 0 + trait + latent(1 | unit, d = 1, unique = FALSE),
+    data = df, unit = "unit", trait = "trait",
+    family = truncated_poisson(), engine = "julia", ci_method = "none"
+  )
+  fit_r <- gllvmTMB(
+    value ~ 0 + trait + latent(1 | unit, d = 1, unique = FALSE),
+    data = df, unit = "unit", trait = "trait",
+    family = truncated_poisson()
+  )
+  expect_s3_class(fit_j, "gllvmTMB_julia")
+  expect_true(is.finite(logLik(fit_j)))
+  expect_lt(abs(as.numeric(logLik(fit_j)) - as.numeric(logLik(fit_r))), 1e-4)
+})
+
+test_that("betabinomial round-trips through engine = 'julia' (live)", {
+  skip_if_no_julia()
+  set.seed(77)
+  n_unit <- 40L
+  df <- expand.grid(
+    unit = factor(seq_len(n_unit)),
+    trait = factor(c("t1", "t2", "t3")),
+    KEEP.OUT.ATTRS = FALSE
+  )
+  beta <- c(-0.3, 0.2, 0.5)[as.integer(df$trait)]
+  lam <- c(0.5, -0.35, 0.3)[as.integer(df$trait)]
+  z <- rnorm(n_unit)[as.integer(df$unit)]
+  ntrials <- 12L
+  mu <- plogis(beta + lam * z)
+  phi <- 8
+  a <- mu * phi; b <- (1 - mu) * phi
+  pr <- rbeta(nrow(df), a, b)
+  df$succ <- rbinom(nrow(df), ntrials, pr)
+  df$fail <- ntrials - df$succ
+  fit_j <- gllvmTMB(
+    cbind(succ, fail) ~ 0 + trait + latent(1 | unit, d = 1, unique = FALSE),
+    data = df, unit = "unit", trait = "trait",
+    family = betabinomial(), engine = "julia", ci_method = "none"
+  )
+  fit_r <- gllvmTMB(
+    cbind(succ, fail) ~ 0 + trait + latent(1 | unit, d = 1, unique = FALSE),
+    data = df, unit = "unit", trait = "trait",
+    family = betabinomial()
+  )
+  expect_s3_class(fit_j, "gllvmTMB_julia")
+  expect_true(is.finite(logLik(fit_j)))
+  expect_lt(abs(as.numeric(logLik(fit_j)) - as.numeric(logLik(fit_r))), 1e-3)
+})
+
+test_that("lone ordinary dep()/indep() structured terms route to Julia sources (live)", {
+  skip_if_no_julia()
+  set.seed(9101)
+  n_unit <- 36L
+  df <- expand.grid(
+    unit = factor(seq_len(n_unit)),
+    trait = factor(c("t1", "t2", "t3")),
+    KEEP.OUT.ATTRS = FALSE
+  )
+  df$grp <- factor(rep(rep(1:12, each = 3), 3))
+  lam <- c(0.5, -0.3, 0.4)[as.integer(df$trait)]
+  z <- rnorm(12)[as.integer(df$grp)]
+  df$value <- 0.2 + lam * z + 0.55 * rnorm(nrow(df))
+
+  for (term in c("dep(0 + trait | grp)", "indep(0 + trait | grp)",
+                 "scalar(0 + trait | grp)")) {
+    fml <- stats::as.formula(paste0(
+      "value ~ 0 + trait + ", term))
+    fit_j <- gllvmTMB(fml, data = df, unit = "unit", trait = "trait",
+                      family = gaussian(), engine = "julia",
+                      ci_method = "none")
+    fit_r <- gllvmTMB(fml, data = df, unit = "unit", trait = "trait",
+                      family = gaussian())
+    expect_s3_class(fit_j, "gllvmTMB_julia")
+    expect_true(is.finite(logLik(fit_j)))
+    expect_lt(
+      abs(as.numeric(logLik(fit_j)) - as.numeric(logLik(fit_r))), 1e-3)
+  }
+})
+
+test_that("dep() on the Julia path never dies in a raw coercion error", {
+  # Pure R: a lone dep() with a NON-gaussian family must hit a NAMED gate,
+  # not "cannot coerce type symbol" (the pre-fix EARLY-GENERIC-ERROR).
+  df <- make_long()
+  df$grp <- factor(rep_len(1:5, nrow(df)))
+  df$value <- rpois(nrow(df), 3)
+  err <- tryCatch(
+    gllvmTMB(value ~ 0 + trait + dep(0 + trait | grp), data = df,
+             unit = "unit", trait = "trait", family = poisson(),
+             engine = "julia", ci_method = "none"),
+    error = function(e) conditionMessage(e)
+  )
+  expect_false(grepl("cannot coerce type", err, fixed = TRUE))
+  expect_true(grepl("GJL-GATE", err, fixed = TRUE))
+})
+
+test_that("phylo/kernel/animal structured terms stay gated", {
+  df <- make_long()
+  df$value <- rnorm(nrow(df))
+  expect_error(
+    gllvmTMB(value ~ 0 + trait + kernel_latent(unit, K = diag(10), d = 1),
+             data = df, unit = "unit", trait = "trait", family = gaussian(),
+             engine = "julia", ci_method = "none"),
+    "GJL-GATE-STRUCTURED-TERMS"
+  )
+})
+
+test_that("lone kernel structured terms route to Julia sources (live, Slice B)", {
+  skip_if_no_julia()
+  set.seed(1123)
+  n_unit <- 30L
+  df <- expand.grid(
+    unit = factor(paste0("u", sprintf("%02d", seq_len(n_unit)))),
+    trait = factor(c("t1", "t2", "t3")),
+    KEEP.OUT.ATTRS = FALSE
+  )
+  # A valid dense kernel over the units: exactly symmetric PD with dimnames.
+  set.seed(7)
+  Zk <- matrix(rnorm(n_unit * 3), n_unit, 3)
+  Kmat <- tcrossprod(Zk) / 3 + diag(0.75, n_unit)
+  Kmat <- (Kmat + t(Kmat)) / 2
+  dimnames(Kmat) <- list(levels(df$unit), levels(df$unit))
+  lam <- c(0.5, -0.35, 0.3)[as.integer(df$trait)]
+  zread <- as.vector(t(chol(Kmat)) %*% rnorm(n_unit))
+  df$value <- 0.1 + lam * zread[as.integer(df$unit)] + 0.5 * rnorm(nrow(df))
+
+  for (term in c("kernel_latent(unit, K = Kmat, d = 1, unique = FALSE)",
+                 "kernel_indep(unit, K = Kmat)",
+                 "kernel_dep(unit, K = Kmat)")) {
+    fml <- stats::as.formula(paste0("value ~ 0 + trait + ", term))
+    fit_j <- gllvmTMB(fml, data = df, unit = "unit", trait = "trait",
+                      family = gaussian(), engine = "julia",
+                      ci_method = "none")
+    fit_r <- gllvmTMB(fml, data = df, unit = "unit", trait = "trait",
+                      family = gaussian())
+    expect_s3_class(fit_j, "gllvmTMB_julia")
+    expect_true(is.finite(logLik(fit_j)))
+    expect_lt(
+      abs(as.numeric(logLik(fit_j)) - as.numeric(logLik(fit_r))), 1e-3)
+  }
+})
+
+test_that("kernel marshalling validates K and keeps animal/phylo gated", {
+  df <- make_long()
+  df$value <- rnorm(nrow(df))
+  Kbad <- matrix(rnorm(100), 10, 10)   # no dimnames, not symmetric
+  expect_error(
+    gllvmTMB(value ~ 0 + trait + kernel_latent(unit, K = Kbad, d = 1,
+                                               unique = FALSE),
+             data = df, unit = "unit", trait = "trait", family = gaussian(),
+             engine = "julia", ci_method = "none"),
+    "GJL-GATE-STRUCTURED-TERMS"
+  )
 })

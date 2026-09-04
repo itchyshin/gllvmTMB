@@ -57526,3 +57526,7 @@ Commands run (worktree `~/local-scratch/lanes/gllvmTMB-arcD-zi-20260902`, R 4.6.
 Deliberately not run: full `devtools::test()` / `R CMD check` on this branch (run at merge on the rebased
 branch; CI on #1240 covers ubuntu); no Totoro/DRAC multi-seed recovery yet (owed before any FAM-21..23 row
 leaves `partial`; D-139 estimate first).
+
+## 2026-09-04 — Cursor twin capability proof (step 5)
+
+- Worktree `/Users/z3437171/local-scratch/lanes/gllvmTMB-gllvm-twin-20260904` @ `5784dab65`; `NOT_CRAN=true`; `devtools::load_all(".")` 29.8 s (TMB DLL OK); one `gllvmTMB_wide(Y, d=1)` fit 1.0 s; `convergence=0`, `logLik=-187.0027`; receipt `docs/dev-log/recovery-checkpoints/2026-09-04-cursor-capability-proof.md`. No testthat/skip_on_cran. Harness/accessor deferred.

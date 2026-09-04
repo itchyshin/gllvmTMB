@@ -1,3 +1,20 @@
+## 2026-09-04 — parity_ledger.R: `--r-ref` pins R capability ledger (Option A S2)
+
+Twin lane `cursor/lane-gllvm-twin-20260904`. G0: Option A + Ada defaults.
+
+**Change:** `tools/parity_ledger.R` gains `--r-ref` (default `origin/main`; `working-tree`
+for legacy disk read). R ledger now resolved via `git show <r-ref>:docs/design/capability-status.md`
+like the Julia side already used `--ref`.
+
+**Verify:**
+```sh
+Rscript tools/parity_ledger.R --ref origin/main --r-ref origin/main \
+  --julia-repo "/Users/z3437171/local-scratch/lanes/GLLVM.jl-gllvm-twin-20260904"
+# CLOSURE: PASS, exit 0
+```
+
+Receipt (JL repo): `docs/dev-log/core070/r-ref-closure-receipt-2026-09-04.md`.
+
 ## 2026-08-19 — `unit_obs` / `cluster` default to `NULL`, not `"site_species"` / `"species"` (DRAFT PR, needs Shinichi sign-off)
 
 Lane `claude/null-tier-defaults-20260819` (worktree
@@ -57526,3 +57543,40 @@ Commands run (worktree `~/local-scratch/lanes/gllvmTMB-arcD-zi-20260902`, R 4.6.
 Deliberately not run: full `devtools::test()` / `R CMD check` on this branch (run at merge on the rebased
 branch; CI on #1240 covers ubuntu); no Totoro/DRAC multi-seed recovery yet (owed before any FAM-21..23 row
 leaves `partial`; D-139 estimate first).
+
+## 2026-09-04 — Cursor twin capability proof (step 5)
+
+- Worktree `/Users/z3437171/local-scratch/lanes/gllvmTMB-gllvm-twin-20260904` @ `5784dab65`; `NOT_CRAN=true`; `devtools::load_all(".")` 29.8 s (TMB DLL OK); one `gllvmTMB_wide(Y, d=1)` fit 1.0 s; `convergence=0`, `logLik=-187.0027`; receipt `docs/dev-log/recovery-checkpoints/2026-09-04-cursor-capability-proof.md`. No testthat/skip_on_cran. Harness/accessor deferred.
+
+## 2026-09-04 — `extract_latent_scores()` accessor (G0 gate #6)
+
+Worktree `/Users/z3437171/local-scratch/lanes/gllvmTMB-gllvm-twin-20260904`.
+
+Commands run:
+
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'` → OK (`man/extract_latent_scores.Rd`, NAMESPACE export + S3 methods).
+- `NOT_CRAN=true Rscript --vanilla -e 'devtools::load_all("."); devtools::test(filter = "extract-latent-scores")'` → **FAIL 0 | WARN 0 | SKIP 0 | PASS 21** (7 tests).
+- `rg -n 'extract_latent_scores' NAMESPACE` → `export(extract_latent_scores)` + 4 `S3method` lines.
+
+Files: `R/extract-latent-scores.R`, `R/simulate-site-trait.R` (`truth$z_B`/`z_W`, class `gllvmTMB_site_trait_sim`), `tests/testthat/test-extract-latent-scores.R`, `docs/design/06-extractors-contract.md`, `NEWS.md`, `docs/dev-log/after-task/2026-09-04-extract-latent-scores.md`.
+
+Deliberately not run: full `devtools::test()` / `R CMD check`; arcG Totoro campaign; harness wiring (next slice).
+
+## 2026-09-04 — arcG harness + Cell-1 local proof
+
+Worktree `/Users/z3437171/local-scratch/lanes/gllvmTMB-gllvm-twin-20260904` @ `afe161781`.
+
+Commands run:
+
+- `NOT_CRAN=true Rscript dev/gapclose/arcG/cell-1-smoke.R` → **Cell-1 PASS** (3/3 converged, pdHess, dims 40×1, finite cov90/cov95); load_all 3.2 s; wall 10.1 s.
+- `rg -n 'extract_latent_scores' dev/gapclose/arcG/coverage-harness.R` → scores via accessor only (no ordination internals archaeology).
+
+Files: `dev/gapclose/arcG/coverage-harness.R`, `cell-1-smoke.R`, `campaign.R`, `run-grid-totoro.sh` (prepared, not executed), `coverage-results.md`, `cell-1-smoke-results.csv`, `docs/dev-log/after-task/2026-09-04-arcG-harness-cell1.md`.
+
+Deliberately not run: Totoro 9×500 grid dispatch; full `devtools::test()`.
+
+## 2026-09-04 arcG Totoro grid (cursor/lane-gllvm-twin)
+
+- HEAD fc08d83f1; 4500 fits; wall 73.3s; core-h 1.60; pooled cov90=0.634 cov95=0.695
+- Commands: dev/gapclose/arcG/run-grid-totoro.sh; aggregate.R on Totoro; rsync to dev/gapclose/arcG/results/
+- Verified: wc -l per_seed_summary.csv => 4501; ls raw/*.rds | wc -l => 4500

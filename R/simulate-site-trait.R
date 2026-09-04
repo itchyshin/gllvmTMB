@@ -57,7 +57,8 @@
 #'     and `lat` if coords were generated.}
 #'   \item{`truth`}{Named list of true parameter values (alpha, beta,
 #'     Lambda_B, Lambda_W, psi_B, psi_W, sigma2_phy, sigma2_sp, sigma2_spa,
-#'     spatial_range, sigma2_eps).}
+#'     spatial_range, sigma2_eps, and when reduced-rank terms are used,
+#'     `z_B` / `z_W` latent-score draws for [extract_latent_scores()].}
 #'   \item{`Cphy`}{The phylogenetic correlation matrix used (or `NULL`).}
 #'   \item{`coords`}{Site coordinates used (or `NULL`).}
 #' }
@@ -121,10 +122,13 @@ simulate_site_trait <- function(n_sites = 50,
 
   ## ---- Reduced-rank between-site u_{st} -----------------------------------
   u_mat <- matrix(0, nrow = n_sites, ncol = n_traits)
+  Z_B <- NULL
   if (!is.null(Lambda_B)) {
     stopifnot(nrow(Lambda_B) == n_traits)
     Z_B <- matrix(stats::rnorm(n_sites * ncol(Lambda_B)),
                   nrow = n_sites, ncol = ncol(Lambda_B))
+    rownames(Z_B) <- as.character(seq_len(n_sites))
+    colnames(Z_B) <- paste0("LV", seq_len(ncol(Lambda_B)))
     u_mat <- u_mat + Z_B %*% t(Lambda_B)
   }
   if (!is.null(psi_B)) {
@@ -170,6 +174,7 @@ simulate_site_trait <- function(n_sites = 50,
 
   ## ---- Build long-format data --------------------------------------------
   rows <- list()
+  z_W_draws <- list()
   for (s in seq_len(n_sites)) {
     for (i in occur[[s]]) {
       ## Within-site reduced-rank e_{sit}
@@ -177,6 +182,7 @@ simulate_site_trait <- function(n_sites = 50,
       if (!is.null(Lambda_W)) {
         stopifnot(nrow(Lambda_W) == n_traits)
         z_W <- stats::rnorm(ncol(Lambda_W))
+        z_W_draws[[paste(s, i, sep = "_")]] <- z_W
         e_sit <- as.numeric(Lambda_W %*% z_W)
       }
       if (!is.null(psi_W)) {
@@ -213,6 +219,23 @@ simulate_site_trait <- function(n_sites = 50,
   dat$site_species <- factor(dat$site_species)
   dat$trait        <- factor(dat$trait, levels = paste0("trait_", seq_len(n_traits)))
 
+  Z_W <- NULL
+  if (!is.null(Lambda_W) && length(z_W_draws) > 0L) {
+    ss_levels <- levels(dat$site_species)
+    Z_W <- matrix(
+      NA_real_,
+      nrow = length(ss_levels),
+      ncol = ncol(Lambda_W),
+      dimnames = list(
+        ss_levels,
+        paste0("LV", seq_len(ncol(Lambda_W)))
+      )
+    )
+    for (nm in names(z_W_draws)) {
+      Z_W[nm, ] <- z_W_draws[[nm]]
+    }
+  }
+
   truth <- list(
     alpha          = alpha,
     beta           = beta,
@@ -224,10 +247,12 @@ simulate_site_trait <- function(n_sites = 50,
     sigma2_phy     = sigma2_phy,
     sigma2_sp      = sigma2_sp,
     sigma2_spa     = sigma2_spa,
-    spatial_range  = spatial_range
+    spatial_range  = spatial_range,
+    z_B            = Z_B,
+    z_W            = Z_W
   )
-  list(data   = dat,
-       truth  = truth,
-       Cphy   = Cphy,
-       coords = coords)
+  structure(
+    list(data = dat, truth = truth, Cphy = Cphy, coords = coords),
+    class = c("gllvmTMB_site_trait_sim", "list")
+  )
 }

@@ -504,8 +504,13 @@ conflate:**
    quadratic in the tested range, not the O(P^2) pathology Design 108
    found in a *different* code path (dense `nlminb` workspace at
    `random = NULL`, which does not apply here). This design's largest
-   cell (`n_units = 320`, `n_traits = 8`, `d = 2`) has a joint-precision
-   dimension on the order of a few hundred (roughly `n_units * d +
+   cell is (`n_units = 320`, `n_traits = 4`, `d = 2`) — **corrected
+   2026-09-04: this passage originally read `n_traits = 8`, a combination
+   the Section 4 grid does not contain (`n_traits = 8` appears only at
+   `n_units = 80`). The pre-run confirmed the intended cell: its measured
+   right-hand-side width is 640 = `d * n_units`, matching `d = 2`,
+   `n_units = 320`.** It has a joint-precision dimension on the order of a
+   few hundred (roughly `n_units * d +
    n_traits * (d + 1) + dispersion terms`, well under Design 129's
    2,130-dimension test point), so the extra `sdreport()` call itself is
    expected to be cheap — plausibly comparable to or cheaper than the fit
@@ -586,6 +591,38 @@ both of this function's extra costs above), would be ~2.85 core-hours —
 consistent with the "optimistic" bound above and reinforcing that the
 extra `sdreport()`/solve overhead, not the base fit, is what could push
 the true cost meaningfully higher.
+
+---
+
+## 9a. PRE-RUN RESULT (measured 2026-09-04) — the estimate is resolved
+
+The Section 9 estimate spanned **3.75-12 core-hours**, a threefold range whose width came from one
+unmeasured step. That step is now measured, and it is a non-factor.
+
+| stage | measured range across 5 cells x 2 seeds |
+|---|---|
+| model fit | 0.53 - 7.05 s — **dominates everywhere, by 4-27x** |
+| `sdreport(getJointPrecision = TRUE)` | 0.11 - 1.17 s, scaling near-linearly in the joint-precision dimension (9.1x dimension -> 9.5x cost) |
+| the sparse multi-RHS solve | **0.001 - 0.018 s** — three orders of magnitude below the fit |
+
+**Section 9's central worry did not materialise.** It flagged that the solve might cost "several
+seconds at the largest cell" if `Matrix::solve()` failed to reuse its factorisation across
+right-hand sides. It reuses it: 640 right-hand-side columns cost 18 ms. The cautious 6-12 core-hour
+half of the range was built on that multiplier and can be discarded.
+
+**Recomputed cost: ~5.0 core-hours** for the full 9-cell x 500-seed grid (mean 4.012 s per fit x
+4,500 fits = 18,054 core-seconds). **No grid trimming is needed on cost grounds**, and nothing scales
+disproportionately at the large cells.
+
+**Two honest qualifications.** (1) Five of the nine cells were measured; the other four are
+**interpolated in `n_units`, not measured** — the real campaign should log per-fit stage timings
+rather than trust that interpolation further. (2) The measuring machine was at **load ~35 on 20
+cores with 12 other users**, so these are upper-bound numbers on a contended box, not clean
+single-core ones — seed-to-seed spread within one cell reached 5x (1.33 s vs 7.05 s for an identical
+DGP), which is contention rather than optimizer variance. On an idle Totoro the campaign should cost
+materially less than 5 core-hours; treating 5 as a ceiling is the safe reading.
+
+Raw per-seed measurements: `dev/gapclose/arcG/prerun-timing-results.csv`; script and log alongside.
 
 ---
 

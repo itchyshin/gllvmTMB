@@ -1,3 +1,20 @@
+## 2026-09-04 — parity_ledger.R: `--r-ref` pins R capability ledger (Option A S2)
+
+Twin lane `cursor/lane-gllvm-twin-20260904`. G0: Option A + Ada defaults.
+
+**Change:** `tools/parity_ledger.R` gains `--r-ref` (default `origin/main`; `working-tree`
+for legacy disk read). R ledger now resolved via `git show <r-ref>:docs/design/capability-status.md`
+like the Julia side already used `--ref`.
+
+**Verify:**
+```sh
+Rscript tools/parity_ledger.R --ref origin/main --r-ref origin/main \
+  --julia-repo "/Users/z3437171/local-scratch/lanes/GLLVM.jl-gllvm-twin-20260904"
+# CLOSURE: PASS, exit 0
+```
+
+Receipt (JL repo): `docs/dev-log/core070/r-ref-closure-receipt-2026-09-04.md`.
+
 ## 2026-08-19 — `unit_obs` / `cluster` default to `NULL`, not `"site_species"` / `"species"` (DRAFT PR, needs Shinichi sign-off)
 
 Lane `claude/null-tier-defaults-20260819` (worktree

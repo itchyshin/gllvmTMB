@@ -1,0 +1,7 @@
+"family","size","n_seeds","frac_converged","frac_pd_hessian","frac_bar_median_rel_loading","frac_bar_max_rel_loading","frac_bar_max_abs_cutpoint","frac_all_bars_joint","median_median_rel_loading","p90_median_rel_loading","median_max_rel_loading","p90_max_rel_loading","median_max_abs_cutpoint","p90_max_abs_cutpoint","median_runtime_s"
+"censored_poisson",200,50,1,1,NA,NA,NA,0.96,NA,NA,NA,NA,NA,NA,1.65
+"censored_poisson",400,50,1,1,NA,NA,NA,1,NA,NA,NA,NA,NA,NA,2.5635
+"censored_poisson",800,50,1,1,NA,NA,NA,1,NA,NA,NA,NA,NA,NA,4.125
+"ordinal_logit",1200,50,1,1,1,1,1,1,0.0363035011021078,0.0654056141022857,0.0722493529561487,0.135240684440317,0.0857274454581408,0.149116973084876,2.321
+"ordinal_logit",300,50,1,1,1,1,1,1,0.0719658138533982,0.121221835991403,0.13022247381629,0.215123975404027,0.144185361674411,0.210799084492586,1.1
+"ordinal_logit",600,50,1,1,1,1,1,1,0.0520738294954722,0.0805984831202125,0.100752528233018,0.152634188140315,0.125325549202973,0.180253372299623,1.5475

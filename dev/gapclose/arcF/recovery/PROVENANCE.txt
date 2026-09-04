@@ -1,0 +1,71 @@
+Arc F recovery campaign (ordinal_logit / censored_poisson) -- provenance
+==========================================================================
+Compute: Totoro (snakagaw@totoro.biology.ualberta.ca), 384 cores, no GPU.
+Cap: mc.cores=100, OPENBLAS_NUM_THREADS=1, OMP_NUM_THREADS=1.
+Attached via the existing ControlMaster socket
+(~/.ssh/cm-snakagaw@totoro.biology.ualberta.ca:22); no fresh login, no Duo
+prompt.
+
+gllvmTMB build used for the campaign:
+  Source SHA:  c9ce86489dad043f1005c995d4864c8f2ceded18
+    (origin/main HEAD at campaign time)
+  Cloned to:   /home/snakagaw/gllvmtmb-arcF-recovery/src (fresh clone,
+               single-branch main, not a reuse of any other lane's
+               checkout)
+  Installed:   gllvmTMB 0.7.1, private library
+               /home/snakagaw/gllvmtmb-arcF-recovery/priv-lib on Totoro
+  DLL SHA-256: 17a443a8a771142416fb0ff1b569ed24e24b823633ebf3f1e619064aa943723a
+               (priv-lib/gllvmTMB/libs/gllvmTMB.so)
+  Build log:   ~/gllvmtmb-arcF-recovery/install.log on Totoro (not
+               committed; ends "* DONE (gllvmTMB)", no ERROR/WARNING).
+
+Grid: 2 families x 3 sizes x 50 seeds (1:50) = 300 fits.
+  ordinal_logit    : n_unit in {300 (shipped test size), 600, 1200}
+  censored_poisson : n_site in {200 (shipped test size), 400, 800}
+DGPs: lifted verbatim from tests/testthat/test-ordinal-logit.R (the
+  .ordlogit_* block) and tests/testthat/test-censored-poisson.R (the
+  known-DGP recovery block). See campaign.R header for the exact
+  constants transcribed from each test.
+
+Deliberate deviation from the shipped tests: censored_poisson's shipped
+test fits with control = gllvmTMBcontrol(se = FALSE) (skips sdreport(),
+so pd_hessian cannot be reported). This campaign uses the PACKAGE
+DEFAULT control (se = TRUE, gllvmTMBcontrol()'s own default) for BOTH
+families, so pd_hessian is reported for both. Point estimates are
+unaffected by se; only whether sdreport() runs. ordinal_logit's shipped
+test does not pass se = FALSE at all, so no deviation there.
+
+D-139 pre-run (one seed, 9001, outside the campaign's 1:50 set, at each
+family's LARGEST size, single fit, on Totoro):
+  ordinal_logit,    n_unit=1200: 1.965 s, conv=0
+  censored_poisson, n_site=800:  3.761 s, conv=0
+Both faster than the local single-core pre-run quoted in the task brief
+(19.3 s and 5.4 s respectively at those sizes) -- Totoro's per-core
+throughput exceeds the local machine's here, not the reverse, so the
+D-139 "more than ~3x slower, stop" trigger never came close to firing.
+
+Full-grid measurement: all 300 output files present; file-timestamp span
+8 seconds (the compute itself). Sum of per-fit runtimes (serial-time
+equivalent) = 666.746 core-seconds (~0.185 core-hours) -- well under the
+~2,600 core-second / 0.72 core-hour D-139 estimate in the task brief.
+
+SHA-256 of files committed to this repo:
+cbe0faf1cc75db637c4fe3b6a7eb1512789800bf1de495f1a26af2aba968cd53  campaign.R
+9711baef5003f83c4d59613e0f5ab2c32b2118c436e74d7e37a643e69bf841c4  run_grid.R
+85e777e02ef728457a51caf171ad6a18ce3e261a658137dbdaf6169a4db6a6ab  aggregate.R
+6ba2593b5e40a4fe94655e1ecd3b12e3895029ea2fe22691cebdf14f707efc3a  summary/per_seed_summary.csv
+743bb7258e583d5970f8f9c9ddf51a60bddc94871650f565afb31ad0dbf0cd9d  summary/per_cell_summary.csv
+fa177eb622cf79fa9120257a83338fb5e67234aad38703def4d26e20d84eaa0a  summary/per_cell_censored_poisson_extra.csv
+
+Raw 300 RDS fits stay on Totoro only (D-50: raw campaign outputs never
+enter git), under ~/gllvmtmb-arcF-recovery/out/. Also on Totoro (not
+committed): src/ (the fresh clone), priv-lib/, install.log, prerun/ (the
+two D-139 timing fits), logs/run_grid.log.
+
+Coordination note: before launching, this lane checked for overlap with
+in-flight session agents named o4-ordinal-logit / O7-censored-poisson
+and branches claude/overnight-ordinal-logit /
+claude/overnight-censored-poisson. Neither had run a multi-seed recovery
+campaign (both branches carry family-construction work only; register
+rows FAM-24/FAM-25 on origin/main quote 3-4 seeds, not 50). This
+campaign is new evidence, not a duplicate.

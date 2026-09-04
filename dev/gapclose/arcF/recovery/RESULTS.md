@@ -134,6 +134,32 @@ inside its own bar; seed 17 breaches relative Frobenius at 0.266 with
 and 0.016 over their respective 0.15 / 0.25 lines), not gross failures.
 This gives a joint pass rate of 48/50 = 96%.
 
+## Do not read 100% vs 96% as "ordinal_logit recovers better"
+
+It does not follow, and the per-cell table says why: **the two families' bars
+are calibrated to very different tightness.** Comparing each cell's 90th
+percentile against its own bar, at the shipped sizes:
+
+| family | metric | p90 | bar | p90 as % of bar |
+|---|---|---|---|---|
+| ordinal_logit (300) | median rel. loading | 0.121 | 0.25 | 48% |
+| ordinal_logit (300) | max rel. loading | 0.215 | 0.40 | 54% |
+| ordinal_logit (300) | max abs. cutpoint | 0.211 | 0.30 | 70% |
+| censored_poisson (200) | max intercept error | 0.119 | 0.15 | 80% |
+| censored_poisson (200) | rel. Frobenius | 0.197 | 0.25 | 79% |
+
+`ordinal_logit`'s bars sit roughly half again above where its errors actually
+land, so a 100% pass rate is close to guaranteed and carries little information
+about accuracy. `censored_poisson`'s bars sit near the edge of its own error
+distribution, which is why two seeds in the tail breach them — and both breaches
+are marginal (0.158 against a 0.15 bar; 0.266 against 0.25).
+
+So the right reading is: **both families' shipped test sizes are sound
+regression guards, and neither pass rate is a statement about which family
+estimates more accurately.** A looser bar passing more often is arithmetic, not
+evidence. If a future arc wants an accuracy claim rather than a guard, it needs
+bars derived from a target precision, not from a pre-run.
+
 ## Honest verdict, per family
 
 **ordinal_logit.** The register/test currently quote **n_unit = 300**

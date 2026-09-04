@@ -212,7 +212,8 @@ test_that("simulate_site_trait(): truth list contains all expected names", {
   expect_named(
     s$truth,
     c("alpha", "beta", "sigma2_eps", "Lambda_B", "Lambda_W",
-      "psi_B", "psi_W", "sigma2_phy", "sigma2_sp", "sigma2_spa", "spatial_range")
+      "psi_B", "psi_W", "sigma2_phy", "sigma2_sp", "sigma2_spa", "spatial_range",
+      "z_B", "z_W")
   )
 })
 

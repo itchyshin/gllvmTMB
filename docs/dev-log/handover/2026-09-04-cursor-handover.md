@@ -74,6 +74,31 @@ the sparse solve that made the original estimate uncertain is measured and negli
 first arc precisely because it needs real R/TMB fits, which is also the capability this lane must
 prove before committing any campaign to itself.
 
+## Two things the outgoing lane learned AFTER writing the rest of this document
+
+**1. The coverage arc has a large, non-obvious SETUP cost before any compute.** A campaign agent was
+dispatched for it and spent **over fifteen minutes in local preparation without dispatching a single
+fit** — it was reading `ordination_uncertainty()`'s source to extract the latent-score path, because
+the function returns uncertainty but does not hand back the scores in the form a coverage comparison
+needs. Budget for that. The compute is ~5 core-hours as a ceiling and a few minutes of wall time on
+Totoro; the *harness* is the part that takes real effort. If you find yourself reimplementing part of
+the function to get at `z_hat`, that is expected, not a wrong turn — but consider whether the cleaner
+fix is a small accessor on the R side, which would be a public-API change and therefore the
+maintainer's call.
+
+**2. The one habit worth taking from this lane.** Five separate confident signals were wrong in a
+single day, and they share one shape: **a cheerful report about the wrong thing.** Tests that skipped
+everything and printed DONE. A merge watcher that logged a merge which never happened. A count that
+fell *below* its ceiling because a file could not be parsed. A CI green whose check step was skipped.
+A watcher that verified a different pull request than intended. None of them looked like failures;
+each looked like success.
+
+The habit that catches all five is one sentence: **verify against the object, never against the
+report about it.** Read the PR state, not the script's log. Read the pass/fail counts, not the word
+DONE. Read which CI steps ran, not the green tick. And treat a number that improves for no reason as
+a bug rather than a result — three of the five were caught only because a figure moved the *right*
+way and that was suspicious.
+
 ## What Was Accomplished (the lane that just closed)
 
 Reverse parity — the capabilities the Julia twin had that R lacked — is closed as buildable work.

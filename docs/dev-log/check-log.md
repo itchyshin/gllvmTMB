@@ -57530,3 +57530,30 @@ leaves `partial`; D-139 estimate first).
 ## 2026-09-04 — Cursor twin capability proof (step 5)
 
 - Worktree `/Users/z3437171/local-scratch/lanes/gllvmTMB-gllvm-twin-20260904` @ `5784dab65`; `NOT_CRAN=true`; `devtools::load_all(".")` 29.8 s (TMB DLL OK); one `gllvmTMB_wide(Y, d=1)` fit 1.0 s; `convergence=0`, `logLik=-187.0027`; receipt `docs/dev-log/recovery-checkpoints/2026-09-04-cursor-capability-proof.md`. No testthat/skip_on_cran. Harness/accessor deferred.
+
+## 2026-09-04 — `extract_latent_scores()` accessor (G0 gate #6)
+
+Worktree `/Users/z3437171/local-scratch/lanes/gllvmTMB-gllvm-twin-20260904`.
+
+Commands run:
+
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'` → OK (`man/extract_latent_scores.Rd`, NAMESPACE export + S3 methods).
+- `NOT_CRAN=true Rscript --vanilla -e 'devtools::load_all("."); devtools::test(filter = "extract-latent-scores")'` → **FAIL 0 | WARN 0 | SKIP 0 | PASS 21** (7 tests).
+- `rg -n 'extract_latent_scores' NAMESPACE` → `export(extract_latent_scores)` + 4 `S3method` lines.
+
+Files: `R/extract-latent-scores.R`, `R/simulate-site-trait.R` (`truth$z_B`/`z_W`, class `gllvmTMB_site_trait_sim`), `tests/testthat/test-extract-latent-scores.R`, `docs/design/06-extractors-contract.md`, `NEWS.md`, `docs/dev-log/after-task/2026-09-04-extract-latent-scores.md`.
+
+Deliberately not run: full `devtools::test()` / `R CMD check`; arcG Totoro campaign; harness wiring (next slice).
+
+## 2026-09-04 — arcG harness + Cell-1 local proof
+
+Worktree `/Users/z3437171/local-scratch/lanes/gllvmTMB-gllvm-twin-20260904` @ `afe161781`.
+
+Commands run:
+
+- `NOT_CRAN=true Rscript dev/gapclose/arcG/cell-1-smoke.R` → **Cell-1 PASS** (3/3 converged, pdHess, dims 40×1, finite cov90/cov95); load_all 3.2 s; wall 10.1 s.
+- `rg -n 'extract_latent_scores' dev/gapclose/arcG/coverage-harness.R` → scores via accessor only (no ordination internals archaeology).
+
+Files: `dev/gapclose/arcG/coverage-harness.R`, `cell-1-smoke.R`, `campaign.R`, `run-grid-totoro.sh` (prepared, not executed), `coverage-results.md`, `cell-1-smoke-results.csv`, `docs/dev-log/after-task/2026-09-04-arcG-harness-cell1.md`.
+
+Deliberately not run: Totoro 9×500 grid dispatch; full `devtools::test()`.

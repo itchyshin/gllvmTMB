@@ -1,0 +1,2 @@
+"cell","n_seeds","n_ok","n_converged","n_pdHess","n_dims_ok","mean_cov90","mean_cov95","wall_s","pass"
+"cell01_d1_n40_t4",3,3,3,3,3,0.641666666666667,0.708333333333333,10.088,TRUE

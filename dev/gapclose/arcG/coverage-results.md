@@ -1,64 +1,48 @@
-# arcG coverage campaign — results stub
+# arcG coverage campaign — results
 
-Status: **Cell-1 local proof DONE** (2026-09-04). Full 9×500 grid **NOT dispatched**.
+Status: **Full 9×500 grid DONE** (2026-09-04, Totoro). Cell-1 local proof retained below.
 
-Design: `coverage-design.md` · Harness: `coverage-harness.R` · Cell-1 smoke: `cell-1-smoke.R`
+Design: `coverage-design.md` · Harness: `coverage-harness.R` · Grid driver: `run_grid.R`
+
+---
+
+## Totoro grid (2026-09-04)
+
+**HEAD:** `fc08d83f1` (lane `cursor/lane-gllvm-twin-20260904`).
+
+**Compute:** Totoro via ControlMaster (D-64); `mc.cores=150` (D-143); wall **73.3 s**; serial-time sum **5752 s ≈ 1.60 core-h** (under D-139 **5.0 core-h** ceiling).
+
+**Jobs:** 9 cells × 500 seeds = **4500** fits; **4500** RDS in `results/raw/`; **4500** rows in `results/summary/per_seed_summary.csv`.
+
+### Pooled coverage (all unit×seed pairs)
+
+| Nominal | Empirical |
+|---|---|
+| 90% | **0.634** |
+| 95% | **0.695** |
+
+### Per-cell mean coverage @90% / @95% (see `results/summary/per_cell_summary.csv`)
+
+| cell | n_sites | d | frac conv | frac pdHess | cov90 | cov95 |
+|---|---:|---:|---:|---:|---:|---:|
+| cell01 | 40 | 1 | 1.000 | 1.000 | 0.614 | 0.685 |
+| cell02 | 80 | 1 | 1.000 | 1.000 | 0.595 | 0.665 |
+| cell03 | 160 | 1 | 1.000 | 1.000 | 0.583 | 0.655 |
+| cell04 | 320 | 1 | 1.000 | 1.000 | 0.578 | 0.648 |
+| cell05 | 40 | 2 | 0.978 | 0.674 | 0.735 | 0.778 |
+| cell06 | 80 | 2 | 0.994 | 0.668 | 0.699 | 0.742 |
+| cell07 | 160 | 2 | 0.996 | 0.663 | 0.687 | 0.727 |
+| cell08 | 320 | 2 | 0.994 | 0.698 | 0.688 | 0.726 |
+| cell09 | 80 | 2 (8 traits) | 1.000 | 0.992 | 0.614 | 0.691 |
+
+Undercoverage vs nominal is **expected** for marginal Wald intervals (design §2); d=2 cells show lower pdHess rates — flag for inference review, not a harness failure.
+
+**Artifacts:** `results/summary/*.csv`, `results/raw/*.rds`, `results/PROVENANCE.txt`, `results/totoro-run.log`.
 
 ---
 
 ## Cell-1 local proof (2026-09-04)
 
-**Cell definition:** smallest grid cell — `n_units=40`, `d=1`, `n_traits=4` (`cell01_d1_n40_t4`, grid id 1).
+(Smallest cell machinery check — 3 seeds; see `cell-1-smoke-results.csv`.)
 
-**HEAD:** `afe161781` (`extract_latent_scores()` landed).
-
-**Command:**
-
-```sh
-cd /Users/z3437171/local-scratch/lanes/gllvmTMB-gllvm-twin-20260904
-NOT_CRAN=true Rscript dev/gapclose/arcG/cell-1-smoke.R
-```
-
-**Environment:** `devtools::load_all(".")` (3.2 s compile/load); `NOT_CRAN=true`; `OPENBLAS_NUM_THREADS=1`.
-
-**Seeds:** 501, 502, 503 (smoke subset; campaign uses 1:500).
-
-### Object-level checks
-
-| Check | Result |
-|---|---|
-| Real fit (not skip) | **PASS** — 3/3 seeds fitted |
-| `fit$opt$convergence == 0` | **PASS** — 3/3 |
-| `fit$sd_report$pdHess == TRUE` | **PASS** — 3/3 |
-| `extract_latent_scores(fit)` dims | **PASS** — 40×1 all seeds |
-| `extract_latent_scores(sim)` dims | **PASS** — 40×1 all seeds |
-| `ordination_uncertainty()$se` dims | **PASS** — 40×1 all seeds |
-| Coverage machinery numeric | **PASS** — finite cov90/cov95 per seed |
-
-### Key numbers
-
-| Metric | Value |
-|---|---|
-| Wall time (3 seeds) | **10.1 s** |
-| Per-seed runtime | 0.45–7.24 s (contention-sensitive) |
-| Mean empirical cov@90% | **0.642** (3-seed smoke mean) |
-| Mean empirical cov@95% | **0.708** (3-seed smoke mean) |
-| Cell-1 harness verdict | **PASS** |
-
-Per-seed coverage (smoke — not campaign evidence):
-
-| seed | cov@90% | cov@95% | runtime (s) |
-|---|---|---|---|
-| 501 | 0.325 | 0.425 | 1.35 |
-| 502 | 0.750 | 0.825 | 7.24 |
-| 503 | 0.850 | 0.875 | 0.45 |
-
-**Note:** Undercoverage at 90%/95% on individual seeds is **expected** per design Section 2 (marginal Wald intervals for random effects); Cell-1 proof validates the **machinery**, not nominal calibration.
-
-Raw CSV: `cell-1-smoke-results.csv`
-
----
-
-## Full grid (NOT RUN)
-
-9 cells × 500 seeds = 4,500 fits · ~5.0 core-h ceiling (§9a) · Totoro **NEXT** — see `run-grid-totoro.sh` (prepared, not submitted).
+**Verdict:** PASS — real fits, dims, coverage machinery numeric.

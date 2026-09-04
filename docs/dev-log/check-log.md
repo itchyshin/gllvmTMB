@@ -57557,3 +57557,9 @@ Commands run:
 Files: `dev/gapclose/arcG/coverage-harness.R`, `cell-1-smoke.R`, `campaign.R`, `run-grid-totoro.sh` (prepared, not executed), `coverage-results.md`, `cell-1-smoke-results.csv`, `docs/dev-log/after-task/2026-09-04-arcG-harness-cell1.md`.
 
 Deliberately not run: Totoro 9×500 grid dispatch; full `devtools::test()`.
+
+## 2026-09-04 arcG Totoro grid (cursor/lane-gllvm-twin)
+
+- HEAD fc08d83f1; 4500 fits; wall 73.3s; core-h 1.60; pooled cov90=0.634 cov95=0.695
+- Commands: dev/gapclose/arcG/run-grid-totoro.sh; aggregate.R on Totoro; rsync to dev/gapclose/arcG/results/
+- Verified: wc -l per_seed_summary.csv => 4501; ls raw/*.rds | wc -l => 4500

@@ -359,19 +359,39 @@ Current operating rule:
 
 ## Active lanes
 
-| Agent | Lane | PR / branch | Files touched | Status |
+**Refreshed 2026-09-04 from evidence, not from claims.** The previous table described a Codex
+"Phase 56.5 anchor-adjacent fan-out" as the single active lane. That row was **three months stale and
+its artifacts no longer exist**: the file it named,
+`tests/testthat/test-relmat-unique-slope-gaussian.R`, is not on `main`; the `skip_until_stage3()`
+gate it said was blocking fifteen tests now has **one** occurrence package-wide, in a different file;
+and every `agent/*` branch it referred to is local-only, never pushed. Retired on that evidence.
+
+**This table records what the repository shows, with the date of the last evidence — it does not
+assert that a lane is alive or dead.** An open PR that has not moved in weeks may be paused,
+blocked, or simply waiting on its owner; only that owner knows. Derived from
+`gh pr list --state open` and `git for-each-ref refs/remotes/origin`; reproduce it the same way
+rather than trusting these rows once they age.
+
+| Agent | Lane | PR / branch | Last evidence | State as evidenced |
 |---|---|---|---|---|
-| Codex | **Phase 56.5 — anchor-adjacent fan-out by backend/risk** (start: `phylo_unique(..., vcv = A_user)`) | branch TBD (PR not yet open) | `tests/testthat/test-relmat-unique-slope-gaussian.R` (remove `skip_until_stage3()` gate, attach recovery + byte-identity + forced-mismatch tests; reuse anchor `b_phy_aug` machinery) | Per Codex 2026-05-26 evidence-first sequencing: with anchor cell green (#298), the fan-out is by **backend / risk grouping**, not one PR per cell. Expected ordering: (a) `phylo_unique(..., vcv = A_user)` first — reuses anchor's `b_phy_aug` machinery directly, smallest delta; (b) `animal_unique` after its bar-form sugar routes to that same path; (c) `spatial_*` after SPDE augmented plumbing; (d) `*_latent` / `*_indep` / `*_dep` after their distinct Σ_b / map semantics ship. **15 skeleton tests remain `skip_until_stage3()`-gated** until each backend lands. Shannon role when PR opens: Rose pre-publish + coord-board sync + after-task cross-reference (same pattern as #289 / #293 / #295 / #298). |
-| Claude/Shannon | Standing by post-#298 close-out | — | — | Phase 56.4 close-out PR (this one) lands the #297 → #298 cross-reference, moves the prior 56.4 row to Recently resolved, and queues the new Codex Phase 56.5 lane. **Auto-poll cron `62caabb4` (every 10 min)** running for hands-free pickup; caveat: session-only, may not survive soft session resets — pair with explicit Ada pings on key merges. **A6 prep memo (#291) + #287 §2 pre-spec tidy (#296) both staged**; A6 itself blocked behind Phase 56.5 close. **Hard scope unchanged (Ada 2026-05-26):** the four engine/parser files Codex-owned through Phase 56.x. |
+| Claude | Reverse-parity gap closure | #1239 #1240 #1248–#1251 #1253–#1255 merged | 2026-09-04 | **CLOSED, fully landed.** Nothing open; see the top section. |
+| Codex | iJSDM forensic follow-up (handed to Claude) | #1238 draft · `codex/2026-09-02-claude-handover` | 2026-09-02 | Open draft handover. The receiving Claude lane parked it when the maintainer re-aimed to gap closure — **still OWED**. |
+| Claude | `engine = "julia"` bridge expansion | #1236 draft · `claude/julia-bridge-expansion-20260901` | 2026-09-01 | Open draft. Owns `R/julia-bridge.R` and its tests; the gap-closure lane routed three bridge leads to it and did not touch those files. |
+| Codex | Random-slope health | #1209 · `codex/random-slope-health` | 2026-08-25 | Open. Diagnostic taxonomy and pre-run design; no promoted public capability. |
+| Claude | Claude → Codex handover (D-113 track 6 + terrapin) | #1198 · `claude/codex-handover-20260820-randslope-terrapin` | 2026-08-20 | Open, conflicting with `main`. Its branch is also the shared Dropbox checkout's current branch. |
+| Cursor | MSPL nbinom admit-packet + oracles | #1065, #1070 · `cursor/mspl-nbinom-*` | 2026-08-17 | Open. **Planned-only** under D-157; no admission. |
+| Cursor | MSPL fenced profile-CI scaffold | #1077 draft · `cursor/mspl-profile-ci-scaffold` | 2026-08-17 | Open draft; still refuses public SE. D-157 PARK stands. |
+| Claude | MSPL B0 code prerequisites | #981 · `claude/mspl-b0-prereqs` | 2026-08-17 | Open. |
 
-**WIP**: 1 active (Codex Phase 56.5 fan-out; PR not yet open).
+**WIP as evidenced:** 7 open PRs across Claude, Codex and Cursor; no two of them own the same files
+so far as the file-ownership section below records. **Nothing here is claimed to be actively running
+right now** — the maintainer runs one platform at a time per project (D-88), and a lane's owner is the
+only authority on whether it is paused or live.
 
-**Stack discipline (Shannon, 2026-05-26):** worktrees current after #298 + this PR.
-
-- `gllvmTMB` (main worktree) — at `main` tip `dd3b2be` (#298).
-- `gllvmTMB-codex-morphometrics` — Codex's prior morphometrics worktree on `codex/morphometrics-long-wide` (**paused per Codex 2026-05-26**; no Phase 56 reactivation).
-- `gllvmTMB-56-4-closeout` — Claude's worktree for the present #298 close-out PR only, branch `agent/phase56-4-merge-closeout`.
-- Codex's Phase 56.5 worktree (when started) wherever Codex prefers locally.
+**Stale-content warning for the sections that follow.** "Validation Factory plan", "Queued lanes",
+and "File ownership for the current docs / navigation pass" are all dated 2026-05-25/26 and were not
+re-verified in this refresh. Treat them as history until someone checks them against `main` the way
+this table was checked.
 
 ## Validation Factory plan — Hidden Article Restoration + Validation (Ada, 2026-05-25)
 

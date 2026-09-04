@@ -168,6 +168,26 @@ unit:**
    property of the fit's axis, not of any individual unit or replicate
    draw within it.
 
+**Gap closed 2026-09-04 (orchestrator): a WEAK axis is not a coverage
+failure, and must not be reported as one.** The procedure above assumes
+`rho_k` is decisively signed. The document notes that an exact `rho_k = 0`
+will not occur with continuous data, which is true and beside the point —
+the hazard is `rho_k` merely *small*. At the smallest cells (`n_units = 40`,
+or the weakly-loaded axis of a `d = 2` fit) the axis may simply not be
+recovered; the sign is then close to a coin flip, and roughly half those
+fits get the orientation wrong. That produces near-total interval failure
+which would be tabulated as catastrophic undercoverage, when the real
+finding is *"this cell does not identify the axis at all"*. Those are
+different results and only one of them is about calibration.
+
+Therefore: **record `|rho_k|` for every (fit, axis) and report its
+distribution per cell alongside coverage.** Pre-declare a weak-axis
+threshold, treat cells whose `|rho_k|` mass sits near zero as
+**uninformative about coverage** rather than as failures, and report the
+count either way rather than dropping them silently. If a cell is
+uninformative, that is a finding about the identifiability floor and
+belongs in the write-up as such.
+
 **Why this does not manufacture coverage.** The flip is a **single binary
 decision per axis per fit** (`2^d` possible outcomes for a `d`-axis fit,
 independent of `n`), resolved once using the *global* correlation between

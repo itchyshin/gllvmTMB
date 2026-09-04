@@ -63,6 +63,7 @@ verification pending), `r` reserved (planned for M1/M2),
 | `extract_phylo_signal(fit)` | c | cl | cl | cl | phylogenetic $H^2$ |
 | `extract_residual_split(fit)` | c | cl | cl | cl | OLRE $\sigma^2_d / \sigma^2_e / \sigma^2_{\text{total}}$ |
 | `extract_ordination(fit, level)` | c | cl | cl | cl | factor scores (rotation-invariant up to orthogonal transform) |
+| `extract_latent_scores(x, level)` | c | cl | cl | cl | latent random-effect scores (`n × K` matrix); fitted modes or simulation truth |
 | `extract_proportions(fit)` | r | r | r | r | delta-family conditional probability — reserved (post-CRAN; depends on delta-family support) |
 | `extract_cutpoints(fit)` | r | r | cl | r | ordinal-probit thresholds, including mixed-family fits with ordinal traits |
 | `extract_ICC_site(fit)` | c | cl | cl | cl | legacy ICC; superseded by `extract_repeatability()` |
@@ -528,6 +529,25 @@ unit-tier Gaussian plus pure binomial logit/probit/cloglog on the TMB
 path, plus a narrow complete-response Gaussian and binomial
 logit/probit/cloglog Julia bridge point route. Other Julia bridge rows
 still accept only `component = "total"`.
+
+#### `extract_latent_scores(x, level = c("unit", "unit_obs"))`
+
+**Return**: an `n × K` numeric matrix of latent random-effect scores
+(innovation / `z_B` or `z_W` modes at `rotate = "none"`), with unit row
+names and `"LV1"`, `"LV2"`, … column names. `NULL` when no reduced-rank
+term exists at the requested level.
+
+**Dispatch**:
+
+- `gllvmTMB_multi` / `gllvmTMB_va` / `gllvmTMB_julia`: posterior modes;
+  identical to `extract_ordination(..., component = "innovation")$scores`,
+  `getLV(..., rotate = "none")`, and `ordination_uncertainty()$scores`
+  when uncertainty succeeds.
+- `gllvmTMB_site_trait_sim` (return value of `simulate_site_trait()`):
+  generating draws from `truth$z_B` / `truth$z_W`.
+
+**Not included**: `se`, `cov`, rotation, or sign alignment — use
+`ordination_uncertainty()` / `getLV(se = TRUE)` and harness-side logic.
 
 #### `extract_lv_effects(fit, level = "unit", type = "axis_effect")`
 

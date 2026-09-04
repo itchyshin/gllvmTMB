@@ -72,6 +72,12 @@
   and `BIC.gllvmTMB_multi` are now exported via roxygen `@export` (an
   idiomatic NAMESPACE `S3method()` entry) instead of the previous manual
   `registerS3method()` call in `.onLoad()`, which is removed as redundant.
+* New `extract_latent_scores()` returns fitted latent random-effect scores
+  (`z_B` / `z_W` innovation modes) as an `n × K` matrix, or the generating
+  draws from `simulate_site_trait()` via `truth$z_B` / `truth$z_W`. Point
+  estimates match `extract_ordination(..., component = "innovation")` and
+  `ordination_uncertainty()$scores`; uncertainty remains
+  `ordination_uncertainty()` / `getLV(se = TRUE)`.
 * New `ordination_uncertainty()` (issue #1243, D-204 parity with GLLVM.jl's
   function of the same name) reports the per-unit covariance of ordination
   (latent) scores, not just a point estimate -- the object needed to draw an

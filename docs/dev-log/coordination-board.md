@@ -388,202 +388,64 @@ so far as the file-ownership section below records. **Nothing here is claimed to
 right now** — the maintainer runs one platform at a time per project (D-88), and a lane's owner is the
 only authority on whether it is paused or live.
 
-**Stale-content warning for the sections that follow.** "Validation Factory plan", "Queued lanes",
-and "File ownership for the current docs / navigation pass" are all dated 2026-05-25/26 and were not
-re-verified in this refresh. Treat them as history until someone checks them against `main` the way
-this table was checked.
+**The three sections that used to follow** — "Validation Factory plan", "Queued lanes", and "File
+ownership for the current docs / navigation pass" — were audited against `main` on 2026-09-04 and
+replaced by a single Historical section below. Their per-file ownership model is superseded by the
+dated lane sections at the top of this file.
 
-## Validation Factory plan — Hidden Article Restoration + Validation (Ada, 2026-05-25)
+## Historical — the 2026-05 Validation Factory, lane queue, and file-ownership model (SUPERSEDED)
 
-Coordinated work allocation: **Codex takes validation-heavy and
-rendered-QA work; Claude/Shannon holds the r200 + coordination
-guardrails.** All five Codex items below are framed as sequential
-PR slices unless a small enough batch makes sense to combine.
+Three sections used to sit here: *"Validation Factory plan"*, *"Queued lanes (not yet picked up)"*, and
+*"File ownership for the current docs / navigation pass"*, all written 2026-05-25/26. They were audited
+against `origin/main` @ `ec4ade761` on **2026-09-04** and replaced by this summary, per the file's own
+rule at the top: replace stale entries; older detail lives in per-PR after-task reports and git history.
+Every statement below was checked with a named command, not inferred from age.
 
-### Codex agent outputs bundled into PR #268 (draft)
+**Why they were removed rather than updated.** The governance model they describe — a per-file
+ownership table locking paths to "Codex" or "Claude", plus a sequential queue — is not how this repo
+has worked for months. It was replaced by the dated top-level lane sections at the head of this file.
+Every path those tables locked has since been edited freely by later, unrelated lanes, and nothing
+went wrong, because nobody was reading the tables. A governance surface nobody reads is worse than
+none: it invites a newcomer to lock files that three months of work has already moved.
 
-The four background lanes Codex/Ada dispatched on 2026-05-25
-returned. Codex bundled their outputs + Ada's joint-SDM scope
-rewrite + a after-task report into draft **PR #268** ("Prep
-joint-SDM validation and scope rewrite"). The PR is draft until
-the maintainer decides merge order vs #261 / #265 and whether to
-keep the bundle as one PR or split per the Validation Factory
-queue. The pieces (do not edit from any other branch):
+**Still true, and worth keeping:**
 
-- `tests/testthat/test-joint-sdm-binary-long-wide.R` —
-  Curie's binary JSDM long-vs-wide parity test (Codex queue
-  item 2 content; PR body reports `PASS 11`).
-- `docs/dev-log/audits/2026-05-25-hidden-article-validation-map.md`
-  — Rose + Shannon's Restoration Queue audit (feeds queue
-  item 5 prioritisation).
-- `docs/dev-log/audits/2026-05-25-joint-sdm-rendered-figure-qa.md`
-  — Boole + Grace + Pat's figure QA (feeds queue item 3
-  scope).
-- `docs/dev-log/audits/2026-05-25-r200-readiness-review.md`
-  — Grace + Curie + Fisher's r200 readiness review (feeds
-  queue item 4; identifies the 120-minute timeout as a
-  dispatch blocker and recommends binomial-focused 4-cell
-  scope: binomial d=1/2/3 + mixed d=2).
-- `vignettes/articles/joint-sdm.Rmd` — joint-SDM scope
-  rewrite reframing binary `unique()` / `dep()` / `indep()`
-  prose around current validation row status.
-- `docs/design/04-random-effects.md` — stale status wording
-  refresh for binary `lambda_constraint` /
-  `suggest_lambda_constraint()` paths (now covered by LAM-03
-  / LAM-04).
-- `docs/dev-log/after-task/2026-05-25-joint-sdm-binary-scope-rewrite.md`
-  — after-task report for the slice.
+- **PRs #203, #204, #205, #229, #258, #261, #262, #263, #265, #266, #267, #268, #273, #282, #283,
+  #284, #289, #293, #295, #298 are all MERGED** (May 2026). Anything in the old text framed as
+  "draft", "queued", or "after PR #NNN merges" has long since resolved.
+- **Register rows LAM-03 and LAM-04 are `covered`**, and all seven test files they cite are present on
+  `main`. The `docs/design/04-random-effects.md` wording that referenced them is intact.
+- `tests/testthat/test-joint-sdm-binary-long-wide.R` (11 expectations),
+  `tests/testthat/test-phylo-unique-slope-gaussian.R` (its three described blocks intact), the three
+  2026-05-25 audit documents, and `dev/precompute-m3-grid.R` all still exist on `main`.
 
-### Codex queue (sequential, by Ada 2026-05-25)
+**Gone — and this is the part that would mislead a reader most:**
 
-1. **Finish #261, then #265.** Stack discipline above. Undraft
-   #265 after the rebase on ROADMAP.md + check-log.md is clean.
+- **The three "hidden articles" the Validation Factory plan was built around no longer exist in any
+  form.** `mixed-family-extractors`, `psychometrics-irt` and `lambda-constraint` were not merely kept
+  out of the pkgdown navigation awaiting "restoration" — they were **deleted outright on 2026-07-12**
+  in `eacbd0f65` ("finalize public article estate for 0.5.0"), which retired fifteen articles under a
+  CUT/HIDE/MERGE disposition. Planning a restoration from the old text would be planning against a
+  later, deliberate removal. If any of them is still wanted, it must be recovered from history —
+  `git show eacbd0f65^:vignettes/articles/lambda-constraint.Rmd` — not un-hidden. Its surviving
+  sibling `lambda-constraint-suggest` is still in the navigation and is a different article.
+  (Established as real deletions: checked with `--diff-filter=D` and `--follow` for rename targets
+  before concluding. `lambda-constraint` alone showed two earlier renames into and out of
+  `dev/held-articles/`, i.e. it *was* reworked in May, then re-hidden, then retired.)
+- **The r200 / M3 dispatch mechanism the plan was staged around is gone from CI.** The old text's
+  blocker — a 120-minute timeout — was fixed by #273's four-way sharding; then on 2026-07-20
+  `f4628a8cd` ("ci: enforce M1 compute boundary") deleted `.github/workflows/m3-production-grid.yaml`
+  along with a dozen other campaign-shaped workflows, under the standing rule that campaigns never run
+  on GitHub Actions. Separately, an r200 run for the cross-family LV cell **was** eventually
+  dispatched and reached a terminal, closed-out failure on 2026-08-27. So both halves of the old
+  framing are moot, for different reasons.
+- `inst/prototypes/ppcheck-diagnostics.R` was deleted 2026-05-25 (`fe3dbbdc1`); its design doc
+  `docs/design/51-posterior-predictive-diagnostics.md` survives.
 
-2. **Binary JSDM long/wide validation PR (test-only).** Wraps
-   `tests/testthat/test-joint-sdm-binary-long-wide.R` (already
-   produced by Curie in lane 1). Cleanest next Codex slice
-   because test-only. **Do not** mix with Ada's local
-   joint-sdm rewrite unless a combined restoration branch is
-   chosen later.
-
-3. **Joint-SDM figure repair PR.** Per Boole+Grace+Pat figure
-   QA: page is not Tier-1 ready. Smallest viable repair —
-   replace hand-built biplot with the package ordination
-   helper and add `fig.cap` / `fig.alt`. Larger blockers
-   (extreme Sigma scale, raw covariance heatmap vs latent
-   correlations, rotation caveat) are follow-up if scope grows.
-
-4. **r200 plumbing PR (BEFORE dispatch).** Per
-   Grace+Curie+Fisher r200 readiness review: current 120-
-   minute timeout likely fails key cells. Required before
-   dispatch is either sharding or explicit timeout change.
-   **Statistical scope (recommended): binomial-focused 4-cell
-   — binomial d=1/2/3 + mixed d=2.** No r200 launch from this
-   PR; dispatch still maintainer-gated.
-
-5. **Article-order correction** (Ada/Rose, 2026-05-26):
-   pause public article expansion before any more local article
-   fixes. No public promotion of `mixed-family-extractors`,
-   `psychometrics-irt`, or `lambda-constraint` until the binary
-   lambda/JSDM article plan lands. Keep mixed-family responses and
-   loading constraints as separate teaching lanes.
-
-6. **Next article lane after the correction PR:** rework
-   `lambda-constraint` as the first binary loading-constraint
-   teaching article, using a binary species/JSDM-style example.
-   Any correlation matrix that displays interval columns should use
-   `plot_correlations(..., style = "heatmap",
-   matrix_layout = "estimate_ci")`, not `plot_Sigma_heatmap()`.
-
-7. **Held internal until later:** `mixed-family-extractors` waits
-   for a comprehensive mixed-response expansion covering Gaussian,
-   binomial, Poisson/NB, beta/proportion, and blocked delta/hurdle
-   cases. `psychometrics-irt` stays Preview/internal until the
-   binary lambda/JSDM article is coherent and the `mirt` comparator
-   path is explicitly designed.
-
-### Claude/Shannon stance during the Validation Factory
-
-- **No r200 dispatch** until (a) Codex queue item 4 lands the
-  plumbing fix on main, and (b) maintainer authorises the
-  dispatch.
-- **No engine debugging** for the resolved binomial Scenario A
-  signal; the DGP fix in PR #263 + #264 + #266 holds.
-- **No edits to Codex stack files** (#261 / #265 file lists) or
-  to Ada's local rewrite files (joint-sdm.Rmd,
-  04-random-effects.md).
-- **No `diagnostic_table()` cross-link** in joint-sdm.Rmd until
-  #265 lands and a separate posterior-predictive teaching slice
-  is opened with real evidence.
-- Claude/Shannon's role for the factory window: coord-board
-  sync (this PR), monitoring #261 / #265 CI green-bar,
-  surfacing forwardable status notes for Ada when she returns,
-  and standing by for any unblocker request from Codex's queue
-  items 2–5.
-
-### Codex's "unblocker?" answer (2026-05-25, recorded)
-
-Codex's four background lanes returned with: **no Claude
-unblocker required.**
-
-- Lane 1 (binary parity test) is complete; no absence-fill
-  ruling needed because the fixture uses a complete site ×
-  species grid that sidesteps sparse-cell semantics.
-- Lane 2 (Restoration Queue audit) is usable now as a map; row
-  citations against `docs/design/35-validation-debt-register.md`
-  will need a one-line refresh after #265 lands (#265 edits
-  design/35).
-- Lane 3 (figure QA) outputs hold against current main.
-- Lane 4 (r200 readiness) can cite PR #267 on main directly.
-- r200 dispatch is maintainer-gated AND workflow-plumbing-gated;
-  no Claude action would change either gate.
-
-Update protocol: when you start a lane, add a row. When the lane's
-PR opens, fill `PR / branch`. When the PR merges, move the row to
-"Recently resolved" with the merge date.
-
-## Queued lanes (not yet picked up)
-
-Per `docs/dev-log/audits/2026-05-13-post-overnight-drift-scan.md`
-batching plan + the 2026-05-14 strategic plan revision. Many older
-rows below were completed or superseded during the Codex pause; keep
-new queued rows current and move stale history to after-task reports
-instead of expanding this table.
-
-| Agent | Lane | Wait condition |
-|---|---|---|
-| Codex | Next small reader-facing lane | after maintainer chooses whether this should be README/pkgdown navigation, a Tier-1 article re-read, or validation-debt surfacing |
-
-Move a row to "Active lanes" when you start it.
-
-## File ownership for the current docs / navigation pass
-
-Current ownership is lane-specific. Lock these files behind the
-named owner; if the other agent needs to touch them, they should
-leave a coordination comment first and wait for acknowledgement.
-
-| File | Owner (this pass) |
-|---|---|
-| `.github/workflows/R-CMD-check.yaml` | no active owner after PR #203 merged |
-| `.github/pull_request_template.md` | no active owner in this lane; do not edit |
-| `CONTRIBUTING.md` | no active owner after PR #203 merged |
-| `docs/dev-log/coordination-board.md` | no active owner |
-| `docs/dev-log/check-log.md` | no active owner |
-| `docs/dev-log/after-task/2026-05-18-pr-slice-contract.md` | Codex for current Slice 1 after-task report |
-| `CLAUDE.md`, `AGENTS.md` | no active owner in this lane; do not edit |
-| `_pkgdown.yml`, `README.md` | no active owner in this lane; do not edit |
-| `docs/design/42-m3-dgp-grid.md`, `docs/design/44-m3-3-inference-replacement.md` | no active owner after PR #205 merged |
-| `docs/design/43-asreml-speed-techniques.md`, `docs/design/48-m3-4-boundary-regimes.md` | no active owner after PR #204 merged |
-| `vignettes/articles/covariance-correlation.Rmd` | no active owner in this lane; do not edit here |
-| `docs/design/*` | coordinate per file; this lane only touches stale source-of-truth wording |
-| `docs/dev-log/*` | each agent owns its own `after-task/*.md` and `shannon-audits/*.md` |
-| Tier-1 article rewrites (`choose-your-model`, `phylogenetic-gllvm`, etc.) | paused; revisit after this hygiene stop point |
-| `R/*` (general) | no active engine owner for non-structural-slope files. Recent parser/API edits on `main` are from PR #226 (`meta_V(V = V)`, `type = "exact"`, wide `traits()` marker preservation). Coordinate before further R edits. |
-| `R/fit-multi.R` | **Codex** (Phase 56.1 landed via #289 at `3133863`; Phase 56.2 closed via #293 at `72f67de` with no R-side edit required; future 56.3 may touch for parser wiring). Shannon stays out through Phase 56.4. |
-| `R/brms-sugar.R`, `R/parse-multi-formula.R` | **Codex** (Phase 56.3 landed via #295 at `6026710`; future 56.4 backend-grouped extensions may touch). Augmented-LHS parser per Design 55 §4 + Design 56 §7 fail-loud invariant. Shannon soft-no-touch through Phase 56.4. |
-| `tests/testthat/test-phylo-unique-slope-gaussian.R` (activated via #298 at `dd3b2be`) | **Active recovery test for anchor cell.** Three test_that blocks live: wide↔long byte-identity, Gaussian Σ_b recovery, forced `n_lhs_cols=1L` negative test. Status row in formula-grammar stays `claimed` until Phase 56.6. Shannon soft-no-touch (recovery numerics owned by Curie / Codex). |
-| `tests/testthat/test-{phylo-{latent,indep,dep},animal,spatial,relmat}-{latent,unique,indep,dep}-slope-gaussian.R` (15 remaining files, merged via #282/#283/#284) | **Codex** activates per file during Phase 56.5 fan-out (by backend/risk grouping) by removing `skip_until_stage3()` gates. Until then, gated skeletons stay as-is. |
-| `tests/testthat/*` (general) | no active owner for non-structural-slope tests after #226 merged. New `tests/testthat/test-phase56-1-phylo-augmented-stub.R` on `main` via #289 (Phase 56.1 regression test, PASS 9). |
-| `src/gllvmTMB.cpp` | **Codex** (Phase 56.1 dormant promotion landed via #289 at `3133863`; future 56.2 / 56.3 may touch as needed): augmented-LHS engine block per Design 56 §5.2. Shannon stays out until Phase 56.4 close. |
-| `inst/prototypes/ppcheck-diagnostics.R`, `docs/design/51-posterior-predictive-diagnostics.md` | no active owner after PR #229 merged |
-| `.github/workflows/m3-production-grid.yaml`, `dev/precompute-m3-grid.R` (CLI surface only) | no active owner after PR #258 merged 2026-05-25. Both teams free to edit. |
-| `dev/m3-grid.R` | **Claude** (PR #263 active 2026-05-25): targeted binomial-psi patch in `m3_sample_truth` + `m3_simulate_response` per maintainer's 2026-05-25 design ruling ("simulations cannot have psi bit — as psi for binary emerges from binomial error"). Gaussian / nbinom2 / ordinal-probit branches untouched. After PR #263 merges, ownership returns to "no active owner; free to edit". |
-| `docs/dev-log/audits/2026-05-24-m3-sim-lane-pilot.md` | no active owner after the M3 sim lane closed 2026-05-25 (post-dispatch §8 results landed in PR #262, post-patch rerun in PR #266). |
-| `docs/dev-log/audits/2026-05-25-set-c-joint-sdm-gate-matrix.md` | no active owner after PR #267 merged 2026-05-25. |
-| `docs/dev-log/audits/2026-05-25-m3-r200-dispatch-plan.md` | no active owner after PR #267 merged 2026-05-25. **r200 dispatch remains maintainer-gated AND workflow-plumbing-gated** (Codex queue item 4). |
-| `docs/design/54-cross-package-scout-protocol.md` | no active owner after PR #267 merged 2026-05-25 (incl. §3.5 anti-patterns from Codex review). |
-| `vignettes/articles/joint-sdm.Rmd` | **PR #268 (draft)** — modified on `codex/joint-sdm-scope-rewrite-2026-05-25`. Do not edit from any other branch. |
-| `docs/design/04-random-effects.md` | **PR #268 (draft)** — stale-status wording refresh. Do not edit from any other branch. |
-| `tests/testthat/test-joint-sdm-binary-long-wide.R` | **PR #268 (draft)** — Curie's parity test (NEW; `PASS 11` per PR body). Codex queue item 2 content. |
-| `docs/dev-log/audits/2026-05-25-hidden-article-validation-map.md` | **PR #268 (draft)** — Rose+Shannon Restoration Queue audit (NEW). Codex queue 5 prioritises against it. |
-| `docs/dev-log/audits/2026-05-25-joint-sdm-rendered-figure-qa.md` | **PR #268 (draft)** — Boole+Grace+Pat figure QA (NEW). Codex queue 3 scope follows from it. |
-| `docs/dev-log/audits/2026-05-25-r200-readiness-review.md` | **PR #268 (draft)** — Grace+Curie+Fisher r200 readiness review (NEW). Codex queue 4 (plumbing PR) implements its recommendation. |
-| `docs/dev-log/after-task/2026-05-25-joint-sdm-binary-scope-rewrite.md` | **PR #268 (draft)** — after-task report for the bundled slice. |
-| **Merge-order rule** (Shannon, 2026-05-25) | `#261` (diagnostic-teaching-reset) merges **before** `#265` (diagnostic-table helper). Both touch `ROADMAP.md` and `docs/dev-log/check-log.md`; #265 will need a small rebase after #261 lands and should be undrafted from there. The Validation Factory queue (items 2–5) begins after the stack settles. |
-
-If a file's owner needs to change (e.g. Claude needs to touch
-`_pkgdown.yml` for a one-line reason), update the row, leave a
-PR comment, wait for the other agent's acknowledgement.
+**Not settled by the repository:** the old queue's last row waited on a maintainer choice between
+"README/pkgdown nav, Tier-1 article re-read, or validation-debt surfacing". Many such lanes have run
+since, but nothing records whether that specific choice was made or simply overtaken. Only the
+maintainer can say, and nothing depends on the answer.
 
 ## Pending coordination questions
 

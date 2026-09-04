@@ -1,7 +1,7 @@
 # Transfer packet — drmTMB MSPL implementation guide
 
-**Date:** 2026-08-16  
-**Purpose:** Point gllvmTMB MSPL agents at the drmTMB port guide.  
+**Date:** 2026-08-16
+**Purpose:** Point gllvmTMB MSPL agents at the drmTMB port guide.
 **Do not** treat this as a gllvmTMB capability claim.
 
 ## Where to read / execute
@@ -18,7 +18,7 @@ drmTMB should port LA-MSPL **discipline** (Laplace outer + soft Jeffreys/Huber p
 
 ## Brain decisions that bind the port
 
-- **D-50 / D-139 / D-142 / D-143** — compute routing and approval line  
-- **D-149** — internal SE pins ≠ public calibrated intervals  
-- MSPL-interval **D-148** — do not copy gllvmTMB public-interval claim without a drmTMB pre-reg  
+- **D-50 / D-139 / D-142 / D-143** — compute routing and approval line
+- **D-149** — internal SE pins ≠ public calibrated intervals
+- MSPL-interval **D-148** — do not copy gllvmTMB public-interval claim without a drmTMB pre-reg
 - Lane note `FOR-DRM-LANE-2026-08-08-separation-borrowable-from-the-literature` — drmTMB is the proving ground

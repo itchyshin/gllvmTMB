@@ -1,10 +1,10 @@
 # MSPL implementation guide for drmTMB (transfer packet)
 
-**Canonical home (preferred):** `drmTMB` repo  
-`docs/design/225-mspl-implementation-guide.md`  
-**This file:** gllvmTMB transfer packet + full text so agents can execute even if the drmTMB copy is not yet synced.  
-**Date:** 2026-08-16  
-**Status:** executable transfer guide — **not** an admitted capability; **not** a NEWS/README claim  
+**Canonical home (preferred):** `drmTMB` repo
+`docs/design/225-mspl-implementation-guide.md`
+**This file:** gllvmTMB transfer packet + full text so agents can execute even if the drmTMB copy is not yet synced.
+**Date:** 2026-08-16
+**Status:** executable transfer guide — **not** an admitted capability; **not** a NEWS/README claim
 **Brain rung used:** shinichi-brain MCP (`search_notes` / `read_note` / `build_context` on project `shinichi-brain`)
 
 ---
@@ -70,7 +70,7 @@ From gllvmTMB `R/mspl-registry.R`:
 | Internal SE pin | \(Q_P\) / \(Q_0\) availability + PD; **withhold** public `sdreport` | Calling pins "calibrated SE" |
 | Intervals | Only after Design-118-style pre-registration + hold-out PASS | Jackknife (rejected in gllvmTMB MSPL-interval D-148) |
 
-gllvmTMB pins: `R/mspl-curvature-pin.R`; after-task `docs/dev-log/after-task/2026-08-15-mspl-se-feasibility-pin.md`.  
+gllvmTMB pins: `R/mspl-curvature-pin.R`; after-task `docs/dev-log/after-task/2026-08-15-mspl-se-feasibility-pin.md`.
 Brain **D-149**: internal SE pins for non-binomial cascades ≠ public calibrated intervals.
 
 ### 1.5 Existing drmTMB hooks that already help
@@ -258,21 +258,21 @@ Also: drmTMB CRAN `0.7.0` path is sequenced elsewhere (**D-86 / D-93 / D-117**).
 
 ### Primaries
 
-- Sterzinger & Kosmidis (2023) — DOI 10.1007/s11222-023-10217-3  
-- Sterzinger, Kosmidis & Moustaki (2026) — DOI 10.1017/psy.2026.10092  
+- Sterzinger & Kosmidis (2023) — DOI 10.1007/s11222-023-10217-3
+- Sterzinger, Kosmidis & Moustaki (2026) — DOI 10.1017/psy.2026.10092
 
 ---
 
 ## 8. G0 questions for Shinichi (with draft answers)
 
-1. **Phase-1 cell?**  
+1. **Phase-1 cell?**
    > your answer: [suggested: “zi/hu logistic first (brain lane note), then binomial mu” — or “binomial mu only first”]
 
-2. **API shape?**  
+2. **API shape?**
    > your answer: [suggested: “top-level `estimator = \"mspl\"` mirroring gllvmTMB” — or “`drm_control(estimator = …)` only”]
 
-3. **Start code this week, or park until gllvmTMB Poisson admit / SE pin series settles?**  
+3. **Start code this week, or park until gllvmTMB Poisson admit / SE pin series settles?**
    > your answer: [suggested: “park code; keep this guide as the baton” — or “start Phase 0+1 fence on a side branch”]
 
-4. **May drmTMB treat D-149-style internal SE pins as authorised for logistic/`zi`/`hu` without a new decision ID?**  
+4. **May drmTMB treat D-149-style internal SE pins as authorised for logistic/`zi`/`hu` without a new decision ID?**
    > your answer: [suggested: “yes for internal pins only; public intervals still need a drmTMB pre-reg” — or “new D-xxx required”]

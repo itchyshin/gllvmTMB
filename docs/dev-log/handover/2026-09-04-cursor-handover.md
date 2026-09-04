@@ -3,11 +3,18 @@
 Meta: 2026-09-04 · from Claude Code · to **Cursor** · `main` @ `72ed68b57` (plus PR #1260, merging).
 
 You are **Cursor**, picking up gllvmTMB as one half of a single lane that also holds **GLLVM.jl**.
-This document covers the gllvmTMB half only. GLLVM.jl has its own, written by its own lane
-(PR #279 there, `docs/dev-log/handover/2026-09-04-cursor-handover.md`); neither is the lane's entry
+This document covers the gllvmTMB half only. **The Julia half is
+`GLLVM.jl/docs/dev-log/handover/2026-09-04-cursor-handover.md`, on that repo's `main` @ `5518d98d`**
+(verified present, and it cross-links this repo's handovers). Neither document is the lane's entry
 point. **The entry point is the start prompt Shinichi pastes**, whose reusable form the brain holds at
 `shinichi-brain/docs/dev-log/handover/2026-09-02-h2-twin-one-lane-start-prompt` — the H² twin pattern
 the maintainer chose for the sibling pair two days ago.
+
+**Division of the two halves**, agreed between the outgoing lanes: GLLVM.jl owns engine truth, the
+parity harness and the frozen oracle; gllvmTMB owns the public R API, its claims and its docs. Where
+they meet — the capability ledgers and `tools/parity_ledger.R` — changes are a **joint-contract
+decision for Shinichi**, not something either half changes alone. Both handovers say so, in the same
+words, on purpose.
 
 ## Critical Context — read these four things or you will go wrong
 

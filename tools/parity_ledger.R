@@ -9,9 +9,10 @@
 #
 # Usage:
 #   Rscript tools/parity_ledger.R
-#   Rscript tools/parity_ledger.R --ref origin/main
+#   Rscript tools/parity_ledger.R --ref origin/main --r-ref origin/main
 #   Rscript tools/parity_ledger.R --julia-repo "/path/to/GLLVM.jl" --ref origin/main
 #   Rscript tools/parity_ledger.R --julia /path/to/a/capability-status.md   # read a file directly
+#   Rscript tools/parity_ledger.R --r-ref working-tree                    # legacy: R ledger from checkout
 #   Rscript tools/parity_ledger.R --check-names                            # near-miss / grouping-level assertions
 #
 # Julia source resolution (no --julia given): `git -C <julia-repo> show
@@ -19,6 +20,14 @@
 # /Users/z3437171/Dropbox/Github Local/GLLVM.jl and <ref> defaults to
 # origin/main; if that git call fails (repo absent, ref absent, git error),
 # fall back to the scratchpad copy so the tool still runs.
+#
+# R source resolution (default): `git -C <this-repo> show
+# <r-ref>:docs/design/capability-status.md`, where <r-ref> defaults to
+# origin/main so CLOSURE cannot pass on an uncommitted working-tree edit.
+# Pass --r-ref working-tree to restore the pre-2026-09-04 behaviour (read
+# docs/design/capability-status.md from disk). Note: capability-status.md
+# did not exist at the frozen 0.7.0 oracle (b4d5fee6); export-level parity
+# against that pin uses GLLVM.jl's tools/parity_ledger.py on NAMESPACE.
 
 args <- commandArgs(trailingOnly = TRUE)
 get_flag <- function(flag, default = NULL) {
@@ -41,6 +50,9 @@ SCRATCHPAD_FALLBACK <- file.path("dev", "gapclose", "gllvmjl-capability-status-2
 julia_path_arg <- get_flag("--julia")
 julia_repo <- get_flag("--julia-repo", JULIA_REPO_DEFAULT)
 ref <- get_flag("--ref", "origin/main")
+r_ref <- get_flag("--r-ref", "origin/main")
+
+R_LEDGER_GIT_PATH <- "docs/design/capability-status.md"
 
 # ---------------------------------------------------------------------------
 # 1. Load the Julia ledger's raw text.
@@ -74,11 +86,29 @@ if (!is.null(julia_path_arg)) {
   }
 }
 
-if (!file.exists(R_LEDGER_PATH)) {
-  stop("R ledger not found at ", R_LEDGER_PATH,
-       " -- run dev/gapclose/build-capability-status.R first")
+r_source_desc <- NULL
+if (identical(r_ref, "working-tree")) {
+  if (!file.exists(R_LEDGER_PATH)) {
+    stop("R ledger not found at ", R_LEDGER_PATH,
+         " -- run dev/gapclose/build-capability-status.R first")
+  }
+  r_text <- readLines(R_LEDGER_PATH, warn = FALSE)
+  r_source_desc <- paste0("file: ", R_LEDGER_PATH, " (working tree; use --r-ref origin/main for pinned join)")
+} else {
+  out <- suppressWarnings(system2(
+    "git", c("-C", shQuote(ROOT), "show", paste0(r_ref, ":", R_LEDGER_GIT_PATH)),
+    stdout = TRUE, stderr = TRUE
+  ))
+  status <- attr(out, "status")
+  if (is.null(status)) status <- 0L
+  if (status != 0L || length(out) == 0) {
+    stop("git show failed for R ledger at ", r_ref, " in ", ROOT, ": ",
+         paste(out, collapse = "\n"),
+         "\nRun dev/gapclose/build-capability-status.R and commit, or pass --r-ref working-tree.")
+  }
+  r_text <- out
+  r_source_desc <- paste0("git -C \"", ROOT, "\" show ", r_ref, ":", R_LEDGER_GIT_PATH)
 }
-r_text <- readLines(R_LEDGER_PATH, warn = FALSE)
 
 # ---------------------------------------------------------------------------
 # 2. Parsers. Both files are pipe-tables under "## " headings. We only parse
@@ -460,7 +490,7 @@ if (!is.null(cum_logit_r)) {
 # 8. Report.
 # ---------------------------------------------------------------------------
 
-cat(sprintf("R ledger:     %s (%d rows)\n", R_LEDGER_PATH, length(r_rows)))
+cat(sprintf("R ledger:     %s (%d rows)\n", r_source_desc, length(r_rows)))
 cat(sprintf("Julia ledger: %s (%d rows)\n", julia_source_desc, length(julia_rows)))
 cat("\n")
 

@@ -11,6 +11,29 @@ This repository is shared by humans, Codex, and Claude Code. Read
 > current handover. Read it before any repository mutation. Milestone state is not in
 > either place and must be re-derived from `git`.
 
+- **2026-09-04 — REVERSE PARITY CLOSED; THIS WORK MOVES TO A SINGLE CURSOR LANE HELD JOINTLY WITH
+  GLLVM.jl (D-220).** `main` @ `4728ee5ea`. Thirteen PRs merged: #1239 (refusals that name a working
+  route, plain-language front page, the R capability ledger + `tools/parity_ledger.R`), #1240
+  zero-inflated `zi_poisson`/`zi_nbinom2`/`zi_binomial` (family ids 17-19), #1248 their 450-fit Totoro
+  campaign, #1251 (171 refusals given a next step; bare-abort count **999 -> 828**, behind a ratchet
+  that only falls), #1250 `ordinal_logit()` (id 20), #1249 `select_lv()` + `anova()` with
+  chi-bar-square boundary p-values, #1253 `ordination_uncertainty()` + `ordiplot(ellipse = TRUE)`,
+  #1254 `censored_poisson()` engine (id 21 — the likelihood behind a constructor that had been
+  exported with nothing behind it), #1258 a 50-seed recovery campaign for the two new families, #1260
+  the coverage-study design, plus handover and board work. Nothing of that lane is open.
+  🔴 **Covered vs claimed.** The two new families' 50-seed fractions are now measured —
+  `ordinal_logit` 100% at n_unit 300, `censored_poisson` 96% at n_site 200 — but read those against
+  **bar tightness, not accuracy**: the p90 sits at 48-70% of `ordinal_logit`'s bars and 79-80% of
+  `censored_poisson`'s, so a looser bar passing more often is arithmetic, not evidence.
+  `ordination_uncertainty()` (EXT-38) has **no measured coverage at all**; both quantities it returns
+  are Wald. Every row stays `partial`.
+  🔴 **Four green signals lied during this lane** — a test file that skipped every assertion while
+  printing `DONE`, a merge watcher that logged a merge which never happened, an abort count that fell
+  BELOW its ceiling because a conflict marker made a file unparseable, and a CI green whose check step
+  was **skipped** by the fast-pass path. Read them before trusting any check in this repo.
+  **START HERE:** `docs/dev-log/handover/2026-09-04-cursor-handover.md` (addressed to the incoming
+  Cursor lane), then `docs/dev-log/handover/2026-09-03-claude-handover.md`, then the lane map.
+
 - **2026-09-02 — GAP CLOSURE ARC A–C MERGED (#1239); ZERO-INFLATED FAMILIES APPROVED (#1240).**
   `main` @ `c39c1a13b`. Refusals now name a route that fits (trait branch → `slope()`/`phylo_slope()`;
   ordinary groupings → `latent()`/`unique()`), a grouping column value-identical to `trait` aborts,

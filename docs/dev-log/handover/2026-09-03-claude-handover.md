@@ -25,6 +25,7 @@ Read that section before you trust any test summary, merge log, or count in this
 | [#1249](https://github.com/itchyshin/gllvmTMB/pull/1249) | `select_lv()` and `anova()` with chi-bar-square boundary p-values |
 | [#1253](https://github.com/itchyshin/gllvmTMB/pull/1253) | `ordination_uncertainty()` and `ordiplot(ellipse = TRUE)` |
 | [#1254](https://github.com/itchyshin/gllvmTMB/pull/1254) | `censored_poisson()` engine (id 21) behind its long-exported constructor |
+| [#1258](https://github.com/itchyshin/gllvmTMB/pull/1258) | 50-seed recovery campaign for `ordinal_logit()` and `censored_poisson()` (added 2026-09-04) |
 
 Issues [#1241–#1247](https://github.com/itchyshin/gllvmTMB/issues/1247) carry the remaining backlog.
 Mission control's twin-parity page now reads the new R ledger, so it shows real Julia-only rows
@@ -64,6 +65,7 @@ D-88. This lane's own ledger:
 | `claude/overnight-ordination-uncertainty` | y | y | #1253 merged | LANDED |
 | `claude/overnight-censored-poisson` | y | y | #1254 merged | LANDED |
 | `claude/lane-gapclose-overnight-20260902` (LOOP kit, brief, after-task, this handover) | y | y | this PR | LANDED |
+| `claude/arcF-recovery-20260904` (50-seed campaign) | y | y | #1258 merged | LANDED |
 | `dev/gapclose/arcD/recovery/` campaign outputs | y | y | #1248 merged | LANDED |
 | Stashes `stash@{0}`/`stash@{1}` in worktree `gllvmTMB-gapclose-20260902` | n | n | none | CARRIED-OVER |
 
@@ -81,15 +83,49 @@ not on any branch.
 Ordered. All were deliberately left unstarted under the maintainer's "stop at the parity" fence, so
 each needs his go-ahead, not just an owner.
 
-1. **Multi-seed recovery for `ordinal_logit()` and `censored_poisson()`.** Both ship on few-seed
-   regression guards (three and four seeds). Their register rows say `partial` and say why. The
-   #1248 campaign is the template: Totoro, a D-139 estimate first, then re-quote the measured
-   fractions in the rows rather than raising the test sizes.
+1. ~~Multi-seed recovery for `ordinal_logit()` and `censored_poisson()`.~~ **DONE 2026-09-04**,
+   PR [#1258](https://github.com/itchyshin/gllvmTMB/pull/1258) — see the campaign section below.
 2. **Coverage for `ordination_uncertainty()`.** It returns Wald quantities with no measured
    coverage at all, and `level = "unit_obs"` runs the same code path with no dedicated hand-check.
 3. **The remaining 828 refusals without a next step** ([#1247](https://github.com/itchyshin/gllvmTMB/issues/1247)),
    behind a ratchet that can only fall. #1251 is the worked pattern.
 4. **The rest of the B3 backlog**, issues #1241–#1246.
+
+## The 2026-09-04 recovery campaign (added after this handover was first written)
+
+Step 1 of Next Immediate Steps is done. 300 fits on Totoro — 2 families x 3 sizes x 50 seeds — in
+**8 seconds of wall time, 0.19 core-hours**. `main` @ `29c4aa7e4`; evidence under
+`dev/gapclose/arcF/recovery/`; raw RDS stay on Totoro (campaigns do not enter Git).
+
+**The result is the opposite of the zero-inflated finding, and that is the point of having run it.**
+
+| family | shipped size | 2x | 4x |
+|---|---|---|---|
+| `ordinal_logit` (n_unit = 300) | **100%** | 100% | 100% |
+| `censored_poisson` (n_site = 200) | **96%** (48/50) | 100% | 100% |
+
+All 300 fits converged with a positive-definite Hessian. The two `censored_poisson` misses are single
+borderline seeds (0.158 against a 0.15 bar; 0.266 against 0.25), not a pattern. So unlike the
+zero-inflated families — whose bars held in only 82% / 82% / 92% of seeds at their shipped sizes —
+**these two shipped test sizes do generalise, and no larger n is needed by this evidence.** Both
+register rows (FAM-24, FAM-25) stay `partial` and now quote the measured fractions; promotion was
+left as a maintainer decision rather than taken.
+
+**Do not read 100% versus 96% as "ordinal_logit recovers better".** It reflects how tightly each
+family's bars were set, not which estimates more accurately. Comparing each cell's 90th percentile
+against its own bar at the shipped sizes: `ordinal_logit` lands at 48-70% of its bars, while
+`censored_poisson` lands at 79-80% of its. A looser bar passing more often is arithmetic. Both are
+sound regression guards; neither pass rate is an accuracy claim, and an accuracy claim would need
+bars derived from a target precision rather than from a pre-run.
+
+**What the campaign does NOT cover:** one data-generating process and one latent rank per family; no
+standard errors; no interval coverage.
+
+**Verification, because two things looked wrong.** The Totoro fits ran about five times faster than
+the local pre-run — the sort of gap that usually means the work differed. It did not: the local
+machine was at load 48 while Totoro was idle, so the *local* numbers were the inflated ones. And one
+cell was re-run independently from scratch (seed 1, n = 300), reproducing all three of the campaign's
+metrics to four decimal places.
 
 ## Blockers / Open Questions
 
@@ -114,6 +150,15 @@ and a candidate for the next inference arc.
    cannot parse.** The count then comes out *below* the ceiling and reads as a pass. This fired three
    times on three different branches. **Check that all R files parse before trusting any count** — a
    count that improves for no reason is a bug, not a result.
+
+**A fourth, learned 2026-09-04 and specific to this repo's CI:** since the test-sharding change,
+a green check may mean **nothing ran**. The workflow classifies the diff and, for changes that touch
+no package source, skips `check-r-package` entirely and reports a "fast pass". That is correct for a
+docs- or `dev/`-only pull request — and it is why #1258's two-minute green was legitimate — but the
+run still shows `completed/success` either way. **Before trusting a green on any branch that touches
+`R/`, `src/`, `tests/`, `NAMESPACE` or `DESCRIPTION`, look at whether the check step actually ran**
+(`gh api repos/<owner>/<repo>/actions/runs/<id>/jobs` and read the step conclusions). A green whose
+check step says `skipped` is not evidence about source.
 
 **Two more worth keeping:**
 

@@ -103,9 +103,9 @@ unpushed commits are local-only branches from a May effort whose named artifacts
 | Stashes in worktree `gllvmTMB-gapclose-20260902` | n | n | none | CARRIED-OVER |
 
 **CARRIED-OVER:** two stashes holding a superseded fix to the parity tool's parser. The canonical fix
-is on `main`. **Do not apply them.** Inspect with
-`cd /Users/z3437171/local-scratch/lanes/gllvmTMB-gapclose-20260902 && git stash show -p stash@{1}`.
-Safe to drop.
+is on `main`. **Do not apply them.** They live in the repository's shared git directory, not in any
+worktree, so they survived that worktree's removal — inspect from the main checkout with
+`git stash list` and `git stash show -p stash@{1}`. Safe to drop.
 
 FINDINGS-OF-RECORD: none — every finding is on `main` or in the vault (D-216, D-217, D-220), not on a
 branch.

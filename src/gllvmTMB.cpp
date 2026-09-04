@@ -497,6 +497,118 @@ Type gll_mspl_poisson_event_radial_penalty(const matrix<Type> &Lambda,
   return ans;
 }
 
+// Information-weighted loading atom (nbinom admit-packet science).
+// V = sum_t (sqrt(1 + ||lambda_t||^2 * wbar_t) - 1). wbar is a
+// family-specific data-plugin weight, not raw ybar and not the
+// Bernoulli radial. Do not reuse this for Poisson (that cell keeps
+// gll_mspl_poisson_event_radial_penalty).
+template <class Type>
+Type gll_mspl_weighted_radial_penalty(const matrix<Type> &Lambda,
+                                      const vector<Type> &wbar,
+                                      int rank)
+{
+  if (Lambda.rows() != wbar.size())
+    error("gllvmTMB_multi: weighted loading atom Lambda/wbar length mismatch");
+  Type ans = Type(0.0);
+  for (int t = 0; t < Lambda.rows(); ++t) {
+    Type wt = CppAD::CondExpGt(wbar(t), Type(0.0), wbar(t), Type(0.0));
+    Type ss = Type(0.0);
+    for (int k = 0; k < rank; ++k)
+      ss += Lambda(t, k) * Lambda(t, k);
+    Type inside = Type(1.0) + ss * wt;
+    ans += sqrt(inside) - Type(1.0);
+  }
+  return ans;
+}
+
+// nbinom data-plugin information size + per-trait weights.
+// family_mode 4 = NB2, 5 = NB1. y is DATA; MoM phi_hat is frozen.
+// NB2: wbar = ybar * phi_hat / (phi_hat + ybar), phi_hat = ybar^2 / (s2-ybar)
+//      with Poisson-limit floor phi_hat = 1e8 when s2 <= ybar.
+// NB1: wbar = exact I_eta(ybar, phi_hat) via the taped PMF sum,
+//      phi_hat = s2/ybar - 1 with Poisson-limit floor 1e-8.
+// Not c_P, not c=1, not quasi W. NB2 Jeffreys-on-phi DROPPED.
+template <class Type>
+Type gll_mspl_nbinom_data_plugin_info(const vector<Type> &y,
+                                      const vector<int> &trait_id,
+                                      int n_traits,
+                                      int family_mode,
+                                      vector<Type> &wbar)
+{
+  if (wbar.size() != n_traits)
+    error("gllvmTMB_multi: nbinom plugin wbar must have length n_traits");
+  if (y.size() != trait_id.size())
+    error("gllvmTMB_multi: nbinom plugin y/trait_id length mismatch");
+  vector<Type> ysum(n_traits);
+  vector<Type> y2sum(n_traits);
+  vector<Type> ycount(n_traits);
+  ysum.setZero();
+  y2sum.setZero();
+  ycount.setZero();
+  for (int o = 0; o < y.size(); ++o) {
+    int t = trait_id(o);
+    if (t < 0 || t >= n_traits)
+      error("gllvmTMB_multi: nbinom plugin trait_id out of range");
+    ysum(t) += y(o);
+    y2sum(t) += y(o) * y(o);
+    ycount(t) += Type(1.0);
+  }
+  Type info = Type(0.0);
+  for (int t = 0; t < n_traits; ++t) {
+    wbar(t) = Type(0.0);
+    double n_d = asDouble(ycount(t));
+    double ybar_d = (n_d > 0.0) ? asDouble(ysum(t)) / n_d : 0.0;
+    double s2_d = 0.0;
+    if (n_d > 1.5) {
+      s2_d = (asDouble(y2sum(t)) - n_d * ybar_d * ybar_d) / (n_d - 1.0);
+    }
+    if (!(ybar_d > 0.0))
+      continue;
+    if (family_mode == 4) {
+      double excess = s2_d - ybar_d;
+      double phi_hat = (excess > 1e-8) ? (ybar_d * ybar_d / excess) : 1e8;
+      wbar(t) = Type(ybar_d * phi_hat / (phi_hat + ybar_d));
+    } else {
+      // Double-only exact I_eta. Do not call the AD GLM-outer hook
+      // here: that PMF loop is for live mu, and taping it on a
+      // data-plugin constant polluted the penalty-off residual.
+      double ratio = s2_d / ybar_d;
+      double phi_hat = (ratio > 1.0 + 1e-8) ? (ratio - 1.0) : 1e-8;
+      double mu = ybar_d;
+      double phi = phi_hat;
+      double r = mu / phi;
+      double log_p = -log1p(phi);
+      double sd = sqrt(mu * (1.0 + phi));
+      double cap = mu + 12.0 * sd;
+      int ymax = 80;
+      if (R_FINITE(cap) && cap < 80.0)
+        ymax = (cap < 8.0) ? 8 : (int)cap;
+      double I = 0.0;
+      auto digamma_d = [](double x) {
+        double acc = 0.0;
+        double z = x;
+        for (int i = 0; i < 8; ++i) {
+          acc -= 1.0 / z;
+          z += 1.0;
+        }
+        double iz = 1.0 / z;
+        double iz2 = iz * iz;
+        return acc + log(z) - 0.5 * iz - iz2 / 12.0 + iz2 * iz2 / 120.0;
+      };
+      for (int yv = 0; yv <= ymax; ++yv) {
+        double yy = (double)yv;
+        double log_f = lgamma(yy + r) - lgamma(r) - lgamma(yy + 1.0) +
+          r * log_p + yy * (log(phi) + log_p);
+        double s = r * (digamma_d(yy + r) - digamma_d(r) + log_p);
+        I += exp(log_f) * s * s;
+      }
+      wbar(t) = Type(I);
+    }
+    info += ycount(t) * wbar(t);
+  }
+  return CppAD::CondExpLt(info, Type(1.0), Type(1.0), info);
+}
+
 template <class Type>
 Type gll_mspl_pseudohuber(Type x)
 {
@@ -3954,8 +4066,12 @@ Type objective_function<Type>::operator()()
       nll += mspl_hirose_nll;
     } else {
       // Bernoulli keeps the validated rate. Poisson uses event-count
-      // c_P = 2 * sqrt(p_free / max(sum(y), 1)). Fenced GLM-outer
-      // families stay at unpinned c=1 (not admitted here).
+      // c_P = 2 * sqrt(p_free / max(sum(y), 1)). nbinom1/2 use a
+      // family data-plugin information size (not c=1, not c_P).
+      // Beta / Tweedie stay at unpinned c=1 (not admitted here).
+      // NB2 Jeffreys-on-phi DROPPED: no I_phi,phi atom on this tape.
+      vector<Type> mspl_nbinom_wbar(n_traits);
+      mspl_nbinom_wbar.setZero();
       if (mspl_family_mode == 1)
         mspl_c_n = Type(2.0) * sqrt(Type(p_free) / Type(N_eff));
       else if (mspl_family_mode == 3) {
@@ -3965,6 +4081,10 @@ Type objective_function<Type>::operator()()
         event_count = CppAD::CondExpLt(event_count, Type(1.0),
                                        Type(1.0), event_count);
         mspl_c_n = Type(2.0) * sqrt(Type(p_free) / event_count);
+      } else if (mspl_family_mode == 4 || mspl_family_mode == 5) {
+        Type info = gll_mspl_nbinom_data_plugin_info(
+          y, trait_id, n_traits, mspl_family_mode, mspl_nbinom_wbar);
+        mspl_c_n = Type(2.0) * sqrt(Type(p_free) / info);
       } else
         mspl_c_n = Type(1.0);
       vector<Type> mspl_logw(N_eff);
@@ -4004,6 +4124,9 @@ Type objective_function<Type>::operator()()
         if (mspl_family_mode == 3)
           mspl_V_loading = gll_mspl_poisson_event_radial_penalty(
             Lambda_B, y, trait_id, d_B, n_traits);
+        else if (mspl_family_mode == 4 || mspl_family_mode == 5)
+          mspl_V_loading = gll_mspl_weighted_radial_penalty(
+            Lambda_B, mspl_nbinom_wbar, d_B);
         else
           mspl_V_loading = gll_mspl_row_radial_penalty(Lambda_B, d_B);
       } else {

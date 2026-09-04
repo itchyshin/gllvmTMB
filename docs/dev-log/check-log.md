@@ -1131,6 +1131,23 @@ rg -n 'SIGNED|D-157|Park\. No second' \
 # no testthat; docs-only
 ```
 
+## 2026-08-17 — #1065 rebase onto main (stay planned; CI pins)
+
+Rebased `cursor/mspl-nbinom-admit-packet` onto `origin/main` after
+#1073 / #1068 / #1071 / #1072. Conflict was `docs/dev-log/check-log.md`
+only (kept both entries). CI pins: D-phi skips when `gllvmTMB.cpp`
+is absent under R CMD check (no `readLines` on a missing `src/`);
+A7 NB1 fixture is a 12-site designed-OD cell (max 4, trait-2
+phi_hat ~ 0.64) so the ubuntu penalty-off residual stays inside
+`1e-7*(1+|obj|)` without collapsing Ibar onto ybar. Registry
+stays `planned`. No admit. No Tweedie door. #981 untouched.
+
+```sh
+rg 'status\s*=\s*"admitted"' R/mspl-registry.R
+# nbinom blocks stay status = "planned"
+rg 'NB2 Jeffreys-on-phi DROPPED' src/gllvmTMB.cpp
+```
+
 ## 2026-08-16 — overnight conductor pulse 21:15 (brief + W-onesided oracles)
 
 Living 05:00 brief:
@@ -1157,6 +1174,28 @@ No promote. No second campaign. No Totoro relaunch.
 rg -n '14/132|10\\.6%|M0' docs/dev-log/research/2026-08-16-mspl-b1-holdout-gate.md
 rg -n 'DEV-11|Phase B closure' docs/design/118-mspl-interval-calibration-protocol.md
 # no testthat; docs-only
+```
+
+## 2026-08-16 — nbinom1/nbinom2 LA-MSPL admit packet (planned, not admitted)
+
+Worktree `/private/tmp/gllvmtmb-mspl-nbinom-admit-packet` from
+`origin/main` after #1042. Packet science only: family data-plugin
+rates \(c_{\mathrm{NB1}}\) / \(c_{\mathrm{NB2}}\), information-weighted
+loading atoms, NB2 Jeffreys-on-φ **DROP**, live A7 twins.
+Registry rows stay `planned` / `phase4_prep`. No NEWS. No public SE.
+No admit flip. G0 ask is in
+`docs/dev-log/research/2026-08-16-mspl-nbinom-admit-packet.md`.
+Local tests: nbinom2 packet 51, nbinom1 packet 41, fences 17+18,
+registry 81, Phase-4 oracles 76+68, Poisson packet 45 / door 7.
+
+rg (verbatim):
+
+```
+rg 'status\s*=\s*"admitted"' R/mspl-registry.R
+# nbinom blocks stay status = "planned"
+rg 'unpinned c=1' R/mspl.R
+# nbinom scope strings no longer claim c=1; tweedie/beta still do
+rg 'NB2 Jeffreys-on-phi DROPPED' src/gllvmTMB.cpp
 ```
 
 ## 2026-08-16 — Gamma / lognormal LA-MSPL rate + loading oracles (Cursor)
@@ -1237,8 +1276,6 @@ rg -n 'Q_0|one-sided|Tweedie|agent paste' \
 
 Deliberately not run: `--as-cran`, pkgdown, Totoro, public-door edits,
 registry admit flips. Fence: no Tweedie door, no public se, no admit.
-
-
 
 ## 2026-08-16 — DIRECTED: binary Phase-B failure, five items for the SE-series lane
 

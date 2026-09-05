@@ -284,6 +284,7 @@ reference:
     - betabinomial
     - delta_beta
     - ordinal_probit
+    - ordinal_logit
     - multinomial
 
   - title: Predictor-model families (modelled missing predictors)
@@ -334,6 +335,8 @@ reference:
     - extract_phylo_signal
     - extract_proportions
     - extract_ordination
+    - extract_latent_scores
+    - ordination_uncertainty
     - extract_loadings
     - extract_lv_effects
     - getREsd
@@ -366,6 +369,14 @@ reference:
     - plot_Sigma_table
     - plot_Sigma_heatmap
     - plot_Sigma_comparison
+
+  - title: Model comparison and latent-rank selection
+    desc: Compare fitted models and choose an ordinary latent rank with the stated boundary assumptions.
+    contents:
+    - anova.gllvmTMB_multi
+    - chibar2_pvalue
+    - variance_lrt
+    - select_lv
 
   - title: First-line diagnostics and uncertainty
     desc: Start here before interpreting covariance, ordination, or interval estimates

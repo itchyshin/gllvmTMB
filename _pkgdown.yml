@@ -43,17 +43,21 @@ navbar:
     intro:
       text: Get started
       menu:
-      - text: Get started with gllvmTMB
+      - text: Start with shared versus response-specific variation
         href: articles/gllvmTMB.html
-      - text: Current limitations and boundaries
-        href: articles/current-limits.html
       - text: First Gaussian morphology model
         href: articles/morphometrics.html
+      - text: Read covariance, correlation, and communality
+        href: articles/covariance-correlation.html
+      - text: Current limitations and boundaries
+        href: articles/current-limits.html
       - text: Function map and cheat sheet
         href: articles/function-map-cheatsheet.html
     general_guides:
       text: General model guides
       menu:
+      - text: First Gaussian morphology model
+        href: articles/morphometrics.html
       - text: Behavioural syndromes in repeated measurements
         href: articles/behavioural-syndromes.html
       - text: Behavioural reaction norms with random slopes
@@ -76,8 +80,8 @@ navbar:
         href: articles/spatial-models.html
       - text: Handling missing data
         href: articles/missing-data.html
-      - text: "Developer note: structured random slopes for non-Gaussian traits"
-        href: articles/random-slopes-nongaussian.html
+      - text: "Strength of a known source"
+        href: articles/structured-source-strength.html
     pcm:
       text: Phylogenetic comparative models
       menu:
@@ -85,8 +89,6 @@ navbar:
         href: articles/where-does-the-tree-go.html
       - text: Phylogenetic covariance among traits
         href: articles/phylogenetic-gllvm.html
-      - text: "Strength of a known source"
-        href: articles/structured-source-strength.html
       - text: Phylogenetic ordinal and nominal PGLMMs
         href: articles/phylogenetic-categorical-pglmm.html
     sdm:
@@ -137,17 +139,22 @@ navbar:
         href: articles/pitfalls.html
       - text: Validation oracles
         href: articles/validation-oracles.html
+      - text: "Developer note: structured random slopes for non-Gaussian traits"
+        href: articles/random-slopes-nongaussian.html
 
 articles:
   - title: Getting started
     contents:
     - gllvmTMB
     - articles/current-limits
-    - articles/morphometrics
     - articles/function-map-cheatsheet
 
   - title: General model guides
+    desc: >
+      Reusable multivariate models and methods, starting with continuous
+      Gaussian traits before choosing a response-specific observation model.
     contents:
+    - articles/morphometrics
     - articles/behavioural-syndromes
     - articles/random-regression-reaction-norms
     - articles/model-selection-latent-rank
@@ -159,7 +166,7 @@ articles:
     - articles/mspl-binary-jsdm
     - articles/spatial-models
     - articles/missing-data
-    - articles/random-slopes-nongaussian
+    - articles/structured-source-strength
 
   - title: Species distribution models
     desc: >
@@ -185,10 +192,12 @@ articles:
     contents:
     - articles/where-does-the-tree-go
     - articles/phylogenetic-gllvm
-    - articles/structured-source-strength
     - articles/phylogenetic-categorical-pglmm
 
   - title: Concepts and diagnostics
+    desc: >
+      Supporting concepts, syntax, and fit checks that readers use across all
+      three model routes.
     contents:
     - articles/unit-of-analysis
     - articles/gllvm-vocabulary
@@ -201,6 +210,7 @@ articles:
     - articles/profile-likelihood-ci
     - articles/pitfalls
     - articles/validation-oracles
+    - articles/random-slopes-nongaussian
 
 reference:
   - title: Start here

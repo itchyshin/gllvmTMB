@@ -57580,3 +57580,16 @@ Deliberately not run: Totoro 9×500 grid dispatch; full `devtools::test()`.
 - HEAD fc08d83f1; 4500 fits; wall 73.3s; core-h 1.60; pooled cov90=0.634 cov95=0.695
 - Commands: dev/gapclose/arcG/run-grid-totoro.sh; aggregate.R on Totoro; rsync to dev/gapclose/arcG/results/
 - Verified: wc -l per_seed_summary.csv => 4501; ls raw/*.rds | wc -l => 4500
+
+## 2026-09-05 — Three-model-heading pkgdown navigation
+
+- `_pkgdown.yml` now has General model guides, Species Distribution Models, and
+  Phylogenetic comparative models as the three model routes; Get started and Concepts
+  and diagnostics remain support routes. The Gaussian morphology route is first;
+  the non-Gaussian response-family guide follows it.
+- Static YAML assertion -> `three_routes_and_primary_article_placement=PASS`;
+  `pkgdown::build_home()` -> `rendered_home_navigation=PASS`.
+- `pkgdown::check_pkgdown()` remains blocked by the unrelated seven missing reference
+  topics: `anova.gllvmTMB_multi`, `chibar2_pvalue`, `extract_latent_scores`,
+  `ordinal_logit`, `ordination_uncertainty`, `select_lv`, and `variance_lrt`.
+- Exact consistency scans: `rg -n 'Model Guides|General model guides|Species Distribution Models|Phylogenetic comparative models|Developer note' _pkgdown.yml`; `rg -n 'articles/(morphometrics|structured-source-strength|random-slopes-nongaussian)' _pkgdown.yml`.

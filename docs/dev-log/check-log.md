@@ -57593,3 +57593,13 @@ Deliberately not run: Totoro 9×500 grid dispatch; full `devtools::test()`.
   topics: `anova.gllvmTMB_multi`, `chibar2_pvalue`, `extract_latent_scores`,
   `ordinal_logit`, `ordination_uncertainty`, `select_lv`, and `variance_lrt`.
 - Exact consistency scans: `rg -n 'Model Guides|General model guides|Species Distribution Models|Phylogenetic comparative models|Developer note' _pkgdown.yml`; `rg -n 'articles/(morphometrics|structured-source-strength|random-slopes-nongaussian)' _pkgdown.yml`.
+
+## 2026-09-05 — Pkgdown reference-index repair
+
+- Added the seven public topics omitted from `_pkgdown.yml`: `ordinal_logit`,
+  `extract_latent_scores`, `ordination_uncertainty`, `anova.gllvmTMB_multi`,
+  `chibar2_pvalue`, `variance_lrt`, and `select_lv`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'` -> **PASS**; direct
+  `pkgdown::build_reference()` produced `pkgdown-site/reference/index.html`; a
+  rendered-topic assertion -> `rendered_reference_topics=PASS`.
+- Exact source/documentation scan: `rg -n -e 'anova.gllvmTMB_multi|chibar2_pvalue|extract_latent_scores|ordinal_logit|ordination_uncertainty|select_lv|variance_lrt' R man _pkgdown.yml`.

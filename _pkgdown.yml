@@ -37,7 +37,7 @@ template:
 
 navbar:
   structure:
-    left:  [intro, model_guides, sdm, concepts, diagnostics, reference, news]
+    left:  [intro, general_guides, sdm, pcm, concepts_diagnostics, reference, news]
     right: [search, github]
   components:
     intro:
@@ -47,13 +47,13 @@ navbar:
         href: articles/gllvmTMB.html
       - text: Current limitations and boundaries
         href: articles/current-limits.html
-      - text: Function map and cheat sheet
-        href: articles/function-map-cheatsheet.html
-    model_guides:
-      text: Model Guides
-      menu:
       - text: First Gaussian morphology model
         href: articles/morphometrics.html
+      - text: Function map and cheat sheet
+        href: articles/function-map-cheatsheet.html
+    general_guides:
+      text: General model guides
+      menu:
       - text: Behavioural syndromes in repeated measurements
         href: articles/behavioural-syndromes.html
       - text: Behavioural reaction norms with random slopes
@@ -64,47 +64,56 @@ navbar:
         href: articles/explaining-latent-ecological-axes.html
       - text: Explore loading constraints
         href: articles/lambda-constraint-suggest.html
+      - text: Cross-family correlations and predictors
+        href: articles/cross-family-correlations.html
+      - text: Choose a response family
+        href: articles/response-families.html
+      - text: Unordered categories with multinomial()
+        href: articles/multinomial.html
       - text: Rare items and runaway estimates
         href: articles/mspl-binary-jsdm.html
       - text: Multivariate spatial models
         href: articles/spatial-models.html
+      - text: Handling missing data
+        href: articles/missing-data.html
+      - text: "Developer note: structured random slopes for non-Gaussian traits"
+        href: articles/random-slopes-nongaussian.html
+    pcm:
+      text: Phylogenetic comparative models
+      menu:
+      - text: "Where does the phylogeny belong?"
+        href: articles/where-does-the-tree-go.html
       - text: Phylogenetic covariance among traits
         href: articles/phylogenetic-gllvm.html
       - text: "Strength of a known source"
         href: articles/structured-source-strength.html
-      - text: "Where does the phylogeny belong?"
-        href: articles/where-does-the-tree-go.html
       - text: Phylogenetic ordinal and nominal PGLMMs
         href: articles/phylogenetic-categorical-pglmm.html
-      - text: Handling missing data
-        href: articles/missing-data.html
-      - text: Structured random slopes for non-Gaussian traits
-        href: articles/random-slopes-nongaussian.html
     sdm:
       text: Species Distribution Models
       menu:
       - text: "Start here: which SDM do your data allow?"
         href: articles/sdm-start-here.html
+      - text: Joint intensity from opportunistic records
+        href: articles/gbif-joint-intensity.html
       - text: Joint species distribution model
         href: articles/joint-sdm.html
       - text: When a rare species breaks the JSDM
         href: articles/rare-species-jsdm.html
-      - text: Joint intensity from opportunistic records
-        href: articles/gbif-joint-intensity.html
       - text: Integrating records with a designed survey
         href: articles/integrated-two-source-example.html
+      - text: What do repeated visits add?
+        href: articles/integrated-repeated-visits.html
+      - text: More than two sources
+        href: articles/integrated-multi-source-example.html
       - text: An integrated SDM end to end, and the map at the end of it
         href: articles/isdm-canada-warbler.html
       - text: When one data source knows where it is and the other does not
         href: articles/isdm-spatial-precision.html
       - text: How much survey do you need?
         href: articles/integrated-survey-design.html
-      - text: More than two sources
-        href: articles/integrated-multi-source-example.html
-      - text: What do repeated visits add?
-        href: articles/integrated-repeated-visits.html
-    concepts:
-      text: Concepts
+    concepts_diagnostics:
+      text: Concepts and diagnostics
       menu:
       - text: What is a site? The unit of analysis
         href: articles/unit-of-analysis.html
@@ -112,19 +121,10 @@ navbar:
         href: articles/gllvm-vocabulary.html
       - text: Covariance and correlation
         href: articles/covariance-correlation.html
-      - text: Cross-family correlations and predictors
-        href: articles/cross-family-correlations.html
       - text: Formula keyword grid
         href: articles/api-keyword-grid.html
       - text: Response-specific predictor effects
         href: articles/fixed-effect-zero-constraints.html
-      - text: Choose a response family
-        href: articles/response-families.html
-      - text: Unordered categories with multinomial()
-        href: articles/multinomial.html
-    diagnostics:
-      text: Diagnostics
-      menu:
       - text: Screen binary traits before fitting
         href: articles/pre-fit-response-screening.html
       - text: Can I trust this fit?
@@ -143,22 +143,21 @@ articles:
     contents:
     - gllvmTMB
     - articles/current-limits
+    - articles/morphometrics
     - articles/function-map-cheatsheet
 
-  - title: Model Guides
+  - title: General model guides
     contents:
-    - articles/morphometrics
     - articles/behavioural-syndromes
     - articles/random-regression-reaction-norms
     - articles/model-selection-latent-rank
     - articles/explaining-latent-ecological-axes
     - articles/lambda-constraint-suggest
+    - articles/cross-family-correlations
+    - articles/response-families
+    - articles/multinomial
     - articles/mspl-binary-jsdm
     - articles/spatial-models
-    - articles/phylogenetic-gllvm
-    - articles/structured-source-strength
-    - articles/where-does-the-tree-go
-    - articles/phylogenetic-categorical-pglmm
     - articles/missing-data
     - articles/random-slopes-nongaussian
 
@@ -169,29 +168,33 @@ articles:
       experimental.
     contents:
     - articles/sdm-start-here
+    - articles/gbif-joint-intensity
     - articles/joint-sdm
     - articles/rare-species-jsdm
-    - articles/isdm-canada-warbler
-    - articles/isdm-spatial-precision
-    - articles/gbif-joint-intensity
     - articles/integrated-two-source-example
     - articles/integrated-repeated-visits
-    - articles/integrated-survey-design
     - articles/integrated-multi-source-example
+    - articles/isdm-canada-warbler
+    - articles/isdm-spatial-precision
+    - articles/integrated-survey-design
 
-  - title: Concepts
+  - title: Phylogenetic comparative models
+    desc: >
+      Stacked-trait models that use a known phylogeny as a relationship source;
+      this is not a general single-response comparative-methods guide.
+    contents:
+    - articles/where-does-the-tree-go
+    - articles/phylogenetic-gllvm
+    - articles/structured-source-strength
+    - articles/phylogenetic-categorical-pglmm
+
+  - title: Concepts and diagnostics
     contents:
     - articles/unit-of-analysis
     - articles/gllvm-vocabulary
     - articles/covariance-correlation
-    - articles/cross-family-correlations
     - articles/api-keyword-grid
     - articles/fixed-effect-zero-constraints
-    - articles/response-families
-    - articles/multinomial
-
-  - title: Diagnostics and validation
-    contents:
     - articles/pre-fit-response-screening
     - articles/fit-diagnostics
     - articles/convergence-start-values

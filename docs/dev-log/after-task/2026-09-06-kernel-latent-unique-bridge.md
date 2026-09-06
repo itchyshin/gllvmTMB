@@ -14,7 +14,10 @@ Evidence:
 
 - R parse and focused package tests: **7 expectations passed, 1 skipped**
   without a configured Julia path.
-- The live paired cell exited 0 with `GLLVM_JL_PATH` configured. It is one
+- The live paired cell exited 0 with `GLLVM_JL_PATH` configured. It uses the
+  public `kernel_latent(unit, K = K, d = 1, unique = TRUE)` formula under
+  both `engine = "julia"` and `engine = "tmb"`, aligns the named K levels,
+  and compares logLik (1e-3), B (1e-2), and cov2cor(B) (1e-2). It is one
   local paired cell and is not promoted to a parity claim.
 - Julia-side regression: **11/11 passed**, covering non-identity K, repeated
   groups, and `unique = true`.

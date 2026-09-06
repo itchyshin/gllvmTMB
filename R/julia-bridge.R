@@ -3919,7 +3919,21 @@ print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
         call. = FALSE
       )
     }
-    grp_var <- deparse(z$group)
+    ## parse_covstruct_call() rewrites the bare phylo_rr-compatible
+    ## kernel term as `(0 + <kernel grouping>) | trait`: the source column
+    ## therefore lives in `lhs`, while `group` is deliberately `trait`.
+    lhs <- z$lhs
+    grp_expr <- if (
+      is.call(lhs) &&
+        identical(lhs[[1L]], as.name("+")) &&
+        is.numeric(lhs[[2L]]) &&
+        identical(lhs[[2L]], 0)
+    ) {
+      lhs[[3L]]
+    } else {
+      NULL
+    }
+    grp_var <- if (is.null(grp_expr)) "" else deparse(grp_expr)
     if (length(grp_var) != 1L || !grp_var %in% names(data)) {
       stop(
         .gllvm_julia_gate_message(

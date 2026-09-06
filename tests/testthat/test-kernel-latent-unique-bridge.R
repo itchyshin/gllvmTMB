@@ -86,32 +86,44 @@ test_that("one Gaussian dense-kernel cell agrees between TMB and Julia", {
   kernel_bridge_skip_if_no_julia()
   set.seed(220)
   n_unit <- 12L
-  df <- data.frame(obs = factor(paste0("o", seq_len(n_unit))))
-  z <- matrix(rnorm(n_unit * 2), n_unit, 2)
-  K <- tcrossprod(z) / 2 + diag(0.8, n_unit)
-  dimnames(K) <- list(levels(df$obs), levels(df$obs))
-  df$t1 <- rnorm(n_unit)
-  df$t2 <- rnorm(n_unit)
-
-  fml <- traits(t1, t2) ~ 1 +
-    kernel_latent(obs, K = K, d = 1, unique = TRUE)
-  Y <- t(as.matrix(df[c("t1", "t2")]))
-  rownames(Y) <- c("t1", "t2")
-  colnames(Y) <- levels(df$obs)
-  fit_j <- gllvm_julia_fit(
-    Y, family = "gaussian", num.lv = 1,
-    sources = list(list(
-      name = "kernel", covariance = K, groups = seq_len(n_unit),
-      mode = "latent", rank = 1, unique = TRUE, common = FALSE
-    ))
+  df <- expand.grid(
+    trait = factor(c("t1", "t2")),
+    unit = factor(paste0("u", seq_len(n_unit))),
+    KEEP.OUT.ATTRS = FALSE
   )
-  fit_r <- gllvmTMB_wide(Y, d = 1)
+  K <- matrix(0.6, n_unit, n_unit)
+  diag(K) <- 1
+  dimnames(K) <- list(levels(df$unit), levels(df$unit))
+  eig <- eigen(K, symmetric = TRUE)
+  g <- as.numeric(eig$vectors %*%
+    (sqrt(pmax(eig$values, 0)) * rnorm(n_unit)))
+  g_unit <- g[as.integer(df$unit)]
+  df$value <- ifelse(
+    df$trait == "t1",
+    g_unit + rnorm(nrow(df), sd = sqrt(0.15)),
+    0.8 * g_unit + rnorm(nrow(df), sd = sqrt(0.15))
+  )
+  fml <- value ~ 0 + trait +
+    kernel_latent(unit, K = K, d = 1, unique = TRUE)
+  fit_j <- gllvmTMB(
+    fml, data = df, unit = "unit", trait = "trait", species = "unit",
+    family = gaussian(), engine = "julia", ci_method = "none"
+  )
+  fit_r <- gllvmTMB(
+    fml, data = df, unit = "unit", trait = "trait", species = "unit",
+    family = gaussian(), engine = "tmb"
+  )
   expect_s3_class(fit_j, "gllvmTMB_julia")
   expect_true(is.finite(as.numeric(logLik(fit_j))))
   B_j <- suppressMessages(extract_Sigma(fit_j, level = "kernel"))
   expect_equal(unname(B_j$Sigma), unname(fit_j$source_covariance),
                tolerance = 1e-10)
   expect_equal(B_j$R, stats::cov2cor(B_j$Sigma), tolerance = 1e-10)
+  B_r <- suppressMessages(extract_Sigma(fit_r, level = "kernel"))
+  expect_equal(as.numeric(logLik(fit_j)), as.numeric(logLik(fit_r)),
+               tolerance = 1e-3)
+  expect_equal(unname(B_j$Sigma), unname(B_r$Sigma), tolerance = 1e-2)
+  expect_equal(B_j$R, B_r$R, tolerance = 1e-2)
   expect_true(is.finite(as.numeric(logLik(fit_r))))
   expect_equal(dim(B_j$Sigma), c(2L, 2L))
 })

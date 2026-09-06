@@ -1394,6 +1394,37 @@ gllvm_julia_capabilities <- function() {
   link_residual,
   .skip_warn = FALSE
 ) {
+  source_levels <- as.character(fit$source_names %||% character(0))
+  if (length(level) == 1L && level %in% source_levels) {
+    part <- match.arg(part, c("total", "shared", "unique"))
+    if (part != "total") {
+      cli::cli_abort(c(
+        "The Julia dense-kernel source extractor exposes source {.val {level}} as its full B covariance only.",
+        "i" = "Use {.code extract_Sigma(fit, level = \"{level}\")} for B = Lambda Lambda' + Psi."
+      ))
+    }
+    traits <- .gllvm_julia_trait_names(fit, .gllvm_julia_n_traits(fit))
+    B <- as.matrix(fit$source_covariance %||% fit$Sigma)
+    if (!identical(dim(B), c(length(traits), length(traits)))) {
+      cli::cli_abort(
+        "engine = 'julia': dense-kernel source covariance dimensions do not match traits."
+      )
+    }
+    dimnames(B) <- list(traits, traits)
+    R <- .gllvm_julia_cov2cor(B, traits)
+    note <- paste0(
+      "engine = 'julia': source ", level,
+      " returns B = Lambda Lambda' + Psi; no independent residual variance ",
+      "is included in this source covariance."
+    )
+    return(list(
+      Sigma = B,
+      R = R,
+      level = level,
+      part = "total",
+      note = note
+    ))
+  }
   if (length(level) > 1L) {
     level <- match.arg(
       level,
@@ -2556,6 +2587,7 @@ gllvm_julia_fit <- function(
   X_lv = NULL,
   coef_fixed = NULL,
   mask = NULL,
+  sources = NULL,
   units_are_rows = FALSE,
   ci_method = c("none", "wald", "profile", "bootstrap"),
   ci_level = 0.95,
@@ -2765,6 +2797,9 @@ gllvm_julia_fit <- function(
   }
   if (!is.null(X_lv)) {
     args$X_lv <- X_lv
+  }
+  if (!is.null(sources)) {
+    args$sources <- sources
   }
   coef_fixed_option <- NULL
   if (!is.null(coef_fixed)) {
@@ -3575,6 +3610,54 @@ print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
     character(0)
   }
 
+  ## --- bounded dense-kernel source route ---------------------------------
+  ## Only one fixed Gaussian kernel source is admitted here.  The parser
+  ## represents kernel_latent(unique = TRUE) as a latent phylo_rr marker plus
+  ## an auto-generated unique companion; retain the pair as one Julia source
+  ## with B = Lambda Lambda' + Psi.  Trees, pedigrees, multiple sources, and
+  ## the deprecated kernel_unique() marker remain outside this bridge slice.
+  structured_source_term <- NULL
+  structured_kernel_unique <- FALSE
+  fam_str_pre <- tryCatch(.gllvm_julia_family(family), error = function(e) NULL)
+  kernel_terms <- which(vapply(
+    cs,
+    function(z) identical(z$kind, "phylo_rr") &&
+      !is.null(z$extra$.kernel_mode),
+    logical(1)
+  ))
+  if (length(kernel_terms) > 0L) {
+    if (
+      length(cs) == 2L &&
+        length(kernel_terms) == 2L &&
+        identical(cs[[1L]]$extra$.kernel_mode, "latent") &&
+        identical(cs[[2L]]$extra$.kernel_mode, "unique") &&
+        isTRUE(cs[[2L]]$extra$.auto_unique)
+    ) {
+      structured_source_term <- cs[[1L]]
+      structured_kernel_unique <- TRUE
+    } else {
+      stop(
+        .gllvm_julia_gate_message(
+          "GJL-GATE-STRUCTURED-TERMS",
+          "engine = 'julia' admits exactly one kernel_latent(..., ",
+          "unique = TRUE) source. The no-Psi unique = FALSE exception, ",
+          "multiple kernel sources, kernel_unique(), kernel_indep(), and ",
+          "kernel_dep() remain on engine = 'tmb'."
+        ),
+        call. = FALSE
+      )
+    }
+    identical(fam_str_pre, "gaussian") || stop(
+      .gllvm_julia_gate_message(
+        "GJL-GATE-STRUCTURED-TERMS",
+        "the kernel Julia bridge cell is Gaussian-only; use engine = 'tmb' ",
+        "for non-Gaussian kernel terms."
+      ),
+      call. = FALSE
+    )
+    kinds <- character(0)
+  }
+
   ## --- capability guard: only the reduced-rank latent block (rr) is mapped ---
   unsupported <- setdiff(unique(kinds), "rr")
   if (length(unsupported) > 0) {
@@ -3822,6 +3905,82 @@ print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
 
   ## --- binomial trials: cbind(successes, failures) totals take precedence, then
   ## per-row n_trials (weights API), else Bernoulli (N = 1). ---
+  sources_arg <- NULL
+  if (!is.null(structured_source_term)) {
+    z <- structured_source_term
+    if (!is.null(Xarg) || !is.null(Xlv_arg) || has_missing_response ||
+        !is.null(weights) || isTRUE(REML) || ci_method != "none") {
+      stop(
+        .gllvm_julia_gate_message(
+          "GJL-GATE-STRUCTURED-TERMS",
+          "the kernel Julia bridge cell admits complete Gaussian data with ",
+          "no X, X_lv, mask, weights, REML, intervals, or offsets."
+        ),
+        call. = FALSE
+      )
+    }
+    grp_var <- deparse(z$group)
+    if (length(grp_var) != 1L || !grp_var %in% names(data)) {
+      stop(
+        .gllvm_julia_gate_message(
+          "GJL-GATE-STRUCTURED-TERMS",
+          "kernel_latent() needs a single grouping column present in `data`."
+        ),
+        call. = FALSE
+      )
+    }
+    unit_first <- match(levels(fu), as.character(fu))
+    grpf <- factor(data[[grp_var]][unit_first])
+    Kmat <- z$extra$vcv
+    if (
+      !is.matrix(Kmat) || !is.numeric(Kmat) ||
+        nrow(Kmat) != ncol(Kmat) || is.null(rownames(Kmat)) ||
+        is.null(colnames(Kmat)) ||
+        !identical(rownames(Kmat), colnames(Kmat)) ||
+        any(!is.finite(Kmat))
+    ) {
+      stop(
+        .gllvm_julia_gate_message(
+          "GJL-GATE-STRUCTURED-TERMS",
+          "kernel_latent() needs one finite, square dense K with matching ",
+          "row and column names."
+        ),
+        call. = FALSE
+      )
+    }
+    missing_lv <- setdiff(levels(grpf), rownames(Kmat))
+    if (length(missing_lv)) {
+      stop(
+        .gllvm_julia_gate_message(
+          "GJL-GATE-STRUCTURED-TERMS",
+          "kernel K is missing grouping level(s): ",
+          paste(missing_lv, collapse = ", "), "."
+        ),
+        call. = FALSE
+      )
+    }
+    Kal <- Kmat[levels(grpf), levels(grpf), drop = FALSE]
+    if (!isSymmetric(unname(Kal), tol = 0)) {
+      stop(
+        .gllvm_julia_gate_message(
+          "GJL-GATE-STRUCTURED-TERMS",
+          "kernel K must be exactly symmetric; no jitter is applied."
+        ),
+        call. = FALSE
+      )
+    }
+    kd <- z$extra$d
+    source_spec <- list(
+      name = as.character(z$extra$.kernel_name %||% "kernel"),
+      covariance = unname(Kal),
+      groups = as.integer(grpf),
+      mode = "latent",
+      rank = as.integer(if (is.null(kd)) 1L else kd),
+      unique = structured_kernel_unique,
+      common = FALSE
+    )
+    sources_arg <- list(source_spec)
+  }
   Narg <- NULL
   if (any(fam_str %in% .GLLVM_JULIA_BINOMIAL_FAMILIES)) {
     if (!is.null(cbind_trials)) {
@@ -3842,6 +4001,7 @@ print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
     family = family,
     num.lv = K,
     N = Narg,
+    sources = sources_arg,
     X = Xarg,
     X_lv = Xlv_arg,
     coef_fixed = coef_fixed_arg,

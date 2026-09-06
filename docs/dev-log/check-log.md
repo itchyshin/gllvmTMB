@@ -57617,3 +57617,14 @@ Deliberately not run: Totoro 9×500 grid dispatch; full `devtools::test()`.
 - Scope ledger: KER-01 is covered; COE-02 stays partial. The article labels
   fixed rho, point estimate, no calibrated intervals, and no causal claim.
 - Full closeout: `docs/dev-log/after-task/2026-09-05-plant-bumblebee-coevolution-article.md`.
+
+## 2026-09-06 — D-220 bounded kernel-latent unique bridge
+
+- Ownership: Cursor/Ada, local-only D-220 slice; #1236 parked with
+  [comment](https://github.com/itchyshin/gllvmTMB/pull/1236#issuecomment-5560078968).
+- `Rscript --vanilla -e 'parse(file="R/julia-bridge.R")'` → `R_PARSE_OK`.
+- `Rscript --vanilla -e 'testthat::test_local(filter="kernel-latent-unique-bridge", reporter="summary")'`
+  → **7 expectations passed, 1 skipped** (Julia path absent).
+- With `GLLVM_JL_PATH` set, the paired cell was still running at report time;
+  no public parity claim is made. No Totoro/DRAC campaign, engine surgery,
+  interval route, or release action was run.

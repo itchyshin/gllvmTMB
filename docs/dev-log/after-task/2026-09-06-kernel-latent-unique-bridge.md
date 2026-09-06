@@ -14,9 +14,8 @@ Evidence:
 
 - R parse and focused package tests: **7 expectations passed, 1 skipped**
   without a configured Julia path.
-- The live paired cell was attempted with `GLLVM_JL_PATH`; its final result
-  remains pending in this local checkpoint and is not promoted to a parity
-  claim.
+- The live paired cell exited 0 with `GLLVM_JL_PATH` configured. It is one
+  local paired cell and is not promoted to a parity claim.
 - Julia-side regression: **11/11 passed**, covering non-identity K, repeated
   groups, and `unique = true`.
 

@@ -57625,6 +57625,8 @@ Deliberately not run: Totoro 9×500 grid dispatch; full `devtools::test()`.
 - `Rscript --vanilla -e 'parse(file="R/julia-bridge.R")'` → `R_PARSE_OK`.
 - `Rscript --vanilla -e 'testthat::test_local(filter="kernel-latent-unique-bridge", reporter="summary")'`
   → **7 expectations passed, 1 skipped** (Julia path absent).
-- With `GLLVM_JL_PATH` set, the paired cell was still running at report time;
-  no public parity claim is made. No Totoro/DRAC campaign, engine surgery,
-  interval route, or release action was run.
+- With `GLLVM_JL_PATH=/Users/z3437171/local-scratch/lanes/GLLVM.jl-kernel-latent-unique-20260906`,
+  the paired bridge test exited 0 (7 tests; one deprecation warning from the
+  TMB comparison wrapper). This is one local paired cell, not a parity claim.
+- No Totoro/DRAC campaign, engine surgery, interval route, or release action
+  was run.

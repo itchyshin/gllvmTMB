@@ -57636,10 +57636,11 @@ Deliberately not run: Totoro 9×500 grid dispatch; full `devtools::test()`.
 ## 2026-09-06 — paired kernel-latent unique live-run (Unlazy honesty)
 
 - Command: `GLLVM_JL_PATH=/Users/z3437171/local-scratch/lanes/GLLVM.jl-kernel-latent-unique-20260906 Rscript --vanilla -e 'res <- testthat::test_local(filter="kernel-latent-unique-bridge", reporter="check"); df <- as.data.frame(res); cat("TALLY failed=", sum(df$failed), " skipped=", sum(df$skipped), " error=", sum(df$error), " warning=", sum(df$warning), " passed=", sum(df$passed), "\n")'`
-- Tally: **[ FAIL 0 | WARN 0 | SKIP 0 | PASS 16 ]**; `TALLY failed= 0  skipped= 0  error= 0  warning= 0  passed= 16`.
-- Breakdown: extractor 4, rejection 3, paired Julia+TMB logLik/B/cov2cor(B) 9.
+- First isolated tally (before `92c0b95ff` added four K-shape refusals): **[ FAIL 0 | WARN 0 | SKIP 0 | PASS 16 ]**.
+- Current focused file has 20 expectations. Later reverify and the dense-K guard entry below report **PASS 20 / FAIL 0**.
+- Breakdown now: extractor 4, rejection 7, paired Julia+TMB logLik/B/cov2cor(B) 9.
 - Julia 1.10.0 available via `~/.juliaup/bin/julia`. A LogExpFunctionsInverseFunctionsExt precompile warning printed; it did not fail the cell.
-- Unlazy: R2/J4 now EXPECT the tally string above, not `DONE` / `test -f`.
+- Unlazy: R2/J4 EXPECT the live tally (`passed=20`), not `DONE` / `test -f`.
 
 ## 2026-09-06 — dense-K input guard reverify
 

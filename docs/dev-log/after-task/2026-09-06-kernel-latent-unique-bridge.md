@@ -37,3 +37,7 @@ The package-prescribed targeted command `devtools::test(filter =
 "kernel-latent-unique-bridge", reporter = "summary")` also completed with
 the Julia project configured. Full `R CMD check` remains a CI-before-merge
 gate; no PR or merge is authorized in this slice.
+
+Rose verdict: PASS WITH NOTES — the retained evidence supports only the
+admitted one-source Gaussian Julia route. Full package checking and CI remain
+required before any merge or public capability promotion.

@@ -40,6 +40,33 @@ Gamma_hat <- extract_Gamma(
 )
 stopifnot(is.matrix(Gamma_hat), all(is.finite(Gamma_hat)))
 
+refit_cross <- function(K, rho) {
+  gllvmTMB(
+    traits(flower_tube_depth, nectar_volume, tongue_length, body_size) ~ 1 +
+      kernel_latent(species, K = K, d = 2, name = "cross"),
+    data = example$data_wide,
+    unit = "observation",
+    cluster = "species",
+    family = gaussian(),
+    control = gllvmTMBcontrol(se = FALSE)
+  )
+}
+
+rho_profile <- profile_cross_rho(
+  example$A_plant,
+  example$A_bumblebee,
+  example$W,
+  rho = c(0, 0.25, example$truth$rho, 0.8),
+  refit = refit_cross
+)
+stopifnot(
+  nrow(rho_profile) == 4L,
+  all(rho_profile$status == "ok"),
+  all(is.finite(rho_profile$logLik)),
+  all(is.finite(rho_profile$relative_logLik))
+)
+
 cat("plant_bumblebee_point_estimate=PASS\n")
+cat("plant_bumblebee_fixed_rho_sensitivity=PASS\n")
 cat(sprintf("logLik=%.6f\n", as.numeric(logLik(fit))))
 print(Gamma_hat)

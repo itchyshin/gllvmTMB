@@ -1,8 +1,9 @@
 fixture_path <- function() {
-  path <- testthat::test_path(
-    "..", "..", "inst", "extdata", "examples",
-    "plant-bumblebee-coevolution-example.rds"
+  path <- system.file(
+    "extdata", "examples", "plant-bumblebee-coevolution-example.rds",
+    package = "gllvmTMB"
   )
+  testthat::expect_true(nzchar(path))
   testthat::expect_true(file.exists(path))
   path
 }

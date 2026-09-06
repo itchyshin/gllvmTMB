@@ -23,8 +23,8 @@ Evidence:
   groups, and `unique = true`.
 
 Rose audit: no NEWS or public capability claim was added. True parity,
-Class-1 promotion, M2-R2, Totoro/DRAC work, push, merge, and release remain
-out of scope.
+Class-1 promotion, M2-R2, Totoro/DRAC work, merge, and release remain out of
+scope.
 
 Follow-up reverify: the R payload now rejects a non-positive-definite K before
 Julia is invoked (strict `chol()` after factor-level alignment; no jitter).
@@ -37,6 +37,9 @@ The package-prescribed targeted command `devtools::test(filter =
 "kernel-latent-unique-bridge", reporter = "summary")` also completed with
 the Julia project configured. Full `R CMD check` remains a CI-before-merge
 gate; no PR or merge is authorized in this slice.
+
+Closure: the verified branch was pushed to origin after the focused reverify.
+No PR, merge, release, or public capability promotion was performed.
 
 Rose verdict: PASS WITH NOTES — the retained evidence supports only the
 admitted one-source Gaussian Julia route. Full package checking and CI remain

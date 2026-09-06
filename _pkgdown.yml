@@ -89,6 +89,8 @@ navbar:
         href: articles/where-does-the-tree-go.html
       - text: Phylogenetic covariance among traits
         href: articles/phylogenetic-gllvm.html
+      - text: Cross-lineage plant--bumblebee covariance
+        href: articles/plant-bumblebee-coevolution.html
       - text: Phylogenetic ordinal and nominal PGLMMs
         href: articles/phylogenetic-categorical-pglmm.html
     sdm:
@@ -192,6 +194,7 @@ articles:
     contents:
     - articles/where-does-the-tree-go
     - articles/phylogenetic-gllvm
+    - articles/plant-bumblebee-coevolution
     - articles/phylogenetic-categorical-pglmm
 
   - title: Concepts and diagnostics

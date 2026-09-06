@@ -80,6 +80,56 @@ test_that("kernel Julia bridge rejects the bounded-cell exclusions", {
     ),
     "GJL-GATE-STRUCTURED-TERMS"
   )
+
+  bad_unlabelled <- diag(3)
+  expect_error(
+    gllvmTMB(
+      value ~ 0 + trait + kernel_latent(group, K = bad_unlabelled, d = 1, unique = TRUE),
+      data = df, unit = "unit", trait = "trait",
+      family = gaussian(), engine = "julia", ci_method = "none"
+    ),
+    "GJL-GATE-STRUCTURED-TERMS"
+  )
+
+  bad_asymmetric <- K
+  bad_asymmetric[1, 2] <- 0.1
+  expect_error(
+    gllvmTMB(
+      value ~ 0 + trait + kernel_latent(group, K = bad_asymmetric, d = 1, unique = TRUE),
+      data = df, unit = "unit", trait = "trait",
+      family = gaussian(), engine = "julia", ci_method = "none"
+    ),
+    "GJL-GATE-STRUCTURED-TERMS"
+  )
+
+  ## These use the admitted public `unit` source spelling.  A distinct
+  ## `group` label is parsed through the broader structured-kernel path and
+  ## is not the bounded Julia bridge payload contract.
+  bad_non_pd <- diag(nlevels(df$unit))
+  dimnames(bad_non_pd) <- list(levels(df$unit), levels(df$unit))
+  bad_non_pd[3, 3] <- -0.1
+  expect_error(
+    gllvmTMB(
+      value ~ 0 + trait + kernel_latent(unit, K = bad_non_pd, d = 1, unique = TRUE),
+      data = df, unit = "unit", trait = "trait",
+      family = gaussian(), engine = "julia", ci_method = "none"
+    ),
+    "GJL-GATE-STRUCTURED-TERMS"
+  )
+
+  bad_misaligned <- diag(nlevels(df$unit))
+  dimnames(bad_misaligned) <- list(
+    c("1", "2", "3", "4", "5", "missing"),
+    c("1", "2", "3", "4", "5", "missing")
+  )
+  expect_error(
+    gllvmTMB(
+      value ~ 0 + trait + kernel_latent(unit, K = bad_misaligned, d = 1, unique = TRUE),
+      data = df, unit = "unit", trait = "trait",
+      family = gaussian(), engine = "julia", ci_method = "none"
+    ),
+    "GJL-GATE-STRUCTURED-TERMS"
+  )
 })
 
 test_that("one Gaussian dense-kernel cell agrees between TMB and Julia", {

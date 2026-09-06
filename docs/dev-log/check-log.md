@@ -57632,3 +57632,21 @@ Deliberately not run: Totoro 9×500 grid dispatch; full `devtools::test()`.
   cov2cor(B) (1e-2). This is one local paired cell, not a parity claim.
 - No Totoro/DRAC campaign, engine surgery, interval route, or release action
   was run.
+
+## 2026-09-06 — paired kernel-latent unique live-run (Unlazy honesty)
+
+- Command: `GLLVM_JL_PATH=/Users/z3437171/local-scratch/lanes/GLLVM.jl-kernel-latent-unique-20260906 Rscript --vanilla -e 'res <- testthat::test_local(filter="kernel-latent-unique-bridge", reporter="check"); df <- as.data.frame(res); cat("TALLY failed=", sum(df$failed), " skipped=", sum(df$skipped), " error=", sum(df$error), " warning=", sum(df$warning), " passed=", sum(df$passed), "\n")'`
+- Tally: **[ FAIL 0 | WARN 0 | SKIP 0 | PASS 16 ]**; `TALLY failed= 0  skipped= 0  error= 0  warning= 0  passed= 16`.
+- Breakdown: extractor 4, rejection 3, paired Julia+TMB logLik/B/cov2cor(B) 9.
+- Julia 1.10.0 available via `~/.juliaup/bin/julia`. A LogExpFunctionsInverseFunctionsExt precompile warning printed; it did not fail the cell.
+- Unlazy: R2/J4 now EXPECT the tally string above, not `DONE` / `test -f`.
+
+## 2026-09-06 — dense-K input guard reverify
+
+- Added the bridge-side strict positive-definiteness check after K is aligned
+  to the public `unit` levels. No jitter is added; a non-PD K stops before
+  invoking Julia.
+- Re-ran the focused Julia-enabled bridge suite: **[ FAIL 0 | WARN 0 | SKIP 0 |
+  PASS 20 ]**. The extra four controls cover unlabelled, asymmetric, non-PD,
+  and misaligned K; source-B extraction and the paired TMB/Julia cell remain
+  in the same focused run.

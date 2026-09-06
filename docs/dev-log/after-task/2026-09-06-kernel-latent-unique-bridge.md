@@ -25,3 +25,10 @@ Evidence:
 Rose audit: no NEWS or public capability claim was added. True parity,
 Class-1 promotion, M2-R2, Totoro/DRAC work, push, merge, and release remain
 out of scope.
+
+Follow-up reverify: the R payload now rejects a non-positive-definite K before
+Julia is invoked (strict `chol()` after factor-level alignment; no jitter).
+The focused live suite was rerun with the dedicated Julia project and returned
+**[ FAIL 0 | WARN 0 | SKIP 0 | PASS 20 ]**. The added controls cover
+unlabelled, asymmetric, non-PD, and misaligned K. This strengthens only the
+admitted one-source Gaussian route and does not widen the claims above.

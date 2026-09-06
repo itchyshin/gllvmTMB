@@ -3983,6 +3983,15 @@ print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
         call. = FALSE
       )
     }
+    if (is.null(tryCatch(chol(Kal), error = function(e) NULL))) {
+      stop(
+        .gllvm_julia_gate_message(
+          "GJL-GATE-STRUCTURED-TERMS",
+          "kernel K must be positive-definite; no jitter is applied."
+        ),
+        call. = FALSE
+      )
+    }
     kd <- z$extra$d
     source_spec <- list(
       name = as.character(z$extra$.kernel_name %||% "kernel"),

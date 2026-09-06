@@ -32,3 +32,8 @@ The focused live suite was rerun with the dedicated Julia project and returned
 **[ FAIL 0 | WARN 0 | SKIP 0 | PASS 20 ]**. The added controls cover
 unlabelled, asymmetric, non-PD, and misaligned K. This strengthens only the
 admitted one-source Gaussian route and does not widen the claims above.
+
+The package-prescribed targeted command `devtools::test(filter =
+"kernel-latent-unique-bridge", reporter = "summary")` also completed with
+the Julia project configured. Full `R CMD check` remains a CI-before-merge
+gate; no PR or merge is authorized in this slice.

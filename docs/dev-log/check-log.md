@@ -57617,3 +57617,60 @@ Deliberately not run: Totoro 9×500 grid dispatch; full `devtools::test()`.
 - Scope ledger: KER-01 is covered; COE-02 stays partial. The article labels
   fixed rho, point estimate, no calibrated intervals, and no causal claim.
 - Full closeout: `docs/dev-log/after-task/2026-09-05-plant-bumblebee-coevolution-article.md`.
+
+## 2026-09-06 — D-220 bounded kernel-latent unique bridge
+
+- Ownership: Cursor/Ada, local-only D-220 slice; #1236 parked with
+  [comment](https://github.com/itchyshin/gllvmTMB/pull/1236#issuecomment-5560055805).
+- `Rscript --vanilla -e 'parse(file="R/julia-bridge.R")'` → `R_PARSE_OK`.
+- `Rscript --vanilla -e 'testthat::test_local(filter="kernel-latent-unique-bridge", reporter="summary")'`
+  → **7 expectations passed, 1 skipped** (Julia path absent).
+- With `GLLVM_JL_PATH=/Users/z3437171/local-scratch/lanes/GLLVM.jl-kernel-latent-unique-20260906`,
+  the paired bridge test exited 0. The cell uses the public
+  `kernel_latent(unit, K = K, d = 1, unique = TRUE)` formula under both
+  Julia and TMB, and compares logLik (1e-3), source B (1e-2), and
+  cov2cor(B) (1e-2). This is one local paired cell, not a parity claim.
+- No Totoro/DRAC campaign, engine surgery, interval route, or release action
+  was run.
+
+## 2026-09-06 — paired kernel-latent unique live-run (Unlazy honesty)
+
+- Command: `GLLVM_JL_PATH=/Users/z3437171/local-scratch/lanes/GLLVM.jl-kernel-latent-unique-20260906 Rscript --vanilla -e 'res <- testthat::test_local(filter="kernel-latent-unique-bridge", reporter="check"); df <- as.data.frame(res); cat("TALLY failed=", sum(df$failed), " skipped=", sum(df$skipped), " error=", sum(df$error), " warning=", sum(df$warning), " passed=", sum(df$passed), "\n")'`
+- First isolated tally (before `92c0b95ff` added four K-shape refusals): **[ FAIL 0 | WARN 0 | SKIP 0 | PASS 16 ]**.
+- Current focused file has 20 expectations. Later reverify and the dense-K guard entry below report **PASS 20 / FAIL 0**.
+- Breakdown now: extractor 4, rejection 7, paired Julia+TMB logLik/B/cov2cor(B) 9.
+- Julia 1.10.0 available via `~/.juliaup/bin/julia`. A LogExpFunctionsInverseFunctionsExt precompile warning printed; it did not fail the cell.
+- Unlazy: R2/J4 EXPECT the live tally (`passed=20`), not `DONE` / `test -f`.
+
+## 2026-09-06 — dense-K input guard reverify
+
+- Added the bridge-side strict positive-definiteness check after K is aligned
+  to the public `unit` levels. No jitter is added; a non-PD K stops before
+  invoking Julia.
+- Re-ran the focused Julia-enabled bridge suite: **[ FAIL 0 | WARN 0 | SKIP 0 |
+  PASS 20 ]**. The extra four controls cover unlabelled, asymmetric, non-PD,
+  and misaligned K; source-B extraction and the paired TMB/Julia cell remain
+  in the same focused run.
+
+## 2026-09-06 — Slice D Rose claim audit (R4)
+
+- Completed internal Rose claim audit in
+  `docs/dev-log/after-task/2026-09-06-kernel-latent-unique-bridge.md`.
+- File exists; cites no-public-claim (`not claiming`); cites paired
+  `TALLY failed=0 skipped=0 error=0 warning=0 passed=20`; names
+  `Class-1 promotion`, true parity, Totoro/DRAC as out of scope.
+- `git diff --stat origin/main...HEAD -- NEWS.md README.md DESCRIPTION`
+  empty. No NEWS / public capability claim.
+- #1236 remains parked (comment 5560055805). Unlazy
+  `.unlazy/julia-fixed-dense-kernel/GATES.md` R4 is the closeout row.
+- Not claiming true parity or Class-1 promotion.
+
+## 2026-09-06 — PR #1274 bare-abort ratchet (829 > 828)
+
+- Root cause: `R/julia-bridge.R` added a new `cli_abort()` when the
+  dense-kernel source covariance dimensions do not match traits. The
+  other new abort already has `Use`, so the honest count rose by 1.
+- Fix: give that consistency check a `>` next step (retry the same
+  formula with `engine = "tmb"`). Ceiling stays **828**; not bumped.
+- Command: `Rscript --vanilla -e 'source("dev/gapclose/count-bare-aborts.R"); cat(length(count_bare_aborts("R")), "\n")'`
+  plus `testthat` filter `gapclose-next-steps|kernel-latent-unique-bridge`.

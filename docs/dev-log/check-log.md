@@ -57651,3 +57651,16 @@ Deliberately not run: Totoro 9×500 grid dispatch; full `devtools::test()`.
   PASS 20 ]**. The extra four controls cover unlabelled, asymmetric, non-PD,
   and misaligned K; source-B extraction and the paired TMB/Julia cell remain
   in the same focused run.
+
+## 2026-09-06 — Slice D Rose claim audit (R4)
+
+- Completed internal Rose claim audit in
+  `docs/dev-log/after-task/2026-09-06-kernel-latent-unique-bridge.md`.
+- File exists; cites no-public-claim (`not claiming`); cites paired
+  `TALLY failed=0 skipped=0 error=0 warning=0 passed=20`; names
+  `Class-1 promotion`, true parity, Totoro/DRAC as out of scope.
+- `git diff --stat origin/main...HEAD -- NEWS.md README.md DESCRIPTION`
+  empty. No NEWS / public capability claim.
+- #1236 remains parked (comment 5560055805). Unlazy
+  `.unlazy/julia-fixed-dense-kernel/GATES.md` R4 is the closeout row.
+- Not claiming true parity or Class-1 promotion.

@@ -48,6 +48,27 @@ test_that("dense-kernel source extractor returns B, not residual-inclusive Sigma
   expect_match(out$note, "B = Lambda Lambda' \\+ Psi")
 })
 
+test_that("dense-kernel dimension mismatch names a TMB next step", {
+  fit <- structure(
+    list(
+      family = "gaussian",
+      families = "gaussian",
+      n_traits = 2L,
+      n_units = 6L,
+      trait_names = c("t1", "t2"),
+      unit_names = paste0("u", 1:6),
+      source_names = "cross",
+      source_covariance = matrix(1, 1, 1),
+      Sigma = matrix(1, 1, 1)
+    ),
+    class = c("gllvmTMB_julia", "list")
+  )
+  expect_error(
+    extract_Sigma(fit, level = "cross"),
+    "engine = \"tmb\""
+  )
+})
+
 test_that("kernel Julia bridge rejects the bounded-cell exclusions", {
   df <- kernel_bridge_make_long(n_unit = 6L, traits = c("t1", "t2"))
   df$group <- factor(rep(1:3, each = 4))

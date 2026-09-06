@@ -57664,3 +57664,13 @@ Deliberately not run: Totoro 9×500 grid dispatch; full `devtools::test()`.
 - #1236 remains parked (comment 5560055805). Unlazy
   `.unlazy/julia-fixed-dense-kernel/GATES.md` R4 is the closeout row.
 - Not claiming true parity or Class-1 promotion.
+
+## 2026-09-06 — PR #1274 bare-abort ratchet (829 > 828)
+
+- Root cause: `R/julia-bridge.R` added a new `cli_abort()` when the
+  dense-kernel source covariance dimensions do not match traits. The
+  other new abort already has `Use`, so the honest count rose by 1.
+- Fix: give that consistency check a `>` next step (retry the same
+  formula with `engine = "tmb"`). Ceiling stays **828**; not bumped.
+- Command: `Rscript --vanilla -e 'source("dev/gapclose/count-bare-aborts.R"); cat(length(count_bare_aborts("R")), "\n")'`
+  plus `testthat` filter `gapclose-next-steps|kernel-latent-unique-bridge`.

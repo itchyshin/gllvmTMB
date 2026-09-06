@@ -84,3 +84,10 @@ the Claude draft paths in this closeout.
 Rose verdict (claim audit): PASS WITH NOTES — file exists, cites
 no-public-claim, and cites paired PASS 20. The notes are the same
 scope fence as above.
+
+## CI ratchet follow-up (2026-09-06)
+
+`test-gapclose-next-steps.R:93` failed on this PR because the new
+dense-kernel dimension-mismatch abort had no next step (829 > 828).
+That abort now names `engine = "tmb"` as the working route. The
+package-wide ceiling stays 828. No capability claim was widened.

@@ -1406,9 +1406,10 @@ gllvm_julia_capabilities <- function() {
     traits <- .gllvm_julia_trait_names(fit, .gllvm_julia_n_traits(fit))
     B <- as.matrix(fit$source_covariance %||% fit$Sigma)
     if (!identical(dim(B), c(length(traits), length(traits)))) {
-      cli::cli_abort(
-        "engine = 'julia': dense-kernel source covariance dimensions do not match traits."
-      )
+      cli::cli_abort(c(
+        "engine = 'julia': dense-kernel source covariance dimensions do not match traits.",
+        ">" = "Retry with {.code engine = \"tmb\"} and report this bridge consistency error."
+      ))
     }
     dimnames(B) <- list(traits, traits)
     R <- .gllvm_julia_cov2cor(B, traits)

@@ -156,11 +156,11 @@ test_that("one Gaussian dense-kernel cell agrees between TMB and Julia", {
   fml <- value ~ 0 + trait +
     kernel_latent(unit, K = K, d = 1, unique = TRUE)
   fit_j <- gllvmTMB(
-    fml, data = df, unit = "unit", trait = "trait", species = "unit",
+    fml, data = df, unit = "unit", trait = "trait", cluster = "unit",
     family = gaussian(), engine = "julia", ci_method = "none"
   )
   fit_r <- gllvmTMB(
-    fml, data = df, unit = "unit", trait = "trait", species = "unit",
+    fml, data = df, unit = "unit", trait = "trait", cluster = "unit",
     family = gaussian(), engine = "tmb"
   )
   expect_s3_class(fit_j, "gllvmTMB_julia")

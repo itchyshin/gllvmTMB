@@ -57603,3 +57603,17 @@ Deliberately not run: Totoro 9×500 grid dispatch; full `devtools::test()`.
   `pkgdown::build_reference()` produced `pkgdown-site/reference/index.html`; a
   rendered-topic assertion -> `rendered_reference_topics=PASS`.
 - Exact source/documentation scan: `rg -n -e 'anova.gllvmTMB_multi|chibar2_pvalue|extract_latent_scores|ordinal_logit|ordination_uncertainty|select_lv|variance_lrt' R man _pkgdown.yml`.
+
+## 2026-09-05 — Synthetic plant--bumblebee cross-lineage covariance article
+
+- Added one PCM-only article, deterministic fixture, actual-fit smoke script,
+  and fixture-contract test. The fixture is intentionally synthetic; it is not
+  a Liang et al. re-analysis.
+- `Rscript --vanilla dev/plant-bumblebee-coevolution-smoke.R` ->
+  `plant_bumblebee_point_estimate=PASS`, convergence `0`, log likelihood
+  `79.432965`; targeted `devtools::test()` -> 8 expectations, 0 failures.
+- `pkgdown::build_article("articles/plant-bumblebee-coevolution", lazy = FALSE)`
+  and `pkgdown::check_pkgdown()` -> PASS.
+- Scope ledger: KER-01 is covered; COE-02 stays partial. The article labels
+  fixed rho, point estimate, no calibrated intervals, and no causal claim.
+- Full closeout: `docs/dev-log/after-task/2026-09-05-plant-bumblebee-coevolution-article.md`.

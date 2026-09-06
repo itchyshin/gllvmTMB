@@ -1,0 +1,221 @@
+---
+title: "Cross-lineage covariance in a plant--bumblebee example"
+description: "Build one fixed cross-lineage kernel and read its plant-by-bumblebee trait covariance block, with an explicit point-estimate boundary."
+tier: 1
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 2
+vignette: >
+  %\VignetteIndexEntry{Cross-lineage covariance in a plant--bumblebee example}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 6.5,
+  fig.height = 4.2,
+  fig.align = "center",
+  cache = FALSE,
+  eval = TRUE,
+  message = FALSE,
+  warning = FALSE
+)
+```
+
+This article shows the smallest cross-lineage phylogenetic workflow: flower
+traits from one lineage and bumblebee traits from another share a supplied,
+association-derived kernel. The output is a plant-trait by bumblebee-trait
+covariance block, not an interaction model.
+
+> **Synthetic teaching data.** Every species name, trait value, phylogeny, and
+> interaction weight below was simulated for this article. The names make the
+> workflow concrete; they are not observations from a real plant--bumblebee
+> network. A suitable public empirical source is the CC0 data record of Liang
+> (2020, [Dryad](https://doi.org/10.5061/dryad.sf7m0cg34)); substituting it
+> requires deliberate species-name and trait checks before fitting.
+
+> **Evidence boundary.** This is a fixed-`rho`, Gaussian point-estimate
+> example. `rho` is supplied when the kernel is built, not estimated by the
+> model. The covariance block has no calibrated interval here, and it is not
+> evidence that traits causally coevolved. Sparse association data, a different
+> defensible `rho`, or a different interaction matrix can change the result.
+
+> **Scope boundary.** **In:** one named, dense `kernel_latent()` tier and its
+> shared plant-by-bumblebee covariance block. **Partial:** the fixed-`rho`
+> point estimate demonstrated here; it is sensitive to the supplied kernel and
+> association matrix. **Not provided:** estimated `rho`, calibrated intervals,
+> a causal coevolution test, or a separately interpreted phylogenetic-versus-tip
+> decomposition.
+
+## The model and its estimand
+
+Let (A_F) and (A_B) be fixed plant and bumblebee phylogenetic correlation
+matrices, and let (W) be the observed or assumed plant-by-bumblebee
+association matrix. `make_cross_kernel()` builds a positive-semidefinite
+stacked kernel
+
+$$
+K_{\mathrm{cross}} =
+\begin{bmatrix}
+A_F & C_{FB} \\
+C_{FB}^{\mathsf T} & A_B
+\end{bmatrix},
+$$
+
+where the off-diagonal block (C_{FB}) is a spectrally scaled function of
+(A_F), (A_B), (W), and the fixed bridge strength (ho). A latent
+Gaussian field (G \sim \operatorname{MVN}(0, K_{\mathrm{cross}})) then gives
+
+$$
+Y = M + G\Lambda^{\mathsf T} + E,
+\qquad
+\Gamma_{FB} = \Lambda_F\Lambda_B^{\mathsf T}.
+$$
+
+`Gamma` is the block whose rows are flower traits and whose columns are
+bumblebee traits. It summarizes the fitted shared covariance shape conditional
+on the supplied kernel. It does not identify a mechanism, establish the
+direction of evolutionary change, or turn the interaction matrix into a
+response variable.
+
+::: {.table-responsive}
+| Symbol in prose | Keyword or helper | Teaching-data draw | Extractor | Known teaching value |
+|---|---|---|---|---|
+| (K_{\mathrm{cross}}) | `make_cross_kernel()` | fixed from (A_F, A_B, W, \rho) | eigenvalue and name checks | `example$K_cross` |
+| (G) | `kernel_latent(..., d = 2, name = "cross")` | (\operatorname{MVN}(0, K_{\mathrm{cross}})) | `extract_Sigma(..., part = "shared")` | `Lambda %*% t(Lambda)` |
+| (Gamma_{FB}) | same named kernel tier | `Lambda_plant %*% t(Lambda_bumblebee)` | `extract_Gamma()` | `example$truth$Gamma` |
+:::
+
+## Load the synthetic plant--bumblebee fixture
+
+```{r setup}
+library(gllvmTMB)
+
+example_path <- system.file(
+  "extdata", "examples", "plant-bumblebee-coevolution-example.rds",
+  package = "gllvmTMB"
+)
+example_path <- c(
+  example_path,
+  file.path("inst", "extdata", "examples", "plant-bumblebee-coevolution-example.rds"),
+  file.path("..", "inst", "extdata", "examples", "plant-bumblebee-coevolution-example.rds"),
+  file.path("..", "..", "inst", "extdata", "examples", "plant-bumblebee-coevolution-example.rds")
+)
+example_path <- example_path[nzchar(example_path) & file.exists(example_path)][1]
+stopifnot(!is.na(example_path))
+example <- readRDS(example_path)
+
+c(
+  plants = example$truth$n_plant,
+  bumblebees = example$truth$n_bumblebee,
+  repeated_measurements = example$truth$n_replicate
+)
+head(example$data_wide)
+```
+
+Each plant row has two observed flower traits and missing bumblebee traits;
+each bumblebee row has the complementary pattern. That block-missing layout is
+intentional. The model learns covariance across the two lineages through the
+supplied cross-kernel, not by pretending a plant has a tongue length.
+
+## Build and check the fixed cross-lineage kernel
+
+```{r kernel}
+K_cross <- make_cross_kernel(
+  example$A_plant,
+  example$A_bumblebee,
+  example$W,
+  rho = example$truth$rho
+)
+
+kernel_check <- list(
+  reconstructed_exactly = isTRUE(all.equal(K_cross, example$K_cross)),
+  minimum_eigenvalue = min(eigen(K_cross, symmetric = TRUE, only.values = TRUE)$values),
+  plant_names_match = identical(rownames(example$A_plant), rownames(example$W)),
+  bumblebee_names_match = identical(colnames(example$A_bumblebee), colnames(example$W))
+)
+kernel_check
+```
+
+For real data, stop here if a species is absent from either tree, if names are
+duplicated across the two lineages, or if the interaction matrix is ordered
+differently from the trees. Prune and reorder deliberately, then rebuild the
+kernel. Do not repair those problems by relying on factor order.
+
+## Fit in wide form
+
+The wide form has one observation per row and the four traits in columns. It
+is compact when the two sets of traits are already stored separately.
+
+```{r fit-wide}
+fit <- gllvmTMB(
+  traits(flower_tube_depth, nectar_volume, tongue_length, body_size) ~ 1 +
+    kernel_latent(species, K = K_cross, d = 2, name = "cross"),
+  data = example$data_wide,
+  unit = "observation",
+  cluster = "species",
+  family = gaussian(),
+  control = gllvmTMBcontrol(se = FALSE)
+)
+
+c(
+  convergence = fit$opt$convergence,
+  log_likelihood = as.numeric(logLik(fit))
+)
+```
+
+The long form is equivalent in meaning and is often easier to construct from
+field data. It uses the same `gllvmTMB()` entry point:
+
+```{r fit-long, eval = FALSE}
+fit_long <- gllvmTMB(
+  value ~ 0 + trait +
+    kernel_latent(species, K = K_cross, d = 2, name = "cross"),
+  data = example$data_long,
+  trait = "trait",
+  unit = "observation",
+  cluster = "species",
+  family = gaussian(),
+  control = gllvmTMBcontrol(se = FALSE)
+)
+```
+
+Here the optimizer reached its normal convergence code. That is a numerical
+health check, not validation of an evolutionary conclusion; inspect
+`check_gllvmTMB(fit)` before interpreting a real fit.
+
+## Read the plant-by-bumblebee covariance block
+
+```{r gamma}
+Gamma_shape <- extract_Gamma(
+  fit,
+  level = "cross",
+  row_traits = example$truth$plant_traits,
+  col_traits = example$truth$bumblebee_traits,
+  scale = "shape"
+)
+round(Gamma_shape, 3)
+```
+
+The signs and relative sizes describe the fitted shared covariance shape for
+this synthetic draw, conditional on the chosen kernel. They are not estimates
+of a universal flower--pollinator matching rule. `scale = "effect"` would
+multiply this shape by the **fixed** `rho`; it would still not estimate `rho`.
+
+## What to do with empirical data next
+
+For an empirical analysis, first make the biological unit explicit: normally
+one row per measured organism or species-level replicate, with a documented
+link from each row to a tree tip. Then retain the four checks this small
+example makes visible: tree labels, trait availability, interaction-matrix
+ordering, and the smallest eigenvalue of the assembled kernel.
+
+You can use `profile_cross_rho()` to refit a short, pre-specified grid of
+fixed `rho` values as a sensitivity analysis. That helper compares supplied
+kernels; it does not estimate `rho`, produce a profile confidence interval, or
+validate a bootstrap. A bootstrap or additional model comparison is therefore
+a separate analysis plan, not a conclusion licensed by this article.

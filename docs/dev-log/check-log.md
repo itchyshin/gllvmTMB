@@ -57621,7 +57621,7 @@ Deliberately not run: Totoro 9×500 grid dispatch; full `devtools::test()`.
 ## 2026-09-06 — D-220 bounded kernel-latent unique bridge
 
 - Ownership: Cursor/Ada, local-only D-220 slice; #1236 parked with
-  [comment](https://github.com/itchyshin/gllvmTMB/pull/1236#issuecomment-5560078968).
+  [comment](https://github.com/itchyshin/gllvmTMB/pull/1236#issuecomment-5560055805).
 - `Rscript --vanilla -e 'parse(file="R/julia-bridge.R")'` → `R_PARSE_OK`.
 - `Rscript --vanilla -e 'testthat::test_local(filter="kernel-latent-unique-bridge", reporter="summary")'`
   → **7 expectations passed, 1 skipped** (Julia path absent).

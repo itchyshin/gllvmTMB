@@ -359,6 +359,31 @@ Current operating rule:
 
 ## Active lanes
 
+- **2026-09-08 — NOTICE, not a lane: the `link_residual` convention names the LIABILITY scale
+  "latent" ([#1276](https://github.com/itchyshin/gllvmTMB/issues/1276)).** Filed by Claude on
+  Shinichi's instruction; **no gllvmTMB source touched and no lane claimed.**
+  **This is a RENAME, not a RENUMBER — do not change any number.** The reasoning in
+  `docs/dev-log/audits/2026-05-17-link-residual-design-decision.md` (ascertainment invariance,
+  link-defined constants, latent-scale correlations as the vision-item-5 differentiator) **still
+  holds**; it is a sound argument *for reporting the liability scale*.
+  **The issue is the word.** That audit adds π²/3 (logit) / 1 (probit) / π²/6 (cloglog) to the
+  latent-scale Σ and calls it *"the correct latent-scale repeatability denominator"*. Under
+  **de Villemereuil, Schielzeth, Nakagawa & Morrissey 2016, *Genetics* 204:1281–1294** (Shinichi
+  is an author) that is **Eq 24, the liability scale**. **Eq 4 — the latent scale — is
+  `V_A,ℓ/(V_A,ℓ + V_RE + V_O)` and contains no link variance at all.** The paper is explicit at
+  p1287: this liability scale *"is not the same as the latent scale hereby defined for the GLMM"*.
+  **Suggested:** report the quantity as **liability**, or report both (Eq 4 alongside Eq 24), and
+  align vocabulary with `HSquared.jl` / `hsquared`, which are adopting the paper's three-scale
+  naming — `h2_latent` (Eq 4) · `h2_liability` (Eq 24, binomial only) · `h2_observation` (Eq 26/25).
+  **Also relevant here: Eq 28 is the exact observed-scale ICC/repeatability for Poisson-log**, so
+  the `ln(1 + 1/λ)` distribution-specific-variance approximation is never needed. **Do not accept
+  `ln(1+1/λ)` as a latent-scale quantity** — three independent LLM reviews proposed it and all
+  were wrong.
+  Decision: [[DECISIONS#D-252]]. Siblings: itchyshin/drmTMB#1301 · itchyshin/hsquared#201 ·
+  `HSquared.jl` branch `claude/h2-three-scale-naming-20260908`.
+  **`GLLVM.jl` should be audited with this repo**, so the parity apparatus does not certify
+  agreement on a mislabelled quantity.
+
 **Refreshed 2026-09-04 from evidence, not from claims.** The previous table described a Codex
 "Phase 56.5 anchor-adjacent fan-out" as the single active lane. That row was **three months stale and
 its artifacts no longer exist**: the file it named,

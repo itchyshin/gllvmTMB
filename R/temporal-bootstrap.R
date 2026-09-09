@@ -21,7 +21,7 @@ bootstrap_temporal <- function(object, n_boot = 100L, seed = NULL) {
   out <- vector("list", n_boot)
   for (i in seq_len(n_boot)) {
     dat <- object$data; dat[[response]] <- draws[, i]
-    refit <- tryCatch(update(object, data = dat), error = identity)
+    refit <- tryCatch(stats::update(object, data = dat), error = identity)
     if (inherits(refit, "error")) {
       out[[i]] <- data.frame(replicate = i, convergence = NA_integer_, objective = NA_real_, time_estimate = NA_real_, error = conditionMessage(refit))
     } else {

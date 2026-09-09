@@ -125,3 +125,25 @@ test_that("S3b native-pair source snapshots reject untracked files", {
     "temporary source must be clean"
   )
 })
+
+test_that("S3b native-pair source snapshots accept a clean repository", {
+  runner_environment <- new.env(parent = baseenv())
+  withr::local_envvar(GLLVM_S3B_NATIVE_PAIRS_DEFINE_ONLY = "1")
+  source(testthat::test_path("run-destination-b-s3b-native-pairs-isolated.R"), local = runner_environment)
+
+  temporary_repository <- tempfile("s3b-clean-source-")
+  dir.create(temporary_repository)
+  withr::defer(unlink(temporary_repository, recursive = TRUE))
+  system2("git", c("init", "--quiet", temporary_repository))
+  writeLines("tracked", file.path(temporary_repository, "tracked.txt"))
+  system2("git", c("-C", temporary_repository, "add", "tracked.txt"))
+  system2("git", c(
+    "-C", temporary_repository,
+    "-c", "user.name=TestRunner", "-c", "user.email=test@example.invalid",
+    "commit", "--quiet", "-m", "initial"
+  ))
+
+  expect_silent(
+    runner_environment$s3b_native_pairs_require_clean_git(temporary_repository, "temporary source")
+  )
+})

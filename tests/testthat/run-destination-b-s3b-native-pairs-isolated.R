@@ -41,7 +41,7 @@ s3b_native_pairs_git_stdout <- function(args, label) {
   if (!is.null(status) && as.integer(status) != 0L) {
     stop(sprintf("%s git command failed: %s", label, paste(output, collapse = "\n")), call. = FALSE)
   }
-  trimws(output)
+  trimws(paste(output, collapse = "\n"))
 }
 
 s3b_native_pairs_validate_loaded_path <- function(actual_path, expected_path, label) {

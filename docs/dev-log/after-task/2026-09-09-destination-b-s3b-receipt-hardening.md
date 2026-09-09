@@ -30,7 +30,10 @@ or Julia consumer changed.
 
 - RED: the old runner ignored define-only mode and demanded live environment
   variables.
-- GREEN: focused runner tests passed **13 expectations**.
+- RED/GREEN follow-up: a clean source tree exposed a zero-length Git-output
+  bug before package loading. The new clean-repository test failed first;
+  scalarising successful empty Git output fixes the guard. Focused runner
+  tests now pass **14 expectations**.
 - The new configured receipt path is mandatory; this prevents accidental
   overwrite of the historical receipt. A live run has not been attempted
   because the new branch does not yet have its authenticated frozen DLL.

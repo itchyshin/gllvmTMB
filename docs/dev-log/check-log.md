@@ -57746,3 +57746,5 @@ Deliberately not run: Totoro 9×500 grid dispatch; full `devtools::test()`.
   results, and its forecast/profile/bootstrap/selection fixtures emitted
   `TEMPORAL_PROGRAM_LIFECYCLE_PASS`. Publication and source-pair modes remain
   fail-closed pending three-OS CI and source-pair admission evidence.
+- Follow-up regression: `OPENBLAS_NUM_THREADS=1 Rscript --vanilla -e 'devtools::test(filter = "temporal-sixth-source")'` completed with **167 assertions, 0 failures, 0 warnings, and 0 skips** in 40.6 seconds.
+- The programme runner was also invoked in `publication`, `combinations`, and `closeout` modes. Each exited nonzero with its intended missing-evidence message; none silently passed. These blocks are evidence boundaries, not failures of the admitted temporal-only route.

@@ -24,3 +24,14 @@ dense Gaussian likelihood over fixed parameter values, and expose flat or
 boundary profiles without inventing endpoints. Wald intervals, derived
 covariance targets, replicated panels, source combinations, bootstrap, and
 coverage claims remain separate work.
+
+## Feasibility receipt
+
+On 2026-09-09, `tmbprofile_wrapper()` was run directly on
+`theta_temporal_time` from a three-series, four-occasion,
+three-trait temporal-independence fit. The wrapper evaluated the temporal TMB
+objective and returned the transformed AR1 MLE (`-0.1711763`). Both bounds were
+`NA` for that deliberately small, weak fixture. This is retained as a
+feasibility observation only: it proves that the generic TMB profile machinery
+can address the native temporal parameter, not that the profile has calibrated
+interval endpoints.

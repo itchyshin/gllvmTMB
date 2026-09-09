@@ -4,8 +4,8 @@ root <- normalizePath(getwd(), mustWork = TRUE)
 if (!file.exists(file.path(root, "DESCRIPTION"))) {
   stop("Run temporal programme verification from the repository root.", call. = FALSE)
 }
-if (!mode %in% c("plan", "simulation", "combinations")) {
-  stop("usage: Rscript --vanilla dev/temporal-program/verify.R {plan|simulation|combinations}", call. = FALSE)
+if (!mode %in% c("plan", "simulation")) {
+  stop("usage: Rscript --vanilla dev/temporal-program/verify.R {plan|simulation}", call. = FALSE)
 }
 
 .temporal_program_assert_test_results <- function(result, fixture) {
@@ -32,16 +32,10 @@ if (identical(mode, "plan")) {
   quit(save = "no", status = 0L)
 }
 
-fixture <- switch(mode,
-  simulation = file.path(root, "tests/testthat/test-temporal-program-simulation.R"),
-  combinations = file.path(root, "tests/testthat/test-temporal-program-kernel.R")
-)
-if (!file.exists(fixture)) stop("missing temporal programme fixture", call. = FALSE)
+fixture <- file.path(root, "tests/testthat/test-temporal-program-simulation.R")
+if (!file.exists(fixture)) stop("missing temporal simulation fixture", call. = FALSE)
 pkgload::load_all(root, quiet = TRUE, export_all = FALSE)
 .temporal_program_assert_test_results(
   testthat::test_file(fixture, reporter = "silent"), fixture
 )
-cat(switch(mode,
-  simulation = "TEMPORAL_PROGRAM_SIMULATION_PASS\n",
-  combinations = "TEMPORAL_PROGRAM_COMBINATIONS_PASS\n"
-))
+cat("TEMPORAL_PROGRAM_SIMULATION_PASS\n")

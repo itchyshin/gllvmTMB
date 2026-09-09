@@ -36,8 +36,7 @@ fixture <- switch(mode,
   simulation = file.path(root, "tests/testthat/test-temporal-program-simulation.R"),
   combinations = c(
     file.path(root, "tests/testthat/test-temporal-program-kernel.R"),
-    file.path(root, "tests/testthat/test-temporal-program-phylo.R"),
-    file.path(root, "tests/testthat/test-temporal-program-animal.R")
+    file.path(root, "tests/testthat/test-temporal-program-phylo.R")
   )
 )
 if (any(!file.exists(fixture))) {

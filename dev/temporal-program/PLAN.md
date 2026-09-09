@@ -75,6 +75,17 @@ S3a--S3d are logically parallel but share parser, fit plumbing, C++ engine and d
 - **G9:** supplied-candidate selection preserves likelihood semantics and never assigns an invalid LRT distribution at a temporal boundary.
 - **G10:** docs, generated help, pkgdown, package checks, validation register, after-task report and plan-versus-result reconciliation agree.
 
+## Current reconciliation
+
+On 2026-09-09, fixed-parameter public previews for
+`temporal_indep() + kernel_indep()`, `+ phylo_indep()`, and
+`+ animal_indep()` reached the existing additive engine and matched small dense
+Gaussian likelihood/gradient calculations. They did not yet have the required
+unconditional composed simulation, retained recovery, or source-specific
+lifecycle evidence. The parser admissions were therefore reverted. No temporal
+source pair is currently admitted; the preview calculations are not a capability
+claim and G3 remains unmet.
+
 ## Compute
 
 Cheap deterministic oracles and smoke fits run locally with one BLAS thread and at most four local cores. Before any recovery or coverage campaign, time one fixture for every source pair and lifecycle route. A retained run projected above 30 minutes requires the measured pre-run evidence and separate compute approval; use Totoro for a bounded rehearsal and DRAC arrays for claim-bearing campaigns.

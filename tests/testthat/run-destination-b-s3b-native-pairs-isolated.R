@@ -26,6 +26,7 @@ project <- normalizePath(Sys.getenv("GLLVM_DESTINATION_B_PROJECT"), mustWork = T
 if (!file.exists(file.path(project, "Project.toml"))) {
   stop("GLLVM_DESTINATION_B_PROJECT is not a Julia project", call. = FALSE)
 }
+receipt_path <- "docs/dev-log/artifacts/2026-09-09-destination-b-s3b-native-pairs-receipt.json"
 pkgload::load_all(".", quiet = TRUE, compile = FALSE)
 
 path <- "tests/testthat/test-julia-phylo-rr-bridge.R"
@@ -91,8 +92,10 @@ if (length(unexpected_paths)) {
 }
 tracked_status <- git_stdout(c("status", "--porcelain", "--untracked-files=no"),
   "adapter source status")
-if (length(tracked_status)) {
-  stop("adapter source must be tracked-clean before retaining a receipt", call. = FALSE)
+tracked_paths <- if (length(tracked_status)) trimws(substr(tracked_status, 4L, nchar(tracked_status))) else character()
+nonreceipt_changes <- setdiff(tracked_paths, receipt_path)
+if (length(nonreceipt_changes)) {
+  stop("adapter source must be tracked-clean outside its stale receipt before retaining evidence", call. = FALSE)
 }
 namespace_path <- normalizePath(getNamespaceInfo(asNamespace("gllvmTMB"), "path"))
 if (!identical(namespace_path, normalizePath(getwd()))) {
@@ -108,7 +111,7 @@ result <- list(
     frozen_reference_commit = frozen_reference_commit,
     frozen_reference_is_ancestor = TRUE,
     adapter_commit = git_stdout(c("rev-parse", "HEAD"), "gllvmTMB revision"),
-    adapter_tracked_clean = TRUE,
+    adapter_tracked_clean_outside_receipt = TRUE,
     changed_paths_from_frozen = changed_paths,
     r_version = R.version$version.string,
     r_platform = R.version$platform,
@@ -124,7 +127,6 @@ result <- list(
     "no recovery or coverage claim"
   )
 )
-receipt_path <- "docs/dev-log/artifacts/2026-09-09-destination-b-s3b-native-pairs-receipt.json"
 jsonlite::write_json(result, receipt_path, auto_unbox = TRUE, pretty = TRUE, digits = NA)
 cat(sprintf("S3B_NATIVE_PAIRS_TALLY failed=%d skipped=%d error=%d warning=%d passed=%d\n", failed, skipped, errors, warnings, passed))
 cat("S3B_NATIVE_PAIRS_RECEIPT ", receipt_path, "\n", sep = "")

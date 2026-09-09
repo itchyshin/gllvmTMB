@@ -6,7 +6,7 @@
   "source": {
     "frozen_reference_commit": "b4d5fee64def88bc768dda1f1f77c29b295edd86",
     "frozen_reference_is_ancestor": true,
-    "adapter_commit": "7908eab2d7bbf2e86e269bf71e8f09501d57ecf0",
+    "adapter_commit": "41a779bf216e307c50380010772492969ffb6451",
     "adapter_tracked_clean_outside_receipt": true,
     "changed_paths_from_frozen": ["R/julia-bridge.R", "docs/dev-log/after-task/2026-09-09-destination-b-s3b-r-adapter.md", "docs/dev-log/artifacts/2026-09-09-destination-b-s3b-native-pairs-receipt.json", "docs/dev-log/check-log.md", "tests/testthat/run-destination-b-s3b-native-pairs-isolated.R", "tests/testthat/test-julia-phylo-rr-bridge.R"],
     "r_version": "R version 4.6.0 (2026-04-24)",

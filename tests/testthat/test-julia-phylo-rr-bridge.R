@@ -648,6 +648,75 @@ test_that("S4 Tree wrapper refuses counterfeit non-Wald stored endpoints", {
   )
 })
 
+test_that("S4 Tree wrapper refuses reversed stored endpoints", {
+  result <- .s4_tree_wrapper_julia_result()
+  result$ci_lower[1L] <- 0
+  result$ci_upper[1L] <- -0.4
+  expect_error(
+    gllvmTMB:::confint.gllvmTMB_julia_phylo_rr(result, level = 0.9),
+    "GJL-GATE-PHYLO-MV-CI-RESULT"
+  )
+})
+
+test_that("S4 Tree wrapper refuses collapsed stored endpoints", {
+  result <- .s4_tree_wrapper_julia_result()
+  result$ci_lower[1L] <- result$ci_estimate[1L]
+  result$ci_upper[1L] <- result$ci_estimate[1L]
+  expect_error(
+    gllvmTMB:::confint.gllvmTMB_julia_phylo_rr(result, level = 0.9),
+    "GJL-GATE-PHYLO-MV-CI-RESULT"
+  )
+})
+
+test_that("S4 Tree wrapper refuses stored endpoints excluding their estimate", {
+  for (estimate in c(-0.5, 0.1)) {
+    result <- .s4_tree_wrapper_julia_result()
+    result$ci_estimate[1L] <- estimate
+    expect_error(
+      gllvmTMB:::confint.gllvmTMB_julia_phylo_rr(result, level = 0.9),
+      "GJL-GATE-PHYLO-MV-CI-RESULT"
+    )
+  }
+})
+
+test_that("S4 Tree wrapper accepts an estimate equal to its lower endpoint", {
+  result <- .s4_tree_wrapper_julia_result()
+  result$ci_estimate[1L] <- result$ci_lower[1L]
+  ci <- gllvmTMB:::confint.gllvmTMB_julia_phylo_rr(result, level = 0.9)
+  expect_equal(unname(ci["beta[1]", ]), c(-0.4, 0.0))
+})
+
+test_that("S4 Tree wrapper accepts an estimate equal to its upper endpoint", {
+  result <- .s4_tree_wrapper_julia_result()
+  result$ci_estimate[1L] <- result$ci_upper[1L]
+  ci <- gllvmTMB:::confint.gllvmTMB_julia_phylo_rr(result, level = 0.9)
+  expect_equal(unname(ci["beta[1]", ]), c(-0.4, 0.0))
+})
+
+test_that("S4 Tree wrapper refuses available non-finite stored endpoints", {
+  for (endpoint in c("ci_lower", "ci_upper")) {
+    for (value in c(NA_real_, Inf, -Inf)) {
+      result <- .s4_tree_wrapper_julia_result()
+      result[[endpoint]][1L] <- value
+      expect_error(
+        gllvmTMB:::confint.gllvmTMB_julia_phylo_rr(result, level = 0.9),
+        "GJL-GATE-PHYLO-MV-CI-RESULT"
+      )
+    }
+  }
+})
+
+test_that("S4 Tree wrapper refuses available non-finite stored estimates", {
+  for (value in c(NA_real_, Inf, -Inf)) {
+    result <- .s4_tree_wrapper_julia_result()
+    result$ci_estimate[1L] <- value
+    expect_error(
+      gllvmTMB:::confint.gllvmTMB_julia_phylo_rr(result, level = 0.9),
+      "GJL-GATE-PHYLO-MV-CI-RESULT"
+    )
+  }
+})
+
 test_that("S4 Tree wrapper rejects a non-intercept fixed design before Julia", {
   fit <- .s4_tree_wrapper_fixture()
   fit$X_fix[, 1L] <- 2

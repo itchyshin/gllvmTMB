@@ -53911,3 +53911,21 @@ candidate evidence is reused from this pre-integration run.
 - Hardened after independent review: source optimizer health, stored object/target Wald labels, malformed CI metadata, and `logLik` df/nobs all fail closed.
 - Focused opt-in frozen R-to-Julia bridge suite: 15 tests, 102 expectations, 0 failures/skips/errors/warnings, 24.5 s. `man/gllvm_julia_phylo_rr.Rd` parsed successfully and `git diff --check` was clean.
 - Dense `vcv`, pedigree, predictors, prediction, recovery, coverage, and generic admission remain outside this S4 row.
+
+## 2026-09-09 — Destination B S4 stored-interval reader repair
+
+- `confint.gllvmTMB_julia_phylo_rr()` now fails closed when any
+  `status = "available"` stored interval has a non-finite estimate/bound,
+  non-positive width, or an estimate outside its closed interval. Equality at
+  either endpoint remains valid. This is a post-fit R bridge reader repair;
+  no R/TMB likelihood, C++, formula grammar, public signature, or generic
+  `engine = "julia"` admission changed.
+- Test-first evidence: hostile reversed, collapsed, excluding, and non-finite
+  endpoint cases first failed against the old reader. A targeted mutation that
+  removed only the estimate-finiteness predicate made the new estimate test
+  fail before the guard returned its named diagnostic. The repaired source-only
+  S4 runner then passed **35/35 expectations** across **11 tests** in 3.3 s,
+  with no failures, errors, warnings, or skips. `git diff --check` passed.
+- An independent read-only review found no remaining P0/P1 in this reader
+  repair. It does not qualify S4 until the separate frozen-pair provenance,
+  seven-target census, and authoritative-route reconciliation gates are paid.

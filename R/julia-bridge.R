@@ -3548,9 +3548,30 @@ confint.gllvmTMB_julia_phylo_rr <- function(
     )
   }
   payload <- .gllvm_julia_phylo_rr_ci_table(object)
-  candidate <- payload$status == "available" &
-    is.finite(payload$estimate) & is.finite(payload$conf.low) &
-    is.finite(payload$conf.high)
+  candidate <- payload$status == "available"
+  invalid_finite <- candidate & (
+    !is.finite(payload$estimate) | !is.finite(payload$conf.low) |
+      !is.finite(payload$conf.high)
+  )
+  if (any(invalid_finite)) {
+    stop(
+      "GJL-GATE-PHYLO-MV-CI-RESULT: available stored intervals require finite estimates and endpoints: ",
+      paste(payload$term[invalid_finite], collapse = ", "),
+      call. = FALSE
+    )
+  }
+  invalid_bounds <- candidate & (
+    payload$conf.low >= payload$conf.high |
+      payload$estimate < payload$conf.low |
+      payload$estimate > payload$conf.high
+  )
+  if (any(invalid_bounds)) {
+    stop(
+      "GJL-GATE-PHYLO-MV-CI-RESULT: available stored intervals must have positive width and contain their estimate: ",
+      paste(payload$term[invalid_bounds], collapse = ", "),
+      call. = FALSE
+    )
+  }
   if (any(candidate & payload$method != "transformed_wald")) {
     stop(
       "GJL-GATE-PHYLO-MV-CI-RESULT: an available stored interval is not a Julia transformed-Wald endpoint.",

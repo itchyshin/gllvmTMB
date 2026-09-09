@@ -101,7 +101,7 @@ test_that("ordinary unit ordination remains available beside a temporal source",
   expect_false("pair_id" %in% names(ordination))
 })
 
-test_that("composed temporal simulation refuses incomplete unconditional redraw", {
+test_that("composed temporal simulation redraws every supported ordinary tier", {
   dat <- .temporal_sixth_fixture()
   dat$within_unit <- paste(dat$series, dat$occasion)
   fit <- suppressWarnings(gllvmTMB(
@@ -110,8 +110,8 @@ test_that("composed temporal simulation refuses incomplete unconditional redraw"
     data = dat, unit = "series", unit_obs = "within_unit",
     family = gaussian(), silent = TRUE
   ))
-  expect_error(simulate(fit, nsim = 1, seed = 41L),
-    "Unconditional.*ordinary unit or unit_obs")
+  expect_equal(dim(simulate(fit, nsim = 1, seed = 41L)),
+    c(nrow(fit$data), 1L))
   expect_equal(dim(simulate(fit, nsim = 2, seed = 41L, condition_on_RE = TRUE)),
     c(nrow(fit$data), 2L))
 })

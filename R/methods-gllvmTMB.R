@@ -1481,7 +1481,9 @@ tidy.gllvmTMB_multi <- function(
 #'   covariance — the unconditional simulation appropriate for
 #'   parametric bootstrap. Redraw is currently implemented for the
 #'   `rr_B`, `diag_B`, `rr_W`, `diag_W`, `propto`, `lv_B`, `phylo_rr`,
-#'   and `diag_species` tiers.
+#'   `diag_species`, and the native temporal tier. A temporal fit redraws its
+#'   recursive temporal state together with every supported ordinary/source
+#'   tier; it does not retain fitted ordinary modes in an unconditional draw.
 #'
 #'   **Not every tier is covered.** A fit using any other active tier —
 #'   notably the SPDE spatial tier (`spde`) and the diagonal
@@ -1530,29 +1532,31 @@ simulate.gllvmTMB_multi <- function(
   }
 
   if (isTRUE(object$temporal$active) && is.null(newdata)) {
-    ## The temporal redraw helper currently owns only the dedicated temporal
-    ## state tier.  Reusing fitted ordinary B/W modes here would make an
-    ## apparently unconditional draw omit their covariance.  Refuse that
-    ## request until a joint redraw is implemented; conditional simulation is
-    ## still well-defined and keeps every fitted random-effect mode.
-    ordinary_temporal_components <- c(
-      rr_B = isTRUE(object$use$rr_B), diag_B = isTRUE(object$use$diag_B),
-      rr_W = isTRUE(object$use$rr_W), diag_W = isTRUE(object$use$diag_W),
-      re_int = isTRUE(object$use$re_int)
-    )
-    if (!isTRUE(condition_on_RE) && any(ordinary_temporal_components)) {
+    if (isTRUE(condition_on_RE)) {
+      out <- replicate(nsim, .draw_y_per_family(
+        object, as.numeric(object$report$eta)
+      ))
+      if (is.null(dim(out))) out <- as.matrix(out)
+      return(out)
+    }
+    ## The ordinary simulator builds a fresh predictor from every supported
+    ## non-temporal tier.  Add an independently redrawn temporal contribution
+    ## rather than subtracting only the temporal state from report$eta: that
+    ## would retain fitted B/W/source modes in an allegedly unconditional draw.
+    ok <- .check_simulate_unconditional(object)
+    if (!isTRUE(ok$can_redraw)) {
       cli::cli_abort(c(
-        "Unconditional {.fn simulate} is not available for a temporal fit with ordinary unit or unit_obs covariance components.",
-        "i" = "The temporal simulator can redraw the temporal state tier but cannot yet redraw: {.val {names(ordinary_temporal_components)[ordinary_temporal_components]}}.",
-        ">" = "Use {.code condition_on_RE = TRUE} for a conditional response draw, or fit the temporal source alone for unconditional temporal simulation."
+        "Unconditional {.fn simulate} cannot redraw every component of this temporal fit.",
+        "i" = "Unsupported components: {.val {ok$unhandled}}.",
+        ">" = "Use {.code condition_on_RE = TRUE} for a conditional response draw, or remove the unsupported covariance tier."
       ), class = "gllvmTMB_temporal_composed_simulation_unsupported")
     }
-    out <- replicate(nsim, .simulate_temporal_response(
-      object, redraw_scores = !isTRUE(condition_on_RE)
-    ))
-    if (is.null(dim(out))) {
-      out <- as.matrix(out)
-    }
+    out <- replicate(nsim, {
+      eta <- .simulate_eta_unconditional(object) +
+        .simulate_temporal_effect(object, redraw_scores = TRUE)
+      .draw_y_per_family(object, eta)
+    })
+    if (is.null(dim(out))) out <- as.matrix(out)
     return(out)
   }
 
@@ -1645,7 +1649,7 @@ simulate.gllvmTMB_multi <- function(
 #'
 #' @keywords internal
 #' @noRd
-.simulate_temporal_response <- function(fit, redraw_scores = TRUE) {
+.simulate_temporal_effect <- function(fit, redraw_scores = TRUE) {
   if (!isTRUE(fit$temporal$active)) {
     stop("Internal temporal simulation requires a temporal fit.", call. = FALSE)
   }
@@ -1700,7 +1704,16 @@ simulate.gllvmTMB_multi <- function(
       } else aa * q[, prev] + innovation * stats::rnorm(n_traits, sd = sd_q)
     }
   }
-  eta <- as.numeric(fit$report$eta) - fitted_effect + effect(z, q)
+  effect(z, q)
+}
+
+#' @keywords internal
+#' @noRd
+.simulate_temporal_response <- function(fit, redraw_scores = TRUE) {
+  temporal_new <- .simulate_temporal_effect(fit, redraw_scores = redraw_scores)
+  temporal_fitted <- .simulate_temporal_effect(fit, redraw_scores = FALSE)
+  eta <- as.numeric(fit$report$eta) - temporal_fitted + temporal_new
+  par <- fit$tmb_obj$env$parList(fit$opt$par)
   eta + stats::rnorm(length(eta), sd = exp(as.numeric(par$log_sigma_eps[1L])))
 }
 
@@ -2100,7 +2113,11 @@ simulate.gllvmTMB_multi <- function(
 .check_simulate_unconditional <- function(fit) {
   handled <- c(
     "rr_B", "diag_B", "rr_W", "diag_W", "propto",
-    "lv_B", "phylo_rr", "phylo_diag", "diag_species", "re_int"
+    "lv_B", "phylo_rr", "phylo_diag", "diag_species", "re_int",
+    ## The temporal tier is redrawn by the temporal branch above rather than
+    ## .simulate_eta_unconditional(); count it as covered when determining
+    ## whether the remaining tiers can be redrawn.
+    "temporal"
   )
   if(identical(fit$source_strength$source,"spatial")) handled <- c(handled,"spde")
   if (is.list(fit$tmb_data)) {

@@ -30,7 +30,9 @@ any random-effect grouping that was active.}
 covariance — the unconditional simulation appropriate for
 parametric bootstrap. Redraw is currently implemented for the
 \code{rr_B}, \code{diag_B}, \code{rr_W}, \code{diag_W}, \code{propto}, \code{lv_B}, \code{phylo_rr},
-and \code{diag_species} tiers.
+\code{diag_species}, and the native temporal tier. A temporal fit redraws its
+recursive temporal state together with every supported ordinary/source
+tier; it does not retain fitted ordinary modes in an unconditional draw.
 
 \strong{Not every tier is covered.} A fit using any other active tier —
 notably the SPDE spatial tier (\code{spde}) and the diagonal

@@ -32,10 +32,18 @@ if (identical(mode, "plan")) {
   quit(save = "no", status = 0L)
 }
 
-fixture <- file.path(root, "tests/testthat/test-temporal-program-simulation.R")
-if (!file.exists(fixture)) stop("missing temporal simulation fixture", call. = FALSE)
-pkgload::load_all(root, quiet = TRUE, export_all = FALSE)
-.temporal_program_assert_test_results(
-  testthat::test_file(fixture, reporter = "silent"), fixture
+fixture <- c(
+  file.path(root, "tests/testthat/test-temporal-program-simulation.R"),
+  file.path(root, "tests/testthat/test-temporal-program-composed-simulation.R")
 )
+if (any(!file.exists(fixture))) {
+  stop("missing temporal simulation fixture: ",
+    paste(fixture[!file.exists(fixture)], collapse = ", "), call. = FALSE)
+}
+pkgload::load_all(root, quiet = TRUE, export_all = FALSE)
+for (path in fixture) {
+  .temporal_program_assert_test_results(
+    testthat::test_file(path, reporter = "silent"), path
+  )
+}
 cat("TEMPORAL_PROGRAM_SIMULATION_PASS\n")

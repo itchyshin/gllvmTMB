@@ -18,6 +18,9 @@ if (!identical(Sys.getenv("GLLVM_S3B_LIVE_ADAPTER_TESTS"), "1")) {
 if (!requireNamespace("jsonlite", quietly = TRUE)) {
   stop("jsonlite is required to retain the S3b receipt", call. = FALSE)
 }
+if (!requireNamespace("digest", quietly = TRUE)) {
+  stop("digest is required to bind the S3b source build", call. = FALSE)
+}
 
 project <- normalizePath(Sys.getenv("GLLVM_DESTINATION_B_PROJECT"), mustWork = TRUE)
 if (!file.exists(file.path(project, "Project.toml"))) {
@@ -68,14 +71,49 @@ git_stdout <- function(args, label) {
   }
   trimws(output)
 }
+frozen_reference_commit <- "b4d5fee64def88bc768dda1f1f77c29b295edd86"
+allowed_changed_paths <- c(
+  "R/julia-bridge.R",
+  "tests/testthat/test-julia-phylo-rr-bridge.R",
+  "tests/testthat/run-destination-b-s3b-native-pairs-isolated.R",
+  "docs/dev-log/check-log.md",
+  "docs/dev-log/after-task/2026-09-09-destination-b-s3b-r-adapter.md",
+  "docs/dev-log/artifacts/2026-09-09-destination-b-s3b-native-pairs-receipt.json"
+)
+git_stdout(c("merge-base", "--is-ancestor", frozen_reference_commit, "HEAD"),
+  "frozen reference ancestry")
+changed_paths <- git_stdout(c("diff", "--name-only", paste0(frozen_reference_commit, "..HEAD")),
+  "frozen reference scope")
+unexpected_paths <- setdiff(changed_paths, allowed_changed_paths)
+if (length(unexpected_paths)) {
+  stop("adapter source changed outside the approved bridge/test scope: ",
+    paste(unexpected_paths, collapse = ", "), call. = FALSE)
+}
+tracked_status <- git_stdout(c("status", "--porcelain", "--untracked-files=no"),
+  "adapter source status")
+if (length(tracked_status)) {
+  stop("adapter source must be tracked-clean before retaining a receipt", call. = FALSE)
+}
+namespace_path <- normalizePath(getNamespaceInfo(asNamespace("gllvmTMB"), "path"))
+if (!identical(namespace_path, normalizePath(getwd()))) {
+  stop("loaded gllvmTMB namespace is not this source checkout", call. = FALSE)
+}
+dll_path <- normalizePath(file.path(getwd(), "src", "gllvmTMB.so"), mustWork = TRUE)
 result <- list(
   kind = "destination_b_s3b_native_pairs",
   status = "passed_closed_adapter_only",
   scope = "three controlled Gaussian native phylo_rr pairs; generic engine remains closed",
   runner = "tests/testthat/run-destination-b-s3b-native-pairs-isolated.R",
   source = list(
-    gllvmtmb_commit = git_stdout(c("rev-parse", "HEAD"), "gllvmTMB revision"),
-    gllvm_julia_project = project,
+    frozen_reference_commit = frozen_reference_commit,
+    frozen_reference_is_ancestor = TRUE,
+    adapter_commit = git_stdout(c("rev-parse", "HEAD"), "gllvmTMB revision"),
+    adapter_tracked_clean = TRUE,
+    changed_paths_from_frozen = changed_paths,
+    r_version = R.version$version.string,
+    r_platform = R.version$platform,
+    r_shared_object_sha256 = digest::digest(file = dll_path, algo = "sha256"),
+    gllvm_julia_project_binding = "GLLVM_DESTINATION_B_PROJECT",
     gllvm_julia_commit = git_stdout(c("-C", shQuote(project), "rev-parse", "HEAD"), "GLLVM.jl revision")
   ),
   tally = list(failed = failed, skipped = skipped, error = errors, warning = warnings, passed = passed),

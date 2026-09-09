@@ -279,6 +279,8 @@ test_that("private S3b adapter pairs with one genuine frozen native tree fit", {
   julia <- gllvmTMB:::.gllvm_julia_phylo_rr_adapter(native, ci_method = "none")
   payload <- gllvmTMB:::.gllvm_julia_phylo_rr_payload(native)
 
+  expect_identical(native$opt$convergence, 0L)
+  expect_true(isTRUE(julia$converged))
   expect_identical(julia$admission_status, "closed")
   expect_equal(abs(as.numeric(logLik(native)) - julia$loglik), 0, tolerance = 1e-6)
   expect_equal(max(abs(unname(coef(native)) - julia$coefficients)), 0, tolerance = 1e-6)
@@ -290,6 +292,9 @@ test_that("private S3b adapter pairs with one genuine frozen native tree fit", {
   assign(".s3b_tree_pair_receipt", list(
     kind = "tree", n_traits = 2L, n_species = 4L, n_observations = 12L,
     scale = julia$scale, log_det_precision = julia$log_det,
+    seed = 701L, data_sha256 = digest::digest(dat, algo = "sha256", serialize = TRUE),
+    model_spec = "gaussian; 0 + trait + phylo_latent(species, d = 1, unique = FALSE)",
+    native_convergence = native$opt$convergence, julia_converged = isTRUE(julia$converged),
     deltas = list(
       log_likelihood = abs(as.numeric(logLik(native)) - julia$loglik),
       fixed_effects = max(abs(unname(coef(native)) - julia$coefficients)),
@@ -353,6 +358,8 @@ test_that("private S3b adapter pairs with a native sparse-pedigree fit", {
   julia <- gllvmTMB:::.gllvm_julia_phylo_rr_adapter(native, ci_method = "none")
   payload <- gllvmTMB:::.gllvm_julia_phylo_rr_payload(native)
 
+  expect_identical(native$opt$convergence, 0L)
+  expect_true(isTRUE(julia$converged))
   expect_identical(julia$admission_status, "closed")
   expect_equal(payload$phylo$n_aug, 4L)
   expect_equal(payload$phylo$n_leaves, 2L)
@@ -368,6 +375,9 @@ test_that("private S3b adapter pairs with a native sparse-pedigree fit", {
     kind = "sparse_pedigree", n_traits = 2L, n_observations = 6L,
     augmented_nodes = payload$phylo$n_aug, observed_nodes_zero_based = payload$phylo$species_aug_id,
     log_det_precision = julia$log_det,
+    seed = 702L, data_sha256 = digest::digest(dat, algo = "sha256", serialize = TRUE),
+    model_spec = "gaussian; 0 + trait + animal_latent(species, d = 1, pedigree = pedigree, unique = FALSE)",
+    native_convergence = native$opt$convergence, julia_converged = isTRUE(julia$converged),
     deltas = list(
       log_likelihood = abs(as.numeric(logLik(native)) - julia$loglik),
       fixed_effects = max(abs(unname(coef(native)) - julia$coefficients)),
@@ -428,6 +438,8 @@ test_that("private S3b adapter transports a native R-ridged-once dense vcv", {
   Q_transport <- matrix(0, payload$phylo$n_aug, payload$phylo$n_aug)
   Q_transport[cbind(payload$phylo$i, payload$phylo$j)] <- payload$phylo$x
 
+  expect_identical(native$opt$convergence, 0L)
+  expect_true(isTRUE(julia$converged))
   expect_identical(julia$admission_status, "closed")
   expect_equal(payload$phylo$n_aug, length(species))
   expect_equal(payload$phylo$node_labels, species)
@@ -441,6 +453,9 @@ test_that("private S3b adapter transports a native R-ridged-once dense vcv", {
     kind = "dense_vcv", n_traits = 2L, n_observations = 3L,
     condition_number_original = kappa(original_vcv), diagonal_jitter = 1e-8,
     augmented_nodes = payload$phylo$n_aug, log_det_precision = julia$log_det,
+    seed = "deterministic_fixed_response", data_sha256 = digest::digest(dat, algo = "sha256", serialize = TRUE),
+    model_spec = "gaussian; 0 + trait + phylo_latent(species, d = 1, vcv = original_vcv, unique = FALSE)",
+    native_convergence = native$opt$convergence, julia_converged = isTRUE(julia$converged),
     deltas = list(
       log_likelihood = abs(as.numeric(logLik(native)) - julia$loglik),
       fixed_effects = max(abs(unname(coef(native)) - julia$coefficients)),

@@ -1,3 +1,41 @@
+## 2026-09-09 — Destination B S3b closed `phylo_rr` adapter
+
+- Local-only branch `codex/destination-b-s3b-r-adapter-20260909`, commit
+  `1c622b3f0` plus the opt-in live-regression follow-up. This is the approved
+  R adapter/test exception only; no C++ likelihood, generic `engine =
+  "julia"` admission, push, merge, release, or FRK work changed.
+- New private `.gllvm_julia_phylo_rr_adapter()` consumes an already-fitted
+  native Gaussian `phylo_rr` object. It transports the native labelled sparse
+  `Ainv_phy_rr`, complete factor-level tip map, determinant sign convention,
+  and tree scale to the closed Julia multivariate precision consumer.
+- Dense `phylo_vcv` records its original condition number and warns above
+  `1e8`; the R-ridged-once precision is transported as-is and is never
+  reinverted by Julia.
+- Focused R transport suite passes with the live JuliaCall route enabled:
+  **34 expectations**, including tree scale, retained pedigree ancestor,
+  dense-ridge-once, corrupt map/determinant/tree controls, generic public-route
+  refusal, and the actual closed R-to-Julia handoff.
+- After-task: `docs/dev-log/after-task/2026-09-09-destination-b-s3b-r-adapter.md`.
+  This is adapter/transport evidence only, not fitted-optimizer parity,
+  recovery, coverage, or 0.7 parity.
+
+## 2026-09-04 — parity_ledger.R: `--r-ref` pins R capability ledger (Option A S2)
+
+Twin lane `cursor/lane-gllvm-twin-20260904`. G0: Option A + Ada defaults.
+
+**Change:** `tools/parity_ledger.R` gains `--r-ref` (default `origin/main`; `working-tree`
+for legacy disk read). R ledger now resolved via `git show <r-ref>:docs/design/capability-status.md`
+like the Julia side already used `--ref`.
+
+**Verify:**
+```sh
+Rscript tools/parity_ledger.R --ref origin/main --r-ref origin/main \
+  --julia-repo "/Users/z3437171/local-scratch/lanes/GLLVM.jl-gllvm-twin-20260904"
+# CLOSURE: PASS, exit 0
+```
+
+Receipt (JL repo): `docs/dev-log/core070/r-ref-closure-receipt-2026-09-04.md`.
+
 ## 2026-08-19 — `unit_obs` / `cluster` default to `NULL`, not `"site_species"` / `"species"` (DRAFT PR, needs Shinichi sign-off)
 
 Lane `claude/null-tier-defaults-20260819` (worktree

@@ -188,6 +188,44 @@ test_that("private S3b adapter sends only the closed multivariate contract", {
   expect_false(inherits(result, "gllvmTMB_julia"))
 })
 
+test_that("private S3b adapter reaches the closed Julia consumer when opted in", {
+  skip_if_not(
+    identical(Sys.getenv("GLLVM_S3B_LIVE_ADAPTER_TESTS"), "1"),
+    "set GLLVM_S3B_LIVE_ADAPTER_TESTS=1 with an isolated Julia project to run"
+  )
+  project <- Sys.getenv("GLLVM_DESTINATION_B_PROJECT", "")
+  julia_home <- Sys.getenv("GLLVM_S3B_JULIA_HOME", "")
+  skip_if_not(nzchar(project), "GLLVM_DESTINATION_B_PROJECT is required")
+  skip_if_not(nzchar(julia_home), "GLLVM_S3B_JULIA_HOME is required")
+
+  Sys.setenv(JULIA_PROJECT = project)
+  JuliaCall::julia_setup(
+    JULIA_HOME = julia_home,
+    install = FALSE,
+    useRCall = FALSE,
+    verbose = FALSE
+  )
+  JuliaCall::julia_command(sprintf(
+    "import Pkg; Pkg.activate(\"%s\"); using GLLVM",
+    gsub("\\\\", "\\\\\\\\", project, fixed = TRUE)
+  ))
+  old_ready <- .gllvm_jl_env$ready
+  .gllvm_jl_env$ready <- TRUE
+  on.exit({
+    .gllvm_jl_env$ready <- old_ready
+  }, add = TRUE)
+
+  result <- gllvmTMB:::.gllvm_julia_phylo_rr_adapter(
+    .s3b_phylo_rr_fixture(),
+    ci_method = "none"
+  )
+  expect_identical(result$model, "precision_multivariate_candidate")
+  expect_identical(result$admission_status, "closed")
+  expect_identical(result$bridge_scope, "experimental_private_phylo_rr")
+  expect_equal(result$n_traits, 2L)
+  expect_equal(result$n_observations, 2L)
+})
+
 test_that("engine = 'julia' remains closed for phylo_rr", {
   df <- .s3b_phylo_rr_fixture()$data
   A <- diag(2L)

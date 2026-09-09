@@ -12,9 +12,12 @@
   `1e8`; the R-ridged-once precision is transported as-is and is never
   reinverted by Julia.
 - Isolated native-pair receipt passes with the live JuliaCall route enabled:
-  **32 expectations; zero failed/skipped/errors/warnings** across genuine
-  frozen-source tree, sparse-pedigree, and dense-`vcv` Gaussian fits. It binds
-  this adapter commit and the hardened GLLVM.jl consumer `fb2c4666`.
+  **38 expectations; zero failed/skipped/errors/warnings** across genuine
+  frozen-source tree, sparse-pedigree, and dense-`vcv` Gaussian fits. It
+  asserts that frozen `b4d5fee` is an ancestor, permits only authorised
+  adapter/test/evidence diffs thereafter, and records R build/DLL SHA,
+  fixture hashes/seeds/specs, convergence, this adapter commit, and hardened
+  GLLVM.jl consumer `fb2c4666`.
 - Tree (scale `2`): absolute deltas are `1.54e-12` (log likelihood), `6.88e-8`
   (fixed effects), `1.26e-7` (phylogenetic covariance), and `4.72e-10`
   (residual variance). Sparse pedigree retains both unobserved founders and

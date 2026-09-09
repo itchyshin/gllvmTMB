@@ -37,10 +37,12 @@ public-route refusal. A mocked transport test checks the flat call contract.
 
 `tests/testthat/run-destination-b-s3b-native-pairs-isolated.R` ran exactly the
 three predeclared native R-to-Julia pairs under the ARM-native Julia 1.10
-runtime, with callbacks disabled. The source-bound receipt records **32 passed,
-zero failed/skipped/errors/warnings** at frozen gllvmTMB source commit
-`b4d5fee64def88bc768dda1f1f77c29b295edd86` plus this adapter revision and
-the hardened GLLVM.jl consumer `fb2c4666`.
+runtime, with callbacks disabled. The source-bound receipt records **38 passed,
+zero failed/skipped/errors/warnings**. It asserts frozen gllvmTMB source commit
+`b4d5fee64def88bc768dda1f1f77c29b295edd86` is an ancestor and that every
+post-freeze change is confined to the authorised adapter/test/evidence files;
+it records the R 4.6.0 ARM build, native shared-object SHA-256, adapter commit,
+fixture hashes/seeds/specifications, and hardened GLLVM.jl consumer `fb2c4666`.
 
 | Source form | Structural evidence | Largest endpoint deltas (R vs Julia) |
 | --- | --- | --- |
@@ -50,6 +52,8 @@ the hardened GLLVM.jl consumer `fb2c4666`.
 
 The receipt is
 `docs/dev-log/artifacts/2026-09-09-destination-b-s3b-native-pairs-receipt.json`.
+All native fits report convergence code `0`; all closed Julia fits report
+`converged = TRUE`.
 
 ## 7. Reference boundary
 
@@ -79,7 +83,9 @@ non-Gaussian phylogeny, ordinary `engine = "julia"` admission, 0.7 parity,
 
 Independent Astra review required the three source forms and corruption tests;
 those gates are present. Its Julia consumer findings were repaired separately
-in GLLVM.jl before the live handoff.
+in GLLVM.jl before the live handoff. The review then identified missing
+provenance and fit-health fields in the first receipt; those are now enforced
+by the runner and recorded above. No P0 mathematical or scope finding remained.
 
 ## 11. Evidence command
 

@@ -211,4 +211,7 @@ if (nrow(attempts) != nrow(plan) || anyDuplicated(attempts[c("cell", "seed")])) 
 summary <- .temporal_recovery_summary(attempts)
 utils::write.csv(summary, summary_path, row.names = FALSE)
 print(summary, row.names = FALSE)
+if (!all(summary$bounded_cell_pass)) {
+  stop("Eight-cell recovery campaign fails one or more frozen per-cell recovery thresholds.", call. = FALSE)
+}
 cat("TEMPORAL_SIXTH_RECOVERY_PASS\n")

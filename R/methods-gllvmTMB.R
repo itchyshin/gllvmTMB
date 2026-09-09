@@ -1658,8 +1658,16 @@ simulate.gllvmTMB_multi <- function(
   predecessor <- td$temporal_predecessor + 1L
   rank <- td$temporal_rank
   lambda <- if (rank > 0L) as.matrix(fit$report$Lambda_temporal) else NULL
-  z <- as.matrix(par$z_temporal)
-  q <- as.matrix(par$q_temporal)
+  ## TMB optimizes standard-normal innovations but reports the recursively
+  ## constructed AR1/OU states that actually enter eta.  Subtract the latter
+  ## before an unconditional redraw; subtracting innovations leaves a
+  ## persistence-dependent piece of the fitted state in every draw.
+  z <- as.matrix(fit$report$z_temporal_state)
+  q <- if (isTRUE(fit$temporal$unique)) {
+    as.matrix(fit$report$q_temporal_state)
+  } else {
+    matrix(0, nrow = n_traits, ncol = n_state)
+  }
   effect <- function(z, q) {
     out <- numeric(length(state_id))
     if (rank > 0L) out <- out + rowSums(lambda[trait_id, , drop = FALSE] *

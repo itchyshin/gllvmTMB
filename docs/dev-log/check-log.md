@@ -57748,3 +57748,15 @@ Deliberately not run: Totoro 9×500 grid dispatch; full `devtools::test()`.
   fail-closed pending three-OS CI and source-pair admission evidence.
 - Follow-up regression: `OPENBLAS_NUM_THREADS=1 Rscript --vanilla -e 'devtools::test(filter = "temporal-sixth-source")'` completed with **167 assertions, 0 failures, 0 warnings, and 0 skips** in 40.6 seconds.
 - The programme runner was also invoked in `publication`, `combinations`, and `closeout` modes. Each exited nonzero with its intended missing-evidence message; none silently passed. These blocks are evidence boundaries, not failures of the admitted temporal-only route.
+
+## 2026-09-09 — retained temporal-kernel redesign remains non-admissible
+
+- A disposable, direct-DGP kernel redesign used 80 series, 16 occasions, three
+  traits, a fixed non-proportional labelled kernel, AR1 `phi = -.4, 0, .6`,
+  seeds `2609151:2609153`, and exact-gradient BFGS fits. It did not call the
+  production temporal simulator and did not change the production parser.
+- All nine fits were finite with optimizer code zero. Three gradients exceeded
+  `1e-3`; strict-success counts were 3/3, 1/3, and 2/3 by persistence cell.
+  The `-.4` and `.6` cells also exceeded the frozen `.25` mean fixed-effect
+  error criterion. Results are retained under `/private/tmp/`; no seed was
+  replaced. The temporal-plus-kernel parser remains closed.

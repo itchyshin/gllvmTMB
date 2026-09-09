@@ -47,6 +47,14 @@ This is a **failed admission experiment**, not evidence for a kernel pair.
 The public parser remains closed. The throwaway runner is deliberately left
 uncommitted because its formula is refused by the supported public contract.
 
+A later 80-series, 16-occasion direct-DGP redesign also remains a failed
+admission exercise. Its nine exact-gradient BFGS fits were finite with
+optimizer code zero, but three gradients exceeded `1e-3`, leaving strict
+success counts 3/3, 1/3, and 2/3 at persistence `-.4`, `0`, and `.6`; the
+negative and positive persistence cells also exceeded the frozen mean
+fixed-effect error target. See `KERNEL-IDENTIFICATION-REDESIGN.md` for the
+retained result.
+
 ## Next bounded slice
 
 Obtain explicit authorization to push this branch solely for CI, then inspect

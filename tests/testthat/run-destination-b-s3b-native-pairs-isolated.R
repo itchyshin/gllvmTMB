@@ -90,9 +90,13 @@ if (length(unexpected_paths)) {
   stop("adapter source changed outside the approved bridge/test scope: ",
     paste(unexpected_paths, collapse = ", "), call. = FALSE)
 }
-tracked_status <- git_stdout(c("status", "--porcelain", "--untracked-files=no"),
-  "adapter source status")
-tracked_paths <- if (length(tracked_status)) trimws(substr(tracked_status, 4L, nchar(tracked_status))) else character()
+tracked_status <- system2("git", c("status", "--porcelain", "--untracked-files=no"),
+  stdout = TRUE, stderr = TRUE)
+tracked_status_code <- attr(tracked_status, "status")
+if (!is.null(tracked_status_code) && as.integer(tracked_status_code) != 0L) {
+  stop("adapter source status git command failed", call. = FALSE)
+}
+tracked_paths <- if (length(tracked_status)) substr(tracked_status, 4L, nchar(tracked_status)) else character()
 nonreceipt_changes <- setdiff(tracked_paths, receipt_path)
 if (length(nonreceipt_changes)) {
   stop("adapter source must be tracked-clean outside its stale receipt before retaining evidence", call. = FALSE)

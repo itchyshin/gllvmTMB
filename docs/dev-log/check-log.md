@@ -11,19 +11,20 @@
 - Dense `phylo_vcv` records its original condition number and warns above
   `1e8`; the R-ridged-once precision is transported as-is and is never
   reinverted by Julia.
-- Focused R transport suite passes with the live JuliaCall route enabled:
-  **44 expectations**, including a genuine frozen-source 24-row native tree
-  pair, tree scale, retained pedigree ancestor,
-  dense-ridge-once, corrupt map/determinant/tree controls, generic public-route
-  refusal, and the actual closed R-to-Julia handoff.
-- Frozen tree pair (R `b4d5fee64def88bc768dda1f1f77c29b295edd86`): absolute
-  deltas were `1.54e-12` for log likelihood, `6.88e-8` for trait fixed
-  effects, `1.26e-7` for rotation-invariant phylogenetic covariance, and
-  `4.72e-10` for residual variance. The complete tip map, log determinant,
-  and non-unit scale `2` were identical.
-- After-task: `docs/dev-log/after-task/2026-09-09-destination-b-s3b-r-adapter.md`.
-  This is adapter/transport evidence only, not fitted-optimizer parity,
-  recovery, coverage, or 0.7 parity.
+- Isolated native-pair receipt passes with the live JuliaCall route enabled:
+  **32 expectations; zero failed/skipped/errors/warnings** across genuine
+  frozen-source tree, sparse-pedigree, and dense-`vcv` Gaussian fits. It binds
+  this adapter commit and the hardened GLLVM.jl consumer `fb2c4666`.
+- Tree (scale `2`): absolute deltas are `1.54e-12` (log likelihood), `6.88e-8`
+  (fixed effects), `1.26e-7` (phylogenetic covariance), and `4.72e-10`
+  (residual variance). Sparse pedigree retains both unobserved founders and
+  has deltas `6.79e-13`, `1.70e-7`, `5.32e-8`, `4.24e-9`; dense `vcv` uses the
+  one-time R ridge at condition number about `1e9` and has deltas `4.13e-13`,
+  `1.81e-8`, `8.55e-8`, `7.58e-9`, respectively.
+- Receipt: `docs/dev-log/artifacts/2026-09-09-destination-b-s3b-native-pairs-receipt.json`;
+  after-task: `docs/dev-log/after-task/2026-09-09-destination-b-s3b-r-adapter.md`.
+  This is closed-adapter fit evidence only, not public workflow, interval,
+  recovery, coverage, fitted-optimizer parity, or 0.7 parity.
 
 ## 2026-09-04 — parity_ledger.R: `--r-ref` pins R capability ledger (Option A S2)
 

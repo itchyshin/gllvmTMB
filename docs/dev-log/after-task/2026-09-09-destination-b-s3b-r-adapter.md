@@ -29,22 +29,27 @@ determinant convention; it does not create a second precision source.
 ## 5. Tests
 
 The focused file exercises a non-unit-height tree, sparse augmented pedigree
-with an unobserved ancestor, and ill-conditioned dense covariance; it also
+with two unobserved founders, and ill-conditioned dense covariance; it also
 tests invalid tip map, determinant/tree corruption, and continued generic
 public-route refusal. A mocked transport test checks the flat call contract.
 
-## 6. Live runtime check
+## 6. Live runtime check and retained evidence
 
-With `GLLVM_S3B_LIVE_ADAPTER_TESTS=1`, the same suite starts the ARM-native
-Julia 1.10 runtime in the isolated GLLVM project with callbacks disabled and
-executes the private adapter. Result: **44 expectations passed**, including a
-genuine 24-row native tree pair from frozen R commit
-`b4d5fee64def88bc768dda1f1f77c29b295edd86`.
+`tests/testthat/run-destination-b-s3b-native-pairs-isolated.R` ran exactly the
+three predeclared native R-to-Julia pairs under the ARM-native Julia 1.10
+runtime, with callbacks disabled. The source-bound receipt records **32 passed,
+zero failed/skipped/errors/warnings** at frozen gllvmTMB source commit
+`b4d5fee64def88bc768dda1f1f77c29b295edd86` plus this adapter revision and
+the hardened GLLVM.jl consumer `fb2c4666`.
 
-That tree pair retained its height-two scale, full node/tip map, and
-determinant exactly. Absolute R-versus-Julia deltas were `1.54e-12` in log
-likelihood, `6.88e-8` in fixed effects, `1.26e-7` in rotation-invariant
-phylogenetic covariance, and `4.72e-10` in residual variance.
+| Source form | Structural evidence | Largest endpoint deltas (R vs Julia) |
+| --- | --- | --- |
+| Height-two tree | Scale `2`; log determinant `4.15888308335967`; all four tips mapped | log likelihood `1.54e-12`; fixed effects `6.88e-8`; phylogenetic covariance `1.26e-7`; residual variance `4.72e-10` |
+| Sparse pedigree | Four precision nodes; unobserved founders retained; descendants map to zero-based nodes `2,3`; log determinant `1.38629436111989` | `6.79e-13`; `1.70e-7`; `5.32e-8`; `4.24e-9` |
+| Dense `vcv` | Original condition number about `1e9`; R adds `1e-8 I` once; transported precision has three nodes and log determinant `19.018517714708` | `4.13e-13`; `1.81e-8`; `8.55e-8`; `7.58e-9` |
+
+The receipt is
+`docs/dev-log/artifacts/2026-09-09-destination-b-s3b-native-pairs-receipt.json`.
 
 ## 7. Reference boundary
 
@@ -63,10 +68,12 @@ variables rather than silently relying on local discovery.
 
 ## 9. Known limitations
 
-The tree source now has an independently fitted-R-versus-Julia comparison.
-Native sparse-pedigree and dense-`vcv` pairs remain unpaid, as do public
-workflow/S4 evidence, profile intervals, recovery, coverage, and a general
-`engine = "julia"` route.
+These are three controlled Gaussian source forms through a private adapter.
+The adapter does not yet expose a public fitted-object interface or supported
+intervals; therefore this does not meet the separate S4 public-workflow or
+interval-feasibility gate. It also does not establish recovery, coverage,
+non-Gaussian phylogeny, ordinary `engine = "julia"` admission, 0.7 parity,
+0.7.1 parity, FRK, release, or registry eligibility.
 
 ## 10. Review
 
@@ -80,10 +87,11 @@ in GLLVM.jl before the live handoff.
 GLLVM_S3B_LIVE_ADAPTER_TESTS=1 \\
 GLLVM_DESTINATION_B_PROJECT=/absolute/path/to/GLLVM.jl \\
 GLLVM_S3B_JULIA_HOME=/absolute/path/to/julia/bin \\
-Rscript --vanilla -e 'devtools::test(filter = "julia-phylo-rr-bridge")'
+Rscript --vanilla tests/testthat/run-destination-b-s3b-native-pairs-isolated.R
 ```
 
 ## 12. Next action
 
-Create equivalent predeclared genuine native sparse-pedigree and dense-`vcv`
-pairs before calling S3b qualified; then S4 may begin.
+Perform a fresh independent review of this receipt and the two adapter/consumer
+commits. Keep S4 as a separate public-workflow gate; do not reopen generic
+engine admission from these private-pair results.

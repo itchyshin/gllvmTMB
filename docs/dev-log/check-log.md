@@ -57715,3 +57715,16 @@ Deliberately not run: Totoro 9×500 grid dispatch; full `devtools::test()`.
   historical records, the separate response-column scope, and intentional
   predecessor fixture fields only; current temporal documentation makes no
   IID-Psi equivalence or release claim.
+
+## 2026-09-09 — temporal helper contract reconciliation
+
+- Corrected the direct-profile contract to name `profile_temporal()` rather
+  than generic `confint()`, which remains deliberately refused for temporal
+  fits because its existing algorithms assume iid latent scores.
+- Reconciled `TEMP-06-01` with the bounded helper routes now present:
+  `forecast_temporal()`, `profile_temporal()`, `bootstrap_temporal()`, and
+  `compare_temporal()`. Generic prediction, generic intervals/profiles,
+  automatic selection, and broad bootstrap routes remain refused.
+- `OPENBLAS_NUM_THREADS=1 Rscript --vanilla -e
+  'devtools::test(filter = "temporal-program-(forecast|profile|bootstrap|selection)|temporal-ar1-methods")'`
+  passed: 38 assertions, 0 failures, 0 warnings, and 0 skips.

@@ -293,7 +293,7 @@ temporal_latent <- function(formula, time, d = 1, structure = "ar1",
     cli::cli_abort(c(
       "{.fn {method}} is not available for {.fn temporal_latent} fits.",
       "i" = "Its existing algorithm assumes iid latent scores or an iid refit path.",
-      ">" = "Use {.fn extract_temporal} for the fitted temporal parameters; temporal interval and bootstrap methods are outside this version."
+      ">" = "Use {.fn extract_temporal} for fitted parameters. The bounded {.fn profile_temporal} and {.fn bootstrap_temporal} helpers have their own contracts; this generic iid route remains unavailable."
     ), class = "gllvmTMB_temporal_inference_unsupported")
   }
   invisible(fit)

@@ -2981,6 +2981,317 @@ gllvm_julia_fit <- function(
   res
 }
 
+# ---------------------------------------------------------------------------
+# Destination B S3b: closed native phylo_rr -> Julia precision adapter.
+#
+# This is intentionally NOT an `engine = "julia"` route.  It takes an already
+# fitted native Gaussian phylo_rr model, transports the canonical R precision
+# payload once, and invokes only the closed multivariate Julia consumer.  The
+# generic dispatch remains responsible for refusing phylo_rr in public bridge
+# fits.  In particular this code never rebuilds a covariance, reinverts a dense
+# vcv, or changes the R/TMB likelihood.
+# ---------------------------------------------------------------------------
+
+.gllvm_julia_phylo_rr_stop <- function(gate, message) {
+  stop(paste0(gate, ": ", message), call. = FALSE)
+}
+
+.gllvm_julia_phylo_rr_flagged <- function(use, names) {
+  names[vapply(names, function(name) isTRUE(use[[name]]), logical(1))]
+}
+
+.gllvm_julia_phylo_rr_payload <- function(fit) {
+  if (!inherits(fit, "gllvmTMB_multi")) {
+    .gllvm_julia_phylo_rr_stop(
+      "GJL-GATE-PHYLO-MV-FIT",
+      "the private S3b adapter requires an already fitted native gllvmTMB_multi object."
+    )
+  }
+  tmb <- fit$tmb_data
+  if (!is.list(tmb) || !isTRUE(fit$use$phylo_rr) || !isTRUE(tmb$use_phylo_rr == 1L)) {
+    .gllvm_julia_phylo_rr_stop(
+      "GJL-GATE-PHYLO-MV-FIT",
+      "the native fit must contain exactly one active phylo_rr component."
+    )
+  }
+  family <- tryCatch(.gllvm_julia_family(fit$family), error = function(error) NULL)
+  if (length(family) != 1L || !identical(family, "gaussian")) {
+    .gllvm_julia_phylo_rr_stop(
+      "GJL-GATE-PHYLO-MV-FAMILY",
+      "the private S3b adapter is Gaussian-only."
+    )
+  }
+  forbidden <- .gllvm_julia_phylo_rr_flagged(
+    fit$use %||% list(),
+    c(
+      "phylo_diag", "rr_B", "diag_B", "rr_W", "diag_W", "diag_species",
+      "diag_cluster2", "propto", "lv_B", "spde", "re_int", "kernel",
+      "phylo_latent_slope", "phylo_dep_slope", "phylo_indep_slope",
+      "phylo_column_slope", "response_column_coef"
+    )
+  )
+  if (length(forbidden)) {
+    .gllvm_julia_phylo_rr_stop(
+      "GJL-GATE-PHYLO-MV-STRUCTURE",
+      paste0("the private S3b adapter does not combine phylo_rr with ",
+             paste(forbidden, collapse = ", "), ".")
+    )
+  }
+  if (isTRUE(fit$REML) || isTRUE(tmb$REML)) {
+    .gllvm_julia_phylo_rr_stop(
+      "GJL-GATE-PHYLO-MV-REML",
+      "REML is not admitted by the private S3b adapter."
+    )
+  }
+  if (!is.null(fit$lv) || isTRUE(tmb$use_lv_B == 1L)) {
+    .gllvm_julia_phylo_rr_stop(
+      "GJL-GATE-PHYLO-MV-X-LV",
+      "predictor-informed latent-score terms are not admitted."
+    )
+  }
+  observed <- tmb$is_y_observed
+  if (!is.null(observed) && (!all(observed %in% 1L) || anyNA(observed))) {
+    .gllvm_julia_phylo_rr_stop(
+      "GJL-GATE-PHYLO-MV-MASK",
+      "response masks are not admitted."
+    )
+  }
+  weights <- tmb$weights_i
+  if (!is.null(weights) && (anyNA(weights) || any(!is.finite(weights)) || any(weights != 1))) {
+    .gllvm_julia_phylo_rr_stop(
+      "GJL-GATE-PHYLO-MV-WEIGHTS",
+      "non-unit likelihood weights are not admitted."
+    )
+  }
+
+  p <- as.integer(tmb$n_traits %||% fit$n_traits)
+  n_obs_unit <- as.integer(tmb$n_site_species %||% fit$n_site_species)
+  d_phy <- as.integer(tmb$d_phy %||% fit$d_phy)
+  if (length(p) != 1L || is.na(p) || p < 1L ||
+      length(n_obs_unit) != 1L || is.na(n_obs_unit) || n_obs_unit < 2L ||
+      length(d_phy) != 1L || is.na(d_phy) || d_phy < 1L || d_phy > p) {
+    .gllvm_julia_phylo_rr_stop(
+      "GJL-GATE-PHYLO-MV-DIM",
+      "native trait, site-species, and phylogenetic-rank dimensions are invalid."
+    )
+  }
+  y <- as.numeric(tmb$y)
+  trait_id <- as.integer(tmb$trait_id)
+  observation_id <- as.integer(tmb$site_species_id)
+  species_id_row <- as.integer(tmb$species_id)
+  species_aug_row <- as.integer(tmb$species_aug_id)
+  n_rows <- length(y)
+  if (n_rows != p * n_obs_unit ||
+      length(trait_id) != n_rows || length(observation_id) != n_rows ||
+      length(species_id_row) != n_rows || length(species_aug_row) != n_rows ||
+      anyNA(y) || any(!is.finite(y)) || anyNA(trait_id) || anyNA(observation_id) ||
+      anyNA(species_id_row) || anyNA(species_aug_row) ||
+      any(trait_id < 0L | trait_id >= p) ||
+      any(observation_id < 0L | observation_id >= n_obs_unit)) {
+    .gllvm_julia_phylo_rr_stop(
+      "GJL-GATE-PHYLO-MV-RESPONSE",
+      "the native response must be a complete finite trait-by-site_species rectangle."
+    )
+  }
+  cell <- trait_id + p * observation_id
+  if (anyDuplicated(cell) || length(unique(cell)) != p * n_obs_unit) {
+    .gllvm_julia_phylo_rr_stop(
+      "GJL-GATE-PHYLO-MV-RESPONSE",
+      "the native response has duplicated or missing trait-by-site_species cells."
+    )
+  }
+  Y <- matrix(NA_real_, nrow = p, ncol = n_obs_unit)
+  Y[cbind(trait_id + 1L, observation_id + 1L)] <- y
+
+  species_col <- fit$species_col %||% fit$cluster_col
+  species <- if (!is.null(species_col) && species_col %in% names(fit$data)) {
+    fit$data[[species_col]]
+  } else {
+    NULL
+  }
+  species_levels <- if (is.factor(species)) levels(species) else character()
+  n_leaves <- length(species_levels)
+  Q <- tmb$Ainv_phy_rr
+  n_aug <- as.integer(tmb$n_aug_phy)
+  if (is.null(Q) || !inherits(Q, "Matrix") ||
+      length(n_aug) != 1L || is.na(n_aug) || n_aug < n_leaves ||
+      nrow(Q) != n_aug || ncol(Q) != n_aug || n_leaves < 1L ||
+      is.null(rownames(Q)) || is.null(colnames(Q)) ||
+      !identical(rownames(Q), colnames(Q)) || anyNA(rownames(Q)) ||
+      any(!nzchar(rownames(Q))) || anyDuplicated(rownames(Q))) {
+    .gllvm_julia_phylo_rr_stop(
+      "GJL-GATE-PHYLO-MV-PRECISION",
+      "the native precision must be a labelled square sparse Matrix with a complete node map."
+    )
+  }
+  if (!Matrix::isSymmetric(Q)) {
+    .gllvm_julia_phylo_rr_stop(
+      "GJL-GATE-PHYLO-MV-PRECISION",
+      "the native precision must be symmetric; the adapter never symmetrises or reinverts it."
+    )
+  }
+  tip_to_aug <- match(species_levels, rownames(Q))
+  if (anyNA(tip_to_aug) || anyDuplicated(tip_to_aug)) {
+    .gllvm_julia_phylo_rr_stop(
+      "GJL-GATE-PHYLO-MV-TIPMAP",
+      "every species-factor level, including unused levels, must match one unique native precision row."
+    )
+  }
+  if (any(species_id_row < 0L | species_id_row >= n_leaves) ||
+      any(species_aug_row < 0L | species_aug_row >= n_aug) ||
+      any(species_aug_row != tip_to_aug[species_id_row + 1L] - 1L)) {
+    .gllvm_julia_phylo_rr_stop(
+      "GJL-GATE-PHYLO-MV-TIPMAP",
+      "the per-row native species-to-augmented map disagrees with the labelled precision map."
+    )
+  }
+  species_id <- vapply(seq_len(n_obs_unit), function(index) {
+    rows <- which(observation_id == index - 1L)
+    mapped <- unique(species_id_row[rows])
+    if (length(mapped) != 1L) {
+      .gllvm_julia_phylo_rr_stop(
+        "GJL-GATE-PHYLO-MV-OBSERVATION",
+        "each site_species observation must belong to exactly one species."
+      )
+    }
+    mapped + 1L
+  }, integer(1))
+
+  log_det_A <- as.numeric(tmb$log_det_A_phy_rr)
+  if (length(log_det_A) != 1L || !is.finite(log_det_A)) {
+    .gllvm_julia_phylo_rr_stop(
+      "GJL-GATE-PHYLO-MV-LOGDET",
+      "the native covariance log determinant must be one finite scalar."
+    )
+  }
+  log_det_Q <- tryCatch(
+    as.numeric(Matrix::determinant(Q, logarithm = TRUE)$modulus),
+    error = function(error) NA_real_
+  )
+  if (!is.finite(log_det_Q)) {
+    .gllvm_julia_phylo_rr_stop(
+      "GJL-GATE-PHYLO-MV-LOGDET",
+      "the native precision determinant could not be evaluated."
+    )
+  }
+  scale <- 1
+  if (!is.null(fit$phylo_tree)) {
+    ## The retained tree supplies only metadata validation and the native
+    ## correlation scale.  The transported Q remains the single source of
+    ## precision values; this does not build a second precision payload.
+    tree_info <- .gllvm_validate_phylo_tree(
+      fit$phylo_tree,
+      species = species_levels,
+      require_ultrametric = TRUE
+    )
+    expected_n_aug <- tree_info$n_tip + tree_info$n_node - 1L
+    expected_log_det_Q <- expected_n_aug * log(tree_info$height) -
+      sum(log(fit$phylo_tree$edge.length))
+    if (n_aug != expected_n_aug ||
+        !is.finite(expected_log_det_Q) ||
+        abs(log_det_Q - expected_log_det_Q) > 1e-8) {
+      .gllvm_julia_phylo_rr_stop(
+        "GJL-GATE-PHYLO-MV-TREE",
+        "the retained tree scale/determinant does not agree with the native canonical precision."
+      )
+    }
+    scale <- as.numeric(tree_info$height)
+  }
+  if (abs(log_det_Q + log_det_A) > 1e-8) {
+    .gllvm_julia_phylo_rr_stop(
+      "GJL-GATE-PHYLO-MV-LOGDET",
+      "the native precision determinant disagrees with the stored covariance determinant."
+    )
+  }
+  condition_number <- NA_real_
+  if (!is.null(fit$phylo_vcv) && is.matrix(fit$phylo_vcv) &&
+      !inherits(fit$phylo_vcv, "sparseMatrix")) {
+    condition_number <- kappa(fit$phylo_vcv, exact = TRUE)
+    if (is.finite(condition_number) && condition_number > 1e8) {
+      warning(
+        "GJL-WARN-PHYLO-VCV-CONDITION: original dense phylo_vcv has condition number ",
+        format(condition_number, digits = 6),
+        "; R's existing ridge-once precision is transported unchanged.",
+        call. = FALSE
+      )
+    }
+  }
+  ## Generalise before making the triplet form: a symmetric Matrix stores one
+  ## triangle, whereas the Julia sparse constructor needs both triangles.
+  Q_sparse <- methods::as(
+    methods::as(Matrix::Matrix(Q, sparse = TRUE), "generalMatrix"),
+    "CsparseMatrix"
+  )
+  triplet <- Matrix::summary(Q_sparse)
+  list(
+    y = Y,
+    species_id = species_id,
+    d_phy = d_phy,
+    condition_number = condition_number,
+    phylo = list(
+      i = as.integer(triplet$i),
+      j = as.integer(triplet$j),
+      x = as.numeric(triplet$x),
+      n_aug = n_aug,
+      n_leaves = n_leaves,
+      species_aug_id = as.integer(tip_to_aug - 1L),
+      node_labels = as.character(rownames(Q)),
+      scale = scale,
+      ## R stores log det(A), while the Julia payload needs log det(Q=A^-1).
+      log_det = -log_det_A
+    )
+  )
+}
+
+.gllvm_julia_phylo_rr_adapter <- function(
+  fit,
+  ci_method = c("none", "wald"),
+  ci_level = 0.95,
+  .julia_call = NULL,
+  ...
+) {
+  ci_method <- match.arg(ci_method)
+  if (!is.numeric(ci_level) || length(ci_level) != 1L || !is.finite(ci_level) ||
+      ci_level <= 0 || ci_level >= 1) {
+    .gllvm_julia_phylo_rr_stop(
+      "GJL-GATE-PHYLO-MV-CI",
+      "ci_level must be one finite number in (0, 1)."
+    )
+  }
+  payload <- .gllvm_julia_phylo_rr_payload(fit)
+  args <- list(
+    "GLLVM.bridge_fit",
+    y = payload$y,
+    phylo = payload$phylo,
+    family = "gaussian",
+    d = payload$d_phy,
+    options = list(
+      phylo_model = "multivariate",
+      species_id = payload$species_id,
+      mode = "barelowrank",
+      residual_mode = "shared",
+      ci_method = ci_method,
+      ci_level = as.numeric(ci_level)
+    )
+  )
+  if (is.null(.julia_call)) {
+    gllvm_julia_setup(...)
+    .julia_call <- JuliaCall::julia_call
+  }
+  result <- do.call(.julia_call, args)
+  result <- .gllvm_julia_normalise_result(result)
+  result$bridge_scope <- "experimental_private_phylo_rr"
+  result$bridge_input <- list(
+    source = "native_gllvmTMB_phylo_rr",
+    d_phy = payload$d_phy,
+    ci_method = ci_method,
+    ci_level = as.numeric(ci_level),
+    condition_number = payload$condition_number
+  )
+  class(result) <- c("gllvmTMB_julia_phylo_rr_adapter", "list")
+  result
+}
+
 #' Methods for Julia bridge fits
 #'
 #' Small S3 surface for fits returned by `gllvmTMB(..., engine = "julia")` or

@@ -20,6 +20,7 @@ temporary file, and an exclusive hard link; an existing receipt is preserved.
 
 - `tests/testthat/run-destination-b-s3b-native-pairs-isolated.R`
 - `tests/testthat/test-destination-b-s3b-native-pairs-runner.R`
+- `docs/dev-log/artifacts/2026-09-09-destination-b-s3b-native-pairs-receipt-v2.json`
 - `docs/dev-log/check-log.md`
 - this report
 
@@ -31,9 +32,9 @@ or Julia consumer changed.
 - RED: the old runner ignored define-only mode and demanded live environment
   variables.
 - RED/GREEN follow-up: a clean source tree exposed a zero-length Git-output
-  bug before package loading. The new clean-repository test failed first;
-  scalarising successful empty Git output fixes the guard. Focused runner
-  tests now pass **16 expectations**.
+  bug before package loading. The new clean-repository test failed first; the
+  clean-status guard now accepts an empty vector while preserving multi-line
+  Git output. Focused runner tests now pass **16 expectations**.
 - A live pre-run then exposed a second pre-fit runner defect: treating Git
   output as scalar fixed clean statuses but collapsed a multi-file changed-path
   list. A two-file Git-diff test now preserves the vector contract while the
@@ -44,9 +45,14 @@ or Julia consumer changed.
   SHA-256 is identical; a same-bytes copy passes while a different binary
   fails.
 - The new configured receipt path is mandatory; this prevents accidental
-  overwrite of the historical receipt. A live run has not been attempted
-  because the new branch does not yet have its authenticated frozen DLL.
-  `git diff --check` passed.
+  overwrite of the historical receipt. Authenticated live replay passed all
+  **48** selected expectations with no failures, skips, errors, or warnings in
+  **28.1 seconds**. Its immutable v2 receipt is
+  `docs/dev-log/artifacts/2026-09-09-destination-b-s3b-native-pairs-receipt-v2.json`
+  (SHA-256 `6b4c19670e154bd7f64d706ee98fc0fe974ae7834225b8cf70749a16228faa97`).
+  It binds frozen ancestry, clean/stable R and Julia commits, source and
+  loaded-DLL paths with equal SHA-256, runner hash, fixtures, seeds, and pair
+  deltas. `git diff --check` passed.
 
 ## Tests Of The Tests
 
@@ -58,11 +64,11 @@ mutation failed this preservation assertion.
 
 ## Known Limitations
 
-No native pair was rerun here. The runner must still be invoked from a clean,
-frozen build to refresh a receipt. This does not qualify S3b/S4, recovery,
-coverage, dense VCV, or generic `engine = "julia"` support.
+The replay covers only three controlled Gaussian, closed-adapter cells. It
+does not qualify S3b/S4, recovery, coverage, dense VCV beyond its recorded
+cell, scalable-gradient performance, or generic `engine = "julia"` support.
 
 ## Next Actions
 
-Run the repaired verifier from an authenticated clean frozen build, then pay
-the separate S4 seven-target-census and authoritative-route gates.
+Persist the immutable receipt with its exact allowlist entry, then pay the
+separate S4 seven-target-census and authoritative-route gates.

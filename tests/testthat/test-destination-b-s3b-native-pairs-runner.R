@@ -11,6 +11,7 @@ test_that("S3b native-pair runner binds the complete frozen-to-HEAD path contrac
     "docs/dev-log/after-task/2026-09-09-destination-b-s4-interval-reader-repair.md",
     "docs/dev-log/after-task/2026-09-09-destination-b-s4-tree-public-wrapper.md",
     "docs/dev-log/artifacts/2026-09-09-destination-b-s3b-native-pairs-receipt.json",
+    "docs/dev-log/artifacts/2026-09-09-destination-b-s3b-native-pairs-receipt-v2.json",
     "docs/dev-log/artifacts/2026-09-09-destination-b-s4-tree-public-workflow-receipt.json",
     "docs/dev-log/check-log.md",
     "man/gllvm_julia_phylo_rr.Rd",

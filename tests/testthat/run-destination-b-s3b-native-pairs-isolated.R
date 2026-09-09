@@ -16,6 +16,7 @@ s3b_native_pairs_allowed_changed_paths <- function() {
     "docs/dev-log/after-task/2026-09-09-destination-b-s4-interval-reader-repair.md",
     "docs/dev-log/after-task/2026-09-09-destination-b-s4-tree-public-wrapper.md",
     "docs/dev-log/artifacts/2026-09-09-destination-b-s3b-native-pairs-receipt.json",
+    "docs/dev-log/artifacts/2026-09-09-destination-b-s3b-native-pairs-receipt-v2.json",
     "docs/dev-log/artifacts/2026-09-09-destination-b-s4-tree-public-workflow-receipt.json",
     "docs/dev-log/check-log.md",
     "man/gllvm_julia_phylo_rr.Rd",

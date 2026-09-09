@@ -37,7 +37,7 @@ public-route refusal. A mocked transport test checks the flat call contract.
 
 `tests/testthat/run-destination-b-s3b-native-pairs-isolated.R` ran exactly the
 three predeclared native R-to-Julia pairs under the ARM-native Julia 1.10
-runtime, with callbacks disabled. The source-bound receipt records **38 passed,
+runtime, with callbacks disabled. The source-aligned receipt records **38 passed,
 zero failed/skipped/errors/warnings**. It asserts frozen gllvmTMB source commit
 `b4d5fee64def88bc768dda1f1f77c29b295edd86` is an ancestor and that every
 post-freeze change is confined to the authorised adapter/test/evidence files;
@@ -85,7 +85,13 @@ Independent Astra review required the three source forms and corruption tests;
 those gates are present. Its Julia consumer findings were repaired separately
 in GLLVM.jl before the live handoff. The review then identified missing
 provenance and fit-health fields in the first receipt; those are now enforced
-by the runner and recorded above. No P0 mathematical or scope finding remained.
+by the runner and recorded above. A subsequent independent S4 receipt review
+identified a shared P1: this runner proves that `pkgload` used the recorded
+local shared-object bytes, but the ignored local `src/gllvmTMB.so` is not yet
+checked against a predeclared frozen-source build manifest. Thus its native
+values are frozen-source-aligned, not authenticated frozen-source binary
+provenance; they cannot advance S3b/S4 qualification until that binding is
+retained and machine-checked.
 
 ## 11. Evidence command
 

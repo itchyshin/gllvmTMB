@@ -53931,15 +53931,19 @@ candidate evidence is reused from this pre-integration run.
   package loading; the live pre-run then exposed a scalar-collapse regression
   for multi-file changed paths, paid by the two-file test. The old runner
   failed the define-only test; an in-memory overwrite mutation failed
-  preservation. A `pkgload` temporary-copy pre-run also established the binary
+  preservation. A `pkgload` temporary-copy pre-run also established the loaded-byte
   contract: source and loaded DLL paths are both retained, and SHA-256 equality
-  is required; a different binary fails. Authenticated live replay then passed
+  is required; a different binary fails. Frozen-source-aligned live replay then passed
   all **48** selected expectations in **28.1 seconds**, with no failures,
   skips, errors, or warnings. The immutable v2 receipt retains the three
   Gaussian tree, sparse-pedigree, and R-ridged-once dense-`vcv` pairs, frozen
   ancestry, clean/stable source bindings, hashes, fixtures, seeds, and deltas.
   This is retained closed-adapter evidence only: it does not qualify S3b/S4,
   recovery, coverage, dense VCV beyond that cell, or general engine admission.
+  Independent S4 review subsequently identified that the ignored local source
+  DLL has no predeclared frozen-source build-manifest check, so this is not
+  authenticated frozen-source binary provenance and cannot advance S3b/S4
+  qualification.
 
 ## 2026-09-09 — Destination B S4 stored-interval reader repair
 

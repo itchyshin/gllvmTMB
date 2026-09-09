@@ -525,13 +525,29 @@ extract_ordination <- function(
       innovation = innovation,
       mean = mean_scores
     )
+    temporal_sign <- NULL
+    if (isTRUE(fit$temporal$active)) {
+      temporal_sign <- .temporal_report_sign(Lambda)
+      Lambda <- Lambda * temporal_sign$multiplier
+      scores <- scores * temporal_sign$multiplier
+    }
     rownames(scores) <- site_names
     colnames(scores) <- paste0("LV", seq_len(ncol(scores)))
-    list(
+    row_index <- site_names
+    if (isTRUE(fit$temporal$active)) {
+      idx <- match(site_names, fit$temporal$pair_table$pair_id)
+      row_index <- fit$temporal$pair_table[idx, , drop = FALSE]
+    }
+    out <- list(
       scores = scores,
       loadings = Lambda,
       row_id = site_names
     )
+    if (isTRUE(fit$temporal$active)) {
+      out$row_index <- row_index
+      out$temporal_sign <- temporal_sign
+    }
+    out
   } else {
     if (!fit$use$rr_W) {
       return(NULL)

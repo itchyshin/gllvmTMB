@@ -1,5 +1,16 @@
 # Extractors Contract
 
+## Temporal AR1 provider (implementation candidate)
+
+`extract_temporal(fit)` returns a parameter table (`phi`, boundary diagnostic,
+workflow, series and pair counts), the public pair index, and variance table.
+For unreplicated fits the variance component is named `iid_total_variance`;
+occasion and measurement components are intentionally unavailable. Replicated
+fits return `occasion_variance` by trait and one `measurement_variance` row.
+`getLV()` remains a matrix with pair IDs as row names and a `temporal_index`
+attribute. `extract_ordination()` adds the same index only for temporal fits,
+leaving the ordinary return contract unchanged.
+
 **Maintained by:** Emmy (R package architecture / S3 surface)
 and Fisher (statistical inference semantics).
 **Reviewers:** Curie (test fixtures cross-check), Boole

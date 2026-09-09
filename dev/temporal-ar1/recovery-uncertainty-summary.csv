@@ -1,0 +1,2 @@
+workflow,phi,seed,component,truth,estimate,relative_error,theta_se,delta_variance_se,truth_minus_estimate_in_delta_se,interpretation
+replicated,0.6,2609081,occasion_variance_trait_2,0.09,0.05797994,-0.35577841,0.32078490,0.03720170,0.8607,"Diagnostic only: retained gate miss; truth-estimate difference is about 0.86 local delta-method SE. This is not interval coverage evidence."

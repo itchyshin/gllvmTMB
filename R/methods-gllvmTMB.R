@@ -1,5 +1,39 @@
 ## S3 methods specific to gllvmTMB_multi objects.
 
+#' Refit a temporal latent model
+#'
+#' Replays the public long- or wide-format call saved for a
+#' [temporal_latent()] fit. Private pair identifiers are rebuilt from the
+#' supplied data and are never reused as public input.
+#'
+#' @param object A fitted `gllvmTMB_multi` temporal model.
+#' @param ... Named arguments to replace in the saved public call.
+#' @param evaluate Whether to evaluate the reconstructed call.
+#' @return The refitted model, or the reconstructed call if `evaluate = FALSE`.
+#' @export
+update.gllvmTMB_multi <- function(object, ..., evaluate = TRUE) {
+  if (!isTRUE(object$temporal$active)) {
+    return(stats::update.default(object, ..., evaluate = evaluate))
+  }
+  call <- object$call_wide %||% object$call
+  if (is.null(call) || !is.call(call)) {
+    cli::cli_abort("This temporal fit does not retain a public call for {.fn update}.")
+  }
+  dots <- list(...)
+  if (length(dots)) {
+    if (is.null(names(dots)) || any(!nzchar(names(dots)))) {
+      cli::cli_abort("Temporal {.fn update} accepts named argument overrides only.")
+    }
+    for (nm in names(dots)) {
+      call[[nm]] <- dots[[nm]]
+    }
+  }
+  if (!isTRUE(evaluate)) {
+    return(call)
+  }
+  eval(call, envir = parent.frame())
+}
+
 .modal_integer_id <- function(x, fallback = NA_integer_) {
   x <- as.integer(x)
   x <- x[!is.na(x)]
@@ -1495,6 +1529,16 @@ simulate.gllvmTMB_multi <- function(
     set.seed(seed)
   }
 
+  if (isTRUE(object$temporal$active) && is.null(newdata)) {
+    out <- replicate(nsim, .simulate_temporal_response(
+      object, redraw_scores = !isTRUE(condition_on_RE)
+    ))
+    if (is.null(dim(out))) {
+      out <- as.matrix(out)
+    }
+    return(out)
+  }
+
   ## Path 1: newdata or explicit condition_on_RE => use fitted eta (the
   ## old conditional behaviour). Newdata always uses fitted eta because
   ## we cannot redraw RE tiers for unseen levels.
@@ -1574,6 +1618,71 @@ simulate.gllvmTMB_multi <- function(
     out <- as.matrix(out)
   }
   out
+}
+
+#' Draw one Gaussian response vector from a temporal AR1 fit
+#'
+#' The score prior is redrawn only for an unconditional draw.  The independent
+#' Gaussian terms are always new response variation, matching the ordinary
+#' `condition_on_RE` contract.
+#'
+#' @keywords internal
+#' @noRd
+.simulate_temporal_response <- function(fit, redraw_scores = TRUE) {
+  if (!isTRUE(fit$temporal$active)) {
+    stop("Internal temporal simulation requires a temporal fit.", call. = FALSE)
+  }
+  td <- fit$tmb_data
+  trait_id <- td$trait_id + 1L
+  site_id <- td$site_id + 1L
+  n_sites <- td$n_sites
+  n_traits <- td$n_traits
+  pair_table <- fit$temporal$pair_table[
+    match(levels(fit$data[[fit$unit_col]]), fit$temporal$pair_table$pair_id),
+    , drop = FALSE
+  ]
+  if (nrow(pair_table) != n_sites || anyNA(pair_table$time)) {
+    stop("Internal temporal score index does not match fitted site levels.", call. = FALSE)
+  }
+
+  if (redraw_scores) {
+    phi <- as.numeric(fit$report$phi)
+    scores <- numeric(n_sites)
+    for (series in unique(pair_table$series)) {
+      idx <- which(pair_table$series == series)
+      idx <- idx[order(pair_table$time[idx])]
+      scores[idx[1L]] <- stats::rnorm(1L)
+      if (length(idx) > 1L) {
+        innovation_sd <- sqrt(1 - phi^2)
+        for (j in 2:length(idx)) {
+          scores[idx[j]] <- phi * scores[idx[j - 1L]] +
+            innovation_sd * stats::rnorm(1L)
+        }
+      }
+    }
+    eta <- as.numeric(td$X_fix %*% .gllvmTMB_b_fix_values(fit)) +
+      .gllvmTMB_offset_vec(fit)
+    Lambda_B <- as.matrix(fit$report$Lambda_B)
+    eta <- eta + Lambda_B[trait_id, 1L] * scores[site_id]
+  } else {
+    eta <- as.numeric(fit$report$eta)
+  }
+
+  par <- fit$tmb_obj$env$parList(fit$opt$par)
+  sd_independent <- exp(as.numeric(par$theta_diag_B))
+  if (length(sd_independent) != n_traits) {
+    stop("Internal temporal independent-variance parameter has wrong length.", call. = FALSE)
+  }
+  if (identical(fit$temporal$workflow, "unreplicated")) {
+    return(eta + stats::rnorm(length(eta), sd = sd_independent[trait_id]))
+  }
+
+  occasion_effect <- matrix(
+    stats::rnorm(n_traits * n_sites), nrow = n_traits, ncol = n_sites
+  ) * sd_independent
+  sigma_eps <- exp(as.numeric(par$log_sigma_eps[1L]))
+  eta + occasion_effect[cbind(trait_id, site_id)] +
+    stats::rnorm(length(eta), sd = sigma_eps)
 }
 
 #' Family-aware per-row draw from a fitted model
@@ -2586,6 +2695,13 @@ predict.gllvmTMB_multi <- function(
   ...
 ) {
   type <- match.arg(type)
+  if (isTRUE(object$temporal$active) && !is.null(newdata)) {
+    cli::cli_abort(c(
+      "{.fn predict} with {.arg newdata} is not yet available for {.fn temporal_latent} fits.",
+      "i" = "New rows need an explicitly reconstructed series--occasion score index.",
+      ">" = "Use {.code predict(fit)} for the training rows or {.code re_form = ~0} for fixed-effects-only training predictions."
+    ), class = "gllvmTMB_temporal_predict_newdata")
+  }
   .aghq_warn_re_gap(object, "predict()")
   if (isTRUE(se.fit)) {
     .gllvmTMB_predict_se_guard(object, newdata)
@@ -2618,7 +2734,9 @@ predict.gllvmTMB_multi <- function(
     } else {
       as.numeric(object$report$eta)
     }
-    ## Use the user's actual column names (not hard-coded sdmTMB ecology labels)
+    ## Use the user's actual column names (not hard-coded sdmTMB ecology labels).
+    ## A temporal fit internally uses a private pair factor, which must never
+    ## leak as the only training-data identifier.
     unit_lbl <- if (!is.null(object$unit_col)) object$unit_col else "site"
     species_lbl <- if (!is.null(object$species_col)) {
       object$species_col
@@ -2626,14 +2744,21 @@ predict.gllvmTMB_multi <- function(
       "species"
     }
     trait_lbl <- if (!is.null(object$trait_col)) object$trait_col else "trait"
-    out <- data.frame(
-      object$data[[unit_lbl]],
-      object$data[[species_lbl]],
-      object$data[[trait_lbl]],
-      est = eta,
-      stringsAsFactors = FALSE
-    )
-    names(out)[1:3] <- c(unit_lbl, species_lbl, trait_lbl)
+    if (isTRUE(object$temporal$active)) {
+      temporal_cols <- c(object$temporal$series_col, object$temporal$time_col,
+        object$temporal$replicate_col, trait_lbl)
+      temporal_cols <- unique(stats::na.omit(temporal_cols))
+      out <- data.frame(object$data[temporal_cols], est = eta, check.names = FALSE)
+    } else {
+      out <- data.frame(
+        object$data[[unit_lbl]],
+        object$data[[species_lbl]],
+        object$data[[trait_lbl]],
+        est = eta,
+        stringsAsFactors = FALSE
+      )
+      names(out)[1:3] <- c(unit_lbl, species_lbl, trait_lbl)
+    }
     ## Carry the arm/source label through (#1133 item 3). On a mixed-family
     ## fit -- an isdm_sources() fit above all -- `est` mixes scales: Poisson
     ## expected counts beside cloglog detection probabilities, in one numeric

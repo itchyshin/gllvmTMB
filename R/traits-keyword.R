@@ -189,6 +189,7 @@ is_traits_lhs <- function(formula) {
   "unique",
   "indep",
   "dep",
+  "temporal_latent",
   "rr",
   "diag",
   "phylo_indep",

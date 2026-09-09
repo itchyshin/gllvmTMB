@@ -91,6 +91,7 @@
                                   conf_level = 0.95,
                                   nsim       = 999L,
                                   seed       = NULL) {
+  .temporal_assert_no_iid_inference(fit, ".loading_ci_bootstrap")
   .structured_rho_refit_assert(fit, ".loading_ci_bootstrap")
 
   if (!inherits(fit, "gllvmTMB_multi"))

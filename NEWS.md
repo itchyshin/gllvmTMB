@@ -1,5 +1,19 @@
 # Development (unreleased)
 
+* `temporal_latent()` is an experimental native-TMB rank-one AR1 latent-score
+  provider for complete Gaussian identity-link longitudinal data with at least
+  three traits and consecutive integer occasions. It accepts both long and
+  `traits(...)` wide calls, and `replicate = measurement` separates
+  occasion-shared from common measurement variation. `extract_temporal()`,
+  labelled scores, training-data prediction, simulation, and public-call
+  update replay are supplied. **In scope:** the bounded syntax and likelihood
+  workflow described in the temporal article. **Partial:** focused dense-oracle and lifecycle checks plus one named
+  bounded local recovery fixture pass; this does not establish general
+  recovery, precision, calibration, or interval coverage.
+  **Not in scope:** forecasts/new-data prediction, profile/bootstrap/interval
+  routes, rank selection, higher ranks, slopes, irregular time, other
+  families, or combinations with another random-effect provider.
+
 * A new ordinal response family, `ordinal_logit()` -- the cumulative-**logit**
   analogue of the existing `ordinal_probit()` threshold model, family_id 20.
   It is a link swap on `ordinal_probit()`'s already-shipped

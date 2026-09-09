@@ -157,6 +157,14 @@ select_lv <- function(formula, data, ..., d_max, criterion = c("bic", "aic", "ai
   criterion <- match.arg(criterion)
   dots <- list(...)
 
+  if (grepl("temporal_latent", paste(deparse(formula), collapse = " "), fixed = TRUE)) {
+    cli::cli_abort(c(
+      "{.fn select_lv} is not available for {.fn temporal_latent} formulas.",
+      "i" = "The rank-selection routine rewrites iid latent terms.",
+      ">" = "Temporal rank is fixed at {.code d = 1} in this version."
+    ), class = "gllvmTMB_temporal_selection_unsupported")
+  }
+
   if (isTRUE(dots$REML)) {
     cli::cli_abort(c(
       "{.fn select_lv} does not support {.code REML = TRUE}.",

@@ -934,6 +934,8 @@ gllvmTMB <- function(
   ## the parser / TMB template / extractors. User-facing argument is `unit`.
   site <- unit
 
+  temporal_spec <- list(active = FALSE)
+
   ## ---- Honour deprecated `species = ...` alias for `cluster = ...` -----
   ## The package was originally written for site × species data, so the
   ## third grouping slot was named `species`. The slot is generic — it is
@@ -1115,6 +1117,39 @@ gllvmTMB <- function(
           "spatial_coef")) {
       .column_coef_engine_fence(column_coef_spec)
     }
+  }
+
+  ## Capture temporal syntax after the wide/data pre-passes, immediately
+  ## before generic desugaring. This keeps model-frame construction from ever
+  ## attempting to evaluate the formula marker.
+  temporal_capture <- .parse_temporal_latent_formula(formula, data, trait_col = trait)
+  temporal_spec <- temporal_capture$spec
+  if (isTRUE(temporal_spec$active)) {
+    if (!identical(engine, "tmb") || isTRUE(REML) || !identical(estimator, "ml") ||
+        !identical(family$family, "gaussian") || !identical(family$link, "identity")) {
+      cli::cli_abort("{.fn temporal_latent} currently requires the native Gaussian identity-link ML route.")
+    }
+    if (!identical(control$integration %||% "laplace", "laplace") ||
+        !isFALSE(control$aghq %||% FALSE)) {
+      cli::cli_abort(c(
+        "{.fn temporal_latent} currently requires native TMB Laplace integration.",
+        "i" = "Variational integration and adaptive Gauss-Hermite quadrature have iid latent-score algorithms.",
+        ">" = "Use {.code gllvmTMBcontrol(integration = \"laplace\", aghq = FALSE)}."
+      ))
+    }
+    if (!is.null(known_V) || !is.null(mesh) || !is.null(phylo_vcv) ||
+        !is.null(phylo_tree) || !is.null(column_coef_spec) ||
+        !is.null(structured_rho_capture$spec)) {
+      cli::cli_abort(c(
+        "{.fn temporal_latent} cannot be combined with another covariance provider in this version.",
+        ">" = "Use one temporal intercept block with fixed effects only."
+      ))
+    }
+    formula <- temporal_capture$formula
+    data <- temporal_capture$data
+    temporal_spec$unit_col <- site
+    site <- temporal_spec$pair_col
+    data[[site]] <- factor(data[[site]])
   }
 
   ## ---- Multinomial response expansion (Design 83) ----------------------
@@ -1344,6 +1379,7 @@ gllvmTMB <- function(
         as.integer(traits_n_dropped_response),
       data_original = data_original
     ),
+    temporal = temporal_spec,
     estimator = estimator,
     engine = engine
   )
@@ -1379,6 +1415,10 @@ gllvmTMB <- function(
   ## see the user's call. Attach it here, where match.call() is the call the
   ## user actually wrote, so print() can show it.
   if (inherits(.fit, "gllvmTMB_va")) {
+    .fit$call <- match.call()
+  }
+  if (isTRUE(temporal_spec$active)) {
+    .fit$temporal <- temporal_spec
     .fit$call <- match.call()
   }
   ## Arc 1A: record resolved integration / criterion / kernel / penalty-eval.

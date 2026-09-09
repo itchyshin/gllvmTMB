@@ -569,6 +569,22 @@ Type objective_function<Type>::operator()()
   DATA_INTEGER(d_B);               // rank of between-site rr term (>= 1 if used)
   DATA_INTEGER(d_W);               // rank of within-site rr term  (>= 1 if used)
   DATA_INTEGER(use_rr_B);          // 1/0
+  DATA_INTEGER(use_temporal_B);    // temporal AR1 prior on B-tier scores
+  DATA_INTEGER(temporal_iid_total); // unreplicated temporal total iid variance
+  DATA_IVECTOR(temporal_series_id); // one per B-tier score column
+  DATA_IVECTOR(temporal_time_index); // zero-based within-series occasion
+  DATA_INTEGER(n_temporal_series);
+  if (use_temporal_B == 1) {
+    if (temporal_series_id.size() != n_sites ||
+        temporal_time_index.size() != n_sites ||
+        n_temporal_series < 1)
+      error("gllvmTMB_multi: malformed temporal score index");
+    for (int s = 0; s < n_sites; s++) {
+      if (temporal_series_id(s) < 0 || temporal_series_id(s) >= n_temporal_series ||
+          temporal_time_index(s) < 0)
+        error("gllvmTMB_multi: temporal score index is out of range");
+    }
+  }
   DATA_INTEGER(use_lv_B);          // 1/0 predictor-informed mean for B-tier scores
   DATA_INTEGER(n_lv_B);            // columns in X_lv_B (>= 1 stub when inactive)
   DATA_MATRIX(X_lv_B);             // n_sites x n_lv_B unit-level score-mean design
@@ -1106,6 +1122,7 @@ Type objective_function<Type>::operator()()
   // Between-site rr: Lambda_B (n_traits x d_B) packed as theta_rr_B
   // length = d_B + (n_traits - d_B) * d_B = n_traits*d_B - d_B*(d_B-1)/2
   PARAMETER_VECTOR(theta_rr_B);
+  PARAMETER(theta_temporal_phi);
   PARAMETER_MATRIX(z_B);                         // d_B x n_sites spherical N(0, I)
   PARAMETER_MATRIX(alpha_lv_B);                  // n_lv_B x d_B score-mean coefficients
   // Augmented between-site random regression:
@@ -1352,6 +1369,7 @@ Type objective_function<Type>::operator()()
   if (integrate_gaussian_diag_B != 0 && integrate_gaussian_diag_B != 1)
     error("gllvmTMB_multi: integrate_gaussian_diag_B must be 0 or 1");
   if (integrate_gaussian_diag_B == 1) {
+    bool temporal_replicated = use_temporal_B == 1 && temporal_iid_total == 0;
     SEXP reml_data = getListElement(TMB_OBJECTIVE_PTR->data, "REML");
     bool gaussian_reml = !Rf_isNull(reml_data) && Rf_asLogical(reml_data) != 0;
     if (use_diag_B != 1 || estimator_id != 0 || gaussian_reml || use_aghq != 0 ||
@@ -1364,7 +1382,8 @@ Type objective_function<Type>::operator()()
         n_kernel_tiers != 0 || use_phylo_latent_slope != 0 || use_re_int != 0 ||
         (use_phylo_slope != 0 && use_phylo_column_slope != 1))
       error("gllvmTMB_multi: unsupported Gaussian cell-integration composition");
-    if (n_traits < 1 || n_sites < 1 || y.size() != n_traits * n_sites ||
+    if (n_traits < 1 || n_sites < 1 ||
+        (!temporal_replicated && y.size() != n_traits * n_sites) ||
         s_B.rows() != n_traits || s_B.cols() != n_sites ||
         diag_B_skip.size() != n_traits || family_id_vec.size() != y.size() ||
         link_id_vec.size() != y.size() || is_y_observed.size() != y.size() ||
@@ -1383,8 +1402,15 @@ Type objective_function<Type>::operator()()
           site_id(o) < 0 || site_id(o) >= n_sites)
         error("gllvmTMB_multi: Gaussian cell integration requires observed unit-weight identity Gaussian rows");
       int cell = trait_id(o) + n_traits * site_id(o);
-      if (++cell_counts(cell) != 1)
-        error("gllvmTMB_multi: Gaussian cell integration requires one observation per cell");
+      int count = ++cell_counts(cell);
+      if ((!temporal_replicated && count != 1) ||
+          (temporal_replicated && count < 1))
+        error("gllvmTMB_multi: Gaussian cell integration has an invalid observation count");
+    }
+    for (int cell = 0; cell < cell_counts.size(); ++cell) {
+      if ((!temporal_replicated && cell_counts(cell) != 1) ||
+          (temporal_replicated && cell_counts(cell) < 2))
+        error("gllvmTMB_multi: Gaussian cell integration has an incomplete temporal block");
     }
   }
 
@@ -1678,9 +1704,33 @@ Type objective_function<Type>::operator()()
     // off and the N(0, I) prior is evaluated INSIDE the quadrature (at each
     // node), so it must not also be added here.
     if (use_aghq == 0) {
-      for (int s = 0; s < n_sites; s++) {
-        vector<Type> col_s = z_B.col(s);
-        nll -= dnorm(col_s, Type(0), Type(1), true).sum();
+      if (use_temporal_B == 1) {
+        Type phi = (Type(1) - Type(1e-6)) * tanh(theta_temporal_phi);
+        Type transition_sd = sqrt(Type(1) - phi * phi);
+        for (int s = 0; s < n_sites; s++) {
+          for (int k = 0; k < d_B; k++) {
+            if (temporal_time_index(s) == 0) {
+              nll -= dnorm(z_B(k, s), Type(0), Type(1), true);
+            } else {
+              int previous = -1;
+              for (int q = 0; q < n_sites; q++) {
+                if (temporal_series_id(q) == temporal_series_id(s) &&
+                    temporal_time_index(q) == temporal_time_index(s) - 1) {
+                  previous = q;
+                  break;
+                }
+              }
+              if (previous < 0) error("gllvmTMB_multi: temporal score index has no previous occasion");
+              nll -= dnorm(z_B(k, s), phi * z_B(k, previous), transition_sd, true);
+            }
+          }
+        }
+        REPORT(phi);
+      } else {
+        for (int s = 0; s < n_sites; s++) {
+          vector<Type> col_s = z_B.col(s);
+          nll -= dnorm(col_s, Type(0), Type(1), true).sum();
+        }
       }
     }
     REPORT(Lambda_B);
@@ -3076,8 +3126,9 @@ Type objective_function<Type>::operator()()
       if (integrate_gaussian_diag_B == 1) {
         // Integrate s_B ~ N(0, psi) exactly. The independent observation
         // stabilizer remains unchanged and contributes its original variance.
-        Type variance = exp(Type(2) * theta_diag_B(trait_id(o))) +
-          sigma_eps_gaussian * sigma_eps_gaussian;
+        Type variance = exp(Type(2) * theta_diag_B(trait_id(o)));
+        if (temporal_iid_total == 0)
+          variance += sigma_eps_gaussian * sigma_eps_gaussian;
         ll += dnorm(y(o), eta_o, sqrt(variance), true);
       } else {
         ll += dnorm(y(o), eta_o, sigma_eps_gaussian, true);
@@ -3707,7 +3758,12 @@ Type objective_function<Type>::operator()()
     // evaluate any family density on it (that is the sentinel-invariance
     // guarantee, design 59 sec.9). When all rows are observed (response="drop")
     // this guard is always true -> an exact no-op.
-    if (family_id_vec(o) != 16 && is_y_observed(o) && !mi_missing_row) {
+    if (use_temporal_B == 1 && temporal_iid_total == 0) {
+      // Replicated temporal Gaussian observations are evaluated below as one
+      // normalized block per (occasion, trait), after integrating the
+      // occasion-shared diagonal effect.  A row-wise density here would lose
+      // the within-occasion covariance.
+    } else if (family_id_vec(o) != 16 && is_y_observed(o) && !mi_missing_row) {
       // Ordinary path: observed-y row whose predictor value is NOT a missing
       // discrete x (observed-x units take this path with the true x in eta(o)).
       // fid-16 rows are handled by the multinomial group branch above and skip
@@ -3782,6 +3838,47 @@ Type objective_function<Type>::operator()()
       observation_nll(o) = row_nll * weights_i(o);
   }
   if (report_obs_nll == 1 && use_aghq == 0) REPORT(observation_nll);
+
+  // -------- Replicated temporal Gaussian observation blocks -------------
+  // Integrating the occasion-shared diagonal term from
+  // y_gtrj = eta_gtrj + s_gtj + epsilon_gtrj gives
+  // psi_j 11' + sigma_eps^2 I within each (series, occasion, trait) block.
+  // This is an exact Gaussian marginal likelihood; it does not make s_B an
+  // iid persistent score or enter it into the temporal AR1 prior.
+  if (use_temporal_B == 1 && temporal_iid_total == 0) {
+    if (use_aghq == 1)
+      error("gllvmTMB_multi: replicated temporal likelihood requires Laplace");
+    for (int s = 0; s < n_sites; ++s) {
+      for (int t = 0; t < n_traits; ++t) {
+        int n_group = 0;
+        for (int o = 0; o < y.size(); ++o) {
+          if (site_id(o) == s && trait_id(o) == t) {
+            if (family_id_vec(o) != 0 || is_y_observed(o) != 1 ||
+                weights_i(o) != Type(1))
+              error("gllvmTMB_multi: malformed replicated temporal observation block");
+            ++n_group;
+          }
+        }
+        if (n_group < 2)
+          error("gllvmTMB_multi: replicated temporal blocks require at least two measurements");
+        vector<Type> residual(n_group);
+        matrix<Type> covariance(n_group, n_group);
+        Type psi = exp(Type(2) * theta_diag_B(t));
+        Type eps2 = sigma_eps_gaussian * sigma_eps_gaussian;
+        int j = 0;
+        for (int o = 0; o < y.size(); ++o) {
+          if (site_id(o) == s && trait_id(o) == t) {
+            residual(j) = y(o) - eta(o);
+            for (int q = 0; q < n_group; ++q)
+              covariance(j, q) = psi + (j == q ? eps2 : Type(0));
+            ++j;
+          }
+        }
+        density::MVNORM_t<Type> block_density(covariance);
+        nll += block_density(residual);
+      }
+    }
+  }
 
   // -------- AGHQ collapse: log-sum-exp over the quadrature nodes ---------
   // log L_i = logdet_i + log sum_j exp( logw_j + inner_ll(i, j) ).
@@ -4079,7 +4176,7 @@ Type objective_function<Type>::operator()()
   REPORT(mspl_Lambda_spde_reference);
 
   ADREPORT(b_fix);
-  if (integrate_gaussian_diag_B == 1) {
+  if (integrate_gaussian_diag_B == 1 && use_temporal_B == 0) {
     // These moments condition on the retained random effects and parameters.
     // ADREPORT(mean) propagates their uncertainty; R adds the conditional
     // variance below to recover the original s_B marginal standard errors.

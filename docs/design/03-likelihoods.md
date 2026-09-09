@@ -12,6 +12,24 @@ density looks like on the link scale, what the numerical scales
 are, what boundary cases are tested, and what comparator alignment
 holds.
 
+## Temporal rank-one AR1 Gaussian provider (implementation candidate)
+
+For series \(g\) and unit-spaced occasion \(t\), the temporal score has the
+stationary prior \(z_{g1}\sim N(0,1)\) and
+\(z_{gt}\sim N(\phi z_{g,t-1},1-\phi^2)\), where
+\(\phi=(1-10^{-6})\tanh(\theta_\phi)\). Only this score persists through
+time. The loading vector supplies the process amplitude.
+
+Without `replicate`, the native Gaussian density uses one directly estimated
+total independent variance \(D_j\) for each trait and maps the ordinary
+response dispersion off. With `replicate`, the likelihood directly integrates
+an occasion-shared \(\psi_j\) term, giving
+\(\psi_j\mathbf1\mathbf1^T+\sigma_\epsilon^2 I\) within every
+occasion--trait measurement block. The dense oracle at
+`tests/testthat/test-temporal-ar1-oracles.R` checks both normalized marginal
+likelihoods and gradients. The retained fixed-seed recovery gate remains
+failed, so this section does not establish general recovery or calibration.
+
 **Status discipline**: this doc uses the 4-state vocabulary from
 `docs/design/01-formula-grammar.md` (`covered / claimed / reserved
 / planned`). Most per-family rows are currently `claimed`; Phase

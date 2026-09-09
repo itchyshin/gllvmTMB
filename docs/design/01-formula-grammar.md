@@ -15,6 +15,25 @@ Everything in the engine serves those surfaces. Per **AGENTS.md Design
 Rule #3**, no change to this grammar ships without updating this
 document first.
 
+## Temporal AR1 latent-score provider (implementation candidate)
+
+`temporal_latent(0 + trait | series, time = occasion, d = 1)` is a separate
+rank-one temporal provider, not a fourth covariance mode or a sixth source
+row. It rewrites internally to one private pair-level latent block while
+preserving the public series--occasion identity. Its wide equivalent is
+`traits(y1, y2, y3) ~ 1 + temporal_latent(1 | series, time = occasion)`.
+`replicate = measurement` admits complete panels with at least two
+measurements per occasion.
+
+The admitted cell is native-TMB Gaussian identity-link ML with Laplace
+integration, at least three traits, consecutive integer occasions, one
+temporal intercept block, fixed effects, and rank one. Missing responses,
+irregular time, other providers, prediction for new data, forecasts,
+interval/profile/bootstrap methods, rank selection, higher ranks, slopes, and
+other families reject before an iid route can be used. This syntax remains
+**claimed / recovery gate open** until the retained temporal fixture meets its
+predeclared criteria; it is not a broad recovery or interval claim.
+
 The package should learn from `glmmTMB`, `gllvm`, and `galamm` without
 copying their grammars wholesale. The public grammar is built around
 two principles:

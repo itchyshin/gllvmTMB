@@ -27,6 +27,17 @@ compatibility syntax. The row remains partial because non-Gaussian
 augmented diagonal Psi is still guarded and broader coverage evidence is
 not yet established.
 
+## Temporal rank-one scores (implementation candidate)
+
+`temporal_latent()` supplies exactly one B-tier rank-one score per public
+series--occasion pair. Its private fitting factor is not part of the public
+object identity: `getLV()` and `extract_ordination()` carry a `pair_id`,
+`series`, `time` index. The score prior is AR1 within series and independent
+across series. In unreplicated data, a trait's independent variance is only
+identified as a total \(D_j\); replicated data identify an occasion-shared
+\(\psi_j\) and a common measurement variance. No other random-effect provider
+can be combined with the temporal block in this version.
+
 ## Order of implementation
 
 The development sequence (mirrors drmTMB's order-of-implementation

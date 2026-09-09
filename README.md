@@ -43,6 +43,7 @@ calibration remains incomplete.
 | fit your first model | [Get started with gllvmTMB](https://itchyshin.github.io/gllvmTMB/articles/gllvmTMB.html) |
 | decide whether your model and intended result are inside the current evidence boundary | [Current limitations and boundaries](https://itchyshin.github.io/gllvmTMB/articles/current-limits.html) |
 | choose the guide matching your data and question | [Browse all articles](https://itchyshin.github.io/gllvmTMB/articles/) |
+| model three traits measured repeatedly through time | [Temporal latent scores](https://itchyshin.github.io/gllvmTMB/articles/temporal-ar1.html) |
 | check whether a fit is interpretable | [Can I trust this fit?](https://itchyshin.github.io/gllvmTMB/articles/fit-diagnostics.html) |
 | look up formulas, covariance terms, or families | [Reference index](https://itchyshin.github.io/gllvmTMB/reference/) |
 
@@ -59,6 +60,14 @@ shown they recover known parameters, so treat this as a teaching example, not
 a proven method. The lme4-style bare-bar spelling `(1 + x | g)` is not
 accepted yet; for a random-slope model, use `latent(1 + x | g, d = K)`
 instead.
+
+An experimental `temporal_latent()` route fits one rank-one AR1 score across
+regular repeated occasions for three or more Gaussian traits, with optional
+replicated measurements. Its syntax, likelihood, simulation, and training-data
+workflow have focused local checks and one named bounded local recovery
+fixture. It makes no general recovery, precision, calibration, or interval
+claim; read the temporal article for the supported input contract and
+unsupported next steps.
 
 ## What the model does
 

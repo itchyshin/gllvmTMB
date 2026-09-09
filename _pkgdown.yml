@@ -62,6 +62,8 @@ navbar:
         href: articles/behavioural-syndromes.html
       - text: Behavioural reaction norms with random slopes
         href: articles/random-regression-reaction-norms.html
+      - text: Temporal latent scores
+        href: articles/temporal-ar1.html
       - text: Choosing latent rank
         href: articles/model-selection-latent-rank.html
       - text: Explaining latent ecological axes with predictors
@@ -159,6 +161,7 @@ articles:
     - articles/morphometrics
     - articles/behavioural-syndromes
     - articles/random-regression-reaction-norms
+    - articles/temporal-ar1
     - articles/model-selection-latent-rank
     - articles/explaining-latent-ecological-axes
     - articles/lambda-constraint-suggest
@@ -231,6 +234,7 @@ reference:
     - latent
     - indep
     - dep
+    - temporal_latent
 
   - title: Advanced formula keywords and shorthands
     desc: First-class mode-dispatch wrappers; the bar form (e.g. phylo(0 + trait | species, mode = ...)) is current, while the legacy bare-alias form is soft-deprecated. Public articles prefer the explicit core keywords
@@ -345,6 +349,7 @@ reference:
     - getREsd
     - extract_rotated_loadings_table
     - extract_cutpoints
+    - extract_temporal
 
   - title: Methods and plots on fitted models
     desc: Standard summaries, predictions, simulations, confidence intervals, and current plotting entry point
@@ -363,6 +368,7 @@ reference:
     - reexports
     - simulate.gllvmTMB_multi
     - predict.gllvmTMB_multi
+    - update.gllvmTMB_multi
     - predict_missing
     - imputed
     - imputed.gllvmTMB

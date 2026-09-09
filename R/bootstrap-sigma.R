@@ -211,6 +211,7 @@ bootstrap_Sigma <- function(
   keep_draws = FALSE,
   link_residual = c("auto", "none")
 ) {
+  .temporal_assert_no_iid_inference(fit, "bootstrap_Sigma")
   .structured_rho_refit_assert(fit, "bootstrap_Sigma")
   if (!inherits(fit, "gllvmTMB_multi")) {
     cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")

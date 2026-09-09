@@ -1121,6 +1121,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                                missing = miss_control(),
                                is_y_observed = NULL,
                                missing_meta = NULL,
+                               temporal = NULL,
                                estimator = "ml",
                                engine = "tmb") {
   if (!is.logical(REML) || length(REML) != 1L || is.na(REML)) {
@@ -1135,6 +1136,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     control$integration %||% "laplace", estimator, control$aghq %||% FALSE)
   structured_rho_estimated <- !is.null(structured_rho) &&
     identical(structured_rho$status, "estimated")
+  temporal <- temporal %||% list(active = FALSE)
+  temporal_active <- isTRUE(temporal$active)
 
   ## Family arg can be:
   ##   * a single family object (as before): same family for all rows.
@@ -5453,6 +5456,24 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     }
   }
 
+  temporal_series_id <- 0L
+  temporal_time_index <- 0L
+  n_temporal_series <- 1L
+  if (temporal_active) {
+    pair_match <- match(levels(data[[site]]), temporal$pair_table$pair_id)
+    if (anyNA(pair_match)) stop("Temporal pair map does not match fitted pair levels.", call. = FALSE)
+    pair_table <- temporal$pair_table[pair_match, , drop = FALSE]
+    temporal_series_id <- as.integer(factor(pair_table$series)) - 1L
+    ## Keep the rank aligned with the B-tier pair order.  `split()` followed
+    ## by `unlist()` would re-order an interleaved factor level vector by
+    ## series, silently attaching one series' time ranks to another's scores.
+    temporal_time_index <- as.integer(ave(
+      pair_table$time, temporal_series_id,
+      FUN = function(x) match(x, sort(x)) - 1L
+    ))
+    n_temporal_series <- length(unique(temporal_series_id))
+  }
+
   tmb_data <- list(
     y                = as.numeric(y),
     is_y_observed    = as.integer(is_y_observed),
@@ -5468,6 +5489,11 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     d_B              = as.integer(d_B),
     d_W              = as.integer(d_W),
     use_rr_B         = as.integer(use_rr_B),
+    use_temporal_B   = as.integer(temporal_active),
+    temporal_iid_total = as.integer(temporal_active && identical(temporal$workflow, "unreplicated")),
+    temporal_series_id = as.integer(temporal_series_id),
+    temporal_time_index = as.integer(temporal_time_index),
+    n_temporal_series = as.integer(n_temporal_series),
     use_lv_B         = as.integer(use_lv_B),
     n_lv_B           = as.integer(n_lv_B),
     X_lv_B           = X_lv_B,
@@ -5697,6 +5723,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     theta_rr_B   = if (use_rr_B) {
                      init_rr_theta(n_traits, d_B, scale = lam_scale_init)
                    } else rep(0.0, theta_rr_B_len),
+    theta_temporal_phi = 0.0,
     ## Latent-score start (issue #851). Seeded from an SVD of the grouped
     ## residual matrix rather than left at exactly zero. This is the one piece
     ## the previous attempt omitted, and the piece the diagnosis points at: the
@@ -6288,6 +6315,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     tmb_map$theta_rr_B <- factor(rep(NA_integer_, length(tmb_params$theta_rr_B)))
     tmb_map$z_B        <- factor(rep(NA_integer_, length(tmb_params$z_B)))
   }
+  if (!temporal_active) {
+    tmb_map$theta_temporal_phi <- factor(NA_integer_)
+  }
   if (!use_lv_B) {
     tmb_map$alpha_lv_B <- factor(rep(NA_integer_, length(tmb_params$alpha_lv_B)))
   }
@@ -6811,7 +6841,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     ## We honour that by fixing sigma_eps to a tiny fraction of the response sd
     ## so the Gaussian density stays well-defined while diag(Psi) absorbs the
     ## row-level variation.
-    if (per_row_diag_W || per_row_diag_B) {
+    if ((per_row_diag_W || per_row_diag_B) &&
+        !(temporal_active && identical(temporal$workflow, "unreplicated"))) {
       level_lab <- if (per_row_diag_W) ss_name else site
       data_sd  <- stats::sd(y)
       small_eps <- max(1e-3 * data_sd, 1e-6)
@@ -7072,6 +7103,17 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     known_V = known_V, lambda_constraint = lambda_constraint,
     Xcoef_fixed = xcoef_fixed
   )
+  if (temporal_active) {
+    ## The temporal Gaussian observation contract integrates the diagonal
+    ## occasion term exactly. Unreplicated data retain only the identifiable
+    ## total variance; replicated data use the normalized per-pair covariance
+    ## Psi 11' + sigma_eps^2 I. Both avoid treating an iid s_B mode as a
+    ## temporal score or as an independently persisted state.
+    integrated_gaussian_diag_B <- TRUE
+    if (identical(temporal$workflow, "unreplicated")) {
+      tmb_map$log_sigma_eps <- factor(rep(NA_integer_, length(tmb_params$log_sigma_eps)))
+    }
+  }
   tmb_data$integrate_gaussian_diag_B <- as.integer(integrated_gaussian_diag_B)
   if (integrated_gaussian_diag_B) {
     tmb_map$s_B <- factor(rep(NA_integer_, length(tmb_params$s_B)))

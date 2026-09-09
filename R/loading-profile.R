@@ -77,6 +77,7 @@ loading_profile <- function(fit,
 
   if (!inherits(fit, "gllvmTMB_multi"))
     cli::cli_abort("{.code fit} must be a multi-trait {.fun gllvmTMB} fit.")
+  .temporal_assert_no_iid_inference(fit, "loading_profile")
   .gllvmTMB_mspl_assert_inference(fit, "loading_profile")
   .gllvmTMB_require_unweighted_inference(fit, "loading_profile")
   level <- match.arg(level)

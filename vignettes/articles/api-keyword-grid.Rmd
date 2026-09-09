@@ -116,6 +116,18 @@ term (see the latent default below). The standalone `unique()` keyword is
 soft-deprecated in favour of `indep()` (for a plain diagonal) and
 `latent(unique = TRUE)` (for the paired companion).
 
+## Repeated temporal measurements
+
+`temporal_latent(0 + trait | series, time = occasion)` is one implemented
+rank-one AR1 latent-score provider beside the grid, rather than a new grid row
+or mode. It is currently limited to Gaussian identity-link ML, regular integer
+occasions, at least three traits, one temporal intercept block, and fixed
+effects. Add `replicate = measurement` for at least two complete trait panels
+at every occasion. The temporal article shows matched long and `traits(...)`
+wide calls. Forecasts, intervals, rank selection, higher ranks, irregular
+time, other families, and combinations with another provider are not yet
+available.
+
 ## What the modes estimate
 
 For the intercept-only grid, let $K_{gg'}$ be an entry of the relationship or

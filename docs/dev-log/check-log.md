@@ -57674,3 +57674,20 @@ Deliberately not run: Totoro 9×500 grid dispatch; full `devtools::test()`.
   formula with `engine = "tmb"`). Ceiling stays **828**; not bumped.
 - Command: `Rscript --vanilla -e 'source("dev/gapclose/count-bare-aborts.R"); cat(length(count_bare_aborts("R")), "\n")'`
   plus `testthat` filter `gapclose-next-steps|kernel-latent-unique-bridge`.
+
+## 2026-09-08 — native temporal AR1 local closeout
+
+- Implemented the native rank-one Gaussian `temporal_latent()` provider for
+  complete regular long and `traits(...)` wide panels, including ordinary and
+  replicated workflows, public labels, training prediction, simulation,
+  update replay, and early unsupported-route guards.
+- Temporal gates: `TEMPORAL_PARSER_PASS`, `TEMPORAL_ORACLE_PASS`,
+  `TEMPORAL_METHODS_PASS`, `TEMPORAL_RECOVERY_PASS` (approved fixture-local
+  revision retained in `dev/temporal-ar1/ACCEPTANCE-REVISION.md`), and
+  `TEMPORAL_REGRESSION_PASS`.
+- The validation register remains `TEMP-AR1-01 = partial`; no general recovery,
+  calibration, precision, or interval claim is made.
+- Detached clean-worktree package check at temporal commit `184aa685f` ran in
+  24m12.7s with 0 errors, 5 warnings, and 4 notes. It had no temporal failure;
+  its BIC namespace, Julia Rd, and anova Rd warnings pre-exist this slice.
+- Repository-owned temporal ledger reverify: all seven gates met; G0–G5 reran after approved receipts were recorded.

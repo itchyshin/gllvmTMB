@@ -428,6 +428,7 @@
   nsim       = 500L,
   seed       = NULL
 ) {
+  .temporal_assert_no_iid_inference(fit, ".proportions_bootstrap_ci")
   .gllvmTMB_mspl_assert_inference(fit, ".proportions_bootstrap_ci")
   .gllvmTMB_require_unweighted_inference(fit, ".proportions_bootstrap_ci")
   v <- .proportions_validate_inputs(fit, components, trait_idx, level)

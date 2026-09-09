@@ -9,6 +9,17 @@ durable record never lags the code.
 Last refreshed 2026-08-24 (0.7.1 trust-release boundary review; this is a
 status fence, not a new validation claim).
 
+## Temporal AR1 latent-score boundary
+
+`temporal_latent()` is an experimental Gaussian identity-link, rank-one,
+regular-time provider for three or more traits. It supports ordinary and
+replicated complete panels, but no forecasts/new-data prediction, profile,
+bootstrap, score interval, rank-selection, higher-rank, slope, irregular-time,
+non-Gaussian, or combined-provider route. Its dense likelihood and lifecycle
+contracts have local tests, and one named 12-series recovery fixture passes a
+fixture-local engineering gate. That retained fixture is not general recovery,
+precision, calibration, or interval-coverage evidence.
+
 ## Exact-aa production boundary
 
 The frozen v4 study completed 44,800/44,800 production fits across 28

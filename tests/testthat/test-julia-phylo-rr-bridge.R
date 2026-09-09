@@ -226,6 +226,69 @@ test_that("private S3b adapter reaches the closed Julia consumer when opted in",
   expect_equal(result$n_observations, 2L)
 })
 
+test_that("private S3b adapter pairs with one genuine frozen native tree fit", {
+  skip_if_not(
+    identical(Sys.getenv("GLLVM_S3B_LIVE_ADAPTER_TESTS"), "1"),
+    "set GLLVM_S3B_LIVE_ADAPTER_TESTS=1 with an isolated Julia project to run"
+  )
+  project <- Sys.getenv("GLLVM_DESTINATION_B_PROJECT", "")
+  julia_home <- Sys.getenv("GLLVM_S3B_JULIA_HOME", "")
+  skip_if_not(nzchar(project), "GLLVM_DESTINATION_B_PROJECT is required")
+  skip_if_not(nzchar(julia_home), "GLLVM_S3B_JULIA_HOME is required")
+  skip_if_not_installed("ape")
+
+  tree <- ape::read.tree(text = "((sp1:1,sp2:1):1,(sp3:1,sp4:1):1);")
+  dat <- expand.grid(
+    site = factor(paste0("site", 1:3)),
+    species = factor(paste0("sp", 1:4), levels = paste0("sp", 1:4)),
+    trait = factor(c("t1", "t2"), levels = c("t1", "t2"))
+  )
+  dat$site_species <- interaction(dat$site, dat$species, drop = TRUE)
+  set.seed(701L)
+  mu <- c(t1 = -0.25, t2 = 0.35)
+  species_effect <- c(sp1 = -0.55, sp2 = -0.20, sp3 = 0.15, sp4 = 0.50)
+  loading <- c(t1 = 0.80, t2 = -0.55)
+  dat$value <- unname(
+    mu[as.character(dat$trait)] +
+      loading[as.character(dat$trait)] * species_effect[as.character(dat$species)] +
+      stats::rnorm(nrow(dat), sd = 0.12)
+  )
+  native <- suppressMessages(gllvmTMB(
+    value ~ 0 + trait + phylo_latent(species, d = 1, unique = FALSE),
+    data = dat, trait = "trait", unit = "site_species", cluster = "species",
+    family = gaussian(), phylo_tree = tree,
+    control = gllvmTMBcontrol(se = FALSE), silent = TRUE
+  ))
+  expect_true(isTRUE(native$use$phylo_rr))
+  expect_false(isTRUE(native$use$phylo_diag))
+
+  Sys.setenv(JULIA_PROJECT = project)
+  JuliaCall::julia_setup(
+    JULIA_HOME = julia_home,
+    install = FALSE,
+    useRCall = FALSE,
+    verbose = FALSE
+  )
+  JuliaCall::julia_command(sprintf(
+    "import Pkg; Pkg.activate(\"%s\"); using GLLVM",
+    gsub("\\\\", "\\\\\\\\", project, fixed = TRUE)
+  ))
+  old_ready <- .gllvm_jl_env$ready
+  .gllvm_jl_env$ready <- TRUE
+  on.exit(.gllvm_jl_env$ready <- old_ready, add = TRUE)
+  julia <- gllvmTMB:::.gllvm_julia_phylo_rr_adapter(native, ci_method = "none")
+  payload <- gllvmTMB:::.gllvm_julia_phylo_rr_payload(native)
+
+  expect_identical(julia$admission_status, "closed")
+  expect_equal(abs(as.numeric(logLik(native)) - julia$loglik), 0, tolerance = 1e-6)
+  expect_equal(max(abs(unname(coef(native)) - julia$coefficients)), 0, tolerance = 1e-6)
+  expect_equal(max(abs(native$report$Sigma_phy - julia$phylo_covariance)), 0, tolerance = 1e-6)
+  expect_equal(max(abs(native$report$sigma_eps^2 - julia$residual_variance)), 0, tolerance = 1e-6)
+  expect_identical(payload$species_id, julia$species_id)
+  expect_equal(julia$scale, 2)
+  expect_equal(payload$phylo$log_det, julia$log_det, tolerance = 0)
+})
+
 test_that("engine = 'julia' remains closed for phylo_rr", {
   df <- .s3b_phylo_rr_fixture()$data
   A <- diag(2L)

@@ -37,7 +37,14 @@ public-route refusal. A mocked transport test checks the flat call contract.
 
 With `GLLVM_S3B_LIVE_ADAPTER_TESTS=1`, the same suite starts the ARM-native
 Julia 1.10 runtime in the isolated GLLVM project with callbacks disabled and
-executes the private adapter. Result: **34 expectations passed**.
+executes the private adapter. Result: **44 expectations passed**, including a
+genuine 24-row native tree pair from frozen R commit
+`b4d5fee64def88bc768dda1f1f77c29b295edd86`.
+
+That tree pair retained its height-two scale, full node/tip map, and
+determinant exactly. Absolute R-versus-Julia deltas were `1.54e-12` in log
+likelihood, `6.88e-8` in fixed effects, `1.26e-7` in rotation-invariant
+phylogenetic covariance, and `4.72e-10` in residual variance.
 
 ## 7. Reference boundary
 
@@ -56,10 +63,10 @@ variables rather than silently relying on local discovery.
 
 ## 9. Known limitations
 
-The native-source fixtures validate transport and a minimal closed consumer
-handoff. They do not yet provide an independently fitted-R-versus-Julia
-optimizer comparison, public workflow/S4 evidence, profile intervals,
-recovery, coverage, or a general `engine = "julia"` route.
+The tree source now has an independently fitted-R-versus-Julia comparison.
+Native sparse-pedigree and dense-`vcv` pairs remain unpaid, as do public
+workflow/S4 evidence, profile intervals, recovery, coverage, and a general
+`engine = "julia"` route.
 
 ## 10. Review
 
@@ -78,6 +85,5 @@ Rscript --vanilla -e 'devtools::test(filter = "julia-phylo-rr-bridge")'
 
 ## 12. Next action
 
-Create a predeclared genuine native-fit paired fixture and compare the named
-admitted quantities against the closed consumer before claiming S3b qualified;
-then S4 may begin.
+Create equivalent predeclared genuine native sparse-pedigree and dense-`vcv`
+pairs before calling S3b qualified; then S4 may begin.

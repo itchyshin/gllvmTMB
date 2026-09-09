@@ -12,9 +12,15 @@
   `1e8`; the R-ridged-once precision is transported as-is and is never
   reinverted by Julia.
 - Focused R transport suite passes with the live JuliaCall route enabled:
-  **34 expectations**, including tree scale, retained pedigree ancestor,
+  **44 expectations**, including a genuine frozen-source 24-row native tree
+  pair, tree scale, retained pedigree ancestor,
   dense-ridge-once, corrupt map/determinant/tree controls, generic public-route
   refusal, and the actual closed R-to-Julia handoff.
+- Frozen tree pair (R `b4d5fee64def88bc768dda1f1f77c29b295edd86`): absolute
+  deltas were `1.54e-12` for log likelihood, `6.88e-8` for trait fixed
+  effects, `1.26e-7` for rotation-invariant phylogenetic covariance, and
+  `4.72e-10` for residual variance. The complete tip map, log determinant,
+  and non-unit scale `2` were identical.
 - After-task: `docs/dev-log/after-task/2026-09-09-destination-b-s3b-r-adapter.md`.
   This is adapter/transport evidence only, not fitted-optimizer parity,
   recovery, coverage, or 0.7 parity.

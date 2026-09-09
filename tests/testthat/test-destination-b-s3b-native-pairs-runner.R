@@ -12,6 +12,8 @@ test_that("S3b native-pair runner binds the complete frozen-to-HEAD path contrac
     "docs/dev-log/after-task/2026-09-09-destination-b-s4-tree-public-wrapper.md",
     "docs/dev-log/artifacts/2026-09-09-destination-b-s3b-native-pairs-receipt.json",
     "docs/dev-log/artifacts/2026-09-09-destination-b-s3b-native-pairs-receipt-v2.json",
+    "docs/dev-log/artifacts/2026-09-09-destination-b-s3b-native-pairs-receipt-v3.json",
+    "docs/dev-log/artifacts/2026-09-09-destination-b-frozen-r-binary-build-manifest.json",
     "docs/dev-log/artifacts/2026-09-09-destination-b-s4-tree-public-workflow-receipt.json",
     "docs/dev-log/check-log.md",
     "man/gllvm_julia_phylo_rr.Rd",
@@ -26,6 +28,31 @@ test_that("S3b native-pair runner binds the complete frozen-to-HEAD path contrac
   expect_error(
     runner_environment$s3b_native_pairs_validate_changed_paths(c(expected_paths, "R/unapproved.R")),
     "outside the approved bridge/test scope"
+  )
+})
+
+test_that("S3b native-pair runner requires an authenticated frozen-binary manifest", {
+  runner_environment <- new.env(parent = baseenv())
+  withr::local_envvar(GLLVM_S3B_NATIVE_PAIRS_DEFINE_ONLY = "1")
+  source(testthat::test_path("run-destination-b-s3b-native-pairs-isolated.R"), local = runner_environment)
+
+  manifest_path <- tempfile("s3b-frozen-binary-manifest-", fileext = ".json")
+  withr::defer(unlink(manifest_path))
+  manifest_payload <- list(
+    kind = "destination_b_frozen_r_binary_build",
+    frozen_reference_commit = runner_environment$s3b_native_pairs_frozen_reference_commit(),
+    source_archive_sha256 = "0c2f4323eb9fb19acccf039b8d57b4dd6bda82e2aa8b4a7bb712f36a64b022bc",
+    shared_object_sha256 = "64f70caad53a235b62c35947ce62617589abc07c5092c77591b208322c84cb2b"
+  )
+  jsonlite::write_json(manifest_payload, manifest_path, auto_unbox = TRUE)
+  manifest <- runner_environment$s3b_native_pairs_read_frozen_binary_manifest(manifest_path)
+  expect_identical(manifest$shared_object_sha256, manifest_payload$shared_object_sha256)
+
+  manifest_payload$frozen_reference_commit <- "not-the-frozen-commit"
+  jsonlite::write_json(manifest_payload, manifest_path, auto_unbox = TRUE)
+  expect_error(
+    runner_environment$s3b_native_pairs_read_frozen_binary_manifest(manifest_path),
+    "does not bind the exact frozen source"
   )
 })
 
@@ -74,7 +101,7 @@ test_that("S3b native-pair provenance helpers bind copied DLL bytes, not a tempo
   expect_identical(binding$source_path, normalizePath(source_path))
   expect_error(
     runner_environment$s3b_native_pairs_validate_loaded_dll(different_path, source_path),
-    "does not match the authenticated source binary"
+    "does not match the authenticated frozen source binary"
   )
 })
 

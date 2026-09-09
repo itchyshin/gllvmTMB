@@ -7,6 +7,41 @@ s3b_native_pairs_frozen_reference_commit <- function() {
   "b4d5fee64def88bc768dda1f1f77c29b295edd86"
 }
 
+s3b_native_pairs_frozen_source_archive_sha256 <- function() {
+  "0c2f4323eb9fb19acccf039b8d57b4dd6bda82e2aa8b4a7bb712f36a64b022bc"
+}
+
+s3b_native_pairs_frozen_binary_manifest_path <- function() {
+  normalizePath(
+    file.path(
+      getwd(), "docs", "dev-log", "artifacts",
+      "2026-09-09-destination-b-frozen-r-binary-build-manifest.json"
+    ),
+    mustWork = TRUE
+  )
+}
+
+s3b_native_pairs_read_frozen_binary_manifest <- function(path) {
+  manifest <- jsonlite::read_json(path, simplifyVector = TRUE)
+  required <- c(
+    "kind", "frozen_reference_commit", "source_archive_sha256", "shared_object_sha256"
+  )
+  missing <- setdiff(required, names(manifest))
+  if (length(missing)) {
+    stop("frozen binary manifest is missing field(s): ", paste(missing, collapse = ", "), call. = FALSE)
+  }
+  manifest <- lapply(manifest, as.character)
+  if (!identical(manifest$kind, "destination_b_frozen_r_binary_build") ||
+      !identical(manifest$frozen_reference_commit, s3b_native_pairs_frozen_reference_commit()) ||
+      !identical(manifest$source_archive_sha256, s3b_native_pairs_frozen_source_archive_sha256())) {
+    stop("frozen binary manifest does not bind the exact frozen source", call. = FALSE)
+  }
+  if (!grepl("^[[:xdigit:]]{64}$", manifest$shared_object_sha256)) {
+    stop("frozen binary manifest must contain a valid SHA-256", call. = FALSE)
+  }
+  manifest
+}
+
 s3b_native_pairs_allowed_changed_paths <- function() {
   c(
     "NAMESPACE",
@@ -17,6 +52,8 @@ s3b_native_pairs_allowed_changed_paths <- function() {
     "docs/dev-log/after-task/2026-09-09-destination-b-s4-tree-public-wrapper.md",
     "docs/dev-log/artifacts/2026-09-09-destination-b-s3b-native-pairs-receipt.json",
     "docs/dev-log/artifacts/2026-09-09-destination-b-s3b-native-pairs-receipt-v2.json",
+    "docs/dev-log/artifacts/2026-09-09-destination-b-s3b-native-pairs-receipt-v3.json",
+    "docs/dev-log/artifacts/2026-09-09-destination-b-frozen-r-binary-build-manifest.json",
     "docs/dev-log/artifacts/2026-09-09-destination-b-s4-tree-public-workflow-receipt.json",
     "docs/dev-log/check-log.md",
     "man/gllvm_julia_phylo_rr.Rd",
@@ -66,14 +103,15 @@ s3b_native_pairs_loaded_dll_path <- function(package = "gllvmTMB") {
   normalizePath(dll[["path"]], mustWork = TRUE)
 }
 
-s3b_native_pairs_validate_loaded_dll <- function(loaded_path, source_path) {
+s3b_native_pairs_validate_loaded_dll <- function(loaded_path, source_path, expected_sha256 = NULL) {
   loaded_path <- normalizePath(loaded_path, mustWork = TRUE)
   source_path <- normalizePath(source_path, mustWork = TRUE)
   loaded_sha256 <- digest::digest(file = loaded_path, algo = "sha256")
   source_sha256 <- digest::digest(file = source_path, algo = "sha256")
-  if (!identical(loaded_sha256, source_sha256)) {
+  if (!identical(loaded_sha256, source_sha256) ||
+      (!is.null(expected_sha256) && !identical(loaded_sha256, expected_sha256))) {
     stop(
-      "loaded gllvmTMB DLL does not match the authenticated source binary: ",
+      "loaded gllvmTMB DLL does not match the authenticated frozen source binary: ",
       "source ", source_path, "; loaded ", loaded_path,
       call. = FALSE
     )
@@ -81,7 +119,8 @@ s3b_native_pairs_validate_loaded_dll <- function(loaded_path, source_path) {
   list(
     loaded_path = loaded_path,
     source_path = source_path,
-    sha256 = loaded_sha256
+    sha256 = loaded_sha256,
+    expected_sha256 = expected_sha256
   )
 }
 
@@ -188,6 +227,8 @@ s3b_native_pairs_main <- function() {
     "frozen reference scope"
   )
   s3b_native_pairs_validate_changed_paths(changed_paths)
+  binary_manifest_path <- s3b_native_pairs_frozen_binary_manifest_path()
+  binary_manifest <- s3b_native_pairs_read_frozen_binary_manifest(binary_manifest_path)
   path <- "tests/testthat/test-julia-phylo-rr-bridge.R"
   expressions <- parse(file = path)
   printed <- vapply(expressions, function(expr) paste(deparse(expr), collapse = "\n"), character(1))
@@ -203,7 +244,9 @@ s3b_native_pairs_main <- function() {
   pkgload::load_all(".", quiet = TRUE, compile = FALSE)
   expected_dll_path <- normalizePath(file.path(getwd(), "src", "gllvmTMB.so"), mustWork = TRUE)
   loaded_dll_path <- s3b_native_pairs_loaded_dll_path()
-  dll_binding <- s3b_native_pairs_validate_loaded_dll(loaded_dll_path, expected_dll_path)
+  dll_binding <- s3b_native_pairs_validate_loaded_dll(
+    loaded_dll_path, expected_dll_path, binary_manifest$shared_object_sha256
+  )
   reporter <- testthat::ListReporter$new()
   testthat::with_reporter(reporter, {
     reporter$start_file("destination-b-s3b-native-pairs-isolated")
@@ -272,6 +315,9 @@ s3b_native_pairs_main <- function() {
       r_shared_object_source_path = dll_binding$source_path,
       r_shared_object_loaded_path = dll_binding$loaded_path,
       r_shared_object_sha256 = dll_binding$sha256,
+      r_shared_object_expected_sha256 = dll_binding$expected_sha256,
+      r_frozen_binary_manifest_path = binary_manifest_path,
+      r_frozen_binary_manifest_sha256 = digest::digest(file = binary_manifest_path, algo = "sha256"),
       gllvm_julia_project_path = project,
       gllvm_julia_active_project_path = julia_active_project,
       gllvm_julia_package_root = julia_package_root,

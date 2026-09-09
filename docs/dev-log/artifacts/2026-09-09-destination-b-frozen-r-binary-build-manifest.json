@@ -1,0 +1,11 @@
+{
+  "kind": "destination_b_frozen_r_binary_build",
+  "frozen_reference_commit": "b4d5fee64def88bc768dda1f1f77c29b295edd86",
+  "source_archive_sha256": "0c2f4323eb9fb19acccf039b8d57b4dd6bda82e2aa8b4a7bb712f36a64b022bc",
+  "shared_object_sha256": "64f70caad53a235b62c35947ce62617589abc07c5092c77591b208322c84cb2b",
+  "r_version": "R version 4.6.0 (2026-04-24)",
+  "r_platform": "aarch64-apple-darwin23",
+  "compiler": "Apple clang version 21.0.0 (clang-2100.1.1.101)",
+  "build_command": "R CMD INSTALL -l <isolated-library> <fresh-git-archive-of-b4d5fee64def88bc768dda1f1f77c29b295edd86>",
+  "build_scope": "fresh archive with no pre-existing object file; local ARM macOS build only"
+}

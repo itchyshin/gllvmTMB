@@ -88,10 +88,15 @@ provenance and fit-health fields in the first receipt; those are now enforced
 by the runner and recorded above. A subsequent independent S4 receipt review
 identified a shared P1: this runner proves that `pkgload` used the recorded
 local shared-object bytes, but the ignored local `src/gllvmTMB.so` is not yet
-checked against a predeclared frozen-source build manifest. Thus its native
-values are frozen-source-aligned, not authenticated frozen-source binary
-provenance; they cannot advance S3b/S4 qualification until that binding is
-retained and machine-checked.
+checked against a predeclared frozen-source build manifest. A fresh archive of
+the exact frozen commit was compiled successfully with no pre-existing object
+file: its archive SHA-256 is
+`0c2f4323eb9fb19acccf039b8d57b4dd6bda82e2aa8b4a7bb712f36a64b022bc` and its
+ARM-macOS shared-object SHA-256 is
+`64f70caad53a235b62c35947ce62617589abc07c5092c77591b208322c84cb2b`.
+The new manifest-pinned runner source is committed and tested; a fresh v3
+replay is still required before calling the three pairs authenticated
+frozen-binary evidence.
 
 ## 11. Evidence command
 
@@ -104,6 +109,6 @@ Rscript --vanilla tests/testthat/run-destination-b-s3b-native-pairs-isolated.R
 
 ## 12. Next action
 
-Perform a fresh independent review of this receipt and the two adapter/consumer
-commits. Keep S4 as a separate public-workflow gate; do not reopen generic
-engine admission from these private-pair results.
+Replay the tree, sparse-pedigree, and dense-`vcv` pairs against the manifest-
+pinned frozen binary into a new write-once v3 receipt, then independently
+review it. Keep S4 separate and do not reopen generic engine admission.

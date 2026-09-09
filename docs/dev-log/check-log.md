@@ -53944,6 +53944,13 @@ candidate evidence is reused from this pre-integration run.
   DLL has no predeclared frozen-source build-manifest check, so this is not
   authenticated frozen-source binary provenance and cannot advance S3b/S4
   qualification.
+- The repair is prepared: an exact `b4d5fee` archive was compiled in a fresh
+  isolated library without a pre-existing object file. Its archive SHA-256 is
+  `0c2f4323eb9fb19acccf039b8d57b4dd6bda82e2aa8b4a7bb712f36a64b022bc` and its
+  ARM shared-object SHA-256 is
+  `64f70caad53a235b62c35947ce62617589abc07c5092c77591b208322c84cb2b`.
+  The manifest-pinned v3 runner source now requires both source and loaded
+  package bytes to match that exact SHA before executing the three pairs.
 
 ## 2026-09-09 — Destination B S4 stored-interval reader repair
 

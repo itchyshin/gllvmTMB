@@ -44,7 +44,7 @@ unstructured trait covariance, and \code{temporal_latent()} fits rank-one trait
 loadings. With \code{unique = TRUE}, the temporal diagonal Psi is also correlated
 across occasions; it is not independent occasion noise. Temporal sources can
 be added to ordinary \code{unit} and \code{unit_obs} terms. The currently verified
-cross-source pairs are \code{temporal_indep()} with one \code{kernel_indep()} term or
-one \code{phylo_indep()} term. Spatial, animal, other source cells, and temporal
-source-by-time interactions remain unavailable.
+cross-source pairs are \code{temporal_indep()} with one \code{kernel_indep()},
+\code{phylo_indep()}, or \code{animal_indep()} term. Spatial, other source cells, and
+temporal source-by-time interactions remain unavailable.
 }

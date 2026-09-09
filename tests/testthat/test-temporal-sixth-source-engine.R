@@ -166,19 +166,18 @@ test_that("temporal long and wide calls retain modes, labels, and lifecycle guar
   }
 })
 
-test_that("temporal source refuses each deferred provider and duplicate temporal terms", {
+test_that("temporal source refuses deferred non-kernel providers and duplicate temporal terms", {
   dat <- .temporal_sixth_fixture()
   deferred <- list(
     quote(phylo_indep(0 + trait | series)),
     quote(animal_indep(0 + trait | series)),
-    quote(spatial_indep(0 + trait | series)),
-    quote(kernel_indep(0 + trait | series))
+    quote(spatial_indep(0 + trait | series))
   )
   for (other in deferred) {
     form <- as.formula(call("~", quote(value), call("+",
       call("+", quote(0 + trait), quote(temporal_indep(0 + trait | series, time = occasion))), other)))
     expect_error(gllvmTMB(form, data = dat, unit = "series", family = gaussian()),
-      "temporal covariance term cannot be combined", info = deparse(other))
+      "temporal covariance combination is not yet supported", info = deparse(other))
   }
   expect_error(gllvmTMB(
     value ~ 0 + trait + temporal_indep(0 + trait | series, time = occasion) +

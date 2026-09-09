@@ -43,6 +43,8 @@ AR1 or OU process for each trait, \code{temporal_dep()} fits that process with a
 unstructured trait covariance, and \code{temporal_latent()} fits rank-one trait
 loadings. With \code{unique = TRUE}, the temporal diagonal Psi is also correlated
 across occasions; it is not independent occasion noise. Temporal sources can
-be added to ordinary \code{unit} and \code{unit_obs} terms, but cannot yet be combined
-with spatial, phylogenetic, animal, or kernel sources.
+be added to ordinary \code{unit} and \code{unit_obs} terms. The currently verified
+cross-source pair is \code{temporal_indep()} with one named \code{kernel_indep()}
+term; spatial, phylogenetic, animal, other kernel cells, and temporal
+source-by-time interactions remain unavailable.
 }

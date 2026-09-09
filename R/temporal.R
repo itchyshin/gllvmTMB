@@ -65,8 +65,10 @@ temporal_dep <- function(formula, time, structure = "ar1", replicate = NULL) {
 #' unstructured trait covariance, and `temporal_latent()` fits rank-one trait
 #' loadings. With `unique = TRUE`, the temporal diagonal Psi is also correlated
 #' across occasions; it is not independent occasion noise. Temporal sources can
-#' be added to ordinary `unit` and `unit_obs` terms, but cannot yet be combined
-#' with spatial, phylogenetic, animal, or kernel sources.
+#' be added to ordinary `unit` and `unit_obs` terms. The currently verified
+#' cross-source pair is `temporal_indep()` with one named `kernel_indep()`
+#' term; spatial, phylogenetic, animal, other kernel cells, and temporal
+#' source-by-time interactions remain unavailable.
 #'
 #' @rdname temporal_latent
 #' @param d Latent rank. This version supports `1`.
@@ -134,16 +136,22 @@ temporal_latent <- function(formula, time, d = 1, structure = "ar1",
   find_provider_heads(stripped_formula[[length(formula)]])
   competing <- unique(c(detect_covstruct_terms(stripped_formula), provider_heads))
   ## Ordinary unit / unit_obs effects are separate tiers and are admitted by
-  ## the native temporal contract.  Other covariance *sources* are fenced
-  ## until their cross-source likelihood is independently validated.
-  forbidden_sources <- competing[grepl(
+  ## the native temporal contract.  The initial source-pair slice admits only
+  ## a named dense kernel with independent trait variation.  Its covariance is
+  ## additive with the temporal tier; every other source/cell remains fenced
+  ## until it has its own likelihood and workflow evidence.
+  source_terms <- competing[grepl(
     "^(phylo|animal|spatial|kernel|meta_|propto$|equalto$|spde$)", competing
   )]
+  temporal_mode <- sub("^temporal_", "", marker_name)
+  allowed_kernel_pair <- identical(temporal_mode, "indep") &&
+    identical(sort(source_terms), "kernel_indep")
+  forbidden_sources <- if (allowed_kernel_pair) character(0) else source_terms
   if (length(forbidden_sources)) {
     cli::cli_abort(c(
-      "A temporal covariance term cannot be combined with another covariance source in this version.",
+      "This temporal covariance combination is not yet supported.",
       "i" = "Found source provider(s): {.fn {forbidden_sources}}.",
-      ">" = "Ordinary unit and unit_obs terms remain available; phylo, animal, spatial, kernel, and meta sources are deferred."
+      ">" = "This version currently supports only {.code temporal_indep() + kernel_indep()} among cross-source pairs; ordinary unit and unit_obs terms remain available."
     ))
   }
   response_cols <- all.vars(formula[[2L]])

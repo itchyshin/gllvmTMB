@@ -94,9 +94,15 @@ file: its archive SHA-256 is
 `0c2f4323eb9fb19acccf039b8d57b4dd6bda82e2aa8b4a7bb712f36a64b022bc` and its
 ARM-macOS shared-object SHA-256 is
 `64f70caad53a235b62c35947ce62617589abc07c5092c77591b208322c84cb2b`.
-The new manifest-pinned runner source is committed and tested; a fresh v3
-replay is still required before calling the three pairs authenticated
-frozen-binary evidence.
+The manifest-pinned v3 replay then passed in 27.4 seconds with `48` passed and
+zero failed, skipped, error, or warning results. Its write-once receipt is
+`docs/dev-log/artifacts/2026-09-09-destination-b-s3b-native-pairs-receipt-v3.json`
+(SHA-256 `4b38793839d40c63932a02685f25e8d2beabd523b134d77aec6c99df7e0e4e5a`).
+It records matching loaded and expected binary hashes and the manifest hash.
+Independent review recomputed the frozen archive digest, manifest/runner
+hashes, and confirmed exactly the Tree, augmented sparse-pedigree, and
+R-ridged-once dense-`vcv` forms. This is now authenticated frozen-binary
+evidence for those three **closed adapter** pairs only.
 
 ## 11. Evidence command
 
@@ -109,6 +115,6 @@ Rscript --vanilla tests/testthat/run-destination-b-s3b-native-pairs-isolated.R
 
 ## 12. Next action
 
-Replay the tree, sparse-pedigree, and dense-`vcv` pairs against the manifest-
-pinned frozen binary into a new write-once v3 receipt, then independently
-review it. Keep S4 separate and do not reopen generic engine admission.
+Use this evidence only within the authorised closed-adapter boundary. Keep S4
+separate and do not reopen generic engine admission, intervals, recovery, or
+coverage from these private pairs.

@@ -53951,6 +53951,14 @@ candidate evidence is reused from this pre-integration run.
   `64f70caad53a235b62c35947ce62617589abc07c5092c77591b208322c84cb2b`.
   The manifest-pinned v3 runner source now requires both source and loaded
   package bytes to match that exact SHA before executing the three pairs.
+- The v3 replay then passed in 27.4 seconds with `48` passed and no failed,
+  skipped, error, or warning result. Its immutable receipt is SHA-256
+  `4b38793839d40c63932a02685f25e8d2beabd523b134d77aec6c99df7e0e4e5a`.
+  Independent review found no P0/P1 after staging: it recomputed frozen
+  archive, manifest, runner, source-binary, and receipt hashes; confirmed the
+  exact Tree, augmented sparse-pedigree, and R-ridged-once dense-`vcv` forms;
+  and confirmed generic-engine/interval/recovery/coverage boundaries remain
+  closed.
 
 ## 2026-09-09 — Destination B S4 stored-interval reader repair
 

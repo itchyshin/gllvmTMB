@@ -3279,6 +3279,14 @@ gllvm_julia_fit <- function(
     .julia_call <- JuliaCall::julia_call
   }
   result <- do.call(.julia_call, args)
+  ## The closed multivariate consumer intentionally names interval targets
+  ## `ci_target_names`.  The older generic bridge normaliser predates that
+  ## contract and expects `ci_param_names`; mirror the same flat labels solely
+  ## for normalisation, retaining the authoritative PMV fields unchanged.
+  if (!is.null(result$ci_target_names) && is.null(result$ci_param_names)) {
+    result$ci_param_names <- result$ci_target_names
+    result$ci_note <- result$ci_note %||% "closed multivariate precision interval payload"
+  }
   result <- .gllvm_julia_normalise_result(result)
   result$bridge_scope <- "experimental_private_phylo_rr"
   result$bridge_input <- list(
@@ -3290,6 +3298,315 @@ gllvm_julia_fit <- function(
   )
   class(result) <- c("gllvmTMB_julia_phylo_rr_adapter", "list")
   result
+}
+
+.gllvm_julia_phylo_rr_validate_tree_x_fix <- function(fit) {
+  tmb <- fit$tmb_data
+  p <- as.integer(tmb$n_traits %||% fit$n_traits)
+  trait_id <- as.integer(tmb$trait_id)
+  X_fix <- fit$X_fix
+  x_names <- fit$X_fix_names
+  x_constraint <- fit$Xcoef_fixed
+  has_fixed_constraint <- if (is.null(x_constraint)) {
+    FALSE
+  } else if (is.list(x_constraint)) {
+    isTRUE(x_constraint$has_fixed)
+  } else {
+    length(x_constraint) > 0L
+  }
+  invalid <- function() {
+    .gllvm_julia_phylo_rr_stop(
+      "GJL-GATE-PHYLO-MV-X-FIX",
+      paste0(
+        "the public S4 Tree wrapper requires exactly the native `0 + trait` ",
+        "fixed-effect design; predictor, intercept-plus-trait, constrained, ",
+        "or otherwise altered designs are not transported."
+      )
+    )
+  }
+  if (
+    !is.matrix(X_fix) || !is.numeric(X_fix) ||
+      length(p) != 1L || is.na(p) || p < 1L ||
+      nrow(X_fix) != length(trait_id) || ncol(X_fix) != p ||
+      is.null(colnames(X_fix)) || anyNA(colnames(X_fix)) ||
+      any(!nzchar(colnames(X_fix))) || anyDuplicated(colnames(X_fix)) ||
+      !is.character(x_names) || !identical(as.character(x_names), colnames(X_fix)) ||
+      has_fixed_constraint
+  ) {
+    invalid()
+  }
+  if (
+    anyNA(trait_id) || any(trait_id < 0L | trait_id >= p) ||
+      anyNA(X_fix) || any(!is.finite(X_fix))
+  ) {
+    invalid()
+  }
+  expected <- matrix(0, nrow = length(trait_id), ncol = p)
+  expected[cbind(seq_along(trait_id), trait_id + 1L)] <- 1
+  if (!isTRUE(all.equal(as.numeric(X_fix), as.numeric(expected), tolerance = 1e-12))) {
+    invalid()
+  }
+  invisible(TRUE)
+}
+
+.gllvm_julia_phylo_rr_validate_public_tree <- function(fit) {
+  if (!inherits(fit, "gllvmTMB_multi")) {
+    .gllvm_julia_phylo_rr_stop(
+      "GJL-GATE-PHYLO-MV-FIT",
+      "the public S4 Tree wrapper requires an already fitted native gllvmTMB_multi object."
+    )
+  }
+  if (is.null(fit$phylo_tree) || !inherits(fit$phylo_tree, "phylo")) {
+    .gllvm_julia_phylo_rr_stop(
+      "GJL-GATE-PHYLO-MV-TREE",
+      "the public S4 wrapper admits one ultrametric `phylo_tree` case, not a dense vcv or pedigree case."
+    )
+  }
+  if (!is.null(fit$phylo_vcv)) {
+    .gllvm_julia_phylo_rr_stop(
+      "GJL-GATE-PHYLO-MV-TREE",
+      "the public S4 wrapper admits its retained Tree cell only; dense `phylo_vcv` remains a separate bridge evidence row."
+    )
+  }
+  d_phy <- as.integer(fit$tmb_data$d_phy %||% fit$d_phy)
+  if (length(d_phy) != 1L || is.na(d_phy) || d_phy != 1L) {
+    .gllvm_julia_phylo_rr_stop(
+      "GJL-GATE-PHYLO-MV-RANK",
+      "the public S4 Tree wrapper admits exactly `phylo_latent(..., d = 1, unique = FALSE)`."
+    )
+  }
+  .gllvm_julia_phylo_rr_validate_tree_x_fix(fit)
+  invisible(TRUE)
+}
+
+.gllvm_julia_phylo_rr_coefficients <- function(object) {
+  values <- as.numeric(object$coefficients)
+  names <- as.character(object$coefficient_names)
+  if (
+    !length(values) || length(values) != length(names) || anyNA(values) ||
+      any(!is.finite(values)) || anyNA(names) || any(!nzchar(names)) ||
+      anyDuplicated(names)
+  ) {
+    stop(
+      "GJL-GATE-PHYLO-MV-RESULT: the Julia S4 result lacks a finite, uniquely named coefficient vector.",
+      call. = FALSE
+    )
+  }
+  stats::setNames(values, names)
+}
+
+.gllvm_julia_phylo_rr_ci_table <- function(object) {
+  names <- as.character(object$ci_target_names)
+  estimate <- as.numeric(object$ci_estimate)
+  lower <- as.numeric(object$ci_lower)
+  upper <- as.numeric(object$ci_upper)
+  statuses <- as.character(object$ci_statuses)
+  methods <- as.character(object$ci_target_methods)
+  n <- length(names)
+  if (
+    !n || length(estimate) != n || length(lower) != n || length(upper) != n ||
+      length(statuses) != n || length(methods) != n || anyNA(names) ||
+      any(!nzchar(names)) || anyDuplicated(names)
+  ) {
+    stop(
+      "GJL-GATE-PHYLO-MV-CI-RESULT: the Julia S4 result lacks a coherent stored interval payload.",
+      call. = FALSE
+    )
+  }
+  data.frame(
+    term = names,
+    estimate = estimate,
+    conf.low = lower,
+    conf.high = upper,
+    status = statuses,
+    method = methods,
+    stringsAsFactors = FALSE
+  )
+}
+
+#' Retrieve the closed S4 Julia interval surface for one native phylogenetic fit
+#'
+#' `gllvm_julia_phylo_rr()` is a deliberately narrow, explicit post-fit bridge.
+#' It does not alter `gllvmTMB(..., engine = "julia")`, which remains closed for
+#' phylogenetic random-regression terms. The one admitted public cell is an
+#' already converged native Gaussian ML `phylo_latent(..., d = 1, unique = FALSE)`
+#' fit with an ultrametric tree, complete responses, unit weights, and exactly
+#' the `0 + trait` fixed-effect design. It retrieves stored transformed-Wald
+#' intervals from the matched Julia multivariate precision calculation; it never
+#' recomputes an interval from the R fit or reinverts a covariance.
+#'
+#' @param fit A fitted native `gllvmTMB_multi` object in the one admitted Tree
+#'   cell.
+#' @param ci_level Nominal Wald interval level, a single finite number in
+#'   `(0, 1)`.
+#' @param ... Passed to [gllvm_julia_setup()] when Julia has not yet been loaded.
+#' @return A list of class `"gllvmTMB_julia_phylo_rr"`. It is distinct from
+#'   `"gllvmTMB_julia"`; ordinary generic Julia-engine methods and capabilities
+#'   do not widen to this result.
+#' @export
+gllvm_julia_phylo_rr <- function(fit, ci_level = 0.95, ...) {
+  .gllvm_julia_phylo_rr_validate_public_tree(fit)
+  result <- .gllvm_julia_phylo_rr_adapter(
+    fit,
+    ci_method = "wald",
+    ci_level = ci_level,
+    ...
+  )
+  result$bridge_scope <- "experimental_postfit_phylo_rr_tree"
+  result$native_engine <- "tmb"
+  result$native_fit_class <- class(fit)
+  class(result) <- c("gllvmTMB_julia_phylo_rr", "list")
+  result
+}
+
+#' @rdname gllvm_julia_phylo_rr
+#' @param object,x A `gllvmTMB_julia_phylo_rr` object.
+#' @param parm Optional integer or character vector selecting stored CI targets.
+#' @param level The stored nominal confidence level.
+#' @param method Only `"stored"` is supported; any requested recomputation
+#'   fails explicitly.
+#' @param digits Number of significant digits to print.
+#' @export
+logLik.gllvmTMB_julia_phylo_rr <- function(object, ...) {
+  value <- as.numeric(object$loglik)
+  if (length(value) != 1L || !is.finite(value)) {
+    stop("GJL-GATE-PHYLO-MV-RESULT: the Julia S4 result lacks a finite log likelihood.", call. = FALSE)
+  }
+  attr(value, "df") <- as.integer(object$df %||% NA_integer_)
+  attr(value, "nobs") <- as.integer(object$nobs %||%
+    ((object$n_traits %||% NA_integer_) * (object$n_observations %||% NA_integer_)))
+  class(value) <- "logLik"
+  value
+}
+
+#' @rdname gllvm_julia_phylo_rr
+#' @export
+coef.gllvmTMB_julia_phylo_rr <- function(object, ...) {
+  .gllvm_julia_phylo_rr_coefficients(object)
+}
+
+#' @rdname gllvm_julia_phylo_rr
+#' @export
+confint.gllvmTMB_julia_phylo_rr <- function(
+  object,
+  parm,
+  level = 0.95,
+  method = "stored",
+  ...
+) {
+  if (!identical(method, "stored")) {
+    stop(
+      "GJL-GATE-PHYLO-MV-CI-RECOMPUTE: this closed S4 wrapper exposes stored Julia Wald endpoints only; interval recomputation is not admitted.",
+      call. = FALSE
+    )
+  }
+  stored_level <- as.numeric(object$ci_level)
+  if (length(stored_level) != 1L || !is.finite(stored_level) ||
+      !isTRUE(all.equal(level, stored_level))) {
+    stop(
+      "GJL-GATE-PHYLO-MV-CI-RECOMPUTE: requested level does not equal the stored Julia Wald level; recomputation is not admitted.",
+      call. = FALSE
+    )
+  }
+  payload <- .gllvm_julia_phylo_rr_ci_table(object)
+  available <- payload$status == "available" &
+    is.finite(payload$estimate) & is.finite(payload$conf.low) &
+    is.finite(payload$conf.high)
+  if (!missing(parm)) {
+    index <- if (is.numeric(parm)) {
+      if (anyNA(parm) || any(parm != as.integer(parm)) ||
+          any(parm < 1L | parm > nrow(payload))) {
+        stop("GJL-GATE-PHYLO-MV-CI-PARM: `parm` is outside the stored Julia interval targets.", call. = FALSE)
+      }
+      as.integer(parm)
+    } else {
+      match(as.character(parm), payload$term)
+    }
+    if (anyNA(index)) {
+      stop("GJL-GATE-PHYLO-MV-CI-PARM: requested interval target is not present in the stored Julia payload.", call. = FALSE)
+    }
+    if (any(!available[index])) {
+      stop("GJL-GATE-PHYLO-MV-CI-UNAVAILABLE: a requested stored interval is unavailable for this fit.", call. = FALSE)
+    }
+    payload <- payload[index, , drop = FALSE]
+  } else {
+    payload <- payload[available, , drop = FALSE]
+  }
+  if (!nrow(payload)) {
+    stop("GJL-GATE-PHYLO-MV-CI-UNAVAILABLE: this fit has no available stored Julia Wald endpoints.", call. = FALSE)
+  }
+  out <- as.matrix(payload[, c("conf.low", "conf.high"), drop = FALSE])
+  rownames(out) <- payload$term
+  colnames(out) <- c(
+    sprintf("%.1f %%", 100 * (1 - level) / 2),
+    sprintf("%.1f %%", 100 * (1 + level) / 2)
+  )
+  attr(out, "ci_method") <- "stored_julia_wald"
+  attr(out, "ci_status") <- payload$status
+  out
+}
+
+#' @rdname gllvm_julia_phylo_rr
+#' @export
+summary.gllvmTMB_julia_phylo_rr <- function(object, ...) {
+  ci <- .gllvm_julia_phylo_rr_ci_table(object)
+  out <- list(
+    header = list(
+      bridge_scope = object$bridge_scope,
+      native_engine = object$native_engine,
+      family = object$family,
+      model = object$model,
+      d = object$d,
+      n_traits = object$n_traits,
+      n_observations = object$n_observations,
+      logLik = object$loglik,
+      converged = object$converged
+    ),
+    coefficients = coef.gllvmTMB_julia_phylo_rr(object),
+    covariance = list(
+      phylogenetic = object$phylo_covariance,
+      residual = object$residual_variance
+    ),
+    diagnostics = list(
+      gradient_max = object$gradient_max,
+      hessian_positive_definite = object$hessian_positive_definite,
+      hessian_condition_number = object$hessian_condition_number,
+      stopping_reason = object$stopping_reason
+    ),
+    intervals = ci
+  )
+  class(out) <- "summary.gllvmTMB_julia_phylo_rr"
+  out
+}
+
+#' @rdname gllvm_julia_phylo_rr
+#' @export
+print.gllvmTMB_julia_phylo_rr <- function(x, ...) {
+  cat("gllvmTMB closed S4 Julia phylo_rr bridge\n")
+  cat(sprintf(
+    "  Tree-only post-fit Gaussian ML | d = %s | %s traits x %s observations\n",
+    x$d %||% NA_integer_, x$n_traits %||% NA_integer_, x$n_observations %||% NA_integer_
+  ))
+  cat(sprintf("  logLik = %.4f | converged = %s | stored Wald level = %s\n",
+    x$loglik, x$converged, x$ci_level))
+  invisible(x)
+}
+
+#' @rdname gllvm_julia_phylo_rr
+#' @export
+print.summary.gllvmTMB_julia_phylo_rr <- function(x, digits = 3, ...) {
+  h <- x$header
+  cat("gllvmTMB closed S4 Julia phylo_rr summary\n")
+  cat(sprintf(
+    "  family: %s | model: %s | d = %s | logLik = %.*f | converged = %s\n",
+    h$family, h$model, h$d, digits, h$logLik, h$converged
+  ))
+  cat("  Coefficients:\n")
+  print(round(x$coefficients, digits))
+  cat(sprintf("  Stored interval targets: %d available of %d returned\n",
+    sum(x$intervals$status == "available" & is.finite(x$intervals$conf.low) & is.finite(x$intervals$conf.high)),
+    nrow(x$intervals)))
+  invisible(x)
 }
 
 #' Methods for Julia bridge fits

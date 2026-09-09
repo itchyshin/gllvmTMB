@@ -53904,3 +53904,8 @@ Reader-surface hard stop retained in `.unlazy/0701-trust-release/GATES.md`:
 the baseline contains public MSPL and random-slope material beyond the three
 narrow closures. Candidate integration waits for an explicit disposition; no
 candidate evidence is reused from this pre-integration run.
+## 2026-09-09 — Destination B S4 closed public Tree workflow
+
+- Added exported `gllvm_julia_phylo_rr()` as the sole public post-fit exception: Gaussian ML Tree `phylo_latent(..., d = 1, unique = FALSE)`, trait intercepts only. It does not widen `engine = "julia"`.
+- The distinct S3 class exposes only `print`, `summary`, `logLik`, `coef`, and stored observed-marginal Wald `confint`; unavailable targets fail loudly.
+- Focused opt-in frozen R-to-Julia bridge suite passed locally. Dense `vcv`, pedigree, predictors, prediction, recovery, coverage, and generic admission remain outside this S4 row.

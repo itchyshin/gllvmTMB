@@ -289,6 +289,22 @@ test_that("private S3b adapter pairs with one genuine frozen native tree fit", {
   expect_identical(payload$species_id, julia$species_id)
   expect_equal(julia$scale, 2)
   expect_equal(payload$phylo$log_det, julia$log_det, tolerance = 0)
+  s4 <- gllvmTMB:::gllvm_julia_phylo_rr(native, ci_level = 0.9)
+  s4_summary <- gllvmTMB:::summary.gllvmTMB_julia_phylo_rr(s4)
+  s4_ci <- gllvmTMB:::confint.gllvmTMB_julia_phylo_rr(s4, level = 0.9)
+  expect_s3_class(s4, "gllvmTMB_julia_phylo_rr")
+  expect_false(inherits(s4, "gllvmTMB_julia"))
+  expect_true(is.finite(as.numeric(gllvmTMB:::logLik.gllvmTMB_julia_phylo_rr(s4))))
+  expect_equal(
+    gllvmTMB:::coef.gllvmTMB_julia_phylo_rr(s4),
+    stats::setNames(s4$coefficients, s4$coefficient_names)
+  )
+  expect_true(is.matrix(s4$phylo_covariance))
+  expect_true(all(is.finite(s4$residual_variance)))
+  expect_true(isTRUE(s4_summary$diagnostics$hessian_positive_definite))
+  expect_gt(nrow(s4_ci), 0L)
+  expect_true(all(is.finite(s4_ci)))
+  expect_true(all(s4_ci[, 1L] < s4_ci[, 2L]))
   assign(".s3b_tree_pair_receipt", list(
     kind = "tree", n_traits = 2L, n_species = 4L, n_observations = 12L,
     scale = julia$scale, log_det_precision = julia$log_det,
@@ -481,5 +497,102 @@ test_that("engine = 'julia' remains closed for phylo_rr", {
       engine = "julia"
     ),
     "GJL-GATE-STRUCTURED-TERMS"
+  )
+})
+
+.s4_tree_wrapper_fixture <- function() {
+  skip_if_not_installed("ape")
+  tree <- ape::read.tree(text = "(sp1:2,sp2:2);")
+  native <- gllvmTMB:::.gllvm_phylo_tree_precision(tree, correlation = TRUE)
+  fit <- .s3b_phylo_rr_fixture()
+  fit$phylo_tree <- tree
+  fit$phylo_vcv <- NULL
+  fit$REML <- FALSE
+  fit$tmb_data$REML <- FALSE
+  fit$tmb_data$Ainv_phy_rr <- native$precision
+  fit$tmb_data$n_aug_phy <- nrow(native$precision)
+  fit$tmb_data$log_det_A_phy_rr <- -native$log_det_precision
+  fit$tmb_data$species_aug_id <- c(0L, 0L, 1L, 1L)
+  fit$X_fix <- cbind(
+    traitt1 = c(1, 0, 1, 0),
+    traitt2 = c(0, 1, 0, 1)
+  )
+  fit$X_fix_names <- colnames(fit$X_fix)
+  fit$Xcoef_fixed <- NULL
+  fit
+}
+
+.s4_tree_wrapper_julia_result <- function(...) {
+  list(
+    family = "gaussian",
+    model = "precision_multivariate_candidate",
+    admission_status = "closed",
+    d = 1L,
+    n_traits = 2L,
+    n_observations = 2L,
+    coefficients = c(-0.2, 0.3),
+    coefficient_names = c("traitt1", "traitt2"),
+    phylo_covariance = matrix(c(0.4, -0.1, -0.1, 0.3), 2L),
+    residual_variance = c(0.08, 0.08),
+    loglik = -4.5,
+    converged = TRUE,
+    gradient_max = 1e-8,
+    hessian_positive_definite = TRUE,
+    hessian_condition_number = 12,
+    ci_method = "wald",
+    ci_level = 0.9,
+    ci_status = "available",
+    ci_target_names = c("beta[1]", "beta[2]", "phylo_cov[1,1]", "signal"),
+    ci_estimate = c(-0.2, 0.3, 0.4, 0.5),
+    ci_lower = c(-0.4, 0.1, 0.1, NA_real_),
+    ci_upper = c(0.0, 0.5, 0.7, NA_real_),
+    ci_note = "",
+    ci_target_methods = rep("transformed_wald", 4L),
+    ci_statuses = c("available", "available", "available", "not_identified")
+  )
+}
+
+test_that("S4 Tree wrapper is an explicit post-fit Wald surface", {
+  fit <- .s4_tree_wrapper_fixture()
+  captured <- NULL
+
+  result <- gllvmTMB:::gllvm_julia_phylo_rr(
+    fit,
+    ci_level = 0.9,
+    .julia_call = function(...) {
+      captured <<- list(...)
+      .s4_tree_wrapper_julia_result(...)
+    }
+  )
+
+  expect_s3_class(result, "gllvmTMB_julia_phylo_rr")
+  expect_false(inherits(result, "gllvmTMB_julia"))
+  expect_equal(captured$options$ci_method, "wald")
+  expect_equal(captured$options$ci_level, 0.9)
+  expect_equal(
+    gllvmTMB:::coef.gllvmTMB_julia_phylo_rr(result),
+    c(traitt1 = -0.2, traitt2 = 0.3)
+  )
+  ci <- gllvmTMB:::confint.gllvmTMB_julia_phylo_rr(result, level = 0.9)
+  expect_equal(rownames(ci), c("beta[1]", "beta[2]", "phylo_cov[1,1]"))
+  expect_true(all(ci[, 1L] < ci[, 2L]))
+  expect_error(
+    gllvmTMB:::confint.gllvmTMB_julia_phylo_rr(result, parm = "signal", level = 0.9),
+    "unavailable"
+  )
+  expect_error(
+    gllvmTMB:::confint.gllvmTMB_julia_phylo_rr(result, method = "wald", level = 0.9),
+    "recomputation"
+  )
+  expect_equal(as.numeric(gllvmTMB:::logLik.gllvmTMB_julia_phylo_rr(result)), -4.5)
+  expect_true(is.list(gllvmTMB:::summary.gllvmTMB_julia_phylo_rr(result)))
+})
+
+test_that("S4 Tree wrapper rejects a non-intercept fixed design before Julia", {
+  fit <- .s4_tree_wrapper_fixture()
+  fit$X_fix[, 1L] <- 2
+  expect_error(
+    gllvmTMB:::gllvm_julia_phylo_rr(fit, .julia_call = .s4_tree_wrapper_julia_result),
+    "GJL-GATE-PHYLO-MV-X-FIX"
   )
 })

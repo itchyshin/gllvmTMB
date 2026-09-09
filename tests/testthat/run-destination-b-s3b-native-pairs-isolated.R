@@ -65,6 +65,25 @@ s3b_native_pairs_loaded_dll_path <- function(package = "gllvmTMB") {
   normalizePath(dll[["path"]], mustWork = TRUE)
 }
 
+s3b_native_pairs_validate_loaded_dll <- function(loaded_path, source_path) {
+  loaded_path <- normalizePath(loaded_path, mustWork = TRUE)
+  source_path <- normalizePath(source_path, mustWork = TRUE)
+  loaded_sha256 <- digest::digest(file = loaded_path, algo = "sha256")
+  source_sha256 <- digest::digest(file = source_path, algo = "sha256")
+  if (!identical(loaded_sha256, source_sha256)) {
+    stop(
+      "loaded gllvmTMB DLL does not match the authenticated source binary: ",
+      "source ", source_path, "; loaded ", loaded_path,
+      call. = FALSE
+    )
+  }
+  list(
+    loaded_path = loaded_path,
+    source_path = source_path,
+    sha256 = loaded_sha256
+  )
+}
+
 s3b_native_pairs_receipt_path <- function(path, artifact_directory) {
   artifact_directory <- normalizePath(artifact_directory, mustWork = TRUE)
   supplied_directory <- normalizePath(dirname(path), mustWork = TRUE)
@@ -183,9 +202,7 @@ s3b_native_pairs_main <- function() {
   pkgload::load_all(".", quiet = TRUE, compile = FALSE)
   expected_dll_path <- normalizePath(file.path(getwd(), "src", "gllvmTMB.so"), mustWork = TRUE)
   loaded_dll_path <- s3b_native_pairs_loaded_dll_path()
-  s3b_native_pairs_validate_loaded_path(
-    loaded_dll_path, expected_dll_path, "loaded gllvmTMB DLL"
-  )
+  dll_binding <- s3b_native_pairs_validate_loaded_dll(loaded_dll_path, expected_dll_path)
   reporter <- testthat::ListReporter$new()
   testthat::with_reporter(reporter, {
     reporter$start_file("destination-b-s3b-native-pairs-isolated")
@@ -251,8 +268,9 @@ s3b_native_pairs_main <- function() {
       changed_paths_from_frozen = changed_paths,
       r_version = R.version$version.string,
       r_platform = R.version$platform,
-      r_shared_object_path = loaded_dll_path,
-      r_shared_object_sha256 = digest::digest(file = loaded_dll_path, algo = "sha256"),
+      r_shared_object_source_path = dll_binding$source_path,
+      r_shared_object_loaded_path = dll_binding$loaded_path,
+      r_shared_object_sha256 = dll_binding$sha256,
       gllvm_julia_project_path = project,
       gllvm_julia_active_project_path = julia_active_project,
       gllvm_julia_package_root = julia_package_root,

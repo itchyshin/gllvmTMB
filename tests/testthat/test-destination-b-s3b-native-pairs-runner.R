@@ -53,24 +53,27 @@ test_that("S3b native-pair receipt output is write-once", {
   )
 })
 
-test_that("S3b native-pair provenance helpers reject a mismatched loaded DLL", {
+test_that("S3b native-pair provenance helpers bind copied DLL bytes, not a temporary path", {
   runner_environment <- new.env(parent = baseenv())
   withr::local_envvar(GLLVM_S3B_NATIVE_PAIRS_DEFINE_ONLY = "1")
   source(testthat::test_path("run-destination-b-s3b-native-pairs-isolated.R"), local = runner_environment)
 
-  expected_path <- normalizePath(testthat::test_path(".."), mustWork = TRUE)
-  actual_path <- normalizePath(testthat::test_path("..", ".."), mustWork = TRUE)
+  source_path <- tempfile("s3b-source-dll-")
+  copied_path <- tempfile("s3b-loaded-dll-")
+  different_path <- tempfile("s3b-other-dll-")
+  withr::defer(unlink(c(source_path, copied_path, different_path)))
+  writeBin(charToRaw("authenticated shared object"), source_path)
+  writeBin(readBin(source_path, what = "raw", n = file.info(source_path)$size), copied_path)
+  writeBin(charToRaw("different shared object"), different_path)
 
-  expect_error(
-    runner_environment$s3b_native_pairs_validate_loaded_path(
-      actual_path, expected_path, "loaded gllvmTMB DLL"
-    ),
-    "does not match the expected source path"
+  binding <- runner_environment$s3b_native_pairs_validate_loaded_dll(
+    copied_path, source_path
   )
-  expect_silent(
-    runner_environment$s3b_native_pairs_validate_loaded_path(
-      expected_path, expected_path, "loaded gllvmTMB DLL"
-    )
+  expect_identical(binding$loaded_path, normalizePath(copied_path))
+  expect_identical(binding$source_path, normalizePath(source_path))
+  expect_error(
+    runner_environment$s3b_native_pairs_validate_loaded_dll(different_path, source_path),
+    "does not match the authenticated source binary"
   )
 })
 

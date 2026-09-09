@@ -509,6 +509,7 @@ test_that("engine = 'julia' remains closed for phylo_rr", {
   fit$phylo_vcv <- NULL
   fit$REML <- FALSE
   fit$tmb_data$REML <- FALSE
+  fit$opt <- list(convergence = 0L, par = c(-0.2, 0.3, -0.7, -1.2))
   fit$tmb_data$Ainv_phy_rr <- native$precision
   fit$tmb_data$n_aug_phy <- nrow(native$precision)
   fit$tmb_data$log_det_A_phy_rr <- -native$log_det_precision
@@ -535,6 +536,7 @@ test_that("engine = 'julia' remains closed for phylo_rr", {
     phylo_covariance = matrix(c(0.4, -0.1, -0.1, 0.3), 2L),
     residual_variance = c(0.08, 0.08),
     loglik = -4.5,
+    parameters = c(-0.2, 0.3, -0.7, -1.2),
     converged = TRUE,
     gradient_max = 1e-8,
     hessian_positive_definite = TRUE,
@@ -584,8 +586,66 @@ test_that("S4 Tree wrapper is an explicit post-fit Wald surface", {
     gllvmTMB:::confint.gllvmTMB_julia_phylo_rr(result, method = "wald", level = 0.9),
     "recomputation"
   )
-  expect_equal(as.numeric(gllvmTMB:::logLik.gllvmTMB_julia_phylo_rr(result)), -4.5)
+  result_logLik <- gllvmTMB:::logLik.gllvmTMB_julia_phylo_rr(result)
+  expect_equal(as.numeric(result_logLik), -4.5)
+  expect_equal(attr(result_logLik, "df"), length(result$parameters))
+  expect_equal(attr(result_logLik, "nobs"), result$n_traits * result$n_observations)
   expect_true(is.list(gllvmTMB:::summary.gllvmTMB_julia_phylo_rr(result)))
+})
+
+test_that("S4 Tree wrapper refuses an unconverged native fit before Julia", {
+  fit <- .s4_tree_wrapper_fixture()
+  fit$opt$convergence <- 1L
+  expect_error(
+    gllvmTMB:::gllvm_julia_phylo_rr(fit, .julia_call = .s4_tree_wrapper_julia_result),
+    "GJL-GATE-PHYLO-MV-NATIVE-HEALTH"
+  )
+  fit <- .s4_tree_wrapper_fixture()
+  fit$opt$convergence <- 0.5
+  expect_error(
+    gllvmTMB:::gllvm_julia_phylo_rr(fit, .julia_call = .s4_tree_wrapper_julia_result),
+    "GJL-GATE-PHYLO-MV-NATIVE-HEALTH"
+  )
+  fit <- .s4_tree_wrapper_fixture()
+  fit$opt <- 0
+  expect_error(
+    gllvmTMB:::gllvm_julia_phylo_rr(fit, .julia_call = .s4_tree_wrapper_julia_result),
+    "GJL-GATE-PHYLO-MV-NATIVE-HEALTH"
+  )
+})
+
+test_that("S4 Tree wrapper refuses counterfeit non-Wald stored endpoints", {
+  fit <- .s4_tree_wrapper_fixture()
+  result <- gllvmTMB:::gllvm_julia_phylo_rr(
+    fit,
+    ci_level = 0.9,
+    .julia_call = .s4_tree_wrapper_julia_result
+  )
+  result$ci_target_methods[1L] <- "profile"
+  expect_error(
+    gllvmTMB:::confint.gllvmTMB_julia_phylo_rr(result, level = 0.9),
+    "GJL-GATE-PHYLO-MV-CI-RESULT"
+  )
+  result <- gllvmTMB:::gllvm_julia_phylo_rr(
+    fit,
+    ci_level = 0.9,
+    .julia_call = .s4_tree_wrapper_julia_result
+  )
+  result$ci_method <- "profile"
+  expect_error(
+    gllvmTMB:::confint.gllvmTMB_julia_phylo_rr(result, level = 0.9),
+    "GJL-GATE-PHYLO-MV-CI-RESULT"
+  )
+  result <- gllvmTMB:::gllvm_julia_phylo_rr(
+    fit,
+    ci_level = 0.9,
+    .julia_call = .s4_tree_wrapper_julia_result
+  )
+  result$ci_statuses[1L] <- NA_character_
+  expect_error(
+    gllvmTMB:::confint.gllvmTMB_julia_phylo_rr(result, level = 0.9),
+    "GJL-GATE-PHYLO-MV-CI-RESULT"
+  )
 })
 
 test_that("S4 Tree wrapper rejects a non-intercept fixed design before Julia", {

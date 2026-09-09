@@ -3375,6 +3375,26 @@ gllvm_julia_fit <- function(
       "the public S4 Tree wrapper admits exactly `phylo_latent(..., d = 1, unique = FALSE)`."
     )
   }
+  opt <- fit$opt
+  if (!is.list(opt)) {
+    .gllvm_julia_phylo_rr_stop(
+      "GJL-GATE-PHYLO-MV-NATIVE-HEALTH",
+      "the public S4 Tree wrapper requires a converged native fit with a finite optimisation parameter vector."
+    )
+  }
+  native_parameters <- opt$par
+  native_convergence <- opt$convergence
+  if (
+    !is.numeric(native_convergence) || length(native_convergence) != 1L ||
+      is.na(native_convergence) || native_convergence != 0 ||
+      !is.numeric(native_parameters) || !length(native_parameters) ||
+      anyNA(native_parameters) || any(!is.finite(native_parameters))
+  ) {
+    .gllvm_julia_phylo_rr_stop(
+      "GJL-GATE-PHYLO-MV-NATIVE-HEALTH",
+      "the public S4 Tree wrapper requires a converged native fit with a finite optimisation parameter vector."
+    )
+  }
   .gllvm_julia_phylo_rr_validate_tree_x_fix(fit)
   invisible(TRUE)
 }
@@ -3406,10 +3426,17 @@ gllvm_julia_fit <- function(
   if (
     !n || length(estimate) != n || length(lower) != n || length(upper) != n ||
       length(statuses) != n || length(methods) != n || anyNA(names) ||
-      any(!nzchar(names)) || anyDuplicated(names)
+      anyNA(statuses) || anyNA(methods) || any(!nzchar(names)) ||
+      any(!nzchar(statuses)) || any(!nzchar(methods)) || anyDuplicated(names)
   ) {
     stop(
       "GJL-GATE-PHYLO-MV-CI-RESULT: the Julia S4 result lacks a coherent stored interval payload.",
+      call. = FALSE
+    )
+  }
+  if (!identical(as.character(object$ci_method), "wald")) {
+    stop(
+      "GJL-GATE-PHYLO-MV-CI-RESULT: the closed S4 wrapper accepts only a Julia result explicitly marked `ci_method = \"wald\"`.",
       call. = FALSE
     )
   }
@@ -3472,9 +3499,21 @@ logLik.gllvmTMB_julia_phylo_rr <- function(object, ...) {
   if (length(value) != 1L || !is.finite(value)) {
     stop("GJL-GATE-PHYLO-MV-RESULT: the Julia S4 result lacks a finite log likelihood.", call. = FALSE)
   }
-  attr(value, "df") <- as.integer(object$df %||% NA_integer_)
-  attr(value, "nobs") <- as.integer(object$nobs %||%
-    ((object$n_traits %||% NA_integer_) * (object$n_observations %||% NA_integer_)))
+  parameters <- as.numeric(object$parameters)
+  n_traits <- as.integer(object$n_traits)
+  n_observations <- as.integer(object$n_observations)
+  if (
+    !length(parameters) || anyNA(parameters) || any(!is.finite(parameters)) ||
+      length(n_traits) != 1L || is.na(n_traits) || n_traits < 1L ||
+      length(n_observations) != 1L || is.na(n_observations) || n_observations < 1L
+  ) {
+    stop(
+      "GJL-GATE-PHYLO-MV-RESULT: the Julia S4 result lacks finite parameters or valid observation dimensions for logLik().",
+      call. = FALSE
+    )
+  }
+  attr(value, "df") <- length(parameters)
+  attr(value, "nobs") <- n_traits * n_observations
   class(value) <- "logLik"
   value
 }
@@ -3509,9 +3548,16 @@ confint.gllvmTMB_julia_phylo_rr <- function(
     )
   }
   payload <- .gllvm_julia_phylo_rr_ci_table(object)
-  available <- payload$status == "available" &
+  candidate <- payload$status == "available" &
     is.finite(payload$estimate) & is.finite(payload$conf.low) &
     is.finite(payload$conf.high)
+  if (any(candidate & payload$method != "transformed_wald")) {
+    stop(
+      "GJL-GATE-PHYLO-MV-CI-RESULT: an available stored interval is not a Julia transformed-Wald endpoint.",
+      call. = FALSE
+    )
+  }
+  available <- candidate & payload$method == "transformed_wald"
   if (!missing(parm)) {
     index <- if (is.numeric(parm)) {
       if (anyNA(parm) || any(parm != as.integer(parm)) ||

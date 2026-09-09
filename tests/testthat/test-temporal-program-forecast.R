@@ -100,3 +100,46 @@ test_that("temporal future forecasts reject unsupported layouts before calculati
   expect_error(forecast_temporal(fit, future[-1L, , drop = FALSE]),
     "complete trait panel")
 })
+
+test_that("temporal forecasts preserve negative AR1 and translated OU covariance", {
+  ar1 <- .temporal_forecast_fixture("ar1")
+  fit_ar1 <- suppressWarnings(gllvmTMB(
+    value ~ 0 + trait + temporal_indep(0 + trait | series, time = occasion),
+    data = ar1$data, unit = "series", family = gaussian(), silent = TRUE,
+    control = gllvmTMBcontrol(se = FALSE)
+  ))
+  future_ar1 <- expand.grid(series = c("s1", "s2"), occasion = c(4L, 5L),
+    trait = c("t1", "t2", "t3"), KEEP.OUT.ATTRS = FALSE)
+  theta <- match("theta_temporal_time", names(fit_ar1$opt$par))
+  fit_ar1$opt$par[theta] <- atanh(-0.6 / (1 - 1e-6))
+  expected_negative <- .temporal_forecast_dense_covariance(
+    fit_ar1, rbind(ar1$data[, c("series", "occasion", "trait")], future_ar1)
+  )
+  n <- nrow(ar1$data)
+  Voo <- expected_negative[seq_len(n), seq_len(n)]
+  Von <- expected_negative[seq_len(n), n + seq_len(nrow(future_ar1)), drop = FALSE]
+  Xo <- fit_ar1$tmb_data$X_fix
+  Xn <- stats::model.matrix(stats::delete.response(stats::terms(fit_ar1$formula)), future_ar1)
+  beta <- gllvmTMB:::.gllvmTMB_b_fix_values(fit_ar1)
+  expected_mean <- drop(Xn %*% beta + t(Von) %*%
+    solve(Voo, ar1$data$value - drop(Xo %*% beta)))
+  expect_equal(forecast_temporal(fit_ar1, future_ar1)$est,
+    unname(expected_mean), tolerance = 1e-8)
+
+  ou <- .temporal_forecast_fixture("ou")
+  fit_ou <- suppressWarnings(gllvmTMB(
+    value ~ 0 + trait + temporal_indep(0 + trait | series, time = elapsed,
+      structure = "ou"), data = ou$data, unit = "series", family = gaussian(),
+    silent = TRUE, control = gllvmTMBcontrol(se = FALSE)
+  ))
+  future_ou <- ou$data[ou$data$occasion == 3L, c("series", "elapsed", "trait")]
+  future_ou$elapsed <- future_ou$elapsed + 2
+  shifted <- fit_ou
+  shifted$data$elapsed <- shifted$data$elapsed + 100
+  shifted$temporal$pair_table$time <- shifted$temporal$pair_table$time + 100
+  shifted_future <- future_ou
+  shifted_future$elapsed <- shifted_future$elapsed + 100
+  expect_equal(forecast_temporal(fit_ou, future_ou, se.fit = TRUE)[c("est", "se.fit")],
+    forecast_temporal(shifted, shifted_future, se.fit = TRUE)[c("est", "se.fit")],
+    tolerance = 1e-10)
+})

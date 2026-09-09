@@ -57728,3 +57728,21 @@ Deliberately not run: Totoro 9×500 grid dispatch; full `devtools::test()`.
 - `OPENBLAS_NUM_THREADS=1 Rscript --vanilla -e
   'devtools::test(filter = "temporal-program-(forecast|profile|bootstrap|selection)|temporal-ar1-methods")'`
   passed: 38 assertions, 0 failures, 0 warnings, and 0 skips.
+
+## 2026-09-09 — temporal recovery evidence and executable lifecycle gate
+
+- Repaired `dev/temporal-sixth-source/run-recovery.R` so its campaign path now
+  stops after retaining the results when any frozen `bounded_cell_pass` is
+  false; it no longer prints `TEMPORAL_SIXTH_RECOVERY_PASS` unconditionally.
+- Measured the eight timing fits with `OPENBLAS_NUM_THREADS=1`: the frozen
+  80-fit projection was 7.957 minutes. The local campaign then retained all 80
+  attempts in `.unlazy/temporal-grid/recovery-eight-cell-attempts.csv`; every
+  per-cell threshold passed. The two latent-plus-Psi cells each retained two
+  non-success terminals, with eight successful fits, so no seed was replaced.
+- `Rscript --vanilla dev/temporal-sixth-source/verify.R recovery` recomputed
+  the retained thresholds and emitted `TEMPORAL_SIXTH_RECOVERY_PASS`.
+- Extended `dev/temporal-program/verify.R` with a self-test and executable
+  `lifecycle` mode. It rejects empty, failed, errored, warned, and skipped test
+  results, and its forecast/profile/bootstrap/selection fixtures emitted
+  `TEMPORAL_PROGRAM_LIFECYCLE_PASS`. Publication and source-pair modes remain
+  fail-closed pending three-OS CI and source-pair admission evidence.

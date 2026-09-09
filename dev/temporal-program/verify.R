@@ -4,8 +4,9 @@ root <- normalizePath(getwd(), mustWork = TRUE)
 if (!file.exists(file.path(root, "DESCRIPTION"))) {
   stop("Run temporal programme verification from the repository root.", call. = FALSE)
 }
-if (!mode %in% c("plan", "simulation")) {
-  stop("usage: Rscript --vanilla dev/temporal-program/verify.R {plan|simulation}", call. = FALSE)
+allowed <- c("plan", "simulation", "lifecycle", "publication", "combinations", "closeout", "self-test")
+if (!mode %in% allowed) {
+  stop("usage: Rscript --vanilla dev/temporal-program/verify.R {plan|simulation|lifecycle|publication|combinations|closeout|self-test}", call. = FALSE)
 }
 
 .temporal_program_assert_test_results <- function(result, fixture) {
@@ -21,6 +22,30 @@ if (!mode %in% c("plan", "simulation")) {
   invisible(summary)
 }
 
+.temporal_program_expect_reject <- function(expr, label) {
+  rejected <- inherits(try(force(expr), silent = TRUE), "try-error")
+  if (!rejected) stop("temporal programme verifier did not reject ", label, call. = FALSE)
+  invisible(TRUE)
+}
+
+if (identical(mode, "self-test")) {
+  base <- data.frame(failed = 0L, error = 0L, warning = 0L, skipped = FALSE)
+  .temporal_program_expect_reject(
+    .temporal_program_assert_test_results(base[FALSE, , drop = FALSE], "self-test"),
+    "zero assertions"
+  )
+  for (field in names(base)) {
+    bad <- base
+    bad[[field]] <- if (identical(field, "skipped")) TRUE else 1L
+    .temporal_program_expect_reject(
+      .temporal_program_assert_test_results(bad, "self-test"),
+      paste0("a ", field, " result")
+    )
+  }
+  cat("TEMPORAL_PROGRAM_SELF_TEST_PASS\n")
+  quit(save = "no", status = 0L)
+}
+
 if (identical(mode, "plan")) {
   required <- c("dev/temporal-program/PLAN.md", ".unlazy/temporal-program/GATES.md")
   missing <- required[!file.exists(file.path(root, required))]
@@ -32,18 +57,36 @@ if (identical(mode, "plan")) {
   quit(save = "no", status = 0L)
 }
 
-fixture <- c(
-  file.path(root, "tests/testthat/test-temporal-program-simulation.R"),
-  file.path(root, "tests/testthat/test-temporal-program-composed-simulation.R")
+if (identical(mode, "publication")) {
+  stop("Publication verification requires a retained three-OS CI receipt; none is available in this local worktree.", call. = FALSE)
+}
+if (identical(mode, "combinations")) {
+  stop("Combination verification requires an admitted temporal-source pair and retained dense-oracle, lifecycle, and recovery evidence; no source pair is admitted.", call. = FALSE)
+}
+if (identical(mode, "closeout")) {
+  stop("Closeout requires passing publication and temporal-source-pair gates; both remain pending.", call. = FALSE)
+}
+
+fixture <- switch(mode,
+  simulation = c(
+    "tests/testthat/test-temporal-program-simulation.R",
+    "tests/testthat/test-temporal-program-composed-simulation.R"
+  ),
+  lifecycle = c(
+    "tests/testthat/test-temporal-program-forecast.R",
+    "tests/testthat/test-temporal-program-profile.R",
+    "tests/testthat/test-temporal-program-bootstrap.R",
+    "tests/testthat/test-temporal-program-selection.R"
+  )
 )
-if (any(!file.exists(fixture))) {
-  stop("missing temporal simulation fixture: ",
-    paste(fixture[!file.exists(fixture)], collapse = ", "), call. = FALSE)
+if (any(!file.exists(file.path(root, fixture)))) {
+  stop("missing temporal programme fixture: ",
+    paste(fixture[!file.exists(file.path(root, fixture))], collapse = ", "), call. = FALSE)
 }
 pkgload::load_all(root, quiet = TRUE, export_all = FALSE)
 for (path in fixture) {
   .temporal_program_assert_test_results(
-    testthat::test_file(path, reporter = "silent"), path
+    testthat::test_file(file.path(root, path), reporter = "silent"), path
   )
 }
-cat("TEMPORAL_PROGRAM_SIMULATION_PASS\n")
+cat(sprintf("TEMPORAL_PROGRAM_%s_PASS\n", toupper(mode)))

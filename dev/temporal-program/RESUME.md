@@ -4,7 +4,7 @@
 
 - Worktree: `/private/tmp/gllvmTMB-temporal-program`
 - Branch: `codex/temporal-program-20260909`
-- Resume commit: `800f57d82`
+- Current branch includes the simulation repair, bounded lifecycle helpers, and the fail-closed recovery-runner repair `7ad1aff56`.
 - Baseline local temporal simulation repair: `f227e7801`
 - Additive source contract: `da718f8c6`
 - Source-pair previews were deliberately reverted at `a2f71fd88`,
@@ -14,14 +14,19 @@
 ## Verified now
 
 ```sh
-Rscript --vanilla dev/temporal-program/verify.R simulation
 Rscript --vanilla dev/temporal-program/verify.R plan
+Rscript --vanilla dev/temporal-program/verify.R simulation
+Rscript --vanilla dev/temporal-program/verify.R lifecycle
+Rscript --vanilla dev/temporal-sixth-source/verify.R recovery
 ```
 
-Both emit their documented success marker at this commit. The ignored ledger
-`.unlazy/temporal-program/GATES.md` has G0--G1 met and G2--G5 unmet. In
-particular, no temporal plus spatial, phylogenetic, animal, or kernel public
-syntax is currently admitted.
+All four commands emit their documented success marker locally. The retained
+recovery receipt contains all 80 fixed seed--cell attempts; the two
+latent-plus-Psi cells retain two non-success terminals each and still meet the
+frozen minimum of eight successes. The ignored ledger has G0, G1, and G4 met;
+G2 (three-OS CI), G3 (a source pair), and G5 (closeout) remain unmet. No
+`temporal_*` term can currently be combined publicly with spatial,
+phylogenetic, animal, or kernel terms.
 
 ## Kernel candidate result (2026-09-09)
 
@@ -44,23 +49,17 @@ uncommitted because its formula is refused by the supported public contract.
 
 ## Next bounded slice
 
-Define and implement a temporal-only **forecasting contract** before reopening
-any source pair. The implementation must condition a joint Gaussian response
-on observed temporal data, preserve time/series labels, and retain the existing
-refusal for unsupported source combinations and forecast layouts.
-
-1. Freeze the estimand: existing series, future occasions, Gaussian identity
-   response prediction, fitted parameters, and the complete observed response
-   vector. New series and source pairs remain refused.
-2. Implement a dedicated helper rather than widening generic `predict(newdata)`
-   by accident. Use independent dense Gaussian conditioning as its initial
-   oracle, including negative AR1 odd/even lags and OU time-shift invariance.
-3. Keep profile, bootstrap, interval and selection refusals until their own
-   profile/refit/candidate contracts are implemented and independently tested.
+Obtain explicit authorization to push this branch solely for CI, then inspect
+Linux/macOS/Windows results. Do not create a pull request, merge, or release as
+part of that step. In parallel, keep every temporal-plus-source parser route
+closed until one source pair has passed its own additive dense-oracle,
+composition-simulation, lifecycle, and retained-recovery gates.
 
 ## Do not claim
 
 Do not describe this work as merged, released, cross-platform verified, or as
-general recovery/coverage evidence. Forecasting, intervals, profiles,
-bootstrap, selection, all non-`indep` source cells, and source-by-time product
-kernels remain separate contracts.
+general recovery/coverage evidence. The named temporal-only forecast, direct
+profile, parametric bootstrap, and supplied-candidate comparison helpers have
+separate bounded Gaussian contracts. Generic prediction, generic intervals and
+profiles, automatic selection, broad bootstrap, all temporal source pairs, and
+source-by-time product kernels remain unavailable.

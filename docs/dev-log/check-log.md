@@ -53912,6 +53912,20 @@ candidate evidence is reused from this pre-integration run.
 - Focused opt-in frozen R-to-Julia bridge suite: 15 tests, 102 expectations, 0 failures/skips/errors/warnings, 24.5 s. `man/gllvm_julia_phylo_rr.Rd` parsed successfully and `git diff --check` was clean.
 - Dense `vcv`, pedigree, predictors, prediction, recovery, coverage, and generic admission remain outside this S4 row.
 
+## 2026-09-09 — Destination B S3b receipt runner hardening
+
+- The retained three-cell native S3b runner now validates frozen ancestry,
+  exact approved changed paths, and tracked-clean state before loading R or
+  executing any native pair. Its S3b/S4 allowlist is exact and rejects an
+  unapproved path. Receipt output is same-directory temporary plus hard-link,
+  refusing replacement of retained JSON.
+- Test-first runner checks passed **6 expectations**: define-only sourcing,
+  exact allowlist acceptance, unapproved-path rejection, first write,
+  second-write refusal, and byte-preservation. The old runner failed the
+  define-only test; an in-memory overwrite mutation failed preservation.
+  This hardens evidence retention only; it does not rerun or newly qualify
+  native pairs, S3b, S4, dense VCV, or general engine admission.
+
 ## 2026-09-09 — Destination B S4 stored-interval reader repair
 
 - `confint.gllvmTMB_julia_phylo_rr()` now fails closed when any

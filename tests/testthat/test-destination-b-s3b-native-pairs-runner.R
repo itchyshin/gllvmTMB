@@ -91,3 +91,37 @@ test_that("S3b native-pair receipt paths stay in the controlled artifact directo
     "must be under the controlled artifact directory"
   )
 })
+
+test_that("S3b native-pair source snapshots reject a changed source", {
+  runner_environment <- new.env(parent = baseenv())
+  withr::local_envvar(GLLVM_S3B_NATIVE_PAIRS_DEFINE_ONLY = "1")
+  source(testthat::test_path("run-destination-b-s3b-native-pairs-isolated.R"), local = runner_environment)
+
+  before <- list(root = "/source", commit = "first")
+  after <- list(root = "/source", commit = "second")
+
+  expect_error(
+    runner_environment$s3b_native_pairs_validate_stable_snapshot(before, after, "GLLVM.jl source"),
+    "changed while S3b evidence was being retained"
+  )
+  expect_silent(
+    runner_environment$s3b_native_pairs_validate_stable_snapshot(before, before, "GLLVM.jl source")
+  )
+})
+
+test_that("S3b native-pair source snapshots reject untracked files", {
+  runner_environment <- new.env(parent = baseenv())
+  withr::local_envvar(GLLVM_S3B_NATIVE_PAIRS_DEFINE_ONLY = "1")
+  source(testthat::test_path("run-destination-b-s3b-native-pairs-isolated.R"), local = runner_environment)
+
+  temporary_repository <- tempfile("s3b-dirty-source-")
+  dir.create(temporary_repository)
+  withr::defer(unlink(temporary_repository, recursive = TRUE))
+  system2("git", c("init", "--quiet", temporary_repository))
+  writeLines("untracked", file.path(temporary_repository, "evidence-drift.txt"))
+
+  expect_error(
+    runner_environment$s3b_native_pairs_require_clean_git(temporary_repository, "temporary source"),
+    "temporary source must be clean"
+  )
+})

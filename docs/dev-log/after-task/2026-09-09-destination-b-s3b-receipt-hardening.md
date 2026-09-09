@@ -30,7 +30,7 @@ or Julia consumer changed.
 
 - RED: the old runner ignored define-only mode and demanded live environment
   variables.
-- GREEN: focused runner tests passed **10 expectations**.
+- GREEN: focused runner tests passed **13 expectations**.
 - The new configured receipt path is mandatory; this prevents accidental
   overwrite of the historical receipt. A live run has not been attempted
   because the new branch does not yet have its authenticated frozen DLL.
@@ -38,10 +38,11 @@ or Julia consumer changed.
 
 ## Tests Of The Tests
 
-The tests reject an unapproved changed path, a mismatched loaded path, and an
-uncontrolled receipt location. They also prove write-once evidence: first
-write succeeds, the second is rejected, and the original bytes remain. Its
-controlled overwrite mutation failed this preservation assertion.
+The tests reject an unapproved changed path, a mismatched loaded path, an
+uncontrolled receipt location, a source revision change, and an untracked
+source file. They also prove write-once evidence: first write succeeds, the
+second is rejected, and the original bytes remain. Its controlled overwrite
+mutation failed this preservation assertion.
 
 ## Known Limitations
 

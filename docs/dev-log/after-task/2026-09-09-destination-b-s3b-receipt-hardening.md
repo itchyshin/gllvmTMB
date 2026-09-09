@@ -9,9 +9,12 @@ fits on invalid provenance and retain its evidence without overwrite risk.
 
 The runner is now sourceable in explicit define-only mode for contract tests.
 It validates frozen ancestry, the exact approved S3b/S4 changed-path set, and
-tracked cleanliness before parsing/loading the package or running native fits.
-Its JSON receipt uses a temporary file and exclusive hard link; an existing
-receipt is preserved.
+clean, unchanged R and Julia source snapshots before parsing/loading the
+package or running native fits. It binds the actual R-loaded shared object to
+this checkout's `src/gllvmTMB.so`, and binds both Julia's active project and
+the loaded `GLLVM` package root to the supplied clean checkout. Its JSON
+receipt uses a caller-supplied path constrained to the artifact directory, a
+temporary file, and an exclusive hard link; an existing receipt is preserved.
 
 ## Files Changed
 
@@ -27,15 +30,18 @@ or Julia consumer changed.
 
 - RED: the old runner ignored define-only mode and demanded live environment
   variables.
-- GREEN: focused runner tests passed **6 expectations**.
-- A normal-mode probe stopped at the tracked-clean provenance gate before
-  package loading or native fits. `git diff --check` passed.
+- GREEN: focused runner tests passed **10 expectations**.
+- The new configured receipt path is mandatory; this prevents accidental
+  overwrite of the historical receipt. A live run has not been attempted
+  because the new branch does not yet have its authenticated frozen DLL.
+  `git diff --check` passed.
 
 ## Tests Of The Tests
 
-The test rejects an unapproved changed path and proves write-once evidence:
-first write succeeds, the second is rejected, and the original bytes remain.
-Its controlled overwrite mutation failed this preservation assertion.
+The tests reject an unapproved changed path, a mismatched loaded path, and an
+uncontrolled receipt location. They also prove write-once evidence: first
+write succeeds, the second is rejected, and the original bytes remain. Its
+controlled overwrite mutation failed this preservation assertion.
 
 ## Known Limitations
 

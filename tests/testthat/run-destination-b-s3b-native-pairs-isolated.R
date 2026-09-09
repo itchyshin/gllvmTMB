@@ -44,6 +44,67 @@ s3b_native_pairs_git_stdout <- function(args, label) {
   trimws(output)
 }
 
+s3b_native_pairs_validate_loaded_path <- function(actual_path, expected_path, label) {
+  actual_path <- normalizePath(actual_path, mustWork = TRUE)
+  expected_path <- normalizePath(expected_path, mustWork = TRUE)
+  if (!identical(actual_path, expected_path)) {
+    stop(
+      label, " does not match the expected source path: expected ", expected_path,
+      "; loaded ", actual_path,
+      call. = FALSE
+    )
+  }
+  invisible(actual_path)
+}
+
+s3b_native_pairs_loaded_dll_path <- function(package = "gllvmTMB") {
+  dll <- getLoadedDLLs()[[package]]
+  if (is.null(dll) || !nzchar(dll[["path"]])) {
+    stop("R has not loaded the expected ", package, " DLL", call. = FALSE)
+  }
+  normalizePath(dll[["path"]], mustWork = TRUE)
+}
+
+s3b_native_pairs_receipt_path <- function(path, artifact_directory) {
+  artifact_directory <- normalizePath(artifact_directory, mustWork = TRUE)
+  supplied_directory <- normalizePath(dirname(path), mustWork = TRUE)
+  if (!identical(supplied_directory, artifact_directory)) {
+    stop("S3b receipt path must be under the controlled artifact directory: ",
+      artifact_directory, call. = FALSE)
+  }
+  file.path(artifact_directory, basename(path))
+}
+
+s3b_native_pairs_require_clean_git <- function(path, label) {
+  status <- s3b_native_pairs_git_stdout(
+    c("-C", shQuote(normalizePath(path, mustWork = TRUE)), "status", "--porcelain"),
+    paste0(label, " status")
+  )
+  if (nzchar(status)) {
+    stop(label, " must be clean before retaining paired evidence: ", status, call. = FALSE)
+  }
+  invisible(TRUE)
+}
+
+s3b_native_pairs_git_snapshot <- function(path, label) {
+  path <- normalizePath(path, mustWork = TRUE)
+  s3b_native_pairs_require_clean_git(path, label)
+  list(
+    root = path,
+    commit = s3b_native_pairs_git_stdout(
+      c("-C", shQuote(path), "rev-parse", "HEAD"),
+      paste0(label, " revision")
+    )
+  )
+}
+
+s3b_native_pairs_validate_stable_snapshot <- function(before, after, label) {
+  if (!identical(before, after)) {
+    stop(label, " changed while S3b evidence was being retained", call. = FALSE)
+  }
+  invisible(TRUE)
+}
+
 s3b_native_pairs_write_receipt_once <- function(result, receipt_path) {
   receipt_directory <- dirname(receipt_path)
   if (!dir.exists(receipt_directory)) {
@@ -67,7 +128,7 @@ s3b_native_pairs_write_receipt_once <- function(result, receipt_path) {
 s3b_native_pairs_main <- function() {
   required <- c(
     "GLLVM_S3B_LIVE_ADAPTER_TESTS", "GLLVM_DESTINATION_B_PROJECT",
-    "GLLVM_S3B_JULIA_HOME"
+    "GLLVM_S3B_JULIA_HOME", "GLLVM_S3B_RECEIPT_PATH"
   )
   missing <- required[!nzchar(Sys.getenv(required, unset = ""))]
   if (length(missing)) {
@@ -87,8 +148,13 @@ s3b_native_pairs_main <- function() {
   if (!file.exists(file.path(project, "Project.toml"))) {
     stop("GLLVM_DESTINATION_B_PROJECT is not a Julia project", call. = FALSE)
   }
-  receipt_path <- "docs/dev-log/artifacts/2026-09-09-destination-b-s3b-native-pairs-receipt.json"
+  receipt_path <- s3b_native_pairs_receipt_path(
+    Sys.getenv("GLLVM_S3B_RECEIPT_PATH"),
+    file.path(getwd(), "docs", "dev-log", "artifacts")
+  )
   frozen_reference_commit <- s3b_native_pairs_frozen_reference_commit()
+  adapter_snapshot_before <- s3b_native_pairs_git_snapshot(getwd(), "gllvmTMB source")
+  julia_snapshot_before <- s3b_native_pairs_git_snapshot(project, "GLLVM.jl source")
   invisible(s3b_native_pairs_git_stdout(
     c("merge-base", "--is-ancestor", frozen_reference_commit, "HEAD"),
     "frozen reference ancestry"
@@ -98,18 +164,6 @@ s3b_native_pairs_main <- function() {
     "frozen reference scope"
   )
   s3b_native_pairs_validate_changed_paths(changed_paths)
-  tracked_status <- system2("git", c("status", "--porcelain", "--untracked-files=no"),
-    stdout = TRUE, stderr = TRUE)
-  tracked_status_code <- attr(tracked_status, "status")
-  if (!is.null(tracked_status_code) && as.integer(tracked_status_code) != 0L) {
-    stop("adapter source status git command failed", call. = FALSE)
-  }
-  tracked_paths <- if (length(tracked_status)) substr(tracked_status, 4L, nchar(tracked_status)) else character()
-  nonreceipt_changes <- setdiff(tracked_paths, receipt_path)
-  if (length(nonreceipt_changes)) {
-    stop("adapter source must be tracked-clean outside its stale receipt before retaining evidence", call. = FALSE)
-  }
-
   path <- "tests/testthat/test-julia-phylo-rr-bridge.R"
   expressions <- parse(file = path)
   printed <- vapply(expressions, function(expr) paste(deparse(expr), collapse = "\n"), character(1))
@@ -123,6 +177,11 @@ s3b_native_pairs_main <- function() {
   }
 
   pkgload::load_all(".", quiet = TRUE, compile = FALSE)
+  expected_dll_path <- normalizePath(file.path(getwd(), "src", "gllvmTMB.so"), mustWork = TRUE)
+  loaded_dll_path <- s3b_native_pairs_loaded_dll_path()
+  s3b_native_pairs_validate_loaded_path(
+    loaded_dll_path, expected_dll_path, "loaded gllvmTMB DLL"
+  )
   reporter <- testthat::ListReporter$new()
   testthat::with_reporter(reporter, {
     reporter$start_file("destination-b-s3b-native-pairs-isolated")
@@ -150,7 +209,31 @@ s3b_native_pairs_main <- function() {
   if (!identical(namespace_path, normalizePath(getwd()))) {
     stop("loaded gllvmTMB namespace is not this source checkout", call. = FALSE)
   }
-  dll_path <- normalizePath(file.path(getwd(), "src", "gllvmTMB.so"), mustWork = TRUE)
+  julia_active_project <- normalizePath(
+    as.character(JuliaCall::julia_eval("string(Base.active_project())")),
+    mustWork = TRUE
+  )
+  julia_package_root <- normalizePath(
+    as.character(JuliaCall::julia_eval("string(Base.pkgdir(GLLVM))")),
+    mustWork = TRUE
+  )
+  s3b_native_pairs_validate_loaded_path(
+    julia_active_project, file.path(project, "Project.toml"), "active Julia project"
+  )
+  s3b_native_pairs_validate_loaded_path(
+    julia_package_root, project, "loaded GLLVM.jl package"
+  )
+  adapter_snapshot_after <- s3b_native_pairs_git_snapshot(getwd(), "gllvmTMB source")
+  julia_snapshot_after <- s3b_native_pairs_git_snapshot(project, "GLLVM.jl source")
+  s3b_native_pairs_validate_stable_snapshot(
+    adapter_snapshot_before, adapter_snapshot_after, "gllvmTMB source"
+  )
+  s3b_native_pairs_validate_stable_snapshot(
+    julia_snapshot_before, julia_snapshot_after, "GLLVM.jl source"
+  )
+  runner_path <- normalizePath(
+    "tests/testthat/run-destination-b-s3b-native-pairs-isolated.R", mustWork = TRUE
+  )
   result <- list(
     kind = "destination_b_s3b_native_pairs",
     status = "passed_closed_adapter_only",
@@ -159,14 +242,19 @@ s3b_native_pairs_main <- function() {
     source = list(
       frozen_reference_commit = frozen_reference_commit,
       frozen_reference_is_ancestor = TRUE,
-      adapter_commit = s3b_native_pairs_git_stdout(c("rev-parse", "HEAD"), "gllvmTMB revision"),
-      adapter_tracked_clean_outside_receipt = TRUE,
+      adapter_commit = adapter_snapshot_before$commit,
+      adapter_source_clean_and_stable = TRUE,
       changed_paths_from_frozen = changed_paths,
       r_version = R.version$version.string,
       r_platform = R.version$platform,
-      r_shared_object_sha256 = digest::digest(file = dll_path, algo = "sha256"),
-      gllvm_julia_project_binding = "GLLVM_DESTINATION_B_PROJECT",
-      gllvm_julia_commit = s3b_native_pairs_git_stdout(c("-C", shQuote(project), "rev-parse", "HEAD"), "GLLVM.jl revision")
+      r_shared_object_path = loaded_dll_path,
+      r_shared_object_sha256 = digest::digest(file = loaded_dll_path, algo = "sha256"),
+      gllvm_julia_project_path = project,
+      gllvm_julia_active_project_path = julia_active_project,
+      gllvm_julia_package_root = julia_package_root,
+      gllvm_julia_commit = julia_snapshot_before$commit,
+      gllvm_julia_source_clean_and_stable = TRUE,
+      runner_sha256 = digest::digest(file = runner_path, algo = "sha256")
     ),
     tally = list(failed = failed, skipped = skipped, error = errors, warning = warnings, passed = passed),
     pairs = receipts,

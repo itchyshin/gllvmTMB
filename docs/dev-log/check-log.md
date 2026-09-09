@@ -53915,13 +53915,17 @@ candidate evidence is reused from this pre-integration run.
 ## 2026-09-09 — Destination B S3b receipt runner hardening
 
 - The retained three-cell native S3b runner now validates frozen ancestry,
-  exact approved changed paths, and tracked-clean state before loading R or
-  executing any native pair. Its S3b/S4 allowlist is exact and rejects an
-  unapproved path. Receipt output is same-directory temporary plus hard-link,
-  refusing replacement of retained JSON.
-- Test-first runner checks passed **6 expectations**: define-only sourcing,
-  exact allowlist acceptance, unapproved-path rejection, first write,
-  second-write refusal, and byte-preservation. The old runner failed the
+  exact approved changed paths, and clean/stable R and Julia sources before
+  loading R or executing any native pair. It verifies that R actually loaded
+  this checkout's shared object, and that Julia's active project and loaded
+  `GLLVM` package are the declared clean checkout. Its S3b/S4 allowlist is
+  exact and rejects an unapproved path. Receipt output is caller-selected but
+  constrained to the artifact directory, then published via a same-directory
+  temporary plus hard-link that refuses replacement of retained JSON.
+- Test-first runner checks passed **10 expectations**: define-only sourcing,
+  exact allowlist acceptance, unapproved-path rejection, matching/mismatched
+  loaded-path behaviour, controlled receipt-path admission/rejection, first
+  write, second-write refusal, and byte-preservation. The old runner failed the
   define-only test; an in-memory overwrite mutation failed preservation.
   This hardens evidence retention only; it does not rerun or newly qualify
   native pairs, S3b, S4, dense VCV, or general engine admission.

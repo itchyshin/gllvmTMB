@@ -52,3 +52,42 @@ test_that("S3b native-pair receipt output is write-once", {
     first_bytes
   )
 })
+
+test_that("S3b native-pair provenance helpers reject a mismatched loaded DLL", {
+  runner_environment <- new.env(parent = baseenv())
+  withr::local_envvar(GLLVM_S3B_NATIVE_PAIRS_DEFINE_ONLY = "1")
+  source(testthat::test_path("run-destination-b-s3b-native-pairs-isolated.R"), local = runner_environment)
+
+  expected_path <- normalizePath(testthat::test_path(".."), mustWork = TRUE)
+  actual_path <- normalizePath(testthat::test_path("..", ".."), mustWork = TRUE)
+
+  expect_error(
+    runner_environment$s3b_native_pairs_validate_loaded_path(
+      actual_path, expected_path, "loaded gllvmTMB DLL"
+    ),
+    "does not match the expected source path"
+  )
+  expect_silent(
+    runner_environment$s3b_native_pairs_validate_loaded_path(
+      expected_path, expected_path, "loaded gllvmTMB DLL"
+    )
+  )
+})
+
+test_that("S3b native-pair receipt paths stay in the controlled artifact directory", {
+  runner_environment <- new.env(parent = baseenv())
+  withr::local_envvar(GLLVM_S3B_NATIVE_PAIRS_DEFINE_ONLY = "1")
+  source(testthat::test_path("run-destination-b-s3b-native-pairs-isolated.R"), local = runner_environment)
+
+  artifact_directory <- normalizePath(testthat::test_path("..", "..", "docs", "dev-log", "artifacts"), mustWork = TRUE)
+  controlled_path <- file.path(artifact_directory, "controlled-s3b-receipt.json")
+
+  expect_identical(
+    runner_environment$s3b_native_pairs_receipt_path(controlled_path, artifact_directory),
+    controlled_path
+  )
+  expect_error(
+    runner_environment$s3b_native_pairs_receipt_path(tempfile(fileext = ".json"), artifact_directory),
+    "must be under the controlled artifact directory"
+  )
+})

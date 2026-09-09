@@ -34,21 +34,13 @@ if (identical(mode, "plan")) {
 
 fixture <- switch(mode,
   simulation = file.path(root, "tests/testthat/test-temporal-program-simulation.R"),
-  combinations = c(
-    file.path(root, "tests/testthat/test-temporal-program-kernel.R"),
-    file.path(root, "tests/testthat/test-temporal-program-phylo.R")
-  )
+  combinations = file.path(root, "tests/testthat/test-temporal-program-kernel.R")
 )
-if (any(!file.exists(fixture))) {
-  stop("missing temporal programme fixture: ",
-    paste(fixture[!file.exists(fixture)], collapse = ", "), call. = FALSE)
-}
+if (!file.exists(fixture)) stop("missing temporal programme fixture", call. = FALSE)
 pkgload::load_all(root, quiet = TRUE, export_all = FALSE)
-for (path in fixture) {
-  .temporal_program_assert_test_results(
-    testthat::test_file(path, reporter = "silent"), path
-  )
-}
+.temporal_program_assert_test_results(
+  testthat::test_file(fixture, reporter = "silent"), fixture
+)
 cat(switch(mode,
   simulation = "TEMPORAL_PROGRAM_SIMULATION_PASS\n",
   combinations = "TEMPORAL_PROGRAM_COMBINATIONS_PASS\n"

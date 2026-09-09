@@ -1,0 +1,64 @@
+{
+  "kind": "destination_b_s4_tree_public_workflow",
+  "status": "passed_single_controlled_tree_cell_only",
+  "scope": "explicit post-fit Gaussian ML ultrametric-tree phylo_rr workflow; generic engine remains closed",
+  "source": {
+    "frozen_reference_commit": "b4d5fee64def88bc768dda1f1f77c29b295edd86",
+    "s4_contract_commit": "1f715f122d8d15bf5dc6d85784982116525941d6",
+    "gllvm_julia_commit": "fb2c4666c176abd6fd2c588ce4f4ad13057369ef",
+    "r_version": "R version 4.6.0 (2026-04-24)",
+    "r_platform": "aarch64-apple-darwin23"
+  },
+  "command": "GLLVM_S3B_LIVE_ADAPTER_TESTS=1 GLLVM_DESTINATION_B_PROJECT=<isolated GLLVM.jl worktree> GLLVM_S3B_JULIA_HOME=<Julia 1.10 executable> Rscript --vanilla -e \"devtools::test(filter = 'julia-phylo-rr-bridge', reporter = 'summary')\"",
+  "tally": {
+    "tests": 15,
+    "expectations": 102,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0,
+    "warnings": 0,
+    "elapsed_seconds": 24.5
+  },
+  "public_cell": {
+    "native_formula": "value ~ 0 + trait + phylo_latent(species, d = 1, unique = FALSE)",
+    "family": "gaussian",
+    "estimation": "ML",
+    "tree": "ultrametric; native scale = 2",
+    "n_traits": 2,
+    "n_species": 4,
+    "n_observations": 12,
+    "seed": 701,
+    "data_sha256": "f90dd00c36de331f191f73cb98c262ffc9da4877ef6434f821ff74e6554ff4bb"
+  },
+  "paired_quantities": {
+    "log_likelihood_absolute_delta": 1.54365409343882e-12,
+    "fixed_effects_maximum_absolute_delta": 6.88428564710186e-08,
+    "phylogenetic_covariance_maximum_absolute_delta": 1.26184749801861e-07,
+    "residual_variance_maximum_absolute_delta": 4.72117954106177e-10
+  },
+  "public_contract": {
+    "class": "gllvmTMB_julia_phylo_rr",
+    "methods": ["print", "summary", "logLik", "coef", "confint"],
+    "intervals": "only stored Julia transformed-Wald endpoints whose object and target methods pass the fail-closed gate",
+    "logLik": "df = length(Julia parameters); nobs = n_traits * n_observations",
+    "source_health": "native optimizer convergence exactly zero and finite parameter vector required"
+  },
+  "negative_controls": [
+    "generic engine = julia still rejects phylo_rr",
+    "dense vcv and pedigree rejected by the public Tree wrapper",
+    "extra fixed effects rejected before Julia",
+    "unconverged, fractional, or malformed native optimizer metadata rejected",
+    "profile-labelled, non-transformed-Wald, or malformed stored endpoints rejected"
+  ],
+  "review": {
+    "independent_reviewer": "review_s4_tree",
+    "verdict": "no P0 after re-review; P1 malformed-input gaps repaired and re-tested"
+  },
+  "exclusions": [
+    "no generic engine admission",
+    "no dense-vcv or pedigree public workflow",
+    "no prediction, residuals, simulation, vcov, recovery, or coverage claim",
+    "not 0.7 parity",
+    "FRK remains parked at gllvmTMB#1275"
+  ]
+}

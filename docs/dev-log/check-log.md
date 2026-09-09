@@ -53908,4 +53908,6 @@ candidate evidence is reused from this pre-integration run.
 
 - Added exported `gllvm_julia_phylo_rr()` as the sole public post-fit exception: Gaussian ML Tree `phylo_latent(..., d = 1, unique = FALSE)`, trait intercepts only. It does not widen `engine = "julia"`.
 - The distinct S3 class exposes only `print`, `summary`, `logLik`, `coef`, and stored observed-marginal Wald `confint`; unavailable targets fail loudly.
-- Focused opt-in frozen R-to-Julia bridge suite passed locally. Dense `vcv`, pedigree, predictors, prediction, recovery, coverage, and generic admission remain outside this S4 row.
+- Hardened after independent review: source optimizer health, stored object/target Wald labels, malformed CI metadata, and `logLik` df/nobs all fail closed.
+- Focused opt-in frozen R-to-Julia bridge suite: 15 tests, 102 expectations, 0 failures/skips/errors/warnings, 24.5 s. `man/gllvm_julia_phylo_rr.Rd` parsed successfully and `git diff --check` was clean.
+- Dense `vcv`, pedigree, predictors, prediction, recovery, coverage, and generic admission remain outside this S4 row.

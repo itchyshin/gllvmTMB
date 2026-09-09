@@ -80,8 +80,8 @@ allowed_changed_paths <- c(
   "docs/dev-log/after-task/2026-09-09-destination-b-s3b-r-adapter.md",
   "docs/dev-log/artifacts/2026-09-09-destination-b-s3b-native-pairs-receipt.json"
 )
-git_stdout(c("merge-base", "--is-ancestor", frozen_reference_commit, "HEAD"),
-  "frozen reference ancestry")
+invisible(git_stdout(c("merge-base", "--is-ancestor", frozen_reference_commit, "HEAD"),
+  "frozen reference ancestry"))
 changed_paths <- git_stdout(c("diff", "--name-only", paste0(frozen_reference_commit, "..HEAD")),
   "frozen reference scope")
 unexpected_paths <- setdiff(changed_paths, allowed_changed_paths)

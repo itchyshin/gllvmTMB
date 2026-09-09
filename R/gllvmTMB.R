@@ -7,7 +7,8 @@
 #' the same trait covariance, pairwise correlations, shared latent axes,
 #' and trait-specific variance. The formula syntax also supports fixed
 #' effects plus covariance-structure keywords organised by
-#' \emph{correlation source} (none / animal / phylo / spatial / kernel) and
+#' \emph{correlation source} (none / animal / phylo / spatial / kernel /
+#' temporal) and
 #' three \emph{modes} (independent / dependent / latent). The `common = TRUE`
 #' modifier on `*_indep()` gives the one-shared-variance special case:
 #'
@@ -18,7 +19,14 @@
 #'   \emph{phylo}   \tab [phylo_indep()]   \tab [phylo_dep()]   \tab [phylo_latent()]   \cr
 #'   \emph{spatial} \tab [spatial_indep()] \tab [spatial_dep()] \tab [spatial_latent()] \cr
 #'   \emph{kernel}  \tab [kernel_indep()]  \tab [kernel_dep()]  \tab [kernel_latent()]  \cr
+#'   \emph{temporal} \tab [temporal_indep()] \tab [temporal_dep()] \tab [temporal_latent()] \cr
 #' }
+#'
+#' The temporal row is currently a Gaussian identity-link ML/Laplace route:
+#' it accepts one ordered `series`--`time` provider, AR1 integer occasions or
+#' OU elapsed time, and may coexist with ordinary `unit` and `unit_obs`
+#' covariance. Other structured sources, new-data prediction, intervals, and
+#' rank above one remain unavailable for temporal fits.
 #'
 #' The three covariance modes (`indep` / `dep` / `latent`) encode
 #' covstruct intent across traits:
@@ -1148,8 +1156,30 @@ gllvmTMB <- function(
     formula <- temporal_capture$formula
     data <- temporal_capture$data
     temporal_spec$unit_col <- site
-    site <- temporal_spec$pair_col
-    data[[site]] <- factor(data[[site]])
+    ## The temporal labels are public metadata and may differ from `unit`.
+    ## The partition condition is deferred until ordinary covariance terms
+    ## have been parsed: a temporal-only model has no stable-unit component to
+    ## constrain.
+    same_partition <- function(left, right) {
+      left <- as.character(left)
+      right <- as.character(right)
+      all(vapply(split(right, left), function(x) length(unique(x)) == 1L,
+        logical(1))) &&
+        all(vapply(split(left, right), function(x) length(unique(x)) == 1L,
+          logical(1)))
+    }
+    temporal_spec$same_unit_partition <- same_partition(
+      data[[temporal_spec$series_col]], data[[site]]
+    )
+    if (isTRUE(unit_obs_supplied) && unit_obs %in% names(data)) {
+      unit_per_unit_obs <- tapply(
+        as.character(data[[site]]), data[[unit_obs]],
+        function(x) length(unique(x))
+      )
+      if (any(unit_per_unit_obs != 1L)) {
+        cli::cli_abort("Each {.arg unit_obs} level must be nested inside one {.arg unit} level.")
+      }
+    }
   }
 
   ## ---- Multinomial response expansion (Design 83) ----------------------
@@ -1212,6 +1242,18 @@ gllvmTMB <- function(
   ## spatial = "off"; that path is removed in 0.2.0 because the
   ## single-response sdmTMB() engine is no longer bundled.
   parsed <- parse_multi_formula(formula)
+  if (isTRUE(temporal_spec$active)) {
+    has_stable_unit_component <- any(vapply(parsed$covstructs, function(cs) {
+      identical(all.vars(cs$group), site)
+    }, logical(1)))
+    if (has_stable_unit_component && !isTRUE(temporal_spec$same_unit_partition)) {
+      cli::cli_abort(c(
+        "The temporal {.code series} column must have the same partition as {.arg unit} when a stable unit covariance component is included.",
+        "i" = "Temporal states are separate from ordinary units, but the two components must index the same stable entities.",
+        ">" = "Use matching unit groups, even when their labels differ, or omit the stable-unit covariance component."
+      ))
+    }
+  }
   if (!is.null(structured_rho_capture$spec)) {
     parsed$structured_rho <- structured_rho_capture$spec
   }

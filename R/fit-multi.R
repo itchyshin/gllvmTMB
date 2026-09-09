@@ -5459,19 +5459,40 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   temporal_series_id <- 0L
   temporal_time_index <- 0L
   n_temporal_series <- 1L
+  temporal_state_id <- integer(n_obs)
+  temporal_predecessor <- -1L
+  temporal_gap <- 0L
+  temporal_elapsed <- 0
+  n_temporal_states <- 1L
+  temporal_mode <- 0L
+  temporal_structure <- 0L
+  temporal_rank <- 0L
+  temporal_unique <- 0L
   if (temporal_active) {
-    pair_match <- match(levels(data[[site]]), temporal$pair_table$pair_id)
-    if (anyNA(pair_match)) stop("Temporal pair map does not match fitted pair levels.", call. = FALSE)
-    pair_table <- temporal$pair_table[pair_match, , drop = FALSE]
-    temporal_series_id <- as.integer(factor(pair_table$series)) - 1L
-    ## Keep the rank aligned with the B-tier pair order.  `split()` followed
-    ## by `unlist()` would re-order an interleaved factor level vector by
-    ## series, silently attaching one series' time ranks to another's scores.
-    temporal_time_index <- as.integer(ave(
-      pair_table$time, temporal_series_id,
-      FUN = function(x) match(x, sort(x)) - 1L
-    ))
-    n_temporal_series <- length(unique(temporal_series_id))
+    pair_table <- temporal$pair_table
+    state_match <- match(as.character(data[[temporal$pair_col]]), pair_table$pair_id)
+    if (anyNA(state_match)) stop("Temporal state map does not match fitted rows.", call. = FALSE)
+    temporal_state_id <- as.integer(state_match - 1L)
+    n_temporal_states <- nrow(pair_table)
+    temporal_predecessor <- rep.int(-1L, n_temporal_states)
+    temporal_gap <- integer(n_temporal_states)
+    temporal_elapsed <- numeric(n_temporal_states)
+    for (series_name in unique(pair_table$series)) {
+      idx <- which(pair_table$series == series_name)
+      idx <- idx[order(pair_table$time[idx])]
+      if (length(idx) > 1L) {
+        temporal_predecessor[idx[-1L]] <- idx[-length(idx)] - 1L
+        if (identical(temporal$structure, "ar1")) {
+          temporal_gap[idx[-1L]] <- as.integer(pair_table$time[idx[-1L]] - pair_table$time[idx[-length(idx)]])
+        } else {
+          temporal_elapsed[idx[-1L]] <- pair_table$time[idx[-1L]] - pair_table$time[idx[-length(idx)]]
+        }
+      }
+    }
+    temporal_mode <- switch(temporal$mode, indep = 0L, dep = 1L, latent = 2L)
+    temporal_structure <- if (identical(temporal$structure, "ou")) 1L else 0L
+    temporal_rank <- if (identical(temporal$mode, "dep")) n_traits else temporal$d
+    temporal_unique <- as.integer(isTRUE(temporal$unique))
   }
 
   tmb_data <- list(
@@ -5489,11 +5510,23 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     d_B              = as.integer(d_B),
     d_W              = as.integer(d_W),
     use_rr_B         = as.integer(use_rr_B),
-    use_temporal_B   = as.integer(temporal_active),
-    temporal_iid_total = as.integer(temporal_active && identical(temporal$workflow, "unreplicated")),
+    ## Legacy B-tier temporal fields remain inert. The sixth source below is
+    ## a separate state/parameter tier and never aliases `z_B` or `s_B`.
+    use_temporal_B   = 0L,
+    temporal_iid_total = 0L,
     temporal_series_id = as.integer(temporal_series_id),
     temporal_time_index = as.integer(temporal_time_index),
     n_temporal_series = as.integer(n_temporal_series),
+    use_temporal = as.integer(temporal_active),
+    temporal_state_id = as.integer(temporal_state_id),
+    temporal_predecessor = as.integer(temporal_predecessor),
+    temporal_gap = as.integer(temporal_gap),
+    temporal_elapsed = as.numeric(temporal_elapsed),
+    n_temporal_states = as.integer(n_temporal_states),
+    temporal_mode = as.integer(temporal_mode),
+    temporal_structure = as.integer(temporal_structure),
+    temporal_rank = as.integer(temporal_rank),
+    temporal_unique = as.integer(temporal_unique),
     use_lv_B         = as.integer(use_lv_B),
     n_lv_B           = as.integer(n_lv_B),
     X_lv_B           = X_lv_B,
@@ -5724,6 +5757,17 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                      init_rr_theta(n_traits, d_B, scale = lam_scale_init)
                    } else rep(0.0, theta_rr_B_len),
     theta_temporal_phi = 0.0,
+    ## The temporal source deliberately has its own parameter blocks.  The
+    ## ordinary B-tier `z_B` / `s_B` objects remain available to ordinary
+    ## unit effects in the same fit and are never repurposed as time states.
+    theta_temporal_time = 0.0,
+    theta_temporal_rr = if (temporal_active && temporal_rank > 0L) {
+      init_rr_theta(n_traits, temporal_rank)
+    } else 0.0,
+    theta_temporal_diag = rep(0.0, n_traits),
+    z_temporal = matrix(0, nrow = max(temporal_rank, 1L),
+      ncol = n_temporal_states),
+    q_temporal = matrix(0, nrow = n_traits, ncol = n_temporal_states),
     ## Latent-score start (issue #851). Seeded from an SVD of the grouped
     ## residual matrix rather than left at exactly zero. This is the one piece
     ## the previous attempt omitted, and the piece the diagnosis points at: the
@@ -6315,8 +6359,30 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     tmb_map$theta_rr_B <- factor(rep(NA_integer_, length(tmb_params$theta_rr_B)))
     tmb_map$z_B        <- factor(rep(NA_integer_, length(tmb_params$z_B)))
   }
+  ## The predecessor-based B-tier prototype is retired in favour of the
+  ## dedicated temporal state tier.  Keep its parameter mapped off for tape
+  ## compatibility, including on temporal fits.
+  tmb_map$theta_temporal_phi <- factor(NA_integer_)
   if (!temporal_active) {
-    tmb_map$theta_temporal_phi <- factor(NA_integer_)
+    tmb_map$theta_temporal_time <- factor(NA_integer_)
+    tmb_map$theta_temporal_rr <- factor(rep(NA_integer_, length(tmb_params$theta_temporal_rr)))
+    tmb_map$theta_temporal_diag <- factor(rep(NA_integer_, length(tmb_params$theta_temporal_diag)))
+    tmb_map$z_temporal <- factor(rep(NA_integer_, length(tmb_params$z_temporal)))
+    tmb_map$q_temporal <- factor(rep(NA_integer_, length(tmb_params$q_temporal)))
+  } else {
+    if (temporal_rank < 1L) {
+      tmb_map$theta_temporal_rr <- factor(rep(NA_integer_, length(tmb_params$theta_temporal_rr)))
+      tmb_map$z_temporal <- factor(rep(NA_integer_, length(tmb_params$z_temporal)))
+    }
+    ## The indep cell owns a temporal trait-diagonal variance even though it
+    ## has no latent Psi.  Map this block only when neither indep nor
+    ## latent(unique = TRUE) needs it.
+    if (temporal_unique != 1L && temporal_mode != 0L) {
+      tmb_map$theta_temporal_diag <- factor(rep(NA_integer_, length(tmb_params$theta_temporal_diag)))
+    }
+    if (temporal_unique != 1L) {
+      tmb_map$q_temporal <- factor(rep(NA_integer_, length(tmb_params$q_temporal)))
+    }
   }
   if (!use_lv_B) {
     tmb_map$alpha_lv_B <- factor(rep(NA_integer_, length(tmb_params$alpha_lv_B)))
@@ -7103,17 +7169,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     known_V = known_V, lambda_constraint = lambda_constraint,
     Xcoef_fixed = xcoef_fixed
   )
-  if (temporal_active) {
-    ## The temporal Gaussian observation contract integrates the diagonal
-    ## occasion term exactly. Unreplicated data retain only the identifiable
-    ## total variance; replicated data use the normalized per-pair covariance
-    ## Psi 11' + sigma_eps^2 I. Both avoid treating an iid s_B mode as a
-    ## temporal score or as an independently persisted state.
-    integrated_gaussian_diag_B <- TRUE
-    if (identical(temporal$workflow, "unreplicated")) {
-      tmb_map$log_sigma_eps <- factor(rep(NA_integer_, length(tmb_params$log_sigma_eps)))
-    }
-  }
+  ## A temporal Psi is a persisted process, never the ordinary B-tier
+  ## Gaussian convolution.  Retain the observation residual and leave B-tier
+  ## integration to its normal eligibility rule.
   tmb_data$integrate_gaussian_diag_B <- as.integer(integrated_gaussian_diag_B)
   if (integrated_gaussian_diag_B) {
     tmb_map$s_B <- factor(rep(NA_integer_, length(tmb_params$s_B)))
@@ -7152,6 +7210,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## guards above have ruled out unsupported extensions.
   if (isTRUE(REML)) random <- c(random, "b_fix")
   if (use_rr_B)   random <- c(random, "z_B")
+  if (temporal_active && temporal_rank > 0L) random <- c(random, "z_temporal")
+  if (temporal_active && temporal_unique == 1L) random <- c(random, "q_temporal")
   if (use_rr_B_slope) random <- c(random, "z_B_slope")
   if (use_diag_B && !diag_B_all_skipped && !integrated_gaussian_diag_B)
     random <- c(random, "s_B")

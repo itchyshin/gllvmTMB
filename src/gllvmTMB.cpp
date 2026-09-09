@@ -59,6 +59,37 @@ matrix<Type> gll_unpack_rr_loadings(const vector<Type>& theta,
   return loading;
 }
 
+// Integer power by squaring keeps signed AR1 persistence AD-safe.  Calling a
+// generic real-valued pow() on a negative base can take a logarithm; repeated
+// multiplication is correct but makes an accidental huge gap O(gap).
+template <class Type>
+Type gll_integer_power(Type base, int exponent)
+{
+  Type result = Type(1);
+  while (exponent > 0) {
+    if (exponent & 1) result *= base;
+    base *= base;
+    exponent >>= 1;
+  }
+  return result;
+}
+
+// Stable 1 - exp(-x) for x >= 0 without relying on an expm1 overload for
+// every TMB AD type. The two branch inputs are clamped independently because
+// CppAD CondExp evaluates both: the series must not see huge x, and the direct
+// subtraction must not see a tiny x that rounds exp(-x) to one.
+template <class Type>
+Type gll_one_minus_exp_neg(Type x)
+{
+  Type cut = Type(1e-4);
+  Type x_series = CppAD::CondExpLt(x, cut, x, cut);
+  Type series = x_series - x_series * x_series / Type(2) +
+    x_series * x_series * x_series / Type(6);
+  Type x_direct = CppAD::CondExpLt(x, cut, cut, x);
+  Type direct = Type(1) - exp(-x_direct);
+  return CppAD::CondExpLt(x, cut, series, direct);
+}
+
 // Stable log helpers for the cumulative-logit ordered missing-PREDICTOR prior
 // (Phase 5b, design 68 sec.1.2). Ported verbatim from drmTMB src/drm_numeric.h
 // (drm_log_inv_logit / drm_log1m_inv_logit / drm_log1mexp / drm_log_inv_logit_
@@ -584,6 +615,42 @@ Type objective_function<Type>::operator()()
           temporal_time_index(s) < 0)
         error("gllvmTMB_multi: temporal score index is out of range");
     }
+  }
+  // Sixth covariance source: a private `(series, time)` state tier.  It is
+  // intentionally separate from B-tier sites and from unit_obs.
+  DATA_INTEGER(use_temporal);
+  DATA_IVECTOR(temporal_state_id);       // one per observation
+  DATA_IVECTOR(temporal_predecessor);    // one per temporal state; -1 at starts
+  DATA_IVECTOR(temporal_gap);            // integer AR1 gaps; 0 at starts
+  DATA_VECTOR(temporal_elapsed);         // numeric OU elapsed gaps; 0 at starts
+  DATA_INTEGER(n_temporal_states);
+  DATA_INTEGER(temporal_mode);           // 0 indep, 1 dep, 2 latent
+  DATA_INTEGER(temporal_structure);      // 0 AR1, 1 OU
+  DATA_INTEGER(temporal_rank);
+  DATA_INTEGER(temporal_unique);
+  if (use_temporal == 1) {
+    if (temporal_state_id.size() != y.size() ||
+        temporal_predecessor.size() != n_temporal_states ||
+        temporal_gap.size() != n_temporal_states ||
+        temporal_elapsed.size() != n_temporal_states ||
+        n_temporal_states < 1)
+      error("gllvmTMB_multi: malformed dedicated temporal state payload");
+    for (int o = 0; o < y.size(); ++o)
+      if (temporal_state_id(o) < 0 || temporal_state_id(o) >= n_temporal_states)
+        error("gllvmTMB_multi: temporal observation state index is out of range");
+    for (int s = 0; s < n_temporal_states; ++s) {
+      int p = temporal_predecessor(s);
+      if (p >= s || p < -1 || temporal_gap(s) < 0 || temporal_elapsed(s) < Type(0))
+        error("gllvmTMB_multi: malformed temporal predecessor or gap");
+      if ((p < 0 && (temporal_gap(s) != 0 || temporal_elapsed(s) != Type(0))) ||
+          (p >= 0 && temporal_structure == 0 && temporal_gap(s) < 1) ||
+          (p >= 0 && temporal_structure == 1 && temporal_elapsed(s) <= Type(0)))
+        error("gllvmTMB_multi: temporal starts and transitions have inconsistent gaps");
+    }
+    if (temporal_mode < 0 || temporal_mode > 2 ||
+        temporal_structure < 0 || temporal_structure > 1 ||
+        temporal_rank < 0 || temporal_unique < 0 || temporal_unique > 1)
+      error("gllvmTMB_multi: malformed temporal mode payload");
   }
   DATA_INTEGER(use_lv_B);          // 1/0 predictor-informed mean for B-tier scores
   DATA_INTEGER(n_lv_B);            // columns in X_lv_B (>= 1 stub when inactive)
@@ -1124,6 +1191,14 @@ Type objective_function<Type>::operator()()
   PARAMETER_VECTOR(theta_rr_B);
   PARAMETER(theta_temporal_phi);
   PARAMETER_MATRIX(z_B);                         // d_B x n_sites spherical N(0, I)
+  // Dedicated temporal-source coordinates.  These must never alias B-tier
+  // score/diagonal matrices because ordinary unit and unit_obs effects can
+  // coexist with the temporal source.
+  PARAMETER(theta_temporal_time);
+  PARAMETER_VECTOR(theta_temporal_rr);
+  PARAMETER_VECTOR(theta_temporal_diag);
+  PARAMETER_MATRIX(z_temporal);
+  PARAMETER_MATRIX(q_temporal);
   PARAMETER_MATRIX(alpha_lv_B);                  // n_lv_B x d_B score-mean coefficients
   // Augmented between-site random regression:
   // Lambda_B_slope is C x d_B_slope where C = 2*n_traits for the single
@@ -1690,6 +1765,80 @@ Type objective_function<Type>::operator()()
     ADREPORT(beta_mi);
     ADREPORT(log_sigma_mi);
     ADREPORT(sigma_mi);
+  }
+
+  // -------- Dedicated temporal covariance source -------------------------
+  matrix<Type> Lambda_temporal(n_traits, std::max(temporal_rank, 1));
+  Lambda_temporal.setZero();
+  // `z_temporal` and `q_temporal` are standard-normal innovations.  The
+  // corresponding persisted states below enter eta.  Working in innovations
+  // is algebraically the same AR1/OU process but avoids a nearly singular
+  // Laplace Hessian when an OU rate is close to zero.
+  matrix<Type> z_temporal_state(std::max(temporal_rank, 1), n_temporal_states);
+  z_temporal_state.setZero();
+  matrix<Type> q_temporal_state(n_traits, n_temporal_states);
+  q_temporal_state.setZero();
+  if (use_temporal == 1) {
+    if (theta_temporal_diag.size() != n_traits ||
+        z_temporal.rows() != std::max(temporal_rank, 1) ||
+        z_temporal.cols() != n_temporal_states ||
+        q_temporal.rows() != n_traits || q_temporal.cols() != n_temporal_states)
+      error("gllvmTMB_multi: dedicated temporal parameter shape mismatch");
+    if (temporal_rank > 0) {
+      int expected_rr = n_traits * temporal_rank -
+        temporal_rank * (temporal_rank - 1) / 2;
+      if (theta_temporal_rr.size() != expected_rr)
+        error("gllvmTMB_multi: temporal loading parameter has wrong length");
+      Lambda_temporal = gll_unpack_rr_loadings(
+        theta_temporal_rr, n_traits, temporal_rank);
+    }
+    Type phi_temporal = (Type(1) - Type(1e-6)) * tanh(theta_temporal_time);
+    Type ou_rate = exp(theta_temporal_time);
+    vector<Type> temporal_sd = exp(theta_temporal_diag);
+    for (int s = 0; s < n_temporal_states; ++s) {
+      int previous = temporal_predecessor(s);
+      Type a = Type(0);
+      Type innovation_sd = Type(1);
+      if (previous >= 0) {
+        if (temporal_structure == 0) {
+          a = gll_integer_power(phi_temporal, temporal_gap(s));
+        } else {
+          a = exp(-ou_rate * temporal_elapsed(s));
+        }
+        // For OU rates near zero, `a` rounds to one and `1-a*a` suffers
+        // catastrophic cancellation. The stable helper is evaluated only on
+        // a transition; a series start has no innovation density at all.
+        innovation_sd = temporal_structure == 1
+          ? sqrt(gll_one_minus_exp_neg(Type(2) * ou_rate * temporal_elapsed(s)))
+          : sqrt(Type(1) - a * a);
+      }
+      if (temporal_rank > 0) {
+        for (int k = 0; k < temporal_rank; ++k) {
+          if (previous < 0)
+            z_temporal_state(k, s) = z_temporal(k, s);
+          else
+            z_temporal_state(k, s) = a * z_temporal_state(k, previous) +
+              innovation_sd * z_temporal(k, s);
+          nll -= dnorm(z_temporal(k, s), Type(0), Type(1), true);
+        }
+      }
+      if (temporal_unique == 1) {
+        for (int t = 0; t < n_traits; ++t) {
+          if (previous < 0)
+            q_temporal_state(t, s) = temporal_sd(t) * q_temporal(t, s);
+          else
+            q_temporal_state(t, s) = a * q_temporal_state(t, previous) +
+              temporal_sd(t) * innovation_sd * q_temporal(t, s);
+          nll -= dnorm(q_temporal(t, s), Type(0), Type(1), true);
+        }
+      }
+    }
+    REPORT(Lambda_temporal);
+    REPORT(z_temporal_state);
+    if (temporal_unique == 1) REPORT(q_temporal_state);
+    REPORT(phi_temporal);
+    REPORT(ou_rate);
+    REPORT(temporal_sd);
   }
 
   // -------- Construct Lambda_B (n_traits x d_B), lower-triangular -------
@@ -2949,6 +3098,17 @@ Type objective_function<Type>::operator()()
         u_B_st += Lambda_B(t, k) * score_k;
       }
       eta(o) += u_B_st;
+    }
+    if (use_temporal == 1) {
+      int ts = temporal_state_id(o);
+      if (temporal_rank > 0) {
+        Type u_temporal = Type(0);
+        for (int k = 0; k < temporal_rank; ++k)
+          u_temporal += Lambda_temporal(t, k) * z_temporal_state(k, ts);
+        eta(o) += u_temporal;
+      }
+      if (temporal_unique == 1)
+        eta(o) += q_temporal_state(t, ts);
     }
     if (use_rr_B_slope == 1) {
       Type u_B_aug = 0;

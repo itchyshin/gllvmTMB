@@ -1,27 +1,8 @@
-#' Temporal AR1 latent-score provider
-#'
-#' Marks a rank-one latent-score term whose scores are correlated across
-#' equally spaced occasions within each series. It is recognised only inside
-#' [gllvmTMB()] formulas.
-#'
-#' @param formula A bar expression such as `0 + trait | series`.
-#' @param time Bare column name giving integer, equally spaced occasions.
-#' @param d Latent rank. Version 1 supports only `1`.
-#' @param structure Temporal covariance structure. Version 1 supports only
-#'   `"ar1"`.
-#' @param replicate Optional bare column name distinguishing repeated
-#'   measurements at the same series--occasion--trait cell.
-#' @return A formula marker consumed by [gllvmTMB()].
-#' @export
-temporal_latent <- function(formula, time, d = 1, structure = "ar1",
-                            replicate = NULL) {
-  formula <- substitute(formula)
-  time <- substitute(time)
-  replicate <- substitute(replicate)
-
+.temporal_marker <- function(formula, time, mode, d = NULL, unique = FALSE,
+                             structure = "ar1", replicate = NULL) {
   if (!is.call(formula) || !identical(formula[[1L]], as.name("|")) ||
       length(formula) != 3L) {
-    cli::cli_abort("{.fn temporal_latent} requires a formula of the form {.code 0 + trait | series}.")
+    cli::cli_abort("A temporal covariance term requires a formula of the form {.code 0 + trait | series}.")
   }
   if (!is.name(time)) {
     cli::cli_abort("{.arg time} must be a bare column name.")
@@ -29,32 +10,87 @@ temporal_latent <- function(formula, time, d = 1, structure = "ar1",
   if (!identical(replicate, quote(NULL)) && !is.name(replicate)) {
     cli::cli_abort("{.arg replicate} must be NULL or a bare column name.")
   }
-  if (!is.numeric(d) || length(d) != 1L || is.na(d) || d != 1) {
+  if (identical(mode, "latent") &&
+      (!is.numeric(d) || length(d) != 1L || is.na(d) || d != 1)) {
     cli::cli_abort("{.fn temporal_latent} currently supports rank one only ({.code d = 1}).")
   }
   if (!is.character(structure) || length(structure) != 1L ||
-      is.na(structure) || !identical(structure, "ar1")) {
-    cli::cli_abort("{.fn temporal_latent} currently supports {.code structure = \"ar1\"} only.")
+      is.na(structure) || !structure %in% c("ar1", "ou")) {
+    cli::cli_abort("{.arg structure} must be either {.code \"ar1\"} or {.code \"ou\"}.")
+  }
+  if (!is.logical(unique) || length(unique) != 1L || is.na(unique)) {
+    cli::cli_abort("{.arg unique} must be TRUE or FALSE.")
   }
 
   structure(list(
     formula = formula,
     time = time,
-    d = 1L,
+    mode = mode,
+    d = if (identical(mode, "latent")) 1L else NULL,
+    unique = if (identical(mode, "latent")) unique else identical(mode, "indep"),
     structure = structure,
     replicate = if (identical(replicate, quote(NULL))) NULL else replicate
-  ), class = "gllvmTMB_temporal_latent")
+  ), class = c("gllvmTMB_temporal", paste0("gllvmTMB_temporal_", mode)))
+}
+
+#' Temporal independent covariance provider
+#'
+#' @rdname temporal_latent
+#' @param formula A bar expression such as `0 + trait | series`.
+#' @param time Bare column naming ordered occasions. AR1 requires integers and
+#'   preserves their gaps; OU accepts elapsed numeric time without rescaling.
+#' @param structure Either `"ar1"` or `"ou"`.
+#' @param replicate Optional bare column distinguishing repeated measurements
+#'   at a series--occasion--trait cell.
+#' @return A formula marker consumed by [gllvmTMB()].
+#' @export
+temporal_indep <- function(formula, time, structure = "ar1", replicate = NULL) {
+  .temporal_marker(substitute(formula), substitute(time), mode = "indep",
+    structure = structure, replicate = substitute(replicate))
+}
+
+#' Temporal unstructured covariance provider
+#'
+#' @rdname temporal_latent
+#' @export
+temporal_dep <- function(formula, time, structure = "ar1", replicate = NULL) {
+  .temporal_marker(substitute(formula), substitute(time), mode = "dep",
+    structure = structure, replicate = substitute(replicate))
+}
+
+#' Temporal covariance providers
+#'
+#' Adds one native temporal covariance source. `temporal_indep()` fits an
+#' AR1 or OU process for each trait, `temporal_dep()` fits that process with an
+#' unstructured trait covariance, and `temporal_latent()` fits rank-one trait
+#' loadings. With `unique = TRUE`, the temporal diagonal Psi is also correlated
+#' across occasions; it is not independent occasion noise. Temporal sources can
+#' be added to ordinary `unit` and `unit_obs` terms, but cannot yet be combined
+#' with spatial, phylogenetic, animal, or kernel sources.
+#'
+#' @rdname temporal_latent
+#' @param d Latent rank. This version supports `1`.
+#' @param unique For `temporal_latent()`, include a trait-diagonal temporal Psi.
+#' @export
+temporal_latent <- function(formula, time, d = 1, structure = "ar1",
+                            replicate = NULL, unique = FALSE) {
+  .temporal_marker(substitute(formula), substitute(time), mode = "latent",
+    d = d, unique = unique, structure = structure,
+    replicate = substitute(replicate))
 }
 
 .parse_temporal_latent_formula <- function(formula, data, trait_col = "trait") {
   rhs <- formula[[length(formula)]]
   marker <- NULL
+  marker_name <- NULL
   n_marker <- 0L
   walk <- function(x) {
     if (!is.call(x)) return(x)
-    if (is.name(x[[1L]]) && identical(as.character(x[[1L]]), "temporal_latent")) {
+    if (is.name(x[[1L]]) &&
+        as.character(x[[1L]]) %in% c("temporal_indep", "temporal_dep", "temporal_latent")) {
       n_marker <<- n_marker + 1L
       marker <<- x
+      marker_name <<- as.character(x[[1L]])
       return(x)
     }
     for (i in seq_along(x)[-1L]) x[[i]] <- walk(x[[i]])
@@ -65,7 +101,7 @@ temporal_latent <- function(formula, time, d = 1, structure = "ar1",
     return(list(formula = formula, data = data, spec = list(active = FALSE)))
   }
   if (n_marker != 1L) {
-    cli::cli_abort("Only one {.fn temporal_latent} term is supported in a model.")
+    cli::cli_abort("Only one temporal covariance term is supported in a model.")
   }
 
   ## Version 1 has one temporal intercept block only.  Do this check while
@@ -73,7 +109,8 @@ temporal_latent <- function(formula, time, d = 1, structure = "ar1",
   ## turn a competing provider into an indistinguishable engine term.
   strip_marker <- function(x) {
     if (!is.call(x)) return(x)
-    if (is.name(x[[1L]]) && identical(as.character(x[[1L]]), "temporal_latent")) {
+    if (is.name(x[[1L]]) &&
+        as.character(x[[1L]]) %in% c("temporal_indep", "temporal_dep", "temporal_latent")) {
       return(quote(0))
     }
     for (i in seq_along(x)[-1L]) x[[i]] <- strip_marker(x[[i]])
@@ -96,11 +133,17 @@ temporal_latent <- function(formula, time, d = 1, structure = "ar1",
   stripped_formula[[length(formula)]] <- strip_marker(rhs)
   find_provider_heads(stripped_formula[[length(formula)]])
   competing <- unique(c(detect_covstruct_terms(stripped_formula), provider_heads))
-  if (length(competing)) {
+  ## Ordinary unit / unit_obs effects are separate tiers and are admitted by
+  ## the native temporal contract.  Other covariance *sources* are fenced
+  ## until their cross-source likelihood is independently validated.
+  forbidden_sources <- competing[grepl(
+    "^(phylo|animal|spatial|kernel|meta_|propto$|equalto$|spde$)", competing
+  )]
+  if (length(forbidden_sources)) {
     cli::cli_abort(c(
-      "{.fn temporal_latent} currently admits one temporal intercept block only.",
-      "i" = "Found additional random or covariance provider(s): {.fn {competing}}.",
-      ">" = "Keep fixed effects and one {.fn temporal_latent} term; additional providers are outside this version."
+      "A temporal covariance term cannot be combined with another covariance source in this version.",
+      "i" = "Found source provider(s): {.fn {forbidden_sources}}.",
+      ">" = "Ordinary unit and unit_obs terms remain available; phylo, animal, spatial, kernel, and meta sources are deferred."
     ))
   }
   response_cols <- all.vars(formula[[2L]])
@@ -120,18 +163,24 @@ temporal_latent <- function(formula, time, d = 1, structure = "ar1",
   }
   bar <- marker[[2L]]
   time <- arg("time")
+  mode <- sub("^temporal_", "", marker_name)
   d <- arg("d", 1)
+  unique <- arg("unique", FALSE)
   structure_name <- arg("structure", "ar1")
   replicate <- arg("replicate", NULL)
   if (is.null(time) || !is.name(time)) {
     cli::cli_abort("{.fn temporal_latent}'s {.arg time} must be a bare column name.")
   }
-  if (!is.numeric(d) || length(d) != 1L || is.na(d) || d != 1) {
+  if (identical(mode, "latent") &&
+      (!is.numeric(d) || length(d) != 1L || is.na(d) || d != 1)) {
     cli::cli_abort("{.fn temporal_latent} currently supports rank one only ({.code d = 1}).")
   }
   if (!is.character(structure_name) || length(structure_name) != 1L ||
-      !identical(structure_name, "ar1")) {
-    cli::cli_abort("{.fn temporal_latent} currently supports {.code structure = \"ar1\"} only.")
+      !structure_name %in% c("ar1", "ou")) {
+    cli::cli_abort("A temporal covariance term requires {.code structure = \"ar1\"} or {.code \"ou\"}.")
+  }
+  if (!is.logical(unique) || length(unique) != 1L || is.na(unique)) {
+    cli::cli_abort("{.arg unique} must be TRUE or FALSE.")
   }
   if (!is.call(bar) || !identical(bar[[1L]], as.name("|")) || length(bar) != 3L ||
       !is.name(bar[[3L]])) {
@@ -151,9 +200,11 @@ temporal_latent <- function(formula, time, d = 1, structure = "ar1",
     missing_cols <- setdiff(c(series, time, trait_col), names(data))
     cli::cli_abort("Temporal data are missing column(s): {.field {missing_cols}}.")
   }
-  if (!is.numeric(data[[time]]) || any(!is.finite(data[[time]])) ||
-      any(data[[time]] != floor(data[[time]]))) {
-    cli::cli_abort("{.arg time} must contain finite integer-valued occasions.")
+  if (!is.numeric(data[[time]]) || any(!is.finite(data[[time]]))) {
+    cli::cli_abort("{.arg time} must contain finite numeric occasions.")
+  }
+  if (identical(structure_name, "ar1") && any(data[[time]] != floor(data[[time]]))) {
+    cli::cli_abort("AR1 {.arg time} must contain finite integer-valued occasions.")
   }
   if (anyNA(data[[series]]) || anyNA(data[[trait_col]])) {
     cli::cli_abort("Temporal series and trait identifiers must be complete.")
@@ -165,8 +216,8 @@ temporal_latent <- function(formula, time, d = 1, structure = "ar1",
   times_by_series <- split(data[[time]], as.character(data[[series]]))
   for (x in times_by_series) {
     occasions <- sort(unique(x))
-    if (length(occasions) < 3L || any(diff(occasions) != 1)) {
-      cli::cli_abort("Each series needs at least three consecutive integer occasions; use an equal-spaced occasion index for AR1.")
+    if (length(occasions) < 3L || any(diff(occasions) <= 0)) {
+      cli::cli_abort("Each temporal series needs at least three strictly ordered occasions.")
     }
   }
   pair_key <- interaction(data[[series]], data[[time]], drop = TRUE, lex.order = TRUE)
@@ -212,10 +263,11 @@ temporal_latent <- function(formula, time, d = 1, structure = "ar1",
 
   rewrite <- function(x) {
     if (!is.call(x)) return(x)
-    if (is.name(x[[1L]]) && identical(as.character(x[[1L]]), "temporal_latent")) {
-      temporal_bar <- x[[2L]]
-      temporal_bar[[3L]] <- as.name(pair_col)
-      return(call("latent", temporal_bar, d = 1L))
+    if (is.name(x[[1L]]) &&
+        as.character(x[[1L]]) %in% c("temporal_indep", "temporal_dep", "temporal_latent")) {
+      ## The native temporal tier is supplied directly to TMB from `spec`.
+      ## Do not desugar this source into the ordinary B tier.
+      return(quote(0))
     }
     for (i in seq_along(x)[-1L]) x[[i]] <- rewrite(x[[i]])
     x
@@ -227,7 +279,11 @@ temporal_latent <- function(formula, time, d = 1, structure = "ar1",
     spec = list(
       active = TRUE, workflow = workflow, pair_col = pair_col,
       pair_table = pair_table, series_col = series, time_col = time,
-      replicate_col = if (is.null(replicate)) NULL else replicate
+      replicate_col = if (is.null(replicate)) NULL else replicate,
+      state_tier = "temporal", mode = mode,
+      d = if (identical(mode, "latent")) as.integer(d) else 0L,
+      unique = if (identical(mode, "latent")) unique else identical(mode, "indep"),
+      structure = structure_name
     )
   )
 }
@@ -262,60 +318,61 @@ temporal_latent <- function(formula, time, d = 1, structure = "ar1",
   )
 }
 
-#' Extract temporal AR1 provider details
+#' Extract temporal covariance provider details
 #'
-#' Returns the persistence estimate and the public series--occasion index for
-#' a `temporal_latent()` fit. In unreplicated data the reported independent
-#' variance is the total iid variance; it is not separated into occasion and
-#' measurement components.
+#' Returns the fitted time parameter, trait covariance components, and public
+#' series--occasion index for a native temporal-source fit.
 #'
 #' @param fit A fitted temporal `gllvmTMB_multi` object.
-#' @return A list with `parameters`, `pair_index`, and `variance` tables.
-#'   `parameters` records the public sign anchor used for reported temporal
-#'   scores and loadings; if `first_loading_negligible` is `TRUE`, the first
-#'   loading was too small relative to the largest loading and that largest
-#'   trait was used instead.
+#' @return A list with `parameters`, `time`, `pair_index`, `loadings`, and
+#'   `variance`. `variance` is `temporal_indep_variance` for the indep cell
+#'   and `temporal_Psi_variance` for `temporal_latent(unique = TRUE)`.
 #' @export
 extract_temporal <- function(fit) {
   if (!inherits(fit, "gllvmTMB_multi") || !isTRUE(fit$temporal$active)) {
-    cli::cli_abort("{.fn extract_temporal} requires a fit made with {.fn temporal_latent}.")
+    cli::cli_abort("{.fn extract_temporal} requires a fit made with a temporal covariance term.")
   }
-  theta <- fit$tmb_obj$env$last.par.best
-  phi <- as.numeric(fit$report$phi)
-  workflow <- fit$temporal$workflow
-  theta_diag <- theta[names(theta) == "theta_diag_B"]
-  loading <- as.matrix(fit$report$Lambda_B)
-  rownames(loading) <- levels(fit$data[[fit$trait_col]])
-  sign_info <- .temporal_report_sign(loading)
-  variance <- data.frame(
-    trait = levels(fit$data[[fit$trait_col]]),
-    value = exp(2 * as.numeric(theta_diag)),
-    component = if (identical(workflow, "unreplicated")) {
-      "iid_total_variance"
-    } else {
-      "occasion_variance"
-    },
-    stringsAsFactors = FALSE
-  )
-  if (identical(workflow, "replicated")) {
-    variance <- rbind(
-      variance,
-      data.frame(
-        trait = NA_character_, value = as.numeric(fit$report$sigma_eps)^2,
-        component = "measurement_variance", stringsAsFactors = FALSE
-      )
+  par <- fit$tmb_obj$env$parList(fit$opt$par)
+  mode <- fit$temporal$mode
+  structure_name <- fit$temporal$structure
+  time_value <- as.numeric(par$theta_temporal_time)
+  time_parameters <- if (identical(structure_name, "ar1")) {
+    data.frame(parameter = "phi", value = (1 - 1e-6) * tanh(time_value))
+  } else {
+    data.frame(parameter = "ou_rate", value = exp(time_value))
+  }
+  ## `dep` is represented by a full-rank temporal loading block even though it
+  ## has no user-requested latent rank `d`; expose that factor so the reported
+  ## covariance is available to extractors and independent recovery checks.
+  loading <- if (fit$temporal$d > 0L || identical(mode, "dep")) {
+    as.matrix(fit$report$Lambda_temporal)
+  } else NULL
+  if (!is.null(loading)) rownames(loading) <- levels(fit$data[[fit$trait_col]])
+  variance <- if (identical(mode, "indep")) {
+    data.frame(
+      trait = levels(fit$data[[fit$trait_col]]),
+      value = exp(2 * as.numeric(par$theta_temporal_diag)),
+      component = "temporal_indep_variance", stringsAsFactors = FALSE
     )
+  } else if (isTRUE(fit$temporal$unique)) {
+    data.frame(
+      trait = levels(fit$data[[fit$trait_col]]),
+      value = exp(2 * as.numeric(par$theta_temporal_diag)),
+      component = "temporal_Psi_variance", stringsAsFactors = FALSE
+    )
+  } else {
+    data.frame(trait = character(), value = numeric(), component = character())
   }
   list(
     parameters = data.frame(
-      phi = phi, boundary = abs(phi) > 0.99, workflow = workflow,
+      mode = mode, structure = structure_name, workflow = fit$temporal$workflow,
       n_series = length(unique(fit$temporal$pair_table$series)),
       n_pairs = nrow(fit$temporal$pair_table),
-      sign_anchor_trait = sign_info$anchor_trait,
-      first_loading_negligible = sign_info$first_loading_negligible,
       stringsAsFactors = FALSE
     ),
+    time = time_parameters,
     pair_index = fit$temporal$pair_table,
+    loadings = loading,
     variance = variance
   )
 }

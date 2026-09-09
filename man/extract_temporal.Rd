@@ -2,7 +2,7 @@
 % Please edit documentation in R/temporal.R
 \name{extract_temporal}
 \alias{extract_temporal}
-\title{Extract temporal AR1 provider details}
+\title{Extract temporal covariance provider details}
 \usage{
 extract_temporal(fit)
 }
@@ -10,15 +10,11 @@ extract_temporal(fit)
 \item{fit}{A fitted temporal \code{gllvmTMB_multi} object.}
 }
 \value{
-A list with \code{parameters}, \code{pair_index}, and \code{variance} tables.
-\code{parameters} records the public sign anchor used for reported temporal
-scores and loadings; if \code{first_loading_negligible} is \code{TRUE}, the first
-loading was too small relative to the largest loading and that largest
-trait was used instead.
+A list with \code{parameters}, \code{time}, \code{pair_index}, \code{loadings}, and
+\code{variance}. \code{variance} is \code{temporal_indep_variance} for the indep cell
+and \code{temporal_Psi_variance} for \code{temporal_latent(unique = TRUE)}.
 }
 \description{
-Returns the persistence estimate and the public series--occasion index for
-a \code{temporal_latent()} fit. In unreplicated data the reported independent
-variance is the total iid variance; it is not separated into occasion and
-measurement components.
+Returns the fitted time parameter, trait covariance components, and public
+series--occasion index for a native temporal-source fit.
 }

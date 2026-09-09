@@ -68,11 +68,11 @@ or family rows elsewhere in the register. Evidence path for all rows:
 | CRAN07-AA-06 | Native-Laplace Binomial(10)-logit rank-1 `latent(unique = TRUE)` point estimation, three traits, clean data, `n = 100/300` | `partial` | 3,200 core attempts passed; n=150 missing/rare cells passed; small-sample silent-failure cells were held or failed | Clean-data point evidence only; no Bernoulli, separation, or family-wide detector claim | Not assessed; no interval claim |
 | CRAN07-AA-07 | Observable terminal-status detection of catastrophic truth errors | `blocked` | 44,800 attempts: sensitivity 19/80 = 0.2375; specificity 43053/44720 = 0.9627236 | Display and triage only; not reliable protection | Not applicable |
 
-## Temporal AR1 implementation candidate (2026-09-08)
+## Temporal sixth source (2026-09-09)
 
 | ID | Capability | Status | Test evidence | Diagnostic status | Interval status |
 |---|---|---|---|---|---|
-| TEMP-AR1-01 | Native rank-one Gaussian temporal AR1 syntax, long/wide lifecycle, dense likelihood oracle, labelled scores, simulation, training prediction, and update replay | `partial` | `test-temporal-ar1-parser.R`, `test-temporal-ar1-methods.R`, `test-temporal-ar1-oracles.R`, `test-temporal-ar1-verify-runner.R`; retained `dev/temporal-ar1/recovery-results-bfgs.csv` and `ACCEPTANCE-REVISION.md` | Admission and boundary diagnostics are tested. One named 12-series fixture passes under its approved fixture-local 0.36 per-variance median-error ceiling; this is not general recovery or calibration evidence | Not available; profile, bootstrap and score-interval routes reject before iid algorithms |
+| TEMP-06-01 | Native Gaussian temporal `indep`, `dep`, and rank-one `latent` (with and without temporal Psi), AR1 gaps and OU elapsed time, long/wide workflow, and ordinary unit/unit_obs composition | `partial` | `test-temporal-sixth-source-api.R`, `test-temporal-sixth-source-engine.R`, `test-temporal-sixth-source-oracles.R`, `dev/temporal-sixth-source/verify.R`; retained `test-temporal-ar1-*.R` migration fixtures | Independently authored dense Gaussian NLL and central-gradient checks cover all eight AR1/OU cells. Lifecycle and deferred-source refusals are focused local checks. | New-data prediction, profiles, selection, bootstrap, and intervals reject. Recovery is a separately timed gate; no general recovery or coverage claim is made. |
 
 ## How the register is maintained
 

@@ -12,23 +12,19 @@ density looks like on the link scale, what the numerical scales
 are, what boundary cases are tested, and what comparator alignment
 holds.
 
-## Temporal rank-one AR1 Gaussian provider (implementation candidate)
+## Temporal Gaussian source
 
-For series \(g\) and unit-spaced occasion \(t\), the temporal score has the
-stationary prior \(z_{g1}\sim N(0,1)\) and
-\(z_{gt}\sim N(\phi z_{g,t-1},1-\phi^2)\), where
-\(\phi=(1-10^{-6})\tanh(\theta_\phi)\). Only this score persists through
-time. The loading vector supplies the process amplitude.
-
-Without `replicate`, the native Gaussian density uses one directly estimated
-total independent variance \(D_j\) for each trait and maps the ordinary
-response dispersion off. With `replicate`, the likelihood directly integrates
-an occasion-shared \(\psi_j\) term, giving
-\(\psi_j\mathbf1\mathbf1^T+\sigma_\epsilon^2 I\) within every
-occasion--trait measurement block. The dense oracle at
-`tests/testthat/test-temporal-ar1-oracles.R` checks both normalized marginal
-likelihoods and gradients. The retained fixed-seed recovery gate remains
-failed, so this section does not establish general recovery or calibration.
+For temporal state covariance \(K\), the native Gaussian temporal tier uses
+`indep`: \(K\otimes\operatorname{diag}(v)\), `dep`:
+\(K\otimes\Sigma_T\), and rank-one `latent`:
+\(K\otimes\Lambda\Lambda^T\), with \(K\otimes\Psi_T\) added only by
+`latent(unique = TRUE)`. AR1 innovations use the observed integer gap; OU
+innovations use the supplied elapsed-time gap. The temporal random coordinates
+are separate from ordinary B and W coordinates. The independent dense Gaussian
+oracle and central gradients for every AR1/OU cell are in
+`tests/testthat/test-temporal-sixth-source-oracles.R`. This is local
+implementation evidence, not a general recovery, calibration, or interval
+claim.
 
 **Status discipline**: this doc uses the 4-state vocabulary from
 `docs/design/01-formula-grammar.md` (`covered / claimed / reserved
@@ -258,7 +254,7 @@ need their own named recovery evidence before a certificate claim.
 
 The phylogenetic and spatial keywords plug into the same
 random-effects machinery via the correlation-source rows of the
-4 × 3 grid plus its `common` and `unique` modifiers (see
+6 × 3 grid plus its `common` and `unique` modifiers (see
 `docs/design/01-formula-grammar.md`).
 
 ### Laplace accuracy caveat

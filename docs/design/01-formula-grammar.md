@@ -4,10 +4,10 @@
 **Reviewers:** Noether (math-vs-implementation alignment) and Rose
 (public-consistency audit).
 
-The formula grammar is the heart of `gllvmTMB`. The 5 x 3
+The formula grammar is the heart of `gllvmTMB`. The 6 x 3
 source-by-mode covariance keyword grid is the core public-API
 contract; the generic `kernel_*()` tier added by Design 65 is its
-fifth source row, and `scalar` / `unique` are modifiers rather than
+fifth source row and the ordered temporal tier is its sixth, while `scalar` / `unique` are modifiers rather than
 modes. The older "4 x 5" framing, which listed those two as separate
 mode columns and placed `kernel_*()` outside the grid, is superseded.
 The kernel row serves user-supplied dense relatedness/covariance matrices.
@@ -15,24 +15,24 @@ Everything in the engine serves those surfaces. Per **AGENTS.md Design
 Rule #3**, no change to this grammar ships without updating this
 document first.
 
-## Temporal AR1 latent-score provider (implementation candidate)
+## Temporal source row
 
-`temporal_latent(0 + trait | series, time = occasion, d = 1)` is a separate
-rank-one temporal provider, not a fourth covariance mode or a sixth source
-row. It rewrites internally to one private pair-level latent block while
-preserving the public series--occasion identity. Its wide equivalent is
-`traits(y1, y2, y3) ~ 1 + temporal_latent(1 | series, time = occasion)`.
-`replicate = measurement` admits complete panels with at least two
-measurements per occasion.
+Temporal is the sixth source row: `temporal_indep()`, `temporal_dep()`, and
+`temporal_latent()`. A provider owns a private `(series, time)` state index;
+it never rewrites public `unit` or `unit_obs`. `temporal_latent(unique = TRUE)`
+means \(K_{time}\otimes(\Lambda\Lambda^T+\Psi_T)\): Psi is correlated through
+time, not IID occasion noise. The old
+\(K\otimes\Lambda\Lambda^T+I\otimes\Psi\) prototype is retained only as a
+named migration fixture.
 
-The admitted cell is native-TMB Gaussian identity-link ML with Laplace
-integration, at least three traits, consecutive integer occasions, one
-temporal intercept block, fixed effects, and rank one. Missing responses,
-irregular time, other providers, prediction for new data, forecasts,
-interval/profile/bootstrap methods, rank selection, higher ranks, slopes, and
-other families reject before an iid route can be used. This syntax remains
-**claimed / recovery gate open** until the retained temporal fixture meets its
-predeclared criteria; it is not a broad recovery or interval claim.
+`structure = "ar1"` accepts ordered integer occasions with gaps and uses
+\(K(t,s)=\phi^{|t-s|}\),
+\(\phi=(1-10^{-6})\tanh(\theta)\). `structure = "ou"` accepts numeric elapsed
+time and uses \(K(t,s)=\exp\{-\exp(\xi)|t-s|\}\), with no automatic rescaling.
+Both long and `traits(...)` wide forms use the same temporal specification.
+Ordinary unit and unit-observation covariance terms are admitted when the
+series and unit partitions agree and `unit_obs` is unit-nested. Spatial,
+phylogenetic, animal, kernel, and meta providers remain refused.
 
 The package should learn from `glmmTMB`, `gllvm`, and `galamm` without
 copying their grammars wholesale. The public grammar is built around
@@ -122,7 +122,7 @@ support from end-to-end verification:
 | `kernel_indep(unit, K = A)` / `kernel_dep(unit, K = A)` | **covered** | Generic dense-kernel marginal-only and full-rank companion modes. C1 fit equivalence is covered in `test-kernel-equivalence.R` against `phylo_indep(..., vcv = A)` and `phylo_dep(..., vcv = A)`; the engine route is the same phylo-equivalent dense `vcv` slot used by `kernel_latent()` / `kernel_unique()` (validation-debt register KER-02; Design 65 C1). |
 | `meta_V(V = V)` | **partial** | Known sampling covariance, desugars to `equalto(0 + obs \| grp_V, V)`. Pass `known_V = V` to `gllvmTMB()` alongside. Test evidence: `test-formula-grammar-smoke.R` (single-V additive form and V-only parser compatibility), `test-traits-keyword.R` (wide `traits(...)` preservation), and `test-block-V.R` (block-V helper) (validation-debt register MET-01, MET-02). The legacy `meta_known_V(V = V)` is retained as a deprecated alias; both names desugar identically in the parser. Single-V inference validation remains partial under MET-01. |
 | `block_V(study, sampling_var, rho_within)` helper | **covered** | Builds the standard compound-symmetric block-diagonal `V` for within-study correlation. Test evidence: `test-block-V.R` (validation-debt register MET-02; Phase 0B promotion 2026-05-16). |
-| `(1 \| group)` ordinary random intercept | **covered** | Pass-through to `glmmTMB`-style random intercept; orthogonal to the 5 × 3 keyword grid. Test evidence: `test-multi-random-intercepts.R` (validation-debt register RE-01; Phase 0B promotion 2026-05-16). |
+| `(1 \| group)` ordinary random intercept | **covered** | Pass-through to `glmmTMB`-style random intercept; orthogonal to the 6 × 3 keyword grid. Test evidence: `test-multi-random-intercepts.R` (validation-debt register RE-01; Phase 0B promotion 2026-05-16). |
 | `(1 + x \| g)` ordinary random slope outside a structural keyword | **reserved** | Bare-bar random slopes remain rejected by `parse_re_int_call()`. Ordinary random regression is keyworded through `latent(1 + x \| unit, d = K)`; structured sources keep their own `phylo_*()` / `spatial_*()` forms. |
 | `(1 \| g1/g2)` slash-form nested random effects | **rejected** | Not parsed. Use globally unique level names instead (see "Crossed-vs-nested" below). |
 | `latent(0 + trait \| g) + lambda_constraint = list(B = M)` | **covered (Gaussian and binary IRT)** | Confirmatory factor analysis on the latent loadings; pins specific entries of $\boldsymbol\Lambda$. Test evidence: `test-lambda-constraint.R` asserts pinned-entry values within `1e-8` tolerance for diagonal-pin, off-diagonal-pin-to-zero, off-diagonal-pin-to-non-zero, W-level, and simultaneous B+W pin cases (validation-debt register LAM-01, LAM-02; Phase 0B.3 promotion 2026-05-16). `test-m2-3-lambda-constraint-binary.R` plus mirt and galamm cross-checks cover binary IRT fits (LAM-03). |
@@ -244,9 +244,9 @@ Removal is a later API-change decision and must not be claimed while
 the export remains live (validation-debt register rows FG-16 and
 MIS-03).
 
-## The 5 x 3 covariance keyword grid
+## The 6 x 3 covariance keyword grid
 
-The grid is the user-facing public-API contract. Rows are the five
+The grid is the user-facing public-API contract. Rows are the six
 correlation **sources** across grouping levels; columns are the three
 fundamental trait-covariance **modes**. Every cell is a live keyword.
 The reader-facing presentation of this same contract is
@@ -260,10 +260,11 @@ the two must not drift.
 | **phylo** | `phylo_indep()` | `phylo_dep()` | `phylo_latent()` |
 | **spatial** | `spatial_indep()` | `spatial_dep()` | `spatial_latent()` |
 | **kernel** | `kernel_indep(unit, K = A)` | `kernel_dep(unit, K = A)` | `kernel_latent(unit, K = A, d = q)` |
+| **temporal** | `temporal_indep(0 + trait | series, time = occasion)` | `temporal_dep(0 + trait | series, time = occasion)` | `temporal_latent(0 + trait | series, time = occasion, d = 1)` |
 
 The source rows go from finest-grained (individual pedigree) to
 broadest (geographic distance), with the Design 65 generic dense kernel
-as the fifth row. The paired response-column slope helpers sit outside the
+as the fifth row; temporal is the sixth, ordered and gap-aware row. The paired response-column slope helpers sit outside the
 grid: `slope()`, `phylo_slope()`, `animal_slope()`, `kernel_slope()`, and the
 designed-but-not-yet-implemented `spatial_slope()`. With the declared trait
 column on the right, `||` is public sugar for the matching
@@ -827,7 +828,7 @@ also still unsupported; that surface has its own design decision to make.
 
 Currently:
 
-- **Random intercepts** `(1 | group)`: covered alongside the 5 × 3
+- **Random intercepts** `(1 | group)`: covered alongside the 6 × 3
   keywords as the default random-intercept on the grouping
   factor.
 - **Bare-bar random slopes** `(0 + x | g)` or `(1 + x | g)`: **reserved**.
@@ -836,7 +837,7 @@ Currently:
   `Lambda_aug Lambda_aug^T + Psi_B,aug` by default. Explicit
   `+ unique(1 + x | unit)` remains compatibility syntax. Non-Gaussian
   augmented `unique()` remains guarded, non-Gaussian augmented `latent()`
-  stays low-rank-only, and other 5 × 3 cells keep their own source-specific
+  stays low-rank-only, and other 6 × 3 cells keep their own source-specific
   random-slope validation boundaries.
 
 Random-slope design and parser details will live in

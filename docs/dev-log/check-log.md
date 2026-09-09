@@ -57691,3 +57691,27 @@ Deliberately not run: Totoro 9×500 grid dispatch; full `devtools::test()`.
   24m12.7s with 0 errors, 5 warnings, and 4 notes. It had no temporal failure;
   its BIC namespace, Julia Rd, and anova Rd warnings pre-exist this slice.
 - Repository-owned temporal ledger reverify: all seven gates met; G0–G5 reran after approved receipts were recorded.
+
+## 2026-09-09 — native temporal sixth-source closeout
+
+- Added the dedicated AR1/OU temporal source and its indep/dep/latent grid;
+  `unique = TRUE` applies a temporally correlated trait-diagonal Psi rather
+  than the predecessor's IID occasion noise.  The retained predecessor is
+  exercised only in a no-Psi common-submodel migration fixture.
+- Gate commands passed: `Rscript --vanilla dev/temporal-sixth-source/verify.R
+  self-test|parser|oracle|methods|recovery|regression`; the independent dense
+  oracle includes all eight AR1/OU cells, central gradients, odd negative AR1
+  lags, additive ordinary covariance, and OU extremes.  The fixed-seed
+  recovery verifier recomputes its thresholds and retains failures.
+- Documentation: `devtools::document()`, both affected article renders, and
+  `pkgdown::check_pkgdown()` passed.  A full
+  `devtools::check(args="--no-manual", quiet=TRUE)` completed in **23m00.2s**
+  with **0 errors, 0 warnings**, and two environmental notes only (system clock
+  verification and `xcrun_db`).
+- Exact closeout scans: `rg -n "5 × 3|5 x 3|five correlation sources"
+  README.md NEWS.md R man docs/design vignettes CLAUDE.md AGENTS.md`; and
+  `rg -n "temporal_iid_total|theta_temporal_phi|occasion_variance|measurement_variance|consecutive integer occasions"
+  R tests/testthat README.md NEWS.md docs vignettes man`.  Findings were
+  historical records, the separate response-column scope, and intentional
+  predecessor fixture fields only; current temporal documentation makes no
+  IID-Psi equivalence or release claim.

@@ -493,11 +493,17 @@ does NOT do" section), see
 
 ## Syntax Rules to Preserve
 
-- Use the canonical **5 x 3 keyword grid**: five correlation **sources**
-  (none, `animal_*`, `phylo_*`, `spatial_*`, `kernel_*`) x three
+- Use the canonical **6 x 3 keyword grid**: six correlation **sources**
+  (none, `animal_*`, `phylo_*`, `spatial_*`, `kernel_*`, `temporal_*`) x three
   trait-covariance **modes** (`indep`, `dep`, `latent`). Every cell is a
   live keyword. Canonical surface:
   `vignettes/articles/api-keyword-grid.Rmd`.
+- The temporal row is a private ordered `(series, time)` state tier.  AR1
+  preserves integer gaps and OU uses numeric elapsed time.  It admits one
+  Gaussian identity-link ML/Laplace provider per fit and may coexist with
+  ordinary `unit` / `unit_obs` covariance; temporal plus phylo, animal,
+  spatial, or kernel sources is refused. `temporal_latent(unique = TRUE)`
+  gives a temporally correlated trait-diagonal Psi, never IID occasion noise.
 - Structured-rho development arc (2026-08-31): canonical phylo/animal/kernel/spatial
   helpers have trailing `rho = 1`; spatial range stays separately estimated.
   New attenuation is one trait-intercept block (including folded Psi), and

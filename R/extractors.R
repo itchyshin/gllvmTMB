@@ -505,6 +505,37 @@ extract_ordination <- function(
   par <- obj$env$last.par.best
   trait_names <- levels(fit$data[[fit$trait_col]])
   if (level == "B") {
+    ## A temporal source has its own state axis.  It must be extracted before
+    ## consulting the ordinary B-tier flags: temporal states are deliberately
+    ## neither `unit` nor `unit_obs` scores.  Only the rank-one latent cell is
+    ## an ordination; indep/dep expose their covariance through
+    ## `extract_temporal()` rather than presenting an arbitrary factorisation
+    ## as fitted LV scores.
+    if (isTRUE(fit$temporal$active) && !isTRUE(fit$use$rr_B)) {
+      if (!identical(fit$temporal$mode, "latent") || fit$temporal$d < 1L) {
+        return(NULL)
+      }
+      ## TMB optimises independent innovations for numerical stability.  The
+      ## public scores are the reconstructed persisted states, which carry
+      ## the AR1/OU covariance promised by the temporal source contract.
+      z_temporal <- as.matrix(fit$report$z_temporal_state)
+      Lambda <- as.matrix(fit$report$Lambda_temporal)
+      rownames(Lambda) <- trait_names
+      colnames(Lambda) <- paste0("LV", seq_len(ncol(Lambda)))
+      temporal_sign <- .temporal_report_sign(Lambda)
+      Lambda <- Lambda * temporal_sign$multiplier
+      scores <- t(z_temporal) * temporal_sign$multiplier
+      colnames(scores) <- paste0("LV", seq_len(ncol(scores)))
+      row_index <- fit$temporal$pair_table
+      rownames(scores) <- row_index$pair_id
+      return(list(
+        scores = scores,
+        loadings = Lambda,
+        row_id = row_index$pair_id,
+        row_index = row_index,
+        temporal_sign = temporal_sign
+      ))
+    }
     if (!fit$use$rr_B) {
       return(NULL)
     }
@@ -525,28 +556,14 @@ extract_ordination <- function(
       innovation = innovation,
       mean = mean_scores
     )
-    temporal_sign <- NULL
-    if (isTRUE(fit$temporal$active)) {
-      temporal_sign <- .temporal_report_sign(Lambda)
-      Lambda <- Lambda * temporal_sign$multiplier
-      scores <- scores * temporal_sign$multiplier
-    }
     rownames(scores) <- site_names
     colnames(scores) <- paste0("LV", seq_len(ncol(scores)))
     row_index <- site_names
-    if (isTRUE(fit$temporal$active)) {
-      idx <- match(site_names, fit$temporal$pair_table$pair_id)
-      row_index <- fit$temporal$pair_table[idx, , drop = FALSE]
-    }
     out <- list(
       scores = scores,
       loadings = Lambda,
       row_id = site_names
     )
-    if (isTRUE(fit$temporal$active)) {
-      out$row_index <- row_index
-      out$temporal_sign <- temporal_sign
-    }
     out
   } else {
     if (!fit$use$rr_W) {

@@ -13,6 +13,7 @@ gllvm_julia_fit(
   X_lv = NULL,
   coef_fixed = NULL,
   mask = NULL,
+  sources = NULL,
   units_are_rows = FALSE,
   ci_method = c("none", "wald", "profile", "bootstrap"),
   ci_level = 0.95,
@@ -59,6 +60,10 @@ as \code{y}; \code{TRUE} cells contribute to the likelihood and \code{FALSE} cel
 ignored. Currently routed for one-part no-X non-Gaussian point fits, with
 masked no-X CI payloads for Poisson, Bernoulli binomial, NB2, NB1, Beta,
 and Gamma.}
+
+\item{sources}{Optional structured-source payload forwarded to the Julia
+bridge. This is used by the internal \code{engine = "julia"} routing layer;
+direct users should normally leave it as \code{NULL}.}
 
 \item{units_are_rows}{If \code{TRUE}, \code{y} is n x p and is transposed to p x n.}
 

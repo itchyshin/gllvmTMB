@@ -2531,6 +2531,9 @@ gllvm_julia_capabilities <- function() {
 #'   ignored. Currently routed for one-part no-X non-Gaussian point fits, with
 #'   masked no-X CI payloads for Poisson, Bernoulli binomial, NB2, NB1, Beta,
 #'   and Gamma.
+#' @param sources Optional structured-source payload forwarded to the Julia
+#'   bridge. This is used by the internal `engine = "julia"` routing layer;
+#'   direct users should normally leave it as `NULL`.
 #' @param units_are_rows If `TRUE`, `y` is n x p and is transposed to p x n.
 #' @param ci_method Confidence-interval route for admitted no-X bridge rows:
 #'   Gaussian, Poisson, Bernoulli binomial, and grouped-dispersion NB2, NB1,

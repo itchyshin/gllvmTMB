@@ -1,18 +1,19 @@
 # Development (unreleased)
 
-* `temporal_latent()` is an experimental native-TMB rank-one AR1 latent-score
-  provider for complete Gaussian identity-link longitudinal data with at least
-  three traits and consecutive integer occasions. It accepts both long and
-  `traits(...)` wide calls, and `replicate = measurement` separates
-  occasion-shared from common measurement variation. `extract_temporal()`,
-  labelled scores, training-data prediction, simulation, and public-call
-  update replay are supplied. **In scope:** the bounded syntax and likelihood
-  workflow described in the temporal article. **Partial:** focused dense-oracle and lifecycle checks plus one named
-  bounded local recovery fixture pass; this does not establish general
-  recovery, precision, calibration, or interval coverage.
-  **Not in scope:** forecasts/new-data prediction, profile/bootstrap/interval
-  routes, rank selection, higher ranks, slopes, irregular time, other
-  families, or combinations with another random-effect provider.
+* Temporal is an experimental sixth covariance-source row. The new
+  `temporal_indep()`, `temporal_dep()`, and rank-one `temporal_latent()`
+  providers accept Gaussian long and `traits(...)` wide calls. AR1 retains
+  integer occasion gaps; OU uses user-supplied elapsed numeric time. With
+  `temporal_latent(unique = TRUE)`, trait-diagonal Psi is correlated through
+  the temporal kernel, rather than being IID occasion noise. The former
+  rank-one AR1/IID-Psi prototype remains only as a named migration fixture.
+  **In scope:** focused source parsing, native Gaussian likelihood oracles,
+  simulation, labelled latent scores, training-data prediction, update, and
+  ordinary unit/unit-observation composition. **Partial:** no general recovery,
+  precision, calibration, or interval-coverage claim is made. **Not in scope:**
+  forecasts/new-data prediction, profiles, selection, bootstrap, intervals,
+  temporal slopes, higher rank, other families, or combinations with spatial,
+  phylogenetic, animal, or kernel sources.
 
 * A new ordinal response family, `ordinal_logit()` -- the cumulative-**logit**
   analogue of the existing `ordinal_probit()` threshold model, family_id 20.

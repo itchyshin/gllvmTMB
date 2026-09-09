@@ -400,7 +400,8 @@ data with one row per \verb{(unit, trait)} observation. Both routes estimate
 the same trait covariance, pairwise correlations, shared latent axes,
 and trait-specific variance. The formula syntax also supports fixed
 effects plus covariance-structure keywords organised by
-\emph{correlation source} (none / animal / phylo / spatial / kernel) and
+\emph{correlation source} (none / animal / phylo / spatial / kernel /
+temporal) and
 three \emph{modes} (independent / dependent / latent). The \code{common = TRUE}
 modifier on \verb{*_indep()} gives the one-shared-variance special case:
 }
@@ -412,7 +413,14 @@ modifier on \verb{*_indep()} gives the one-shared-variance special case:
 \emph{phylo}   \tab \code{\link[=phylo_indep]{phylo_indep()}}   \tab \code{\link[=phylo_dep]{phylo_dep()}}   \tab \code{\link[=phylo_latent]{phylo_latent()}}   \cr
 \emph{spatial} \tab \code{\link[=spatial_indep]{spatial_indep()}} \tab \code{\link[=spatial_dep]{spatial_dep()}} \tab \code{\link[=spatial_latent]{spatial_latent()}} \cr
 \emph{kernel}  \tab \code{\link[=kernel_indep]{kernel_indep()}}  \tab \code{\link[=kernel_dep]{kernel_dep()}}  \tab \code{\link[=kernel_latent]{kernel_latent()}}  \cr
+\emph{temporal} \tab \code{\link[=temporal_indep]{temporal_indep()}} \tab \code{\link[=temporal_dep]{temporal_dep()}} \tab \code{\link[=temporal_latent]{temporal_latent()}} \cr
 }
+
+The temporal row is currently a Gaussian identity-link ML/Laplace route:
+it accepts one ordered \code{series}--\code{time} provider, AR1 integer occasions or
+OU elapsed time, and may coexist with ordinary \code{unit} and \code{unit_obs}
+covariance. Other structured sources, new-data prediction, intervals, and
+rank above one remain unavailable for temporal fits.
 
 The three covariance modes (\code{indep} / \code{dep} / \code{latent}) encode
 covstruct intent across traits:

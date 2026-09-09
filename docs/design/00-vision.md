@@ -251,7 +251,7 @@ sister packages have separate scopes:
   variational, extended-variational, and Laplace approximation
   paths. `gllvm` 2.0 also covers advanced ordination and joint
   species-distribution workflows. `gllvmTMB` differs by centering
-  the stacked-trait long-format grammar, the explicit 5 x 3
+  the stacked-trait long-format grammar, the explicit 6 x 3
   covariance keyword grid, mixed-family per-row data, and
   validation-debt rows for its phylogenetic / spatial covariance
   paths.

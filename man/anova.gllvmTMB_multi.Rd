@@ -20,6 +20,8 @@ in the returned table's notes), or \code{"none"} (report the table with no
 p-values).}
 
 \item{x}{An \code{"anova.gllvmTMB_multi"} object.}
+
+\item{digits}{Number of significant digits printed in the comparison table.}
 }
 \value{
 A \code{data.frame} of class \code{c("anova.gllvmTMB_multi", "data.frame")}

@@ -1530,6 +1530,23 @@ simulate.gllvmTMB_multi <- function(
   }
 
   if (isTRUE(object$temporal$active) && is.null(newdata)) {
+    ## The temporal redraw helper currently owns only the dedicated temporal
+    ## state tier.  Reusing fitted ordinary B/W modes here would make an
+    ## apparently unconditional draw omit their covariance.  Refuse that
+    ## request until a joint redraw is implemented; conditional simulation is
+    ## still well-defined and keeps every fitted random-effect mode.
+    ordinary_temporal_components <- c(
+      rr_B = isTRUE(object$use$rr_B), diag_B = isTRUE(object$use$diag_B),
+      rr_W = isTRUE(object$use$rr_W), diag_W = isTRUE(object$use$diag_W),
+      re_int = isTRUE(object$use$re_int)
+    )
+    if (!isTRUE(condition_on_RE) && any(ordinary_temporal_components)) {
+      cli::cli_abort(c(
+        "Unconditional {.fn simulate} is not available for a temporal fit with ordinary unit or unit_obs covariance components.",
+        "i" = "The temporal simulator can redraw the temporal state tier but cannot yet redraw: {.val {names(ordinary_temporal_components)[ordinary_temporal_components]}}.",
+        ">" = "Use {.code condition_on_RE = TRUE} for a conditional response draw, or fit the temporal source alone for unconditional temporal simulation."
+      ), class = "gllvmTMB_temporal_composed_simulation_unsupported")
+    }
     out <- replicate(nsim, .simulate_temporal_response(
       object, redraw_scores = !isTRUE(condition_on_RE)
     ))
@@ -1620,7 +1637,7 @@ simulate.gllvmTMB_multi <- function(
   out
 }
 
-#' Draw one Gaussian response vector from a temporal AR1 fit
+#' Draw one Gaussian response vector from a temporal-source fit
 #'
 #' The score prior is redrawn only for an unconditional draw.  The independent
 #' Gaussian terms are always new response variation, matching the ordinary
@@ -1634,55 +1651,49 @@ simulate.gllvmTMB_multi <- function(
   }
   td <- fit$tmb_data
   trait_id <- td$trait_id + 1L
-  site_id <- td$site_id + 1L
-  n_sites <- td$n_sites
   n_traits <- td$n_traits
-  pair_table <- fit$temporal$pair_table[
-    match(levels(fit$data[[fit$unit_col]]), fit$temporal$pair_table$pair_id),
-    , drop = FALSE
-  ]
-  if (nrow(pair_table) != n_sites || anyNA(pair_table$time)) {
-    stop("Internal temporal score index does not match fitted site levels.", call. = FALSE)
-  }
-
-  if (redraw_scores) {
-    phi <- as.numeric(fit$report$phi)
-    scores <- numeric(n_sites)
-    for (series in unique(pair_table$series)) {
-      idx <- which(pair_table$series == series)
-      idx <- idx[order(pair_table$time[idx])]
-      scores[idx[1L]] <- stats::rnorm(1L)
-      if (length(idx) > 1L) {
-        innovation_sd <- sqrt(1 - phi^2)
-        for (j in 2:length(idx)) {
-          scores[idx[j]] <- phi * scores[idx[j - 1L]] +
-            innovation_sd * stats::rnorm(1L)
-        }
-      }
-    }
-    eta <- as.numeric(td$X_fix %*% .gllvmTMB_b_fix_values(fit)) +
-      .gllvmTMB_offset_vec(fit)
-    Lambda_B <- as.matrix(fit$report$Lambda_B)
-    eta <- eta + Lambda_B[trait_id, 1L] * scores[site_id]
-  } else {
-    eta <- as.numeric(fit$report$eta)
-  }
-
   par <- fit$tmb_obj$env$parList(fit$opt$par)
-  sd_independent <- exp(as.numeric(par$theta_diag_B))
-  if (length(sd_independent) != n_traits) {
-    stop("Internal temporal independent-variance parameter has wrong length.", call. = FALSE)
+  n_state <- td$n_temporal_states
+  state_id <- td$temporal_state_id + 1L
+  predecessor <- td$temporal_predecessor + 1L
+  rank <- td$temporal_rank
+  lambda <- if (rank > 0L) as.matrix(fit$report$Lambda_temporal) else NULL
+  z <- as.matrix(par$z_temporal)
+  q <- as.matrix(par$q_temporal)
+  effect <- function(z, q) {
+    out <- numeric(length(state_id))
+    if (rank > 0L) out <- out + rowSums(lambda[trait_id, , drop = FALSE] *
+      t(z[, state_id, drop = FALSE]))
+    if (isTRUE(fit$temporal$unique)) out <- out + q[cbind(trait_id, state_id)]
+    out
   }
-  if (identical(fit$temporal$workflow, "unreplicated")) {
-    return(eta + stats::rnorm(length(eta), sd = sd_independent[trait_id]))
+  fitted_effect <- effect(z, q)
+  if (redraw_scores) {
+    a <- function(s) {
+      if (predecessor[s] == 0L) return(0)
+      if (identical(fit$temporal$structure, "ar1")) {
+        phi <- (1 - 1e-6) * tanh(par$theta_temporal_time)
+        phi^td$temporal_gap[s]
+      } else exp(-exp(par$theta_temporal_time) * td$temporal_elapsed[s])
+    }
+    z[] <- 0
+    q[] <- 0
+    sd_q <- exp(as.numeric(par$theta_temporal_diag))
+    for (s in seq_len(n_state)) {
+      aa <- a(s)
+      innovation <- if (identical(fit$temporal$structure, "ou")) {
+        sqrt(-expm1(-2 * exp(par$theta_temporal_time) * td$temporal_elapsed[s]))
+      } else sqrt(1 - aa^2)
+      prev <- predecessor[s]
+      if (rank > 0L) z[, s] <- if (prev == 0L) stats::rnorm(rank) else
+        aa * z[, prev] + innovation * stats::rnorm(rank)
+      if (isTRUE(fit$temporal$unique)) q[, s] <- if (prev == 0L) {
+        stats::rnorm(n_traits, sd = sd_q)
+      } else aa * q[, prev] + innovation * stats::rnorm(n_traits, sd = sd_q)
+    }
   }
-
-  occasion_effect <- matrix(
-    stats::rnorm(n_traits * n_sites), nrow = n_traits, ncol = n_sites
-  ) * sd_independent
-  sigma_eps <- exp(as.numeric(par$log_sigma_eps[1L]))
-  eta + occasion_effect[cbind(trait_id, site_id)] +
-    stats::rnorm(length(eta), sd = sigma_eps)
+  eta <- as.numeric(fit$report$eta) - fitted_effect + effect(z, q)
+  eta + stats::rnorm(length(eta), sd = exp(as.numeric(par$log_sigma_eps[1L])))
 }
 
 #' Family-aware per-row draw from a fitted model

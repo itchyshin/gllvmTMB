@@ -44,6 +44,8 @@ strength](#advanced-estimating-the-source-strength).
   locations can be correlated.
 - **`kernel_`:** levels are related through a supplied dense covariance matrix
   `K` — the generic dense-matrix source (the fifth grid row).
+- **`temporal_`:** ordered `(series, time)` states share an AR1 or OU kernel;
+  this sixth row preserves integer gaps for AR1 and elapsed-time distances for OU.
 
 These sources are alternatives based on study design, not a progression from
 fine to broad scale. Add a source prefix only when that structured relationship
@@ -77,9 +79,9 @@ All fitted keyword covariances are random-effect covariances on the model's
 linear-predictor or latent scale. They are not automatically response-scale
 covariances for non-Gaussian traits.
 
-## The 5 × 3 grid
+## The 6 × 3 grid
 
-The rows are the five correlation **sources** across grouping levels; the
+The rows are the six correlation **sources** across grouping levels; the
 columns are the three fundamental trait-covariance **modes**. Every cell is a
 live keyword. The *scalar* and *unique* sub-cases are modifiers, listed under
 the table.
@@ -101,6 +103,8 @@ the table.
 <td><code>spatial_dep()</code></td><td><code>spatial_latent()</code></td></tr>
 <tr><th>kernel</th><td><code>kernel_indep()</code></td>
 <td><code>kernel_dep()</code></td><td><code>kernel_latent()</code></td></tr>
+<tr><th>temporal</th><td><code>temporal_indep()</code></td>
+<td><code>temporal_dep()</code></td><td><code>temporal_latent()</code></td></tr>
 </tbody>
 </table>
 </div>
@@ -118,15 +122,17 @@ soft-deprecated in favour of `indep()` (for a plain diagonal) and
 
 ## Repeated temporal measurements
 
-`temporal_latent(0 + trait | series, time = occasion)` is one implemented
-rank-one AR1 latent-score provider beside the grid, rather than a new grid row
-or mode. It is currently limited to Gaussian identity-link ML, regular integer
-occasions, at least three traits, one temporal intercept block, and fixed
-effects. Add `replicate = measurement` for at least two complete trait panels
-at every occasion. The temporal article shows matched long and `traits(...)`
-wide calls. Forecasts, intervals, rank selection, higher ranks, irregular
-time, other families, and combinations with another provider are not yet
-available.
+`temporal_indep(0 + trait | series, time = occasion)`,
+`temporal_dep(...)`, and `temporal_latent(..., d = 1)` form the temporal row.
+AR1 accepts ordered integer occasions and keeps missing values as gaps; OU
+accepts elapsed numeric time without automatic rescaling. With
+`temporal_latent(unique = TRUE)`, Psi is itself correlated through the temporal
+kernel, not IID occasion noise. The temporal article shows matching long and
+`traits(...)` wide calls. **In scope:** focused Gaussian local fits, source
+parsing, covariance oracles, simulation, and ordinary unit/unit-observation
+composition. **Partial:** recovery is not yet a general claim. Forecasts,
+new-data prediction, intervals, profiles, selection, bootstrap, other
+families, higher rank, and other structured-source combinations are unavailable.
 
 ## What the modes estimate
 
@@ -294,7 +300,7 @@ biological stories.
 
 <div class="slope-chooser">
 
-The 5 × 3 grid describes **trait covariance for random effects**. The slope
+The 6 × 3 grid describes **trait covariance for random effects**. The slope
 helpers answer a separate question: *how do fixed-predictor coefficients vary
 across the response columns?* They are not a new grid row, column, or mode.
 
@@ -340,7 +346,7 @@ when the slope of `x` should vary **across the sampled grouping units**
 `column_coef()`, `phylo_coef()`, `animal_coef()`, `kernel_coef()`, and
 `spatial_coef()` extend the coefficient
 basis to an explicit random intercept, a slope, or both. They are also outside
-the 5 × 3 grid: their covariance is across coefficient-basis columns, not a new
+the 6 × 3 grid: their covariance is across coefficient-basis columns, not a new
 trait-covariance mode.
 
 ```r

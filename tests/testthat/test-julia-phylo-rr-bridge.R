@@ -287,6 +287,167 @@ test_that("private S3b adapter pairs with one genuine frozen native tree fit", {
   expect_identical(payload$species_id, julia$species_id)
   expect_equal(julia$scale, 2)
   expect_equal(payload$phylo$log_det, julia$log_det, tolerance = 0)
+  assign(".s3b_tree_pair_receipt", list(
+    kind = "tree", n_traits = 2L, n_species = 4L, n_observations = 12L,
+    scale = julia$scale, log_det_precision = julia$log_det,
+    deltas = list(
+      log_likelihood = abs(as.numeric(logLik(native)) - julia$loglik),
+      fixed_effects = max(abs(unname(coef(native)) - julia$coefficients)),
+      phylogenetic_covariance = max(abs(native$report$Sigma_phy - julia$phylo_covariance)),
+      residual_variance = max(abs(native$report$sigma_eps^2 - julia$residual_variance))
+    )
+  ), envir = globalenv())
+})
+
+test_that("private S3b adapter pairs with a native sparse-pedigree fit", {
+  skip_if_not(
+    identical(Sys.getenv("GLLVM_S3B_LIVE_ADAPTER_TESTS"), "1"),
+    "set GLLVM_S3B_LIVE_ADAPTER_TESTS=1 with an isolated Julia project to run"
+  )
+  project <- Sys.getenv("GLLVM_DESTINATION_B_PROJECT", "")
+  julia_home <- Sys.getenv("GLLVM_S3B_JULIA_HOME", "")
+  skip_if_not(nzchar(project), "GLLVM_DESTINATION_B_PROJECT is required")
+  skip_if_not(nzchar(julia_home), "GLLVM_S3B_JULIA_HOME is required")
+
+  ## The founders are not observed responses.  They must nevertheless remain
+  ## in the transported precision system so the descendant effects are
+  ## marginalised, rather than conditioned on a truncated covariance.
+  pedigree <- data.frame(
+    id = c("founder_s", "founder_d", "desc_1", "desc_2"),
+    sire = c(NA, NA, "founder_s", "founder_s"),
+    dam = c(NA, NA, "founder_d", "founder_d")
+  )
+  dat <- expand.grid(
+    site = factor(paste0("site", 1:3)),
+    species = factor(c("desc_1", "desc_2"), levels = c("desc_1", "desc_2")),
+    trait = factor(c("t1", "t2"), levels = c("t1", "t2"))
+  )
+  dat$site_species <- interaction(dat$site, dat$species, drop = TRUE)
+  set.seed(702L)
+  effects <- c(desc_1 = -0.35, desc_2 = 0.40)
+  loading <- c(t1 = 0.72, t2 = -0.48)
+  mean <- c(t1 = -0.20, t2 = 0.30)
+  dat$value <- unname(
+    mean[as.character(dat$trait)] +
+      loading[as.character(dat$trait)] * effects[as.character(dat$species)] +
+      stats::rnorm(nrow(dat), sd = 0.10)
+  )
+  native <- suppressMessages(gllvmTMB(
+    value ~ 0 + trait + animal_latent(species, d = 1, pedigree = pedigree, unique = FALSE),
+    data = dat, trait = "trait", unit = "site_species", family = gaussian(),
+    control = gllvmTMBcontrol(se = FALSE), silent = TRUE
+  ))
+  expect_true(isTRUE(native$use$phylo_rr))
+
+  Sys.setenv(JULIA_PROJECT = project)
+  JuliaCall::julia_setup(
+    JULIA_HOME = julia_home, install = FALSE, useRCall = FALSE, verbose = FALSE
+  )
+  JuliaCall::julia_command(sprintf(
+    "import Pkg; Pkg.activate(\"%s\"); using GLLVM",
+    gsub("\\\\", "\\\\\\\\", project, fixed = TRUE)
+  ))
+  old_ready <- .gllvm_jl_env$ready
+  .gllvm_jl_env$ready <- TRUE
+  on.exit(.gllvm_jl_env$ready <- old_ready, add = TRUE)
+  julia <- gllvmTMB:::.gllvm_julia_phylo_rr_adapter(native, ci_method = "none")
+  payload <- gllvmTMB:::.gllvm_julia_phylo_rr_payload(native)
+
+  expect_identical(julia$admission_status, "closed")
+  expect_equal(payload$phylo$n_aug, 4L)
+  expect_equal(payload$phylo$n_leaves, 2L)
+  expect_equal(payload$phylo$node_labels, pedigree$id)
+  ## The bridge contract is zero-based for Julia indexing.
+  expect_equal(payload$phylo$species_aug_id, c(2L, 3L))
+  expect_equal(abs(as.numeric(logLik(native)) - julia$loglik), 0, tolerance = 1e-6)
+  expect_equal(max(abs(unname(coef(native)) - julia$coefficients)), 0, tolerance = 1e-6)
+  expect_equal(max(abs(native$report$Sigma_phy - julia$phylo_covariance)), 0, tolerance = 1e-6)
+  expect_equal(max(abs(native$report$sigma_eps^2 - julia$residual_variance)), 0, tolerance = 1e-6)
+  expect_equal(payload$phylo$log_det, julia$log_det, tolerance = 0)
+  assign(".s3b_pedigree_pair_receipt", list(
+    kind = "sparse_pedigree", n_traits = 2L, n_observations = 6L,
+    augmented_nodes = payload$phylo$n_aug, observed_nodes_zero_based = payload$phylo$species_aug_id,
+    log_det_precision = julia$log_det,
+    deltas = list(
+      log_likelihood = abs(as.numeric(logLik(native)) - julia$loglik),
+      fixed_effects = max(abs(unname(coef(native)) - julia$coefficients)),
+      phylogenetic_covariance = max(abs(native$report$Sigma_phy - julia$phylo_covariance)),
+      residual_variance = max(abs(native$report$sigma_eps^2 - julia$residual_variance))
+    )
+  ), envir = globalenv())
+})
+
+test_that("private S3b adapter transports a native R-ridged-once dense vcv", {
+  skip_if_not(
+    identical(Sys.getenv("GLLVM_S3B_LIVE_ADAPTER_TESTS"), "1"),
+    "set GLLVM_S3B_LIVE_ADAPTER_TESTS=1 with an isolated Julia project to run"
+  )
+  project <- Sys.getenv("GLLVM_DESTINATION_B_PROJECT", "")
+  julia_home <- Sys.getenv("GLLVM_S3B_JULIA_HOME", "")
+  skip_if_not(nzchar(project), "GLLVM_DESTINATION_B_PROJECT is required")
+  skip_if_not(nzchar(julia_home), "GLLVM_S3B_JULIA_HOME is required")
+
+  species <- c("a", "b", "c")
+  original_vcv <- diag(c(1, 1e-9, 0.5))
+  dimnames(original_vcv) <- list(species, species)
+  dat <- expand.grid(
+    trait = factor(c("t1", "t2"), levels = c("t1", "t2")),
+    species = factor(species, levels = species)
+  )
+  dat$unit <- factor(dat$species, levels = species)
+  dat$value <- c(0.2, -0.1, 0.5, 0.3, -0.2, 0.4)
+  native <- suppressMessages(gllvmTMB(
+    value ~ 0 + trait + phylo_latent(species, d = 1, vcv = original_vcv, unique = FALSE),
+    data = dat, trait = "trait", unit = "unit", family = gaussian(),
+    control = gllvmTMBcontrol(se = FALSE), silent = TRUE
+  ))
+  expect_true(isTRUE(native$use$phylo_rr))
+
+  Sys.setenv(JULIA_PROJECT = project)
+  JuliaCall::julia_setup(
+    JULIA_HOME = julia_home, install = FALSE, useRCall = FALSE, verbose = FALSE
+  )
+  JuliaCall::julia_command(sprintf(
+    "import Pkg; Pkg.activate(\"%s\"); using GLLVM",
+    gsub("\\\\", "\\\\\\\\", project, fixed = TRUE)
+  ))
+  old_ready <- .gllvm_jl_env$ready
+  .gllvm_jl_env$ready <- TRUE
+  on.exit(.gllvm_jl_env$ready <- old_ready, add = TRUE)
+  payload <- NULL
+  expect_warning(
+    payload <- gllvmTMB:::.gllvm_julia_phylo_rr_payload(native),
+    "GJL-WARN-PHYLO-VCV-CONDITION"
+  )
+  ## The adapter validates the original dense covariance again; its warning is
+  ## already asserted above, so keep this paired-result step noise-free.
+  julia <- suppressWarnings(
+    gllvmTMB:::.gllvm_julia_phylo_rr_adapter(native, ci_method = "none")
+  )
+  ridged_vcv <- original_vcv + diag(1e-8, length(species))
+  Q_transport <- matrix(0, payload$phylo$n_aug, payload$phylo$n_aug)
+  Q_transport[cbind(payload$phylo$i, payload$phylo$j)] <- payload$phylo$x
+
+  expect_identical(julia$admission_status, "closed")
+  expect_equal(payload$phylo$n_aug, length(species))
+  expect_equal(payload$phylo$node_labels, species)
+  expect_equal(Q_transport, unname(solve(ridged_vcv)), tolerance = 1e-10)
+  expect_equal(abs(as.numeric(logLik(native)) - julia$loglik), 0, tolerance = 1e-6)
+  expect_equal(max(abs(unname(coef(native)) - julia$coefficients)), 0, tolerance = 1e-6)
+  expect_equal(max(abs(native$report$Sigma_phy - julia$phylo_covariance)), 0, tolerance = 1e-6)
+  expect_equal(max(abs(native$report$sigma_eps^2 - julia$residual_variance)), 0, tolerance = 1e-6)
+  expect_equal(payload$phylo$log_det, julia$log_det, tolerance = 0)
+  assign(".s3b_dense_pair_receipt", list(
+    kind = "dense_vcv", n_traits = 2L, n_observations = 3L,
+    condition_number_original = kappa(original_vcv), diagonal_jitter = 1e-8,
+    augmented_nodes = payload$phylo$n_aug, log_det_precision = julia$log_det,
+    deltas = list(
+      log_likelihood = abs(as.numeric(logLik(native)) - julia$loglik),
+      fixed_effects = max(abs(unname(coef(native)) - julia$coefficients)),
+      phylogenetic_covariance = max(abs(native$report$Sigma_phy - julia$phylo_covariance)),
+      residual_variance = max(abs(native$report$sigma_eps^2 - julia$residual_variance))
+    )
+  ), envir = globalenv())
 })
 
 test_that("engine = 'julia' remains closed for phylo_rr", {

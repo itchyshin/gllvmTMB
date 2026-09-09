@@ -4,7 +4,7 @@
 
 - Worktree: `/private/tmp/gllvmTMB-temporal-program`
 - Branch: `codex/temporal-program-20260909`
-- Resume commit: `6c3f0bb00`
+- Resume commit: `800f57d82`
 - Baseline local temporal simulation repair: `f227e7801`
 - Additive source contract: `da718f8c6`
 - Source-pair previews were deliberately reverted at `a2f71fd88`,
@@ -23,26 +23,40 @@ Both emit their documented success marker at this commit. The ignored ledger
 particular, no temporal plus spatial, phylogenetic, animal, or kernel public
 syntax is currently admitted.
 
+## Kernel candidate result (2026-09-09)
+
+A deliberately narrow, temporary `temporal_indep() + kernel_indep()` parser
+preview was used only to run an independently simulated, retained local
+recovery smoke campaign. It was closed again immediately after the result.
+
+- DGP: 12 series, 20 occasions, three traits; stationary AR1 persistence
+  `(-0.4, 0, 0.6)`; labelled fixed kernel; both source tiers nonzero.
+- Nine fixed seed--persistence fits are retained at
+  `/private/tmp/temporal-kernel-pair-recovery-20260909.csv`.
+- All fits returned a finite objective and convergence code zero, but three
+  maximum outer gradients exceeded `1e-3`; the negative-persistence cell also
+  exceeded the prespecified mean absolute persistence-error target. Several
+  kernel-variance estimates collapsed to the boundary.
+
+This is a **failed admission experiment**, not evidence for a kernel pair.
+The public parser remains closed. The throwaway runner is deliberately left
+uncommitted because its formula is refused by the supported public contract.
+
 ## Next bounded slice
 
-Implement and independently verify **unconditional simulation for one proposed
-additive source pair before reopening its parser admission**. Start with a
-fixed labelled kernel, because its dense covariance is directly available.
+Define and implement a temporal-only **forecasting contract** before reopening
+any source pair. The implementation must condition a joint Gaussian response
+on observed temporal data, preserve time/series labels, and retain the existing
+refusal for unsupported source combinations and forecast layouts.
 
-1. Claim `R/methods-gllvmTMB.R`, `R/temporal.R`, the new temporal source-pair
-   simulation test, and any required source simulator surface.
-2. Write a deterministic zero-innovation/zero-residual test proving that an
-   unconditional draw removes and redraws both the temporal state and the
-   kernel random effect. Add an independently authored moment oracle for the
-   sum of the temporal and kernel covariance terms; do not call production
-   simulation from that oracle.
-3. Preserve `condition_on_RE = TRUE` as an observation-noise draw around the
-   full fitted predictor. Keep unimplemented sources/cells fenced.
-4. Time one recovery fixture. If the retained campaign projects above thirty
-   minutes, present its measured pre-run result and obtain separate compute
-   approval before launch.
-5. Only after simulation, lifecycle, and retained recovery gates pass may the
-   narrow `temporal_indep() + kernel_indep()` public admission be restored.
+1. Freeze the estimand: existing series, future occasions, Gaussian identity
+   response prediction, fitted parameters, and the complete observed response
+   vector. New series and source pairs remain refused.
+2. Implement a dedicated helper rather than widening generic `predict(newdata)`
+   by accident. Use independent dense Gaussian conditioning as its initial
+   oracle, including negative AR1 odd/even lags and OU time-shift invariance.
+3. Keep profile, bootstrap, interval and selection refusals until their own
+   profile/refit/candidate contracts are implemented and independently tested.
 
 ## Do not claim
 

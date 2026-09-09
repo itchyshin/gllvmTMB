@@ -33,7 +33,11 @@ or Julia consumer changed.
 - RED/GREEN follow-up: a clean source tree exposed a zero-length Git-output
   bug before package loading. The new clean-repository test failed first;
   scalarising successful empty Git output fixes the guard. Focused runner
-  tests now pass **14 expectations**.
+  tests now pass **15 expectations**.
+- A live pre-run then exposed a second pre-fit runner defect: treating Git
+  output as scalar fixed clean statuses but collapsed a multi-file changed-path
+  list. A two-file Git-diff test now preserves the vector contract while the
+  clean-status guard handles an empty vector.
 - The new configured receipt path is mandatory; this prevents accidental
   overwrite of the historical receipt. A live run has not been attempted
   because the new branch does not yet have its authenticated frozen DLL.

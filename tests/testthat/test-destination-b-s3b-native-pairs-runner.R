@@ -135,8 +135,9 @@ test_that("S3b native-pair source snapshots accept a clean repository", {
   dir.create(temporary_repository)
   withr::defer(unlink(temporary_repository, recursive = TRUE))
   system2("git", c("init", "--quiet", temporary_repository))
-  writeLines("tracked", file.path(temporary_repository, "tracked.txt"))
-  system2("git", c("-C", temporary_repository, "add", "tracked.txt"))
+  writeLines("first", file.path(temporary_repository, "first.txt"))
+  writeLines("second", file.path(temporary_repository, "second.txt"))
+  system2("git", c("-C", temporary_repository, "add", "first.txt", "second.txt"))
   system2("git", c(
     "-C", temporary_repository,
     "-c", "user.name=TestRunner", "-c", "user.email=test@example.invalid",
@@ -145,5 +146,20 @@ test_that("S3b native-pair source snapshots accept a clean repository", {
 
   expect_silent(
     runner_environment$s3b_native_pairs_require_clean_git(temporary_repository, "temporary source")
+  )
+  writeLines("changed first", file.path(temporary_repository, "first.txt"))
+  writeLines("changed second", file.path(temporary_repository, "second.txt"))
+  system2("git", c("-C", temporary_repository, "add", "first.txt", "second.txt"))
+  system2("git", c(
+    "-C", temporary_repository,
+    "-c", "user.name=TestRunner", "-c", "user.email=test@example.invalid",
+    "commit", "--quiet", "-m", "two-files"
+  ))
+
+  expect_identical(
+    runner_environment$s3b_native_pairs_git_stdout(
+      c("-C", temporary_repository, "diff", "--name-only", shQuote("HEAD~..HEAD")), "two-file diff"
+    ),
+    c("first.txt", "second.txt")
   )
 })

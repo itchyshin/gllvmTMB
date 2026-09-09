@@ -41,7 +41,7 @@ s3b_native_pairs_git_stdout <- function(args, label) {
   if (!is.null(status) && as.integer(status) != 0L) {
     stop(sprintf("%s git command failed: %s", label, paste(output, collapse = "\n")), call. = FALSE)
   }
-  trimws(paste(output, collapse = "\n"))
+  trimws(output)
 }
 
 s3b_native_pairs_validate_loaded_path <- function(actual_path, expected_path, label) {
@@ -80,8 +80,12 @@ s3b_native_pairs_require_clean_git <- function(path, label) {
     c("-C", shQuote(normalizePath(path, mustWork = TRUE)), "status", "--porcelain"),
     paste0(label, " status")
   )
-  if (nzchar(status)) {
-    stop(label, " must be clean before retaining paired evidence: ", status, call. = FALSE)
+  if (length(status) && any(nzchar(status))) {
+    stop(
+      label, " must be clean before retaining paired evidence: ",
+      paste(status[nzchar(status)], collapse = "\n"),
+      call. = FALSE
+    )
   }
   invisible(TRUE)
 }

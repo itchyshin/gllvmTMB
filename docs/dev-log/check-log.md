@@ -53922,14 +53922,16 @@ candidate evidence is reused from this pre-integration run.
   exact and rejects an unapproved path. Receipt output is caller-selected but
   constrained to the artifact directory, then published via a same-directory
   temporary plus hard-link that refuses replacement of retained JSON.
-- Test-first runner checks passed **14 expectations**: define-only sourcing,
+- Test-first runner checks passed **15 expectations**: define-only sourcing,
   exact allowlist acceptance, unapproved-path rejection, matching/mismatched
   loaded-path behaviour, controlled receipt-path admission/rejection, first
   write, second-write refusal, byte-preservation, a changed source snapshot,
-  an untracked source file, and a clean source tree. The clean-tree test
-  exposed and then repaired a zero-length Git-output bug before package
-  loading. The old runner failed the define-only test; an in-memory overwrite
-  mutation failed preservation.
+  an untracked source file, a clean source tree, and a two-file Git diff. The
+  clean-tree test exposed and then repaired a zero-length Git-output bug before
+  package loading; the live pre-run then exposed a scalar-collapse regression
+  for multi-file changed paths, paid by the two-file test. The old runner
+  failed the define-only test; an in-memory overwrite mutation failed
+  preservation.
   This hardens evidence retention only; it does not rerun or newly qualify
   native pairs, S3b, S4, dense VCV, or general engine admission.
 

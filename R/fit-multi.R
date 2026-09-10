@@ -7553,7 +7553,11 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         error_maximum = NA_real_, error_coordinate = NA_character_
       ))
     }
-    step <- sqrt(.Machine$double.eps) * pmax(1, abs(par))
+    ## The Laplace objective can be O(10^4) even for a small qualification
+    ## fixture. A sqrt-epsilon step loses its central difference to cancellation
+    ## on that scale, so use the same fixed relative step as the independent
+    ## dense-oracle test below the fitting layer.
+    step <- 1e-5 * pmax(1, abs(par))
     central <- vapply(seq_along(par), function(i) {
       plus <- par; minus <- par
       plus[[i]] <- plus[[i]] + step[[i]]

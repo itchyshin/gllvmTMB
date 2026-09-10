@@ -67,6 +67,7 @@ test_that("temporal-phylo optimizer passes retain labelled qualification diagnos
   expect_identical(history$pass_label, c("pass_1", "pass_2"))
   expect_true(all(is.finite(history$outer_gradient_max)))
   expect_true(all(nzchar(history$outer_gradient_coordinate)))
+  expect_lt(max(history$finite_difference_error_max), 1e-4)
   expect_true(all(history$fresh_state_ok))
 })
 

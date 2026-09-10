@@ -176,6 +176,45 @@ s4_public_phylo_dep_write_failed_diagnostic_once <- function(payload, path, rece
   invisible(path)
 }
 
+s4_public_phylo_dep_abort_julia_probe <- function(message, output = character(), status = NA_integer_, command = character()) {
+  stop(structure(
+    list(
+      message = message,
+      output = as.character(output),
+      status = as.integer(status),
+      command = as.character(command)
+    ),
+    class = c("s4_public_phylo_dep_julia_probe_error", "error", "condition")
+  ))
+}
+
+s4_public_phylo_dep_retain_julia_probe_failure <- function(probe, provenance, receipt_path, failed_path) {
+  failed_path <- normalizePath(failed_path, mustWork = FALSE)
+  reserved_namespace <- normalizePath(s4_public_phylo_dep_failed_diagnostic_namespace(receipt_path), mustWork = TRUE)
+  if (!identical(normalizePath(dirname(failed_path), mustWork = TRUE), reserved_namespace) || !identical(basename(failed_path), "FAILED.json")) {
+    stop("S4 failed-attempt diagnostic path was not reserved for this receipt", call. = FALSE)
+  }
+  raw_output <- as.character(probe$output)
+  payload <- list(
+    kind = "destination_b_s4_public_phylo_dep_failed_attempt",
+    schema = 1L,
+    status = "failed_environment_preflight_not_a_receipt",
+    stage = "julia_clean_probe",
+    receipt_path = normalizePath(receipt_path, mustWork = FALSE),
+    source = provenance,
+    selected_test_count = 0L,
+    raw_output = as.list(raw_output),
+    raw_output_sha256 = digest::digest(paste(raw_output, collapse = "\n"), algo = "sha256"),
+    probe = list(
+      message = conditionMessage(probe),
+      status = as.integer(probe$status),
+      command = as.list(as.character(probe$command))
+    )
+  )
+  s4_public_phylo_dep_write_failed_diagnostic_once(payload, failed_path, receipt_path)
+  stop(probe)
+}
+
 ## Captured testthat expectations can be S3 conditions. jsonlite has no
 ## asJSON() method for them, so preserve their useful identity explicitly
 ## rather than carrying the condition object into the immutable artifact.
@@ -271,10 +310,19 @@ s4_public_phylo_dep_julia_args <- function(code) {
 s4_public_phylo_dep_clean_julia_probe <- function(project, environment, julia_home) {
   julia <- file.path(normalizePath(julia_home, mustWork = TRUE), "julia")
   if (!file.exists(julia)) julia <- file.path(normalizePath(julia_home, mustWork = TRUE), "bin", "julia")
-  if (!file.exists(julia)) stop("GLLVM_S4_JULIA_HOME does not identify a Julia executable", call. = FALSE)
+  if (!file.exists(julia)) s4_public_phylo_dep_abort_julia_probe("GLLVM_S4_JULIA_HOME does not identify a Julia executable")
   code <- sprintf("import Pkg; Pkg.activate(%s); using LogExpFunctions; isdefined(LogExpFunctions, :loglogistic) || error(\"missing loglogistic\"); using GLLVM; println(\"S4_JULIA_ENVIRONMENT_CLEAN\"); println(\"S4_ACTIVE_PROJECT=\" * Base.active_project()); println(\"S4_PACKAGE_ROOT=\" * Base.pkgdir(GLLVM))", s4_public_phylo_dep_julia_literal(environment))
-  output <- system2(julia, s4_public_phylo_dep_julia_args(code), stdout = TRUE, stderr = TRUE)
-  if (!is.null(attr(output, "status")) || !any(grepl("S4_JULIA_ENVIRONMENT_CLEAN", output, fixed = TRUE)) || any(grepl("LogExpFunctions.*(Error|error|precompile)|loglogistic not defined", output))) stop("Julia environment is not qualified: LogExpFunctions extension load was not clean", call. = FALSE)
+  args <- s4_public_phylo_dep_julia_args(code)
+  output <- system2(julia, args, stdout = TRUE, stderr = TRUE)
+  status <- attr(output, "status")
+  if (!is.null(status) || !any(grepl("S4_JULIA_ENVIRONMENT_CLEAN", output, fixed = TRUE)) || any(grepl("LogExpFunctions.*(Error|error|precompile)|loglogistic not defined", output))) {
+    s4_public_phylo_dep_abort_julia_probe(
+      "Julia environment is not qualified: LogExpFunctions extension load was not clean",
+      output = output,
+      status = if (is.null(status)) NA_integer_ else status,
+      command = c(julia, args)
+    )
+  }
   active <- sub("^S4_ACTIVE_PROJECT=", "", output[grepl("^S4_ACTIVE_PROJECT=", output)])
   package_root <- sub("^S4_PACKAGE_ROOT=", "", output[grepl("^S4_PACKAGE_ROOT=", output)])
   if (!identical(length(active), 1L) || !identical(length(package_root), 1L) || !identical(normalizePath(package_root, mustWork = TRUE), normalizePath(project, mustWork = TRUE))) stop("Julia environment did not load the requested GLLVM project", call. = FALSE)
@@ -298,7 +346,32 @@ s4_public_phylo_dep_main <- function() {
   julia_before <- s4_public_phylo_dep_snapshot(project, "GLLVM.jl source")
   s4_seal <- s4_public_phylo_dep_read_s4_seal(getwd())
   runtime_root <- s4_public_phylo_dep_validate_s4_runtime_root(getwd(), s4_seal)
-  clean_probe <- s4_public_phylo_dep_clean_julia_probe(project, environment, Sys.getenv("GLLVM_S4_JULIA_HOME"))
+  preflight_provenance <- list(
+    sealed_build = list(
+      path = s4_public_phylo_dep_s4_seal_path(getwd()),
+      sha256 = s4_public_phylo_dep_s4_seal_sha256(),
+      source_archive_sha256 = s4_seal$source_snapshot$archive$sha256,
+      source_commit = s4_seal$source_snapshot$commit,
+      binary_identity = s4_seal$binary_identity
+    ),
+    r_runtime = list(snapshot = r_before, validated_runtime_root = runtime_root),
+    gllvm_runtime = julia_before,
+    runner_identity = list(
+      path = normalizePath("tests/testthat/run-destination-b-s4-public-phylo-dep-isolated.R", mustWork = TRUE),
+      sha256 = digest::digest(file = "tests/testthat/run-destination-b-s4-public-phylo-dep-isolated.R", algo = "sha256")
+    )
+  )
+  clean_probe <- tryCatch(
+    s4_public_phylo_dep_clean_julia_probe(project, environment, Sys.getenv("GLLVM_S4_JULIA_HOME")),
+    s4_public_phylo_dep_julia_probe_error = function(probe) {
+      s4_public_phylo_dep_retain_julia_probe_failure(
+        probe = probe,
+        provenance = preflight_provenance,
+        receipt_path = receipt_path,
+        failed_path = failed_diagnostic$path
+      )
+    }
+  )
   if ("gllvmTMB" %in% loadedNamespaces()) stop("S4 sealed load requires no preloaded gllvmTMB namespace", call. = FALSE)
   library("gllvmTMB", lib.loc = s4_seal$isolated_library, character.only = TRUE)
   expressions <- parse(file = "tests/testthat/test-julia-phylo-rr-bridge.R")
@@ -319,23 +392,10 @@ s4_public_phylo_dep_main <- function() {
     tab = tab,
     raw_output = raw_output,
     reporter_details = s4_public_phylo_dep_reporter_details(reporter_results),
-    provenance = list(
-      sealed_build = list(
-        path = s4_public_phylo_dep_s4_seal_path(getwd()),
-        sha256 = s4_public_phylo_dep_s4_seal_sha256(),
-        source_archive_sha256 = s4_seal$source_snapshot$archive$sha256,
-        source_commit = s4_seal$source_snapshot$commit,
-        binary_identity = s4_seal$binary_identity
-      ),
-      r_runtime = list(snapshot = r_before, validated_runtime_root = runtime_root),
-      gllvm_runtime = julia_before,
+    provenance = c(preflight_provenance, list(
       julia_probe = clean_probe,
-      runner_identity = list(
-        path = normalizePath("tests/testthat/run-destination-b-s4-public-phylo-dep-isolated.R", mustWork = TRUE),
-        sha256 = digest::digest(file = "tests/testthat/run-destination-b-s4-public-phylo-dep-isolated.R", algo = "sha256")
-      ),
       selected_test_expressions = selected_test_expressions
-    ),
+    )),
     receipt_path = receipt_path,
     failed_path = failed_diagnostic$path
   )

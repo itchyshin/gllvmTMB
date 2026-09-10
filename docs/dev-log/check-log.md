@@ -54115,3 +54115,20 @@ candidate evidence is reused from this pre-integration run.
   `git diff --check` was clean. No S4 test replay, fit, Julia probe, receipt,
   qualification, engine/generic/seal change, push, merge, or release ran. Any
   future live replay requires fresh approval.
+
+## 2026-09-10 — Destination B S4 clean-Julia-probe diagnostic retention
+
+- The runner now turns a nonzero or unclean Julia qualification probe into a
+  structured condition carrying its captured output, process status, and
+  command. After the pre-reserved namespace exists, the main path retains a
+  link-only `FAILED.json` before refusal with status
+  `failed_environment_preflight_not_a_receipt`, stage `julia_clean_probe`, a
+  zero selected-test count, and a SHA-256 of the unchanged raw probe output.
+- TDD RED: the synthetic nonzero-probe flow made the expected assertion fail
+  because `FAILED.json` was absent (the following JSON read necessarily also
+  errored). GREEN: the focused runner contract reported 11 tests / 83
+  expectations, 0 failed, 0 skipped, 0 errors, and 0 warnings; source parsing
+  and `git diff --check` passed. Independent review: PASS. No live Julia probe
+  or replay, model, likelihood, C++, generic-engine, push, merge, or release
+  ran. The already reserved namespace from the earlier live attempt is not
+  modified; any future replay needs a new path and fresh approval.

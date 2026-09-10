@@ -109,6 +109,69 @@ test_that("S4 public phylo_dep receipt runner uses ASCII Julia string literals",
   expect_identical(args[[4L]], shQuote(code))
 })
 
+test_that("S4 runner retains a nonzero clean-Julia probe before test dispatch", {
+  environment <- new.env(parent = baseenv())
+  withr::local_envvar(GLLVM_S4_PUBLIC_PHYLO_DEP_DEFINE_ONLY = "1")
+  source(testthat::test_path("run-destination-b-s4-public-phylo-dep-isolated.R"), local = environment)
+  repository <- normalizePath(testthat::test_path("..", ".."), mustWork = TRUE)
+  withr::local_dir(repository)
+
+  project <- tempfile("s4-preflight-gllvm-")
+  julia_environment <- tempfile("s4-preflight-julia-")
+  dir.create(project)
+  dir.create(julia_environment)
+  writeLines("name = \"synthetic-gllvm\"", file.path(project, "Project.toml"))
+  writeLines("name = \"synthetic-julia\"", file.path(julia_environment, "Project.toml"))
+  receipt_path <- tempfile("s4-preflight-receipt-", fileext = ".json")
+  failed_path <- paste0(receipt_path, ".failed-attempt", "/FAILED.json")
+  withr::defer(unlink(c(project, julia_environment, receipt_path,
+                        paste0(receipt_path, ".failed-attempt")), recursive = TRUE))
+  withr::local_envvar(c(
+    GLLVM_S4_LIVE_FORMULA_TESTS = "1",
+    GLLVM_DESTINATION_B_PROJECT = project,
+    GLLVM_S4_JULIA_HOME = tempdir(),
+    GLLVM_S4_JULIA_ENV = julia_environment,
+    GLLVM_S4_RECEIPT_PATH = receipt_path
+  ))
+
+  environment$s4_public_phylo_dep_snapshot <- function(path, label) {
+    list(root = normalizePath(path, mustWork = TRUE), commit = paste0(label, "-commit"))
+  }
+  environment$s4_public_phylo_dep_read_s4_seal <- function(source_root, seal_path) {
+    list(source_snapshot = list(archive = list(sha256 = "archive-sha"), commit = "sealed-commit"),
+         binary_identity = list(source_dll = list(sha256 = "dll-sha")))
+  }
+  environment$s4_public_phylo_dep_validate_s4_runtime_root <- function(source_root, seal) {
+    list(root = normalizePath(source_root, mustWork = TRUE), runtime_commit = "runtime-commit")
+  }
+  environment$s4_public_phylo_dep_clean_julia_probe <- function(project, environment, julia_home) {
+    stop(structure(
+      list(
+        message = "synthetic clean Julia probe failed",
+        output = c("synthetic Julia stderr", "synthetic Julia status 1"),
+        status = 1L,
+        command = c("julia", "--startup-file=no", "-e", "synthetic")
+      ),
+      class = c("s4_public_phylo_dep_julia_probe_error", "error", "condition")
+    ))
+  }
+
+  expect_error(environment$s4_public_phylo_dep_main(), "synthetic clean Julia probe failed")
+  expect_false(file.exists(receipt_path))
+  expect_true(file.exists(failed_path))
+  diagnostic <- jsonlite::read_json(failed_path, simplifyVector = FALSE)
+  expect_identical(diagnostic$status, "failed_environment_preflight_not_a_receipt")
+  expect_identical(diagnostic$stage, "julia_clean_probe")
+  expect_identical(diagnostic$selected_test_count, 0L)
+  expect_identical(diagnostic$raw_output,
+                   list("synthetic Julia stderr", "synthetic Julia status 1"))
+  expect_identical(diagnostic$raw_output_sha256,
+                   digest::digest("synthetic Julia stderr\nsynthetic Julia status 1", algo = "sha256"))
+  expect_identical(diagnostic$probe$status, 1L)
+  expect_identical(diagnostic$probe$command,
+                   list("julia", "--startup-file=no", "-e", "synthetic"))
+})
+
 test_that("S4 runner retains a write-once failed-attempt diagnostic before refusal", {
   environment <- new.env(parent = baseenv())
   withr::local_envvar(GLLVM_S4_PUBLIC_PHYLO_DEP_DEFINE_ONLY = "1")

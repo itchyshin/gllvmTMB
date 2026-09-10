@@ -57849,3 +57849,20 @@ Deliberately not run: Totoro 9×500 grid dispatch; full `devtools::test()`.
   output_dir = tempdir(), quiet = TRUE)'` completed and emitted
   `TEMPORAL_GRID_ARTICLE_RENDER_PASS`. This is a source-article render only;
   no pkgdown deployment, merge, or release claim follows.
+
+## 2026-09-10 — exact-source Fir optimizer replay retains platform difference
+
+- Built a clean isolated Fir R 4.5.0 runtime in one core job `59103778` from
+  exact commit `19756f2a5`, then ran one immutable `phi = 0`, seed `2609188`
+  diagnostic fixture in job `59103979`. The task exited zero in 14.6 seconds
+  and retained `fir-59103979-phi0-seed2609188-19756f2a-step1e-5.rds` beside
+  the local receipts.
+- The Fir and local receipts have the same final objective (`11306.6746241`),
+  source commit, DGP, control, and convergence zero. Fir's two fresh-object
+  checks passed with finite-difference errors below `5.5e-5`, yet its final
+  outer gradient is `0.00161452497`, reproducing the original failed Fir
+  campaign value; the local exact-source run records `0.00013677207`.
+- This rules out a changed fixture or source revision as an explanation for
+  this one-cell difference. It neither identifies the numerical platform cause
+  nor repairs the frozen `1e-3` recovery gate. No recovery or coverage claim
+  is added.

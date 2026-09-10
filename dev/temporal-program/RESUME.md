@@ -87,6 +87,8 @@ The fixed `animal_indep()` cell has dense/product-control, source-provenance,
 long/wide/update, and simulation evidence. Its retained 160-series campaign
 completed, but the unchanged strict gradient gate failed in 3/10, 3/10, and
 2/10 fits for persistence `-.4`, `0`, and `.6`; it remains partial.
+`ANIMAL-RECOVERY-DIAGNOSTIC.md` retains the third-pass check: only two of the
+eight failed cells crossed the gradient gate, so it does not repair the campaign.
 
 ## Next bounded slice
 

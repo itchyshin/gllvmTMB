@@ -4,9 +4,9 @@ root <- normalizePath(getwd(), mustWork = TRUE)
 if (!file.exists(file.path(root, "DESCRIPTION"))) {
   stop("Run temporal programme verification from the repository root.", call. = FALSE)
 }
-allowed <- c("plan", "simulation", "lifecycle", "remote", "publication", "combinations", "closeout", "self-test")
+allowed <- c("plan", "simulation", "lifecycle", "remote", "phylo", "publication", "combinations", "closeout", "self-test")
 if (!mode %in% allowed) {
-  stop("usage: Rscript --vanilla dev/temporal-program/verify.R {plan|simulation|lifecycle|remote|publication|combinations|closeout|self-test}", call. = FALSE)
+  stop("usage: Rscript --vanilla dev/temporal-program/verify.R {plan|simulation|lifecycle|remote|phylo|publication|combinations|closeout|self-test}", call. = FALSE)
 }
 
 .temporal_program_assert_test_results <- function(result, fixture) {
@@ -86,6 +86,103 @@ if (!mode %in% allowed) {
   invisible(recomputed)
 }
 
+.temporal_program_phylo_summary <- function(results) {
+  expected_phi <- c(-.4, 0, .6)
+  expected_seed <- 2609181:2609190
+  required <- c(
+    "phi", "seed", "terminal", "convergence", "pass_2_convergence",
+    "pass_2_accepted", "max_gradient", "phi_estimate",
+    paste0("temporal_", 1:3), paste0("phylo_", 1:3), paste0("beta_", 1:3)
+  )
+  if (!all(required %in% names(results)) || nrow(results) != 30L ||
+      !setequal(results$phi, expected_phi) || !setequal(results$seed, expected_seed) ||
+      any(vapply(split(results$seed, results$phi), function(x) !setequal(x, expected_seed), logical(1)))) {
+    stop("temporal-phylo recovery does not retain every fixed phi/seed attempt", call. = FALSE)
+  }
+  strict <- results$terminal == "success" & results$convergence == 0L &
+    results$pass_2_convergence == 0L & results$pass_2_accepted &
+    is.finite(results$max_gradient) & results$max_gradient <= 1e-3
+  if (!all(strict)) {
+    stop("temporal-phylo recovery has a retained terminal or final-pass failure", call. = FALSE)
+  }
+  truth <- list(beta = c(.2, -.3, .1), temporal = c(.55, .42, .63)^2,
+    phylo = c(.35, .28, .40)^2)
+  for (j in 1:3) {
+    results[[paste0("temporal_relative_error_", j)]] <-
+      abs(results[[paste0("temporal_", j)]] - truth$temporal[[j]]) / truth$temporal[[j]]
+    results[[paste0("phylo_relative_error_", j)]] <-
+      abs(results[[paste0("phylo_", j)]] - truth$phylo[[j]]) / truth$phylo[[j]]
+  }
+  results$phi_absolute_error <- abs(results$phi_estimate - results$phi)
+  results$fixed_effect_mean_absolute_error <- vapply(seq_len(nrow(results)), function(i) {
+    mean(abs(as.numeric(results[i, paste0("beta_", 1:3)]) - truth$beta))
+  }, numeric(1))
+  summary <- do.call(rbind, lapply(expected_phi, function(phi) {
+    x <- results[results$phi == phi, , drop = FALSE]
+    data.frame(
+      phi = phi, attempts = nrow(x), strict_successes = sum(strict[results$phi == phi]),
+      mean_phi_absolute_error = mean(x$phi_absolute_error),
+      median_phi_absolute_error = stats::median(x$phi_absolute_error),
+      median_temporal_1_relative_error = stats::median(x$temporal_relative_error_1),
+      median_temporal_2_relative_error = stats::median(x$temporal_relative_error_2),
+      median_temporal_3_relative_error = stats::median(x$temporal_relative_error_3),
+      median_phylo_1_relative_error = stats::median(x$phylo_relative_error_1),
+      median_phylo_2_relative_error = stats::median(x$phylo_relative_error_2),
+      median_phylo_3_relative_error = stats::median(x$phylo_relative_error_3),
+      mean_fixed_effect_error = mean(x$fixed_effect_mean_absolute_error),
+      stringsAsFactors = FALSE
+    )
+  }))
+  summary$passes <- with(summary,
+    strict_successes == 10L & mean_phi_absolute_error <= .15 &
+      median_phi_absolute_error <= .20 &
+      median_temporal_1_relative_error <= .35 & median_temporal_2_relative_error <= .35 &
+      median_temporal_3_relative_error <= .35 & median_phylo_1_relative_error <= .35 &
+      median_phylo_2_relative_error <= .35 & median_phylo_3_relative_error <= .35 &
+      mean_fixed_effect_error <= .25)
+  summary
+}
+
+.temporal_program_validate_phylo_summary <- function(results, summary) {
+  recomputed <- .temporal_program_phylo_summary(results)
+  required <- names(recomputed)
+  if (!all(required %in% names(summary)) || nrow(summary) != nrow(recomputed) ||
+      !setequal(summary$phi, recomputed$phi)) {
+    stop("temporal-phylo recovery summary has an invalid schema or phi labels", call. = FALSE)
+  }
+  summary <- summary[match(recomputed$phi, summary$phi), required, drop = FALSE]
+  for (nm in setdiff(required, "phi")) {
+    if (any(is.na(summary[[nm]])) ||
+        !isTRUE(all.equal(summary[[nm]], recomputed[[nm]], tolerance = 1e-10))) {
+      stop("temporal-phylo recovery summary is stale or disagrees with retained attempts: ", nm,
+        call. = FALSE)
+    }
+  }
+  invisible(recomputed)
+}
+
+.temporal_program_verify_phylo <- function(root) {
+  fixture <- "tests/testthat/test-temporal-program-phylo-replicated.R"
+  result_path <- "dev/temporal-program/results/phylo-recovery-160-20260909.csv"
+  summary_path <- "dev/temporal-program/results/phylo-recovery-160-summary-20260909.csv"
+  required <- c(fixture, result_path, summary_path)
+  if (any(!file.exists(file.path(root, required)))) {
+    stop("missing temporal-phylo evidence: ",
+      paste(required[!file.exists(file.path(root, required))], collapse = ", "), call. = FALSE)
+  }
+  pkgload::load_all(root, quiet = TRUE, export_all = FALSE)
+  .temporal_program_assert_test_results(
+    testthat::test_file(file.path(root, fixture), reporter = "silent"), fixture
+  )
+  results <- utils::read.csv(file.path(root, result_path), check.names = FALSE)
+  summary <- utils::read.csv(file.path(root, summary_path), check.names = FALSE)
+  recomputed <- .temporal_program_validate_phylo_summary(results, summary)
+  if (!all(recomputed$passes)) {
+    stop("temporal-phylo recovery exceeds a frozen summary threshold", call. = FALSE)
+  }
+  invisible(recomputed)
+}
+
 if (identical(mode, "self-test")) {
   base <- data.frame(failed = 0L, error = 0L, warning = 0L, skipped = FALSE)
   .temporal_program_expect_reject(
@@ -118,6 +215,27 @@ if (identical(mode, "self-test")) {
     .temporal_program_validate_kernel_summary(synthetic, stale_summary),
     "a stale kernel-recovery summary"
   )
+  phylo_synthetic <- expand.grid(phi = c(-.4, 0, .6), seed = 2609181:2609190)
+  phylo_synthetic$terminal <- "success"; phylo_synthetic$convergence <- 0L
+  phylo_synthetic$pass_2_convergence <- 0L; phylo_synthetic$pass_2_accepted <- TRUE
+  phylo_synthetic$max_gradient <- 0; phylo_synthetic$phi_estimate <- phylo_synthetic$phi
+  for (j in 1:3) {
+    phylo_synthetic[[paste0("temporal_", j)]] <- c(.55, .42, .63)[[j]]^2
+    phylo_synthetic[[paste0("phylo_", j)]] <- c(.35, .28, .40)[[j]]^2
+    phylo_synthetic[[paste0("beta_", j)]] <- c(.2, -.3, .1)[[j]]
+  }
+  phylo_summary <- .temporal_program_phylo_summary(phylo_synthetic)
+  .temporal_program_validate_phylo_summary(phylo_synthetic, phylo_summary)
+  .temporal_program_expect_reject(
+    .temporal_program_phylo_summary(phylo_synthetic[-1L, , drop = FALSE]),
+    "an incomplete phylogenetic recovery receipt"
+  )
+  stale_phylo_summary <- phylo_summary
+  stale_phylo_summary$median_phylo_1_relative_error[[1L]] <- .1
+  .temporal_program_expect_reject(
+    .temporal_program_validate_phylo_summary(phylo_synthetic, stale_phylo_summary),
+    "a stale phylogenetic-recovery summary"
+  )
   cat("TEMPORAL_PROGRAM_SELF_TEST_PASS\n")
   quit(save = "no", status = 0L)
 }
@@ -136,14 +254,12 @@ if (identical(mode, "plan")) {
 if (identical(mode, "publication")) {
   stop("Publication verification requires a retained three-OS CI receipt; none is available in this local worktree.", call. = FALSE)
 }
+if (identical(mode, "phylo")) {
+  .temporal_program_verify_phylo(root)
+  cat("TEMPORAL_PROGRAM_PHYLO_PASS\n")
+  quit(save = "no", status = 0L)
+}
 if (identical(mode, "combinations")) {
-  ## Do not let the previously green kernel-only receipt stand in for every
-  ## public source pair. The phylogenetic fixture is intentionally a separate
-  ## retained campaign and this runner remains fail-closed until it has a
-  ## complete 30-attempt receipt plus a source-specific recomputation path.
-  if (file.exists(file.path(root, "tests/testthat/test-temporal-program-phylo-replicated.R"))) {
-    stop("temporal-phylo source pair is admitted but its retained recovery/verifier gate is incomplete; combinations cannot certify every admitted pair", call. = FALSE)
-  }
   fixture <- "tests/testthat/test-temporal-program-kernel-replicated.R"
   result_path <- "dev/temporal-program/results/kernel-recovery-20260909.csv"
   summary_path <- "dev/temporal-program/results/kernel-recovery-summary-20260909.csv"
@@ -209,6 +325,7 @@ if (identical(mode, "combinations")) {
       }, logical(1)))) {
     stop("temporal-kernel recovery exceeds a frozen summary threshold", call. = FALSE)
   }
+  .temporal_program_verify_phylo(root)
   cat("TEMPORAL_PROGRAM_COMBINATIONS_PASS\n")
   quit(save = "no", status = 0L)
 }

@@ -11,12 +11,14 @@ identity without reusing the retained S3b binary identity or running an S4 fit.
 contains a Git archive of clean commit `8889d8a4d2d88e1cfd60f7b644eb79e71a7346f4`,
 the isolated installation, both build attempt records, and an immutable JSON
 seal. The S4 runner now reads that seal explicitly. Before any runtime work it
-requires the pinned seal bytes, canonical seal path, intended source commit,
-archive and selected adapter/test hashes, plus the sealed source and loaded DLL
-SHA-256, Mach-O UUID, and size. It loads from the sealed isolated library. The
-old S3b frozen manifest remains retained but unselected. This is a DLL build
-identity seal, not a fully reproducible runtime: dependency binaries are not
-sealed.
+uses two roots. The archive/build root is the exact pinned source archive at
+`8889d8a4d2d88e1cfd60f7b644eb79e71a7346f4`, with its archive and DLL hashes.
+The runner/runtime root must instead be a clean descendant with an empty
+`8889d8..HEAD -- R src DESCRIPTION` diff and unchanged selected adapter/test
+hashes; later runner or documentation commits are permitted and its actual HEAD
+is recorded. The old S3b frozen manifest remains retained but unselected. This
+is a DLL build identity seal, not a fully reproducible runtime: dependency
+binaries are not sealed.
 
 ## Files Changed
 
@@ -28,8 +30,10 @@ sealed.
 
 ## Tests Added
 
-The runner contract now rejects a forged archive hash and a forged source-DLL
-UUID. The test was RED before the S4 seal reader/path functions existed.
+The runner contract rejects altered seal bytes/source hashes, a stale archive
+root, a non-descendant runtime root, a dirty runtime root, and package-source
+drift. It accepts a clean descendant containing only later runner/docs changes.
+The test was RED before the runtime-root validator existed.
 
 ## Build Evidence
 
@@ -57,6 +61,8 @@ fit path was exercised.
 
 - The seal authenticates this local ARM macOS build only.
 - Dependency binaries are not sealed; this is not a fully reproducible runtime.
+- The runtime root may differ from the archive/build root only outside `R`,
+  `src`, and `DESCRIPTION`; it remains a provenance boundary, not qualification.
 - It is build identity, not S4 qualification. No fit, receipt, recovery,
   coverage, generic-engine admission, or parity claim is created.
 

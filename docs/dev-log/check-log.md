@@ -54056,3 +54056,15 @@ candidate evidence is reused from this pre-integration run.
 - `git diff --check` is run only over authored runner/test/docs changes. Raw
   retained compiler output and the installed-package payload are excluded so
   their original bytes remain evidence.
+
+## 2026-09-10 — Destination B S4 two-root contract repair
+
+- The sealed JSON remains byte-for-byte unchanged. Its archive/build root is
+  exact commit `8889d8a4d2d88e1cfd60f7b644eb79e71a7346f4`, archive hash, and
+  DLL identity. The runtime root is deliberately separate: it must be a clean
+  descendant, retain the pinned selected adapter/test hashes, and have no
+  change under `R`, `src`, or `DESCRIPTION` since that archive root.
+- Temporary Git-root contracts reject dirty roots, non-descendants, and package
+  source drift, while accepting a later clean runner/docs-only commit. Runtime
+  HEAD is provenance recorded at execution, not a fragile hardcoded equality.
+  No workflow, fit, receipt, or qualification ran.

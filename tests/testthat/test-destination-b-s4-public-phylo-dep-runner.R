@@ -10,7 +10,7 @@ test_that("S4 runner selects its own immutable build seal", {
   expect_true(is.function(environment$s4_public_phylo_dep_s4_seal_path))
   expect_true(is.function(environment$s4_public_phylo_dep_read_s4_seal))
   expect_true(is.function(environment$s4_public_phylo_dep_s4_seal_sha256))
-  expect_true(is.function(environment$s4_public_phylo_dep_validate_s4_runtime_commit))
+  expect_true(is.function(environment$s4_public_phylo_dep_validate_s4_runtime_root))
   expect_match(
     environment$s4_public_phylo_dep_s4_seal_path(repository),
     "destination-b-s4-phylo-dep-build-seal.json$"
@@ -26,11 +26,73 @@ test_that("S4 runner selects its own immutable build seal", {
   payload <- jsonlite::read_json(environment$s4_public_phylo_dep_s4_seal_path(repository), simplifyVector = FALSE)
   payload$source_snapshot$commit <- paste(rep("0", 40), collapse = "")
   expect_error(environment$s4_public_phylo_dep_validate_s4_seal_payload(payload), "source commit mismatch")
-  expect_error(environment$s4_public_phylo_dep_validate_s4_runtime_commit(list(commit = "not-the-sealed-commit"), seal), "current source commit mismatch")
   alternate <- tempfile(fileext = ".json")
   withr::defer(unlink(alternate))
   file.copy(environment$s4_public_phylo_dep_s4_seal_path(repository), alternate)
   expect_error(environment$s4_public_phylo_dep_read_s4_seal(repository, alternate), "canonical path")
+})
+
+s4_runtime_git <- function(root, args) {
+  output <- system2("git", c("-C", root, args), stdout = TRUE, stderr = TRUE)
+  if (!is.null(attr(output, "status"))) stop(paste(output, collapse = "\n"))
+  trimws(output)
+}
+
+s4_runtime_root <- function() {
+  root <- tempfile("s4-runtime-root-")
+  dir.create(root)
+  s4_runtime_git(root, c("init", "-q"))
+  s4_runtime_git(root, c("config", "user.email", "s4@example.test"))
+  s4_runtime_git(root, c("config", "user.name", "S4 test"))
+  dir.create(file.path(root, "R"))
+  writeLines("adapter <- function() 1", file.path(root, "R", "adapter.R"))
+  s4_runtime_git(root, c("add", "R/adapter.R"))
+  s4_runtime_git(root, c("commit", "-q", "-m", shQuote("archive root")))
+  list(root = root, commit = s4_runtime_git(root, c("rev-parse", "HEAD")),
+       branch = s4_runtime_git(root, c("symbolic-ref", "--short", "HEAD")))
+}
+
+test_that("S4 runtime root permits only clean descendant runner and docs changes", {
+  environment <- new.env(parent = baseenv())
+  withr::local_envvar(GLLVM_S4_PUBLIC_PHYLO_DEP_DEFINE_ONLY = "1")
+  source(testthat::test_path("run-destination-b-s4-public-phylo-dep-isolated.R"), local = environment)
+  runtime <- s4_runtime_root()
+  withr::defer(unlink(runtime$root, recursive = TRUE))
+  dir.create(file.path(runtime$root, "docs"))
+  writeLines("later runner documentation", file.path(runtime$root, "docs", "runner.md"))
+  s4_runtime_git(runtime$root, c("add", "docs/runner.md"))
+  s4_runtime_git(runtime$root, c("commit", "-q", "-m", shQuote("later runner docs")))
+  seal <- list(source_snapshot = list(commit = runtime$commit))
+  accepted <- environment$s4_public_phylo_dep_validate_s4_runtime_root(runtime$root, seal, runtime$commit)
+  expect_identical(accepted$archive_root_commit, runtime$commit)
+  expect_false(identical(accepted$runtime_commit, runtime$commit))
+})
+
+test_that("S4 runtime root rejects dirty, non-descendant, and package-source drift", {
+  environment <- new.env(parent = baseenv())
+  withr::local_envvar(GLLVM_S4_PUBLIC_PHYLO_DEP_DEFINE_ONLY = "1")
+  source(testthat::test_path("run-destination-b-s4-public-phylo-dep-isolated.R"), local = environment)
+  runtime <- s4_runtime_root()
+  withr::defer(unlink(runtime$root, recursive = TRUE))
+  seal <- list(source_snapshot = list(commit = runtime$commit))
+  writeLines("uncommitted", file.path(runtime$root, "dirty.txt"))
+  expect_error(environment$s4_public_phylo_dep_validate_s4_runtime_root(runtime$root, seal, runtime$commit), "must be clean")
+  unlink(file.path(runtime$root, "dirty.txt"))
+  writeLines("adapter <- function() 2", file.path(runtime$root, "R", "adapter.R"))
+  s4_runtime_git(runtime$root, c("add", "R/adapter.R"))
+  s4_runtime_git(runtime$root, c("commit", "-q", "-m", shQuote("package drift")))
+  expect_error(environment$s4_public_phylo_dep_validate_s4_runtime_root(runtime$root, seal, runtime$commit), "package source drift")
+  s4_runtime_git(runtime$root, c("checkout", "-q", runtime$commit))
+  s4_runtime_git(runtime$root, c("checkout", "-qb", "other"))
+  writeLines("other branch", file.path(runtime$root, "other.txt"))
+  s4_runtime_git(runtime$root, c("add", "other.txt"))
+  s4_runtime_git(runtime$root, c("commit", "-q", "-m", shQuote("other branch")))
+  other <- s4_runtime_git(runtime$root, c("rev-parse", "HEAD"))
+  s4_runtime_git(runtime$root, c("checkout", "-q", runtime$branch))
+  writeLines("master branch", file.path(runtime$root, "master.txt"))
+  s4_runtime_git(runtime$root, c("add", "master.txt"))
+  s4_runtime_git(runtime$root, c("commit", "-q", "-m", shQuote("master branch")))
+  expect_error(environment$s4_public_phylo_dep_validate_s4_runtime_root(runtime$root, list(source_snapshot = list(commit = other)), other), "not a descendant")
 })
 
 test_that("S4 public phylo_dep receipt runner uses ASCII Julia string literals", {

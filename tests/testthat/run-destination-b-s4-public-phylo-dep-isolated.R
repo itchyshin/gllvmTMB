@@ -49,12 +49,21 @@ s4_public_phylo_dep_validate_s4_seal_payload <- function(seal) {
   invisible(seal)
 }
 
-s4_public_phylo_dep_validate_s4_runtime_commit <- function(snapshot, seal) {
-  expected <- s4_public_phylo_dep_expected_s4_source_commit()
-  if (!identical(snapshot$commit, expected) || !identical(snapshot$commit, seal$source_snapshot$commit)) {
-    stop("S4 build seal current source commit mismatch", call. = FALSE)
+s4_public_phylo_dep_validate_s4_runtime_root <- function(source_root, seal, expected_commit = s4_public_phylo_dep_expected_s4_source_commit()) {
+  source_root <- normalizePath(source_root, mustWork = TRUE)
+  if (!identical(seal$source_snapshot$commit, expected_commit)) {
+    stop("S4 build seal runtime root does not match its archive root", call. = FALSE)
   }
-  invisible(snapshot)
+  dirty <- s4_public_phylo_dep_git(c("-C", source_root, "status", "--porcelain"), "S4 runtime root status")
+  if (length(dirty) && any(nzchar(dirty))) stop("S4 runtime root must be clean", call. = FALSE)
+  ancestry <- suppressWarnings(system2("git", c("-C", source_root, "merge-base", "--is-ancestor", expected_commit, "HEAD"), stdout = TRUE, stderr = TRUE))
+  status <- attr(ancestry, "status")
+  if (!is.null(status) && identical(as.integer(status), 1L)) stop("S4 runtime root is not a descendant of the archive root", call. = FALSE)
+  if (!is.null(status)) stop("S4 runtime root ancestry check failed: ", paste(ancestry, collapse = "\n"), call. = FALSE)
+  changed <- s4_public_phylo_dep_git(c("-C", source_root, "diff", "--name-only", paste0(expected_commit, "..HEAD"), "--", "R", "src", "DESCRIPTION"), "S4 runtime root package-source diff")
+  if (length(changed) && any(nzchar(changed))) stop("S4 runtime root package source drift", call. = FALSE)
+  list(root = source_root, archive_root_commit = expected_commit,
+       runtime_commit = s4_public_phylo_dep_git(c("-C", source_root, "rev-parse", "HEAD"), "S4 runtime root commit"))
 }
 
 s4_public_phylo_dep_read_s4_seal <- function(source_root, seal_path = s4_public_phylo_dep_s4_seal_path(source_root)) {
@@ -166,7 +175,7 @@ s4_public_phylo_dep_main <- function() {
   r_before <- s4_public_phylo_dep_snapshot(getwd(), "gllvmTMB source")
   julia_before <- s4_public_phylo_dep_snapshot(project, "GLLVM.jl source")
   s4_seal <- s4_public_phylo_dep_read_s4_seal(getwd())
-  s4_public_phylo_dep_validate_s4_runtime_commit(r_before, s4_seal)
+  runtime_root <- s4_public_phylo_dep_validate_s4_runtime_root(getwd(), s4_seal)
   clean_probe <- s4_public_phylo_dep_clean_julia_probe(project, environment, Sys.getenv("GLLVM_S4_JULIA_HOME"))
   if ("gllvmTMB" %in% loadedNamespaces()) stop("S4 sealed load requires no preloaded gllvmTMB namespace", call. = FALSE)
   library("gllvmTMB", lib.loc = s4_seal$isolated_library, character.only = TRUE)
@@ -195,7 +204,7 @@ s4_public_phylo_dep_main <- function() {
   r_after <- s4_public_phylo_dep_snapshot(getwd(), "gllvmTMB source")
   julia_after <- s4_public_phylo_dep_snapshot(project, "GLLVM.jl source")
   if (!identical(r_before, r_after) || !identical(julia_before, julia_after)) stop("source changed while S4 public phylo_dep evidence was being retained", call. = FALSE)
-  result <- list(kind = "destination_b_s4_public_phylo_dep", status = "passed_experimental_postfit_only", scope = "Gaussian p=2, three-tip, shared-residual public formula cell; generic engine remains closed", source = list(s4_build_seal_path = s4_public_phylo_dep_s4_seal_path(getwd()), s4_source_archive_sha256 = s4_seal$source_snapshot$archive$sha256, s4_source_snapshot_commit = s4_seal$source_snapshot$commit, r_commit = r_before$commit, r_source_clean_and_stable = TRUE, r_shared_object_source = s4_seal$binary_identity$source_dll, r_shared_object_loaded = loaded_identity, gllvm_julia_commit = julia_before$commit, gllvm_julia_source_clean_and_stable = TRUE, fixture_sha256 = raw$fixture_sha256, julia = clean_probe, embedded_julia_runtime = embedded_julia), endpoint_pairs = endpoints, test_output_sha256 = digest::digest(paste(raw_output, collapse = "\n"), algo = "sha256"), runner_sha256 = digest::digest(file = "tests/testthat/run-destination-b-s4-public-phylo-dep-isolated.R", algo = "sha256"), generic_engine_closed = TRUE)
+  result <- list(kind = "destination_b_s4_public_phylo_dep", status = "passed_experimental_postfit_only", scope = "Gaussian p=2, three-tip, shared-residual public formula cell; generic engine remains closed", source = list(s4_build_seal_path = s4_public_phylo_dep_s4_seal_path(getwd()), s4_source_archive_sha256 = s4_seal$source_snapshot$archive$sha256, s4_archive_build_root_commit = s4_seal$source_snapshot$commit, r_runtime_root = runtime_root, r_commit = r_before$commit, r_source_clean_and_stable = TRUE, r_shared_object_source = s4_seal$binary_identity$source_dll, r_shared_object_loaded = loaded_identity, gllvm_julia_commit = julia_before$commit, gllvm_julia_source_clean_and_stable = TRUE, fixture_sha256 = raw$fixture_sha256, julia = clean_probe, embedded_julia_runtime = embedded_julia), endpoint_pairs = endpoints, test_output_sha256 = digest::digest(paste(raw_output, collapse = "\n"), algo = "sha256"), runner_sha256 = digest::digest(file = "tests/testthat/run-destination-b-s4-public-phylo-dep-isolated.R", algo = "sha256"), generic_engine_closed = TRUE)
   s4_public_phylo_dep_write_once(result, receipt_path)
   cat("S4_PUBLIC_PHYLO_DEP_RECEIPT ", receipt_path, "\n", sep = "")
 }

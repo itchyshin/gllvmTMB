@@ -178,7 +178,7 @@ summary$passes <- with(summary, strict_successes == 10L &
   median_kappa_relative_error <= .50 & mean_fixed_effect_error <= .25)
 utils::write.csv(result, result_path, row.names = FALSE)
 utils::write.csv(summary,
-  file.path(root, "dev/temporal-program/results/spatial-recovery-160-summary-20260909.csv"),
+  file.path(root, "dev/temporal-program/results/spatial-recovery-80-summary-20260909.csv"),
   row.names = FALSE)
 print(result, row.names = FALSE); print(summary, row.names = FALSE)
 if (!all(summary$passes)) stop("Frozen spatial recovery campaign fails its predeclared thresholds.", call. = FALSE)

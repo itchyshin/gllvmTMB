@@ -57811,3 +57811,26 @@ Deliberately not run: Totoro 9×500 grid dispatch; full `devtools::test()`.
   now checkpoints every attempt and resumes only missing frozen seed--phi
   combinations. Completing the remaining 22 attempts needs separate compute
   approval; no seed or threshold changed.
+
+## 2026-09-10 — completed temporal--phylogenetic Fir recovery remains failed
+
+- Fir job `59096255` completed the 22 missing frozen recovery tasks after a
+  one-cell installed-runtime preflight reproduced the Totoro fixture. The
+  original eight checkpoints and the new 22 receipts form all 30 `(phi, seed)`
+  cells, with every terminal recorded as `success` and every result retained.
+- The frozen strict gate failed without relaxation: strict successes are 10/10,
+  9/10, and 8/10 at `phi = -.4, 0, .6`. Seeds 2609188 (`phi = 0`), 2609183,
+  and 2609185 (`phi = .6`) have outer gradients 0.001614525, 0.001358263, and
+  0.002647219, respectively. The 30-row receipt and summary are retained at
+  `dev/temporal-program/results/failed/phylo-recovery-160-fir-59096255-20260910/`.
+- The remote runner now retains pre-fit load errors and binds exported provider
+  helpers in installed-package tasks. The collector now removes source row names
+  and `expand.grid()` metadata before its strict ledger-key comparison. Exact
+  raw receipts reproduced the collector bug before the repair; a temporary
+  threshold-satisfying copy emitted `TEMPORAL_PHYLO_COLLECTION_PASS` after it.
+- `Rscript --vanilla dev/temporal-program/verify.R remote` emitted
+  `TEMPORAL_PROGRAM_REMOTE_PASS`; `Rscript --vanilla dev/temporal-program/verify.R
+  self-test` emitted `TEMPORAL_PROGRAM_SELF_TEST_PASS`. No package likelihood,
+  grammar, help, vignette, README, NEWS, or generated documentation surface
+  changed. TEMP-06-03 remains `partial`; this is not recovery, coverage,
+  cross-platform, merge, or release evidence.

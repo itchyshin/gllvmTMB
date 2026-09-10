@@ -70,12 +70,14 @@ composition have focused local checks. Recovery, precision, calibration, and
 interval coverage remain unclaimed; the temporal article gives the supported
 input contract and unavailable next steps. The first locally verified
 cross-source cells are replicated AR1 `temporal_indep()` plus either one
-labelled `kernel_indep()` term or one fixed, labelled `phylo_indep()` term
-whose `tree =` or `vcv =` is supplied inside the keyword. OU, other
-temporal/source modes, spatial, and animal combinations remain unavailable.
-The phylogenetic cell has focused local likelihood and lifecycle checks; its
-recovery evidence is a separate bounded gate and does not establish a general
-recovery or coverage claim.
+labelled `kernel_indep()` term, one fixed labelled `phylo_indep()` term whose
+`tree =` or `vcv =` is supplied inside the keyword, or one fixed labelled
+`animal_indep()` term with in-keyword `pedigree =`, `A =`, or `Ainv =`. OU,
+other temporal/source modes, and spatial combinations remain unavailable. The
+phylogenetic and animal cells have focused local likelihood and lifecycle
+checks; their recovery evidence is separate and does not establish a general
+recovery or coverage claim. In the animal cell, `A` is a labelled dense
+relatedness matrix; pass a sparse relationship precision through `Ainv`.
 
 ## What the model does
 

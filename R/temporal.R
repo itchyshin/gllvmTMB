@@ -66,9 +66,9 @@ temporal_dep <- function(formula, time, structure = "ar1", replicate = NULL) {
 #' loadings. With `unique = TRUE`, the temporal diagonal Psi is also correlated
 #' across occasions; it is not independent occasion noise. Temporal sources can
 #' be added to ordinary `unit` and `unit_obs` terms. The initial cross-source
-#' cells are replicated AR1 `temporal_indep()` plus one labelled `kernel_indep()`
-#' or fixed labelled `phylo_indep()` term. Other temporal-source combinations
-#' remain unavailable.
+#' cells are replicated AR1 `temporal_indep()` plus one labelled `kernel_indep()`,
+#' a fixed labelled `phylo_indep()` term, or a fixed labelled `animal_indep()`
+#' term. Other temporal-source combinations remain unavailable.
 #'
 #' @rdname temporal_latent
 #' @param d Latent rank. This version supports `1`.
@@ -146,14 +146,94 @@ temporal_latent <- function(formula, time, d = 1, structure = "ar1",
   temporal_mode <- sub("^temporal_", "", marker_name)
   allowed_source_pair <- identical(temporal_mode, "indep") &&
     identical(length(source_terms), 1L) &&
-    source_terms %in% c("kernel_indep", "phylo_indep")
+    source_terms %in% c("kernel_indep", "phylo_indep", "animal_indep")
   source_pair <- if (isTRUE(allowed_source_pair)) source_terms[[1L]] else NULL
+
+  ## An identity animal relationship and an ordinary `indep()` term over the
+  ## same labels are the same static covariance basis.  Detect that exact
+  ## duplication on the public call, before animal sugar turns both terms into
+  ## anonymous engine blocks.  We intentionally require a labelled dense A:
+  ## pedigree and Ainv routes can contain unobserved ancestors/precision rows,
+  ## so testing identity from only their observed slice would be misleading.
+  find_calls_named <- function(x, target, out = list()) {
+    if (!is.call(x)) return(out)
+    if (is.name(x[[1L]]) && identical(as.character(x[[1L]]), target)) {
+      out[[length(out) + 1L]] <- x
+    }
+    for (i in seq_along(x)[-1L]) out <- find_calls_named(x[[i]], target, out)
+    out
+  }
+  ## Leave the regular temporal admission errors in charge until the narrow
+  ## AR1/replication shape is otherwise valid.  A deferred temporal mode must
+  ## not misleadingly fail first because its animal term has no matrix yet.
+  marker_names_early <- names(marker)
+  if (is.null(marker_names_early)) marker_names_early <- rep("", length(marker))
+  marker_arg_early <- function(name, default = NULL) {
+    i <- which(marker_names_early == name)
+    if (length(i)) marker[[i[[1L]]]] else default
+  }
+  animal_shape_ready <- identical(marker_name, "temporal_indep") &&
+    identical(marker_arg_early("structure", "ar1"), "ar1") &&
+    is.name(marker_arg_early("replicate", quote(NULL)))
+  if (identical(source_pair, "animal_indep") && animal_shape_ready) {
+    animal_call <- find_calls_named(rhs, "animal_indep")
+    if (length(animal_call) == 1L) {
+      animal_call <- animal_call[[1L]]
+      animal_names <- names(animal_call)
+      if (is.null(animal_names)) animal_names <- rep("", length(animal_call))
+      animal_relationship_inputs <- c("pedigree", "A", "Ainv")
+      if (sum(animal_names %in% animal_relationship_inputs) != 1L) {
+        cli::cli_abort(c(
+          "{.fn animal_indep} accepts exactly one of {.arg pedigree}, {.arg A}, or {.arg Ainv}.",
+          ">" = "Choose the one representation that defines the animal relationship matrix."
+        ))
+      }
+      A_pos <- which(animal_names == "A")
+      bar_animal <- animal_call[[2L]]
+      animal_group <- if (is.call(bar_animal) && length(bar_animal) == 3L &&
+        is.name(bar_animal[[3L]])) as.character(bar_animal[[3L]]) else NULL
+      indep_calls <- find_calls_named(stripped_formula[[length(formula)]], "indep")
+      duplicate_unit_indep <- any(vapply(indep_calls, function(call) {
+        bar <- call[[2L]]
+        is.call(bar) && length(bar) == 3L && is.name(bar[[1L]]) &&
+          identical(as.character(bar[[1L]]), "|") && is.name(bar[[3L]]) &&
+          identical(as.character(bar[[3L]]), animal_group)
+      }, logical(1L)))
+      if (length(A_pos) == 1L && !is.null(animal_group) && animal_group %in% names(data)) {
+        A_value <- tryCatch(eval(animal_call[[A_pos]], envir = environment(formula)),
+          error = function(e) NULL)
+        if (!is.null(A_value) && inherits(A_value, "sparseMatrix")) {
+          cli::cli_abort(c(
+            "{.arg A} must be a dense relatedness matrix.",
+            ">" = "Use {.arg Ainv} for a sparse relationship precision matrix."
+          ))
+        }
+        if (isTRUE(duplicate_unit_indep) && !is.null(A_value)) {
+          A_value <- as.matrix(A_value)
+          ids <- unique(as.character(data[[animal_group]]))
+          if (!is.null(rownames(A_value)) && !is.null(colnames(A_value)) &&
+              all(ids %in% rownames(A_value)) && all(ids %in% colnames(A_value))) {
+            A_observed <- A_value[ids, ids, drop = FALSE]
+            scale <- max(1, max(abs(A_observed)))
+            is_identity <- max(abs(A_observed - diag(diag(A_observed)))) <= 1e-10 * scale &&
+              max(abs(diag(A_observed) - diag(A_observed)[[1L]])) <= 1e-10 * scale
+            if (is_identity) {
+              cli::cli_abort(c(
+                "{.fn animal_indep} with an identity relationship duplicates {.fn indep} for the same grouping factor.",
+                ">" = "Keep one static term, or supply a non-identity animal relationship."
+              ))
+            }
+          }
+        }
+      }
+    }
+  }
   forbidden_sources <- if (allowed_source_pair) character(0) else source_terms
   if (length(forbidden_sources)) {
     cli::cli_abort(c(
       "A temporal covariance term cannot be combined with another covariance source in this version.",
       "i" = "Found source provider(s): {.fn {forbidden_sources}}.",
-      ">" = "Use ordinary unit/unit_obs terms, or one of the admitted replicated AR1 {.code temporal_indep() + kernel_indep()} or {.code temporal_indep() + phylo_indep()} cells. Other temporal source pairs remain deferred."
+      ">" = "Use ordinary unit/unit_obs terms, or one of the admitted replicated AR1 {.code temporal_indep() + kernel_indep()}, {.code temporal_indep() + phylo_indep()}, or {.code temporal_indep() + animal_indep()} cells. Other temporal source pairs remain deferred."
     ))
   }
   response_cols <- all.vars(formula[[2L]])

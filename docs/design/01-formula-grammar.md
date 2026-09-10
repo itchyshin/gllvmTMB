@@ -31,14 +31,17 @@ named migration fixture.
 time and uses \(K(t,s)=\exp\{-\exp(\xi)|t-s|\}\), with no automatic rescaling.
 Both long and `traits(...)` wide forms use the same temporal specification.
 Ordinary unit and unit-observation covariance terms are admitted when the
-series and unit partitions agree and `unit_obs` is unit-nested. Spatial,
-animal, and meta providers remain refused. Two source-pair exceptions are
+series and unit partitions agree and `unit_obs` is unit-nested. Spatial and
+meta providers remain refused. Three source-pair exceptions are
 replicated AR1 `temporal_indep()` with exactly one labelled `kernel_indep()`
 term, or with exactly one fixed labelled `phylo_indep()` term whose `tree =`
-or `vcv =` is supplied inside the keyword. Both use an additive static-source
-plus temporal-process covariance, not a source-by-time product; global
-`phylo_tree`/`phylo_vcv`, OU and the remaining temporal/source-mode
-combinations remain refused.
+or `vcv =` is supplied inside the keyword, or with exactly one fixed labelled
+`animal_indep()` term whose `pedigree =`, `A =`, or `Ainv =` is supplied inside
+the keyword. These use an additive static-source plus temporal-process
+covariance, not a source-by-time product; global `phylo_tree`/`phylo_vcv`, OU
+and the remaining temporal/source-mode combinations remain refused. In this
+animal cell, `A` is a labelled dense relatedness matrix and a sparse
+relationship precision belongs in `Ainv`.
 
 The package should learn from `glmmTMB`, `gllvm`, and `galamm` without
 copying their grammars wholesale. The public grammar is built around

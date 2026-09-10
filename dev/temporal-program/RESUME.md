@@ -78,6 +78,8 @@ field redraw checked against dense covariance moments. Its source-pair recovery
 campaign retained 30 fixed attempts but failed its frozen gate: strict successes
 were 10/10, 9/10, and 8/10 at persistence `-.4`, `0`, and `.6`; spatial scale
 and range estimates were unstable at positive persistence. It remains partial.
+`SPATIAL-RECOVERY-DIAGNOSTIC.md` verifies that this is not an SPDE
+parameter-scale inversion and records the derived-SD evidence.
 
 ## Animal result (2026-09-09)
 

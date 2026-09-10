@@ -8,7 +8,8 @@ arg_value <- function(name) {
   sub(paste0("^", name, "="), "", hit)
 }
 root <- normalizePath(".", mustWork = TRUE)
-mode <- arg_value("--mode") %||% "run"
+mode <- arg_value("--mode")
+if (is.null(mode)) mode <- "run"
 script_dir <- file.path(root, "dev", "temporal-program", "remote")
 sys.source(file.path(script_dir, "phylo-recovery-common.R"), envir = globalenv())
 sys.source(file.path(script_dir, "phylo-third-pass-common.R"), envir = globalenv())

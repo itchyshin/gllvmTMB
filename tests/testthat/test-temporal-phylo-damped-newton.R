@@ -101,3 +101,18 @@ test_that("runner asks TMB to report from its conditional mode", {
   expect_silent(parse(file = testthat::test_path("..", "..", "dev", "temporal-program", "remote",
     "phylo-damped-newton.R")))
 })
+
+test_that("DRAC envelope has the exact six-cell plan and a submit interlock", {
+  root <- normalizePath(testthat::test_path("..", ".."), mustWork = TRUE)
+  task <- file.path(root, "dev", "temporal-program", "remote", "phylo-damped-newton-task.R")
+  old <- setwd(root)
+  on.exit(setwd(old), add = TRUE)
+  output <- system2("Rscript", c("--vanilla", task, "--mode=plan"), stdout = TRUE, stderr = TRUE)
+  expect_true(any(grepl("TEMPORAL_PHYLO_DAMPED_NEWTON_TASK_PLAN_PASS tasks=6", output, fixed = TRUE)))
+  envelope <- readLines(file.path(root, "dev", "temporal-program", "remote",
+    "phylo-damped-newton-drac.sh"), warn = FALSE)
+  expect_true(any(grepl("--array=1-6%6", envelope, fixed = TRUE)))
+  expect_true(any(grepl("TEMPORAL_PHYLO_DAMPED_NEWTON_DRAC_APPROVED=YES", envelope, fixed = TRUE)))
+  expect_true(any(grepl("Refuse to construct a compute envelope from a dirty source checkout", envelope,
+    fixed = TRUE)))
+})

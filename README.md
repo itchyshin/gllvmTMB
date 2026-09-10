@@ -43,6 +43,7 @@ calibration remains incomplete.
 | fit your first model | [Get started with gllvmTMB](https://itchyshin.github.io/gllvmTMB/articles/gllvmTMB.html) |
 | decide whether your model and intended result are inside the current evidence boundary | [Current limitations and boundaries](https://itchyshin.github.io/gllvmTMB/articles/current-limits.html) |
 | choose the guide matching your data and question | [Browse all articles](https://itchyshin.github.io/gllvmTMB/articles/) |
+| model three traits measured repeatedly through time | [Temporal covariance](https://itchyshin.github.io/gllvmTMB/articles/temporal-ar1.html) |
 | check whether a fit is interpretable | [Can I trust this fit?](https://itchyshin.github.io/gllvmTMB/articles/fit-diagnostics.html) |
 | look up formulas, covariance terms, or families | [Reference index](https://itchyshin.github.io/gllvmTMB/reference/) |
 
@@ -59,6 +60,26 @@ shown they recover known parameters, so treat this as a teaching example, not
 a proven method. The lme4-style bare-bar spelling `(1 + x | g)` is not
 accepted yet; for a random-slope model, use `latent(1 + x | g, d = K)`
 instead.
+
+The experimental temporal source row provides `temporal_indep()`,
+`temporal_dep()`, and rank-one `temporal_latent()` for Gaussian repeated-trait
+data. AR1 retains integer gaps and OU uses elapsed numeric time; the optional
+latent Psi is correlated through that same kernel. Long and `traits(...)` wide
+calls, simulation, training-data prediction, and ordinary unit/unit-observation
+composition have focused local checks. Recovery, precision, calibration, and
+interval coverage remain unclaimed; the temporal article gives the supported
+input contract and unavailable next steps. Four narrow additive source-pair
+cells are implemented: replicated AR1 `temporal_indep()` plus one labelled
+`kernel_indep()` term; one fixed labelled `phylo_indep()` term with in-keyword
+`tree =` or `vcv =`; one fixed labelled `animal_indep()` term with in-keyword
+`pedigree =`, `A =`, or `Ainv =`; or one fixed-mesh `spatial_indep()` term.
+Their evidence is partial and differs by pair: the named kernel fixture passes
+locally; retained phylogenetic, animal, and spatial recovery gates fail
+strictly. They are not cross-platform verification,
+release, general recovery, or coverage evidence. OU, other temporal/source
+modes, source-by-time interactions, and other structured-source combinations
+remain unavailable. In the animal cell, `A` is a labelled dense relatedness
+matrix; pass a sparse relationship precision through `Ainv`.
 
 ## What the model does
 

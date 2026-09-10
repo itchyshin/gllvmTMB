@@ -394,7 +394,12 @@ UNMAPPED_BY_DESIGN <- c(
   "FAM-19" = "R-only aspirational generalized-gamma family (gengamma), blocked on the R side too; no Julia twin",
   "MIS-04" = "R-only unified weight-column handling; internal plumbing, no distinct Julia-comparable capability",
   "MIS-05" = "R S3-method ergonomics (simulate.gllvmTMB_multi()); Julia's ledger does not track simulate() as a capability row",
-  "MIS-38" = "API hygiene only (#1190 unused unit_obs/cluster warning) -- Julia's own ledger explicitly lists this under 'Not capability (API hygiene in 0.7.1, nothing to mirror): unused grouping-slot warnings (#1190)', so it is deliberately excluded on both sides"
+  "MIS-38" = "API hygiene only (#1190 unused unit_obs/cluster warning) -- Julia's own ledger explicitly lists this under 'Not capability (API hygiene in 0.7.1, nothing to mirror): unused grouping-slot warnings (#1190)', so it is deliberately excluded on both sides",
+  "TEMP-06-01" = "R-only temporal source parsing and state indexing; GLLVM.jl has no temporal provider row",
+  "TEMP-06-02" = "R-only temporal AR1/OU covariance implementation; GLLVM.jl has no temporal provider row",
+  "TEMP-06-03" = "R-only temporal extraction and simulation workflow; GLLVM.jl has no temporal provider row",
+  "TEMP-06-04" = "R-only bounded temporal lifecycle helpers; no Julia temporal route exists to compare",
+  "TEMP-06-05" = "R-only retained temporal source-pair evidence; no Julia temporal source-pair route exists to compare"
 )
 
 # ---------------------------------------------------------------------------

@@ -45,6 +45,7 @@ bootstrap_ci_lv_effects <- function(fit,
   if (!inherits(fit, "gllvmTMB_multi")) {
     cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
   }
+  .temporal_assert_no_iid_inference(fit, "bootstrap_ci_lv_effects")
   B_hat <- fit$report[["B_lv_unit"]]
   if (is.null(B_hat)) {
     cli::cli_abort(c(

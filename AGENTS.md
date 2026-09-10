@@ -34,8 +34,8 @@ Model Builder.
 - The package fits multi-response models on long-format data: one row
   per `(unit, trait)` observation. The "unit" is typically a site or
   individual; the "trait" is one column of a multivariate response.
-- The covariance dispatch is the **5 x 3 keyword grid**: rows are the
-  five correlation **sources** across grouping levels, columns are the
+- The covariance dispatch is the **6 x 3 keyword grid**: rows are the
+  six correlation **sources** across grouping levels, columns are the
   three fundamental trait-covariance **modes**. Every cell is a live
   keyword. (Canonical surface:
   `vignettes/articles/api-keyword-grid.Rmd`.)
@@ -47,6 +47,7 @@ Model Builder.
 | phylo   | `phylo_indep()`   | `phylo_dep()`   | `phylo_latent()`   |
 | spatial | `spatial_indep()` | `spatial_dep()` | `spatial_latent()` |
 | kernel  | `kernel_indep()`  | `kernel_dep()`  | `kernel_latent()`  |
+| temporal | `temporal_indep()` | `temporal_dep()` | `temporal_latent()` |
 
 - Structured-rho development arc (2026-08-31): canonical phylo/animal/kernel/spatial
   helpers have trailing `rho = 1`; spatial range stays separately estimated.
@@ -131,7 +132,7 @@ Model Builder.
    and a runnable example. The return-value contract for every
    exported `extract_*()` is recorded in
    `docs/design/06-extractors-contract.md`.
-3. Do not change formula grammar (the 5 x 3 keyword grid, the
+3. Do not change formula grammar (the 6 x 3 keyword grid, the
    `scalar` / `unique` modifiers, or `traits()` LHS) without updating
    `docs/design/01-formula-grammar.md` (the canonical grammar
    contract), the grid / kernel note in this file, and the parallel
@@ -422,7 +423,7 @@ implementation reviewer.
 Use one narrow Rose pre-publish audit for any PR that touches
 README, vignettes, `_pkgdown.yml`, NEWS, roxygen for exported
 functions, or generated Rd files. The gate checks method lists,
-default-value claims, exported function names, the 5 x 3 keyword grid,
+default-value claims, exported function names, the 6 x 3 keyword grid,
 argument names, family lists, and stale terminology. It does not
 replace Boole, Gauss, Noether, Grace, Pat, or Darwin; it only checks
 cross-file consistency before user-facing content is published.

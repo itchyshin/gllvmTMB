@@ -34,7 +34,13 @@ strength](#advanced-estimating-the-source-strength).
 
 ## Choose in two steps
 
-### 1. What relates the grouping levels?
+### 1. What is being related?
+
+The first five sources describe relationships **among stable units**: for
+example, individuals, species, locations, or rows of a supplied relatedness
+matrix. Temporal is the additional source for **ordered repeated states within
+a series**. It uses the same three trait-covariance modes, but its series and
+time coordinates have a different scientific meaning.
 
 - **No prefix:** levels are independent, as in an ordinary random effect.
 - **`animal_`:** individuals are related through a pedigree, `A`, or `Ainv`.
@@ -44,6 +50,9 @@ strength](#advanced-estimating-the-source-strength).
   locations can be correlated.
 - **`kernel_`:** levels are related through a supplied dense covariance matrix
   `K` — the generic dense-matrix source (the fifth grid row).
+- **`temporal_`:** ordered states within each `series` share an AR1 or OU
+  kernel. `time =` names the occasion or elapsed-time column; AR1 preserves
+  integer gaps and OU uses elapsed-time distances.
 
 These sources are alternatives based on study design, not a progression from
 fine to broad scale. Add a source prefix only when that structured relationship
@@ -77,16 +86,17 @@ All fitted keyword covariances are random-effect covariances on the model's
 linear-predictor or latent scale. They are not automatically response-scale
 covariances for non-Gaussian traits.
 
-## The 5 × 3 grid
+## The 5 × 3 grid, plus temporal
 
-The rows are the five correlation **sources** across grouping levels; the
-columns are the three fundamental trait-covariance **modes**. Every cell is a
-live keyword. The *scalar* and *unique* sub-cases are modifiers, listed under
-the table.
+The five stable-unit sources form the familiar 5 × 3 grid. Temporal adds a
+sixth, within-series row with the same three trait-covariance modes. Thus the
+formal grammar is a 6 × 3 source-by-mode grid, while this presentation keeps
+the important distinction visible. Every cell is a live keyword. The *scalar*
+and *unique* sub-cases are modifiers, listed under the table.
 
 <div class="table-responsive">
 <table class="table table-striped" style="min-width: 640px;">
-<caption>Source × mode covariance keyword grid</caption>
+<caption>Stable-unit sources and the additional temporal source, each paired with a trait-covariance mode</caption>
 <thead><tr>
 <th>Source</th><th>Independent</th><th>Dependent</th><th>Latent</th>
 </tr></thead>
@@ -101,6 +111,8 @@ the table.
 <td><code>spatial_dep()</code></td><td><code>spatial_latent()</code></td></tr>
 <tr><th>kernel</th><td><code>kernel_indep()</code></td>
 <td><code>kernel_dep()</code></td><td><code>kernel_latent()</code></td></tr>
+<tr><th>temporal (within series)</th><td><code>temporal_indep()</code></td>
+<td><code>temporal_dep()</code></td><td><code>temporal_latent()</code></td></tr>
 </tbody>
 </table>
 </div>
@@ -115,6 +127,34 @@ term is fitted.
 term (see the latent default below). The standalone `unique()` keyword is
 soft-deprecated in favour of `indep()` (for a plain diagonal) and
 `latent(unique = TRUE)` (for the paired companion).
+
+## The temporal addition
+
+`temporal_indep(0 + trait | series, time = occasion)`,
+`temporal_dep(...)`, and `temporal_latent(..., d = 1)` form the temporal row.
+Here `series` identifies one independent trajectory, and `time = occasion`
+uses the bare `occasion` column from the data: it is neither a formula term nor
+a character string. A `replicate = measurement` column identifies repeated
+measurements at the same `(series, occasion)` state. The provider creates that
+state index privately; it does not change `unit` or `unit_obs`, which retain
+their ordinary stable-unit and within-unit meanings.
+
+AR1 accepts ordered integer occasions and keeps missing values as gaps; OU
+accepts elapsed numeric time without automatic rescaling. With
+`temporal_latent(unique = TRUE)`, Psi is itself correlated through the temporal
+kernel, not IID occasion noise. The temporal article shows matching long and
+`traits(...)` wide calls. **In scope:** focused Gaussian local fits, source
+parsing, covariance oracles, simulation, and ordinary unit/unit-observation
+composition. **Partial:** recovery is not yet a general claim. The bounded
+temporal-only forecast, profile, bootstrap, and supplied-candidate comparison
+helpers have their own contracts; generic forecasts, new-data prediction,
+generic intervals/profiles, and automatic selection remain unavailable. Four
+replicated-AR1 additive `temporal_indep()` pairs with one diagonal kernel,
+phylogenetic, animal, or spatial source are separately implemented, with
+pair-specific local evidence only: kernel has a passing local fixture,
+phylogenetic and spatial recovery gates retain failures, and animal recovery is
+pending. Other families, higher rank, source-by-time interactions, and other
+structured-source combinations are unavailable.
 
 ## What the modes estimate
 
@@ -282,7 +322,7 @@ biological stories.
 
 <div class="slope-chooser">
 
-The 5 × 3 grid describes **trait covariance for random effects**. The slope
+The 6 × 3 grid describes **trait covariance for random effects**. The slope
 helpers answer a separate question: *how do fixed-predictor coefficients vary
 across the response columns?* They are not a new grid row, column, or mode.
 
@@ -328,7 +368,7 @@ when the slope of `x` should vary **across the sampled grouping units**
 `column_coef()`, `phylo_coef()`, `animal_coef()`, `kernel_coef()`, and
 `spatial_coef()` extend the coefficient
 basis to an explicit random intercept, a slope, or both. They are also outside
-the 5 × 3 grid: their covariance is across coefficient-basis columns, not a new
+the 6 × 3 grid: their covariance is across coefficient-basis columns, not a new
 trait-covariance mode.
 
 ```r

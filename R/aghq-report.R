@@ -580,6 +580,7 @@ anova.gllvmTMB_multi <- function(object, ..., test = c("chibar", "chisq", "none"
 
 #' @rdname anova.gllvmTMB_multi
 #' @param x An `"anova.gllvmTMB_multi"` object.
+#' @param digits Number of significant digits printed in the comparison table.
 #' @export
 print.anova.gllvmTMB_multi <- function(x, digits = 4, ...) {
   cat("Likelihood-ratio comparison of gllvmTMB fits\n\n")

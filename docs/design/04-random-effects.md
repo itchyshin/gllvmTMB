@@ -1,6 +1,6 @@
 # Random Effects
 
-**Maintained by:** Boole (R API + parser owner for the 4 × 3
+**Maintained by:** Boole (R API + parser owner for the 6 × 3
 keyword grid) and Fisher (inference semantics on the
 reduced-rank decomposition).
 **Reviewers:** Curie (simulation-recovery + boundary cases),
@@ -9,7 +9,7 @@ implementation alignment), Emmy (S3 dispatch on the random-
 effects output).
 
 The random-effects machinery is the heart of `gllvmTMB`. The
-4 × 3 covariance keyword grid (see
+6 × 3 covariance keyword grid (see
 `docs/design/01-formula-grammar.md`) is the user-facing surface;
 this document describes the contract underneath — what each
 keyword does to the latent variables, how the TMB template
@@ -27,6 +27,23 @@ compatibility syntax. The row remains partial because non-Gaussian
 augmented diagonal Psi is still guarded and broader coverage evidence is
 not yet established.
 
+## Temporal source tier
+
+Temporal is a sixth source tier, not a B-tier rewrite. It owns a private
+ordered `(series, time)` state index and the `z_temporal` / `q_temporal`
+blocks, while public `unit` and `unit_obs` retain their ordinary meanings.
+For one provider the covariance is
+\(J_{unit}\otimes\Sigma_B + K_{time}\otimes\Sigma_T +
+J_{unit_obs}\otimes\Sigma_W + R\). The AR1 source preserves integer gaps;
+the OU source uses user-supplied elapsed numeric time. `temporal_indep()`,
+`temporal_dep()`, and rank-one `temporal_latent()` supply diagonal,
+unstructured, and reduced-rank \(\Sigma_T\), respectively. Its
+`unique = TRUE` companion is \(K_{time}\otimes\Psi_T\), never IID occasion
+noise. `getLV()` and `extract_ordination()` expose pair-indexed scores only
+for the latent cell; `extract_temporal()` reports every temporal mode.
+Ordinary unit and unit-observation components may be added if their
+partitions agree and nest; other structured sources are currently refused.
+
 ## Order of implementation
 
 The development sequence (mirrors drmTMB's order-of-implementation
@@ -36,7 +53,7 @@ discipline, adapted for the multi-trait stacked grammar):
    `value ~ 0 + trait + (0 + trait):env`. Baseline; serves
    primarily as a comparator for the random-effects fits.
 2. **Ordinary random intercepts** `(1 | g)`. Pass-through to
-   `glmmTMB::glmmTMB()`-style RE. Orthogonal to the 4 × 3 grid;
+   `glmmTMB::glmmTMB()`-style RE. Orthogonal to the 6 × 3 grid;
    used for groupings that are NOT the unit / unit_obs / cluster
    axes. **Status: `claimed`** (Phase 0B verifies).
 3. **`unique(0 + trait | g)` trait-diagonal** $\boldsymbol\Psi$.
@@ -88,7 +105,7 @@ discipline, adapted for the multi-trait stacked grammar):
 
 ## Vocabulary
 
-The **4 × 3** keyword grid plus ordinary RE form the
+The **6 × 3** keyword grid plus ordinary RE form the
 random-effects vocabulary. `common = TRUE` is the one-shared-variance
 modifier of `*_indep()` and `unique = TRUE` is the diagonal-Psi modifier of
 `*_latent()` (per [`14-known-relatedness-keywords.md`](14-known-relatedness-keywords.md)):
@@ -96,9 +113,9 @@ modifier of `*_indep()` and `unique = TRUE` is the diagonal-Psi modifier of
 | Source | Keyword pattern | What it adds to the linear predictor |
 |--------|-----------------|-------------------------------------|
 | Ordinary RE | `(1 \| g)` | Standard random intercept by `g`; not multi-trait-aware |
-| 4 × 3 grid: `indep` | `indep() / animal_indep() / phylo_indep() / spatial_indep()` | Explicit marginal / independent trait covariance; diagonal, no off-diagonal. `common = TRUE` ties all trait variances to one shared value. |
-| 4 × 3 grid: `dep` | `dep() / animal_dep() / phylo_dep() / spatial_dep()` | Unstructured trait covariance |
-| 4 × 3 grid: `latent` | `latent() / animal_latent() / phylo_latent() / spatial_latent()` | Reduced-rank $\Lambda$ ($T \times K$); `unique = TRUE` adds the diagonal $\Psi$ companion. |
+| 6 × 3 grid: `indep` | `indep() / animal_indep() / phylo_indep() / spatial_indep() / temporal_indep()` | Explicit marginal / independent trait covariance; diagonal, no off-diagonal. `common = TRUE` ties all trait variances to one shared value where admitted. |
+| 6 × 3 grid: `dep` | `dep() / animal_dep() / phylo_dep() / spatial_dep() / temporal_dep()` | Unstructured trait covariance |
+| 6 × 3 grid: `latent` | `latent() / animal_latent() / phylo_latent() / spatial_latent() / temporal_latent()` | Reduced-rank $\Lambda$ ($T \times K$); `unique = TRUE` adds the source-correlated diagonal $\Psi$ companion. |
 | Predictor-informed latent scores | `latent(..., lv = ~ x)` | Term-local fixed-effect mean for latent scores; Design 73, ordinary unit-tier C1 partial for Gaussian and pure binomial logit/probit/cloglog |
 | Random slope | `latent(1 + x \| unit, d = K)` / structured `phylo_*()` and `spatial_*()` slope keywords | Per-group random regression slope on covariate `x`; ordinary Gaussian default `latent()` path is partial under RE-12, structured paths follow their validation rows |
 | `meta_V` | `meta_V(V = V)` | Known **sampling variance** added to residual. **V is reserved** for sampling variance per the A-vs-V boundary rule (Design 14 §3); relatedness covariance uses **A** / **Ainv** / **pedigree**. `meta_known_V()` is a deprecated alias. |
@@ -768,9 +785,9 @@ public contract is locked but remains unimplemented. Wide column-predictor
 grammar, latent predictor covariance, non-Gaussian models, and intervals are
 deferred.
 
-### Other 4 × 3 cells
+### Other 6 × 3 cells
 
-Other 4 × 3 cells (`indep`, `dep`, and the phylo / spatial
+Other 6 × 3 cells (`indep`, `dep`, and the phylo / spatial
 analogues) move by validation-debt row, not by this ordinary RE-12
 slice. Current public status is:
 
@@ -877,11 +894,11 @@ The remaining three are Phase 0B verification targets.
 
 ## Cross-references
 
-- `docs/design/00-vision.md` — package vision; the 4 × 3 grid
+- `docs/design/00-vision.md` — package vision; the 6 × 3 grid
   + reduced-rank decomposition + phylogenetic and spatial
   extensions ARE the package's identity.
 - `docs/design/01-formula-grammar.md` — full formula grammar
-  contract; the 4 × 3 keyword grid + `traits()` LHS expansion
+  contract; the 6 × 3 keyword grid + `traits()` LHS expansion
   + unit / unit_obs / cluster taxonomy + crossed-vs-nested rule.
 - `docs/design/02-family-registry.md` — per-family registry;
   the link-residual contract that combines with the trait
@@ -907,7 +924,7 @@ The remaining three are Phase 0B verification targets.
 
 ## Persona-active engagement
 
-- **Boole** owns the parser surface for the 4 × 3 keywords +
+- **Boole** owns the parser surface for the 6 × 3 keywords +
   ordinary RE + slash-form-rejected enforcement.
 - **Fisher** reviews inference semantics on the reduced-rank
   decomposition — what $\boldsymbol\Lambda$ rotation does to

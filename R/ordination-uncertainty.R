@@ -193,6 +193,7 @@ ordination_uncertainty <- function(fit, level = "unit") {
       ">" = "Pass a fit returned by {.fn gllvmTMB}."
     ), class = "gllvmTMB_ordination_uncertainty_bad_fit")
   }
+  .temporal_assert_no_iid_inference(fit, "ordination_uncertainty")
   .gllvmTMB_mspl_assert_inference(fit, "ordination_uncertainty")
   .gllvmTMB_require_unweighted_inference(fit, "ordination_uncertainty")
 

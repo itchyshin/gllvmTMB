@@ -1,0 +1,178 @@
+---
+title: "Temporal covariance for repeated multivariate measurements"
+description: "Fit AR1 or OU temporal covariance for three repeatedly measured traits, in long or traits(...) wide data."
+tier: 1
+output:
+  rmarkdown::html_vignette:
+    toc: true
+vignette: >
+  %\VignetteIndexEntry{Temporal covariance for repeated multivariate measurements}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+library(gllvmTMB)
+set.seed(2609081)
+```
+
+Temporal is a covariance source row with three trait modes:
+`temporal_indep()`, `temporal_dep()`, and rank-one `temporal_latent()`.
+Each provider has a private `(series, time)` state index; it does not replace
+the public `unit` or `unit_obs` labels. For latent mode,
+`unique = TRUE` gives
+\(K_{time}\otimes(\Lambda\Lambda^T+\Psi_T)\): Psi is correlated through
+time, rather than being IID occasion noise.
+
+With `structure = "ar1"`, occasions are ordered integers and gaps are kept:
+\(K(t,s)=\phi^{|t-s|}\). With `structure = "ou"`, `time` is elapsed numeric
+time and \(K(t,s)=\exp(-\kappa|t-s|)\). This first version admits complete
+Gaussian identity-link ML fits with at least three traits and three occasions
+per series. Ordinary unit and unit-observation terms can be combined when
+their partitions agree and nest. The bounded temporal-only
+`forecast_temporal()`, `profile_temporal()`, `bootstrap_temporal()`, and
+`compare_temporal()` helpers have separate contracts; generic forecasts,
+new-data prediction, generic profile/bootstrap intervals, and automatic rank
+selection remain unavailable. Other response families, higher ranks, temporal
+slopes, source-by-time interactions, and structured-source combinations beyond
+the four narrow additive pairs below remain unavailable.
+
+> **Scope boundary.** Gaussian AR1/OU source parsing, dense covariance
+> oracles, score labels, simulation, training-data prediction, and update have
+> focused local checks. Recovery remains an engineering gate and does not
+> support a general recovery, precision, calibration, or interval-coverage
+> claim. Four separately bounded replicated-AR1 additive pairs with one
+> diagonal kernel, phylogenetic, animal, or spatial source are implemented;
+> their likelihood and lifecycle checks do not give them a common recovery
+> status. Kernel has a retained passing local fixture, phylogenetic and spatial
+> recovery gates retain strict failures, and animal recovery is pending.
+
+## Ordinary longitudinal observations
+
+Here each `(series, occasion, trait)` cell occurs once. The independent
+variation for trait `j` is one total variance, `D_j`; it is not separated into
+occasion and measurement pieces.
+
+```{r ordinary-data}
+ordinary <- expand.grid(
+  series = paste0("series_", 1:3), occasion = c(1L, 3L, 7L),
+  trait = paste0("trait_", 1:3),
+  KEEP.OUT.ATTRS = FALSE, stringsAsFactors = FALSE
+)
+ordinary$value <- rnorm(nrow(ordinary))
+```
+
+The long-format call is the canonical form. Here are the three AR1 cells.
+
+```{r ordinary-long}
+fit_long <- gllvmTMB(
+  value ~ 0 + trait +
+    temporal_indep(0 + trait | series, time = occasion),
+  data = ordinary, trait = "trait", unit = "series", family = gaussian(), silent = TRUE
+)
+extract_temporal(fit_long)
+fit_dep <- gllvmTMB(
+  value ~ 0 + trait + temporal_dep(0 + trait | series, time = occasion),
+  data = ordinary, trait = "trait", unit = "series", family = gaussian(), silent = TRUE
+)
+fit_latent <- gllvmTMB(
+  value ~ 0 + trait + temporal_latent(0 + trait | series, time = occasion,
+    d = 1, unique = TRUE),
+  data = ordinary, trait = "trait", unit = "series", family = gaussian(), silent = TRUE
+)
+```
+
+The same observations can be supplied in wide format through the one
+`gllvmTMB()` entry point.
+
+```{r ordinary-wide}
+ordinary_wide <- reshape(
+  ordinary, idvar = c("series", "occasion"), timevar = "trait",
+  direction = "wide"
+)
+names(ordinary_wide) <- sub("value\\.", "", names(ordinary_wide))
+fit_wide <- gllvmTMB(
+  traits(trait_1, trait_2, trait_3) ~ 1 +
+    temporal_latent(1 | series, time = occasion, d = 1, unique = TRUE),
+  data = ordinary_wide, unit = "series", family = gaussian(), silent = TRUE
+)
+extract_temporal(fit_wide)$pair_index
+```
+
+`getLV()` returns the occasion-level scores for `temporal_latent()` as a matrix. Its row names and the
+`temporal_index` attribute identify the public series and occasion rather than
+the private fitting factor. Score and loading signs are a reporting convention:
+the first loading anchors the displayed direction unless it is negligible
+relative to the largest loading, in which case that largest trait anchors it.
+`extract_temporal()` records this diagnostic; the fitted likelihood is
+unchanged by the simultaneous sign change.
+
+```{r ordinary-scores}
+scores <- getLV(fit_latent)
+attr(scores, "temporal_index")
+predict(fit_latent)
+```
+
+For elapsed time, use the same grammar with `structure = "ou"`. Translation
+of this column does not change the model; rescaling time changes the estimated
+decay rate reciprocally.
+
+```{r ordinary-ou}
+ordinary$elapsed <- c(0, 0.5, 2)[match(ordinary$occasion, c(1L, 3L, 7L))]
+fit_ou <- gllvmTMB(
+  value ~ 0 + trait + temporal_dep(0 + trait | series, time = elapsed,
+    structure = "ou"),
+  data = ordinary, trait = "trait", unit = "series", family = gaussian(), silent = TRUE
+)
+extract_temporal(fit_ou)$time
+```
+
+## Optional repeated rows at each occasion
+
+Use `replicate = measurement` when every trait is measured at least twice at
+each occasion. It identifies repeated trait panels while the temporal
+covariance remains on the series--occasion state. A `unit_obs` grouping remains
+an ordinary, unit-nested random-effect level; it is never silently treated as
+a temporal replicate.
+
+```{r replicated-data}
+replicated <- expand.grid(
+  series = paste0("series_", 1:3), occasion = 1:3, measurement = 1:2,
+  trait = paste0("trait_", 1:3),
+  KEEP.OUT.ATTRS = FALSE, stringsAsFactors = FALSE
+)
+replicated$value <- rnorm(nrow(replicated))
+fit_replicated <- gllvmTMB(
+  value ~ 0 + trait + temporal_latent(
+    0 + trait | series, time = occasion, replicate = measurement
+  ), data = replicated, trait = "trait", unit = "series", family = gaussian(), silent = TRUE
+)
+extract_temporal(fit_replicated)$variance
+```
+
+The wide form keeps the measurement column and uses the same keyword.
+
+```{r replicated-wide}
+replicated_wide <- reshape(
+  replicated, idvar = c("series", "occasion", "measurement"),
+  timevar = "trait", direction = "wide"
+)
+names(replicated_wide) <- sub("value\\.", "", names(replicated_wide))
+fit_replicated_wide <- gllvmTMB(
+  traits(trait_1, trait_2, trait_3) ~ 1 + temporal_latent(
+    1 | series, time = occasion, replicate = measurement
+  ), data = replicated_wide, unit = "series", family = gaussian(), silent = TRUE
+)
+extract_temporal(fit_replicated_wide)$parameters
+```
+
+`simulate()` redraws stationary temporal scores by default. Passing
+`condition_on_RE = TRUE` keeps the fitted score modes and redraws only the
+independent response variation. `update()` replays the saved public long or
+wide call, rebuilding its private temporal index.
+
+```{r simulation-update}
+simulated <- simulate(fit_replicated, nsim = 2, seed = 23)
+updated_call <- update(fit_replicated_wide, evaluate = FALSE)
+```

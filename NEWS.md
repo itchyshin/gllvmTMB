@@ -1,5 +1,30 @@
 # Development (unreleased)
 
+* Temporal is an experimental sixth covariance-source row. The new
+  `temporal_indep()`, `temporal_dep()`, and rank-one `temporal_latent()`
+  providers accept Gaussian long and `traits(...)` wide calls. AR1 retains
+  integer occasion gaps; OU uses user-supplied elapsed numeric time. With
+  `temporal_latent(unique = TRUE)`, trait-diagonal Psi is correlated through
+  the temporal kernel, rather than being IID occasion noise. The former
+  rank-one AR1/IID-Psi prototype remains only as a named migration fixture.
+  **In scope:** focused source parsing, native Gaussian likelihood oracles,
+  simulation, labelled latent scores, training-data prediction, update, and
+  ordinary unit/unit-observation composition. **Partial:** no general recovery,
+  precision, calibration, or interval-coverage claim is made. **Not in scope:**
+  temporal slopes, higher rank, other families, or spatial source pairs.
+  **Locally verified only:** replicated AR1 `temporal_indep()` plus
+  one labelled `kernel_indep()` term has a fixed-seed recovery and lifecycle
+  fixture. A fixed, labelled `phylo_indep()` source can be supplied through
+  `tree =` or `vcv =` inside its keyword and has focused local oracle,
+  long/wide, simulation, update, and tree/dense-equivalence checks; its
+  recovery gate is separate and does not support a general recovery or
+  coverage claim.
+  A fixed `animal_indep()` source can likewise use in-keyword `pedigree =`,
+  `A =`, or `Ainv =`; its dense oracle, source-provenance, lifecycle, and
+  matrix-label checks are local only and its recovery gate remains pending.
+  Other temporal/source modes, OU source combinations,
+  cross-platform verification, and release remain pending.
+
 * A new ordinal response family, `ordinal_logit()` -- the cumulative-**logit**
   analogue of the existing `ordinal_probit()` threshold model, family_id 20.
   It is a link swap on `ordinal_probit()`'s already-shipped

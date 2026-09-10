@@ -7,7 +7,8 @@
 #' the same trait covariance, pairwise correlations, shared latent axes,
 #' and trait-specific variance. The formula syntax also supports fixed
 #' effects plus covariance-structure keywords organised by
-#' \emph{correlation source} (none / animal / phylo / spatial / kernel) and
+#' \emph{correlation source} (none / animal / phylo / spatial / kernel /
+#' temporal) and
 #' three \emph{modes} (independent / dependent / latent). The `common = TRUE`
 #' modifier on `*_indep()` gives the one-shared-variance special case:
 #'
@@ -18,7 +19,14 @@
 #'   \emph{phylo}   \tab [phylo_indep()]   \tab [phylo_dep()]   \tab [phylo_latent()]   \cr
 #'   \emph{spatial} \tab [spatial_indep()] \tab [spatial_dep()] \tab [spatial_latent()] \cr
 #'   \emph{kernel}  \tab [kernel_indep()]  \tab [kernel_dep()]  \tab [kernel_latent()]  \cr
+#'   \emph{temporal} \tab [temporal_indep()] \tab [temporal_dep()] \tab [temporal_latent()] \cr
 #' }
+#'
+#' The temporal row is currently a Gaussian identity-link ML/Laplace route:
+#' it accepts one ordered `series`--`time` provider, AR1 integer occasions or
+#' OU elapsed time, and may coexist with ordinary `unit` and `unit_obs`
+#' covariance. Other structured sources, new-data prediction, intervals, and
+#' rank above one remain unavailable for temporal fits.
 #'
 #' The three covariance modes (`indep` / `dep` / `latent`) encode
 #' covstruct intent across traits:
@@ -688,6 +696,14 @@ gllvmTMB <- function(
   ## engine = "julia" routes through the experimental GLLVM.jl bridge fitting
   ## path via JuliaCall; "tmb" (default) keeps the native TMB engine below.
   engine <- match.arg(engine)
+  if (identical(engine, "julia") &&
+      (control$optimizer_passes %||% 1L) > 1L) {
+    cli::cli_abort(c(
+      "{.arg optimizer_passes} greater than one requires the native TMB Laplace engine.",
+      "i" = "The Julia dispatch has its own optimizer and does not consume this control.",
+      ">" = "Use {.code optimizer_passes = 1L}, or fit with {.code engine = \"tmb\"}."
+    ))
+  }
   structured_rho_capture <- .parse_structured_rho_formula(formula, trait_col = trait, strip = FALSE)
   .structured_rho_dispatch_fence(structured_rho_capture$spec, engine = engine,
     integration = control$integration %||% "laplace", estimator = estimator,
@@ -934,6 +950,8 @@ gllvmTMB <- function(
   ## the parser / TMB template / extractors. User-facing argument is `unit`.
   site <- unit
 
+  temporal_spec <- list(active = FALSE)
+
   ## ---- Honour deprecated `species = ...` alias for `cluster = ...` -----
   ## The package was originally written for site × species data, so the
   ## third grouping slot was named `species`. The slot is generic — it is
@@ -1117,6 +1135,61 @@ gllvmTMB <- function(
     }
   }
 
+  ## Capture temporal syntax after the wide/data pre-passes, immediately
+  ## before generic desugaring. This keeps model-frame construction from ever
+  ## attempting to evaluate the formula marker.
+  temporal_capture <- .parse_temporal_latent_formula(formula, data, trait_col = trait)
+  temporal_spec <- temporal_capture$spec
+  if (isTRUE(temporal_spec$active)) {
+    if (!identical(engine, "tmb") || isTRUE(REML) || !identical(estimator, "ml") ||
+        !identical(family$family, "gaussian") || !identical(family$link, "identity")) {
+      cli::cli_abort(c("{.fn temporal_latent} currently requires the native Gaussian identity-link ML route.", ">" = "Use the Gaussian identity-link ML temporal workflow."))
+    }
+    if (!identical(control$integration %||% "laplace", "laplace") ||
+        !isFALSE(control$aghq %||% FALSE)) {
+      cli::cli_abort(c(
+        "{.fn temporal_latent} currently requires native TMB Laplace integration.",
+        "i" = "Variational integration and adaptive Gauss-Hermite quadrature have iid latent-score algorithms.",
+        ">" = "Use {.code gllvmTMBcontrol(integration = \"laplace\", aghq = FALSE)}."
+      ))
+    }
+    if (!is.null(known_V) || !is.null(mesh) || !is.null(phylo_vcv) ||
+        !is.null(phylo_tree) || !is.null(column_coef_spec) ||
+        !is.null(structured_rho_capture$spec)) {
+      cli::cli_abort(c(
+        "{.fn temporal_latent} cannot be combined with another covariance provider in this version.",
+        ">" = "Use one temporal intercept block with fixed effects only."
+      ))
+    }
+    formula <- temporal_capture$formula
+    data <- temporal_capture$data
+    temporal_spec$unit_col <- site
+    ## The temporal labels are public metadata and may differ from `unit`.
+    ## The partition condition is deferred until ordinary covariance terms
+    ## have been parsed: a temporal-only model has no stable-unit component to
+    ## constrain.
+    same_partition <- function(left, right) {
+      left <- as.character(left)
+      right <- as.character(right)
+      all(vapply(split(right, left), function(x) length(unique(x)) == 1L,
+        logical(1))) &&
+        all(vapply(split(left, right), function(x) length(unique(x)) == 1L,
+          logical(1)))
+    }
+    temporal_spec$same_unit_partition <- same_partition(
+      data[[temporal_spec$series_col]], data[[site]]
+    )
+    if (isTRUE(unit_obs_supplied) && unit_obs %in% names(data)) {
+      unit_per_unit_obs <- tapply(
+        as.character(data[[site]]), data[[unit_obs]],
+        function(x) length(unique(x))
+      )
+      if (any(unit_per_unit_obs != 1L)) {
+        cli::cli_abort(c("Each {.arg unit_obs} level must be nested inside one {.arg unit} level.", ">" = "Use a unit_obs identifier nested within unit."))
+      }
+    }
+  }
+
   ## ---- Multinomial response expansion (Design 83) ----------------------
   ## Expand a multinomial() response into K-1 category-contrast pseudo-trait
   ## rows BEFORE desugar/parse so the ordinary trait grammar builds the
@@ -1177,6 +1250,18 @@ gllvmTMB <- function(
   ## spatial = "off"; that path is removed in 0.2.0 because the
   ## single-response sdmTMB() engine is no longer bundled.
   parsed <- parse_multi_formula(formula)
+  if (isTRUE(temporal_spec$active)) {
+    has_stable_unit_component <- any(vapply(parsed$covstructs, function(cs) {
+      identical(all.vars(cs$group), site)
+    }, logical(1)))
+    if (has_stable_unit_component && !isTRUE(temporal_spec$same_unit_partition)) {
+      cli::cli_abort(c(
+        "The temporal {.code series} column must have the same partition as {.arg unit} when a stable unit covariance component is included.",
+        "i" = "Temporal states are separate from ordinary units, but the two components must index the same stable entities.",
+        ">" = "Use matching unit groups, even when their labels differ, or omit the stable-unit covariance component."
+      ))
+    }
+  }
   if (!is.null(structured_rho_capture$spec)) {
     parsed$structured_rho <- structured_rho_capture$spec
   }
@@ -1344,6 +1429,7 @@ gllvmTMB <- function(
         as.integer(traits_n_dropped_response),
       data_original = data_original
     ),
+    temporal = temporal_spec,
     estimator = estimator,
     engine = engine
   )
@@ -1379,6 +1465,10 @@ gllvmTMB <- function(
   ## see the user's call. Attach it here, where match.call() is the call the
   ## user actually wrote, so print() can show it.
   if (inherits(.fit, "gllvmTMB_va")) {
+    .fit$call <- match.call()
+  }
+  if (isTRUE(temporal_spec$active)) {
+    .fit$temporal <- temporal_spec
     .fit$call <- match.call()
   }
   ## Arc 1A: record resolved integration / criterion / kernel / penalty-eval.
@@ -1810,6 +1900,11 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #'   latter together with `optArgs` for finicky two-level rr fits.
 #' @param optArgs A list of arguments passed to the optimiser. For
 #'   `optim` the most useful is `list(method = "BFGS")`.
+#' @param optimizer_passes Number of exact-gradient optimisation passes from
+#'   the preceding estimate. The default `1` retains the historical single
+#'   pass. A later pass is retained only when it converges and does not increase
+#'   the objective. It is available for native Laplace fits with `aghq = FALSE`.
+#'   The setting is saved in the public call and replayed by [update()].
 #' @param init_jitter Standard deviation of N(0, sigma) jitter applied to
 #'   the starting parameter vector across the `n_init` restarts.
 #'   Default 0.3.
@@ -2189,6 +2284,7 @@ gllvmTMBcontrol <- function(
   warn_runaway = TRUE,
   allow_nongaussian_reml = FALSE,
   loading_ridge = NULL,
+  optimizer_passes = 1L,
   ...
 ) {
   ## Did the CALLER name `aghq_ridge`, or is this the package default? The
@@ -2224,6 +2320,14 @@ gllvmTMBcontrol <- function(
   aghq_multistart_explicit <- !missing(aghq_multistart)
   spde_mode <- match.arg(spde_mode)
   optimizer <- match.arg(optimizer)
+  if (!is.numeric(optimizer_passes) || length(optimizer_passes) != 1L ||
+      is.na(optimizer_passes) || !is.finite(optimizer_passes) ||
+      optimizer_passes != as.integer(optimizer_passes) || optimizer_passes < 1L) {
+    cli::cli_abort(c(
+      "{.arg optimizer_passes} must be one or more whole-number passes.",
+      ">" = "Use {.code optimizer_passes = 1L} for the historical single pass."
+    ))
+  }
   init_strategy <- match.arg(init_strategy)
   start_method <- .gllvmTMB_normalize_start_method(start_method)
   integration <- match.arg(integration)
@@ -2277,6 +2381,14 @@ gllvmTMBcontrol <- function(
       ">" = "Set {.code aghq = FALSE}, or use {.code integration = \"laplace\"}."
     ))
   }
+  if (optimizer_passes > 1L &&
+      (!identical(integration, "laplace") || !isFALSE(aghq))) {
+    cli::cli_abort(c(
+      "{.arg optimizer_passes} greater than one requires native Laplace optimisation with {.code aghq = FALSE}.",
+      "i" = "Variational and adaptive-quadrature routes use their own optimisation loops.",
+      ">" = "Use {.code optimizer_passes = 1L}, or fit the native Laplace route."
+    ))
+  }
   if (!is.logical(se) || length(se) != 1L || is.na(se)) {
     cli::cli_abort(c(
       "{.arg se} must be a single {.code TRUE} or {.code FALSE} value.",
@@ -2298,6 +2410,7 @@ gllvmTMBcontrol <- function(
     n_init = as.integer(n_init),
     optimizer = optimizer,
     optArgs = optArgs,
+    optimizer_passes = as.integer(optimizer_passes),
     init_jitter = init_jitter,
     init_strategy = init_strategy,
     start_method = start_method,

@@ -12,6 +12,20 @@ density looks like on the link scale, what the numerical scales
 are, what boundary cases are tested, and what comparator alignment
 holds.
 
+## Temporal Gaussian source
+
+For temporal state covariance \(K\), the native Gaussian temporal tier uses
+`indep`: \(K\otimes\operatorname{diag}(v)\), `dep`:
+\(K\otimes\Sigma_T\), and rank-one `latent`:
+\(K\otimes\Lambda\Lambda^T\), with \(K\otimes\Psi_T\) added only by
+`latent(unique = TRUE)`. AR1 innovations use the observed integer gap; OU
+innovations use the supplied elapsed-time gap. The temporal random coordinates
+are separate from ordinary B and W coordinates. The independent dense Gaussian
+oracle and central gradients for every AR1/OU cell are in
+`tests/testthat/test-temporal-sixth-source-oracles.R`. This is local
+implementation evidence, not a general recovery, calibration, or interval
+claim.
+
 **Status discipline**: this doc uses the 4-state vocabulary from
 `docs/design/01-formula-grammar.md` (`covered / claimed / reserved
 / planned`). Most per-family rows are currently `claimed`; Phase
@@ -240,7 +254,7 @@ need their own named recovery evidence before a certificate claim.
 
 The phylogenetic and spatial keywords plug into the same
 random-effects machinery via the correlation-source rows of the
-4 × 3 grid plus its `common` and `unique` modifiers (see
+6 × 3 grid plus its `common` and `unique` modifiers (see
 `docs/design/01-formula-grammar.md`).
 
 ### Laplace accuracy caveat

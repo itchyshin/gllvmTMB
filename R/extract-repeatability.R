@@ -88,6 +88,7 @@ extract_repeatability <- function(
   seed = NULL
 ) {
   method <- match.arg(method)
+  .temporal_assert_no_iid_inference(fit, "extract_repeatability")
   if (.gllvmTMB_is_mspl(fit)) {
     .gllvmTMB_mspl_assert_inference(fit, "extract_repeatability")
   }

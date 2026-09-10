@@ -184,4 +184,9 @@ Register rows deliberately NOT translated into a ledger capability row above, wi
 | MIS-20 | R-side optimizer starting-value engineering (restart_history/start_provenance); internal robustness measure |
 | MIS-38 | API hygiene only (#1190 unused unit_obs/cluster warning) -- Julia's own ledger explicitly lists this under 'Not capability (API hygiene in 0.7.1, nothing to mirror): unused grouping-slot warnings (#1190)', so it is deliberately excluded on both sides |
 | SPA-01 | R-side SPDE mesh construction (make_mesh()); pre-fit geospatial prep, no Julia twin capability (cf. drmTMB's identical make_mesh precedent) |
+| TEMP-06-01 | R-only temporal source parsing and state indexing; GLLVM.jl has no temporal provider row |
+| TEMP-06-02 | R-only temporal AR1/OU covariance implementation; GLLVM.jl has no temporal provider row |
+| TEMP-06-03 | R-only temporal extraction and simulation workflow; GLLVM.jl has no temporal provider row |
+| TEMP-06-04 | R-only bounded temporal lifecycle helpers; no Julia temporal route exists to compare |
+| TEMP-06-05 | R-only retained temporal source-pair evidence; no Julia temporal source-pair route exists to compare |
 

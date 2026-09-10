@@ -1,5 +1,39 @@
 ## S3 methods specific to gllvmTMB_multi objects.
 
+#' Refit a temporal latent model
+#'
+#' Replays the public long- or wide-format call saved for a
+#' [temporal_latent()] fit. Private pair identifiers are rebuilt from the
+#' supplied data and are never reused as public input.
+#'
+#' @param object A fitted `gllvmTMB_multi` temporal model.
+#' @param ... Named arguments to replace in the saved public call.
+#' @param evaluate Whether to evaluate the reconstructed call.
+#' @return The refitted model, or the reconstructed call if `evaluate = FALSE`.
+#' @export
+update.gllvmTMB_multi <- function(object, ..., evaluate = TRUE) {
+  if (!isTRUE(object$temporal$active)) {
+    return(stats::update.default(object, ..., evaluate = evaluate))
+  }
+  call <- object$call_wide %||% object$call
+  if (is.null(call) || !is.call(call)) {
+    cli::cli_abort(c("This temporal fit does not retain a public call for {.fn update}.", ">" = "Refit from the original temporal formula and data."))
+  }
+  dots <- list(...)
+  if (length(dots)) {
+    if (is.null(names(dots)) || any(!nzchar(names(dots)))) {
+      cli::cli_abort(c("Temporal {.fn update} accepts named argument overrides only.", ">" = "Use named formula, data, or fitting-argument overrides."))
+    }
+    for (nm in names(dots)) {
+      call[[nm]] <- dots[[nm]]
+    }
+  }
+  if (!isTRUE(evaluate)) {
+    return(call)
+  }
+  eval(call, envir = parent.frame())
+}
+
 .modal_integer_id <- function(x, fallback = NA_integer_) {
   x <- as.integer(x)
   x <- x[!is.na(x)]
@@ -1447,11 +1481,14 @@ tidy.gllvmTMB_multi <- function(
 #'   covariance — the unconditional simulation appropriate for
 #'   parametric bootstrap. Redraw is currently implemented for the
 #'   `rr_B`, `diag_B`, `rr_W`, `diag_W`, `propto`, `lv_B`, `phylo_rr`,
-#'   and `diag_species` tiers.
+#'   `diag_species`, and the native temporal tier. A temporal fit redraws its
+#'   recursive temporal state together with every supported ordinary/source
+#'   tier; it does not retain fitted ordinary modes in an unconditional draw.
 #'
-#'   **Not every tier is covered.** A fit using any other active tier —
-#'   notably the SPDE spatial tier (`spde`) and the diagonal
-#'   phylogenetic tier (`phylo_diag`) — falls back to conditional
+#'   **Not every tier is covered.** The admitted replicated-AR1
+#'   `temporal_indep() + spatial_indep()` cell redraws its independent SPDE
+#'   field. Other SPDE spatial forms and the diagonal phylogenetic tier
+#'   (`phylo_diag`) fall back to conditional
 #'   simulation and emits a one-shot warning naming the unhandled
 #'   tiers. Because conditional simulation reuses the fitted random-
 #'   effect modes rather than redrawing them, it understates
@@ -1493,6 +1530,35 @@ simulate.gllvmTMB_multi <- function(
 ) {
   if (!is.null(seed)) {
     set.seed(seed)
+  }
+
+  if (isTRUE(object$temporal$active) && is.null(newdata)) {
+    if (isTRUE(condition_on_RE)) {
+      out <- replicate(nsim, .draw_y_per_family(
+        object, as.numeric(object$report$eta)
+      ))
+      if (is.null(dim(out))) out <- as.matrix(out)
+      return(out)
+    }
+    ## The ordinary simulator builds a fresh predictor from every supported
+    ## non-temporal tier.  Add an independently redrawn temporal contribution
+    ## rather than subtracting only the temporal state from report$eta: that
+    ## would retain fitted B/W/source modes in an allegedly unconditional draw.
+    ok <- .check_simulate_unconditional(object)
+    if (!isTRUE(ok$can_redraw)) {
+      cli::cli_abort(c(
+        "Unconditional {.fn simulate} cannot redraw every component of this temporal fit.",
+        "i" = "Unsupported components: {.val {ok$unhandled}}.",
+        ">" = "Use {.code condition_on_RE = TRUE} for a conditional response draw, or remove the unsupported covariance tier."
+      ), class = "gllvmTMB_temporal_composed_simulation_unsupported")
+    }
+    out <- replicate(nsim, {
+      eta <- .simulate_eta_unconditional(object) +
+        .simulate_temporal_effect(object, redraw_scores = TRUE)
+      .draw_y_per_family(object, eta)
+    })
+    if (is.null(dim(out))) out <- as.matrix(out)
+    return(out)
   }
 
   ## Path 1: newdata or explicit condition_on_RE => use fitted eta (the
@@ -1574,6 +1640,82 @@ simulate.gllvmTMB_multi <- function(
     out <- as.matrix(out)
   }
   out
+}
+
+#' Draw one Gaussian response vector from a temporal-source fit
+#'
+#' The score prior is redrawn only for an unconditional draw.  The independent
+#' Gaussian terms are always new response variation, matching the ordinary
+#' `condition_on_RE` contract.
+#'
+#' @keywords internal
+#' @noRd
+.simulate_temporal_effect <- function(fit, redraw_scores = TRUE) {
+  if (!isTRUE(fit$temporal$active)) {
+    stop("Internal temporal simulation requires a temporal fit.", call. = FALSE)
+  }
+  td <- fit$tmb_data
+  trait_id <- td$trait_id + 1L
+  n_traits <- td$n_traits
+  par <- fit$tmb_obj$env$parList(fit$opt$par)
+  n_state <- td$n_temporal_states
+  state_id <- td$temporal_state_id + 1L
+  predecessor <- td$temporal_predecessor + 1L
+  rank <- td$temporal_rank
+  lambda <- if (rank > 0L) as.matrix(fit$report$Lambda_temporal) else NULL
+  ## TMB optimizes standard-normal innovations but reports the recursively
+  ## constructed AR1/OU states that actually enter eta.  Subtract the latter
+  ## before an unconditional redraw; subtracting innovations leaves a
+  ## persistence-dependent piece of the fitted state in every draw.
+  z <- as.matrix(fit$report$z_temporal_state)
+  q <- if (isTRUE(fit$temporal$unique)) {
+    as.matrix(fit$report$q_temporal_state)
+  } else {
+    matrix(0, nrow = n_traits, ncol = n_state)
+  }
+  effect <- function(z, q) {
+    out <- numeric(length(state_id))
+    if (rank > 0L) out <- out + rowSums(lambda[trait_id, , drop = FALSE] *
+      t(z[, state_id, drop = FALSE]))
+    if (isTRUE(fit$temporal$unique)) out <- out + q[cbind(trait_id, state_id)]
+    out
+  }
+  fitted_effect <- effect(z, q)
+  if (redraw_scores) {
+    a <- function(s) {
+      if (predecessor[s] == 0L) return(0)
+      if (identical(fit$temporal$structure, "ar1")) {
+        phi <- (1 - 1e-6) * tanh(par$theta_temporal_time)
+        phi^td$temporal_gap[s]
+      } else exp(-exp(par$theta_temporal_time) * td$temporal_elapsed[s])
+    }
+    z[] <- 0
+    q[] <- 0
+    sd_q <- exp(as.numeric(par$theta_temporal_diag))
+    for (s in seq_len(n_state)) {
+      aa <- a(s)
+      innovation <- if (identical(fit$temporal$structure, "ou")) {
+        sqrt(-expm1(-2 * exp(par$theta_temporal_time) * td$temporal_elapsed[s]))
+      } else sqrt(1 - aa^2)
+      prev <- predecessor[s]
+      if (rank > 0L) z[, s] <- if (prev == 0L) stats::rnorm(rank) else
+        aa * z[, prev] + innovation * stats::rnorm(rank)
+      if (isTRUE(fit$temporal$unique)) q[, s] <- if (prev == 0L) {
+        stats::rnorm(n_traits, sd = sd_q)
+      } else aa * q[, prev] + innovation * stats::rnorm(n_traits, sd = sd_q)
+    }
+  }
+  effect(z, q)
+}
+
+#' @keywords internal
+#' @noRd
+.simulate_temporal_response <- function(fit, redraw_scores = TRUE) {
+  temporal_new <- .simulate_temporal_effect(fit, redraw_scores = redraw_scores)
+  temporal_fitted <- .simulate_temporal_effect(fit, redraw_scores = FALSE)
+  eta <- as.numeric(fit$report$eta) - temporal_fitted + temporal_new
+  par <- fit$tmb_obj$env$parList(fit$opt$par)
+  eta + stats::rnorm(length(eta), sd = exp(as.numeric(par$log_sigma_eps[1L])))
 }
 
 #' Family-aware per-row draw from a fitted model
@@ -1969,12 +2111,69 @@ simulate.gllvmTMB_multi <- function(
 
 #' @keywords internal
 #' @noRd
+.temporal_spatial_indep_redrawable <- function(fit) {
+  td <- fit$tmb_data
+  isTRUE(fit$temporal$active) &&
+    isTRUE(fit$use$spde) &&
+    isTRUE(fit$use$spatial_indep) &&
+    is.null(fit$source_strength) &&
+    identical(as.integer(td$spde_lv_k %||% 0L), 0L) &&
+    identical(as.integer(td$spde_lv_unique %||% 0L), 0L)
+}
+
+#' Draw the per-trait SPDE field for the admitted temporal--spatial cell
+#'
+#' The narrow temporal--spatial contract admits only `spatial_indep()`:
+#' each trait's mesh field has covariance `(tau_t^2 Q)^{-1}`, where
+#' `Q = kappa^4 M0 + 2 kappa^2 M1 + M2`.  Redrawing the field here keeps
+#' an unconditional temporal simulation unconditional for both sources.
+#'
+#' @keywords internal
+#' @noRd
+.simulate_temporal_spatial_indep <- function(fit) {
+  if (!.temporal_spatial_indep_redrawable(fit)) {
+    stop("Internal SPDE redraw was requested outside the admitted temporal-spatial indep cell.",
+      call. = FALSE)
+  }
+  td <- fit$tmb_data
+  par <- fit$tmb_obj$env$parList(fit$opt$par)
+  kappa <- exp(as.numeric(par$log_kappa_spde[[1L]]))
+  tau <- exp(as.numeric(par$log_tau_spde))
+  n_mesh <- ncol(td$A_proj)
+  if (length(tau) != td$n_traits || n_mesh < 1L) {
+    stop("Internal SPDE parameter dimensions do not match the fitted mesh.",
+      call. = FALSE)
+  }
+  Q <- kappa^4 * as.matrix(td$spde_M0) +
+    2 * kappa^2 * as.matrix(td$spde_M1) + as.matrix(td$spde_M2)
+  U <- tryCatch(chol(Q), error = function(e) NULL)
+  if (is.null(U)) {
+    stop("The fitted SPDE precision matrix could not be factorized for unconditional simulation.",
+      call. = FALSE)
+  }
+  omega <- matrix(0, nrow = n_mesh, ncol = td$n_traits)
+  for (trait in seq_len(td$n_traits)) {
+    omega[, trait] <- backsolve(U, stats::rnorm(n_mesh)) / tau[[trait]]
+  }
+  projected <- as.matrix(td$A_proj %*% omega)
+  projected[cbind(seq_len(nrow(projected)), td$trait_id + 1L)]
+}
+
+#' @keywords internal
+#' @noRd
 .check_simulate_unconditional <- function(fit) {
   handled <- c(
     "rr_B", "diag_B", "rr_W", "diag_W", "propto",
-    "lv_B", "phylo_rr", "phylo_diag", "diag_species", "re_int"
+    "lv_B", "phylo_rr", "phylo_diag", "diag_species", "re_int",
+    ## The temporal tier is redrawn by the temporal branch above rather than
+    ## .simulate_eta_unconditional(); count it as covered when determining
+    ## whether the remaining tiers can be redrawn.
+    "temporal"
   )
-  if(identical(fit$source_strength$source,"spatial")) handled <- c(handled,"spde")
+  if (identical(fit$source_strength$source, "spatial") ||
+      .temporal_spatial_indep_redrawable(fit)) {
+    handled <- c(handled, "spde")
+  }
   if (is.list(fit$tmb_data)) {
     # Mode descriptors do not add another field. Actual engine flags are the
     # authority, so folded Psi and indep/dep cannot force a silent fallback.
@@ -2107,6 +2306,13 @@ simulate.gllvmTMB_multi <- function(
   if (is.null(fit$source_strength) && isTRUE(fit$use$phylo_diag)) {
     scores <- .structured_rho_scores(fit,n_traits,"g_phy_diag","g_phy_diag_iid",redraw=TRUE)
     eta <- eta + scores[cbind(fit$tmb_data$species_id+1L,trait_id)]*fit$report$sd_phy_diag[trait_id]
+  }
+
+  ## The only composed spatial route admitted with temporal covariance is
+  ## `temporal_indep(...) + spatial_indep(...)`.  It has one independent
+  ## per-trait GMRF field, so redraw it from the exact fitted Q precision.
+  if (.temporal_spatial_indep_redrawable(fit)) {
+    eta <- eta + .simulate_temporal_spatial_indep(fit)
   }
 
   if (isTRUE(fit$use$re_int)) {
@@ -2586,6 +2792,13 @@ predict.gllvmTMB_multi <- function(
   ...
 ) {
   type <- match.arg(type)
+  if (isTRUE(object$temporal$active) && !is.null(newdata)) {
+    cli::cli_abort(c(
+      "{.fn predict} with {.arg newdata} is not yet available for {.fn temporal_latent} fits.",
+      "i" = "New rows need an explicitly reconstructed series--occasion score index.",
+      ">" = "Use {.code predict(fit)} for the training rows or {.code re_form = ~0} for fixed-effects-only training predictions."
+    ), class = "gllvmTMB_temporal_predict_newdata")
+  }
   .aghq_warn_re_gap(object, "predict()")
   if (isTRUE(se.fit)) {
     .gllvmTMB_predict_se_guard(object, newdata)
@@ -2618,7 +2831,9 @@ predict.gllvmTMB_multi <- function(
     } else {
       as.numeric(object$report$eta)
     }
-    ## Use the user's actual column names (not hard-coded sdmTMB ecology labels)
+    ## Use the user's actual column names (not hard-coded sdmTMB ecology labels).
+    ## A temporal fit internally uses a private pair factor, which must never
+    ## leak as the only training-data identifier.
     unit_lbl <- if (!is.null(object$unit_col)) object$unit_col else "site"
     species_lbl <- if (!is.null(object$species_col)) {
       object$species_col
@@ -2626,14 +2841,21 @@ predict.gllvmTMB_multi <- function(
       "species"
     }
     trait_lbl <- if (!is.null(object$trait_col)) object$trait_col else "trait"
-    out <- data.frame(
-      object$data[[unit_lbl]],
-      object$data[[species_lbl]],
-      object$data[[trait_lbl]],
-      est = eta,
-      stringsAsFactors = FALSE
-    )
-    names(out)[1:3] <- c(unit_lbl, species_lbl, trait_lbl)
+    if (isTRUE(object$temporal$active)) {
+      temporal_cols <- c(object$temporal$series_col, object$temporal$time_col,
+        object$temporal$replicate_col, trait_lbl)
+      temporal_cols <- unique(stats::na.omit(temporal_cols))
+      out <- data.frame(object$data[temporal_cols], est = eta, check.names = FALSE)
+    } else {
+      out <- data.frame(
+        object$data[[unit_lbl]],
+        object$data[[species_lbl]],
+        object$data[[trait_lbl]],
+        est = eta,
+        stringsAsFactors = FALSE
+      )
+      names(out)[1:3] <- c(unit_lbl, species_lbl, trait_lbl)
+    }
     ## Carry the arm/source label through (#1133 item 3). On a mixed-family
     ## fit -- an isdm_sources() fit above all -- `est` mixes scales: Poisson
     ## expected counts beside cloglog detection probabilities, in one numeric

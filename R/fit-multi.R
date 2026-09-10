@@ -8,6 +8,55 @@
   )
 }
 
+## This audit is deliberately independent of an optimiser's stopping rule. It
+## is called only by the opt-in temporal--phylogenetic qualification receipt;
+## a missing or non-finite coordinate is evidence of an incomplete audit, not
+## a reason to report the maximum over the coordinates that happened to work.
+.gllvmTMB_optimizer_finite_difference_audit <- function(par, gradient, fn,
+                                                        relative_step = 1e-5) {
+  raw <- names(par)
+  if (is.null(raw) || length(raw) != length(par)) raw <- rep("outer", length(par))
+  labels <- paste0(raw, "[", ave(seq_along(raw), raw, FUN = seq_along), "]")
+  empty <- list(
+    labels = labels, step = stats::setNames(rep(NA_real_, length(par)), labels),
+    central = stats::setNames(rep(NA_real_, length(par)), labels),
+    error = stats::setNames(rep(NA_real_, length(par)), labels), n_coordinates = length(par),
+    n_finite = 0L, all_finite = FALSE, maximum = NA_real_,
+    coordinate = NA_character_, error_maximum = NA_real_,
+    error_coordinate = NA_character_
+  )
+  if (!length(par) || length(gradient) != length(par) ||
+      any(!is.finite(par)) || any(!is.finite(gradient)) || !is.function(fn)) {
+    return(empty)
+  }
+  step <- relative_step * pmax(1, abs(par))
+  central <- vapply(seq_along(par), function(i) {
+    plus <- par; minus <- par
+    plus[[i]] <- plus[[i]] + step[[i]]
+    minus[[i]] <- minus[[i]] - step[[i]]
+    f_plus <- tryCatch(fn(plus), error = function(e) NA_real_)
+    f_minus <- tryCatch(fn(minus), error = function(e) NA_real_)
+    if (!is.finite(f_plus) || !is.finite(f_minus)) return(NA_real_)
+    (f_plus - f_minus) / (2 * step[[i]])
+  }, numeric(1))
+  step <- stats::setNames(step, labels)
+  central <- stats::setNames(central, labels)
+  error <- stats::setNames(abs(central - gradient), labels)
+  finite <- is.finite(central) & is.finite(error)
+  all_finite <- length(finite) == length(par) && all(finite)
+  max_index <- if (all_finite) which.max(abs(central)) else NA_integer_
+  err_index <- if (all_finite) which.max(error) else NA_integer_
+  list(
+    labels = labels, step = step, central = central, error = error,
+    n_coordinates = length(par), n_finite = sum(finite),
+    all_finite = all_finite,
+    maximum = if (all_finite) max(abs(central)) else NA_real_,
+    coordinate = if (all_finite) labels[[max_index]] else NA_character_,
+    error_maximum = if (all_finite) max(error) else NA_real_,
+    error_coordinate = if (all_finite) labels[[err_index]] else NA_character_
+  )
+}
+
 .auto_psi_skip_message <- function(binomial_labs = character(),
                                    multinomial_labs = character()) {
   affected <- c(binomial_labs, multinomial_labs)
@@ -1121,6 +1170,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                                missing = miss_control(),
                                is_y_observed = NULL,
                                missing_meta = NULL,
+                               temporal = NULL,
                                estimator = "ml",
                                engine = "tmb") {
   if (!is.logical(REML) || length(REML) != 1L || is.na(REML)) {
@@ -1135,6 +1185,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     control$integration %||% "laplace", estimator, control$aghq %||% FALSE)
   structured_rho_estimated <- !is.null(structured_rho) &&
     identical(structured_rho$status, "estimated")
+  temporal <- temporal %||% list(active = FALSE)
+  temporal_active <- isTRUE(temporal$active)
 
   ## Family arg can be:
   ##   * a single family object (as before): same family for all rows.
@@ -5453,6 +5505,45 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     }
   }
 
+  temporal_series_id <- 0L
+  temporal_time_index <- 0L
+  n_temporal_series <- 1L
+  temporal_state_id <- integer(n_obs)
+  temporal_predecessor <- -1L
+  temporal_gap <- 0L
+  temporal_elapsed <- 0
+  n_temporal_states <- 1L
+  temporal_mode <- 0L
+  temporal_structure <- 0L
+  temporal_rank <- 0L
+  temporal_unique <- 0L
+  if (temporal_active) {
+    pair_table <- temporal$pair_table
+    state_match <- match(as.character(data[[temporal$pair_col]]), pair_table$pair_id)
+    if (anyNA(state_match)) stop("Temporal state map does not match fitted rows.", call. = FALSE)
+    temporal_state_id <- as.integer(state_match - 1L)
+    n_temporal_states <- nrow(pair_table)
+    temporal_predecessor <- rep.int(-1L, n_temporal_states)
+    temporal_gap <- integer(n_temporal_states)
+    temporal_elapsed <- numeric(n_temporal_states)
+    for (series_name in unique(pair_table$series)) {
+      idx <- which(pair_table$series == series_name)
+      idx <- idx[order(pair_table$time[idx])]
+      if (length(idx) > 1L) {
+        temporal_predecessor[idx[-1L]] <- idx[-length(idx)] - 1L
+        if (identical(temporal$structure, "ar1")) {
+          temporal_gap[idx[-1L]] <- as.integer(pair_table$time[idx[-1L]] - pair_table$time[idx[-length(idx)]])
+        } else {
+          temporal_elapsed[idx[-1L]] <- pair_table$time[idx[-1L]] - pair_table$time[idx[-length(idx)]]
+        }
+      }
+    }
+    temporal_mode <- switch(temporal$mode, indep = 0L, dep = 1L, latent = 2L)
+    temporal_structure <- if (identical(temporal$structure, "ou")) 1L else 0L
+    temporal_rank <- if (identical(temporal$mode, "dep")) n_traits else temporal$d
+    temporal_unique <- as.integer(isTRUE(temporal$unique))
+  }
+
   tmb_data <- list(
     y                = as.numeric(y),
     is_y_observed    = as.integer(is_y_observed),
@@ -5468,6 +5559,23 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     d_B              = as.integer(d_B),
     d_W              = as.integer(d_W),
     use_rr_B         = as.integer(use_rr_B),
+    ## Legacy B-tier temporal fields remain inert. The sixth source below is
+    ## a separate state/parameter tier and never aliases `z_B` or `s_B`.
+    use_temporal_B   = 0L,
+    temporal_iid_total = 0L,
+    temporal_series_id = as.integer(temporal_series_id),
+    temporal_time_index = as.integer(temporal_time_index),
+    n_temporal_series = as.integer(n_temporal_series),
+    use_temporal = as.integer(temporal_active),
+    temporal_state_id = as.integer(temporal_state_id),
+    temporal_predecessor = as.integer(temporal_predecessor),
+    temporal_gap = as.integer(temporal_gap),
+    temporal_elapsed = as.numeric(temporal_elapsed),
+    n_temporal_states = as.integer(n_temporal_states),
+    temporal_mode = as.integer(temporal_mode),
+    temporal_structure = as.integer(temporal_structure),
+    temporal_rank = as.integer(temporal_rank),
+    temporal_unique = as.integer(temporal_unique),
     use_lv_B         = as.integer(use_lv_B),
     n_lv_B           = as.integer(n_lv_B),
     X_lv_B           = X_lv_B,
@@ -5697,6 +5805,18 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     theta_rr_B   = if (use_rr_B) {
                      init_rr_theta(n_traits, d_B, scale = lam_scale_init)
                    } else rep(0.0, theta_rr_B_len),
+    theta_temporal_phi = 0.0,
+    ## The temporal source deliberately has its own parameter blocks.  The
+    ## ordinary B-tier `z_B` / `s_B` objects remain available to ordinary
+    ## unit effects in the same fit and are never repurposed as time states.
+    theta_temporal_time = 0.0,
+    theta_temporal_rr = if (temporal_active && temporal_rank > 0L) {
+      init_rr_theta(n_traits, temporal_rank)
+    } else 0.0,
+    theta_temporal_diag = rep(0.0, n_traits),
+    z_temporal = matrix(0, nrow = max(temporal_rank, 1L),
+      ncol = n_temporal_states),
+    q_temporal = matrix(0, nrow = n_traits, ncol = n_temporal_states),
     ## Latent-score start (issue #851). Seeded from an SVD of the grouped
     ## residual matrix rather than left at exactly zero. This is the one piece
     ## the previous attempt omitted, and the piece the diagnosis points at: the
@@ -6288,6 +6408,31 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     tmb_map$theta_rr_B <- factor(rep(NA_integer_, length(tmb_params$theta_rr_B)))
     tmb_map$z_B        <- factor(rep(NA_integer_, length(tmb_params$z_B)))
   }
+  ## The predecessor-based B-tier prototype is retired in favour of the
+  ## dedicated temporal state tier.  Keep its parameter mapped off for tape
+  ## compatibility, including on temporal fits.
+  tmb_map$theta_temporal_phi <- factor(NA_integer_)
+  if (!temporal_active) {
+    tmb_map$theta_temporal_time <- factor(NA_integer_)
+    tmb_map$theta_temporal_rr <- factor(rep(NA_integer_, length(tmb_params$theta_temporal_rr)))
+    tmb_map$theta_temporal_diag <- factor(rep(NA_integer_, length(tmb_params$theta_temporal_diag)))
+    tmb_map$z_temporal <- factor(rep(NA_integer_, length(tmb_params$z_temporal)))
+    tmb_map$q_temporal <- factor(rep(NA_integer_, length(tmb_params$q_temporal)))
+  } else {
+    if (temporal_rank < 1L) {
+      tmb_map$theta_temporal_rr <- factor(rep(NA_integer_, length(tmb_params$theta_temporal_rr)))
+      tmb_map$z_temporal <- factor(rep(NA_integer_, length(tmb_params$z_temporal)))
+    }
+    ## The indep cell owns a temporal trait-diagonal variance even though it
+    ## has no latent Psi.  Map this block only when neither indep nor
+    ## latent(unique = TRUE) needs it.
+    if (temporal_unique != 1L && temporal_mode != 0L) {
+      tmb_map$theta_temporal_diag <- factor(rep(NA_integer_, length(tmb_params$theta_temporal_diag)))
+    }
+    if (temporal_unique != 1L) {
+      tmb_map$q_temporal <- factor(rep(NA_integer_, length(tmb_params$q_temporal)))
+    }
+  }
   if (!use_lv_B) {
     tmb_map$alpha_lv_B <- factor(rep(NA_integer_, length(tmb_params$alpha_lv_B)))
   }
@@ -6811,7 +6956,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     ## We honour that by fixing sigma_eps to a tiny fraction of the response sd
     ## so the Gaussian density stays well-defined while diag(Psi) absorbs the
     ## row-level variation.
-    if (per_row_diag_W || per_row_diag_B) {
+    if ((per_row_diag_W || per_row_diag_B) &&
+        !(temporal_active && identical(temporal$workflow, "unreplicated"))) {
       level_lab <- if (per_row_diag_W) ss_name else site
       data_sd  <- stats::sd(y)
       small_eps <- max(1e-3 * data_sd, 1e-6)
@@ -7072,6 +7218,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     known_V = known_V, lambda_constraint = lambda_constraint,
     Xcoef_fixed = xcoef_fixed
   )
+  ## A temporal Psi is a persisted process, never the ordinary B-tier
+  ## Gaussian convolution.  Retain the observation residual and leave B-tier
+  ## integration to its normal eligibility rule.
   tmb_data$integrate_gaussian_diag_B <- as.integer(integrated_gaussian_diag_B)
   if (integrated_gaussian_diag_B) {
     tmb_map$s_B <- factor(rep(NA_integer_, length(tmb_params$s_B)))
@@ -7110,6 +7259,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## guards above have ruled out unsupported extensions.
   if (isTRUE(REML)) random <- c(random, "b_fix")
   if (use_rr_B)   random <- c(random, "z_B")
+  if (temporal_active && temporal_rank > 0L) random <- c(random, "z_temporal")
+  if (temporal_active && temporal_unique == 1L) random <- c(random, "q_temporal")
   if (use_rr_B_slope) random <- c(random, "z_B_slope")
   if (use_diag_B && !diag_B_all_skipped && !integrated_gaussian_diag_B)
     random <- c(random, "s_B")
@@ -7419,6 +7570,341 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     }
   }
 
+  ## A caller can request a bounded exact-gradient continuation of the selected
+  ## optimiser. This is an optimisation control rather than a post-fit
+  ## mutation: every pass uses the same TMB objective and the saved public
+  ## control call replays it in update()/refit workflows. A later pass is
+  ## adopted only after its own convergence code and objective have passed.
+  ##
+  ## `optimizer_diagnostics` is a developer-only, opt-in qualification hook.
+  ## It deliberately leaves the optimisation settings and acceptance predicate
+  ## untouched. The temporal-phylogenetic recovery qualification uses it to
+  ## retain enough evidence to distinguish a stopping-rule issue from an
+  ## objective-state mismatch. It is not a public control argument.
+  optimizer_diagnostics <- isTRUE(control$optimizer_diagnostics) &&
+    temporal_active && use_phylo_rr
+
+  optimizer_coordinate_labels <- function(par) {
+    raw <- names(par)
+    if (is.null(raw) || length(raw) != length(par)) {
+      raw <- rep("outer", length(par))
+    }
+    occurrence <- ave(seq_along(raw), raw, FUN = seq_along)
+    paste0(raw, "[", occurrence, "]")
+  }
+
+  optimizer_finite_difference <- function(par, gradient, diagnostic_obj) {
+    ## The Laplace objective can be O(10^4) even for a small qualification
+    ## fixture. A sqrt-epsilon step loses its central difference to cancellation
+    ## on that scale, so use the same fixed relative step as the independent
+    ## dense-oracle test below the fitting layer.
+    .gllvmTMB_optimizer_finite_difference_audit(
+      par, gradient, diagnostic_obj$fn, relative_step = 1e-5
+    )
+  }
+
+  optimizer_fresh_state <- function(par, objective, gradient) {
+    unavailable <- function(message) list(
+      ok = FALSE, gradient = NULL, objective = NA_real_, objective_error = NA_real_,
+      message = message, inner_method = NA_character_,
+      inner_hessian_available = FALSE, inner_hessian_dimension = NA_integer_,
+      inner_hessian_rcond = NA_real_, inner_hessian_condition = NA_real_,
+      inner_hessian_symmetric = FALSE, inner_hessian_pd = FALSE,
+      inner_score_max = NA_real_, inner_score_coordinate = NA_character_,
+      inner_fixed_state_ok = FALSE,
+      inner_hessian_tmb_version = NA_character_,
+      inner_hessian_message = "not available", outer_hessian_available = FALSE,
+      outer_hessian_message = "not available"
+    )
+    if (!optimizer_diagnostics) {
+      return(unavailable("not requested"))
+    }
+    fresh <- tryCatch(
+      TMB::MakeADFun(
+        data = tmb_data, parameters = tmb_params, map = tmb_map,
+        random = random, DLL = "gllvmTMB", silent = silent
+      ),
+      error = function(e) e
+    )
+    if (inherits(fresh, "error")) {
+      return(unavailable(conditionMessage(fresh)))
+    }
+    labels <- optimizer_coordinate_labels(par)
+    if (!identical(optimizer_coordinate_labels(fresh$par), labels)) {
+      return(unavailable("fresh outer-coordinate order differs"))
+    }
+    fresh_objective <- tryCatch(fresh$fn(par), error = function(e) NA_real_)
+    ## `last.par` is the full fixed-plus-random vector at the conditional mode
+    ## just evaluated by `fn()`.  It is the only valid point at which to ask
+    ## TMB for the Laplace inner Hessian.  Calling `spHess()` with its defaults
+    ## instead returns the full joint matrix at `env$par`.
+    fresh_full_par <- tryCatch(fresh$env$last.par, error = function(e) NULL)
+    fresh_gradient <- tryCatch(fresh$gr(par),
+      error = function(e) rep(NA_real_, length(par)))
+    tolerance <- 64 * .Machine$double.eps * max(1, abs(objective))
+    gradient_tolerance <- 1e-7 * pmax(1, abs(gradient))
+    ok <- is.finite(fresh_objective) && is.finite(objective) &&
+      abs(fresh_objective - objective) <= tolerance &&
+      length(fresh_gradient) == length(gradient) &&
+      all(is.finite(fresh_gradient)) && all(is.finite(gradient)) &&
+      all(abs(fresh_gradient - gradient) <= gradient_tolerance)
+    inner <- tryCatch({
+      random_index <- as.integer(fresh$env$random)
+      n_full <- length(fresh$env$par)
+      fixed_index <- setdiff(seq_len(n_full), random_index)
+      full_valid <- is.numeric(fresh_full_par) && length(fresh_full_par) == n_full &&
+        all(is.finite(fresh_full_par)) && length(fixed_index) == length(par)
+      fixed_tolerance <- 64 * .Machine$double.eps * max(1, max(abs(par)))
+      fixed_ok <- full_valid && all(abs(fresh_full_par[fixed_index] - par) <= fixed_tolerance)
+      if (!full_valid || !fixed_ok || !length(random_index)) {
+        stop("conditional-mode parameter state is unavailable or does not match the outer endpoint",
+          call. = FALSE)
+      }
+      ## EvalADFunObject on ADGrad is the joint exact score.  Its random block
+      ## is the conditional score at `fresh_full_par`; `spHess(..., random =
+      ## TRUE)` selects the matching random-effect block rather than the full
+      ## joint Hessian.
+      joint_score <- TMB:::EvalADFunObject(
+        fresh$env$ADGrad, fresh_full_par, order = 0L
+      )
+      if (!is.numeric(joint_score) || length(joint_score) != n_full ||
+          any(!is.finite(joint_score))) {
+        stop("conditional random-effect score is unavailable", call. = FALSE)
+      }
+      conditional_score <- stats::setNames(
+        as.numeric(joint_score[random_index]),
+        optimizer_coordinate_labels(fresh_full_par)[random_index]
+      )
+      hessian <- fresh$env$spHess(fresh_full_par, random = TRUE)
+      dimension <- if (is.matrix(hessian) || inherits(hessian, "Matrix")) nrow(hessian) else NA_integer_
+      dimension_ok <- is.finite(dimension) && dimension > 0L &&
+        identical(as.integer(dimension), as.integer(length(random_index)))
+      finite <- dimension_ok && all(is.finite(hessian))
+      symmetric <- finite && isTRUE(Matrix::isSymmetric(hessian, tol = 1e-10))
+      cholesky <- if (symmetric) tryCatch(
+        Matrix::Cholesky(hessian, LDL = FALSE, perm = TRUE),
+        error = function(e) NULL
+      ) else NULL
+      pd <- !is.null(cholesky)
+      rcond <- if (pd) Matrix::rcond(hessian) else NA_real_
+      list(available = finite && symmetric && pd, dimension = as.integer(dimension),
+        rcond = as.numeric(rcond),
+        condition = if (is.finite(rcond) && rcond > 0) 1 / rcond else Inf,
+        symmetric = symmetric, pd = pd,
+        score_max = max(abs(conditional_score)),
+        score_coordinate = names(conditional_score)[which.max(abs(conditional_score))],
+        fixed_state_ok = fixed_ok,
+        tmb_version = as.character(utils::packageVersion("TMB")),
+        message = if (finite && symmetric && pd) "ok" else
+          "conditional random-effect Hessian is nonfinite, nonsymmetric, or not positive-definite")
+    }, error = function(e) list(available = FALSE, dimension = NA_integer_,
+      rcond = NA_real_, condition = NA_real_, symmetric = FALSE, pd = FALSE,
+      score_max = NA_real_, score_coordinate = NA_character_, fixed_state_ok = FALSE,
+      tmb_version = NA_character_,
+      message = conditionMessage(e)))
+    outer <- tryCatch({
+      hessian <- fresh$he(par)
+      list(available = is.matrix(hessian) && all(is.finite(hessian)), message = "ok")
+    }, error = function(e) list(available = FALSE, message = conditionMessage(e)))
+    list(ok = ok, gradient = stats::setNames(fresh_gradient, labels),
+      objective = as.numeric(fresh_objective),
+      objective_error = if (is.finite(fresh_objective) && is.finite(objective)) {
+        abs(fresh_objective - objective)
+      } else NA_real_,
+      message = if (isTRUE(ok)) "ok" else "fresh objective or gradient differs",
+      inner_method = as.character(fresh$env$inner.method %||% NA_character_),
+      inner_hessian_available = isTRUE(inner$available),
+      inner_hessian_dimension = inner$dimension,
+      inner_hessian_rcond = inner$rcond,
+      inner_hessian_condition = inner$condition,
+      inner_hessian_symmetric = inner$symmetric,
+      inner_hessian_pd = inner$pd,
+      inner_score_max = inner$score_max,
+      inner_score_coordinate = inner$score_coordinate,
+      inner_fixed_state_ok = inner$fixed_state_ok,
+      inner_hessian_tmb_version = inner$tmb_version,
+      inner_hessian_message = inner$message,
+      outer_hessian_available = isTRUE(outer$available),
+      outer_hessian_message = outer$message)
+  }
+
+  optimizer_pass_record <- function(pass, answer, start, accepted, warnings = character()) {
+    if (!optimizer_diagnostics) {
+      return(list(
+        pass = as.integer(pass),
+        objective = as.numeric(answer$objective %||% NA_real_),
+        convergence = as.integer(answer$convergence %||% NA_integer_),
+        message = as.character(answer$message %||% ""),
+        iterations = as.numeric(answer$iterations %||% NA_real_),
+        evaluations = as.numeric(answer$evaluations %||% NA_real_),
+        accepted = isTRUE(accepted)
+      ))
+    }
+    endpoint <- answer$par %||% rep(NA_real_, length(start))
+    labels <- optimizer_coordinate_labels(endpoint)
+    diagnostic_obj <- tryCatch(
+      TMB::MakeADFun(
+        data = tmb_data, parameters = tmb_params, map = tmb_map,
+        random = random, DLL = "gllvmTMB", silent = silent
+      ),
+      error = function(e) e
+    )
+    gradient <- if (inherits(diagnostic_obj, "error")) {
+      rep(NA_real_, length(endpoint))
+    } else {
+      tryCatch(diagnostic_obj$gr(endpoint),
+        error = function(e) rep(NA_real_, length(endpoint)))
+    }
+    objective <- as.numeric(answer$objective %||% NA_real_)
+    finite_gradient <- which(is.finite(gradient))
+    gradient_maximum <- if (length(finite_gradient)) max(abs(gradient[finite_gradient])) else NA_real_
+    gradient_coordinate <- if (length(finite_gradient)) {
+      labels[[finite_gradient[[which.max(abs(gradient[finite_gradient]))]]]]
+    } else NA_character_
+    finite_difference <- if (!inherits(diagnostic_obj, "error")) {
+      optimizer_finite_difference(endpoint, gradient, diagnostic_obj)
+    } else list(labels = labels,
+      step = stats::setNames(rep(NA_real_, length(endpoint)), labels),
+      central = stats::setNames(rep(NA_real_, length(endpoint)), labels),
+      error = stats::setNames(rep(NA_real_, length(endpoint)), labels),
+      maximum = NA_real_, coordinate = NA_character_,
+      error_maximum = NA_real_, error_coordinate = NA_character_,
+      n_coordinates = length(endpoint), n_finite = 0L, all_finite = FALSE)
+    fresh <- optimizer_fresh_state(endpoint, objective, gradient)
+    list(
+      pass = as.integer(pass), pass_label = paste0("pass_", pass),
+      objective = objective,
+      convergence = as.integer(answer$convergence %||% NA_integer_),
+      message = as.character(answer$message %||% ""),
+      iterations = as.numeric(answer$iterations %||% NA_real_),
+      evaluations = as.numeric(answer$evaluations %||% NA_real_),
+      accepted = isTRUE(accepted),
+      outer_gradient_max = gradient_maximum,
+      outer_gradient_coordinate = gradient_coordinate,
+      finite_difference_max = finite_difference$maximum,
+      finite_difference_coordinate = finite_difference$coordinate,
+      finite_difference_error_max = finite_difference$error_maximum,
+      finite_difference_error_coordinate = finite_difference$error_coordinate,
+      finite_difference_n_coordinates = finite_difference$n_coordinates,
+      finite_difference_n_finite = finite_difference$n_finite,
+      finite_difference_all_finite = finite_difference$all_finite,
+      finite_difference_labels = I(list(finite_difference$labels)),
+      finite_difference_step = I(list(finite_difference$step)),
+      finite_difference_central = I(list(finite_difference$central)),
+      finite_difference_error = I(list(finite_difference$error)),
+      fresh_state_ok = fresh$ok,
+      fresh_objective = fresh$objective,
+      fresh_objective_error = fresh$objective_error,
+      inner_method = fresh$inner_method,
+      inner_hessian_available = fresh$inner_hessian_available,
+      inner_hessian_dimension = fresh$inner_hessian_dimension,
+      inner_hessian_rcond = fresh$inner_hessian_rcond,
+      inner_hessian_condition = fresh$inner_hessian_condition,
+      inner_hessian_symmetric = fresh$inner_hessian_symmetric,
+      inner_hessian_pd = fresh$inner_hessian_pd,
+      inner_score_max = fresh$inner_score_max,
+      inner_score_coordinate = fresh$inner_score_coordinate,
+      inner_fixed_state_ok = fresh$inner_fixed_state_ok,
+      inner_hessian_tmb_version = fresh$inner_hessian_tmb_version,
+      inner_hessian_message = fresh$inner_hessian_message,
+      outer_hessian_available = fresh$outer_hessian_available,
+      outer_hessian_message = fresh$outer_hessian_message,
+      fn_evaluations = as.numeric(answer$iterations %||% NA_real_),
+      gr_evaluations = as.numeric(answer$evaluations %||% NA_real_),
+      warnings = paste(warnings, collapse = " | "),
+      elapsed_seconds = as.numeric(answer$elapsed_seconds %||% NA_real_),
+      start = I(list(stats::setNames(start, optimizer_coordinate_labels(start)))),
+      end = I(list(stats::setNames(endpoint, labels))),
+      gradient = I(list(stats::setNames(gradient, labels))),
+      fresh_gradient = I(list(if (length(fresh$gradient) == length(endpoint)) {
+        stats::setNames(fresh$gradient, labels)
+      } else numeric())),
+      fresh_state_message = as.character(fresh$message %||% "")
+    )
+  }
+
+  optimizer_run_with_receipt <- function(start, .ridge_tau = NULL) {
+    if (!optimizer_diagnostics) {
+      return(list(
+        answer = run_one(start, .ridge_tau = .ridge_tau),
+        warnings = character()
+      ))
+    }
+    started <- proc.time()[["elapsed"]]
+    warnings <- character()
+    answer <- withCallingHandlers(
+      run_one(start, .ridge_tau = .ridge_tau),
+      warning = function(w) {
+        warnings <<- c(warnings, conditionMessage(w))
+        invokeRestart("muffleWarning")
+      }
+    )
+    answer$elapsed_seconds <- proc.time()[["elapsed"]] - started
+    list(answer = answer, warnings = warnings)
+  }
+
+  run_passes <- function(par_init, .ridge_tau = NULL) {
+    requested <- max(1L, as.integer(control$optimizer_passes %||% 1L))
+    first <- optimizer_run_with_receipt(par_init, .ridge_tau = .ridge_tau)
+    current <- first$answer
+    history <- list(list(
+      answer = current, start = par_init, accepted = TRUE, warnings = first$warnings
+    ))
+    if (requested >= 2L) for (pass in seq.int(2L, requested)) {
+      trial <- tryCatch(
+        optimizer_run_with_receipt(current$par, .ridge_tau = .ridge_tau),
+        error = function(e) e
+      )
+      if (inherits(trial, "error")) {
+        failed <- list(par = current$par, objective = NA_real_, convergence = NA_integer_,
+          message = conditionMessage(trial), iterations = NA_real_, evaluations = NA_real_,
+          elapsed_seconds = NA_real_)
+        history[[pass]] <- list(
+          answer = failed, start = current$par, accepted = FALSE,
+          warnings = character()
+        )
+        next
+      }
+      candidate <- trial$answer
+      candidate_objective <- as.numeric(candidate$objective %||% NA_real_)
+      current_objective <- as.numeric(current$objective %||% NA_real_)
+      tolerance <- 64 * .Machine$double.eps * max(1, abs(current_objective))
+      accepted <- is.finite(candidate_objective) && is.finite(current_objective) &&
+        identical(as.integer(candidate$convergence %||% NA_integer_), 0L) &&
+        candidate_objective <= current_objective + tolerance
+      history[[pass]] <- list(
+        answer = candidate, start = current$par, accepted = accepted,
+        warnings = trial$warnings
+      )
+      if (isTRUE(accepted)) current <- candidate
+    }
+    ## Record qualification diagnostics only after every optimizer pass has
+    ## finished. Each record builds its own objective, so neither a gradient
+    ## nor a finite-difference probe changes the live TMB warm start used by a
+    ## later pass.
+    pass_history <- do.call(rbind, lapply(seq_along(history), function(i) {
+      record <- history[[i]]
+      as.data.frame(
+        optimizer_pass_record(i, record$answer, record$start,
+          record$accepted, record$warnings),
+        stringsAsFactors = FALSE
+      )
+    }))
+    current$pass_history <- pass_history
+    current$passes_requested <- requested
+    current$passes_accepted <- sum(pass_history$accepted)
+    current$iterations <- sum(pass_history$iterations, na.rm = TRUE)
+    current$evaluations <- sum(pass_history$evaluations, na.rm = TRUE)
+    if (requested > 1L) {
+      current$message <- paste0(
+        current$message %||% "",
+        if (nzchar(current$message %||% "")) "; " else "",
+        "optimizer passes accepted ", current$passes_accepted, "/", requested
+      )
+    }
+    current
+  }
+
   ## LAPLACE-PATH RIDGE -- the fair control, made runnable.
   ##
   ## `run_one()` above already takes `.ridge_tau` and applies it with no
@@ -7475,7 +7961,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       )
     }
     elapsed_start <- proc.time()[["elapsed"]]
-    opt_i <- tryCatch(run_one(par0, .ridge_tau = laplace_ridge_tau),
+    opt_i <- tryCatch(run_passes(par0, .ridge_tau = laplace_ridge_tau),
                       error = function(e) e)
     elapsed_s <- proc.time()[["elapsed"]] - elapsed_start
     if (inherits(opt_i, "error")) {
@@ -8795,6 +9281,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       lambda_constraint     = lambda_constraint,
       needs_rotation_advice = needs_rotation_advice,
       restart_history = restart_history,
+      optimizer_pass_history = opt$pass_history %||% data.frame(),
       start_provenance = start_provenance,
       sdreport_error = sdreport_error,
       package_version = utils::packageVersion("gllvmTMB"),

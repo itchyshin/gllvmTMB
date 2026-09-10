@@ -57674,3 +57674,213 @@ Deliberately not run: Totoro 9×500 grid dispatch; full `devtools::test()`.
   formula with `engine = "tmb"`). Ceiling stays **828**; not bumped.
 - Command: `Rscript --vanilla -e 'source("dev/gapclose/count-bare-aborts.R"); cat(length(count_bare_aborts("R")), "\n")'`
   plus `testthat` filter `gapclose-next-steps|kernel-latent-unique-bridge`.
+
+## 2026-09-08 — native temporal AR1 local closeout
+
+- Implemented the native rank-one Gaussian `temporal_latent()` provider for
+  complete regular long and `traits(...)` wide panels, including ordinary and
+  replicated workflows, public labels, training prediction, simulation,
+  update replay, and early unsupported-route guards.
+- Temporal gates: `TEMPORAL_PARSER_PASS`, `TEMPORAL_ORACLE_PASS`,
+  `TEMPORAL_METHODS_PASS`, `TEMPORAL_RECOVERY_PASS` (approved fixture-local
+  revision retained in `dev/temporal-ar1/ACCEPTANCE-REVISION.md`), and
+  `TEMPORAL_REGRESSION_PASS`.
+- The validation register remains `TEMP-AR1-01 = partial`; no general recovery,
+  calibration, precision, or interval claim is made.
+- Detached clean-worktree package check at temporal commit `184aa685f` ran in
+  24m12.7s with 0 errors, 5 warnings, and 4 notes. It had no temporal failure;
+  its BIC namespace, Julia Rd, and anova Rd warnings pre-exist this slice.
+- Repository-owned temporal ledger reverify: all seven gates met; G0–G5 reran after approved receipts were recorded.
+
+## 2026-09-09 — native temporal sixth-source closeout
+
+- Added the dedicated AR1/OU temporal source and its indep/dep/latent grid;
+  `unique = TRUE` applies a temporally correlated trait-diagonal Psi rather
+  than the predecessor's IID occasion noise.  The retained predecessor is
+  exercised only in a no-Psi common-submodel migration fixture.
+- Gate commands passed: `Rscript --vanilla dev/temporal-sixth-source/verify.R
+  self-test|parser|oracle|methods|recovery|regression`; the independent dense
+  oracle includes all eight AR1/OU cells, central gradients, odd negative AR1
+  lags, additive ordinary covariance, and OU extremes.  The fixed-seed
+  recovery verifier recomputes its thresholds and retains failures.
+- Documentation: `devtools::document()`, both affected article renders, and
+  `pkgdown::check_pkgdown()` passed.  A full
+  `devtools::check(args="--no-manual", quiet=TRUE)` completed in **23m00.2s**
+  with **0 errors, 0 warnings**, and two environmental notes only (system clock
+  verification and `xcrun_db`).
+- Exact closeout scans: `rg -n "5 × 3|5 x 3|five correlation sources"
+  README.md NEWS.md R man docs/design vignettes CLAUDE.md AGENTS.md`; and
+  `rg -n "temporal_iid_total|theta_temporal_phi|occasion_variance|measurement_variance|consecutive integer occasions"
+  R tests/testthat README.md NEWS.md docs vignettes man`.  Findings were
+  historical records, the separate response-column scope, and intentional
+  predecessor fixture fields only; current temporal documentation makes no
+  IID-Psi equivalence or release claim.
+
+## 2026-09-09 — temporal helper contract reconciliation
+
+- Corrected the direct-profile contract to name `profile_temporal()` rather
+  than generic `confint()`, which remains deliberately refused for temporal
+  fits because its existing algorithms assume iid latent scores.
+- Reconciled `TEMP-06-01` with the bounded helper routes now present:
+  `forecast_temporal()`, `profile_temporal()`, `bootstrap_temporal()`, and
+  `compare_temporal()`. Generic prediction, generic intervals/profiles,
+  automatic selection, and broad bootstrap routes remain refused.
+- `OPENBLAS_NUM_THREADS=1 Rscript --vanilla -e
+  'devtools::test(filter = "temporal-program-(forecast|profile|bootstrap|selection)|temporal-ar1-methods")'`
+  passed: 38 assertions, 0 failures, 0 warnings, and 0 skips.
+
+## 2026-09-09 — temporal recovery evidence and executable lifecycle gate
+
+- Repaired `dev/temporal-sixth-source/run-recovery.R` so its campaign path now
+  stops after retaining the results when any frozen `bounded_cell_pass` is
+  false; it no longer prints `TEMPORAL_SIXTH_RECOVERY_PASS` unconditionally.
+- Measured the eight timing fits with `OPENBLAS_NUM_THREADS=1`: the frozen
+  80-fit projection was 7.957 minutes. The local campaign then retained all 80
+  attempts in `.unlazy/temporal-grid/recovery-eight-cell-attempts.csv`; every
+  per-cell threshold passed. The two latent-plus-Psi cells each retained two
+  non-success terminals, with eight successful fits, so no seed was replaced.
+- `Rscript --vanilla dev/temporal-sixth-source/verify.R recovery` recomputed
+  the retained thresholds and emitted `TEMPORAL_SIXTH_RECOVERY_PASS`.
+- Extended `dev/temporal-program/verify.R` with a self-test and executable
+  `lifecycle` mode. It rejects empty, failed, errored, warned, and skipped test
+  results, and its forecast/profile/bootstrap/selection fixtures emitted
+  `TEMPORAL_PROGRAM_LIFECYCLE_PASS`. Publication and source-pair modes remain
+  fail-closed pending three-OS CI and source-pair admission evidence.
+- Follow-up regression: `OPENBLAS_NUM_THREADS=1 Rscript --vanilla -e 'devtools::test(filter = "temporal-sixth-source")'` completed with **167 assertions, 0 failures, 0 warnings, and 0 skips** in 40.6 seconds.
+- The programme runner was also invoked in `publication`, `combinations`, and `closeout` modes. Each exited nonzero with its intended missing-evidence message; none silently passed. These blocks are evidence boundaries, not failures of the admitted temporal-only route.
+
+## 2026-09-09 — retained temporal-kernel redesign remains non-admissible
+
+- A disposable, direct-DGP kernel redesign used 80 series, 16 occasions, three
+  traits, a fixed non-proportional labelled kernel, AR1 `phi = -.4, 0, .6`,
+  seeds `2609151:2609153`, and exact-gradient BFGS fits. It did not call the
+  production temporal simulator and did not change the production parser.
+- All nine fits were finite with optimizer code zero. Three gradients exceeded
+  `1e-3`; strict-success counts were 3/3, 1/3, and 2/3 by persistence cell.
+  The `-.4` and `.6` cells also exceeded the frozen `.25` mean fixed-effect
+  error criterion. Results are retained under `/private/tmp/`; no seed was
+  replaced. The temporal-plus-kernel parser remains closed.
+
+## 2026-09-09 — replicated AR1 temporal-kernel cell uses a replayable optimizer contract
+
+- Added the opt-in native-Laplace `optimizer_passes` control. Every requested
+  pass uses the TMB objective and exact gradient; a later pass replaces its
+  predecessor only with its own convergence code zero and a non-increasing
+  objective. The selected fit rebuilds its report before extraction, and the
+  saved public control is replayed by `update()`.
+- The first admitted source-pair cell is deliberately narrow: replicated AR1
+  `temporal_indep()` plus one labelled `kernel_indep()` term. The test fixture
+  checks its independent dense additive NLL and gradients, distinguishes the
+  rejected product covariance, covers long/wide calls, simulation moments,
+  update, and all current parser fences. It does not admit OU, temporal
+  `dep`/`latent`, or any spatial/phylogenetic/animal pair.
+- A fresh direct-DGP timing fit took 10.8 seconds; the nine fixed attempts were
+  projected below 2 minutes and completed in 88 seconds with one BLAS thread.
+  `dev/temporal-program/run-kernel-recovery.R` retained every attempt and
+  final-pass diagnostic. `Rscript --vanilla dev/temporal-program/verify.R
+  combinations` recomputed the fixed seeds, final-pass diagnostics, and frozen
+  thresholds, then emitted `TEMPORAL_PROGRAM_COMBINATIONS_PASS`.
+- Astra's independent review found and the integration repaired two additional
+  fail-closed details: the verifier now recomputes summaries from retained
+  attempt rows and self-tests a stale-summary rejection; `optimizer_passes > 1`
+  rejects the Julia engine rather than being silently dropped. The final review
+  reports no remaining P1 findings for this kernel cell.
+
+## 2026-09-09 — fixed phylogenetic temporal source-pair checkpoint
+
+- Extended the narrow cross-source admission to replicated AR1
+  `temporal_indep()` plus exactly one fixed labelled `phylo_indep()` source.
+  The source must be supplied inside the keyword as `tree =` or `vcv =`; global
+  phylogenetic arguments, source attenuation, OU, temporal `dep`/`latent`, and
+  all other source pairs remain refused.
+- `test-temporal-program-phylo-replicated.R` independently evaluates the dense
+  additive NLL and central gradient, rejects a source-by-time product, checks
+  long/wide rewriting, dense-VCV/tree equivalence, labels, simulation moments,
+  update, and all parser fences. The AR1 dense oracle exponent was corrected
+  after mathematical review to `((1 - 1e-6) * tanh(theta))^lag`.
+- Focused phylogenetic and kernel source-pair fixtures passed locally, as did
+  `Rscript --vanilla dev/temporal-program/verify.R self-test`. The combinations
+  runner now deliberately exits nonzero while this newly admitted source pair
+  lacks a completed retained recovery/verifier receipt; kernel-only evidence is
+  no longer allowed to certify every admitted pair.
+- The direct 80-series phylogenetic DGP retained all nine optimizer-successful
+  attempts but failed two unchanged `phi=.6` phylogenetic-variance thresholds.
+  Its sole predeclared 160-series follow-up retains eight successful checkpoints
+  (all final gradients below `1e-3`); the ninth fit exceeded three minutes and
+  moved the complete campaign beyond the local 30-minute boundary. The runner
+  now checkpoints every attempt and resumes only missing frozen seed--phi
+  combinations. Completing the remaining 22 attempts needs separate compute
+  approval; no seed or threshold changed.
+
+## 2026-09-10 — completed temporal--phylogenetic Fir recovery remains failed
+
+- Fir job `59096255` completed the 22 missing frozen recovery tasks after a
+  one-cell installed-runtime preflight reproduced the Totoro fixture. The
+  original eight checkpoints and the new 22 receipts form all 30 `(phi, seed)`
+  cells, with every terminal recorded as `success` and every result retained.
+- The frozen strict gate failed without relaxation: strict successes are 10/10,
+  9/10, and 8/10 at `phi = -.4, 0, .6`. Seeds 2609188 (`phi = 0`), 2609183,
+  and 2609185 (`phi = .6`) have outer gradients 0.001614525, 0.001358263, and
+  0.002647219, respectively. The 30-row receipt and summary are retained at
+  `dev/temporal-program/results/failed/phylo-recovery-160-fir-59096255-20260910/`.
+- The remote runner now retains pre-fit load errors and binds exported provider
+  helpers in installed-package tasks. The collector now removes source row names
+  and `expand.grid()` metadata before its strict ledger-key comparison. Exact
+  raw receipts reproduced the collector bug before the repair; a temporary
+  threshold-satisfying copy emitted `TEMPORAL_PHYLO_COLLECTION_PASS` after it.
+- `Rscript --vanilla dev/temporal-program/verify.R remote` emitted
+  `TEMPORAL_PROGRAM_REMOTE_PASS`; `Rscript --vanilla dev/temporal-program/verify.R
+  self-test` emitted `TEMPORAL_PROGRAM_SELF_TEST_PASS`. No package likelihood,
+  grammar, help, vignette, README, NEWS, or generated documentation surface
+  changed. TEMP-06-03 remains `partial`; this is not recovery, coverage,
+  cross-platform, merge, or release evidence.
+
+## 2026-09-10 — temporal keyword-grid teaching clarification
+
+- Reframed the keyword-grid article as a five-source stable-unit grid plus the
+  temporal within-series addition. The formal grammar remains six sources by
+  three trait-covariance modes; the new presentation makes the different
+  grouping-axis meaning visible without creating a fourth mode or special
+  temporal syntax.
+- The temporal row now identifies `series`, a bare `time = occasion` column,
+  and optional `replicate = measurement` explicitly, and states that the
+  private temporal-state index never overwrites ordinary `unit` or `unit_obs`.
+- `Rscript --vanilla -e 'rmarkdown::render("vignettes/articles/api-keyword-grid.Rmd",
+  output_dir = tempdir(), quiet = TRUE)'` completed and emitted
+  `TEMPORAL_GRID_ARTICLE_RENDER_PASS`. This is a source-article render only;
+  no pkgdown deployment, merge, or release claim follows.
+
+## 2026-09-10 — exact-source Fir optimizer replay retains platform difference
+
+- Built a clean isolated Fir R 4.5.0 runtime in one core job `59103778` from
+  exact commit `19756f2a5`, then ran one immutable `phi = 0`, seed `2609188`
+  diagnostic fixture in job `59103979`. The task exited zero in 14.6 seconds
+  and retained `fir-59103979-phi0-seed2609188-19756f2a-step1e-5.rds` beside
+  the local receipts.
+- The Fir and local receipts have the same final objective (`11306.6746241`),
+  source commit, DGP, control, and convergence zero. Fir's two fresh-object
+  checks passed with finite-difference errors below `5.5e-5`, yet its final
+  outer gradient is `0.00161452497`, reproducing the original failed Fir
+  campaign value; the local exact-source run records `0.00013677207`.
+- This rules out a changed fixture or source revision as an explanation for
+  this one-cell difference. It neither identifies the numerical platform cause
+  nor repairs the frozen `1e-3` recovery gate. No recovery or coverage claim
+  is added.
+
+## 2026-09-10 — temporal--spatial status reconciled with retained evidence
+
+- Ran `test-temporal-program-spatial-replicated.R`: its independent dense
+  additive likelihood/gradient, product-kernel control, long/wide replay,
+  proportional-basis refusal, and unconditional SPDE-redraw checks passed.
+- Re-read the retained 30-attempt spatial fixture and summary. It records 29
+  terminal successes and one error, with strict-success counts 10/10, 9/10,
+  and 8/10 by persistence; frozen spatial range/scale criteria fail. The cell
+  is therefore implemented with focused local checks but remains `partial`,
+  without a recovery, cross-platform, release, or coverage claim.
+- Corrected README, temporal/grid articles, grammar contract, validation
+  register and programme ledger so they name the narrow spatial cell rather
+  than incorrectly saying every temporal--spatial combination is unavailable.
+- Built the current branch into an isolated temporary R library and rendered
+  `vignettes/articles/temporal-ar1.Rmd` and
+  `vignettes/articles/api-keyword-grid.Rmd` against that install. Both passed
+  and emitted `TEMPORAL_STATUS_ARTICLES_RENDER_PASS`.

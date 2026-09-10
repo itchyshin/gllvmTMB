@@ -412,6 +412,7 @@
   nsim = 999L,
   seed = NULL
 ) {
+  .temporal_assert_no_iid_inference(fit, ".phylo_signal_bootstrap_ci")
   .phylo_signal_check_has_phy(fit)
   if (!is.numeric(level) || length(level) != 1L || level <= 0 || level >= 1) {
     cli::cli_abort("{.arg level} must be a scalar in (0, 1); got {level}.")

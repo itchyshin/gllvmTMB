@@ -205,16 +205,29 @@ getLV <- function(
   }
   if (!isTRUE(se)) {
     if (rotate == "none") {
-      return(ord$scores)
+      scores <- ord$scores
+      if (isTRUE(fit$temporal$active)) {
+        attr(scores, "temporal_index") <- ord$row_index
+      }
+      return(scores)
     }
-    return(rotate_loadings(fit, .canonical_level_name(level), rotate)$scores)
+    scores <- rotate_loadings(fit, .canonical_level_name(level), rotate)$scores
+    if (isTRUE(fit$temporal$active)) {
+      attr(scores, "temporal_index") <- ord$row_index
+    }
+    return(scores)
   }
   se_mat <- if (inherits(fit, "gllvmTMB_va")) {
     .va_getLV_se(fit, scores = ord$scores)
   } else {
     .getLV_se(fit, level = level, scores = ord$scores)
   }
-  list(scores = ord$scores, se = se_mat)
+  out <- list(scores = ord$scores, se = se_mat)
+  if (isTRUE(fit$temporal$active)) {
+    attr(out$scores, "temporal_index") <- ord$row_index
+    out$temporal_index <- ord$row_index
+  }
+  out
 }
 
 #' Standard error of every unit-level (or within-unit) latent score

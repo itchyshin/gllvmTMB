@@ -96,6 +96,7 @@ profile_ci_repeatability <- function(fit, trait_idx = NULL, level = 0.95) {
   if (!inherits(fit, "gllvmTMB_multi")) {
     cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
   }
+  .temporal_assert_no_iid_inference(fit, "profile_ci_repeatability")
   ix_B <- .par_indices(fit, "theta_diag_B")
   ix_W <- .par_indices(fit, "theta_diag_W")
   if (length(ix_B) == 0L || length(ix_W) == 0L) {
@@ -177,6 +178,7 @@ profile_ci_phylo_signal <- function(fit, trait_idx = NULL, level = 0.95) {
   if (!inherits(fit, "gllvmTMB_multi")) {
     cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
   }
+  .temporal_assert_no_iid_inference(fit, "profile_ci_phylo_signal")
   .structured_rho_source_allocation_assert(fit, "profile_ci_phylo_signal")
   .gllvmTMB_mspl_assert_inference(fit, "profile_ci_phylo_signal")
   .gllvmTMB_require_unweighted_inference(fit, "profile_ci_phylo_signal")
@@ -554,6 +556,7 @@ profile_ci_communality <- function(
   if (!inherits(fit, "gllvmTMB_multi")) {
     cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
   }
+  .temporal_assert_no_iid_inference(fit, "profile_ci_communality")
   tier <- match.arg(tier)
   tier <- .normalise_level(tier, arg_name = "tier")
   rr_used <- switch(
@@ -991,6 +994,7 @@ profile_ci_total_variance <- function(
   trait_idx = NULL,
   level = 0.95
 ) {
+  .temporal_assert_no_iid_inference(fit, "profile_ci_total_variance")
   .gllvmTMB_mspl_assert_inference(fit, "profile_ci_total_variance")
   .gllvmTMB_require_unweighted_inference(fit, "profile_ci_total_variance")
   tier <- match.arg(tier)
@@ -1186,6 +1190,7 @@ profile_ci_correlation <- function(
   if (!inherits(fit, "gllvmTMB_multi")) {
     cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
   }
+  .temporal_assert_no_iid_inference(fit, "profile_ci_correlation")
   tier <- match.arg(tier)
   tier <- .normalise_level(tier, arg_name = "tier")
   if (tier %in% c("cluster", "cluster2")) {
@@ -1643,6 +1648,7 @@ profile_ci_proportions <- function(
   if (!inherits(fit, "gllvmTMB_multi")) {
     cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
   }
+  .temporal_assert_no_iid_inference(fit, "profile_ci_proportions")
   pt <- suppressMessages(extract_proportions(fit, format = "long"))
   ## Sanity: extract_proportions() may add link_residual conditionally.
   comps_present <- as.character(unique(pt$component))
@@ -1824,6 +1830,7 @@ profile_ci_lv_effects <- function(fit,
                                   level = 0.95,
                                   reference = c("chisq", "t"),
                                   df = NULL) {
+  .temporal_assert_no_iid_inference(fit, "profile_ci_lv_effects")
   reference <- match.arg(reference)
   B_hat <- fit$report[["B_lv_unit"]]
   if (is.null(B_hat)) {

@@ -715,6 +715,7 @@ test_that("S4 public phylo_dep formula retains paired transformed-Wald endpoints
   julia_ci <- confint(julia, level = 0.9)
   embedded_julia_active_project <- normalizePath(as.character(JuliaCall::julia_eval("string(Base.active_project())")), mustWork = TRUE)
   embedded_julia_package_root <- normalizePath(as.character(JuliaCall::julia_eval("string(Base.pkgdir(GLLVM))")), mustWork = TRUE)
+  expect_identical(embedded_julia_active_project, normalizePath(file.path(julia_project, "Project.toml"), mustWork = TRUE))
   expect_identical(embedded_julia_package_root, normalizePath(julia_project, mustWork = TRUE))
 
   expect_identical(rownames(julia_ci), names(native_estimate))

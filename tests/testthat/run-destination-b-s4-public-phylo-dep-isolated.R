@@ -46,6 +46,12 @@ s4_public_phylo_dep_validate_frozen_manifest <- function(manifest, source_root, 
   invisible(manifest)
 }
 
+s4_public_phylo_dep_validate_embedded_julia_runtime <- function(active_project, package_root, project) {
+  expected_active <- normalizePath(file.path(project, "Project.toml"), mustWork = TRUE)
+  if (is.null(active_project) || is.null(package_root) || !identical(normalizePath(active_project, mustWork = TRUE), expected_active) || !identical(normalizePath(package_root, mustWork = TRUE), normalizePath(project, mustWork = TRUE))) stop("endpoint runtime did not attest the configured Julia active project and GLLVM package root", call. = FALSE)
+  list(active_project = expected_active, package_root = normalizePath(project, mustWork = TRUE))
+}
+
 s4_public_phylo_dep_write_once <- function(payload, path) {
   if (file.exists(path)) stop("refusing to overwrite existing S4 public phylo_dep receipt", call. = FALSE)
   directory <- dirname(path)
@@ -102,7 +108,7 @@ s4_public_phylo_dep_main <- function() {
   tab <- as.data.frame(reporter$get_results())
   if (nrow(tab) != 2L || sum(tab$failed) + sum(tab$skipped) + sum(tab$error) + sum(tab$warning) != 0L) stop("S4 public phylo_dep test pair did not pass cleanly", call. = FALSE)
   raw <- get0(".s4_public_phylo_dep_receipt", envir = globalenv(), inherits = FALSE)
-  if (is.null(raw$embedded_julia_active_project) || is.null(raw$embedded_julia_package_root) || !identical(normalizePath(raw$embedded_julia_package_root, mustWork = TRUE), project)) stop("endpoint runtime did not attest the requested GLLVM package root", call. = FALSE)
+  embedded_julia <- s4_public_phylo_dep_validate_embedded_julia_runtime(raw$embedded_julia_active_project, raw$embedded_julia_package_root, project)
   endpoints <- s4_public_phylo_dep_validate_endpoints(raw)
   dll <- normalizePath(file.path(getwd(), "src", "gllvmTMB.so"), mustWork = TRUE)
   loaded_dll <- getLoadedDLLs()[["gllvmTMB"]][["path"]]
@@ -112,7 +118,7 @@ s4_public_phylo_dep_main <- function() {
   r_after <- s4_public_phylo_dep_snapshot(getwd(), "gllvmTMB source")
   julia_after <- s4_public_phylo_dep_snapshot(project, "GLLVM.jl source")
   if (!identical(r_before, r_after) || !identical(julia_before, julia_after)) stop("source changed while S4 public phylo_dep evidence was being retained", call. = FALSE)
-  result <- list(kind = "destination_b_s4_public_phylo_dep", status = "passed_experimental_postfit_only", scope = "Gaussian p=2, three-tip, shared-residual public formula cell; generic engine remains closed", source = list(frozen_reference_commit = frozen_manifest$frozen_reference_commit, frozen_source_archive_sha256 = frozen_manifest$source_archive_sha256, frozen_build_manifest_sha256 = digest::digest(file = frozen_manifest_path, algo = "sha256"), r_commit = r_before$commit, r_source_clean_and_stable = TRUE, r_shared_object_source_path = dll, r_shared_object_loaded_path = loaded_dll, r_shared_object_sha256 = digest::digest(file = dll, algo = "sha256"), gllvm_julia_commit = julia_before$commit, gllvm_julia_source_clean_and_stable = TRUE, fixture_sha256 = raw$fixture_sha256, julia = clean_probe), endpoint_pairs = endpoints, test_output_sha256 = digest::digest(paste(raw_output, collapse = "\n"), algo = "sha256"), runner_sha256 = digest::digest(file = "tests/testthat/run-destination-b-s4-public-phylo-dep-isolated.R", algo = "sha256"), generic_engine_closed = TRUE)
+  result <- list(kind = "destination_b_s4_public_phylo_dep", status = "passed_experimental_postfit_only", scope = "Gaussian p=2, three-tip, shared-residual public formula cell; generic engine remains closed", source = list(frozen_reference_commit = frozen_manifest$frozen_reference_commit, frozen_source_archive_sha256 = frozen_manifest$source_archive_sha256, frozen_build_manifest_sha256 = digest::digest(file = frozen_manifest_path, algo = "sha256"), r_commit = r_before$commit, r_source_clean_and_stable = TRUE, r_shared_object_source_path = dll, r_shared_object_loaded_path = loaded_dll, r_shared_object_sha256 = digest::digest(file = dll, algo = "sha256"), gllvm_julia_commit = julia_before$commit, gllvm_julia_source_clean_and_stable = TRUE, fixture_sha256 = raw$fixture_sha256, julia = clean_probe, embedded_julia_runtime = embedded_julia), endpoint_pairs = endpoints, test_output_sha256 = digest::digest(paste(raw_output, collapse = "\n"), algo = "sha256"), runner_sha256 = digest::digest(file = "tests/testthat/run-destination-b-s4-public-phylo-dep-isolated.R", algo = "sha256"), generic_engine_closed = TRUE)
   s4_public_phylo_dep_write_once(result, receipt_path)
   cat("S4_PUBLIC_PHYLO_DEP_RECEIPT ", receipt_path, "\n", sep = "")
 }

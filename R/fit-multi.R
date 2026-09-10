@@ -7526,31 +7526,197 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## mutation: every pass uses the same TMB objective and the saved public
   ## control call replays it in update()/refit workflows. A later pass is
   ## adopted only after its own convergence code and objective have passed.
+  ##
+  ## `optimizer_diagnostics` is a developer-only, opt-in qualification hook.
+  ## It deliberately leaves the optimisation settings and acceptance predicate
+  ## untouched. The temporal-phylogenetic recovery qualification uses it to
+  ## retain enough evidence to distinguish a stopping-rule issue from an
+  ## objective-state mismatch. It is not a public control argument.
+  optimizer_diagnostics <- isTRUE(control$optimizer_diagnostics) &&
+    temporal_active && use_phylo_rr
+
+  optimizer_coordinate_labels <- function(par) {
+    raw <- names(par)
+    if (is.null(raw) || length(raw) != length(par)) {
+      raw <- rep("outer", length(par))
+    }
+    occurrence <- ave(seq_along(raw), raw, FUN = seq_along)
+    paste0(raw, "[", occurrence, "]")
+  }
+
+  optimizer_finite_difference <- function(par, gradient, diagnostic_obj) {
+    labels <- optimizer_coordinate_labels(par)
+    if (!length(par) || length(gradient) != length(par) ||
+        any(!is.finite(par)) || any(!is.finite(gradient))) {
+      return(list(
+        maximum = NA_real_, coordinate = NA_character_,
+        error_maximum = NA_real_, error_coordinate = NA_character_
+      ))
+    }
+    step <- sqrt(.Machine$double.eps) * pmax(1, abs(par))
+    central <- vapply(seq_along(par), function(i) {
+      plus <- par; minus <- par
+      plus[[i]] <- plus[[i]] + step[[i]]
+      minus[[i]] <- minus[[i]] - step[[i]]
+      f_plus <- tryCatch(diagnostic_obj$fn(plus), error = function(e) NA_real_)
+      f_minus <- tryCatch(diagnostic_obj$fn(minus), error = function(e) NA_real_)
+      if (!is.finite(f_plus) || !is.finite(f_minus)) return(NA_real_)
+      (f_plus - f_minus) / (2 * step[[i]])
+    }, numeric(1))
+    error <- abs(central - gradient)
+    finite_central <- which(is.finite(central))
+    finite_error <- which(is.finite(error))
+    list(
+      maximum = if (length(finite_central)) max(abs(central[finite_central])) else NA_real_,
+      coordinate = if (length(finite_central)) labels[[finite_central[[which.max(abs(central[finite_central]))]]]] else NA_character_,
+      error_maximum = if (length(finite_error)) max(error[finite_error]) else NA_real_,
+      error_coordinate = if (length(finite_error)) labels[[finite_error[[which.max(error[finite_error])]]]] else NA_character_
+    )
+  }
+
+  optimizer_fresh_state <- function(par, objective, gradient) {
+    if (!optimizer_diagnostics) {
+      return(list(ok = NA, gradient = NULL, message = "not requested"))
+    }
+    fresh <- tryCatch(
+      TMB::MakeADFun(
+        data = tmb_data, parameters = tmb_params, map = tmb_map,
+        random = random, DLL = "gllvmTMB", silent = silent
+      ),
+      error = function(e) e
+    )
+    if (inherits(fresh, "error")) {
+      return(list(ok = FALSE, gradient = NULL, message = conditionMessage(fresh)))
+    }
+    labels <- optimizer_coordinate_labels(par)
+    if (!identical(optimizer_coordinate_labels(fresh$par), labels)) {
+      return(list(ok = FALSE, gradient = NULL,
+        message = "fresh outer-coordinate order differs"))
+    }
+    fresh_objective <- tryCatch(fresh$fn(par), error = function(e) NA_real_)
+    fresh_gradient <- tryCatch(fresh$gr(par),
+      error = function(e) rep(NA_real_, length(par)))
+    tolerance <- 64 * .Machine$double.eps * max(1, abs(objective))
+    gradient_tolerance <- 1e-7 * pmax(1, abs(gradient))
+    ok <- is.finite(fresh_objective) && is.finite(objective) &&
+      abs(fresh_objective - objective) <= tolerance &&
+      length(fresh_gradient) == length(gradient) &&
+      all(is.finite(fresh_gradient)) && all(is.finite(gradient)) &&
+      all(abs(fresh_gradient - gradient) <= gradient_tolerance)
+    list(ok = ok, gradient = stats::setNames(fresh_gradient, labels),
+      message = if (isTRUE(ok)) "ok" else "fresh objective or gradient differs")
+  }
+
+  optimizer_pass_record <- function(pass, answer, start, accepted, warnings = character()) {
+    if (!optimizer_diagnostics) {
+      return(list(
+        pass = as.integer(pass),
+        objective = as.numeric(answer$objective %||% NA_real_),
+        convergence = as.integer(answer$convergence %||% NA_integer_),
+        message = as.character(answer$message %||% ""),
+        iterations = as.numeric(answer$iterations %||% NA_real_),
+        evaluations = as.numeric(answer$evaluations %||% NA_real_),
+        accepted = isTRUE(accepted)
+      ))
+    }
+    endpoint <- answer$par %||% rep(NA_real_, length(start))
+    labels <- optimizer_coordinate_labels(endpoint)
+    diagnostic_obj <- tryCatch(
+      TMB::MakeADFun(
+        data = tmb_data, parameters = tmb_params, map = tmb_map,
+        random = random, DLL = "gllvmTMB", silent = silent
+      ),
+      error = function(e) e
+    )
+    gradient <- if (inherits(diagnostic_obj, "error")) {
+      rep(NA_real_, length(endpoint))
+    } else {
+      tryCatch(diagnostic_obj$gr(endpoint),
+        error = function(e) rep(NA_real_, length(endpoint)))
+    }
+    objective <- as.numeric(answer$objective %||% NA_real_)
+    finite_gradient <- which(is.finite(gradient))
+    gradient_maximum <- if (length(finite_gradient)) max(abs(gradient[finite_gradient])) else NA_real_
+    gradient_coordinate <- if (length(finite_gradient)) {
+      labels[[finite_gradient[[which.max(abs(gradient[finite_gradient]))]]]]
+    } else NA_character_
+    finite_difference <- if (!inherits(diagnostic_obj, "error")) {
+      optimizer_finite_difference(endpoint, gradient, diagnostic_obj)
+    } else list(maximum = NA_real_, coordinate = NA_character_,
+      error_maximum = NA_real_, error_coordinate = NA_character_)
+    fresh <- optimizer_fresh_state(endpoint, objective, gradient)
+    list(
+      pass = as.integer(pass), pass_label = paste0("pass_", pass),
+      objective = objective,
+      convergence = as.integer(answer$convergence %||% NA_integer_),
+      message = as.character(answer$message %||% ""),
+      iterations = as.numeric(answer$iterations %||% NA_real_),
+      evaluations = as.numeric(answer$evaluations %||% NA_real_),
+      accepted = isTRUE(accepted),
+      outer_gradient_max = gradient_maximum,
+      outer_gradient_coordinate = gradient_coordinate,
+      finite_difference_max = finite_difference$maximum,
+      finite_difference_coordinate = finite_difference$coordinate,
+      finite_difference_error_max = finite_difference$error_maximum,
+      finite_difference_error_coordinate = finite_difference$error_coordinate,
+      fresh_state_ok = fresh$ok,
+      fn_evaluations = as.numeric(answer$iterations %||% NA_real_),
+      gr_evaluations = as.numeric(answer$evaluations %||% NA_real_),
+      warnings = paste(warnings, collapse = " | "),
+      elapsed_seconds = as.numeric(answer$elapsed_seconds %||% NA_real_),
+      start = I(list(stats::setNames(start, optimizer_coordinate_labels(start)))),
+      end = I(list(stats::setNames(endpoint, labels))),
+      gradient = I(list(stats::setNames(gradient, labels))),
+      fresh_gradient = I(list(if (length(fresh$gradient) == length(endpoint)) {
+        stats::setNames(fresh$gradient, labels)
+      } else numeric())),
+      fresh_state_message = as.character(fresh$message %||% "")
+    )
+  }
+
+  optimizer_run_with_receipt <- function(start, .ridge_tau = NULL) {
+    if (!optimizer_diagnostics) {
+      return(list(
+        answer = run_one(start, .ridge_tau = .ridge_tau),
+        warnings = character()
+      ))
+    }
+    started <- proc.time()[["elapsed"]]
+    warnings <- character()
+    answer <- withCallingHandlers(
+      run_one(start, .ridge_tau = .ridge_tau),
+      warning = function(w) {
+        warnings <<- c(warnings, conditionMessage(w))
+        invokeRestart("muffleWarning")
+      }
+    )
+    answer$elapsed_seconds <- proc.time()[["elapsed"]] - started
+    list(answer = answer, warnings = warnings)
+  }
+
   run_passes <- function(par_init, .ridge_tau = NULL) {
     requested <- max(1L, as.integer(control$optimizer_passes %||% 1L))
-    current <- run_one(par_init, .ridge_tau = .ridge_tau)
+    first <- optimizer_run_with_receipt(par_init, .ridge_tau = .ridge_tau)
+    current <- first$answer
     history <- list(list(
-      pass = 1L,
-      objective = as.numeric(current$objective %||% NA_real_),
-      convergence = as.integer(current$convergence %||% NA_integer_),
-      message = as.character(current$message %||% ""),
-      iterations = as.numeric(current$iterations %||% NA_real_),
-      evaluations = as.numeric(current$evaluations %||% NA_real_),
-      accepted = TRUE
+      answer = current, start = par_init, accepted = TRUE, warnings = first$warnings
     ))
     if (requested >= 2L) for (pass in seq.int(2L, requested)) {
-      candidate <- tryCatch(
-        run_one(current$par, .ridge_tau = .ridge_tau),
+      trial <- tryCatch(
+        optimizer_run_with_receipt(current$par, .ridge_tau = .ridge_tau),
         error = function(e) e
       )
-      if (inherits(candidate, "error")) {
+      if (inherits(trial, "error")) {
+        failed <- list(par = current$par, objective = NA_real_, convergence = NA_integer_,
+          message = conditionMessage(trial), iterations = NA_real_, evaluations = NA_real_,
+          elapsed_seconds = NA_real_)
         history[[pass]] <- list(
-          pass = pass, objective = NA_real_, convergence = NA_integer_,
-          message = conditionMessage(candidate), iterations = NA_real_,
-          evaluations = NA_real_, accepted = FALSE
+          answer = failed, start = current$par, accepted = FALSE,
+          warnings = character()
         )
         next
       }
+      candidate <- trial$answer
       candidate_objective <- as.numeric(candidate$objective %||% NA_real_)
       current_objective <- as.numeric(current$objective %||% NA_real_)
       tolerance <- 64 * .Machine$double.eps * max(1, abs(current_objective))
@@ -7558,17 +7724,23 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         identical(as.integer(candidate$convergence %||% NA_integer_), 0L) &&
         candidate_objective <= current_objective + tolerance
       history[[pass]] <- list(
-        pass = pass, objective = candidate_objective,
-        convergence = as.integer(candidate$convergence %||% NA_integer_),
-        message = as.character(candidate$message %||% ""),
-        iterations = as.numeric(candidate$iterations %||% NA_real_),
-        evaluations = as.numeric(candidate$evaluations %||% NA_real_),
-        accepted = accepted
+        answer = candidate, start = current$par, accepted = accepted,
+        warnings = trial$warnings
       )
       if (isTRUE(accepted)) current <- candidate
     }
-    pass_history <- do.call(rbind, lapply(history, as.data.frame,
-      stringsAsFactors = FALSE))
+    ## Record qualification diagnostics only after every optimizer pass has
+    ## finished. Each record builds its own objective, so neither a gradient
+    ## nor a finite-difference probe changes the live TMB warm start used by a
+    ## later pass.
+    pass_history <- do.call(rbind, lapply(seq_along(history), function(i) {
+      record <- history[[i]]
+      as.data.frame(
+        optimizer_pass_record(i, record$answer, record$start,
+          record$accepted, record$warnings),
+        stringsAsFactors = FALSE
+      )
+    }))
     current$pass_history <- pass_history
     current$passes_requested <- requested
     current$passes_accepted <- sum(pass_history$accepted)

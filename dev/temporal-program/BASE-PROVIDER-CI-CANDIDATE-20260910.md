@@ -29,6 +29,21 @@ The commands emitted, respectively, `TEMPORAL_PARSER_PASS`,
 check and rendered the temporal article. The worktree was clean before and
 after the commands.
 
+The same candidate completed a retained local source-package check:
+
+```sh
+R CMD build .
+R CMD check --as-cran --no-manual gllvmTMB_0.7.1.tar.gz
+```
+
+On macOS arm64 / R 4.6.0, installation, compilation, examples,
+documentation, vignette rebuilding, and the full test suite passed. The check
+returned one CRAN incoming NOTE because `README.md` links to the temporal
+article at the public pkgdown URL, which is intentionally still a 404 until a
+future deployment. This local-only candidate has not been deployed; the NOTE
+is retained rather than suppressed. The full log is retained locally at
+`/private/tmp/temporal-base-check-20260910/check/gllvmTMB.Rcheck/00check.log`.
+
 ## What this does and does not authorize
 
 This is a local review boundary and macOS evidence only. It does not supply

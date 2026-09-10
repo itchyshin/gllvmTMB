@@ -3349,6 +3349,28 @@ gllvm_julia_fit <- function(
   invisible(TRUE)
 }
 
+.gllvm_julia_phylo_rr_validate_public_phylo_dep_term <- function(fit, p, d_phy) {
+  terms <- fit$covstructs
+  valid <- is.list(terms) && length(terms) == 1L
+  term <- if (valid) terms[[1L]] else NULL
+  extra <- if (is.list(term)) term$extra else NULL
+  valid <- valid && is.list(term) && is.list(extra) &&
+    identical(term$kind, "phylo_rr") &&
+    isTRUE(extra$.dep) &&
+    identical(as.integer(extra$d), as.integer(p)) &&
+    inherits(extra$tree, "phylo") &&
+    is.symbol(term$group) && identical(as.character(term$group), "trait") &&
+    identical(paste(deparse(term$lhs), collapse = ""), "0 + species") &&
+    identical(as.integer(d_phy), as.integer(p))
+  if (!valid) {
+    .gllvm_julia_phylo_rr_stop(
+      "GJL-GATE-PHYLO-MV-FORMULA",
+      "the public S4 phylo_dep wrapper admits exactly one two-trait `phylo_dep(1 | species, tree = tree)` structured term."
+    )
+  }
+  invisible(TRUE)
+}
+
 .gllvm_julia_phylo_rr_validate_public_tree <- function(fit) {
   if (!inherits(fit, "gllvmTMB_multi")) {
     .gllvm_julia_phylo_rr_stop(
@@ -3384,6 +3406,7 @@ gllvm_julia_fit <- function(
         "the public S4 phylo_dep wrapper admits exactly the two-trait full-covariance `traits(...) ~ 1 + phylo_dep(1 | species, tree = tree)` cell."
       )
     }
+    .gllvm_julia_phylo_rr_validate_public_phylo_dep_term(fit, p, d_phy)
   } else if (d_phy != 1L) {
     .gllvm_julia_phylo_rr_stop(
       "GJL-GATE-PHYLO-MV-RANK",
@@ -3485,7 +3508,7 @@ gllvm_julia_fit <- function(
   }
   index <- match(expected, names)
   fields <- c(
-    "ci_target_names", "ci_estimate", "ci_lower", "ci_upper",
+    "ci_target_names", "ci_param_names", "ci_estimate", "ci_lower", "ci_upper",
     "ci_se_transformed", "ci_transforms", "ci_target_methods", "ci_statuses"
   )
   for (field in fields) {

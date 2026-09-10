@@ -53992,3 +53992,25 @@ candidate evidence is reused from this pre-integration run.
   against clean GLLVM.jl `b6bd78bb`; tally `48/0/0/0/0`
   (passed/failed/skipped/errors/warnings). This remains
   three-cell closed-adapter evidence, not S3b/S4/generic-engine qualification.
+
+## 2026-09-10 — Destination B S4 `phylo_dep` public-formula repair
+
+- The public post-fit Tree adapter now has a fail-closed two-trait
+  `traits(...) ~ 1 + phylo_dep(1 | species, tree = tree)` cell. It requires
+  `d_phy = n_traits = 2` and receives only the full-covariance, shared-residual
+  Julia consumer. Generic `engine = "julia"` remains closed.
+- A focused mocked regression checks that the seven stored interval fields are
+  reordered by exact target name, not the Julia engine's internal interleaved
+  order. The opt-in live fixture then compares native and Julia covariance and
+  all seven transformed-Wald endpoints using the native reported transformation
+  and observed fixed-parameter covariance.
+- The default focused test passed with its five opt-in bridge checks skipped.
+  With the approved S4 variables set, the same test file passed the public
+  formula check in 29.8 seconds; four unrelated S3b opt-in checks remained
+  skipped. `tools::parse_Rd("man/gllvm_julia_phylo_rr.Rd")` and
+  `git diff --check` passed. A noisy local `LogExpFunctions` extension-load
+  error still appears before JuliaCall completes, but the Julia package loads
+  and the paired test passes; it is recorded as environment debt.
+- This is a local formula/reader repair with repeatable acceptance testing. It
+  does not yet create a write-once S4 receipt or qualify a broader S4 row;
+  recovery, coverage, generic admission, 0.7 parity, and FRK remain excluded.

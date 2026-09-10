@@ -563,6 +563,12 @@ test_that("engine = 'julia' remains closed for phylo_rr", {
   fit$use$phylo_dep <- TRUE
   fit$use$phylo_latent <- FALSE
   fit$opt$par <- c(-0.2, 0.3, 0.4, -0.1, 0.5, -1.2)
+  fit$covstructs <- list(list(
+    kind = "phylo_rr",
+    lhs = quote(0 + species),
+    group = quote(trait),
+    extra = list(d = 2L, .dep = TRUE, tree = fit$phylo_tree)
+  ))
   fit
 }
 
@@ -607,7 +613,34 @@ test_that("S4 public formula wrapper transports only phylo_dep full covariance",
     "beta[1]", "beta[2]", "phylo_cov[1,1]", "phylo_cov[2,1]",
     "phylo_cov[2,2]", "residual_var_shared[1]", "residual_var_shared[2]"
   ))
+  expect_identical(result$ci_param_names, rownames(ci))
+  expect_identical(names(result$ci_estimate), rownames(ci))
   expect_true(all(ci[, 1L] < ci[, 2L]))
+})
+
+test_that("S4 public formula wrapper rejects a different structured term", {
+  fit <- .s4_public_phylo_dep_fixture()
+  fit$covstructs[[1L]]$extra$.dep <- FALSE
+  expect_error(
+    gllvmTMB:::gllvm_julia_phylo_rr(fit, .julia_call = .s4_public_phylo_dep_julia_result),
+    "GJL-GATE-PHYLO-MV-FORMULA"
+  )
+})
+
+test_that("generic engine remains closed for the public phylo_dep formula", {
+  skip_if_not_installed("ape")
+  tree <- ape::read.tree(text = "(sp1:2,sp2:2,sp3:2);")
+  data <- data.frame(
+    individual = seq_len(3L), species = c("sp1", "sp2", "sp3"),
+    trait_1 = c(0.2, 1.4, 0.8), trait_2 = c(0.1, 0.7, 0.4)
+  )
+  expect_error(
+    gllvmTMB(
+      traits(trait_1, trait_2) ~ 1 + phylo_dep(1 | species, tree = tree),
+      data = data, unit = "individual", family = gaussian(), engine = "julia"
+    ),
+    "GJL-GATE-STRUCTURED-TERMS"
+  )
 })
 
 test_that("S4 public phylo_dep formula retains paired transformed-Wald endpoints", {

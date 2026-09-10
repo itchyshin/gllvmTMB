@@ -112,10 +112,12 @@ Setting `unique = FALSE` requests the narrower loadings-only subset.
 
 One narrow exception is available as an explicit post-fit bridge, not through
 `engine = "julia"`: `gllvm_julia_phylo_rr()` accepts an already fitted native
-Gaussian ML Tree `phylo_latent(..., d = 1, unique = FALSE)` model with only
-trait intercepts. It returns stored observed-marginal Wald intervals when their
-individual status is available. It does not admit dense `vcv`, pedigrees,
-extra predictors, prediction, recovery, coverage, or general phylogenetic
+Gaussian ML ultrametric-Tree model in one of two exact structural cells:
+`phylo_latent(..., d = 1, unique = FALSE)` with trait intercepts, or the
+two-trait full-covariance `traits(...) ~ 1 + phylo_dep(1 | species, tree = tree)`
+cell. It returns stored observed-marginal Wald intervals when their individual
+status is available. It does not admit dense `vcv`, pedigrees, extra
+predictors, prediction, recovery, coverage, or general phylogenetic
 Julia-engine use.
 | Wald, bootstrap, or profile intervals | Not recommended for this claim | A target-specific returned interval together with its method and status label, subject to the narrow exception below | That method availability establishes repeated-sampling coverage |
 

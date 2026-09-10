@@ -399,10 +399,11 @@ reference:
     - profile_ci_total_variance
 
   - title: Experimental Julia bridge
-    desc: Optional point-estimation bridge; use only after reading the explicit method limitations, and do not assume R/TMB feature parity
+    desc: Optional point-estimation and narrowly scoped post-fit bridge; use only after reading the explicit method limitations, and do not assume R/TMB feature parity
     contents:
     - gllvm_julia_fit
     - gllvm_julia_setup
+    - gllvm_julia_phylo_rr
     - gllvmTMB_julia-methods
     - logLik.gllvmTMB_julia
     - print.gllvmTMB_julia

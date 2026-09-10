@@ -58,7 +58,12 @@ test_that("temporal-phylo optimizer passes retain labelled qualification diagnos
     "outer_gradient_max", "outer_gradient_coordinate",
     "finite_difference_max", "finite_difference_coordinate",
     "finite_difference_error_max", "finite_difference_error_coordinate",
-    "fresh_state_ok", "fn_evaluations", "gr_evaluations", "message",
+    "finite_difference_n_coordinates", "finite_difference_n_finite",
+    "finite_difference_all_finite", "fresh_state_ok", "fresh_objective",
+    "fresh_objective_error", "inner_method", "inner_hessian_available",
+    "inner_hessian_dimension", "inner_hessian_rcond", "inner_hessian_condition",
+    "inner_hessian_message", "outer_hessian_available", "outer_hessian_message",
+    "fn_evaluations", "gr_evaluations", "message",
     "warnings", "elapsed_seconds", "start", "end", "gradient", "fresh_gradient"
   )
   expect_true(all(required %in% names(history)),
@@ -68,7 +73,14 @@ test_that("temporal-phylo optimizer passes retain labelled qualification diagnos
   expect_true(all(is.finite(history$outer_gradient_max)))
   expect_true(all(nzchar(history$outer_gradient_coordinate)))
   expect_lt(max(history$finite_difference_error_max), 1e-4)
+  expect_true(all(history$finite_difference_all_finite))
+  expect_identical(history$finite_difference_n_coordinates,
+    history$finite_difference_n_finite)
   expect_true(all(history$fresh_state_ok))
+  expect_true(all(is.finite(history$fresh_objective)))
+  expect_true(all(is.finite(history$fresh_objective_error)))
+  expect_true(all(history$inner_hessian_available))
+  expect_true(all(history$inner_hessian_dimension > 0L))
 })
 
 .temporal_phylo_optimizer_qualification_dense_nll <- function(fit, fixed, Cphy) {
@@ -133,6 +145,26 @@ test_that("temporal-phylo qualification independently audits every outer coordin
   expect_equal(native_gradient, central, tolerance = 2e-5)
 })
 
+test_that("optimizer finite-difference audit fails closed on a missing coordinate", {
+  par <- c(alpha = .2, beta = -.3)
+  gradient <- c(alpha = .4, beta = -.6)
+  quadratic <- function(x) sum(x^2)
+  complete <- gllvmTMB:::.gllvmTMB_optimizer_finite_difference_audit(
+    par, gradient, quadratic
+  )
+  expect_true(complete$all_finite)
+  expect_identical(complete$n_coordinates, 2L)
+  expect_identical(complete$n_finite, 2L)
+  expect_equal(unname(complete$error), c(0, 0), tolerance = 1e-7)
+
+  missing <- gllvmTMB:::.gllvmTMB_optimizer_finite_difference_audit(
+    par, gradient, function(x) if (x[[2L]] > -.3) NA_real_ else quadratic(x)
+  )
+  expect_false(missing$all_finite)
+  expect_lt(missing$n_finite, missing$n_coordinates)
+  expect_true(is.na(missing$error_maximum))
+})
+
 source(testthat::test_path(
   "fixtures", "temporal-phylo-optimizer-qualification-controls.R"
 ))
@@ -140,9 +172,23 @@ source(testthat::test_path(
 test_that("qualification controls retain the failed campaign and localize an injected derivative fault", {
   controls <- .temporal_phylo_optimizer_qualification_controls()
   expect_true(.temporal_phylo_optimizer_qualification_validate_controls(controls))
-  bad_path <- controls$retained_summary
-  controls$retained_summary <- paste0(bad_path, ".changed")
+  controls$retained_summary <- "DESCRIPTION"
   expect_false(.temporal_phylo_optimizer_qualification_validate_controls(controls))
+
+  summary_path <- testthat::test_path("..", "..", "dev", "temporal-program", "results", "failed",
+    "phylo-recovery-160-fir-59096255-20260910",
+    "phylo-recovery-160-summary-20260909.csv")
+  copied <- tempfile(fileext = ".csv")
+  expect_true(file.copy(summary_path, copied, overwrite = TRUE))
+  expect_true(.temporal_phylo_optimizer_qualification_validate_summary(
+    copied, unname(tools::md5sum(copied))
+  ))
+  changed <- utils::read.csv(copied, check.names = FALSE)
+  changed$strict_successes[[2L]] <- 10L
+  utils::write.csv(changed, copied, row.names = FALSE)
+  expect_false(.temporal_phylo_optimizer_qualification_validate_summary(
+    copied, unname(tools::md5sum(summary_path))
+  ))
 
   labels <- c("b_fix[1]", "theta_rr_phy[1]", "theta_rr_phy[2]")
   exact <- c(1, -.5, .25)

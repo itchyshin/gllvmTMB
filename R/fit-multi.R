@@ -8,6 +8,52 @@
   )
 }
 
+## This audit is deliberately independent of an optimiser's stopping rule. It
+## is called only by the opt-in temporal--phylogenetic qualification receipt;
+## a missing or non-finite coordinate is evidence of an incomplete audit, not
+## a reason to report the maximum over the coordinates that happened to work.
+.gllvmTMB_optimizer_finite_difference_audit <- function(par, gradient, fn,
+                                                        relative_step = 1e-5) {
+  raw <- names(par)
+  if (is.null(raw) || length(raw) != length(par)) raw <- rep("outer", length(par))
+  labels <- paste0(raw, "[", ave(seq_along(raw), raw, FUN = seq_along), "]")
+  empty <- list(
+    labels = labels, central = rep(NA_real_, length(par)),
+    error = rep(NA_real_, length(par)), n_coordinates = length(par),
+    n_finite = 0L, all_finite = FALSE, maximum = NA_real_,
+    coordinate = NA_character_, error_maximum = NA_real_,
+    error_coordinate = NA_character_
+  )
+  if (!length(par) || length(gradient) != length(par) ||
+      any(!is.finite(par)) || any(!is.finite(gradient)) || !is.function(fn)) {
+    return(empty)
+  }
+  step <- relative_step * pmax(1, abs(par))
+  central <- vapply(seq_along(par), function(i) {
+    plus <- par; minus <- par
+    plus[[i]] <- plus[[i]] + step[[i]]
+    minus[[i]] <- minus[[i]] - step[[i]]
+    f_plus <- tryCatch(fn(plus), error = function(e) NA_real_)
+    f_minus <- tryCatch(fn(minus), error = function(e) NA_real_)
+    if (!is.finite(f_plus) || !is.finite(f_minus)) return(NA_real_)
+    (f_plus - f_minus) / (2 * step[[i]])
+  }, numeric(1))
+  error <- abs(central - gradient)
+  finite <- is.finite(central) & is.finite(error)
+  all_finite <- length(finite) == length(par) && all(finite)
+  max_index <- if (all_finite) which.max(abs(central)) else NA_integer_
+  err_index <- if (all_finite) which.max(error) else NA_integer_
+  list(
+    labels = labels, central = central, error = error,
+    n_coordinates = length(par), n_finite = sum(finite),
+    all_finite = all_finite,
+    maximum = if (all_finite) max(abs(central)) else NA_real_,
+    coordinate = if (all_finite) labels[[max_index]] else NA_character_,
+    error_maximum = if (all_finite) max(error) else NA_real_,
+    error_coordinate = if (all_finite) labels[[err_index]] else NA_character_
+  )
+}
+
 .auto_psi_skip_message <- function(binomial_labs = character(),
                                    multinomial_labs = character()) {
   affected <- c(binomial_labs, multinomial_labs)
@@ -7545,42 +7591,26 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   }
 
   optimizer_finite_difference <- function(par, gradient, diagnostic_obj) {
-    labels <- optimizer_coordinate_labels(par)
-    if (!length(par) || length(gradient) != length(par) ||
-        any(!is.finite(par)) || any(!is.finite(gradient))) {
-      return(list(
-        maximum = NA_real_, coordinate = NA_character_,
-        error_maximum = NA_real_, error_coordinate = NA_character_
-      ))
-    }
     ## The Laplace objective can be O(10^4) even for a small qualification
     ## fixture. A sqrt-epsilon step loses its central difference to cancellation
     ## on that scale, so use the same fixed relative step as the independent
     ## dense-oracle test below the fitting layer.
-    step <- 1e-5 * pmax(1, abs(par))
-    central <- vapply(seq_along(par), function(i) {
-      plus <- par; minus <- par
-      plus[[i]] <- plus[[i]] + step[[i]]
-      minus[[i]] <- minus[[i]] - step[[i]]
-      f_plus <- tryCatch(diagnostic_obj$fn(plus), error = function(e) NA_real_)
-      f_minus <- tryCatch(diagnostic_obj$fn(minus), error = function(e) NA_real_)
-      if (!is.finite(f_plus) || !is.finite(f_minus)) return(NA_real_)
-      (f_plus - f_minus) / (2 * step[[i]])
-    }, numeric(1))
-    error <- abs(central - gradient)
-    finite_central <- which(is.finite(central))
-    finite_error <- which(is.finite(error))
-    list(
-      maximum = if (length(finite_central)) max(abs(central[finite_central])) else NA_real_,
-      coordinate = if (length(finite_central)) labels[[finite_central[[which.max(abs(central[finite_central]))]]]] else NA_character_,
-      error_maximum = if (length(finite_error)) max(error[finite_error]) else NA_real_,
-      error_coordinate = if (length(finite_error)) labels[[finite_error[[which.max(error[finite_error])]]]] else NA_character_
+    .gllvmTMB_optimizer_finite_difference_audit(
+      par, gradient, diagnostic_obj$fn, relative_step = 1e-5
     )
   }
 
   optimizer_fresh_state <- function(par, objective, gradient) {
+    unavailable <- function(message) list(
+      ok = FALSE, gradient = NULL, objective = NA_real_, objective_error = NA_real_,
+      message = message, inner_method = NA_character_,
+      inner_hessian_available = FALSE, inner_hessian_dimension = NA_integer_,
+      inner_hessian_rcond = NA_real_, inner_hessian_condition = NA_real_,
+      inner_hessian_message = "not available", outer_hessian_available = FALSE,
+      outer_hessian_message = "not available"
+    )
     if (!optimizer_diagnostics) {
-      return(list(ok = NA, gradient = NULL, message = "not requested"))
+      return(unavailable("not requested"))
     }
     fresh <- tryCatch(
       TMB::MakeADFun(
@@ -7590,12 +7620,11 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       error = function(e) e
     )
     if (inherits(fresh, "error")) {
-      return(list(ok = FALSE, gradient = NULL, message = conditionMessage(fresh)))
+      return(unavailable(conditionMessage(fresh)))
     }
     labels <- optimizer_coordinate_labels(par)
     if (!identical(optimizer_coordinate_labels(fresh$par), labels)) {
-      return(list(ok = FALSE, gradient = NULL,
-        message = "fresh outer-coordinate order differs"))
+      return(unavailable("fresh outer-coordinate order differs"))
     }
     fresh_objective <- tryCatch(fresh$fn(par), error = function(e) NA_real_)
     fresh_gradient <- tryCatch(fresh$gr(par),
@@ -7607,8 +7636,35 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       length(fresh_gradient) == length(gradient) &&
       all(is.finite(fresh_gradient)) && all(is.finite(gradient)) &&
       all(abs(fresh_gradient - gradient) <= gradient_tolerance)
+    inner <- tryCatch({
+      hessian <- fresh$env$spHess()
+      dimension <- if (is.matrix(hessian) || inherits(hessian, "Matrix")) nrow(hessian) else NA_integer_
+      rcond <- if (is.finite(dimension) && dimension > 0L) Matrix::rcond(hessian) else NA_real_
+      list(available = is.finite(dimension) && dimension > 0L &&
+          all(is.finite(hessian)), dimension = as.integer(dimension),
+        rcond = as.numeric(rcond),
+        condition = if (is.finite(rcond) && rcond > 0) 1 / rcond else Inf,
+        message = "ok")
+    }, error = function(e) list(available = FALSE, dimension = NA_integer_,
+      rcond = NA_real_, condition = NA_real_, message = conditionMessage(e)))
+    outer <- tryCatch({
+      hessian <- fresh$he(par)
+      list(available = is.matrix(hessian) && all(is.finite(hessian)), message = "ok")
+    }, error = function(e) list(available = FALSE, message = conditionMessage(e)))
     list(ok = ok, gradient = stats::setNames(fresh_gradient, labels),
-      message = if (isTRUE(ok)) "ok" else "fresh objective or gradient differs")
+      objective = as.numeric(fresh_objective),
+      objective_error = if (is.finite(fresh_objective) && is.finite(objective)) {
+        abs(fresh_objective - objective)
+      } else NA_real_,
+      message = if (isTRUE(ok)) "ok" else "fresh objective or gradient differs",
+      inner_method = as.character(fresh$env$inner.method %||% NA_character_),
+      inner_hessian_available = isTRUE(inner$available),
+      inner_hessian_dimension = inner$dimension,
+      inner_hessian_rcond = inner$rcond,
+      inner_hessian_condition = inner$condition,
+      inner_hessian_message = inner$message,
+      outer_hessian_available = isTRUE(outer$available),
+      outer_hessian_message = outer$message)
   }
 
   optimizer_pass_record <- function(pass, answer, start, accepted, warnings = character()) {
@@ -7647,7 +7703,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     finite_difference <- if (!inherits(diagnostic_obj, "error")) {
       optimizer_finite_difference(endpoint, gradient, diagnostic_obj)
     } else list(maximum = NA_real_, coordinate = NA_character_,
-      error_maximum = NA_real_, error_coordinate = NA_character_)
+      error_maximum = NA_real_, error_coordinate = NA_character_,
+      n_coordinates = length(endpoint), n_finite = 0L, all_finite = FALSE)
     fresh <- optimizer_fresh_state(endpoint, objective, gradient)
     list(
       pass = as.integer(pass), pass_label = paste0("pass_", pass),
@@ -7663,7 +7720,20 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       finite_difference_coordinate = finite_difference$coordinate,
       finite_difference_error_max = finite_difference$error_maximum,
       finite_difference_error_coordinate = finite_difference$error_coordinate,
+      finite_difference_n_coordinates = finite_difference$n_coordinates,
+      finite_difference_n_finite = finite_difference$n_finite,
+      finite_difference_all_finite = finite_difference$all_finite,
       fresh_state_ok = fresh$ok,
+      fresh_objective = fresh$objective,
+      fresh_objective_error = fresh$objective_error,
+      inner_method = fresh$inner_method,
+      inner_hessian_available = fresh$inner_hessian_available,
+      inner_hessian_dimension = fresh$inner_hessian_dimension,
+      inner_hessian_rcond = fresh$inner_hessian_rcond,
+      inner_hessian_condition = fresh$inner_hessian_condition,
+      inner_hessian_message = fresh$inner_hessian_message,
+      outer_hessian_available = fresh$outer_hessian_available,
+      outer_hessian_message = fresh$outer_hessian_message,
       fn_evaluations = as.numeric(answer$iterations %||% NA_real_),
       gr_evaluations = as.numeric(answer$evaluations %||% NA_real_),
       warnings = paste(warnings, collapse = " | "),

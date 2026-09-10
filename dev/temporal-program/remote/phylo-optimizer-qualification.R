@@ -55,12 +55,19 @@ required <- c(
   "outer_gradient_max", "outer_gradient_coordinate",
   "finite_difference_max", "finite_difference_coordinate",
   "finite_difference_error_max", "finite_difference_error_coordinate",
-  "fresh_state_ok", "fn_evaluations", "gr_evaluations", "message",
+  "finite_difference_n_coordinates", "finite_difference_n_finite",
+  "finite_difference_all_finite", "fresh_state_ok", "fresh_objective",
+  "fresh_objective_error", "inner_method", "inner_hessian_available",
+  "inner_hessian_dimension", "inner_hessian_rcond", "inner_hessian_condition",
+  "inner_hessian_message", "outer_hessian_available", "outer_hessian_message",
+  "fn_evaluations", "gr_evaluations", "message",
   "warnings", "elapsed_seconds", "start", "end", "gradient", "fresh_gradient"
 )
 if (!is.data.frame(history) || nrow(history) != 2L ||
     !all(required %in% names(history)) || !identical(history$pass, 1:2) ||
-    !all(history$fresh_state_ok)) {
+    !all(history$fresh_state_ok) || !all(history$finite_difference_all_finite) ||
+    !identical(history$finite_difference_n_coordinates, history$finite_difference_n_finite) ||
+    !all(history$inner_hessian_available)) {
   stop("The diagnostic two-pass qualification receipt is incomplete.", call. = FALSE)
 }
 head <- tryCatch(system2("git", c("rev-parse", "HEAD"), stdout = TRUE, stderr = TRUE),

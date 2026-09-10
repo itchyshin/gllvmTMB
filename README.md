@@ -68,16 +68,18 @@ latent Psi is correlated through that same kernel. Long and `traits(...)` wide
 calls, simulation, training-data prediction, and ordinary unit/unit-observation
 composition have focused local checks. Recovery, precision, calibration, and
 interval coverage remain unclaimed; the temporal article gives the supported
-input contract and unavailable next steps. The first locally verified
-cross-source cells are replicated AR1 `temporal_indep()` plus either one
-labelled `kernel_indep()` term, one fixed labelled `phylo_indep()` term whose
-`tree =` or `vcv =` is supplied inside the keyword, or one fixed labelled
-`animal_indep()` term with in-keyword `pedigree =`, `A =`, or `Ainv =`. OU,
-other temporal/source modes, and spatial combinations remain unavailable. The
-phylogenetic and animal cells have focused local likelihood and lifecycle
-checks; their recovery evidence is separate and does not establish a general
-recovery or coverage claim. In the animal cell, `A` is a labelled dense
-relatedness matrix; pass a sparse relationship precision through `Ainv`.
+input contract and unavailable next steps. Four narrow additive source-pair
+cells are implemented: replicated AR1 `temporal_indep()` plus one labelled
+`kernel_indep()` term; one fixed labelled `phylo_indep()` term with in-keyword
+`tree =` or `vcv =`; one fixed labelled `animal_indep()` term with in-keyword
+`pedigree =`, `A =`, or `Ainv =`; or one fixed-mesh `spatial_indep()` term.
+Their evidence is partial and differs by pair: the named kernel fixture passes
+locally, retained phylogenetic and spatial recovery gates fail strictly, and
+animal recovery has not yet run. They are not cross-platform verification,
+release, general recovery, or coverage evidence. OU, other temporal/source
+modes, source-by-time interactions, and other structured-source combinations
+remain unavailable. In the animal cell, `A` is a labelled dense relatedness
+matrix; pass a sparse relationship precision through `Ainv`.
 
 ## What the model does
 

@@ -30,15 +30,23 @@ With `structure = "ar1"`, occasions are ordered integers and gaps are kept:
 time and \(K(t,s)=\exp(-\kappa|t-s|)\). This first version admits complete
 Gaussian identity-link ML fits with at least three traits and three occasions
 per series. Ordinary unit and unit-observation terms can be combined when
-their partitions agree and nest. Forecasts, new-data prediction, profile and
-bootstrap intervals, rank selection, other response families, higher ranks,
-temporal slopes, and other structured-source combinations are unavailable.
+their partitions agree and nest. The bounded temporal-only
+`forecast_temporal()`, `profile_temporal()`, `bootstrap_temporal()`, and
+`compare_temporal()` helpers have separate contracts; generic forecasts,
+new-data prediction, generic profile/bootstrap intervals, and automatic rank
+selection remain unavailable. Other response families, higher ranks, temporal
+slopes, source-by-time interactions, and structured-source combinations beyond
+the four narrow additive pairs below remain unavailable.
 
 > **Scope boundary.** Gaussian AR1/OU source parsing, dense covariance
 > oracles, score labels, simulation, training-data prediction, and update have
 > focused local checks. Recovery remains an engineering gate and does not
 > support a general recovery, precision, calibration, or interval-coverage
-> claim.
+> claim. Four separately bounded replicated-AR1 additive pairs with one
+> diagonal kernel, phylogenetic, animal, or spatial source are implemented;
+> their likelihood and lifecycle checks do not give them a common recovery
+> status. Kernel has a retained passing local fixture, phylogenetic and spatial
+> recovery gates retain strict failures, and animal recovery is pending.
 
 ## Ordinary longitudinal observations
 

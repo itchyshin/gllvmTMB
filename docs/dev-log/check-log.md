@@ -57866,3 +57866,21 @@ Deliberately not run: Totoro 9×500 grid dispatch; full `devtools::test()`.
   this one-cell difference. It neither identifies the numerical platform cause
   nor repairs the frozen `1e-3` recovery gate. No recovery or coverage claim
   is added.
+
+## 2026-09-10 — temporal--spatial status reconciled with retained evidence
+
+- Ran `test-temporal-program-spatial-replicated.R`: its independent dense
+  additive likelihood/gradient, product-kernel control, long/wide replay,
+  proportional-basis refusal, and unconditional SPDE-redraw checks passed.
+- Re-read the retained 30-attempt spatial fixture and summary. It records 29
+  terminal successes and one error, with strict-success counts 10/10, 9/10,
+  and 8/10 by persistence; frozen spatial range/scale criteria fail. The cell
+  is therefore implemented with focused local checks but remains `partial`,
+  without a recovery, cross-platform, release, or coverage claim.
+- Corrected README, temporal/grid articles, grammar contract, validation
+  register and programme ledger so they name the narrow spatial cell rather
+  than incorrectly saying every temporal--spatial combination is unavailable.
+- Built the current branch into an isolated temporary R library and rendered
+  `vignettes/articles/temporal-ar1.Rmd` and
+  `vignettes/articles/api-keyword-grid.Rmd` against that install. Both passed
+  and emitted `TEMPORAL_STATUS_ARTICLES_RENDER_PASS`.

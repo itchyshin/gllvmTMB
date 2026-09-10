@@ -29,3 +29,27 @@ Retained disposable evidence is
 `/private/tmp/temporal-kernel-redesign-recovery-20260909.csv` and
 `/private/tmp/temporal-kernel-redesign-summary-20260909.csv`. This is a second
 failed admission exercise, not a basis for opening the public kernel parser.
+
+## Public optimizer-contract rerun (2026-09-09)
+
+The earlier post-polish script must not be used as admission evidence: it
+overwrote fitted parameters after the public optimizer had returned, retained
+the first-pass convergence code, and computed fixed-effect errors with a
+recycling mistake. Its results remain retained only as a diagnostic.
+
+The replacement is the saved native-Laplace control
+`gllvmTMBcontrol(optimizer = "optim", optArgs = list(method = "BFGS", ...),
+optimizer_passes = 2L)`. A candidate second pass is retained only when its own
+convergence code is zero and its objective is non-increasing. `update()`
+replays the control, and the fit refreshes its report from the selected final
+parameters. The runner stores and checks both convergence codes and the final
+gradient for every attempt.
+
+The retained result is
+`dev/temporal-program/results/kernel-recovery-20260909.csv`, with the
+per-persistence summary in
+`dev/temporal-program/results/kernel-recovery-summary-20260909.csv`. All nine
+attempts had two accepted converged passes and final maximum gradient at most
+`3.43e-4`; all three frozen persistence-cell summaries pass. The timing fit was
+10.8 seconds and the nine-fit local run completed in 88 seconds. This supports
+only the replicated AR1 diagonal temporal plus labelled diagonal-kernel cell.

@@ -57760,3 +57760,28 @@ Deliberately not run: Totoro 9×500 grid dispatch; full `devtools::test()`.
   The `-.4` and `.6` cells also exceeded the frozen `.25` mean fixed-effect
   error criterion. Results are retained under `/private/tmp/`; no seed was
   replaced. The temporal-plus-kernel parser remains closed.
+
+## 2026-09-09 — replicated AR1 temporal-kernel cell uses a replayable optimizer contract
+
+- Added the opt-in native-Laplace `optimizer_passes` control. Every requested
+  pass uses the TMB objective and exact gradient; a later pass replaces its
+  predecessor only with its own convergence code zero and a non-increasing
+  objective. The selected fit rebuilds its report before extraction, and the
+  saved public control is replayed by `update()`.
+- The first admitted source-pair cell is deliberately narrow: replicated AR1
+  `temporal_indep()` plus one labelled `kernel_indep()` term. The test fixture
+  checks its independent dense additive NLL and gradients, distinguishes the
+  rejected product covariance, covers long/wide calls, simulation moments,
+  update, and all current parser fences. It does not admit OU, temporal
+  `dep`/`latent`, or any spatial/phylogenetic/animal pair.
+- A fresh direct-DGP timing fit took 10.8 seconds; the nine fixed attempts were
+  projected below 2 minutes and completed in 88 seconds with one BLAS thread.
+  `dev/temporal-program/run-kernel-recovery.R` retained every attempt and
+  final-pass diagnostic. `Rscript --vanilla dev/temporal-program/verify.R
+  combinations` recomputed the fixed seeds, final-pass diagnostics, and frozen
+  thresholds, then emitted `TEMPORAL_PROGRAM_COMBINATIONS_PASS`.
+- Astra's independent review found and the integration repaired two additional
+  fail-closed details: the verifier now recomputes summaries from retained
+  attempt rows and self-tests a stale-summary rejection; `optimizer_passes > 1`
+  rejects the Julia engine rather than being silently dropped. The final review
+  reports no remaining P1 findings for this kernel cell.

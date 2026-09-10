@@ -35,6 +35,7 @@ gllvmTMBcontrol(
   warn_runaway = TRUE,
   allow_nongaussian_reml = FALSE,
   loading_ridge = NULL,
+  optimizer_passes = 1L,
   ...
 )
 }
@@ -305,6 +306,12 @@ suggesting that the penalty belongs to AGHQ. The default \code{NULL} preserves
 historical unpenalised Laplace fits. Supply at most one of
 \code{loading_ridge} and \code{aghq_ridge}; neither may be combined with
 \code{estimator = "mspl"}.}
+
+\item{optimizer_passes}{Number of exact-gradient optimisation passes from
+the preceding estimate. The default \code{1} retains the historical single
+pass. A later pass is retained only when it converges and does not increase
+the objective. It is available for native Laplace fits with \code{aghq = FALSE}.
+The setting is saved in the public call and replayed by \code{\link[=update]{update()}}.}
 
 \item{...}{Reserved for future use. Currently ignored with a warning.}
 }

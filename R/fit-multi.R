@@ -7521,6 +7521,69 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     }
   }
 
+  ## A caller can request a bounded exact-gradient continuation of the selected
+  ## optimiser. This is an optimisation control rather than a post-fit
+  ## mutation: every pass uses the same TMB objective and the saved public
+  ## control call replays it in update()/refit workflows. A later pass is
+  ## adopted only after its own convergence code and objective have passed.
+  run_passes <- function(par_init, .ridge_tau = NULL) {
+    requested <- max(1L, as.integer(control$optimizer_passes %||% 1L))
+    current <- run_one(par_init, .ridge_tau = .ridge_tau)
+    history <- list(list(
+      pass = 1L,
+      objective = as.numeric(current$objective %||% NA_real_),
+      convergence = as.integer(current$convergence %||% NA_integer_),
+      message = as.character(current$message %||% ""),
+      iterations = as.numeric(current$iterations %||% NA_real_),
+      evaluations = as.numeric(current$evaluations %||% NA_real_),
+      accepted = TRUE
+    ))
+    if (requested >= 2L) for (pass in seq.int(2L, requested)) {
+      candidate <- tryCatch(
+        run_one(current$par, .ridge_tau = .ridge_tau),
+        error = function(e) e
+      )
+      if (inherits(candidate, "error")) {
+        history[[pass]] <- list(
+          pass = pass, objective = NA_real_, convergence = NA_integer_,
+          message = conditionMessage(candidate), iterations = NA_real_,
+          evaluations = NA_real_, accepted = FALSE
+        )
+        next
+      }
+      candidate_objective <- as.numeric(candidate$objective %||% NA_real_)
+      current_objective <- as.numeric(current$objective %||% NA_real_)
+      tolerance <- 64 * .Machine$double.eps * max(1, abs(current_objective))
+      accepted <- is.finite(candidate_objective) && is.finite(current_objective) &&
+        identical(as.integer(candidate$convergence %||% NA_integer_), 0L) &&
+        candidate_objective <= current_objective + tolerance
+      history[[pass]] <- list(
+        pass = pass, objective = candidate_objective,
+        convergence = as.integer(candidate$convergence %||% NA_integer_),
+        message = as.character(candidate$message %||% ""),
+        iterations = as.numeric(candidate$iterations %||% NA_real_),
+        evaluations = as.numeric(candidate$evaluations %||% NA_real_),
+        accepted = accepted
+      )
+      if (isTRUE(accepted)) current <- candidate
+    }
+    pass_history <- do.call(rbind, lapply(history, as.data.frame,
+      stringsAsFactors = FALSE))
+    current$pass_history <- pass_history
+    current$passes_requested <- requested
+    current$passes_accepted <- sum(pass_history$accepted)
+    current$iterations <- sum(pass_history$iterations, na.rm = TRUE)
+    current$evaluations <- sum(pass_history$evaluations, na.rm = TRUE)
+    if (requested > 1L) {
+      current$message <- paste0(
+        current$message %||% "",
+        if (nzchar(current$message %||% "")) "; " else "",
+        "optimizer passes accepted ", current$passes_accepted, "/", requested
+      )
+    }
+    current
+  }
+
   ## LAPLACE-PATH RIDGE -- the fair control, made runnable.
   ##
   ## `run_one()` above already takes `.ridge_tau` and applies it with no
@@ -7577,7 +7640,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       )
     }
     elapsed_start <- proc.time()[["elapsed"]]
-    opt_i <- tryCatch(run_one(par0, .ridge_tau = laplace_ridge_tau),
+    opt_i <- tryCatch(run_passes(par0, .ridge_tau = laplace_ridge_tau),
                       error = function(e) e)
     elapsed_s <- proc.time()[["elapsed"]] - elapsed_start
     if (inherits(opt_i, "error")) {
@@ -8897,6 +8960,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       lambda_constraint     = lambda_constraint,
       needs_rotation_advice = needs_rotation_advice,
       restart_history = restart_history,
+      optimizer_pass_history = opt$pass_history %||% data.frame(),
       start_provenance = start_provenance,
       sdreport_error = sdreport_error,
       package_version = utils::packageVersion("gllvmTMB"),

@@ -32,7 +32,11 @@ time and uses \(K(t,s)=\exp\{-\exp(\xi)|t-s|\}\), with no automatic rescaling.
 Both long and `traits(...)` wide forms use the same temporal specification.
 Ordinary unit and unit-observation covariance terms are admitted when the
 series and unit partitions agree and `unit_obs` is unit-nested. Spatial,
-phylogenetic, animal, kernel, and meta providers remain refused.
+phylogenetic, animal, and meta providers remain refused. The sole source-pair
+exception is replicated AR1 `temporal_indep()` with one labelled
+`kernel_indep()` term. It uses an additive static-kernel plus temporal-process
+covariance, not a source-by-time product; OU and the remaining temporal/kernel
+mode combinations remain refused.
 
 The package should learn from `glmmTMB`, `gllvm`, and `galamm` without
 copying their grammars wholesale. The public grammar is built around

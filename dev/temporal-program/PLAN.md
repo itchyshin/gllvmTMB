@@ -52,7 +52,7 @@ intercepts, and use Gaussian identity-link ML/Laplace only.
 | S3a | Terra-high + Curie; 2-4 days | Temporal plus spatial pair | S2 | AR1/OU, supported trait modes, dense NLL/gradient, simulation, long/wide, known-level lifecycle fixture. |
 | S3b | Terra-high + Curie; 2-4 days | Temporal plus phylogenetic pair | S2 | Same evidence plus tree-label/scale preservation and confounding controls. |
 | S3c | Terra-high + Curie; 2-4 days | Temporal plus animal pair | S2 | Same evidence plus pedigree provenance and identity-like relationship control. |
-| S3d | Terra-high + Curie; 2-4 days | Temporal plus fixed-kernel pair | S2 | Same evidence plus proportional-kernel non-identification diagnostic. |
+| S3d | Terra-high + Curie; 2-4 days | Temporal plus fixed-kernel pair | S2 | **Implemented locally:** replicated AR1 `temporal_indep()` plus one labelled `kernel_indep()` term, with a dense additive oracle, product-kernel control, simulation, long/wide replay, two-pass optimizer provenance, and retained fixed-seed recovery. OU and other temporal/kernel modes remain deferred. |
 | S4 | Terra-high + Emmy; 2-4 days | `forecast_temporal()` or precisely scoped `predict()` extension | S0, then S3a-d for composed version | **In progress:** temporal-only existing-series Gaussian forecast with a dense conditional-Gaussian oracle. New independent series and composed forecasts remain refused. |
 | S5 | Terra-high + Gauss/Fisher; 3-6 days | Direct temporal persistence/decay and diagonal-SD interval/profile routes | S0 | Marginal re-optimization, correct transformed scales, MLE closure and boundary diagnostics. Derived profiles remain blocked. |
 | S6 | Terra-high + Curie; 2-5 days | Temporal-only parametric bootstrap/refit, then one source pair at a time | S0, S3a-d, S5 | Full-joint draw/refit retains original long/wide temporal call and source object; every failure retained. |
@@ -77,14 +77,13 @@ S3a--S3d are logically parallel but share parser, fit plumbing, C++ engine and d
 
 ## Current reconciliation
 
-On 2026-09-09, fixed-parameter public previews for
-`temporal_indep() + kernel_indep()`, `+ phylo_indep()`, and
-`+ animal_indep()` reached the existing additive engine and matched small dense
-Gaussian likelihood/gradient calculations. They did not yet have the required
-unconditional composed simulation, retained recovery, or source-specific
-lifecycle evidence. The parser admissions were therefore reverted. No temporal
-source pair is currently admitted; the preview calculations are not a capability
-claim and G3 remains unmet.
+On 2026-09-09, the first source-pair admission is replicated AR1
+`temporal_indep() + kernel_indep()`. Its direct DGP uses 80 series, 16
+occasions, three traits, fixed labelled non-proportional kernel coordinates,
+`phi = -.4, 0, .6`, and seeds `2609151:2609153`. The executable runner checks
+the dense oracle fixture and each retained final two-pass optimizer result.
+This is local kernel-cell evidence only. OU, temporal `dep`/`latent`, and all
+spatial, phylogenetic, and animal source pairs remain refused.
 
 ## Compute
 

@@ -171,8 +171,7 @@ test_that("temporal source refuses each deferred provider and duplicate temporal
   deferred <- list(
     quote(phylo_indep(0 + trait | series)),
     quote(animal_indep(0 + trait | series)),
-    quote(spatial_indep(0 + trait | series)),
-    quote(kernel_indep(0 + trait | series))
+    quote(spatial_indep(0 + trait | series))
   )
   for (other in deferred) {
     form <- as.formula(call("~", quote(value), call("+",
@@ -180,6 +179,11 @@ test_that("temporal source refuses each deferred provider and duplicate temporal
     expect_error(gllvmTMB(form, data = dat, unit = "series", family = gaussian()),
       "temporal covariance term cannot be combined", info = deparse(other))
   }
+  kernel_form <- value ~ 0 + trait +
+    temporal_indep(0 + trait | series, time = occasion) +
+    kernel_indep(series, K = diag(3L), name = "deferred_kernel")
+  expect_error(gllvmTMB(kernel_form, data = dat, unit = "series", family = gaussian()),
+    "requires replicated AR1")
   expect_error(gllvmTMB(
     value ~ 0 + trait + temporal_indep(0 + trait | series, time = occasion) +
       temporal_dep(0 + trait | series, time = occasion),

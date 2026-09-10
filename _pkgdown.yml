@@ -236,6 +236,14 @@ reference:
     - dep
     - temporal_latent
 
+  - title: Temporal covariance helpers
+    desc: Bounded Gaussian temporal forecasting, direct profiles, bootstrap, and candidate comparison.
+    contents:
+    - forecast_temporal
+    - profile_temporal
+    - bootstrap_temporal
+    - compare_temporal
+
   - title: Advanced formula keywords and shorthands
     desc: First-class mode-dispatch wrappers; the bar form (e.g. phylo(0 + trait | species, mode = ...)) is current, while the legacy bare-alias form is soft-deprecated. Public articles prefer the explicit core keywords
     contents:

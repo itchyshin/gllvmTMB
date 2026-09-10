@@ -696,6 +696,14 @@ gllvmTMB <- function(
   ## engine = "julia" routes through the experimental GLLVM.jl bridge fitting
   ## path via JuliaCall; "tmb" (default) keeps the native TMB engine below.
   engine <- match.arg(engine)
+  if (identical(engine, "julia") &&
+      (control$optimizer_passes %||% 1L) > 1L) {
+    cli::cli_abort(c(
+      "{.arg optimizer_passes} greater than one requires the native TMB Laplace engine.",
+      "i" = "The Julia dispatch has its own optimizer and does not consume this control.",
+      ">" = "Use {.code optimizer_passes = 1L}, or fit with {.code engine = \"tmb\"}."
+    ))
+  }
   structured_rho_capture <- .parse_structured_rho_formula(formula, trait_col = trait, strip = FALSE)
   .structured_rho_dispatch_fence(structured_rho_capture$spec, engine = engine,
     integration = control$integration %||% "laplace", estimator = estimator,
@@ -1892,6 +1900,11 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #'   latter together with `optArgs` for finicky two-level rr fits.
 #' @param optArgs A list of arguments passed to the optimiser. For
 #'   `optim` the most useful is `list(method = "BFGS")`.
+#' @param optimizer_passes Number of exact-gradient optimisation passes from
+#'   the preceding estimate. The default `1` retains the historical single
+#'   pass. A later pass is retained only when it converges and does not increase
+#'   the objective. It is available for native Laplace fits with `aghq = FALSE`.
+#'   The setting is saved in the public call and replayed by [update()].
 #' @param init_jitter Standard deviation of N(0, sigma) jitter applied to
 #'   the starting parameter vector across the `n_init` restarts.
 #'   Default 0.3.
@@ -2271,6 +2284,7 @@ gllvmTMBcontrol <- function(
   warn_runaway = TRUE,
   allow_nongaussian_reml = FALSE,
   loading_ridge = NULL,
+  optimizer_passes = 1L,
   ...
 ) {
   ## Did the CALLER name `aghq_ridge`, or is this the package default? The
@@ -2306,6 +2320,14 @@ gllvmTMBcontrol <- function(
   aghq_multistart_explicit <- !missing(aghq_multistart)
   spde_mode <- match.arg(spde_mode)
   optimizer <- match.arg(optimizer)
+  if (!is.numeric(optimizer_passes) || length(optimizer_passes) != 1L ||
+      is.na(optimizer_passes) || !is.finite(optimizer_passes) ||
+      optimizer_passes != as.integer(optimizer_passes) || optimizer_passes < 1L) {
+    cli::cli_abort(c(
+      "{.arg optimizer_passes} must be one or more whole-number passes.",
+      ">" = "Use {.code optimizer_passes = 1L} for the historical single pass."
+    ))
+  }
   init_strategy <- match.arg(init_strategy)
   start_method <- .gllvmTMB_normalize_start_method(start_method)
   integration <- match.arg(integration)
@@ -2359,6 +2381,14 @@ gllvmTMBcontrol <- function(
       ">" = "Set {.code aghq = FALSE}, or use {.code integration = \"laplace\"}."
     ))
   }
+  if (optimizer_passes > 1L &&
+      (!identical(integration, "laplace") || !isFALSE(aghq))) {
+    cli::cli_abort(c(
+      "{.arg optimizer_passes} greater than one requires native Laplace optimisation with {.code aghq = FALSE}.",
+      "i" = "Variational and adaptive-quadrature routes use their own optimisation loops.",
+      ">" = "Use {.code optimizer_passes = 1L}, or fit the native Laplace route."
+    ))
+  }
   if (!is.logical(se) || length(se) != 1L || is.na(se)) {
     cli::cli_abort(c(
       "{.arg se} must be a single {.code TRUE} or {.code FALSE} value.",
@@ -2380,6 +2410,7 @@ gllvmTMBcontrol <- function(
     n_init = as.integer(n_init),
     optimizer = optimizer,
     optArgs = optArgs,
+    optimizer_passes = as.integer(optimizer_passes),
     init_jitter = init_jitter,
     init_strategy = init_strategy,
     start_method = start_method,

@@ -416,7 +416,8 @@ This repository is shared by humans, Codex, and Claude Code. Read
   **CANCELLED** by decision (no new API; the M3 freeze holds), two user-facing bug
   fixes plus the first `gllvm` fit-level comparators landed on `main`
   `a0f568d1..84ca8290`, and a D-43 panel returned **3/3 NOT-DONE** so **nothing was
-  promoted**. The keyword grid was corrected to **5 × 3** across the rule files.
+  promoted**. The keyword grid was then 5 × 3; it is now superseded by the
+  6 × 3 grid with the temporal source row.
   **Next arc is UNCHOSEN** (not CRAN, not the paper — Shinichi reserved the choice);
   standing interest recorded in **EVA**. Handover:
   `docs/dev-log/handover/2026-07-25-claude-handover-arc-closed.md`.
@@ -502,7 +503,8 @@ does NOT do" section), see
   preserves integer gaps and OU uses numeric elapsed time.  It admits one
   Gaussian identity-link ML/Laplace provider per fit and may coexist with
   ordinary `unit` / `unit_obs` covariance; temporal plus phylo, animal,
-  spatial, or kernel sources is refused. `temporal_latent(unique = TRUE)`
+  spatial, or kernel sources is refused except for replicated AR1
+  `temporal_indep()` plus one labelled `kernel_indep()` term. `temporal_latent(unique = TRUE)`
   gives a temporally correlated trait-diagonal Psi, never IID occasion noise.
 - Structured-rho development arc (2026-08-31): canonical phylo/animal/kernel/spatial
   helpers have trailing `rho = 1`; spatial range stays separately estimated.

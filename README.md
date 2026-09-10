@@ -68,7 +68,10 @@ latent Psi is correlated through that same kernel. Long and `traits(...)` wide
 calls, simulation, training-data prediction, and ordinary unit/unit-observation
 composition have focused local checks. Recovery, precision, calibration, and
 interval coverage remain unclaimed; the temporal article gives the supported
-input contract and unavailable next steps.
+input contract and unavailable next steps. The first locally verified
+cross-source cell is replicated AR1 `temporal_indep()` plus one labelled
+`kernel_indep()` term; OU, other temporal/kernel modes, and spatial,
+phylogenetic, and animal combinations remain unavailable.
 
 ## What the model does
 

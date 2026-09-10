@@ -64,7 +64,9 @@ test_that("temporal-phylo optimizer passes retain labelled qualification diagnos
     "inner_hessian_dimension", "inner_hessian_rcond", "inner_hessian_condition",
     "inner_hessian_message", "outer_hessian_available", "outer_hessian_message",
     "fn_evaluations", "gr_evaluations", "message",
-    "warnings", "elapsed_seconds", "start", "end", "gradient", "fresh_gradient"
+    "warnings", "elapsed_seconds", "start", "end", "gradient", "fresh_gradient",
+    "finite_difference_labels", "finite_difference_step",
+    "finite_difference_central", "finite_difference_error"
   )
   expect_true(all(required %in% names(history)),
     info = paste("missing:", paste(setdiff(required, names(history)), collapse = ", ")))
@@ -76,6 +78,15 @@ test_that("temporal-phylo optimizer passes retain labelled qualification diagnos
   expect_true(all(history$finite_difference_all_finite))
   expect_identical(history$finite_difference_n_coordinates,
     history$finite_difference_n_finite)
+  expect_true(all(vapply(seq_len(nrow(history)), function(i) {
+    labels <- history$finite_difference_labels[[i]]
+    step <- history$finite_difference_step[[i]]
+    central <- history$finite_difference_central[[i]]
+    error <- history$finite_difference_error[[i]]
+    identical(names(step), labels) && identical(names(central), labels) &&
+      identical(names(error), labels) && all(is.finite(step)) &&
+      all(is.finite(central)) && all(is.finite(error))
+  }, logical(1))))
   expect_true(all(history$fresh_state_ok))
   expect_true(all(is.finite(history$fresh_objective)))
   expect_true(all(is.finite(history$fresh_objective_error)))
@@ -155,6 +166,7 @@ test_that("optimizer finite-difference audit fails closed on a missing coordinat
   expect_true(complete$all_finite)
   expect_identical(complete$n_coordinates, 2L)
   expect_identical(complete$n_finite, 2L)
+  expect_equal(unname(complete$step), c(1e-5, 1e-5), tolerance = 1e-12)
   expect_equal(unname(complete$error), c(0, 0), tolerance = 1e-7)
 
   missing <- gllvmTMB:::.gllvmTMB_optimizer_finite_difference_audit(

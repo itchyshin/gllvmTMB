@@ -18,8 +18,9 @@
   if (is.null(raw) || length(raw) != length(par)) raw <- rep("outer", length(par))
   labels <- paste0(raw, "[", ave(seq_along(raw), raw, FUN = seq_along), "]")
   empty <- list(
-    labels = labels, central = rep(NA_real_, length(par)),
-    error = rep(NA_real_, length(par)), n_coordinates = length(par),
+    labels = labels, step = stats::setNames(rep(NA_real_, length(par)), labels),
+    central = stats::setNames(rep(NA_real_, length(par)), labels),
+    error = stats::setNames(rep(NA_real_, length(par)), labels), n_coordinates = length(par),
     n_finite = 0L, all_finite = FALSE, maximum = NA_real_,
     coordinate = NA_character_, error_maximum = NA_real_,
     error_coordinate = NA_character_
@@ -38,13 +39,15 @@
     if (!is.finite(f_plus) || !is.finite(f_minus)) return(NA_real_)
     (f_plus - f_minus) / (2 * step[[i]])
   }, numeric(1))
-  error <- abs(central - gradient)
+  step <- stats::setNames(step, labels)
+  central <- stats::setNames(central, labels)
+  error <- stats::setNames(abs(central - gradient), labels)
   finite <- is.finite(central) & is.finite(error)
   all_finite <- length(finite) == length(par) && all(finite)
   max_index <- if (all_finite) which.max(abs(central)) else NA_integer_
   err_index <- if (all_finite) which.max(error) else NA_integer_
   list(
-    labels = labels, central = central, error = error,
+    labels = labels, step = step, central = central, error = error,
     n_coordinates = length(par), n_finite = sum(finite),
     all_finite = all_finite,
     maximum = if (all_finite) max(abs(central)) else NA_real_,
@@ -7702,7 +7705,11 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     } else NA_character_
     finite_difference <- if (!inherits(diagnostic_obj, "error")) {
       optimizer_finite_difference(endpoint, gradient, diagnostic_obj)
-    } else list(maximum = NA_real_, coordinate = NA_character_,
+    } else list(labels = labels,
+      step = stats::setNames(rep(NA_real_, length(endpoint)), labels),
+      central = stats::setNames(rep(NA_real_, length(endpoint)), labels),
+      error = stats::setNames(rep(NA_real_, length(endpoint)), labels),
+      maximum = NA_real_, coordinate = NA_character_,
       error_maximum = NA_real_, error_coordinate = NA_character_,
       n_coordinates = length(endpoint), n_finite = 0L, all_finite = FALSE)
     fresh <- optimizer_fresh_state(endpoint, objective, gradient)
@@ -7723,6 +7730,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       finite_difference_n_coordinates = finite_difference$n_coordinates,
       finite_difference_n_finite = finite_difference$n_finite,
       finite_difference_all_finite = finite_difference$all_finite,
+      finite_difference_labels = I(list(finite_difference$labels)),
+      finite_difference_step = I(list(finite_difference$step)),
+      finite_difference_central = I(list(finite_difference$central)),
+      finite_difference_error = I(list(finite_difference$error)),
       fresh_state_ok = fresh$ok,
       fresh_objective = fresh$objective,
       fresh_objective_error = fresh$objective_error,

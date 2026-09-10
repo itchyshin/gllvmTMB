@@ -139,8 +139,10 @@ temporal_phylo_third_pass_adjudicate <- function(baseline, candidate) {
     residual = residual_change <= 1e-4,
     prediction = prediction_change <= 1e-4
   )
+  failed_gates <- names(gates)[!gates]
   list(
     accepted = all(gates), gates = gates,
+    rejection_reasons = unname(failed_gates),
     final_outer_gradient = final$outer_gradient_max[[1L]],
     final_objective = final$fresh_objective[[1L]],
     covariance_relative_change = covariance_change,

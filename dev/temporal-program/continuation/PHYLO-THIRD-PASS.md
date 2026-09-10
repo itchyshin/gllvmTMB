@@ -39,8 +39,8 @@ no higher than the two-pass baseline plus `64 * eps * max(1, abs(objective))`.
 As a same-solution safeguard, AR1 persistence may differ by at most `1e-5`,
 each covariance component and residual variance by relative Frobenius error at
 most `1e-4`, and training linear predictors by relative error at most `1e-4`.
-Rejected candidates retain the baseline and rejection diagnostics; no fit state
-is overwritten.
+Rejected candidates retain the baseline and an explicit list of failed gates;
+no fit state is overwritten.
 
 ## Local pre-run receipt
 
@@ -52,6 +52,22 @@ about three minutes. The third pass was a near no-op: gradient
 already passed the gradient gate. This does not predict or repair the retained
 Fir gradient `1.614525e-3`.
 
-The complete local receipt is deliberately kept outside the repository at
-`/private/tmp/temporal-phylo-third-pass-local-phi0-seed2609188.rds`; the
-candidate runner refuses to overwrite a receipt.
+## Retained local result
+
+The complete frozen local set is retained in
+`dev/temporal-program/results/continuation/phylo-third-pass-local-six-20260910/`.
+All six receipts were run from `fd91016718109592224a98110750fe6d23ea317c` with
+one BLAS thread. Five cells met C3's local predicates. The remaining retained
+failure, `phi = .6`, `seed = 2609185`, had a final outer gradient of
+`1.105532e-3`, exceeding the unchanged `1e-3` gate; every other same-solution
+and fresh-state predicate passed. The full values and failed-gate label are in
+`summary.csv`.
+
+Therefore C3 is rejected. It does not justify a Fir submission, a fourth BFGS
+pass, a changed stopping threshold, or any recovery claim. The original Fir
+campaign remains the controlling failed phylogenetic receipt.
+
+The first retained C3 receipt predated the `rejection_reasons` field. The raw
+gates still identify `gradient` as its only failure, and the summary records
+that diagnosis. The runner now writes `rejection_reasons` directly, with a
+unit test, so a later candidate cannot omit it.

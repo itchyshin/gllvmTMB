@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html>
+<head><title>R: Fit Multivariate Models from Wide Response Data</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+<link rel="stylesheet" type="text/css" href="R.css">
+</head><body><div class="container">
+<h1> Fit Multivariate Models from Wide Response Data
+<img class="toplogo" src="figures/logo.png" alt="[R logo]">
+</h1>
+<hr>
+<div style="text-align: center;">
+<a href="../../../doc/html/packages.html"><img class="arrow" src="../../../doc/html/left.jpg" alt="[Up]"></a>
+<a href="../../../doc/html/index.html"><img class="arrow" src="../../../doc/html/up.jpg" alt="[Top]"></a>
+</div><h2>Documentation for package &lsquo;gllvmTMB&rsquo; version 0.7.0</h2>
+
+<ul><li><a href="../DESCRIPTION" type="text/plain; charset=utf-8">DESCRIPTION file</a></li>
+<li><a href="../NEWS.md">Package NEWS</a></li>
+<li><a href="../README.md">Package README</a></li>
+</ul>
+
+<h2>Help Pages</h2>
+
+
+<p style="text-align: center;">
+<a href="#A">A</a>
+<a href="#B">B</a>
+<a href="#C">C</a>
+<a href="#D">D</a>
+<a href="#E">E</a>
+<a href="#F">F</a>
+<a href="#G">G</a>
+<a href="#I">I</a>
+<a href="#K">K</a>
+<a href="#L">L</a>
+<a href="#M">M</a>
+<a href="#N">N</a>
+<a href="#O">O</a>
+<a href="#P">P</a>
+<a href="#R">R</a>
+<a href="#S">S</a>
+<a href="#T">T</a>
+<a href="#V">V</a>
+<a href="#W">W</a>
+</p>
+
+
+<h2><a id="A">-- A --</a></h2>
+
+<table style="width: 100%;">
+<tr><td style="width: 25%;"><a href="add_utm_columns.html">add_utm_columns</a></td>
+<td>Add UTM coordinates to a data frame</td></tr>
+<tr><td style="width: 25%;"><a href="animal_dep.html">animal_dep</a></td>
+<td>Full unstructured animal-model trait covariance: 'animal_dep(0 + trait | id)'</td></tr>
+<tr><td style="width: 25%;"><a href="animal_indep.html">animal_indep</a></td>
+<td>Independent per-trait animal-model random intercepts: 'animal_indep(0 + trait | id)'</td></tr>
+<tr><td style="width: 25%;"><a href="animal_latent.html">animal_latent</a></td>
+<td>Reduced-rank animal-model latent factors: 'animal_latent(id, d = K)'</td></tr>
+<tr><td style="width: 25%;"><a href="animal_scalar.html">animal_scalar</a></td>
+<td>Single-shared-variance animal-model random effect: 'animal_scalar(id)'</td></tr>
+<tr><td style="width: 25%;"><a href="animal_slope.html">animal_slope</a></td>
+<td>Animal-model random slope on a continuous covariate</td></tr>
+<tr><td style="width: 25%;"><a href="animal_unique.html">animal_unique</a></td>
+<td>Per-trait independent animal-model random intercepts: 'animal_unique(id)'</td></tr>
+</table>
+
+<h2><a id="B">-- B --</a></h2>
+
+<table style="width: 100%;">
+<tr><td style="width: 25%;"><a href="block_V.html">block_V</a></td>
+<td>Build a block-diagonal sampling-variance matrix V</td></tr>
+<tr><td style="width: 25%;"><a href="bootstrap_Sigma.html">bootstrap_Sigma</a></td>
+<td>Bootstrap covariance, correlation, communality, and ICC summaries</td></tr>
+</table>
+
+<h2><a id="C">-- C --</a></h2>
+
+<table style="width: 100%;">
+<tr><td style="width: 25%;"><a href="categorical.html">categorical</a></td>
+<td>Baseline-category softmax unordered categorical missing-predictor family</td></tr>
+<tr><td style="width: 25%;"><a href="check_auto_residual.html">check_auto_residual</a></td>
+<td>Check whether 'link_residual = "auto"' is coherent for this fit</td></tr>
+<tr><td style="width: 25%;"><a href="check_gllvmTMB.html">check_gllvmTMB</a></td>
+<td>Check convergence, Hessian, gradients, and interval readiness</td></tr>
+<tr><td style="width: 25%;"><a href="gllvmTMB_julia-methods.html">coef.gllvmTMB_julia</a></td>
+<td>Methods for Julia bridge fits</td></tr>
+<tr><td style="width: 25%;"><a href="gllvm_julia_phylo_rr.html">coef.gllvmTMB_julia_phylo_rr</a></td>
+<td>Retrieve the closed S4 Julia interval surface for one native phylogenetic fit</td></tr>
+<tr><td style="width: 25%;"><a href="gllvmTMB_multi-vcov.html">coef.gllvmTMB_multi</a></td>
+<td>Fixed-effect estimates and covariance for a multi-trait fit</td></tr>
+<tr><td style="width: 25%;"><a href="gllvmTMB_va-methods.html">coef.gllvmTMB_va</a></td>
+<td>Methods for variational ('integration = "va"') fits</td></tr>
+<tr><td style="width: 25%;"><a href="compare_dep_vs_two_psi.html">compare_dep_vs_two_psi</a></td>
+<td>Canonical likelihood-based cross-check for the paired phylogenetic decomposition</td></tr>
+<tr><td style="width: 25%;"><a href="compare_indep_vs_two_psi.html">compare_indep_vs_two_psi</a></td>
+<td>Cheap diagonal cross-check for the paired phylogenetic decomposition (large T)</td></tr>
+<tr><td style="width: 25%;"><a href="compare_loadings.html">compare_loadings</a></td>
+<td>Compare two loading matrices after Procrustes alignment</td></tr>
+<tr><td style="width: 25%;"><a href="compare_Sigma_table.html">compare_Sigma_table</a></td>
+<td>Compare fitted Sigma-table rows with a known truth matrix</td></tr>
+<tr><td style="width: 25%;"><a href="gllvmTMB_julia-methods.html">confint.gllvmTMB_julia</a></td>
+<td>Methods for Julia bridge fits</td></tr>
+<tr><td style="width: 25%;"><a href="gllvm_julia_phylo_rr.html">confint.gllvmTMB_julia_phylo_rr</a></td>
+<td>Retrieve the closed S4 Julia interval surface for one native phylogenetic fit</td></tr>
+<tr><td style="width: 25%;"><a href="confint.gllvmTMB_multi.html">confint.gllvmTMB_multi</a></td>
+<td>Confidence intervals for a fitted gllvmTMB model</td></tr>
+<tr><td style="width: 25%;"><a href="gllvmTMB_va-methods.html">confint.gllvmTMB_va</a></td>
+<td>Methods for variational ('integration = "va"') fits</td></tr>
+<tr><td style="width: 25%;"><a href="confint_inspect.html">confint_inspect</a></td>
+<td>Inspect profile confidence-interval shape for a fitted model</td></tr>
+<tr><td style="width: 25%;"><a href="confirmatory_lambda.html">confirmatory_lambda</a></td>
+<td>Build a confirmatory 'lambda_constraint' matrix from group membership</td></tr>
+<tr><td style="width: 25%;"><a href="cumulative_logit.html">cumulative_logit</a></td>
+<td>Cumulative-logit ordered categorical missing-predictor family</td></tr>
+</table>
+
+<h2><a id="D">-- D --</a></h2>
+
+<table style="width: 100%;">
+<tr><td style="width: 25%;"><a href="dep.html">dep</a></td>
+<td>Full unstructured trait covariance: 'dep(0 + trait | g)'</td></tr>
+<tr><td style="width: 25%;"><a href="deviance.gllvmTMB_multi.html">deviance.gllvmTMB_multi</a></td>
+<td>Deviance of a fitted gllvmTMB model</td></tr>
+<tr><td style="width: 25%;"><a href="gllvmTMB_va-methods.html">deviance.gllvmTMB_va</a></td>
+<td>Methods for variational ('integration = "va"') fits</td></tr>
+<tr><td style="width: 25%;"><a href="gllvmTMB_va-methods.html">df.residual.gllvmTMB_va</a></td>
+<td>Methods for variational ('integration = "va"') fits</td></tr>
+<tr><td style="width: 25%;"><a href="diagnose_kernel_separability.html">diagnose_kernel_separability</a></td>
+<td>Diagnose fixed-kernel separability before fitting</td></tr>
+<tr><td style="width: 25%;"><a href="diagnostic_table.html">diagnostic_table</a></td>
+<td>Extract report-ready tables from diagnostic objects</td></tr>
+</table>
+
+<h2><a id="E">-- E --</a></h2>
+
+<table style="width: 100%;">
+<tr><td style="width: 25%;"><a href="extract_coevolution_modules.html">extract_coevolution_modules</a></td>
+<td>Extract cross-lineage coevolutionary modules</td></tr>
+<tr><td style="width: 25%;"><a href="extract_communality.html">extract_communality</a></td>
+<td>Communality of each trait</td></tr>
+<tr><td style="width: 25%;"><a href="extract_correlations.html">extract_correlations</a></td>
+<td>Extract cross-trait correlations</td></tr>
+<tr><td style="width: 25%;"><a href="extract_cross_correlations.html">extract_cross_correlations</a></td>
+<td>Cross-family correlations between a nominal (multinomial) trait and partners</td></tr>
+<tr><td style="width: 25%;"><a href="extract_cutpoints.html">extract_cutpoints</a></td>
+<td>Extract ordinal-probit cutpoints from a fitted gllvmTMB model</td></tr>
+<tr><td style="width: 25%;"><a href="extract_Gamma.html">extract_Gamma</a></td>
+<td>Extract a cross-lineage Gamma block</td></tr>
+<tr><td style="width: 25%;"><a href="extract_loadings.html">extract_loadings</a></td>
+<td>Extract the trait loading matrix</td></tr>
+<tr><td style="width: 25%;"><a href="extract_lv_effects.html">extract_lv_effects</a></td>
+<td>Predictor effects on latent-score means</td></tr>
+<tr><td style="width: 25%;"><a href="extract_Omega.html">extract_Omega</a></td>
+<td>Total trait covariance Omega summed across requested tiers</td></tr>
+<tr><td style="width: 25%;"><a href="extract_ordination.html">extract_ordination</a></td>
+<td>Extract ordination scores and loadings from a fitted multivariate model</td></tr>
+<tr><td style="width: 25%;"><a href="extract_phylo_signal.html">extract_phylo_signal</a></td>
+<td>Phylogenetic-signal proportions per trait</td></tr>
+<tr><td style="width: 25%;"><a href="extract_proportions.html">extract_proportions</a></td>
+<td>Per-trait proportion-of-variance decomposition across all model components</td></tr>
+<tr><td style="width: 25%;"><a href="extract_repeatability.html">extract_repeatability</a></td>
+<td>Per-trait repeatability with confidence intervals</td></tr>
+<tr><td style="width: 25%;"><a href="extract_residual_cov.html">extract_residual_cor</a></td>
+<td>Implied trait covariance or correlation</td></tr>
+<tr><td style="width: 25%;"><a href="extract_residual_cov.html">extract_residual_cov</a></td>
+<td>Implied trait covariance or correlation</td></tr>
+<tr><td style="width: 25%;"><a href="extract_rotated_loadings_table.html">extract_rotated_loadings_table</a></td>
+<td>Extract a tidy rotated loading table</td></tr>
+<tr><td style="width: 25%;"><a href="extract_Sigma.html">extract_Sigma</a></td>
+<td>Extract the implied trait covariance / correlation at one tier</td></tr>
+<tr><td style="width: 25%;"><a href="extract_Sigma_table.html">extract_Sigma_table</a></td>
+<td>Extract a report-ready table of Sigma or correlation entries</td></tr>
+</table>
+
+<h2><a id="F">-- F --</a></h2>
+
+<table style="width: 100%;">
+<tr><td style="width: 25%;"><a href="gllvmTMB_julia-methods.html">fitted.gllvmTMB_julia</a></td>
+<td>Methods for Julia bridge fits</td></tr>
+<tr><td style="width: 25%;"><a href="fitted.gllvmTMB_multi.html">fitted.gllvmTMB_multi</a></td>
+<td>Fitted values from a fitted gllvmTMB model</td></tr>
+<tr><td style="width: 25%;"><a href="gllvmTMB_va-methods.html">fitted.gllvmTMB_va</a></td>
+<td>Methods for variational ('integration = "va"') fits</td></tr>
+<tr><td style="width: 25%;"><a href="flag_unreliable_loadings.html">flag_unreliable_loadings</a></td>
+<td>Flag loadings whose CI overlaps a "biologically negligible" region</td></tr>
+</table>
+
+<h2><a id="G">-- G --</a></h2>
+
+<table style="width: 100%;">
+<tr><td style="width: 25%;"><a href="get_crs.html">get_crs</a></td>
+<td>Infer a UTM coordinate reference system</td></tr>
+<tr><td style="width: 25%;"><a href="gllvmTMB.html">gllvmTMB</a></td>
+<td>Fit multivariate response models from wide or long data</td></tr>
+<tr><td style="width: 25%;"><a href="gllvmTMBcontrol.html">gllvmTMBcontrol</a></td>
+<td>Control parameters for 'gllvmTMB()'</td></tr>
+<tr><td style="width: 25%;"><a href="gllvmTMB_check_consistency.html">gllvmTMB_check_consistency</a></td>
+<td>Run an advanced Laplace-consistency check</td></tr>
+<tr><td style="width: 25%;"><a href="gllvmTMB_diagnose.html">gllvmTMB_diagnose</a></td>
+<td>Diagnose a fitted model and suggest next actions</td></tr>
+<tr><td style="width: 25%;"><a href="gllvmTMB_julia-methods.html">gllvmTMB_julia-methods</a></td>
+<td>Methods for Julia bridge fits</td></tr>
+<tr><td style="width: 25%;"><a href="gllvmTMB_multi-methods.html">gllvmTMB_multi-methods</a></td>
+<td>Methods on a fitted gllvmTMB model</td></tr>
+<tr><td style="width: 25%;"><a href="gllvmTMB_multi-vcov.html">gllvmTMB_multi-vcov</a></td>
+<td>Fixed-effect estimates and covariance for a multi-trait fit</td></tr>
+<tr><td style="width: 25%;"><a href="gllvmTMB_va-methods.html">gllvmTMB_va-methods</a></td>
+<td>Methods for variational ('integration = "va"') fits</td></tr>
+<tr><td style="width: 25%;"><a href="gllvm_julia_fit.html">gllvm_julia_fit</a></td>
+<td>Fit a GLLVM with the Julia engine (GLLVM.jl 'bridge_fit').</td></tr>
+<tr><td style="width: 25%;"><a href="gllvm_julia_phylo_rr.html">gllvm_julia_phylo_rr</a></td>
+<td>Retrieve the closed S4 Julia interval surface for one native phylogenetic fit</td></tr>
+<tr><td style="width: 25%;"><a href="gllvm_julia_setup.html">gllvm_julia_setup</a></td>
+<td>Set up JuliaCall and load the GLLVM.jl engine (once per R session).</td></tr>
+</table>
+
+<h2><a id="I">-- I --</a></h2>
+
+<table style="width: 100%;">
+<tr><td style="width: 25%;"><a href="imputed.html">imputed</a></td>
+<td>Extract fitted missing-predictor values from a 'gllvmTMB' fit</td></tr>
+<tr><td style="width: 25%;"><a href="imputed.html">imputed.gllvmTMB</a></td>
+<td>Extract fitted missing-predictor values from a 'gllvmTMB' fit</td></tr>
+<tr><td style="width: 25%;"><a href="impute_model.html">impute_model</a></td>
+<td>Predictor model for a missing covariate used inside 'mi()'</td></tr>
+<tr><td style="width: 25%;"><a href="indep.html">indep</a></td>
+<td>Per-trait marginal variance: 'indep(0 + trait | g)'</td></tr>
+<tr><td style="width: 25%;"><a href="isdm_source.html">isdm_source</a></td>
+<td>Declare one iSDM source observation model</td></tr>
+<tr><td style="width: 25%;"><a href="isdm_sources.html">isdm_sources</a></td>
+<td>Declare the sources of a multi-source integrated model</td></tr>
+</table>
+
+<h2><a id="K">-- K --</a></h2>
+
+<table style="width: 100%;">
+<tr><td style="width: 25%;"><a href="kernel_latent.html">kernel_dep</a></td>
+<td>Generic dense-kernel covariance keywords</td></tr>
+<tr><td style="width: 25%;"><a href="kernel_latent.html">kernel_indep</a></td>
+<td>Generic dense-kernel covariance keywords</td></tr>
+<tr><td style="width: 25%;"><a href="kernel_latent.html">kernel_latent</a></td>
+<td>Generic dense-kernel covariance keywords</td></tr>
+<tr><td style="width: 25%;"><a href="kernel_scalar.html">kernel_scalar</a></td>
+<td>Dense-kernel one-shared-variance covariance: 'kernel_scalar()'</td></tr>
+<tr><td style="width: 25%;"><a href="kernel_unique.html">kernel_unique</a></td>
+<td>Deprecated alias: 'kernel_unique()'</td></tr>
+</table>
+
+<h2><a id="L">-- L --</a></h2>
+
+<table style="width: 100%;">
+<tr><td style="width: 25%;"><a href="latent.html">latent</a></td>
+<td>Latent-factor (reduced-rank) random effect: 'latent(0 + trait | g, d = K)'</td></tr>
+<tr><td style="width: 25%;"><a href="loading_ci.html">loading_ci</a></td>
+<td>Confidence intervals on individual entries of the loading matrix</td></tr>
+<tr><td style="width: 25%;"><a href="loading_profile.html">loading_profile</a></td>
+<td>Profile-likelihood curve(s) for entries of the loading matrix</td></tr>
+<tr><td style="width: 25%;"><a href="gllvmTMB_julia-methods.html">logLik.gllvmTMB_julia</a></td>
+<td>Methods for Julia bridge fits</td></tr>
+<tr><td style="width: 25%;"><a href="gllvm_julia_phylo_rr.html">logLik.gllvmTMB_julia_phylo_rr</a></td>
+<td>Retrieve the closed S4 Julia interval surface for one native phylogenetic fit</td></tr>
+<tr><td style="width: 25%;"><a href="gllvmTMB_multi-methods.html">logLik.gllvmTMB_multi</a></td>
+<td>Methods on a fitted gllvmTMB model</td></tr>
+<tr><td style="width: 25%;"><a href="gllvmTMB_va-methods.html">logLik.gllvmTMB_va</a></td>
+<td>Methods for variational ('integration = "va"') fits</td></tr>
+</table>
+
+<h2><a id="M">-- M --</a></h2>
+
+<table style="width: 100%;">
+<tr><td style="width: 25%;"><a href="make_cross_kernel.html">make_cross_kernel</a></td>
+<td>Build a cross-lineage relatedness kernel</td></tr>
+<tr><td style="width: 25%;"><a href="make_mesh.html">make_mesh</a></td>
+<td>Construct an SPDE mesh for gllvmTMB</td></tr>
+<tr><td style="width: 25%;"><a href="meta_V.html">meta_V</a></td>
+<td>Known-V meta-analytic random effect (canonical name): 'meta_V(V = V)'</td></tr>
+<tr><td style="width: 25%;"><a href="impute_model.html">mi</a></td>
+<td>Predictor model for a missing covariate used inside 'mi()'</td></tr>
+<tr><td style="width: 25%;"><a href="miss_control.html">miss_control</a></td>
+<td>Missing-data control for 'gllvmTMB()'</td></tr>
+<tr><td style="width: 25%;"><a href="impute_model.html">mi_group</a></td>
+<td>Predictor model for a missing covariate used inside 'mi()'</td></tr>
+<tr><td style="width: 25%;"><a href="multinomial.html">multinomial</a></td>
+<td>Multinomial (baseline-category logit) family</td></tr>
+</table>
+
+<h2><a id="N">-- N --</a></h2>
+
+<table style="width: 100%;">
+<tr><td style="width: 25%;"><a href="gllvmTMB_multi-methods.html">nobs.gllvmTMB_multi</a></td>
+<td>Methods on a fitted gllvmTMB model</td></tr>
+<tr><td style="width: 25%;"><a href="gllvmTMB_va-methods.html">nobs.gllvmTMB_va</a></td>
+<td>Methods for variational ('integration = "va"') fits</td></tr>
+</table>
+
+<h2><a id="O">-- O --</a></h2>
+
+<table style="width: 100%;">
+<tr><td style="width: 25%;"><a href="ordinal_probit.html">ordinal_probit</a></td>
+<td>Ordinal-probit threshold family for the multivariate engine</td></tr>
+</table>
+
+<h2><a id="P">-- P --</a></h2>
+
+<table style="width: 100%;">
+<tr><td style="width: 25%;"><a href="pedigree_to_A.html">pedigree_to_A</a></td>
+<td>Pedigree to additive-genetic relatedness matrix 'A'</td></tr>
+<tr><td style="width: 25%;"><a href="pedigree_to_Ainv_sparse.html">pedigree_to_Ainv_sparse</a></td>
+<td>Sparse pedigree inverse-A via Henderson-Quaas (MCMCglmm-free)</td></tr>
+<tr><td style="width: 25%;"><a href="phylo.html">phylo</a></td>
+<td>Phylogenetic random effect: lme4-bar mode-dispatch wrapper</td></tr>
+<tr><td style="width: 25%;"><a href="phylo_dep.html">phylo_dep</a></td>
+<td>Full unstructured phylogenetic trait covariance: 'phylo_dep(0 + trait | species)'</td></tr>
+<tr><td style="width: 25%;"><a href="phylo_indep.html">phylo_indep</a></td>
+<td>Per-trait phylogenetic marginal variance: 'phylo_indep(0 + trait | species)'</td></tr>
+<tr><td style="width: 25%;"><a href="phylo_latent.html">phylo_latent</a></td>
+<td>Reduced-rank phylogenetic latent factors: 'phylo_latent(species, d = K)'</td></tr>
+<tr><td style="width: 25%;"><a href="phylo_scalar.html">phylo_scalar</a></td>
+<td>Single-shared-variance phylogenetic random effect: 'phylo_scalar(species)'</td></tr>
+<tr><td style="width: 25%;"><a href="phylo_signal_mi.html">phylo_signal_mi</a></td>
+<td>Phylogenetic-signal diagnostic for a modelled missing predictor</td></tr>
+<tr><td style="width: 25%;"><a href="phylo_slope.html">phylo_slope</a></td>
+<td>Phylogenetic random slope on a continuous covariate</td></tr>
+<tr><td style="width: 25%;"><a href="phylo_unique.html">phylo_unique</a></td>
+<td>Per-trait independent phylogenetic random intercepts: 'phylo_unique(species)'</td></tr>
+<tr><td style="width: 25%;"><a href="plot.gllvmTMBmesh.html">plot.gllvmTMBmesh</a></td>
+<td>Plot a gllvmTMB SPDE mesh</td></tr>
+<tr><td style="width: 25%;"><a href="plot.gllvmTMB_multi.html">plot.gllvmTMB_multi</a></td>
+<td>Plot a fitted multivariate gllvmTMB model</td></tr>
+<tr><td style="width: 25%;"><a href="plot.profile_derived.html">plot.profile_derived</a></td>
+<td>Plot a profile-derived LR curve</td></tr>
+<tr><td style="width: 25%;"><a href="plot.profile_loadings.html">plot.profile_loadings</a></td>
+<td>Plot a profile_loadings object (LR U-shape per entry)</td></tr>
+<tr><td style="width: 25%;"><a href="plot.gllvmTMBmesh.html">plot.sdmTMBmesh</a></td>
+<td>Plot a gllvmTMB SPDE mesh</td></tr>
+<tr><td style="width: 25%;"><a href="plot_anisotropy.html">plot_anisotropy</a></td>
+<td>Plot the isotropic spatial range from a gllvmTMB model</td></tr>
+<tr><td style="width: 25%;"><a href="plot_anisotropy.html">plot_anisotropy2</a></td>
+<td>Plot the isotropic spatial range from a gllvmTMB model</td></tr>
+<tr><td style="width: 25%;"><a href="plot_correlations.html">plot_correlations</a></td>
+<td>Plot pairwise trait correlations with intervals</td></tr>
+<tr><td style="width: 25%;"><a href="plot_loadings_confidence_eye.html">plot_loadings_confidence_eye</a></td>
+<td>Confidence Eye plot for per-species loading uncertainty</td></tr>
+<tr><td style="width: 25%;"><a href="plot_rotated_loadings.html">plot_rotated_loadings</a></td>
+<td>Plot a rotated loading matrix</td></tr>
+<tr><td style="width: 25%;"><a href="plot_Sigma_comparison.html">plot_Sigma_comparison</a></td>
+<td>Plot Sigma-table estimates against a known truth matrix</td></tr>
+<tr><td style="width: 25%;"><a href="plot_Sigma_heatmap.html">plot_Sigma_heatmap</a></td>
+<td>Plot Sigma-table rows as a trait-by-trait heatmap</td></tr>
+<tr><td style="width: 25%;"><a href="plot_Sigma_table.html">plot_Sigma_table</a></td>
+<td>Plot report-ready Sigma table rows</td></tr>
+<tr><td style="width: 25%;"><a href="gllvmTMB_julia-methods.html">predict.gllvmTMB_julia</a></td>
+<td>Methods for Julia bridge fits</td></tr>
+<tr><td style="width: 25%;"><a href="predict.gllvmTMB_multi.html">predict.gllvmTMB_multi</a></td>
+<td>Predict from a fitted gllvmTMB model</td></tr>
+<tr><td style="width: 25%;"><a href="gllvmTMB_va-methods.html">predict.gllvmTMB_va</a></td>
+<td>Methods for variational ('integration = "va"') fits</td></tr>
+<tr><td style="width: 25%;"><a href="predictive_check.html">predictive_check</a></td>
+<td>Fitted-model predictive checks for a multivariate 'gllvmTMB' fit</td></tr>
+<tr><td style="width: 25%;"><a href="predict_cross_covariance.html">predict_cross_covariance</a></td>
+<td>Predict pair-specific cross-lineage covariance</td></tr>
+<tr><td style="width: 25%;"><a href="predict_missing.html">predict_missing</a></td>
+<td>Predict the masked (missing) response cells of a gllvmTMB fit</td></tr>
+<tr><td style="width: 25%;"><a href="gllvmTMB_julia-methods.html">print.gllvmTMB_julia</a></td>
+<td>Methods for Julia bridge fits</td></tr>
+<tr><td style="width: 25%;"><a href="gllvm_julia_phylo_rr.html">print.gllvmTMB_julia_phylo_rr</a></td>
+<td>Retrieve the closed S4 Julia interval surface for one native phylogenetic fit</td></tr>
+<tr><td style="width: 25%;"><a href="gllvmTMB_multi-methods.html">print.gllvmTMB_multi</a></td>
+<td>Methods on a fitted gllvmTMB model</td></tr>
+<tr><td style="width: 25%;"><a href="print.gllvmTMB_Sigma_phy_slope.html">print.gllvmTMB_Sigma_phy_slope</a></td>
+<td>Print an augmented latent-slope Sigma extraction</td></tr>
+<tr><td style="width: 25%;"><a href="gllvmTMB_va-methods.html">print.gllvmTMB_va</a></td>
+<td>Methods for variational ('integration = "va"') fits</td></tr>
+<tr><td style="width: 25%;"><a href="gllvmTMB_julia-methods.html">print.summary.gllvmTMB_julia</a></td>
+<td>Methods for Julia bridge fits</td></tr>
+<tr><td style="width: 25%;"><a href="gllvm_julia_phylo_rr.html">print.summary.gllvmTMB_julia_phylo_rr</a></td>
+<td>Retrieve the closed S4 Julia interval surface for one native phylogenetic fit</td></tr>
+<tr><td style="width: 25%;"><a href="gllvmTMB_multi-methods.html">print.summary.gllvmTMB_multi</a></td>
+<td>Methods on a fitted gllvmTMB model</td></tr>
+<tr><td style="width: 25%;"><a href="gllvmTMB_va-methods.html">print.summary.gllvmTMB_va</a></td>
+<td>Methods for variational ('integration = "va"') fits</td></tr>
+<tr><td style="width: 25%;"><a href="profile_ci_total_variance.html">profile_ci_total_variance</a></td>
+<td>Profile-likelihood CI for per-trait total variance</td></tr>
+<tr><td style="width: 25%;"><a href="profile_cross_rho.html">profile_cross_rho</a></td>
+<td>Profile fixed cross-lineage rho values</td></tr>
+<tr><td style="width: 25%;"><a href="profile_cross_rho_ci.html">profile_cross_rho_ci</a></td>
+<td>Profile sensitivity interval for the cross-lineage 'rho'</td></tr>
+<tr><td style="width: 25%;"><a href="profile_phylo_signal.html">profile_phylo_signal</a></td>
+<td>Profile-likelihood curve(s) for per-trait phylogenetic signal</td></tr>
+<tr><td style="width: 25%;"><a href="profile_targets.html">profile_targets</a></td>
+<td>List profile-ready confidence-interval targets for a fitted model</td></tr>
+</table>
+
+<h2><a id="R">-- R --</a></h2>
+
+<table style="width: 100%;">
+<tr><td style="width: 25%;"><a href="gllvmTMB_julia-methods.html">residuals.gllvmTMB_julia</a></td>
+<td>Methods for Julia bridge fits</td></tr>
+<tr><td style="width: 25%;"><a href="residuals.gllvmTMB_multi.html">residuals.gllvmTMB_multi</a></td>
+<td>Diagnostic residuals for a multivariate 'gllvmTMB' fit</td></tr>
+<tr><td style="width: 25%;"><a href="gllvmTMB_va-methods.html">residuals.gllvmTMB_va</a></td>
+<td>Methods for variational ('integration = "va"') fits</td></tr>
+<tr><td style="width: 25%;"><a href="ridge_path.html">ridge_path</a></td>
+<td>Sweep the loading-ridge penalty and report a stability path</td></tr>
+<tr><td style="width: 25%;"><a href="rotate_loadings.html">rotate_loadings</a></td>
+<td>Rotate the loadings of a fitted multivariate model</td></tr>
+</table>
+
+<h2><a id="S">-- S --</a></h2>
+
+<table style="width: 100%;">
+<tr><td style="width: 25%;"><a href="sanity_multi.html">sanity_multi</a></td>
+<td>Print a quick convergence and parameter sanity report</td></tr>
+<tr><td style="width: 25%;"><a href="scalar.html">scalar</a></td>
+<td>One shared trait variance: 'scalar(0 + trait | g)'</td></tr>
+<tr><td style="width: 25%;"><a href="screen_control.html">screen_control</a></td>
+<td>Control pre-fit response screening</td></tr>
+<tr><td style="width: 25%;"><a href="screen_gllvmTMB.html">screen_gllvmTMB</a></td>
+<td>Screen candidate responses before fitting a gllvmTMB model</td></tr>
+<tr><td style="width: 25%;"><a href="screen_table.html">screen_table</a></td>
+<td>Extract tables from a pre-fit screen</td></tr>
+<tr><td style="width: 25%;"><a href="gllvmTMB_julia-methods.html">simulate.gllvmTMB_julia</a></td>
+<td>Methods for Julia bridge fits</td></tr>
+<tr><td style="width: 25%;"><a href="simulate.gllvmTMB_multi.html">simulate.gllvmTMB_multi</a></td>
+<td>Simulate new responses from a fitted gllvmTMB model</td></tr>
+<tr><td style="width: 25%;"><a href="simulate_site_trait.html">simulate_site_trait</a></td>
+<td>Simulate a functional-biogeography GLLVM dataset (sites × species × traits)</td></tr>
+<tr><td style="width: 25%;"><a href="simulate_unit_trait.html">simulate_unit_trait</a></td>
+<td>Simulate a generic stacked-trait GLLVM dataset (units x observations x traits)</td></tr>
+<tr><td style="width: 25%;"><a href="slope_sd_ci.html">slope_sd_ci</a></td>
+<td>Wald confidence intervals on augmented random-slope standard deviations</td></tr>
+<tr><td style="width: 25%;"><a href="spatial.html">spatial</a></td>
+<td>Spatial random field: lme4-bar mode-dispatch wrapper</td></tr>
+<tr><td style="width: 25%;"><a href="spatial_dep.html">spatial_dep</a></td>
+<td>Full unstructured spatial trait covariance: 'spatial_dep(0 + trait | coords)'</td></tr>
+<tr><td style="width: 25%;"><a href="spatial_indep.html">spatial_indep</a></td>
+<td>Per-trait spatial marginal field: 'spatial_indep(0 + trait | coords)'</td></tr>
+<tr><td style="width: 25%;"><a href="spatial_latent.html">spatial_latent</a></td>
+<td>Reduced-rank spatial latent factors: 'spatial_latent(0 + trait | coords, d = K)'</td></tr>
+<tr><td style="width: 25%;"><a href="spatial_scalar.html">spatial_scalar</a></td>
+<td>Deprecated alias for one shared spatial-field variance</td></tr>
+<tr><td style="width: 25%;"><a href="spatial_unique.html">spatial_unique</a></td>
+<td>Per-trait independent spatial random fields: 'spatial_unique(0 + trait | coords)'</td></tr>
+<tr><td style="width: 25%;"><a href="standard_errors.html">standard_errors</a></td>
+<td>Compute standard errors after fitting</td></tr>
+<tr><td style="width: 25%;"><a href="suggest_lambda_constraint.html">suggest_lambda_constraint</a></td>
+<td>Suggest a 'lambda_constraint' matrix for a reduced-rank fit</td></tr>
+<tr><td style="width: 25%;"><a href="suggest_lambda_constraints.html">suggest_lambda_constraints</a></td>
+<td>Compare several 'lambda_constraint' suggestions</td></tr>
+<tr><td style="width: 25%;"><a href="gllvmTMB_julia-methods.html">summary.gllvmTMB_julia</a></td>
+<td>Methods for Julia bridge fits</td></tr>
+<tr><td style="width: 25%;"><a href="gllvm_julia_phylo_rr.html">summary.gllvmTMB_julia_phylo_rr</a></td>
+<td>Retrieve the closed S4 Julia interval surface for one native phylogenetic fit</td></tr>
+<tr><td style="width: 25%;"><a href="gllvmTMB_multi-methods.html">summary.gllvmTMB_multi</a></td>
+<td>Methods on a fitted gllvmTMB model</td></tr>
+<tr><td style="width: 25%;"><a href="gllvmTMB_va-methods.html">summary.gllvmTMB_va</a></td>
+<td>Methods for variational ('integration = "va"') fits</td></tr>
+</table>
+
+<h2><a id="T">-- T --</a></h2>
+
+<table style="width: 100%;">
+<tr><td style="width: 25%;"><a href="tidy.gllvmTMB_multi.html">tidy.gllvmTMB_multi</a></td>
+<td>Tidy a fitted gllvmTMB model</td></tr>
+<tr><td style="width: 25%;"><a href="traits.html">traits</a></td>
+<td>Wide-format trait marker for the 'gllvmTMB()' formula LHS</td></tr>
+</table>
+
+<h2><a id="V">-- V --</a></h2>
+
+<table style="width: 100%;">
+<tr><td style="width: 25%;"><a href="gllvmTMB_multi-vcov.html">vcov.gllvmTMB_multi</a></td>
+<td>Fixed-effect estimates and covariance for a multi-trait fit</td></tr>
+<tr><td style="width: 25%;"><a href="gllvmTMB_va-methods.html">vcov.gllvmTMB_va</a></td>
+<td>Methods for variational ('integration = "va"') fits</td></tr>
+</table>
+
+<h2><a id="W">-- W --</a></h2>
+
+<table style="width: 100%;">
+<tr><td style="width: 25%;"><a href="gllvmTMB_va-methods.html">weights.gllvmTMB_va</a></td>
+<td>Methods for variational ('integration = "va"') fits</td></tr>
+</table>
+</div></body></html>

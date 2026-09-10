@@ -9,8 +9,50 @@ s4_public_phylo_dep_targets <- function() c(
   "phylo_cov[2,2]", "residual_var_shared[1]", "residual_var_shared[2]"
 )
 
-s4_public_phylo_dep_known_manifest_sha256 <- function() "1c4844db1a58c6b978494668cbf9b9e789792103a15cbf52e866a87836090b57"
-s4_public_phylo_dep_known_shared_object_sha256 <- function() "64f70caad53a235b62c35947ce62617589abc07c5092c77591b208322c84cb2b"
+s4_public_phylo_dep_s4_seal_path <- function(root = getwd()) {
+  normalizePath(file.path(root, "docs", "dev-log", "artifacts",
+                          "2026-09-10-destination-b-s4-phylo-dep-build-seal",
+                          "destination-b-s4-phylo-dep-build-seal.json"), mustWork = TRUE)
+}
+
+s4_public_phylo_dep_dll_identity <- function(path) {
+  path <- normalizePath(path, mustWork = TRUE)
+  uuid_output <- system2("dwarfdump", c("--uuid", path), stdout = TRUE, stderr = TRUE)
+  uuid <- sub("^UUID: ([^ ]+).*", "\\1", uuid_output[grepl("^UUID: ", uuid_output)])
+  if (!identical(length(uuid), 1L) || !grepl("^[0-9A-F-]{36}$", uuid)) {
+    stop("S4 build artifact has no usable Mach-O UUID", call. = FALSE)
+  }
+  list(path = path, sha256 = digest::digest(file = path, algo = "sha256"),
+       uuid = uuid, bytes = unname(file.info(path)$size))
+}
+
+s4_public_phylo_dep_read_s4_seal <- function(source_root, seal_path = s4_public_phylo_dep_s4_seal_path(source_root)) {
+  source_root <- normalizePath(source_root, mustWork = TRUE)
+  seal_path <- normalizePath(seal_path, mustWork = TRUE)
+  seal <- jsonlite::read_json(seal_path, simplifyVector = FALSE)
+  required <- c("kind", "schema", "status", "source_snapshot", "build", "binary_identity", "contract")
+  if (!all(required %in% names(seal)) || !identical(seal$kind, "destination_b_s4_phylo_dep_build_seal") || !identical(seal$schema, 1L) || !identical(seal$status, "sealed_build_only_no_fit_or_receipt") || !isTRUE(seal$contract$require_exact_archive_and_selected_source) || !isTRUE(seal$contract$require_exact_s4_build_artifact) || !identical(seal$contract$allow_source_rebuild_as_qualification, FALSE)) {
+    stop("S4 build seal has an invalid contract", call. = FALSE)
+  }
+  archive <- file.path(source_root, seal$source_snapshot$archive$path)
+  if (!file.exists(archive) || !identical(digest::digest(file = archive, algo = "sha256"), seal$source_snapshot$archive$sha256) || !identical(unname(file.info(archive)$size), as.numeric(seal$source_snapshot$archive$bytes))) {
+    stop("S4 build seal source archive identity mismatch", call. = FALSE)
+  }
+  for (entry in seal$source_snapshot$selected_source) {
+    path <- file.path(source_root, entry$path)
+    if (!file.exists(path) || !identical(digest::digest(file = path, algo = "sha256"), entry$sha256)) {
+      stop("S4 build seal selected source identity mismatch", call. = FALSE)
+    }
+  }
+  source_dll <- s4_public_phylo_dep_dll_identity(file.path(source_root, seal$binary_identity$source_dll$path))
+  expected_source <- seal$binary_identity$source_dll
+  if (!identical(source_dll$sha256, expected_source$sha256) || !identical(source_dll$uuid, expected_source$uuid) || !identical(as.numeric(source_dll$bytes), as.numeric(expected_source$bytes))) {
+    stop("S4 build seal source DLL identity mismatch", call. = FALSE)
+  }
+  seal$binary_identity$source_dll$path <- source_dll$path
+  seal$isolated_library <- normalizePath(file.path(source_root, seal$build$isolated_library$path), mustWork = TRUE)
+  seal
+}
 
 s4_public_phylo_dep_validate_endpoints <- function(payload, tolerance = 1e-4) {
   targets <- s4_public_phylo_dep_targets()
@@ -35,15 +77,6 @@ s4_public_phylo_dep_snapshot <- function(path, label) {
   dirty <- s4_public_phylo_dep_git(c("-C", path, "status", "--porcelain"), paste(label, "status"))
   if (length(dirty) && any(nzchar(dirty))) stop(label, " must be clean before retaining evidence", call. = FALSE)
   list(root = path, commit = s4_public_phylo_dep_git(c("-C", path, "rev-parse", "HEAD"), paste(label, "commit")))
-}
-
-s4_public_phylo_dep_validate_frozen_manifest <- function(manifest, source_root, manifest_path = NULL) {
-  expected_commit <- "b4d5fee64def88bc768dda1f1f77c29b295edd86"
-  required <- c("kind", "frozen_reference_commit", "source_archive_sha256", "shared_object_sha256")
-  if (!all(required %in% names(manifest)) || !identical(manifest$kind, "destination_b_frozen_r_binary_build") || !identical(manifest$frozen_reference_commit, expected_commit) || !identical(manifest$source_archive_sha256, "0c2f4323eb9fb19acccf039b8d57b4dd6bda82e2aa8b4a7bb712f36a64b022bc") || !identical(manifest$shared_object_sha256, s4_public_phylo_dep_known_shared_object_sha256())) stop("frozen R build manifest does not bind the known source archive and DLL", call. = FALSE)
-  if (!is.null(manifest_path) && !identical(digest::digest(file = manifest_path, algo = "sha256"), s4_public_phylo_dep_known_manifest_sha256())) stop("frozen R build manifest bytes do not match the known manifest", call. = FALSE)
-  s4_public_phylo_dep_git(c("-C", normalizePath(source_root, mustWork = TRUE), "merge-base", "--is-ancestor", expected_commit, "HEAD"), "frozen R source ancestry")
-  invisible(manifest)
 }
 
 s4_public_phylo_dep_validate_embedded_julia_runtime <- function(active_project, package_root, project) {
@@ -92,20 +125,19 @@ s4_public_phylo_dep_main <- function() {
   missing <- required[!nzchar(Sys.getenv(required, unset = ""))]
   if (length(missing)) stop("missing required environment variable(s): ", paste(missing, collapse = ", "), call. = FALSE)
   if (!identical(Sys.getenv("GLLVM_S4_LIVE_FORMULA_TESTS"), "1")) stop("GLLVM_S4_LIVE_FORMULA_TESTS must equal 1", call. = FALSE)
-  for (package in c("digest", "jsonlite", "pkgload", "testthat")) if (!requireNamespace(package, quietly = TRUE)) stop(package, " is required", call. = FALSE)
+  for (package in c("digest", "jsonlite", "testthat")) if (!requireNamespace(package, quietly = TRUE)) stop(package, " is required", call. = FALSE)
   project <- normalizePath(Sys.getenv("GLLVM_DESTINATION_B_PROJECT"), mustWork = TRUE)
   environment <- normalizePath(Sys.getenv("GLLVM_S4_JULIA_ENV"), mustWork = TRUE)
   if (!file.exists(file.path(project, "Project.toml")) || !file.exists(file.path(environment, "Project.toml"))) stop("S4 Julia project/environment is invalid", call. = FALSE)
   receipt_path <- normalizePath(dirname(Sys.getenv("GLLVM_S4_RECEIPT_PATH")), mustWork = TRUE)
   receipt_path <- file.path(receipt_path, basename(Sys.getenv("GLLVM_S4_RECEIPT_PATH")))
   if (file.exists(receipt_path)) stop("refusing to overwrite existing S4 public phylo_dep receipt", call. = FALSE)
-  frozen_manifest_path <- normalizePath(file.path(getwd(), "docs", "dev-log", "artifacts", "2026-09-09-destination-b-frozen-r-binary-build-manifest.json"), mustWork = TRUE)
-  frozen_manifest <- jsonlite::read_json(frozen_manifest_path, simplifyVector = TRUE)
   r_before <- s4_public_phylo_dep_snapshot(getwd(), "gllvmTMB source")
   julia_before <- s4_public_phylo_dep_snapshot(project, "GLLVM.jl source")
-  s4_public_phylo_dep_validate_frozen_manifest(frozen_manifest, getwd(), frozen_manifest_path)
+  s4_seal <- s4_public_phylo_dep_read_s4_seal(getwd())
   clean_probe <- s4_public_phylo_dep_clean_julia_probe(project, environment, Sys.getenv("GLLVM_S4_JULIA_HOME"))
-  pkgload::load_all(".", quiet = TRUE, compile = FALSE)
+  if ("gllvmTMB" %in% loadedNamespaces()) stop("S4 sealed load requires no preloaded gllvmTMB namespace", call. = FALSE)
+  library("gllvmTMB", lib.loc = s4_seal$isolated_library, character.only = TRUE)
   expressions <- parse(file = "tests/testthat/test-julia-phylo-rr-bridge.R")
   text <- vapply(expressions, function(x) paste(deparse(x), collapse = "\n"), character(1))
   live <- grep("S4 public phylo_dep formula retains paired transformed-Wald endpoints", text, fixed = TRUE)
@@ -121,15 +153,17 @@ s4_public_phylo_dep_main <- function() {
   raw <- get0(".s4_public_phylo_dep_receipt", envir = globalenv(), inherits = FALSE)
   embedded_julia <- s4_public_phylo_dep_validate_embedded_julia_runtime(raw$embedded_julia_active_project, raw$embedded_julia_package_root, project)
   endpoints <- s4_public_phylo_dep_validate_endpoints(raw)
-  dll <- normalizePath(file.path(getwd(), "src", "gllvmTMB.so"), mustWork = TRUE)
+  dll <- s4_seal$binary_identity$source_dll$path
   loaded_dll <- getLoadedDLLs()[["gllvmTMB"]][["path"]]
   if (is.null(loaded_dll)) stop("gllvmTMB DLL is not loaded from this source", call. = FALSE)
   loaded_dll <- normalizePath(loaded_dll, mustWork = TRUE)
-  if (!identical(digest::digest(file = dll, algo = "sha256"), s4_public_phylo_dep_known_shared_object_sha256()) || !identical(digest::digest(file = loaded_dll, algo = "sha256"), s4_public_phylo_dep_known_shared_object_sha256())) stop("loaded R DLL does not match frozen build manifest", call. = FALSE)
+  loaded_identity <- s4_public_phylo_dep_dll_identity(loaded_dll)
+  expected_loaded <- s4_seal$binary_identity$loaded_dll
+  if (!identical(loaded_identity$sha256, expected_loaded$sha256) || !identical(loaded_identity$uuid, expected_loaded$uuid) || !identical(as.numeric(loaded_identity$bytes), as.numeric(expected_loaded$bytes))) stop("loaded R DLL does not match S4 build seal", call. = FALSE)
   r_after <- s4_public_phylo_dep_snapshot(getwd(), "gllvmTMB source")
   julia_after <- s4_public_phylo_dep_snapshot(project, "GLLVM.jl source")
   if (!identical(r_before, r_after) || !identical(julia_before, julia_after)) stop("source changed while S4 public phylo_dep evidence was being retained", call. = FALSE)
-  result <- list(kind = "destination_b_s4_public_phylo_dep", status = "passed_experimental_postfit_only", scope = "Gaussian p=2, three-tip, shared-residual public formula cell; generic engine remains closed", source = list(frozen_reference_commit = frozen_manifest$frozen_reference_commit, frozen_source_archive_sha256 = frozen_manifest$source_archive_sha256, frozen_build_manifest_sha256 = digest::digest(file = frozen_manifest_path, algo = "sha256"), r_commit = r_before$commit, r_source_clean_and_stable = TRUE, r_shared_object_source_path = dll, r_shared_object_loaded_path = loaded_dll, r_shared_object_sha256 = digest::digest(file = dll, algo = "sha256"), gllvm_julia_commit = julia_before$commit, gllvm_julia_source_clean_and_stable = TRUE, fixture_sha256 = raw$fixture_sha256, julia = clean_probe, embedded_julia_runtime = embedded_julia), endpoint_pairs = endpoints, test_output_sha256 = digest::digest(paste(raw_output, collapse = "\n"), algo = "sha256"), runner_sha256 = digest::digest(file = "tests/testthat/run-destination-b-s4-public-phylo-dep-isolated.R", algo = "sha256"), generic_engine_closed = TRUE)
+  result <- list(kind = "destination_b_s4_public_phylo_dep", status = "passed_experimental_postfit_only", scope = "Gaussian p=2, three-tip, shared-residual public formula cell; generic engine remains closed", source = list(s4_build_seal_path = s4_public_phylo_dep_s4_seal_path(getwd()), s4_source_archive_sha256 = s4_seal$source_snapshot$archive$sha256, s4_source_snapshot_commit = s4_seal$source_snapshot$commit, r_commit = r_before$commit, r_source_clean_and_stable = TRUE, r_shared_object_source = s4_seal$binary_identity$source_dll, r_shared_object_loaded = loaded_identity, gllvm_julia_commit = julia_before$commit, gllvm_julia_source_clean_and_stable = TRUE, fixture_sha256 = raw$fixture_sha256, julia = clean_probe, embedded_julia_runtime = embedded_julia), endpoint_pairs = endpoints, test_output_sha256 = digest::digest(paste(raw_output, collapse = "\n"), algo = "sha256"), runner_sha256 = digest::digest(file = "tests/testthat/run-destination-b-s4-public-phylo-dep-isolated.R", algo = "sha256"), generic_engine_closed = TRUE)
   s4_public_phylo_dep_write_once(result, receipt_path)
   cat("S4_PUBLIC_PHYLO_DEP_RECEIPT ", receipt_path, "\n", sep = "")
 }

@@ -1,0 +1,80 @@
+## Canonical citation(s) returned by `citation("gllvmTMB")`.
+##
+## - Primary entry: the gllvmTMB methods paper (Nakagawa et al., in prep).
+##   Update the DOI / journal / volume / pages when the paper lands.
+## - Recommended companion: cite TMB (Kristensen et al. 2016) for any
+##   gllvmTMB fit.
+
+bibentry(
+  bibtype  = "Manual",
+  key      = "gllvmTMB",
+  title    = "gllvmTMB: Fit Multivariate Models from Wide Response
+             Data",
+  author   = c(
+    person("Shinichi", "Nakagawa")
+  ),
+  year     = "2026",
+  note     = "R package version 0.6.0; methods paper in preparation",
+  url      = "https://itchyshin.github.io/gllvmTMB/",
+  textVersion = paste(
+    "Nakagawa S (2026).",
+    "gllvmTMB: Fit Multivariate Models from Wide Response Data.",
+    "R package version 0.6.0; methods paper in preparation.",
+    "https://itchyshin.github.io/gllvmTMB/"
+  ),
+  header   = paste(
+    "To cite gllvmTMB itself:"
+  )
+)
+
+bibentry(
+  bibtype  = "Article",
+  key      = "MSPL",
+  title    = "Maximum Softly-Penalized Likelihood for Mixed Effects Logistic Regression",
+  author   = c(
+    person("Philipp", "Sterzinger"),
+    person("Ioannis", "Kosmidis")
+  ),
+  journal  = "Statistics and Computing",
+  year     = "2023",
+  volume   = "33",
+  pages    = "53",
+  doi      = "10.1007/s11222-023-10217-3",
+  textVersion = paste(
+    "Sterzinger P, Kosmidis I (2023).",
+    "Maximum Softly-Penalized Likelihood for Mixed Effects Logistic Regression.",
+    "Statistics and Computing, 33, 53.",
+    "doi:10.1007/s11222-023-10217-3"
+  ),
+  header   = paste(
+    "When using estimator = \"mspl\", also cite the logistic mixed-effects antecedent for its fixed-effect Jeffreys construction; gllvmTMB's probit, cloglog, reduced-rank, and spatial extensions are separate:"
+  )
+)
+
+bibentry(
+  bibtype  = "Article",
+  key      = "TMB",
+  title    = "TMB: Automatic Differentiation and Laplace Approximation",
+  author   = c(
+    person(c("Kasper"), "Kristensen"),
+    person(c("Anders"), "Nielsen"),
+    person(c("Casper", "W."), "Berg"),
+    person(c("Hans"), "Skaug"),
+    person(c("Bradley", "M."), "Bell")
+  ),
+  journal  = "Journal of Statistical Software",
+  year     = "2016",
+  volume   = "70",
+  number   = "5",
+  pages    = "1--21",
+  doi      = "10.18637/jss.v070.i05",
+  textVersion = paste(
+    "Kristensen K, Nielsen A, Berg CW, Skaug H, Bell BM (2016).",
+    "TMB: Automatic Differentiation and Laplace Approximation.",
+    "Journal of Statistical Software, 70(5), 1-21.",
+    "doi:10.18637/jss.v070.i05"
+  ),
+  header   = paste(
+    "Please also cite TMB, the engine underlying every gllvmTMB fit:"
+  )
+)

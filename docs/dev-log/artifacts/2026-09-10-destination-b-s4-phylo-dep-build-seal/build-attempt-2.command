@@ -1,0 +1,1 @@
+R CMD INSTALL --library=docs/dev-log/artifacts/2026-09-10-destination-b-s4-phylo-dep-build-seal/isolated-library --no-multiarch --no-staged-install --with-keep.source docs/dev-log/artifacts/2026-09-10-destination-b-s4-phylo-dep-build-seal/gllvmTMB-s4-source-8889d8a4d.tar.gz

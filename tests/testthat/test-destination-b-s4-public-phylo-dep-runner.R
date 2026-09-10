@@ -2,6 +2,32 @@ test_that("S4 public phylo_dep receipt runner is present", {
   expect_true(file.exists(testthat::test_path("run-destination-b-s4-public-phylo-dep-isolated.R")))
 })
 
+test_that("S4 runner selects its own immutable build seal", {
+  environment <- new.env(parent = baseenv())
+  withr::local_envvar(GLLVM_S4_PUBLIC_PHYLO_DEP_DEFINE_ONLY = "1")
+  source(testthat::test_path("run-destination-b-s4-public-phylo-dep-isolated.R"), local = environment)
+  repository <- normalizePath(testthat::test_path("..", ".."), mustWork = TRUE)
+  expect_true(is.function(environment$s4_public_phylo_dep_s4_seal_path))
+  expect_true(is.function(environment$s4_public_phylo_dep_read_s4_seal))
+  expect_match(
+    environment$s4_public_phylo_dep_s4_seal_path(repository),
+    "destination-b-s4-phylo-dep-build-seal.json$"
+  )
+  seal <- environment$s4_public_phylo_dep_read_s4_seal(repository)
+  expect_identical(seal$binary_identity$source_dll$sha256,
+                   "eba1d3c5d5c26303f0e730a87ee70a627eb508c35f9419610fad08e37ccbb2f8")
+  forged <- tempfile(fileext = ".json")
+  withr::defer(unlink(forged))
+  payload <- jsonlite::read_json(environment$s4_public_phylo_dep_s4_seal_path(repository), simplifyVector = FALSE)
+  payload$source_snapshot$archive$sha256 <- paste(rep("0", 64), collapse = "")
+  jsonlite::write_json(payload, forged, auto_unbox = TRUE)
+  expect_error(environment$s4_public_phylo_dep_read_s4_seal(repository, forged), "source archive identity mismatch")
+  payload <- jsonlite::read_json(environment$s4_public_phylo_dep_s4_seal_path(repository), simplifyVector = FALSE)
+  payload$binary_identity$source_dll$uuid <- "00000000-0000-0000-0000-000000000000"
+  jsonlite::write_json(payload, forged, auto_unbox = TRUE)
+  expect_error(environment$s4_public_phylo_dep_read_s4_seal(repository, forged), "source DLL identity mismatch")
+})
+
 test_that("S4 public phylo_dep receipt runner uses ASCII Julia string literals", {
   environment <- new.env(parent = baseenv())
   withr::local_envvar(GLLVM_S4_PUBLIC_PHYLO_DEP_DEFINE_ONLY = "1")
@@ -30,17 +56,7 @@ test_that("S4 public phylo_dep receipt refuses malformed endpoints and duplicate
   ordered$native_upper[1] <- ordered$native_lower[1]
   ordered$julia_upper[1] <- ordered$julia_lower[1]
   expect_error(environment$s4_public_phylo_dep_validate_endpoints(ordered), "ordered endpoints")
-  expect_true(is.function(environment$s4_public_phylo_dep_validate_frozen_manifest))
-  expect_identical(environment$s4_public_phylo_dep_known_manifest_sha256(), "1c4844db1a58c6b978494668cbf9b9e789792103a15cbf52e866a87836090b57")
   expect_true(is.function(environment$s4_public_phylo_dep_validate_embedded_julia_runtime))
-  forged <- list(kind = "destination_b_frozen_r_binary_build", frozen_reference_commit = "b4d5fee64def88bc768dda1f1f77c29b295edd86", source_archive_sha256 = "0c2f4323eb9fb19acccf039b8d57b4dd6bda82e2aa8b4a7bb712f36a64b022bc", shared_object_sha256 = paste(rep("0", 64), collapse = ""))
-  expect_error(environment$s4_public_phylo_dep_validate_frozen_manifest(forged, "."), "known source archive and DLL")
-  copied_manifest <- tempfile(fileext = ".json")
-  withr::defer(unlink(copied_manifest))
-  manifest_source <- testthat::test_path("..", "..", "docs", "dev-log", "artifacts", "2026-09-09-destination-b-frozen-r-binary-build-manifest.json")
-  writeLines(c(readLines(manifest_source), ""), copied_manifest)
-  valid_manifest <- jsonlite::read_json(copied_manifest, simplifyVector = TRUE)
-  expect_error(environment$s4_public_phylo_dep_validate_frozen_manifest(valid_manifest, ".", copied_manifest), "manifest bytes")
   malformed <- list(target_names = targets, native_lower = seq_along(targets), native_upper = seq_along(targets) + 1, julia_lower = seq_along(targets), julia_upper = seq_along(targets) + 1)
   malformed$target_names[2] <- malformed$target_names[1]
   expect_error(environment$s4_public_phylo_dep_validate_endpoints(malformed), "target/order mismatch")

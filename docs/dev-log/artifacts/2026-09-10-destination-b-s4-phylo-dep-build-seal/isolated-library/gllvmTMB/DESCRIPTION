@@ -1,0 +1,60 @@
+Type: Package
+Package: gllvmTMB
+Title: Fit Multivariate Models from Wide Response Data
+Version: 0.7.0
+Authors@R: 
+    person("Shinichi", "Nakagawa", , "itchyshin@gmail.com",
+           role = c("aut", "cre", "cph"),
+           comment = c(ORCID = "0000-0002-7765-5182"))
+Description: Fits multivariate models for data where each site,
+    individual, species, or study has several responses. Start from a
+    wide data frame with the 'traits()' formula interface, or from
+    already-stacked long data, and estimate trait covariance, pairwise
+    correlations, shared latent axes, and trait-specific variance.
+    Binary presence-absence applications include binomial-family joint
+    species distribution models that decompose environmental and residual
+    co-occurrence in multispecies SDMs (Pollock et al. 2014
+    <doi:10.1111/2041-210X.12180>).
+    Optional animal, phylogenetic, spatial, and known-sampling-variance
+    components use the same formula grammar. Model fitting uses
+    Template Model Builder (Kristensen et al. 2016
+    <doi:10.18637/jss.v070.i05>); spatial helpers implement the
+    stochastic partial differential equation/Gaussian Markov random field
+    (SPDE/GMRF) construction of Lindgren, Rue, and Lindstrom (2011), and
+    phylogenetic relatedness follows Hadfield & Nakagawa (2010)
+    <doi:10.1111/j.1420-9101.2009.01915.x>. This package is
+    experimental: it is not complete, is not fully human-verified, and
+    needs extensive further validation, so it should be used at your own
+    risk. Point estimates are the primary inferential output, but their
+    evidence is route- and regime-specific. Broad package-wide interval
+    coverage is not certified; one narrowly scoped two-sided Gaussian
+    total-variance profile regime has a documented 0.94 coverage floor.
+    Covariance routes otherwise have cell-specific evidence only.
+License: GPL-3
+Language: en-GB
+Copyright: inst/COPYRIGHTS
+URL: https://itchyshin.github.io/gllvmTMB/,
+        https://github.com/itchyshin/gllvmTMB
+BugReports: https://github.com/itchyshin/gllvmTMB/issues
+Depends: R (>= 4.1.0)
+Imports: assertthat, cli, fmesher, generics, graphics, lifecycle,
+        Matrix, methods, rlang, stats, tidyselect, TMB (>= 1.8.0),
+        utils
+LinkingTo: BH, RcppEigen, TMB
+Suggests: ape, DHARMa, detectseparation (>= 0.4.0), dplyr, future,
+        future.apply, ggforce, ggplot2, galamm, glmmTMB, gllvm,
+        JuliaCall, jsonlite, knitr, lme4, MASS, MCMCglmm, mgcv, mirt,
+        mvtnorm, nadiv, rmarkdown, sf, testthat (>= 3.0.0), tibble,
+        tidyr, tweedie, vegan, vdiffr, withr
+VignetteBuilder: knitr
+ByteCompile: true
+Config/testthat/edition: 3
+Config/testthat/parallel: false
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+SystemRequirements: GNU make, C++17
+Config/roxygen2/version: 8.0.0
+Author: Shinichi Nakagawa [aut, cre, cph] (ORCID:
+    <https://orcid.org/0000-0002-7765-5182>)
+Maintainer: Shinichi Nakagawa <itchyshin@gmail.com>
+Built: R 4.6.0; aarch64-apple-darwin23; 2026-09-10 10:10:45 UTC; unix

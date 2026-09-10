@@ -54026,3 +54026,19 @@ candidate evidence is reused from this pre-integration run.
 - This is a local formula/reader repair with repeatable acceptance testing. It
   does not yet create a write-once S4 receipt or qualify a broader S4 row;
   recovery, coverage, generic admission, 0.7 parity, and FRK remain excluded.
+
+## 2026-09-10 — Destination B S4 immutable build seal
+
+- Retained an exact clean Git archive of the selected S4 adapter/test snapshot
+  `8889d8a4d2d88e1cfd60f7b644eb79e71a7346f4` under the scoped documentation
+  artifact directory. The archive SHA-256 is
+  `62208640189794c6e442b98e6917f22abb9d6f78ae0d15edc85ccaeac6929080`.
+- A first staged isolated install compiled but failed lazy loading; its command
+  and output are retained. Exactly one no-staged-install retry succeeded in
+  74.4 seconds. The sealed source and loaded ARM DLL are
+  `eba1d3c5d5c26303f0e730a87ee70a627eb508c35f9419610fad08e37ccbb2f8`,
+  UUID `793A5DB4-227D-33C4-9DCE-2BE66FD6865F`, 4,988,376 bytes.
+- The focused runner contract was RED before the S4 seal functions existed,
+  then GREEN with archive-hash and DLL-UUID forgery failures exercised.
+  No S4 fit or receipt ran. The retained S3b frozen manifest is unchanged and
+  is not selected by the S4 runner.

@@ -1,0 +1,236 @@
+add_utm_columns         Add UTM coordinates to a data frame
+animal_dep              Full unstructured animal-model trait
+                        covariance: 'animal_dep(0 + trait | id)'
+animal_indep            Independent per-trait animal-model random
+                        intercepts: 'animal_indep(0 + trait | id)'
+animal_latent           Reduced-rank animal-model latent factors:
+                        'animal_latent(id, d = K)'
+animal_scalar           Single-shared-variance animal-model random
+                        effect: 'animal_scalar(id)'
+animal_slope            Animal-model random slope on a continuous
+                        covariate
+animal_unique           Per-trait independent animal-model random
+                        intercepts: 'animal_unique(id)'
+block_V                 Build a block-diagonal sampling-variance matrix
+                        V
+bootstrap_Sigma         Bootstrap covariance, correlation, communality,
+                        and ICC summaries
+categorical             Baseline-category softmax unordered categorical
+                        missing-predictor family
+check_auto_residual     Check whether 'link_residual = "auto"' is
+                        coherent for this fit
+check_gllvmTMB          Check convergence, Hessian, gradients, and
+                        interval readiness
+compare_dep_vs_two_psi
+                        Canonical likelihood-based cross-check for the
+                        paired phylogenetic decomposition
+compare_indep_vs_two_psi
+                        Cheap diagonal cross-check for the paired
+                        phylogenetic decomposition (large T)
+compare_loadings        Compare two loading matrices after Procrustes
+                        alignment
+compare_Sigma_table     Compare fitted Sigma-table rows with a known
+                        truth matrix
+confint_inspect         Inspect profile confidence-interval shape for a
+                        fitted model
+confint.gllvmTMB_multi
+                        Confidence intervals for a fitted gllvmTMB
+                        model
+confirmatory_lambda     Build a confirmatory 'lambda_constraint' matrix
+                        from group membership
+cumulative_logit        Cumulative-logit ordered categorical
+                        missing-predictor family
+dep                     Full unstructured trait covariance: 'dep(0 +
+                        trait | g)'
+deviance.gllvmTMB_multi
+                        Deviance of a fitted gllvmTMB model
+diagnose_kernel_separability
+                        Diagnose fixed-kernel separability before
+                        fitting
+diagnostic_table        Extract report-ready tables from diagnostic
+                        objects
+extract_coevolution_modules
+                        Extract cross-lineage coevolutionary modules
+extract_communality     Communality of each trait
+extract_correlations    Extract cross-trait correlations
+extract_cross_correlations
+                        Cross-family correlations between a nominal
+                        (multinomial) trait and partners
+extract_cutpoints       Extract ordinal-probit cutpoints from a fitted
+                        gllvmTMB model
+extract_Gamma           Extract a cross-lineage Gamma block
+extract_loadings        Extract the trait loading matrix
+extract_lv_effects      Predictor effects on latent-score means
+extract_Omega           Total trait covariance Omega summed across
+                        requested tiers
+extract_ordination      Extract ordination scores and loadings from a
+                        fitted multivariate model
+extract_phylo_signal    Phylogenetic-signal proportions per trait
+extract_proportions     Per-trait proportion-of-variance decomposition
+                        across all model components
+extract_repeatability   Per-trait repeatability with confidence
+                        intervals
+extract_residual_cov    Implied trait covariance or correlation
+extract_rotated_loadings_table
+                        Extract a tidy rotated loading table
+extract_Sigma           Extract the implied trait covariance /
+                        correlation at one tier
+extract_Sigma_table     Extract a report-ready table of Sigma or
+                        correlation entries
+fitted.gllvmTMB_multi   Fitted values from a fitted gllvmTMB model
+flag_unreliable_loadings
+                        Flag loadings whose CI overlaps a "biologically
+                        negligible" region
+get_crs                 Infer a UTM coordinate reference system
+gllvm_julia_fit         Fit a GLLVM with the Julia engine (GLLVM.jl
+                        'bridge_fit').
+gllvm_julia_phylo_rr    Retrieve the closed S4 Julia interval surface
+                        for one native phylogenetic fit
+gllvm_julia_setup       Set up JuliaCall and load the GLLVM.jl engine
+                        (once per R session).
+gllvmTMB                Fit multivariate response models from wide or
+                        long data
+gllvmTMB_check_consistency
+                        Run an advanced Laplace-consistency check
+gllvmTMB_diagnose       Diagnose a fitted model and suggest next
+                        actions
+gllvmTMB_julia-methods
+                        Methods for Julia bridge fits
+gllvmTMB_multi-methods
+                        Methods on a fitted gllvmTMB model
+gllvmTMB_multi-vcov     Fixed-effect estimates and covariance for a
+                        multi-trait fit
+gllvmTMB_va-methods     Methods for variational ('integration = "va"')
+                        fits
+gllvmTMBcontrol         Control parameters for 'gllvmTMB()'
+impute_model            Predictor model for a missing covariate used
+                        inside 'mi()'
+imputed                 Extract fitted missing-predictor values from a
+                        'gllvmTMB' fit
+indep                   Per-trait marginal variance: 'indep(0 + trait |
+                        g)'
+isdm_source             Declare one iSDM source observation model
+isdm_sources            Declare the sources of a multi-source
+                        integrated model
+kernel_latent           Generic dense-kernel covariance keywords
+kernel_scalar           Dense-kernel one-shared-variance covariance:
+                        'kernel_scalar()'
+kernel_unique           Deprecated alias: 'kernel_unique()'
+latent                  Latent-factor (reduced-rank) random effect:
+                        'latent(0 + trait | g, d = K)'
+loading_ci              Confidence intervals on individual entries of
+                        the loading matrix
+loading_profile         Profile-likelihood curve(s) for entries of the
+                        loading matrix
+make_cross_kernel       Build a cross-lineage relatedness kernel
+make_mesh               Construct an SPDE mesh for gllvmTMB
+meta_V                  Known-V meta-analytic random effect (canonical
+                        name): 'meta_V(V = V)'
+miss_control            Missing-data control for 'gllvmTMB()'
+multinomial             Multinomial (baseline-category logit) family
+ordinal_probit          Ordinal-probit threshold family for the
+                        multivariate engine
+pedigree_to_A           Pedigree to additive-genetic relatedness matrix
+                        'A'
+pedigree_to_Ainv_sparse
+                        Sparse pedigree inverse-A via Henderson-Quaas
+                        (MCMCglmm-free)
+phylo                   Phylogenetic random effect: lme4-bar
+                        mode-dispatch wrapper
+phylo_dep               Full unstructured phylogenetic trait
+                        covariance: 'phylo_dep(0 + trait | species)'
+phylo_indep             Per-trait phylogenetic marginal variance:
+                        'phylo_indep(0 + trait | species)'
+phylo_latent            Reduced-rank phylogenetic latent factors:
+                        'phylo_latent(species, d = K)'
+phylo_scalar            Single-shared-variance phylogenetic random
+                        effect: 'phylo_scalar(species)'
+phylo_signal_mi         Phylogenetic-signal diagnostic for a modelled
+                        missing predictor
+phylo_slope             Phylogenetic random slope on a continuous
+                        covariate
+phylo_unique            Per-trait independent phylogenetic random
+                        intercepts: 'phylo_unique(species)'
+plot_anisotropy         Plot the isotropic spatial range from a
+                        gllvmTMB model
+plot_correlations       Plot pairwise trait correlations with intervals
+plot_loadings_confidence_eye
+                        Confidence Eye plot for per-species loading
+                        uncertainty
+plot_rotated_loadings   Plot a rotated loading matrix
+plot_Sigma_comparison   Plot Sigma-table estimates against a known
+                        truth matrix
+plot_Sigma_heatmap      Plot Sigma-table rows as a trait-by-trait
+                        heatmap
+plot_Sigma_table        Plot report-ready Sigma table rows
+plot.gllvmTMB_multi     Plot a fitted multivariate gllvmTMB model
+plot.gllvmTMBmesh       Plot a gllvmTMB SPDE mesh
+plot.profile_derived    Plot a profile-derived LR curve
+plot.profile_loadings   Plot a profile_loadings object (LR U-shape per
+                        entry)
+predict_cross_covariance
+                        Predict pair-specific cross-lineage covariance
+predict_missing         Predict the masked (missing) response cells of
+                        a gllvmTMB fit
+predict.gllvmTMB_multi
+                        Predict from a fitted gllvmTMB model
+predictive_check        Fitted-model predictive checks for a
+                        multivariate 'gllvmTMB' fit
+print.gllvmTMB_Sigma_phy_slope
+                        Print an augmented latent-slope Sigma
+                        extraction
+profile_ci_total_variance
+                        Profile-likelihood CI for per-trait total
+                        variance
+profile_cross_rho       Profile fixed cross-lineage rho values
+profile_cross_rho_ci    Profile sensitivity interval for the
+                        cross-lineage 'rho'
+profile_phylo_signal    Profile-likelihood curve(s) for per-trait
+                        phylogenetic signal
+profile_targets         List profile-ready confidence-interval targets
+                        for a fitted model
+residuals.gllvmTMB_multi
+                        Diagnostic residuals for a multivariate
+                        'gllvmTMB' fit
+ridge_path              Sweep the loading-ridge penalty and report a
+                        stability path
+rotate_loadings         Rotate the loadings of a fitted multivariate
+                        model
+sanity_multi            Print a quick convergence and parameter sanity
+                        report
+scalar                  One shared trait variance: 'scalar(0 + trait |
+                        g)'
+screen_control          Control pre-fit response screening
+screen_gllvmTMB         Screen candidate responses before fitting a
+                        gllvmTMB model
+screen_table            Extract tables from a pre-fit screen
+simulate_site_trait     Simulate a functional-biogeography GLLVM
+                        dataset (sites × species × traits)
+simulate_unit_trait     Simulate a generic stacked-trait GLLVM dataset
+                        (units x observations x traits)
+simulate.gllvmTMB_multi
+                        Simulate new responses from a fitted gllvmTMB
+                        model
+slope_sd_ci             Wald confidence intervals on augmented
+                        random-slope standard deviations
+spatial                 Spatial random field: lme4-bar mode-dispatch
+                        wrapper
+spatial_dep             Full unstructured spatial trait covariance:
+                        'spatial_dep(0 + trait | coords)'
+spatial_indep           Per-trait spatial marginal field:
+                        'spatial_indep(0 + trait | coords)'
+spatial_latent          Reduced-rank spatial latent factors:
+                        'spatial_latent(0 + trait | coords, d = K)'
+spatial_scalar          Deprecated alias for one shared spatial-field
+                        variance
+spatial_unique          Per-trait independent spatial random fields:
+                        'spatial_unique(0 + trait | coords)'
+standard_errors         Compute standard errors after fitting
+suggest_lambda_constraint
+                        Suggest a 'lambda_constraint' matrix for a
+                        reduced-rank fit
+suggest_lambda_constraints
+                        Compare several 'lambda_constraint' suggestions
+tidy.gllvmTMB_multi     Tidy a fitted gllvmTMB model
+traits                  Wide-format trait marker for the 'gllvmTMB()'
+                        formula LHS

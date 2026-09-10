@@ -1,0 +1,16 @@
+command: R CMD INSTALL --library=docs/dev-log/artifacts/2026-09-10-destination-b-s4-phylo-dep-build-seal/isolated-library --no-multiarch --with-keep.source docs/dev-log/artifacts/2026-09-10-destination-b-s4-phylo-dep-build-seal/gllvmTMB-s4-source-8889d8a4d.tar.gz
+exit_status: 1
+result: failed during staged-install lazy loading; retained as a failed build attempt, not an S4 fit or receipt.
+
+4 warnings generated.
+clang++ -arch arm64 -std=gnu++17 -dynamiclib -Wl,-headerpad_max_install_names -undefined dynamic_lookup -L/Library/Frameworks/R.framework/Resources/lib -L/opt/R/arm64/lib -o gllvmTMB.so gllvmTMB.o -F/Library/Frameworks/R.framework/Resources/.. -framework R
+installing to /private/tmp/destination-b-s4-phylo-dep-formula-20260910/docs/dev-log/artifacts/2026-09-10-destination-b-s4-phylo-dep-build-seal/isolated-library/00LOCK-gllvmTMB-s4-source-8889d8a4d/00new/gllvmTMB/libs
+** R
+** inst
+** byte-compile and prepare package for lazy loading
+Error in findpack(package, lib.loc) :
+  there is no package called 'gllvmTMB'
+Calls: <Anonymous> -> findpack
+Execution halted
+ERROR: lazy loading failed for package 'gllvmTMB'
+* removing '/private/tmp/destination-b-s4-phylo-dep-formula-20260910/docs/dev-log/artifacts/2026-09-10-destination-b-s4-phylo-dep-build-seal/isolated-library/gllvmTMB'

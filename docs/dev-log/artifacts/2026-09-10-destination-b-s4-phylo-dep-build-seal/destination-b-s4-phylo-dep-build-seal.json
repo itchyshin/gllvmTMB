@@ -1,0 +1,76 @@
+{
+  "kind": "destination_b_s4_phylo_dep_build_seal",
+  "schema": 1,
+  "status": "sealed_build_only_no_fit_or_receipt",
+  "scope": "S4 public phylo_dep adapter/test snapshot only; not a qualification, replay, fit, or receipt",
+  "source_snapshot": {
+    "commit": "8889d8a4d2d88e1cfd60f7b644eb79e71a7346f4",
+    "commit_short": "8889d8a4d",
+    "clean_before_archive": true,
+    "archive": {
+      "path": "docs/dev-log/artifacts/2026-09-10-destination-b-s4-phylo-dep-build-seal/gllvmTMB-s4-source-8889d8a4d.tar.gz",
+      "bytes": 40862189,
+      "sha256": "62208640189794c6e442b98e6917f22abb9d6f78ae0d15edc85ccaeac6929080",
+      "creation_command": "git archive --format=tar.gz --prefix=gllvmTMB-s4-source-8889d8a4d/ 8889d8a4d"
+    },
+    "selected_source": [
+      {
+        "path": "R/julia-bridge.R",
+        "sha256": "cb3b5cd2f7017deeaea664c593da95e044a2a4592128212e6176fe3f39a2c9a2"
+      },
+      {
+        "path": "tests/testthat/test-julia-phylo-rr-bridge.R",
+        "sha256": "409961775de390c48eb7b2185f808e4091298c7febbdfe4b058ef370e3632f72"
+      }
+    ]
+  },
+  "build": {
+    "input_archive_only": true,
+    "attempts": [
+      {
+        "command_file": "docs/dev-log/artifacts/2026-09-10-destination-b-s4-phylo-dep-build-seal/build-attempt-1.log",
+        "exit_status": 1,
+        "outcome": "staged install failed during lazy loading; retained"
+      },
+      {
+        "command_file": "docs/dev-log/artifacts/2026-09-10-destination-b-s4-phylo-dep-build-seal/build-attempt-2.command",
+        "output_file": "docs/dev-log/artifacts/2026-09-10-destination-b-s4-phylo-dep-build-seal/build-attempt-2.log",
+        "exit_status": 0,
+        "outcome": "no-staged-install isolated build passed"
+      }
+    ],
+    "isolated_library": {
+      "path": "docs/dev-log/artifacts/2026-09-10-destination-b-s4-phylo-dep-build-seal/isolated-library",
+      "semantics": "The sealed library is prepended to .libPaths() only for artifact loading. It is not a user library, default library, or source-rebuild substitute."
+    },
+    "toolchain": {
+      "r_version": "R version 4.6.0 (2026-04-24)",
+      "r_platform": "aarch64-apple-darwin23",
+      "compiler": "Apple clang version 21.0.0 (clang-2100.1.1.101)",
+      "cxx17": "clang++ -arch arm64",
+      "cxx17flags": "-falign-functions=64 -Wall -g -O2",
+      "sdk": "MacOSX26.5.sdk"
+    }
+  },
+  "binary_identity": {
+    "source_dll": {
+      "path": "docs/dev-log/artifacts/2026-09-10-destination-b-s4-phylo-dep-build-seal/isolated-library/gllvmTMB/libs/gllvmTMB.so",
+      "sha256": "eba1d3c5d5c26303f0e730a87ee70a627eb508c35f9419610fad08e37ccbb2f8",
+      "uuid": "793A5DB4-227D-33C4-9DCE-2BE66FD6865F",
+      "bytes": 4988376
+    },
+    "loaded_dll": {
+      "path": "docs/dev-log/artifacts/2026-09-10-destination-b-s4-phylo-dep-build-seal/isolated-library/gllvmTMB/libs/gllvmTMB.so",
+      "sha256": "eba1d3c5d5c26303f0e730a87ee70a627eb508c35f9419610fad08e37ccbb2f8",
+      "uuid": "793A5DB4-227D-33C4-9DCE-2BE66FD6865F",
+      "bytes": 4988376
+    }
+  },
+  "contract": {
+    "require_exact_archive_and_selected_source": true,
+    "require_exact_s4_build_artifact": true,
+    "allow_source_rebuild_as_qualification": false,
+    "s3b_frozen_manifest": "retained separately and not selected by this S4 runner",
+    "no_s4_fit_or_receipt_was_run": true
+  }
+}

@@ -1,0 +1,61 @@
+# After Task: Destination B S4 provenance seal
+
+## Goal
+
+Seal the current committed S4 adapter/test source and its locally built R DLL
+without reusing the retained S3b binary identity or running an S4 fit.
+
+## Implemented
+
+`docs/dev-log/artifacts/2026-09-10-destination-b-s4-phylo-dep-build-seal/`
+contains a Git archive of clean commit `8889d8a4d2d88e1cfd60f7b644eb79e71a7346f4`,
+the isolated installation, both build attempt records, and an immutable JSON
+seal. The S4 runner now reads that seal explicitly. Before any runtime work it
+requires the archive and selected adapter/test hashes plus the sealed source
+and loaded DLL SHA-256, Mach-O UUID, and size. It loads from the sealed
+isolated library. The old S3b frozen manifest remains retained but unselected.
+
+## Files Changed
+
+- `tests/testthat/run-destination-b-s4-public-phylo-dep-isolated.R`
+- `tests/testthat/test-destination-b-s4-public-phylo-dep-runner.R`
+- `docs/dev-log/artifacts/2026-09-10-destination-b-s4-phylo-dep-build-seal/`
+- `docs/dev-log/check-log.md`
+- this report
+
+## Tests Added
+
+The runner contract now rejects a forged archive hash and a forged source-DLL
+UUID. The test was RED before the S4 seal reader/path functions existed.
+
+## Build Evidence
+
+The archive SHA-256 is
+`62208640189794c6e442b98e6917f22abb9d6f78ae0d15edc85ccaeac6929080`.
+The successful isolated build took 74.4 seconds. Its source and loaded DLL
+SHA-256 is `eba1d3c5d5c26303f0e730a87ee70a627eb508c35f9419610fad08e37ccbb2f8`,
+UUID `793A5DB4-227D-33C4-9DCE-2BE66FD6865F`, and size 4,988,376 bytes.
+The initial staged-build failure and the one successful no-staged-install
+remedy are both retained under the seal directory.
+
+## Checks Run
+
+`Rscript --vanilla -e 'devtools::test_active_file("tests/testthat/test-destination-b-s4-public-phylo-dep-runner.R", reporter = "summary")'`
+passed 22 expectations with no failures, errors, or warnings. `git diff --check`
+is recorded in the final commit check.
+
+## Parity, JET, Allocs, Aqua
+
+N/A — this is provenance-only runner/artifact work; no likelihood, Julia, or
+fit path was exercised.
+
+## Remaining Risks
+
+- The seal authenticates this local ARM macOS build only.
+- It is build identity, not S4 qualification. No fit, receipt, recovery,
+  coverage, generic-engine admission, or parity claim is created.
+
+## Rose Verdict
+
+Rose verdict: PASS WITH NOTES — the S4 build identity is sealed; qualification
+remains intentionally absent.

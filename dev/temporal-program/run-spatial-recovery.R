@@ -94,6 +94,7 @@ fit_one <- function(phi, seed) {
       tau_1 = par$log_tau_spde[[1L]], tau_2 = par$log_tau_spde[[2L]],
       tau_3 = par$log_tau_spde[[3L]], kappa = exp(par$log_kappa_spde[[1L]]),
       beta_1 = beta[[1L]], beta_2 = beta[[2L]], beta_3 = beta[[3L]],
+      error_message = NA_character_,
       stringsAsFactors = FALSE
     )
   }, error = function(e) data.frame(
@@ -103,6 +104,7 @@ fit_one <- function(phi, seed) {
     phi_estimate = NA_real_, temporal_1 = NA_real_, temporal_2 = NA_real_,
     temporal_3 = NA_real_, tau_1 = NA_real_, tau_2 = NA_real_, tau_3 = NA_real_,
     kappa = NA_real_, beta_1 = NA_real_, beta_2 = NA_real_, beta_3 = NA_real_,
+    error_message = conditionMessage(e),
     stringsAsFactors = FALSE
   ))
   out$elapsed_seconds <- proc.time()[["elapsed"]] - started

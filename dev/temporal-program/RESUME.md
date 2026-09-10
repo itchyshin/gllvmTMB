@@ -75,8 +75,9 @@ one fixed in-keyword `spatial_indep()` term. It has an independent dense
 additive likelihood/gradient oracle, product-covariance control, long/wide
 syntax, update replay, a proportional-basis refusal, and unconditional SPDE
 field redraw checked against dense covariance moments. Its source-pair recovery
-fixture has not yet been declared or timed, so this is local implementation
-evidence only.
+campaign retained 30 fixed attempts but failed its frozen gate: strict successes
+were 10/10, 9/10, and 8/10 at persistence `-.4`, `0`, and `.6`; spatial scale
+and range estimates were unstable at positive persistence. It remains partial.
 
 ## Animal result (2026-09-09)
 

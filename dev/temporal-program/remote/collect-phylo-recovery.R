@@ -32,6 +32,12 @@ result <- rbind(base, attempts)
 full <- expand.grid(phi = c(-.4, 0, .6), seed = 2609181:2609190)
 full <- full[order(full$phi, full$seed), , drop = FALSE]
 result <- result[order(result$phi, result$seed), , drop = FALSE]
+# The base checkpoint and one-row task receipts arrive with independent row
+# names.  Values, rather than their source-row identities, define this frozen
+# cell ledger.
+rownames(full) <- NULL
+rownames(result) <- NULL
+attr(full, "out.attrs") <- NULL
 if (anyDuplicated(result[c("phi", "seed")]) || nrow(result) != nrow(full) ||
     !identical(result[c("phi", "seed")], full)) {
   stop("Combined recovery receipt does not retain each frozen phi--seed cell exactly once.", call. = FALSE)

@@ -61,14 +61,14 @@ slurm_dir="$RESULTS_DIR/_slurm"
 attempt_dir="$RESULTS_DIR/attempts"
 sbatch_file="$slurm_dir/phylo-recovery-160.sbatch"
 mkdir -p "$slurm_dir" "$attempt_dir"
-cat > "$slurm_dir/manifest.tsv" <<EOF
-source_commit\t$source_commit
-task_manifest\tphylo-recovery-160-tasks-20260909.csv
-task_count\t22
-walltime_per_task\t$time
-memory_per_task\t$mem
-array_limit\t$limit
-EOF
+{
+  printf 'source_commit\t%s\n' "$source_commit"
+  printf 'task_manifest\t%s\n' 'phylo-recovery-160-tasks-20260909.csv'
+  printf 'task_count\t22\n'
+  printf 'walltime_per_task\t%s\n' "$time"
+  printf 'memory_per_task\t%s\n' "$mem"
+  printf 'array_limit\t%s\n' "$limit"
+} > "$slurm_dir/manifest.tsv"
 cat > "$sbatch_file" <<EOF
 #!/usr/bin/env bash
 #SBATCH --job-name=gllvmtmb-temporal-phylo

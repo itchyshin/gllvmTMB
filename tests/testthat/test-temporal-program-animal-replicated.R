@@ -195,7 +195,13 @@ test_that("animal pedigree provenance, wide rewrite, simulation, and update pres
   expect_true(all(abs(observed - expected) <= qnorm(1 - .05 / 6) * se))
   replay <- suppressWarnings(update(dense)); changed <- fx$data; changed$value <- changed$value + .01
   refit <- suppressWarnings(update(dense, data = changed))
+  pedigree_replay <- suppressWarnings(update(pedigree_fit))
+  precision_replay <- suppressWarnings(update(precision_fit))
   expect_s3_class(replay, "gllvmTMB_multi"); expect_equal(replay$phylo_vcv, dense$phylo_vcv)
+  expect_s3_class(pedigree_replay, "gllvmTMB_multi")
+  expect_s3_class(precision_replay, "gllvmTMB_multi")
+  expect_equal(pedigree_replay$opt$objective, pedigree_fit$opt$objective, tolerance = 1e-6)
+  expect_equal(precision_replay$opt$objective, precision_fit$opt$objective, tolerance = 1e-6)
   expect_s3_class(refit, "gllvmTMB_multi")
 })
 

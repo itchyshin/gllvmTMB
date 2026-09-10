@@ -249,15 +249,15 @@ if (identical(mode, "remote")) {
     stop("phylogenetic DRAC envelope has an invalid manifest or task shape.", call. = FALSE)
   }
   denied_dir <- tempfile("temporal-phylo-drac-denied-")
-  denied_out <- system2("bash", launcher,
-    env = c(paste0("RESULTS_DIR=", denied_dir), "SLURM_ACTION=submit"), stdout = TRUE, stderr = TRUE)
+  denied_out <- suppressWarnings(system2("bash", launcher,
+    env = c(paste0("RESULTS_DIR=", denied_dir), "SLURM_ACTION=submit"), stdout = TRUE, stderr = TRUE))
   if (is.null(attr(denied_out, "status")) ||
       !any(grepl("Refusing submission without TEMPORAL_PHYLO_DRAC_APPROVED=YES", denied_out, fixed = TRUE))) {
     stop("phylogenetic DRAC launcher did not fence an unapproved submission.", call. = FALSE)
   }
-  collector_out <- system2("Rscript", c("--vanilla", collector,
+  collector_out <- suppressWarnings(system2("Rscript", c("--vanilla", collector,
       paste0("--attempt-dir=", envelope_dir), paste0("--output-dir=", tempfile("temporal-phylo-collect-"))),
-    stdout = TRUE, stderr = TRUE)
+    stdout = TRUE, stderr = TRUE))
   if (is.null(attr(collector_out, "status")) ||
       !any(grepl("Missing DRAC task receipts", collector_out, fixed = TRUE))) {
     stop("phylogenetic collector did not reject an incomplete task set.", call. = FALSE)

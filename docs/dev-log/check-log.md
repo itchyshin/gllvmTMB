@@ -54068,3 +54068,21 @@ candidate evidence is reused from this pre-integration run.
   source drift, while accepting a later clean runner/docs-only commit. Runtime
   HEAD is provenance recorded at execution, not a fragile hardcoded equality.
   No workflow, fit, receipt, or qualification ran.
+
+## 2026-09-10 — Destination B S4 failed-attempt diagnostic retention
+
+- The sealed S4 runner now retains a distinct, link-only write-once
+  `-FAILED.json` diagnostic before refusing a non-clean selected test pair. It
+  is explicitly `failed_test_attempt_not_a_receipt`; it cannot reuse or
+  overwrite the requested receipt path.
+- The failed diagnostic records the sealed build, R/GLLVM runtime snapshots,
+  Julia probe, exact selected test expressions, per-test names and count
+  columns, raw `capture.output` lines plus their hash, and available
+  expectation condition message/call/backtrace data. Raw output is retained
+  unchanged; its known gap is that `ListReporter` output can omit expectation
+  details, which are recorded separately when available.
+- TDD evidence: the focused synthetic non-clean-tab test first failed because
+  the retention helper did not exist, then passed with 49 expectations across
+  7 runner-contract tests (`0 failed, 0 skipped, 0 errors, 0 warnings`). No
+  S4 fit, probe, selected-test replay, receipt, qualification, push, merge, or
+  release ran. Any future live replay needs fresh approval.

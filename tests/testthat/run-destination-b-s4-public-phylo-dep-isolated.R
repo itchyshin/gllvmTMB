@@ -136,6 +136,79 @@ s4_public_phylo_dep_write_once <- function(payload, path) {
   invisible(path)
 }
 
+s4_public_phylo_dep_failed_diagnostic_path <- function(receipt_path) {
+  receipt_path <- normalizePath(receipt_path, mustWork = FALSE)
+  file.path(
+    dirname(receipt_path),
+    paste0(tools::file_path_sans_ext(basename(receipt_path)), "-FAILED.json")
+  )
+}
+
+s4_public_phylo_dep_write_failed_diagnostic_once <- function(payload, path, receipt_path) {
+  path <- normalizePath(path, mustWork = FALSE)
+  receipt_path <- normalizePath(receipt_path, mustWork = FALSE)
+  if (identical(path, receipt_path)) {
+    stop("S4 failed-attempt diagnostic must not use the receipt path", call. = FALSE)
+  }
+  if (file.exists(path)) {
+    stop("refusing to overwrite existing S4 failed-attempt diagnostic", call. = FALSE)
+  }
+  directory <- dirname(path)
+  if (!dir.exists(directory)) stop("S4 failed-attempt diagnostic directory does not exist", call. = FALSE)
+  temporary <- tempfile(pattern = paste0(".", basename(path), "."), tmpdir = directory)
+  on.exit(unlink(temporary), add = TRUE)
+  jsonlite::write_json(payload, temporary, auto_unbox = TRUE, pretty = TRUE, digits = NA)
+  if (!file.link(temporary, path)) {
+    stop("refusing to overwrite existing S4 failed-attempt diagnostic", call. = FALSE)
+  }
+  invisible(path)
+}
+
+s4_public_phylo_dep_reporter_details <- function(results) {
+  lapply(results, function(test) {
+    list(
+      file = test$file,
+      context = test$context,
+      test = test$test,
+      expectations = lapply(test$results, function(expectation) {
+        call <- if (inherits(expectation, "condition")) conditionCall(expectation) else NULL
+        list(
+          class = class(expectation),
+          message = if (inherits(expectation, "condition")) conditionMessage(expectation) else expectation$message,
+          call = if (is.null(call)) NULL else paste(deparse(call), collapse = "\n"),
+          backtrace = if (is.null(expectation$trace)) NULL else paste(capture.output(print(expectation$trace)), collapse = "\n")
+        )
+      })
+    )
+  })
+}
+
+s4_public_phylo_dep_retain_failed_attempt <- function(tab, raw_output, reporter_details, provenance, receipt_path) {
+  failed_path <- s4_public_phylo_dep_failed_diagnostic_path(receipt_path)
+  provenance$selected_test_expressions <- as.list(provenance$selected_test_expressions)
+  counts <- vapply(c("failed", "skipped", "error", "warning"), function(name) {
+    if (!name %in% names(tab)) 0L else sum(as.integer(tab[[name]]), na.rm = TRUE)
+  }, integer(1))
+  dirty <- nrow(tab) != 2L || sum(counts) != 0L
+  if (!dirty) return(invisible(NULL))
+  payload <- list(
+    kind = "destination_b_s4_public_phylo_dep_failed_attempt",
+    schema = 1L,
+    status = "failed_test_attempt_not_a_receipt",
+    receipt_path = normalizePath(receipt_path, mustWork = FALSE),
+    source = provenance,
+    selected_test_count = nrow(tab),
+    test_counts = as.list(counts),
+    test_tab = as.list(tab),
+    raw_output = as.list(raw_output),
+    raw_output_sha256 = digest::digest(paste(raw_output, collapse = "\n"), algo = "sha256"),
+    raw_output_information_gap = "Raw capture.output lines are retained unchanged. ListReporter raw output can omit expectation condition details; available condition message, call, and backtrace data are retained separately in reporter_details.",
+    reporter_details = reporter_details
+  )
+  s4_public_phylo_dep_write_failed_diagnostic_once(payload, failed_path, receipt_path)
+  stop("S4 public phylo_dep test pair did not pass cleanly; failed-attempt diagnostic retained at ", failed_path, call. = FALSE)
+}
+
 s4_public_phylo_dep_julia_literal <- function(path) {
   ## `dQuote()` follows R's user-facing fancy-quote option, whereas this value
   ## is embedded in Julia source passed through a shell. JSON string syntax is
@@ -189,8 +262,33 @@ s4_public_phylo_dep_main <- function() {
   }
   reporter <- testthat::ListReporter$new()
   raw_output <- capture.output(testthat::with_reporter(reporter, { reporter$start_file("destination-b-s4-public-phylo-dep-isolated"); for (i in c(generic, live)) testthat:::test_code(expressions[[i]], globalenv()); reporter$end_context_if_started(); reporter$end_file() }), type = "output")
-  tab <- as.data.frame(reporter$get_results())
-  if (nrow(tab) != 2L || sum(tab$failed) + sum(tab$skipped) + sum(tab$error) + sum(tab$warning) != 0L) stop("S4 public phylo_dep test pair did not pass cleanly", call. = FALSE)
+  reporter_results <- reporter$get_results()
+  tab <- as.data.frame(reporter_results)
+  selected_test_expressions <- text[c(generic, live)]
+  names(selected_test_expressions) <- c("generic_engine_closed", "paired_endpoint_formula")
+  s4_public_phylo_dep_retain_failed_attempt(
+    tab = tab,
+    raw_output = raw_output,
+    reporter_details = s4_public_phylo_dep_reporter_details(reporter_results),
+    provenance = list(
+      sealed_build = list(
+        path = s4_public_phylo_dep_s4_seal_path(getwd()),
+        sha256 = s4_public_phylo_dep_s4_seal_sha256(),
+        source_archive_sha256 = s4_seal$source_snapshot$archive$sha256,
+        source_commit = s4_seal$source_snapshot$commit,
+        binary_identity = s4_seal$binary_identity
+      ),
+      r_runtime = list(snapshot = r_before, validated_runtime_root = runtime_root),
+      gllvm_runtime = julia_before,
+      julia_probe = clean_probe,
+      runner_identity = list(
+        path = normalizePath("tests/testthat/run-destination-b-s4-public-phylo-dep-isolated.R", mustWork = TRUE),
+        sha256 = digest::digest(file = "tests/testthat/run-destination-b-s4-public-phylo-dep-isolated.R", algo = "sha256")
+      ),
+      selected_test_expressions = selected_test_expressions
+    ),
+    receipt_path = receipt_path
+  )
   raw <- get0(".s4_public_phylo_dep_receipt", envir = globalenv(), inherits = FALSE)
   embedded_julia <- s4_public_phylo_dep_validate_embedded_julia_runtime(raw$embedded_julia_active_project, raw$embedded_julia_package_root, project)
   endpoints <- s4_public_phylo_dep_validate_endpoints(raw)

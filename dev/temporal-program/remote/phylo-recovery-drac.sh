@@ -17,6 +17,7 @@ Environment:
   SLURM_ARRAY_LIMIT  simultaneous tasks (default: 6)
   R_MODULE       R module (default: r/4.5.0)
   R_LIBS_USER_DIR user R library (default: $PROJECT/$USER/R/<R>)
+  GLLVMTMB_TEMPORAL_LOAD pkgload | installed (default: pkgload)
   TEMPORAL_PHYLO_DRAC_APPROVED=YES  required for submit
 
 The array has 22 cells: the exact unfinished portion of the frozen
@@ -35,6 +36,7 @@ time="${SLURM_TIME:-00:15:00}"
 mem="${SLURM_MEM:-8G}"
 limit="${SLURM_ARRAY_LIMIT:-6}"
 r_module="${R_MODULE:-r/4.5.0}"
+load_mode="${GLLVMTMB_TEMPORAL_LOAD:-pkgload}"
 r_version="${r_module##*/}"
 if [[ -z "${RESULTS_DIR:-}" ]]; then
   : "${PROJECT:?Set RESULTS_DIR or PROJECT before generating a DRAC launch.}"
@@ -68,6 +70,7 @@ mkdir -p "$slurm_dir" "$attempt_dir"
   printf 'walltime_per_task\t%s\n' "$time"
   printf 'memory_per_task\t%s\n' "$mem"
   printf 'array_limit\t%s\n' "$limit"
+  printf 'load_mode\t%s\n' "$load_mode"
 } > "$slurm_dir/manifest.tsv"
 cat > "$sbatch_file" <<EOF
 #!/usr/bin/env bash
@@ -87,6 +90,7 @@ set -euo pipefail
 module load "$r_module"
 export R_LIBS_USER="$R_LIBS_USER_DIR"
 export R_LIBS="\$R_LIBS_USER\${R_LIBS:+:\$R_LIBS}"
+export GLLVMTMB_TEMPORAL_LOAD="$load_mode"
 export OMP_NUM_THREADS=1
 export OPENBLAS_NUM_THREADS=1
 export MKL_NUM_THREADS=1

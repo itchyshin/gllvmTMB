@@ -4,7 +4,25 @@
 ## exact same dense covariance construction rule, 16 occasions, two measures,
 ## three traits, unchanged truths/thresholds/optimizer, and 10 fresh seeds/cell.
 root <- normalizePath(".", mustWork = TRUE)
-pkgload::load_all(root, quiet = TRUE, export_all = FALSE)
+
+# Loading source through pkgload in every array worker races compilation and can
+# fail before the task wrapper has a chance to retain a one-row receipt.  The
+# local verifier keeps that route; an allocated DRAC preflight installs the
+# exact source once and workers then use the installed-package route.
+load_temporal_program_package <- function(root) {
+  mode <- Sys.getenv("GLLVMTMB_TEMPORAL_LOAD", "pkgload")
+  if (identical(mode, "pkgload")) {
+    pkgload::load_all(root, quiet = TRUE, export_all = FALSE)
+  } else if (identical(mode, "installed")) {
+    if (!requireNamespace("gllvmTMB", quietly = TRUE)) {
+      stop("GLLVMTMB_TEMPORAL_LOAD=installed requires gllvmTMB in R_LIBS_USER.", call. = FALSE)
+    }
+    suppressPackageStartupMessages(library(gllvmTMB))
+  } else {
+    stop("GLLVMTMB_TEMPORAL_LOAD must be 'pkgload' or 'installed'.", call. = FALSE)
+  }
+  invisible(mode)
+}
 
 truth <- list(beta = c(.2, -.3, .1), temporal = c(.55, .42, .63)^2,
   phylo = c(.35, .28, .40)^2, residual = .30)
@@ -17,6 +35,15 @@ Cphy[abs(row(Cphy) - col(Cphy)) == 2L] <- .28
 Cphy <- (Cphy + t(Cphy)) / 2; diag(Cphy) <- 1
 dimnames(Cphy) <- list(series, series)
 stopifnot(all(eigen(Cphy, symmetric = TRUE, only.values = TRUE)$values > 0))
+
+phylo_recovery_error <- function(phi, seed, message) {
+  data.frame(phi = phi, seed = seed, terminal = "error",
+    convergence = NA_integer_, pass_1_convergence = NA_integer_, pass_2_convergence = NA_integer_,
+    pass_2_accepted = NA, max_gradient = NA_real_, objective = NA_real_, phi_estimate = NA_real_,
+    temporal_1 = NA_real_, temporal_2 = NA_real_, temporal_3 = NA_real_, phylo_1 = NA_real_,
+    phylo_2 = NA_real_, phylo_3 = NA_real_, beta_1 = NA_real_, beta_2 = NA_real_, beta_3 = NA_real_,
+    error_message = message, stringsAsFactors = FALSE)
+}
 
 simulate_fixture <- function(phi, seed) {
   set.seed(seed)
@@ -65,11 +92,6 @@ fit_one <- function(phi, seed) {
       phylo_1 = p$theta_rr_phy[1L]^2, phylo_2 = p$theta_rr_phy[2L]^2, phylo_3 = p$theta_rr_phy[3L]^2,
       beta_1 = beta[[1L]], beta_2 = beta[[2L]], beta_3 = beta[[3L]],
       error_message = NA_character_, stringsAsFactors = FALSE)
-  }, error = function(e) data.frame(phi = phi, seed = seed, terminal = "error",
-    convergence = NA_integer_, pass_1_convergence = NA_integer_, pass_2_convergence = NA_integer_,
-    pass_2_accepted = NA, max_gradient = NA_real_, objective = NA_real_, phi_estimate = NA_real_,
-    temporal_1 = NA_real_, temporal_2 = NA_real_, temporal_3 = NA_real_, phylo_1 = NA_real_,
-    phylo_2 = NA_real_, phylo_3 = NA_real_, beta_1 = NA_real_, beta_2 = NA_real_, beta_3 = NA_real_,
-    error_message = conditionMessage(e)))
+  }, error = function(e) phylo_recovery_error(phi, seed, conditionMessage(e)))
   out$elapsed_seconds <- proc.time()[["elapsed"]] - started; out
 }

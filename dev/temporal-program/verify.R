@@ -336,7 +336,8 @@ if (identical(mode, "remote")) {
   task <- "dev/temporal-program/remote/phylo-recovery-task.R"
   collector <- "dev/temporal-program/remote/collect-phylo-recovery.R"
   launcher <- "dev/temporal-program/remote/phylo-recovery-drac.sh"
-  required <- c(task, collector, launcher,
+  runtime <- "dev/temporal-program/remote/prepare-phylo-recovery-runtime.sh"
+  required <- c(task, collector, launcher, runtime,
     "dev/temporal-program/remote/phylo-recovery-common.R",
     "dev/temporal-program/results/phylo-recovery-160-tasks-20260909.csv")
   if (any(!file.exists(file.path(root, required)))) {
@@ -348,7 +349,10 @@ if (identical(mode, "remote")) {
     stop("phylogenetic DRAC task manifest does not verify.", call. = FALSE)
   }
   shell_status <- system2("bash", c("-n", launcher))
-  if (!identical(shell_status, 0L)) stop("phylogenetic DRAC launcher has invalid shell syntax.", call. = FALSE)
+  runtime_status <- system2("bash", c("-n", runtime))
+  if (!identical(shell_status, 0L) || !identical(runtime_status, 0L)) {
+    stop("phylogenetic DRAC launcher or runtime-preflight script has invalid shell syntax.", call. = FALSE)
+  }
   envelope_dir <- tempfile("temporal-phylo-drac-envelope-")
   launcher_out <- system2("bash", launcher,
     env = c(paste0("RESULTS_DIR=", envelope_dir), "SLURM_ACTION=write"), stdout = TRUE, stderr = TRUE)
@@ -361,8 +365,8 @@ if (identical(mode, "remote")) {
   }
   manifest_data <- utils::read.delim(manifest, header = FALSE, sep = "\t", stringsAsFactors = FALSE)
   sbatch_text <- readLines(sbatch, warn = FALSE)
-  if (nrow(manifest_data) != 6L || any(lengths(strsplit(readLines(manifest), "\t", fixed = TRUE)) != 2L) ||
-      !all(c("#SBATCH --array=1-22%6", "#SBATCH --cpus-per-task=1", "export OPENBLAS_NUM_THREADS=1") %in% sbatch_text)) {
+  if (nrow(manifest_data) != 7L || any(lengths(strsplit(readLines(manifest), "\t", fixed = TRUE)) != 2L) ||
+      !all(c("#SBATCH --array=1-22%6", "#SBATCH --cpus-per-task=1", "export OPENBLAS_NUM_THREADS=1", "export GLLVMTMB_TEMPORAL_LOAD=\"pkgload\"") %in% sbatch_text)) {
     stop("phylogenetic DRAC envelope has an invalid manifest or task shape.", call. = FALSE)
   }
   denied_dir <- tempfile("temporal-phylo-drac-denied-")
@@ -378,6 +382,19 @@ if (identical(mode, "remote")) {
   if (is.null(attr(collector_out, "status")) ||
       !any(grepl("Missing DRAC task receipts", collector_out, fixed = TRUE))) {
     stop("phylogenetic collector did not reject an incomplete task set.", call. = FALSE)
+  }
+  retained_error_dir <- tempfile("temporal-phylo-retained-error-")
+  retained_error_out <- suppressWarnings(system2("Rscript", c("--vanilla", task, "--mode=task",
+      "--task-id=1", paste0("--results-dir=", retained_error_dir)),
+    env = "GLLVMTMB_TEMPORAL_LOAD=invalid", stdout = TRUE, stderr = TRUE))
+  retained_error_path <- file.path(retained_error_dir, "phylo-recovery-attempt-01.csv")
+  if (!identical(attr(retained_error_out, "status"), NULL) || !file.exists(retained_error_path)) {
+    stop("phylogenetic task did not retain a pre-fit package-load error receipt.", call. = FALSE)
+  }
+  retained_error <- utils::read.csv(retained_error_path, check.names = FALSE)
+  if (nrow(retained_error) != 1L || !identical(retained_error$terminal[[1L]], "error") ||
+      !grepl("GLLVMTMB_TEMPORAL_LOAD", retained_error$error_message[[1L]], fixed = TRUE)) {
+    stop("phylogenetic task pre-fit package-load receipt is malformed.", call. = FALSE)
   }
   cat("TEMPORAL_PROGRAM_REMOTE_PASS\n")
   quit(save = "no", status = 0L)

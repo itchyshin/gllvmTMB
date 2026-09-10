@@ -48,9 +48,14 @@ if (file.exists(out_path)) {
   stop("Refusing to overwrite an existing DRAC task receipt: ", out_path, call. = FALSE)
 }
 
-sys.source(file.path(root, "dev/temporal-program/remote/phylo-recovery-common.R"), envir = globalenv())
 task <- tasks[tasks$task_id == task_id, , drop = FALSE]
-attempt <- fit_one(task$phi[[1L]], task$seed[[1L]])
+sys.source(file.path(root, "dev/temporal-program/remote/phylo-recovery-common.R"), envir = globalenv())
+started <- proc.time()[["elapsed"]]
+attempt <- tryCatch({
+  load_temporal_program_package(root)
+  fit_one(task$phi[[1L]], task$seed[[1L]])
+}, error = function(e) phylo_recovery_error(task$phi[[1L]], task$seed[[1L]], conditionMessage(e)))
+attempt$elapsed_seconds <- proc.time()[["elapsed"]] - started
 if (!is.data.frame(attempt) || nrow(attempt) != 1L ||
     !identical(as.numeric(attempt$phi[[1L]]), as.numeric(task$phi[[1L]])) ||
     !identical(as.integer(attempt$seed[[1L]]), as.integer(task$seed[[1L]]))) {

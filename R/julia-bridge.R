@@ -3368,11 +3368,26 @@ gllvm_julia_fit <- function(
       "the public S4 wrapper admits its retained Tree cell only; dense `phylo_vcv` remains a separate bridge evidence row."
     )
   }
+  p <- as.integer(fit$tmb_data$n_traits %||% fit$n_traits)
   d_phy <- as.integer(fit$tmb_data$d_phy %||% fit$d_phy)
-  if (length(d_phy) != 1L || is.na(d_phy) || d_phy != 1L) {
+  if (length(p) != 1L || is.na(p) || p < 1L ||
+      length(d_phy) != 1L || is.na(d_phy)) {
     .gllvm_julia_phylo_rr_stop(
       "GJL-GATE-PHYLO-MV-RANK",
-      "the public S4 Tree wrapper admits exactly `phylo_latent(..., d = 1, unique = FALSE)`."
+      "the public S4 Tree wrapper requires valid native trait and phylogenetic-rank dimensions."
+    )
+  }
+  if (isTRUE(fit$use$phylo_dep)) {
+    if (p != 2L || d_phy != p) {
+      .gllvm_julia_phylo_rr_stop(
+        "GJL-GATE-PHYLO-MV-RANK",
+        "the public S4 phylo_dep wrapper admits exactly the two-trait full-covariance `traits(...) ~ 1 + phylo_dep(1 | species, tree = tree)` cell."
+      )
+    }
+  } else if (d_phy != 1L) {
+    .gllvm_julia_phylo_rr_stop(
+      "GJL-GATE-PHYLO-MV-RANK",
+      "the legacy public S4 Tree wrapper admits exactly `phylo_latent(..., d = 1, unique = FALSE)`."
     )
   }
   opt <- fit$opt
@@ -3451,18 +3466,56 @@ gllvm_julia_fit <- function(
   )
 }
 
+.gllvm_julia_phylo_dep_target_order <- function() {
+  c(
+    "beta[1]", "beta[2]", "phylo_cov[1,1]", "phylo_cov[2,1]",
+    "phylo_cov[2,2]", "residual_var_shared[1]", "residual_var_shared[2]"
+  )
+}
+
+.gllvm_julia_phylo_dep_order_intervals <- function(result) {
+  expected <- .gllvm_julia_phylo_dep_target_order()
+  names <- as.character(result$ci_target_names)
+  if (length(names) != length(expected) || anyNA(names) ||
+      anyDuplicated(names) || !setequal(names, expected)) {
+    .gllvm_julia_phylo_rr_stop(
+      "GJL-GATE-PHYLO-MV-CI-TARGETS",
+      "the public S4 phylo_dep wrapper requires exactly its seven named Julia interval targets."
+    )
+  }
+  index <- match(expected, names)
+  fields <- c(
+    "ci_target_names", "ci_estimate", "ci_lower", "ci_upper",
+    "ci_se_transformed", "ci_transforms", "ci_target_methods", "ci_statuses"
+  )
+  for (field in fields) {
+    value <- result[[field]]
+    if (is.null(value) || length(value) != length(expected)) {
+      .gllvm_julia_phylo_rr_stop(
+        "GJL-GATE-PHYLO-MV-CI-TARGETS",
+        "the public S4 phylo_dep wrapper received an incoherent Julia interval payload."
+      )
+    }
+    result[[field]] <- value[index]
+  }
+  result
+}
+
 #' Retrieve the closed S4 Julia interval surface for one native phylogenetic fit
 #'
 #' `gllvm_julia_phylo_rr()` is a deliberately narrow, explicit post-fit bridge.
 #' It does not alter `gllvmTMB(..., engine = "julia")`, which remains closed for
-#' phylogenetic random-regression terms. The one admitted public cell is an
-#' already converged native Gaussian ML `phylo_latent(..., d = 1, unique = FALSE)`
-#' fit with an ultrametric tree, complete responses, unit weights, and exactly
-#' the `0 + trait` fixed-effect design. It retrieves stored transformed-Wald
-#' intervals from the matched Julia multivariate precision calculation; it never
-#' recomputes an interval from the R fit or reinverts a covariance.
+#' phylogenetic random-regression terms. Two deliberately narrow, distinct
+#' post-fit Tree cells are admitted: an already converged native Gaussian ML
+#' `phylo_latent(..., d = 1, unique = FALSE)` fit with the `0 + trait` fixed
+#' design, and the two-trait full-covariance
+#' `traits(trait_1, trait_2) ~ 1 + phylo_dep(1 | species, tree = tree)` cell.
+#' Both require an ultrametric tree, complete responses, and unit weights. The
+#' wrapper retrieves stored transformed-Wald intervals from the matched Julia
+#' multivariate precision calculation; it never recomputes an interval from the
+#' R fit or reinverts a covariance.
 #'
-#' @param fit A fitted native `gllvmTMB_multi` object in the one admitted Tree
+#' @param fit A fitted native `gllvmTMB_multi` object in one admitted Tree
 #'   cell.
 #' @param ci_level Nominal Wald interval level, a single finite number in
 #'   `(0, 1)`.
@@ -3473,12 +3526,16 @@ gllvm_julia_fit <- function(
 #' @export
 gllvm_julia_phylo_rr <- function(fit, ci_level = 0.95, ...) {
   .gllvm_julia_phylo_rr_validate_public_tree(fit)
+  phylo_dep <- isTRUE(fit$use$phylo_dep)
   result <- .gllvm_julia_phylo_rr_adapter(
     fit,
     ci_method = "wald",
     ci_level = ci_level,
     ...
   )
+  if (phylo_dep) {
+    result <- .gllvm_julia_phylo_dep_order_intervals(result)
+  }
   result$bridge_scope <- "experimental_postfit_phylo_rr_tree"
   result$native_engine <- "tmb"
   result$native_fit_class <- class(fit)

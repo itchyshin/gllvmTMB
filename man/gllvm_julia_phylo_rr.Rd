@@ -25,7 +25,7 @@ gllvm_julia_phylo_rr(fit, ci_level = 0.95, ...)
 \method{print}{summary.gllvmTMB_julia_phylo_rr}(x, digits = 3, ...)
 }
 \arguments{
-\item{fit}{A fitted native \code{gllvmTMB_multi} object in the one admitted Tree
+\item{fit}{A fitted native \code{gllvmTMB_multi} object in one admitted Tree
 cell.}
 
 \item{ci_level}{Nominal Wald interval level, a single finite number in
@@ -52,10 +52,13 @@ do not widen to this result.
 \description{
 \code{gllvm_julia_phylo_rr()} is a deliberately narrow, explicit post-fit bridge.
 It does not alter \code{gllvmTMB(..., engine = "julia")}, which remains closed for
-phylogenetic random-regression terms. The one admitted public cell is an
-already converged native Gaussian ML \code{phylo_latent(..., d = 1, unique = FALSE)}
-fit with an ultrametric tree, complete responses, unit weights, and exactly
-the \code{0 + trait} fixed-effect design. It retrieves stored transformed-Wald
-intervals from the matched Julia multivariate precision calculation; it never
-recomputes an interval from the R fit or reinverts a covariance.
+phylogenetic random-regression terms. Two deliberately narrow, distinct
+post-fit Tree cells are admitted: an already converged native Gaussian ML
+\code{phylo_latent(..., d = 1, unique = FALSE)} fit with the \code{0 + trait} fixed
+design, and the two-trait full-covariance
+\code{traits(trait_1, trait_2) ~ 1 + phylo_dep(1 | species, tree = tree)} cell.
+Both require an ultrametric tree, complete responses, and unit weights. The
+wrapper retrieves stored transformed-Wald intervals from the matched Julia
+multivariate precision calculation; it never recomputes an interval from the
+R fit or reinverts a covariance.
 }

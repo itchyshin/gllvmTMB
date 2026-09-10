@@ -554,6 +554,142 @@ test_that("engine = 'julia' remains closed for phylo_rr", {
   )
 }
 
+.s4_public_phylo_dep_fixture <- function() {
+  fit <- .s4_tree_wrapper_fixture()
+  ## Exact narrow public S4 structure: two trait intercepts and the full
+  ## dependent phylogenetic trait covariance (`d_phy = n_traits = 2`).
+  fit$d_phy <- 2L
+  fit$tmb_data$d_phy <- 2L
+  fit$use$phylo_dep <- TRUE
+  fit$use$phylo_latent <- FALSE
+  fit$opt$par <- c(-0.2, 0.3, 0.4, -0.1, 0.5, -1.2)
+  fit
+}
+
+.s4_public_phylo_dep_julia_result <- function(...) {
+  result <- .s4_tree_wrapper_julia_result(...)
+  result$d <- 2L
+  result$parameters <- c(-0.2, 0.3, 0.4, -0.1, 0.5, -1.2)
+  ## Mirror the generic Julia PMV order: shared residual target 1 is emitted
+  ## before the second covariance diagonal. The public R formula surface must
+  ## order by names, never assume this internal layout.
+  result$ci_target_names <- c(
+    "beta[1]", "beta[2]", "phylo_cov[1,1]", "phylo_cov[2,1]",
+    "residual_var_shared[1]", "phylo_cov[2,2]", "residual_var_shared[2]"
+  )
+  result$ci_estimate <- c(-0.2, 0.3, 0.4, -0.1, 0.08, 0.3, 0.08)
+  result$ci_lower <- c(-0.4, 0.1, 0.1, -0.3, 0.04, 0.1, 0.04)
+  result$ci_upper <- c(0.0, 0.5, 0.7, 0.1, 0.12, 0.6, 0.12)
+  result$ci_se_transformed <- rep(0.1, 7L)
+  result$ci_transforms <- c("identity", "identity", "log", "identity", "log", "log", "log")
+  result$ci_target_methods <- rep("transformed_wald", 7L)
+  result$ci_statuses <- rep("available", 7L)
+  result
+}
+
+test_that("S4 public formula wrapper transports only phylo_dep full covariance", {
+  fit <- .s4_public_phylo_dep_fixture()
+  captured <- NULL
+  result <- gllvmTMB:::gllvm_julia_phylo_rr(
+    fit,
+    ci_level = 0.9,
+    .julia_call = function(...) {
+      captured <<- list(...)
+      .s4_public_phylo_dep_julia_result(...)
+    }
+  )
+
+  expect_equal(captured$d, 2L)
+  expect_equal(captured$options$mode, "barelowrank")
+  expect_equal(captured$options$residual_mode, "shared")
+  ci <- gllvmTMB:::confint.gllvmTMB_julia_phylo_rr(result, level = 0.9)
+  expect_equal(rownames(ci), c(
+    "beta[1]", "beta[2]", "phylo_cov[1,1]", "phylo_cov[2,1]",
+    "phylo_cov[2,2]", "residual_var_shared[1]", "residual_var_shared[2]"
+  ))
+  expect_true(all(ci[, 1L] < ci[, 2L]))
+})
+
+test_that("S4 public phylo_dep formula retains paired transformed-Wald endpoints", {
+  skip_if_not(identical(Sys.getenv("GLLVM_S4_LIVE_FORMULA_TESTS"), "1"))
+  skip_if_not_installed("JuliaCall")
+  skip_if_not_installed("ape")
+
+  julia_project <- Sys.getenv("GLLVM_DESTINATION_B_PROJECT")
+  julia_home <- Sys.getenv("GLLVM_S4_JULIA_HOME")
+  if (!nzchar(julia_project) || !nzchar(julia_home)) {
+    skip("set GLLVM_DESTINATION_B_PROJECT and GLLVM_S4_JULIA_HOME for the opt-in S4 paired workflow")
+  }
+
+  tree <- ape::read.tree(text = "(sp1:2,sp2:2,sp3:2);")
+  data <- data.frame(
+    individual = seq_len(9L),
+    species = rep(c("sp1", "sp2", "sp3"), each = 3L),
+    trait_1 = c(0.2, 0.4, 0.1, 1.4, 1.3, 1.5, 0.8, 0.9, 1.0),
+    trait_2 = c(0.1, 0.3, 0.2, 0.7, 0.8, 0.6, 0.4, 0.5, 0.6)
+  )
+  native <- gllvmTMB(
+    traits(trait_1, trait_2) ~ 1 + phylo_dep(1 | species, tree = tree),
+    data = data,
+    unit = "individual",
+    family = gaussian(),
+    control = gllvmTMBcontrol(se = TRUE)
+  )
+  julia <- gllvm_julia_phylo_rr(
+    native,
+    ci_level = 0.9,
+    jl_path = julia_project,
+    julia_home = julia_home
+  )
+
+  fixed <- native$opt$par
+  full <- native$tmb_obj$env$last.par.best
+  native_targets <- function(parameters) {
+    full_parameters <- full
+    full_parameters[seq_along(parameters)] <- parameters
+    report <- native$tmb_obj$report(full_parameters)
+    c(
+      "beta[1]" = unname(parameters[1L]),
+      "beta[2]" = unname(parameters[2L]),
+      "phylo_cov[1,1]" = report$Sigma_phy[1L, 1L],
+      "phylo_cov[2,1]" = report$Sigma_phy[2L, 1L],
+      "phylo_cov[2,2]" = report$Sigma_phy[2L, 2L],
+      "residual_var_shared[1]" = report$sigma_eps^2,
+      "residual_var_shared[2]" = report$sigma_eps^2
+    )
+  }
+  native_estimate <- native_targets(fixed)
+  step <- 1e-5
+  jacobian <- sapply(seq_along(fixed), function(index) {
+    plus <- minus <- fixed
+    plus[index] <- plus[index] + step
+    minus[index] <- minus[index] - step
+    (native_targets(plus) - native_targets(minus)) / (2 * step)
+  })
+  covariance <- native$sd_report$cov.fixed
+  native_se <- sqrt(pmax(0, diag(jacobian %*% covariance %*% t(jacobian))))
+  critical <- stats::qnorm(0.95)
+  native_lower <- native_estimate - critical * native_se
+  native_upper <- native_estimate + critical * native_se
+  log_targets <- names(native_estimate) %in% c(
+    "phylo_cov[1,1]", "phylo_cov[2,2]",
+    "residual_var_shared[1]", "residual_var_shared[2]"
+  )
+  log_jacobian <- jacobian[log_targets, , drop = FALSE] / native_estimate[log_targets]
+  log_se <- sqrt(pmax(0, diag(log_jacobian %*% covariance %*% t(log_jacobian))))
+  native_lower[log_targets] <- exp(log(native_estimate[log_targets]) - critical * log_se)
+  native_upper[log_targets] <- exp(log(native_estimate[log_targets]) + critical * log_se)
+  julia_ci <- confint(julia, level = 0.9)
+
+  expect_identical(rownames(julia_ci), names(native_estimate))
+  ## Independent native and Julia optimizers are compared on an absolute scale;
+  ## 5e-6 exceeds the observed 9e-7 component difference without masking a
+  ## meaningful covariance mismatch in this small controlled fixture.
+  expect_equal(as.numeric(julia$phylo_covariance), as.numeric(native$report$Sigma_phy), tolerance = 5e-6)
+  expect_equal(as.numeric(julia_ci[, 1L]), unname(native_lower), tolerance = 1e-4)
+  expect_equal(as.numeric(julia_ci[, 2L]), unname(native_upper), tolerance = 1e-4)
+})
+
 test_that("S4 Tree wrapper is an explicit post-fit Wald surface", {
   fit <- .s4_tree_wrapper_fixture()
   captured <- NULL

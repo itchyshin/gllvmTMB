@@ -4,9 +4,9 @@ root <- normalizePath(getwd(), mustWork = TRUE)
 if (!file.exists(file.path(root, "DESCRIPTION"))) {
   stop("Run temporal programme verification from the repository root.", call. = FALSE)
 }
-allowed <- c("plan", "simulation", "lifecycle", "publication", "combinations", "closeout", "self-test")
+allowed <- c("plan", "simulation", "lifecycle", "remote", "publication", "combinations", "closeout", "self-test")
 if (!mode %in% allowed) {
-  stop("usage: Rscript --vanilla dev/temporal-program/verify.R {plan|simulation|lifecycle|publication|combinations|closeout|self-test}", call. = FALSE)
+  stop("usage: Rscript --vanilla dev/temporal-program/verify.R {plan|simulation|lifecycle|remote|publication|combinations|closeout|self-test}", call. = FALSE)
 }
 
 .temporal_program_assert_test_results <- function(result, fixture) {
@@ -214,6 +214,56 @@ if (identical(mode, "combinations")) {
 }
 if (identical(mode, "closeout")) {
   stop("Closeout requires a retained three-OS publication receipt and completion of the remaining temporal source-pair programme gates.", call. = FALSE)
+}
+if (identical(mode, "remote")) {
+  task <- "dev/temporal-program/remote/phylo-recovery-task.R"
+  collector <- "dev/temporal-program/remote/collect-phylo-recovery.R"
+  launcher <- "dev/temporal-program/remote/phylo-recovery-drac.sh"
+  required <- c(task, collector, launcher,
+    "dev/temporal-program/remote/phylo-recovery-common.R",
+    "dev/temporal-program/results/phylo-recovery-160-tasks-20260909.csv")
+  if (any(!file.exists(file.path(root, required)))) {
+    stop("missing temporal phylogenetic remote artifact(s): ",
+      paste(required[!file.exists(file.path(root, required))], collapse = ", "), call. = FALSE)
+  }
+  task_out <- system2("Rscript", c("--vanilla", task, "--mode=plan"), stdout = TRUE, stderr = TRUE)
+  if (!identical(attr(task_out, "status"), NULL) || !any(grepl("TEMPORAL_PHYLO_TASK_PLAN_PASS tasks=22", task_out, fixed = TRUE))) {
+    stop("phylogenetic DRAC task manifest does not verify.", call. = FALSE)
+  }
+  shell_status <- system2("bash", c("-n", launcher))
+  if (!identical(shell_status, 0L)) stop("phylogenetic DRAC launcher has invalid shell syntax.", call. = FALSE)
+  envelope_dir <- tempfile("temporal-phylo-drac-envelope-")
+  launcher_out <- system2("bash", launcher,
+    env = c(paste0("RESULTS_DIR=", envelope_dir), "SLURM_ACTION=write"), stdout = TRUE, stderr = TRUE)
+  sbatch <- file.path(envelope_dir, "_slurm", "phylo-recovery-160.sbatch")
+  manifest <- file.path(envelope_dir, "_slurm", "manifest.tsv")
+  if (!identical(attr(launcher_out, "status"), NULL) ||
+      !any(grepl("TEMPORAL_PHYLO_DRAC_WRITE_PASS", launcher_out, fixed = TRUE)) ||
+      !file.exists(sbatch) || !file.exists(manifest)) {
+    stop("phylogenetic DRAC launcher did not create a write-only envelope.", call. = FALSE)
+  }
+  manifest_data <- utils::read.delim(manifest, header = FALSE, sep = "\t", stringsAsFactors = FALSE)
+  sbatch_text <- readLines(sbatch, warn = FALSE)
+  if (nrow(manifest_data) != 6L || any(lengths(strsplit(readLines(manifest), "\t", fixed = TRUE)) != 2L) ||
+      !all(c("#SBATCH --array=1-22%6", "#SBATCH --cpus-per-task=1", "export OPENBLAS_NUM_THREADS=1") %in% sbatch_text)) {
+    stop("phylogenetic DRAC envelope has an invalid manifest or task shape.", call. = FALSE)
+  }
+  denied_dir <- tempfile("temporal-phylo-drac-denied-")
+  denied_out <- system2("bash", launcher,
+    env = c(paste0("RESULTS_DIR=", denied_dir), "SLURM_ACTION=submit"), stdout = TRUE, stderr = TRUE)
+  if (is.null(attr(denied_out, "status")) ||
+      !any(grepl("Refusing submission without TEMPORAL_PHYLO_DRAC_APPROVED=YES", denied_out, fixed = TRUE))) {
+    stop("phylogenetic DRAC launcher did not fence an unapproved submission.", call. = FALSE)
+  }
+  collector_out <- system2("Rscript", c("--vanilla", collector,
+      paste0("--attempt-dir=", envelope_dir), paste0("--output-dir=", tempfile("temporal-phylo-collect-"))),
+    stdout = TRUE, stderr = TRUE)
+  if (is.null(attr(collector_out, "status")) ||
+      !any(grepl("Missing DRAC task receipts", collector_out, fixed = TRUE))) {
+    stop("phylogenetic collector did not reject an incomplete task set.", call. = FALSE)
+  }
+  cat("TEMPORAL_PROGRAM_REMOTE_PASS\n")
+  quit(save = "no", status = 0L)
 }
 
 fixture <- switch(mode,

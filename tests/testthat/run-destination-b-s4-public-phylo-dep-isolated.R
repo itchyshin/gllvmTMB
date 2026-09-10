@@ -176,6 +176,34 @@ s4_public_phylo_dep_write_failed_diagnostic_once <- function(payload, path, rece
   invisible(path)
 }
 
+## Captured testthat expectations can be S3 conditions. jsonlite has no
+## asJSON() method for them, so preserve their useful identity explicitly
+## rather than carrying the condition object into the immutable artifact.
+s4_public_phylo_dep_condition_diagnostic <- function(condition) {
+  call <- tryCatch(conditionCall(condition), error = function(error) NULL)
+  trace <- condition$trace
+  list(
+    message = as.character(conditionMessage(condition)),
+    class = as.list(as.character(class(condition))),
+    call = if (is.null(call)) NULL else paste(deparse(call), collapse = "\n"),
+    backtrace = if (is.null(trace)) NULL else paste(capture.output(print(trace)), collapse = "\n")
+  )
+}
+
+s4_public_phylo_dep_json_safe <- function(value) {
+  if (inherits(value, "condition")) {
+    return(s4_public_phylo_dep_condition_diagnostic(value))
+  }
+  if (is.null(value) || is.atomic(value)) return(value)
+  if (is.language(value)) return(paste(deparse(value), collapse = "\n"))
+  if (is.list(value)) {
+    normalized <- lapply(value, s4_public_phylo_dep_json_safe)
+    names(normalized) <- names(value)
+    return(normalized)
+  }
+  as.character(value)
+}
+
 s4_public_phylo_dep_reporter_details <- function(results) {
   lapply(results, function(test) {
     list(
@@ -202,6 +230,7 @@ s4_public_phylo_dep_retain_failed_attempt <- function(tab, raw_output, reporter_
     stop("S4 failed-attempt diagnostic path was not reserved for this receipt", call. = FALSE)
   }
   provenance$selected_test_expressions <- as.list(provenance$selected_test_expressions)
+  reporter_details <- s4_public_phylo_dep_json_safe(reporter_details)
   counts <- vapply(c("failed", "skipped", "error", "warning"), function(name) {
     if (!name %in% names(tab)) 0L else sum(as.integer(tab[[name]]), na.rm = TRUE)
   }, integer(1))

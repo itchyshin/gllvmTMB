@@ -54091,3 +54091,12 @@ candidate evidence is reused from this pre-integration run.
   snapshot, Julia probe, package load, or selected test. An occupied namespace
   fails early; a pre-existing legacy sibling `receipt-FAILED.json` is a
   different possible receipt and cannot consume the diagnostic location.
+- P2 condition-serialization repair: before the write-once diagnostic is
+  written, captured S3 conditions in reporter details are converted to plain
+  message, class, call, and backtrace fields. A synthetic failed pair first
+  reproduced `jsonlite`'s `No method asJSON S3 class: condition`; the focused
+  fit-free runner contract is now 9 tests / 63 expectations, with 0 failed,
+  skipped, errors, or warnings. It also verifies untouched raw output, no
+  receipt, and byte-for-byte write-once protection. No S4 selected-test replay,
+  fit, Julia probe, receipt, qualification, push, merge, or release ran. A
+  future replay still needs fresh user approval.

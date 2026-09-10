@@ -167,6 +167,69 @@ test_that("S4 runner retains a write-once failed-attempt diagnostic before refus
   expect_identical(readBin(failed_path, what = "raw", n = file.info(failed_path)$size), first_bytes)
 })
 
+test_that("S4 failed-attempt diagnostic normalizes captured conditions before writing", {
+  environment <- new.env(parent = baseenv())
+  withr::local_envvar(GLLVM_S4_PUBLIC_PHYLO_DEP_DEFINE_ONLY = "1")
+  source(testthat::test_path("run-destination-b-s4-public-phylo-dep-isolated.R"), local = environment)
+
+  receipt_path <- tempfile("s4-condition-receipt-", fileext = ".json")
+  reservation <- environment$s4_public_phylo_dep_reserve_failed_diagnostic_path(receipt_path)
+  failed_path <- reservation$path
+  withr::defer(unlink(c(receipt_path, reservation$namespace), recursive = TRUE))
+  tab <- data.frame(
+    context = c("S4 public phylo_dep", "S4 public phylo_dep"),
+    test = c("generic engine remains closed", "paired endpoints"),
+    failed = c(0L, 1L), skipped = c(0L, 0L), error = c(0L, 0L), warning = c(0L, 0L),
+    stringsAsFactors = FALSE
+  )
+  captured <- structure(
+    list(message = "synthetic captured condition", call = quote(synthetic_s4_failure())),
+    class = c("synthetic_s4_condition", "error", "condition")
+  )
+  raw_output <- "unchanged raw testthat output"
+  provenance <- list(
+    sealed_build = list(path = "/sealed.json", sha256 = "seal-sha"),
+    r_runtime = list(root = "/r", commit = "r-commit"),
+    gllvm_runtime = list(root = "/gllvm", commit = "g-commit"),
+    julia_probe = list(executable = "/julia", executable_sha256 = "julia-sha"),
+    selected_test_expressions = c(generic = "test_that('generic', {})", live = "test_that('live', {})")
+  )
+
+  expect_error(
+    environment$s4_public_phylo_dep_retain_failed_attempt(
+      tab = tab,
+      raw_output = raw_output,
+      reporter_details = list(list(expectations = list(captured))),
+      provenance = provenance,
+      receipt_path = receipt_path,
+      failed_path = failed_path
+    ),
+    "did not pass cleanly"
+  )
+  diagnostic <- jsonlite::read_json(failed_path, simplifyVector = FALSE)
+  detail <- diagnostic$reporter_details[[1L]]$expectations[[1L]]
+  expect_identical(diagnostic$raw_output, as.list(raw_output))
+  expect_identical(detail$message, "synthetic captured condition")
+  expect_identical(detail$class, as.list(class(captured)))
+  expect_identical(detail$call, "synthetic_s4_failure()")
+  expect_length(detail$backtrace, 0L)
+  expect_false(inherits(detail, "condition"))
+  expect_false(file.exists(receipt_path))
+  first_bytes <- readBin(failed_path, what = "raw", n = file.info(failed_path)$size)
+  expect_error(
+    environment$s4_public_phylo_dep_retain_failed_attempt(
+      tab = tab,
+      raw_output = raw_output,
+      reporter_details = list(list(expectations = list(captured))),
+      provenance = provenance,
+      receipt_path = receipt_path,
+      failed_path = failed_path
+    ),
+    "refusing to overwrite existing S4 failed-attempt diagnostic"
+  )
+  expect_identical(readBin(failed_path, what = "raw", n = file.info(failed_path)$size), first_bytes)
+})
+
 test_that("S4 runner pre-reserves a failure namespace without colliding with a receipt", {
   environment <- new.env(parent = baseenv())
   withr::local_envvar(GLLVM_S4_PUBLIC_PHYLO_DEP_DEFINE_ONLY = "1")

@@ -85,6 +85,26 @@ attempt activity. The new contract test proves that an occupied namespace fails
 early while a legacy sibling receipt cannot collide with the reserved path. The
 focused fit-free contract is now 8 tests / 53 expectations, all green.
 
+## P2 Condition-Serialization Repair
+
+The failed-attempt writer now recursively normalizes captured S3 conditions in
+reporter details before JSON serialization. Each condition becomes only its
+message, class, deparsed call, and rendered backtrace; no condition object
+reaches `jsonlite`. The raw `capture.output` value is not normalized or
+otherwise changed. The synthetic failed-pair regression first reproduced
+`No method asJSON S3 class: condition`, then passed while proving the valid
+diagnostic retains raw output, creates no receipt, preserves the condition's
+identity fields, and remains byte-for-byte immutable after a second write
+attempt. The focused fit-free contract is now 9 tests / 63 expectations, all
+green.
+
+### P2 Checks Run
+
+`Rscript -e 'results <- testthat::test_file("tests/testthat/test-destination-b-s4-public-phylo-dep-runner.R", reporter = "silent"); tab <- as.data.frame(results); cat(sprintf("S4_RUNNER_CONTRACT tests=%d passed=%d failed=%d skipped=%d error=%d warning=%d\\n", nrow(tab), sum(tab$passed), sum(tab$failed), sum(tab$skipped), sum(tab$error), sum(tab$warning)))'`
+reported 9 tests, 63 expectations, 0 failed, 0 skipped, 0 errors, and 0
+warnings. No S4 fit, Julia probe, selected-test replay, receipt,
+qualification, push, merge, or release ran.
+
 ## Team Learning
 
 Use the actual `ListReporter` result objects as a second channel beside raw

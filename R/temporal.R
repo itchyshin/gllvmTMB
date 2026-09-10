@@ -68,7 +68,9 @@ temporal_dep <- function(formula, time, structure = "ar1", replicate = NULL) {
 #' be added to ordinary `unit` and `unit_obs` terms. The initial cross-source
 #' cells are replicated AR1 `temporal_indep()` plus one labelled `kernel_indep()`,
 #' a fixed labelled `phylo_indep()` term, or a fixed labelled `animal_indep()`
-#' term. Other temporal-source combinations remain unavailable.
+#' term, or a fixed labelled `spatial_indep()` term. The spatial cell redraws
+#' its independent SPDE field during unconditional simulation. Other
+#' temporal-source combinations remain unavailable.
 #'
 #' @rdname temporal_latent
 #' @param d Latent rank. This version supports `1`.
@@ -146,7 +148,7 @@ temporal_latent <- function(formula, time, d = 1, structure = "ar1",
   temporal_mode <- sub("^temporal_", "", marker_name)
   allowed_source_pair <- identical(temporal_mode, "indep") &&
     identical(length(source_terms), 1L) &&
-    source_terms %in% c("kernel_indep", "phylo_indep", "animal_indep")
+    source_terms %in% c("kernel_indep", "phylo_indep", "animal_indep", "spatial_indep")
   source_pair <- if (isTRUE(allowed_source_pair)) source_terms[[1L]] else NULL
 
   ## An identity animal relationship and an ordinary `indep()` term over the
@@ -228,12 +230,61 @@ temporal_latent <- function(formula, time, d = 1, structure = "ar1",
       }
     }
   }
+  if (identical(source_pair, "spatial_indep") && animal_shape_ready) {
+    spatial_call <- find_calls_named(rhs, "spatial_indep")
+    if (length(spatial_call) == 1L) {
+      spatial_call <- spatial_call[[1L]]
+      spatial_names <- names(spatial_call)
+      if (is.null(spatial_names)) spatial_names <- rep("", length(spatial_call))
+      mesh_pos <- which(spatial_names == "mesh")
+      temporal_bar <- marker[[2L]]
+      series_name <- if (is.call(temporal_bar) && length(temporal_bar) == 3L &&
+        is.name(temporal_bar[[3L]])) as.character(temporal_bar[[3L]]) else NULL
+      time_name <- marker_arg_early("time")
+      mesh_value <- if (length(mesh_pos) == 1L) {
+        tryCatch(eval(spatial_call[[mesh_pos]], envir = environment(formula)),
+          error = function(e) NULL)
+      } else NULL
+      xy_cols <- mesh_value$xy_cols %||% character(0)
+      if (!is.null(series_name) && is.name(time_name) &&
+          all(c(series_name, as.character(time_name), xy_cols) %in% names(data)) &&
+          length(xy_cols) == 2L) {
+        state_key <- interaction(data[[series_name]], data[[as.character(time_name)]],
+          drop = TRUE, lex.order = TRUE)
+        state_rows <- !duplicated(state_key)
+        state <- data[state_rows, c(series_name, as.character(time_name), xy_cols), drop = FALSE]
+        names(state)[1:2] <- c(".series", ".time")
+        ## The temporal process and the spatial field cannot be separated if
+        ## every within-series spatial distance is an exact scalar multiple of
+        ## its time lag.  That is an evolving trajectory, not evidence for two
+        ## independent additive sources.
+        proportional <- vapply(split(state, state$.series), function(x) {
+          if (nrow(x) < 3L) return(FALSE)
+          lag <- abs(outer(x$.time, x$.time, `-`))
+          dx <- outer(x[[xy_cols[[1L]]]], x[[xy_cols[[1L]]]], `-`)
+          dy <- outer(x[[xy_cols[[2L]]]], x[[xy_cols[[2L]]]], `-`)
+          distance <- sqrt(dx^2 + dy^2)
+          take <- upper.tri(lag) & lag > 0
+          lag <- lag[take]; distance <- distance[take]
+          length(lag) >= 3L && stats::sd(lag) > 0 && stats::sd(distance) > 0 &&
+            abs(stats::cor(lag, distance)) >= 1 - 1e-10
+        }, logical(1L))
+        if (any(proportional)) {
+          cli::cli_abort(c(
+            "Temporal and spatial covariance bases are proportional within a series.",
+            "i" = "Affected series: {.val {names(proportional)[proportional]}}.",
+            ">" = "Use locations with spatial contrasts not determined solely by temporal lag, or fit a dedicated space-time interaction model."
+          ))
+        }
+      }
+    }
+  }
   forbidden_sources <- if (allowed_source_pair) character(0) else source_terms
   if (length(forbidden_sources)) {
     cli::cli_abort(c(
       "A temporal covariance term cannot be combined with another covariance source in this version.",
       "i" = "Found source provider(s): {.fn {forbidden_sources}}.",
-      ">" = "Use ordinary unit/unit_obs terms, or one of the admitted replicated AR1 {.code temporal_indep() + kernel_indep()}, {.code temporal_indep() + phylo_indep()}, or {.code temporal_indep() + animal_indep()} cells. Other temporal source pairs remain deferred."
+      ">" = "Use ordinary unit/unit_obs terms, or one of the admitted replicated AR1 {.code temporal_indep() + kernel_indep()}, {.code temporal_indep() + phylo_indep()}, {.code temporal_indep() + animal_indep()}, or {.code temporal_indep() + spatial_indep()} cells. Other temporal source pairs remain deferred."
     ))
   }
   response_cols <- all.vars(formula[[2L]])

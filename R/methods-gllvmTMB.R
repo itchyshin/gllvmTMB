@@ -1485,9 +1485,10 @@ tidy.gllvmTMB_multi <- function(
 #'   recursive temporal state together with every supported ordinary/source
 #'   tier; it does not retain fitted ordinary modes in an unconditional draw.
 #'
-#'   **Not every tier is covered.** A fit using any other active tier —
-#'   notably the SPDE spatial tier (`spde`) and the diagonal
-#'   phylogenetic tier (`phylo_diag`) — falls back to conditional
+#'   **Not every tier is covered.** The admitted replicated-AR1
+#'   `temporal_indep() + spatial_indep()` cell redraws its independent SPDE
+#'   field. Other SPDE spatial forms and the diagonal phylogenetic tier
+#'   (`phylo_diag`) fall back to conditional
 #'   simulation and emits a one-shot warning naming the unhandled
 #'   tiers. Because conditional simulation reuses the fitted random-
 #'   effect modes rather than redrawing them, it understates
@@ -2110,6 +2111,56 @@ simulate.gllvmTMB_multi <- function(
 
 #' @keywords internal
 #' @noRd
+.temporal_spatial_indep_redrawable <- function(fit) {
+  td <- fit$tmb_data
+  isTRUE(fit$temporal$active) &&
+    isTRUE(fit$use$spde) &&
+    isTRUE(fit$use$spatial_indep) &&
+    is.null(fit$source_strength) &&
+    identical(as.integer(td$spde_lv_k %||% 0L), 0L) &&
+    identical(as.integer(td$spde_lv_unique %||% 0L), 0L)
+}
+
+#' Draw the per-trait SPDE field for the admitted temporal--spatial cell
+#'
+#' The narrow temporal--spatial contract admits only `spatial_indep()`:
+#' each trait's mesh field has covariance `(tau_t^2 Q)^{-1}`, where
+#' `Q = kappa^4 M0 + 2 kappa^2 M1 + M2`.  Redrawing the field here keeps
+#' an unconditional temporal simulation unconditional for both sources.
+#'
+#' @keywords internal
+#' @noRd
+.simulate_temporal_spatial_indep <- function(fit) {
+  if (!.temporal_spatial_indep_redrawable(fit)) {
+    stop("Internal SPDE redraw was requested outside the admitted temporal-spatial indep cell.",
+      call. = FALSE)
+  }
+  td <- fit$tmb_data
+  par <- fit$tmb_obj$env$parList(fit$opt$par)
+  kappa <- exp(as.numeric(par$log_kappa_spde[[1L]]))
+  tau <- exp(as.numeric(par$log_tau_spde))
+  n_mesh <- ncol(td$A_proj)
+  if (length(tau) != td$n_traits || n_mesh < 1L) {
+    stop("Internal SPDE parameter dimensions do not match the fitted mesh.",
+      call. = FALSE)
+  }
+  Q <- kappa^4 * as.matrix(td$spde_M0) +
+    2 * kappa^2 * as.matrix(td$spde_M1) + as.matrix(td$spde_M2)
+  U <- tryCatch(chol(Q), error = function(e) NULL)
+  if (is.null(U)) {
+    stop("The fitted SPDE precision matrix could not be factorized for unconditional simulation.",
+      call. = FALSE)
+  }
+  omega <- matrix(0, nrow = n_mesh, ncol = td$n_traits)
+  for (trait in seq_len(td$n_traits)) {
+    omega[, trait] <- backsolve(U, stats::rnorm(n_mesh)) / tau[[trait]]
+  }
+  projected <- as.matrix(td$A_proj %*% omega)
+  projected[cbind(seq_len(nrow(projected)), td$trait_id + 1L)]
+}
+
+#' @keywords internal
+#' @noRd
 .check_simulate_unconditional <- function(fit) {
   handled <- c(
     "rr_B", "diag_B", "rr_W", "diag_W", "propto",
@@ -2119,7 +2170,10 @@ simulate.gllvmTMB_multi <- function(
     ## whether the remaining tiers can be redrawn.
     "temporal"
   )
-  if(identical(fit$source_strength$source,"spatial")) handled <- c(handled,"spde")
+  if (identical(fit$source_strength$source, "spatial") ||
+      .temporal_spatial_indep_redrawable(fit)) {
+    handled <- c(handled, "spde")
+  }
   if (is.list(fit$tmb_data)) {
     # Mode descriptors do not add another field. Actual engine flags are the
     # authority, so folded Psi and indep/dep cannot force a silent fallback.
@@ -2252,6 +2306,13 @@ simulate.gllvmTMB_multi <- function(
   if (is.null(fit$source_strength) && isTRUE(fit$use$phylo_diag)) {
     scores <- .structured_rho_scores(fit,n_traits,"g_phy_diag","g_phy_diag_iid",redraw=TRUE)
     eta <- eta + scores[cbind(fit$tmb_data$species_id+1L,trait_id)]*fit$report$sd_phy_diag[trait_id]
+  }
+
+  ## The only composed spatial route admitted with temporal covariance is
+  ## `temporal_indep(...) + spatial_indep(...)`.  It has one independent
+  ## per-trait GMRF field, so redraw it from the exact fitted Q precision.
+  if (.temporal_spatial_indep_redrawable(fit)) {
+    eta <- eta + .simulate_temporal_spatial_indep(fit)
   }
 
   if (isTRUE(fit$use$re_int)) {

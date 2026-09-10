@@ -177,7 +177,7 @@ test_that("temporal source refuses each deferred provider and duplicate temporal
     form <- as.formula(call("~", quote(value), call("+",
       call("+", quote(0 + trait), quote(temporal_indep(0 + trait | series, time = occasion))), other)))
     expect_error(gllvmTMB(form, data = dat, unit = "series", family = gaussian()),
-      if (as.character(other[[1L]]) %in% c("phylo_indep", "animal_indep"))
+      if (as.character(other[[1L]]) %in% c("phylo_indep", "animal_indep", "spatial_indep"))
         "requires replicated AR1" else "temporal covariance term cannot be combined",
       info = deparse(other))
   }

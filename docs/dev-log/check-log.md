@@ -54100,3 +54100,18 @@ candidate evidence is reused from this pre-integration run.
   receipt, and byte-for-byte write-once protection. No S4 selected-test replay,
   fit, Julia probe, receipt, qualification, push, merge, or release ran. A
   future replay still needs fresh user approval.
+
+## 2026-09-10 — Destination B S4 test-tab condition serialization repair
+
+- `ListReporter` may retain captured expectation conditions in list-columns
+  after `tab` is converted with `as.list(tab)`. The failed-attempt payload now
+  applies the existing recursive JSON normalizer to `test_tab` as well as to
+  separately extracted reporter details, preserving test names/count columns
+  and plain condition message/class/call/backtrace fields.
+- TDD RED: the new synthetic list-column condition reached `jsonlite` through
+  the previous raw `test_tab = as.list(tab)` and failed with `No method asJSON
+  S3 class: condition`. GREEN: the focused, fit-free runner contract reported
+  10 tests / 73 expectations, 0 failed, 0 skipped, 0 errors, and 0 warnings;
+  `git diff --check` was clean. No S4 test replay, fit, Julia probe, receipt,
+  qualification, engine/generic/seal change, push, merge, or release ran. Any
+  future live replay requires fresh approval.

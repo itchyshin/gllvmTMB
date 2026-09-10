@@ -244,7 +244,10 @@ s4_public_phylo_dep_retain_failed_attempt <- function(tab, raw_output, reporter_
     source = provenance,
     selected_test_count = nrow(tab),
     test_counts = as.list(counts),
-    test_tab = as.list(tab),
+    ## ListReporter can retain condition objects in list-columns after its
+    ## table is converted to a list.  Normalize that representation too, not
+    ## only the separately extracted reporter details.
+    test_tab = s4_public_phylo_dep_json_safe(as.list(tab)),
     raw_output = as.list(raw_output),
     raw_output_sha256 = digest::digest(paste(raw_output, collapse = "\n"), algo = "sha256"),
     raw_output_information_gap = "Raw capture.output lines are retained unchanged. ListReporter raw output can omit expectation condition details; available condition message, call, and backtrace data are retained separately in reporter_details.",

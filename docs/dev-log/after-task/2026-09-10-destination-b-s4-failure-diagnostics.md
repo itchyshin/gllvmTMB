@@ -105,6 +105,28 @@ reported 9 tests, 63 expectations, 0 failed, 0 skipped, 0 errors, and 0
 warnings. No S4 fit, Julia probe, selected-test replay, receipt,
 qualification, push, merge, or release ran.
 
+## P3 Test-Tab Condition-Serialization Repair
+
+`ListReporter` can carry a captured expectation as a condition inside a
+list-column after `test_tab = as.list(tab)`. That payload path had bypassed
+the P2 recursive normalizer. The failed-attempt payload now normalizes the
+per-test table before the write-once JSON call; selected test names and integer
+count columns stay intact, while the nested condition becomes its plain
+message, class, call, and backtrace fields. The synthetic list-column fixture
+first reproduced `No method asJSON S3 class: condition`, then proved directly
+that recursive normalization leaves no condition object anywhere in the
+per-test table before proving the retained JSON has the selected name, failed
+count, and condition details.
+
+### P3 Checks Run
+
+`Rscript -e 'results <- testthat::test_file("tests/testthat/test-destination-b-s4-public-phylo-dep-runner.R", reporter = "silent"); tab <- as.data.frame(results); cat(sprintf("S4_RUNNER_CONTRACT tests=%d passed=%d failed=%d skipped=%d error=%d warning=%d\\n", nrow(tab), sum(tab$passed), sum(tab$failed), sum(tab$skipped), sum(tab$error), sum(tab$warning)))'`
+reported 10 tests, 73 expectations, 0 failed, 0 skipped, 0 errors, and 0
+warnings. `git diff --check` was clean. This test is synthetic and fit-free;
+no S4 test replay, fit, Julia probe, receipt, qualification, engine/generic/
+seal change, push, merge, or release ran. A future live replay still requires
+fresh approval.
+
 ## Team Learning
 
 Use the actual `ListReporter` result objects as a second channel beside raw

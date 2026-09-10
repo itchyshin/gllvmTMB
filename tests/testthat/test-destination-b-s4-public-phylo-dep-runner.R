@@ -230,6 +230,59 @@ test_that("S4 failed-attempt diagnostic normalizes captured conditions before wr
   expect_identical(readBin(failed_path, what = "raw", n = file.info(failed_path)$size), first_bytes)
 })
 
+test_that("S4 failed-attempt diagnostic recursively normalizes test-tab conditions", {
+  environment <- new.env(parent = baseenv())
+  withr::local_envvar(GLLVM_S4_PUBLIC_PHYLO_DEP_DEFINE_ONLY = "1")
+  source(testthat::test_path("run-destination-b-s4-public-phylo-dep-isolated.R"), local = environment)
+
+  receipt_path <- tempfile("s4-test-tab-condition-receipt-", fileext = ".json")
+  reservation <- environment$s4_public_phylo_dep_reserve_failed_diagnostic_path(receipt_path)
+  failed_path <- reservation$path
+  withr::defer(unlink(c(receipt_path, reservation$namespace), recursive = TRUE))
+  captured <- structure(
+    list(message = "synthetic test-tab condition", call = quote(synthetic_s4_tab_failure())),
+    class = c("synthetic_s4_tab_condition", "error", "condition")
+  )
+  tab <- data.frame(
+    context = c("S4 public phylo_dep", "S4 public phylo_dep"),
+    test = c("generic engine remains closed", "paired endpoints"),
+    failed = c(0L, 1L), skipped = c(0L, 0L), error = c(0L, 0L), warning = c(0L, 0L),
+    stringsAsFactors = FALSE
+  )
+  tab$details <- I(list(list(expectation = captured), list(note = "second selected test")))
+  contains_condition <- function(value) {
+    inherits(value, "condition") ||
+      (is.list(value) && any(vapply(value, contains_condition, logical(1))))
+  }
+  expect_true(contains_condition(as.list(tab)))
+  normalized_tab <- environment$s4_public_phylo_dep_json_safe(as.list(tab))
+  expect_false(contains_condition(normalized_tab))
+  provenance <- list(
+    sealed_build = list(path = "/sealed.json", sha256 = "seal-sha"),
+    r_runtime = list(root = "/r", commit = "r-commit"),
+    gllvm_runtime = list(root = "/gllvm", commit = "g-commit"),
+    julia_probe = list(executable = "/julia", executable_sha256 = "julia-sha"),
+    selected_test_expressions = c(generic = "test_that('generic', {})", live = "test_that('live', {})")
+  )
+
+  expect_error(
+    environment$s4_public_phylo_dep_retain_failed_attempt(
+      tab = tab, raw_output = "unchanged raw testthat output", reporter_details = list(),
+      provenance = provenance, receipt_path = receipt_path, failed_path = failed_path
+    ),
+    "did not pass cleanly"
+  )
+  diagnostic <- jsonlite::read_json(failed_path, simplifyVector = FALSE)
+  expect_identical(diagnostic$test_tab$test, as.list(tab$test))
+  expect_identical(diagnostic$test_tab$failed, as.list(as.integer(tab$failed)))
+  expect_identical(diagnostic$test_counts$failed, 1L)
+  detail <- diagnostic$test_tab$details[[1L]]$expectation
+  expect_identical(detail$message, "synthetic test-tab condition")
+  expect_identical(detail$class, as.list(class(captured)))
+  expect_identical(detail$call, "synthetic_s4_tab_failure()")
+  expect_false(inherits(detail, "condition"))
+})
+
 test_that("S4 runner pre-reserves a failure namespace without colliding with a receipt", {
   environment <- new.env(parent = baseenv())
   withr::local_envvar(GLLVM_S4_PUBLIC_PHYLO_DEP_DEFINE_ONLY = "1")

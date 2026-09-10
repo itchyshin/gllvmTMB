@@ -1,9 +1,10 @@
 .temporal_abort <- function(message, ...,
                             action = "See {.help [temporal_latent()](gllvmTMB::temporal_latent)} for the admitted temporal workflow.") {
+  caller <- parent.frame()
   if (is.character(message) && !any(names(message) %in% c(">", "*"))) {
     message <- c(message, ">" = action)
   }
-  cli::cli_abort(message, ...)
+  cli::cli_abort(message, ..., .envir = caller)
 }
 
 .temporal_marker <- function(formula, time, mode, d = NULL, unique = FALSE,

@@ -2,7 +2,7 @@
   "kind": "destination_b_s4_phylo_dep_build_seal",
   "schema": 1,
   "status": "sealed_build_only_no_fit_or_receipt",
-  "scope": "S4 public phylo_dep adapter/test snapshot only; not a qualification, replay, fit, or receipt",
+  "scope": "S4 public phylo_dep adapter/test DLL build identity only; not a fully reproducible runtime, qualification, replay, fit, or receipt",
   "source_snapshot": {
     "commit": "8889d8a4d2d88e1cfd60f7b644eb79e71a7346f4",
     "commit_short": "8889d8a4d",
@@ -41,7 +41,7 @@
     ],
     "isolated_library": {
       "path": "docs/dev-log/artifacts/2026-09-10-destination-b-s4-phylo-dep-build-seal/isolated-library",
-      "semantics": "The sealed library is prepended to .libPaths() only for artifact loading. It is not a user library, default library, or source-rebuild substitute."
+      "semantics": "The sealed library is prepended to .libPaths() only for artifact loading. It is not a user library, default library, source-rebuild substitute, or a seal of dependency binaries."
     },
     "toolchain": {
       "r_version": "R version 4.6.0 (2026-04-24)",
@@ -70,6 +70,7 @@
     "require_exact_archive_and_selected_source": true,
     "require_exact_s4_build_artifact": true,
     "allow_source_rebuild_as_qualification": false,
+    "claim_boundary": "DLL build identity only; dependency binaries are not sealed, so this is not a fully reproducible runtime.",
     "s3b_frozen_manifest": "retained separately and not selected by this S4 runner",
     "no_s4_fit_or_receipt_was_run": true
   }

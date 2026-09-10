@@ -9,23 +9,28 @@ test_that("S4 runner selects its own immutable build seal", {
   repository <- normalizePath(testthat::test_path("..", ".."), mustWork = TRUE)
   expect_true(is.function(environment$s4_public_phylo_dep_s4_seal_path))
   expect_true(is.function(environment$s4_public_phylo_dep_read_s4_seal))
+  expect_true(is.function(environment$s4_public_phylo_dep_s4_seal_sha256))
+  expect_true(is.function(environment$s4_public_phylo_dep_validate_s4_runtime_commit))
   expect_match(
     environment$s4_public_phylo_dep_s4_seal_path(repository),
     "destination-b-s4-phylo-dep-build-seal.json$"
   )
   seal <- environment$s4_public_phylo_dep_read_s4_seal(repository)
+  expect_identical(environment$s4_public_phylo_dep_s4_seal_sha256(),
+                   "a16bf7ecae725c8e3fb7282c7ae6b63b7f648cf052da8f46556a1ff7b1d61d9e")
   expect_identical(seal$binary_identity$source_dll$sha256,
                    "eba1d3c5d5c26303f0e730a87ee70a627eb508c35f9419610fad08e37ccbb2f8")
-  forged <- tempfile(fileext = ".json")
-  withr::defer(unlink(forged))
   payload <- jsonlite::read_json(environment$s4_public_phylo_dep_s4_seal_path(repository), simplifyVector = FALSE)
-  payload$source_snapshot$archive$sha256 <- paste(rep("0", 64), collapse = "")
-  jsonlite::write_json(payload, forged, auto_unbox = TRUE)
-  expect_error(environment$s4_public_phylo_dep_read_s4_seal(repository, forged), "source archive identity mismatch")
+  payload$source_snapshot$selected_source[[1L]]$sha256 <- paste(rep("0", 64), collapse = "")
+  expect_error(environment$s4_public_phylo_dep_validate_s4_seal_payload(payload), "selected-source hash mismatch")
   payload <- jsonlite::read_json(environment$s4_public_phylo_dep_s4_seal_path(repository), simplifyVector = FALSE)
-  payload$binary_identity$source_dll$uuid <- "00000000-0000-0000-0000-000000000000"
-  jsonlite::write_json(payload, forged, auto_unbox = TRUE)
-  expect_error(environment$s4_public_phylo_dep_read_s4_seal(repository, forged), "source DLL identity mismatch")
+  payload$source_snapshot$commit <- paste(rep("0", 40), collapse = "")
+  expect_error(environment$s4_public_phylo_dep_validate_s4_seal_payload(payload), "source commit mismatch")
+  expect_error(environment$s4_public_phylo_dep_validate_s4_runtime_commit(list(commit = "not-the-sealed-commit"), seal), "current source commit mismatch")
+  alternate <- tempfile(fileext = ".json")
+  withr::defer(unlink(alternate))
+  file.copy(environment$s4_public_phylo_dep_s4_seal_path(repository), alternate)
+  expect_error(environment$s4_public_phylo_dep_read_s4_seal(repository, alternate), "canonical path")
 })
 
 test_that("S4 public phylo_dep receipt runner uses ASCII Julia string literals", {

@@ -54042,3 +54042,17 @@ candidate evidence is reused from this pre-integration run.
   then GREEN with archive-hash and DLL-UUID forgery failures exercised.
   No S4 fit or receipt ran. The retained S3b frozen manifest is unchanged and
   is not selected by the S4 runner.
+
+## 2026-09-10 — Destination B S4 DLL build-identity seal P0 remediation
+
+- The runner now pins the canonical S4 seal JSON SHA-256 and intended source
+  commit in code. It rejects altered selected-source hashes, a stale seal
+  commit, an alternate coherent seal path, and a runtime source commit that
+  differs from the intended snapshot before any Julia probe or test execution.
+- This is explicitly a local ARM DLL build identity seal, not a fully
+  reproducible runtime: dependency binaries are not sealed. The focused
+  contract test passed after the new failures were added. No fit, receipt, or
+  qualification action ran.
+- `git diff --check` is run only over authored runner/test/docs changes. Raw
+  retained compiler output and the installed-package payload are excluded so
+  their original bytes remain evidence.

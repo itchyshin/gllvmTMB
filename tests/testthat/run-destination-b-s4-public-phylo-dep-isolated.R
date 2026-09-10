@@ -9,6 +9,13 @@ s4_public_phylo_dep_targets <- function() c(
   "phylo_cov[2,2]", "residual_var_shared[1]", "residual_var_shared[2]"
 )
 
+s4_public_phylo_dep_expected_s4_source_commit <- function() "8889d8a4d2d88e1cfd60f7b644eb79e71a7346f4"
+s4_public_phylo_dep_s4_seal_sha256 <- function() "a16bf7ecae725c8e3fb7282c7ae6b63b7f648cf052da8f46556a1ff7b1d61d9e"
+s4_public_phylo_dep_expected_s4_selected_source <- function() c(
+  "R/julia-bridge.R" = "cb3b5cd2f7017deeaea664c593da95e044a2a4592128212e6176fe3f39a2c9a2",
+  "tests/testthat/test-julia-phylo-rr-bridge.R" = "409961775de390c48eb7b2185f808e4091298c7febbdfe4b058ef370e3632f72"
+)
+
 s4_public_phylo_dep_s4_seal_path <- function(root = getwd()) {
   normalizePath(file.path(root, "docs", "dev-log", "artifacts",
                           "2026-09-10-destination-b-s4-phylo-dep-build-seal",
@@ -26,14 +33,38 @@ s4_public_phylo_dep_dll_identity <- function(path) {
        uuid = uuid, bytes = unname(file.info(path)$size))
 }
 
-s4_public_phylo_dep_read_s4_seal <- function(source_root, seal_path = s4_public_phylo_dep_s4_seal_path(source_root)) {
-  source_root <- normalizePath(source_root, mustWork = TRUE)
-  seal_path <- normalizePath(seal_path, mustWork = TRUE)
-  seal <- jsonlite::read_json(seal_path, simplifyVector = FALSE)
+s4_public_phylo_dep_validate_s4_seal_payload <- function(seal) {
   required <- c("kind", "schema", "status", "source_snapshot", "build", "binary_identity", "contract")
   if (!all(required %in% names(seal)) || !identical(seal$kind, "destination_b_s4_phylo_dep_build_seal") || !identical(seal$schema, 1L) || !identical(seal$status, "sealed_build_only_no_fit_or_receipt") || !isTRUE(seal$contract$require_exact_archive_and_selected_source) || !isTRUE(seal$contract$require_exact_s4_build_artifact) || !identical(seal$contract$allow_source_rebuild_as_qualification, FALSE)) {
     stop("S4 build seal has an invalid contract", call. = FALSE)
   }
+  if (!identical(seal$source_snapshot$commit, s4_public_phylo_dep_expected_s4_source_commit())) {
+    stop("S4 build seal source commit mismatch", call. = FALSE)
+  }
+  selected <- vapply(seal$source_snapshot$selected_source, function(entry) entry$sha256, character(1))
+  names(selected) <- vapply(seal$source_snapshot$selected_source, function(entry) entry$path, character(1))
+  if (!identical(selected, s4_public_phylo_dep_expected_s4_selected_source())) {
+    stop("S4 build seal selected-source hash mismatch", call. = FALSE)
+  }
+  invisible(seal)
+}
+
+s4_public_phylo_dep_validate_s4_runtime_commit <- function(snapshot, seal) {
+  expected <- s4_public_phylo_dep_expected_s4_source_commit()
+  if (!identical(snapshot$commit, expected) || !identical(snapshot$commit, seal$source_snapshot$commit)) {
+    stop("S4 build seal current source commit mismatch", call. = FALSE)
+  }
+  invisible(snapshot)
+}
+
+s4_public_phylo_dep_read_s4_seal <- function(source_root, seal_path = s4_public_phylo_dep_s4_seal_path(source_root)) {
+  source_root <- normalizePath(source_root, mustWork = TRUE)
+  canonical_path <- s4_public_phylo_dep_s4_seal_path(source_root)
+  seal_path <- normalizePath(seal_path, mustWork = TRUE)
+  if (!identical(seal_path, canonical_path)) stop("S4 build seal must use its canonical path", call. = FALSE)
+  if (!identical(digest::digest(file = seal_path, algo = "sha256"), s4_public_phylo_dep_s4_seal_sha256())) stop("S4 build seal bytes do not match the pinned seal", call. = FALSE)
+  seal <- jsonlite::read_json(seal_path, simplifyVector = FALSE)
+  s4_public_phylo_dep_validate_s4_seal_payload(seal)
   archive <- file.path(source_root, seal$source_snapshot$archive$path)
   if (!file.exists(archive) || !identical(digest::digest(file = archive, algo = "sha256"), seal$source_snapshot$archive$sha256) || !identical(unname(file.info(archive)$size), as.numeric(seal$source_snapshot$archive$bytes))) {
     stop("S4 build seal source archive identity mismatch", call. = FALSE)
@@ -135,6 +166,7 @@ s4_public_phylo_dep_main <- function() {
   r_before <- s4_public_phylo_dep_snapshot(getwd(), "gllvmTMB source")
   julia_before <- s4_public_phylo_dep_snapshot(project, "GLLVM.jl source")
   s4_seal <- s4_public_phylo_dep_read_s4_seal(getwd())
+  s4_public_phylo_dep_validate_s4_runtime_commit(r_before, s4_seal)
   clean_probe <- s4_public_phylo_dep_clean_julia_probe(project, environment, Sys.getenv("GLLVM_S4_JULIA_HOME"))
   if ("gllvmTMB" %in% loadedNamespaces()) stop("S4 sealed load requires no preloaded gllvmTMB namespace", call. = FALSE)
   library("gllvmTMB", lib.loc = s4_seal$isolated_library, character.only = TRUE)

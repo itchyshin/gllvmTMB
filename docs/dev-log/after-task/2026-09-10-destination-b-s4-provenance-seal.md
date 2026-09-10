@@ -2,8 +2,8 @@
 
 ## Goal
 
-Seal the current committed S4 adapter/test source and its locally built R DLL
-without reusing the retained S3b binary identity or running an S4 fit.
+Seal the selected committed S4 adapter/test source and its locally built R DLL
+identity without reusing the retained S3b binary identity or running an S4 fit.
 
 ## Implemented
 
@@ -11,9 +11,12 @@ without reusing the retained S3b binary identity or running an S4 fit.
 contains a Git archive of clean commit `8889d8a4d2d88e1cfd60f7b644eb79e71a7346f4`,
 the isolated installation, both build attempt records, and an immutable JSON
 seal. The S4 runner now reads that seal explicitly. Before any runtime work it
-requires the archive and selected adapter/test hashes plus the sealed source
-and loaded DLL SHA-256, Mach-O UUID, and size. It loads from the sealed
-isolated library. The old S3b frozen manifest remains retained but unselected.
+requires the pinned seal bytes, canonical seal path, intended source commit,
+archive and selected adapter/test hashes, plus the sealed source and loaded DLL
+SHA-256, Mach-O UUID, and size. It loads from the sealed isolated library. The
+old S3b frozen manifest remains retained but unselected. This is a DLL build
+identity seal, not a fully reproducible runtime: dependency binaries are not
+sealed.
 
 ## Files Changed
 
@@ -41,8 +44,9 @@ remedy are both retained under the seal directory.
 ## Checks Run
 
 `Rscript --vanilla -e 'devtools::test_active_file("tests/testthat/test-destination-b-s4-public-phylo-dep-runner.R", reporter = "summary")'`
-passed 22 expectations with no failures, errors, or warnings. `git diff --check`
-is recorded in the final commit check.
+passed with no failures, errors, or warnings. `git diff --check`
+is clean for authored runner/test/docs paths; raw retained compiler and
+installed-package evidence is excluded because modifying it would alter evidence.
 
 ## Parity, JET, Allocs, Aqua
 
@@ -52,6 +56,7 @@ fit path was exercised.
 ## Remaining Risks
 
 - The seal authenticates this local ARM macOS build only.
+- Dependency binaries are not sealed; this is not a fully reproducible runtime.
 - It is build identity, not S4 qualification. No fit, receipt, recovery,
   coverage, generic-engine admission, or parity claim is created.
 

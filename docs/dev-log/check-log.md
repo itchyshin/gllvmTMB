@@ -53986,5 +53986,9 @@ candidate evidence is reused from this pre-integration run.
   it binds the final runner source. No R/TMB likelihood/C++, formula grammar,
   public API, generic engine route, or Julia source changed.
 - Focused runner-contract test and the clean-source, manifest-bound 48-check
-  replay are recorded in the accompanying after-task report. This remains
+  replay passed in 25.3 seconds. The binding receipt is
+  `2026-09-10-destination-b-s3b-native-pairs-active-gllvm-b6bd78bb-r2.json`
+  (SHA-256 `bf8aa6438d97430808df7aa49111cc3c64a01c5ce3411da00e12c3698d5dd351`),
+  against clean GLLVM.jl `b6bd78bb`; tally `48/0/0/0/0`
+  (passed/failed/skipped/errors/warnings). This remains
   three-cell closed-adapter evidence, not S3b/S4/generic-engine qualification.

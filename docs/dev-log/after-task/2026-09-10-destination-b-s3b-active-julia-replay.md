@@ -39,8 +39,24 @@ No R/TMB likelihood, C++, formula grammar, public API, generic
 
 ## 4. Checks Run
 
-Pending final receipt replay. The measured historical replay was 27.4 seconds,
-so the focused live check is below the 30-minute campaign gate.
+```sh
+Rscript --vanilla -e 'devtools::test_active_file("tests/testthat/test-destination-b-s3b-native-pairs-runner.R", reporter = "summary")'
+# 16 expectations; no failures, errors, warnings, or skips
+
+GLLVM_S3B_LIVE_ADAPTER_TESTS=1 \\
+  GLLVM_DESTINATION_B_PROJECT=/private/tmp/destination-b-b1-integration-20260910 \\
+  GLLVM_S3B_JULIA_HOME=/Users/z3437171/.juliaup/bin \\
+  GLLVM_S3B_RECEIPT_PATH=docs/dev-log/artifacts/2026-09-10-destination-b-s3b-native-pairs-active-gllvm-b6bd78bb-r2.json \\
+  Rscript --vanilla tests/testthat/run-destination-b-s3b-native-pairs-isolated.R
+# 48 passed; 0 failed, skipped, errors, or warnings; 25.3 s
+```
+
+The live command required the normal Julia manifest-usage pidfile outside the
+filesystem sandbox. It ran only after source snapshots passed and published a
+new hard-linked receipt. SHA-256:
+`bf8aa6438d97430808df7aa49111cc3c64a01c5ce3411da00e12c3698d5dd351`.
+It binds clean GLLVM.jl `b6bd78bb0fe094b404a963d0fd65e93809cf5bd7` and runner
+SHA-256 `ce405eef72abfe0352d174ae2102a20803cb7f834f5c807c56339567c11f5cfa`.
 
 ## 5. Tests of the Tests
 
@@ -49,7 +65,10 @@ unapproved path. The write-once receipt test separately rejects replacement.
 
 ## 6. Consistency Audit
 
-Pending final receipt replay and focused provenance scan.
+`rg -n "engine = \"julia\"|generic engine|stored intervals|recovery|coverage|0\\.7 parity|FRK" R/julia-bridge.R docs/dev-log/after-task/2026-09-10-destination-b-s3b-active-julia-replay.md docs/dev-log/artifacts/2026-09-10-destination-b-s3b-native-pairs-active-gllvm-b6bd78bb-r2.json`
+
+Verdict: the runner receipt and this report consistently retain generic-engine,
+private-adapter-interval, recovery, coverage, 0.7-parity, and FRK exclusions.
 
 ## 7. Roadmap Tick
 
@@ -64,7 +83,8 @@ push, merge, release, or registry action was taken.
 
 The first replay necessarily predates the allowlist entry needed for later
 clean-source replays. Its immutable record is preserved, and a second receipt
-is used rather than mutating it.
+was used rather than mutating it. The sandbox denied Julia's ordinary
+manifest-usage pidfile; an approved outside-sandbox run passed unchanged.
 
 ## 9. Team Learning (per AGENTS.md Standing Review Roles)
 

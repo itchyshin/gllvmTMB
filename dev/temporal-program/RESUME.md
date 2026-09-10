@@ -5,8 +5,9 @@
 - Worktree: `/private/tmp/gllvmTMB-temporal-program`
 - Branch: `codex/temporal-program-20260909`
 - Current branch includes the simulation repair, bounded lifecycle helpers, the
-  retained kernel source pair (`54904175f`), and an uncommitted fixed-phylo
-  source-pair extension under review.
+  retained kernel source pair (`54904175f`), fixed phylogenetic and animal
+  source-pair extensions, and the local temporal--spatial AR1 cell
+  (`b18456b53`).
 - Baseline local temporal simulation repair: `f227e7801`
 - Additive source contract: `da718f8c6`
 - Source-pair previews were deliberately reverted at `a2f71fd88`,
@@ -22,14 +23,13 @@ Rscript --vanilla dev/temporal-program/verify.R lifecycle
 Rscript --vanilla dev/temporal-sixth-source/verify.R recovery
 ```
 
-All four commands emit their documented success marker locally. The retained
+The `plan`, `simulation`, and `lifecycle` commands were rerun after the
+spatial change and emit their documented success markers. The retained base
 recovery receipt contains all 80 fixed seed--cell attempts; the two
 latent-plus-Psi cells retain two non-success terminals each and still meet the
 frozen minimum of eight successes. The ignored ledger has G0, G1, and G4 met;
 G2 (three-OS CI) and G5 (closeout) remain unmet. G3 has retained local kernel
-evidence and a pending phylogenetic recovery gate. No `temporal_*` term can
-currently be combined publicly with spatial or animal terms, and only the
-replicated AR1 diagonal kernel/phylogenetic cells are admitted.
+evidence and a pending phylogenetic recovery gate.
 
 ## Kernel result (2026-09-09)
 
@@ -68,14 +68,29 @@ minutes, pushing the full campaign past the 30-minute local boundary; the
 runner was stopped and checkpoints every completed attempt. Resume only after
 separate compute approval, without replacing any seed or relaxing thresholds.
 
+## Spatial result (2026-09-09)
+
+The admitted spatial cell is replicated AR1 `temporal_indep()` plus exactly
+one fixed in-keyword `spatial_indep()` term. It has an independent dense
+additive likelihood/gradient oracle, product-covariance control, long/wide
+syntax, update replay, a proportional-basis refusal, and unconditional SPDE
+field redraw checked against dense covariance moments. Its source-pair recovery
+fixture has not yet been declared or timed, so this is local implementation
+evidence only.
+
+## Animal result (2026-09-09)
+
+The fixed `animal_indep()` cell has dense/product-control, source-provenance,
+long/wide/update, and simulation evidence. Its retained 160-series campaign
+completed, but the unchanged strict gradient gate failed in 3/10, 3/10, and
+2/10 fits for persistence `-.4`, `0`, and `.6`; it remains partial.
+
 ## Next bounded slice
 
-Obtain explicit authorization to push this branch solely for CI, then inspect
-Linux/macOS/Windows results. Do not create a pull request, merge, or release as
-part of that step. When the phylogenetic campaign finishes, add it to the
-fail-closed verifier only if its frozen result passes. In parallel, keep every temporal-plus-source parser route
-closed until one source pair has passed its own additive dense-oracle,
-composition-simulation, lifecycle, and retained-recovery gates.
+Obtain separate authorization for the unchanged remaining 22 phylogenetic
+recovery fits on a DRAC Slurm array, with one BLAS thread per job and every
+result retained. Do not create a pull request, merge, release, or push. A
+separate CI-only authorization remains necessary before cross-platform claims.
 
 ## Do not claim
 

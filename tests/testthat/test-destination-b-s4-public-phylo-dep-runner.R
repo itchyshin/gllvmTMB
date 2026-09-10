@@ -2,6 +2,16 @@ test_that("S4 public phylo_dep receipt runner is present", {
   expect_true(file.exists(testthat::test_path("run-destination-b-s4-public-phylo-dep-isolated.R")))
 })
 
+test_that("S4 public phylo_dep receipt runner uses ASCII Julia string literals", {
+  environment <- new.env(parent = baseenv())
+  withr::local_envvar(GLLVM_S4_PUBLIC_PHYLO_DEP_DEFINE_ONLY = "1")
+  withr::local_options(useFancyQuotes = TRUE)
+  source(testthat::test_path("run-destination-b-s4-public-phylo-dep-isolated.R"), local = environment)
+  literal <- environment$s4_public_phylo_dep_julia_literal(tempdir())
+  expect_identical(literal, paste0('"', normalizePath(tempdir()), '"'))
+  expect_false(grepl("[\u201c\u201d]", literal))
+})
+
 test_that("S4 public phylo_dep receipt refuses malformed endpoints and duplicate output", {
   environment <- new.env(parent = baseenv())
   withr::local_envvar(GLLVM_S4_PUBLIC_PHYLO_DEP_DEFINE_ONLY = "1")

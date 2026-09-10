@@ -63,11 +63,18 @@ s4_public_phylo_dep_write_once <- function(payload, path) {
   invisible(path)
 }
 
+s4_public_phylo_dep_julia_literal <- function(path) {
+  ## `dQuote()` follows R's user-facing fancy-quote option, whereas this value
+  ## is embedded in Julia source passed through a shell. JSON string syntax is
+  ## valid Julia syntax and is always ASCII-quoted.
+  as.character(jsonlite::toJSON(normalizePath(path, mustWork = TRUE), auto_unbox = TRUE))
+}
+
 s4_public_phylo_dep_clean_julia_probe <- function(project, environment, julia_home) {
   julia <- file.path(normalizePath(julia_home, mustWork = TRUE), "julia")
   if (!file.exists(julia)) julia <- file.path(normalizePath(julia_home, mustWork = TRUE), "bin", "julia")
   if (!file.exists(julia)) stop("GLLVM_S4_JULIA_HOME does not identify a Julia executable", call. = FALSE)
-  code <- sprintf("import Pkg; Pkg.activate(%s); using LogExpFunctions; isdefined(LogExpFunctions, :loglogistic) || error(\"missing loglogistic\"); using GLLVM; println(\"S4_JULIA_ENVIRONMENT_CLEAN\"); println(\"S4_ACTIVE_PROJECT=\" * Base.active_project()); println(\"S4_PACKAGE_ROOT=\" * Base.pkgdir(GLLVM))", dQuote(normalizePath(environment, mustWork = TRUE)))
+  code <- sprintf("import Pkg; Pkg.activate(%s); using LogExpFunctions; isdefined(LogExpFunctions, :loglogistic) || error(\"missing loglogistic\"); using GLLVM; println(\"S4_JULIA_ENVIRONMENT_CLEAN\"); println(\"S4_ACTIVE_PROJECT=\" * Base.active_project()); println(\"S4_PACKAGE_ROOT=\" * Base.pkgdir(GLLVM))", s4_public_phylo_dep_julia_literal(environment))
   output <- system2(julia, c("--startup-file=no", "--project", "-e", code), stdout = TRUE, stderr = TRUE)
   if (!is.null(attr(output, "status")) || !any(grepl("S4_JULIA_ENVIRONMENT_CLEAN", output, fixed = TRUE)) || any(grepl("LogExpFunctions.*(Error|error|precompile)|loglogistic not defined", output))) stop("Julia environment is not qualified: LogExpFunctions extension load was not clean", call. = FALSE)
   active <- sub("^S4_ACTIVE_PROJECT=", "", output[grepl("^S4_ACTIVE_PROJECT=", output)])

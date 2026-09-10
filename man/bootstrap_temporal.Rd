@@ -14,7 +14,9 @@ bootstrap_temporal(object, n_boot = 100L, seed = NULL)
 \item{seed}{Optional random seed.}
 }
 \value{
-A data frame with one row per attempted refit.
+A data frame with one row per attempted refit. \code{seed} records the
+exact unconditional response draw; failed and non-converged refits retain
+their convergence code and error text.
 }
 \description{
 Draws unconditional temporal responses and refits the saved public model

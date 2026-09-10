@@ -1,7 +1,11 @@
-source(testthat::test_path("..", "..", "dev", "temporal-program", "remote",
-  "phylo-damped-newton-common.R"), local = TRUE)
+.temporal_program_root <- .temporal_program_repo_root()
+if (!is.null(.temporal_program_root)) {
+  source(file.path(.temporal_program_root, "dev", "temporal-program", "remote",
+    "phylo-damped-newton-common.R"), local = TRUE)
+}
 
 test_that("damped Newton curvature accepts a stable exact quadratic", {
+  skip_if(is.null(.temporal_program_root), "temporal programme files are unavailable in an installed check")
   A <- matrix(c(4, 1, 1, 3), 2, 2)
   theta <- c(alpha = 1, beta = -2)
   gradient <- function(x) drop(A %*% x)
@@ -17,6 +21,7 @@ test_that("damped Newton curvature accepts a stable exact quadratic", {
 })
 
 test_that("damped Newton curvature rejects disagreement and nonpositive curvature", {
+  skip_if(is.null(.temporal_program_root), "temporal programme files are unavailable in an installed check")
   theta <- c(alpha = .4, beta = -.7)
   indefinite <- temporal_phylo_damped_newton_curvature(theta, function(x) c(x[[1L]], -x[[2L]]))
   expect_false(indefinite$eligible)
@@ -30,6 +35,7 @@ test_that("damped Newton curvature rejects disagreement and nonpositive curvatur
 })
 
 test_that("damped Newton chooses the first Armijo-eligible step", {
+  skip_if(is.null(.temporal_program_root), "temporal programme files are unavailable in an installed check")
   baseline <- 10
   direction <- c(a = -1)
   gradient <- c(a = 2)
@@ -49,6 +55,7 @@ test_that("damped Newton chooses the first Armijo-eligible step", {
 })
 
 test_that("damped Newton does not mutate its supplied baseline", {
+  skip_if(is.null(.temporal_program_root), "temporal programme files are unavailable in an installed check")
   theta <- c(alpha = 1, beta = -2)
   snapshot <- theta
   result <- temporal_phylo_damped_newton_select_step(
@@ -62,6 +69,7 @@ test_that("damped Newton does not mutate its supplied baseline", {
 })
 
 test_that("conditional eligibility fails closed on invalid score or Hessian", {
+  skip_if(is.null(.temporal_program_root), "temporal programme files are unavailable in an installed check")
   good <- temporal_phylo_damped_newton_inner_eligibility(
     score = c(1e-10, -2e-10), hessian = diag(2), fixed_state_ok = TRUE
   )
@@ -81,6 +89,7 @@ test_that("conditional eligibility fails closed on invalid score or Hessian", {
 })
 
 test_that("damped Newton plan retains the three failures and positional controls", {
+  skip_if(is.null(.temporal_program_root), "temporal programme files are unavailable in an installed check")
   plan <- temporal_phylo_damped_newton_plan()
   expect_identical(plan$role, c(
     "retained_failure", "retained_failure", "retained_failure",
@@ -94,16 +103,18 @@ test_that("damped Newton plan retains the three failures and positional controls
 })
 
 test_that("runner asks TMB to report from its conditional mode", {
-  runner <- readLines(testthat::test_path("..", "..", "dev", "temporal-program", "remote",
+  skip_if(is.null(.temporal_program_root), "temporal programme files are unavailable in an installed check")
+  runner <- readLines(file.path(.temporal_program_root, "dev", "temporal-program", "remote",
     "phylo-damped-newton.R"), warn = FALSE)
   expect_true(any(grepl("report <- obj\\$report\\(\\)", runner)))
   expect_false(any(grepl("report <- obj\\$report\\(theta\\)", runner)))
-  expect_silent(parse(file = testthat::test_path("..", "..", "dev", "temporal-program", "remote",
+  expect_silent(parse(file = file.path(.temporal_program_root, "dev", "temporal-program", "remote",
     "phylo-damped-newton.R")))
 })
 
 test_that("DRAC envelope has the exact six-cell plan and a submit interlock", {
-  root <- normalizePath(testthat::test_path("..", ".."), mustWork = TRUE)
+  skip_if(is.null(.temporal_program_root), "temporal programme files are unavailable in an installed check")
+  root <- .temporal_program_root
   task <- file.path(root, "dev", "temporal-program", "remote", "phylo-damped-newton-task.R")
   old <- setwd(root)
   on.exit(setwd(old), add = TRUE)

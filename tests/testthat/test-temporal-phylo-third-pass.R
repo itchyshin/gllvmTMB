@@ -1,5 +1,7 @@
 test_that("the temporal phylogenetic third-pass candidate is frozen", {
-  source(testthat::test_path("..", "..", "dev", "temporal-program", "remote",
+  root <- .temporal_program_repo_root()
+  skip_if(is.null(root), "temporal programme files are unavailable in an installed check")
+  source(file.path(root, "dev", "temporal-program", "remote",
     "phylo-third-pass-common.R"), local = TRUE)
   controls <- temporal_phylo_third_pass_controls()
 
@@ -13,7 +15,9 @@ test_that("the temporal phylogenetic third-pass candidate is frozen", {
 })
 
 test_that("third-pass qualification plan retains failures and fixed controls", {
-  source(testthat::test_path("..", "..", "dev", "temporal-program", "remote",
+  root <- .temporal_program_repo_root()
+  skip_if(is.null(root), "temporal programme files are unavailable in an installed check")
+  source(file.path(root, "dev", "temporal-program", "remote",
     "phylo-third-pass-common.R"), local = TRUE)
   plan <- temporal_phylo_third_pass_plan()
 
@@ -32,7 +36,9 @@ test_that("third-pass qualification plan retains failures and fixed controls", {
 })
 
 test_that("third-pass receipt requires every exact continuation diagnostic", {
-  source(testthat::test_path("..", "..", "dev", "temporal-program", "remote",
+  root <- .temporal_program_repo_root()
+  skip_if(is.null(root), "temporal programme files are unavailable in an installed check")
+  source(file.path(root, "dev", "temporal-program", "remote",
     "phylo-third-pass-common.R"), local = TRUE)
   receipt <- data.frame(
     role = "passing_control", phi = -.4, seed = 2609181L,
@@ -49,7 +55,9 @@ test_that("third-pass receipt requires every exact continuation diagnostic", {
 })
 
 test_that("third-pass adjudication names every failed gate", {
-  source(testthat::test_path("..", "..", "dev", "temporal-program", "remote",
+  root <- .temporal_program_repo_root()
+  skip_if(is.null(root), "temporal programme files are unavailable in an installed check")
+  source(file.path(root, "dev", "temporal-program", "remote",
     "phylo-third-pass-common.R"), local = TRUE)
   controls <- temporal_phylo_third_pass_controls()
   baseline <- list(

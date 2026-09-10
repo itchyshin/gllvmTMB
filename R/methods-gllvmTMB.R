@@ -17,12 +17,12 @@ update.gllvmTMB_multi <- function(object, ..., evaluate = TRUE) {
   }
   call <- object$call_wide %||% object$call
   if (is.null(call) || !is.call(call)) {
-    cli::cli_abort("This temporal fit does not retain a public call for {.fn update}.")
+    cli::cli_abort(c("This temporal fit does not retain a public call for {.fn update}.", ">" = "Refit from the original temporal formula and data."))
   }
   dots <- list(...)
   if (length(dots)) {
     if (is.null(names(dots)) || any(!nzchar(names(dots)))) {
-      cli::cli_abort("Temporal {.fn update} accepts named argument overrides only.")
+      cli::cli_abort(c("Temporal {.fn update} accepts named argument overrides only.", ">" = "Use named formula, data, or fitting-argument overrides."))
     }
     for (nm in names(dots)) {
       call[[nm]] <- dots[[nm]]

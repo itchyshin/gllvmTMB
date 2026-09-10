@@ -1143,7 +1143,7 @@ gllvmTMB <- function(
   if (isTRUE(temporal_spec$active)) {
     if (!identical(engine, "tmb") || isTRUE(REML) || !identical(estimator, "ml") ||
         !identical(family$family, "gaussian") || !identical(family$link, "identity")) {
-      cli::cli_abort("{.fn temporal_latent} currently requires the native Gaussian identity-link ML route.")
+      cli::cli_abort(c("{.fn temporal_latent} currently requires the native Gaussian identity-link ML route.", ">" = "Use the Gaussian identity-link ML temporal workflow."))
     }
     if (!identical(control$integration %||% "laplace", "laplace") ||
         !isFALSE(control$aghq %||% FALSE)) {
@@ -1185,7 +1185,7 @@ gllvmTMB <- function(
         function(x) length(unique(x))
       )
       if (any(unit_per_unit_obs != 1L)) {
-        cli::cli_abort("Each {.arg unit_obs} level must be nested inside one {.arg unit} level.")
+        cli::cli_abort(c("Each {.arg unit_obs} level must be nested inside one {.arg unit} level.", ">" = "Use a unit_obs identifier nested within unit."))
       }
     }
   }

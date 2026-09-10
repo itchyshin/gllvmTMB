@@ -1,25 +1,33 @@
+.temporal_abort <- function(message, ...,
+                            action = "See {.help [temporal_latent()](gllvmTMB::temporal_latent)} for the admitted temporal workflow.") {
+  if (is.character(message) && !any(names(message) %in% c(">", "*"))) {
+    message <- c(message, ">" = action)
+  }
+  cli::cli_abort(message, ...)
+}
+
 .temporal_marker <- function(formula, time, mode, d = NULL, unique = FALSE,
                              structure = "ar1", replicate = NULL) {
   if (!is.call(formula) || !identical(formula[[1L]], as.name("|")) ||
       length(formula) != 3L) {
-    cli::cli_abort("A temporal covariance term requires a formula of the form {.code 0 + trait | series}.")
+    .temporal_abort("A temporal covariance term requires a formula of the form {.code 0 + trait | series}.")
   }
   if (!is.name(time)) {
-    cli::cli_abort("{.arg time} must be a bare column name.")
+    .temporal_abort("{.arg time} must be a bare column name.")
   }
   if (!identical(replicate, quote(NULL)) && !is.name(replicate)) {
-    cli::cli_abort("{.arg replicate} must be NULL or a bare column name.")
+    .temporal_abort("{.arg replicate} must be NULL or a bare column name.")
   }
   if (identical(mode, "latent") &&
       (!is.numeric(d) || length(d) != 1L || is.na(d) || d != 1)) {
-    cli::cli_abort("{.fn temporal_latent} currently supports rank one only ({.code d = 1}).")
+    .temporal_abort("{.fn temporal_latent} currently supports rank one only ({.code d = 1}).")
   }
   if (!is.character(structure) || length(structure) != 1L ||
       is.na(structure) || !structure %in% c("ar1", "ou")) {
-    cli::cli_abort("{.arg structure} must be either {.code \"ar1\"} or {.code \"ou\"}.")
+    .temporal_abort("{.arg structure} must be either {.code \"ar1\"} or {.code \"ou\"}.")
   }
   if (!is.logical(unique) || length(unique) != 1L || is.na(unique)) {
-    cli::cli_abort("{.arg unique} must be TRUE or FALSE.")
+    .temporal_abort("{.arg unique} must be TRUE or FALSE.")
   }
 
   structure(list(
@@ -110,7 +118,7 @@ temporal_latent <- function(formula, time, d = 1, structure = "ar1",
     return(list(formula = formula, data = data, spec = list(active = FALSE)))
   }
   if (n_marker != 1L) {
-    cli::cli_abort("Only one temporal covariance term is supported in a model.")
+    .temporal_abort("Only one temporal covariance term is supported in a model.")
   }
 
   ## Version 1 has one temporal intercept block only.  Do this check while
@@ -190,7 +198,7 @@ temporal_latent <- function(formula, time, d = 1, structure = "ar1",
       if (is.null(animal_names)) animal_names <- rep("", length(animal_call))
       animal_relationship_inputs <- c("pedigree", "A", "Ainv")
       if (sum(animal_names %in% animal_relationship_inputs) != 1L) {
-        cli::cli_abort(c(
+        .temporal_abort(c(
           "{.fn animal_indep} accepts exactly one of {.arg pedigree}, {.arg A}, or {.arg Ainv}.",
           ">" = "Choose the one representation that defines the animal relationship matrix."
         ))
@@ -210,7 +218,7 @@ temporal_latent <- function(formula, time, d = 1, structure = "ar1",
         A_value <- tryCatch(eval(animal_call[[A_pos]], envir = environment(formula)),
           error = function(e) NULL)
         if (!is.null(A_value) && inherits(A_value, "sparseMatrix")) {
-          cli::cli_abort(c(
+          .temporal_abort(c(
             "{.arg A} must be a dense relatedness matrix.",
             ">" = "Use {.arg Ainv} for a sparse relationship precision matrix."
           ))
@@ -225,7 +233,7 @@ temporal_latent <- function(formula, time, d = 1, structure = "ar1",
             is_identity <- max(abs(A_observed - diag(diag(A_observed)))) <= 1e-10 * scale &&
               max(abs(diag(A_observed) - diag(A_observed)[[1L]])) <= 1e-10 * scale
             if (is_identity) {
-              cli::cli_abort(c(
+              .temporal_abort(c(
                 "{.fn animal_indep} with an identity relationship duplicates {.fn indep} for the same grouping factor.",
                 ">" = "Keep one static term, or supply a non-identity animal relationship."
               ))
@@ -275,7 +283,7 @@ temporal_latent <- function(formula, time, d = 1, structure = "ar1",
             abs(stats::cor(lag, distance)) >= 1 - 1e-10
         }, logical(1L))
         if (any(proportional)) {
-          cli::cli_abort(c(
+          .temporal_abort(c(
             "Temporal and spatial covariance bases are proportional within a series.",
             "i" = "Affected series: {.val {names(proportional)[proportional]}}.",
             ">" = "Use locations with spatial contrasts not determined solely by temporal lag, or fit a dedicated space-time interaction model."
@@ -286,7 +294,7 @@ temporal_latent <- function(formula, time, d = 1, structure = "ar1",
   }
   forbidden_sources <- if (allowed_source_pair) character(0) else source_terms
   if (length(forbidden_sources)) {
-    cli::cli_abort(c(
+    .temporal_abort(c(
       "A temporal covariance term cannot be combined with another covariance source in this version.",
       "i" = "Found source provider(s): {.fn {forbidden_sources}}.",
       ">" = "Use ordinary unit/unit_obs terms, or one of the admitted replicated AR1 {.code temporal_indep() + kernel_indep()}, {.code temporal_indep() + phylo_indep()}, {.code temporal_indep() + animal_indep()}, or {.code temporal_indep() + spatial_indep()} cells. Other temporal source pairs remain deferred."
@@ -295,7 +303,7 @@ temporal_latent <- function(formula, time, d = 1, structure = "ar1",
   response_cols <- all.vars(formula[[2L]])
   if (length(response_cols) != 1L || !response_cols %in% names(data) ||
       anyNA(data[[response_cols]])) {
-    cli::cli_abort(c(
+    .temporal_abort(c(
       "{.fn temporal_latent} requires complete Gaussian response values.",
       "i" = "Temporal panels are validated before ordinary missing-response handling.",
       ">" = "Remove or impute missing responses before fitting this version."
@@ -315,26 +323,26 @@ temporal_latent <- function(formula, time, d = 1, structure = "ar1",
   structure_name <- arg("structure", "ar1")
   replicate <- arg("replicate", NULL)
   if (is.null(time) || !is.name(time)) {
-    cli::cli_abort("{.fn temporal_latent}'s {.arg time} must be a bare column name.")
+    .temporal_abort("{.fn temporal_latent}'s {.arg time} must be a bare column name.")
   }
   if (identical(mode, "latent") &&
       (!is.numeric(d) || length(d) != 1L || is.na(d) || d != 1)) {
-    cli::cli_abort("{.fn temporal_latent} currently supports rank one only ({.code d = 1}).")
+    .temporal_abort("{.fn temporal_latent} currently supports rank one only ({.code d = 1}).")
   }
   if (!is.character(structure_name) || length(structure_name) != 1L ||
       !structure_name %in% c("ar1", "ou")) {
-    cli::cli_abort("A temporal covariance term requires {.code structure = \"ar1\"} or {.code \"ou\"}.")
+    .temporal_abort("A temporal covariance term requires {.code structure = \"ar1\"} or {.code \"ou\"}.")
   }
   if (!is.logical(unique) || length(unique) != 1L || is.na(unique)) {
-    cli::cli_abort("{.arg unique} must be TRUE or FALSE.")
+    .temporal_abort("{.arg unique} must be TRUE or FALSE.")
   }
   if (!is.call(bar) || !identical(bar[[1L]], as.name("|")) || length(bar) != 3L ||
       !is.name(bar[[3L]])) {
-    cli::cli_abort("{.fn temporal_latent} requires {.code 0 + trait | series}.")
+    .temporal_abort("{.fn temporal_latent} requires {.code 0 + trait | series}.")
   }
   lhs_text <- gsub("[[:space:]]+", "", paste(deparse(bar[[2L]]), collapse = ""))
   if (!identical(lhs_text, paste0("0+", trait_col))) {
-    cli::cli_abort(c(
+    .temporal_abort(c(
       "{.fn temporal_latent} requires one trait-intercept block {.code 0 + {trait_col} | series}.",
       "i" = "The wide {.code traits(...)} interface is expanded to this form before temporal parsing.",
       ">" = "For long data, use {.code temporal_latent(0 + trait | series, time = occasion)}."
@@ -344,26 +352,26 @@ temporal_latent <- function(formula, time, d = 1, structure = "ar1",
   time <- as.character(time)
   if (!all(c(series, time, trait_col) %in% names(data))) {
     missing_cols <- setdiff(c(series, time, trait_col), names(data))
-    cli::cli_abort("Temporal data are missing column(s): {.field {missing_cols}}.")
+    .temporal_abort("Temporal data are missing column(s): {.field {missing_cols}}.")
   }
   if (!is.numeric(data[[time]]) || any(!is.finite(data[[time]]))) {
-    cli::cli_abort("{.arg time} must contain finite numeric occasions.")
+    .temporal_abort("{.arg time} must contain finite numeric occasions.")
   }
   if (identical(structure_name, "ar1") && any(data[[time]] != floor(data[[time]]))) {
-    cli::cli_abort("AR1 {.arg time} must contain finite integer-valued occasions.")
+    .temporal_abort("AR1 {.arg time} must contain finite integer-valued occasions.")
   }
   if (anyNA(data[[series]]) || anyNA(data[[trait_col]])) {
-    cli::cli_abort("Temporal series and trait identifiers must be complete.")
+    .temporal_abort("Temporal series and trait identifiers must be complete.")
   }
   traits <- unique(as.character(data[[trait_col]]))
   if (length(traits) < 3L) {
-    cli::cli_abort("{.fn temporal_latent} requires at least three traits.")
+    .temporal_abort("{.fn temporal_latent} requires at least three traits.")
   }
   times_by_series <- split(data[[time]], as.character(data[[series]]))
   for (x in times_by_series) {
     occasions <- sort(unique(x))
     if (length(occasions) < 3L || any(diff(occasions) <= 0)) {
-      cli::cli_abort("Each temporal series needs at least three strictly ordered occasions.")
+      .temporal_abort("Each temporal series needs at least three strictly ordered occasions.")
     }
   }
   pair_key <- interaction(data[[series]], data[[time]], drop = TRUE, lex.order = TRUE)
@@ -381,35 +389,35 @@ temporal_latent <- function(formula, time, d = 1, structure = "ar1",
   workflow <- "unreplicated"
   if (!is.null(replicate)) {
     if (!is.name(replicate) || !as.character(replicate) %in% names(data)) {
-      cli::cli_abort("{.arg replicate} must name a column in {.arg data}.")
+      .temporal_abort("{.arg replicate} must name a column in {.arg data}.")
     }
     replicate <- as.character(replicate)
-    if (anyNA(data[[replicate]])) cli::cli_abort("{.arg replicate} must be complete.")
+    if (anyNA(data[[replicate]])) .temporal_abort("{.arg replicate} must be complete.")
     workflow <- "replicated"
     key <- interaction(pair_key, data[[replicate]], data[[trait_col]], drop = TRUE)
-    if (anyDuplicated(key)) cli::cli_abort("Temporal data contain duplicate series--occasion--replicate--trait rows.")
+    if (anyDuplicated(key)) .temporal_abort("Temporal data contain duplicate series--occasion--replicate--trait rows.")
     panel <- table(interaction(pair_key, data[[replicate]], drop = TRUE), data[[trait_col]])
     if (any(panel != 1L) || any(rowSums(panel > 0L) != length(traits))) {
-      cli::cli_abort("Each temporal replicate must contain one complete trait panel.")
+      .temporal_abort("Each temporal replicate must contain one complete trait panel.")
     }
     reps <- table(pair_key)
     if (any(reps < 2L * length(traits))) {
-      cli::cli_abort("Replicated temporal data require at least two measurements at every occasion.")
+      .temporal_abort("Replicated temporal data require at least two measurements at every occasion.")
     }
   } else {
     key <- interaction(pair_key, data[[trait_col]], drop = TRUE)
     if (anyDuplicated(key)) {
-      cli::cli_abort("Repeated temporal observations require {.arg replicate =} to distinguish measurements.")
+      .temporal_abort("Repeated temporal observations require {.arg replicate =} to distinguish measurements.")
     }
     panel <- table(pair_key, data[[trait_col]])
     if (any(panel != 1L)) {
-      cli::cli_abort("Unreplicated temporal data require one complete trait panel at every occasion.")
+      .temporal_abort("Unreplicated temporal data require one complete trait panel at every occasion.")
     }
   }
 
   if (isTRUE(allowed_source_pair) &&
       (!identical(workflow, "replicated") || !identical(structure_name, "ar1"))) {
-    cli::cli_abort(c(
+    .temporal_abort(c(
       "The temporal cross-source cell requires replicated AR1 observations.",
       "i" = "At zero persistence, unreplicated temporal diagonal variation cannot be separated from observation-level noise.",
       ">" = "Supply {.code replicate = measurement} with at least two complete measurements at every series--occasion, and use {.code structure = 'ar1'}."
@@ -445,7 +453,7 @@ temporal_latent <- function(formula, time, d = 1, structure = "ar1",
 
 .temporal_assert_no_iid_inference <- function(fit, method) {
   if (is.list(fit) && isTRUE(fit$temporal$active)) {
-    cli::cli_abort(c(
+    .temporal_abort(c(
       "{.fn {method}} is not available for {.fn temporal_latent} fits.",
       "i" = "Its existing algorithm assumes iid latent scores or an iid refit path.",
       ">" = "Use {.fn extract_temporal} for fitted parameters. The bounded {.fn profile_temporal} and {.fn bootstrap_temporal} helpers have their own contracts; this generic iid route remains unavailable."
@@ -485,7 +493,7 @@ temporal_latent <- function(formula, time, d = 1, structure = "ar1",
 #' @export
 extract_temporal <- function(fit) {
   if (!inherits(fit, "gllvmTMB_multi") || !isTRUE(fit$temporal$active)) {
-    cli::cli_abort("{.fn extract_temporal} requires a fit made with a temporal covariance term.")
+    .temporal_abort("{.fn extract_temporal} requires a fit made with a temporal covariance term.")
   }
   par <- fit$tmb_obj$env$parList(fit$opt$par)
   mode <- fit$temporal$mode

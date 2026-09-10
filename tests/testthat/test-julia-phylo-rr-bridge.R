@@ -725,7 +725,12 @@ test_that("S4 public phylo_dep formula retains paired transformed-Wald endpoints
     target_names = rownames(julia_ci), native_lower = unname(native_lower),
     native_upper = unname(native_upper), julia_lower = as.numeric(julia_ci[, 1L]),
     julia_upper = as.numeric(julia_ci[, 2L]),
-    fixture_sha256 = digest::digest(data, algo = "sha256", serialize = TRUE)
+    fixture_sha256 = digest::digest(list(
+      data = data, tree = tree,
+      formula = "traits(trait_1, trait_2) ~ 1 + phylo_dep(1 | species, tree = tree)",
+      family = "gaussian", ci_level = 0.9,
+      test_source = readLines("tests/testthat/test-julia-phylo-rr-bridge.R", warn = FALSE)
+    ), algo = "sha256", serialize = TRUE)
   ), envir = globalenv())
 })
 

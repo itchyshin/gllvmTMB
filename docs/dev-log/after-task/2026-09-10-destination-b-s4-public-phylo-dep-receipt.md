@@ -64,3 +64,13 @@ clean, and run the one-cell command once to a new artifact path.
 
 Runner/test implementation is complete locally; successful immutable receipt
 and environment qualification are blocked by the missing repaired environment.
+
+## Review remediation
+
+The runner now verifies the fixed frozen commit and source-archive digest plus
+commit ancestry, requires clean/stable R and GLLVM worktrees, hashes both the
+source and actually loaded R DLL, and proves the loaded Julia package root is
+the recorded GLLVM checkout. The fixture hash includes data, tree, exact
+formula, Gaussian family, CI level, and relevant test source. Endpoint tests
+now reject duplicate/wrong-length/non-finite targets, excess deltas, and equal
+or inverted lower/upper bounds.

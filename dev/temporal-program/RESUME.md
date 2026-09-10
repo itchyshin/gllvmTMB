@@ -51,22 +51,26 @@ gradient `3.43e-4`, and its frozen summaries pass. See
 `KERNEL-IDENTIFICATION-REDESIGN.md` for the historical failed previews and
 the retained valid result.
 
-## Phylogenetic result in progress (2026-09-09)
+## Phylogenetic result (2026-09-10)
 
-The next narrow cell is replicated AR1 `temporal_indep()` plus exactly one
-fixed labelled `phylo_indep()` source supplied as in-keyword `tree =` or
-`vcv =`. Independent dense additive likelihood/gradient, product-control,
-long/wide, update, simulation, label, and tree/dense-equivalence tests pass
-locally. The first retained 80-series DGP is deliberately preserved under
-`results/failed/`: all nine fits met optimizer/gradient requirements, but two
-`phi = .6` phylogenetic-variance medians exceeded the unchanged `.35` bound.
-The predeclared single follow-up is 160 series, 16 occasions, two measures,
-the same covariance construction/truths/settings, three phi values, and ten
-fresh seeds per phi. Eight `phi = -.4` attempts are retained with final
-optimizer code zero and gradients below `1e-3`. The ninth fit exceeded three
-minutes, pushing the full campaign past the 30-minute local boundary; the
-runner was stopped and checkpoints every completed attempt. Resume only after
-separate compute approval, without replacing any seed or relaxing thresholds.
+The narrow replicated-AR1 `temporal_indep()` plus one fixed labelled
+`phylo_indep()` cell has independent dense additive likelihood/gradient,
+product-control, long/wide, update, simulation, label, and tree/dense-equivalence
+tests. Its first retained 80-series DGP remains under `results/failed/` because
+two `phi = .6` phylogenetic-variance medians exceeded the unchanged `.35` bound.
+
+The sole predeclared 160-series follow-up completed on Fir DRAC job `59096255`:
+the retained 22 task receipts combine with the eight original `phi = -.4`
+checkpoints into all 30 frozen `(phi, seed)` cells. Every fit has a terminal
+`success`, finite objective, and optimizer code zero. The frozen strict gate
+still fails: `strict_successes` are 10/10, 9/10, and 8/10 for `phi = -.4`, `0`,
+and `.6`, respectively. The non-strict cells are seeds 2609188 at `phi = 0`
+(`max_gradient = 0.001614525`) and 2609183/2609185 at `phi = .6`
+(`0.001358263` and `0.002647219`). The combined receipt and summary are retained
+under `results/failed/phylo-recovery-160-fir-59096255-20260910/`. The campaign
+is therefore a failed engineering gate, not recovery evidence. Do not replace
+seeds, relax thresholds, or rerun it as evidence; a separate optimizer
+qualification would need its own contract and pre-run gate.
 
 ## Spatial result (2026-09-09)
 
@@ -92,10 +96,9 @@ eight failed cells crossed the gradient gate, so it does not repair the campaign
 
 ## Next bounded slice
 
-Obtain separate authorization for the unchanged remaining 22 phylogenetic
-recovery fits on a DRAC Slurm array, with one BLAS thread per job and every
-result retained. Do not create a pull request, merge, release, or push. A
-separate CI-only authorization remains necessary before cross-platform claims.
+Treat the phylogenetic recovery gate as failed and retain its result. Do not
+create a pull request, merge, release, or push. A separate CI-only authorization
+remains necessary before cross-platform claims.
 
 ## Do not claim
 

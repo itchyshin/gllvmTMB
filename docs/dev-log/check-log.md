@@ -53977,3 +53977,14 @@ candidate evidence is reused from this pre-integration run.
 - An independent read-only review found no remaining P0/P1 in this reader
   repair. It does not qualify S4 until the separate frozen-pair provenance,
   seven-target census, and authoritative-route reconciliation gates are paid.
+
+## 2026-09-10 — Destination B S3b active-Julia replay
+
+- Added only the exact report and two immutable active-Julia receipt paths to
+  the S3b changed-path contract. The first receipt is retained historical
+  evidence; the `-r2` receipt is generated after this contract is committed so
+  it binds the final runner source. No R/TMB likelihood/C++, formula grammar,
+  public API, generic engine route, or Julia source changed.
+- Focused runner-contract test and the clean-source, manifest-bound 48-check
+  replay are recorded in the accompanying after-task report. This remains
+  three-cell closed-adapter evidence, not S3b/S4/generic-engine qualification.

@@ -1,0 +1,95 @@
+{
+  "kind": "destination_b_s3b_native_pairs",
+  "status": "passed_closed_adapter_only",
+  "scope": "three controlled Gaussian native phylo_rr pairs; generic engine remains closed",
+  "runner": "tests/testthat/run-destination-b-s3b-native-pairs-isolated.R",
+  "source": {
+    "frozen_reference_commit": "b4d5fee64def88bc768dda1f1f77c29b295edd86",
+    "frozen_reference_is_ancestor": true,
+    "adapter_commit": "66c4c54cf3e416118c0f8cedbecee12a07872355",
+    "adapter_source_clean_and_stable": true,
+    "changed_paths_from_frozen": ["NAMESPACE", "R/julia-bridge.R", "docs/dev-log/after-task/2026-09-09-destination-b-s3b-r-adapter.md", "docs/dev-log/after-task/2026-09-09-destination-b-s3b-receipt-hardening.md", "docs/dev-log/after-task/2026-09-09-destination-b-s4-interval-reader-repair.md", "docs/dev-log/after-task/2026-09-09-destination-b-s4-tree-public-wrapper.md", "docs/dev-log/artifacts/2026-09-09-destination-b-frozen-r-binary-build-manifest.json", "docs/dev-log/artifacts/2026-09-09-destination-b-s3b-native-pairs-receipt-v2.json", "docs/dev-log/artifacts/2026-09-09-destination-b-s3b-native-pairs-receipt-v3.json", "docs/dev-log/artifacts/2026-09-09-destination-b-s3b-native-pairs-receipt.json", "docs/dev-log/artifacts/2026-09-09-destination-b-s4-tree-public-workflow-receipt.json", "docs/dev-log/check-log.md", "man/gllvm_julia_phylo_rr.Rd", "tests/testthat/run-destination-b-s3b-native-pairs-isolated.R", "tests/testthat/test-destination-b-s3b-native-pairs-runner.R", "tests/testthat/test-julia-phylo-rr-bridge.R", "vignettes/articles/current-limits.Rmd"],
+    "r_version": "R version 4.6.0 (2026-04-24)",
+    "r_platform": "aarch64-apple-darwin23",
+    "r_shared_object_source_path": "/private/tmp/destination-b-s3b-receipt-hardening-20260909/src/gllvmTMB.so",
+    "r_shared_object_loaded_path": "/private/var/folders/7x/ytfpq14s0v18frbm9v_w9f4c0000gq/T/RtmpiKvzcl/pkgload16b966698f788/gllvmTMB.so",
+    "r_shared_object_sha256": "64f70caad53a235b62c35947ce62617589abc07c5092c77591b208322c84cb2b",
+    "r_shared_object_expected_sha256": "64f70caad53a235b62c35947ce62617589abc07c5092c77591b208322c84cb2b",
+    "r_frozen_binary_manifest_path": "/private/tmp/destination-b-s3b-receipt-hardening-20260909/docs/dev-log/artifacts/2026-09-09-destination-b-frozen-r-binary-build-manifest.json",
+    "r_frozen_binary_manifest_sha256": "1c4844db1a58c6b978494668cbf9b9e789792103a15cbf52e866a87836090b57",
+    "gllvm_julia_project_path": "/private/tmp/destination-b-b1-integration-20260910",
+    "gllvm_julia_active_project_path": "/private/tmp/destination-b-b1-integration-20260910/Project.toml",
+    "gllvm_julia_package_root": "/private/tmp/destination-b-b1-integration-20260910",
+    "gllvm_julia_commit": "b6bd78bb0fe094b404a963d0fd65e93809cf5bd7",
+    "gllvm_julia_source_clean_and_stable": true,
+    "runner_sha256": "1c798307ac67395aaa6121c5a6ea258c3bf1f608c73297ef20ec9bf7ea7899f8"
+  },
+  "tally": {
+    "failed": 0,
+    "skipped": 0,
+    "error": 0,
+    "warning": 0,
+    "passed": 48
+  },
+  "pairs": {
+    "tree": {
+      "kind": "tree",
+      "n_traits": 2,
+      "n_species": 4,
+      "n_observations": 12,
+      "scale": 2,
+      "log_det_precision": 4.15888308335967,
+      "seed": 701,
+      "data_sha256": "f90dd00c36de331f191f73cb98c262ffc9da4877ef6434f821ff74e6554ff4bb",
+      "model_spec": "gaussian; 0 + trait + phylo_latent(species, d = 1, unique = FALSE)",
+      "native_convergence": 0,
+      "julia_converged": true,
+      "deltas": {
+        "log_likelihood": 1.54365409343882e-12,
+        "fixed_effects": 6.88428564710186e-08,
+        "phylogenetic_covariance": 1.26184749801861e-07,
+        "residual_variance": 4.72117954106177e-10
+      }
+    },
+    "sparse_pedigree": {
+      "kind": "sparse_pedigree",
+      "n_traits": 2,
+      "n_observations": 6,
+      "augmented_nodes": 4,
+      "observed_nodes_zero_based": [2, 3],
+      "log_det_precision": 1.38629436111989,
+      "seed": 702,
+      "data_sha256": "e7cec4dd1ab9e595c5a1ad53357cbccc18416f48e1c495d44dbd07a21b26a8ca",
+      "model_spec": "gaussian; 0 + trait + animal_latent(species, d = 1, pedigree = pedigree, unique = FALSE)",
+      "native_convergence": 0,
+      "julia_converged": true,
+      "deltas": {
+        "log_likelihood": 6.78568312650896e-13,
+        "fixed_effects": 1.7045311742625e-07,
+        "phylogenetic_covariance": 5.3246159342768e-08,
+        "residual_variance": 4.23725687176413e-09
+      }
+    },
+    "dense_vcv": {
+      "kind": "dense_vcv",
+      "n_traits": 2,
+      "n_observations": 3,
+      "condition_number_original": 999999997,
+      "diagonal_jitter": 1e-08,
+      "augmented_nodes": 3,
+      "log_det_precision": 19.018517714708,
+      "seed": "deterministic_fixed_response",
+      "data_sha256": "54e2a0debbe9e1240b444e8dba7cb87cb1955d58e1767c18859abc81b6da454f",
+      "model_spec": "gaussian; 0 + trait + phylo_latent(species, d = 1, vcv = original_vcv, unique = FALSE)",
+      "native_convergence": 0,
+      "julia_converged": true,
+      "deltas": {
+        "log_likelihood": 4.13447054370408e-13,
+        "fixed_effects": 1.80556264661735e-08,
+        "phylogenetic_covariance": 8.55453583872845e-08,
+        "residual_variance": 7.57786403765559e-09
+      }
+    }
+  },
+  "exclusions": ["generic engine admission remains closed", "stored intervals are not yet exposed by the private adapter", "no recovery or coverage claim"]
+}

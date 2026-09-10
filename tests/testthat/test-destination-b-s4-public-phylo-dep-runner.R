@@ -10,6 +10,10 @@ test_that("S4 public phylo_dep receipt runner uses ASCII Julia string literals",
   literal <- environment$s4_public_phylo_dep_julia_literal(tempdir())
   expect_identical(literal, paste0('"', normalizePath(tempdir()), '"'))
   expect_false(grepl("[\u201c\u201d]", literal))
+  code <- paste0("import Pkg; Pkg.activate(", literal, "); println(\"ok\")")
+  args <- environment$s4_public_phylo_dep_julia_args(code)
+  expect_identical(args[1:3], c("--startup-file=no", "--project", "-e"))
+  expect_identical(args[[4L]], shQuote(code))
 })
 
 test_that("S4 public phylo_dep receipt refuses malformed endpoints and duplicate output", {

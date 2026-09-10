@@ -713,6 +713,9 @@ test_that("S4 public phylo_dep formula retains paired transformed-Wald endpoints
   native_lower[log_targets] <- exp(log(native_estimate[log_targets]) - critical * log_se)
   native_upper[log_targets] <- exp(log(native_estimate[log_targets]) + critical * log_se)
   julia_ci <- confint(julia, level = 0.9)
+  embedded_julia_active_project <- normalizePath(as.character(JuliaCall::julia_eval("string(Base.active_project())")), mustWork = TRUE)
+  embedded_julia_package_root <- normalizePath(as.character(JuliaCall::julia_eval("string(Base.pkgdir(GLLVM))")), mustWork = TRUE)
+  expect_identical(embedded_julia_package_root, normalizePath(julia_project, mustWork = TRUE))
 
   expect_identical(rownames(julia_ci), names(native_estimate))
   ## Independent native and Julia optimizers are compared on an absolute scale;
@@ -725,6 +728,8 @@ test_that("S4 public phylo_dep formula retains paired transformed-Wald endpoints
     target_names = rownames(julia_ci), native_lower = unname(native_lower),
     native_upper = unname(native_upper), julia_lower = as.numeric(julia_ci[, 1L]),
     julia_upper = as.numeric(julia_ci[, 2L]),
+    embedded_julia_active_project = embedded_julia_active_project,
+    embedded_julia_package_root = embedded_julia_package_root,
     fixture_sha256 = digest::digest(list(
       data = data, tree = tree,
       formula = "traits(trait_1, trait_2) ~ 1 + phylo_dep(1 | species, tree = tree)",

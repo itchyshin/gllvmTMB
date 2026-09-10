@@ -9,6 +9,9 @@ s4_public_phylo_dep_targets <- function() c(
   "phylo_cov[2,2]", "residual_var_shared[1]", "residual_var_shared[2]"
 )
 
+s4_public_phylo_dep_known_manifest_sha256 <- function() "1c4844db1a58c6b978494668cbf9b9e789792103a15cbf52e866a87836090b57"
+s4_public_phylo_dep_known_shared_object_sha256 <- function() "64f70caad53a235b62c35947ce62617589abc07c5092c77591b208322c84cb2b"
+
 s4_public_phylo_dep_validate_endpoints <- function(payload, tolerance = 1e-4) {
   targets <- s4_public_phylo_dep_targets()
   required <- c("target_names", "native_lower", "native_upper", "julia_lower", "julia_upper")
@@ -34,10 +37,11 @@ s4_public_phylo_dep_snapshot <- function(path, label) {
   list(root = path, commit = s4_public_phylo_dep_git(c("-C", path, "rev-parse", "HEAD"), paste(label, "commit")))
 }
 
-s4_public_phylo_dep_validate_frozen_manifest <- function(manifest, source_root) {
+s4_public_phylo_dep_validate_frozen_manifest <- function(manifest, source_root, manifest_path = NULL) {
   expected_commit <- "b4d5fee64def88bc768dda1f1f77c29b295edd86"
   required <- c("kind", "frozen_reference_commit", "source_archive_sha256", "shared_object_sha256")
-  if (!all(required %in% names(manifest)) || !identical(manifest$kind, "destination_b_frozen_r_binary_build") || !identical(manifest$frozen_reference_commit, expected_commit) || !identical(manifest$source_archive_sha256, "0c2f4323eb9fb19acccf039b8d57b4dd6bda82e2aa8b4a7bb712f36a64b022bc") || !grepl("^[[:xdigit:]]{64}$", manifest$shared_object_sha256)) stop("frozen R build manifest does not bind the known source archive and DLL", call. = FALSE)
+  if (!all(required %in% names(manifest)) || !identical(manifest$kind, "destination_b_frozen_r_binary_build") || !identical(manifest$frozen_reference_commit, expected_commit) || !identical(manifest$source_archive_sha256, "0c2f4323eb9fb19acccf039b8d57b4dd6bda82e2aa8b4a7bb712f36a64b022bc") || !identical(manifest$shared_object_sha256, s4_public_phylo_dep_known_shared_object_sha256())) stop("frozen R build manifest does not bind the known source archive and DLL", call. = FALSE)
+  if (!is.null(manifest_path) && !identical(digest::digest(file = manifest_path, algo = "sha256"), s4_public_phylo_dep_known_manifest_sha256())) stop("frozen R build manifest bytes do not match the known manifest", call. = FALSE)
   s4_public_phylo_dep_git(c("-C", normalizePath(source_root, mustWork = TRUE), "merge-base", "--is-ancestor", expected_commit, "HEAD"), "frozen R source ancestry")
   invisible(manifest)
 }
@@ -82,7 +86,7 @@ s4_public_phylo_dep_main <- function() {
   frozen_manifest <- jsonlite::read_json(frozen_manifest_path, simplifyVector = TRUE)
   r_before <- s4_public_phylo_dep_snapshot(getwd(), "gllvmTMB source")
   julia_before <- s4_public_phylo_dep_snapshot(project, "GLLVM.jl source")
-  s4_public_phylo_dep_validate_frozen_manifest(frozen_manifest, getwd())
+  s4_public_phylo_dep_validate_frozen_manifest(frozen_manifest, getwd(), frozen_manifest_path)
   clean_probe <- s4_public_phylo_dep_clean_julia_probe(project, environment, Sys.getenv("GLLVM_S4_JULIA_HOME"))
   pkgload::load_all(".", quiet = TRUE, compile = FALSE)
   expressions <- parse(file = "tests/testthat/test-julia-phylo-rr-bridge.R")
@@ -98,12 +102,13 @@ s4_public_phylo_dep_main <- function() {
   tab <- as.data.frame(reporter$get_results())
   if (nrow(tab) != 2L || sum(tab$failed) + sum(tab$skipped) + sum(tab$error) + sum(tab$warning) != 0L) stop("S4 public phylo_dep test pair did not pass cleanly", call. = FALSE)
   raw <- get0(".s4_public_phylo_dep_receipt", envir = globalenv(), inherits = FALSE)
+  if (is.null(raw$embedded_julia_active_project) || is.null(raw$embedded_julia_package_root) || !identical(normalizePath(raw$embedded_julia_package_root, mustWork = TRUE), project)) stop("endpoint runtime did not attest the requested GLLVM package root", call. = FALSE)
   endpoints <- s4_public_phylo_dep_validate_endpoints(raw)
   dll <- normalizePath(file.path(getwd(), "src", "gllvmTMB.so"), mustWork = TRUE)
   loaded_dll <- getLoadedDLLs()[["gllvmTMB"]][["path"]]
   if (is.null(loaded_dll)) stop("gllvmTMB DLL is not loaded from this source", call. = FALSE)
   loaded_dll <- normalizePath(loaded_dll, mustWork = TRUE)
-  if (!identical(digest::digest(file = dll, algo = "sha256"), frozen_manifest$shared_object_sha256) || !identical(digest::digest(file = loaded_dll, algo = "sha256"), frozen_manifest$shared_object_sha256)) stop("loaded R DLL does not match frozen build manifest", call. = FALSE)
+  if (!identical(digest::digest(file = dll, algo = "sha256"), s4_public_phylo_dep_known_shared_object_sha256()) || !identical(digest::digest(file = loaded_dll, algo = "sha256"), s4_public_phylo_dep_known_shared_object_sha256())) stop("loaded R DLL does not match frozen build manifest", call. = FALSE)
   r_after <- s4_public_phylo_dep_snapshot(getwd(), "gllvmTMB source")
   julia_after <- s4_public_phylo_dep_snapshot(project, "GLLVM.jl source")
   if (!identical(r_before, r_after) || !identical(julia_before, julia_after)) stop("source changed while S4 public phylo_dep evidence was being retained", call. = FALSE)

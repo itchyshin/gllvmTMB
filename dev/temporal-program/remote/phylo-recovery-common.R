@@ -18,6 +18,12 @@ load_temporal_program_package <- function(root) {
       stop("GLLVMTMB_TEMPORAL_LOAD=installed requires gllvmTMB in R_LIBS_USER.", call. = FALSE)
     }
     suppressPackageStartupMessages(library(gllvmTMB))
+    # The formula is constructed in this sourced script.  Bind provider
+    # helpers here rather than depending on a search-path lookup from inside
+    # the formula evaluator used by an installed package.
+    for (name in c("temporal_indep", "phylo_indep")) {
+      assign(name, getExportedValue("gllvmTMB", name), envir = globalenv())
+    }
   } else {
     stop("GLLVMTMB_TEMPORAL_LOAD must be 'pkgload' or 'installed'.", call. = FALSE)
   }

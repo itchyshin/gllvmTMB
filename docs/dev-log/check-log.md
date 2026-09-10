@@ -57785,3 +57785,29 @@ Deliberately not run: Totoro 9×500 grid dispatch; full `devtools::test()`.
   attempt rows and self-tests a stale-summary rejection; `optimizer_passes > 1`
   rejects the Julia engine rather than being silently dropped. The final review
   reports no remaining P1 findings for this kernel cell.
+
+## 2026-09-09 — fixed phylogenetic temporal source-pair checkpoint
+
+- Extended the narrow cross-source admission to replicated AR1
+  `temporal_indep()` plus exactly one fixed labelled `phylo_indep()` source.
+  The source must be supplied inside the keyword as `tree =` or `vcv =`; global
+  phylogenetic arguments, source attenuation, OU, temporal `dep`/`latent`, and
+  all other source pairs remain refused.
+- `test-temporal-program-phylo-replicated.R` independently evaluates the dense
+  additive NLL and central gradient, rejects a source-by-time product, checks
+  long/wide rewriting, dense-VCV/tree equivalence, labels, simulation moments,
+  update, and all parser fences. The AR1 dense oracle exponent was corrected
+  after mathematical review to `((1 - 1e-6) * tanh(theta))^lag`.
+- Focused phylogenetic and kernel source-pair fixtures passed locally, as did
+  `Rscript --vanilla dev/temporal-program/verify.R self-test`. The combinations
+  runner now deliberately exits nonzero while this newly admitted source pair
+  lacks a completed retained recovery/verifier receipt; kernel-only evidence is
+  no longer allowed to certify every admitted pair.
+- The direct 80-series phylogenetic DGP retained all nine optimizer-successful
+  attempts but failed two unchanged `phi=.6` phylogenetic-variance thresholds.
+  Its sole predeclared 160-series follow-up retains eight successful checkpoints
+  (all final gradients below `1e-3`); the ninth fit exceeded three minutes and
+  moved the complete campaign beyond the local 30-minute boundary. The runner
+  now checkpoints every attempt and resumes only missing frozen seed--phi
+  combinations. Completing the remaining 22 attempts needs separate compute
+  approval; no seed or threshold changed.

@@ -50,7 +50,7 @@ intercepts, and use Gaussian identity-link ML/Laplace only.
 | S1 | Terra-high + Grace; 1-2 days excluding CI | Rebased corrected base, docs, PR/cross-platform receipts, merge/release readiness | S0 | Linux/macOS/Windows native temporal checks; local package/docs gates; no broader claim. |
 | S2 | Astra contract review then Terra-high; 1-2 days | Additive source-pair grammar/admission contract and independent dense source-pair oracle | S0 | Explicit additive-not-interaction negative control; source/series labels and fixed source scale preserved. |
 | S3a | Terra-high + Curie; 2-4 days | Temporal plus spatial pair | S2 | AR1/OU, supported trait modes, dense NLL/gradient, simulation, long/wide, known-level lifecycle fixture. |
-| S3b | Terra-high + Curie; 2-4 days | Temporal plus phylogenetic pair | S2 | Same evidence plus tree-label/scale preservation and confounding controls. |
+| S3b | Terra-high + Curie; 2-4 days | Temporal plus phylogenetic pair | S2 | **In progress:** replicated AR1 `temporal_indep()` plus fixed in-keyword `phylo_indep()` has independent additive dense, product-control, long/wide, update, simulation and tree/dense evidence. The initial retained 80-series recovery fixture failed two unchanged phylogenetic-variance criteria at `phi=.6`. The only follow-up is a predeclared 160-series, 10-seed-per-cell fixture; eight checkpoints are retained and its remaining execution needs compute approval after one fit exceeded three minutes. |
 | S3c | Terra-high + Curie; 2-4 days | Temporal plus animal pair | S2 | Same evidence plus pedigree provenance and identity-like relationship control. |
 | S3d | Terra-high + Curie; 2-4 days | Temporal plus fixed-kernel pair | S2 | **Implemented locally:** replicated AR1 `temporal_indep()` plus one labelled `kernel_indep()` term, with a dense additive oracle, product-kernel control, simulation, long/wide replay, two-pass optimizer provenance, and retained fixed-seed recovery. OU and other temporal/kernel modes remain deferred. |
 | S4 | Terra-high + Emmy; 2-4 days | `forecast_temporal()` or precisely scoped `predict()` extension | S0, then S3a-d for composed version | **In progress:** temporal-only existing-series Gaussian forecast with a dense conditional-Gaussian oracle. New independent series and composed forecasts remain refused. |
@@ -82,8 +82,9 @@ On 2026-09-09, the first source-pair admission is replicated AR1
 occasions, three traits, fixed labelled non-proportional kernel coordinates,
 `phi = -.4, 0, .6`, and seeds `2609151:2609153`. The executable runner checks
 the dense oracle fixture and each retained final two-pass optimizer result.
-This is local kernel-cell evidence only. OU, temporal `dep`/`latent`, and all
-spatial, phylogenetic, and animal source pairs remain refused.
+This is local kernel-cell evidence only. A fixed in-keyword phylogenetic cell
+is separately in progress and has not passed its retained recovery gate. OU,
+temporal `dep`/`latent`, spatial and animal source pairs remain refused.
 
 ## Compute
 

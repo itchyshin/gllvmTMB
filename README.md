@@ -69,9 +69,13 @@ calls, simulation, training-data prediction, and ordinary unit/unit-observation
 composition have focused local checks. Recovery, precision, calibration, and
 interval coverage remain unclaimed; the temporal article gives the supported
 input contract and unavailable next steps. The first locally verified
-cross-source cell is replicated AR1 `temporal_indep()` plus one labelled
-`kernel_indep()` term; OU, other temporal/kernel modes, and spatial,
-phylogenetic, and animal combinations remain unavailable.
+cross-source cells are replicated AR1 `temporal_indep()` plus either one
+labelled `kernel_indep()` term or one fixed, labelled `phylo_indep()` term
+whose `tree =` or `vcv =` is supplied inside the keyword. OU, other
+temporal/source modes, spatial, and animal combinations remain unavailable.
+The phylogenetic cell has focused local likelihood and lifecycle checks; its
+recovery evidence is a separate bounded gate and does not establish a general
+recovery or coverage claim.
 
 ## What the model does
 

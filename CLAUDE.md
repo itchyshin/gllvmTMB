@@ -502,9 +502,11 @@ does NOT do" section), see
 - The temporal row is a private ordered `(series, time)` state tier.  AR1
   preserves integer gaps and OU uses numeric elapsed time.  It admits one
   Gaussian identity-link ML/Laplace provider per fit and may coexist with
-  ordinary `unit` / `unit_obs` covariance; temporal plus phylo, animal,
-  spatial, or kernel sources is refused except for replicated AR1
-  `temporal_indep()` plus one labelled `kernel_indep()` term. `temporal_latent(unique = TRUE)`
+  ordinary `unit` / `unit_obs` covariance; temporal plus animal or spatial
+  sources is refused. The admitted cross-source cells are replicated AR1
+  `temporal_indep()` plus exactly one labelled `kernel_indep()` term or one
+  fixed labelled `phylo_indep()` term with `tree =` or `vcv =` inside the
+  keyword. `temporal_latent(unique = TRUE)`
   gives a temporally correlated trait-diagonal Psi, never IID occasion noise.
 - Structured-rho development arc (2026-08-31): canonical phylo/animal/kernel/spatial
   helpers have trailing `rho = 1`; spatial range stays separately estimated.

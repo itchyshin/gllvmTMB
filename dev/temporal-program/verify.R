@@ -137,6 +137,13 @@ if (identical(mode, "publication")) {
   stop("Publication verification requires a retained three-OS CI receipt; none is available in this local worktree.", call. = FALSE)
 }
 if (identical(mode, "combinations")) {
+  ## Do not let the previously green kernel-only receipt stand in for every
+  ## public source pair. The phylogenetic fixture is intentionally a separate
+  ## retained campaign and this runner remains fail-closed until it has a
+  ## complete 30-attempt receipt plus a source-specific recomputation path.
+  if (file.exists(file.path(root, "tests/testthat/test-temporal-program-phylo-replicated.R"))) {
+    stop("temporal-phylo source pair is admitted but its retained recovery/verifier gate is incomplete; combinations cannot certify every admitted pair", call. = FALSE)
+  }
   fixture <- "tests/testthat/test-temporal-program-kernel-replicated.R"
   result_path <- "dev/temporal-program/results/kernel-recovery-20260909.csv"
   summary_path <- "dev/temporal-program/results/kernel-recovery-summary-20260909.csv"

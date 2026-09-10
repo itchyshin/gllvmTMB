@@ -66,8 +66,9 @@ temporal_dep <- function(formula, time, structure = "ar1", replicate = NULL) {
 #' loadings. With `unique = TRUE`, the temporal diagonal Psi is also correlated
 #' across occasions; it is not independent occasion noise. Temporal sources can
 #' be added to ordinary `unit` and `unit_obs` terms. The initial cross-source
-#' cell is replicated AR1 `temporal_indep()` plus one labelled `kernel_indep()`
-#' term. Other temporal-source combinations remain unavailable.
+#' cells are replicated AR1 `temporal_indep()` plus one labelled `kernel_indep()`
+#' or fixed labelled `phylo_indep()` term. Other temporal-source combinations
+#' remain unavailable.
 #'
 #' @rdname temporal_latent
 #' @param d Latent rank. This version supports `1`.
@@ -135,23 +136,24 @@ temporal_latent <- function(formula, time, d = 1, structure = "ar1",
   find_provider_heads(stripped_formula[[length(formula)]])
   competing <- unique(c(detect_covstruct_terms(stripped_formula), provider_heads))
   ## Ordinary unit / unit_obs effects are separate tiers and are admitted by
-  ## the native temporal contract. The first static-source cell is deliberately
-  ## narrow: one labelled kernel with diagonal trait variation, paired with a
-  ## replicated AR1 temporal diagonal process. Other sources/modes stay fenced
-  ## until their own additive likelihood and lifecycle evidence is available.
+  ## the native temporal contract. Cross-source cells are deliberately narrow:
+  ## one static, diagonal source term paired with a replicated AR1 temporal
+  ## diagonal process. Each source is admitted only after its own additive
+  ## likelihood and lifecycle evidence is available.
   source_terms <- competing[grepl(
     "^(phylo|animal|spatial|kernel|meta_|propto$|equalto$|spde$)", competing
   )]
   temporal_mode <- sub("^temporal_", "", marker_name)
-  allowed_kernel_pair <- identical(temporal_mode, "indep") &&
+  allowed_source_pair <- identical(temporal_mode, "indep") &&
     identical(length(source_terms), 1L) &&
-    identical(source_terms, "kernel_indep")
-  forbidden_sources <- if (allowed_kernel_pair) character(0) else source_terms
+    source_terms %in% c("kernel_indep", "phylo_indep")
+  source_pair <- if (isTRUE(allowed_source_pair)) source_terms[[1L]] else NULL
+  forbidden_sources <- if (allowed_source_pair) character(0) else source_terms
   if (length(forbidden_sources)) {
     cli::cli_abort(c(
       "A temporal covariance term cannot be combined with another covariance source in this version.",
       "i" = "Found source provider(s): {.fn {forbidden_sources}}.",
-      ">" = "Use ordinary unit/unit_obs terms, or the replicated AR1 {.code temporal_indep() + kernel_indep()} cell. Other temporal source pairs remain deferred."
+      ">" = "Use ordinary unit/unit_obs terms, or one of the admitted replicated AR1 {.code temporal_indep() + kernel_indep()} or {.code temporal_indep() + phylo_indep()} cells. Other temporal source pairs remain deferred."
     ))
   }
   response_cols <- all.vars(formula[[2L]])
@@ -269,10 +271,10 @@ temporal_latent <- function(formula, time, d = 1, structure = "ar1",
     }
   }
 
-  if (isTRUE(allowed_kernel_pair) &&
+  if (isTRUE(allowed_source_pair) &&
       (!identical(workflow, "replicated") || !identical(structure_name, "ar1"))) {
     cli::cli_abort(c(
-      "The temporal-kernel cell requires replicated AR1 observations.",
+      "The temporal cross-source cell requires replicated AR1 observations.",
       "i" = "At zero persistence, unreplicated temporal diagonal variation cannot be separated from observation-level noise.",
       ">" = "Supply {.code replicate = measurement} with at least two complete measurements at every series--occasion, and use {.code structure = 'ar1'}."
     ))
@@ -297,7 +299,7 @@ temporal_latent <- function(formula, time, d = 1, structure = "ar1",
       active = TRUE, workflow = workflow, pair_col = pair_col,
       pair_table = pair_table, series_col = series, time_col = time,
       replicate_col = if (is.null(replicate)) NULL else replicate,
-      state_tier = "temporal", mode = mode,
+      state_tier = "temporal", mode = mode, source_pair = source_pair,
       d = if (identical(mode, "latent")) as.integer(d) else 0L,
       unique = if (identical(mode, "latent")) unique else identical(mode, "indep"),
       structure = structure_name

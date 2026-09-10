@@ -11,11 +11,15 @@
   simulation, labelled latent scores, training-data prediction, update, and
   ordinary unit/unit-observation composition. **Partial:** no general recovery,
   precision, calibration, or interval-coverage claim is made. **Not in scope:**
-  temporal slopes, higher rank, other families, or combinations with spatial,
-  phylogenetic, or animal sources. **Locally verified only:** replicated AR1
-  `temporal_indep()` plus one labelled `kernel_indep()` term has a fixed-seed
-  recovery and lifecycle fixture. Other temporal/kernel modes, OU kernel
-  combinations, cross-platform verification, and release remain pending.
+  temporal slopes, higher rank, other families, spatial or animal source
+  pairs. **Locally verified only:** replicated AR1 `temporal_indep()` plus
+  one labelled `kernel_indep()` term has a fixed-seed recovery and lifecycle
+  fixture. A fixed, labelled `phylo_indep()` source can be supplied through
+  `tree =` or `vcv =` inside its keyword and has focused local oracle,
+  long/wide, simulation, update, and tree/dense-equivalence checks; its
+  recovery gate is separate and does not support a general recovery or
+  coverage claim. Other temporal/source modes, OU source combinations,
+  cross-platform verification, and release remain pending.
 
 * A new ordinal response family, `ordinal_logit()` -- the cumulative-**logit**
   analogue of the existing `ordinal_probit()` threshold model, family_id 20.

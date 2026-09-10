@@ -28,8 +28,8 @@ spatial change and emit their documented success markers. The retained base
 recovery receipt contains all 80 fixed seed--cell attempts; the two
 latent-plus-Psi cells retain two non-success terminals each and still meet the
 frozen minimum of eight successes. The ignored ledger has G0, G1, and G4 met;
-G2 (three-OS CI) and G5 (closeout) remain unmet. G3 has retained local kernel
-evidence and a pending phylogenetic recovery gate.
+G2 (three-OS CI) and G5 (closeout) remain unmet. G3 retains passing local
+kernel evidence and failed phylogenetic, animal, and spatial recovery gates.
 
 ## Kernel result (2026-09-09)
 
@@ -69,8 +69,12 @@ and `.6`, respectively. The non-strict cells are seeds 2609188 at `phi = 0`
 (`0.001358263` and `0.002647219`). The combined receipt and summary are retained
 under `results/failed/phylo-recovery-160-fir-59096255-20260910/`. The campaign
 is therefore a failed engineering gate, not recovery evidence. Do not replace
-seeds, relax thresholds, or rerun it as evidence; a separate optimizer
-qualification would need its own contract and pre-run gate.
+seeds, relax thresholds, or rerun it as evidence. The separately frozen
+six-cell third-BFGS-pass candidate retained in
+`results/continuation/phylo-third-pass-local-six-20260910/` also fails: five
+cells pass locally, but `phi=.6`, seed `2609185` remains above the unchanged
+gradient gate (`0.001105532 > 0.001`). C3 is closed; it does not justify a
+fourth pass, a Fir replay, or a changed threshold.
 
 ## Spatial result (2026-09-09)
 
@@ -96,9 +100,11 @@ eight failed cells crossed the gradient gate, so it does not repair the campaign
 
 ## Next bounded slice
 
-Treat the phylogenetic recovery gate as failed and retain its result. Do not
-create a pull request, merge, release, or push. A separate CI-only authorization
-remains necessary before cross-platform claims.
+Treat the phylogenetic, animal, and spatial recovery gates as failed and retain
+their results. Any numerical follow-up needs a separate model-level contract
+with independent evidence; it cannot be another generic BFGS restart. Do not
+create a pull request, merge, release, or push. A separate CI-only
+authorization remains necessary before cross-platform claims.
 
 ## Do not claim
 
@@ -106,5 +112,5 @@ Do not describe this work as merged, released, cross-platform verified, or as
 general recovery/coverage evidence. The named temporal-only forecast, direct
 profile, parametric bootstrap, and supplied-candidate comparison helpers have
 separate bounded Gaussian contracts. Generic prediction, generic intervals and
-profiles, automatic selection, broad bootstrap, all temporal source pairs, and
-source-by-time product kernels remain unavailable.
+profiles, automatic selection, broad bootstrap, all other temporal source
+pairs, and source-by-time product kernels remain unavailable.

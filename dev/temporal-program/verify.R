@@ -163,8 +163,16 @@ if (!mode %in% allowed) {
 
 .temporal_program_verify_phylo <- function(root) {
   fixture <- "tests/testthat/test-temporal-program-phylo-replicated.R"
-  result_path <- "dev/temporal-program/results/phylo-recovery-160-20260909.csv"
-  summary_path <- "dev/temporal-program/results/phylo-recovery-160-summary-20260909.csv"
+  result_path <- paste0(
+    "dev/temporal-program/results/failed/",
+    "phylo-recovery-160-fir-59096255-20260910/",
+    "phylo-recovery-160-20260909.csv"
+  )
+  summary_path <- paste0(
+    "dev/temporal-program/results/failed/",
+    "phylo-recovery-160-fir-59096255-20260910/",
+    "phylo-recovery-160-summary-20260909.csv"
+  )
   required <- c(fixture, result_path, summary_path)
   if (any(!file.exists(file.path(root, required)))) {
     stop("missing temporal-phylo evidence: ",

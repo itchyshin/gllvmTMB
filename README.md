@@ -74,8 +74,8 @@ cells are implemented: replicated AR1 `temporal_indep()` plus one labelled
 `tree =` or `vcv =`; one fixed labelled `animal_indep()` term with in-keyword
 `pedigree =`, `A =`, or `Ainv =`; or one fixed-mesh `spatial_indep()` term.
 Their evidence is partial and differs by pair: the named kernel fixture passes
-locally, retained phylogenetic and spatial recovery gates fail strictly, and
-animal recovery has not yet run. They are not cross-platform verification,
+locally; retained phylogenetic, animal, and spatial recovery gates fail
+strictly. They are not cross-platform verification,
 release, general recovery, or coverage evidence. OU, other temporal/source
 modes, source-by-time interactions, and other structured-source combinations
 remain unavailable. In the animal cell, `A` is a labelled dense relatedness

@@ -63,12 +63,14 @@ fit_one <- function(phi, seed) {
       objective = fit$opt$objective, phi_estimate = temporal$time$value[[1L]],
       temporal_1 = temporal$variance$value[[1L]], temporal_2 = temporal$variance$value[[2L]], temporal_3 = temporal$variance$value[[3L]],
       phylo_1 = p$theta_rr_phy[1L]^2, phylo_2 = p$theta_rr_phy[2L]^2, phylo_3 = p$theta_rr_phy[3L]^2,
-      beta_1 = beta[[1L]], beta_2 = beta[[2L]], beta_3 = beta[[3L]], stringsAsFactors = FALSE)
+      beta_1 = beta[[1L]], beta_2 = beta[[2L]], beta_3 = beta[[3L]],
+      error_message = NA_character_, stringsAsFactors = FALSE)
   }, error = function(e) data.frame(phi = phi, seed = seed, terminal = "error",
     convergence = NA_integer_, pass_1_convergence = NA_integer_, pass_2_convergence = NA_integer_,
     pass_2_accepted = NA, max_gradient = NA_real_, objective = NA_real_, phi_estimate = NA_real_,
     temporal_1 = NA_real_, temporal_2 = NA_real_, temporal_3 = NA_real_, phylo_1 = NA_real_,
-    phylo_2 = NA_real_, phylo_3 = NA_real_, beta_1 = NA_real_, beta_2 = NA_real_, beta_3 = NA_real_))
+    phylo_2 = NA_real_, phylo_3 = NA_real_, beta_1 = NA_real_, beta_2 = NA_real_, beta_3 = NA_real_,
+    error_message = conditionMessage(e)))
   out$elapsed_seconds <- proc.time()[["elapsed"]] - started; out
 }
 
@@ -81,6 +83,9 @@ result_path <- if (is_smoke) tempfile("temporal-phylo-smoke-", fileext = ".csv")
 ## Checkpoint each retained attempt. A stopped process can therefore resume the
 ## exact frozen plan without discarding already completed seed--phi cells.
 result <- if (file.exists(result_path)) utils::read.csv(result_path, check.names = FALSE) else NULL
+if (!is.null(result) && !"error_message" %in% names(result)) {
+  result$error_message <- NA_character_
+}
 if (!is.null(result) && anyDuplicated(result[c("phi", "seed")])) {
   stop("Phylogenetic recovery checkpoint has duplicate phi--seed attempts.", call. = FALSE)
 }

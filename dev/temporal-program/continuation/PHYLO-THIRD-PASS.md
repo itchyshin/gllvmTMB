@@ -67,6 +67,15 @@ Therefore C3 is rejected. It does not justify a Fir submission, a fourth BFGS
 pass, a changed stopping threshold, or any recovery claim. The original Fir
 campaign remains the controlling failed phylogenetic receipt.
 
+The original C3 receipts also recorded an `inner_hessian` diagnostic using
+TMB's default `spHess()` call. That call is the full joint Hessian, rather
+than the conditional random-effect block, so its reported condition values
+cannot be used to qualify a later Newton step. This does not change C3's
+rejection: its frozen failure was the independently recomputed outer gradient
+`0.001105532 > 0.001`. Future candidates must use the corrected
+`spHess(last.par, random = TRUE)` diagnostic and its independent analytic
+precision test.
+
 The first retained C3 receipt predated the `rejection_reasons` field. The raw
 gates still identify `gradient` as its only failure, and the summary records
 that diagnosis. The runner now writes `rejection_reasons` directly, with a

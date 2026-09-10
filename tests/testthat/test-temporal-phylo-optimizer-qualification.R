@@ -62,6 +62,8 @@ test_that("temporal-phylo optimizer passes retain labelled qualification diagnos
     "finite_difference_all_finite", "fresh_state_ok", "fresh_objective",
     "fresh_objective_error", "inner_method", "inner_hessian_available",
     "inner_hessian_dimension", "inner_hessian_rcond", "inner_hessian_condition",
+    "inner_hessian_symmetric", "inner_hessian_pd", "inner_score_max",
+    "inner_score_coordinate", "inner_fixed_state_ok", "inner_hessian_tmb_version",
     "inner_hessian_message", "outer_hessian_available", "outer_hessian_message",
     "fn_evaluations", "gr_evaluations", "message",
     "warnings", "elapsed_seconds", "start", "end", "gradient", "fresh_gradient",
@@ -92,6 +94,89 @@ test_that("temporal-phylo optimizer passes retain labelled qualification diagnos
   expect_true(all(is.finite(history$fresh_objective_error)))
   expect_true(all(history$inner_hessian_available))
   expect_true(all(history$inner_hessian_dimension > 0L))
+  expect_true(all(history$inner_hessian_symmetric))
+  expect_true(all(history$inner_hessian_pd))
+  expect_true(all(history$inner_fixed_state_ok))
+  expect_true(all(is.finite(history$inner_score_max)))
+  expect_true(all(history$inner_score_max <= 1e-7))
+  expect_true(all(nzchar(history$inner_score_coordinate)))
+  expect_identical(history$inner_hessian_tmb_version,
+    rep(as.character(utils::packageVersion("TMB")), nrow(history)))
+  ## This must be the conditional random-effect Hessian, rather than TMB's
+  ## full joint sparse Hessian.  The latter can include fixed-coordinate
+  ## rows and therefore cannot diagnose the Laplace inner mode.
+  expect_identical(
+    history$inner_hessian_dimension,
+    rep(as.integer(length(fit$tmb_obj$env$random)), nrow(history))
+  )
+})
+
+.temporal_phylo_conditional_precision <- function(fit) {
+  td <- fit$tmb_data
+  outer <- fit$opt$par
+  par <- fit$tmb_obj$env$parList(outer)
+  n_state <- as.integer(td$n_temporal_states)
+  n_trait <- as.integer(td$n_traits)
+  n_phy <- as.integer(td$n_aug_phy)
+  rank_phy <- as.integer(td$d_phy)
+  stopifnot(identical(as.integer(td$temporal_structure), 0L))
+  ## The qualification fixture is `phylo_indep()`: it uses one independent
+  ## phylogenetic score field per trait, hence its lower-triangular loading
+  ## matrix is diagonal and the remaining packed entries are zero.
+  stopifnot(identical(rank_phy, n_trait))
+  stopifnot(all(par$theta_rr_phy[-seq_len(n_trait)] == 0))
+
+  phi <- (1 - 1e-6) * tanh(par$theta_temporal_time)
+  temporal_transition <- matrix(0, n_state, n_state)
+  for (state in seq_len(n_state)) {
+    predecessor <- as.integer(td$temporal_predecessor[[state]]) + 1L
+    if (predecessor <= 0L) {
+      temporal_transition[state, state] <- 1
+    } else {
+      a <- phi ^ td$temporal_gap[[state]]
+      temporal_transition[state, ] <- a * temporal_transition[predecessor, ]
+      temporal_transition[state, state] <- sqrt(1 - a * a)
+    }
+  }
+
+  Z_temporal <- matrix(0, length(td$y), n_trait * n_state)
+  temporal_sd <- exp(par$theta_temporal_diag)
+  for (obs in seq_along(td$y)) {
+    trait <- as.integer(td$trait_id[[obs]]) + 1L
+    state <- as.integer(td$temporal_state_id[[obs]]) + 1L
+    Z_temporal[obs, seq(trait, n_trait * n_state, by = n_trait)] <-
+      temporal_sd[[trait]] * temporal_transition[state, ]
+  }
+
+  Z_phylo <- matrix(0, length(td$y), n_phy * rank_phy)
+  for (obs in seq_along(td$y)) {
+    trait <- as.integer(td$trait_id[[obs]]) + 1L
+    phylo_score <- as.integer(td$species_aug_id[[obs]]) +
+      (trait - 1L) * n_phy + 1L
+    Z_phylo[obs, phylo_score] <- par$theta_rr_phy[[trait]]
+  }
+  Q_prior <- as.matrix(do.call(Matrix::bdiag, c(
+    list(diag(n_trait * n_state)),
+    replicate(rank_phy, td$Ainv_phy_rr, simplify = FALSE)
+  )))
+  Q_prior + crossprod(cbind(Z_temporal, Z_phylo)) /
+    exp(2 * par$log_sigma_eps[[1L]])
+}
+
+test_that("conditional random-effect Hessian matches the analytic Gaussian precision", {
+  skip_if_not_installed("TMB")
+  fit <- .temporal_phylo_optimizer_qualification_fit(
+    .temporal_phylo_optimizer_qualification_fixture()
+  )
+  full <- fit$tmb_obj$env$last.par
+  random <- fit$tmb_obj$env$random
+  conditional <- as.matrix(fit$tmb_obj$env$spHess(full, random = TRUE))
+  analytic <- .temporal_phylo_conditional_precision(fit)
+  expect_identical(dim(conditional), dim(analytic))
+  expect_equal(conditional, analytic, tolerance = 1e-9)
+  joint_score <- TMB:::EvalADFunObject(fit$tmb_obj$env$ADGrad, full, order = 0L)
+  expect_lt(max(abs(joint_score[random])), 1e-7)
+  expect_gt(nrow(fit$tmb_obj$env$spHess(full)), nrow(conditional))
 })
 
 .temporal_phylo_optimizer_qualification_dense_nll <- function(fit, fixed, Cphy) {

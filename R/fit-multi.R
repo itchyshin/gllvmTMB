@@ -7609,6 +7609,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       message = message, inner_method = NA_character_,
       inner_hessian_available = FALSE, inner_hessian_dimension = NA_integer_,
       inner_hessian_rcond = NA_real_, inner_hessian_condition = NA_real_,
+      inner_hessian_symmetric = FALSE, inner_hessian_pd = FALSE,
+      inner_score_max = NA_real_, inner_score_coordinate = NA_character_,
+      inner_fixed_state_ok = FALSE,
+      inner_hessian_tmb_version = NA_character_,
       inner_hessian_message = "not available", outer_hessian_available = FALSE,
       outer_hessian_message = "not available"
     )
@@ -7630,6 +7634,11 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       return(unavailable("fresh outer-coordinate order differs"))
     }
     fresh_objective <- tryCatch(fresh$fn(par), error = function(e) NA_real_)
+    ## `last.par` is the full fixed-plus-random vector at the conditional mode
+    ## just evaluated by `fn()`.  It is the only valid point at which to ask
+    ## TMB for the Laplace inner Hessian.  Calling `spHess()` with its defaults
+    ## instead returns the full joint matrix at `env$par`.
+    fresh_full_par <- tryCatch(fresh$env$last.par, error = function(e) NULL)
     fresh_gradient <- tryCatch(fresh$gr(par),
       error = function(e) rep(NA_real_, length(par)))
     tolerance <- 64 * .Machine$double.eps * max(1, abs(objective))
@@ -7640,16 +7649,59 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       all(is.finite(fresh_gradient)) && all(is.finite(gradient)) &&
       all(abs(fresh_gradient - gradient) <= gradient_tolerance)
     inner <- tryCatch({
-      hessian <- fresh$env$spHess()
+      random_index <- as.integer(fresh$env$random)
+      n_full <- length(fresh$env$par)
+      fixed_index <- setdiff(seq_len(n_full), random_index)
+      full_valid <- is.numeric(fresh_full_par) && length(fresh_full_par) == n_full &&
+        all(is.finite(fresh_full_par)) && length(fixed_index) == length(par)
+      fixed_tolerance <- 64 * .Machine$double.eps * max(1, max(abs(par)))
+      fixed_ok <- full_valid && all(abs(fresh_full_par[fixed_index] - par) <= fixed_tolerance)
+      if (!full_valid || !fixed_ok || !length(random_index)) {
+        stop("conditional-mode parameter state is unavailable or does not match the outer endpoint",
+          call. = FALSE)
+      }
+      ## EvalADFunObject on ADGrad is the joint exact score.  Its random block
+      ## is the conditional score at `fresh_full_par`; `spHess(..., random =
+      ## TRUE)` selects the matching random-effect block rather than the full
+      ## joint Hessian.
+      joint_score <- TMB:::EvalADFunObject(
+        fresh$env$ADGrad, fresh_full_par, order = 0L
+      )
+      if (!is.numeric(joint_score) || length(joint_score) != n_full ||
+          any(!is.finite(joint_score))) {
+        stop("conditional random-effect score is unavailable", call. = FALSE)
+      }
+      conditional_score <- stats::setNames(
+        as.numeric(joint_score[random_index]),
+        optimizer_coordinate_labels(fresh_full_par)[random_index]
+      )
+      hessian <- fresh$env$spHess(fresh_full_par, random = TRUE)
       dimension <- if (is.matrix(hessian) || inherits(hessian, "Matrix")) nrow(hessian) else NA_integer_
-      rcond <- if (is.finite(dimension) && dimension > 0L) Matrix::rcond(hessian) else NA_real_
-      list(available = is.finite(dimension) && dimension > 0L &&
-          all(is.finite(hessian)), dimension = as.integer(dimension),
+      dimension_ok <- is.finite(dimension) && dimension > 0L &&
+        identical(as.integer(dimension), as.integer(length(random_index)))
+      finite <- dimension_ok && all(is.finite(hessian))
+      symmetric <- finite && isTRUE(Matrix::isSymmetric(hessian, tol = 1e-10))
+      cholesky <- if (symmetric) tryCatch(
+        Matrix::Cholesky(hessian, LDL = FALSE, perm = TRUE),
+        error = function(e) NULL
+      ) else NULL
+      pd <- !is.null(cholesky)
+      rcond <- if (pd) Matrix::rcond(hessian) else NA_real_
+      list(available = finite && symmetric && pd, dimension = as.integer(dimension),
         rcond = as.numeric(rcond),
         condition = if (is.finite(rcond) && rcond > 0) 1 / rcond else Inf,
-        message = "ok")
+        symmetric = symmetric, pd = pd,
+        score_max = max(abs(conditional_score)),
+        score_coordinate = names(conditional_score)[which.max(abs(conditional_score))],
+        fixed_state_ok = fixed_ok,
+        tmb_version = as.character(utils::packageVersion("TMB")),
+        message = if (finite && symmetric && pd) "ok" else
+          "conditional random-effect Hessian is nonfinite, nonsymmetric, or not positive-definite")
     }, error = function(e) list(available = FALSE, dimension = NA_integer_,
-      rcond = NA_real_, condition = NA_real_, message = conditionMessage(e)))
+      rcond = NA_real_, condition = NA_real_, symmetric = FALSE, pd = FALSE,
+      score_max = NA_real_, score_coordinate = NA_character_, fixed_state_ok = FALSE,
+      tmb_version = NA_character_,
+      message = conditionMessage(e)))
     outer <- tryCatch({
       hessian <- fresh$he(par)
       list(available = is.matrix(hessian) && all(is.finite(hessian)), message = "ok")
@@ -7665,6 +7717,12 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       inner_hessian_dimension = inner$dimension,
       inner_hessian_rcond = inner$rcond,
       inner_hessian_condition = inner$condition,
+      inner_hessian_symmetric = inner$symmetric,
+      inner_hessian_pd = inner$pd,
+      inner_score_max = inner$score_max,
+      inner_score_coordinate = inner$score_coordinate,
+      inner_fixed_state_ok = inner$fixed_state_ok,
+      inner_hessian_tmb_version = inner$tmb_version,
       inner_hessian_message = inner$message,
       outer_hessian_available = isTRUE(outer$available),
       outer_hessian_message = outer$message)
@@ -7742,6 +7800,12 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       inner_hessian_dimension = fresh$inner_hessian_dimension,
       inner_hessian_rcond = fresh$inner_hessian_rcond,
       inner_hessian_condition = fresh$inner_hessian_condition,
+      inner_hessian_symmetric = fresh$inner_hessian_symmetric,
+      inner_hessian_pd = fresh$inner_hessian_pd,
+      inner_score_max = fresh$inner_score_max,
+      inner_score_coordinate = fresh$inner_score_coordinate,
+      inner_fixed_state_ok = fresh$inner_fixed_state_ok,
+      inner_hessian_tmb_version = fresh$inner_hessian_tmb_version,
       inner_hessian_message = fresh$inner_hessian_message,
       outer_hessian_available = fresh$outer_hessian_available,
       outer_hessian_message = fresh$outer_hessian_message,

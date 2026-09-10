@@ -34,7 +34,13 @@ strength](#advanced-estimating-the-source-strength).
 
 ## Choose in two steps
 
-### 1. What relates the grouping levels?
+### 1. What is being related?
+
+The first five sources describe relationships **among stable units**: for
+example, individuals, species, locations, or rows of a supplied relatedness
+matrix. Temporal is the additional source for **ordered repeated states within
+a series**. It uses the same three trait-covariance modes, but its series and
+time coordinates have a different scientific meaning.
 
 - **No prefix:** levels are independent, as in an ordinary random effect.
 - **`animal_`:** individuals are related through a pedigree, `A`, or `Ainv`.
@@ -44,8 +50,9 @@ strength](#advanced-estimating-the-source-strength).
   locations can be correlated.
 - **`kernel_`:** levels are related through a supplied dense covariance matrix
   `K` — the generic dense-matrix source (the fifth grid row).
-- **`temporal_`:** ordered `(series, time)` states share an AR1 or OU kernel;
-  this sixth row preserves integer gaps for AR1 and elapsed-time distances for OU.
+- **`temporal_`:** ordered states within each `series` share an AR1 or OU
+  kernel. `time =` names the occasion or elapsed-time column; AR1 preserves
+  integer gaps and OU uses elapsed-time distances.
 
 These sources are alternatives based on study design, not a progression from
 fine to broad scale. Add a source prefix only when that structured relationship
@@ -79,16 +86,17 @@ All fitted keyword covariances are random-effect covariances on the model's
 linear-predictor or latent scale. They are not automatically response-scale
 covariances for non-Gaussian traits.
 
-## The 6 × 3 grid
+## The 5 × 3 grid, plus temporal
 
-The rows are the six correlation **sources** across grouping levels; the
-columns are the three fundamental trait-covariance **modes**. Every cell is a
-live keyword. The *scalar* and *unique* sub-cases are modifiers, listed under
-the table.
+The five stable-unit sources form the familiar 5 × 3 grid. Temporal adds a
+sixth, within-series row with the same three trait-covariance modes. Thus the
+formal grammar is a 6 × 3 source-by-mode grid, while this presentation keeps
+the important distinction visible. Every cell is a live keyword. The *scalar*
+and *unique* sub-cases are modifiers, listed under the table.
 
 <div class="table-responsive">
 <table class="table table-striped" style="min-width: 640px;">
-<caption>Source × mode covariance keyword grid</caption>
+<caption>Stable-unit sources and the additional temporal source, each paired with a trait-covariance mode</caption>
 <thead><tr>
 <th>Source</th><th>Independent</th><th>Dependent</th><th>Latent</th>
 </tr></thead>
@@ -103,7 +111,7 @@ the table.
 <td><code>spatial_dep()</code></td><td><code>spatial_latent()</code></td></tr>
 <tr><th>kernel</th><td><code>kernel_indep()</code></td>
 <td><code>kernel_dep()</code></td><td><code>kernel_latent()</code></td></tr>
-<tr><th>temporal</th><td><code>temporal_indep()</code></td>
+<tr><th>temporal (within series)</th><td><code>temporal_indep()</code></td>
 <td><code>temporal_dep()</code></td><td><code>temporal_latent()</code></td></tr>
 </tbody>
 </table>
@@ -120,10 +128,17 @@ term (see the latent default below). The standalone `unique()` keyword is
 soft-deprecated in favour of `indep()` (for a plain diagonal) and
 `latent(unique = TRUE)` (for the paired companion).
 
-## Repeated temporal measurements
+## The temporal addition
 
 `temporal_indep(0 + trait | series, time = occasion)`,
 `temporal_dep(...)`, and `temporal_latent(..., d = 1)` form the temporal row.
+Here `series` identifies one independent trajectory, and `time = occasion`
+uses the bare `occasion` column from the data: it is neither a formula term nor
+a character string. A `replicate = measurement` column identifies repeated
+measurements at the same `(series, occasion)` state. The provider creates that
+state index privately; it does not change `unit` or `unit_obs`, which retain
+their ordinary stable-unit and within-unit meanings.
+
 AR1 accepts ordered integer occasions and keeps missing values as gaps; OU
 accepts elapsed numeric time without automatic rescaling. With
 `temporal_latent(unique = TRUE)`, Psi is itself correlated through the temporal

@@ -57834,3 +57834,18 @@ Deliberately not run: Totoro 9×500 grid dispatch; full `devtools::test()`.
   grammar, help, vignette, README, NEWS, or generated documentation surface
   changed. TEMP-06-03 remains `partial`; this is not recovery, coverage,
   cross-platform, merge, or release evidence.
+
+## 2026-09-10 — temporal keyword-grid teaching clarification
+
+- Reframed the keyword-grid article as a five-source stable-unit grid plus the
+  temporal within-series addition. The formal grammar remains six sources by
+  three trait-covariance modes; the new presentation makes the different
+  grouping-axis meaning visible without creating a fourth mode or special
+  temporal syntax.
+- The temporal row now identifies `series`, a bare `time = occasion` column,
+  and optional `replicate = measurement` explicitly, and states that the
+  private temporal-state index never overwrites ordinary `unit` or `unit_obs`.
+- `Rscript --vanilla -e 'rmarkdown::render("vignettes/articles/api-keyword-grid.Rmd",
+  output_dir = tempdir(), quiet = TRUE)'` completed and emitted
+  `TEMPORAL_GRID_ARTICLE_RENDER_PASS`. This is a source-article render only;
+  no pkgdown deployment, merge, or release claim follows.

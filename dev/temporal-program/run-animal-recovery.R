@@ -11,8 +11,8 @@ truth <- list(beta = c(.2, -.3, .1), temporal = c(.55, .42, .63)^2,
 n_series <- 160L; n_time <- 16L; n_replicate <- 2L
 series <- paste0("sp", seq_len(n_series)); traits <- paste0("t", 1:3)
 ## One fixed, labelled pedigree relationship matrix. The two founders are
-## unobserved parents of every remaining series, so the animal route exercises
-## the sparse precision/marginalisation path rather than a generic kernel.
+## parents of every remaining series, so this is a pedigree source rather than
+## a generic kernel; unobserved-ancestor marginalisation is tested separately.
 pedigree <- data.frame(
   id = series,
   sire = c(NA_character_, NA_character_, rep(series[[1L]], n_series - 2L)),

@@ -7,8 +7,13 @@ mode and structure, either `phi` or the OU rate, temporal loadings where
 present, `temporal_indep_variance` for `indep`, and
 `temporal_Psi_variance` for `latent(unique = TRUE)`.
 It does not relabel ordinary unit/unit-observation components as temporal
-states. New-data prediction, intervals, profiles, selection and bootstrap
-remain explicit unsupported routes.
+states. For an unreplicated Gaussian `temporal_indep()` source by itself,
+`forecast_temporal()`, `profile_temporal()`, `bootstrap_temporal()`, and
+`compare_temporal()` have separate bounded contracts. The forecast conditions
+on fitted parameter values for future occasions of existing series; its
+`se.fit` is not a calibrated prediction interval. Generic new-data prediction,
+generic intervals and profiles, automatic selection, source-pair versions, and
+other temporal modes remain explicit unsupported routes.
 
 **Maintained by:** Emmy (R package architecture / S3 surface)
 and Fisher (statistical inference semantics).

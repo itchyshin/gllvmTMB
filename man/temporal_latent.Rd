@@ -48,5 +48,10 @@ cells are replicated AR1 \code{temporal_indep()} plus one labelled \code{kernel_
 a fixed labelled \code{phylo_indep()} term, or a fixed labelled \code{animal_indep()}
 term, or a fixed labelled \code{spatial_indep()} term. The spatial cell redraws
 its independent SPDE field during unconditional simulation. Other
-temporal-source combinations remain unavailable.
+temporal-source combinations remain unavailable. For an unreplicated,
+Gaussian \code{temporal_indep()} source by itself, \code{forecast_temporal()},
+\code{profile_temporal()}, \code{bootstrap_temporal()}, and \code{compare_temporal()} have
+separate bounded contracts. Generic new-data prediction, generic intervals
+and profiles, automatic selection, and source-pair versions of those routes
+remain unavailable.
 }

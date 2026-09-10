@@ -70,7 +70,12 @@ temporal_dep <- function(formula, time, structure = "ar1", replicate = NULL) {
 #' a fixed labelled `phylo_indep()` term, or a fixed labelled `animal_indep()`
 #' term, or a fixed labelled `spatial_indep()` term. The spatial cell redraws
 #' its independent SPDE field during unconditional simulation. Other
-#' temporal-source combinations remain unavailable.
+#' temporal-source combinations remain unavailable. For an unreplicated,
+#' Gaussian `temporal_indep()` source by itself, `forecast_temporal()`,
+#' `profile_temporal()`, `bootstrap_temporal()`, and `compare_temporal()` have
+#' separate bounded contracts. Generic new-data prediction, generic intervals
+#' and profiles, automatic selection, and source-pair versions of those routes
+#' remain unavailable.
 #'
 #' @rdname temporal_latent
 #' @param d Latent rank. This version supports `1`.

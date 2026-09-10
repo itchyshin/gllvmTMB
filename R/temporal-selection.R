@@ -8,6 +8,16 @@ compare_temporal <- function(...) {
   if (is.null(names(fits)) || any(!nzchar(names(fits)))) cli::cli_abort("Temporal candidates must be named.")
   ok <- vapply(fits, function(x) inherits(x, "gllvmTMB_multi") && isTRUE(x$temporal$active), logical(1))
   if (!all(ok)) cli::cli_abort("Every candidate must be a native temporal fit.")
+  composed <- vapply(fits, function(x) {
+    length(.gllvmTMB_predict_unhandled_re_tiers(x, handled = "temporal")) > 0L
+  }, logical(1))
+  if (any(composed)) {
+    cli::cli_abort(c(
+      "{.fn compare_temporal} currently requires the temporal source by itself.",
+      "i" = "Candidate(s) with another covariance tier: {.val {names(fits)[composed]}}.",
+      ">" = "AIC comparison for temporal source pairs needs its own selection contract and evidence."
+    ), class = "gllvmTMB_temporal_selection_composed")
+  }
   responses <- lapply(fits, function(x) x$data[[all.vars(x$formula[[2L]])]])
   if (!all(vapply(responses[-1L], identical, logical(1), responses[[1L]])))
     cli::cli_abort("Temporal candidates must use identical response rows and ordering.")

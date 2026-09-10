@@ -26,3 +26,21 @@ test_that("profile_temporal profiles the direct transformed time parameter", {
     formula = value ~ 0 + trait + temporal_dep(0 + trait | series, time = occasion))),
     "temporal_indep")
 })
+
+test_that("OU temporal profiles are invariant to a time-origin shift", {
+  d <- expand.grid(series = c("a", "b", "c"), elapsed = c(0, .5, 2),
+    trait = c("t1", "t2", "t3"), KEEP.OUT.ATTRS = FALSE)
+  set.seed(260918L); d$value <- as.numeric(factor(d$trait)) + stats::rnorm(nrow(d))
+  shifted <- d; shifted$elapsed <- shifted$elapsed + 100
+  fit <- suppressWarnings(gllvmTMB(value ~ 0 + trait +
+    temporal_indep(0 + trait | series, time = elapsed, structure = "ou"), data = d,
+    unit = "series", family = gaussian(), silent = TRUE,
+    control = gllvmTMBcontrol(se = FALSE)))
+  shifted_fit <- suppressWarnings(gllvmTMB(value ~ 0 + trait +
+    temporal_indep(0 + trait | series, time = elapsed, structure = "ou"), data = shifted,
+    unit = "series", family = gaussian(), silent = TRUE,
+    control = gllvmTMBcontrol(se = FALSE)))
+  expect_equal(fit$opt$objective, shifted_fit$opt$objective, tolerance = 1e-8)
+  expect_equal(profile_temporal(fit, ystep = .25, ytol = 1),
+    profile_temporal(shifted_fit, ystep = .25, ytol = 1), tolerance = 1e-8)
+})

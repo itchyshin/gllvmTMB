@@ -1,5 +1,17 @@
 ## 2026-09-09 — Destination B S3b closed `phylo_rr` adapter
 
+## 2026-09-10 — Destination B S4 public `phylo_dep` receipt runner
+
+- Added an isolated, write-once runner for exactly the experimental post-fit
+  Gaussian `traits(trait_1, trait_2) ~ 1 + phylo_dep(1 | species, tree = tree)`
+  Tree cell. It binds seven named lower/upper endpoint pairs to `<= 1e-4`,
+  fixture, R DLL/source, GLLVM revision, Julia executable/project/environment,
+  generic-engine closure, and raw output hashes; malformed targets, dangling
+  payloads, or duplicate output fail loudly.
+- Focused runner contract and non-live bridge tests pass. No immutable S4
+  receipt is retained: the previous repaired JuliaCall environment path is
+  absent, and the runner refuses any `LogExpFunctions` extension-load noise.
+
 - Local-only branch `codex/destination-b-s3b-r-adapter-20260909`, commit
   `1c622b3f0` plus the opt-in live-regression follow-up. This is the approved
   R adapter/test exception only; no C++ likelihood, generic `engine =

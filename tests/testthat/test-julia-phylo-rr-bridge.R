@@ -721,6 +721,12 @@ test_that("S4 public phylo_dep formula retains paired transformed-Wald endpoints
   expect_equal(as.numeric(julia$phylo_covariance), as.numeric(native$report$Sigma_phy), tolerance = 5e-6)
   expect_equal(as.numeric(julia_ci[, 1L]), unname(native_lower), tolerance = 1e-4)
   expect_equal(as.numeric(julia_ci[, 2L]), unname(native_upper), tolerance = 1e-4)
+  assign(".s4_public_phylo_dep_receipt", list(
+    target_names = rownames(julia_ci), native_lower = unname(native_lower),
+    native_upper = unname(native_upper), julia_lower = as.numeric(julia_ci[, 1L]),
+    julia_upper = as.numeric(julia_ci[, 2L]),
+    fixture_sha256 = digest::digest(data, algo = "sha256", serialize = TRUE)
+  ), envir = globalenv())
 })
 
 test_that("S4 Tree wrapper is an explicit post-fit Wald surface", {

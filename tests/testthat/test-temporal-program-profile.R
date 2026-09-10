@@ -10,9 +10,18 @@ test_that("profile_temporal profiles the direct transformed time parameter", {
   ))
   out <- profile_temporal(fit, ystep = .25, ytol = 1)
   par <- fit$tmb_obj$env$parList(fit$opt$par)
+  theta_index <- match("theta_temporal_time", names(fit$opt$par))
+  trace <- TMB::tmbprofile(fit$tmb_obj, name = theta_index,
+    ystep = .25, ytol = 1, trace = FALSE)
+  at_mle <- which.min(abs(trace[[1L]] - fit$opt$par[[theta_index]]))
   expect_named(out, c("estimate", "lower", "upper"))
   expect_equal(out[["estimate"]], (1 - 1e-6) * tanh(par$theta_temporal_time),
     tolerance = 1e-10)
+  expect_equal(trace[[2L]][[at_mle]], fit$opt$objective, tolerance = 1e-8)
+  expect_gt(max(trace[[2L]]), fit$opt$objective + .1)
+  constrained <- profile_temporal(fit, ystep = .1, ytol = 1,
+    parm.range = fit$opt$par[[theta_index]] + c(-.01, .01))
+  expect_true(all(is.na(constrained[c("lower", "upper")])))
   expect_error(profile_temporal(update(fit,
     formula = value ~ 0 + trait + temporal_dep(0 + trait | series, time = occasion))),
     "temporal_indep")

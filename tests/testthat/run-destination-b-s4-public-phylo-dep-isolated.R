@@ -136,12 +136,24 @@ s4_public_phylo_dep_write_once <- function(payload, path) {
   invisible(path)
 }
 
-s4_public_phylo_dep_failed_diagnostic_path <- function(receipt_path) {
+s4_public_phylo_dep_failed_diagnostic_namespace <- function(receipt_path) {
   receipt_path <- normalizePath(receipt_path, mustWork = FALSE)
-  file.path(
-    dirname(receipt_path),
-    paste0(tools::file_path_sans_ext(basename(receipt_path)), "-FAILED.json")
-  )
+  paste0(receipt_path, ".failed-attempt")
+}
+
+s4_public_phylo_dep_failed_diagnostic_path <- function(receipt_path) {
+  file.path(s4_public_phylo_dep_failed_diagnostic_namespace(receipt_path), "FAILED.json")
+}
+
+s4_public_phylo_dep_reserve_failed_diagnostic_path <- function(receipt_path) {
+  namespace <- s4_public_phylo_dep_failed_diagnostic_namespace(receipt_path)
+  if (file.exists(namespace)) {
+    stop("S4 failed-attempt diagnostic namespace is already reserved; use a new receipt path", call. = FALSE)
+  }
+  if (!dir.create(namespace, recursive = FALSE)) {
+    stop("S4 failed-attempt diagnostic namespace could not be reserved", call. = FALSE)
+  }
+  list(namespace = namespace, path = file.path(namespace, "FAILED.json"))
 }
 
 s4_public_phylo_dep_write_failed_diagnostic_once <- function(payload, path, receipt_path) {
@@ -183,8 +195,12 @@ s4_public_phylo_dep_reporter_details <- function(results) {
   })
 }
 
-s4_public_phylo_dep_retain_failed_attempt <- function(tab, raw_output, reporter_details, provenance, receipt_path) {
-  failed_path <- s4_public_phylo_dep_failed_diagnostic_path(receipt_path)
+s4_public_phylo_dep_retain_failed_attempt <- function(tab, raw_output, reporter_details, provenance, receipt_path, failed_path) {
+  failed_path <- normalizePath(failed_path, mustWork = FALSE)
+  reserved_namespace <- normalizePath(s4_public_phylo_dep_failed_diagnostic_namespace(receipt_path), mustWork = TRUE)
+  if (!identical(normalizePath(dirname(failed_path), mustWork = TRUE), reserved_namespace) || !identical(basename(failed_path), "FAILED.json")) {
+    stop("S4 failed-attempt diagnostic path was not reserved for this receipt", call. = FALSE)
+  }
   provenance$selected_test_expressions <- as.list(provenance$selected_test_expressions)
   counts <- vapply(c("failed", "skipped", "error", "warning"), function(name) {
     if (!name %in% names(tab)) 0L else sum(as.integer(tab[[name]]), na.rm = TRUE)
@@ -245,6 +261,7 @@ s4_public_phylo_dep_main <- function() {
   receipt_path <- normalizePath(dirname(Sys.getenv("GLLVM_S4_RECEIPT_PATH")), mustWork = TRUE)
   receipt_path <- file.path(receipt_path, basename(Sys.getenv("GLLVM_S4_RECEIPT_PATH")))
   if (file.exists(receipt_path)) stop("refusing to overwrite existing S4 public phylo_dep receipt", call. = FALSE)
+  failed_diagnostic <- s4_public_phylo_dep_reserve_failed_diagnostic_path(receipt_path)
   r_before <- s4_public_phylo_dep_snapshot(getwd(), "gllvmTMB source")
   julia_before <- s4_public_phylo_dep_snapshot(project, "GLLVM.jl source")
   s4_seal <- s4_public_phylo_dep_read_s4_seal(getwd())
@@ -287,7 +304,8 @@ s4_public_phylo_dep_main <- function() {
       ),
       selected_test_expressions = selected_test_expressions
     ),
-    receipt_path = receipt_path
+    receipt_path = receipt_path,
+    failed_path = failed_diagnostic$path
   )
   raw <- get0(".s4_public_phylo_dep_receipt", envir = globalenv(), inherits = FALSE)
   embedded_julia <- s4_public_phylo_dep_validate_embedded_julia_runtime(raw$embedded_julia_active_project, raw$embedded_julia_package_root, project)

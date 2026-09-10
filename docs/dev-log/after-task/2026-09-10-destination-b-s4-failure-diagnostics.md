@@ -76,6 +76,15 @@ test process working directory. The hash was moved into execution provenance,
 where the runner path is known. A second test exposed that JSON dropped names
 on the selected-expression vector; it is now serialized as a named list.
 
+## P1 Collision Remediation
+
+The original derived sibling name, `receipt-FAILED.json`, could already be a
+differently named successful receipt. The runner now reserves the separate
+deterministic namespace `receipt.json.failed-attempt/FAILED.json` before any
+attempt activity. The new contract test proves that an occupied namespace fails
+early while a legacy sibling receipt cannot collide with the reserved path. The
+focused fit-free contract is now 8 tests / 53 expectations, all green.
+
 ## Team Learning
 
 Use the actual `ListReporter` result objects as a second channel beside raw

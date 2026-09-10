@@ -115,8 +115,9 @@ test_that("S4 runner retains a write-once failed-attempt diagnostic before refus
   source(testthat::test_path("run-destination-b-s4-public-phylo-dep-isolated.R"), local = environment)
 
   receipt_path <- tempfile("s4-passed-receipt-", fileext = ".json")
-  failed_path <- environment$s4_public_phylo_dep_failed_diagnostic_path(receipt_path)
-  withr::defer(unlink(c(receipt_path, failed_path)))
+  reservation <- environment$s4_public_phylo_dep_reserve_failed_diagnostic_path(receipt_path)
+  failed_path <- reservation$path
+  withr::defer(unlink(c(receipt_path, reservation$namespace), recursive = TRUE))
   tab <- data.frame(
     context = c("S4 public phylo_dep", "S4 public phylo_dep"),
     test = c("generic engine remains closed", "paired endpoints"),
@@ -135,7 +136,7 @@ test_that("S4 runner retains a write-once failed-attempt diagnostic before refus
   expect_error(
     environment$s4_public_phylo_dep_retain_failed_attempt(
       tab = tab, raw_output = raw_output, reporter_details = list(list(message = "synthetic expectation failure")),
-      provenance = provenance, receipt_path = receipt_path
+      provenance = provenance, receipt_path = receipt_path, failed_path = failed_path
     ),
     "did not pass cleanly"
   )
@@ -159,11 +160,35 @@ test_that("S4 runner retains a write-once failed-attempt diagnostic before refus
   expect_error(
     environment$s4_public_phylo_dep_retain_failed_attempt(
       tab = tab, raw_output = raw_output, reporter_details = list(), provenance = provenance,
-      receipt_path = receipt_path
+      receipt_path = receipt_path, failed_path = failed_path
     ),
     "refusing to overwrite existing S4 failed-attempt diagnostic"
   )
   expect_identical(readBin(failed_path, what = "raw", n = file.info(failed_path)$size), first_bytes)
+})
+
+test_that("S4 runner pre-reserves a failure namespace without colliding with a receipt", {
+  environment <- new.env(parent = baseenv())
+  withr::local_envvar(GLLVM_S4_PUBLIC_PHYLO_DEP_DEFINE_ONLY = "1")
+  source(testthat::test_path("run-destination-b-s4-public-phylo-dep-isolated.R"), local = environment)
+
+  receipt_path <- tempfile("s4-receipt-", fileext = ".json")
+  legacy_sibling_receipt <- file.path(
+    dirname(receipt_path),
+    paste0(tools::file_path_sans_ext(basename(receipt_path)), "-FAILED.json")
+  )
+  jsonlite::write_json(list(status = "passed"), legacy_sibling_receipt, auto_unbox = TRUE)
+  withr::defer(unlink(c(receipt_path, legacy_sibling_receipt), recursive = TRUE))
+
+  reservation <- environment$s4_public_phylo_dep_reserve_failed_diagnostic_path(receipt_path)
+  withr::defer(unlink(reservation$namespace, recursive = TRUE))
+  expect_true(dir.exists(reservation$namespace))
+  expect_false(file.exists(reservation$path))
+  expect_false(identical(reservation$path, legacy_sibling_receipt))
+  expect_error(
+    environment$s4_public_phylo_dep_reserve_failed_diagnostic_path(receipt_path),
+    "already reserved"
+  )
 })
 
 test_that("S4 public phylo_dep receipt refuses malformed endpoints and duplicate output", {

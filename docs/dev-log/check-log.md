@@ -54086,3 +54086,8 @@ candidate evidence is reused from this pre-integration run.
   7 runner-contract tests (`0 failed, 0 skipped, 0 errors, 0 warnings`). No
   S4 fit, probe, selected-test replay, receipt, qualification, push, merge, or
   release ran. Any future live replay needs fresh approval.
+- P1 collision remediation: the runner now reserves the deterministic
+  `receipt.json.failed-attempt/FAILED.json` namespace before any source
+  snapshot, Julia probe, package load, or selected test. An occupied namespace
+  fails early; a pre-existing legacy sibling `receipt-FAILED.json` is a
+  different possible receipt and cannot consume the diagnostic location.

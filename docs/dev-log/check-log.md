@@ -58121,3 +58121,22 @@ Deliberately not run: Totoro 9×500 grid dispatch; full `devtools::test()`.
   contract. This is local route evidence only; it neither supports a generic
   source-pair selection claim nor calibration, coverage, cross-platform, or
   release claims.
+
+## 2026-09-11 — dependent temporal–spatial timing diagnostic preparation
+
+- The retained dependent-temporal–spatial recovery attempt at `phi=-.4`,
+  `seed=2609333` was terminated after 109 seconds before it reached an
+  optimizer or Hessian result. It therefore cannot identify which stage caused
+  the overrun.
+- Added a diagnostic-only mode to `run-dep-spatial-recovery.R`. It requires an
+  existing planned-cell index and a distinct output path, so it cannot overwrite
+  a frozen receipt. The fit-only mode can skip the optional Hessian and records
+  fit and Hessian elapsed time only in its separate diagnostic receipt. Default
+  recovery behavior and all frozen data, source, seeds, criteria, and receipts
+  remain unchanged.
+- Parsed the runner successfully. `DEP_SPATIAL_SKIP_HESSIAN=1` without
+  diagnostic mode refused with the expected guard, confirming the ordinary
+  campaign cannot silently omit Hessian bookkeeping. Diagnostic mode without a
+  separate output path also refused before fitting. No diagnostic fit,
+  continuation, campaign, threshold change, recovery claim, or release action
+  has run.

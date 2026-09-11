@@ -69,3 +69,19 @@ optimizer code zero, accepted second pass, and maximum outer gradient
 seconds without returning, and was terminated under the measured one-fit
 budget; its factual receipt is retained. The campaign is paused after four
 attempts, so it provides no recovery verdict and no threshold is relaxed.
+
+## Timing diagnostic before any continuation
+
+The retained termination does not identify whether the optimizer or the
+optional post-fit Hessian call consumed the extra time. A later diagnostic must
+not overwrite a frozen attempt receipt or change its fixture, seed, optimizer,
+or thresholds. It uses exactly one existing planned cell and writes a separate
+receipt. First run the fit-only diagnostic with
+`DEP_SPATIAL_DIAGNOSTIC=1`, `DEP_SPATIAL_SKIP_HESSIAN=1`,
+`DEP_SPATIAL_ONE=<planned index>`, and a new
+`DEP_SPATIAL_DIAGNOSTIC_OUTPUT=<path>`. Only if that retained probe reaches a
+successful endpoint can a separately authorized Hessian-inclusive diagnostic
+be considered. Diagnostic output records `fit_elapsed_seconds`,
+`hessian_elapsed_seconds`, and whether the Hessian was requested. It is timing
+evidence only: it neither repairs the frozen campaign nor supplies recovery
+evidence.

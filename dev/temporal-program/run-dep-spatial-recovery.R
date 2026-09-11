@@ -51,8 +51,11 @@ simulate_fixture <- function(phi, seed) {
 rel_frob <- function(x, y) sqrt(sum((x - y)^2)) / sqrt(sum(y^2))
 fit_one <- function(phi, seed) {
   started <- proc.time()[['elapsed']]
+  diagnostic <- identical(Sys.getenv('DEP_SPATIAL_DIAGNOSTIC'), '1')
+  skip_hessian <- identical(Sys.getenv('DEP_SPATIAL_SKIP_HESSIAN'), '1')
   out <- tryCatch({
     data <- simulate_fixture(phi, seed)
+    fit_started <- proc.time()[['elapsed']]
     fit <- suppressWarnings(gllvmTMB(
       value ~ 0 + trait +
         temporal_dep(0 + trait | series, time = occasion, replicate = measurement) +
@@ -62,15 +65,24 @@ fit_one <- function(phi, seed) {
         optArgs = list(method = 'BFGS', control = list(maxit = 3000, reltol = 1e-14)),
         optimizer_passes = 2L)
     ))
+    fit_elapsed_seconds <- proc.time()[['elapsed']] - fit_started
     history <- fit$optimizer_pass_history
     if (!is.data.frame(history) || nrow(history) != 2L || !all(history$pass == 1:2))
       stop('The requested two-pass optimizer history was not retained.', call. = FALSE)
     temporal <- extract_temporal(fit); par <- fit$tmb_obj$env$parList(fit$opt$par)
-    hessian <- tryCatch(fit$tmb_obj$he(fit$opt$par), error = function(e) e)
-    hessian_status <- if (inherits(hessian, 'error')) 'error' else if (
-      all(is.finite(hessian)) && !inherits(try(chol(hessian), silent = TRUE), 'try-error')
-    ) 'positive_definite' else 'non_positive_definite'
-    data.frame(phi = phi, seed = seed, terminal = 'success', convergence = fit$opt$convergence,
+    hessian_started <- proc.time()[['elapsed']]
+    if (skip_hessian) {
+      hessian <- NULL
+      hessian_status <- 'not_requested'
+      hessian_elapsed_seconds <- 0
+    } else {
+      hessian <- tryCatch(fit$tmb_obj$he(fit$opt$par), error = function(e) e)
+      hessian_status <- if (inherits(hessian, 'error')) 'error' else if (
+        all(is.finite(hessian)) && !inherits(try(chol(hessian), silent = TRUE), 'try-error')
+      ) 'positive_definite' else 'non_positive_definite'
+      hessian_elapsed_seconds <- proc.time()[['elapsed']] - hessian_started
+    }
+    result <- data.frame(phi = phi, seed = seed, terminal = 'success', convergence = fit$opt$convergence,
       pass_1_convergence = history$convergence[[1L]], pass_2_convergence = history$convergence[[2L]],
       pass_2_accepted = history$accepted[[2L]], max_gradient = max(abs(fit$tmb_obj$gr(fit$opt$par))),
       objective = fit$opt$objective, hessian_status = hessian_status,
@@ -80,6 +92,12 @@ fit_one <- function(phi, seed) {
       tau_3 = exp(-par$log_tau_spde[[3L]]), kappa = exp(par$log_kappa_spde[[1L]]),
       beta_1 = par$b_fix[[1L]], beta_2 = par$b_fix[[2L]], beta_3 = par$b_fix[[3L]],
       error_message = NA_character_, stringsAsFactors = FALSE)
+    if (diagnostic) {
+      result$fit_elapsed_seconds <- fit_elapsed_seconds
+      result$hessian_elapsed_seconds <- hessian_elapsed_seconds
+      result$hessian_requested <- !skip_hessian
+    }
+    result
   }, error = function(e) data.frame(
     phi = phi, seed = seed, terminal = 'error', convergence = NA_integer_,
     pass_1_convergence = NA_integer_, pass_2_convergence = NA_integer_, pass_2_accepted = NA,
@@ -95,8 +113,17 @@ full_plan <- expand.grid(phi = c(-.4, 0, .6), seed = 2609331:2609333)
 full_plan <- full_plan[order(full_plan$phi, full_plan$seed), , drop = FALSE]
 smoke <- identical(Sys.getenv('DEP_SPATIAL_SMOKE'), '1')
 finalize_only <- identical(commandArgs(trailingOnly = TRUE), '--finalize')
+diagnostic <- identical(Sys.getenv('DEP_SPATIAL_DIAGNOSTIC'), '1')
+diagnostic_output <- Sys.getenv('DEP_SPATIAL_DIAGNOSTIC_OUTPUT', unset = '')
+skip_hessian <- identical(Sys.getenv('DEP_SPATIAL_SKIP_HESSIAN'), '1')
 one_text <- Sys.getenv('DEP_SPATIAL_ONE', unset = '')
 one_requested <- nzchar(one_text)
+if (diagnostic && (!one_requested || !nzchar(diagnostic_output))) {
+  stop('Diagnostic mode requires DEP_SPATIAL_ONE and DEP_SPATIAL_DIAGNOSTIC_OUTPUT so frozen receipts cannot be overwritten.', call. = FALSE)
+}
+if (skip_hessian && !diagnostic) {
+  stop('DEP_SPATIAL_SKIP_HESSIAN is available only with DEP_SPATIAL_DIAGNOSTIC=1.', call. = FALSE)
+}
 attempt_path <- function(index) file.path(root, sprintf(
   'dev/temporal-program/results/dep-spatial-recovery-attempt-%02d-20260911.csv', index))
 if (finalize_only) {
@@ -121,7 +148,8 @@ if (finalize_only) {
   for (i in seq_len(nrow(plan))) {
     cat(sprintf('DEP_SPATIAL_ATTEMPT phi=%s seed=%s\n', plan$phi[[i]], plan$seed[[i]])); flush.console()
     result_rows[[i]] <- fit_one(plan$phi[[i]], plan$seed[[i]])
-    if (!is.na(selected[[i]])) utils::write.csv(result_rows[[i]], attempt_path(selected[[i]]), row.names = FALSE)
+    if (!is.na(selected[[i]])) utils::write.csv(result_rows[[i]],
+      if (diagnostic) diagnostic_output else attempt_path(selected[[i]]), row.names = FALSE)
   }
   result <- do.call(rbind, result_rows)
 }
@@ -133,6 +161,7 @@ if (smoke) {
 if (one_requested && !finalize_only) {
   print(result, row.names = FALSE)
   if (!all(result$terminal == 'success')) stop('Dependent-spatial recovery attempt failed.', call. = FALSE)
+  if (diagnostic) cat('TEMPORAL_DEP_SPATIAL_DIAGNOSTIC_PASS\n')
   cat('TEMPORAL_DEP_SPATIAL_ATTEMPT_PASS\n'); quit(save = 'no', status = 0L)
 }
 for (j in 1:3) result[[paste0('tau_relative_error_', j)]] <-

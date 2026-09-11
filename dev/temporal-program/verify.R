@@ -4,9 +4,9 @@ root <- normalizePath(getwd(), mustWork = TRUE)
 if (!file.exists(file.path(root, "DESCRIPTION"))) {
   stop("Run temporal programme verification from the repository root.", call. = FALSE)
 }
-allowed <- c("plan", "simulation", "lifecycle", "remote", "phylo", "dep-kernel", "dep-kernel-oracle", "dep-phylo", "dep-animal", "dep-spatial", "dep-spatial-corrected", "latent-kernel", "latent-phylo", "latent-animal", "latent-spatial", "publication", "combinations", "closeout", "self-test")
+allowed <- c("plan", "simulation", "lifecycle", "remote", "phylo", "dep-kernel", "dep-kernel-oracle", "dep-kernel-curvature", "dep-phylo", "dep-animal", "dep-spatial", "dep-spatial-corrected", "latent-kernel", "latent-phylo", "latent-animal", "latent-spatial", "publication", "combinations", "closeout", "self-test")
 if (!mode %in% allowed) {
-  stop("usage: Rscript --vanilla dev/temporal-program/verify.R {plan|simulation|lifecycle|remote|phylo|dep-kernel|dep-kernel-oracle|dep-phylo|dep-animal|dep-spatial|dep-spatial-corrected|latent-kernel|latent-phylo|latent-animal|latent-spatial|publication|combinations|closeout|self-test}", call. = FALSE)
+  stop("usage: Rscript --vanilla dev/temporal-program/verify.R {plan|simulation|lifecycle|remote|phylo|dep-kernel|dep-kernel-oracle|dep-kernel-curvature|dep-phylo|dep-animal|dep-spatial|dep-spatial-corrected|latent-kernel|latent-phylo|latent-animal|latent-spatial|publication|combinations|closeout|self-test}", call. = FALSE)
 }
 
 .temporal_program_verify_dep_kernel_oracle <- function(root) {
@@ -73,6 +73,120 @@ if (!mode %in% allowed) {
     report
   })
   invisible(reports)
+}
+
+.temporal_program_verify_dep_kernel_curvature <- function(root) {
+  evidence_dir <- file.path(root, "dev", "temporal-program", "results",
+    "diagnostics", "dep-kernel-retained-curvature-final-20260911")
+  seeds <- 2609221:2609223
+  coordinate <- c(paste0("kernel_", 1:3), "theta_temporal_time",
+    paste0("theta_temporal_rr_", 1:6))
+  receipt_path <- file.path(root, "dev", "temporal-program", "results",
+    "dep-kernel-recovery-20260911.csv")
+  receipt_required <- c("phi", "seed", "terminal", "convergence", "pass_1_convergence",
+    "pass_2_convergence", "pass_2_accepted", "max_gradient", "objective",
+    "hessian_status", "phi_estimate", "temporal_frobenius_relative_error",
+    "kernel_1", "kernel_2", "kernel_3", "beta_1", "beta_2", "beta_3",
+    "kernel_relative_error_1", "kernel_relative_error_2", "kernel_relative_error_3",
+    "phi_absolute_error", "fixed_effect_mean_absolute_error", "elapsed_seconds")
+  frozen_receipt <- if (file.exists(receipt_path)) {
+    utils::read.csv(receipt_path, stringsAsFactors = FALSE)
+  } else NULL
+  oracle_script <- file.path(root, "dev", "temporal-program",
+    "verify-dep-kernel-retained-oracle.R")
+  curvature_script <- file.path(root, "dev", "temporal-program",
+    "diagnose-dep-kernel-retained-curvature.R")
+  if (!file.exists(oracle_script) || !file.exists(curvature_script) || !dir.exists(evidence_dir)) {
+    stop("missing retained temporal dep-kernel curvature implementation or evidence", call. = FALSE)
+  }
+  lapply(seeds, function(seed) {
+    path <- file.path(evidence_dir,
+      paste0("dep-kernel-retained-curvature-v1-", seed, ".rds"))
+    if (!file.exists(path)) {
+      stop("missing retained temporal dep-kernel curvature receipt for seed ", seed,
+        call. = FALSE)
+    }
+    output <- readRDS(path)
+    identity <- output$receipt_identity
+    one <- output$report
+    receipt <- if (is.list(one)) one$receipt else NULL
+    runtime <- if (is.list(receipt)) receipt$runtime else NULL
+    runtime_values <- if (is.list(runtime)) {
+      unlist(runtime[c("frozen_elapsed_seconds", "rehydrated_elapsed_seconds")], use.names = FALSE)
+    } else numeric()
+    frozen_row <- if (is.data.frame(frozen_receipt) &&
+      all(receipt_required %in% names(frozen_receipt))) {
+      frozen_receipt[frozen_receipt$phi == .6 & frozen_receipt$seed == seed,
+        receipt_required, drop = FALSE]
+    } else data.frame()
+    exact_receipt <- c("phi", "seed", "terminal", "convergence", "pass_1_convergence",
+      "pass_2_convergence", "pass_2_accepted", "hessian_status")
+    numeric_receipt <- setdiff(receipt_required, c(exact_receipt, "elapsed_seconds"))
+    receipt_matches <- is.data.frame(receipt$expected) && is.data.frame(receipt$observed) &&
+      nrow(frozen_row) == 1L && nrow(receipt$expected) == 1L &&
+      nrow(receipt$observed) == 1L &&
+      isTRUE(all.equal(receipt$expected[, receipt_required, drop = FALSE], frozen_row,
+        check.attributes = FALSE, tolerance = 0)) &&
+      identical(as.character(unlist(receipt$observed[exact_receipt], use.names = FALSE)),
+        as.character(unlist(frozen_row[exact_receipt], use.names = FALSE))) &&
+      all(abs(as.numeric(receipt$observed[numeric_receipt]) -
+        as.numeric(frozen_row[numeric_receipt])) <= 2e-5)
+    if (!is.list(output) ||
+        !identical(output$schema_version, "temporal-dep-kernel-retained-curvature-v1") ||
+        !identical(as.integer(output$seed), as.integer(seed)) ||
+        !identical(as.integer(output$n_series), 80L) ||
+        !identical(as.integer(output$n_time), 16L) ||
+        !identical(as.integer(output$n_observation), 7680L) ||
+        !is.list(identity) || !identical(as.integer(identity$frozen_seed), as.integer(seed)) ||
+        !identical(as.integer(identity$rehydrated_seed), as.integer(seed)) ||
+        !identical(as.numeric(identity$frozen_phi), .6) ||
+        !identical(as.numeric(identity$rehydrated_phi), .6) ||
+        !identical(identity$terminal, "success") ||
+        !is.list(one) || !identical(as.integer(one$seed), as.integer(seed)) ||
+        !is.list(receipt) || !receipt_matches || !is.list(runtime) ||
+        !identical(output$contract, paste("Curvature/conditioning diagnostic only; no optimiser intervention,",
+          "recovery, calibration, or numerical-remedy claim.")) ||
+        !identical(runtime$comparable, FALSE) || length(runtime_values) != 2L ||
+        any(!is.finite(runtime_values)) || any(runtime_values < 0) ||
+        !identical(as.integer(receipt$expected$seed[[1L]]), as.integer(seed)) ||
+        !identical(as.integer(receipt$observed$seed[[1L]]), as.integer(seed)) ||
+        !identical(as.numeric(receipt$expected$phi[[1L]]), .6) ||
+        !identical(as.numeric(receipt$observed$phi[[1L]]), .6) ||
+        !identical(as.character(receipt$expected$terminal[[1L]]), "success") ||
+        !identical(as.character(receipt$observed$terminal[[1L]]), "success")) {
+      stop("invalid retained temporal dep-kernel curvature identity for seed ", seed,
+        call. = FALSE)
+    }
+    for (point_name in c("truth", "rehydrated")) {
+      point <- one[[point_name]]
+      if (!is.list(point) || !identical(point$point, point_name) ||
+          !identical(names(point$coordinate), coordinate) ||
+          !identical(names(point$curvature), coordinate) ||
+          !identical(dim(point$observed_information), c(10L, 10L)) ||
+          !identical(dimnames(point$observed_information), list(coordinate, coordinate)) ||
+          any(!is.finite(point$gradient)) || any(!is.finite(point$curvature)) ||
+          any(!is.finite(point$observed_information)) ||
+          !isTRUE(all.equal(point$observed_information,
+            t(point$observed_information), tolerance = 1e-10)) ||
+          !isTRUE(point$information_positive_definite) ||
+          !is.finite(point$information_condition) || point$information_condition <= 0 ||
+          !identical(point$correlation_status, "observed_information_inverse") ||
+          !identical(dim(point$parameter_correlation), c(10L, 10L)) ||
+          !identical(dimnames(point$parameter_correlation), list(coordinate, coordinate)) ||
+          any(!is.finite(point$parameter_correlation)) ||
+          !isTRUE(all.equal(point$parameter_correlation, t(point$parameter_correlation), tolerance = 1e-10)) ||
+          !isTRUE(all.equal(unname(diag(point$parameter_correlation)), rep(1, 10), tolerance = 1e-10))) {
+        stop("invalid retained temporal dep-kernel curvature point ", point_name,
+          " for seed ", seed, call. = FALSE)
+      }
+    }
+    if (max(abs(one$rehydrated$gradient)) > 1e-3) {
+      stop("rehydrated temporal dep-kernel curvature gradient exceeds frozen fit tolerance for seed ",
+        seed, call. = FALSE)
+    }
+    output
+  })
+  invisible(TRUE)
 }
 
 .temporal_program_assert_test_results <- function(result, fixture) {
@@ -789,6 +903,11 @@ if (identical(mode, "dep-kernel")) {
 if (identical(mode, "dep-kernel-oracle")) {
   .temporal_program_verify_dep_kernel_oracle(root)
   cat("TEMPORAL_DEP_KERNEL_RETAINED_ORACLE_PASS\n")
+  quit(save = "no", status = 0L)
+}
+if (identical(mode, "dep-kernel-curvature")) {
+  .temporal_program_verify_dep_kernel_curvature(root)
+  cat("TEMPORAL_DEP_KERNEL_RETAINED_CURVATURE_PASS\n")
   quit(save = "no", status = 0L)
 }
 if (identical(mode, "dep-phylo")) {

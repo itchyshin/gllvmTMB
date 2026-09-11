@@ -33,7 +33,14 @@
 }
 
 .temporal_phylo_optimizer_qualification_validate_controls <- function(controls) {
-  roots <- character()
+  roots <- tryCatch({
+    if (exists(".temporal_program_repo_root", mode = "function", inherits = TRUE)) {
+      .temporal_program_repo_root()
+    } else {
+      NULL
+    }
+  }, error = function(e) NULL)
+  roots <- roots[!is.na(roots) & nzchar(roots) & dir.exists(roots)]
   root <- normalizePath(getwd(), mustWork = TRUE)
   for (i in 0:4) {
     roots <- c(roots, root)

@@ -5088,18 +5088,44 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ## label-based lookup into the one-row-per-column projection above.
       A_proj <- A_column_sparse[trait_id + 1L, , drop = FALSE]
     } else {
-      if (is.null(mesh$xy_cols) || !all(mesh$xy_cols %in% names(data)))
+      ## Multinomial expansion creates one contrast row per non-reference
+      ## category before this point. Its spatial contract deliberately requires
+      ## the supplied mesh to have been built on those expanded rows: accepting
+      ## a per-site projection here would conceal that distinct likelihood
+      ## design. This preserves the established hard admission fence.
+      if (any(family_id_vec == 16L) && !isTRUE(nrow(mesh$A_st) == n_obs)) {
         cli::cli_abort(c(
-          "The spatial mesh coordinate columns are unavailable after data preparation.",
-          ">" = "Build the mesh with coordinates that are columns of the supplied data."
+          "make_mesh() projection has {nrow(mesh$A_st)} rows but the multinomial long-format data has {n_obs}.",
+          ">" = "Build the mesh on the post-expansion coordinate rows required by the multinomial spatial model."
         ))
-      ## A_st is tied to the input row order.  Long/wide rewriting and user row
-      ## permutations can change that order, so rebuild the projection on the
-      ## prepared likelihood rows instead of reusing a stale row-aligned matrix.
-      A_proj <- Matrix::Matrix(fmesher::fm_basis(mesh$mesh,
-        loc = as.matrix(data[, mesh$xy_cols, drop = FALSE])), sparse = TRUE)
-      if (!isTRUE(ncol(A_proj) == ncol(mesh$A_st)))
-        cli::cli_abort("The rebuilt spatial projection does not match the supplied mesh nodes.")
+      }
+      can_rebuild_projection <- !is.null(mesh$xy_cols) &&
+        all(mesh$xy_cols %in% names(data))
+      if (can_rebuild_projection) {
+        ## A_st is tied to the input row order. Long/wide rewriting and user row
+        ## permutations can change that order, so prefer a projection rebuilt on
+        ## the prepared likelihood rows whenever their coordinates remain known.
+        A_proj <- Matrix::Matrix(fmesher::fm_basis(mesh$mesh,
+          loc = as.matrix(data[, mesh$xy_cols, drop = FALSE])), sparse = TRUE)
+        if (!isTRUE(ncol(A_proj) == ncol(mesh$A_st))) {
+          cli::cli_abort(c(
+            "The rebuilt spatial projection does not match the supplied mesh nodes.",
+            ">" = "Rebuild the mesh from the prepared coordinate rows and refit the model."
+          ))
+        }
+      } else {
+        ## A wide rewrite can legitimately omit coordinate columns while
+        ## preserving the row-aligned projection from make_mesh(). Retain that
+        ## established route only when the supplied projection has exactly the
+        ## prepared likelihood rows; otherwise there is no safe alignment.
+        if (!isTRUE(nrow(mesh$A_st) == n_obs)) {
+          cli::cli_abort(c(
+            "make_mesh() projection has {nrow(mesh$A_st)} rows but the prepared data has {n_obs}.",
+            ">" = "Include the mesh coordinate columns in the data, or build the mesh on the prepared long-format rows."
+          ))
+        }
+        A_proj <- mesh$A_st
+      }
     }
     n_mesh   <- ncol(mesh$A_st)
     spde_M0  <- mesh$spde$c0

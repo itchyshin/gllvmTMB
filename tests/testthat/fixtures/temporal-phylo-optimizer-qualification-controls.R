@@ -57,38 +57,27 @@
 }
 
 .temporal_phylo_optimizer_qualification_validate_controls <- function(controls) {
-  roots <- tryCatch({
+  source_root <- tryCatch({
     if (exists(".temporal_program_repo_root", mode = "function", inherits = TRUE)) {
       .temporal_program_repo_root()
     } else {
       NULL
     }
   }, error = function(e) NULL)
-  if (!is.character(roots)) roots <- character()
-  roots <- roots[!is.na(roots) & nzchar(roots)]
-  roots <- roots[vapply(roots, dir.exists, logical(1))]
-  test_root <- tryCatch(testthat::test_path(), error = function(e) NULL)
-  if (is.character(test_root) && length(test_root) == 1L && dir.exists(test_root)) {
-    roots <- c(roots, test_root)
+  source_path <- if (is.character(source_root) && length(source_root) == 1L &&
+      !is.na(source_root) && nzchar(source_root)) {
+    file.path(source_root, controls$retained_summary)
+  } else {
+    NA_character_
   }
-  root <- normalizePath(getwd(), mustWork = TRUE)
-  for (i in 0:4) {
-    roots <- c(roots, root)
-    root <- dirname(root)
-  }
-  summary_paths <- unique(unlist(lapply(roots, function(root) c(
-    file.path(root, controls$retained_summary),
-    file.path(root, "00_pkg_src", "gllvmTMB", controls$retained_summary)
-  )), use.names = FALSE))
-  existing_summary_paths <- summary_paths[file.exists(summary_paths)]
-  retained_summary_ok <- if (length(existing_summary_paths)) {
-    ## In a source checkout, only the real retained receipt is evidence.  Do
-    ## not let the installed fallback mask a changed or missing source record.
-    any(vapply(existing_summary_paths, function(path) {
-      .temporal_phylo_optimizer_qualification_validate_summary(
-        path, controls$retained_summary_md5
-      )
-    }, logical(1)))
+  retained_summary_ok <- if (!is.na(source_path) && file.exists(source_path)) {
+    ## A source checkout has an authoritative campaign receipt. Restrict this
+    ## lookup to the explicit repository root: walking R CMD check's temporary
+    ## directories can find an unrelated, line-ending-transformed copy on
+    ## Windows and incorrectly suppress the installed-package control.
+    .temporal_phylo_optimizer_qualification_validate_summary(
+      source_path, controls$retained_summary_md5
+    )
   } else {
     installed_path <- .temporal_phylo_optimizer_qualification_installed_summary()
     on.exit(unlink(installed_path), add = TRUE)

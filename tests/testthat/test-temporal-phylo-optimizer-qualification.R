@@ -269,6 +269,11 @@ source(testthat::test_path(
 test_that("qualification controls retain the failed campaign and localize an injected derivative fault", {
   controls <- .temporal_phylo_optimizer_qualification_controls()
   expect_true(.temporal_phylo_optimizer_qualification_validate_controls(controls))
+  installed_summary <- .temporal_phylo_optimizer_qualification_installed_summary()
+  on.exit(unlink(installed_summary), add = TRUE)
+  expect_true(.temporal_phylo_optimizer_qualification_validate_summary(
+    installed_summary, controls$retained_summary_md5
+  ))
   controls$retained_summary <- "DESCRIPTION"
   expect_false(.temporal_phylo_optimizer_qualification_validate_controls(controls))
 

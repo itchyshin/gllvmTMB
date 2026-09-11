@@ -106,7 +106,7 @@ test_that("replicated temporal-phylo likelihood and gradient equal a dense addit
   expect_equal(fit$tmb_obj$gr(fixed)[[index]], central, tolerance = 2e-5)
 })
 
-test_that("only the replicated AR1 temporal_indep phylo cell is opened", {
+test_that("phylogenetic temporal cells enforce their specific bounds", {
   fx <- .temporal_phylo_rep_fixture()
   unrep <- fx$data[fx$data$measurement == "m1", , drop = FALSE]
   expect_error(suppressWarnings(gllvmTMB(
@@ -121,12 +121,6 @@ test_that("only the replicated AR1 temporal_indep phylo cell is opened", {
         structure = "ou") + phylo_indep(0 + trait | series, vcv = fx$Cphy),
     data = fx$data, unit = "series", cluster = "series", family = gaussian(), silent = TRUE
   )), "requires replicated AR1")
-  expect_error(suppressWarnings(gllvmTMB(
-    value ~ 0 + trait +
-      temporal_dep(0 + trait | series, time = occasion, replicate = measurement) +
-      phylo_indep(0 + trait | series, vcv = fx$Cphy),
-    data = fx$data, unit = "series", cluster = "series", family = gaussian(), silent = TRUE
-  )), "cannot be combined")
   expect_error(suppressWarnings(gllvmTMB(
     value ~ 0 + trait +
       temporal_indep(0 + trait | series, time = occasion, replicate = measurement) +

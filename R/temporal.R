@@ -86,9 +86,11 @@ temporal_dep <- function(formula, time, structure = "ar1", replicate = NULL) {
 #' `temporal_latent(..., d = 1, unique = FALSE) + kernel_indep()` cell has a
 #' direct fixed-seed recovery fixture, independent dense likelihood/gradient
 #' oracle, unconditional simulation, and long/wide/update checks. The matching
-#' fixed-phylogeny rank-one cell has the same dense/lifecycle evidence, but its
-#' retained positive-persistence variance gate fails. Both are local
-#' fixed-fixture evidence only: neither supports source-pair forecasting,
+#' fixed-animal rank-one cell has the same evidence and a passing retained
+#' fixed-fixture gate; the fixed-phylogeny rank-one cell has the same
+#' dense/lifecycle evidence but fails its retained positive-persistence variance
+#' gate. These are local fixed-fixture evidence only: they do not support
+#' source-pair forecasting,
 #' intervals, profiles, bootstrap, selection, cross-platform verification,
 #' release, general recovery, or coverage claims. The spatial
 #' cell redraws its independent SPDE field during unconditional simulation. Other
@@ -186,7 +188,7 @@ temporal_latent <- function(formula, time, d = 1, structure = "ar1",
       source_terms %in% c("kernel_indep", "phylo_indep", "animal_indep", "spatial_indep")) ||
     (identical(temporal_mode, "dep") && identical(source_terms, "kernel_indep")) ||
     (identical(temporal_mode, "latent") &&
-      source_terms %in% c("kernel_indep", "phylo_indep") &&
+      source_terms %in% c("kernel_indep", "phylo_indep", "animal_indep") &&
       identical(marker_arg_early("unique", FALSE), FALSE))
   )
   source_pair <- if (isTRUE(allowed_source_pair)) source_terms[[1L]] else NULL
@@ -198,7 +200,7 @@ temporal_latent <- function(formula, time, d = 1, structure = "ar1",
     any(vapply(as.list(x)[-1L], has_ordinary_bar, logical(1)))
   }
   if (identical(temporal_mode, "latent") &&
-      source_pair %in% c("kernel_indep", "phylo_indep") &&
+      isTRUE(source_pair %in% c("kernel_indep", "phylo_indep", "animal_indep")) &&
       (length(ordinary_terms) || has_ordinary_bar(stripped_formula[[length(formula)]]))) {
     .temporal_abort(c(
       "The rank-one temporal latent-source cell cannot include an ordinary covariance term.",
@@ -207,17 +209,17 @@ temporal_latent <- function(formula, time, d = 1, structure = "ar1",
       } else {
         "Found a bare ordinary random-effect term."
       },
-      ">" = "Fit the qualified temporal-kernel pair alone, or use a separately validated additive model."
+      ">" = "Fit the qualified rank-one temporal source pair alone, or use a separately validated additive model."
     ))
   }
 
-  ## The rank-one phylogenetic candidate is an intercept-tier covariance only.
-  ## A trait-by-predictor slope inside phylo_indep() is rewritten later into an
-  ## augmented source block, so reject it before that rewrite can make it look
-  ## like the qualified diagonal source term.
-  phylo_intercept_only <- function(x) {
+  ## Rank-one source candidates are intercept-tier covariances only. A
+  ## trait-by-predictor slope is rewritten later into an augmented source block,
+  ## so reject it before that rewrite can make it look like a qualified diagonal
+  ## source term.
+  source_intercept_only <- function(x, provider) {
     if (!is.call(x)) return(TRUE)
-    if (is.name(x[[1L]]) && identical(as.character(x[[1L]]), "phylo_indep")) {
+    if (is.name(x[[1L]]) && identical(as.character(x[[1L]]), provider)) {
       term <- x[[2L]]
       if (!is.call(term) || !identical(term[[1L]], as.name("|"))) return(FALSE)
       lhs <- term[[2L]]
@@ -227,13 +229,13 @@ temporal_latent <- function(formula, time, d = 1, structure = "ar1",
       }
       return(all(all.vars(lhs) %in% trait_col) && !contains_interaction(lhs))
     }
-    all(vapply(as.list(x)[-1L], phylo_intercept_only, logical(1)))
+    all(vapply(as.list(x)[-1L], source_intercept_only, logical(1), provider = provider))
   }
-  if (identical(temporal_mode, "latent") && identical(source_pair, "phylo_indep") &&
-      !phylo_intercept_only(stripped_formula[[length(formula)]])) {
+  if (identical(temporal_mode, "latent") && isTRUE(source_pair %in% c("phylo_indep", "animal_indep")) &&
+      !source_intercept_only(stripped_formula[[length(formula)]], source_pair)) {
     .temporal_abort(c(
-      "The rank-one temporal-phylogenetic cell requires an intercept-only phylo_indep() term.",
-      ">" = "Use {.code phylo_indep(0 + trait | series, vcv = C)} in long data or {.code phylo_indep(1 | series, vcv = C)} with {.fn traits}()."
+      "The rank-one temporal source cell requires an intercept-only static source term.",
+      ">" = "Use {.code phylo_indep(0 + trait | series, vcv = C)} or {.code animal_indep(0 + trait | series, A = A)} in long data, or their {.fn traits}() equivalents."
     ))
   }
 
@@ -254,7 +256,7 @@ temporal_latent <- function(formula, time, d = 1, structure = "ar1",
   ## Leave the regular temporal admission errors in charge until the narrow
   ## AR1/replication shape is otherwise valid.  A deferred temporal mode must
   ## not misleadingly fail first because its animal term has no matrix yet.
-  animal_shape_ready <- identical(marker_name, "temporal_indep") &&
+  animal_shape_ready <- marker_name %in% c("temporal_indep", "temporal_latent") &&
     identical(marker_arg_early("structure", "ar1"), "ar1") &&
     is.name(marker_arg_early("replicate", quote(NULL)))
   if (identical(source_pair, "animal_indep") && animal_shape_ready) {
@@ -364,7 +366,7 @@ temporal_latent <- function(formula, time, d = 1, structure = "ar1",
     .temporal_abort(c(
       "A temporal covariance term cannot be combined with another covariance source in this version.",
       "i" = "Found source provider(s): {.fn {forbidden_sources}}.",
-      ">" = "Use ordinary unit/unit_obs terms, the admitted replicated AR1 {.code temporal_indep() + kernel_indep()}, {.code temporal_indep() + phylo_indep()}, {.code temporal_indep() + animal_indep()}, or {.code temporal_indep() + spatial_indep()} cells, or the fixed-kernel {.code temporal_dep()} / rank-one {.code temporal_latent(unique = FALSE)} cells, including the fixed-phylogeny rank-one cell. Other temporal source pairs remain deferred."
+      ">" = "Use ordinary unit/unit_obs terms, the admitted replicated AR1 {.code temporal_indep() + kernel_indep()}, {.code temporal_indep() + phylo_indep()}, {.code temporal_indep() + animal_indep()}, or {.code temporal_indep() + spatial_indep()} cells, or the fixed-kernel {.code temporal_dep()} / rank-one {.code temporal_latent(unique = FALSE)} cells, including fixed-phylogeny and fixed-animal rank-one cells. Other temporal source pairs remain deferred."
     ))
   }
   response_cols <- all.vars(formula[[2L]])
@@ -442,7 +444,7 @@ temporal_latent <- function(formula, time, d = 1, structure = "ar1",
     }
   }
   if (identical(temporal_mode, "latent") &&
-      source_pair %in% c("kernel_indep", "phylo_indep") &&
+      isTRUE(source_pair %in% c("kernel_indep", "phylo_indep", "animal_indep")) &&
       identical(structure_name, "ar1") && any(vapply(times_by_series, function(x) {
         occasions <- unique(as.integer(x))
         !any(abs(outer(occasions, occasions, `-`)) %% 2L == 1L)

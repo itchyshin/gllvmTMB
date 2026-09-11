@@ -155,6 +155,20 @@ unchanged `.35` threshold. `verify.R latent-phylo` fails closed. Keep the cell
 interval, profile, bootstrap, selection, temporal-Psi, or wider source-pair
 evidence.
 
+## Rank-one temporal-latent animal result (2026-09-11)
+
+The separately admitted replicated AR1
+`temporal_latent(..., d = 1, unique = FALSE) + animal_indep()` cell has direct
+dense all-parameter NLL/gradient checks, diagonal and source-by-time controls,
+long/wide and dense-A/pedigree/sparse-Ainv equivalence, lifecycle tests, and a
+direct-DGP receipt. The measured positive-persistence smoke took 3.357 seconds after the independent-reference repair.
+All nine fixed attempts at `phi = -.4, 0, .6` and seeds `2609251:2609253`
+passed their strict gate; `verify.R latent-animal` recomputes the receipt and
+passes. This remains local evidence for the named rank-one fixed-animal
+fixture only. It does not support temporal `unique = TRUE`, other sources,
+forecasts, intervals, profiles, bootstrap, selection, cross-platform
+verification, release, general recovery, or coverage.
+
 ## Next bounded slice
 
 Treat the phylogenetic, animal, spatial, and dependent-temporal-kernel recovery

@@ -58001,3 +58001,30 @@ Deliberately not run: Totoro 9×500 grid dispatch; full `devtools::test()`.
   The Windows matrix leg remains in progress at this record. A new remote
   three-OS run requires an explicit push authorization; no cross-platform
   success is claimed.
+
+## 2026-09-11 — rank-one temporal-latent animal fixture passes its retained local gate
+
+- Added the narrowly admitted replicated AR1
+  `temporal_latent(..., d = 1, unique = FALSE) + animal_indep()` cell. The
+  parser permits exactly one intercept-only animal source and preserves its
+  dense-A, pedigree, or sparse-Ainv provenance. Temporal Psi, OU, ordinary
+  covariance terms, additional sources, augmented slopes, and all-even
+  occasion grids are rejected before the existing source rewrites can broaden
+  the model.
+- `test-temporal-program-latent-animal.R` independently constructs the dense
+  additive Gaussian covariance and checks normalized NLL plus every active
+  central derivative at phi `-.55`, `0`, and `.55`. It distinguishes the model
+  from diagonal temporal and animal-by-time substitutes, then exercises
+  long/wide labels, source permutations, A/pedigree/Ainv equivalence,
+  unconditional simulation, update replay, and all admission refusals.
+- The direct 80-series, 16-occasion, two-measurement related-animal DGP never calls
+  production simulation or pedigree conversion. Its phi `.6`, seed `2609251` smoke
+  took 3.357 seconds after the independent-reference repair. All nine retained attempts at phi `-.4`, `0`, `.6` and seeds
+  `2609251:2609253` have finite objectives, accepted second optimizer passes,
+  final gradients below `.001`, and pass their frozen summary thresholds.
+  `verify.R self-test` emitted `TEMPORAL_PROGRAM_SELF_TEST_PASS`; `verify.R
+  latent-animal` recomputed the receipt and emitted
+  `TEMPORAL_LATENT_ANIMAL_RECOVERY_PASS`. TEMP-06-09 remains `partial`: this
+  is local named-fixture evidence, not cross-platform, release, general
+  recovery, coverage, forecast, interval, profile, bootstrap, selection,
+  temporal-Psi, or other-source evidence.

@@ -146,7 +146,8 @@ if (skip_hessian && !diagnostic) {
 if (diagnostic) {
   diagnostic_output <- normalizePath(diagnostic_output, mustWork = FALSE)
   diagnostic_phase_path <- sub('\\.csv$', '-phase.csv', diagnostic_output)
-  if (dirname(diagnostic_output) != normalizePath(diagnostic_dir, mustWork = TRUE) ||
+  diagnostic_parent <- normalizePath(dirname(diagnostic_output), mustWork = TRUE)
+  if (diagnostic_parent != normalizePath(diagnostic_dir, mustWork = TRUE) ||
       !grepl('\\.csv$', diagnostic_output) || file.exists(diagnostic_output) ||
       file.exists(diagnostic_phase_path)) {
     stop('Diagnostic output must be a new CSV in dev/temporal-program/results/diagnostics/.', call. = FALSE)

@@ -656,7 +656,37 @@ if (identical(mode, "plan")) {
 }
 
 if (identical(mode, "publication")) {
-  stop("Publication verification requires a retained three-OS CI receipt; none is available in this local worktree.", call. = FALSE)
+  receipt_path <- path.expand(Sys.getenv("TEMPORAL_PROGRAM_CI_RECEIPT", unset = ""))
+  if (!nzchar(receipt_path) || !file.exists(receipt_path)) {
+    stop("Publication verification requires TEMPORAL_PROGRAM_CI_RECEIPT pointing to a retained three-OS CI receipt.", call. = FALSE)
+  }
+  receipt <- readRDS(receipt_path)
+  head <- system2("git", c("rev-parse", "HEAD"), stdout = TRUE)[[1L]]
+  if (!is.list(receipt) ||
+      !identical(receipt$schema, "temporal-program-publication-ci-receipt-v1") ||
+      !identical(receipt$workflow_name, "R-CMD-check") ||
+      !identical(receipt$event, "workflow_dispatch") ||
+      !identical(receipt$head_sha, head) ||
+      !identical(sort(names(receipt$platforms)), c("macos", "ubuntu", "windows")) ||
+      any(receipt$platforms != "success")) {
+    stop("retained three-OS CI receipt differs from final branch HEAD", call. = FALSE)
+  }
+  fresh_path <- tempfile(fileext = ".rds")
+  status <- system2(file.path(R.home("bin"), "Rscript"), c(
+    "--vanilla", "dev/temporal-program/make-publication-ci-receipt.R",
+    format(receipt$run_id, scientific = FALSE), shQuote(fresh_path)
+  ))
+  if (status != 0L || !file.exists(fresh_path)) {
+    stop("live three-OS CI receipt query failed", call. = FALSE)
+  }
+  fresh <- readRDS(fresh_path)
+  unlink(fresh_path)
+  receipt$created_at <- fresh$created_at <- NULL
+  if (!identical(receipt, fresh)) {
+    stop("live CI state differs from retained receipt", call. = FALSE)
+  }
+  cat("TEMPORAL_PROGRAM_PUBLICATION_PASS\n")
+  quit(save = "no", status = 0L)
 }
 if (identical(mode, "phylo")) {
   .temporal_program_verify_phylo(root)

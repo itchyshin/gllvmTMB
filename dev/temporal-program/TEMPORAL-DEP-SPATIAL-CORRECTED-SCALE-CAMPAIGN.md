@@ -68,3 +68,13 @@ retained 215.571-second fit-only tail. A conservative serial projection
 therefore exceeds 30 minutes. Obtain a distinct compute decision before the
 remaining eight cells, then route them to Totoro or DRAC with one BLAS thread
 and at most four local cores.
+
+## Approved Totoro execution shape
+
+The remaining eight cells use
+`remote/dep-spatial-corrected-scale-totoro.sh` at the pre-run commit. It stages
+an isolated detached checkout, verifies that checkout is clean, compiles once,
+then launches indexes 2--9 at eight workers with BLAS and OpenMP pinned to one
+thread. Each attempt retains its own log and result/phase pair. The script
+returns nonzero if any result pair is missing or any attempt has a nonzero
+terminal status; it does not finalize or interpret the campaign.

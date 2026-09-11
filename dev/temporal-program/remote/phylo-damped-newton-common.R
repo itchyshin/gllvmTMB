@@ -171,3 +171,39 @@ temporal_phylo_damped_newton_select_step <- function(theta, direction, gradient,
   list(accepted = FALSE, selected_index = NA_integer_, selected_alpha = NA_real_,
     selected = NULL, trials = trials, rejection_reasons = "no_armijo_eligible_step")
 }
+
+## This final gate is deliberately pure: the sequential runner supplies fresh
+## TMB evaluations, while the checkpointed runner supplies independently
+## retained endpoint receipts. Keeping the decision here makes their criteria
+## identical.
+temporal_phylo_damped_newton_adjudicate_evaluated <- function(baseline, curvature, step, final, replay) {
+  tolerance <- 64 * .Machine$double.eps * max(1, abs(baseline$fresh$objective))
+  replay_ok <- !is.null(final) && !is.null(replay) && isTRUE(final$eligible) && isTRUE(replay$eligible) &&
+    abs(final$objective - replay$objective) <= tolerance &&
+    length(final$gradient) == length(replay$gradient) &&
+    all(abs(final$gradient - replay$gradient) <= 1e-7 * pmax(1, abs(final$gradient)))
+  drift <- if (!is.null(final) && isTRUE(final$eligible)) c(
+    phi = abs(final$state$phi - baseline$fresh$state$phi),
+    covariance = max(temporal_phylo_damped_newton_relative_change(final$state$temporal_variance,
+      baseline$fresh$state$temporal_variance), temporal_phylo_damped_newton_relative_change(
+        final$state$phylo_variance, baseline$fresh$state$phylo_variance)),
+    residual = temporal_phylo_damped_newton_relative_change(final$state$residual_variance,
+      baseline$fresh$state$residual_variance),
+    prediction = temporal_phylo_damped_newton_relative_change(final$state$eta, baseline$fresh$state$eta)
+  ) else c(phi = Inf, covariance = Inf, residual = Inf, prediction = Inf)
+  gates <- c(
+    baseline = baseline$eligible,
+    curvature = curvature$eligible,
+    step = step$accepted,
+    final = !is.null(final) && isTRUE(final$eligible),
+    replay = replay_ok,
+    objective = !is.null(final) && final$objective <= baseline$fresh$objective + tolerance,
+    gradient = !is.null(final) && max(abs(final$gradient)) <= 1e-3,
+    phi = drift[["phi"]] <= 1e-5,
+    covariance = drift[["covariance"]] <= 1e-4,
+    residual = drift[["residual"]] <= 1e-4,
+    prediction = drift[["prediction"]] <= 1e-4
+  )
+  list(accepted = all(gates), gates = gates, rejection_reasons = names(gates)[!gates],
+    final = final, replay = replay, drift = drift)
+}

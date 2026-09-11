@@ -28,7 +28,7 @@ output <- arg_value("--output")
 stage <- arg_value("--stage")
 if (is.null(stage)) stage <- "full"
 if (length(phi) != 1L || !is.finite(phi) || length(seed) != 1L || is.na(seed) ||
-    is.null(output) || !nzchar(output) || !stage %in% c("full", "baseline", "curvature_probe")) {
+    is.null(output) || !nzchar(output) || !stage %in% c("full", "baseline", "curvature_probe", "endpoint_probe")) {
   stop("run mode requires finite --phi, integer --seed, non-empty --output, and a supported --stage.", call. = FALSE)
 }
 plan <- temporal_phylo_damped_newton_plan()
@@ -129,41 +129,12 @@ temporal_phylo_damped_newton_baseline <- function(fit, role) {
 }
 
 temporal_phylo_damped_newton_adjudicate <- function(baseline, curvature, step) {
-  controls <- temporal_phylo_damped_newton_controls()
   selected <- step$selected
   final <- if (!is.null(selected)) temporal_phylo_damped_newton_fresh(baseline$fit, selected$endpoint) else NULL
   replay <- if (!is.null(final) && isTRUE(final$eligible)) {
     temporal_phylo_damped_newton_fresh(baseline$fit, selected$endpoint)
   } else NULL
-  tolerance <- 64 * .Machine$double.eps * max(1, abs(baseline$fresh$objective))
-  replay_ok <- !is.null(final) && !is.null(replay) && isTRUE(final$eligible) && isTRUE(replay$eligible) &&
-    abs(final$objective - replay$objective) <= tolerance &&
-    length(final$gradient) == length(replay$gradient) &&
-    all(abs(final$gradient - replay$gradient) <= 1e-7 * pmax(1, abs(final$gradient)))
-  drift <- if (!is.null(final) && isTRUE(final$eligible)) c(
-    phi = abs(final$state$phi - baseline$fresh$state$phi),
-    covariance = max(temporal_phylo_damped_newton_relative_change(final$state$temporal_variance,
-      baseline$fresh$state$temporal_variance), temporal_phylo_damped_newton_relative_change(
-        final$state$phylo_variance, baseline$fresh$state$phylo_variance)),
-    residual = temporal_phylo_damped_newton_relative_change(final$state$residual_variance,
-      baseline$fresh$state$residual_variance),
-    prediction = temporal_phylo_damped_newton_relative_change(final$state$eta, baseline$fresh$state$eta)
-  ) else c(phi = Inf, covariance = Inf, residual = Inf, prediction = Inf)
-  gates <- c(
-    baseline = baseline$eligible,
-    curvature = curvature$eligible,
-    step = step$accepted,
-    final = !is.null(final) && isTRUE(final$eligible),
-    replay = replay_ok,
-    objective = !is.null(final) && final$objective <= baseline$fresh$objective + tolerance,
-    gradient = !is.null(final) && max(abs(final$gradient)) <= 1e-3,
-    phi = drift[["phi"]] <= 1e-5,
-    covariance = drift[["covariance"]] <= 1e-4,
-    residual = drift[["residual"]] <= 1e-4,
-    prediction = drift[["prediction"]] <= 1e-4
-  )
-  list(accepted = all(gates), gates = gates, rejection_reasons = names(gates)[!gates],
-    final = final, replay = replay, drift = drift)
+  temporal_phylo_damped_newton_adjudicate_evaluated(baseline, curvature, step, final, replay)
 }
 
 load_temporal_program_package(root)
@@ -235,6 +206,67 @@ if (identical(stage, "curvature_probe")) {
   saveRDS(receipt, output)
   cat(sprintf("TEMPORAL_PHYLO_DAMPED_NEWTON_CURVATURE_PROBE phi=%s seed=%d coordinate=%d multiplier=%s direction=%s output=%s\n",
     phi, seed, coordinate, multiplier, direction, output))
+  quit(save = "no", status = 0L)
+}
+
+if (identical(stage, "endpoint_probe")) {
+  checkpoint_path <- arg_value("--checkpoint")
+  purpose <- arg_value("--purpose")
+  curvature_path <- arg_value("--curvature")
+  step_path <- arg_value("--step")
+  if (is.null(checkpoint_path) || !file.exists(checkpoint_path) ||
+      !purpose %in% c("line_trial", "final_replay")) {
+    stop("endpoint_probe requires an existing checkpoint and a supported purpose.", call. = FALSE)
+  }
+  checkpoint <- readRDS(checkpoint_path)
+  theta <- fit_result$fit$opt$par
+  checkpoint_ok <- is.list(checkpoint) &&
+    identical(checkpoint$schema, "temporal_phylo_damped_newton_checkpoint_v1") &&
+    identical(checkpoint$stage, "baseline") && identical(as.numeric(checkpoint$phi), phi) &&
+    identical(as.integer(checkpoint$seed), seed) && identical(checkpoint$theta_names, names(theta)) &&
+    isTRUE(all.equal(as.numeric(checkpoint$theta), as.numeric(theta), tolerance = 0))
+  if (!checkpoint_ok) stop("endpoint probe does not exactly reproduce its frozen baseline checkpoint.", call. = FALSE)
+  if (identical(purpose, "line_trial")) {
+    alpha <- suppressWarnings(as.numeric(arg_value("--alpha")))
+    if (is.null(curvature_path) || !file.exists(curvature_path) || !is.finite(alpha) ||
+        !alpha %in% temporal_phylo_damped_newton_controls()$alpha) {
+      stop("line_trial requires a curvature receipt and a frozen line-search alpha.", call. = FALSE)
+    }
+    source <- readRDS(curvature_path)
+    source_ok <- is.list(source) && identical(source$schema, "temporal_phylo_damped_newton_checkpoint_v1") &&
+      identical(source$stage, "curvature_collect") && identical(as.numeric(source$phi), phi) &&
+      identical(as.integer(source$seed), seed) && identical(source$theta_names, names(theta)) &&
+      isTRUE(all.equal(as.numeric(source$theta), as.numeric(theta), tolerance = 0)) && isTRUE(source$curvature$eligible)
+    if (!source_ok) stop("line trial does not match an eligible frozen curvature receipt.", call. = FALSE)
+    endpoint <- theta + alpha * source$curvature$direction
+    source_path <- normalizePath(curvature_path)
+  } else {
+    replicate_id <- suppressWarnings(as.integer(arg_value("--replicate")))
+    if (is.null(step_path) || !file.exists(step_path) || is.na(replicate_id) || !replicate_id %in% 1:2) {
+      stop("final_replay requires a step receipt and replicate 1 or 2.", call. = FALSE)
+    }
+    source <- readRDS(step_path)
+    source_ok <- is.list(source) && identical(source$schema, "temporal_phylo_damped_newton_checkpoint_v1") &&
+      identical(source$stage, "step_collect") && identical(as.numeric(source$phi), phi) &&
+      identical(as.integer(source$seed), seed) && identical(source$theta_names, names(theta)) &&
+      isTRUE(all.equal(as.numeric(source$theta), as.numeric(theta), tolerance = 0)) && isTRUE(source$step$accepted) &&
+      !is.null(source$step$selected$endpoint)
+    if (!source_ok) stop("final replay does not match an accepted frozen step receipt.", call. = FALSE)
+    endpoint <- source$step$selected$endpoint
+    source_path <- normalizePath(step_path)
+    alpha <- source$step$selected_alpha
+  }
+  evaluated <- temporal_phylo_damped_newton_fresh(fit_result$fit, endpoint)
+  receipt <- list(
+    schema = "temporal_phylo_damped_newton_checkpoint_v1",
+    stage = "endpoint_probe", purpose = purpose, source_commit = unname(commit[[1L]]),
+    phi = phi, seed = seed, role = plan$role[[plan_row]], checkpoint = normalizePath(checkpoint_path),
+    source = source_path, alpha = alpha, replicate = if (identical(purpose, "final_replay")) replicate_id else NA_integer_,
+    endpoint = endpoint, evaluated = evaluated, elapsed_seconds = proc.time()[["elapsed"]] - started
+  )
+  saveRDS(receipt, output)
+  cat(sprintf("TEMPORAL_PHYLO_DAMPED_NEWTON_ENDPOINT_PROBE purpose=%s phi=%s seed=%d output=%s\n",
+    purpose, phi, seed, output))
   quit(save = "no", status = 0L)
 }
 

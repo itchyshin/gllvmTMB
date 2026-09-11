@@ -17,6 +17,7 @@ Environment:
   R_MODULE      R module (default: r/4.5.0)
   R_LIBS_USER_DIR user R library (default: $PROJECT/$USER/R/<R>)
   GLLVMTMB_TEMPORAL_LOAD installed | pkgload (default: installed)
+  TEMPORAL_PHYLO_DAMPED_NEWTON_STAGE full | baseline | probe (default: full)
   TEMPORAL_PHYLO_DAMPED_NEWTON_DRAC_APPROVED=YES required for submit
 
 The array has exactly six frozen cells.  Each task retains one result under
@@ -30,6 +31,7 @@ script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 root="$(cd "$script_dir/../../.." && pwd)"
 cd "$root"
 action="${SLURM_ACTION:-write}"
+stage="${TEMPORAL_PHYLO_DAMPED_NEWTON_STAGE:-full}"
 time="${SLURM_TIME:-00:45:00}"
 mem="${SLURM_MEM:-8G}"
 r_module="${R_MODULE:-r/4.5.0}"
@@ -46,6 +48,8 @@ fi
 [[ "$load_mode" == "installed" || "$load_mode" == "pkgload" ]] || {
   echo "GLLVMTMB_TEMPORAL_LOAD must be installed or pkgload." >&2; exit 2; }
 Rscript --vanilla dev/temporal-program/remote/phylo-damped-newton-task.R --mode=plan
+[[ "$stage" == "full" || "$stage" == "baseline" || "$stage" == "probe" ]] || {
+  echo "TEMPORAL_PHYLO_DAMPED_NEWTON_STAGE must be full, baseline, or probe." >&2; exit 2; }
 source_commit="$(git rev-parse HEAD)"
 if [[ -n "$(git status --porcelain)" ]]; then
   echo "Refuse to construct a compute envelope from a dirty source checkout." >&2; exit 2
@@ -53,12 +57,32 @@ fi
 
 slurm_dir="$RESULTS_DIR/_slurm"
 attempt_dir="$RESULTS_DIR/attempts"
-sbatch_file="$slurm_dir/phylo-damped-newton.sbatch"
+sbatch_file="$slurm_dir/phylo-damped-newton-${stage}.sbatch"
+checkpoint_dir="$RESULTS_DIR/baselines"
+probe_dir="$RESULTS_DIR/probes"
 mkdir -p "$slurm_dir" "$attempt_dir"
+array="1-6%6"
+worker_args="--mode=task --task-id=\${SLURM_ARRAY_TASK_ID} --results-dir=$attempt_dir"
+if [[ "$stage" == "baseline" ]]; then
+  mkdir -p "$checkpoint_dir"
+  worker_args="--mode=baseline --task-id=\${SLURM_ARRAY_TASK_ID} --results-dir=$checkpoint_dir"
+elif [[ "$stage" == "probe" ]]; then
+  mkdir -p "$probe_dir"
+  probe_plan="$slurm_dir/phylo-damped-newton-probe-plan.tsv"
+  [[ ! -e "$probe_plan" ]] || { echo "Refusing to overwrite frozen probe plan: $probe_plan" >&2; exit 2; }
+  Rscript --vanilla dev/temporal-program/remote/phylo-damped-newton-task.R \
+    --mode=probe_plan --checkpoint-dir="$checkpoint_dir" --output="$probe_plan"
+  probe_count="$(awk 'END { print NR - 1 }' "$probe_plan")"
+  [[ "$probe_count" =~ ^[1-9][0-9]*$ ]] || { echo "Probe plan is empty." >&2; exit 2; }
+  array="1-${probe_count}%250"
+  worker_args="--mode=probe --probe-plan=$probe_plan --checkpoint-dir=$checkpoint_dir --probe-task-id=\${SLURM_ARRAY_TASK_ID} --results-dir=$probe_dir"
+fi
 {
   printf 'source_commit\t%s\n' "$source_commit"
   printf 'task_plan\t%s\n' 'temporal_phylo_damped_newton_plan'
   printf 'task_count\t6\n'
+  printf 'stage\t%s\n' "$stage"
+  printf 'array\t%s\n' "$array"
   printf 'walltime_per_task\t%s\n' "$time"
   printf 'memory_per_task\t%s\n' "$mem"
   printf 'load_mode\t%s\n' "$load_mode"
@@ -66,7 +90,7 @@ mkdir -p "$slurm_dir" "$attempt_dir"
 cat > "$sbatch_file" <<EOF
 #!/usr/bin/env bash
 #SBATCH --job-name=gllvmtmb-temporal-newton
-#SBATCH --array=1-6%6
+#SBATCH --array=$array
 #SBATCH --time=$time
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=$mem
@@ -84,10 +108,9 @@ export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1
 cd "$root"
 test "\$(git rev-parse HEAD)" = "$source_commit"
 test -z "\$(git status --porcelain)"
-Rscript --vanilla dev/temporal-program/remote/phylo-damped-newton-task.R \\
-  --mode=task --task-id="\${SLURM_ARRAY_TASK_ID}" --results-dir="$attempt_dir"
+Rscript --vanilla dev/temporal-program/remote/phylo-damped-newton-task.R $worker_args
 EOF
-echo "TEMPORAL_PHYLO_DAMPED_NEWTON_DRAC_ENVELOPE action=$action source=$source_commit tasks=6 sbatch=$sbatch_file"
+echo "TEMPORAL_PHYLO_DAMPED_NEWTON_DRAC_ENVELOPE action=$action stage=$stage source=$source_commit array=$array sbatch=$sbatch_file"
 case "$action" in
   write) echo "TEMPORAL_PHYLO_DAMPED_NEWTON_DRAC_WRITE_PASS" ;;
   test) sbatch --test-only "$sbatch_file" ;;

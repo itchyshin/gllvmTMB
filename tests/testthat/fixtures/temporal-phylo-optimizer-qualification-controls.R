@@ -39,6 +39,10 @@
     roots <- c(roots, root)
     root <- dirname(root)
   }
+  summary_paths <- unique(unlist(lapply(roots, function(root) c(
+    file.path(root, controls$retained_summary),
+    file.path(root, "00_pkg_src", "gllvmTMB", controls$retained_summary)
+  )), use.names = FALSE))
   identical(controls$retained_summary,
     .temporal_phylo_optimizer_qualification_controls()$retained_summary) &&
     identical(controls$retained_summary_md5,
@@ -47,9 +51,9 @@
     identical(controls$retained_passes, c(TRUE, FALSE, FALSE)) &&
     identical(controls$injected_coordinate, "theta_rr_phy[2]") &&
     identical(controls$derivative_tolerance, 2e-5) &&
-    any(vapply(roots, function(root) {
+    any(vapply(summary_paths, function(path) {
       .temporal_phylo_optimizer_qualification_validate_summary(
-        file.path(root, controls$retained_summary), controls$retained_summary_md5
+        path, controls$retained_summary_md5
       )
     }, logical(1)))
 }

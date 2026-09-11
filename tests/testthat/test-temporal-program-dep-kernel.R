@@ -105,3 +105,114 @@ test_that("replicated temporal_dep-kernel likelihood and gradients equal an inde
       tolerance = 3e-5, info = names(fixed)[[index]])
   }
 })
+
+test_that("replicated temporal_dep-kernel unconditional simulation has additive moments", {
+  skip_if_not_installed("TMB")
+  fx <- .temporal_dep_kernel_fixture()
+  fit <- suppressWarnings(gllvmTMB(
+    value ~ 0 + trait + temporal_dep(0 + trait | series, time = occasion,
+      replicate = measurement) + kernel_indep(series, K = fx$K, name = "fixed_kernel"),
+    data = fx$data, unit = "series", cluster = "series", family = gaussian(),
+    silent = TRUE, control = gllvmTMBcontrol(se = FALSE)
+  ))
+  par <- fit$tmb_obj$env$parList(fit$opt$par)
+  rows <- fit$data
+  find_row <- function(series, occasion, measurement, trait) {
+    which(as.character(rows$series) == series & rows$occasion == occasion &
+      as.character(rows$measurement) == measurement &
+      as.character(rows$trait) == trait)
+  }
+  i1 <- find_row("s1", 1, "m1", "t1")
+  i_time <- find_row("s1", 2, "m1", "t2")
+  i_rep <- find_row("s1", 1, "m2", "t2")
+  i_source <- find_row("s2", 1, "m1", "t1")
+  Lambda_time <- .temporal_dep_kernel_unpack(par$theta_temporal_rr,
+    fit$tmb_data$n_traits)
+  Sigma_time <- tcrossprod(Lambda_time)
+  Lambda_kernel <- diag(par$theta_rr_phy, nrow = fit$tmb_data$n_traits)
+  Sigma_kernel <- tcrossprod(Lambda_kernel)
+  phi <- (1 - 1e-6) * tanh(par$theta_temporal_time)
+  expected <- c(
+    time_cross_trait = phi * Sigma_time[1L, 2L] + fx$K[1L, 1L] * Sigma_kernel[1L, 2L],
+    replicate_cross_trait = Sigma_time[1L, 2L] + fx$K[1L, 1L] * Sigma_kernel[1L, 2L],
+    source_same_trait = fx$K[1L, 2L] * Sigma_kernel[1L, 1L]
+  )
+  draw <- simulate(fit, nsim = 2000L, seed = 2609162L)
+  observed <- c(
+    time_cross_trait = cov(draw[i1, ], draw[i_time, ]),
+    replicate_cross_trait = cov(draw[i1, ], draw[i_rep, ]),
+    source_same_trait = cov(draw[i1, ], draw[i_source, ])
+  )
+  variance <- apply(draw[c(i1, i_time, i_rep, i_source), , drop = FALSE], 1L, var)
+  se <- c(
+    time_cross_trait = sqrt((variance[[1L]] * variance[[2L]] +
+      expected[[1L]]^2) / 1999),
+    replicate_cross_trait = sqrt((variance[[1L]] * variance[[3L]] +
+      expected[[2L]]^2) / 1999),
+    source_same_trait = sqrt((variance[[1L]] * variance[[4L]] +
+      expected[[3L]]^2) / 1999)
+  )
+  simultaneous_bound <- qnorm(1 - .05 / (2 * length(expected))) * se
+  expect_true(all(abs(observed - expected) <= simultaneous_bound),
+    info = paste(capture.output(rbind(observed, expected, simultaneous_bound)), collapse = "\n"))
+})
+
+test_that("replicated temporal_dep-kernel preserves identity through wide parsing and update", {
+  skip_if_not_installed("TMB")
+  fx <- .temporal_dep_kernel_fixture()
+  long_fit <- suppressWarnings(gllvmTMB(
+    value ~ 0 + trait + temporal_dep(0 + trait | series, time = occasion,
+      replicate = measurement) + kernel_indep(series, K = fx$K, name = "fixed_kernel"),
+    data = fx$data, unit = "series", cluster = "series", family = gaussian(),
+    silent = TRUE, control = gllvmTMBcontrol(se = FALSE)
+  ))
+  key <- unique(fx$data[c("series", "occasion", "measurement")])
+  wide <- key[order(key$series, key$occasion, key$measurement), , drop = FALSE]
+  for (trait in paste0("t", 1:3)) {
+    values <- fx$data[fx$data$trait == trait,
+      c("series", "occasion", "measurement", "value")]
+    values <- values[order(values$series, values$occasion, values$measurement), , drop = FALSE]
+    wide[[sub("t", "y", trait)]] <- values$value
+  }
+  wide_fit <- suppressWarnings(gllvmTMB(
+    traits(y1, y2, y3) ~ 1 + temporal_dep(1 | series, time = occasion,
+      replicate = measurement) + kernel_indep(series, K = fx$K, name = "fixed_kernel"),
+    data = wide, unit = "series", cluster = "series", family = gaussian(),
+    silent = TRUE, control = gllvmTMBcontrol(se = FALSE)
+  ))
+  replay <- suppressWarnings(update(long_fit))
+  replacement <- fx$data
+  replacement$value <- replacement$value + .01
+  refit <- suppressWarnings(update(long_fit, data = replacement))
+
+  expect_equal(unname(as.matrix(extract_temporal(long_fit)$pair_index)),
+    unname(as.matrix(extract_temporal(wide_fit)$pair_index)))
+  expect_equal(wide_fit$kernel_levels$name, long_fit$kernel_levels$name)
+  expect_equal(unname(extract_temporal(wide_fit)$loading),
+    unname(wide_fit$report$Lambda_temporal), tolerance = 1e-8)
+  expect_equal(rownames(extract_temporal(wide_fit)$loading), c("y1", "y2", "y3"))
+  expect_s3_class(replay, "gllvmTMB_multi")
+  expect_identical(replay$temporal$mode, "dep")
+  expect_equal(replay$kernel_levels$name, "fixed_kernel")
+  expect_s3_class(refit, "gllvmTMB_multi")
+  expect_equal(nrow(extract_temporal(refit)$pair_index),
+    nrow(extract_temporal(long_fit)$pair_index))
+})
+
+test_that("replicated temporal_dep-kernel fences inference routes without a source-pair contract", {
+  skip_if_not_installed("TMB")
+  fx <- .temporal_dep_kernel_fixture()
+  fit <- suppressWarnings(gllvmTMB(
+    value ~ 0 + trait + temporal_dep(0 + trait | series, time = occasion,
+      replicate = measurement) + kernel_indep(series, K = fx$K, name = "fixed_kernel"),
+    data = fx$data, unit = "series", cluster = "series", family = gaussian(),
+    silent = TRUE, control = gllvmTMBcontrol(se = FALSE)
+  ))
+  expect_error(forecast_temporal(fit, fx$data), "does not yet support replicated")
+  expect_error(profile_temporal(fit), "unreplicated Gaussian.*temporal_indep")
+  expect_error(bootstrap_temporal(fit, n_boot = 2L), "requires the temporal source by itself")
+  expect_error(compare_temporal(first = fit, second = fit),
+    "requires the temporal source by itself")
+  expect_error(confint(fit), "not available.*temporal")
+  expect_error(bootstrap_Sigma(fit, n_boot = 2L), "not available.*temporal")
+})

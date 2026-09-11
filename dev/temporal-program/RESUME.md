@@ -110,10 +110,25 @@ completed, but the unchanged strict gradient gate failed in 3/10, 3/10, and
 `ANIMAL-RECOVERY-DIAGNOSTIC.md` retains the third-pass check: only two of the
 eight failed cells crossed the gradient gate, so it does not repair the campaign.
 
+## Dependent temporal-kernel result (2026-09-11)
+
+The new replicated AR1 `temporal_dep() + kernel_indep()` cell has an
+independent additive dense likelihood/gradient oracle, product-interaction
+control, unconditional moments, long/wide parsing, update replay, and explicit
+forecast/profile/bootstrap/interval/selection refusals. Its direct DGP never
+calls package simulation and retains all nine fixed `(phi, seed)` attempts at
+`results/dep-kernel-recovery-20260911.csv`. Every fit has terminal success,
+two accepted optimizer passes, and final gradient below `1e-3`. The frozen gate
+nevertheless fails at `phi=.6`: the median relative errors for the first two
+kernel variances are `.395` and `.362`, above `.35`. The companion verifier
+fails closed by design. This cell remains partial and does not justify a
+recovery, coverage, forecast, interval, profile, bootstrap, selection,
+cross-platform, release, or wider source-pair claim.
+
 ## Next bounded slice
 
-Treat the phylogenetic, animal, and spatial recovery gates as failed and retain
-their results. Any numerical follow-up needs a separate model-level contract
+Treat the phylogenetic, animal, spatial, and dependent-temporal-kernel recovery
+gates as failed and retain their results. Any numerical follow-up needs a separate model-level contract
 with independent evidence; it cannot be another generic BFGS restart. Do not
 create a pull request, merge, release, or push. A separate CI-only
 authorization remains necessary before cross-platform claims.

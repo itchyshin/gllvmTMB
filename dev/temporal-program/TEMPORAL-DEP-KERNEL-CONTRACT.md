@@ -72,3 +72,29 @@ and source-by-time interactions. Those routes retain their own contracts.
 No test of this cell establishes source-pair forecasting, calibration,
 coverage, general recovery, or support for phylogenetic, animal, or spatial
 `temporal_dep()` pairs.
+
+## Frozen recovery fixture
+
+The direct generator in `run-dep-kernel-recovery.R` never calls package
+simulation. It uses 80 series, 16 integer occasions, two measurements, and
+three traits. The fixed labelled kernel is a nonproportional unit-diagonal
+exponential coordinate kernel. The true fixed effects are `(.2, -.3, .1)`,
+the temporal covariance is `L_T L_T^T` for
+
+\[
+L_T=\begin{pmatrix}.55&0&0\\ .12&.50&0\\ -.08&.10&.48\end{pmatrix},
+\]
+
+the static diagonal kernel standard deviations are `(.35, .28, .40)`, and
+the measurement standard deviation is `.30`. It retains every combination of
+`phi = (-.4, 0, .6)` and seeds `2609221:2609223`.
+
+Every attempted fit must have finite objective, optimizer convergence zero,
+an accepted final second optimizer pass, and maximum outer gradient at most
+`1e-3`. Within each persistence value, the three retained attempts must have
+mean absolute phi error at most `.15`, median absolute phi error at most
+`.20`, median relative Frobenius error for the temporal covariance at most
+`.30`, median relative error for every kernel variance at most `.35`, and
+mean absolute fixed-effect error at most `.25`. These are a fixed engineering
+smoke criterion for this named DGP. Passing it would not establish general
+recovery or interval coverage.

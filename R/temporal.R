@@ -79,8 +79,10 @@ temporal_dep <- function(formula, time, structure = "ar1", replicate = NULL) {
 #' a fixed labelled `phylo_indep()` term, or a fixed labelled `animal_indep()`
 #' term, or a fixed labelled `spatial_indep()` term. A separate replicated AR1
 #' `temporal_dep() + kernel_indep()` cell adds an unrestricted temporal trait
-#' covariance to the fixed diagonal kernel source; its current evidence is
-#' limited to point estimation and dense likelihood/gradient checks. The spatial
+#' covariance to the fixed diagonal kernel source; its current evidence covers
+#' point estimation, dense likelihood/gradient checks, unconditional simulation,
+#' and long/wide update replay, but its retained fixed-seed recovery fixture did
+#' not meet every frozen variance criterion. The spatial
 #' cell redraws its independent SPDE field during unconditional simulation. Other
 #' temporal-source combinations remain unavailable. For an unreplicated,
 #' Gaussian `temporal_indep()` source by itself, `forecast_temporal()`,

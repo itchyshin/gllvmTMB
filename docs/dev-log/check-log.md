@@ -57901,3 +57901,27 @@ Deliberately not run: Totoro 9×500 grid dispatch; full `devtools::test()`.
   `Rscript --vanilla dev/temporal-program/verify.R plan`, which emitted
   `TEMPORAL_PROGRAM_PLAN_PASS`. The result neither repairs the failed Fir
   recovery campaign nor supports a recovery, release, or cross-platform claim.
+
+## 2026-09-11 — dependent temporal-kernel cell remains partial after direct recovery
+
+- Admitted the narrow replicated AR1 `temporal_dep() + kernel_indep()` cell
+  with a separate temporal full trait covariance and a fixed diagonal kernel
+  covariance. Its test file independently checks the additive dense Gaussian
+  likelihood and central derivatives, rejects the product interaction, checks
+  unconditional covariance moments, preserves long/wide identity through
+  `update()`, and fences uncontracted inference routes.
+- The direct 80-series, 16-occasion, two-measurement DGP in
+  `run-dep-kernel-recovery.R` never calls package simulation. A smoke fit took
+  5.685 seconds. The retained nine attempt fixture completed with finite
+  objectives, convergence code zero, accepted second passes, and final outer
+  gradients below `0.001`; each receipt also records the attempted Hessian
+  status (all nine are `error`, rather than being silently omitted). The frozen gate fails at `phi=.6`: median kernel
+  relative errors are `0.3951228` and `0.3617466` for the first two traits,
+  exceeding the unchanged `.35` criterion. No seed, threshold, fixture, or
+  optimizer control was changed.
+- `Rscript --vanilla dev/temporal-program/verify.R self-test` emitted
+  `TEMPORAL_PROGRAM_SELF_TEST_PASS`; its `dep-kernel` mode correctly stops
+  with `temporal dep-kernel recovery fails its frozen threshold gate` against
+  the retained result. The focused source-pair test passed. TEMP-06-06 is
+  `partial`; this is not recovery, coverage, cross-platform, merge, or release
+  evidence.

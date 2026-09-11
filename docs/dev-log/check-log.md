@@ -58195,3 +58195,16 @@ Deliberately not run: Totoro 9×500 grid dispatch; full `devtools::test()`.
 - `test-temporal-program-dep-spatial-runner.R` passed four expectations with no
   warnings and `run-dep-spatial-recovery.R` parsed cleanly. Those checks cover
   only fail-closed campaign routing, not recovery or timing.
+
+## 2026-09-11 — corrected-scale dependent temporal–spatial retained pre-run
+
+- The first newly frozen cell (`phi=-.4`, `seed=2609331`) completed with a
+  retained result and final phase receipt. It took 19.693 seconds, had terminal
+  success, optimizer codes zero on both passes, accepted pass two, and maximum
+  outer gradient `1.1863489e-05`. Its Hessian status is `error`; that is
+  retained, not treated as a successful Hessian calculation.
+- Nine times this direct measurement is about three minutes. The same fixture
+  family also retains a 215.571-second fit-only tail, so a conservative serial
+  campaign estimate exceeds 30 minutes. Per the compute contract, the remaining
+  eight cells are held for a distinct Totoro/DRAC compute decision. No summary,
+  recovery verdict, threshold change, or release action follows from one cell.

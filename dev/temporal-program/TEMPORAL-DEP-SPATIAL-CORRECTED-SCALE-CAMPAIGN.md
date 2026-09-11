@@ -2,7 +2,7 @@
 
 ## Status
 
-**Pre-run pending.** This is a new, isolated campaign. It does not amend,
+**Pre-run retained; full campaign held for a compute decision.** This is a new, isolated campaign. It does not amend,
 replace, or reinterpret the four frozen `dep-spatial-recovery-20260911`
 attempts.
 
@@ -59,8 +59,12 @@ at most `.30`, median relative errors at most `.35` for each `tau`, at most
 
 The previous non-retained smoke was stopped at 37 seconds after exceeding its
 11.797-second historical estimate and had no terminal outcome. It is therefore
-not a valid pre-run. Before the nine-cell campaign, run exactly one selected
-cell from the command above and retain its terminal result and phase receipts.
-Use its measured duration to estimate the nine-cell run. If that estimate is
-over 30 minutes, obtain a distinct compute decision and route the retained
-campaign to Totoro or DRAC with one BLAS thread and at most four local cores.
+not a valid pre-run. The retained first cell (`phi=-.4`, `seed=2609331`) then
+completed in 19.693 seconds with terminal success, both optimizer passes
+accepted, and maximum outer gradient `1.1863489e-05`; its result and final
+phase receipts are in the campaign directory. A straight-line nine-cell
+projection is about three minutes, but the same fixture family also has a
+retained 215.571-second fit-only tail. A conservative serial projection
+therefore exceeds 30 minutes. Obtain a distinct compute decision before the
+remaining eight cells, then route them to Totoro or DRAC with one BLAS thread
+and at most four local cores.

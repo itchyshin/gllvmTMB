@@ -92,8 +92,8 @@ relative covariance/residual/prediction changes at most `1e-4`.
 
 Retain all trial rows and rejection reasons. The local candidate passes only
 if all six cells pass. A local pass still does not alter the failed Fir
-campaign, claim recovery, or authorize remote replay. A remote array requires
-a separate measured compute estimate and authorization.
+campaign or claim recovery. A remote array requires a separate measured
+compute estimate and authorization.
 
 ## Measured pre-run evidence
 
@@ -105,3 +105,19 @@ positive-definite (condition about `578`) and their Newton directions agreed
 to `2.10e-9`. The undamped trial reduced the outer gradient from
 `1.10553166e-3` to `1.70188015e-9`. This supports the fixed local six-cell
 qualification; it is not retained recovery evidence.
+
+## Authorized Totoro qualification result (2026-09-11)
+
+The unchanged six-cell qualification was run on Totoro with at most 150
+workers, exact source commit `1dabd4a6c5f6df6751d37eb3a596008d430c5e6a`, and
+the existing R 4.5.3 / TMB 1.9.21 environment. It retained all probe,
+curvature, line-search, final and decision receipts at
+`/home/snakagaw/gllvmtmb-temporal-newton-1dabd4a6c-results/`.
+
+Two of six cells accepted: retained failure `(phi=.6, seed=2609185)` and
+positional control `(phi=-.4, seed=2609181)`. The remaining retained failure
+`(phi=.6, seed=2609183)` completed every post-baseline gate but remained
+rejected by its frozen baseline gate. The remaining three cells rejected at
+the recorded step/final/replay stages. Because the contract requires all six
+cells to accept, the qualification fails. This result changes no source,
+fixture, seed, threshold, branch, or status of the failed Fir recovery gate.

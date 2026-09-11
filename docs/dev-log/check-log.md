@@ -57884,3 +57884,20 @@ Deliberately not run: Totoro 9×500 grid dispatch; full `devtools::test()`.
   `vignettes/articles/temporal-ar1.Rmd` and
   `vignettes/articles/api-keyword-grid.Rmd` against that install. Both passed
   and emitted `TEMPORAL_STATUS_ARTICLES_RENDER_PASS`.
+
+## 2026-09-11 — Totoro damped-Newton qualification retained and reconciled
+
+- Read all six immutable decision receipts from the authorized Totoro campaign
+  at exact source commit `1dabd4a6c5f6df6751d37eb3a596008d430c5e6a`, using
+  the existing R 4.5.3 / TMB 1.9.21 environment and no more than 150 workers.
+  The receipts remain at
+  `/home/snakagaw/gllvmtmb-temporal-newton-1dabd4a6c-results/decision-r2/`.
+- The all-six qualification failed: only `(phi=.6, seed=2609185)` and
+  `(phi=-.4, seed=2609181)` accepted. The other four cells retained their
+  rejection reasons; the `(phi=.6, seed=2609183)` cell passed every
+  post-baseline diagnostic but stayed rejected by its frozen baseline gate.
+- Updated the temporal programme resume, candidate contract, and ignored
+  acceptance ledger to preserve that negative evidence. Ran
+  `Rscript --vanilla dev/temporal-program/verify.R plan`, which emitted
+  `TEMPORAL_PROGRAM_PLAN_PASS`. The result neither repairs the failed Fir
+  recovery campaign nor supports a recovery, release, or cross-platform claim.

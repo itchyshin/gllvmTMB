@@ -76,6 +76,18 @@ cells pass locally, but `phi=.6`, seed `2609185` remains above the unchanged
 gradient gate (`0.001105532 > 0.001`). C3 is closed; it does not justify a
 fourth pass, a Fir replay, or a changed threshold.
 
+The separately authorized frozen damped-Newton qualification then completed
+on Totoro against exact source commit `1dabd4a6c5f6df6751d37eb3a596008d430c5e6a`.
+All six decision receipts are retained at
+`/home/snakagaw/gllvmtmb-temporal-newton-1dabd4a6c-results/decision-r2/`.
+Only two cells accepted: `phi=.6`, seed `2609185`, and `phi=-.4`, seed
+`2609181`. The other four cells rejected under the frozen rules; the
+`phi=.6`, seed `2609183` rejection is baseline-only, which shows that a later
+Newton step cannot select a cell that the original baseline excludes. The
+all-six qualification fails and is diagnostic evidence only. It does not
+repair the Fir recovery campaign, justify a solver change, or support a
+recovery claim.
+
 ## Spatial result (2026-09-09)
 
 The admitted spatial cell is replicated AR1 `temporal_indep()` plus exactly

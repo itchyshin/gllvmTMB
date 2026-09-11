@@ -41,6 +41,21 @@
     identical(as.logical(x$passes), c(TRUE, FALSE, FALSE))
 }
 
+.temporal_phylo_optimizer_qualification_installed_summary <- function() {
+  ## `dev/` is intentionally absent from installed packages.  Preserve the
+  ## immutable three-row receipt here so the installed-package control verifies
+  ## the same failure record rather than silently losing its evidence check.
+  lines <- c(
+    '"phi","attempts","strict_successes","mean_phi_absolute_error","median_phi_absolute_error","median_temporal_1_relative_error","median_temporal_2_relative_error","median_temporal_3_relative_error","median_phylo_1_relative_error","median_phylo_2_relative_error","median_phylo_3_relative_error","mean_fixed_effect_error","passes"',
+    '-0.4,10,10,0.0096902597297317,0.00901689598924349,0.0214603156240379,0.0398014024819387,0.0269024800505128,0.0654820642541633,0.0794342177339947,0.0723851634791718,0.0986865792012925,TRUE',
+    '0,10,9,0.0108098419140769,0.0130218510695404,0.0119397010828196,0.0284081698341212,0.0204392613599043,0.0896558046313798,0.0944745206344529,0.0679073160281122,0.10199048495348,FALSE',
+    '0.6,10,8,0.00626076816168523,0.00589527148851754,0.00701719996550428,0.0431202953446174,0.0242815926002243,0.154469018044702,0.140039804249406,0.134245983920956,0.0937981217336855,FALSE'
+  )
+  path <- tempfile("temporal-phylo-installed-summary-", fileext = ".csv")
+  writeLines(lines, path, useBytes = TRUE)
+  path
+}
+
 .temporal_phylo_optimizer_qualification_validate_controls <- function(controls) {
   roots <- tryCatch({
     if (exists(".temporal_program_repo_root", mode = "function", inherits = TRUE)) {
@@ -65,6 +80,22 @@
     file.path(root, controls$retained_summary),
     file.path(root, "00_pkg_src", "gllvmTMB", controls$retained_summary)
   )), use.names = FALSE))
+  existing_summary_paths <- summary_paths[file.exists(summary_paths)]
+  retained_summary_ok <- if (length(existing_summary_paths)) {
+    ## In a source checkout, only the real retained receipt is evidence.  Do
+    ## not let the installed fallback mask a changed or missing source record.
+    any(vapply(existing_summary_paths, function(path) {
+      .temporal_phylo_optimizer_qualification_validate_summary(
+        path, controls$retained_summary_md5
+      )
+    }, logical(1)))
+  } else {
+    installed_path <- .temporal_phylo_optimizer_qualification_installed_summary()
+    on.exit(unlink(installed_path), add = TRUE)
+    .temporal_phylo_optimizer_qualification_validate_summary(
+      installed_path, controls$retained_summary_md5
+    )
+  }
   identical(controls$retained_summary,
     .temporal_phylo_optimizer_qualification_controls()$retained_summary) &&
     identical(controls$retained_summary_md5,
@@ -73,9 +104,5 @@
     identical(controls$retained_passes, c(TRUE, FALSE, FALSE)) &&
     identical(controls$injected_coordinate, "theta_rr_phy[2]") &&
     identical(controls$derivative_tolerance, 2e-5) &&
-    any(vapply(summary_paths, function(path) {
-      .temporal_phylo_optimizer_qualification_validate_summary(
-        path, controls$retained_summary_md5
-      )
-    }, logical(1)))
+    retained_summary_ok
 }

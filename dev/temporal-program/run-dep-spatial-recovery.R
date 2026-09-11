@@ -56,6 +56,7 @@ fit_one <- function(phi, seed) {
   out <- tryCatch({
     data <- simulate_fixture(phi, seed)
     fit_started <- proc.time()[['elapsed']]
+    write_diagnostic_phase('fit_started', phi, seed)
     fit <- suppressWarnings(gllvmTMB(
       value ~ 0 + trait +
         temporal_dep(0 + trait | series, time = occasion, replicate = measurement) +
@@ -66,11 +67,14 @@ fit_one <- function(phi, seed) {
         optimizer_passes = 2L)
     ))
     fit_elapsed_seconds <- proc.time()[['elapsed']] - fit_started
+    write_diagnostic_phase('fit_finished', phi, seed, fit_elapsed_seconds = fit_elapsed_seconds)
     history <- fit$optimizer_pass_history
     if (!is.data.frame(history) || nrow(history) != 2L || !all(history$pass == 1:2))
       stop('The requested two-pass optimizer history was not retained.', call. = FALSE)
     temporal <- extract_temporal(fit); par <- fit$tmb_obj$env$parList(fit$opt$par)
     hessian_started <- proc.time()[['elapsed']]
+    write_diagnostic_phase('hessian_started', phi, seed,
+      fit_elapsed_seconds = fit_elapsed_seconds)
     if (skip_hessian) {
       hessian <- NULL
       hessian_status <- 'not_requested'
@@ -82,29 +86,43 @@ fit_one <- function(phi, seed) {
       ) 'positive_definite' else 'non_positive_definite'
       hessian_elapsed_seconds <- proc.time()[['elapsed']] - hessian_started
     }
+    write_diagnostic_phase('hessian_finished', phi, seed,
+      fit_elapsed_seconds = fit_elapsed_seconds,
+      hessian_elapsed_seconds = hessian_elapsed_seconds)
+    gradient_started <- proc.time()[['elapsed']]
+    max_gradient <- max(abs(fit$tmb_obj$gr(fit$opt$par)))
+    gradient_elapsed_seconds <- proc.time()[['elapsed']] - gradient_started
+    write_diagnostic_phase('gradient_finished', phi, seed,
+      fit_elapsed_seconds = fit_elapsed_seconds,
+      hessian_elapsed_seconds = hessian_elapsed_seconds,
+      gradient_elapsed_seconds = gradient_elapsed_seconds)
     result <- data.frame(phi = phi, seed = seed, terminal = 'success', convergence = fit$opt$convergence,
       pass_1_convergence = history$convergence[[1L]], pass_2_convergence = history$convergence[[2L]],
-      pass_2_accepted = history$accepted[[2L]], max_gradient = max(abs(fit$tmb_obj$gr(fit$opt$par))),
+      pass_2_accepted = history$accepted[[2L]], max_gradient = max_gradient,
       objective = fit$opt$objective, hessian_status = hessian_status,
       phi_estimate = temporal$time$value[[1L]],
       temporal_frobenius_relative_error = rel_frob(tcrossprod(as.matrix(temporal$loading)), truth$temporal_covariance),
-      tau_1 = exp(-par$log_tau_spde[[1L]]), tau_2 = exp(-par$log_tau_spde[[2L]]),
-      tau_3 = exp(-par$log_tau_spde[[3L]]), kappa = exp(par$log_kappa_spde[[1L]]),
+      tau_1 = exp(par$log_tau_spde[[1L]]), tau_2 = exp(par$log_tau_spde[[2L]]),
+      tau_3 = exp(par$log_tau_spde[[3L]]), kappa = exp(par$log_kappa_spde[[1L]]),
       beta_1 = par$b_fix[[1L]], beta_2 = par$b_fix[[2L]], beta_3 = par$b_fix[[3L]],
       error_message = NA_character_, stringsAsFactors = FALSE)
     if (diagnostic) {
       result$fit_elapsed_seconds <- fit_elapsed_seconds
       result$hessian_elapsed_seconds <- hessian_elapsed_seconds
+      result$gradient_elapsed_seconds <- gradient_elapsed_seconds
       result$hessian_requested <- !skip_hessian
     }
     result
-  }, error = function(e) data.frame(
+  }, error = function(e) {
+    write_diagnostic_phase('error', phi, seed, error_message = conditionMessage(e))
+    data.frame(
     phi = phi, seed = seed, terminal = 'error', convergence = NA_integer_,
     pass_1_convergence = NA_integer_, pass_2_convergence = NA_integer_, pass_2_accepted = NA,
     max_gradient = NA_real_, objective = NA_real_, hessian_status = 'error', phi_estimate = NA_real_,
     temporal_frobenius_relative_error = NA_real_, tau_1 = NA_real_, tau_2 = NA_real_, tau_3 = NA_real_,
     kappa = NA_real_, beta_1 = NA_real_, beta_2 = NA_real_, beta_3 = NA_real_,
-    error_message = conditionMessage(e), stringsAsFactors = FALSE))
+    error_message = conditionMessage(e), stringsAsFactors = FALSE)
+  })
   out$elapsed_seconds <- proc.time()[['elapsed']] - started
   out
 }
@@ -118,11 +136,37 @@ diagnostic_output <- Sys.getenv('DEP_SPATIAL_DIAGNOSTIC_OUTPUT', unset = '')
 skip_hessian <- identical(Sys.getenv('DEP_SPATIAL_SKIP_HESSIAN'), '1')
 one_text <- Sys.getenv('DEP_SPATIAL_ONE', unset = '')
 one_requested <- nzchar(one_text)
-if (diagnostic && (!one_requested || !nzchar(diagnostic_output))) {
+diagnostic_dir <- file.path(root, 'dev/temporal-program/results/diagnostics')
+if (diagnostic && (!one_requested || !nzchar(diagnostic_output) || finalize_only)) {
   stop('Diagnostic mode requires DEP_SPATIAL_ONE and DEP_SPATIAL_DIAGNOSTIC_OUTPUT so frozen receipts cannot be overwritten.', call. = FALSE)
 }
 if (skip_hessian && !diagnostic) {
   stop('DEP_SPATIAL_SKIP_HESSIAN is available only with DEP_SPATIAL_DIAGNOSTIC=1.', call. = FALSE)
+}
+if (diagnostic) {
+  diagnostic_output <- normalizePath(diagnostic_output, mustWork = FALSE)
+  diagnostic_phase_path <- sub('\\.csv$', '-phase.csv', diagnostic_output)
+  if (dirname(diagnostic_output) != normalizePath(diagnostic_dir, mustWork = TRUE) ||
+      !grepl('\\.csv$', diagnostic_output) || file.exists(diagnostic_output) ||
+      file.exists(diagnostic_phase_path)) {
+    stop('Diagnostic output must be a new CSV in dev/temporal-program/results/diagnostics/.', call. = FALSE)
+  }
+} else {
+  diagnostic_phase_path <- NA_character_
+}
+write_diagnostic_phase <- function(phase, phi, seed,
+                                   fit_elapsed_seconds = NA_real_,
+                                   hessian_elapsed_seconds = NA_real_,
+                                   gradient_elapsed_seconds = NA_real_,
+                                   error_message = NA_character_) {
+  if (!diagnostic) return(invisible(NULL))
+  utils::write.csv(data.frame(phase = phase, phi = phi, seed = seed,
+    fit_elapsed_seconds = fit_elapsed_seconds,
+    hessian_elapsed_seconds = hessian_elapsed_seconds,
+    gradient_elapsed_seconds = gradient_elapsed_seconds,
+    error_message = error_message, stringsAsFactors = FALSE),
+    diagnostic_phase_path, row.names = FALSE)
+  invisible(NULL)
 }
 attempt_path <- function(index) file.path(root, sprintf(
   'dev/temporal-program/results/dep-spatial-recovery-attempt-%02d-20260911.csv', index))
@@ -188,6 +232,7 @@ summary$passes <- with(summary, strict_successes == 3L & mean_phi_absolute_error
   median_tau_1_relative_error <= .35 & median_tau_2_relative_error <= .35 &
   median_tau_3_relative_error <= .35 & median_kappa_relative_error <= .50 &
   mean_fixed_effect_error <= .25)
+result_path <- file.path(root, 'dev/temporal-program/results/dep-spatial-recovery-20260911.csv')
 utils::write.csv(result, result_path, row.names = FALSE)
 utils::write.csv(summary, file.path(root, 'dev/temporal-program/results/dep-spatial-recovery-summary-20260911.csv'), row.names = FALSE)
 print(result, row.names = FALSE); print(summary, row.names = FALSE)

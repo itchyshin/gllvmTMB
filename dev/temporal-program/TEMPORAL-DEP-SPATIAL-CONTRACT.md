@@ -79,9 +79,21 @@ or thresholds. It uses exactly one existing planned cell and writes a separate
 receipt. First run the fit-only diagnostic with
 `DEP_SPATIAL_DIAGNOSTIC=1`, `DEP_SPATIAL_SKIP_HESSIAN=1`,
 `DEP_SPATIAL_ONE=<planned index>`, and a new
-`DEP_SPATIAL_DIAGNOSTIC_OUTPUT=<path>`. Only if that retained probe reaches a
+`DEP_SPATIAL_DIAGNOSTIC_OUTPUT=<path>` under `results/diagnostics/`. Only if that retained probe reaches a
 successful endpoint can a separately authorized Hessian-inclusive diagnostic
 be considered. Diagnostic output records `fit_elapsed_seconds`,
-`hessian_elapsed_seconds`, and whether the Hessian was requested. It is timing
-evidence only: it neither repairs the frozen campaign nor supplies recovery
-evidence.
+`hessian_elapsed_seconds`, `gradient_elapsed_seconds`, and whether the Hessian
+was requested. A phase receipt is written before each expensive stage, so an
+interruption records the last reached stage. It is timing evidence only: it
+neither repairs the frozen campaign nor supplies recovery evidence.
+
+## Spatial-scale correction
+
+The DGP divides each SPDE draw by its precision `tau`, and the TMB parameter is
+`tau = exp(log_tau_spde)`. The four retained attempted rows instead recorded
+`exp(-log_tau_spde)` while comparing it to precision-scale truth. They remain
+immutable timing and optimizer receipts, but cannot support any spatial-scale
+recovery verdict. A future recovery contract must use the precision scale in
+both the DGP and estimator extraction, freeze a new output location and all
+criteria before execution, and retain every attempt. No threshold is relaxed
+and no prior result is reclassified as recovery evidence.

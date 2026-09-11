@@ -58150,3 +58150,19 @@ Deliberately not run: Totoro 9×500 grid dispatch; full `devtools::test()`.
 - This is a local macOS package check only. It is not a substitute for the
   required retained Linux, macOS, and Windows publication receipt, and it does
   not change the branch's unmerged, unreleased, locally verified status.
+
+## 2026-09-11 — dependent temporal–spatial recovery-scale audit and harness repair
+
+- Astra's independent review found four P1 defects in the paused recovery
+  harness: diagnostic output could overwrite a frozen receipt, full-campaign
+  finalization used an undefined path, a timeout had no durable phase marker,
+  and the runner compared inverse spatial precision to precision-scale truth.
+- The diagnostic now writes only a new CSV under `results/diagnostics/`, refuses
+  finalization and every existing output path, checkpoints fit/Hessian/gradient
+  phase state, and records their separate elapsed times. The ordinary campaign
+  still cannot omit its Hessian unless explicit diagnostic mode is active.
+- Spatial estimates now use `exp(log_tau_spde)`, matching the DGP and native
+  TMB precision convention. Existing rows remain immutable timing/optimizer
+  receipts but cannot decide spatial-scale recovery; a separately frozen,
+  corrected-scale campaign is required. The existing-output guard refused as
+  expected before fitting. No continuation or campaign was run.

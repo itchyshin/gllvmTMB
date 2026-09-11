@@ -25,9 +25,11 @@ if (!identical(mode, "run")) {
 phi <- suppressWarnings(as.numeric(arg_value("--phi")))
 seed <- suppressWarnings(as.integer(arg_value("--seed")))
 output <- arg_value("--output")
+stage <- arg_value("--stage")
+if (is.null(stage)) stage <- "full"
 if (length(phi) != 1L || !is.finite(phi) || length(seed) != 1L || is.na(seed) ||
-    is.null(output) || !nzchar(output)) {
-  stop("run mode requires finite --phi, integer --seed, and non-empty --output.", call. = FALSE)
+    is.null(output) || !nzchar(output) || !stage %in% c("full", "baseline", "curvature_probe")) {
+  stop("run mode requires finite --phi, integer --seed, non-empty --output, and a supported --stage.", call. = FALSE)
 }
 plan <- temporal_phylo_damped_newton_plan()
 plan_row <- which(plan$phi == phi & plan$seed == seed)
@@ -176,6 +178,66 @@ if (inherits(fit_result, "error")) {
 }
 baseline <- temporal_phylo_damped_newton_baseline(fit_result$fit, plan$role[[plan_row]])
 baseline$fit <- fit_result$fit
+commit <- tryCatch(system2("git", c("rev-parse", "HEAD"), stdout = TRUE, stderr = TRUE), error = function(e) NA_character_)
+
+## The checkpoint stages deliberately recreate the frozen two-pass endpoint in
+## each worker.  TMB objects contain external pointers and must not be passed
+## between processes.  This makes each probe independently auditable and lets
+## a scheduler use one core per probe without changing the numerical rule.
+if (identical(stage, "baseline")) {
+  baseline_receipt <- baseline
+  baseline_receipt$fit <- NULL
+  receipt <- list(
+    schema = "temporal_phylo_damped_newton_checkpoint_v1",
+    stage = "baseline", source_commit = unname(commit[[1L]]),
+    phi = phi, seed = seed, role = plan$role[[plan_row]], plan = plan,
+    theta = unname(fit_result$fit$opt$par), theta_names = names(fit_result$fit$opt$par),
+    baseline = baseline_receipt,
+    elapsed_seconds = proc.time()[["elapsed"]] - started
+  )
+  saveRDS(receipt, output)
+  cat(sprintf("TEMPORAL_PHYLO_DAMPED_NEWTON_BASELINE phi=%s seed=%d output=%s\n", phi, seed, output))
+  quit(save = "no", status = 0L)
+}
+
+if (identical(stage, "curvature_probe")) {
+  checkpoint_path <- arg_value("--checkpoint")
+  coordinate <- suppressWarnings(as.integer(arg_value("--coordinate")))
+  multiplier <- suppressWarnings(as.numeric(arg_value("--multiplier")))
+  direction <- arg_value("--direction")
+  if (is.null(checkpoint_path) || !file.exists(checkpoint_path) || is.na(coordinate) ||
+      coordinate < 1L || coordinate > length(fit_result$fit$opt$par) ||
+      !is.finite(multiplier) || !multiplier %in% temporal_phylo_damped_newton_controls()$fd_multipliers ||
+      !direction %in% c("plus", "minus")) {
+    stop("curvature_probe requires an existing checkpoint, valid coordinate, fixed multiplier, and plus/minus direction.", call. = FALSE)
+  }
+  checkpoint <- readRDS(checkpoint_path)
+  theta <- fit_result$fit$opt$par
+  checkpoint_ok <- is.list(checkpoint) &&
+    identical(checkpoint$schema, "temporal_phylo_damped_newton_checkpoint_v1") &&
+    identical(checkpoint$stage, "baseline") && identical(as.numeric(checkpoint$phi), phi) &&
+    identical(as.integer(checkpoint$seed), seed) && identical(checkpoint$theta_names, names(theta)) &&
+    isTRUE(all.equal(as.numeric(checkpoint$theta), as.numeric(theta), tolerance = 0))
+  if (!checkpoint_ok) stop("curvature_probe endpoint does not exactly reproduce its frozen baseline checkpoint.", call. = FALSE)
+  h <- multiplier * .Machine$double.eps^(1 / 3) * max(1, abs(theta[[coordinate]]))
+  endpoint <- theta
+  endpoint[[coordinate]] <- endpoint[[coordinate]] + if (identical(direction, "plus")) h else -h
+  evaluated <- temporal_phylo_damped_newton_fresh(fit_result$fit, endpoint)
+  receipt <- list(
+    schema = "temporal_phylo_damped_newton_checkpoint_v1",
+    stage = "curvature_probe", source_commit = unname(commit[[1L]]),
+    phi = phi, seed = seed, role = plan$role[[plan_row]],
+    checkpoint = normalizePath(checkpoint_path), coordinate = coordinate,
+    coordinate_name = names(theta)[[coordinate]], multiplier = multiplier,
+    direction = direction, step = h, endpoint = endpoint, evaluated = evaluated,
+    elapsed_seconds = proc.time()[["elapsed"]] - started
+  )
+  saveRDS(receipt, output)
+  cat(sprintf("TEMPORAL_PHYLO_DAMPED_NEWTON_CURVATURE_PROBE phi=%s seed=%d coordinate=%d multiplier=%s direction=%s output=%s\n",
+    phi, seed, coordinate, multiplier, direction, output))
+  quit(save = "no", status = 0L)
+}
+
 curvature <- if (baseline$eligible) temporal_phylo_damped_newton_curvature(
   fit_result$fit$opt$par, function(theta) temporal_phylo_damped_newton_fresh(fit_result$fit, theta)$gradient
 ) else list(eligible = FALSE, rejection_reasons = "baseline_ineligible")
@@ -185,7 +247,6 @@ step <- if (isTRUE(curvature$eligible)) temporal_phylo_damped_newton_select_step
   evaluate = function(endpoint) temporal_phylo_damped_newton_fresh(fit_result$fit, endpoint)
 ) else list(accepted = FALSE, selected = NULL, trials = list(), rejection_reasons = "curvature_ineligible")
 adjudication <- temporal_phylo_damped_newton_adjudicate(baseline, curvature, step)
-commit <- tryCatch(system2("git", c("rev-parse", "HEAD"), stdout = TRUE, stderr = TRUE), error = function(e) NA_character_)
 baseline_receipt <- baseline
 baseline_receipt$fit <- NULL
 receipt <- list(

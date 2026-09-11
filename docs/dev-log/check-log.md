@@ -58140,3 +58140,13 @@ Deliberately not run: Totoro 9×500 grid dispatch; full `devtools::test()`.
   separate output path also refused before fitting. No diagnostic fit,
   continuation, campaign, threshold change, recovery claim, or release action
   has run.
+
+## 2026-09-11 — temporal branch local package readiness
+
+- `Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  exited zero on `codex/temporal-program-20260909` after the qualified-kernel
+  comparison and dependent-spatial diagnostic preparations. The worktree
+  remained clean after the check.
+- This is a local macOS package check only. It is not a substitute for the
+  required retained Linux, macOS, and Windows publication receipt, and it does
+  not change the branch's unmerged, unreleased, locally verified status.

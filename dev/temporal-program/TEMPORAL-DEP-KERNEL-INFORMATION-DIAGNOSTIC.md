@@ -45,6 +45,13 @@ recovery information.  The full six-fit ladder is therefore a queued
 single-thread remote campaign: its launcher must retain every terminal row,
 and it requires distinct compute approval before submission.
 
+The 80-series / seed-2609221 receipt-path check completed locally in 18.984
+seconds, with terminal success, both BFGS passes accepted, and a valid
+temporary RDS receipt.  That exercise verifies the runner and retention path;
+it does not add a recovery attempt or change the frozen campaign.  Together,
+these measurements make a six-cell campaign materially longer than the local
+30-second line even when its six independent fits run concurrently.
+
 The prepared Totoro launcher caps the campaign at six single-thread workers,
 checks an immutable source commit and clean checkout, pins one BLAS/OpenMP
 thread per fit, refuses an absent approval token, and refuses to overwrite a

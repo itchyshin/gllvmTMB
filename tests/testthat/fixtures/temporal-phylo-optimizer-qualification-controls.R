@@ -16,8 +16,17 @@
 .temporal_phylo_optimizer_qualification_validate_summary <- function(path,
                                                                        expected_md5) {
   if (!is.character(path) || length(path) != 1L || !file.exists(path) ||
-      !is.character(expected_md5) || length(expected_md5) != 1L ||
-      !identical(unname(tools::md5sum(path)), expected_md5)) {
+      !is.character(expected_md5) || length(expected_md5) != 1L) {
+    return(FALSE)
+  }
+  raw_md5 <- unname(tools::md5sum(path))
+  bytes <- readBin(path, what = "raw", n = file.info(path)$size)
+  normalized <- charToRaw(gsub("\\r\\n?", "\\n", rawToChar(bytes), perl = TRUE))
+  normalized_path <- tempfile("temporal-phylo-summary-", fileext = ".csv")
+  on.exit(unlink(normalized_path), add = TRUE)
+  writeBin(normalized, normalized_path)
+  normalized_md5 <- unname(tools::md5sum(normalized_path))
+  if (!identical(raw_md5, expected_md5) && !identical(normalized_md5, expected_md5)) {
     return(FALSE)
   }
   x <- tryCatch(utils::read.csv(path, check.names = FALSE), error = function(e) NULL)
@@ -43,6 +52,10 @@
   if (!is.character(roots)) roots <- character()
   roots <- roots[!is.na(roots) & nzchar(roots)]
   roots <- roots[vapply(roots, dir.exists, logical(1))]
+  test_root <- tryCatch(testthat::test_path(), error = function(e) NULL)
+  if (is.character(test_root) && length(test_root) == 1L && dir.exists(test_root)) {
+    roots <- c(roots, test_root)
+  }
   root <- normalizePath(getwd(), mustWork = TRUE)
   for (i in 0:4) {
     roots <- c(roots, root)

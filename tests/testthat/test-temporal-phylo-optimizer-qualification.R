@@ -282,6 +282,12 @@ test_that("qualification controls retain the failed campaign and localize an inj
   expect_true(.temporal_phylo_optimizer_qualification_validate_summary(
     copied, unname(tools::md5sum(copied))
   ))
+  windows_copy <- tempfile(fileext = ".csv")
+  raw <- readBin(summary_path, what = "raw", n = file.info(summary_path)$size)
+  writeBin(charToRaw(gsub("\\n", "\\r\\n", rawToChar(raw), fixed = TRUE)), windows_copy)
+  expect_true(.temporal_phylo_optimizer_qualification_validate_summary(
+    windows_copy, unname(tools::md5sum(summary_path))
+  ))
   changed <- utils::read.csv(copied, check.names = FALSE)
   changed$strict_successes[[2L]] <- 10L
   utils::write.csv(changed, copied, row.names = FALSE)

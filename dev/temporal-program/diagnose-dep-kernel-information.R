@@ -104,12 +104,22 @@
   )))
 }
 
-.temporal_dep_kernel_information_run <- function(one = FALSE) {
+.temporal_dep_kernel_information_run <- function(one = FALSE, n_series = NULL, seed = NULL) {
   .temporal_dep_kernel_information_source()
+  if (isTRUE(one) && (!is.null(n_series) || !is.null(seed))) {
+    stop("--one cannot be combined with an explicit cell", call. = FALSE)
+  }
+  if (xor(is.null(n_series), is.null(seed))) {
+    stop("an explicit cell requires both n_series and seed", call. = FALSE)
+  }
   plan <- expand.grid(n_series = .temporal_dep_kernel_information_sizes(),
     seed = .temporal_dep_kernel_information_seeds(), KEEP.OUT.ATTRS = FALSE)
   plan <- plan[order(plan$n_series, plan$seed), , drop = FALSE]
   if (isTRUE(one)) plan <- plan[plan$n_series == 160L & plan$seed == 2609221L, , drop = FALSE]
+  if (!is.null(n_series)) {
+    key <- .temporal_dep_kernel_information_validate(n_series, seed)
+    plan <- data.frame(n_series = key$n_series, seed = key$seed)
+  }
   result <- do.call(rbind, Map(.temporal_dep_kernel_information_one, plan$n_series, plan$seed))
   list(result = result, summary = .temporal_dep_kernel_information_summary(result),
     contract = "information-size diagnostic only; no recovery pass or solver claim")
@@ -119,8 +129,14 @@ if (sys.nframe() == 0L) {
   args <- commandArgs(trailingOnly = TRUE)
   one <- "--one" %in% args
   output_args <- grep("^--output=", args, value = TRUE)
-  if (length(output_args) > 1L || !all(args %in% c("--one", output_args))) {
-    stop("usage: Rscript --vanilla diagnose-dep-kernel-information.R [--one] [--output=PATH]", call. = FALSE)
+  n_series_args <- grep("^--n-series=", args, value = TRUE)
+  seed_args <- grep("^--seed=", args, value = TRUE)
+  allowed <- c("--one", output_args, n_series_args, seed_args)
+  if (length(output_args) > 1L || length(n_series_args) > 1L || length(seed_args) > 1L ||
+      !all(args %in% allowed) || (one && (length(n_series_args) || length(seed_args))) ||
+      xor(length(n_series_args) == 1L, length(seed_args) == 1L)) {
+    stop(paste("usage: Rscript --vanilla diagnose-dep-kernel-information.R",
+      "[--one] [--n-series=N --seed=N] [--output=PATH]"), call. = FALSE)
   }
   output_path <- if (length(output_args)) sub("^--output=", "", output_args) else NULL
   if (!is.null(output_path) && (!nzchar(output_path) || file.exists(output_path))) {
@@ -128,7 +144,9 @@ if (sys.nframe() == 0L) {
   }
   root <- normalizePath(".", mustWork = TRUE)
   pkgload::load_all(root, quiet = TRUE, export_all = FALSE)
-  diagnostic <- .temporal_dep_kernel_information_run(one = one)
+  n_series <- if (length(n_series_args)) as.integer(sub("^--n-series=", "", n_series_args)) else NULL
+  seed <- if (length(seed_args)) as.integer(sub("^--seed=", "", seed_args)) else NULL
+  diagnostic <- .temporal_dep_kernel_information_run(one = one, n_series = n_series, seed = seed)
   if (!is.null(output_path)) {
     directory <- dirname(output_path)
     if (!dir.exists(directory)) stop("output directory does not exist", call. = FALSE)
@@ -138,6 +156,7 @@ if (sys.nframe() == 0L) {
   }
   print(diagnostic$result, row.names = FALSE)
   print(diagnostic$summary, row.names = FALSE)
-  cat(if (one) "TEMPORAL_DEP_KERNEL_INFORMATION_PRERUN_PASS\n" else
+  cat(if (one) "TEMPORAL_DEP_KERNEL_INFORMATION_PRERUN_PASS\n" else if (!is.null(n_series))
+    "TEMPORAL_DEP_KERNEL_INFORMATION_CELL_PASS\n" else
     "TEMPORAL_DEP_KERNEL_INFORMATION_PASS\n")
 }

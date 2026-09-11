@@ -45,6 +45,11 @@ recovery information.  The full six-fit ladder is therefore a queued
 single-thread remote campaign: its launcher must retain every terminal row,
 and it requires distinct compute approval before submission.
 
+The prepared Totoro launcher caps the campaign at six single-thread workers,
+checks an immutable source commit and clean checkout, pins one BLAS/OpenMP
+thread per fit, refuses an absent approval token, and refuses to overwrite a
+cell receipt.  It is an envelope only until that approval is granted.
+
 ## Exclusions
 
 This diagnostic does not change source-pair fitting code, start values,

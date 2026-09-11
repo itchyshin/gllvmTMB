@@ -256,12 +256,12 @@ Removal is a later API-change decision and must not be claimed while
 the export remains live (validation-debt register rows FG-16 and
 MIS-03).
 
-## The 6 x 3 covariance keyword grid
+## The 5 × 3 covariance keyword grid, plus temporal
 
-The grid is the user-facing public-API contract. Rows are the six
-correlation **sources** across grouping levels; columns are the three
-fundamental trait-covariance **modes**. Every cell is a live keyword.
-The reader-facing presentation of this same contract is
+The five stable-unit rows are the user-facing public-API grid. Temporal is an
+additional, ordered within-series row with the same three trait-covariance
+modes, but its data contract and evidence are cell-specific. Every cell shown
+below is a live keyword. The reader-facing presentation of this contract is
 [`vignettes/articles/api-keyword-grid.Rmd`](../../vignettes/articles/api-keyword-grid.Rmd);
 the two must not drift.
 

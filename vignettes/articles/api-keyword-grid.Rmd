@@ -88,11 +88,12 @@ covariances for non-Gaussian traits.
 
 ## The 5 × 3 grid, plus temporal
 
-The five stable-unit sources form the familiar 5 × 3 grid. Temporal adds a
-sixth, within-series row with the same three trait-covariance modes. Thus the
-formal grammar is a 6 × 3 source-by-mode grid, while this presentation keeps
-the important distinction visible. Every cell is a live keyword. The *scalar*
-and *unique* sub-cases are modifiers, listed under the table.
+The five stable-unit sources form the familiar 5 × 3 grid. Temporal adds one
+distinct within-series row with the same three trait-covariance modes. This
+presentation therefore shows the 5 × 3 grid **plus temporal**, rather than
+suggesting that temporal is interchangeable with the stable-unit sources.
+Every cell shown is a live keyword. The *scalar* and *unique* sub-cases are
+modifiers, listed under the table.
 
 <div class="table-responsive">
 <table class="table table-striped" style="min-width: 640px;">
@@ -116,6 +117,10 @@ and *unique* sub-cases are modifiers, listed under the table.
 </tbody>
 </table>
 </div>
+
+Temporal uses its own ordered time kernel and data-layout rules, so evidence
+and admitted combinations differ by temporal cell. The five stable-unit rows
+remain the ordinary source grid.
 
 **Scalar (one shared variance).** Add `common = TRUE` to any `indep` term —
 e.g. `indep(0 + trait | g, common = TRUE)`. The soft-deprecated `scalar()` /

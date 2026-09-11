@@ -56,7 +56,7 @@ fit_one <- function(phi, seed) {
   out <- tryCatch({
     data <- simulate_fixture(phi, seed)
     fit_started <- proc.time()[['elapsed']]
-    write_diagnostic_phase('fit_started', phi, seed)
+    write_phase('fit_started', phi, seed)
     fit <- suppressWarnings(gllvmTMB(
       value ~ 0 + trait +
         temporal_dep(0 + trait | series, time = occasion, replicate = measurement) +
@@ -67,13 +67,13 @@ fit_one <- function(phi, seed) {
         optimizer_passes = 2L)
     ))
     fit_elapsed_seconds <- proc.time()[['elapsed']] - fit_started
-    write_diagnostic_phase('fit_finished', phi, seed, fit_elapsed_seconds = fit_elapsed_seconds)
+    write_phase('fit_finished', phi, seed, fit_elapsed_seconds = fit_elapsed_seconds)
     history <- fit$optimizer_pass_history
     if (!is.data.frame(history) || nrow(history) != 2L || !all(history$pass == 1:2))
       stop('The requested two-pass optimizer history was not retained.', call. = FALSE)
     temporal <- extract_temporal(fit); par <- fit$tmb_obj$env$parList(fit$opt$par)
     hessian_started <- proc.time()[['elapsed']]
-    write_diagnostic_phase('hessian_started', phi, seed,
+    write_phase('hessian_started', phi, seed,
       fit_elapsed_seconds = fit_elapsed_seconds)
     if (skip_hessian) {
       hessian <- NULL
@@ -86,13 +86,13 @@ fit_one <- function(phi, seed) {
       ) 'positive_definite' else 'non_positive_definite'
       hessian_elapsed_seconds <- proc.time()[['elapsed']] - hessian_started
     }
-    write_diagnostic_phase('hessian_finished', phi, seed,
+    write_phase('hessian_finished', phi, seed,
       fit_elapsed_seconds = fit_elapsed_seconds,
       hessian_elapsed_seconds = hessian_elapsed_seconds)
     gradient_started <- proc.time()[['elapsed']]
     max_gradient <- max(abs(fit$tmb_obj$gr(fit$opt$par)))
     gradient_elapsed_seconds <- proc.time()[['elapsed']] - gradient_started
-    write_diagnostic_phase('gradient_finished', phi, seed,
+    write_phase('gradient_finished', phi, seed,
       fit_elapsed_seconds = fit_elapsed_seconds,
       hessian_elapsed_seconds = hessian_elapsed_seconds,
       gradient_elapsed_seconds = gradient_elapsed_seconds)
@@ -114,7 +114,7 @@ fit_one <- function(phi, seed) {
     }
     result
   }, error = function(e) {
-    write_diagnostic_phase('error', phi, seed, error_message = conditionMessage(e))
+    write_phase('error', phi, seed, error_message = conditionMessage(e))
     data.frame(
     phi = phi, seed = seed, terminal = 'error', convergence = NA_integer_,
     pass_1_convergence = NA_integer_, pass_2_convergence = NA_integer_, pass_2_accepted = NA,
@@ -136,12 +136,27 @@ diagnostic_output <- Sys.getenv('DEP_SPATIAL_DIAGNOSTIC_OUTPUT', unset = '')
 skip_hessian <- identical(Sys.getenv('DEP_SPATIAL_SKIP_HESSIAN'), '1')
 one_text <- Sys.getenv('DEP_SPATIAL_ONE', unset = '')
 one_requested <- nzchar(one_text)
+campaign <- Sys.getenv('DEP_SPATIAL_CAMPAIGN', unset = '')
+corrected_campaign <- identical(campaign, 'corrected-scale-20260911')
+campaign_dir <- file.path(root, 'dev/temporal-program/results/corrected-scale-20260911')
 diagnostic_dir <- file.path(root, 'dev/temporal-program/results/diagnostics')
 if (diagnostic && (!one_requested || !nzchar(diagnostic_output) || finalize_only)) {
   stop('Diagnostic mode requires DEP_SPATIAL_ONE and DEP_SPATIAL_DIAGNOSTIC_OUTPUT so frozen receipts cannot be overwritten.', call. = FALSE)
 }
 if (skip_hessian && !diagnostic) {
   stop('DEP_SPATIAL_SKIP_HESSIAN is available only with DEP_SPATIAL_DIAGNOSTIC=1.', call. = FALSE)
+}
+if (diagnostic && nzchar(campaign)) {
+  stop('Diagnostic mode cannot select a recovery campaign.', call. = FALSE)
+}
+if (!diagnostic && !corrected_campaign) {
+  stop('The legacy dependent-spatial campaign is frozen; set DEP_SPATIAL_CAMPAIGN=corrected-scale-20260911.', call. = FALSE)
+}
+if (!diagnostic && !finalize_only && !one_requested && !smoke) {
+  stop('The corrected-scale campaign requires DEP_SPATIAL_ONE so each retained attempt is explicit.', call. = FALSE)
+}
+if (!diagnostic && !dir.exists(campaign_dir)) {
+  stop('The corrected-scale campaign output directory is missing.', call. = FALSE)
 }
 if (diagnostic) {
   diagnostic_output <- normalizePath(diagnostic_output, mustWork = FALSE)
@@ -155,22 +170,26 @@ if (diagnostic) {
 } else {
   diagnostic_phase_path <- NA_character_
 }
-write_diagnostic_phase <- function(phase, phi, seed,
+write_phase <- function(phase, phi, seed,
                                    fit_elapsed_seconds = NA_real_,
                                    hessian_elapsed_seconds = NA_real_,
                                    gradient_elapsed_seconds = NA_real_,
                                    error_message = NA_character_) {
-  if (!diagnostic) return(invisible(NULL))
+  if (is.na(phase_path)) return(invisible(NULL))
   utils::write.csv(data.frame(phase = phase, phi = phi, seed = seed,
     fit_elapsed_seconds = fit_elapsed_seconds,
     hessian_elapsed_seconds = hessian_elapsed_seconds,
     gradient_elapsed_seconds = gradient_elapsed_seconds,
     error_message = error_message, stringsAsFactors = FALSE),
-    diagnostic_phase_path, row.names = FALSE)
+    phase_path, row.names = FALSE)
   invisible(NULL)
 }
-attempt_path <- function(index) file.path(root, sprintf(
+attempt_path <- function(index) if (corrected_campaign) file.path(campaign_dir,
+  sprintf('dep-spatial-corrected-scale-attempt-%02d.csv', index)) else file.path(root, sprintf(
   'dev/temporal-program/results/dep-spatial-recovery-attempt-%02d-20260911.csv', index))
+phase_path <- if (diagnostic) diagnostic_phase_path else if (corrected_campaign &&
+  one_requested && !finalize_only) file.path(campaign_dir, sprintf(
+  'dep-spatial-corrected-scale-attempt-%02d-phase.csv', as.integer(one_text))) else NA_character_
 if (finalize_only) {
   paths <- vapply(seq_len(nrow(full_plan)), attempt_path, character(1))
   missing <- paths[!file.exists(paths)]
@@ -188,6 +207,8 @@ if (finalize_only) {
     if (is.na(one) || one < 1L || one > nrow(full_plan))
       stop('DEP_SPATIAL_ONE must select one planned attempt', call. = FALSE)
     plan <- full_plan[one, , drop = FALSE]; selected <- one
+    if (!diagnostic && (file.exists(attempt_path(one)) || file.exists(phase_path)))
+      stop('The selected corrected-scale attempt already has a retained receipt or phase marker.', call. = FALSE)
   }
   result_rows <- vector('list', nrow(plan))
   for (i in seq_len(nrow(plan))) {
@@ -233,9 +254,13 @@ summary$passes <- with(summary, strict_successes == 3L & mean_phi_absolute_error
   median_tau_1_relative_error <= .35 & median_tau_2_relative_error <= .35 &
   median_tau_3_relative_error <= .35 & median_kappa_relative_error <= .50 &
   mean_fixed_effect_error <= .25)
-result_path <- file.path(root, 'dev/temporal-program/results/dep-spatial-recovery-20260911.csv')
+result_path <- if (corrected_campaign) file.path(campaign_dir,
+  'dep-spatial-corrected-scale-recovery.csv') else file.path(root,
+  'dev/temporal-program/results/dep-spatial-recovery-20260911.csv')
 utils::write.csv(result, result_path, row.names = FALSE)
-utils::write.csv(summary, file.path(root, 'dev/temporal-program/results/dep-spatial-recovery-summary-20260911.csv'), row.names = FALSE)
+utils::write.csv(summary, if (corrected_campaign) file.path(campaign_dir,
+  'dep-spatial-corrected-scale-summary.csv') else file.path(root,
+  'dev/temporal-program/results/dep-spatial-recovery-summary-20260911.csv'), row.names = FALSE)
 print(result, row.names = FALSE); print(summary, row.names = FALSE)
 if (!all(summary$passes)) stop('Frozen temporal_dep-spatial recovery campaign fails its predeclared thresholds.', call. = FALSE)
 cat('TEMPORAL_DEP_SPATIAL_RECOVERY_PASS\n')

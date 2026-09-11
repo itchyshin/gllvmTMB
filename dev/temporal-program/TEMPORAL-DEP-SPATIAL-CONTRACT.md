@@ -110,3 +110,7 @@ recovery verdict. A future recovery contract must use the precision scale in
 both the DGP and estimator extraction, freeze a new output location and all
 criteria before execution, and retain every attempt. No threshold is relaxed
 and no prior result is reclassified as recovery evidence.
+
+`TEMPORAL-DEP-SPATIAL-CORRECTED-SCALE-CAMPAIGN.md` now freezes that separate
+output location and unchanged decision rule. It is pre-run pending and does
+not yet provide recovery evidence.

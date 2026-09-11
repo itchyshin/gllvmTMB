@@ -58179,3 +58179,19 @@ Deliberately not run: Totoro 9×500 grid dispatch; full `devtools::test()`.
   stage is fitting itself. It neither rescues nor replaces frozen attempt 03,
   changes any criterion, establishes spatial-scale recovery, nor authorizes a
   Hessian-inclusive diagnostic or campaign continuation.
+
+## 2026-09-11 — corrected-scale dependent temporal–spatial campaign preparation
+
+- The legacy recovery runner now rejects before fitting unless the explicitly
+  named `corrected-scale-20260911` campaign is selected. That campaign requires
+  a single planned attempt index and refuses any existing result or phase
+  receipt; it records a phase marker before fitting. The legacy frozen receipts
+  therefore cannot be overwritten by an ordinary rerun.
+- `TEMPORAL-DEP-SPATIAL-CORRECTED-SCALE-CAMPAIGN.md` freezes the distinct output
+  directory, direct DGP, precision-scale `tau` estimand, nine cells, and
+  unchanged decision thresholds. The earlier non-retained smoke was stopped
+  after 37 seconds without a terminal result, so no valid pre-run exists yet.
+  No corrected-scale campaign attempt has started.
+- `test-temporal-program-dep-spatial-runner.R` passed four expectations with no
+  warnings and `run-dep-spatial-recovery.R` parsed cleanly. Those checks cover
+  only fail-closed campaign routing, not recovery or timing.

@@ -32,8 +32,9 @@ Gaussian identity-link ML fits with at least three traits and three occasions
 per series. Ordinary unit and unit-observation terms can be combined when
 their partitions agree and nest. The bounded temporal-only
 `forecast_temporal()`, `profile_temporal()`, `bootstrap_temporal()`, and
-`compare_temporal()` helpers have separate contracts. `bootstrap_temporal()`
-and `profile_temporal()` also support the qualified replicated-AR1
+`compare_temporal()` helpers have separate contracts. `bootstrap_temporal()`,
+`profile_temporal()`, and `compare_temporal()` also support the qualified
+replicated-AR1
 `temporal_indep() + kernel_indep()` cell. Generic forecasts, new-data
 prediction, generic profile/bootstrap intervals, automatic rank selection, and
 other source-pair helper routes remain unavailable. Other response families,
@@ -177,8 +178,10 @@ One bounded composed route is available for a replicated AR1
 `temporal_indep()` model with one fixed labelled diagonal kernel. The profile
 re-optimizes every nuisance parameter, including the kernel variance, at each
 fixed persistence value. The bootstrap redraws both sources and refits the
-saved public call. Its returned profile endpoints and bootstrap draws are not
-calibrated intervals.
+saved public call. `compare_temporal()` accepts only supplied candidates with
+the identical labelled kernel and returns their AIC values; it does not perform
+a likelihood-ratio test or search candidate models. Its returned profile
+endpoints and bootstrap draws are not calibrated intervals.
 
 ```{r kernel-pair-lifecycle}
 K_series <- diag(3)
@@ -192,6 +195,7 @@ fit_kernel_pair <- gllvmTMB(
 )
 profile_temporal(fit_kernel_pair, ystep = .25, ytol = 1)
 bootstrap_temporal(fit_kernel_pair, n_boot = 2, seed = 260920L)
+compare_temporal(current = fit_kernel_pair, replay = update(fit_kernel_pair))
 ```
 
 `simulate()` redraws stationary temporal scores by default. Passing

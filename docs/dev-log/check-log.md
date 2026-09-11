@@ -58106,3 +58106,18 @@ Deliberately not run: Totoro 9×500 grid dispatch; full `devtools::test()`.
   `git diff --check`. Profile endpoints are not interval calibration or
   coverage evidence; every source-pair profile other than this kernel cell
   remains refused.
+
+## 2026-09-11 — qualified temporal-kernel AIC comparison route
+
+- Extended `compare_temporal()` to exactly the replicated Gaussian AR1
+  `temporal_indep() + kernel_indep()` cell used by the bounded bootstrap and
+  direct-profile routes. Every supplied candidate must have the same labelled
+  kernel matrix; the helper returns log likelihood, degrees of freedom, AIC,
+  and optimizer status only. It performs neither a likelihood-ratio test nor
+  automatic model selection.
+- `test-temporal-program-selection.R` checks AIC arithmetic, deterministic
+  replay candidates, and early refusal for phylogenetic, dependent-temporal,
+  and mismatched-kernel candidates. `SELECTION-CONTRACT.md` fixes this narrow
+  contract. This is local route evidence only; it neither supports a generic
+  source-pair selection claim nor calibration, coverage, cross-platform, or
+  release claims.

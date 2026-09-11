@@ -100,14 +100,14 @@ temporal_dep <- function(formula, time, structure = "ar1", replicate = NULL) {
 #' has the same dense/lifecycle evidence but fails its retained
 #' positive-persistence variance gate. These are local fixed-fixture evidence
 #' only: they do not support source-pair forecasting,
-#' intervals, selection, cross-platform verification,
+#' intervals, cross-platform verification,
 #' release, general recovery, or coverage claims. The spatial
 #' cell redraws its independent SPDE field during unconditional simulation. Other
 #' temporal-source combinations remain unavailable. For an unreplicated,
 #' Gaussian `temporal_indep()` source by itself, `forecast_temporal()`,
 #' `profile_temporal()`, `bootstrap_temporal()`, and `compare_temporal()` have
-#' separate bounded contracts. `bootstrap_temporal()` and `profile_temporal()`
-#' also support the qualified replicated AR1
+#' separate bounded contracts. `bootstrap_temporal()`, `profile_temporal()`, and
+#' `compare_temporal()` also support the qualified replicated AR1
 #' `temporal_indep() + kernel_indep()` cell. Generic new-data prediction,
 #' generic intervals and profiles, automatic selection, and every other
 #' source-pair helper route remain unavailable.

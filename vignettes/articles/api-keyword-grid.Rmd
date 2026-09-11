@@ -152,8 +152,8 @@ kernel, not IID occasion noise. The temporal article shows matching long and
 parsing, covariance oracles, simulation, and ordinary unit/unit-observation
 composition. **Partial:** recovery is not yet a general claim. The bounded
 temporal-only forecast, profile, bootstrap, and supplied-candidate comparison
-helpers have their own contracts. `bootstrap_temporal()` and
-`profile_temporal()` also support the qualified replicated-AR1
+helpers have their own contracts. `bootstrap_temporal()`, `profile_temporal()`,
+and `compare_temporal()` also support the qualified replicated-AR1
 `temporal_indep() + kernel_indep()` cell. Generic forecasts, new-data
 prediction, generic intervals/profiles, automatic selection, and other
 source-pair helper routes remain unavailable. Four

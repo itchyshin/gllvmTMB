@@ -69,14 +69,14 @@ retained fixture with its mesh held fixed; the fixed-phylogeny rank-one cell
 has the same dense/lifecycle evidence but fails its retained
 positive-persistence variance gate. These are local fixed-fixture evidence
 only: they do not support source-pair forecasting,
-intervals, selection, cross-platform verification,
+intervals, cross-platform verification,
 release, general recovery, or coverage claims. The spatial
 cell redraws its independent SPDE field during unconditional simulation. Other
 temporal-source combinations remain unavailable. For an unreplicated,
 Gaussian \code{temporal_indep()} source by itself, \code{forecast_temporal()},
 \code{profile_temporal()}, \code{bootstrap_temporal()}, and \code{compare_temporal()} have
-separate bounded contracts. \code{bootstrap_temporal()} and \code{profile_temporal()}
-also support the qualified replicated AR1
+separate bounded contracts. \code{bootstrap_temporal()}, \code{profile_temporal()}, and
+\code{compare_temporal()} also support the qualified replicated AR1
 \code{temporal_indep() + kernel_indep()} cell. Generic new-data prediction,
 generic intervals and profiles, automatic selection, and every other
 source-pair helper route remain unavailable.

@@ -87,6 +87,19 @@ was requested. A phase receipt is written before each expensive stage, so an
 interruption records the last reached stage. It is timing evidence only: it
 neither repairs the frozen campaign nor supplies recovery evidence.
 
+### Retained fit-only diagnostic (2026-09-11)
+
+The authorized fit-only replay selected the existing third planned cell
+(`phi = -.4`, `seed = 2609333`) and wrote separate receipts at
+`results/diagnostics/dep-spatial-attempt-03-fit-only-20260911.csv` and
+`results/diagnostics/dep-spatial-attempt-03-fit-only-20260911-phase.csv`.
+It consumed 215.571 seconds in fitting and returned `All 1 restarts failed.`
+before the Hessian or gradient stages. It confirms that this repeat's delay was
+inside the optimizer path, rather than in the optional Hessian calculation. It
+does not change the paused campaign, its frozen rows, its criteria, or the
+absence of a recovery verdict. The condition for considering a Hessian-inclusive
+diagnostic was not met.
+
 ## Spatial-scale correction
 
 The DGP divides each SPDE draw by its precision `tau`, and the TMB parameter is

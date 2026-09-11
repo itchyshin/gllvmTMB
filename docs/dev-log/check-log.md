@@ -58166,3 +58166,16 @@ Deliberately not run: Totoro 9×500 grid dispatch; full `devtools::test()`.
   receipts but cannot decide spatial-scale recovery; a separately frozen,
   corrected-scale campaign is required. The existing-output guard refused as
   expected before fitting. No continuation or campaign was run.
+
+## 2026-09-11 — dependent temporal–spatial retained fit-only timing diagnostic
+
+- The authorized diagnostic replay used the unchanged planned third cell
+  (`phi=-.4`, `seed=2609333`) with Hessian evaluation disabled and wrote only
+  fresh separate receipts in
+  `dev/temporal-program/results/diagnostics/dep-spatial-attempt-03-fit-only-20260911*.csv`.
+  It ran for 215.571 seconds before the fit returned `All 1 restarts failed.`;
+  the phase receipt records `error`, with no Hessian or gradient stage reached.
+- This is negative timing evidence: on this unchanged replay, the expensive
+  stage is fitting itself. It neither rescues nor replaces frozen attempt 03,
+  changes any criterion, establishes spatial-scale recovery, nor authorizes a
+  Hessian-inclusive diagnostic or campaign continuation.

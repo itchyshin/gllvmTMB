@@ -40,7 +40,9 @@
       NULL
     }
   }, error = function(e) NULL)
-  roots <- roots[!is.na(roots) & nzchar(roots) & dir.exists(roots)]
+  if (!is.character(roots)) roots <- character()
+  roots <- roots[!is.na(roots) & nzchar(roots)]
+  roots <- roots[vapply(roots, dir.exists, logical(1))]
   root <- normalizePath(getwd(), mustWork = TRUE)
   for (i in 0:4) {
     roots <- c(roots, root)

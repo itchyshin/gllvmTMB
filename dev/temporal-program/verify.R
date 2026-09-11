@@ -4,9 +4,9 @@ root <- normalizePath(getwd(), mustWork = TRUE)
 if (!file.exists(file.path(root, "DESCRIPTION"))) {
   stop("Run temporal programme verification from the repository root.", call. = FALSE)
 }
-allowed <- c("plan", "simulation", "lifecycle", "remote", "phylo", "dep-kernel", "dep-phylo", "latent-kernel", "latent-phylo", "latent-animal", "latent-spatial", "publication", "combinations", "closeout", "self-test")
+allowed <- c("plan", "simulation", "lifecycle", "remote", "phylo", "dep-kernel", "dep-phylo", "dep-animal", "latent-kernel", "latent-phylo", "latent-animal", "latent-spatial", "publication", "combinations", "closeout", "self-test")
 if (!mode %in% allowed) {
-  stop("usage: Rscript --vanilla dev/temporal-program/verify.R {plan|simulation|lifecycle|remote|phylo|dep-kernel|dep-phylo|latent-kernel|latent-phylo|latent-animal|latent-spatial|publication|combinations|closeout|self-test}", call. = FALSE)
+  stop("usage: Rscript --vanilla dev/temporal-program/verify.R {plan|simulation|lifecycle|remote|phylo|dep-kernel|dep-phylo|dep-animal|latent-kernel|latent-phylo|latent-animal|latent-spatial|publication|combinations|closeout|self-test}", call. = FALSE)
 }
 
 .temporal_program_assert_test_results <- function(result, fixture) {
@@ -671,6 +671,55 @@ if (identical(mode, "dep-phylo")) {
       any(vapply(names(thresholds), function(nm) any(recomputed[[nm]] > thresholds[[nm]]), logical(1))))
     stop("temporal dep-phylo recovery fails its frozen threshold gate", call. = FALSE)
   cat("TEMPORAL_DEP_PHYLO_RECOVERY_PASS\n"); quit(save = "no", status = 0L)
+}
+if (identical(mode, "dep-animal")) {
+  fixture <- "tests/testthat/test-temporal-program-dep-animal.R"
+  result_path <- "dev/temporal-program/results/dep-animal-recovery-20260911.csv"
+  summary_path <- "dev/temporal-program/results/dep-animal-recovery-summary-20260911.csv"
+  required <- c(fixture, result_path, summary_path, vapply(1:9, function(i)
+    sprintf("dev/temporal-program/results/dep-animal-recovery-attempt-%02d-20260911.csv", i), character(1)))
+  if (any(!file.exists(file.path(root, required)))) stop("missing temporal dep-animal evidence: ",
+    paste(required[!file.exists(file.path(root, required))], collapse = ", "), call. = FALSE)
+  pkgload::load_all(root, quiet = TRUE, export_all = FALSE)
+  .temporal_program_assert_test_results(testthat::test_file(file.path(root, fixture), reporter = "silent"), fixture)
+  results <- utils::read.csv(file.path(root, result_path), check.names = FALSE)
+  summary <- utils::read.csv(file.path(root, summary_path), check.names = FALSE)
+  expected_phi <- c(-.4, 0, .6); expected_seed <- 2609311:2609313
+  required_columns <- c("phi", "seed", "terminal", "convergence", "pass_2_convergence",
+    "pass_2_accepted", "max_gradient", "objective", "temporal_frobenius_relative_error",
+    "animal_1", "animal_2", "animal_3", "phi_absolute_error", "fixed_effect_mean_absolute_error")
+  if (!all(required_columns %in% names(results)) || nrow(results) != 9L ||
+      !setequal(results$phi, expected_phi) || any(vapply(split(results$seed, results$phi),
+        function(x) !setequal(x, expected_seed), logical(1))))
+    stop("temporal dep-animal receipt does not retain every frozen attempt", call. = FALSE)
+  strict <- results$terminal == "success" & results$convergence == 0L &
+    results$pass_2_convergence == 0L & results$pass_2_accepted &
+    is.finite(results$objective) & is.finite(results$max_gradient) & results$max_gradient <= 1e-3
+  recomputed <- do.call(rbind, lapply(expected_phi, function(phi) {
+    x <- results[results$phi == phi, , drop = FALSE]; keep <- strict[results$phi == phi]
+    data.frame(phi = phi, attempts = nrow(x), strict_successes = sum(keep),
+      mean_phi_absolute_error = mean(x$phi_absolute_error[keep]),
+      median_phi_absolute_error = stats::median(x$phi_absolute_error[keep]),
+      median_temporal_frobenius_relative_error = stats::median(x$temporal_frobenius_relative_error[keep]),
+      median_animal_1_relative_error = stats::median(abs(x$animal_1[keep] - .35^2) / .35^2),
+      median_animal_2_relative_error = stats::median(abs(x$animal_2[keep] - .28^2) / .28^2),
+      median_animal_3_relative_error = stats::median(abs(x$animal_3[keep] - .40^2) / .40^2),
+      mean_fixed_effect_error = mean(x$fixed_effect_mean_absolute_error[keep]), stringsAsFactors = FALSE)
+  }))
+  columns <- names(recomputed)
+  if (!all(columns %in% names(summary)) || nrow(summary) != 3L || !setequal(summary$phi, recomputed$phi))
+    stop("temporal dep-animal summary has an invalid schema", call. = FALSE)
+  summary <- summary[match(recomputed$phi, summary$phi), columns, drop = FALSE]
+  if (!isTRUE(all.equal(summary, recomputed, tolerance = 1e-10)))
+    stop("temporal dep-animal summary disagrees with retained attempts", call. = FALSE)
+  thresholds <- c(mean_phi_absolute_error = .15, median_phi_absolute_error = .20,
+    median_temporal_frobenius_relative_error = .30, median_animal_1_relative_error = .35,
+    median_animal_2_relative_error = .35, median_animal_3_relative_error = .35,
+    mean_fixed_effect_error = .25)
+  if (any(recomputed$strict_successes != 3L) ||
+      any(vapply(names(thresholds), function(nm) any(recomputed[[nm]] > thresholds[[nm]]), logical(1))))
+    stop("temporal dep-animal recovery fails its frozen threshold gate", call. = FALSE)
+  cat("TEMPORAL_DEP_ANIMAL_RECOVERY_PASS\n"); quit(save = "no", status = 0L)
 }
 if (identical(mode, "latent-kernel")) {
   fixture <- "tests/testthat/test-temporal-program-latent-kernel.R"

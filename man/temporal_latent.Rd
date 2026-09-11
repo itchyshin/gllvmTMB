@@ -52,7 +52,10 @@ covariance to the fixed diagonal kernel source; its retained fixed-seed
 recovery fixture did not meet every frozen variance criterion. The matching
 fixed-phylogeny \code{temporal_dep() + phylo_indep()} cell has an independent
 dense likelihood/gradient oracle, source-representation and lifecycle checks,
-and a passing retained local fixture. The separate rank-one
+and a passing retained local fixture. The matching fixed-animal
+\code{temporal_dep() + animal_indep()} cell has the same independent dense
+likelihood/gradient and lifecycle checks, but its retained positive-persistence
+animal-variance gate fails. The separate rank-one
 \code{temporal_latent(..., d = 1, unique = FALSE) + kernel_indep()} cell has a
 direct fixed-seed recovery fixture, independent dense likelihood/gradient
 oracle, unconditional simulation, and long/wide/update checks. The matching

@@ -83,7 +83,10 @@ temporal_dep <- function(formula, time, structure = "ar1", replicate = NULL) {
 #' recovery fixture did not meet every frozen variance criterion. The matching
 #' fixed-phylogeny `temporal_dep() + phylo_indep()` cell has an independent
 #' dense likelihood/gradient oracle, source-representation and lifecycle checks,
-#' and a passing retained local fixture. The separate rank-one
+#' and a passing retained local fixture. The matching fixed-animal
+#' `temporal_dep() + animal_indep()` cell has the same independent dense
+#' likelihood/gradient and lifecycle checks, but its retained positive-persistence
+#' animal-variance gate fails. The separate rank-one
 #' `temporal_latent(..., d = 1, unique = FALSE) + kernel_indep()` cell has a
 #' direct fixed-seed recovery fixture, independent dense likelihood/gradient
 #' oracle, unconditional simulation, and long/wide/update checks. The matching
@@ -190,7 +193,7 @@ temporal_latent <- function(formula, time, d = 1, structure = "ar1",
     (identical(temporal_mode, "indep") &&
       source_terms %in% c("kernel_indep", "phylo_indep", "animal_indep", "spatial_indep")) ||
     (identical(temporal_mode, "dep") &&
-      source_terms %in% c("kernel_indep", "phylo_indep")) ||
+      source_terms %in% c("kernel_indep", "phylo_indep", "animal_indep")) ||
     (identical(temporal_mode, "latent") &&
       source_terms %in% c("kernel_indep", "phylo_indep", "animal_indep", "spatial_indep") &&
       identical(marker_arg_early("unique", FALSE), FALSE))
@@ -260,7 +263,7 @@ temporal_latent <- function(formula, time, d = 1, structure = "ar1",
   ## Leave the regular temporal admission errors in charge until the narrow
   ## AR1/replication shape is otherwise valid.  A deferred temporal mode must
   ## not misleadingly fail first because its animal term has no matrix yet.
-  animal_shape_ready <- marker_name %in% c("temporal_indep", "temporal_latent") &&
+  animal_shape_ready <- marker_name %in% c("temporal_indep", "temporal_dep", "temporal_latent") &&
     identical(marker_arg_early("structure", "ar1"), "ar1") &&
     is.name(marker_arg_early("replicate", quote(NULL)))
   if (identical(source_pair, "animal_indep") && animal_shape_ready) {

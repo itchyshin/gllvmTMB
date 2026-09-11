@@ -1,0 +1,2 @@
+"phi","seed","terminal","convergence","pass_1_convergence","pass_2_convergence","pass_2_accepted","max_gradient","objective","hessian_status","phi_estimate","temporal_frobenius_relative_error","animal_1","animal_2","animal_3","beta_1","beta_2","beta_3","elapsed_seconds"
+0.6,2609312,"success",0,0,0,TRUE,5.31576211439794e-06,4931.23779276518,"error",0.622033147641907,0.0924872374179081,0.129206939370783,0.0457949120589082,0.147676082195546,0.243267810060795,-0.241549219992035,0.108823851959735,7.69

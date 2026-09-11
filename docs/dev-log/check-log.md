@@ -58046,3 +58046,10 @@ Deliberately not run: Totoro 9×500 grid dispatch; full `devtools::test()`.
   caller order. This strengthens only the existing unreplicated Gaussian,
   temporal-only forecast contract; it does not admit source-pair, replicated,
   new-series, interval, or parameter-uncertainty forecasting.
+
+
+## 2026-09-11 — temporal dependent phylogeny passes its named local fixture
+
+- Added the narrow replicated AR1 `temporal_dep() + phylo_indep()` cell. The parser now applies ordinary-term, intercept-only, and odd-lag fences to full temporal covariance static-source cells as well as rank-one cells.
+- `test-temporal-program-dep-phylo.R` independently assembles the additive dense covariance, checks every active outer derivative at persistence `-.4`, `0`, and `.6`, distinguishes an unmasked cross-series phylogeny-by-time product, and covers dense VCV/tree/permuted-tip representation, long/wide/update, redraw moments, and refusals.
+- The direct 80-series, 16-occasion, two-measurement tree-VCV DGP never calls package simulation. The seed `2609291`, phi `.6` smoke took 6.252 seconds; the retained nine-fit campaign therefore stayed below the 30-minute local compute threshold. Every fit is finite with accepted two-pass optimization and gradient below `.001`; the fixed median threshold gate passes at each persistence. Hessian calls are retained as `error` for all fits, so no Hessian-positive-definiteness claim is made. `verify.R self-test` and `verify.R dep-phylo` pass. TEMP-06-11 remains `partial`: local named-fixture evidence only, with no cross-platform, release, general recovery, coverage, source-pair forecast, interval, profile, bootstrap, selection, OU, or temporal-Psi claim.

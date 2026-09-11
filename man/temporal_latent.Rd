@@ -48,10 +48,11 @@ cells are replicated AR1 \code{temporal_indep()} plus one labelled \code{kernel_
 a fixed labelled \code{phylo_indep()} term, or a fixed labelled \code{animal_indep()}
 term, or a fixed labelled \code{spatial_indep()} term. A separate replicated AR1
 \code{temporal_dep() + kernel_indep()} cell adds an unrestricted temporal trait
-covariance to the fixed diagonal kernel source; its current evidence covers
-point estimation, dense likelihood/gradient checks, unconditional simulation,
-and long/wide update replay, but its retained fixed-seed recovery fixture did
-not meet every frozen variance criterion. The separate rank-one
+covariance to the fixed diagonal kernel source; its retained fixed-seed
+recovery fixture did not meet every frozen variance criterion. The matching
+fixed-phylogeny \code{temporal_dep() + phylo_indep()} cell has an independent
+dense likelihood/gradient oracle, source-representation and lifecycle checks,
+and a passing retained local fixture. The separate rank-one
 \code{temporal_latent(..., d = 1, unique = FALSE) + kernel_indep()} cell has a
 direct fixed-seed recovery fixture, independent dense likelihood/gradient
 oracle, unconditional simulation, and long/wide/update checks. The matching

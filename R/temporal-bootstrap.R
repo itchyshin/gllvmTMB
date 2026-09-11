@@ -7,7 +7,7 @@
   }
 }
 
-.temporal_bootstrap_is_kernel_pair <- function(object, active_tiers) {
+.temporal_is_qualified_kernel_pair <- function(object, active_tiers) {
   providers <- object$covstructs
   if (!is.list(providers) || length(providers) != 1L ||
       !identical(as.character(active_tiers), "phylo_rr")) {
@@ -39,7 +39,7 @@ bootstrap_temporal <- function(object, n_boot = 100L, seed = NULL) {
     .temporal_abort("{.fn bootstrap_temporal} requires a native temporal fit.")
   }
   active <- .gllvmTMB_predict_unhandled_re_tiers(object, handled = "temporal")
-  kernel_pair <- .temporal_bootstrap_is_kernel_pair(object, active)
+  kernel_pair <- .temporal_is_qualified_kernel_pair(object, active)
   if (length(active) && !kernel_pair) {
     .temporal_abort(c(
       "{.fn bootstrap_temporal} supports only the qualified temporal-kernel source pair.",

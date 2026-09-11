@@ -58086,3 +58086,23 @@ Deliberately not run: Totoro 9×500 grid dispatch; full `devtools::test()`.
   articles; `verify.R lifecycle` (`TEMPORAL_PROGRAM_LIFECYCLE_PASS`); and
   `git diff --check`. The grid, temporal article, helper documentation, and
   validation register all now state the same narrow boundary.
+
+## 2026-09-11 — qualified temporal-kernel direct profile route
+
+- Extended `profile_temporal()` to exactly the same replicated Gaussian AR1
+  `temporal_indep() + kernel_indep()` cell. At each fixed
+  `theta_temporal_time`, the native `TMB::tmbprofile()` route re-optimizes the
+  complete marginal TMB/Laplace objective, including the kernel variance and
+  all remaining nuisance parameters. It does not condition on temporal states
+  or treat the fitted kernel variance as fixed.
+- `test-temporal-program-profile.R` confirms the direct profile trace agrees
+  with the fitted objective at its MLE and rises away from it, checks the
+  transformed persistence estimate, and refuses the analogous phylogenetic
+  and temporal-dependent models. The profile and bootstrap tests both pass
+  after their shared qualified-kernel discriminator was introduced.
+- Local checks: `devtools::document()`; `pkgdown::check_pkgdown()`; rendered
+  temporal keyword-grid and worked articles; focused profile and bootstrap
+  tests; `verify.R lifecycle` (`TEMPORAL_PROGRAM_LIFECYCLE_PASS`); and
+  `git diff --check`. Profile endpoints are not interval calibration or
+  coverage evidence; every source-pair profile other than this kernel cell
+  remains refused.

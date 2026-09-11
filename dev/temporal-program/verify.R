@@ -4,9 +4,9 @@ root <- normalizePath(getwd(), mustWork = TRUE)
 if (!file.exists(file.path(root, "DESCRIPTION"))) {
   stop("Run temporal programme verification from the repository root.", call. = FALSE)
 }
-allowed <- c("plan", "simulation", "lifecycle", "remote", "phylo", "dep-kernel", "latent-kernel", "latent-phylo", "latent-animal", "publication", "combinations", "closeout", "self-test")
+allowed <- c("plan", "simulation", "lifecycle", "remote", "phylo", "dep-kernel", "latent-kernel", "latent-phylo", "latent-animal", "latent-spatial", "publication", "combinations", "closeout", "self-test")
 if (!mode %in% allowed) {
-  stop("usage: Rscript --vanilla dev/temporal-program/verify.R {plan|simulation|lifecycle|remote|phylo|dep-kernel|latent-kernel|latent-phylo|latent-animal|publication|combinations|closeout|self-test}", call. = FALSE)
+  stop("usage: Rscript --vanilla dev/temporal-program/verify.R {plan|simulation|lifecycle|remote|phylo|dep-kernel|latent-kernel|latent-phylo|latent-animal|latent-spatial|publication|combinations|closeout|self-test}", call. = FALSE)
 }
 
 .temporal_program_assert_test_results <- function(result, fixture) {
@@ -275,6 +275,55 @@ if (!mode %in% allowed) {
   invisible(recomputed)
 }
 
+
+.temporal_program_latent_spatial_summary <- function(results) {
+  expected_phi <- c(-.4, 0, .6)
+  expected_seed <- 2609261:2609263
+  required <- c("phi", "seed", "terminal", "convergence", "pass_2_convergence",
+    "pass_2_accepted", "max_gradient", "objective", "temporal_frobenius_relative_error",
+    "tau_relative_error_1", "tau_relative_error_2", "tau_relative_error_3", "kappa_relative_error",
+    "phi_absolute_error", "fixed_effect_mean_absolute_error")
+  if (!all(required %in% names(results)) || nrow(results) != 9L ||
+      !setequal(results$phi, expected_phi) || !setequal(results$seed, expected_seed) ||
+      any(vapply(split(results$seed, results$phi), function(x) !setequal(x, expected_seed), logical(1)))) {
+    stop("temporal latent-spatial recovery does not retain every fixed phi/seed attempt", call. = FALSE)
+  }
+  strict <- results$terminal == "success" & results$convergence == 0L &
+    results$pass_2_convergence == 0L & results$pass_2_accepted &
+    is.finite(results$objective) & is.finite(results$max_gradient) & results$max_gradient <= 1e-3
+  do.call(rbind, lapply(expected_phi, function(phi) {
+    x <- results[results$phi == phi, , drop = FALSE]
+    keep <- strict[results$phi == phi]
+    data.frame(phi = phi, attempts = nrow(x), strict_successes = sum(keep),
+      mean_phi_absolute_error = mean(x$phi_absolute_error[keep]),
+      median_phi_absolute_error = stats::median(x$phi_absolute_error[keep]),
+      median_temporal_frobenius_relative_error = stats::median(x$temporal_frobenius_relative_error[keep]),
+      median_tau_1_relative_error = stats::median(x$tau_relative_error_1[keep]),
+      median_tau_2_relative_error = stats::median(x$tau_relative_error_2[keep]),
+      median_tau_3_relative_error = stats::median(x$tau_relative_error_3[keep]),
+      median_kappa_relative_error = stats::median(x$kappa_relative_error[keep]),
+      mean_fixed_effect_error = mean(x$fixed_effect_mean_absolute_error[keep]), stringsAsFactors = FALSE)
+  }))
+}
+
+.temporal_program_validate_latent_spatial_summary <- function(results, summary) {
+  recomputed <- .temporal_program_latent_spatial_summary(results)
+  required <- names(recomputed)
+  if (!all(required %in% names(summary)) || nrow(summary) != nrow(recomputed) ||
+      !setequal(summary$phi, recomputed$phi)) {
+    stop("temporal latent-spatial recovery summary has an invalid schema or phi labels", call. = FALSE)
+  }
+  summary <- summary[match(recomputed$phi, summary$phi), required, drop = FALSE]
+  for (nm in setdiff(required, "phi")) {
+    if (any(!is.finite(summary[[nm]])) ||
+        !isTRUE(all.equal(summary[[nm]], recomputed[[nm]], tolerance = 1e-10))) {
+      stop("temporal latent-spatial recovery summary is stale or disagrees with retained attempts: ", nm,
+        call. = FALSE)
+    }
+  }
+  invisible(recomputed)
+}
+
 .temporal_program_phylo_summary <- function(results) {
   expected_phi <- c(-.4, 0, .6)
   expected_seed <- 2609181:2609190
@@ -468,6 +517,19 @@ if (identical(mode, "self-test")) {
     .temporal_program_latent_animal_summary(latent_animal_synthetic[-1L, , drop = FALSE]),
     "an incomplete temporal latent-animal recovery receipt"
   )
+  latent_spatial_synthetic <- expand.grid(phi = c(-.4, 0, .6), seed = 2609261:2609263)
+  latent_spatial_synthetic$terminal <- "success"; latent_spatial_synthetic$convergence <- 0L
+  latent_spatial_synthetic$pass_2_convergence <- 0L; latent_spatial_synthetic$pass_2_accepted <- TRUE
+  latent_spatial_synthetic$max_gradient <- 0; latent_spatial_synthetic$objective <- 1
+  for (nm in c("temporal_frobenius_relative_error", "tau_relative_error_1",
+    "tau_relative_error_2", "tau_relative_error_3", "kappa_relative_error", "phi_absolute_error",
+    "fixed_effect_mean_absolute_error")) latent_spatial_synthetic[[nm]] <- .1
+  latent_spatial_summary <- .temporal_program_latent_spatial_summary(latent_spatial_synthetic)
+  .temporal_program_validate_latent_spatial_summary(latent_spatial_synthetic, latent_spatial_summary)
+  .temporal_program_expect_reject(
+    .temporal_program_latent_spatial_summary(latent_spatial_synthetic[-1L, , drop = FALSE]),
+    "an incomplete temporal latent-spatial recovery receipt"
+  )
   phylo_synthetic <- expand.grid(phi = c(-.4, 0, .6), seed = 2609181:2609190)
   phylo_synthetic$terminal <- "success"; phylo_synthetic$convergence <- 0L
   phylo_synthetic$pass_2_convergence <- 0L; phylo_synthetic$pass_2_accepted <- TRUE
@@ -618,6 +680,34 @@ if (identical(mode, "latent-animal")) {
     stop("temporal latent-animal recovery fails its frozen threshold gate", call. = FALSE)
   }
   cat("TEMPORAL_LATENT_ANIMAL_RECOVERY_PASS\n")
+  quit(save = "no", status = 0L)
+}
+if (identical(mode, "latent-spatial")) {
+  fixture <- "tests/testthat/test-temporal-program-latent-spatial.R"
+  result_path <- "dev/temporal-program/results/latent-spatial-recovery-20260911.csv"
+  summary_path <- "dev/temporal-program/results/latent-spatial-recovery-summary-20260911.csv"
+  required <- c(fixture, result_path, summary_path)
+  if (any(!file.exists(file.path(root, required)))) {
+    stop("missing temporal latent-spatial evidence: ",
+      paste(required[!file.exists(file.path(root, required))], collapse = ", "), call. = FALSE)
+  }
+  pkgload::load_all(root, quiet = TRUE, export_all = FALSE)
+  .temporal_program_assert_test_results(
+    testthat::test_file(file.path(root, fixture), reporter = "silent"), fixture
+  )
+  results <- utils::read.csv(file.path(root, result_path), check.names = FALSE)
+  summary <- utils::read.csv(file.path(root, summary_path), check.names = FALSE)
+  recomputed <- .temporal_program_validate_latent_spatial_summary(results, summary)
+  thresholds <- c(mean_phi_absolute_error = .15, median_phi_absolute_error = .20,
+    median_temporal_frobenius_relative_error = .30,
+    median_tau_1_relative_error = .35, median_tau_2_relative_error = .35,
+    median_tau_3_relative_error = .35, median_kappa_relative_error = .50,
+    mean_fixed_effect_error = .25)
+  if (any(recomputed$strict_successes != 3L) ||
+      any(vapply(names(thresholds), function(nm) any(recomputed[[nm]] > thresholds[[nm]]), logical(1)))) {
+    stop("temporal latent-spatial recovery fails its frozen threshold gate", call. = FALSE)
+  }
+  cat("TEMPORAL_LATENT_SPATIAL_RECOVERY_PASS\n")
   quit(save = "no", status = 0L)
 }
 if (identical(mode, "combinations")) {

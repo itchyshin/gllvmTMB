@@ -5088,12 +5088,18 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ## label-based lookup into the one-row-per-column projection above.
       A_proj <- A_column_sparse[trait_id + 1L, , drop = FALSE]
     } else {
-      if (!isTRUE(nrow(mesh$A_st) == n_obs))
+      if (is.null(mesh$xy_cols) || !all(mesh$xy_cols %in% names(data)))
         cli::cli_abort(c(
-          "make_mesh() projection has {nrow(mesh$A_st)} rows but the long-format data has {n_obs}.",
-          ">" = "Build the mesh on the same long-format data passed to gllvmTMB()."
+          "The spatial mesh coordinate columns are unavailable after data preparation.",
+          ">" = "Build the mesh with coordinates that are columns of the supplied data."
         ))
-      A_proj <- mesh$A_st
+      ## A_st is tied to the input row order.  Long/wide rewriting and user row
+      ## permutations can change that order, so rebuild the projection on the
+      ## prepared likelihood rows instead of reusing a stale row-aligned matrix.
+      A_proj <- Matrix::Matrix(fmesher::fm_basis(mesh$mesh,
+        loc = as.matrix(data[, mesh$xy_cols, drop = FALSE])), sparse = TRUE)
+      if (!isTRUE(ncol(A_proj) == ncol(mesh$A_st)))
+        cli::cli_abort("The rebuilt spatial projection does not match the supplied mesh nodes.")
     }
     n_mesh   <- ncol(mesh$A_st)
     spde_M0  <- mesh$spde$c0

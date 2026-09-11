@@ -403,7 +403,8 @@ UNMAPPED_BY_DESIGN <- c(
   "TEMP-06-06" = "R-only temporal dependent-kernel source-pair evidence; no Julia temporal provider row exists to compare",
   "TEMP-06-07" = "R-only rank-one temporal latent-kernel source-pair evidence; no Julia temporal provider row exists to compare",
   "TEMP-06-08" = "R-only rank-one temporal latent-phylogenetic source-pair evidence; no Julia temporal provider row exists to compare",
-  "TEMP-06-09" = "R-only rank-one temporal latent-animal source-pair evidence; no Julia temporal provider row exists to compare"
+  "TEMP-06-09" = "R-only rank-one temporal latent-animal source-pair evidence; no Julia temporal provider row exists to compare",
+  "TEMP-06-10" = "R-only rank-one temporal latent-spatial source-pair evidence; no Julia temporal provider row exists to compare"
 )
 
 # ---------------------------------------------------------------------------

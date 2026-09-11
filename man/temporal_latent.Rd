@@ -56,10 +56,12 @@ not meet every frozen variance criterion. The separate rank-one
 direct fixed-seed recovery fixture, independent dense likelihood/gradient
 oracle, unconditional simulation, and long/wide/update checks. The matching
 fixed-animal rank-one cell has the same evidence and a passing retained
-fixed-fixture gate; the fixed-phylogeny rank-one cell has the same
-dense/lifecycle evidence but fails its retained positive-persistence variance
-gate. These are local fixed-fixture evidence only: they do not support
-source-pair forecasting,
+fixed-fixture gate; the fixed-spatial rank-one cell has an independently
+rebuilt mesh projection, dense gradients, redraw moments, and a passing
+retained fixture with its mesh held fixed; the fixed-phylogeny rank-one cell
+has the same dense/lifecycle evidence but fails its retained
+positive-persistence variance gate. These are local fixed-fixture evidence
+only: they do not support source-pair forecasting,
 intervals, profiles, bootstrap, selection, cross-platform verification,
 release, general recovery, or coverage claims. The spatial
 cell redraws its independent SPDE field during unconditional simulation. Other

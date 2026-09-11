@@ -87,10 +87,12 @@ temporal_dep <- function(formula, time, structure = "ar1", replicate = NULL) {
 #' direct fixed-seed recovery fixture, independent dense likelihood/gradient
 #' oracle, unconditional simulation, and long/wide/update checks. The matching
 #' fixed-animal rank-one cell has the same evidence and a passing retained
-#' fixed-fixture gate; the fixed-phylogeny rank-one cell has the same
-#' dense/lifecycle evidence but fails its retained positive-persistence variance
-#' gate. These are local fixed-fixture evidence only: they do not support
-#' source-pair forecasting,
+#' fixed-fixture gate; the fixed-spatial rank-one cell has an independently
+#' rebuilt mesh projection, dense gradients, redraw moments, and a passing
+#' retained fixture with its mesh held fixed; the fixed-phylogeny rank-one cell
+#' has the same dense/lifecycle evidence but fails its retained
+#' positive-persistence variance gate. These are local fixed-fixture evidence
+#' only: they do not support source-pair forecasting,
 #' intervals, profiles, bootstrap, selection, cross-platform verification,
 #' release, general recovery, or coverage claims. The spatial
 #' cell redraws its independent SPDE field during unconditional simulation. Other
@@ -188,7 +190,7 @@ temporal_latent <- function(formula, time, d = 1, structure = "ar1",
       source_terms %in% c("kernel_indep", "phylo_indep", "animal_indep", "spatial_indep")) ||
     (identical(temporal_mode, "dep") && identical(source_terms, "kernel_indep")) ||
     (identical(temporal_mode, "latent") &&
-      source_terms %in% c("kernel_indep", "phylo_indep", "animal_indep") &&
+      source_terms %in% c("kernel_indep", "phylo_indep", "animal_indep", "spatial_indep") &&
       identical(marker_arg_early("unique", FALSE), FALSE))
   )
   source_pair <- if (isTRUE(allowed_source_pair)) source_terms[[1L]] else NULL
@@ -200,7 +202,7 @@ temporal_latent <- function(formula, time, d = 1, structure = "ar1",
     any(vapply(as.list(x)[-1L], has_ordinary_bar, logical(1)))
   }
   if (identical(temporal_mode, "latent") &&
-      isTRUE(source_pair %in% c("kernel_indep", "phylo_indep", "animal_indep")) &&
+      isTRUE(source_pair %in% c("kernel_indep", "phylo_indep", "animal_indep", "spatial_indep")) &&
       (length(ordinary_terms) || has_ordinary_bar(stripped_formula[[length(formula)]]))) {
     .temporal_abort(c(
       "The rank-one temporal latent-source cell cannot include an ordinary covariance term.",
@@ -231,7 +233,7 @@ temporal_latent <- function(formula, time, d = 1, structure = "ar1",
     }
     all(vapply(as.list(x)[-1L], source_intercept_only, logical(1), provider = provider))
   }
-  if (identical(temporal_mode, "latent") && isTRUE(source_pair %in% c("phylo_indep", "animal_indep")) &&
+  if (identical(temporal_mode, "latent") && isTRUE(source_pair %in% c("phylo_indep", "animal_indep", "spatial_indep")) &&
       !source_intercept_only(stripped_formula[[length(formula)]], source_pair)) {
     .temporal_abort(c(
       "The rank-one temporal source cell requires an intercept-only static source term.",
@@ -333,6 +335,19 @@ temporal_latent <- function(formula, time, d = 1, structure = "ar1",
           length(xy_cols) == 2L) {
         state_key <- interaction(data[[series_name]], data[[as.character(time_name)]],
           drop = TRUE, lex.order = TRUE)
+        ## A spatial field is defined at the temporal state, so traits and
+        ## repeated measurements cannot silently supply different locations
+        ## for the same `(series, time)` state.
+        inconsistent_coordinates <- vapply(split(seq_len(nrow(data)), state_key), function(i) {
+          any(vapply(xy_cols, function(col) length(unique(data[[col]][i])) != 1L, logical(1)))
+        }, logical(1))
+        if (any(inconsistent_coordinates)) {
+          .temporal_abort(c(
+            "Each temporal state must have one shared spatial coordinate pair.",
+            "i" = "Affected series--time state(s): {.val {names(inconsistent_coordinates)[inconsistent_coordinates]}}.",
+            ">" = "Use the same coordinates for every trait and measurement within each temporal state."
+          ))
+        }
         state_rows <- !duplicated(state_key)
         state <- data[state_rows, c(series_name, as.character(time_name), xy_cols), drop = FALSE]
         names(state)[1:2] <- c(".series", ".time")
@@ -444,7 +459,7 @@ temporal_latent <- function(formula, time, d = 1, structure = "ar1",
     }
   }
   if (identical(temporal_mode, "latent") &&
-      isTRUE(source_pair %in% c("kernel_indep", "phylo_indep", "animal_indep")) &&
+      isTRUE(source_pair %in% c("kernel_indep", "phylo_indep", "animal_indep", "spatial_indep")) &&
       identical(structure_name, "ar1") && any(vapply(times_by_series, function(x) {
         occasions <- unique(as.integer(x))
         !any(abs(outer(occasions, occasions, `-`)) %% 2L == 1L)

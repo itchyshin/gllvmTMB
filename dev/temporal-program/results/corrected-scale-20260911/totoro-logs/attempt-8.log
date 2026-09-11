@@ -1,0 +1,11 @@
+gllvmTMB is EXPERIMENTAL (lifecycle: experimental). Use at your own risk: the package is not complete, is not fully human-verified, and needs extensive further validation. Point estimates are the primary output, and how well they are supported depends on the exact model and route used. Broad interval coverage is not yet confirmed. A handful of interval calculations for standardized factor loadings have been checked and shown accurate, but only for one Gaussian model, in a few fixed sample-size and rank combinations, fitted to one fixed simulated dataset with known true values, and only for fits that converge cleanly; this does not carry over to any other sample size, rank, or dataset. Total-variance penalty profiles are still only an approximate calculation: even in previously checked cases, we have not confirmed they match the exact answer. See the Current limitations and boundaries page for scope.
+DEP_SPATIAL_ATTEMPT phi=0.6 seed=2609332
+ phi    seed terminal convergence pass_1_convergence pass_2_convergence
+ 0.6 2609332  success           0                  0                  0
+ pass_2_accepted max_gradient objective hessian_status phi_estimate
+            TRUE 2.441051e-05  4752.805          error    0.5900123
+ temporal_frobenius_relative_error    tau_1     tau_2    tau_3    kappa
+                        0.06682321 5663.138 0.1728647 842.4184 7.537353
+    beta_1     beta_2   beta_3 error_message elapsed_seconds
+ 0.2514898 -0.3399637 0.063262          <NA>           44.82
+TEMPORAL_DEP_SPATIAL_ATTEMPT_PASS

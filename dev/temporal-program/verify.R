@@ -4,9 +4,9 @@ root <- normalizePath(getwd(), mustWork = TRUE)
 if (!file.exists(file.path(root, "DESCRIPTION"))) {
   stop("Run temporal programme verification from the repository root.", call. = FALSE)
 }
-allowed <- c("plan", "simulation", "lifecycle", "remote", "phylo", "dep-kernel", "dep-phylo", "dep-animal", "dep-spatial", "latent-kernel", "latent-phylo", "latent-animal", "latent-spatial", "publication", "combinations", "closeout", "self-test")
+allowed <- c("plan", "simulation", "lifecycle", "remote", "phylo", "dep-kernel", "dep-phylo", "dep-animal", "dep-spatial", "dep-spatial-corrected", "latent-kernel", "latent-phylo", "latent-animal", "latent-spatial", "publication", "combinations", "closeout", "self-test")
 if (!mode %in% allowed) {
-  stop("usage: Rscript --vanilla dev/temporal-program/verify.R {plan|simulation|lifecycle|remote|phylo|dep-kernel|dep-phylo|dep-animal|dep-spatial|latent-kernel|latent-phylo|latent-animal|latent-spatial|publication|combinations|closeout|self-test}", call. = FALSE)
+  stop("usage: Rscript --vanilla dev/temporal-program/verify.R {plan|simulation|lifecycle|remote|phylo|dep-kernel|dep-phylo|dep-animal|dep-spatial|dep-spatial-corrected|latent-kernel|latent-phylo|latent-animal|latent-spatial|publication|combinations|closeout|self-test}", call. = FALSE)
 }
 
 .temporal_program_assert_test_results <- function(result, fixture) {
@@ -895,6 +895,48 @@ if (identical(mode, "dep-spatial")) {
     stop("temporal dep-spatial recovery fails its frozen threshold gate", call. = FALSE)
   }
   cat("TEMPORAL_DEP_SPATIAL_RECOVERY_PASS\n")
+  quit(save = "no", status = 0L)
+}
+if (identical(mode, "dep-spatial-corrected")) {
+  fixture <- "tests/testthat/test-temporal-program-dep-spatial-runner.R"
+  receipt_dir <- "dev/temporal-program/results/corrected-scale-20260911"
+  attempt_paths <- file.path(receipt_dir, sprintf("dep-spatial-corrected-scale-attempt-%02d.csv", 1:9))
+  phase_paths <- sub("\\.csv$", "-phase.csv", attempt_paths)
+  result_path <- file.path(receipt_dir, "dep-spatial-corrected-scale-recovery.csv")
+  summary_path <- file.path(receipt_dir, "dep-spatial-corrected-scale-summary.csv")
+  required <- c(fixture, attempt_paths, phase_paths, result_path, summary_path,
+    file.path(receipt_dir, "totoro-finalize.log"))
+  if (any(!file.exists(file.path(root, required)))) {
+    stop("missing corrected-scale temporal dep-spatial evidence: ",
+      paste(required[!file.exists(file.path(root, required))], collapse = ", "), call. = FALSE)
+  }
+  pkgload::load_all(root, quiet = TRUE, export_all = FALSE)
+  .temporal_program_assert_test_results(
+    testthat::test_file(file.path(root, fixture), reporter = "silent"), fixture
+  )
+  attempts <- do.call(rbind, lapply(file.path(root, attempt_paths), utils::read.csv, check.names = FALSE))
+  combined <- utils::read.csv(file.path(root, result_path), check.names = FALSE)
+  if (!all(names(attempts) %in% names(combined)) ||
+      !isTRUE(all.equal(attempts, combined[, names(attempts), drop = FALSE], tolerance = 1e-12,
+        check.attributes = FALSE)))
+    stop("corrected-scale combined receipt disagrees with the nine retained attempts", call. = FALSE)
+  results <- combined
+  summary <- utils::read.csv(file.path(root, summary_path), check.names = FALSE)
+  recomputed <- .temporal_program_validate_dep_spatial_summary(results, summary)
+  thresholds <- c(mean_phi_absolute_error = .15, median_phi_absolute_error = .20,
+    median_temporal_frobenius_relative_error = .30,
+    median_tau_1_relative_error = .35, median_tau_2_relative_error = .35,
+    median_tau_3_relative_error = .35, median_kappa_relative_error = .50,
+    mean_fixed_effect_error = .25)
+  passes <- recomputed$strict_successes == 3L & !vapply(seq_len(nrow(recomputed)), function(i)
+    any(vapply(names(thresholds), function(nm) recomputed[[nm]][[i]] > thresholds[[nm]], logical(1))), logical(1))
+  if (!identical(as.logical(summary$passes[match(recomputed$phi, summary$phi)]), passes))
+    stop("corrected-scale temporal dep-spatial summary has stale pass labels", call. = FALSE)
+  if (all(passes)) stop("corrected-scale temporal dep-spatial campaign unexpectedly passes; update its evidence gate", call. = FALSE)
+  phase <- lapply(file.path(root, phase_paths), utils::read.csv, check.names = FALSE)
+  if (!all(vapply(phase, function(x) nrow(x) == 1L && x$phase[[1L]] %in% c("gradient_finished", "error"), logical(1))))
+    stop("corrected-scale temporal dep-spatial phase receipts are not terminal", call. = FALSE)
+  cat("TEMPORAL_DEP_SPATIAL_CORRECTED_SCALE_RETAINED_FAILURE\n")
   quit(save = "no", status = 0L)
 }
 if (identical(mode, "combinations")) {

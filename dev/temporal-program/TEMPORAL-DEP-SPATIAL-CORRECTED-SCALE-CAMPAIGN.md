@@ -2,7 +2,7 @@
 
 ## Status
 
-**Pre-run retained; full campaign held for a compute decision.** This is a new, isolated campaign. It does not amend,
+**Completed with a retained frozen-threshold failure.** This is a new, isolated campaign. It does not amend,
 replace, or reinterpret the four frozen `dep-spatial-recovery-20260911`
 attempts.
 
@@ -65,9 +65,8 @@ accepted, and maximum outer gradient `1.1863489e-05`; its result and final
 phase receipts are in the campaign directory. A straight-line nine-cell
 projection is about three minutes, but the same fixture family also has a
 retained 215.571-second fit-only tail. A conservative serial projection
-therefore exceeds 30 minutes. Obtain a distinct compute decision before the
-remaining eight cells, then route them to Totoro or DRAC with one BLAS thread
-and at most four local cores.
+therefore exceeds 30 minutes. The remaining eight cells were therefore run as
+eight one-thread Totoro tasks after the recorded compute decision.
 
 ## Approved Totoro execution shape
 
@@ -78,3 +77,15 @@ then launches indexes 2--9 at eight workers with BLAS and OpenMP pinned to one
 thread. Each attempt retains its own log and result/phase pair. The script
 returns nonzero if any result pair is missing or any attempt has a nonzero
 terminal status; it does not finalize or interpret the campaign.
+
+## Retained outcome
+
+All nine cells reached terminal optimizer success with accepted second passes
+and maximum outer gradients at most `1e-3`. No recovery threshold was relaxed.
+The final recomputed summary fails every persistence stratum: at `phi=.6`, the
+median relative errors for `tau_1`, `tau_2`, `tau_3`, and `kappa` are
+`5765.2289994`, `2.5135586`, `623.0136318`, and `.7859026`. The verifier
+`verify.R dep-spatial-corrected` checks every result and terminal phase receipt,
+recomputes the summary, verifies the failed `passes` labels, and emits
+`TEMPORAL_DEP_SPATIAL_CORRECTED_SCALE_RETAINED_FAILURE`. This is a retained
+negative result, not a recovery or release claim.

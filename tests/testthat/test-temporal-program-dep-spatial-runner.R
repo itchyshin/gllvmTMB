@@ -1,7 +1,10 @@
 test_that("the corrected dependent-spatial runner refuses unsafe campaign starts", {
-  script <- testthat::test_path("..", "..", "dev", "temporal-program",
-    "run-dep-spatial-recovery.R")
+  script <- normalizePath(testthat::test_path("..", "..", "dev", "temporal-program",
+    "run-dep-spatial-recovery.R"), mustWork = FALSE)
   skip_if_not(file.exists(script))
+  root <- normalizePath(file.path(dirname(script), "..", ".."), mustWork = TRUE)
+  old_wd <- setwd(root)
+  on.exit(setwd(old_wd), add = TRUE)
   rscript <- file.path(R.home("bin"), "Rscript")
 
   legacy <- suppressWarnings(system2(rscript, c("--vanilla", script), stdout = TRUE, stderr = TRUE))
@@ -13,4 +16,5 @@ test_that("the corrected dependent-spatial runner refuses unsafe campaign starts
   )
   expect_equal(attr(missing_index, "status"), 1L)
   expect_match(paste(missing_index, collapse = "\n"), "requires DEP_SPATIAL_ONE")
+
 })

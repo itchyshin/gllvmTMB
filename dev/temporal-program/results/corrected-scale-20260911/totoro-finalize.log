@@ -1,0 +1,83 @@
+gllvmTMB is EXPERIMENTAL (lifecycle: experimental). Use at your own risk: the package is not complete, is not fully human-verified, and needs extensive further validation. Point estimates are the primary output, and how well they are supported depends on the exact model and route used. Broad interval coverage is not yet confirmed. A handful of interval calculations for standardized factor loadings have been checked and shown accurate, but only for one Gaussian model, in a few fixed sample-size and rank combinations, fitted to one fixed simulated dataset with known true values, and only for fits that converge cleanly; this does not carry over to any other sample size, rank, or dataset. Total-variance penalty profiles are still only an approximate calculation: even in previously checked cases, we have not confirmed they match the exact answer. See the Current limitations and boundaries page for scope.
+  phi    seed terminal convergence pass_1_convergence pass_2_convergence
+ -0.4 2609331  success           0                  0                  0
+ -0.4 2609332  success           0                  0                  0
+ -0.4 2609333  success           0                  0                  0
+  0.0 2609331  success           0                  0                  0
+  0.0 2609332  success           0                  0                  0
+  0.0 2609333  success           0                  0                  0
+  0.6 2609331  success           0                  0                  0
+  0.6 2609332  success           0                  0                  0
+  0.6 2609333  success           0                  0                  0
+ pass_2_accepted max_gradient objective hessian_status phi_estimate
+            TRUE 1.186349e-05  5254.288          error  -0.38511317
+            TRUE 3.930179e-04  5089.872          error  -0.37857865
+            TRUE 7.135468e-04  5253.710          error  -0.37017459
+            TRUE 1.236461e-04  5399.642          error  -0.01061228
+            TRUE 2.466629e-05  5300.238          error   0.01267404
+            TRUE 5.808441e-04  5379.487          error  -0.03329213
+            TRUE 9.029437e-04  4811.575          error   0.59383076
+            TRUE 2.441051e-05  4752.805          error   0.59001232
+            TRUE 6.697159e-04  4799.368          error   0.60157901
+ temporal_frobenius_relative_error        tau_1      tau_2        tau_3
+                        0.05677052    0.5962248  0.6911787    0.8367866
+                        0.09224624    0.7150297  0.9523562    0.8926109
+                        0.05696885    2.5020083  0.8300393    3.8060629
+                        0.07210924    0.8596546  0.8542541    0.7640348
+                        0.07407770    0.4452787  0.5353922    0.5016479
+                        0.03844332    1.2683748  1.0132894    0.7468391
+                        0.06877198    5.6822360  3.8649144  781.5339303
+                        0.06682321 5663.1381881  0.1728647  842.4184029
+                        0.04459808 4901.2946495 12.8402955 2169.8968359
+       kappa    beta_1     beta_2     beta_3 error_message elapsed_seconds
+   2.9541335 0.1552152 -0.3735977 0.09303211            NA          19.693
+   2.7776662 0.2566991 -0.3198111 0.07592407            NA          32.176
+ 450.8504013 0.2088522 -0.3338067 0.15360984            NA          12.210
+   2.8720838 0.1716409 -0.3106444 0.08332289            NA          31.369
+   4.1830717 0.2533163 -0.3239792 0.07027343            NA          50.471
+   2.4802308 0.2032011 -0.3323124 0.15582317            NA         135.441
+   0.9867694 0.1888237 -0.3051373 0.07983445            NA          24.200
+   7.5373534 0.2514898 -0.3399637 0.06326200            NA          44.820
+   0.4281948 0.1961245 -0.3320163 0.16209839            NA          34.984
+ tau_relative_error_1 tau_relative_error_2 tau_relative_error_3
+            0.2985590           0.37165574            0.3801581
+            0.1587885           0.13422161            0.3388067
+            1.9435391           0.24541882            1.8193059
+            0.0113584           0.22340539            0.4340483
+            0.4761427           0.51327985            0.6284090
+            0.4922056           0.07882785            0.4467859
+            5.6849836           2.51355857          577.9140224
+         6661.5155154           0.84285024          623.0136318
+         5765.2289994          10.67299587         1606.3309896
+ kappa_relative_error phi_absolute_error fixed_effect_mean_absolute_error
+            0.4770667        0.014886834                       0.04178346
+            0.3888331        0.021421353                       0.03352870
+          224.4252007        0.029825408                       0.03208957
+            0.4360419        0.010612280                       0.01856019
+            1.0915359        0.012674039                       0.03567401
+            0.2401154        0.033292129                       0.03044555
+            0.5066153        0.006169240                       0.01215970
+            2.7686767        0.009987679                       0.04273050
+            0.7859026        0.001579015                       0.03266337
+  phi attempts strict_successes mean_phi_absolute_error
+ -0.4        3                3             0.022044532
+  0.0        3                3             0.018859483
+  0.6        3                3             0.005911978
+ median_phi_absolute_error median_temporal_frobenius_relative_error
+                0.02142135                               0.05696885
+                0.01267404                               0.07210924
+                0.00616924                               0.06682321
+ median_tau_1_relative_error median_tau_2_relative_error
+                   0.2985590                   0.2454188
+                   0.4761427                   0.2234054
+                5765.2289994                   2.5135586
+ median_tau_3_relative_error median_kappa_relative_error
+                   0.3801581                   0.4770667
+                   0.4467859                   0.4360419
+                 623.0136318                   0.7859026
+ mean_fixed_effect_error passes
+              0.03580058  FALSE
+              0.02822658  FALSE
+              0.02918453  FALSE
+Error: Frozen temporal_dep-spatial recovery campaign fails its predeclared thresholds.
+Execution halted

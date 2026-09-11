@@ -58208,3 +58208,21 @@ Deliberately not run: Totoro 9×500 grid dispatch; full `devtools::test()`.
   campaign estimate exceeds 30 minutes. Per the compute contract, the remaining
   eight cells are held for a distinct Totoro/DRAC compute decision. No summary,
   recovery verdict, threshold change, or release action follows from one cell.
+
+## 2026-09-11 — corrected-scale dependent temporal–spatial Totoro campaign
+
+- Exact commit `56ab381aea18248e7c965c7983abbce286d2633a` was staged in an
+  isolated Totoro checkout and pre-built once. The remaining eight planned
+  cells ran as eight single-threaded workers. All nine result and terminal
+  phase receipts, worker logs, and the finalization log are retained locally.
+- All nine fits had terminal success, optimizer codes zero, accepted second
+  passes, and gradients at most `1e-3`. The frozen recovery summary still fails
+  in every persistence stratum because spatial precision/range estimates are
+  unstable; at phi `.6`, median relative errors are 5765.229, 2.514, 623.014,
+  and .786 for `tau_1`, `tau_2`, `tau_3`, and `kappa`. No criterion changed.
+- `verify.R dep-spatial-corrected` and its focused source test recompute and
+  confirm the retained failed summary, emitting
+  `TEMPORAL_DEP_SPATIAL_CORRECTED_SCALE_RETAINED_FAILURE`. This closes the
+  bounded corrected campaign with negative evidence. TEMP-06-13 remains
+  partial; no recovery, coverage, cross-platform, release, or broader source
+  pairing claim follows.

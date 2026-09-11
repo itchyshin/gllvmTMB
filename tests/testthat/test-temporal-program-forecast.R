@@ -143,3 +143,27 @@ test_that("temporal forecasts preserve negative AR1 and translated OU covariance
     forecast_temporal(shifted, shifted_future, se.fit = TRUE)[c("est", "se.fit")],
     tolerance = 1e-10)
 })
+
+test_that("temporal forecasts preserve shuffled future-panel row order", {
+  fixture <- .temporal_forecast_fixture("ar1")
+  fit <- suppressWarnings(gllvmTMB(
+    value ~ 0 + trait + temporal_indep(0 + trait | series, time = occasion),
+    data = fixture$data, unit = "series", family = gaussian(), silent = TRUE,
+    control = gllvmTMBcontrol(se = FALSE)
+  ))
+  future <- expand.grid(series = c("s1", "s2"), occasion = c(4L, 5L),
+    trait = c("t1", "t2", "t3"), KEEP.OUT.ATTRS = FALSE,
+    stringsAsFactors = FALSE)
+  reference <- forecast_temporal(fit, future, se.fit = TRUE)
+  set.seed(260927L)
+  shuffled <- future[sample.int(nrow(future)), , drop = FALSE]
+  observed <- forecast_temporal(fit, shuffled, se.fit = TRUE)
+  key <- c("series", "occasion", "trait")
+  expect_identical(as.character(observed$series), as.character(shuffled$series))
+  expect_identical(observed$occasion, shuffled$occasion)
+  expect_identical(as.character(observed$trait), as.character(shuffled$trait))
+  expected_order <- match(do.call(paste, c(shuffled[key], sep = "\r")),
+    do.call(paste, c(future[key], sep = "\r")))
+  expect_equal(observed$est, reference$est[expected_order], tolerance = 1e-10)
+  expect_equal(observed$se.fit, reference$se.fit[expected_order], tolerance = 1e-10)
+})

@@ -58036,3 +58036,13 @@ Deliberately not run: Totoro 9×500 grid dispatch; full `devtools::test()`.
 - `test-temporal-program-latent-spatial.R` independently rebuilds `fm_basis()` from the public mesh and coordinates, assembles the additive dense covariance, tests every active central derivative at persistence `-.55`, `0`, and `.55`, distinguishes a genuine cross-series time-by-space product, and checks long/wide/update, labels, projection consistency, and unconditional temporal cross-trait, spatial cross-series, and mean redraw moments with analytic Monte Carlo error bounds. The fit path now rebuilds the SPDE projection from prepared likelihood rows, preventing a row permutation or wide expansion from silently reusing stale `A_st` rows.
 - The direct 80-series, 16-occasion, two-measurement fixed-mesh DGP never calls package simulation. The phi `.6`, seed `2609261` smoke took 9.656 seconds. All nine retained attempts at phi `-.4`, `0`, `.6` and seeds `2609261:2609263` have finite objectives, accepted second optimizer passes, and final gradients below `.001`; each persistence stratum has 3/3 strict successes and meets the frozen phi, temporal, SPDE scale/range, and fixed-effect thresholds. `verify.R self-test` emitted `TEMPORAL_PROGRAM_SELF_TEST_PASS`; `verify.R latent-spatial` recomputed the retained receipt and emitted `TEMPORAL_LATENT_SPATIAL_RECOVERY_PASS`. TEMP-06-10 remains `partial`: this is local fixed-fixture evidence, not cross-platform, release, general recovery, coverage, forecast, interval, profile, bootstrap, selection, temporal-Psi, or other-source evidence.
 - Astra’s independent mathematical review found a wide-format stale-projection P1 and two missing controls before closeout. The fitting path now reconstructs `A_proj` on prepared likelihood rows; the test verifies wide projection and dense likelihood against those rows. The product control now retains cross-series spatial covariance, while simulation checks cross-trait rank-one covariance and redraw means. Astra reported no P0 finding after this scope correction.
+
+## 2026-09-11 — temporal forecast preserves caller future-panel order
+
+- Added a shuffled multi-series, multi-occasion future-panel check to
+  `test-temporal-program-forecast.R`. It matches forecast means and conditional
+  standard deviations to the independent dense-conditioning result after keying
+  by `(series, occasion, trait)`, and verifies that the helper returns rows in
+  caller order. This strengthens only the existing unreplicated Gaussian,
+  temporal-only forecast contract; it does not admit source-pair, replicated,
+  new-series, interval, or parameter-uncertainty forecasting.

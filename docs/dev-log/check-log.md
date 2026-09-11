@@ -58066,3 +58066,23 @@ Deliberately not run: Totoro 9×500 grid dispatch; full `devtools::test()`.
 - Added the narrow replicated AR1 `temporal_dep() + spatial_indep()` cell. An isolated parser probe first verified the existing TMB map contains a full temporal state block plus trait-diagonal SPDE fields; no engine code was changed. Astra independently reviewed the additive contract and confirmed that the shared SPDE redraw applies to the full temporal covariance cell because it is independent of temporal rank.
 - `test-temporal-program-dep-spatial.R` reconstructs the spatial projection from public mesh coordinates, independently assembles the additive dense Gaussian covariance, checks every active central derivative at persistence `-.55`, `0`, and `.55`, distinguishes diagonal/rank-one temporal and unmasked product substitutes, and covers long/wide/permuted likelihood identity, update, labelled covariance extraction, conditional/unconditional simulation, geometry, and refusal boundaries. The neighboring temporal-independent spatial regression fixture also passes.
 - The direct 80-series, 16-occasion, two-measurement DGP separately samples non-diagonal stationary temporal states, trait-diagonal SPDE fields, and measurement noise. The fixed smoke fit (`phi=.6`, seed `2609331`) took 11.797 seconds, with accepted second pass and max gradient `.00094893`. Frozen attempts 01 and 02 returned in 20.131 and 6.754 seconds; attempt 03 (`phi=-.4`, seed `2609333`) ran for 109 seconds at one full CPU and was terminated under the measured one-fit budget, with a factual receipt retained. Attempt 04 returned in 9.597 seconds. The campaign is paused after four retained attempts, `DEP-SPATIAL-2` remains unchecked, and TEMP-06-13 is partial without a recovery, coverage, cross-platform, or release claim.
+
+## 2026-09-11 — qualified temporal-kernel bootstrap refit route
+
+- Extended `bootstrap_temporal()` from its unreplicated temporal-only contract
+  to exactly one composed cell: replicated Gaussian AR1
+  `temporal_indep() + kernel_indep()` with one fixed labelled kernel. The
+  route uses `simulate(fit, condition_on_RE = FALSE)` and the saved public
+  `update()` call, so it redraws both the native temporal field and the kernel
+  field without rebuilding an iid covariance formula.
+- `test-temporal-program-bootstrap.R` verifies retained attempt rows,
+  deterministic draw seeds and estimates, finite-or-retained-error outcomes,
+  and explicit refusal of the corresponding phylogenetic and temporal-dependent
+  fits. `BOOTSTRAP-CONTRACT.md` freezes the limited route: it is parametric
+  refit variability only, with no calibration, coverage, interval,
+  source-pair forecast/profile/selection, or other-source bootstrap claim.
+- Local checks: the focused bootstrap test; `devtools::document()`;
+  `pkgdown::check_pkgdown()`; rendered `api-keyword-grid` and `temporal-ar1`
+  articles; `verify.R lifecycle` (`TEMPORAL_PROGRAM_LIFECYCLE_PASS`); and
+  `git diff --check`. The grid, temporal article, helper documentation, and
+  validation register all now state the same narrow boundary.

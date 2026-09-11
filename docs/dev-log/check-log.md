@@ -57925,3 +57925,35 @@ Deliberately not run: Totoro 9×500 grid dispatch; full `devtools::test()`.
   the retained result. The focused source-pair test passed. TEMP-06-06 is
   `partial`; this is not recovery, coverage, cross-platform, merge, or release
   evidence.
+
+## 2026-09-11 — rank-one temporal-latent kernel fixture passes its retained local gate
+
+- Added the narrowly admitted replicated AR1
+  `temporal_latent(..., d = 1, unique = FALSE) + kernel_indep()` cell. The
+  parser refuses temporal Psi, OU, additional structured sources, and ordinary
+  covariance terms because those combinations do not yet have this cell's
+  additive covariance and recovery evidence.
+- `test-temporal-program-latent-kernel.R` independently constructs the dense
+  additive Gaussian covariance, checks normalized NLL plus all eleven active
+  central derivatives, distinguishes the rank-one temporal covariance from a
+  diagonal substitute, and exercises long/wide labels, unconditional simulation,
+  update replay, and refusals. It passed locally together with the neighbouring
+  independent and dependent kernel-pair tests.
+- The direct 80-series, 16-occasion, two-measurement recovery generator never
+  calls production simulation. Its fixed `phi=.6`, seed `2609231` pre-run took
+  3.397 seconds. All nine retained attempts at phi `-.4`, `0`, `.6` and seeds
+  `2609231:2609233` reached terminal success, accepted their second pass, and
+  met the outer-gradient and frozen summary thresholds. `verify.R self-test`
+  emitted `TEMPORAL_PROGRAM_SELF_TEST_PASS`; `verify.R latent-kernel` emitted
+  `TEMPORAL_LATENT_KERNEL_RECOVERY_PASS` after recomputing the retained CSV
+  summary. This is local evidence for the named rank-one fixed-kernel fixture,
+  not a cross-platform, release, general-recovery, coverage, forecast, interval,
+  profile, bootstrap, selection, temporal-Psi, or other-source claim.
+- Astra's independent review found two pre-fit identifiability/contract leaks:
+  all-even occasion grids alias positive and negative AR1 persistence, and bare
+  `(1 | series)` terms bypassed the ordinary-provider fence. The parser now
+  rejects both. The oracle now repeats all active derivatives at negative,
+  zero, and positive persistence, checks an explicit product interaction, and
+  verifies row/kernel-label permutations. The evidence verifier now requires
+  finite recorded objectives. The focused test and both verifier modes passed
+  after those repairs.

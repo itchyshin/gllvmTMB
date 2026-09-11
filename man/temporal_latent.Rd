@@ -51,7 +51,13 @@ term, or a fixed labelled \code{spatial_indep()} term. A separate replicated AR1
 covariance to the fixed diagonal kernel source; its current evidence covers
 point estimation, dense likelihood/gradient checks, unconditional simulation,
 and long/wide update replay, but its retained fixed-seed recovery fixture did
-not meet every frozen variance criterion. The spatial
+not meet every frozen variance criterion. The separate rank-one
+\code{temporal_latent(..., d = 1, unique = FALSE) + kernel_indep()} cell has a
+direct fixed-seed recovery fixture, independent dense likelihood/gradient
+oracle, unconditional simulation, and long/wide/update checks. Both are
+local fixed-fixture evidence only: neither supports source-pair forecasting,
+intervals, profiles, bootstrap, selection, cross-platform verification,
+release, general recovery, or coverage claims. The spatial
 cell redraws its independent SPDE field during unconditional simulation. Other
 temporal-source combinations remain unavailable. For an unreplicated,
 Gaussian \code{temporal_indep()} source by itself, \code{forecast_temporal()},

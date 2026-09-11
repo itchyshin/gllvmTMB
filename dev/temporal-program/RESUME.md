@@ -125,6 +125,23 @@ fails closed by design. This cell remains partial and does not justify a
 recovery, coverage, forecast, interval, profile, bootstrap, selection,
 cross-platform, release, or wider source-pair claim.
 
+## Rank-one temporal-latent kernel result (2026-09-11)
+
+The separate replicated AR1
+`temporal_latent(..., d = 1, unique = FALSE) + kernel_indep()` cell has an
+independent dense marginal likelihood and every-active-parameter derivative
+oracle, a diagonal-temporal negative control, long/wide score labels,
+unconditional simulation moments, update replay, and explicit refusal of
+temporal Psi and OU. Its direct generator never calls production simulation.
+The measured positive-persistence pre-run took 3.397 seconds. All nine fixed
+attempts at `phi = -.4, 0, .6` and seeds `2609231:2609233` were retained in
+`results/latent-kernel-recovery-20260911.csv`, with 3/3 strict successes in
+each stratum. The executable `verify.R latent-kernel` gate recomputes the
+summary and passes. This is local evidence for that rank-one fixed kernel
+fixture only. It does not support temporal `unique = TRUE`, any other source,
+forecasts, intervals, profiles, bootstrap, selection, cross-platform
+verification, release, general recovery, or coverage.
+
 ## Next bounded slice
 
 Treat the phylogenetic, animal, spatial, and dependent-temporal-kernel recovery

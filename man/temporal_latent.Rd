@@ -55,7 +55,10 @@ dense likelihood/gradient oracle, source-representation and lifecycle checks,
 and a passing retained local fixture. The matching fixed-animal
 \code{temporal_dep() + animal_indep()} cell has the same independent dense
 likelihood/gradient and lifecycle checks, but its retained positive-persistence
-animal-variance gate fails. The separate rank-one
+animal-variance gate fails. The fixed-mesh \code{temporal_dep() + spatial_indep()}
+cell has independently rebuilt spatial projection, dense likelihood/gradient,
+lifecycle, and redraw checks; its recovery evidence is a separate frozen gate.
+The separate rank-one
 \code{temporal_latent(..., d = 1, unique = FALSE) + kernel_indep()} cell has a
 direct fixed-seed recovery fixture, independent dense likelihood/gradient
 oracle, unconditional simulation, and long/wide/update checks. The matching

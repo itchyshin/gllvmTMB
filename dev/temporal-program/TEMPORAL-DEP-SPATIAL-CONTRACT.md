@@ -1,0 +1,71 @@
+# Temporal dependent covariance with a fixed SPDE field: contract
+
+## Purpose
+
+This candidate admits exactly one replicated Gaussian AR1 `temporal_dep()`
+intercept term and one fixed-mesh intercept-only `spatial_indep()` term. It is
+an additive temporal-plus-spatial model; it is not a separable or evolving
+space--time process.
+
+## Model and admission
+
+For observation rows `i` and `i'`, with series `g`, integer occasion `t`,
+trait `j`, and mesh projection row `P_i`, the covariance is
+
+\[
+ 1(g_i=g_{i'})\phi^{|t_i-t_{i'}|}[L_TL_T^\top]_{j_i j_{i'}}+
+ 1(j_i=j_{i'})\tau_{j_i}^{-2}[P Q(\kappa)^{-1}P^\top]_{ii'}+
+ 1(i=i')\sigma_\epsilon^2,
+\]
+
+where `phi = (1 - 1e-6) tanh(theta_temporal_time)` and
+`Q(kappa) = kappa^4 M0 + 2 kappa^2 M1 + M2`. `L_T` is the signed packed
+lower-triangular full temporal trait loading matrix; the spatial field stays
+trait-diagonal. The mesh is fixed while `kappa` and each spatial scale are
+estimated.
+
+The initial cell is Gaussian identity-link ML/Laplace, replicated AR1, at
+least three traits and occasions, complete panels with two measurements per
+state, and one temporal plus one intercept-only spatial term at `rho = 1`.
+Each `(series, time)` state must have one coordinate pair across traits and
+measurements; every series must contain an odd integer time lag. It refuses
+OU, temporal Psi/latent variants, ordinary covariance, slopes, extra sources,
+estimated attenuation, source-by-time products, forecasts, intervals,
+profiles, bootstrap, and selection.
+
+`temporal_dep()` reports a labelled temporal covariance factor and public
+series--occasion index through `extract_temporal()`; it does not turn the
+full-rank factorization into a low-rank `getLV()` ordination.
+
+## Required evidence
+
+The independent dense oracle reconstructs `P` from public mesh coordinates
+and checks normalized NLL plus every outer central derivative at negative,
+zero, and positive persistence. It must reject diagonal and rank-one temporal
+substitutes and an unmasked time-by-space product. Long/wide and row-permuted
+fits must agree at common parameters, retain labels, and replay through
+`update()`.
+
+Unconditional simulation must redraw the full temporal state and each
+trait-diagonal SPDE field. It checks same-state and lagged cross-trait
+covariances, plus cross-series spatial covariance, against analytic Gaussian
+Monte Carlo standard errors; conditional draws must center on the retained
+linear predictor.
+
+A direct DGP must separately simulate a stationary non-diagonal multivariate
+AR1 state, independent SPDE fields, and measurement noise without calling
+production temporal simulation. Freeze mesh, seeds, truth, optimiser,
+thresholds, and all results before the campaign. Record temporal covariance,
+spatial scales, range, persistence, fixed effects, gradients, optimizer state,
+and Hessian availability. This cell cannot borrow recovery evidence from the
+rank-one or temporal-independent spatial cells.
+
+## Pre-run result
+
+The fixed `phi = .6`, seed `2609331` smoke fit took 11.797 seconds with
+optimizer code zero, accepted second pass, and maximum outer gradient
+`.00094893`. The first two frozen `phi = -.4` attempts returned in 20.131 and
+6.754 seconds. The third attempt (seed `2609333`) consumed a full CPU for 109
+seconds without returning, and was terminated under the measured one-fit
+budget; its factual receipt is retained. The campaign is paused after four
+attempts, so it provides no recovery verdict and no threshold is relaxed.

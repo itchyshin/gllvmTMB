@@ -1,0 +1,2 @@
+"phi","seed","terminal","convergence","pass_1_convergence","pass_2_convergence","pass_2_accepted","max_gradient","objective","hessian_status","phi_estimate","temporal_frobenius_relative_error","tau_1","tau_2","tau_3","kappa","beta_1","beta_2","beta_3","error_message","elapsed_seconds"
+-0.4,2609333,"terminated",NA,NA,NA,NA,NA,NA,"not_reached",NA,NA,NA,NA,NA,NA,NA,NA,NA,"Terminated after 109 seconds: exceeded the 20.131-second measured one-fit budget.",109

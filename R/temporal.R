@@ -86,7 +86,10 @@ temporal_dep <- function(formula, time, structure = "ar1", replicate = NULL) {
 #' and a passing retained local fixture. The matching fixed-animal
 #' `temporal_dep() + animal_indep()` cell has the same independent dense
 #' likelihood/gradient and lifecycle checks, but its retained positive-persistence
-#' animal-variance gate fails. The separate rank-one
+#' animal-variance gate fails. The fixed-mesh `temporal_dep() + spatial_indep()`
+#' cell has independently rebuilt spatial projection, dense likelihood/gradient,
+#' lifecycle, and redraw checks; its recovery evidence is a separate frozen gate.
+#' The separate rank-one
 #' `temporal_latent(..., d = 1, unique = FALSE) + kernel_indep()` cell has a
 #' direct fixed-seed recovery fixture, independent dense likelihood/gradient
 #' oracle, unconditional simulation, and long/wide/update checks. The matching
@@ -193,7 +196,7 @@ temporal_latent <- function(formula, time, d = 1, structure = "ar1",
     (identical(temporal_mode, "indep") &&
       source_terms %in% c("kernel_indep", "phylo_indep", "animal_indep", "spatial_indep")) ||
     (identical(temporal_mode, "dep") &&
-      source_terms %in% c("kernel_indep", "phylo_indep", "animal_indep")) ||
+      source_terms %in% c("kernel_indep", "phylo_indep", "animal_indep", "spatial_indep")) ||
     (identical(temporal_mode, "latent") &&
       source_terms %in% c("kernel_indep", "phylo_indep", "animal_indep", "spatial_indep") &&
       identical(marker_arg_early("unique", FALSE), FALSE))
@@ -386,7 +389,7 @@ temporal_latent <- function(formula, time, d = 1, structure = "ar1",
     .temporal_abort(c(
       "A temporal covariance term cannot be combined with another covariance source in this version.",
       "i" = "Found source provider(s): {.fn {forbidden_sources}}.",
-      ">" = "Use ordinary unit/unit_obs terms, the admitted replicated AR1 {.code temporal_indep() + kernel_indep()}, {.code temporal_indep() + phylo_indep()}, {.code temporal_indep() + animal_indep()}, or {.code temporal_indep() + spatial_indep()} cells, or the fixed-kernel/fixed-phylogeny {.code temporal_dep()} and rank-one {.code temporal_latent(unique = FALSE)} cells. Other temporal source pairs remain deferred."
+      ">" = "Use ordinary unit/unit_obs terms, the admitted replicated AR1 {.code temporal_indep()} source pairs, the fixed kernel/phylogeny/animal/spatial {.code temporal_dep()} source pairs, or a qualified rank-one {.code temporal_latent(unique = FALSE)} source pair. Other temporal source pairs remain deferred."
     ))
   }
   response_cols <- all.vars(formula[[2L]])

@@ -94,7 +94,7 @@ test_that("replicated temporal-spatial likelihood and gradient equal a dense add
   expect_equal(fit$tmb_obj$gr(fixed)[[i]], central, tolerance = 3e-5)
 })
 
-test_that("only the replicated AR1 temporal_indep spatial cell is opened", {
+test_that("independent temporal-spatial cells enforce their specific bounds", {
   skip_if_not_installed("fmesher")
   fx <- .temporal_spatial_rep_fixture(); unrep <- fx$data[fx$data$measurement == "m1", , drop = FALSE]
   expect_error(suppressWarnings(gllvmTMB(
@@ -107,11 +107,6 @@ test_that("only the replicated AR1 temporal_indep spatial cell is opened", {
       spatial_indep(0 + trait | coords, mesh = fx$mesh),
     data = fx$data, unit = "series", family = gaussian(), silent = TRUE
   )), "requires replicated AR1")
-  expect_error(suppressWarnings(gllvmTMB(
-    value ~ 0 + trait + temporal_dep(0 + trait | series, time = occasion, replicate = measurement) +
-      spatial_indep(0 + trait | coords, mesh = fx$mesh),
-    data = fx$data, unit = "series", family = gaussian(), silent = TRUE
-  )), "cannot be combined")
   expect_error(suppressWarnings(gllvmTMB(
     value ~ 0 + trait + temporal_indep(0 + trait | series, time = occasion, replicate = measurement) +
       spatial_dep(0 + trait | coords, mesh = fx$mesh),

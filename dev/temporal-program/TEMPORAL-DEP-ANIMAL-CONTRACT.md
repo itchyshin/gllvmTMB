@@ -41,3 +41,14 @@ or rank-one-animal fixture.
 ## Probe result
 
 On 2026-09-11 a temporary parser admission was tested against an independently assembled dense additive likelihood and every outer central derivative. It failed at the first fixed parameter point, so the parser remains closed. The animal representation must be traced through its engine parameter map before this contract can proceed; it cannot inherit the phylogenetic implementation merely because both calls are labelled relationship matrices.
+
+## Engine-map finding
+
+The rejection is now localized. `animal_indep()` currently reaches the shared
+`use_phylo_rr` block; in `src/gllvmTMB.cpp` that block unpacks
+`theta_rr_phy` as a lower-triangular loading matrix and therefore contributes
+a full trait covariance. The intended dependent-animal model requires a
+trait-diagonal static animal covariance. The next implementation must route
+this cell through the dedicated diagonal source representation (or add an
+explicit diagonal map) and then repeat the oracle; changing only temporal
+parser admission is incorrect.

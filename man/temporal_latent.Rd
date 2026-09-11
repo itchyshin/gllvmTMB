@@ -54,8 +54,10 @@ and long/wide update replay, but its retained fixed-seed recovery fixture did
 not meet every frozen variance criterion. The separate rank-one
 \code{temporal_latent(..., d = 1, unique = FALSE) + kernel_indep()} cell has a
 direct fixed-seed recovery fixture, independent dense likelihood/gradient
-oracle, unconditional simulation, and long/wide/update checks. Both are
-local fixed-fixture evidence only: neither supports source-pair forecasting,
+oracle, unconditional simulation, and long/wide/update checks. The matching
+fixed-phylogeny rank-one cell has the same dense/lifecycle evidence, but its
+retained positive-persistence variance gate fails. Both are local
+fixed-fixture evidence only: neither supports source-pair forecasting,
 intervals, profiles, bootstrap, selection, cross-platform verification,
 release, general recovery, or coverage claims. The spatial
 cell redraws its independent SPDE field during unconditional simulation. Other

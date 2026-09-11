@@ -142,6 +142,19 @@ fixture only. It does not support temporal `unique = TRUE`, any other source,
 forecasts, intervals, profiles, bootstrap, selection, cross-platform
 verification, release, general recovery, or coverage.
 
+## Rank-one temporal-latent phylogenetic result (2026-09-11)
+
+The separately admitted replicated AR1
+`temporal_latent(..., d = 1, unique = FALSE) + phylo_indep()` cell has a direct
+dense all-parameter NLL/gradient oracle, diagonal and source-by-time controls,
+long/wide and tree/VCV equivalence, lifecycle tests, and retained direct-DGP
+receipts. The fixed 80-series campaign retained all nine attempts, but the
+positive-persistence phylogenetic-variance medians `.529` and `.769` exceed its
+unchanged `.35` threshold. `verify.R latent-phylo` fails closed. Keep the cell
+`partial`; it is not recovery, coverage, cross-platform, release, forecast,
+interval, profile, bootstrap, selection, temporal-Psi, or wider source-pair
+evidence.
+
 ## Next bounded slice
 
 Treat the phylogenetic, animal, spatial, and dependent-temporal-kernel recovery

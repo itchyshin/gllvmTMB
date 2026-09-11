@@ -189,4 +189,7 @@ Register rows deliberately NOT translated into a ledger capability row above, wi
 | TEMP-06-03 | R-only temporal extraction and simulation workflow; GLLVM.jl has no temporal provider row |
 | TEMP-06-04 | R-only bounded temporal lifecycle helpers; no Julia temporal route exists to compare |
 | TEMP-06-05 | R-only retained temporal source-pair evidence; no Julia temporal source-pair route exists to compare |
+| TEMP-06-06 | R-only temporal dependent-kernel source-pair evidence; no Julia temporal provider row exists to compare |
+| TEMP-06-07 | R-only rank-one temporal latent-kernel source-pair evidence; no Julia temporal provider row exists to compare |
+| TEMP-06-08 | R-only rank-one temporal latent-phylogenetic source-pair evidence; no Julia temporal provider row exists to compare |
 

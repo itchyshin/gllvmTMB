@@ -57957,3 +57957,47 @@ Deliberately not run: Totoro 9×500 grid dispatch; full `devtools::test()`.
   verifies row/kernel-label permutations. The evidence verifier now requires
   finite recorded objectives. The focused test and both verifier modes passed
   after those repairs.
+
+## 2026-09-11 — rank-one temporal-latent phylogenetic fixture retained as a failed gate
+
+- Added the narrowly admitted replicated AR1
+  `temporal_latent(..., d = 1, unique = FALSE) + phylo_indep()` cell. It uses
+  the same additive, independent-field interpretation as the qualified
+  temporal-kernel cell, while keeping the labelled phylogenetic covariance and
+  temporal state process distinct. The parser fences temporal Psi, OU,
+  ordinary covariance terms, additional sources, and all-even occasion grids.
+- `test-temporal-program-latent-phylo.R` independently constructs the dense
+  additive Gaussian covariance, checks normalized NLL and every active central
+  derivative at phi `-.55`, `0`, and `.55`, rejects diagonal-temporal and
+  phylogeny-by-time substitutes, and verifies long/wide parsing, score labels,
+  VCV/tree equivalence, label permutations, unconditional simulation, update,
+  and refusals. The focused file passed locally.
+- The direct 80-series, 16-occasion, two-measurement DGP uses a fixed tree
+  correlation matrix but never calls production simulation. Its phi `.6`, seed
+  `2609241` smoke took 3.183 seconds; the nine fixed attempts ran in about 25
+  seconds. All attempts have terminal success, accepted second optimizer pass,
+  finite objective, and final gradient below `.001`. The frozen positive-phi
+  medians for phylogenetic variance 1 and 2 are `.529` and `.769`, exceeding
+  `.35`, so the campaign fails. `verify.R latent-phylo` recomputes the retained
+  receipts and fails closed with that result; `verify.R self-test` passes. No
+  seeds, fixture, threshold, or optimizer setting changed. TEMP-06-08 remains
+  `partial`: this is neither a recovery nor coverage claim and it does not
+  establish cross-platform, release, forecasting, intervals, profiles,
+  bootstrap, selection, temporal-Psi, or other-source support.
+
+## 2026-09-11 — three-OS temporal control repair exposed and fixed a ledger-map regression
+
+- The manually dispatched three-OS run `34609555457` was launched after the
+  Windows installed-package retained-control repair. macOS failed in
+  `test-gapclose-parity-ledger.R`, not the temporal control: the
+  capability-status generator found `TEMP-06-06` absent from both its ledger
+  map and its deliberate R-only list. The same remote commit therefore cannot
+  establish a three-OS pass.
+- Added `TEMP-06-06`, `TEMP-06-07`, and `TEMP-06-08` to the generator's
+  explicit R-only temporal list and regenerated
+  `docs/design/capability-status.md`. Locally,
+  `Rscript --vanilla dev/gapclose/build-capability-status.R --check` reports
+  `0 unmapped register rows`, and the exact focused parity-ledger test passes.
+  The Windows matrix leg remains in progress at this record. A new remote
+  three-OS run requires an explicit push authorization; no cross-platform
+  success is claimed.

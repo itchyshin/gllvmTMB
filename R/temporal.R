@@ -77,8 +77,11 @@ temporal_dep <- function(formula, time, structure = "ar1", replicate = NULL) {
 #' be added to ordinary `unit` and `unit_obs` terms. The initial cross-source
 #' cells are replicated AR1 `temporal_indep()` plus one labelled `kernel_indep()`,
 #' a fixed labelled `phylo_indep()` term, or a fixed labelled `animal_indep()`
-#' term, or a fixed labelled `spatial_indep()` term. The spatial cell redraws
-#' its independent SPDE field during unconditional simulation. Other
+#' term, or a fixed labelled `spatial_indep()` term. A separate replicated AR1
+#' `temporal_dep() + kernel_indep()` cell adds an unrestricted temporal trait
+#' covariance to the fixed diagonal kernel source; its current evidence is
+#' limited to point estimation and dense likelihood/gradient checks. The spatial
+#' cell redraws its independent SPDE field during unconditional simulation. Other
 #' temporal-source combinations remain unavailable. For an unreplicated,
 #' Gaussian `temporal_indep()` source by itself, `forecast_temporal()`,
 #' `profile_temporal()`, `bootstrap_temporal()`, and `compare_temporal()` have
@@ -154,15 +157,18 @@ temporal_latent <- function(formula, time, d = 1, structure = "ar1",
   ## Ordinary unit / unit_obs effects are separate tiers and are admitted by
   ## the native temporal contract. Cross-source cells are deliberately narrow:
   ## one static, diagonal source term paired with a replicated AR1 temporal
-  ## diagonal process. Each source is admitted only after its own additive
-  ## likelihood and lifecycle evidence is available.
+  ## process. The first non-diagonal exception is temporal_dep plus a labelled
+  ## fixed kernel; it has its own additive-contract and oracle gates. Each
+  ## other source/mode pair remains separately admitted.
   source_terms <- competing[grepl(
     "^(phylo|animal|spatial|kernel|meta_|propto$|equalto$|spde$)", competing
   )]
   temporal_mode <- sub("^temporal_", "", marker_name)
-  allowed_source_pair <- identical(temporal_mode, "indep") &&
-    identical(length(source_terms), 1L) &&
-    source_terms %in% c("kernel_indep", "phylo_indep", "animal_indep", "spatial_indep")
+  allowed_source_pair <- identical(length(source_terms), 1L) && (
+    (identical(temporal_mode, "indep") &&
+      source_terms %in% c("kernel_indep", "phylo_indep", "animal_indep", "spatial_indep")) ||
+    (identical(temporal_mode, "dep") && identical(source_terms, "kernel_indep"))
+  )
   source_pair <- if (isTRUE(allowed_source_pair)) source_terms[[1L]] else NULL
 
   ## An identity animal relationship and an ordinary `indep()` term over the
@@ -298,7 +304,7 @@ temporal_latent <- function(formula, time, d = 1, structure = "ar1",
     .temporal_abort(c(
       "A temporal covariance term cannot be combined with another covariance source in this version.",
       "i" = "Found source provider(s): {.fn {forbidden_sources}}.",
-      ">" = "Use ordinary unit/unit_obs terms, or one of the admitted replicated AR1 {.code temporal_indep() + kernel_indep()}, {.code temporal_indep() + phylo_indep()}, {.code temporal_indep() + animal_indep()}, or {.code temporal_indep() + spatial_indep()} cells. Other temporal source pairs remain deferred."
+      ">" = "Use ordinary unit/unit_obs terms, the admitted replicated AR1 {.code temporal_indep() + kernel_indep()}, {.code temporal_indep() + phylo_indep()}, {.code temporal_indep() + animal_indep()}, or {.code temporal_indep() + spatial_indep()} cells, or {.code temporal_dep() + kernel_indep()}. Other temporal source pairs remain deferred."
     ))
   }
   response_cols <- all.vars(formula[[2L]])

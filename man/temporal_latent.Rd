@@ -46,8 +46,11 @@ across occasions; it is not independent occasion noise. Temporal sources can
 be added to ordinary \code{unit} and \code{unit_obs} terms. The initial cross-source
 cells are replicated AR1 \code{temporal_indep()} plus one labelled \code{kernel_indep()},
 a fixed labelled \code{phylo_indep()} term, or a fixed labelled \code{animal_indep()}
-term, or a fixed labelled \code{spatial_indep()} term. The spatial cell redraws
-its independent SPDE field during unconditional simulation. Other
+term, or a fixed labelled \code{spatial_indep()} term. A separate replicated AR1
+\code{temporal_dep() + kernel_indep()} cell adds an unrestricted temporal trait
+covariance to the fixed diagonal kernel source; its current evidence is
+limited to point estimation and dense likelihood/gradient checks. The spatial
+cell redraws its independent SPDE field during unconditional simulation. Other
 temporal-source combinations remain unavailable. For an unreplicated,
 Gaussian \code{temporal_indep()} source by itself, \code{forecast_temporal()},
 \code{profile_temporal()}, \code{bootstrap_temporal()}, and \code{compare_temporal()} have

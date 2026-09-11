@@ -37,3 +37,7 @@ dense A, pedigree, Ainv, labels, long/wide, update/refit, fitted labels and
 conditional/unconditional simulation. A direct retained DGP and frozen
 thresholds are required for recovery evidence. None transfers from a phylogeny
 or rank-one-animal fixture.
+
+## Probe result
+
+On 2026-09-11 a temporary parser admission was tested against an independently assembled dense additive likelihood and every outer central derivative. It failed at the first fixed parameter point, so the parser remains closed. The animal representation must be traced through its engine parameter map before this contract can proceed; it cannot inherit the phylogenetic implementation merely because both calls are labelled relationship matrices.

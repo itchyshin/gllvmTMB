@@ -4,9 +4,75 @@ root <- normalizePath(getwd(), mustWork = TRUE)
 if (!file.exists(file.path(root, "DESCRIPTION"))) {
   stop("Run temporal programme verification from the repository root.", call. = FALSE)
 }
-allowed <- c("plan", "simulation", "lifecycle", "remote", "phylo", "dep-kernel", "dep-phylo", "dep-animal", "dep-spatial", "dep-spatial-corrected", "latent-kernel", "latent-phylo", "latent-animal", "latent-spatial", "publication", "combinations", "closeout", "self-test")
+allowed <- c("plan", "simulation", "lifecycle", "remote", "phylo", "dep-kernel", "dep-kernel-oracle", "dep-phylo", "dep-animal", "dep-spatial", "dep-spatial-corrected", "latent-kernel", "latent-phylo", "latent-animal", "latent-spatial", "publication", "combinations", "closeout", "self-test")
 if (!mode %in% allowed) {
-  stop("usage: Rscript --vanilla dev/temporal-program/verify.R {plan|simulation|lifecycle|remote|phylo|dep-kernel|dep-phylo|dep-animal|dep-spatial|dep-spatial-corrected|latent-kernel|latent-phylo|latent-animal|latent-spatial|publication|combinations|closeout|self-test}", call. = FALSE)
+  stop("usage: Rscript --vanilla dev/temporal-program/verify.R {plan|simulation|lifecycle|remote|phylo|dep-kernel|dep-kernel-oracle|dep-phylo|dep-animal|dep-spatial|dep-spatial-corrected|latent-kernel|latent-phylo|latent-animal|latent-spatial|publication|combinations|closeout|self-test}", call. = FALSE)
+}
+
+.temporal_program_verify_dep_kernel_oracle <- function(root) {
+  evidence_dir <- file.path(root, "dev", "temporal-program", "results",
+    "diagnostics", "dep-kernel-retained-oracle-20260911")
+  seeds <- 2609221:2609223
+  points <- c("fitted", "kernel_1_plus_0.075", "kernel_2_plus_0.075")
+  oracle_script <- file.path(root, "dev", "temporal-program",
+    "verify-dep-kernel-retained-oracle.R")
+  if (!file.exists(oracle_script)) {
+    stop("missing retained temporal dep-kernel oracle implementation", call. = FALSE)
+  }
+  oracle_env <- new.env(parent = globalenv())
+  sys.source(oracle_script, envir = oracle_env)
+  make_table <- get(".temporal_dep_kernel_retained_oracle_table", envir = oracle_env)
+  if (!dir.exists(evidence_dir)) {
+    stop("missing retained temporal dep-kernel oracle evidence directory", call. = FALSE)
+  }
+  reports <- lapply(seeds, function(seed) {
+    stem <- paste0("dep-kernel-retained-oracle-v1-", seed)
+    csv_path <- file.path(evidence_dir, paste0(stem, ".csv"))
+    rds_path <- file.path(evidence_dir, paste0(stem, ".rds"))
+    if (!file.exists(csv_path) || !file.exists(rds_path)) {
+      stop("missing paired retained temporal dep-kernel oracle receipt for seed ", seed,
+        call. = FALSE)
+    }
+    csv <- utils::read.csv(csv_path, stringsAsFactors = FALSE)
+    report <- readRDS(rds_path)
+    runtime <- if (is.list(report$receipt)) report$receipt$runtime else NULL
+    runtime_values <- if (is.list(runtime)) {
+      unlist(runtime[c("frozen_elapsed_seconds", "rehydrated_elapsed_seconds")], use.names = FALSE)
+    } else numeric()
+    if (!is.list(report) ||
+        !identical(report$schema_version, "temporal-dep-kernel-retained-oracle-v1") ||
+        !identical(as.integer(report$seed), as.integer(seed)) ||
+        !identical(as.numeric(report$phi), .6) ||
+        !identical(as.integer(report$n_series), 80L) ||
+        !identical(as.integer(report$n_time), 16L) ||
+        !identical(as.integer(report$n_observation), 7680L) ||
+        !is.list(report$receipt) || !is.data.frame(report$receipt$expected) ||
+        !is.data.frame(report$receipt$observed) || nrow(report$receipt$expected) != 1L ||
+        nrow(report$receipt$observed) != 1L || !is.list(runtime) ||
+        !identical(runtime$comparable, FALSE) || length(runtime_values) != 2L ||
+        any(!is.finite(runtime_values)) || any(runtime_values < 0) ||
+        !is.numeric(report$outer_parameter) || length(report$outer_parameter) != 14L ||
+        !identical(names(report$records), points)) {
+      stop("invalid retained temporal dep-kernel oracle RDS receipt for seed ", seed,
+        call. = FALSE)
+    }
+    expected_csv <- make_table(report)
+    if (!isTRUE(all.equal(csv, expected_csv, check.attributes = FALSE, tolerance = 1e-12)) ||
+        !all(c("schema_version", "seed", "phi", "point", "kind", "coordinate",
+        "native", "oracle", "absolute_error", "elapsed_seconds") %in% names(csv)) ||
+        nrow(csv) != 45L || !all(csv$schema_version == report$schema_version) ||
+        !all(csv$seed == seed) || !all(csv$phi == .6) ||
+        !setequal(csv$point, points) || sum(csv$kind == "nll") != 3L ||
+        sum(csv$kind == "gradient") != 42L || any(!is.finite(csv$absolute_error)) ||
+        any(!is.finite(csv$elapsed_seconds)) || any(csv$elapsed_seconds < 0) ||
+        any(csv$absolute_error[csv$kind == "nll"] > 1e-6) ||
+        any(csv$absolute_error[csv$kind == "gradient"] > 5e-5)) {
+      stop("invalid retained temporal dep-kernel oracle CSV receipt for seed ", seed,
+        call. = FALSE)
+    }
+    report
+  })
+  invisible(reports)
 }
 
 .temporal_program_assert_test_results <- function(result, fixture) {
@@ -718,6 +784,11 @@ if (identical(mode, "dep-kernel")) {
     stop("temporal dep-kernel recovery fails its frozen threshold gate", call. = FALSE)
   }
   cat("TEMPORAL_DEP_KERNEL_RECOVERY_PASS\n")
+  quit(save = "no", status = 0L)
+}
+if (identical(mode, "dep-kernel-oracle")) {
+  .temporal_program_verify_dep_kernel_oracle(root)
+  cat("TEMPORAL_DEP_KERNEL_RETAINED_ORACLE_PASS\n")
   quit(save = "no", status = 0L)
 }
 if (identical(mode, "dep-phylo")) {

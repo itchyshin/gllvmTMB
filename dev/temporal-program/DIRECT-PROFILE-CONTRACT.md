@@ -43,6 +43,16 @@ structure. The route does not define a profile for a temporal covariance entry,
 a phylogenetic variance, or a derived target; its endpoints are not calibrated
 intervals or coverage evidence.
 
+One further composed route admits replicated AR1
+`temporal_dep() + animal_indep()` with one fixed intercept-only animal
+relationship. It has the same direct-persistence target: the full packed
+temporal covariance, every animal variance, the measurement variance, and
+fixed effects are re-optimized at each fixed time coordinate. The lifecycle
+test closes the transformed profile at the direct TMB trace and rejects a
+changed OU structure. This is neither a profile of animal variance nor an
+interval-calibration claim, and it does not change the retained failed
+dependent-animal recovery gate.
+
 ## Feasibility receipt
 
 On 2026-09-09, `tmbprofile_wrapper()` was run directly on

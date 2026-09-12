@@ -9,7 +9,8 @@ bootstrap_temporal(object, n_boot = 100L, seed = NULL)
 \arguments{
 \item{object}{An unreplicated Gaussian \code{temporal_indep()} fit, or the
 qualified replicated AR1 or OU \code{temporal_indep() + kernel_indep()} fit, or
-the qualified replicated AR1 \code{temporal_dep() + phylo_indep()} fit, or the
+the qualified replicated AR1 \code{temporal_dep() + phylo_indep()} or
+\code{temporal_dep() + animal_indep()} fit, or the
 qualified rank-one \code{temporal_latent() + animal_indep()} fit, or the
 qualified rank-one \code{temporal_latent() + spatial_indep()} fit.}
 
@@ -27,7 +28,8 @@ Draws unconditional temporal responses and refits the saved public model
 call. Failed refits are retained in the returned table. The bounded composed
 route accepts a replicated Gaussian AR1 or OU \code{temporal_indep()} fit with one
 fixed labelled \code{kernel_indep()} term, a replicated Gaussian AR1
-\code{temporal_dep()} fit with one fixed \code{phylo_indep()} source, or a replicated
+\code{temporal_dep()} fit with one fixed \code{phylo_indep()} or \code{animal_indep()}
+source, or a replicated
 Gaussian AR1 rank-one \code{temporal_latent(unique = FALSE)} fit with one fixed
 \code{animal_indep()} source, or a replicated Gaussian AR1 rank-one
 \code{temporal_latent(unique = FALSE)} fit with one fixed-mesh

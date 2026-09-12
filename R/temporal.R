@@ -118,6 +118,9 @@ temporal_dep <- function(formula, time, structure = "ar1", replicate = NULL) {
 #' unconditional redraw/refit routes for the replicated AR1
 #' `temporal_dep() + phylo_indep()` cell. `bootstrap_temporal()` separately
 #' supports the replicated rank-one `temporal_latent() + animal_indep()` cell.
+#' `profile_temporal()` and `bootstrap_temporal()` also support the replicated
+#' full-covariance `temporal_dep() + animal_indep()` cell; this local helper
+#' evidence does not change its retained failed recovery gate.
 #' It also supports the corresponding fixed-mesh `spatial_indep()` cell.
 #' `forecast_temporal()` also has separately bounded future-observation routes
 #' for the replicated AR1 fixed-kernel cell, the replicated AR1 rank-one

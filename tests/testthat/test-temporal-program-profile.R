@@ -138,6 +138,34 @@ test_that("profile_temporal profiles the qualified temporal-dependent phylogenet
     "qualified temporal-kernel, temporal-dependent phylogenetic")
 })
 
+test_that("profile_temporal profiles the qualified temporal-dependent animal objective", {
+  skip_if_not_installed("TMB")
+  d <- expand.grid(series = paste0("a", 1:4), occasion = 1:4,
+    measurement = c("m1", "m2"), trait = paste0("t", 1:3),
+    KEEP.OUT.ATTRS = FALSE, stringsAsFactors = FALSE)
+  set.seed(260963L); d$value <- stats::rnorm(nrow(d))
+  A <- matrix(c(1, .35, .15, .10, .35, 1, .25, .20,
+    .15, .25, 1, .40, .10, .20, .40, 1), 4L, 4L, byrow = TRUE,
+    dimnames = list(paste0("a", 1:4), paste0("a", 1:4)))
+  fit <- suppressWarnings(gllvmTMB(value ~ 0 + trait +
+    temporal_dep(0 + trait | series, time = occasion, replicate = measurement) +
+    animal_indep(0 + trait | series, A = A), data = d,
+    unit = "series", cluster = "series", family = gaussian(), silent = TRUE,
+    control = gllvmTMBcontrol(se = FALSE)))
+  out <- profile_temporal(fit, ystep = .25, ytol = 1)
+  theta_index <- match("theta_temporal_time", names(fit$opt$par))
+  trace <- TMB::tmbprofile(fit$tmb_obj, name = theta_index,
+    ystep = .25, ytol = 1, trace = FALSE)
+  at_mle <- which.min(abs(trace[[1L]] - fit$opt$par[[theta_index]]))
+  expect_equal(out[["estimate"]],
+    (1 - 1e-6) * tanh(fit$opt$par[[theta_index]]), tolerance = 1e-10)
+  expect_equal(trace[[2L]][[at_mle]], fit$opt$objective, tolerance = 1e-8)
+  expect_gt(max(trace[[2L]]), fit$opt$objective)
+  fit_ou <- fit; fit_ou$temporal$structure <- "ou"
+  expect_error(profile_temporal(fit_ou, ystep = .25, ytol = 1),
+    "qualified temporal-kernel, temporal-dependent phylogenetic or animal")
+})
+
 test_that("profile_temporal profiles the qualified rank-one temporal-animal objective", {
   skip_if_not_installed("TMB")
   d <- expand.grid(series = paste0("s", 1:3), occasion = 1:3, measurement = c("m1", "m2"), trait = paste0("t", 1:3))

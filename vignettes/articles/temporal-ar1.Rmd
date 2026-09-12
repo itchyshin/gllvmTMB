@@ -46,6 +46,10 @@ conditional standard deviations are not prediction intervals. That same
 phylogenetic cell also has a direct persistence profile and an unconditional
 bootstrap/refit helper that retains every attempted refit; neither establishes
 calibrated intervals or bootstrap sampling properties. A separately qualified
+full-covariance `temporal_dep(..., structure = "ar1") + animal_indep()` cell
+has the same restricted profile and bootstrap/refit routes. Its retained animal
+variance recovery gate still fails, so these helper checks do not promote a
+recovery claim. A separately qualified
 rank-one `temporal_latent(..., unique = FALSE) + animal_indep()` cell also has
 that retained bootstrap/refit helper and a known-series future-observation
 forecast. Its fitted-parameter conditional standard deviations are not

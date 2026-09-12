@@ -5,8 +5,9 @@
 #' `temporal_indep() + kernel_indep()` route re-optimizes the fixed kernel's
 #' variance and every other nuisance parameter at each profile point. This is
 #' also available for the qualified replicated AR1
-#' `temporal_dep() + phylo_indep()` route, which re-optimizes its full temporal
-#' trait covariance and phylogenetic variances at each profile point. This is
+#' `temporal_dep() + phylo_indep()` or `temporal_dep() + animal_indep()` route,
+#' which re-optimizes its full temporal trait covariance and source variances at
+#' each profile point. This is
 #' also available for the qualified replicated rank-one AR1
 #' `temporal_latent() + animal_indep()` route. The corresponding fixed-mesh
 #' `temporal_latent() + spatial_indep()` route is also available. Each is a
@@ -16,7 +17,8 @@
 #'
 #' @param object An unreplicated Gaussian `temporal_indep()` fit, or the
 #'   qualified replicated AR1 or OU `temporal_indep() + kernel_indep()` fit,
-#'   or a qualified replicated AR1 `temporal_dep() + phylo_indep()` fit.
+#'   or a qualified replicated AR1 `temporal_dep() + phylo_indep()` or
+#'   `temporal_dep() + animal_indep()` fit.
 #'   The qualified replicated rank-one `temporal_latent() + animal_indep()` fit
 #'   or fixed-mesh `temporal_latent() + spatial_indep()` fit is also accepted.
 #' @param level Likelihood-ratio confidence level.
@@ -31,18 +33,19 @@ profile_temporal <- function(object, level = 0.95, ...) {
   active <- .gllvmTMB_predict_unhandled_re_tiers(object, handled = "temporal")
   kernel_pair <- .temporal_is_qualified_kernel_pair(object, active)
   dep_phylo_pair <- .temporal_is_qualified_dep_phylo_pair(object, active)
+  dep_animal_pair <- .temporal_is_qualified_dep_animal_pair(object, active)
   latent_animal_pair <- .temporal_is_qualified_latent_animal_pair(object, active)
   latent_spatial_pair <- .temporal_is_qualified_latent_spatial_pair(object, active)
-  if (length(active) && !kernel_pair && !dep_phylo_pair && !latent_animal_pair && !latent_spatial_pair) {
+  if (length(active) && !kernel_pair && !dep_phylo_pair && !dep_animal_pair && !latent_animal_pair && !latent_spatial_pair) {
     .temporal_abort(c(
-      "{.fn profile_temporal} supports only qualified temporal-kernel, temporal-dependent phylogenetic, rank-one temporal-animal, or rank-one temporal-spatial source pairs.",
+      "{.fn profile_temporal} supports only qualified temporal-kernel, temporal-dependent phylogenetic or animal, rank-one temporal-animal, or rank-one temporal-spatial source pairs.",
       "i" = "The fit also uses covariance tier(s): {.val {active}}.",
-      ">" = "Use the replicated {.code temporal_indep() + kernel_indep()} cell, the AR1 {.code temporal_dep() + phylo_indep()} cell, a qualified rank-one {.code temporal_latent()} source pair, or a temporal-only fit."
+      ">" = "Use the replicated {.code temporal_indep() + kernel_indep()} cell, an AR1 {.code temporal_dep()} cell with a fixed phylogeny or animal relationship, a qualified rank-one {.code temporal_latent()} source pair, or a temporal-only fit."
     ), class = "gllvmTMB_temporal_profile_composed")
   }
-  if ((!identical(object$temporal$mode, "indep") && !dep_phylo_pair && !latent_animal_pair && !latent_spatial_pair) ||
+  if ((!identical(object$temporal$mode, "indep") && !dep_phylo_pair && !dep_animal_pair && !latent_animal_pair && !latent_spatial_pair) ||
       any(object$tmb_data$family_id_vec != 0L)) {
-    .temporal_abort("{.fn profile_temporal} currently supports Gaussian {.fn temporal_indep} fits, apart from qualified temporal-dependent phylogenetic and rank-one temporal-animal or temporal-spatial cells.")
+    .temporal_abort("{.fn profile_temporal} currently supports Gaussian {.fn temporal_indep} fits, apart from qualified temporal-dependent phylogenetic or animal and rank-one temporal-animal or temporal-spatial cells.")
   }
   if (kernel_pair) {
     if (!object$temporal$structure %in% c("ar1", "ou") || is.null(object$temporal$replicate_col)) {
@@ -51,6 +54,10 @@ profile_temporal <- function(object, level = 0.95, ...) {
   } else if (dep_phylo_pair) {
     if (!identical(object$temporal$structure, "ar1") || is.null(object$temporal$replicate_col)) {
       .temporal_abort("The qualified temporal-dependent phylogenetic profile requires a replicated AR1 panel.")
+    }
+  } else if (dep_animal_pair) {
+    if (!identical(object$temporal$structure, "ar1") || is.null(object$temporal$replicate_col)) {
+      .temporal_abort("The qualified temporal-dependent animal profile requires a replicated AR1 panel.")
     }
   } else if (latent_animal_pair) {
     if (!identical(object$temporal$structure, "ar1") || is.null(object$temporal$replicate_col)) {

@@ -9,7 +9,8 @@ profile_temporal(object, level = 0.95, ...)
 \arguments{
 \item{object}{An unreplicated Gaussian \code{temporal_indep()} fit, or the
 qualified replicated AR1 or OU \code{temporal_indep() + kernel_indep()} fit,
-or a qualified replicated AR1 \code{temporal_dep() + phylo_indep()} fit.
+or a qualified replicated AR1 \code{temporal_dep() + phylo_indep()} or
+\code{temporal_dep() + animal_indep()} fit.
 The qualified replicated rank-one \code{temporal_latent() + animal_indep()} fit
 or fixed-mesh \code{temporal_latent() + spatial_indep()} fit is also accepted.}
 
@@ -28,8 +29,9 @@ parameters re-optimized. The qualified replicated AR1 or OU
 \code{temporal_indep() + kernel_indep()} route re-optimizes the fixed kernel's
 variance and every other nuisance parameter at each profile point. This is
 also available for the qualified replicated AR1
-\code{temporal_dep() + phylo_indep()} route, which re-optimizes its full temporal
-trait covariance and phylogenetic variances at each profile point. This is
+\code{temporal_dep() + phylo_indep()} or \code{temporal_dep() + animal_indep()} route,
+which re-optimizes its full temporal trait covariance and source variances at
+each profile point. This is
 also available for the qualified replicated rank-one AR1
 \code{temporal_latent() + animal_indep()} route. The corresponding fixed-mesh
 \code{temporal_latent() + spatial_indep()} route is also available. Each is a

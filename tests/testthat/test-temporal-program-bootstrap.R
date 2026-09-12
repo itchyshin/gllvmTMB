@@ -89,6 +89,27 @@ test_that("bootstrap_temporal replays the qualified temporal-dependent phylogene
   expect_true(all(is.finite(out$objective) | nzchar(out$error)))
 })
 
+test_that("bootstrap_temporal replays the qualified temporal-dependent animal pair", {
+  skip_if_not_installed("TMB")
+  d <- expand.grid(series = paste0("a", 1:3), occasion = 1:3,
+    measurement = c("m1", "m2"), trait = paste0("t", 1:3),
+    KEEP.OUT.ATTRS = FALSE, stringsAsFactors = FALSE)
+  set.seed(260961L); d$value <- stats::rnorm(nrow(d))
+  A <- matrix(c(1, .3, .1, .3, 1, .2, .1, .2, 1), 3L,
+    dimnames = list(paste0("a", 1:3), paste0("a", 1:3)))
+  fit <- suppressWarnings(gllvmTMB(value ~ 0 + trait +
+    temporal_dep(0 + trait | series, time = occasion, replicate = measurement) +
+    animal_indep(0 + trait | series, A = A), data = d,
+    unit = "series", cluster = "series", family = gaussian(), silent = TRUE,
+    control = gllvmTMBcontrol(se = FALSE)))
+  out <- bootstrap_temporal(fit, n_boot = 2L, seed = 260962L)
+  again <- bootstrap_temporal(fit, n_boot = 2L, seed = 260962L)
+  expect_equal(out$replicate, 1:2)
+  expect_equal(out$seed, again$seed)
+  expect_equal(out$time_estimate, again$time_estimate, tolerance = 1e-10)
+  expect_true(all(is.finite(out$objective) | nzchar(out$error)))
+})
+
 test_that("bootstrap_temporal replays the qualified temporal-dependent tree input", {
   skip_if_not_installed("TMB"); skip_if_not_installed("ape")
   d <- expand.grid(series = paste0("sp", 1:3), occasion = 1:3,

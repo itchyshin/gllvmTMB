@@ -58351,5 +58351,6 @@ Deliberately not run: Totoro 9×500 grid dispatch; full `devtools::test()`.
 - The test now runs all 31 source-checkout assertions when those developer
   files exist and skips the developer-only evidence checks from an installed
   package. The retained receipt itself and the frozen qualification criteria
-  remain unchanged. The source-layout focused test passed; a repaired local
-  package check and a new three-platform check remain required.
+  remain unchanged. The source-layout focused test passed. A repaired local
+  package check was stopped after exceeding its 20-minute estimate without a
+  result, so it is not evidence. A new three-platform check remains required.

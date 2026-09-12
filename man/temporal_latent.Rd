@@ -86,6 +86,7 @@ separate bounded contracts. \code{bootstrap_temporal()}, \code{profile_temporal(
 unconditional redraw/refit routes for the replicated AR1
 \code{temporal_dep() + phylo_indep()} cell. \code{bootstrap_temporal()} separately
 supports the replicated rank-one \code{temporal_latent() + animal_indep()} cell.
+It also supports the corresponding fixed-mesh \code{spatial_indep()} cell.
 \code{forecast_temporal()} also has a
 separately bounded future-observation route for the replicated AR1 fixed
 kernel cell and for the replicated AR1

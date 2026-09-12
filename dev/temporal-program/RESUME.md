@@ -182,6 +182,8 @@ authorization remains necessary before cross-platform claims.
 Do not describe this work as merged, released, cross-platform verified, or as
 general recovery/coverage evidence. The named temporal-only forecast, direct
 profile, parametric bootstrap, and supplied-candidate comparison helpers have
-separate bounded Gaussian contracts. Generic prediction, generic intervals and
-profiles, automatic selection, broad bootstrap, all other temporal source
-pairs, and source-by-time product kernels remain unavailable.
+separate bounded Gaussian contracts. A separately qualified forecast also
+covers replicated AR1 `temporal_indep() + kernel_indep()` future observations
+with one fixed labelled diagonal kernel. Generic prediction, generic intervals
+and profiles, automatic selection, broad bootstrap, every other temporal
+source-pair forecast, and source-by-time product kernels remain unavailable.

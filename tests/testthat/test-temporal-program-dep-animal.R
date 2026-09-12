@@ -104,6 +104,37 @@
   fixed
 }
 
+.temporal_dep_animal_forecast_covariance <- function(fit, left, right = left,
+                                                      product = FALSE) {
+  par <- fit$tmb_obj$env$parList(fit$opt$par)
+  td <- fit$tmb_data
+  trait_levels <- levels(fit$data[[fit$trait_col]])
+  left_trait <- match(as.character(left[[fit$trait_col]]), trait_levels)
+  right_trait <- match(as.character(right[[fit$trait_col]]), trait_levels)
+  left_animal <- as.character(left[[fit$temporal$series_col]])
+  right_animal <- as.character(right[[fit$temporal$series_col]])
+  source_map <- split(td$species_aug_id,
+    as.character(fit$data[[fit$temporal$series_col]]))
+  source_map <- vapply(source_map, function(x) unique(x)[[1L]], integer(1))
+  left_source <- unname(source_map[left_animal])
+  right_source <- unname(source_map[right_animal])
+  if (anyNA(left_source) || anyNA(right_source)) stop("unknown animal label")
+  phi <- (1 - 1e-6) * tanh(par$theta_temporal_time)
+  left_time <- as.numeric(left[[fit$temporal$time_col]])
+  right_time <- as.numeric(right[[fit$temporal$time_col]])
+  Sigma_time <- tcrossprod(.temporal_dep_animal_unpack(
+    par$theta_temporal_rr, length(trait_levels)))
+  temporal <- outer(left_animal, right_animal, "==") *
+    phi^abs(outer(left_time, right_time, "-")) *
+    Sigma_time[left_trait, right_trait]
+  A <- solve(as.matrix(td$Ainv_phy_rr))
+  animal <- A[left_source + 1L, right_source + 1L] *
+    diag(par$theta_rr_phy^2, nrow = length(trait_levels))[left_trait, right_trait]
+  out <- if (isTRUE(product)) temporal * animal else temporal + animal
+  if (identical(left, right)) diag(out) <- diag(out) + exp(2 * par$log_sigma_eps[[1L]])
+  out
+}
+
 test_that("replicated temporal_dep plus fixed animal_indep keeps the animal covariance diagonal", {
   skip_if_not_installed("TMB")
   fx <- .temporal_dep_animal_fixture(); fit <- .temporal_dep_animal_fit(fx)
@@ -227,4 +258,50 @@ test_that("temporal_dep animal fences unqualified variants", {
   expect_error(suppressWarnings(gllvmTMB(update(base, . ~ . + animal_dep(0 + trait | animal, A = fx$A)),
     data = fx$data, unit = "animal", cluster = "animal", family = gaussian(), silent = TRUE)),
     "cannot be combined")
+})
+
+test_that("replicated temporal_dep-animal forecasts match additive dense conditioning", {
+  skip_if_not_installed("TMB")
+  fx <- .temporal_dep_animal_fixture(); fit <- .temporal_dep_animal_fit(fx)
+  fixed <- .temporal_dep_animal_fixed(fit, .45)
+  fit$opt$par <- fixed
+  future <- expand.grid(animal = paste0("a", 1:4), occasion = 5L,
+    measurement = c("m1", "m2"), trait = paste0("t", 1:3),
+    KEEP.OUT.ATTRS = FALSE, stringsAsFactors = FALSE)
+  observed <- forecast_temporal(fit, future, se.fit = TRUE)
+  all_rows <- rbind(fx$data[, names(future)], future)
+  V <- .temporal_dep_animal_forecast_covariance(fit, all_rows)
+  n_observed <- nrow(fx$data)
+  Voo <- V[seq_len(n_observed), seq_len(n_observed), drop = FALSE]
+  Von <- V[seq_len(n_observed), n_observed + seq_len(nrow(future)), drop = FALSE]
+  Vnn <- V[n_observed + seq_len(nrow(future)), n_observed + seq_len(nrow(future)), drop = FALSE]
+  beta <- fixed[names(fixed) == "b_fix"]
+  Xo <- model.matrix(~ 0 + trait, fx$data)
+  Xn <- model.matrix(~ 0 + trait, future)
+  solved <- solve(Voo, cbind(fx$data$value - drop(Xo %*% beta), Von))
+  expected_mean <- drop(Xn %*% beta + crossprod(Von, solved[, 1L]))
+  expected_variance <- diag(Vnn - crossprod(Von, solved[, -1L, drop = FALSE]))
+  expect_equal(observed$est, unname(expected_mean), tolerance = 1e-8)
+  expect_equal(observed$se.fit, unname(sqrt(pmax(expected_variance, 0))), tolerance = 1e-8)
+  expect_gt(max(abs(V - .temporal_dep_animal_forecast_covariance(fit, all_rows, product = TRUE))), 1e-3)
+
+  fit$opt$par[names(fit$opt$par) == "theta_temporal_time"] <- atanh(-.45 / (1 - 1e-6))
+  negative <- forecast_temporal(fit, future, se.fit = TRUE)
+  negative_V <- .temporal_dep_animal_forecast_covariance(fit, all_rows)
+  negative_solved <- solve(negative_V[seq_len(n_observed), seq_len(n_observed), drop = FALSE],
+    cbind(fx$data$value - drop(Xo %*% beta), negative_V[seq_len(n_observed), n_observed + seq_len(nrow(future)), drop = FALSE]))
+  expect_equal(negative$est, unname(drop(Xn %*% beta + crossprod(
+    negative_V[seq_len(n_observed), n_observed + seq_len(nrow(future)), drop = FALSE], negative_solved[, 1L]))), tolerance = 1e-8)
+})
+
+test_that("temporal_dep-animal forecast preserves row order and refuses unseen animals", {
+  skip_if_not_installed("TMB")
+  fx <- .temporal_dep_animal_fixture(); fit <- .temporal_dep_animal_fit(fx)
+  future <- expand.grid(animal = paste0("a", 1:4), occasion = 5L,
+    measurement = c("m1", "m2"), trait = paste0("t", 1:3),
+    KEEP.OUT.ATTRS = FALSE, stringsAsFactors = FALSE)
+  shuffled <- future[sample(nrow(future)), , drop = FALSE]
+  expect_identical(as.character(forecast_temporal(fit, shuffled)$animal), shuffled$animal)
+  unseen <- future; unseen$animal[[1L]] <- "a_new"
+  expect_error(forecast_temporal(fit, unseen), "supports existing series only")
 })

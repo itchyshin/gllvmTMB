@@ -12,9 +12,10 @@
 #' kernel. A second route supports the corresponding rank-one
 #' `temporal_latent(unique = FALSE) + kernel_indep()` fit. A third route supports replicated AR1
 #' `temporal_dep() + phylo_indep()` with one fixed phylogenetic covariance. A
-#' fourth route supports replicated AR1 rank-one
+#' fourth route supports the corresponding `temporal_dep() + animal_indep()`
+#' fit. A fifth route supports replicated AR1 rank-one
 #' `temporal_latent(unique = FALSE) + animal_indep()` with one fixed animal
-#' relationship. A fifth route supports the corresponding fixed-mesh
+#' relationship. A sixth route supports the corresponding fixed-mesh
 #' `spatial_indep()` pair. All composed routes forecast future observations
 #' rather than latent state means.
 #' Other temporal covariance modes, non-temporal random-effect tiers, source
@@ -53,13 +54,14 @@ forecast_temporal <- function(object, newdata, se.fit = FALSE) {
   kernel_pair <- .temporal_is_qualified_kernel_pair(object, active)
   latent_kernel_pair <- .temporal_is_qualified_latent_kernel_pair(object, active)
   dep_phylo_pair <- .temporal_is_qualified_dep_phylo_pair(object, active)
+  dep_animal_pair <- .temporal_is_qualified_dep_animal_pair(object, active)
   latent_animal_pair <- .temporal_is_qualified_latent_animal_pair(object, active)
   latent_spatial_pair <- .temporal_is_qualified_latent_spatial_pair(object, active)
   qualified_replicated_pair <-
-    (kernel_pair && identical(object$temporal$structure, "ar1")) || latent_kernel_pair || dep_phylo_pair || latent_animal_pair || latent_spatial_pair
-  if (!identical(object$temporal$mode, "indep") && !latent_kernel_pair && !dep_phylo_pair && !latent_animal_pair && !latent_spatial_pair) {
+    (kernel_pair && identical(object$temporal$structure, "ar1")) || latent_kernel_pair || dep_phylo_pair || dep_animal_pair || latent_animal_pair || latent_spatial_pair
+  if (!identical(object$temporal$mode, "indep") && !latent_kernel_pair && !dep_phylo_pair && !dep_animal_pair && !latent_animal_pair && !latent_spatial_pair) {
     .temporal_abort(c(
-      "{.fn forecast_temporal} currently supports {.fn temporal_indep} only, apart from qualified rank-one temporal-kernel, temporal-dependent phylogenetic, rank-one temporal-animal, and rank-one temporal-spatial cells.",
+      "{.fn forecast_temporal} currently supports {.fn temporal_indep} only, apart from qualified rank-one temporal-kernel, temporal-dependent phylogenetic or animal, rank-one temporal-animal, and rank-one temporal-spatial cells.",
       ">" = "Forecasts for temporal dependent and latent trait covariance need mode- and source-specific oracle evidence."
     ), class = "gllvmTMB_temporal_forecast_mode")
   }
@@ -67,7 +69,7 @@ forecast_temporal <- function(object, newdata, se.fit = FALSE) {
   if (is.null(td$family_id_vec) || any(td$family_id_vec != 0L)) {
     .temporal_abort("{.fn forecast_temporal} currently requires a Gaussian identity-link temporal fit.")
   }
-  if (length(active) && !kernel_pair && !latent_kernel_pair && !dep_phylo_pair && !latent_animal_pair && !latent_spatial_pair) {
+  if (length(active) && !kernel_pair && !latent_kernel_pair && !dep_phylo_pair && !dep_animal_pair && !latent_animal_pair && !latent_spatial_pair) {
     .temporal_abort(c("{.fn forecast_temporal} currently supports the temporal source by itself.",
       "i" = "Active additional tier{?s}: {.val {active}}.",
       ">" = "Forecasts with ordinary or structured source effects need a joint conditioning contract."),
@@ -76,8 +78,8 @@ forecast_temporal <- function(object, newdata, se.fit = FALSE) {
   if (!is.null(object$temporal$replicate_col) &&
       !qualified_replicated_pair) {
     .temporal_abort(c(
-      "{.fn forecast_temporal} currently supports replicated panels only for qualified temporal-kernel, temporal-dependent phylogenetic, rank-one temporal-animal, or rank-one temporal-spatial cells.",
-      ">" = "Use replicated {.fn temporal_indep} or rank-one {.fn temporal_latent} plus one fixed labelled {.fn kernel_indep}, replicated {.fn temporal_dep} plus one fixed {.fn phylo_indep}, or replicated rank-one {.fn temporal_latent} plus one fixed {.fn animal_indep} or fixed-mesh {.fn spatial_indep}."
+      "{.fn forecast_temporal} currently supports replicated panels only for qualified temporal-kernel, temporal-dependent phylogenetic or animal, rank-one temporal-animal, or rank-one temporal-spatial cells.",
+      ">" = "Use replicated {.fn temporal_indep} or rank-one {.fn temporal_latent} plus one fixed labelled {.fn kernel_indep}, replicated {.fn temporal_dep} plus one fixed {.fn phylo_indep} or {.fn animal_indep}, or replicated rank-one {.fn temporal_latent} plus one fixed {.fn animal_indep} or fixed-mesh {.fn spatial_indep}."
     ), class = "gllvmTMB_temporal_forecast_replicated")
   }
 
@@ -229,7 +231,8 @@ forecast_temporal <- function(object, newdata, se.fit = FALSE) {
     out <- out + phylo_covariance[left_source + 1L, right_source + 1L] *
       phylo_variance[left_trait, right_trait]
   }
-  if (.temporal_is_qualified_latent_animal_pair(object, active)) {
+  if (.temporal_is_qualified_dep_animal_pair(object, active) ||
+      .temporal_is_qualified_latent_animal_pair(object, active)) {
     provider <- object$covstructs[[1L]]
     source_col <- all.vars(provider$lhs)
     if (length(source_col) != 1L || !source_col %in% names(left) || !source_col %in% names(right)) {

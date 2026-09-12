@@ -16,8 +16,14 @@ test_that("the disjoint 160-series dep-kernel qualification plan is fixed", {
   expect_equal(.temporal_dep_kernel_160_prerun(), list(phi = .6, seed = 2609340L, n_series = 160L))
   source_text <- paste(readLines(script, warn = FALSE), collapse = "\n")
   expect_false(grepl("simulate\\.gllvmTMB", source_text))
+  expect_false(grepl("gllvmTMB::temporal_dep", source_text, fixed = TRUE))
+  expect_false(grepl("gllvmTMB::kernel_indep", source_text, fixed = TRUE))
   expect_match(source_text, "output must name a new result file")
   expect_match(source_text, "error_message = conditionMessage")
+  parser <- getFromNamespace("parse_multi_formula", "gllvmTMB")
+  expect_silent(parser(value ~ 0 + trait +
+    temporal_dep(0 + trait | series, time = occasion, replicate = measurement) +
+    kernel_indep(series, K = K, name = "fixed_nonproportional_K")))
 })
 
 test_that("the 160-series qualification launcher preserves the compute boundary", {

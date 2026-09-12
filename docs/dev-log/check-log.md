@@ -58317,3 +58317,26 @@ Deliberately not run: Totoro 9×500 grid dispatch; full `devtools::test()`.
   passed and emitted `TEMPORAL_PROGRAM_LIFECYCLE_PASS`, covering the ordinary
   temporal helper contracts plus the OU--kernel profile, bootstrap, AIC, and
   refused-forecast checks.
+
+## 2026-09-12 — bounded AR1 temporal--kernel future-observation forecast
+
+- `TEMPORAL-KERNEL-FORECAST-CONTRACT.md` freezes a fitted-parameter
+  conditional-Gaussian forecast for the replicated AR1
+  `temporal_indep() + kernel_indep()` cell. It forecasts observable future
+  measurements for known series only; each future `(series, occasion,
+  measurement)` needs a complete trait panel.
+- `test-temporal-program-forecast-kernel.R` independently builds the complete
+  additive temporal-plus-kernel covariance, including measurement variance,
+  and matches its conditional means and variances to `forecast_temporal()`.
+  It also checks a negative AR1 parameter, a rejected source-by-time product,
+  malformed panels and input-row order. The original temporal-only forecast
+  tests and the qualified AR1 kernel likelihood tests remain green.
+- `Rscript --vanilla dev/temporal-program/verify.R lifecycle` emitted
+  `TEMPORAL_PROGRAM_LIFECYCLE_PASS`; `devtools::document()` regenerated help;
+  `pkgdown::check_pkgdown()` passed; and the temporal article rendered under
+  the current development package. The full pkgdown article build was unable
+  to use this uninstalled feature branch and stopped at the existing
+  `temporal_indep()` call, so it is not counted as evidence.
+- This is a local fixed-parameter conditioning route. It does not provide
+  calibrated intervals, parameter uncertainty, OU/source-pair forecasts, new
+  series, source-pair recovery, coverage, cross-platform, or release evidence.

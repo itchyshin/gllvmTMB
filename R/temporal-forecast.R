@@ -6,11 +6,13 @@
 #' conditional predictive standard deviation; it excludes uncertainty in the
 #' fitted parameters and is not a calibrated prediction interval.
 #'
-#' This first route supports an unreplicated, `temporal_indep()`, Gaussian
-#' identity-link model. It deliberately refuses new series, replicated panels,
-#' other temporal covariance modes, non-temporal random-effect tiers, source
-#' combinations, past or observed occasions, and non-Gaussian families. Those
-#' cases require their own conditioning and validation contracts.
+#' The base route supports an unreplicated, `temporal_indep()`, Gaussian
+#' identity-link model. A separately qualified route supports a replicated AR1
+#' `temporal_indep() + kernel_indep()` fit with one fixed labelled diagonal
+#' kernel, forecasting future observations rather than latent state means.
+#' Other temporal covariance modes, non-temporal random-effect tiers, source
+#' combinations, past or observed occasions, and non-Gaussian families remain
+#' outside this helper until they have their own conditioning contracts.
 #'
 #' @param object A fitted native temporal [gllvmTMB()] model.
 #' @param newdata A complete trait panel for one or more future
@@ -40,11 +42,8 @@ forecast_temporal <- function(object, newdata, se.fit = FALSE) {
   if (!is.logical(se.fit) || length(se.fit) != 1L || is.na(se.fit)) {
     .temporal_abort("{.arg se.fit} must be TRUE or FALSE.")
   }
-  if (!is.null(object$temporal$replicate_col)) {
-    .temporal_abort(c("{.fn forecast_temporal} does not yet support replicated temporal panels.",
-      ">" = "Use a temporal-only unreplicated Gaussian fit for this fitted-parameter forecast route."),
-      class = "gllvmTMB_temporal_forecast_replicated")
-  }
+  active <- .gllvmTMB_predict_unhandled_re_tiers(object, handled = "temporal")
+  kernel_pair <- .temporal_is_qualified_kernel_pair(object, active)
   if (!identical(object$temporal$mode, "indep")) {
     .temporal_abort(c(
       "{.fn forecast_temporal} currently supports {.fn temporal_indep} only.",
@@ -55,25 +54,34 @@ forecast_temporal <- function(object, newdata, se.fit = FALSE) {
   if (is.null(td$family_id_vec) || any(td$family_id_vec != 0L)) {
     .temporal_abort("{.fn forecast_temporal} currently requires a Gaussian identity-link temporal fit.")
   }
-  active <- .gllvmTMB_predict_unhandled_re_tiers(object, handled = "temporal")
-  if (length(active)) {
+  if (length(active) && !kernel_pair) {
     .temporal_abort(c("{.fn forecast_temporal} currently supports the temporal source by itself.",
       "i" = "Active additional tier{?s}: {.val {active}}.",
       ">" = "Forecasts with ordinary or structured source effects need a joint conditioning contract."),
       class = "gllvmTMB_temporal_forecast_composed")
   }
+  if (!is.null(object$temporal$replicate_col) &&
+      !(kernel_pair && identical(object$temporal$structure, "ar1"))) {
+    .temporal_abort(c(
+      "{.fn forecast_temporal} currently supports replicated panels only for the qualified AR1 temporal-kernel cell.",
+      ">" = "Use replicated {.fn temporal_indep} plus one fixed labelled {.fn kernel_indep}, or use a temporal-only unreplicated fit."
+    ), class = "gllvmTMB_temporal_forecast_replicated")
+  }
 
   series_col <- object$temporal$series_col
   time_col <- object$temporal$time_col
   trait_col <- object$trait_col
-  required <- c(series_col, time_col, trait_col)
+  replicate_col <- object$temporal$replicate_col
+  required <- c(series_col, time_col, trait_col, replicate_col)
   missing <- setdiff(required, names(newdata))
   if (length(missing)) .temporal_abort("{.arg newdata} is missing required temporal column{?s}: {.val {missing}}.")
   raw_series <- as.character(newdata[[series_col]])
   raw_time <- newdata[[time_col]]
   raw_trait <- as.character(newdata[[trait_col]])
-  if (!nrow(newdata) || anyNA(raw_series) || anyNA(raw_time) || anyNA(raw_trait)) {
-    .temporal_abort("{.arg newdata} needs non-missing series, time, and trait values.")
+  raw_replicate <- if (is.null(replicate_col)) NULL else as.character(newdata[[replicate_col]])
+  if (!nrow(newdata) || anyNA(raw_series) || anyNA(raw_time) || anyNA(raw_trait) ||
+      (!is.null(raw_replicate) && anyNA(raw_replicate))) {
+    .temporal_abort("{.arg newdata} needs non-missing series, time, trait, and measurement values.")
   }
   if (!is.numeric(raw_time) && !is.integer(raw_time)) .temporal_abort("The temporal forecast time column must be numeric.")
   raw_time <- as.numeric(raw_time)
@@ -93,13 +101,13 @@ forecast_temporal <- function(object, newdata, se.fit = FALSE) {
   trait_levels <- levels(object$data[[trait_col]])
   unknown_trait <- setdiff(unique(raw_trait), trait_levels)
   if (length(unknown_trait)) .temporal_abort("{.arg newdata} names unknown trait{?s}: {.val {unknown_trait}}.")
-  key <- paste(raw_series, format(raw_time, digits = 17), raw_trait, sep = "\r")
-  if (anyDuplicated(key)) .temporal_abort("{.arg newdata} has duplicate series--time--trait rows.")
-  panel_key <- paste(raw_series, format(raw_time, digits = 17), sep = "\r")
+  key <- paste(raw_series, format(raw_time, digits = 17), raw_replicate, raw_trait, sep = "\r")
+  if (anyDuplicated(key)) .temporal_abort("{.arg newdata} has duplicate future observation rows.")
+  panel_key <- paste(raw_series, format(raw_time, digits = 17), raw_replicate, sep = "\r")
   complete_panel <- vapply(split(raw_trait, panel_key), function(x) length(x) == length(trait_levels) && setequal(x, trait_levels), logical(1))
   if (!all(complete_panel)) {
-    .temporal_abort(c("{.arg newdata} must contain a complete trait panel at every future series--occasion pair.",
-      ">" = "Supply one row for each fitted trait at each requested time."),
+    .temporal_abort(c("{.arg newdata} must contain a complete trait panel at every future observation.",
+      ">" = "Supply one row for each fitted trait at each series, time, and measurement."),
       class = "gllvmTMB_temporal_forecast_panel")
   }
   latest_time <- tapply(training_time, training_series, max)
@@ -159,6 +167,29 @@ forecast_temporal <- function(object, newdata, se.fit = FALSE) {
     covariance
   }
   out <- correlation * trait_covariance[left_trait, right_trait]
+  active <- .gllvmTMB_predict_unhandled_re_tiers(object, handled = "temporal")
+  if (.temporal_is_qualified_kernel_pair(object, active)) {
+    provider <- object$covstructs[[1L]]
+    source_col <- all.vars(provider$lhs)
+    if (length(source_col) != 1L || !source_col %in% names(left) || !source_col %in% names(right)) {
+      .temporal_abort("The fitted temporal-kernel source grouping is unavailable in forecast data.")
+    }
+    kernel_name <- object$kernel_levels$name
+    K <- object$kernel_matrices[[kernel_name]]
+    if (!is.matrix(K) || is.null(rownames(K)) || is.null(colnames(K))) {
+      .temporal_abort("The fitted temporal-kernel model does not retain a labelled kernel matrix.")
+    }
+    left_source <- match(as.character(left[[source_col]]), rownames(K))
+    right_source <- match(as.character(right[[source_col]]), colnames(K))
+    if (anyNA(left_source) || anyNA(right_source)) {
+      .temporal_abort(c(
+        "{.arg newdata} names a source level absent from the fitted kernel.",
+        ">" = "Use a fitted series and its corresponding kernel label."
+      ), class = "gllvmTMB_temporal_forecast_kernel_level")
+    }
+    kernel_covariance <- diag(par$theta_rr_phy^2, nrow = length(trait_levels))
+    out <- out + K[left_source, right_source] * kernel_covariance[left_trait, right_trait]
+  }
   if (identical(left, right)) diag(out) <- diag(out) + as.numeric(object$report$sigma_eps)^2
   out
 }

@@ -187,6 +187,12 @@ the identical labelled kernel and returns their AIC values; it does not perform
 a likelihood-ratio test or search candidate models. Its returned profile
 endpoints and bootstrap draws are not calibrated intervals.
 
+The same AR1 kernel cell can forecast a **new response measurement** at later
+occasions in a known series. Supply each measurement as a complete trait panel.
+The forecast conditions on the fitted additive temporal-plus-kernel covariance;
+`se.fit` is a fitted-parameter conditional standard deviation, not a
+prediction interval.
+
 ```{r kernel-pair-lifecycle}
 K_series <- diag(3)
 dimnames(K_series) <- list(paste0("series_", 1:3), paste0("series_", 1:3))
@@ -200,6 +206,12 @@ fit_kernel_pair <- gllvmTMB(
 profile_temporal(fit_kernel_pair, ystep = .25, ytol = 1)
 bootstrap_temporal(fit_kernel_pair, n_boot = 2, seed = 260920L)
 compare_temporal(current = fit_kernel_pair, replay = update(fit_kernel_pair))
+future_kernel <- expand.grid(
+  series = paste0("series_", 1:3), occasion = 5,
+  measurement = c("m1", "m2"), trait = paste0("trait_", 1:3),
+  KEEP.OUT.ATTRS = FALSE
+)
+forecast_temporal(fit_kernel_pair, future_kernel, se.fit = TRUE)
 ```
 
 `simulate()` redraws stationary temporal scores by default. Passing

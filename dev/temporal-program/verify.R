@@ -1307,6 +1307,7 @@ fixture <- switch(mode,
   ),
   lifecycle = c(
     "tests/testthat/test-temporal-program-forecast.R",
+    "tests/testthat/test-temporal-program-forecast-kernel.R",
     "tests/testthat/test-temporal-program-profile.R",
     "tests/testthat/test-temporal-program-bootstrap.R",
     "tests/testthat/test-temporal-program-selection.R",

@@ -75,7 +75,10 @@ cells are implemented: replicated AR1 `temporal_indep()` plus one labelled
 `pedigree =`, `A =`, or `Ainv =`; or one fixed-mesh `spatial_indep()` term.
 Their evidence is partial and differs by pair: the named kernel fixture passes
 locally; retained phylogenetic, animal, and spatial recovery gates fail
-strictly. A separately bounded replicated OU `temporal_indep() + kernel_indep()`
+strictly. The AR1 kernel cell has a narrow future-observation forecast for
+known series and complete future measurement panels; it conditions on the
+fitted additive covariance and does not provide calibrated intervals. A
+separately bounded replicated OU `temporal_indep() + kernel_indep()`
 cell has local independent dense likelihood/gradient, time-coordinate,
 simulation, long/wide, update, and direct-profile checks, but no source-pair
 bootstrap/selection beyond the named fixed kernel, forecast, recovery, cross-platform, release, or coverage evidence. Other OU source modes, source-by-time interactions, and

@@ -99,7 +99,7 @@ temporal_dep <- function(formula, time, structure = "ar1", replicate = NULL) {
 #' retained fixture with its mesh held fixed; the fixed-phylogeny rank-one cell
 #' has the same dense/lifecycle evidence but fails its retained
 #' positive-persistence variance gate. These are local fixed-fixture evidence
-#' only: they do not support source-pair forecasting,
+#' only: they do not support generic source-pair forecasting,
 #' intervals, cross-platform verification,
 #' release, general recovery, or coverage claims. The spatial
 #' cell redraws its independent SPDE field during unconditional simulation. Other
@@ -113,8 +113,10 @@ temporal_dep <- function(formula, time, structure = "ar1", replicate = NULL) {
 #' `profile_temporal()`, `bootstrap_temporal()`, and `compare_temporal()` have
 #' separate bounded contracts. `bootstrap_temporal()`, `profile_temporal()`, and
 #' `compare_temporal()` also support the qualified replicated AR1 or OU
-#' `temporal_indep() + kernel_indep()` cells. Generic new-data prediction,
-#' generic intervals and profiles, automatic selection, and every other
+#' `temporal_indep() + kernel_indep()` cells. `forecast_temporal()` also has a
+#' separately bounded future-observation route for the replicated AR1 fixed
+#' kernel cell. Generic new-data prediction, generic intervals and profiles,
+#' automatic selection, and every other
 #' source-pair helper route remain unavailable.
 #'
 #' @rdname temporal_latent

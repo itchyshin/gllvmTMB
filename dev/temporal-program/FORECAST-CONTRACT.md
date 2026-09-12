@@ -1,4 +1,4 @@
-# Temporal-only future forecast contract
+# Temporal future forecast contracts
 
 `forecast_temporal(fit, newdata)` is a deliberately small forecast route for
 the native temporal source. It returns response-scale Gaussian point forecasts
@@ -30,7 +30,14 @@ known to the fit and each requested time must be strictly later than the last
 fitted time for that series. AR1 occasions remain integers; OU times retain
 their supplied numeric scale.
 
-This contract does not cover new series, interpolation, replicated panels,
-ordinary or structured source tiers, parameter uncertainty, intervals,
-profiles, bootstrap, or selection. Each requires its own covariance and
-validation evidence before admission.
+A separate contract at `TEMPORAL-KERNEL-FORECAST-CONTRACT.md` admits one
+replicated AR1 `temporal_indep() + kernel_indep()` future-observation route.
+It uses the full additive temporal-plus-kernel covariance and requires a
+complete trait panel for every future measurement. Its fixed-parameter dense
+conditioning check is not interval calibration or a general source-pair
+forecast claim.
+
+This contract does not cover new series, interpolation, replicated panels
+outside that named AR1-kernel cell, other ordinary or structured source tiers,
+parameter uncertainty, intervals, profiles, bootstrap, or selection. Each
+requires its own covariance and validation evidence before admission.

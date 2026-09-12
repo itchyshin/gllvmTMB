@@ -197,4 +197,5 @@ Register rows deliberately NOT translated into a ledger capability row above, wi
 | TEMP-06-11 | R-only temporal dependent-phylogenetic source-pair evidence; no Julia temporal provider row exists to compare |
 | TEMP-06-12 | R-only temporal dependent-animal source-pair evidence; no Julia temporal provider row exists to compare |
 | TEMP-06-13 | R-only temporal dependent-spatial source-pair evidence; no Julia temporal provider row exists to compare |
+| TEMP-06-14 | R-only irregular-time temporal-kernel source-pair evidence; no Julia temporal provider row exists to compare |
 

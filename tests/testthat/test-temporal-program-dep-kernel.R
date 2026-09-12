@@ -208,7 +208,7 @@ test_that("replicated temporal_dep-kernel fences unsupported inference routes", 
     data = fx$data, unit = "series", cluster = "series", family = gaussian(),
     silent = TRUE, control = gllvmTMBcontrol(se = FALSE)
   ))
-  expect_error(forecast_temporal(fit, fx$data), "does not yet support replicated")
+  expect_error(forecast_temporal(fit, fx$data), "currently supports.*temporal_indep")
   expect_error(profile_temporal(fit), "supports Gaussian.*temporal_indep")
   expect_error(bootstrap_temporal(fit, n_boot = 2L), "supports Gaussian.*temporal_indep")
   expect_error(compare_temporal(first = fit, second = fit),

@@ -219,7 +219,7 @@ test_that("temporal_dep animal fences unqualified variants", {
     "cannot include an ordinary")
   expect_error(suppressWarnings(gllvmTMB(value ~ 0 + trait + temporal_dep(0 + trait | animal, time = occasion) +
     animal_indep(0 + trait | animal, A = fx$A), data = unrep, unit = "animal", cluster = "animal", family = gaussian(), silent = TRUE)),
-    "requires replicated AR1")
+    "requires a replicated panel")
   expect_error(suppressWarnings(gllvmTMB(value ~ 0 + trait + temporal_dep(0 + trait | animal, time = occasion,
     replicate = measurement, structure = "ou") + animal_indep(0 + trait | animal, A = fx$A),
     data = fx$data, unit = "animal", cluster = "animal", family = gaussian(), silent = TRUE)),

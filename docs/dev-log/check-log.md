@@ -58354,3 +58354,18 @@ Deliberately not run: Totoro 9×500 grid dispatch; full `devtools::test()`.
   remain unchanged. The source-layout focused test passed. A repaired local
   package check was stopped after exceeding its 20-minute estimate without a
   result, so it is not evidence. A new three-platform check remains required.
+
+## 2026-09-12 — macOS temporal platform-check repair
+
+- The replacement macOS package check at `fea2d5702` ran for 32 minutes and
+  exposed four stale validation surfaces: the irregular-time OU--kernel row
+  `TEMP-06-14` was absent from the capability-status generator's explicit
+  R-only mapping, and three temporal tests still asserted superseded refusal
+  wording. The model, fixture, thresholds, and retained results were not
+  changed.
+- `TEMP-06-14` is now mapped as R-only, the generated status page is current,
+  and the three tests match their current public errors: a missing replicated
+  panel and the explicitly unsupported dependent/latent forecast route. The
+  source-package focused checks passed (80 animal, 26 kernel, and 94 baseline
+  temporal assertions); the existing Windows and Linux jobs are retained to
+  completion before a corrected replacement matrix is dispatched.

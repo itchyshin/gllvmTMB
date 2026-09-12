@@ -178,14 +178,14 @@ test_that("temporal source refuses each deferred provider and duplicate temporal
       call("+", quote(0 + trait), quote(temporal_indep(0 + trait | series, time = occasion))), other)))
     expect_error(gllvmTMB(form, data = dat, unit = "series", family = gaussian()),
       if (as.character(other[[1L]]) %in% c("phylo_indep", "animal_indep", "spatial_indep"))
-        "requires replicated AR1" else "temporal covariance term cannot be combined",
+        "requires a replicated panel" else "temporal covariance term cannot be combined",
       info = deparse(other))
   }
   kernel_form <- value ~ 0 + trait +
     temporal_indep(0 + trait | series, time = occasion) +
     kernel_indep(series, K = diag(3L), name = "deferred_kernel")
   expect_error(gllvmTMB(kernel_form, data = dat, unit = "series", family = gaussian()),
-    "requires replicated AR1")
+    "requires a replicated panel")
   expect_error(gllvmTMB(
     value ~ 0 + trait + temporal_indep(0 + trait | series, time = occasion) +
       temporal_dep(0 + trait | series, time = occasion),

@@ -37,6 +37,17 @@
   on.exit(unlink(lock, recursive = TRUE, force = TRUE), add = TRUE)
   force(expr)
 }
+
+.temporal_dep_kernel_occasion_provenance <- function() {
+  commit <- tryCatch(system2("git", c("rev-parse", "HEAD"), stdout = TRUE,
+    stderr = FALSE), error = function(e) character())
+  list(
+    schema = "temporal-dep-kernel-occasion-receipt-v2",
+    source_commit = if (length(commit) == 1L) trimws(commit) else NA_character_,
+    r_version = R.version.string,
+    platform = R.version$platform
+  )
+}
 .temporal_dep_kernel_occasion_truth <- function() list(beta = c(.2, -.3, .1),
   temporal_loading = rbind(c(.55, 0, 0), c(.12, .50, 0), c(-.08, .10, .48)),
   kernel_sd = c(.35, .28, .40), residual = .30)
@@ -88,10 +99,11 @@
     par <- fit$tmb_obj$env$parList(fit$opt$par); temporal <- gllvmTMB::extract_temporal(fit)
     hessian <- tryCatch(fit$tmb_obj$he(fit$opt$par), error = function(e) e)
     hs <- if (inherits(hessian, "error")) "error" else if (all(is.finite(hessian)) && !inherits(try(chol(hessian), silent = TRUE), "try-error")) "positive_definite" else "non_positive_definite"
+    hessian_error_message <- if (inherits(hessian, "error")) conditionMessage(hessian) else NA_character_
     data.frame(phi = key$phi, seed = key$seed, n_series = key$n_series,
       n_time = key$n_time, terminal = "success", convergence = fit$opt$convergence,
       pass_1_convergence = history$convergence[[1L]], pass_2_convergence = history$convergence[[2L]], pass_2_accepted = history$accepted[[2L]],
-      max_gradient = max(abs(fit$tmb_obj$gr(fit$opt$par))), objective = fit$opt$objective, hessian_status = hs,
+      max_gradient = max(abs(fit$tmb_obj$gr(fit$opt$par))), objective = fit$opt$objective, hessian_status = hs, hessian_error_message = hessian_error_message,
       phi_estimate = temporal$time$value[[1L]], temporal_frobenius_relative_error = sqrt(sum((tcrossprod(as.matrix(temporal$loading)) - tcrossprod(fixture$truth$temporal_loading))^2)) / sqrt(sum(tcrossprod(fixture$truth$temporal_loading)^2)),
       kernel_1 = par$theta_rr_phy[[1L]]^2, kernel_2 = par$theta_rr_phy[[2L]]^2, kernel_3 = par$theta_rr_phy[[3L]]^2,
       beta_1 = par$b_fix[[1L]], beta_2 = par$b_fix[[2L]], beta_3 = par$b_fix[[3L]],
@@ -100,11 +112,29 @@
     n_time = key$n_time,
     terminal = "error", convergence = NA_integer_, pass_1_convergence = NA_integer_,
     pass_2_convergence = NA_integer_, pass_2_accepted = NA, max_gradient = NA_real_,
-    objective = NA_real_, hessian_status = "error", phi_estimate = NA_real_,
+    objective = NA_real_, hessian_status = "error", hessian_error_message = NA_character_, phi_estimate = NA_real_,
     temporal_frobenius_relative_error = NA_real_, kernel_1 = NA_real_, kernel_2 = NA_real_,
     kernel_3 = NA_real_, beta_1 = NA_real_, beta_2 = NA_real_, beta_3 = NA_real_,
     error_message = conditionMessage(e), stringsAsFactors = FALSE))
   out$elapsed_seconds <- proc.time()[["elapsed"]] - started; out
+}
+
+.temporal_dep_kernel_occasion_validate_campaign <- function(result) {
+  if (!is.data.frame(result) || !all(c("phi", "seed") %in% names(result))) {
+    stop("campaign results must contain phi and seed", call. = FALSE)
+  }
+  key <- function(x) paste(sprintf("%.17g", as.numeric(x$phi)), as.integer(x$seed), sep = "/")
+  observed <- key(result)
+  expected <- key(.temporal_dep_kernel_occasion_plan())
+  if (anyDuplicated(observed)) stop("every frozen campaign cell must occur exactly once", call. = FALSE)
+  if (length(unexpected <- setdiff(observed, expected))) stop("unexpected campaign cell: ", unexpected[[1L]], call. = FALSE)
+  if (length(missing <- setdiff(expected, observed))) stop("missing frozen campaign cell: ", missing[[1L]], call. = FALSE)
+  invisible(result)
+}
+
+.temporal_dep_kernel_occasion_summarise_campaign <- function(result) {
+  .temporal_dep_kernel_occasion_validate_campaign(result)
+  .temporal_dep_kernel_occasion_summarise(result)
 }
 
 .temporal_dep_kernel_occasion_summarise <- function(result) {
@@ -146,6 +176,7 @@
   .temporal_dep_kernel_occasion_with_reservation(output, {
     pkgload::load_all(normalizePath(".", mustWork = TRUE), quiet = TRUE, export_all = FALSE)
     value <- .temporal_dep_kernel_occasion_run(if (length(phi_arg)) as.numeric(sub("^--phi=", "", phi_arg)) else NULL, if (length(seed_arg)) as.integer(sub("^--seed=", "", seed_arg)) else NULL, pre_run)
+    value$provenance <- .temporal_dep_kernel_occasion_provenance()
     temporary <- tempfile("dep-kernel-occasion-", tmpdir = dirname(output), fileext = ".rds"); saveRDS(value, temporary)
     if (file.exists(output)) stop("output became occupied while the qualification was running", call. = FALSE)
     if (!file.rename(temporary, output)) stop("could not atomically retain qualification output", call. = FALSE)

@@ -35,7 +35,8 @@ pass.
 
 ## Next implication
 
-Longer temporal panels remove much of the nuisance-information weakness seen
-in the shorter fixture, but do not yet establish a stable optimizer route.
-Any further attempt needs a separate optimizer contract and new independent
-evidence; it must not overwrite or reinterpret these receipts.
+The longer-panel fixture meets the recovery summaries in its qualifying fits,
+while one fit misses the fixed optimizer gate.  It does not establish a stable
+optimizer route or identify the component responsible for the gradient breach.
+Any further attempt needs a separate optimizer-diagnostic contract and new
+independent evidence; it must not overwrite or reinterpret these receipts.

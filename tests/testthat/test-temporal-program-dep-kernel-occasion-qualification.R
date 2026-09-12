@@ -37,8 +37,29 @@ test_that("the long-occasion dep-kernel qualification is frozen before fitting",
   expect_match(source_text, "error_message = conditionMessage")
   expect_match(source_text, "CELL_ERROR_RETAINED")
   expect_false(grepl("CELL_PASS", source_text, fixed = TRUE))
+  expect_match(source_text, "hessian_error_message")
+  provenance <- .temporal_dep_kernel_occasion_provenance()
+  expect_named(provenance, c("schema", "source_commit", "r_version", "platform"))
+  expect_true(nzchar(provenance$schema))
   parser <- getFromNamespace("parse_multi_formula", "gllvmTMB")
   expect_silent(parser(value ~ 0 + trait +
     temporal_dep(0 + trait | series, time = occasion, replicate = measurement) +
     kernel_indep(series, K = K, name = "fixed_nonproportional_K")))
+})
+
+test_that("campaign aggregation requires every frozen cell exactly once", {
+  script <- .temporal_dep_kernel_occasion_dev_path("run-dep-kernel-occasion-qualification.R")
+  skip_if_not(file.exists(script), "developer-only qualification runner is unavailable")
+  source(script, local = environment())
+  plan <- .temporal_dep_kernel_occasion_plan()
+  expect_silent(.temporal_dep_kernel_occasion_validate_campaign(plan))
+  expect_error(.temporal_dep_kernel_occasion_validate_campaign(plan[-1L, , drop = FALSE]),
+    "missing frozen campaign cell")
+  duplicated_plan <- rbind(plan, plan[1L, , drop = FALSE])
+  expect_error(.temporal_dep_kernel_occasion_validate_campaign(duplicated_plan),
+    "exactly once")
+  altered <- plan
+  altered$seed[[1L]] <- 2609370L
+  expect_error(.temporal_dep_kernel_occasion_validate_campaign(altered),
+    "unexpected campaign cell")
 })

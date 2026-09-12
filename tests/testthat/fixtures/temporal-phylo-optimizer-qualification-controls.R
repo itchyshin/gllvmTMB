@@ -21,7 +21,10 @@
   }
   raw_md5 <- unname(tools::md5sum(path))
   bytes <- readBin(path, what = "raw", n = file.info(path)$size)
-  normalized <- charToRaw(gsub("\\r\\n?", "\\n", rawToChar(bytes), perl = TRUE))
+  ## The replacement must be an actual LF byte. `"\\n"` would insert the
+  ## two printable characters backslash and n, so a CRLF copy could never
+  ## match the frozen LF receipt on Windows.
+  normalized <- charToRaw(gsub("\\r\\n?", "\n", rawToChar(bytes), perl = TRUE))
   normalized_path <- tempfile("temporal-phylo-summary-", fileext = ".csv")
   on.exit(unlink(normalized_path), add = TRUE)
   writeBin(normalized, normalized_path)

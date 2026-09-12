@@ -199,7 +199,7 @@ test_that("replicated temporal_dep-kernel preserves identity through wide parsin
     nrow(extract_temporal(long_fit)$pair_index))
 })
 
-test_that("replicated temporal_dep-kernel fences inference routes without a source-pair contract", {
+test_that("replicated temporal_dep-kernel fences unsupported inference routes", {
   skip_if_not_installed("TMB")
   fx <- .temporal_dep_kernel_fixture()
   fit <- suppressWarnings(gllvmTMB(
@@ -209,10 +209,10 @@ test_that("replicated temporal_dep-kernel fences inference routes without a sour
     silent = TRUE, control = gllvmTMBcontrol(se = FALSE)
   ))
   expect_error(forecast_temporal(fit, fx$data), "does not yet support replicated")
-  expect_error(profile_temporal(fit), "unreplicated Gaussian.*temporal_indep")
-  expect_error(bootstrap_temporal(fit, n_boot = 2L), "requires the temporal source by itself")
+  expect_error(profile_temporal(fit), "supports Gaussian.*temporal_indep")
+  expect_error(bootstrap_temporal(fit, n_boot = 2L), "supports Gaussian.*temporal_indep")
   expect_error(compare_temporal(first = fit, second = fit),
-    "requires the temporal source by itself")
+    "qualified temporal-kernel comparison requires.*temporal_indep")
   expect_error(confint(fit), "not available.*temporal")
   expect_error(bootstrap_Sigma(fit, n_boot = 2L), "not available.*temporal")
 })

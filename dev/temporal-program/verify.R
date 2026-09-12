@@ -4,9 +4,9 @@ root <- normalizePath(getwd(), mustWork = TRUE)
 if (!file.exists(file.path(root, "DESCRIPTION"))) {
   stop("Run temporal programme verification from the repository root.", call. = FALSE)
 }
-allowed <- c("plan", "simulation", "lifecycle", "remote", "phylo", "dep-kernel", "dep-kernel-oracle", "dep-kernel-curvature", "dep-phylo", "dep-animal", "dep-spatial", "dep-spatial-corrected", "latent-kernel", "latent-phylo", "latent-animal", "latent-spatial", "publication", "combinations", "closeout", "self-test")
+allowed <- c("plan", "simulation", "lifecycle", "remote", "phylo", "dep-kernel", "dep-kernel-oracle", "dep-kernel-curvature", "dep-phylo", "dep-animal", "dep-spatial", "dep-spatial-corrected", "latent-kernel", "latent-phylo", "latent-animal", "latent-spatial", "latent-phylo-endpoint", "publication", "combinations", "closeout", "self-test")
 if (!mode %in% allowed) {
-  stop("usage: Rscript --vanilla dev/temporal-program/verify.R {plan|simulation|lifecycle|remote|phylo|dep-kernel|dep-kernel-oracle|dep-kernel-curvature|dep-phylo|dep-animal|dep-spatial|dep-spatial-corrected|latent-kernel|latent-phylo|latent-animal|latent-spatial|publication|combinations|closeout|self-test}", call. = FALSE)
+  stop("usage: Rscript --vanilla dev/temporal-program/verify.R {plan|simulation|lifecycle|remote|phylo|dep-kernel|dep-kernel-oracle|dep-kernel-curvature|dep-phylo|dep-animal|dep-spatial|dep-spatial-corrected|latent-kernel|latent-phylo|latent-animal|latent-spatial|latent-phylo-endpoint|publication|combinations|closeout|self-test}", call. = FALSE)
 }
 
 .temporal_program_verify_dep_kernel_oracle <- function(root) {
@@ -1227,6 +1227,43 @@ if (identical(mode, "combinations")) {
   }
   .temporal_program_verify_phylo(root)
   cat("TEMPORAL_PROGRAM_COMBINATIONS_PASS\n")
+  quit(save = "no", status = 0L)
+}
+if (identical(mode, "latent-phylo-endpoint")) {
+  evidence_dir <- file.path(root, "dev", "temporal-program", "results", "diagnostics")
+  script <- file.path(root, "dev", "temporal-program", "diagnose-latent-phylo-endpoint.R")
+  contract <- file.path(root, "dev", "temporal-program",
+    "TEMPORAL-LATENT-PHYLO-ENDPOINT-DIAGNOSTIC-CONTRACT.md")
+  paths <- file.path(evidence_dir,
+    sprintf("latent-phylo-endpoint-20260912-coordinate-%02d.rds", 1:11))
+  if (!file.exists(script) || !file.exists(contract) || any(!file.exists(paths))) {
+    stop("missing temporal latent-phylo endpoint diagnostic artifacts", call. = FALSE)
+  }
+  receipts <- lapply(paths, readRDS)
+  coordinate <- vapply(receipts, function(x) x$coordinate$index, integer(1))
+  if (!identical(coordinate, 1:11) || any(!vapply(receipts, function(x) {
+    identical(x$contract, "TEMPORAL-LATENT-PHYLO-ENDPOINT-DIAGNOSTIC-v1") &&
+      identical(x$endpoint, list(phi = .6, seed = 2609243L)) &&
+      is.finite(x$native$objective) && is.finite(x$fresh$objective) &&
+      is.finite(x$dense$objective) && is.finite(x$coordinate$error)
+  }, logical(1)))) {
+    stop("temporal latent-phylo endpoint receipts have an invalid identity or schema", call. = FALSE)
+  }
+  reference <- receipts[[1L]]
+  if (abs(reference$fresh$objective_error) > 1e-8 ||
+      reference$fresh$gradient_error_max > 1e-7 ||
+      abs(reference$dense$objective_error) > 1e-6 ||
+      max(abs(vapply(receipts, function(x) x$coordinate$error, numeric(1)))) > 2e-5) {
+    stop("temporal latent-phylo endpoint native/dense agreement exceeds its diagnostic tolerance", call. = FALSE)
+  }
+  boundary <- receipts[[10L]]$phylo_second_loading
+  if (!is.numeric(boundary$objective_change) || length(boundary$objective_change) != 3L ||
+      any(!is.finite(boundary$objective_change)) || any(boundary$objective_change <= 0) ||
+      !identical(reference$hessian$status, "error") ||
+      !nzchar(reference$hessian$message)) {
+    stop("temporal latent-phylo endpoint boundary or Hessian diagnostic is incomplete", call. = FALSE)
+  }
+  cat("TEMPORAL_LATENT_PHYLO_ENDPOINT_DIAGNOSTIC_PASS\n")
   quit(save = "no", status = 0L)
 }
 if (identical(mode, "closeout")) {

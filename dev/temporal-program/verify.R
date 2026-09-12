@@ -1309,7 +1309,8 @@ fixture <- switch(mode,
     "tests/testthat/test-temporal-program-forecast.R",
     "tests/testthat/test-temporal-program-profile.R",
     "tests/testthat/test-temporal-program-bootstrap.R",
-    "tests/testthat/test-temporal-program-selection.R"
+    "tests/testthat/test-temporal-program-selection.R",
+    "tests/testthat/test-temporal-program-ou-kernel.R"
   )
 )
 if (any(!file.exists(file.path(root, fixture)))) {

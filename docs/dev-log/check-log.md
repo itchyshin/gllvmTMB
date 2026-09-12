@@ -58309,3 +58309,11 @@ Deliberately not run: Totoro 9×500 grid dispatch; full `devtools::test()`.
   only; it neither refits, searches, nor attaches a likelihood-ratio test.
   Forecasts remain rejected because conditioning a future joint OU--kernel
   field requires a separate contract.
+
+## 2026-09-12 — lifecycle verifier covers the bounded OU--kernel route
+
+- Added `test-temporal-program-ou-kernel.R` to the executable lifecycle
+  verifier. `Rscript --vanilla dev/temporal-program/verify.R lifecycle`
+  passed and emitted `TEMPORAL_PROGRAM_LIFECYCLE_PASS`, covering the ordinary
+  temporal helper contracts plus the OU--kernel profile, bootstrap, AIC, and
+  refused-forecast checks.

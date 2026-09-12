@@ -31,4 +31,5 @@ test_that("the 160-series qualification launcher preserves the compute boundary"
   expect_match(source_text, "pre-run")
   expect_match(source_text, "git@github.com:itchyshin/gllvmTMB.git")
   expect_match(source_text, "git fetch --no-tags origin")
+  expect_match(source_text, "--untracked-files=no")
 })

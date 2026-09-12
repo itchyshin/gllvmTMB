@@ -24,7 +24,9 @@ fi
 cd "${ROOT}"
 git fetch --no-tags origin "${GLLVM_TMB_COMMIT}"
 git checkout --detach FETCH_HEAD
-[[ -z "$(git status --porcelain)" ]] || { echo "staged checkout is dirty" >&2; exit 2; }
+[[ -z "$(git status --porcelain --untracked-files=no)" ]] || {
+  echo "staged checkout has tracked changes" >&2; exit 2;
+}
 [[ "$(git rev-parse HEAD)" == "${GLLVM_TMB_COMMIT}" ]] || { echo "wrong staged commit" >&2; exit 2; }
 mkdir -p "${RESULT_DIR}" "${LOG_DIR}"
 export OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1

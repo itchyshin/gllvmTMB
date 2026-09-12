@@ -11,7 +11,7 @@ profile_temporal(object, level = 0.95, ...)
 qualified replicated AR1 or OU \code{temporal_indep() + kernel_indep()} fit,
 or a qualified replicated AR1 \code{temporal_dep() + phylo_indep()} fit.
 The qualified replicated rank-one \code{temporal_latent() + animal_indep()} fit
-is also accepted.}
+or fixed-mesh \code{temporal_latent() + spatial_indep()} fit is also accepted.}
 
 \item{level}{Likelihood-ratio confidence level.}
 
@@ -31,7 +31,9 @@ also available for the qualified replicated AR1
 \code{temporal_dep() + phylo_indep()} route, which re-optimizes its full temporal
 trait covariance and phylogenetic variances at each profile point. This is
 also available for the qualified replicated rank-one AR1
-\code{temporal_latent() + animal_indep()} route. It is a fitted-parameter
+\code{temporal_latent() + animal_indep()} route. The corresponding fixed-mesh
+\code{temporal_latent() + spatial_indep()} route is also available. Each is a
+fitted-parameter
 likelihood profile, not a calibrated interval or a
 profile of conditional temporal states.
 }

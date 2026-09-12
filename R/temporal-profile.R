@@ -8,7 +8,9 @@
 #' `temporal_dep() + phylo_indep()` route, which re-optimizes its full temporal
 #' trait covariance and phylogenetic variances at each profile point. This is
 #' also available for the qualified replicated rank-one AR1
-#' `temporal_latent() + animal_indep()` route. It is a fitted-parameter
+#' `temporal_latent() + animal_indep()` route. The corresponding fixed-mesh
+#' `temporal_latent() + spatial_indep()` route is also available. Each is a
+#' fitted-parameter
 #' likelihood profile, not a calibrated interval or a
 #' profile of conditional temporal states.
 #'
@@ -16,7 +18,7 @@
 #'   qualified replicated AR1 or OU `temporal_indep() + kernel_indep()` fit,
 #'   or a qualified replicated AR1 `temporal_dep() + phylo_indep()` fit.
 #'   The qualified replicated rank-one `temporal_latent() + animal_indep()` fit
-#'   is also accepted.
+#'   or fixed-mesh `temporal_latent() + spatial_indep()` fit is also accepted.
 #' @param level Likelihood-ratio confidence level.
 #' @param ... Passed to [tmbprofile_wrapper()].
 #' @return Named numeric vector with `estimate`, `lower`, and `upper`, on the

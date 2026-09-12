@@ -21,10 +21,13 @@ For the first retained rehydrated fit, the 10-coordinate observed-information
 matrix was positive definite with condition number 1072.8.  The three
 kernel log-variance curvatures were 14.52, 6.76, and 20.51.  Their correlations
 with the temporal persistence coordinate were -0.161, -0.226, and -0.113.
-These values do not show a singular information matrix or a strong
-kernel--persistence confounding ridge.  The remaining receipts are retained
-under `results/diagnostics/dep-kernel-retained-curvature-20260911/` and are
-validated by the executable gate.
+The all-seed review gives condition numbers 495.6--1072.8, with every
+information matrix positive definite.  Across the nine kernel--persistence
+correlations, the largest absolute value is 0.226; all nine kernel curvatures
+are finite and positive.  These values do not show a singular information
+matrix or a strong kernel--persistence confounding ridge.  The receipts are
+retained under `results/diagnostics/dep-kernel-retained-curvature-20260911/`
+and are validated by the executable gate.
 
 ## Verdict
 

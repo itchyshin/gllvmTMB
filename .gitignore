@@ -150,3 +150,6 @@ dev/.commit-msg-tmp.txt
 # Local acceptance-ledger runtime (ultra-plan / unlazy); never ship or track.
 .unlazy/
 .unlazy-hook-state.json
+
+# graft's local graph cache — regenerable, not committed (run `graft build`).
+/graft/

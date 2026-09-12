@@ -43,7 +43,9 @@ phylogenetic cell also has a direct persistence profile and an unconditional
 bootstrap/refit helper that retains every attempted refit; neither establishes
 calibrated intervals or bootstrap sampling properties. A separately qualified
 rank-one `temporal_latent(..., unique = FALSE) + animal_indep()` cell also has
-that retained bootstrap/refit helper. Generic forecasts, new-data
+that retained bootstrap/refit helper and a known-series future-observation
+forecast. Its fitted-parameter conditional standard deviations are not
+prediction intervals. Generic forecasts, new-data
 prediction, generic profile/bootstrap intervals, automatic rank selection, and
 other source-pair helper routes remain unavailable. Other response families,
 higher ranks, temporal
@@ -220,6 +222,35 @@ future_kernel <- expand.grid(
   KEEP.OUT.ATTRS = FALSE
 )
 forecast_temporal(fit_kernel_pair, future_kernel, se.fit = TRUE)
+```
+
+## A qualified rank-one animal-pair forecast
+
+The rank-one temporal latent cell also has a narrow future-observation route
+when it is paired with one fixed labelled `animal_indep()` relationship. The
+animal field is static across occasions: it is added to the temporal AR1
+covariance rather than multiplied by it. Future rows must retain fitted animal
+labels and form complete measurement-by-trait panels. As above, `se.fit` is a
+conditional standard deviation at fitted parameters, not a prediction
+interval.
+
+```{r animal-pair-forecast}
+A_series <- diag(3)
+dimnames(A_series) <- list(paste0("series_", 1:3), paste0("series_", 1:3))
+fit_animal_pair <- gllvmTMB(
+  value ~ 0 + trait +
+    temporal_latent(0 + trait | series, time = occasion,
+      replicate = measurement, d = 1, unique = FALSE) +
+    animal_indep(0 + trait | series, A = A_series),
+  data = replicated, trait = "trait", unit = "series", cluster = "series",
+  family = gaussian(), silent = TRUE
+)
+future_animal <- expand.grid(
+  series = paste0("series_", 1:3), occasion = 4,
+  measurement = 1:2, trait = paste0("trait_", 1:3),
+  KEEP.OUT.ATTRS = FALSE
+)
+forecast_temporal(fit_animal_pair, future_animal, se.fit = TRUE)
 ```
 
 `simulate()` redraws stationary temporal scores by default. Passing

@@ -119,10 +119,11 @@ temporal_dep <- function(formula, time, structure = "ar1", replicate = NULL) {
 #' `temporal_dep() + phylo_indep()` cell. `bootstrap_temporal()` separately
 #' supports the replicated rank-one `temporal_latent() + animal_indep()` cell.
 #' It also supports the corresponding fixed-mesh `spatial_indep()` cell.
-#' `forecast_temporal()` also has a
-#' separately bounded future-observation route for the replicated AR1 fixed
-#' kernel cell and for the replicated AR1
-#' `temporal_dep() + phylo_indep()` cell with a fixed phylogeny. Generic new-data prediction, generic intervals and profiles,
+#' `forecast_temporal()` also has separately bounded future-observation routes
+#' for the replicated AR1 fixed-kernel cell, the replicated AR1
+#' `temporal_dep() + phylo_indep()` cell with a fixed phylogeny, and the
+#' replicated AR1 rank-one `temporal_latent() + animal_indep()` cell with a
+#' fixed labelled animal relationship. Generic new-data prediction, generic intervals and profiles,
 #' automatic selection, and every other
 #' source-pair helper route remain unavailable.
 #'

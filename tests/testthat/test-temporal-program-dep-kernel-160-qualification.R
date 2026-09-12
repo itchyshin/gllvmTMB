@@ -17,6 +17,7 @@ test_that("the disjoint 160-series dep-kernel qualification plan is fixed", {
   source_text <- paste(readLines(script, warn = FALSE), collapse = "\n")
   expect_false(grepl("simulate\\.gllvmTMB", source_text))
   expect_match(source_text, "output must name a new result file")
+  expect_match(source_text, "error_message = conditionMessage")
 })
 
 test_that("the 160-series qualification launcher preserves the compute boundary", {

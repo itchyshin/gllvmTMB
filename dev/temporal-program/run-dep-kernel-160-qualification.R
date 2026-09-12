@@ -65,8 +65,15 @@
       max_gradient = max(abs(fit$tmb_obj$gr(fit$opt$par))), objective = fit$opt$objective, hessian_status = hs,
       phi_estimate = temporal$time$value[[1L]], temporal_frobenius_relative_error = sqrt(sum((tcrossprod(as.matrix(temporal$loading)) - tcrossprod(fixture$truth$temporal_loading))^2)) / sqrt(sum(tcrossprod(fixture$truth$temporal_loading)^2)),
       kernel_1 = par$theta_rr_phy[[1L]]^2, kernel_2 = par$theta_rr_phy[[2L]]^2, kernel_3 = par$theta_rr_phy[[3L]]^2,
-      beta_1 = par$b_fix[[1L]], beta_2 = par$b_fix[[2L]], beta_3 = par$b_fix[[3L]], stringsAsFactors = FALSE)
-  }, error = function(e) data.frame(phi = key$phi, seed = key$seed, n_series = key$n_series, terminal = "error", convergence = NA_integer_, pass_1_convergence = NA_integer_, pass_2_convergence = NA_integer_, pass_2_accepted = NA, max_gradient = NA_real_, objective = NA_real_, hessian_status = "error", phi_estimate = NA_real_, temporal_frobenius_relative_error = NA_real_, kernel_1 = NA_real_, kernel_2 = NA_real_, kernel_3 = NA_real_, beta_1 = NA_real_, beta_2 = NA_real_, beta_3 = NA_real_, stringsAsFactors = FALSE))
+      beta_1 = par$b_fix[[1L]], beta_2 = par$b_fix[[2L]], beta_3 = par$b_fix[[3L]],
+      error_message = NA_character_, stringsAsFactors = FALSE)
+  }, error = function(e) data.frame(phi = key$phi, seed = key$seed, n_series = key$n_series,
+    terminal = "error", convergence = NA_integer_, pass_1_convergence = NA_integer_,
+    pass_2_convergence = NA_integer_, pass_2_accepted = NA, max_gradient = NA_real_,
+    objective = NA_real_, hessian_status = "error", phi_estimate = NA_real_,
+    temporal_frobenius_relative_error = NA_real_, kernel_1 = NA_real_, kernel_2 = NA_real_,
+    kernel_3 = NA_real_, beta_1 = NA_real_, beta_2 = NA_real_, beta_3 = NA_real_,
+    error_message = conditionMessage(e), stringsAsFactors = FALSE))
   out$elapsed_seconds <- proc.time()[["elapsed"]] - started; out
 }
 

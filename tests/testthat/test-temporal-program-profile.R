@@ -135,7 +135,7 @@ test_that("profile_temporal profiles the qualified temporal-dependent phylogenet
 
   fit_ou <- fit; fit_ou$temporal$structure <- "ou"
   expect_error(profile_temporal(fit_ou, ystep = .25, ytol = 1),
-    "qualified temporal-kernel or temporal-dependent phylogenetic source pairs")
+    "qualified temporal-kernel, temporal-dependent phylogenetic")
 })
 
 test_that("profile_temporal profiles the qualified rank-one temporal-animal objective", {
@@ -144,6 +144,38 @@ test_that("profile_temporal profiles the qualified rank-one temporal-animal obje
   set.seed(260955L); d$value <- stats::rnorm(nrow(d))
   A <- matrix(c(1,.3,.1,.3,1,.2,.1,.2,1), 3, dimnames = list(paste0("s",1:3), paste0("s",1:3)))
   fit <- suppressWarnings(gllvmTMB(value ~ 0 + trait + temporal_latent(0 + trait | series, time = occasion, replicate = measurement, d = 1, unique = FALSE) + animal_indep(0 + trait | series, A = A), data = d, unit = "series", cluster = "series", family = gaussian(), silent = TRUE, control = gllvmTMBcontrol(se = FALSE)))
+  out <- profile_temporal(fit, ystep = .25, ytol = 1)
+  theta_index <- match("theta_temporal_time", names(fit$opt$par))
+  trace <- TMB::tmbprofile(fit$tmb_obj, name = theta_index,
+    ystep = .25, ytol = 1, trace = FALSE)
+  at_mle <- which.min(abs(trace[[1L]] - fit$opt$par[[theta_index]]))
+  expect_equal(out[["estimate"]],
+    (1 - 1e-6) * tanh(fit$opt$par[[theta_index]]), tolerance = 1e-10)
+  expect_equal(trace[[2L]][[at_mle]], fit$opt$objective, tolerance = 1e-8)
+  expect_gt(max(trace[[2L]]), fit$opt$objective)
+})
+
+test_that("profile_temporal closes the qualified rank-one temporal-spatial objective at the direct MLE", {
+  skip_if_not_installed("TMB")
+  skip_if_not_installed("fmesher")
+  key <- expand.grid(series = paste0("s", 1:3), occasion = 1:3,
+    measurement = c("m1", "m2"), KEEP.OUT.ATTRS = FALSE)
+  loc <- expand.grid(series = paste0("s", 1:3), occasion = 1:3,
+    KEEP.OUT.ATTRS = FALSE)
+  loc$lon <- c(0, 1, .2, .8, .4, .6, .3, .7, .5)
+  loc$lat <- c(0, 0, 1, 1, .8, .2, .7, .3, .5)
+  key <- merge(key, loc, by = c("series", "occasion"), sort = FALSE)
+  d <- key[rep(seq_len(nrow(key)), each = 3L), , drop = FALSE]
+  d$trait <- rep(paste0("t", 1:3), nrow(key))
+  set.seed(260956L)
+  d$value <- stats::rnorm(nrow(d))
+  mesh <- make_mesh(d, c("lon", "lat"), cutoff = .05)
+  fit <- suppressWarnings(gllvmTMB(value ~ 0 + trait +
+    temporal_latent(0 + trait | series, time = occasion,
+      replicate = measurement, d = 1, unique = FALSE) +
+    spatial_indep(0 + trait | coords, mesh = mesh), data = d,
+    unit = "series", family = gaussian(), silent = TRUE,
+    control = gllvmTMBcontrol(se = FALSE)))
   out <- profile_temporal(fit, ystep = .25, ytol = 1)
   theta_index <- match("theta_temporal_time", names(fit$opt$par))
   trace <- TMB::tmbprofile(fit$tmb_obj, name = theta_index,

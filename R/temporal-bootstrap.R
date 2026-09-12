@@ -82,12 +82,15 @@
 #' fixed labelled `kernel_indep()` term, a replicated Gaussian AR1
 #' `temporal_dep()` fit with one fixed `phylo_indep()` source, or a replicated
 #' Gaussian AR1 rank-one `temporal_latent(unique = FALSE)` fit with one fixed
-#' `animal_indep()` source; it redraws both sources through [stats::simulate()]
+#' `animal_indep()` source, or a replicated Gaussian AR1 rank-one
+#' `temporal_latent(unique = FALSE)` fit with one fixed-mesh
+#' `spatial_indep()` source. It redraws both sources through [stats::simulate()]
 #' and replays the public model call through [update()].
 #' @param object An unreplicated Gaussian `temporal_indep()` fit, or the
 #'   qualified replicated AR1 or OU `temporal_indep() + kernel_indep()` fit, or
 #'   the qualified replicated AR1 `temporal_dep() + phylo_indep()` fit, or the
-#'   qualified rank-one `temporal_latent() + animal_indep()` fit.
+#'   qualified rank-one `temporal_latent() + animal_indep()` fit, or the
+#'   qualified rank-one `temporal_latent() + spatial_indep()` fit.
 #' @param n_boot Number of refits.
 #' @param seed Optional random seed.
 #' @return A data frame with one row per attempted refit. `seed` records the
@@ -105,14 +108,14 @@ bootstrap_temporal <- function(object, n_boot = 100L, seed = NULL) {
   latent_spatial_pair <- .temporal_is_qualified_latent_spatial_pair(object, active)
   if (length(active) && !kernel_pair && !dep_phylo_pair && !latent_animal_pair && !latent_spatial_pair) {
     .temporal_abort(c(
-      "{.fn bootstrap_temporal} supports only qualified temporal-kernel, temporal-dependent phylogenetic, or rank-one temporal-animal source pairs.",
+      "{.fn bootstrap_temporal} supports only qualified temporal-kernel, temporal-dependent phylogenetic, rank-one temporal-animal, or rank-one temporal-spatial source pairs.",
       "i" = "The fit also uses covariance tier(s): {.val {active}}.",
-      ">" = "Use the replicated AR1 {.code temporal_indep() + kernel_indep()} cell with one fixed labelled kernel, the replicated AR1 {.code temporal_dep() + phylo_indep()} cell with one fixed phylogeny, the rank-one {.code temporal_latent() + animal_indep()} cell with one fixed relationship, or a temporal-only fit."
+      ">" = "Use the replicated AR1 {.code temporal_indep() + kernel_indep()} cell with one fixed labelled kernel, the replicated AR1 {.code temporal_dep() + phylo_indep()} cell with one fixed phylogeny, a qualified rank-one {.code temporal_latent()} source pair, or a temporal-only fit."
     ), class = "gllvmTMB_temporal_bootstrap_composed")
   }
   if ((!identical(object$temporal$mode, "indep") && !dep_phylo_pair && !latent_animal_pair && !latent_spatial_pair) ||
       any(object$tmb_data$family_id_vec != 0L)) {
-    .temporal_abort("{.fn bootstrap_temporal} currently supports Gaussian {.fn temporal_indep} fits, the qualified temporal-dependent phylogenetic pair, and the qualified rank-one temporal-animal pair only.")
+    .temporal_abort("{.fn bootstrap_temporal} currently supports Gaussian {.fn temporal_indep} fits, the qualified temporal-dependent phylogenetic pair, and qualified rank-one temporal-animal or temporal-spatial pairs only.")
   }
   if (kernel_pair) {
     if (!object$temporal$structure %in% c("ar1", "ou") || is.null(object$temporal$replicate_col)) {

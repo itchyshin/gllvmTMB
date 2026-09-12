@@ -10,7 +10,8 @@ bootstrap_temporal(object, n_boot = 100L, seed = NULL)
 \item{object}{An unreplicated Gaussian \code{temporal_indep()} fit, or the
 qualified replicated AR1 or OU \code{temporal_indep() + kernel_indep()} fit, or
 the qualified replicated AR1 \code{temporal_dep() + phylo_indep()} fit, or the
-qualified rank-one \code{temporal_latent() + animal_indep()} fit.}
+qualified rank-one \code{temporal_latent() + animal_indep()} fit, or the
+qualified rank-one \code{temporal_latent() + spatial_indep()} fit.}
 
 \item{n_boot}{Number of refits.}
 
@@ -28,6 +29,8 @@ route accepts a replicated Gaussian AR1 or OU \code{temporal_indep()} fit with o
 fixed labelled \code{kernel_indep()} term, a replicated Gaussian AR1
 \code{temporal_dep()} fit with one fixed \code{phylo_indep()} source, or a replicated
 Gaussian AR1 rank-one \code{temporal_latent(unique = FALSE)} fit with one fixed
-\code{animal_indep()} source; it redraws both sources through \code{\link[stats:simulate]{stats::simulate()}}
+\code{animal_indep()} source, or a replicated Gaussian AR1 rank-one
+\code{temporal_latent(unique = FALSE)} fit with one fixed-mesh
+\code{spatial_indep()} source. It redraws both sources through \code{\link[stats:simulate]{stats::simulate()}}
 and replays the public model call through \code{\link[=update]{update()}}.
 }

@@ -18,6 +18,7 @@ test_that("the disjoint 160-series dep-kernel qualification plan is fixed", {
   expect_false(grepl("simulate\\.gllvmTMB", source_text))
   expect_false(grepl("gllvmTMB::temporal_dep", source_text, fixed = TRUE))
   expect_false(grepl("gllvmTMB::kernel_indep", source_text, fixed = TRUE))
+  expect_match(source_text, "getFromNamespace\\(\"temporal_dep\"")
   expect_match(source_text, "output must name a new result file")
   expect_match(source_text, "error_message = conditionMessage")
   parser <- getFromNamespace("parse_multi_formula", "gllvmTMB")

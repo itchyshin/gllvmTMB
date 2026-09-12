@@ -49,6 +49,8 @@
   key <- if (identical(as.integer(seed), 2609340L)) .temporal_dep_kernel_160_prerun() else .temporal_dep_kernel_160_validate(phi, seed)
   out <- tryCatch({
     fixture <- .temporal_dep_kernel_160_fixture(key$phi, key$seed)
+    temporal_dep <- getFromNamespace("temporal_dep", "gllvmTMB")
+    kernel_indep <- getFromNamespace("kernel_indep", "gllvmTMB")
     fit <- suppressWarnings(gllvmTMB::gllvmTMB(value ~ 0 + trait +
       temporal_dep(0 + trait | series, time = occasion, replicate = measurement) +
       kernel_indep(series, K = fixture$K, name = "fixed_nonproportional_K"),

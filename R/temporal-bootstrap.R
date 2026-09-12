@@ -145,6 +145,24 @@
   dat
 }
 
+.temporal_bootstrap_spatial_formula <- function(formula, mesh) {
+  replace_mesh <- function(x) {
+    if (!is.call(x)) {
+      return(x)
+    }
+    fn <- as.character(x[[1L]])
+    if (identical(fn, "spatial_indep")) {
+      x[["mesh"]] <- mesh
+      return(x)
+    }
+    for (i in seq_along(x)[-1L]) {
+      x[[i]] <- replace_mesh(x[[i]])
+    }
+    x
+  }
+  replace_mesh(formula)
+}
+
 #' Parametric bootstrap for a temporal persistence parameter
 #'
 #' Draws unconditional temporal responses and refits the saved public model
@@ -228,7 +246,19 @@ bootstrap_temporal <- function(object, n_boot = 100L, seed = NULL) {
   for (i in seq_len(n_boot)) {
     draw <- simulate(object, nsim = 1L, seed = draw_seeds[[i]], condition_on_RE = FALSE)
     dat <- .temporal_bootstrap_refit_data(object, draw, response)
-    refit <- tryCatch(stats::update(object, data = dat), error = identity)
+    ## A public spatial formula can refer to a locally scoped `mesh` symbol.
+    ## Substitute the fitted mesh inside that provider term rather than adding
+    ## a top-level mesh argument, which would create a second provider.
+    refit_call <- if (latent_spatial_pair || dep_spatial_pair) {
+      call <- stats::update(object, data = dat, evaluate = FALSE)
+      call[["formula"]] <- .temporal_bootstrap_spatial_formula(
+        call[["formula"]], object$mesh
+      )
+      function() eval(call, envir = parent.frame())
+    } else {
+      function() stats::update(object, data = dat)
+    }
+    refit <- tryCatch(refit_call(), error = identity)
     if (inherits(refit, "error")) {
       out[[i]] <- data.frame(replicate = i, seed = draw_seeds[[i]], convergence = NA_integer_,
         objective = NA_real_, time_estimate = NA_real_, error = conditionMessage(refit))

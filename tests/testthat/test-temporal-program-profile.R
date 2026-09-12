@@ -165,7 +165,7 @@ test_that("profile_temporal profiles the qualified temporal-dependent animal obj
   expect_gt(max(trace[[2L]]), fit$opt$objective)
   fit_ou <- fit; fit_ou$temporal$structure <- "ou"
   expect_error(profile_temporal(fit_ou, ystep = .25, ytol = 1),
-    "qualified temporal-kernel, temporal-dependent phylogenetic or animal")
+    "supports only qualified temporal-kernel")
 })
 
 test_that("profile_temporal profiles the qualified rank-one temporal-animal objective", {

@@ -5,11 +5,12 @@ and AIC for named, already fitted candidates. It assigns no likelihood-ratio
 test or p-value, because persistence and variance boundaries do not have a
 generic chi-square reference distribution.
 
-The first composed extension admits exactly a set of replicated Gaussian AR1
+The composed extensions admit exactly a set of replicated Gaussian AR1 or a
+set of replicated Gaussian irregular-time OU
 `temporal_indep() + kernel_indep()` candidates. Every candidate must carry one
 fixed labelled diagonal kernel with the same label, labels, and matrix. This
 keeps the source component identical while candidates differ only through
-user-supplied temporal model choices. The helper neither searches a model
+user-supplied choices within one temporal structure. The helper neither searches a model
 space nor refits candidates.
 
 Tests require the reported AIC to equal `-2 * logLik + 2 * df`, confirm there

@@ -53,8 +53,8 @@ the four narrow AR1 additive pairs and the preliminary OU-kernel pair below rema
 > spatial retained recovery gates remain partial or failed, and the dependent
 > spatial campaign is paused after a retained overrun. One additional replicated
 > OU `temporal_indep() + kernel_indep()` cell has independent dense
-> likelihood/gradient, time-coordinate, simulation, long/wide, update, and direct-profile checks
-> on an irregular-time fixture. Its source-pair bootstrap, selection, forecast, and recovery gates remain pending, so this article
+> likelihood/gradient, time-coordinate, simulation, long/wide, update, direct-profile, bootstrap, and same-structure AIC checks
+> on an irregular-time fixture. Its source-pair forecast and recovery gates remain pending, so this article
 > does not present it as a worked workflow.
 
 ## Ordinary longitudinal observations

@@ -42,7 +42,8 @@ separately bounded cell is replicated irregular-time
 `temporal_indep(..., structure = "ou") + kernel_indep(...)`; its independent
 dense likelihood/gradient and time-coordinate oracles, unconditional simulation,
 long/wide identity, update replay, and direct-profile checks have passed locally.
-Its source-pair bootstrap, selection, forecast, and recovery gates remain
+Its source-pair bootstrap and same-structure AIC checks have also passed locally.
+Forecast and recovery gates remain
 pending. These use
 an additive static-source plus temporal-process covariance, not a source-by-time
 product; global `phylo_tree`/`phylo_vcv`, other OU source pairs and the remaining

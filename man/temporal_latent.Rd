@@ -74,14 +74,14 @@ release, general recovery, or coverage claims. The spatial
 cell redraws its independent SPDE field during unconditional simulation. Other
 temporal-source combinations remain unavailable. A fifth, separately bounded
 source pair is replicated irregular-time \code{temporal_indep(..., structure = "ou") + kernel_indep(...)}; its independent dense likelihood, gradient and
-time-coordinate, simulation, long/wide, update and direct-profile checks are
-local only; its bootstrap, selection, forecast, and recovery gates remain
-pending. For an unreplicated,
+time-coordinate, simulation, long/wide, update, direct-profile, bootstrap,
+and same-structure AIC checks are local only; its forecast and recovery gates
+remain pending. For an unreplicated,
 Gaussian \code{temporal_indep()} source by itself, \code{forecast_temporal()},
 \code{profile_temporal()}, \code{bootstrap_temporal()}, and \code{compare_temporal()} have
 separate bounded contracts. \code{bootstrap_temporal()}, \code{profile_temporal()}, and
-\code{compare_temporal()} also support the qualified replicated AR1
-\code{temporal_indep() + kernel_indep()} cell. Generic new-data prediction,
+\code{compare_temporal()} also support the qualified replicated AR1 or OU
+\code{temporal_indep() + kernel_indep()} cells. Generic new-data prediction,
 generic intervals and profiles, automatic selection, and every other
 source-pair helper route remain unavailable.
 }

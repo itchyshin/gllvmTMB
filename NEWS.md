@@ -24,7 +24,7 @@
   matrix-label checks are local only and its recovery gate remains pending.
   A separately bounded replicated Gaussian OU `temporal_indep() + kernel_indep()`
   cell has local independent dense likelihood/gradient, time-coordinate,
-  simulation, long/wide, update, and direct-profile checks; it has no source-pair bootstrap, selection, forecast, recovery,
+  simulation, long/wide, update, direct-profile, bootstrap, and same-structure AIC checks; it has no source-pair forecast, recovery,
   cross-platform, release, or coverage claim. Other temporal/source modes and OU source combinations,
   cross-platform verification, and release remain pending.
 

@@ -8,7 +8,7 @@ bootstrap_temporal(object, n_boot = 100L, seed = NULL)
 }
 \arguments{
 \item{object}{An unreplicated Gaussian \code{temporal_indep()} fit, or the
-qualified replicated AR1 \code{temporal_indep() + kernel_indep()} fit.}
+qualified replicated AR1 or OU \code{temporal_indep() + kernel_indep()} fit.}
 
 \item{n_boot}{Number of refits.}
 
@@ -22,7 +22,7 @@ their convergence code and error text.
 \description{
 Draws unconditional temporal responses and refits the saved public model
 call. Failed refits are retained in the returned table. The bounded composed
-route accepts a replicated Gaussian AR1 \code{temporal_indep()} fit with one
+route accepts a replicated Gaussian AR1 or OU \code{temporal_indep()} fit with one
 fixed labelled \code{kernel_indep()} term; it redraws both sources through
 \code{\link[stats:simulate]{stats::simulate()}} and replays the public model call through \code{\link[=update]{update()}}.
 }

@@ -23,11 +23,11 @@
 #'
 #' Draws unconditional temporal responses and refits the saved public model
 #' call. Failed refits are retained in the returned table. The bounded composed
-#' route accepts a replicated Gaussian AR1 `temporal_indep()` fit with one
+#' route accepts a replicated Gaussian AR1 or OU `temporal_indep()` fit with one
 #' fixed labelled `kernel_indep()` term; it redraws both sources through
 #' [stats::simulate()] and replays the public model call through [update()].
 #' @param object An unreplicated Gaussian `temporal_indep()` fit, or the
-#'   qualified replicated AR1 `temporal_indep() + kernel_indep()` fit.
+#'   qualified replicated AR1 or OU `temporal_indep() + kernel_indep()` fit.
 #' @param n_boot Number of refits.
 #' @param seed Optional random seed.
 #' @return A data frame with one row per attempted refit. `seed` records the
@@ -51,8 +51,8 @@ bootstrap_temporal <- function(object, n_boot = 100L, seed = NULL) {
     .temporal_abort("{.fn bootstrap_temporal} currently supports Gaussian {.fn temporal_indep} fits only.")
   }
   if (kernel_pair) {
-    if (!identical(object$temporal$structure, "ar1") || is.null(object$temporal$replicate_col)) {
-      .temporal_abort("The qualified temporal-kernel bootstrap requires a replicated AR1 panel.")
+    if (!object$temporal$structure %in% c("ar1", "ou") || is.null(object$temporal$replicate_col)) {
+      .temporal_abort("The qualified temporal-kernel bootstrap requires a replicated AR1 or OU panel.")
     }
   } else if (!is.null(object$temporal$replicate_col)) {
     .temporal_abort("{.fn bootstrap_temporal} currently supports replicated panels only for the qualified AR1 {.code temporal_indep() + kernel_indep()} cell.")

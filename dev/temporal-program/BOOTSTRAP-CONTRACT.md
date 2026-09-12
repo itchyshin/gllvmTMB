@@ -8,8 +8,9 @@ covstructs.
 
 The first target is the temporal `phi`/`kappa` estimate for unreplicated,
 Gaussian, temporal-only `temporal_indep()` fits. The first composed extension
-is exactly the replicated Gaussian AR1 `temporal_indep()` plus one fixed,
-labelled `kernel_indep()` intercept term at `rho = 1`. It uses the same saved
+is exactly the replicated Gaussian AR1 or irregular-time OU
+`temporal_indep()` plus one fixed, labelled `kernel_indep()` intercept term at
+`rho = 1`. It uses the same saved
 public call, `simulate()` draw, and `update()` replay; the simulator redraws
 both the temporal state and the independent kernel field. It never replaces
 the fitted kernel with an iid effect or conditions on fitted random effects.
@@ -20,6 +21,6 @@ refits are retained and excluded only from summaries with their denominator
 shown. This is parametric refit variability, not coverage evidence. The
 extension has deterministic source-label, draw-seed, response-row, and update
 tests. It does not establish bootstrap calibration, confidence-interval
-coverage, source-pair forecasting or profiling, nor bootstrap support for
+coverage or source-pair forecasting, nor bootstrap support for
 temporal `dep`/`latent`, phylogenetic, animal, spatial, ordinary, or multiple
 source terms.

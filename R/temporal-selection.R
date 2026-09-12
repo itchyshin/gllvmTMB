@@ -1,8 +1,8 @@
 #' Compare supplied temporal model candidates
 #'
-#' The bounded composed route accepts only replicated Gaussian AR1
+#' The bounded composed route accepts only replicated Gaussian AR1 or OU
 #' `temporal_indep() + kernel_indep()` candidates with the same fixed labelled
-#' kernel. It reports AIC only and does not perform a likelihood-ratio test or
+#' kernel with one common temporal structure. It reports AIC only and does not perform a likelihood-ratio test or
 #' automatic search.
 #' @param ... Named fitted temporal models.
 #' @return AIC comparison table; no likelihood-ratio test is assigned.
@@ -31,12 +31,16 @@ compare_temporal <- function(...) {
   if (all(kernel_pair)) {
     qualified <- vapply(fits, function(x) {
       identical(x$temporal$mode, "indep") &&
-        identical(x$temporal$structure, "ar1") &&
+      x$temporal$structure %in% c("ar1", "ou") &&
         !is.null(x$temporal$replicate_col) &&
         all(x$tmb_data$family_id_vec == 0L)
     }, logical(1))
     if (!all(qualified)) {
-      .temporal_abort("The qualified temporal-kernel comparison requires replicated Gaussian AR1 {.fn temporal_indep} fits.")
+      .temporal_abort("The qualified temporal-kernel comparison requires replicated Gaussian AR1 or OU {.fn temporal_indep} fits.")
+    }
+    structures <- vapply(fits, function(x) x$temporal$structure, character(1))
+    if (length(unique(structures)) != 1L) {
+      .temporal_abort("Qualified temporal-kernel candidates must use the same temporal structure.")
     }
     reference_name <- fits[[1L]]$kernel_levels$name
     reference_matrix <- fits[[1L]]$kernel_matrices[[reference_name]]

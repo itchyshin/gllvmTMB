@@ -58297,3 +58297,15 @@ Deliberately not run: Totoro 9×500 grid dispatch; full `devtools::test()`.
   MLE, and translating all elapsed times leaves the profile unchanged. The
   independent dense likelihood check remains in the OU-kernel oracle test.
   Bootstrap, selection, and forecast stay refused for this cell.
+
+## 2026-09-12 — bounded OU temporal--kernel bootstrap and AIC comparison
+
+- `bootstrap_temporal()` now admits the named replicated OU plus fixed labelled
+  kernel cell. Its two-attempt test redraws the native OU and kernel fields,
+  replays the saved public call, and proves deterministic retained output for
+  a fixed draw seed. It remains parametric-refit variability, not coverage.
+- `compare_temporal()` now admits supplied OU candidates only when every fit
+  has the same OU structure and the identical labelled kernel. It returns AIC
+  only; it neither refits, searches, nor attaches a likelihood-ratio test.
+  Forecasts remain rejected because conditioning a future joint OU--kernel
+  field requires a separate contract.

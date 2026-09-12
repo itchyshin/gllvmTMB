@@ -78,7 +78,7 @@ locally; retained phylogenetic, animal, and spatial recovery gates fail
 strictly. A separately bounded replicated OU `temporal_indep() + kernel_indep()`
 cell has local independent dense likelihood/gradient, time-coordinate,
 simulation, long/wide, update, and direct-profile checks, but no source-pair
-bootstrap, selection, forecast, recovery, cross-platform, release, or coverage evidence. Other OU source modes, source-by-time interactions, and
+bootstrap/selection beyond the named fixed kernel, forecast, recovery, cross-platform, release, or coverage evidence. Other OU source modes, source-by-time interactions, and
 other structured-source combinations remain unavailable. In the animal cell, `A` is a labelled dense relatedness
 matrix; pass a sparse relationship precision through `Ainv`.
 

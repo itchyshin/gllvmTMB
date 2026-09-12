@@ -244,7 +244,7 @@ test_that("OU source-pair admission remains limited to temporal_indep plus kerne
   )), "requires replicated AR1")
 })
 
-test_that("OU temporal-kernel profiles directly while unsupported helpers refuse", {
+test_that("OU temporal-kernel profiles, bootstraps, and compares within structure", {
   skip_if_not_installed("TMB")
   fx <- .temporal_ou_kernel_fixture()
   fit <- .temporal_ou_kernel_fit(fx)
@@ -253,8 +253,12 @@ test_that("OU temporal-kernel profiles directly while unsupported helpers refuse
   expect_error(forecast_temporal(fit, future), "does not yet support replicated temporal panels")
   expect_named(profile_temporal(fit, ystep = .25, ytol = 1),
     c("estimate", "lower", "upper"))
-  expect_error(bootstrap_temporal(fit, n_boot = 1L),
-    "qualified temporal-kernel bootstrap requires a replicated AR1 panel")
-  expect_error(compare_temporal(left = fit, right = fit),
-    "qualified temporal-kernel comparison requires replicated Gaussian AR1")
+  boot <- bootstrap_temporal(fit, n_boot = 2L, seed = 2609362L)
+  again <- bootstrap_temporal(fit, n_boot = 2L, seed = 2609362L)
+  expect_named(boot, c("replicate", "seed", "convergence", "objective", "time_estimate", "error"))
+  expect_equal(boot, again, tolerance = 1e-10)
+  expect_true(all(is.finite(boot$time_estimate) | nzchar(boot$error)))
+  comparison <- compare_temporal(left = fit, right = fit)
+  expect_named(comparison, c("model", "logLik", "df", "AIC", "convergence"))
+  expect_equal(nrow(comparison), 2L)
 })

@@ -106,14 +106,14 @@ temporal_dep <- function(formula, time, structure = "ar1", replicate = NULL) {
 #' temporal-source combinations remain unavailable. A fifth, separately bounded
 #' source pair is replicated irregular-time `temporal_indep(..., structure =
 #' "ou") + kernel_indep(...)`; its independent dense likelihood, gradient and
-#' time-coordinate, simulation, long/wide, update and direct-profile checks are
-#' local only; its bootstrap, selection, forecast, and recovery gates remain
-#' pending. For an unreplicated,
+#' time-coordinate, simulation, long/wide, update, direct-profile, bootstrap,
+#' and same-structure AIC checks are local only; its forecast and recovery gates
+#' remain pending. For an unreplicated,
 #' Gaussian `temporal_indep()` source by itself, `forecast_temporal()`,
 #' `profile_temporal()`, `bootstrap_temporal()`, and `compare_temporal()` have
 #' separate bounded contracts. `bootstrap_temporal()`, `profile_temporal()`, and
-#' `compare_temporal()` also support the qualified replicated AR1
-#' `temporal_indep() + kernel_indep()` cell. Generic new-data prediction,
+#' `compare_temporal()` also support the qualified replicated AR1 or OU
+#' `temporal_indep() + kernel_indep()` cells. Generic new-data prediction,
 #' generic intervals and profiles, automatic selection, and every other
 #' source-pair helper route remain unavailable.
 #'

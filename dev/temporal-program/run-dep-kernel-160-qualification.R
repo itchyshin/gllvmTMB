@@ -50,8 +50,8 @@
   out <- tryCatch({
     fixture <- .temporal_dep_kernel_160_fixture(key$phi, key$seed)
     fit <- suppressWarnings(gllvmTMB::gllvmTMB(value ~ 0 + trait +
-      gllvmTMB::temporal_dep(0 + trait | series, time = occasion, replicate = measurement) +
-      gllvmTMB::kernel_indep(series, K = fixture$K, name = "fixed_nonproportional_K"),
+      temporal_dep(0 + trait | series, time = occasion, replicate = measurement) +
+      kernel_indep(series, K = fixture$K, name = "fixed_nonproportional_K"),
       data = fixture$data, unit = "series", cluster = "series", family = stats::gaussian(), silent = TRUE,
       control = gllvmTMB::gllvmTMBcontrol(se = FALSE, optimizer = "optim",
         optArgs = list(method = "BFGS", control = list(maxit = 3000L, reltol = 1e-14)), optimizer_passes = 2L)))

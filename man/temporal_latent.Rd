@@ -83,7 +83,8 @@ separate bounded contracts. \code{bootstrap_temporal()}, \code{profile_temporal(
 \code{compare_temporal()} also support the qualified replicated AR1 or OU
 \code{temporal_indep() + kernel_indep()} cells. \code{forecast_temporal()} also has a
 separately bounded future-observation route for the replicated AR1 fixed
-kernel cell. Generic new-data prediction, generic intervals and profiles,
+kernel cell and for the replicated AR1
+\code{temporal_dep() + phylo_indep()} cell with a fixed phylogeny. Generic new-data prediction, generic intervals and profiles,
 automatic selection, and every other
 source-pair helper route remain unavailable.
 }

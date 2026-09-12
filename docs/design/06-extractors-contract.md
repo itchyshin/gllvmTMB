@@ -17,7 +17,10 @@ fixed persistence value, while `compare_temporal()` accepts only supplied
 qualified candidates with the same labelled kernel and returns AIC without a
 likelihood-ratio test or automatic search. The forecast conditions on fitted parameter values
 for future occasions of existing series; its `se.fit` is not a calibrated
-prediction interval. Generic new-data prediction, generic intervals and
+prediction interval. A separate future-observation contract admits replicated
+AR1 `temporal_dep() + phylo_indep()` with one fixed phylogenetic source; it
+uses the full retained phylogenetic precision and does not establish forecast
+calibration. Generic new-data prediction, generic intervals and
 profiles, automatic selection, every other source-pair helper route, and other
 temporal modes remain explicit unsupported routes.
 

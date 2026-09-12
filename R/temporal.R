@@ -115,7 +115,8 @@ temporal_dep <- function(formula, time, structure = "ar1", replicate = NULL) {
 #' `compare_temporal()` also support the qualified replicated AR1 or OU
 #' `temporal_indep() + kernel_indep()` cells. `forecast_temporal()` also has a
 #' separately bounded future-observation route for the replicated AR1 fixed
-#' kernel cell. Generic new-data prediction, generic intervals and profiles,
+#' kernel cell and for the replicated AR1
+#' `temporal_dep() + phylo_indep()` cell with a fixed phylogeny. Generic new-data prediction, generic intervals and profiles,
 #' automatic selection, and every other
 #' source-pair helper route remain unavailable.
 #'

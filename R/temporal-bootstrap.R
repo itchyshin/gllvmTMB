@@ -19,6 +19,25 @@
     identical(extra$.kernel_mode, "indep")
 }
 
+.temporal_is_qualified_dep_phylo_pair <- function(object, active_tiers) {
+  providers <- object$covstructs
+  if (!is.list(providers) || length(providers) != 1L ||
+      !identical(as.character(active_tiers), "phylo_rr") ||
+      !identical(object$temporal$source_pair, "phylo_indep") ||
+      !identical(object$temporal$mode, "dep") ||
+      !identical(object$temporal$structure, "ar1") ||
+      !identical(object$temporal$workflow, "replicated")) {
+    return(FALSE)
+  }
+  provider <- providers[[1L]]
+  extra <- provider$extra
+  identical(provider$kind, "phylo_rr") && is.list(extra) &&
+    isTRUE(extra$.indep) && isTRUE(extra$.phylo_unique) &&
+    is.null(object$source_strength) &&
+    (is.matrix(object$tmb_data$Ainv_phy_rr) ||
+      inherits(object$tmb_data$Ainv_phy_rr, "Matrix"))
+}
+
 #' Parametric bootstrap for a temporal persistence parameter
 #'
 #' Draws unconditional temporal responses and refits the saved public model

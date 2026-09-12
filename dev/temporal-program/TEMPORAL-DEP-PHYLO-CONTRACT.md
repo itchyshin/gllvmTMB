@@ -45,8 +45,11 @@ separate from the private temporal state index.
 
 Refuse OU, temporal latent/Psi alternatives, ordinary `unit` or `unit_obs`
 terms, phylogenetic slopes, duplicate sources, estimated attenuation,
-incomplete panels, source-by-time interactions, forecasts, intervals,
-profiles, bootstrap, selection, and generic inference routes.
+incomplete panels, source-by-time interactions, intervals, profiles,
+bootstrap, selection, and generic inference routes. The separately bounded
+future-observation forecast route is defined in
+`TEMPORAL-DEP-PHYLO-FORECAST-CONTRACT.md`; all other forecast routes remain
+refused.
 
 ## Required evidence
 

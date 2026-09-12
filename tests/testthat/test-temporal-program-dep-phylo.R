@@ -204,3 +204,135 @@ test_that("temporal_dep-phylo fences unqualified variants", {
   even <- fx$data; even$occasion <- 2L * even$occasion
   expect_error(suppressWarnings(gllvmTMB(base, data = even, unit = "series", cluster = "series", family = gaussian(), silent = TRUE)), "odd within-series")
 })
+
+.temporal_dep_phylo_forecast_dense_covariance <- function(fit, left, right = left) {
+  par <- fit$tmb_obj$env$parList(fit$opt$par)
+  trait_levels <- levels(fit$data[[fit$trait_col]])
+  trait_left <- match(as.character(left[[fit$trait_col]]), trait_levels)
+  trait_right <- match(as.character(right[[fit$trait_col]]), trait_levels)
+  series_left <- as.character(left[[fit$temporal$series_col]])
+  series_right <- as.character(right[[fit$temporal$series_col]])
+  time_left <- as.numeric(left[[fit$temporal$time_col]])
+  time_right <- as.numeric(right[[fit$temporal$time_col]])
+  phi <- (1 - 1e-6) * tanh(par$theta_temporal_time)
+  Sigma_time <- tcrossprod(.temporal_dep_phylo_unpack(
+    par$theta_temporal_rr, length(trait_levels)
+  ))
+  temporal <- outer(series_left, series_right, "==") *
+    phi^abs(outer(time_left, time_right, "-")) *
+    Sigma_time[trait_left, trait_right]
+  source_map <- tapply(fit$tmb_data$species_aug_id,
+    as.character(fit$data[[fit$temporal$series_col]]), unique)
+  source_map <- vapply(source_map, function(x) x[[1L]], integer(1))
+  left_source <- unname(source_map[series_left])
+  right_source <- unname(source_map[series_right])
+  Aphy <- solve(as.matrix(fit$tmb_data$Ainv_phy_rr))
+  phylo <- Aphy[left_source + 1L, right_source + 1L] *
+    diag(par$theta_rr_phy^2, nrow = length(trait_levels))[trait_left, trait_right]
+  out <- temporal + phylo
+  if (identical(left, right)) diag(out) <- diag(out) + exp(2 * par$log_sigma_eps[[1L]])
+  out
+}
+
+.temporal_dep_phylo_forecast_product_covariance <- function(fit, left, right = left) {
+  par <- fit$tmb_obj$env$parList(fit$opt$par)
+  trait_levels <- levels(fit$data[[fit$trait_col]])
+  trait_left <- match(as.character(left[[fit$trait_col]]), trait_levels)
+  trait_right <- match(as.character(right[[fit$trait_col]]), trait_levels)
+  series_left <- as.character(left[[fit$temporal$series_col]])
+  series_right <- as.character(right[[fit$temporal$series_col]])
+  time_left <- as.numeric(left[[fit$temporal$time_col]])
+  time_right <- as.numeric(right[[fit$temporal$time_col]])
+  source_map <- tapply(fit$tmb_data$species_aug_id,
+    as.character(fit$data[[fit$temporal$series_col]]), unique)
+  source_map <- vapply(source_map, function(x) x[[1L]], integer(1))
+  Aphy <- solve(as.matrix(fit$tmb_data$Ainv_phy_rr))
+  phi <- (1 - 1e-6) * tanh(par$theta_temporal_time)
+  Sigma_time <- tcrossprod(.temporal_dep_phylo_unpack(
+    par$theta_temporal_rr, length(trait_levels)
+  ))
+  out <- phi^abs(outer(time_left, time_right, "-")) *
+    Aphy[unname(source_map[series_left]) + 1L, unname(source_map[series_right]) + 1L] *
+    Sigma_time[trait_left, trait_right]
+  if (identical(left, right)) diag(out) <- diag(out) + exp(2 * par$log_sigma_eps[[1L]])
+  out
+}
+
+test_that("replicated temporal_dep-phylo forecasts match additive dense conditioning", {
+  skip_if_not_installed("TMB")
+  fx <- .temporal_dep_phylo_fixture(); fit <- .temporal_dep_phylo_fit(fx)
+  fixed <- fit$opt$par
+  fixed[names(fixed) == "b_fix"] <- c(.1, -.15, .2)
+  fixed[names(fixed) == "theta_temporal_rr"] <- c(.55, .45, .5, .08, -.12, .1)
+  fixed[names(fixed) == "theta_rr_phy"] <- c(.25, .4, .6)
+  fixed[names(fixed) == "log_sigma_eps"] <- log(.25)
+  fixed[names(fixed) == "theta_temporal_time"] <- atanh(.55 / (1 - 1e-6))
+  fit$opt$par <- fixed
+  future <- expand.grid(series = paste0("sp", 1:4), occasion = c(5L, 6L),
+    measurement = c("m1", "m2"), trait = paste0("t", 1:3),
+    KEEP.OUT.ATTRS = FALSE, stringsAsFactors = FALSE)
+  observed <- forecast_temporal(fit, future, se.fit = TRUE)
+  all_rows <- rbind(fx$data[, names(future)], future)
+  V <- .temporal_dep_phylo_forecast_dense_covariance(fit, all_rows)
+  n_observed <- nrow(fx$data)
+  Voo <- V[seq_len(n_observed), seq_len(n_observed), drop = FALSE]
+  Von <- V[seq_len(n_observed), n_observed + seq_len(nrow(future)), drop = FALSE]
+  Vnn <- V[n_observed + seq_len(nrow(future)), n_observed + seq_len(nrow(future)), drop = FALSE]
+  beta <- gllvmTMB:::.gllvmTMB_b_fix_values(fit)
+  Xo <- fit$tmb_data$X_fix
+  Xn <- stats::model.matrix(stats::delete.response(stats::terms(fit$formula)), future)
+  solved <- solve(Voo, cbind(fx$data$value - drop(Xo %*% beta), Von))
+  expected_mean <- drop(Xn %*% beta + t(Von) %*% solved[, 1L])
+  expected_variance <- diag(Vnn - t(Von) %*% solved[, -1L, drop = FALSE])
+  expect_equal(observed$est, unname(expected_mean), tolerance = 1e-8)
+  expect_equal(observed$se.fit, unname(sqrt(pmax(expected_variance, 0))), tolerance = 1e-8)
+  expect_equal(solve(as.matrix(fit$tmb_data$Ainv_phy_rr)), fx$Cphy + diag(1e-8, 4L), tolerance = 1e-8)
+  expect_gt(max(abs(V - .temporal_dep_phylo_forecast_product_covariance(fit, all_rows))), 1e-3)
+
+  fit$opt$par[names(fit$opt$par) == "theta_temporal_time"] <- atanh(-.55 / (1 - 1e-6))
+  negative <- forecast_temporal(fit, future)
+  negative_V <- .temporal_dep_phylo_forecast_dense_covariance(fit, all_rows)
+  negative_Voo <- negative_V[seq_len(n_observed), seq_len(n_observed), drop = FALSE]
+  negative_Von <- negative_V[seq_len(n_observed), n_observed + seq_len(nrow(future)), drop = FALSE]
+  expected_negative <- drop(Xn %*% beta + t(negative_Von) %*%
+    solve(negative_Voo, fx$data$value - drop(Xo %*% beta)))
+  expect_equal(negative$est, unname(expected_negative), tolerance = 1e-8)
+})
+
+test_that("replicated temporal_dep-phylo forecasts preserve row order and refuse unqualified requests", {
+  skip_if_not_installed("TMB")
+  fx <- .temporal_dep_phylo_fixture(); fit <- .temporal_dep_phylo_fit(fx)
+  future <- expand.grid(series = paste0("sp", 1:4), occasion = 5L,
+    measurement = c("m1", "m2"), trait = paste0("t", 1:3),
+    KEEP.OUT.ATTRS = FALSE, stringsAsFactors = FALSE)
+  reference <- forecast_temporal(fit, future, se.fit = TRUE)
+  set.seed(260942L); shuffled <- future[sample.int(nrow(future)), , drop = FALSE]
+  reordered <- forecast_temporal(fit, shuffled, se.fit = TRUE)
+  key <- c("series", "occasion", "measurement", "trait")
+  index <- match(do.call(paste, c(shuffled[key], sep = "\r")),
+    do.call(paste, c(future[key], sep = "\r")))
+  expect_equal(reordered$est, reference$est[index], tolerance = 1e-8)
+  expect_equal(reordered$se.fit, reference$se.fit[index], tolerance = 1e-8)
+  expect_error(forecast_temporal(fit, future[-1L, , drop = FALSE]), "complete trait panel")
+  expect_error(forecast_temporal(fit, transform(future, series = "new_tip")), "existing series")
+  fit_ou <- fit; fit_ou$temporal$structure <- "ou"
+  expect_error(forecast_temporal(fit_ou, future), "mode- and source-specific oracle evidence")
+})
+
+test_that("temporal_dep-phylo forecast preserves tree and dense-VCV representations", {
+  skip_if_not_installed("TMB"); skip_if_not_installed("ape")
+  fx <- .temporal_dep_phylo_fixture()
+  set.seed(260943L); tree <- ape::rcoal(4L); tree$tip.label <- rownames(fx$Cphy)
+  fx$Cphy <- ape::vcv(tree, corr = TRUE)
+  dense_fit <- .temporal_dep_phylo_fit(fx, "vcv")
+  tree_fit <- .temporal_dep_phylo_fit(fx, "tree", tree)
+  common <- dense_fit$opt$par
+  expect_identical(names(common), names(tree_fit$opt$par))
+  tree_fit$opt$par <- common
+  future <- expand.grid(series = rownames(fx$Cphy), occasion = 5L,
+    measurement = c("m1", "m2"), trait = paste0("t", 1:3),
+    KEEP.OUT.ATTRS = FALSE, stringsAsFactors = FALSE)
+  dense <- forecast_temporal(dense_fit, future, se.fit = TRUE)
+  tree_out <- forecast_temporal(tree_fit, future, se.fit = TRUE)
+  expect_equal(tree_out[c("est", "se.fit")], dense[c("est", "se.fit")], tolerance = 3e-6)
+})

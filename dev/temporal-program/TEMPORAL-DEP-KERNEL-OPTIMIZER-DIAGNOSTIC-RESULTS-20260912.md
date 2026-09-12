@@ -10,9 +10,12 @@ and its failed verdict remain unchanged.
 
 `optimizer-diagnostic-p00-seed-2609373.rds` retained a harness error because
 the direct fixture did not carry labelled series and trait vectors into the
-independent panel checker.  It is preserved.  The repaired, separate receipt
-`optimizer-diagnostic-v2-p00-seed-2609373.rds` completed successfully on the
-same fixed design point (`phi = 0`, seed `2609373`, 80 series, 32 occasions).
+independent panel checker.  It is preserved.  The repaired
+`optimizer-diagnostic-v2-p00-seed-2609373.rds` was a source-dirty debugging
+receipt and is retained only for that history.  The load-bearing receipt is
+`optimizer-diagnostic-v3-p00-seed-2609373.rds`, generated from clean commit
+`87d2a7a6c715dc763f5e44242613d724f108a534`, on the same fixed design point
+(`phi = 0`, seed `2609373`, 80 series, 32 occasions).
 
 At the native endpoint, the outer gradient is still `0.00167243199`, exceeding
 the unchanged `0.001` qualification criterion.  The independent block

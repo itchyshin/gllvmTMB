@@ -39,7 +39,7 @@ fit. A fifth route supports replicated AR1 rank-one
 \code{temporal_latent(unique = FALSE) + animal_indep()} with one fixed animal
 relationship. A sixth route supports the corresponding fixed-mesh
 \code{spatial_indep()} pair. All composed routes forecast future observations
-rather than latent state means.
+rather than latent state means. The fixed-mesh \code{temporal_dep() + spatial_indep()} route is separately qualified on the same additive model.
 Other temporal covariance modes, non-temporal random-effect tiers, source
 combinations, past or observed occasions, and non-Gaussian families remain
 outside this helper until they have their own conditioning contracts.

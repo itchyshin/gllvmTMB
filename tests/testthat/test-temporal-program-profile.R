@@ -22,6 +22,8 @@ test_that("profile_temporal profiles the direct transformed time parameter", {
   constrained <- profile_temporal(fit, ystep = .1, ytol = 1,
     parm.range = fit$opt$par[[theta_index]] + c(-.01, .01))
   expect_true(all(is.na(constrained[c("lower", "upper")])))
+  expect_error(profile_temporal(fit, lincomb = c(1, rep(0, length(fit$opt$par) - 1L))),
+    "lincomb.*not supported")
   expect_error(profile_temporal(update(fit,
     formula = value ~ 0 + trait + temporal_dep(0 + trait | series, time = occasion))),
     "temporal_indep")

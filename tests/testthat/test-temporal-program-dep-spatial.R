@@ -64,6 +64,34 @@
     sum(backsolve(L, residual, transpose = TRUE)^2))
 }
 
+.temporal_dep_spatial_forecast_covariance <- function(fit, left, right = left) {
+  par <- fit$tmb_obj$env$parList(fit$opt$par)
+  traits <- levels(fit$data[[fit$trait_col]])
+  left_trait <- match(as.character(left[[fit$trait_col]]), traits)
+  right_trait <- match(as.character(right[[fit$trait_col]]), traits)
+  left_series <- as.character(left[[fit$temporal$series_col]])
+  right_series <- as.character(right[[fit$temporal$series_col]])
+  phi <- (1 - 1e-6) * tanh(par$theta_temporal_time)
+  temporal <- outer(left_series, right_series, "==") *
+    phi^abs(outer(as.numeric(left[[fit$temporal$time_col]]),
+      as.numeric(right[[fit$temporal$time_col]]), "-"))
+  loading <- .temporal_dep_spatial_unpack(par$theta_temporal_rr, length(traits))
+  P_left <- as.matrix(fmesher::fm_basis(fit$mesh$mesh,
+    loc = as.matrix(left[, fit$mesh$xy_cols, drop = FALSE])))
+  P_right <- as.matrix(fmesher::fm_basis(fit$mesh$mesh,
+    loc = as.matrix(right[, fit$mesh$xy_cols, drop = FALSE])))
+  ## Rebuild the finite-element matrices from the mesh rather than borrowing
+  ## the production TMB data block.
+  fem <- fmesher::fm_fem(fit$mesh$mesh, order = 2)
+  kappa <- exp(par$log_kappa_spde)
+  Q <- kappa^4 * as.matrix(fem$c0) + 2 * kappa^2 * as.matrix(fem$g1) + as.matrix(fem$g2)
+  spatial <- P_left %*% solve(Q) %*% t(P_right)
+  out <- temporal * tcrossprod(loading)[left_trait, right_trait] +
+    spatial * diag(exp(-2 * par$log_tau_spde), nrow = length(traits))[left_trait, right_trait]
+  if (identical(left, right)) diag(out) <- diag(out) + exp(2 * par$log_sigma_eps[[1L]])
+  out
+}
+
 test_that("rank-full temporal dependent plus fixed spatial indep is admitted", {
   skip_if_not_installed("TMB"); skip_if_not_installed("fmesher")
   fx <- .temporal_dep_spatial_fixture(); fit <- .temporal_dep_spatial_fit(fx)
@@ -227,4 +255,51 @@ test_that("temporal-dependent-spatial long and wide calls preserve state labels 
   expect_identical(names(shuffled_fit$opt$par), names(long_fit$opt$par))
   expect_equal(shuffled_fit$tmb_obj$fn(long_fit$opt$par),
     long_fit$tmb_obj$fn(long_fit$opt$par), tolerance = 2e-6)
+})
+
+test_that("temporal-dependent-spatial lifecycle routes condition on the additive covariance", {
+  skip_if_not_installed("TMB"); skip_if_not_installed("fmesher")
+  fx <- .temporal_dep_spatial_fixture(); fit <- .temporal_dep_spatial_fit(fx)
+  par <- fit$opt$par
+  par[match("theta_temporal_time", names(par))] <- atanh(.45 / (1 - 1e-6))
+  par[which(names(par) == "theta_temporal_rr")] <- c(.7, .6, .5, .1, -.08, .06)
+  par[which(names(par) == "log_tau_spde")] <- log(c(1.1, .9, 1.2))
+  fit$opt$par <- par
+  future <- expand.grid(series = paste0("s", 1:4), occasion = 5L,
+    measurement = c("m1", "m2"), trait = paste0("t", 1:3),
+    KEEP.OUT.ATTRS = FALSE, stringsAsFactors = FALSE)
+  location <- unique(fx$data[c("series", "lon", "lat")])
+  location <- location[!duplicated(location$series), , drop = FALSE]
+  location$occasion <- 5L
+  future <- merge(future, location, by = c("series", "occasion"), sort = FALSE)
+  observed <- forecast_temporal(fit, future, se.fit = TRUE)
+  all_rows <- rbind(fx$data[, names(future)], future)
+  V <- .temporal_dep_spatial_forecast_covariance(fit, all_rows)
+  n_observed <- nrow(fx$data); obs <- seq_len(n_observed); future_i <- n_observed + seq_len(nrow(future))
+  beta <- gllvmTMB:::.gllvmTMB_b_fix_values(fit)
+  X_new <- stats::model.matrix(stats::delete.response(stats::terms(fit$formula)), future)
+  solved <- solve(V[obs, obs], cbind(fx$data$value - drop(fit$tmb_data$X_fix %*% beta), V[obs, future_i]))
+  expected <- drop(X_new %*% beta + t(V[obs, future_i]) %*% solved[, 1L])
+  expected_se <- sqrt(pmax(diag(V[future_i, future_i] - t(V[obs, future_i]) %*% solved[, -1L, drop = FALSE]), 0))
+  expect_equal(observed$est, unname(expected), tolerance = 1e-8)
+  expect_equal(observed$se.fit, unname(expected_se), tolerance = 1e-8)
+  product <- outer(as.character(all_rows$series), as.character(all_rows$series), "==") *
+    ((1 - 1e-6) * tanh(fit$tmb_obj$env$parList(par)$theta_temporal_time))^
+      abs(outer(all_rows$occasion, all_rows$occasion, "-")) * V
+  expect_gt(max(abs(V - product)), 1e-3)
+  fit$opt$par[match("theta_temporal_time", names(par))] <- atanh(-.45 / (1 - 1e-6))
+  negative <- forecast_temporal(fit, future)
+  negative_V <- .temporal_dep_spatial_forecast_covariance(fit, all_rows)
+  negative_expected <- drop(X_new %*% beta + negative_V[future_i, obs] %*%
+    solve(negative_V[obs, obs], fx$data$value - drop(fit$tmb_data$X_fix %*% beta)))
+  expect_equal(negative$est, unname(negative_expected), tolerance = 1e-8)
+  mismatch <- future
+  mismatch$lon[mismatch$trait == "t2"] <- mismatch$lon[mismatch$trait == "t2"] + .1
+  expect_error(forecast_temporal(fit, mismatch), "shared spatial coordinate")
+  theta <- fit$opt$par[[match("theta_temporal_time", names(fit$opt$par))]]
+  profile <- profile_temporal(fit, ystep = .1, ytol = 1,
+    parm.range = theta + c(-.01, .01))
+  expect_equal(profile[["estimate"]], (1 - 1e-6) * tanh(fit$tmb_obj$env$parList(fit$opt$par)$theta_temporal_time), tolerance = 1e-10)
+  boot <- bootstrap_temporal(fit, n_boot = 1L, seed = 260974L)
+  expect_true(is.finite(boot$objective[[1L]]), info = boot$error[[1L]])
 })

@@ -29,7 +29,8 @@ ordinary covariance, another source, attenuation, slopes, temporal Psi, or a
 second temporal block. Future rows must use fitted series, strictly future
 integer occasions, complete measurement-by-trait panels, finite fitted
 coordinate columns, and coordinates with nonzero projection on the fitted
-mesh.
+mesh. Every trait and measurement in one future `(series, time)` state must
+carry the same coordinate pair, matching the fitting invariant.
 
 Refuse OU, temporal-independent or rank-one spatial pairs, new series,
 interpolation, missing/duplicate/incomplete panels, out-of-mesh coordinates,
@@ -37,15 +38,20 @@ generic new-data prediction, selection, generic intervals, and all other
 source pairs. These helpers do not amend the retained failed spatial recovery
 gate.
 
+The rank-one refusal is limited to this dependent-temporal contract. The
+separately qualified `temporal_latent(unique = FALSE) + spatial_indep()` route
+retains its own contract and evidence.
+
 ## Required evidence and boundary
 
 The independent forecast oracle must rebuild `fm_basis()` and the finite-element
-precision from the stored mesh and public coordinate names, match conditional
+matrices/precision from the stored mesh and public coordinate names, match conditional
 means and standard deviations at positive and negative persistence, distinguish
 the additive model from a time-by-space product, preserve row order, and refuse
 missing or out-of-domain coordinates. Lifecycle tests must close the profile at
 the direct TMB trace, retain deterministic bootstrap refit attempts, and reject
-OU. Existing spatial tests supply the separate dense likelihood/gradient,
+OU and arbitrary profile `lincomb` targets. Wide bootstrap tests must
+reconstitute the original `traits(...)` response columns before replay. Existing spatial tests supply the separate dense likelihood/gradient,
 simulation, and long/wide/update evidence.
 
 This is local fixed-parameter and lifecycle evidence. It is not recovery,

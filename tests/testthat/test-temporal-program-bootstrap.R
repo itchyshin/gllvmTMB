@@ -37,6 +37,24 @@ test_that("bootstrap_temporal retains reproducible draw seeds and the OU scale",
     exp(par$theta_temporal_time), tolerance = 1e-12)
 })
 
+test_that("bootstrap_temporal reconstructs the public wide response for replay", {
+  wide <- expand.grid(series = c("a", "b", "c"), occasion = 1:3,
+    KEEP.OUT.ATTRS = FALSE, stringsAsFactors = FALSE)
+  set.seed(260972L)
+  wide$y1 <- stats::rnorm(nrow(wide))
+  wide$y2 <- stats::rnorm(nrow(wide))
+  wide$y3 <- stats::rnorm(nrow(wide))
+  fit <- suppressWarnings(gllvmTMB(
+    traits(y1, y2, y3) ~ 1 + temporal_indep(1 | series, time = occasion),
+    data = wide, unit = "series", family = gaussian(), silent = TRUE,
+    control = gllvmTMBcontrol(se = FALSE)
+  ))
+  expect_true(is.data.frame(fit$wide_data_original))
+  out <- bootstrap_temporal(fit, n_boot = 1L, seed = 260973L)
+  expect_true(is.finite(out$objective[[1L]]), info = out$error[[1L]])
+  expect_identical(out$error[[1L]], "")
+})
+
 test_that("bootstrap_temporal replays the qualified temporal-kernel source pair", {
   d <- expand.grid(series = paste0("s", 1:3), occasion = 1:3,
     measurement = c("m1", "m2"), trait = paste0("t", 1:3),

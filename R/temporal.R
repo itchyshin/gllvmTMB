@@ -116,8 +116,12 @@ temporal_dep <- function(formula, time, structure = "ar1", replicate = NULL) {
 #' `temporal_indep() + kernel_indep()` cells. `profile_temporal()` and
 #' `bootstrap_temporal()` also have separately bounded direct-persistence and
 #' unconditional redraw/refit routes for the replicated AR1
-#' `temporal_dep() + phylo_indep()` cell. `bootstrap_temporal()` separately
-#' supports the replicated rank-one `temporal_latent() + animal_indep()` cell.
+#' `temporal_dep() + phylo_indep()`, `temporal_dep() + animal_indep()`, and
+#' fixed-mesh `temporal_dep() + spatial_indep()` cells. `bootstrap_temporal()`
+#' separately supports the replicated rank-one `temporal_latent() + animal_indep()`
+#' and fixed-mesh `temporal_latent() + spatial_indep()` cells. Forecasting is
+#' separately bounded to qualified source-pair conditioning contracts; it is
+#' not a calibrated interval or a claim of general recovery.
 #' `profile_temporal()` and `bootstrap_temporal()` also support the replicated
 #' full-covariance `temporal_dep() + animal_indep()` cell; this local helper
 #' evidence does not change its retained failed recovery gate.

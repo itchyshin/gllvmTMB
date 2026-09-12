@@ -902,6 +902,11 @@ gllvmTMB <- function(
       source_row = rewrite$source_row,
       input_shape = "wide_data_frame"
     )
+    ## Temporal lifecycle methods must be able to replay the public wide call
+    ## after replacing the simulated stacked response.  Retain the user's
+    ## pre-pivot data, rather than trying to evaluate `call_wide$data` later
+    ## in an arbitrary method environment.
+    fit$wide_data_original <- data
     return(fit)
   }
 

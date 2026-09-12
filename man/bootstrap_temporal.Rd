@@ -10,7 +10,8 @@ bootstrap_temporal(object, n_boot = 100L, seed = NULL)
 \item{object}{An unreplicated Gaussian \code{temporal_indep()} fit, or the
 qualified replicated AR1 or OU \code{temporal_indep() + kernel_indep()} fit, or
 the qualified replicated AR1 \code{temporal_dep() + phylo_indep()} or
-\code{temporal_dep() + animal_indep()} fit, or the
+\code{temporal_dep() + animal_indep()} or fixed-mesh
+\code{temporal_dep() + spatial_indep()} fit, or the
 qualified rank-one \code{temporal_latent() + animal_indep()} fit, or the
 qualified rank-one \code{temporal_latent() + spatial_indep()} fit.}
 
@@ -34,5 +35,8 @@ Gaussian AR1 rank-one \code{temporal_latent(unique = FALSE)} fit with one fixed
 \code{animal_indep()} source, or a replicated Gaussian AR1 rank-one
 \code{temporal_latent(unique = FALSE)} fit with one fixed-mesh
 \code{spatial_indep()} source. It redraws both sources through \code{\link[stats:simulate]{stats::simulate()}}
-and replays the public model call through \code{\link[=update]{update()}}.
+and replays the public model call through \code{\link[=update]{update()}}. For a \code{traits(...)}
+fit it reconstructs the original wide response columns before replay.
+The fixed-mesh \code{temporal_dep() + spatial_indep()} route is also admitted
+under its separate AR1 Gaussian lifecycle contract.
 }

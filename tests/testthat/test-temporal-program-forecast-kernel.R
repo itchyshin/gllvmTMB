@@ -328,4 +328,10 @@ test_that("rank-one temporal-spatial forecasts match additive dense conditioning
   expect_equal(reordered$est, reference$est[index], tolerance = 1e-8)
   expect_equal(reordered$se.fit, reference$se.fit[index], tolerance = 1e-8)
   expect_error(forecast_temporal(fx$fit, future[, setdiff(names(future), "lon")]), "coordinate columns")
+  trait_mismatch <- future
+  trait_mismatch$lon[trait_mismatch$trait == "t2"] <- trait_mismatch$lon[trait_mismatch$trait == "t2"] + .1
+  expect_error(forecast_temporal(fx$fit, trait_mismatch), "shared spatial coordinate")
+  replicate_mismatch <- future
+  replicate_mismatch$lat[replicate_mismatch$measurement == "m2"] <- replicate_mismatch$lat[replicate_mismatch$measurement == "m2"] + .1
+  expect_error(forecast_temporal(fx$fit, replicate_mismatch), "shared spatial coordinate")
 })

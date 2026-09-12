@@ -12,11 +12,13 @@ qualified replicated AR1 or OU \code{temporal_indep() + kernel_indep()} fit,
 or a qualified replicated AR1 \code{temporal_dep() + phylo_indep()} or
 \code{temporal_dep() + animal_indep()} fit.
 The qualified replicated rank-one \code{temporal_latent() + animal_indep()} fit
-or fixed-mesh \code{temporal_latent() + spatial_indep()} fit is also accepted.}
+or fixed-mesh \code{temporal_latent() + spatial_indep()} or
+\code{temporal_dep() + spatial_indep()} fit is also accepted.}
 
 \item{level}{Likelihood-ratio confidence level.}
 
-\item{...}{Passed to \code{\link[=tmbprofile_wrapper]{tmbprofile_wrapper()}}.}
+\item{...}{Passed to \code{\link[=tmbprofile_wrapper]{tmbprofile_wrapper()}}. \code{lincomb} is refused because
+this helper only profiles the native temporal time parameter.}
 }
 \value{
 Named numeric vector with \code{estimate}, \code{lower}, and \code{upper}, on the
@@ -34,8 +36,8 @@ which re-optimizes its full temporal trait covariance and source variances at
 each profile point. This is
 also available for the qualified replicated rank-one AR1
 \code{temporal_latent() + animal_indep()} route. The corresponding fixed-mesh
-\code{temporal_latent() + spatial_indep()} route is also available. Each is a
-fitted-parameter
+\code{temporal_latent() + spatial_indep()} and \code{temporal_dep() + spatial_indep()}
+routes are also available. Each is a fitted-parameter
 likelihood profile, not a calibrated interval or a
 profile of conditional temporal states.
 }

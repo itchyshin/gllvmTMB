@@ -84,8 +84,12 @@ separate bounded contracts. \code{bootstrap_temporal()}, \code{profile_temporal(
 \code{temporal_indep() + kernel_indep()} cells. \code{profile_temporal()} and
 \code{bootstrap_temporal()} also have separately bounded direct-persistence and
 unconditional redraw/refit routes for the replicated AR1
-\code{temporal_dep() + phylo_indep()} cell. \code{bootstrap_temporal()} separately
-supports the replicated rank-one \code{temporal_latent() + animal_indep()} cell.
+\code{temporal_dep() + phylo_indep()}, \code{temporal_dep() + animal_indep()}, and
+fixed-mesh \code{temporal_dep() + spatial_indep()} cells. \code{bootstrap_temporal()}
+separately supports the replicated rank-one \code{temporal_latent() + animal_indep()}
+and fixed-mesh \code{temporal_latent() + spatial_indep()} cells. Forecasting is
+separately bounded to qualified source-pair conditioning contracts; it is
+not a calibrated interval or a claim of general recovery.
 \code{profile_temporal()} and \code{bootstrap_temporal()} also support the replicated
 full-covariance \code{temporal_dep() + animal_indep()} cell; this local helper
 evidence does not change its retained failed recovery gate.

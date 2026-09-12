@@ -22,6 +22,16 @@ test_that("the nlminb temporal-kernel candidate is independently frozen", {
   expect_identical(control$optArgs$control$iter.max, 3000L)
   expect_identical(control$optArgs$control$eval.max, 12000L)
   expect_true(isTRUE(control$optimizer_diagnostics))
+  probe <- data.frame(x = 1)
+  attr(probe, "optimizer_diagnostics") <- list(
+    pass_history = data.frame(pass = 1:2, message = c("one", "two")),
+    final_parameter = c(a = 1), final_gradient = c(a = 0),
+    final_objective = 1, warnings = character(), control = control
+  )
+  round_trip <- unserialize(serialize(probe, NULL))
+  retained <- attr(round_trip, "optimizer_diagnostics")
+  expect_identical(retained$pass_history$message, c("one", "two"))
+  expect_identical(retained$final_parameter, c(a = 1))
   source_text <- paste(readLines(script, warn = FALSE), collapse = "\n")
   expect_false(grepl("simulate\\.gllvmTMB", source_text))
   expect_match(source_text, "NLMINB_CELL_ERROR_RETAINED")

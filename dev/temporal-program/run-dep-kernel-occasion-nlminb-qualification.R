@@ -90,11 +90,14 @@ source(.temporal_dep_kernel_nlminb_dev_file("run-dep-kernel-occasion-qualificati
   } else .temporal_dep_kernel_nlminb_validate(phi, seed)
   out <- tryCatch({
     fixture <- .temporal_dep_kernel_nlminb_fixture(key$phi, key$seed)
-    fit <- suppressWarnings(gllvmTMB::gllvmTMB(value ~ 0 + trait +
+    warnings <- character()
+    fit <- withCallingHandlers(gllvmTMB::gllvmTMB(value ~ 0 + trait +
       temporal_dep(0 + trait | series, time = occasion, replicate = measurement) +
       kernel_indep(series, K = fixture$K, name = "fixed_nonproportional_K"),
       data = fixture$data, unit = "series", cluster = "series", family = stats::gaussian(),
-      silent = TRUE, control = .temporal_dep_kernel_nlminb_control()))
+      silent = TRUE, control = .temporal_dep_kernel_nlminb_control()), warning = function(w) {
+        warnings <<- c(warnings, conditionMessage(w)); invokeRestart("muffleWarning")
+      })
     history <- fit$optimizer_pass_history
     if (!is.data.frame(history) || nrow(history) != 2L || !identical(history$pass, 1:2)) {
       stop("fit did not retain the requested two optimizer passes", call. = FALSE)
@@ -107,7 +110,8 @@ source(.temporal_dep_kernel_nlminb_dev_file("run-dep-kernel-occasion-qualificati
     hessian <- tryCatch(fit$tmb_obj$he(fit$opt$par), error = function(e) e)
     hs <- if (inherits(hessian, "error")) "error" else if (all(is.finite(hessian)) &&
       !inherits(try(chol(hessian), silent = TRUE), "try-error")) "positive_definite" else "non_positive_definite"
-    data.frame(phi = key$phi, seed = key$seed, n_series = key$n_series, n_time = key$n_time,
+    native_gradient <- stats::setNames(fit$tmb_obj$gr(fit$opt$par), names(fit$opt$par))
+    result <- data.frame(phi = key$phi, seed = key$seed, n_series = key$n_series, n_time = key$n_time,
       terminal = "success", convergence = fit$opt$convergence,
       pass_1_convergence = history$convergence[[1L]], pass_2_convergence = history$convergence[[2L]],
       pass_2_accepted = history$accepted[[2L]], max_gradient = max(abs(fit$tmb_obj$gr(fit$opt$par))),
@@ -119,6 +123,12 @@ source(.temporal_dep_kernel_nlminb_dev_file("run-dep-kernel-occasion-qualificati
       kernel_3 = par$theta_rr_phy[[3L]]^2, beta_1 = par$b_fix[[1L]],
       beta_2 = par$b_fix[[2L]], beta_3 = par$b_fix[[3L]], error_message = NA_character_,
       stringsAsFactors = FALSE)
+    attr(result, "optimizer_diagnostics") <- list(
+      pass_history = history, final_parameter = fit$opt$par,
+      final_gradient = native_gradient, final_objective = as.numeric(fit$tmb_obj$fn(fit$opt$par)),
+      warnings = unique(warnings), control = .temporal_dep_kernel_nlminb_control()
+    )
+    result
   }, error = function(e) data.frame(phi = key$phi, seed = key$seed, n_series = key$n_series,
     n_time = key$n_time, terminal = "error", convergence = NA_integer_,
     pass_1_convergence = NA_integer_, pass_2_convergence = NA_integer_, pass_2_accepted = NA,

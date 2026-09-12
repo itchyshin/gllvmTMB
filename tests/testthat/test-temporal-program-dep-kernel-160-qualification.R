@@ -1,10 +1,20 @@
+.temporal_dep_kernel_160_dev_path <- function(...) {
+  testthat::test_path("..", "..", "dev", "temporal-program", ...)
+}
+
+.skip_if_temporal_dep_kernel_160_dev_files_unavailable <- function(...) {
+  path <- .temporal_dep_kernel_160_dev_path(...)
+  skip_if_not(
+    file.exists(path),
+    "developer-only temporal qualification evidence is unavailable in an installed-package test layout"
+  )
+  path
+}
+
 test_that("the disjoint 160-series dep-kernel qualification plan is fixed", {
-  script <- testthat::test_path("..", "..", "dev", "temporal-program",
-    "run-dep-kernel-160-qualification.R")
-  if (!file.exists(script)) {
-    expect_true(file.exists(script))
-    return(invisible())
-  }
+  script <- .skip_if_temporal_dep_kernel_160_dev_files_unavailable(
+    "run-dep-kernel-160-qualification.R"
+  )
   source(script, local = environment())
   plan <- .temporal_dep_kernel_160_plan()
   expect_equal(nrow(plan), 9L)
@@ -28,9 +38,9 @@ test_that("the disjoint 160-series dep-kernel qualification plan is fixed", {
 })
 
 test_that("the 160-series qualification launcher preserves the compute boundary", {
-  launcher <- testthat::test_path("..", "..", "dev", "temporal-program", "remote",
-    "dep-kernel-160-qualification-totoro.sh")
-  expect_true(file.exists(launcher))
+  launcher <- .skip_if_temporal_dep_kernel_160_dev_files_unavailable(
+    "remote", "dep-kernel-160-qualification-totoro.sh"
+  )
   expect_equal(system2("bash", c("-n", launcher)), 0L)
   source_text <- paste(readLines(launcher, warn = FALSE), collapse = "\n")
   expect_match(source_text, "TEMPORAL_DEP_KERNEL_160_TOTORO_APPROVED=YES")
@@ -43,11 +53,11 @@ test_that("the 160-series qualification launcher preserves the compute boundary"
 })
 
 test_that("the retained 160-series qualification failure is complete and immutable", {
-  script <- testthat::test_path("..", "..", "dev", "temporal-program",
-    "run-dep-kernel-160-qualification.R")
+  script <- .skip_if_temporal_dep_kernel_160_dev_files_unavailable(
+    "run-dep-kernel-160-qualification.R"
+  )
   source(script, local = environment())
-  receipts <- testthat::test_path("..", "..", "dev", "temporal-program", "results",
-    "qualification-160-20260912")
+  receipts <- .temporal_dep_kernel_160_dev_path("results", "qualification-160-20260912")
   skip_if_not(dir.exists(receipts), "retained Totoro qualification receipts are unavailable")
   paths <- sort(list.files(receipts, pattern = "[.]rds$", full.names = TRUE))
   expect_length(paths, 9L)

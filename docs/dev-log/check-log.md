@@ -58340,3 +58340,16 @@ Deliberately not run: Totoro 9×500 grid dispatch; full `devtools::test()`.
 - This is a local fixed-parameter conditioning route. It does not provide
   calibrated intervals, parameter uncertainty, OU/source-pair forecasts, new
   series, source-pair recovery, coverage, cross-platform, or release evidence.
+
+## 2026-09-12 — installed-package guard for retained dep--kernel evidence
+
+- The completed three-platform check at `677c02e9c` failed because its retained
+  160-series dep--kernel evidence test tried to source developer-only scripts
+  under `dev/`, which is intentionally excluded from the source package by
+  `.Rbuildignore`. This was a test-layout fault, not a changed fixture or a
+  statistical result.
+- The test now runs all 31 source-checkout assertions when those developer
+  files exist and skips the developer-only evidence checks from an installed
+  package. The retained receipt itself and the frozen qualification criteria
+  remain unchanged. The source-layout focused test passed; a repaired local
+  package check and a new three-platform check remain required.

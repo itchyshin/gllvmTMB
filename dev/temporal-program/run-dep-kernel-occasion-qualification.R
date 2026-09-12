@@ -20,9 +20,25 @@
 .temporal_dep_kernel_occasion_prerun <- function() {
   list(phi = .6, seed = 2609370L, n_series = 80L, n_time = 32L)
 }
+
+.temporal_dep_kernel_occasion_reserve_output <- function(output) {
+  if (!nzchar(output) || file.exists(output)) {
+    stop("output must name a new result file", call. = FALSE)
+  }
+  lock <- paste0(output, ".lock")
+  if (!dir.create(lock, showWarnings = FALSE)) {
+    stop("output is already reserved by another qualification process", call. = FALSE)
+  }
+  lock
+}
 .temporal_dep_kernel_occasion_truth <- function() list(beta = c(.2, -.3, .1),
   temporal_loading = rbind(c(.55, 0, 0), c(.12, .50, 0), c(-.08, .10, .48)),
   kernel_sd = c(.35, .28, .40), residual = .30)
+
+.temporal_dep_kernel_occasion_fixed_effect_error <- function(result, beta) {
+  beta_error <- sweep(as.matrix(result[paste0("beta_", 1:3)]), 2L, beta, "-")
+  rowMeans(abs(beta_error))
+}
 
 .temporal_dep_kernel_occasion_fixture <- function(phi, seed) {
   key <- if (identical(as.integer(seed), 2609370L)) .temporal_dep_kernel_occasion_prerun() else .temporal_dep_kernel_occasion_validate(phi, seed)
@@ -89,7 +105,8 @@
   truth <- .temporal_dep_kernel_occasion_truth()
   for (j in 1:3) result[[paste0("kernel_relative_error_", j)]] <- abs(result[[paste0("kernel_", j)]] - truth$kernel_sd[[j]]^2) / truth$kernel_sd[[j]]^2
   result$phi_absolute_error <- abs(result$phi_estimate - result$phi)
-  result$fixed_effect_mean_absolute_error <- rowMeans(abs(as.matrix(result[paste0("beta_", 1:3)]) - truth$beta))
+  result$fixed_effect_mean_absolute_error <-
+    .temporal_dep_kernel_occasion_fixed_effect_error(result, truth$beta)
   summary <- do.call(rbind, lapply(split(result, result$phi), function(x) {
     strict <- x$terminal == "success" & x$convergence == 0L & x$pass_2_convergence == 0L & x$pass_2_accepted & is.finite(x$max_gradient) & x$max_gradient <= 1e-3
     data.frame(phi = x$phi[[1L]], attempts = nrow(x), strict_successes = sum(strict), mean_phi_absolute_error = mean(x$phi_absolute_error[strict]), median_phi_absolute_error = stats::median(x$phi_absolute_error[strict]), median_temporal_frobenius_relative_error = stats::median(x$temporal_frobenius_relative_error[strict]), median_kernel_1_relative_error = stats::median(x$kernel_relative_error_1[strict]), median_kernel_2_relative_error = stats::median(x$kernel_relative_error_2[strict]), median_kernel_3_relative_error = stats::median(x$kernel_relative_error_3[strict]), mean_fixed_effect_error = mean(x$fixed_effect_mean_absolute_error[strict]), stringsAsFactors = FALSE)
@@ -104,7 +121,12 @@
     x <- .temporal_dep_kernel_occasion_prerun(); return(list(result = .temporal_dep_kernel_occasion_one(x$phi, x$seed), summary = NULL, contract = "non-campaign timing pre-run only"))
   }
   if (xor(is.null(phi), is.null(seed))) stop("a campaign cell requires both phi and seed", call. = FALSE)
-  if (is.null(phi)) { plan <- .temporal_dep_kernel_occasion_plan(); result <- do.call(rbind, Map(.temporal_dep_kernel_occasion_one, plan$phi, plan$seed)) } else { key <- .temporal_dep_kernel_occasion_validate(phi, seed); result <- .temporal_dep_kernel_occasion_one(key$phi, key$seed) }
+  if (is.null(phi)) {
+    stop("a qualification invocation must name one frozen campaign cell", call. = FALSE)
+  } else {
+    key <- .temporal_dep_kernel_occasion_validate(phi, seed)
+    result <- .temporal_dep_kernel_occasion_one(key$phi, key$seed)
+  }
   .temporal_dep_kernel_occasion_summarise(result)
 }
 
@@ -112,13 +134,23 @@ if (sys.nframe() == 0L) {
   args <- commandArgs(trailingOnly = TRUE); pre_run <- "--pre-run" %in% args
   phi_arg <- grep("^--phi=", args, value = TRUE); seed_arg <- grep("^--seed=", args, value = TRUE); output_arg <- grep("^--output=", args, value = TRUE)
   allowed <- c("--pre-run", phi_arg, seed_arg, output_arg)
-  if (length(phi_arg) > 1L || length(seed_arg) > 1L || length(output_arg) != 1L || !all(args %in% allowed) || xor(length(phi_arg) == 1L, length(seed_arg) == 1L) || (pre_run && (length(phi_arg) || length(seed_arg)))) stop("usage: Rscript --vanilla run-dep-kernel-occasion-qualification.R [--pre-run | --phi=VALUE --seed=N] --output=PATH", call. = FALSE)
-  output <- sub("^--output=", "", output_arg); if (!nzchar(output) || file.exists(output)) stop("output must name a new result file", call. = FALSE)
+  if (length(phi_arg) > 1L || length(seed_arg) > 1L || length(output_arg) != 1L || !all(args %in% allowed) || xor(length(phi_arg) == 1L, length(seed_arg) == 1L) || (pre_run && (length(phi_arg) || length(seed_arg))) || (!pre_run && !length(phi_arg))) stop("usage: Rscript --vanilla run-dep-kernel-occasion-qualification.R [--pre-run | --phi=VALUE --seed=N] --output=PATH", call. = FALSE)
+  output <- sub("^--output=", "", output_arg)
   if (!dir.exists(dirname(output))) stop("output directory does not exist", call. = FALSE)
+  lock <- .temporal_dep_kernel_occasion_reserve_output(output)
+  on.exit(unlink(lock, recursive = TRUE, force = TRUE), add = TRUE)
   pkgload::load_all(normalizePath(".", mustWork = TRUE), quiet = TRUE, export_all = FALSE)
   value <- .temporal_dep_kernel_occasion_run(if (length(phi_arg)) as.numeric(sub("^--phi=", "", phi_arg)) else NULL, if (length(seed_arg)) as.integer(sub("^--seed=", "", seed_arg)) else NULL, pre_run)
   temporary <- tempfile("dep-kernel-occasion-", tmpdir = dirname(output), fileext = ".rds"); saveRDS(value, temporary)
+  if (file.exists(output)) stop("output became occupied while the qualification was running", call. = FALSE)
   if (!file.rename(temporary, output)) stop("could not atomically retain qualification output", call. = FALSE)
   print(value$result, row.names = FALSE); if (!is.null(value$summary)) print(value$summary, row.names = FALSE)
-  cat(if (pre_run) "TEMPORAL_DEP_KERNEL_OCCASION_PRERUN_PASS\n" else "TEMPORAL_DEP_KERNEL_OCCASION_CELL_PASS\n")
+  terminal <- value$result$terminal[[1L]]
+  marker <- if (identical(terminal, "success")) {
+    if (pre_run) "TEMPORAL_DEP_KERNEL_OCCASION_PRERUN_RETAINED" else "TEMPORAL_DEP_KERNEL_OCCASION_CELL_RETAINED"
+  } else {
+    if (pre_run) "TEMPORAL_DEP_KERNEL_OCCASION_PRERUN_ERROR_RETAINED" else "TEMPORAL_DEP_KERNEL_OCCASION_CELL_ERROR_RETAINED"
+  }
+  cat(marker, "\n", sep = "")
+  if (!identical(terminal, "success")) quit(save = "no", status = 1L)
 }

@@ -16,10 +16,23 @@ test_that("the long-occasion dep-kernel qualification is frozen before fitting",
     list(phi = .6, seed = 2609370L, n_series = 80L, n_time = 32L))
   expect_error(.temporal_dep_kernel_occasion_validate(.6, 2609221L), "disjoint")
   expect_error(.temporal_dep_kernel_occasion_validate(.5, 2609371L), "frozen persistence")
+  exact <- data.frame(beta_1 = c(.2, .2), beta_2 = c(-.3, -.3),
+    beta_3 = c(.1, .1))
+  expect_equal(.temporal_dep_kernel_occasion_fixed_effect_error(exact,
+    c(.2, -.3, .1)), c(0, 0))
+  output <- tempfile("temporal-dep-kernel-occasion-")
+  lock <- .temporal_dep_kernel_occasion_reserve_output(output)
+  on.exit(unlink(lock, recursive = TRUE, force = TRUE), add = TRUE)
+  expect_error(.temporal_dep_kernel_occasion_reserve_output(output), "reserved")
+  unlink(lock, recursive = TRUE, force = TRUE)
+  file.create(output)
+  expect_error(.temporal_dep_kernel_occasion_reserve_output(output), "new result")
   source_text <- paste(readLines(script, warn = FALSE), collapse = "\n")
   expect_false(grepl("simulate\\.gllvmTMB", source_text))
   expect_match(source_text, "output must name a new result file")
   expect_match(source_text, "error_message = conditionMessage")
+  expect_match(source_text, "CELL_ERROR_RETAINED")
+  expect_false(grepl("CELL_PASS", source_text, fixed = TRUE))
   parser <- getFromNamespace("parse_multi_formula", "gllvmTMB")
   expect_silent(parser(value ~ 0 + trait +
     temporal_dep(0 + trait | series, time = occasion, replicate = measurement) +

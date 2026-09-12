@@ -8,7 +8,9 @@ if (!file.exists(file.path(root, "DESCRIPTION"))) {
 script_dir <- file.path(root, "dev", "temporal-program")
 source(file.path(script_dir, "diagnose-dep-kernel-occasion-optimizer.R"), local = FALSE)
 
-.scaled_target <- function() list(phi = 0, seed = 2609373L, n_series = 80L, n_time = 32L)
+.scaled_target <- function(phi = 0, seed = 2609373L) {
+  .temporal_dep_kernel_occasion_validate(phi, seed)
+}
 
 .scaled_baseline_fit <- function(fixture) {
   warnings <- character()
@@ -94,7 +96,7 @@ source(file.path(script_dir, "diagnose-dep-kernel-occasion-optimizer.R"), local 
   list(accepted = !length(reasons), reasons = unique(reasons))
 }
 
-.scaled_run <- function(output) {
+.scaled_run <- function(output, target = .scaled_target()) {
   if (!is.character(output) || length(output) != 1L || !nzchar(output) ||
       file.exists(output) || !dir.exists(dirname(output))) {
     stop("--output must name a new RDS file in an existing directory", call. = FALSE)
@@ -102,7 +104,6 @@ source(file.path(script_dir, "diagnose-dep-kernel-occasion-optimizer.R"), local 
   started <- Sys.time()
   receipt <- tryCatch({
     pkgload::load_all(root, quiet = TRUE, export_all = FALSE)
-    target <- .scaled_target()
     fixture <- .temporal_dep_kernel_occasion_fixture(target$phi, target$seed)
     fixture$series <- paste0("s", seq_len(target$n_series)); fixture$traits <- paste0("t", 1:3)
     baseline_fit <- .scaled_baseline_fit(fixture)
@@ -118,7 +119,7 @@ source(file.path(script_dir, "diagnose-dep-kernel-occasion-optimizer.R"), local 
       target = target, baseline = baseline, curvature = curvature, candidate = candidate,
       adjudication = .scaled_adjudicate(baseline, candidate))
   }, error = function(e) list(schema = "temporal-dep-kernel-curvature-scaled-bfgs-v1",
-    terminal = "error", target = .scaled_target(), error_message = conditionMessage(e)))
+    terminal = "error", target = target, error_message = conditionMessage(e)))
   receipt$contract <- "One-cell curvature-scaled BFGS diagnostic only; no recovery, optimizer, coverage, or admission claim."
   receipt$started_at_utc <- format(started, tz = "UTC", usetz = TRUE)
   receipt$ended_at_utc <- format(Sys.time(), tz = "UTC", usetz = TRUE)
@@ -138,6 +139,7 @@ source(file.path(script_dir, "diagnose-dep-kernel-occasion-optimizer.R"), local 
   cat("TEMPORAL_DEP_KERNEL_SCALED_BFGS_SELF_TEST_PASS\n")
 }
 
+if (sys.nframe() == 0L) {
 verify_arg <- grep("^--verify=", args, value = TRUE)
 output_arg <- grep("^--output=", args, value = TRUE)
 if (identical(args, "--self-test")) {
@@ -179,4 +181,5 @@ if (identical(args, "--self-test")) {
   .scaled_run(sub("^--output=", "", output_arg))
 } else {
   stop("usage: diagnose-dep-kernel-curvature-scaled-bfgs.R --self-test | --output=PATH | --verify=PATH", call. = FALSE)
+}
 }

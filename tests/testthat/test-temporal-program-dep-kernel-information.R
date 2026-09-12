@@ -1,6 +1,10 @@
 test_that("dep-kernel information diagnostic is frozen and sourceable", {
   script <- testthat::test_path("..", "..", "dev", "temporal-program",
     "diagnose-dep-kernel-information.R")
+  testthat::skip_if_not(
+    file.exists(script),
+    "development diagnostic is excluded from the installed package"
+  )
   expect_true(file.exists(script))
   source(script, local = environment())
   expect_equal(.temporal_dep_kernel_information_seeds(), 2609221:2609223)

@@ -55,9 +55,12 @@ claim. A separately qualified
 rank-one `temporal_latent(..., unique = FALSE) + animal_indep()` cell also has
 that retained bootstrap/refit helper and a known-series future-observation
 forecast. Its fitted-parameter conditional standard deviations are not
-prediction intervals. The matching fixed-mesh `spatial_indep()` pair has the
-same restricted future-observation route, but additionally requires each
-future coordinate pair to project onto the fitted mesh; it remains an additive
+prediction intervals. The fixed-mesh full-covariance
+`temporal_dep(..., structure = "ar1") + spatial_indep()` pair has separately
+qualified future-observation forecasting, direct persistence profiling, and
+unconditional bootstrap/refit. It requires one shared coordinate pair for all
+traits and measurements in each future `(series, occasion)` state, and that
+pair must project onto the fitted mesh. It remains an additive
 temporal-plus-spatial covariance model, not a space-time interaction. Generic forecasts, new-data
 prediction, generic profile/bootstrap intervals, automatic rank selection, and
 other source-pair helper routes remain unavailable. Other response families,

@@ -38,7 +38,10 @@ replicated-AR1
 `temporal_indep() + kernel_indep()` cell. A separate fixed-parameter
 future-observation route also admits replicated-AR1
 `temporal_dep() + phylo_indep()` with one fixed phylogenetic source; its
-conditional standard deviations are not prediction intervals. Generic forecasts, new-data
+conditional standard deviations are not prediction intervals. That same
+phylogenetic cell also has a direct persistence profile and an unconditional
+bootstrap/refit helper that retains every attempted refit; neither establishes
+calibrated intervals or bootstrap sampling properties. Generic forecasts, new-data
 prediction, generic profile/bootstrap intervals, automatic rank selection, and
 other source-pair helper routes remain unavailable. Other response families,
 higher ranks, temporal

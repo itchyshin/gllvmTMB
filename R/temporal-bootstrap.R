@@ -43,10 +43,13 @@
 #' Draws unconditional temporal responses and refits the saved public model
 #' call. Failed refits are retained in the returned table. The bounded composed
 #' route accepts a replicated Gaussian AR1 or OU `temporal_indep()` fit with one
-#' fixed labelled `kernel_indep()` term; it redraws both sources through
-#' [stats::simulate()] and replays the public model call through [update()].
+#' fixed labelled `kernel_indep()` term, or a replicated Gaussian AR1
+#' `temporal_dep()` fit with one fixed `phylo_indep()` source; it redraws both
+#' sources through [stats::simulate()] and replays the public model call through
+#' [update()].
 #' @param object An unreplicated Gaussian `temporal_indep()` fit, or the
-#'   qualified replicated AR1 or OU `temporal_indep() + kernel_indep()` fit.
+#'   qualified replicated AR1 or OU `temporal_indep() + kernel_indep()` fit, or
+#'   the qualified replicated AR1 `temporal_dep() + phylo_indep()` fit.
 #' @param n_boot Number of refits.
 #' @param seed Optional random seed.
 #' @return A data frame with one row per attempted refit. `seed` records the
@@ -59,22 +62,24 @@ bootstrap_temporal <- function(object, n_boot = 100L, seed = NULL) {
   }
   active <- .gllvmTMB_predict_unhandled_re_tiers(object, handled = "temporal")
   kernel_pair <- .temporal_is_qualified_kernel_pair(object, active)
-  if (length(active) && !kernel_pair) {
+  dep_phylo_pair <- .temporal_is_qualified_dep_phylo_pair(object, active)
+  if (length(active) && !kernel_pair && !dep_phylo_pair) {
     .temporal_abort(c(
-      "{.fn bootstrap_temporal} supports only the qualified temporal-kernel source pair.",
+      "{.fn bootstrap_temporal} supports only qualified temporal-kernel or temporal-dependent phylogenetic source pairs.",
       "i" = "The fit also uses covariance tier(s): {.val {active}}.",
-      ">" = "Use the replicated AR1 {.code temporal_indep() + kernel_indep()} cell with one fixed labelled kernel, or use a temporal-only fit."
+      ">" = "Use the replicated AR1 {.code temporal_indep() + kernel_indep()} cell with one fixed labelled kernel, the replicated AR1 {.code temporal_dep() + phylo_indep()} cell with one fixed phylogeny, or a temporal-only fit."
     ), class = "gllvmTMB_temporal_bootstrap_composed")
   }
-  if (!identical(object$temporal$mode, "indep") || any(object$tmb_data$family_id_vec != 0L)) {
-    .temporal_abort("{.fn bootstrap_temporal} currently supports Gaussian {.fn temporal_indep} fits only.")
+  if ((!identical(object$temporal$mode, "indep") && !dep_phylo_pair) ||
+      any(object$tmb_data$family_id_vec != 0L)) {
+    .temporal_abort("{.fn bootstrap_temporal} currently supports Gaussian {.fn temporal_indep} fits and the qualified temporal-dependent phylogenetic pair only.")
   }
   if (kernel_pair) {
     if (!object$temporal$structure %in% c("ar1", "ou") || is.null(object$temporal$replicate_col)) {
       .temporal_abort("The qualified temporal-kernel bootstrap requires a replicated AR1 or OU panel.")
     }
-  } else if (!is.null(object$temporal$replicate_col)) {
-    .temporal_abort("{.fn bootstrap_temporal} currently supports replicated panels only for the qualified AR1 {.code temporal_indep() + kernel_indep()} cell.")
+  } else if (!dep_phylo_pair && !is.null(object$temporal$replicate_col)) {
+    .temporal_abort("{.fn bootstrap_temporal} currently supports replicated panels only for qualified temporal-kernel or temporal-dependent phylogenetic cells.")
   }
   if (!is.numeric(n_boot) || length(n_boot) != 1L || !is.finite(n_boot) ||
       n_boot < 1 || n_boot != as.integer(n_boot)) {

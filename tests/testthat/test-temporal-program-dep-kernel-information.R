@@ -16,3 +16,21 @@ test_that("dep-kernel information diagnostic is frozen and sourceable", {
   expect_match(paste(readLines(launcher, warn = FALSE), collapse = "\n"),
     "TEMPORAL_DEP_KERNEL_INFORMATION_TOTORO_APPROVED=YES")
 })
+
+test_that("dep-kernel information diagnostic retains every approved Totoro receipt", {
+  receipts <- testthat::test_path("..", "..", "dev", "temporal-program", "results",
+    "diagnostics", "dep-kernel-information-20260911")
+  skip_if_not(dir.exists(receipts), "repository-only Totoro receipts are unavailable")
+  paths <- sort(list.files(receipts, pattern = "rds$", full.names = TRUE))
+  expect_length(paths, 6L)
+  records <- lapply(paths, readRDS)
+  expect_true(all(vapply(records, function(x) {
+    is.list(x) && all(c("result", "summary", "contract") %in% names(x))
+  }, logical(1))))
+  result <- do.call(rbind, lapply(records, `[[`, "result"))
+  expected <- as.vector(outer(c(80L, 160L), 2609221:2609223, paste, sep = ":"))
+  expect_setequal(paste(result$n_series, result$seed, sep = ":"), expected)
+  expect_true(all(result$terminal == "success"))
+  expect_true(all(result$convergence == 0L))
+  expect_true(all(result$pass_2_accepted))
+})

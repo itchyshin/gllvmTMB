@@ -41,3 +41,26 @@ test_that("the 160-series qualification launcher preserves the compute boundary"
   expect_match(source_text, "git fetch --no-tags origin")
   expect_match(source_text, "--untracked-files=no")
 })
+
+test_that("the retained 160-series qualification failure is complete and immutable", {
+  script <- testthat::test_path("..", "..", "dev", "temporal-program",
+    "run-dep-kernel-160-qualification.R")
+  source(script, local = environment())
+  receipts <- testthat::test_path("..", "..", "dev", "temporal-program", "results",
+    "qualification-160-20260912")
+  skip_if_not(dir.exists(receipts), "retained Totoro qualification receipts are unavailable")
+  paths <- sort(list.files(receipts, pattern = "[.]rds$", full.names = TRUE))
+  expect_length(paths, 9L)
+  records <- lapply(paths, readRDS)
+  result <- do.call(rbind, lapply(records, `[[`, "result"))
+  expect_setequal(paste(result$phi, result$seed, sep = ":"),
+    as.vector(outer(c(-.4, 0, .6), 2609341:2609343, paste, sep = ":")))
+  expect_true(all(result$terminal == "success"))
+  expect_true(all(result$convergence == 0L))
+  expect_true(all(result$pass_2_accepted))
+  expect_true(all(result$hessian_status == "error"))
+  verdict <- .temporal_dep_kernel_160_summarise(result)
+  expect_false(all(verdict$summary$passes))
+  expect_equal(verdict$summary$strict_successes[verdict$summary$phi == 0], 0L)
+  expect_gt(verdict$summary$median_kernel_3_relative_error[verdict$summary$phi == .6], .35)
+})

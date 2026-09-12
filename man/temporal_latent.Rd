@@ -91,7 +91,8 @@ It also supports the corresponding fixed-mesh \code{spatial_indep()} cell.
 for the replicated AR1 fixed-kernel cell, the replicated AR1
 \code{temporal_dep() + phylo_indep()} cell with a fixed phylogeny, and the
 replicated AR1 rank-one \code{temporal_latent() + animal_indep()} cell with a
-fixed labelled animal relationship. Generic new-data prediction, generic intervals and profiles,
+fixed labelled animal relationship or fixed-mesh \code{spatial_indep()} cell.
+Generic new-data prediction, generic intervals and profiles,
 automatic selection, and every other
 source-pair helper route remain unavailable.
 }

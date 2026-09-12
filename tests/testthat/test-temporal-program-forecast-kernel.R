@@ -211,3 +211,97 @@ test_that("rank-one temporal-animal forecasts match additive dense conditioning"
   expect_equal(reordered$est, reference$est[index], tolerance = 1e-8)
   expect_equal(reordered$se.fit, reference$se.fit[index], tolerance = 1e-8)
 })
+
+.temporal_spatial_forecast_fixture <- function() {
+  key <- expand.grid(series = paste0("s", 1:3), occasion = 1:3,
+    measurement = c("m1", "m2"), KEEP.OUT.ATTRS = FALSE,
+    stringsAsFactors = FALSE)
+  location <- expand.grid(series = paste0("s", 1:3), occasion = 1:3,
+    KEEP.OUT.ATTRS = FALSE, stringsAsFactors = FALSE)
+  location$lon <- c(0, 1, .2, .8, .4, .6, .3, .7, .5)
+  location$lat <- c(0, 0, 1, 1, .8, .2, .7, .3, .5)
+  key <- merge(key, location, by = c("series", "occasion"), sort = FALSE)
+  data <- key[rep(seq_len(nrow(key)), each = 3L), , drop = FALSE]
+  data$trait <- rep(paste0("t", 1:3), nrow(key))
+  data$value <- with(data, as.numeric(factor(trait)) + .1 * occasion +
+    c(s1 = -.2, s2 = .1, s3 = .25)[series] + c(m1 = -.03, m2 = .03)[measurement])
+  mesh <- make_mesh(data, c("lon", "lat"), cutoff = .05)
+  fit <- suppressWarnings(gllvmTMB(
+    value ~ 0 + trait +
+      temporal_latent(0 + trait | series, time = occasion,
+        replicate = measurement, d = 1, unique = FALSE) +
+      spatial_indep(0 + trait | coords, mesh = mesh),
+    data = data, unit = "series", family = gaussian(), silent = TRUE,
+    control = gllvmTMBcontrol(se = FALSE)
+  ))
+  list(data = data, fit = fit)
+}
+
+.temporal_spatial_forecast_dense_covariance <- function(fit, left, right = left) {
+  par <- fit$tmb_obj$env$parList(fit$opt$par); td <- fit$tmb_data
+  traits <- levels(fit$data[[fit$trait_col]])
+  trait_left <- match(as.character(left[[fit$trait_col]]), traits)
+  trait_right <- match(as.character(right[[fit$trait_col]]), traits)
+  series_left <- as.character(left[[fit$temporal$series_col]])
+  series_right <- as.character(right[[fit$temporal$series_col]])
+  phi <- (1 - 1e-6) * tanh(par$theta_temporal_time)
+  temporal <- outer(series_left, series_right, "==") *
+    phi^abs(outer(as.numeric(left[[fit$temporal$time_col]]),
+      as.numeric(right[[fit$temporal$time_col]]), "-"))
+  P_left <- as.matrix(fmesher::fm_basis(fit$mesh$mesh,
+    loc = as.matrix(left[, fit$mesh$xy_cols, drop = FALSE])))
+  P_right <- as.matrix(fmesher::fm_basis(fit$mesh$mesh,
+    loc = as.matrix(right[, fit$mesh$xy_cols, drop = FALSE])))
+  kappa <- exp(par$log_kappa_spde)
+  Q <- kappa^4 * as.matrix(td$spde_M0) + 2 * kappa^2 * as.matrix(td$spde_M1) + as.matrix(td$spde_M2)
+  spatial <- P_left %*% solve(Q) %*% t(P_right)
+  out <- temporal * tcrossprod(as.numeric(par$theta_temporal_rr))[trait_left, trait_right] +
+    spatial * diag(exp(-2 * par$log_tau_spde), nrow = length(traits))[trait_left, trait_right]
+  if (identical(left, right)) diag(out) <- diag(out) + exp(2 * par$log_sigma_eps[[1L]])
+  out
+}
+
+test_that("rank-one temporal-spatial forecasts match additive dense conditioning", {
+  skip_if_not_installed("TMB"); skip_if_not_installed("fmesher")
+  fx <- .temporal_spatial_forecast_fixture()
+  fx$fit$opt$par[match("theta_temporal_time", names(fx$fit$opt$par))] <- atanh(.5 / (1 - 1e-6))
+  fx$fit$opt$par[which(names(fx$fit$opt$par) == "theta_temporal_rr")] <- c(.7, -.4, .25)
+  fx$fit$opt$par[which(names(fx$fit$opt$par) == "log_tau_spde")] <- log(c(1.1, .9, 1.2))
+  future <- expand.grid(series = paste0("s", 1:3), occasion = 4L,
+    measurement = c("m1", "m2"), trait = paste0("t", 1:3), KEEP.OUT.ATTRS = FALSE)
+  location <- unique(fx$data[c("series", "lon", "lat")])
+  location <- location[!duplicated(location$series), , drop = FALSE]
+  location$occasion <- 4L
+  future <- merge(future, location, by = c("series", "occasion"), sort = FALSE)
+  observed <- forecast_temporal(fx$fit, future, se.fit = TRUE)
+  all_rows <- rbind(fx$data[, names(future)], future)
+  V <- .temporal_spatial_forecast_dense_covariance(fx$fit, all_rows)
+  n_observed <- nrow(fx$data); ix_observed <- seq_len(n_observed); ix_future <- n_observed + seq_len(nrow(future))
+  beta <- gllvmTMB:::.gllvmTMB_b_fix_values(fx$fit)
+  Xn <- stats::model.matrix(stats::delete.response(stats::terms(fx$fit$formula)), future)
+  solved <- solve(V[ix_observed, ix_observed], cbind(fx$data$value - drop(fx$fit$tmb_data$X_fix %*% beta), V[ix_observed, ix_future]))
+  expect_equal(observed$est, unname(drop(Xn %*% beta + t(V[ix_observed, ix_future]) %*% solved[, 1L])), tolerance = 1e-8)
+  expect_equal(observed$se.fit, unname(sqrt(pmax(diag(V[ix_future, ix_future] - t(V[ix_observed, ix_future]) %*% solved[, -1L, drop = FALSE]), 0))), tolerance = 1e-8)
+  product <- outer(as.character(all_rows$series), as.character(all_rows$series), "==") *
+    ((1 - 1e-6) * tanh(fx$fit$tmb_obj$env$parList(fx$fit$opt$par)$theta_temporal_time))^
+      abs(outer(all_rows$occasion, all_rows$occasion, "-")) *
+    .temporal_spatial_forecast_dense_covariance(fx$fit, all_rows)
+  expect_gt(max(abs(V - product)), 1e-3)
+
+  fx$fit$opt$par[match("theta_temporal_time", names(fx$fit$opt$par))] <- atanh(-.5 / (1 - 1e-6))
+  negative <- forecast_temporal(fx$fit, future)
+  negative_V <- .temporal_spatial_forecast_dense_covariance(fx$fit, all_rows)
+  negative_mean <- drop(Xn %*% beta + negative_V[ix_future, ix_observed] %*%
+    solve(negative_V[ix_observed, ix_observed], fx$data$value - drop(fx$fit$tmb_data$X_fix %*% beta)))
+  expect_equal(negative$est, unname(negative_mean), tolerance = 1e-8)
+
+  set.seed(260943L)
+  shuffled <- future[sample.int(nrow(future)), , drop = FALSE]
+  reference <- forecast_temporal(fx$fit, future, se.fit = TRUE)
+  reordered <- forecast_temporal(fx$fit, shuffled, se.fit = TRUE)
+  key <- c("series", "occasion", "measurement", "trait")
+  index <- match(do.call(paste, c(shuffled[key], sep = "\r")), do.call(paste, c(future[key], sep = "\r")))
+  expect_equal(reordered$est, reference$est[index], tolerance = 1e-8)
+  expect_equal(reordered$se.fit, reference$se.fit[index], tolerance = 1e-8)
+  expect_error(forecast_temporal(fx$fit, future[, setdiff(names(future), "lon")]), "coordinate columns")
+})

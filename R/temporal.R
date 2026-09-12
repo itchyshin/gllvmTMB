@@ -123,7 +123,8 @@ temporal_dep <- function(formula, time, structure = "ar1", replicate = NULL) {
 #' for the replicated AR1 fixed-kernel cell, the replicated AR1
 #' `temporal_dep() + phylo_indep()` cell with a fixed phylogeny, and the
 #' replicated AR1 rank-one `temporal_latent() + animal_indep()` cell with a
-#' fixed labelled animal relationship. Generic new-data prediction, generic intervals and profiles,
+#' fixed labelled animal relationship or fixed-mesh `spatial_indep()` cell.
+#' Generic new-data prediction, generic intervals and profiles,
 #' automatic selection, and every other
 #' source-pair helper route remain unavailable.
 #'

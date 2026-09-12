@@ -27,8 +27,10 @@ Coordinates must be constant across traits and measurements within a temporal
 state. The spatial projection is rebuilt from the prepared likelihood rows, so
 long/wide conversion, update, and row permutations cannot reuse a stale
 row-aligned `A_st` projection. Refuse OU, temporal Psi, ordinary terms, spatial
-slopes, extra sources, estimated attenuation, source forecasts and generic
-inference routes. The current proportional trajectory refusal is conservative,
+slopes, extra sources, estimated attenuation, and source-by-time products. The
+separate bounded future-observation route is specified in
+`TEMPORAL-LATENT-SPATIAL-FORECAST-CONTRACT.md`; generic prediction and every
+other inferential route remain refused. The current proportional trajectory refusal is conservative,
 not a claim that proportional distances prove non-identifiability.
 
 ## Evidence owed before admission

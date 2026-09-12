@@ -18,11 +18,12 @@ readonly MODE="${1:-campaign}"
   echo "usage: dep-kernel-160-qualification-totoro.sh [pre-run]" >&2; exit 2;
 }
 if [[ ! -d "${ROOT}/.git" ]]; then
-  git clone git@github.com:itchyshin/gllvmTMB.git "${ROOT}"
+  git init "${ROOT}"
+  git -C "${ROOT}" remote add origin git@github.com:itchyshin/gllvmTMB.git
 fi
 cd "${ROOT}"
-git fetch origin
-git checkout --detach "${GLLVM_TMB_COMMIT}"
+git fetch --no-tags origin "${GLLVM_TMB_COMMIT}"
+git checkout --detach FETCH_HEAD
 [[ -z "$(git status --porcelain)" ]] || { echo "staged checkout is dirty" >&2; exit 2; }
 [[ "$(git rev-parse HEAD)" == "${GLLVM_TMB_COMMIT}" ]] || { echo "wrong staged commit" >&2; exit 2; }
 mkdir -p "${RESULT_DIR}" "${LOG_DIR}"

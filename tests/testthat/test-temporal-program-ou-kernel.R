@@ -251,7 +251,7 @@ test_that("OU temporal-kernel profiles, bootstraps, and compares within structur
   future <- fx$data[fx$data$measurement == "m1", c("series", "elapsed", "trait")]
 
   expect_error(forecast_temporal(fit, future),
-    "replicated panels only for the qualified AR1 temporal-kernel cell")
+    "replicated panels only for qualified temporal-kernel")
   expect_named(profile_temporal(fit, ystep = .25, ytol = 1),
     c("estimate", "lower", "upper"))
   boot <- bootstrap_temporal(fit, n_boot = 2L, seed = 2609362L)

@@ -58246,3 +58246,6 @@ Deliberately not run: Totoro 9×500 grid dispatch; full `devtools::test()`.
   the narrow equation and outstanding gates. Source-pair helper lifecycle,
   rate-boundary identification, retained recovery, cross-platform,
   release, general recovery, and coverage evidence remain pending.
+- The source-pair test also verifies that forecast, profile, bootstrap, and
+  candidate-comparison helpers reject this OU route before an AR1/IID helper
+  algorithm can run.

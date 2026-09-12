@@ -220,3 +220,18 @@ test_that("OU source-pair admission remains limited to temporal_indep plus kerne
     data = fx$data, unit = "series", cluster = "series", family = gaussian(), silent = TRUE
   )), "requires replicated AR1")
 })
+
+test_that("OU temporal-kernel helper routes refuse before an IID algorithm runs", {
+  skip_if_not_installed("TMB")
+  fx <- .temporal_ou_kernel_fixture()
+  fit <- .temporal_ou_kernel_fit(fx)
+  future <- fx$data[fx$data$measurement == "m1", c("series", "elapsed", "trait")]
+
+  expect_error(forecast_temporal(fit, future), "does not yet support replicated temporal panels")
+  expect_error(profile_temporal(fit, ystep = .25, ytol = 1),
+    "qualified temporal-kernel profile requires a replicated AR1 panel")
+  expect_error(bootstrap_temporal(fit, n_boot = 1L),
+    "qualified temporal-kernel bootstrap requires a replicated AR1 panel")
+  expect_error(compare_temporal(left = fit, right = fit),
+    "qualified temporal-kernel comparison requires replicated Gaussian AR1")
+})

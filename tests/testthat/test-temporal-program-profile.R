@@ -145,5 +145,12 @@ test_that("profile_temporal profiles the qualified rank-one temporal-animal obje
   A <- matrix(c(1,.3,.1,.3,1,.2,.1,.2,1), 3, dimnames = list(paste0("s",1:3), paste0("s",1:3)))
   fit <- suppressWarnings(gllvmTMB(value ~ 0 + trait + temporal_latent(0 + trait | series, time = occasion, replicate = measurement, d = 1, unique = FALSE) + animal_indep(0 + trait | series, A = A), data = d, unit = "series", cluster = "series", family = gaussian(), silent = TRUE, control = gllvmTMBcontrol(se = FALSE)))
   out <- profile_temporal(fit, ystep = .25, ytol = 1)
-  expect_true(is.finite(out[["estimate"]]))
+  theta_index <- match("theta_temporal_time", names(fit$opt$par))
+  trace <- TMB::tmbprofile(fit$tmb_obj, name = theta_index,
+    ystep = .25, ytol = 1, trace = FALSE)
+  at_mle <- which.min(abs(trace[[1L]] - fit$opt$par[[theta_index]]))
+  expect_equal(out[["estimate"]],
+    (1 - 1e-6) * tanh(fit$opt$par[[theta_index]]), tolerance = 1e-10)
+  expect_equal(trace[[2L]][[at_mle]], fit$opt$objective, tolerance = 1e-8)
+  expect_gt(max(trace[[2L]]), fit$opt$objective)
 })

@@ -137,3 +137,13 @@ test_that("profile_temporal profiles the qualified temporal-dependent phylogenet
   expect_error(profile_temporal(fit_ou, ystep = .25, ytol = 1),
     "qualified temporal-kernel or temporal-dependent phylogenetic source pairs")
 })
+
+test_that("profile_temporal profiles the qualified rank-one temporal-animal objective", {
+  skip_if_not_installed("TMB")
+  d <- expand.grid(series = paste0("s", 1:3), occasion = 1:3, measurement = c("m1", "m2"), trait = paste0("t", 1:3))
+  set.seed(260955L); d$value <- stats::rnorm(nrow(d))
+  A <- matrix(c(1,.3,.1,.3,1,.2,.1,.2,1), 3, dimnames = list(paste0("s",1:3), paste0("s",1:3)))
+  fit <- suppressWarnings(gllvmTMB(value ~ 0 + trait + temporal_latent(0 + trait | series, time = occasion, replicate = measurement, d = 1, unique = FALSE) + animal_indep(0 + trait | series, A = A), data = d, unit = "series", cluster = "series", family = gaussian(), silent = TRUE, control = gllvmTMBcontrol(se = FALSE)))
+  out <- profile_temporal(fit, ystep = .25, ytol = 1)
+  expect_true(is.finite(out[["estimate"]]))
+})

@@ -25,14 +25,15 @@ profile_temporal <- function(object, level = 0.95, ...) {
   active <- .gllvmTMB_predict_unhandled_re_tiers(object, handled = "temporal")
   kernel_pair <- .temporal_is_qualified_kernel_pair(object, active)
   dep_phylo_pair <- .temporal_is_qualified_dep_phylo_pair(object, active)
-  if (length(active) && !kernel_pair && !dep_phylo_pair) {
+  latent_animal_pair <- .temporal_is_qualified_latent_animal_pair(object, active)
+  if (length(active) && !kernel_pair && !dep_phylo_pair && !latent_animal_pair) {
     .temporal_abort(c(
       "{.fn profile_temporal} supports only qualified temporal-kernel or temporal-dependent phylogenetic source pairs.",
       "i" = "The fit also uses covariance tier(s): {.val {active}}.",
       ">" = "Use the replicated {.code temporal_indep() + kernel_indep()} cell, the AR1 {.code temporal_dep() + phylo_indep()} cell, or a temporal-only fit."
     ), class = "gllvmTMB_temporal_profile_composed")
   }
-  if ((!identical(object$temporal$mode, "indep") && !dep_phylo_pair) ||
+  if ((!identical(object$temporal$mode, "indep") && !dep_phylo_pair && !latent_animal_pair) ||
       any(object$tmb_data$family_id_vec != 0L)) {
     .temporal_abort("{.fn profile_temporal} currently supports Gaussian {.fn temporal_indep} fits, apart from the qualified temporal-dependent phylogenetic cell.")
   }
@@ -43,6 +44,10 @@ profile_temporal <- function(object, level = 0.95, ...) {
   } else if (dep_phylo_pair) {
     if (!identical(object$temporal$structure, "ar1") || is.null(object$temporal$replicate_col)) {
       .temporal_abort("The qualified temporal-dependent phylogenetic profile requires a replicated AR1 panel.")
+    }
+  } else if (latent_animal_pair) {
+    if (!identical(object$temporal$structure, "ar1") || is.null(object$temporal$replicate_col)) {
+      .temporal_abort("The qualified rank-one temporal-animal profile requires a replicated AR1 panel.")
     }
   } else if (!is.null(object$temporal$replicate_col)) {
     .temporal_abort("{.fn profile_temporal} currently supports replicated panels only for the qualified AR1 {.code temporal_indep() + kernel_indep()} cell.")

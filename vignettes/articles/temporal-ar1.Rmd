@@ -37,6 +37,10 @@ their partitions agree and nest. The bounded temporal-only
 replicated-AR1
 `temporal_indep() + kernel_indep()` cell. A separate fixed-parameter
 future-observation route also admits replicated-AR1
+rank-one `temporal_latent(..., unique = FALSE) + kernel_indep()` with the
+same fixed labelled kernel. It returns fitted-parameter conditional standard
+deviations rather than prediction intervals. A further separate route admits
+replicated-AR1
 `temporal_dep() + phylo_indep()` with one fixed phylogenetic source; its
 conditional standard deviations are not prediction intervals. That same
 phylogenetic cell also has a direct persistence profile and an unconditional

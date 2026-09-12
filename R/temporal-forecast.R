@@ -12,9 +12,9 @@
 #' kernel. A second route supports the corresponding rank-one
 #' `temporal_latent(unique = FALSE) + kernel_indep()` fit. A third route supports replicated AR1
 #' `temporal_dep() + phylo_indep()` with one fixed phylogenetic covariance. A
-#' third route supports replicated AR1 rank-one
+#' fourth route supports replicated AR1 rank-one
 #' `temporal_latent(unique = FALSE) + animal_indep()` with one fixed animal
-#' relationship. A fourth route supports the corresponding fixed-mesh
+#' relationship. A fifth route supports the corresponding fixed-mesh
 #' `spatial_indep()` pair. All composed routes forecast future observations
 #' rather than latent state means.
 #' Other temporal covariance modes, non-temporal random-effect tiers, source
@@ -59,7 +59,7 @@ forecast_temporal <- function(object, newdata, se.fit = FALSE) {
     (kernel_pair && identical(object$temporal$structure, "ar1")) || latent_kernel_pair || dep_phylo_pair || latent_animal_pair || latent_spatial_pair
   if (!identical(object$temporal$mode, "indep") && !latent_kernel_pair && !dep_phylo_pair && !latent_animal_pair && !latent_spatial_pair) {
     .temporal_abort(c(
-      "{.fn forecast_temporal} currently supports {.fn temporal_indep} only, apart from qualified temporal-dependent phylogenetic, rank-one temporal-animal, and rank-one temporal-spatial cells.",
+      "{.fn forecast_temporal} currently supports {.fn temporal_indep} only, apart from qualified rank-one temporal-kernel, temporal-dependent phylogenetic, rank-one temporal-animal, and rank-one temporal-spatial cells.",
       ">" = "Forecasts for temporal dependent and latent trait covariance need mode- and source-specific oracle evidence."
     ), class = "gllvmTMB_temporal_forecast_mode")
   }
@@ -77,7 +77,7 @@ forecast_temporal <- function(object, newdata, se.fit = FALSE) {
       !qualified_replicated_pair) {
     .temporal_abort(c(
       "{.fn forecast_temporal} currently supports replicated panels only for qualified temporal-kernel, temporal-dependent phylogenetic, rank-one temporal-animal, or rank-one temporal-spatial cells.",
-      ">" = "Use replicated {.fn temporal_indep} plus one fixed labelled {.fn kernel_indep}, replicated {.fn temporal_dep} plus one fixed {.fn phylo_indep}, or replicated rank-one {.fn temporal_latent} plus one fixed {.fn animal_indep} or fixed-mesh {.fn spatial_indep}."
+      ">" = "Use replicated {.fn temporal_indep} or rank-one {.fn temporal_latent} plus one fixed labelled {.fn kernel_indep}, replicated {.fn temporal_dep} plus one fixed {.fn phylo_indep}, or replicated rank-one {.fn temporal_latent} plus one fixed {.fn animal_indep} or fixed-mesh {.fn spatial_indep}."
     ), class = "gllvmTMB_temporal_forecast_replicated")
   }
 

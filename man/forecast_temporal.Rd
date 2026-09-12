@@ -34,9 +34,9 @@ identity-link model. A separately qualified route supports a replicated AR1
 kernel. A second route supports the corresponding rank-one
 \code{temporal_latent(unique = FALSE) + kernel_indep()} fit. A third route supports replicated AR1
 \code{temporal_dep() + phylo_indep()} with one fixed phylogenetic covariance. A
-third route supports replicated AR1 rank-one
+fourth route supports replicated AR1 rank-one
 \code{temporal_latent(unique = FALSE) + animal_indep()} with one fixed animal
-relationship. A fourth route supports the corresponding fixed-mesh
+relationship. A fifth route supports the corresponding fixed-mesh
 \code{spatial_indep()} pair. All composed routes forecast future observations
 rather than latent state means.
 Other temporal covariance modes, non-temporal random-effect tiers, source

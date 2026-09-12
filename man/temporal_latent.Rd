@@ -88,7 +88,8 @@ unconditional redraw/refit routes for the replicated AR1
 supports the replicated rank-one \code{temporal_latent() + animal_indep()} cell.
 It also supports the corresponding fixed-mesh \code{spatial_indep()} cell.
 \code{forecast_temporal()} also has separately bounded future-observation routes
-for the replicated AR1 fixed-kernel cell, the replicated AR1
+for the replicated AR1 fixed-kernel cell, the replicated AR1 rank-one
+\code{temporal_latent() + kernel_indep()} cell, the replicated AR1
 \code{temporal_dep() + phylo_indep()} cell with a fixed phylogeny, and the
 replicated AR1 rank-one \code{temporal_latent() + animal_indep()} cell with a
 fixed labelled animal relationship or fixed-mesh \code{spatial_indep()} cell.

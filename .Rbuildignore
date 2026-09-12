@@ -38,3 +38,8 @@
 ^.*/\.DS_Store$
 ^pkgdown-site$
 ^lanes$
+^\.cursor$
+^\.mcp\.json$
+^\.ignore$
+^graft$
+^\.claude$

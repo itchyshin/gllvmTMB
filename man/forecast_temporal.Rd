@@ -32,8 +32,11 @@ The base route supports an unreplicated, \code{temporal_indep()}, Gaussian
 identity-link model. A separately qualified route supports a replicated AR1
 \code{temporal_indep() + kernel_indep()} fit with one fixed labelled diagonal
 kernel. A second route supports replicated AR1
-\code{temporal_dep() + phylo_indep()} with one fixed phylogenetic covariance.
-Both composed routes forecast future observations rather than latent state means.
+\code{temporal_dep() + phylo_indep()} with one fixed phylogenetic covariance. A
+third route supports replicated AR1 rank-one
+\code{temporal_latent(unique = FALSE) + animal_indep()} with one fixed animal
+relationship. All composed routes forecast future observations rather than
+latent state means.
 Other temporal covariance modes, non-temporal random-effect tiers, source
 combinations, past or observed occasions, and non-Gaussian families remain
 outside this helper until they have their own conditioning contracts.

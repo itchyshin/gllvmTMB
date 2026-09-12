@@ -37,7 +37,13 @@ complete trait panel for every future measurement. Its fixed-parameter dense
 conditioning check is not interval calibration or a general source-pair
 forecast claim.
 
+A separate contract at `TEMPORAL-LATENT-ANIMAL-FORECAST-CONTRACT.md` admits
+one replicated AR1 rank-one `temporal_latent(unique = FALSE) + animal_indep()`
+future-observation route with a fixed labelled animal relationship. It uses
+the full additive temporal-plus-animal covariance and does not make the
+animal field a temporal process.
+
 This contract does not cover new series, interpolation, replicated panels
-outside that named AR1-kernel cell, other ordinary or structured source tiers,
+outside those named contracts, other ordinary or structured source tiers,
 parameter uncertainty, intervals, profiles, bootstrap, or selection. Each
 requires its own covariance and validation evidence before admission.

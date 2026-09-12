@@ -29,8 +29,10 @@ three integer occasions, two complete measurements per state, an odd observed
 time lag in every series, one rank-one temporal term with `unique = FALSE`,
 and one fixed `animal_indep(0 + trait | series, A = A)`, `pedigree =`, or
 `Ainv =` term at `rho = 1`. It rejects OU, temporal Psi, ordinary covariance terms,
-additional static sources, estimated attenuation, source-by-time products,
-forecasting and generic inferential routes.
+additional static sources, estimated attenuation, and source-by-time products.
+The separate bounded future-observation route is specified in
+`TEMPORAL-LATENT-ANIMAL-FORECAST-CONTRACT.md`; generic prediction and every
+other inferential route remain refused.
 
 ## Required evidence
 

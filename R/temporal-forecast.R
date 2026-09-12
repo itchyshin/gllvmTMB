@@ -9,7 +9,8 @@
 #' The base route supports an unreplicated, `temporal_indep()`, Gaussian
 #' identity-link model. A separately qualified route supports a replicated AR1
 #' `temporal_indep() + kernel_indep()` fit with one fixed labelled diagonal
-#' kernel. A second route supports replicated AR1
+#' kernel. A second route supports the corresponding rank-one
+#' `temporal_latent(unique = FALSE) + kernel_indep()` fit. A third route supports replicated AR1
 #' `temporal_dep() + phylo_indep()` with one fixed phylogenetic covariance. A
 #' third route supports replicated AR1 rank-one
 #' `temporal_latent(unique = FALSE) + animal_indep()` with one fixed animal
@@ -50,12 +51,13 @@ forecast_temporal <- function(object, newdata, se.fit = FALSE) {
   }
   active <- .gllvmTMB_predict_unhandled_re_tiers(object, handled = "temporal")
   kernel_pair <- .temporal_is_qualified_kernel_pair(object, active)
+  latent_kernel_pair <- .temporal_is_qualified_latent_kernel_pair(object, active)
   dep_phylo_pair <- .temporal_is_qualified_dep_phylo_pair(object, active)
   latent_animal_pair <- .temporal_is_qualified_latent_animal_pair(object, active)
   latent_spatial_pair <- .temporal_is_qualified_latent_spatial_pair(object, active)
   qualified_replicated_pair <-
-    (kernel_pair && identical(object$temporal$structure, "ar1")) || dep_phylo_pair || latent_animal_pair || latent_spatial_pair
-  if (!identical(object$temporal$mode, "indep") && !dep_phylo_pair && !latent_animal_pair && !latent_spatial_pair) {
+    (kernel_pair && identical(object$temporal$structure, "ar1")) || latent_kernel_pair || dep_phylo_pair || latent_animal_pair || latent_spatial_pair
+  if (!identical(object$temporal$mode, "indep") && !latent_kernel_pair && !dep_phylo_pair && !latent_animal_pair && !latent_spatial_pair) {
     .temporal_abort(c(
       "{.fn forecast_temporal} currently supports {.fn temporal_indep} only, apart from qualified temporal-dependent phylogenetic, rank-one temporal-animal, and rank-one temporal-spatial cells.",
       ">" = "Forecasts for temporal dependent and latent trait covariance need mode- and source-specific oracle evidence."
@@ -65,7 +67,7 @@ forecast_temporal <- function(object, newdata, se.fit = FALSE) {
   if (is.null(td$family_id_vec) || any(td$family_id_vec != 0L)) {
     .temporal_abort("{.fn forecast_temporal} currently requires a Gaussian identity-link temporal fit.")
   }
-  if (length(active) && !kernel_pair && !dep_phylo_pair && !latent_animal_pair && !latent_spatial_pair) {
+  if (length(active) && !kernel_pair && !latent_kernel_pair && !dep_phylo_pair && !latent_animal_pair && !latent_spatial_pair) {
     .temporal_abort(c("{.fn forecast_temporal} currently supports the temporal source by itself.",
       "i" = "Active additional tier{?s}: {.val {active}}.",
       ">" = "Forecasts with ordinary or structured source effects need a joint conditioning contract."),

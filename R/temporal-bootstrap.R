@@ -58,6 +58,15 @@
       inherits(object$tmb_data$Ainv_phy_rr, "Matrix"))
 }
 
+.temporal_is_qualified_latent_kernel_pair <- function(object, active_tiers) {
+  .temporal_is_qualified_kernel_pair(object, active_tiers) &&
+    identical(object$temporal$source_pair, "kernel_indep") &&
+    identical(object$temporal$mode, "latent") &&
+    identical(object$temporal$d, 1L) && !isTRUE(object$temporal$unique) &&
+    identical(object$temporal$structure, "ar1") &&
+    identical(object$temporal$workflow, "replicated")
+}
+
 .temporal_is_qualified_latent_spatial_pair <- function(object, active_tiers) {
   providers <- object$covstructs
   if (!is.list(providers) || length(providers) != 1L ||

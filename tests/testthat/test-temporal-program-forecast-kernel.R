@@ -33,7 +33,9 @@
   phi <- (1 - 1e-6) * tanh(par$theta_temporal_time)
   temporal <- outer(series_left, series_right, "==") *
     phi^abs(outer(time_left, time_right, "-"))
-  temporal_sigma <- diag(exp(2 * par$theta_temporal_diag), nrow = length(trait_levels))
+  temporal_sigma <- if (identical(fit$temporal$mode, "latent")) {
+    tcrossprod(as.numeric(par$theta_temporal_rr))
+  } else diag(exp(2 * par$theta_temporal_diag), nrow = length(trait_levels))
   source_left <- match(series_left, rownames(fit$kernel_matrices$fixed_kernel))
   source_right <- match(series_right, colnames(fit$kernel_matrices$fixed_kernel))
   kernel_sigma <- diag(par$theta_rr_phy^2, nrow = length(trait_levels))
@@ -120,6 +122,28 @@ test_that("replicated temporal-kernel forecasts validate future measurement pane
     "missing required temporal column")
   expect_error(forecast_temporal(fx$fit, future[-1L, , drop = FALSE]), "complete trait panel")
   expect_error(forecast_temporal(fx$fit, transform(future, series = "new")), "existing series")
+})
+
+test_that("rank-one temporal-kernel forecasts match the dense conditioning oracle", {
+  skip_if_not_installed("TMB")
+  fx <- .temporal_kernel_forecast_fixture()
+  fit <- suppressWarnings(gllvmTMB(value ~ 0 + trait +
+    temporal_latent(0 + trait | series, time = occasion, replicate = measurement,
+      d = 1, unique = FALSE) + kernel_indep(series, K = fx$K, name = "fixed_kernel"),
+    data = fx$data, unit = "series", cluster = "series", family = gaussian(),
+    silent = TRUE, control = gllvmTMBcontrol(se = FALSE)))
+  fit$opt$par[match("theta_temporal_time", names(fit$opt$par))] <- atanh(.5 / (1 - 1e-6))
+  fit$opt$par[which(names(fit$opt$par) == "theta_temporal_rr")] <- c(.7, -.4, .25)
+  future <- expand.grid(series = paste0("s", 1:3), occasion = 5L,
+    measurement = c("m1", "m2"), trait = paste0("t", 1:3), KEEP.OUT.ATTRS = FALSE)
+  got <- forecast_temporal(fit, future, se.fit = TRUE)
+  all_rows <- rbind(fx$data[, names(future)], future); n <- nrow(fx$data)
+  V <- .temporal_kernel_forecast_dense_covariance(fit, all_rows)
+  beta <- gllvmTMB:::.gllvmTMB_b_fix_values(fit)
+  Xn <- stats::model.matrix(stats::delete.response(stats::terms(fit$formula)), future)
+  solved <- solve(V[seq_len(n), seq_len(n)], cbind(fx$data$value - drop(fit$tmb_data$X_fix %*% beta), V[seq_len(n), n + seq_len(nrow(future))]))
+  expect_equal(got$est, unname(drop(Xn %*% beta + t(V[seq_len(n), n + seq_len(nrow(future))]) %*% solved[, 1L])), tolerance = 1e-8)
+  expect_equal(got$se.fit, unname(sqrt(pmax(diag(V[n + seq_len(nrow(future)), n + seq_len(nrow(future))] - t(V[seq_len(n), n + seq_len(nrow(future))]) %*% solved[, -1L, drop = FALSE]), 0))), tolerance = 1e-8)
 })
 
 .temporal_animal_forecast_fixture <- function() {

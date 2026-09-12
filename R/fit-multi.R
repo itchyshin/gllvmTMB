@@ -7761,14 +7761,37 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   }
 
   optimizer_pass_record <- function(pass, answer, start, accepted, warnings = character()) {
+    ## `optim()` exposes function and gradient counts separately through the
+    ## scalar fields we construct in `run_one()`.  `nlminb()` instead returns
+    ## a named two-element `evaluations` vector and an iteration count.  Keep
+    ## the legacy generic `evaluations` field as the gradient count, while
+    ## recording every count explicitly for qualification receipts.  Passing
+    ## the raw vector to `as.data.frame()` would turn one optimizer pass into
+    ## two rows.
+    optimizer_counts <- function(answer) {
+      raw_evaluations <- answer$evaluations %||% NA_real_
+      if (length(raw_evaluations) == 1L) {
+        return(list(
+          iterations = as.numeric(answer$iterations %||% NA_real_)[[1L]],
+          fn = as.numeric(answer$iterations %||% NA_real_)[[1L]],
+          gr = as.numeric(raw_evaluations)[[1L]]
+        ))
+      }
+      list(
+        iterations = as.numeric(answer$iterations %||% NA_real_)[[1L]],
+        fn = as.numeric(raw_evaluations[["function"]] %||% NA_real_)[[1L]],
+        gr = as.numeric(raw_evaluations[["gradient"]] %||% NA_real_)[[1L]]
+      )
+    }
+    counts <- optimizer_counts(answer)
     if (!optimizer_diagnostics) {
       return(list(
         pass = as.integer(pass),
         objective = as.numeric(answer$objective %||% NA_real_),
         convergence = as.integer(answer$convergence %||% NA_integer_),
         message = as.character(answer$message %||% ""),
-        iterations = as.numeric(answer$iterations %||% NA_real_),
-        evaluations = as.numeric(answer$evaluations %||% NA_real_),
+        iterations = counts$iterations,
+        evaluations = counts$gr,
         accepted = isTRUE(accepted)
       ))
     }
@@ -7808,8 +7831,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       objective = objective,
       convergence = as.integer(answer$convergence %||% NA_integer_),
       message = as.character(answer$message %||% ""),
-      iterations = as.numeric(answer$iterations %||% NA_real_),
-      evaluations = as.numeric(answer$evaluations %||% NA_real_),
+      iterations = counts$iterations,
+      evaluations = counts$gr,
       accepted = isTRUE(accepted),
       outer_gradient_max = gradient_maximum,
       outer_gradient_coordinate = gradient_coordinate,
@@ -7841,8 +7864,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       inner_hessian_message = fresh$inner_hessian_message,
       outer_hessian_available = fresh$outer_hessian_available,
       outer_hessian_message = fresh$outer_hessian_message,
-      fn_evaluations = as.numeric(answer$iterations %||% NA_real_),
-      gr_evaluations = as.numeric(answer$evaluations %||% NA_real_),
+      fn_evaluations = counts$fn,
+      gr_evaluations = counts$gr,
       warnings = paste(warnings, collapse = " | "),
       elapsed_seconds = as.numeric(answer$elapsed_seconds %||% NA_real_),
       start = I(list(stats::setNames(start, optimizer_coordinate_labels(start)))),

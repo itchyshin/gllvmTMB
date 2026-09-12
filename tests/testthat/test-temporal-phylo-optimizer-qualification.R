@@ -36,6 +36,23 @@
   ))
 }
 
+.temporal_phylo_optimizer_qualification_nlminb_fit <- function(fx) {
+  control <- gllvmTMBcontrol(
+    se = FALSE, optimizer = "nlminb",
+    optArgs = list(control = list(iter.max = 1000L, eval.max = 4000L)),
+    optimizer_passes = 2L
+  )
+  control$optimizer_diagnostics <- TRUE
+  suppressWarnings(gllvmTMB(
+    value ~ 0 + trait +
+      temporal_indep(0 + trait | series, time = occasion,
+        replicate = measurement, structure = "ar1") +
+      phylo_indep(0 + trait | series, vcv = fx$Cphy),
+    data = fx$data, unit = "series", cluster = "series",
+    family = gaussian(), silent = TRUE, control = control
+  ))
+}
+
 test_that("optimizer qualification is observationally inert for the two-pass fit", {
   skip_if_not_installed("TMB")
   fx <- .temporal_phylo_optimizer_qualification_fixture()
@@ -45,6 +62,21 @@ test_that("optimizer qualification is observationally inert for the two-pass fit
   expect_equal(qualified$opt$objective, ordinary$opt$objective, tolerance = 1e-10)
   expect_identical(qualified$optimizer_pass_history$accepted,
     ordinary$optimizer_pass_history$accepted)
+})
+
+test_that("two-pass nlminb retains one labelled row and distinct counts per pass", {
+  skip_if_not_installed("TMB")
+  fit <- .temporal_phylo_optimizer_qualification_nlminb_fit(
+    .temporal_phylo_optimizer_qualification_fixture()
+  )
+  history <- fit$optimizer_pass_history
+  expect_identical(history$pass, 1:2)
+  expect_equal(nrow(history), 2L)
+  expect_true(all(is.finite(history$iterations)))
+  expect_true(all(is.finite(history$fn_evaluations)))
+  expect_true(all(is.finite(history$gr_evaluations)))
+  expect_true(all(history$fn_evaluations >= history$iterations))
+  expect_identical(history$evaluations, history$gr_evaluations)
 })
 
 test_that("temporal-phylo optimizer passes retain labelled qualification diagnostics", {
@@ -74,6 +106,11 @@ test_that("temporal-phylo optimizer passes retain labelled qualification diagnos
     info = paste("missing:", paste(setdiff(required, names(history)), collapse = ", ")))
   expect_identical(history$pass, 1:2)
   expect_identical(history$pass_label, c("pass_1", "pass_2"))
+  ## `optim()` has historically stored function counts in `iterations` and
+  ## gradient counts in `evaluations`; the nlminb accounting repair must not
+  ## change either BFGS receipt field.
+  expect_identical(history$fn_evaluations, history$iterations)
+  expect_identical(history$gr_evaluations, history$evaluations)
   expect_true(all(is.finite(history$outer_gradient_max)))
   expect_true(all(nzchar(history$outer_gradient_coordinate)))
   expect_lt(max(history$finite_difference_error_max), 1e-4)

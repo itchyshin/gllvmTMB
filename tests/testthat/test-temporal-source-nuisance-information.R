@@ -1,7 +1,12 @@
-test_that("temporal source nuisance-information oracle is derivative-aligned", {
-  script <- testthat::test_path("..", "..", "dev", "temporal-program",
+.temporal_source_nuisance_information_script <- function() {
+  testthat::test_path("..", "..", "dev", "temporal-program",
     "diagnose-temporal-source-nuisance-information.R")
-  expect_true(file.exists(script))
+}
+
+test_that("temporal source nuisance-information oracle is derivative-aligned", {
+  script <- .temporal_source_nuisance_information_script()
+  skip_if_not(file.exists(script),
+    "developer-only nuisance-information diagnostic is unavailable")
   source(script, local = environment())
   report <- .tsni_oracle()
   expect_lt(report$max_score_error, 2e-5)
@@ -10,8 +15,9 @@ test_that("temporal source nuisance-information oracle is derivative-aligned", {
 })
 
 test_that("temporal source mean contrast and nuisance Schur guards fail honestly", {
-  script <- testthat::test_path("..", "..", "dev", "temporal-program",
-    "diagnose-temporal-source-nuisance-information.R")
+  script <- .temporal_source_nuisance_information_script()
+  skip_if_not(file.exists(script),
+    "developer-only nuisance-information diagnostic is unavailable")
   source(script, local = environment())
   decomposition <- .tsni_decomposition(16L)
   expect_lt(decomposition$max_reconstruction_error, 1e-12)

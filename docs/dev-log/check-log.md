@@ -58254,3 +58254,19 @@ Deliberately not run: Totoro 9×500 grid dispatch; full `devtools::test()`.
   nearly-constant and nearly-independent OU covariance limits. This is a
   numerical endpoint check only; it does not establish rate identification or
   recovery.
+
+## 2026-09-12 — irregular-time OU temporal--kernel recovery pre-run
+
+- `TEMPORAL-OU-KERNEL-RECOVERY-CONTRACT.md` freezes a direct 80-series,
+  irregular-time, two-measurement OU-plus-fixed-kernel DGP: three rates and
+  three seeds, with strict optimizer, log-rate, variance, and fixed-effect
+  criteria. The production simulator is not used.
+- The first draft stopped before fitting because it indexed the fixed mean
+  vector as a scalar with a vector index. Its output directory was created but
+  contains no result and was left untouched. The repaired same frozen cell
+  (rate `.25`, seed `2609371`) retained its receipt separately and took
+  2.143 seconds. Nine serial cells project to roughly 20 seconds before small
+  overhead, below the 30-minute compute gate.
+- `run-ou-kernel-recovery.R` parses and its static runner test passes. The full
+  nine-cell campaign and its acceptance summary have not run yet; no recovery
+  claim follows from the timing pre-run.

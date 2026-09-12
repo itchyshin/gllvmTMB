@@ -171,6 +171,19 @@ verification, release, general recovery, or coverage.
 
 ## Next bounded slice
 
+The local lifecycle verifier passed on 2026-09-12:
+
+```sh
+OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 VECLIB_MAXIMUM_THREADS=1 \
+  Rscript --vanilla dev/temporal-program/verify.R lifecycle
+# TEMPORAL_PROGRAM_LIFECYCLE_PASS
+```
+
+This rechecks the bounded forecast, direct profile, parametric bootstrap, and
+supplied-candidate selection helpers together with their early refusals. It
+does not supply interval calibration, coverage, source-pair recovery,
+cross-platform evidence, merge, or release evidence.
+
 Treat the phylogenetic, animal, spatial, and dependent-temporal-kernel recovery
 gates as failed and retain their results. Any numerical follow-up needs a separate model-level contract
 with independent evidence; it cannot be another generic BFGS restart. Do not

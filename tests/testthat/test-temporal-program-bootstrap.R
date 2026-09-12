@@ -105,3 +105,25 @@ test_that("bootstrap_temporal replays the qualified temporal-dependent tree inpu
   expect_equal(out$replicate, 1L)
   expect_true(is.finite(out$objective[[1L]]) || nzchar(out$error[[1L]]))
 })
+
+test_that("bootstrap_temporal replays the qualified rank-one temporal-animal pair", {
+  skip_if_not_installed("TMB")
+  d <- expand.grid(series = paste0("s", 1:3), occasion = 1:3,
+    measurement = c("m1", "m2"), trait = paste0("t", 1:3),
+    KEEP.OUT.ATTRS = FALSE, stringsAsFactors = FALSE)
+  set.seed(260951L); d$value <- stats::rnorm(nrow(d))
+  A <- matrix(c(1, .3, .1, .3, 1, .2, .1, .2, 1), 3L,
+    dimnames = list(paste0("s", 1:3), paste0("s", 1:3)))
+  fit <- suppressWarnings(gllvmTMB(value ~ 0 + trait +
+    temporal_latent(0 + trait | series, time = occasion,
+      replicate = measurement, d = 1, unique = FALSE) +
+    animal_indep(0 + trait | series, A = A), data = d,
+    unit = "series", cluster = "series", family = gaussian(), silent = TRUE,
+    control = gllvmTMBcontrol(se = FALSE)))
+  out <- bootstrap_temporal(fit, n_boot = 2L, seed = 260952L)
+  again <- bootstrap_temporal(fit, n_boot = 2L, seed = 260952L)
+  expect_equal(out$replicate, 1:2)
+  expect_equal(out$seed, again$seed)
+  expect_equal(out$time_estimate, again$time_estimate, tolerance = 1e-10)
+  expect_true(all(is.finite(out$objective) | nzchar(out$error)))
+})

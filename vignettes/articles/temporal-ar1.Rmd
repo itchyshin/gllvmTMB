@@ -41,7 +41,9 @@ future-observation route also admits replicated-AR1
 conditional standard deviations are not prediction intervals. That same
 phylogenetic cell also has a direct persistence profile and an unconditional
 bootstrap/refit helper that retains every attempted refit; neither establishes
-calibrated intervals or bootstrap sampling properties. Generic forecasts, new-data
+calibrated intervals or bootstrap sampling properties. A separately qualified
+rank-one `temporal_latent(..., unique = FALSE) + animal_indep()` cell also has
+that retained bootstrap/refit helper. Generic forecasts, new-data
 prediction, generic profile/bootstrap intervals, automatic rank selection, and
 other source-pair helper routes remain unavailable. Other response families,
 higher ranks, temporal

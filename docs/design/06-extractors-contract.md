@@ -12,7 +12,8 @@ states. For an unreplicated Gaussian `temporal_indep()` source by itself,
 `compare_temporal()` have separate bounded contracts. `bootstrap_temporal()`
 replays the qualified replicated AR1 `temporal_indep() + kernel_indep()` fit
 or the qualified replicated AR1 `temporal_dep() + phylo_indep()` fit through
-its public call after an unconditional joint draw, and
+its public call after an unconditional joint draw. It separately replays the
+qualified replicated rank-one `temporal_latent() + animal_indep()` fit, and
 `profile_temporal()` re-optimizes that pair's full marginal objective at each
 fixed persistence value, while `compare_temporal()` accepts only supplied
 qualified candidates with the same labelled kernel and returns AIC without a
@@ -22,7 +23,8 @@ prediction interval. A separate future-observation contract admits replicated
 AR1 `temporal_dep() + phylo_indep()` with one fixed phylogenetic source; it
 uses the full retained phylogenetic precision and does not establish forecast
 calibration. Its direct persistence profile and bootstrap/refit route retain
-every attempted refit, but establish neither calibrated intervals nor
+every attempted refit, as does the qualified rank-one temporal-animal route,
+but these establish neither calibrated intervals nor
 bootstrap sampling properties. Generic new-data prediction, generic intervals and
 profiles, automatic selection, every other source-pair helper route, and other
 temporal modes remain explicit unsupported routes.

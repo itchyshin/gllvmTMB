@@ -18,7 +18,7 @@ readonly MODE="${1:-campaign}"
   echo "usage: dep-kernel-160-qualification-totoro.sh [pre-run]" >&2; exit 2;
 }
 if [[ ! -d "${ROOT}/.git" ]]; then
-  git clone https://github.com/itchyshin/gllvmTMB.git "${ROOT}"
+  git clone git@github.com:itchyshin/gllvmTMB.git "${ROOT}"
 fi
 cd "${ROOT}"
 git fetch origin

@@ -39,13 +39,17 @@ source(.temporal_dep_kernel_optimizer_dev_file("verify-dep-kernel-retained-oracl
 
 .temporal_dep_kernel_optimizer_fit <- function(fixture) {
   warnings <- character()
+  control <- gllvmTMB::gllvmTMBcontrol(se = FALSE, optimizer = "optim",
+    optArgs = list(method = "BFGS", control = list(maxit = 3000L, reltol = 1e-14)),
+    optimizer_passes = 2L)
+  ## Existing developer-only recorder: it evaluates endpoints after each pass
+  ## and does not alter either BFGS call or the adoption predicate.
+  control$optimizer_diagnostics <- TRUE
   fit <- withCallingHandlers(gllvmTMB::gllvmTMB(value ~ 0 + trait +
     temporal_dep(0 + trait | series, time = occasion, replicate = measurement) +
     kernel_indep(series, K = fixture$K, name = "fixed_nonproportional_K"),
     data = fixture$data, unit = "series", cluster = "series", family = stats::gaussian(),
-    silent = TRUE, control = gllvmTMB::gllvmTMBcontrol(se = FALSE, optimizer = "optim",
-      optArgs = list(method = "BFGS", control = list(maxit = 3000L, reltol = 1e-14)),
-      optimizer_passes = 2L)), warning = function(w) {
+    silent = TRUE, control = control), warning = function(w) {
     warnings <<- c(warnings, conditionMessage(w)); invokeRestart("muffleWarning")
   })
   list(fit = fit, warnings = unique(warnings))

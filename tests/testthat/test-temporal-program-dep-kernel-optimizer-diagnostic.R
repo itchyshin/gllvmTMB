@@ -19,5 +19,6 @@ test_that("dep-kernel optimizer diagnostic preserves the failed qualification bo
   expect_match(source_text, "hessian_error_message")
   expect_match(source_text, "native_gradient")
   expect_match(source_text, "independent_block_gradient")
+  expect_match(source_text, "optimizer_diagnostics <- TRUE")
   expect_match(source_text, "cannot replace the failed qualification")
 })

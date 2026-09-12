@@ -41,8 +41,9 @@ the keyword, or with exactly one fixed-mesh `spatial_indep()` term. One further,
 separately bounded cell is replicated irregular-time
 `temporal_indep(..., structure = "ou") + kernel_indep(...)`; its independent
 dense likelihood/gradient and time-coordinate oracles, unconditional simulation,
-long/wide identity, and update replay have passed locally. Its source-pair helper
-lifecycle and recovery gates remain pending. These use
+long/wide identity, update replay, and direct-profile checks have passed locally.
+Its source-pair bootstrap, selection, forecast, and recovery gates remain
+pending. These use
 an additive static-source plus temporal-process covariance, not a source-by-time
 product; global `phylo_tree`/`phylo_vcv`, other OU source pairs and the remaining
 temporal/source-mode combinations remain refused. In the spatial cell, the

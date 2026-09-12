@@ -8,7 +8,7 @@ profile_temporal(object, level = 0.95, ...)
 }
 \arguments{
 \item{object}{An unreplicated Gaussian \code{temporal_indep()} fit, or the
-qualified replicated AR1 \code{temporal_indep() + kernel_indep()} fit.}
+qualified replicated AR1 or OU \code{temporal_indep() + kernel_indep()} fit.}
 
 \item{level}{Likelihood-ratio confidence level.}
 
@@ -21,7 +21,7 @@ not establish an endpoint.
 }
 \description{
 Profiles the direct native temporal time parameter with all other TMB
-parameters re-optimized. The qualified replicated AR1
+parameters re-optimized. The qualified replicated AR1 or OU
 \code{temporal_indep() + kernel_indep()} route re-optimizes the fixed kernel's
 variance and every other nuisance parameter at each profile point. This is
 a fitted-parameter likelihood profile, not a calibrated interval or a

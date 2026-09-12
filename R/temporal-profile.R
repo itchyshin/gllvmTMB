@@ -1,14 +1,14 @@
 #' Profile a temporal persistence or decay parameter
 #'
 #' Profiles the direct native temporal time parameter with all other TMB
-#' parameters re-optimized. The qualified replicated AR1
+#' parameters re-optimized. The qualified replicated AR1 or OU
 #' `temporal_indep() + kernel_indep()` route re-optimizes the fixed kernel's
 #' variance and every other nuisance parameter at each profile point. This is
 #' a fitted-parameter likelihood profile, not a calibrated interval or a
 #' profile of conditional temporal states.
 #'
 #' @param object An unreplicated Gaussian `temporal_indep()` fit, or the
-#'   qualified replicated AR1 `temporal_indep() + kernel_indep()` fit.
+#'   qualified replicated AR1 or OU `temporal_indep() + kernel_indep()` fit.
 #' @param level Likelihood-ratio confidence level.
 #' @param ... Passed to [tmbprofile_wrapper()].
 #' @return Named numeric vector with `estimate`, `lower`, and `upper`, on the
@@ -31,8 +31,8 @@ profile_temporal <- function(object, level = 0.95, ...) {
     .temporal_abort("{.fn profile_temporal} currently supports Gaussian {.fn temporal_indep} fits only.")
   }
   if (kernel_pair) {
-    if (!identical(object$temporal$structure, "ar1") || is.null(object$temporal$replicate_col)) {
-      .temporal_abort("The qualified temporal-kernel profile requires a replicated AR1 panel.")
+    if (!object$temporal$structure %in% c("ar1", "ou") || is.null(object$temporal$replicate_col)) {
+      .temporal_abort("The qualified temporal-kernel profile requires a replicated AR1 or OU panel.")
     }
   } else if (!is.null(object$temporal$replicate_col)) {
     .temporal_abort("{.fn profile_temporal} currently supports replicated panels only for the qualified AR1 {.code temporal_indep() + kernel_indep()} cell.")

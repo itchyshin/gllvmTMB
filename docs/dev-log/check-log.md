@@ -58285,3 +58285,15 @@ Deliberately not run: Totoro 9×500 grid dispatch; full `devtools::test()`.
   failure. No seed, threshold, or fixture was replaced. TEMP-06-14 remains
   partial and has no OU source-pair recovery, rate-identification, coverage,
   cross-platform, release, or broader-source claim.
+
+## 2026-09-12 — bounded OU temporal--kernel direct profile
+
+- `profile_temporal()` now admits the named replicated OU plus fixed labelled
+  kernel cell. At each rate point it profiles the native marginal objective and
+  re-optimizes the kernel variance and every remaining nuisance parameter;
+  it still returns profile endpoints rather than a coverage claim.
+- The focused irregular-time test confirms the reported estimate is
+  `exp(theta_temporal_time)`, the TMB trace equals the fitted objective at the
+  MLE, and translating all elapsed times leaves the profile unchanged. The
+  independent dense likelihood check remains in the OU-kernel oracle test.
+  Bootstrap, selection, and forecast stay refused for this cell.

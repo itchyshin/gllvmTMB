@@ -19,8 +19,9 @@ is the positive rate \(\kappa=\exp(\theta_T)\); translating elapsed time does
 not alter its profile, while rescaling time changes its reciprocal.
 
 The initial route admits temporal-only, unreplicated Gaussian identity-link
-fits and only the direct time parameter. Its first composed extension admits
-exactly the replicated Gaussian AR1 `temporal_indep() + kernel_indep()` cell
+fits and only the direct time parameter. Its composed extensions admit exactly
+the replicated Gaussian AR1 or irregular-time OU
+`temporal_indep() + kernel_indep()` cells
 with one fixed labelled kernel. At every fixed persistence value,
 `TMB::tmbprofile()` re-optimizes the full marginal objective, including the
 kernel variance and all remaining nuisance parameters; it does not profile a
@@ -29,9 +30,8 @@ that its profile objective equals the fitted marginal objective at the MLE,
 match an independent dense Gaussian likelihood over fixed parameter values,
 and expose flat or boundary profiles without inventing endpoints. Its returned
 lower and upper values are profile endpoints, not a coverage claim. Wald
-intervals, derived covariance targets, source-pair forecasts, source-pair
-bootstrap beyond its separately qualified kernel cell, temporal `dep`/`latent`,
-other sources, and coverage claims remain separate work.
+intervals, derived covariance targets, source-pair forecasts and bootstrap,
+temporal `dep`/`latent`, other sources, and coverage claims remain separate work.
 
 ## Feasibility receipt
 

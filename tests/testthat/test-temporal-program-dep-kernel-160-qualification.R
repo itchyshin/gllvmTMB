@@ -29,4 +29,5 @@ test_that("the 160-series qualification launcher preserves the compute boundary"
   expect_match(source_text, "WORKERS=9")
   expect_match(source_text, "2609341")
   expect_match(source_text, "pre-run")
+  expect_match(source_text, "git@github.com:itchyshin/gllvmTMB.git")
 })

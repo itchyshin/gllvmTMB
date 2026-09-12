@@ -7,20 +7,22 @@ on:
   workflow_dispatch:
     inputs:
       full_matrix:
-        description: "Also run macOS + Windows (pre-release / CRAN check)"
+        description: "Three-OS publication check (turn off for Ubuntu shards)"
         type: boolean
-        default: false
+        default: true
 
 name: R-CMD-check
+run-name: >-
+  ${{ github.event_name == 'workflow_dispatch' && inputs.full_matrix && 'Three-OS publication check' || 'Ubuntu shards' }} — ${{ github.sha }}
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  # Never cancel main integration runs — pkgdown deploys on their success.
-  # Only supersede in-progress runs on PR / feature branches.
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+  # A manual publication run is evidence, not disposable branch churn.
+  # Only supersede in-progress pull-request checks.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   R-CMD-check:

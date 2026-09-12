@@ -58,6 +58,22 @@
       inherits(object$tmb_data$Ainv_phy_rr, "Matrix"))
 }
 
+.temporal_is_qualified_latent_spatial_pair <- function(object, active_tiers) {
+  providers <- object$covstructs
+  if (!is.list(providers) || length(providers) != 1L ||
+      !identical(as.character(active_tiers), "spde") ||
+      !identical(object$temporal$source_pair, "spatial_indep") ||
+      !identical(object$temporal$mode, "latent") ||
+      !identical(object$temporal$d, 1L) || isTRUE(object$temporal$unique) ||
+      !identical(object$temporal$structure, "ar1") ||
+      !identical(object$temporal$workflow, "replicated")) return(FALSE)
+  provider <- providers[[1L]]; extra <- provider$extra
+  identical(provider$kind, "spde") && is.list(extra) &&
+    isTRUE(extra$.spatial_indep) && identical(extra$lhs_form, "intercept_only") &&
+    inherits(extra$mesh, "gllvmTMBmesh") && is.null(object$source_strength) &&
+    isTRUE(object$tmb_data$use_spde == 1L)
+}
+
 #' Parametric bootstrap for a temporal persistence parameter
 #'
 #' Draws unconditional temporal responses and refits the saved public model
@@ -86,14 +102,15 @@ bootstrap_temporal <- function(object, n_boot = 100L, seed = NULL) {
   kernel_pair <- .temporal_is_qualified_kernel_pair(object, active)
   dep_phylo_pair <- .temporal_is_qualified_dep_phylo_pair(object, active)
   latent_animal_pair <- .temporal_is_qualified_latent_animal_pair(object, active)
-  if (length(active) && !kernel_pair && !dep_phylo_pair && !latent_animal_pair) {
+  latent_spatial_pair <- .temporal_is_qualified_latent_spatial_pair(object, active)
+  if (length(active) && !kernel_pair && !dep_phylo_pair && !latent_animal_pair && !latent_spatial_pair) {
     .temporal_abort(c(
       "{.fn bootstrap_temporal} supports only qualified temporal-kernel, temporal-dependent phylogenetic, or rank-one temporal-animal source pairs.",
       "i" = "The fit also uses covariance tier(s): {.val {active}}.",
       ">" = "Use the replicated AR1 {.code temporal_indep() + kernel_indep()} cell with one fixed labelled kernel, the replicated AR1 {.code temporal_dep() + phylo_indep()} cell with one fixed phylogeny, the rank-one {.code temporal_latent() + animal_indep()} cell with one fixed relationship, or a temporal-only fit."
     ), class = "gllvmTMB_temporal_bootstrap_composed")
   }
-  if ((!identical(object$temporal$mode, "indep") && !dep_phylo_pair && !latent_animal_pair) ||
+  if ((!identical(object$temporal$mode, "indep") && !dep_phylo_pair && !latent_animal_pair && !latent_spatial_pair) ||
       any(object$tmb_data$family_id_vec != 0L)) {
     .temporal_abort("{.fn bootstrap_temporal} currently supports Gaussian {.fn temporal_indep} fits, the qualified temporal-dependent phylogenetic pair, and the qualified rank-one temporal-animal pair only.")
   }
@@ -101,7 +118,7 @@ bootstrap_temporal <- function(object, n_boot = 100L, seed = NULL) {
     if (!object$temporal$structure %in% c("ar1", "ou") || is.null(object$temporal$replicate_col)) {
       .temporal_abort("The qualified temporal-kernel bootstrap requires a replicated AR1 or OU panel.")
     }
-  } else if (!dep_phylo_pair && !latent_animal_pair && !is.null(object$temporal$replicate_col)) {
+  } else if (!dep_phylo_pair && !latent_animal_pair && !latent_spatial_pair && !is.null(object$temporal$replicate_col)) {
     .temporal_abort("{.fn bootstrap_temporal} currently supports replicated panels only for qualified temporal-kernel, temporal-dependent phylogenetic, or rank-one temporal-animal cells.")
   }
   if (!is.numeric(n_boot) || length(n_boot) != 1L || !is.finite(n_boot) ||

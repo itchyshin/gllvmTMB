@@ -127,3 +127,25 @@ test_that("bootstrap_temporal replays the qualified rank-one temporal-animal pai
   expect_equal(out$time_estimate, again$time_estimate, tolerance = 1e-10)
   expect_true(all(is.finite(out$objective) | nzchar(out$error)))
 })
+
+test_that("bootstrap_temporal rebuilds the qualified rank-one temporal-spatial projection", {
+  skip_if_not_installed("TMB"); skip_if_not_installed("fmesher")
+  key <- expand.grid(series = paste0("s", 1:3), occasion = 1:3,
+    measurement = c("m1", "m2"), KEEP.OUT.ATTRS = FALSE)
+  loc <- expand.grid(series = paste0("s", 1:3), occasion = 1:3,
+    KEEP.OUT.ATTRS = FALSE)
+  loc$lon <- c(0, 1, .2, .8, .4, .6, .3, .7, .5)
+  loc$lat <- c(0, 0, 1, 1, .8, .2, .7, .3, .5)
+  key <- merge(key, loc, by = c("series", "occasion"), sort = FALSE)
+  d <- key[rep(seq_len(nrow(key)), each = 3L), , drop = FALSE]
+  d$trait <- rep(paste0("t", 1:3), nrow(key)); set.seed(260953L); d$value <- stats::rnorm(nrow(d))
+  mesh <- make_mesh(d, c("lon", "lat"), cutoff = .05)
+  fit <- suppressWarnings(gllvmTMB(value ~ 0 + trait +
+    temporal_latent(0 + trait | series, time = occasion, replicate = measurement,
+      d = 1, unique = FALSE) + spatial_indep(0 + trait | coords, mesh = mesh),
+    data = d, unit = "series", family = gaussian(), silent = TRUE,
+    control = gllvmTMBcontrol(se = FALSE)))
+  out <- bootstrap_temporal(fit, n_boot = 1L, seed = 260954L)
+  expect_equal(out$replicate, 1L)
+  expect_true(is.finite(out$objective[[1L]]) || nzchar(out$error[[1L]]))
+})

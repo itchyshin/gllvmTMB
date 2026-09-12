@@ -144,9 +144,13 @@ source(.temporal_dep_kernel_nlminb_dev_file("run-dep-kernel-occasion-qualificati
 }
 
 .temporal_dep_kernel_nlminb_summarise <- function(result) {
-  .temporal_dep_kernel_nlminb_validate_campaign(result)
   result$optimizer <- "nlminb"
   .temporal_dep_kernel_occasion_summarise(result)
+}
+
+.temporal_dep_kernel_nlminb_summarise_campaign <- function(result) {
+  .temporal_dep_kernel_nlminb_validate_campaign(result)
+  .temporal_dep_kernel_nlminb_summarise(result)
 }
 
 .temporal_dep_kernel_nlminb_provenance <- function() {

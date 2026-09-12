@@ -38,4 +38,22 @@ test_that("nlminb campaign aggregation rejects incomplete or duplicated cells", 
     "missing frozen campaign cell")
   expect_error(.temporal_dep_kernel_nlminb_validate_campaign(rbind(plan, plan[1L, ])),
     "exactly once")
+  one <- plan[1L, , drop = FALSE]
+  one$terminal <- "success"
+  one$convergence <- 0L
+  one$pass_1_convergence <- 0L
+  one$pass_2_convergence <- 0L
+  one$pass_2_accepted <- TRUE
+  one$max_gradient <- 0
+  one$phi_estimate <- one$phi
+  one$temporal_frobenius_relative_error <- 0
+  one$kernel_1 <- .35^2
+  one$kernel_2 <- .28^2
+  one$kernel_3 <- .40^2
+  one$beta_1 <- .2
+  one$beta_2 <- -.3
+  one$beta_3 <- .1
+  expect_silent(.temporal_dep_kernel_nlminb_summarise(one))
+  expect_error(.temporal_dep_kernel_nlminb_summarise_campaign(one),
+    "missing frozen campaign cell")
 })

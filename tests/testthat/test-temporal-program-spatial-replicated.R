@@ -101,7 +101,7 @@ test_that("independent temporal-spatial cells enforce their specific bounds", {
     value ~ 0 + trait + temporal_indep(0 + trait | series, time = occasion) +
       spatial_indep(0 + trait | coords, mesh = fx$mesh),
     data = unrep, unit = "series", family = gaussian(), silent = TRUE
-  )), "requires replicated AR1")
+  )), "requires a replicated panel")
   expect_error(suppressWarnings(gllvmTMB(
     value ~ 0 + trait + temporal_indep(0 + trait | series, time = occasion, replicate = measurement, structure = "ou") +
       spatial_indep(0 + trait | coords, mesh = fx$mesh),

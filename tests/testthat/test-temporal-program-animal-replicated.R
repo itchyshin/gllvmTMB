@@ -207,7 +207,7 @@ test_that("animal pedigree provenance, wide rewrite, simulation, and update pres
 
 test_that("animal temporal cells enforce their specific bounds", {
   fx <- .temporal_animal_rep_fixture(); unrep <- fx$data[fx$data$measurement == "m1", , drop = FALSE]
-  expect_error(suppressWarnings(gllvmTMB(value ~ 0 + trait + temporal_indep(0 + trait | animal, time = occasion) + animal_indep(0 + trait | animal, A = fx$A), data = unrep, unit = "animal", cluster = "animal", family = gaussian(), silent = TRUE)), "requires replicated AR1")
+  expect_error(suppressWarnings(gllvmTMB(value ~ 0 + trait + temporal_indep(0 + trait | animal, time = occasion) + animal_indep(0 + trait | animal, A = fx$A), data = unrep, unit = "animal", cluster = "animal", family = gaussian(), silent = TRUE)), "requires a replicated panel")
   expect_error(suppressWarnings(gllvmTMB(value ~ 0 + trait + temporal_indep(0 + trait | animal, time = occasion, replicate = measurement, structure = "ou") + animal_indep(0 + trait | animal, A = fx$A), data = fx$data, unit = "animal", cluster = "animal", family = gaussian(), silent = TRUE)), "requires replicated AR1")
   expect_error(suppressWarnings(gllvmTMB(value ~ 0 + trait + temporal_indep(0 + trait | animal, time = occasion, replicate = measurement) + animal_dep(0 + trait | animal, A = fx$A), data = fx$data, unit = "animal", cluster = "animal", family = gaussian(), silent = TRUE)), "cannot be combined")
   expect_error(suppressWarnings(gllvmTMB(value ~ 0 + trait + temporal_indep(0 + trait | animal, time = occasion, replicate = measurement) + animal_indep(0 + trait | animal, A = fx$A, rho = .5), data = fx$data, unit = "animal", cluster = "animal", family = gaussian(), silent = TRUE)), "cannot be combined")

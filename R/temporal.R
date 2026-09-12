@@ -103,7 +103,11 @@ temporal_dep <- function(formula, time, structure = "ar1", replicate = NULL) {
 #' intervals, cross-platform verification,
 #' release, general recovery, or coverage claims. The spatial
 #' cell redraws its independent SPDE field during unconditional simulation. Other
-#' temporal-source combinations remain unavailable. For an unreplicated,
+#' temporal-source combinations remain unavailable. A fifth, separately bounded
+#' source pair is replicated irregular-time `temporal_indep(..., structure =
+#' "ou") + kernel_indep(...)`; its independent dense likelihood, gradient and
+#' time-coordinate, simulation, long/wide and update checks are local only;
+#' its source-pair lifecycle and recovery gates remain pending. For an unreplicated,
 #' Gaussian `temporal_indep()` source by itself, `forecast_temporal()`,
 #' `profile_temporal()`, `bootstrap_temporal()`, and `compare_temporal()` have
 #' separate bounded contracts. `bootstrap_temporal()`, `profile_temporal()`, and
@@ -180,10 +184,11 @@ temporal_latent <- function(formula, time, d = 1, structure = "ar1",
   ## Ordinary unit / unit_obs effects are separate tiers and are admitted by
   ## the native temporal contract. Cross-source cells are deliberately narrow:
   ## one static, diagonal source term paired with a replicated AR1 temporal
-  ## process. The two non-diagonal kernel exceptions are temporal_dep and the
-  ## rank-one temporal_latent(unique = FALSE) cells; each has its own
-  ## additive-contract and oracle gates. Each other source/mode pair remains
-  ## separately admitted.
+  ## process, plus the independently qualified irregular-time OU
+  ## temporal_indep + kernel_indep cell. The two non-diagonal kernel
+  ## exceptions are temporal_dep and the rank-one temporal_latent(unique =
+  ## FALSE) cells; each has its own additive-contract and oracle gates. Each
+  ## other source/mode pair remains separately admitted.
   source_terms <- competing[grepl(
     "^(phylo|animal|spatial|kernel|meta_|propto$|equalto$|spde$)", competing
   )]
@@ -521,12 +526,21 @@ temporal_latent <- function(formula, time, d = 1, structure = "ar1",
     }
   }
 
-  if (isTRUE(allowed_source_pair) &&
-      (!identical(workflow, "replicated") || !identical(structure_name, "ar1"))) {
+  ou_kernel_indep_pair <- identical(workflow, "replicated") &&
+    identical(temporal_mode, "indep") &&
+    identical(source_pair, "kernel_indep") && identical(structure_name, "ou")
+  if (isTRUE(allowed_source_pair) && !identical(workflow, "replicated")) {
+    .temporal_abort(c(
+      "The temporal cross-source cell requires a replicated panel.",
+      "i" = "At zero persistence, unreplicated temporal diagonal variation cannot be separated from observation-level noise.",
+      ">" = "Supply {.code replicate = measurement} with at least two complete measurements at every series--occasion."
+    ))
+  }
+  if (isTRUE(allowed_source_pair) && !identical(structure_name, "ar1") &&
+      !isTRUE(ou_kernel_indep_pair)) {
     .temporal_abort(c(
       "The temporal cross-source cell requires replicated AR1 observations.",
-      "i" = "At zero persistence, unreplicated temporal diagonal variation cannot be separated from observation-level noise.",
-      ">" = "Supply {.code replicate = measurement} with at least two complete measurements at every series--occasion, and use {.code structure = 'ar1'}."
+      ">" = "Supply {.code replicate = measurement} with at least two complete measurements at every series--occasion. The only admitted OU source pair is {.code temporal_indep(..., structure = 'ou') + kernel_indep(...)}; use {.code structure = 'ar1'} for the other qualified source pairs."
     ))
   }
 

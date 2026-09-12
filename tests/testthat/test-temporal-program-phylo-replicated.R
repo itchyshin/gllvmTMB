@@ -114,7 +114,7 @@ test_that("phylogenetic temporal cells enforce their specific bounds", {
       temporal_indep(0 + trait | series, time = occasion) +
       phylo_indep(0 + trait | series, vcv = fx$Cphy),
     data = unrep, unit = "series", cluster = "series", family = gaussian(), silent = TRUE
-  )), "requires replicated AR1")
+  )), "requires a replicated panel")
   expect_error(suppressWarnings(gllvmTMB(
     value ~ 0 + trait +
       temporal_indep(0 + trait | series, time = occasion, replicate = measurement,

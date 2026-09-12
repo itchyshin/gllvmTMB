@@ -22,7 +22,10 @@
   A fixed `animal_indep()` source can likewise use in-keyword `pedigree =`,
   `A =`, or `Ainv =`; its dense oracle, source-provenance, lifecycle, and
   matrix-label checks are local only and its recovery gate remains pending.
-  Other temporal/source modes, OU source combinations,
+  A separately bounded replicated Gaussian OU `temporal_indep() + kernel_indep()`
+  cell has local independent dense likelihood/gradient, time-coordinate,
+  simulation, long/wide and update checks; it has no source-pair helper lifecycle, recovery,
+  cross-platform, release, or coverage claim. Other temporal/source modes and OU source combinations,
   cross-platform verification, and release remain pending.
 
 * A new ordinal response family, `ordinal_logit()` -- the cumulative-**logit**

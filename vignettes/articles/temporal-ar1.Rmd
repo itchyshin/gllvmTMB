@@ -40,7 +40,7 @@ prediction, generic profile/bootstrap intervals, automatic rank selection, and
 other source-pair helper routes remain unavailable. Other response families,
 higher ranks, temporal
 slopes, source-by-time interactions, and structured-source combinations beyond
-the four narrow additive pairs below remain unavailable.
+the four narrow AR1 additive pairs and the preliminary OU-kernel pair below remain unavailable.
 
 > **Scope boundary.** Gaussian AR1/OU source parsing, dense covariance
 > oracles, score labels, simulation, training-data prediction, and update have
@@ -51,7 +51,11 @@ the four narrow additive pairs below remain unavailable.
 > their likelihood and lifecycle checks do not give them a common recovery
 > status. Kernel has a retained passing local fixture; phylogenetic, animal, and
 > spatial retained recovery gates remain partial or failed, and the dependent
-> spatial campaign is paused after a retained overrun.
+> spatial campaign is paused after a retained overrun. One additional replicated
+> OU `temporal_indep() + kernel_indep()` cell has independent dense
+> likelihood/gradient, time-coordinate, simulation, long/wide and update checks
+> on an irregular-time fixture. Its source-pair helper lifecycle and recovery gates remain pending, so this article
+> does not present it as a worked workflow.
 
 ## Ordinary longitudinal observations
 

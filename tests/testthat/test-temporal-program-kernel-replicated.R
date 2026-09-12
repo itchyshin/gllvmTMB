@@ -160,7 +160,7 @@ test_that("replicated temporal-kernel long and wide calls preserve temporal and 
     long_fit$tmb_obj$report()$Lambda_phy, tolerance = 1e-8)
 })
 
-test_that("kernel source-pair admission rejects unreplicated, OU, and non-diagonal kernel cells", {
+test_that("kernel source-pair admission rejects unreplicated and deferred OU/non-diagonal cells", {
   fx <- .temporal_kernel_rep_fixture()
   unreplicated <- fx$data[fx$data$measurement == "m1", , drop = FALSE]
   expect_error(suppressWarnings(gllvmTMB(
@@ -168,10 +168,10 @@ test_that("kernel source-pair admission rejects unreplicated, OU, and non-diagon
       temporal_indep(0 + trait | series, time = occasion) +
       kernel_indep(series, K = fx$K, name = "fixed_kernel"),
     data = unreplicated, unit = "series", cluster = "series", family = gaussian(), silent = TRUE
-  )), "requires replicated AR1")
+  )), "requires a replicated panel")
   expect_error(suppressWarnings(gllvmTMB(
     value ~ 0 + trait +
-      temporal_indep(0 + trait | series, time = occasion, replicate = measurement,
+      temporal_dep(0 + trait | series, time = occasion, replicate = measurement,
         structure = "ou") +
       kernel_indep(series, K = fx$K, name = "fixed_kernel"),
     data = fx$data, unit = "series", cluster = "series", family = gaussian(), silent = TRUE

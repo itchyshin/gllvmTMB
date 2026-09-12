@@ -75,10 +75,11 @@ cells are implemented: replicated AR1 `temporal_indep()` plus one labelled
 `pedigree =`, `A =`, or `Ainv =`; or one fixed-mesh `spatial_indep()` term.
 Their evidence is partial and differs by pair: the named kernel fixture passes
 locally; retained phylogenetic, animal, and spatial recovery gates fail
-strictly. They are not cross-platform verification,
-release, general recovery, or coverage evidence. OU, other temporal/source
-modes, source-by-time interactions, and other structured-source combinations
-remain unavailable. In the animal cell, `A` is a labelled dense relatedness
+strictly. A separately bounded replicated OU `temporal_indep() + kernel_indep()`
+cell has local independent dense likelihood/gradient, time-coordinate,
+simulation, long/wide and update checks, but no source-pair helper lifecycle,
+recovery, cross-platform, release, or coverage evidence. Other OU source modes, source-by-time interactions, and
+other structured-source combinations remain unavailable. In the animal cell, `A` is a labelled dense relatedness
 matrix; pass a sparse relationship precision through `Ainv`.
 
 ## What the model does

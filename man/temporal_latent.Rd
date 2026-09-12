@@ -72,7 +72,10 @@ only: they do not support source-pair forecasting,
 intervals, cross-platform verification,
 release, general recovery, or coverage claims. The spatial
 cell redraws its independent SPDE field during unconditional simulation. Other
-temporal-source combinations remain unavailable. For an unreplicated,
+temporal-source combinations remain unavailable. A fifth, separately bounded
+source pair is replicated irregular-time \code{temporal_indep(..., structure = "ou") + kernel_indep(...)}; its independent dense likelihood, gradient and
+time-coordinate, simulation, long/wide and update checks are local only;
+its source-pair lifecycle and recovery gates remain pending. For an unreplicated,
 Gaussian \code{temporal_indep()} source by itself, \code{forecast_temporal()},
 \code{profile_temporal()}, \code{bootstrap_temporal()}, and \code{compare_temporal()} have
 separate bounded contracts. \code{bootstrap_temporal()}, \code{profile_temporal()}, and

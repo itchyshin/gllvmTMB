@@ -58226,3 +58226,23 @@ Deliberately not run: Totoro 9×500 grid dispatch; full `devtools::test()`.
   bounded corrected campaign with negative evidence. TEMP-06-13 remains
   partial; no recovery, coverage, cross-platform, release, or broader source
   pairing claim follows.
+
+## 2026-09-12 — bounded irregular-time OU temporal–kernel cell
+
+- Added the sole irregular-time source-pair exception:
+  replicated Gaussian `temporal_indep(..., structure = "ou") +
+  kernel_indep(...)`. The term remains an additive sum of a within-series OU
+  temporal diagonal covariance and one fixed labelled kernel diagonal
+  covariance; it is not a source-by-time product or a general OU pairing.
+- `test-temporal-program-ou-kernel.R` independently evaluates the marginal
+  dense Gaussian likelihood and central derivatives, rejects the product
+  covariance, checks time-shift and time-rescaling identities, draws 2,000
+  unconditional simulations against simultaneous moment bounds, and exercises
+  labels, long/wide identity, and `update()` replay. It passed locally, as did
+  the four existing replicated AR1 source-pair suites, `devtools::document()`,
+  `pkgdown::check_pkgdown()`, and a direct render of
+  `vignettes/articles/temporal-ar1.Rmd`.
+- `TEMPORAL-OU-KERNEL-CONTRACT.md` and the independent Noether review record
+  the narrow equation and outstanding gates. Source-pair helper lifecycle,
+  rate-boundary identification, retained recovery, cross-platform,
+  release, general recovery, and coverage evidence remain pending.

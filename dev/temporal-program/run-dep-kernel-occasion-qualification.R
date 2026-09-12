@@ -31,6 +31,12 @@
   }
   lock
 }
+
+.temporal_dep_kernel_occasion_with_reservation <- function(output, expr) {
+  lock <- .temporal_dep_kernel_occasion_reserve_output(output)
+  on.exit(unlink(lock, recursive = TRUE, force = TRUE), add = TRUE)
+  force(expr)
+}
 .temporal_dep_kernel_occasion_truth <- function() list(beta = c(.2, -.3, .1),
   temporal_loading = rbind(c(.55, 0, 0), c(.12, .50, 0), c(-.08, .10, .48)),
   kernel_sd = c(.35, .28, .40), residual = .30)
@@ -130,27 +136,31 @@
   .temporal_dep_kernel_occasion_summarise(result)
 }
 
-if (sys.nframe() == 0L) {
-  args <- commandArgs(trailingOnly = TRUE); pre_run <- "--pre-run" %in% args
+.temporal_dep_kernel_occasion_cli <- function(args = commandArgs(trailingOnly = TRUE)) {
+  pre_run <- "--pre-run" %in% args
   phi_arg <- grep("^--phi=", args, value = TRUE); seed_arg <- grep("^--seed=", args, value = TRUE); output_arg <- grep("^--output=", args, value = TRUE)
   allowed <- c("--pre-run", phi_arg, seed_arg, output_arg)
   if (length(phi_arg) > 1L || length(seed_arg) > 1L || length(output_arg) != 1L || !all(args %in% allowed) || xor(length(phi_arg) == 1L, length(seed_arg) == 1L) || (pre_run && (length(phi_arg) || length(seed_arg))) || (!pre_run && !length(phi_arg))) stop("usage: Rscript --vanilla run-dep-kernel-occasion-qualification.R [--pre-run | --phi=VALUE --seed=N] --output=PATH", call. = FALSE)
   output <- sub("^--output=", "", output_arg)
   if (!dir.exists(dirname(output))) stop("output directory does not exist", call. = FALSE)
-  lock <- .temporal_dep_kernel_occasion_reserve_output(output)
-  on.exit(unlink(lock, recursive = TRUE, force = TRUE), add = TRUE)
-  pkgload::load_all(normalizePath(".", mustWork = TRUE), quiet = TRUE, export_all = FALSE)
-  value <- .temporal_dep_kernel_occasion_run(if (length(phi_arg)) as.numeric(sub("^--phi=", "", phi_arg)) else NULL, if (length(seed_arg)) as.integer(sub("^--seed=", "", seed_arg)) else NULL, pre_run)
-  temporary <- tempfile("dep-kernel-occasion-", tmpdir = dirname(output), fileext = ".rds"); saveRDS(value, temporary)
-  if (file.exists(output)) stop("output became occupied while the qualification was running", call. = FALSE)
-  if (!file.rename(temporary, output)) stop("could not atomically retain qualification output", call. = FALSE)
-  print(value$result, row.names = FALSE); if (!is.null(value$summary)) print(value$summary, row.names = FALSE)
-  terminal <- value$result$terminal[[1L]]
-  marker <- if (identical(terminal, "success")) {
-    if (pre_run) "TEMPORAL_DEP_KERNEL_OCCASION_PRERUN_RETAINED" else "TEMPORAL_DEP_KERNEL_OCCASION_CELL_RETAINED"
-  } else {
-    if (pre_run) "TEMPORAL_DEP_KERNEL_OCCASION_PRERUN_ERROR_RETAINED" else "TEMPORAL_DEP_KERNEL_OCCASION_CELL_ERROR_RETAINED"
-  }
-  cat(marker, "\n", sep = "")
-  if (!identical(terminal, "success")) quit(save = "no", status = 1L)
+  .temporal_dep_kernel_occasion_with_reservation(output, {
+    pkgload::load_all(normalizePath(".", mustWork = TRUE), quiet = TRUE, export_all = FALSE)
+    value <- .temporal_dep_kernel_occasion_run(if (length(phi_arg)) as.numeric(sub("^--phi=", "", phi_arg)) else NULL, if (length(seed_arg)) as.integer(sub("^--seed=", "", seed_arg)) else NULL, pre_run)
+    temporary <- tempfile("dep-kernel-occasion-", tmpdir = dirname(output), fileext = ".rds"); saveRDS(value, temporary)
+    if (file.exists(output)) stop("output became occupied while the qualification was running", call. = FALSE)
+    if (!file.rename(temporary, output)) stop("could not atomically retain qualification output", call. = FALSE)
+    print(value$result, row.names = FALSE); if (!is.null(value$summary)) print(value$summary, row.names = FALSE)
+    terminal <- value$result$terminal[[1L]]
+    marker <- if (identical(terminal, "success")) {
+      if (pre_run) "TEMPORAL_DEP_KERNEL_OCCASION_PRERUN_RETAINED" else "TEMPORAL_DEP_KERNEL_OCCASION_CELL_RETAINED"
+    } else {
+      if (pre_run) "TEMPORAL_DEP_KERNEL_OCCASION_PRERUN_ERROR_RETAINED" else "TEMPORAL_DEP_KERNEL_OCCASION_CELL_ERROR_RETAINED"
+    }
+    cat(marker, "\n", sep = "")
+    as.integer(!identical(terminal, "success"))
+  })
+}
+
+if (sys.nframe() == 0L) {
+  quit(save = "no", status = .temporal_dep_kernel_occasion_cli())
 }

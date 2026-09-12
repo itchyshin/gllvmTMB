@@ -27,6 +27,10 @@ test_that("the long-occasion dep-kernel qualification is frozen before fitting",
   unlink(lock, recursive = TRUE, force = TRUE)
   file.create(output)
   expect_error(.temporal_dep_kernel_occasion_reserve_output(output), "new result")
+  cleanup_output <- tempfile("temporal-dep-kernel-occasion-cleanup-")
+  expect_error(.temporal_dep_kernel_occasion_with_reservation(cleanup_output,
+    stop("deliberate pre-fit failure")), "deliberate pre-fit failure")
+  expect_false(dir.exists(paste0(cleanup_output, ".lock")))
   source_text <- paste(readLines(script, warn = FALSE), collapse = "\n")
   expect_false(grepl("simulate\\.gllvmTMB", source_text))
   expect_match(source_text, "output must name a new result file")

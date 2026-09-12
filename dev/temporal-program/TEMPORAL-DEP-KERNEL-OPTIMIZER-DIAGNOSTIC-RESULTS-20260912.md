@@ -14,8 +14,11 @@ independent panel checker.  It is preserved.  The repaired
 `optimizer-diagnostic-v2-p00-seed-2609373.rds` was a source-dirty debugging
 receipt and is retained only for that history.  The load-bearing receipt is
 `optimizer-diagnostic-v3-p00-seed-2609373.rds`, generated from clean commit
-`87d2a7a6c715dc763f5e44242613d724f108a534`, on the same fixed design point
-(`phi = 0`, seed `2609373`, 80 series, 32 occasions).
+`87d2a7a6c715dc763f5e44242613d724f108a534`, established the independent
+native-to-dense agreement.  The load-bearing endpoint receipt is
+`optimizer-diagnostic-v4-p00-seed-2609373.rds`, generated from clean commit
+`954e1abe5`: it additionally retains both optimizer-pass endpoints on the
+same fixed design point (`phi = 0`, seed `2609373`, 80 series, 32 occasions).
 
 At the native endpoint, the outer gradient is still `0.00167243199`, exceeding
 the unchanged `0.001` qualification criterion.  The independent block
@@ -28,6 +31,12 @@ The largest native derivative is
 attributing the failed gate to the zero-persistence coordinate.  The native
 Hessian remains unavailable because this random-effects model does not
 implement it; the retained message records that limitation.
+
+The pass-level record shows BFGS reduced the maximum gradient from
+`0.003364864` on pass one to `0.001672432` on pass two, with the same
+`theta_temporal_rr[6]` coordinate largest on both passes.  The conditional
+inner Hessian is available and positive definite at both endpoints; that does
+not supply an outer observed-information matrix.
 
 ## Implication
 

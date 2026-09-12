@@ -58270,3 +58270,18 @@ Deliberately not run: Totoro 9×500 grid dispatch; full `devtools::test()`.
 - `run-ou-kernel-recovery.R` parses and its static runner test passes. The full
   nine-cell campaign and its acceptance summary have not run yet; no recovery
   claim follows from the timing pre-run.
+
+## 2026-09-12 — irregular-time OU temporal--kernel retained recovery result
+
+- The exact frozen runner at `5af5fafcf` completed all nine planned local
+  attempts in fresh output directories. Every fit had terminal success, both
+  optimizer passes accepted at code zero, and maximum gradient at most
+  `6.157075e-04`. The complete raw rows, frozen plan copies, consolidated CSV,
+  and summary are retained under
+  `results/failed/ou-kernel-recovery-20260912/`.
+- The frozen gate fails for rate `.25`: median relative error of the first
+  kernel variance is `.4711615`, above `.35`. The rate and fixed-effect criteria
+  pass, as do the other two rate strata, but the campaign is a whole-gate
+  failure. No seed, threshold, or fixture was replaced. TEMP-06-14 remains
+  partial and has no OU source-pair recovery, rate-identification, coverage,
+  cross-platform, release, or broader-source claim.

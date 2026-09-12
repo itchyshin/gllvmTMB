@@ -16,7 +16,7 @@
                                                         relative_step = 1e-5) {
   raw <- names(par)
   if (is.null(raw) || length(raw) != length(par)) raw <- rep("outer", length(par))
-  labels <- paste0(raw, "[", ave(seq_along(raw), raw, FUN = seq_along), "]")
+  labels <- paste0(raw, "[", stats::ave(seq_along(raw), raw, FUN = seq_along), "]")
   empty <- list(
     labels = labels, step = stats::setNames(rep(NA_real_, length(par)), labels),
     central = stats::setNames(rep(NA_real_, length(par)), labels),
@@ -7621,7 +7621,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     if (is.null(raw) || length(raw) != length(par)) {
       raw <- rep("outer", length(par))
     }
-    occurrence <- ave(seq_along(raw), raw, FUN = seq_along)
+    occurrence <- stats::ave(seq_along(raw), raw, FUN = seq_along)
     paste0(raw, "[", occurrence, "]")
   }
 

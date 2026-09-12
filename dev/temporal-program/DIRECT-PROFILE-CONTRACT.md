@@ -33,6 +33,16 @@ lower and upper values are profile endpoints, not a coverage claim. Wald
 intervals, derived covariance targets, source-pair forecasts and bootstrap,
 temporal `dep`/`latent`, other sources, and coverage claims remain separate work.
 
+One additional composed route admits replicated AR1
+`temporal_dep() + phylo_indep()` with one fixed intercept-only phylogenetic
+source. It profiles only `theta_temporal_time`; the full packed temporal
+loading block, every phylogenetic variance, and the measurement variance are
+re-optimized at every profile point. Its test establishes transformed-MLE
+closure against the direct `TMB::tmbprofile()` trace and refuses an altered OU
+structure. The route does not define a profile for a temporal covariance entry,
+a phylogenetic variance, or a derived target; its endpoints are not calibrated
+intervals or coverage evidence.
+
 ## Feasibility receipt
 
 On 2026-09-09, `tmbprofile_wrapper()` was run directly on

@@ -113,7 +113,9 @@ temporal_dep <- function(formula, time, structure = "ar1", replicate = NULL) {
 #' `profile_temporal()`, `bootstrap_temporal()`, and `compare_temporal()` have
 #' separate bounded contracts. `bootstrap_temporal()`, `profile_temporal()`, and
 #' `compare_temporal()` also support the qualified replicated AR1 or OU
-#' `temporal_indep() + kernel_indep()` cells. `forecast_temporal()` also has a
+#' `temporal_indep() + kernel_indep()` cells. `profile_temporal()` also has a
+#' separately bounded direct-persistence route for the replicated AR1
+#' `temporal_dep() + phylo_indep()` cell. `forecast_temporal()` also has a
 #' separately bounded future-observation route for the replicated AR1 fixed
 #' kernel cell and for the replicated AR1
 #' `temporal_dep() + phylo_indep()` cell with a fixed phylogeny. Generic new-data prediction, generic intervals and profiles,

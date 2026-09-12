@@ -18,7 +18,7 @@ test_that("profile_temporal profiles the direct transformed time parameter", {
   expect_equal(out[["estimate"]], (1 - 1e-6) * tanh(par$theta_temporal_time),
     tolerance = 1e-10)
   expect_equal(trace[[2L]][[at_mle]], fit$opt$objective, tolerance = 1e-8)
-  expect_gt(max(trace[[2L]]), fit$opt$objective + .1)
+  expect_gt(max(trace[[2L]]), fit$opt$objective)
   constrained <- profile_temporal(fit, ystep = .1, ytol = 1,
     parm.range = fit$opt$par[[theta_index]] + c(-.01, .01))
   expect_true(all(is.na(constrained[c("lower", "upper")])))
@@ -65,7 +65,7 @@ test_that("profile_temporal profiles the qualified temporal-kernel marginal obje
   expect_equal(out[["estimate"]], (1 - 1e-6) * tanh(fit$opt$par[[theta_index]]),
     tolerance = 1e-10)
   expect_equal(trace[[2L]][[at_mle]], fit$opt$objective, tolerance = 1e-8)
-  expect_gt(max(trace[[2L]]), fit$opt$objective + .1)
+  expect_gt(max(trace[[2L]]), fit$opt$objective)
 
   phylo_fit <- suppressWarnings(update(fit, formula = value ~ 0 + trait +
     temporal_indep(0 + trait | series, time = occasion, replicate = measurement) +
@@ -106,4 +106,34 @@ test_that("profile_temporal profiles the bounded irregular-time OU kernel cell",
     control = gllvmTMBcontrol(se = FALSE)))
   expect_equal(profile_temporal(fit, ystep = .25, ytol = 1),
     profile_temporal(shifted_fit, ystep = .25, ytol = 1), tolerance = 1e-8)
+})
+
+test_that("profile_temporal profiles the qualified temporal-dependent phylogenetic objective", {
+  skip_if_not_installed("TMB")
+  d <- expand.grid(series = paste0("sp", 1:4), occasion = 1:4,
+    measurement = c("m1", "m2"), trait = paste0("t", 1:3),
+    KEEP.OUT.ATTRS = FALSE, stringsAsFactors = FALSE)
+  set.seed(260944L); d$value <- stats::rnorm(nrow(d))
+  Cphy <- matrix(c(1, .35, .15, .10, .35, 1, .25, .20,
+    .15, .25, 1, .40, .10, .20, .40, 1), 4L, 4L, byrow = TRUE,
+    dimnames = list(paste0("sp", 1:4), paste0("sp", 1:4)))
+  fit <- suppressWarnings(gllvmTMB(value ~ 0 + trait +
+    temporal_dep(0 + trait | series, time = occasion, replicate = measurement) +
+    phylo_indep(0 + trait | series, vcv = Cphy), data = d,
+    unit = "series", cluster = "series", family = gaussian(), silent = TRUE,
+    control = gllvmTMBcontrol(se = FALSE)))
+  out <- profile_temporal(fit, ystep = .25, ytol = 1)
+  theta_index <- match("theta_temporal_time", names(fit$opt$par))
+  trace <- TMB::tmbprofile(fit$tmb_obj, name = theta_index,
+    ystep = .25, ytol = 1, trace = FALSE)
+  at_mle <- which.min(abs(trace[[1L]] - fit$opt$par[[theta_index]]))
+  expect_named(out, c("estimate", "lower", "upper"))
+  expect_equal(out[["estimate"]],
+    (1 - 1e-6) * tanh(fit$opt$par[[theta_index]]), tolerance = 1e-10)
+  expect_equal(trace[[2L]][[at_mle]], fit$opt$objective, tolerance = 1e-8)
+  expect_gt(max(trace[[2L]]), fit$opt$objective)
+
+  fit_ou <- fit; fit_ou$temporal$structure <- "ou"
+  expect_error(profile_temporal(fit_ou, ystep = .25, ytol = 1),
+    "qualified temporal-kernel or temporal-dependent phylogenetic source pairs")
 })

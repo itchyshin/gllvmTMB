@@ -81,7 +81,9 @@ Gaussian \code{temporal_indep()} source by itself, \code{forecast_temporal()},
 \code{profile_temporal()}, \code{bootstrap_temporal()}, and \code{compare_temporal()} have
 separate bounded contracts. \code{bootstrap_temporal()}, \code{profile_temporal()}, and
 \code{compare_temporal()} also support the qualified replicated AR1 or OU
-\code{temporal_indep() + kernel_indep()} cells. \code{forecast_temporal()} also has a
+\code{temporal_indep() + kernel_indep()} cells. \code{profile_temporal()} also has a
+separately bounded direct-persistence route for the replicated AR1
+\code{temporal_dep() + phylo_indep()} cell. \code{forecast_temporal()} also has a
 separately bounded future-observation route for the replicated AR1 fixed
 kernel cell and for the replicated AR1
 \code{temporal_dep() + phylo_indep()} cell with a fixed phylogeny. Generic new-data prediction, generic intervals and profiles,

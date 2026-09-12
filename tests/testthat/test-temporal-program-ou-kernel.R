@@ -117,6 +117,29 @@ test_that("OU temporal-kernel covariance is shift and time-unit invariant", {
     .temporal_ou_kernel_dense_nll(rescaled_fit, rescaled_fixed, fx$K), tolerance = 1e-8)
 })
 
+test_that("OU temporal-kernel rate endpoints have the intended finite covariance limits", {
+  skip_if_not_installed("TMB")
+  fx <- .temporal_ou_kernel_fixture()
+  fit <- .temporal_ou_kernel_fit(fx)
+  fixed <- fit$opt$par
+  pair <- fit$temporal$pair_table
+  same_series <- outer(pair$series, pair$series, `==`)
+  lag <- abs(outer(pair$time, pair$time, `-`))
+  off_state <- same_series & lag > 0
+
+  for (theta in c(-20, 20)) {
+    endpoint <- fixed
+    endpoint[names(endpoint) == "theta_temporal_time"] <- theta
+    expect_true(is.finite(fit$tmb_obj$fn(endpoint)))
+    expect_true(all(is.finite(fit$tmb_obj$gr(endpoint))))
+  }
+  near_constant <- exp(-exp(-20) * lag)
+  near_independent <- exp(-exp(20) * lag)
+  expect_lt(max(abs(near_constant[same_series] - 1)), 1e-7)
+  expect_lt(max(abs(near_independent[off_state])), 1e-7)
+  expect_equal(near_independent[diag(nrow(near_independent))], rep(1, nrow(near_independent)))
+})
+
 test_that("OU temporal-kernel unconditional simulation has additive moments", {
   skip_if_not_installed("TMB")
   fx <- .temporal_ou_kernel_fixture()

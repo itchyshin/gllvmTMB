@@ -58249,3 +58249,8 @@ Deliberately not run: Totoro 9×500 grid dispatch; full `devtools::test()`.
 - The source-pair test also verifies that forecast, profile, bootstrap, and
   candidate-comparison helpers reject this OU route before an AR1/IID helper
   algorithm can run.
+- A separate endpoint check evaluates the native objective and gradient at
+  `theta_temporal_time = -20` and `20`, and confirms the corresponding
+  nearly-constant and nearly-independent OU covariance limits. This is a
+  numerical endpoint check only; it does not establish rate identification or
+  recovery.

@@ -47,16 +47,36 @@ covered. No seed is replaced.
    truth and a 95% Wilson lower bound of at least 0.75. This is a bounded
    engineering check, not a general calibration claim.
 
+Profile calls use `ystep = 0.1` and `ytol = 3`. The latter exceeds the
+95%-profile likelihood-ratio cutoff (`qchisq(.95, 1) / 2`, about `1.92`), so
+the search is allowed to reach a nominal endpoint.
+
 The generic `confint()` temporal guard remains in place until this campaign is
 complete, independently reviewed, and reconciled with the public contract.
 
-## Retained result: 2026-09-13
+## Configuration diagnostic retained: 2026-09-13
 
-The fixed local pre-run took 2.620 seconds. The unchanged 30-seed campaign
-completed in under two minutes with 30 converged, finite-objective fits. None
-of the 30 profile calls supplied both finite endpoints, so finite endpoint
-availability and coverage were both `0/30` (95% binomial lower bound `0`).
-This fails the declared gate. The result is retained in
-`results/temporal-profile-coverage-20260913.csv`; it does not support a
-generic temporal interval claim and no post-result fixture, threshold, or
-profile-search adjustment was made.
+The initial local pre-run used `ytol = 1`, which is below the required
+likelihood-ratio cutoff. Its 30 fitted profiles consequently could not be
+asked to reach a nominal endpoint; all 30 converged but returned missing
+endpoints. That retained output is
+`results/temporal-profile-coverage-20260913.csv`. It is a configuration
+diagnostic, not an interval-coverage result.
+
+The DGP, seeds, fitted model, endpoint definition, and acceptance criterion
+are unchanged. The only correction is the declared TMB likelihood range above.
+On the fixed smoke seed, the corrected search returned finite endpoints
+`0.5346553` and `0.9040291`, containing the true `phi = 0.6`. The corrected
+30-seed receipt will be retained separately as
+`results/temporal-profile-coverage-ytol3-20260913.csv`.
+
+## Corrected retained result: 2026-09-13
+
+All 30 fixed-seed fits converged with finite objectives and all 30 corrected
+profile calls supplied finite endpoint pairs. Twenty-four of 30 intervals
+contained the true `phi = 0.6`; the exact binomial 95% lower bound was
+`0.6143`. This misses both predeclared acceptance criteria (`27/30` coverage
+and lower bound at least `0.75`). The receipt is retained in
+`results/temporal-profile-coverage-ytol3-20260913.csv`. It establishes only a
+failed, small fixed-DGP profile-endpoint calibration gate; it does not support
+generic temporal confidence intervals or coverage claims.

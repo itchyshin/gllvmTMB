@@ -5,7 +5,7 @@
 args <- commandArgs(trailingOnly = TRUE)
 smoke <- identical(args, "--smoke")
 if (length(args) && !smoke) stop("Only --smoke is accepted.", call. = FALSE)
-result_path <- "dev/temporal-main-lifecycle/results/temporal-profile-coverage-20260913.csv"
+result_path <- "dev/temporal-main-lifecycle/results/temporal-profile-coverage-ytol3-20260913.csv"
 
 Sys.setenv(OPENBLAS_NUM_THREADS = "1", OMP_NUM_THREADS = "1", MKL_NUM_THREADS = "1")
 suppressPackageStartupMessages(devtools::load_all(quiet = TRUE))
@@ -56,7 +56,7 @@ run_one <- function(seed) {
   ))
   grad <- max(abs(fit$tmb_obj$gr(fit$opt$par)))
   profile_started <- proc.time()[["elapsed"]]
-  endpoint <- tryCatch(profile_temporal(fit, ystep = 0.25, ytol = 1), error = identity)
+  endpoint <- tryCatch(profile_temporal(fit, ystep = 0.1, ytol = 3), error = identity)
   profile_elapsed <- proc.time()[["elapsed"]] - profile_started
   if (inherits(endpoint, "error")) return(data.frame(
     seed, terminal = "profile_error", fit_seconds = fit_elapsed,

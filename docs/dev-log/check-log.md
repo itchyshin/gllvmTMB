@@ -58369,3 +58369,22 @@ Deliberately not run: Totoro 9×500 grid dispatch; full `devtools::test()`.
   source-package focused checks passed (80 animal, 26 kernel, and 94 baseline
   temporal assertions); the existing Windows and Linux jobs are retained to
   completion before a corrected replacement matrix is dispatched.
+
+## 2026-09-12 — retained curvature-scaled temporal--kernel qualification
+
+- Totoro ran the frozen nine-cell long-occasion temporal-dependent kernel
+  qualification from detached commit `8d6895092`, with nine single-thread
+  workers and BLAS pinned to one thread. All nine receipts were retained under
+  the ignored temporal acceptance ledger; no GitHub Actions job was used for
+  this compute evidence.
+- `verify-dep-kernel-curvature-scaled-qualification.R` independently reads
+  retained receipts, checks their identity, solver history, native/dense NLL
+  and central-gradient agreement, then recomputes the frozen recovery summary.
+  It emitted `TEMPORAL_DEP_KERNEL_SCALED_QUALIFICATION_RECEIPT_PASS`: all three
+  persistence strata passed. The largest mean absolute persistence error was
+  `.00974`, temporal covariance Frobenius error `.04585`, kernel-variance
+  relative error `.17593`, and fixed-effect error `.05901`.
+- This is evidence for the precise 80-series, 32-occasion direct-Gaussian
+  temporal-dependent kernel fixture and curvature-scaled BFGS continuation.
+  It does not erase retained failures in other source-pair fixtures or support
+  general recovery, coverage, cross-platform, merge, or release claims.

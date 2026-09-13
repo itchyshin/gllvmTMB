@@ -23,3 +23,20 @@ on Totoro, use nine independent single-thread workers with BLAS pinned to one
 thread.  This remains below the 30-minute campaign threshold but requires the
 clean committed source to be staged remotely before execution.  No GitHub
 Actions run may be used for this evidence.
+
+## Retained execution result
+
+Totoro executed detached commit `8d68950921c4eae9dc0cb420e78117d59bc73c1f`
+on 2026-09-13 with nine independent single-thread workers and BLAS pinned to
+one thread. All nine receipts were retained locally. The executable receipt
+verifier checked their identities, optimizer histories, independent NLL and
+central-gradient oracles, and the frozen per-persistence recovery summaries.
+Every `phi = (-.4, 0, .6)` cell passed. The largest mean absolute persistence
+error was `.00974`, the largest median temporal covariance Frobenius error was
+`.04585`, the largest median kernel-variance relative error was `.17593`, and
+the largest mean fixed-effect error was `.05901`.
+
+This qualifies the named nine-cell long-occasion temporal--kernel fixture under
+this solver regime only. It does not establish general recovery, interval
+coverage, source-combination admission beyond its existing contract,
+cross-platform verification, merge, or release readiness.

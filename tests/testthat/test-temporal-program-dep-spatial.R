@@ -296,6 +296,10 @@ test_that("temporal-dependent-spatial lifecycle routes condition on the additive
   mismatch <- future
   mismatch$lon[mismatch$trait == "t2"] <- mismatch$lon[mismatch$trait == "t2"] + .1
   expect_error(forecast_temporal(fit, mismatch), "shared spatial coordinate")
+  mismatch_measurement <- future
+  mismatch_measurement$lat[mismatch_measurement$measurement == "m2"] <-
+    mismatch_measurement$lat[mismatch_measurement$measurement == "m2"] + .1
+  expect_error(forecast_temporal(fit, mismatch_measurement), "shared spatial coordinate")
   theta <- fit$opt$par[[match("theta_temporal_time", names(fit$opt$par))]]
   profile <- profile_temporal(fit, ystep = .1, ytol = 1,
     parm.range = theta + c(-.01, .01))

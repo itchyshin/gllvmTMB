@@ -7,117 +7,6 @@
   }
 }
 
-.temporal_is_qualified_kernel_pair <- function(object, active_tiers) {
-  providers <- object$covstructs
-  if (!is.list(providers) || length(providers) != 1L ||
-      !identical(as.character(active_tiers), "phylo_rr")) {
-    return(FALSE)
-  }
-  extra <- providers[[1L]]$extra
-  is.list(extra) && is.character(extra$.kernel_name) &&
-    length(extra$.kernel_name) == 1L && nzchar(extra$.kernel_name) &&
-    identical(extra$.kernel_mode, "indep")
-}
-
-.temporal_is_qualified_dep_phylo_pair <- function(object, active_tiers) {
-  providers <- object$covstructs
-  if (!is.list(providers) || length(providers) != 1L ||
-      !identical(as.character(active_tiers), "phylo_rr") ||
-      !identical(object$temporal$source_pair, "phylo_indep") ||
-      !identical(object$temporal$mode, "dep") ||
-      !identical(object$temporal$structure, "ar1") ||
-      !identical(object$temporal$workflow, "replicated")) {
-    return(FALSE)
-  }
-  provider <- providers[[1L]]
-  extra <- provider$extra
-  identical(provider$kind, "phylo_rr") && is.list(extra) &&
-    isTRUE(extra$.indep) && isTRUE(extra$.phylo_unique) &&
-    is.null(object$source_strength) &&
-    (is.matrix(object$tmb_data$Ainv_phy_rr) ||
-      inherits(object$tmb_data$Ainv_phy_rr, "Matrix"))
-}
-
-.temporal_is_qualified_dep_animal_pair <- function(object, active_tiers) {
-  providers <- object$covstructs
-  if (!is.list(providers) || length(providers) != 1L ||
-      !identical(as.character(active_tiers), "phylo_rr") ||
-      !identical(object$temporal$source_pair, "animal_indep") ||
-      !identical(object$temporal$mode, "dep") ||
-      !identical(object$temporal$structure, "ar1") ||
-      !identical(object$temporal$workflow, "replicated")) {
-    return(FALSE)
-  }
-  provider <- providers[[1L]]
-  extra <- provider$extra
-  identical(provider$kind, "phylo_rr") && is.list(extra) &&
-    isTRUE(extra$.indep) && isTRUE(extra$.phylo_unique) &&
-    isTRUE(extra$.animal_source) && is.null(object$source_strength) &&
-    (is.matrix(object$tmb_data$Ainv_phy_rr) ||
-      inherits(object$tmb_data$Ainv_phy_rr, "Matrix"))
-}
-
-.temporal_is_qualified_latent_animal_pair <- function(object, active_tiers) {
-  providers <- object$covstructs
-  if (!is.list(providers) || length(providers) != 1L ||
-      !identical(as.character(active_tiers), "phylo_rr") ||
-      !identical(object$temporal$source_pair, "animal_indep") ||
-      !identical(object$temporal$mode, "latent") ||
-      !identical(object$temporal$d, 1L) || isTRUE(object$temporal$unique) ||
-      !identical(object$temporal$structure, "ar1") ||
-      !identical(object$temporal$workflow, "replicated")) {
-    return(FALSE)
-  }
-  provider <- providers[[1L]]
-  extra <- provider$extra
-  identical(provider$kind, "phylo_rr") && is.list(extra) &&
-    isTRUE(extra$.indep) && isTRUE(extra$.phylo_unique) &&
-    isTRUE(extra$.animal_source) && is.null(object$source_strength) &&
-    (is.matrix(object$tmb_data$Ainv_phy_rr) ||
-      inherits(object$tmb_data$Ainv_phy_rr, "Matrix"))
-}
-
-.temporal_is_qualified_latent_kernel_pair <- function(object, active_tiers) {
-  .temporal_is_qualified_kernel_pair(object, active_tiers) &&
-    identical(object$temporal$source_pair, "kernel_indep") &&
-    identical(object$temporal$mode, "latent") &&
-    identical(object$temporal$d, 1L) && !isTRUE(object$temporal$unique) &&
-    identical(object$temporal$structure, "ar1") &&
-    identical(object$temporal$workflow, "replicated")
-}
-
-.temporal_is_qualified_latent_spatial_pair <- function(object, active_tiers) {
-  providers <- object$covstructs
-  if (!is.list(providers) || length(providers) != 1L ||
-      !identical(as.character(active_tiers), "spde") ||
-      !identical(object$temporal$source_pair, "spatial_indep") ||
-      !identical(object$temporal$mode, "latent") ||
-      !identical(object$temporal$d, 1L) || isTRUE(object$temporal$unique) ||
-      !identical(object$temporal$structure, "ar1") ||
-      !identical(object$temporal$workflow, "replicated")) return(FALSE)
-  provider <- providers[[1L]]; extra <- provider$extra
-  identical(provider$kind, "spde") && is.list(extra) &&
-    isTRUE(extra$.spatial_indep) && identical(extra$lhs_form, "intercept_only") &&
-    inherits(extra$mesh, "gllvmTMBmesh") && is.null(object$source_strength) &&
-    isTRUE(object$tmb_data$use_spde == 1L)
-}
-
-.temporal_is_qualified_dep_spatial_pair <- function(object, active_tiers) {
-  providers <- object$covstructs
-  if (!is.list(providers) || length(providers) != 1L ||
-      !identical(as.character(active_tiers), "spde") ||
-      !identical(object$temporal$source_pair, "spatial_indep") ||
-      !identical(object$temporal$mode, "dep") ||
-      !identical(object$temporal$d, 0L) || isTRUE(object$temporal$unique) ||
-      !identical(object$temporal$structure, "ar1") ||
-      !identical(object$temporal$workflow, "replicated")) return(FALSE)
-  provider <- providers[[1L]]; extra <- provider$extra
-  identical(provider$kind, "spde") && is.list(extra) &&
-    isTRUE(extra$.spatial_indep) && identical(extra$lhs_form, "intercept_only") &&
-    inherits(extra$mesh, "gllvmTMBmesh") && is.null(object$source_strength) &&
-    isTRUE(object$tmb_data$use_spde == 1L)
-}
-
 .temporal_bootstrap_refit_data <- function(object, draw, response) {
   is_wide <- identical(object$traits_meta$input_shape, "wide_data_frame")
   if (!is_wide) {
@@ -143,24 +32,6 @@
   }
   dat[cbind(source_row, match(trait_cols[response_col], names(dat)))] <- draw[, 1L]
   dat
-}
-
-.temporal_bootstrap_spatial_formula <- function(formula, mesh) {
-  replace_mesh <- function(x) {
-    if (!is.call(x)) {
-      return(x)
-    }
-    fn <- as.character(x[[1L]])
-    if (identical(fn, "spatial_indep")) {
-      x[["mesh"]] <- mesh
-      return(x)
-    }
-    for (i in seq_along(x)[-1L]) {
-      x[[i]] <- replace_mesh(x[[i]])
-    }
-    x
-  }
-  replace_mesh(formula)
 }
 
 #' Parametric bootstrap for a temporal persistence parameter
@@ -190,29 +61,11 @@ bootstrap_temporal <- function(object, n_boot = 100L, seed = NULL) {
       ">" = "Temporal combinations with phylogenetic, animal, spatial, and dense-kernel sources are deferred."
     ))
   }
-  kernel_pair <- .temporal_is_qualified_kernel_pair(object, active)
-  dep_phylo_pair <- .temporal_is_qualified_dep_phylo_pair(object, active)
-  dep_animal_pair <- .temporal_is_qualified_dep_animal_pair(object, active)
-  latent_animal_pair <- .temporal_is_qualified_latent_animal_pair(object, active)
-  latent_spatial_pair <- .temporal_is_qualified_latent_spatial_pair(object, active)
-  dep_spatial_pair <- .temporal_is_qualified_dep_spatial_pair(object, active)
-  if (length(active) && !kernel_pair && !dep_phylo_pair && !dep_animal_pair && !latent_animal_pair && !latent_spatial_pair && !dep_spatial_pair) {
-    .temporal_abort(c(
-      "{.fn bootstrap_temporal} supports only qualified temporal-kernel, temporal-dependent phylogenetic, animal, or spatial, rank-one temporal-animal, or rank-one temporal-spatial source pairs.",
-      "i" = "The fit also uses covariance tier(s): {.val {active}}.",
-      ">" = "Use the replicated AR1 {.code temporal_indep() + kernel_indep()} cell with one fixed labelled kernel, the replicated AR1 {.code temporal_dep()} cell with one fixed phylogeny or animal relationship, a qualified rank-one {.code temporal_latent()} source pair, or a temporal-only fit."
-    ), class = "gllvmTMB_temporal_bootstrap_composed")
+  if (!identical(object$temporal$mode, "indep") || any(object$tmb_data$family_id_vec != 0L)) {
+    .temporal_abort("{.fn bootstrap_temporal} currently supports Gaussian {.fn temporal_indep} fits only.")
   }
-  if ((!identical(object$temporal$mode, "indep") && !dep_phylo_pair && !dep_animal_pair && !latent_animal_pair && !latent_spatial_pair && !dep_spatial_pair) ||
-      any(object$tmb_data$family_id_vec != 0L)) {
-    .temporal_abort("{.fn bootstrap_temporal} currently supports Gaussian {.fn temporal_indep} fits, qualified temporal-dependent phylogenetic, animal, or spatial pairs, and qualified rank-one temporal-animal or temporal-spatial pairs only.")
-  }
-  if (kernel_pair) {
-    if (!object$temporal$structure %in% c("ar1", "ou") || is.null(object$temporal$replicate_col)) {
-      .temporal_abort("The qualified temporal-kernel bootstrap requires a replicated AR1 or OU panel.")
-    }
-  } else if (!dep_phylo_pair && !dep_animal_pair && !latent_animal_pair && !latent_spatial_pair && !dep_spatial_pair && !is.null(object$temporal$replicate_col)) {
-    .temporal_abort("{.fn bootstrap_temporal} currently supports replicated panels only for qualified temporal-kernel, temporal-dependent phylogenetic, animal, or spatial, or rank-one temporal-animal cells.")
+  if (!is.null(object$temporal$replicate_col)) {
+    .temporal_abort("{.fn bootstrap_temporal} currently supports unreplicated panels only.")
   }
   if (!is.numeric(n_boot) || length(n_boot) != 1L || !is.finite(n_boot) ||
       n_boot < 1 || n_boot != as.integer(n_boot)) {
@@ -239,19 +92,7 @@ bootstrap_temporal <- function(object, n_boot = 100L, seed = NULL) {
   for (i in seq_len(n_boot)) {
     draw <- simulate(object, nsim = 1L, seed = draw_seeds[[i]], condition_on_RE = FALSE)
     dat <- .temporal_bootstrap_refit_data(object, draw, response)
-    ## A public spatial formula can refer to a locally scoped `mesh` symbol.
-    ## Substitute the fitted mesh inside that provider term rather than adding
-    ## a top-level mesh argument, which would create a second provider.
-    refit_call <- if (latent_spatial_pair || dep_spatial_pair) {
-      call <- stats::update(object, data = dat, evaluate = FALSE)
-      call[["formula"]] <- .temporal_bootstrap_spatial_formula(
-        call[["formula"]], object$mesh
-      )
-      function() eval(call, envir = parent.frame())
-    } else {
-      function() stats::update(object, data = dat)
-    }
-    refit <- tryCatch(refit_call(), error = identity)
+    refit <- tryCatch(stats::update(object, data = dat), error = identity)
     if (inherits(refit, "error")) {
       out[[i]] <- data.frame(replicate = i, seed = draw_seeds[[i]], convergence = NA_integer_,
         objective = NA_real_, time_estimate = NA_real_, error = conditionMessage(refit))

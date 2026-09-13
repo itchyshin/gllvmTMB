@@ -58388,3 +58388,22 @@ Deliberately not run: Totoro 9×500 grid dispatch; full `devtools::test()`.
   temporal-dependent kernel fixture and curvature-scaled BFGS continuation.
   It does not erase retained failures in other source-pair fixtures or support
   general recovery, coverage, cross-platform, merge, or release claims.
+
+## 2026-09-12 — remove unreachable temporal source-pair lifecycle code
+
+- The active parser refuses every temporal combination with phylogenetic,
+  animal, spatial, or dense-kernel sources before a fit is constructed. The
+  public lifecycle helpers had retained unreachable source-pair branches below
+  that refusal, which made their implementation disagree with the active
+  temporal-only contract.
+- Removed those branches from `forecast_temporal()`, `profile_temporal()`,
+  `bootstrap_temporal()`, `compare_temporal()`, and their private helpers.
+  The helpers now consistently admit only unreplicated Gaussian
+  `temporal_indep()` fits; source pairs, replicated panels, and temporal
+  dependent/latent lifecycle routes remain refused pending separate contracts.
+- `Rscript --vanilla -e 'devtools::test(filter =
+  "^(temporal-program-(forecast|profile|bootstrap|selection)|temporal-provider-scope)$")'`
+  passed 54 assertions with no failures, warnings, or skips. The broader
+  temporal suite remains a subsequent package-check gate. This cleanup makes
+  no source-pair, recovery, interval, coverage, cross-platform, merge, or
+  release claim.

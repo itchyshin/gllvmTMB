@@ -16,52 +16,12 @@ compare_temporal <- function(...) {
   composed <- vapply(fits, function(x) {
     length(.gllvmTMB_predict_unhandled_re_tiers(x, handled = "temporal")) > 0L
   }, logical(1))
-  kernel_pair <- vapply(fits, function(x) {
-    .temporal_is_qualified_kernel_pair(
-      x, .gllvmTMB_predict_unhandled_re_tiers(x, handled = "temporal")
-    )
-  }, logical(1))
   if (any(composed)) {
     .temporal_abort(c(
       "{.fn compare_temporal} currently supports temporal-only candidates.",
       "i" = "Candidate(s) with another covariance tier: {.val {names(fits)[composed]}}.",
       ">" = "Temporal combinations with other sources are deferred."
     ), class = "gllvmTMB_temporal_selection_composed")
-  }
-  if (any(composed) && !all(kernel_pair)) {
-    .temporal_abort(c(
-      "{.fn compare_temporal} supports only matching qualified temporal-kernel candidates.",
-      "i" = "Candidate(s) with another covariance tier: {.val {names(fits)[composed]}}.",
-      ">" = "Supply temporal-only fits, or replicated AR1 {.code temporal_indep() + kernel_indep()} fits with one identical labelled kernel."
-    ), class = "gllvmTMB_temporal_selection_composed")
-  }
-  if (all(kernel_pair)) {
-    qualified <- vapply(fits, function(x) {
-      identical(x$temporal$mode, "indep") &&
-      x$temporal$structure %in% c("ar1", "ou") &&
-        !is.null(x$temporal$replicate_col) &&
-        all(x$tmb_data$family_id_vec == 0L)
-    }, logical(1))
-    if (!all(qualified)) {
-      .temporal_abort("The qualified temporal-kernel comparison requires replicated Gaussian AR1 or OU {.fn temporal_indep} fits.")
-    }
-    structures <- vapply(fits, function(x) x$temporal$structure, character(1))
-    if (length(unique(structures)) != 1L) {
-      .temporal_abort("Qualified temporal-kernel candidates must use the same temporal structure.")
-    }
-    reference_name <- fits[[1L]]$kernel_levels$name
-    reference_matrix <- fits[[1L]]$kernel_matrices[[reference_name]]
-    same_kernel <- vapply(fits, function(x) {
-      identical(x$kernel_levels$name, reference_name) &&
-        isTRUE(all.equal(x$kernel_matrices[[reference_name]], reference_matrix,
-          check.attributes = TRUE, tolerance = 0))
-    }, logical(1))
-    if (!all(same_kernel)) {
-      .temporal_abort(c(
-        "Qualified temporal-kernel candidates must use the same labelled kernel.",
-        ">" = "Fit every supplied candidate with the same {.code kernel_indep()} label and matrix."
-      ), class = "gllvmTMB_temporal_selection_kernel")
-    }
   }
   responses <- lapply(fits, function(x) x$data[[all.vars(x$formula[[2L]])]])
   if (!all(vapply(responses[-1L], identical, logical(1), responses[[1L]])))

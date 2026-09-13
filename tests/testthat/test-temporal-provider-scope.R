@@ -1,4 +1,4 @@
-test_that("the first temporal release refuses every mode-by-static-source combination", {
+test_that("temporal defers source pairs apart from qualified dependent-spatial", {
   dat <- expand.grid(
     series = paste0("s", 1:3), occasion = 1:3, measurement = c("m1", "m2"),
     trait = paste0("t", 1:3), KEEP.OUT.ATTRS = FALSE, stringsAsFactors = FALSE
@@ -16,8 +16,11 @@ test_that("the first temporal release refuses every mode-by-static-source combin
     latent = "temporal_latent(0 + trait | series, time = occasion, replicate = measurement, d = 1, unique = FALSE)"
   )
 
-  for (temporal in temporal_terms) {
-    for (source in source_terms) {
+  for (temporal_name in names(temporal_terms)) {
+    temporal <- temporal_terms[[temporal_name]]
+    for (source_name in names(source_terms)) {
+      source <- source_terms[[source_name]]
+      if (identical(temporal_name, "dep") && identical(source_name, "spatial")) next
       formula <- stats::as.formula(paste0(
         "value ~ 0 + trait + ", temporal, " + ", source
       ))

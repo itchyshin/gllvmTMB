@@ -6,11 +6,11 @@
 #' conditional predictive standard deviation; it excludes uncertainty in the
 #' fitted parameters and is not a calibrated prediction interval.
 #'
-#' This helper currently supports an unreplicated `temporal_indep()` Gaussian
-#' identity-link model. Temporal combinations with phylogenetic, animal, spatial,
-#' dense-kernel, or other random-effect sources are refused pending separate
-#' conditioning contracts. It forecasts future observations rather than latent
-#' state means.
+#' This helper supports an unreplicated `temporal_indep()` Gaussian identity-link
+#' model and the separately qualified replicated Gaussian AR1
+#' `temporal_dep() + spatial_indep()` route with one fixed mesh. Other
+#' temporal-source combinations remain refused pending separate conditioning
+#' contracts. It forecasts future observations rather than latent state means.
 #'
 #' @param object A fitted native temporal [gllvmTMB()] model.
 #' @param newdata A complete trait panel for one or more future
@@ -41,16 +41,17 @@ forecast_temporal <- function(object, newdata, se.fit = FALSE) {
     .temporal_abort("{.arg se.fit} must be TRUE or FALSE.")
   }
   active <- .gllvmTMB_predict_unhandled_re_tiers(object, handled = "temporal")
-  if (length(active)) {
+  dep_spatial_pair <- .temporal_is_qualified_dep_spatial_pair(object, active)
+  if (length(active) && !dep_spatial_pair) {
     .temporal_abort(c(
       "This helper currently supports the temporal source by itself.",
       "i" = "The fit also uses covariance tier{?s}: {.val {active}}.",
       ">" = "Temporal combinations with phylogenetic, animal, spatial, and dense-kernel sources are deferred."
     ))
   }
-  if (!identical(object$temporal$mode, "indep")) {
+  if (!identical(object$temporal$mode, "indep") && !dep_spatial_pair) {
     .temporal_abort(c(
-      "{.fn forecast_temporal} currently supports {.fn temporal_indep} only.",
+      "{.fn forecast_temporal} currently supports {.fn temporal_indep} and the qualified temporal-dependent spatial cell only.",
       ">" = "Forecasts for temporal dependent and latent trait covariance need mode-specific oracle evidence."
     ), class = "gllvmTMB_temporal_forecast_mode")
   }
@@ -58,7 +59,7 @@ forecast_temporal <- function(object, newdata, se.fit = FALSE) {
   if (is.null(td$family_id_vec) || any(td$family_id_vec != 0L)) {
     .temporal_abort("{.fn forecast_temporal} currently requires a Gaussian identity-link temporal fit.")
   }
-  if (!is.null(object$temporal$replicate_col)) {
+  if (!dep_spatial_pair && !is.null(object$temporal$replicate_col)) {
     .temporal_abort(c(
       "{.fn forecast_temporal} currently supports unreplicated panels only.",
       ">" = "Replicated-panel forecasts need a separate conditioning contract."
@@ -106,6 +107,31 @@ forecast_temporal <- function(object, newdata, se.fit = FALSE) {
     .temporal_abort(c("{.arg newdata} must contain a complete trait panel at every future observation.",
       ">" = "Supply one row for each fitted trait at each series, time, and measurement."),
       class = "gllvmTMB_temporal_forecast_panel")
+  }
+  if (dep_spatial_pair) {
+    xy_cols <- object$mesh$xy_cols
+    if (!is.character(xy_cols) || length(xy_cols) != 2L ||
+        !all(xy_cols %in% names(newdata))) {
+      .temporal_abort(c(
+        "The fitted temporal-spatial forecast requires both fitted coordinate columns.",
+        ">" = "Supply the same coordinate names used to construct the fitted mesh."
+      ), class = "gllvmTMB_temporal_forecast_spatial_coordinates")
+    }
+    coordinates <- as.matrix(newdata[, xy_cols, drop = FALSE])
+    if (!is.numeric(coordinates) || any(!is.finite(coordinates))) {
+      .temporal_abort("Temporal-spatial forecast coordinates must be finite numeric values.")
+    }
+    state_key <- paste(raw_series, format(raw_time, digits = 17), sep = "\r")
+    inconsistent <- vapply(split(seq_len(nrow(newdata)), state_key), function(i) {
+      any(vapply(xy_cols, function(col) length(unique(newdata[[col]][i])) != 1L, logical(1)))
+    }, logical(1))
+    if (any(inconsistent)) {
+      .temporal_abort(c(
+        "Each forecast temporal state must have one shared spatial coordinate pair.",
+        "i" = "Affected series--time state(s): {.val {names(inconsistent)[inconsistent]}}.",
+        ">" = "Use the same coordinates for every trait and measurement within each future temporal state."
+      ), class = "gllvmTMB_temporal_forecast_spatial_state_coordinates")
+    }
   }
   latest_time <- tapply(training_time, training_series, max)
   if (!all(raw_time > unname(latest_time[raw_series]))) {
@@ -167,6 +193,40 @@ forecast_temporal <- function(object, newdata, se.fit = FALSE) {
     covariance
   }
   out <- correlation * trait_covariance[left_trait, right_trait]
+  active <- .gllvmTMB_predict_unhandled_re_tiers(object, handled = "temporal")
+  if (.temporal_is_qualified_dep_spatial_pair(object, active)) {
+    xy_cols <- object$mesh$xy_cols
+    if (!is.character(xy_cols) || length(xy_cols) != 2L ||
+        !all(xy_cols %in% names(left)) || !all(xy_cols %in% names(right))) {
+      .temporal_abort(c(
+        "The fitted temporal-spatial forecast requires both fitted coordinate columns.",
+        ">" = "Supply the same coordinate names used to construct the fitted mesh."
+      ), class = "gllvmTMB_temporal_forecast_spatial_coordinates")
+    }
+    left_coordinates <- as.matrix(left[, xy_cols, drop = FALSE])
+    right_coordinates <- as.matrix(right[, xy_cols, drop = FALSE])
+    if (!is.numeric(left_coordinates) || !is.numeric(right_coordinates) ||
+        any(!is.finite(left_coordinates)) || any(!is.finite(right_coordinates))) {
+      .temporal_abort("Temporal-spatial forecast coordinates must be finite numeric values.")
+    }
+    if (!requireNamespace("fmesher", quietly = TRUE)) {
+      .temporal_abort("The qualified temporal-spatial forecast requires the suggested fmesher package.")
+    }
+    P_left <- as.matrix(fmesher::fm_basis(object$mesh$mesh, loc = left_coordinates))
+    P_right <- as.matrix(fmesher::fm_basis(object$mesh$mesh, loc = right_coordinates))
+    if (any(!is.finite(P_left)) || any(!is.finite(P_right)) ||
+        any(rowSums(abs(P_left)) <= 0) || any(rowSums(abs(P_right)) <= 0)) {
+      .temporal_abort(c(
+        "Temporal-spatial forecast coordinates must project onto the fitted mesh.",
+        ">" = "Use future coordinates inside the supported fitted-mesh domain."
+      ), class = "gllvmTMB_temporal_forecast_spatial_projection")
+    }
+    kappa <- exp(par$log_kappa_spde)
+    Q <- kappa^4 * as.matrix(td$spde_M0) + 2 * kappa^2 * as.matrix(td$spde_M1) + as.matrix(td$spde_M2)
+    spatial_covariance <- P_left %*% solve(Q) %*% t(P_right)
+    spatial_variance <- diag(exp(-2 * par$log_tau_spde), nrow = length(trait_levels))
+    out <- out + spatial_covariance * spatial_variance[left_trait, right_trait]
+  }
   if (identical(left, right)) diag(out) <- diag(out) + exp(2 * par$log_sigma_eps[[1L]])
   out
 }

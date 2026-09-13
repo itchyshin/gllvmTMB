@@ -7,6 +7,23 @@
   }
 }
 
+.temporal_is_qualified_dep_spatial_pair <- function(object, active_tiers) {
+  providers <- object$covstructs
+  if (!is.list(providers) || length(providers) != 1L ||
+      !identical(as.character(active_tiers), "spde") ||
+      !identical(object$temporal$source_pair, "spatial_indep") ||
+      !identical(object$temporal$mode, "dep") ||
+      !identical(object$temporal$d, 0L) || isTRUE(object$temporal$unique) ||
+      !identical(object$temporal$structure, "ar1") ||
+      !identical(object$temporal$workflow, "replicated")) return(FALSE)
+  provider <- providers[[1L]]
+  extra <- provider$extra
+  identical(provider$kind, "spde") && is.list(extra) &&
+    isTRUE(extra$.spatial_indep) && identical(extra$lhs_form, "intercept_only") &&
+    inherits(extra$mesh, "gllvmTMBmesh") && is.null(object$source_strength) &&
+    isTRUE(object$tmb_data$use_spde == 1L)
+}
+
 .temporal_bootstrap_refit_data <- function(object, draw, response) {
   is_wide <- identical(object$traits_meta$input_shape, "wide_data_frame")
   if (!is_wide) {
@@ -34,15 +51,29 @@
   dat
 }
 
+.temporal_bootstrap_spatial_formula <- function(formula, mesh) {
+  replace_mesh <- function(x) {
+    if (!is.call(x)) return(x)
+    if (identical(as.character(x[[1L]]), "spatial_indep")) {
+      x[["mesh"]] <- mesh
+      return(x)
+    }
+    for (i in seq_along(x)[-1L]) x[[i]] <- replace_mesh(x[[i]])
+    x
+  }
+  replace_mesh(formula)
+}
+
 #' Parametric bootstrap for a temporal persistence parameter
 #'
 #' Draws unconditional temporal responses and refits the saved public model
-#' call. Failed refits are retained in the returned table. The current helper
-#' supports temporal-only unreplicated Gaussian `temporal_indep()` fits.
-#' Temporal combinations and replicated panels need their own lifecycle
-#' contracts.
+#' call. Failed refits are retained in the returned table. The helper supports temporal-only unreplicated Gaussian
+#' `temporal_indep()` fits and the separately qualified replicated Gaussian AR1
+#' `temporal_dep() + spatial_indep()` route. Other combinations and replicated
+#' panels need their own lifecycle contracts.
 #'
-#' @param object An unreplicated Gaussian `temporal_indep()` fit.
+#' @param object An unreplicated Gaussian `temporal_indep()` fit or a qualified
+#'   replicated Gaussian AR1 `temporal_dep() + spatial_indep()` fit.
 #' @param n_boot Number of refits.
 #' @param seed Optional random seed.
 #' @return A data frame with one row per attempted refit. `seed` records the
@@ -54,17 +85,19 @@ bootstrap_temporal <- function(object, n_boot = 100L, seed = NULL) {
     .temporal_abort("{.fn bootstrap_temporal} requires a native temporal fit.")
   }
   active <- .gllvmTMB_predict_unhandled_re_tiers(object, handled = "temporal")
-  if (length(active)) {
+  dep_spatial_pair <- .temporal_is_qualified_dep_spatial_pair(object, active)
+  if (length(active) && !dep_spatial_pair) {
     .temporal_abort(c(
       "This helper currently supports the temporal source by itself.",
       "i" = "The fit also uses covariance tier{?s}: {.val {active}}.",
       ">" = "Temporal combinations with phylogenetic, animal, spatial, and dense-kernel sources are deferred."
     ))
   }
-  if (!identical(object$temporal$mode, "indep") || any(object$tmb_data$family_id_vec != 0L)) {
-    .temporal_abort("{.fn bootstrap_temporal} currently supports Gaussian {.fn temporal_indep} fits only.")
+  if ((!identical(object$temporal$mode, "indep") && !dep_spatial_pair) ||
+      any(object$tmb_data$family_id_vec != 0L)) {
+    .temporal_abort("{.fn bootstrap_temporal} currently supports Gaussian {.fn temporal_indep} fits and the qualified temporal-dependent spatial cell only.")
   }
-  if (!is.null(object$temporal$replicate_col)) {
+  if (!dep_spatial_pair && !is.null(object$temporal$replicate_col)) {
     .temporal_abort("{.fn bootstrap_temporal} currently supports unreplicated panels only.")
   }
   if (!is.numeric(n_boot) || length(n_boot) != 1L || !is.finite(n_boot) ||
@@ -92,7 +125,16 @@ bootstrap_temporal <- function(object, n_boot = 100L, seed = NULL) {
   for (i in seq_len(n_boot)) {
     draw <- simulate(object, nsim = 1L, seed = draw_seeds[[i]], condition_on_RE = FALSE)
     dat <- .temporal_bootstrap_refit_data(object, draw, response)
-    refit <- tryCatch(stats::update(object, data = dat), error = identity)
+    refit_call <- if (dep_spatial_pair) {
+      call <- stats::update(object, data = dat, evaluate = FALSE)
+      call[["formula"]] <- .temporal_bootstrap_spatial_formula(
+        call[["formula"]], object$mesh
+      )
+      function() eval(call, envir = parent.frame())
+    } else {
+      function() stats::update(object, data = dat)
+    }
+    refit <- tryCatch(refit_call(), error = identity)
     if (inherits(refit, "error")) {
       out[[i]] <- data.frame(replicate = i, seed = draw_seeds[[i]], convergence = NA_integer_,
         objective = NA_real_, time_estimate = NA_real_, error = conditionMessage(refit))

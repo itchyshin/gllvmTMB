@@ -32,20 +32,24 @@ Gaussian identity-link ML fits with at least three traits and three occasions
 per series. Ordinary unit and unit-observation terms can be combined when
 their partitions agree and nest. The bounded temporal-only `forecast_temporal()`, `profile_temporal()`,
 `bootstrap_temporal()`, and `compare_temporal()` helpers have separate
-contracts. Their narrow results do not establish calibrated intervals,
-bootstrap sampling properties, general recovery, or coverage. Generic
-forecasts, new-data prediction, generic profile/bootstrap intervals, automatic
-rank selection, and temporal combinations with phylogenetic, animal, spatial,
-or dense-kernel sources remain unavailable.
+contracts. A separate replicated Gaussian AR1 `temporal_dep() +
+spatial_indep()` cell with one fixed mesh also has direct profile, bootstrap,
+and known-series forecast contracts. These narrow results do not establish
+calibrated intervals, bootstrap sampling properties, general recovery, or
+coverage. Generic forecasts, new-data prediction, generic profile/bootstrap
+intervals, automatic rank selection, and temporal combinations with
+phylogenetic, animal, other spatial, or dense-kernel sources remain unavailable.
 
 > **Scope boundary.** Gaussian AR1/OU source parsing, dense covariance
 > oracles, score labels, simulation, training-data prediction, and update have
 > focused local checks. Recovery remains an engineering gate and does not
 > support a general recovery, precision, calibration, or interval-coverage
-> claim. Temporal is available only with ordinary `unit` and nested
-> `unit_obs` terms. Phylogenetic, animal, spatial, and dense-kernel temporal
-> combinations are explicitly deferred pending separate model contracts and
-> evidence. The provider is locally verified only; it is not merged, released,
+> claim. Temporal is available with ordinary `unit` and nested `unit_obs`
+> terms. The first qualified source pair is replicated Gaussian AR1
+> `temporal_dep() + spatial_indep()` with one fixed mesh; phylogenetic, animal,
+> other spatial, and dense-kernel temporal combinations remain deferred pending
+> separate model contracts and evidence. The provider is locally verified only;
+> it is not merged, released,
 > or cross-platform verified.
 
 ## Ordinary longitudinal observations

@@ -58407,3 +58407,48 @@ Deliberately not run: Totoro 9×500 grid dispatch; full `devtools::test()`.
   temporal suite remains a subsequent package-check gate. This cleanup makes
   no source-pair, recovery, interval, coverage, cross-platform, merge, or
   release claim.
+
+## 2026-09-13 — re-admit qualified dependent temporal--spatial lifecycle cell
+
+- Re-admitted only the replicated Gaussian AR1 `temporal_dep() +
+  spatial_indep()` cell with one fixed mesh and an intercept-only spatial term.
+  The parser still refuses every temporal--phylogenetic, --animal, --kernel,
+  and other temporal--spatial combination. The retained lifecycle code had
+  been removed with the temporal-only public scope, so this re-admission
+  restores only the independently contracted dependent-spatial route.
+- `Rscript --vanilla -e 'devtools::load_all(quiet=TRUE);
+  testthat::test_file("tests/testthat/test-temporal-provider-scope.R");
+  testthat::test_file("tests/testthat/test-temporal-program-dep-spatial.R");
+  testthat::test_file("tests/testthat/test-temporal-program-bootstrap.R");
+  testthat::test_file("tests/testthat/test-temporal-program-profile.R");
+  testthat::test_file("tests/testthat/test-temporal-program-forecast.R")'`
+  passed with no failures, errors, warnings, or skips. The dependent-spatial
+  file independently checks dense NLL and all active central gradients,
+  additive-versus-product covariance, unconditional redraw moments, long/wide
+  update replay, direct temporal profile, mesh-preserving bootstrap/refit, and
+  known-series forecasts including state-level coordinate refusals.
+- `Rscript --vanilla -e 'devtools::document(quiet=TRUE)'` regenerated the four
+  changed temporal help topics; `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  reported no problems. `pkgdown::build_articles(lazy = FALSE, preview = FALSE)`
+  is running as the article-render gate at the time of this entry and is not
+  counted as completed evidence until its process exits successfully.
+- This is a bounded fixed-parameter/lifecycle re-admission. The retained
+  spatial recovery receipt remains negative evidence, and this change does not
+  establish recovery, calibration, interval coverage, cross-platform status,
+  merge, or release readiness.
+
+- The full `pkgdown::build_articles(lazy = FALSE, preview = FALSE)` process
+  completed without a shell receipt. A direct isolated `pkgdown::build_article()`
+  then reproduced the old installed-package failure: its child process cannot
+  find `temporal_indep()`. Rendering `articles/temporal-ar1` after
+  `devtools::load_all()` with `new_process = FALSE` passed all 20 chunks and
+  wrote `pkgdown-site/articles/temporal-ar1.html`. This is the appropriate
+  source-branch article evidence; the installed-package environment issue is
+  not counted as a model or article failure.
+- Restored `test-temporal-program-dep-spatial-runner.R` from the retained
+  deferred evidence directory because `verify.R dep-spatial-corrected` names it
+  as a required active fixture. Its focused control test passed, then the
+  independent receipt verifier emitted
+  `TEMPORAL_DEP_SPATIAL_CORRECTED_SCALE_RETAINED_FAILURE`. The frozen Totoro
+  campaign is retained as negative recovery evidence; no seed, criterion,
+  fixture, or threshold changed.

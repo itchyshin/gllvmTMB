@@ -77,11 +77,12 @@ temporal_dep <- function(formula, time, structure = "ar1", replicate = NULL) {
 #' noise.
 #'
 #' AR1 uses integer occasions and preserves gaps. OU uses numeric elapsed time
-#' in the units supplied by the user. The initial release admits one temporal
+#' in the units supplied by the user. The current release admits one temporal
 #' source by itself, optionally with ordinary `unit` or nested `unit_obs`
-#' effects. Combinations with phylogenetic, animal, spatial, or user-kernel
-#' sources are deferred because they require separate joint-model and
-#' identifiability contracts. The admitted Gaussian temporal-only workflows
+#' effects, plus one separately qualified source pair: replicated Gaussian AR1
+#' `temporal_dep()` with fixed-mesh intercept-only `spatial_indep()`. Other
+#' phylogenetic, animal, spatial, and user-kernel combinations remain deferred
+#' because they require their own joint-model and identifiability contracts. The admitted Gaussian temporal-only workflows
 #' have bounded fitting, extraction, simulation, update/refit, and named helper
 #' support; forecasts return fitted-parameter conditional uncertainty, not
 #' calibrated prediction intervals. Generic new-data prediction, interval
@@ -164,15 +165,18 @@ temporal_latent <- function(formula, time, d = 1, structure = "ar1",
   source_terms <- competing[grepl(
     "^(phylo|animal|spatial|kernel|meta_|propto$|equalto$|spde$)", competing
   )]
-  ## Temporal is a within-series covariance source. Its first public release
-  ## deliberately does not construct joint temporal--phylogeny, --animal,
-  ## --spatial, or --kernel models: those require their own separability and
-  ## identifiability contracts.
-  if (length(source_terms)) {
+  ## The first re-admitted cross-source cell is deliberately narrow: replicated
+  ## Gaussian AR1 temporal_dep plus one fixed intercept-only spatial_indep
+  ## source. Its additive covariance and lifecycle routes have a separate
+  ## contract and independent oracle. Other source pairs remain deferred.
+  re_admitted_dep_spatial <- identical(length(source_terms), 1L) &&
+    identical(marker_name, "temporal_dep") &&
+    identical(source_terms, "spatial_indep")
+  if (length(source_terms) && !re_admitted_dep_spatial) {
     .temporal_abort(c(
-      "The current temporal provider supports temporal-only covariance.",
+      "The current temporal provider supports temporal-only covariance, apart from the qualified temporal-dependent spatial cell.",
       "i" = "Found additional source provider(s): {.fn {source_terms}}.",
-      ">" = "Fit the temporal term alone; phylogenetic, animal, spatial, and kernel combinations are deferred."
+      ">" = "Use the replicated AR1 {.code temporal_dep()} + fixed-mesh {.code spatial_indep()} cell, or fit the temporal term alone; other source pairs remain deferred."
     ))
   }
   marker_names_early <- names(marker)

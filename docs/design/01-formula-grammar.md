@@ -31,11 +31,13 @@ named migration fixture.
 time and uses \(K(t,s)=\exp\{-\exp(\xi)|t-s|\}\), with no automatic rescaling.
 Both long and `traits(...)` wide forms use the same temporal specification.
 Ordinary unit and unit-observation covariance terms are admitted when the
-series and unit partitions agree and `unit_obs` is unit-nested. Meta providers
-and combinations of temporal with phylogenetic, animal, spatial, or kernel
-sources are refused. Those are distinct additive or interaction models and
-need separate statistical contracts, likelihood checks, lifecycle behaviour,
-and recovery evidence before they can be admitted.
+series and unit partitions agree and `unit_obs` is unit-nested. Meta providers and all temporal source pairs except replicated Gaussian AR1
+`temporal_dep() + spatial_indep()` are refused. That qualified fixed-mesh,
+intercept-only spatial cell has its own additive covariance contract, independent
+dense likelihood and forecast oracles, lifecycle tests, and retained recovery
+boundary. Other temporal--phylogenetic, --animal, --spatial, and --kernel
+models remain distinct additive or interaction models that need their own
+contracts, likelihood checks, lifecycle behaviour, and recovery evidence.
 
 The package should learn from `glmmTMB`, `gllvm`, and `galamm` without
 copying their grammars wholesale. The public grammar is built around

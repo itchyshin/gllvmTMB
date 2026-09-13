@@ -120,15 +120,18 @@ modifiers, listed under the table.
 
 Temporal uses its own ordered time kernel and data-layout rules. It is an
 additional within-series provider, while the five stable-unit rows remain the
-ordinary source grid. **In scope:** Gaussian temporal-only fitting, source
-parsing, independent covariance oracles, simulation, ordinary `unit` and
-nested `unit_obs` composition, update/refit, and the bounded temporal-only
-forecast, profile, bootstrap, and supplied-candidate comparison helpers.
-**Partial:** the retained recovery fixtures are engineering evidence for their
-named designs, not general recovery or coverage claims. Phylogenetic, animal,
-spatial, and user-kernel combinations with temporal covariance are deferred;
-they need separate joint-model and identifiability contracts before they can be
-admitted. Generic new-data prediction, calibrated intervals, automatic
+ordinary source grid. **In scope:** Gaussian temporal-only fitting, source parsing, independent
+covariance oracles, simulation, ordinary `unit` and nested `unit_obs`
+composition, update/refit, and the bounded temporal-only forecast, profile,
+bootstrap, and supplied-candidate comparison helpers. The first qualified
+source pair is replicated Gaussian AR1 `temporal_dep() + spatial_indep()` with
+one fixed mesh, intercept-only spatial term, and separate direct profile,
+bootstrap/refit, and known-series forecast contracts. **Partial:** its retained
+recovery fixture and the temporal-only fixtures are engineering evidence for
+their named designs, not general recovery or coverage claims. Phylogenetic,
+animal, other spatial, and user-kernel combinations with temporal covariance
+remain deferred; each needs its own joint-model and identifiability contract
+before admission. Generic new-data prediction, calibrated intervals, automatic
 selection, higher rank, and other response families remain unavailable.
 
 

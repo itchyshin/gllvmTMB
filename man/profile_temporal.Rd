@@ -7,7 +7,8 @@
 profile_temporal(object, level = 0.95, ...)
 }
 \arguments{
-\item{object}{An unreplicated Gaussian \code{temporal_indep()} fit.}
+\item{object}{An unreplicated Gaussian \code{temporal_indep()} fit or a qualified
+replicated Gaussian AR1 \code{temporal_dep() + spatial_indep()} fit.}
 
 \item{level}{Likelihood-ratio confidence level.}
 
@@ -23,7 +24,8 @@ not establish an endpoint.
 Profiles the direct native temporal time parameter with all other TMB
 parameters re-optimized. This is a fitted-parameter likelihood profile,
 not a calibrated interval or a profile of conditional temporal states.
-The current helper supports temporal-only unreplicated Gaussian
-\code{temporal_indep()} fits. Temporal combinations and replicated panels need
-their own lifecycle contracts.
+The helper supports temporal-only unreplicated Gaussian \code{temporal_indep()}
+fits and the separately qualified replicated Gaussian AR1
+\code{temporal_dep() + spatial_indep()} route. Other combinations and replicated
+panels need their own lifecycle contracts.
 }

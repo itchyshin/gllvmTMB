@@ -10,12 +10,15 @@ unit or unit-observation components as temporal states.
 
 The admitted temporal-only Gaussian routes have bounded `forecast_temporal()`,
 `profile_temporal()`, `bootstrap_temporal()`, and `compare_temporal()`
-contracts. Forecast output conditions on fitted parameters for future
-occasions of existing series; `se.fit` is conditional uncertainty, not a
-calibrated prediction interval. Generic new-data prediction, calibrated
-intervals, unsupported profile or bootstrap targets, automatic selection, and
-all temporal combinations with phylogenetic, animal, spatial, or kernel
-sources are refused. Re-admitting a source pair requires a separate model and
+contracts. The qualified replicated Gaussian AR1 `temporal_dep() +
+spatial_indep()` cell additionally supports direct persistence profiling,
+unconditional bootstrap/refit, and known-series forecasting with one fixed mesh.
+Forecast output conditions on fitted parameters for future occasions of existing
+series; `se.fit` is conditional uncertainty, not a calibrated prediction
+interval. Generic new-data prediction, calibrated intervals, unsupported
+profile or bootstrap targets, automatic selection, and all other
+temporal--phylogenetic, --animal, --spatial, or --kernel combinations are
+refused. Re-admitting another source pair requires a separate model and
 validation contract.
 
 **Maintained by:** Emmy (R package architecture / S3 surface)

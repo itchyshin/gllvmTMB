@@ -3,11 +3,13 @@
 #' Profiles the direct native temporal time parameter with all other TMB
 #' parameters re-optimized. This is a fitted-parameter likelihood profile,
 #' not a calibrated interval or a profile of conditional temporal states.
-#' The current helper supports temporal-only unreplicated Gaussian
-#' `temporal_indep()` fits. Temporal combinations and replicated panels need
-#' their own lifecycle contracts.
+#' The helper supports temporal-only unreplicated Gaussian `temporal_indep()`
+#' fits and the separately qualified replicated Gaussian AR1
+#' `temporal_dep() + spatial_indep()` route. Other combinations and replicated
+#' panels need their own lifecycle contracts.
 #'
-#' @param object An unreplicated Gaussian `temporal_indep()` fit.
+#' @param object An unreplicated Gaussian `temporal_indep()` fit or a qualified
+#'   replicated Gaussian AR1 `temporal_dep() + spatial_indep()` fit.
 #' @param level Likelihood-ratio confidence level.
 #' @param ... Passed to [tmbprofile_wrapper()]. `lincomb` is refused because
 #'   this helper only profiles the native temporal time parameter.
@@ -26,17 +28,23 @@ profile_temporal <- function(object, level = 0.95, ...) {
     ), class = "gllvmTMB_temporal_profile_lincomb")
   }
   active <- .gllvmTMB_predict_unhandled_re_tiers(object, handled = "temporal")
-  if (length(active)) {
+  dep_spatial_pair <- .temporal_is_qualified_dep_spatial_pair(object, active)
+  if (length(active) && !dep_spatial_pair) {
     .temporal_abort(c(
       "This helper currently supports the temporal source by itself.",
       "i" = "The fit also uses covariance tier{?s}: {.val {active}}.",
       ">" = "Temporal combinations with phylogenetic, animal, spatial, and dense-kernel sources are deferred."
     ))
   }
-  if (!identical(object$temporal$mode, "indep") || any(object$tmb_data$family_id_vec != 0L)) {
-    .temporal_abort("{.fn profile_temporal} currently supports Gaussian {.fn temporal_indep} fits only.")
+  if ((!identical(object$temporal$mode, "indep") && !dep_spatial_pair) ||
+      any(object$tmb_data$family_id_vec != 0L)) {
+    .temporal_abort("{.fn profile_temporal} currently supports Gaussian {.fn temporal_indep} fits and the qualified temporal-dependent spatial cell only.")
   }
-  if (!is.null(object$temporal$replicate_col)) {
+  if (dep_spatial_pair && (!identical(object$temporal$structure, "ar1") ||
+      is.null(object$temporal$replicate_col))) {
+    .temporal_abort("The qualified temporal-dependent spatial profile requires a replicated AR1 panel.")
+  }
+  if (!dep_spatial_pair && !is.null(object$temporal$replicate_col)) {
     .temporal_abort("{.fn profile_temporal} currently supports unreplicated panels only.")
   }
   transform <- if (identical(object$temporal$structure, "ar1")) {

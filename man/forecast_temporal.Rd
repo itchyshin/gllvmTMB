@@ -11,7 +11,9 @@ forecast_temporal(object, newdata, se.fit = FALSE)
 
 \item{newdata}{A complete trait panel for one or more future
 series--occasion pairs. Each series must occur in the fitted data and each
-requested time must be strictly after that series' final fitted time.}
+requested time must be strictly after that series' final fitted time. For
+the replicated kernel cell, include \code{measurement} and a complete trait
+panel for each series--occasion--measurement combination.}
 
 \item{se.fit}{Return the fitted-parameter conditional predictive standard
 deviation.}
@@ -28,11 +30,14 @@ conditional predictive standard deviation; it excludes uncertainty in the
 fitted parameters and is not a calibrated prediction interval.
 }
 \details{
-This first route supports an unreplicated, \code{temporal_indep()}, Gaussian
-identity-link model. It deliberately refuses new series, replicated panels,
-other temporal covariance modes, non-temporal random-effect tiers, source
-combinations, past or observed occasions, and non-Gaussian families. Those
-cases require their own conditioning and validation contracts.
+This route supports an unreplicated, \code{temporal_indep()}, Gaussian
+identity-link model and one separately checked source-pair cell: replicated
+AR1 \code{temporal_indep()} plus a fixed labelled \code{kernel_indep()} term. It
+deliberately refuses new series, other temporal covariance modes, other
+non-temporal tiers, source combinations, past or observed occasions, and
+non-Gaussian families. The source-pair result is a fitted-parameter forecast
+only; it does not establish interval calibration, coverage, or general
+source-pair prediction.
 }
 \examples{
 d <- expand.grid(series = c("a", "b"), occasion = 1:3,

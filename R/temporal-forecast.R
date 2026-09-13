@@ -6,16 +6,21 @@
 #' conditional predictive standard deviation; it excludes uncertainty in the
 #' fitted parameters and is not a calibrated prediction interval.
 #'
-#' This first route supports an unreplicated, `temporal_indep()`, Gaussian
-#' identity-link model. It deliberately refuses new series, replicated panels,
-#' other temporal covariance modes, non-temporal random-effect tiers, source
-#' combinations, past or observed occasions, and non-Gaussian families. Those
-#' cases require their own conditioning and validation contracts.
+#' This route supports an unreplicated, `temporal_indep()`, Gaussian
+#' identity-link model and one separately checked source-pair cell: replicated
+#' AR1 `temporal_indep()` plus a fixed labelled `kernel_indep()` term. It
+#' deliberately refuses new series, other temporal covariance modes, other
+#' non-temporal tiers, source combinations, past or observed occasions, and
+#' non-Gaussian families. The source-pair result is a fitted-parameter forecast
+#' only; it does not establish interval calibration, coverage, or general
+#' source-pair prediction.
 #'
 #' @param object A fitted native temporal [gllvmTMB()] model.
 #' @param newdata A complete trait panel for one or more future
 #'   series--occasion pairs. Each series must occur in the fitted data and each
-#'   requested time must be strictly after that series' final fitted time.
+#'   requested time must be strictly after that series' final fitted time. For
+#'   the replicated kernel cell, include `measurement` and a complete trait
+#'   panel for each series--occasion--measurement combination.
 #' @param se.fit Return the fitted-parameter conditional predictive standard
 #'   deviation.
 #' @return `newdata`, in its input row order, with `est` on the Gaussian
@@ -40,7 +45,9 @@ forecast_temporal <- function(object, newdata, se.fit = FALSE) {
   if (!is.logical(se.fit) || length(se.fit) != 1L || is.na(se.fit)) {
     .temporal_abort("{.arg se.fit} must be TRUE or FALSE.")
   }
-  if (!is.null(object$temporal$replicate_col)) {
+  active <- .gllvmTMB_predict_unhandled_re_tiers(object, handled = "temporal")
+  indep_kernel_pair <- .temporal_is_qualified_indep_kernel_pair(object, active)
+  if (!is.null(object$temporal$replicate_col) && !indep_kernel_pair) {
     .temporal_abort(c("{.fn forecast_temporal} does not yet support replicated temporal panels.",
       ">" = "Use a temporal-only unreplicated Gaussian fit for this fitted-parameter forecast route."),
       class = "gllvmTMB_temporal_forecast_replicated")
@@ -55,8 +62,7 @@ forecast_temporal <- function(object, newdata, se.fit = FALSE) {
   if (is.null(td$family_id_vec) || any(td$family_id_vec != 0L)) {
     .temporal_abort("{.fn forecast_temporal} currently requires a Gaussian identity-link temporal fit.")
   }
-  active <- .gllvmTMB_predict_unhandled_re_tiers(object, handled = "temporal")
-  if (length(active)) {
+  if (length(active) && !indep_kernel_pair) {
     .temporal_abort(c("{.fn forecast_temporal} currently supports the temporal source by itself.",
       "i" = "Active additional tier{?s}: {.val {active}}.",
       ">" = "Forecasts with ordinary or structured source effects need a joint conditioning contract."),
@@ -66,7 +72,9 @@ forecast_temporal <- function(object, newdata, se.fit = FALSE) {
   series_col <- object$temporal$series_col
   time_col <- object$temporal$time_col
   trait_col <- object$trait_col
-  required <- c(series_col, time_col, trait_col)
+  kernel_source_col <- if (indep_kernel_pair) .temporal_indep_kernel_source_column(object) else NULL
+  required <- c(series_col, time_col, trait_col, object$temporal$replicate_col,
+    kernel_source_col)
   missing <- setdiff(required, names(newdata))
   if (length(missing)) .temporal_abort("{.arg newdata} is missing required temporal column{?s}: {.val {missing}}.")
   raw_series <- as.character(newdata[[series_col]])
@@ -93,14 +101,23 @@ forecast_temporal <- function(object, newdata, se.fit = FALSE) {
   trait_levels <- levels(object$data[[trait_col]])
   unknown_trait <- setdiff(unique(raw_trait), trait_levels)
   if (length(unknown_trait)) .temporal_abort("{.arg newdata} names unknown trait{?s}: {.val {unknown_trait}}.")
-  key <- paste(raw_series, format(raw_time, digits = 17), raw_trait, sep = "\r")
-  if (anyDuplicated(key)) .temporal_abort("{.arg newdata} has duplicate series--time--trait rows.")
-  panel_key <- paste(raw_series, format(raw_time, digits = 17), sep = "\r")
+  raw_replicate <- if (is.null(object$temporal$replicate_col)) NULL else
+    as.character(newdata[[object$temporal$replicate_col]])
+  if (!is.null(raw_replicate) && anyNA(raw_replicate)) {
+    .temporal_abort("{.arg newdata} needs non-missing measurement labels.")
+  }
+  key <- paste(raw_series, format(raw_time, digits = 17), raw_replicate, raw_trait, sep = "\r")
+  if (anyDuplicated(key)) .temporal_abort("{.arg newdata} has duplicate future observation rows.")
+  panel_key <- paste(raw_series, format(raw_time, digits = 17), raw_replicate, sep = "\r")
   complete_panel <- vapply(split(raw_trait, panel_key), function(x) length(x) == length(trait_levels) && setequal(x, trait_levels), logical(1))
   if (!all(complete_panel)) {
     .temporal_abort(c("{.arg newdata} must contain a complete trait panel at every future series--occasion pair.",
       ">" = "Supply one row for each fitted trait at each requested time."),
       class = "gllvmTMB_temporal_forecast_panel")
+  }
+  if (indep_kernel_pair) {
+    .temporal_indep_kernel_forecast_levels(object, nd = newdata,
+      source_col = kernel_source_col)
   }
   latest_time <- tapply(training_time, training_series, max)
   if (!all(raw_time > unname(latest_time[raw_series]))) {
@@ -135,6 +152,50 @@ forecast_temporal <- function(object, newdata, se.fit = FALSE) {
   out
 }
 
+.temporal_is_qualified_indep_kernel_pair <- function(object, active) {
+  if (!inherits(object, "gllvmTMB_multi") || !isTRUE(object$temporal$active) ||
+      !identical(object$temporal$workflow, "replicated") ||
+      !identical(object$temporal$structure, "ar1") ||
+      !identical(object$temporal$mode, "indep") ||
+      !identical(object$temporal$source_pair, "kernel_indep") ||
+      !identical(active, "phylo_rr") || !isTRUE(object$use$phylo_rr)) {
+    return(FALSE)
+  }
+  providers <- Filter(function(x) identical(x$kind, "phylo_rr"), object$covstructs)
+  if (length(providers) != 1L) return(FALSE)
+  extra <- providers[[1L]]$extra
+  kernel_name <- extra$.kernel_name
+  identical(extra$.kernel_mode, "indep") && isTRUE(extra$.indep) &&
+    is.character(kernel_name) && length(kernel_name) == 1L && nzchar(kernel_name) &&
+    !is.null(object$kernel_matrices[[kernel_name]]) &&
+    is.matrix(object$kernel_matrices[[kernel_name]]) &&
+    !is.null(rownames(object$kernel_matrices[[kernel_name]]))
+}
+
+.temporal_indep_kernel_source_column <- function(object) {
+  providers <- Filter(function(x) identical(x$kind, "phylo_rr"), object$covstructs)
+  source_col <- all.vars(providers[[1L]]$lhs)
+  if (length(source_col) != 1L || !nzchar(source_col)) {
+    .temporal_abort("The fitted temporal-kernel source grouping is unavailable for forecasting.")
+  }
+  source_col
+}
+
+.temporal_indep_kernel_forecast_levels <- function(object, nd, source_col) {
+  kernel_name <- Filter(function(x) identical(x$kind, "phylo_rr"), object$covstructs)[[1L]]$extra$.kernel_name
+  kernel <- object$kernel_matrices[[kernel_name]]
+  labels <- as.character(nd[[source_col]])
+  unknown <- setdiff(unique(labels), rownames(kernel))
+  if (length(unknown)) {
+    .temporal_abort(c(
+      "{.arg newdata} names a kernel level absent from the fitted model.",
+      "i" = "Unknown kernel level{?s}: {.val {unknown}}.",
+      ">" = "Use existing fitted kernel labels; new-label forecasts need a separate marginal contract."
+    ), class = "gllvmTMB_temporal_forecast_kernel_level")
+  }
+  invisible(kernel)
+}
+
 .temporal_forecast_covariance <- function(object, left, right = left) {
   par <- object$tmb_obj$env$parList(object$opt$par)
   trait_levels <- levels(object$data[[object$trait_col]])
@@ -159,6 +220,23 @@ forecast_temporal <- function(object, newdata, se.fit = FALSE) {
     covariance
   }
   out <- correlation * trait_covariance[left_trait, right_trait]
-  if (identical(left, right)) diag(out) <- diag(out) + as.numeric(object$report$sigma_eps)^2
+  active <- .gllvmTMB_predict_unhandled_re_tiers(object, handled = "temporal")
+  if (.temporal_is_qualified_indep_kernel_pair(object, active)) {
+    source_col <- .temporal_indep_kernel_source_column(object)
+    if (!source_col %in% names(left) || !source_col %in% names(right)) {
+      .temporal_abort("The fitted temporal-kernel source grouping is unavailable in forecast data.")
+    }
+    kernel <- .temporal_indep_kernel_forecast_levels(object, left, source_col)
+    .temporal_indep_kernel_forecast_levels(object, right, source_col)
+    left_source <- as.character(left[[source_col]])
+    right_source <- as.character(right[[source_col]])
+    kernel_entry <- outer(left_source, right_source,
+      Vectorize(function(a, b) kernel[a, b]))
+    kernel_variance <- par$theta_rr_phy^2
+    kernel_trait <- outer(left_trait, right_trait,
+      Vectorize(function(i, j) if (i == j) kernel_variance[[i]] else 0))
+    out <- out + kernel_entry * kernel_trait
+  }
+  if (identical(left, right)) diag(out) <- diag(out) + exp(2 * par$log_sigma_eps[[1L]])
   out
 }

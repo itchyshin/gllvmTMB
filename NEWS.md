@@ -5,30 +5,16 @@
   providers accept Gaussian long and `traits(...)` wide calls. AR1 retains
   integer occasion gaps; OU uses user-supplied elapsed numeric time. With
   `temporal_latent(unique = TRUE)`, trait-diagonal Psi is correlated through
-  the temporal kernel, rather than being IID occasion noise. The former
-  rank-one AR1/IID-Psi prototype remains only as a named migration fixture.
-  **In scope:** focused source parsing, native Gaussian likelihood oracles,
-  simulation, labelled latent scores, training-data prediction, update, and
-  ordinary unit/unit-observation composition. **Partial:** no general recovery,
+  the temporal kernel, rather than being IID occasion noise. **In scope:**
+  focused source parsing, native Gaussian likelihood oracles, simulation,
+  labelled latent scores, training-data prediction, update, and ordinary
+  unit/unit-observation composition. **Partial:** no general recovery,
   precision, calibration, or interval-coverage claim is made. **Not in scope:**
-  temporal slopes, higher rank, other families, or spatial source pairs.
-  **Locally verified only:** replicated AR1 `temporal_indep()` plus
-  one labelled `kernel_indep()` term has a fixed-seed recovery and lifecycle
-  fixture. Its AR1 cell also has a narrow known-series, complete-future-
-  measurement forecast that conditions on the fitted additive covariance;
-  it is not an interval or coverage result. A fixed, labelled `phylo_indep()` source can be supplied through
-  `tree =` or `vcv =` inside its keyword and has focused local oracle,
-  long/wide, simulation, update, and tree/dense-equivalence checks; its
-  recovery gate is separate and does not support a general recovery or
-  coverage claim.
-  A fixed `animal_indep()` source can likewise use in-keyword `pedigree =`,
-  `A =`, or `Ainv =`; its dense oracle, source-provenance, lifecycle, and
-  matrix-label checks are local only and its recovery gate remains pending.
-  A separately bounded replicated Gaussian OU `temporal_indep() + kernel_indep()`
-  cell has local independent dense likelihood/gradient, time-coordinate,
-  simulation, long/wide, update, direct-profile, bootstrap, and same-structure AIC checks; it has no source-pair forecast, recovery,
-  cross-platform, release, or coverage claim. Other temporal/source modes and OU source combinations,
-  cross-platform verification, and release remain pending.
+  temporal slopes, higher rank, other families, and temporal combinations with
+  phylogenetic, animal, spatial, or dense-kernel sources. The latter are
+  explicitly refused pending their own model contracts and evidence. The
+  temporal provider is locally verified only; it is not merged, released, or
+  cross-platform verified.
 
 * A new ordinal response family, `ordinal_logit()` -- the cumulative-**logit**
   analogue of the existing `ordinal_probit()` threshold model, family_id 20.

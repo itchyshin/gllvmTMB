@@ -34,12 +34,11 @@ parametric bootstrap. Redraw is currently implemented for the
 recursive temporal state together with every supported ordinary/source
 tier; it does not retain fitted ordinary modes in an unconditional draw.
 
-\strong{Not every tier is covered.} The admitted replicated-AR1
-\code{temporal_indep() + spatial_indep()} cell redraws its independent SPDE
-field. Other SPDE spatial forms and the diagonal phylogenetic tier
-(\code{phylo_diag}) fall back to conditional
-simulation and emits a one-shot warning naming the unhandled
-tiers. Because conditional simulation reuses the fitted random-
+\strong{Not every tier is covered.} Temporal combinations with spatial,
+phylogenetic, animal, and dense-kernel sources are currently refused.
+Other SPDE spatial forms and the diagonal phylogenetic tier (\code{phylo_diag})
+fall back to conditional simulation and emit a one-shot warning naming
+the unhandled tiers. Because conditional simulation reuses the fitted random-
 effect modes rather than redrawing them, it understates
 between-unit variability: intervals derived from it (for example
 via \code{\link[=bootstrap_Sigma]{bootstrap_Sigma()}}) are \strong{too narrow} and should not be read

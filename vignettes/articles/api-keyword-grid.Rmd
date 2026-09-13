@@ -118,54 +118,19 @@ modifiers, listed under the table.
 </table>
 </div>
 
-Temporal uses its own ordered time kernel and data-layout rules, so evidence
-and admitted combinations differ by temporal cell. The five stable-unit rows
-remain the ordinary source grid.
+Temporal uses its own ordered time kernel and data-layout rules. It is an
+additional within-series provider, while the five stable-unit rows remain the
+ordinary source grid. **In scope:** Gaussian temporal-only fitting, source
+parsing, independent covariance oracles, simulation, ordinary `unit` and
+nested `unit_obs` composition, update/refit, and the bounded temporal-only
+forecast, profile, bootstrap, and supplied-candidate comparison helpers.
+**Partial:** the retained recovery fixtures are engineering evidence for their
+named designs, not general recovery or coverage claims. Phylogenetic, animal,
+spatial, and user-kernel combinations with temporal covariance are deferred;
+they need separate joint-model and identifiability contracts before they can be
+admitted. Generic new-data prediction, calibrated intervals, automatic
+selection, higher rank, and other response families remain unavailable.
 
-**Scalar (one shared variance).** Add `common = TRUE` to any `indep` term —
-e.g. `indep(0 + trait | g, common = TRUE)`. The soft-deprecated `scalar()` /
-`*_scalar()` keywords fit the same model but warn once and are kept only for
-compatibility. Omitting a multi-trait covariance term entirely means no such
-term is fitted.
-
-**Unique (diagonal-\(\Psi\) companion).** Add `unique = TRUE` to a `latent`
-term (see the latent default below). The standalone `unique()` keyword is
-soft-deprecated in favour of `indep()` (for a plain diagonal) and
-`latent(unique = TRUE)` (for the paired companion).
-
-## The temporal addition
-
-`temporal_indep(0 + trait | series, time = occasion)`,
-`temporal_dep(...)`, and `temporal_latent(..., d = 1)` form the temporal row.
-Here `series` identifies one independent trajectory, and `time = occasion`
-uses the bare `occasion` column from the data: it is neither a formula term nor
-a character string. A `replicate = measurement` column identifies repeated
-measurements at the same `(series, occasion)` state. The provider creates that
-state index privately; it does not change `unit` or `unit_obs`, which retain
-their ordinary stable-unit and within-unit meanings.
-
-AR1 accepts ordered integer occasions and keeps missing values as gaps; OU
-accepts elapsed numeric time without automatic rescaling. With
-`temporal_latent(unique = TRUE)`, Psi is itself correlated through the temporal
-kernel, not IID occasion noise. The temporal article shows matching long and
-`traits(...)` wide calls. **In scope:** focused Gaussian local fits, source
-parsing, covariance oracles, simulation, and ordinary unit/unit-observation
-composition. **Partial:** recovery is not yet a general claim. The bounded
-temporal-only forecast, profile, bootstrap, and supplied-candidate comparison
-helpers have their own contracts. `bootstrap_temporal()`, `profile_temporal()`,
-and `compare_temporal()` also support the qualified replicated-AR1
-`temporal_indep() + kernel_indep()` cell. Generic forecasts, new-data
-prediction, generic intervals/profiles, automatic selection, and other
-source-pair helper routes remain unavailable. Four
-replicated-AR1 additive pairs with one diagonal kernel, phylogenetic, animal,
-or spatial source are separately implemented for `temporal_indep()`,
-`temporal_dep()`, and rank-one `temporal_latent(unique = FALSE)`. Their
-evidence is pair-specific and local: several retained fixed-fixture gates pass,
-several fail their unchanged recovery criterion, and the dependent-spatial
-campaign is paused after one retained optimizer overrun. Those outcomes do not
-generalize beyond the named fixtures. Other families, higher rank,
-source-by-time interactions, and other structured-source combinations are
-unavailable.
 
 ## What the modes estimate
 

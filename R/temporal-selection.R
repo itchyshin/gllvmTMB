@@ -1,9 +1,9 @@
 #' Compare supplied temporal model candidates
 #'
-#' The bounded composed route accepts only replicated Gaussian AR1 or OU
-#' `temporal_indep() + kernel_indep()` candidates with the same fixed labelled
-#' kernel with one common temporal structure. It reports AIC only and does not perform a likelihood-ratio test or
-#' automatic search.
+#' Compares supplied temporal-only model candidates by AIC. It does not
+#' perform a likelihood-ratio test or automatic search. Candidates involving
+#' another covariance source are refused.
+#'
 #' @param ... Named fitted temporal models.
 #' @return AIC comparison table; no likelihood-ratio test is assigned.
 #' @export
@@ -21,6 +21,13 @@ compare_temporal <- function(...) {
       x, .gllvmTMB_predict_unhandled_re_tiers(x, handled = "temporal")
     )
   }, logical(1))
+  if (any(composed)) {
+    .temporal_abort(c(
+      "{.fn compare_temporal} currently supports temporal-only candidates.",
+      "i" = "Candidate(s) with another covariance tier: {.val {names(fits)[composed]}}.",
+      ">" = "Temporal combinations with other sources are deferred."
+    ), class = "gllvmTMB_temporal_selection_composed")
+  }
   if (any(composed) && !all(kernel_pair)) {
     .temporal_abort(c(
       "{.fn compare_temporal} supports only matching qualified temporal-kernel candidates.",

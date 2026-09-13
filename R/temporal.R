@@ -69,74 +69,24 @@ temporal_dep <- function(formula, time, structure = "ar1", replicate = NULL) {
 
 #' Temporal covariance providers
 #'
-#' Adds one native temporal covariance source. `temporal_indep()` fits an
-#' AR1 or OU process for each trait, `temporal_dep()` fits that process with an
-#' unstructured trait covariance, and `temporal_latent()` fits rank-one trait
-#' loadings. With `unique = TRUE`, the temporal diagonal Psi is also correlated
-#' across occasions; it is not independent occasion noise. Temporal sources can
-#' be added to ordinary `unit` and `unit_obs` terms. The initial cross-source
-#' cells are replicated AR1 `temporal_indep()` plus one labelled `kernel_indep()`,
-#' a fixed labelled `phylo_indep()` term, or a fixed labelled `animal_indep()`
-#' term, or a fixed labelled `spatial_indep()` term. A separate replicated AR1
-#' `temporal_dep() + kernel_indep()` cell adds an unrestricted temporal trait
-#' covariance to the fixed diagonal kernel source; its retained fixed-seed
-#' recovery fixture did not meet every frozen variance criterion. The matching
-#' fixed-phylogeny `temporal_dep() + phylo_indep()` cell has an independent
-#' dense likelihood/gradient oracle, source-representation and lifecycle checks,
-#' and a passing retained local fixture. The matching fixed-animal
-#' `temporal_dep() + animal_indep()` cell has the same independent dense
-#' likelihood/gradient and lifecycle checks, but its retained positive-persistence
-#' animal-variance gate fails. The fixed-mesh `temporal_dep() + spatial_indep()`
-#' cell has independently rebuilt spatial projection, dense likelihood/gradient,
-#' lifecycle, and redraw checks; its recovery evidence is a separate frozen gate.
-#' The separate rank-one
-#' `temporal_latent(..., d = 1, unique = FALSE) + kernel_indep()` cell has a
-#' direct fixed-seed recovery fixture, independent dense likelihood/gradient
-#' oracle, unconditional simulation, and long/wide/update checks. The matching
-#' fixed-animal rank-one cell has the same evidence and a passing retained
-#' fixed-fixture gate; the fixed-spatial rank-one cell has an independently
-#' rebuilt mesh projection, dense gradients, redraw moments, and a passing
-#' retained fixture with its mesh held fixed; the fixed-phylogeny rank-one cell
-#' has the same dense/lifecycle evidence but fails its retained
-#' positive-persistence variance gate. These are local fixed-fixture evidence
-#' only: they do not support generic source-pair forecasting,
-#' intervals, cross-platform verification,
-#' release, general recovery, or coverage claims. The spatial
-#' cell redraws its independent SPDE field during unconditional simulation. Other
-#' temporal-source combinations remain unavailable. A fifth, separately bounded
-#' source pair is replicated irregular-time `temporal_indep(..., structure =
-#' "ou") + kernel_indep(...)`; its independent dense likelihood, gradient and
-#' time-coordinate, simulation, long/wide, update, direct-profile, bootstrap,
-#' and same-structure AIC checks are local only; its forecast and recovery gates
-#' remain pending. For an unreplicated,
-#' Gaussian `temporal_indep()` source by itself, `forecast_temporal()`,
-#' `profile_temporal()`, `bootstrap_temporal()`, and `compare_temporal()` have
-#' separate bounded contracts. `bootstrap_temporal()`, `profile_temporal()`, and
-#' `compare_temporal()` also support the qualified replicated AR1 or OU
-#' `temporal_indep() + kernel_indep()` cells. `profile_temporal()` and
-#' `bootstrap_temporal()` also have separately bounded direct-persistence and
-#' unconditional redraw/refit routes for the replicated AR1
-#' `temporal_dep() + phylo_indep()`, `temporal_dep() + animal_indep()`, and
-#' fixed-mesh `temporal_dep() + spatial_indep()` cells. `bootstrap_temporal()`
-#' separately supports the replicated rank-one `temporal_latent() + animal_indep()`
-#' and fixed-mesh `temporal_latent() + spatial_indep()` cells. Forecasting is
-#' separately bounded to qualified source-pair conditioning contracts; it is
-#' not a calibrated interval or a claim of general recovery.
-#' `profile_temporal()` and `bootstrap_temporal()` also support the replicated
-#' full-covariance `temporal_dep() + animal_indep()` cell; this local helper
-#' evidence does not change its retained failed recovery gate.
-#' It also supports the corresponding fixed-mesh `spatial_indep()` cell.
-#' `forecast_temporal()` also has separately bounded future-observation routes
-#' for the replicated AR1 fixed-kernel cell, the replicated AR1 rank-one
-#' `temporal_latent() + kernel_indep()` cell, the replicated AR1
-#' `temporal_dep() + phylo_indep()` cell with a fixed phylogeny, and the
-#' replicated AR1 full-covariance `temporal_dep() + animal_indep()` cell with a
-#' fixed labelled animal relationship, and the
-#' replicated AR1 rank-one `temporal_latent() + animal_indep()` cell with a
-#' fixed labelled animal relationship or fixed-mesh `spatial_indep()` cell.
-#' Generic new-data prediction, generic intervals and profiles,
-#' automatic selection, and every other
-#' source-pair helper route remain unavailable.
+#' Adds one native temporal covariance source for repeated observations within
+#' each `series`. `temporal_indep()` fits an AR1 or OU process with independent
+#' trait variances, `temporal_dep()` uses an unstructured trait covariance, and
+#' `temporal_latent()` uses rank-one trait loadings. With `unique = TRUE`, the
+#' trait-diagonal Psi is also temporally correlated; it is not IID occasion
+#' noise.
+#'
+#' AR1 uses integer occasions and preserves gaps. OU uses numeric elapsed time
+#' in the units supplied by the user. The initial release admits one temporal
+#' source by itself, optionally with ordinary `unit` or nested `unit_obs`
+#' effects. Combinations with phylogenetic, animal, spatial, or user-kernel
+#' sources are deferred because they require separate joint-model and
+#' identifiability contracts. The admitted Gaussian temporal-only workflows
+#' have bounded fitting, extraction, simulation, update/refit, and named helper
+#' support; forecasts return fitted-parameter conditional uncertainty, not
+#' calibrated prediction intervals. Generic new-data prediction, interval
+#' calibration, selection, and unsupported profile or bootstrap targets remain
+#' unavailable.
 #'
 #' @rdname temporal_latent
 #' @param d Latent rank. This version supports `1`.
@@ -214,6 +164,17 @@ temporal_latent <- function(formula, time, d = 1, structure = "ar1",
   source_terms <- competing[grepl(
     "^(phylo|animal|spatial|kernel|meta_|propto$|equalto$|spde$)", competing
   )]
+  ## Temporal is a within-series covariance source. Its first public release
+  ## deliberately does not construct joint temporal--phylogeny, --animal,
+  ## --spatial, or --kernel models: those require their own separability and
+  ## identifiability contracts.
+  if (length(source_terms)) {
+    .temporal_abort(c(
+      "The current temporal provider supports temporal-only covariance.",
+      "i" = "Found additional source provider(s): {.fn {source_terms}}.",
+      ">" = "Fit the temporal term alone; phylogenetic, animal, spatial, and kernel combinations are deferred."
+    ))
+  }
   marker_names_early <- names(marker)
   if (is.null(marker_names_early)) marker_names_early <- rep("", length(marker))
   marker_arg_early <- function(name, default = NULL) {

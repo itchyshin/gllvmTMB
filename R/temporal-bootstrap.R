@@ -166,26 +166,12 @@
 #' Parametric bootstrap for a temporal persistence parameter
 #'
 #' Draws unconditional temporal responses and refits the saved public model
-#' call. Failed refits are retained in the returned table. The bounded composed
-#' route accepts a replicated Gaussian AR1 or OU `temporal_indep()` fit with one
-#' fixed labelled `kernel_indep()` term, a replicated Gaussian AR1
-#' `temporal_dep()` fit with one fixed `phylo_indep()` or `animal_indep()`
-#' source, or a replicated
-#' Gaussian AR1 rank-one `temporal_latent(unique = FALSE)` fit with one fixed
-#' `animal_indep()` source, or a replicated Gaussian AR1 rank-one
-#' `temporal_latent(unique = FALSE)` fit with one fixed-mesh
-#' `spatial_indep()` source. It redraws both sources through [stats::simulate()]
-#' and replays the public model call through [update()]. For a `traits(...)`
-#' fit it reconstructs the original wide response columns before replay.
-#' The fixed-mesh `temporal_dep() + spatial_indep()` route is also admitted
-#' under its separate AR1 Gaussian lifecycle contract.
-#' @param object An unreplicated Gaussian `temporal_indep()` fit, or the
-#'   qualified replicated AR1 or OU `temporal_indep() + kernel_indep()` fit, or
-#'   the qualified replicated AR1 `temporal_dep() + phylo_indep()` or
-#'   `temporal_dep() + animal_indep()` or fixed-mesh
-#'   `temporal_dep() + spatial_indep()` fit, or the
-#'   qualified rank-one `temporal_latent() + animal_indep()` fit, or the
-#'   qualified rank-one `temporal_latent() + spatial_indep()` fit.
+#' call. Failed refits are retained in the returned table. The current helper
+#' supports temporal-only unreplicated Gaussian `temporal_indep()` fits.
+#' Temporal combinations and replicated panels need their own lifecycle
+#' contracts.
+#'
+#' @param object An unreplicated Gaussian `temporal_indep()` fit.
 #' @param n_boot Number of refits.
 #' @param seed Optional random seed.
 #' @return A data frame with one row per attempted refit. `seed` records the
@@ -197,6 +183,13 @@ bootstrap_temporal <- function(object, n_boot = 100L, seed = NULL) {
     .temporal_abort("{.fn bootstrap_temporal} requires a native temporal fit.")
   }
   active <- .gllvmTMB_predict_unhandled_re_tiers(object, handled = "temporal")
+  if (length(active)) {
+    .temporal_abort(c(
+      "This helper currently supports the temporal source by itself.",
+      "i" = "The fit also uses covariance tier{?s}: {.val {active}}.",
+      ">" = "Temporal combinations with phylogenetic, animal, spatial, and dense-kernel sources are deferred."
+    ))
+  }
   kernel_pair <- .temporal_is_qualified_kernel_pair(object, active)
   dep_phylo_pair <- .temporal_is_qualified_dep_phylo_pair(object, active)
   dep_animal_pair <- .temporal_is_qualified_dep_animal_pair(object, active)

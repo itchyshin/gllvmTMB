@@ -3,31 +3,20 @@
 ## Temporal source provider
 
 `extract_temporal(fit)` returns public `series`--`time` labels, the selected
-mode and structure, either `phi` or the OU rate, temporal loadings where
-present, `temporal_indep_variance` for `indep`, and
-`temporal_Psi_variance` for `latent(unique = TRUE)`.
-It does not relabel ordinary unit/unit-observation components as temporal
-states. For an unreplicated Gaussian `temporal_indep()` source by itself,
-`forecast_temporal()`, `profile_temporal()`, `bootstrap_temporal()`, and
-`compare_temporal()` have separate bounded contracts. `bootstrap_temporal()`
-replays the qualified replicated AR1 `temporal_indep() + kernel_indep()` fit
-or the qualified replicated AR1 `temporal_dep() + phylo_indep()` fit through
-its public call after an unconditional joint draw. It separately replays the
-qualified replicated rank-one `temporal_latent() + animal_indep()` fit, and
-`profile_temporal()` re-optimizes that pair's full marginal objective at each
-fixed persistence value, while `compare_temporal()` accepts only supplied
-qualified candidates with the same labelled kernel and returns AIC without a
-likelihood-ratio test or automatic search. The forecast conditions on fitted parameter values
-for future occasions of existing series; its `se.fit` is not a calibrated
-prediction interval. A separate future-observation contract admits replicated
-AR1 `temporal_dep() + phylo_indep()` with one fixed phylogenetic source; it
-uses the full retained phylogenetic precision and does not establish forecast
-calibration. Its direct persistence profile and bootstrap/refit route retain
-every attempted refit, as does the qualified rank-one temporal-animal route,
-but these establish neither calibrated intervals nor
-bootstrap sampling properties. Generic new-data prediction, generic intervals and
-profiles, automatic selection, every other source-pair helper route, and other
-temporal modes remain explicit unsupported routes.
+mode and structure, either AR1 persistence or the OU rate, temporal loadings
+where present, `temporal_indep_variance` for `indep`, and
+`temporal_Psi_variance` for `latent(unique = TRUE)`. It never relabels ordinary
+unit or unit-observation components as temporal states.
+
+The admitted temporal-only Gaussian routes have bounded `forecast_temporal()`,
+`profile_temporal()`, `bootstrap_temporal()`, and `compare_temporal()`
+contracts. Forecast output conditions on fitted parameters for future
+occasions of existing series; `se.fit` is conditional uncertainty, not a
+calibrated prediction interval. Generic new-data prediction, calibrated
+intervals, unsupported profile or bootstrap targets, automatic selection, and
+all temporal combinations with phylogenetic, animal, spatial, or kernel
+sources are refused. Re-admitting a source pair requires a separate model and
+validation contract.
 
 **Maintained by:** Emmy (R package architecture / S3 surface)
 and Fisher (statistical inference semantics).

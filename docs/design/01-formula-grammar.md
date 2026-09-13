@@ -32,26 +32,10 @@ time and uses \(K(t,s)=\exp\{-\exp(\xi)|t-s|\}\), with no automatic rescaling.
 Both long and `traits(...)` wide forms use the same temporal specification.
 Ordinary unit and unit-observation covariance terms are admitted when the
 series and unit partitions agree and `unit_obs` is unit-nested. Meta providers
-remain refused. Four source-pair exceptions are
-replicated AR1 `temporal_indep()` with exactly one labelled `kernel_indep()`
-term, or with exactly one fixed labelled `phylo_indep()` term whose `tree =`
-or `vcv =` is supplied inside the keyword, or with exactly one fixed labelled
-`animal_indep()` term whose `pedigree =`, `A =`, or `Ainv =` is supplied inside
-the keyword, or with exactly one fixed-mesh `spatial_indep()` term. One further,
-separately bounded cell is replicated irregular-time
-`temporal_indep(..., structure = "ou") + kernel_indep(...)`; its independent
-dense likelihood/gradient and time-coordinate oracles, unconditional simulation,
-long/wide identity, update replay, and direct-profile checks have passed locally.
-Its source-pair bootstrap and same-structure AIC checks have also passed locally.
-Forecast and recovery gates remain
-pending. These use
-an additive static-source plus temporal-process covariance, not a source-by-time
-product; global `phylo_tree`/`phylo_vcv`, other OU source pairs and the remaining
-temporal/source-mode combinations remain refused. In the spatial cell, the
-source coordinate factor and mesh are supplied inside `spatial_indep()` and
-trajectory geometries whose spatial and temporal bases are proportional are
-refused. In the animal cell, `A` is a labelled dense relatedness matrix and a
-sparse relationship precision belongs in `Ainv`.
+and combinations of temporal with phylogenetic, animal, spatial, or kernel
+sources are refused. Those are distinct additive or interaction models and
+need separate statistical contracts, likelihood checks, lifecycle behaviour,
+and recovery evidence before they can be admitted.
 
 The package should learn from `glmmTMB`, `gllvm`, and `galamm` without
 copying their grammars wholesale. The public grammar is built around

@@ -28,21 +28,11 @@ conditional predictive standard deviation; it excludes uncertainty in the
 fitted parameters and is not a calibrated prediction interval.
 }
 \details{
-The base route supports an unreplicated, \code{temporal_indep()}, Gaussian
-identity-link model. A separately qualified route supports a replicated AR1
-\code{temporal_indep() + kernel_indep()} fit with one fixed labelled diagonal
-kernel. A second route supports the corresponding rank-one
-\code{temporal_latent(unique = FALSE) + kernel_indep()} fit. A third route supports replicated AR1
-\code{temporal_dep() + phylo_indep()} with one fixed phylogenetic covariance. A
-fourth route supports the corresponding \code{temporal_dep() + animal_indep()}
-fit. A fifth route supports replicated AR1 rank-one
-\code{temporal_latent(unique = FALSE) + animal_indep()} with one fixed animal
-relationship. A sixth route supports the corresponding fixed-mesh
-\code{spatial_indep()} pair. All composed routes forecast future observations
-rather than latent state means. The fixed-mesh \code{temporal_dep() + spatial_indep()} route is separately qualified on the same additive model.
-Other temporal covariance modes, non-temporal random-effect tiers, source
-combinations, past or observed occasions, and non-Gaussian families remain
-outside this helper until they have their own conditioning contracts.
+This helper currently supports an unreplicated \code{temporal_indep()} Gaussian
+identity-link model. Temporal combinations with phylogenetic, animal, spatial,
+dense-kernel, or other random-effect sources are refused pending separate
+conditioning contracts. It forecasts future observations rather than latent
+state means.
 }
 \examples{
 d <- expand.grid(series = c("a", "b"), occasion = 1:3,

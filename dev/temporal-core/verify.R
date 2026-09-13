@@ -1,0 +1,8 @@
+args <- commandArgs(trailingOnly = TRUE)
+if (length(args) != 1L || args[[1L]] != "scope") stop("usage: verify.R scope", call. = FALSE)
+root <- normalizePath(getwd(), mustWork = TRUE)
+paths <- c("R/temporal.R", "tests/testthat/test-temporal-provider-scope.R", ".unlazy/temporal-core/GATES.md")
+if (!all(file.exists(file.path(root, paths)))) stop("missing temporal-core fixture", call. = FALSE)
+text <- paste(readLines(file.path(root, "R/temporal.R"), warn = FALSE), collapse = "\n")
+if (!grepl("temporal-only covariance", text, fixed = TRUE)) stop("missing temporal-only parser refusal", call. = FALSE)
+cat("TEMPORAL_CORE_SCOPE_PASS\n")

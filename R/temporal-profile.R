@@ -1,27 +1,13 @@
 #' Profile a temporal persistence or decay parameter
 #'
 #' Profiles the direct native temporal time parameter with all other TMB
-#' parameters re-optimized. The qualified replicated AR1 or OU
-#' `temporal_indep() + kernel_indep()` route re-optimizes the fixed kernel's
-#' variance and every other nuisance parameter at each profile point. This is
-#' also available for the qualified replicated AR1
-#' `temporal_dep() + phylo_indep()` or `temporal_dep() + animal_indep()` route,
-#' which re-optimizes its full temporal trait covariance and source variances at
-#' each profile point. This is
-#' also available for the qualified replicated rank-one AR1
-#' `temporal_latent() + animal_indep()` route. The corresponding fixed-mesh
-#' `temporal_latent() + spatial_indep()` and `temporal_dep() + spatial_indep()`
-#' routes are also available. Each is a fitted-parameter
-#' likelihood profile, not a calibrated interval or a
-#' profile of conditional temporal states.
+#' parameters re-optimized. This is a fitted-parameter likelihood profile,
+#' not a calibrated interval or a profile of conditional temporal states.
+#' The current helper supports temporal-only unreplicated Gaussian
+#' `temporal_indep()` fits. Temporal combinations and replicated panels need
+#' their own lifecycle contracts.
 #'
-#' @param object An unreplicated Gaussian `temporal_indep()` fit, or the
-#'   qualified replicated AR1 or OU `temporal_indep() + kernel_indep()` fit,
-#'   or a qualified replicated AR1 `temporal_dep() + phylo_indep()` or
-#'   `temporal_dep() + animal_indep()` fit.
-#'   The qualified replicated rank-one `temporal_latent() + animal_indep()` fit
-#'   or fixed-mesh `temporal_latent() + spatial_indep()` or
-#'   `temporal_dep() + spatial_indep()` fit is also accepted.
+#' @param object An unreplicated Gaussian `temporal_indep()` fit.
 #' @param level Likelihood-ratio confidence level.
 #' @param ... Passed to [tmbprofile_wrapper()]. `lincomb` is refused because
 #'   this helper only profiles the native temporal time parameter.
@@ -40,6 +26,13 @@ profile_temporal <- function(object, level = 0.95, ...) {
     ), class = "gllvmTMB_temporal_profile_lincomb")
   }
   active <- .gllvmTMB_predict_unhandled_re_tiers(object, handled = "temporal")
+  if (length(active)) {
+    .temporal_abort(c(
+      "This helper currently supports the temporal source by itself.",
+      "i" = "The fit also uses covariance tier{?s}: {.val {active}}.",
+      ">" = "Temporal combinations with phylogenetic, animal, spatial, and dense-kernel sources are deferred."
+    ))
+  }
   kernel_pair <- .temporal_is_qualified_kernel_pair(object, active)
   dep_phylo_pair <- .temporal_is_qualified_dep_phylo_pair(object, active)
   dep_animal_pair <- .temporal_is_qualified_dep_animal_pair(object, active)

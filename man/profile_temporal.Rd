@@ -7,13 +7,7 @@
 profile_temporal(object, level = 0.95, ...)
 }
 \arguments{
-\item{object}{An unreplicated Gaussian \code{temporal_indep()} fit, or the
-qualified replicated AR1 or OU \code{temporal_indep() + kernel_indep()} fit,
-or a qualified replicated AR1 \code{temporal_dep() + phylo_indep()} or
-\code{temporal_dep() + animal_indep()} fit.
-The qualified replicated rank-one \code{temporal_latent() + animal_indep()} fit
-or fixed-mesh \code{temporal_latent() + spatial_indep()} or
-\code{temporal_dep() + spatial_indep()} fit is also accepted.}
+\item{object}{An unreplicated Gaussian \code{temporal_indep()} fit.}
 
 \item{level}{Likelihood-ratio confidence level.}
 
@@ -27,17 +21,9 @@ not establish an endpoint.
 }
 \description{
 Profiles the direct native temporal time parameter with all other TMB
-parameters re-optimized. The qualified replicated AR1 or OU
-\code{temporal_indep() + kernel_indep()} route re-optimizes the fixed kernel's
-variance and every other nuisance parameter at each profile point. This is
-also available for the qualified replicated AR1
-\code{temporal_dep() + phylo_indep()} or \code{temporal_dep() + animal_indep()} route,
-which re-optimizes its full temporal trait covariance and source variances at
-each profile point. This is
-also available for the qualified replicated rank-one AR1
-\code{temporal_latent() + animal_indep()} route. The corresponding fixed-mesh
-\code{temporal_latent() + spatial_indep()} and \code{temporal_dep() + spatial_indep()}
-routes are also available. Each is a fitted-parameter
-likelihood profile, not a calibrated interval or a
-profile of conditional temporal states.
+parameters re-optimized. This is a fitted-parameter likelihood profile,
+not a calibrated interval or a profile of conditional temporal states.
+The current helper supports temporal-only unreplicated Gaussian
+\code{temporal_indep()} fits. Temporal combinations and replicated panels need
+their own lifecycle contracts.
 }

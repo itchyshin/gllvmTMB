@@ -74,17 +74,22 @@ temporal_dep <- function(formula, time, structure = "ar1", replicate = NULL) {
 #' unstructured trait covariance, and `temporal_latent()` fits rank-one trait
 #' loadings. With `unique = TRUE`, the temporal diagonal Psi is also correlated
 #' across occasions; it is not independent occasion noise. Temporal sources can
-#' be added to ordinary `unit` and `unit_obs` terms. The initial cross-source
-#' cells are replicated AR1 `temporal_indep()` plus one labelled `kernel_indep()`,
-#' a fixed labelled `phylo_indep()` term, or a fixed labelled `animal_indep()`
-#' term, or a fixed labelled `spatial_indep()` term. The spatial cell redraws
-#' its independent SPDE field during unconditional simulation. Other
+#' be added to ordinary `unit` and `unit_obs` terms. Some replicated AR1
+#' cross-source cells are experimental parsed pathways: `temporal_indep()` plus
+#' one labelled `kernel_indep()`, a fixed labelled `phylo_indep()` term, a fixed
+#' labelled `animal_indep()` term, or a fixed labelled `spatial_indep()` term.
+#' Their source-pair recovery and identifiability evidence remains incomplete;
+#' use only the documented bounded route for the exact cell of interest. The
+#' spatial cell redraws its independent SPDE field during unconditional
+#' simulation. Other
 #' temporal-source combinations remain unavailable. For an unreplicated,
-#' Gaussian `temporal_indep()` source by itself, `forecast_temporal()`,
-#' `profile_temporal()`, `bootstrap_temporal()`, and `compare_temporal()` have
-#' separate bounded contracts. Generic new-data prediction, generic intervals
-#' and profiles, automatic selection, and source-pair versions of those routes
-#' remain unavailable.
+#' Gaussian `temporal_indep()` source by itself, and for the qualified
+#' replicated AR1 `temporal_indep()` plus one fixed labelled `kernel_indep()`
+#' cell, `forecast_temporal()`, `profile_temporal()`, `bootstrap_temporal()`,
+#' and `compare_temporal()` have separate bounded contracts. Profile endpoints
+#' are likelihood-profile bounds, not calibrated intervals. Generic new-data
+#' prediction, generic intervals and profiles, automatic selection, and every
+#' other source-pair version of those routes remain unavailable.
 #'
 #' @rdname temporal_latent
 #' @param d Latent rank. This version supports `1`.

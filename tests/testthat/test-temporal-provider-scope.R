@@ -1,4 +1,4 @@
-test_that("the first temporal release refuses every static-source combination", {
+test_that("the first temporal release refuses every mode-by-static-source combination", {
   dat <- expand.grid(
     series = paste0("s", 1:3), occasion = 1:3, measurement = c("m1", "m2"),
     trait = paste0("t", 1:3), KEEP.OUT.ATTRS = FALSE, stringsAsFactors = FALSE
@@ -10,17 +10,22 @@ test_that("the first temporal release refuses every static-source combination", 
     spatial = "spatial_indep(0 + trait | series, mesh = mesh)",
     kernel = "kernel_indep(series, K = K, name = 'deferred_kernel')"
   )
+  temporal_terms <- c(
+    indep = "temporal_indep(0 + trait | series, time = occasion, replicate = measurement)",
+    dep = "temporal_dep(0 + trait | series, time = occasion, replicate = measurement)",
+    latent = "temporal_latent(0 + trait | series, time = occasion, replicate = measurement, d = 1, unique = FALSE)"
+  )
 
-  for (source in source_terms) {
-    formula <- stats::as.formula(paste0(
-      "value ~ 0 + trait + ",
-      "temporal_indep(0 + trait | series, time = occasion, replicate = measurement) + ",
-      source
-    ))
-    expect_error(
-      gllvmTMB(formula, data = dat, unit = "series", cluster = "series",
-        family = gaussian(), silent = TRUE),
-      "temporal-only covariance"
-    )
+  for (temporal in temporal_terms) {
+    for (source in source_terms) {
+      formula <- stats::as.formula(paste0(
+        "value ~ 0 + trait + ", temporal, " + ", source
+      ))
+      expect_error(
+        gllvmTMB(formula, data = dat, unit = "series", cluster = "series",
+          family = gaussian(), silent = TRUE),
+        "temporal-only covariance"
+      )
+    }
   }
 })

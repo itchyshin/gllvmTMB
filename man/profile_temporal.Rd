@@ -7,7 +7,9 @@
 profile_temporal(object, level = 0.95, ...)
 }
 \arguments{
-\item{object}{An unreplicated Gaussian \code{temporal_indep()} fit.}
+\item{object}{An unreplicated Gaussian \code{temporal_indep()} fit, or the
+qualified replicated AR1 \code{temporal_indep() + kernel_indep()} fit with one
+fixed labelled kernel.}
 
 \item{level}{Likelihood-ratio confidence level.}
 

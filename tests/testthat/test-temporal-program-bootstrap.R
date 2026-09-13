@@ -54,3 +54,45 @@ test_that("bootstrap_temporal reconstructs the public wide response for replay",
   expect_true(is.finite(out$objective[[1L]]), info = out$error[[1L]])
   expect_identical(out$error[[1L]], "")
 })
+
+test_that("bootstrap_temporal replays a shuffled wide temporal-spatial fit", {
+  skip_if_not_installed("TMB")
+  skip_if_not_installed("fmesher")
+  key <- expand.grid(series = paste0("s", 1:4), occasion = 1:4,
+    measurement = c("m1", "m2"), KEEP.OUT.ATTRS = FALSE,
+    stringsAsFactors = FALSE)
+  location <- expand.grid(series = paste0("s", 1:4), occasion = 1:4,
+    KEEP.OUT.ATTRS = FALSE, stringsAsFactors = FALSE)
+  location$lon <- c(0, 1, 0, 1, .2, .8, .3, .7, .1, .9, .4, .6,
+    .25, .75, .45, .55)
+  location$lat <- c(0, 0, 1, 1, .8, .2, .7, .3, .4, .6, .9, .1,
+    .25, .75, .55, .45)
+  key <- merge(key, location, by = c("series", "occasion"), sort = FALSE)
+  long <- key[rep(seq_len(nrow(key)), each = 3L), , drop = FALSE]
+  long$trait <- rep(paste0("t", 1:3), nrow(key))
+  long$value <- with(long, as.numeric(factor(trait)) + .1 * occasion +
+    c(s1 = -.2, s2 = .15, s3 = .05, s4 = .3)[series] +
+    c(m1 = -.03, m2 = .03)[measurement])
+  mesh <- make_mesh(long, c("lon", "lat"), cutoff = .05)
+  wide <- unique(long[c("series", "occasion", "measurement", "lon", "lat")])
+  wide <- wide[order(wide$series, wide$occasion, wide$measurement), , drop = FALSE]
+  for (j in 1:3) {
+    rows <- long[long$trait == paste0("t", j),
+      c("series", "occasion", "measurement", "value")]
+    rows <- rows[order(rows$series, rows$occasion, rows$measurement), , drop = FALSE]
+    wide[[paste0("y", j)]] <- rows$value
+  }
+  set.seed(260975L)
+  wide <- wide[sample(nrow(wide)), , drop = FALSE]
+  fit <- suppressWarnings(gllvmTMB(
+    traits(y1, y2, y3) ~ 1 +
+      temporal_dep(1 | series, time = occasion, replicate = measurement) +
+      spatial_indep(1 | coords, mesh = mesh),
+    data = wide, unit = "series", family = gaussian(), silent = TRUE,
+    control = gllvmTMBcontrol(se = FALSE)
+  ))
+  out <- bootstrap_temporal(fit, n_boot = 1L, seed = 260976L)
+  expect_true(is.finite(out$objective[[1L]]), info = out$error[[1L]])
+  expect_identical(out$error[[1L]], "")
+  expect_identical(out$convergence[[1L]], 0L)
+})

@@ -39,6 +39,14 @@
     roots <- c(roots, root)
     root <- dirname(root)
   }
+  installed_summary <- system.file(
+    "extdata", "temporal-phylo-optimizer-qualification-summary.csv",
+    package = "gllvmTMB"
+  )
+  candidate_summaries <- c(
+    file.path(roots, controls$retained_summary),
+    if (nzchar(installed_summary)) installed_summary
+  )
   identical(controls$retained_summary,
     .temporal_phylo_optimizer_qualification_controls()$retained_summary) &&
     identical(controls$retained_summary_md5,
@@ -47,9 +55,9 @@
     identical(controls$retained_passes, c(TRUE, FALSE, FALSE)) &&
     identical(controls$injected_coordinate, "theta_rr_phy[2]") &&
     identical(controls$derivative_tolerance, 2e-5) &&
-    any(vapply(roots, function(root) {
+    any(vapply(candidate_summaries, function(path) {
       .temporal_phylo_optimizer_qualification_validate_summary(
-        file.path(root, controls$retained_summary), controls$retained_summary_md5
+        path, controls$retained_summary_md5
       )
     }, logical(1)))
 }

@@ -34,12 +34,13 @@ their partitions agree and nest. The bounded temporal-only `forecast_temporal()`
 `bootstrap_temporal()`, and `compare_temporal()` helpers have separate
 contracts. A separate replicated Gaussian AR1 `temporal_dep() +
 spatial_indep()` cell with one fixed mesh also has direct profile, bootstrap,
-and known-series forecast contracts; so does `temporal_dep() + phylo_indep()`
-with one fixed phylogeny. These narrow results do not establish
+and known-series forecast contracts; so do `temporal_dep() + phylo_indep()`
+with one fixed phylogeny and `temporal_dep() + animal_indep()` with one fixed
+relationship. These narrow results do not establish
 calibrated intervals, bootstrap sampling properties, general recovery, or
 coverage. Generic forecasts, new-data prediction, generic profile/bootstrap
-intervals, automatic rank selection, and temporal combinations with
-animal, other phylogenetic, other spatial, or other dense-kernel sources remain unavailable.
+intervals, automatic rank selection, and temporal combinations with other
+animal, phylogenetic, spatial, or dense-kernel sources remain unavailable.
 
 > **Scope boundary.** Gaussian AR1/OU source parsing, dense covariance
 > oracles, score labels, simulation, training-data prediction, and update have

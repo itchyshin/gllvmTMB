@@ -9,7 +9,7 @@ profile_temporal(object, level = 0.95, ...)
 \arguments{
 \item{object}{An unreplicated Gaussian \code{temporal_indep()} fit or a qualified
 replicated Gaussian AR1 \code{temporal_dep() + spatial_indep()} or
-\code{temporal_dep() + phylo_indep()} fit.}
+\code{temporal_dep() + phylo_indep()} or \code{temporal_dep() + animal_indep()} fit.}
 
 \item{level}{Likelihood-ratio confidence level.}
 
@@ -28,6 +28,6 @@ not a calibrated interval or a profile of conditional temporal states.
 The helper supports temporal-only unreplicated Gaussian \code{temporal_indep()}
 fits and separately qualified replicated Gaussian AR1
 \code{temporal_dep()} routes with one fixed-mesh \code{spatial_indep()} or fixed
-\code{phylo_indep()} source. Other combinations and replicated panels need their
-own lifecycle contracts.
+\code{phylo_indep()} or \code{animal_indep()} source. Other combinations and
+replicated panels need their own lifecycle contracts.
 }

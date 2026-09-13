@@ -305,3 +305,29 @@ test_that("temporal_dep-animal forecast preserves row order and refuses unseen a
   unseen <- future; unseen$animal[[1L]] <- "a_new"
   expect_error(forecast_temporal(fit, unseen), "supports existing series only")
 })
+
+test_that("temporal_dep animal profiles the native persistence parameter", {
+  skip_if_not_installed("TMB")
+  fx <- .temporal_dep_animal_fixture(); fit <- .temporal_dep_animal_fit(fx)
+  out <- profile_temporal(fit, ystep = .1, ytol = 1)
+  expect_named(out, c("estimate", "lower", "upper"))
+  expected <- (1 - 1e-6) * tanh(fit$opt$par[["theta_temporal_time"]])
+  expect_equal(unname(out[["estimate"]]), expected, tolerance = 1e-8)
+  expect_error(profile_temporal(update(fit,
+    formula = value ~ 0 + trait + temporal_dep(0 + trait | animal,
+      time = occasion, replicate = measurement, structure = "ou") +
+      animal_indep(0 + trait | animal, A = fx$A))),
+    "requires replicated AR1")
+})
+
+test_that("temporal_dep animal bootstrap retains reproducible refits", {
+  skip_if_not_installed("TMB")
+  fx <- .temporal_dep_animal_fixture(); fit <- .temporal_dep_animal_fit(fx)
+  first <- bootstrap_temporal(fit, n_boot = 2L, seed = 260962L)
+  second <- bootstrap_temporal(fit, n_boot = 2L, seed = 260962L)
+  expect_equal(first, second)
+  expect_equal(nrow(first), 2L)
+  expect_true(all(is.finite(first$seed)))
+  expect_true(all(is.na(first$convergence) | first$convergence >= 0L))
+  expect_true(all(is.character(first$error)))
+})

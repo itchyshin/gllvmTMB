@@ -185,16 +185,16 @@ temporal_latent <- function(formula, time, d = 1, structure = "ar1",
   ## only temporal_indep + a fixed labelled kernel_indep source.
   re_admitted_source <- identical(length(source_terms), 1L) && (
     (identical(marker_name, "temporal_dep") &&
-      source_terms %in% c("spatial_indep", "phylo_indep")) ||
+      source_terms %in% c("spatial_indep", "phylo_indep", "animal_indep")) ||
     (identical(marker_name, "temporal_indep") &&
       identical(source_terms, "kernel_indep") &&
       identical(marker_arg_early("structure", "ar1"), "ou"))
   )
   if (length(source_terms) && !re_admitted_source) {
     .temporal_abort(c(
-      "The current temporal provider supports temporal-only covariance, apart from qualified temporal-dependent spatial or phylogenetic cells and one irregular-time temporal-independent kernel cell.",
+      "The current temporal provider supports temporal-only covariance, apart from qualified temporal-dependent spatial, phylogenetic, or animal cells and one irregular-time temporal-independent kernel cell.",
       "i" = "Found additional source provider(s): {.fn {source_terms}}.",
-      ">" = "Use the replicated AR1 {.code temporal_dep()} + fixed-mesh {.code spatial_indep()} or fixed {.code phylo_indep()} cell, replicated OU {.code temporal_indep()} + fixed {.code kernel_indep()}, or fit the temporal term alone; other source pairs remain deferred."
+      ">" = "Use the replicated AR1 {.code temporal_dep()} + fixed-mesh {.code spatial_indep()}, fixed {.code phylo_indep()}, or fixed {.code animal_indep()} cell, replicated OU {.code temporal_indep()} + fixed {.code kernel_indep()}, or fit the temporal term alone; other source pairs remain deferred."
     ))
   }
   temporal_mode <- sub("^temporal_", "", marker_name)

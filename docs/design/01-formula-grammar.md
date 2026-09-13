@@ -34,11 +34,14 @@ Ordinary unit and unit-observation covariance terms are admitted when the
 series and unit partitions agree and `unit_obs` is unit-nested. Meta providers
 and all temporal source pairs except replicated Gaussian AR1
 `temporal_dep() + spatial_indep()`, replicated Gaussian AR1
-`temporal_dep() + phylo_indep()`, and replicated Gaussian OU
+`temporal_dep() + phylo_indep()`, replicated Gaussian AR1
+`temporal_dep() + animal_indep()`, and replicated Gaussian OU
 `temporal_indep() + kernel_indep()` are refused. The qualified fixed-mesh
-intercept-only spatial cell and the qualified fixed intercept-only phylogenetic
-cell each have an additive covariance contract, independent dense likelihood
-and forecast oracles, lifecycle tests, and retained recovery boundary. The
+intercept-only spatial cell, the qualified fixed intercept-only phylogenetic
+cell, and the qualified fixed intercept-only animal cell each have an additive
+covariance contract and independent dense likelihood oracle. The animal cell
+also has fixed-parameter forecast, profile, bootstrap/refit, and retained
+failed-recovery evidence; it does not support a recovery or coverage claim. The
 qualified OU--kernel cell has an additive covariance contract, dense likelihood
 and simulation oracles, long/wide and update/refit tests, and a retained failed
 recovery fixture; forecast, profile, bootstrap, and selection remain refused.

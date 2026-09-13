@@ -10,8 +10,9 @@
 #' model, the separately qualified replicated Gaussian AR1
 #' `temporal_dep() + spatial_indep()` route with one fixed mesh, and the
 #' separately qualified replicated Gaussian AR1 `temporal_dep() + phylo_indep()`
-#' route with one fixed phylogeny. Other temporal-source combinations remain
-#' refused pending separate conditioning contracts. It forecasts future
+#' route with one fixed phylogeny, and `temporal_dep() + animal_indep()` with
+#' one fixed relationship. Other temporal-source combinations remain refused
+#' pending separate conditioning contracts. It forecasts future
 #' observations rather than latent state means.
 #'
 #' @param object A fitted native temporal [gllvmTMB()] model.
@@ -45,18 +46,19 @@ forecast_temporal <- function(object, newdata, se.fit = FALSE) {
   active <- .gllvmTMB_predict_unhandled_re_tiers(object, handled = "temporal")
   dep_spatial_pair <- .temporal_is_qualified_dep_spatial_pair(object, active)
   dep_phylo_pair <- .temporal_is_qualified_dep_phylo_pair(object, active)
+  dep_animal_pair <- .temporal_is_qualified_dep_animal_pair(object, active)
   known_dep_source <- identical(object$temporal$mode, "dep") &&
-    isTRUE(object$temporal$source_pair %in% c("phylo_indep", "spatial_indep"))
-  if (length(active) && !dep_spatial_pair && !dep_phylo_pair && !known_dep_source) {
+    isTRUE(object$temporal$source_pair %in% c("phylo_indep", "spatial_indep", "animal_indep"))
+  if (length(active) && !dep_spatial_pair && !dep_phylo_pair && !dep_animal_pair && !known_dep_source) {
     .temporal_abort(c(
       "This helper currently supports the temporal source by itself.",
       "i" = "The fit also uses covariance tier{?s}: {.val {active}}.",
-      ">" = "Temporal combinations with animal, dense-kernel, and other spatial or phylogenetic sources are deferred."
+      ">" = "Temporal combinations with dense-kernel and other spatial, phylogenetic, or animal sources are deferred."
     ))
   }
-  if (!identical(object$temporal$mode, "indep") && !dep_spatial_pair && !dep_phylo_pair) {
+  if (!identical(object$temporal$mode, "indep") && !dep_spatial_pair && !dep_phylo_pair && !dep_animal_pair) {
     .temporal_abort(c(
-      "{.fn forecast_temporal} currently supports {.fn temporal_indep} and the qualified temporal-dependent spatial or phylogenetic cells only.",
+      "{.fn forecast_temporal} currently supports {.fn temporal_indep} and the qualified temporal-dependent spatial, phylogenetic, or animal cells only.",
       ">" = "Forecasts for temporal dependent and latent trait covariance need mode- and source-specific oracle evidence."
     ), class = "gllvmTMB_temporal_forecast_mode")
   }
@@ -64,7 +66,7 @@ forecast_temporal <- function(object, newdata, se.fit = FALSE) {
   if (is.null(td$family_id_vec) || any(td$family_id_vec != 0L)) {
     .temporal_abort("{.fn forecast_temporal} currently requires a Gaussian identity-link temporal fit.")
   }
-  if (!dep_spatial_pair && !dep_phylo_pair && !is.null(object$temporal$replicate_col)) {
+  if (!dep_spatial_pair && !dep_phylo_pair && !dep_animal_pair && !is.null(object$temporal$replicate_col)) {
     .temporal_abort(c(
       "{.fn forecast_temporal} currently supports unreplicated panels only.",
       ">" = "Replicated-panel forecasts need a separate conditioning contract."
@@ -221,6 +223,29 @@ forecast_temporal <- function(object, newdata, se.fit = FALSE) {
     phylo_variance <- diag(par$theta_rr_phy^2, nrow = length(trait_levels))
     out <- out + phylo_covariance[left_source + 1L, right_source + 1L] *
       phylo_variance[left_trait, right_trait]
+  }
+  if (.temporal_is_qualified_dep_animal_pair(object, active)) {
+    provider <- object$covstructs[[1L]]
+    source_col <- all.vars(provider$lhs)
+    if (length(source_col) != 1L || !source_col %in% names(left) || !source_col %in% names(right)) {
+      .temporal_abort("The fitted temporal-animal source grouping is unavailable in forecast data.")
+    }
+    source_map <- split(td$species_aug_id, as.character(object$data[[source_col]]))
+    source_map <- vapply(source_map, function(x) {
+      if (length(unique(x)) != 1L) NA_integer_ else unique(x)[[1L]]
+    }, integer(1))
+    left_source <- unname(source_map[as.character(left[[source_col]])])
+    right_source <- unname(source_map[as.character(right[[source_col]])])
+    if (anyNA(left_source) || anyNA(right_source)) {
+      .temporal_abort(c(
+        "{.arg newdata} names an animal level absent from the fitted model.",
+        ">" = "Use a fitted series and its corresponding animal label."
+      ), class = "gllvmTMB_temporal_forecast_animal_level")
+    }
+    animal_covariance <- solve(as.matrix(td$Ainv_phy_rr))
+    animal_variance <- diag(par$theta_rr_phy^2, nrow = length(trait_levels))
+    out <- out + animal_covariance[left_source + 1L, right_source + 1L] *
+      animal_variance[left_trait, right_trait]
   }
   if (.temporal_is_qualified_dep_spatial_pair(object, active)) {
     xy_cols <- object$mesh$xy_cols

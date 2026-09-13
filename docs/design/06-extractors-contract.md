@@ -16,11 +16,13 @@ unconditional bootstrap/refit, and known-series forecasting with one fixed mesh.
 Forecast output conditions on fitted parameters for future occasions of existing
 series; `se.fit` is conditional uncertainty, not a calibrated prediction
 interval. Generic new-data prediction, calibrated intervals, unsupported
-profile or bootstrap targets, automatic selection, and all other
-temporal--animal, all other --kernel, and all other --phylogenetic or --spatial
-combinations are refused. Replicated Gaussian AR1 `temporal_dep() +
-phylo_indep()` and `temporal_dep() + spatial_indep()` each have separate
-additive lifecycle contracts. Replicated Gaussian OU `temporal_indep() +
+profile or bootstrap targets, automatic selection, and all other temporal--animal, all other --kernel, and all other --phylogenetic
+or --spatial combinations are refused. Replicated Gaussian AR1
+`temporal_dep() + phylo_indep()`, `temporal_dep() + spatial_indep()`, and
+`temporal_dep() + animal_indep()` each have separate additive lifecycle
+contracts. The animal cell has local fixed-parameter forecast, profile, and
+bootstrap/refit checks, but its retained recovery fixture fails and gives no
+recovery or coverage claim. Replicated Gaussian OU `temporal_indep() +
 kernel_indep()` has separate additive extraction, simulation, long/wide, and
 update/refit evidence, while its forecast, profile, bootstrap, and selection
 routes refuse early. Re-admitting another source pair or route requires a

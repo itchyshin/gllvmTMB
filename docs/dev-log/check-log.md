@@ -58511,3 +58511,30 @@ Deliberately not run: Totoro 9×500 grid dispatch; full `devtools::test()`.
   all five executable gates. This is local-only evidence; a three-OS run for
   the earlier dependent-spatial commit remains active and no additional push
   has been made while it runs.
+
+## 2026-09-13 — re-admit qualified dependent temporal--animal lifecycle cell
+
+- Re-admitted only replicated Gaussian AR1 `temporal_dep() + animal_indep()`
+  with one fixed intercept-only relationship source. Its covariance remains
+  additive: a within-series full temporal trait covariance plus a static
+  animal-diagonal covariance. It is not an animal-by-time interaction.
+- The active test `test-temporal-program-dep-animal.R` now exercises dense
+  A/pedigree/Ainv representations, labelled relationship permutations,
+  independently assembled Gaussian NLL and outer gradients at persistence
+  `-.4`, `0`, and `.6`, invalid diagonal/rank-one/product controls, long/wide
+  equivalence, update, conditional and unconditional simulation, and direct
+  fixed-parameter forecasts at both positive and negative persistence.
+- `profile_temporal()` and `bootstrap_temporal()` now admit the same narrow
+  cell. Focused tests verify the native persistence profile, early OU refusal,
+  deterministic retained bootstrap rows, and the rule that refit failures are
+  retained rather than discarded. A clean local two-draw bootstrap had both
+  convergence codes zero; that observation is not a bootstrap-calibration
+  claim.
+- Local checks passed: the focused animal/lifecycle tests; `Rscript --vanilla
+  dev/temporal-program/verify.R dep-animal-retained-failure` emitted
+  `TEMPORAL_DEP_ANIMAL_RETAINED_FAILURE_PASS`; `devtools::document()`
+  regenerated the three lifecycle Rd files; `pkgdown::check_pkgdown()` found
+  no problems; and both affected articles rendered directly. The retained
+  nine-attempt recovery receipt keeps its frozen animal-variance threshold
+  failure. This is local named-fixture evidence only, without recovery,
+  coverage, calibrated-interval, cross-platform, merge, or release claim.

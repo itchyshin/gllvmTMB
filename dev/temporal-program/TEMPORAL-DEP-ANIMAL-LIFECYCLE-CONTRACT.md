@@ -39,9 +39,9 @@ entered through a labelled dense `A`, pedigree, or sparse `Ainv`, provided the
 saved public call is replayable.
 
 Refuse OU, temporal-independent or rank-one animal pairs, generic bootstrap
-or profile APIs, profiles of covariance entries or animal variances, forecasts,
-selection, intervals, new data, and every other source pair.  Forecast needs a
-separate full conditional-Gaussian oracle and is outside this contract.
+or profile APIs, profiles of covariance entries or animal variances, selection, intervals, and
+every other source pair. Forecasting has a separate full
+conditional-Gaussian contract; it is not an interval or a generic new-data route.
 
 ## Required evidence and boundary
 

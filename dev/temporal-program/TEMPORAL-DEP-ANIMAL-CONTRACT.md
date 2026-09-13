@@ -30,16 +30,18 @@ least three traits and occasions, complete panels with two measurements per
 state, an odd observed lag per series, one temporal intercept and exactly one
 intercept-only `animal_indep(0 + trait | animal, A = A)`, `pedigree =`, or
 `Ainv =` source at `rho = 1`. It refuses OU, temporal Psi/latent variants,
-ordinary covariance, slopes, additional sources, source-by-time products, and
-forecast/interval/profile/bootstrap/selection routes.
+ordinary covariance, slopes, additional sources, source-by-time products, generic
+intervals, selection, and all other source-pair routes. The direct forecast and
+profile/bootstrap lifecycle routes have separate contracts.
 
 ## Evidence required before an advertised claim
 
 A separately authored dense oracle must verify normalized NLL and every active
 outer derivative at negative, zero, and positive persistence; reject diagonal
 and rank-one temporal substitutes and the animal-by-time product; and cover
-dense A, pedigree, Ainv, labels, long/wide, update/refit, fitted labels and
-conditional/unconditional simulation. A direct retained DGP and frozen
+dense A, pedigree, Ainv, labels, long/wide, update/refit, fitted labels,
+conditional/unconditional simulation, and the separately contracted lifecycle
+routes. A direct retained DGP and frozen
 thresholds are required for recovery evidence. None transfers from a phylogeny
 or rank-one-animal fixture.
 

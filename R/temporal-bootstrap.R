@@ -42,6 +42,24 @@
       inherits(object$tmb_data$Ainv_phy_rr, "Matrix"))
 }
 
+.temporal_is_qualified_dep_animal_pair <- function(object, active_tiers) {
+  providers <- object$covstructs
+  if (!is.list(providers) || length(providers) != 1L ||
+      !identical(as.character(active_tiers), "phylo_rr") ||
+      !identical(object$temporal$source_pair, "animal_indep") ||
+      !identical(object$temporal$mode, "dep") ||
+      !identical(object$temporal$d, 0L) || isTRUE(object$temporal$unique) ||
+      !identical(object$temporal$structure, "ar1") ||
+      !identical(object$temporal$workflow, "replicated")) return(FALSE)
+  provider <- providers[[1L]]
+  extra <- provider$extra
+  identical(provider$kind, "phylo_rr") && is.list(extra) &&
+    isTRUE(extra$.indep) && isTRUE(extra$.animal_source) &&
+    is.null(object$source_strength) &&
+    (is.matrix(object$tmb_data$Ainv_phy_rr) ||
+      inherits(object$tmb_data$Ainv_phy_rr, "Matrix"))
+}
+
 .temporal_bootstrap_refit_data <- function(object, draw, response) {
   is_wide <- identical(object$traits_meta$input_shape, "wide_data_frame")
   if (!is_wide) {
@@ -88,12 +106,12 @@
 #' call. Failed refits are retained in the returned table. The helper supports temporal-only unreplicated Gaussian
 #' `temporal_indep()` fits and the separately qualified replicated Gaussian AR1
 #' `temporal_dep()` routes with one fixed mesh `spatial_indep()` or fixed
-#' `phylo_indep()` source. Other combinations and replicated panels need their
-#' own lifecycle contracts.
+#' `phylo_indep()` or `animal_indep()` source. Other combinations and
+#' replicated panels need their own lifecycle contracts.
 #'
 #' @param object An unreplicated Gaussian `temporal_indep()` fit or a qualified
 #'   replicated Gaussian AR1 `temporal_dep() + spatial_indep()` or
-#'   `temporal_dep() + phylo_indep()` fit.
+#'   `temporal_dep() + phylo_indep()` or `temporal_dep() + animal_indep()` fit.
 #' @param n_boot Number of refits.
 #' @param seed Optional random seed.
 #' @return A data frame with one row per attempted refit. `seed` records the
@@ -107,18 +125,19 @@ bootstrap_temporal <- function(object, n_boot = 100L, seed = NULL) {
   active <- .gllvmTMB_predict_unhandled_re_tiers(object, handled = "temporal")
   dep_spatial_pair <- .temporal_is_qualified_dep_spatial_pair(object, active)
   dep_phylo_pair <- .temporal_is_qualified_dep_phylo_pair(object, active)
-  if (length(active) && !dep_spatial_pair && !dep_phylo_pair) {
+  dep_animal_pair <- .temporal_is_qualified_dep_animal_pair(object, active)
+  if (length(active) && !dep_spatial_pair && !dep_phylo_pair && !dep_animal_pair) {
     .temporal_abort(c(
       "This helper currently supports the temporal source by itself.",
       "i" = "The fit also uses covariance tier{?s}: {.val {active}}.",
-      ">" = "Temporal combinations with animal, dense-kernel, and other spatial or phylogenetic sources are deferred."
+      ">" = "Temporal combinations with dense-kernel and other spatial, phylogenetic, or animal sources are deferred."
     ))
   }
-  if ((!identical(object$temporal$mode, "indep") && !dep_spatial_pair && !dep_phylo_pair) ||
+  if ((!identical(object$temporal$mode, "indep") && !dep_spatial_pair && !dep_phylo_pair && !dep_animal_pair) ||
       any(object$tmb_data$family_id_vec != 0L)) {
-    .temporal_abort("{.fn bootstrap_temporal} currently supports Gaussian {.fn temporal_indep} fits and qualified temporal-dependent spatial or phylogenetic cells only.")
+    .temporal_abort("{.fn bootstrap_temporal} currently supports Gaussian {.fn temporal_indep} fits and qualified temporal-dependent spatial, phylogenetic, or animal cells only.")
   }
-  if (!dep_spatial_pair && !dep_phylo_pair && !is.null(object$temporal$replicate_col)) {
+  if (!dep_spatial_pair && !dep_phylo_pair && !dep_animal_pair && !is.null(object$temporal$replicate_col)) {
     .temporal_abort("{.fn bootstrap_temporal} currently supports unreplicated panels only.")
   }
   if (!is.numeric(n_boot) || length(n_boot) != 1L || !is.finite(n_boot) ||

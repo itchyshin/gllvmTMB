@@ -58478,3 +58478,36 @@ Deliberately not run: Totoro 9×500 grid dispatch; full `devtools::test()`.
   `TEMPORAL_DEP_SPATIAL_CORRECTED_SCALE_RETAINED_FAILURE`. The frozen Totoro
   campaign is retained as negative recovery evidence; no seed, criterion,
   fixture, or threshold changed.
+
+## 2026-09-13 — restore the qualified irregular-time temporal OU--kernel cell
+
+- Restored the independently authored OU-kernel source-pair test from the
+  retained evidence directory to the active suite. It first failed because an
+  earlier parser guard still rejected every source pair other than the two
+  dependent AR1 exceptions. The parser now admits only replicated Gaussian
+  `temporal_indep(..., structure = "ou") + kernel_indep()` with one fixed
+  labelled kernel. It continues to reject every AR1 kernel source pair, every
+  other OU source pair, and all forecast, profile, bootstrap, and selection
+  routes for this cell.
+- `Rscript --vanilla -e 'devtools::load_all(quiet=TRUE);
+  testthat::test_file("tests/testthat/test-temporal-program-ou-kernel.R")'`
+  passed with no failures, errors, warnings, or skips. The active test checks
+  independent dense additive NLL and outer gradients, product-covariance
+  rejection, shift/rescaling and rate-limit identities, simulation moments,
+  long/wide replay and update/refit, plus all early lifecycle refusals.
+- `Rscript --vanilla dev/temporal-program/verify-ou-kernel-retained.R` emitted
+  `TEMPORAL_OU_KERNEL_RETAINED_FAILURE_PASS`. The frozen nine-cell recovery
+  fixture fails its kernel-variance threshold at rate .25 and remains negative
+  evidence; this re-admission makes no recovery or coverage claim.
+- `devtools::document(quiet=TRUE)` regenerated `man/temporal_latent.Rd`, and
+  `pkgdown::check_pkgdown()` reported no problems. Initial article rendering
+  found that pkgdown's clean child R process loaded the stale installed package
+  without the temporal exports. Installing this exact checkout into an isolated
+  temporary library and retaining the normal package library for `pkgdown`
+  resolved the environment mismatch. Both `articles/temporal-ar1` and
+  `articles/api-keyword-grid` rendered successfully from that isolated build.
+- `node ~/shinichi-brain/skills/unlazy/scripts/gate-check.mjs --approve
+  --reverify .unlazy/temporal-program/re-admit-ou-kernel-GATES.md` reverified
+  all five executable gates. This is local-only evidence; a three-OS run for
+  the earlier dependent-spatial commit remains active and no additional push
+  has been made while it runs.

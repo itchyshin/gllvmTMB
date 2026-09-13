@@ -39,7 +39,7 @@ with one fixed phylogeny. These narrow results do not establish
 calibrated intervals, bootstrap sampling properties, general recovery, or
 coverage. Generic forecasts, new-data prediction, generic profile/bootstrap
 intervals, automatic rank selection, and temporal combinations with
-animal, other phylogenetic, other spatial, or dense-kernel sources remain unavailable.
+animal, other phylogenetic, other spatial, or other dense-kernel sources remain unavailable.
 
 > **Scope boundary.** Gaussian AR1/OU source parsing, dense covariance
 > oracles, score labels, simulation, training-data prediction, and update have
@@ -47,9 +47,13 @@ animal, other phylogenetic, other spatial, or dense-kernel sources remain unavai
 > support a general recovery, precision, calibration, or interval-coverage
 > claim. Temporal is available with ordinary `unit` and nested `unit_obs`
 > terms. The first qualified source pair is replicated Gaussian AR1
-> `temporal_dep() + spatial_indep()` with one fixed mesh, and replicated
-> Gaussian AR1 `temporal_dep() + phylo_indep()` with one fixed phylogeny.
-> Animal, other phylogenetic, other spatial, and dense-kernel temporal
+> `temporal_dep() + spatial_indep()` with one fixed mesh, replicated Gaussian
+> AR1 `temporal_dep() + phylo_indep()` with one fixed phylogeny, and replicated
+> Gaussian OU `temporal_indep() + kernel_indep()` with one fixed labelled
+> kernel. The OU--kernel cell has local dense-oracle, simulation, long/wide,
+> and update/refit checks, but its retained recovery fixture fails and its
+> forecast, profile, bootstrap, and selection routes remain unavailable.
+> Animal, other phylogenetic, other spatial, and other dense-kernel temporal
 > combinations remain deferred pending separate model contracts and evidence.
 > The provider is locally verified only;
 > it is not merged, released,

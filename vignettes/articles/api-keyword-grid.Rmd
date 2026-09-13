@@ -128,10 +128,14 @@ source pairs are replicated Gaussian AR1 `temporal_dep() + spatial_indep()` with
 one fixed mesh and intercept-only spatial term, and `temporal_dep() +
 phylo_indep()` with one fixed intercept-only phylogenetic source. Each has
 separate direct profile, bootstrap/refit, and known-series forecast contracts.
+The third qualified pair is replicated Gaussian OU `temporal_indep() +
+kernel_indep()` with one fixed labelled kernel: local dense-oracle, simulation,
+long/wide, and update/refit checks pass, while its recovery fixture is retained
+as failed and forecast, profile, bootstrap, and selection remain refused.
 **Partial:** the spatial and phylogenetic cells' retained recovery fixtures and
 the temporal-only fixtures are engineering evidence for their named designs,
 not general recovery or coverage claims. Animal, other phylogenetic, other
-spatial, and user-kernel combinations with temporal covariance remain deferred;
+spatial, and other user-kernel combinations with temporal covariance remain deferred;
 each needs its own joint-model and identifiability contract before admission.
 Generic new-data prediction, calibrated intervals, automatic selection, higher
 rank, and other response families remain unavailable.

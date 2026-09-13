@@ -7,7 +7,9 @@
 bootstrap_temporal(object, n_boot = 100L, seed = NULL)
 }
 \arguments{
-\item{object}{An unreplicated Gaussian \code{temporal_indep()} fit.}
+\item{object}{An unreplicated Gaussian \code{temporal_indep()} fit, or the
+qualified replicated AR1 \code{temporal_indep() + kernel_indep()} fit with one
+fixed labelled kernel.}
 
 \item{n_boot}{Number of refits.}
 

@@ -36,17 +36,3 @@ test_that("bootstrap_temporal retains reproducible draw seeds and the OU scale",
   expect_equal(gllvmTMB:::.temporal_bootstrap_time_estimate(fit, par),
     exp(par$theta_temporal_time), tolerance = 1e-12)
 })
-
-test_that("bootstrap_temporal refuses temporal source pairs", {
-  d <- expand.grid(series = paste0("s", 1:3), occasion = 1:3,
-    measurement = c("m1", "m2"), trait = paste0("t", 1:3),
-    KEEP.OUT.ATTRS = FALSE, stringsAsFactors = FALSE)
-  set.seed(260916L); d$value <- stats::rnorm(nrow(d))
-  K <- diag(3L); dimnames(K) <- list(paste0("s", 1:3), paste0("s", 1:3))
-  fit <- suppressWarnings(gllvmTMB(value ~ 0 + trait +
-    temporal_indep(0 + trait | series, time = occasion, replicate = measurement) +
-    kernel_indep(series, K = K, name = "bootstrap_kernel"), data = d,
-    unit = "series", cluster = "series", family = gaussian(), silent = TRUE,
-    control = gllvmTMBcontrol(se = FALSE)))
-  expect_error(bootstrap_temporal(fit, n_boot = 1L), "temporal source by itself")
-})

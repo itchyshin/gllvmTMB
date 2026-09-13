@@ -11,7 +11,9 @@
 #'
 #' Draws unconditional temporal responses and refits the saved public model
 #' call. Failed refits are retained in the returned table.
-#' @param object An unreplicated Gaussian `temporal_indep()` fit.
+#' @param object An unreplicated Gaussian `temporal_indep()` fit, or the
+#'   qualified replicated AR1 `temporal_indep() + kernel_indep()` fit with one
+#'   fixed labelled kernel.
 #' @param n_boot Number of refits.
 #' @param seed Optional random seed.
 #' @return A data frame with one row per attempted refit. `seed` records the
@@ -23,16 +25,23 @@ bootstrap_temporal <- function(object, n_boot = 100L, seed = NULL) {
     .temporal_abort("{.fn bootstrap_temporal} requires a native temporal fit.")
   }
   active <- .gllvmTMB_predict_unhandled_re_tiers(object, handled = "temporal")
-  if (length(active)) {
+  indep_kernel_pair <- .temporal_is_qualified_indep_kernel_pair(object, active)
+  if (length(active) && !indep_kernel_pair) {
     .temporal_abort(c(
-      "{.fn bootstrap_temporal} currently requires the temporal source by itself.",
+      "{.fn bootstrap_temporal} currently requires the temporal source by itself, or the qualified AR1 {.fn temporal_indep} + {.fn kernel_indep} cell.",
       "i" = "The fit also uses covariance tier(s): {.val {active}}.",
       ">" = "A parametric bootstrap for temporal source pairs needs its own contract and evidence."
     ), class = "gllvmTMB_temporal_bootstrap_composed")
   }
   if (!identical(object$temporal$mode, "indep") ||
-      !is.null(object$temporal$replicate_col) || any(object$tmb_data$family_id_vec != 0L)) {
-    .temporal_abort("{.fn bootstrap_temporal} currently supports unreplicated Gaussian {.fn temporal_indep} fits only.")
+      any(object$tmb_data$family_id_vec != 0L)) {
+    .temporal_abort("{.fn bootstrap_temporal} currently supports Gaussian {.fn temporal_indep} fits only.")
+  }
+  if (!is.null(object$temporal$replicate_col) && !indep_kernel_pair) {
+    .temporal_abort(c(
+      "{.fn bootstrap_temporal} supports replicated panels only for the qualified AR1 {.fn temporal_indep} + {.fn kernel_indep} cell.",
+      ">" = "Other temporal source combinations need their own bootstrap contract and evidence."
+    ), class = "gllvmTMB_temporal_bootstrap_replicated")
   }
   if (!is.numeric(n_boot) || length(n_boot) != 1L || !is.finite(n_boot) ||
       n_boot < 1 || n_boot != as.integer(n_boot)) {

@@ -17,9 +17,11 @@ Forecast output conditions on fitted parameters for future occasions of existing
 series; `se.fit` is conditional uncertainty, not a calibrated prediction
 interval. Generic new-data prediction, calibrated intervals, unsupported
 profile or bootstrap targets, automatic selection, and all other
-temporal--phylogenetic, --animal, --spatial, or --kernel combinations are
-refused. Re-admitting another source pair requires a separate model and
-validation contract.
+temporal--animal, --kernel, and all other --phylogenetic or --spatial
+combinations are refused. Replicated Gaussian AR1
+`temporal_dep() + phylo_indep()` and `temporal_dep() + spatial_indep()` each
+have separate additive lifecycle contracts. Re-admitting another source pair
+requires a separate model and validation contract.
 
 **Maintained by:** Emmy (R package architecture / S3 surface)
 and Fisher (statistical inference semantics).

@@ -8,7 +8,8 @@ bootstrap_temporal(object, n_boot = 100L, seed = NULL)
 }
 \arguments{
 \item{object}{An unreplicated Gaussian \code{temporal_indep()} fit or a qualified
-replicated Gaussian AR1 \code{temporal_dep() + spatial_indep()} fit.}
+replicated Gaussian AR1 \code{temporal_dep() + spatial_indep()} or
+\code{temporal_dep() + phylo_indep()} fit.}
 
 \item{n_boot}{Number of refits.}
 
@@ -23,6 +24,7 @@ their convergence code and error text.
 Draws unconditional temporal responses and refits the saved public model
 call. Failed refits are retained in the returned table. The helper supports temporal-only unreplicated Gaussian
 \code{temporal_indep()} fits and the separately qualified replicated Gaussian AR1
-\code{temporal_dep() + spatial_indep()} route. Other combinations and replicated
-panels need their own lifecycle contracts.
+\code{temporal_dep()} routes with one fixed mesh \code{spatial_indep()} or fixed
+\code{phylo_indep()} source. Other combinations and replicated panels need their
+own lifecycle contracts.
 }

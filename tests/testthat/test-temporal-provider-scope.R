@@ -1,4 +1,4 @@
-test_that("temporal defers source pairs apart from qualified dependent-spatial", {
+test_that("temporal defers source pairs apart from qualified dependent-spatial and dependent-phylogenetic cells", {
   dat <- expand.grid(
     series = paste0("s", 1:3), occasion = 1:3, measurement = c("m1", "m2"),
     trait = paste0("t", 1:3), KEEP.OUT.ATTRS = FALSE, stringsAsFactors = FALSE
@@ -20,7 +20,7 @@ test_that("temporal defers source pairs apart from qualified dependent-spatial",
     temporal <- temporal_terms[[temporal_name]]
     for (source_name in names(source_terms)) {
       source <- source_terms[[source_name]]
-      if (identical(temporal_name, "dep") && identical(source_name, "spatial")) next
+      if (identical(temporal_name, "dep") && source_name %in% c("spatial", "phylo")) next
       formula <- stats::as.formula(paste0(
         "value ~ 0 + trait + ", temporal, " + ", source
       ))

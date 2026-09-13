@@ -29,10 +29,12 @@ fitted parameters and is not a calibrated prediction interval.
 }
 \details{
 This helper supports an unreplicated \code{temporal_indep()} Gaussian identity-link
-model and the separately qualified replicated Gaussian AR1
-\code{temporal_dep() + spatial_indep()} route with one fixed mesh. Other
-temporal-source combinations remain refused pending separate conditioning
-contracts. It forecasts future observations rather than latent state means.
+model, the separately qualified replicated Gaussian AR1
+\code{temporal_dep() + spatial_indep()} route with one fixed mesh, and the
+separately qualified replicated Gaussian AR1 \code{temporal_dep() + phylo_indep()}
+route with one fixed phylogeny. Other temporal-source combinations remain
+refused pending separate conditioning contracts. It forecasts future
+observations rather than latent state means.
 }
 \examples{
 d <- expand.grid(series = c("a", "b"), occasion = 1:3,

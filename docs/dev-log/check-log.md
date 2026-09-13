@@ -58437,6 +58437,32 @@ Deliberately not run: Totoro 9×500 grid dispatch; full `devtools::test()`.
   establish recovery, calibration, interval coverage, cross-platform status,
   merge, or release readiness.
 
+## 2026-09-13 — re-admit qualified dependent temporal--phylogenetic lifecycle cell
+
+- Re-admitted only replicated Gaussian AR1 `temporal_dep() + phylo_indep()`
+  with one fixed intercept-only phylogenetic source. The model is additive:
+  a within-series temporal trait covariance plus a static phylogenetic
+  trait-diagonal covariance. It is not a phylogeny-by-time interaction.
+- The active source-pair oracle checks all free outer derivatives against an
+  independently constructed dense Gaussian likelihood at persistence `-.4`,
+  `0`, and `.6`; it distinguishes the additive covariance from a genuine
+  phylogeny-by-time product and from diagonal or rank-one temporal substitutes.
+  Long/wide common parameters, tree/VCV and label permutations, update/refit,
+  unconditional and conditional simulation, and known-series forecast
+  conditioning are also tested.
+- New lifecycle tests verify deterministic retained bootstrap attempts,
+  profile targeting of the direct temporal parameter, and refusal of a generic
+  `lincomb` profile. `Rscript --vanilla dev/temporal-program/verify.R
+  dep-phylo` emitted `TEMPORAL_DEP_PHYLO_RECOVERY_PASS` for the retained
+  three-persistence fixed-seed fixture. This is named-fixture local evidence,
+  not a general recovery, coverage, or calibrated-interval claim.
+- `node ~/shinichi-brain/skills/unlazy/scripts/gate-check.mjs --approve
+  --reverify .unlazy/temporal-program/re-admit-dep-phylo-GATES.md` completed;
+  its status reports all five gates met. `devtools::document(quiet=TRUE)`
+  regenerated the four temporal Rd topics. A three-OS run for the preceding
+  dependent-spatial commit remains active at the time of this entry; no new
+  branch push has been sent while it runs.
+
 - The full `pkgdown::build_articles(lazy = FALSE, preview = FALSE)` process
   completed without a shell receipt. A direct isolated `pkgdown::build_article()`
   then reproduced the old installed-package failure: its child process cannot

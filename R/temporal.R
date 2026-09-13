@@ -79,10 +79,12 @@ temporal_dep <- function(formula, time, structure = "ar1", replicate = NULL) {
 #' AR1 uses integer occasions and preserves gaps. OU uses numeric elapsed time
 #' in the units supplied by the user. The current release admits one temporal
 #' source by itself, optionally with ordinary `unit` or nested `unit_obs`
-#' effects, plus one separately qualified source pair: replicated Gaussian AR1
-#' `temporal_dep()` with fixed-mesh intercept-only `spatial_indep()`. Other
-#' phylogenetic, animal, spatial, and user-kernel combinations remain deferred
-#' because they require their own joint-model and identifiability contracts. The admitted Gaussian temporal-only workflows
+#' effects, plus two separately qualified source pairs: replicated Gaussian AR1
+#' `temporal_dep()` with fixed-mesh intercept-only `spatial_indep()`, and
+#' replicated Gaussian AR1 `temporal_dep()` with fixed intercept-only
+#' `phylo_indep()`. Other phylogenetic, animal, spatial, and user-kernel
+#' combinations remain deferred because they require their own joint-model and
+#' identifiability contracts. The admitted Gaussian temporal-only workflows
 #' have bounded fitting, extraction, simulation, update/refit, and named helper
 #' support; forecasts return fitted-parameter conditional uncertainty, not
 #' calibrated prediction intervals. Generic new-data prediction, interval
@@ -165,18 +167,19 @@ temporal_latent <- function(formula, time, d = 1, structure = "ar1",
   source_terms <- competing[grepl(
     "^(phylo|animal|spatial|kernel|meta_|propto$|equalto$|spde$)", competing
   )]
-  ## The first re-admitted cross-source cell is deliberately narrow: replicated
-  ## Gaussian AR1 temporal_dep plus one fixed intercept-only spatial_indep
-  ## source. Its additive covariance and lifecycle routes have a separate
-  ## contract and independent oracle. Other source pairs remain deferred.
-  re_admitted_dep_spatial <- identical(length(source_terms), 1L) &&
+  ## Each re-admitted cross-source cell is deliberately narrow and has its own
+  ## additive covariance, lifecycle, and recovery contract.  Do not widen this
+  ## parser exception into source-pair symmetry: the phylogenetic cell is a
+  ## fixed intercept-only source, whereas the spatial cell requires one fixed
+  ## mesh and its separate coordinate invariant.
+  re_admitted_dep_source <- identical(length(source_terms), 1L) &&
     identical(marker_name, "temporal_dep") &&
-    identical(source_terms, "spatial_indep")
-  if (length(source_terms) && !re_admitted_dep_spatial) {
+    source_terms %in% c("spatial_indep", "phylo_indep")
+  if (length(source_terms) && !re_admitted_dep_source) {
     .temporal_abort(c(
-      "The current temporal provider supports temporal-only covariance, apart from the qualified temporal-dependent spatial cell.",
+      "The current temporal provider supports temporal-only covariance, apart from qualified temporal-dependent spatial or phylogenetic cells.",
       "i" = "Found additional source provider(s): {.fn {source_terms}}.",
-      ">" = "Use the replicated AR1 {.code temporal_dep()} + fixed-mesh {.code spatial_indep()} cell, or fit the temporal term alone; other source pairs remain deferred."
+      ">" = "Use the replicated AR1 {.code temporal_dep()} + fixed-mesh {.code spatial_indep()} or fixed {.code phylo_indep()} cell, or fit the temporal term alone; other source pairs remain deferred."
     ))
   }
   marker_names_early <- names(marker)

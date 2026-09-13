@@ -49,10 +49,12 @@ noise.
 AR1 uses integer occasions and preserves gaps. OU uses numeric elapsed time
 in the units supplied by the user. The current release admits one temporal
 source by itself, optionally with ordinary \code{unit} or nested \code{unit_obs}
-effects, plus one separately qualified source pair: replicated Gaussian AR1
-\code{temporal_dep()} with fixed-mesh intercept-only \code{spatial_indep()}. Other
-phylogenetic, animal, spatial, and user-kernel combinations remain deferred
-because they require their own joint-model and identifiability contracts. The admitted Gaussian temporal-only workflows
+effects, plus two separately qualified source pairs: replicated Gaussian AR1
+\code{temporal_dep()} with fixed-mesh intercept-only \code{spatial_indep()}, and
+replicated Gaussian AR1 \code{temporal_dep()} with fixed intercept-only
+\code{phylo_indep()}. Other phylogenetic, animal, spatial, and user-kernel
+combinations remain deferred because they require their own joint-model and
+identifiability contracts. The admitted Gaussian temporal-only workflows
 have bounded fitting, extraction, simulation, update/refit, and named helper
 support; forecasts return fitted-parameter conditional uncertainty, not
 calibrated prediction intervals. Generic new-data prediction, interval

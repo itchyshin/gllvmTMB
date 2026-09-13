@@ -10,7 +10,9 @@ compare_temporal(...)
 \item{...}{Named fitted temporal models.}
 }
 \value{
-AIC comparison table; no likelihood-ratio test is assigned.
+AIC comparison table; no likelihood-ratio test is assigned. The
+qualified replicated AR1 \code{temporal_indep() + kernel_indep()} cell with one
+fixed labelled kernel is supported alongside temporal-only candidates.
 }
 \description{
 Compare supplied temporal model candidates

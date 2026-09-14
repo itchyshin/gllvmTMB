@@ -58369,3 +58369,10 @@ Deliberately not run: Totoro 9×500 grid dispatch; full `devtools::test()`.
   source-package focused checks passed (80 animal, 26 kernel, and 94 baseline
   temporal assertions); the existing Windows and Linux jobs are retained to
   completion before a corrected replacement matrix is dispatched.
+
+## 2026-09-14 — temporal provider narrowed to standalone AR1/OU
+
+- Public temporal syntax now retains the 5 × 3 stable-unit grid plus one standalone temporal provider. `temporal_indep()`, `temporal_dep()`, and `temporal_latent()` reject combinations with phylogenetic, animal, spatial, or kernel sources before TMB construction.
+- The former source-pair lifecycle code is no longer reachable through the public parser. Its package tests were moved to `dev/temporal-program/retained-source-pair-tests/` as developer-only historical evidence; TEMP-06-02 through TEMP-06-14 are `blocked`, low-priority future work.
+- Checks passed: `Rscript --vanilla dev/temporal-program/verify.R lifecycle`; `Rscript --vanilla dev/temporal-program/verify.R plan`; `Rscript --vanilla dev/gapclose/build-capability-status.R --check`; focused temporal API/engine/oracle/lifecycle tests; `devtools::document()`; `pkgdown::check_pkgdown()`; and rendered `vignettes/articles/temporal-ar1.Rmd` against the installed development package.
+- A raw local `R CMD check --no-manual .` stopped before checking code because this R invocation rejected the package's `Authors@R` metadata as missing `Author`/`Maintainer`; it is not accepted as package-check evidence. Fresh three-OS CI is required for commit `f24d83c66`.

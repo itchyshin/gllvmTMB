@@ -153,8 +153,14 @@ replicated-AR1 additive `temporal_indep()` pairs with one diagonal kernel,
 phylogenetic, animal, or spatial source are separately implemented, with
 pair-specific local evidence only: kernel has a passing local fixture,
 phylogenetic and spatial recovery gates retain failures, and animal recovery is
-pending. Other families, higher rank, source-by-time interactions, and other
-structured-source combinations are unavailable.
+pending. Two further fixed-kernel cells are available for complete replicated
+AR1 panels: `temporal_dep(...) + kernel_indep(...)` and rank-one
+`temporal_latent(..., d = 1, unique = FALSE) + kernel_indep(...)`. They require
+an odd observed lag in each series and no ordinary covariance term. Their
+evidence is local and cell-specific; neither supplies source-pair forecasts,
+intervals, profiles, bootstrap, selection, broad recovery, or coverage.
+Other families, higher rank, source-by-time interactions, and other structured-
+source combinations are unavailable.
 
 ## What the modes estimate
 

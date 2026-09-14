@@ -194,10 +194,12 @@ temporal_latent <- function(formula, time, d = 1, structure = "ar1",
     if (identical(x[[1L]], as.name("|"))) return(TRUE)
     any(vapply(as.list(x)[-1L], has_ordinary_bar, logical(1)))
   }
-  if (identical(temporal_mode, "latent") && identical(source_pair, "kernel_indep") &&
+  narrow_kernel_pair <- temporal_mode %in% c("dep", "latent") &&
+    identical(source_pair, "kernel_indep")
+  if (narrow_kernel_pair &&
       (length(ordinary_terms) || has_ordinary_bar(stripped_formula[[length(formula)]]))) {
     .temporal_abort(c(
-      "The rank-one temporal-kernel cell cannot include an ordinary covariance term.",
+      "This temporal-kernel cell cannot include an ordinary covariance term.",
       "i" = "Found ordinary provider(s): {.fn {ordinary_terms}}.",
       ">" = "Fit the qualified temporal-kernel pair alone, or use a separately validated additive model."
     ))
@@ -407,13 +409,13 @@ temporal_latent <- function(formula, time, d = 1, structure = "ar1",
       .temporal_abort("Each temporal series needs at least three strictly ordered occasions.")
     }
   }
-  if (identical(temporal_mode, "latent") && identical(source_pair, "kernel_indep") &&
+  if (narrow_kernel_pair &&
       identical(structure_name, "ar1") && any(vapply(times_by_series, function(x) {
         occasions <- unique(as.integer(x))
         !any(abs(outer(occasions, occasions, `-`)) %% 2L == 1L)
       }, logical(1)))) {
     .temporal_abort(c(
-      "The rank-one temporal-kernel AR1 cell requires an odd within-series time lag.",
+      "The temporal-kernel AR1 cell requires an odd within-series time lag.",
       "i" = "All-even time gaps make positive and negative AR1 persistence observationally identical.",
       ">" = "Include at least one pair of occasions an odd integer distance apart in every series."
     ))

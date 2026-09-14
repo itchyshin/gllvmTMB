@@ -43,6 +43,12 @@ product; global `phylo_tree`/`phylo_vcv`, OU and the remaining
 temporal/source-mode combinations remain refused. In the spatial cell, the
 source coordinate factor and mesh are supplied inside `spatial_indep()` and
 trajectory geometries whose spatial and temporal bases are proportional are
+refused. Two further replicated-AR1 fixed-kernel exceptions are
+`temporal_dep()` plus one labelled `kernel_indep()` term, and
+`temporal_latent(..., d = 1, unique = FALSE)` plus one labelled
+`kernel_indep()` term. They require complete panels, an odd observed lag in
+each series, and no ordinary covariance term; they do not admit source-pair
+forecasting or inference routes. Their evidence remains local and cell-specific.
 refused. In the animal cell, `A` is a labelled dense relatedness matrix and a
 sparse relationship precision belongs in `Ainv`.
 
@@ -273,6 +279,11 @@ the two must not drift.
 | **spatial** | `spatial_indep()` | `spatial_dep()` | `spatial_latent()` |
 | **kernel** | `kernel_indep(unit, K = A)` | `kernel_dep(unit, K = A)` | `kernel_latent(unit, K = A, d = q)` |
 | **temporal** | `temporal_indep(0 + trait | series, time = occasion)` | `temporal_dep(0 + trait | series, time = occasion)` | `temporal_latent(0 + trait | series, time = occasion, d = 1)` |
+
+The temporal `dep` and rank-one `latent` cells are standalone providers by
+default. Their only current cross-source forms are the replicated-AR1,
+fixed-kernel exceptions described above; all other source-pair forms remain
+unavailable.
 
 The source rows go from finest-grained (individual pedigree) to
 broadest (geographic distance), with the Design 65 generic dense kernel

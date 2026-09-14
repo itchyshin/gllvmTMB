@@ -25,6 +25,16 @@ oracles, product-covariance controls, admissibility and refusals. The latent
 suite also covers long/wide conversion, labels, permutations, unconditional
 simulation, and `update()` replay.
 
+An independent Astra review found and this branch repaired two admission
+defects in the dependent cell: ordinary covariance additions and all-even AR1
+lags now refuse before fitting. The dependent oracle now evaluates every active
+outer derivative at negative, zero, and positive persistence and asserts its
+mapped temporal-Psi/random-effect membership. Its focused lifecycle checks
+cover long/wide conversion, label permutations, unconditional simulation, and
+`update()` replay. It intentionally has no `getLV()` temporal-score claim:
+that extractor is a rank-one latent interface, not an unrestricted dependent
+temporal state interface.
+
 ## Package check
 
 `devtools::check(args = "--no-manual", quiet = TRUE)` reached the test stage
@@ -41,4 +51,3 @@ warnings.
 These cells remain partial local evidence. They do not support source-pair
 forecasts, intervals, profiles, bootstrap, selection, broad recovery,
 coverage, release, or cross-platform claims.
-

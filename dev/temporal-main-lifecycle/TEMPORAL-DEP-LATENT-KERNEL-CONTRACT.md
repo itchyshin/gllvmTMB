@@ -52,10 +52,10 @@ prediction and recovery contract.
 Admit Gaussian identity-link ML/Laplace only; one temporal intercept block;
 one labelled, fixed `kernel_indep()` term with `rho = 1`; at least three
 traits, three integer occasions in each series, and two complete measurement
-panels per series--occasion. The rank-one cell additionally requires `d = 1`,
-`unique = FALSE`, an odd observed time lag in every series, and no ordinary
-`unit`/`unit_obs` covariance term. Both cells require nonproportional observed
-temporal and kernel covariance bases.
+panels per series--occasion. Both cells require an odd observed time lag in
+every series, no ordinary `unit`/`unit_obs` covariance term, and
+nonproportional observed temporal and kernel covariance bases. The rank-one
+cell additionally requires `d = 1` and `unique = FALSE`.
 
 Refuse latent `unique = TRUE`, OU, another static source, estimated source
 attenuation, outcome-trained kernels, temporal slopes, future forecasts,
@@ -69,9 +69,10 @@ interaction. Each needs its own evidence.
    residual parameter, at negative, zero and positive persistence.
 2. A diagonal temporal covariance and a product-kernel covariance must both
    disagree with the native rank-one additive covariance.
-3. Long/wide conversion, row and kernel-label permutations, temporal score
-   labels, unconditional simulation and `update()`/refit must preserve the
-   public temporal and kernel identities.
+3. Long/wide conversion, row and kernel-label permutations, unconditional
+   simulation and `update()`/refit must preserve the public temporal and
+   kernel identities. Temporal score labels are required only for the
+   rank-one latent cell; the dependent cell has no latent-score extractor.
 4. A direct, fixed-seed DGP must retain all fits, objectives, optimizer
    status, gradients, Hessian diagnostics and threshold verdicts.  It must
    not call production simulation.  A measured pre-run and separate compute

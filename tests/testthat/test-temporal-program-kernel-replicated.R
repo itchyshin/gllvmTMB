@@ -160,7 +160,7 @@ test_that("replicated temporal-kernel long and wide calls preserve temporal and 
     long_fit$tmb_obj$report()$Lambda_phy, tolerance = 1e-8)
 })
 
-test_that("only the replicated AR1 temporal_indep kernel cell is opened", {
+test_that("only approved replicated AR1 temporal-kernel cells are opened", {
   fx <- .temporal_kernel_rep_fixture()
   unreplicated <- fx$data[fx$data$measurement == "m1", , drop = FALSE]
   expect_error(suppressWarnings(gllvmTMB(
@@ -178,7 +178,8 @@ test_that("only the replicated AR1 temporal_indep kernel cell is opened", {
   )), "requires replicated AR1")
   expect_error(suppressWarnings(gllvmTMB(
     value ~ 0 + trait +
-      temporal_dep(0 + trait | series, time = occasion, replicate = measurement) +
+      temporal_latent(0 + trait | series, time = occasion, replicate = measurement,
+        d = 1, unique = TRUE) +
       kernel_indep(series, K = fx$K, name = "fixed_kernel"),
     data = fx$data, unit = "series", cluster = "series", family = gaussian(), silent = TRUE
   )), "cannot be combined")

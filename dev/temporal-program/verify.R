@@ -1267,7 +1267,7 @@ if (identical(mode, "latent-phylo-endpoint")) {
   quit(save = "no", status = 0L)
 }
 if (identical(mode, "closeout")) {
-  stop("Closeout requires a retained three-OS publication receipt and completion of the remaining temporal source-pair programme gates.", call. = FALSE)
+  stop("Closeout requires a fresh three-OS publication receipt for the current source commit and completion of standalone temporal documentation/reconciliation.", call. = FALSE)
 }
 if (identical(mode, "remote")) {
   task <- "dev/temporal-program/remote/phylo-recovery-task.R"
@@ -1344,11 +1344,9 @@ fixture <- switch(mode,
   ),
   lifecycle = c(
     "tests/testthat/test-temporal-program-forecast.R",
-    "tests/testthat/test-temporal-program-forecast-kernel.R",
     "tests/testthat/test-temporal-program-profile.R",
     "tests/testthat/test-temporal-program-bootstrap.R",
-    "tests/testthat/test-temporal-program-selection.R",
-    "tests/testthat/test-temporal-program-ou-kernel.R"
+    "tests/testthat/test-temporal-program-selection.R"
   )
 )
 if (any(!file.exists(file.path(root, fixture)))) {

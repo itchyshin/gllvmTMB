@@ -67,23 +67,11 @@ data. AR1 retains integer gaps and OU uses elapsed numeric time; the optional
 latent Psi is correlated through that same kernel. Long and `traits(...)` wide
 calls, simulation, training-data prediction, and ordinary unit/unit-observation
 composition have focused local checks. Recovery, precision, calibration, and
-interval coverage remain unclaimed; the temporal article gives the supported
-input contract and unavailable next steps. Four narrow additive source-pair
-cells are implemented: replicated AR1 `temporal_indep()` plus one labelled
-`kernel_indep()` term; one fixed labelled `phylo_indep()` term with in-keyword
-`tree =` or `vcv =`; one fixed labelled `animal_indep()` term with in-keyword
-`pedigree =`, `A =`, or `Ainv =`; or one fixed-mesh `spatial_indep()` term.
-Their evidence is partial and differs by pair: the named kernel fixture passes
-locally; retained phylogenetic, animal, and spatial recovery gates fail
-strictly. The AR1 kernel cell has a narrow future-observation forecast for
-known series and complete future measurement panels; it conditions on the
-fitted additive covariance and does not provide calibrated intervals. A
-separately bounded replicated OU `temporal_indep() + kernel_indep()`
-cell has local independent dense likelihood/gradient, time-coordinate,
-simulation, long/wide, update, and direct-profile checks, but no source-pair
-bootstrap/selection beyond the named fixed kernel, forecast, recovery, cross-platform, release, or coverage evidence. Other OU source modes, source-by-time interactions, and
-other structured-source combinations remain unavailable. In the animal cell, `A` is a labelled dense relatedness
-matrix; pass a sparse relationship precision through `Ainv`.
+interval coverage remain unclaimed. Temporal combinations with phylogenetic,
+animal, spatial, or kernel sources are deferred as a low-priority future
+extension: they need a separate model contract and fresh evidence before they
+can be reconsidered. The temporal article gives the supported input contract
+and unavailable next steps.
 
 ## What the model does
 

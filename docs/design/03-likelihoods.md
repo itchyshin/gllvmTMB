@@ -254,7 +254,7 @@ need their own named recovery evidence before a certificate claim.
 
 The phylogenetic and spatial keywords plug into the same
 random-effects machinery via the correlation-source rows of the
-6 × 3 grid plus its `common` and `unique` modifiers (see
+5 × 3 stable-unit grid plus temporal plus its `common` and `unique` modifiers (see
 `docs/design/01-formula-grammar.md`).
 
 ### Laplace accuracy caveat

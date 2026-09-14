@@ -9,17 +9,14 @@ present, `temporal_indep_variance` for `indep`, and
 It does not relabel ordinary unit/unit-observation components as temporal
 states. For an unreplicated Gaussian `temporal_indep()` source by itself,
 `forecast_temporal()`, `profile_temporal()`, `bootstrap_temporal()`, and
-`compare_temporal()` have separate bounded contracts. `bootstrap_temporal()`
-replays the qualified replicated AR1 `temporal_indep() + kernel_indep()` fit
-through its public call after an unconditional joint draw, and
-`profile_temporal()` re-optimizes that pair's full marginal objective at each
-fixed persistence value, while `compare_temporal()` accepts only supplied
-qualified candidates with the same labelled kernel and returns AIC without a
-likelihood-ratio test or automatic search. The forecast conditions on fitted parameter values
-for future occasions of existing series; its `se.fit` is not a calibrated
-prediction interval. Generic new-data prediction, generic intervals and
-profiles, automatic selection, every other source-pair helper route, and other
-temporal modes remain explicit unsupported routes.
+`compare_temporal()` have separate bounded contracts. The forecast conditions
+on fitted parameter values for future occasions of existing series; its `se.fit`
+is not a calibrated prediction interval. Generic new-data prediction, generic
+intervals and profiles, automatic selection, replicated-panel helper routes,
+temporal combinations with other covariance sources, and other temporal modes
+remain explicit unsupported routes. The source combinations are retained as
+low-priority developer fixtures only.
+
 
 **Maintained by:** Emmy (R package architecture / S3 surface)
 and Fisher (statistical inference semantics).

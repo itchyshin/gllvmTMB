@@ -41,6 +41,24 @@ test_that("AR1 parser preserves ordered integer gaps in its private state index"
   expect_equal(out$spec$state_tier, "temporal")
 })
 
+test_that("temporal sources defer combinations with other covariance providers", {
+  dat <- expand.grid(
+    series = c("a", "b"), occasion = c(1L, 3L, 7L),
+    trait = paste0("t", 1:3), KEEP.OUT.ATTRS = FALSE
+  )
+  dat$value <- seq_len(nrow(dat))
+
+  expect_error(
+    gllvmTMB:::.parse_temporal_latent_formula(
+      value ~ 0 + trait +
+        temporal_indep(0 + trait | series, time = occasion) +
+        kernel_indep(series, K = diag(2), name = "future_extension"),
+      dat, trait_col = "trait"
+    ),
+    "cannot be combined.*deferred"
+  )
+})
+
 test_that("series/unit partition is required only by an included stable unit component", {
   dat <- expand.grid(series = c("a", "b"), occasion = c(1L, 3L, 8L),
     trait = paste0("t", 1:3), KEEP.OUT.ATTRS = FALSE,

@@ -1,4 +1,4 @@
-# Resume: temporal source-pair programme
+# Resume: standalone temporal programme
 
 ## Current state
 
@@ -27,9 +27,13 @@ The `plan`, `simulation`, and `lifecycle` commands were rerun after the
 spatial change and emit their documented success markers. The retained base
 recovery receipt contains all 80 fixed seed--cell attempts; the two
 latent-plus-Psi cells retain two non-success terminals each and still meet the
-frozen minimum of eight successes. The ignored ledger has G0, G1, and G4 met;
-G2 (three-OS CI) and G5 (closeout) remain unmet. G3 retains passing local
-kernel evidence and failed phylogenetic, animal, and spatial recovery gates.
+frozen minimum of eight successes. The exact-head three-OS package check
+`34852007424` passed on macOS, Ubuntu, and Windows; its local ignored receipt
+`publication-ci-34852007424-fa51682b6.rds` is re-verified by
+`verify.R publication`. G0, G1, G2, and G4 are therefore met. G5 (programme
+closeout) remains unmet until this revised source state has a fresh three-OS
+receipt and the standalone documentation/reconciliation report is complete.
+The source-pair gates are retained history and no longer release work.
 
 ## Kernel result (2026-09-09)
 
@@ -171,11 +175,11 @@ verification, release, general recovery, or coverage.
 
 ## Next bounded slice
 
-Treat the phylogenetic, animal, spatial, and dependent-temporal-kernel recovery
-gates as failed and retain their results. Any numerical follow-up needs a separate model-level contract
-with independent evidence; it cannot be another generic BFGS restart. Do not
-create a pull request, merge, release, or push. A separate CI-only
-authorization remains necessary before cross-platform claims.
+Treat every temporal-source combination as deferred, including phylogenetic,
+animal, spatial, and kernel cells. Retain their results, but do not run a
+numerical follow-up or extend their lifecycle routes. Finish standalone AR1 and
+OU documentation, methods, and release reconciliation instead. The exact-head
+three-OS package gate has passed, but it does not itself justify a release.
 
 ## Do not claim
 

@@ -41,49 +41,14 @@ A formula marker consumed by \code{\link[=gllvmTMB]{gllvmTMB()}}.
 Adds one native temporal covariance source. \code{temporal_indep()} fits an
 AR1 or OU process for each trait, \code{temporal_dep()} fits that process with an
 unstructured trait covariance, and \code{temporal_latent()} fits rank-one trait
-loadings. With \code{unique = TRUE}, the temporal diagonal Psi is also correlated
+loadings. With \code{unique = TRUE}, the temporal diagonal Psi is correlated
 across occasions; it is not independent occasion noise. Temporal sources can
-be added to ordinary \code{unit} and \code{unit_obs} terms. The initial cross-source
-cells are replicated AR1 \code{temporal_indep()} plus one labelled \code{kernel_indep()},
-a fixed labelled \code{phylo_indep()} term, or a fixed labelled \code{animal_indep()}
-term, or a fixed labelled \code{spatial_indep()} term. A separate replicated AR1
-\code{temporal_dep() + kernel_indep()} cell adds an unrestricted temporal trait
-covariance to the fixed diagonal kernel source; its retained fixed-seed
-recovery fixture did not meet every frozen variance criterion. The matching
-fixed-phylogeny \code{temporal_dep() + phylo_indep()} cell has an independent
-dense likelihood/gradient oracle, source-representation and lifecycle checks,
-and a passing retained local fixture. The matching fixed-animal
-\code{temporal_dep() + animal_indep()} cell has the same independent dense
-likelihood/gradient and lifecycle checks, but its retained positive-persistence
-animal-variance gate fails. The fixed-mesh \code{temporal_dep() + spatial_indep()}
-cell has independently rebuilt spatial projection, dense likelihood/gradient,
-lifecycle, and redraw checks; its recovery evidence is a separate frozen gate.
-The separate rank-one
-\code{temporal_latent(..., d = 1, unique = FALSE) + kernel_indep()} cell has a
-direct fixed-seed recovery fixture, independent dense likelihood/gradient
-oracle, unconditional simulation, and long/wide/update checks. The matching
-fixed-animal rank-one cell has the same evidence and a passing retained
-fixed-fixture gate; the fixed-spatial rank-one cell has an independently
-rebuilt mesh projection, dense gradients, redraw moments, and a passing
-retained fixture with its mesh held fixed; the fixed-phylogeny rank-one cell
-has the same dense/lifecycle evidence but fails its retained
-positive-persistence variance gate. These are local fixed-fixture evidence
-only: they do not support generic source-pair forecasting,
-intervals, cross-platform verification,
-release, general recovery, or coverage claims. The spatial
-cell redraws its independent SPDE field during unconditional simulation. Other
-temporal-source combinations remain unavailable. A fifth, separately bounded
-source pair is replicated irregular-time \code{temporal_indep(..., structure = "ou") + kernel_indep(...)}; its independent dense likelihood, gradient and
-time-coordinate, simulation, long/wide, update, direct-profile, bootstrap,
-and same-structure AIC checks are local only; its forecast and recovery gates
-remain pending. For an unreplicated,
-Gaussian \code{temporal_indep()} source by itself, \code{forecast_temporal()},
-\code{profile_temporal()}, \code{bootstrap_temporal()}, and \code{compare_temporal()} have
-separate bounded contracts. \code{bootstrap_temporal()}, \code{profile_temporal()}, and
-\code{compare_temporal()} also support the qualified replicated AR1 or OU
-\code{temporal_indep() + kernel_indep()} cells. \code{forecast_temporal()} also has a
-separately bounded future-observation route for the replicated AR1 fixed
-kernel cell. Generic new-data prediction, generic intervals and profiles,
-automatic selection, and every other
-source-pair helper route remain unavailable.
+be added to ordinary \code{unit} and \code{unit_obs} terms when their grouping
+partitions agree and nest. Temporal combinations with phylogenetic, animal,
+spatial, or kernel sources are deferred pending separate model contracts and
+evidence. For an unreplicated Gaussian \code{temporal_indep()} source by itself,
+\code{forecast_temporal()}, \code{profile_temporal()}, \code{bootstrap_temporal()}, and
+\code{compare_temporal()} have separate bounded contracts. Generic new-data
+prediction, generic intervals and profiles, automatic selection, and
+replicated-panel helper routes remain unavailable.
 }

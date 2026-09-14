@@ -17,10 +17,10 @@ library(gllvmTMB)
 set.seed(2609081)
 ```
 
-Temporal is a covariance source row with three trait modes:
-`temporal_indep()`, `temporal_dep()`, and rank-one `temporal_latent()`.
-Each provider has a private `(series, time)` state index; it does not replace
-the public `unit` or `unit_obs` labels. For latent mode,
+Temporal is an additional, ordered within-series covariance provider with
+three trait modes: `temporal_indep()`, `temporal_dep()`, and rank-one
+`temporal_latent()`. Each provider has a private `(series, time)` state index;
+it does not replace the public `unit` or `unit_obs` labels. For latent mode,
 `unique = TRUE` gives
 \(K_{time}\otimes(\Lambda\Lambda^T+\Psi_T)\): Psi is correlated through
 time, rather than being IID occasion noise.
@@ -29,33 +29,19 @@ With `structure = "ar1"`, occasions are ordered integers and gaps are kept:
 \(K(t,s)=\phi^{|t-s|}\). With `structure = "ou"`, `time` is elapsed numeric
 time and \(K(t,s)=\exp(-\kappa|t-s|)\). This first version admits complete
 Gaussian identity-link ML fits with at least three traits and three occasions
-per series. Ordinary unit and unit-observation terms can be combined when
-their partitions agree and nest. The bounded temporal-only
-`forecast_temporal()`, `profile_temporal()`, `bootstrap_temporal()`, and
-`compare_temporal()` helpers have separate contracts. `bootstrap_temporal()`,
-`profile_temporal()`, and `compare_temporal()` also support the qualified
-replicated-AR1
-`temporal_indep() + kernel_indep()` cell. Generic forecasts, new-data
-prediction, generic profile/bootstrap intervals, automatic rank selection, and
-other source-pair helper routes remain unavailable. Other response families,
-higher ranks, temporal
-slopes, source-by-time interactions, and structured-source combinations beyond
-the four narrow AR1 additive pairs and the preliminary OU-kernel pair below remain unavailable.
+per series. Ordinary unit and unit-observation terms can be combined when their
+partitions agree and nest. The bounded temporal-only `forecast_temporal()`,
+`profile_temporal()`, `bootstrap_temporal()`, and `compare_temporal()` helpers
+have separate contracts.
 
-> **Scope boundary.** Gaussian AR1/OU source parsing, dense covariance
-> oracles, score labels, simulation, training-data prediction, and update have
-> focused local checks. Recovery remains an engineering gate and does not
-> support a general recovery, precision, calibration, or interval-coverage
-> claim. Four separately bounded replicated-AR1 additive pairs with one
-> diagonal kernel, phylogenetic, animal, or spatial source are implemented;
-> their likelihood and lifecycle checks do not give them a common recovery
-> status. Kernel has a retained passing local fixture; phylogenetic, animal, and
-> spatial retained recovery gates remain partial or failed, and the dependent
-> spatial campaign is paused after a retained overrun. One additional replicated
-> OU `temporal_indep() + kernel_indep()` cell has independent dense
-> likelihood/gradient, time-coordinate, simulation, long/wide, update, direct-profile, bootstrap, and same-structure AIC checks
-> on an irregular-time fixture. Its source-pair forecast and recovery gates remain pending, so this article
-> does not present it as a worked workflow.
+> **Scope boundary.** Gaussian AR1/OU source parsing, dense covariance oracles,
+> score labels, simulation, training-data prediction, and update have focused
+> local checks. Recovery remains an engineering gate and does not support a
+> general recovery, precision, calibration, or interval-coverage claim.
+> Temporal combinations with phylogenetic, animal, spatial, or kernel sources
+> are deferred as a low-priority future extension. Replicated-panel lifecycle
+> helpers, generic forecasts, new-data prediction, generic profile/bootstrap
+> intervals, and automatic rank selection remain unavailable.
 
 ## Ordinary longitudinal observations
 
@@ -176,43 +162,15 @@ fit_replicated_wide <- gllvmTMB(
 extract_temporal(fit_replicated_wide)$parameters
 ```
 
-## A qualified kernel-pair refit route
+## Standalone lifecycle boundaries
 
-One bounded composed route is available for a replicated AR1
-`temporal_indep()` model with one fixed labelled diagonal kernel. The profile
-re-optimizes every nuisance parameter, including the kernel variance, at each
-fixed persistence value. The bootstrap redraws both sources and refits the
-saved public call. `compare_temporal()` accepts only supplied candidates with
-the identical labelled kernel and returns their AIC values; it does not perform
-a likelihood-ratio test or search candidate models. Its returned profile
-endpoints and bootstrap draws are not calibrated intervals.
-
-The same AR1 kernel cell can forecast a **new response measurement** at later
-occasions in a known series. Supply each measurement as a complete trait panel.
-The forecast conditions on the fitted additive temporal-plus-kernel covariance;
-`se.fit` is a fitted-parameter conditional standard deviation, not a
-prediction interval.
-
-```{r kernel-pair-lifecycle}
-K_series <- diag(3)
-dimnames(K_series) <- list(paste0("series_", 1:3), paste0("series_", 1:3))
-fit_kernel_pair <- gllvmTMB(
-  value ~ 0 + trait +
-    temporal_indep(0 + trait | series, time = occasion, replicate = measurement) +
-    kernel_indep(series, K = K_series, name = "series_kernel"),
-  data = replicated, trait = "trait", unit = "series", cluster = "series",
-  family = gaussian(), silent = TRUE
-)
-profile_temporal(fit_kernel_pair, ystep = .25, ytol = 1)
-bootstrap_temporal(fit_kernel_pair, n_boot = 2, seed = 260920L)
-compare_temporal(current = fit_kernel_pair, replay = update(fit_kernel_pair))
-future_kernel <- expand.grid(
-  series = paste0("series_", 1:3), occasion = 5,
-  measurement = c("m1", "m2"), trait = paste0("trait_", 1:3),
-  KEEP.OUT.ATTRS = FALSE
-)
-forecast_temporal(fit_kernel_pair, future_kernel, se.fit = TRUE)
-```
+The current lifecycle helpers are intentionally limited to an unreplicated
+Gaussian `temporal_indep()` fit. `profile_temporal()` re-optimizes the temporal
+model at fixed persistence or decay values; `bootstrap_temporal()` retains all
+refit attempts; and `compare_temporal()` reports AIC without a likelihood-ratio
+test. `forecast_temporal()` forecasts a complete future trait panel for an
+already observed series. Its `se.fit` is a fitted-parameter conditional standard
+deviation, not a calibrated prediction interval.
 
 `simulate()` redraws stationary temporal scores by default. Passing
 `condition_on_RE = TRUE` keeps the fitted score modes and redraws only the

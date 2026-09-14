@@ -13,8 +13,6 @@ compare_temporal(...)
 AIC comparison table; no likelihood-ratio test is assigned.
 }
 \description{
-The bounded composed route accepts only replicated Gaussian AR1 or OU
-\code{temporal_indep() + kernel_indep()} candidates with the same fixed labelled
-kernel with one common temporal structure. It reports AIC only and does not perform a likelihood-ratio test or
-automatic search.
+It reports AIC only and does not perform a likelihood-ratio test or automatic
+search. Temporal combinations with other covariance sources are deferred.
 }

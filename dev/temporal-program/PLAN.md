@@ -4,11 +4,13 @@
 
 **Platform:** Codex
 
-Deliver a corrected, cross-platform-verified native temporal covariance provider, then add the four named **additive** temporal-source combinations and individually specified temporal forecasting, direct inference, bootstrap, and selection routes. Each admitted route will have an executable ledger, independent dense Gaussian oracle, lifecycle evidence, user documentation, and its own claim boundary.
+Deliver a corrected, cross-platform-verified native temporal covariance provider, with individually specified forecasting, direct inference, bootstrap, and selection routes only where the standalone temporal contract supports them. Each admitted route will have an executable ledger, independent dense Gaussian oracle, lifecycle evidence, user documentation, and its own claim boundary.
 
 **Headline:** repair unconditional temporal simulation before any public or inferential expansion.
 
-**Deferred:** source-by-time interaction kernels; estimated source attenuation with temporal terms; temporal rank above one; temporal slopes; non-Gaussian temporal fits; automatic selection; inferential calibration or coverage claims beyond campaigns that actually pass.
+**Scope revision (2026-09-14):** temporal combinations with phylogenetic, animal, spatial, or dense-kernel sources are deferred. Their existing local fixtures remain retained developer evidence, but they are not release gates, public workflows, or candidates for further forecasting, profile, bootstrap, selection, or recovery work in this programme. Finish standalone AR1 and OU first.
+
+**Deferred:** temporal combinations with other sources; source-by-time interaction kernels; estimated source attenuation with temporal terms; temporal rank above one; temporal slopes; non-Gaussian temporal fits; automatic selection; inferential calibration or coverage claims beyond campaigns that actually pass.
 
 **Discipline:** no source-combination or lifecycle route becomes public merely because parsing or a generic method exists. Long recovery or coverage campaigns are timed first and routed under the compute policy.
 
@@ -43,6 +45,9 @@ intercepts, and use Gaussian identity-link ML/Laplace only.
 | Lane state | `lane_preflight.sh` on 2026-09-09 and Luna branch/worktree map | Several live Codex lanes touch engine, methods, intervals and shared docs. Claim paths before each slice and use a fresh worktree. |
 
 ## Slices and dependencies
+
+**Effective release path:** S0, S1, the standalone portions of S4--S7, then
+S8. S2 and S3a--S3d below are retained history, not pending delivery work.
 
 | ID | Owner / model / estimate | Output and owned surface | Depends on | Acceptance |
 |---|---|---|---|---|
@@ -96,4 +101,4 @@ Cheap deterministic oracles and smoke fits run locally with one BLAS thread and 
 
 ## Publication sequence
 
-The corrected bounded temporal base may proceed through a dedicated PR, three-OS CI and release decision after G1--G2. Each additional pair or lifecycle route gets a separate release note and validation-register row only after its own gates pass. No source pair or lifecycle route is silently included in the base release.
+The corrected bounded temporal base may proceed through a dedicated PR, three-OS CI and release decision after its standalone gates pass. No source pair or lifecycle route is included in this release; each needs a future model-level contract and fresh evidence before reconsideration.

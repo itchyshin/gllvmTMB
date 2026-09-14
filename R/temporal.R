@@ -72,52 +72,16 @@ temporal_dep <- function(formula, time, structure = "ar1", replicate = NULL) {
 #' Adds one native temporal covariance source. `temporal_indep()` fits an
 #' AR1 or OU process for each trait, `temporal_dep()` fits that process with an
 #' unstructured trait covariance, and `temporal_latent()` fits rank-one trait
-#' loadings. With `unique = TRUE`, the temporal diagonal Psi is also correlated
+#' loadings. With `unique = TRUE`, the temporal diagonal Psi is correlated
 #' across occasions; it is not independent occasion noise. Temporal sources can
-#' be added to ordinary `unit` and `unit_obs` terms. The initial cross-source
-#' cells are replicated AR1 `temporal_indep()` plus one labelled `kernel_indep()`,
-#' a fixed labelled `phylo_indep()` term, or a fixed labelled `animal_indep()`
-#' term, or a fixed labelled `spatial_indep()` term. A separate replicated AR1
-#' `temporal_dep() + kernel_indep()` cell adds an unrestricted temporal trait
-#' covariance to the fixed diagonal kernel source; its retained fixed-seed
-#' recovery fixture did not meet every frozen variance criterion. The matching
-#' fixed-phylogeny `temporal_dep() + phylo_indep()` cell has an independent
-#' dense likelihood/gradient oracle, source-representation and lifecycle checks,
-#' and a passing retained local fixture. The matching fixed-animal
-#' `temporal_dep() + animal_indep()` cell has the same independent dense
-#' likelihood/gradient and lifecycle checks, but its retained positive-persistence
-#' animal-variance gate fails. The fixed-mesh `temporal_dep() + spatial_indep()`
-#' cell has independently rebuilt spatial projection, dense likelihood/gradient,
-#' lifecycle, and redraw checks; its recovery evidence is a separate frozen gate.
-#' The separate rank-one
-#' `temporal_latent(..., d = 1, unique = FALSE) + kernel_indep()` cell has a
-#' direct fixed-seed recovery fixture, independent dense likelihood/gradient
-#' oracle, unconditional simulation, and long/wide/update checks. The matching
-#' fixed-animal rank-one cell has the same evidence and a passing retained
-#' fixed-fixture gate; the fixed-spatial rank-one cell has an independently
-#' rebuilt mesh projection, dense gradients, redraw moments, and a passing
-#' retained fixture with its mesh held fixed; the fixed-phylogeny rank-one cell
-#' has the same dense/lifecycle evidence but fails its retained
-#' positive-persistence variance gate. These are local fixed-fixture evidence
-#' only: they do not support generic source-pair forecasting,
-#' intervals, cross-platform verification,
-#' release, general recovery, or coverage claims. The spatial
-#' cell redraws its independent SPDE field during unconditional simulation. Other
-#' temporal-source combinations remain unavailable. A fifth, separately bounded
-#' source pair is replicated irregular-time `temporal_indep(..., structure =
-#' "ou") + kernel_indep(...)`; its independent dense likelihood, gradient and
-#' time-coordinate, simulation, long/wide, update, direct-profile, bootstrap,
-#' and same-structure AIC checks are local only; its forecast and recovery gates
-#' remain pending. For an unreplicated,
-#' Gaussian `temporal_indep()` source by itself, `forecast_temporal()`,
-#' `profile_temporal()`, `bootstrap_temporal()`, and `compare_temporal()` have
-#' separate bounded contracts. `bootstrap_temporal()`, `profile_temporal()`, and
-#' `compare_temporal()` also support the qualified replicated AR1 or OU
-#' `temporal_indep() + kernel_indep()` cells. `forecast_temporal()` also has a
-#' separately bounded future-observation route for the replicated AR1 fixed
-#' kernel cell. Generic new-data prediction, generic intervals and profiles,
-#' automatic selection, and every other
-#' source-pair helper route remain unavailable.
+#' be added to ordinary `unit` and `unit_obs` terms when their grouping
+#' partitions agree and nest. Temporal combinations with phylogenetic, animal,
+#' spatial, or kernel sources are deferred pending separate model contracts and
+#' evidence. For an unreplicated Gaussian `temporal_indep()` source by itself,
+#' `forecast_temporal()`, `profile_temporal()`, `bootstrap_temporal()`, and
+#' `compare_temporal()` have separate bounded contracts. Generic new-data
+#' prediction, generic intervals and profiles, automatic selection, and
+#' replicated-panel helper routes remain unavailable.
 #'
 #' @rdname temporal_latent
 #' @param d Latent rank. This version supports `1`.
@@ -185,224 +149,21 @@ temporal_latent <- function(formula, time, d = 1, structure = "ar1",
   find_provider_heads(stripped_formula[[length(formula)]])
   competing <- unique(c(detect_covstruct_terms(stripped_formula), provider_heads))
   ## Ordinary unit / unit_obs effects are separate tiers and are admitted by
-  ## the native temporal contract. Cross-source cells are deliberately narrow:
-  ## one static, diagonal source term paired with a replicated AR1 temporal
-  ## process, plus the independently qualified irregular-time OU
-  ## temporal_indep + kernel_indep cell. The two non-diagonal kernel
-  ## exceptions are temporal_dep and the rank-one temporal_latent(unique =
-  ## FALSE) cells; each has its own additive-contract and oracle gates. Each
-  ## other source/mode pair remains separately admitted.
+  ## the native temporal contract.  Every temporal pairing with another
+  ## covariance source is deferred until it has a dedicated model contract and
+  ## evidence; retained developer fixtures do not create a public API.
   source_terms <- competing[grepl(
     "^(phylo|animal|spatial|kernel|meta_|propto$|equalto$|spde$)", competing
   )]
-  marker_names_early <- names(marker)
-  if (is.null(marker_names_early)) marker_names_early <- rep("", length(marker))
-  marker_arg_early <- function(name, default = NULL) {
-    i <- which(marker_names_early == name)
-    if (length(i)) marker[[i[[1L]]]] else default
-  }
-  temporal_mode <- sub("^temporal_", "", marker_name)
-  allowed_source_pair <- identical(length(source_terms), 1L) && (
-    (identical(temporal_mode, "indep") &&
-      source_terms %in% c("kernel_indep", "phylo_indep", "animal_indep", "spatial_indep")) ||
-    (identical(temporal_mode, "dep") &&
-      source_terms %in% c("kernel_indep", "phylo_indep", "animal_indep", "spatial_indep")) ||
-    (identical(temporal_mode, "latent") &&
-      source_terms %in% c("kernel_indep", "phylo_indep", "animal_indep", "spatial_indep") &&
-      identical(marker_arg_early("unique", FALSE), FALSE))
-  )
-  source_pair <- if (isTRUE(allowed_source_pair)) source_terms[[1L]] else NULL
-  ordinary_terms <- competing[competing %in% c("indep", "dep", "latent", "unique", "scalar")]
-  has_ordinary_bar <- function(x) {
-    if (!is.call(x)) return(FALSE)
-    if (is.name(x[[1L]]) && as.character(x[[1L]]) %in% source_terms) return(FALSE)
-    if (identical(x[[1L]], as.name("|"))) return(TRUE)
-    any(vapply(as.list(x)[-1L], has_ordinary_bar, logical(1)))
-  }
-  if (temporal_mode %in% c("latent", "dep") &&
-      isTRUE(source_pair %in% c("kernel_indep", "phylo_indep", "animal_indep", "spatial_indep")) &&
-      (length(ordinary_terms) || has_ordinary_bar(stripped_formula[[length(formula)]]))) {
-    .temporal_abort(c(
-      "The temporal static-source cell cannot include an ordinary covariance term.",
-      "i" = if (length(ordinary_terms)) {
-        "Found ordinary provider(s): {.fn {ordinary_terms}}."
-      } else {
-        "Found a bare ordinary random-effect term."
-      },
-      ">" = "Fit the qualified rank-one temporal source pair alone, or use a separately validated additive model."
-    ))
-  }
-
-  ## Rank-one source candidates are intercept-tier covariances only. A
-  ## trait-by-predictor slope is rewritten later into an augmented source block,
-  ## so reject it before that rewrite can make it look like a qualified diagonal
-  ## source term.
-  source_intercept_only <- function(x, provider) {
-    if (!is.call(x)) return(TRUE)
-    if (is.name(x[[1L]]) && identical(as.character(x[[1L]]), provider)) {
-      term <- x[[2L]]
-      if (!is.call(term) || !identical(term[[1L]], as.name("|"))) return(FALSE)
-      lhs <- term[[2L]]
-      contains_interaction <- function(y) {
-        is.call(y) && (identical(y[[1L]], as.name(":")) ||
-          any(vapply(as.list(y)[-1L], contains_interaction, logical(1))))
-      }
-      return(all(all.vars(lhs) %in% trait_col) && !contains_interaction(lhs))
-    }
-    all(vapply(as.list(x)[-1L], source_intercept_only, logical(1), provider = provider))
-  }
-  if (temporal_mode %in% c("latent", "dep") && isTRUE(source_pair %in% c("phylo_indep", "animal_indep", "spatial_indep")) &&
-      !source_intercept_only(stripped_formula[[length(formula)]], source_pair)) {
-    .temporal_abort(c(
-      "The temporal static-source cell requires an intercept-only static source term.",
-      ">" = "Use {.code phylo_indep(0 + trait | series, vcv = C)} or {.code animal_indep(0 + trait | series, A = A)} in long data, or their {.fn traits}() equivalents."
-    ))
-  }
-
-  ## An identity animal relationship and an ordinary `indep()` term over the
-  ## same labels are the same static covariance basis.  Detect that exact
-  ## duplication on the public call, before animal sugar turns both terms into
-  ## anonymous engine blocks.  We intentionally require a labelled dense A:
-  ## pedigree and Ainv routes can contain unobserved ancestors/precision rows,
-  ## so testing identity from only their observed slice would be misleading.
-  find_calls_named <- function(x, target, out = list()) {
-    if (!is.call(x)) return(out)
-    if (is.name(x[[1L]]) && identical(as.character(x[[1L]]), target)) {
-      out[[length(out) + 1L]] <- x
-    }
-    for (i in seq_along(x)[-1L]) out <- find_calls_named(x[[i]], target, out)
-    out
-  }
-  ## Leave the regular temporal admission errors in charge until the narrow
-  ## AR1/replication shape is otherwise valid.  A deferred temporal mode must
-  ## not misleadingly fail first because its animal term has no matrix yet.
-  animal_shape_ready <- marker_name %in% c("temporal_indep", "temporal_dep", "temporal_latent") &&
-    identical(marker_arg_early("structure", "ar1"), "ar1") &&
-    is.name(marker_arg_early("replicate", quote(NULL)))
-  if (identical(source_pair, "animal_indep") && animal_shape_ready) {
-    animal_call <- find_calls_named(rhs, "animal_indep")
-    if (length(animal_call) == 1L) {
-      animal_call <- animal_call[[1L]]
-      animal_names <- names(animal_call)
-      if (is.null(animal_names)) animal_names <- rep("", length(animal_call))
-      animal_relationship_inputs <- c("pedigree", "A", "Ainv")
-      if (sum(animal_names %in% animal_relationship_inputs) != 1L) {
-        .temporal_abort(c(
-          "{.fn animal_indep} accepts exactly one of {.arg pedigree}, {.arg A}, or {.arg Ainv}.",
-          ">" = "Choose the one representation that defines the animal relationship matrix."
-        ))
-      }
-      A_pos <- which(animal_names == "A")
-      bar_animal <- animal_call[[2L]]
-      animal_group <- if (is.call(bar_animal) && length(bar_animal) == 3L &&
-        is.name(bar_animal[[3L]])) as.character(bar_animal[[3L]]) else NULL
-      indep_calls <- find_calls_named(stripped_formula[[length(formula)]], "indep")
-      duplicate_unit_indep <- any(vapply(indep_calls, function(call) {
-        bar <- call[[2L]]
-        is.call(bar) && length(bar) == 3L && is.name(bar[[1L]]) &&
-          identical(as.character(bar[[1L]]), "|") && is.name(bar[[3L]]) &&
-          identical(as.character(bar[[3L]]), animal_group)
-      }, logical(1L)))
-      if (length(A_pos) == 1L && !is.null(animal_group) && animal_group %in% names(data)) {
-        A_value <- tryCatch(eval(animal_call[[A_pos]], envir = environment(formula)),
-          error = function(e) NULL)
-        if (!is.null(A_value) && inherits(A_value, "sparseMatrix")) {
-          .temporal_abort(c(
-            "{.arg A} must be a dense relatedness matrix.",
-            ">" = "Use {.arg Ainv} for a sparse relationship precision matrix."
-          ))
-        }
-        if (isTRUE(duplicate_unit_indep) && !is.null(A_value)) {
-          A_value <- as.matrix(A_value)
-          ids <- unique(as.character(data[[animal_group]]))
-          if (!is.null(rownames(A_value)) && !is.null(colnames(A_value)) &&
-              all(ids %in% rownames(A_value)) && all(ids %in% colnames(A_value))) {
-            A_observed <- A_value[ids, ids, drop = FALSE]
-            scale <- max(1, max(abs(A_observed)))
-            is_identity <- max(abs(A_observed - diag(diag(A_observed)))) <= 1e-10 * scale &&
-              max(abs(diag(A_observed) - diag(A_observed)[[1L]])) <= 1e-10 * scale
-            if (is_identity) {
-              .temporal_abort(c(
-                "{.fn animal_indep} with an identity relationship duplicates {.fn indep} for the same grouping factor.",
-                ">" = "Keep one static term, or supply a non-identity animal relationship."
-              ))
-            }
-          }
-        }
-      }
-    }
-  }
-  if (identical(source_pair, "spatial_indep") && animal_shape_ready) {
-    spatial_call <- find_calls_named(rhs, "spatial_indep")
-    if (length(spatial_call) == 1L) {
-      spatial_call <- spatial_call[[1L]]
-      spatial_names <- names(spatial_call)
-      if (is.null(spatial_names)) spatial_names <- rep("", length(spatial_call))
-      mesh_pos <- which(spatial_names == "mesh")
-      temporal_bar <- marker[[2L]]
-      series_name <- if (is.call(temporal_bar) && length(temporal_bar) == 3L &&
-        is.name(temporal_bar[[3L]])) as.character(temporal_bar[[3L]]) else NULL
-      time_name <- marker_arg_early("time")
-      mesh_value <- if (length(mesh_pos) == 1L) {
-        tryCatch(eval(spatial_call[[mesh_pos]], envir = environment(formula)),
-          error = function(e) NULL)
-      } else NULL
-      xy_cols <- mesh_value$xy_cols %||% character(0)
-      if (!is.null(series_name) && is.name(time_name) &&
-          all(c(series_name, as.character(time_name), xy_cols) %in% names(data)) &&
-          length(xy_cols) == 2L) {
-        state_key <- interaction(data[[series_name]], data[[as.character(time_name)]],
-          drop = TRUE, lex.order = TRUE)
-        ## A spatial field is defined at the temporal state, so traits and
-        ## repeated measurements cannot silently supply different locations
-        ## for the same `(series, time)` state.
-        inconsistent_coordinates <- vapply(split(seq_len(nrow(data)), state_key), function(i) {
-          any(vapply(xy_cols, function(col) length(unique(data[[col]][i])) != 1L, logical(1)))
-        }, logical(1))
-        if (any(inconsistent_coordinates)) {
-          .temporal_abort(c(
-            "Each temporal state must have one shared spatial coordinate pair.",
-            "i" = "Affected series--time state(s): {.val {names(inconsistent_coordinates)[inconsistent_coordinates]}}.",
-            ">" = "Use the same coordinates for every trait and measurement within each temporal state."
-          ))
-        }
-        state_rows <- !duplicated(state_key)
-        state <- data[state_rows, c(series_name, as.character(time_name), xy_cols), drop = FALSE]
-        names(state)[1:2] <- c(".series", ".time")
-        ## The temporal process and the spatial field cannot be separated if
-        ## every within-series spatial distance is an exact scalar multiple of
-        ## its time lag.  That is an evolving trajectory, not evidence for two
-        ## independent additive sources.
-        proportional <- vapply(split(state, state$.series), function(x) {
-          if (nrow(x) < 3L) return(FALSE)
-          lag <- abs(outer(x$.time, x$.time, `-`))
-          dx <- outer(x[[xy_cols[[1L]]]], x[[xy_cols[[1L]]]], `-`)
-          dy <- outer(x[[xy_cols[[2L]]]], x[[xy_cols[[2L]]]], `-`)
-          distance <- sqrt(dx^2 + dy^2)
-          take <- upper.tri(lag) & lag > 0
-          lag <- lag[take]; distance <- distance[take]
-          length(lag) >= 3L && stats::sd(lag) > 0 && stats::sd(distance) > 0 &&
-            abs(stats::cor(lag, distance)) >= 1 - 1e-10
-        }, logical(1L))
-        if (any(proportional)) {
-          .temporal_abort(c(
-            "Temporal and spatial covariance bases are proportional within a series.",
-            "i" = "Affected series: {.val {names(proportional)[proportional]}}.",
-            ">" = "Use locations with spatial contrasts not determined solely by temporal lag, or fit a dedicated space-time interaction model."
-          ))
-        }
-      }
-    }
-  }
-  forbidden_sources <- if (allowed_source_pair) character(0) else source_terms
-  if (length(forbidden_sources)) {
+  source_pair <- NULL
+  if (length(source_terms)) {
     .temporal_abort(c(
       "A temporal covariance term cannot be combined with another covariance source in this version.",
-      "i" = "Found source provider(s): {.fn {forbidden_sources}}.",
-      ">" = "Use ordinary unit/unit_obs terms, the admitted replicated AR1 {.code temporal_indep()} source pairs, the fixed kernel/phylogeny/animal/spatial {.code temporal_dep()} source pairs, or a qualified rank-one {.code temporal_latent(unique = FALSE)} source pair. Other temporal source pairs remain deferred."
+      "i" = "Found source provider(s): {.fn {source_terms}}.",
+      ">" = "Use a standalone temporal model with ordinary unit/unit_obs terms. Temporal combinations with phylogenetic, animal, spatial, and kernel sources are deferred pending a separate model contract and evidence."
     ))
   }
-  response_cols <- all.vars(formula[[2L]])
+    response_cols <- all.vars(formula[[2L]])
   if (length(response_cols) != 1L || !response_cols %in% names(data) ||
       anyNA(data[[response_cols]])) {
     .temporal_abort(c(
@@ -476,18 +237,6 @@ temporal_latent <- function(formula, time, d = 1, structure = "ar1",
       .temporal_abort("Each temporal series needs at least three strictly ordered occasions.")
     }
   }
-  if (temporal_mode %in% c("latent", "dep") &&
-      isTRUE(source_pair %in% c("kernel_indep", "phylo_indep", "animal_indep", "spatial_indep")) &&
-      identical(structure_name, "ar1") && any(vapply(times_by_series, function(x) {
-        occasions <- unique(as.integer(x))
-        !any(abs(outer(occasions, occasions, `-`)) %% 2L == 1L)
-      }, logical(1)))) {
-    .temporal_abort(c(
-      "The rank-one temporal latent-source AR1 cell requires an odd within-series time lag.",
-      "i" = "All-even time gaps make positive and negative AR1 persistence observationally identical.",
-      ">" = "Include at least one pair of occasions an odd integer distance apart in every series."
-    ))
-  }
   pair_key <- interaction(data[[series]], data[[time]], drop = TRUE, lex.order = TRUE)
   pair_col <- ".temporal_pair"
   while (pair_col %in% names(data)) pair_col <- paste0(".", pair_col)
@@ -527,24 +276,6 @@ temporal_latent <- function(formula, time, d = 1, structure = "ar1",
     if (any(panel != 1L)) {
       .temporal_abort("Unreplicated temporal data require one complete trait panel at every occasion.")
     }
-  }
-
-  ou_kernel_indep_pair <- identical(workflow, "replicated") &&
-    identical(temporal_mode, "indep") &&
-    identical(source_pair, "kernel_indep") && identical(structure_name, "ou")
-  if (isTRUE(allowed_source_pair) && !identical(workflow, "replicated")) {
-    .temporal_abort(c(
-      "The temporal cross-source cell requires a replicated panel.",
-      "i" = "At zero persistence, unreplicated temporal diagonal variation cannot be separated from observation-level noise.",
-      ">" = "Supply {.code replicate = measurement} with at least two complete measurements at every series--occasion."
-    ))
-  }
-  if (isTRUE(allowed_source_pair) && !identical(structure_name, "ar1") &&
-      !isTRUE(ou_kernel_indep_pair)) {
-    .temporal_abort(c(
-      "The temporal cross-source cell requires replicated AR1 observations.",
-      ">" = "Supply {.code replicate = measurement} with at least two complete measurements at every series--occasion. The only admitted OU source pair is {.code temporal_indep(..., structure = 'ou') + kernel_indep(...)}; use {.code structure = 'ar1'} for the other qualified source pairs."
-    ))
   }
 
   rewrite <- function(x) {

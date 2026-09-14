@@ -1,14 +1,10 @@
 #' Profile a temporal persistence or decay parameter
 #'
 #' Profiles the direct native temporal time parameter with all other TMB
-#' parameters re-optimized. The qualified replicated AR1 or OU
-#' `temporal_indep() + kernel_indep()` route re-optimizes the fixed kernel's
-#' variance and every other nuisance parameter at each profile point. This is
-#' a fitted-parameter likelihood profile, not a calibrated interval or a
-#' profile of conditional temporal states.
+#' parameters re-optimized. This is a fitted-parameter likelihood profile, not
+#' a calibrated interval or a profile of conditional temporal states.
 #'
-#' @param object An unreplicated Gaussian `temporal_indep()` fit, or the
-#'   qualified replicated AR1 or OU `temporal_indep() + kernel_indep()` fit.
+#' @param object An unreplicated Gaussian `temporal_indep()` fit.
 #' @param level Likelihood-ratio confidence level.
 #' @param ... Passed to [tmbprofile_wrapper()].
 #' @return Named numeric vector with `estimate`, `lower`, and `upper`, on the
@@ -19,23 +15,18 @@ profile_temporal <- function(object, level = 0.95, ...) {
   if (!inherits(object, "gllvmTMB_multi") || !isTRUE(object$temporal$active))
     .temporal_abort("{.fn profile_temporal} requires a native temporal fit.")
   active <- .gllvmTMB_predict_unhandled_re_tiers(object, handled = "temporal")
-  kernel_pair <- .temporal_is_qualified_kernel_pair(object, active)
-  if (length(active) && !kernel_pair) {
+  if (length(active)) {
     .temporal_abort(c(
-      "{.fn profile_temporal} supports only the qualified temporal-kernel source pair.",
+      "{.fn profile_temporal} supports temporal-only fits.",
       "i" = "The fit also uses covariance tier(s): {.val {active}}.",
-      ">" = "Use the replicated AR1 {.code temporal_indep() + kernel_indep()} cell with one fixed labelled kernel, or use a temporal-only fit."
+      ">" = "Temporal combinations with other covariance sources are deferred pending a separate model contract and evidence."
     ), class = "gllvmTMB_temporal_profile_composed")
   }
   if (!identical(object$temporal$mode, "indep") || any(object$tmb_data$family_id_vec != 0L)) {
     .temporal_abort("{.fn profile_temporal} currently supports Gaussian {.fn temporal_indep} fits only.")
   }
-  if (kernel_pair) {
-    if (!object$temporal$structure %in% c("ar1", "ou") || is.null(object$temporal$replicate_col)) {
-      .temporal_abort("The qualified temporal-kernel profile requires a replicated AR1 or OU panel.")
-    }
-  } else if (!is.null(object$temporal$replicate_col)) {
-    .temporal_abort("{.fn profile_temporal} currently supports replicated panels only for the qualified AR1 {.code temporal_indep() + kernel_indep()} cell.")
+  if (!is.null(object$temporal$replicate_col)) {
+    .temporal_abort("{.fn profile_temporal} currently supports unreplicated temporal panels only.")
   }
   transform <- if (identical(object$temporal$structure, "ar1")) {
     function(x) (1 - 1e-6) * tanh(x)

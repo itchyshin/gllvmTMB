@@ -101,3 +101,26 @@ error for `lambda lambda'` must be at most `.30`; median relative error for
 each kernel variance must be at most `.35`; and mean absolute fixed-effect
 error must be at most `.25`.  These are fixed engineering smoke criteria for
 this named DGP, not general recovery or coverage evidence.
+
+## Recovery provenance and replay
+
+The original frozen runner and its nine retained rows were introduced in
+commit `0a81c0675`; this lifecycle ledger keeps byte-for-byte copies of that
+runner's 2026-09-11 result and summary under `results/`.  Those rows document
+the historical source state only.  They do not prove recovery for this branch.
+
+`run-latent-kernel-recovery.R` is the same independently authored DGP and
+threshold calculation, but writes a later replay to files named
+`latent-kernel-recovery-current-20260914*.csv`.  This separation prevents a
+later current-source qualification from replacing historical evidence.  A
+current-source smoke run must precede the nine-cell replay; the latter remains
+fixture-specific evidence and cannot support a general recovery, interval,
+coverage, forecast, profile, bootstrap, selection, or release claim.
+
+At commit `5ff59b746`, the current-source smoke completed in 12.41 seconds.
+The subsequent nine-cell replay retained all nine terminal successes and all
+three frozen strata passed.  Its scientific fit fields reproduce the historical
+receipt; only elapsed-time fields differ.  The replay retains the reported
+Hessian diagnostics (`error` for all nine fits), which are not an acceptance
+criterion in this frozen fixture.  This closes the named local rank-one
+fixed-kernel recovery fixture only; TEMP-06-07 remains `partial`.

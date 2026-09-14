@@ -120,8 +120,15 @@ summary$passes <- with(summary, strict_successes == 3L &
   median_temporal_frobenius_relative_error <= .30 &
   median_kernel_1_relative_error <= .35 & median_kernel_2_relative_error <= .35 &
   median_kernel_3_relative_error <= .35 & mean_fixed_effect_error <= .25)
-utils::write.csv(result, file.path(root, "dev/temporal-program/results/latent-kernel-recovery-20260911.csv"), row.names = FALSE)
-utils::write.csv(summary, file.path(root, "dev/temporal-program/results/latent-kernel-recovery-summary-20260911.csv"), row.names = FALSE)
+## Current-source qualifications are deliberately separate from the imported
+## 2026-09-11 receipt. Never overwrite historical evidence with a replay from
+## a later package head.
+utils::write.csv(result, file.path(root,
+  "dev/temporal-program/results/latent-kernel-recovery-current-20260914.csv"),
+  row.names = FALSE)
+utils::write.csv(summary, file.path(root,
+  "dev/temporal-program/results/latent-kernel-recovery-current-summary-20260914.csv"),
+  row.names = FALSE)
 print(result, row.names = FALSE); print(summary, row.names = FALSE)
 if (!all(summary$passes)) stop("Frozen temporal-latent-kernel recovery campaign fails its predeclared thresholds.", call. = FALSE)
 cat("TEMPORAL_LATENT_KERNEL_RECOVERY_PASS\n")

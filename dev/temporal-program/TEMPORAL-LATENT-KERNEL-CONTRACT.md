@@ -88,3 +88,20 @@ error for `lambda lambda'` must be at most `.30`; median relative error for
 each kernel variance must be at most `.35`; and mean absolute fixed-effect
 error must be at most `.25`.  These are fixed engineering smoke criteria for
 this named DGP, not general recovery or coverage evidence.
+
+## Current-source replay
+
+The original frozen runner and its nine retained rows were introduced on
+2026-09-11. Historical output is retained under the `20260911` names. The
+same independently authored DGP and threshold calculation write the
+current-source replay to `latent-kernel-recovery-current-20260914*.csv`, so a
+later qualification cannot overwrite historical evidence.
+
+At source commit `5ff59b746`, a one-cell smoke completed in 12.41 seconds.
+The subsequent nine-cell replay retained all terminal successes and all three
+frozen strata passed. Its scientific fit fields reproduce the historical
+receipt; only elapsed-time fields differ. Hessian diagnostics are retained as
+`error` for all nine fits and are not an acceptance criterion in this frozen
+fixture. The replay remains fixture-specific evidence and supports no general
+recovery, coverage, forecast, profile, bootstrap, selection, or release
+claim.

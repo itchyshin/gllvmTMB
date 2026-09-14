@@ -46,11 +46,16 @@ across occasions; it is not independent occasion noise. Temporal sources can
 be added to ordinary \code{unit} and \code{unit_obs} terms. Some replicated AR1
 cross-source cells are experimental parsed pathways: \code{temporal_indep()} plus
 one labelled \code{kernel_indep()}, a fixed labelled \code{phylo_indep()} term, a fixed
-labelled \code{animal_indep()} term, or a fixed labelled \code{spatial_indep()} term.
-Their source-pair recovery and identifiability evidence remains incomplete;
-use only the documented bounded route for the exact cell of interest. The
-spatial cell redraws its independent SPDE field during unconditional
-simulation. Other
+labelled \code{animal_indep()} term, or a fixed labelled \code{spatial_indep()} term;
+\code{temporal_dep()} plus one fixed labelled \code{kernel_indep()} term; and rank-one
+\code{temporal_latent(..., unique = FALSE)} plus one fixed labelled
+\code{kernel_indep()} term. The latter two are replicated Gaussian identity-link
+AR1 cells only. The dependent cell has fixed-parameter point-estimation and
+dense-oracle checks. The rank-one cell additionally has simulation,
+long/wide, and update checks. Neither supports source-pair forecasting,
+intervals, profiles, bootstrap, selection, broad recovery, or coverage
+claims. The spatial cell redraws its
+independent SPDE field during unconditional simulation. Other
 temporal-source combinations remain unavailable. For an unreplicated,
 Gaussian \code{temporal_indep()} source by itself, and for the qualified
 replicated AR1 \code{temporal_indep()} plus one fixed labelled \code{kernel_indep()}

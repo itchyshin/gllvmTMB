@@ -58392,3 +58392,16 @@ Deliberately not run: Totoro 9×500 grid dispatch; full `devtools::test()`.
   "temporal-sixth-source-api", reporter = "summary")'` passed 15 assertions.
   A replacement cross-platform run is still required; the in-progress original
   matrix is retained as failure evidence.
+
+## 2026-09-14 — executable standalone temporal closeout
+
+- `dev/temporal-program/verify.R closeout` now verifies a fresh, current-head
+  three-OS receipt and reconciles the standalone grammar, temporal article,
+  validation register, retained source-pair history, and after-task record. It
+  rejects package-suite files that would reintroduce a temporal source-pair
+  qualification route while allowing the explicit public refusal test.
+- `Rscript --vanilla dev/temporal-program/verify.R self-test` emitted
+  `TEMPORAL_PROGRAM_SELF_TEST_PASS`. Calling `closeout` without
+  `TEMPORAL_PROGRAM_CI_RECEIPT` failed with the expected missing-receipt error.
+  A final matrix for this closeout implementation is required before the gate
+  can be reported as passed.

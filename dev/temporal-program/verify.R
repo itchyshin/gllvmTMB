@@ -835,8 +835,7 @@ if (identical(mode, "plan")) {
   quit(save = "no", status = 0L)
 }
 
-if (identical(mode, "publication")) {
-  receipt_path <- path.expand(Sys.getenv("TEMPORAL_PROGRAM_CI_RECEIPT", unset = ""))
+.temporal_program_verify_publication <- function(root, receipt_path = path.expand(Sys.getenv("TEMPORAL_PROGRAM_CI_RECEIPT", unset = ""))) {
   if (!nzchar(receipt_path) || !file.exists(receipt_path)) {
     stop("Publication verification requires TEMPORAL_PROGRAM_CI_RECEIPT pointing to a retained three-OS CI receipt.", call. = FALSE)
   }
@@ -865,6 +864,11 @@ if (identical(mode, "publication")) {
   if (!identical(receipt, fresh)) {
     stop("live CI state differs from retained receipt", call. = FALSE)
   }
+  invisible(receipt)
+}
+
+if (identical(mode, "publication")) {
+  .temporal_program_verify_publication(root)
   cat("TEMPORAL_PROGRAM_PUBLICATION_PASS\n")
   quit(save = "no", status = 0L)
 }
@@ -1267,7 +1271,49 @@ if (identical(mode, "latent-phylo-endpoint")) {
   quit(save = "no", status = 0L)
 }
 if (identical(mode, "closeout")) {
-  stop("Closeout requires a fresh three-OS publication receipt for the current source commit and completion of standalone temporal documentation/reconciliation.", call. = FALSE)
+  .temporal_program_verify_publication(root)
+  required <- c(
+    "docs/dev-log/after-task/2026-09-14-temporal-standalone-scope.md",
+    "docs/dev-log/check-log.md",
+    "docs/design/01-formula-grammar.md",
+    "docs/design/03-likelihoods.md",
+    "docs/design/04-random-effects.md",
+    "docs/design/06-extractors-contract.md",
+    "docs/design/35-validation-debt-register.md",
+    "vignettes/articles/temporal-ar1.Rmd",
+    "vignettes/articles/api-keyword-grid.Rmd",
+    "dev/temporal-program/retained-source-pair-tests/README.md"
+  )
+  missing <- required[!file.exists(file.path(root, required))]
+  if (length(missing)) {
+    stop("standalone temporal closeout lacks required reconciliation artifact(s): ",
+      paste(missing, collapse = ", "), call. = FALSE)
+  }
+  register <- readLines(file.path(root, "docs/design/35-validation-debt-register.md"), warn = FALSE)
+  if (!any(grepl("TEMP-06-01", register, fixed = TRUE)) ||
+      !any(grepl("TEMP-06-02", register, fixed = TRUE)) ||
+      !any(grepl("low-priority future work", register, fixed = TRUE))) {
+    stop("validation register does not distinguish the standalone temporal provider from deferred source pairs", call. = FALSE)
+  }
+  grammar <- readLines(file.path(root, "docs/design/01-formula-grammar.md"), warn = FALSE)
+  if (!any(grepl("standalone", grammar, ignore.case = TRUE)) ||
+      !any(grepl("temporal_indep", grammar, fixed = TRUE)) ||
+      !any(grepl("temporal_dep", grammar, fixed = TRUE)) ||
+      !any(grepl("temporal_latent", grammar, fixed = TRUE))) {
+    stop("formula grammar lacks the reconciled standalone temporal contract", call. = FALSE)
+  }
+  test_paths <- list.files(file.path(root, "tests", "testthat"),
+    pattern = "^test-.*\\.R$", full.names = TRUE)
+  source_pair_tests <- test_paths[grepl(
+    "^test-temporal-(phylo|program-.*(phylo|animal|spatial|kernel))",
+    basename(test_paths), ignore.case = TRUE, perl = TRUE
+  )]
+  if (length(source_pair_tests)) {
+    stop("deferred temporal source-pair tests remain in tests/testthat/: ",
+      paste(basename(source_pair_tests), collapse = ", "), call. = FALSE)
+  }
+  cat("TEMPORAL_PROGRAM_CLOSEOUT_PASS\n")
+  quit(save = "no", status = 0L)
 }
 if (identical(mode, "remote")) {
   task <- "dev/temporal-program/remote/phylo-recovery-task.R"

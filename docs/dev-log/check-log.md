@@ -58376,3 +58376,19 @@ Deliberately not run: Totoro 9×500 grid dispatch; full `devtools::test()`.
 - The former source-pair lifecycle code is no longer reachable through the public parser. Its package tests were moved to `dev/temporal-program/retained-source-pair-tests/` as developer-only historical evidence; TEMP-06-02 through TEMP-06-14 are `blocked`, low-priority future work.
 - Checks passed: `Rscript --vanilla dev/temporal-program/verify.R lifecycle`; `Rscript --vanilla dev/temporal-program/verify.R plan`; `Rscript --vanilla dev/gapclose/build-capability-status.R --check`; focused temporal API/engine/oracle/lifecycle tests; `devtools::document()`; `pkgdown::check_pkgdown()`; and rendered `vignettes/articles/temporal-ar1.Rmd` against the installed development package.
 - A raw local `R CMD check --no-manual .` stopped before checking code because this R invocation rejected the package's `Authors@R` metadata as missing `Author`/`Maintainer`; it is not accepted as package-check evidence. Fresh three-OS CI is required for commit `f24d83c66`.
+
+## 2026-09-14 — package-suite removal of deferred phylogenetic qualification
+
+- The macOS job in three-OS run `34909951965` correctly exposed that the former
+  temporal--phylogenetic optimizer qualification file was still collected by
+  `testthat`, despite the public parser now refusing temporal--phylogenetic
+  models. The failure occurred before any likelihood assertion; the fixture
+  stopped at the intended parser boundary.
+- The file and its controls fixture now live under
+  `dev/temporal-program/retained-source-pair-tests/`, alongside the other
+  deferred source-pair evidence. They remain developer history and are no
+  longer package tests or release gates.
+- `Rscript --vanilla -e 'devtools::test(filter =
+  "temporal-sixth-source-api", reporter = "summary")'` passed 15 assertions.
+  A replacement cross-platform run is still required; the in-progress original
+  matrix is retained as failure evidence.

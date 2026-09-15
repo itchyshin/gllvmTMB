@@ -37,7 +37,7 @@ The implementation must also retain the conditional-mode/inner optimization stat
 
 ## Independent test fixture and oracle
 
-Curie owns one new CRAN-safe test file, `tests/testthat/test-temporal-phylo-optimizer-qualification.R`, with a direct 4-series × 4-occasion × 2-replicate × 3-trait Gaussian additive DGP. It uses fixed phylogenetic covariance, fixed effects `(.2, -.3, .1)`, temporal and phylogenetic trait-diagonal variation, and residual noise. It deliberately does not call the production temporal simulator or reuse the 160-series recovery DGP.
+The former CRAN-safe test file is retained at `dev/temporal-program/retained-source-pair-tests/test-temporal-phylo-optimizer-qualification.R`, with a direct 4-series × 4-occasion × 2-replicate × 3-trait Gaussian additive DGP. It uses fixed phylogenetic covariance, fixed effects `(.2, -.3, .1)`, temporal and phylogenetic trait-diagonal variation, and residual noise. It deliberately does not call the production temporal simulator or reuse the 160-series recovery DGP. It is developer history, not a package test or a supported workflow, because temporal--phylogenetic combinations are deferred.
 
 At a fixed non-optimal outer vector, the test compares the TMB outer gradient with central finite differences of its own dense additive Gaussian negative log likelihood for every free outer coordinate. Expected positional labels include fixed effects, the temporal persistence transform, the three temporal diagonal coordinates, the three phylogenetic coordinates, and residual log-SD. The test records the maximum discrepancy and its coordinate. Actual coordinate ordering is read from the fitted objective and must be identical in the fresh-state rebuild.
 

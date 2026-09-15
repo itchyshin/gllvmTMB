@@ -58405,3 +58405,12 @@ Deliberately not run: Totoro 9×500 grid dispatch; full `devtools::test()`.
   `TEMPORAL_PROGRAM_CI_RECEIPT` failed with the expected missing-receipt error.
   A final matrix for this closeout implementation is required before the gate
   can be reported as passed.
+
+## 2026-09-14 — standalone verification interface
+
+- The programme verifier now exposes only `plan`, `simulation`, `lifecycle`,
+  `publication`, `closeout`, and `self-test`. Former temporal source-pair
+  verification modes remain retained code history but are no longer callable
+  programme routes.
+- `self-test` passed. A legacy `phylo` invocation rejected with the new
+  standalone-only usage message.

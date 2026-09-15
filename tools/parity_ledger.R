@@ -406,7 +406,12 @@ ACCOUNTED <- list(
   "phylo model a public interval promotion" = "duplicate framing of the same LV-08 fence matched to the 'phylo_latent + lv = ~ x (Phylo Model A)' row above -- both sides withhold this promotion",
   "delta/hurdle latent-scale correlation advertising" = "matches R's MIX-10 (mixed-family delta/hurdle latent-scale correlation, `partial`, route-only): both sides fence this advertising claim",
   "non-gaussian reml" = "matches R's own MIS-33 fence (Gaussian-only REML; non-Gaussian REML is not built): both sides refuse this by decision",
-  "broad aghq (julia)" = "duplicate of the already-matched 'AGHQ estimator' row (see its NOTED_DIVERGENCES note above) -- GLLVM.jl's ledger lists AGHQ twice (main table + Withdrawn table); this tool joins the first occurrence"
+  "broad aghq (julia)" = "duplicate of the already-matched 'AGHQ estimator' row (see its NOTED_DIVERGENCES note above) -- GLLVM.jl's ledger lists AGHQ twice (main table + Withdrawn table); this tool joins the first occurrence",
+  # Julia-only coverage *diagnostics* (DRAC / arcG grids): not an R capability to
+  # mirror, and not the matched DIFFER row "Simulation-validated coverage
+  # certificate" (Julia status missing / out of R↔Julia parity). See GLLVM.jl
+  # docs/dev-log/decisions/2026-09-15-julia-only-arcg-disposition.md.
+  "julia-only arcg / drac wald coverage diagnostics" = "GLLVM.jl-only Wald coverage diagnostic programme (DRAC / arcG grids; undercoverage evidence, not a calibrated certificate); out of R↔Julia parity by decision — not owed as a gllvmTMB capability row"
 )
 
 DIVERGENCE <- list(

@@ -1,8 +1,8 @@
 # Codex handover — random-slope health, before promotion
 
-**Date:** 2026-08-25 (MDT)  
-**Receiving tool:** Codex  
-**Worktree:** `/private/tmp/gllvmtmb-random-slope-health`  
+**Date:** 2026-08-25 (MDT)
+**Receiving tool:** Codex
+**Worktree:** `/private/tmp/gllvmtmb-random-slope-health`
 **Branch:** `codex/random-slope-health` (clean branch from `origin/main` at
 `482c9d372c7dc100f988f41f80d1b4cc3ce8a8e4`)
 

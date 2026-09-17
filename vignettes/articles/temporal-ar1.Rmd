@@ -1,6 +1,6 @@
 ---
 title: "Temporal covariance for repeated multivariate measurements"
-description: "Fit AR1 or OU temporal covariance for three repeatedly measured traits, in long or traits(...) wide data."
+description: "Choose AR1 or OU covariance for repeatedly measured Gaussian traits, then fit a standalone temporal model in long or traits(...) wide data."
 tier: 1
 output:
   rmarkdown::html_vignette:
@@ -17,48 +17,193 @@ library(gllvmTMB)
 set.seed(2609081)
 ```
 
-Temporal is an additional, ordered within-series covariance provider with
-three trait modes: `temporal_indep()`, `temporal_dep()`, and rank-one
-`temporal_latent()`. Each provider has a private `(series, time)` state index;
-it does not replace the public `unit` or `unit_obs` labels. For latent mode,
-`unique = TRUE` gives
-\(K_{time}\otimes(\Lambda\Lambda^T+\Psi_T)\): Psi is correlated through
-time, rather than being IID occasion noise.
+This article is for an applied researcher with several traits measured along an
+animal, plot, or transect trajectory. Within each series, the occasions are
+temporally correlated: `time` selects the temporal states, whereas `unit` and
+`unit_obs` remain ordinary grouping tiers and do not define the temporal clock.
+The covariance grammar is the 5 x 3 stable-unit grid plus one standalone
+temporal provider, not an extra interchangeable source row. The temporal
+provider has three trait-covariance modes:
+`temporal_indep()`, `temporal_dep()`, and rank-one `temporal_latent()`.
 
-With `structure = "ar1"`, occasions are ordered integers and gaps are kept:
-\(K(t,s)=\phi^{|t-s|}\). With `structure = "ou"`, `time` is elapsed numeric
-time and \(K(t,s)=\exp(-\kappa|t-s|)\). This first version admits complete
-Gaussian identity-link ML fits with at least three traits and three occasions
-per series. Ordinary unit and unit-observation terms can be combined when their
-partitions agree and nest. The bounded temporal-only `forecast_temporal()`,
-`profile_temporal()`, `bootstrap_temporal()`, and `compare_temporal()` helpers
-have separate contracts.
+First choose the time scale. AR1 is for ordered integer occasions and preserves
+their gaps, so \(K(t,s)=\phi^{|t-s|}\). It can describe positive or negative
+adjacent-occasion persistence. OU is for numeric elapsed time, with positive
+decay rate \(\kappa\) and \(K(t,s)=\exp(-\kappa|t-s|)\). Translation of elapsed
+time does not change an OU model; changing its units changes the numerical
+decay rate. Next choose the trait covariance carried through that time kernel:
 
-> **Scope boundary.** Gaussian AR1/OU source parsing, dense covariance oracles,
-> score labels, simulation, training-data prediction, and update have focused
-> local checks. Recovery remains an engineering gate and does not support a
-> general recovery, precision, calibration, or interval-coverage claim.
-> Temporal combinations with phylogenetic, animal, spatial, or kernel sources
-> are deferred as a low-priority future extension. Replicated-panel lifecycle
-> helpers, generic forecasts, new-data prediction, generic profile/bootstrap
-> intervals, and automatic rank selection remain unavailable.
+| Question about the three traits | Temporal keyword | Trait covariance |
+|---|---|---|
+| Do they persist separately? | `temporal_indep()` | a diagonal variance for each trait |
+| May every pair persist together? | `temporal_dep()` | an unstructured covariance matrix |
+| Is one shared changing axis enough? | `temporal_latent(..., d = 1)` | rank-one \(\Lambda\Lambda^T\) |
 
-## Ordinary longitudinal observations
+With `temporal_latent(unique = TRUE)`, the model adds its trait-diagonal
+\(\Psi\) companion, so the temporal covariance is
+\(K_{time}\otimes(\Lambda\Lambda^T+\Psi)\). That Psi is correlated through
+time; it is not independent occasion noise. Each provider creates a private
+`(series, time)` state index and does not replace the public `unit` or
+`unit_obs` labels.
 
-Here each `(series, occasion, trait)` cell occurs once. The independent
-variation for trait `j` is one total variance, `D_j`; it is not separated into
-occasion and measurement pieces.
+This version requires complete Gaussian identity-link data, at least three
+traits, and at least three ordered occasions in every series. Ordinary `unit`
+and `unit_obs` terms can be combined when their partitions agree and nest. The
+bounded temporal-only `forecast_temporal()`, `profile_temporal()`,
+`bootstrap_temporal()`, and `compare_temporal()` helpers have separate
+contracts.
+
+> **Scope boundary.** The standalone Gaussian AR1/OU routes shown here have
+> focused local checks for parsing, dense covariance calculations, score labels,
+> simulation, training-data prediction, and update. This is not a general
+> recovery, precision, calibration, or interval-coverage claim. Temporal terms
+> cannot currently be combined with phylogenetic, animal, spatial, or kernel
+> sources. Generic forecasts, new-data prediction, generic profile/bootstrap
+> intervals, and automatic model search or rank selection remain unavailable.
+
+```{r temporal-concept, echo = FALSE, fig.width = 8.2, fig.height = 4.1, fig.cap = "The correlation panel uses fixed illustrative values, not fitted estimates: AR1 has phi = 0.7 and OU has kappa = -log(0.7). The hierarchy panel shows the standalone temporal provider; the refusal to combine it with another covariance source remains unchanged."}
+blue <- "#0072B2"
+orange <- "#E69F00"
+orange_text <- "#8A5A00"
+grey <- "#666666"
+
+ar1_points <- data.frame(
+  lag = 0:4,
+  correlation = 0.7^(0:4)
+)
+ou_curve <- data.frame(
+  lag = seq(0, 4, length.out = 161)
+)
+ou_curve$correlation <- exp(-(-log(0.7)) * ou_curve$lag)
+
+p_correlation <- ggplot2::ggplot() +
+  ggplot2::geom_hline(yintercept = 0, colour = "#D9D9D9", linewidth = 0.4) +
+  ggplot2::geom_line(
+    data = ou_curve,
+    ggplot2::aes(lag, correlation),
+    colour = orange, linewidth = 1
+  ) +
+  ggplot2::geom_point(
+    data = ar1_points,
+    ggplot2::aes(lag, correlation),
+    colour = blue, size = 2.4
+  ) +
+  ggplot2::annotate(
+    "text", x = 2.2, y = 0.54,
+    label = "OU: continuous elapsed time\nkappa = -log(0.7)",
+    colour = orange_text, hjust = 0, size = 3.05, lineheight = 0.95
+  ) +
+  ggplot2::annotate(
+    "text", x = 2.2, y = 0.29,
+    label = "AR1: integer occasions\nphi = 0.7",
+    colour = blue, hjust = 0, size = 3.05, lineheight = 0.95
+  ) +
+  ggplot2::scale_x_continuous(breaks = 0:4, limits = c(0, 4.65)) +
+  ggplot2::scale_y_continuous(
+    breaks = c(0, 0.25, 0.5, 0.75, 1), limits = c(0, 1.03),
+    expand = ggplot2::expansion(mult = c(0, 0.02))
+  ) +
+  ggplot2::labs(
+    title = "Correlation across time",
+    x = "Elapsed lag",
+    y = "Temporal-process correlation"
+  ) +
+  ggplot2::theme_minimal(base_size = 10) +
+  ggplot2::theme(
+    panel.grid.minor = ggplot2::element_blank(),
+    panel.grid.major.x = ggplot2::element_blank(),
+    plot.title = ggplot2::element_text(face = "bold"),
+    plot.background = ggplot2::element_rect(fill = "white", colour = NA),
+    panel.background = ggplot2::element_rect(fill = "white", colour = NA)
+  )
+
+hierarchy_nodes <- data.frame(
+  x = c(0.5, 1.9, 3.35, 3.35, 1.25, 2.75),
+  y = c(0.76, 0.76, 0.76, 0.47, 0.12, 0.12),
+  label = c(
+    "Series\nanimal / plot /\ntransect",
+    "Occasions / time\nselect temporal\nstates",
+    "Complete\ntrait panel",
+    "Optional\nreplicate panel",
+    "unit",
+    "unit_obs"
+  ),
+  kind = c("temporal", "temporal", "temporal", "optional", "ordinary", "ordinary")
+)
+hierarchy_links <- data.frame(
+  x = c(1.02, 2.37, 3.35),
+  xend = c(1.42, 3.02, 3.35),
+  y = c(0.76, 0.76, 0.66),
+  yend = c(0.76, 0.76, 0.57),
+  kind = c("temporal", "temporal", "optional")
+)
+
+p_hierarchy <- ggplot2::ggplot() +
+  ggplot2::geom_segment(
+    data = hierarchy_links,
+    ggplot2::aes(x, y, xend = xend, yend = yend, linetype = kind),
+    colour = grey, linewidth = 0.55,
+    arrow = grid::arrow(length = grid::unit(0.11, "inches"))
+  ) +
+  ggplot2::geom_label(
+    data = hierarchy_nodes,
+    ggplot2::aes(x, y, label = label, colour = kind),
+    fill = "white", label.size = 0.35, size = 3.05, lineheight = 0.95,
+    show.legend = FALSE
+  ) +
+  ggplot2::annotate(
+    "text", x = 2, y = 0.27,
+    label = "Separate ordinary grouping tiers (not the temporal clock)",
+    colour = grey, size = 3.05
+  ) +
+  ggplot2::scale_colour_manual(values = c(
+    temporal = blue, optional = orange_text, ordinary = grey
+  )) +
+  ggplot2::scale_linetype_manual(values = c(temporal = "solid", optional = "dashed")) +
+  ggplot2::coord_cartesian(xlim = c(0.05, 3.85), ylim = c(0, 1), clip = "off") +
+  ggplot2::labs(title = "How observations map to temporal states") +
+  ggplot2::theme_void(base_size = 10) +
+  ggplot2::theme(
+    plot.title = ggplot2::element_text(face = "bold"),
+    plot.background = ggplot2::element_rect(fill = "white", colour = NA),
+    panel.background = ggplot2::element_rect(fill = "white", colour = NA),
+    legend.position = "none",
+    plot.margin = ggplot2::margin(8, 8, 8, 8)
+  )
+
+grid::grid.newpage()
+layout <- grid::grid.layout(1, 2, widths = grid::unit(c(1, 1.2), "null"))
+grid::pushViewport(grid::viewport(layout = layout))
+print(p_correlation, vp = grid::viewport(layout.pos.row = 1, layout.pos.col = 1))
+print(p_hierarchy, vp = grid::viewport(layout.pos.row = 1, layout.pos.col = 2))
+grid::popViewport()
+```
+
+The AR1 points and OU curve above are conceptual only; they show no fitted
+estimates and no uncertainty ribbons. With a negative AR1 value, correlations
+alternate sign across odd and even integer lags. A positive-decay OU process
+has no analogue of that alternating pattern.
+
+## Fit an AR1 model to ordinary longitudinal observations
+
+Here each `(series, occasion, trait)` cell occurs once. Start with AR1 because
+the occasions are integers and their unequal gaps, 1 to 2 to 4, matter to the
+covariance. The independent-mode variance for each trait is its total temporal
+variance; this unreplicated design does not split it into occasion and
+measurement components.
 
 ```{r ordinary-data}
 ordinary <- expand.grid(
-  series = paste0("series_", 1:3), occasion = c(1L, 3L, 7L),
+  series = paste0("series_", 1:3), occasion = c(1L, 2L, 4L),
   trait = paste0("trait_", 1:3),
   KEEP.OUT.ATTRS = FALSE, stringsAsFactors = FALSE
 )
 ordinary$value <- rnorm(nrow(ordinary))
 ```
 
-The long-format call is the canonical form. Here are the three AR1 cells.
+The long-format call is canonical. The three fits below differ only in their
+cross-trait covariance; `extract_temporal()` makes the fitted time index and
+mode explicit.
 
 ```{r ordinary-long}
 fit_long <- gllvmTMB(
@@ -79,7 +224,9 @@ fit_latent <- gllvmTMB(
 ```
 
 The same observations can be supplied in wide format through the one
-`gllvmTMB()` entry point.
+`gllvmTMB()` entry point. `traits(...)` says which response columns are the
+three traits; it expands internally to the same trait-intercept structure as
+the long call.
 
 ```{r ordinary-wide}
 ordinary_wide <- reshape(
@@ -95,13 +242,13 @@ fit_wide <- gllvmTMB(
 extract_temporal(fit_wide)$pair_index
 ```
 
-`getLV()` returns the occasion-level scores for `temporal_latent()` as a matrix. Its row names and the
-`temporal_index` attribute identify the public series and occasion rather than
-the private fitting factor. Score and loading signs are a reporting convention:
-the first loading anchors the displayed direction unless it is negligible
-relative to the largest loading, in which case that largest trait anchors it.
-`extract_temporal()` records this diagnostic; the fitted likelihood is
-unchanged by the simultaneous sign change.
+`getLV()` returns occasion-level scores for `temporal_latent()` as a matrix.
+Its row names and `temporal_index` attribute identify the public series and
+occasion, rather than the private fitting factor. Score and loading signs are a
+reporting convention: the first loading anchors the displayed direction unless
+it is negligible relative to the largest loading, in which case that largest
+trait anchors it. A simultaneous sign change leaves the fitted likelihood
+unchanged.
 
 ```{r ordinary-scores}
 scores <- getLV(fit_latent)
@@ -109,12 +256,23 @@ attr(scores, "temporal_index")
 predict(fit_latent)
 ```
 
-For elapsed time, use the same grammar with `structure = "ou"`. Translation
-of this column does not change the model; rescaling time changes the estimated
-decay rate reciprocally.
+Read `extract_temporal(fit_latent)$time` as the fitted AR1 persistence (or OU
+decay rate), and use `$pair_index` to map each temporal state back to its series
+and occasion. For the rank-one model, call
+`ordination <- extract_ordination(fit_latent, level = "unit")`, then interpret
+`ordination$scores` together with `ordination$loadings`. This paired accessor
+applies the same sign orientation to both: the score traces the shared
+occasion-level axis, while each loading gives that trait's direction and scale
+on the axis. Reversing both signs still describes the same fitted model.
+
+## Use OU when elapsed time, not occasion number, is meaningful
+
+For elapsed time, use the same grammar with `structure = "ou"`. Here 0, 0.5,
+and 2 are elapsed time points. Do not replace elapsed time
+with consecutive visit numbers: that would fit a different scientific model.
 
 ```{r ordinary-ou}
-ordinary$elapsed <- c(0, 0.5, 2)[match(ordinary$occasion, c(1L, 3L, 7L))]
+ordinary$elapsed <- c(0, 0.5, 2)[match(ordinary$occasion, c(1L, 2L, 4L))]
 fit_ou <- gllvmTMB(
   value ~ 0 + trait + temporal_dep(0 + trait | series, time = elapsed,
     structure = "ou"),
@@ -123,13 +281,13 @@ fit_ou <- gllvmTMB(
 extract_temporal(fit_ou)$time
 ```
 
-## Optional repeated rows at each occasion
+## Add repeated measurements only when they are genuine replicate panels
 
-Use `replicate = measurement` when every trait is measured at least twice at
-each occasion. It identifies repeated trait panels while the temporal
-covariance remains on the series--occasion state. A `unit_obs` grouping remains
-an ordinary, unit-nested random-effect level; it is never silently treated as
-a temporal replicate.
+Use `replicate = measurement` only when every trait is measured at least twice
+at each occasion. It identifies repeated complete trait panels while the
+temporal covariance remains on the series--occasion state. A `unit_obs`
+grouping remains an ordinary, unit-nested random-effect level; it is never
+silently treated as a temporal replicate.
 
 ```{r replicated-data}
 replicated <- expand.grid(
@@ -162,15 +320,15 @@ fit_replicated_wide <- gllvmTMB(
 extract_temporal(fit_replicated_wide)$parameters
 ```
 
-## Standalone lifecycle boundaries
+## What post-fit actions this standalone route supports
 
 The current lifecycle helpers are intentionally limited to an unreplicated
 Gaussian `temporal_indep()` fit. `profile_temporal()` re-optimizes the temporal
 model at fixed persistence or decay values; `bootstrap_temporal()` retains all
 refit attempts; and `compare_temporal()` reports AIC without a likelihood-ratio
 test. `forecast_temporal()` forecasts a complete future trait panel for an
-already observed series. Its `se.fit` is a fitted-parameter conditional standard
-deviation, not a calibrated prediction interval.
+already observed series. Its `se.fit` is conditional on fitted parameters, not
+a calibrated prediction interval.
 
 `simulate()` redraws stationary temporal scores by default. Passing
 `condition_on_RE = TRUE` keeps the fitted score modes and redraws only the
@@ -181,3 +339,9 @@ wide call, rebuilding its private temporal index.
 simulated <- simulate(fit_replicated, nsim = 2, seed = 23)
 updated_call <- update(fit_replicated_wide, evaluate = FALSE)
 ```
+
+The next practical step is to inspect the fitted temporal covariance and, for
+the latent model, report the labelled scores together with the loadings. If
+your question requires a temporal term plus a phylogeny, pedigree, spatial
+field, or supplied kernel, this package currently stops before fitting; do not
+reinterpret that refusal as evidence for an additive source-pair model.

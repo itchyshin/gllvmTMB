@@ -57884,3 +57884,35 @@ Deliberately not run: Totoro 9×500 grid dispatch; full `devtools::test()`.
   `vignettes/articles/temporal-ar1.Rmd` and
   `vignettes/articles/api-keyword-grid.Rmd` against that install. Both passed
   and emitted `TEMPORAL_STATUS_ARTICLES_RENDER_PASS`.
+
+## 2026-09-15 — standalone temporal article reader refresh
+
+- Refined `vignettes/articles/temporal-ar1.Rmd` only: it now leads with the
+  AR1-versus-OU time-scale decision, then the three standalone trait modes.
+  The article keeps the 5 x 3 stable-unit grid plus one temporal provider and
+  does not present temporal source-pair models as user options.
+- `Rscript --vanilla -e 'rmarkdown::render("vignettes/articles/temporal-ar1.Rmd", output_dir = "/private/tmp/gllvmTMB-temporal-article-render", quiet = TRUE)'`,
+  `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`, and `git diff --check`
+  passed. This is prose-only local evidence, not a package-release or new
+  cross-platform claim.
+
+## 2026-09-15 — temporal reader decision figure
+
+- Added one executable two-panel conceptual figure to
+  `vignettes/articles/temporal-ar1.Rmd`: fixed illustrative AR1/OU temporal
+  correlation and the `series`-to-occasion data hierarchy. It is not a fit,
+  recovery, uncertainty, or interval display. The article keeps the 5 x 3
+  stable-unit grid plus one standalone temporal provider; temporal source pairs
+  remain refused.
+- Corrected the AR1 teaching occasions to `1, 2, 4`, the matching OU lookup,
+  the raw-versus-sign-normalized loading interpretation, elapsed-time wording,
+  and automatic-model-search boundary.
+- Independent reviews: Pat/Darwin reader audit; Astra/Rose/Fisher scope and
+  extractor-orientation audit; Florence/Tufte source-level figure review. The
+  final figure source passed after contrast and arrow/label fixes. Screenshot
+  inspection was unavailable because the host Mac was locked; no direct visual
+  inspection is claimed.
+- Checks passed: `Rscript --vanilla -e
+  'rmarkdown::render("vignettes/articles/temporal-ar1.Rmd", output_dir =
+  "/private/tmp/gllvmTMB-temporal-final-verify", quiet = TRUE)'`,
+  `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`, and `git diff --check`.

@@ -46,6 +46,7 @@ calibration remains incomplete.
 | decide whether your model and intended result are inside the current evidence boundary | [Current limitations and boundaries](https://itchyshin.github.io/gllvmTMB/articles/current-limits.html) |
 | choose the guide matching your data and question | [Browse all articles](https://itchyshin.github.io/gllvmTMB/articles/) |
 | model three traits measured repeatedly through time | [Temporal covariance](https://itchyshin.github.io/gllvmTMB/articles/temporal-ar1.html) |
+| try an optional, limited Julia-backed fit from R | [Julia bridge setup](https://itchyshin.github.io/gllvmTMB/reference/gllvm_julia_setup.html) |
 | check whether a fit is interpretable | [Can I trust this fit?](https://itchyshin.github.io/gllvmTMB/articles/fit-diagnostics.html) |
 | look up formulas, covariance terms, or families | [Reference index](https://itchyshin.github.io/gllvmTMB/reference/) |
 

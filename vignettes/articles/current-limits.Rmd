@@ -38,19 +38,11 @@ availability is not scientific certification.
 Start with the response-family table. Expand the additional-model boundaries
 as needed, and read the interval section before reporting uncertainty.
 
-**Experimental/partial** means implementation and some evidence exist, limited
-to the stated design. **Not recommended for this claim** means the intended
-interpretation has not earned a reliability claim; choose a simpler route or
-another package. **Dependable core** would require every preregistered
-first-release recovery and comparator gate to pass; no package-wide claim has
-been earned.
-
-The frozen production study completed 44,800 fits across 28 admitted cells;
-the table gives its family-specific verdicts. Not every eligible cell entered
-the study, every campaign had failed cells, and diagnostics missed most
-catastrophic truth errors. **Tested-regime evidence** applies only to the named designs;
-**clean-data evidence** also has failed adjacent robustness tests;
-**characterization-only** means the tested pair did not pass its release gate.
+**Experimental/partial** means a feature is available only for the stated
+design; do not extend its conclusions to neighbouring models. **Not
+recommended for this claim** means choose a simpler route or another package.
+The family-specific rows below say what has actually been checked and where
+that evidence stops.
 
 ## Choose a response model
 
@@ -83,7 +75,7 @@ Setting `unique = FALSE` requests the narrower loadings-only subset.
 | Non-unit likelihood weights | Not recommended for likelihood-based inference | Weighted-objective point estimates only, with the weighting rule reported | Ordinary Hessian/Wald uncertainty, `logLik()`, AIC, BIC, or likelihood-ratio interpretation; no sandwich route is certified |
 | Phylogenetic, animal, spatial, or kernel covariance | Experimental/partial | Point estimates for the exact documented route after structure-specific diagnostics | That ordinary-model evidence transfers to a structured source, that spatial `tau` or field SD has validated absolute-scale recovery, or that structured intervals are calibrated |
 | Gaussian temporal covariance | Experimental/partial | Standalone AR1/OU `temporal_indep()`, `temporal_dep()`, and rank-one `temporal_latent()` with complete panels, at least three traits and three occasions per series; see [Temporal covariance](temporal-ar1.html) | General recovery, calibrated intervals, temporal slopes, higher rank, or non-Gaussian support |
-| Temporal plus another source | Experimental/partial | Replicated AR1 `temporal_indep()` plus exactly one `kernel_indep()`, `phylo_indep()`, `animal_indep()`, or `spatial_indep()`: Gaussian identity-link native TMB/Laplace ML, at least two complete measurements per state, source supplied inside the keyword at `rho = 1`, and non-proportional time/space contrasts for the fixed-mesh spatial route | Broad recovery or coverage: only the kernel local fixture passes; retained phylogenetic, animal, and spatial recovery gates fail. OU source combinations, temporal `dep`/`latent` combinations, multiple structured sources, source-by-time interactions, and spatial forecasting remain unavailable |
+| Temporal plus another source | Experimental/partial | A narrow Gaussian AR1 model plus one kernel, phylogenetic, animal, or spatial source; see the temporal guide for the required complete-panel design | Broad recovery or coverage, OU combinations, multiple structured sources, source-by-time interactions, and spatial forecasting |
 | Random slopes or several grouping tiers | Experimental/partial | Exact admitted cells only, with the covariance block named explicitly | A grid-wide claim across families, modes, slope counts, or grouping levels |
 | Missing response cells | Experimental/partial | Point estimates after confirming the intended cells were omitted from the likelihood; the strongest worked evidence is Gaussian | That every family has equal recovery depth or that missingness is ignorable by default |
 | One modelled missing predictor with `mi()` | Experimental/partial | Native-Laplace results for one explicitly modelled predictor in the documented predictor-family routes | VA support, several `mi()` predictors, general MNAR handling, or missing grouping variables |
@@ -98,7 +90,7 @@ Setting `unique = FALSE` requests the narrower loadings-only subset.
 | Variational approximation | Experimental/partial | Opt-in exploratory point estimates within the admitted VA fence, using the current automatic GH evaluator with `H = 7`, with the returned method metadata and the exact family/rank evidence named | General point recovery: only 1 of 36 family-by-rank cells passed the current campaign's overall point route, and that sole pass was Poisson-log `q = 5`, outside the public `d <= 2` fence; its ELBO is not a log-likelihood, so ordinary `logLik()`, AIC, BIC, and likelihood-ratio comparisons are undefined; do not infer calibrated covariance, Wald intervals, or evidence equivalent to Laplace |
 | Adaptive Gauss-Hermite quadrature | Experimental/partial | Opt-in sensitivity analysis in its documented scalar-random-effect regime, stating the ridge setting | Ordinary ML interpretation: AGHQ defaults to a `tau = 2` penalised MAP fit, so ordinary AIC, BIC, and likelihood-ratio interpretations do not apply; the evaluated node/ridge rule is not a generally calibrated estimator |
 | EVA | Not recommended for this claim | Nothing yet | That internal design work implies an available estimator |
-| Julia engine | Experimental/partial | Optional-bridge results only after checking the route-specific parity evidence | Full R/TMB feature parity or a required dependency for the ordinary workflow |
+| Julia engine | Experimental/partial | Optional-bridge results for the documented model types; start with [Julia bridge setup](../reference/gllvm_julia_setup.html) | Full R/TMB feature parity or a required dependency for the ordinary workflow |
 
 </details>
 

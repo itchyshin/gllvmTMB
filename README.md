@@ -7,20 +7,11 @@
 <!-- badges: end -->
 
 > [!WARNING]
-> **`gllvmTMB` is experimental — use at your own risk.** It is not complete, is
-> not fully human-verified, and needs extensive further validation. CRAN
-> availability is not a statement of scientific maturity. Point estimates are the
-> primary output, and how well they are supported depends on the exact model
-> and route used. Broad package-wide interval coverage is not yet confirmed.
-> A handful of interval calculations for standardized factor loadings have
-> been checked and shown accurate, but only for one Gaussian model, in a few
-> fixed sample-size and rank combinations, fitted to
-> one fixed simulated dataset with known true values, and
-> only for fits that converge cleanly;
-> this does not carry over to any other sample size, rank, or dataset.
-> Total-variance penalty profiles are still only an approximate calculation:
-> even in previously checked cases, we have not confirmed they match the
-> exact answer.
+> **`gllvmTMB` is experimental.** Start with a documented tutorial, check fit
+> diagnostics, and read [Current limitations and
+> boundaries](https://itchyshin.github.io/gllvmTMB/articles/current-limits.html)
+> before treating an estimate or interval as a scientific result. A model that
+> converges is not, by itself, evidence that every extension is reliable.
 
 `gllvmTMB` fits multivariate models for data where each site,
 individual, species, or study has several responses: body traits,
@@ -50,42 +41,12 @@ calibration remains incomplete.
 | check whether a fit is interpretable | [Can I trust this fit?](https://itchyshin.github.io/gllvmTMB/articles/fit-diagnostics.html) |
 | look up formulas, covariance terms, or families | [Reference index](https://itchyshin.github.io/gllvmTMB/reference/) |
 
-`gllvmTMB` is under active development and has lifecycle **experimental**: the
-formula grammar, defaults, and extractor output may still change as the API
-matures. The public path above is deliberately bounded. For Gaussian models,
-point estimates have only been checked to recover known parameters under the
-specific conditions tested so far, starting with `indep()` or `dep()`; inspect
-the covariance point estimate. The latent model below remains the clearest way
-to teach `Sigma = Lambda Lambda^T + Psi`, but for the two specific latent-model
-shapes tested in production — Gaussian `latent(unique = TRUE)` and NB2-log
-`latent(unique = TRUE)` — we have so far only measured how they behave, not
-shown they recover known parameters, so treat this as a teaching example, not
-a proven method. The lme4-style bare-bar spelling `(1 + x | g)` is not
-accepted yet; for a random-slope model, use `latent(1 + x | g, d = K)`
-instead.
-
-The experimental temporal source row provides `temporal_indep()`,
-`temporal_dep()`, and rank-one `temporal_latent()` for Gaussian repeated-trait
-data. AR1 retains integer gaps and OU uses elapsed numeric time; the optional
-latent Psi is correlated through that same kernel. Long and `traits(...)` wide
-calls, simulation, training-data prediction, and ordinary unit/unit-observation
-composition have focused local checks. Recovery, precision, calibration, and
-interval coverage remain unclaimed; the temporal article gives the supported
-input contract and unavailable next steps. Four narrow additive source-pair
-cells are implemented: replicated AR1 `temporal_indep()` plus one labelled
-`kernel_indep()` term; one fixed labelled `phylo_indep()` term with in-keyword
-`tree =` or `vcv =`; one fixed labelled `animal_indep()` term with in-keyword
-`pedigree =`, `A =`, or `Ainv =`; or one fixed-mesh `spatial_indep()` term.
-These pairs require Gaussian identity-link data, native TMB/Laplace ML,
-at least two complete measurements per series--occasion, and `rho = 1`.
-Spatial contrasts must not be determined solely by temporal lag.
-Their evidence is partial and differs by pair: the named kernel fixture passes
-locally; retained phylogenetic, animal, and spatial recovery gates fail
-strictly. They are not cross-platform verification,
-release, general recovery, or coverage evidence. OU source combinations, other
-temporal/source modes, source-by-time interactions, and other structured-source combinations
-remain unavailable. In the animal cell, `A` is a labelled dense relatedness
-matrix; pass a sparse relationship precision through `Ainv`.
+The package is under active development, so formula details and extractor
+output may still change. The first tutorials focus on ordinary Gaussian models
+and explain how to interpret covariance, correlation, and communality. For
+random slopes, temporal dependence, phylogeny, spatial structure, another
+response family, or a Julia-backed fit, start with the linked guide and use its
+stated boundary rather than extending a simple example by analogy.
 
 ## What the model does
 

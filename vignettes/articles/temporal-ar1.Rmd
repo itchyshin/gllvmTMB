@@ -21,9 +21,9 @@ This article is for an applied researcher with several traits measured along an
 animal, plot, or transect trajectory. Within each series, the occasions are
 temporally correlated: `time` selects the temporal states, whereas `unit` and
 `unit_obs` remain ordinary grouping tiers and do not define the temporal clock.
-The covariance grammar is the 5 x 3 stable-unit grid plus one standalone
-temporal provider, not an extra interchangeable source row. The temporal
-provider has three trait-covariance modes:
+The covariance grammar has five stable-unit sources and a sixth temporal
+source for ordered states within a series. This article teaches the standalone
+temporal route, with three trait-covariance modes:
 `temporal_indep()`, `temporal_dep()`, and rank-one `temporal_latent()`.
 
 First choose the time scale. AR1 is for ordered integer occasions and preserves
@@ -56,12 +56,13 @@ contracts.
 > **Scope boundary.** The standalone Gaussian AR1/OU routes shown here have
 > focused local checks for parsing, dense covariance calculations, score labels,
 > simulation, training-data prediction, and update. This is not a general
-> recovery, precision, calibration, or interval-coverage claim. Temporal terms
-> cannot currently be combined with phylogenetic, animal, spatial, or kernel
-> sources. Generic forecasts, new-data prediction, generic profile/bootstrap
-> intervals, and automatic model search or rank selection remain unavailable.
+> recovery, precision, calibration, or interval-coverage claim. Four narrow
+> replicated AR1 source combinations are also implemented, with separate
+> evidence and restrictions described below. Generic forecasts, new-data
+> prediction, generic profile/bootstrap intervals, and automatic model search
+> or rank selection remain unavailable.
 
-```{r temporal-concept, echo = FALSE, fig.width = 8.2, fig.height = 4.1, fig.cap = "The correlation panel uses fixed illustrative values, not fitted estimates: AR1 has phi = 0.7 and OU has kappa = -log(0.7). The hierarchy panel shows the standalone temporal provider; the refusal to combine it with another covariance source remains unchanged."}
+```{r temporal-concept, echo = FALSE, fig.width = 8.2, fig.height = 4.1, fig.cap = "The correlation panel uses fixed illustrative values, not fitted estimates: AR1 has phi = 0.7 and OU has kappa = -log(0.7). The hierarchy panel shows the standalone temporal provider; the restricted additive source combinations described below are not shown."}
 blue <- "#0072B2"
 orange <- "#E69F00"
 orange_text <- "#8A5A00"
@@ -211,6 +212,19 @@ fit_long <- gllvmTMB(
     temporal_indep(0 + trait | series, time = occasion),
   data = ordinary, trait = "trait", unit = "series", family = gaussian(), silent = TRUE
 )
+```
+
+Before interpreting the temporal covariance, check the fit. Read and follow
+the `action` for every row that is not `PASS`; a converged optimizer alone is
+not enough. [Can I trust this fit?](fit-diagnostics.html) explains the
+diagnostic workflow.
+
+```{r ordinary-long-check}
+health <- check_gllvmTMB(fit_long)
+health[health$status != "PASS", c("component", "status", "message", "action")]
+```
+
+```{r ordinary-long-comparison}
 extract_temporal(fit_long)
 fit_dep <- gllvmTMB(
   value ~ 0 + trait + temporal_dep(0 + trait | series, time = occasion),
@@ -340,8 +354,33 @@ simulated <- simulate(fit_replicated, nsim = 2, seed = 23)
 updated_call <- update(fit_replicated_wide, evaluate = FALSE)
 ```
 
-The next practical step is to inspect the fitted temporal covariance and, for
-the latent model, report the labelled scores together with the loadings. If
-your question requires a temporal term plus a phylogeny, pedigree, spatial
-field, or supplied kernel, this package currently stops before fitting; do not
-reinterpret that refusal as evidence for an additive source-pair model.
+## Can I add a phylogeny, pedigree, spatial field, or kernel?
+
+Only four narrow additive combinations are implemented: replicated AR1
+`temporal_indep()` plus exactly one `kernel_indep()`, `phylo_indep()`,
+`animal_indep()`, or `spatial_indep()` term. Both terms describe trait-specific
+variances, with zero cross-trait covariance. The model adds their covariance
+contributions; it does not fit a source-by-time interaction.
+
+These combinations require complete Gaussian identity-link data, native
+TMB/Laplace ML fitting, and at least two complete measurements at every
+series--occasion, identified by `replicate = measurement`. The source is fixed
+at `rho = 1`. Supply the labelled kernel, `tree =` or `vcv =`, or `pedigree =`,
+`A =`, or `Ainv =` inside the corresponding keyword. Use dense `A` for a
+relationship matrix and `Ainv` for sparse precision. The spatial route requires
+a fixed mesh and spatial contrasts that are not determined solely by temporal
+lag; spatial range is still estimated.
+
+The kernel combination has a passing local recovery fixture. The phylogenetic,
+animal, and spatial combinations have focused likelihood and lifecycle checks,
+but their retained recovery gates failed. None earns general recovery,
+cross-platform, release, precision, calibration, or interval-coverage claims.
+OU combinations, temporal `dep`/`latent` combinations, temporal slopes, higher
+rank, other families, multiple structured sources, source-by-time interactions,
+and spatial forecasting remain unavailable. The temporal-only post-fit helpers
+above do not extend to these combinations.
+
+For the standalone examples, inspect the fitted temporal covariance and, for
+the latent model, report the labelled scores together with the loadings. Read
+[Current limitations](current-limits.html) before interpreting a more complex
+model.

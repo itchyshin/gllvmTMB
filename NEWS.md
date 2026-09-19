@@ -11,17 +11,22 @@
   simulation, labelled latent scores, training-data prediction, update, and
   ordinary unit/unit-observation composition. **Partial:** no general recovery,
   precision, calibration, or interval-coverage claim is made. **Not in scope:**
-  temporal slopes, higher rank, other families, or spatial source pairs.
+  temporal slopes, higher rank, or other families.
   **Locally verified only:** replicated AR1 `temporal_indep()` plus
   one labelled `kernel_indep()` term has a fixed-seed recovery and lifecycle
   fixture. A fixed, labelled `phylo_indep()` source can be supplied through
   `tree =` or `vcv =` inside its keyword and has focused local oracle,
   long/wide, simulation, update, and tree/dense-equivalence checks; its
-  recovery gate is separate and does not support a general recovery or
+  retained recovery gate failed and does not support a general recovery or
   coverage claim.
   A fixed `animal_indep()` source can likewise use in-keyword `pedigree =`,
   `A =`, or `Ainv =`; its dense oracle, source-provenance, lifecycle, and
-  matrix-label checks are local only and its recovery gate remains pending.
+  matrix-label checks are local only and its retained recovery gate failed.
+  One fixed-mesh `spatial_indep()` term is also admitted, with local additive
+  likelihood and lifecycle checks but a failed recovery gate. These four pairs
+  require complete Gaussian identity-link data, native TMB/Laplace ML,
+  at least two complete measurements per series--occasion, and `rho = 1`;
+  the spatial route also requires non-proportional time and space contrasts.
   Other temporal/source modes, OU source combinations,
   cross-platform verification, and release remain pending.
 
@@ -81,8 +86,7 @@
   plain Wilks chi-square, and a rank step of exactly one new latent
   dimension uses the Self & Liang (1987) chi-bar-square mixture (new
   exported `chibar2_pvalue()`/`variance_lrt()`) as a documented
-  approximation -- see `?anova.gllvmTMB_multi` for the exact caveat and
-  `dev/gapclose/arcD/O5-report.md` for its measured empirical size. **In
+  approximation -- see `?anova.gllvmTMB_multi` for the exact caveat. **In
   scope:** ML-only comparisons (REML, LA-MSPL, mismatched integration
   engines/loading ridges, mismatched data or families, and non-nested fixed
   effects are all refused, naming the reason); a single-dimension rank step
@@ -103,8 +107,8 @@
   estimates match `extract_ordination(..., component = "innovation")` and
   `ordination_uncertainty()$scores`; uncertainty remains
   `ordination_uncertainty()` / `getLV(se = TRUE)`.
-* New `ordination_uncertainty()` (issue #1243, D-204 parity with GLLVM.jl's
-  function of the same name) reports the per-unit covariance of ordination
+* New `ordination_uncertainty()`, matching GLLVModels.jl's function of the same
+  name, reports the per-unit covariance of ordination
   (latent) scores, not just a point estimate -- the object needed to draw an
   uncertainty ellipse (not just an axis-aligned error bar) around a site in
   a biplot. **Estimand, stated plainly:** the conditional (posterior)
@@ -154,7 +158,7 @@
   are wired for all three; `check_gllvmTMB()` flags a `zi` pinned near 0 or 1.
 * `censored_poisson()` is now a runtime-admitted family (log link only), not
   a constructor-only stub -- it previously failed loud with "Unsupported
-  family" (register FAM-16). **In scope: right-censoring only.** Supply the
+  family". **In scope: right-censoring only.** Supply the
   response as `cbind(y, censored) ~ ...`, where column 1 is the observed
   count (uncensored rows) or the censoring limit (right-censored rows) and
   column 2 is a strict `{0, 1}` right-censoring indicator; a plain
@@ -678,7 +682,7 @@ is still the default.
   the response-scale dependence #851/#855 otherwise describes: probit
   fixes the residual variance at 1, so there is no free response scale
   here to rescale against, and the class's usual per-fit device does not
-  obviously transfer (see `dev/heywood/fp-scale-dependence.md`).
+  obviously transfer.
   `aghq_ridge = 2` reduces the problem (46.0% -> 13.5% false positives at
   that larger scale) but does not remove it.
 
@@ -817,8 +821,7 @@ is still the default.
   `n = 1600` (that arm was dropped for run time). What the campaign
   establishes: link saturation is refuted as the mechanism (solid);
   category-level separation, the residual hypothesis, is NOT demonstrated
-  -- the evidence originally cited for it does not discriminate (see the
-  correction recorded in `dev/ordinal-degeneracy/probe-criteria.md`); and
+  -- the evidence originally cited for it does not discriminate; and
   the threshold question is answered negatively with a stated path forward.
 
   Neither categorical screen changes what fitting itself does: `gllvmTMB()`
@@ -1093,10 +1096,10 @@ is still the default.
 
   **The honest evidence, not softened:** on the phylogenetic surface, the
   ONE-CATEGORICAL-DRAW-PER-SPECIES recovery gate **FAILED** for both the
-  loadings-only route (FAM-20C: rail rate 8/20, exceeding the 6/20
+  loadings-only route (rail rate 8/20, exceeding the 6/20
   threshold, identically for `animal_latent()`/`kernel_latent()` by proven
-  engine identity to `phylo_latent()`) and the mode-axis route (FAM-20D:
-  `phylo_dep()` rails 8/20; `phylo_indep()`'s corrected diagonal-truth
+  engine identity to `phylo_latent()`) and the covariance-mode comparison
+  (`phylo_dep()` rails 8/20; `phylo_indep()`'s corrected diagonal-truth
   rerun shows larger contrast variances recover fine, median ratio 0.78,
   17/20 in band, but smaller ones collapse, median ratio 0.24, 9/20 --
   **7 of those 20 seeds collapse the smaller contrast variance to
@@ -1223,8 +1226,8 @@ bridge remains experimental and is not required for the main workflow.
   19 of 80 catastrophic truth errors. The result supports narrow tested-regime
   point-estimation statements only; it does not certify intervals, structured
   sources, slopes, mixed families, alternative integration engines, or
-  reliable silent-failure detection. The package remains version 0.6.0 while
-  this evidence and the remaining pre-0.7 issue backlog are reconciled.
+  reliable silent-failure detection. At that checkpoint the package remained
+  version 0.6.0 while this evidence and the pre-0.7 issue backlog were reconciled.
 
 * **A fit without standard errors no longer returns a silent all-`NA` answer.**
   When a model is fitted with `gllvmTMBcontrol(se = FALSE)`, there is no
@@ -1950,5 +1953,5 @@ bridge remains experimental and is not required for the main workflow.
 
 Earlier development release establishing the stacked-trait R/TMB engine, the
 long-format API, initial covariance keywords, simulation helpers, and extractor
-infrastructure. The 0.6.0 notes above describe the current taught syntax and
-reader-facing scope.
+infrastructure. See the later release sections above for subsequent syntax
+and scope changes.

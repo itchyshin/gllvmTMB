@@ -1,7 +1,6 @@
 ---
 title: "Function map and cheat sheet"
 description: "Find the documented function for preparing, fitting, checking, interpreting, or reporting a stacked-trait GLLVM."
-tier: 2 # Lookup guide from a modelling task to the current public API.
 output:
   rmarkdown::html_vignette:
     toc: true
@@ -67,10 +66,10 @@ species, or study and know what you need to do next, but not which
 every documented formula, family, covariance source, or interval is suitable
 for every data set.
 
-The page is a Tier 2 lookup guide within **Get started** because it routes
-readers to the current API and existing worked guides; [Get started](gllvmTMB.html) and
-[Individual morphometrics](morphometrics.html) remain the better first read
-when you are new to GLLVMs.
+This task-based lookup guide sits within **Get started** because it routes
+readers to the current API and existing worked guides. [Get
+started](gllvmTMB.html) and [Individual morphometrics](morphometrics.html)
+remain the better first read when you are new to GLLVMs.
 
 ```{=html}
 <div class="gllvm-downloads" aria-label="Download printable gllvmTMB function guides">

@@ -44,8 +44,9 @@ milestone_codes='\bM[0-9]\.[0-9]\b'
 decision_codes='\bD-[0-9]{1,3}\b'
 design_refs='\bDesign [0-9]{2}\b'
 dead_paths='docs/(design|dev-log)/'
+retired_julia_names='\bGLLVM\.jl\b|\bGLLVM_JL_PATH\b|\bgllvmTMB\.GLLVM\.jl\.path\b'
 
-pattern="${register_codes}|${phase_codes}|${milestone_codes}|${decision_codes}|${design_refs}|${dead_paths}"
+pattern="${register_codes}|${phase_codes}|${milestone_codes}|${decision_codes}|${design_refs}|${dead_paths}|${retired_julia_names}"
 
 # --- surfaces a user actually reads ---------------------------------------
 #
@@ -91,6 +92,7 @@ violations=$(grep -rInE "$pattern" "${surfaces[@]}" 2>/dev/null \
 if [ -d R ]; then
   r_violations=$(grep -rInE "\"[^\"]*(${pattern})" R 2>/dev/null \
     | grep -vE '^[^:]+:[0-9]+: *#' \
+    | grep -vE 'R/julia-bridge\.R:[0-9]+:.*(getOption|Sys\.getenv)\(' \
     | grep -vE "$exclude_re" || true)
   if [ -n "$r_violations" ]; then
     violations=$(printf '%s\n%s' "$violations" "$r_violations")
@@ -119,7 +121,7 @@ violations=$(printf '%s' "$violations" | sed '/^$/d')
 if [ -n "$violations" ]; then
   echo "READER-SURFACE CHECK: FAIL"
   echo
-  echo "Internal identifiers or unshipped paths found on user-facing surfaces."
+  echo "Internal identifiers, retired Julia names, or unshipped paths found on user-facing surfaces."
   echo "These contradict the claim NEWS.md makes about itself, and docs/ paths"
   echo "are dead links because .Rbuildignore strips ^docs\$ from the tarball."
   echo

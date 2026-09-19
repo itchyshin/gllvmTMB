@@ -53,7 +53,7 @@ covariance block, not an interaction model.
 
 > **Engine note.** Run this example with `engine = "tmb"` (the default). The
 > current `engine = "julia"` bridge deliberately does not route
-> `kernel_latent()` or other structured covariance terms. GLLVM.jl has a
+> `kernel_latent()` or other structured covariance terms. GLLVModels.jl has a
 > Gaussian dense-covariance building block, but the R bridge has not yet been
 > validated to represent this kernel-only model or return its named covariance
 > component.

@@ -1,15 +1,15 @@
 # ---------------------------------------------------------------------------
-# R -> Julia bridge: run the experimental GLLVM.jl bridge fitting path from R.
+# R -> Julia bridge: run the experimental GLLVModels.jl bridge fitting path from R.
 #
 # `gllvmTMB(..., engine = "julia")` routes here: we marshal the response matrix +
-# model spec to GLLVM.jl's flat `bridge_fit` contract, run the Julia fitter, and
+# model spec to GLLVModels.jl's flat `bridge_fit` contract, run the Julia fitter, and
 # unmarshal the result into a gllvmTMB-compatible list. JuliaCall is a SUGGESTED
-# dependency — everything here errors cleanly if it (or the GLLVM.jl path) is absent.
+# dependency — everything here errors cleanly if it (or the GLLVModels.jl path) is absent.
 #
-# Contract + family mapping: GLLVM.jl docs/dev-log/2026-06-10-bridge-fit-contract-and-r-wiring.md.
+# Contract + family mapping: GLLVModels.jl bridge contract.
 # ---------------------------------------------------------------------------
 
-# session cache so JuliaCall + GLLVM.jl load only once
+# session cache so JuliaCall + GLLVModels.jl load only once
 .gllvm_jl_env <- new.env(parent = emptyenv())
 
 # Bridge family strings admitted by the lean R bridge. Keep this conservative:
@@ -261,19 +261,46 @@ gllvm_julia_gate_registry <- function() {
   paste0("[", gate_id, "] ", paste0(...))
 }
 
-#' Set up JuliaCall and load the GLLVM.jl engine (once per R session).
+# Set up JuliaCall and load the GLLVModels.jl engine (once per R session).
+#
+# The GLLVModels path names are canonical. The former GLLVM path names are
+# retained as compatibility aliases so existing local configurations continue
+# to locate the renamed checkout.
+.gllvm_julia_project_path <- function() {
+  candidates <- c(
+    getOption("gllvmTMB.GLLVModels.jl.path", ""),
+    Sys.getenv("GLLVMODELS_JL_PATH", ""),
+    getOption("gllvmTMB.GLLVM.jl.path", ""),
+    Sys.getenv("GLLVM_JL_PATH", "")
+  )
+  candidates <- as.character(candidates)
+  candidates <- candidates[!is.na(candidates) & nzchar(candidates)]
+  if (length(candidates)) candidates[[1L]] else ""
+}
+
+.gllvm_julia_quote <- function(path) {
+  chars <- strsplit(path, "", fixed = TRUE)[[1L]]
+  paste0(
+    vapply(
+      chars,
+      function(ch) if (ch %in% c("\\", '"')) paste0("\\", ch) else ch,
+      character(1)
+    ),
+    collapse = ""
+  )
+}
+#' Set up JuliaCall and load the GLLVModels.jl engine (once per R session).
 #'
-#' @param jl_path Path to the GLLVM.jl project that provides `bridge_fit`
-#'   (default: option `gllvmTMB.GLLVM.jl.path` or env `GLLVM_JL_PATH`).
+#' @param jl_path Path to the GLLVModels.jl project that provides `bridge_fit`
+#'   (default: option `gllvmTMB.GLLVModels.jl.path` or env
+#'   `GLLVMODELS_JL_PATH`). The older `gllvmTMB.GLLVM.jl.path` option and
+#'   `GLLVM_JL_PATH` environment variable remain accepted as path aliases.
 #' @param julia_home Julia `bin` directory (default: option `gllvmTMB.julia_home`
 #'   or env `JULIA_HOME`; if unset, JuliaCall auto-discovers).
 #' @return Invisibly `TRUE` once ready.
 #' @export
 gllvm_julia_setup <- function(
-  jl_path = getOption(
-    "gllvmTMB.GLLVM.jl.path",
-    Sys.getenv("GLLVM_JL_PATH", "")
-  ),
+  jl_path = .gllvm_julia_project_path(),
   julia_home = getOption("gllvmTMB.julia_home", Sys.getenv("JULIA_HOME", ""))
 ) {
   if (isTRUE(.gllvm_jl_env$ready)) {
@@ -287,8 +314,9 @@ gllvm_julia_setup <- function(
   }
   if (identical(jl_path, "")) {
     stop(
-      "engine = 'julia': set the GLLVM.jl project path via ",
-      "options(gllvmTMB.GLLVM.jl.path = '/path/to/GLLVM.jl') or the GLLVM_JL_PATH env var.",
+      "engine = 'julia': set the GLLVModels.jl project path via ",
+      "options(gllvmTMB.GLLVModels.jl.path = '/path/to/GLLVModels.jl') or the GLLVMODELS_JL_PATH env var. ",
+      "The older gllvmTMB.GLLVM.jl.path option and GLLVM_JL_PATH env var remain accepted as compatibility aliases.",
       call. = FALSE
     )
   }
@@ -302,8 +330,13 @@ gllvm_julia_setup <- function(
     )
   }
   JuliaCall::julia_command(sprintf(
-    'import Pkg; Pkg.activate("%s"); using GLLVM',
-    jl_path
+    paste0(
+      'import Pkg; Pkg.activate("%s"); ',
+      'try; @eval using GLLVModels; ',
+      'catch err; error("gllvmTMB now loads GLLVModels.jl. Update the checkout at this path to GLLVModels.jl; ',
+      'the legacy GLLVM path aliases select a path only and cannot load the retired GLLVM module. Original error: $(sprint(showerror, err))"); end'
+    ),
+    .gllvm_julia_quote(jl_path)
   ))
   .gllvm_jl_env$ready <- TRUE
   invisible(TRUE)
@@ -313,7 +346,7 @@ gllvm_julia_setup <- function(
 #'
 #' `gllvm_julia_capabilities()` reports the rows currently admitted by the lean
 #' R `engine = "julia"` bridge before any JuliaCall setup. It is deliberately
-#' conservative: the paired `GLLVM.jl` checkout may expose broader engine rows
+#' conservative: the paired `GLLVModels.jl` checkout may expose broader engine rows
 #' before R-side payload labels, public-scale maps, confidence-interval status,
 #' and native `gllvmTMB` parity evidence are complete.
 #'
@@ -680,7 +713,7 @@ gllvm_julia_capabilities <- function() {
   )
 }
 
-# Map one R family (a `family` object or a string) to the GLLVM.jl bridge key.
+# Map one R family (a `family` object or a string) to the GLLVModels.jl bridge key.
 .gllvm_julia_family_scalar <- function(family) {
   if (inherits(family, "family")) {
     if (identical(family$family, "binomial")) {
@@ -750,7 +783,7 @@ gllvm_julia_capabilities <- function() {
 }
 
 # Map an R family (a `family` object, a string, a character vector, or a list of
-# one family per trait) to the GLLVM.jl bridge family string(s).
+# one family per trait) to the GLLVModels.jl bridge family string(s).
 .gllvm_julia_family <- function(family) {
   if (is.list(family) && !inherits(family, "family")) {
     fam <- vapply(family, .gllvm_julia_family_scalar, character(1))
@@ -1520,7 +1553,7 @@ gllvm_julia_capabilities <- function() {
     note <- c(
       note,
       if (has_retained_sigma) {
-        "engine = 'julia': link_residual = 'auto' uses the retained GLLVM.jl Sigma/correlation payload on the engine-provided latent or link-residual scale."
+        "engine = 'julia': link_residual = 'auto' uses the retained GLLVModels.jl Sigma/correlation payload on the engine-provided latent or link-residual scale."
       } else {
         "engine = 'julia': link_residual = 'auto' has no retained Sigma payload for this row, so the shared Lambda Lambda^T block is returned."
       }
@@ -2499,7 +2532,7 @@ gllvm_julia_capabilities <- function() {
   invisible(x)
 }
 
-#' Fit a GLLVM with the Julia engine (GLLVM.jl `bridge_fit`).
+#' Fit a GLLVM with the Julia engine (GLLVModels.jl `bridge_fit`).
 #'
 #' @param y Response matrix, p x n (traits x units), or n x p (set `units_are_rows`).
 #' @param family A family object/string, or a list of them (one per trait -> mixed).
@@ -2556,7 +2589,7 @@ gllvm_julia_capabilities <- function() {
 #'   list also carries flat CI fields consumed by `confint()`.
 #' @examples
 #' \dontrun{
-#' # Requires a local GLLVM.jl install (see [gllvm_julia_setup()]).
+#' # Requires a local GLLVModels.jl install (see [gllvm_julia_setup()]).
 #' # `y` is traits x units (p x n): two Gaussian traits, 40 units, K = 2.
 #' set.seed(1)
 #' y <- matrix(rnorm(2 * 40), nrow = 2)
@@ -2786,7 +2819,7 @@ gllvm_julia_fit <- function(
   ) {
     storage.mode(y) <- "integer"
   }
-  args <- list("GLLVM.bridge_fit", y = y, family = fam, d = as.integer(num.lv))
+  args <- list("GLLVModels.bridge_fit", y = y, family = fam, d = as.integer(num.lv))
   if (!is.null(rownames(y))) {
     args$trait_names <- rownames(y)
   }
@@ -2830,7 +2863,7 @@ gllvm_julia_fit <- function(
     fixed_idx <- which(coef_fixed)
     if (length(fixed_idx)) {
       ## JuliaCall simplifies length-1 R vectors to scalar Julia values. Use
-      ## GLLVM.jl's index=>0 dictionary route so one-column masks stay vectors
+      ## GLLVModels.jl's index=>0 dictionary route so one-column masks stay vectors
       ## semantically and multi-column masks use the same transport.
       coef_fixed_option <- stats::setNames(
         as.list(rep(0, length(fixed_idx))),
@@ -3105,7 +3138,7 @@ logLik.gllvmTMB_julia <- function(object, ...) {
 #' @rdname gllvmTMB_julia-methods
 #' @export
 print.gllvmTMB_julia <- function(x, ...) {
-  cat("gllvmTMB fit (engine = 'julia', via GLLVM.jl)\n")
+  cat("gllvmTMB fit (engine = 'julia', via GLLVModels.jl)\n")
   cat(sprintf(
     "  family: %s | K = %d | %d traits x %d units\n",
     paste(unique(x$family), collapse = ","),
@@ -3560,7 +3593,7 @@ print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
 # Called from gllvmTMB() AFTER desugar_brms_sugar() + parse_multi_formula(), so
 # the user grammar (latent/dep/indep/unique -> rr/diag/...) is already interpreted
 # exactly as the TMB engine interprets it. We map the unconstrained-ordination
-# core that GLLVM.jl's bridge_fit currently exposes (a single reduced-rank latent
+# core that GLLVModels.jl's bridge_fit currently exposes (a single reduced-rank latent
 # block + per-trait intercepts, every family) and reject anything else loudly with
 # a pointer to engine = "tmb" -- never a silent approximation.
 # ---------------------------------------------------------------------------
@@ -3860,7 +3893,7 @@ print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
     ## Pivot the long (N = p*n row) design matrix into a p x n x q array. For each
     ## long row i with (trait ft[i], unit fu[i]), Xarg[ft[i], fu[i], k] = Xfix[i, k].
     ## Gaussian keeps the full model matrix. Non-Gaussian rows drop the trait
-    ## dummy columns because GLLVM.jl's covariate fitter estimates those as beta_cov.
+    ## dummy columns because GLLVModels.jl's covariate fitter estimates those as beta_cov.
     x_cols <- if (fam_str == "gaussian") colnames(Xfix) else extra_cols
     q <- length(x_cols)
     Xarg <- array(0, dim = c(p, n, q), dimnames = list(traits, units, x_cols))

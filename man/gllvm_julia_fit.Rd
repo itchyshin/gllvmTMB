@@ -2,7 +2,7 @@
 % Please edit documentation in R/julia-bridge.R
 \name{gllvm_julia_fit}
 \alias{gllvm_julia_fit}
-\title{Fit a GLLVM with the Julia engine (GLLVM.jl \code{bridge_fit}).}
+\title{Fit a GLLVM with the Julia engine (GLLVModels.jl \code{bridge_fit}).}
 \usage{
 gllvm_julia_fit(
   y,
@@ -94,11 +94,11 @@ A list of class \code{gllvmTMB_julia} with the bridge contract fields
 list also carries flat CI fields consumed by \code{confint()}.
 }
 \description{
-Fit a GLLVM with the Julia engine (GLLVM.jl \code{bridge_fit}).
+Fit a GLLVM with the Julia engine (GLLVModels.jl \code{bridge_fit}).
 }
 \examples{
 \dontrun{
-# Requires a local GLLVM.jl install (see [gllvm_julia_setup()]).
+# Requires a local GLLVModels.jl install (see [gllvm_julia_setup()]).
 # `y` is traits x units (p x n): two Gaussian traits, 40 units, K = 2.
 set.seed(1)
 y <- matrix(rnorm(2 * 40), nrow = 2)

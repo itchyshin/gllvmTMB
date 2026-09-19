@@ -2,16 +2,18 @@
 % Please edit documentation in R/julia-bridge.R
 \name{gllvm_julia_setup}
 \alias{gllvm_julia_setup}
-\title{Set up JuliaCall and load the GLLVM.jl engine (once per R session).}
+\title{Set up JuliaCall and load the GLLVModels.jl engine (once per R session).}
 \usage{
 gllvm_julia_setup(
-  jl_path = getOption("gllvmTMB.GLLVM.jl.path", Sys.getenv("GLLVM_JL_PATH", "")),
+  jl_path = .gllvm_julia_project_path(),
   julia_home = getOption("gllvmTMB.julia_home", Sys.getenv("JULIA_HOME", ""))
 )
 }
 \arguments{
-\item{jl_path}{Path to the GLLVM.jl project that provides \code{bridge_fit}
-(default: option \code{gllvmTMB.GLLVM.jl.path} or env \code{GLLVM_JL_PATH}).}
+\item{jl_path}{Path to the GLLVModels.jl project that provides \code{bridge_fit}
+(default: option \code{gllvmTMB.GLLVModels.jl.path} or env
+\code{GLLVMODELS_JL_PATH}). The older \code{gllvmTMB.GLLVM.jl.path} option and
+\code{GLLVM_JL_PATH} environment variable remain accepted as path aliases.}
 
 \item{julia_home}{Julia \code{bin} directory (default: option \code{gllvmTMB.julia_home}
 or env \code{JULIA_HOME}; if unset, JuliaCall auto-discovers).}
@@ -20,5 +22,5 @@ or env \code{JULIA_HOME}; if unset, JuliaCall auto-discovers).}
 Invisibly \code{TRUE} once ready.
 }
 \description{
-Set up JuliaCall and load the GLLVM.jl engine (once per R session).
+Set up JuliaCall and load the GLLVModels.jl engine (once per R session).
 }

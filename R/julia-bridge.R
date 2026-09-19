@@ -263,9 +263,9 @@ gllvm_julia_gate_registry <- function() {
 
 # Set up JuliaCall and load the GLLVModels.jl engine (once per R session).
 #
-# The GLLVModels path names are canonical. The former GLLVM path names are
-# retained as compatibility aliases so existing local configurations continue
-# to locate the renamed checkout.
+# The GLLVModels path names are canonical. Earlier path names are retained as
+# compatibility aliases so existing local configurations continue to locate the
+# renamed checkout.
 .gllvm_julia_project_path <- function() {
   candidates <- c(
     getOption("gllvmTMB.GLLVModels.jl.path", ""),
@@ -293,8 +293,8 @@ gllvm_julia_gate_registry <- function() {
 #'
 #' @param jl_path Path to the GLLVModels.jl project that provides `bridge_fit`
 #'   (default: option `gllvmTMB.GLLVModels.jl.path` or env
-#'   `GLLVMODELS_JL_PATH`). The older `gllvmTMB.GLLVM.jl.path` option and
-#'   `GLLVM_JL_PATH` environment variable remain accepted as path aliases.
+#'   `GLLVMODELS_JL_PATH`). Earlier path settings remain accepted as
+#'   compatibility aliases.
 #' @param julia_home Julia `bin` directory (default: option `gllvmTMB.julia_home`
 #'   or env `JULIA_HOME`; if unset, JuliaCall auto-discovers).
 #' @return Invisibly `TRUE` once ready.
@@ -316,7 +316,7 @@ gllvm_julia_setup <- function(
     stop(
       "engine = 'julia': set the GLLVModels.jl project path via ",
       "options(gllvmTMB.GLLVModels.jl.path = '/path/to/GLLVModels.jl') or the GLLVMODELS_JL_PATH env var. ",
-      "The older gllvmTMB.GLLVM.jl.path option and GLLVM_JL_PATH env var remain accepted as compatibility aliases.",
+      "Earlier path settings remain accepted as compatibility aliases.",
       call. = FALSE
     )
   }
@@ -334,7 +334,7 @@ gllvm_julia_setup <- function(
       'import Pkg; Pkg.activate("%s"); ',
       'try; @eval using GLLVModels; ',
       'catch err; error("gllvmTMB now loads GLLVModels.jl. Update the checkout at this path to GLLVModels.jl; ',
-      'the legacy GLLVM path aliases select a path only and cannot load the retired GLLVM module. Original error: $(sprint(showerror, err))"); end'
+      'earlier path aliases select a path only and cannot load the current module. Original error: $(sprint(showerror, err))"); end'
     ),
     .gllvm_julia_quote(jl_path)
   ))

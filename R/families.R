@@ -463,8 +463,8 @@ censored_poisson <- function(link = "log") {
 #' from \code{\link{delta_lognormal}()}/\code{\link{delta_gamma}()}, which
 #' are hurdle models -- a strictly positive component conditional on
 #' presence, with no second zero-generating process (see
-#' \code{vignette("current-limits", package = "gllvmTMB")} and Design 62 for
-#' the naming rationale). \strong{Boundary:} the count process (its fixed
+#' \code{vignette("current-limits", package = "gllvmTMB")} for the
+#' boundary). \strong{Boundary:} the count process (its fixed
 #' effects, \code{\link{latent}()} structure, and every correlation gllvmTMB
 #' reports) is conditional on the non-structural component; \code{zi} itself
 #' carries no covariates, no random effects, and no reported interval.
@@ -763,7 +763,7 @@ delta_beta <- function(link1 = "logit", link2 = "logit") {
 #'
 #' Cross-engine note: `gllvmTMB`'s `ordinal_probit()` is a probit
 #' threshold model (unit latent variance; Hadfield 2015), whereas
-#' `GLLVM.jl`'s ordinal family is a cumulative-*logit* model. Cutpoints
+#' `GLLVModels.jl`'s ordinal family is a cumulative-*logit* model. Cutpoints
 #' and loadings therefore live on different link scales (differing by a
 #' factor of roughly \eqn{\pi / \sqrt{3}}) and must not be compared
 #' across engines at machine tolerance; the `engine = "julia"` bridge
@@ -856,7 +856,7 @@ ordinal_probit <- function(link = "probit") {
 #' and the other models the observed multivariate response; they are not
 #' interchangeable and share no code path.
 #'
-#' Cross-engine note: `GLLVM.jl`'s ordinal family is a cumulative-logit
+#' Cross-engine note: `GLLVModels.jl`'s ordinal family is a cumulative-logit
 #' model, so `ordinal_logit()` is the gllvmTMB family that is directly
 #' comparable to it on the link scale (unlike `ordinal_probit()`, which
 #' differs by a factor of roughly \eqn{\pi / \sqrt{3}}; see the

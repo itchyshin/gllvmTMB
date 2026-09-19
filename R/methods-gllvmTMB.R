@@ -4319,20 +4319,19 @@ deviance.gllvmTMB_multi <- function(object, ...) {
 #' or its inverse-link response (`type = "response"`). Reconstruction standard
 #' errors and prediction intervals are not currently returned by default.
 #'
-#' `se = TRUE` is **EXPERIMENTAL and INTERNAL-ONLY** (Design 119 Slice 1):
-#' register status `heuristic_unvalidated` -- no repeated-sampling coverage
-#' evidence exists for `se_confidence` or `se_prediction`, and neither is an
-#' interval claim of any kind. It is currently implemented for gaussian
+#' `se = TRUE` is **experimental**: no repeated-sampling coverage evidence
+#' exists for `se_confidence` or `se_prediction`, and neither is an interval
+#' claim of any kind. It is currently implemented for gaussian
 #' fits only (other families abort). Five routes exist (`se_route`):
 #' `"quad"` (default) omits the b_fix/latent-score cross-covariance and any
 #' `diag_B` ("unique"/Psi) or within-unit (`rr_W`) random-effect
-#' contribution (sec.3 R1-quad) and OVER-covers `se_confidence`;
+#' contribution and OVER-covers `se_confidence`;
 #' `"joint"` computes the exact joint-precision variance for the b_fix and
-#' latent-score blocks (sec.3 R1-joint) but omits the loading-uncertainty
+#' latent-score blocks but omits the loading-uncertainty
 #' block entirely and UNDER-covers; `"joint"` and `"quad"` BRACKET nominal
-#' coverage. `"joint_load"` (sec.7b, R1-joint+loadings) adds that third
-#' block; it is the best-calibrated delta-method route measured and still
-#' fails the gate by ~1.2 points at 95% (sec.7c). `"sim"` (sec.3 R2) is a
+#' coverage. `"joint_load"` adds that third block; it is the best-calibrated
+#' delta-method route measured and still falls short of nominal coverage.
+#' `"sim"` is a
 #' Monte Carlo route: it draws the same gradient-relevant parameter
 #' subvector `"joint_load"` uses from its exact joint-precision marginal
 #' normal, forms `n_sim` EXACT (non-linearised) draws of
@@ -4345,7 +4344,7 @@ deviance.gllvmTMB_multi <- function(object, ...) {
 #' nominal 90%) that a normal-quantile route cannot produce. It still holds
 #' every parameter at its estimate (a plug-in simulation), so it does not
 #' address hyperparameter uncertainty.
-#' `"boot"` (sec.3 R3, sec.7d) is a parametric bootstrap: it simulates a
+#' `"boot"` is a parametric bootstrap: it simulates a
 #' complete dataset at the fitted parameters (fresh latent scores AND a
 #' fresh family draw for every cell), masks the same cells, and REFITS the
 #' model `n_boot` times. Because every replicate is a full refit, it is the
@@ -4360,9 +4359,9 @@ deviance.gllvmTMB_multi <- function(object, ...) {
 #' `NA` for that fit (with a warning) rather than reporting an interval
 #' built from a thin sample.
 #'
-#' `boot_dgp` (sec.7e, following the wave-3 coverage diagnosis that `"boot"`
-#' with `boot_dgp = "ml"` under-covers at the same level as `"joint_load"`)
-#' controls what parameters generate the `n_boot` complete-data worlds.
+#' `boot_dgp` controls what parameters generate the `n_boot` complete-data
+#' worlds. A bootstrap with `boot_dgp = "ml"` can under-cover at the same
+#' level as `"joint_load"`.
 #' `"ml"` (default, byte-identical to the pre-sec.7e route) simulates from
 #' the SAME ML fit being intervalised -- so at small n its known downward
 #' variance/loading bias is "re-imported" into the bootstrap world, making
@@ -4375,8 +4374,8 @@ deviance.gllvmTMB_multi <- function(object, ...) {
 #' generative world changes. Ignored unless `se_route = "boot"`.
 #'
 #' Do not surface `se_confidence` / `se_prediction` / the quantile columns
-#' as calibrated uncertainty in any user-facing output until the Design 119
-#' sec.4 coverage campaign clears a route and family for export.
+#' as calibrated uncertainty in any user-facing output until a route and family
+#' have direct coverage evidence.
 #'
 #' For [ordinal_probit()] / [ordinal_logit()] traits, `type = "response"`
 #' is the **expected category** \eqn{E[k] = \sum_k k \cdot

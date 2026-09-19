@@ -634,7 +634,7 @@ link_residual_per_trait <- function(fit) {
 #' @param fit A fit returned by [gllvmTMB()]. Admitted `engine = "julia"`
 #'   bridge fits expose the ordinary unit tier only: `link_residual = "none"`
 #'   reconstructs \eqn{\Lambda\Lambda^\top} from retained loadings, while
-#'   `link_residual = "auto"` uses the retained GLLVM.jl residual-augmented
+#'   `link_residual = "auto"` uses the retained GLLVModels.jl residual-augmented
 #'   payload where available and keeps Gaussian / lognormal rows on the native
 #'   no-op convention. `unit_obs`, structured tiers, and augmented-slope tiers
 #'   remain gated for Julia bridge extractors.

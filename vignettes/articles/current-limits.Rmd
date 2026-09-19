@@ -24,63 +24,35 @@ knitr::opts_chunk$set(
 
 ## Can I use gllvmTMB for this analysis?
 
-Read this page before choosing a model. `gllvmTMB` is experimental, and its
-implemented surface is larger than the set of models with deep recovery and
-comparison evidence. A formula being accepted tells you that the route is
-implemented; it does not, by itself, show that the covariance is identifiable
-for your data or that its uncertainty is calibrated.
+For continuous traits, start with an ordinary Gaussian `indep()` or `dep()`
+model using the default Laplace engine, then [check the
+fit](fit-diagnostics.html). These are the strongest starting routes in the
+tested three-trait complete-data designs. For community counts or binary
+occurrences, do not substitute that Gaussian advice: first choose the matching
+response-family row below and read its linked guide.
+`gllvmTMB` remains experimental: accepting a formula does not establish that
+your covariance can be estimated reliably or that its intervals are calibrated.
+This page describes the 0.7.1 source version; a version number or CRAN
+availability is not scientific certification.
 
-The safest current starting boundary is an ordinary Gaussian model fitted with
-the default Laplace engine using `indep()` or `dep()`. The frozen production
-study gave positive point-estimation evidence for those two routes in its
-tested three-trait complete-data designs. It did not earn a package-wide
-dependable-core claim. The Gaussian latent decomposition remains useful as a
-teaching and characterization model, while non-Gaussian latent evidence is
-family- and design-specific.
+Start with the response-family table. Expand the additional-model boundaries
+as needed, and read the interval section before reporting uncertainty.
 
-This page reports the evidence boundary for the development version leading to
-0.7.0, updated after production confirmation on 9 August 2026. The package
-version remains 0.6.0. CRAN availability will not, by itself, be a scientific
-certification.
+**Experimental/partial** means implementation and some evidence exist, limited
+to the stated design. **Not recommended for this claim** means the intended
+interpretation has not earned a reliability claim; choose a simpler route or
+another package. **Dependable core** would require every preregistered
+first-release recovery and comparator gate to pass; no package-wide claim has
+been earned.
 
-## What the status labels mean
+The frozen production study completed 44,800 fits across 28 admitted cells;
+the table gives its family-specific verdicts. Not every eligible cell entered
+the study, every campaign had failed cells, and diagnostics missed most
+catastrophic truth errors. **Tested-regime evidence** applies only to the named designs;
+**clean-data evidence** also has failed adjacent robustness tests;
+**characterization-only** means the tested pair did not pass its release gate.
 
-**Dependable core** means the route passed every preregistered first-release
-recovery and comparator gate. No candidate receives this label before all of
-its release cells pass.
-
-**Experimental/partial** means a useful implementation and some evidence
-exist, but the evidence is narrower than the general model description. Read
-the linked model guide and do not generalise beyond its stated design.
-
-**Not recommended for this claim** means the package may expose related code,
-but the intended scientific interpretation has not earned a public reliability
-claim. Choose a simpler route or another package.
-
-## What production confirmation found
-
-The frozen study completed 44,800 fits across 28 pilot-admitted cells. Gaussian
-`indep()`, Gaussian `dep()`, Poisson-log rank-1
-`latent(unique = TRUE)`, and Binomial(10)-logit rank-1
-`latent(unique = TRUE)` passed their prespecified small/large core
-point-estimation gates. Gaussian `latent(unique = TRUE)` and NB2-log
-`latent(unique = TRUE)` remained characterization-only.
-
-That result is deliberately narrower than a dependable-core label. Not every
-eligible cell entered production, every campaign contained failed cells, and
-the observable terminal-status detector found only 19 of 80 catastrophic truth
-errors. The passing Poisson and binomial pairs are therefore clean-data,
-tested-regime point evidence, not family-wide robustness or reliable
-silent-failure protection.
-
-Within the package-wide **Experimental/partial** status, the exact-aa evidence
-uses three more precise result phrases. **Narrow tested-regime point evidence**
-means the named core cells passed only in their stated designs. **Narrow
-clean-data point evidence** adds the restriction that adjacent robustness cells
-did not all pass. **Characterization-only** means the route can be studied and
-reported transparently, but its tested pair did not pass the release gate.
-
-## Current decision table
+## Choose a response model
 
 For the ordinary latent route, `latent(..., unique = TRUE)` is the default and
 represents
@@ -100,21 +72,48 @@ Setting `unique = FALSE` requests the narrower loadings-only subset.
 | Ordinal models | Not recommended for this claim | Exploratory point fits only with model-specific validation; there is no calibrated ordinal degeneracy detector | That nominal convergence rules out a degenerate fit, or that binomial detector thresholds transfer to ordinal fits |
 | Mixed-family models across traits | Experimental/partial | Point estimates only for explicitly documented family combinations, with one family/link per trait | Direct comparison of correlations defined on incompatible latent or response scales |
 | Family/link varying across rows within one trait | Not recommended for this claim | Nothing yet; the fit now fails loudly before optimization | That a shared loading is coherent across Poisson-log and binomial-logit/probit merely because the engine accepts per-row family IDs; the planned Poisson-log/binomial-cloglog integrated route is not yet validated |
+
+## Check additional model components
+
+<details>
+<summary>Covariance sources, temporal models, grouping, and missing data</summary>
+
+| Analysis or result | Current status | What you may report | What you must not infer |
+|---|---|---|---|
 | Non-unit likelihood weights | Not recommended for likelihood-based inference | Weighted-objective point estimates only, with the weighting rule reported | Ordinary Hessian/Wald uncertainty, `logLik()`, AIC, BIC, or likelihood-ratio interpretation; no sandwich route is certified |
 | Phylogenetic, animal, spatial, or kernel covariance | Experimental/partial | Point estimates for the exact documented route after structure-specific diagnostics | That ordinary-model evidence transfers to a structured source, that spatial `tau` or field SD has validated absolute-scale recovery, or that structured intervals are calibrated |
+| Gaussian temporal covariance | Experimental/partial | Standalone AR1/OU `temporal_indep()`, `temporal_dep()`, and rank-one `temporal_latent()` with complete panels, at least three traits and three occasions per series; see [Temporal covariance](temporal-ar1.html) | General recovery, calibrated intervals, temporal slopes, higher rank, or non-Gaussian support |
+| Temporal plus another source | Experimental/partial | Replicated AR1 `temporal_indep()` plus exactly one `kernel_indep()`, `phylo_indep()`, `animal_indep()`, or `spatial_indep()`: Gaussian identity-link native TMB/Laplace ML, at least two complete measurements per state, source supplied inside the keyword at `rho = 1`, and non-proportional time/space contrasts for the fixed-mesh spatial route | Broad recovery or coverage: only the kernel local fixture passes; retained phylogenetic, animal, and spatial recovery gates fail. OU source combinations, temporal `dep`/`latent` combinations, multiple structured sources, source-by-time interactions, and spatial forecasting remain unavailable |
 | Random slopes or several grouping tiers | Experimental/partial | Exact admitted cells only, with the covariance block named explicitly | A grid-wide claim across families, modes, slope counts, or grouping levels |
 | Missing response cells | Experimental/partial | Point estimates after confirming the intended cells were omitted from the likelihood; the strongest worked evidence is Gaussian | That every family has equal recovery depth or that missingness is ignorable by default |
 | One modelled missing predictor with `mi()` | Experimental/partial | Native-Laplace results for one explicitly modelled predictor in the documented predictor-family routes | VA support, several `mi()` predictors, general MNAR handling, or missing grouping variables |
+
+</details>
+
+<details>
+<summary>Alternative engines and integration methods</summary>
+
+| Analysis or result | Current status | What you may report | What you must not infer |
+|---|---|---|---|
 | Variational approximation | Experimental/partial | Opt-in exploratory point estimates within the admitted VA fence, using the current automatic GH evaluator with `H = 7`, with the returned method metadata and the exact family/rank evidence named | General point recovery: only 1 of 36 family-by-rank cells passed the current campaign's overall point route, and that sole pass was Poisson-log `q = 5`, outside the public `d <= 2` fence; its ELBO is not a log-likelihood, so ordinary `logLik()`, AIC, BIC, and likelihood-ratio comparisons are undefined; do not infer calibrated covariance, Wald intervals, or evidence equivalent to Laplace |
 | Adaptive Gauss-Hermite quadrature | Experimental/partial | Opt-in sensitivity analysis in its documented scalar-random-effect regime, stating the ridge setting | Ordinary ML interpretation: AGHQ defaults to a `tau = 2` penalised MAP fit, so ordinary AIC, BIC, and likelihood-ratio interpretations do not apply; the evaluated node/ridge rule is not a generally calibrated estimator |
 | EVA | Not recommended for this claim | Nothing yet | That internal design work implies an available estimator |
 | Julia engine | Experimental/partial | Optional-bridge results only after checking the route-specific parity evidence | Full R/TMB feature parity or a required dependency for the ordinary workflow |
+
+</details>
+
+<details>
+<summary>Response-column effects, integrated models, and other specialised routes</summary>
+
+| Analysis or result | Current status | What you may report | What you must not infer |
+|---|---|---|---|
 | Response-column coefficient models (`column_coef()`, `phylo_coef()`, `animal_coef()`, `kernel_coef()`, `spatial_coef()`) | Experimental/partial | Gaussian point estimates for a random intercept, slope, or both, varying across response columns, fitted through long or `traits(...)` wide data. `phylo_coef()` and `kernel_coef()` can fix a numeric mixture strength or estimate one interior value; `animal_coef()` fixes it; `spatial_coef()` fixes it at 1 and estimates the spatial range | Calibrated intervals, non-Gaussian responses, an estimated mixture strength for the animal or spatial routes, or recovery outside the tested Gaussian cells |
 | Prediction at new locations for integrated (iSDM) fits (`predict()` on `isdm_sources()` fits) | Experimental/partial | Point predictions, including maps, at new in-hull coordinates for the ordinary intercept-only spatial tier; training-row predictions reproduce the fitted values exactly | Held-out map accuracy — the preregistered accuracy campaign did not pass its gate; a standard error or confidence interval on `newdata` predictions (`se.fit` is refused there); or predictions for spatial slope tiers, which remain unsupported |
 | Predictor-informed latent scores (`latent(..., lv = ~ x)`) | Experimental/partial | Point estimates of the rotation-invariant effect of a predictor acting through the shared latent axes, combining traits from more than one response family in one model, in the specific tested construction and evidence cells | Broad recovery or calibration across arbitrary family combinations; support for missing latent-score predictors, combined fixed-and-latent-score predictors, REML, or a structured (phylogenetic/spatial/kernel) source on this term |
 | Multinomial structured routes | Experimental/partial | Fixed-effect point estimates and probability predictions for one unordered multinomial response are well tested. Several structured extensions (a phylogenetic route, a shared-latent cross-family route, pedigree- or kernel-sourced routes, and ordinary group random intercepts) exist and each has its own narrower tested evidence | Fitting more than one multinomial response in the same model; augmented (intercept-and-slope) structured forms; or calibrated intervals on any structured multinomial route |
 | Estimated source strength (`rho = NULL` on `phylo_*`/`animal_*`/`kernel_*`/`spatial_*` terms) | Experimental/partial | Bounded point-recovery evidence for a native Gaussian model with complete replicated trait vectors, one known relatedness source, retained observation-level residual variance, and no competing ordinary covariance term | General recovery across other source/covariance-mode combinations — most combinations tested so far did not pass; any confidence interval on the estimated strength, which does not yet exist; or recovery for augmented (intercept-and-slope) forms |
-| Wald, bootstrap, or profile intervals | Not recommended for this claim | A target-specific returned interval together with its method and status label, subject to the narrow exception below | That method availability establishes repeated-sampling coverage |
+
+</details>
 
 ## What to interpret first
 
@@ -133,8 +132,10 @@ rotation convention; do not treat an arbitrary raw orientation as biology.
 
 ## Current uncertainty limits
 
-The package provides Wald, bootstrap, and profile machinery for named targets,
-but these routes do not share one package-wide calibration claim.
+Wald, bootstrap, and profile methods are available for named targets, but their
+availability does not establish repeated-sampling coverage. Report the target,
+method, and returned status; calibrated uncertainty is not recommended as a
+general claim. The narrow loading-interval exception is described below.
 
 `profile_ci_total_variance()` is a penalty-profile approximation, not a
 certified exact likelihood-ratio profile. Historical ordinary Gaussian

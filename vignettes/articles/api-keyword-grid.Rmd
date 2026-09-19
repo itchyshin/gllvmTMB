@@ -139,8 +139,8 @@ measurements at the same `(series, occasion)` state. The provider creates that
 state index privately; it does not change `unit` or `unit_obs`, which retain
 their ordinary stable-unit and within-unit meanings.
 
-AR1 accepts ordered integer occasions and keeps missing values as gaps; OU
-accepts elapsed numeric time without automatic rescaling. With
+AR1 accepts ordered integer occasions and preserves unobserved occasions as
+gaps; OU accepts elapsed numeric time without automatic rescaling. With
 `temporal_latent(unique = TRUE)`, Psi is itself correlated through the temporal
 kernel, not IID occasion noise. The temporal article shows matching long and
 `traits(...)` wide calls. **In scope:** focused Gaussian local fits, source
@@ -152,9 +152,16 @@ generic intervals/profiles, and automatic selection remain unavailable. Four
 replicated-AR1 additive `temporal_indep()` pairs with one diagonal kernel,
 phylogenetic, animal, or spatial source are separately implemented, with
 pair-specific local evidence only: kernel has a passing local fixture,
-phylogenetic and spatial recovery gates retain failures, and animal recovery is
-pending. Other families, higher rank, source-by-time interactions, and other
-structured-source combinations are unavailable.
+phylogenetic, animal, and spatial recovery gates retain failures. These pairs
+require complete Gaussian identity-link data, native TMB/Laplace ML, at least
+two complete measurements per series--occasion, and a source fixed at `rho = 1`.
+Supply the source inside its keyword (`K =`, `tree =`/`vcv =`,
+`pedigree =`/`A =`/`Ainv =`, or `mesh =`). The spatial route needs time and space
+contrasts that are not proportional. OU source combinations, temporal
+`dep`/`latent` combinations, temporal slopes, other families, higher rank,
+source-by-time interactions, and other structured-source combinations are
+unavailable. See [Temporal covariance](temporal-ar1.html) for the standalone
+workflow and the adjacent source-combination limits.
 
 ## What the modes estimate
 

@@ -41,6 +41,8 @@ calibration remains incomplete.
 | If you want to... | Read this |
 |---|---|
 | fit your first model | [Get started with gllvmTMB](https://itchyshin.github.io/gllvmTMB/articles/gllvmTMB.html) |
+| model community counts, one count per species at each site | [Response families](https://itchyshin.github.io/gllvmTMB/articles/response-families.html) to choose a count model, then [browse the matching article](https://itchyshin.github.io/gllvmTMB/articles/) |
+| model community occurrence records, one 0/1 observation per species at each site | [Joint species distribution models for binary occurrence data](https://itchyshin.github.io/gllvmTMB/articles/joint-sdm.html) |
 | decide whether your model and intended result are inside the current evidence boundary | [Current limitations and boundaries](https://itchyshin.github.io/gllvmTMB/articles/current-limits.html) |
 | choose the guide matching your data and question | [Browse all articles](https://itchyshin.github.io/gllvmTMB/articles/) |
 | model three traits measured repeatedly through time | [Temporal covariance](https://itchyshin.github.io/gllvmTMB/articles/temporal-ar1.html) |
@@ -73,11 +75,14 @@ cells are implemented: replicated AR1 `temporal_indep()` plus one labelled
 `kernel_indep()` term; one fixed labelled `phylo_indep()` term with in-keyword
 `tree =` or `vcv =`; one fixed labelled `animal_indep()` term with in-keyword
 `pedigree =`, `A =`, or `Ainv =`; or one fixed-mesh `spatial_indep()` term.
+These pairs require Gaussian identity-link data, native TMB/Laplace ML,
+at least two complete measurements per series--occasion, and `rho = 1`.
+Spatial contrasts must not be determined solely by temporal lag.
 Their evidence is partial and differs by pair: the named kernel fixture passes
 locally; retained phylogenetic, animal, and spatial recovery gates fail
 strictly. They are not cross-platform verification,
-release, general recovery, or coverage evidence. OU, other temporal/source
-modes, source-by-time interactions, and other structured-source combinations
+release, general recovery, or coverage evidence. OU source combinations, other
+temporal/source modes, source-by-time interactions, and other structured-source combinations
 remain unavailable. In the animal cell, `A` is a labelled dense relatedness
 matrix; pass a sparse relationship precision through `Ainv`.
 

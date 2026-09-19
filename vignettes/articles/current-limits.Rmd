@@ -41,8 +41,9 @@ as needed, and read the interval section before reporting uncertainty.
 **Experimental/partial** means a feature is available only for the stated
 design; do not extend its conclusions to neighbouring models. **Not
 recommended for this claim** means choose a simpler route or another package.
-The family-specific rows below say what has actually been checked and where
-that evidence stops.
+Evidence is limited to the designs named in the table. No package-wide
+reliability claim has been earned, so choose a simpler route when a row says
+that a claim is not recommended.
 
 ## Choose a response model
 
@@ -74,7 +75,7 @@ Setting `unique = FALSE` requests the narrower loadings-only subset.
 |---|---|---|---|
 | Non-unit likelihood weights | Not recommended for likelihood-based inference | Weighted-objective point estimates only, with the weighting rule reported | Ordinary Hessian/Wald uncertainty, `logLik()`, AIC, BIC, or likelihood-ratio interpretation; no sandwich route is certified |
 | Phylogenetic, animal, spatial, or kernel covariance | Experimental/partial | Point estimates for the exact documented route after structure-specific diagnostics | That ordinary-model evidence transfers to a structured source, that spatial `tau` or field SD has validated absolute-scale recovery, or that structured intervals are calibrated |
-| Gaussian temporal covariance | Experimental/partial | Standalone AR1/OU `temporal_indep()`, `temporal_dep()`, and rank-one `temporal_latent()` with complete panels, at least three traits and three occasions per series; see [Temporal covariance](temporal-ar1.html) | General recovery, calibrated intervals, temporal slopes, higher rank, or non-Gaussian support |
+| Gaussian temporal covariance | Experimental/partial | Use the [temporal guide](temporal-ar1.html) only for repeated Gaussian measurements with complete panels, at least three traits, and three occasions per series | General recovery, calibrated intervals, temporal slopes, higher rank, or non-Gaussian support |
 | Temporal plus another source | Experimental/partial | A narrow Gaussian AR1 model plus one kernel, phylogenetic, animal, or spatial source; see the temporal guide for the required complete-panel design | Broad recovery or coverage, OU combinations, multiple structured sources, source-by-time interactions, and spatial forecasting |
 | Random slopes or several grouping tiers | Experimental/partial | Exact admitted cells only, with the covariance block named explicitly | A grid-wide claim across families, modes, slope counts, or grouping levels |
 | Missing response cells | Experimental/partial | Point estimates after confirming the intended cells were omitted from the likelihood; the strongest worked evidence is Gaussian | That every family has equal recovery depth or that missingness is ignorable by default |
@@ -87,9 +88,9 @@ Setting `unique = FALSE` requests the narrower loadings-only subset.
 
 | Analysis or result | Current status | What you may report | What you must not infer |
 |---|---|---|---|
-| Variational approximation | Experimental/partial | Opt-in exploratory point estimates within the admitted VA fence, using the current automatic GH evaluator with `H = 7`, with the returned method metadata and the exact family/rank evidence named | General point recovery: only 1 of 36 family-by-rank cells passed the current campaign's overall point route, and that sole pass was Poisson-log `q = 5`, outside the public `d <= 2` fence; its ELBO is not a log-likelihood, so ordinary `logLik()`, AIC, BIC, and likelihood-ratio comparisons are undefined; do not infer calibrated covariance, Wald intervals, or evidence equivalent to Laplace |
+| Variational approximation | Experimental/partial | Opt-in exploratory point estimates within the admitted VA fence, using the current automatic GH evaluator with `H = 7`, and report the method metadata and exact family/rank | General point recovery outside the stated public fence; its ELBO is not a log-likelihood, so ordinary `logLik()`, AIC, BIC, and likelihood-ratio comparisons are undefined; do not infer calibrated covariance, Wald intervals, or evidence equivalent to Laplace |
 | Adaptive Gauss-Hermite quadrature | Experimental/partial | Opt-in sensitivity analysis in its documented scalar-random-effect regime, stating the ridge setting | Ordinary ML interpretation: AGHQ defaults to a `tau = 2` penalised MAP fit, so ordinary AIC, BIC, and likelihood-ratio interpretations do not apply; the evaluated node/ridge rule is not a generally calibrated estimator |
-| EVA | Not recommended for this claim | Nothing yet | That internal design work implies an available estimator |
+| EVA | Not recommended for this claim | No public estimator is available | That an implementation detail implies an available estimator |
 | Julia engine | Experimental/partial | Optional-bridge results for the documented model types; start with [Julia bridge setup](../reference/gllvm_julia_setup.html) | Full R/TMB feature parity or a required dependency for the ordinary workflow |
 
 </details>
@@ -100,7 +101,7 @@ Setting `unique = FALSE` requests the narrower loadings-only subset.
 | Analysis or result | Current status | What you may report | What you must not infer |
 |---|---|---|---|
 | Response-column coefficient models (`column_coef()`, `phylo_coef()`, `animal_coef()`, `kernel_coef()`, `spatial_coef()`) | Experimental/partial | Gaussian point estimates for a random intercept, slope, or both, varying across response columns, fitted through long or `traits(...)` wide data. `phylo_coef()` and `kernel_coef()` can fix a numeric mixture strength or estimate one interior value; `animal_coef()` fixes it; `spatial_coef()` fixes it at 1 and estimates the spatial range | Calibrated intervals, non-Gaussian responses, an estimated mixture strength for the animal or spatial routes, or recovery outside the tested Gaussian cells |
-| Prediction at new locations for integrated (iSDM) fits (`predict()` on `isdm_sources()` fits) | Experimental/partial | Point predictions, including maps, at new in-hull coordinates for the ordinary intercept-only spatial tier; training-row predictions reproduce the fitted values exactly | Held-out map accuracy — the preregistered accuracy campaign did not pass its gate; a standard error or confidence interval on `newdata` predictions (`se.fit` is refused there); or predictions for spatial slope tiers, which remain unsupported |
+| Prediction at new locations for integrated (iSDM) fits (`predict()` on `isdm_sources()` fits) | Experimental/partial | Point predictions, including maps, at new in-hull coordinates for the ordinary intercept-only spatial tier; training-row predictions reproduce the fitted values exactly | Held-out map accuracy, which has not been demonstrated in the evaluated design; a standard error or confidence interval on `newdata` predictions (`se.fit` is refused there); or predictions for spatial slope tiers, which remain unsupported |
 | Predictor-informed latent scores (`latent(..., lv = ~ x)`) | Experimental/partial | Point estimates of the rotation-invariant effect of a predictor acting through the shared latent axes, combining traits from more than one response family in one model, in the specific tested construction and evidence cells | Broad recovery or calibration across arbitrary family combinations; support for missing latent-score predictors, combined fixed-and-latent-score predictors, REML, or a structured (phylogenetic/spatial/kernel) source on this term |
 | Multinomial structured routes | Experimental/partial | Fixed-effect point estimates and probability predictions for one unordered multinomial response are well tested. Several structured extensions (a phylogenetic route, a shared-latent cross-family route, pedigree- or kernel-sourced routes, and ordinary group random intercepts) exist and each has its own narrower tested evidence | Fitting more than one multinomial response in the same model; augmented (intercept-and-slope) structured forms; or calibrated intervals on any structured multinomial route |
 | Estimated source strength (`rho = NULL` on `phylo_*`/`animal_*`/`kernel_*`/`spatial_*` terms) | Experimental/partial | Bounded point-recovery evidence for a native Gaussian model with complete replicated trait vectors, one known relatedness source, retained observation-level residual variance, and no competing ordinary covariance term | General recovery across other source/covariance-mode combinations — most combinations tested so far did not pass; any confidence interval on the estimated strength, which does not yet exist; or recovery for augmented (intercept-and-slope) forms |
@@ -176,10 +177,10 @@ diagnostics specific to the response family. Procedural convergence and a
 positive-definite Hessian are useful signals, but neither proves that the
 scientific estimand was recovered.
 
-In the frozen production study, the observable terminal-status detector had
+In the tested NB2 examples, the observable terminal-status detector had
 sensitivity 0.2375 and specificity 0.9627: it missed 61 of 80 catastrophic
-truth errors, all in the tested NB2 cells. Treat diagnostics as triage signals,
-not as certificates that a scientifically plausible estimate is accurate.
+truth errors. Treat diagnostics as triage signals, not as certificates that a
+scientifically plausible estimate is accurate.
 
 See [Can I trust this fit?](fit-diagnostics.html) for the first diagnostic
 workflow and [Convergence and start values](convergence-start-values.html) when

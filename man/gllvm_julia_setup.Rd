@@ -12,8 +12,8 @@ gllvm_julia_setup(
 \arguments{
 \item{jl_path}{Path to the GLLVModels.jl project that provides \code{bridge_fit}
 (default: option \code{gllvmTMB.GLLVModels.jl.path} or env
-\code{GLLVMODELS_JL_PATH}). The older \code{gllvmTMB.GLLVM.jl.path} option and
-\code{GLLVM_JL_PATH} environment variable remain accepted as path aliases.}
+\code{GLLVMODELS_JL_PATH}). Earlier path settings remain accepted as
+compatibility aliases.}
 
 \item{julia_home}{Julia \code{bin} directory (default: option \code{gllvmTMB.julia_home}
 or env \code{JULIA_HOME}; if unset, JuliaCall auto-discovers).}

@@ -293,7 +293,7 @@ pinning those coefficients exactly at structural zero. Use this when a
 predictor is meaningful for some responses but should be fixed at zero
 for others. Native TMB fits use a parameter map; admitted
 \code{engine = "julia"} fixed-effect-X rows pass the same zero mask to
-GLLVM.jl. This is ML-only: \code{REML = TRUE} stops loudly. Native fitted
+GLLVModels.jl. This is ML-only: \code{REML = TRUE} stops loudly. Native fitted
 objects still report all fixed-effect rows; pinned rows have
 \code{estimate = 0}, \code{std.error = NA}, and \code{status = "fixed"} in
 \code{tidy(fit, "fixed")}.}
@@ -319,7 +319,7 @@ predictor-model formula (for Gaussian sugar, e.g. \code{x ~ z}) or an
 \item{silent}{Logical; suppress TMB and gllvmTMB chatter. Default \code{TRUE}.}
 
 \item{engine}{Character; \code{"tmb"} (default) fits with the native TMB engine,
-\code{"julia"} routes the fit through the experimental GLLVM.jl bridge fitting
+\code{"julia"} routes the fit through the experimental GLLVModels.jl bridge fitting
 path via JuliaCall (see \code{R/julia-bridge.R}). The Julia path currently maps
 the unconstrained-ordination core (a single \code{latent()} block + per-trait
 intercepts) and errors on structures it does not yet support.}

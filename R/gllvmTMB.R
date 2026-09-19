@@ -315,7 +315,7 @@
 #'   predictor is meaningful for some responses but should be fixed at zero
 #'   for others. Native TMB fits use a parameter map; admitted
 #'   `engine = "julia"` fixed-effect-X rows pass the same zero mask to
-#'   GLLVM.jl. This is ML-only: `REML = TRUE` stops loudly. Native fitted
+#'   GLLVModels.jl. This is ML-only: `REML = TRUE` stops loudly. Native fitted
 #'   objects still report all fixed-effect rows; pinned rows have
 #'   `estimate = 0`, `std.error = NA`, and `status = "fixed"` in
 #'   `tidy(fit, "fixed")`.
@@ -336,7 +336,7 @@
 #'   `NULL` is appropriate when no `mi()` term is present.
 #' @param silent Logical; suppress TMB and gllvmTMB chatter. Default `TRUE`.
 #' @param engine Character; `"tmb"` (default) fits with the native TMB engine,
-#'   `"julia"` routes the fit through the experimental GLLVM.jl bridge fitting
+#'   `"julia"` routes the fit through the experimental GLLVModels.jl bridge fitting
 #'   path via JuliaCall (see `R/julia-bridge.R`). The Julia path currently maps
 #'   the unconstrained-ordination core (a single `latent()` block + per-trait
 #'   intercepts) and errors on structures it does not yet support.
@@ -693,7 +693,7 @@ gllvmTMB <- function(
       ">" = "Pass {.code REML = TRUE} or {.code REML = FALSE}."
     ))
   }
-  ## engine = "julia" routes through the experimental GLLVM.jl bridge fitting
+  ## engine = "julia" routes through the experimental GLLVModels.jl bridge fitting
   ## path via JuliaCall; "tmb" (default) keeps the native TMB engine below.
   engine <- match.arg(engine)
   if (identical(engine, "julia") &&
@@ -1366,7 +1366,7 @@ gllvmTMB <- function(
     response_shape = "long",
     n_obs = nrow(data)
   )
-  ## ---- engine = "julia": route to the GLLVM.jl bridge ---------------------
+  ## ---- engine = "julia": route to the GLLVModels.jl bridge ----------------
   ## `parsed` already reflects the desugared user grammar, so the Julia path
   ## interprets latent/dep/indep/unique exactly as the TMB engine does. The
   ## dispatch maps the unconstrained-ordination core and errors loudly on
@@ -1379,7 +1379,7 @@ gllvmTMB <- function(
     if (!is.null(parsed$offset_expr))
       cli::cli_abort(c(
         "{.code engine = \"julia\"} does not support {.fn offset} terms.",
-        "i" = "The GLLVM.jl bridge has no offset in its linear predictor, so the term would be dropped from the fit rather than applied.",
+        "i" = "The GLLVModels.jl bridge has no offset in its linear predictor, so the term would be dropped from the fit rather than applied.",
         ">" = "Use the default {.code engine = \"tmb\"} for a model with an offset."
       ))
     return(.gllvmTMB_julia_dispatch(

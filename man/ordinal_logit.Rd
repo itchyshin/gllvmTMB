@@ -53,7 +53,7 @@ probability, but one models a missing predictor's marginal distribution
 and the other models the observed multivariate response; they are not
 interchangeable and share no code path.
 
-Cross-engine note: \code{GLLVM.jl}'s ordinal family is a cumulative-logit
+Cross-engine note: \code{GLLVModels.jl}'s ordinal family is a cumulative-logit
 model, so \code{ordinal_logit()} is the gllvmTMB family that is directly
 comparable to it on the link scale (unlike \code{ordinal_probit()}, which
 differs by a factor of roughly \eqn{\pi / \sqrt{3}}; see the

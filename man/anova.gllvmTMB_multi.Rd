@@ -67,13 +67,10 @@ scalar variances: at the null (the new column exactly 0) the associated
 latent score itself becomes unidentified, which is closer to the
 "testing the number of factors" / reduced-rank-testing literature (known
 to have non-standard LRT asymptotics in general) than to Self & Liang's
-setting. \code{anova()} uses the chi-bar-square mixture anyway, exactly as
-GLLVM.jl's oracle implementation does for K-selection, but labels every
-rank-step p-value with this caveat in the table's notes rather than
-presenting it as an exact result. Its empirical size was measured by
-simulation (\code{tests/testthat/test-select-lv-anova.R},
-\code{dev/gapclose/arcD/O5-report.md}); consult that evidence, not this
-docstring, for whether it is close to nominal.
+setting. \code{anova()} uses the chi-bar-square mixture as an approximation and
+labels every rank-step p-value with this caveat in the table's notes rather
+than presenting it as an exact result. Treat this result as a model-selection
+aid, not as a generally calibrated hypothesis test.
 }
 
 \seealso{

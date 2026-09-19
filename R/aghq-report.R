@@ -438,13 +438,10 @@ BIC.gllvmTMB_multi <- function(object, ...) {
 #' latent score itself becomes unidentified, which is closer to the
 #' "testing the number of factors" / reduced-rank-testing literature (known
 #' to have non-standard LRT asymptotics in general) than to Self & Liang's
-#' setting. `anova()` uses the chi-bar-square mixture anyway, exactly as
-#' GLLVM.jl's oracle implementation does for K-selection, but labels every
-#' rank-step p-value with this caveat in the table's notes rather than
-#' presenting it as an exact result. Its empirical size was measured by
-#' simulation (`tests/testthat/test-select-lv-anova.R`,
-#' `dev/gapclose/arcD/O5-report.md`); consult that evidence, not this
-#' docstring, for whether it is close to nominal.
+#' setting. `anova()` uses the chi-bar-square mixture as an approximation and
+#' labels every rank-step p-value with this caveat in the table's notes rather
+#' than presenting it as an exact result. Treat this result as a model-selection
+#' aid, not as a generally calibrated hypothesis test.
 #'
 #' @return A `data.frame` of class `c("anova.gllvmTMB_multi", "data.frame")`
 #'   with columns `model`, `formula`, `d` (latent rank, `NA` if not

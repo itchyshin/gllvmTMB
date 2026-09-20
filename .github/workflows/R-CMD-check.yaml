@@ -82,6 +82,10 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Check reader-facing public surface
+        shell: bash
+        run: bash tools/check-reader-surface.sh
+
       - name: Enforce GitHub Actions compute boundary
         shell: bash
         run: bash tools/check-actions-boundary.sh

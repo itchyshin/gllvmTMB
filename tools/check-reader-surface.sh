@@ -60,6 +60,26 @@ surfaces=(README.md NEWS.md DESCRIPTION)
 [ -d man ] && surfaces+=(man)
 [ -d vignettes ] && surfaces+=(vignettes)
 
+# --- home-page first-read contract ----------------------------------------
+#
+# A banned-token sweep cannot establish that a new reader encounters the
+# purpose of the package before caveats or implementation language. Keep this
+# narrow and concrete: the README is pkgdown's home-page body, so it must name
+# the model in plain language, say what it is for, and do both before the
+# experimental warning. A rendered-site check accompanies this source contract
+# in the documentation job; this check catches a regression before a build is
+# published.
+#
+landing_text=$(tr '\n' ' ' < README.md)
+gllvm_definition=$(printf '%s' "$landing_text" | grep -bo 'GLLVM\*\* means \*\*generalized linear latent-variable model' | head -1 | cut -d: -f1 || true)
+purpose=$(printf '%s' "$landing_text" | grep -bo 'several responses together' | head -1 | cut -d: -f1 || true)
+warning=$(printf '%s' "$landing_text" | grep -bo 'Experimental software' | head -1 | cut -d: -f1 || true)
+
+if [ -z "$gllvm_definition" ] || [ -z "$purpose" ] || [ -z "$warning" ] || \
+   [ "$gllvm_definition" -ge "$warning" ] || [ "$purpose" -ge "$warning" ]; then
+  violations=$(printf '%s\nREADME.md: landing page must define GLLVM and its multi-response purpose before the experimental warning' "$violations")
+fi
+
 # --- documented exclusions -------------------------------------------------
 #
 # refs.bib   : bibliography. R Journal DOIs (RJ-2018-017, RJ-2018-009) match the
@@ -137,6 +157,8 @@ echo "  runtime  : R/ string literals (cli/stop/warning message text and"
 echo "             character values returned to users; comments exempt)"
 echo "  links    : shipped vignettes carry no relative *.html links to"
 echo "             articles that .Rbuildignore strips from the tarball"
+echo "  landing  : README defines GLLVM and its multi-response purpose before"
+echo "             the experimental warning"
 echo
 echo "NOT covered: whether the prose that replaced a removed identifier is TRUE."
 echo "No grep can establish that. Four panels withheld on exactly that gap."

@@ -16,9 +16,17 @@ vignette: >
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
 ```
 
-GLLVMs combine vocabulary from multivariate statistics, ordination, factor
-analysis, and mixed models. This glossary translates the terms used in the
-public `gllvmTMB` guides and points to the page where each idea is demonstrated.
+**GLLVM** means **generalized linear latent-variable model**. A GLLVM analyses
+several responses together and uses a small number of unobserved shared
+patterns, called latent variables, to describe how those responses vary together.
+The word *generalized* means the model can use response distributions suited
+to different data, such as continuous measurements, counts, or presence and
+absence. See [Response families](response-families.html) for the supported
+choices and their limits.
+
+`gllvmTMB` is the R package used in these guides. This glossary translates
+terms from multivariate statistics, ordination, factor analysis, and mixed
+models, and points to the page where each idea is demonstrated.
 
 Use [Choose your next gllvmTMB step](function-map-cheatsheet.html) when you
 know the task you need to complete but not the function or guide that starts it.

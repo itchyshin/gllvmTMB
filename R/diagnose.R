@@ -855,6 +855,7 @@
 #' @return A one-row data frame in the [check_gllvmTMB()] row shape, or
 #'   `NULL` when the fit has no multinomial (fid 16) contrast pseudo-traits.
 #' @keywords internal
+#' @noRd
 .gllvmTMB_multinomial_degeneracy_row <- function(
   object,
   multinomial_collapse_floor = 1e-10,

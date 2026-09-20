@@ -68,8 +68,9 @@ form.
 left-hand side converts that shape to the same stacked representation. These two
 formulas express the same two-LV model. Long calls name both the trait and unit
 columns explicitly. Wide calls omit `trait =` because `traits(...)` supplies
-the response columns, but still name `unit`; override the default
-`unit = "site"` whenever another column carries that role.
+the response columns, but still name `unit`. Name the unit column explicitly:
+the temporary implicit `"site"` fallback is deprecated, and omission otherwise
+stops with an error.
 
 ```{r long-wide-formulas, eval = FALSE}
 # Long

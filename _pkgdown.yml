@@ -4,8 +4,9 @@ url: https://itchyshin.github.io/gllvmTMB/
 # Matches drmTMB's _pkgdown.yml convention.
 destination: pkgdown-site
 
-# D-41: a prominent, site-wide EXPERIMENTAL callout on the home sidebar,
-# in addition to the README badge + callout and the DESCRIPTION line.
+# A visible, concise safety note belongs beside the home page. Detailed
+# validation records belong on the linked limits page, not in a reader's first
+# screen.
 home:
   sidebar:
     structure: [experimental, links, license, community, citation, authors, dev]
@@ -13,16 +14,11 @@ home:
       experimental:
         title: Status
         text: >-
-          **Experimental — use at your own risk.** Not complete, not fully
-          human-verified, needs extensive further validation. CRAN availability
-          is not scientific maturity. Point estimates are the primary
-          inferential output, but their evidence is route- and regime-specific.
-          Broad package-wide interval coverage is not certified. Three exact
-          native pinned unrotated ordinary-Gaussian standardized-loading Wald cells have
-          target-specific certificates only in one frozen DGP, conditional on eligible fits;
-          total-variance penalty profiles remain route-only. Read
-          [Current limitations and boundaries](articles/current-limits.html)
-          before choosing a model.
+          **Experimental software.** Start with a documented example, check the
+          fitted model, and read [Current limitations and
+          boundaries](articles/current-limits.html) before reporting a result.
+          A model that converges alone does not establish that every extension
+          is reliable.
 template:
   bootstrap: 5
   bootswatch: flatly

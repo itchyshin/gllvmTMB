@@ -6,47 +6,52 @@
 [![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
 <!-- badges: end -->
 
+## Find shared patterns across many responses
+
+**GLLVM** means **generalized linear latent-variable model**. A GLLVM analyses
+several responses together and uses a small number of unobserved shared
+patterns—called latent variables—to describe how those responses vary together.
+
+`gllvmTMB` is an R package for data in which each site, individual, species, or
+study has several measurements: body traits, species counts or occurrences,
+behaviours, clinical outcomes, or similar data. It helps answer questions such
+as:
+
+- Which traits vary together across individuals?
+- Which species tend to occur together after accounting for measured conditions?
+- How much variation is shared, and how much is specific to each response?
+
+Latent variables describe patterns of association. They do not, by themselves,
+show that one trait, species, or treatment causes another to change.
+
 > [!WARNING]
-> **`gllvmTMB` is experimental.** Start with a documented tutorial, check fit
-> diagnostics, and read [Current limitations and
+> **Experimental software.** Start with a documented example, check the fitted
+> model, and read [Current limitations and
 > boundaries](https://itchyshin.github.io/gllvmTMB/articles/current-limits.html)
-> before treating an estimate or interval as a scientific result. A model that
-> converges is not, by itself, evidence that every extension is reliable.
+> before reporting a result. A model that converges is not, by itself, evidence
+> that every extension is reliable.
 
-`gllvmTMB` fits multivariate models for data where each site,
-individual, species, or study has several responses: body traits,
-species occurrences, behaviours, outcomes, or similar measurements.
-The main question is simple:
-
-> Which responses vary together, and how much of that variation is shared
-> versus response-specific?
-
-Unlike PCA or NMDS, `gllvmTMB` estimates latent structure **inside a
-likelihood** rather than from a distance matrix or eigen-decomposition.
-Loadings, correlations, and communalities can be paired with model-based
-uncertainty where a target-specific route is supported; broad interval
-calibration remains incomplete.
-
-## Start Here
+## Start with your scientific question
 
 | If you want to... | Read this |
 |---|---|
-| fit your first model | [Get started with gllvmTMB](https://itchyshin.github.io/gllvmTMB/articles/gllvmTMB.html) |
-| model community counts, one count per species at each site | [Response families](https://itchyshin.github.io/gllvmTMB/articles/response-families.html) to choose a count model, then [browse the matching article](https://itchyshin.github.io/gllvmTMB/articles/) |
-| model community occurrence records, one 0/1 observation per species at each site | [Joint species distribution models for binary occurrence data](https://itchyshin.github.io/gllvmTMB/articles/joint-sdm.html) |
-| decide whether your model and intended result are inside the current evidence boundary | [Current limitations and boundaries](https://itchyshin.github.io/gllvmTMB/articles/current-limits.html) |
-| choose the guide matching your data and question | [Browse all articles](https://itchyshin.github.io/gllvmTMB/articles/) |
-| model three traits measured repeatedly through time | [Temporal covariance](https://itchyshin.github.io/gllvmTMB/articles/temporal-ar1.html) |
-| try an optional, limited Julia-backed fit from R | [Julia bridge setup](https://itchyshin.github.io/gllvmTMB/reference/gllvm_julia_setup.html) |
-| check whether a fit is interpretable | [Can I trust this fit?](https://itchyshin.github.io/gllvmTMB/articles/fit-diagnostics.html) |
-| look up formulas, covariance terms, or families | [Reference index](https://itchyshin.github.io/gllvmTMB/reference/) |
+| learn from a first continuous-trait model | [Get started with gllvmTMB](https://itchyshin.github.io/gllvmTMB/articles/gllvmTMB.html) |
+| model community counts at sites | [Response families](https://itchyshin.github.io/gllvmTMB/articles/response-families.html), then [choose the matching example](https://itchyshin.github.io/gllvmTMB/articles/) |
+| model presence or absence of many species | [Joint species distribution models](https://itchyshin.github.io/gllvmTMB/articles/joint-sdm.html) |
+| model traits measured repeatedly through time | [Temporal covariance](https://itchyshin.github.io/gllvmTMB/articles/temporal-ar1.html) |
+| check whether a fitted model is interpretable | [Can I trust this fit?](https://itchyshin.github.io/gllvmTMB/articles/fit-diagnostics.html) |
+| choose another guide | [Browse all articles](https://itchyshin.github.io/gllvmTMB/articles/) |
 
-The package is under active development, so formula details and extractor
-output may still change. The first tutorials focus on ordinary Gaussian models
-and explain how to interpret covariance, correlation, and communality. For
-random slopes, temporal dependence, phylogeny, spatial structure, another
-response family, or a Julia-backed fit, start with the linked guide and use its
-stated boundary rather than extending a simple example by analogy.
+The first tutorials focus on continuous responses and explain how to interpret
+shared and response-specific variation. For random slopes, temporal dependence,
+phylogeny, spatial structure, or another response family, start with the linked
+guide and use its stated boundary rather than extending a simple example by
+analogy.
+
+The comparison with PCA or NMDS, the likelihood, and technical terms such as
+loadings and communality are explained after the first example. They are useful
+for interpreting a fitted model, not prerequisites for deciding whether this is
+the right question for your data.
 
 ## What the model does
 
@@ -94,13 +99,13 @@ interface lets you supply the stacked table yourself.
 
 ## Install
 
-After the first CRAN release is accepted, install the released package with:
+The released package is available from CRAN:
 
 ```r
 install.packages("gllvmTMB")
 ```
 
-Until then, install the development build from GitHub with `pak`:
+To try development changes before a release, install from GitHub with `pak`:
 
 ```r
 install.packages("pak")

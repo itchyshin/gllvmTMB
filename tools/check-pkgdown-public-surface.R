@@ -41,6 +41,27 @@ if (length(missing_indexes)) {
   )
 }
 
+# The source README is the home-page body, but its Markdown is not the public
+# artifact. Parse the generated main content so an apparently harmless template
+# or sidebar change cannot put the safety notice ahead of the explanation.
+home <- xml2::read_html(file.path(site_dir, "index.html"))
+home_main <- xml2::xml_find_first(home, "//main")
+home_text <- xml2::xml_text(home_main)
+definition_at <- regexpr(
+  "GLLVM means generalized linear latent-variable model",
+  home_text,
+  fixed = TRUE
+)[[1L]]
+purpose_at <- regexpr("several responses together", home_text, fixed = TRUE)[[1L]]
+warning_at <- regexpr("Experimental software", home_text, fixed = TRUE)[[1L]]
+if (definition_at < 1L || purpose_at < 1L || warning_at < 1L ||
+    definition_at >= warning_at || purpose_at >= warning_at) {
+  stop(
+    "Rendered landing page must define GLLVM and its multi-response purpose before the experimental warning.",
+    call. = FALSE
+  )
+}
+
 html_files <- list.files(
   site_dir,
   pattern = "[.]html$",

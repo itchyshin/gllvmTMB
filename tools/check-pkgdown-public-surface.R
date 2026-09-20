@@ -49,14 +49,33 @@ html_files <- list.files(
 )
 files_to_scan <- c(html_files, file.path(site_dir, required_indexes))
 private_target <- paste0("(?i)(?:^|[/\"'])", paste(private_pages, collapse = "|"))
+reader_tracking <- paste(
+  "(?i)(?:",
+  "\\b(?:PR|issue)\\s*#\\d+|\\bArc\\s+\\d+\\b|",
+  "\\b(?:implementation|development|work|active)\\s+lane\\b|\\bworktree\\b|\\bdev-log/|",
+  "\\b(?:agent|persona)\\s+(?:review|approved|approval|handoff)\\b|",
+  "\\b(?:Rose|Pat)\\s+(?:reviewed|approved)\\b|",
+  "\\bfixture(?:-backed|\\s+evidence)\\b|\\bcapability\\s+ledger\\b|",
+  "\\b(?:catch-up\\s+)?scoreboard\\b|\\boptimizer-health\\b|",
+  "\\b[A-Z]{2,4}-[0-9]{2,}\\b|\\bM[0-9](?:\\.[0-9])?\\b|\\bD-[0-9]{1,3}\\b",
+  ")",
+  sep = ""
+)
 
 leaks <- vapply(files_to_scan, function(path) {
   any(grepl(private_target, readLines(path, warn = FALSE), perl = TRUE))
 }, logical(1))
-if (any(leaks)) {
+tracking_leaks <- vapply(files_to_scan, function(path) {
+  text <- paste(readLines(path, warn = FALSE), collapse = " ")
+  grepl(reader_tracking, text, perl = TRUE)
+}, logical(1))
+if (any(leaks | tracking_leaks)) {
   stop(
-    "Private page links leaked into generated site files: ",
-    paste(sub(paste0("^", site_dir, "/"), "", files_to_scan[leaks]), collapse = ", "),
+    "Private links or internal process language leaked into generated site files: ",
+    paste(
+      sub(paste0("^", site_dir, "/"), "", files_to_scan[leaks | tracking_leaks]),
+      collapse = ", "
+    ),
     call. = FALSE
   )
 }

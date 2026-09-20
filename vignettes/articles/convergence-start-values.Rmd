@@ -154,9 +154,9 @@ health[
 ]
 ```
 
-Read the components in three lanes:
+Read the components as three separate checks:
 
-| Lane | Components | What it answers | Typical next action |
+| Check | Components | What it answers | Typical next action |
 |---|---|---|---|
 | Convergence | optimizer code, raw maximum gradient, restart history; scaled gradient is descriptive | Is the selected point sufficiently stationary, and did starts find competing objective values? | Try more starts, rescale predictors, or compare optimizers. |
 | Hessian-based inference | `sdreport`, `pd_hessian`, Hessian rank, fixed-effect SE | Is local curvature usable for Wald uncertainty? | If unavailable or weak, inspect the target and use a supported profile or bootstrap route. |
@@ -356,7 +356,7 @@ The output method column should be read literally: if it says
 was `"profile"`.
 
 The generic `confint(method = "profile")` and
-`confint(method = "bootstrap")` routes are contract-tested, but route
+`confint(method = "bootstrap")` routes are available, but route
 availability is not the same as empirical interval calibration.
 Target-specific profile helpers are narrower: check
 `profile_targets(fit)` before treating a derived quantity as

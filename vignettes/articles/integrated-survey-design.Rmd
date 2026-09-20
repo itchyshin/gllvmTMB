@@ -203,7 +203,7 @@ be concrete. This is the same route the companion article walks through, on a
 deliberately small design, so that the rest of the page has something to point
 at.
 
-Four columns do the integrating work: a **source gate** so that portal-only
+Four columns do the integrating work: a **portal-row indicator** so that portal-only
 terms are structurally absent from the survey likelihood, a **log support**
 offset carrying known effort, a **structurally zero** accessibility covariate
 on survey rows, and a per-row **family selector**.
@@ -213,7 +213,7 @@ dat <- rows
 dat$trait   <- factor(dat$trait)
 dat$cell_id <- factor(dat$cell_id)
 
-dat$isdm_gbif    <- as.integer(dat$source == "gbif")   # source gate
+dat$isdm_gbif    <- as.integer(dat$source == "gbif")   # 1 for portal rows, 0 otherwise
 dat$log_support  <- log(dat$support)                   # known effort
 dat$env    <- x[match(as.character(dat$cell_id), cells)]
 dat$access <- ifelse(dat$isdm_gbif == 1L,              # portal-only, so a
@@ -289,16 +289,16 @@ the next section measures.
 
 # The design curve
 
-The numbers in this section come from an internal known-truth simulation
-campaign: **1,600 fits, no errors**, run on a shared compute server. The
+The numbers in this section come from a simulation study with known parameter
+values: **1,600 fits, no errors**. The
 domain was grown at **fixed spatial range and fixed cell size**, so the number
 of cells rises *without* diluting the sampling in any one cell. That
 separation is the point of the design; it is what lets the curve say something
 about cells specifically rather than about "more data" in general.
 
-They are hard-coded here, exactly as the campaign recorded them, so that you
-can see the evidence rather than a summary of it. Nothing on this page re-runs
-the campaign — a single fit at the largest design point took about 107 s.
+The table below reproduces the study results. Running this article does not
+repeat the simulation study; a single fit at the largest design point took
+about 107 s.
 
 ```{r curve-data}
 ## per-cell effort level E = 2 (the higher of the campaign's two settings)
@@ -454,8 +454,8 @@ route — one presence-only count stream and one detection/non-detection survey
 sharing an ecological linear predictor, with a portal-only bias term and known
 per-row support, through `gllvmTMB()`.
 
-**Works but not certified:** the design guidance itself. It rests on a
-synthetic known-truth campaign in a single narrow regime. The direction of the
+**Limits of the design guidance:** it rests on a simulation study with known
+parameter values in a single narrow regime. The direction of the
 effect and its conditional form are what the evidence supports; the location
 of the accuracy frontier is not established, and the estimates from the small
 fit above are illustration, not validation.
@@ -463,8 +463,8 @@ fit above are illustration, not validation.
 **Not available:** a power calculator or a recommended cell count for a real
 study; calibrated confidence intervals for this route; weighting one source's
 contribution against the other's; and any measured result outside the
-fixed-range, fixed-cell-size regime described above. Each is real work, not
-an oversight. (More than two sources IS available — through the
+fixed-range, fixed-cell-size regime described above. (More than two sources
+is available through the
 `isdm_sources()` declaration shown in
 [More than two sources](integrated-multi-source-example.html) — but this
 campaign measured the two-source design only.)

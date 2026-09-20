@@ -10,7 +10,11 @@
 
 **GLLVM** means **generalized linear latent-variable model**. A GLLVM analyses
 several responses together and uses a small number of unobserved shared
-patterns—called latent variables—to describe how those responses vary together.
+patterns, called latent variables, to describe how those responses vary together.
+The word *generalized* means the model can use response distributions suited
+to different data, such as continuous measurements, counts, or presence and
+absence. The supported choices and their limits are in
+[Response families](https://itchyshin.github.io/gllvmTMB/articles/response-families.html).
 
 `gllvmTMB` is an R package for data in which each site, individual, species, or
 study has several measurements: body traits, species counts or occurrences,
@@ -30,6 +34,15 @@ show that one trait, species, or treatment causes another to change.
 > boundaries](https://itchyshin.github.io/gllvmTMB/articles/current-limits.html)
 > before reporting a result. A model that converges is not, by itself, evidence
 > that every extension is reliable.
+
+`gllvmTMB` uses **Template Model Builder (TMB)** to fit models by default.
+`GLLVModels.jl` is an optional Julia companion. The experimental
+`engine = "julia"` option fits a supported subset of models from R; it does
+not provide every R/TMB feature. See the
+[Julia setup reference](https://itchyshin.github.io/gllvmTMB/reference/gllvm_julia_setup.html)
+and the Julia-engine entry in
+[Current limitations and boundaries](https://itchyshin.github.io/gllvmTMB/articles/current-limits.html).
+Julia is not required to install or use the default R workflow.
 
 ## Start with your scientific question
 

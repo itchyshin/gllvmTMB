@@ -24,19 +24,50 @@ knitr::opts_chunk$set(
 
 ## Can I use gllvmTMB for this analysis?
 
-For continuous traits, start with an ordinary Gaussian `indep()` or `dep()`
-model using the default Laplace engine, then [check the
-fit](fit-diagnostics.html). These are the strongest starting routes in the
-tested three-trait complete-data designs. For community counts or binary
-occurrences, do not substitute that Gaussian advice: first choose the matching
-response-family row below and read its linked guide.
-`gllvmTMB` remains experimental: accepting a formula does not establish that
-your covariance can be estimated reliably or that its intervals are calibrated.
-This page describes the 0.7.1 source version; a version number or CRAN
-availability is not scientific certification.
+`gllvmTMB` models several responses measured on the same sampling units, such
+as species counts at sites or traits measured on individuals. A **generalized
+linear latent-variable model (GLLVM)** uses a few unobserved variables to
+describe how responses vary together after accounting for measured predictors.
+It can help ask which species respond similarly to an environmental gradient,
+or how much variation is shared among traits. Shared variation alone
+does not identify a cause or demonstrate an interaction between species.
 
-Start with the response-family table. Expand the additional-model boundaries
-as needed, and read the interval section before reporting uncertainty.
+For a first runnable example, follow
+[Get started: fit continuous morphological traits](gllvmTMB.html#first-fit-wide-individual-by-trait-morphology).
+It loads data included with the package, fits a model, checks the fit, and reads
+trait covariances. Both wide and long data are shown. This is a teaching example;
+running it successfully does not establish reliability for a new dataset.
+
+`gllvmTMB` is experimental. Its formulas and summaries may change, and support
+for a model does not mean that all its estimates and intervals have been shown
+to be reliable. Before reporting a result:
+
+- Match the response model to your data. Continuous measurements, counts, and
+  presence/absence need different choices; see the
+  [response-family guide](response-families.html).
+- [Check the fitted model](fit-diagnostics.html). A fit can appear numerically
+  healthy and still give poor estimates, particularly for some negative-binomial
+  count models and models with missing responses.
+- Read the evidence for your model in the table below. Results for a simple
+  model do not automatically apply after adding a phylogeny, spatial structure,
+  or another source of variation.
+- Treat uncertainty separately from point estimates. An available confidence
+  interval does not guarantee that it contains the true value as often as its
+  stated confidence level implies. See [Current uncertainty limits](#current-uncertainty-limits).
+
+For continuous traits, the strongest starting evidence here is for Gaussian
+models with independent trait variation (`indep()`) or a full trait covariance
+(`dep()`), in the tested three-trait complete-data examples. The Gaussian latent
+model used in the introductory tutorial has not passed all its recovery checks.
+For counts and binary responses, use the matching row below; the Gaussian
+results do not establish reliability for those data.
+
+## Evidence for choosing a model
+
+This page describes the 0.7.1 source version. The tables give the conditions
+under which each result was tested, followed by limits for additional model
+components and uncertainty. For how these checks work, see
+[Validation oracles](validation-oracles.html).
 
 **Experimental/partial** means a feature is available only for the stated
 design; do not extend its conclusions to neighbouring models. **Not

@@ -22,35 +22,46 @@ knitr::opts_chunk$set(
 )
 ```
 
-`gllvmTMB` fits multivariate models for data where each site,
-individual, species, or study has several responses. The first
-question is usually not mathematical:
+GLLVM means **generalized linear latent-variable model**. It models several
+responses together and uses a small number of unobserved variables to describe
+how those responses vary together after accounting for measured predictors.
+`gllvmTMB` fits these models in R. Your responses might be species counts at
+survey sites, morphological traits of individuals, or environmental measurements
+at sampling locations. Each site or individual is a sampling unit; each species,
+trait, or measurement is a response.
 
 > Which responses vary together, and how much variation is shared
 > rather than response-specific?
 
-This page does one small, reproducible example. It loads a prepared
+This page works through one small, reproducible example with continuous
+morphological traits. It loads a prepared
 morphometrics object, fits the model from a wide trait table first,
 checks the equivalent long-data call, and extracts the covariance,
 correlation, communality, and ordination summaries a reader normally
-wants first.
+wants first. To run it now, go to
+[First fit: wide individual-by-trait morphology](#first-fit-wide-individual-by-trait-morphology).
+The data are included with the package, and the example shows both wide data
+(one row per individual) and long data (one row per individual and trait).
 
 `gllvmTMB` has an experimental lifecycle: the formula grammar,
 defaults, and reported summaries and intervals may still change as
 the API matures.
 
-Before choosing a family, covariance source, estimator, or interval method,
-read [Current limitations and boundaries](https://itchyshin.github.io/gllvmTMB/articles/current-limits.html). That
-page distinguishes evidence limited to the specific conditions we tested from
-experimental or partial routes, and states what each result can and cannot
-support. The Gaussian latent model below is retained as a teaching example for
-the covariance decomposition and rotation-invariant summaries. For the two
-specific latent-model shapes tested in production — Gaussian
-`latent(unique = TRUE)` and NB2-log `latent(unique = TRUE)` — we have so far
-only measured how they behave, not shown they recover known parameters, so
-this tutorial is not proof that the method works. Gaussian point estimates
-have only been checked to recover known parameters starting with `indep()` or
-`dep()`, with fit-health checks and no general interval certificate.
+Use this example to learn how to fit a model and read its covariance summaries.
+Successful fitting does not establish that the estimates are accurate for your
+data or that an interval has its stated coverage. The Gaussian latent model
+taught here has not passed all of its parameter-recovery checks. For continuous
+traits, simpler models with independent trait variation (`indep()`) or a full
+trait covariance (`dep()`) have stronger point-estimation evidence in the tested
+three-trait, complete-data examples.
+
+Before adapting the example to counts, presence/absence, missing observations,
+or a spatial or phylogenetic model, read
+[Current limitations and boundaries](https://itchyshin.github.io/gllvmTMB/articles/current-limits.html).
+It explains which results have been checked, where estimates can fail even when
+the fit appears healthy, and why uncertainty needs a separate check.
+
+## What the first model means
 
 The fitted Gaussian model starts with observations, not with the
 covariance matrix. For each individual and trait, the teaching model is:

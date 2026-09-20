@@ -83,12 +83,64 @@ reader_tracking <- paste(
   sep = ""
 )
 
+is_spde_matrix_notation <- function(text, start, length) {
+  token <- substr(text, start, start + length - 1L)
+  if (!grepl("^M[0-9](?:[.][0-9])?$", token, ignore.case = TRUE, perl = TRUE)) {
+    return(FALSE)
+  }
+
+  # pkgdown's search index keeps both flattened and source-like mathematics,
+  # turning M_2 into M2. Exempt only an M-number inside the local SPDE matrix
+  # triad (M0, M1, M2), not a bare M2 or a milestone-labelled M2.
+  context_start <- max(1L, start - 160L)
+  context_end <- min(nchar(text), start + length - 1L + 160L)
+  context <- substr(text, context_start, context_end)
+  tracking_cue <- grepl(
+    paste0(
+      "(?i)(?:\\b(?:milestone|phase|stage|track|gate)\\s+",
+      "M[0-9](?:[.][0-9])?\\b|\\bM[0-9](?:[.][0-9])?\\s+",
+      "(?:milestone|phase|stage|track|gate|status)\\b)"
+    ),
+    context,
+    perl = TRUE
+  )
+  if (tracking_cue) {
+    return(FALSE)
+  }
+  matrix_matches <- gregexpr("M_?[0-2]", context, perl = TRUE)[[1L]]
+  if (matrix_matches[[1L]] == -1L) {
+    return(FALSE)
+  }
+  matrix_tokens <- regmatches(context, list(matrix_matches))[[1L]]
+  matrix_tokens <- unique(toupper(gsub("_", "", matrix_tokens, fixed = TRUE)))
+  has_matrix_context <- grepl(
+    "(?i)(?:\\bmesh\\b|\\bmatri(?:x|ces)\\b|Q\\s*[(]|kappa|κ)",
+    context,
+    perl = TRUE
+  )
+  has_matrix_context && all(c("M0", "M1", "M2") %in% matrix_tokens)
+}
+
+contains_reader_tracking <- function(text) {
+  matches <- gregexpr(reader_tracking, text, perl = TRUE)[[1L]]
+  if (matches[[1L]] == -1L) {
+    return(FALSE)
+  }
+  lengths <- attr(matches, "match.length")
+  for (i in seq_along(matches)) {
+    if (!is_spde_matrix_notation(text, matches[[i]], lengths[[i]])) {
+      return(TRUE)
+    }
+  }
+  FALSE
+}
+
 leaks <- vapply(files_to_scan, function(path) {
   any(grepl(private_target, readLines(path, warn = FALSE), perl = TRUE))
 }, logical(1))
 tracking_leaks <- vapply(files_to_scan, function(path) {
   text <- paste(readLines(path, warn = FALSE), collapse = " ")
-  grepl(reader_tracking, text, perl = TRUE)
+  contains_reader_tracking(text)
 }, logical(1))
 if (any(leaks | tracking_leaks)) {
   stop(

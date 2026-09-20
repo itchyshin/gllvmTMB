@@ -39,6 +39,28 @@ status <- attr(run_checker(site), "status")
 stopifnot(!is.null(status) && status != 0L)
 writeLines(home, file.path(site, "index.html"))
 
+# SPDE finite-element matrices are mathematical notation, not development
+# milestones. pkgdown flattens M_2 to M2 in search.json, so exercise the exact
+# rendered form that triggered the false positive.
+writeLines(
+  '{"text":"Q(kappa) = kappa^4 M0 + 2 kappa^2 M1 + M2; the mesh supplies M0, M1, and M2."}',
+  file.path(site, "search.json")
+)
+status <- attr(run_checker(site), "status")
+stopifnot(is.null(status) || status == 0L)
+
+# A real internal milestone must still be rejected in the same generated file.
+writeLines(
+  paste0(
+    '{"text":"The mesh matrices are M0, M1, and M2. ',
+    'Milestone M2 governs the next release."}'
+  ),
+  file.path(site, "search.json")
+)
+status <- attr(run_checker(site), "status")
+stopifnot(!is.null(status) && status != 0L)
+writeLines("{}", file.path(site, "search.json"))
+
 writeLines(
   "<html><body><p>This implementation lane closes PR #456.</p></body></html>",
   file.path(site, "articles", "gllvmTMB.html")

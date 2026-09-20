@@ -127,8 +127,8 @@ per-trait site-level ICCs
 \eqn{R_t = (\Sigma_\mathrm{unit})_{tt} /
 [(\Sigma_\mathrm{unit})_{tt} + (\Sigma_\mathrm{unit\_obs})_{tt}]}.
 
-Scope: Gaussian bootstrap summaries and mixed-family refit
-plumbing are covered by current tests.
+Scope: Gaussian bootstrap summaries and mixed-family refitting are exercised
+across the currently supported routes.
 Non-Gaussian bootstrap calibration is experimental: its repeated-sampling
 behaviour has not been certified, and there is no production calibration
 evidence for mixed-family intervals. Treat those intervals as indicative.

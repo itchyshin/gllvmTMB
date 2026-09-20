@@ -111,13 +111,13 @@ meaningful because the latent scores are standard normal by
 identification, so a binomial loading is the trait's latent standard
 deviation in link units: a value of this size already implies a
 fitted probability indistinguishable from 0 or 1 across an ordinary
-swing of the axis. Default 8, raised from 6 (issue #1098) after the
+swing of the axis. Default 8, raised from 6 after the
 earlier calibration pool (3,944 simulated binomial fits, no healthy
 fit above 3.99) turned out to be unrepresentative: its true loading
 scale never reached the regime where this arm misfires. A second pool
 built specifically to cross \verb{sigma_lambda in c(0.7, 3.0)} (928 healthy
-/ 272 degenerate binomial-probit fits) -- 3.0 chosen to hit issue
-#847's \code{aghq_ridge} ridge-failure regime, not argued for realism --
+/ 272 degenerate binomial-probit fits) -- 3.0 chosen to probe the
+\code{aghq_ridge} ridge-failure regime, not argued for realism --
 measured this arm as the SOLE source of every false positive found
 (232/928 at threshold 6, all attributable to this arm alone). Raising
 the threshold to 8 lowers the false-positive rate on that pool from
@@ -133,7 +133,7 @@ scales, and this default should not be read as calibrated against
 that regime. \code{aghq_ridge = 2} reduces but does not remove the problem
 (46.0\% -> 13.5\% false positives at \code{sigma_lambda = 3.0}). Being a
 link-scale quantity it does not transport to families whose response
-scale is arbitrary, which is why this row is binomial-only. This gate
+scale is arbitrary, which is why this row is binomial-only. This rule
 applies to every link (\code{family_id == 1L}), but the calibration above
 is probit-only: logit loadings run larger than probit loadings for
 the same underlying model (the standard logistic/probit
@@ -141,8 +141,7 @@ variance-matching ratio, commonly cited as ~1.6-1.8), so the same
 fixed threshold is reached by a smaller true effect on the logit
 link, and the false-positive rate measured here should be read as a
 lower bound on logit fits, not a transportable number -- no logit
-evidence exists in the calibration pool. See
-\code{dev/heywood/fp-scale-dependence.md} for the full mechanism note.}
+evidence exists in the calibration pool.}
 
 \item{multinomial_collapse_floor}{Absolute floor on a \code{multinomial()}
 (fid 16) contrast pseudo-trait's fitted loading energy
@@ -182,10 +181,9 @@ S3 calibration campaign; labeled evidence: collapsed ratios 7e-5 to
 (fid 14) trait's largest loading relative to the typical loading among
 the other ordinal traits, at or above which the loading is reported on
 its own. Mirrors \code{loading_runaway_thresh}'s binomial arm. Default \code{Inf}
-(disarmed): the detector-S1 mechanism probe
-(\code{dev/ordinal-degeneracy/probe-criteria.md}) established that degenerate
-ordinal fits share binomial's quasi-complete-separation mechanism, but
-the threshold itself awaits the detector-S2 calibration campaign.}
+(disarmed): a mechanism study established that degenerate ordinal fits
+share binomial's quasi-complete-separation mechanism, but the threshold
+itself still awaits calibration.}
 
 \item{ordinal_loading_absolute_thresh}{Threshold on an \code{ordinal_probit()}
 trait's largest loading on the link (liability) scale, unit tiers only,

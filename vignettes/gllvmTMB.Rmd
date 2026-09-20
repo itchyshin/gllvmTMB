@@ -150,9 +150,9 @@ library(gllvmTMB)
 
 For a first fit, load the prepared morphometrics example object. It
 contains long data, wide data, the truth table, and the two formulas
-used below. The reproducible generator is
-`data-raw/examples/make-morphometrics-example.R`, but beginners do not
-need to read the generator before fitting the model.
+used below. The generating code is available in the source repository for
+reproducibility, but beginners do not need to read it before fitting the
+model.
 
 ```{r example-data, eval = FALSE}
 morph <- readRDS(system.file(

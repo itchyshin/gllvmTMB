@@ -345,9 +345,8 @@ outside this article's scope. The comparison for Example 2 is
 
 ## The paper-equation to `gllvmTMB`-call map
 
-The rows below are reproduced from `gllvmTMB`'s own internal design
-record for this alignment (not re-derived here), restricted to the
-models this article uses.
+The rows below map the paper's equations to the `gllvmTMB` calls used in this
+article.
 
 | Paper eq | Model | `gllvmTMB` call | Status |
 |---|---|---|---|
@@ -359,9 +358,8 @@ models this article uses.
 | 8 | Phylogenetic correlation between traits/contrasts | `extract_correlations(fit, tier = "phy")` | supported for admitted phylogenetic tiers, including ordinal and multinomial |
 | A.1-A.9 | Contrast-matrix reparameterisation of the softmax | n/a | no action needed — `gllvmTMB` already fits the equivalent baseline-category-logit softmax directly |
 
-The full table (20 rows, every mode/source combination, with the
-recovery-campaign evidence behind each verdict) is available in the
-[package repository](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/123-multinomial-structured-surface.md).
+The status column states the supported scope directly. Combinations not listed
+here should not be inferred from a neighbouring supported model.
 
 ## What this article does *not* claim
 

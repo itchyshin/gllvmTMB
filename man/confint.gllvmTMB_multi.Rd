@@ -24,8 +24,8 @@
 \item \code{"Sigma_cluster"} and \code{"Sigma_cluster2"} --
 diagonal covariance matrices for the first and second extra grouping
 tiers. \code{"profile"} and \code{"wald"} return diagonal variance
-intervals; \code{"bootstrap"} is intentionally blocked until a
-simulate-refit calibration gate is added for these tiers.
+intervals; \code{"bootstrap"} is intentionally blocked until
+simulate-refit calibration is available for these tiers.
 \item \code{"sigma_phy"} -- per-trait phylogenetic standard deviations.
 \item Legacy aliases \code{"Sigma_B"} and \code{"Sigma_W"}, retained
 for existing scripts.

@@ -52,7 +52,7 @@ Gaussian, binomial, Poisson, lognormal, Gamma, NB2, Beta, betabinomial,
 Student-t, zero-truncated Poisson, zero-truncated NB2, NB1, and
 ordinal-probit rows. \code{type = "simulation_rank"} uses fitted-model
 simulations and is available as a fallback for checking the same row
-contract when exact family-CDF plumbing is not implemented for a family;
+contract when an exact family CDF is not implemented for a family;
 its own family coverage (what \code{\link[=simulate.gllvmTMB_multi]{simulate.gllvmTMB_multi()}} can draw from)
 is tracked separately and is not extended here.
 }
@@ -71,9 +71,8 @@ at zero with a continuous part and need an explicit design decision for
 splitting the point mass, and multinomial's categories are unordered so a
 randomized-quantile residual is undefined without inventing an ordering.
 Unsupported families are retained with row status rather than promoted
-to exact residual claims. Formal residual tests (beyond the recovery
-checks in \code{tests/testthat/test-exact-rq-residuals-families.R}) remain
-later validation work.
+to exact residual claims. Formal residual calibration beyond the current
+family-specific recovery checks remains later validation work.
 
 The returned data frame also carries \code{attr(x, "gllvmTMB_diagnostic")}
 with \code{\link[=check_gllvmTMB]{check_gllvmTMB()}} output and the fitted object's \code{fit_health}

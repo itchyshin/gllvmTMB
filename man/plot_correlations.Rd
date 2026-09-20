@@ -115,7 +115,7 @@ For fitted-object calls, open points can often be investigated by trying
 \code{\link[=extract_correlations]{extract_correlations()}}.
 }
 \details{
-Julia bridge (\code{engine = "julia"}) fits currently fail with an explicit gate
+Julia bridge (\code{engine = "julia"}) fits currently fail with an explicit error
 because this helper depends on interval-bearing \code{\link[=extract_correlations]{extract_correlations()}}
 rows. Use \code{\link[=plot_Sigma_table]{plot_Sigma_table()}} or \code{\link[=plot_Sigma_heatmap]{plot_Sigma_heatmap()}} for point-only
 Julia bridge correlation displays.

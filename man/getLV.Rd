@@ -49,8 +49,7 @@ and \code{se[i, k]} always refer to the same (unit, axis) cell. This value is
 mathematically equivalent to inverting the fit's full joint precision
 matrix (\code{TMB::sdreport(getJointPrecision = TRUE)}) and reading the
 diagonal of the same block; the two routes were verified to agree to
-machine precision during development (see
-\code{dev/getlv-score-se-RESULTS.md}). Requirements:
+machine precision. Requirements:
 \itemize{
 \item The fit must carry a valid \code{sdreport()}
 (\code{gllvmTMBcontrol(se = TRUE)}, the default) with a positive-definite
@@ -74,13 +73,13 @@ calibrated (the returned matrix carries a
 the object itself, not only here -- though those attributes are silently
 dropped by \code{se[i, ]}, \code{head(se)} and \code{as.data.frame(se)}).
 
-Two independent gates restrict it. \strong{By tier}, an explicitly requested
+Two independent restrictions apply. \strong{By method}, an explicitly requested
 \code{"jj"} (Jaakkola-Jordan) fit is refused pending its own measurement.
 \strong{By mechanism}, any fit whose per-unit SD turns out to be
 constant across units is refused outright: the array would carry one row
 per unit while containing no per-unit information. That degeneracy is
 provable under \code{"ac"} (Albert-Chib) and was \emph{measured} on a Gaussian fit
-(coefficient of variation 1.6e-15) which the tier gate alone did not
+(coefficient of variation 1.6e-15) which the method restriction alone did not
 catch.
 }
 

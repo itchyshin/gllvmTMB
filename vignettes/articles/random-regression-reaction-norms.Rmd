@@ -54,10 +54,9 @@ library(gllvmTMB)
 library(ggplot2)
 ```
 
-We use a reproducible simulated example with 60 individuals, five sessions
-per individual, and three Gaussian response traits. The simulation generator
-is shipped as
-[`data-raw/examples/make-behavioural-reaction-norm-example.R`](https://github.com/itchyshin/gllvmTMB/blob/main/data-raw/examples/make-behavioural-reaction-norm-example.R).
+We use a reproducible simulated example shipped with the package: 60
+individuals, five sessions per individual, and three Gaussian response traits.
+The generating code remains available in the source repository.
 
 ```{r example-data, eval = FALSE}
 rr <- readRDS(system.file(
@@ -268,7 +267,7 @@ knitr::kable(
 )
 ```
 
-The audited fixture has optimizer convergence and a raw maximum gradient below
+The simulated example has optimizer convergence and a raw maximum gradient below
 `0.01`, so its point surface is numerically usable. Standard-error calculations
 are available, the Hessian is positive definite and full rank, and no boundary
 flags appear. The final row records that the separate Gaussian residual scale

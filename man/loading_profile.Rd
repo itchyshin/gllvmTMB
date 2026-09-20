@@ -54,7 +54,7 @@ Hessian being positive-definite.
 \details{
 This is \strong{expensive}: each entry requires \code{n_grid} partial refits,
 so a 20-species 2-factor fit at default \code{n_grid = 11} is ~440 fits.
-For binary probit at the scale of this article's fixture, expect
+For binary probit at the scale of a small teaching example, expect
 minutes. Use \code{entries} to restrict to a subset when iterating.
 }
 \examples{

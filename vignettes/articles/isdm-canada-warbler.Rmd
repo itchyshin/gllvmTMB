@@ -1,12 +1,12 @@
 ---
-title: "An integrated SDM for twelve species, end to end"
-description: "How to combine eBird-style opportunistic counts with a structured detection survey for a twelve-species songbird community when the two sources share no locations, and how to make a map out of the result. Covers the two decisions you will actually face -- how many shared spatial gradients to fit, and what to do about overdispersion -- and is honest about what the map does not carry."
+title: "A conceptual integrated SDM case study for twelve species"
+description: "An evidence-backed case study of combining eBird-style opportunistic counts with a structured detection survey for a twelve-species songbird community when the sources share no locations. It covers choosing the number of shared spatial gradients, handling overdispersion, and interpreting a map that carries no uncertainty."
 output:
   rmarkdown::html_vignette:
     toc: true
     toc_depth: 3
 vignette: >
-  %\VignetteIndexEntry{An integrated SDM for twelve species, end to end}
+  %\VignetteIndexEntry{A conceptual integrated SDM case study for twelve species}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -103,6 +103,14 @@ msg_of <- function(expr) {
 }
 ```
 
+> **Conceptual case study, not a copy-and-run tutorial.** This page reports a
+> retained simulation study and shows the modelling decisions it supports. Its
+> analysis objects are not installed with the package, so copying every chunk
+> into a fresh R session will not reproduce the reported numbers. For a
+> self-contained workflow that simulates data, declares several observation
+> sources, and fits the model from start to finish, use
+> [Integrating three data sources at once](integrated-multi-source-example.html).
+
 # What this shows
 
 You have two kinds of data on the same birds. One is **opportunistic** --
@@ -144,13 +152,9 @@ remotes::install_github("itchyshin/gllvmTMB")
 library(gllvmTMB)
 ```
 
-**And note: you need the repository to run this page's code, not just the
-installed package.** The simulator and the saved campaign results live in
-`dev/isdm-precision/` in the
-[gllvmTMB source tree](https://github.com/itchyshin/gllvmTMB); copying chunks
-into a fresh session will not work on its own. Everything you need for *your
-own* data — `isdm_sources()`, `make_mesh()`, `gllvmTMB()`, `predict()` — is in
-the installed package.
+Everything needed for your own data — `isdm_sources()`, `make_mesh()`,
+`gllvmTMB()`, and `predict()` — is in the installed package. The retained
+simulation objects used to calculate this page's numerical results are not.
 
 Two neighbouring questions have articles of their own rather than a paragraph
 here: how much survey you need
@@ -254,14 +258,16 @@ union of both, and project every row onto it.
 The simulator draws the two arms **independently** over one landscape, so
 nothing here quietly assumes a convenience the real data will not have:
 
-```{r data}
+```{r data-support, include = FALSE}
 local({
   article_dir <- getwd()
   on.exit(setwd(article_dir), add = TRUE)
   setwd(normalizePath("../.."))
   suppressMessages(source("dev/isdm-precision/generate-cawa12.R"))
 })
+```
 
+```{r data}
 dat   <- sim_cawa12(seed = 1L)
 truth <- attr(dat, "truth")
 cells <- attr(dat, "cells")
@@ -854,8 +860,11 @@ refitted with every location snapped to the centre of its grid cell and the
 habitat value re-read there — which is what gridding does to your data. Six
 datasets per cell size:
 
-```{r gridding}
+```{r gridding-support, include = FALSE}
 gr <- readRDS("../../dev/isdm-precision/cawa12-gridding.rds")$summary
+```
+
+```{r gridding}
 data.frame(cell = c("exact points", "6 x 11 km", "12 x 22 km", "25 x 44 km"),
            mean_cor = gr$cor.1, sd_cor = gr$cor.2,
            mean_abs_err = gr$mae.1, sd = gr$mae.2)
@@ -955,8 +964,8 @@ Point estimates and a surface. No intervals -- and this page says so, rather
 than letting a smooth picture imply otherwise.
 
 **A first-time reader can stop here.** What follows is reference material:
-four behaviours to know about on the day something does not work, and the
-audit trail behind every number above.
+four behaviours to know about on the day something does not work, followed by
+details of the simulation evidence behind the numerical results.
 
 # Reference: four things that do not do what you would guess
 
@@ -1116,12 +1125,11 @@ cat(err_of(FIT(value ~ 0 + trait + trait:env + isdm_source + offset(log_effort) 
                  spatial_latent(0 + trait | coords, d = 1), mesh = raw_mesh)))
 ```
 
-# For the record
+# Evidence behind the results
 
-This section is the audit trail: the campaigns behind the numbers above, the
+This section describes the simulation studies behind the numbers above, the
 measurements that did not make the main path, and the places where the
-evidence is weaker than a plain sentence would suggest. It is here so the
-claims can be checked, not because a first-time reader needs it.
+evidence is weaker than a plain sentence would suggest.
 
 ## Where the numbers come from
 
@@ -1139,16 +1147,16 @@ data.frame(
              nrow(qd$sweep_decoupled$long) / nrow(qd$replicates) +
              nrow(qd$sweep_coincident$long) / nrow(qd$replicates),
            length(md$ok_seeds)),
-  file = c("cawa12-probe.rds", "cawa12-aic.rds", "cawa12-unique.rds",
-           "cawa12-quadrature.rds", "cawa12-mapdata.rds"),
+  evidence = c("count-ceiling and recovery results", "rank-selection results",
+               "overdispersion results", "quadrature results",
+               "map-stability results"),
   row.names = NULL)
 ```
 
-Each has its generating script beside it in `dev/isdm-precision/`
-(`generate-<name>.R`), and each records gllvmTMB `r ai$package_version`.
-For the map artefact, that operational statement means the development source
-with the ordinary SPDE prediction repair, not every build that happened to
-report version 0.7.0.
+Each retained result records gllvmTMB `r ai$package_version`. The map was
+generated with the ordinary SPDE prediction repair used for this study; a
+matching version string alone does not establish that two development builds
+used identical code.
 
 ## How the simulated field was built
 
@@ -1374,8 +1382,11 @@ in kilometres, so a mesh built on `lon`/`lat` imposes a correlation structure
 stretched by that factor in one direction. The instinct is to check the choice
 by fitting both and comparing. That does not work.
 
-```{r projection-null}
+```{r projection-support, include = FALSE}
 pj <- readRDS("../../dev/isdm-precision/cawa12-projection.rds")
+```
+
+```{r projection-null}
 data.frame(seed        = pj$per_seed$seed,
            d_objective = round(pj$per_seed$d_obj, 2),
            err_lonlat  = round(pj$per_seed$err_lonlat, 4),

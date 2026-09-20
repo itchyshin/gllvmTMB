@@ -104,7 +104,7 @@ phylogenetic or spatial structure, use \code{\link[=simulate_unit_trait]{simulat
 
 Each component can be turned on or off via the corresponding variance /
 loading argument. The default settings produce a fixed-effects-only dataset
-suitable for Stage-1 regression tests.
+suitable for a quick first-stage example.
 }
 \examples{
 set.seed(1)

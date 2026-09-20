@@ -329,33 +329,46 @@ not turn a family-specific calibration result into a general interval claim.
 Separately retained simulation evidence supports target-wise `B_lv` Wald
 coverage for this exact Gaussian + Poisson archetype.
 
-> **Current boundary.** This article teaches the native, ordinary unit-tier,
-> complete-response Gaussian model and one named Gaussian + Poisson,
-> rank-1, loadings-only mixed example. Registered native family/link rows now
-> compose in this ordinary predictor-informed block at rank 1 through the
-> number of logical responses, with automatic $\Psi$ or `unique = FALSE`;
-> bounded rank-2/rank-3 canaries exercise every registered family. Those
-> canaries establish route health, not general recovery or interval
-> calibration. Retained native evidence covers named
-> Gaussian rank-1 and rank-2 cells; interval evidence for pure binomial models
-> is limited to rank-1, multi-trial logit, probit, and cloglog cells.
-> Factor-valued LV predictors have point-estimate and recovery evidence, but
-> their intervals are not calibrated. The Julia bridge provides
-> complete-response, loadings-only (`unique = FALSE`) point estimates with
-> optional uncalibrated Wald plumbing; native ordinary `latent()` instead uses
-> $\Lambda\Lambda^\top + \Psi$ by default. This article does not support REML,
-> an ordinary fixed predictor combined with the same `lv` predictor, Julia
-> interval calibration, broader response masks, non-canonical links, ranks
-> above the number of logical responses, extra grouping tiers, structured
-> phylogenetic, spatial, animal, or
-> kernel sources, missing LV predictors, or profile and bootstrap intervals.
-> Separately named mixed-response cells have retained rank-1, loadings-only
-> point-recovery evidence. Eight preregistered Gaussian-anchor archetypes also
-> have target-wise Wald calibration evidence, including the Gaussian + Poisson
-> example shown here; this is not a simultaneous all-target or arbitrary-mixture
-> interval claim. Pure Beta and pure ordinal-probit retain separate point-
-> recovery HOLDs. Consult the family-specific boundary before interpreting a
-> different admitted composition.
+> **Which analyses does the evidence support?** This article demonstrates
+> complete-response Gaussian models and a Gaussian + Poisson model with one
+> latent axis and `unique = FALSE`, all fitted with the native TMB engine at
+> the ordinary unit level. Other supported response-family and link
+> combinations can be fitted with one numeric unit-level `lv` predictor and
+> no ordinary fixed-effect covariates. With `unique = FALSE`, the latent rank
+> can range from one to the number of responses before any multinomial
+> expansion. The default $\Psi$ component adds further restrictions to avoid
+> fitting more mean and covariance parameters than the data can distinguish.
+> Small rank-2 and rank-3 examples have fitted successfully across all supported
+> families; these checks alone do not establish accurate estimates or reliable
+> confidence intervals for every combination.
+>
+> Simulation evidence supports estimates and Wald intervals in the tested
+> Gaussian rank-1 and rank-2 settings. For binomial-only models, interval
+> evidence is limited to rank-1 models with multiple trials per observation
+> and logit, probit, or cloglog links. Categorical `lv` predictors have
+> point-estimate recovery evidence for Gaussian responses, but their interval
+> coverage has not been established. Tested mixed-response models have
+> point-estimate recovery evidence at rank 1 with `unique = FALSE`. Eight
+> tested combinations containing Gaussian responses, including the Gaussian +
+> Poisson example here, also have evidence for the coverage of each individual
+> $B_{lv}$ Wald interval. This does not establish simultaneous coverage of all
+> effects or coverage for arbitrary mixtures of response families.
+>
+> Beta-only models did not converge reliably enough in the recovery study;
+> ordinal-probit-only models did not recover the shared covariance reliably
+> enough. Treat those estimates as exploratory. Before interpreting a different
+> response combination, check its family-specific evidence and use simulations
+> resembling your data to assess estimation and interval coverage.
+>
+> The Julia bridge supports complete-response Gaussian point estimates with
+> `unique = FALSE`; its optional Wald intervals have not been shown to achieve
+> their stated coverage. Native ordinary `latent()` instead uses
+> $\Lambda\Lambda^\top + \Psi$ by default. The examples here do not establish
+> support for REML, ordinary fixed-effect covariates alongside `lv` predictors
+> (including the same predictor in both), calibrated Julia intervals, broader
+> missing-response patterns, non-canonical links, ranks above the number of
+> responses, extra grouping levels, phylogenetic, spatial, animal, or kernel
+> covariance, missing `lv` predictors, or profile and bootstrap intervals.
 
 ## What to report
 

@@ -253,8 +253,8 @@ covariates and no random effects on the zero part). This is different
 from \code{\link{delta_lognormal}()}/\code{\link{delta_gamma}()}, which
 are hurdle models -- a strictly positive component conditional on
 presence, with no second zero-generating process (see
-\code{vignette("current-limits", package = "gllvmTMB")} for the
-boundary). \strong{Boundary:} the count process (its fixed
+\code{vignette("current-limits", package = "gllvmTMB")} for guidance on
+choosing between these models). \strong{Boundary:} the count process (its fixed
 effects, \code{\link{latent}()} structure, and every correlation gllvmTMB
 reports) is conditional on the non-structural component; \code{zi} itself
 carries no covariates, no random effects, and no reported interval.

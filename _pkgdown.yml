@@ -37,7 +37,7 @@ template:
 
 navbar:
   structure:
-    left:  [intro, general_guides, sdm, pcm, concepts_diagnostics, reference, news]
+    left:  [intro, general_guides, sdm, pcm, concepts_diagnostics, advanced_evidence, reference, news]
     right: [search, github]
   components:
     intro:
@@ -76,8 +76,6 @@ navbar:
         href: articles/response-families.html
       - text: Unordered categories with multinomial()
         href: articles/multinomial.html
-      - text: Rare items and runaway estimates
-        href: articles/mspl-binary-jsdm.html
       - text: Multivariate spatial models
         href: articles/spatial-models.html
       - text: Handling missing data
@@ -141,7 +139,12 @@ navbar:
         href: articles/profile-likelihood-ci.html
       - text: Common pitfalls
         href: articles/pitfalls.html
-      - text: Validation oracles
+    advanced_evidence:
+      text: Advanced and evidence
+      menu:
+      - text: "Evidence synthesis: rare binary items (experimental MSPL)"
+        href: articles/mspl-binary-jsdm.html
+      - text: Validation evidence and its limits
         href: articles/validation-oracles.html
       - text: "Developer note: structured random slopes for non-Gaussian traits"
         href: articles/random-slopes-nongaussian.html
@@ -168,7 +171,6 @@ articles:
     - articles/cross-family-correlations
     - articles/response-families
     - articles/multinomial
-    - articles/mspl-binary-jsdm
     - articles/spatial-models
     - articles/missing-data
     - articles/structured-source-strength
@@ -215,6 +217,15 @@ articles:
     - articles/convergence-start-values
     - articles/profile-likelihood-ci
     - articles/pitfalls
+
+  - title: Advanced and evidence
+    desc: >
+      Specialist case studies and evidence notes rather than a beginner route.
+      The MSPL example uses an opt-in experimental estimator, the validation
+      page explains package evidence, and the structured-slope page remains an
+      under-audit developer note rather than a public worked example.
+    contents:
+    - articles/mspl-binary-jsdm
     - articles/validation-oracles
     - articles/random-slopes-nongaussian
 

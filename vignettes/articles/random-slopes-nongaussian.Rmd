@@ -74,14 +74,7 @@ data:
 The full grid -- every core family (`poisson`, `nbinom1`, `nbinom2`,
 `Gamma`, `Beta`, `binomial`, `ordinal_probit`) crossed with the
 phylogenetic and spatial sources, across the `indep`, `latent`, and
-`dep` correlation modes -- is now largely reachable (gllvmTMB issues
-[#388](https://github.com/itchyshin/gllvmTMB/issues/388),
-[#392](https://github.com/itchyshin/gllvmTMB/issues/392),
-[#422](https://github.com/itchyshin/gllvmTMB/issues/422),
-[#424](https://github.com/itchyshin/gllvmTMB/issues/424),
-[#427](https://github.com/itchyshin/gllvmTMB/issues/427),
-[#429](https://github.com/itchyshin/gllvmTMB/issues/429); `nbinom1`
-added in [#441](https://github.com/itchyshin/gllvmTMB/issues/441)): the
+`dep` correlation modes -- is now largely reachable: the
 `latent` and `dep` modes recover across the full family list, and the
 diagonal `indep` mode recovers for poisson, nbinom2, Gamma, and Beta.
 Binomial and ordinal_probit under `indep` remain structural-contract-only,
@@ -117,8 +110,7 @@ coverage for slope summaries, which is not yet calibrated. BLOCKED or
 out-of-scope rows are delta, hurdle, and zero-inflated slope covariance
 families. Treat the build-time examples as syntax and point-fit
 demonstrations; the heavy validation prose names recovery bands, not
-calibrated uncertainty (see the
-[validation-debt register](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/35-validation-debt-register.md)).
+calibrated uncertainty.
 
 ## The augmented-slope grammar
 
@@ -476,20 +468,20 @@ recovery not yet established.
 
 This table covers one random-slope covariate. Gaussian
 `phylo_dep(1 + x1 + x2 | species)` has its own recovery evidence, but the
-non-Gaussian `s >= 2` path remains guarded until that separate gate
-clears.
+non-Gaussian `s >= 2` path remains unavailable because its recovery evidence
+is not yet sufficient.
 
 ## A note on confidence intervals
 
 Everything here reports **point** estimates and **recovery bands**, not
-calibrated confidence intervals. The coverage study clears the nominal
-gate only for narrow Gaussian cases; for the non-Gaussian structured
-slopes it does not yet. Treat the recovery bands above as evidence that
+calibrated confidence intervals. The coverage study attained nominal
+coverage only for narrow Gaussian cases; for the non-Gaussian structured
+slopes it did not. Treat the recovery bands above as evidence that
 the *point* estimate lands near truth, not as a coverage guarantee. For
 inference on a slope variance, prefer external validation (a Bayesian
 refit in [`MCMCglmm`](https://cran.r-project.org/package=MCMCglmm) or
-[`brms`](https://cran.r-project.org/package=brms)) until the coverage
-gate is met. See
+[`brms`](https://cran.r-project.org/package=brms)) until coverage is
+established. See
 [profile-likelihood-ci](profile-likelihood-ci.html) for what the interval
 tools currently do and do not guarantee.
 

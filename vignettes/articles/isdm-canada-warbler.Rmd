@@ -681,9 +681,9 @@ log-likelihood difference, in [For the record].
 Three things have to be right before a surface means anything.
 
 **The spatial field must be in the prediction.** The current gllvmTMB 0.7.1
-source contains the ordinary SPDE prediction repair. Early 0.7.0 development
-builds did not all contain it; this saved map was reproduced from a worktree
-that did. A version string alone is therefore not sufficient provenance.
+source contains the ordinary SPDE prediction repair. Early 0.7.0 source
+snapshots did not all contain it; this saved map was reproduced from a snapshot
+that included the repair. A version string alone is therefore not sufficient provenance.
 Before trusting an older saved map, reproduce the training-row identity
 `predict(fit, newdata = training_rows) == predict(fit)`. The current public
 route covers the ordinary intercept-only SPDE point predictor, not spatial
@@ -748,8 +748,8 @@ Map-scale uncertainty needs random-effect-aware machinery that is not
 calibrated here. In a retained 1,600-fit negative control, the fixed-only
 standard error covered the true linear predictor only 0.23--0.82 of the time.
 That is why the refusal remains. A separate 22,200-fit campaign for a fixed
-`trait:env` coefficient passed its narrow coverage gates, but fixed-coefficient
-coverage does not transfer to a reconstructed spatial surface.
+`trait:env` coefficient met its prespecified narrow coverage criterion, but
+fixed-coefficient coverage does not transfer to a reconstructed spatial surface.
 
 These maps also lack a held-out point-accuracy certificate. Training-row
 identity proves that the fitted field is reconstructed and packed correctly;
@@ -1086,10 +1086,9 @@ m
 cat("difference:", abs(diff(m)), "\n")
 ```
 
-The package gained a warning for this case (issue
-[#1165](https://github.com/itchyshin/gllvmTMB/issues/1165)). Whether it reaches
-you depends on the path -- when this page was built, the integrated fit above
-produced no warning:
+The package now warns for this case. Whether the warning reaches you depends on
+the path -- when this page was built, the integrated fit above produced no
+warning:
 
 ```{r mesh-ignored-warn}
 cat(warn_of(gllvmTMB(
@@ -1463,15 +1462,13 @@ replicates, so it has not been shown to be a mechanism rather than noise. What
 remains true, and is visible in this article's own recovery table, is that the
 slopes come back shrunk.
 
-## Known issues behind this page
+## Remaining limitations
 
-- The one-iteration silent failure at large counts:
-  [#1167](https://github.com/itchyshin/gllvmTMB/issues/1167).
-- The inert grouping token on a `spatial_*()` term:
-  [#1163](https://github.com/itchyshin/gllvmTMB/issues/1163).
-- A mesh silently ignored when no `spatial_*()` term is present:
-  [#1165](https://github.com/itchyshin/gllvmTMB/issues/1165) — **fixed**; the
-  package now warns, as shown in section 4 above.
+- At large counts, some fits stop after one optimiser iteration without clearly
+  flagging the failure.
+- A grouping token on a `spatial_*()` term is currently inert.
+- A mesh supplied without a `spatial_*()` term is ignored. The package now
+  warns, as shown in section 4 above.
 
 ## References
 

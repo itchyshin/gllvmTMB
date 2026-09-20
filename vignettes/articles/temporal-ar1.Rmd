@@ -336,7 +336,7 @@ extract_temporal(fit_replicated_wide)$parameters
 
 ## What post-fit actions this standalone route supports
 
-The current lifecycle helpers are intentionally limited to an unreplicated
+The current post-fit helpers are intentionally limited to an unreplicated
 Gaussian `temporal_indep()` fit. `profile_temporal()` re-optimizes the temporal
 model at fixed persistence or decay values; `bootstrap_temporal()` retains all
 refit attempts; and `compare_temporal()` reports AIC without a likelihood-ratio
@@ -371,9 +371,10 @@ relationship matrix and `Ainv` for sparse precision. The spatial route requires
 a fixed mesh and spatial contrasts that are not determined solely by temporal
 lag; spatial range is still estimated.
 
-The kernel combination has a passing local recovery fixture. The phylogenetic,
-animal, and spatial combinations have focused likelihood and lifecycle checks,
-but their retained recovery gates failed. None earns general recovery,
+The kernel combination met its prespecified recovery criteria in one local
+simulated example. The phylogenetic, animal, and spatial combinations have
+focused likelihood checks, but their retained recovery studies did not meet the
+prespecified recovery criteria. None earns general recovery,
 cross-platform, release, precision, calibration, or interval-coverage claims.
 OU combinations, temporal `dep`/`latent` combinations, temporal slopes, higher
 rank, other families, multiple structured sources, source-by-time interactions,

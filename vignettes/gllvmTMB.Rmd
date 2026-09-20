@@ -43,9 +43,8 @@ wants first. To run it now, go to
 The data are included with the package, and the example shows both wide data
 (one row per individual) and long data (one row per individual and trait).
 
-`gllvmTMB` has an experimental lifecycle: the formula grammar,
-defaults, and reported summaries and intervals may still change as
-the API matures.
+`gllvmTMB` is experimental: the formula grammar, defaults, and reported
+summaries and intervals may still change as the API matures.
 
 Use this example to learn how to fit a model and read its covariance summaries.
 Successful fitting does not establish that the estimates are accurate for your

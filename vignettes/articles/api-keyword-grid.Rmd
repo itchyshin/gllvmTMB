@@ -151,8 +151,9 @@ helpers have their own contracts; generic forecasts, new-data prediction,
 generic intervals/profiles, and automatic selection remain unavailable. Four
 replicated-AR1 additive `temporal_indep()` pairs with one diagonal kernel,
 phylogenetic, animal, or spatial source are separately implemented, with
-pair-specific local evidence only: kernel has a passing local fixture,
-phylogenetic, animal, and spatial recovery gates retain failures. These pairs
+pair-specific local evidence only: the kernel combination met its prespecified
+recovery criteria in one local simulated example, while the phylogenetic,
+animal, and spatial recovery studies retain failed cases. These pairs
 require complete Gaussian identity-link data, native TMB/Laplace ML, at least
 two complete measurements per series--occasion, and a source fixed at `rho = 1`.
 Supply the source inside its keyword (`K =`, `tree =`/`vcv =`,
@@ -477,10 +478,10 @@ between-level source covariance while preserving the resolved source diagonal.
 This does not add a grid row or mode. With `unique = TRUE`, the same strength
 applies to both the loadings and Psi; ordinary intercept effects stay separate.
 Omitted rho and explicit one preserve existing models, including multi-kernel
-endpoints. New attenuation initially admits one structured trait-intercept
+endpoints. New attenuation currently supports one structured trait-intercept
 block per fit.
 
-`rho = NULL` estimates one strength only in the admitted complete, replicated
+`rho = NULL` estimates one strength only in the documented complete, replicated
 Gaussian design with retained observation noise and no competing ordinary
 covariance. Estimated latent terms require rank one and at least four traits.
 Spatial terms use the same attenuation weight while range stays separately

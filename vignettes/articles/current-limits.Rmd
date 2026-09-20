@@ -87,8 +87,8 @@ Setting `unique = FALSE` requests the narrower loadings-only subset.
 |---|---|---|---|
 | Ordinary Gaussian `indep()` | Experimental/partial | **Narrow tested-regime point evidence:** trait-specific independent variance point estimates in the tested three-trait complete-data regimes (`n = 60` and `n = 240`) after fit-health checks | Calibrated uncertainty, family-wide robustness, or protection across arbitrary sample sizes and boundary regimes |
 | Ordinary Gaussian `dep()` | Experimental/partial | **Narrow tested-regime point evidence:** a full trait covariance point estimate in the tested three-trait complete-data regimes (`n = 60` and `n = 240`) after fit-health checks | That a positive-definite Hessian proves every covariance entry is well estimated, or that the result transfers to structured sources |
-| Ordinary Gaussian `latent()` | Experimental/partial | **Characterization-only:** rotation-invariant `Sigma`, correlations, communality, and an ordination after diagnostics; the `n = 60` core cell was not admitted and correlation stress cells failed production gates | A dependable-core claim, biological meaning for raw loading signs/orientation, or reliability in weak-variance and boundary regimes |
-| Poisson-log rank-1 `latent()` | Experimental/partial | **Narrow clean-data point evidence:** point estimates and rotation-invariant covariance summaries in the tested three-trait designs (`n = 100` and `n = 300`) | Family-wide robustness: the rare-level robustness cell failed its fixed-effect-bias gate; no general interval or detector claim follows |
+| Ordinary Gaussian `latent()` | Experimental/partial | **Characterization-only:** rotation-invariant `Sigma`, correlations, communality, and an ordination after diagnostics; the `n = 60` core design was held before production, while correlation stress designs failed the prespecified accuracy criteria | A dependable-core claim, biological meaning for raw loading signs/orientation, or reliability in weak-variance and boundary regimes |
+| Poisson-log rank-1 `latent()` | Experimental/partial | **Narrow clean-data point evidence:** point estimates and rotation-invariant covariance summaries in the tested three-trait designs (`n = 100` and `n = 300`) | Family-wide robustness: the rare-level robustness cell exceeded the prespecified fixed-effect-bias limit; no general interval or detector claim follows |
 | NB2-log rank-1 `latent()` | Experimental/partial | **Characterization-only:** point results with the exact sample size and dispersion diagnostics reported; the `n = 300` core cell passed | A dependable point-estimation claim: the `n = 100` and missing-response cells produced catastrophic dispersion failures that diagnostics often missed |
 | NB2-log latent model with missing responses | Not recommended for this claim | Nothing as dependable evidence; the tested cell may be used only to study the failure mechanism | That standard optimizer, Hessian, or boundary diagnostics clear the fit: 30 of 41 catastrophic truth errors in the tested missing-response cell were missed |
 | Binomial(10)-logit rank-1 `latent()` | Experimental/partial | **Narrow clean-data point evidence:** point estimates and rotation-invariant covariance summaries in the tested three-trait designs (`n = 100` and `n = 300`) | Family-wide robustness, Bernoulli equivalence, separation protection, or reliability in the held/failed small-sample silent-failure cells |
@@ -108,7 +108,7 @@ Setting `unique = FALSE` requests the narrower loadings-only subset.
 | Phylogenetic, animal, spatial, or kernel covariance | Experimental/partial | Point estimates for the exact documented route after structure-specific diagnostics | That ordinary-model evidence transfers to a structured source, that spatial `tau` or field SD has validated absolute-scale recovery, or that structured intervals are calibrated |
 | Gaussian temporal covariance | Experimental/partial | Use the [temporal guide](temporal-ar1.html) only for repeated Gaussian measurements with complete panels, at least three traits, and three occasions per series | General recovery, calibrated intervals, temporal slopes, higher rank, or non-Gaussian support |
 | Temporal plus another source | Experimental/partial | A narrow Gaussian AR1 model plus one kernel, phylogenetic, animal, or spatial source; see the temporal guide for the required complete-panel design | Broad recovery or coverage, OU combinations, multiple structured sources, source-by-time interactions, and spatial forecasting |
-| Random slopes or several grouping tiers | Experimental/partial | Exact admitted cells only, with the covariance block named explicitly | A grid-wide claim across families, modes, slope counts, or grouping levels |
+| Random slopes or several grouping tiers | Experimental/partial | Only the exact family, mode, slope-count, and grouping combinations with documented recovery evidence, with the covariance block named explicitly | A grid-wide claim across families, modes, slope counts, or grouping levels |
 | Missing response cells | Experimental/partial | Point estimates after confirming the intended cells were omitted from the likelihood; the strongest worked evidence is Gaussian | That every family has equal recovery depth or that missingness is ignorable by default |
 | One modelled missing predictor with `mi()` | Experimental/partial | Native-Laplace results for one explicitly modelled predictor in the documented predictor-family routes | VA support, several `mi()` predictors, general MNAR handling, or missing grouping variables |
 
@@ -119,7 +119,7 @@ Setting `unique = FALSE` requests the narrower loadings-only subset.
 
 | Analysis or result | Current status | What you may report | What you must not infer |
 |---|---|---|---|
-| Variational approximation | Experimental/partial | Opt-in exploratory point estimates within the admitted VA fence, using the current automatic GH evaluator with `H = 7`, and report the method metadata and exact family/rank | General point recovery outside the stated public fence; its ELBO is not a log-likelihood, so ordinary `logLik()`, AIC, BIC, and likelihood-ratio comparisons are undefined; do not infer calibrated covariance, Wald intervals, or evidence equivalent to Laplace |
+| Variational approximation | Experimental/partial | Opt-in exploratory point estimates for the documented families and ranks, using the current automatic GH evaluator with `H = 7`, and report the method metadata and exact family/rank | General point recovery outside those families and ranks; its ELBO is not a log-likelihood, so ordinary `logLik()`, AIC, BIC, and likelihood-ratio comparisons are undefined; do not infer calibrated covariance, Wald intervals, or evidence equivalent to Laplace |
 | Adaptive Gauss-Hermite quadrature | Experimental/partial | Opt-in sensitivity analysis in its documented scalar-random-effect regime, stating the ridge setting | Ordinary ML interpretation: AGHQ defaults to a `tau = 2` penalised MAP fit, so ordinary AIC, BIC, and likelihood-ratio interpretations do not apply; the evaluated node/ridge rule is not a generally calibrated estimator |
 | EVA | Not recommended for this claim | No public estimator is available | That an implementation detail implies an available estimator |
 | Julia engine | Experimental/partial | Optional-bridge results for the documented model types; start with [Julia bridge setup](../reference/gllvm_julia_setup.html) | Full R/TMB feature parity or a required dependency for the ordinary workflow |
@@ -164,10 +164,12 @@ general claim. The narrow loading-interval exception is described below.
 `profile_ci_total_variance()` is a penalty-profile approximation, not a
 certified exact likelihood-ratio profile. Historical ordinary Gaussian
 `n_units = 150`, `d` in `{1, 2}` cells and the newer `n_units = 400`, `d = 2`
-cell passed their numerical coverage gates, but the retained endpoints do not
+cell met their prespecified numerical coverage criteria, but the retained
+endpoints do not
 prove constrained-refit convergence and exact target attainment. Every
-computed row is therefore `route-only`; the former `certified-0.94` labels are
-withdrawn until the mechanism is repaired and recalibrated.
+computed row remains an approximate calculation rather than a certified exact
+profile. The earlier 0.94 coverage result does not justify exact-profile
+language until the mechanism is repaired and recalibrated.
 
 There is one exact loading-interval exception. Standardized symmetric
 joint-delta Wald intervals are certified for the structurally free strict-lower

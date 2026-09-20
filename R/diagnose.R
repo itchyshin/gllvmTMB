@@ -1493,43 +1493,47 @@
 #'   evidence exists in the calibration pool. See
 #'   `dev/heywood/fp-scale-dependence.md` for the full mechanism note.
 #' @param multinomial_collapse_floor Absolute floor on a `multinomial()`
-#'   (fid 16) contrast pseudo-trait's fitted loading energy
+#'   contrast's fitted loading energy
 #'   (`rowSums(Lambda^2)`), at or below which it is a collapsed contrast.
-#'   Default `1e-10`, the campaign code's own guard. Provisional pending the
-#'   S3 calibration campaign; labeled evidence: 7/20 `phylo_indep` seeds at
+#'   Default `1e-10`. Evidence is limited to the tested model designs:
+#'   7/20 simulated `phylo_indep()` fits had loading energy at
 #'   or below `1e-9`, every one reporting `convergence = 0` and a
-#'   positive-definite Hessian.
+#'   positive-definite Hessian. Check whether a flagged component was
+#'   intentionally fixed at zero or whether its variance has collapsed.
 #' @param multinomial_collapse_rel_thresh Threshold on the ratio of the
 #'   smallest to the largest fitted contrast loading energy within one
 #'   `multinomial()` response's K-1 contrasts, below which the smallest is
-#'   flagged as collapsed relative to its siblings. Default `Inf`
-#'   (disarmed): those K-1 contrasts are `pi^2/6`-correlated siblings through
-#'   their shared baseline category, not the independent siblings
-#'   `psi_rel_thresh` was calibrated on, so this arm is provisional pending
-#'   the S3 calibration campaign.
+#'   flagged as collapsed relative to the others. Default `Inf` (disabled).
+#'   These contrasts share a baseline category and have `pi^2/6` error
+#'   covariance, so the threshold for independent components
+#'   (`psi_rel_thresh`) cannot be assumed to apply. A reliable relative
+#'   cutoff has not been established; inspect the contrast variances before
+#'   choosing a finite threshold for your model.
 #' @param multinomial_rail_thresh Threshold on the largest absolute
 #'   off-diagonal correlation of the implied contrast-level covariance
 #'   within one `multinomial()` response's contrasts, at or above which two
-#'   contrasts are reported as rail-correlated. Only evaluated at tiers with
+#'   contrasts are flagged as nearly perfectly correlated. Only evaluated at tiers with
 #'   rank `d >= 2` -- at `d = 1` every healthy fit reaches `|rho| = 1`
-#'   exactly by row proportionality. Default `0.99`, provisional pending the
-#'   S3 calibration campaign; labeled evidence: 8/20 seeds at or above it.
+#'   exactly by row proportionality. Default `0.99`; 8/20 simulated fits
+#'   in the tested design reached or exceeded it. Performance in other
+#'   designs may differ. If flagged, compare a lower rank and check the
+#'   baseline-category coding.
 #' @param multinomial_range_collapse_thresh Threshold on the fitted spatial
 #'   practical range (`sqrt(8) / kappa`) relative to the coordinate-domain
 #'   diameter (when the fit's mesh coordinates are reachable), or on the
 #'   practical range itself in absolute coordinate units (the fallback when
-#'   they are not), at or below which a `multinomial()` response's spatial
-#'   field is reported as collapsed. Default `0.02`, provisional pending the
-#'   S3 calibration campaign; labeled evidence: collapsed ratios 7e-5 to
-#'   3.4e-4.
+#'   they are not), below which a `multinomial()` response's spatial
+#'   field is reported as collapsed. Default `0.02`; collapsed ratios in
+#'   the tested design ranged from 7e-5 to 3.4e-4. Performance in other
+#'   designs may differ. Check mesh resolution and whether the data support
+#'   estimating a spatial range for this response.
 #' @param ordinal_loading_runaway_thresh Threshold on an `ordinal_probit()`
-#'   (fid 14) trait's largest loading relative to the typical loading among
+#'   trait's largest loading relative to the typical loading among
 #'   the other ordinal traits, at or above which the loading is reported on
-#'   its own. Mirrors `loading_runaway_thresh`'s binomial arm. Default `Inf`
-#'   (disarmed): the detector-S1 mechanism probe
-#'   (`dev/ordinal-degeneracy/probe-criteria.md`) established that degenerate
-#'   ordinal fits share binomial's quasi-complete-separation mechanism, but
-#'   the threshold itself awaits the detector-S2 calibration campaign.
+#'   its own. Default `Inf` (disabled): the tested loading thresholds could
+#'   not reliably distinguish poorly identified fits from healthy fits.
+#'   Inspect the reported loadings and category frequencies; a large loading
+#'   alone is not evidence of a failed fit.
 #' @param ordinal_loading_absolute_thresh Threshold on an `ordinal_probit()`
 #'   trait's largest loading on the link (liability) scale, unit tiers only,
 #'   at or above which it is reported regardless of the other traits.
@@ -1537,7 +1541,9 @@
 #'   under the Wright/Falconer/Hadfield threshold convention, so a loading
 #'   is the trait's latent standard deviation in liability units, mirroring
 #'   `loading_absolute_thresh`'s binomial justification. Default `Inf`
-#'   (disarmed pending the detector-S2 calibration campaign).
+#'   (disabled): healthy ordinal traits can also have large loadings.
+#'   Inspect loadings alongside category frequencies and the other fit
+#'   diagnostics before choosing a finite threshold for your model.
 #' @param phi_nbinom2_ceiling_thresh Numeric scalar. A negative-binomial dispersion
 #'   estimate at or above this value is reported as a `boundary_phi_nbinom2_<trait>`
 #'   warning: the trait has run to the Poisson limit (no overdispersion left to

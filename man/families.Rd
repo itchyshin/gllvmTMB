@@ -148,8 +148,8 @@ name (e.g. a \code{"student"} level naturally means \code{student()}) agrees wit
 where the list put it. When the two readings agree -- which is true
 whenever the list is already written in level order -- the fit proceeds
 silently. When they disagree, that disagreement is precisely the
-silent-swap failure mode (issue #1120: \code{list(student(), gaussian())}
-against \code{family = rep(c("student","gaussian"), each = n)} used to pair
+silent-swap failure mode: \code{list(student(), gaussian())}
+against \code{family = rep(c("student","gaussian"), each = n)} previously paired
 the student rows with \code{gaussian()} and vice versa, with no warning and a
 converged fit), and the list is refused with an error showing both
 readings. A selector column whose values carry no name evidence at all

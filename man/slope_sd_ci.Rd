@@ -96,8 +96,7 @@ approximation and propagates it through a monotone log/exp transform.
 It is \strong{not a calibrated coverage statement} -- no repeated-sampling
 coverage campaign has been run for any of these estimands, and
 \code{interval_status = "wald_uncalibrated"} marks every row as such. The
-package's validation-debt ledger records this as tested-but-not-
-coverage-certified (see the ledger for the current status).
+implementation is tested, but repeated-sampling coverage is not certified.
 
 When the fit's random-slope term carries BOTH a diagonal Psi companion
 and a shared loadings component (\code{theta_rr_B_slope}, the default
@@ -105,7 +104,7 @@ alongside \code{theta_diag_B_slope} for ordinary \code{latent()}), \code{estimat
 that route is the per-trait UNIQUE (Psi) component of slope variance
 only -- it excludes the shared loadings contribution to the marginal
 slope variance, and can understate the total marginal slope SD
-substantially (measured up to ~45\% on a recovery fixture). This
+substantially (measured up to ~45\% in a recovery study). This
 restriction travels with the \strong{data}, not only the print method: the
 \code{component} column reads \code{"unique_psi"} in that case (\code{"total"}
 otherwise -- including for the phylogenetic and loadings-only routes,

@@ -147,9 +147,9 @@ Read the model beside the R syntax and the report-ready summary:
 
 ## A side-by-side demonstration
 
-We use a prepared Gaussian behavioural-syndrome example object. The generator
-is `data-raw/examples/make-covariance-edge-cases-example.R`; the article uses
-the shipped object so the first thing the reader sees is the model, not a long
+We use a prepared Gaussian behavioural-syndrome example object shipped with
+the package. Its generating code is available in the source repository for
+reproducibility, but the article starts with the model rather than a long
 data-generating block.
 
 The truth has both a shared low-rank component and a trait-specific diagonal

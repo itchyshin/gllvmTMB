@@ -82,7 +82,7 @@ certificate only for the structurally free strict-lower targets in native
 Laplace, pinned, unrotated, lower-triangular ordinary Gaussian unit-tier
 three-trait cells \verb{(n_units=150,d=2)}, \verb{(n_units=400,d=1)}, and
 \verb{(n_units=400,d=2)}, at \code{conf_level = 0.95}. The \verb{(n_units=150,d=1)} cell
-failed its lower-band gate. This is one frozen DGP: trait intercepts
+did not meet the prespecified lower-coverage criterion. This is one simulation design: trait intercepts
 \verb{(-0.20, 0.10, 0.25)}, unique standard deviations
 \verb{(0.70, 0.80, 0.90)}, and loading vector \verb{(0.80, 0.45, -0.35)} for \code{d=1},
 with the second column \verb{(0, 0.70, 0.40)} added for \code{d=2}. Coverage is

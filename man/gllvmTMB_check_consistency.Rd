@@ -11,7 +11,7 @@ gllvmTMB_check_consistency(fit, n_sim = 100L, seed = NULL, estimate = FALSE)
 
 \item{n_sim}{Integer number of simulate-evaluate replicates.
 Default \code{100L}. Cost is roughly \code{n_sim} joint likelihood
-evaluations; budget 5-30 seconds on a Tier-1 fixture
+evaluations; budget 5-30 seconds on a small Tier-1 example
 and proportionally longer for larger fits.}
 
 \item{seed}{Optional integer seed for the simulation RNG. NULL
@@ -28,8 +28,8 @@ components:
 \describe{
 \item{\verb{$marginal_p_value}}{Joint chi-squared p-value across
 all marginal-score components. \code{NA} if TMB's information
-matrix could not be inverted (often the case on tiny
-fixtures).}
+matrix could not be inverted (often the case on small,
+weakly identified examples).}
 \item{\verb{$marginal_bias}}{Named numeric vector: per-parameter
 bias (mean of the simulated score, normalised by its SE).
 Large absolute values flag specific parameters where the
@@ -50,7 +50,7 @@ non-centring; this is not an accuracy certificate),
 \code{"information_matrix_singular"} (TMB couldn't invert it;
 interpret with caution), \code{"marginal_p_value_unavailable"}
 (TMB returned NA without a captured warning; usually
-happens on tiny / weakly-identified fixtures).}
+happens on small, weakly identified examples).}
 \item{\verb{$raw}}{The full \code{TMB::checkConsistency()} return value
 in case the user wants the per-replicate gradient matrix.}
 \item{\verb{$call}}{\code{match.call()} of the invocation.}

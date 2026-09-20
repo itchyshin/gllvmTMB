@@ -32,7 +32,7 @@ automatic \code{Psi} additionally requires that its physical loading,
 latent-predictor, and engine-free diagonal parameters pass a necessary
 joint mean-covariance dimension screen. Passing that screen is not a
 recovery or interval-calibration certificate. Bounded
-rank-2/rank-3 canaries exercise every registered family, but broad
+rank-2/rank-3 checks exercise every supported family, but broad
 composition recovery and interval calibration remain partial. Retained
 recovery and interval claims remain limited to their named cells.
 Source-specific \verb{*_latent(..., lv = ~ x)} forms are

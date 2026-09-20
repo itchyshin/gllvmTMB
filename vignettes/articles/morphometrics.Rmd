@@ -51,11 +51,10 @@ library(dplyr)
 
 ## Example Data
 
-We use a prepared example object rather than asking you to read the
-data-generating script first. The script is still in the repository
-(`data-raw/examples/make-morphometrics-example.R`) so the fixture is
-reproducible, but the article starts where a user starts: with data,
-truth, formulas, and one biological question.
+We use a prepared simulated example object shipped with the package. Its
+generating code remains available in the source repository for reproducibility,
+but the article starts where a user starts: with data, truth, formulas, and one
+biological question.
 
 ```{r example-data, eval = FALSE}
 morph <- readRDS(system.file(
@@ -319,7 +318,7 @@ corr_rows <- extract_correlations(fit, tier = "unit")
 corr_rows
 ```
 
-```{r ci-correlation-eye, fig.width = 7, fig.height = 4.3, fig.cap = "Pairwise between-individual trait correlations from a cached morphometrics bootstrap fixture. Confidence eyes reconstruct frequentist compatibility from percentile intervals; hollow circles mark estimates. Use a larger bootstrap run before making a final interval-calibration claim."}
+```{r ci-correlation-eye, fig.width = 7, fig.height = 4.3, fig.cap = "Pairwise between-individual trait correlations from a cached morphometrics bootstrap example. Confidence eyes reconstruct frequentist compatibility from percentile intervals; hollow circles mark estimates. Use a larger bootstrap run before making a final interval-calibration claim."}
 plot_correlations(morph_boot_R, tier = "unit", style = "eye", sort = "trait")
 ```
 
@@ -329,12 +328,12 @@ confidence eyes near 1 are supplied by the cached bootstrap object
 (n_boot = `r morph_boot_R$n_boot`, failed refits =
 `r morph_boot_R$n_failed`). Treat this as a rendered plotting example;
 final inference should use a bootstrap size chosen for the study rather
-than the article's lightweight fixture.
+than the article's small teaching example.
 
 The same cached intervals can be shown as a matrix-style ellipse plot.
 Here the shape and fill show the sign and strength of each correlation;
 black borders and stars mark pairs whose supplied bootstrap interval does
-not cross zero. The stars are a display convention on the cached fixture's
+not cross zero. The stars are a display convention on the cached example's
 percentile intervals, not a calibrated significance test — choose a
 bootstrap size for the study before drawing inferential conclusions.
 
@@ -352,7 +351,7 @@ the latent factors; high $c_t^2$ means strongly integrated, low
 $c_t^2$ means trait-specific variation dominates.
 
 This single generated data set is a teaching example, not a full simulation
-study. For this known fixture, the long and wide formulas recover the same
+study. For this simulated example, the long and wide formulas recover the same
 off-diagonal covariance pattern. Broader coverage and interval-calibration
 claims require separate simulation studies across prespecified generating
 values, with every failed fit included in the accounting.
@@ -446,7 +445,7 @@ What this shows:
   surface** — the comparison is a useful check that the dense fit and the
   full-rank latent parameterisation agree on the covariance pattern.
   `dep` and `latent(d = T)` give the same saturated fit here — numerically
-  equal logL and $\boldsymbol\Sigma_B$ on this fixture.
+  equal logL and $\boldsymbol\Sigma_B$ on this simulated example.
 - **Reduced-rank `latent(d = 2)` with default $\boldsymbol\Psi$ matches the saturated fit
   within 0.1 nats of logL.** With $T = 5$ traits and a
   rank-2 truth, the rank constraint loses essentially no information

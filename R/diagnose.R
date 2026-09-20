@@ -833,7 +833,7 @@
 #'   0.490 and -0.145). Specificity: zero false positives on 40 informative
 #'   healthy fits, which bounds the false-positive rate at roughly 7.5% by
 #'   the rule of three -- a real improvement on the binomial screen's
-#'   measured 25% (issue #897), but NOT a verified zero. The `d >= 2` gate is
+#'   measured 25%, but NOT a verified zero. The `d >= 2` gate is
 #'   load-bearing, not defensive: at rank 1 every pair of contrast rows is
 #'   proportional, so `|rho| = 1` exactly on healthy fits; suppression
 #'   confirmed out-of-sample at 0/20 on a healthy `d = 1` cell.
@@ -1162,7 +1162,7 @@
 #' pure-ordinal fit has no `report$sd_B` and the `near_zero_psi_*` rows
 #' elsewhere in [check_gllvmTMB()] are dark by design -- these two loading
 #' arms are the ONLY degeneracy coverage a default all-ordinal fit gets,
-#' which is exactly issue #897's gap in one sentence (`ordinal_probit` had
+#' which addresses the earlier coverage gap (`ordinal_probit` had
 #' zero detector coverage, 239/239 fits unflagged, where the binomial screen
 #' caught 272/272).
 #'
@@ -1254,9 +1254,9 @@
 #'
 #'   Two findings from that campaign are worth stating. First, borrowing
 #'   binomial's own threshold of 6 would have shipped a screen with a ~39%
-#'   false-alarm rate — reproducing on ordinal exactly the defect issue #897
-#'   reports in binomial (25%), which is precisely why that issue insists
-#'   ordinal thresholds be set on ordinal evidence rather than inherited.
+#'   false-alarm rate, similar to the problem previously observed for
+#'   binomial (25%). Ordinal thresholds therefore need ordinal evidence rather
+#'   than an inherited threshold.
 #'   Second, the false alarms concentrate in designs with heterogeneous
 #'   per-trait loading scales: an absolute liability-scale threshold cannot
 #'   transport across them, because a legitimately large loading on a

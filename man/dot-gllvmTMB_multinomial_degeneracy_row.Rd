@@ -49,7 +49,7 @@ verified by refitting (rho = +-1.00000 on all four; non-firing controls
 0.490 and -0.145). Specificity: zero false positives on 40 informative
 healthy fits, which bounds the false-positive rate at roughly 7.5\% by
 the rule of three -- a real improvement on the binomial screen's
-measured 25\% (issue #897), but NOT a verified zero. The \code{d >= 2} gate is
+measured 25\%, but NOT a verified zero. The \code{d >= 2} gate is
 load-bearing, not defensive: at rank 1 every pair of contrast rows is
 proportional, so \verb{|rho| = 1} exactly on healthy fits; suppression
 confirmed out-of-sample at 0/20 on a healthy \code{d = 1} cell.}

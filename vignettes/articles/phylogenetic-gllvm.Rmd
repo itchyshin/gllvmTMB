@@ -395,7 +395,7 @@ Both terms now estimate one shared axis and a diagonal, trait-specific
 The `unique =` argument is part of the current latent-term interfaces; it is
 distinct from the deprecated standalone `unique()` function.
 
-### Why this example uses 500 species
+### Why this example includes 500 species
 
 There is no universal species-count threshold for separating these matrices.
 Tree shape, covariance strength, trait count, and within-species replication

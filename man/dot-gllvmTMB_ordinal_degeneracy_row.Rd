@@ -41,9 +41,9 @@ this statistic, because the healthy pool reaches \code{max_loading_unit}
 
 Two findings from that campaign are worth stating. First, borrowing
 binomial's own threshold of 6 would have shipped a screen with a ~39\%
-false-alarm rate — reproducing on ordinal exactly the defect issue #897
-reports in binomial (25\%), which is precisely why that issue insists
-ordinal thresholds be set on ordinal evidence rather than inherited.
+false-alarm rate, similar to the problem previously observed for
+binomial (25\%). Ordinal thresholds therefore need ordinal evidence rather
+than an inherited threshold.
 Second, the false alarms concentrate in designs with heterogeneous
 per-trait loading scales: an absolute liability-scale threshold cannot
 transport across them, because a legitimately large loading on a
@@ -63,7 +63,7 @@ A one-row data frame in the \code{\link[=check_gllvmTMB]{check_gllvmTMB()}} row 
 pure-ordinal fit has no \code{report$sd_B} and the \verb{near_zero_psi_*} rows
 elsewhere in \code{\link[=check_gllvmTMB]{check_gllvmTMB()}} are dark by design -- these two loading
 arms are the ONLY degeneracy coverage a default all-ordinal fit gets,
-which is exactly issue #897's gap in one sentence (\code{ordinal_probit} had
+which addresses the earlier coverage gap (\code{ordinal_probit} had
 zero detector coverage, 239/239 fits unflagged, where the binomial screen
 caught 272/272).
 }

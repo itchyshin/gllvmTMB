@@ -458,7 +458,7 @@ and this candidate neither expands nor promotes either topic.
   a shape, not a dispersion), student (`sigma_student` is a scale, not the
   response SD), Beta (`phi_beta` is a precision; boundary 0/1 values are
   not Beta data), multi-trial binomial (`cbind()` vs `weights = n_trials`,
-  and a now-fixed `simulate()` gotcha for pre-2026-08-17 saved draws),
+  and a now-fixed `simulate()` gotcha for older saved draws),
   `ordinal_probit()` (cutpoints depend on which categories are actually
   observed, per trait), the truncated count families (`phi_truncnb2` is
   its own vector, separate from `phi_nbinom2`), and `delta_gamma()`
@@ -1105,7 +1105,7 @@ is still the default.
   **7 of those 20 seeds collapse the smaller contrast variance to
   numerical zero (≤1e-9)**, each with `convergence = 0` AND a PD Hessian,
   and no runtime detector currently flags it (`R/diagnose.R`'s degeneracy
-  gate is family_id == 1-only, issue #897's class) -- and the planted-zero
+  gate is currently family_id == 1-only) -- and the planted-zero
   check FAILS -- a full-`V` `phylo_latent()` refit on
   diagonal-truth data rails to median |rho| = 1.0). A pre-registered
   **replication rescue PASSED**: five categorical draws per species (`n_sp

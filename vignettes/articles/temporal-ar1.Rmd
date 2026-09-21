@@ -371,15 +371,16 @@ relationship matrix and `Ainv` for sparse precision. The spatial route requires
 a fixed mesh and spatial contrasts that are not determined solely by temporal
 lag; spatial range is still estimated.
 
-The kernel combination met its prespecified recovery criteria in one local
-simulated example. The phylogenetic, animal, and spatial combinations have
-focused likelihood checks, but their retained recovery studies did not meet the
-prespecified recovery criteria. None earns general recovery,
-cross-platform, release, precision, calibration, or interval-coverage claims.
-OU combinations, temporal `dep`/`latent` combinations, temporal slopes, higher
-rank, other families, multiple structured sources, source-by-time interactions,
-and spatial forecasting remain unavailable. The temporal-only post-fit helpers
-above do not extend to these combinations.
+For a first exploratory analysis, the kernel combination has recovered the
+known pattern in one local simulated example. The phylogenetic, animal, and
+spatial combinations have passed focused likelihood checks, but the recovery
+studies kept for them were not accurate enough to support the same conclusion.
+Treat all four combinations as exploratory: none has general evidence for
+recovery, precision, or interval calibration in other data designs. OU
+combinations, temporal `dep`/`latent` combinations, temporal
+slopes, higher rank, other families, multiple structured sources, source-by-time
+interactions, and spatial forecasting remain unavailable. The temporal-only
+post-fit helpers above do not extend to these combinations.
 
 For the standalone examples, inspect the fitted temporal covariance and, for
 the latent model, report the labelled scores together with the loadings. Read

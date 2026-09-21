@@ -288,8 +288,8 @@ ggplot(ps2, aes(x = trait, y = H2)) +
 
 > **One categorical draw per species — read the correlation with
 > caution, or not at all.** This dataset has exactly one lifestyle
-> observation per species, the regime the package's own recovery
-> campaign (documented for this exact call shape) found unreliable for
+> observation per species, the regime a simulation study using this same
+> model and data structure found unreliable for
 > the **among-category correlation**: variance/H^2 components separate
 > and recover correctly, but the correlation estimate rails toward
 > +/-1 in a substantial fraction of simulated fits under one draw per

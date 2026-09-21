@@ -146,7 +146,7 @@ $i$, and the species loading $\boldsymbol\lambda_t$ says how species
 $t$ responds to those residual axes. The rotation of
 $\boldsymbol\Lambda$ is arbitrary, so the stable co-occurrence target
 is the species covariance implied by the loadings. For this single-trial
-Bernoulli fixture, each species-site cell contributes one binary observation.
+Bernoulli example, each species-site cell contributes one binary observation.
 The default between-site diagonal companion is therefore not separately
 identified from the link scale and the engine maps it off:
 
@@ -400,8 +400,8 @@ plot(
   )
 ```
 
-The fixture's truth places the eight species into **four designed
-association groups**: `sp_1` / `sp_2`, `sp_3` / `sp_4`, `sp_5` /
+In this simulated example, the eight species belong to **four association
+groups**: `sp_1` / `sp_2`, `sp_3` / `sp_4`, `sp_5` /
 `sp_6`, and `sp_7` / `sp_8`. The fitted arrows should be read for
 broad grouping, not axis labels. The exact orientation is arbitrary —
 only $\boldsymbol\Lambda\boldsymbol\Lambda^\top$ is identifiable.

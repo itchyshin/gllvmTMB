@@ -1,9 +1,9 @@
 # Claude handover — make the first gllvmTMB tutorial route runnable
 
-**Date:** 2026-09-21 (America/Edmonton)  
-**From:** Codex  
-**To:** Claude Code  
-**Repository:** `itchyshin/gllvmTMB`  
+**Date:** 2026-09-21 (America/Edmonton)
+**From:** Codex
+**To:** Claude Code
+**Repository:** `itchyshin/gllvmTMB`
 **Branch:** `claude/gllvmtmb-beginner-reader-20260921`
 
 ## Goals / mission

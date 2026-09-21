@@ -13,6 +13,9 @@ vignette: >
 ---
 
 ```{r, include = FALSE}
+# Rendering needs gllvmTMB installed (pkgdown installs it first) or
+# pkgload::load_all(); the visible data chunk below calls system.file()
+# directly and has no hidden fallback.
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment  = "#>",
@@ -67,40 +70,6 @@ This article is about `Psi` in a decomposed `latent()` model. It is not a
 recommendation to use a standalone diagonal term as the first model. When
 the goal is a standalone marginal-only diagonal covariance, new examples should
 use `indep()` so the intent is visible in the formula.
-
-```{r early-fit-pattern, eval = FALSE}
-fit_no_residual <- gllvmTMB(
-  value ~ 0 + trait +
-    latent(0 + trait | individual, d = 2, unique = FALSE),
-  data = df, trait = "trait", unit = "individual"
-)
-
-fit_latent_default <- gllvmTMB(
-  value ~ 0 + trait + latent(0 + trait | individual, d = 2),
-  data = df, trait = "trait", unit = "individual"
-)
-```
-
-If your data are wide, with one row per individual and one column per
-behaviour, use the same `gllvmTMB()` entry point with `traits(...)` on the
-left-hand side:
-
-```{r early-fit-pattern-wide, eval = FALSE}
-fit_latent_default <- gllvmTMB(
-  traits(boldness, exploration, activity, aggression, sociability) ~
-    1 + latent(1 | individual, d = 2),
-  data = df_wide, unit = "individual"
-)
-fit_no_residual_wide <- gllvmTMB(
-  traits(boldness, exploration, activity, aggression, sociability) ~
-    1 + latent(1 | individual, d = 2, unique = FALSE),
-  data = df_wide, unit = "individual"
-)
-```
-
-These are unevaluated structural translations only; the worked long/wide
-comparison below evaluates the ordinary `latent()` model and does not establish
-parity for the no-residual subset.
 
 ## From model to Sigma
 
@@ -163,7 +132,7 @@ library(gllvmTMB)
 library(ggplot2)
 ```
 
-```{r load-example, eval = FALSE}
+```{r load-example}
 covex <- readRDS(system.file(
   "extdata", "examples", "covariance-edge-cases-example.rds",
   package = "gllvmTMB"
@@ -171,27 +140,6 @@ covex <- readRDS(system.file(
 df <- covex$data_long
 df_wide <- covex$data_wide
 truth <- covex$truth
-```
-
-```{r load-example-data, include = FALSE}
-covex_path <- system.file(
-  "extdata", "examples", "covariance-edge-cases-example.rds",
-  package = "gllvmTMB"
-)
-covex_path <- c(
-  covex_path,
-  file.path("inst", "extdata", "examples", "covariance-edge-cases-example.rds"),
-  file.path("..", "inst", "extdata", "examples", "covariance-edge-cases-example.rds"),
-  file.path("..", "..", "inst", "extdata", "examples", "covariance-edge-cases-example.rds")
-)
-covex_path <- covex_path[nzchar(covex_path) & file.exists(covex_path)][1]
-stopifnot(!is.na(covex_path))
-covex <- readRDS(covex_path)
-df <- covex$data_long
-df_wide <- covex$data_wide
-truth <- covex$truth
-trait_names <- truth$trait_names
-Sigma_true <- truth$Sigma
 ```
 
 ```{r show-example}
@@ -266,6 +214,49 @@ c(
 )
 ```
 
+Those two numbers are the first output: equal log-likelihoods say the long
+and wide calls fitted the same model, not that either fit is healthy. Run
+`check_gllvmTMB()` on a fit and read its `action` column before
+interpreting any covariance it implies.
+
+Written in full, with the formulas spelled out instead of stored in
+`form_A` and `form_B` and the `control` argument left at its default, the
+calls above are:
+
+```{r fit-pattern, eval = FALSE}
+fit_A <- gllvmTMB(
+  value ~ 0 + trait +
+    latent(0 + trait | individual, d = 2, unique = FALSE),
+  data = df, trait = "trait", unit = "individual"
+)
+
+fit_B <- gllvmTMB(
+  value ~ 0 + trait + latent(0 + trait | individual, d = 2),
+  data = df, trait = "trait", unit = "individual"
+)
+```
+
+If your data are wide, with one row per individual and one column per
+behaviour, use the same `gllvmTMB()` entry point with `traits(...)` on the
+left-hand side:
+
+```{r fit-pattern-wide, eval = FALSE}
+fit_B_wide <- gllvmTMB(
+  traits(boldness, exploration, activity, aggression, sociability) ~
+    1 + latent(1 | individual, d = 2),
+  data = df_wide, unit = "individual"
+)
+fit_A_wide <- gllvmTMB(
+  traits(boldness, exploration, activity, aggression, sociability) ~
+    1 + latent(1 | individual, d = 2, unique = FALSE),
+  data = df_wide, unit = "individual"
+)
+```
+
+These are unevaluated structural translations only; the worked long/wide
+comparison above evaluates the ordinary `latent()` model and does not establish
+parity for the no-residual subset (`fit_A_wide` is not fitted on this page).
+
 Now extract the implied $\hat{\boldsymbol\Sigma}_{\text{unit}}$ and
 between-individual correlation matrix from each fit:
 
@@ -288,6 +279,7 @@ ext_A$note  # advisory: diagonal Psi omitted by unique = FALSE
 ## The correlations side by side
 
 ```{r corr-comparison, fig.width = 7.5, fig.height = 5.2, fig.cap = "Trait-pair correlation errors for the no-residual latent subset and the ordinary latent model with Psi. Positive values mean the fitted correlation is larger than truth; zero means exact recovery for that pair.", fig.alt = "Comparison plot of trait-pair correlation errors for two fitted models. Each point is a trait pair; values above zero overestimate the known correlation and values below zero underestimate it."}
+Sigma_true <- truth$Sigma
 cmp_A <- compare_Sigma_table(
   fit_A,
   truth = Sigma_true,

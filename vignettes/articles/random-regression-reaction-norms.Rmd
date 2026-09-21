@@ -13,6 +13,9 @@ vignette: >
 ---
 
 ```{r, include = FALSE}
+# Rendering needs gllvmTMB installed (pkgdown installs it first) or
+# pkgload::load_all(); the visible data chunk below calls system.file()
+# directly and has no hidden fallback.
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
@@ -58,7 +61,7 @@ We use a reproducible simulated example shipped with the package: 60
 individuals, five sessions per individual, and three Gaussian response traits.
 The generating code remains available in the source repository.
 
-```{r example-data, eval = FALSE}
+```{r example-data}
 rr <- readRDS(system.file(
   "extdata", "examples", "behavioural-reaction-norm-example.rds",
   package = "gllvmTMB"
@@ -66,39 +69,6 @@ rr <- readRDS(system.file(
 df <- rr$data_long
 df_wide <- rr$data_wide
 truth <- rr$truth
-```
-
-```{r example-data-load, include = FALSE}
-example_path <- c(
-  file.path(
-    "inst", "extdata", "examples",
-    "behavioural-reaction-norm-example.rds"
-  ),
-  file.path(
-    "..", "inst", "extdata", "examples",
-    "behavioural-reaction-norm-example.rds"
-  ),
-  file.path(
-    "..", "..", "inst", "extdata", "examples",
-    "behavioural-reaction-norm-example.rds"
-  ),
-  system.file(
-    "extdata",
-    "examples",
-    "behavioural-reaction-norm-example.rds",
-    package = "gllvmTMB"
-  )
-)
-example_path <- example_path[nzchar(example_path) & file.exists(example_path)][1]
-stopifnot(!is.na(example_path))
-
-rr <- readRDS(example_path)
-df <- rr$data_long
-df_wide <- rr$data_wide
-truth <- rr$truth
-trait_names <- truth$trait_names
-intercept_names <- paste0("intercept.", trait_names)
-slope_names <- paste0("slope.temperature.", trait_names)
 ```
 
 Temperature is stored both in degrees Celsius and as the centred, scaled
@@ -235,6 +205,10 @@ cat(
 fit <- fit_long
 ```
 
+That difference is the first output: a value near zero says the long and
+wide calls fitted the same model, not that the fit is healthy. The next
+section runs the checks that come before any interpretation.
+
 The individual term contains trait-specific random intercepts and slopes. The
 session term contains covariance among traits within a repeated occasion:
 
@@ -353,6 +327,10 @@ total within-session covariance. The model assumes the individual and session
 effects are independent.
 
 ```{r extract-sigma}
+trait_names <- truth$trait_names
+intercept_names <- paste0("intercept.", trait_names)
+slope_names <- paste0("slope.temperature.", trait_names)
+
 Sigma_shared <- extract_Sigma(
   fit,
   level = "unit_slope",

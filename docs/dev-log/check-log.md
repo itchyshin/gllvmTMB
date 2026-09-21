@@ -57947,3 +57947,43 @@ Deliberately not run: Totoro 9×500 grid dispatch; full `devtools::test()`.
   the clean clone), full site build, `R CMD check`. Prose-order evidence only;
   no fit, coverage, or release claim. Report:
   `docs/dev-log/after-task/2026-09-21-get-started-first-route.md`.
+
+## 2026-09-21 — Five articles' first routes are runnable
+
+- Applied the Get started first-route repair to `morphometrics`, `pitfalls`,
+  `random-regression-reaction-norms`, `model-selection-latent-rank`, and
+  `covariance-correlation`: one visible evaluated `readRDS(system.file(...))`
+  chunk per page in place of the `eval = FALSE` sketch plus hidden fallback
+  loader; every derived object (`Sigma_true`, `psi_true`, `trait_names`, `T`,
+  the bootstrap fixture, `intercept_names`/`slope_names`) defined in the visible
+  chunk that first uses it; the two `covariance-correlation` fit sketches that
+  sat before `library(gllvmTMB)` moved to after the first output and renamed to
+  the fitted objects' names; one sentence after each first fit saying what the
+  printed result means and that checks come before interpretation. No model,
+  formula, fixture, figure, caption, or evidence claim changed.
+- `tests/testthat/test-get-started-reader-route.R` extended to a page list (Get
+  started plus the five), one `test_that()` per page, with two new assertions (no
+  hidden `readRDS()` before the first fit; no `eval = FALSE` `gllvmTMB()` sketch
+  before the visible `library()`), and a fit detector that resolves one level of
+  helper indirection (the model-selection first fit is the `lapply` over
+  `fit_candidate`). FAIL 14 / PASS 40 on the committed pages (morphometrics 3,
+  pitfalls 1, random-regression 3, model-selection 3, covariance-correlation 4;
+  Get started 9/9), FAIL 0 / PASS 54 after the edits.
+- Checks passed: `git diff --check`; `bash tools/check-reader-surface.sh`
+  (PASS); `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`;
+  `test-article-prescribed-calls.R` (5/5) and
+  `test-reader-facing-no-register-codes.R` (8/8) under `NOT_CRAN=true Rscript
+  --vanilla`; five concurrent `pkgdown::build_article()` renders into separate
+  scratch destinations (12 to 23 s each, exit 0, no error output, all figures
+  present; the first attempt failed in 3 s because the logs sat in the
+  destination); rendered order checked with tags stripped (library, visible
+  data load, fit, result, then any `eval = FALSE` code); purled first routes run
+  in clean `Rscript --vanilla` sessions (morphometrics `[1] -739.6107`,
+  pitfalls the two-row diagonal table, random-regression difference `0`,
+  model-selection the candidate table with `d = 2` at delta 0, covariance
+  `-1111.151 -1111.151`; 1 to 9 s each); `slop_check.py` on the report (2.9 per
+  1000, 0 findings).
+- Deliberately not run: `devtools::test()` / `load_all()` / `R CMD check` (no
+  compiled object in the worktree), full site build. Prose-order evidence only;
+  no fit, coverage, or release claim. Report:
+  `docs/dev-log/after-task/2026-09-21-article-first-routes.md`.

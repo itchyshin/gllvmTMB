@@ -133,43 +133,57 @@ automatic repair for Poisson overdispersion: first check whether the missing
 structure is better represented by NB1/NB2, a predictor, a grouping term, or a
 different sampling process.
 
-## One family in long and wide data
+## First workflow: Poisson or NB2 for insect counts?
 
-A single family applies to every response in the fit. The long and
-`traits(...)` wide calls below fit the same Poisson model; only the data shape
-and formula shorthand differ.
+Suppose pitfall traps record aphids, thrips, and weevils along an environmental
+gradient. Poisson is a sensible starting point because the responses are
+counts. It also makes a strong assumption: after accounting for the gradient,
+the conditional variance equals the conditional mean.
 
-```{r count-data}
+The example below deliberately simulates extra variation that grows with the
+square of the mean. We first prepare the same counts that an ecological survey
+would provide, without using the known simulation settings during fitting.
+
+```{r count-choice-data}
 library(gllvmTMB)
 
-set.seed(20260711)
-n_unit <- 40L
-trait_names <- c("beetles", "moths", "spiders")
+set.seed(20260817)
+n_unit <- 200L
+trait_names <- c("aphids", "thrips", "weevils")
 unit <- factor(seq_len(n_unit))
-z <- rnorm(n_unit, sd = 0.45)
+environment <- rnorm(n_unit, sd = 0.45)
 
 eta <- cbind(
-  beetles = 0.2 + 0.8 * z,
-  moths = 0.6 - 0.4 * z,
-  spiders = 0.1 + 0.5 * z
+  aphids = 1.0 + 0.8 * environment,
+  thrips = 1.4 - 0.4 * environment,
+  weevils = 0.8 + 0.5 * environment
 )
+phi_true <- c(aphids = 1.5, thrips = 2, weevils = 1.2)
 Y <- matrix(
-  rpois(length(eta), lambda = exp(eta)),
+  rnbinom(
+    length(eta),
+    mu = exp(eta),
+    size = rep(phi_true, each = n_unit)
+  ),
   nrow = n_unit,
   dimnames = list(NULL, trait_names)
 )
 
-counts_wide <- data.frame(unit = unit, Y, check.names = FALSE)
 counts_long <- data.frame(
   unit = rep(unit, each = length(trait_names)),
   trait = factor(rep(trait_names, times = n_unit), levels = trait_names),
+  environment = rep(environment, each = length(trait_names)),
   count = as.vector(t(Y))
 )
 ```
 
-```{r count-fits}
-fit_long <- gllvmTMB(
-  count ~ 0 + trait + latent(0 + trait | unit, d = 1),
+Fit Poisson and NB2 with the same trait-specific environmental effects. This
+keeps the family comparison focused on the conditional count distribution,
+before adding latent or other covariance terms.
+
+```{r count-choice-fits}
+fit_poisson <- gllvmTMB(
+  count ~ 0 + trait + trait:environment,
   data = counts_long,
   trait = "trait",
   unit = "unit",
@@ -177,25 +191,93 @@ fit_long <- gllvmTMB(
   silent = TRUE
 )
 
-fit_wide <- gllvmTMB(
-  traits(beetles, moths, spiders) ~ 1 + latent(1 | unit, d = 1),
+fit_nb_long <- gllvmTMB(
+  count ~ 0 + trait + trait:environment,
+  data = counts_long,
+  trait = "trait",
+  unit = "unit",
+  family = nbinom2(),
+  silent = TRUE
+)
+```
+
+Randomized-quantile residuals should have mean near 0 and standard deviation
+near 1 when the conditional distribution is adequate. Compare that diagnostic
+with the fitted log-likelihood:
+
+```{r count-choice-diagnostics}
+resid_poisson <- residuals(
+  fit_poisson,
+  type = "randomized_quantile",
+  seed = 1
+)
+resid_nb2 <- residuals(
+  fit_nb_long,
+  type = "randomized_quantile",
+  seed = 1
+)
+
+data.frame(
+  family = c("Poisson", "NB2"),
+  logLik = round(c(
+    as.numeric(logLik(fit_poisson)),
+    as.numeric(logLik(fit_nb_long))
+  ), 1),
+  residual_mean = round(c(
+    mean(resid_poisson$residual),
+    mean(resid_nb2$residual)
+  ), 2),
+  residual_sd = round(c(
+    sd(resid_poisson$residual),
+    sd(resid_nb2$residual)
+  ), 2)
+)
+```
+
+The Poisson residual standard deviation is about 1.48, so the counts are much
+more variable than its conditional distribution allows. NB2 brings that value
+to about 0.99, keeps the residual mean near 0, and has the better likelihood.
+For these data, choose NB2. In real data, also plot residuals against fitted
+means and revisit the predictors or grouping structure if a pattern remains.
+Do not choose NB2 only because it has the larger likelihood: the ecological
+sampling process and the residual pattern should support the change.
+
+## The same NB2 model in long and wide data
+
+A single family applies to every response in this fit. The long call above and
+the `traits(...)` wide call below fit the same NB2 model; only the data shape
+and formula shorthand differ.
+
+```{r count-wide-fit}
+counts_wide <- data.frame(
+  unit = unit,
+  environment = environment,
+  Y,
+  check.names = FALSE
+)
+
+fit_nb_wide <- gllvmTMB(
+  traits(aphids, thrips, weevils) ~ 1 + environment,
   data = counts_wide,
   unit = "unit",
-  family = poisson(),
+  family = nbinom2(),
   silent = TRUE
 )
 
 data.frame(
   input = c("long", "wide"),
-  logLik = c(as.numeric(logLik(fit_long)), as.numeric(logLik(fit_wide)))
+  logLik = c(
+    as.numeric(logLik(fit_nb_long)),
+    as.numeric(logLik(fit_nb_wide))
+  )
 )
 ```
 
-Equivalent long and wide designs should give the same likelihood. This check
-does not show that Poisson is the right family; that requires diagnostics and a
-scientific mean--variance argument.
+Equivalent long and wide designs give the same likelihood. Choose the shape
+that best matches the rest of the analysis; it does not change the family or
+its interpretation.
 
-## Overdispersed counts and the NB2 dispersion
+## Interpret the NB2 dispersion
 
 When counts vary more than a Poisson mean allows even after the mean structure
 and covariance terms, `nbinom2()` adds one dispersion parameter per trait. Its
@@ -208,112 +290,34 @@ conditional variance is
 so \(\phi\) controls the quadratic extra-Poisson variance: smaller \(\phi\)
 means stronger overdispersion, and as \(\phi \to \infty\) the family collapses
 back to Poisson. This \(\phi\) is the negative binomial `size` parameter on the
-natural scale—the value you would pass to `rnbinom(mu = , size = )`—not a
-variance, a standard deviation, or a log-scale quantity.
-
-The simulation below draws three insect counts per site from that exact
-mean--variance relationship, sharing one latent axis across traits:
-
-```{r nb2-data}
-set.seed(20260817)
-n_unit_nb <- 200L
-nb_trait_names <- c("aphids", "thrips", "weevils")
-nb_unit <- factor(seq_len(n_unit_nb))
-z_nb <- rnorm(n_unit_nb, sd = 0.45)
-
-eta_nb <- cbind(
-  aphids = 1.0 + 0.8 * z_nb,
-  thrips = 1.4 - 0.4 * z_nb,
-  weevils = 0.8 + 0.5 * z_nb
-)
-phi_true <- c(aphids = 1.5, thrips = 2, weevils = 1.2)
-Y_nb <- matrix(
-  rnbinom(length(eta_nb),
-          mu = exp(eta_nb),
-          size = rep(phi_true, each = n_unit_nb)),
-  nrow = n_unit_nb,
-  dimnames = list(NULL, nb_trait_names)
-)
-
-nb_wide <- data.frame(unit = nb_unit, Y_nb, check.names = FALSE)
-nb_long <- data.frame(
-  unit = rep(nb_unit, each = length(nb_trait_names)),
-  trait = factor(rep(nb_trait_names, times = n_unit_nb),
-                 levels = nb_trait_names),
-  count = as.vector(t(Y_nb))
-)
-```
-
-The long and wide calls change only `family = nbinom2()` relative to the
-Poisson fits above:
-
-```{r nb2-fits}
-fit_nb_long <- gllvmTMB(
-  count ~ 0 + trait + latent(0 + trait | unit, d = 1),
-  data = nb_long,
-  trait = "trait",
-  unit = "unit",
-  family = nbinom2(),
-  silent = TRUE
-)
-
-fit_nb_wide <- gllvmTMB(
-  traits(aphids, thrips, weevils) ~ 1 + latent(1 | unit, d = 1),
-  data = nb_wide,
-  unit = "unit",
-  family = nbinom2(),
-  silent = TRUE
-)
-
-data.frame(
-  input = c("long", "wide"),
-  logLik = c(as.numeric(logLik(fit_nb_long)), as.numeric(logLik(fit_nb_wide)))
-)
-```
+natural scale—the value passed to `rnbinom(mu = , size = )` in the first
+workflow—not a variance, a standard deviation, or a log-scale quantity.
 
 The fitted dispersions live in `fit$report$phi_nbinom2`, one value per trait in
 trait factor-level order, already on the natural \(\phi\) scale:
 
 ```{r nb2-dispersion}
 data.frame(
-  trait = nb_trait_names,
+  trait = trait_names,
   phi_true = as.numeric(phi_true),
   phi_hat = round(as.numeric(fit_nb_long$report$phi_nbinom2), 2)
 )
 ```
 
-Read these against the variance formula, not as effect sizes: `aphids` with
-\(\hat\phi \approx 2\) has extra variance \(\mu^2 / 2\) at mean \(\mu\), which
-at \(\mu = 5\) already exceeds the Poisson variance. The estimates sit somewhat
-above the simulated values because the `latent()` tier—whose default per-trait
-`Psi` acts like an observation-level variance here—absorbs part of the
-extra-Poisson variation, leaving less for \(\phi\). The two components compete,
-and that competition has a failure mode worth recognizing: when the data carry
-little quadratic overdispersion beyond what the covariance terms explain,
-\(\phi\) is weakly identified and can run away to a huge value (`1e6` or more).
-A runaway \(\hat\phi\) means "this trait looks Poisson after the random
-effects", not a precise estimate; refit with `poisson()` and compare rather
-than reporting the number.
+Read these against the variance formula, not as effect sizes. For example,
+\(\hat\phi \approx 2\) gives extra variance \(\mu^2 / 2\), which already exceeds
+the Poisson variance when \(\mu = 5\). When the data contain little quadratic
+overdispersion, \(\phi\) can be weakly identified and run away to a huge value
+(`1e6` or more). A runaway estimate means "this trait looks Poisson after the
+modelled predictors and random effects", not a precise dispersion estimate;
+refit with `poisson()` and compare rather than reporting the number.
 
-Exact randomized-quantile residuals are available for NB2 rows and return
-standard-normal residuals when the family, link, and mean model are adequate:
-
-```{r nb2-residuals}
-r_nb <- residuals(fit_nb_long, type = "randomized_quantile", seed = 1)
-round(c(mean = mean(r_nb$residual), sd = sd(r_nb$residual)), 2)
-```
-
-The `residual` column should look like draws from \(N(0, 1)\); a mean near 0
-and a standard deviation near 1, with no trend against fitted means, is
-consistent with the NB2 mean--variance assumption. Systematic departure—for
-example residual variance still growing with the mean—points back to the
-family table above.
-
-This example demonstrates point estimation and fitted diagnostics only.
-Interval coverage for negative binomial fits has not been certified, and
-NB2 latent models at small sample sizes have documented dispersion failures;
-see [Current limitations and boundaries](current-limits.html) before reporting
-uncertainty statements from a fit like this one.
+This example demonstrates point estimation and fitted diagnostics without a
+covariance tier. Interval coverage for negative binomial fits has not been
+certified, and NB2 latent models at small sample sizes have documented
+dispersion failures. See
+[Current limitations and boundaries](current-limits.html) before adding a
+latent term or reporting uncertainty from a negative binomial fit.
 
 ## Gamma's `phi_gamma` is a shape, not a dispersion
 
@@ -751,16 +755,16 @@ above.
 Family choice is provisional until the fitted model behaves sensibly.
 
 ```{r diagnostics, eval = FALSE}
-check_gllvmTMB(fit_long)
+check_gllvmTMB(fit_nb_long)
 
 # Exact randomized-quantile residuals are currently available for Gaussian,
 # binomial, Poisson, lognormal, Gamma, NB1, NB2, Beta, betabinomial, student,
 # truncated Poisson, truncated NB2, and ordinal_probit rows -- every family
 # above except tweedie, delta_lognormal, delta_gamma, and multinomial.
-residuals(fit_long, type = "randomized_quantile", seed = 1)
+residuals(fit_nb_long, type = "randomized_quantile", seed = 1)
 
 # Rootograms currently support Poisson, NB1, and NB2 count rows.
-predictive_check(fit_long, type = "rootogram", ndraws = 100, seed = 1)
+predictive_check(fit_nb_long, type = "rootogram", ndraws = 100, seed = 1)
 ```
 
 Systematic residual or rootogram structure can indicate a wrong family, link,

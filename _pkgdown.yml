@@ -136,13 +136,13 @@ navbar:
       - text: Common pitfalls
         href: articles/pitfalls.html
     advanced_evidence:
-      text: Advanced and evidence
+      text: Specialist methods and evidence
       menu:
-      - text: "Evidence synthesis: rare binary items (experimental MSPL)"
+      - text: "Rare binary items and runaway estimates (experimental)"
         href: articles/mspl-binary-jsdm.html
-      - text: Validation evidence and its limits
+      - text: "How gllvmTMB is checked — and what those checks miss"
         href: articles/validation-oracles.html
-      - text: "Developer note: structured random slopes for non-Gaussian traits"
+      - text: "Structured random slopes for non-Gaussian traits — current evidence and limits"
         href: articles/random-slopes-nongaussian.html
 
 articles:
@@ -214,12 +214,12 @@ articles:
     - articles/profile-likelihood-ci
     - articles/pitfalls
 
-  - title: Advanced and evidence
+  - title: Specialist methods and evidence
     desc: >
-      Specialist case studies and evidence notes rather than a beginner route.
-      The MSPL example uses an opt-in experimental estimator, the validation
-      page explains package evidence, and the structured-slope page remains an
-      under-audit developer note rather than a public worked example.
+      Specialist case studies and evidence notes, not a beginner route. The
+      rare-binary example uses an opt-in experimental estimator; the checking
+      guide explains what has and has not been evaluated; and the structured-slope
+      page states its current evidence and limits.
     contents:
     - articles/mspl-binary-jsdm
     - articles/validation-oracles

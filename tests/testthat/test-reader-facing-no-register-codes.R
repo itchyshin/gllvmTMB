@@ -106,3 +106,18 @@ testthat::test_that("README gives the current installation route", {
     perl = TRUE
   )
 })
+
+testthat::test_that("pkgdown navigation names specialist routes for readers", {
+  testthat::skip_on_cran()
+
+  root <- testthat::test_path("..", "..")
+  config <- file.path(root, "_pkgdown.yml")
+  testthat::skip_if_not(file.exists(config), "not a source checkout")
+  text <- paste(readLines(config, warn = FALSE), collapse = "\n")
+
+  testthat::expect_match(text, "Specialist methods and evidence", fixed = TRUE)
+  testthat::expect_match(text, "Rare binary items and runaway estimates (experimental)", fixed = TRUE)
+  testthat::expect_match(text, "How gllvmTMB is checked — and what those checks miss", fixed = TRUE)
+  testthat::expect_match(text, "Structured random slopes for non-Gaussian traits — current evidence and limits", fixed = TRUE)
+  testthat::expect_false(grepl("Developer note:", text, fixed = TRUE))
+})

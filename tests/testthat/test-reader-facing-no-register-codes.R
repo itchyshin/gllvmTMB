@@ -88,3 +88,21 @@ testthat::test_that("no internal register codes reach reader-facing surfaces", {
     )
   )
 })
+
+testthat::test_that("README gives the current installation route", {
+  testthat::skip_on_cran()
+
+  root <- testthat::test_path("..", "..")
+  readme <- file.path(root, "README.md")
+  testthat::skip_if_not(file.exists(readme), "not a source checkout")
+
+  text <- paste(readLines(readme, warn = FALSE), collapse = "\n")
+  testthat::expect_false(grepl(
+    "The released package is available from CRAN", text, fixed = TRUE
+  ))
+  testthat::expect_match(
+    text,
+    'pak::pak\\("itchyshin/gllvmTMB"\\)',
+    perl = TRUE
+  )
+})

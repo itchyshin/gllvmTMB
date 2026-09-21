@@ -12,6 +12,9 @@ vignette: >
 ---
 
 ```{r, include = FALSE}
+# Rendering needs gllvmTMB installed (pkgdown installs it first) or
+# pkgload::load_all(); the visible data chunks below call system.file()
+# directly and have no hidden fallback.
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment  = "#>",
@@ -56,7 +59,7 @@ generating code remains available in the source repository for reproducibility,
 but the article starts where a user starts: with data, truth, formulas, and one
 biological question.
 
-```{r example-data, eval = FALSE}
+```{r example-data}
 morph <- readRDS(system.file(
   "extdata", "examples", "morphometrics-example.rds",
   package = "gllvmTMB"
@@ -65,48 +68,7 @@ df <- morph$data_long
 df_wide <- morph$data_wide
 truth <- morph$truth
 estimands <- morph$estimands
-```
-
-```{r example-data-load, include = FALSE}
-example_path <- system.file(
-  "extdata", "examples", "morphometrics-example.rds",
-  package = "gllvmTMB"
-)
-example_path <- c(
-  file.path("inst", "extdata", "examples", "morphometrics-example.rds"),
-  file.path("..", "inst", "extdata", "examples", "morphometrics-example.rds"),
-  file.path("..", "..", "inst", "extdata", "examples", "morphometrics-example.rds"),
-  example_path
-)
-example_path <- example_path[nzchar(example_path) & file.exists(example_path)][1]
-stopifnot(!is.na(example_path))
-morph <- readRDS(example_path)
-
-boot_r_path <- system.file(
-  "extdata", "examples", "morphometrics-bootstrap-r.rds",
-  package = "gllvmTMB"
-)
-boot_r_path <- c(
-  file.path("inst", "extdata", "examples", "morphometrics-bootstrap-r.rds"),
-  file.path("..", "inst", "extdata", "examples", "morphometrics-bootstrap-r.rds"),
-  file.path("..", "..", "inst", "extdata", "examples", "morphometrics-bootstrap-r.rds"),
-  boot_r_path
-)
-boot_r_path <- boot_r_path[nzchar(boot_r_path) & file.exists(boot_r_path)][1]
-stopifnot(!is.na(boot_r_path))
-morph_boot_R <- readRDS(boot_r_path)
-
-df <- morph$data_long
-df_wide <- morph$data_wide
-truth <- morph$truth
-estimands <- morph$estimands
-
 n_ind <- truth$n_individuals
-trait_names <- truth$trait_names
-T <- length(trait_names)
-Lambda_true <- truth$Lambda
-psi_true <- truth$psi
-Sigma_true <- truth$Sigma
 ```
 
 ```{r example-data-preview}
@@ -122,6 +84,7 @@ axis (factor 2, mixed signs: long-and-skinny vs. short-and-stocky).
 Each trait also has a trait-specific diagonal variance $\psi_t$.
 
 ```{r sim-truth}
+Sigma_true <- truth$Sigma
 round(Sigma_true, 2)
 estimands
 ```
@@ -171,6 +134,12 @@ cat("Long/formula-wide logLik difference:",
                as.numeric(logLik(fit_wide_formula))), 3),
     "\n")
 ```
+
+The first number is the log-likelihood of the long fit and the second is
+how far the wide fit's log-likelihood sits from it. A finite value says
+there is a fitted model to inspect, not that it is right; run
+`check_gllvmTMB(fit)` and read its `action` column before interpreting
+any covariance below.
 
 gllvmTMB defaults to `unit = "site"`, meaning it looks for a column
 literally named `site` in the data. This morphometric data set has no
@@ -245,6 +214,7 @@ first, trait-specific variation second.
 
 ```{r fit-psi-s}
 # Trait-specific unique variances (psi_t)
+psi_true <- truth$psi
 psi_hat <- extract_Sigma(fit, level = "unit", part = "unique")$s
 cat("Estimated psi_t:", round(psi_hat, 3), "\n")
 cat("True      psi_t:", round(psi_true, 3), "\n")
@@ -273,6 +243,7 @@ agree with truth. Zero means the fitted correlation equals the known
 simulation truth for that trait pair:
 
 ```{r corr-comparison, fig.width = 7, fig.height = 4.8, fig.cap = "Trait-pair correlation errors from the total between-unit covariance Sigma_B = Lambda Lambda^T + Psi. Points show fitted minus true correlation; zero means exact recovery for that pair."}
+trait_names <- truth$trait_names
 rownames(Sigma_true) <- colnames(Sigma_true) <- trait_names
 rownames(Sigma_hat)  <- colnames(Sigma_hat)  <- trait_names
 corr_compare <- compare_Sigma_table(
@@ -316,6 +287,13 @@ figure so pkgdown does not refit bootstrap replicates while rendering.
 ```{r ci-correlations}
 corr_rows <- extract_correlations(fit, tier = "unit")
 corr_rows
+```
+
+```{r bootstrap-example}
+morph_boot_R <- readRDS(system.file(
+  "extdata", "examples", "morphometrics-bootstrap-r.rds",
+  package = "gllvmTMB"
+))
 ```
 
 ```{r ci-correlation-eye, fig.width = 7, fig.height = 4.3, fig.cap = "Pairwise between-individual trait correlations from a cached morphometrics bootstrap example. Confidence eyes reconstruct frequentist compatibility from percentile intervals; hollow circles mark estimates. Use a larger bootstrap run before making a final interval-calibration claim."}
@@ -370,6 +348,7 @@ These are ordinary unit-tier keywords; source-specific forms such as
 unit-tier covariance instead.
 
 ```{r dep-indep-compare, message = FALSE, warning = FALSE}
+T <- length(trait_names)
 fit_full_long <- gllvmTMB(
   value ~ 0 + trait +
           latent(0 + trait | individual, d = T),

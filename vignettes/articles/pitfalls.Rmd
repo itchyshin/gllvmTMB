@@ -12,6 +12,9 @@ vignette: >
 ---
 
 ```{r, include = FALSE}
+# Rendering needs gllvmTMB installed (pkgdown installs it first) or
+# pkgload::load_all(); the visible data chunk below calls system.file()
+# directly and has no hidden fallback.
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment  = "#>",
@@ -54,20 +57,15 @@ side-by-side long and wide calls.
 library(gllvmTMB)
 ```
 
-```{r load-example-data, include = FALSE}
-covex_path <- system.file(
+Pitfall 1 uses the trait names from a prepared behavioural example object
+shipped with the package; the fits later on this page simulate their own
+data in front of you.
+
+```{r load-example-data}
+covex <- readRDS(system.file(
   "extdata", "examples", "covariance-edge-cases-example.rds",
   package = "gllvmTMB"
-)
-covex_path <- c(
-  covex_path,
-  file.path("inst", "extdata", "examples", "covariance-edge-cases-example.rds"),
-  file.path("..", "inst", "extdata", "examples", "covariance-edge-cases-example.rds"),
-  file.path("..", "..", "inst", "extdata", "examples", "covariance-edge-cases-example.rds")
-)
-covex_path <- covex_path[nzchar(covex_path) & file.exists(covex_path)][1]
-stopifnot(!is.na(covex_path))
-covex <- readRDS(covex_path)
+))
 ```
 
 ## 1. Keep trait labels and matrix rows in the same order
@@ -137,6 +135,11 @@ LLt_true <- tcrossprod(sim$truth$Lambda_B)
 round(rbind(diag_LLt_true   = diag(LLt_true),
             diag_Sigma_hat = diag(S_hat)), 2)
 ```
+
+The two rows are the first output: the known diagonal of
+$\boldsymbol\Lambda\boldsymbol\Lambda^{\!\top}$ above the fitted one. A fit
+that returns them is not yet a fit you can read; run the checks in the
+note at the top of this page before interpreting the gap.
 
 **Rule of thumb.** *Name the estimand before judging the estimate. If the
 scientific target includes trait-specific diagonal $\boldsymbol\Psi$, use the

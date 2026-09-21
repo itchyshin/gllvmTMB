@@ -12,6 +12,9 @@ vignette: >
 ---
 
 ```{r, include = FALSE}
+# Rendering needs gllvmTMB installed (pkgdown installs it first) or
+# pkgload::load_all(); the visible data chunk below calls system.file()
+# directly and has no hidden fallback.
 knitr::opts_chunk$set(
   collapse  = TRUE,
   comment   = "#>",
@@ -74,7 +77,7 @@ $$
 where `Lambda` contains the shared latent loadings and `Psi` is the
 trait-specific diagonal carried by ordinary `latent()`.
 
-```{r example-data, eval = FALSE}
+```{r example-data}
 rank_ex <- readRDS(system.file(
   "extdata", "examples", "model-selection-rank-example.rds",
   package = "gllvmTMB"
@@ -82,26 +85,6 @@ rank_ex <- readRDS(system.file(
 df <- rank_ex$data_long
 df_wide <- rank_ex$data_wide
 truth <- rank_ex$truth
-```
-
-```{r example-data-load, include = FALSE}
-rank_path <- c(
-  file.path("inst", "extdata", "examples", "model-selection-rank-example.rds"),
-  file.path("..", "inst", "extdata", "examples", "model-selection-rank-example.rds"),
-  file.path("..", "..", "inst", "extdata", "examples", "model-selection-rank-example.rds"),
-  system.file(
-    "extdata", "examples", "model-selection-rank-example.rds",
-    package = "gllvmTMB"
-  )
-)
-rank_path <- rank_path[nzchar(rank_path) & file.exists(rank_path)][1]
-stopifnot(!is.na(rank_path))
-rank_ex <- readRDS(rank_path)
-
-df <- rank_ex$data_long
-df_wide <- rank_ex$data_wide
-truth <- rank_ex$truth
-trait_names <- truth$trait_names
 ```
 
 ```{r data-preview}
@@ -210,6 +193,16 @@ rank_table_display
 selected_d <- rank_table$d[which.min(rank_table$BIC)]
 fit_selected <- fits[[paste0("d", selected_d)]]
 ```
+
+The table is the first output: one row per candidate rank, with the
+fit-health columns beside the criteria. Read `health` and `weak_axis`
+before `delta_BIC`; a low criterion value on a fit that failed its checks
+is not evidence for that rank. The `WARN` on the `d = 2` row comes from a
+single `check_gllvmTMB()` row, the rotation-convention note (with `d > 1`
+the loading columns are identified only up to rotation and sign), not from
+a numerical failure. The `d = 3` row carries that note too and also warns
+on `pd_hessian` and `weak_axis`; those two rows are printed in full further
+down the page.
 
 Here both criteria support `d = 2`, the planted rank. The `d = 3`
 model gains a tiny amount of log-likelihood, but it pays for extra

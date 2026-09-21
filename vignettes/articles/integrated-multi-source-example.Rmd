@@ -99,8 +99,7 @@ dat <- expand.grid(cell_id = cells, trait = species, isdm_source = sources,
 ci <- match(dat$cell_id, cells)
 si <- match(dat$trait, species)
 di <- match(dat$isdm_source, sources)
-## Harmless off-source placeholders keep upstream row filtering independent of
-## variables that the source wrapper will never evaluate on those rows.
+## These placeholder values are unused for rows from the other sources.
 dat$access  <- 0
 dat$popdens <- 0
 dat$observer <- "A"
@@ -154,8 +153,9 @@ fam <- isdm_sources(
 ```
 
 The data need an `isdm_source` column naming each row's source (built above),
-and every species must be observed by every declared source. The wrapper owns
-the source-observation effects, so the main formula stays ecological:
+and every species must be observed by every declared source. The source
+declaration handles source-specific observation effects, so the main formula
+can describe the shared ecological process:
 
 ```{r fit}
 fit <- gllvmTMB(
@@ -209,22 +209,21 @@ detection probability.
 
 # How large does a design like this need to be?
 
-Two pieces of measured guidance from this package's internal campaigns, both
-with their regimes stated:
+This small, non-spatial simulation gives two pieces of design guidance. They
+apply only to the balanced, fully crossed setting described here:
 
-1. **Adding sources neither helps nor hurts the sources you already have.**
-   In a 1,200-fit known-truth study on exactly this model shape (150 cells,
-   3 species, non-spatial, 2–4 fully-crossed sources), each source type's own
-   recovery error was flat as sources were added. Integration's cost is not
-   interference between arms.
-2. **A weak source pays its own price.** Dropping a source's effort to a
-   tenth of the reference roughly doubled the error of *that source's*
-   recording effects, and left the others essentially untouched.
+1. **Adding sources did not make the other sources less precise in this
+   simulation.** In a 1,200-fit study of this exact model shape (150 cells,
+   3 species, non-spatial, 2–4 fully crossed sources), each source type's own
+   recovery error changed little as sources were added.
+2. **A weak source was less precisely estimated in this simulation.** Dropping
+   a source's effort to one tenth of the reference roughly doubled the error
+   of *that source's* recording effects, while the others changed little.
 
-Both were measured with every source observing every cell — balanced,
-fully-crossed designs. Sources with partial, patchy coverage are the harder
-and unmeasured case, and the spatial version of this model has its own,
-stricter design requirements — see
+Both results come from data in which every source observed every cell. They do
+not show that adding sources has the same effect with partial coverage, spatial
+structure, or a different model. Those situations need their own assessment;
+the spatial version of this model also has stricter design requirements — see
 [How big does an integrated survey design need to be?](integrated-survey-design.html).
 
 # What this route does and does not cover
@@ -234,11 +233,10 @@ each a Poisson count stream or a cloglog detection stream, sharing one
 ecological process through the ordinary `gllvmTMB()` call, with per-source
 observation covariates through `isdm_source()`.
 
-**Works but not certified:** the estimates themselves. The route is
-contract-tested and the recovery evidence above is real but nonspatial, at
-one design size, on balanced sources. Read fitted numbers as illustration
-until your own design has been checked against the design article's
-guidance.
+**What has been checked:** the non-spatial, balanced simulation above, at one
+design size. Read fitted numbers from this example as an illustration, not as
+evidence that estimates or uncertainty will behave the same way for your own
+design. Use the design article's guidance before relying on them.
 
 **Not available:** an all-detection declaration (refused when you build it —
 the detection arm's offset is only admitted alongside a count arm); weighting
@@ -252,7 +250,7 @@ occupancy, detectability — from any number of presence-only sources.
   — the two-source worked example, including the spatial variant and an
   honest treatment of a non-positive-definite fit.
 - [How big does an integrated survey design need to be?](integrated-survey-design.html)
-  — the design question, from a 1,600-fit known-truth campaign.
+  — the design question and the evidence currently available for it.
 - [Response families](response-families.html) — the admitted families and
   links in general.
 

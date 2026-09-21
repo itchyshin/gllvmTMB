@@ -112,13 +112,7 @@ interface lets you supply the stacked table yourself.
 
 ## Install
 
-The released package is available from CRAN:
-
-```r
-install.packages("gllvmTMB")
-```
-
-To try development changes before a release, install from GitHub with `pak`:
+Install the current development version from GitHub with `pak`:
 
 ```r
 install.packages("pak")

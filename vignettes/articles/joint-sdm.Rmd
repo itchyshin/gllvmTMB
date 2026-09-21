@@ -35,15 +35,13 @@ or trait per species, and a 0/1 response for absence/presence. The
 model uses `latent()` to estimate a low-rank residual co-occurrence
 structure across species after `env_1` is accounted for.
 
-This example supports both long data and the wide `traits(...)` formula,
-using a binomial-logit model with `latent(0 + trait | site, d = K)` for
-residual co-occurrence. One of the interval methods used below — Fisher-z, a
-fast closed-form transform of an estimated correlation, explained where the
-correlations are extracted — gives model-based uncertainty diagnostics whose
-repeated-sampling coverage has not been established for this model class. Single-species spatial SDMs belong in
-`sdmTMB`. Multivariate spatial fields via `spatial_*()` are beyond the scope of
-this introductory JSDM example and have a separate
-[worked spatial-model guide](spatial-models.html).
+This example uses a binomial-logit model with
+`latent(0 + trait | site, d = K)` for residual co-occurrence. It fits the
+model, checks its numerical health, and then interprets the residual species
+correlations. The equivalent wide `traits(...)` formula comes after that first
+workflow. Single-species spatial SDMs belong in `sdmTMB`. Multivariate spatial
+fields via `spatial_*()` are beyond the scope of this introductory JSDM
+example and have a separate [worked spatial-model guide](spatial-models.html).
 
 ## Setup
 
@@ -54,38 +52,18 @@ library(ggplot2)
 
 ## Load and fit
 
-The article uses a shipped teaching fixture rather than building the
-data inside the vignette. It contains a complete `Site x Species`
-occurrence matrix: 120 sites, 8 species, 2 latent residual
-co-occurrence axes, and an environmental covariate `env_1` with
-species-specific responses. The true loadings put the species into
-four niche quadrants (dry-low, dry-high, wet-low, wet-high), with two
-species per quadrant.
+The article uses a shipped teaching data set: 120 sites, eight species, and
+an environmental covariate `env_1` with species-specific responses. Every
+site-by-species cell is an observed absence or presence. The data were made
+for teaching, so the fitted associations are an example of interpretation,
+not a claim about a real community.
 
 ```{r jsdm-data}
 jsdm_path <- system.file(
   "extdata", "examples", "joint-sdm-example.rds",
   package = "gllvmTMB"
 )
-
-source_candidates <- file.path(
-  c(".", "..", "../.."),
-  "inst", "extdata", "examples", "joint-sdm-example.rds"
-)
-input_file <- knitr::current_input(dir = TRUE)
-if (!is.null(input_file)) {
-  source_candidates <- c(
-    source_candidates,
-    file.path(
-      dirname(dirname(dirname(input_file))),
-      "inst", "extdata", "examples", "joint-sdm-example.rds"
-    )
-  )
-}
-candidate_paths <- c(jsdm_path, source_candidates)
-candidate_paths <- candidate_paths[nzchar(candidate_paths)]
-jsdm_path <- candidate_paths[file.exists(candidate_paths)][1]
-if (is.na(jsdm_path)) {
+if (!nzchar(jsdm_path)) {
   stop("Could not find joint-sdm-example.rds.")
 }
 jsdm <- readRDS(jsdm_path)
@@ -112,9 +90,17 @@ fit_jsdm <- gllvmTMB(
 fit_jsdm
 ```
 
-The printed summary confirms the model estimated one intercept and one
-`env_1` slope per species plus a rank-2 latent term; `fit_jsdm$opt$convergence`
-is the numeric flag to check next if anything looks off.
+The printed summary confirms one intercept and one `env_1` slope per species,
+plus a rank-2 latent term. Before interpreting any association, inspect the
+fit-health table rather than relying on the optimizer code alone:
+
+```{r jsdm-diagnostics}
+health <- check_gllvmTMB(fit_jsdm)
+health[health$component %in% c("optimizer_convergence", "pd_hessian"), ]
+```
+
+Both rows should pass before you use the correlations below. If either one
+does not, stop here and follow [Fit diagnostics](fit-diagnostics.html).
 
 ```{r jsdm-fit-wide}
 # Wide format -- one row per site, one column per species. The

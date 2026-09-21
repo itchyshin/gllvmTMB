@@ -57916,3 +57916,34 @@ Deliberately not run: Totoro 9×500 grid dispatch; full `devtools::test()`.
   'rmarkdown::render("vignettes/articles/temporal-ar1.Rmd", output_dir =
   "/private/tmp/gllvmTMB-temporal-final-verify", quiet = TRUE)'`,
   `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`, and `git diff --check`.
+
+## 2026-09-21 — Get started first route is runnable
+
+- Reordered `vignettes/gllvmTMB.Rmd` so the first visible code is a complete
+  route: `library(gllvmTMB)`, `readRDS(system.file(...))` evaluated in front of
+  the reader, the wide fit, `as.numeric(logLik(fit))`, and one sentence reading
+  that number. The mathematics section now follows the `Sigma` table. The hidden
+  `example-data-load` chunk is removed (every render path installs the package
+  first; installed and source RDS are byte-identical). No model, formula,
+  fixture, default, API, or evidence claim changed.
+- New `tests/testthat/test-get-started-reader-route.R`: source-order invariant
+  (visible library and readRDS before the first runnable fit; no `eval = FALSE`
+  chunk before it; limits link before the next-guide section). Shown to FAIL on
+  the committed page (2 of 7) and PASS on the repaired page (7 of 7). Needs
+  `NOT_CRAN=true` under `Rscript --vanilla`; skips under `R CMD check` like the
+  precedent reader test.
+- Checks passed: `git diff --check`; `bash tools/check-reader-surface.sh`;
+  `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`;
+  `Rscript --vanilla -e "pkgdown::build_article('gllvmTMB', lazy = FALSE,
+  override = list(destination = '<scratch>/site'))"` (17 to 20 s; the handover's
+  `build_articles(articles = ...)` form is not accepted by pkgdown 2.2.0);
+  purled first route run in a clean `Rscript --vanilla` session
+  (`[1] -739.6107`, about 3 s). Independent Pat/Rose review (Fable) applied:
+  log-likelihood sentence no longer claims convergence, `Psi`/`Sigma` glossed
+  before the equations, fixture described correctly (150 individuals measured
+  once), the `rotation_convention_unit` WARN explained, `Sigma` table printed
+  as four readable columns.
+- Deliberately not run: `devtools::test()` / `load_all()` (no compiled object in
+  the clean clone), full site build, `R CMD check`. Prose-order evidence only;
+  no fit, coverage, or release claim. Report:
+  `docs/dev-log/after-task/2026-09-21-get-started-first-route.md`.

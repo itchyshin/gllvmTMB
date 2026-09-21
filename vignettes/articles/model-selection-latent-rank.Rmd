@@ -197,7 +197,12 @@ fit_selected <- fits[[paste0("d", selected_d)]]
 The table is the first output: one row per candidate rank, with the
 fit-health columns beside the criteria. Read `health` and `weak_axis`
 before `delta_BIC`; a low criterion value on a fit that failed its checks
-is not evidence for that rank.
+is not evidence for that rank. The `WARN` on the `d = 2` row comes from a
+single `check_gllvmTMB()` row, the rotation-convention note (with `d > 1`
+the loading columns are identified only up to rotation and sign), not from
+a numerical failure. The `d = 3` row carries that note too and also warns
+on `pd_hessian` and `weak_axis`; those two rows are printed in full further
+down the page.
 
 Here both criteria support `d = 2`, the planted rank. The `d = 3`
 model gains a tiny amount of log-likelihood, but it pays for extra

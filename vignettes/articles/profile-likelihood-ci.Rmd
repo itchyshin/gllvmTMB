@@ -1,13 +1,13 @@
 ---
-title: "Profile likelihood: routes and fallbacks"
-description: "Choose and inspect target-specific profile, Wald, or bootstrap routes while keeping returned bounds separate from coverage claims."
+title: "Confidence intervals: what can I report?"
+description: "Choose a profile, Wald, or bootstrap interval for a specific result, and keep the returned bounds separate from a general coverage claim."
 tier: 2 # Target-specific lookup page for readers who already have a fitted model.
 output:
   rmarkdown::html_vignette:
     toc: true
     toc_depth: 3
 vignette: >
-  %\VignetteIndexEntry{Profile likelihood: routes and fallbacks}
+  %\VignetteIndexEntry{Confidence intervals: what can I report?}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -25,24 +25,26 @@ knitr::opts_chunk$set(
 )
 ```
 
-This reference answers one practical question: when you request a profile
-interval, does `gllvmTMB` actually compute one for your target?
+## Before choosing an interval
 
-Direct parameters and simple linear contrasts can use likelihood profiles.
-Most nonlinear derived quantities do not currently have profile intervals
-because the constrained fits cannot yet be checked reliably in every case.
-Per-trait total variance through `profile_ci_total_variance()` is also only an
-approximate calculation: historical and new checks met their prespecified
-numerical criteria in several Gaussian cells, but the retained penalty-profile
-endpoints cannot establish
-exact constrained-refit convergence and target attainment. Empirical coverage has
-not been established for an exact profile across supported models, so this
-page does not call any interval method universally best or publication-ready.
+An interval is useful only when you know what quantity it describes and how it
+was calculated. This guide answers a practical reporting question: **what kind
+of interval can gllvmTMB provide for this particular result?**
 
-The key rule is simple: **choose a route that is actually available for the
-target, then inspect the returned bounds and any method or status columns.** A
-documented numerical-Wald fallback must retain its label, while a withdrawn
-nonlinear route must stop rather than being presented as a profile result.
+- Direct model parameters and simple linear contrasts can sometimes use a
+  likelihood profile.
+- Most nonlinear derived quantities do not yet have profile intervals, because
+  the required constrained fits cannot be checked reliably in every case.
+- Per-trait total variance from `profile_ci_total_variance()` is an approximate
+  calculation. In several historical and new Gaussian examples its numerical
+  checks succeeded, but the saved endpoints do not prove that every constrained
+  refit converged to the exact requested value.
+
+No interval method on this page has general repeated-sampling coverage evidence
+across all supported models. Start by choosing a route that is available for
+your target, then report the returned bounds together with their method and any
+status message. A numerical-Wald fallback must keep that label; an unsupported
+nonlinear target should stop rather than be described as a profile result.
 
 ```{r setup}
 library(gllvmTMB)
@@ -54,10 +56,10 @@ set.seed(42)
 The interval API is target-specific. The table below shows what a reader can
 request now; it is not a claim about empirical coverage.
 
-| Target | Start here | Current behavior |
+| Your result | Start here | What gllvmTMB can provide |
 |:-------|:-----------|:-----------------|
 | Direct fixed effect, dispersion, or variance component | `profile_targets(fit)` followed by `confint(fit, parm = ..., method = "profile")` | Direct likelihood profile when the target is marked ready. |
-| Per-trait total variance | `profile_ci_total_variance()` | Penalty-based fix-and-refit approximation. Historical `n_units = 150`, `d` in `{1, 2}` and new `n_units = 400`, `d = 2` Gaussian cells met their prespecified numerical criteria, but retained endpoints do not prove exact constrained-refit convergence and target attainment. Every computed interval carries a status marking it as calculated but not proven to match the exact profile-likelihood answer; unavailable rows are `none`. |
+| Per-trait total variance | `profile_ci_total_variance()` | A penalty-based fix-and-refit approximation. Historical Gaussian examples with `n_units = 150`, `d` in `{1, 2}`, and a newer `n_units = 400`, `d = 2` example met their numerical checks, but saved endpoints do not prove exact constrained-refit convergence and target attainment. Every returned interval is labelled as calculated but not proven to match an exact profile-likelihood answer; unavailable rows are `none`. |
 | Repeatability | `extract_repeatability()` | Wald is the default; requesting profile stops with a typed withdrawal because no full-covariance profile route is available. |
 | Trait correlation | `extract_correlations()` | Point-only is the default. Fisher-z and bootstrap bounds are opt-in; a profile interval is not currently available. |
 | Communality | `extract_communality()` | Point estimates are the default; Wald and bootstrap bounds are opt-in; a profile interval is not currently available. |
@@ -66,8 +68,8 @@ request now; it is not a claim about empirical coverage.
 | Full covariance matrix | `confint(fit, parm = "Sigma_unit", ...)` | Route depends on the fitted structure. Read the returned method and any fallback message rather than assuming every matrix element was directly profiled. |
 
 Bootstrap is not an automatic remedy for an unusable profile. It relies on
-simulation and successful refits, and every active random-effect tier must be
-redrawn rather than silently conditioned on its fitted mode. Use enough
+simulation and successful refits, and every source of random variation in the
+fitted model must be simulated again rather than silently held fixed. Use enough
 replicates to estimate the requested tail probabilities, report failed refits,
 and treat small runs only as software smoke tests.
 

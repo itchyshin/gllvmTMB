@@ -124,9 +124,9 @@ mesh <- make_mesh(
 In the fitted formula below, `site` identifies the sampling unit, whereas the
 geometry comes from the pre-built `mesh`. The `mesh = mesh` argument must refer
 to a mesh made from the coordinate rows in the data supplied to `gllvmTMB()`.
-For long data, that means one coordinate row per site--trait response cell;
-for wide data, the mesh must be expanded to the corresponding internal stacked
-row order.
+For long data, that means one coordinate row per site--trait response cell.
+For wide data, expand the mesh coordinates to the row order used when the
+model turns the response matrix into long data.
 
 The compact summary below confirms that all three SPDE finite-element matrices
 are present without printing their sparse entries or every coordinate row.
@@ -167,9 +167,9 @@ without a fringe of extremely narrow triangles. A mesh that is too coarse can
 erase short-range structure; a needlessly fine mesh adds latent variables and
 can make optimization slower.
 
-The projection matrix must follow the rows of the internally stacked data.
-The long data already have that order. If your data start wide, make an
-equivalent row-major coordinate frame before calling `make_mesh()`:
+The projection matrix must follow the rows used by the model. The long data
+already have that order. If your data start wide, make an equivalent row-major
+coordinate frame before calling `make_mesh()`:
 
 ```{r wide-mesh-data, eval = FALSE}
 trait_cols <- c("trait_1", "trait_2", "trait_3")
@@ -402,7 +402,8 @@ layer were derived from sdmTMB's GPL-3 implementation. Repository history and
 The current helpers in `R/mesh.R`, `R/crs.R`, and `R/plot.R` were substantially
 rewritten for gllvmTMB from the published SPDE/GMRF construction and the public
 `fmesher` API. They remain distributed under
-[GPL-3](../LICENSE.html), which is compatible with their sdmTMB source lineage.
+[GPL-3](https://github.com/itchyshin/gllvmTMB/blob/main/LICENSE), which is
+compatible with their sdmTMB source lineage.
 The repository records the detailed code-provenance boundary in
 [`inst/COPYRIGHTS`](https://github.com/itchyshin/gllvmTMB/blob/main/inst/COPYRIGHTS).
 

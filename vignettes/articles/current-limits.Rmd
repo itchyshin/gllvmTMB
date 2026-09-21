@@ -62,19 +62,24 @@ model used in the introductory tutorial has not passed all its recovery checks.
 For counts and binary responses, use the matching row below; the Gaussian
 results do not establish reliability for those data.
 
-## Evidence for choosing a model
+## Choose a model within the evidence
 
-This page describes the 0.7.1 source version. The tables give the conditions
-under which each result was tested, followed by limits for additional model
-components and uncertainty. For how these checks work, see
-[Validation oracles](validation-oracles.html).
+This page describes the 0.7.1 source version. It separates three practical
+decisions:
 
-**Experimental/partial** means a feature is available only for the stated
-design; do not extend its conclusions to neighbouring models. **Not
-recommended for this claim** means choose a simpler route or another package.
-Evidence is limited to the designs named in the table. No package-wide
-reliability claim has been earned, so choose a simpler route when a row says
-that a claim is not recommended.
+- **A safer starting point within the tested conditions:** point-estimate
+  checks passed for the model and data design stated. This does not establish
+  reliability for other designs or for confidence intervals.
+- **Exploratory only:** you can fit and describe the stated model, but its
+  accuracy is incomplete or a relevant check failed.
+- **Do not use it for this purpose:** the requested conclusion is unsupported,
+  or known failures make that interpretation unreliable.
+
+Match the *whole* model to the evidence: its response family, number of
+responses, sample size, covariance structure, and missing-data pattern all
+matter. Adding a phylogeny, spatial term, or other component does not inherit
+the evidence for the simpler model. The technical record behind these checks is
+available in [Validation oracles](validation-oracles.html).
 
 ## Choose a response model
 
@@ -83,26 +88,26 @@ represents
 \(\Sigma = \Lambda\Lambda^\mathsf{T} + \Psi\), where \(\Psi\) is diagonal.
 Setting `unique = FALSE` requests the narrower loadings-only subset.
 
-| Analysis or result | Current status | What you may report | What you must not infer |
+| Your model or question | What you can use | Important limit |
 |---|---|---|---|
-| Ordinary Gaussian `indep()` | Experimental/partial | **Narrow tested-regime point evidence:** trait-specific independent variance point estimates in the tested three-trait complete-data regimes (`n = 60` and `n = 240`) after fit-health checks | Calibrated uncertainty, family-wide robustness, or protection across arbitrary sample sizes and boundary regimes |
-| Ordinary Gaussian `dep()` | Experimental/partial | **Narrow tested-regime point evidence:** a full trait covariance point estimate in the tested three-trait complete-data regimes (`n = 60` and `n = 240`) after fit-health checks | That a positive-definite Hessian proves every covariance entry is well estimated, or that the result transfers to structured sources |
-| Ordinary Gaussian `latent()` | Experimental/partial | **Characterization-only:** rotation-invariant `Sigma`, correlations, communality, and an ordination after diagnostics; the `n = 60` core design was held before production, while correlation stress designs failed the prespecified accuracy criteria | A dependable-core claim, biological meaning for raw loading signs/orientation, or reliability in weak-variance and boundary regimes |
-| Poisson-log rank-1 `latent()` | Experimental/partial | **Narrow clean-data point evidence:** point estimates and rotation-invariant covariance summaries in the tested three-trait designs (`n = 100` and `n = 300`) | Family-wide robustness: the rare-level robustness cell exceeded the prespecified fixed-effect-bias limit; no general interval or detector claim follows |
-| NB2-log rank-1 `latent()` | Experimental/partial | **Characterization-only:** point results with the exact sample size and dispersion diagnostics reported; the `n = 300` core cell passed | A dependable point-estimation claim: the `n = 100` and missing-response cells produced catastrophic dispersion failures that diagnostics often missed |
-| NB2-log latent model with missing responses | Not recommended for this claim | Nothing as dependable evidence; the tested cell may be used only to study the failure mechanism | That standard optimizer, Hessian, or boundary diagnostics clear the fit: 30 of 41 catastrophic truth errors in the tested missing-response cell were missed |
-| Binomial(10)-logit rank-1 `latent()` | Experimental/partial | **Narrow clean-data point evidence:** point estimates and rotation-invariant covariance summaries in the tested three-trait designs (`n = 100` and `n = 300`) | Family-wide robustness, Bernoulli equivalence, separation protection, or reliability in the held/failed small-sample silent-failure cells |
-| Other response families | Experimental/partial | Results only within the conditions stated in the response-family and model-specific guides | That family construction or one successful fit establishes broad recovery |
-| Ordinal models | Not recommended for this claim | Exploratory point fits only with model-specific validation; there is no calibrated ordinal degeneracy detector | That nominal convergence rules out a degenerate fit, or that binomial detector thresholds transfer to ordinal fits |
-| Mixed-family models across traits | Experimental/partial | Point estimates only for explicitly documented family combinations, with one family/link per trait | Direct comparison of correlations defined on incompatible latent or response scales |
-| Family/link varying across rows within one trait | Not recommended for this claim | Nothing yet; the fit now fails loudly before optimization | That a shared loading is coherent across Poisson-log and binomial-logit/probit merely because the engine accepts per-row family IDs; the planned Poisson-log/binomial-cloglog integrated route is not yet validated |
+| Gaussian `indep()` | **Safer starting point:** trait-specific variance point estimates after fit-health checks, for complete three-trait data in the tested `n = 60` and `n = 240` designs | No calibrated uncertainty, broad robustness claim, or guarantee at other sample sizes or boundary conditions |
+| Gaussian `dep()` | **Safer starting point:** a full trait-covariance point estimate after fit-health checks, for complete three-trait data in the tested `n = 60` and `n = 240` designs | A positive-definite Hessian does not show that every covariance is accurate, and this evidence does not transfer to structured models |
+| Gaussian `latent()` | **Exploratory:** rotation-invariant covariance (`Sigma`), correlations, communality, and an ordination after diagnostics | The `n = 60` central design was not ready for release and correlation-stress designs failed accuracy checks. Do not attach biological meaning to raw loading signs or orientation, or assume reliability near weak-variance or boundary cases |
+| Poisson-log rank-1 `latent()` | **Exploratory point estimates:** rotation-invariant covariance summaries for clean three-trait data in the tested `n = 100` and `n = 300` designs | A rare-level design had excessive fixed-effect bias. This does not establish general robustness, interval reliability, or dependable failure detection |
+| NB2-log rank-1 `latent()` | **Exploratory:** report point results with their exact sample size and dispersion diagnostics; the `n = 300` central design passed | Do not make a dependable point-estimation claim: `n = 100` and missing-response designs had severe dispersion errors that diagnostics often missed |
+| NB2-log latent model with missing responses | **Do not use for dependable results.** The tested model is useful only for studying the failure mechanism | Standard optimizer, Hessian, and boundary diagnostics missed 30 of 41 severe truth errors in the tested missing-response design |
+| Binomial(10)-logit rank-1 `latent()` | **Exploratory point estimates:** rotation-invariant covariance summaries for clean three-trait data in the tested `n = 100` and `n = 300` designs | No broad robustness claim, Bernoulli equivalence, separation protection, or reliability in the small-sample designs where failures could be silent |
+| Other response families | **Exploratory:** only within the conditions in the response-family and model-specific guides | Constructing a family, or obtaining one successful fit, does not establish broad recovery |
+| Ordinal models | **Do not use for a validated conclusion.** Exploratory point fits need model-specific validation | Nominal convergence does not rule out a degenerate fit, and binomial diagnostic thresholds do not apply to ordinal fits |
+| Mixed response families across traits | **Exploratory:** documented combinations with one family and link per trait | Do not directly compare correlations that live on incompatible latent or response scales |
+| Family or link varying between rows of one trait | **Do not use.** The fit now stops before optimisation | An accepted per-row family identifier does not make a shared loading coherent across Poisson-log and binomial-logit/probit. The planned Poisson-log/binomial-cloglog integrated route is not yet validated |
 
 ## Check additional model components
 
 <details>
-<summary>Covariance sources, temporal models, grouping, and missing data</summary>
+<summary>More complex structure: covariance, time, groups, and missing data</summary>
 
-| Analysis or result | Current status | What you may report | What you must not infer |
+| Your model or question | Availability | What you can use | Important limit |
 |---|---|---|---|
 | Non-unit likelihood weights | Not recommended for likelihood-based inference | Weighted-objective point estimates only, with the weighting rule reported | Ordinary Hessian/Wald uncertainty, `logLik()`, AIC, BIC, or likelihood-ratio interpretation; no sandwich route is certified |
 | Phylogenetic, animal, spatial, or kernel covariance | Experimental/partial | Point estimates for the exact documented route after structure-specific diagnostics | That ordinary-model evidence transfers to a structured source, that spatial `tau` or field SD has validated absolute-scale recovery, or that structured intervals are calibrated |
@@ -115,9 +120,9 @@ Setting `unique = FALSE` requests the narrower loadings-only subset.
 </details>
 
 <details>
-<summary>Alternative engines and integration methods</summary>
+<summary>Alternative fitting methods and the optional Julia connection</summary>
 
-| Analysis or result | Current status | What you may report | What you must not infer |
+| Your model or question | Availability | What you can use | Important limit |
 |---|---|---|---|
 | Variational approximation | Experimental/partial | Opt-in exploratory point estimates for the documented families and ranks, using the current automatic GH evaluator with `H = 7`, and report the method metadata and exact family/rank | General point recovery outside those families and ranks; its ELBO is not a log-likelihood, so ordinary `logLik()`, AIC, BIC, and likelihood-ratio comparisons are undefined; do not infer calibrated covariance, Wald intervals, or evidence equivalent to Laplace |
 | Adaptive Gauss-Hermite quadrature | Experimental/partial | Opt-in sensitivity analysis in its documented scalar-random-effect regime, stating the ridge setting | Ordinary ML interpretation: AGHQ defaults to a `tau = 2` penalised MAP fit, so ordinary AIC, BIC, and likelihood-ratio interpretations do not apply; the evaluated node/ridge rule is not a generally calibrated estimator |
@@ -127,9 +132,9 @@ Setting `unique = FALSE` requests the narrower loadings-only subset.
 </details>
 
 <details>
-<summary>Response-column effects, integrated models, and other specialised routes</summary>
+<summary>Specialised response-column, integrated, and multinomial routes</summary>
 
-| Analysis or result | Current status | What you may report | What you must not infer |
+| Your model or question | Availability | What you can use | Important limit |
 |---|---|---|---|
 | Response-column coefficient models (`column_coef()`, `phylo_coef()`, `animal_coef()`, `kernel_coef()`, `spatial_coef()`) | Experimental/partial | Gaussian point estimates for a random intercept, slope, or both, varying across response columns, fitted through long or `traits(...)` wide data. `phylo_coef()` and `kernel_coef()` can fix a numeric mixture strength or estimate one interior value; `animal_coef()` fixes it; `spatial_coef()` fixes it at 1 and estimates the spatial range | Calibrated intervals, non-Gaussian responses, an estimated mixture strength for the animal or spatial routes, or recovery outside the tested Gaussian cells |
 | Prediction at new locations for integrated (iSDM) fits (`predict()` on `isdm_sources()` fits) | Experimental/partial | Point predictions, including maps, at new in-hull coordinates for the ordinary intercept-only spatial tier; training-row predictions reproduce the fitted values exactly | Held-out map accuracy, which has not been demonstrated in the evaluated design; a standard error or confidence interval on `newdata` predictions (`se.fit` is refused there); or predictions for spatial slope tiers, which remain unsupported |

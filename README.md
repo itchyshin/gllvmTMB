@@ -71,14 +71,9 @@ the right question for your data.
 The teaching example uses one ordinary Gaussian `latent()` model. It splits
 the trait covariance matrix into shared axes plus trait-specific variance:
 
-$$
-\boldsymbol{\Sigma}
-= \boldsymbol{\Lambda}\boldsymbol{\Lambda}^{\mathsf{T}}
-+ \boldsymbol{\Psi},
-\qquad
-\boldsymbol{\Psi}
-= \mathrm{diag}(\psi_1,\ldots,\psi_T).
-$$
+```math
+\boldsymbol{\Sigma} = \boldsymbol{\Lambda}\boldsymbol{\Lambda}^{\mathsf{T}} + \boldsymbol{\Psi}, \qquad \boldsymbol{\Psi} = \mathrm{diag}(\psi_1,\ldots,\psi_T).
+```
 
 In words: total trait covariance = shared multivariate structure +
 response-specific variation. Read the equation from left to right:

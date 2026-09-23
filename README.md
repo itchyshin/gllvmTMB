@@ -73,15 +73,10 @@ the trait covariance matrix into shared axes plus trait-specific variance:
 
 $$
 \boldsymbol{\Sigma}
-
 = \boldsymbol{\Lambda}\boldsymbol{\Lambda}^{\mathsf{T}}
-
 + \boldsymbol{\Psi},
-
 \qquad
-
 \boldsymbol{\Psi}
-
 = \mathrm{diag}(\psi_1,\ldots,\psi_T).
 $$
 

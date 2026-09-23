@@ -73,12 +73,16 @@ the trait covariance matrix into shared axes plus trait-specific variance:
 
 $$
 \boldsymbol{\Sigma}
-= \boldsymbol{\Lambda}\boldsymbol{\Lambda}^{\mathsf T}
-+
-\boldsymbol{\Psi},
+
+= \boldsymbol{\Lambda}\boldsymbol{\Lambda}^{\mathsf{T}}
+
++ \boldsymbol{\Psi},
+
 \qquad
+
 \boldsymbol{\Psi}
-= \operatorname{diag}(\psi_1,\ldots,\psi_T).
+
+= \mathrm{diag}(\psi_1,\ldots,\psi_T).
 $$
 
 In words: total trait covariance = shared multivariate structure +

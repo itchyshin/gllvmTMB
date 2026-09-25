@@ -123,7 +123,8 @@
     if (length(parents) > 0L && any(parents >= i)) {
       cli::cli_abort(c(
         "{.fn animal} pedigree {.field {object}} could not be ordered from ancestors to descendants.",
-        "x" = "Individual {.val {ped$id[[i]]}} has a parent that is not available before the offspring."
+        "x" = "Individual {.val {ped$id[[i]]}} has a parent that is not available before the offspring.",
+        ">" = "Supply rows ordered ancestors-before-descendants so every parent appears before its offspring."
       ))
     }
     if (i > 1L) {
@@ -170,7 +171,8 @@
     if ((s != 0L && s >= i) || (d != 0L && d >= i)) {
       cli::cli_abort(c(
         "{.fn animal} pedigree {.field {object}} could not be ordered from ancestors to descendants.",
-        "x" = "Individual {.val {ids[[i]]}} has a parent that is not available before the offspring."
+        "x" = "Individual {.val {ids[[i]]}} has a parent that is not available before the offspring.",
+        ">" = "Supply rows ordered ancestors-before-descendants so every parent appears before its offspring."
       ))
     }
   }

@@ -1,6 +1,7 @@
 ## Unit tests for the MCMCglmm-free sparse pedigree precision builder
-## (.gllvm_pedigree_precision, Henderson/Quaas). The reference oracle is
-## MCMCglmm::inverseA(); it is a Suggests-only test dependency (skip if absent).
+## (.gllvm_pedigree_precision, Henderson/Quaas + Meuwissen-Luo F). The
+## reference oracle is MCMCglmm::inverseA(); it is a Suggests-only test
+## dependency (skip if absent). Dense-F path stays for identity gates.
 
 align_named <- function(M) {
   M <- as.matrix(M)
@@ -19,6 +20,11 @@ mcmc_ainv <- function(ped) {
   align_named(A)
 }
 
+ordered_ped <- function(ped) {
+  sp <- .gllvm_standardize_pedigree(ped)
+  sp[.gllvm_pedigree_topological_order(sp), , drop = FALSE]
+}
+
 ped_noninbred <- data.frame(
   id   = c("A", "B", "C", "D", "E", "F", "G", "H"),
   dam  = c(NA, NA, NA, NA, "A", "C", "E", "E"),
@@ -33,21 +39,29 @@ ped_inbred <- data.frame(
   stringsAsFactors = FALSE
 )
 
-test_that(".gllvm_pedigree_precision reproduces MCMCglmm::inverseA (non-inbred)", {
-  skip_if_not_installed("MCMCglmm")
-  native <- align_named(.gllvm_pedigree_precision(ped_noninbred))
-  expect_equal(native, mcmc_ainv(ped_noninbred), tolerance = 1e-10)
+test_that("Meuwissen-Luo F matches dense diag(A)-1 (non-inbred and inbred)", {
+  for (ped in list(ped_noninbred, ped_inbred)) {
+    sp <- ordered_ped(ped)
+    F_ml <- .gllvm_pedigree_inbreeding_meuwissen_luo(sp)
+    F_dense <- unname(diag(.gllvm_pedigree_additive_relationship(sp)) - 1)
+    expect_equal(unname(F_ml), F_dense, tolerance = 1e-12)
+  }
+  sp <- ordered_ped(ped_inbred)
+  expect_equal(
+    .gllvm_pedigree_inbreeding_meuwissen_luo(sp)[sp$id == "H"],
+    0.25,
+    tolerance = 1e-10
+  )
 })
 
-test_that(".gllvm_pedigree_precision reproduces MCMCglmm::inverseA (inbred, F>0)", {
+test_that(".gllvm_pedigree_precision matches dense-F oracle and MCMCglmm", {
   skip_if_not_installed("MCMCglmm")
-  ## Confirm the inbreeding path is actually exercised.
-  sp <- .gllvm_standardize_pedigree(ped_inbred)
-  sp <- sp[.gllvm_pedigree_topological_order(sp), ]
-  F_H <- .gllvm_pedigree_additive_relationship(sp)["H", "H"] - 1
-  expect_equal(F_H, 0.25, tolerance = 1e-10)
-  native <- align_named(.gllvm_pedigree_precision(ped_inbred))
-  expect_equal(native, mcmc_ainv(ped_inbred), tolerance = 1e-10)
+  for (ped in list(ped_noninbred, ped_inbred)) {
+    native <- align_named(.gllvm_pedigree_precision(ped))
+    dense_F <- align_named(.gllvm_pedigree_precision_dense_F(ped))
+    expect_equal(native, dense_F, tolerance = 1e-12)
+    expect_equal(native, mcmc_ainv(ped), tolerance = 1e-10)
+  }
 })
 
 test_that(".gllvm_pedigree_precision returns a genuinely sparse, symmetric, id-named dgCMatrix", {
@@ -66,6 +80,24 @@ test_that(".gllvm_pedigree_precision is invariant to input row order", {
   expect_equal(
     align_named(.gllvm_pedigree_precision(ped_inbred)),
     align_named(.gllvm_pedigree_precision(scrambled)),
+    tolerance = 1e-12
+  )
+})
+
+test_that("reciprocal sire/dam swap is an identity for F and Ainv", {
+  swapped <- ped_inbred
+  swapped$sire <- ped_inbred$dam
+  swapped$dam <- ped_inbred$sire
+  expect_equal(
+    align_named(.gllvm_pedigree_precision(ped_inbred)),
+    align_named(.gllvm_pedigree_precision(swapped)),
+    tolerance = 1e-12
+  )
+  sp <- ordered_ped(ped_inbred)
+  sw <- ordered_ped(swapped)
+  expect_equal(
+    setNames(.gllvm_pedigree_inbreeding_meuwissen_luo(sp), sp$id)[sp$id],
+    setNames(.gllvm_pedigree_inbreeding_meuwissen_luo(sw), sw$id)[sp$id],
     tolerance = 1e-12
   )
 })

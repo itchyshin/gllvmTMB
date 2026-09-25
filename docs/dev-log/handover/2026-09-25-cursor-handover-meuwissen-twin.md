@@ -48,12 +48,14 @@ Paste-oriented ledger for this handoff (handoff_gate on Dropbox checkout shows m
 |---|---|---|---|---|
 | drmTMB `origin/main` `b737b3bad` (#1422-#1428 stack) | y | y | merged | LANDED (other repo) |
 | Twin scout draft `~/local-scratch/tmb-1424-parallel/gllvmtmb-twin-issue-draft.md` | n (scratch) | n | none | CARRIED-OVER: paste into GitHub issue as step 1; not in this repo |
-| This handover branch `cursor/meuwissen-twin-handover-20260925` | this commit | when pushed | open docs PR | LANDED when PR merges |
-| gllvmTMB Meuwissen implementation | n | n | none | OWED (next session) |
-| Foreign gllvmTMB open PRs (#1318, #1317, #1306, #1236, MSPL #1065/#1070/#1077/#981, …) | — | — | open | PROTECTED |
-| Dropbox gllvmTMB untracked (`.worktrees/`, inbox, christin vignette, …) | n | n | — | PROTECTED; never stage |
+| This handover PR [#1321](https://github.com/itchyshin/gllvmTMB/pull/1321) @ `78849d342` | y | y | open | CI 4/4 green; MERGEABLE; merge when ready (docs-only; no auto-merge) |
+| gllvmTMB Meuwissen implementation | n | n | none | OWED (next session; new worktree `…/gllvmTMB-meuwissen-twin-20260925`) |
+| Foreign gllvmTMB open PRs (#1318, #1317, #1306, #1236, MSPL #1065/#1070/#1077/#981, …) | - | - | open | PROTECTED |
+| Dropbox gllvmTMB untracked (`.worktrees/`, inbox, christin vignette, …) | n | n | - | PROTECTED; never stage |
+| 676 foreign unpushed local branches (agent/*, claude/*, …) | varies | n | varies | PROTECTED; do not push, merge, or rebase them from this lane |
 
-FINDINGS-OF-RECORD: dense Finb leftover at `R/pedigree-precision.R:163-165`; twin draft ready in scratch. vault-note: none required (finding lives in this handover + scratch draft).
+FINDINGS-OF-RECORD: none
+(Dense Finb leftover and twin draft path are already stated in Critical Context and Next Immediate Steps; no separate vault distillation required for this docs handoff.)
 
 ## Files Created / Modified (this handoff PR)
 

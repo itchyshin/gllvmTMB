@@ -543,12 +543,10 @@ pedigree_to_A <- function(pedigree) {
 #' this is the canonical fast path for wild pedigrees with
 #' \eqn{n_{\text{individuals}} > 500}. The construction is the standard
 #' Henderson (1976) / Quaas (1976) sparse inverse: inbreeding coefficients
-#' \eqn{F} are derived from the dense tabular relatedness matrix, then
-#' \eqn{\mathbf A^{-1}} is assembled directly from the per-individual
-#' Mendelian sampling variances. It reproduces
-#' `MCMCglmm::inverseA(pedigree)$Ainv` exactly. (The current inbreeding
-#' step forms the dense \eqn{n \times n} \eqn{\mathbf A}, an \eqn{O(n^2)}
-#' one-time cost.)
+#' \eqn{F} are computed by the Meuwissen & Luo (1992) walk (no dense
+#' \eqn{\mathbf A} on the fit path), then \eqn{\mathbf A^{-1}} is assembled
+#' from the per-individual Mendelian sampling variances. It reproduces
+#' `MCMCglmm::inverseA(pedigree)$Ainv` exactly.
 #'
 #' Usage:
 #'
@@ -579,6 +577,9 @@ pedigree_to_A <- function(pedigree) {
 #'
 #' Quaas, R. L. (1976). Computing the diagonal elements and inverse of a
 #' large numerator relationship matrix. *Biometrics* 32: 949-953.
+#'
+#' Meuwissen, T. H. E., and Luo, Z. (1992). Computing inbreeding coefficients
+#' in large populations. *Genetics Selection Evolution* 24: 305-313.
 #'
 #' Hadfield, J. D. (2010). MCMC methods for multi-response generalised
 #' linear mixed models: the MCMCglmm R package. *Journal of Statistical

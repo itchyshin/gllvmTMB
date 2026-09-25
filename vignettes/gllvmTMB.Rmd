@@ -12,6 +12,9 @@ vignette: >
 ---
 
 ```{r, include = FALSE}
+# Rendering needs gllvmTMB installed (R CMD build, CI, and pkgdown all
+# install it first) or pkgload::load_all(); the visible data chunk below
+# calls system.file() directly and has no hidden fallback.
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment  = "#>",
@@ -38,12 +41,10 @@ continuous morphological traits. It loads a prepared morphometrics object,
 fits the model from a wide trait table first,
 checks the equivalent long-data call, and extracts the covariance,
 correlation, communality, and ordination summaries a reader normally
-wants first. To run it now, go to
-[First fit: wide individual-by-trait morphology](#first-fit-wide-individual-by-trait-morphology).
-The data are included with the package, and the example shows both wide data
-(one row per individual) and long data (one row per individual and trait). As
-they are simulated, the object also contains the known generating values used
-later to check what the fit recovered.
+wants first. The data are included with the package, and the example shows
+both wide data (one row per individual) and long data (one row per individual
+and trait). As they are simulated, the object also contains the known
+generating values used later to check what the fit recovered.
 
 `gllvmTMB` is experimental: the formula grammar, defaults, and reported
 summaries and intervals may still change as the API matures.
@@ -62,7 +63,180 @@ or a spatial or phylogenetic model, read
 It explains which results have been checked, where estimates can fail even when
 the fit appears healthy, and why uncertainty needs a separate check.
 
-## What the first model means
+## First fit: wide individual-by-trait morphology
+
+We have 150 individuals, each measured once on five morphological
+traits. The biological question: do the traits covary on a small number
+of latent axes (for example a body-size axis and a shape axis)? With one
+observation per individual and trait, ordinary `latent()` estimates both
+parts: the shared part carried by a few latent axes, and the leftover
+variance specific to each trait (`Psi` in the equations later on this
+page). No spatial or phylogenetic structure here.
+
+```{r setup}
+library(gllvmTMB)
+```
+
+For a first fit, load the prepared morphometrics example object. It contains
+simulated long and wide data, the known generating values (`truth`), and the
+two formulas used below. The generating code is available in the source
+repository for reproducibility, but beginners do not need to read it before
+fitting the model.
+
+```{r example-data}
+morph <- readRDS(system.file(
+  "extdata", "examples", "morphometrics-example.rds",
+  package = "gllvmTMB"
+))
+df_wide <- morph$data_wide
+```
+
+```{r example-data-preview}
+morph$story$question
+head(df_wide)
+```
+
+The example was generated with a small number of shared axes plus
+variation specific to each trait. The fit below recovers the individual-level
+covariance via ordinary `latent()`; the equations are in
+"What the fitted model means", after the covariance table.
+
+In wide data, the formula term is
+`latent(1 | individual, d = 2)`. In long data, the equivalent term is
+`latent(0 + trait | individual, d = 2)`. The `1` in the wide form is
+the compact shorthand for the same trait-specific columns used in the
+long form.
+
+Fit the model with two latent axes (`d = 2`) using ordinary `latent()`
+at the individual level. That term estimates the shared structure the
+axes carry plus the trait-specific variance, which ordinary `latent()`
+includes by default:
+
+```{r fit-call}
+morph$formula_wide
+
+fit <- gllvmTMB(
+  morph$formula_wide,
+  data = df_wide,
+  unit = morph$fit_args$unit,
+  family = morph$fit_args$family
+)
+
+# A finite likelihood confirms that the model fitted; diagnostics come next.
+as.numeric(logLik(fit))
+```
+
+That single number says the fit returned a finite log-likelihood, so
+there is a fitted model to inspect. It does not say the optimiser
+converged or that the model is right; run the checks under "Check the
+fitted response distribution" before interpreting anything.
+
+### Same model, long data
+
+If your workflow already stores one row per `(individual, trait)`
+observation, use the same entry point with the long formula and explicit
+`trait =` argument. Internally the wide formula pivots to this stacked
+form, so the two calls fit the same model — the log-likelihoods agree:
+
+```{r fit-long}
+morph$formula_long
+
+df <- morph$data_long
+head(df, 6)
+
+fit_long <- gllvmTMB(
+  morph$formula_long,
+  data = df,
+  trait = morph$fit_args$trait,
+  unit = morph$fit_args$unit,
+  family = morph$fit_args$family
+)
+
+# Same fit:
+all.equal(as.numeric(logLik(fit)), as.numeric(logLik(fit_long)))
+```
+
+### What if some response cells are missing?
+
+Wide trait tables do not need to be perfectly rectangular. If an
+individual is missing one trait measurement, leave that response cell as
+`NA`; `gllvmTMB()` can treat only that unit-trait cell as missing and
+keep the other observed traits for the individual. The same rule applies
+to long data with `NA` in the response column. Missing predictors and
+missing grouping variables are a separate problem: by default they fail
+loudly because the model cannot construct that row.
+
+## Check the fitted response distribution
+
+Before interpreting `Sigma` (the fitted trait covariance), separate two
+questions. First, ask whether
+the numerical fit looks healthy. Then ask whether the fitted response
+distribution is visibly mismatched to the observed stacked traits. For
+this Gaussian example, use `check_gllvmTMB()` first; if a row is not
+`PASS`, read its `action` before interpreting covariance. The residual
+and predictive-check plots are diagnostic displays here. They do not
+prove the latent rank or calibrate uncertainty intervals.
+
+```{r fit-health}
+health <- check_gllvmTMB(fit)
+health[, c("component", "status", "message", "action")]
+```
+
+The `WARN` on `rotation_convention_unit` is expected for every latent
+fit: the loadings are identified only up to rotation and sign. Its
+`action` says to read `Sigma`, correlations, and communality rather than
+raw loadings, which is the order this page follows.
+
+Each individual-trait cell has one observation, and the fitted diagonal
+`Psi` term is indexed at that same cell resolution. Exact conditional Gaussian
+residuals would therefore be almost zero and would make a misleadingly perfect
+Q-Q plot. Instead, use simulation-rank residuals from new fitted-model draws
+with random effects regenerated (`condition_on_RE = FALSE`).
+
+```{r residual-table}
+rq <- residuals(
+  fit,
+  type = "simulation_rank",
+  nsim = 199,
+  seed = 1,
+  condition_on_RE = FALSE
+)
+head(rq[, c("trait", "family", "observed", "residual", "status")], 8)
+stopifnot(diff(range(rq$residual, na.rm = TRUE)) > 1)
+```
+
+Use the plot as a quick fitted-response check before turning to
+covariance interpretation:
+
+```{r residual-qq, fig.width = 6.2, fig.height = 4.2, out.extra='class="wide-scientific-figure"', fig.cap = "Marginal simulation-rank residual Q-Q check for the fitted Gaussian morphometrics model. New random effects are generated for each fitted-model draw. The plot is a diagnostic display, not interval calibration or a posterior predictive check."}
+predictive_check(
+  fit,
+  type = "rq_qq",
+  residual_type = "simulation_rank",
+  nsim = 199,
+  seed = 1,
+  condition_on_RE = FALSE
+)
+```
+
+## Read the covariance summaries first
+
+Start with the fitted `Sigma` rows. These rows describe the covariance
+surface implied by the model, not a separate model:
+
+```{r sigma-table}
+sigma_rows <- extract_Sigma_table(fit, level = "unit")
+sigma_rows[, c("trait_i", "trait_j", "estimate", "diagonal")]
+```
+
+Each row is one entry of the fitted trait covariance at the individual
+level; the `diagonal` column marks the rows that are variances. The
+diagonal entries combine shared and trait-specific variance; the
+off-diagonal entries are the covariance the shared axes create between
+two traits. The full table (`sigma_rows`) also carries interval columns,
+which stay empty until you ask for a specific interval route.
+
+### What the fitted model means
 
 The fitted Gaussian model starts with observations, not with the
 covariance matrix. For each individual and trait, the teaching model is:
@@ -92,9 +266,9 @@ function $g()$ connects it to the mean response:
 $g(\mu_{it}) = \eta_{it}$. This first example uses a Gaussian family
 with the identity link, so the linear predictor is the mean itself.
 
-The R formula for that model is compact:
+Written in full, the call you ran above is:
 
-```{r first-model-sketch, eval = FALSE}
+```{r first-model-formula, eval = FALSE}
 fit <- gllvmTMB(
   traits(length, mass, wing, tarsus, bill) ~ 1 +
     latent(1 | individual, d = 2),
@@ -136,186 +310,11 @@ turned without changing the covariance they imply, so raw loading
 columns need a rotation or confirmatory constraint before they become a
 biological story.
 
-## First fit: wide individual-by-trait morphology
-
-We have `n` individuals, each measured on `T` morphological traits
-across a few sessions. The biological question: do the traits covary
-on a small number of latent variables (e.g. a body-size axis, a shape
-axis)? With one observational level and modest repetition, ordinary
-`latent()` estimates both the shared low-rank component and the
-trait-specific diagonal `Psi`. No spatial or phylogenetic structure
-here.
-
-```{r setup}
-library(gllvmTMB)
-```
-
-For a first fit, load the prepared morphometrics example object. It contains
-simulated long and wide data, the known generating values (`truth`), and the
-two formulas used below. The generating code is available in the source
-repository for reproducibility, but beginners do not need to read it before
-fitting the model.
-
-```{r example-data, eval = FALSE}
-morph <- readRDS(system.file(
-  "extdata", "examples", "morphometrics-example.rds",
-  package = "gllvmTMB"
-))
-df <- morph$data_long
-df_wide <- morph$data_wide
-truth <- morph$truth
-```
-
-```{r example-data-load, include = FALSE}
-example_path <- system.file(
-  "extdata", "examples", "morphometrics-example.rds",
-  package = "gllvmTMB"
-)
-example_path <- c(
-  file.path("inst", "extdata", "examples", "morphometrics-example.rds"),
-  file.path("..", "inst", "extdata", "examples", "morphometrics-example.rds"),
-  file.path("..", "..", "inst", "extdata", "examples", "morphometrics-example.rds"),
-  example_path
-)
-example_path <- example_path[nzchar(example_path) & file.exists(example_path)][1]
-stopifnot(!is.na(example_path))
-morph <- readRDS(example_path)
-
-df <- morph$data_long
-df_wide <- morph$data_wide
-truth <- morph$truth
-trait_names <- truth$trait_names
-n_traits <- length(trait_names)
-Lambda_true <- truth$Lambda
-```
-
-```{r example-data-preview}
-morph$story$question
-head(df, 6)
-```
-
-The example has shared low-rank covariance
-$\boldsymbol\Lambda\boldsymbol\Lambda^\top$ plus per-trait diagonal
-variance $\boldsymbol\Psi$. The fit below recovers the individual-level
-covariance via ordinary `latent()`.
-
-In wide data, the formula term is
-`latent(1 | individual, d = 2)`. In long data, the equivalent term is
-`latent(0 + trait | individual, d = 2)`. The `1` in the wide form is
-the compact shorthand for the same trait-specific columns used in the
-long form.
-
-Fit a `d = 2` reduced-rank GLLVM with ordinary `latent()` at the
-individual level — the shared low-rank structure plus trait-specific
-unique variance, which ordinary `latent()` carries by default:
-
-```{r fit-call}
-morph$formula_wide
-
-fit <- gllvmTMB(
-  morph$formula_wide,
-  data = df_wide,
-  unit = morph$fit_args$unit,
-  family = morph$fit_args$family
-)
-
-# A finite likelihood confirms that the model fitted; diagnostics come next.
-as.numeric(logLik(fit))
-```
-
-### Same model, long data
-
-If your workflow already stores one row per `(individual, trait)`
-observation, use the same entry point with the long formula and explicit
-`trait =` argument. Internally the wide formula pivots to this stacked
-form, so the two calls fit the same model — the log-likelihoods agree:
-
-```{r fit-long}
-morph$formula_long
-
-fit_long <- gllvmTMB(
-  morph$formula_long,
-  data = df,
-  trait = morph$fit_args$trait,
-  unit = morph$fit_args$unit,
-  family = morph$fit_args$family
-)
-
-# Same fit:
-all.equal(as.numeric(logLik(fit)), as.numeric(logLik(fit_long)))
-```
-
-### What if some response cells are missing?
-
-Wide trait tables do not need to be perfectly rectangular. If an
-individual is missing one trait measurement, leave that response cell as
-`NA`; `gllvmTMB()` can treat only that unit-trait cell as missing and
-keep the other observed traits for the individual. The same rule applies
-to long data with `NA` in the response column. Missing predictors and
-missing grouping variables are a separate problem: by default they fail
-loudly because the model cannot construct that row.
-
-## Check the fitted response distribution
-
-Before interpreting `Sigma`, separate two questions. First, ask whether
-the numerical fit looks healthy. Then ask whether the fitted response
-distribution is visibly mismatched to the observed stacked traits. For
-this Gaussian example, use `check_gllvmTMB()` first; if a row is not
-`PASS`, read its `action` before interpreting covariance. The residual
-and predictive-check plots are diagnostic displays here. They do not
-prove the latent rank or calibrate uncertainty intervals.
-
-```{r fit-health}
-health <- check_gllvmTMB(fit)
-health[, c("component", "status", "message", "action")]
-```
-
-Each individual-trait cell has one observation, and the fitted diagonal
-`Psi` term is indexed at that same cell resolution. Exact conditional Gaussian
-residuals would therefore be almost zero and would make a misleadingly perfect
-Q-Q plot. Instead, use simulation-rank residuals from new fitted-model draws
-with random effects regenerated (`condition_on_RE = FALSE`).
-
-```{r residual-table}
-rq <- residuals(
-  fit,
-  type = "simulation_rank",
-  nsim = 199,
-  seed = 1,
-  condition_on_RE = FALSE
-)
-head(rq[, c("trait", "family", "observed", "residual", "status")], 8)
-stopifnot(diff(range(rq$residual, na.rm = TRUE)) > 1)
-```
-
-Use the plot as a quick fitted-response check before turning to
-covariance interpretation:
-
-```{r residual-qq, fig.width = 6.2, fig.height = 4.2, out.extra='class="wide-scientific-figure"', fig.cap = "Marginal simulation-rank residual Q-Q check for the fitted Gaussian morphometrics model. New random effects are generated for each fitted-model draw. The plot is a diagnostic display, not interval calibration or a posterior predictive check."}
-predictive_check(
-  fit,
-  type = "rq_qq",
-  residual_type = "simulation_rank",
-  nsim = 199,
-  seed = 1,
-  condition_on_RE = FALSE
-)
-```
-
-## Read the covariance summaries first
-
-Start with the fitted `Sigma` rows. These rows describe the covariance
-surface implied by the model, not a separate model:
-
-```{r sigma-table}
-sigma_rows <- extract_Sigma_table(fit, level = "unit")
-sigma_rows
-```
-
 The full covariance target is stored in the example object, so this
 teaching example can show what the fitted model is trying to recover:
 
 ```{r sigma-truth}
+truth <- morph$truth
 round(truth$Sigma, 2)
 ```
 
@@ -385,6 +384,7 @@ $\boldsymbol{\Lambda}\boldsymbol{\Lambda}^{\mathsf T}$ is identified
 directly from the data; raw loading columns can change sign or rotate.
 
 ```{r loadings}
+n_traits <- length(truth$trait_names)
 Lambda_hat <- extract_loadings(fit, level = "unit")
 rownames(Lambda_hat) <- paste0("trait_", seq_len(n_traits))
 colnames(Lambda_hat) <- paste0("LV", seq_len(ncol(Lambda_hat)))
@@ -401,6 +401,7 @@ known truth in this simulated teaching object. The off-diagonal pattern
 is what should agree; the full `Sigma` diagonal also includes `Psi`.
 
 ```{r cov}
+Lambda_true <- truth$Lambda
 list(true_LL  = round(Lambda_true %*% t(Lambda_true), 2),
      fitted_LL = round(Lambda_hat  %*% t(Lambda_hat),  2))
 ```

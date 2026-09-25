@@ -1,7 +1,18 @@
+<!-- slop-ok: historical multi-lane ownership map; refresh bullets keep house START HERE form -->
 # Active-lane split — 2026-07-25
 
 This coordination note prevents a new session from treating this repository as
 a single writable lane.  It is a map, not a release/capability claim.
+
+Refresh 2026-09-25 (Cursor): Meuwissen-Luo F twin lane OPEN.
+drmTMB Destination D animal construction is closed (#1422-#1428 on drmTMB
+`b737b3bad`). This lane ports only the dense-`Finb` leftover in
+`.gllvm_pedigree_precision` (`R/pedigree-precision.R:163-165`). Owns
+`R/pedigree-precision.R`, pedigree tests, related help/COPYRIGHTS, and this
+handover. Does not own docs reader PRs, MSPL, or `engine=julia` bridge.
+Work from a clean local-scratch worktree; leave the Dropbox checkout alone.
+START HERE: `docs/dev-log/handover/2026-09-25-cursor-handover-meuwissen-twin.md`.
+Sibling lanes below remain PROTECTED.
 
 **Refresh 2026-08-26 (Codex to Codex): response-column coefficient foundation awaiting PR integration.**
 Branch `codex/response-column-coef-arc1` contains the fail-closed Arc 1 parser/data

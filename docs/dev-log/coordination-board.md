@@ -374,6 +374,7 @@ rather than trusting these rows once they age.
 
 | Agent | Lane | PR / branch | Last evidence | State as evidenced |
 |---|---|---|---|---|
+| Cursor | Meuwissen-Luo F twin (dense Finb leftover) | handover branch `cursor/meuwissen-twin-handover-20260925`; impl worktree TBD | 2026-09-25 | **OPEN.** Owns `R/pedigree-precision.R` + pedigree tests/help/COPYRIGHTS. START HERE: `docs/dev-log/handover/2026-09-25-cursor-handover-meuwissen-twin.md`. drmTMB twin stack closed (#1422-#1428). |
 | Claude | Reverse-parity gap closure | #1239 #1240 #1248–#1251 #1253–#1255 merged | 2026-09-04 | **CLOSED, fully landed.** Nothing open; see the top section. |
 | Codex | iJSDM forensic follow-up (handed to Claude) | #1238 draft · `codex/2026-09-02-claude-handover` | 2026-09-02 | Open draft handover. The receiving Claude lane parked it when the maintainer re-aimed to gap closure — **still OWED**. |
 | Claude | `engine = "julia"` bridge expansion | #1236 draft · `claude/julia-bridge-expansion-20260901` | 2026-09-01 | Open draft. Owns `R/julia-bridge.R` and its tests; the gap-closure lane routed three bridge leads to it and did not touch those files. |

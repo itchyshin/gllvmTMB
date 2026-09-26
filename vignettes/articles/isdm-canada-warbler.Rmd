@@ -276,10 +276,10 @@ str(dat[, c("cell_id", "trait", "isdm_source", "env", "log_effort", "value")])
 ```
 
 **This `str()` is the shape your own data has to reach, so read it as a
-target.** One row per species per location. `cell_id` labels the location
-(give every location its own label — it is bookkeeping here, and
-[the reference section](#reference-four-things-that-do-not-do-what-you-would-guess)
-shows it never enters the prediction). `trait` is the species. `isdm_source`
+target.** One row per species per location. `cell_id` gives every location a
+label so its species rows can be identified together; it is not used as a
+predictor, as [the reference section](#reference-four-things-that-do-not-do-what-you-would-guess)
+shows. `trait` is the species. `isdm_source`
 says which dataset the row came from. `value` is the count on the
 opportunistic rows and detected/not-detected (1/0) on the survey rows.
 `log_effort` is the log of whatever measures how hard that row was looked for
@@ -432,7 +432,7 @@ That is **one** dataset, and a single replicate scatters. Read it against the
 is how people conclude it is broken when it is not.
 
 **The slopes do come back shrunk**, here and in every replicate: the mean
-signed error across the campaign is
+signed error across the 12 replicate datasets is
 `r f2(mean(ss$mean_signed_err), 3)` against a true slope SD of
 `r f2(sd(truth$beta), 3)`. This article makes no claim that these estimates
 are unbiased.
@@ -559,11 +559,11 @@ it with your species vector mislabels silently.
 
 ```{r rank-cost, echo = FALSE}
 data.frame(d = by_k$d, median_secs_per_fit = by_k$median_secs,
-           fits_in_this_campaign = as.integer(table(ff$k)))
+           fits_per_rank = as.integer(table(ff$k)))
 ```
 
 Fitting four values of `d` on one dataset is a few minutes at this size. You
-do not have to repeat the ten-dataset campaign -- fit your own `d = 1..4`
+do not have to repeat the ten-dataset simulation study -- fit your own `d = 1..4`
 once and read the AIC.
 
 # Decision 2: overdispersion in an arm with no dispersion parameter
@@ -755,7 +755,7 @@ reconstructing the latent field, which is exactly what dominates on a map.
 Map-scale uncertainty needs random-effect-aware machinery that is not
 calibrated here. In a retained 1,600-fit negative control, the fixed-only
 standard error covered the true linear predictor only 0.23--0.82 of the time.
-That is why the refusal remains. A separate 22,200-fit campaign for a fixed
+That is why the refusal remains. A separate 22,200-fit simulation study for a fixed
 `trait:env` coefficient met its prespecified narrow coverage criterion, but
 fixed-coefficient coverage does not transfer to a reconstructed spatial surface.
 
@@ -1135,12 +1135,12 @@ evidence is weaker than a plain sentence would suggest.
 
 ## Where the numbers come from
 
-One fit runs live on this page. Everything replicated is read from a saved
-campaign:
+One fit runs live on this page. Everything replicated is read from saved
+simulation studies:
 
 ```{r provenance, echo = FALSE}
 data.frame(
-  campaign = c("intensity ceiling + recovery envelope", "rank selection",
+  study = c("intensity ceiling + recovery envelope", "rank selection",
                "overdispersion (unique = TRUE)", "presence-only quadrature",
                "map surfaces"),
   fits = c(nrow(pr$sweep) + nrow(pr$timing) + sum(pr$sweep_summary$n_rep),
@@ -1304,7 +1304,7 @@ avoids the question.
 which is the likeliest explanation for the attenuation above. Whether a
 genuine observation-level tier, shaped like
 `latent(0 + trait | cell_id, unique = TRUE)`, would recover $\sigma^2$ at the
-right magnitude is the honest next measurement, and this campaign did not run
+right magnitude is the honest next measurement, and this study did not test
 it.
 
 **Nothing here was tested above the count screen**, which is exactly where
@@ -1450,7 +1450,7 @@ cat("\nUTM zones spanned by this article's data:",
 
 ## The bias question, and a correction
 
-A separate 30-replicate, 12-species recovery campaign against this same
+A separate 30-replicate, 12-species recovery study using this same
 machinery reported a positive mean error at *t* = 4.17, and an earlier version
 of this article called it "small but statistically real". It is not: that test
 treated 360 errors as independent when all twelve species within a replicate

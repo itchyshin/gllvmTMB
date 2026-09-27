@@ -14,10 +14,10 @@ home:
       experimental:
         title: Status
         text: >-
-          **Development documentation for 0.8.0.9000.** The planned first CRAN
-          submission is the earlier, bounded 0.7.1 source. Start with a documented
-          example, check the
-          fitted model, and read [Current limitations and
+          **Experimental development documentation for 0.8.0.9000.** The
+          planned first CRAN submission is the earlier, bounded 0.7.1 source.
+          Start with a documented example, check the fitted model, and read
+          [Current limitations and
           boundaries](articles/current-limits.html) before reporting a result.
           A model that converges alone does not establish that every extension
           is reliable.

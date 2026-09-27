@@ -16,6 +16,14 @@
 ## single failing K, read the criteria off the fits via the SAME
 ## logLik()/AIC()/BIC() path a single fit would use, tidy-table print with
 ## the chosen row marked) follows the oracle's shape directly.
+##
+## Lane auto-d-20260926: ported the oracle's warm-start-retry guard and
+## runaway-loading detector (`_lv_warm_start()`/`_lv_runaway()` in
+## `model_selection.jl`) onto this sweep. One divergence, forced by the file
+## restriction above -- gllvmTMB has no `Λ_init`-style keyword, so the
+## warm-start retry uses `control(start_from = <accepted fit>)` instead of
+## the oracle's explicit lower-triangular new-loading-column construction;
+## see `.select_lv_warm_control()` for exactly what that route copies.
 
 ## Walk a formula's call tree and count `latent(...)` calls.
 .select_lv_count_latent <- function(expr) {
@@ -27,6 +35,70 @@
     n <- n + .select_lv_count_latent(expr[[i]])
   }
   n
+}
+
+## Guard against a runaway loading matrix (lane auto-d-20260926, ported from
+## GLLVM.jl's `_lv_runaway()`). Latent variables are standardised, so a
+## trait's loading row norm is its latent SD on the link scale: a SCALE check
+## (max row norm > max_latent_sd) catches common inflation of the loadings
+## (any non-identity-link family), and a RATIO check (binomial only: the
+## largest per-trait max |loading| over the median of those maxima >=
+## ratio_max) catches one trait separating -- a mode the scale check is
+## blind to by construction. Identity-link (Gaussian) fits are skipped: their
+## loadings are in data units, not standardised latent SDs. Returns "" when
+## healthy, else the reason.
+.select_lv_runaway <- function(fit, family_obj, max_latent_sd, ratio_max) {
+  link <- tryCatch(family_obj$link, error = function(e) NULL)
+  if (!is.null(link) && identical(link, "identity")) {
+    return("")
+  }
+  Lambda <- tryCatch(getLoadings(fit, level = "unit", rotate = "none"),
+                      error = function(e) NULL)
+  if (is.null(Lambda) || !is.matrix(Lambda) || nrow(Lambda) < 1L || ncol(Lambda) < 1L) {
+    return("")
+  }
+  row_norms <- sqrt(rowSums(Lambda^2))
+  smax <- max(row_norms)
+  if (smax > max_latent_sd) {
+    t <- which.max(row_norms)
+    return(sprintf(
+      "latent SD %s on the link scale for trait %d (> %s)",
+      format(smax, digits = 3), t, format(max_latent_sd, digits = 3)
+    ))
+  }
+  fam_name <- tryCatch(family_obj$family, error = function(e) NA_character_)
+  if (length(fam_name) == 1L && !is.na(fam_name) && identical(fam_name, "binomial")) {
+    row_max <- apply(abs(Lambda), 1L, max)
+    med <- stats::median(row_max)
+    r <- max(row_max) / max(med, .Machine$double.eps)
+    if (r >= ratio_max) {
+      t <- which.max(row_max)
+      return(sprintf(
+        "loading ratio %s for trait %d (>= %s; separation)",
+        format(r, digits = 3), t, format(ratio_max, digits = 3)
+      ))
+    }
+  }
+  ""
+}
+
+## Warm-start `control`: a copy of the sweep's own `control` (or the package
+## default) with `start_from` set to the last ACCEPTED fit. gllvmTMB's own
+## warm-start route (`R/init-warmstart.R::.gllvmTMB_apply_start_from()`)
+## copies only same-shaped parameter blocks from `start_from` into the new
+## fit's starting values -- fixed effects and dispersion parameters carry
+## over, but the loading matrix changes shape between d and d + 1, so its new
+## column still starts at gllvmTMB's ordinary default init, not at the
+## oracle's explicit lower-triangular (0 above, 0.1 below the diagonal) new
+## column. See the file banner for why: gllvmTMB has no argument that injects
+## a specific starting loading matrix, unlike GLLVM.jl's `Λ_init` keyword.
+.select_lv_warm_control <- function(dots, accepted_fit) {
+  ctrl <- dots$control
+  if (is.null(ctrl)) {
+    ctrl <- gllvmTMBcontrol()
+  }
+  ctrl$start_from <- accepted_fit
+  ctrl
 }
 
 ## Return a copy of `formula` with the (single) `latent(...)` call's `d`
@@ -91,10 +163,31 @@
 #'   matrix cannot have rank greater than `p`); `d_max` greater than `p` is
 #'   rejected before any fitting is attempted, naming `p`.
 #' @param criterion One of `"aic"`, `"bic"` (default), or `"aicc"`. Selects
-#'   the row that minimises this criterion among fits that converged with a
-#'   positive-definite Hessian; a fit that did not is excluded from selection
+#'   the row that minimises this criterion among fits that pass the guard
+#'   described in Details; a fit that does not is excluded from selection
 #'   (and reported with a warning) even though its row still appears in the
 #'   table.
+#' @param warm_start Logical, default `TRUE`. Before excluding a fit rejected
+#'   by the guard (non-monotone, unconverged, or runaway), refit once from
+#'   `control(start_from = <accepted fit at d - 1>)` and keep the refit only
+#'   if it passes every check. See Details for exactly what that warm start
+#'   does and does not carry over.
+#' @param tol Single non-negative number, default `1e-3`. A fit's
+#'   log-likelihood is "non-monotone" (and rejected) when it falls more than
+#'   `tol` below the last accepted `d`'s log-likelihood.
+#' @param max_latent_sd Single positive number, default 10. The runaway
+#'   guard's SCALE check: because the latent variables are standardised
+#'   (`z ~ N(0, I)`), a trait's loading row norm is its latent SD on the link
+#'   scale, and a fit is rejected as runaway when any trait's exceeds this
+#'   value. Skipped for identity-link (Gaussian) fits, whose loadings are in
+#'   data units. Pass `Inf` to disable.
+#' @param ratio_max Single positive number, default 25. The runaway guard's
+#'   RATIO check, `Binomial` families only: a fit is rejected as runaway when
+#'   the largest per-trait max `|loading|`, divided by the median of those
+#'   maxima across traits, reaches this ratio (one trait separating).
+#' @param .fitter Internal test hook, default [gllvmTMB()]: the function
+#'   called for every fit in the sweep, `.fitter(formula = <rewritten
+#'   formula>, data = data, ...)`. Not intended for ordinary use.
 #'
 #' @details
 #' # Scope
@@ -107,12 +200,39 @@
 #' criteria and excluded from selection, with a warning naming which `d`
 #' failed and why.
 #'
+#' # Guard against a non-nesting or runaway fit
+#' A rank-`d` model nests the rank-`(d - 1)` model (a zero loading column), so
+#' a correctly maximised fit can never have a lower log-likelihood than the
+#' last accepted rank. A fit is excluded from selection -- its row stays in
+#' `table` with `status` naming why, but it is never chosen -- when: it
+#' errors (`"failed"`); the optimizer did not converge or the Hessian is
+#' confirmed non-positive-definite (`"unconverged"`); its loadings are
+#' runaway (`"runaway"`, see `max_latent_sd`/`ratio_max` above); or its
+#' log-likelihood falls more than `tol` below the last accepted `d`
+#' (`"nonmonotone"`). With `warm_start = TRUE` (the default), a rejected fit
+#' is retried once from the previous accepted fit via `control(start_from =
+#' ...)` before being excluded, and kept (`status = "warm_start"`) if the
+#' retry passes every check; `gllvmTMB`'s `start_from` route copies only
+#' same-shaped parameter blocks (fixed effects, dispersion), so the new
+#' loading column in the retry still starts at the ordinary default init, not
+#' the specific values a from-scratch warm start might use. Healthy sweeps
+#' never trigger a retry, so their results are unchanged from a version of
+#' this function without the guard.
+#'
+#' The rank `d` chosen by `select_lv()` is itself an estimate: standard
+#' errors, confidence intervals, and tests computed on `selected_fit`
+#' (`sel$fits[[as.character(sel$selected_d)]]`) are conditional on that `d`
+#' and do not include the uncertainty of having selected it.
+#'
 #' @return An object of class `"gllvmTMB_select_lv"`, a list with:
 #' \describe{
 #'   \item{table}{A `data.frame` with one row per attempted `d`: `d`,
 #'     `npar`, `logLik`, `aic`, `bic`, `aicc`, `converged` (optimizer
-#'     convergence flag), `pd_hessian`, `seconds`, and `error` (the error
-#'     message when a fit failed, else `NA`).}
+#'     convergence flag), `pd_hessian`, `seconds`, `error` (the error message
+#'     when a fit failed, else `NA`), `status` (one of `"ok"`, `"warm_start"`,
+#'     `"nonmonotone"`, `"unconverged"`, `"runaway"`, or `"failed"`; see
+#'     Details), and `message` (the guard's reason for a non-`"ok"`/
+#'     `"warm_start"` status, else `""`).}
 #'   \item{selected_d}{The chosen rank under `criterion`.}
 #'   \item{criterion}{The criterion used for selection.}
 #'   \item{fits}{A named list (names = `d`) of the fitted [gllvmTMB()]
@@ -153,9 +273,12 @@
 #' }
 #'
 #' @export
-select_lv <- function(formula, data, ..., d_max, criterion = c("bic", "aic", "aicc")) {
+select_lv <- function(formula, data, ..., d_max, criterion = c("bic", "aic", "aicc"),
+                       warm_start = TRUE, tol = 1e-3, max_latent_sd = 10,
+                       ratio_max = 25, .fitter = gllvmTMB) {
   criterion <- match.arg(criterion)
   dots <- list(...)
+  family_obj <- dots$family %||% stats::gaussian()
 
   if (grepl("temporal_(indep|dep|latent)",
       paste(deparse(formula), collapse = " "))) {
@@ -229,54 +352,113 @@ select_lv <- function(formula, data, ..., d_max, criterion = c("bic", "aic", "ai
   names(fits) <- as.character(ks)
   failed <- character(0L)
 
+  ## Guard state carried across the sweep: the log-likelihood and fit object
+  ## of the last ACCEPTED d, used by the monotonicity check and (if
+  ## warm_start) as the retry's start_from. NULL/-Inf before any d is
+  ## accepted, so d = 1 can never be rejected as non-monotone.
+  accepted_ll <- -Inf
+  accepted_fit <- NULL
+
+  ## Try one fit and classify it: an error is "failed"; non-convergence or a
+  ## confirmed non-PD Hessian is "unconverged"; an unreadable logLik() is
+  ## folded into "unconverged" (there is nothing to compare); a runaway
+  ## loading matrix is "runaway"; a logLik() more than `tol` below
+  ## `accepted_ll` is "nonmonotone"; anything else is "ok". Returns a list
+  ## with `fit`, `status`, `message`, and `ll` (a `logLik` object with `df`/
+  ## `nobs` attributes, or `NULL`).
+  try_fit <- function(f_k, control_override = NULL) {
+    call_dots <- dots
+    if (!is.null(control_override)) {
+      call_dots$control <- control_override
+    }
+    fit_try <- tryCatch(
+      do.call(.fitter, c(list(formula = f_k, data = data), call_dots)),
+      error = function(e) e
+    )
+    if (inherits(fit_try, "error")) {
+      return(list(fit = NULL, status = "failed",
+                  message = conditionMessage(fit_try), ll = NULL))
+    }
+    conv <- isTRUE(fit_try$opt$convergence == 0L)
+    ## pdh is NA (not FALSE) when control(se = FALSE) skipped sdreport()
+    ## entirely -- "not determined", not "known bad". A fit is excluded only
+    ## on non-convergence or a CONFIRMED non-PD Hessian (pdh identically
+    ## FALSE), never on pdh being merely unknown.
+    pdh <- if (!is.null(fit_try$sd_report)) isTRUE(fit_try$sd_report$pdHess) else NA
+    if (!conv || isFALSE(pdh)) {
+      return(list(
+        fit = fit_try, status = "unconverged",
+        message = if (!conv) "optimizer did not report convergence" else "Hessian is not positive-definite",
+        ll = tryCatch(stats::logLik(fit_try), error = function(e) NULL)
+      ))
+    }
+    ll <- tryCatch(stats::logLik(fit_try), error = function(e) NULL)
+    if (is.null(ll)) {
+      return(list(fit = fit_try, status = "unconverged",
+                  message = "logLik() unavailable for this fit", ll = NULL))
+    }
+    reason <- .select_lv_runaway(fit_try, family_obj,
+                                  max_latent_sd = max_latent_sd, ratio_max = ratio_max)
+    if (nzchar(reason)) {
+      return(list(fit = fit_try, status = "runaway", message = reason, ll = ll))
+    }
+    if (as.numeric(ll) < accepted_ll - tol) {
+      return(list(
+        fit = fit_try, status = "nonmonotone",
+        message = sprintf("logLik %s below the last accepted fit (%s)",
+                           format(as.numeric(ll), digits = 7), format(accepted_ll, digits = 7)),
+        ll = ll
+      ))
+    }
+    list(fit = fit_try, status = "ok", message = "", ll = ll)
+  }
+
   for (k in ks) {
     f_k <- .select_lv_set_d(formula, k)
     t0 <- proc.time()[["elapsed"]]
-    fit_k <- tryCatch(
-      do.call(gllvmTMB, c(list(formula = f_k, data = data), dots)),
-      error = function(e) e
-    )
+    res <- try_fit(f_k)
+    if (res$status != "ok" && res$status != "failed" &&
+        isTRUE(warm_start) && !is.null(accepted_fit)) {
+      retry <- try_fit(f_k, control_override = .select_lv_warm_control(dots, accepted_fit))
+      if (retry$status == "ok") {
+        res <- retry
+        res$status <- "warm_start"
+      }
+    }
     elapsed <- proc.time()[["elapsed"]] - t0
 
-    if (inherits(fit_k, "error")) {
+    if (res$status == "failed") {
       rows[[k]] <- data.frame(
         d = k, npar = NA_integer_, logLik = NA_real_,
         aic = NA_real_, bic = NA_real_, aicc = NA_real_,
         converged = NA, pd_hessian = NA, seconds = elapsed,
-        error = conditionMessage(fit_k), stringsAsFactors = FALSE
+        error = res$message, status = res$status, message = res$message,
+        stringsAsFactors = FALSE
       )
-      failed <- c(failed, sprintf("d = %d: %s", k, conditionMessage(fit_k)))
+      failed <- c(failed, sprintf("d = %d: %s", k, res$message))
       next
     }
 
-    fits[[as.character(k)]] <- fit_k
-    conv <- isTRUE(fit_k$opt$convergence == 0L)
-    ## pdh is NA (not FALSE) when control(se = FALSE) skipped sdreport()
-    ## entirely -- "not determined", not "known bad". Eligibility below
-    ## therefore excludes a fit only on non-convergence or a CONFIRMED
-    ## non-PD Hessian (pdh identically FALSE), never on pdh being merely
-    ## unknown; that distinction is also what `failed`'s message names.
-    pdh <- if (!is.null(fit_k$sd_report)) isTRUE(fit_k$sd_report$pdHess) else NA
-    if (!conv || isFALSE(pdh)) {
-      failed <- c(failed, sprintf(
-        "d = %d: %s", k,
-        if (!conv) "optimizer did not report convergence" else "Hessian is not positive-definite"
-      ))
-    }
-    ll <- tryCatch(stats::logLik(fit_k), error = function(e) NULL)
-    if (is.null(ll)) {
+    fits[[as.character(k)]] <- res$fit
+    conv <- isTRUE(res$fit$opt$convergence == 0L)
+    pdh <- if (!is.null(res$fit$sd_report)) isTRUE(res$fit$sd_report$pdHess) else NA
+
+    if (res$status != "ok" && res$status != "warm_start") {
+      failed <- c(failed, sprintf("d = %d: %s (%s)", k, res$status, res$message))
       rows[[k]] <- data.frame(
-        d = k, npar = NA_integer_, logLik = NA_real_,
+        d = k, npar = NA_integer_,
+        logLik = if (is.null(res$ll)) NA_real_ else as.numeric(res$ll),
         aic = NA_real_, bic = NA_real_, aicc = NA_real_,
         converged = conv, pd_hessian = pdh, seconds = elapsed,
-        error = "logLik() unavailable for this fit", stringsAsFactors = FALSE
+        error = NA_character_, status = res$status, message = res$message,
+        stringsAsFactors = FALSE
       )
-      failed <- c(failed, sprintf("d = %d: logLik() unavailable", k))
       next
     }
-    npar_k <- attr(ll, "df")
-    n_k <- attr(ll, "nobs")
-    ll_k <- as.numeric(ll)
+
+    npar_k <- attr(res$ll, "df")
+    n_k <- attr(res$ll, "nobs")
+    ll_k <- as.numeric(res$ll)
     aic_k <- -2 * ll_k + 2 * npar_k
     bic_k <- -2 * ll_k + npar_k * log(n_k)
     rows[[k]] <- data.frame(
@@ -284,22 +466,24 @@ select_lv <- function(formula, data, ..., d_max, criterion = c("bic", "aic", "ai
       aic = aic_k, bic = bic_k,
       aicc = .select_lv_aicc(aic_k, npar_k, n_k),
       converged = conv, pd_hessian = pdh, seconds = elapsed,
-      error = NA_character_, stringsAsFactors = FALSE
+      error = NA_character_, status = res$status, message = res$message,
+      stringsAsFactors = FALSE
     )
+    accepted_ll <- ll_k
+    accepted_fit <- res$fit
   }
 
   table <- do.call(rbind, rows)
   rownames(table) <- NULL
 
-  ## Eligible = fit succeeded, optimizer converged, and the Hessian is not
-  ## CONFIRMED non-PD. pd_hessian == NA (se = FALSE, so sdreport() never
-  ## ran) does not disqualify -- there is simply no evidence either way.
-  confirmed_non_pd <- !is.na(table$pd_hessian) & !table$pd_hessian
-  eligible <- is.na(table$error) & .select_lv_isTRUE_vec(table$converged) &
-    !confirmed_non_pd
+  ## Eligible = the guard's status is "ok" or "warm_start" (see try_fit()
+  ## above): the fit succeeded, converged with a Hessian not CONFIRMED
+  ## non-PD, its logLik() was readable, its loadings were not runaway, and
+  ## it did not fall more than tol below the last accepted d.
+  eligible <- table$status %in% c("ok", "warm_start")
   if (!any(eligible)) {
     cli::cli_abort(c(
-      "No {.code d} in 1:{d_max} produced a converged, positive-definite-Hessian fit.",
+      "No {.code d} in 1:{d_max} was accepted by the guard.",
       "i" = paste(failed, collapse = "; ")
     ), class = "gllvmTMB_select_lv_no_eligible_fit")
   }
@@ -338,10 +522,6 @@ select_lv <- function(formula, data, ..., d_max, criterion = c("bic", "aic", "ai
   )
 }
 
-## `x$converged`/`x$pd_hessian` may contain NA (fit errored before either was
-## known); treat NA as "not eligible" rather than propagating NA through `&`.
-.select_lv_isTRUE_vec <- function(x) !is.na(x) & x
-
 #' @rdname select_lv
 #' @param x A `"gllvmTMB_select_lv"` object.
 #' @param ... Currently unused.
@@ -367,10 +547,13 @@ print.gllvmTMB_select_lv <- function(x, ...) {
   )
   names(show)[1] <- ""
   print(show, row.names = FALSE)
-  if (any(!is.na(tab$error))) {
-    cat("\nFailed fits:\n")
-    for (i in which(!is.na(tab$error))) {
-      cat(sprintf("  d = %d: %s\n", tab$d[i], tab$error[i]))
+  excluded <- which(!(tab$status %in% c("ok", "warm_start")))
+  if (length(excluded) > 0L) {
+    cat("\nExcluded fits:\n")
+    for (i in excluded) {
+      reason <- if (!is.na(tab$error[i]) && nzchar(tab$error[i])) tab$error[i] else tab$message[i]
+      cat(sprintf("  d = %d: %s%s\n", tab$d[i], tab$status[i],
+                  if (nzchar(reason)) paste0(" -- ", reason) else ""))
     }
   }
   invisible(x)

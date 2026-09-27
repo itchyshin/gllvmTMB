@@ -1,5 +1,19 @@
 # Development (unreleased)
 
+* `select_lv()` now guards its latent-rank sweep against a non-nesting or
+  runaway fit (ported from GLLVM.jl's `select_lv()`/`_lv_warm_start()`/
+  `_lv_runaway()`): a `d` whose fit errors, fails to converge, has a runaway
+  loading matrix, or has a log-likelihood more than `tol` below the last
+  accepted `d`, is excluded from selection and recorded in `table` with a new
+  `status` column (`"ok"`, `"warm_start"`, `"nonmonotone"`, `"unconverged"`,
+  `"runaway"`, or `"failed"`) and `message`. With the new `warm_start = TRUE`
+  default, a rejected fit is retried once from `control(start_from = <last
+  accepted fit>)` before being excluded. New `max_latent_sd` (default 10) and
+  `ratio_max` (default 25, `Binomial` only) arguments control the runaway
+  check; `tol` (default `1e-3`) controls the monotonicity check. Healthy
+  sweeps are unaffected. The selected `d` is itself an estimate; see
+  `?select_lv` for what that means for intervals computed on `selected_fit`.
+
 * Temporal is an experimental sixth covariance-source row. The new
   `temporal_indep()`, `temporal_dep()`, and rank-one `temporal_latent()`
   providers accept Gaussian long and `traits(...)` wide calls. AR1 retains

@@ -5,7 +5,18 @@
 \alias{print.gllvmTMB_select_lv}
 \title{Select a latent-variable rank by information criterion}
 \usage{
-select_lv(formula, data, ..., d_max, criterion = c("bic", "aic", "aicc"))
+select_lv(
+  formula,
+  data,
+  ...,
+  d_max,
+  criterion = c("bic", "aic", "aicc"),
+  warm_start = TRUE,
+  tol = 0.001,
+  max_latent_sd = 10,
+  ratio_max = 25,
+  .fitter = gllvmTMB
+)
 
 \method{print}{gllvmTMB_select_lv}(x, ...)
 }
@@ -30,10 +41,35 @@ matrix cannot have rank greater than \code{p}); \code{d_max} greater than \code{
 rejected before any fitting is attempted, naming \code{p}.}
 
 \item{criterion}{One of \code{"aic"}, \code{"bic"} (default), or \code{"aicc"}. Selects
-the row that minimises this criterion among fits that converged with a
-positive-definite Hessian; a fit that did not is excluded from selection
+the row that minimises this criterion among fits that pass the guard
+described in Details; a fit that does not is excluded from selection
 (and reported with a warning) even though its row still appears in the
 table.}
+
+\item{warm_start}{Logical, default \code{TRUE}. Before excluding a fit rejected
+by the guard (non-monotone, unconverged, or runaway), refit once from
+\verb{control(start_from = <accepted fit at d - 1>)} and keep the refit only
+if it passes every check. See Details for exactly what that warm start
+does and does not carry over.}
+
+\item{tol}{Single non-negative number, default \code{1e-3}. A fit's
+log-likelihood is "non-monotone" (and rejected) when it falls more than
+\code{tol} below the last accepted \code{d}'s log-likelihood.}
+
+\item{max_latent_sd}{Single positive number, default 10. The runaway
+guard's SCALE check: because the latent variables are standardised
+(\code{z ~ N(0, I)}), a trait's loading row norm is its latent SD on the link
+scale, and a fit is rejected as runaway when any trait's exceeds this
+value. Skipped for identity-link (Gaussian) fits, whose loadings are in
+data units. Pass \code{Inf} to disable.}
+
+\item{ratio_max}{Single positive number, default 25. The runaway guard's
+RATIO check, \code{Binomial} families only: a fit is rejected as runaway when
+the largest per-trait max \verb{|loading|}, divided by the median of those
+maxima across traits, reaches this ratio (one trait separating).}
+
+\item{.fitter}{Internal test hook, default \code{\link[=gllvmTMB]{gllvmTMB()}}: the function
+called for every fit in the sweep, \verb{.fitter(formula = <rewritten formula>, data = data, ...)}. Not intended for ordinary use.}
 
 \item{x}{A \code{"gllvmTMB_select_lv"} object.}
 }
@@ -42,8 +78,11 @@ An object of class \code{"gllvmTMB_select_lv"}, a list with:
 \describe{
 \item{table}{A \code{data.frame} with one row per attempted \code{d}: \code{d},
 \code{npar}, \code{logLik}, \code{aic}, \code{bic}, \code{aicc}, \code{converged} (optimizer
-convergence flag), \code{pd_hessian}, \code{seconds}, and \code{error} (the error
-message when a fit failed, else \code{NA}).}
+convergence flag), \code{pd_hessian}, \code{seconds}, \code{error} (the error message
+when a fit failed, else \code{NA}), \code{status} (one of \code{"ok"}, \code{"warm_start"},
+\code{"nonmonotone"}, \code{"unconverged"}, \code{"runaway"}, or \code{"failed"}; see
+Details), and \code{message} (the guard's reason for a non-\code{"ok"}/
+\code{"warm_start"} status, else \code{""}).}
 \item{selected_d}{The chosen rank under \code{criterion}.}
 \item{criterion}{The criterion used for selection.}
 \item{fits}{A named list (names = \code{d}) of the fitted \code{\link[=gllvmTMB]{gllvmTMB()}}
@@ -72,6 +111,30 @@ failing \code{k} (an error from \code{\link[=gllvmTMB]{gllvmTMB()}}, non-converg
 Hessian) does not abort the sweep; it is recorded in the table with \code{NA}
 criteria and excluded from selection, with a warning naming which \code{d}
 failed and why.
+}
+
+\section{Guard against a non-nesting or runaway fit}{
+A rank-\code{d} model nests the rank-\code{(d - 1)} model (a zero loading column), so
+a correctly maximised fit can never have a lower log-likelihood than the
+last accepted rank. A fit is excluded from selection -- its row stays in
+\code{table} with \code{status} naming why, but it is never chosen -- when: it
+errors (\code{"failed"}); the optimizer did not converge or the Hessian is
+confirmed non-positive-definite (\code{"unconverged"}); its loadings are
+runaway (\code{"runaway"}, see \code{max_latent_sd}/\code{ratio_max} above); or its
+log-likelihood falls more than \code{tol} below the last accepted \code{d}
+(\code{"nonmonotone"}). With \code{warm_start = TRUE} (the default), a rejected fit
+is retried once from the previous accepted fit via \code{control(start_from = ...)} before being excluded, and kept (\code{status = "warm_start"}) if the
+retry passes every check; \code{gllvmTMB}'s \code{start_from} route copies only
+same-shaped parameter blocks (fixed effects, dispersion), so the new
+loading column in the retry still starts at the ordinary default init, not
+the specific values a from-scratch warm start might use. Healthy sweeps
+never trigger a retry, so their results are unchanged from a version of
+this function without the guard.
+
+The rank \code{d} chosen by \code{select_lv()} is itself an estimate: standard
+errors, confidence intervals, and tests computed on \code{selected_fit}
+(\code{sel$fits[[as.character(sel$selected_d)]]}) are conditional on that \code{d}
+and do not include the uncertainty of having selected it.
 }
 
 \examples{

@@ -47,14 +47,18 @@ described in Details; a fit that does not is excluded from selection
 table.}
 
 \item{warm_start}{Logical, default \code{TRUE}. Before excluding a fit rejected
-by the guard (non-monotone, unconverged, or runaway), refit once from
-\verb{control(start_from = <accepted fit at d - 1>)} and keep the refit only
-if it passes every check. See Details for exactly what that warm start
-does and does not carry over.}
+by the guard (non-monotone, unconverged, or runaway), retries once with
+\verb{control(start_from = <the last accepted fit>)} and keeps the retry only
+if it passes every check. See Details for exactly what that start_from
+does and does not carry over -- it is not a retry "from the (d - 1)
+solution": it copies matching parameter blocks only, never the loadings.}
 
 \item{tol}{Single non-negative number, default \code{1e-3}. A fit's
-log-likelihood is "non-monotone" (and rejected) when it falls more than
-\code{tol} below the last accepted \code{d}'s log-likelihood.}
+log-likelihood is "non-monotone" (and rejected) when it falls below
+\verb{max(tol, 1e-6 * |bar|)}, where \code{bar} is the best log-likelihood among
+every converged, non-runaway fit at any smaller \code{d} seen so far
+(accepted or rejected as non-monotone; a runaway fit's inflated
+log-likelihood never sets \code{bar}).}
 
 \item{max_latent_sd}{Single positive number, default 10. The runaway
 guard's SCALE check: because the latent variables are standardised
@@ -116,20 +120,22 @@ failed and why.
 \section{Guard against a non-nesting or runaway fit}{
 A rank-\code{d} model nests the rank-\code{(d - 1)} model (a zero loading column), so
 a correctly maximised fit can never have a lower log-likelihood than the
-last accepted rank. A fit is excluded from selection -- its row stays in
-\code{table} with \code{status} naming why, but it is never chosen -- when: it
-errors (\code{"failed"}); the optimizer did not converge or the Hessian is
-confirmed non-positive-definite (\code{"unconverged"}); its loadings are
-runaway (\code{"runaway"}, see \code{max_latent_sd}/\code{ratio_max} above); or its
-log-likelihood falls more than \code{tol} below the last accepted \code{d}
-(\code{"nonmonotone"}). With \code{warm_start = TRUE} (the default), a rejected fit
-is retried once from the previous accepted fit via \code{control(start_from = ...)} before being excluded, and kept (\code{status = "warm_start"}) if the
-retry passes every check; \code{gllvmTMB}'s \code{start_from} route copies only
-same-shaped parameter blocks (fixed effects, dispersion), so the new
-loading column in the retry still starts at the ordinary default init, not
-the specific values a from-scratch warm start might use. Healthy sweeps
-never trigger a retry, so their results are unchanged from a version of
-this function without the guard.
+best of every smaller rank already tried. A fit is excluded from selection
+-- its row stays in \code{table} with \code{status} naming why, but it is never
+chosen -- when: it errors (\code{"failed"}); the optimizer did not converge or
+the Hessian is confirmed non-positive-definite (\code{"unconverged"}); its
+loadings are runaway (\code{"runaway"}, see \code{max_latent_sd}/\code{ratio_max} above);
+or its log-likelihood falls below \verb{max(tol, 1e-6 * |bar|)} of \code{bar}, the
+best log-likelihood among every converged, non-runaway fit at any smaller
+\code{d} (accepted or itself rejected as non-monotone; a runaway fit's inflated
+log-likelihood never becomes \code{bar}) (\code{"nonmonotone"}). With \code{warm_start = TRUE} (the default), a rejected fit is retried once with \verb{control(start_from = <the last accepted fit>)} before being excluded, and kept (\code{status = "warm_start"}) if the retry passes every check. This is a retry from the
+last accepted fit's matching parameter blocks only, NOT a retry "from the
+(d - 1) solution": \code{gllvmTMB}'s \code{start_from} route copies same-shaped
+blocks (fixed effects, dispersion) but never the loading matrix, whose
+shape differs between ranks, so the new loading column in the retry still
+starts at the ordinary default init. Healthy sweeps never trigger a retry,
+so their results are unchanged from a version of this function without the
+guard.
 
 The rank \code{d} chosen by \code{select_lv()} is itself an estimate: standard
 errors, confidence intervals, and tests computed on \code{selected_fit}

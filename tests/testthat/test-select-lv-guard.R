@@ -332,3 +332,90 @@ test_that("identity-link (Gaussian) fits skip the runaway check entirely", {
                     family = stats::gaussian(), .fitter = fitter)
   expect_equal(sel$table$d[sel$table$status %in% c("ok", "warm_start")], 1:2)
 })
+
+## ---- Panel fixes (review, 2026-09-26) --------------------------------------
+## Ported from GLLVM.jl's "select_lv — review fixes" testset (commit
+## bf8940ad2 in GLLVM.jl-auto-d-20260926), restricted to what applies on this
+## side of the file split (see R/select-lv.R banner): the monotonicity bar
+## and the Gaussian/mixed-family runaway-skip robustness. The warm-start
+## column-padding fix and the mask-reaches-bic fix are Julia-internal
+## (`_lv_warm_start()`'s explicit `Λ_init` construction, and a `bic()`
+## `mask` keyword) with no R analogue -- gllvmTMB's `start_from` route and
+## `getLoadings()` accessor already sidestep both.
+
+test_that("bar = best converged fit at any smaller d, not just the last accepted one (drift)", {
+  ## d1 = -500 (accepted, bar = -500). d2 = -500.008 (within tol = 0.01 of
+  ## -500, accepted; bar STAYS -500, the true best-so-far, not -500.008).
+  ## d3 = -500.016 is within tol of d2's -500.008 but more than tol below the
+  ## true bar (-500), so it must be rejected. A guard that (bugged) compares
+  ## only against the last ACCEPTED d would instead compare d3 to -500.008
+  ## and wrongly accept it (drift compounding across small allowed steps).
+  d_of <- function(formula) {
+    txt <- paste(deparse(formula), collapse = " ")
+    as.integer(sub(".*d = ([0-9]+).*", "\\1", txt))
+  }
+  testthat::local_mocked_bindings(
+    getLoadings = function(...) matrix(0.5, 6, 1),
+    .package = "gllvmTMB"
+  )
+  fitter <- function(formula, data, ...) {
+    d <- d_of(formula)
+    ll <- c(`1` = -500, `2` = -500.008, `3` = -500.016)[[as.character(d)]]
+    .guard_fake_fit(loglik = ll)
+  }
+  sel <- select_lv(.guard_formula, data = .guard_data, d_max = 3L,
+                    tol = 0.01, warm_start = FALSE, .fitter = fitter)
+  a3 <- sel$table[sel$table$d == 3L, ]
+  expect_equal(a3$status, "nonmonotone")
+  expect_false(3L %in% sel$table$d[sel$table$status %in% c("ok", "warm_start")])
+})
+
+test_that("a runaway fit's inflated logLik never raises the bar for later d", {
+  ## d1 = -500 (ok, bar = -500). d2 = -300 is RUNAWAY (inflated loadings), so
+  ## its higher logLik must never become the bar. d3 = -420 must be compared
+  ## to d1's -500, not d2's -300, and accepted.
+  d_of <- function(formula) {
+    txt <- paste(deparse(formula), collapse = " ")
+    as.integer(sub(".*d = ([0-9]+).*", "\\1", txt))
+  }
+  testthat::local_mocked_bindings(
+    getLoadings = function(fit, ...) if (isTRUE(fit$.runaway)) matrix(20, 6, 1) else matrix(0.5, 6, 1),
+    .package = "gllvmTMB"
+  )
+  fitter <- function(formula, data, ..., family = stats::poisson(), control = NULL) {
+    d <- d_of(formula)
+    ll <- c(`1` = -500, `2` = -300, `3` = -420)[[as.character(d)]]
+    fit <- .guard_fake_fit(loglik = ll)
+    fit$.runaway <- identical(d, 2L)
+    fit
+  }
+  sel <- select_lv(.guard_formula, data = .guard_data, d_max = 3L, warm_start = FALSE,
+                    family = stats::poisson(), .fitter = fitter)
+  a2 <- sel$table[sel$table$d == 2L, ]
+  a3 <- sel$table[sel$table$d == 3L, ]
+  expect_equal(a2$status, "runaway")
+  expect_equal(a3$status, "ok")
+})
+
+test_that("the Gaussian runaway-skip works for a family object with no $link element", {
+  fam_no_link <- structure(list(family = "gaussian"), class = "family")
+  testthat::local_mocked_bindings(
+    getLoadings = function(...) matrix(999, 6, 1),
+    .package = "gllvmTMB"
+  )
+  fitter <- function(formula, data, ...) .guard_fake_fit(loglik = -500)
+  sel <- select_lv(.guard_formula, data = .guard_data, d_max = 1L,
+                    family = fam_no_link, .fitter = fitter)
+  expect_equal(sel$table$status, "ok")
+})
+
+test_that("the Gaussian runaway-skip applies to an all-Gaussian mixed-family list", {
+  testthat::local_mocked_bindings(
+    getLoadings = function(...) matrix(999, 6, 1),
+    .package = "gllvmTMB"
+  )
+  fitter <- function(formula, data, ...) .guard_fake_fit(loglik = -500)
+  sel <- select_lv(.guard_formula, data = .guard_data, d_max = 1L,
+                    family = list(stats::gaussian(), stats::gaussian()), .fitter = fitter)
+  expect_equal(sel$table$status, "ok")
+})

@@ -24,6 +24,29 @@
 ## warm-start retry uses `control(start_from = <accepted fit>)` instead of
 ## the oracle's explicit lower-triangular new-loading-column construction;
 ## see `.select_lv_warm_control()` for exactly what that route copies.
+##
+## Same lane, review pass (D-43 panel, 2026-09-26): applied the oracle's
+## post-review fixes (GLLVM.jl commit bf8940ad2) that have an R analogue --
+## the monotonicity bar is now the best converged, non-runaway fit at ANY
+## smaller d (not just the last accepted one; see `bar_ll` below), and the
+## Gaussian/mixed-family runaway-skip no longer depends solely on reading
+## `$link` (`.select_lv_is_gaussian_family()`). Two of the oracle's fixes do
+## NOT apply here: `_lv_warm_start()`'s explicit lower-triangular `Λ_init`
+## padding (gllvmTMB's `start_from` route has no equivalent shape-mismatch
+## problem to fix -- see the divergence noted above) and `bic()`'s `mask`
+## keyword (`.select_lv_runaway()`/`bic.gllvmTMB_multi()` on this side never
+## dropped `mask` in the first place). A third -- re-raising an
+## `ArgumentError` at K = 1 as a hard misconfiguration signal -- was
+## evaluated and SKIPPED: unlike GLLVM.jl's single `ArgumentError` type,
+## `gllvmTMB()`'s own argument-validation aborts use dozens of distinct
+## `cli::cli_abort(..., class = "gllvmTMB_*")` classes (and many use no
+## class at all), so there is no one condition class this sweep could
+## re-raise-and-distinguish-from-an-ordinary-fit-failure without an
+## exhaustive, brittle allowlist. A genuine misconfiguration at d = 1 is
+## still visible: it is recorded as `status = "failed"` with its message
+## verbatim, and (since d = 1 can never be accepted-as-nonmonotone) the
+## sweep aborts with `gllvmTMB_select_lv_no_eligible_fit` when no d
+## succeeds.
 
 ## Walk a formula's call tree and count `latent(...)` calls.
 .select_lv_count_latent <- function(expr) {
@@ -37,6 +60,26 @@
   n
 }
 
+## TRUE when `family_obj` is Gaussian/identity-link, robustly: checked via
+## BOTH `$family == "gaussian"` and `$link == "identity"` (a family object
+## missing one of the two -- e.g. a hand-built list with only `$family` --
+## still matches on the other), and, for a mixed-family fit (`family_obj` a
+## plain list of per-response family objects), only when EVERY entry is
+## Gaussian/identity (review fix, lane auto-d-20260926: the previous check
+## read only `$link`, so a family object without a `$link` element, or a
+## mixed-family list, silently fell through to the runaway check with a
+## loading matrix in data units).
+.select_lv_is_gaussian_family <- function(family_obj) {
+  is_one <- function(f) {
+    fam_name <- tryCatch(f$family, error = function(e) NULL)
+    link <- tryCatch(f$link, error = function(e) NULL)
+    (!is.null(fam_name) && identical(fam_name, "gaussian")) ||
+      (!is.null(link) && identical(link, "identity"))
+  }
+  fams <- if (is.list(family_obj) && !inherits(family_obj, "family")) family_obj else list(family_obj)
+  length(fams) > 0L && all(vapply(fams, is_one, logical(1L)))
+}
+
 ## Guard against a runaway loading matrix (lane auto-d-20260926, ported from
 ## GLLVM.jl's `_lv_runaway()`). Latent variables are standardised, so a
 ## trait's loading row norm is its latent SD on the link scale: a SCALE check
@@ -44,12 +87,11 @@
 ## (any non-identity-link family), and a RATIO check (binomial only: the
 ## largest per-trait max |loading| over the median of those maxima >=
 ## ratio_max) catches one trait separating -- a mode the scale check is
-## blind to by construction. Identity-link (Gaussian) fits are skipped: their
-## loadings are in data units, not standardised latent SDs. Returns "" when
-## healthy, else the reason.
+## blind to by construction. Gaussian/identity-link fits are skipped (see
+## `.select_lv_is_gaussian_family()`): their loadings are in data units, not
+## standardised latent SDs. Returns "" when healthy, else the reason.
 .select_lv_runaway <- function(fit, family_obj, max_latent_sd, ratio_max) {
-  link <- tryCatch(family_obj$link, error = function(e) NULL)
-  if (!is.null(link) && identical(link, "identity")) {
+  if (.select_lv_is_gaussian_family(family_obj)) {
     return("")
   }
   Lambda <- tryCatch(getLoadings(fit, level = "unit", rotate = "none"),
@@ -168,13 +210,17 @@
 #'   (and reported with a warning) even though its row still appears in the
 #'   table.
 #' @param warm_start Logical, default `TRUE`. Before excluding a fit rejected
-#'   by the guard (non-monotone, unconverged, or runaway), refit once from
-#'   `control(start_from = <accepted fit at d - 1>)` and keep the refit only
-#'   if it passes every check. See Details for exactly what that warm start
-#'   does and does not carry over.
+#'   by the guard (non-monotone, unconverged, or runaway), retries once with
+#'   `control(start_from = <the last accepted fit>)` and keeps the retry only
+#'   if it passes every check. See Details for exactly what that start_from
+#'   does and does not carry over -- it is not a retry "from the (d - 1)
+#'   solution": it copies matching parameter blocks only, never the loadings.
 #' @param tol Single non-negative number, default `1e-3`. A fit's
-#'   log-likelihood is "non-monotone" (and rejected) when it falls more than
-#'   `tol` below the last accepted `d`'s log-likelihood.
+#'   log-likelihood is "non-monotone" (and rejected) when it falls below
+#'   `max(tol, 1e-6 * |bar|)`, where `bar` is the best log-likelihood among
+#'   every converged, non-runaway fit at any smaller `d` seen so far
+#'   (accepted or rejected as non-monotone; a runaway fit's inflated
+#'   log-likelihood never sets `bar`).
 #' @param max_latent_sd Single positive number, default 10. The runaway
 #'   guard's SCALE check: because the latent variables are standardised
 #'   (`z ~ N(0, I)`), a trait's loading row norm is its latent SD on the link
@@ -203,21 +249,25 @@
 #' # Guard against a non-nesting or runaway fit
 #' A rank-`d` model nests the rank-`(d - 1)` model (a zero loading column), so
 #' a correctly maximised fit can never have a lower log-likelihood than the
-#' last accepted rank. A fit is excluded from selection -- its row stays in
-#' `table` with `status` naming why, but it is never chosen -- when: it
-#' errors (`"failed"`); the optimizer did not converge or the Hessian is
-#' confirmed non-positive-definite (`"unconverged"`); its loadings are
-#' runaway (`"runaway"`, see `max_latent_sd`/`ratio_max` above); or its
-#' log-likelihood falls more than `tol` below the last accepted `d`
-#' (`"nonmonotone"`). With `warm_start = TRUE` (the default), a rejected fit
-#' is retried once from the previous accepted fit via `control(start_from =
-#' ...)` before being excluded, and kept (`status = "warm_start"`) if the
-#' retry passes every check; `gllvmTMB`'s `start_from` route copies only
-#' same-shaped parameter blocks (fixed effects, dispersion), so the new
-#' loading column in the retry still starts at the ordinary default init, not
-#' the specific values a from-scratch warm start might use. Healthy sweeps
-#' never trigger a retry, so their results are unchanged from a version of
-#' this function without the guard.
+#' best of every smaller rank already tried. A fit is excluded from selection
+#' -- its row stays in `table` with `status` naming why, but it is never
+#' chosen -- when: it errors (`"failed"`); the optimizer did not converge or
+#' the Hessian is confirmed non-positive-definite (`"unconverged"`); its
+#' loadings are runaway (`"runaway"`, see `max_latent_sd`/`ratio_max` above);
+#' or its log-likelihood falls below `max(tol, 1e-6 * |bar|)` of `bar`, the
+#' best log-likelihood among every converged, non-runaway fit at any smaller
+#' `d` (accepted or itself rejected as non-monotone; a runaway fit's inflated
+#' log-likelihood never becomes `bar`) (`"nonmonotone"`). With `warm_start =
+#' TRUE` (the default), a rejected fit is retried once with `control(start_from
+#' = <the last accepted fit>)` before being excluded, and kept (`status =
+#' "warm_start"`) if the retry passes every check. This is a retry from the
+#' last accepted fit's matching parameter blocks only, NOT a retry "from the
+#' (d - 1) solution": `gllvmTMB`'s `start_from` route copies same-shaped
+#' blocks (fixed effects, dispersion) but never the loading matrix, whose
+#' shape differs between ranks, so the new loading column in the retry still
+#' starts at the ordinary default init. Healthy sweeps never trigger a retry,
+#' so their results are unchanged from a version of this function without the
+#' guard.
 #'
 #' The rank `d` chosen by `select_lv()` is itself an estimate: standard
 #' errors, confidence intervals, and tests computed on `selected_fit`
@@ -352,20 +402,38 @@ select_lv <- function(formula, data, ..., d_max, criterion = c("bic", "aic", "ai
   names(fits) <- as.character(ks)
   failed <- character(0L)
 
-  ## Guard state carried across the sweep: the log-likelihood and fit object
-  ## of the last ACCEPTED d, used by the monotonicity check and (if
-  ## warm_start) as the retry's start_from. NULL/-Inf before any d is
-  ## accepted, so d = 1 can never be rejected as non-monotone.
-  accepted_ll <- -Inf
+  ## Guard state carried across the sweep. `accepted_fit` is the last
+  ## TRULY ACCEPTED (status "ok"/"warm_start") fit, used by `warm_start` as
+  ## the retry's start_from. `bar_ll` is the monotonicity bar: the best
+  ## log-likelihood among every converged, non-runaway fit at any smaller d
+  ## seen so far -- accepted or rejected as "nonmonotone" -- never a runaway
+  ## fit's inflated logLik (review fix, lane auto-d-20260926: comparing only
+  ## against the LAST accepted d let a run of small, individually-tolerable
+  ## decreases drift the effective bar down below the true best-so-far; see
+  ## `bar_threshold()`). Both are NULL/-Inf before any d is accepted, so
+  ## d = 1 can never be rejected as non-monotone.
   accepted_fit <- NULL
+  bar_ll <- -Inf
+
+  ## The monotonicity threshold for a candidate logLik, given the current
+  ## bar: `-Inf` (never reject) while no bar has been set yet, else `bar -
+  ## max(tol, 1e-6 * |bar|)`. `bar - Inf` (arithmetic on two infinities) is
+  ## NaN in R, not `-Inf`, so the `bar == -Inf` case is handled explicitly
+  ## rather than folded into the general formula.
+  bar_threshold <- function(bar) {
+    if (is.infinite(bar) && bar < 0) {
+      return(-Inf)
+    }
+    bar - max(tol, 1e-6 * abs(bar))
+  }
 
   ## Try one fit and classify it: an error is "failed"; non-convergence or a
   ## confirmed non-PD Hessian is "unconverged"; an unreadable logLik() is
   ## folded into "unconverged" (there is nothing to compare); a runaway
-  ## loading matrix is "runaway"; a logLik() more than `tol` below
-  ## `accepted_ll` is "nonmonotone"; anything else is "ok". Returns a list
-  ## with `fit`, `status`, `message`, and `ll` (a `logLik` object with `df`/
-  ## `nobs` attributes, or `NULL`).
+  ## loading matrix is "runaway"; a logLik() below `bar_threshold(bar_ll)` is
+  ## "nonmonotone"; anything else is "ok". Returns a list with `fit`,
+  ## `status`, `message`, and `ll` (a `logLik` object with `df`/`nobs`
+  ## attributes, or `NULL`).
   try_fit <- function(f_k, control_override = NULL) {
     call_dots <- dots
     if (!is.null(control_override)) {
@@ -402,11 +470,11 @@ select_lv <- function(formula, data, ..., d_max, criterion = c("bic", "aic", "ai
     if (nzchar(reason)) {
       return(list(fit = fit_try, status = "runaway", message = reason, ll = ll))
     }
-    if (as.numeric(ll) < accepted_ll - tol) {
+    if (as.numeric(ll) < bar_threshold(bar_ll)) {
       return(list(
         fit = fit_try, status = "nonmonotone",
-        message = sprintf("logLik %s below the last accepted fit (%s)",
-                           format(as.numeric(ll), digits = 7), format(accepted_ll, digits = 7)),
+        message = sprintf("logLik %s below a converged fit at a smaller d (%s)",
+                           format(as.numeric(ll), digits = 7), format(bar_ll, digits = 7)),
         ll = ll
       ))
     }
@@ -444,6 +512,16 @@ select_lv <- function(formula, data, ..., d_max, criterion = c("bic", "aic", "ai
     pdh <- if (!is.null(res$fit$sd_report)) isTRUE(res$fit$sd_report$pdHess) else NA
 
     if (res$status != "ok" && res$status != "warm_start") {
+      ## A "nonmonotone" fit is still converged and non-runaway (those are
+      ## classified before the monotonicity check in try_fit()), so it is a
+      ## valid point inside every larger d; it can only ever equal or lower
+      ## the bar (max() is a no-op unless bar_ll is still -Inf), never raise
+      ## it above the true best-so-far. "unconverged"/"runaway"/leave the bar
+      ## alone: an inflated runaway logLik must never become the reference
+      ## point for a later d.
+      if (identical(res$status, "nonmonotone") && !is.null(res$ll)) {
+        bar_ll <- max(bar_ll, as.numeric(res$ll))
+      }
       failed <- c(failed, sprintf("d = %d: %s (%s)", k, res$status, res$message))
       rows[[k]] <- data.frame(
         d = k, npar = NA_integer_,
@@ -469,7 +547,7 @@ select_lv <- function(formula, data, ..., d_max, criterion = c("bic", "aic", "ai
       error = NA_character_, status = res$status, message = res$message,
       stringsAsFactors = FALSE
     )
-    accepted_ll <- ll_k
+    bar_ll <- max(bar_ll, ll_k)
     accepted_fit <- res$fit
   }
 
@@ -479,7 +557,8 @@ select_lv <- function(formula, data, ..., d_max, criterion = c("bic", "aic", "ai
   ## Eligible = the guard's status is "ok" or "warm_start" (see try_fit()
   ## above): the fit succeeded, converged with a Hessian not CONFIRMED
   ## non-PD, its logLik() was readable, its loadings were not runaway, and
-  ## it did not fall more than tol below the last accepted d.
+  ## it did not fall below the monotonicity bar (the best converged,
+  ## non-runaway fit at any smaller d).
   eligible <- table$status %in% c("ok", "warm_start")
   if (!any(eligible)) {
     cli::cli_abort(c(

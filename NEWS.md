@@ -3,16 +3,27 @@
 * `select_lv()` now guards its latent-rank sweep against a non-nesting or
   runaway fit (ported from GLLVM.jl's `select_lv()`/`_lv_warm_start()`/
   `_lv_runaway()`): a `d` whose fit errors, fails to converge, has a runaway
-  loading matrix, or has a log-likelihood more than `tol` below the last
-  accepted `d`, is excluded from selection and recorded in `table` with a new
-  `status` column (`"ok"`, `"warm_start"`, `"nonmonotone"`, `"unconverged"`,
-  `"runaway"`, or `"failed"`) and `message`. With the new `warm_start = TRUE`
-  default, a rejected fit is retried once from `control(start_from = <last
-  accepted fit>)` before being excluded. New `max_latent_sd` (default 10) and
-  `ratio_max` (default 25, `Binomial` only) arguments control the runaway
-  check; `tol` (default `1e-3`) controls the monotonicity check. Healthy
-  sweeps are unaffected. The selected `d` is itself an estimate; see
-  `?select_lv` for what that means for intervals computed on `selected_fit`.
+  loading matrix, or has a log-likelihood below `max(tol, 1e-6 * |bar|)` of
+  `bar` -- the best log-likelihood among every converged, non-runaway fit at
+  any smaller `d` seen so far (accepted or itself rejected as non-monotone; a
+  runaway fit's inflated log-likelihood never sets `bar`) -- is excluded from
+  selection and recorded in `table` with a new `status` column (`"ok"`,
+  `"warm_start"`, `"nonmonotone"`, `"unconverged"`, `"runaway"`, or
+  `"failed"`) and `message`. **`table` now keeps a row for every rejected
+  `d`** with its `status`/`message` and `NA` criteria, rather than dropping
+  it: existing code that read `AIC`/`BIC` straight off `table` for an
+  unconverged `d` previously saw a real (misleading) number there and will
+  now see `NA`. With the new `warm_start = TRUE` default, a rejected fit is
+  retried once with `control(start_from = <the last accepted fit>)` before
+  being excluded -- this copies matching parameter blocks only (fixed
+  effects, dispersion), never the loading matrix, so it is a retry from the
+  last accepted fit, not from "the (d - 1) solution". New `max_latent_sd`
+  (default 10) and `ratio_max` (default 25, `Binomial` only) arguments
+  control the runaway check, robust to a Gaussian family object missing a
+  `$link` element or wrapped in a mixed-family list; `tol` (default `1e-3`)
+  controls the monotonicity check. Healthy sweeps are unaffected. The
+  selected `d` is itself an estimate; see `?select_lv` for what that means
+  for intervals computed on `selected_fit`.
 
 * Temporal is an experimental sixth covariance-source row. The new
   `temporal_indep()`, `temporal_dep()`, and rank-one `temporal_latent()`

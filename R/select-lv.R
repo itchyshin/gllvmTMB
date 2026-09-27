@@ -83,9 +83,14 @@
 ## dispatch sweeps via `select_lv()`; `d = "auto"` on any of these is
 ## refused with a clear message (gllvmTMB()'s `.gllvmTMB_scan_auto_d()`
 ## caller decides what "refused" means, so this file only enumerates them).
+## `rr` is included even though it is never a real, exported R function (it
+## is only ever a bare formula marker, a deprecated alias for `latent()`):
+## without this, `rr(d = "auto")` reached the fitting engine and crashed
+## with an unclassed base-R error (review fix, lane auto-d-20260926). See
+## `resolve_d()`'s `rr` fallback below for how its `d` gets matched.
 .gllvmTMB_d_bearing_terms <- c(
   "phylo", "phylo_rr", "phylo_latent", "spatial", "spatial_latent",
-  "animal_latent", "kernel_latent", "temporal_latent"
+  "animal_latent", "kernel_latent", "temporal_latent", "rr"
 )
 
 ## Walk `formula`'s call tree (BEFORE any covstruct desugaring, so every
@@ -117,11 +122,28 @@
       identical(d_val, "auto")
   }
   is_valid_positive_integer <- function(d_val) {
-    is.numeric(d_val) && length(d_val) == 1L && !is.na(d_val) &&
-      is.finite(d_val) && d_val == as.integer(d_val) && d_val >= 1L
+    ## `d_val == as.integer(d_val)` returned NA (with a coercion warning,
+    ## review fix) for a finite d beyond .Machine$integer.max, which made the
+    ## `&&` chain NA and crashed the caller's `if` with an unclassed error;
+    ## `round()` plus an explicit range check and `isTRUE()` keep this a
+    ## plain TRUE/FALSE.
+    isTRUE(
+      is.numeric(d_val) && length(d_val) == 1L && !is.na(d_val) &&
+        is.finite(d_val) && d_val == round(d_val) && d_val >= 1L &&
+        d_val <= .Machine$integer.max
+    )
   }
   resolve_d <- function(fn_name, e) {
+    ## `rr` is a deprecated bare alias for `latent()` (see
+    ## `.gllvmTMB_d_bearing_terms` above) and is never a real, exported R
+    ## function -- it only ever appears as an unevaluated formula marker --
+    ## so `get("rr", mode = "function")` fails. Match its `d` against
+    ## `latent()`'s own formals instead; the two share the same calling
+    ## convention (`formula, d, unique, common, lv`).
     fn_obj <- tryCatch(get(fn_name, mode = "function"), error = function(err) NULL)
+    if (is.null(fn_obj) && identical(fn_name, "rr")) {
+      fn_obj <- tryCatch(get("latent", mode = "function"), error = function(err) NULL)
+    }
     if (is.null(fn_obj)) {
       return(NULL)
     }
@@ -158,10 +180,27 @@
     }
   }
   walk(formula)
+  ## Review fix (lane auto-d-20260926): `select_lv()` unconditionally refuses
+  ## a formula with a second `latent()` term (any `d`), a structured
+  ## source-specific latent term (`phylo_latent()`/`spatial_latent()`/
+  ## `kernel_latent()`/`animal_latent()`, any `d`), or any `temporal_*()`
+  ## term -- these checks mirror `select_lv()`'s own (`.select_lv_count_latent()`
+  ## and the `bad_source_fns`/temporal `grepl()` near the top of `select_lv()`)
+  ## so gllvmTMB()'s caller can refuse the same formulas UP FRONT, before ever
+  ## calling `select_lv()`, with wording about `d = "auto"` rather than an
+  ## error from a function the user never called.
+  formula_text <- paste(deparse(formula), collapse = " ")
+  source_latent_fns <- c("phylo_latent", "spatial_latent", "kernel_latent", "animal_latent")
+  source_latent_found <- source_latent_fns[vapply(source_latent_fns, function(fn) {
+    grepl(paste0("\\b", fn, "\\s*\\("), formula_text)
+  }, logical(1L))]
   list(
     latent_auto = latent_auto,
     other_auto = other_auto,
-    invalid_latent_d = invalid_latent_d
+    invalid_latent_d = invalid_latent_d,
+    total_latent = .select_lv_count_latent(formula),
+    source_latent_found = source_latent_found,
+    temporal_found = grepl("temporal_(indep|dep|latent)", formula_text)
   )
 }
 

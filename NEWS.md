@@ -23,19 +23,35 @@
   multi-trial binomial data, are unaffected regardless of this argument.
 
 * Ordinary `latent()` gains `d = "auto"` (maintainer decision D-293,
-  2026-09-27): on a formula with exactly one ordinary `latent()` term,
-  `gllvmTMB()` now runs `select_lv()` on that same formula/data/family/
-  control and every other argument (`d_max = min(5, n_traits - 1)`,
-  criterion `"bic_sites"`) before fitting, and returns the selected fit with
-  the full selection attached at `fit$select_lv`; a message at fit time
+  2026-09-27): on a formula with exactly one ordinary `latent()` term and no
+  other latent-type term, `gllvmTMB()` now runs `select_lv()` on that same
+  formula/data/family/control and every other argument (`d_max = min(5,
+  n_traits - 1)`, criterion `"bic_sites"`) before fitting, and returns the
+  selected fit with the full selection attached at `fit$select_lv` (the
+  per-rank `table`, `selected_d`, `criterion` and `d_max`; not every
+  candidate fit -- see `?select_lv` if you need those); a message at fit time
   names the chosen `d` and criterion. `latent()`'s own default is unchanged
   (`d = 1`). Intervals and tests on the returned fit are conditional on the
-  chosen `d`. `d = "auto"` on more than one `latent()` term, on any other
-  d-bearing covariance term (`phylo_latent()`, `spatial_latent()`,
-  `animal_latent()`, `kernel_latent()`, etc.), or any other invalid `d`
-  value on `latent()`, is refused with a clear error. See `?latent` and
-  `?gllvmTMB` ("Choosing d automatically") and `?select_lv` for the per-rank
-  table and for controlling `d_max`/`criterion` directly.
+  chosen `d`. `d = "auto"` on more than one `latent()` term (whatever `d` the
+  other term carries), on any structured source-specific latent term
+  (`phylo_latent()`, `spatial_latent()`, `animal_latent()`, `kernel_latent()`,
+  etc.), on any `temporal_*()` term, or any other invalid `d` value on
+  `latent()`, is refused up front with a clear error naming the real
+  restriction. See `?latent` and `?gllvmTMB` ("Choosing d automatically") and
+  `?select_lv` for the per-rank table and for controlling `d_max`/`criterion`
+  directly. Recovery evidence is family-specific: a simulation with known
+  true rank found `"bic_sites"` recovers it most often for Gaussian (recovery
+  rate 0.95), Poisson (0.999), and negative-binomial (0.90) data; for
+  single-trial binary (Bernoulli) data recovery is still weak at small sizes
+  even with the default loading ridge (`binary_ridge = 2`; e.g. 20 traits,
+  120 units: the true rank was found in 8/10 simulated datasets with the
+  ridge). The deprecated `species = ...` alias for `cluster = ...` (bug fix)
+  is now correctly forwarded to `select_lv()`'s refits; previously it was
+  silently dropped and every refit fell back to the default cluster.
+  `latent()`'s `d` validation is new: a `d` that previously fitted silently
+  after truncation (e.g. `d = 2.5` fitting rank 2, `d = "2"` fitting rank 2,
+  `d = TRUE` fitting rank 1) is now refused with a clear error
+  (`gllvmTMB_latent_d_invalid`).
 
 * `select_lv()` now guards its latent-rank sweep against a non-nesting or
   runaway fit (ported from GLLVM.jl's `select_lv()`/`_lv_warm_start()`/

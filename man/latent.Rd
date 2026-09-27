@@ -11,11 +11,14 @@ latent(formula, d = 1, unique = TRUE, common = FALSE, lv = NULL)
 factor, typically \code{0 + trait}; RHS is the grouping factor).}
 
 \item{d}{Integer number of latent factors, or the string \code{"auto"} to
-select \code{d} automatically (maintainer decision D-293, 2026-09-27).
+select \code{d} automatically.
 \subsection{Choosing d automatically}{
 
-\code{d = "auto"} is supported on exactly one ordinary \code{latent()} term per
-formula. \code{\link[=gllvmTMB]{gllvmTMB()}} then runs \code{\link[=select_lv]{select_lv()}} on the same
+\code{d = "auto"} needs a formula with exactly one ordinary \code{latent()} term
+and no other latent-type term (no second \code{latent()}, no structured
+source-specific latent term such as \code{phylo_latent()}, \code{spatial_latent()},
+\code{animal_latent()}, \code{kernel_latent()}, and no \verb{temporal_*()} term).
+\code{\link[=gllvmTMB]{gllvmTMB()}} then runs \code{\link[=select_lv]{select_lv()}} on the same
 formula/data/family/control (\code{d_max = min(5, n_traits - 1)}, criterion
 \code{"bic_sites"}) before fitting, and returns the selected fit with the
 full selection attached at \code{fit$select_lv}; a \code{cli::cli_inform} message
@@ -23,10 +26,17 @@ at fit time names the chosen \code{d} and the criterion. Standard errors,
 confidence intervals, and tests on that fit are \strong{conditional on the
 chosen \code{d}} -- they do not include the uncertainty of having selected
 it (see \code{\link[=select_lv]{select_lv()}} for the full per-rank table and for controlling
-\code{d_max} or the criterion directly). \code{d = "auto"} is not supported on any
-other d-bearing covariance term (\code{phylo_latent()}, \code{spatial_latent()},
-\code{animal_latent()}, \code{kernel_latent()}, etc.) -- fit and compare those
-ranks directly, or with \code{\link[=select_lv]{select_lv()}} itself.
+\code{d_max} or the criterion directly). Recovery evidence is family-specific:
+a simulation with known true rank found \code{"bic_sites"} recovers it most
+often for Gaussian (recovery rate 0.95), Poisson (0.999), and
+negative-binomial (0.90) data. For single-trial binary (Bernoulli) data,
+a loading ridge is used by default (\code{select_lv()}'s \code{binary_ridge = 2})
+and recovery is still weak at small sizes (e.g. 20 traits, 120 units:
+the true rank was found in 8/10 simulated datasets with the ridge).
+\code{d = "auto"} is not supported on any other d-bearing covariance term
+(\code{phylo_latent()}, \code{spatial_latent()}, \code{animal_latent()}, \code{kernel_latent()},
+etc.) -- fit each rank explicitly and compare the fits with \code{AIC()}/
+\code{BIC()} or \code{anova()}.
 }}
 
 \item{unique}{Logical; \code{TRUE} (default) auto-includes the diagonal
@@ -49,7 +59,7 @@ automatic \code{Psi} additionally requires that its physical loading,
 latent-predictor, and engine-free diagonal parameters pass a necessary
 joint mean-covariance dimension screen. Passing that screen is not a
 recovery or interval-calibration certificate. Bounded
-rank-2/rank-3 canaries exercise every registered family, but broad
+rank-2/rank-3 checks exercise every supported family, but broad
 composition recovery and interval calibration remain partial. Retained
 recovery and interval claims remain limited to their named cells.
 Source-specific \verb{*_latent(..., lv = ~ x)} forms are

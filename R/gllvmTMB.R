@@ -43,18 +43,6 @@
 #' * `dep` — the **full unstructured** mode: \eqn{\boldsymbol\Sigma}
 #'   is free with \eqn{T(T+1)/2} parameters via a Cholesky factor.
 #'
-#' ## Choosing d automatically
-#' A single ordinary `latent()` term may pass `d = "auto"` instead of an
-#' integer rank (maintainer decision D-293, 2026-09-27): before fitting,
-#' [select_lv()] sweeps `d = 1, ..., min(5, n_traits - 1)` on this same
-#' formula/data/family/control and every other argument, and the fit
-#' returned is the one it selects (by `"bic_sites"`, its default criterion),
-#' with the full selection attached at `fit$select_lv`. Intervals and tests
-#' on that fit are conditional on the chosen `d`; see [latent()] for the
-#' full contract and [select_lv()] for the per-rank table and for
-#' controlling `d_max`/`criterion` directly instead. `d = "auto"` is not
-#' supported on any other d-bearing covariance term.
-#'
 #' The five Gaussian long-format response-column slope helpers are [slope()],
 #' [phylo_slope()], [animal_slope()], [kernel_slope()], and [spatial_slope()].
 #' Their RHS is the resolved response-column factor, so they are not extra
@@ -492,6 +480,27 @@
 #' delta family carries one per-trait dispersion of the *positive*
 #' component (no extra Bernoulli dispersion). The response must be
 #' non-negative.
+#'
+#' ## Choosing d automatically
+#' A single ordinary `latent()` term may pass `d = "auto"` instead of an
+#' integer rank: before fitting, [select_lv()] sweeps `d = 1, ...,
+#' min(5, n_traits - 1)` on this same formula/data/family/control and every
+#' other argument, and the fit returned is the one it selects (by
+#' `"bic_sites"`, its default criterion), with the full selection attached at
+#' `fit$select_lv`. Intervals and tests on that fit are conditional on the
+#' chosen `d`; see [latent()] for the full contract and [select_lv()] for the
+#' per-rank table and for controlling `d_max`/`criterion` directly instead.
+#' `d = "auto"` needs a formula with exactly one `latent()` term and no
+#' structured latent or temporal term; set `d` explicitly for those, or
+#' compare fits yourself.
+#'
+#' Recovery evidence for `d = "auto"` is family-specific. A simulation with
+#' known true rank found `"bic_sites"` recovers it most often for Gaussian
+#' (recovery rate 0.95), Poisson (0.999), and negative-binomial (0.90) data.
+#' For single-trial binary (Bernoulli) data, a loading ridge is used by
+#' default (`select_lv()`'s `binary_ridge = 2`) and recovery is still weak at
+#' small sizes (e.g. 20 traits, 120 units: the true rank was found in 8/10
+#' simulated datasets with the ridge).
 #'
 #' ## Per-trait residual variance: when does it activate?
 #'
@@ -973,6 +982,15 @@ gllvmTMB <- function(
   ## third grouping (e.g. `cluster = "population"` for 3-level personality
   ## data). `species` is now a deprecated alias that emits a one-shot
   ## soft warning and is forwarded to `cluster`.
+  ## Review fix (lane auto-d-20260926): `cluster_supplied` (above) is
+  ## computed from the `cluster` argument alone and is FALSE when the
+  ## caller used the `species =` alias instead. The `d = "auto"` branch
+  ## below forwards the resolved `cluster` to `select_lv()` only when
+  ## `cluster_supplied`, so every refit in the sweep silently lost a
+  ## `species = ...` alias caller's grouping column. Track alias use here,
+  ## before `species` is overwritten below, so that branch can forward the
+  ## resolved cluster on either path.
+  species_alias_used <- !is.null(species)
   if (!is.null(species)) {
     if (!missing(cluster) && !identical(cluster, "species")) {
       cli::cli_abort(
@@ -1131,7 +1149,7 @@ gllvmTMB <- function(
   if (auto_d_scan$latent_auto > 1L) {
     cli::cli_abort(c(
       "{.fn gllvmTMB} found {auto_d_scan$latent_auto} {.fn latent} terms with {.code d = \"auto\"} in {.arg formula}; only one is supported.",
-      ">" = "Use {.code d = \"auto\"} on a single {.fn latent} term, giving the others an explicit integer {.arg d}."
+      ">" = "{.code d = \"auto\"} needs a formula with exactly one {.fn latent} term in total; pass an explicit integer {.arg d} on this term instead, or compare fits yourself."
     ), class = "gllvmTMB_auto_d_multiple")
   }
   if (length(auto_d_scan$other_auto) > 0L) {
@@ -1140,6 +1158,25 @@ gllvmTMB <- function(
       "x" = "Found on {.fn {unique(auto_d_scan$other_auto)}}.",
       ">" = "Pass an explicit integer {.arg d} for that term, or compare ranks for it directly with repeated fits."
     ), class = "gllvmTMB_auto_d_unsupported_term")
+  }
+  ## Review fix (lane auto-d-20260926): the scan above only refused a SECOND
+  ## `d = "auto"` term or `"auto"` on another d-bearing keyword. It let
+  ## through formulas that `select_lv()` (called below) always refuses
+  ## regardless of `d`'s value: a second ordinary `latent()` term (even with
+  ## an explicit integer `d`), any structured source-specific latent term
+  ## (`phylo_latent()`/`spatial_latent()`/`kernel_latent()`/`animal_latent()`),
+  ## or any `temporal_*()` term. Those formulas used to reach `select_lv()`
+  ## and abort with an error worded for a function the user never called
+  ## (e.g. `gllvmTMB_select_lv_ambiguous_latent_term`). Refuse them here
+  ## instead, up front, stating the real restriction.
+  if (auto_d_scan$latent_auto == 1L &&
+      (auto_d_scan$total_latent > 1L ||
+       length(auto_d_scan$source_latent_found) > 0L ||
+       auto_d_scan$temporal_found)) {
+    cli::cli_abort(c(
+      "{.code d = \"auto\"} needs exactly one {.fn latent} term and no structured latent or temporal terms.",
+      ">" = "Set {.arg d} explicitly, or compare fits yourself."
+    ), class = "gllvmTMB_auto_d_unsupported_formula")
   }
   if (auto_d_scan$latent_auto == 1L) {
     n_traits <- length(unique(data[[trait]]))
@@ -1175,13 +1212,26 @@ gllvmTMB <- function(
       ci_seed = ci_seed
     )
     if (unit_obs_supplied) sel_args$unit_obs <- unit_obs
-    if (cluster_supplied) sel_args$cluster <- cluster
+    ## Review fix (lane auto-d-20260926): forward the resolved cluster when
+    ## the caller used the deprecated `species = ...` alias too (see
+    ## `species_alias_used` above), not only when `cluster` itself was
+    ## supplied -- otherwise every refit in the sweep silently fell back to
+    ## the default `cluster = "species"` placeholder.
+    if (cluster_supplied || species_alias_used) sel_args$cluster <- cluster
     if (!estimator_missing) sel_args$estimator <- estimator
     sel <- do.call(select_lv, sel_args)
     fit <- sel$selected_fit
-    fit$select_lv <- sel
+    ## Review fix (lane auto-d-20260926): attach a trimmed copy, not every
+    ## candidate fit plus a duplicate of `fit` itself (`sel$selected_fit` IS
+    ## `fit`) -- about 5x the object size for no benefit. Nothing in the
+    ## package reads `fit$select_lv$fits`/`$selected_fit`;
+    ## `print.gllvmTMB_select_lv()` only uses `$criterion`/`$selected_d`/`$table`.
+    sel_attached <- sel
+    sel_attached$fits <- NULL
+    sel_attached$selected_fit <- NULL
+    fit$select_lv <- sel_attached
     cli::cli_inform(
-      "{.fn latent}(d = \"auto\"): chose d = {sel$selected_d} by {sel$criterion} over d = 1:{d_max}. Intervals from this fit are conditional on the chosen d; see {.code fit$select_lv}."
+      "{.code latent(d = \"auto\")}: chose d = {sel$selected_d} by {sel$criterion} over d = 1:{d_max}. Intervals from this fit are conditional on the chosen d; see {.code fit$select_lv}."
     )
     return(fit)
   }

@@ -555,11 +555,14 @@ meta <- function(value, sampling_var) {
 #' @param formula `0 + trait | g` style formula (LHS is the response
 #'   factor, typically `0 + trait`; RHS is the grouping factor).
 #' @param d Integer number of latent factors, or the string `"auto"` to
-#'   select `d` automatically (maintainer decision D-293, 2026-09-27).
+#'   select `d` automatically.
 #'
 #'   ## Choosing d automatically
-#'   `d = "auto"` is supported on exactly one ordinary `latent()` term per
-#'   formula. [gllvmTMB()] then runs [select_lv()] on the same
+#'   `d = "auto"` needs a formula with exactly one ordinary `latent()` term
+#'   and no other latent-type term (no second `latent()`, no structured
+#'   source-specific latent term such as `phylo_latent()`, `spatial_latent()`,
+#'   `animal_latent()`, `kernel_latent()`, and no `temporal_*()` term).
+#'   [gllvmTMB()] then runs [select_lv()] on the same
 #'   formula/data/family/control (`d_max = min(5, n_traits - 1)`, criterion
 #'   `"bic_sites"`) before fitting, and returns the selected fit with the
 #'   full selection attached at `fit$select_lv`; a `cli::cli_inform` message
@@ -567,10 +570,17 @@ meta <- function(value, sampling_var) {
 #'   confidence intervals, and tests on that fit are **conditional on the
 #'   chosen `d`** -- they do not include the uncertainty of having selected
 #'   it (see [select_lv()] for the full per-rank table and for controlling
-#'   `d_max` or the criterion directly). `d = "auto"` is not supported on any
-#'   other d-bearing covariance term (`phylo_latent()`, `spatial_latent()`,
-#'   `animal_latent()`, `kernel_latent()`, etc.) -- fit and compare those
-#'   ranks directly, or with [select_lv()] itself.
+#'   `d_max` or the criterion directly). Recovery evidence is family-specific:
+#'   a simulation with known true rank found `"bic_sites"` recovers it most
+#'   often for Gaussian (recovery rate 0.95), Poisson (0.999), and
+#'   negative-binomial (0.90) data. For single-trial binary (Bernoulli) data,
+#'   a loading ridge is used by default (`select_lv()`'s `binary_ridge = 2`)
+#'   and recovery is still weak at small sizes (e.g. 20 traits, 120 units:
+#'   the true rank was found in 8/10 simulated datasets with the ridge).
+#'   `d = "auto"` is not supported on any other d-bearing covariance term
+#'   (`phylo_latent()`, `spatial_latent()`, `animal_latent()`, `kernel_latent()`,
+#'   etc.) -- fit each rank explicitly and compare the fits with `AIC()`/
+#'   `BIC()` or `anova()`.
 #' @param unique Logical; `TRUE` (default) auto-includes the diagonal
 #'   trait-specific \eqn{\boldsymbol\Psi} companion
 #'   (\eqn{\boldsymbol\Sigma = \boldsymbol\Lambda\boldsymbol\Lambda^\top + \boldsymbol\Psi}).
@@ -589,7 +599,7 @@ meta <- function(value, sampling_var) {
 #'   latent-predictor, and engine-free diagonal parameters pass a necessary
 #'   joint mean-covariance dimension screen. Passing that screen is not a
 #'   recovery or interval-calibration certificate. Bounded
-#'   rank-2/rank-3 canaries exercise every registered family, but broad
+#'   rank-2/rank-3 checks exercise every supported family, but broad
 #'   composition recovery and interval calibration remain partial. Retained
 #'   recovery and interval claims remain limited to their named cells.
 #'   Source-specific `*_latent(..., lv = ~ x)` forms are

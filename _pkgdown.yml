@@ -14,7 +14,9 @@ home:
       experimental:
         title: Status
         text: >-
-          **Experimental software.** Start with a documented example, check the
+          **Development documentation for 0.8.0.9000.** The planned first CRAN
+          submission is the earlier, bounded 0.7.1 source. Start with a documented
+          example, check the
           fitted model, and read [Current limitations and
           boundaries](articles/current-limits.html) before reporting a result.
           A model that converges alone does not establish that every extension
@@ -140,9 +142,9 @@ navbar:
       menu:
       - text: "Rare binary items and runaway estimates (experimental)"
         href: articles/mspl-binary-jsdm.html
-      - text: "How gllvmTMB is checked — and what those checks miss"
+      - text: "How gllvmTMB is checked and what those checks miss"
         href: articles/validation-oracles.html
-      - text: "Structured random slopes for non-Gaussian traits — current evidence and limits"
+      - text: "Structured random slopes for non-Gaussian traits: current evidence and limits"
         href: articles/random-slopes-nongaussian.html
 
 articles:
@@ -536,12 +538,12 @@ reference:
     - getResidualCov
     - ordiplot
 
-## news.releases intentionally omitted until the maintainer creates a 0.6.0 tag
-## and GitHub release. The current site is pre-release documentation.
+## news.releases is omitted while this site documents the unreleased
+## 0.8.0.9000 development source.
 ##
 ## NOT 0.5.0: the premature v0.5.0 tag was DROPPED. 0.5 was the
-## "cover-everything" dev cycle, never a release; the first CRAN release is
-## 0.6.0 (D-66). Updated at the M3 freeze, 2026-07-22.
+## "cover-everything" dev cycle, never a release; the planned first CRAN
+## submission is the bounded historical 0.7.1 source (2026-09-27).
 ##
 ## In the meantime, the navbar "News" dropdown will show only the
-## "Changelog" entry (NEWS.md) — which is the correct pre-release UX.
+## "Changelog" entry (NEWS.md), which is the correct development-site path.

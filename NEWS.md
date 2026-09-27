@@ -1,8 +1,8 @@
 # Development (unreleased)
 
-* `select_lv()` gains a `binary_ridge` argument (default `2`; maintainer
-  decision D-293, 2026-09-27): for **single-trial binomial (Bernoulli)**
-  data -- every response a 0/1 trial, detected from a `cbind(successes,
+* `select_lv()` gains a `binary_ridge` argument (default `2`): for
+  **single-trial binomial (Bernoulli)** data -- every response a 0/1 trial,
+  detected from a `cbind(successes,
   failures)` formula LHS or the flat-response `weights =` trial-count API --
   every fit in the sweep (including the `warm_start` retry) now uses
   `control(aghq_ridge = binary_ridge)`, a Laplace fit penalised by a loading
@@ -22,8 +22,8 @@
   inside the sweep and replaced by one summary message. Other families, or
   multi-trial binomial data, are unaffected regardless of this argument.
 
-* Ordinary `latent()` gains `d = "auto"` (maintainer decision D-293,
-  2026-09-27): on a formula with exactly one ordinary `latent()` term and no
+* Ordinary `latent()` gains `d = "auto"`: on a formula with exactly one
+  ordinary `latent()` term and no
   other latent-type term, `gllvmTMB()` now runs `select_lv()` on that same
   formula/data/family/control and every other argument (`d_max = min(5,
   n_traits - 1)`, criterion `"bic_sites"`) before fitting, and returns the
@@ -55,8 +55,9 @@
   (`gllvmTMB_latent_d_invalid`).
 
 * `select_lv()` now guards its latent-rank sweep against a non-nesting or
-  runaway fit (ported from GLLVM.jl's `select_lv()`/`_lv_warm_start()`/
-  `_lv_runaway()`): a `d` whose fit errors, fails to converge, has a runaway
+  runaway fit (ported from the Julia twin package's `select_lv()`/
+  `_lv_warm_start()`/`_lv_runaway()`): a `d` whose fit errors, fails to
+  converge, has a runaway
   loading matrix, or has a log-likelihood below `max(tol, 1e-6 * |bar|)` of
   `bar` -- the best log-likelihood among every converged, non-runaway fit at
   any smaller `d` seen so far (accepted or itself rejected as non-monotone; a
@@ -78,7 +79,7 @@
   controls the monotonicity check. Healthy sweeps are unaffected. The
   selected `d` is itself an estimate; see `?select_lv` for what that means
   for intervals computed on `selected_fit`. New `require_converged` argument
-  (default `FALSE`, mirroring GLLVM.jl): a fit whose optimizer did not report
+  (default `FALSE`, mirroring the Julia twin package): a fit whose optimizer did not report
   convergence is now **kept** (`status = "ok"`, flagged in `message`) unless
   it is also runaway or non-monotone, and counts for the monotonicity bar
   like any accepted fit; `require_converged = TRUE` restores the previous
@@ -91,7 +92,7 @@
   excludes a fit regardless of `require_converged`.
 
 * `select_lv()`'s `criterion` argument gains `"bic_sites"` and **it is now
-  the default** (maintainer decision D-293, 2026-09-27) -- **existing
+  the default** -- **existing
   `select_lv()` calls that did not pass `criterion =` may now choose a
   different `d`.** `"bic"` and `"bic_sites"` are the same statistic, `-2 *
   logLik + npar * log(n)`, counting `n` two different ways: `"bic"` (the

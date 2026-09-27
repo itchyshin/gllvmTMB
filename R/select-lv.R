@@ -477,8 +477,8 @@
 #'   outright (`status = "unconverged"`). A CONFIRMED non-positive-definite
 #'   Hessian is excluded either way -- this argument only relaxes the
 #'   convergence-flag check. See Details for why the default is preferred.
-#' @param binary_ridge Single positive number or `Inf`, default `2`. Maintainer
-#'   decision D-293: for **single-trial binomial (Bernoulli)** data -- every
+#' @param binary_ridge Single positive number or `Inf`, default `2`. For
+#'   **single-trial binomial (Bernoulli)** data -- every
 #'   response a 0/1 trial, checked from the formula/`weights` (see Details) --
 #'   every fit in the sweep uses `control(aghq_ridge = binary_ridge)` (a
 #'   Laplace fit penalised by a loading ridge at scale `binary_ridge`, see

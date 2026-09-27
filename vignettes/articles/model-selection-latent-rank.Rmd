@@ -338,7 +338,7 @@ This chunk is not evaluated here (`eval = FALSE`): `d = "auto"` sweeps
 this five-trait fixture), on top of the four candidate fits already run
 above, and the package's own recovery evidence for this feature is
 reported for family-level simulation grids, not for this one teaching
-fixture (see `?select_lv` and validation-debt register row MS-05).
+fixture (see `?select_lv`).
 `fit_auto$select_lv$table` is the same kind of AIC/BIC/`bic_sites` table
 built by hand above, with the guard's own `status` column
 (`ok`/`warm_start`/`nonmonotone`/`unconverged`/`runaway`/`failed`) added.

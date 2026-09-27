@@ -460,3 +460,82 @@ test_that("the Gaussian runaway-skip applies to an all-Gaussian mixed-family lis
                     family = list(stats::gaussian(), stats::gaussian()), .fitter = fitter)
   expect_equal(sel$table$status, "ok")
 })
+
+## ---- D-293: bic_sites (default criterion) ----------------------------------
+## Ported from the GLLVM.jl oracle's recovery-simulation rationale (17,687
+## datasets): `bic` (penalty log(cells) = log(n_traits * n_units)) penalises
+## added latent dimensions more heavily than `bic_sites` (penalty
+## log(n_units)) does, because a unit's several trait-cells are correlated,
+## not independent draws. The fixture below (6 traits x 40 units, so
+## log(cells) = log(240) ~= 5.481 vs log(units) = log(40) ~= 3.689) is built
+## so the two penalties disagree on the same logLik/npar sequence.
+
+## Data/formula: 6 traits x 40 units, fully observed (no missingness), so
+## `.select_lv_n_units()` reads a clean 40 off the unit column.
+.bic_sites_data <- data.frame(
+  unit = rep(paste0("u", 1:40), each = 6),
+  trait = rep(paste0("t", 1:6), times = 40),
+  value = 1
+)
+.bic_sites_formula <- value ~ 0 + trait + latent(0 + trait | unit, d = 1)
+
+test_that("bic and bic_sites disagree when log(cells) and log(units) disagree", {
+  ## npar = 10000, 10010, 10011 at d = 1, 2, 3; logLik = -500, -477, -476;
+  ## nobs (cells) = 240 fixed via the fake logLik method. With log(240) ~=
+  ## 5.4806 and log(40) ~= 3.6889:
+  ##   bic:       55806.4, 55815.2, 55818.7 -> picks d = 1
+  ##   bic_sites: 37888.8, 37879.7, 37881.4  -> picks d = 2
+  d_of <- function(formula) {
+    txt <- paste(deparse(formula), collapse = " ")
+    as.integer(sub(".*d = ([0-9]+).*", "\\1", txt))
+  }
+  fitter <- function(formula, data, ...) {
+    d <- d_of(formula)
+    ll <- c(`1` = -500, `2` = -477, `3` = -476)[[as.character(d)]]
+    npar <- c(`1` = 10000L, `2` = 10010L, `3` = 10011L)[[as.character(d)]]
+    .guard_fake_fit(loglik = ll, npar = npar, nobs = 240L)
+  }
+  testthat::local_mocked_bindings(
+    getLoadings = function(...) matrix(0.5, 6, 1),
+    .package = "gllvmTMB"
+  )
+  sel_bic <- select_lv(.bic_sites_formula, data = .bic_sites_data, d_max = 3L,
+                        unit = "unit", trait = "trait", criterion = "bic",
+                        warm_start = FALSE, .fitter = fitter)
+  expect_equal(sel_bic$selected_d, 1L)
+
+  sel_bic_sites <- select_lv(.bic_sites_formula, data = .bic_sites_data, d_max = 3L,
+                              unit = "unit", trait = "trait", criterion = "bic_sites",
+                              warm_start = FALSE, .fitter = fitter)
+  expect_equal(sel_bic_sites$selected_d, 2L)
+  expect_equal(sel_bic_sites$table$bic_sites,
+               -2 * c(-500, -477, -476) + c(10000, 10010, 10011) * log(40),
+               tolerance = 1e-6)
+})
+
+test_that("the default criterion is bic_sites", {
+  fitter <- function(formula, data, ...) .guard_fake_fit(loglik = -500, npar = 5L, nobs = 240L)
+  testthat::local_mocked_bindings(
+    getLoadings = function(...) matrix(0.5, 6, 1),
+    .package = "gllvmTMB"
+  )
+  sel <- select_lv(.bic_sites_formula, data = .bic_sites_data, d_max = 1L,
+                    unit = "unit", trait = "trait", .fitter = fitter)
+  expect_equal(sel$criterion, "bic_sites")
+})
+
+test_that("criterion = 'bic_sites' warns and falls back to bic's cell count when the unit column is not identifiable", {
+  fitter <- function(formula, data, ...) .guard_fake_fit(loglik = -500, npar = 5L, nobs = 240L)
+  testthat::local_mocked_bindings(
+    getLoadings = function(...) matrix(0.5, 6, 1),
+    .package = "gllvmTMB"
+  )
+  ## .guard_data has no `unit =` forwarded, so the unit column is unknown;
+  ## bic_sites should fall back to nobs() = 240 (the fake fit's `nobs`), so
+  ## its value matches bic's (npar * log(240) - 2 * logLik) exactly.
+  expect_warning(
+    sel <- select_lv(.guard_formula, data = .guard_data, d_max = 1L, .fitter = fitter),
+    class = "gllvmTMB_select_lv_bic_sites_no_units"
+  )
+  expect_equal(sel$table$bic_sites, sel$table$bic)
+})

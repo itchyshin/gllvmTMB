@@ -35,6 +35,22 @@
   `pd_hessian` is unchanged: a CONFIRMED non-positive-definite Hessian still
   excludes a fit regardless of `require_converged`.
 
+* `select_lv()`'s `criterion` argument gains `"bic_sites"` and **it is now
+  the default** (maintainer decision D-293, 2026-09-27) -- **existing
+  `select_lv()` calls that did not pass `criterion =` may now choose a
+  different `d`.** `"bic"` and `"bic_sites"` are the same statistic, `-2 *
+  logLik + npar * log(n)`, counting `n` two different ways: `"bic"` (the
+  previous default, unchanged) uses `nobs()`'s observed-cell count (unit x
+  trait); `"bic_sites"` uses the number of distinct units with at least one
+  non-missing response. A recovery simulation on 17,687 simulated datasets
+  found `"bic_sites"` best or joint-best for Gaussian, Poisson, and
+  negative-binomial data, while `"bic"`'s cell count over-penalises added
+  latent dimensions and picks too few at small `n`. `table` gains a matching
+  `bic_sites` column. `"bic_sites"` needs the sweep's `unit =` column and the
+  formula's response identifiable in `data`; when they are not, it falls
+  back to `"bic"`'s cell count with a warning rather than aborting the
+  sweep.
+
 * Temporal is an experimental sixth covariance-source row. The new
   `temporal_indep()`, `temporal_dep()`, and rank-one `temporal_latent()`
   providers accept Gaussian long and `traits(...)` wide calls. AR1 retains

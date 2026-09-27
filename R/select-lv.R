@@ -54,6 +54,16 @@
 ## monotonicity bar like any accepted fit; `require_converged = TRUE` restores
 ## the previous outright rejection. `pd_hessian` is untouched -- a CONFIRMED
 ## non-PD Hessian still excludes a fit regardless of this argument.
+##
+## Maintainer decision D-293 (2026-09-27), mirroring GLLVM.jl's `:bic_sites`:
+## added a second BIC penalty, `bic_sites` (log(n_units), n_units = distinct
+## units with >= 1 non-missing response; see `.select_lv_n_units()`), and made
+## it the DEFAULT criterion. `bic` (log(cells) = nobs(), unchanged) remains
+## available. The default follows a recovery simulation (17,687 simulated
+## datasets): `bic_sites` was best or joint-best for Gaussian, Poisson, and
+## negative-binomial data; `bic` picked too few dimensions at small n.
+## EXISTING `select_lv()` CALLS THAT DID NOT PASS `criterion =` MAY NOW CHOOSE
+## A DIFFERENT `d` (see NEWS).
 
 ## Walk a formula's call tree and count `latent(...)` calls.
 .select_lv_count_latent <- function(expr) {
@@ -179,6 +189,27 @@
   ifelse(is.finite(denom) & denom > 0, aic + (2 * npar * (npar + 1)) / denom, NA_real_)
 }
 
+## Number of distinct units (sites) with at least one non-missing response,
+## for the `bic_sites` penalty log(n_units) -- as opposed to `nobs()`'s
+## observed-CELL count (unit x trait), which is what the existing `bic`
+## penalty log(cells) uses. Read directly off `data` and the sweep's own
+## `unit =` / formula response, since this does not depend on `d` or the fit
+## and so is computed once, before the sweep. Returns NA_integer_ (never
+## errors) when the unit column or response cannot be identified -- the
+## caller decides how to degrade.
+.select_lv_n_units <- function(formula, data, unit_arg) {
+  if (is.null(unit_arg) || !is.character(unit_arg) || length(unit_arg) != 1L ||
+      !(unit_arg %in% names(data))) {
+    return(NA_integer_)
+  }
+  response_name <- tryCatch(all.vars(formula[[2L]])[1L], error = function(e) NA_character_)
+  if (is.na(response_name) || !(response_name %in% names(data))) {
+    return(NA_integer_)
+  }
+  observed <- !is.na(data[[response_name]])
+  length(unique(data[[unit_arg]][observed]))
+}
+
 #' Select a latent-variable rank by information criterion
 #'
 #' @description
@@ -211,11 +242,29 @@
 #'   only identifiable up to the number of traits `p` (a `p`-row loading
 #'   matrix cannot have rank greater than `p`); `d_max` greater than `p` is
 #'   rejected before any fitting is attempted, naming `p`.
-#' @param criterion One of `"aic"`, `"bic"` (default), or `"aicc"`. Selects
-#'   the row that minimises this criterion among fits that pass the guard
-#'   described in Details; a fit that does not is excluded from selection
-#'   (and reported with a warning) even though its row still appears in the
-#'   table.
+#' @param criterion One of `"bic_sites"` (default), `"bic"`, `"aic"`, or
+#'   `"aicc"`. Selects the row that minimises this criterion among fits that
+#'   pass the guard described in Details; a fit that does not is excluded
+#'   from selection (and reported with a warning) even though its row still
+#'   appears in the table.
+#'
+#'   `"bic"` and `"bic_sites"` are the same statistic, `-2 * logLik + npar *
+#'   log(n)`, with `n` counted two different ways: `"bic"` uses `nobs()`'s
+#'   observed-CELL count (unit x trait cells contributing to the
+#'   likelihood -- see [nobs.gllvmTMB_multi()]); `"bic_sites"` uses the
+#'   number of distinct **units** (sites) with at least one non-missing
+#'   response, read off the sweep's own `unit =` column and the formula's
+#'   response, once, before the sweep (it does not depend on `d`). Because a
+#'   unit contributes several correlated cells (one per trait), the cell
+#'   count overstates the effective sample size for the purpose of penalising
+#'   latent-rank complexity, and log(cells) penalises added dimensions more
+#'   heavily than log(units) does. The default follows a recovery simulation
+#'   on 17,687 simulated datasets with known true rank: `"bic_sites"` was
+#'   best or joint-best for Gaussian, Poisson, and negative-binomial
+#'   responses, while `"bic"` (log(cells)) picked too few dimensions at small
+#'   `n`. Both remain available; `"bic_sites"` needs the `unit` column
+#'   identifiable in `data` (else it falls back to `"bic"`'s cell count, with
+#'   a warning) while `"bic"` never does.
 #' @param warm_start Logical, default `TRUE`. Before excluding a fit rejected
 #'   by the guard (non-monotone, unconverged, or runaway), retries once with
 #'   `control(start_from = <the last accepted fit>)` and keeps the retry only
@@ -302,8 +351,9 @@
 #' @return An object of class `"gllvmTMB_select_lv"`, a list with:
 #' \describe{
 #'   \item{table}{A `data.frame` with one row per attempted `d`: `d`,
-#'     `npar`, `logLik`, `aic`, `bic`, `aicc`, `converged` (optimizer
-#'     convergence flag), `pd_hessian`, `seconds`, `error` (the error message
+#'     `npar`, `logLik`, `aic`, `bic`, `bic_sites`, `aicc`, `converged`
+#'     (optimizer convergence flag), `pd_hessian`, `seconds`, `error` (the
+#'     error message
 #'     when a fit failed, else `NA`), `status` (one of `"ok"`, `"warm_start"`,
 #'     `"nonmonotone"`, `"unconverged"`, `"runaway"`, or `"failed"`; see
 #'     Details), and `message` (the guard's reason for a non-`"ok"`/
@@ -348,7 +398,8 @@
 #' }
 #'
 #' @export
-select_lv <- function(formula, data, ..., d_max, criterion = c("bic", "aic", "aicc"),
+select_lv <- function(formula, data, ..., d_max,
+                       criterion = c("bic_sites", "bic", "aic", "aicc"),
                        warm_start = TRUE, tol = 1e-3, max_latent_sd = 10,
                        ratio_max = 25, require_converged = FALSE, .fitter = gllvmTMB) {
   criterion <- match.arg(criterion)
@@ -419,6 +470,20 @@ select_lv <- function(formula, data, ..., d_max, criterion = c("bic", "aic", "ai
         ">" = "Pass a smaller {.arg d_max}."
       ), class = "gllvmTMB_select_lv_dmax_too_large")
     }
+  }
+
+  ## `bic_sites`'s penalty is log(n_units); computed once, up front, since it
+  ## does not depend on d. When the unit column (or the response) cannot be
+  ## identified from `data`/`formula`, `bic_sites` falls back to the same
+  ## penalty `bic` uses (log(cells), read off each fit's own `nobs()` below)
+  ## rather than aborting the whole sweep -- a single warning names the
+  ## fallback so it is never silent.
+  n_units <- .select_lv_n_units(formula, data, dots$unit)
+  if (identical(criterion, "bic_sites") && is.na(n_units)) {
+    cli::cli_warn(c(
+      "{.arg criterion} = \"bic_sites\" could not identify the number of units; falling back to {.code bic}'s cell count.",
+      "i" = "Pass {.code unit = } naming the between-unit grouping column present in {.arg data}, alongside a response identifiable from {.arg formula}, to get the log(n_units) penalty."
+    ), class = "gllvmTMB_select_lv_bic_sites_no_units")
   }
 
   ks <- seq_len(d_max)
@@ -529,7 +594,7 @@ select_lv <- function(formula, data, ..., d_max, criterion = c("bic", "aic", "ai
     if (res$status == "failed") {
       rows[[k]] <- data.frame(
         d = k, npar = NA_integer_, logLik = NA_real_,
-        aic = NA_real_, bic = NA_real_, aicc = NA_real_,
+        aic = NA_real_, bic = NA_real_, bic_sites = NA_real_, aicc = NA_real_,
         converged = NA, pd_hessian = NA, seconds = elapsed,
         error = res$message, status = res$status, message = res$message,
         stringsAsFactors = FALSE
@@ -557,7 +622,7 @@ select_lv <- function(formula, data, ..., d_max, criterion = c("bic", "aic", "ai
       rows[[k]] <- data.frame(
         d = k, npar = NA_integer_,
         logLik = if (is.null(res$ll)) NA_real_ else as.numeric(res$ll),
-        aic = NA_real_, bic = NA_real_, aicc = NA_real_,
+        aic = NA_real_, bic = NA_real_, bic_sites = NA_real_, aicc = NA_real_,
         converged = conv, pd_hessian = pdh, seconds = elapsed,
         error = NA_character_, status = res$status, message = res$message,
         stringsAsFactors = FALSE
@@ -570,9 +635,11 @@ select_lv <- function(formula, data, ..., d_max, criterion = c("bic", "aic", "ai
     ll_k <- as.numeric(res$ll)
     aic_k <- -2 * ll_k + 2 * npar_k
     bic_k <- -2 * ll_k + npar_k * log(n_k)
+    n_for_bic_sites <- if (is.na(n_units)) n_k else n_units
+    bic_sites_k <- -2 * ll_k + npar_k * log(n_for_bic_sites)
     rows[[k]] <- data.frame(
       d = k, npar = npar_k, logLik = ll_k,
-      aic = aic_k, bic = bic_k,
+      aic = aic_k, bic = bic_k, bic_sites = bic_sites_k,
       aicc = .select_lv_aicc(aic_k, npar_k, n_k),
       converged = conv, pd_hessian = pdh, seconds = elapsed,
       error = NA_character_, status = res$status, message = res$message,
@@ -610,7 +677,7 @@ select_lv <- function(formula, data, ..., d_max, criterion = c("bic", "aic", "ai
     cli::cli_abort(
       c(
         "{.arg criterion} = {.val {criterion}} is not available (NA) for every eligible fit.",
-        ">" = "Try another criterion ({.code criterion = \"aic\"}, {.code \"bic\"} or {.code \"aicc\"}), or lower {.arg d_max} -- the criterion is NA when no fit up to that rank converged, so a smaller rank is usually what is fittable on this data."
+        ">" = "Try another criterion ({.code criterion = \"aic\"}, {.code \"bic\"}, {.code \"bic_sites\"} or {.code \"aicc\"}), or lower {.arg d_max} -- the criterion is NA when no fit up to that rank converged, so a smaller rank is usually what is fittable on this data."
       ),
       class = "gllvmTMB_select_lv_criterion_unavailable"
     )
@@ -650,6 +717,7 @@ print.gllvmTMB_select_lv <- function(x, ...) {
     logLik = round(tab$logLik, 3),
     AIC = round(tab$aic, 3),
     BIC = round(tab$bic, 3),
+    BIC_sites = round(tab$bic_sites, 3),
     AICc = round(tab$aicc, 3),
     conv = tab$converged,
     pdHess = tab$pd_hessian,

@@ -10,7 +10,7 @@ select_lv(
   data,
   ...,
   d_max,
-  criterion = c("bic", "aic", "aicc"),
+  criterion = c("bic_sites", "bic", "aic", "aicc"),
   warm_start = TRUE,
   tol = 0.001,
   max_latent_sd = 10,
@@ -41,11 +41,28 @@ only identifiable up to the number of traits \code{p} (a \code{p}-row loading
 matrix cannot have rank greater than \code{p}); \code{d_max} greater than \code{p} is
 rejected before any fitting is attempted, naming \code{p}.}
 
-\item{criterion}{One of \code{"aic"}, \code{"bic"} (default), or \code{"aicc"}. Selects
-the row that minimises this criterion among fits that pass the guard
-described in Details; a fit that does not is excluded from selection
-(and reported with a warning) even though its row still appears in the
-table.}
+\item{criterion}{One of \code{"bic_sites"} (default), \code{"bic"}, \code{"aic"}, or
+\code{"aicc"}. Selects the row that minimises this criterion among fits that
+pass the guard described in Details; a fit that does not is excluded
+from selection (and reported with a warning) even though its row still
+appears in the table.
+
+\code{"bic"} and \code{"bic_sites"} are the same statistic, \code{-2 * logLik + npar * log(n)}, with \code{n} counted two different ways: \code{"bic"} uses \code{nobs()}'s
+observed-CELL count (unit x trait cells contributing to the
+likelihood -- see \code{\link[=nobs.gllvmTMB_multi]{nobs.gllvmTMB_multi()}}); \code{"bic_sites"} uses the
+number of distinct \strong{units} (sites) with at least one non-missing
+response, read off the sweep's own \verb{unit =} column and the formula's
+response, once, before the sweep (it does not depend on \code{d}). Because a
+unit contributes several correlated cells (one per trait), the cell
+count overstates the effective sample size for the purpose of penalising
+latent-rank complexity, and log(cells) penalises added dimensions more
+heavily than log(units) does. The default follows a recovery simulation
+on 17,687 simulated datasets with known true rank: \code{"bic_sites"} was
+best or joint-best for Gaussian, Poisson, and negative-binomial
+responses, while \code{"bic"} (log(cells)) picked too few dimensions at small
+\code{n}. Both remain available; \code{"bic_sites"} needs the \code{unit} column
+identifiable in \code{data} (else it falls back to \code{"bic"}'s cell count, with
+a warning) while \code{"bic"} never does.}
 
 \item{warm_start}{Logical, default \code{TRUE}. Before excluding a fit rejected
 by the guard (non-monotone, unconverged, or runaway), retries once with
@@ -91,8 +108,9 @@ called for every fit in the sweep, \verb{.fitter(formula = <rewritten formula>, 
 An object of class \code{"gllvmTMB_select_lv"}, a list with:
 \describe{
 \item{table}{A \code{data.frame} with one row per attempted \code{d}: \code{d},
-\code{npar}, \code{logLik}, \code{aic}, \code{bic}, \code{aicc}, \code{converged} (optimizer
-convergence flag), \code{pd_hessian}, \code{seconds}, \code{error} (the error message
+\code{npar}, \code{logLik}, \code{aic}, \code{bic}, \code{bic_sites}, \code{aicc}, \code{converged}
+(optimizer convergence flag), \code{pd_hessian}, \code{seconds}, \code{error} (the
+error message
 when a fit failed, else \code{NA}), \code{status} (one of \code{"ok"}, \code{"warm_start"},
 \code{"nonmonotone"}, \code{"unconverged"}, \code{"runaway"}, or \code{"failed"}; see
 Details), and \code{message} (the guard's reason for a non-\code{"ok"}/

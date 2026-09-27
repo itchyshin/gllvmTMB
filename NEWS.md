@@ -41,7 +41,8 @@
   `?select_lv` for the per-rank table and for controlling `d_max`/`criterion`
   directly. Recovery evidence is family-specific: a simulation with known
   true rank found `"bic_sites"` recovers it most often for Gaussian (recovery
-  rate 0.95), Poisson (0.999), and negative-binomial (0.90) data; for
+  rate 0.95) and Poisson (0.999) data; negative-binomial recovery is being
+  re-measured on the corrected NB fitting code, so no rate is given yet. For
   single-trial binary (Bernoulli) data recovery is still weak at small sizes
   even with the default loading ridge (`binary_ridge = 2`; e.g. 20 traits,
   120 units: the true rank was found in 8/10 simulated datasets with the
@@ -82,9 +83,10 @@
   it is also runaway or non-monotone, and counts for the monotonicity bar
   like any accepted fit; `require_converged = TRUE` restores the previous
   outright rejection. On the auto-d recovery grid (13,506 simulated
-  datasets), rejecting on the convergence flag alone lowered recovery for
-  Poisson (0.999 to 0.991) and negative binomial (0.904 to 0.866) data, and
-  every broken unconverged fit was already caught as runaway or non-monotone.
+  datasets), rejecting on the convergence flag alone lowered Poisson
+  recovery (0.999 to 0.991); the negative-binomial comparison is being
+  re-measured on the corrected NB fitting code, so no figure is given yet.
+  Every broken unconverged fit was already caught as runaway or non-monotone.
   `pd_hessian` is unchanged: a CONFIRMED non-positive-definite Hessian still
   excludes a fit regardless of `require_converged`.
 

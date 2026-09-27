@@ -520,9 +520,10 @@
 #' still subject to the runaway and monotonicity checks above, and only
 #' rejected (`"unconverged"`) when its Hessian is CONFIRMED non-positive-
 #' definite. On the auto-d recovery grid (13,506 simulated datasets),
-#' rejecting on the convergence flag alone lowered recovery for Poisson
-#' (0.999 to 0.991) and negative binomial (0.904 to 0.866) data, and every
-#' broken unconverged fit in that grid was already caught by the runaway or
+#' rejecting on the convergence flag alone lowered Poisson recovery (0.999
+#' to 0.991); the negative-binomial comparison has not yet been measured on
+#' the corrected NB fitting code, so no rate is claimed here. Every broken
+#' unconverged fit in that grid was already caught by the runaway or
 #' monotonicity checks; `require_converged = TRUE` restores the stricter
 #' rule. With `warm_start =
 #' TRUE` (the default), a rejected fit is retried once with `control(start_from

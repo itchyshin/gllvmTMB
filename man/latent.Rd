@@ -28,9 +28,10 @@ chosen \code{d}} -- they do not include the uncertainty of having selected
 it (see \code{\link[=select_lv]{select_lv()}} for the full per-rank table and for controlling
 \code{d_max} or the criterion directly). Recovery evidence is family-specific:
 a simulation with known true rank found \code{"bic_sites"} recovers it most
-often for Gaussian (recovery rate 0.95), Poisson (0.999), and
-negative-binomial (0.90) data. For single-trial binary (Bernoulli) data,
-a loading ridge is used by default (\code{select_lv()}'s \code{binary_ridge = 2})
+often for Gaussian (recovery rate 0.95) and Poisson (0.999) data.
+Negative-binomial recovery has not yet been measured on the corrected
+NB fitting code, so no rate is claimed here. For single-trial binary
+(Bernoulli) data, a loading ridge is used by default (\code{select_lv()}'s \code{binary_ridge = 2})
 and recovery is still weak at small sizes (e.g. 20 traits, 120 units:
 the true rank was found in 8/10 simulated datasets with the ridge).
 \code{d = "auto"} is not supported on any other d-bearing covariance term

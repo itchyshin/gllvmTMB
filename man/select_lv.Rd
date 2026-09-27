@@ -178,9 +178,10 @@ convergence is \strong{kept} rather than excluded on that flag alone -- it is
 still subject to the runaway and monotonicity checks above, and only
 rejected (\code{"unconverged"}) when its Hessian is CONFIRMED non-positive-
 definite. On the auto-d recovery grid (13,506 simulated datasets),
-rejecting on the convergence flag alone lowered recovery for Poisson
-(0.999 to 0.991) and negative binomial (0.904 to 0.866) data, and every
-broken unconverged fit in that grid was already caught by the runaway or
+rejecting on the convergence flag alone lowered Poisson recovery (0.999
+to 0.991); the negative-binomial comparison has not yet been measured on
+the corrected NB fitting code, so no rate is claimed here. Every broken
+unconverged fit in that grid was already caught by the runaway or
 monotonicity checks; \code{require_converged = TRUE} restores the stricter
 rule. With \code{warm_start = TRUE} (the default), a rejected fit is retried once with \verb{control(start_from = <the last accepted fit>)} before being excluded, and kept (\code{status = "warm_start"}) if the retry passes every check. This is a retry from the
 last accepted fit's matching parameter blocks only, NOT a retry "from the

@@ -530,8 +530,9 @@ compare fits yourself.
 
 Recovery evidence for \code{d = "auto"} is family-specific. A simulation with
 known true rank found \code{"bic_sites"} recovers it most often for Gaussian
-(recovery rate 0.95), Poisson (0.999), and negative-binomial (0.90) data.
-For single-trial binary (Bernoulli) data, a loading ridge is used by
+(recovery rate 0.95) and Poisson (0.999) data. Negative-binomial recovery
+has not yet been measured on the corrected NB fitting code, so no rate is
+claimed here. For single-trial binary (Bernoulli) data, a loading ridge is used by
 default (\code{select_lv()}'s \code{binary_ridge = 2}) and recovery is still weak at
 small sizes (e.g. 20 traits, 120 units: the true rank was found in 8/10
 simulated datasets with the ridge).

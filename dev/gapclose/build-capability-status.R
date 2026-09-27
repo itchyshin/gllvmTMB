@@ -322,6 +322,12 @@ REGISTER_MAP <- list(
   ROW("select_lv() rank selection + anova() boundary likelihood-ratio test",
       "Post-fit and extractors", c("MS-01", "MS-02"),
       aliases = "select_lv / chibar2_pvalue / variance_lrt"),
+  # Automatic rank selection (auto-d lane, 2026-09-27): the select_lv() guard, the
+  # `bic_sites` default, `latent(d = "auto")`, and the binary loading ridge. One combined
+  # ledger row, since the four register rows are one arc's evidence.
+  ROW("select_lv() guard, bic_sites default, latent(d = \"auto\") and binary ridge",
+      "Post-fit and extractors", c("MS-03", "MS-04", "MS-05", "MS-06"),
+      aliases = "select_lv guard / latent(d = auto) / binary_ridge"),
 
   # --- Diagnostics -----------------------------------------------------------
   ROW("Diagnostics and fit-health surface", "Diagnostics",

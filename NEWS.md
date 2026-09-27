@@ -23,7 +23,17 @@
   `$link` element or wrapped in a mixed-family list; `tol` (default `1e-3`)
   controls the monotonicity check. Healthy sweeps are unaffected. The
   selected `d` is itself an estimate; see `?select_lv` for what that means
-  for intervals computed on `selected_fit`.
+  for intervals computed on `selected_fit`. New `require_converged` argument
+  (default `FALSE`, mirroring GLLVM.jl): a fit whose optimizer did not report
+  convergence is now **kept** (`status = "ok"`, flagged in `message`) unless
+  it is also runaway or non-monotone, and counts for the monotonicity bar
+  like any accepted fit; `require_converged = TRUE` restores the previous
+  outright rejection. On the auto-d recovery grid (13,506 simulated
+  datasets), rejecting on the convergence flag alone lowered recovery for
+  Poisson (0.999 to 0.991) and negative binomial (0.904 to 0.866) data, and
+  every broken unconverged fit was already caught as runaway or non-monotone.
+  `pd_hessian` is unchanged: a CONFIRMED non-positive-definite Hessian still
+  excludes a fit regardless of `require_converged`.
 
 * Temporal is an experimental sixth covariance-source row. The new
   `temporal_indep()`, `temporal_dep()`, and rank-one `temporal_latent()`

@@ -47,6 +47,13 @@
 ## verbatim, and (since d = 1 can never be accepted-as-nonmonotone) the
 ## sweep aborts with `gllvmTMB_select_lv_no_eligible_fit` when no d
 ## succeeds.
+##
+## Same lane, mirroring GLLVM.jl commit 1c9e0ca86: added `require_converged =
+## FALSE` (default). A fit whose optimizer did not report convergence is now
+## KEPT unless it is also runaway or non-monotone, and counts for the
+## monotonicity bar like any accepted fit; `require_converged = TRUE` restores
+## the previous outright rejection. `pd_hessian` is untouched -- a CONFIRMED
+## non-PD Hessian still excludes a fit regardless of this argument.
 
 ## Walk a formula's call tree and count `latent(...)` calls.
 .select_lv_count_latent <- function(expr) {
@@ -231,6 +238,14 @@
 #'   RATIO check, `Binomial` families only: a fit is rejected as runaway when
 #'   the largest per-trait max `|loading|`, divided by the median of those
 #'   maxima across traits, reaches this ratio (one trait separating).
+#' @param require_converged Logical, default `FALSE`. When `FALSE`, a fit
+#'   whose optimizer did not report convergence is *kept* (`status = "ok"`,
+#'   with a message noting the non-convergence) unless it is also runaway or
+#'   non-monotone, and it then counts for the monotonicity bar like any other
+#'   accepted fit. `TRUE` restores the stricter rule that rejects such a fit
+#'   outright (`status = "unconverged"`). A CONFIRMED non-positive-definite
+#'   Hessian is excluded either way -- this argument only relaxes the
+#'   convergence-flag check. See Details for why the default is preferred.
 #' @param .fitter Internal test hook, default [gllvmTMB()]: the function
 #'   called for every fit in the sweep, `.fitter(formula = <rewritten
 #'   formula>, data = data, ...)`. Not intended for ordinary use.
@@ -257,7 +272,17 @@
 #' or its log-likelihood falls below `max(tol, 1e-6 * |bar|)` of `bar`, the
 #' best log-likelihood among every converged, non-runaway fit at any smaller
 #' `d` (accepted or itself rejected as non-monotone; a runaway fit's inflated
-#' log-likelihood never becomes `bar`) (`"nonmonotone"`). With `warm_start =
+#' log-likelihood never becomes `bar`) (`"nonmonotone"`). By default
+#' (`require_converged = FALSE`), a fit whose optimizer did not report
+#' convergence is **kept** rather than excluded on that flag alone -- it is
+#' still subject to the runaway and monotonicity checks above, and only
+#' rejected (`"unconverged"`) when its Hessian is CONFIRMED non-positive-
+#' definite. On the auto-d recovery grid (13,506 simulated datasets),
+#' rejecting on the convergence flag alone lowered recovery for Poisson
+#' (0.999 to 0.991) and negative binomial (0.904 to 0.866) data, and every
+#' broken unconverged fit in that grid was already caught by the runaway or
+#' monotonicity checks; `require_converged = TRUE` restores the stricter
+#' rule. With `warm_start =
 #' TRUE` (the default), a rejected fit is retried once with `control(start_from
 #' = <the last accepted fit>)` before being excluded, and kept (`status =
 #' "warm_start"`) if the retry passes every check. This is a retry from the
@@ -325,7 +350,7 @@
 #' @export
 select_lv <- function(formula, data, ..., d_max, criterion = c("bic", "aic", "aicc"),
                        warm_start = TRUE, tol = 1e-3, max_latent_sd = 10,
-                       ratio_max = 25, .fitter = gllvmTMB) {
+                       ratio_max = 25, require_converged = FALSE, .fitter = gllvmTMB) {
   criterion <- match.arg(criterion)
   dots <- list(...)
   family_obj <- dots$family %||% stats::gaussian()
@@ -449,11 +474,12 @@ select_lv <- function(formula, data, ..., d_max, criterion = c("bic", "aic", "ai
     }
     conv <- isTRUE(fit_try$opt$convergence == 0L)
     ## pdh is NA (not FALSE) when control(se = FALSE) skipped sdreport()
-    ## entirely -- "not determined", not "known bad". A fit is excluded only
-    ## on non-convergence or a CONFIRMED non-PD Hessian (pdh identically
-    ## FALSE), never on pdh being merely unknown.
+    ## entirely -- "not determined", not "known bad". A fit is excluded on a
+    ## CONFIRMED non-PD Hessian (pdh identically FALSE) regardless of
+    ## `require_converged` (that argument only relaxes the convergence-flag
+    ## check below), never on pdh being merely unknown.
     pdh <- if (!is.null(fit_try$sd_report)) isTRUE(fit_try$sd_report$pdHess) else NA
-    if (!conv || isFALSE(pdh)) {
+    if (isFALSE(pdh) || (!conv && isTRUE(require_converged))) {
       return(list(
         fit = fit_try, status = "unconverged",
         message = if (!conv) "optimizer did not report convergence" else "Hessian is not positive-definite",
@@ -478,7 +504,12 @@ select_lv <- function(formula, data, ..., d_max, criterion = c("bic", "aic", "ai
         ll = ll
       ))
     }
-    list(fit = fit_try, status = "ok", message = "", ll = ll)
+    ## A fit kept despite non-convergence (require_converged = FALSE, the
+    ## default) still counts for the monotonicity bar like any accepted fit --
+    ## it falls through to "ok" here and is treated identically downstream.
+    list(fit = fit_try, status = "ok",
+         message = if (!conv) "optimiser did not report convergence; kept (not runaway, logLik non-decreasing)" else "",
+         ll = ll)
   }
 
   for (k in ks) {

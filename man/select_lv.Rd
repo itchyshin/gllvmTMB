@@ -15,6 +15,7 @@ select_lv(
   tol = 0.001,
   max_latent_sd = 10,
   ratio_max = 25,
+  require_converged = FALSE,
   .fitter = gllvmTMB
 )
 
@@ -72,6 +73,15 @@ RATIO check, \code{Binomial} families only: a fit is rejected as runaway when
 the largest per-trait max \verb{|loading|}, divided by the median of those
 maxima across traits, reaches this ratio (one trait separating).}
 
+\item{require_converged}{Logical, default \code{FALSE}. When \code{FALSE}, a fit
+whose optimizer did not report convergence is \emph{kept} (\code{status = "ok"},
+with a message noting the non-convergence) unless it is also runaway or
+non-monotone, and it then counts for the monotonicity bar like any other
+accepted fit. \code{TRUE} restores the stricter rule that rejects such a fit
+outright (\code{status = "unconverged"}). A CONFIRMED non-positive-definite
+Hessian is excluded either way -- this argument only relaxes the
+convergence-flag check. See Details for why the default is preferred.}
+
 \item{.fitter}{Internal test hook, default \code{\link[=gllvmTMB]{gllvmTMB()}}: the function
 called for every fit in the sweep, \verb{.fitter(formula = <rewritten formula>, data = data, ...)}. Not intended for ordinary use.}
 
@@ -128,7 +138,17 @@ loadings are runaway (\code{"runaway"}, see \code{max_latent_sd}/\code{ratio_max
 or its log-likelihood falls below \verb{max(tol, 1e-6 * |bar|)} of \code{bar}, the
 best log-likelihood among every converged, non-runaway fit at any smaller
 \code{d} (accepted or itself rejected as non-monotone; a runaway fit's inflated
-log-likelihood never becomes \code{bar}) (\code{"nonmonotone"}). With \code{warm_start = TRUE} (the default), a rejected fit is retried once with \verb{control(start_from = <the last accepted fit>)} before being excluded, and kept (\code{status = "warm_start"}) if the retry passes every check. This is a retry from the
+log-likelihood never becomes \code{bar}) (\code{"nonmonotone"}). By default
+(\code{require_converged = FALSE}), a fit whose optimizer did not report
+convergence is \strong{kept} rather than excluded on that flag alone -- it is
+still subject to the runaway and monotonicity checks above, and only
+rejected (\code{"unconverged"}) when its Hessian is CONFIRMED non-positive-
+definite. On the auto-d recovery grid (13,506 simulated datasets),
+rejecting on the convergence flag alone lowered recovery for Poisson
+(0.999 to 0.991) and negative binomial (0.904 to 0.866) data, and every
+broken unconverged fit in that grid was already caught by the runaway or
+monotonicity checks; \code{require_converged = TRUE} restores the stricter
+rule. With \code{warm_start = TRUE} (the default), a rejected fit is retried once with \verb{control(start_from = <the last accepted fit>)} before being excluded, and kept (\code{status = "warm_start"}) if the retry passes every check. This is a retry from the
 last accepted fit's matching parameter blocks only, NOT a retry "from the
 (d - 1) solution": \code{gllvmTMB}'s \code{start_from} route copies same-shaped
 blocks (fixed effects, dispersion) but never the loading matrix, whose

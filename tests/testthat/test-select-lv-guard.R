@@ -128,7 +128,24 @@ test_that("a throwing fit is recorded as failed with its reason, and excluded", 
   expect_false(2L %in% sel$table$d[sel$table$status %in% c("ok", "warm_start")])
 })
 
-test_that("an unconverged fit is excluded", {
+test_that("require_converged = TRUE excludes an unconverged fit", {
+  fitter <- function(formula, data, ...) {
+    txt <- paste(deparse(formula), collapse = " ")
+    d <- as.integer(sub(".*d = ([0-9]+).*", "\\1", txt))
+    .guard_fake_fit(loglik = -500 + 60 * d, converged = (d != 2L))
+  }
+  testthat::local_mocked_bindings(
+    getLoadings = function(...) matrix(0.5, 6, 1),
+    .package = "gllvmTMB"
+  )
+  sel <- select_lv(.guard_formula, data = .guard_data, d_max = 3L,
+                    require_converged = TRUE, .fitter = fitter)
+  a2 <- sel$table[sel$table$d == 2L, ]
+  expect_equal(a2$status, "unconverged")
+  expect_false(2L %in% sel$table$d[sel$table$status %in% c("ok", "warm_start")])
+})
+
+test_that("an unconverged fit is kept by default, flagged in the message", {
   fitter <- function(formula, data, ...) {
     txt <- paste(deparse(formula), collapse = " ")
     d <- as.integer(sub(".*d = ([0-9]+).*", "\\1", txt))
@@ -140,7 +157,31 @@ test_that("an unconverged fit is excluded", {
   )
   sel <- select_lv(.guard_formula, data = .guard_data, d_max = 3L, .fitter = fitter)
   a2 <- sel$table[sel$table$d == 2L, ]
-  expect_equal(a2$status, "unconverged")
+  expect_equal(a2$status, "ok")
+  expect_match(a2$message, "did not report convergence")
+  expect_true(2L %in% sel$table$d[sel$table$status %in% c("ok", "warm_start")])
+})
+
+test_that("an unconverged fit that is also runaway is still rejected (as runaway, not unconverged)", {
+  d_of <- function(formula) {
+    txt <- paste(deparse(formula), collapse = " ")
+    as.integer(sub(".*d = ([0-9]+).*", "\\1", txt))
+  }
+  testthat::local_mocked_bindings(
+    getLoadings = function(fit, ...) if (isTRUE(fit$.runaway)) matrix(30, 6, fit$.npar_lv) else matrix(0.5, 6, fit$.npar_lv),
+    .package = "gllvmTMB"
+  )
+  fitter <- function(formula, data, ..., family = stats::poisson(), control = NULL) {
+    d <- d_of(formula)
+    fit <- .guard_fake_fit(loglik = -500 + 60 * d, converged = (d != 2L))
+    fit$.runaway <- identical(d, 2L)
+    fit$.npar_lv <- d
+    fit
+  }
+  sel <- select_lv(.guard_formula, data = .guard_data, d_max = 3L, warm_start = FALSE,
+                    family = stats::poisson(), .fitter = fitter)
+  a2 <- sel$table[sel$table$d == 2L, ]
+  expect_equal(a2$status, "runaway")
   expect_false(2L %in% sel$table$d[sel$table$status %in% c("ok", "warm_start")])
 })
 

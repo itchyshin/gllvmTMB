@@ -43,6 +43,18 @@
 #' * `dep` — the **full unstructured** mode: \eqn{\boldsymbol\Sigma}
 #'   is free with \eqn{T(T+1)/2} parameters via a Cholesky factor.
 #'
+#' ## Choosing d automatically
+#' A single ordinary `latent()` term may pass `d = "auto"` instead of an
+#' integer rank (maintainer decision D-293, 2026-09-27): before fitting,
+#' [select_lv()] sweeps `d = 1, ..., min(5, n_traits - 1)` on this same
+#' formula/data/family/control and every other argument, and the fit
+#' returned is the one it selects (by `"bic_sites"`, its default criterion),
+#' with the full selection attached at `fit$select_lv`. Intervals and tests
+#' on that fit are conditional on the chosen `d`; see [latent()] for the
+#' full contract and [select_lv()] for the per-rank table and for
+#' controlling `d_max`/`criterion` directly instead. `d = "auto"` is not
+#' supported on any other d-bearing covariance term.
+#'
 #' The five Gaussian long-format response-column slope helpers are [slope()],
 #' [phylo_slope()], [animal_slope()], [kernel_slope()], and [spatial_slope()].
 #' Their RHS is the resolved response-column factor, so they are not extra
@@ -1100,6 +1112,78 @@ gllvmTMB <- function(
   }
   if (!is.factor(data[[unit_obs]])) {
     data[[unit_obs]] <- factor(data[[unit_obs]])
+  }
+
+  ## ---- D-293 (2026-09-27): latent(d = "auto") rank selection ------------
+  ## Scan the RAW formula (before any covstruct desugaring below, so every
+  ## `latent(...)`/etc. call is still a literal marker) for a `d = "auto"`
+  ## on the ordinary `latent()` term, or an invalid `d`, or `d = "auto"` on
+  ## any other d-bearing covstruct keyword. See `.gllvmTMB_scan_auto_d()` in
+  ## R/select-lv.R.
+  auto_d_scan <- .gllvmTMB_scan_auto_d(formula)
+  if (length(auto_d_scan$invalid_latent_d) > 0L) {
+    cli::cli_abort(c(
+      "{.arg d} in {.fn latent} must be a single positive integer or the string {.val auto}.",
+      "x" = "Found {.val {auto_d_scan$invalid_latent_d}}.",
+      ">" = "Pass a whole number >= 1 (e.g. {.code d = 2}) or {.code d = \"auto\"} to select it automatically."
+    ), class = "gllvmTMB_latent_d_invalid")
+  }
+  if (auto_d_scan$latent_auto > 1L) {
+    cli::cli_abort(c(
+      "{.fn gllvmTMB} found {auto_d_scan$latent_auto} {.fn latent} terms with {.code d = \"auto\"} in {.arg formula}; only one is supported.",
+      ">" = "Use {.code d = \"auto\"} on a single {.fn latent} term, giving the others an explicit integer {.arg d}."
+    ), class = "gllvmTMB_auto_d_multiple")
+  }
+  if (length(auto_d_scan$other_auto) > 0L) {
+    cli::cli_abort(c(
+      "{.code d = \"auto\"} is only supported on the ordinary {.fn latent} term.",
+      "x" = "Found on {.fn {unique(auto_d_scan$other_auto)}}.",
+      ">" = "Pass an explicit integer {.arg d} for that term, or compare ranks for it directly with repeated fits."
+    ), class = "gllvmTMB_auto_d_unsupported_term")
+  }
+  if (auto_d_scan$latent_auto == 1L) {
+    n_traits <- length(unique(data[[trait]]))
+    if (n_traits < 1L) {
+      cli::cli_abort(c(
+        "{.code latent(d = \"auto\")} needs at least one trait level in {.arg data}[[{.val {trait}}]].",
+        "x" = "Found {n_traits} level(s)."
+      ), class = "gllvmTMB_auto_d_no_traits")
+    }
+    d_max <- min(5L, n_traits - 1L)
+    if (d_max < 1L) {
+      cli::cli_abort(c(
+        "{.code latent(d = \"auto\")} needs at least 2 trait levels so {.code d_max = min(5, n_traits - 1)} is >= 1.",
+        "x" = "{.arg data}[[{.val {trait}}]] has {n_traits} level(s).",
+        ">" = "Pass an explicit integer {.arg d} instead of {.code \"auto\"}, or supply data with more traits."
+      ), class = "gllvmTMB_auto_d_dmax_too_small")
+    }
+    ## Forward the SAME formula/data/family/control and other resolved
+    ## arguments to select_lv(), whose internal sweep rewrites this
+    ## formula's single latent() `d` for each candidate rank and refits with
+    ## an ordinary integer `d` -- never recursing back into this branch.
+    ## Mirrors the traits()-wide recursion's own conditional-forwarding
+    ## pattern above for `unit_obs`/`cluster`/`estimator`.
+    sel_args <- list(
+      formula = formula, data = data, d_max = d_max,
+      trait = trait, unit = unit, cluster2 = cluster2,
+      family = family, weights = weights, REML = REML,
+      mesh = mesh, phylo_vcv = phylo_vcv, phylo_tree = phylo_tree,
+      known_V = known_V, lambda_constraint = lambda_constraint,
+      Xcoef_fixed = Xcoef_fixed, control = control, missing = missing,
+      impute = impute, silent = silent, engine = engine,
+      ci_method = ci_method, ci_level = ci_level, ci_nboot = ci_nboot,
+      ci_seed = ci_seed
+    )
+    if (unit_obs_supplied) sel_args$unit_obs <- unit_obs
+    if (cluster_supplied) sel_args$cluster <- cluster
+    if (!estimator_missing) sel_args$estimator <- estimator
+    sel <- do.call(select_lv, sel_args)
+    fit <- sel$selected_fit
+    fit$select_lv <- sel
+    cli::cli_inform(
+      "{.fn latent}(d = \"auto\"): chose d = {sel$selected_d} by {sel$criterion} over d = 1:{d_max}. Intervals from this fit are conditional on the chosen d; see {.code fit$select_lv}."
+    )
+    return(fit)
   }
 
   ## Design 131: validate and unwrap shared fixed effects, then parse

@@ -10,7 +10,24 @@ latent(formula, d = 1, unique = TRUE, common = FALSE, lv = NULL)
 \item{formula}{\code{0 + trait | g} style formula (LHS is the response
 factor, typically \code{0 + trait}; RHS is the grouping factor).}
 
-\item{d}{Integer; number of latent factors.}
+\item{d}{Integer number of latent factors, or the string \code{"auto"} to
+select \code{d} automatically (maintainer decision D-293, 2026-09-27).
+\subsection{Choosing d automatically}{
+
+\code{d = "auto"} is supported on exactly one ordinary \code{latent()} term per
+formula. \code{\link[=gllvmTMB]{gllvmTMB()}} then runs \code{\link[=select_lv]{select_lv()}} on the same
+formula/data/family/control (\code{d_max = min(5, n_traits - 1)}, criterion
+\code{"bic_sites"}) before fitting, and returns the selected fit with the
+full selection attached at \code{fit$select_lv}; a \code{cli::cli_inform} message
+at fit time names the chosen \code{d} and the criterion. Standard errors,
+confidence intervals, and tests on that fit are \strong{conditional on the
+chosen \code{d}} -- they do not include the uncertainty of having selected
+it (see \code{\link[=select_lv]{select_lv()}} for the full per-rank table and for controlling
+\code{d_max} or the criterion directly). \code{d = "auto"} is not supported on any
+other d-bearing covariance term (\code{phylo_latent()}, \code{spatial_latent()},
+\code{animal_latent()}, \code{kernel_latent()}, etc.) -- fit and compare those
+ranks directly, or with \code{\link[=select_lv]{select_lv()}} itself.
+}}
 
 \item{unique}{Logical; \code{TRUE} (default) auto-includes the diagonal
 trait-specific \eqn{\boldsymbol\Psi} companion
@@ -32,7 +49,7 @@ automatic \code{Psi} additionally requires that its physical loading,
 latent-predictor, and engine-free diagonal parameters pass a necessary
 joint mean-covariance dimension screen. Passing that screen is not a
 recovery or interval-calibration certificate. Bounded
-rank-2/rank-3 checks exercise every supported family, but broad
+rank-2/rank-3 canaries exercise every registered family, but broad
 composition recovery and interval calibration remain partial. Retained
 recovery and interval claims remain limited to their named cells.
 Source-specific \verb{*_latent(..., lv = ~ x)} forms are

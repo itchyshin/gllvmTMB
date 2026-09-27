@@ -554,7 +554,23 @@ meta <- function(value, sampling_var) {
 #'
 #' @param formula `0 + trait | g` style formula (LHS is the response
 #'   factor, typically `0 + trait`; RHS is the grouping factor).
-#' @param d Integer; number of latent factors.
+#' @param d Integer number of latent factors, or the string `"auto"` to
+#'   select `d` automatically (maintainer decision D-293, 2026-09-27).
+#'
+#'   ## Choosing d automatically
+#'   `d = "auto"` is supported on exactly one ordinary `latent()` term per
+#'   formula. [gllvmTMB()] then runs [select_lv()] on the same
+#'   formula/data/family/control (`d_max = min(5, n_traits - 1)`, criterion
+#'   `"bic_sites"`) before fitting, and returns the selected fit with the
+#'   full selection attached at `fit$select_lv`; a `cli::cli_inform` message
+#'   at fit time names the chosen `d` and the criterion. Standard errors,
+#'   confidence intervals, and tests on that fit are **conditional on the
+#'   chosen `d`** -- they do not include the uncertainty of having selected
+#'   it (see [select_lv()] for the full per-rank table and for controlling
+#'   `d_max` or the criterion directly). `d = "auto"` is not supported on any
+#'   other d-bearing covariance term (`phylo_latent()`, `spatial_latent()`,
+#'   `animal_latent()`, `kernel_latent()`, etc.) -- fit and compare those
+#'   ranks directly, or with [select_lv()] itself.
 #' @param unique Logical; `TRUE` (default) auto-includes the diagonal
 #'   trait-specific \eqn{\boldsymbol\Psi} companion
 #'   (\eqn{\boldsymbol\Sigma = \boldsymbol\Lambda\boldsymbol\Lambda^\top + \boldsymbol\Psi}).

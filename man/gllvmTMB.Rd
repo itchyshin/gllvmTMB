@@ -437,6 +437,18 @@ variance, no cross-trait covariance.
 \item \code{dep} — the \strong{full unstructured} mode: \eqn{\boldsymbol\Sigma}
 is free with \eqn{T(T+1)/2} parameters via a Cholesky factor.
 }
+\subsection{Choosing d automatically}{
+
+A single ordinary \code{latent()} term may pass \code{d = "auto"} instead of an
+integer rank (maintainer decision D-293, 2026-09-27): before fitting,
+\code{\link[=select_lv]{select_lv()}} sweeps \verb{d = 1, ..., min(5, n_traits - 1)} on this same
+formula/data/family/control and every other argument, and the fit
+returned is the one it selects (by \code{"bic_sites"}, its default criterion),
+with the full selection attached at \code{fit$select_lv}. Intervals and tests
+on that fit are conditional on the chosen \code{d}; see \code{\link[=latent]{latent()}} for the
+full contract and \code{\link[=select_lv]{select_lv()}} for the per-rank table and for
+controlling \code{d_max}/\code{criterion} directly instead. \code{d = "auto"} is not
+supported on any other d-bearing covariance term.
 
 The five Gaussian long-format response-column slope helpers are \code{\link[=slope]{slope()}},
 \code{\link[=phylo_slope]{phylo_slope()}}, \code{\link[=animal_slope]{animal_slope()}}, \code{\link[=kernel_slope]{kernel_slope()}}, and \code{\link[=spatial_slope]{spatial_slope()}}.
@@ -515,6 +527,8 @@ multivariate engine; \code{type = "poisson-link"} is not implemented. Each
 delta family carries one per-trait dispersion of the \emph{positive}
 component (no extra Bernoulli dispersion). The response must be
 non-negative.
+}
+
 \subsection{Per-trait residual variance: when does it activate?}{
 
 "Residual" in a mixed-effects model is \strong{scale-relative}: what

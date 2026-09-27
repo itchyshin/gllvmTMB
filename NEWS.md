@@ -1,5 +1,20 @@
 # Development (unreleased)
 
+* Ordinary `latent()` gains `d = "auto"` (maintainer decision D-293,
+  2026-09-27): on a formula with exactly one ordinary `latent()` term,
+  `gllvmTMB()` now runs `select_lv()` on that same formula/data/family/
+  control and every other argument (`d_max = min(5, n_traits - 1)`,
+  criterion `"bic_sites"`) before fitting, and returns the selected fit with
+  the full selection attached at `fit$select_lv`; a message at fit time
+  names the chosen `d` and criterion. `latent()`'s own default is unchanged
+  (`d = 1`). Intervals and tests on the returned fit are conditional on the
+  chosen `d`. `d = "auto"` on more than one `latent()` term, on any other
+  d-bearing covariance term (`phylo_latent()`, `spatial_latent()`,
+  `animal_latent()`, `kernel_latent()`, etc.), or any other invalid `d`
+  value on `latent()`, is refused with a clear error. See `?latent` and
+  `?gllvmTMB` ("Choosing d automatically") and `?select_lv` for the per-rank
+  table and for controlling `d_max`/`criterion` directly.
+
 * `select_lv()` now guards its latent-rank sweep against a non-nesting or
   runaway fit (ported from GLLVM.jl's `select_lv()`/`_lv_warm_start()`/
   `_lv_runaway()`): a `d` whose fit errors, fails to converge, has a runaway

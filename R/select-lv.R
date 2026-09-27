@@ -77,6 +77,94 @@
   n
 }
 
+## Lane auto-d-20260926 (D-293): every OTHER exported covstruct keyword that
+## carries its own `d` (latent rank) argument -- `latent(d = "auto")` is
+## supported only on the ordinary `latent()` term gllvmTMB()'s auto-d
+## dispatch sweeps via `select_lv()`; `d = "auto"` on any of these is
+## refused with a clear message (gllvmTMB()'s `.gllvmTMB_scan_auto_d()`
+## caller decides what "refused" means, so this file only enumerates them).
+.gllvmTMB_d_bearing_terms <- c(
+  "phylo", "phylo_rr", "phylo_latent", "spatial", "spatial_latent",
+  "animal_latent", "kernel_latent", "temporal_latent"
+)
+
+## Walk `formula`'s call tree (BEFORE any covstruct desugaring, so every
+## `latent(...)`/etc. call is still a literal, unevaluated marker) looking
+## for a `d` argument on the ordinary `latent()` term or on any of the
+## `.gllvmTMB_d_bearing_terms` keywords above. Argument matching goes through
+## `match.call()` against each keyword's own formals, so a positional `d`
+## (e.g. `phylo_rr(species, 2)`) is found too; `d`'s VALUE is then resolved
+## by evaluating it in the formula's own environment (mirroring
+## `parse_covstruct_call()`'s own `eval(extra_args[[i]], envir = eval_env)`)
+## so a variable such as `latent(..., d = my_rank)` is read correctly rather
+## than being misread as an invalid literal.
+##
+## Returns a list: `latent_auto` (count of ordinary `latent()` calls with
+## `d` evaluating to the literal string `"auto"`), `other_auto` (character
+## vector, one entry per other d-bearing call found with `d = "auto"`,
+## naming the keyword), and `invalid_latent_d` (character vector, the
+## formatted `d` value of every ordinary `latent()` call whose `d` is
+## neither `"auto"` nor a single positive integer -- callers of this
+## function decide how to report each).
+.gllvmTMB_scan_auto_d <- function(formula) {
+  env <- environment(formula)
+  latent_auto <- 0L
+  other_auto <- character(0L)
+  invalid_latent_d <- character(0L)
+
+  is_auto <- function(d_val) {
+    is.character(d_val) && length(d_val) == 1L && !is.na(d_val) &&
+      identical(d_val, "auto")
+  }
+  is_valid_positive_integer <- function(d_val) {
+    is.numeric(d_val) && length(d_val) == 1L && !is.na(d_val) &&
+      is.finite(d_val) && d_val == as.integer(d_val) && d_val >= 1L
+  }
+  resolve_d <- function(fn_name, e) {
+    fn_obj <- tryCatch(get(fn_name, mode = "function"), error = function(err) NULL)
+    if (is.null(fn_obj)) {
+      return(NULL)
+    }
+    mc <- tryCatch(match.call(fn_obj, e), error = function(err) NULL)
+    d_arg <- if (!is.null(mc)) mc$d else NULL
+    if (is.null(d_arg)) {
+      return(NULL)
+    }
+    tryCatch(eval(d_arg, envir = env), error = function(err) d_arg)
+  }
+
+  walk <- function(e) {
+    if (!is.call(e)) {
+      return(invisible(NULL))
+    }
+    fn_name <- tryCatch(deparse(e[[1L]]), error = function(err) NA_character_)
+    if (!is.na(fn_name) && identical(fn_name, "latent")) {
+      d_val <- resolve_d(fn_name, e)
+      if (!is.null(d_val)) {
+        if (is_auto(d_val)) {
+          latent_auto <<- latent_auto + 1L
+        } else if (!is_valid_positive_integer(d_val)) {
+          invalid_latent_d <<- c(invalid_latent_d, format(d_val))
+        }
+      }
+    } else if (!is.na(fn_name) && fn_name %in% .gllvmTMB_d_bearing_terms) {
+      d_val <- resolve_d(fn_name, e)
+      if (!is.null(d_val) && is_auto(d_val)) {
+        other_auto <<- c(other_auto, fn_name)
+      }
+    }
+    for (i in seq_along(e)) {
+      walk(e[[i]])
+    }
+  }
+  walk(formula)
+  list(
+    latent_auto = latent_auto,
+    other_auto = other_auto,
+    invalid_latent_d = invalid_latent_d
+  )
+}
+
 ## TRUE when `family_obj` is Gaussian/identity-link, robustly: checked via
 ## BOTH `$family == "gaussian"` and `$link == "identity"` (a family object
 ## missing one of the two -- e.g. a hand-built list with only `$family` --

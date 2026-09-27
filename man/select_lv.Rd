@@ -16,6 +16,7 @@ select_lv(
   max_latent_sd = 10,
   ratio_max = 25,
   require_converged = FALSE,
+  binary_ridge = 2,
   .fitter = gllvmTMB
 )
 
@@ -99,6 +100,18 @@ outright (\code{status = "unconverged"}). A CONFIRMED non-positive-definite
 Hessian is excluded either way -- this argument only relaxes the
 convergence-flag check. See Details for why the default is preferred.}
 
+\item{binary_ridge}{Single positive number or \code{Inf}, default \code{2}. Maintainer
+decision D-293: for \strong{single-trial binomial (Bernoulli)} data -- every
+response a 0/1 trial, checked from the formula/\code{weights} (see Details) --
+every fit in the sweep uses \code{control(aghq_ridge = binary_ridge)} (a
+Laplace fit penalised by a loading ridge at scale \code{binary_ridge}, see
+\code{\link[=gllvmTMBcontrol]{gllvmTMBcontrol()}}) unless the caller's own \code{control} already names
+\code{aghq_ridge} (then theirs wins) or \code{binary_ridge = Inf} (disables the
+default; today's unpenalised behaviour). Other families, or multi-trial
+binomial data, are unaffected regardless of this argument. A recovery
+experiment (20 traits, \code{n = 120} Bernoulli datasets) found the ridge
+recovered the true \code{d} in 8/10 simulated datasets against 4/10 without.}
+
 \item{.fitter}{Internal test hook, default \code{\link[=gllvmTMB]{gllvmTMB()}}: the function
 called for every fit in the sweep, \verb{.fitter(formula = <rewritten formula>, data = data, ...)}. Not intended for ordinary use.}
 
@@ -109,7 +122,10 @@ An object of class \code{"gllvmTMB_select_lv"}, a list with:
 \describe{
 \item{table}{A \code{data.frame} with one row per attempted \code{d}: \code{d},
 \code{npar}, \code{logLik}, \code{aic}, \code{bic}, \code{bic_sites}, \code{aicc}, \code{converged}
-(optimizer convergence flag), \code{pd_hessian}, \code{seconds}, \code{error} (the
+(optimizer convergence flag), \code{pd_hessian}, \code{seconds}, \code{ridge_tau} (the
+loading-ridge scale actually used for that fit, from \code{binary_ridge} or
+the caller's own \code{control}; \code{NA} when no ridge was used or the fit
+failed), \code{error} (the
 error message
 when a fit failed, else \code{NA}), \code{status} (one of \code{"ok"}, \code{"warm_start"},
 \code{"nonmonotone"}, \code{"unconverged"}, \code{"runaway"}, or \code{"failed"}; see
@@ -174,6 +190,23 @@ shape differs between ranks, so the new loading column in the retry still
 starts at the ordinary default init. Healthy sweeps never trigger a retry,
 so their results are unchanged from a version of this function without the
 guard.
+}
+
+\section{Binary (single-trial Bernoulli) loading ridge and the monotonicity bar}{
+For single-trial binomial data (see \code{binary_ridge}), every fit is
+penalised: the optimiser minimises \code{likelihood_nll + 0.5 * sum(lambda^2) / tau^2}, not the plain likelihood. Nesting then only guarantees that this
+PENALISED objective improves with \code{d} -- the unpenalised log-likelihood at
+the ridge's MAP point can fall even for a correctly maximised larger
+model. So whenever the ridge is active (from \code{binary_ridge} or from the
+caller's own \code{control(aghq_ridge = )}), the non-monotone guard and \code{bar}
+above compare the penalised objective (\code{-(likelihood_nll + penalty)},
+read off the fit's own \code{objective_components}), not the log-likelihood.
+\code{criterion} selection is unaffected: \code{bic_sites}/\code{bic}/\code{aic}/\code{aicc} always
+use the unpenalised log-likelihood at that MAP point, exactly as
+\code{logLik()} reports it (with its usual warning that this is a MAP-point
+likelihood, muffled per-fit and replaced by one summary message for the
+whole sweep). Without the ridge (the default for any other family, or for
+multi-trial binomial data), this section does not change anything.
 
 The rank \code{d} chosen by \code{select_lv()} is itself an estimate: standard
 errors, confidence intervals, and tests computed on \code{selected_fit}

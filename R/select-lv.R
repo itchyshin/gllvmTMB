@@ -298,6 +298,61 @@
   length(unique(data[[unit_arg]][observed]))
 }
 
+## TRUE when `family_obj` is binomial, robustly: mirrors
+## `.select_lv_is_gaussian_family()` -- for a mixed-family fit (`family_obj` a
+## plain list of per-response family objects), only when EVERY entry is
+## binomial. Used to gate the `binary_ridge` sweep default below.
+.select_lv_is_binomial_family <- function(family_obj) {
+  is_one <- function(f) {
+    fam_name <- tryCatch(f$family, error = function(e) NULL)
+    !is.null(fam_name) && identical(fam_name, "binomial")
+  }
+  fams <- if (is.list(family_obj) && !inherits(family_obj, "family")) family_obj else list(family_obj)
+  length(fams) > 0L && all(vapply(fams, is_one, logical(1L)))
+}
+
+## Per-row binomial trial count, mirroring gllvmTMB()'s own two accepted
+## APIs (see ?gllvmTMB, "Multi-trial binomial"): a `cbind(successes,
+## failures)` formula LHS (trials = successes + failures), or a flat 0/1
+## response with `weights =` giving the trial count directly (the
+## alternative API; `weights = NULL`, the default, means Bernoulli, trials =
+## 1 on every row). Returns a numeric vector the same length as `nrow(data)`
+## (for the `weights` branch) or as long as the evaluated `cbind()` arguments;
+## a `cbind()` LHS whose arguments cannot be evaluated in `data` returns
+## `NA_real_` throughout so callers treat trials as UNKNOWN, never as 1.
+.select_lv_binomial_trials <- function(formula, data, dots) {
+  lhs <- formula[[2L]]
+  if (is.call(lhs) && identical(deparse(lhs[[1L]]), "cbind") && length(lhs) == 3L) {
+    env <- environment(formula)
+    succ <- tryCatch(eval(lhs[[2L]], envir = data, enclos = env), error = function(e) NULL)
+    fail <- tryCatch(eval(lhs[[3L]], envir = data, enclos = env), error = function(e) NULL)
+    if (is.null(succ) || is.null(fail) || length(succ) != length(fail)) {
+      return(rep(NA_real_, nrow(data)))
+    }
+    return(as.numeric(succ) + as.numeric(fail))
+  }
+  wt <- dots$weights
+  if (is.null(wt)) {
+    return(rep(1, nrow(data)))
+  }
+  as.numeric(wt)
+}
+
+## TRUE exactly when `family_obj` is binomial (see
+## `.select_lv_is_binomial_family()`) AND every response is single-trial
+## (Bernoulli): every trial count from `.select_lv_binomial_trials()` is
+## finite and equal to 1. FALSE (never NA) for any other family, an
+## unreadable trial count, or genuine multi-trial data -- this gates the
+## `binary_ridge` sweep default, and an ambiguous trial count must not
+## silently enable it.
+.select_lv_is_single_trial_binomial <- function(formula, data, family_obj, dots) {
+  if (!.select_lv_is_binomial_family(family_obj)) {
+    return(FALSE)
+  }
+  trials <- .select_lv_binomial_trials(formula, data, dots)
+  length(trials) > 0L && all(is.finite(trials)) && all(trials == 1)
+}
+
 #' Select a latent-variable rank by information criterion
 #'
 #' @description
@@ -383,6 +438,17 @@
 #'   outright (`status = "unconverged"`). A CONFIRMED non-positive-definite
 #'   Hessian is excluded either way -- this argument only relaxes the
 #'   convergence-flag check. See Details for why the default is preferred.
+#' @param binary_ridge Single positive number or `Inf`, default `2`. Maintainer
+#'   decision D-293: for **single-trial binomial (Bernoulli)** data -- every
+#'   response a 0/1 trial, checked from the formula/`weights` (see Details) --
+#'   every fit in the sweep uses `control(aghq_ridge = binary_ridge)` (a
+#'   Laplace fit penalised by a loading ridge at scale `binary_ridge`, see
+#'   [gllvmTMBcontrol()]) unless the caller's own `control` already names
+#'   `aghq_ridge` (then theirs wins) or `binary_ridge = Inf` (disables the
+#'   default; today's unpenalised behaviour). Other families, or multi-trial
+#'   binomial data, are unaffected regardless of this argument. A recovery
+#'   experiment (20 traits, `n = 120` Bernoulli datasets) found the ridge
+#'   recovered the true `d` in 8/10 simulated datasets against 4/10 without.
 #' @param .fitter Internal test hook, default [gllvmTMB()]: the function
 #'   called for every fit in the sweep, `.fitter(formula = <rewritten
 #'   formula>, data = data, ...)`. Not intended for ordinary use.
@@ -431,6 +497,23 @@
 #' so their results are unchanged from a version of this function without the
 #' guard.
 #'
+#' # Binary (single-trial Bernoulli) loading ridge and the monotonicity bar
+#' For single-trial binomial data (see `binary_ridge`), every fit is
+#' penalised: the optimiser minimises `likelihood_nll + 0.5 * sum(lambda^2) /
+#' tau^2`, not the plain likelihood. Nesting then only guarantees that this
+#' PENALISED objective improves with `d` -- the unpenalised log-likelihood at
+#' the ridge's MAP point can fall even for a correctly maximised larger
+#' model. So whenever the ridge is active (from `binary_ridge` or from the
+#' caller's own `control(aghq_ridge = )`), the non-monotone guard and `bar`
+#' above compare the penalised objective (`-(likelihood_nll + penalty)`,
+#' read off the fit's own `objective_components`), not the log-likelihood.
+#' `criterion` selection is unaffected: `bic_sites`/`bic`/`aic`/`aicc` always
+#' use the unpenalised log-likelihood at that MAP point, exactly as
+#' `logLik()` reports it (with its usual warning that this is a MAP-point
+#' likelihood, muffled per-fit and replaced by one summary message for the
+#' whole sweep). Without the ridge (the default for any other family, or for
+#' multi-trial binomial data), this section does not change anything.
+#'
 #' The rank `d` chosen by `select_lv()` is itself an estimate: standard
 #' errors, confidence intervals, and tests computed on `selected_fit`
 #' (`sel$fits[[as.character(sel$selected_d)]]`) are conditional on that `d`
@@ -440,7 +523,10 @@
 #' \describe{
 #'   \item{table}{A `data.frame` with one row per attempted `d`: `d`,
 #'     `npar`, `logLik`, `aic`, `bic`, `bic_sites`, `aicc`, `converged`
-#'     (optimizer convergence flag), `pd_hessian`, `seconds`, `error` (the
+#'     (optimizer convergence flag), `pd_hessian`, `seconds`, `ridge_tau` (the
+#'     loading-ridge scale actually used for that fit, from `binary_ridge` or
+#'     the caller's own `control`; `NA` when no ridge was used or the fit
+#'     failed), `error` (the
 #'     error message
 #'     when a fit failed, else `NA`), `status` (one of `"ok"`, `"warm_start"`,
 #'     `"nonmonotone"`, `"unconverged"`, `"runaway"`, or `"failed"`; see
@@ -489,7 +575,8 @@
 select_lv <- function(formula, data, ..., d_max,
                        criterion = c("bic_sites", "bic", "aic", "aicc"),
                        warm_start = TRUE, tol = 1e-3, max_latent_sd = 10,
-                       ratio_max = 25, require_converged = FALSE, .fitter = gllvmTMB) {
+                       ratio_max = 25, require_converged = FALSE,
+                       binary_ridge = 2, .fitter = gllvmTMB) {
   criterion <- match.arg(criterion)
   dots <- list(...)
   family_obj <- dots$family %||% stats::gaussian()
@@ -574,6 +661,60 @@ select_lv <- function(formula, data, ..., d_max,
     ), class = "gllvmTMB_select_lv_bic_sites_no_units")
   }
 
+  ## D-293 loading-ridge sweep default for single-trial binomial (Bernoulli)
+  ## data (vault D-293; ridge experiment in
+  ## LOOP/lanes/auto-d-20260926/ridge/ridge_binary_scaled.R,
+  ## GLLVM.jl-auto-d-20260926 lane worktree): recovered true d = 2 in 8/10
+  ## simulated Bernoulli datasets (20 traits, n = 120) with
+  ## control(aghq_ridge = 2), vs 4/10 without. Applied only in the scope the
+  ## experiment covers -- binomial family, every response single-trial (see
+  ## `.select_lv_is_single_trial_binomial()` above) -- and only when the
+  ## caller has not already named `aghq_ridge` on their own `control` (that
+  ## always wins, whatever tau it names, including `Inf`).
+  is_single_trial_binomial <- .select_lv_is_single_trial_binomial(formula, data, family_obj, dots)
+  caller_named_ridge <- isTRUE(dots$control$aghq_ridge_explicit)
+  apply_binary_ridge <- !caller_named_ridge && isTRUE(is_single_trial_binomial) &&
+    is.numeric(binary_ridge) && length(binary_ridge) == 1L && !is.na(binary_ridge) &&
+    is.finite(binary_ridge) && binary_ridge > 0
+  if (apply_binary_ridge) {
+    ridge_control <- dots$control %||% gllvmTMBcontrol()
+    ridge_control$aghq_ridge <- binary_ridge
+    ridge_control$aghq_ridge_explicit <- TRUE
+    dots$control <- ridge_control
+  }
+  ## Whether every fit in the sweep (first attempt and the start_from retry,
+  ## both of which read `dots$control`, set above) is now Laplace + ridge --
+  ## either from our own injection just above, or because the caller's own
+  ## `control` already named `aghq_ridge` (theirs wins, but the monotonicity
+  ## bar below still has to honour whatever penalty it imposes).
+  ridge_active <- isTRUE(dots$control$aghq_ridge_explicit) &&
+    is.numeric(dots$control$aghq_ridge) && length(dots$control$aghq_ridge) == 1L &&
+    !is.na(dots$control$aghq_ridge) && is.finite(dots$control$aghq_ridge) &&
+    dots$control$aghq_ridge > 0
+  if (isTRUE(ridge_active)) {
+    cli::cli_inform(c(
+      "{.fn select_lv} is sweeping every {.arg d} with a loading ridge (tau = {format(dots$control$aghq_ridge, digits = 4)}).",
+      "i" = "{.field bic_sites}/{.field bic}/{.field aic}/{.field aicc} are computed from the unpenalised log-likelihood at that ridge optimum (a MAP point, not the likelihood's own maximum); the non-nesting guard instead compares the penalised objective, which nesting DOES guarantee improves with {.arg d}.",
+      ">" = "Pass {.code binary_ridge = Inf} to disable the default for single-trial binomial data."
+    ), class = "gllvmTMB_select_lv_binary_ridge_used")
+  }
+
+  ## `stats::logLik(fit)` warns, per fit, that a penalised fit's value sits at
+  ## a MAP point (R/methods-gllvmTMB.R, `logLik.gllvmTMB_multi()`) -- accurate
+  ## for a single fit, but repetitive once per swept `d` here. Muffled by
+  ## message (no distinct condition class is raised) and replaced by the one
+  ## `cli_inform()` above; a no-op when the fit is not penalised.
+  .select_lv_safe_loglik <- function(fit) {
+    withCallingHandlers(
+      tryCatch(stats::logLik(fit), error = function(e) NULL),
+      warning = function(w) {
+        if (grepl("penalised MAP point", conditionMessage(w), fixed = TRUE)) {
+          invokeRestart("muffleWarning")
+        }
+      }
+    )
+  }
+
   ks <- seq_len(d_max)
   rows <- vector("list", d_max)
   fits <- vector("list", d_max)
@@ -605,13 +746,50 @@ select_lv <- function(formula, data, ..., d_max,
     bar - max(tol, 1e-6 * abs(bar))
   }
 
+  ## The value the monotonicity guard actually compares, for a fit whose
+  ## `ll`/`fit_try` are already known good: `-fit_try$objective_components$
+  ## optimization_nll` (the penalised NLL the optimiser minimised --
+  ## `likelihood_nll + ridge_penalty`, see `.gllvmTMB_objective_components()`
+  ## in R/fit-multi.R) when the ridge is active, else the plain `as.numeric(ll)`
+  ## -- unchanged from the pre-ridge behaviour. Falls back to `as.numeric(ll)`
+  ## if `objective_components` is unavailable (an older fit object) so the
+  ## guard degrades to the unpenalised comparison rather than erroring.
+  ## The loading-ridge scale actually used for a given fit, read off the
+  ## fit's own report (`fit$aghq$ridge_tau`, populated whether or not AGHQ
+  ## itself ran -- see R/fit-multi.R) rather than re-derived from `dots$
+  ## control`, so a fit where the ridge did not reach any parameter block
+  ## (`.gllvmTMB_loading_ridge_applies()`) is correctly recorded as
+  ## unpenalised. `NA` for no fit (a "failed" row) or no ridge.
+  fit_ridge_tau <- function(fit) {
+    if (is.null(fit)) {
+      return(NA_real_)
+    }
+    rt <- fit$aghq$ridge_tau
+    if (is.null(rt) || length(rt) != 1L || is.na(rt) || !is.finite(rt)) NA_real_ else as.numeric(rt)
+  }
+
+  mono_value <- function(fit_try, ll) {
+    if (!isTRUE(ridge_active)) {
+      return(as.numeric(ll))
+    }
+    oc <- fit_try$objective_components
+    onll <- oc$optimization_nll
+    if (is.null(onll) || length(onll) != 1L || !is.finite(onll)) {
+      return(as.numeric(ll))
+    }
+    -as.numeric(onll)
+  }
+
   ## Try one fit and classify it: an error is "failed"; non-convergence or a
   ## confirmed non-PD Hessian is "unconverged"; an unreadable logLik() is
   ## folded into "unconverged" (there is nothing to compare); a runaway
-  ## loading matrix is "runaway"; a logLik() below `bar_threshold(bar_ll)` is
-  ## "nonmonotone"; anything else is "ok". Returns a list with `fit`,
-  ## `status`, `message`, and `ll` (a `logLik` object with `df`/`nobs`
-  ## attributes, or `NULL`).
+  ## loading matrix is "runaway"; a monotonicity value below
+  ## `bar_threshold(bar_ll)` is "nonmonotone" (the PENALISED objective when
+  ## the ridge is active -- see `mono_value()` -- else the plain logLik, as
+  ## before); anything else is "ok". Returns a list with `fit`, `status`,
+  ## `message`, `ll` (a `logLik` object with `df`/`nobs` attributes, or
+  ## `NULL`), and `mono` (the monotonicity value used for this fit, or `NULL`
+  ## when no comparison was made).
   try_fit <- function(f_k, control_override = NULL) {
     call_dots <- dots
     if (!is.null(control_override)) {
@@ -623,7 +801,7 @@ select_lv <- function(formula, data, ..., d_max,
     )
     if (inherits(fit_try, "error")) {
       return(list(fit = NULL, status = "failed",
-                  message = conditionMessage(fit_try), ll = NULL))
+                  message = conditionMessage(fit_try), ll = NULL, mono = NULL))
     }
     conv <- isTRUE(fit_try$opt$convergence == 0L)
     ## pdh is NA (not FALSE) when control(se = FALSE) skipped sdreport()
@@ -636,25 +814,31 @@ select_lv <- function(formula, data, ..., d_max,
       return(list(
         fit = fit_try, status = "unconverged",
         message = if (!conv) "optimizer did not report convergence" else "Hessian is not positive-definite",
-        ll = tryCatch(stats::logLik(fit_try), error = function(e) NULL)
+        ll = .select_lv_safe_loglik(fit_try), mono = NULL
       ))
     }
-    ll <- tryCatch(stats::logLik(fit_try), error = function(e) NULL)
+    ll <- .select_lv_safe_loglik(fit_try)
     if (is.null(ll)) {
       return(list(fit = fit_try, status = "unconverged",
-                  message = "logLik() unavailable for this fit", ll = NULL))
+                  message = "logLik() unavailable for this fit", ll = NULL, mono = NULL))
     }
     reason <- .select_lv_runaway(fit_try, family_obj,
                                   max_latent_sd = max_latent_sd, ratio_max = ratio_max)
     if (nzchar(reason)) {
-      return(list(fit = fit_try, status = "runaway", message = reason, ll = ll))
+      return(list(fit = fit_try, status = "runaway", message = reason, ll = ll, mono = NULL))
     }
-    if (as.numeric(ll) < bar_threshold(bar_ll)) {
+    mono <- mono_value(fit_try, ll)
+    if (mono < bar_threshold(bar_ll)) {
       return(list(
         fit = fit_try, status = "nonmonotone",
-        message = sprintf("logLik %s below a converged fit at a smaller d (%s)",
-                           format(as.numeric(ll), digits = 7), format(bar_ll, digits = 7)),
-        ll = ll
+        message = if (isTRUE(ridge_active)) {
+          sprintf("penalised objective %s below a converged fit at a smaller d (%s); logLik %s",
+                  format(mono, digits = 7), format(bar_ll, digits = 7), format(as.numeric(ll), digits = 7))
+        } else {
+          sprintf("logLik %s below a converged fit at a smaller d (%s)",
+                  format(as.numeric(ll), digits = 7), format(bar_ll, digits = 7))
+        },
+        ll = ll, mono = mono
       ))
     }
     ## A fit kept despite non-convergence (require_converged = FALSE, the
@@ -662,7 +846,7 @@ select_lv <- function(formula, data, ..., d_max,
     ## it falls through to "ok" here and is treated identically downstream.
     list(fit = fit_try, status = "ok",
          message = if (!conv) "optimiser did not report convergence; kept (not runaway, logLik non-decreasing)" else "",
-         ll = ll)
+         ll = ll, mono = mono)
   }
 
   for (k in ks) {
@@ -683,7 +867,7 @@ select_lv <- function(formula, data, ..., d_max,
       rows[[k]] <- data.frame(
         d = k, npar = NA_integer_, logLik = NA_real_,
         aic = NA_real_, bic = NA_real_, bic_sites = NA_real_, aicc = NA_real_,
-        converged = NA, pd_hessian = NA, seconds = elapsed,
+        converged = NA, pd_hessian = NA, seconds = elapsed, ridge_tau = NA_real_,
         error = res$message, status = res$status, message = res$message,
         stringsAsFactors = FALSE
       )
@@ -694,6 +878,7 @@ select_lv <- function(formula, data, ..., d_max,
     fits[[as.character(k)]] <- res$fit
     conv <- isTRUE(res$fit$opt$convergence == 0L)
     pdh <- if (!is.null(res$fit$sd_report)) isTRUE(res$fit$sd_report$pdHess) else NA
+    ridge_tau_k <- fit_ridge_tau(res$fit)
 
     if (res$status != "ok" && res$status != "warm_start") {
       ## A "nonmonotone" fit is still converged and non-runaway (those are
@@ -702,16 +887,18 @@ select_lv <- function(formula, data, ..., d_max,
       ## the bar (max() is a no-op unless bar_ll is still -Inf), never raise
       ## it above the true best-so-far. "unconverged"/"runaway"/leave the bar
       ## alone: an inflated runaway logLik must never become the reference
-      ## point for a later d.
-      if (identical(res$status, "nonmonotone") && !is.null(res$ll)) {
-        bar_ll <- max(bar_ll, as.numeric(res$ll))
+      ## point for a later d. Compared on `mono` (the penalised objective when
+      ## the ridge is active, else logLik -- see `mono_value()`), the same
+      ## quantity the guard itself just compared it against.
+      if (identical(res$status, "nonmonotone") && !is.null(res$mono)) {
+        bar_ll <- max(bar_ll, res$mono)
       }
       failed <- c(failed, sprintf("d = %d: %s (%s)", k, res$status, res$message))
       rows[[k]] <- data.frame(
         d = k, npar = NA_integer_,
         logLik = if (is.null(res$ll)) NA_real_ else as.numeric(res$ll),
         aic = NA_real_, bic = NA_real_, bic_sites = NA_real_, aicc = NA_real_,
-        converged = conv, pd_hessian = pdh, seconds = elapsed,
+        converged = conv, pd_hessian = pdh, seconds = elapsed, ridge_tau = ridge_tau_k,
         error = NA_character_, status = res$status, message = res$message,
         stringsAsFactors = FALSE
       )
@@ -729,11 +916,11 @@ select_lv <- function(formula, data, ..., d_max,
       d = k, npar = npar_k, logLik = ll_k,
       aic = aic_k, bic = bic_k, bic_sites = bic_sites_k,
       aicc = .select_lv_aicc(aic_k, npar_k, n_k),
-      converged = conv, pd_hessian = pdh, seconds = elapsed,
+      converged = conv, pd_hessian = pdh, seconds = elapsed, ridge_tau = ridge_tau_k,
       error = NA_character_, status = res$status, message = res$message,
       stringsAsFactors = FALSE
     )
-    bar_ll <- max(bar_ll, ll_k)
+    bar_ll <- max(bar_ll, res$mono)
     accepted_fit <- res$fit
   }
 

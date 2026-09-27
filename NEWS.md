@@ -1,5 +1,27 @@
 # Development (unreleased)
 
+* `select_lv()` gains a `binary_ridge` argument (default `2`; maintainer
+  decision D-293, 2026-09-27): for **single-trial binomial (Bernoulli)**
+  data -- every response a 0/1 trial, detected from a `cbind(successes,
+  failures)` formula LHS or the flat-response `weights =` trial-count API --
+  every fit in the sweep (including the `warm_start` retry) now uses
+  `control(aghq_ridge = binary_ridge)`, a Laplace fit penalised by a loading
+  ridge (see `?gllvmTMBcontrol`'s `aghq_ridge`), unless the caller's own
+  `control` already names `aghq_ridge` (theirs wins) or `binary_ridge = Inf`
+  (disables the default; today's unpenalised behaviour). A recovery
+  experiment (20 traits, `n = 120` simulated Bernoulli datasets) found the
+  ridge recovered the true `d` in 8/10 datasets against 4/10 without.
+  Because nesting only guarantees the *penalised* objective improves with
+  `d`, the non-monotone guard now compares the penalised objective
+  (`-(likelihood_nll + ridge_penalty)`) rather than the plain log-likelihood
+  whenever the ridge is active; `criterion` selection (`bic_sites`/`bic`/
+  `aic`/`aicc`) is unaffected and still uses the unpenalised log-likelihood
+  at the ridge's MAP point. `table` gains a `ridge_tau` column (the ridge
+  scale actually used for that fit; `NA` when no ridge was used). The
+  per-fit "evaluated at a penalised MAP point" `logLik()` warning is muffled
+  inside the sweep and replaced by one summary message. Other families, or
+  multi-trial binomial data, are unaffected regardless of this argument.
+
 * Ordinary `latent()` gains `d = "auto"` (maintainer decision D-293,
   2026-09-27): on a formula with exactly one ordinary `latent()` term,
   `gllvmTMB()` now runs `select_lv()` on that same formula/data/family/

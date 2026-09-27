@@ -312,6 +312,50 @@ fit. Once those checks point to a defensible Gaussian model, use a REML
 refit only for the final covariance summary, not for the ML candidate
 table.
 
+## Let `d` Pick Itself
+
+The candidate loop above is explicit so every fit, criterion, and
+health check is visible. `select_lv()` runs the same kind of sweep
+behind one call, and `latent(..., d = "auto")` runs `select_lv()`
+automatically from inside `gllvmTMB()` itself:
+
+```{r auto-d, eval = FALSE}
+fit_auto <- gllvmTMB(
+  value ~ 0 + trait + latent(0 + trait | individual, d = "auto"),
+  data = df,
+  trait = "trait",
+  unit = "individual",
+  family = gaussian(),
+  control = rank_control
+)
+
+fit_auto$select_lv$table
+selected_d
+```
+
+This chunk is not evaluated here (`eval = FALSE`): `d = "auto"` sweeps
+`d_max = min(5, n_traits - 1)` candidate ranks internally (four fits on
+this five-trait fixture), on top of the four candidate fits already run
+above, and the package's own recovery evidence for this feature is
+reported for family-level simulation grids, not for this one teaching
+fixture (see `?select_lv` and validation-debt register row MS-05).
+`fit_auto$select_lv$table` is the same kind of AIC/BIC/`bic_sites` table
+built by hand above, with the guard's own `status` column
+(`ok`/`warm_start`/`nonmonotone`/`unconverged`/`runaway`/`failed`) added.
+
+The caveat that matters most in practice: **every downstream
+quantity — `Sigma`, correlations, communalities, extracted loadings,
+prediction — is conditional on the selected `d`.** `d = "auto"` picks
+one rank by `bic_sites` and reports as if that rank were known in
+advance; it does not average over ranks or propagate the uncertainty
+of the rank choice itself into any interval. Two datasets that differ
+only in noise can select different `d`, and a downstream comparison
+across such fits is comparing conditional summaries under
+possibly-different ranks. Treat `latent(d = "auto")` as a
+default-defensible starting point, not a replacement for looking at
+the candidate table and fit-health rows the way the rest of this
+article does by hand.
+
 ## Interpret The Selected Model
 
 After choosing a rank, interpret invariant summaries first. `Sigma`,

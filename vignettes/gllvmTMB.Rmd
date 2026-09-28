@@ -346,6 +346,56 @@ plot_correlations(
 )
 ```
 
+The correlation results above are point estimates only. Profile intervals for
+correlations are unavailable. The separate total-variance route targets the
+diagonal of `Sigma`, not correlation. This example profiles one trait, chosen
+from the simulated truth table, and prints the interval status with its bounds:
+
+```{r total-variance-profile}
+profile_trait <- which.max(diag(truth$Sigma))
+total_variance_ci <- profile_ci_total_variance(
+  fit,
+  tier = "unit",
+  trait_idx = profile_trait
+)
+total_variance_ci[, c(
+  "trait", "estimate", "lower", "upper", "interval_status"
+)]
+```
+
+`certified-0.94` means the fit falls inside one simulated Gaussian regime
+(unpenalised native-Laplace, `n_units >= 150`, `d <= 2`, and a two-sided
+95% input). Its measured 0.9467 marginal coverage is a 0.94 floor, not nominal
+95% coverage or a guarantee for an individual interval. `route-only` means
+the bounds were computed outside that measured regime. The installed help
+`?profile_ci_total_variance` lists the exact target and status rules. These
+total-variance intervals do not apply to the correlations shown above.
+
+## Choose a covariance source and level
+
+`unit` is the between-unit covariance grouping, called `B` in older output.
+`unit_obs` is the within-unit observation grouping, called `W` in older output;
+each `unit_obs` level must be nested within one `unit`. These groupings are
+different from covariance source families:
+
+| Component | Keyword family | What identifies it |
+|---|---|---|
+| Between-unit or within-unit covariance | `indep()`, `dep()`, `latent()` | Use `unit` or `unit_obs` as the grouping factor in the formula. |
+| Animal relatedness | `animal_indep()`, `animal_dep()`, `animal_latent()` | A pedigree, `A`, or `Ainv` supplies relatedness for the animal IDs. |
+| Phylogenetic relatedness | `phylo_indep()`, `phylo_dep()`, `phylo_latent()` | A tree or `vcv` matrix supplies relatedness on the cluster axis, usually species. |
+| Spatial fields | `spatial_indep()`, `spatial_dep()`, `spatial_latent()` | A mesh built from the fitted locations supplies the spatial structure. |
+| Known kernel | `kernel_indep()`, `kernel_dep()`, `kernel_latent()` | A supplied matrix `K` supplies relatedness or similarity. |
+
+The mode describes covariance among traits: `indep()` gives separate trait
+variances with no cross-trait covariance; `dep()` estimates an unstructured
+trait covariance; and `latent(..., d = K)` estimates a rank-`K` shared
+component. Ordinary `latent()` includes diagonal `Psi` by default. A
+source-specific `*_latent()` term is loadings-only by default; use
+`unique = TRUE` to add its source-specific diagonal `Psi`. The older ordinary
+pair `latent(..., unique = FALSE) + unique(...)` remains accepted for
+compatibility. Check the installed help for the selected keyword before
+combining covariance sources.
+
 ## Then inspect loadings and scores
 
 The recovered loadings are useful, but they are not the first

@@ -81,6 +81,31 @@ response-specific variation. Read the equation from left to right:
 Use `latent(...)` for this decomposed model, and `indep(...)` for a
 standalone diagonal baseline.
 
+## Choose a covariance source and level
+
+The grouping factor says where a component varies; the keyword family says
+what covariance structure it uses. In older output, `B` means between-unit
+(`unit`) and `W` means within-unit observations (`unit_obs`). A `unit_obs`
+level must be nested within one `unit`.
+
+| Component | Keyword family | What identifies it |
+|---|---|---|
+| Between-unit or within-unit covariance | `indep()`, `dep()`, `latent()` | Use the `unit` or `unit_obs` grouping factor in the formula. |
+| Animal relatedness | `animal_indep()`, `animal_dep()`, `animal_latent()` | Supply a pedigree, `A`, or `Ainv` for the animal IDs. |
+| Phylogenetic relatedness | `phylo_indep()`, `phylo_dep()`, `phylo_latent()` | Supply a tree or `vcv` matrix for the cluster axis, usually species. |
+| Spatial fields | `spatial_indep()`, `spatial_dep()`, `spatial_latent()` | Supply a mesh built from the fitted locations. |
+| Known kernel | `kernel_indep()`, `kernel_dep()`, `kernel_latent()` | Supply the relatedness or similarity matrix `K`. |
+
+The mode describes covariance among traits: `indep()` gives separate trait
+variances with no cross-trait covariance; `dep()` estimates an unstructured
+trait covariance; and `latent(..., d = K)` estimates a rank-`K` shared
+component. Ordinary `latent()` includes its diagonal `Psi` companion by
+default. For a source-specific `*_latent()` term, set `unique = TRUE` when the
+source-specific diagonal `Psi` is intended. The older paired form
+`latent(..., unique = FALSE) + unique(...)` remains accepted for compatibility;
+new ordinary fits can write `latent(...)` alone. These terms can be combined
+only in the regimes documented for the selected family and covariance source.
+
 Most readers will start from a wide data frame: one row per unit, one
 column per trait. Use that shape directly with the `traits(...)` formula
 marker. If your data are already stacked long, use the same `gllvmTMB()`
@@ -211,6 +236,15 @@ method. In brief:
   the evidence regime;
 - do not infer interval calibration from the availability of Wald, bootstrap,
   or profile bounds.
+
+The first-fit correlation example reports point estimates only; profile
+intervals for correlations are unavailable. The separate
+`profile_ci_total_variance()` route targets diagonal per-trait total variance,
+not correlation. Open its installed help with `?profile_ci_total_variance`
+for the returned `lower`, `upper`, and `interval_status` columns. Its
+`certified-0.94` label marks membership in one simulated regime; it is not
+nominal 95% coverage or a guarantee for an individual fit. Other computed
+rows are labelled `route-only` and do not carry that coverage evidence.
 
 `gllvmTMB` is for stacked-trait multivariate models. Use `glmmTMB` for a
 single-response GLMM, `sdmTMB` for a single-response spatial model, and

@@ -2,7 +2,7 @@
 ^\.unlazy$
 ^\.codex$
 ^results$
-^build$
+^build/partial\.rdb$
 ^\.github$
 ^\.git$
 ^\.gitignore$

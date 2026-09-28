@@ -7,7 +7,7 @@
 #' the same trait covariance, pairwise correlations, shared latent axes,
 #' and trait-specific variance. The formula syntax also supports fixed
 #' effects plus covariance-structure keywords organised by
-#' \emph{correlation source} (none / animal / phylo / spatial) and
+#' \emph{correlation source} (none / animal / phylo / spatial / kernel) and
 #' three \emph{modes} (independent / dependent / latent). The `common = TRUE`
 #' modifier on `*_indep()` gives the one-shared-variance special case:
 #'
@@ -17,21 +17,27 @@
 #'   \emph{animal}  \tab [animal_indep()]  \tab [animal_dep()]  \tab [animal_latent()]  \cr
 #'   \emph{phylo}   \tab [phylo_indep()]   \tab [phylo_dep()]   \tab [phylo_latent()]   \cr
 #'   \emph{spatial} \tab [spatial_indep()] \tab [spatial_dep()] \tab [spatial_latent()] \cr
+#'   \emph{kernel}  \tab [kernel_indep()]  \tab [kernel_dep()]  \tab [kernel_latent()]  \cr
 #' }
+#'
+#' The grid lists available syntax. Reliability depends on the family
+#' and uncertainty method. Gaussian `indep()` and `dep()` point fits are the
+#' narrow tested starting routes; structured-source and non-Gaussian routes
+#' need their named evidence boundary. General interval coverage is not claimed.
 #'
 #' The three covariance modes (`indep` / `dep` / `latent`) encode
 #' covstruct intent across traits:
 #'
-#' * `latent` — the **decomposition** mode
+#' * `latent`: the **decomposition** mode
 #'   \eqn{\boldsymbol\Sigma = \boldsymbol\Lambda \boldsymbol\Lambda^\top + \boldsymbol\Psi}:
 #'   a low-rank shared part plus a diagonal \eqn{\boldsymbol\Psi} companion.
 #'   Ordinary `latent()` carries \eqn{\boldsymbol\Psi} by default; the
 #'   `unique =` argument controls it (`latent(..., unique = FALSE)` for the
 #'   loadings-only subset, `*_latent(..., unique = TRUE)` to fold the
 #'   \eqn{\boldsymbol\Psi} companion into a source-specific term).
-#' * `indep` — the **marginal-only** mode: each trait gets its own
+#' * `indep`: the **marginal-only** mode: each trait gets its own
 #'   variance, no cross-trait covariance.
-#' * `dep` — the **full unstructured** mode: \eqn{\boldsymbol\Sigma}
+#' * `dep`: the **full unstructured** mode: \eqn{\boldsymbol\Sigma}
 #'   is free with \eqn{T(T+1)/2} parameters via a Cholesky factor.
 #'
 #' Plus the supporting [phylo_slope()] / [animal_slope()] (random
@@ -47,9 +53,9 @@
 #'   Fixed effects and any of the three-mode grid covstructs above are
 #'   supported (plus [phylo_slope()], [animal_slope()], and [meta_V()]).
 #'
-#'   An `offset()` term is supported for **count responses only** — `poisson()`,
+#'   An `offset()` term is supported for **count responses only**: `poisson()`,
 #'   `nbinom1()`, `nbinom2()`, `truncated_poisson()`, and
-#'   `truncated_nbinom2()` — where it is the usual exposure or effort
+#'   `truncated_nbinom2()`. There it is the usual exposure or effort
 #'   adjustment. Supply it already on the link scale, e.g.
 #'   `offset(log(trap_nights))`. It must be its own additive term; it is not
 #'   interacted with `trait`.
@@ -83,7 +89,7 @@
 #'   behavioural-syndrome data, `"species"` for PGLLVM, `"paper"` for
 #'   systematic mapping. Default `"site"`.
 #' @param unit_obs Optional. Name of the column holding the **within-unit**
-#'   grouping factor — one level per (unit, replicate) cell — used by
+#'   grouping factor, with one level per (unit, replicate) cell, used by
 #'   `latent(0 + trait | unit_obs, ...)` and
 #'   `indep(0 + trait | unit_obs)` for the W-tier covariance.
 #'   Default `NULL`, which resolves to `"site_species"` (the conventional
@@ -112,7 +118,7 @@
 #'   the intended covariance keyword.
 #'
 #'   The engine does **not** enforce nesting between `unit_obs`,
-#'   `unit`, and `cluster` — crossed and nested designs both fit. Two
+#'   `unit`, and `cluster`; crossed and nested designs both fit. Two
 #'   canonical patterns:
 #'   \itemize{
 #'     \item Functional biogeography (crossed): `unit = "site"`,
@@ -180,7 +186,7 @@
 #' @param weights Optional numeric vector of length `nrow(data)`. Family-
 #'   conditional semantics (lme4 / glmmTMB convention):
 #'   * For **non-binomial** families, `weights` is interpreted as per-
-#'     observation likelihood multipliers — each row's log-likelihood
+#'     observation likelihood multipliers: each row's log-likelihood
 #'     contribution is multiplied by `weights[i]`. This matches the
 #'     `weights` argument of `lme4::lmer()`, `glmmTMB::glmmTMB()` and
 #'     `stats::glm()`. Use this for relative-abundance weighting
@@ -247,7 +253,7 @@
 #'   `n_species = 1000`.
 #' @param phylo_vcv (legacy global) Optional tip-only `n_species ×
 #'   n_species` phylogenetic correlation matrix. The canonical syntax
-#'   is `vcv =` inside each `phylo_*()` keyword. **`r lifecycle::badge("superseded")`** —
+#'   is `vcv =` inside each `phylo_*()` keyword. **`r lifecycle::badge("superseded")`**;
 #'   prefer `tree =`. The dense path inverts via `Matrix::solve()`,
 #'   giving the same MLE as the sparse path but at `O(n^2)` memory and
 #'   `O(n^3)` Cholesky cost. Use only when you have a Cphy in hand and
@@ -259,7 +265,7 @@
 #'   `unit_obs` (plus `phy`, `spde` for structural levels), each an
 #'   `n_traits × d` matrix of confirmatory loading constraints
 #'   (galamm-style). `NA` entries are estimated; numerical entries are
-#'   pinned. Upper-triangle entries are silently ignored — the engine's
+#'   pinned. Upper-triangle entries are silently ignored because the engine's
 #'   lower-triangular parameterisation already fixes those at zero.
 #'   Default `NULL` uses the engine's exploratory lower-triangular
 #'   convention. See [confirmatory_lambda()] to build the matrix from
@@ -340,13 +346,13 @@
 #'   surface is point estimation only. Trait-level extractors such as
 #'   `extract_ICC_site()` and `extract_communality()` are multi-trait only.
 #'
-#'   `vcov()` and `coef()` are available too — see
+#'   `vcov()` and `coef()` are available too; see
 #'   [gllvmTMB_multi-vcov]. `coef()` works on any fit; `vcov()` needs the
 #'   `sdreport()` and raises the same typed errors [confint()] does when it
 #'   is missing or non-finite.
 #'
 #'   *History, 2026-08-04:* this block used to say `vcov()` dispatched on
-#'   `gllvmTMB`, which was **never true of any release** — it and `coef()`
+#'   `gllvmTMB`, which was **never true of any release**. It and `coef()`
 #'   existed only for `gllvmTMB_va`, where they refuse. The wording was
 #'   corrected first, then the two methods were added, which is why the
 #'   promise now holds.
@@ -355,7 +361,7 @@
 #' The fitted object's `$report` carries per-family dispersion quantities on
 #' the natural scale, each a vector of length `n_traits` indexed by trait
 #' (except `sigma_eps`, a single scalar). Their names follow the engine's
-#' internal parameterisation, **not** standard R distribution arguments —
+#' internal parameterisation, **not** standard R distribution arguments;
 #' several are easy to misread. What each one IS, and how it maps to
 #' standard R arguments (`mu = exp(eta)` unless noted):
 #'
@@ -364,7 +370,7 @@
 #' | gaussian, lognormal (`sigma_eps`) | residual SD / sdlog; **one scalar shared** by all gaussian *and* lognormal traits | `pnorm(y, mean = eta, sd = sigma_eps)`; `plnorm(y, meanlog = eta, sdlog = sigma_eps)` |
 #' | Gamma (`phi_gamma`) | the **shape**, not a dispersion | `pgamma(y, shape = phi, scale = mu / phi)`; `CV(y) = 1 / sqrt(phi)` |
 #' | nbinom2 (`phi_nbinom2`) | the NB `size` | `pnbinom(y, size = phi, mu = mu)`; `Var(y) = mu + mu^2 / phi` |
-#' | nbinom1 (`phi_nbinom1`) | linear overdispersion, `Var(y) = mu * (1 + phi)` | `pnbinom(y, size = mu / phi, mu = mu)` — the size is mean-dependent |
+#' | nbinom1 (`phi_nbinom1`) | linear overdispersion, `Var(y) = mu * (1 + phi)` | `pnbinom(y, size = mu / phi, mu = mu)`; the size is mean-dependent |
 #' | tweedie (`phi_tweedie`, `p_tweedie`) | dispersion and power `p` in (1, 2) | no base-R CDF; `tweedie::ptweedie(y, mu = mu, phi = phi, power = p)` |
 #' | Beta (`phi_beta`) | the precision | `pbeta(y, shape1 = mu * phi, shape2 = (1 - mu) * phi)` with `mu = plogis(eta)` |
 #' | betabinomial (`phi_betabinom`) | precision of the Beta mixing | `a = mu * phi`, `b = (1 - mu) * phi` with `mu = plogis(eta)`; no base-R CDF |
@@ -518,7 +524,7 @@
 #' Schielzeth (2010) \emph{Biol. Rev.} 85: 935-956; Nakagawa, Johnson &
 #' Schielzeth (2017) \emph{J. R. Soc. Interface} 14: 20170213.
 #'
-#' @section Objective provenance: report\$joint_nll_* vs objective_components:
+#' @section Objective provenance:
 #' A fitted object carries two different surfaces that both look like "the
 #' objective", and they answer different questions.
 #'
@@ -800,7 +806,7 @@ gllvmTMB <- function(
   ## ---- Honour deprecated `site = ...` alias for `unit = ...` -------------
   ## The package was originally written for site × species data, so the
   ## between-unit grouping argument was named `site`. The unit × trait
-  ## framing makes `unit` the more natural name (rows index *units* —
+  ## framing makes `unit` the more natural name (rows index *units*;
   ## sites, individuals, species, papers); `site` is now a deprecated
   ## alias that emits a one-shot soft warning and is forwarded to `unit`.
   if (!is.null(site)) {
@@ -826,7 +832,7 @@ gllvmTMB <- function(
 
   ## ---- Honour deprecated `species = ...` alias for `cluster = ...` -----
   ## The package was originally written for site × species data, so the
-  ## third grouping slot was named `species`. The slot is generic — it is
+  ## third grouping slot was named `species`. The slot is generic; it is
   ## the third grouping factor, which activates phylogenetic random
   ## effects when the column matches `phylo_vcv` rownames or `phylo_tree`
   ## tip labels, and otherwise just provides a regular crossed/nested
@@ -1528,7 +1534,7 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #'   Default 0.3.
 #' @param init_strategy One of `"default"` (current behaviour) or
 #'   `"single_trait_warmup"`. The warmup option fits an intercept-only univariate GLM
-#'   per trait — with that trait's family — and seeds the matching
+#'   per trait, using that trait's family, and seeds the matching
 #'   `log_phi_*` entries before `MakeADFun()`. Recommended for count
 #'   families (especially `nbinom2`) where the default initialisation
 #'   can leave the optimiser walking the
@@ -1604,11 +1610,11 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #'   coverage claim is made. A bound must not be compared across ranks or
 #'   models, so it cannot be used for model or rank selection.
 #'
-#'   It is admitted only inside the Gate-E implementation/light-fit region —
+#'   It is admitted only inside the Gate-E implementation/light-fit region:
 #'   `latent(..., unique = FALSE)`, the 18 scalar family/link cells in the
 #'   response-family registry, `d` up to 2, up to 80 responses, at least 100
-#'   units, and the native TMB engine — and
-#'   requesting it outside that region is an **error**, not a warning. The `d`
+#'   units, and the native TMB engine. A request
+#'   outside that region is an **error**, not a warning. The `d`
 #'   limit is retained from the historical explicit-JJ preregistered recovery
 #'   gate: `d = 4` was measured and refused because, with few responses, the
 #'   planted axes collapsed more often than that gate allowed. This is an
@@ -1643,10 +1649,10 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #'     truth, and the mean paired difference in latent-score correlation
 #'     against Laplace is below `2e-07` at both `n`.
 #'   * **Poisson**: also 0.98–1.02 of truth, with a paired latent-score
-#'     difference of ~`4e-04` — negligible in magnitude but statistically
+#'     difference of ~`4e-04`, negligible in magnitude but statistically
 #'     detectable, and the loading scale sits ~1% below Laplace.
 #'   * **Binomial**: latent scores recover at about r = 0.59. That ceiling is a limit
-#'     of **binary data** at these cells rather than of the historical JJ route —
+#'     of **binary data** at these cells rather than of the historical JJ route:
 #'     the Laplace default reaches about r = 0.56–0.59 on the same data, and a third
 #'     estimator (Gauss-Hermite) lands in the same place. The loading SCALE,
 #'     however, is biased low (0.58–0.67 of truth) and this **is** a real bias
@@ -1662,8 +1668,8 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #'   [gllvmTMB_va-methods]) rather than an ordinary fit, so that every method
 #'   which would treat its objective as a likelihood fails loudly instead of
 #'   returning a number. Because the engine runs its own multi-start and
-#'   optimiser policy, the search settings of [gllvmTMBcontrol()] — `n_init`,
-#'   `optimizer`, `optArgs`, `start_from`, `init_*` and `se` — have no effect
+#'   optimiser policy, the search settings of [gllvmTMBcontrol()] (`n_init`,
+#'   `optimizer`, `optArgs`, `start_from`, `init_*` and `se`) have no effect
 #'   on this route. Any model structure the route cannot represent (a latent
 #'   term away from the unit grouping, a constrained ordination, an offset,
 #'   weights, `REML`, `lambda_constraint`, `Xcoef_fixed`, or a further random
@@ -1680,7 +1686,7 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #'   requests that many quadrature nodes. `"auto"` lets the package decide, and
 #'   it declines to Laplace whenever the model is ineligible or the expected
 #'   gain does not justify the cost. **Opt-in and experimental**: no capability
-#'   claim is made for quadrature-fitted models, and eligibility is narrow — the
+#'   claim is made for quadrature-fitted models, and eligibility is narrow: the
 #'   random part must be a single ordinary `latent()` block on the unit tier.
 #' @param aghq_iter_cap Optimiser iteration budget for the first adaptation
 #'   pass. Default `1L`. Later passes escalate when continuation is enabled.
@@ -1731,12 +1737,12 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #'   absolute `aghq_grad_tol` on its own becomes unreachable at scale. The two are
 #'   combined with `OR`, so this can only ever admit more fits as converged, never
 #'   fewer; set it to `0` to test the absolute tolerance only. Read
-#'   `fit$aghq$converged` for the verdict — **not** `fit$opt$convergence`, which
+#'   `fit$aghq$converged` for the verdict, **not** `fit$opt$convergence`, which
 #'   on the quadrature path records the optimiser's per-pass iteration cap and so
 #'   reports a limit even on a healthy fit.
 #' @param aghq_multistart If `TRUE` (default), the quadrature is run from two
-#'   starting points — the Laplace optimum and a data-driven alternative that uses
-#'   no knowledge of the truth — and the fit with the better final objective is
+#'   starting points: the Laplace optimum and a data-driven alternative that uses
+#'   no knowledge of the truth. The fit with the better final objective is
 #'   kept. `FALSE` uses the Laplace warm start only, reproducing the behaviour of
 #'   earlier versions. The extra start costs one additional adaptation run, and
 #'   exists because the Laplace optimum is sometimes itself a runaway that the
@@ -1768,8 +1774,8 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #'    fits: it decomposes the fixed-effect residual matrix into starting
 #'    values for \eqn{\Lambda} and the latent scores. Do not reach for it.
 #'
-#'    It was retired on measurement. Across 89 simulated fits — Gaussian,
-#'    Poisson and negative-binomial, `d = 1` to `3`, three and five traits —
+#'    It was retired on measurement. Across 89 simulated fits (Gaussian,
+#'    Poisson and negative-binomial, `d = 1` to `3`, three and five traits),
 #'    it was **never materially better** than the default start (its three
 #'    best margins were 0.07, 0.29 and 0.66 log-likelihood units) and was
 #'    materially worse eight times, once by 14.6 units. At `d >= 2` it made
@@ -2239,10 +2245,10 @@ detect_covstruct_terms <- function(formula) {
   walk <- function(e) {
     if (is.call(e)) {
       ## Defensive: only treat `e[[1L]]` as a function name when it is a
-      ## plain symbol. Namespaced calls (`pkg::fn` / `pkg:::fn`) — which
+      ## plain symbol. Namespaced calls (`pkg::fn` / `pkg:::fn`), which
       ## can appear inside argument expressions like
       ## `vcv = gllvmTMB:::.pedigree_to_A(ped)` (M2.8 animal-keyword
-      ## rewrite) — must not crash this walk.
+      ## rewrite), must not crash this walk.
       head <- e[[1L]]
       fn <- if (is.name(head)) as.character(head) else ""
       if (fn %in% supported_covstruct ||
@@ -2250,7 +2256,7 @@ detect_covstruct_terms <- function(formula) {
         found <<- c(found, fn)
       }
       ## Bar syntax `(... | g)`: detected as the parens wrapping a `|`
-      ## call. We label it "re_int" regardless of LHS shape — the actual
+      ## call. We label it "re_int" regardless of LHS shape; the actual
       ## dispatch and validation happens in parse_re_int_call().
       if (
         fn == "(" &&

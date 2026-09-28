@@ -53971,3 +53971,442 @@ rg -n 'FG-[0-9]|FAM-[0-9]|RE-[0-9]|ISDM-[0-9]' vignettes/articles/where-does-the
 **Visual receipt:** Florence inspected the four rendered PNGs after a first render exposed clipping and trait-scale conflation. The revised direct-flow figures, per-column PCM small multiples, covariance matrix, and source flow all pass at rendered article size.
 
 **Deliberately not run:** full package check / recovery campaign; Totoro/DRAC; non-Gaussian multi-predictor fits; or implementation work for wide, spatial/kernel/latent slope-only variants. After-task: `docs/dev-log/after-task/2026-08-24-trait-axis-bridge-article.md`.
+
+---
+
+## 2026-09-27: 0.7.1 first CRAN source repair, diagnostic phase
+
+**Lane:** `codex/cran-071-first-20260927`, historical source based on `482c9d372c7dc100f988f41f80d1b4cc3ce8a8e4`. Shinichi approved a one-time exception to the merged-main release rule. This entry describes a diagnostic predecessor, not a frozen upload file. The rights record remains on HOLD for the compiled Lane B header's external prototype.
+
+Release-source repairs update `NEWS.md`, reader-facing version and scope wording, `inst/CITATION`, generated help, and tests that had emitted expected product warnings without asserting them. The five repository campaign directories are excluded from the source archive; all 19 Lane B runner and source-receipt files remain included because installed tests use them. The unused `refine_maxvol_double` C++ helper was removed after Gauss confirmed that the active route calls `refine_maxvol_hybrid` and the shared inverse routine remains in use.
+
+```sh
+Rscript --vanilla -e 'devtools::document(quiet = TRUE)'
+# Exit 0; man/gllvmTMB.Rd and man/gllvmTMBcontrol.Rd regenerated.
+Rscript --vanilla -e 'pkgdown::check_pkgdown()'
+# Exit 0; No problems found, including after the final roxygen regeneration.
+Rscript --vanilla -e 'urlchecker::url_check()'
+# Exit 0; 32 URLs checked earlier in this lane.
+R CMD check --as-cran --run-donttest ../diagnostic-build-v5/gllvmTMB_0.7.1.tar.gz
+# Exit 0; Status: 1 NOTE (New submission); installed tests FAIL 0, WARN 0,
+# SKIP 1675, PASS 9675. Archive SHA-256 e279b399d3ba0b0a3c3a739669c27413e1ba98c3664dd0a828f0389eb1c5904e.
+Rscript --vanilla -e 'devtools::test(filter = "mspl-simulation-contract", reporter = "summary")'
+# Exit 0 after dead-helper deletion; one expected skip, no failures or warnings.
+git diff --check
+# Exit 0.
+rg -n '0\.6\.0|5 × 3|6 × 3|CRAN source freeze|submitted|accepted' NEWS.md README.md cran-comments.md inst/CITATION inst/COPYRIGHTS R/gllvmTMB.R vignettes/gllvmTMB.Rmd
+# Historical 0.6.0 NEWS and soft-deprecation references remain; no current
+# 0.6.0 citation or false completed-submission claim. The final NEWS pointer
+# to current syntax was corrected from 0.6.0 to 0.7.1 after this scan.
+rg -n 'temporal_(indep|dep|latent)|general interval coverage|interval bounds|repeated sessions' NEWS.md README.md R/gllvmTMB.R vignettes/gllvmTMB.Rmd
+# No imported temporal row or repeated-session claim. The first-fit vignette
+# explicitly says its correlation plot has no interval bounds.
+rg -n '—' NEWS.md README.md cran-comments.md inst/CITATION inst/COPYRIGHTS R/gllvmTMB.R vignettes/gllvmTMB.Rmd
+# Exit 1: no em-dash matches in these release prose files.
+```
+
+The v5 archive passed its check before the latest regenerated help, NEWS pointer, and C++ deletion. Its install log still shows three RcppEigen dependency warnings and the old package-owned unused-function warning. The next archive must establish that the package-owned warning is gone. Detailed hashes, paths, source inventory, and failure history are in `docs/dev-log/release/2026-09-27-071-local-diagnostic.md` and `docs/dev-log/release/2026-09-27-071-component-rights.md`.
+
+A sixth diagnostic archive, built with `R CMD build --no-build-vignettes`, compiled and installed in an empty temporary library. Its SHA-256 is `e0107a8c22227fe4e6eab27cdee2b5622bc679f2f7b3e86b1708dd6b4cf50e52`. `R CMD INSTALL` exited 0; only three RcppEigen dependency-header warnings remain, with no package-owned compiler warning. V6 has no full check and cannot replace the final full-vignette tarball gate.
+
+**Deliberately not run yet:** a clean-source final tarball check, three-OS candidate CI, win-builder/R-hub, a new simulation campaign, public-site deployment audit, and CRAN upload. None can promote this diagnostic predecessor to submission-ready. The exact external-prototype rights chain must be established before source freeze.
+
+Diagnostic-phase after-task report: `docs/dev-log/after-task/2026-09-27-cran-071-diagnostic-source-repair.md`. It records the release checks and open gates without declaring the package ready.
+
+Pat's S1 reader audit also flagged `characterization-only` as unclear first-use advice in the README and root vignette. Replaced that phrase with the concrete narrow-Gaussian starting route (`indep()` or `dep()`, followed by fit-health checks). `pkgdown::check_pkgdown()` passed afterward. Exact wording scan: `rg -n -C 3 'characterization-only|characterization' README.md vignettes/gllvmTMB.Rmd` returned the two edited passages before the repair; a repeat found no matches. `slop_check.py` on `README.md` and `vignettes/gllvmTMB.Rmd` returned zero findings; `git diff --check` passed.
+
+## 2026-09-27: v9 diagnostic archive, full local check, and as-cran network stop
+
+**Lane:** `codex/cran-071-first-20260927`, source base `482c9d372c7dc100f988f41f80d1b4cc3ce8a8e4`. This is diagnostic evidence from a dirty source tree, not the frozen upload candidate. The external prototype rights HOLD remains.
+
+```sh
+Rscript --vanilla -e 'devtools::build(pkg="/Users/z3437171/.codex/worktrees/cran-071-first/gllvmTMB", path="/private/tmp/gllvmtmb-071-cran-evidence/diagnostic-build-v9", vignettes=TRUE, manual=FALSE)'
+# Exit 0; built gllvmTMB_0.7.1.tar.gz with vignettes.
+shasum -a 256 /private/tmp/gllvmtmb-071-cran-evidence/diagnostic-build-v9/gllvmTMB_0.7.1.tar.gz
+# d05ece42b1b9be51a288aeb2ec6b39a006208d7e4138a1c1e51f6c4fd41834d4
+stat -f '%z bytes' /private/tmp/gllvmtmb-071-cran-evidence/diagnostic-build-v9/gllvmTMB_0.7.1.tar.gz
+# 4419273 bytes
+tar -tzf /private/tmp/gllvmtmb-071-cran-evidence/diagnostic-build-v9/gllvmTMB_0.7.1.tar.gz | wc -l
+# 887 entries.
+tar -tzf /private/tmp/gllvmtmb-071-cran-evidence/diagnostic-build-v9/gllvmTMB_0.7.1.tar.gz | rg '(^|/)(\.git|\.Rproj\.user|\.unlazy|\.codex|\.claude|\.DS_Store|intake|AGENTS\.md)(/|$|\.)' || true
+# No forbidden-path matches.
+R CMD check --run-donttest --no-manual --output=/private/tmp/gllvmtmb-071-cran-evidence/v9-local-check /private/tmp/gllvmtmb-071-cran-evidence/diagnostic-build-v9/gllvmTMB_0.7.1.tar.gz
+# Exit 0; Status: OK on R 4.6.0, aarch64 macOS. Tests and vignette rebuild passed.
+# Three compiler warnings remain in RcppEigen dependency headers; no package-owned warning.
+R CMD INSTALL --library=/private/tmp/gllvmtmb-071-cran-evidence/v9-install-lib /private/tmp/gllvmtmb-071-cran-evidence/diagnostic-build-v9/gllvmTMB_0.7.1.tar.gz
+# Exit 0; loading from the clean library reported version 0.7.1. The installed
+# bootstrap worker validator accepted 1 and 2.
+R CMD check --as-cran --run-donttest --no-manual --output=/private/tmp/gllvmtmb-071-cran-evidence/v9-as-cran /private/tmp/gllvmtmb-071-cran-evidence/diagnostic-build-v9/gllvmTMB_0.7.1.tar.gz
+# Exit 1 before package checks: CRAN incoming feasibility could not resolve CRAN.R-project.org
+# or Bioconductor indexes. This is a network-blocked gate, not a package check failure.
+Rscript --vanilla -e 'pkgdown::check_pkgdown()'
+# Exit 0 in the release source mirror; No problems found.
+R_USER_CACHE_DIR=/private/tmp/gllvmtmb-071-cran-evidence/r-cache Rscript --vanilla -e 'pkgdown::build_article("articles/convergence-start-values", pkg = "/private/tmp/gllvmtmb-071-cran-evidence/roxygen-copy", lazy = FALSE, quiet = TRUE)'
+# Exit 1: pkgdown could not fetch headroom.min.js from cdnjs because DNS was unavailable.
+python3 /Users/z3437171/shinichi-brain/tools/cran_release_gate.py --selftest
+# Exit 0; all CRAN ledger negative controls failed closed. No candidate ledger was evaluated.
+git diff --check
+# Exit 0.
+```
+
+Logs and archive inventory are retained under `/private/tmp/gllvmtmb-071-cran-evidence/v9-local-check`, `v9-as-cran`, and `diagnostic-build-v9`. The exact archive, local check, and as-cran result are detailed in `docs/dev-log/release/2026-09-27-071-local-diagnostic.md`.
+
+**Deliberately not run:** a clean-source freeze, candidate ledger rung, win-builder/R-hub, candidate-aligned three-OS CI, final-site rendering, or fresh Grace/Rose/Pat votes. Source is dirty, the header rights chain is unresolved, and the exact-file as-cran network gate stopped before package checks.
+
+## 2026-09-28: historical rights-file wording and post-candidate boundary
+
+The source claim audit found the historical branch's covariance grid dimensions accurate, while the release plan requires the shipped `inst/COPYRIGHTS` file to avoid the literal `5 x 3` claim. Changed that line to identify the keyword grid in this release snapshot, retaining the fact that the historical source does not include the later temporal row. Also replaced the stale statement that a CRAN source freeze had already occurred with wording that describes only the current source tree.
+
+```sh
+/Users/z3437171/Dropbox/Github\ Local/Shinichi/tools/lane_preflight.sh /Users/z3437171/.codex/worktrees/cran-071-first/gllvmTMB --file inst/COPYRIGHTS
+# Found 3 newer refs. Inspected the origin/HEAD diff: it adds Meuwissen-Luo
+# pedigree inbreeding F and the HSquared.jl provenance. This is post-candidate
+# work, so it remains excluded from the approved historical 0.7.1 source.
+rg -n '5 x 3|5 × 3|CRAN source freeze|source freeze' inst/COPYRIGHTS || true
+# No matches.
+git diff --check
+# Exit 0.
+```
+
+The v9 diagnostic archive predates this installed-file edit and is now predecessor evidence. A fresh archive and full local check are required before any frozen-artifact claim. The external Lane B header rights HOLD is unchanged.
+
+## 2026-09-28: v10 full diagnostic check after rights-file repair
+
+```sh
+Rscript --vanilla -e 'devtools::build(pkg="/Users/z3437171/.codex/worktrees/cran-071-first/gllvmTMB", path="/private/tmp/gllvmtmb-071-cran-evidence/diagnostic-build-v10", vignettes=TRUE, manual=FALSE)'
+# Exit 0; archive size 4,419,267 bytes, inventory 887 entries.
+shasum -a 256 /private/tmp/gllvmtmb-071-cran-evidence/diagnostic-build-v10/gllvmTMB_0.7.1.tar.gz
+# 9397190d74edf9d1802f051d66ff3712fa60d83ba14afd74f765908e67422d20
+tar -tzf /private/tmp/gllvmtmb-071-cran-evidence/diagnostic-build-v10/gllvmTMB_0.7.1.tar.gz | rg '(^|/)(\.git|\.Rproj\.user|\.unlazy|\.codex|\.claude|\.DS_Store|intake|AGENTS\.md)(/|$|\.)' || true
+# No forbidden-path matches.
+tar -xOzf /private/tmp/gllvmtmb-071-cran-evidence/diagnostic-build-v10/gllvmTMB_0.7.1.tar.gz gllvmTMB/inst/COPYRIGHTS | rg -n '5 x 3|5 × 3|CRAN source freeze|source freeze' || true
+# No matches in shipped rights text.
+R CMD check --run-donttest --no-manual --output=/private/tmp/gllvmtmb-071-cran-evidence/v10-local-check /private/tmp/gllvmtmb-071-cran-evidence/diagnostic-build-v10/gllvmTMB_0.7.1.tar.gz
+# Exit 0; Status: OK on R 4.6.0, aarch64 macOS; installed tests and vignette rebuild passed.
+R CMD check --as-cran --run-donttest --no-manual --output=/private/tmp/gllvmtmb-071-cran-evidence/v10-as-cran /private/tmp/gllvmtmb-071-cran-evidence/diagnostic-build-v10/gllvmTMB_0.7.1.tar.gz
+# Exit 1 before package checks because CRAN and Bioconductor DNS failed at incoming feasibility.
+R CMD INSTALL --library=/private/tmp/gllvmtmb-071-cran-evidence/v10-install-lib /private/tmp/gllvmtmb-071-cran-evidence/diagnostic-build-v10/gllvmTMB_0.7.1.tar.gz
+# Exit 0. Rscript loaded this library as version 0.7.1, verified the returned citation
+# version, and checked that the installed worker validator accepts 1 and 2.
+```
+
+Logs: `/private/tmp/gllvmtmb-071-cran-evidence/v10-local-check/gllvmTMB.Rcheck/00check.log`, `/private/tmp/gllvmtmb-071-cran-evidence/v10-as-cran/gllvmTMB.Rcheck/00check.log`, `/private/tmp/gllvmtmb-071-cran-evidence/v10-install.log`, and `/private/tmp/gllvmtmb-071-cran-evidence/v10-installed-smoke.log`. V10 is diagnostic, not frozen. Rights, clean-source, current-R as-cran, external platform checks, fresh panel votes, and the submission ledger remain open.
+
+The official [CRAN Repository Policy](https://cran.r-project.org/web/packages/policies.html) and [R for macOS](https://cran.r-project.org/bin/macosx/) pages were checked on 2026-09-28. The source tarball is below 10 MB; data and documentation areas are below the general 5 MB guideline; the package worker cap is two; rights and redistribution remain the outstanding source gate. The current macOS release is R 4.6.1 while local R is 4.6.0, so final as-cran verification must use current R-devel or an explained current release, in addition to passing the network-dependent incoming checks.
+
+```sh
+du -sk vignettes inst/doc inst/extdata man
+# From the unpacked v10 source: 20 KB, 340 KB, 456 KB, and 2116 KB, respectively.
+```
+
+The exact policy observations and v10 sizes are retained in `/private/tmp/gllvmtmb-071-cran-evidence/cran-policy-20260928.md`.
+
+## 2026-09-28: release title and reader-claim alignment
+
+Changed the bounded 0.7.1 title from `Fit Multivariate Models from Wide Response Data` to `Generalised Linear Latent Variable Models with TMB`. The previous title over-focused on the wide input form although the package also supports long-format data. Kept multiple title candidates in the maintainer discussion rather than in `cran-comments.md`, which is for CRAN reviewers. The README now describes the two interfaces as forms of the same stacked-trait model and limits the worked equivalence statement to the Get started example.
+
+```sh
+Rscript --vanilla -e 'devtools::document(quiet = TRUE)'
+# Exit 0. Regenerated man/gllvmTMB-package.Rd. Roxygen also reported existing missing
+# @export/@exportS3Method tags for AIC.gllvmTMB_multi, BIC.gllvmTMB_multi, and
+# anova.gllvmTMB_multi in aghq-report.R; these are retained for check adjudication.
+Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); print(utils::citation("gllvmTMB"))'
+# Loaded the source package and printed the 0.7.1 citation with the revised title.
+rg -n 'Fit Multivariate Models from Wide Response Data|Generalised Linear Latent Variable Models with TMB' DESCRIPTION inst/CITATION README.md R/zzz.R man/gllvmTMB-package.Rd
+# The old title has no hit in current release metadata/help/citation; the new title is consistent.
+git diff --check
+# Exit 0.
+```
+
+The first documentation attempt was blocked from writing in the managed worktree by the sandbox. The approved Rscript command was then run with the needed write access and completed successfully. This title and reader-text edit changes no model code, but it changes package metadata and generated help, so v10 is predecessor evidence only. No new tarball or artifact check has run yet. Rights, clean-source, current-R `--as-cran`, external checks, final panel votes, and the submission ledger remain open.
+
+**Deliberately not run:** `pkgdown::check_pkgdown()`, site rendering, a tarball build/check, the full test suite, three-OS CI, win-builder, R-hub, or candidate ledger. Those checks must use the next source candidate after the remaining source edits are complete.
+
+## 2026-09-28: v12 archive, complete ordinary check, and network-limited incoming gates
+
+Added `^build$` to `.Rbuildignore` after exact inventory audits found generated `build/partial.rdb` and `build/vignette.rds` in v10 and v11. The source tree had no `build/` directory; the clean v12 inventory confirms the build process no longer ships those caches. This is diagnostic evidence from a dirty worktree, not the frozen tarball.
+
+```sh
+Rscript --vanilla -e 'devtools::build(pkg="/Users/z3437171/.codex/worktrees/cran-071-first/gllvmTMB", path="/private/tmp/gllvmtmb-071-cran-evidence/diagnostic-build-v12", vignettes=TRUE, manual=FALSE)'
+# Exit 0; produced a gzip source archive at the exact path below.
+shasum -a 256 /private/tmp/gllvmtmb-071-cran-evidence/diagnostic-build-v12
+# 450b4d4dd92732dd8bbc61c317f6466762920d6fc4ad86669130419a10e891ef
+stat -f '%z bytes' /private/tmp/gllvmtmb-071-cran-evidence/diagnostic-build-v12
+# 4,418,550 bytes.
+tar -tzf /private/tmp/gllvmtmb-071-cran-evidence/diagnostic-build-v12 > /private/tmp/gllvmtmb-071-cran-evidence/v12-inventory.txt
+wc -l /private/tmp/gllvmtmb-071-cran-evidence/v12-inventory.txt
+# 884 entries; scans for forbidden paths and gllvmTMB/build/ returned no matches.
+tar -xOzf /private/tmp/gllvmtmb-071-cran-evidence/diagnostic-build-v12 gllvmTMB/DESCRIPTION | sed -n '1,6p'
+# Name and version are gllvmTMB 0.7.1; Title is Generalised Linear Latent Variable Models with TMB.
+R CMD check --run-donttest --no-manual --output=/private/tmp/gllvmtmb-071-cran-evidence/v12-local-check /private/tmp/gllvmtmb-071-cran-evidence/diagnostic-build-v12
+# First invocation failed because the output directory did not exist. After mkdir -p,
+# the same check completed with exit 0 and Status: OK on macOS ARM, R 4.6.0.
+R CMD check --as-cran --run-donttest --no-manual --output=/private/tmp/gllvmtmb-071-cran-evidence/v12-as-cran /private/tmp/gllvmtmb-071-cran-evidence/diagnostic-build-v12
+# Exit 1 before package checks at CRAN incoming feasibility. CRAN and Bioconductor
+# package indexes could not resolve their host names.
+R CMD INSTALL --library=/private/tmp/gllvmtmb-071-cran-evidence/v12-install-lib /private/tmp/gllvmtmb-071-cran-evidence/diagnostic-build-v12
+# Exit 0. Full install output is v12-install.log; three compiler diagnostics are
+# from RcppEigen headers, not package-owned source files.
+Rscript --vanilla -e '.libPaths(c("/private/tmp/gllvmtmb-071-cran-evidence/v12-install-lib", .libPaths())); library(gllvmTMB); stopifnot(as.character(packageVersion("gllvmTMB")) == "0.7.1"); cite <- gsub("[[:space:]]+", " ", paste(capture.output(citation("gllvmTMB")), collapse=" ")); stopifnot(grepl("Generalised Linear Latent Variable Models with TMB", cite)); f <- getFromNamespace(".validate_bootstrap_n_cores", "gllvmTMB"); stopifnot(identical(f(1L), 1L), identical(f(2L), 2L)); err <- tryCatch(f(3L), error=identity); stopifnot(inherits(err, "error")); cat("version, citation title, and bootstrap worker bounds OK\n")'
+# Exit 0; installed version, citation title, and worker bounds verified.
+Rscript --vanilla -e 'pkgdown::check_pkgdown()'
+# Exit 0; No problems found.
+Rscript --vanilla -e 'urlchecker::url_check()'
+# Exit 0 as a process, but the report contains 76 URL errors over 32 fetch groups.
+# All 76 are DNS-resolution failures across nine hosts; they do not establish broken links.
+```
+
+The ordinary v12 check log is `/private/tmp/gllvmtmb-071-cran-evidence/v12-local-check/gllvmTMB.Rcheck/00check.log`; the as-cran log is `/private/tmp/gllvmtmb-071-cran-evidence/v12-as-cran/gllvmTMB.Rcheck/00check.log`. The exact inventory is `/private/tmp/gllvmtmb-071-cran-evidence/v12-inventory.txt`, install log is `v12-install.log`, installed smoke output is `v12-installed-smoke.log`, and URL report is `v12-url-check.log`. As-cran, URL reachability, current-R, rights, source-clean, platform, and panel gates remain open. The archive and check results cannot be frozen because the worktree is dirty and the included external prototype header lacks verified redistribution rights.
+
+`src/lane_b_jeffreys_maxvol_atomic_v8.h` is included from `src/gllvmTMB.cpp`. Gauss review of the 26-line deletion of `refine_maxvol_double` is pending; this does not resolve the independent header rights hold.
+
+**Deliberately not run:** current R 4.6.1 or R-devel checks (not installed locally), three-OS CI, win-builder, R-hub, public-site deployment, and a submission-ready ledger. The ledger file referenced by G6 does not exist yet; a premature invocation returned `FileNotFoundError`, so G6 remains pending rather than passing or failing. No upload was attempted.
+
+## 2026-09-28: Correct R build metadata handling and v13 diagnostic check
+
+The v12 incoming NOTE showed that the `^build$` exclusion removed `build/vignette.rds`, which R uses as the prebuilt vignette index. The initial v12 rationale above was wrong: these files are R CMD build metadata, not disposable package caches. I removed that exclusion before building v13. The new diagnostic archive therefore includes the generated `build/partial.rdb` and `build/vignette.rds`; its index check has passed so far. This correction follows the official [Writing R Extensions manual](https://rstudio.github.io/r-manuals/R-exts/Creating-R-packages.html), which reserves `build/` for package build metadata.
+
+The exact v13 source unpacked by `R CMD check` also passed URL validation: `urlchecker::url_check(path="/private/tmp/gllvmtmb-071-cran-evidence/v13-local-check/gllvmTMB.Rcheck/00_pkg_src/gllvmTMB", progress=FALSE)` returned `All URLs are correct!`; retained output is `/private/tmp/gllvmtmb-071-cran-evidence/v13-url-check.log`. This replaces the earlier v12 URL result, whose DNS failures came from the restricted network environment.
+
+```sh
+R CMD check --as-cran --run-donttest --no-manual --output=/private/tmp/gllvmtmb-071-cran-evidence/v12-as-cran-network /private/tmp/gllvmtmb-071-cran-evidence/diagnostic-build-v12
+# Finished on the elevated-network retry: Status: 1 NOTE, solely the missing prebuilt
+# vignette index reported at incoming feasibility; v12 is superseded.
+shasum -a 256 /private/tmp/gllvmtmb-071-cran-evidence/diagnostic-build-v13
+# ef55c622c99fd62819f69701102263b2009f10fc2c6774c8cf7c333d323b2d68
+stat -f '%z bytes' /private/tmp/gllvmtmb-071-cran-evidence/diagnostic-build-v13
+# 4,419,267 bytes.
+tar -tzf /private/tmp/gllvmtmb-071-cran-evidence/diagnostic-build-v13 | rg '^gllvmTMB/build/'
+# build/, build/partial.rdb, and build/vignette.rds are present.
+R CMD check --run-donttest --no-manual --output=/private/tmp/gllvmtmb-071-cran-evidence/v13-local-check /private/tmp/gllvmtmb-071-cran-evidence/diagnostic-build-v13
+# Exit 0; Status: OK on macOS ARM / R 4.6.0. Tests, examples, and vignette rebuild passed.
+mkdir -p /private/tmp/gllvmtmb-071-cran-evidence/v13-as-cran-network
+R CMD check --as-cran --run-donttest --no-manual --output=/private/tmp/gllvmtmb-071-cran-evidence/v13-as-cran-network /private/tmp/gllvmtmb-071-cran-evidence/diagnostic-build-v13
+# Running on the exact same v13 archive; network-enabled CRAN incoming check is active.
+```
+
+V13 has 887 archive entries; the forbidden-path scan found no matches, and the exact unpacked source passed URL validation. It is still only a diagnostic archive from a dirty, rights-unresolved worktree. The v13 ordinary check passed, and its exact archive `--as-cran` run is active. The v12 retry is recorded only to explain the superseded build exclusion and is not v13 evidence. Rights, a clean source commit, current-R verification, cross-platform/independent checks, reviewer votes, and a submission ledger remain open.
+
+**Deliberately not run:** a second v12 check, v13 `--as-cran` before ordinary check completion, any upload, and any claim that the diagnostic v13 archive is frozen.
+
+## 2026-09-28: v13 as-cran outcome and NEWS scope correction
+
+```sh
+R CMD check --as-cran --run-donttest --no-manual --output=/private/tmp/gllvmtmb-071-cran-evidence/v13-as-cran-network /private/tmp/gllvmtmb-071-cran-evidence/diagnostic-build-v13
+# Exit 0; Status: 1 NOTE. The sole NOTE is the expected first-submission
+# incoming message: “New submission”. Incoming feasibility passed, as did
+# package installation, S3 registration/consistency, examples, tests, and vignettes.
+rg -n -C 2 'NOTE|WARNING|warning:|Status:' /private/tmp/gllvmtmb-071-cran-evidence/v13-as-cran-network/gllvmTMB.Rcheck/00check.log
+# Only one NOTE: “New submission”. No package-check WARNING.
+```
+
+Grace's independent read of the exact v13 archive verified hash
+`ef55c622c99fd62819f69701102263b2009f10fc2c6774c8cf7c333d323b2d68`, size
+4,419,267 bytes, and 887 entries. The only compiler warnings were three Clang
+diagnostics inside RcppEigen headers while test code compiled; there was no
+package-owned compiler warning. `urlchecker::url_check()` on the exact v13
+unpacked source returned “All URLs are correct!”. Grace's receipt is
+`/private/tmp/gllvmtmb-071-cran-evidence/grace-v13-audit.md`.
+
+Rose found that the first v13 NEWS entry lacked a plain-language scope
+boundary. NEWS now says which complete-data Gaussian point-estimate routes were
+covered (`indep()` and `dep()` for three traits at n=60/240), names the partial
+Gaussian/Poisson/NB2 latent regimes and observed holds/failures, fences the
+narrow 0.94 profile-interval claim, and keeps random slopes/MSPL experimental
+and unexpanded. It has no register IDs, as required for reader-facing prose by
+AGENTS.md. The historical-branch exception was removed from reviewer-facing
+`cran-comments.md`; it remains documented in the internal release gate. Rose
+requested precise failure descriptions, now added; the final recheck is
+pending. Rose's and Pat's v13 audit receipts are
+`/private/tmp/gllvmtmb-071-cran-evidence/rose-v13-claims-audit.md` and
+`/private/tmp/gllvmtmb-071-cran-evidence/pat-v13-reader-audit.md`.
+
+Before the NEWS edit, `~/shinichi-brain/tools/lane_preflight.sh <release-worktree> --file NEWS.md` reported the live release lease, the separate Claude development branch, and newer NEWS history not present in the historical release checkout. The lease listing confirmed `codex:cran-071-20260927` owns NEWS.md. The Claude worktree was clean at `edd90850ff317bac62a7382e101dce8b0bac4d96` (2026-09-27 14:29 MDT); there were no NEWS commits in the last-six-hour history query. `gh pr list --state open` could not reach api.github.com, so live PR state is not freshly verified. The NEWS update is limited to the historical 0.7.1 entry; no later development edits were copied.
+
+The v13 tarball predates these NEWS/comment edits and is diagnostic predecessor evidence only. Rebuild a new archive after Rose's final accuracy check and rerun the affected exact-tarball gates. Rights, clean-source commit, current R 4.6.1/R-devel, three-OS CI, win-builder/R-hub, frozen-artifact reviewer votes, and the submission-ready ledger remain open. No upload was attempted.
+
+**Deliberately not run:** a v14 build/check before Rose's final NEWS read, any upload, or the submission-ready ledger on v13.
+
+## 2026-09-28: current-source Rose findings, reader wording repair, and v14 check
+
+Rose's full pre-publish audit found that `vignettes/gllvmTMB.Rmd` described
+correlation profile and bootstrap routes together as available, although the
+profile method is deliberately withdrawn and aborts. The vignette now says
+correlation profile intervals are unavailable; Fisher-z remains heuristic and
+bootstrap is a slower target-specific option without universal calibration.
+Rose also found that the release README said to install after CRAN acceptance
+without saying publication. It now says “accepted and published.” The current
+development-identity worktree was clean at `469b1a4d66f3a9ff0a30d4ee070f211d6f8a6115`;
+the edits are limited to the historical-release worktree. Rose's corrected
+source review remains pending.
+
+```sh
+~/shinichi-brain/tools/lane_preflight.sh /Users/z3437171/.codex/worktrees/cran-071-first/gllvmTMB --file README.md
+~/shinichi-brain/tools/lane_preflight.sh /Users/z3437171/.codex/worktrees/cran-071-first/gllvmTMB --file vignettes/gllvmTMB.Rmd
+# Both reported unmerged references on these shared paths, the live CRAN release
+# lease, and active separate development/Claude lanes. The diff against the
+# development-identity branch was read; its README changes describe current-main
+# 0.8.0.9000 identity and are not imported. The Claude beginner-reader refs were
+# read before changing the historical Get Started source. No commits appeared
+# on these paths in the six-hour history query. `gh pr list --state open` failed
+# because api.github.com was unreachable. The maintainer's recorded CRAN
+# priority and active exclusive release lease authorize the isolated release
+# branch edits; no foreign worktree was modified.
+Rscript --vanilla -e 'pkgdown::check_pkgdown()'
+# Exit 0; No problems found.
+Rscript --vanilla -e 'devtools::build(pkg="/Users/z3437171/.codex/worktrees/cran-071-first/gllvmTMB", path="/private/tmp/gllvmtmb-071-cran-evidence/diagnostic-build-v14", vignettes=TRUE, manual=FALSE)'
+# Exit 0; built gllvmTMB_0.7.1.tar.gz.
+shasum -a 256 /private/tmp/gllvmtmb-071-cran-evidence/diagnostic-build-v14
+# c77dcb40462b9a340cac1455d7179d5425d6a881b6213896113aa30353c229b1
+stat -f '%z bytes' /private/tmp/gllvmtmb-071-cran-evidence/diagnostic-build-v14
+# 4,419,668 bytes; 887 inventory entries; forbidden-path scan found no matches.
+R CMD check --run-donttest --no-manual --output=/private/tmp/gllvmtmb-071-cran-evidence/v14-local-check /private/tmp/gllvmtmb-071-cran-evidence/diagnostic-build-v14
+# Running the exact v14 archive on macOS ARM / R 4.6.0. Metadata, package
+# installation, namespace, code, documentation, examples, and test dependency
+# checks passed; testthat is running.
+```
+
+V14 contains the NEWS scope correction but predates the README/Get Started
+repairs. Its current check is useful only for the exact v14 source; a later
+archive and exact-tarball checks are required after the last edits. The
+unresolved rights hold, current R 4.6.1/R-devel, three-OS checks,
+win-builder/R-hub, final artifact panel, clean source commit, and ledger remain
+open. No upload was attempted.
+
+**Deliberately not run:** build after the Rose reader-wording correction,
+v14 URL check, `--as-cran` on v14, or any upload. All must use the later
+archive that includes README and Get Started corrections.
+
+## 2026-09-28: corrected-source v15 diagnostics
+
+Rose re-audited the corrected README publication sentence and Get Started
+correlation-method paragraph; both passed. `pkgdown::build_articles(lazy =
+FALSE)` rendered the full article set, and `pkgdown::check_pkgdown()` returned
+“No problems found.”
+
+```sh
+Rscript --vanilla -e 'devtools::build(pkg="/Users/z3437171/.codex/worktrees/cran-071-first/gllvmTMB", path="/private/tmp/gllvmtmb-071-cran-evidence/diagnostic-build-v15", vignettes=TRUE, manual=FALSE)'
+# Exit 0; built gllvmTMB_0.7.1.tar.gz.
+shasum -a 256 /private/tmp/gllvmtmb-071-cran-evidence/diagnostic-build-v15
+# 9d85ea9f635d6a52de1b7a4fffe7be72390ae0ecd468caf1b40a977cd602d0ea
+stat -f '%z bytes' /private/tmp/gllvmtmb-071-cran-evidence/diagnostic-build-v15
+# 4,419,817 bytes.
+tar -tzf /private/tmp/gllvmtmb-071-cran-evidence/diagnostic-build-v15 > /private/tmp/gllvmtmb-071-cran-evidence/v15-inventory.txt
+wc -l /private/tmp/gllvmtmb-071-cran-evidence/v15-inventory.txt
+# 887 entries. Forbidden-path scan had no matches; only expected build/,
+# build/partial.rdb, and build/vignette.rds entries were present.
+R CMD check --run-donttest --no-manual --output=/private/tmp/gllvmtmb-071-cran-evidence/v15-local-check /private/tmp/gllvmtmb-071-cran-evidence/diagnostic-build-v15
+# Exit 0; Status: OK on macOS ARM / R 4.6.0, including tests and vignette rebuild.
+R CMD check --as-cran --run-donttest --no-manual --output=/private/tmp/gllvmtmb-071-cran-evidence/v15-as-cran-network /private/tmp/gllvmtmb-071-cran-evidence/diagnostic-build-v15
+# Exit 0; Status: 1 NOTE, solely expected “New submission”; no package-check warnings.
+Rscript --vanilla -e 'urlchecker::url_check(path="/private/tmp/gllvmtmb-071-cran-evidence/v15-local-check/gllvmTMB.Rcheck/00_pkg_src/gllvmTMB", progress=FALSE)'
+# Exit 0 with network access; All URLs are correct!
+R CMD INSTALL --library=/private/tmp/gllvmtmb-071-cran-evidence/v15-install-lib /private/tmp/gllvmtmb-071-cran-evidence/diagnostic-build-v15
+# Exit 0; clean temporary-library install.
+Rscript --vanilla -e '.libPaths(c("/private/tmp/gllvmtmb-071-cran-evidence/v15-install-lib", .libPaths())); library(gllvmTMB); stopifnot(as.character(packageVersion("gllvmTMB")) == "0.7.1"); cite <- gsub("[[:space:]]+", " ", paste(capture.output(citation("gllvmTMB")), collapse=" ")); stopifnot(grepl("Generalised Linear Latent Variable Models with TMB", cite)); f <- getFromNamespace(".validate_bootstrap_n_cores", "gllvmTMB"); stopifnot(identical(f(1L), 1L), identical(f(2L), 2L)); err <- tryCatch(f(3L), error=identity); stopifnot(inherits(err, "error")); cat("version, citation title, and bootstrap worker bounds OK\n")'
+# Exit 0; installed version, title, and worker bounds passed.
+```
+
+V15 remains diagnostic, not frozen: source is dirty and the Lane B header
+redistribution-rights hold is unresolved. Local R is 4.6.0; R 4.6.1 is absent.
+No current-R, three-OS matrix, win-builder/R-hub, final-artifact Grace/Rose/Pat
+panel, clean source commit, or submission-ledger result is established. No
+upload was attempted.
+
+**Deliberately not run:** R 4.6.1 check (not installed), candidate-aligned
+three-OS CI, win-builder/R-hub, final artifact panel, final CRAN ledger, upload,
+or acceptance polling. The rights and clean-source gates must be resolved
+before freezing a candidate.
+
+## 2026-09-28 — MSPL paper-code provenance correction
+
+The release audit had treated a misleading comment in
+`src/lane_b_jeffreys_maxvol_atomic_v8.h` as evidence that the header was a
+mechanical port from an external prototype. Shinichi confirmed on 2026-09-28
+that the compiled header under audit is ours. I inspected the linked 2023 paper companion's
+`Scripts/Functions/mv_MSPAL.R`: its `mv_penalty()` evaluates the Jeffreys atom
+as `log(det(crossprod(X * sqrt(w)))) / 2`. Our header implements that same
+mathematical term but uses a distinct guarded C++ route with weighted
+maximum-volume exchanges, exact-dyadic rank checks, and multiprecision
+fallback. The companion repository lists `Data/`, `Results/`, `Scripts/`, a
+README, and a supplementary PDF; its README calls the R files scripts for
+reproducing analyses and does not present an R package. The script header says
+GPL-2-or-later; gllvmTMB does not copy that script. The erroneous external
+prototype wording was replaced by a precise method/code distinction. The
+existing `inst/COPYRIGHTS` statement that gllvmTMB-specific code is GPL-3 by
+Shinichi covers this helper; it was not edited because a newer unrelated
+provenance change to that file exists on other refs and is outside this
+historical candidate.
+
+Sources: [paper](https://link.springer.com/article/10.1007/s11222-023-10217-3),
+[authors' supplementary repository](https://github.com/psterzinger/softpen_supplementary),
+[inspected `mv_MSPAL.R`](https://github.com/psterzinger/softpen_supplementary/blob/main/Scripts/Functions/mv_MSPAL.R).
+
+Commands and outcomes:
+
+```sh
+git status --short --branch
+# Historical release worktree is dirty from the already approved release repairs.
+rg -n "HOLD|external prototype|mechanically ported|rights chain is unresolved|rights, a clean" .unlazy/cran-071/GATES.md docs/dev-log/release/2026-09-27-071-component-rights.md docs/dev-log/check-log.md
+# Historical predecessor log entries still describe their state when written;
+# the current GATES ledger and component receipt were corrected in this entry.
+```
+
+This clears only the disputed Lane B provenance item. It does not pass G1 as a
+whole, freeze a tarball, or supply any new R CMD check evidence. Existing v15
+logs remain predecessor evidence; the corrected comment and release records
+must enter a new clean source commit and artifact. No CRAN upload was attempted.
+
+
+## 2026-09-28 — Diagnostic v16 exact-archive checks
+
+Diagnostic v16 at `/private/tmp/gllvmtmb-071-cran-evidence/diagnostic-build-v16/gllvmTMB_0.7.1.tar.gz` has SHA-256 `129ae6a0d99604eef419111dde30d83ee77be1278c0aefa051899375c949dc82`, size 4,419,914 bytes, and 887 inventory entries. The forbidden-path scan was clean. It remains diagnostic because its generating source tree was dirty.
+
+The ordinary exact-tarball check completed `Status: OK` on macOS ARM / R 4.6.0. Testthat reported FAIL 0, WARN 0, SKIP 1675, PASS 9682. Exact-tarball `--as-cran` completed `Status: 1 NOTE`, solely the first-submission `New submission` NOTE; test counts matched. URL checking returned `All URLs are correct!`; installation to a clean temporary library succeeded, and installed version, citation title, and bootstrap worker-bound smoke checks passed. Compiler warning output contained unused-variable warnings from RcppEigen/Eigen dependency headers only; no package-owned warning was present.
+
+Commands and outcomes:
+
+```sh
+R CMD check --run-donttest --no-manual --output=/private/tmp/gllvmtmb-071-cran-evidence/v16-local-check /private/tmp/gllvmtmb-071-cran-evidence/diagnostic-build-v16/gllvmTMB_0.7.1.tar.gz
+# Exit 0; Status: OK.
+R CMD check --as-cran --run-donttest --no-manual --output=/private/tmp/gllvmtmb-071-cran-evidence/v16-as-cran /private/tmp/gllvmtmb-071-cran-evidence/diagnostic-build-v16/gllvmTMB_0.7.1.tar.gz
+# Exit 0; Status: 1 NOTE, solely New submission.
+Rscript --vanilla -e 'urlchecker::url_check(path="/private/tmp/gllvmtmb-071-cran-evidence/v16-as-cran/gllvmTMB.Rcheck/00_pkg_src/gllvmTMB", progress=FALSE)'
+# Exit 0; All URLs are correct!
+R CMD INSTALL --library=/private/tmp/gllvmtmb-071-cran-evidence/v16-install-lib /private/tmp/gllvmtmb-071-cran-evidence/diagnostic-build-v16/gllvmTMB_0.7.1.tar.gz
+# Exit 0; * DONE (gllvmTMB).
+Rscript --vanilla -e '.libPaths(c("/private/tmp/gllvmtmb-071-cran-evidence/v16-install-lib", .libPaths())); library(gllvmTMB); stopifnot(as.character(packageVersion("gllvmTMB")) == "0.7.1"); cite <- gsub("[[:space:]]+", " ", paste(capture.output(citation("gllvmTMB")), collapse=" ")); stopifnot(grepl("Generalised Linear Latent Variable Models with TMB", cite)); f <- getFromNamespace(".validate_bootstrap_n_cores", "gllvmTMB"); stopifnot(identical(f(1L), 1L), identical(f(2L), 2L)); err <- tryCatch(f(3L), error=identity); stopifnot(inherits(err, "error")); cat("version, citation title, and bootstrap worker bounds OK\n")'
+# Exit 0; version, citation title, and bootstrap worker bounds OK.
+rg -n "mechanically ported|external prototype|guarded backend core from the frozen" src/lane_b_jeffreys_maxvol_atomic_v8.h docs/dev-log/release/2026-09-27-071-component-rights.md
+# Exit 1; no stale prototype wording in the audited header or current component receipt.
+```
+
+The 1675 skips include repository-only checks and later MSPL code excluded from bounded 0.7.1. This does not replace rendered site/article checks on final source, current-R checks, the platform matrix, or final-artifact checks.
+
+
+Additional source documentation checks on 2026-09-28:
+
+```sh
+Rscript --vanilla -e 'pkgdown::check_pkgdown()'
+# Exit 0; No problems found.
+Rscript --vanilla -e 'pkgdown::build_articles(lazy = FALSE)'
+# Completed; all 39 source article files and the package vignette were read/rendered.
+python3 - <<'PY'
+from pathlib import Path
+src=list(Path("vignettes/articles").glob("*.Rmd"))+list(Path("vignettes").glob("*.Rmd"))
+out=Path("pkgdown-site/articles")
+missing=[p.name.replace(".Rmd", ".html") for p in src if not (out/p.name.replace(".Rmd", ".html")).exists()]
+assert len(src) == 39 and len(list(out.glob("*.html"))) == 40 and not missing
+print("source articles: 39; rendered html: 40; missing: []")
+PY
+# Exit 0; all source article outputs exist.
+```
+
+These checks validate local source rendering only. No live-site deployment was checked.
+
+
+## 2026-09-28 — Independent source rights and component audit
+
+Grace's independent review of diagnostic v16 passed the bounded source-level rights accounting. All 19 tracked `inst/sim/lane-b/` files are present byte-for-byte in the 887-entry archive (178,843 bytes total); their Git history names only Shinichi Nakagawa, and targeted provenance searches found no third-party code lineage. This supplements, but does not broaden, the direct maintainer confirmation for the C++ header. The older release-rights authorization covers 0.7.0; the current user-approved 0.7.1 preparation plan authorizes preparation. The exact final artifact and its inventory/notice match remain to be checked.
+
+Receipt: `/private/tmp/gllvmtmb-071-cran-evidence/rights-audit-2026-09-28-v16-source.md`.

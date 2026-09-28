@@ -1,6 +1,6 @@
 Type: Package
 Package: gllvmTMB
-Title: Fit Multivariate Models from Wide Response Data
+Title: Generalised Linear Latent Variable Models with TMB
 Version: 0.7.1
 Authors@R:
     person("Shinichi", "Nakagawa", , "itchyshin@gmail.com",

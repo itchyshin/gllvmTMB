@@ -64,10 +64,10 @@ test_that("integration: simulate -> fit -> all extractors -> predict -> simulate
   expect_equal(dim(y_sim), c(nrow(sim$data), 2L))
 
   ## Extractors
-  B <- extract_Sigma_B(fit)
-  expect_named(B, c("Sigma_B", "R_B"))
-  W <- extract_Sigma_W(fit)
-  expect_named(W, c("Sigma_W", "R_W"))
+  B <- extract_Sigma(fit, level = "unit")
+  expect_true(all(c("Sigma", "R") %in% names(B)))
+  W <- extract_Sigma(fit, level = "unit_obs")
+  expect_true(all(c("Sigma", "R") %in% names(W)))
   icc <- extract_ICC_site(fit)
   expect_length(icc, 4)
   expect_true(all(icc > 0 & icc < 1))

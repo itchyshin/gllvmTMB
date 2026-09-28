@@ -582,7 +582,6 @@ test_that("ordinary latent random-regression guards unsupported slope variants",
       data = fx$data,
       trait = "trait",
       unit = "individual",
-      unit_obs = "session_id",
       control = gllvmTMBcontrol(se = FALSE)
     ),
     regexp = "2 \\* n_traits|augmented random-regression coefficient dimension"
@@ -598,7 +597,6 @@ test_that("ordinary latent random-regression guards unsupported slope variants",
       data = fx$data,
       trait = "trait",
       unit = "individual",
-      unit_obs = "session_id",
       control = gllvmTMBcontrol(se = FALSE)
     ),
     regexp = "Do not combine augmented ordinary.*intercept-only"
@@ -629,7 +627,6 @@ test_that("ordinary latent random-regression guards unsupported slope variants",
       data = fx$data,
       trait = "trait",
       unit = "individual",
-      unit_obs = "session_id",
       control = gllvmTMBcontrol(se = FALSE)
     ),
     regexp = "Do not combine augmented ordinary.*intercept-only"
@@ -644,7 +641,6 @@ test_that("ordinary latent random-regression guards unsupported slope variants",
       data = fx$data,
       trait = "trait",
       unit = "individual",
-      unit_obs = "session_id",
       control = gllvmTMBcontrol(se = FALSE)
     ),
     regexp = "common = TRUE"
@@ -662,7 +658,6 @@ test_that("ordinary latent random-regression guards unsupported slope variants",
       data = fx$data,
       trait = "trait",
       unit = "individual",
-      unit_obs = "session_id",
       control = gllvmTMBcontrol(se = FALSE)
     ),
     regexp = "same slope covariate"

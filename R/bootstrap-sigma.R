@@ -31,6 +31,19 @@
   stats::as.formula(paste(deparse(call("~", lhs, rhs)), collapse = " "))
 }
 
+.validate_bootstrap_n_cores <- function(n_cores) {
+  valid <- is.numeric(n_cores) &&
+    !is.complex(n_cores) &&
+    length(n_cores) == 1L &&
+    !is.na(n_cores) &&
+    is.finite(n_cores) &&
+    n_cores %in% c(1, 2)
+  if (!valid) {
+    cli::cli_abort("{.arg n_cores} must be 1 or 2.")
+  }
+  as.integer(n_cores)
+}
+
 #' Bootstrap covariance, correlation, communality, and ICC summaries
 #'
 #' Use `bootstrap_Sigma()` when Hessian, Wald, or profile intervals are
@@ -64,9 +77,9 @@
 #' Replicates whose refit fails to converge are recorded but excluded
 #' from CI calculation.
 #'
-#' Multicore is dispatched via `future` + `future.apply`; pass
-#' `n_cores >= 2` to enable parallel refits. When parallel, replicates
-#' use `future.apply`'s L'Ecuyer-CMRG seed stream so the answers are
+#' Parallel refits use `future` + `future.apply` and are limited to two
+#' workers. Set `n_cores = 2` to enable parallel refits. When parallel,
+#' replicates use `future.apply`'s L'Ecuyer-CMRG seed stream so the answers are
 #' reproducible given a fixed `seed`, but they are NOT bit-identical to
 #' an `n_cores = 1` run with the same seed (different RNG streams).
 #'
@@ -90,7 +103,7 @@
 #'   order statistics rather than being interpolated between them.
 #'
 #'   Raising `n_boot` reduces Monte Carlo error in the endpoints but does not
-#'   make a percentile interval second-order accurate — its coverage asymptotes
+#'   make a percentile interval second-order accurate; its coverage asymptotes
 #'   slightly below nominal regardless. Use [profile_ci_total_variance()] for
 #'   the `Sigma` diagonals if that matters. For exploratory work a smaller `B`
 #'   (200, say) is a reasonable time-for-precision trade; for a number you
@@ -110,13 +123,13 @@
 #' @param conf Numeric in `(0, 1)`; confidence level for percentile CIs.
 #'   Default 0.95.
 #' @param seed Optional RNG seed for reproducibility.
-#' @param n_cores Integer; number of cores for parallel refits.
-#'   Default 1 (sequential). `>= 2` uses `future::multisession`.
+#' @param n_cores Integer; number of workers for refits. Must be 1 or 2.
+#'   Default 1 (sequential); 2 uses `future::multisession`.
 #' @param progress Logical; print a one-line status message at each
 #'   replicate (sequential only). Default `TRUE`.
 #' @param keep_draws Logical; if `TRUE`, the full `n_boot` x ...
 #'   matrices of bootstrap draws are returned as `$draws`. Default
-#'   `FALSE` (CIs only — saves memory for large n_boot).
+#'   `FALSE` (CIs only; saves memory for large n_boot).
 #' @param link_residual How to treat family-specific link-implicit
 #'   residual variance when extracting `Sigma`, `R`, `communality`, and
 #'   `ICC`.
@@ -157,7 +170,7 @@
 #'     CIs reflect parametric simulate-refit variability, not a
 #'     Bayesian posterior distribution for variance components.
 #'   \item **Intervals are too narrow when the simulator cannot redraw a
-#'     tier.** Redraw is not implemented for every random-effect tier —
+#'     tier.** Redraw is not implemented for every random-effect tier,
 #'     notably the SPDE spatial tier and the diagonal phylogenetic tier.
 #'     For a fit using one of those, [simulate.gllvmTMB_multi()] falls back
 #'     to reusing the fitted random-effect modes and emits a one-shot
@@ -205,6 +218,7 @@ bootstrap_Sigma <- function(
   keep_draws = FALSE,
   link_residual = c("auto", "none")
 ) {
+  n_cores <- .validate_bootstrap_n_cores(n_cores)
   if (!inherits(fit, "gllvmTMB_multi")) {
     cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
   }
@@ -221,8 +235,6 @@ bootstrap_Sigma <- function(
     cli::cli_abort("{.arg n_boot} must be a positive integer; got {n_boot}.")
   }
   n_boot <- as.integer(n_boot)
-  n_cores <- as.integer(n_cores)
-
   ## Arithmetic floor on n_boot (2026-08-02).
   ##
   ## Percentile bounds cannot represent a `conf`-level interval from too few

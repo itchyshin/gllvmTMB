@@ -55,6 +55,13 @@ test_that("bootstrap_ci_lv_effects errors without a predictor-informed latent te
   expect_error(bootstrap_ci_lv_effects(fit, n_boot = 5), regexp = "predictor-informed latent")
 })
 
+test_that("bootstrap_ci_lv_effects limits parallel refits to two workers", {
+  expect_error(
+    gllvmTMB:::bootstrap_ci_lv_effects(list(), n_cores = 3L),
+    "must be 1 or 2"
+  )
+})
+
 test_that("unconditional simulate() redraws the Model A tiers (no conditional fallback)", {
   skip_if_not_heavy()
   skip_on_cran()

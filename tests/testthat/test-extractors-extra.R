@@ -52,17 +52,26 @@ make_diag_only_fit <- function(seed = 2) {
 # ---- error on non-gllvmTMB_multi input -----------------------------------
 
 test_that("extract_Sigma_B(): non-multi fit errors", {
-  expect_error(
-    extract_Sigma_B("not-a-fit"),
-    regexp = "fit returned by `gllvmTMB\\(\\)`"
+  expect_warning(
+    expect_error(
+      extract_Sigma_B("not-a-fit"),
+      regexp = "fit returned by `gllvmTMB\\(\\)`"
+    ),
+    "extract_Sigma_B\\(\\).*deprecated"
   )
-  expect_error(extract_Sigma_B(42), regexp = "fit returned by `gllvmTMB\\(\\)`")
+  expect_warning(
+    expect_error(extract_Sigma_B(42), regexp = "fit returned by `gllvmTMB\\(\\)`"),
+    "extract_Sigma_B\\(\\).*deprecated"
+  )
 })
 
 test_that("extract_Sigma_W(): non-multi fit errors", {
-  expect_error(
-    extract_Sigma_W(list()),
-    regexp = "fit returned by `gllvmTMB\\(\\)`"
+  expect_warning(
+    expect_error(
+      extract_Sigma_W(list()),
+      regexp = "fit returned by `gllvmTMB\\(\\)`"
+    ),
+    "extract_Sigma_W\\(\\).*deprecated"
   )
 })
 
@@ -117,7 +126,7 @@ test_that("safe variance proportions and ICC return NA for zero denominators", {
 
 # ---- clean degradation when covstruct absent -----------------------------
 
-test_that("extract_Sigma_B(): NULL when neither rr_B nor diag_B is in the fit", {
+test_that("extract_Sigma(): NULL when neither rr_B nor diag_B is in the fit", {
   ## A fit with only diag_W: no between-site covstruct
   sim <- simulate_site_trait(
     n_sites = 20,
@@ -131,12 +140,12 @@ test_that("extract_Sigma_B(): NULL when neither rr_B nor diag_B is in the fit", 
     value ~ 0 + trait + indep(0 + trait | site_species),
     data = sim$data
   )
-  expect_null(extract_Sigma_B(fit))
+  expect_null(extract_Sigma(fit, level = "unit"))
 })
 
-test_that("extract_Sigma_W(): NULL when neither rr_W nor diag_W is in the fit", {
+test_that("extract_Sigma(): NULL when neither rr_W nor diag_W is in the fit", {
   fit <- make_diag_only_fit()
-  expect_null(extract_Sigma_W(fit))
+  expect_null(extract_Sigma(fit, level = "unit_obs"))
 })
 
 test_that("extract_ICC_site(): NULL when only one of B / W is present", {
@@ -158,29 +167,29 @@ test_that("extract_ordination(): NULL when level missing in fit", {
 
 # ---- diag_B alone produces a Sigma_B with zero off-diagonals -------------
 
-test_that("extract_Sigma_B(): diag_B alone yields a diagonal Sigma_B", {
+test_that("extract_Sigma(): diag_B alone yields a diagonal Sigma_B", {
   fit <- make_diag_only_fit()
-  out <- extract_Sigma_B(fit)
-  expect_named(out, c("Sigma_B", "R_B"))
+  out <- extract_Sigma(fit, level = "unit")
+  expect_true(all(c("Sigma", "R") %in% names(out)))
   ## Off-diagonal elements should be exactly zero
-  od <- out$Sigma_B
+  od <- out$Sigma
   diag(od) <- 0
   expect_equal(sum(abs(od)), 0)
   ## Diagonal of correlation matrix should be 1
-  expect_equal(unname(diag(out$R_B)), rep(1, fit$n_traits))
+  expect_equal(unname(diag(out$R)), rep(1, fit$n_traits))
 })
 
 # ---- rotation invariance: Sigma_B = Lambda Lambda' ---------------------
 
-test_that("extract_Sigma_B() is rotation-invariant (varimax leaves Sigma_B unchanged)", {
+test_that("extract_Sigma() is rotation-invariant (varimax leaves Sigma_B unchanged)", {
   fit <- make_small_rrB_fit(seed = 7, d = 2)
-  before <- extract_Sigma_B(fit)$Sigma_B
+  before <- suppressMessages(extract_Sigma(fit, level = "unit"))$Sigma
   rt <- rotate_loadings(fit, "unit", method = "varimax")
   ## Lambda Lambda' is invariant under orthogonal rotation
   Sigma_rot <- rt$Lambda %*% t(rt$Lambda)
   ## Add the diag_B contribution explicitly to mirror Sigma_B
   Sigma_rot_full <- Sigma_rot + diag(as.numeric(fit$report$sd_B)^2)
-  ## extract_Sigma_B() now returns a named matrix; drop dimnames before equality
+  ## The extracted covariance is named; drop dimnames before equality
   expect_equal(unname(Sigma_rot_full), unname(before), tolerance = 1e-8)
 })
 
@@ -221,7 +230,7 @@ test_that("extract_communality('unit') equals diag(LL') / diag(Sigma_B)", {
   ## Recompute manually
   L <- fit$report$Lambda_B
   LL <- L %*% t(L)
-  S <- extract_Sigma_B(fit)$Sigma_B
+  S <- suppressMessages(extract_Sigma(fit, level = "unit"))$Sigma
   expect_equal(unname(comm), as.numeric(diag(LL) / diag(S)), tolerance = 1e-10)
 })
 
@@ -238,14 +247,16 @@ test_that("extract_ordination('unit'): scores are n_sites x d_B", {
 
 # ---- getResidualCov / getResidualCor ------------------------------------
 
-test_that("getResidualCov(level='unit') matches extract_Sigma_B()$Sigma_B", {
+test_that("getResidualCov(level='unit') matches extract_Sigma()$Sigma", {
   fit <- make_small_rrB_fit(seed = 13, d = 2)
-  expect_equal(getResidualCov(fit, "unit"), extract_Sigma_B(fit)$Sigma_B)
+  expect_equal(getResidualCov(fit, "unit"),
+               suppressMessages(extract_Sigma(fit, level = "unit"))$Sigma)
 })
 
-test_that("getResidualCor(level='unit') matches extract_Sigma_B()$R_B", {
+test_that("getResidualCor(level='unit') matches extract_Sigma()$R", {
   fit <- make_small_rrB_fit(seed = 17, d = 2)
-  expect_equal(getResidualCor(fit, "unit"), extract_Sigma_B(fit)$R_B)
+  expect_equal(getResidualCor(fit, "unit"),
+               suppressMessages(extract_Sigma(fit, level = "unit"))$R)
 })
 
 test_that("getResidualCov / Cor return NULL when level is empty in fit", {

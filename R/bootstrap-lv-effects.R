@@ -27,7 +27,8 @@
 #' @param n_boot Number of bootstrap replicates (default 999).
 #' @param conf Confidence level (default 0.95).
 #' @param seed Optional integer seed for reproducible replicates.
-#' @param n_cores Cores for parallel refits (requires \pkg{future.apply} when > 1).
+#' @param n_cores Number of workers for refits. Must be 1 or 2; parallel
+#'   refits require \pkg{future.apply} and \pkg{future}.
 #' @param progress Logical; print per-replicate progress in the sequential path.
 #'
 #' @return A data frame with one row per \eqn{B_{lv}} entry: \code{trait},
@@ -42,6 +43,7 @@ bootstrap_ci_lv_effects <- function(fit,
                                     seed = NULL,
                                     n_cores = 1,
                                     progress = FALSE) {
+  n_cores <- .validate_bootstrap_n_cores(n_cores)
   if (!inherits(fit, "gllvmTMB_multi")) {
     cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
   }
@@ -56,7 +58,6 @@ bootstrap_ci_lv_effects <- function(fit,
     cli::cli_abort("{.arg conf} must be in (0, 1); got {conf}.")
   }
   n_boot <- as.integer(n_boot)
-  n_cores <- as.integer(n_cores)
   B_hat <- as.matrix(B_hat)
   n_tr <- nrow(B_hat)
   n_pr <- ncol(B_hat)

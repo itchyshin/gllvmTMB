@@ -1,11 +1,37 @@
-# gllvmTMB 0.7.1 (release candidate)
+# gllvmTMB 0.7.1
 
-This candidate is a narrow trust-release closure. It adds no new response
-family, likelihood, integration engine, random-slope capability, iSDM route,
-or broad `predict(newdata = )` claim. No CRAN submission, tag, or public
-release accompanies this candidate.
+Version 0.7.1 is prepared for the first CRAN submission of `gllvmTMB`.
+It fits multivariate
+response models using stacked long data or a wide-data formula, with
+independent, full, or latent trait covariance and selected animal,
+phylogenetic, spatial, and kernel correlation sources. This bounded 0.7.1
+source adds no new response family, likelihood, integration engine,
+random-slope capability, iSDM route, or broad `predict(newdata = )` claim.
+Availability on CRAN begins only after CRAN accepts and publishes the package.
+
+Validation depth varies across these routes. In complete three-trait Gaussian
+data, native-Laplace point estimation with `indep()` and `dep()` is covered at
+sample sizes `n = 60` and `240`. Native-Laplace Gaussian rank-1 latent
+evidence is partial: `n = 240` passed, `n = 60` was held, three admitted
+correlation-stress cells failed, and three boundary/Psi challenges were held.
+Native-Laplace Poisson-log rank-1 latent evidence is partial in the clean-data
+`n = 100` and `300` setting; a rare-level cell showed fixed-effect bias.
+Native-Laplace NB2-log rank-1 latent evidence is mixed: `n = 300` passed, but
+`n = 100` and missing-response cells failed with catastrophic dispersion
+errors, while the rare-level cell was held. Evidence for other non-Gaussian
+fixed-effect or extractor routes does not establish latent model performance.
+The available covariance keywords do not imply equal validation for every
+family and combination. Broad interval calibration is not established; one
+narrow exception is the documented 0.94 coverage floor for a two-sided
+Gaussian total-variance profile interval under its stated conditions. The
+existing random-slope and MSPL routes remain experimental and are not expanded
+by this release.
 
 ## Changed
+
+* **Parametric bootstrap refits are limited to two workers.**
+  `bootstrap_Sigma()` and the predictor-informed latent-effect bootstrap
+  accept `n_cores = 1` or `2`; larger values return an error.
 
 * **Explicitly unused optional grouping slots now warn (#1190).** Supplying
   `unit_obs` or `cluster` is useful only when a covariance keyword consumes
@@ -22,14 +48,14 @@ release accompanies this candidate.
   the wrapper warning.
 
 * **Variational approximation remains an opt-in experimental route (#1189).**
-  Native Laplace remains the default. This candidate makes no VA calibration,
+  Native Laplace remains the default. This release makes no VA calibration,
   standard-error, confidence-interval, low-prevalence, or MSPL claim.
 
 ## Scope boundary
 
 Existing random-slope documentation and existing MSPL material are retained.
 They are not new 0.7.1 capability claims: MSPL remains opt-in experimental,
-and this candidate neither expands nor promotes either topic.
+and this release neither expands nor promotes either topic.
 
 # gllvmTMB 0.7.0 (development history retained for provenance)
 
@@ -300,7 +326,7 @@ and this candidate neither expands nor promotes either topic.
   were previously gated WHOLE-VECTOR: mapped off only when the family was
   absent from every trait. In a mixed-family fit where the family was
   present on some traits but not others, the other traits' entries were
-  free parameters the likelihood never reads — a mechanically singular
+  free parameters the likelihood never reads, a mechanically singular
   Hessian (`pdHess = FALSE`), no valid `sdreport`/Wald/profile intervals,
   and phantom entries enumerated by `profile_targets()`/`confint()`. Each
   vector is now pinned per trait to the traits that actually use its
@@ -309,7 +335,7 @@ and this candidate neither expands nor promotes either topic.
 * **Convergence diagnostics on ridged fits now judge the objective the fit
   actually optimised (#1092).** `aghq_ridge` applies a loading penalty in R,
   outside the TMB objective, so `fit_health$max_gradient` previously reported
-  the gradient of the *unpenalised* likelihood at the penalised optimum — a
+  the gradient of the *unpenalised* likelihood at the penalised optimum, a
   number that equals the missing ridge term (`|Lambda|/tau^2`) rather than
   ~0, making perfectly converged ridged fits read as unconverged. The
   reported gradient, `stationary_by_gradient`, `converged`, `sanity_multi()`
@@ -320,7 +346,7 @@ and this candidate neither expands nor promotes either topic.
   the ordinary loading block `theta_rr_B` **only**: an accidental merge had
   briefly made it also penalise spatial latent loadings
   (`theta_rr_spde_lv`), contradicting the documented exemption for spatial
-  terms — a regression test now proves spatial loadings carry no silent
+  terms; a regression test now proves spatial loadings carry no silent
   penalty.
 
 * **Multinomial fits now warn at fit time when their contrast structure is
@@ -330,7 +356,7 @@ and this candidate neither expands nor promotes either topic.
   switch and with its own once-per-session slot, so it cannot suppress or be
   suppressed by the binomial runaway warning. Set `warn_runaway = FALSE` to
   silence both; `check_gllvmTMB()` and `gllvmTMB_diagnose()` are unaffected.
-  Ordinal fits deliberately emit no such warning — that family's arms ship
+  Ordinal fits deliberately emit no such warning; that family's arms ship
   disarmed (see the calibration note below), so the row reports statistics
   without a verdict.
 
@@ -346,16 +372,16 @@ is still the default.
   reported `PASS` before starts reporting `WARN`. The earlier default was
   calibrated on a pool whose true loading scale never reached the regime
   where this arm misfires. A pool built to cross `sigma_lambda in c(0.7,
-  3.0)` (928 healthy / 272 degenerate binomial-probit fits) — `3.0` chosen
+  3.0)` (928 healthy / 272 degenerate binomial-probit fits; `3.0` chosen
   to hit issue #847's `aghq_ridge` ridge-failure regime, not argued for
-  realism — measured a 25% false-positive rate at the old threshold, all
+  realism) measured a 25% false-positive rate at the old threshold, all
   of it attributable to this one arm; raising the threshold to 8 lowers
   that rate to 15.52% while sensitivity on the same pool's degenerate fits
   falls only from 100.00% to 99.63% (one additional missed fit out of
   272). This is an improvement, not a fix: the arm remains measurably
-  regime-dependent — false-positive rate 3.85% at a mild true loading
+  regime-dependent: false-positive rate 3.85% at a mild true loading
   scale versus 49.08% at the scale `aghq_ridge = 2` is already known to
-  struggle at (issue #847) — so a fixed constant cannot be correct across
+  struggle at (issue #847), so a fixed constant cannot be correct across
   every loading scale a fit may have. This is effect-size dependence, not
   the response-scale dependence #851/#855 otherwise describes: probit
   fixes the residual variance at 1, so there is no free response scale
@@ -536,7 +562,7 @@ is still the default.
   fixture.
 
 * **A Species Distribution Models article collection.** The pkgdown site
-  gains a dedicated navbar menu ordering the SDM material as a curriculum —
+  gains a dedicated navbar menu ordering the SDM material as a curriculum:
   the joint species distribution model guide, a new presence-only opener,
   and the three integrated-source articles. The new article, *Joint
   ecological intensity from opportunistic records*
@@ -544,8 +570,8 @@ is still the default.
   relative-intensity model to GBIF-style records alone through the ordinary
   `gllvmTMB()` call (Poisson counts, an effort offset, a named recording-bias
   covariate, and one `latent()` factor). It estimates relative ecological
-  intensity only — no abundance, absolute occurrence, or detectability
-  claim — and states the design assumption its bias term rests on.
+  intensity only, no abundance, absolute occurrence, or detectability
+  claim, and states the design assumption its bias term rests on.
 
 * **A fifth SDM article: repeated survey visits.** *What do repeated survey
   visits add to an integrated model?*
@@ -581,8 +607,8 @@ is still the default.
   (`vignettes/articles/mspl-binary-jsdm.Rmd`, same URL) now grounds the
   example in an evidence-map-shaped corpus and demonstrates, on one dataset,
   that runaway loadings and fixed-design separation are different diseases
-  with different matched remedies — the opt-in loading ridge for the first,
-  opt-in MSPL for the second — including the negative result that the ridge
+  with different matched remedies: the opt-in loading ridge for the first
+  and opt-in MSPL for the second. It also includes the negative result that the ridge
   does not repair separation. Claim boundaries (probit vs logit ridge
   regimes, AGHQ's large-n evidence, MSPL's refused inference surface) are
   stated in the article.
@@ -699,11 +725,11 @@ is still the default.
   for any family it did not explicitly recognise, so tweedie, Beta,
   betabinomial, Student-t, truncated Poisson, truncated NB2,
   `delta_lognormal`, `delta_gamma`, and ordinal-probit rows were redrawn as
-  plain Gaussian noise on the link scale — a plausible-looking but wrong
+  plain Gaussian noise on the link scale, a plausible-looking but wrong
   number, not an error. `simulate()`, `predictive_check()`'s simulation-based
   plot types (`stat_grouped`, `dens_overlay`), and anything built on
   `.gllvmTMB_predictive_draws()` (bootstrap/coverage helpers included) now
-  draw correctly for 16 of these — every family except tweedie, which has no
+  draw correctly for 16 of these: every family except tweedie, which has no
   exact draw without a new dependency and now returns `NA` with a per-call
   warning rather than the previous wrong-distribution substitute. Multinomial
   rows draw a single grouped categorical outcome per observation rather than
@@ -737,7 +763,7 @@ is still the default.
   `kernel_*()`, and `phylo_scalar()` / `animal_scalar()`. Every one of these
   now aborts, as the documentation always said they should. **If you fitted
   a `multinomial()` trait combined with any of the keywords above, that fit
-  ran on an unvalidated structured-term path and should be re-checked** —
+  ran on an unvalidated structured-term path and should be re-checked**;
   the currently admitted set is unchanged: fixed effects, an ordinary shared
   `latent(0 + trait | unit, d = k)` ordination, and intercept-only
   `phylo_latent()` (default `unique = FALSE`; it emits no Psi companion at
@@ -850,14 +876,14 @@ bridge remains experimental and is not required for the main workflow.
   its own observation law, all sharing one ecological process:
   `family = isdm_sources(gbif = poisson(), literature = poisson(), survey =
   binomial("cloglog"))`, with an `isdm_source` column in the data naming each
-  row's source. Two laws are admitted — a Poisson count stream and a
-  complementary-log-log detection stream — because both observe a thinning of
+  row's source. Two laws are admitted: a Poisson count stream and a
+  complementary-log-log detection stream, because both observe a thinning of
   the same shared intensity; that argument holds arm by arm, so it does not
   weaken as sources are added. Everything the two-source route refused stays
   refused: logit or probit detection, dispersion-carrying families, `weights`,
   multi-trial rows, and any trait not observed by every declared source. The
   existing two-source form (`list(gbif = ..., survey_pa = ...)`) keeps working
-  unchanged and gives identical fits — it is now the two-source case of the
+  unchanged and gives identical fits; it is now the two-source case of the
   same rule. A worked example, *Integrating three data sources at once:
   portal, atlas, and survey*, fits a three-source model end to end through the
   declared route. Everything reported remains relative intensity, and the
@@ -882,7 +908,7 @@ bridge remains experimental and is not required for the main workflow.
   articles cover it: *Integrating opportunistic records with a repeated
   survey* fits and renders through the public route, and *How big does an
   integrated survey design need to be?* reads a known-truth design curve to
-  ask whether a design is large enough before you fit at all. **Partial:** everything reported is relative intensity —
+  ask whether a design is large enough before you fit at all. **Partial:** everything reported is relative intensity;
   presence-only data cannot identify absolute abundance, occupancy, or
   detectability, and none are estimated. Source-specific spatial structure is
   only weakly identified on small designs; treat a portal-only field as a
@@ -909,32 +935,32 @@ bridge remains experimental and is not required for the main workflow.
 * **A fit without standard errors no longer returns a silent all-`NA` answer.**
   When a model is fitted with `gllvmTMBcontrol(se = FALSE)`, there is no
   `sd_report`, so a Wald interval has nothing to be built from. `confint()`
-  used to return a matrix of `NA` bounds with no error and no warning — a
+  used to return a matrix of `NA` bounds with no error and no warning: a
   non-answer that looks like an answer, and that flows onward into tables and
   plots with nothing marking it.
 
   `confint(method = "wald")` now **raises a typed error**
   (`gllvmTMB_confint_no_sdreport`) naming both remedies:
   `fit <- standard_errors(fit)`, or `method = "profile"`, which does not need
-  standard errors. This covers both Wald routes — the fixed-effects path and
+  standard errors. This covers both Wald routes: the fixed-effects path and
   the variance-component target path (`parm = "sigma_eps"` and friends). The
   extractor-style consumers `getREsd()`, `getLV(se = TRUE)` and
   `predict(se.fit = TRUE)` already behaved this way.
 
   **The other way to have no usable standard errors is also covered.** A fit
   whose Hessian is not positive-definite *has* an `sd_report`, but its standard
-  errors come back non-finite — and those used to print as a wall of bare `NaN`.
+  errors come back non-finite, and those used to print as a wall of bare `NaN`.
   `summary()` now says so, and `confint()` aborts
   (`gllvmTMB_confint_nonfinite_se`). The advice deliberately differs: this is a
   property of the fit, so `standard_errors()` cannot help and the message points
   at `gllvmTMB_diagnose()` and `method = "profile"` instead.
 
   **A single `NA` is left alone.** A coefficient fixed via `Xcoef_fixed` has no
-  standard error, and `NA` is the right answer there — only an *entirely*
+  standard error, and `NA` is the right answer there; only an *entirely*
   non-finite set is treated as the pathology.
 
   **`summary()` deliberately still works.** Fitting fast and reading point
-  estimates is a legitimate workflow, so `summary()` prints as before — but it
+  estimates is a legitimate workflow, so `summary()` prints as before, but it
   now says *why* the `Std.Err` column is empty instead of leaving a column of
   bare `NA`s to be read as a computed result. `extract_cutpoints()` reports the
   same way for its `tau_se` column.
@@ -950,8 +976,8 @@ bridge remains experimental and is not required for the main workflow.
 * **`vcov()` and `coef()` now work on multi-trait fits.** `coef(fit)` returns
   the named fixed-effect estimates and `vcov(fit)` their covariance, taken from
   the fit's `sdreport()`. Both were previously registered only for the
-  variational `gllvmTMB_va` class — where `coef()` deliberately refuses and
-  `vcov()` is now restricted to uncalibrated fixed-effect VA-Wald inference —
+  variational `gllvmTMB_va` class, where `coef()` deliberately refuses and
+  `vcov()` is now restricted to uncalibrated fixed-effect VA-Wald inference,
   so calling either on an ordinary fit raised "no applicable method", *despite
   the documentation saying otherwise*.
 
@@ -959,7 +985,7 @@ bridge remains experimental and is not required for the main workflow.
   estimates do not depend on `sdreport()`. `vcov()` does, and raises the same
   typed conditions `confint()` does when it is missing or non-finite, so a
   caller that handles one handles the other. Rows and columns for coefficients
-  held fixed via `Xcoef_fixed` are `NA` — a parameter that was not estimated has
+  held fixed via `Xcoef_fixed` are `NA`; a parameter that was not estimated has
   no sampling covariance.
 
 * **`standard_errors()` computes standard errors after fitting.** Fitting with
@@ -968,11 +994,11 @@ bridge remains experimental and is not required for the main workflow.
   afterwards was to fit the model again. `fit <- standard_errors(fit)` now
   computes them on demand from the fitted object.
 
-  The result is the fit-time calculation deferred, not a different one — the
+  The result is the fit-time calculation deferred, not a different one: the
   same single `sdreport()` call on the same converged parameter vector,
   verified bit-exact (`tolerance = 0`) against a fit made with `se = TRUE`.
-  Every existing consumer — `summary()`, `getLV()`, `getREsd()`,
-  `confint(method = "wald")` — then works on the returned object.
+  Every existing consumer (`summary()`, `getLV()`, `getREsd()`,
+  and `confint(method = "wald")`) then works on the returned object.
 
   Note the R semantics: the fit is **returned**, not modified in place. Assign
   the result, or the standard errors are discarded.
@@ -982,7 +1008,7 @@ bridge remains experimental and is not required for the main workflow.
   That limitation is shared by every part of the package that reuses the fitted
   TMB object; what is new is that this function says so with a clear, typed
   error instead of failing obscurely. This adds no new inference and changes no
-  likelihood, parameterisation, or honesty caveat — Wald standard errors carry
+  likelihood, parameterisation, or honesty caveat; Wald standard errors carry
   exactly the caveats they carried before.
 
 * **Spatial mesh, CRS, and range-plot helpers were substantially rewritten
@@ -1004,11 +1030,11 @@ bridge remains experimental and is not required for the main workflow.
 * **`offset()` now works, for count responses.** `offset(log(trap_nights))`
   in a Poisson or negative-binomial model is the standard way to model a rate
   rather than a raw count, and until now gllvmTMB rejected it. Both closest
-  comparators offer offsets, so this was a gap rather than a rough edge — and
+  comparators offer offsets, so this was a gap rather than a rough edge, and
   for counts there is no workaround, since an effort adjustment cannot be
   folded into the response the way a Gaussian one can be centred by hand.
 
-  **It is deliberately restricted to count families** — `poisson()`,
+  **It is deliberately restricted to count families**: `poisson()`,
   `nbinom1()`, `nbinom2()`, `truncated_poisson()`, `truncated_nbinom2()`.
   An offset is a multiplicative rate adjustment on the log link; under
   `gaussian()` it would be an unexplained mean shift and under `binomial()`
@@ -1020,18 +1046,18 @@ bridge remains experimental and is not required for the main workflow.
   trait `t2` uses `gaussian`.
   ```
 
-  This is the advantage of a mixed-family design rather than a cost of one.
-  A single-family package can only recycle one offset across every response.
+  A mixed-family design allows the offset to vary by trait. A single-family
+  package can only recycle one offset across every response.
 
   **A zero offset is allowed everywhere and does nothing**, because zero on
   the log scale is a multiplier of one. That is how a mixed-family model
-  gives an offset to its count traits and not the rest — set the offset
+  gives an offset to its count traits and not the rest; set the offset
   column to `0` on the other rows. In wide format, `offset(w)` applies one
   unit-level column to every trait, while `offset(e1, e2)` gives one column
   per trait in `traits()` order.
 
   The offset also reaches `simulate()`, `bootstrap_Sigma()`,
-  `coverage_study()`, and `predict(newdata = )` — all of which rebuild the
+  `coverage_study()`, and `predict(newdata = )`, all of which rebuild the
   linear predictor themselves and would otherwise have used a model you did
   not fit. `predict(newdata = )` needs the offset variable present in
   `newdata` and says so if it is missing. `engine = "julia"` has no offset in
@@ -1043,8 +1069,8 @@ bridge remains experimental and is not required for the main workflow.
 * **A loading penalty is available for fits that run away, via
   `gllvmTMBcontrol(aghq_ridge = tau)`.** Binomial fits at small sample sizes can
   drive one trait's loading to an absurd value while reporting every
-  conventional sign of health — `convergence = 0` and a positive-definite
-  Hessian — because quasi-complete separation makes that solution the genuine
+  conventional sign of health: `convergence = 0` and a positive-definite
+  Hessian, because quasi-complete separation makes that solution the genuine
   maximum of the likelihood. A Gaussian ridge on the loadings adds curvature
   where the likelihood is flat and removes the runaway: measured at **47% of
   fits down to 0%** at n = 100, and on one reproduction fit it takes the largest
@@ -1064,7 +1090,7 @@ bridge remains experimental and is not required for the main workflow.
 
   Two costs, stated plainly. A penalised fit is a **maximum-a-posteriori point,
   not a maximum-likelihood estimate**, so `logLik()`, `AIC()` and `BIC()` no
-  longer describe it — set `aghq_ridge = Inf` and refit every model being
+  longer describe it; set `aghq_ridge = Inf` and refit every model being
   compared if you need likelihood-based comparison. And the penalty currently
   covers the unit-tier loadings only. `check_gllvmTMB()` now names this remedy
   when it reports a runaway loading.
@@ -1099,14 +1125,14 @@ bridge remains experimental and is not required for the main workflow.
   `tau = 2`.
 
 * **Adaptive quadrature (`gllvmTMBcontrol(aghq = k)`) now tries two starting
-  points and keeps the better fit.** It previously ran from a single start — the
-  Laplace optimum — on the grounds that without a penalty there is nothing to
+  points and keeps the better fit.** It previously ran from a single start: the
+  Laplace optimum, on the grounds that without a penalty there is nothing to
   choose between two starts. That holds for two *starting points*; it does not
   hold for two *converged fits*, which can simply be compared. It matters
   because the Laplace optimum is sometimes itself a runaway, and quadrature then
   inherits it: measured over 40 binomial fits at n = 100, sixteen ran away
   catastrophically, and on **all sixteen** the second start reached a strictly
-  better objective — by 1.1 to 12.9 in negative log-likelihood — and a far more
+  better objective, by 1.1 to 12.9 in negative log-likelihood, and a far more
   plausible loading matrix. Catastrophic fits fell from **16 in 40 to 1 in 40**.
 
   The second start is data-driven and uses no knowledge of the truth; the cost
@@ -1119,7 +1145,7 @@ bridge remains experimental and is not required for the main workflow.
   every stop says why.** The convergence test compared the gradient against a
   fixed threshold. Because a likelihood's gradient grows with the amount of
   data, that threshold became unreachable as the sample grew: no fit at n = 400
-  or n = 1600 could be certified as converged, in any family tried — including
+  or n = 1600 could be certified as converged, in any family tried, including
   cases where the quadrature had landed on precisely the point the Laplace fit
   reported as converged. The test now also accepts a **relative** gradient
   (`aghq_grad_tol_rel`). This changes the verdict, not the estimate: fits are
@@ -1127,7 +1153,7 @@ bridge remains experimental and is not required for the main workflow.
 
   Every stopping condition now reports its gradient, including the one that
   previously reported none, so a genuine stall can be distinguished from a near
-  miss. Read `fit$aghq$converged` for the verdict — **not**
+  miss. Read `fit$aghq$converged` for the verdict: **not**
   `fit$opt$convergence`, which on this path records the optimiser's per-pass
   iteration cap and therefore reports a limit even on a healthy fit. `fit$aghq`
   also now carries `grad_max`, `grad_rel`, and how many starts were run.
@@ -1162,12 +1188,12 @@ bridge remains experimental and is not required for the main workflow.
   per-category intercepts and slopes as contrasts against a reference category, and
   `predict(type = "response")` returns per-category probabilities. Use
   `multinomial(baseline = ...)` to choose the reference category. The validation
-  boundary is explicit: **fixed-effect point recovery is validated** — no
+  boundary is explicit: **fixed-effect point recovery is validated**: no
   detectable bias (|bias| ≤ 0.02 per coefficient across a 500-seed calibration,
   with recovery asserted on a 20-seed aggregate at `K = 3` and `K = 4` rather
-  than any single fit) — and that is a statement about the estimates, not about
-  their intervals. The two covariance routes — a single `phylo_latent()` term,
-  and the narrow ordinary shared-`latent()` cross-family route — are
+  than any single fit), and that is a statement about the estimates, not about
+  their intervals. The two covariance routes: a single `phylo_latent()` term,
+  and the narrow ordinary shared-`latent()` cross-family route, are
   **only partially validated**, meaning
   they fit and report but their recovery has not been certified. The latter reports the nominal
   trait as its `K - 1` baseline-contrast block rather than inventing one scalar
@@ -1209,14 +1235,14 @@ bridge remains experimental and is not required for the main workflow.
   a source-tier cross-family correlation was never validated on those paths, and
   returning an uncalibrated number was worse than refusing. Use
   `extract_Sigma()` for source-tier covariance.
-* **Known limitation — random-slope covariance is not calibrated when each
+* **Known limitation: random-slope covariance is not calibrated when each
   cluster carries little information.** This is a limitation of the *data
   regime*, not of one keyword: it applies to any random-slope covariance fitted
   on **single-trial binary responses with few observations per grouping level**,
   and it affects both the current `phylo_indep()` / `animal_indep()` /
   `spatial_indep()` slope forms and the soft-deprecated `*_unique()` forms.
   Measured on a phylogenetic slope fit with a logit link (60 species, 4
-  replicates, 3 traits — 12 single-Bernoulli observations per species), the
+  replicates, 3 traits, 12 single-Bernoulli observations per species), the
   **whole 2x2 slope covariance is over-estimated**, not just its slope entry:
 
   | target | true | relative error |
@@ -1225,8 +1251,8 @@ bridge remains experimental and is not required for the main workflow.
   | slope variance | 0.30 | **0.78** |
   | intercept-slope correlation | 0.50 | **0.367** (absolute) |
 
-  The bias does **not** shrink with more clusters — it persists across 60, 120
-  and 240 species — on fits that are otherwise healthy (converged,
+  The bias does **not** shrink with more clusters: it persists across 60, 120
+  and 240 species, on fits that are otherwise healthy (converged,
   positive-definite Hessian, valid `sdreport`). The cause is too little
   information per cluster: with a handful of single-trial binary observations
   per species, the sampling variance of each species' estimated slope is
@@ -1235,9 +1261,9 @@ bridge remains experimental and is not required for the main workflow.
   under a Gaussian response, which is what rules out an engine problem.
 
   **Do not read a random-slope variance or correlation from sparse binary data
-  as calibrated.** The remedy is more information *per* grouping level — more
+  as calibrated.** The remedy is more information *per* grouping level: more
   replicates per species, or multi-trial `cbind(successes, failures)` data
-  instead of single 0/1 draws — rather than more species. Note also that the
+  instead of single 0/1 draws, rather than more species. Note also that the
   binomial slope routes are covered by a **structural** contract only: those
   tests check that the model fits and reports the right shapes, and
   **deliberately do not certify variance recovery or interval calibration**. The
@@ -1268,7 +1294,7 @@ bridge remains experimental and is not required for the main workflow.
   The same raise was applied to the internal bootstrap paths behind
   `extract_lv_effects()`, `extract_communality()`, `extract_repeatability()`,
   the loading intervals, and the phylogenetic-signal intervals, so every
-  bootstrap interval in the package now uses one replicate count — those
+  bootstrap interval in the package now uses one replicate count: those
   extractors take longer and return slightly different bounds without any
   change to their own arguments. **Calls that relied on the old default return
   slightly different interval bounds and take roughly five times longer.** Pass
@@ -1278,12 +1304,12 @@ bridge remains experimental and is not required for the main workflow.
   Two distinct things bound this argument, and only the lower one is a
   correctness constraint. A percentile interval built from `B` draws is bounded
   by its widest possible realisation, whose coverage cannot exceed
-  `(B - 1) / (B + 1)` whatever the data are — so below roughly `2 / (1 - conf)`
+  `(B - 1) / (B + 1)` whatever the data are, so below roughly `2 / (1 - conf)`
   the interval *cannot* reach the requested level. Above that threshold what
   remains is Monte Carlo error in the endpoints, which is a precision question.
   The old default of 200 already cleared the ceiling comfortably (0.990 at
   `conf = 0.95`), so this change buys endpoint precision for intervals that get
-  reported — it does not fix a correctness bug. 999 rather than 1000 so that
+  reported; it does not fix a correctness bug. 999 rather than 1000 so that
   `(1 - conf) / 2 * (B + 1)` is a whole number at `conf = 0.95`, letting the
   bounds land on order statistics instead of being interpolated between them.
 
@@ -1320,7 +1346,7 @@ bridge remains experimental and is not required for the main workflow.
   given combination is.** Treat a successful fit as evidence that the model is
   *admissible*, not that its variance components or intervals have been
   validated. Where a route is known to be weak this changelog says so
-  explicitly — see the random-slope limitation above.
+  explicitly; see the random-slope limitation above.
 * `fit$fit_health` separates optimiser success, raw and objective-scaled
   gradients, Hessian health, and `sdreport()` availability. Its `converged` field
   is conservative: optimiser success, a finite objective, and a small raw maximum
@@ -1354,7 +1380,7 @@ bridge remains experimental and is not required for the main workflow.
 
 * **Ordination no longer collapses when the response is on a large scale.**
   Starting values for the latent structure were built as though the response had
-  a standard deviation of about 1 — a hardcoded loading start, a matching
+  a standard deviation of about 1: a hardcoded loading start, a matching
   variance start, and latent scores beginning at exactly zero. Standardising the
   latent scores is precisely what pushes the response scale into the loadings, so
   where that assumption did not hold the fit could collapse: loadings, the
@@ -1364,14 +1390,14 @@ bridge remains experimental and is not required for the main workflow.
 
   All three starts now follow the data. The loadings and the variance term are
   placed on the scale of the working residuals, and the latent scores are seeded
-  from the data instead of from zero — scaled to unit variance, since the scores
+  from the data instead of from zero, scaled to unit variance, since the scores
   are standardised by definition and it is the starting *direction* that was
   missing, not the magnitude.
 
   For an ordinary single-tier `latent()` model on 4 traits, multiplying the
   response by 100 now reproduces every expected transformation to within about
   one part in 100,000. At a factor of 5000 it holds to about 1% in the worst of
-  eight simulated datasets — looser, but well inside the 2% we accept, and the
+  eight simulated datasets, looser, but well inside the 2% we accept, and the
   quantities most people report (the correlations and the communality) hold
   there too. Two other implementations of the same model do not hold that law on
   the same data: their worst cases are roughly 100% and 200% out, meaning a
@@ -1379,7 +1405,7 @@ bridge remains experimental and is not required for the main workflow.
   by rescaling your response by hand, you no longer need to.
 
   This covers **Gaussian responses**, and the ordinary latent structure on your
-  unit grouping — `latent()` and the variance term it carries. Everything else
+  unit grouping: `latent()` and the variance term it carries. Everything else
   deliberately keeps its previous starting values: any model with a
   non-Gaussian response, the phylogenetic, spatial, kernel and random-slope
   latent terms, and the **second grouping of a nested two-tier fit** (the
@@ -1391,7 +1417,7 @@ bridge remains experimental and is not required for the main workflow.
   The reason for drawing the line there rather than wider: "multiply the
   response by 100" is only a meaningful thing to do to an unbounded continuous
   response, and that is the only case the collapse was measured on. A count or a
-  presence/absence on an awkward scale may well have the same problem — but
+  presence/absence on an awkward scale may well have the same problem, but
   moving a starting value that has not been measured trades a known problem for
   an unmeasured one, which is the whole reason the old default was dangerous. If
   you fit any of the excluded forms on a response far from unit scale, rescaling
@@ -1399,7 +1425,7 @@ bridge remains experimental and is not required for the main workflow.
 
   One case is **not** fully resolved. In a nested two-tier fit the residual scale
   error is around 2%, and that remainder is a property of the likelihood surface
-  rather than of the starting values — a fit can report convergence while sitting
+  rather than of the starting values: a fit can report convergence while sitting
   some distance from the optimum, because a wide region of parameter space is
   nearly flat there. That is tracked separately and no starting value will
   address it.
@@ -1408,7 +1434,7 @@ bridge remains experimental and is not required for the main workflow.
   away.** The loading row could only fire when the trait's marginal prevalence
   was also extreme (at or beyond 0.9). But quasi-complete separation is a
   property of the fitted linear predictor, not of the marginal rate, so it runs
-  a loading away while prevalence stays entirely ordinary — and the row was
+  a loading away while prevalence stays entirely ordinary, and the row was
   keyed on a quantity the pathology does not move. Across 3,944 simulated
   binomial fits the worst-affected trait's prevalence never left 0.20 to 0.807,
   and its distance from 0.5 was essentially uncorrelated with the size of the
@@ -1420,20 +1446,20 @@ bridge remains experimental and is not required for the main workflow.
   (Heywood case) and pointing at the loading penalty in
   `gllvmTMBcontrol(aghq_ridge = )`. The existing `loading_relative_thresh` of 8
   keeps its prevalence conjunct, because healthy fits with a sparse loading
-  structure reach that level routinely — so nothing that was flagged before
+  structure reach that level routinely, so nothing that was flagged before
   stops being flagged, including a genuinely near-constant trait, which the row
   still reports as it always did.
 
   A second, complementary criterion is added alongside it. A relative
   criterion cannot see a loading matrix that is inflated *as a whole*, because
-  scaling every loading leaves every ratio unchanged — so
+  scaling every loading leaves every ratio unchanged, so
   `loading_absolute_thresh` (new argument, default 6) reports a loading that is
   simply too large on the link scale. That threshold is meaningful because the
   latent scores are standard normal by identification, making a binomial
   loading the trait's latent standard deviation in link units; a value of 6
   already implies a fitted probability indistinguishable from 0 or 1 across an
   ordinary swing of the axis. Measured over the same 3,944 fits: no healthy fit
-  exceeded 3.99, none was flagged, and it reported 97.3% of degenerate fits —
+  exceeded 3.99, none was flagged, and it reported 97.3% of degenerate fits,
   catching 14 that the relative criterion missed. Being a link-scale quantity
   it does not transport to families whose response scale is arbitrary, which is
   why this row remains binomial-only.
@@ -1451,12 +1477,12 @@ bridge remains experimental and is not required for the main workflow.
 * **`check_gllvmTMB()` now reports a unique variance that has collapsed only
   relative to its siblings.** A Heywood case in a Gaussian or Poisson fit
   usually appears as a per-trait unique variance driven to the boundary, not as
-  a runaway loading — and because `psi` is estimated on the log scale, the
+  a runaway loading, and because `psi` is estimated on the log scale, the
   boundary is an interior point of the transformed space, so `pdHess` stays
   positive definite and nothing else objects. Across 360 fits with a
   deliberately over-specified latent rank, **58% drove a unique standard
   deviation below a tenth of its true value while reporting `convergence = 0`
-  and `pdHess = TRUE`** — one reached 6e-50. The covariance itself was still
+  and `pdHess = TRUE`**: one reached 6e-50. The covariance itself was still
   recovered to within 7%, so this is a failure of the
   `Lambda Lambda' + Psi` decomposition rather than of the fitted covariance,
   and no recovery-based check can see it.
@@ -1464,7 +1490,7 @@ bridge remains experimental and is not required for the main workflow.
   `psi_rel_thresh` is raised from 0.001 to **0.01**, which reports 96.2% of
   those fits rather than 73.7%. The measured false-positive rate is **zero**
   both on 151 healthy fits and on 359 healthy fits whose true unique variances
-  differ by up to a factor of 1000 — the case that decides whether the number
+  differ by up to a factor of 1000, the case that decides whether the number
   transports, since a small ratio is then correct rather than pathological.
   Looser values do not transport: 0.1 reaches full sensitivity but flags 19% of
   those healthy fits. **Some fits that previously passed will now warn**; on
@@ -1473,7 +1499,7 @@ bridge remains experimental and is not required for the main workflow.
 * **The typical loading size is now taken over the traits being screened.**
   Previously it pooled every trait in the fit regardless of family, so in a
   mixed-family model a trait on a large response scale could set the yardstick
-  for a binomial one — masking a genuine runaway, or manufacturing a spurious
+  for a binomial one, masking a genuine runaway, or manufacturing a spurious
   one when the other family's loadings were small.
 
 * **Profile confidence intervals no longer lose their bounds at higher
@@ -1483,14 +1509,14 @@ bridge remains experimental and is not required for the main workflow.
   could stop short and the bound was reported as infinite. On a four-trait
   Gaussian fit, `level = 0.99` returned an infinite bound for four of ten
   targets where `level = 0.95` returned all ten finite. The budget is now sized
-  from the requested `level`, with headroom — merely reaching the threshold is
+  from the requested `level`, with headroom; merely reaching the threshold is
   not enough, because the bound is located by interpolating across it. The
   default `level = 0.95` also gains margin it did not previously have.
 * **An unbounded interval is no longer reported where the bound is simply
   unknown.** A profile that stops without crossing its threshold can mean two
   different things, and only one was reported. If the profile has flattened out,
   no finite bound exists and an infinite bound is the honest answer. If the
-  profile was still climbing when the search stopped, the bound is *unknown* —
+  profile was still climbing when the search stopped, the bound is *unknown*;
   calling it infinite asserts an unbounded parameter on the strength of having
   stopped looking. The two are now distinguished from the shape of the profile
   itself, and the second returns `NA`.
@@ -1510,7 +1536,7 @@ bridge remains experimental and is not required for the main workflow.
   with an earlier version of it is affected.
 * Near-zero variance components are now detected **relative to their
   siblings**, not only against an absolute threshold. A boundary-pinned
-  (Heywood) component — one trait's unique variance collapsing to zero — could
+  (Heywood) component, one trait's unique variance collapsing to zero, could
   previously pass every check the package had: `check_gllvmTMB()` reported
   `near_zero_psi_unit … PASS` and `fit_health$boundary_flags` stayed empty for a
   component whose variance was six orders of magnitude below the others. The
@@ -1548,8 +1574,8 @@ bridge remains experimental and is not required for the main workflow.
 * `gllvmTMBcontrol(start_method = list(method = "res"))` is **soft-deprecated**
   and warns once per session. It still fits; prefer the default starts.
 
-  It was retired on measurement. Across 89 simulated fits — Gaussian, Poisson
-  and negative-binomial, `d = 1` to `3`, three and five traits — the residual
+  It was retired on measurement. Across 89 simulated fits (Gaussian, Poisson
+  and negative-binomial; `d = 1` to `3`; three and five traits), the residual
   start was **never materially better** than the default start (its three best
   margins were 0.07, 0.29 and 0.66 log-likelihood units, the scale of landing on
   a slightly different point of the same optimum), was **materially worse eight
@@ -1563,8 +1589,8 @@ bridge remains experimental and is not required for the main workflow.
   corner where a per-trait variance can collapse to zero. Seeding from the
   residual covariance commits the optimiser to that matrix's leading direction,
   which there is not the best-likelihood factor. This is not a residual-noise
-  problem — a start built from noise-free random-effect estimates lands in the
-  same wrong place — so it is not fixable by a better residual.
+  problem: a start built from noise-free random-effect estimates lands in the
+  same wrong place, so it is not fixable by a better residual.
 
 * The formula parser continues to accept `unique()` as compatibility syntax;
   source-specific `*_unique()` functions remain exported soft-deprecated
@@ -1621,5 +1647,5 @@ bridge remains experimental and is not required for the main workflow.
 
 Earlier development release establishing the stacked-trait R/TMB engine, the
 long-format API, initial covariance keywords, simulation helpers, and extractor
-infrastructure. The 0.6.0 notes above describe the current taught syntax and
+infrastructure. The 0.7.1 notes above describe the current taught syntax and
 reader-facing scope.

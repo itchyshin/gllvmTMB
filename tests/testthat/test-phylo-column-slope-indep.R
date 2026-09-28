@@ -20,14 +20,23 @@
   list(data = dat, A = A, traits = trait_levels)
 }
 
-.fit_column_slope <- function(fx, formula = NULL, family = stats::gaussian()) {
+.fit_column_slope <- function(fx, formula = NULL, family = stats::gaussian(),
+                              include_cluster = FALSE) {
   if (is.null(formula)) {
     formula <- value ~ 0 + trait + phylo_indep(0 + lat + temp | trait, vcv = fx$A)
   }
-  suppressMessages(gllvmTMB::gllvmTMB(
-    formula, data = fx$data, trait = "trait", unit = "unit", cluster = "cluster",
-    family = family, control = gllvmTMB::gllvmTMBcontrol(se = FALSE)
-  ))
+  args <- list(formula, data = fx$data, trait = "trait", unit = "unit",
+               family = family, control = gllvmTMB::gllvmTMBcontrol(se = FALSE))
+  if (include_cluster) {
+    args$cluster <- "cluster"
+    expect_warning(
+      fit <- suppressMessages(do.call(gllvmTMB::gllvmTMB, args)),
+      "Unused optional grouping argument\\(s\\): cluster"
+    )
+  } else {
+    fit <- suppressMessages(do.call(gllvmTMB::gllvmTMB, args))
+  }
+  fit
 }
 
 ## Symbolic <-> implementation alignment for the retained recovery cell:
@@ -93,7 +102,7 @@
 
 test_that("column slopes use predictor-only design and the RHS trait map", {
   fx <- .make_column_slope_fixture()
-  fit <- .fit_column_slope(fx)
+  fit <- .fit_column_slope(fx, include_cluster = TRUE)
 
   expect_equal(fit$opt$convergence, 0L)
   expect_identical(fit$tmb_data$use_phylo_column_slope, 1L)
@@ -171,7 +180,7 @@ test_that("full column-slope covariance and helpers preserve their contracts", {
 
 test_that("column slope grammar rejects an intercept, trait basis, and wrong RHS", {
   fx <- .make_column_slope_fixture()
-  common <- list(data = fx$data, trait = "trait", unit = "unit", cluster = "cluster",
+  common <- list(data = fx$data, trait = "trait", unit = "unit",
                  control = gllvmTMB::gllvmTMBcontrol(se = FALSE))
   expect_error(do.call(gllvmTMB::gllvmTMB, c(list(
     value ~ 0 + trait + phylo_indep(1 + lat | trait, vcv = fx$A)
@@ -195,7 +204,7 @@ test_that("column slopes are Gaussian-only", {
 
 test_that("column slopes reject transformed, factor, and non-finite predictors", {
   fx <- .make_column_slope_fixture()
-  common <- list(data = fx$data, trait = "trait", unit = "unit", cluster = "cluster",
+  common <- list(data = fx$data, trait = "trait", unit = "unit",
                  control = gllvmTMB::gllvmTMBcontrol(se = FALSE))
   expect_error(do.call(gllvmTMB::gllvmTMB, c(list(
     value ~ 0 + trait + phylo_indep(0 + I(lat^2) | trait, vcv = fx$A)
@@ -203,13 +212,13 @@ test_that("column slopes reject transformed, factor, and non-finite predictors",
   fx$data$method <- factor(rep(c("a", "b"), length.out = nrow(fx$data)))
   expect_error(gllvmTMB::gllvmTMB(
     value ~ 0 + trait + phylo_indep(0 + method | trait, vcv = fx$A),
-    data = fx$data, trait = "trait", unit = "unit", cluster = "cluster",
+    data = fx$data, trait = "trait", unit = "unit",
     control = gllvmTMB::gllvmTMBcontrol(se = FALSE)
   ), "numeric")
   fx$data$lat[1L] <- NA_real_
   expect_error(gllvmTMB::gllvmTMB(
     value ~ 0 + trait + phylo_indep(0 + lat | trait, vcv = fx$A),
-    data = fx$data, trait = "trait", unit = "unit", cluster = "cluster",
+    data = fx$data, trait = "trait", unit = "unit",
     control = gllvmTMB::gllvmTMBcontrol(se = FALSE)
   ), "finite")
 })

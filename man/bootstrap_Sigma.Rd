@@ -39,7 +39,7 @@ whole number at \code{conf = 0.95} (25), letting the percentile bounds land on
 order statistics rather than being interpolated between them.
 
 Raising \code{n_boot} reduces Monte Carlo error in the endpoints but does not
-make a percentile interval second-order accurate — its coverage asymptotes
+make a percentile interval second-order accurate; its coverage asymptotes
 slightly below nominal regardless. Use \code{\link[=profile_ci_total_variance]{profile_ci_total_variance()}} for
 the \code{Sigma} diagonals if that matters. For exploratory work a smaller \code{B}
 (200, say) is a reasonable time-for-precision trade; for a number you
@@ -64,15 +64,15 @@ Default 0.95.}
 
 \item{seed}{Optional RNG seed for reproducibility.}
 
-\item{n_cores}{Integer; number of cores for parallel refits.
-Default 1 (sequential). \verb{>= 2} uses \code{future::multisession}.}
+\item{n_cores}{Integer; number of workers for refits. Must be 1 or 2.
+Default 1 (sequential); 2 uses \code{future::multisession}.}
 
 \item{progress}{Logical; print a one-line status message at each
 replicate (sequential only). Default \code{TRUE}.}
 
 \item{keep_draws}{Logical; if \code{TRUE}, the full \code{n_boot} x ...
 matrices of bootstrap draws are returned as \verb{$draws}. Default
-\code{FALSE} (CIs only — saves memory for large n_boot).}
+\code{FALSE} (CIs only; saves memory for large n_boot).}
 
 \item{link_residual}{How to treat family-specific link-implicit
 residual variance when extracting \code{Sigma}, \code{R}, \code{communality}, and
@@ -140,9 +140,9 @@ on the simulated data, (3) extracts the requested summaries via
 Replicates whose refit fails to converge are recorded but excluded
 from CI calculation.
 
-Multicore is dispatched via \code{future} + \code{future.apply}; pass
-\code{n_cores >= 2} to enable parallel refits. When parallel, replicates
-use \code{future.apply}'s L'Ecuyer-CMRG seed stream so the answers are
+Parallel refits use \code{future} + \code{future.apply} and are limited to two
+workers. Set \code{n_cores = 2} to enable parallel refits. When parallel,
+replicates use \code{future.apply}'s L'Ecuyer-CMRG seed stream so the answers are
 reproducible given a fixed \code{seed}, but they are NOT bit-identical to
 an \code{n_cores = 1} run with the same seed (different RNG streams).
 }
@@ -155,7 +155,7 @@ which is what makes these intervals span between-unit variability.
 CIs reflect parametric simulate-refit variability, not a
 Bayesian posterior distribution for variance components.
 \item \strong{Intervals are too narrow when the simulator cannot redraw a
-tier.} Redraw is not implemented for every random-effect tier —
+tier.} Redraw is not implemented for every random-effect tier,
 notably the SPDE spatial tier and the diagonal phylogenetic tier.
 For a fit using one of those, \code{\link[=simulate.gllvmTMB_multi]{simulate.gllvmTMB_multi()}} falls back
 to reusing the fitted random-effect modes and emits a one-shot

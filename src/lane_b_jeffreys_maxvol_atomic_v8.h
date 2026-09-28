@@ -1,13 +1,15 @@
 #ifndef GLLVMTMB_LANE_B_JEFFREYS_MAXVOL_ATOMIC_V8_HPP
 #define GLLVMTMB_LANE_B_JEFFREYS_MAXVOL_ATOMIC_V8_HPP
 
-// Frozen Lane B v8 numerically guarded maximum-volume Jeffreys atom.
-// Mechanically ported from the SHA-verified external prototype bundle.
-// Guarded backend core from the frozen external R&D prototype v1.  The
-// a-posteriori certificate covers the inverse/exchange decision, not a formal
-// interval enclosure for every returned value or derivative entry.
-// Exact-dyadic modular rank start + adaptive-style multiprecision
-// one-row-exchange maximum-volume refinement.
+// Original gllvmTMB Lane B v8 implementation by Shinichi Nakagawa.
+// It evaluates the Jeffreys information atom used in the MSPL method of
+// Sterzinger and Kosmidis (2023), with a gllvmTMB-specific numerically guarded
+// maximum-volume implementation. The paper's supplementary R scripts use a
+// direct determinant calculation; this header is not a mechanical port of
+// those scripts. Its exact-dyadic rank start, a-posteriori inverse/exchange
+// certificate, and adaptive-style multiprecision one-row-exchange refinement
+// are implementation details of this gllvmTMB code. The certificate does not
+// provide a formal interval enclosure for every returned value or derivative.
 
 #include <boost/multiprecision/cpp_dec_float.hpp>
 #include <boost/multiprecision/cpp_int.hpp>
@@ -216,32 +218,6 @@ static std::vector<std::vector<double> > inverse_basis_double(
   for (int i = 0; i < p; ++i)
     for (int j = 0; j < p; ++j) inv[i][j] = a[i][p + j];
   return inv;
-}
-
-static std::pair<int, double> refine_maxvol_double(
-    const DMat &X, const std::vector<double> &lw, std::vector<int> basis,
-    double tau, int max_exchange = 100) {
-  int n = int(X.size()), p = int(X[0].size()), exchanges = 0;
-  while (true) {
-    DMat inv = inverse_basis_double(X, basis);
-    std::vector<char> in_basis(n, 0);
-    for (int i : basis) in_basis[i] = 1;
-    int best_i = -1, best_j = -1;
-    double best_gain = std::log1p(tau), final_max = -INFINITY;
-    for (int i = 0; i < n; ++i) if (!in_basis[i]) {
-      for (int j = 0; j < p; ++j) {
-        double c = 0;
-        for (int k = 0; k < p; ++k) c += X[i][k] * inv[k][j];
-        if (c == 0) continue;
-        double gain = std::log(std::abs(c)) + 0.5 * (lw[i] - lw[basis[j]]);
-        final_max = std::max(final_max, gain);
-        if (gain > best_gain) { best_gain = gain; best_i = i; best_j = j; }
-      }
-    }
-    if (best_i < 0) return {exchanges, std::exp(final_max)};
-    basis[best_j] = best_i;
-    if (++exchanges >= max_exchange) throw std::runtime_error("double exchange cap");
-  }
 }
 
 struct InverseCertificate {

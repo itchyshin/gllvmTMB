@@ -1,7 +1,9 @@
 ## Shipped pure-logic mirror of the excluded CRAN 0.7 campaign schema.
 ##
-## `inst/sim/` is deliberately absent from the source tarball. These helpers
-## keep the always-on tests-of-tests runnable from that tarball. A repository-
+## The `inst/sim/cran07-*` campaign directories are excluded from the source
+## tarball; the Lane B harness remains for its installed test contract. These
+## mirror helpers keep the
+## always-on tests-of-tests runnable from that tarball. A repository-
 ## only synchronization test below compares this mirror exhaustively with the
 ## frozen campaign implementation whenever both files are present.
 

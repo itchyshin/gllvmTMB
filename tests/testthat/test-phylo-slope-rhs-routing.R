@@ -24,11 +24,14 @@
 test_that("phylo_slope() uses its RHS map, not top-level cluster", {
   fx <- .make_phylo_slope_rhs_fixture()
 
-  fit_rhs <- suppressMessages(gllvmTMB::gllvmTMB(
-    value ~ 0 + trait + phylo_slope(x | phy_id, vcv = fx$A),
-    data = fx$data, trait = "trait", unit = "unit", cluster = "cluster",
-    control = gllvmTMB::gllvmTMBcontrol(se = FALSE)
-  ))
+  expect_warning(
+    fit_rhs <- suppressMessages(gllvmTMB::gllvmTMB(
+      value ~ 0 + trait + phylo_slope(x | phy_id, vcv = fx$A),
+      data = fx$data, trait = "trait", unit = "unit", cluster = "cluster",
+      control = gllvmTMB::gllvmTMBcontrol(se = FALSE)
+    )),
+    "Unused optional grouping argument\\(s\\): cluster"
+  )
   fit_same <- suppressMessages(gllvmTMB::gllvmTMB(
     value ~ 0 + trait + phylo_slope(x | phy_id, vcv = fx$A),
     data = fx$data, trait = "trait", unit = "unit", cluster = "phy_id",
@@ -62,7 +65,7 @@ test_that("phylo_slope() rejects a non-column RHS", {
   expect_error(
     gllvmTMB::gllvmTMB(
       value ~ 0 + trait + phylo_slope(x | interaction(phy_id, trait), vcv = fx$A),
-      data = fx$data, trait = "trait", unit = "unit", cluster = "cluster",
+      data = fx$data, trait = "trait", unit = "unit",
       control = gllvmTMB::gllvmTMBcontrol(se = FALSE)
     ),
     "bare grouping column"
@@ -77,13 +80,12 @@ test_that("phylo_slope() maps a tree's augmented nodes from its RHS", {
 
   fit <- suppressMessages(gllvmTMB::gllvmTMB(
     value ~ 0 + trait + phylo_slope(x | phy_id, tree = tree),
-    data = fx$data, trait = "trait", unit = "unit", cluster = "cluster",
+    data = fx$data, trait = "trait", unit = "unit",
     control = gllvmTMB::gllvmTMBcontrol(se = FALSE)
   ))
 
   tip_index <- match(as.character(fx$data$phy_id), rownames(fit$tmb_data$Ainv_phy_slope))
   expect_gt(fit$tmb_data$n_aug_phy_slope, nlevels(fx$data$phy_id))
-  expect_identical(fit$tmb_data$n_aug_phy, 2L)
   expect_identical(fit$tmb_data$phylo_slope_aug_id, as.integer(tip_index - 1L))
   expect_equal(fit$opt$convergence, 0L)
 })

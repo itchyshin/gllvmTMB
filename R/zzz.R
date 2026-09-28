@@ -1,5 +1,6 @@
 ## Package-level roxygen block for the auto-generated NAMESPACE entry
 ## that registers the compiled TMB engine (src/gllvmTMB.cpp).
+#' @title gllvmTMB: Generalised Linear Latent Variable Models with TMB
 #' @useDynLib gllvmTMB, .registration = TRUE
 #' @section Current limitations and boundaries:
 #' Before choosing a family, covariance source, estimator, or interval method,

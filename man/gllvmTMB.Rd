@@ -41,9 +41,9 @@ gllvmTMB(
 Fixed effects and any of the three-mode grid covstructs above are
 supported (plus \code{\link[=phylo_slope]{phylo_slope()}}, \code{\link[=animal_slope]{animal_slope()}}, and \code{\link[=meta_V]{meta_V()}}).
 
-An \code{offset()} term is supported for \strong{count responses only} — \code{poisson()},
+An \code{offset()} term is supported for \strong{count responses only}: \code{poisson()},
 \code{nbinom1()}, \code{nbinom2()}, \code{truncated_poisson()}, and
-\code{truncated_nbinom2()} — where it is the usual exposure or effort
+\code{truncated_nbinom2()}. There it is the usual exposure or effort
 adjustment. Supply it already on the link scale, e.g.
 \code{offset(log(trap_nights))}. It must be its own additive term; it is not
 interacted with \code{trait}.
@@ -81,7 +81,7 @@ behavioural-syndrome data, \code{"species"} for PGLLVM, \code{"paper"} for
 systematic mapping. Default \code{"site"}.}
 
 \item{unit_obs}{Optional. Name of the column holding the \strong{within-unit}
-grouping factor — one level per (unit, replicate) cell — used by
+grouping factor, with one level per (unit, replicate) cell, used by
 \code{latent(0 + trait | unit_obs, ...)} and
 \code{indep(0 + trait | unit_obs)} for the W-tier covariance.
 Default \code{NULL}, which resolves to \code{"site_species"} (the conventional
@@ -109,7 +109,7 @@ that column, \code{\link[=gllvmTMB]{gllvmTMB()}} warns; omit the argument or use
 the intended covariance keyword.
 
 The engine does \strong{not} enforce nesting between \code{unit_obs},
-\code{unit}, and \code{cluster} — crossed and nested designs both fit. Two
+\code{unit}, and \code{cluster}; crossed and nested designs both fit. Two
 canonical patterns:
 \itemize{
 \item Functional biogeography (crossed): \code{unit = "site"},
@@ -178,7 +178,7 @@ log-dispersion of the \emph{positive} component per trait
 conditional semantics (lme4 / glmmTMB convention):
 \itemize{
 \item For \strong{non-binomial} families, \code{weights} is interpreted as per-
-observation likelihood multipliers — each row's log-likelihood
+observation likelihood multipliers: each row's log-likelihood
 contribution is multiplied by \code{weights[i]}. This matches the
 \code{weights} argument of \code{lme4::lmer()}, \code{glmmTMB::glmmTMB()} and
 \code{stats::glm()}. Use this for relative-abundance weighting
@@ -234,7 +234,7 @@ the fit warns, and a raw fmesher/INLA mesh is rejected, rather than
 being silently ignored.}
 
 \item{phylo_vcv}{(legacy global) Optional tip-only \verb{n_species × n_species} phylogenetic correlation matrix. The canonical syntax
-is \verb{vcv =} inside each \verb{phylo_*()} keyword. \strong{\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#superseded}{\figure{lifecycle-superseded.svg}{options: alt='[Superseded]'}}}{\strong{[Superseded]}}} —
+is \verb{vcv =} inside each \verb{phylo_*()} keyword. \strong{\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#superseded}{\figure{lifecycle-superseded.svg}{options: alt='[Superseded]'}}}{\strong{[Superseded]}}};
 prefer \verb{tree =}. The dense path inverts via \code{Matrix::solve()},
 giving the same MLE as the sparse path but at \code{O(n^2)} memory and
 \code{O(n^3)} Cholesky cost. Use only when you have a Cphy in hand and
@@ -262,7 +262,7 @@ matrices are available from a prior stage of estimation.}
 \code{unit_obs} (plus \code{phy}, \code{spde} for structural levels), each an
 \verb{n_traits × d} matrix of confirmatory loading constraints
 (galamm-style). \code{NA} entries are estimated; numerical entries are
-pinned. Upper-triangle entries are silently ignored — the engine's
+pinned. Upper-triangle entries are silently ignored because the engine's
 lower-triangular parameterisation already fixes those at zero.
 Default \code{NULL} uses the engine's exploratory lower-triangular
 convention. See \code{\link[=confirmatory_lambda]{confirmatory_lambda()}} to build the matrix from
@@ -361,13 +361,13 @@ profiles, and hypothesis-test methods fail closed because this experimental
 surface is point estimation only. Trait-level extractors such as
 \code{extract_ICC_site()} and \code{extract_communality()} are multi-trait only.
 
-\code{vcov()} and \code{coef()} are available too — see
+\code{vcov()} and \code{coef()} are available too; see
 \link{gllvmTMB_multi-vcov}. \code{coef()} works on any fit; \code{vcov()} needs the
 \code{sdreport()} and raises the same typed errors \code{\link[=confint]{confint()}} does when it
 is missing or non-finite.
 
 \emph{History, 2026-08-04:} this block used to say \code{vcov()} dispatched on
-\code{gllvmTMB}, which was \strong{never true of any release} — it and \code{coef()}
+\code{gllvmTMB}, which was \strong{never true of any release}. It and \code{coef()}
 existed only for \code{gllvmTMB_va}, where they refuse. The wording was
 corrected first, then the two methods were added, which is why the
 promise now holds.
@@ -380,7 +380,7 @@ data with one row per \verb{(unit, trait)} observation. Both routes estimate
 the same trait covariance, pairwise correlations, shared latent axes,
 and trait-specific variance. The formula syntax also supports fixed
 effects plus covariance-structure keywords organised by
-\emph{correlation source} (none / animal / phylo / spatial) and
+\emph{correlation source} (none / animal / phylo / spatial / kernel) and
 three \emph{modes} (independent / dependent / latent). The \code{common = TRUE}
 modifier on \verb{*_indep()} gives the one-shared-variance special case:
 }
@@ -391,21 +391,27 @@ modifier on \verb{*_indep()} gives the one-shared-variance special case:
 \emph{animal}  \tab \code{\link[=animal_indep]{animal_indep()}}  \tab \code{\link[=animal_dep]{animal_dep()}}  \tab \code{\link[=animal_latent]{animal_latent()}}  \cr
 \emph{phylo}   \tab \code{\link[=phylo_indep]{phylo_indep()}}   \tab \code{\link[=phylo_dep]{phylo_dep()}}   \tab \code{\link[=phylo_latent]{phylo_latent()}}   \cr
 \emph{spatial} \tab \code{\link[=spatial_indep]{spatial_indep()}} \tab \code{\link[=spatial_dep]{spatial_dep()}} \tab \code{\link[=spatial_latent]{spatial_latent()}} \cr
+\emph{kernel}  \tab \code{\link[=kernel_indep]{kernel_indep()}}  \tab \code{\link[=kernel_dep]{kernel_dep()}}  \tab \code{\link[=kernel_latent]{kernel_latent()}}  \cr
 }
+
+The grid lists available syntax. Reliability depends on the family
+and uncertainty method. Gaussian \code{indep()} and \code{dep()} point fits are the
+narrow tested starting routes; structured-source and non-Gaussian routes
+need their named evidence boundary. General interval coverage is not claimed.
 
 The three covariance modes (\code{indep} / \code{dep} / \code{latent}) encode
 covstruct intent across traits:
 \itemize{
-\item \code{latent} — the \strong{decomposition} mode
+\item \code{latent}: the \strong{decomposition} mode
 \eqn{\boldsymbol\Sigma = \boldsymbol\Lambda \boldsymbol\Lambda^\top + \boldsymbol\Psi}:
 a low-rank shared part plus a diagonal \eqn{\boldsymbol\Psi} companion.
 Ordinary \code{latent()} carries \eqn{\boldsymbol\Psi} by default; the
 \verb{unique =} argument controls it (\code{latent(..., unique = FALSE)} for the
 loadings-only subset, \verb{*_latent(..., unique = TRUE)} to fold the
 \eqn{\boldsymbol\Psi} companion into a source-specific term).
-\item \code{indep} — the \strong{marginal-only} mode: each trait gets its own
+\item \code{indep}: the \strong{marginal-only} mode: each trait gets its own
 variance, no cross-trait covariance.
-\item \code{dep} — the \strong{full unstructured} mode: \eqn{\boldsymbol\Sigma}
+\item \code{dep}: the \strong{full unstructured} mode: \eqn{\boldsymbol\Sigma}
 is free with \eqn{T(T+1)/2} parameters via a Cholesky factor.
 }
 
@@ -557,14 +563,14 @@ Schielzeth (2017) \emph{J. R. Soc. Interface} 14: 20170213.
 The fitted object's \verb{$report} carries per-family dispersion quantities on
 the natural scale, each a vector of length \code{n_traits} indexed by trait
 (except \code{sigma_eps}, a single scalar). Their names follow the engine's
-internal parameterisation, \strong{not} standard R distribution arguments —
+internal parameterisation, \strong{not} standard R distribution arguments;
 several are easy to misread. What each one IS, and how it maps to
 standard R arguments (\code{mu = exp(eta)} unless noted):\tabular{lll}{
    Family (report name) \tab What it is \tab Standard-R conversion \cr
    gaussian, lognormal (\code{sigma_eps}) \tab residual SD / sdlog; \strong{one scalar shared} by all gaussian \emph{and} lognormal traits \tab \code{pnorm(y, mean = eta, sd = sigma_eps)}; \code{plnorm(y, meanlog = eta, sdlog = sigma_eps)} \cr
    Gamma (\code{phi_gamma}) \tab the \strong{shape}, not a dispersion \tab \code{pgamma(y, shape = phi, scale = mu / phi)}; \code{CV(y) = 1 / sqrt(phi)} \cr
    nbinom2 (\code{phi_nbinom2}) \tab the NB \code{size} \tab \code{pnbinom(y, size = phi, mu = mu)}; \code{Var(y) = mu + mu^2 / phi} \cr
-   nbinom1 (\code{phi_nbinom1}) \tab linear overdispersion, \code{Var(y) = mu * (1 + phi)} \tab \code{pnbinom(y, size = mu / phi, mu = mu)} — the size is mean-dependent \cr
+   nbinom1 (\code{phi_nbinom1}) \tab linear overdispersion, \code{Var(y) = mu * (1 + phi)} \tab \code{pnbinom(y, size = mu / phi, mu = mu)}; the size is mean-dependent \cr
    tweedie (\code{phi_tweedie}, \code{p_tweedie}) \tab dispersion and power \code{p} in (1, 2) \tab no base-R CDF; \code{tweedie::ptweedie(y, mu = mu, phi = phi, power = p)} \cr
    Beta (\code{phi_beta}) \tab the precision \tab \code{pbeta(y, shape1 = mu * phi, shape2 = (1 - mu) * phi)} with \code{mu = plogis(eta)} \cr
    betabinomial (\code{phi_betabinom}) \tab precision of the Beta mixing \tab \code{a = mu * phi}, \code{b = (1 - mu) * phi} with \code{mu = plogis(eta)}; no base-R CDF \cr
@@ -576,7 +582,7 @@ standard R arguments (\code{mu = exp(eta)} unless noted):\tabular{lll}{
 }
 
 \section{Objective provenance}{
- report\$joint_nll_* vs objective_components:
+
 A fitted object carries two different surfaces that both look like "the
 objective", and they answer different questions.
 

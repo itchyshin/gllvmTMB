@@ -66,7 +66,7 @@ Default 0.3.}
 
 \item{init_strategy}{One of \code{"default"} (current behaviour) or
 \code{"single_trait_warmup"}. The warmup option fits an intercept-only univariate GLM
-per trait — with that trait's family — and seeds the matching
+per trait, using that trait's family, and seeds the matching
 \verb{log_phi_*} entries before \code{MakeADFun()}. Recommended for count
 families (especially \code{nbinom2}) where the default initialisation
 can leave the optimiser walking the
@@ -122,11 +122,11 @@ which is not a frequentist random-effect standard error. No nominal
 coverage claim is made. A bound must not be compared across ranks or
 models, so it cannot be used for model or rank selection.
 
-It is admitted only inside the Gate-E implementation/light-fit region —
+It is admitted only inside the Gate-E implementation/light-fit region:
 \code{latent(..., unique = FALSE)}, the 18 scalar family/link cells in the
 response-family registry, \code{d} up to 2, up to 80 responses, at least 100
-units, and the native TMB engine — and
-requesting it outside that region is an \strong{error}, not a warning. The \code{d}
+units, and the native TMB engine. A request
+outside that region is an \strong{error}, not a warning. The \code{d}
 limit is retained from the historical explicit-JJ preregistered recovery
 gate: \code{d = 4} was measured and refused because, with few responses, the
 planted axes collapsed more often than that gate allowed. This is an
@@ -161,10 +161,10 @@ accuracy of the current GH-default route:
 truth, and the mean paired difference in latent-score correlation
 against Laplace is below \code{2e-07} at both \code{n}.
 \item \strong{Poisson}: also 0.98–1.02 of truth, with a paired latent-score
-difference of ~\code{4e-04} — negligible in magnitude but statistically
+difference of ~\code{4e-04}, negligible in magnitude but statistically
 detectable, and the loading scale sits ~1\% below Laplace.
 \item \strong{Binomial}: latent scores recover at about r = 0.59. That ceiling is a limit
-of \strong{binary data} at these cells rather than of the historical JJ route —
+of \strong{binary data} at these cells rather than of the historical JJ route:
 the Laplace default reaches about r = 0.56–0.59 on the same data, and a third
 estimator (Gauss-Hermite) lands in the same place. The loading SCALE,
 however, is biased low (0.58–0.67 of truth) and this \strong{is} a real bias
@@ -181,8 +181,8 @@ start admitted on a positive-definite Hessian.
 \link{gllvmTMB_va-methods}) rather than an ordinary fit, so that every method
 which would treat its objective as a likelihood fails loudly instead of
 returning a number. Because the engine runs its own multi-start and
-optimiser policy, the search settings of \code{\link[=gllvmTMBcontrol]{gllvmTMBcontrol()}} — \code{n_init},
-\code{optimizer}, \code{optArgs}, \code{start_from}, \verb{init_*} and \code{se} — have no effect
+optimiser policy, the search settings of \code{\link[=gllvmTMBcontrol]{gllvmTMBcontrol()}} (\code{n_init},
+\code{optimizer}, \code{optArgs}, \code{start_from}, \verb{init_*} and \code{se}) have no effect
 on this route. Any model structure the route cannot represent (a latent
 term away from the unit grouping, a constrained ordination, an offset,
 weights, \code{REML}, \code{lambda_constraint}, \code{Xcoef_fixed}, or a further random
@@ -225,7 +225,7 @@ block. \code{FALSE} (default) fits by Laplace approximation. A positive integer
 requests that many quadrature nodes. \code{"auto"} lets the package decide, and
 it declines to Laplace whenever the model is ineligible or the expected
 gain does not justify the cost. \strong{Opt-in and experimental}: no capability
-claim is made for quadrature-fitted models, and eligibility is narrow — the
+claim is made for quadrature-fitted models, and eligibility is narrow: the
 random part must be a single ordinary \code{latent()} block on the unit tier.}
 
 \item{aghq_iter_cap}{Optimiser iteration budget for the first adaptation
@@ -266,13 +266,13 @@ likelihood summed over many observations grows with the sample, so the
 absolute \code{aghq_grad_tol} on its own becomes unreachable at scale. The two are
 combined with \code{OR}, so this can only ever admit more fits as converged, never
 fewer; set it to \code{0} to test the absolute tolerance only. Read
-\code{fit$aghq$converged} for the verdict — \strong{not} \code{fit$opt$convergence}, which
+\code{fit$aghq$converged} for the verdict, \strong{not} \code{fit$opt$convergence}, which
 on the quadrature path records the optimiser's per-pass iteration cap and so
 reports a limit even on a healthy fit.}
 
 \item{aghq_multistart}{If \code{TRUE} (default), the quadrature is run from two
-starting points — the Laplace optimum and a data-driven alternative that uses
-no knowledge of the truth — and the fit with the better final objective is
+starting points: the Laplace optimum and a data-driven alternative that uses
+no knowledge of the truth. The fit with the better final objective is
 kept. \code{FALSE} uses the Laplace warm start only, reproducing the behaviour of
 earlier versions. The extra start costs one additional adaptation run, and
 exists because the Laplace optimum is sometimes itself a runaway that the
@@ -330,8 +330,8 @@ with the lowest \code{-logLik}.
 fits: it decomposes the fixed-effect residual matrix into starting
 values for \eqn{\Lambda} and the latent scores. Do not reach for it.
 
-It was retired on measurement. Across 89 simulated fits — Gaussian,
-Poisson and negative-binomial, \code{d = 1} to \code{3}, three and five traits —
+It was retired on measurement. Across 89 simulated fits (Gaussian,
+Poisson and negative-binomial, \code{d = 1} to \code{3}, three and five traits),
 it was \strong{never materially better} than the default start (its three
 best margins were 0.07, 0.29 and 0.66 log-likelihood units) and was
 materially worse eight times, once by 14.6 units. At \code{d >= 2} it made

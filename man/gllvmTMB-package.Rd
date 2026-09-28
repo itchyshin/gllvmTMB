@@ -3,7 +3,7 @@
 \docType{package}
 \name{gllvmTMB-package}
 \alias{gllvmTMB-package}
-\title{gllvmTMB: Fit Multivariate Models from Wide Response Data}
+\title{gllvmTMB: Generalised Linear Latent Variable Models with TMB}
 \description{
 \if{html}{\figure{logo.png}{options: style='float: right' alt='logo' width='120'}}
 

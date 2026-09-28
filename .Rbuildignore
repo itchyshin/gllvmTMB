@@ -1,4 +1,5 @@
 ^\.agents$
+^\.unlazy$
 ^\.codex$
 ^results$
 ^\.github$
@@ -28,6 +29,11 @@
 ^inst/tmb/.*\.(o|so|dll|dylib)$
 ^inst/extdata/m3-coverage-(grid|summary)-smoke\.rds$
 ^vignettes/articles$
+^inst/sim/cran07-aa03$
+^inst/sim/cran07-adjudication-psi-v1$
+^inst/sim/cran07-core$
+^inst/sim/cran07-v3$
+^inst/sim/cran07-v4$
 ^vignettes/mee\.csl$
 ^vignettes/refs\.bib$
 ^vignettes/.*-[0-9]+\.png$

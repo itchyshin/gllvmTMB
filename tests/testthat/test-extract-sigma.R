@@ -127,14 +127,23 @@ test_that("extract_Sigma does not call a phylo_dep covariance latent-only", {
 
 test_that("extract_Sigma_B / extract_Sigma_W backward-compat wrappers work", {
   fit <- make_fit_BW_diag()
-  out_B <- suppressMessages(extract_Sigma_B(fit))
-  out_W <- suppressMessages(extract_Sigma_W(fit))
+  expect_warning(
+    out_B <- suppressMessages(extract_Sigma_B(fit)),
+    "extract_Sigma_B\\(\\).*deprecated"
+  )
+  expect_warning(
+    out_W <- suppressMessages(extract_Sigma_W(fit)),
+    "extract_Sigma_W\\(\\).*deprecated"
+  )
   expect_named(out_B, c("Sigma_B", "R_B"))
   expect_named(out_W, c("Sigma_W", "R_W"))
   ## Wrapper output must equal the unified extract_Sigma output
   unified_B <- suppressMessages(extract_Sigma(fit, level = "unit", part = "total"))
   expect_equal(out_B$Sigma_B, unified_B$Sigma)
   expect_equal(out_B$R_B,     unified_B$R)
+  unified_W <- suppressMessages(extract_Sigma(fit, level = "unit_obs", part = "total"))
+  expect_equal(out_W$Sigma_W, unified_W$Sigma)
+  expect_equal(out_W$R_W,     unified_W$R)
 })
 
 test_that("extract_Sigma errors on unknown level argument", {

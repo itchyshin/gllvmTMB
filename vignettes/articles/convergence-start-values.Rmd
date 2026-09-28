@@ -25,8 +25,8 @@ knitr::opts_chunk$set(
 ```
 
 Some multivariate latent models are hard because the likelihood has
-several plausible basins—a basin is a local solution reached from one set of
-starting values—weakly identified variance splits, or a flat curvature
+several plausible basins, meaning local solutions reached from different
+starting values; weakly identified variance splits; or a flat curvature
 direction near a boundary. The practical question is
 therefore not just "did the optimizer print convergence code 0?" but
 "which part of the fit is healthy, which part is weak, and what should
@@ -212,7 +212,7 @@ table as a menu of things to try on a hard fit, not a proven policy.
 |---|---|---|
 | No warning or competing objective yet | Use the default first | `gllvmTMBcontrol()` |
 | Starts reach different objective values | Add restarts and modest jitter | `gllvmTMBcontrol(n_init = 5, init_jitter = 0.1)` |
-| A non-Gaussian reduced-rank fit repeatedly stops poorly | *(soft-deprecated — see below; use the default starts)* | `gllvmTMBcontrol(start_method = list(method = "res", jitter.sd = 0.2))` |
+| A non-Gaussian reduced-rank fit repeatedly stops poorly | *(soft-deprecated; see below; use the default starts)* | `gllvmTMBcontrol(start_method = list(method = "res", jitter.sd = 0.2))` |
 | A Gaussian two-level latent fit is sensitive to its initial covariance | Warm-start from the matching independent model | `gllvmTMBcontrol(start_method = list(method = "indep"))` |
 | A scientifically sensible simpler fit is already available | Copy compatible starting parameters | `gllvmTMBcontrol(start_from = simpler_fit)` |
 | A fitted `phi` parameter is unstable, especially for NB1/NB2 | Warm up dispersion trait by trait | `gllvmTMBcontrol(init_strategy = "single_trait_warmup")` |
@@ -229,11 +229,11 @@ It was retired on measurement, not on taste. Across 89 simulated fits spanning
 Gaussian, Poisson and negative-binomial responses, `d = 1` to `3`, and three and
 five traits, the residual start was:
 
-- **never materially better** than the default start — its three best margins
+- **never materially better** than the default start. Its three best margins
   were 0.07, 0.29 and 0.66 log-likelihood units, the scale of landing on a
   slightly different point of the *same* optimum;
 - **materially worse eight times**, by as much as 14.6 log-likelihood units;
-- **exactly neutral at `d >= 2`** — objectives agreed to seven decimal places in
+- **exactly neutral at `d >= 2`**. Objectives agreed to seven decimal places in
   34 of 34 fits, so it changed nothing where it was safe.
 
 Every one of those failures reported `convergence == 0` and a positive-definite
@@ -241,8 +241,8 @@ Hessian on both sides, so the worse fit was silent. Restarts were not a guard
 either: in one such fit all five `n_init = 5` restarts returned the same worse
 optimum.
 
-The damage concentrates at `d = 1` with three traits — the exactly identified
-corner, where one per-trait variance can collapse to zero and the likelihood has
+The damage concentrates at `d = 1` with three traits. This exactly identified
+corner allows one per-trait variance to collapse to zero, and the likelihood has
 genuinely distinct optima. Seeding from the residual covariance commits the
 optimiser to that matrix's leading direction, which in that corner is not the
 best-likelihood factor. This is not a residual-noise problem: a start built from
@@ -310,7 +310,7 @@ Bootstrap refits the model many times. It is one practical uncertainty
 path when `pdHess` is
 false, when `sdreport()` fails, or when the target is nonlinear, but
 it is not a cure for an unstable fitted surface. `bootstrap_Sigma()`
-exposes `n_cores` so independent refits can run in parallel.
+allows one or two workers for parallel refits. Values above two are rejected.
 
 The Gaussian `bootstrap_Sigma()` route has direct simulate-refit contract and
 plumbing tests, but this article does not claim uniform interval coverage
@@ -390,7 +390,7 @@ Use this order when a hard model does not give clean inference:
 10. If the target still changes across starts, simplify rank or
    covariance structure before making a scientific claim.
 
-## The bottom line
+## Summary
 
 The carry-forward principle is that hard fits need honest triage. A
 weak Hessian should change the uncertainty workflow, not automatically

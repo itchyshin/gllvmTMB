@@ -1,6 +1,6 @@
 # Stage 8: biological-summary extractors.
 
-test_that("extract_Sigma_B / Sigma_W return correlation matrices on the diagonal", {
+test_that("extract_Sigma returns correlation matrices on the diagonal", {
   set.seed(2025)
   sim <- simulate_site_trait(
     n_sites = 80,
@@ -24,15 +24,15 @@ test_that("extract_Sigma_B / Sigma_W return correlation matrices on the diagonal
       latent(0 + trait | site_species, d = 1),
     data = sim$data
   )
-  B <- extract_Sigma_B(fit)
-  W <- extract_Sigma_W(fit)
-  expect_named(B, c("Sigma_B", "R_B"))
-  expect_named(W, c("Sigma_W", "R_W"))
-  expect_equal(unname(diag(B$R_B)), rep(1, 4))
-  expect_equal(unname(diag(W$R_W)), rep(1, 4))
-  expect_true(all(abs(B$R_B) <= 1 + 1e-10))
-  expect_true(all(diag(B$Sigma_B) > 0))
-  expect_true(all(diag(W$Sigma_W) > 0))
+  B <- extract_Sigma(fit, level = "unit")
+  W <- extract_Sigma(fit, level = "unit_obs")
+  expect_true(all(c("Sigma", "R") %in% names(B)))
+  expect_true(all(c("Sigma", "R") %in% names(W)))
+  expect_equal(unname(diag(B$R)), rep(1, 4))
+  expect_equal(unname(diag(W$R)), rep(1, 4))
+  expect_true(all(abs(B$R) <= 1 + 1e-10))
+  expect_true(all(diag(B$Sigma) > 0))
+  expect_true(all(diag(W$Sigma) > 0))
 })
 
 test_that("ICC_site is in (0, 1) when both Sigma_B and Sigma_W are present", {

@@ -35,6 +35,21 @@ make_tiny_fit <- function(seed = 1) {
   )))
 }
 
+test_that("bootstrap_Sigma limits parallel refits to two workers", {
+  expect_error(
+    bootstrap_Sigma(list(), n_cores = 3L),
+    "must be 1 or 2"
+  )
+})
+
+test_that("bootstrap worker count accepts only the integers one and two", {
+  expect_identical(.validate_bootstrap_n_cores(1), 1L)
+  expect_identical(.validate_bootstrap_n_cores(2), 2L)
+  expect_error(.validate_bootstrap_n_cores(0), "must be 1 or 2")
+  expect_error(.validate_bootstrap_n_cores(-1), "must be 1 or 2")
+  expect_error(.validate_bootstrap_n_cores(1.5), "must be 1 or 2")
+})
+
 test_that("bootstrap_Sigma returns the expected list structure (smoke test)", {
   skip_if_not_heavy()
   skip_on_cran()

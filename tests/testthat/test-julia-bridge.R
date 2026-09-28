@@ -932,10 +932,16 @@ test_that("Julia bridge covariance and raw ordination accessors are routed narro
   ))
   expect_equal(unique$s, setNames(c(0, 0), fit$trait_names))
 
-  sigma_b <- suppressMessages(extract_Sigma_B(fit))
+  expect_warning(
+    sigma_b <- suppressMessages(extract_Sigma_B(fit)),
+    "extract_Sigma_B\\(\\).*deprecated"
+  )
   expect_equal(sigma_b$Sigma_B, fit$Sigma)
   expect_equal(sigma_b$R_B, fit$correlation)
-  expect_null(extract_Sigma_W(fit))
+  expect_warning(
+    expect_null(extract_Sigma_W(fit)),
+    "extract_Sigma_W\\(\\).*deprecated"
+  )
   expect_equal(suppressMessages(getResidualCov(fit)), fit$Sigma)
   expect_equal(suppressMessages(getResidualCor(fit)), fit$correlation)
 

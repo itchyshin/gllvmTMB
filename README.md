@@ -7,7 +7,7 @@
 <!-- badges: end -->
 
 > [!WARNING]
-> **`gllvmTMB` is experimental — use at your own risk.** It is not complete, is
+> **`gllvmTMB` is experimental; use at your own risk.** It is not complete, is
 > not fully human-verified, and needs extensive further validation. CRAN
 > availability is not a statement of scientific maturity. Point estimates are the
 > primary inferential output, but their evidence is route- and regime-specific.
@@ -46,9 +46,10 @@ formula grammar, defaults, and extractor output may still change as the API
 matures. The public path above is deliberately bounded. For Gaussian models,
 the narrow tested-regime point evidence starts with `indep()` or `dep()`; inspect
 the covariance point estimate. The latent model below remains the clearest way
-to teach `Sigma = Lambda Lambda^T + Psi`, but its production pair is
-characterization-only rather than a dependable-core claim. Bare-bar
-`(1 + x | g)` slopes remain reserved.
+to learn `Sigma = Lambda Lambda^T + Psi` and interpret covariance point
+estimates. For a first point estimate in the narrow tested Gaussian setting,
+start with `indep()` or `dep()` and check fit health. Bare-bar `(1 + x | g)`
+slopes remain reserved.
 
 ## What the model does
 
@@ -96,18 +97,23 @@ interface lets you supply the stacked table yourself.
 
 ## Install
 
-After the first CRAN release is accepted, install the released package with:
+Once the first CRAN release has been accepted and published, install the
+released package with:
 
 ```r
 install.packages("gllvmTMB")
 ```
 
-Until then, install the development build from GitHub with `pak`:
+To install the unreleased development build from GitHub, use `pak`:
 
 ```r
 install.packages("pak")
 pak::pak("itchyshin/gllvmTMB")
 ```
+
+The online site documents the current development branch and may describe
+features absent from 0.7.1. For this release, use the help pages and vignette
+installed with the package.
 
 Then load the package and run a small smoke test:
 
@@ -169,10 +175,9 @@ one response per row.
            data = df_long, trait = "trait", unit = "unit")
   ```
 
-Predictors go into the formula in either form. Both paths reach the same
-stacked-trait model and produce the same fit (identical log-likelihood and
-estimates). The [Get started](https://itchyshin.github.io/gllvmTMB/articles/gllvmTMB.html)
-vignette shows the runnable wide/long equivalence.
+Predictors go into the formula in either form, and both forms describe the
+same stacked-trait model. The [Get started](https://itchyshin.github.io/gllvmTMB/articles/gllvmTMB.html)
+vignette fits one example both ways and checks that the log-likelihoods agree.
 
 Missing response cells are allowed. In a wide `traits(...)` data frame,
 an `NA` trait value can be treated as an unobserved unit-trait cell; in
@@ -216,8 +221,8 @@ single-response GLMM, `sdmTMB` for a single-response spatial model, and
 If you use gllvmTMB, please cite the package and its TMB engine.
 Run `citation("gllvmTMB")` for formatted entries:
 
-- **gllvmTMB**: Nakagawa S (2026). *gllvmTMB: Fit Multivariate
-  Models from Wide Response Data.* R package version 0.6.0.
+- **gllvmTMB**: Nakagawa S (2026). *gllvmTMB: Generalised Linear
+  Latent Variable Models with TMB.* R package version 0.7.1.
   <https://itchyshin.github.io/gllvmTMB/>
 - **TMB engine**: Kristensen K, Nielsen A, Berg CW, Skaug H,
   Bell BM (2016). *TMB: Automatic Differentiation and Laplace

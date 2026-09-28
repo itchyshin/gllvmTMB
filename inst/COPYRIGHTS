@@ -3,9 +3,9 @@
 ## gllvmTMB is a standalone Template Model Builder (TMB) package for
 ## stacked-trait, long-format multivariate generalised linear latent
 ## variable models (GLLVMs). Except for the components and source lineages
-## recorded below, the gllvmTMB-specific code -- including the multi-trait
-## engine, formula parser, 5 x 3 covariance keyword grid, response-family
-## extensions, diagnostics, and extractors -- is licensed GPL-3 by Shinichi
+## recorded below, gllvmTMB-specific code (the multi-trait engine, formula
+## parser, covariance keyword grid in this release snapshot, response-family
+## extensions, diagnostics, and extractors) is licensed GPL-3 by Shinichi
 ## Nakagawa.
 ##
 ## Family constructors (R/families.R)
@@ -14,8 +14,8 @@
 ## data-driven gllvmTMB design by Shinichi Nakagawa. It is built from the public
 ## R family-object contract and `stats::make.link()` semantics. The earlier
 ## development implementation derived from sdmTMB/glmmTMB family code was
-## replaced before the CRAN source freeze; that earlier source is not included
-## in the 0.7 tarball. Compatibility is guarded by formals, object-field,
+## replaced in this 0.7.1 source. The earlier implementation is not present
+## in this source tree. Compatibility is guarded by formals, object-field,
 ## inverse-link, validation, delta, mixed-family, and compiled-engine tests.
 ##
 ## Spatial helper lineage (R/mesh.R, R/crs.R, and R/plot.R)

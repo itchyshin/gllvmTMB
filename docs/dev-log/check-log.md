@@ -57916,3 +57916,26 @@ Deliberately not run: Totoro 9×500 grid dispatch; full `devtools::test()`.
   'rmarkdown::render("vignettes/articles/temporal-ar1.Rmd", output_dir =
   "/private/tmp/gllvmTMB-temporal-final-verify", quiet = TRUE)'`,
   `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`, and `git diff --check`.
+
+## 2026-09-28 — development and CRAN reader boundary
+
+- Updated `vignettes/articles/current-limits.Rmd` to label its 0.8.0.9000
+  development status before the evidence table and direct 0.7.1 users to the
+  help and vignette installed with that package. The table preserves the
+  validation register's distinction between partial and blocked estimated-rho
+  results. This article follows the current development branch; it is not the
+  0.7.1 release artifact.
+- Exact commands and outcomes:
+  - `Rscript --vanilla -e 'rmarkdown::render("vignettes/articles/current-limits.Rmd", output_file="/private/tmp/gllvmtmb-071-cran-evidence/dev-site-preview-2026-09-28/current-limits.html", intermediates_dir="/private/tmp/gllvmtmb-071-cran-evidence/dev-site-preview-2026-09-28/intermediates", quiet=TRUE)'` — passed; rendered HTML contains the version label, archive boundary, installed-help route, and corrected evidence wording.
+  - `Rscript --vanilla -e 'pkgdown::check_pkgdown()'` — passed, “No problems found.”
+  - `python3 ~/shinichi-brain/tools/slop_check.py /Users/z3437171/.codex/worktrees/cran-071-dev-identity/gllvmTMB/vignettes/articles/current-limits.Rmd` — `FINDINGS: 0`.
+  - `git diff --check` — passed.
+- Rose's version-boundary and estimated-rho wording reviews passed; Pat's local
+  reader-path review passed. Receipts are retained under
+  `/private/tmp/gllvmtmb-071-cran-evidence/` as
+  `rose-current-limits-version-boundary-2026-09-28.md`,
+  `rose-current-limits-source-strength-boundary-2026-09-28.md`, and
+  `pat-current-limits-dev-boundary-followup-2026-09-28.md`.
+- Deliberately not run for this prose-only edit: package tests, `R CMD check`,
+  a full development-site build, or deployment. These checks do not replace the
+  exact 0.7.1 tarball and live-site release gates; deployment remains unverified.

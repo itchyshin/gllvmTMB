@@ -54410,3 +54410,21 @@ These checks validate local source rendering only. No live-site deployment was c
 Grace's independent review of diagnostic v16 passed the bounded source-level rights accounting. All 19 tracked `inst/sim/lane-b/` files are present byte-for-byte in the 887-entry archive (178,843 bytes total); their Git history names only Shinichi Nakagawa, and targeted provenance searches found no third-party code lineage. This supplements, but does not broaden, the direct maintainer confirmation for the C++ header. The older release-rights authorization covers 0.7.0; the current user-approved 0.7.1 preparation plan authorizes preparation. The exact final artifact and its inventory/notice match remain to be checked.
 
 Receipt: `/private/tmp/gllvmtmb-071-cran-evidence/rights-audit-2026-09-28-v16-source.md`.
+
+
+## 2026-09-28 — Correct DESCRIPTION spell-check suggestions for 0.7.1
+
+The two exact-candidate Win-builder logs identified `Lindstrom`, `Nakagawa`, `SDMs`, `al`, `et`, and `multispecies` as DESCRIPTION spelling suggestions. These terms were absent from the shipped `inst/WORDLIST`; they have now been added without changing DESCRIPTION wording. This installed-file change supersedes tarball SHA-256 `69a3b4ae851c5995e0d8470411368c13fce996fb2b0842b0751420849b57bb2c`. A new clean source commit, archive identity, and artifact-dependent checks are required.
+
+Commands and outcomes:
+
+```sh
+Rscript --vanilla -e 'x <- spelling::spell_check_package(".", vignettes = FALSE); print(x[grepl("DESCRIPTION", x[["FOUND IN"]]), , drop = FALSE])'
+# Exit 0; No spelling errors found.
+git diff --check
+# Exit 0; no whitespace errors.
+rg -n 'Lindstrom|Nakagawa|SDMs|multispecies|\b(al|et)\b' inst/WORDLIST
+# All six Win-builder terms are present after the correction.
+```
+
+The check-log update is a source-phase record only. The exact tarball CRAN incoming check has not yet been rerun. See `docs/dev-log/after-task/2026-09-28-cran-071-wordlist-note.md`.

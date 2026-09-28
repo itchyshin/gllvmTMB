@@ -11,7 +11,7 @@ Description: Fits multivariate generalised linear latent variable models using
     response distributions and trait covariance structures, and can estimate
     correlations, shared latent axes, and trait-specific variances. Binary
     presence-absence data can be used for joint species distribution analyses.
-    Optional animal, phylogenetic, spatial, temporal, and kernel covariance
+    Optional animal, phylogenetic, spatial, and kernel covariance
     components are available. Estimation uses 'Template Model Builder'. Spatial
     effects can use sparse Gaussian Markov random field constructions. This
     0.7.1 release remains experimental: evidence for estimates is model- and

@@ -349,7 +349,10 @@ plot_correlations(
 The correlation results above are point estimates only. Profile intervals for
 correlations are unavailable. The separate total-variance route targets the
 diagonal of `Sigma`, not correlation. This example profiles one trait, chosen
-from the simulated truth table, and prints the interval status with its bounds:
+from the simulated truth table, and prints the interval status with its bounds.
+With real data, choose the trait to profile from the scientific question and pass
+its index with `trait_idx`; the simulated truth is used here only to make this
+example's choice reproducible.
 
 ```{r total-variance-profile}
 profile_trait <- which.max(diag(truth$Sigma))

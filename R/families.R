@@ -97,9 +97,10 @@
 #' itself mean that a route is in the dependable release core. Ordinary
 #' Gaussian, Poisson, NB2, and binomial Laplace routes have the strongest
 #' first-release evidence. Other families and delta, mixture, truncated,
-#' ordinal, or mixed-family routes have narrower evidence. Read
-#' `vignette("current-limits", package = "gllvmTMB")` before relying on one of
-#' those routes.
+#' ordinal, or mixed-family routes have narrower evidence. For version 0.7.1,
+#' consult its NEWS and installed help for the route-specific evidence limits.
+#' The online limitations page is supplementary and may differ as development
+#' continues.
 #'
 #' ## Mixed-family input
 #'

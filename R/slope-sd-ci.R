@@ -664,8 +664,9 @@ print.gllvmTMB_slope_ci <- function(x, ...) {
     "Wald (log-SD-scale) intervals on augmented random-slope standard",
     "deviations. These are recovery-only, UNCALIBRATED intervals --",
     "repeated-sampling coverage has not been measured for this estimand,",
-    "for any family. Consult the package's current limitations for",
-    "the applicable validation boundary.",
+    "for any family. For 0.7.1, consult the installed help and NEWS for",
+    "the applicable evidence boundary. The online limitations page is",
+    "supplementary and may differ as development continues.",
     sep = "\n"
   )
   if (isTRUE(attr(x, "rr_B_slope_present"))) {

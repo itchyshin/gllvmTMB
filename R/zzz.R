@@ -19,7 +19,8 @@
     "output, but evidence is route- and regime-specific. Broad interval ",
     "coverage is not certified. One narrow two-sided ",
     "Gaussian total-variance profile regime has a documented 0.94 floor. ",
-    "See the Current limitations and boundaries page for scope."
+    "For 0.7.1 scope, see its installed help, vignettes, and NEWS. The ",
+    "online limitations page may differ as development continues."
   )
 }
 

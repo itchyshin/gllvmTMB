@@ -54540,7 +54540,7 @@ Rscript --vanilla -e 'pkgdown::build_article("response-families", quiet = FALSE)
 Rscript --vanilla -e 'pkgdown::build_article("articles/response-families", quiet = FALSE)'
 # Exit 0; rendered all 39 chunks including model examples to pkgdown-site/articles/response-families.html.
 rg -n "Before choosing a family|read .*Current limitations|before reporting|online page follows the development|may include changes made after 0\\.7\\.1|scope and restrictions of 0\\.7\\.1" README.md NEWS.md R/zzz.R man/gllvmTMB-package.Rd vignettes/gllvmTMB.Rmd vignettes/articles/response-families.Rmd
-# Found no remaining unqualified instruction to use the online page as the 0.7.1 limits source; release help/vignette wording is version-qualified.
+# This literal scan did not catch the README's “canonical reader-facing boundary” wording; Pat's fresh artifact review found that sibling and it is corrected in the follow-up entry below.
 rg -n -i "development version|0\\.7\\.1|Current limitations" pkgdown-site/articles/response-families.html
 # Rendered HTML contains the development-version warning and the 0.7.1 help/NEWS direction.
 git diff --check
@@ -54548,3 +54548,27 @@ git diff --check
 ```
 
 The worktree has not yet been committed and no replacement tarball has been built. The previous hash remains blocked and cannot be resubmitted. Fresh exact-artifact checks, reviews, external platform checks, and the CRAN submission gate remain outstanding.
+
+
+## 2026-09-29 — Extend the 0.7.1 reader-path repair
+
+Fresh Pat and Rose reviews found sibling cases after the first documentation repair. The README still called the live page canonical for choosing a model; the startup message pointed there “for scope” without a release qualifier; `R/families.R` described the nested article as an installed vignette even though `R CMD build` omits `vignettes/articles/current-limits.Rmd`; and the slope-interval print method pointed to unversioned “current limitations.” The README and all three package source references now identify 0.7.1's bundled NEWS/help/vignettes as release guidance and mark online limits as supplementary development material. The generated family help was regenerated. The old hash `ea709778c258ccb64f54c15d12d82c9e7e6f272c58a50aaff3fde791f9f97037` remains blocked and its checks do not qualify the modified source.
+
+```sh
+bash /Users/z3437171/shinichi-brain/tools/lane_preflight.sh /Users/z3437171/.codex/worktrees/cran-071-first/gllvmTMB --file README.md
+# Found other-ref changes; Shinichi explicitly assigned the release paths. No other branch was changed.
+bash /Users/z3437171/shinichi-brain/tools/lane_preflight.sh /Users/z3437171/.codex/worktrees/cran-071-first/gllvmTMB --file R/families.R --file R/slope-sd-ci.R --file man/families.Rd
+# Found other-ref changes on these paths; edits remain limited to the 0.7.1 historical branch.
+tar -tzf /private/tmp/gllvmtmb-071-cran-evidence/gllvmTMB_0.7.1.tar.gz | rg '(^|/)(inst/doc|vignettes)/.*(current-limits|response-families|gllvmTMB)'
+# Confirmed only gllvmTMB.Rmd is packaged from vignettes; nested current-limits and response-families articles are absent.
+rg -n -i "current limitations|current-limits|for scope|canonical reader|before choosing|evidence boundary" README.md NEWS.md R man vignettes
+# Located the startup-message, family-help, and slope-interval print references; read each context before editing.
+Rscript --vanilla -e 'devtools::document(quiet = TRUE); pkgdown::check_pkgdown()'
+# Exit 0; regenerated families.Rd and check_pkgdown reported no problems. Roxygen printed three pre-existing S3 export-tag diagnostics in aghq-report.R.
+rg -n "current limitations for|validation boundary|for any family|Wald \\(log-SD|package's current limitations" tests/testthat
+# No test depends on the previous output wording.
+git diff --check
+# Passed before the final exact check.
+```
+
+These follow-up edits post-date the last built artifact. They need a clean commit, a fresh archive, a new hash, and complete exact-artifact verification before any submission action.

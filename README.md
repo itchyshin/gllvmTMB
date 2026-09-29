@@ -36,7 +36,7 @@ calibration remains incomplete.
 | If you want to... | Read this |
 |---|---|
 | fit your first model | [Get started with gllvmTMB](https://itchyshin.github.io/gllvmTMB/articles/gllvmTMB.html) |
-| decide whether your model and intended result are inside the current evidence boundary | [Current limitations and boundaries](https://itchyshin.github.io/gllvmTMB/articles/current-limits.html) |
+| check the scope and limits of version 0.7.1 | [0.7.1 release notes](NEWS.md) and the help and vignettes installed with that release |
 | choose the guide matching your data and question | [Browse all articles](https://itchyshin.github.io/gllvmTMB/articles/) |
 | check whether a fit is interpretable | [Can I trust this fit?](https://itchyshin.github.io/gllvmTMB/articles/fit-diagnostics.html) |
 | look up formulas, covariance terms, or families | [Reference index](https://itchyshin.github.io/gllvmTMB/reference/) |
@@ -223,10 +223,11 @@ because the model cannot build that row.
 
 ## Current support boundary
 
-The canonical reader-facing boundary is
-[Current limitations and boundaries](https://itchyshin.github.io/gllvmTMB/articles/current-limits.html).
-Read it before choosing a family, covariance source, estimator, or interval
-method. In brief:
+The online [Current limitations and boundaries
+page](https://itchyshin.github.io/gllvmTMB/articles/current-limits.html) is
+supplementary and may change with the development version. For the scope and
+restrictions of version 0.7.1, use the [0.7.1 release notes](NEWS.md) and the
+help and vignettes installed with that release. In brief:
 
 - start from an ordinary native-Laplace model and inspect fit health;
 - interpret rotation-invariant `Sigma`, correlations, and communality before
@@ -301,7 +302,8 @@ on GitHub.
 
 ## Support boundary
 
-Reader-facing support is defined by the current guides linked above. A formula
-being accepted by the parser does not guarantee that its covariance parameters
-are estimable from a particular data set; check fit health and the boundary in
-the relevant guide before interpreting a model.
+For version 0.7.1, the installed help, vignettes, and release notes define the
+documented scope. Online guides can change with development and may describe
+features added after this release. A formula being accepted by the parser does
+not guarantee that its covariance parameters are estimable from a particular
+data set; check fit health and follow the guidance installed with this version.

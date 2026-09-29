@@ -57966,3 +57966,13 @@ the 0.7.1 release site.
   - `rg -n -C 1 'Experimental development documentation for 0\.8\.0\.9000|planned first CRAN submission|bounded 0\.7\.1|Development documentation \(0\.8\.0\.9000\)|consult the help and vignette installed' pkgdown-site/index.html pkgdown-site/articles/current-limits.html` — confirmed the generated homepage names 0.8.0.9000 as development documentation and identifies the bounded 0.7.1 submission source; Current limitations directs 0.7.1 users to their installed help and vignette.
   - `git diff --check` — passed in the dev-identity worktree.
 - The full build used a copy of the reviewed working tree under `/private/tmp`. This is local render evidence; merge, deployment, and live-page verification remain open. The exact f613 0.7.1 artifact retains its separate passing check and platform evidence. The 0.8.0.9000 development-source check does not change that artifact or its hash.
+
+## 2026-09-29 — Remove internal issue labels from public help
+
+- Removed internal issue identifiers from the `check_gllvmTMB()` and family-list roxygen descriptions, retained their reader-facing explanations, and regenerated `man/check_gllvmTMB.Rd` and `man/families.Rd`. No API, likelihood, formula grammar, family, vignette, or frozen 0.7.1 tarball changed.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'` — passed, “No problems found.”
+- `Rscript --vanilla tools/build-pkgdown.R && Rscript --vanilla tools/check-pkgdown-public-surface.R && git diff --check` — passed on rebased current `main`; full build completed and printed `PKGDOWN PUBLIC SURFACE PASS`.
+- `roxygen2::roxygenise(roclets="rd", load_code="source")` — passed. `tools::Rd2txt("man/check_gllvmTMB.Rd", out=tempfile())` — passed. `git diff --cached --check` — passed.
+- Exact consistency patterns run: `rg "\bS_B\b|\bS_W\b|\\bf S" .`; `rg -n "gllvmTMB\(" R vignettes README.md NEWS.md docs/design`; `rg "in prep|in preparation" docs vignettes`; `rg "\bphylo\(|\bgr\(|\bmeta\(|block_V\(|phylo_rr\(" vignettes`; `rg "meta_known_V" README.md NEWS.md docs vignettes`; `rg "gllvmTMB_wide" README.md NEWS.md docs vignettes`. These found existing repository/historical references (329, 893, 98, 3, 371, and 600 matching lines, respectively); no call, example, or prose in this repair changed.
+- Inspected issues #1098, #847, and #1120; all were already closed. No issue state or discussion changed.
+- After-task report: `docs/dev-log/after-task/2026-09-29-pkgdown-public-surface-fix.md`. Local scanner evidence only; PR, CI, merge, deployment, and live-page inspection remain pending. This repair does not advance the separate 0.7.1 release ledger.

@@ -100,6 +100,7 @@
 }
 
 test_that("developer-only PA fit can retain raw state with continuations sealed", {
+  skip_on_cran()
   fixture <- .isdm_fit_fixture("pa")
   fit <- .gll_isdm_fit(
     fixture$rows, fixture$X, fixture$B,
@@ -340,6 +341,7 @@ test_that("binomial cloglog keeps the likelihood on a stable log scale", {
 })
 
 test_that("compiled cloglog objective, gradient, and Hessian stay finite in both tails", {
+  skip_on_cran()
   ## Compile a tiny TMB template against the exact production header.  This is
   ## deliberately MakeADFun-only: it never invokes gllvmTMB(), nlminb(), or a
   ## G2d diagnostic fit before the single authorised S3 smoke.

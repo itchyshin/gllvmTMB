@@ -1,4 +1,5 @@
 test_that("G3 compiled unit evaluates a sealed Newton grid without optimisation", {
+  skip_on_cran()
   fd_gradient_jacobian <- function(object, theta, multiplier) {
     p <- length(theta)
     out <- matrix(NA_real_, p, p)

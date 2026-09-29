@@ -1,4 +1,5 @@
 test_that("compiled fixed-effect BFGS uses the exact cloglog gradient", {
+  skip_on_cran()
   skip_if_not_installed("TMB")
   scratch <- tempfile("bfgs-cloglog-fixed-")
   dir.create(scratch)
@@ -65,6 +66,7 @@ test_that("compiled fixed-effect BFGS uses the exact cloglog gradient", {
 })
 
 test_that("random-effect BFGS reaches candidate-specific sdreport curvature", {
+  skip_on_cran()
   skip_if_not_installed("TMB")
   scratch <- tempfile("bfgs-gaussian-random-")
   dir.create(scratch)

@@ -381,6 +381,7 @@ test_that("R3 fit returns a latent posterior of the right shape", {
 })
 
 test_that("R3 nbinom2 fit is alive: simulate-then-fit returns a healthy status", {
+  skip_on_cran()
   ## A recovery SMOKE test, not a recovery accuracy test: the point is to
   ## prove the whole nbinom2 pipeline (beta, loadings, per-trait log_phi_nbinom2, and
   ## the variational block) is alive end to end, not to certify accuracy.

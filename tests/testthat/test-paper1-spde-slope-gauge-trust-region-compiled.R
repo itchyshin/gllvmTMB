@@ -15,6 +15,7 @@ spde_slope_gauge_tr_compiled_env <- function() {
 }
 
 test_that("compiled 22-coordinate fixture preserves the full sign orbit and callback receipt", {
+  skip_on_cran()
   skip_if_not_installed("TMB")
   env <- spde_slope_gauge_tr_compiled_env()
   scratch <- tempfile("spde-slope-gauge-tr-compiled-")

@@ -257,6 +257,7 @@ test_that("G3 calls candidate curvature only after objective and gradient gates"
 })
 
 test_that("a random-intercept marginal objective exposes sdreport curvature", {
+  skip_on_cran()
   skip_if_not_installed("TMB")
   scratch <- tempfile("g3-gaussian-random-intercept-")
   dir.create(scratch)

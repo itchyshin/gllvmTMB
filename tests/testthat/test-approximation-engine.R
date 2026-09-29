@@ -169,6 +169,7 @@ test_that("EVA reports an unavailable sealed helper instead of widening scope", 
 })
 
 test_that("EVA normalises a fixed Gate-1 evaluation without optimisation", {
+  skip_on_cran()
   skip_if_not_installed("TMB")
   skip_if_not_installed("jsonlite")
   if (!exists(".eva_fixture", envir = environment(), inherits = TRUE)) {

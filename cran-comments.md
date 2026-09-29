@@ -1,14 +1,15 @@
 # CRAN comments for gllvmTMB 0.7.1
 
-Draft for Shinichi's first CRAN submission. Do not submit until the release
-ledger reaches `submission-ready`. No CRAN upload or acceptance has occurred.
+Prepared for the first CRAN submission on 2026-09-29. The release ledger
+reaches `submission-ready` for the exact candidate below. Upload, confirmation,
+incoming review, and acceptance are recorded as separate states.
 
 ## Submission
 
 This is a new package submission. `gllvmTMB` is experimental. Native Laplace
 estimation is the default. Evidence for point estimates is model-specific. The
 documented 0.94 coverage floor applies only to a narrow two-sided Gaussian
-total-variance profile setting; it is not nominal 95% coverage or a guarantee
+total-variance profile setting. It is not nominal 95% coverage or a guarantee
 for an individual interval.
 
 ## Exact candidate
@@ -18,22 +19,25 @@ for an individual interval.
 - SHA-256: `f613c93a92f67922f10902f5702c9b2e7dd416e28eb12bd25efc3675500a65a8`.
 - Size: 4,423,904 bytes; 886 inventory entries.
 
-## Test environments and results
+## Checks and notes
 
-- Local macOS arm64, R 4.6.0, exact-tarball `R CMD check --as-cran --run-donttest`: exit 0, `Status: 1 NOTE`. The sole NOTE is `New submission`. Tests: 9,682 PASS, 0 FAIL, 0 WARN, 1,675 SKIP. Examples, vignettes, and PDF/HTML manuals passed.
-- Three unused-variable compiler warnings came from RcppEigen/Eigen dependency headers. No package-owned compiler warning or R CMD check WARNING occurred.
-- The full Windows, macOS, and Ubuntu GitHub Actions matrix was dispatched for source commit `d227bfbf2` as run `36488711009`; results are pending.
-- The exact tarball was received by the official Win-builder R-release and R-devel upload forms. Their checks and result emails are pending.
-- No exact-candidate R-hub log is available yet.
-- The live-site identity check remains open. The current homepage displays 0.7.1 while its installation instructions point to the GitHub development version. The development-identity site PR remains open.
+- Local macOS arm64, R 4.6.0, exact-tarball `R CMD check --as-cran --run-donttest`: exit 0, `Status: 1 NOTE`. The only NOTE is `New submission`. Tests: 9,682 PASS, 0 FAIL, 0 WARN, 1,675 SKIP. Examples, vignettes, and PDF/HTML manuals passed.
+- The install log contains three unused-variable compiler warnings in RcppEigen/Eigen dependency headers. They are not package-owned warnings and did not produce an `R CMD check` WARNING.
+- GitHub Actions run `36488711009` checked the clean source commit used to build this tarball on Ubuntu, macOS, and Windows. All three jobs report `R CMD check Status: OK`. CI rebuilt the source package on each runner; it did not check the compressed archive bytes.
+- Win-builder R-release and R-devel each completed with `Status: 1 NOTE`. The package checks, compilation, tests, examples, vignettes, and manuals passed. The NOTE is the expected `New submission` message plus a possible misspelling flag for `TMB`, the correct acronym for Template Model Builder. Win-builder does not provide an archive SHA receipt; filename, size, version, and upload chronology match this candidate.
+- R-hub run `36489966189` completed on Ubuntu with `Status: 1 NOTE`. Its sole NOTE reports vignette rebuilding CPU time of 23 seconds over 8 elapsed seconds. The exact local check and three-OS matrix report no corresponding check NOTE, and the standalone local render averages 0.89 CPU cores. Grace's review considers runner timing the likely explanation, but this does not measure R-hub's peak active-thread count. The R-hub NOTE is retained in the evidence record.
 
-The source tarball passed the exact-archive URL check and a clean temporary-library
-install. The release ledger contains the detailed hash-bound evidence and current
-gate status.
+## Public site and submission status
 
-## Current submission gate
+The current development site is deployed from `main` commit
+`0cf373d55ab3a691013b375881466b35616cc17b`. The homepage identifies 0.8.0.9000
+as experimental development documentation and says the planned first CRAN
+submission is the earlier bounded 0.7.1 source. Current limitations directs
+0.7.1 users to the help and vignette installed with that version. The public
+help scanner passed in pkgdown run `36525965570`. Live-page snapshots and hashes
+are recorded in `/private/tmp/gllvmtmb-071-cran-evidence/site-live-0cf373d55-2026-09-29.md`.
 
-**HOLD. Do not upload this package to CRAN yet.** The exact local check passes,
-but the three-OS matrix, Win-builder results, R-hub log, public-site identity,
-and final independent review panel are incomplete. Upload only this exact hash
-if all release gates later pass.
+The CRAN submission form accepted the exact candidate above, and the maintainer
+completed its confirmation on 2026-09-29. The hash-bound release ledger records
+that receipt. Incoming review, acceptance, archive presence, and public package
+and check pages remain pending.

@@ -49,6 +49,7 @@ bfgs_terminal_ledger_fixture <- function(
 }
 
 test_that("BFGS receipts require exact schema, types, values, and paper order", {
+  skip_on_cran()
   contract <- bfgs_contract_env()
   expected <- bfgs_receipt_fixture()
   expect_identical(
@@ -90,6 +91,7 @@ test_that("BFGS receipts require exact schema, types, values, and paper order", 
 })
 
 test_that("exact TMB gradient order accepts positional output but rejects drift", {
+  skip_on_cran()
   contract <- bfgs_contract_env()
   theta <- c(beta = 0, log_sigma = 1)
   expect_true(contract$bfgs_smoke_gradient_order_ok(c(0.1, 0.2), theta))
@@ -103,6 +105,7 @@ test_that("exact TMB gradient order accepts positional output but rejects drift"
 })
 
 test_that("BFGS independent recomputation accepts evidence and rejects coordinated drift", {
+  skip_on_cran()
   contract <- bfgs_contract_env()
   x <- bfgs_quadratic_fixture()
   out <- gllvmTMB:::.gllvmTMB_isdm_bfgs_exact_gradient_continuation(
@@ -127,6 +130,7 @@ test_that("BFGS independent recomputation accepts evidence and rejects coordinat
 })
 
 test_that("BFGS manifest validation detects file, schema, and hash tampering", {
+  skip_on_cran()
   contract <- bfgs_contract_env()
   root <- withr::local_tempdir()
   writeLines("sealed session", file.path(root, "session-info.rds"))
@@ -171,6 +175,7 @@ test_that("BFGS manifest validation detects file, schema, and hash tampering", {
 })
 
 test_that("BFGS manifest inventory rejects symlinks, nested files, and nonempty claims", {
+  skip_on_cran()
   skip_if(.Platform$OS.type == "windows", "symlink semantics are platform-specific")
   contract <- bfgs_contract_env()
   root <- withr::local_tempdir()
@@ -201,6 +206,7 @@ test_that("BFGS manifest inventory rejects symlinks, nested files, and nonempty 
 })
 
 test_that("attempt marker or terminal ledger consumes a BFGS root without mutation", {
+  skip_on_cran()
   contract <- bfgs_contract_env()
   root <- withr::local_tempdir()
   expect_identical(contract$bfgs_smoke_consumed_state(root), list(
@@ -224,6 +230,7 @@ test_that("attempt marker or terminal ledger consumes a BFGS root without mutati
 })
 
 test_that("V2 terminal ledgers distinguish early and fallback terminal shapes", {
+  skip_on_cran()
   contract <- bfgs_contract_env()
   commit <- strrep("a", 40L)
   for (case in list(
@@ -251,6 +258,7 @@ test_that("V2 terminal ledgers distinguish early and fallback terminal shapes", 
 })
 
 test_that("post-entry fallback preserves every typed NULL ledger slot", {
+  skip_on_cran()
   contract <- bfgs_contract_env()
   root <- withr::local_tempdir()
   ledger <- bfgs_v2_normal_ledger(contract, root)
@@ -302,6 +310,7 @@ test_that("post-entry fallback preserves every typed NULL ledger slot", {
 })
 
 test_that("BFGS entry evidence requires a claimed marker and immutable order hash", {
+  skip_on_cran()
   contract <- bfgs_contract_env()
   root <- withr::local_tempdir()
   ledger <- bfgs_v2_fallback_ledger(contract, root)
@@ -330,6 +339,7 @@ test_that("BFGS entry evidence requires a claimed marker and immutable order has
 })
 
 test_that("normal V2 terminal evidence is recomputed before a Paper 2 prerequisite", {
+  skip_on_cran()
   contract <- bfgs_contract_env()
   root <- withr::local_tempdir()
   ledger <- bfgs_v2_normal_ledger(contract, root)
@@ -371,6 +381,7 @@ test_that("normal V2 terminal evidence is recomputed before a Paper 2 prerequisi
 })
 
 test_that("a live-root V2 terminal is the only accepted Paper 2 prerequisite", {
+  skip_on_cran()
   isdm_dev_path()  # skips when dev/ did not ship in the built package
   contract <- bfgs_contract_env()
   pkg <- normalizePath(testthat::test_path("..", ".."), mustWork = TRUE)
@@ -552,6 +563,7 @@ if (FALSE) { # superseded V1 packet retained only as a parse-time reference
 }
 
 test_that("Paper BFGS runners execute their validation modes without a fit", {
+  skip_on_cran()
   isdm_dev_path()  # skips when dev/ did not ship in the built package
   skip_if_not_installed("devtools")
   rscript <- Sys.which("Rscript")

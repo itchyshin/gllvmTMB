@@ -54428,3 +54428,99 @@ rg -n 'Lindstrom|Nakagawa|SDMs|multispecies|\b(al|et)\b' inst/WORDLIST
 ```
 
 The check-log update is a source-phase record only. The exact tarball CRAN incoming check has not yet been rerun. See `docs/dev-log/after-task/2026-09-28-cran-071-wordlist-note.md`.
+
+
+## 2026-09-29 — 0.7.1 CRAN upload and maintainer confirmation
+
+The exact frozen archive was uploaded through CRAN form package ID `356988`, then the maintainer confirmation step was completed. CRAN displayed “The package has been uploaded successfully to CRAN submission team.” The hash-bound ledger now records `confirmed` for SHA-256 `f613c93a92f67922f10902f5702c9b2e7dd416e28eb12bd25efc3675500a65a8` (4,423,904 bytes; source commit `d227bfbf21941f10dd0d335d2b3ef87a24082284`). Incoming review, acceptance, archive presence, and public package/check pages remain unverified. Receipt: `/private/tmp/gllvmtmb-071-cran-evidence/submission-confirmed-f613c93a-2026-09-29.md`.
+
+Commands and outcomes:
+
+```sh
+python3 /Users/z3437171/shinichi-brain/tools/cran_release_gate.py /private/tmp/gllvmtmb-071-cran-evidence/ledger-platform-f613c93a92f67922f10902f5702c9b2e7dd416e28eb12bd25efc3675500a65a8.json
+# Exit 0; READY FOR CLAIMED RUNG at confirmed.
+python3 /Users/z3437171/shinichi-brain/tools/cran_release_gate.py --selftest
+# Exit 0; planted invalid-state controls passed.
+```
+
+No package tests, checks, documentation generation, article rendering, or site build were run during closeout because the frozen package source was not changed. The supplied later Gmail URL remained unread because Chrome showed a blank page and the mailbox API could not resolve its URL fragment.
+
+Closeout checks:
+
+```sh
+node /Users/z3437171/shinichi-brain/skills/unlazy/scripts/gate-check.mjs --scope cran-071 --root "$PWD" --status
+# Exit 0; all 9 gates met, with G2 and G6 re-run against the confirmed ledger.
+Rscript /Users/z3437171/shinichi-brain/tools/check-after-task.R docs/dev-log/after-task/2026-09-29-cran-071-submission.md
+# Exit 0; report structure and acceptance ledger passed.
+python3 /Users/z3437171/shinichi-brain/tools/slop_check.py "$PWD/docs/dev-log/after-task/2026-09-29-cran-071-submission.md"
+# Exit 0; 0 findings.
+git diff --check
+# Exit 0; no whitespace errors.
+```
+
+
+## 2026-09-29 — Incoming runtime profile for 0.7.1 resubmission
+
+The exact 2026-09-29 incoming logs are retained in `/private/tmp/gllvmtmb-071-cran-evidence/`. Windows ran the test stage in 20 minutes; Debian ran it in 507 seconds. Both logs report a `TMB (3:55)` DESCRIPTION spelling suggestion despite `TMB` already being in `inst/WORDLIST`. The source title now omits the acronym.
+
+With the user's approval, eight guards were added only to internal prototype, compiled-objective, and developer-fit test blocks. Normal local and CI test runs keep these tests active. A repeat of the same eight-file CRAN-mode profile took 80.1 seconds, down from 235.5 seconds. The complete CRAN-mode file-by-file timing profile covered 515 test files in 711.67 seconds on this Mac. It used `testthat::test_file(..., reporter = "silent")` per file, so it is timing evidence rather than a canonical test summary; no uncaught file-level errors were logged. Linear projection from the predecessor Windows result still exceeds the 10-minute incoming signal.
+
+The current source has not been built into a replacement tarball. No exact-tarball check, Windows rerun, win-builder upload, or resubmission has occurred.
+
+Commands and outcomes:
+
+```sh
+Rscript --vanilla -e '... testthat::test_file(..., reporter = "silent") ...'
+# Eight-file CRAN-mode profile: 80.1 seconds; on_cran=TRUE.
+Rscript --vanilla -e '... loop over sort(list.files("tests/testthat", pattern = "^test.*[.]R$")) ...'
+# CRAN-mode diagnostic profile: 515 files, 711.67 seconds; no uncaught file errors logged.
+rg -n '^(Title|Description|Version):|TMB' DESCRIPTION inst/WORDLIST
+# Confirmed the title no longer contains TMB; the acronym remains in WORDLIST and dependency metadata.
+git diff --check
+# Passed before the full profile.
+```
+
+No claim is made that the complete test suite passed: the timing profile used a silent reporter and did not produce the normal R CMD check summary.
+
+
+## 2026-09-29 — Broader, scope-preserving CRAN runtime adjustment
+
+After the user authorized a broader CRAN-only reduction, selected expensive internal numerical oracles, paper-validation harness tests, and random-slope example fits that are outside the bounded 0.7.1 claims were marked with `skip_on_cran()`. Fast 0.7.1 comparator, formula, covariance, extractor, plot, and fail-closed checks remain active in CRAN mode. Every guard remains inactive in normal local and CI runs. Files with cross-lane changes (`test-va-r3-prototype.R`, `test-m3-pilot-report.R`, `test-integration-fence.R`, `test-mspl-simulation-contract.R`, `test-g2d-six-species-harness.R`, `test-mspl-api.R`, and `test-plot-visual-snapshots.R`) were not edited in this step.
+
+The original per-file CRAN-mode diagnostic covered 515 test files in 711.67 seconds. The five-file follow-up on newly guarded files took 19.96 seconds against 97.71 seconds before those guards. These are diagnostic timings from `testthat::test_file(..., reporter = "silent")`, not a canonical pass/fail or Windows timing result. A fresh exact-tarball check must establish actual Windows timing.
+
+```sh
+CODEX_ACTION=codex bash /Users/z3437171/shinichi-brain/tools/lane_preflight.sh /Users/z3437171/.codex/worktrees/cran-071-first/gllvmTMB --file tests/testthat/test-paper1-spde-slope-gauge-trust-region-compiled.R --file tests/testthat/test-bfgs-smoke-contract.R --file tests/testthat/test-plot-visual-snapshots.R --file tests/testthat/test-mspl-api.R --file tests/testthat/test-aghq-golden.R --file tests/testthat/test-example-behavioural-reaction-norm.R --file tests/testthat/test-example-coevolution-kernel.R
+# No missing branch work on paper1 compiled, BFGS smoke, AGHQ golden, behavioural reaction-norm, or coevolution example.
+# Preflight found branch work on plot-visual-snapshots and mspl-api; those files were left untouched.
+Rscript --vanilla -e '... five selected testthat::test_file calls in CRAN mode ...'
+# CRAN_MODE=TRUE; 19.96 seconds total; timing only.
+Rscript --vanilla -e 'x <- spelling::spell_check_package(".", vignettes = FALSE); ...'
+# No spelling errors; DESCRIPTION title contains no TMB.
+git diff --check
+# Passed.
+```
+
+No replacement tarball has been built. The CRAN release gate remains at R2, pending the exact-tarball and Windows checks.
+
+
+## 2026-09-29 — 0.7.1 resubmission diagnostic check
+
+This is preliminary evidence for the resubmission source. It does not qualify the final committed archive.
+
+- Built diagnostic archive `gllvmTMB_0.7.1.tar.gz` from a clean `git archive HEAD` plus the current tracked edits. SHA-256 `21b1d2049a97a374b992252419e80477f6c60e3a91ce7d07bcc69edb1c8b0b7d`; 4,424,112 bytes; 886 entries.
+- Exact archive `R CMD check --as-cran --run-donttest` on macOS arm64 / R 4.6.0 exited 0 with `Status: 1 NOTE`. `00check.log` reports only `New submission`. Install size was 11.3 MB. Testthat reported 9,515 PASS, 0 FAIL, 0 WARN, 1,690 SKIP in 313.7 elapsed seconds. The first check could not resolve CRAN indexes in the sandbox; the network-enabled retry completed.
+- Full local `NOT_CRAN=true` testthat run took 2,453.447 seconds. It reported 5 failures: three fit-based visual snapshots differed from the local renderer; the truncated-NB2 seed-1 recovery case observed 3 healthy starts rather than the expected 4 and failed its all-start eligibility assertion. The exact `--as-cran` archive check skipped those routes and passed. The VA prototype and visual-snapshot files have other-ref work in lane preflight and were not further changed. New SVGs from the run were moved to `/private/tmp/gllvmtmb-071-cran-evidence/local-visual-snapshot-review/` for preservation.
+- Focused `isdm-contract` tests passed in a writable scratch copy. Running tests in the managed worktree could not update testthat snapshot files because that checkout is read-only to the runner; no snapshot was changed in the release worktree.
+
+Commands and scans:
+
+```sh
+OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 NOT_CRAN=true Rscript --vanilla -e 'devtools::test(reporter = "summary")'
+R CMD build /private/tmp/gllvmtmb-071-cran-check-source
+OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 R CMD check --as-cran --run-donttest gllvmTMB_0.7.1.tar.gz
+rg -n "New submission|TMB|Spell|spell|1 NOTE|Status:" /private/tmp/gllvmtmb-071-cran-evidence/gllvmTMB.Rcheck/00check.log
+rg -n "R3 campaign truncated-NB2 seed 1|dispatcher correlation ellipse matrix has stable visual output|dispatcher integration dot-whisker has stable visual output|dispatcher variance partition has stable visual output" /private/tmp/gllvmtmb-071-cran-evidence/gllvmTMB.Rcheck/tests/testthat.Rout
+```
+
+`git diff --check` passed before this entry. No final committed source archive has been built. Fresh Win-builder, R-hub, independent artifact reviews, the ledger's `submission-ready` state, resubmission, and maintainer confirmation remain outstanding.

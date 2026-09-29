@@ -170,6 +170,7 @@ test_that("every individual traverses the planned temperature gradient", {
 })
 
 test_that("behavioural reaction-norm long and wide fits agree and recover truth", {
+  skip_on_cran()
   ex <- load_behavioural_reaction_norm_example()
 
   fit_long <- fit_behavioural_reaction_norm_long(ex)
@@ -292,6 +293,7 @@ test_that("behavioural reaction-norm long and wide fits agree and recover truth"
 })
 
 test_that("behavioural reaction-norm audited fit reports curvature diagnostics", {
+  skip_on_cran()
   ex <- load_behavioural_reaction_norm_example()
   fit <- suppressMessages(suppressWarnings(gllvmTMB(
     ex$formula_long,

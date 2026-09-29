@@ -1,6 +1,6 @@
 Type: Package
 Package: gllvmTMB
-Title: Generalised Linear Latent Variable Models with TMB
+Title: Generalised Linear Latent Variable Models
 Version: 0.7.1
 Authors@R:
     person("Shinichi", "Nakagawa", , "itchyshin@gmail.com",

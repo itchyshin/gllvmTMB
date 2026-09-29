@@ -1,4 +1,5 @@
 test_that("G2n compiled unit preserves finite PA-cloglog objective derivatives", {
+  skip_on_cran()
   skip_if_not_installed("TMB")
   scratch <- tempfile("g2n-cloglog-unit-")
   dir.create(scratch)

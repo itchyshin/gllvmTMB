@@ -57974,3 +57974,62 @@ Julia, or test files touched by this pass; docs/vignettes/README only.
   `latent(0 + trait | individual, d = "auto")` on the article's existing
   simulated fixture, with the conditional-on-`d` caveat stated in plain
   words; `eval = FALSE` (see after-task report for why).
+## 2026-09-28 — development and CRAN reader boundary
+
+- Updated `vignettes/articles/current-limits.Rmd` to label its 0.8.0.9000
+  development status before the evidence table and direct 0.7.1 users to the
+  help and vignette installed with that package. The table preserves the
+  validation register's distinction between partial and blocked estimated-rho
+  results. This article follows the current development branch; it is not the
+  0.7.1 release artifact.
+- Exact commands and outcomes:
+  - `Rscript --vanilla -e 'rmarkdown::render("vignettes/articles/current-limits.Rmd", output_file="/private/tmp/gllvmtmb-071-cran-evidence/dev-site-preview-2026-09-28/current-limits.html", intermediates_dir="/private/tmp/gllvmtmb-071-cran-evidence/dev-site-preview-2026-09-28/intermediates", quiet=TRUE)'` — passed; rendered HTML contains the version label, archive boundary, installed-help route, and corrected evidence wording.
+  - `Rscript --vanilla -e 'pkgdown::check_pkgdown()'` — passed, “No problems found.”
+  - `python3 ~/shinichi-brain/tools/slop_check.py /Users/z3437171/.codex/worktrees/cran-071-dev-identity/gllvmTMB/vignettes/articles/current-limits.Rmd` — `FINDINGS: 0`.
+  - `git diff --check` — passed.
+- Rose's version-boundary and estimated-rho wording reviews passed; Pat's local
+  reader-path review passed. Receipts are retained under
+  `/private/tmp/gllvmtmb-071-cran-evidence/` as
+  `rose-current-limits-version-boundary-2026-09-28.md`,
+  `rose-current-limits-source-strength-boundary-2026-09-28.md`, and
+  `pat-current-limits-dev-boundary-followup-2026-09-28.md`.
+- Deliberately not run for this prose-only edit: package tests, `R CMD check`,
+  a full development-site build, or deployment. These checks do not replace the
+  exact 0.7.1 tarball and live-site release gates; deployment remains unverified.
+
+## 2026-09-28 follow-up — clean development-site build
+
+This follow-up supersedes the earlier targeted-edit note that a full development
+site build had not yet been run. It records the build of the pushed commit, not
+the 0.7.1 release site.
+
+- `git archive --format=tar --output=/private/tmp/gllvmtmb-071-cran-evidence/dev-source-303738c4/source.tar 303738c4a76ba6cf2ade2b19d1ac31cf0f65422f` — passed. SHA-256: `b76541245fd4efebdefd1b84b7270566dab18185957cc352b7518101845c2498`.
+- `tar -xf /private/tmp/gllvmtmb-071-cran-evidence/dev-source-303738c4/source.tar -C /private/tmp/gllvmtmb-071-cran-evidence/dev-source-303738c4` — passed.
+- Initial `Rscript --vanilla -e 'pkgdown::build_site(devel = TRUE, lazy = FALSE)'` — failed because the sandbox could not resolve `cloud.r-project.org` and could not write the default Sass cache.
+- `R_USER_CACHE_DIR=/private/tmp/gllvmtmb-071-cran-evidence/dev-source-303738c4/cache Rscript --vanilla -e 'pkgdown::build_site(devel = TRUE, lazy = FALSE)'` — passed with exit 0 and completed the full site build.
+- Verified the generated homepage displays `0.8.0.9000` as experimental development documentation and says the planned first CRAN submission uses the earlier bounded 0.7.1 source. The generated Current limitations page displays the development label, directs 0.7.1 readers to `?gllvmTMB` and `vignette("gllvmTMB")`, and retains the partial/blocked source-strength wording.
+- Full-build receipt: `/private/tmp/gllvmtmb-071-cran-evidence/dev-site-build-303738c4.md`. Local build only; merge, deployment, and live-page inspection remain outstanding.
+
+## 2026-09-28 follow-up: reviewed help corrections and full local verification
+
+- The working-tree follow-up corrected stale internal-path and calibration wording in roxygen descriptions and regenerated the matching `man/*.Rd` pages. It also aligned the help text with the completed ordinal calibration: no threshold met its targets, so defaults remain disarmed. The changed source/help files are `R/diagnose.R`, `R/families.R`, `R/gllvmTMB.R`, `R/loading-ci.R`, `R/output-methods.R`, `R/predictive-diagnostics.R`, `R/slope-sd-ci.R`, and the 20 generated help topics shown by `git diff --name-only`, plus `DESCRIPTION`, `README.md`, and `inst/CITATION`. No example code, test file, likelihood, TMB source, `NAMESPACE`, `NEWS.md`, or formula grammar changed.
+- Exact commands and outcomes:
+  - `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'` — passed earlier in this follow-up; generated help matches roxygen.
+  - `Rscript --vanilla -e 'pkgdown::check_pkgdown()'` — passed earlier in this follow-up, “No problems found.”
+  - `Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'` in the writable source copy — exit 1 after 23m39.4s; 24,989 PASS, 6 FAIL, 54 warning captures, 1,231 SKIP, and four NOTEs. Failures: three `vdiffr` snapshots with small SVG coordinate changes; the temporal optimizer-control fixture at `test-temporal-phylo-optimizer-qualification.R:271`; and two seed-12 R3 prototype assertions at `test-va-r3-prototype.R:116,121` (three healthy starts where four were expected, plus failed start eligibility). The isolated temporal test passed; the R3 seed-12 failure reproduced in the focused run. These test and fitting files are unchanged by this documentation follow-up. Do not accept new snapshots from this local platform run or use this development-source check as evidence for the separate 0.7.1 archive. Full log: `/private/tmp/gllvmtmb-071-cran-evidence/pr1325-full-check-writable-2026-09-28.log`.
+  - `Rscript --vanilla -e 'devtools::test(filter = "plot-visual-snapshots|temporal-phylo-optimizer-qualification|va-r3-prototype", reporter = "summary")'` in the writable source copy — confirmed the temporal file passes in isolation, three plot snapshots differ, and the R3 seed-12 assertions still fail. Log: `/private/tmp/gllvmtmb-071-cran-evidence/pr1325-focused-failures-writable-2026-09-28.log`.
+  - Initial `Rscript --vanilla -e 'pkgdown::build_site(devel = TRUE, lazy = FALSE)'` — blocked before page generation because this sandbox could not resolve `cloud.r-project.org` and could not write the default user Sass cache. This is not the final build result.
+  - `R_USER_CACHE_DIR=/private/tmp/gllvmtmb-071-cran-evidence/R-cache XDG_CACHE_HOME=/private/tmp/gllvmtmb-071-cran-evidence/XDG-cache Rscript --vanilla -e 'pkgdown::build_site(devel = TRUE, lazy = FALSE)'` — passed with exit 0; full site build finished. Log: `/private/tmp/gllvmtmb-071-cran-evidence/pr1325-full-site-build-network-2026-09-28.log`.
+  - `rg -n -C 1 'Experimental development documentation for 0\.8\.0\.9000|planned first CRAN submission|bounded 0\.7\.1|Development documentation \(0\.8\.0\.9000\)|consult the help and vignette installed' pkgdown-site/index.html pkgdown-site/articles/current-limits.html` — confirmed the generated homepage names 0.8.0.9000 as development documentation and identifies the bounded 0.7.1 submission source; Current limitations directs 0.7.1 users to their installed help and vignette.
+  - `git diff --check` — passed in the dev-identity worktree.
+- The full build used a copy of the reviewed working tree under `/private/tmp`. This is local render evidence; merge, deployment, and live-page verification remain open. The exact f613 0.7.1 artifact retains its separate passing check and platform evidence. The 0.8.0.9000 development-source check does not change that artifact or its hash.
+
+## 2026-09-29 — Remove internal issue labels from public help
+
+- Removed internal issue identifiers from the `check_gllvmTMB()` and family-list roxygen descriptions, retained their reader-facing explanations, and regenerated `man/check_gllvmTMB.Rd` and `man/families.Rd`. No API, likelihood, formula grammar, family, vignette, or frozen 0.7.1 tarball changed.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'` — passed, “No problems found.”
+- `Rscript --vanilla tools/build-pkgdown.R && Rscript --vanilla tools/check-pkgdown-public-surface.R && git diff --check` — passed on rebased current `main`; full build completed and printed `PKGDOWN PUBLIC SURFACE PASS`.
+- `roxygen2::roxygenise(roclets="rd", load_code="source")` — passed. `tools::Rd2txt("man/check_gllvmTMB.Rd", out=tempfile())` — passed. `git diff --cached --check` — passed.
+- Exact consistency patterns run: `rg "\bS_B\b|\bS_W\b|\\bf S" .`; `rg -n "gllvmTMB\(" R vignettes README.md NEWS.md docs/design`; `rg "in prep|in preparation" docs vignettes`; `rg "\bphylo\(|\bgr\(|\bmeta\(|block_V\(|phylo_rr\(" vignettes`; `rg "meta_known_V" README.md NEWS.md docs vignettes`; `rg "gllvmTMB_wide" README.md NEWS.md docs vignettes`. These found existing repository/historical references (329, 893, 98, 3, 371, and 600 matching lines, respectively); no call, example, or prose in this repair changed.
+- Inspected issues #1098, #847, and #1120; all were already closed. No issue state or discussion changed.
+- After-task report: `docs/dev-log/after-task/2026-09-29-pkgdown-public-surface-fix.md`. Local scanner evidence only; PR, CI, merge, deployment, and live-page inspection remain pending. This repair does not advance the separate 0.7.1 release ledger.

@@ -1158,17 +1158,16 @@
 
 #' Ordinal-probit loading degeneracy screen
 #'
-#' `ordinal_probit()` (family_id 14) traits drop the auto-Psi at parse time
-#' (`auto_unique_off_family` in `R/fit-multi.R`, fids 12/13/14), so a
-#' pure-ordinal fit has no `report$sd_B` and the `near_zero_psi_*` rows
-#' elsewhere in [check_gllvmTMB()] are dark by design -- these two loading
-#' arms are the ONLY degeneracy coverage a default all-ordinal fit gets,
-#' which addresses the earlier coverage gap (`ordinal_probit` had
-#' zero detector coverage, 239/239 fits unflagged, where the binomial screen
-#' caught 272/272).
+#' `ordinal_probit()` does not include the automatic Psi component, so a
+#' pure-ordinal fit has no `report$sd_B` and the `near_zero_psi_*` checks
+#' in [check_gllvmTMB()] are unavailable. These two loading arms are
+#' available when a user supplies finite thresholds; both are disarmed by
+#' default because the completed calibration did not identify a threshold
+#' that met its targets. They address the earlier detector-coverage gap
+#' (`ordinal_probit` had zero detector coverage, 239/239 fits unflagged,
+#' where the binomial screen caught 272/272).
 #'
-#' The detector-S1 mechanism probe (`dev/ordinal-degeneracy/probe-criteria.md`,
-#' VERDICT 2026-08-17) measured the mechanism behind 24 degenerate ordinal
+#' A mechanism probe completed on 2026-08-17 measured the cause of 24 degenerate ordinal
 #' fits over a 60-fit grid and found **category-level separation, not link
 #' saturation**: `gll_log_pnorm_diff`'s cutpoint-underflow condition (both
 #' bracketing cutpoints more than 8.2924 from `eta` on the same side) never
@@ -1203,26 +1202,26 @@
 #'     `ordinal_loading_absolute_thresh`. This is scale-free for
 #'     `ordinal_probit` by the same argument that justifies binomial's
 #'     absolute arm: the probit-liability residual variance is EXACTLY 1
-#'     under the Wright/Falconer/Hadfield threshold convention
-#'     (`R/extract-sigma.R`, `sigma_d^2 = 1` fixed, no free scale
-#'     parameter), so a loading IS the trait's latent SD in liability units.
+#'     under the probit threshold convention (`sigma_d^2 = 1` is fixed,
+#'     with no free scale parameter), so a loading is the trait's latent SD
+#'     in liability units.
 #'
-#' Both thresholds default to `Inf` (fully disarmed) pending the detector-S2
-#' calibration campaign staged at `dev/ordinal-degeneracy/`
-#' (`campaign-ordinal-calibration.R`, `pass-criteria-ordinal.md`) -- shipping
-#' an armed default ahead of that evidence would repeat the mistake the
-#' binomial thresholds in this file were originally calibrated to correct.
+#' Both thresholds default to `Inf` (fully disarmed) because the completed
+#' 315-fit calibration did not identify a threshold that met its targets.
+#' Further calibration may evaluate additional statistics or designs; until
+#' that evidence supports a threshold, no default is armed.
 #'
-#' A third statistic is computed and reported for the calibration campaign's
-#' own use but is **NOT** wired into `flag` or `status`: `cutpoint_span`
+#' A third statistic is computed and reported for follow-up calibration but
+#' is **NOT** wired into `flag` or `status`: `cutpoint_span`
 #' (a trait's fitted cutpoint span, `max(tau) - min(tau)` over its free
 #' cutpoints `tau_2 .. tau_{K-1}`, via
 #' `.gllvmTMB_ordinal_cutpoint_span_by_trait()`) and the derived
 #' `loading_over_span` (`max_loading_unit / cutpoint_span`). Whether this
 #' variant adds sensitivity beyond O1/O2, and whether the span itself is
 #' confounded with the degeneracy label it would be screening for (a
-#' precondition the calibration campaign must report before this variant
-#' could ever ship), is exactly what that campaign is for. `K = 2` traits
+#' precondition follow-up calibration must report before this variant
+#' could ever ship), is exactly what follow-up calibration would assess.
+#' `K = 2` traits
 #' (no free cutpoint under the Hadfield `tau_1 = 0` convention) return `NA`
 #' for `cutpoint_span` rather than dividing by zero, and `loading_over_span`
 #' is `NA` wherever `cutpoint_span` is `NA` or non-positive.
@@ -1329,7 +1328,7 @@
   } else {
     paste0(
       "ordinal trait loading has run away from the rest (quasi-complete ",
-      "category-level separation; see dev/ordinal-degeneracy/probe-criteria.md; arms: ",
+      "category-level separation; arms: ",
       paste(arms, collapse = ","), ")"
     )
   }
@@ -1352,7 +1351,7 @@
     paste0(
       "relative_loading >= ", ordinal_loading_runaway_thresh,
       " (O1) or max_loading_unit >= ", ordinal_loading_absolute_thresh,
-      " on the link scale (O2); both disarmed at Inf pending the detector-S2 calibration campaign"
+      " on the link scale (O2); defaults remain disarmed at Inf because calibration found no threshold meeting its targets"
     ),
     msg,
     action
@@ -1461,13 +1460,13 @@
 #'   identification, so a binomial loading is the trait's latent standard
 #'   deviation in link units: a value of this size already implies a
 #'   fitted probability indistinguishable from 0 or 1 across an ordinary
-#'   swing of the axis. Default 8, raised from 6 (issue #1098) after the
+#'   swing of the axis. Default 8, raised from 6 after the
 #'   earlier calibration pool (3,944 simulated binomial fits, no healthy
 #'   fit above 3.99) turned out to be unrepresentative: its true loading
 #'   scale never reached the regime where this arm misfires. A second pool
 #'   built specifically to cross `sigma_lambda in c(0.7, 3.0)` (928 healthy
-#'   / 272 degenerate binomial-probit fits) -- 3.0 chosen to hit issue
-#'   #847's `aghq_ridge` ridge-failure regime, not argued for realism --
+#'   / 272 degenerate binomial-probit fits) -- 3.0 chosen to probe the
+#'   `aghq_ridge` ridge-failure regime, not argued for realism --
 #'   measured this arm as the SOLE source of every false positive found
 #'   (232/928 at threshold 6, all attributable to this arm alone). Raising
 #'   the threshold to 8 lowers the false-positive rate on that pool from
@@ -1485,14 +1484,8 @@
 #'   link-scale quantity it does not transport to families whose response
 #'   scale is arbitrary, which is why this row is binomial-only. This gate
 #'   applies to every link (`family_id == 1L`), but the calibration above
-#'   is probit-only: logit loadings run larger than probit loadings for
-#'   the same underlying model (the standard logistic/probit
-#'   variance-matching ratio, commonly cited as ~1.6-1.8), so the same
-#'   fixed threshold is reached by a smaller true effect on the logit
-#'   link, and the false-positive rate measured here should be read as a
-#'   lower bound on logit fits, not a transportable number -- no logit
-#'   evidence exists in the calibration pool. See
-#'   `dev/heywood/fp-scale-dependence.md` for the full mechanism note.
+#'   is probit-only. No logit evidence exists in the calibration pool, so
+#'   this false-positive rate should not be transported to logit fits.
 #' @param multinomial_collapse_floor Absolute floor on a `multinomial()`
 #'   contrast's fitted loading energy
 #'   (`rowSums(Lambda^2)`), at or below which it is a collapsed contrast.

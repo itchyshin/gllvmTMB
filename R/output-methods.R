@@ -123,8 +123,7 @@ extract_loadings <- function(
 #' mathematically equivalent to inverting the fit's full joint precision
 #' matrix (`TMB::sdreport(getJointPrecision = TRUE)`) and reading the
 #' diagonal of the same block; the two routes were verified to agree to
-#' machine precision during development (see
-#' `dev/getlv-score-se-RESULTS.md`). Requirements:
+#' machine precision during development. Requirements:
 #' \itemize{
 #'   \item The fit must carry a valid `sdreport()`
 #'     (`gllvmTMBcontrol(se = TRUE)`, the default) with a positive-definite
@@ -237,8 +236,8 @@ getLV <- function(
 #' it with the same `matrix(nrow = d, ncol = n)` then transpose convention
 #' [extract_ordination()] uses for the point estimates, so a misordered
 #' reshape here would silently pair the wrong SE with the wrong (unit,
-#' axis) score cell -- see `dev/getlv-score-se-RESULTS.md` for the
-#' verification this guards against.
+#' axis) score cell. The returned standard-error matrix has the same
+#' dimensions and dimnames as the point estimates.
 #'
 #' @param fit A `gllvmTMB_multi` fit.
 #' @param level Canonical `"B"` or `"W"` (already normalised by the caller).

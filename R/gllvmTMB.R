@@ -281,7 +281,8 @@
 #'   `MCMCglmm` dependency**. The construction is the deterministic
 #'   Hadfield & Nakagawa (2010) sparse phylogenetic inverse (appendix
 #'   eqs. 26-29), adopted from that method and ported from the sister
-#'   package drmTMB (see `inst/COPYRIGHTS`). The result is `~5n`
+#'   package drmTMB. Provenance is recorded in the package's COPYRIGHTS
+#'   file. The result is `~5n`
 #'   non-zeros for an `n`-tip tree, vs `n^2` for the dense path. **This is
 #'   the recommended path** at any `n_species`; the speedup grows to ~24× at
 #'   `n_species = 1000`.
@@ -336,8 +337,8 @@
 #'   `NULL` is appropriate when no `mi()` term is present.
 #' @param silent Logical; suppress TMB and gllvmTMB chatter. Default `TRUE`.
 #' @param engine Character; `"tmb"` (default) fits with the native TMB engine,
-#'   `"julia"` routes the fit through the experimental GLLVModels.jl bridge fitting
-#'   path via JuliaCall (see `R/julia-bridge.R`). The Julia path currently maps
+#'   `"julia"` routes the fit through the experimental GLLVModels.jl bridge via
+#'   JuliaCall. The Julia path currently maps
 #'   the unconstrained-ordination core (a single `latent()` block + per-trait
 #'   intercepts) and errors on structures it does not yet support.
 #' @param ci_method Confidence-interval route requested at fit time for
@@ -2088,8 +2089,9 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #'   probit cell with 20 traits, `H = 7` was indistinguishable from `H = 61` in
 #'   both the recovered loading scale and the recovered linear predictor, at
 #'   two and at five latent dimensions, while running 3.4-6.7 times faster.
-#'   `H = 5` was measurably worse at five latent dimensions. Gate E therefore
-#'   promoted `H = 7`; `H = 61` remains available as a diagnostic.
+#'   `H = 5` was measurably worse at five latent dimensions. These results
+#'   support `H = 7` as the default; `H = 61` remains available as a
+#'   diagnostic.
 #'
 #' @param va_eval_method How the variational route evaluates the per-observation
 #'   expectation. `"auto"` (default) selects Gauss-Hermite quadrature for every
@@ -2121,11 +2123,11 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #'   coverage claim is made. A bound must not be compared across ranks or
 #'   models, so it cannot be used for model or rank selection.
 #'
-#'   It is admitted only inside the Gate-E implementation/light-fit region —
+#'   It is currently admitted only for these model conditions:
 #'   `latent(..., unique = FALSE)`, the 18 scalar family/link cells in the
 #'   response-family registry, `d` up to 2, up to 80 responses, at least 100
-#'   units, and the native TMB engine — and
-#'   requesting it outside that region is an **error**, not a warning. The `d`
+#'   units, and the native TMB engine. Requesting it outside these conditions
+#'   is an **error**, not a warning. The `d`
 #'   limit is retained from the historical explicit-JJ preregistered recovery
 #'   gate: `d = 4` was measured and refused because, with few responses, the
 #'   planted axes collapsed more often than that gate allowed. This is an
@@ -2150,9 +2152,9 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #'
 #'   **Historical explicit-JJ evidence.** Recovery of the ordination below was
 #'   measured with the earlier JJ evaluator against planted truth at the
-#'   admitted cells (`d = 2`, 8 responses, n = 150 and 400, 50 seeds per cell;
-#'   `dev/va-usability/A2-ATTENUATION.md`), with the Laplace route run on the
-#'   same simulated data as a control. This campaign predates the current
+#'   admitted cells (`d = 2`, 8 responses, n = 150 and 400, 50 seeds per cell),
+#'   with the Laplace route run on the same simulated data as a control. This
+#'   campaign predates the current
 #'   automatic Gauss-Hermite default and must not be used as evidence for the
 #'   accuracy of the current GH-default route:
 #'

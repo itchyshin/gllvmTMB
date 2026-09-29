@@ -263,7 +263,8 @@ nodes natively, using only \pkg{ape} and \pkg{Matrix} -- \strong{no
 \code{MCMCglmm} dependency}. The construction is the deterministic
 Hadfield & Nakagawa (2010) sparse phylogenetic inverse (appendix
 eqs. 26-29), adopted from that method and ported from the sister
-package drmTMB (see \code{inst/COPYRIGHTS}). The result is \verb{~5n}
+package drmTMB. Provenance is recorded in the package's COPYRIGHTS
+file. The result is \verb{~5n}
 non-zeros for an \code{n}-tip tree, vs \code{n^2} for the dense path. \strong{This is
 the recommended path} at any \code{n_species}; the speedup grows to ~24× at
 \code{n_species = 1000}.}
@@ -319,8 +320,8 @@ predictor-model formula (for Gaussian sugar, e.g. \code{x ~ z}) or an
 \item{silent}{Logical; suppress TMB and gllvmTMB chatter. Default \code{TRUE}.}
 
 \item{engine}{Character; \code{"tmb"} (default) fits with the native TMB engine,
-\code{"julia"} routes the fit through the experimental GLLVModels.jl bridge fitting
-path via JuliaCall (see \code{R/julia-bridge.R}). The Julia path currently maps
+\code{"julia"} routes the fit through the experimental GLLVModels.jl bridge via
+JuliaCall. The Julia path currently maps
 the unconstrained-ordination core (a single \code{latent()} block + per-trait
 intercepts) and errors on structures it does not yet support.}
 

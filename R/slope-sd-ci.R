@@ -333,8 +333,7 @@
 #' It is **not a calibrated coverage statement** -- no repeated-sampling
 #' coverage campaign has been run for any of these estimands, and
 #' `interval_status = "wald_uncalibrated"` marks every row as such. The
-#' package's validation-debt ledger records this as tested-but-not-
-#' coverage-certified (see the ledger for the current status).
+#' calculation is tested; its repeated-sampling coverage is not.
 #'
 #' When the fit's random-slope term carries BOTH a diagonal Psi companion
 #' and a shared loadings component (`theta_rr_B_slope`, the default
@@ -342,7 +341,7 @@
 #' that route is the per-trait UNIQUE (Psi) component of slope variance
 #' only -- it excludes the shared loadings contribution to the marginal
 #' slope variance, and can understate the total marginal slope SD
-#' substantially (measured up to ~45% on a recovery fixture). This
+#' substantially (measured up to ~45% in a recovery simulation). This
 #' restriction travels with the **data**, not only the print method: the
 #' `component` column reads `"unique_psi"` in that case (`"total"`
 #' otherwise -- including for the phylogenetic and loadings-only routes,
@@ -426,12 +425,11 @@
 #'     OTHER slope coordinates on the SAME route (only evaluated when there
 #'     is more than one to compare against); `status = "near_zero_relative"`,
 #'     mirroring the package's relative-to-siblings convention for a
-#'     collapsed variance component (`psi_rel_thresh` / `near_zero_psi_*`,
-#'     `R/diagnose.R`).
+#'     collapsed variance component (`psi_rel_thresh` / `near_zero_psi_*`).
 #' }
-#' The point estimate (`estimate`, `theta`) is always returned, following
-#' the house line that a non-PD Hessian disqualifies standard errors but
-#' not point estimates (`R/bootstrap-sigma.R`, `R/cv-internal.R`).
+#' The point estimate (`estimate`, `theta`) is always returned. A
+#' non-positive-definite Hessian disqualifies standard errors, but not
+#' point estimates.
 #'
 #' @seealso [loading_ci()] for the equivalent interval on Lambda entries;
 #'   [extract_Sigma()] with `level = "unit_slope"` or `level = "phy"` for

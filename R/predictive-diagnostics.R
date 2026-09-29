@@ -180,9 +180,8 @@ predictive_check <- function(
 #' splitting the point mass, and multinomial's categories are unordered so a
 #' randomized-quantile residual is undefined without inventing an ordering.
 #' Unsupported families are retained with row status rather than promoted
-#' to exact residual claims. Formal residual tests (beyond the recovery
-#' checks in `tests/testthat/test-exact-rq-residuals-families.R`) remain
-#' later validation work.
+#' to exact residual claims. Formal residual calibration beyond the
+#' current family-specific recovery checks remains later validation work.
 #'
 #' The returned data frame also carries `attr(x, "gllvmTMB_diagnostic")`
 #' with [check_gllvmTMB()] output and the fitted object's `fit_health`

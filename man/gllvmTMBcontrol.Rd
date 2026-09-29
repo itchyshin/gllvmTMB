@@ -123,14 +123,14 @@ which is not a frequentist random-effect standard error. No nominal
 coverage claim is made. A bound must not be compared across ranks or
 models, so it cannot be used for model or rank selection.
 
-It is admitted only inside the current experimental region —
+It is currently admitted only for these model conditions:
 \code{latent(..., unique = FALSE)}, the 18 scalar family/link cells in the
 response-family registry, \code{d} up to 2, up to 80 responses, at least 100
-units, and the native TMB engine — and
-requesting it outside that region is an \strong{error}, not a warning. The \code{d}
-limit is retained from an earlier preregistered explicit-JJ recovery study:
-\code{d = 4} was measured and refused because, with few responses, the
-planted axes collapsed more often than the prespecified criterion allowed. This is an
+units, and the native TMB engine. Requesting it outside these conditions
+is an \strong{error}, not a warning. The \code{d}
+limit is retained from the historical explicit-JJ preregistered recovery
+gate: \code{d = 4} was measured and refused because, with few responses, the
+planted axes collapsed more often than that gate allowed. This is an
 implementation admission fence, not recovery evidence for the current
 automatic GH-H7 route. In the current 36-cell family-by-rank campaign only
 the Poisson-log \code{q = 5} cell passed the overall point route, and that rank
@@ -150,11 +150,11 @@ uncalibrated VA-Wald uncertainty; \code{getLV(se = TRUE)} returns a variational
 \code{eval_method} resolves to \code{"gh"}. Loading/covariance intervals remain
 unavailable.
 
-\strong{Earlier explicit-JJ evidence.} Recovery of the ordination below was
+\strong{Historical explicit-JJ evidence.} Recovery of the ordination below was
 measured with the earlier JJ evaluator against planted truth at the
 admitted cells (\code{d = 2}, 8 responses, n = 150 and 400, 50 seeds per cell),
-with the Laplace route run on the
-same simulated data as a control. This campaign predates the current
+with the Laplace route run on the same simulated data as a control. This
+campaign predates the current
 automatic Gauss-Hermite default and must not be used as evidence for the
 accuracy of the current GH-default route:
 \itemize{
@@ -175,8 +175,8 @@ its loadings.
 }
 
 The comparison is not effort-matched: the historical JJ arm ran four starts
-and retained fits meeting agreement and gradient criteria, while the Laplace
-arm used one start and required a positive-definite Hessian.
+behind an agreement-and-gradient health gate, the Laplace arm a single
+start admitted on a positive-definite Hessian.
 
 \code{"va"} returns an object of class \code{"gllvmTMB_va"} (see
 \link{gllvmTMB_va-methods}) rather than an ordinary fit, so that every method
@@ -205,8 +205,9 @@ in \code{H}, so this is the main speed control on that route. On a binomial
 probit cell with 20 traits, \code{H = 7} was indistinguishable from \code{H = 61} in
 both the recovered loading scale and the recovered linear predictor, at
 two and at five latent dimensions, while running 3.4-6.7 times faster.
-\code{H = 5} was measurably worse at five latent dimensions. The default is
-therefore \code{H = 7}; \code{H = 61} remains available as a diagnostic.}
+\code{H = 5} was measurably worse at five latent dimensions. These results
+support \code{H = 7} as the default; \code{H = 61} remains available as a
+diagnostic.}
 
 \item{va_eval_method}{How the variational route evaluates the per-observation
 expectation. \code{"auto"} (default) selects Gauss-Hermite quadrature for every

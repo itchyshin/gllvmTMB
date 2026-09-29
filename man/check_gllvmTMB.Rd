@@ -133,15 +133,10 @@ scales, and this default should not be read as calibrated against
 that regime. \code{aghq_ridge = 2} reduces but does not remove the problem
 (46.0\% -> 13.5\% false positives at \code{sigma_lambda = 3.0}). Being a
 link-scale quantity it does not transport to families whose response
-scale is arbitrary, which is why this row is binomial-only. This rule
+scale is arbitrary, which is why this row is binomial-only. This gate
 applies to every link (\code{family_id == 1L}), but the calibration above
-is probit-only: logit loadings run larger than probit loadings for
-the same underlying model (the standard logistic/probit
-variance-matching ratio, commonly cited as ~1.6-1.8), so the same
-fixed threshold is reached by a smaller true effect on the logit
-link, and the false-positive rate measured here should be read as a
-lower bound on logit fits, not a transportable number -- no logit
-evidence exists in the calibration pool.}
+is probit-only. No logit evidence exists in the calibration pool, so
+this false-positive rate should not be transported to logit fits.}
 
 \item{multinomial_collapse_floor}{Absolute floor on a \code{multinomial()}
 contrast's fitted loading energy

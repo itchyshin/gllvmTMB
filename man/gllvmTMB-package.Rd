@@ -7,13 +7,14 @@
 \description{
 \if{html}{\figure{logo.png}{options: style='float: right' alt='logo' width='120'}}
 
-Fits multivariate models for data where each site, individual, species, or study has several responses. Start from a wide data frame with the 'traits()' formula interface, or from already-stacked long data, and estimate trait covariance, pairwise correlations, shared latent axes, and trait-specific variance. Binary presence-absence applications include binomial-family joint species distribution models that decompose environmental and residual co-occurrence in multispecies SDMs (Pollock et al. 2014 \doi{10.1111/2041-210X.12180}). Optional animal, phylogenetic, spatial, and known-sampling-variance components use the same formula grammar. Model fitting uses Template Model Builder (Kristensen et al. 2016 \doi{10.18637/jss.v070.i05}); spatial helpers implement the stochastic partial differential equation/Gaussian Markov random field (SPDE/GMRF) construction of Lindgren, Rue, and Lindstrom (2011), and phylogenetic relatedness follows Hadfield & Nakagawa (2010) \doi{10.1111/j.1420-9101.2009.01915.x}. This package is experimental: it is not complete, is not fully human-verified, and needs extensive further validation, so it should be used at your own risk. Point estimates are the primary inferential output, but their evidence is route- and regime-specific. Broad package-wide interval coverage is not certified; one narrowly scoped two-sided Gaussian total-variance profile regime has a documented 0.94 coverage floor. Covariance routes otherwise have cell-specific evidence only.
+Fits multivariate generalised linear latent variable models using either long-format data or a wide data frame. Models support several response distributions and trait covariance structures, and can estimate correlations, shared latent axes, and trait-specific variances. Binary presence-absence data can be used for joint species distribution analyses. Optional animal, phylogenetic, spatial, and kernel covariance components are available. Estimation uses 'Template Model Builder'. Spatial effects can use sparse Gaussian Markov random field constructions. This 0.7.1 release remains experimental: evidence for estimates is model- and regime-specific. Broad interval coverage is not certified; a 0.94 coverage floor is documented only for one two-sided Gaussian total-variance profile setting.
 }
 \section{Current limitations and boundaries}{
 
-Before choosing a family, covariance source, estimator, or interval method,
-read the
-\href{https://itchyshin.github.io/gllvmTMB/articles/current-limits.html}{current limitations and boundaries}.
+The online \href{https://itchyshin.github.io/gllvmTMB/articles/current-limits.html}{current limitations and boundaries page}
+follows the development version and may describe changes made after 0.7.1.
+For the scope and restrictions of 0.7.1, use this release's NEWS and the
+help and vignettes installed with the package.
 }
 
 \seealso{

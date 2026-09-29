@@ -54524,3 +54524,27 @@ rg -n "R3 campaign truncated-NB2 seed 1|dispatcher correlation ellipse matrix ha
 ```
 
 `git diff --check` passed before this entry. No final committed source archive has been built. Fresh Win-builder, R-hub, independent artifact reviews, the ledger's `submission-ready` state, resubmission, and maintainer confirmation remain outstanding.
+
+
+## 2026-09-29 — 0.7.1 reader-path version boundary
+
+Pat's review of the previous exact archive found that its installed package help and main vignette sent 0.7.1 users to unversioned online development limits. With Shinichi's approval to take the overlapping release paths, the package help source, generated help, main vignette, and response-family article now say that the online page may include changes after 0.7.1 and that 0.7.1 readers should use that release's NEWS and installed documentation for its scope and restrictions. The other branch edits were read before the changes and remain untouched.
+
+```sh
+bash /Users/z3437171/shinichi-brain/tools/lane_preflight.sh /Users/z3437171/.codex/worktrees/cran-071-first/gllvmTMB --file R/zzz.R --file man/gllvmTMB-package.Rd --file vignettes/gllvmTMB.Rmd --file vignettes/articles/response-families.Rmd
+# Found competing-ref work; Shinichi explicitly assigned these release paths. No competing branch was modified.
+Rscript --vanilla -e 'devtools::document(quiet = TRUE); pkgdown::check_pkgdown()'
+# Exit 0. Generated gllvmTMB-package.Rd and pkgdown::check_pkgdown() reported no problems. Roxygen also printed three pre-existing S3 export-tag diagnostics in aghq-report.R.
+Rscript --vanilla -e 'pkgdown::build_article("response-families", quiet = FALSE)'
+# Failed: article key omitted the articles/ prefix.
+Rscript --vanilla -e 'pkgdown::build_article("articles/response-families", quiet = FALSE)'
+# Exit 0; rendered all 39 chunks including model examples to pkgdown-site/articles/response-families.html.
+rg -n "Before choosing a family|read .*Current limitations|before reporting|online page follows the development|may include changes made after 0\\.7\\.1|scope and restrictions of 0\\.7\\.1" README.md NEWS.md R/zzz.R man/gllvmTMB-package.Rd vignettes/gllvmTMB.Rmd vignettes/articles/response-families.Rmd
+# Found no remaining unqualified instruction to use the online page as the 0.7.1 limits source; release help/vignette wording is version-qualified.
+rg -n -i "development version|0\\.7\\.1|Current limitations" pkgdown-site/articles/response-families.html
+# Rendered HTML contains the development-version warning and the 0.7.1 help/NEWS direction.
+git diff --check
+# Passed.
+```
+
+The worktree has not yet been committed and no replacement tarball has been built. The previous hash remains blocked and cannot be resubmitted. Fresh exact-artifact checks, reviews, external platform checks, and the CRAN submission gate remain outstanding.

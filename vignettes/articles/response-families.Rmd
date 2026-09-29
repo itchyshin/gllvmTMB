@@ -313,7 +313,10 @@ This example demonstrates point estimation and fitted diagnostics only.
 Interval coverage for negative binomial fits has not been certified, and
 NB2 latent models at small sample sizes have documented dispersion failures;
 see [Current limitations and boundaries](current-limits.html) before reporting
-uncertainty statements from a fit like this one.
+uncertainty statements from a fit like this one. The online page follows the
+development version and may include changes made after 0.7.1. For the scope and
+restrictions of 0.7.1, use this release's NEWS and the help and vignettes
+installed with the package.
 
 ## Gamma's `phi_gamma` is a shape, not a dispersion
 

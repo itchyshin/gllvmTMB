@@ -10,12 +10,14 @@ outputs must use an absolute campaign root outside the git checkout.
 The scripts split pure logic from fitting. `prepare` freezes manifests, seed
 registries, thresholds, and a queue without loading the compiled engine.
 `run` performs a four-arm capability preflight before creating a shard lock.
-Because the public MSPL estimator may not yet exist, the default is a loud,
-pre-fit failure. The MSPL-plus-ridge arm is implemented locally by the harness:
-it refreshes the TMB report at the private ridge optimum and does not add a
-package API. `--allow-missing-mspl` is
-restricted to diagnostic smoke work and retains missing-capability failures as
-attempt rows. It cannot produce promotion evidence.
+The package includes an opt-in experimental `estimator = "mspl"` point
+estimator for a bounded complete-Bernoulli surface; the installed
+`gllvmTMB()` help and `NEWS` describe its supported structures and limits.
+This harness's MSPL-plus-ridge arm is a private ablation: it refreshes the TMB
+report at the private ridge optimum and is not a package estimator or API.
+`--allow-missing-mspl` is restricted to diagnostic smoke work in a checkout
+where the public estimator is unavailable. It retains missing-capability
+failures as attempt rows and cannot produce promotion evidence.
 
 Local smoke preparation and capability check:
 
@@ -29,8 +31,9 @@ Rscript --vanilla inst/sim/lane-b/1_run_lane_b_b2_shard.R \
 
 Smoke preparation freezes five datasets: ordinary O007, permutation P01, and
 one mixed-extreme logit cell for each spatial structure. Run their five shard
-IDs from `queue/lane-b-b2-queue.csv`. Until MSPL lands, add
-`--allow-missing-mspl` only to exercise failure retention.
+IDs from `queue/lane-b-b2-queue.csv`. Add `--allow-missing-mspl` only when
+diagnosing a checkout without the public estimator; it exercises failure
+retention and does not enable an estimator or create promotion evidence.
 Aggregate incomplete smoke output with `--provisional`; it is labelled
 `PROVISIONAL-NOT-EVIDENCE`.
 

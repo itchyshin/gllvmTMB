@@ -267,3 +267,32 @@ test_that("a real single-trial Bernoulli sweep records ridge_tau and has no runa
   expect_false(any(sel$table$status == "runaway"))
   expect_true(sel$selected_d %in% 1:3)
 })
+
+## ---- Penalised Hessian under the ridge (Shinichi, 2026-09-28) ---------------
+## The ridge is applied in R, outside the TMB template, so sdreport()'s pdHess
+## tests the UNPENALISED Hessian at the PENALISED optimum. A fit whose
+## unpenalised Hessian is indefinite but whose penalised Hessian is positive
+## definite is a proper optimum of what was minimised and must not be rejected.
+## The objective below is f(x) = 0.5 x' A x with A indefinite on the ridge
+## block (eigenvalues 2 and -0.1); adding 1/tau^2 = 0.25 there makes it PD.
+test_that(".select_lv_pd_hessian tests the penalised Hessian under the ridge", {
+  A <- matrix(c(2, 0, 0, -0.1), 2, 2)
+  par <- c(beta = 0.3, theta_rr_B = 0.2)
+  obj <- list(par = par,
+              fn = function(x) 0.5 * sum(x * (A %*% x)),
+              gr = function(x) as.numeric(A %*% x))
+  fit <- list(sd_report = list(pdHess = FALSE), tmb_obj = obj,
+              opt = list(par = par), aghq = list(ridge_tau = 2))
+  expect_true(gllvmTMB:::.select_lv_pd_hessian(fit))
+  ## Without a ridge the sdreport flag stands.
+  fit_noridge <- fit; fit_noridge$aghq$ridge_tau <- Inf
+  expect_false(gllvmTMB:::.select_lv_pd_hessian(fit_noridge))
+  ## A ridge too weak to fix the indefinite direction (1/tau^2 = 0.04 < 0.1).
+  fit_weak <- fit; fit_weak$aghq$ridge_tau <- 5
+  expect_false(gllvmTMB:::.select_lv_pd_hessian(fit_weak))
+  ## sdreport says PD, or was skipped: returned as is.
+  expect_true(gllvmTMB:::.select_lv_pd_hessian(
+    modifyList(fit, list(sd_report = list(pdHess = TRUE)))))
+  expect_true(is.na(gllvmTMB:::.select_lv_pd_hessian(
+    modifyList(fit, list(sd_report = NULL)))))
+})

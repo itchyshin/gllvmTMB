@@ -41,8 +41,8 @@
   `?select_lv` for the per-rank table and for controlling `d_max`/`criterion`
   directly. Recovery evidence is family-specific: a simulation with known
   true rank found `"bic_sites"` recovers it most often for Gaussian (recovery
-  rate 0.95) and Poisson (0.999) data; negative-binomial recovery is being
-  re-measured on the corrected NB fitting code, so no rate is given yet. For
+  rate 0.95), Poisson (0.999) and negative-binomial (0.93, re-measured on the
+  corrected NB fitting code) data. For
   single-trial binary (Bernoulli) data recovery is still weak at small sizes
   even with the default loading ridge (`binary_ridge = 2`; e.g. 20 traits,
   120 units: the true rank was found in 8/10 simulated datasets with the
@@ -85,11 +85,18 @@
   like any accepted fit; `require_converged = TRUE` restores the previous
   outright rejection. On the auto-d recovery grid (13,506 simulated
   datasets), rejecting on the convergence flag alone lowered Poisson
-  recovery (0.999 to 0.991); the negative-binomial comparison is being
-  re-measured on the corrected NB fitting code, so no figure is given yet.
+  recovery (0.999 to 0.991) and negative-binomial recovery (0.934 to 0.747,
+  re-measured on the corrected NB fitting code, where a dispersion at the
+  Poisson boundary is reported as unconverged).
   Every broken unconverged fit was already caught as runaway or non-monotone.
-  `pd_hessian` is unchanged: a CONFIRMED non-positive-definite Hessian still
-  excludes a fit regardless of `require_converged`.
+  A CONFIRMED non-positive-definite Hessian still excludes a fit regardless
+  of `require_converged`, but under the loading ridge the Hessian tested is
+  now the penalised one (the objective the optimiser minimised). The ridge is
+  applied outside the TMB template, so `sdreport()`'s `pdHess` tests the
+  unpenalised Hessian at the penalised optimum and wrongly rejected correct
+  fits: on 10 simulated binary datasets with n = 120, p = 20 and true d = 3,
+  `"bic_sites"` recovered d = 3 in 4 before this change and 9 after it, with
+  no fit rejected. `sdreport()`'s own `pdHess` is unchanged.
 
 * `select_lv()`'s `criterion` argument gains `"bic_sites"` and **it is now
   the default** -- **existing

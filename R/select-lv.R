@@ -65,6 +65,33 @@
 ## EXISTING `select_lv()` CALLS THAT DID NOT PASS `criterion =` MAY NOW CHOOSE
 ## A DIFFERENT `d` (see NEWS).
 
+## pdHess of the objective the optimiser minimised. Without a loading ridge this
+## is sdreport()'s own flag (NA when sdreport() was skipped). Under
+## `aghq_ridge` the penalty is added in R, outside the TMB template, so
+## sdreport() tests the UNPENALISED Hessian at the PENALISED optimum, which can
+## be indefinite at a proper penalised optimum -- the same defect #1092 fixed
+## for the gradient (`.gllvmTMB_penalised_gradient()`). On the matched
+## binary-ridge data (n = 120, p = 20, K = 3) six fits flagged this way had a
+## penalised Hessian with smallest eigenvalue 0.09 to 0.25 and a penalised
+## gradient of 1e-4. So, under the ridge, add 1 / tau^2 on the ridge block of a
+## numerical Hessian and test that instead.
+.select_lv_pd_hessian <- function(fit) {
+  if (is.null(fit$sd_report)) return(NA)
+  if (isTRUE(fit$sd_report$pdHess)) return(TRUE)
+  tau <- fit$aghq$ridge_tau %||% Inf
+  obj <- fit$tmb_obj
+  par <- fit$opt$par
+  if (is.null(obj) || is.null(par) ||
+      !.gllvmTMB_loading_ridge_applies(tau, names(par))) return(FALSE)
+  H <- tryCatch(stats::optimHess(par, obj$fn, obj$gr), error = function(e) NULL)
+  try(obj$fn(par), silent = TRUE)  # leave the tape at the fitted parameters
+  if (is.null(H) || any(!is.finite(H))) return(FALSE)
+  li <- .gllvmTMB_ridge_block_index(names(par))
+  diag(H)[li] <- diag(H)[li] + 1 / tau^2
+  ev <- eigen((H + t(H)) / 2, symmetric = TRUE, only.values = TRUE)$values
+  isTRUE(min(ev) > 0)
+}
+
 ## Walk a formula's call tree and count `latent(...)` calls.
 .select_lv_count_latent <- function(expr) {
   if (!is.call(expr)) {
@@ -519,10 +546,14 @@
 #' convergence is **kept** rather than excluded on that flag alone -- it is
 #' still subject to the runaway and monotonicity checks above, and only
 #' rejected (`"unconverged"`) when its Hessian is CONFIRMED non-positive-
-#' definite. On the auto-d recovery grid (13,506 simulated datasets),
-#' rejecting on the convergence flag alone lowered Poisson recovery (0.999
-#' to 0.991); the negative-binomial comparison has not yet been measured on
-#' the corrected NB fitting code, so no rate is claimed here. Every broken
+#' definite. Under the loading ridge that Hessian is the penalised one (the
+#' objective the optimiser minimised), not `sdreport()`'s unpenalised one,
+#' which can be indefinite at a proper penalised optimum. On the auto-d
+#' recovery grid (13,506 simulated datasets), rejecting on the convergence
+#' flag alone lowered Poisson recovery (0.999 to 0.991); re-measured on the
+#' corrected NB fitting code (4,794 datasets), it lowered negative-binomial
+#' recovery from 0.934 to 0.747, because a dispersion at the Poisson
+#' boundary is reported as unconverged. Every broken
 #' unconverged fit in that grid was already caught by the runaway or
 #' monotonicity checks; `require_converged = TRUE` restores the stricter
 #' rule. With `warm_start =
@@ -849,7 +880,7 @@ select_lv <- function(formula, data, ..., d_max,
     ## CONFIRMED non-PD Hessian (pdh identically FALSE) regardless of
     ## `require_converged` (that argument only relaxes the convergence-flag
     ## check below), never on pdh being merely unknown.
-    pdh <- if (!is.null(fit_try$sd_report)) isTRUE(fit_try$sd_report$pdHess) else NA
+    pdh <- .select_lv_pd_hessian(fit_try)
     if (isFALSE(pdh) || (!conv && isTRUE(require_converged))) {
       return(list(
         fit = fit_try, status = "unconverged",
@@ -917,7 +948,7 @@ select_lv <- function(formula, data, ..., d_max,
 
     fits[[as.character(k)]] <- res$fit
     conv <- isTRUE(res$fit$opt$convergence == 0L)
-    pdh <- if (!is.null(res$fit$sd_report)) isTRUE(res$fit$sd_report$pdHess) else NA
+    pdh <- .select_lv_pd_hessian(res$fit)
     ridge_tau_k <- fit_ridge_tau(res$fit)
 
     if (res$status != "ok" && res$status != "warm_start") {

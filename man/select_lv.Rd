@@ -177,10 +177,14 @@ log-likelihood never becomes \code{bar}) (\code{"nonmonotone"}). By default
 convergence is \strong{kept} rather than excluded on that flag alone -- it is
 still subject to the runaway and monotonicity checks above, and only
 rejected (\code{"unconverged"}) when its Hessian is CONFIRMED non-positive-
-definite. On the auto-d recovery grid (13,506 simulated datasets),
-rejecting on the convergence flag alone lowered Poisson recovery (0.999
-to 0.991); the negative-binomial comparison has not yet been measured on
-the corrected NB fitting code, so no rate is claimed here. Every broken
+definite. Under the loading ridge that Hessian is the penalised one (the
+objective the optimiser minimised), not \code{sdreport()}'s unpenalised one,
+which can be indefinite at a proper penalised optimum. On the auto-d
+recovery grid (13,506 simulated datasets), rejecting on the convergence
+flag alone lowered Poisson recovery (0.999 to 0.991); re-measured on the
+corrected NB fitting code (4,794 datasets), it lowered negative-binomial
+recovery from 0.934 to 0.747, because a dispersion at the Poisson
+boundary is reported as unconverged. Every broken
 unconverged fit in that grid was already caught by the runaway or
 monotonicity checks; \code{require_converged = TRUE} restores the stricter
 rule. With \code{warm_start = TRUE} (the default), a rejected fit is retried once with \verb{control(start_from = <the last accepted fit>)} before being excluded, and kept (\code{status = "warm_start"}) if the retry passes every check. This is a retry from the

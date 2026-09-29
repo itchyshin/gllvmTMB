@@ -64,8 +64,13 @@ results do not establish reliability for those data.
 
 ## Choose a model within the evidence
 
-This page describes the 0.7.1 source version. It separates three practical
-decisions:
+**Development documentation (0.8.0.9000).** This page follows the current
+GitHub development branch. Its validation results and capabilities include
+changes added after the bounded 0.7.1 source was prepared for CRAN, so some
+material is absent from that snapshot. If you use 0.7.1, consult the help and
+vignette installed with that version (`?gllvmTMB` and `vignette("gllvmTMB")`).
+
+This page separates three practical decisions:
 
 - **A safer starting point within the tested conditions:** point-estimate
   checks passed for the model and data design stated. This does not establish
@@ -140,7 +145,7 @@ Setting `unique = FALSE` requests the narrower loadings-only subset.
 | Prediction at new locations for integrated (iSDM) fits (`predict()` on `isdm_sources()` fits) | Exploratory | Point predictions, including maps, at new in-hull coordinates for the ordinary intercept-only spatial tier; training-row predictions reproduce the fitted values exactly | Held-out map accuracy, which has not been demonstrated in the evaluated design; a standard error or confidence interval on `newdata` predictions (`se.fit` is refused there); or predictions for spatial slope tiers, which remain unsupported |
 | Predictor-informed latent scores (`latent(..., lv = ~ x)`) | Exploratory | Point estimates of the rotation-invariant effect of a predictor acting through the shared latent axes, combining traits from more than one response family in one model, in the specific tested construction and evidence cells | Broad recovery or calibration across arbitrary family combinations; support for missing latent-score predictors, combined fixed-and-latent-score predictors, REML, or a structured (phylogenetic/spatial/kernel) source on this term |
 | Multinomial structured routes | Exploratory | Fixed-effect point estimates and probability predictions for one unordered multinomial response are well tested. Several structured extensions (a phylogenetic route, a shared-latent cross-family route, pedigree- or kernel-sourced routes, and ordinary group random intercepts) exist and each has its own narrower tested evidence | Fitting more than one multinomial response in the same model; augmented (intercept-and-slope) structured forms; or calibrated intervals on any structured multinomial route |
-| Estimated source strength (`rho = NULL` on `phylo_*`/`animal_*`/`kernel_*`/`spatial_*` terms) | Exploratory | Bounded point-recovery evidence for a native Gaussian model with complete replicated trait vectors, one known relatedness source, retained observation-level residual variance, and no competing ordinary covariance term | General recovery across other source/covariance-mode combinations — most combinations tested so far did not pass; any confidence interval on the estimated strength, which does not yet exist; or recovery for augmented (intercept-and-slope) forms |
+| Estimated source strength (`rho = NULL` on `phylo_*`/`animal_*`/`kernel_*`/`spatial_*` terms) | Exploratory | Bounded point-recovery evidence for a native Gaussian model with complete replicated trait vectors, one known relatedness source, retained observation-level residual variance, and no competing ordinary covariance term | Broader recovery across other source/covariance-mode combinations remains partial or blocked under the tested conditions. Confidence intervals on the estimated strength are not yet available, and recovery for augmented (intercept-and-slope) forms has not passed |
 
 </details>
 

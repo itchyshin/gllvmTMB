@@ -96,7 +96,7 @@ approximation and propagates it through a monotone log/exp transform.
 It is \strong{not a calibrated coverage statement} -- no repeated-sampling
 coverage campaign has been run for any of these estimands, and
 \code{interval_status = "wald_uncalibrated"} marks every row as such. The
-implementation is tested, but repeated-sampling coverage is not certified.
+calculation is tested; its repeated-sampling coverage is not.
 
 When the fit's random-slope term carries BOTH a diagonal Psi companion
 and a shared loadings component (\code{theta_rr_B_slope}, the default
@@ -104,7 +104,7 @@ alongside \code{theta_diag_B_slope} for ordinary \code{latent()}), \code{estimat
 that route is the per-trait UNIQUE (Psi) component of slope variance
 only -- it excludes the shared loadings contribution to the marginal
 slope variance, and can understate the total marginal slope SD
-substantially (measured up to ~45\% in a recovery study). This
+substantially (measured up to ~45\% in a recovery simulation). This
 restriction travels with the \strong{data}, not only the print method: the
 \code{component} column reads \code{"unique_psi"} in that case (\code{"total"}
 otherwise -- including for the phylogenetic and loadings-only routes,
@@ -140,12 +140,11 @@ logged;
 OTHER slope coordinates on the SAME route (only evaluated when there
 is more than one to compare against); \code{status = "near_zero_relative"},
 mirroring the package's relative-to-siblings convention for a
-collapsed variance component (\code{psi_rel_thresh} / \verb{near_zero_psi_*},
-\code{R/diagnose.R}).
+collapsed variance component (\code{psi_rel_thresh} / \verb{near_zero_psi_*}).
 }
-The point estimate (\code{estimate}, \code{theta}) is always returned, following
-the house line that a non-PD Hessian disqualifies standard errors but
-not point estimates (\code{R/bootstrap-sigma.R}, \code{R/cv-internal.R}).
+The point estimate (\code{estimate}, \code{theta}) is always returned. A
+non-positive-definite Hessian disqualifies standard errors, but not
+point estimates.
 }
 
 \examples{

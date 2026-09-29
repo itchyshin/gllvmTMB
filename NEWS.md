@@ -1,6 +1,6 @@
 # gllvmTMB 0.7.1
 
-Version 0.7.1 is prepared for the first CRAN submission of `gllvmTMB`.
+Version 0.7.1 is the candidate for the first CRAN release of `gllvmTMB`.
 It fits multivariate
 response models using stacked long data or a wide-data formula, with
 independent, full, or latent trait covariance and selected animal,
@@ -602,16 +602,16 @@ is still the default.
   use; and figures gain alt text, equal-axis identity lines, and
   non-overlapping labels.
 
-* **The LA-MSPL worked example is rewritten around its two failure modes.**
-  *Rare items and runaway estimates in Paper × Items evidence synthesis*
-  (`vignettes/articles/mspl-binary-jsdm.Rmd`, same URL) now grounds the
+* **LA-MSPL worked example (development site only).** *Rare items and runaway
+  estimates in Paper × Items evidence synthesis* is available on the
+  [development site](https://itchyshin.github.io/gllvmTMB/articles/mspl-binary-jsdm.html).
+  It is not included in the CRAN 0.7.1 package. The article grounds its
   example in an evidence-map-shaped corpus and demonstrates, on one dataset,
   that runaway loadings and fixed-design separation are different diseases
   with different matched remedies: the opt-in loading ridge for the first
-  and opt-in MSPL for the second. It also includes the negative result that the ridge
-  does not repair separation. Claim boundaries (probit vs logit ridge
-  regimes, AGHQ's large-n evidence, MSPL's refused inference surface) are
-  stated in the article.
+  and opt-in MSPL for the second. It also shows that the ridge does not repair
+  separation. The article states the boundaries for probit and logit ridge
+  regimes, AGHQ's large-sample evidence, and MSPL's inference surface.
 
 * **Complete-Bernoulli GLLVMs can opt in to LA-MSPL point estimation.** Set
   `estimator = "mspl"` to fit the experimental maximum softly penalised

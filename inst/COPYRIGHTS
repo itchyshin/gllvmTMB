@@ -30,9 +30,9 @@
 ##
 ## sdmTMB is GPL-3. Its named authors at that revision include Sean C.
 ## Anderson, Eric J. Ward, Philina A. English, Lewis A. K. Barnett, and James
-## T. Thorson; its complete contributor and copyright-holder roster is retained
-## in the pinned DESCRIPTION above. No sdmTMB runtime or build dependency is
-## required by gllvmTMB.
+## T. Thorson. The DESCRIPTION at the pinned source revision is available at
+## https://github.com/sdmTMB/sdmTMB/blob/8bc452cb743a9efa7b3212653a0f5f2bda3c5ffc/DESCRIPTION.
+## No sdmTMB runtime or build dependency is required by gllvmTMB.
 ##
 ## TMB engine (src/gllvmTMB.cpp)
 ##

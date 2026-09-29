@@ -654,8 +654,8 @@ that paper does not validate those extensions.
 }
 \seealso{
 \code{\link[=screen_gllvmTMB]{screen_gllvmTMB()}} for the opt-in fixed-design separation
-certificate; \code{vignette("mspl-binary-jsdm", package = "gllvmTMB")}
-for the screen-first LA-MSPL workflow; \code{\link[=traits]{traits()}} for wide data-frame formula input;
+certificate to use before fitting; \code{estimator = "mspl"} is documented
+in this topic. \code{\link[=traits]{traits()}} for wide data-frame formula input;
 \code{\link[=gllvmTMB_wide]{gllvmTMB_wide()}} for wide matrix/data-frame input;
 \code{\link[=simulate_site_trait]{simulate_site_trait()}} for
 generating recovery test data;

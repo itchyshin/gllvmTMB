@@ -54572,3 +54572,194 @@ git diff --check
 ```
 
 These follow-up edits post-date the last built artifact. They need a clean commit, a fresh archive, a new hash, and complete exact-artifact verification before any submission action.
+
+
+## 2026-09-29 — Repair two 0.7.1 archive references (diagnostic evidence)
+
+Rose's exact-artifact review found that `man/gllvmTMB.Rd` linked to an
+unshipped `mspl-binary-jsdm` vignette and `inst/COPYRIGHTS` claimed that a
+complete upstream contributor roster appeared “in the pinned DESCRIPTION
+above,” although that DESCRIPTION is not shipped. The release-branch edits
+remove only the dangling help link and replace the false cross-reference with
+the commit-specific upstream DESCRIPTION URL; the existing attribution and
+author names remain. These exact hunks were absent from the inspected Claude
+branch diff. The required lane handoff is still being confirmed; this source
+change is not committed and the diagnostic tarball is not a submission
+candidate.
+
+```sh
+bash ~/shinichi-brain/tools/lane_preflight.sh /Users/z3437171/.codex/worktrees/cran-071-first/gllvmTMB --file R/gllvmTMB.R
+# Confirmed the foreign Claude lane is active and carries a broad diff in this file; inspected its diff and confirmed it did not change the target @seealso block.
+bash ~/shinichi-brain/tools/lane_preflight.sh /Users/z3437171/.codex/worktrees/cran-071-first/gllvmTMB --file inst/COPYRIGHTS
+# Found other-ref work in unrelated sections; inspected those diffs before retaining the narrow pinned-DESCRIPTION correction.
+gh pr list --state open
+# Could not connect to api.github.com; no PR state inferred.
+git log --all --oneline --since='6 hours ago'
+# Listed current release and Claude lane commits; see lane preflight above.
+Rscript --vanilla -e 'devtools::document(quiet = TRUE)'
+# Exit 0 after allowing the managed release worktree write; regenerated gllvmTMB.Rd. Roxygen printed three pre-existing S3 export-tag diagnostics in aghq-report.R.
+Rscript --vanilla -e 'pkgdown::check_pkgdown()'
+# Exit 0: no problems found.
+Rscript --vanilla -e 'urlchecker::url_check(".", progress = FALSE)'
+# Initial sandboxed run could not resolve hosts; network-enabled rerun exited 0: all URLs correct.
+rg -n 'mspl-binary-jsdm|pinned DESCRIPTION above|5 × 3' R man inst/COPYRIGHTS
+# No matches after the target edits.
+R CMD build --no-build-vignettes --no-manual --no-resave-data gllvmTMB
+# Run under R 4.6.1 on a temporary extraction of the prior archive with only R/gllvmTMB.R, man/gllvmTMB.Rd, and inst/COPYRIGHTS copied from the worktree. Diagnostic SHA-256 326eab70f9f54614fef68eb5a8dd3d30edad1edd9862dd98e9c0e0d96a65d773; 4,423,766 bytes; 887 members.
+R CMD check --as-cran --run-donttest -o /private/tmp/gllvmtmb-071-cran-evidence/diag-repair-20260929/check /private/tmp/gllvmtmb-071-cran-evidence/diag-repair-20260929/src/gllvmTMB_0.7.1.tar.gz
+# Exit 0 under R 4.6.0 / macOS arm64. Status: 1 NOTE (New submission only); testthat 9,515 PASS, 0 FAIL, 0 WARN, 1,690 SKIP in 300.4 elapsed seconds; examples, manuals, and rebuilt vignettes passed. Three install compiler warnings are in RcppEigen headers.
+R CMD INSTALL --library=/private/tmp/gllvmtmb-071-cran-evidence/diag-repair-20260929/clean-lib /private/tmp/gllvmtmb-071-cran-evidence/diag-repair-20260929/src/gllvmTMB_0.7.1.tar.gz
+# Exit 0. Separate smoke loaded version 0.7.1 from the clean library plus the existing dependency library.
+git diff --check
+# Passed.
+```
+
+The diagnostic archive was built from the previous archive rather than a clean
+source commit. It does not clear the exact-source build gate. Fresh exact-hash
+external platform checks and reviewer votes, the `submission-ready` release
+ledger, lane handoff, clean source commit, and resubmission remain outstanding.
+
+
+### Inventory correction and second packaging rehearsal
+
+The first diagnostic tarball above (`326eab70...`) contained
+`gllvmTMB/build/partial.rdb`, so its green check is diagnostic only and its
+member list fails the archive-hygiene gate. Cause: its source was unpacked from
+the predecessor tarball, which does not contain the source-only `.Rbuildignore`.
+Restoring `.Rbuildignore` before rebuilding excluded the partial database. That
+second archive has SHA-256
+`e70d3a4a644877238140e4b5dfd98cb4f97c33d7432568a5f8779a2eba9518eb`, 4,423,650
+bytes, and its 886 member names match the predecessor inventory. It has not
+been checked. Rose then found the NEWS article pointer noted below, so both
+diagnostic hashes remain ineligible for submission.
+
+```sh
+tar -tzf /private/tmp/gllvmtmb-071-cran-evidence/diag-repair-20260929/src/gllvmTMB_0.7.1.tar.gz | rg 'partial\.rdb'
+# Found gllvmTMB/build/partial.rdb. Disqualified diagnostic hash 326eab70...d773.
+bash ~/shinichi-brain/tools/lane_preflight.sh /Users/z3437171/.codex/worktrees/cran-071-first/gllvmTMB --file NEWS.md
+# Found many competing-ref changes and an active Claude lane; read its target hunk. No NEWS edit made.
+git diff HEAD..claude/lane-auto-d-r-20260926 -- NEWS.md | rg -n -C 4 'LA-MSPL worked example|mspl-binary-jsdm|same URL|rare items'
+# Claude's NEWS diff retains the stale “same URL” reference; no equivalent repair is present.
+rg -n -C 2 'mspl-binary-jsdm|same URL' README.md NEWS.md R man vignettes
+# Found the NEWS reference and links in non-installed nested articles; the R source and generated help link were corrected in this release worktree.
+tar -tzf /private/tmp/gllvmtmb-071-cran-evidence/diag-repair-v2-20260929/src/gllvmTMB_0.7.1.tar.gz | rg 'partial\.rdb|vignettes/articles/mspl-binary-jsdm|\.Rbuildignore'
+# No matches: no partial DB, MSPL article, or source-only .Rbuildignore in this package tarball.
+```
+
+The second packaging rehearsal is still built from an unpacked predecessor,
+not a clean committed source. The NEWS path requires the Claude handoff; after
+the owner resolves it, update NEWS, commit the bounded release fix, build from
+that clean source tree, repeat the exact archive checks, and retie all required
+platform evidence and fresh reviews to the final hash.
+
+
+### 2026-09-29 — DESCRIPTION spelling follow-up for the replacement candidate
+
+The bounded release source already removes `TMB` from the package title. A
+fresh spelling check confirms the source no longer carries the incoming
+DESCRIPTION spelling NOTE. This is source-level diagnostic evidence only; the
+final tarball check must be repeated after the NEWS handoff and clean rebuild.
+
+```sh
+Rscript --vanilla -e 'spelling::spell_check_package()'
+# Exit 0: “No spelling errors found.”
+rg -n '^Title:|TMB' DESCRIPTION
+# Title is “Generalised Linear Latent Variable Models”; TMB appears only in dependency fields, not in the title.
+Rscript --vanilla -e 'x <- spelling::spell_check_package(); cat("columns:", paste(names(x), collapse=", "), "\\n"); cat("TMB in DESCRIPTION rows:", sum(x[[1]] == "TMB" & grepl("DESCRIPTION", x[[2]], fixed=TRUE)), "\\n"); cat("any TMB rows:\\n"); print(x[x[[1]] == "TMB", , drop=FALSE])'
+# Exit 0: “No spelling errors found”; zero TMB rows in DESCRIPTION.
+git diff --check
+# Passed before this log entry; rerun before commit.
+```
+
+
+### 2026-09-29 — verify the live development-site label
+
+The reader-site gate was checked against the live GitHub Pages responses rather
+than the stale web-search cache. The home page and both audited article paths
+returned HTTP 200. The homepage now states that it is experimental development
+documentation for 0.8.0.9000 and that the planned CRAN source is the earlier,
+bounded 0.7.1 source. This clears the public-site distinction sub-gate only;
+R6 remains open for fresh artifact-bound checks, reviews, and the NEWS handoff.
+
+```sh
+python3 - <<'PY'
+import urllib.request, re
+urls = [
+  ('home', 'https://itchyshin.github.io/gllvmTMB/'),
+  ('limits', 'https://itchyshin.github.io/gllvmTMB/articles/current-limits.html'),
+  ('MSPL', 'https://itchyshin.github.io/gllvmTMB/articles/mspl-binary-jsdm.html'),
+]
+for name, url in urls:
+    req = urllib.request.Request(url, headers={'User-Agent': 'Codex release audit'})
+    with urllib.request.urlopen(req, timeout=15) as response:
+        html = response.read().decode('utf-8', 'replace')
+        print(f'{name}: HTTP {response.status}; Last-Modified={response.headers.get("Last-Modified")}')
+        for term in ('Experimental development documentation for 0.8.0.9000', 'planned first CRAN submission is the earlier, bounded 0.7.1 source', 'This site documents the current development version', '0.7.1', '0.8.0.9000', 'pre-CRAN', 'not included in the CRAN package'):
+            if term in html:
+                print('  FOUND:', term)
+        title = re.search(r'<title>(.*?)</title>', html, re.S)
+        if title:
+            print('  TITLE:', re.sub(r'\s+', ' ', title.group(1)).strip())
+PY
+# Three URLs returned HTTP 200; Last-Modified was 18:06:14 UTC for home and 18:06:15 UTC for each article. Homepage includes the 0.8.0.9000 development label and bounded 0.7.1 CRAN-source distinction.
+git diff --check
+# Passed before this log entry; rerun before commit.
+```
+
+
+### 2026-09-29 — final source-reader edits and local review
+
+The CRAN-lane README now places its version boundary directly below the
+development-site links and removes a repeated first-fit recommendation. NEWS
+marks the MSPL article as development-site-only; the main help source and
+generated Rd no longer link to an article omitted from the 0.7.1 tarball. Rose's
+fresh pre-publish review passed these source edits. Pat found no blocker and
+noted one optional clarity improvement: explain that the `indep()` / `dep()`
+first-fit advice and the `latent()` decomposition example have different
+teaching purposes. That observation is not carried into this branch because
+the active development-identity lane also owns README work; no cross-lane edit
+was made.
+
+```sh
+Rscript --vanilla -e 'devtools::document(quiet = TRUE); pkgdown::check_pkgdown()'
+# Exit 0; pkgdown reported “No problems found.” Roxygen printed three existing
+# S3-method export warnings in aghq-report.R; no unrelated files changed.
+python3 ~/shinichi-brain/tools/slop_check.py /Users/z3437171/.codex/worktrees/cran-071-first/gllvmTMB/README.md /Users/z3437171/.codex/worktrees/cran-071-first/gllvmTMB/NEWS.md
+# Zero findings for both files (README 1,818 words; NEWS 13,956 words).
+Rscript --vanilla -e 'urlchecker::url_check(progress = FALSE)'
+# R returned exit 0, but DNS resolution failed for external hosts including
+# cran.r-project.org, github.com, and doi.org. This is not a URL-check pass;
+# repeat in a network-enabled environment against the final candidate.
+git diff --check
+# Passed.
+```
+
+The network-enabled retry was then run on the same repaired source tree:
+
+```sh
+Rscript --vanilla -e 'urlchecker::url_check(progress = FALSE)'
+# Exit 0: “All URLs are correct!” Network access was enabled for this retry.
+```
+
+The actual pkgdown site also built successfully to a temporary destination:
+
+```sh
+R_USER_CACHE_DIR=/private/tmp/gllvmtmb-071-cran-evidence/r-user-cache Rscript --vanilla -e 'pkgdown::build_site(install = FALSE, quiet = TRUE, devel = TRUE, override = list(destination = "/private/tmp/gllvmtmb-071-cran-evidence/resubmission-site-source"))'
+# Finished building the site. 767 output files. All references, articles,
+# sitemap, search index, and redirects completed.
+rg -n 'online articles follow active development|If you use CRAN 0.7.1' /private/tmp/gllvmtmb-071-cran-evidence/resubmission-site-source/index.html
+# Found the CRAN-version warning immediately after the development-site links.
+rg -n 'estimator = .mspl.|certificate to use before fitting' /private/tmp/gllvmtmb-071-cran-evidence/resubmission-site-source/reference/gllvmTMB.html
+# Found the replacement pre-fit screen / help wording; no vignette() pointer remains.
+```
+
+The local MSPL article renders without an article-local CRAN boundary notice.
+Its source belongs to the separately leased site lane, so it was not changed;
+verify the live direct-entry path after that lane deploys. This keeps the site
+boundary sub-gate open even though the homepage and release reader routes now
+label the development material.
+
+These are source-level results only. The README / NEWS audience review does not
+qualify the live MSPL article, which remains owned by the separate site lane.
+The release source is still dirty; no replacement archive has been frozen, so
+all artifact-bound checks and final votes remain open.

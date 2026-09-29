@@ -41,15 +41,16 @@ calibration remains incomplete.
 | check whether a fit is interpretable | [Can I trust this fit?](https://itchyshin.github.io/gllvmTMB/articles/fit-diagnostics.html) |
 | look up formulas, covariance terms, or families | [Reference index](https://itchyshin.github.io/gllvmTMB/reference/) |
 
+The online articles follow active development. If you use CRAN 0.7.1, follow
+the release notes and documentation installed with that version.
+
 `gllvmTMB` is under active development and has lifecycle **experimental**: the
 formula grammar, defaults, and extractor output may still change as the API
 matures. The public path above is deliberately bounded. For Gaussian models,
 the narrow tested-regime point evidence starts with `indep()` or `dep()`; inspect
 the covariance point estimate. The latent model below remains the clearest way
 to learn `Sigma = Lambda Lambda^T + Psi` and interpret covariance point
-estimates. For a first point estimate in the narrow tested Gaussian setting,
-start with `indep()` or `dep()` and check fit health. Bare-bar `(1 + x | g)`
-slopes remain reserved.
+estimates. Bare-bar `(1 + x | g)` slopes remain reserved.
 
 ## What the model does
 

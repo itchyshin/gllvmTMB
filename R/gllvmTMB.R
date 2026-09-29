@@ -550,8 +550,8 @@
 #' conditional-joint and marginal quantities from different penalty regimes.
 #'
 #' @seealso [screen_gllvmTMB()] for the opt-in fixed-design separation
-#'   certificate; \code{vignette("mspl-binary-jsdm", package = "gllvmTMB")}
-#'   for the screen-first LA-MSPL workflow; [traits()] for wide data-frame formula input;
+#'   certificate to use before fitting; `estimator = "mspl"` is documented
+#'   in this topic. [traits()] for wide data-frame formula input;
 #'   [gllvmTMB_wide()] for wide matrix/data-frame input;
 #'   [simulate_site_trait()] for
 #'   generating recovery test data;

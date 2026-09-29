@@ -947,9 +947,9 @@ ordinal_logit <- function(link = "logit") {
 #' own corrected rerun independently FAILED (small contrast variances
 #' collapse; a planted-zero check fails). The spatial mode axis and the
 #' \code{(1 | group)} route below both PASSED their signed recovery gates
-#' outright, with no replication rescue needed. \strong{One categorical
-#' draw per species does not identify \eqn{V}; five draws per species
-#' does.}
+#' outright, with no replication rescue needed. In the tested phylogenetic
+#' designs, five draws passed for the loadings-only and full-\eqn{V} cells;
+#' these results do not establish recovery for the diagonal-\eqn{V} cell.
 #'
 #' A generic \code{(1 | group)}
 #' random intercept is also admitted, but its semantics are
@@ -983,11 +983,11 @@ ordinal_logit <- function(link = "logit") {
 #' \code{animal_scalar()} / \code{kernel_scalar()} / \code{spatial_scalar()}
 #' and \code{common = TRUE} at the cluster/cluster2 tier -- a single shared
 #' level across the \eqn{K-1} contrasts has no interpretable null on the
-#' \eqn{(I+J)} contrast geometry (null-DGP evidence:
-#' \code{dev/multinomial-structured/probe-scalar-null.R}).
+#' \eqn{(I+J)} contrast geometry; a null-generating simulation found no
+#' interpretable shared variance on this geometry.
 #'
-#' \strong{Everything else is still deferred} and fails loud
-#' (\code{R/multinomial-fence.R}) rather than reaching an untested
+#' \strong{Everything else is still deferred} and is rejected with an
+#' explicit error rather than reaching an untested
 #' categorical path: \code{dep()}, explicit \code{unique()} /
 #' \code{indep()} at the unit tier, \code{latent()}/\code{dep()} at the
 #' \code{cluster}/\code{cluster2} tiers, and the \code{unit_obs} grouping

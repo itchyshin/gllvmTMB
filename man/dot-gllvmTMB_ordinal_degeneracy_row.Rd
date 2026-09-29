@@ -58,18 +58,17 @@ A one-row data frame in the \code{\link[=check_gllvmTMB]{check_gllvmTMB()}} row 
 \code{NULL} when the fit has no \code{ordinal_probit()} (family_id 14) trait.
 }
 \description{
-\code{ordinal_probit()} (family_id 14) traits drop the auto-Psi at parse time
-(\code{auto_unique_off_family} in \code{R/fit-multi.R}, fids 12/13/14), so a
-pure-ordinal fit has no \code{report$sd_B} and the \verb{near_zero_psi_*} rows
-elsewhere in \code{\link[=check_gllvmTMB]{check_gllvmTMB()}} are dark by design -- these two loading
-arms are the ONLY degeneracy coverage a default all-ordinal fit gets,
-which addresses the earlier coverage gap (\code{ordinal_probit} had
-zero detector coverage, 239/239 fits unflagged, where the binomial screen
-caught 272/272).
+\code{ordinal_probit()} does not include the automatic Psi component, so a
+pure-ordinal fit has no \code{report$sd_B} and the \verb{near_zero_psi_*} checks
+in \code{\link[=check_gllvmTMB]{check_gllvmTMB()}} are unavailable. These two loading arms are
+available when a user supplies finite thresholds; both are disarmed by
+default because the completed calibration did not identify a threshold
+that met its targets. They address the earlier detector-coverage gap
+(\code{ordinal_probit} had zero detector coverage, 239/239 fits unflagged,
+where the binomial screen caught 272/272).
 }
 \details{
-The detector-S1 mechanism probe (\code{dev/ordinal-degeneracy/probe-criteria.md},
-VERDICT 2026-08-17) measured the mechanism behind 24 degenerate ordinal
+A mechanism probe completed on 2026-08-17 measured the cause of 24 degenerate ordinal
 fits over a 60-fit grid and found \strong{category-level separation, not link
 saturation}: \code{gll_log_pnorm_diff}'s cutpoint-underflow condition (both
 bracketing cutpoints more than 8.2924 from \code{eta} on the same side) never
@@ -104,27 +103,27 @@ comment on the \code{sqrt(4*pi)*kappa} normalisation hazard, measured at
 \code{ordinal_loading_absolute_thresh}. This is scale-free for
 \code{ordinal_probit} by the same argument that justifies binomial's
 absolute arm: the probit-liability residual variance is EXACTLY 1
-under the Wright/Falconer/Hadfield threshold convention
-(\code{R/extract-sigma.R}, \code{sigma_d^2 = 1} fixed, no free scale
-parameter), so a loading IS the trait's latent SD in liability units.
+under the probit threshold convention (\code{sigma_d^2 = 1} is fixed,
+with no free scale parameter), so a loading is the trait's latent SD
+in liability units.
 }
 
-Both thresholds default to \code{Inf} (fully disarmed) pending the detector-S2
-calibration campaign staged at \verb{dev/ordinal-degeneracy/}
-(\code{campaign-ordinal-calibration.R}, \code{pass-criteria-ordinal.md}) -- shipping
-an armed default ahead of that evidence would repeat the mistake the
-binomial thresholds in this file were originally calibrated to correct.
+Both thresholds default to \code{Inf} (fully disarmed) because the completed
+315-fit calibration did not identify a threshold that met its targets.
+Further calibration may evaluate additional statistics or designs; until
+that evidence supports a threshold, no default is armed.
 
-A third statistic is computed and reported for the calibration campaign's
-own use but is \strong{NOT} wired into \code{flag} or \code{status}: \code{cutpoint_span}
+A third statistic is computed and reported for follow-up calibration but
+is \strong{NOT} wired into \code{flag} or \code{status}: \code{cutpoint_span}
 (a trait's fitted cutpoint span, \code{max(tau) - min(tau)} over its free
 cutpoints \verb{tau_2 .. tau_\{K-1\}}, via
 \code{.gllvmTMB_ordinal_cutpoint_span_by_trait()}) and the derived
 \code{loading_over_span} (\code{max_loading_unit / cutpoint_span}). Whether this
 variant adds sensitivity beyond O1/O2, and whether the span itself is
 confounded with the degeneracy label it would be screening for (a
-precondition the calibration campaign must report before this variant
-could ever ship), is exactly what that campaign is for. \code{K = 2} traits
+precondition follow-up calibration must report before this variant
+could ever ship), is exactly what follow-up calibration would assess.
+\code{K = 2} traits
 (no free cutpoint under the Hadfield \code{tau_1 = 0} convention) return \code{NA}
 for \code{cutpoint_span} rather than dividing by zero, and \code{loading_over_span}
 is \code{NA} wherever \code{cutpoint_span} is \code{NA} or non-positive.

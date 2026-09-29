@@ -81,3 +81,18 @@ N/A. No `ROADMAP.md` row changed in this PR.
 No model contract or design document changed. `_pkgdown.yml` now displays the development status and planned CRAN source in the site banner. The two changed navbar labels retain their existing article links. The locally rendered homepage confirms the banner; the public deployment remains unverified.
 
 This PR does NOT cover model behavior, simulation recovery, R API examples, generated help, the frozen `0.7.1` CRAN artifact, CRAN submission, or the deployed pkgdown site. No `ROADMAP.md` row changed.
+
+## 2026-09-28 follow-up: help and site verification
+
+This follow-up records corrections made after the initial identity report. It does not change the frozen 0.7.1 archive.
+
+### Files and scope
+
+Updated roxygen prose in `R/diagnose.R`, `R/families.R`, `R/gllvmTMB.R`, `R/loading-ci.R`, `R/output-methods.R`, `R/predictive-diagnostics.R`, and `R/slope-sd-ci.R`, then regenerated 20 affected `man/*.Rd` topics. Updated `DESCRIPTION`, `README.md`, and `inst/CITATION` to keep the development version and citation consistent. No runnable example, test file, `NAMESPACE`, `NEWS.md`, TMB source, or likelihood changed. The already-recorded `current-limits.Rmd` change remains the only article source change in this PR.
+
+### Checks and results
+
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'` and `Rscript --vanilla -e 'pkgdown::check_pkgdown()'` passed for the source/help edits.
+- `Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'` on the writable development-source copy exited 1 after 23m39.4s: 24,989 PASS, 6 FAIL, 54 warning captures, 1,231 SKIP, and four NOTEs. Three `vdiffr` snapshots differ slightly on this Mac; the temporal-control fixture failed in the full suite but passed when run alone; the unchanged R3 seed-12 fixture reproduced two convergence/eligibility assertion failures. No snapshot was accepted and no fitter/test change was made. This check describes current 0.8.0.9000 development source; the exact 0.7.1 release check is separate.
+- The full `pkgdown::build_site(devel = TRUE, lazy = FALSE)` completed with exit 0 in the writable copy after the network/cache-enabled retry. I inspected generated `pkgdown-site/index.html` and `pkgdown-site/articles/current-limits.html`: both distinguish experimental 0.8.0.9000 development documentation from the bounded 0.7.1 source, and the article points 0.7.1 users to installed help and vignette. Build log: `/private/tmp/gllvmtmb-071-cran-evidence/pr1325-full-site-build-network-2026-09-28.log`.
+- `git diff --check` passed. No full simulation campaign or snapshot refresh was run. CI has not yet checked these uncommitted follow-up edits; public deployment and live-page verification remain outstanding.

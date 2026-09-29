@@ -57939,3 +57939,30 @@ Deliberately not run: Totoro 9×500 grid dispatch; full `devtools::test()`.
 - Deliberately not run for this prose-only edit: package tests, `R CMD check`,
   a full development-site build, or deployment. These checks do not replace the
   exact 0.7.1 tarball and live-site release gates; deployment remains unverified.
+
+## 2026-09-28 follow-up — clean development-site build
+
+This follow-up supersedes the earlier targeted-edit note that a full development
+site build had not yet been run. It records the build of the pushed commit, not
+the 0.7.1 release site.
+
+- `git archive --format=tar --output=/private/tmp/gllvmtmb-071-cran-evidence/dev-source-303738c4/source.tar 303738c4a76ba6cf2ade2b19d1ac31cf0f65422f` — passed. SHA-256: `b76541245fd4efebdefd1b84b7270566dab18185957cc352b7518101845c2498`.
+- `tar -xf /private/tmp/gllvmtmb-071-cran-evidence/dev-source-303738c4/source.tar -C /private/tmp/gllvmtmb-071-cran-evidence/dev-source-303738c4` — passed.
+- Initial `Rscript --vanilla -e 'pkgdown::build_site(devel = TRUE, lazy = FALSE)'` — failed because the sandbox could not resolve `cloud.r-project.org` and could not write the default Sass cache.
+- `R_USER_CACHE_DIR=/private/tmp/gllvmtmb-071-cran-evidence/dev-source-303738c4/cache Rscript --vanilla -e 'pkgdown::build_site(devel = TRUE, lazy = FALSE)'` — passed with exit 0 and completed the full site build.
+- Verified the generated homepage displays `0.8.0.9000` as experimental development documentation and says the planned first CRAN submission uses the earlier bounded 0.7.1 source. The generated Current limitations page displays the development label, directs 0.7.1 readers to `?gllvmTMB` and `vignette("gllvmTMB")`, and retains the partial/blocked source-strength wording.
+- Full-build receipt: `/private/tmp/gllvmtmb-071-cran-evidence/dev-site-build-303738c4.md`. Local build only; merge, deployment, and live-page inspection remain outstanding.
+
+## 2026-09-28 follow-up: reviewed help corrections and full local verification
+
+- The working-tree follow-up corrected stale internal-path and calibration wording in roxygen descriptions and regenerated the matching `man/*.Rd` pages. It also aligned the help text with the completed ordinal calibration: no threshold met its targets, so defaults remain disarmed. The changed source/help files are `R/diagnose.R`, `R/families.R`, `R/gllvmTMB.R`, `R/loading-ci.R`, `R/output-methods.R`, `R/predictive-diagnostics.R`, `R/slope-sd-ci.R`, and the 20 generated help topics shown by `git diff --name-only`, plus `DESCRIPTION`, `README.md`, and `inst/CITATION`. No example code, test file, likelihood, TMB source, `NAMESPACE`, `NEWS.md`, or formula grammar changed.
+- Exact commands and outcomes:
+  - `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'` — passed earlier in this follow-up; generated help matches roxygen.
+  - `Rscript --vanilla -e 'pkgdown::check_pkgdown()'` — passed earlier in this follow-up, “No problems found.”
+  - `Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'` in the writable source copy — exit 1 after 23m39.4s; 24,989 PASS, 6 FAIL, 54 warning captures, 1,231 SKIP, and four NOTEs. Failures: three `vdiffr` snapshots with small SVG coordinate changes; the temporal optimizer-control fixture at `test-temporal-phylo-optimizer-qualification.R:271`; and two seed-12 R3 prototype assertions at `test-va-r3-prototype.R:116,121` (three healthy starts where four were expected, plus failed start eligibility). The isolated temporal test passed; the R3 seed-12 failure reproduced in the focused run. These test and fitting files are unchanged by this documentation follow-up. Do not accept new snapshots from this local platform run or use this development-source check as evidence for the separate 0.7.1 archive. Full log: `/private/tmp/gllvmtmb-071-cran-evidence/pr1325-full-check-writable-2026-09-28.log`.
+  - `Rscript --vanilla -e 'devtools::test(filter = "plot-visual-snapshots|temporal-phylo-optimizer-qualification|va-r3-prototype", reporter = "summary")'` in the writable source copy — confirmed the temporal file passes in isolation, three plot snapshots differ, and the R3 seed-12 assertions still fail. Log: `/private/tmp/gllvmtmb-071-cran-evidence/pr1325-focused-failures-writable-2026-09-28.log`.
+  - Initial `Rscript --vanilla -e 'pkgdown::build_site(devel = TRUE, lazy = FALSE)'` — blocked before page generation because this sandbox could not resolve `cloud.r-project.org` and could not write the default user Sass cache. This is not the final build result.
+  - `R_USER_CACHE_DIR=/private/tmp/gllvmtmb-071-cran-evidence/R-cache XDG_CACHE_HOME=/private/tmp/gllvmtmb-071-cran-evidence/XDG-cache Rscript --vanilla -e 'pkgdown::build_site(devel = TRUE, lazy = FALSE)'` — passed with exit 0; full site build finished. Log: `/private/tmp/gllvmtmb-071-cran-evidence/pr1325-full-site-build-network-2026-09-28.log`.
+  - `rg -n -C 1 'Experimental development documentation for 0\.8\.0\.9000|planned first CRAN submission|bounded 0\.7\.1|Development documentation \(0\.8\.0\.9000\)|consult the help and vignette installed' pkgdown-site/index.html pkgdown-site/articles/current-limits.html` — confirmed the generated homepage names 0.8.0.9000 as development documentation and identifies the bounded 0.7.1 submission source; Current limitations directs 0.7.1 users to their installed help and vignette.
+  - `git diff --check` — passed in the dev-identity worktree.
+- The full build used a copy of the reviewed working tree under `/private/tmp`. This is local render evidence; merge, deployment, and live-page verification remain open. The exact f613 0.7.1 artifact retains its separate passing check and platform evidence. The 0.8.0.9000 development-source check does not change that artifact or its hash.

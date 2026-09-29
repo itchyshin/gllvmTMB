@@ -121,10 +121,10 @@
 #' where the list put it. When the two readings agree -- which is true
 #' whenever the list is already written in level order -- the fit proceeds
 #' silently. When they disagree, that disagreement is precisely the
-#' silent-swap failure mode (issue #1120: `list(student(), gaussian())`
-#' against `family = rep(c("student","gaussian"), each = n)` used to pair
+#' silent-swap failure mode: `list(student(), gaussian())` against
+#' `family = rep(c("student","gaussian"), each = n)` previously paired
 #' the student rows with `gaussian()` and vice versa, with no warning and a
-#' converged fit), and the list is refused with an error showing both
+#' converged fit; the list is refused with an error showing both
 #' readings. A selector column whose values carry no name evidence at all
 #' (arbitrary labels such as `"count"`/`"binary"`) still uses list order,
 #' but the resolved pairing is reported once so it stays auditable.

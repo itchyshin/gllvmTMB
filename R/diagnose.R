@@ -1460,13 +1460,13 @@
 #'   identification, so a binomial loading is the trait's latent standard
 #'   deviation in link units: a value of this size already implies a
 #'   fitted probability indistinguishable from 0 or 1 across an ordinary
-#'   swing of the axis. Default 8, raised from 6 (issue #1098) after the
+#'   swing of the axis. Default 8, raised from 6 after the
 #'   earlier calibration pool (3,944 simulated binomial fits, no healthy
 #'   fit above 3.99) turned out to be unrepresentative: its true loading
 #'   scale never reached the regime where this arm misfires. A second pool
 #'   built specifically to cross `sigma_lambda in c(0.7, 3.0)` (928 healthy
-#'   / 272 degenerate binomial-probit fits) -- 3.0 chosen to hit issue
-#'   #847's `aghq_ridge` ridge-failure regime, not argued for realism --
+#'   / 272 degenerate binomial-probit fits) -- 3.0 chosen to probe the
+#'   `aghq_ridge` ridge-failure regime, not argued for realism --
 #'   measured this arm as the SOLE source of every false positive found
 #'   (232/928 at threshold 6, all attributable to this arm alone). Raising
 #'   the threshold to 8 lowers the false-positive rate on that pool from

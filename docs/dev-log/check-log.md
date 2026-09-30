@@ -54851,3 +54851,49 @@ rg -n 'dev/' NEWS.md
 git diff --check
 # Exit 0.
 ```
+
+
+### 2026-09-30: exact diagnostic archive from repaired 0.7.1 source
+
+The clean release source commit was `9fcacea7786ed602502954e6d9f572c2ffec810d`.
+A clean `git archive` export was built with R 4.6.0. This is diagnostic
+evidence, not the final current-R candidate. An initial build invocation used
+an unsupported output-directory option and produced a hidden `.-00build.log`
+inside its temporary source; I discarded that archive. The corrected build ran
+from the output directory with the absolute source path, and its inventory has
+no hidden entries.
+
+```sh
+/usr/local/bin/R CMD build --log --no-manual --no-resave-data --sha256 \
+  /private/tmp/gllvmtmb-071-cran-evidence/source-9fcacea77-clean2
+# Exit 0. Built gllvmTMB_0.7.1.tar.gz from the clean git archive.
+shasum -a 256 gllvmTMB_0.7.1.tar.gz
+# 1cfaf189b375485c49b428cc813c8631cbfc20f0c9be22e35baa207470dc9361
+# 4,468,055 bytes; 887 entries.
+python3 <inventory audit>
+# 19 Lane B files present; no hidden entries, forbidden paths, or partial.rdb.
+# build/vignette.rds present as R CMD build vignette-index metadata.
+R CMD check --as-cran --run-donttest gllvmTMB_0.7.1.tar.gz
+# R 4.6.0; exit 0; Status: 1 NOTE (New submission).
+# Testthat: 9,515 PASS, 0 FAIL, 0 WARN, 1,690 SKIP; stage 253/303 seconds.
+# Install stage: 73/78 seconds; examples 11/12 seconds; manual checks passed.
+# Three compiler warnings are from unused variables in RcppEigen headers.
+urlchecker::url_check("urlcheck-source/gllvmTMB", progress = FALSE)
+# All URLs are correct!
+R CMD INSTALL --library=clean-lib-final gllvmTMB_0.7.1.tar.gz
+# DONE (gllvmTMB); installed package loaded as version 0.7.1.
+```
+
+The first `R CMD check` attempt could not resolve CRAN/Bioconductor hosts and
+stopped during incoming feasibility. It was rerun with network access; the
+completed result above is from that rerun. R's current Writing R Extensions
+manual reserves `build/` for R CMD build metadata and says it may contain
+vignette index information: https://stat.ethz.ch/CRAN/doc/FAQ/r-devel/R-exts.html.
+The exact check reports `checking ‘build’ directory ... OK`; `build/vignette.rds`
+is not a forbidden path. The stale 8c inventory concern is therefore closed
+for this diagnostic archive, while its platform/reader votes do not transfer.
+
+Stale private-path scan: `rg -n 'dev/' NEWS.md man` returned no matches.
+No R 4.6.1 archive, full developer-suite pass, current-hash platform results,
+rights clearance for all 19 Lane B files, live-site update, final reviewer votes,
+submission-ready release ledger, or resubmission has been established.

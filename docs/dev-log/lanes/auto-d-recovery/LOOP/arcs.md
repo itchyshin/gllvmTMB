@@ -1,8 +1,12 @@
-# Arcs — from the approved ultra-plan
+# Arcs (from ultra-plan.md)
 
 | # | arc | status | gate? |
 |---|-----|--------|-------|
-| 1 | <...> | todo | — |
+| 1 | kit move + ADEMP design | done | — |
+| 2 | sim scripts + local smoke | doing | — |
+| 3 | Totoro pre-run test, timing, auto == select_lv check | todo | — |
+| 4 | full campaign on Totoro | todo | GATE if projection > 3 h |
+| 5 | recovery table + verdict + bug reproducers | todo | — |
+| 6 | handover + after-task, local commit | todo | push/merge = gate |
 
-Status: todo / doing / done / paused / blocked. `paused` = awaiting Shinichi's named decision;
-`blocked` = external dependency. Ordinary repair work remains `doing`.
+Status: todo / doing / done / paused / blocked.

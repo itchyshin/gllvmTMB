@@ -54763,3 +54763,38 @@ These are source-level results only. The README / NEWS audience review does not
 qualify the live MSPL article, which remains owned by the separate site lane.
 The release source is still dirty; no replacement archive has been frozen, so
 all artifact-bound checks and final votes remain open.
+
+### 2026-09-29 — 0.7.1 resubmission source/help sweep and developer suite
+
+On release branch `codex/cran-071-first-20260927` at `1def1e78e`, I revised
+ordinal diagnostic help to state that its default thresholds are disabled and
+uncalibrated, removed the unsupported probit-to-logit calibration wording, and
+removed references from shipped R/help text to excluded `dev/` files. The exact
+source tree is still uncommitted, so these are diagnostics, not frozen-artifact
+results.
+
+```sh
+Rscript --vanilla -e 'devtools::document(quiet = TRUE)'
+# Exit 0. Roxygen reported the three existing missing-export tags for
+# anova.gllvmTMB_multi, BIC.gllvmTMB_multi, and AIC.gllvmTMB_multi.
+Rscript --vanilla -e 'pkgdown::check_pkgdown()'
+# Exit 0: no problems found.
+git diff --check
+# Exit 0.
+rg -n 'dev/' man
+# Exit 1: no matches in installed help.
+OPENBLAS_NUM_THREADS=1 VECLIB_MAXIMUM_THREADS=2 NOT_CRAN=true \
+  Rscript --vanilla -e 'devtools::test(reporter = "summary")'
+# Process exit 0, but testthat reported five failures: three vdiffr snapshots
+# in test-plot-visual-snapshots.R (dispatcher correlation ellipse, integration
+# dot-whisker, and variance partition), and two assertions in
+# test-va-r3-prototype.R for truncated-NB2 seed 1 (3 healthy starts observed,
+# 4 expected; the associated all-healthy assertion was false). The three
+# generated *.new.svg review files were moved to
+# /private/tmp/gllvmtmb-071-cran-evidence/review-snapshots-2026-09-29; none
+# remains in the package source tree. Full developer-suite gate remains OPEN.
+```
+
+No final archive, exact-hash tarball check, or fresh platform result was
+produced by this run. The source changes still require a clean commit and a new
+artifact before artifact-bound checks or review can begin.

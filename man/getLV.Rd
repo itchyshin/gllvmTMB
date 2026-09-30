@@ -49,8 +49,7 @@ and \code{se[i, k]} always refer to the same (unit, axis) cell. This value is
 mathematically equivalent to inverting the fit's full joint precision
 matrix (\code{TMB::sdreport(getJointPrecision = TRUE)}) and reading the
 diagonal of the same block; the two routes were verified to agree to
-machine precision during development (see
-\code{dev/getlv-score-se-RESULTS.md}). Requirements:
+machine precision in development checks. Requirements:
 \itemize{
 \item The fit must carry a valid \code{sdreport()}
 (\code{gllvmTMBcontrol(se = TRUE)}, the default) with a positive-definite

@@ -151,8 +151,8 @@ unavailable.
 
 \strong{Historical explicit-JJ evidence.} Recovery of the ordination below was
 measured with the earlier JJ evaluator against planted truth at the
-admitted cells (\code{d = 2}, 8 responses, n = 150 and 400, 50 seeds per cell;
-\code{dev/va-usability/A2-ATTENUATION.md}), with the Laplace route run on the
+admitted cells (\code{d = 2}, 8 responses, n = 150 and 400, 50 seeds per cell),
+with the Laplace route run on the
 same simulated data as a control. This campaign predates the current
 automatic Gauss-Hermite default and must not be used as evidence for the
 accuracy of the current GH-default route:

@@ -102,8 +102,7 @@ is fixed.
 \code{animal_scalar()} / \code{kernel_scalar()} / \code{spatial_scalar()}
 and \code{common = TRUE} at the cluster/cluster2 tier -- a single shared
 level across the \eqn{K-1} contrasts has no interpretable null on the
-\eqn{(I+J)} contrast geometry (null-DGP evidence:
-\code{dev/multinomial-structured/probe-scalar-null.R}).
+\eqn{(I+J)} contrast geometry.
 
 \strong{Everything else is still deferred} and fails loud
 (\code{R/multinomial-fence.R}) rather than reaching an untested

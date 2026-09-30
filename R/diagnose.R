@@ -1157,38 +1157,34 @@
 
 #' Ordinal-probit loading degeneracy screen
 #'
-#' `ordinal_probit()` (family_id 14) traits drop the auto-Psi at parse time
-#' (`auto_unique_off_family` in `R/fit-multi.R`, fids 12/13/14), so a
-#' pure-ordinal fit has no `report$sd_B` and the `near_zero_psi_*` rows
-#' elsewhere in [check_gllvmTMB()] are dark by design -- these two loading
-#' arms are the ONLY degeneracy coverage a default all-ordinal fit gets,
-#' which is exactly issue #897's gap in one sentence (`ordinal_probit` had
-#' zero detector coverage, 239/239 fits unflagged, where the binomial screen
-#' caught 272/272).
+#' Pure `ordinal_probit()` fits have no auto-Psi block, so the near-zero-Psi
+#' rows in [check_gllvmTMB()] do not apply. This diagnostic row reports two
+#' loading summaries, but both thresholds default to `Inf` and the screen is
+#' disabled by default. A `PASS` with those defaults does not establish that
+#' an ordinal fit is free of degeneracy.
 #'
-#' The detector-S1 mechanism probe (`dev/ordinal-degeneracy/probe-criteria.md`,
-#' VERDICT 2026-08-17) measured the mechanism behind 24 degenerate ordinal
-#' fits over a 60-fit grid and found **category-level separation, not link
+#' A mechanism probe of 24 degenerate ordinal fits found **category-level
+#' separation, not link
 #' saturation**: `gll_log_pnorm_diff`'s cutpoint-underflow condition (both
 #' bracketing cutpoints more than 8.2924 from `eta` on the same side) never
 #' fired on any observed row of any degenerate fit (flat-row share exactly
 #' 0/24 fits), while dichotomising every degenerate fit's response to binary
 #' at the middle cutpoint and refitting as `binomial(link = "probit")` fired
 #' the package's EXISTING `binomial_prevalence_loading` detector on 24/24
-#' refits. **A flat-fit/saturation arm therefore has no empirical basis in
-#' this probe and is deliberately not built here.** This row is instead
+#' refits. A flat-fit/saturation arm therefore has no empirical basis in
+#' this probe. This row is instead
 #' modeled directly on `.gllvmTMB_binomial_prevalence_loading_row()`'s
 #' loading arms, because the probe found the pathology concentrated in a
 #' single trait's loading column (worked example: one trait's loading 44.2
 #' against a true `max|Lambda| = 4.79` while sibling traits stayed near
-#' truth) -- the same per-trait quasi-separation geometry, not a
-#' cutpoint-arithmetic artifact.
+#' truth) -- consistent with per-trait quasi-separation in these fits.
 #'
 #' Two arms, both loading-only. Unlike the binomial row there is no
 #' prevalence/saturation conjunct: an ordinal trait has no single Bernoulli
-#' "prevalence" to test against, and the probe found no evidence that an
-#' extreme-category-prevalence conjunct would add sensitivity here; if the
-#' detector-S2 calibration campaign shows otherwise, one can be added later.
+#' "prevalence" to test against. The tested ordinal thresholds did not meet
+#' the predeclared sensitivity and false-positive targets, so neither arm is
+#' enabled by default. Finite thresholds are user-selected exploratory
+#' cutoffs, not calibrated defaults.
 #'   - **O1 (`runaway_loading`)**: `relative_loading` (a trait's largest
 #'     loading divided by the typical loading among the OTHER ordinal
 #'     traits, via `.gllvmTMB_max_loading_by_trait(object, reference_traits =
@@ -1206,22 +1202,19 @@
 #'     (`R/extract-sigma.R`, `sigma_d^2 = 1` fixed, no free scale
 #'     parameter), so a loading IS the trait's latent SD in liability units.
 #'
-#' Both thresholds default to `Inf` (fully disarmed) pending the detector-S2
-#' calibration campaign staged at `dev/ordinal-degeneracy/`
-#' (`campaign-ordinal-calibration.R`, `pass-criteria-ordinal.md`) -- shipping
-#' an armed default ahead of that evidence would repeat the mistake the
-#' binomial thresholds in this file were originally calibrated to correct.
+#' Both thresholds default to `Inf` (disabled). No tested threshold met the
+#' predeclared calibration targets. Setting a finite threshold makes the row
+#' report that user-selected cutoff; it does not make the cutoff calibrated.
 #'
-#' A third statistic is computed and reported for the calibration campaign's
-#' own use but is **NOT** wired into `flag` or `status`: `cutpoint_span`
+#' A third statistic is computed for the diagnostic table but is **NOT** wired
+#' into `flag` or `status`: `cutpoint_span`
 #' (a trait's fitted cutpoint span, `max(tau) - min(tau)` over its free
 #' cutpoints `tau_2 .. tau_{K-1}`, via
 #' `.gllvmTMB_ordinal_cutpoint_span_by_trait()`) and the derived
-#' `loading_over_span` (`max_loading_unit / cutpoint_span`). Whether this
-#' variant adds sensitivity beyond O1/O2, and whether the span itself is
-#' confounded with the degeneracy label it would be screening for (a
-#' precondition the calibration campaign must report before this variant
-#' could ever ship), is exactly what that campaign is for. `K = 2` traits
+#' `loading_over_span` (`max_loading_unit / cutpoint_span`). The calibration
+#' analysis found cutpoint span associated with the degeneracy label, so this
+#' ratio is not treated as an independent scale correction or screening arm.
+#' `K = 2` traits
 #' (no free cutpoint under the Hadfield `tau_1 = 0` convention) return `NA`
 #' for `cutpoint_span` rather than dividing by zero, and `loading_over_span`
 #' is `NA` wherever `cutpoint_span` is `NA` or non-positive.
@@ -1328,7 +1321,7 @@
   } else {
     paste0(
       "ordinal trait loading has run away from the rest (quasi-complete ",
-      "category-level separation; see dev/ordinal-degeneracy/probe-criteria.md; arms: ",
+      "category-level separation; arms: ",
       paste(arms, collapse = ","), ")"
     )
   }
@@ -1351,7 +1344,7 @@
     paste0(
       "relative_loading >= ", ordinal_loading_runaway_thresh,
       " (O1) or max_loading_unit >= ", ordinal_loading_absolute_thresh,
-      " on the link scale (O2); both disarmed at Inf pending the detector-S2 calibration campaign"
+      " on the link scale (O2); defaults are Inf (disabled); finite cutoffs are user-selected"
     ),
     msg,
     action
@@ -1483,15 +1476,9 @@
 #'   (46.0% -> 13.5% false positives at `sigma_lambda = 3.0`). Being a
 #'   link-scale quantity it does not transport to families whose response
 #'   scale is arbitrary, which is why this row is binomial-only. This gate
-#'   applies to every link (`family_id == 1L`), but the calibration above
-#'   is probit-only: logit loadings run larger than probit loadings for
-#'   the same underlying model (the standard logistic/probit
-#'   variance-matching ratio, commonly cited as ~1.6-1.8), so the same
-#'   fixed threshold is reached by a smaller true effect on the logit
-#'   link, and the false-positive rate measured here should be read as a
-#'   lower bound on logit fits, not a transportable number -- no logit
-#'   evidence exists in the calibration pool. See
-#'   `dev/heywood/fp-scale-dependence.md` for the full mechanism note.
+#'   applies to every link (`family_id == 1L`), but calibration is probit-only.
+#'   No logit calibration is available, so do not interpret the probit results
+#'   or thresholds as calibrated for logit fits.
 #' @param multinomial_collapse_floor Absolute floor on a `multinomial()`
 #'   (fid 16) contrast pseudo-trait's fitted loading energy
 #'   (`rowSums(Lambda^2)`), at or below which it is a collapsed contrast.
@@ -1526,10 +1513,9 @@
 #'   (fid 14) trait's largest loading relative to the typical loading among
 #'   the other ordinal traits, at or above which the loading is reported on
 #'   its own. Mirrors `loading_runaway_thresh`'s binomial arm. Default `Inf`
-#'   (disarmed): the detector-S1 mechanism probe
-#'   (`dev/ordinal-degeneracy/probe-criteria.md`) established that degenerate
-#'   ordinal fits share binomial's quasi-complete-separation mechanism, but
-#'   the threshold itself awaits the detector-S2 calibration campaign.
+#'   (disabled): the tested ordinal thresholds did not meet the predeclared
+#'   sensitivity and false-positive targets. Finite values are user-selected
+#'   exploratory cutoffs, not calibrated defaults.
 #' @param ordinal_loading_absolute_thresh Threshold on an `ordinal_probit()`
 #'   trait's largest loading on the link (liability) scale, unit tiers only,
 #'   at or above which it is reported regardless of the other traits.
@@ -1537,7 +1523,9 @@
 #'   under the Wright/Falconer/Hadfield threshold convention, so a loading
 #'   is the trait's latent standard deviation in liability units, mirroring
 #'   `loading_absolute_thresh`'s binomial justification. Default `Inf`
-#'   (disarmed pending the detector-S2 calibration campaign).
+#'   (disabled): the tested ordinal thresholds did not meet the predeclared
+#'   sensitivity and false-positive targets. Finite values are user-selected
+#'   exploratory cutoffs, not calibrated defaults.
 #' @return A data frame with columns `component`, `status`, `value`,
 #'   `threshold`, `message`, and `action`. Status values are `"PASS"`,
 #'   `"WARN"`, or `"FAIL"`.

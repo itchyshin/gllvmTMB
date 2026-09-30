@@ -33,3 +33,14 @@ None found. The unpenalised log-likelihood falling with d on ridged binomial fit
 - Models with covariates, row effects, `unique = TRUE`, or structured latent terms (`d = "auto"` refuses those).
 - The 11 NB n = 400 datasets stopped at the overrun line, and 144 ridge-off datasets at n = 400, p = 16.
 - `require_converged = TRUE` and ridge scales other than 2 and off.
+
+## Addendum: AIC as the binomial criterion (2026-09-30, Shinichi's question)
+No rerun was needed: every sweep stored all four criteria, and the fits do not depend on the criterion, so a rerun with the same seeds would reproduce the same AIC picks. From the existing 3,600 binomial datasets (200 per cell, MCSE at most 0.035):
+
+- AIC raises mean P(correct) over the 18 cells from 0.522 (`bic_sites`) to 0.646.
+- It helps most at small and middle sizes with true d >= 2 (n 150, p 16, d 2: 0.65 to 0.96; n 150, p 16, d 3: 0.24 to 0.89; n 50, p 16, d 2: 0.12 to 0.68).
+- It hurts at the largest size, where it over-selects (n 400, p 16: d 1 1.00 to 0.83, d 2 0.97 to 0.71, d 3 0.78 to 0.63; over-selection 17 to 37%).
+- It still fails with 8 traits and d >= 2 (at most 0.74) and at n 50, d 3 (at most 0.27).
+- Cells at or above 0.90: AIC 6 of 18, `bic_sites` 7 of 18.
+
+Reading: neither criterion can be recommended for binomial rank selection across these sizes. AIC trades under-selection at small n for over-selection at large n. Switching the binomial default to AIC would help the typical small-to-middle dataset and hurt the large one; it does not meet the verdict rule either. Binomial stays "not recommended" under both criteria.

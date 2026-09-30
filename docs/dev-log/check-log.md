@@ -54939,3 +54939,29 @@ suite, rights confirmation for the Lane B simulation files, candidate-specific
 external checks, final reviewer votes, and submission-ready ledger remain
 pending. The failed archive remains predecessor evidence and must not be
 uploaded.
+
+
+### 2026-09-30: add guards to three measured slow fit tests
+
+A fresh CRAN-path timing profile on the frozen 0.7.1 source identified three fit tests without CRAN skips: the R3 latent-posterior fit (24.962 s), the R3 optimizer comparison (7.325 s), and the spatial LA-MSPL fits across binary links (7.653 s). Added `skip_on_cran()` to those three tests only. `NOT_CRAN=true` retains them for the local and CI suite. The former exact tarball hash `23728b7492bc34e4e157c31d7a7159f2aba44b16d5eeb054207ca64fa430ee80` is no longer the candidate once these test files are committed and rebuilt.
+
+The M3 binomial-probit fit took 22.147 s in the developer timing profile. Its helper scripts are under `dev/` and excluded from the source tarball, so the test already skips in the CRAN source-tarball context. A temporary `skip_on_cran()` guard was removed. In a disposable source tree with the three development scripts restored, the M3 focused test ran and passed in 22.3 s.
+
+After removing the temporary M3 guard, the final-source CRAN-mode focused run was repeated from a fresh extraction of the predecessor tarball with the two edited test files copied in. It confirms the M3 tests skip because their development helpers are absent, and the three intended R3/spatial tests skip with reason `On CRAN`. Log: `/private/tmp/gllvmtmb-071-cran-evidence/skip-cran-final-CRAN-mode-20260930.log`.
+
+Commands and outcomes:
+
+```sh
+env CI=true NOT_CRAN=false OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 Rscript --vanilla -e 'testthat::test_dir("tests/testthat", filter = "va-r3-prototype|m3-pilot-report|mspl-api", reporter = "summary", package = "gllvmTMB", load_helpers = TRUE, load_package = "source", stop_on_failure = TRUE)'
+# Exit 0; the three new guards report On CRAN; M3 dev-helper cases skip because dev/ is absent.
+env CI=true NOT_CRAN=true OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 Rscript --vanilla -e 'testthat::test_dir("tests/testthat", filter = "va-r3-prototype|m3-pilot-report|mspl-api", reporter = "summary", package = "gllvmTMB", load_helpers = TRUE, load_package = "source", stop_on_failure = TRUE)'
+# Exit 0; R3 and spatial MSPL guarded tests execute; M3 dev-helper cases skip in this tarball-shaped tree.
+env CI=true NOT_CRAN=true OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 Rscript --vanilla -e 'testthat::test_dir("tests/testthat", filter = "m3-pilot-report", reporter = "summary", package = "gllvmTMB", load_helpers = TRUE, load_package = "source", stop_on_failure = TRUE)'
+# Exit 0; full-checkout M3 helper fit ran and passed in 22.3 seconds.
+rg -n 'skip_on_cran|R3 fit returns|R3 L-BFGS-B|spatial LA-MSPL' tests/testthat/test-va-r3-prototype.R tests/testthat/test-mspl-api.R
+# Confirmed three new guards at the intended fit tests.
+git diff --check
+# Exit 0.
+```
+
+Deliberately not run in this diagnostic phase: a replacement tarball build, full exact-tarball R CMD check, new Win-builder or R-hub submission, 3-OS CI, or a CRAN resubmission. The exact Win-builder `00check.log` files for the previous candidate remain unavailable, so their NOTE and stage timings are unresolved. No stale-wording scan was run because only test files changed.

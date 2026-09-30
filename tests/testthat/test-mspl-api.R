@@ -203,6 +203,7 @@ test_that("LA-MSPL closes the stable cloglog objective under fixed-effect separa
 })
 
 test_that("spatial LA-MSPL returns labelled finite point estimates for all binary links", {
+  skip_on_cran()
   skip_if_not_installed("fmesher")
   for (link in c("logit", "probit", "cloglog")) {
     indep <- .mspl_spatial_fit(link, "indep")

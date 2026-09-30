@@ -361,6 +361,7 @@ test_that("R3 latent posterior reads variational means and SDs out of the fitted
 })
 
 test_that("R3 fit returns a latent posterior of the right shape", {
+  skip_on_cran()
   set.seed(4242)
   n <- 40L; p <- 4L
   trait_names <- paste0("sp", seq_len(p))
@@ -584,6 +585,7 @@ test_that("R3 n_starts exposes the gate width without weakening the gate", {
 })
 
 test_that("R3 L-BFGS-B primary reaches the same optimum as nlminb", {
+  skip_on_cran()
   ## The optimiser is a ROUTE choice, not a model choice: both minimise the same
   ## objective from the same start, so the fitted values must agree. This test
   ## is the guard on that. It deliberately asserts NOTHING about speed -- a

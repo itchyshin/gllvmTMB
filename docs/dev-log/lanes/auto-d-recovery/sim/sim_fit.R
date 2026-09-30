@@ -10,7 +10,7 @@
   gllvmTMB::gllvmTMBcontrol(optimizer = "optim", optArgs = list(method = "BFGS"), se = FALSE)
 }
 
-fit_one <- function(dat, family, n_traits) {
+fit_one <- function(dat, family, n_traits, binary_ridge = 2) {
   crits <- c("bic_sites", "bic", "aic", "aicc")
   n_warn <- 0L
   t0 <- proc.time()[["elapsed"]]
@@ -19,7 +19,7 @@ fit_one <- function(dat, family, n_traits) {
       gllvmTMB::select_lv(
         value ~ 0 + trait + latent(0 + trait | unit, unique = FALSE),
         data = dat, family = .family_obj(family), unit = "unit", trait = "trait",
-        control = .fit_ctrl(), d_max = min(5L, n_traits - 1L)),
+        control = .fit_ctrl(), d_max = min(5L, n_traits - 1L), binary_ridge = binary_ridge),
       warning = function(w) {
         n_warn <<- n_warn + 1L
         invokeRestart("muffleWarning")

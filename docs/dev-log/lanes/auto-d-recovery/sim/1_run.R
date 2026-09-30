@@ -1,4 +1,5 @@
-## Rscript 1_run.R --ids 1:100 --cores 4 --out DIR [--lib LIB] [--check-auto K]
+## Rscript 1_run.R --ids 1:100 --cores 4 --out DIR [--lib LIB] [--check-auto K] [--binary-ridge TAU]
+## --binary-ridge: select_lv(binary_ridge=) for single-trial binomial; default 2 (package default), Inf = ridge off.
 ## The launcher must ALSO export OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1.
 Sys.setenv(OPENBLAS_NUM_THREADS = "1", OMP_NUM_THREADS = "1")
 args <- commandArgs(trailingOnly = TRUE)
@@ -8,6 +9,7 @@ getarg <- function(flag, default = NULL) {
 ids_arg <- getarg("--ids"); ids_file <- getarg("--ids-file")
 cores <- as.integer(getarg("--cores", "1"))
 out <- getarg("--out", Sys.getenv("AUTOD_OUT", "docs/dev-log/lanes/auto-d-recovery/sim/out"))
+binary_ridge <- as.numeric(getarg("--binary-ridge", "2"))
 lib <- getarg("--lib"); check_auto <- as.integer(getarg("--check-auto", "0"))
 if (!is.null(lib)) .libPaths(c(lib, .libPaths()))
 script_dir <- local({
@@ -33,7 +35,7 @@ run_task <- function(id) {
   if (file.exists(f)) return(invisible("skip"))
   row <- grid[grid$task_id == id, ]
   dat <- sim_dataset(row$family, row$n_units, row$n_traits, row$d, row$seed)
-  fo <- fit_one(dat, row$family, row$n_traits)
+  fo <- fit_one(dat, row$family, row$n_traits, binary_ridge = binary_ridge)
   auto_d <- NA_integer_
   if (id %in% auto_ids) {
     af <- tryCatch(suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(

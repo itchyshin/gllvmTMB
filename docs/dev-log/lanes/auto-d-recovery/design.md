@@ -4,9 +4,9 @@ Lane: `claude/lane-auto-d-recovery`. Frameworks: ADEMP (Morris, White and Crowth
 
 ## A. Aims
 
-- **Primary.** Estimate how often `gllvmTMB(..., latent(0 + trait | unit, d = "auto"))`, whose default criterion is `bic_sites`, selects the true latent rank, by family, number of units, number of traits and true rank.
-- **Secondary 1.** Compare `bic_sites` with `bic`, `aic` and `aicc` on the same sweeps, to judge whether the default can be recommended per family.
-- **Secondary 2.** Report how often the guard rejects fits (status other than `ok` / `warm_start`) and how often no fit is eligible, since a failure to select is a usability outcome, not a missing value.
+- Primary: estimate how often `gllvmTMB(..., latent(0 + trait | unit, d = "auto"))`, whose default criterion is `bic_sites`, selects the true latent rank, by family, number of units, number of traits and true rank.
+- Secondary 1: compare `bic_sites` with `bic`, `aic` and `aicc` on the same sweeps, to judge whether the default can be recommended per family.
+- Secondary 2: report how often the guard rejects fits (status other than `ok` / `warm_start`) and how often no fit is eligible, since a failure to select is a usability outcome in its own right.
 
 Prior evidence this extends, not repeats: the Julia twin (GLLVModels.jl, 17,569 datasets: Gaussian 0.948, Poisson 0.999, binomial weak; NB 0.934 on 4,794 corrected-kernel datasets) and one R-side Bernoulli ridge check (10 datasets per arm). The R side has no repeated-sampling recovery study; this is it.
 
@@ -15,7 +15,7 @@ Prior evidence this extends, not repeats: the Julia twin (GLLVModels.jl, 17,569 
 Long format, units i = 1..n, traits j = 1..p, true rank d.
 
 - Latent scores: z_i ~ N_d(0, I_d), independent across units.
-- Loadings: Λ (p x d), entries iid N(0, 1). Lower-triangular constraints are the fitter's business, not the DGP's; any Λ is identifiable up to rotation, and the estimand is the rank only.
+- Loadings: Λ (p x d), entries iid N(0, 1). The DGP imposes no lower-triangular constraint; Λ is identifiable up to rotation, and the estimand is the rank only.
 - Intercepts: β_j ~ U(-0.5, 0.5) for Gaussian and binomial; β_j ~ U(0, 1) for Poisson and NB (mean counts around 2 to 5, so few all-zero traits).
 - Linear predictor: η_ij = β_j + z_i' Λ_j.
 - Response:
@@ -57,7 +57,7 @@ select_lv(value ~ 0 + trait + latent(0 + trait | unit, unique = FALSE),
           d_max = min(5L, p - 1L))
 ```
 
-All other arguments at their defaults (`warm_start = TRUE`, `require_converged = FALSE`, `binary_ridge = 2` for Bernoulli), because the aim is the behaviour a user gets from `d = "auto"`. `unique = FALSE` matches the DGP, which has no per-trait unit-level term beyond the family's own noise (for Gaussian, the family residual carries ε). Criteria compared: `bic_sites` (default), `bic`, `aic`, `aicc`. No other rank-selection methods: the question is whether the package default can be recommended, not a methods zoo.
+All other arguments at their defaults (`warm_start = TRUE`, `require_converged = FALSE`, `binary_ridge = 2` for Bernoulli), because the aim is the behaviour a user gets from `d = "auto"`. `unique = FALSE` matches the DGP, which has no per-trait unit-level term beyond the family's own noise (for Gaussian, the family residual carries ε). Criteria compared: `bic_sites` (default), `bic`, `aic`, `aicc`. No other rank-selection methods: the question is whether the package default can be recommended.
 
 Recorded per dataset: seed, cell, the whole `$table` (d, logLik, df, each criterion, status, seconds), d̂ per criterion, whether `select_lv` aborted (and its condition class), warnings count, redraw count, wall time.
 

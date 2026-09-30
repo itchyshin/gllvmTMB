@@ -1,8 +1,8 @@
 # Checkpoint — OVERWRITTEN every arc (a pointer to truth, not a log)
 
-- DONE: arc 1 (kit moved @ 3d6f2a406; ADEMP design + plan @ e68391469). Totoro lane library ready: ~/autod-recovery/lib holds gllvmTMB 0.8.0.9000 built from e68391469 (R 4.6.1), plus fresh rlang/vctrs/lifecycle/pillar/tibble/tidyselect/dplyr because ~/R/lib copies are built for an older R (undefined SETLENGTH). fmesher did not rebuild; not needed (no spatial terms). Launch with R_LIBS=~/autod-recovery/lib.
-- IN PROGRESS: arc 2, sim scripts under docs/dev-log/lanes/auto-d-recovery/sim/ (Sonnet subagent writing + local smoke in /private/tmp/claude-503/autod-smoke).
-- NEXT: review scripts, commit, arc 3 Totoro pre-run test (timing + auto == select_lv check).
-- OPEN GATE: none yet. Arc 4 gates if projected campaign > 3 h.
-- WHERE TRUTH LIVES: branch claude/lane-auto-d-recovery in ~/local-scratch/lanes/gllvmTMB-auto-d-recovery; kit docs/dev-log/lanes/auto-d-recovery/LOOP/; design ../design.md; Totoro ~/autod-recovery/.
+- DONE: arc 1 (kit move 3d6f2a406; design e68391469). Arc 2 (scripts b25a6128b, local smoke passed). Arc 3 (pre-run, ../prerun.md @ d5bfb6204: auto == select_lv 4/4, recomputed bic_sites == pkg 215/215, 0 aborts).
+- IN PROGRESS: arc 4 phase A on Totoro: all cells except NB n=400, 12,998 tasks, 140 workers, launched 07:46 MDT 2026-09-30, estimate 45-60 min. Landed when `grep "ids;" ~/autod-recovery/phaseA.log` prints a line and out/res has 13,213+ files. If still running past 09:15 MDT it has overrun: stop and re-report.
+- NEXT: when phase A lands, pull out/res to the Mac, run 2_summarise.R on it (partial table, NB n=400 missing), then decide phase B.
+- OPEN GATE: phase B (NB n=400, 1,200 tasks). Pre-run NB n=400 p=16 datasets run >25 min each; projection ~250+ CPU-h, ~2 h wall alone, so A + B is near or over 3 h. Proposal for Shinichi: run B at 100 reps (design fallback, MCSE <= 0.05) or at 200 reps, with the measured estimate. Do not launch B without his answer.
+- WHERE TRUTH LIVES: branch claude/lane-auto-d-recovery in ~/local-scratch/lanes/gllvmTMB-auto-d-recovery; design ../design.md; pre-run ../prerun.md; Totoro ~/autod-recovery/ (lib/, out/grid.rds, out/res/task_*.rds, *.log). Launch pattern: R_LIBS=~/autod-recovery/lib OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 nohup Rscript 1_run.R --ids-file X --cores N --out out.
 - RESUME: read docs/dev-log/lanes/auto-d-recovery/LOOP/GOAL.md → docs/dev-log/lanes/auto-d-recovery/LOOP/checkpoint.md → docs/dev-log/lanes/auto-d-recovery/LOOP/ultra-plan.md → ../design.md, then continue from NEXT.

@@ -54764,7 +54764,7 @@ qualify the live MSPL article, which remains owned by the separate site lane.
 The release source is still dirty; no replacement archive has been frozen, so
 all artifact-bound checks and final votes remain open.
 
-### 2026-09-29 — 0.7.1 resubmission source/help sweep and developer suite
+### 2026-09-29: 0.7.1 resubmission source/help sweep and developer suite
 
 On release branch `codex/cran-071-first-20260927` at `1def1e78e`, I revised
 ordinal diagnostic help to state that its default thresholds are disabled and
@@ -54798,3 +54798,56 @@ OPENBLAS_NUM_THREADS=1 VECLIB_MAXIMUM_THREADS=2 NOT_CRAN=true \
 No final archive, exact-hash tarball check, or fresh platform result was
 produced by this run. The source changes still require a clean commit and a new
 artifact before artifact-bound checks or review can begin.
+
+
+### 2026-09-29: latest clean source archive diagnostic
+
+The clean release source commit was `6b2d29432863667f5be83de8d48bc8d1bd6c64e7`.
+This archive is diagnostic only because it was built with R 4.6.0; it cannot
+satisfy the current-R release gate.
+
+```sh
+/usr/local/bin/R CMD build --log --no-manual --no-resave-data --sha256 '/Users/z3437171/.codex/worktrees/cran-071-first/gllvmTMB'
+# Exit 0. Built inst/doc/gllvmTMB.html, gllvmTMB.R, and gllvmTMB.Rmd.
+# SHA-256 77c3f0471eebfe023dc747796ebc4f49120d2a20a06270b11f24477497fe6497;
+# 4,468,429 bytes; 887 archive entries.
+python3 -c '...'
+# Tar inventory: build/vignette.rds present, build/partial.rdb absent,
+# no .git/.codex/.claude/.worktrees/.unlazy/dev path matches.
+R CMD check --as-cran --run-donttest gllvmTMB_0.7.1.tar.gz
+# /usr/local/bin/R 4.6.0; exit 0; Status: 1 NOTE (New submission).
+# Testthat: 9,515 PASS, 0 FAIL, 0 WARN, 1,690 SKIP; testthat stage 246s.
+# Examples and rebuilt vignette outputs passed. The install log has three
+# unused-variable warnings in RcppEigen headers; no R CMD check WARNING.
+```
+
+R 4.6.1 at `/private/tmp/r-4.6.1-build` is the current release used for the
+required final build/check. `R CMD build` under it stopped at package install
+because `fmesher` was unavailable. Loading the R 4.6.0 `fmesher` under R
+4.6.1 caused a process segfault, so that cross-version library was rejected.
+This custom R build does not support CRAN binary installation. Source installs
+showed that the fmesher/sf dependency chain requires system build tools absent
+here: `command -v cmake`, `gdal-config`, `geos-config`, `proj`, and
+`udunits2-config` all returned no path; `pkg-config` found no proj/gdal/geos/
+udunits metadata. The broad optional-dependency install was stopped, and no
+system package was installed. Shinichi was asked to choose between installing
+the missing Homebrew tools and supplying another prepared R 4.6.1 environment.
+
+Stale-help scan used `rg -n 'dev/' man` and returned no matches. The source
+scan `rg -n 'dev/' R/diagnose.R R/families.R R/gllvmTMB.R R/output-methods.R`
+found only internal comments, not installed help or user-visible messages.
+No current-R archive, exact-current-R check, fresh Win-builder run, or
+submission-ready verdict exists yet.
+
+### 2026-09-29: remove private development-note links from NEWS
+
+The release copy of `NEWS.md` no longer points to the private `dev/` notes
+for the Heywood and ordinal-degeneracy investigations. The surrounding
+sentences retain the evidence limits without exposing private paths.
+
+```sh
+rg -n 'dev/' NEWS.md
+# No matches.
+git diff --check
+# Exit 0.
+```

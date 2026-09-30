@@ -386,7 +386,7 @@ is still the default.
   the response-scale dependence #851/#855 otherwise describes: probit
   fixes the residual variance at 1, so there is no free response scale
   here to rescale against, and the class's usual per-fit device does not
-  obviously transfer (see `dev/heywood/fp-scale-dependence.md`).
+  obviously transfer.
   `aghq_ridge = 2` reduces the problem (46.0% -> 13.5% false positives at
   that larger scale) but does not remove it.
 
@@ -525,8 +525,7 @@ is still the default.
   `n = 1600` (that arm was dropped for run time). What the campaign
   establishes: link saturation is refuted as the mechanism (solid);
   category-level separation, the residual hypothesis, is NOT demonstrated
-  -- the evidence originally cited for it does not discriminate (see the
-  correction recorded in `dev/ordinal-degeneracy/probe-criteria.md`); and
+  because the originally cited evidence does not discriminate; and
   the threshold question is answered negatively with a stated path forward.
 
   Neither categorical screen changes what fitting itself does: `gllvmTMB()`

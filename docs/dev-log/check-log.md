@@ -54897,3 +54897,45 @@ Stale private-path scan: `rg -n 'dev/' NEWS.md man` returned no matches.
 No R 4.6.1 archive, full developer-suite pass, current-hash platform results,
 rights clearance for all 19 Lane B files, live-site update, final reviewer votes,
 submission-ready release ledger, or resubmission has been established.
+
+### 2026-09-30: stabilize the CRAN morphometrics fit assertion
+
+The R 4.6.1 `R CMD check --as-cran --run-donttest` run on the exact archive
+with SHA-256 `60b7cbdbf98c908fdee550b2bda7b80ea972d0f394038b2ab42a96d3e7b276b6`
+failed one test. The long-format morphometrics fit reported `false convergence
+(8)` from `nlminb` while its maximum gradient was `0.0009448`, below the
+`0.01` health threshold. The wide/long equivalence and recovery assertions had
+not failed; the test stopped at the optimizer status assertion.
+
+A targeted probe using BFGS with `maxit = 1000` and `reltol = 1e-12` produced
+matching long and wide log likelihoods (`-739.6107`), convergence code zero,
+and maximum gradient `0.000358`. The example test now uses that stricter
+control while retaining its optimizer-health, gradient, long/wide, and
+truth-recovery assertions. This changes the test setup only; no package code,
+fixture, or user-facing example changed.
+
+```sh
+CONDA=/private/tmp/gllvmtmb-071-cran-evidence/conda-r-4.6.1
+PATH="$CONDA/bin:$PATH" PKG_CONFIG="$CONDA/bin/pkg-config" \
+  PKG_CONFIG_PATH="$CONDA/lib/pkgconfig" \
+  PKG_CONFIG_LIBDIR="$CONDA/lib/pkgconfig" ICU_CONFIG="$CONDA/bin/icu-config" \
+  R_LIBS_USER=/private/tmp/gllvmtmb-r461-userlib \
+  R_MAKEVARS_USER=/private/tmp/gllvmtmb-071-cran-evidence/Makevars-cc17 \
+  "$CONDA/bin/R" CMD INSTALL \
+  --library=/private/tmp/gllvmtmb-r461-userlib --no-test-load .
+# Exit 0; R 4.6.1 compiled and installed gllvmTMB.
+CHECK=/private/tmp/gllvmtmb-071-cran-evidence/60b7cbdbf98c908fdee550b2bda7b80ea972d0f394038b2ab42a96d3e7b276b6/gllvmTMB.Rcheck
+R_LIBS_USER="$CHECK:/private/tmp/gllvmtmb-r461-userlib" \
+  "$CONDA/bin/Rscript" --vanilla -e \
+  'library(gllvmTMB); testthat::test_file("tests/testthat/test-example-morphometrics.R", reporter="summary")'
+# Against the package installed by exact-archive check: all tests in the file passed.
+git diff --check
+# Exit 0.
+```
+
+No stale-wording scan was run because this is a test-only change. The
+replacement tarball, full exact-archive check, current-source CI, developer
+suite, rights confirmation for the Lane B simulation files, candidate-specific
+external checks, final reviewer votes, and submission-ready ledger remain
+pending. The failed archive remains predecessor evidence and must not be
+uploaded.

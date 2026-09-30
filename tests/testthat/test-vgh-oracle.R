@@ -136,7 +136,11 @@ test_that("exact families are invariant to the quadrature order", {
 ## multiplied by the trial count; a Binomial(n, p) datum must give the same
 ## fitted linear predictor as n separate Bernoulli(p) rows would in expectation,
 ## and at minimum must run, converge, and place the loadings sensibly.
-test_that("binomial admits n_trials > 1 and rejects impossible counts", {
+test_that("binomial admits n_trials > 1", {
+  ## This 120 x 8 variational fit is an expensive developer oracle. Keep it
+  ## active in local and CI runs, but leave the fast input-rejection check
+  ## below active on CRAN.
+  skip_on_cran()
   set.seed(41)
   n <- 120L; T <- 8L; q <- 2L
   s <- .vgh_test_sim("binomial", n, T, q, seed = 41L)
@@ -149,11 +153,14 @@ test_that("binomial admits n_trials > 1 and rejects impossible counts", {
                 maxit = 800L)
   expect_true(f$converged)
   expect_true(all(is.finite(f$Lambda)))
+})
 
-  bad <- d; bad$y[1] <- bad$n_trials[1] + 1      # y > n_trials
+test_that("binomial rejects counts above n_trials before fitting", {
+  bad <- .vgh_test_long(matrix(0L, nrow = 2L, ncol = 2L))
+  bad$y[1] <- bad$n_trials[1] + 1L              # y > n_trials
   expect_error(
-    .vgh_fit(bad$y, bad$n_trials, bad$X, bad$unit_id, bad$trait_id, q = q,
-             N = n, T = T, family = "binomial", link = "logit"),
+    .vgh_fit(bad$y, bad$n_trials, bad$X, bad$unit_id, bad$trait_id, q = 1L,
+             N = 2L, T = 2L, family = "binomial", link = "logit"),
     "integer counts in 0\\.\\.n_trials")
 })
 

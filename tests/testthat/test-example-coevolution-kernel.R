@@ -79,6 +79,9 @@ test_that("coevolution kernel example has aligned block-missing data and kernels
 })
 
 test_that("coevolution kernel example long and wide fits agree", {
+  ## Exercise both fits in local and CI checks. CRAN still checks the example
+  ## data contract and alignment above, while avoiding two full model fits.
+  skip_on_cran()
   ex <- load_coevolution_kernel_example()
   K_star <- ex$K_star
   ctl <- gllvmTMBcontrol(se = FALSE)

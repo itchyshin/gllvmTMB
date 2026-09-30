@@ -32,6 +32,10 @@
 ## kernel is ever gated off for a fixture it does not (yet) cover.
 
 test_that("[oracle sanity] q = 1 brute-force marginal likelihood matches an unrelated fine-grid quadrature", {
+  ## This cross-check validates the test oracle, not a user-facing package
+  ## route. Keep it in local and CI runs; avoid its multi-million-point grid
+  ## during CRAN checks.
+  skip_on_cran()
   ## Not a golden test itself -- a check that the ground truth GOLDEN 2 will
   ## be compared against is not silently wrong. .golden_site_log_marginal_q1
   ## (adaptive stats::integrate()) and .golden_site_log_marginal_q1_simpson

@@ -54965,3 +54965,115 @@ git diff --check
 ```
 
 Deliberately not run in this diagnostic phase: a replacement tarball build, full exact-tarball R CMD check, new Win-builder or R-hub submission, 3-OS CI, or a CRAN resubmission. The exact Win-builder `00check.log` files for the previous candidate remain unavailable, so their NOTE and stage timings are unresolved. No stale-wording scan was run because only test files changed.
+
+
+### 2026-09-30: first exact-archive check after measured CRAN-path skips
+
+The clean source commit is `f7fdd3605447fafc678cd66ec711df3460421e78`; its
+worktree was empty at build time. The initial build attempt used an unsupported
+`R CMD build --output` option and was discarded. The corrected build ran from a
+separate output directory with vignettes enabled and produced the candidate
+archive below. Only the corrected archive is a candidate.
+
+```sh
+BASE=/private/tmp/gllvmtmb-071-cran-evidence/final-source-f7fdd360
+mkdir -p "$BASE/source" "$BASE/build"
+git archive --format=tar f7fdd3605447fafc678cd66ec711df3460421e78 | tar -xf - -C "$BASE/source"
+cd "$BASE"
+PATH=/private/tmp/gllvmtmb-071-cran-evidence/conda-r-4.6.1/bin:$PATH \
+  R_LIBS_USER=/private/tmp/gllvmtmb-r461-userlib \
+  R_MAKEVARS_USER=/private/tmp/gllvmtmb-071-cran-evidence/Makevars-cc17 \
+  OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 \
+  R CMD build source
+# Exit 0; vignettes built; gllvmTMB_0.7.1.tar.gz created.
+shasum -a 256 gllvmTMB_0.7.1.tar.gz
+# bd32516d1820bd11cd07701fdc0dea0817651ef12f3b160566d2ba982e9c373a
+stat -f 'bytes=%z' gllvmTMB_0.7.1.tar.gz
+# 4423192 bytes; tar inventory has 886 entries.
+tar -tzf "$BASE/gllvmTMB_0.7.1.tar.gz" > "$BASE/inventory.txt"
+wc -l "$BASE/inventory.txt"
+# 886 entries.
+if rg -n '(^|/)(\.git|\.unlazy|\.agents|\.codex|\.claude|\.worktrees|dev/|MS/|cran-comments\.md|docs/|\.Rproj\.user)(/|$)|(^|/)\.DS_Store$' "$BASE/inventory.txt"; then exit 1; else echo 'zero forbidden-path matches'; fi
+# Zero forbidden-path matches; docs/ and cran-comments.md are excluded.
+```
+
+The first R 4.6.1 check attempt stopped at incoming feasibility because the
+sandbox could not resolve CRAN and Bioconductor. With network access enabled,
+the exact archive passed `R CMD check --as-cran --run-donttest`:
+
+```sh
+BASE=/private/tmp/gllvmtmb-071-cran-evidence/final-source-f7fdd360
+mkdir -p "$BASE/check-network"
+cd "$BASE/check-network"
+PATH=/private/tmp/gllvmtmb-071-cran-evidence/conda-r-4.6.1/bin:/opt/homebrew/bin:$PATH \
+  R_LIBS_USER=/private/tmp/gllvmtmb-r461-userlib \
+  R_MAKEVARS_USER=/private/tmp/gllvmtmb-071-cran-evidence/Makevars-cc17 \
+  OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 \
+  R CMD check --as-cran --run-donttest "$BASE/gllvmTMB_0.7.1.tar.gz" \
+  2>&1 | tee "$BASE/check-network.log"
+# R 4.6.1 arm64 macOS; exit 0; Status: 1 NOTE (New submission only).
+# Testthat: 9,434 PASS, 0 FAIL, 0 WARN, 1,696 SKIP; check stage 245/301 seconds, testthat process 244/300 seconds.
+# Install: 79/85 seconds; examples: 18/19 seconds; vignette rebuild: 10/14 seconds.
+# Full log: /private/tmp/gllvmtmb-071-cran-evidence/final-source-f7fdd360/check-network/gllvmTMB.Rcheck/00check.log
+```
+
+The exact check's incoming-feasibility section reports only `New submission`,
+not the `TMB` spelling flag in the 2026-09-29 CRAN rejection. That older email
+also reports Windows overall check time of 30 minutes, above CRAN's 10-minute
+incoming limit. The timing issue is not yet resolved: the new exact archive has
+been submitted to Win-builder R-release and R-devel and R-hub Ubuntu release;
+all three results are pending. These uploads use hash
+`bd32516d1820bd11cd07701fdc0dea0817651ef12f3b160566d2ba982e9c373a` and are
+platform checks, not a CRAN resubmission. The current 3-OS matrix, updated
+`cran-comments.md`, refreshed exact-artifact review panel, and submission-ready
+release ledger remain outstanding. No CRAN upload or resubmission occurred.
+
+### 2026-09-30: focused verification of the two proposed CRAN-only fit guards
+
+The current release worktree proposes two narrow test changes that are not in
+the frozen `bd32516d` tarball: the internal EVA reachability fit is separated
+from the public `integration = "eva"` rejection, and the R3 fixed-information
+fit is skipped only on CRAN. Both tests remain enabled when `NOT_CRAN=true`.
+
+Focused checks used R 4.6.1 (2026-06-24), the installed exact predecessor
+candidate in a clean library, and the extracted macOS SDK/compiler path:
+
+```sh
+PATH=/private/tmp/cran-r461-bin:/usr/bin:/bin \
+SDKROOT=/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk \
+R_LIBS_USER=/private/tmp/gllvmTMB-071-cleanlib-r461-f7fdd360:/private/tmp/gllvmtmb-r461-userlib \
+NOT_CRAN=true CI=true \
+/private/tmp/gllvmtmb-071-cran-evidence/conda-r-4.6.1/bin/Rscript --vanilla \
+-e 'testthat::test_file("tests/testthat/test-integration-fence.R", package="gllvmTMB", reporter="summary", load_package="installed")'
+# Exit 0; the public rejection and internal EVA fit both ran and passed.
+
+PATH=/private/tmp/cran-r461-bin:/usr/bin:/bin \
+SDKROOT=/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk \
+R_LIBS_USER=/private/tmp/gllvmTMB-071-cleanlib-r461-f7fdd360:/private/tmp/gllvmtmb-r461-userlib \
+NOT_CRAN=true CI=true \
+/private/tmp/gllvmtmb-071-cran-evidence/conda-r-4.6.1/bin/Rscript --vanilla \
+-e 'testthat::test_file("tests/testthat/test-va-r3-prototype.R", package="gllvmTMB", reporter="summary", load_package="installed")'
+# Exit 0; the fixed-information fit and the rest of the file ran without CRAN skips.
+
+PATH=/private/tmp/cran-r461-bin:/usr/bin:/bin \
+SDKROOT=/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk \
+R_LIBS_USER=/private/tmp/gllvmTMB-071-cleanlib-r461-f7fdd360:/private/tmp/gllvmtmb-r461-userlib \
+NOT_CRAN=false CI=true \
+/private/tmp/gllvmtmb-071-cran-evidence/conda-r-4.6.1/bin/Rscript --vanilla \
+-e 'testthat::test_file("tests/testthat/test-integration-fence.R", package="gllvmTMB", reporter="summary", load_package="installed"); testthat::test_file("tests/testthat/test-va-r3-prototype.R", package="gllvmTMB", reporter="summary", load_package="installed")'
+# Exit 0; public rejection ran; only the internal EVA fit and the R3 fixed-information fit were newly skipped. Existing R3 CRAN skips also appeared.
+```
+
+The source edits remain uncommitted, and no replacement archive has been built.
+The frozen predecessor's exact Win-builder result is 910 seconds overall and
+596 seconds for tests. Grace and Rose reviewed the skip scope: both consider
+these two fit-only guards defensible, but they do not close the timing gate.
+No small additional skip set can meet the project's approximately 600-second
+signal; the remaining time reduction would require a much broader loss of
+CRAN-time regression coverage. The `NOT_CRAN=true` runs preserve these two
+checks locally and in CI. Broader skips or a timing-gate exception need a
+maintainer decision before freezing a new candidate.
+
+Deliberately not run in this focused phase: a new source commit or tarball,
+full exact-tarball check, Win-builder/R-hub/3-OS checks for a replacement
+artifact, or CRAN resubmission. The older hash `bd32516d1820bd11cd07701fdc0dea0817651ef12f3b160566d2ba982e9c373a` remains predecessor evidence only.

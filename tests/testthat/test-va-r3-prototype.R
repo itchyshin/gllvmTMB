@@ -424,6 +424,7 @@ test_that("R3 nbinom2 fit is alive: simulate-then-fit returns a healthy status",
 })
 
 test_that("R3 fixed-parameter information marginalises the variational block", {
+  skip_on_cran()
   set.seed(9191)
   n <- 60L; p <- 5L
   trait_names <- paste0("sp", seq_len(p))

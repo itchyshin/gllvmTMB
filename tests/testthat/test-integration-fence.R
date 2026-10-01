@@ -32,14 +32,16 @@ test_that("gllvmTMBcontrol gains integration, defaulting to laplace", {
 })
 
 test_that("\"eva\" is not an admitted integration value", {
-  ## The EVA engine exists and stays reachable as a research route, but it is
-  ## not wired to gllvmTMB(). An argument value that could only ever error
-  ## would advertise a capability the package does not have -- and EVA's own
-  ## measurements are why it is not a candidate: it delivers valid inference
-  ## for the coefficients but not for Lambda Lambda', which is the estimand
-  ## this package exists to compute.
+  ## The EVA engine remains an internal research route, but it is not wired to
+  ## gllvmTMB(). Its current inference is not a candidate for the package's
+  ## loading-matrix estimand, so the public control must reject it.
   expect_error(gllvmTMBcontrol(integration = "eva"), "should be one of")
-  ## The research route is untouched by that decision.
+})
+
+test_that("the internal EVA research route remains callable", {
+  skip_on_cran()
+  ## This slow internal fit is not the public integration API. The public
+  ## control value remains rejected above; local and CI runs retain this check.
   expect_identical(
     .approximation_engine_fit("eva", fixture = "bernoulli")$engine, "eva"
   )

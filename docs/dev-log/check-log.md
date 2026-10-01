@@ -55077,3 +55077,87 @@ maintainer decision before freezing a new candidate.
 Deliberately not run in this focused phase: a new source commit or tarball,
 full exact-tarball check, Win-builder/R-hub/3-OS checks for a replacement
 artifact, or CRAN resubmission. The older hash `bd32516d1820bd11cd07701fdc0dea0817651ef12f3b160566d2ba982e9c373a` remains predecessor evidence only.
+
+### 2026-10-01: provisional exact archive from be21c4dd
+
+The approved test-only change was committed as `be21c4dd7` on the historical
+0.7.1 release branch. A clean `git archive` was built with R 4.6.1 after
+rendering vignettes. The archive is provisional while the Windows timing
+scope decision remains open; it is not a CRAN upload candidate yet.
+
+```sh
+git archive --format=tar be21c4dd7 | tar -xf - -C /private/tmp/gllvmtmb-071-cran-evidence/provisional-be21c4dd/source
+cd /private/tmp/gllvmtmb-071-cran-evidence/provisional-be21c4dd
+PATH=/private/tmp/gllvmtmb-071-cran-evidence/conda-r-4.6.1/bin:/opt/homebrew/bin:/usr/bin:/bin R_LIBS_USER=/private/tmp/gllvmtmb-r461-userlib R_MAKEVARS_USER=/private/tmp/gllvmtmb-071-cran-evidence/Makevars-cc17 OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 R CMD build source
+# Exit 0; vignettes built.
+shasum -a 256 gllvmTMB_0.7.1.tar.gz
+# 0fb7c302f694e9ff70af95e09b17218a3a501aeed7e712d35059981fb667059d
+stat -f 'bytes=%z' gllvmTMB_0.7.1.tar.gz
+# 4,423,109 bytes; 886 inventory entries.
+if rg -n '(^|/)(\.git|\.unlazy|\.agents|\.codex|\.claude|\.worktrees|dev/|MS/|cran-comments\.md|docs/|\.Rproj\.user)(/|$)|(^|/)\.DS_Store$' inventory.txt; then exit 1; else echo 'zero forbidden-path matches'; fi
+# Zero forbidden-path matches.
+```
+
+Exact-tarball local check:
+
+```sh
+PATH=/private/tmp/gllvmtmb-071-cran-evidence/conda-r-4.6.1/bin:/opt/homebrew/bin:/usr/local/bin:/Library/TeX/texbin:/usr/bin:/bin R_LIBS_USER=/private/tmp/gllvmtmb-r461-userlib R_MAKEVARS_USER=/private/tmp/gllvmtmb-071-cran-evidence/Makevars-cc17 OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 R CMD check --as-cran --run-donttest ../gllvmTMB_0.7.1.tar.gz
+# Exit 0; R 4.6.1 arm64 macOS; Status: 1 NOTE (New submission only).
+# Testthat: 9,423 PASS, 0 FAIL, 0 WARN, 1,698 SKIP; test stage 209/248 sec.
+# Install 72/76 sec; code analysis 39/40 sec; examples 17/17 sec; PDF and HTML manuals, vignettes, cleanup all pass.
+# Full log: /private/tmp/gllvmtmb-071-cran-evidence/provisional-be21c4dd/check-final/gllvmTMB.Rcheck/00check.log
+```
+
+A first full local check attempt omitted `/usr/local/bin` from `PATH`, so the
+manual PDF stage could not find TinyTeX's `pdflatex`; that run ended with one
+ERROR and is superseded by the corrected successful command above. A second
+network-disabled run stopped before checking because CRAN indexes were
+unreachable; it is also superseded. No package warning or test failure remains
+in the successful exact-archive run.
+
+The Win-builder upload form rejected a POST with a stale ASP.NET viewstate and
+returned an error page; no receipt was returned for that attempt. The official
+passive-FTP route then accepted the exact archive for R-release:
+
+```sh
+curl --ftp-pasv --user 'anonymous:itchyshin@gmail.com' \
+  -T /private/tmp/gllvmtmb-071-cran-evidence/provisional-be21c4dd/gllvmTMB_0.7.1.tar.gz \
+  ftp://win-builder.r-project.org/R-release/
+# Exit 0; 4,423,109 bytes transferred. Awaiting the Win-builder email/log receipt.
+```
+
+R-devel upload is unavailable on the currently exposed upload page. The exact
+archive's Windows check and resulting total timing are pending. Deliberately
+not run: replacement 3-OS CI/R-hub checks and CRAN form resubmission. The
+predecessor R-release result was 910 seconds overall; the provisional archive
+must be judged on its own result. No claim of incoming pass or acceptance is
+made.
+
+
+### 2026-10-01: targeted CRAN guards for internal fit diagnostics
+
+After the latest Win-builder email reported a 1,223-second Windows check and
+its full test process took 760.42 seconds (0 test failures, warnings, or errors),
+added `skip_on_cran()` only to two private VA/EVA prototype fits and four
+unexported MSPL profile-feasibility diagnostics. All six still run outside
+CRAN checks. Existing public MSPL estimator, unsupported-option, and inference
+guard tests remain unchanged. The AGHQ negative-control test already had a
+CRAN skip.
+
+The exact-file test run rebuilt the private VA/EVA helper and completed with:
+
+```sh
+Rscript --vanilla -e 'devtools::test(filter = "va-r3-prototype|mspl-api")'
+# Exit 0; Duration: 92.4 sec; 1,002 PASS, 0 FAIL, 0 WARN, 0 SKIP.
+```
+
+The unfiltered local run confirms the new guards do not suppress these tests
+locally. `git diff --check` exited 0. During review the exact patterns used
+were `skip_on_cran\(\)` and `^test_that`; the relevant file-level test
+profiles were read from `/private/tmp/gllvmtmb-071-cran-evidence/cran-mode-file-profile-after-vgh.csv`.
+
+Deliberately not run yet: a rebuilt exact-source archive, full archive-based
+`R CMD check --as-cran --run-donttest`, new Win-builder upload, 3-OS checks,
+R-hub, or CRAN form resubmission. The Oct 1 Win-builder message has no archive
+hash, so it remains chronology-linked evidence only and cannot qualify a new
+tarball.

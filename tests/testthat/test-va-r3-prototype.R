@@ -983,6 +983,8 @@ test_that("R3 small-variance expansion is insensitive across switch candidates",
 }
 
 test_that("R3 Gaussian variational posterior equals the analytic posterior", {
+  # Internal fit oracle for the paused VA/EVA prototype; keep in local/CI tests.
+  skip_on_cran()
   z <- .va_r3_gaussian_fixture()
   fit <- .va_r3_fit(
     y = z$y, n_trials = rep(1L, length(z$y)), X = z$X,
@@ -1844,6 +1846,8 @@ test_that("the polish target stays stricter than the health bar", {
 })
 
 test_that("the reported gradient_tolerance is the one actually applied", {
+  # Internal optimizer diagnostic for the paused VA/EVA prototype.
+  skip_on_cran()
   ## The reported value and the applied value were separate literals; they could
   ## drift apart with nothing to catch it. They are now one constant, and this
   ## asserts the report reflects it.

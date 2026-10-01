@@ -468,6 +468,8 @@ test_that("loading_ridge is an integration-neutral alias and cannot double-speci
 ## point without touching the real optimizer everywhere else.
 
 test_that("internal MSPL profile feasibility traces the penalised objective only", {
+  # Internal feasibility probe; public MSPL fit and refusal tests remain active.
+  skip_on_cran()
   fit <- .mspl_fit("logit", q = 1L)
   checkpoint <- gllvmTMB:::.gllvmTMB_profile_tmb_checkpoint(fit$tmb_obj)
   penalty_off <- fit$mspl$unpenalized_tmb_obj
@@ -505,6 +507,8 @@ test_that("internal MSPL profile feasibility traces the penalised objective only
 })
 
 test_that("MSPL profile bracket search retries a transient nlminb failure before giving up", {
+  # Internal optimizer-retry diagnostic; keep enabled in local/CI tests.
+  skip_on_cran()
   ## Defect (2), A1 Q6: C010's `lower=optimizer_failed`/`refinement_failed`.
   ## A single non-converging nlminb call used to be immediately fatal to the
   ## point it evaluated. Force the FIRST attempt at one specific grid target
@@ -549,6 +553,8 @@ test_that("MSPL profile bracket search retries a transient nlminb failure before
 })
 
 test_that("MSPL profile bracket search retains the last known-good point across a stuck grid step", {
+  # Internal bracket-search diagnostic; keep enabled in local/CI tests.
+  skip_on_cran()
   ## Defect (1), A1 Q6: C003's `upper=truncated` (paired with `lower=crossed`
   ## on the same replicate). The OLD code reset `previous_success` to NULL on
   ## any grid-point failure, so a permanently non-converging point (both the
@@ -601,6 +607,8 @@ test_that("MSPL profile bracket search retains the last known-good point across 
 })
 
 test_that("MSPL profile bracket search widens on request to reach Design 118 s3.4's outer threshold (s7.2)", {
+  # Internal profile-search diagnostic; keep enabled in local/CI tests.
+  skip_on_cran()
   ## s7.2's OTHER half -- "widen the ... stored bracket to thresholds
   ## [0.354, 3.317]" -- was ported by 0d6de305 only as far as the two
   ## root-finder fixes above; the walk's reach stayed fixed at

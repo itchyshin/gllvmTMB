@@ -1,27 +1,14 @@
 # CRAN comments for gllvmTMB 0.7.1
 
-**Working draft. Do not upload until the exact-candidate Windows timing, external checks, and release ledger are complete.** The 0.7.1 package was first submitted on 2026-09-29 and returned by CRAN's automated incoming checks. This draft describes the replacement candidate; it does not claim that CRAN has accepted the package.
+**Working draft. Do not upload until the exact-archive Windows result, remaining release reviews, and the release ledger clear.** This is a resubmission of the 0.7.1 first submission made on 2026-09-29. It does not claim that CRAN has accepted or published the package.
 
 ## Resubmission
 
-The earlier incoming report flagged an overall Windows check time of 30 minutes, above the 10-minute incoming-check limit, and suggested that “TMB” in `DESCRIPTION` might be misspelled. The exact local check of the current candidate reports only the standard `New submission` NOTE and no spelling suggestion. The current source draft adds six narrowly targeted `skip_on_cran()` guards around private VA/EVA prototype fits and unexported MSPL profile-feasibility diagnostics. Those tests remain enabled in local and CI runs. Public estimator, unsupported-option, and inference-guard tests remain enabled on CRAN.
+The previous CRAN return said the submission did not pass incoming checks automatically and reported an overall Windows check time of 30 minutes, above the 10-minute incoming target. A separate earlier Win-builder log suggested a possible spelling issue in the package title. The current source includes seven narrow `skip_on_cran()` guards for internal prototype/profile diagnostics, plus two test-fixture adjustments to prevent unrelated quasi-separation warnings. The skips remain active in local and CI runs; public API and core model tests still run on CRAN.
 
-The predecessor Windows check took 910 seconds overall, including 596 seconds for tests. Those measurements belong to the earlier tarball and do not establish the timing of this replacement. A later Win-builder email (Oct 1, 2026, report `F0m7RWXUY4Po`) reports R 4.6.1 Windows, 1 NOTE, 1,223 seconds overall, and 760.42 seconds for tests. It has no tarball checksum, so it is chronology-linked only and does not qualify a newly built archive. The timing remains above the incoming limit. The six new guards have not yet been checked in a new archive.
+The Oct 1 R-release Win-builder result is predecessor evidence. Its email reported 1 NOTE and a 1,207-second check, and linked tests with 9,241 passes, 1,714 skips, no failures or warnings, and 752.82 seconds elapsed. The upload receipt matched a 4,423,090-byte archive by name and size but included no SHA-256. It therefore cannot identify the uploaded archive cryptographically, and its timing remains above the incoming target.
 
-## Prior candidate (predecessor evidence; not the current upload candidate)
-
-- Source commit: `be21c4dd784e21be6b42b673209b9fee6e6d217e`.
-- Tarball: `/private/tmp/gllvmtmb-071-cran-evidence/provisional-be21c4dd/gllvmTMB_0.7.1.tar.gz`.
-- SHA-256: `0fb7c302f694e9ff70af95e09b17218a3a501aeed7e712d35059981fb667059d`.
-- Size: 4,423,109 bytes; inventory: 886 entries; forbidden-path scan: zero matches.
-
-## Checks completed for this predecessor candidate
-
-- Local macOS arm64, R 4.6.1, exact-tarball `R CMD check --as-cran --run-donttest`: exit 0, `Status: 1 NOTE`; the only NOTE is `New submission`. Tests: 9,423 PASS, 0 FAIL, 0 WARN, 1,698 SKIP. Installation, examples, PDF and HTML manuals, vignettes, and cleanup passed.
-- Exact-source three-OS GitHub Actions run `36810912509` passed on Windows, macOS, and Ubuntu for commit `be21c4dd784e21be6b42b673209b9fee6e6d217e`. Each platform reports `Status: OK` and zero test failures. Test process elapsed times were 2,080.93 seconds on Windows, 865.98 seconds on macOS, and 1,381.62 seconds on Ubuntu. These are GitHub Actions timings, not Win-builder incoming timings; each exceeds the project's approximate 600-second signal, so the incoming-time concern remains unresolved.
-- A Win-builder R-release report is now available for a 0.7.1 upload, but it has no archive SHA receipt. Its chronology is not sufficient to bind it to the exact archive described above.
-- R-hub evidence and independent final reviews are pending.
-
+A scratch archive was built from commit `9a9c3aa8b7c6808f0941d5fe0d841a7618c37fe1` with the current package-source changes. It has SHA-256 `b1480dcb0354291d5dd9fe0e50784efae6b8242902b518d4387f535dd4eb38fb` and size 4,423,195 bytes. Its macOS arm64/R 4.6.0 `R CMD check --as-cran --run-donttest --no-manual` completed successfully with 9,353 passes, 1,705 skips, and no test failures or warnings. The test runner used two processes and the test phase took 169.648 seconds. One environment NOTE remains for Xcode's `xcrun_db` temporary file. The shell could not reach CRAN or Bioconductor indexes, so remote incoming lookups were disabled. This scratch archive does not have a clean generating commit and has not been sent to Win-builder; it is not the upload file. Do not use this draft for resubmission until a new clean-commit archive passes the exact-archive and external gates.
 ## Scope and interpretation
 
-`gllvmTMB` remains experimental. Native Laplace estimation is the default. Evidence for point estimates is model-specific. Broad interval coverage is not certified. The documented 0.94 coverage floor applies only to one two-sided Gaussian total-variance profile setting; it is not nominal 95% coverage or a guarantee for an individual interval.
+Version 0.7.1 is the first-release candidate for the documented, bounded gllvmTMB model scope. The release notes retain experimental VA, MSPL, and random-slope material as experimental and do not promote it as a validated user-facing capability. Point-estimate and interval evidence remains model-specific; broad interval coverage is not certified. The documented 0.94 coverage floor applies only to one two-sided Gaussian total-variance profile setting; it is neither nominal 95% coverage nor a guarantee for an individual interval.

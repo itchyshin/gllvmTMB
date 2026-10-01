@@ -10,7 +10,14 @@ make_missing_resp_data <- function(family = "poisson", seed = 5L, n_unit = 45L) 
   df <- expand.grid(unit = factor(seq_len(n_unit)), trait = factor(traits))
   u <- stats::rnorm(n_unit)[as.integer(df$unit)]
   lam <- c(t1 = 0.8, t2 = 0.6, t3 = 0.5)[as.character(df$trait)]
-  b0 <- c(t1 = 1.0, t2 = 1.2, t3 = 0.8)[as.character(df$trait)]
+  ## Keep the Bernoulli fixture away from boundary prevalence. This test checks
+  ## response-mask equivalence; runaway-loading behavior has its own tests.
+  b0_by_trait <- if (identical(family, "binomial")) {
+    c(t1 = -0.7, t2 = -0.7, t3 = -0.7)
+  } else {
+    c(t1 = 1.0, t2 = 1.2, t3 = 0.8)
+  }
+  b0 <- b0_by_trait[as.character(df$trait)]
   eta <- b0 + lam * u
   df$value <- switch(
     family,

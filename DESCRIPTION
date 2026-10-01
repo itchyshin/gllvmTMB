@@ -78,7 +78,7 @@ VignetteBuilder:
     knitr
 ByteCompile: true
 Config/testthat/edition: 3
-Config/testthat/parallel: false
+Config/testthat/parallel: true
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 SystemRequirements: GNU make, C++17

@@ -55236,3 +55236,285 @@ the copied source includes `dev/`, which the release inventory excludes.
 Public plotting, extraction, and model tests remain enabled. No additional
 skip was selected from this profile; the final artifact still needs its own
 archive-based `R CMD check` and fresh Windows result.
+
+### 2026-10-01: exact 0.7.1 archive installed and checked
+
+Built the bounded release source at commit
+`9a9c3aa8b7c6808f0941d5fe0d841a7618c37fe1` into
+`/private/tmp/gllvmTMB-071-resubmission-9a9c3aa8/gllvmTMB_0.7.1.tar.gz`.
+The archive SHA-256 is
+`04c547b043d34935625d0ae373c82f2e37ae4dbe9414b4b309ee68bcb5e2e03a`; size is
+4,423,090 bytes. The exact archive installed to a clean temporary library.
+Compilation emitted three `-Wunused-but-set-variable` diagnostics from
+RcppEigen's `TriangularSolver.h` and `SparseLU_heap_relax_snode.h`; package
+installation completed successfully. The full package check's compiled-code
+stage was OK and reported no package warning.
+
+The first exact-archive `--as-cran --run-donttest` attempt stopped before
+package checks because the shell could not resolve CRAN/Bioconductor package
+indexes. Retried with `_R_CHECK_CRAN_INCOMING_REMOTE_=false` to allow the
+locally available dependency check to proceed. The exact archive check exited
+0 on macOS arm64 / R 4.6.0. Testthat reported 9,353 PASS, 1,705 SKIP, 0 FAIL,
+and 0 WARN; test-process elapsed time was 226 seconds. Installation took 83
+seconds. All examples, vignettes, manual formats, and compiled-code checks
+passed. Status was 2 NOTEs: this restricted environment could not verify the
+system clock, and Xcode left an `xcrun_db` entry in the temporary check
+directory. No package-owned NOTE, warning, or test failure was reported.
+
+Uploaded this exact 4,423,090-byte archive to Win-builder's available
+R-release upload form. Its HTTP 200 response named `gllvmTMB_0.7.1.tar.gz`,
+reported the matching byte size and `application/gzip`, and accepted the
+upload. The check email is pending. The form currently marks R-devel
+unavailable. The pre-existing Oct 1 Win-builder emails remain chronology-only
+because they predate this archive and carry no checksum. The 600-second
+Windows timing gate therefore remains open.
+
+Exact patterns used: `NOTE|WARNING|ERROR|Status:` in `00check.log`, and
+`PASS|FAIL|WARN|SKIP` in `testthat.Rout`. Deliberately not run: the three-OS CI
+matrix, R-hub, or CRAN form resubmission. Separately, with network access
+available, ran:
+
+```sh
+OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 Rscript --vanilla -e 'pkgdown::check_pkgdown()'
+# Exit 0; no problems found.
+OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 Rscript --vanilla -e 'urlchecker::url_check()'
+# Exit 0; all 33 URLs are correct.
+```
+
+The 0.7.1 archive has not changed; the current comments sidecar and release
+ledger remain drafts until fresh Windows evidence and the remaining publication
+gates clear.
+
+### 2026-10-01: check linked Win-builder thread and start remaining platform checks
+
+Searched the linked Gmail conversation and the mailbox for mail from
+`ligges` dated after 2026-10-01. The latest message remains the 8:55 AM R 4.6.1
+Win-builder report for predecessor upload `vEAK8XYdJES1` (1 NOTE; 1,192
+seconds). No message has arrived for the archive uploaded from commit
+`9a9c3aa8b7c6808f0941d5fe0d841a7618c37fe1`; the prior email has no SHA and
+does not qualify the current archive.
+
+Started the full three-OS R-CMD-check workflow manually on the exact source
+commit. GitHub Actions run `2977` (`36910554084`) is queued and has the macOS
+and Windows pre-release/CRAN checks enabled. The push itself produced no
+workflow run, so this explicit dispatch is the candidate-aligned CI attempt.
+
+Submitted the unchanged archive
+`/private/tmp/gllvmTMB-071-resubmission-9a9c3aa8/gllvmTMB_0.7.1.tar.gz`
+through `rhub::rc_submit(path = ..., platforms = "ubuntu-release",
+confirmation = TRUE)`. R-hub returned `OK` and created build
+`important-seagull` in
+`https://github.com/r-hub2/comfortable-iguana-gllvmTMB/actions`. The result is
+pending; the submission receipt identifies the archive path and SHA-256
+`04c547b043d34935625d0ae373c82f2e37ae4dbe9414b4b309ee68bcb5e2e03a`.
+
+Coordination check before editing this log: `gh pr list --state open` could not
+reach the GitHub API; the authenticated GitHub UI query
+`is:pr is:open path:docs/dev-log/check-log.md` showed zero matching PRs.
+`git log --all --oneline --since='6 hours ago' -- docs/dev-log/check-log.md`
+showed only the two commits in this release lane. Exact patterns used:
+`Status:|NOTE|WARNING|ERROR|PASS|FAIL|WARN|SKIP` for the check logs and
+`ligges after:2026/10/01` for Gmail. Deliberately not run: a CRAN resubmission,
+because the current Win-builder result and the release ledger are still
+pending.
+
+### 2026-10-01: current Win-builder result exceeds the incoming-time gate
+
+Rechecked Gmail thread `FMfcgzQhWfVZxfnbjhjlWQcrGgZTTGKl` after a new unread
+message arrived from the Windows CRAN binary maintainer at 1:05 PM MDT. The
+linked report is `https://win-builder.r-project.org/9vsX0F9N05lQ/`; its email
+reports R 4.6.1, installation time 304 seconds, check time 1207 seconds, and
+1 NOTE. This run is correlated with the current R-release upload by the
+submission timing and the upload form's matching filename and 4,423,090-byte
+receipt. The email itself has no SHA-256, so exact-hash binding is not proven.
+
+The endpoint directory lists `00check.log` (3,687 bytes),
+`00install.out`, and `gllvmTMB_0.7.1.zip`. The linked `00check.log` was opened
+in the browser. It identifies gllvmTMB 0.7.1 on Windows Server 2022 x64/R
+4.6.1, reports only the expected `New submission` NOTE, and shows
+`* checking tests ... [13m] OK` with `testthat.R` also at 13 minutes. Examples,
+vignette rebuilds, manuals, compiled code, and all preceding checks are OK;
+the full log ends `Status: 1 NOTE`. Thus the long pole is test execution, not
+examples or documentation. The emailed total check time (1207 seconds) and
+test phase alone both exceed the 600-second gate. Opened the linked
+`examples_and_tests/tests/testthat.Rout` in the browser: testthat reports
+9,241 PASS, 1,714 SKIP, 0 FAIL, and 0 WARN; `proc.time()` reports user 610.14,
+system 35.43, elapsed 752.82 seconds. Thus the test process itself exceeds
+the 600-second threshold by 152.82 seconds. This output does not provide
+per-test timings. A local `devtools::test()` timing profile began in default
+local mode, where CRAN-specific skips do not fire; it was interrupted after
+exposing slow AGHQ diagnostic tests, so those timings are not treated as
+estimates of the Windows CRAN-mode run. No extra skip was selected from that
+mismatched profile.
+
+Refreshed external status: GitHub Actions run #2977 (`36910554084`) on exact
+commit `9a9c3aa8b7c6808f0941d5fe0d841a7618c37fe1` remained in progress with
+0/3 matrix jobs complete at 1:16 PM MDT; its Windows job had spent over 18
+minutes in `actions/checkout@v5` fetching repository refs. R-hub
+`ubuntu-release` run #4 (`36910815751`, build `important-seagull`) was still
+in progress 18 minutes after start. The G7 evidence in
+`.unlazy/cran-071-resubmission/GATES.md` now records the check-log result and
+the pending checks. No CRAN submission was made because Windows test time
+fails the gate and candidate-aligned platform review is incomplete.
+
+Coordination check before editing this shared log: GitHub UI query
+`is:pr is:open path:docs/dev-log/check-log.md` returned zero open PRs; recent
+`git log --all --oneline --since='6 hours ago' -- docs/dev-log/check-log.md`
+showed only commits `9a9c3aa8b` and `d4cb4edcf` in this release lane. Exact
+search pattern used: `newer_than:1d from:ligges`. `git diff --check` and
+`bash tools/check-actions-boundary.sh` remain to be rerun after this
+evidence-only log/ledger edit.
+
+### 2026-10-01: latest Win-builder email and platform status refreshed
+
+Opened the new message in Gmail thread
+`FMfcgzQhWfVZxfnbjhjlWQcrGgZTTGKl` (Oct 1, 1:05 PM MDT) and expanded the
+linked `testthat.Rout` for Win-builder run `9vsX0F9N05lQ`. The email reports
+1 NOTE and 1,207 seconds total check time. The test log reports 9,241 PASS,
+1,714 SKIP, 0 FAIL, 0 WARN; test-process elapsed time is 752.82 seconds
+(user 610.14, system 35.43). This exceeds the internal 600-second timing gate.
+The filename and 4,423,090-byte receipt correlate the run with the current
+upload, but neither includes the archive SHA-256. The NOTE is only `New
+submission`. This new message supersedes the prior paragraph's statement that
+the release result was pending; that statement remains correct for the older
+email when it was written.
+
+Refreshed R-hub run #4 (`36910815751`, build `important-seagull`):
+`ubuntu-release` succeeded in 17m47s. Inspected the package check step, which
+shows R 4.6.1 on Ubuntu 24.04, builds gllvmTMB 0.7.1, installs it, and ends
+successfully. The R-hub submission receipt is tied to the exact tarball path
+and SHA-256. Refreshed GitHub Actions run #2977 (`36910554084`) on exact source
+commit `9a9c3aa8b7c6808f0941d5fe0d841a7618c37fe1`: macOS (32m35s) and Ubuntu
+(40m49s) passed; Windows remained in the full R CMD check at 1h39m. Its
+check-step log had reached tests, so Windows is not yet a completed matrix
+result.
+
+Release status remains blocked at G7 and G9: Windows exceeds the timing gate,
+the Windows CI job is still running, and the ledger has not reached
+`submission-ready`. No CRAN resubmission was made. Updated
+`.unlazy/cran-071-resubmission/GATES.md` and the `cran-comments.md` draft with
+these facts. Exact searches/patterns used: `PASS|FAIL|WARN|SKIP` in
+Win-builder `testthat.Rout`; `Status:|NOTE|WARNING|ERROR` in `00check.log`;
+`ligges after:2026/10/01` in Gmail. Deliberately not run: another Win-builder
+upload or CRAN resubmission, because the timing gate remains unmet.
+
+Follow-up refresh: GitHub Actions Windows job #2977 was still at
+`checking tests ...` after 1h05m total (42m32s in the full R CMD check step;
+checkout took 21m16s). macOS and Ubuntu remain passed. This replaces the
+earlier estimate in the preceding platform-status paragraph; the Windows
+matrix result is still pending.
+
+### 2026-10-01: exact-source platform matrix completes; CRAN-mode timing profile
+
+Reopened GitHub Actions run #2977 at
+`https://github.com/itchyshin/gllvmTMB/actions/runs/36910554084`. The run page
+identifies source commit `9a9c3aa8b7c6808f0941d5fe0d841a7618c37fe1`, shows
+overall `Success`, all 3/3 OS jobs complete, and total duration 1h11m40s. This
+supersedes the pending Windows-matrix status above; it does not change the
+separate Win-builder timing result.
+
+Completed the diagnostic full-suite profile against the writable extraction of
+the exact archive (SHA-256
+`04c547b043d34935625d0ae373c82f2e37ae4dbe9414b4b309ee68bcb5e2e03a`):
+
+```sh
+NOT_CRAN=false OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 Rscript --vanilla \
+  -e 'devtools::test(reporter = c("summary", "slow"))' \
+  > /private/tmp/gllvmTMB-071-cran-profile-04c547b/testthat-slow-reporter.txt 2>&1
+# Exit 0; All tests 406.41 seconds, slow tests 263.64 seconds.
+```
+
+The profile records 177 individually timed test cases. The slowest is the
+private VA R3 dense-versus-blocked Schur-complement comparison at 24.26 seconds;
+the next are a `getLV()` standard-error test (4.55 seconds), an AGHQ golden
+gate (4.53 seconds), and a three-link latent Bernoulli fit (4.43 seconds).
+Aggregated top timed files are `test-va-r3-prototype.R` (51.71 seconds),
+`test-plot-gllvmTMB.R` (19.51), `test-getlv-se.R` (17.32),
+`test-mspl-api.R` (16.41), and `test-extractors.R` (13.08). The testthat slow
+reporter adds instrumentation and this macOS/source-tree run is not a Windows
+timing estimate. It does not establish the required Windows reduction: the
+latest Win-builder test process remains 752.82 seconds and total check remains
+1207 seconds. No further test was skipped from this profile alone; preserving
+public feature coverage remains required.
+
+Coordination checks: `gh pr list --state open` could not reach the GitHub API;
+`git log --all --oneline --since='6 hours ago' -- docs/dev-log/check-log.md`
+showed only the current release-lane commit. Lane preflight reports the active
+foreign `claude/lane-auto-d-recovery` branch; the user had already confirmed
+handoff and assigned `tests/testthat` to the CRAN lane. No test source was
+edited in this update. Exact search patterns used:
+`\[[0-9.]+s\]` for slow-reporter timing lines and
+`All tests:|Slow tests:` for the profile summary. Deliberately not run: another
+Win-builder upload or CRAN submission, because the 600-second incoming gate
+remains unmet.
+
+### 2026-10-01: parallel test-runner feasibility on the exact archive
+
+The completed serial `devtools::test(reporter = "summary")` run on the same
+archive extraction exited 0 in 444.35 seconds wall time (including source DLL
+compilation). To test the testthat parallel runner without changing the
+candidate, changed only the extracted archive's scratch `DESCRIPTION` from
+`Config/testthat/parallel: false` to `true`; the tracked worktree and tarball
+were untouched. Ran the full suite twice:
+
+```sh
+NOT_CRAN=false TESTTHAT_CPUS=4 OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 \
+  Rscript --vanilla -e 'devtools::test(reporter = "summary")'
+# Exit 0; 4 test processes; 177.06 seconds wall time.
+NOT_CRAN=false TESTTHAT_CPUS=2 OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 \
+  Rscript --vanilla -e 'devtools::test(reporter = "summary")'
+# Exit 0; 2 test processes; 289.70 seconds wall time.
+```
+
+All three runs reached the testthat `DONE` marker and exited 0 with no failing
+test. The four-worker reporter showed one warning from the intentionally
+diagnosed runaway-loading fit in `test-confirmatory-lambda.R`; the serial
+slow/summary reporters and the two-worker reporter had no warning section.
+The source test fixes its RNG seed, so this reporter difference is not evidence
+of a shared-RNG dependency; its cause remains unverified. The exact-archive R
+CMD check and upload-correlated Windows R CMD check reported zero test
+warnings. The parallel runs are feasibility evidence only: the scratch
+metadata differs from the frozen archive, and the local results do not prove
+Windows R CMD check time. The two-worker run is 1.53 times faster than this
+serial `devtools::test` wall time, still far short of demonstrating the roughly
+81% test-time reduction implied by the Win-builder result. No source
+configuration change or new tarball was made. The warning difference is an
+open stability question before any parallel setting is adopted; do not infer
+the 600-second gate from these local runs.
+
+Exact output searches used: `Starting [24] test processes`, `══ DONE`, and
+`══ Warnings` in the serial and parallel reporter logs; test-run exit codes
+were 0 for all three runs. Deliberately not run: another Win-builder upload or
+CRAN submission, because the current frozen archive still exceeds the measured
+incoming-time gate.
+
+
+### 2026-10-01: two-worker CRAN-mode check and test-fixture warnings
+
+A scratch release source tree based on clean commit `9a9c3aa8b7c6808f0941d5fe0d841a7618c37fe1` was built under `/private/tmp/gllvmTMB-071-parallel-candidate/src`. The scratch tree changed `Config/testthat/parallel` to `true` and repaired two small fit fixtures. It is a timing and check experiment, not the cleanly generated release artifact.
+
+The first full R CMD check with two test processes exposed an unexpected runaway-loading warning in the binomial mask-equivalence fixture (`test-missing-response-nongaussian.R:51`). The simulated trait prevalence was 0.837 and the fitted loading was 46.5. Lowering the Bernoulli fixture intercepts to -0.7 gave prevalences 0.244, 0.356, and 0.422; both masked and complete-case fits had finite log likelihoods, their log-likelihood difference was `8.65e-11`, and the largest covariance difference was `1.90e-05`. The focused file passed in 16.12 seconds with no warnings.
+
+A subsequent full check exposed a separate runaway-loading warning in `test-confirmatory-lambda.R:172`: the 40-site fit had C_4 prevalence 0.4 and loading 69.4. Increasing that fixture to 80 sites removed the warning in the focused test, which passed in 6.94 seconds. These fixtures exercise mask equivalence and confirmatory-constraint API compatibility; runaway-loading behavior is tested separately. The changes avoid comparing estimates from fits that the package itself diagnoses as unusable.
+
+The rebuilt scratch archive had SHA-256 `b1480dcb0354291d5dd9fe0e50784efae6b8242902b518d4387f535dd4eb38fb`, size 4,423,195 bytes, and 886 entries. The exact command was:
+
+```sh
+_R_CHECK_CRAN_INCOMING_REMOTE_=false _R_CHECK_SYSTEM_CLOCK_=false   NOT_CRAN=false OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1   R CMD check --as-cran --run-donttest --no-manual   --output=/private/tmp/gllvmTMB-071-parallel-candidate/check-final   gllvmTMB_0.7.1.tar.gz
+```
+
+It exited 0 on macOS arm64/R 4.6.0 with 9,353 PASS, 1,705 SKIP, 0 WARN, 0 FAIL. `testthat.Rout` reports `Starting 2 test processes` and `proc.time()` elapsed 169.648 seconds. The outer check ended `Status: 1 NOTE`; the sole NOTE is `xcrun_db` in the temporary check directory. The archive's local incoming check used the remote-disabled setting because this shell could not resolve CRAN/Bioconductor repository indexes. This Mac timing does not predict the Win-builder result.
+
+The archive was built from a scratch copy of the release commit and has no clean generating commit. No new Win-builder upload, R-hub run, three-OS workflow, or CRAN submission was made for it. The previous Win-builder result remains predecessor evidence only. `gh pr list --state open` could not reach GitHub; `git log --all --oneline --since='6 hours ago'` for the touched release files showed only commit `9a9c3aa8b`. The prescribed `graft` command and `graft/` index are absent in this checkout. Search patterns used: `Starting [0-9]+ test processes|\[ FAIL|proc.time|elapsed` and `Warnings|runaway|prevalence` in the check/test output. Deliberately not run: a CRAN resubmission, because the archive was a scratch build without a clean generating commit or fresh Windows result.
+
+Lane recheck before freezing this repair: GitHub API access was unavailable and
+`gh pr list --state open` could not verify open PRs. The full lane preflight
+reported active Claude and Codex lanes. I read the overlapping
+`claude/lvb-modelA-extend` diff for `test-missing-response-nongaussian.R`: it
+adds an NB1 case and removes the later Tier-3b family-coverage section. Shinichi
+had already confirmed that Claude handed off and the CRAN lane owns
+`tests/testthat`; I retained the current 0.7.1 test coverage and did not import
+that separate change. The development-identity branch changes DESCRIPTION's
+title, version, and description; those changes remain outside this bounded
+release. The CRAN lane lease now covers the two repaired test files. The
+preflight's `graft` command and graph index are absent from this checkout.

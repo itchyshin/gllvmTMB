@@ -138,7 +138,7 @@ test_that("confirmatory_lambda() output is consumable by gllvmTMB()", {
   skip_if_not_installed("TMB")
 
   set.seed(20260527)
-  n_sites <- 40L
+  n_sites <- 80L
   species_names <- c(paste0("A_", 1:3), paste0("B_", 1:3), paste0("C_", 1:4))
   group <- c(rep("A", 3), rep("B", 3), rep("C", 4))
 

@@ -495,14 +495,16 @@
 #' structured latent or temporal term; set `d` explicitly for those, or
 #' compare fits yourself.
 #'
-#' Recovery evidence for `d = "auto"` is family-specific. A simulation with
-#' known true rank found `"bic_sites"` recovers it most often for Gaussian
-#' (recovery rate 0.95) and Poisson (0.999) data. Negative-binomial recovery
-#' has not yet been measured on the corrected NB fitting code, so no rate is
-#' claimed here. For single-trial binary (Bernoulli) data, a loading ridge is used by
-#' default (`select_lv()`'s `binary_ridge = 2`) and recovery is still weak at
-#' small sizes (e.g. 20 traits, 120 units: the true rank was found in 8/10
-#' simulated datasets with the ridge).
+#' Recovery evidence for `d = "auto"` is family-specific. In a simulation
+#' with known true rank (13,789 datasets; 50 to 400 units, 8 or 16 traits,
+#' true rank 1 to 3), `"bic_sites"` found the true rank in at least 97% of
+#' datasets in every setting for Gaussian and Poisson data, and in at least
+#' 93% for negative-binomial data with 16 traits (as low as 39% with 8
+#' traits and a true rank of 3). **`d = "auto"` is not reliable for
+#' single-trial binary (Bernoulli) data:** it usually selects too few
+#' factors, and neither the default loading ridge nor `criterion = "aic"`
+#' fixes this; see [latent()] for the numbers. For binary data, set `d`
+#' from subject knowledge or compare explicit fits.
 #'
 #' ## Per-trait residual variance: when does it activate?
 #'

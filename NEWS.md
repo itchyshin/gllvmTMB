@@ -39,14 +39,16 @@
   `latent()`, is refused up front with a clear error naming the real
   restriction. See `?latent` and `?gllvmTMB` ("Choosing d automatically") and
   `?select_lv` for the per-rank table and for controlling `d_max`/`criterion`
-  directly. Recovery evidence is family-specific: a simulation with known
-  true rank found `"bic_sites"` recovers it most often for Gaussian (recovery
-  rate 0.95), Poisson (0.999) and negative-binomial (0.93, re-measured on the
-  corrected NB fitting code) data. For
-  single-trial binary (Bernoulli) data recovery is still weak at small sizes
-  even with the default loading ridge (`binary_ridge = 2`; e.g. 20 traits,
-  120 units: the true rank was found in 8/10 simulated datasets with the
-  ridge). The deprecated `species = ...` alias for `cluster = ...` (bug fix)
+  directly. Recovery evidence is family-specific. In a simulation with
+  known true rank (13,789 datasets; 50 to 400 units, 8 or 16 traits, true
+  rank 1 to 3), `"bic_sites"` found the true rank in at least 97% of datasets
+  in every setting for Gaussian and Poisson data, and in at least 93% for
+  negative-binomial data with 16 traits (as low as 39% with 8 traits and a
+  true rank of 3). `d = "auto"` is not reliable for single-trial binary
+  (Bernoulli) data: it usually selects too few factors, and neither the
+  default loading ridge (`binary_ridge = 2`) nor `criterion = "aic"` fixes
+  this. For binary data, set `d` from subject knowledge or compare explicit
+  fits. The deprecated `species = ...` alias for `cluster = ...` (bug fix)
   is now correctly forwarded to `select_lv()`'s refits; previously it was
   silently dropped and every refit fell back to the default cluster.
   `latent()`'s `d` validation is new: a `d` that previously fitted silently

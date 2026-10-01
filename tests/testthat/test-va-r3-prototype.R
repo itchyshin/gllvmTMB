@@ -1163,6 +1163,9 @@ test_that("R3 Gaussian variational gradients match analytic matrix derivatives",
 }
 
 test_that("R3 fixed-coordinate q=1/q=2 cells pass the AGHQ admission gate", {
+  # These private prototype-to-AGHQ fit comparisons are outside 0.7.1 scope.
+  skip_on_cran()
+
   comparisons <- list(
     q1 = .va_r3_r2_comparison(1L, 20260719L),
     q2 = .va_r3_r2_comparison(2L, 20260720L)

@@ -55161,3 +55161,78 @@ Deliberately not run yet: a rebuilt exact-source archive, full archive-based
 R-hub, or CRAN form resubmission. The Oct 1 Win-builder message has no archive
 hash, so it remains chronology-linked evidence only and cannot qualify a new
 tarball.
+
+### 2026-10-01: newest Win-builder email and Windows log
+
+Read the newest messages in Gmail thread `FMfcgzQhWfVZxfnbjhjlWQcrGgZTTGKl`.
+The Oct 1 R-devel report `6lO6qDE5TbaN` reports 1 NOTE and 1,248 seconds.
+The later R 4.6.1 R-release report `vEAK8XYdJES1` reports 1 NOTE and 1,192
+seconds. Both are still chronology-bound: neither email contains the source
+tarball SHA-256.
+
+Inspected the public R-release `00check.log` and downloaded
+`examples_and_tests/tests/testthat.Rout` from
+`https://win-builder.r-project.org/vEAK8XYdJES1/`. The Windows Server 2022,
+R 4.6.1 log has only the standard `New submission` NOTE. Installation,
+compilation, examples, tests, vignettes, and both manuals passed. Testthat
+reports 9,265 PASS, 1,713 SKIP, 0 FAIL, and 0 WARN; its `proc.time()` elapsed
+value is 743.56 seconds. The overall check remains above the 600-second
+incoming timing target, so this result does not clear the Windows gate and no
+CRAN resubmission was made. The downloaded test output is retained at
+`/private/tmp/gllvmTMB-winbuilder-testthat-20261001.Rout` for this session.
+
+Exact patterns used in the log inspection: `^\* checking tests`, `Running
+'testthat.R'`, `Status:`, `FAIL`, `WARN`, `SKIP`, and `PASS`. Deliberately not
+run: another upload or CRAN submission, because the timing gate remains red.
+
+### 2026-10-01: guard one additional internal VA prototype comparison
+
+Added `skip_on_cran()` to the fixed-coordinate q=1/q=2 VA-to-AGHQ admission
+comparison in `tests/testthat/test-va-r3-prototype.R`. It exercises private
+experimental prototype code outside the 0.7.1 release scope. It remains active
+in ordinary local and CI runs. A first CRAN-mode run caught that this testthat
+version does not accept a message argument to `skip_on_cran()`; the guard was
+corrected to the supported zero-argument form.
+
+```sh
+NOT_CRAN=false OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 Rscript --vanilla -e 'devtools::test(filter = "va-r3-prototype")'
+# Exit 0; 31.2 sec; 338 PASS, 23 SKIP, 0 FAIL, 0 WARN.
+# The new test appears in the CRAN skip list at test-va-r3-prototype.R:1167.
+OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 Rscript --vanilla -e 'devtools::test(filter = "va-r3-prototype")'
+# Exit 0; 55.3 sec; 646 PASS, 0 SKIP, 0 FAIL, 0 WARN.
+git diff --check
+# Exit 0.
+```
+
+The local and CRAN-mode file durations differ by about 24 seconds, but the
+CRAN run also skips 22 pre-existing tests; this difference cannot be attributed
+to the new guard alone. The latest Windows result predates this edit, so its
+test-time and total check-time gates remain unqualified. Deliberately not run:
+new archive build, full archive check, Windows upload, platform matrix, or CRAN
+resubmission; those follow only after the release source commit and any further
+profiling-driven timing changes.
+
+### 2026-10-01: full-suite CRAN-mode timing profile (diagnostic only)
+
+Attempting to run `devtools::test()` in the release worktree stopped when
+testthat tried to rewrite `tests/testthat/_snaps/isdm-contract.md`; the sandbox
+denies R writes to that tracked snapshot. The test itself did not report a
+failure. Re-ran the profile in a disposable writable source copy with a local
+Git history, carrying the current VA test edit. The copy came from `git
+archive HEAD`, so it contains development files not shipped in the built
+tarball; these per-file times are triage only, not release-check evidence.
+
+```sh
+NOT_CRAN=false OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 Rscript --vanilla /private/tmp/gllvmTMB-cran-file-profile.R
+# Exit 0; profile wrote /private/tmp/gllvmTMB-cran-file-profile-after-skip.csv.
+```
+
+The profile covered 515 test files and summed to 458.8 seconds on this Mac.
+The longest files were `test-va-r3-prototype.R` (26.663 s),
+`test-m3-pilot-report.R` (20.356 s), `test-plot-gllvmTMB.R` (19.187 s),
+`test-mspl-api.R` (14.583 s), and `test-extract-sigma.R` (11.405 s). The M3
+pilot and G2d harness timing is not representative of the CRAN tarball because
+the copied source includes `dev/`, which the release inventory excludes.
+Public plotting, extraction, and model tests remain enabled. No additional
+skip was selected from this profile; the final artifact still needs its own
+archive-based `R CMD check` and fresh Windows result.

@@ -515,6 +515,12 @@
 #'   binomial data, are unaffected regardless of this argument. A recovery
 #'   experiment (20 traits, `n = 120` Bernoulli datasets) found the ridge
 #'   recovered the true `d` in 8/10 simulated datasets against 4/10 without.
+#'   A larger simulation (3,600 Bernoulli datasets; 50 to 400 units, 8 or 16
+#'   traits, true rank 1 to 3) confirmed the ridge helps, but found rank
+#'   selection on binary data unreliable with or without it: every criterion
+#'   usually selected too few factors unless both units and traits were
+#'   large, and `"aic"` selected too many at the largest sizes. See the
+#'   `d` argument of [latent()].
 #' @param .fitter Internal test hook, default [gllvmTMB()]: the function
 #'   called for every fit in the sweep, `.fitter(formula = <rewritten
 #'   formula>, data = data, ...)`. Not intended for ordinary use.

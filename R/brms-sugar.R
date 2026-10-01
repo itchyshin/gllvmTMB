@@ -570,14 +570,23 @@ meta <- function(value, sampling_var) {
 #'   confidence intervals, and tests on that fit are **conditional on the
 #'   chosen `d`** -- they do not include the uncertainty of having selected
 #'   it (see [select_lv()] for the full per-rank table and for controlling
-#'   `d_max` or the criterion directly). Recovery evidence is family-specific:
-#'   a simulation with known true rank found `"bic_sites"` recovers it most
-#'   often for Gaussian (recovery rate 0.95) and Poisson (0.999) data.
-#'   Negative-binomial recovery has not yet been measured on the corrected
-#'   NB fitting code, so no rate is claimed here. For single-trial binary
-#'   (Bernoulli) data, a loading ridge is used by default (`select_lv()`'s `binary_ridge = 2`)
-#'   and recovery is still weak at small sizes (e.g. 20 traits, 120 units:
-#'   the true rank was found in 8/10 simulated datasets with the ridge).
+#'   `d_max` or the criterion directly). Recovery evidence is family-specific.
+#'   In a simulation with known true rank (13,789 datasets; 50 to 400 units,
+#'   8 or 16 traits, true rank 1 to 3), `"bic_sites"` found the true rank in
+#'   at least 97% of datasets in every setting for Gaussian and Poisson
+#'   data, and in at least 93% for negative-binomial data with 16 traits
+#'   (as low as 39% with 8 traits and a true rank of 3).
+#'
+#'   **`d = "auto"` is not reliable for single-trial binary (Bernoulli)
+#'   data.** It usually selects too few factors: a true rank of 2 or 3 was
+#'   found in as few as 0% of datasets with 8 traits, and reliably only with
+#'   400 units and 16 traits. The default loading ridge (`select_lv()`'s
+#'   `binary_ridge = 2`) is not the cause (removing it made recovery worse),
+#'   and `criterion = "aic"` in [select_lv()] does not fix it (it selects
+#'   too many factors at larger sizes). For binary data, set `d` from
+#'   subject knowledge or compare explicit fits, and read a selected rank as
+#'   more likely too low than too high.
+#'
 #'   `d = "auto"` is not supported on any other d-bearing covariance term
 #'   (`phylo_latent()`, `spatial_latent()`, `animal_latent()`, `kernel_latent()`,
 #'   etc.) -- fit each rank explicitly and compare the fits with `AIC()`/

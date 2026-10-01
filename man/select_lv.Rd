@@ -110,7 +110,13 @@ Laplace fit penalised by a loading ridge at scale \code{binary_ridge}, see
 default; today's unpenalised behaviour). Other families, or multi-trial
 binomial data, are unaffected regardless of this argument. A recovery
 experiment (20 traits, \code{n = 120} Bernoulli datasets) found the ridge
-recovered the true \code{d} in 8/10 simulated datasets against 4/10 without.}
+recovered the true \code{d} in 8/10 simulated datasets against 4/10 without.
+A larger simulation (3,600 Bernoulli datasets; 50 to 400 units, 8 or 16
+traits, true rank 1 to 3) confirmed the ridge helps, but found rank
+selection on binary data unreliable with or without it: every criterion
+usually selected too few factors unless both units and traits were
+large, and \code{"aic"} selected too many at the largest sizes. See the
+\code{d} argument of \code{\link[=latent]{latent()}}.}
 
 \item{.fitter}{Internal test hook, default \code{\link[=gllvmTMB]{gllvmTMB()}}: the function
 called for every fit in the sweep, \verb{.fitter(formula = <rewritten formula>, data = data, ...)}. Not intended for ordinary use.}

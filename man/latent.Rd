@@ -26,14 +26,23 @@ at fit time names the chosen \code{d} and the criterion. Standard errors,
 confidence intervals, and tests on that fit are \strong{conditional on the
 chosen \code{d}} -- they do not include the uncertainty of having selected
 it (see \code{\link[=select_lv]{select_lv()}} for the full per-rank table and for controlling
-\code{d_max} or the criterion directly). Recovery evidence is family-specific:
-a simulation with known true rank found \code{"bic_sites"} recovers it most
-often for Gaussian (recovery rate 0.95) and Poisson (0.999) data.
-Negative-binomial recovery has not yet been measured on the corrected
-NB fitting code, so no rate is claimed here. For single-trial binary
-(Bernoulli) data, a loading ridge is used by default (\code{select_lv()}'s \code{binary_ridge = 2})
-and recovery is still weak at small sizes (e.g. 20 traits, 120 units:
-the true rank was found in 8/10 simulated datasets with the ridge).
+\code{d_max} or the criterion directly). Recovery evidence is family-specific.
+In a simulation with known true rank (13,789 datasets; 50 to 400 units,
+8 or 16 traits, true rank 1 to 3), \code{"bic_sites"} found the true rank in
+at least 97\% of datasets in every setting for Gaussian and Poisson
+data, and in at least 93\% for negative-binomial data with 16 traits
+(as low as 39\% with 8 traits and a true rank of 3).
+
+\strong{\code{d = "auto"} is not reliable for single-trial binary (Bernoulli)
+data.} It usually selects too few factors: a true rank of 2 or 3 was
+found in as few as 0\% of datasets with 8 traits, and reliably only with
+400 units and 16 traits. The default loading ridge (\code{select_lv()}'s
+\code{binary_ridge = 2}) is not the cause (removing it made recovery worse),
+and \code{criterion = "aic"} in \code{\link[=select_lv]{select_lv()}} does not fix it (it selects
+too many factors at larger sizes). For binary data, set \code{d} from
+subject knowledge or compare explicit fits, and read a selected rank as
+more likely too low than too high.
+
 \code{d = "auto"} is not supported on any other d-bearing covariance term
 (\code{phylo_latent()}, \code{spatial_latent()}, \code{animal_latent()}, \code{kernel_latent()},
 etc.) -- fit each rank explicitly and compare the fits with \code{AIC()}/
@@ -60,7 +69,7 @@ automatic \code{Psi} additionally requires that its physical loading,
 latent-predictor, and engine-free diagonal parameters pass a necessary
 joint mean-covariance dimension screen. Passing that screen is not a
 recovery or interval-calibration certificate. Bounded
-rank-2/rank-3 canaries exercise every registered family, but broad
+rank-2/rank-3 checks exercise every supported family, but broad
 composition recovery and interval calibration remain partial. Retained
 recovery and interval claims remain limited to their named cells.
 Source-specific \verb{*_latent(..., lv = ~ x)} forms are

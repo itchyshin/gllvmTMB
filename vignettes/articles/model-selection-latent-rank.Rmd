@@ -356,6 +356,15 @@ default-defensible starting point, not a replacement for looking at
 the candidate table and fit-health rows the way the rest of this
 article does by hand.
 
+One family needs a stronger warning. In the package's recovery
+simulation, `d = "auto"` found the true rank in at least 97% of
+datasets for Gaussian and Poisson data, and in at least 93% for
+negative-binomial data with 16 traits, but it is **not reliable for
+binary (0/1) data**: it usually picks too few factors unless both the
+number of units and the number of traits are large, and switching to
+`criterion = "aic"` does not fix this. For binary responses, set `d`
+from subject knowledge or compare explicit fits (see `?latent`).
+
 ## Interpret The Selected Model
 
 After choosing a rank, interpret invariant summaries first. `Sigma`,

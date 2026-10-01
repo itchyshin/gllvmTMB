@@ -1,8 +1,8 @@
 # Checkpoint — OVERWRITTEN every arc (a pointer to truth, not a log)
 
 - DONE: all six arcs. Kit move 3d6f2a406; design e68391469; scripts b25a6128b + 930213a58; pre-run d5bfb6204; ridge-off diagnostic 9b8c17564; recovery table + verdict b58d708b1; after-task + handover (this commit). 13,789 datasets; verdict in ../verdict.md.
-- IN PROGRESS: nothing. Totoro: 0 lane processes.
-- NEXT: Shinichi's decisions, listed in ../handover.md: (a) per-family criterion for d = "auto". Cut-off datasets (11 NB, 144 ridge-off): SKIPPED for now (Shinichi, 2026-09-30); id files stay on Totoro if wanted later. Totoro ~/autod-recovery: KEEP (Shinichi, 2026-09-30); do not delete without asking.
+- IN PROGRESS: nothing. Doc update done (04a14d674, Shinichi asked 2026-09-30 to document that d = "auto" is not reliable for binomial): ?latent, ?select_lv, model-selection article, register MS-05/MS-06. R/gllvmTMB.R + man/gllvmTMB.Rd edits are LEFT UNCOMMITTED in this worktree on purpose (release-lane files) and saved as proposed/gllvmTMB-docs.patch; NEWS.md text in proposed/NEWS-replacement.md. Do not commit or discard them without Shinichi.
+- NEXT: Shinichi decides whether the ?gllvmTMB and NEWS.md edits go in this PR or to the release lane. Otherwise the lane is complete. Cut-off datasets skipped; Totoro ~/autod-recovery kept (both Shinichi, 2026-09-30).
 - OPEN GATE: merge / any public claim about recovery (Shinichi). Pushed and opened as DRAFT itchyshin/gllvmTMB#1337 on 2026-09-30 at Shinichi's request, base claude/lane-auto-d-r-20260926 (diff = lane folder only; no CI fires).
 - WHERE TRUTH LIVES: branch claude/lane-auto-d-recovery (pushed; draft PR #1337) in ~/local-scratch/lanes/gllvmTMB-auto-d-recovery; docs/dev-log/lanes/auto-d-recovery/ (verdict.md, results/, design.md, prerun.md, ridgeoff.md, sim/, after-task.md, handover.md); raw RDS on Totoro ~/autod-recovery/.
 - RESUME: read docs/dev-log/lanes/auto-d-recovery/LOOP/GOAL.md → docs/dev-log/lanes/auto-d-recovery/LOOP/checkpoint.md → docs/dev-log/lanes/auto-d-recovery/handover.md, then act on Shinichi's decision.

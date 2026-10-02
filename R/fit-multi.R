@@ -460,6 +460,31 @@
   g
 }
 
+## #1330: zero-inflated count fits (zi_poisson / zi_nbinom2 / zi_binomial,
+## family ids 17-19) sometimes stop with a non-zero optimiser code at a
+## numerically absurd point (huge gradient or objective). Warn only; start
+## values, optimiser and results are unchanged. Healthy fits are silent.
+.gllvmTMB_warn_zi_nonconvergence <- function(health, family_id_vec) {
+  if (!any(as.integer(family_id_vec) %in% c(17L, 18L, 19L), na.rm = TRUE)) {
+    return(invisible(FALSE))
+  }
+  conv <- health$convergence
+  if (is.null(conv) || length(conv) != 1L || is.na(conv) || conv == 0L) {
+    return(invisible(FALSE))
+  }
+  obj <- health$objective
+  grad <- health$max_gradient
+  absurd <- !is.finite(obj) || abs(obj) > 1e8 ||
+    !is.finite(grad) || grad > 1e3
+  if (!absurd) return(invisible(FALSE))
+  cli::cli_warn(c(
+    "The zero-inflated fit did not converge (optimiser code {conv}, max |gradient| = {signif(grad, 3)}, objective = {signif(obj, 4)}).",
+    "i" = "Estimates and {.fn logLik} from this fit are not reliable.",
+    ">" = "Refit with {.code control = gllvmTMBcontrol(n_init = 5)} (several random starts), a different {.arg start_method}, or a smaller {.arg d}."
+  ), class = "gllvmTMB_zi_nonconvergence")
+  invisible(TRUE)
+}
+
 .gllvmTMB_objective_components <- function(obj, opt, aghq) {
   likelihood_nll <- tryCatch(
     as.numeric(obj$fn(opt$par)),
@@ -9700,6 +9725,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     fit$tmb_obj, fit$opt, fit$aghq
   )
   fit$fit_health <- .gllvmTMB_build_fit_health(fit)
+  .gllvmTMB_warn_zi_nonconvergence(fit$fit_health, family_id_vec)
   if (structured_rho_estimated) {
     structured_rho$value <- as.numeric(stats::plogis(fit$opt$par[names(fit$opt$par)=="eta_structured_rho"]))
     structured_rho$boundary <- structured_rho$value < 1e-4 || structured_rho$value > 1-1e-4

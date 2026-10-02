@@ -713,6 +713,24 @@ gllvm_julia_capabilities <- function() {
   )
 }
 
+# #1334: the Julia bridge fits ONE shared Gamma shape; engine = "tmb" fits a
+# per-trait shape. Warn (additive; results unchanged) when >1 Gamma traits.
+.gllvm_julia_warn_gamma_shared_shape <- function(fam, p) {
+  n_gamma <- if (length(fam) == 1L) {
+    if (identical(fam, "gamma")) p else 0L
+  } else {
+    sum(fam == "gamma")
+  }
+  if (n_gamma > 1L) {
+    cli::cli_warn(c(
+      "engine = 'julia' fits one shared Gamma shape for all {n_gamma} Gamma traits.",
+      "i" = "engine = 'tmb' fits a per-trait Gamma shape, so the two engines can differ substantially in logLik (155 units on {.code ape::carnivora}).",
+      ">" = "Use {.code engine = \"tmb\"} if traits have different coefficients of variation."
+    ), class = "gllvmTMB_julia_gamma_shared_shape")
+  }
+  invisible(n_gamma > 1L)
+}
+
 # Map one R family (a `family` object or a string) to the GLLVModels.jl bridge key.
 .gllvm_julia_family_scalar <- function(family) {
   if (inherits(family, "family")) {
@@ -2694,6 +2712,7 @@ gllvm_julia_fit <- function(
       N <- t(N)
     }
   }
+  .gllvm_julia_warn_gamma_shared_shape(fam, nrow(y))
   if (!is.null(mask)) {
     mask <- as.matrix(mask)
     if (isTRUE(units_are_rows)) {

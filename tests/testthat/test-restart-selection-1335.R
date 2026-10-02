@@ -41,16 +41,17 @@ doubs_student_long <- function() {
 test_that("#1335 default n_init = 1 fit is unchanged (parity pin)", {
   ## Pinned on origin/main (0cf373d55) before the #1335 fix. The default
   ## single-start path must not move: a Julia true-parity lane compares
-  ## against it.
+  ## against it. Before and after the fix the macOS value was byte-identical;
+  ## the 1e-6 tolerance only absorbs cross-platform BLAS differences.
   sim <- sim_restart_fit_data()
   fit <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
     value ~ 0 + trait + latent(0 + trait | site, d = 2) +
       unique(0 + trait | site),
     data = sim$data
   )))
-  expect_equal(fit$opt$objective, 665.09608921189783, tolerance = 1e-10)
+  expect_equal(fit$opt$objective, 665.09608921189783, tolerance = 1e-6)
   expect_equal(as.numeric(logLik(fit)), -665.09608921189783,
-               tolerance = 1e-10)
+               tolerance = 1e-6)
   expect_identical(nrow(fit$restart_history), 1L)
 })
 

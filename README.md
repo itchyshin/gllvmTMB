@@ -150,6 +150,24 @@ while compiling C++, install the usual R build tools for your
 platform: Rtools on Windows, Xcode Command Line Tools on macOS,
 or the R development toolchain on Linux.
 
+On Linux, installation also builds a spatial stack even if you never fit
+a spatial model: `gllvmTMB` imports `fmesher`, which imports `sf`, which
+needs `s2` and `units`. Building those from source needs system libraries
+(GDAL, GEOS, PROJ, SQLite, udunits2, and abseil plus cmake for `s2`), and
+installing them usually needs administrator rights. On Debian or Ubuntu:
+
+```sh
+sudo apt-get install libgdal-dev gdal-bin libgeos-dev libproj-dev \
+  libsqlite3-dev libudunits2-dev libabsl-dev cmake
+```
+
+Without administrator rights (for example on a cluster), install binary
+builds of `sf` and `fmesher` first, for example from
+[Posit Package Manager](https://packagemanager.posit.co) or
+[r-universe](https://r-universe.dev), then install `gllvmTMB`.
+If the failure names `s2`, `sf`, `units` or `fmesher`, the problem is
+this spatial stack, not the TMB toolchain.
+
 ## Data shapes: wide or long, one entry point
 
 One entry point handles both shapes. Start with wide data if that is
@@ -208,6 +226,13 @@ method. In brief:
   the evidence regime;
 - do not infer interval calibration from the availability of Wald, bootstrap,
   or profile bounds.
+
+Intervals cost more than the fit. `confint()` defaults to
+`method = "profile"`, which refits the model many times for every
+parameter it profiles, so on models with many traits or latent dimensions it
+can take far longer than the original fit. Start with `method = "wald"` (one
+Hessian, fast), profile only the parameters you will report through
+`parm`, and keep the profile run for the final model.
 
 `gllvmTMB` is for stacked-trait multivariate models. Use `glmmTMB` for a
 single-response GLMM, `sdmTMB` for a single-response spatial model, and

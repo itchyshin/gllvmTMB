@@ -10,7 +10,7 @@ cran_sentinels <- paste0(
   "^(cran-sentinels|release-core-sentinels|formula-grammar-smoke|",
   "traits-keyword|integration-tour|canonical-keywords|kernel-equivalence|",
   "animal-keyword|family-constructor-contract|family-gamma|family-lognormal|",
-  "cran-family-sentinels|missing-response-nongaussian|",
+  "cran-family-sentinels|cran-missing-data-sentinels|missing-response-nongaussian|",
   "unused-grouping-slots|sigma-rename|bootstrap-Sigma|bootstrap-lv-effects|",
   "spatial-latent-unique-fold|lv-missing-response|",
   "link-residual-15-family-fixture|extract-sigma|extractors|extractors-extra|",

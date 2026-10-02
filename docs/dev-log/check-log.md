@@ -55566,6 +55566,34 @@ R CMD check output from the frozen local candidate reports 10 seconds for exampl
 Searches: rg -n 'Starting [0-9]+ test processes|══ DONE|══ Failed|══ Warnings|FAIL|WARN|ERROR' on both paired logs; rg -n 'seconds|elapsed|timing|Running|vignette|examples' on the exact local 00check.log and 00install.out; no source-pattern sweep or release text edit was made. Deliberately not run: a new build, Win-builder upload, R-hub submission, or CRAN submission, because the timing gate is still unmet.
 
 
+### 2026-10-01: CRAN reader-path sentinels
+
+Added `tests/testthat/test-cran-missing-data-sentinels.R` and selected it from
+the CRAN `testthat.R` filter. The tests fit the two Gaussian workflows in the
+missing-data article and call `predict_missing()` for four masked response
+cells and `imputed()` for three modelled predictor values. They verify
+convergence, output shape, and finite reconstructions. They are execution
+sentinels, not recovery or calibration evidence. This closes Pat's identified
+gap in which the CRAN selection had not executed either reader-facing route.
+
+The focused command
+`Rscript --vanilla -e 'devtools::test(filter = "cran-missing-data-sentinels", reporter = "summary")'`
+exited 0 with 11 expectations passing. A broader local
+`NOT_CRAN=false TESTTHAT_CPUS=2 OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 Rscript --vanilla -e 'devtools::test(reporter = "summary")'`
+run exited 1 when `test-isdm-contract.R` could not open the absent
+`tests/testthat/_snaps/isdm-contract.md` in this historical worktree. It had
+already executed the new sentinel file successfully. This is not a CRAN-filter
+run: `devtools::test()` runs all source tests, while the CRAN selection is
+applied by `R CMD check` through `tests/testthat.R`.
+
+Searches: `rg -n 'cran-missing-data-sentinels|cran-family-sentinels|missing-data'`
+over `tests/testthat.R` and `tests/testthat`; `rg -n 'imputed\\(|predict_missing\\('
+over the test files. The exact tarball check and new Win-builder timing have not
+been run for these source bytes. The preceding frozen archive and all of its
+platform evidence are predecessor evidence only. Deliberately not run yet:
+another full-suite source test, external upload, or CRAN submission.
+
+
 ### 2026-10-02: bounded CRAN test suite and multinomial sentinel
 
 The maintainer approved a targeted CRAN-mode test selection. `tests/testthat.R` now retains the full suite when `NOT_CRAN=true` or under GitHub Actions, and otherwise selects the release core, public keyword and extractor routes, the admitted-family missing-response fits, and targeted 0.7.1 regression tests. Existing multinomial fit tests call `skip_on_cran()`, so `test-cran-family-sentinels.R` adds one small converged three-category fit and checks finite objective and parameters plus family id 16. It is path-execution coverage, not parameter-recovery evidence.

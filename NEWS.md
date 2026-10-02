@@ -20,6 +20,14 @@
   estimate, or logLik changes, and healthy fits are unaffected. #897
   (ordinal_probit degeneracy detector) is intentionally not extended; see #1097.
 
+* New warnings only (no behaviour change): zero-inflated fits (`zi_poisson()`,
+  `zi_nbinom2()`, `zi_binomial()`) that stop with a non-zero optimiser code at
+  an absurd point (max |gradient| > 1e3 or non-finite/huge objective) now warn
+  with a next step (`n_init`, `start_method`) (#1330); and
+  `engine = "julia"` warns when more than one Gamma trait is fitted, because
+  the Julia bridge uses one shared shape whereas `engine = "tmb"` fits a
+  per-trait shape (#1334).
+
 * Temporal is an experimental sixth covariance-source row. The new
   `temporal_indep()`, `temporal_dep()`, and rank-one `temporal_latent()`
   providers accept Gaussian long and `traits(...)` wide calls. AR1 retains

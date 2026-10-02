@@ -1,5 +1,33 @@
 # Development (unreleased)
 
+* Multi-start fits (`gllvmTMBcontrol(n_init > 1)`) now rank restarts by the
+  objective re-evaluated at each restart's returned parameters and return the
+  TMB state of the selected restart. Previously a restart could win on an
+  optimizer-reported value that `obj$fn(opt$par)` did not reproduce (a
+  near-singular inner Laplace Hessian, seen with `student()`), so the returned
+  fit could have a lower `logLik()` than the default single start (#1335).
+  `restart_history$message` notes when the two values differed. The default
+  `n_init = 1` path is unchanged.
+* When every restart fails, the error now lists each restart's objective,
+  convergence code and optimizer message, instead of only
+  "All N restarts failed." (#1333).
+
+* `check_gllvmTMB()` now reports a `premature_termination` FAIL row, and
+  `fit_health$converged` is `FALSE`, when the optimiser stops after at most two
+  iterations at a non-finite or astronomically large (> 1e12) objective. This
+  catches SPDE fits that returned `convergence == 0` after one iteration at
+  objective ~1e21 (#1167). Diagnostic only: no optimiser setting, start value,
+  estimate, or logLik changes, and healthy fits are unaffected. #897
+  (ordinal_probit degeneracy detector) is intentionally not extended; see #1097.
+
+* New warnings only (no behaviour change): zero-inflated fits (`zi_poisson()`,
+  `zi_nbinom2()`, `zi_binomial()`) that stop with a non-zero optimiser code at
+  an absurd point (max |gradient| > 1e3 or non-finite/huge objective) now warn
+  with a next step (`n_init`, `start_method`) (#1330); and
+  `engine = "julia"` warns when more than one Gamma trait is fitted, because
+  the Julia bridge uses one shared shape whereas `engine = "tmb"` fits a
+  per-trait shape (#1334).
+
 * Temporal is an experimental sixth covariance-source row. The new
   `temporal_indep()`, `temporal_dep()`, and rank-one `temporal_latent()`
   providers accept Gaussian long and `traits(...)` wide calls. AR1 retains

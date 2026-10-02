@@ -460,6 +460,31 @@
   g
 }
 
+## #1330: zero-inflated count fits (zi_poisson / zi_nbinom2 / zi_binomial,
+## family ids 17-19) sometimes stop with a non-zero optimiser code at a
+## numerically absurd point (huge gradient or objective). Warn only; start
+## values, optimiser and results are unchanged. Healthy fits are silent.
+.gllvmTMB_warn_zi_nonconvergence <- function(health, family_id_vec) {
+  if (!any(as.integer(family_id_vec) %in% c(17L, 18L, 19L), na.rm = TRUE)) {
+    return(invisible(FALSE))
+  }
+  conv <- health$convergence
+  if (is.null(conv) || length(conv) != 1L || is.na(conv) || conv == 0L) {
+    return(invisible(FALSE))
+  }
+  obj <- health$objective
+  grad <- health$max_gradient
+  absurd <- !is.finite(obj) || abs(obj) > 1e8 ||
+    !is.finite(grad) || grad > 1e3
+  if (!absurd) return(invisible(FALSE))
+  cli::cli_warn(c(
+    "The zero-inflated fit did not converge (optimiser code {conv}, max |gradient| = {signif(grad, 3)}, objective = {signif(obj, 4)}).",
+    "i" = "Estimates and {.fn logLik} from this fit are not reliable.",
+    ">" = "Refit with {.code control = gllvmTMBcontrol(n_init = 5)} (several random starts), a different {.arg start_method}, or a smaller {.arg d}."
+  ), class = "gllvmTMB_zi_nonconvergence")
+  invisible(TRUE)
+}
+
 .gllvmTMB_objective_components <- function(obj, opt, aghq) {
   likelihood_nll <- tryCatch(
     as.numeric(obj$fn(opt$par)),
@@ -7950,6 +7975,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## vectors (per Maeve McGillycuddy's recommendation), keep the best.
   best_opt <- NULL
   best_obj <- Inf
+  best_state <- NULL
   n_restarts <- max(1L, control$n_init)
   restart_history <- vector("list", n_restarts)
   for (i in seq_len(n_restarts)) {
@@ -7983,6 +8009,38 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     }
     objective_i <- .gllvmTMB_restart_objective(opt_i)
     success_i <- is.finite(objective_i)
+    ## #1335: with more than one restart, rank restarts by the objective
+    ## re-evaluated at each restart's returned parameters, not the value the
+    ## optimizer reported. When the inner (Laplace) Hessian is near-singular
+    ## at the returned point (seen with student()), the reported value
+    ## depends on where TMB's inner Newton solve happened to start and need
+    ## not be reproducible by `obj$fn(opt$par)`; selecting on it returned a
+    ## fit whose logLik was worse than restart 1. The TMB state the
+    ## re-evaluation started from is kept so the post-loop refresh at the
+    ## selected optimum repeats the same computation. Skipped for
+    ## n_init = 1 so the default single-start path is unchanged.
+    state_i <- NULL
+    reeval_note <- ""
+    if (n_restarts > 1L && success_i) {
+      state_i <- list(
+        last.par = obj$env$last.par,
+        last.par.best = obj$env$last.par.best,
+        value.best = obj$env$value.best
+      )
+      reevaluated_i <- .gllvmTMB_restart_reevaluate(
+        obj, opt_i$par, laplace_ridge_tau
+      )
+      if (!isTRUE(abs(reevaluated_i - objective_i) <= 1e-8 *
+                    max(1, abs(objective_i)))) {
+        reeval_note <- sprintf(
+          "optimizer reported objective %.6f; re-evaluated at the returned parameters as %.6f",
+          objective_i, reevaluated_i
+        )
+      }
+      objective_i <- reevaluated_i
+      opt_i$objective <- reevaluated_i
+      success_i <- is.finite(objective_i)
+    }
     if (isTRUE(control$verbose))
       cat(sprintf("  restart %d: -logLik = %.3f, conv = %s\n",
                   i, objective_i,
@@ -7995,7 +8053,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       jitter_sd = if (i == 1L) 0 else control$init_jitter,
       objective = objective_i,
       convergence = opt_i$convergence %||% NA_integer_,
-      message = opt_i$message %||% "",
+      message = paste(c(if (nzchar(opt_i$message %||% "")) opt_i$message,
+                        if (nzchar(reeval_note)) reeval_note),
+                      collapse = "; "),
       elapsed_s = elapsed_s,
       iterations = opt_i$iterations %||% NA_integer_,
       evaluations = opt_i$evaluations %||% NA_integer_,
@@ -8004,16 +8064,25 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     if (success_i && objective_i < best_obj) {
       best_obj <- objective_i
       best_opt <- opt_i
+      best_state <- state_i
     }
   }
   restart_history <- do.call(rbind, restart_history)
   if (is.null(best_opt))
-    cli::cli_abort("All {control$n_init} restarts failed.")
+    .gllvmTMB_abort_all_restarts_failed(restart_history)
   opt <- best_opt
   restart_history <- .gllvmTMB_select_restart_history(restart_history)
   start_provenance$selected_restart <- restart_history$restart[
     which(restart_history$selected)[1L]
   ]
+  ## #1335: hand TMB back the state the selected restart was re-evaluated
+  ## from, so every later `obj$fn(opt$par)` reproduces its objective rather
+  ## than starting the inner solve from another restart's random effects.
+  if (!is.null(best_state)) {
+    obj$env$last.par <- best_state$last.par
+    obj$env$last.par.best <- best_state$last.par.best
+    obj$env$value.best <- best_state$value.best
+  }
 
   ## ---- AGHQ outer adaptation loop (Stage 1a: the z_B block) ------------
   ## The Laplace fit above is the ADAPTATION source, not the answer: AGHQ is
@@ -9700,6 +9769,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     fit$tmb_obj, fit$opt, fit$aghq
   )
   fit$fit_health <- .gllvmTMB_build_fit_health(fit)
+  .gllvmTMB_warn_zi_nonconvergence(fit$fit_health, family_id_vec)
   if (structured_rho_estimated) {
     structured_rho$value <- as.numeric(stats::plogis(fit$opt$par[names(fit$opt$par)=="eta_structured_rho"]))
     structured_rho$boundary <- structured_rho$value < 1e-4 || structured_rho$value > 1-1e-4
@@ -11215,6 +11285,47 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     return(NA_real_)
   }
   as.numeric(objective)[[1L]]
+}
+
+## #1335: the restart objective at `par`, evaluated afresh. Adds the R-level
+## loading ridge exactly as `run_one()` does, so penalised restarts are still
+## ranked on the criterion they minimised.
+.gllvmTMB_restart_reevaluate <- function(obj, par, ridge_tau) {
+  value <- tryCatch(as.numeric(obj$fn(par))[1L], error = function(e) NA_real_)
+  if (is.finite(value) &&
+      .gllvmTMB_loading_ridge_applies(ridge_tau, names(obj$par))) {
+    li <- .gllvmTMB_ridge_block_index(names(obj$par))
+    if (length(li)) value <- value + 0.5 * sum(par[li]^2) / (ridge_tau^2)
+  }
+  value
+}
+
+## #1333: say why each restart failed instead of only that they all did.
+.gllvmTMB_abort_all_restarts_failed <- function(restart_history) {
+  escape <- function(x) gsub("}", "}}", gsub("{", "{{", x, fixed = TRUE),
+                             fixed = TRUE)
+  reasons <- vapply(seq_len(nrow(restart_history)), function(k) {
+    row <- restart_history[k, , drop = FALSE]
+    parts <- character()
+    ## An optimizer error leaves objective and code NA; its message says it.
+    if (!is.finite(row$objective) && !is.na(row$convergence)) {
+      parts <- c(parts, paste0("objective ", format(row$objective)))
+    }
+    if (!is.na(row$convergence)) {
+      parts <- c(parts, paste0("convergence code ", row$convergence))
+    }
+    if (nzchar(row$message)) parts <- c(parts, row$message)
+    if (!length(parts)) parts <- "no reason recorded"
+    paste0("Restart ", row$restart, " (", row$start_label, "): ",
+           paste(parts, collapse = "; "))
+  }, character(1))
+  n <- nrow(restart_history)
+  cli::cli_abort(c(
+    "All {n} restart{?s} failed.",
+    stats::setNames(escape(reasons), rep("x", length(reasons))),
+    "i" = "A non-finite objective usually means the start sits where the likelihood cannot be evaluated (for example near-separation in binary data, or too many latent dimensions for the data).",
+    ">" = "Try more restarts ({.code gllvmTMBcontrol(n_init = 5)}), a different {.arg start_method}, or a smaller {.arg d}."
+  ), class = "gllvmTMB_all_restarts_failed")
 }
 
 .gllvmTMB_select_restart_history <- function(restart_history) {

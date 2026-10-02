@@ -250,3 +250,198 @@ test_that("delta_gamma accessor converts the CV to shape/scale per the engine", 
   expect_equal(full$args$shape * full$args$scale, exp(eta)) # mean = mu
   expect_equal(1 / sqrt(full$args$shape), cv) # CV = phi
 })
+
+## ---- (d) #1149: remaining family_id branches --------------------------------
+## Each expectation is a hand computation from the documented engine
+## parameterisation in src/gllvmTMB.cpp (cited per test), not a copy of the
+## accessor output. Mock fits only; no TMB fit.
+
+mock_one <- function(fid, lid = 0L, report = list(), tmb_extra = list(), gen = NULL) {
+  traits <- data.frame(name = "x", family_id = fid, link_id = lid,
+                       stringsAsFactors = FALSE)
+  traits$gen <- list(gen %||% function(e) rep(1, length(e)))
+  fit <- make_mock_fit(traits, report = report)
+  fit$tmb_data[names(tmb_extra)] <- tmb_extra
+  fit
+}
+eta_toy <- c(-0.5, 0, 0.7)
+
+test_that("#1149 family_id 1 (binomial) prob = linkinv(eta) per link_id", {
+  for (lid in 0:2) {
+    fit <- mock_one(1L, lid)
+    a <- gllvmTMB:::.gllvmTMB_family_cdf_args(fit, 1, eta = eta_toy)
+    hand <- switch(as.character(lid),
+      "0" = 1 / (1 + exp(-eta_toy)),
+      "1" = stats::pnorm(eta_toy),
+      "2" = 1 - exp(-exp(eta_toy))
+    )
+    expect_identical(a$dist, "binom")
+    expect_equal(a$args$prob, hand, tolerance = 1e-12)
+    ## CDF reproduction with a toy size (row-level n_trials).
+    expect_equal(stats::pbinom(2, size = 5, prob = a$args$prob),
+                 stats::pbinom(2, size = 5, prob = hand))
+  }
+  ## No eta, or an unknown link: no prob.
+  expect_null(gllvmTMB:::.gllvmTMB_family_cdf_args(mock_one(1L, 0L), 1)$args$prob)
+  expect_null(gllvmTMB:::.gllvmTMB_family_cdf_args(mock_one(1L, 7L), 1,
+                                                    eta = eta_toy)$args$prob)
+})
+
+test_that("#1149 family_id 2 (poisson) lambda = exp(eta)", {
+  a <- gllvmTMB:::.gllvmTMB_family_cdf_args(mock_one(2L), 1, eta = eta_toy)
+  expect_identical(a$dist, "pois")
+  expect_equal(a$args$lambda, exp(eta_toy))
+  expect_equal(stats::ppois(3, a$args$lambda), stats::ppois(3, exp(eta_toy)))
+  expect_null(gllvmTMB:::.gllvmTMB_family_cdf_args(mock_one(2L), 1)$args$lambda)
+})
+
+test_that("#1149 family_id 5 (nbinom2) size = phi, mu = exp(eta)", {
+  ## cpp fid 5: log(var - mu) = 2 log(mu) - log(phi)  =>  var = mu + mu^2/phi,
+  ## which is R's nbinom(size = phi, mu).
+  phi <- 3.2
+  fit <- mock_one(5L, report = list(phi_nbinom2 = phi))
+  a <- gllvmTMB:::.gllvmTMB_family_cdf_args(fit, 1, eta = eta_toy)
+  expect_identical(a$dist, "nbinom")
+  expect_equal(a$args$size, phi)
+  expect_equal(a$args$mu, exp(eta_toy))
+  mu <- exp(eta_toy)
+  expect_equal(mu + mu^2 / a$args$size, mu + mu^2 / phi)
+  ## Gamma-Poisson mixture CDF by hand: pnbinom(y; size, mu) at y = 0 is
+  ## (size / (size + mu))^size.
+  expect_equal(stats::pnbinom(0, size = a$args$size, mu = a$args$mu),
+               (phi / (phi + mu))^phi, tolerance = 1e-12)
+})
+
+test_that("#1149 family_id 6 (tweedie) passes phi, power; mu = exp(eta)", {
+  fit <- mock_one(6L, report = list(phi_tweedie = 1.7, p_tweedie = 1.4))
+  a <- gllvmTMB:::.gllvmTMB_family_cdf_args(fit, 1, eta = eta_toy)
+  expect_true(is.na(a$dist))
+  expect_equal(a$args$phi, 1.7)
+  expect_equal(a$args$power, 1.4)
+  expect_equal(a$args$mu, exp(eta_toy))
+  expect_true(a$args$power > 1 && a$args$power < 2)
+  ## Compound Poisson-Gamma: P(y = 0) = exp(-mu^(2-p) / (phi * (2-p))).
+  mu <- a$args$mu
+  p0 <- exp(-mu^(2 - 1.4) / (1.7 * (2 - 1.4)))
+  expect_true(all(p0 > 0 & p0 < 1))
+  skip_if_not_installed("tweedie")
+  expect_equal(tweedie::ptweedie(0, mu = mu[1], phi = a$args$phi, power = a$args$power),
+               p0[1], tolerance = 1e-6)
+})
+
+test_that("#1149 family_id 7 (beta) mean-precision shapes", {
+  ## cpp fid 7: mu = invlogit(eta), a = mu * phi, b = (1 - mu) * phi.
+  phi <- 12
+  fit <- mock_one(7L, report = list(phi_beta = phi))
+  a <- gllvmTMB:::.gllvmTMB_family_cdf_args(fit, 1, eta = eta_toy)
+  mu <- 1 / (1 + exp(-eta_toy))
+  expect_identical(a$dist, "beta")
+  expect_equal(a$args$shape1, mu * phi)
+  expect_equal(a$args$shape2, (1 - mu) * phi)
+  expect_equal(a$args$shape1 + a$args$shape2, rep(phi, 3))
+  expect_equal(a$args$shape1 / (a$args$shape1 + a$args$shape2), mu)
+  expect_equal(stats::pbeta(0.4, a$args$shape1, a$args$shape2),
+               stats::pbeta(0.4, mu * phi, (1 - mu) * phi))
+  expect_length(gllvmTMB:::.gllvmTMB_family_cdf_args(fit, 1)$args, 0L)
+})
+
+test_that("#1149 family_id 8 (beta-binomial) Beta-mixing shapes", {
+  phi <- 4
+  fit <- mock_one(8L, report = list(phi_betabinom = phi))
+  a <- gllvmTMB:::.gllvmTMB_family_cdf_args(fit, 1, eta = eta_toy)
+  mu <- 1 / (1 + exp(-eta_toy))
+  expect_true(is.na(a$dist))
+  expect_equal(a$args$shape1, mu * phi)
+  expect_equal(a$args$shape2, (1 - mu) * phi)
+  ## Beta-binomial P(Y = 0 | N = 1) = E(1 - p) = b / (a + b) = 1 - mu.
+  expect_equal(a$args$shape2 / (a$args$shape1 + a$args$shape2), 1 - mu)
+})
+
+test_that("#1149 family_id 10 (zero-truncated poisson) untruncated lambda", {
+  a <- gllvmTMB:::.gllvmTMB_family_cdf_args(mock_one(10L), 1, eta = eta_toy)
+  expect_identical(a$dist, "pois")
+  expect_equal(a$args$lambda, exp(eta_toy))
+  ## Truncated CDF by hand: F(y) = (ppois(y) - e^-lambda) / (1 - e^-lambda).
+  lam <- a$args$lambda
+  p0 <- stats::ppois(0, lam)
+  expect_equal(p0, exp(-lam))
+  trunc_cdf <- (stats::ppois(2, lam) - p0) / (1 - p0)
+  expect_true(all(trunc_cdf > 0 & trunc_cdf <= 1))
+  expect_equal((stats::ppois(1, lam) - p0) / (1 - p0),
+               lam * exp(-lam) / (1 - exp(-lam)), tolerance = 1e-12)
+})
+
+test_that("#1149 family_id 12 (delta_lognormal) sdlog and meanlog = eta", {
+  fit <- mock_one(12L, report = list(sigma_lognormal_delta = 0.6))
+  a <- gllvmTMB:::.gllvmTMB_family_cdf_args(fit, 1, eta = eta_toy)
+  expect_identical(a$dist, "lnorm")
+  expect_equal(a$args$sdlog, 0.6)
+  expect_equal(a$args$meanlog, eta_toy)
+  ## cpp fid 12: log y | y > 0 ~ Normal(eta, sigma): plnorm(y) = pnorm(log y).
+  expect_equal(stats::plnorm(2, a$args$meanlog, a$args$sdlog),
+               stats::pnorm((log(2) - eta_toy) / 0.6), tolerance = 1e-12)
+  expect_match(a$note, "plogis")
+})
+
+ordinal_fit <- function(fid) {
+  ## Two traits: trait 1 has 2 extra cutpoints, trait 2 has 1 (K = 4 and 3).
+  traits <- data.frame(name = c("o1", "o2"), family_id = fid, link_id = 0L,
+                       stringsAsFactors = FALSE)
+  traits$gen <- list(function(e) rep(1, length(e)), function(e) rep(1, length(e)))
+  fit <- make_mock_fit(traits, report = list(ordinal_cutpoints = c(0.8, 1.9, 1.1)))
+  fit$tmb_data$n_ordinal_cuts_per_trait <- c(2L, 1L)
+  fit$tmb_data$ordinal_offset_per_trait <- c(0L, 2L)
+  fit
+}
+
+test_that("#1149 family_id 14 (ordinal_probit) cutpoints and pnorm(tau - eta)", {
+  fit <- ordinal_fit(14L)
+  a1 <- gllvmTMB:::.gllvmTMB_family_cdf_args(fit, 1, eta = eta_toy)
+  a2 <- gllvmTMB:::.gllvmTMB_family_cdf_args(fit, 2, eta = eta_toy)
+  ## tau_1 = 0 fixed; remaining cutpoints read per trait via the offsets.
+  expect_equal(a1$args$cutpoints, c(0, 0.8, 1.9))
+  expect_equal(a2$args$cutpoints, c(0, 1.1))
+  expect_equal(a1$args$mean, eta_toy)
+  expect_true(is.na(a1$dist))
+  ## P(y <= k) = pnorm(tau_k - eta); the K categories sum to one.
+  cdf <- outer(eta_toy, c(a1$args$cutpoints, Inf), function(e, tau) stats::pnorm(tau - e))
+  expect_equal(unname(cdf[, 1]), stats::pnorm(0 - eta_toy))
+  expect_equal(unname(cdf[, ncol(cdf)]), rep(1, 3))
+  expect_match(a1$note, "pnorm")
+})
+
+test_that("#1149 family_id 20 (ordinal_logit) same cutpoints, logistic CDF", {
+  fit <- ordinal_fit(20L)
+  a1 <- gllvmTMB:::.gllvmTMB_family_cdf_args(fit, 1, eta = eta_toy)
+  a2 <- gllvmTMB:::.gllvmTMB_family_cdf_args(fit, 2)
+  expect_equal(a1$args$cutpoints, c(0, 0.8, 1.9))
+  expect_equal(a2$args$cutpoints, c(0, 1.1))
+  expect_equal(a1$args$mean, eta_toy)
+  expect_null(a2$args$mean)
+  ## P(y <= 1) = plogis(0 - eta) = 1 / (1 + exp(eta)).
+  expect_equal(stats::plogis(a1$args$cutpoints[1] - a1$args$mean),
+               1 / (1 + exp(eta_toy)), tolerance = 1e-12)
+  expect_match(a1$note, "plogis")
+})
+
+test_that("#1149 family_id 15 (nbinom1) size = mu / phi, mu = exp(eta)", {
+  ## cpp fid 15: var - mu = phi * mu = mu^2 / size  =>  size = mu / phi.
+  phi <- 0.8
+  fit <- mock_one(15L, report = list(phi_nbinom1 = phi))
+  a <- gllvmTMB:::.gllvmTMB_family_cdf_args(fit, 1, eta = eta_toy)
+  mu <- exp(eta_toy)
+  expect_identical(a$dist, "nbinom")
+  expect_equal(a$args$mu, mu)
+  expect_equal(a$args$size, mu / phi)
+  expect_equal(mu + mu^2 / a$args$size, mu * (1 + phi))
+  expect_equal(stats::pnbinom(0, size = a$args$size, mu = a$args$mu),
+               (1 / (1 + phi))^(mu / phi), tolerance = 1e-12)
+  ## Without eta the size is mean-dependent and withheld.
+  expect_length(gllvmTMB:::.gllvmTMB_family_cdf_args(fit, 1)$args, 0L)
+})
+
+test_that("#1149 unsupported family_id falls through with a note", {
+  a <- gllvmTMB:::.gllvmTMB_family_cdf_args(mock_one(16L), 1, eta = eta_toy)
+  expect_length(a$args, 0L)
+  expect_match(a$note, "No scalar CDF conversion")
+})

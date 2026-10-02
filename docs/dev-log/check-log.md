@@ -55518,3 +55518,62 @@ that separate change. The development-identity branch changes DESCRIPTION's
 title, version, and description; those changes remain outside this bounded
 release. The CRAN lane lease now covers the two repaired test files. The
 preflight's `graft` command and graph index are absent from this checkout.
+
+
+### 2026-10-02: current 0.7.1 archive identity and fresh Windows timing
+
+Revalidated the frozen candidate at clean source commit `16137e617008d176fa262b6f676076fad798ec20`. Independent tar inspection returned SHA-256 `980847c245e910c2b221489e370c5f7d8756f46a4295d967e600f85d5e56f114`, 4,423,185 bytes, 886 entries, and zero paths matching the forbidden-path scan. The worktree was clean at that verification.
+
+Inspected the new Win-builder R-release result directory `https://win-builder.r-project.org/g5sjZMzq87XR/` (files timestamped 2026-10-02 01:31–01:32 UTC) and the corresponding mail/result records. The report identifies gllvmTMB 0.7.1; the email reports installation 303 seconds, check 1,013 seconds, and one NOTE. The linked test output reports 9,241 PASS, 1,714 SKIP, 0 FAIL, 1 reporter warning, and 558.95 seconds elapsed. The warning detail has not been explained. The result is correlated to this upload by time, package/version, filename and size; no SHA-256 is supplied by Win-builder, so it is not cryptographically bound. The full check remains 413 seconds above the 600-second project gate. R-devel result `https://win-builder.r-project.org/67d86VU83fss/` reports 1,065 seconds and one NOTE, with the same hash-binding limitation.
+
+The exact-source GitHub Actions run #2978 (`https://github.com/itchyshin/gllvmTMB/actions/runs/36938951173`) completed successfully on commit `16137e617008d176fa262b6f676076fad798ec20`, 3/3 OS jobs. This does not supersede the slower Win-builder incoming result. Fresh reviews on the same tarball: Rose READY for claims, Pat READY for reader path, Grace rights READY but overall NOT READY because of timing. No fresh R-hub result is available; its upload attempt stopped because the local authentication token is not configured.
+
+The executable unlazy status still reports G7, G9, G10, and G11 unmet. G3 is now also open because `cran-comments.md` still reports the predecessor 1,207-second result and scratch hash `b1480dcb...`; refresh it only after the timing/source decision. The exact current tarball and source were not changed. No source tests were edited, no full suite was rerun, no new Win-builder/R-hub upload was made, and no CRAN submission was made.
+
+Commands and patterns used: `git status --porcelain`, `git rev-parse HEAD`, `python3` tar/hash/inventory scan, `shasum -a 256`, `stat -f %z`, `/Users/z3437171/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node /Users/z3437171/.codex/skills/unlazy/scripts/gate-check.mjs --status .unlazy/cran-071-resubmission/GATES.md`, and `rg -n 'skip_on_cran|GLLVMTMB_CRAN07'` over the current release test files. Graft queries covered the VA R3 dense/blocked Schur test and current CRAN skip patterns. Exact Win-builder test search: `PASS|FAIL|WARN|SKIP`; check log search: `Status:|NOTE|WARNING|ERROR`. Deliberately not run: another whole test suite, upload, or CRAN resubmission, because the 600-second timing gate remains unmet and no source change was made. The ChatGPT Chrome extension setting required for local file uploads remains user-side; the browser security policy blocks changing extension settings from this session.
+
+
+### 2026-10-02: measured CRAN-only skip pool is too small for the timing gate
+
+Grace reviewed the 167-case local slow-reporter profile (263.67 host-local seconds; profile file SHA-256 `f9d9f8d09c22be9f81ae0e2408b35a1374d023d2448289be004e40e266740b42`). The profile directory has no manifest tying it to the frozen archive SHA, so it supports triage only. The largest defensible additional CRAN-only deferral set found so far is about 23.13 profile seconds: internal MSPL fork-B diagnostics, planned Beta-MSPL fits/curvature, out-of-scope joint-SDM and random-slope examples, a redundant long/wide rank comparison, and one extra SPDE plus fixed-rank combination. Retain the VA Schur-complement and AGHQ oracles, MSPL Cauchy-Binet and point-estimate tests, public refusal boundaries, and the remaining 0.7.1 feature sentinels.
+
+The frozen archive's Win-builder R-release check remains 1,013 seconds against the 600-second project gate; this targeted pool is not enough to account for the 413-second overrun. No test source or tarball was changed, and no new Win-builder or CRAN submission was made. Further progress needs either a substantially wider CRAN-only sentinel suite or runtime work outside this narrow skip pool. A maintainer choice is pending.
+
+Patterns used: `\[[0-9.]+s\] test-` in `testthat-slow-reporter.txt`; case names and suite times were deduplicated by test file and description. Deliberately not run: another external upload, because the current evidence does not show the exact Windows timing gate passing.
+
+
+### 2026-10-02: timing boundary and CRAN-mode profile
+
+Refreshed the official CRAN Repository Policy at https://cran.r-project.org/web/packages/policies.html. The source-package section sets no numeric check-time limit. It says checks should use as little CPU time as possible, that long-running tests and vignette code may be optional if the remaining checks exercise all package features, and that a package must not use more than two cores at once. The project release protocol describes the roughly 10-minute Windows timing boundary as an observed incoming signal, not immutable CRAN policy. Keep the 600-second gate as the conservative release criterion recorded for this resubmission; do not describe it as a numeric CRAN rule.
+
+Current frozen-candidate evidence remains unchanged: SHA-256 980847c245e910c2b221489e370c5f7d8756f46a4295d967e600f85d5e56f114; Win-builder R-release check 1,013 seconds, test phase 558.95 seconds, installation 303 seconds, and one New submission NOTE. Its test output has 9,241 PASS, 1,714 SKIP, zero FAIL, and one unexplained reporter warning. This evidence exceeds the release gate but is upload-correlated rather than cryptographically bound to the tarball.
+
+Deduplicating the preceding local slow-reporter profile gives 167 timed cases and 263.67 seconds; its slowest timed case is the internal VA R3 dense Schur-complement oracle at 24.26 seconds. The CRAN-mode start-first scratch run reached DONE with no FAIL or WARN header, but its metadata differed from the frozen archive and the run was not a paired timing benchmark. It does not show that test ordering clears the Windows gate. The current DESCRIPTION already enables testthat parallel execution. No source, configuration, or tarball change was made.
+
+The maintainer choice between broad CRAN sentinels with further runtime work and a smaller CRAN-only sentinel suite is pending. Deliberately not run: a new build, platform upload, R-hub submission, or CRAN submission while this choice and timing gate remain open.
+
+Commands and searches: lane preflight on the release worktree; gh pr list --state open (network failure); git log --all --oneline --since='6 hours ago' and the same history query scoped to the release log and test files; graft ask for VA R3 compile behavior and testthat start-first scheduling; rg -n "Config/testthat|parallel|start-first" DESCRIPTION; rg -n "\.va_r3_(fit|load_dll)|sourceCpp|compile\(" tests/testthat/test-va-r3-prototype.R; Python parsing of tests-junit.xml and the slow-reporter output. No stale-wording sweep was run because no user-facing release text changed.
+
+
+### 2026-10-02: matched test-order timing comparison
+
+Ran the complete CRAN-mode test suite twice from separate extractions of the frozen archive (SHA-256 980847c245e910c2b221489e370c5f7d8756f46a4295d967e600f85d5e56f114), with R 4.6.0, testthat 3.3.2, two test processes, and identical thread settings. Baseline without start-first metadata exited 0 in 292.15 seconds. The second extraction added only Config/testthat/start-first for the ten slowest files and exited 0 in 282.86 seconds. Both logs reached DONE. Ordering saved 9.29 seconds (3.18 percent) on this Mac. The comparison is local feasibility evidence; it does not establish a Windows time, and the saving is too small to clear the 413-second check-time excess. No package source, DESCRIPTION, or tarball was changed.
+
+The exact commands used in both trees were:
+NOT_CRAN=false TESTTHAT_CPUS=2 OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 Rscript --vanilla -e 'devtools::test(reporter = "summary")'
+R CMD check output from the frozen local candidate reports 10 seconds for examples and 170 seconds for tests, with package vignettes OK; this does not account for the upload-correlated Windows check time. The Win-builder directories are visible, but direct access to 00check.log, testthat.Rout, and gllvmTMB-Ex.timings is blocked in the browser with ERR_BLOCKED_BY_CLIENT, and the web reader cannot fetch those file URLs. G7 therefore remains open until the required external log review is completed.
+
+Searches: rg -n 'Starting [0-9]+ test processes|══ DONE|══ Failed|══ Warnings|FAIL|WARN|ERROR' on both paired logs; rg -n 'seconds|elapsed|timing|Running|vignette|examples' on the exact local 00check.log and 00install.out; no source-pattern sweep or release text edit was made. Deliberately not run: a new build, Win-builder upload, R-hub submission, or CRAN submission, because the timing gate is still unmet.
+
+
+### 2026-10-02: bounded CRAN test suite and multinomial sentinel
+
+The maintainer approved a targeted CRAN-mode test selection. `tests/testthat.R` now retains the full suite when `NOT_CRAN=true` or under GitHub Actions, and otherwise selects the release core, public keyword and extractor routes, the admitted-family missing-response fits, and targeted 0.7.1 regression tests. Existing multinomial fit tests call `skip_on_cran()`, so `test-cran-family-sentinels.R` adds one small converged three-category fit and checks finite objective and parameters plus family id 16. It is path-execution coverage, not parameter-recovery evidence.
+
+On the release worktree, the selected test files passed with 552 PASS, 10 SKIP, 0 FAIL, and 0 WARN (exit 0). Exact command: `NOT_CRAN=false OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 Rscript --vanilla -e 'devtools::test(filter = "release-core-sentinels|cran-family-sentinels|missing-response-nongaussian|unused-grouping-slots|sigma-rename|bootstrap-Sigma|bootstrap-lv-effects|spatial-latent-unique-fold|lv-missing-response")'`. The complete local suite also exited 0 in the scratch feasibility tree; that run is not exact-archive evidence.
+
+The latest R-release Win-builder result is the 2y10cf run: 1,044 seconds total, 293 seconds installation, 577 seconds in tests, one `New submission` NOTE, and 9,241 PASS / 1,714 SKIP / 0 FAIL / 0 WARN in its test report. This corrects the earlier GATES/check-log description of run g5sjZMzq87XR and its supposed reporter warning. The new result is not bound to the forthcoming source or tarball hash. The 600-second project timing gate remains unproven for a fresh bounded-suite artifact. No tarball has been rebuilt or uploaded to Win-builder or CRAN yet.
+
+Deliberately not run yet: package build/check, platform matrix, R-hub, pkgdown or URL checks, and CRAN upload; they follow the clean-source commit and exact-tarball freeze. The public docs and installed code are unchanged.
+
+Search/command evidence: `gh pr list --state open` failed because `api.github.com` was unreachable; `git log --all --name-only --since='6 hours ago'` found only the earlier release-core commit among the owned test files; `rg -n 'skip_on_cran|test_that'` confirmed the multinomial fit tests skip on CRAN and the admitted-family missing-response file has no CRAN skips. `rg -n 'NOT_CRAN|GITHUB_ACTIONS|testthat' .github/workflows/R-CMD-check.yaml .github/workflows/full-check.yaml` confirmed the full CI path sets `NOT_CRAN=true`. The repository's lane-preflight script and graft index are absent in this historical checkout.

@@ -1,5 +1,17 @@
 # Development (unreleased)
 
+* Multi-start fits (`gllvmTMBcontrol(n_init > 1)`) now rank restarts by the
+  objective re-evaluated at each restart's returned parameters and return the
+  TMB state of the selected restart. Previously a restart could win on an
+  optimizer-reported value that `obj$fn(opt$par)` did not reproduce (a
+  near-singular inner Laplace Hessian, seen with `student()`), so the returned
+  fit could have a lower `logLik()` than the default single start (#1335).
+  `restart_history$message` notes when the two values differed. The default
+  `n_init = 1` path is unchanged.
+* When every restart fails, the error now lists each restart's objective,
+  convergence code and optimizer message, instead of only
+  "All N restarts failed." (#1333).
+
 * Temporal is an experimental sixth covariance-source row. The new
   `temporal_indep()`, `temporal_dep()`, and rank-one `temporal_latent()`
   providers accept Gaussian long and `traits(...)` wide calls. AR1 retains

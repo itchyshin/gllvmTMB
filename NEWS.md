@@ -1,5 +1,13 @@
 # Development (unreleased)
 
+* `check_gllvmTMB()` now reports a `premature_termination` FAIL row, and
+  `fit_health$converged` is `FALSE`, when the optimiser stops after at most two
+  iterations at a non-finite or astronomically large (> 1e12) objective. This
+  catches SPDE fits that returned `convergence == 0` after one iteration at
+  objective ~1e21 (#1167). Diagnostic only: no optimiser setting, start value,
+  estimate, or logLik changes, and healthy fits are unaffected. #897
+  (ordinal_probit degeneracy detector) is intentionally not extended; see #1097.
+
 * Temporal is an experimental sixth covariance-source row. The new
   `temporal_indep()`, `temporal_dep()`, and rank-one `temporal_latent()`
   providers accept Gaussian long and `traits(...)` wide calls. AR1 retains

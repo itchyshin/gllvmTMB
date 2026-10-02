@@ -73,8 +73,16 @@
   )
   stationary_by_gradient <- isTRUE(max_grad_val < .gllvmTMB_converged_gtol)
   optimizer_converged <- isTRUE(identical(object$opt$convergence, 0L))
+  ## #1167: an SPDE fit can exit nlminb with code 0 after ONE iteration at an
+  ## objective of ~1e21 with every spatial parameter still at its start. No
+  ## genuine fit takes <= 2 iterations to an absurd or non-finite objective,
+  ## so flag it and refuse to call it converged. Healthy fits are untouched.
+  n_iter <- suppressWarnings(as.numeric(object$opt$iterations %||% NA_real_))
+  premature_termination <- length(n_iter) == 1L && is.finite(n_iter) &&
+    n_iter <= 2 && (!is.finite(obj_val) || abs(obj_val) > 1e12)
   converged <- isTRUE(
-    optimizer_converged && is.finite(obj_val) && stationary_by_gradient
+    optimizer_converged && is.finite(obj_val) && stationary_by_gradient &&
+      !premature_termination
   )
 
   list(
@@ -95,6 +103,7 @@
     stationary_by_gradient = stationary_by_gradient,
     optimizer_converged = optimizer_converged,
     converged = converged,
+    premature_termination = premature_termination,
     pd_hessian = if (
       !is.null(object$sd_report) &&
         !is.null(object$sd_report$pdHess)
@@ -1708,6 +1717,17 @@ check_gllvmTMB <- function(
       }
     )
   )
+
+  if (isTRUE(health$premature_termination)) {
+    rows <- c(rows, list(.gllvmTMB_check_row(
+      "premature_termination",
+      "FAIL",
+      signif(health$objective, 4),
+      "> 2 iterations at a finite, plausible objective",
+      "optimizer stopped after <= 2 iterations at a non-finite or astronomically large objective; the reported convergence code is not trustworthy",
+      "treat the fit as failed; rescale the response/offset or try different starts"
+    )))
+  }
 
   restart_history <- object$restart_history %||% data.frame()
   rows <- c(

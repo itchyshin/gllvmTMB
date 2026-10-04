@@ -1534,9 +1534,9 @@ gllvmTMB <- function(
     ## M1 6/7 labeled collapses plus 7/7 fully out-of-sample, M2 8/8 rails,
     ## M3 3/3 spatial range collapses, zero false positives across the
     ## informative healthy pool. The ORDINAL row is deliberately NOT wired
-    ## here: its arms ship disarmed because no threshold met the frozen
-    ## targets (dev/ordinal-degeneracy/pass-criteria-ordinal.md), so it has
-    ## nothing to warn about and would only add a silent no-op call.
+    ## here: its absolute arm (default 30, #897) misses about a quarter of
+    ## degenerate fits and has no fit-time warning decision behind it, so it
+    ## reports through check_gllvmTMB() only.
     .mn <- tryCatch(
       .gllvmTMB_multinomial_degeneracy_row(.fit),
       error = function(e) NULL
@@ -2149,9 +2149,8 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #'   [gllvmTMB_diagnose()]. The same switch also governs the multinomial contrast-degeneracy warning (collapsed contrast
 #'   variance, rail-correlated contrasts, or a collapsed spatial range), which
 #'   uses its own once-per-session slot so neither family's warning can
-#'   suppress the other's. Ordinal fits emit no fit-time warning: that row's
-#'   arms ship disarmed because no threshold met its calibration targets, so
-#'   it reports statistics through [check_gllvmTMB()] only.
+#'   suppress the other's. Ordinal fits emit no fit-time warning: the
+#'   `ordinal_probit()` loading screen reports through [check_gllvmTMB()] only.
 #' @param aghq_continuation If `TRUE` (default), the adaptation loop may raise
 #'   `aghq_iter_cap` across passes. `FALSE` pins the cap and disables escalation.
 #' @param aghq_shift_tol,aghq_grad_tol,aghq_f_tol Convergence tolerances for the

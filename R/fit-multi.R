@@ -3408,6 +3408,21 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## otherwise misinterpret a valid uncensored y = 0, censored = 0 row as
   ## "zero trials" and abort).
   if (is.matrix(y_raw) && ncol(y_raw) == 2L) {
+    ## #1369: cbind(succ, fail) already supplies n_trials. The weights_i
+    ## block below then forces binomial / beta-binomial rows to 1, so a
+    ## user `weights` argument is accepted and silently ignored. Honoring
+    ## those weights as likelihood multipliers would change the fitted
+    ## likelihood; refuse the combination instead of fitting the
+    ## unweighted model.
+    cbind_binom_rows <- family_id_vec %in% c(1L, 8L) & !cens_rows
+    if (!is.null(weights) && any(cbind_binom_rows)) {
+      cli::cli_abort(c(
+        "{.arg weights} is not used when the binomial response is {.code cbind(successes, failures)}.",
+        "x" = "Trial counts already come from the two-column response. Applying {.arg weights} as a likelihood multiplier would change the fitted likelihood.",
+        "i" = "Without {.code cbind()}, {.arg weights} is the per-row binomial trial count.",
+        ">" = "Drop {.arg weights}, or use a single-column success response with {.arg weights} as the trial count."
+      ), class = "gllvmTMB_cbind_binomial_weights_unsupported")
+    }
     succ <- as.numeric(y_raw[, 1L])
     fail <- as.numeric(y_raw[, 2L])
     if (any(cens_rows)) {

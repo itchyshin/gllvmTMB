@@ -9,9 +9,9 @@ extract_ICC_site(fit, link_residual = c("auto", "none"))
 \arguments{
 \item{fit}{A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}.}
 
-\item{link_residual}{For binomial fits: \code{"auto"} (default) adds the
-link-specific implicit residual to \eqn{(\boldsymbol\Sigma_W)_{tt}};
-\code{"none"} returns ICC on the latent/Psi-implied scale only.}
+\item{link_residual}{For non-Gaussian fits: \code{"auto"} (default) adds each
+trait's family/link implicit residual to \eqn{(\boldsymbol\Sigma_W)_{tt}};
+\code{"none"} omits those additions.}
 }
 \value{
 Numeric vector indexed by trait, or \code{NULL} if either Sigma_B or
@@ -28,9 +28,10 @@ includes \eqn{\boldsymbol\Psi} by default; if either level uses
 \code{latent(..., unique = FALSE)}, the corresponding advisory message
 fires and the ICC is computed against the no-Psi diagonal.
 
-For binomial fits the implicit link residual is included in the
-within-unit variance by default (matching the marginal latent-scale
-ICC convention); set \code{link_residual = "none"} to suppress.
+For non-Gaussian fits the per-trait link-implicit residual is included
+in the within-unit variance by default when \code{link_residual = "auto"}
+(see \code{\link[=extract_Sigma]{extract_Sigma()}}); set
+\code{link_residual = "none"} for the latent/Psi-implied scale only.
 }
 \seealso{
 \code{\link[=extract_proportions]{extract_proportions()}} for the canonical per-trait variance

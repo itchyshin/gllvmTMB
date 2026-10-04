@@ -83,14 +83,15 @@ extract_Sigma_W <- function(fit) {
 #' `latent(..., unique = FALSE)`, the corresponding advisory message
 #' fires and the ICC is computed against the no-Psi diagonal.
 #'
-#' For binomial fits the implicit link residual is included in the
-#' within-unit variance by default (matching the marginal latent-scale
-#' ICC convention); set `link_residual = "none"` to suppress.
+#' For non-Gaussian fits the per-trait link-implicit residual is included
+#' in the within-unit variance by default when `link_residual = "auto"`
+#' (see [extract_Sigma()]); set
+#' `link_residual = "none"` for the latent/Psi-implied scale only.
 #'
 #' @inheritParams extract_Sigma_B
-#' @param link_residual For binomial fits: `"auto"` (default) adds the
-#'   link-specific implicit residual to \eqn{(\boldsymbol\Sigma_W)_{tt}};
-#'   `"none"` returns ICC on the latent/Psi-implied scale only.
+#' @param link_residual For non-Gaussian fits: `"auto"` (default) adds each
+#'   trait's family/link implicit residual to \eqn{(\boldsymbol\Sigma_W)_{tt}};
+#'   `"none"` omits those additions.
 #' @return Numeric vector indexed by trait, or `NULL` if either Sigma_B or
 #'   Sigma_W is unavailable.
 #' @seealso [extract_proportions()] for the canonical per-trait variance
@@ -153,9 +154,10 @@ extract_ICC_site <- function(fit, link_residual = c("auto", "none")) {
 #' meaningful communalities, use ordinary `latent()` with the default
 #' `unique = TRUE`.
 #'
-#' For binomial fits the link-specific implicit residual (\eqn{\pi^2/3}
-#' for logit, 1 for probit, \eqn{\pi^2/6} for cloglog) is added to the
-#' denominator by default; pass `link_residual = "none"` to suppress.
+#' For non-Gaussian fits the per-trait link-implicit residual (e.g.
+#' \eqn{\pi^2/3} for binomial logit, \eqn{\log(1 + 1/\hat\mu)} for Poisson
+#' log) is added to the denominator by default when `link_residual = "auto"`;
+#' pass `link_residual = "none"` to suppress (see [extract_Sigma()]).
 #'
 #' @param fit A fit returned by [gllvmTMB()]. A [bootstrap_Sigma()] result is
 #'   also accepted when it contains `communality` summaries; in that case the
@@ -164,10 +166,10 @@ extract_ICC_site <- function(fit, link_residual = c("auto", "none")) {
 #' @param level `"unit"` (between-unit), `"unit_obs"` (within-unit), or
 #'   `"phy"` (phylogenetic tier). Legacy aliases `"B"` and `"W"` are accepted
 #'   with a deprecation warning.
-#' @param link_residual For binomial fits: `"auto"` (default) adds the
-#'   link-specific implicit residual to the denominator; `"none"` returns
-#'   communalities on the fitted model covariance scale without link-residual
-#'   additions.
+#' @param link_residual For non-Gaussian fits: `"auto"` (default) adds each
+#'   trait's family/link implicit residual to the denominator; `"none"`
+#'   returns communalities on the fitted model covariance scale without
+#'   link-residual additions.
 #' @param ci Logical. When `TRUE`, returns a tidy data frame with
 #'   confidence-interval columns; when `FALSE` (the default), returns a
 #'   plain named numeric vector for backward compatibility.

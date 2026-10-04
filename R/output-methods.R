@@ -496,12 +496,11 @@ ordiplot.gllvmTMB_multi <- function(
 #' Variance partition by source
 #'
 #' Decomposes the marginal trait variance into contributions from each
-#' active component of the model: between-unit shared (`latent_B`),
-#' between-unit unique (`unique_B`), within-unit shared (`latent_W`),
-#' within-unit unique (`unique_W`), phylogenetic (`phylo_scalar` /
-#' `phylo_latent`), non-phylogenetic species, spatial (`spatial`), and
-#' Gaussian/lognormal observation residual where present. Non-Gaussian
-#' link-implicit residual shares are handled by [extract_proportions()].
+#' active component of the model. Column names follow the fitted report
+#' blocks: `rr_B`, `diag_B`, `rr_W`, `diag_W`, `diag_species`, `phylo_rr`,
+#' `phylo_diag`, `propto`, and `residual` (Gaussian/lognormal observation
+#' variance where present). Non-Gaussian link-implicit residual shares are
+#' handled by [extract_proportions()], not by `VP()`.
 #'
 #' Mirrors `gllvm::VP()` / `gllvm::plotVP()`.
 #'
@@ -514,8 +513,8 @@ ordiplot.gllvmTMB_multi <- function(
 #'   sum to 1). Columns are only those active in `fit$use`.
 #'
 #' @seealso [extract_proportions()] for the canonical per-trait
-#'   variance-share decomposition with explicit B / W / phy / link-residual
-#'   columns.
+#'   variance-share decomposition (`shared_unit`, `unique_unit_obs`, phy
+#'   tiers, link-residual, etc.).
 #' @keywords internal
 #' @export
 VP <- function(fit) {

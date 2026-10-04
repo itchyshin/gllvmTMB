@@ -97,7 +97,8 @@ generalized linear mixed-effects models revisited and expanded.
 \seealso{
 \code{\link[=extract_Omega]{extract_Omega()}} (returns \code{residual_split} as a list component
 when \code{link_residual = "auto"}); \code{\link[=extract_Sigma]{extract_Sigma()}}; \code{\link[=extract_proportions]{extract_proportions()}}
-(the \code{unique_W} component in its output is \eqn{\sigma^2_e} and the
-\code{link_residual} component is \eqn{\sigma^2_d} for OLRE-style fits).
+(\code{unique_unit_obs} carries \eqn{\sigma^2_e} and \code{link_residual} carries
+\eqn{\sigma^2_d} for OLRE-style fits; legacy \code{unique_W} labels are not
+used).
 }
 \keyword{internal}

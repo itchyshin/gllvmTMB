@@ -202,6 +202,22 @@ gllvmTMB_wide <- function(
     if (nrow(X) != n_sites) {
       cli::cli_abort("X must have nrow(X) == nrow(Y).")
     }
+    .wide_long_reserved_cols <- c(
+      "site", "species", "value", "trait", "site_species"
+    )
+    colliding_x_cols <- intersect(names(X), .wide_long_reserved_cols)
+    if (length(colliding_x_cols) > 0L) {
+      cli::cli_abort(c(
+        paste0(
+          "{.arg X} cannot use column names reserved by the ",
+          "wide-to-long pivot: {.field {colliding_x_cols}}."
+        ),
+        "i" = paste0(
+          "Rename the covariate(s) in {.arg X} ",
+          "(for example {.code z} instead of {.code value})."
+        )
+      ))
+    }
     X$site <- factor(rownames(Y), levels = rownames(Y))
     x_match <- match(long_df$site, X$site)
     x_cols <- setdiff(names(X), "site")

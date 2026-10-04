@@ -85,6 +85,9 @@ df_long <- sim$data
 The long-format call is the canonical interface: one row per
 `(unit, trait)` observation, with the `trait` and `unit` columns named
 explicitly.
+The first ordinary `latent()` fit in an R session prints a one-time warning
+that `latent()` includes per-trait Psi by default; that message is expected
+here.
 
 ```{r fit-long}
 fit <- gllvmTMB(

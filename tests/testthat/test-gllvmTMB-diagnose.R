@@ -96,3 +96,43 @@ test_that("non-fit input errors gracefully", {
     regexp = "fit returned by `gllvmTMB\\(\\)`"
   )
 })
+
+## Issue #1401: boundary and near-zero psi WARN rows from check_gllvmTMB() must
+## surface in diagnose hints and block the unconditional healthy message.
+test_that("gllvmTMB_diagnose respects check_gllvmTMB boundary and psi WARN rows (#1401)", {
+  set.seed(2028)
+  sim <- simulate_site_trait(
+    n_sites = 40,
+    n_species = 10,
+    n_traits = 3,
+    mean_species_per_site = 4,
+    Lambda_B = matrix(c(0.8, 0.5, -0.2, 0.2, -0.4, 0.6), nrow = 3, ncol = 2),
+    psi_B = c(0.3, 0.3, 0.3),
+    seed = 2028
+  )
+  cnst <- matrix(NA_real_, 3, 2)
+  diag(cnst) <- 1
+  fit <- suppressMessages(suppressWarnings(gllvmTMB(
+    value ~ 0 + trait + latent(0 + trait | site, d = 2, unique = FALSE),
+    data = sim$data,
+    lambda_constraint = list(unit = cnst)
+  )))
+  fit$report$sd_B[1L] <- 1e-8
+  fit$fit_health <- NULL
+
+  chk <- check_gllvmTMB(fit, psi_thresh = 1e-4, sigma_eps_thresh = 1e-4)
+  expect_equal(chk$status[chk$component == "near_zero_psi_unit"], "WARN")
+  expect_true(any(chk$component == "boundary_flags" & chk$status == "WARN"))
+
+  res <- suppressMessages(gllvmTMB_diagnose(fit, verbose = FALSE))
+  expect_true(length(res$hints) > 0)
+  expect_true(
+    any(grepl("near-boundary|psi|variance component", res$hints, ignore.case = TRUE))
+  )
+
+  msgs <- capture.output(
+    suppressMessages(gllvmTMB_diagnose(fit, verbose = TRUE)),
+    type = "message"
+  )
+  expect_false(any(grepl("Fit looks healthy", msgs, fixed = TRUE)))
+})

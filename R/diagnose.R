@@ -2326,6 +2326,33 @@ gllvmTMB_diagnose <- function(
     )
   }
 
+  chk <- check_gllvmTMB(
+    object,
+    gradient_thresh = gradient_thresh,
+    se_thresh = se_thresh
+  )
+  chk_warn <- chk[
+    chk$status == "WARN" &
+      (chk$component == "boundary_flags" |
+        grepl("^near_zero_psi_", chk$component)),
+    ,
+    drop = FALSE
+  ]
+  if (nrow(chk_warn) > 0L) {
+    for (i in seq_len(nrow(chk_warn))) {
+      row <- chk_warn[i, , drop = FALSE]
+      detail <- if (identical(row$component[[1L]], "boundary_flags")) {
+        paste0(" (", row$value[[1L]], ")")
+      } else {
+        ""
+      }
+      hints <- c(
+        hints,
+        paste0(row$message[[1L]], detail, " ", row$action[[1L]])
+      )
+    }
+  }
+
   if (verbose) {
     cli::cli_h2("4. Suggested next steps")
     if (length(hints) == 0) {

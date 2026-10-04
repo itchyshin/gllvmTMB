@@ -45,6 +45,7 @@ update.gllvmTMB_multi <- function(object, ..., evaluate = TRUE) {
 #' @param object A fitted `gllvmTMB` object.
 #' @param ... Not used.
 #' @return An error is always thrown.
+#' @importFrom stats sigma
 #' @export
 sigma.gllvmTMB_multi <- function(object, ...) {
   cli::cli_abort(c(

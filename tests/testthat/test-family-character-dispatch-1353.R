@@ -1,5 +1,5 @@
 ## #1353: character family = "gaussian" (and other constructor names) must
-## resolve via match.fun(), not call an undefined f().
+## resolve via package-namespace constructors, not call an undefined f().
 
 .mk_long_gaussian <- function(n = 40L, p = 4L, seed = 1L) {
   set.seed(seed)
@@ -35,6 +35,26 @@ test_that("#1353 unknown character family names error clearly", {
   expect_s3_class(err, "error")
   expect_match(conditionMessage(err), "Unsupported family")
   expect_false(grepl('could not find function "f"', conditionMessage(err), fixed = TRUE))
+})
+
+.expect_unsupported_char_family <- function(family_name) {
+  d <- .mk_long_gaussian()
+  fm <- value ~ 0 + trait + indep(1 | unit)
+  err <- tryCatch(
+    suppressMessages(gllvmTMB(
+      fm, data = d, unit = "unit", trait = "trait", family = family_name,
+      control = gllvmTMBcontrol(n_init = 1L, se = FALSE)
+    )),
+    error = function(e) e
+  )
+  expect_s3_class(err, "error")
+  expect_match(conditionMessage(err), "Unsupported family")
+  expect_false(grepl('could not find function "f"', conditionMessage(err), fixed = TRUE))
+}
+
+test_that("#1353 non-constructor names on the search path are rejected", {
+  .expect_unsupported_char_family("mean")
+  .expect_unsupported_char_family("ls")
 })
 
 test_that("#1353 character family strings reach gllvmTMB_multi_fit dispatch", {

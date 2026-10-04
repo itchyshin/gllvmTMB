@@ -1239,7 +1239,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   family_to_id <- function(f) {
     ## Allow "delta_lognormal" / "delta_gamma" as character shortcuts to
     ## the constructors in R/families.R. Other single character strings
-    ## name a family constructor resolved via match.fun().
+    ## name a function in this package namespace only (never the search path).
     if (is.character(f) && length(f) == 1L) {
       f <- switch(
         f,
@@ -1247,14 +1247,37 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         delta_gamma     = delta_gamma(),
         {
           nm <- f
-          fn <- tryCatch(match.fun(nm), error = function(e) NULL)
+          pkg_env <- asNamespace("gllvmTMB")
+          imp_env <- parent.env(pkg_env)
+          fn <- NULL
+          for (env in list(pkg_env, imp_env)) {
+            if (exists(nm, envir = env, mode = "function", inherits = FALSE)) {
+              fn <- get(nm, envir = env, mode = "function", inherits = FALSE)
+              break
+            }
+          }
+          ## poisson() is a stats family constructor but is not importFrom()'d
+          ## into NAMESPACE (unlike gaussian/binomial/Gamma).
+          if (is.null(fn) && identical(nm, "poisson") &&
+              exists("poisson", envir = asNamespace("stats"), mode = "function",
+                     inherits = FALSE)) {
+            fn <- get("poisson", envir = asNamespace("stats"), mode = "function",
+                      inherits = FALSE)
+          }
           if (is.null(fn)) {
             cli::cli_abort(c(
               "Unsupported family: {.val {nm}}.",
               ">" = "Use a family object like {.code gaussian()} or a character name that matches a family constructor."
             ))
           }
-          fn()
+          f <- fn()
+          if (!inherits(f, "family")) {
+            cli::cli_abort(c(
+              "Unsupported family: {.val {nm}}.",
+              ">" = "Use a family object like {.code gaussian()} or a character name that matches a family constructor."
+            ))
+          }
+          f
         }
       )
     } else if (is.function(f) && !inherits(f, "family")) {

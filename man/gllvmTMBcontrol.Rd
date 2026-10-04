@@ -40,13 +40,14 @@ gllvmTMBcontrol(
 )
 }
 \arguments{
-\item{d_B, d_W}{Latent dimensions for the between-unit and within-unit
-reduced-rank components. Set to a positive integer to enable
-\code{latent()} / \code{indep()} covariance structures at the corresponding tier.}
+\item{d_B, d_W}{\strong{Not read by the fitter.} Retained in the control list for
+backward compatibility only. Set latent rank in the formula with
+\code{latent(..., d = K)} (or the \code{d} argument on the keyword helper), not
+here.}
 
-\item{spde_mode}{\code{"per_trait"} (default) fits one independent SPDE field
-per trait when a \code{spatial()} term is present; \code{"shared"} fits one shared
-SPDE field with trait-specific scalar loadings.}
+\item{spde_mode}{\strong{Not read by the fitter.} Retained for backward
+compatibility only. Spatial field sharing is determined by the
+\verb{spatial_*()} formula keyword, not by this control argument.}
 
 \item{n_init}{Number of random-start replicates. Reduced-rank GLLVMs
 are often multimodal because the latent-factor likelihood has many

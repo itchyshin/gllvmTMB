@@ -45,6 +45,9 @@ extract_latent_scores <- function(x, level = c("unit", "unit_obs")) {
 
 #' @export
 extract_latent_scores.gllvmTMB_multi <- function(x, level = c("unit", "unit_obs")) {
+  if (length(level) > 1L) {
+    level <- match.arg(level)
+  }
   level <- match.arg(level, c("unit", "unit_obs", "B", "W"))
   ord <- extract_ordination(x, level = level, component = "innovation")
   if (is.null(ord)) {
@@ -60,6 +63,9 @@ extract_latent_scores.gllvmTMB_va <- function(x, level = c("unit", "unit_obs")) 
 
 #' @export
 extract_latent_scores.gllvmTMB_site_trait_sim <- function(x, level = c("unit", "unit_obs")) {
+  if (length(level) > 1L) {
+    level <- match.arg(level)
+  }
   level <- match.arg(level, c("unit", "unit_obs", "B", "W"))
   level <- .normalise_level(level, arg_name = "level")
   z <- if (level == "B") x$truth$z_B else x$truth$z_W

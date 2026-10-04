@@ -120,3 +120,15 @@ test_that("extract_latent_scores() errors clearly on unsupported objects", {
     "No method for"
   )
 })
+
+test_that("extract_latent_scores() default level resolves to unit (#1404)", {
+  sim <- simulate_site_trait(
+    n_sites = 20, n_species = 6, n_traits = 4, mean_species_per_site = 4,
+    Lambda_B = matrix(c(0.9, 0.6, -0.4, 0.5), nrow = 4, ncol = 1),
+    seed = 1
+  )
+  z_default <- extract_latent_scores(sim)
+  z_unit <- extract_latent_scores(sim, level = "unit")
+  expect_equal(z_default, z_unit)
+  expect_identical(z_default, sim$truth$z_B)
+})

@@ -140,6 +140,39 @@ test_that("W-level constraint pins Lambda_W diagonals", {
   expect_equal(L_W[1, 1], 1, tolerance = 1e-8)
 })
 
+test_that("lambda_constraint for an absent tier errors with a clear message (#1374)", {
+  set.seed(11)
+  n <- 60
+  nt <- 4
+  L <- matrix(c(1, 0.8, 0.5, 0.3, 0, 0.6, -0.4, 0.5), nt, 2)
+  Z <- matrix(rnorm(n * 2), n, 2)
+  Y <- Z %*% t(L) + matrix(rnorm(n * nt, sd = 0.5), n, nt)
+  d <- data.frame(
+    unit = factor(rep(seq_len(n), each = nt)),
+    trait = factor(rep(paste0("t", seq_len(nt)), n)),
+    value = as.vector(t(Y))
+  )
+  fit_args <- list(
+    formula = value ~ 0 + trait + latent(0 + trait | unit, d = 2),
+    data = d,
+    unit = "unit",
+    trait = "trait",
+    family = gaussian()
+  )
+  expect_error(
+    do.call(gllvmTMB, c(fit_args, list(
+      lambda_constraint = list(unit_obs = matrix(NA_real_, nt, 1))
+    ))),
+    "lambda_constraint\\$unit_obs"
+  )
+  expect_error(
+    do.call(gllvmTMB, c(fit_args, list(
+      lambda_constraint = list(phy = matrix(0, nt, 1))
+    ))),
+    "lambda_constraint\\$phy"
+  )
+})
+
 test_that("simultaneous B and W constraints both pin", {
   sim <- make_sim()
   cnst_B <- matrix(NA_real_, nrow = 4, ncol = 2); diag(cnst_B) <- 1

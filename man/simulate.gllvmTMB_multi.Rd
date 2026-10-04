@@ -16,7 +16,8 @@
 \arguments{
 \item{object}{A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}.}
 
-\item{nsim}{Number of replicate response vectors to draw. Default 1.}
+\item{nsim}{Number of replicate response vectors to draw. Must be a
+single positive integer. Default 1.}
 
 \item{seed}{Optional RNG seed.}
 

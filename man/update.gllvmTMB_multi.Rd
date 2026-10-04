@@ -20,4 +20,7 @@ The refitted model, or the reconstructed call if \code{evaluate = FALSE}.
 Replays the public long- or wide-format call saved for a
 \code{\link[=temporal_latent]{temporal_latent()}} fit. Private pair identifiers are rebuilt from the
 supplied data and are never reused as public input.
+Ordinary (non-temporal) fits do not store a public call, so
+\code{update()} refuses them rather than forwarding to
+\code{\link[stats:update.default]{stats::update.default()}}.
 }

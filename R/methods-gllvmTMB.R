@@ -5,6 +5,9 @@
 #' Replays the public long- or wide-format call saved for a
 #' [temporal_latent()] fit. Private pair identifiers are rebuilt from the
 #' supplied data and are never reused as public input.
+#' Ordinary (non-temporal) fits do not store a public call, so
+#' `update()` refuses them rather than forwarding to
+#' [stats::update.default()].
 #'
 #' @param object A fitted `gllvmTMB_multi` temporal model.
 #' @param ... Named arguments to replace in the saved public call.
@@ -13,7 +16,10 @@
 #' @export
 update.gllvmTMB_multi <- function(object, ..., evaluate = TRUE) {
   if (!isTRUE(object$temporal$active)) {
-    return(stats::update.default(object, ..., evaluate = evaluate))
+    cli::cli_abort(c(
+      "{.fn update} is only supported for temporal latent fits.",
+      ">" = "Refit from the original formula and data."
+    ))
   }
   call <- object$call_wide %||% object$call
   if (is.null(call) || !is.call(call)) {
@@ -1470,7 +1476,8 @@ tidy.gllvmTMB_multi <- function(
 #'   components produce an error instead of a conditional fallback. This
 #'   supports simulation; automatic covariance bootstrap refits are not yet
 #'   supported for these fits.
-#' @param nsim Number of replicate response vectors to draw. Default 1.
+#' @param nsim Number of replicate response vectors to draw. Must be a
+#'   single positive integer. Default 1.
 #' @param seed Optional RNG seed.
 #' @param newdata Optional new data frame; if supplied, predictions are
 #'   computed at `newdata` and noise is drawn around them. The newdata
@@ -1528,6 +1535,19 @@ simulate.gllvmTMB_multi <- function(
   condition_on_RE = FALSE,
   ...
 ) {
+  nsim_value <- suppressWarnings(as.numeric(nsim))
+  if (
+    length(nsim) != 1L ||
+      length(nsim_value) != 1L ||
+      is.na(nsim_value) ||
+      !is.finite(nsim_value) ||
+      nsim_value < 1L ||
+      nsim_value != floor(nsim_value)
+  ) {
+    cli::cli_abort("{.arg nsim} must be a single positive integer.")
+  }
+  nsim <- as.integer(nsim_value)
+
   if (!is.null(seed)) {
     set.seed(seed)
   }

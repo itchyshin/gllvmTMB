@@ -300,8 +300,9 @@
 #'   `unit_obs` (plus `phy`, `spde` for structural levels), each an
 #'   `n_traits × d` matrix of confirmatory loading constraints
 #'   (galamm-style). `NA` entries are estimated; numerical entries are
-#'   pinned. Upper-triangle entries are silently ignored — the engine's
-#'   lower-triangular parameterisation already fixes those at zero.
+#'   pinned. Upper-triangle zeros are already structural zeros and are
+#'   accepted. A non-zero upper-triangle pin is an error — the engine's
+#'   lower-triangular parameterisation has no packed slot for it.
 #'   Default `NULL` uses the engine's exploratory lower-triangular
 #'   convention. See [confirmatory_lambda()] to build the matrix from
 #'   functional-group membership, or [suggest_lambda_constraint()] for a

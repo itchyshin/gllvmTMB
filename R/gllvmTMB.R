@@ -114,10 +114,10 @@
 #'   systematic mapping. Required — every dataset has its own natural
 #'   sampling-unit column, and [gllvmTMB()] aborts naming `unit = ...` if
 #'   it is omitted and `data` has no `"site"` column to fall back to.
-#'   For one release, omitting `unit` when `data` DOES have a `"site"`
-#'   column still works via a deprecated implicit fallback (a one-time
-#'   warning); pass `unit = "site"` explicitly to silence it. The implicit
-#'   fallback is removed in 0.8.0.
+#'   Omitting `unit` when `data` has a `"site"` column still works via a
+#'   deprecated implicit fallback (a one-time warning); pass
+#'   `unit = "site"` explicitly to silence it. The fallback remains for
+#'   now; a future release will require `unit`.
 #' @param unit_obs Optional. Name of the column holding the **within-unit**
 #'   grouping factor — one level per (unit, replicate) cell — used by
 #'   `latent(0 + trait | unit_obs, ...)` and
@@ -2450,7 +2450,7 @@ gllvmTMBcontrol <- function(
 ## resolves when `data` has a literal "site" column, with a one-time
 ## deprecation warning shared across all four entry points (one
 ## `getOption()` key); the abort fires only when that fallback column
-## does not exist. The implicit fallback is removed in 0.8.0 (NEWS).
+## does not exist. A future release will require explicit `unit` (NEWS).
 ##
 ## Returns the resolved `unit` string, or aborts naming `{.arg unit}`.
 .gllvmTMB_resolve_unit_staged <- function(unit, data) {
@@ -2466,7 +2466,7 @@ gllvmTMBcontrol <- function(
       cli::cli_warn(
         c(
           "!" = "Relying on the implicit {.code unit = \"site\"} default is deprecated.",
-          "i" = "Pass {.arg unit = \"site\"} explicitly; the implicit default is removed in 0.8.0."
+          "i" = "Pass {.arg unit = \"site\"} explicitly; the implicit fallback still applies for now but will be removed in a future release."
         ),
         class = "lifecycle_warning_deprecated"
       )

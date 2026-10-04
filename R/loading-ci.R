@@ -150,7 +150,7 @@ loading_ci <- function(fit,
     )
   }
 
-  level  <- match.arg(level)
+  level  <- match.arg(level, c("unit", "unit_obs", "B", "W"))
   method <- match.arg(method)
   if (is.null(loading_scale)) {
     loading_scale <- if (identical(method, "wald_asym")) {

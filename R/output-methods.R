@@ -437,16 +437,19 @@ ordiplot.gllvmTMB_multi <- function(
   xs <- scores[, axes[1L]]
   ys <- scores[, axes[2L]]
 
-  graphics::plot(
-    xs,
-    ys,
-    xlab = paste0("LV", axes[1L]),
-    ylab = paste0("LV", axes[2L]),
-    pch = 19,
-    col = "grey40",
-    asp = 1,
-    ...
+  plot_args <- utils::modifyList(
+    list(
+      x = xs,
+      y = ys,
+      xlab = paste0("LV", axes[1L]),
+      ylab = paste0("LV", axes[2L]),
+      pch = 19,
+      col = "grey40",
+      asp = 1
+    ),
+    list(...)
   )
+  do.call(graphics::plot, plot_args)
   graphics::abline(h = 0, v = 0, lty = 2, col = "grey80")
 
   if (isTRUE(ellipse)) {

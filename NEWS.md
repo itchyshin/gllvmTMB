@@ -1614,14 +1614,12 @@ bridge remains experimental and is not required for the main workflow.
 
 ## Changed
 
-* **The default number of bootstrap replicates is now 999, raised from 200.**
-  `bootstrap_Sigma()` is the only exported function whose signature changes.
-  The same raise was applied to the internal bootstrap paths behind
-  `extract_lv_effects()`, `extract_communality()`, `extract_repeatability()`,
-  the loading intervals, and the phylogenetic-signal intervals, so every
-  bootstrap interval in the package now uses one replicate count — those
-  extractors take longer and return slightly different bounds without any
-  change to their own arguments. **Calls that relied on the old default return
+* **`bootstrap_Sigma()` default `n_boot` is now 999, raised from 200.**
+  That is the only exported function whose bootstrap argument default changed.
+  Exported extractor and `confint()` routes that call it with
+  `method = "bootstrap"` still default to **`nsim = 500`** unless you pass
+  `nsim` or call `bootstrap_Sigma()` yourself with a different `n_boot`.
+  **Direct `bootstrap_Sigma()` calls that relied on the old default return
   slightly different interval bounds and take roughly five times longer.** Pass
   `n_boot = 200` to `bootstrap_Sigma()` to restore the previous behaviour; for
   exploratory work that remains a reasonable time-for-precision trade.
@@ -1638,7 +1636,7 @@ bridge remains experimental and is not required for the main workflow.
   `(1 - conf) / 2 * (B + 1)` is a whole number at `conf = 0.95`, letting the
   bounds land on order statistics instead of being interpolated between them.
 
-  `bootstrap_Sigma()` refuses an `n_boot` below the arithmetic floor, warns
+  `bootstrap_Sigma()` **warns** when `n_boot` is below the arithmetic floor or
   below the default, and returns `$coverage_ceiling` so a simulation campaign
   can assert `coverage_ceiling >= conf` on its own configuration before trusting
   its own numbers. The guard and its tests are covered; bootstrap interval
@@ -1688,8 +1686,8 @@ bridge remains experimental and is not required for the main workflow.
 * Standardized loading inference now uses the model-implied total variance,
   `rho[t,k] = Lambda[t,k] / sqrt(Sigma_total[t,t])`, rather than an entrywise
   loading-plus-scalar approximation. `loading_ci(method = "wald_asym")`,
-  `suggest_lambda_constraint(method = "wald_retention")`, and
-  `suggest_lambda_constraint(method = "varimax_threshold")` now account for
+  `suggest_lambda_constraint(convention = "wald_retention")`, and
+  `suggest_lambda_constraint(convention = "varimax_threshold")` now account for
   every latent axis in the trait denominator; the Wald routes propagate the
   full joint fixed-parameter covariance, including fitted variance components
   and parameter-dependent link residuals. Loading CI, flagging, plotting,
@@ -1981,5 +1979,24 @@ bridge remains experimental and is not required for the main workflow.
 
 Earlier development release establishing the stacked-trait R/TMB engine, the
 long-format API, initial covariance keywords, simulation helpers, and extractor
-infrastructure. See the later release sections above for subsequent syntax
-and scope changes.
+infrastructure.
+
+## Changed
+
+* **Ordinary `latent()` now includes a per-trait `Psi` by default**
+  (`Sigma = Lambda Lambda^T + Psi`). Earlier builds fit loadings-only
+  (`Lambda Lambda^T`). Pass `latent(..., unique = FALSE)` for the old
+  rotation-invariant loadings-only subset.
+* **The `residual` argument on `latent()` was renamed to `unique`.**
+  `residual` remains a soft-deprecated alias.
+* **`unique()` and source-specific `*_unique()` are soft-deprecated**
+  compatibility syntax. For standalone marginal diagonal tiers use `indep()` /
+  `*_indep()`; ordinary `latent()` now carries `Psi` by default.
+* **The scalar keyword family** (`scalar()`, `phylo_scalar()`, and related
+  `*_scalar()` helpers) is soft-deprecated. Use `indep(..., common = TRUE)` /
+  `*_indep(..., common = TRUE)`, which fits the same one-shared-variance model.
+* **`gllvmTMB_wide()` is soft-deprecated.** New wide-data examples use
+  `gllvmTMB()` with the `traits(...)` LHS marker.
+* **`meta_known_V()` is a deprecated alias of `meta_V()`.**
+
+See the later release sections above for subsequent syntax and scope changes.

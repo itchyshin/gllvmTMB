@@ -1526,24 +1526,7 @@ gllvmTMB <- function(
   ##
   ## Scoped to binomial because that is the family the 12,000 fits measured.
   if (!identical(control$warn_runaway, FALSE)) {
-    .rw <- tryCatch(
-      .gllvmTMB_binomial_prevalence_loading_row(.fit),
-      error = function(e) NULL
-    )
-    if (!is.null(.rw) && identical(as.character(.rw$status), "WARN")) {
-      ## Surface the check's OWN message/action verbatim rather than writing a
-      ## second copy here. Two reasons: the wording is already reviewed and shipped
-      ## via `gllvmTMB_diagnose()`, and a second copy would drift from the first the
-      ## moment either is edited.
-      cli::cli_warn(c(
-        "This fit shows a runaway trait loading; {.emph treat it as unusable until checked}.",
-        "*" = "{as.character(.rw$value)}",
-        "i" = "{as.character(.rw$message)}",
-        ">" = "{as.character(.rw$action)}",
-        ">" = "Full check: {.run gllvmTMB_diagnose(fit)}. Silence this with \\
-               {.code gllvmTMBcontrol(warn_runaway = FALSE)}."
-      ), .frequency = "once", .frequency_id = "gllvmTMB-loading-runaway")
-    }
+    .gllvmTMB_warn_runaway_loading(.fit)
 
     ## Multinomial contrast degeneracy (fid 16), same control, same
     ## once-per-session discipline, but its OWN frequency id so one family's
@@ -1571,6 +1554,68 @@ gllvmTMB <- function(
     }
   }
   .fit
+}
+
+## Fit-time runaway-loading warning (binomial). Factored out of `gllvmTMB()` so
+## the warning can be exercised on a recorded fit without refitting.
+##
+## ONCE PER FIT SIGNATURE, NOT ONCE PER SESSION (#1367). The first version used
+## one session-wide frequency id, so after any fit tripped the warning every
+## later runaway fit in the same R session was silent -- including a probit d = 1
+## fit with a loading column norm of 1.6e4 that followed a probit d = 2 fit. On
+## the vegan::sipoo data the three fits (probit d = 2, probit d = 1, logit d = 2)
+## ran in one session gave warnings 1, 0, 0 while `check_gllvmTMB()` flagged all
+## three. The id now carries a hash of what makes a fit a different problem (the
+## response, the family/link ids, and the shape of each loading matrix), so a
+## re-fit of the same data and model (n_init loops, the same script run twice)
+## stays quiet and a different dataset or model warns again. Silence everything
+## with `gllvmTMBcontrol(warn_runaway = FALSE)`.
+.gllvmTMB_runaway_signature <- function(fit) {
+  tmb <- fit$tmb_data
+  shapes <- lapply(
+    tryCatch(.gllvmTMB_latent_specs(fit), error = function(e) list()),
+    function(spec) c(spec$level, dim(spec$matrix))
+  )
+  rlang::hash(list(
+    tmb$y, tmb$family_id_vec, tmb$link_id_vec, tmb$trait_id, shapes
+  ))
+}
+
+## Ids this session has emitted, so a test (or a user who wants the warning
+## again) can reset them: rlang has no "reset everything with this prefix".
+.gllvmTMB_runaway_ids <- new.env(parent = emptyenv())
+
+.gllvmTMB_reset_runaway_warnings <- function() {
+  for (id in ls(.gllvmTMB_runaway_ids)) {
+    rlang::reset_warning_verbosity(id)
+  }
+  rm(list = ls(.gllvmTMB_runaway_ids), envir = .gllvmTMB_runaway_ids)
+  invisible(NULL)
+}
+
+.gllvmTMB_warn_runaway_loading <- function(fit) {
+  rw <- tryCatch(
+    .gllvmTMB_binomial_prevalence_loading_row(fit),
+    error = function(e) NULL
+  )
+  if (is.null(rw) || !identical(as.character(rw$status), "WARN")) {
+    return(invisible(FALSE))
+  }
+  ## Surface the check's OWN message/action verbatim rather than writing a
+  ## second copy here. Two reasons: the wording is already reviewed and shipped
+  ## via `gllvmTMB_diagnose()`, and a second copy would drift from the first the
+  ## moment either is edited.
+  id <- paste0("gllvmTMB-loading-runaway:", .gllvmTMB_runaway_signature(fit))
+  assign(id, TRUE, envir = .gllvmTMB_runaway_ids)
+  cli::cli_warn(c(
+    "This fit shows a runaway trait loading; {.emph treat it as unusable until checked}.",
+    "*" = "{as.character(rw$value)}",
+    "i" = "{as.character(rw$message)}",
+    ">" = "{as.character(rw$action)}",
+    ">" = "Full check: {.run gllvmTMB_diagnose(fit)}. Silence this with \\
+           {.code gllvmTMBcontrol(warn_runaway = FALSE)}."
+  ), .frequency = "once", .frequency_id = id)
+  invisible(TRUE)
 }
 
 ## Multinomial (baseline-category logit) response expansion (Design 83).
@@ -2094,11 +2139,14 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #'   historical unpenalised Laplace fits. Supply at most one of
 #'   `loading_ridge` and `aghq_ridge`; neither may be combined with
 #'   `estimator = "mspl"`.
-#' @param warn_runaway If `TRUE` (default), warn once per session when a
-#'   binomial latent-variable fit triggers the package's existing runaway-loading
-#'   diagnostic. Set `FALSE` to silence the fit-time warning; the diagnostic
-#'   remains available through [gllvmTMB_diagnose()]. The same switch also
-#'   governs the multinomial contrast-degeneracy warning (collapsed contrast
+#' @param warn_runaway If `TRUE` (default), warn when a binomial
+#'   latent-variable fit triggers the package's existing runaway-loading
+#'   diagnostic. The warning is shown once per session for each distinct
+#'   dataset and model (response, family and link, and loading-matrix shape), so
+#'   a second, different runaway fit in the same session still warns while a
+#'   re-fit of the same data and model does not. Set `FALSE` to silence the
+#'   fit-time warning; the diagnostic remains available through
+#'   [gllvmTMB_diagnose()]. The same switch also governs the multinomial contrast-degeneracy warning (collapsed contrast
 #'   variance, rail-correlated contrasts, or a collapsed spatial range), which
 #'   uses its own once-per-session slot so neither family's warning can
 #'   suppress the other's. Ordinal fits emit no fit-time warning: that row's

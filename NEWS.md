@@ -1,5 +1,15 @@
 # Development (unreleased)
 
+* The fit-time runaway-loading warning for binomial fits is now shown once per
+  session for each distinct dataset and model, not once per session. Before,
+  the first runaway fit used up the warning and every later one in the same R
+  session was silent: on `vegan::sipoo`, a probit `d = 2`, a probit `d = 1`
+  (loading column norm 3.6e4) and a logit `d = 2` fit run in one session gave
+  1, 0 and 0 warnings, while `check_gllvmTMB()` flagged all three. A re-fit of
+  the same data and model stays quiet. The detector, its thresholds, the
+  likelihood and the optimizer are unchanged; `gllvmTMBcontrol(warn_runaway =
+  FALSE)` still silences it. Only runs of many different runaway datasets in
+  one session will see more warnings than before (#1367).
 * Multi-start fits (`gllvmTMBcontrol(n_init > 1)`) now rank restarts by the
   objective re-evaluated at each restart's returned parameters and return the
   TMB state of the selected restart. Previously a restart could win on an

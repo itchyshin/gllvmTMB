@@ -53,6 +53,9 @@
 #' round(V, 3)
 #' @export
 block_V <- function(study_id, sampling_var, rho_within = 0.5) {
+  if (anyNA(study_id)) {
+    cli::cli_abort("{.arg study_id} must not contain NA.")
+  }
   if (!is.factor(study_id)) {
     study_id <- factor(study_id)
   }
@@ -62,8 +65,14 @@ block_V <- function(study_id, sampling_var, rho_within = 0.5) {
       "length(sampling_var) must equal length(study_id) (got {length(sampling_var)} vs {n})."
     )
   }
+  if (anyNA(sampling_var)) {
+    cli::cli_abort("{.arg sampling_var} must not contain NA.")
+  }
   if (any(sampling_var < 0)) {
     cli::cli_abort("All sampling_var entries must be non-negative.")
+  }
+  if (anyNA(rho_within)) {
+    cli::cli_abort("{.arg rho_within} must not contain NA.")
   }
 
   if (length(rho_within) == 1L && is.null(names(rho_within))) {

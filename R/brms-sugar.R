@@ -4037,6 +4037,46 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
           ))
         }
         if (identical(fn, "latent")) {
+          latent_arg_names <- names(e)
+          if (!is.null(latent_arg_names) && length(e) > 2L) {
+            named <- latent_arg_names[-c(1L, 2L)]
+            named <- named[nzchar(named)]
+            allowed <- c("d", "unique", "residual", "common", "lv")
+            unknown <- setdiff(named, allowed)
+            if (length(unknown) > 0L) {
+              cli::cli_abort(c(
+                "Unknown argument {.arg {unknown[[1L]]}} in {.fn latent}.",
+                "i" = "Valid arguments are {.arg d}, {.arg unique}, {.arg common}, and {.arg lv}."
+              ))
+            }
+          }
+          d_positional <- length(e) >= 3L && {
+            pos_nm <- latent_arg_names[[3L]]
+            is.null(pos_nm) || is.na(pos_nm) || !nzchar(pos_nm)
+          }
+          if (.has_named_arg(e, "d") || d_positional) {
+            d_val <- .named_or_positional_arg(e, "d", 3L, default = NULL)
+            if (length(d_val) != 1L) {
+              cli::cli_abort(c(
+                "{.arg d} in {.fn latent} must be a whole number >= 1.",
+                ">" = "Pass a single rank, e.g. {.code latent(..., d = 2)}."
+              ))
+            }
+            d_num <- suppressWarnings(as.numeric(d_val))
+            if (length(d_num) != 1L || is.na(d_num)) {
+              cli::cli_abort(c(
+                "{.arg d} in {.fn latent} must be a whole number >= 1.",
+                ">" = "Pass a single rank, e.g. {.code latent(..., d = 2)}."
+              ))
+            }
+            d_int <- as.integer(d_num)
+            if (d_int < 1L || !identical(d_num, as.numeric(d_int))) {
+              cli::cli_abort(c(
+                "{.arg d} in {.fn latent} must be a whole number >= 1.",
+                ">" = "Pass a single rank, e.g. {.code latent(..., d = 2)}."
+              ))
+            }
+          }
           ## `unique =` is the canonical argument (matches
           ## extract_Sigma(part = "unique")). `residual =` is a soft-deprecated
           ## alias for the argument shipped in 0.2.0 (#505); it routes to `unique`.

@@ -1239,7 +1239,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   family_to_id <- function(f) {
     ## Allow "delta_lognormal" / "delta_gamma" as character shortcuts to
     ## the constructors in R/families.R. Other single character strings
-    ## name a function in this package namespace only (never the search path).
+    ## name a package-defined constructor or one of four stats:: families.
     if (is.character(f) && length(f) == 1L) {
       f <- switch(
         f,
@@ -1248,21 +1248,15 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         {
           nm <- f
           pkg_env <- asNamespace("gllvmTMB")
-          imp_env <- parent.env(pkg_env)
+          stats_families <- c("gaussian", "binomial", "Gamma", "poisson")
           fn <- NULL
-          for (env in list(pkg_env, imp_env)) {
-            if (exists(nm, envir = env, mode = "function", inherits = FALSE)) {
-              fn <- get(nm, envir = env, mode = "function", inherits = FALSE)
-              break
+          if (exists(nm, envir = pkg_env, mode = "function", inherits = FALSE)) {
+            fn <- get(nm, envir = pkg_env, mode = "function", inherits = FALSE)
+          } else if (nm %in% stats_families) {
+            stats_env <- asNamespace("stats")
+            if (exists(nm, envir = stats_env, mode = "function", inherits = FALSE)) {
+              fn <- get(nm, envir = stats_env, mode = "function", inherits = FALSE)
             }
-          }
-          ## poisson() is a stats family constructor but is not importFrom()'d
-          ## into NAMESPACE (unlike gaussian/binomial/Gamma).
-          if (is.null(fn) && identical(nm, "poisson") &&
-              exists("poisson", envir = asNamespace("stats"), mode = "function",
-                     inherits = FALSE)) {
-            fn <- get("poisson", envir = asNamespace("stats"), mode = "function",
-                      inherits = FALSE)
           }
           if (is.null(fn)) {
             cli::cli_abort(c(

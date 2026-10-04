@@ -57,6 +57,11 @@ test_that("#1353 non-constructor names on the search path are rejected", {
   .expect_unsupported_char_family("ls")
 })
 
+test_that("#1353 imported helpers are not invoked as family names", {
+  .expect_unsupported_char_family("predict")
+  .expect_unsupported_char_family("cli_abort")
+})
+
 test_that("#1353 character family strings reach gllvmTMB_multi_fit dispatch", {
   skip_on_cran()
   ns <- asNamespace("gllvmTMB")

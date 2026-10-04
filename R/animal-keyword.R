@@ -32,16 +32,26 @@
 #' \eqn{\sigma^{2}_{\text{a}}} is shared across traits.
 #'
 #' Mathematical parallel to [phylo_scalar()] -- same engine path; the
-#' only difference is that **A** is supplied via `pedigree =` (a
-#' 3-column data frame: id, sire, dam), `A =` (dense \eqn{n \times n}
-#' relatedness matrix), or `Ainv =` (precision matrix). Sparse `Ainv`
-#' inputs use the sparse precision route.
+#' only difference is the relatedness input. Pass one **named**
+#' argument: `pedigree =` (converted to a sparse inverse relationship
+#' matrix \eqn{\mathbf A^{-1}} via Henderson/Quaas), `A =` (dense
+#' \eqn{n \times n} relatedness matrix), or `Ainv =` (precision
+#' matrix). Sparse `Ainv` inputs use the sparse precision route.
+#' A positional pedigree such as `animal_scalar(id, ped)` is not
+#' recognised. If more than one of `pedigree`, `A`, and `Ainv` is
+#' supplied, the first match wins in that order.
 #'
 #' @param id Bare column name of the individual factor.
-#' @param pedigree A 3-column data frame with columns `id`, `sire`,
-#'   `dam` (unknown parents encoded as `NA`). Converted internally
-#'   to **A** via Henderson's recursive formula. Only one of
-#'   `pedigree`, `A`, or `Ainv` should be given.
+#' @param pedigree A 3-column data frame identifying individuals and
+#'   parents. Columns are resolved by name using the synonyms
+#'   `id`/`animal`, `sire`/`father`, and `dam`/`mother`; if none
+#'   match, column 1 is id, column 2 is sire, and column 3 is dam.
+#'   Unknown parents may be `NA`, `""`, or `"0"`. Converted internally
+#'   to a sparse inverse relationship matrix \eqn{\mathbf A^{-1}} by
+#'   [pedigree_to_Ainv_sparse()] (Henderson/Quaas), not to a dense
+#'   \eqn{\mathbf A}. Must be passed by name (`pedigree = ped`). If
+#'   several of `pedigree`, `A`, and `Ainv` are given, `pedigree`
+#'   wins, then `A`, then `Ainv`.
 #' @param A Dense relatedness matrix (\eqn{n \times n}); rownames /
 #'   colnames must match levels of `id`.
 #' @param Ainv Precision matrix (inverse of A). Sparse matrix inputs are

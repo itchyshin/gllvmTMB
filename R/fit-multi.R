@@ -7447,6 +7447,29 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     }
   }
 
+  .gllvmTMB_warn_ignored_opt_args <- function(ignored, optimizer) {
+    if (!length(ignored)) return(invisible(NULL))
+    nested <- if (identical(optimizer, "optim")) {
+      c("Use {.code optArgs = list(control = list(maxit = ...))} for iteration limits.")
+    } else {
+      c("Use {.code optArgs = list(control = list(iter.max = ...))} for iteration limits.")
+    }
+    cli::cli_warn(c(
+      "{.code gllvmTMBcontrol(optArgs = ...)} ignored: {.field {ignored}}.",
+      i = paste0(
+        "Only ",
+        if (identical(optimizer, "optim")) {
+          "{.code method}, {.code control}, {.code hessian}, {.code lower}, and {.code upper}"
+        } else {
+          "{.code control}, {.code lower}, {.code upper}, and {.code scale}"
+        },
+        " are passed to {.val {optimizer}}."
+      ),
+      i = nested
+    ))
+    invisible(NULL)
+  }
+
   ## Optimiser dispatch: nlminb (default) or optim with user-supplied
   ## method (per Maeve McGillycuddy's email — optim/BFGS is often more
   ## robust than nlminb for two-level rr fits).
@@ -7507,6 +7530,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     }
     if (identical(control$optimizer, "optim")) {
       opt_args <- control$optArgs
+      keep_optim <- names(opt_args) %in% c("method", "control", "hessian", "lower", "upper")
+      .gllvmTMB_warn_ignored_opt_args(names(opt_args)[!keep_optim], "optim")
+      opt_args <- opt_args[keep_optim]
       method <- opt_args$method %||% "BFGS"
       opt_args$method <- method
       opt_args$control <- utils::modifyList(
@@ -7522,6 +7548,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     } else {
       nlminb_args <- control$optArgs
       keep <- names(nlminb_args) %in% c("control", "lower", "upper", "scale")
+      .gllvmTMB_warn_ignored_opt_args(names(nlminb_args)[!keep], "nlminb")
       if (length(nlminb_args) > 0L && any(!keep) && isTRUE(control$verbose)) {
         cat(sprintf(
           "  nlminb optArgs ignored: %s\n",

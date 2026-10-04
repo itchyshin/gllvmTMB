@@ -59,7 +59,11 @@ reduces the risk of settling on a suboptimal solution. Default
 latter together with \code{optArgs} for finicky two-level rr fits.}
 
 \item{optArgs}{A list of arguments passed to the optimiser. For
-\code{optim} the most useful is \code{list(method = "BFGS")}.}
+\code{nlminb}, only \code{control}, \code{lower}, \code{upper}, and \code{scale} are forwarded
+(put \code{iter.max} and other limits in \code{optArgs$control}). For \code{optim}, only
+\code{method}, \code{control}, \code{hessian}, \code{lower}, and \code{upper} are forwarded (put
+\code{maxit} in \code{optArgs$control}). Top-level names such as \code{iter.max} or
+\code{maxit} are ignored with a warning.}
 
 \item{init_jitter}{Standard deviation of N(0, sigma) jitter applied to
 the starting parameter vector across the \code{n_init} restarts.

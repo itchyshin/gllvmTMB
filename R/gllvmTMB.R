@@ -2400,6 +2400,26 @@ gllvmTMBcontrol <- function(
       ">" = "Pass {.code se = TRUE} or {.code se = FALSE} to {.fn gllvmTMBcontrol}."
     ))
   }
+  if (!is.numeric(n_init) || length(n_init) != 1L || is.na(n_init) ||
+      !is.finite(n_init)) {
+    cli::cli_abort(c(
+      "{.arg n_init} must be one finite whole number of random starts.",
+      ">" = "Use {.code n_init = 1L} for a single start, or a positive integer such as {.code 5L}."
+    ))
+  }
+  if (n_init < 1L || n_init != as.integer(n_init)) {
+    cli::cli_abort(c(
+      "{.arg n_init} must be an integer greater than or equal to 1.",
+      ">" = "Fractional values such as {.code 5.5} are not accepted."
+    ))
+  }
+  if (!is.numeric(init_jitter) || length(init_jitter) != 1L ||
+      is.na(init_jitter) || !is.finite(init_jitter) || init_jitter < 0) {
+    cli::cli_abort(c(
+      "{.arg init_jitter} must be one finite non-negative number.",
+      ">" = "Use {.code init_jitter = 0} to disable jitter between restarts."
+    ))
+  }
   if (...length() > 0L) {
     cli::cli_warn(
       "Extra arguments to {.fun gllvmTMBcontrol} are ignored in this version."

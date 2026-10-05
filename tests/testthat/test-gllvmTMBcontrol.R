@@ -30,9 +30,19 @@ test_that("gllvmTMBcontrol(): n_init = 5 coerces to integer", {
   expect_identical(ctl$n_init, 5L)
 })
 
-test_that("gllvmTMBcontrol(): n_init = 5.5 coerces to 5L (rounding via as.integer)", {
-  ctl <- gllvmTMBcontrol(n_init = 5.5)
-  expect_identical(ctl$n_init, 5L)
+test_that("gllvmTMBcontrol(): fractional n_init errors (#1355)", {
+  expect_error(
+    gllvmTMBcontrol(n_init = 5.5),
+    "n_init.*integer"
+  )
+})
+
+test_that("gllvmTMBcontrol(): invalid n_init and init_jitter error clearly (#1355)", {
+  expect_error(gllvmTMBcontrol(n_init = 0), "n_init")
+  expect_error(gllvmTMBcontrol(n_init = -2), "n_init")
+  expect_error(gllvmTMBcontrol(n_init = NA_real_), "n_init")
+  expect_error(gllvmTMBcontrol(init_jitter = -0.1), "init_jitter")
+  expect_error(gllvmTMBcontrol(init_jitter = NA_real_), "init_jitter")
 })
 
 # ---- optimizer choice via match.arg --------------------------------------

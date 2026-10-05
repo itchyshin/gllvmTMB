@@ -341,6 +341,9 @@
 #'   JuliaCall. The Julia path currently maps
 #'   the unconstrained-ordination core (a single `latent()` block + per-trait
 #'   intercepts) and errors on structures it does not yet support.
+#'   For unstructured Gaussian models (`gaussian()` with ordinary `latent()` and
+#'   no phylo/spatial structure), `engine = "julia"` uses the GLLVModels.jl
+#'   closed-form profile path instead of the native Laplace engine.
 #' @param ci_method Confidence-interval route requested at fit time for
 #'   admitted `engine = "julia"` no-X rows. One of `"none"` (default),
 #'   `"wald"`, `"profile"`, or `"bootstrap"`. Native `engine = "tmb"` fits use

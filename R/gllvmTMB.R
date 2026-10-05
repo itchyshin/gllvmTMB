@@ -2520,7 +2520,8 @@ gllvmTMBcontrol <- function(
   }
   cli::cli_abort(c(
     "{.arg {arg}} must be {.code TRUE}, {.code FALSE}, {.code 1}, or {.code 0}.",
-    "x" = "Got {.val {x}}."
+    "x" = "Got {.val {x}}.",
+    ">" = "Pass {.code TRUE} or {.code FALSE} (or {.code 1} / {.code 0}) to {.fn gllvmTMBcontrol}."
   ))
 }
 
@@ -2531,7 +2532,8 @@ gllvmTMBcontrol <- function(
   }
   cli::cli_abort(c(
     "{.arg {arg}} must be a single positive whole number.",
-    "x" = "Got {.val {x}}."
+    "x" = "Got {.val {x}}.",
+    ">" = "Pass a whole number of at least 1, e.g. {.code {arg} = 1}."
   ))
 }
 
@@ -2552,7 +2554,8 @@ gllvmTMBcontrol <- function(
   }
   cli::cli_abort(c(
     "{.arg {arg}} must be a single finite {kind} number{ceiling}.",
-    "x" = "Got {.val {x}}."
+    "x" = "Got {.val {x}}.",
+    ">" = "Pass a finite {kind} number{ceiling} to {.fn gllvmTMBcontrol}."
   ))
 }
 

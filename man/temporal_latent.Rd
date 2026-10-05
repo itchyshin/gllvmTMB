@@ -55,3 +55,14 @@ separate bounded contracts. Generic new-data prediction, generic intervals
 and profiles, automatic selection, and source-pair versions of those routes
 remain unavailable.
 }
+\section{Requirements}{
+
+\code{temporal_indep()}, \code{temporal_dep()}, and \code{temporal_latent()} abort unless
+the response is one complete Gaussian column (no missing values); the
+long-form term is exactly \code{0 + trait | series} (the wide \code{traits(...)}
+interface is expanded to this form first); the data have at least three
+traits; and each series has at least three strictly ordered occasions.
+\code{time} must be finite numeric; AR1 also requires integer-valued occasions
+that preserve their gaps.
+}
+

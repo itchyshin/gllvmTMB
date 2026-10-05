@@ -1903,7 +1903,11 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #' @param optimizer One of `"nlminb"` (default) or `"optim"`. Use the
 #'   latter together with `optArgs` for finicky two-level rr fits.
 #' @param optArgs A list of arguments passed to the optimiser. For
-#'   `optim` the most useful is `list(method = "BFGS")`.
+#'   `nlminb`, only `control`, `lower`, `upper`, and `scale` are forwarded
+#'   (put `iter.max` and other limits in `optArgs$control`). For `optim`, only
+#'   `method`, `control`, `hessian`, `lower`, and `upper` are forwarded (put
+#'   `maxit` in `optArgs$control`). Top-level names such as `iter.max` or
+#'   `maxit` are ignored with a warning.
 #' @param optimizer_passes Number of exact-gradient optimisation passes from
 #'   the preceding estimate. The default `1` retains the historical single
 #'   pass. A later pass is retained only when it converges and does not increase

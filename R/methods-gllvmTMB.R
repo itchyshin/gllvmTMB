@@ -1249,9 +1249,9 @@ nobs.gllvmTMB_multi <- function(object, ...) {
 #' @param conf.level Confidence level for the CI.
 #' @param ... Currently unused.
 #'
-#' @return A data.frame. `effect = "fixed"` rows include a `link` column
+#' @return A data.frame. `effects = "fixed"` rows include a `link` column
 #'   reporting each trait's link function (`"identity"`, `"probit"`,
-#'   `"log"`, `"logit"`, …). `effect = "cutpoint"` rows carry the
+#'   `"log"`, `"logit"`, …). `effects = "cutpoint"` rows carry the
 #'   ordinal-probit thresholds. For a non-unit weighted objective, fixed-effect
 #'   point estimates remain available but `std.error` is `NA`, an
 #'   `inference_status` column explains the boundary, and `conf.int = TRUE`

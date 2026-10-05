@@ -144,6 +144,16 @@ extract_communality(fit, level = "unit")
 extract_Sigma_table(fit, level = "unit")
 ```
 
+In an interactive session the first ordinary `latent()` fit prints a
+one-time warning that `latent()` includes per-trait Psi by default; that
+note is expected, not a failed fit.
+The printed `Covstructs:` line uses internal names: `latent_unit` is your
+`latent()` term and `indep_unit` is the automatic per-row Gaussian residual
+structure the stacked model adds even when you did not type `indep()`.
+If the print method mentions `gllvmTMB_diagnose()`, use `check_gllvmTMB()`
+for the same health checklist taught in [Get started with
+gllvmTMB](https://itchyshin.github.io/gllvmTMB/articles/gllvmTMB.html).
+
 You need R 4.1.0 or newer and a working compiler toolchain because
 TMB models are compiled during installation. If installation fails
 while compiling C++, install the usual R build tools for your

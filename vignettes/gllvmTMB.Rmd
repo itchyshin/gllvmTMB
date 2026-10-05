@@ -207,7 +207,12 @@ long form.
 
 Fit a `d = 2` reduced-rank GLLVM with ordinary `latent()` at the
 individual level — the shared low-rank structure plus trait-specific
-unique variance, which ordinary `latent()` carries by default:
+unique variance, which ordinary `latent()` carries by default.
+In an interactive session (this page hides messages when knitted), the first
+ordinary `latent()` fit prints a one-time warning that `latent()` includes
+per-trait Psi by default, and the fit may note that `sigma_eps` was fixed
+because an internal `indep(0 + trait | individual)` term already absorbs
+observation-level residual variance on the stacked rows.
 
 ```{r fit-call}
 morph$formula_wide
@@ -261,9 +266,12 @@ Before interpreting `Sigma`, separate two questions. First, ask whether
 the numerical fit looks healthy. Then ask whether the fitted response
 distribution is visibly mismatched to the observed stacked traits. For
 this Gaussian example, use `check_gllvmTMB()` first; if a row is not
-`PASS`, read its `action` before interpreting covariance. The residual
-and predictive-check plots are diagnostic displays here. They do not
-prove the latent rank or calibrate uncertainty intervals.
+`PASS`, read its `action` before interpreting covariance.
+With `d = 2`, a `rotation_convention` row with status `WARN` is expected:
+`Lambda_B` names the unit-tier loadings, which are identified only up to
+rotation and sign until you rotate or constrain them.
+The residual and predictive-check plots are diagnostic displays here. They
+do not prove the latent rank or calibrate uncertainty intervals.
 
 ```{r fit-health}
 health <- check_gllvmTMB(fit)

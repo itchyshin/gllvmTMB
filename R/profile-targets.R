@@ -431,9 +431,9 @@
 #'       scale (the TMB internal scale).}
 #'     \item{`scale`}{Either `"natural"` (after applying the
 #'       transformation) or `"link"` (for raw packed entries).}
-#'     \item{`transformation`}{One of `linear_predictor`, `exp`,
-#'       `logit`, `logit_p_tweedie`, `lambda_packed`,
-#'       or `ordinal_threshold`.}
+#'     \item{`transformation`}{Currently emitted: `linear_predictor`, `exp`,
+#'       `logit_p_tweedie`, `lambda_packed`, or `ordinal_threshold`.
+#'       Reserved (allowed, not currently returned): `logit`.}
 #'     \item{`target_type`}{Always `"direct"` for currently returned rows.}
 #'     \item{`profile_ready`}{`TRUE` iff the target can be passed
 #'       directly to `confint(fit, parm = ..., method = "profile")`.}

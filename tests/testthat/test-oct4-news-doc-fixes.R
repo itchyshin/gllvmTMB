@@ -2,14 +2,32 @@
 ## These tickets had no test file; a silent revert would put the old wrong
 ## sentences back. Each test reads the file that changed and asserts the
 ## wording now in the tree.
+##
+## R CMD check runs tests from <pkg>.Rcheck/tests/testthat.  ../../man and
+## ../../R are the check tree, not the source package, so those naive paths
+## fail with "cannot open the connection".  The tarball copy lives at
+## ../../00_pkg_src/gllvmTMB/ (same layout as test-isdm-developer-fit.R).
 
-.oct4_news_root <- function() {
-  testthat::test_path("..", "..")
+.pkg_source_file <- function(...) {
+  rel <- do.call(file.path, list(...))
+  candidates <- c(
+    testthat::test_path("..", "..", rel),
+    testthat::test_path("..", "..", "00_pkg_src", "gllvmTMB", rel),
+    testthat::test_path("..", "..", "..", "00_pkg_src", "gllvmTMB", rel)
+  )
+  found <- candidates[file.exists(candidates)]
+  if (length(found) == 0L) {
+    return(NA_character_)
+  }
+  found[[1L]]
 }
 
 .oct4_read <- function(...) {
-  path <- file.path(.oct4_news_root(), ...)
-  testthat::skip_if_not(file.exists(path), paste("missing", path))
+  path <- .pkg_source_file(...)
+  testthat::skip_if_not(
+    is.character(path) && !is.na(path) && file.exists(path),
+    paste("missing", file.path(...))
+  )
   paste(readLines(path, warn = FALSE), collapse = "\n")
 }
 

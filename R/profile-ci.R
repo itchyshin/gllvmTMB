@@ -339,8 +339,13 @@
 #'   constrain via e.g. `c(-15, Inf)` so the profile does not chase
 #'   variance to zero.
 #' @return A length-3 named numeric vector (`estimate`, `lower`, `upper`).
-#'   `lower` or `upper` may be `NA` when the profile is one-sided
-#'   (variance pinned at boundary).
+#'   When the profile crosses the threshold on both sides, bounds are finite
+#'   interior values after `transform`. When the likelihood is one-sided at a
+#'   natural boundary (deviance asymptotes), the affected bound is the
+#'   transformed limit (e.g. `lower = 0` with `transform = exp`; see
+#'   **Boundary behaviour**). `NA` marks a bound that could not be located
+#'   (truncated profile search or `tmbprofile()` failure), not a one-sided
+#'   asymptote at the parameter boundary.
 #'
 #' @section Boundary behaviour:
 #' When a variance component is near zero, the profile likelihood becomes

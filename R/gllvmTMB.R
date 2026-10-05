@@ -2337,6 +2337,27 @@ gllvmTMBcontrol <- function(
   start_method <- .gllvmTMB_normalize_start_method(start_method)
   integration <- match.arg(integration)
   va_eval_method <- match.arg(va_eval_method)
+  ## isTRUE() treats 1 as off. Coerce 1/0 first so a numeric on-switch reaches
+  ## the later auto-ridge check as a real logical (#1426).
+  aghq_continuation <- .gllvmTMB_as_flag(aghq_continuation, "aghq_continuation")
+  aghq_multistart <- .gllvmTMB_as_flag(aghq_multistart, "aghq_multistart")
+  warn_runaway <- .gllvmTMB_as_flag(warn_runaway, "warn_runaway")
+  allow_nongaussian_reml <- .gllvmTMB_as_flag(
+    allow_nongaussian_reml, "allow_nongaussian_reml"
+  )
+  aghq_iter_cap <- .gllvmTMB_as_count(aghq_iter_cap, "aghq_iter_cap")
+  aghq_n_adapt <- .gllvmTMB_as_count(aghq_n_adapt, "aghq_n_adapt")
+  aghq_escalate_patience <- .gllvmTMB_as_count(
+    aghq_escalate_patience, "aghq_escalate_patience"
+  )
+  aghq_shift_tol <- .gllvmTMB_as_tol(aghq_shift_tol, "aghq_shift_tol")
+  aghq_grad_tol <- .gllvmTMB_as_tol(aghq_grad_tol, "aghq_grad_tol")
+  aghq_f_tol <- .gllvmTMB_as_tol(aghq_f_tol, "aghq_f_tol")
+  aghq_grad_tol_rel <- .gllvmTMB_as_tol(
+    aghq_grad_tol_rel, "aghq_grad_tol_rel",
+    allow_zero = TRUE
+  )
+  aghq_rho_min <- .gllvmTMB_as_tol(aghq_rho_min, "aghq_rho_min", upper = 1)
   ## Validate here rather than deep in the engine, so a typo fails at the call
   ## the user wrote. The odd-only rule is the GH rule's own contract: an odd
   ## order keeps a node at the variational mean, where the integrand's mass is.
@@ -2443,22 +2464,22 @@ gllvmTMBcontrol <- function(
     se = se,
     verbose = verbose,
     aghq = aghq,
-    aghq_iter_cap = as.integer(aghq_iter_cap),
-    aghq_n_adapt = as.integer(aghq_n_adapt),
+    aghq_iter_cap = aghq_iter_cap,
+    aghq_n_adapt = aghq_n_adapt,
     aghq_ridge = aghq_ridge,
     aghq_ridge_explicit = aghq_ridge_explicit,
     loading_ridge = if (isTRUE(loading_ridge_explicit)) aghq_ridge else NULL,
     loading_ridge_explicit = loading_ridge_explicit,
-    aghq_continuation = isTRUE(aghq_continuation),
-    aghq_shift_tol = as.numeric(aghq_shift_tol),
-    aghq_grad_tol = as.numeric(aghq_grad_tol),
-    aghq_grad_tol_rel = as.numeric(aghq_grad_tol_rel),
-    aghq_multistart = isTRUE(aghq_multistart),
-    aghq_f_tol = as.numeric(aghq_f_tol),
-    aghq_escalate_patience = as.integer(aghq_escalate_patience),
-    aghq_rho_min = as.numeric(aghq_rho_min),
-    warn_runaway = isTRUE(warn_runaway),
-    allow_nongaussian_reml = isTRUE(allow_nongaussian_reml)
+    aghq_continuation = aghq_continuation,
+    aghq_shift_tol = aghq_shift_tol,
+    aghq_grad_tol = aghq_grad_tol,
+    aghq_grad_tol_rel = aghq_grad_tol_rel,
+    aghq_multistart = aghq_multistart,
+    aghq_f_tol = aghq_f_tol,
+    aghq_escalate_patience = aghq_escalate_patience,
+    aghq_rho_min = aghq_rho_min,
+    warn_runaway = warn_runaway,
+    allow_nongaussian_reml = allow_nongaussian_reml
   )
 }
 
@@ -2513,6 +2534,54 @@ gllvmTMBcontrol <- function(
 ## head-to-head evidence decides, because flipping it would change every existing
 ## user's numbers while touching no export and so would be invisible to R CMD check.
 ## See docs/dev-log/decisions.md. When that evidence lands, this one word is the flip.
+.gllvmTMB_as_flag <- function(x, arg) {
+  if (is.logical(x) && length(x) == 1L && !is.na(x)) {
+    return(x)
+  }
+  if (is.numeric(x) && length(x) == 1L && is.finite(x) && x %in% c(0, 1)) {
+    return(as.logical(x))
+  }
+  cli::cli_abort(c(
+    "{.arg {arg}} must be {.code TRUE}, {.code FALSE}, {.code 1}, or {.code 0}.",
+    "x" = "Got {.val {x}}.",
+    ">" = "Pass {.code TRUE} or {.code FALSE} (or {.code 1} / {.code 0}) to {.fn gllvmTMBcontrol}."
+  ))
+}
+
+.gllvmTMB_as_count <- function(x, arg) {
+  if (is.numeric(x) && length(x) == 1L && is.finite(x) &&
+      x == as.integer(x) && x >= 1) {
+    return(as.integer(x))
+  }
+  cli::cli_abort(c(
+    "{.arg {arg}} must be a single positive whole number.",
+    "x" = "Got {.val {x}}.",
+    ">" = "Pass a whole number of at least 1, e.g. {.code {arg} = 1}."
+  ))
+}
+
+.gllvmTMB_as_tol <- function(x, arg, allow_zero = FALSE, upper = Inf) {
+  lower_ok <- if (isTRUE(allow_zero)) {
+    is.numeric(x) && length(x) == 1L && is.finite(x) && x >= 0
+  } else {
+    is.numeric(x) && length(x) == 1L && is.finite(x) && x > 0
+  }
+  if (lower_ok && x <= upper) {
+    return(as.numeric(x))
+  }
+  kind <- if (isTRUE(allow_zero)) "non-negative" else "positive"
+  ceiling <- if (is.finite(upper)) {
+    paste0(" and at most ", upper)
+  } else {
+    ""
+  }
+  cli::cli_abort(c(
+    "{.arg {arg}} must be a single finite {kind} number{ceiling}.",
+    "x" = "Got {.val {x}}.",
+    ">" = "Pass a finite {kind} number{ceiling} to {.fn gllvmTMBcontrol}."
+  ))
+}
+
 .gllvmTMB_normalize_aghq <- function(aghq) {
   if (is.null(aghq) || isFALSE(aghq)) return(FALSE)
   if (is.character(aghq) && length(aghq) == 1L && identical(aghq, "auto")) return("auto")

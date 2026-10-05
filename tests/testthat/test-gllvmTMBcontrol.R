@@ -161,3 +161,25 @@ test_that("gllvmTMB(): REML must be a single TRUE/FALSE", {
     "must be a single", fixed = TRUE
   )
 })
+
+# ---- #1426 AGHQ switches and numeric validation --------------------------
+
+test_that("#1426: aghq_multistart = 1 means on", {
+  ctl <- gllvmTMBcontrol(aghq_multistart = 1)
+  expect_identical(ctl$aghq_multistart, TRUE)
+  expect_identical(gllvmTMBcontrol(aghq_multistart = 0)$aghq_multistart, FALSE)
+  expect_identical(gllvmTMBcontrol(aghq_continuation = 1)$aghq_continuation, TRUE)
+  expect_identical(gllvmTMBcontrol(warn_runaway = 1)$warn_runaway, TRUE)
+  expect_identical(
+    gllvmTMBcontrol(allow_nongaussian_reml = 1)$allow_nongaussian_reml,
+    TRUE
+  )
+})
+
+test_that("#1426: invalid AGHQ counts and tolerances name the argument", {
+  expect_error(gllvmTMBcontrol(aghq_n_adapt = -5L), "aghq_n_adapt")
+  expect_error(gllvmTMBcontrol(aghq_iter_cap = NA), "aghq_iter_cap")
+  expect_error(gllvmTMBcontrol(aghq_escalate_patience = 0), "aghq_escalate_patience")
+  expect_error(gllvmTMBcontrol(aghq_rho_min = 5), "aghq_rho_min")
+  expect_error(gllvmTMBcontrol(aghq_shift_tol = -1), "aghq_shift_tol")
+})

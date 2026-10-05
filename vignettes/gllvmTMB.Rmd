@@ -156,7 +156,7 @@ two formulas used below. The generating code is available in the source
 repository for reproducibility, but beginners do not need to read it before
 fitting the model.
 
-```{r example-data, eval = FALSE}
+```{r example-data}
 morph <- readRDS(system.file(
   "extdata", "examples", "morphometrics-example.rds",
   package = "gllvmTMB"
@@ -164,6 +164,9 @@ morph <- readRDS(system.file(
 df <- morph$data_long
 df_wide <- morph$data_wide
 truth <- morph$truth
+trait_names <- truth$trait_names
+n_traits <- length(trait_names)
+Lambda_true <- truth$Lambda
 ```
 
 ```{r example-data-load, include = FALSE}
@@ -184,9 +187,6 @@ morph <- readRDS(example_path)
 df <- morph$data_long
 df_wide <- morph$data_wide
 truth <- morph$truth
-trait_names <- truth$trait_names
-n_traits <- length(trait_names)
-Lambda_true <- truth$Lambda
 ```
 
 ```{r example-data-preview}

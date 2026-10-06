@@ -1,3 +1,20 @@
+## 2026-10-04 - #1403: ordinary `update()` no longer asks for a missing `call`
+
+Lane `cursor/oct4-1403` (worktree `/Users/z3437171/local-scratch/lanes/gllvmTMB-oct4-1403`).
+
+**Change:** `update.gllvmTMB_multi()` refuses non-temporal fits with a temporal-only
+message instead of `stats::update.default()`. `simulate.gllvmTMB_multi()` rejects
+invalid `nsim` before any draw.
+
+**Verify:**
+```sh
+Rscript --vanilla -e 'pkgload::load_all(".", compile = FALSE, quiet = TRUE); testthat::test_file("tests/testthat/test-update-nsim.R")'
+# [ FAIL 0 | WARN 0 | SKIP 0 | PASS 6 ]
+```
+
+Watched the new tests fail first (`need an object with call component`;
+`invalid 'length' argument` from `integer(n)`), then pass after the guards.
+
 ## 2026-09-04 — parity_ledger.R: `--r-ref` pins R capability ledger (Option A S2)
 
 Twin lane `cursor/lane-gllvm-twin-20260904`. G0: Option A + Ada defaults.

@@ -25,10 +25,10 @@ than refitting.}
 \code{"phy"} (phylogenetic tier). Legacy aliases \code{"B"} and \code{"W"} are accepted
 with a deprecation warning.}
 
-\item{link_residual}{For binomial fits: \code{"auto"} (default) adds the
-link-specific implicit residual to the denominator; \code{"none"} returns
-communalities on the fitted model covariance scale without link-residual
-additions.}
+\item{link_residual}{For non-Gaussian fits: \code{"auto"} (default) adds each
+trait's family/link implicit residual to the denominator; \code{"none"}
+returns communalities on the fitted model covariance scale without
+link-residual additions.}
 
 \item{ci}{Logical. When \code{TRUE}, returns a tidy data frame with
 confidence-interval columns; when \code{FALSE} (the default), returns a
@@ -73,9 +73,10 @@ subset but tells you nothing about trait integration. The
 meaningful communalities, use ordinary \code{latent()} with the default
 \code{unique = TRUE}.
 
-For binomial fits the link-specific implicit residual (\eqn{\pi^2/3}
-for logit, 1 for probit, \eqn{\pi^2/6} for cloglog) is added to the
-denominator by default; pass \code{link_residual = "none"} to suppress.
+For non-Gaussian fits the per-trait link-implicit residual (e.g.
+\eqn{\pi^2/3} for binomial logit, \eqn{\log(1 + 1/\hat\mu)} for Poisson
+log) is added to the denominator by default when \code{link_residual = "auto"};
+pass \code{link_residual = "none"} to suppress (see \code{\link[=extract_Sigma]{extract_Sigma()}}).
 }
 }
 \examples{

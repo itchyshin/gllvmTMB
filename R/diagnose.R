@@ -1215,10 +1215,31 @@
 #'     with no free scale parameter), so a loading is the trait's latent SD
 #'     in liability units.
 #'
-#' Both thresholds default to `Inf` (fully disarmed) because the completed
-#' 315-fit calibration did not identify a threshold that met its targets.
-#' Further calibration may evaluate additional statistics or designs; until
-#' that evidence supports a threshold, no default is armed.
+#' `ordinal_loading_absolute_thresh` (O2) defaults to 30 (#897);
+#' `ordinal_loading_runaway_thresh` (O1) stays disarmed at `Inf`. The
+#' pre-registered 315-fit calibration scored false positives by DESIGN ARM, so
+#' a fit from the `healthy` arm that itself ran away counted as a false alarm,
+#' and found no threshold meeting its targets. Scored per fit instead, against
+#' that fit's own `rel_frob > 10` truth, the same recorded fits and two further
+#' sets give (O2, `max_loading_unit`; sensitivity = degenerate fits flagged,
+#' false positive = fits with `rel_frob <= 10` flagged):
+#'
+#' | threshold | 315-fit set | 380-fit set | 240 fresh-seed fits |
+#' |---|---|---|---|
+#' | 20 | 91% / 12% | 94% / 8.3% | 97.5% / 0.8% |
+#' | 30 | 67% / 4.2% | 78% / 4.4% | 81% / 0% |
+#' | 40 | 60% / 0% | 63% / 2.9% | 63% / 0% |
+#'
+#' (sensitivity / false positive). The false positives at 30 and above are
+#' the `transport` design, whose true loadings are themselves heterogeneous
+#' and large, and a `sigma_lambda = 8` design; the fresh-seed set (probit
+#' `sigma_lambda` 0.7 and 3, n = 100, seeds 3001-3120, run on Totoro
+#' 2026-10-04 after the threshold was chosen from the first two sets) has none.
+#' 30 is a loading standard deviation of 30 against a residual standard
+#' deviation of 1 (communality above 0.998). It is a screen that misses
+#' roughly a quarter of degenerate fits, not the 90% sensitivity the
+#' pre-registration asked for; see the `ordinal_loading_absolute_thresh`
+#' parameter for what it does not catch.
 #'
 #' A third statistic is computed and reported for follow-up calibration but
 #' is **NOT** wired into `flag` or `status`: `cutpoint_span`
@@ -1248,18 +1269,27 @@
 #'   never the SPDE tier, whose loadings carry a different normalisation.
 #'   Scale-free by construction: the probit-liability residual variance is
 #'   exactly 1, so an ordinal loading IS the trait's latent SD in liability
-#'   units. Default `Inf` — **DISARMED**.
+#'   units. Default `30` (#897); `Inf` disables the arm.
 #'
-#'   Both ordinal arms ship disarmed because a pre-registered 315-fit
-#'   calibration (2026-08-17; four arms — degenerate, healthy, transport,
-#'   mixed) could not find a threshold meeting its frozen targets
-#'   (sensitivity >= 90% on the degenerate arm AND zero false positives
-#'   across the healthy, transport and mixed arms combined). Measured under
-#'   that rule: at a threshold of 6, sensitivity 100% but **39.2% false
-#'   positives**; at 40, 80.5% and 11.0%; the first zero-FP point sits at
-#'   250, where sensitivity is 0%. The classes are not separable at all on
-#'   this statistic, because the healthy pool reaches `max_loading_unit`
-#'   216.9 while the degenerate arm starts at 13.5.
+#'   A pre-registered 315-fit calibration (2026-08-17; four arms — degenerate,
+#'   healthy, transport, mixed) could not find a threshold meeting its frozen
+#'   targets (sensitivity >= 90% on the degenerate arm AND zero false
+#'   positives across the healthy, transport and mixed arms combined) and the
+#'   arms shipped disarmed. Measured under that rule: at a threshold of 6,
+#'   sensitivity 100% but **39.2% false positives**; at 40, 80.5% and 11.0%;
+#'   the first zero-FP point sat at 250, where sensitivity was 0%. That rule
+#'   scored a design arm, not a fit, so a `healthy`-arm fit that itself ran
+#'   away (`max_loading_unit` up to 216.9) counted as a false positive. The
+#'   per-fit scoring in the roxygen block above is what the default of 30 rests
+#'   on.
+#'
+#'   What the default does NOT catch: a degenerate fit whose largest unit-tier
+#'   loading is below 30 (for example `rel_frob` 26.6 at `max_loading_unit`
+#'   22.3 in the recorded fixture), a single over-large loading that is
+#'   moderate in size, and anything on a structured tier (the absolute arm
+#'   reads the unit tiers only). Convergence and `pdHess` do not help here:
+#'   every one of the 240 fresh-seed fits, flagged or not, reported
+#'   `convergence = 0`.
 #'
 #'   Two findings from that campaign are worth stating. First, borrowing
 #'   binomial's own threshold of 6 would have shipped a screen with a ~39%
@@ -1271,16 +1301,15 @@
 #'   transport across them, because a legitimately large loading on a
 #'   wide-cutpoint trait is indistinguishable from a runaway.
 #'
-#'   The row still computes and reports its statistics, so a user who wants
-#'   the screen can set either threshold explicitly. Arming a default is a
-#'   maintainer decision that this evidence does not support.
+#'   The row reports its statistics for every `ordinal_probit()` fit; set
+#'   `ordinal_loading_absolute_thresh = Inf` to turn the absolute arm off.
 #' @return A one-row data frame in the [check_gllvmTMB()] row shape, or
 #'   `NULL` when the fit has no `ordinal_probit()` (family_id 14) trait.
 #' @keywords internal
 .gllvmTMB_ordinal_degeneracy_row <- function(
   object,
   ordinal_loading_runaway_thresh = Inf,
-  ordinal_loading_absolute_thresh = Inf
+  ordinal_loading_absolute_thresh = 30
 ) {
   required <- c("family_id_vec", "trait_id")
   tmb <- .gllvmTMB_tmb_data_or_null(object, required)
@@ -1344,7 +1373,7 @@
   action <- if (!identical(status, "WARN")) {
     "none"
   } else {
-    "treat the fit as unusable rather than interpreting it: the S1 probe found this is the same quasi-complete-separation geometry the binomial screen catches (24/24 dichotomised refits fired binomial_prevalence_loading); try gllvmTMBcontrol(loading_ridge = 0.25) (0.25 to 0.5; larger tau shrinks less) to shrink runaway loadings, or gllvmTMBcontrol(integration = 'va') for latent(..., unique = FALSE) fits with at least 100 units and d <= 2 -- either makes the result a penalised (MAP) or variational estimate, so logLik(), AIC() and BIC() no longer apply to it"
+    "treat the fit as unusable rather than interpreting it: a loading this large on a probit liability scale (residual SD 1) is the signature of category-level separation; try gllvmTMBcontrol(loading_ridge = 0.25) (0.25 to 0.5; larger tau shrinks less) to shrink runaway loadings, or gllvmTMBcontrol(integration = 'va') for latent(..., unique = FALSE) fits with at least 100 units and d <= 2 -- either makes the result a penalised (MAP) or variational estimate, so logLik(), AIC() and BIC() no longer apply to it"
   }
 
   .gllvmTMB_check_row(
@@ -1360,7 +1389,7 @@
     paste0(
       "relative_loading >= ", ordinal_loading_runaway_thresh,
       " (O1) or max_loading_unit >= ", ordinal_loading_absolute_thresh,
-      " on the link scale (O2); defaults remain disarmed at Inf because calibration found no threshold meeting its targets"
+      " on the link scale (O2); the O1 default is Inf (disabled) and the O2 default is 30, a screen that misses roughly a quarter of degenerate fits"
     ),
     msg,
     action
@@ -1543,10 +1572,13 @@
 #'   Meaningful because the probit-liability residual variance is exactly 1
 #'   under the Wright/Falconer/Hadfield threshold convention, so a loading
 #'   is the trait's latent standard deviation in liability units, mirroring
-#'   `loading_absolute_thresh`'s binomial justification. Default `Inf`
-#'   (disabled): healthy ordinal traits can also have large loadings.
-#'   Inspect loadings alongside category frequencies and the other fit
-#'   diagnostics before choosing a finite threshold for your model.
+#'   `loading_absolute_thresh`'s binomial justification. Default `30`. At that
+#'   value the screen flagged 0 of 122 fresh-seed fits whose covariance
+#'   was recovered (within a relative Frobenius error of 10) and 81% of the
+#'   degenerate ones, in a simulation with `n = 100`, four traits and two
+#'   latent variables; it misses degenerate fits whose largest loading is
+#'   below 30, and healthy fits with genuinely heterogeneous loading scales
+#'   can exceed it. Use `Inf` to disable it.
 #' @param phi_nbinom2_ceiling_thresh Numeric scalar. A negative-binomial dispersion
 #'   estimate at or above this value is reported as a `boundary_phi_nbinom2_<trait>`
 #'   warning: the trait has run to the Poisson limit (no overdispersion left to
@@ -1584,7 +1616,7 @@ check_gllvmTMB <- function(
   multinomial_rail_thresh = 0.99,
   multinomial_range_collapse_thresh = 0.02,
   ordinal_loading_runaway_thresh = Inf,
-  ordinal_loading_absolute_thresh = Inf,
+  ordinal_loading_absolute_thresh = 30,
   ## R4 (2026-09-02 review): a per-trait NB2 dispersion (fid 5 nbinom2 OR
   ## fid 18 zi_nbinom2, which REUSES the same log_phi_nbinom2 vector) can
   ## run to the Poisson boundary (phi -> Inf) while reporting

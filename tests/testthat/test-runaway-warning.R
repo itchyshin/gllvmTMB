@@ -16,6 +16,8 @@
 ## the warning to actually fire.
 .rw_reset <- function() {
   try(rlang::reset_warning_verbosity("gllvmTMB-loading-runaway"), silent = TRUE)
+  ## the id is now per fit signature (#1367); this clears every id emitted so far
+  gllvmTMB:::.gllvmTMB_reset_runaway_warnings()
   invisible(NULL)
 }
 
@@ -178,6 +180,7 @@ test_that("the multinomial degeneracy warning fires once, honours warn_runaway, 
   ## R CMD check runs the whole suite in one).
   rlang::reset_warning_verbosity("gllvmTMB-multinomial-degeneracy")
   rlang::reset_warning_verbosity("gllvmTMB-loading-runaway")
+  gllvmTMB:::.gllvmTMB_reset_runaway_warnings()
 
   expect_true(
     is.function(gllvmTMB:::.gllvmTMB_multinomial_degeneracy_row),

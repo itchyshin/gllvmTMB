@@ -1,5 +1,28 @@
 # Development (unreleased)
 
+* `check_gllvmTMB()` now flags degenerate `ordinal_probit()` fits by default.
+  The `ordinal_liability_loading` row already existed but both of its
+  thresholds defaulted to `Inf`, so a fit with a unit-tier loading of 42 or 185
+  (liability SD against a residual SD of 1) passed unflagged while the binomial
+  screen caught the same defect. `ordinal_loading_absolute_thresh` now defaults
+  to 30; `ordinal_loading_runaway_thresh` stays `Inf`. Scored per fit against
+  known truth in simulations (n = 100, four traits, two latent variables), 30
+  flagged 81% of degenerate fits and 0 of 122 recovered fits on fresh seeds,
+  and 77% and about 3% on earlier pooled runs that include designs with
+  genuinely large loadings. It misses degenerate fits whose largest loading is
+  below 30, and every fit it flags or misses reports `convergence = 0`.
+  Set `ordinal_loading_absolute_thresh = Inf` to turn it off. No fit-time
+  warning is added, and `ordinal_logit()` is unaffected (#897).
+* The fit-time runaway-loading warning for binomial fits is now shown once per
+  session for each distinct dataset and model, not once per session. Before,
+  the first runaway fit used up the warning and every later one in the same R
+  session was silent: on `vegan::sipoo`, a probit `d = 2`, a probit `d = 1`
+  (loading column norm 3.6e4) and a logit `d = 2` fit run in one session gave
+  1, 0 and 0 warnings, while `check_gllvmTMB()` flagged all three. A re-fit of
+  the same data and model stays quiet. The detector, its thresholds, the
+  likelihood and the optimizer are unchanged; `gllvmTMBcontrol(warn_runaway =
+  FALSE)` still silences it. Only runs of many different runaway datasets in
+  one session will see more warnings than before (#1367).
 * Multi-start fits (`gllvmTMBcontrol(n_init > 1)`) now rank restarts by the
   objective re-evaluated at each restart's returned parameters and return the
   TMB state of the selected restart. Previously a restart could win on an

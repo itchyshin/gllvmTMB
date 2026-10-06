@@ -24,7 +24,7 @@ check_gllvmTMB(
   multinomial_rail_thresh = 0.99,
   multinomial_range_collapse_thresh = 0.02,
   ordinal_loading_runaway_thresh = Inf,
-  ordinal_loading_absolute_thresh = Inf,
+  ordinal_loading_absolute_thresh = 30,
   phi_nbinom2_ceiling_thresh = 10000
 )
 }
@@ -191,10 +191,13 @@ at or above which it is reported regardless of the other traits.
 Meaningful because the probit-liability residual variance is exactly 1
 under the Wright/Falconer/Hadfield threshold convention, so a loading
 is the trait's latent standard deviation in liability units, mirroring
-\code{loading_absolute_thresh}'s binomial justification. Default \code{Inf}
-(disabled): healthy ordinal traits can also have large loadings.
-Inspect loadings alongside category frequencies and the other fit
-diagnostics before choosing a finite threshold for your model.}
+\code{loading_absolute_thresh}'s binomial justification. Default \code{30}. At that
+value the screen flagged 0 of 122 fresh-seed fits whose covariance
+was recovered (within a relative Frobenius error of 10) and 81\% of the
+degenerate ones, in a simulation with \code{n = 100}, four traits and two
+latent variables; it misses degenerate fits whose largest loading is
+below 30, and healthy fits with genuinely heterogeneous loading scales
+can exceed it. Use \code{Inf} to disable it.}
 
 \item{phi_nbinom2_ceiling_thresh}{Numeric scalar. A negative-binomial dispersion
 estimate at or above this value is reported as a \verb{boundary_phi_nbinom2_<trait>}

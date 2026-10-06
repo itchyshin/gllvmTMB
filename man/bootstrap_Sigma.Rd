@@ -21,13 +21,14 @@ bootstrap_Sigma(
 \item{fit}{A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}.}
 
 \item{n_boot}{Integer; number of bootstrap replicates. Default 999.
-Values below \code{2 / (1 - conf) - 1} (39 at the default \code{conf = 0.95}) are
-refused: the widest interval \code{B} draws can produce is \verb{[min, max]}, whose
+Values below \code{2 / (1 - conf) - 1} (39 at the default \code{conf = 0.95}) trigger
+a warning: the widest interval \code{B} draws can produce is \verb{[min, max]}, whose
 coverage is at most \code{(B - 1) / (B + 1)}, so a smaller \code{B} cannot reach the
-requested level whatever the data are. Values below 999 warn.
+requested level whatever the data are. The fit still runs. Values below 999
+warn for endpoint noise.
 
 Two different things bound \code{n_boot}, and they bite at different scales.
-Below the refusal threshold the \emph{arithmetic ceiling} binds: the interval
+Below the arithmetic floor the \emph{arithmetic ceiling} binds: the interval
 cannot reach the requested level however much data you have. Above it, what
 binds is Monte Carlo error in the endpoints, which is a precision question
 and shrinks with \code{B}. Conflating the two is how a replicate count comes to

@@ -78,13 +78,14 @@
 #'
 #' @param fit A fit returned by [gllvmTMB()].
 #' @param n_boot Integer; number of bootstrap replicates. Default 999.
-#'   Values below `2 / (1 - conf) - 1` (39 at the default `conf = 0.95`) are
-#'   refused: the widest interval `B` draws can produce is `[min, max]`, whose
+#'   Values below `2 / (1 - conf) - 1` (39 at the default `conf = 0.95`) trigger
+#'   a warning: the widest interval `B` draws can produce is `[min, max]`, whose
 #'   coverage is at most `(B - 1) / (B + 1)`, so a smaller `B` cannot reach the
-#'   requested level whatever the data are. Values below 999 warn.
+#'   requested level whatever the data are. The fit still runs. Values below 999
+#'   warn for endpoint noise.
 #'
 #'   Two different things bound `n_boot`, and they bite at different scales.
-#'   Below the refusal threshold the *arithmetic ceiling* binds: the interval
+#'   Below the arithmetic floor the *arithmetic ceiling* binds: the interval
 #'   cannot reach the requested level however much data you have. Above it, what
 #'   binds is Monte Carlo error in the endpoints, which is a precision question
 #'   and shrinks with `B`. Conflating the two is how a replicate count comes to

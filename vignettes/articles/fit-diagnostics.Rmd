@@ -189,10 +189,11 @@ health[
 ]
 ```
 
-These six displayed rows pass for this example. The full table contains more
-checks, so always inspect every warning rather than treating a selected subset
-as the whole verdict. Here are all non-passing rows, including their thresholds,
-meaning, and suggested action.
+These six displayed rows are the headline fit-health checks for this example;
+read each `status` column literally (`pd_hessian` warns here). The full table
+contains more checks, so always inspect every warning rather than treating a
+selected subset as the whole verdict. Here are all non-passing rows, including
+their thresholds, meaning, and suggested action.
 
 ```{r fit-health-warnings}
 health[

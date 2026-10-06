@@ -266,7 +266,7 @@ relative to observation noise. They do not change the model's source normalizati
 ```{r spatial-long}
 set.seed(319928)
 spatial_fit_long <- gllvmTMB(
-  value ~ 0+trait+spatial_latent(0+trait|location,mesh=mesh,d=1,unique=TRUE,rho=NULL),
+  value ~ 0+trait+spatial_latent(0+trait|coords,mesh=mesh,d=1,unique=TRUE,rho=NULL),
   data=spatial_long,trait="trait",unit="obs",family=gaussian(),
   control=gllvmTMBcontrol(n_init=1))
 ```
@@ -274,7 +274,7 @@ spatial_fit_long <- gllvmTMB(
 ```{r spatial-wide}
 set.seed(319928)
 spatial_fit_wide <- gllvmTMB(
-  traits(t1,t2,t3,t4) ~ 1+spatial_latent(1|location,mesh=mesh,d=1,unique=TRUE,rho=NULL),
+  traits(t1,t2,t3,t4) ~ 1+spatial_latent(1|coords,mesh=mesh,d=1,unique=TRUE,rho=NULL),
   data=spatial_wide,unit="obs",family=gaussian(),
   control=gllvmTMBcontrol(n_init=1))
 ```

@@ -34,6 +34,33 @@ update.gllvmTMB_multi <- function(object, ..., evaluate = TRUE) {
   eval(call, envir = parent.frame())
 }
 
+#' Residual standard deviation for gllvmTMB fits
+#'
+#' @description
+#' `stats::sigma()` is not defined for multivariate `gllvmTMB()` fits: a
+#' single residual scale is not meaningful across mixed response families.
+#' Use family-specific dispersion extractors instead (for example
+#' [extract_Sigma()] on Gaussian traits).
+#'
+#' @param object A fitted `gllvmTMB` object.
+#' @param ... Not used.
+#' @return An error is always thrown.
+#' @importFrom stats sigma
+#' @export
+sigma.gllvmTMB_multi <- function(object, ...) {
+  cli::cli_abort(c(
+    "{.fn sigma} is not defined for {.cls gllvmTMB} fits.",
+    "i" = "Multivariate fits can mix families, so there is no single residual standard deviation.",
+    ">" = "For Gaussian traits use {.fn extract_Sigma} or the per-trait dispersion columns from {.fn tidy}."
+  ))
+}
+
+#' @export
+sigma.gllvmTMB_julia <- sigma.gllvmTMB_multi
+
+#' @export
+sigma.gllvmTMB_va <- sigma.gllvmTMB_multi
+
 .modal_integer_id <- function(x, fallback = NA_integer_) {
   x <- as.integer(x)
   x <- x[!is.na(x)]

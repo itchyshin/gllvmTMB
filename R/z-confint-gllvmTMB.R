@@ -1486,10 +1486,14 @@
 #'     \item \code{"rho:<tier>:i,j"} (one pair) or
 #'       \code{"rho:<tier>:i,j;k,l"} (multiple pairs). Tier is one of
 #'       \code{"unit"} / \code{"unit_slope"} / \code{"unit_obs"} /
-#'       \code{"phy"} / \code{"spatial"} (legacy \code{"B"} / \code{"W"} /
+#'       \code{"cluster"} / \code{"cluster2"} / \code{"phy"} /
+#'       \code{"spatial"} (legacy \code{"B"} / \code{"W"} /
 #'       \code{"spde"}). \code{"unit_slope"} indexes the augmented
-#'       \code{2T} coefficient vector by numeric position and is currently a
-#'       not currently an interval target. Other tiers route to
+#'       \code{2T} coefficient vector by numeric position and is not
+#'       currently an interval target. \code{"cluster"} and
+#'       \code{"cluster2"} are recognised but profile intervals are
+#'       withheld (see the error from [extract_correlations()]).
+#'       Other tiers route to
 #'       [extract_correlations()] (\code{"fisher-z"} / \code{"wald"} /
 #'       \code{"bootstrap"}); Fisher-z is the default for this \code{confint()}
 #'       token. The nonlinear profile prototype is withheld.

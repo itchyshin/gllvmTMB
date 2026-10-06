@@ -1246,7 +1246,7 @@ nobs.gllvmTMB_multi <- function(object, ...) {
 #'   releases lumped the cutpoints into `"ran_pars"` as a categorisation
 #'   hack — see *NEWS*.)
 #' @param conf.int Whether to add `conf.low` / `conf.high` columns.
-#' @param conf.level Confidence level for the CI.
+#' @param conf.level Confidence level in (0, 1). Default 0.95.
 #' @param ... Currently unused.
 #'
 #' @return A data.frame. `effects = "fixed"` rows include a `link` column
@@ -1266,6 +1266,7 @@ tidy.gllvmTMB_multi <- function(
 ) {
   effects <- match.arg(effects)
   if (isTRUE(conf.int)) {
+    conf.level <- .gtmb_validate_interval_level(conf.level, arg = "conf.level")
     .gllvmTMB_mspl_assert_inference(x, "tidy(conf.int = TRUE)")
   }
   if (effects == "fixed") {

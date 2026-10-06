@@ -405,6 +405,9 @@ extract_correlations <- function(
   ## per-session warning about the default change.
   link_residual_missing <- missing(link_residual)
   method <- match.arg(method)
+  if (method %in% c("fisher-z", "wald")) {
+    level <- .gtmb_validate_interval_level(level, arg = "level")
+  }
   if (!identical(method, "none") && .gllvmTMB_is_mspl(fit)) {
     .gllvmTMB_mspl_assert_inference(
       fit,

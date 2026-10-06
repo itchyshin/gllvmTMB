@@ -1614,6 +1614,7 @@ confint.gllvmTMB_multi <- function(
   seed = NULL,
   ...
 ) {
+  level <- .gtmb_validate_interval_level(level, arg = "level")
   .temporal_assert_no_iid_inference(object, "confint")
   .gllvmTMB_mspl_assert_inference(object, "confint")
   .gllvmTMB_require_unweighted_inference(object, "confint")

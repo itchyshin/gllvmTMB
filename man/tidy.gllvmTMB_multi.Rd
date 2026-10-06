@@ -24,7 +24,7 @@ hack — see \emph{NEWS}.)}
 
 \item{conf.int}{Whether to add \code{conf.low} / \code{conf.high} columns.}
 
-\item{conf.level}{Confidence level for the CI.}
+\item{conf.level}{Confidence level in (0, 1). Default 0.95.}
 
 \item{...}{Currently unused.}
 }

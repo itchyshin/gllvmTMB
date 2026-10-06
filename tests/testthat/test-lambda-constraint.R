@@ -97,18 +97,15 @@ test_that("free entries adjacent to pinned ones are still optimised", {
   expect_true(all(abs(free_entries) > 1e-3))   # actually moved
 })
 
-test_that("upper-triangle pins are silently ignored (always 0 by construction)", {
-  sim <- make_sim()
+test_that("non-zero upper-triangle pins error instead of being dropped (#1418)", {
   cnst <- matrix(NA_real_, nrow = 4, ncol = 2)
   diag(cnst) <- 1
-  cnst[1, 2] <- 0.99   # upper triangle — should be ignored, no error
-  fit <- gllvmTMB(
-    value ~ 0 + trait + latent(0 + trait | site, d = 2),
-    data = sim$data,
-    lambda_constraint = list(unit = cnst)
+  cnst[1, 2] <- 0.99
+  theta <- rep(0, 7L)
+  expect_error(
+    gllvmTMB:::lambda_packed_map(cnst, n_traits = 4L, rank = 2L, theta_init = theta),
+    "upper triangle"
   )
-  L <- getLoadings(fit, level = "unit")
-  expect_equal(L[1, 2], 0, tolerance = 1e-12)   # NOT 0.99
 })
 
 test_that("dimension-mismatched constraint matrix errors with cli message", {

@@ -32,8 +32,12 @@ but absent from \code{loads_on} remain free on all axes.}
 
 \item{anchors}{Optional length-\code{d} character vector; one anchor
 species per axis (pinned at \code{+1}). If \code{NULL} (the default), anchors
-are auto-picked as the first species belonging to the group that
-loads on each axis. Use \code{NA} to skip the anchor on a specific axis.}
+are auto-picked as the first species of the group that loads on
+each axis whose row index is on or below the diagonal (row >=
+axis). That placement is required because the engine can pin only
+the lower triangle of Lambda. An explicit or auto-picked anchor
+in the strict upper triangle is an error. Use \code{NA} to skip the
+anchor on a specific axis.}
 
 \item{axis_labels}{Optional length-\code{d} character vector for the
 matrix column names. Defaults to \code{c("LV1", "LV2", ...)}.}
@@ -54,8 +58,11 @@ present in \code{group} but absent from \code{loads_on} remain free on all axes.
 \details{
 This is the recommended starting point for confirmatory JSDMs where
 prior knowledge takes the form "species in group A respond to
-gradient 1, species in group B respond to gradient 2, ...". For
-free-form constraint patterns (psychometric CFA, idiosyncratic
+gradient 1, species in group B respond to gradient 2, ...". The
+engine parameterises Lambda as lower-triangular, so an axis-\code{j}
+anchor must fall on species row \code{i >= j}; otherwise the pin has no
+packed slot and would be dropped. Auto-anchors honour that rule.
+For free-form constraint patterns (psychometric CFA, idiosyncratic
 species-by-species pins), build the matrix directly; for purely
 statistical identification scaffolding when no biology is in play,
 see \code{\link[=suggest_lambda_constraint]{suggest_lambda_constraint()}}.

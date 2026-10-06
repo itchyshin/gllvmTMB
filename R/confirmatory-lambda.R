@@ -21,8 +21,11 @@
 #'
 #' This is the recommended starting point for confirmatory JSDMs where
 #' prior knowledge takes the form "species in group A respond to
-#' gradient 1, species in group B respond to gradient 2, ...". For
-#' free-form constraint patterns (psychometric CFA, idiosyncratic
+#' gradient 1, species in group B respond to gradient 2, ...". The
+#' engine parameterises Lambda as lower-triangular, so an axis-`j`
+#' anchor must fall on species row `i >= j`; otherwise the pin has no
+#' packed slot and would be dropped. Auto-anchors honour that rule.
+#' For free-form constraint patterns (psychometric CFA, idiosyncratic
 #' species-by-species pins), build the matrix directly; for purely
 #' statistical identification scaffolding when no biology is in play,
 #' see [suggest_lambda_constraint()].
@@ -41,8 +44,12 @@
 #'   but absent from `loads_on` remain free on all axes.
 #' @param anchors Optional length-`d` character vector; one anchor
 #'   species per axis (pinned at `+1`). If `NULL` (the default), anchors
-#'   are auto-picked as the first species belonging to the group that
-#'   loads on each axis. Use `NA` to skip the anchor on a specific axis.
+#'   are auto-picked as the first species of the group that loads on
+#'   each axis whose row index is on or below the diagonal (row >=
+#'   axis). That placement is required because the engine can pin only
+#'   the lower triangle of Lambda. An explicit or auto-picked anchor
+#'   in the strict upper triangle is an error. Use `NA` to skip the
+#'   anchor on a specific axis.
 #' @param axis_labels Optional length-`d` character vector for the
 #'   matrix column names. Defaults to `c("LV1", "LV2", ...)`.
 #'
@@ -135,15 +142,25 @@ confirmatory_lambda <- function(species,
   ## ---- Anchors ----
   if (is.null(anchors)) {
     ## Auto-pick: for each axis with at least one loaded group, anchor
-    ## on the first species of the first loaded group.
+    ## on the first species of the first loaded group whose row index
+    ## is on or below the diagonal. The engine has no packed slot for
+    ## Lambda[i, j] when j > i (#1418).
     anchors <- rep(NA_character_, d)
     for (j in seq_len(d)) {
       groups_on_j <- names(loads_on)[
         vapply(loads_on, function(x) j %in% as.integer(x), logical(1))
       ]
       if (length(groups_on_j) > 0L) {
-        first_member <- species[which(group == groups_on_j[1])[1]]
-        anchors[j] <- first_member
+        members <- which(group == groups_on_j[1])
+        eligible <- members[members >= j]
+        if (length(eligible) == 0L) {
+          cli::cli_abort(c(
+            "No species in group {.val {groups_on_j[1]}} can anchor axis {.val {j}} under the lower-triangular loading convention.",
+            "x" = "Every member sits above row {.val {j}}, so the +1 pin would fall in the strict upper triangle and cannot be applied.",
+            ">" = "Reorder {.code species} so a group-{.val {groups_on_j[1]}} member is at or below row {.val {j}}, or pass {.code anchors} naming such a species."
+          ))
+        }
+        anchors[j] <- species[eligible[1]]
       }
     }
   } else if (length(anchors) != d) {
@@ -159,6 +176,14 @@ confirmatory_lambda <- function(species,
       cli::cli_abort(
         "Anchor species {.val {sp}} for axis {.val {j}} not in {.code species}."
       )
+    i <- match(sp, species)
+    if (j > i) {
+      cli::cli_abort(c(
+        "Anchor species {.val {sp}} for axis {.val {j}} sits at row {.val {i}}, which is the strict upper triangle of Lambda.",
+        "x" = "The engine's lower-triangular loading parameterisation cannot pin Lambda[{i}, {j}].",
+        ">" = "Choose an anchor at or below row {.val {j}}, or reorder {.code species} so {.val {sp}} is on or below the diagonal."
+      ))
+    }
     M[sp, j] <- 1
   }
 

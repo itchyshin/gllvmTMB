@@ -277,8 +277,9 @@ matrices are available from a prior stage of estimation.}
 \code{unit_obs} (plus \code{phy}, \code{spde} for structural levels), each an
 \verb{n_traits × d} matrix of confirmatory loading constraints
 (galamm-style). \code{NA} entries are estimated; numerical entries are
-pinned. Upper-triangle entries are silently ignored — the engine's
-lower-triangular parameterisation already fixes those at zero.
+pinned. Upper-triangle zeros are already structural zeros and are
+accepted. A non-zero upper-triangle pin is an error — the engine's
+lower-triangular parameterisation has no packed slot for it.
 Default \code{NULL} uses the engine's exploratory lower-triangular
 convention. See \code{\link[=confirmatory_lambda]{confirmatory_lambda()}} to build the matrix from
 functional-group membership, or \code{\link[=suggest_lambda_constraint]{suggest_lambda_constraint()}} for a

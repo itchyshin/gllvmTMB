@@ -1555,7 +1555,8 @@
 #'   that trait, or more sites.
 #' @return A data frame with columns `component`, `status`, `value`,
 #'   `threshold`, `message`, and `action`. Status values are `"PASS"`,
-#'   `"WARN"`, or `"FAIL"`.
+#'   `"WARN"`, `"FAIL"`, or `"INFO"` (informational rows on MSPL and other
+#'   routes where a check does not apply to the fitted estimator).
 #' @export
 #' @examples
 #' \dontrun{

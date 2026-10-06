@@ -206,7 +206,8 @@ that trait, or more sites.}
 \value{
 A data frame with columns \code{component}, \code{status}, \code{value},
 \code{threshold}, \code{message}, and \code{action}. Status values are \code{"PASS"},
-\code{"WARN"}, or \code{"FAIL"}.
+\code{"WARN"}, \code{"FAIL"}, or \code{"INFO"} (informational rows on MSPL and other
+routes where a check does not apply to the fitted estimator).
 }
 \description{
 Run \code{check_gllvmTMB()} right after fitting, before interpreting

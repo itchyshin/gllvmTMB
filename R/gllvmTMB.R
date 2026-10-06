@@ -1888,12 +1888,13 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 
 #' Control parameters for [gllvmTMB()]
 #'
-#' @param d_B,d_W Latent dimensions for the between-unit and within-unit
-#'   reduced-rank components. Set to a positive integer to enable
-#'   `latent()` / `indep()` covariance structures at the corresponding tier.
-#' @param spde_mode `"per_trait"` (default) fits one independent SPDE field
-#'   per trait when a `spatial()` term is present; `"shared"` fits one shared
-#'   SPDE field with trait-specific scalar loadings.
+#' @param d_B,d_W **Not read by the fitter.** Retained in the control list for
+#'   backward compatibility only. Set latent rank in the formula with
+#'   `latent(..., d = K)` (or the `d` argument on the keyword helper), not
+#'   here.
+#' @param spde_mode **Not read by the fitter.** Retained for backward
+#'   compatibility only. Spatial field sharing is determined by the
+#'   `spatial_*()` formula keyword, not by this control argument.
 #' @param n_init Number of random-start replicates. Reduced-rank GLLVMs
 #'   are often multimodal because the latent-factor likelihood has many
 #'   equivalent local maxima; running several restarts with different

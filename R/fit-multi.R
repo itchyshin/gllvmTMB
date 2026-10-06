@@ -6546,6 +6546,31 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## that respect the engine's lower-triangular structure: diagonal and
   ## strict-lower-triangle of an n_traits x rank Lambda. Upper-triangle
   ## constraints are silently ignored (those entries are already 0).
+  if (!is.null(lambda_constraint$B) && !use_rr_B) {
+    cli::cli_abort(c(
+      "!" = "{.code lambda_constraint$unit} was supplied but the model has no unit-level {.fn latent} term.",
+      ">" = "Add {.code latent(... | {unit}, d = K)} to the formula, or remove {.code unit} from {.code lambda_constraint}."
+    ))
+  }
+  if (!is.null(lambda_constraint$W) && !use_rr_W) {
+    cli::cli_abort(c(
+      "!" = "{.code lambda_constraint$unit_obs} was supplied but the model has no {.var {unit_obs}}-level {.fn latent} term.",
+      ">" = "Add {.code latent(... | {unit_obs}, d = K)} to the formula, or remove {.code unit_obs} from {.code lambda_constraint}."
+    ))
+  }
+  if (!is.null(lambda_constraint$phy) && !use_phylo_rr) {
+    cli::cli_abort(c(
+      "!" = "{.code lambda_constraint$phy} was supplied but the model has no phylogenetic {.fn latent} term.",
+      ">" = "Add a {.code phylo_latent(...)} term to the formula, or remove {.code phy} from {.code lambda_constraint}."
+    ))
+  }
+  if (!is.null(lambda_constraint$spde) &&
+      !(isTRUE(use_spde) && isTRUE(is_spatial_latent))) {
+    cli::cli_abort(c(
+      "!" = "{.code lambda_constraint$spde} was supplied but the model has no {.fn spatial_latent} term.",
+      ">" = "Add {.fn spatial_latent} to the formula, or remove {.code spde} from {.code lambda_constraint}."
+    ))
+  }
   if (use_rr_B_slope && !is.null(lambda_constraint$B)) {
     cli::cli_abort(c(
       "{.code lambda_constraint$B} is not yet implemented for augmented ordinary {.fn latent} random-regression slopes.",

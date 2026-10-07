@@ -124,7 +124,7 @@
 #'
 #' @export
 loading_ci <- function(fit,
-                       level      = c("unit", "unit_obs"),
+                       level      = "unit",
                        method     = c("wald", "wald_asym", "profile"),
                        conf_level = 0.95,
                        sigma_d2   = 1,
@@ -150,7 +150,7 @@ loading_ci <- function(fit,
     )
   }
 
-  level  <- match.arg(level)
+  level  <- match.arg(level, c("unit", "unit_obs", "B", "W"))
   method <- match.arg(method)
   if (is.null(loading_scale)) {
     loading_scale <- if (identical(method, "wald_asym")) {

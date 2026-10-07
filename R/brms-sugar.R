@@ -4056,25 +4056,30 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
           }
           if (.has_named_arg(e, "d") || d_positional) {
             d_val <- .named_or_positional_arg(e, "d", 3L, default = NULL)
-            if (length(d_val) != 1L) {
-              cli::cli_abort(c(
-                "{.arg d} in {.fn latent} must be a whole number >= 1.",
-                ">" = "Pass a single rank, e.g. {.code latent(..., d = 2)}."
-              ))
-            }
-            d_num <- suppressWarnings(as.numeric(d_val))
-            if (length(d_num) != 1L || is.na(d_num)) {
-              cli::cli_abort(c(
-                "{.arg d} in {.fn latent} must be a whole number >= 1.",
-                ">" = "Pass a single rank, e.g. {.code latent(..., d = 2)}."
-              ))
-            }
-            d_int <- as.integer(d_num)
-            if (d_int < 1L || !identical(d_num, as.numeric(d_int))) {
-              cli::cli_abort(c(
-                "{.arg d} in {.fn latent} must be a whole number >= 1.",
-                ">" = "Pass a single rank, e.g. {.code latent(..., d = 2)}."
-              ))
+            ## Formula `d` can still be a symbol or call (`d = q`,
+            ## `d = n_traits + 1`). Those evaluate later; only guard
+            ## values that are already numeric.
+            if (is.numeric(d_val)) {
+              if (length(d_val) != 1L) {
+                cli::cli_abort(c(
+                  "{.arg d} in {.fn latent} must be a whole number >= 1.",
+                  ">" = "Pass a single rank, e.g. {.code latent(..., d = 2)}."
+                ))
+              }
+              d_num <- suppressWarnings(as.numeric(d_val))
+              if (length(d_num) != 1L || is.na(d_num)) {
+                cli::cli_abort(c(
+                  "{.arg d} in {.fn latent} must be a whole number >= 1.",
+                  ">" = "Pass a single rank, e.g. {.code latent(..., d = 2)}."
+                ))
+              }
+              d_int <- as.integer(d_num)
+              if (d_int < 1L || !identical(d_num, as.numeric(d_int))) {
+                cli::cli_abort(c(
+                  "{.arg d} in {.fn latent} must be a whole number >= 1.",
+                  ">" = "Pass a single rank, e.g. {.code latent(..., d = 2)}."
+                ))
+              }
             }
           }
           ## `unique =` is the canonical argument (matches

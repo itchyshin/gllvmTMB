@@ -748,7 +748,10 @@ NULL
 #'     Cphy = ape::vcv(tree, corr = TRUE),
 #'     sigma2_phy = rep(0.3, 4), seed = 1
 #'   )
-#'   sim$data$species <- factor(sim$data$species, levels = tree$tip.label)
+#'   sim$data$species <- factor(
+#'     tree$tip.label[as.integer(sim$data$species)],
+#'     levels = tree$tip.label
+#'   )
 #'   fit <- gllvmTMB(
 #'     value ~ 0 + trait + phylo_latent(species, d = 2),
 #'     data       = sim$data,
@@ -1032,7 +1035,10 @@ spatial_slope <- function(formula, mesh) {
 #'     Cphy = ape::vcv(tree, corr = TRUE),
 #'     sigma2_phy = rep(0.3, 3), seed = 1
 #'   )
-#'   sim$data$species <- factor(sim$data$species, levels = tree$tip.label)
+#'   sim$data$species <- factor(
+#'     tree$tip.label[as.integer(sim$data$species)],
+#'     levels = tree$tip.label
+#'   )
 #'   fit <- gllvmTMB(
 #'     value ~ 0 + trait + phylo_scalar(species),
 #'     data       = sim$data,
@@ -1141,7 +1147,10 @@ phylo_scalar <- function(
 #'     Cphy = ape::vcv(tree, corr = TRUE),
 #'     sigma2_phy = rep(0.3, 3), seed = 1
 #'   )
-#'   sim$data$species <- factor(sim$data$species, levels = tree$tip.label)
+#'   sim$data$species <- factor(
+#'     tree$tip.label[as.integer(sim$data$species)],
+#'     levels = tree$tip.label
+#'   )
 #'   fit <- gllvmTMB(
 #'     value ~ 0 + trait + phylo_unique(species),
 #'     data       = sim$data,
@@ -2022,7 +2031,10 @@ dep <- function(formula) {
 #'     Cphy = ape::vcv(tree, corr = TRUE),
 #'     sigma2_phy = rep(0.3, 3), seed = 1
 #'   )
-#'   sim$data$species <- factor(sim$data$species, levels = tree$tip.label)
+#'   sim$data$species <- factor(
+#'     tree$tip.label[as.integer(sim$data$species)],
+#'     levels = tree$tip.label
+#'   )
 #'   fit <- gllvmTMB(
 #'     value ~ 0 + trait + phylo_dep(0 + trait | species),
 #'     data       = sim$data,

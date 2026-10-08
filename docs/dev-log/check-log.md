@@ -1,3 +1,24 @@
+## 2026-10-07: issue 1467 posterior uncertainty
+
+Corrected prior curvature supplies conditional posterior SDs in fit-time,
+lazy and joint paths. 776 focused checks passed. Complete runnable ridge code
+and diagnostic suggestions ship. Independent review found no blocking findings.
+Supplied-data numerical results and fit artifacts remain private.
+Report: after-task/2026-10-07-issue-1467-completion.md.
+
+## 2026-10-07: issue 1467 LV summary and one-axis ordiplot
+
+Separate lane codex/issue-1467-output-20261007, base 02b46cfc8.
+Final source-loaded tests: summary 38, one-axis ordiplot 20, existing ordiplot-multi 9,
+ordiplot-VP 32, all passed. Three synthetic binomial-probit refits (d1, d2,
+d2 loading_ridge = 2) converged. Rd regeneration, pkgdown reference check,
+and predictor-informed tutorial render passed. Independent scoped review OK.
+Ridge summary likelihood/criterion distinction corrected; older stored objects
+retain printable summaries with an unavailable-likelihood note.
+Exact-data refits pending inaccessible Drive CSV. Full R CMD check and package
+suite not run; local patch only, no push or merge. Report:
+after-task/2026-10-07-issue-1467-output.md.
+
 ## 2026-10-04 - #1403: ordinary `update()` no longer asks for a missing `call`
 
 Lane `cursor/oct4-1403` (worktree `/Users/z3437171/local-scratch/lanes/gllvmTMB-oct4-1403`).

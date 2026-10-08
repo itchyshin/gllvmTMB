@@ -324,7 +324,10 @@ predictor-model formula (for Gaussian sugar, e.g. \code{x ~ z}) or an
 \code{"julia"} routes the fit through the experimental GLLVModels.jl bridge via
 JuliaCall. The Julia path currently maps
 the unconstrained-ordination core (a single \code{latent()} block + per-trait
-intercepts) and errors on structures it does not yet support.}
+intercepts) and errors on structures it does not yet support.
+For unstructured Gaussian models (\code{gaussian()} with ordinary \code{latent()} and
+no phylo/spatial structure), \code{engine = "julia"} uses the GLLVModels.jl
+closed-form profile path instead of the native Laplace engine.}
 
 \item{ci_method}{Confidence-interval route requested at fit time for
 admitted \code{engine = "julia"} no-X rows. One of \code{"none"} (default),

@@ -77,6 +77,11 @@
 #' honesty caveat that already applies to Wald standard errors from this
 #' package.
 #'
+#' With finite loading ridge, the calculation includes the Gaussian loading
+#' prior precision at the fitted MAP point. These are local approximate
+#' posterior standard deviations conditional on the chosen ridge scale,
+#' model, and latent-axis orientation, not calibrated sampling standard errors.
+#'
 #' @seealso [gllvmTMBcontrol()] for the `se` argument that defers the
 #'   calculation; [getREsd()] and [getLV()] for accessors that read the
 #'   resulting `sd_report`.
@@ -143,7 +148,9 @@ standard_errors <- function(fit) {
   }
 
   sd_rep <- tryCatch(
-    TMB::sdreport(obj, par.fixed = opt$par, getJointPrecision = FALSE),
+    .gllvmTMB_sdreport_loading_ridge(obj, opt$par, fit$aghq$ridge_tau,
+      getJointPrecision = FALSE,
+      getReportCovariance = !isTRUE(fit$integrated_gaussian_diag_B)),
     error = function(e) {
       cli::cli_abort(c(
         "{.fn standard_errors} failed inside {.fn TMB::sdreport}.",
@@ -156,6 +163,7 @@ standard_errors <- function(fit) {
   )
 
   fit$sd_report <- sd_rep
+  fit$loading_ridge_curvature <- attr(sd_rep, "loading_ridge_curvature")
   fit$sdreport_error <- NULL
   fit
 }

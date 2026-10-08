@@ -747,7 +747,7 @@
     } else if (runaway_hit) {
       "treat the fit as unusable rather than interpreting it: this is quasi-complete separation, which lowering the rank does not resolve; try gllvmTMBcontrol(loading_ridge = 0.25) (0.25 to 0.5; larger tau shrinks less) to shrink runaway loadings, or gllvmTMBcontrol(integration = 'va') for latent(..., unique = FALSE) fits with at least 100 units and d <= 2 -- either makes the result a penalised (MAP) or variational estimate, so logLik(), AIC() and BIC() no longer apply to it"
     } else {
-      "remove or re-code the near-constant binary indicator; lowering rank will not resolve quasi-separation by itself"
+      "check the near-constant binary indicator and compare a regularised refit with gllvmTMBcontrol(loading_ridge = 2); this is a Normal(0, 2^2) loading prior, with smaller scales giving stronger shrinkage. Lowering rank will not resolve quasi-separation by itself"
     }
   )
   ## Which path fired, so the weak-axis row can give matching advice: a
@@ -2290,6 +2290,11 @@ gllvmTMB_diagnose <- function(
 
   ## ---- Pillar 4: actionable hints ----------------------------------
   hints <- character(0)
+  binomial_screen <- .gllvmTMB_binomial_prevalence_loading_row(object)
+  if (!is.null(binomial_screen) && identical(binomial_screen$status[[1L]], "WARN")) {
+    hints <- c(hints, paste(binomial_screen$message[[1L]],
+                           binomial_screen$action[[1L]]))
+  }
   if (!isTRUE(san$converged)) {
     hints <- c(
       hints,
@@ -2301,6 +2306,17 @@ gllvmTMB_diagnose <- function(
         "for simpler-model warm starts."
       )
     )
+  }
+  if (!is_mspl && !isTRUE(object$likelihood_weights$active) &&
+      isTRUE(object$use$rr_B) && !isTRUE(object$aghq$penalised) &&
+      any(object$tmb_data$family_id_vec == 1L) &&
+      (!isTRUE(san$converged) || identical(san$pd_hessian, FALSE))) {
+    hints <- c(hints, paste(
+      "For an unstable binomial latent fit, compare an explicit regularised refit with",
+      "`gllvmTMBcontrol(loading_ridge = 2)`: free loadings have a Normal(0, 2^2) prior.",
+      "Smaller scales shrink more. This changes ML to MAP; inspect convergence and",
+      "posterior SDs and compare prior scales before interpretation."
+    ))
   }
   if (isTRUE(san$max_gradient >= gradient_thresh)) {
     hints <- c(

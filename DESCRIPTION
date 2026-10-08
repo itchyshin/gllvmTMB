@@ -45,6 +45,7 @@ LinkingTo:
     RcppEigen,
     TMB
 Suggests:
+    ade4,
     ape,
     DHARMa,
     detectseparation (>= 0.4.0),

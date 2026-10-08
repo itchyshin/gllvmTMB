@@ -184,9 +184,14 @@ and latent-variable modelling, not evidence that this specific
 - Random-effect bars, offsets, `mi()`, smooth terms, and response or
   trait columns inside `lv` are rejected; top-level guard tests cover
   random-effect bars, `offset()`, `mi()`, and smooth terms.
-- `lv = ~ x` is accepted, but the intercept is dropped internally.
-  The parser records a fit note and tests equivalence to
-  `lv = ~ 0 + x`.
+- `lv = ~ x` is accepted; its model matrix is built from the original
+  formula, then the actual intercept column is removed. For numeric `x`,
+  this is equivalent to `lv = ~ 0 + x`. For factors, retain the original
+  contrasts: default treatment coding estimates differences from a
+  reference level. Full factor indicators and other designs spanning a
+  constant are rejected under the no-LV-intercept contract. This corrects
+  the redundant factor coding found in issue #1467; see
+  `../dev-log/decisions/2026-10-07-lv-factor-contrasts.md`.
 - Predictors in `lv` must be constant within the grouping level of the
   outer `latent()` term. The parser errors rather than averaging.
 - Any ordinary fixed-effect RHS covariate is rejected in C1 when a

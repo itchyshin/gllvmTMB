@@ -356,7 +356,7 @@ extract_residual_cor <- function(fit, level = "unit") {
 }
 
 
-#' Draw a two-axis ordination plot for a fitted multivariate model
+#' Draw a one- or two-axis ordination plot for a fitted multivariate model
 #'
 #' Draws a simple base-R biplot of latent scores, with optional trait loadings
 #' overlaid, for a fit returned by [gllvmTMB()]. This method is a compatibility
@@ -372,15 +372,17 @@ extract_residual_cor <- function(fit, level = "unit") {
 #' @param fit A fitted multivariate model returned by [gllvmTMB()].
 #' @param level `"unit"` (between-unit) or `"unit_obs"` (within-unit).
 #'   Deprecated aliases `"B"` and `"W"` are still accepted with a warning.
-#' @param axes Length-2 integer vector picking which two latent axes
-#'   to plot. Default `c(1, 2)`.
+#' @param axes Integer vector selecting one or two distinct latent axes.
+#'   When omitted, uses axis 1 for a one-axis fit and `c(1, 2)` otherwise.
+#'   A one-axis plot places scores and loading arrows along a horizontal
+#'   baseline; its vertical position has no latent-variable meaning.
 #' @param biplot Logical; if `TRUE`, overlay scaled trait loadings as
 #'   arrows (default `TRUE`).
 #' @param rotate Rotation after fitting: `"none"` (default), `"varimax"`, or
 #'   `"promax"`.
 #' @param ellipse Logical; if `TRUE`, draw an asymptotic-normal score
 #'   -uncertainty ellipse around every site, from [ordination_uncertainty()].
-#'   Only supported with `rotate = "none"` (the default) -- see
+#'   Only supported for two-axis plots with `rotate = "none"` (the default) -- see
 #'   [ordination_uncertainty()]'s Rotation section for why. The ellipse
 #'   level is unmeasured for coverage; it is a standard Wald construction,
 #'   not a certified interval.
@@ -416,8 +418,13 @@ ordiplot.gllvmTMB_multi <- function(
   level <- .normalise_level(level, arg_name = "level")
   canonical_level <- .canonical_level_name(level)
   rotate <- match.arg(rotate)
-  if (length(axes) != 2L) {
-    cli::cli_abort("axes must be length 2.")
+  axes_supplied <- !missing(axes)
+  if (axes_supplied && (
+    !is.numeric(axes) || !length(axes) %in% 1:2 || anyNA(axes) ||
+    any(!is.finite(axes)) || any(axes < 1 | axes != trunc(axes)) ||
+    anyDuplicated(axes)
+  )) {
+    cli::cli_abort("axes must be length 1 or length 2, with distinct positive integer indices.")
   }
   if (isTRUE(ellipse) && rotate != "none") {
     cli::cli_abort(c(
@@ -429,23 +436,32 @@ ordiplot.gllvmTMB_multi <- function(
 
   scores <- getLV(fit, canonical_level, rotate)
   loadings <- getLoadings(fit, canonical_level, rotate)
+  if (!axes_supplied) axes <- if (!is.null(scores) && ncol(scores) == 1L) 1L else c(1L, 2L)
   if (is.null(scores) || ncol(scores) < max(axes)) {
     cli::cli_abort("Not enough latent axes for the requested {.code axes}.")
   }
 
+  one_axis <- length(axes) == 1L
+  if (isTRUE(ellipse) && one_axis) {
+    cli::cli_abort(
+      "ellipse = TRUE requires two latent axes; one-axis uncertainty intervals are not supported by ordiplot().",
+      class = "gllvmTMB_ordiplot_ellipse_one_axis_unsupported"
+    )
+  }
   rng <- function(x) range(x, na.rm = TRUE)
   xs <- scores[, axes[1L]]
-  ys <- scores[, axes[2L]]
+  ys <- if (one_axis) rep(0, nrow(scores)) else scores[, axes[2L]]
 
   plot_args <- utils::modifyList(
     list(
       x = xs,
       y = ys,
       xlab = paste0("LV", axes[1L]),
-      ylab = paste0("LV", axes[2L]),
+      ylab = if (one_axis) "" else paste0("LV", axes[2L]),
       pch = 19,
       col = "grey40",
-      asp = 1
+      asp = if (one_axis) NA else 1,
+      yaxt = if (one_axis) "n" else "s"
     ),
     list(...)
   )
@@ -474,7 +490,7 @@ ordiplot.gllvmTMB_multi <- function(
       max(abs(loadings[, axes]), 1e-9) *
       0.7
     arrows_x <- loadings[, axes[1L]] * sc
-    arrows_y <- loadings[, axes[2L]] * sc
+    arrows_y <- if (one_axis) rep(0, nrow(loadings)) else loadings[, axes[2L]] * sc
     graphics::arrows(
       0,
       0,

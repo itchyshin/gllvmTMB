@@ -313,7 +313,16 @@ spelling to request the same loading MAP penalty on a Laplace fit without
 suggesting that the penalty belongs to AGHQ. The default \code{NULL} preserves
 historical unpenalised Laplace fits. Supply at most one of
 \code{loading_ridge} and \code{aghq_ridge}; neither may be combined with
-\code{estimator = "mspl"}.}
+\code{estimator = "mspl"}. A finite positive value is the standard deviation
+\code{tau} of independent zero-mean normal priors on free unit-tier loadings:
+\code{loading_ridge = 2} means variance \code{2^2}, smaller positive values apply
+stronger shrinkage, and \code{Inf} disables the penalty. For unstable binomial
+latent fits, an explicit \code{loading_ridge = 2} fit is a starting sensitivity
+analysis; this does not change the ordinary Laplace default. Estimates
+are penalised MAP points. Retained penalised-Hessian LV uncertainty is a
+local posterior approximation conditional on \code{tau}, with delta-method
+propagation for trait effects, not calibrated repeated-sampling coverage.
+Older fits without the required metadata withhold LV uncertainty.}
 
 \item{optimizer_passes}{Number of exact-gradient optimisation passes from
 the preceding estimate. The default \code{1} retains the historical single

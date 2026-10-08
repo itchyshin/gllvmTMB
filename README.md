@@ -204,6 +204,30 @@ stacked-trait model and produce the same fit (identical log-likelihood and
 estimates). The [Get started](https://itchyshin.github.io/gllvmTMB/articles/gllvmTMB.html)
 vignette shows the runnable wide/long equivalence.
 
+For `latent(..., lv = ~ predictor)`, `summary(fit)` reports the predictor's
+latent-axis coefficients and trait-scale effects. Axis coefficients depend
+on axis orientation; trait-scale effects are the basis for comparisons.
+For unstable binomial latent fits, try an explicit sensitivity fit with
+`control = gllvmTMBcontrol(loading_ridge = 2)`. This puts a zero-mean normal
+prior with standard deviation 2 on the free unit-tier loadings; smaller
+positive values shrink more, and `Inf` disables the penalty. Ordinary
+Laplace fits remain unpenalised by default. Ridged fits are penalised
+estimates, so ordinary AIC, BIC, and likelihood-ratio comparisons do not
+apply. With retained penalised-Hessian metadata, their LV uncertainty is a
+local posterior approximation conditional on the chosen ridge scale,
+including delta-method propagation for trait effects. It does not establish
+repeated-sampling coverage: `std.error` holds an approximate posterior SD,
+and bounds are normal-approximation credible bounds. Older fits without
+that metadata withhold LV uncertainty.
+For a factor in `lv = ~ group`, default treatment contrasts compare levels
+with the reference level, selected using `relevel()` before fitting.
+Use this form rather than `lv = ~ 0 + group`, whose full indicator coding
+violates the no-LV-intercept contract.
+`ordiplot(fit)` also supports a single latent axis. See
+[Explaining latent ecological axes](https://itchyshin.github.io/gllvmTMB/articles/explaining-latent-ecological-axes.html)
+for interpretation, uncertainty limits, and a complete CSV-to-fit example
+with 35 articles, 22 words, and `Fox_Nativeness` as the LV predictor.
+
 Missing response cells are allowed. In a wide `traits(...)` data frame,
 an `NA` trait value can be treated as an unobserved unit-trait cell; in
 long data, an `NA` in the response column is treated the same way. The

@@ -428,3 +428,30 @@ test_that("vcov() gives NA rows for a coefficient held fixed", {
   ## ...and the free block is still finite.
   expect_true(all(is.finite(v[-i, -i, drop = FALSE])))
 })
+
+test_that("lazy ridge uncertainty uses the same penalised MAP curvature as eager fitting", {
+  withr::local_options(gllvmTMB.quiet_grammar_notes = TRUE, lifecycle_verbosity = "quiet")
+  set.seed(14673)
+  n <- 60L
+  x <- seq(-1, 1, length.out = n)
+  z <- .6 * x + rnorm(n)
+  data <- data.frame(unit = factor(rep(seq_len(n), each = 3L)),
+    trait = factor(rep(c("a", "b", "c"), n)), x = rep(x, each = 3L))
+  data$value <- rep(c(.1, -.1, .2), n) + rep(c(.8, -.5, .6), n) *
+    rep(z, each = 3L) + rnorm(3L * n, sd = .2)
+  fit_once <- function(se) suppressWarnings(gllvmTMB(
+    value ~ 0 + trait + latent(0 + trait | unit, d = 1, unique = FALSE, lv = ~ x),
+    data = data, unit = "unit", trait = "trait",
+    control = gllvmTMBcontrol(loading_ridge = 2, se = se)))
+  eager <- fit_once(TRUE)
+  lazy <- fit_once(FALSE)
+  expect_null(lazy$loading_ridge_curvature)
+  lazy <- standard_errors(lazy)
+  expect_equal(lazy$sd_report$cov.fixed, eager$sd_report$cov.fixed, tolerance = 1e-10)
+  expect_equal(lazy$sd_report$gradient.fixed, eager$sd_report$gradient.fixed, tolerance = 1e-10)
+  expect_identical(lazy$loading_ridge_curvature,
+    attr(lazy$sd_report, "loading_ridge_curvature"))
+  expect_identical(lazy$loading_ridge_curvature$parameter_vector, lazy$opt$par)
+  expect_identical(lazy$loading_ridge_curvature$interpretation,
+    "local_approximate_posterior_curvature_at_map")
+})

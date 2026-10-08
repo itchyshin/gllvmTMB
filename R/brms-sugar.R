@@ -565,6 +565,12 @@ meta <- function(value, sampling_var) {
 #'   diagonal \eqn{\boldsymbol\Psi} companion to one shared variance across
 #'   traits. Only applies when `unique = TRUE`.
 #' @param lv One-sided formula for predictor-informed latent-score means.
+#'   The model matrix retains the formula's factor contrasts, then its
+#'   intercept column is removed. With default treatment contrasts,
+#'   `lv = ~ group` estimates differences from the factor reference level.
+#'   Use [stats::relevel()] to select that level. Designs spanning a constant,
+#'   including `lv = ~ 0 + group`, violate the no-LV-intercept contract
+#'   and are rejected. Numeric `lv = ~ x` and `lv = ~ 0 + x` are equivalent.
 #'   Runtime support is limited to ordinary unit-tier
 #'   `latent(..., lv = ~ x)`. Registered native family/link rows compose in one
 #'   complete-response ordinary unit-tier block. The loadings-only

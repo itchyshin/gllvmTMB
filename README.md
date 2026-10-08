@@ -207,9 +207,10 @@ vignette shows the runnable wide/long equivalence.
 For `latent(..., lv = ~ predictor)`, `summary(fit)` reports the predictor's
 latent-axis coefficients and trait-scale effects. Axis coefficients depend
 on axis orientation; trait-scale effects are the basis for comparisons.
-For unstable binomial latent fits, try an explicit sensitivity fit with
+For unstable binomial fits with ordinary between-unit latent loadings, try
+an explicit sensitivity fit with
 `control = gllvmTMBcontrol(loading_ridge = 2)`. This puts a zero-mean normal
-prior with standard deviation 2 on the free unit-tier loadings; smaller
+prior with standard deviation 2 on the free ordinary between-unit loadings; smaller
 positive values shrink more, and `Inf` disables the penalty. Ordinary
 Laplace fits remain unpenalised by default. Ridged fits are penalised
 estimates, so ordinary AIC, BIC, and likelihood-ratio comparisons do not

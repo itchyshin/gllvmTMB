@@ -2148,11 +2148,12 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #'   historical unpenalised Laplace fits. Supply at most one of
 #'   `loading_ridge` and `aghq_ridge`; neither may be combined with
 #'   `estimator = "mspl"`. A finite positive value is the standard deviation
-#'   `tau` of independent zero-mean normal priors on free unit-tier loadings:
+#'   `tau` of independent zero-mean normal priors on free ordinary between-unit loadings:
 #'   `loading_ridge = 2` means variance `2^2`, smaller positive values apply
 #'   stronger shrinkage, and `Inf` disables the penalty. For unstable binomial
-#'   latent fits, an explicit `loading_ridge = 2` fit is a starting sensitivity
-#'   analysis; this does not change the ordinary Laplace default. Estimates
+#'   fits with ordinary between-unit latent loadings, an explicit
+#'   `loading_ridge = 2` fit is a starting sensitivity analysis; this does not
+#'   change the ordinary Laplace default. Estimates
 #'   are penalised MAP points. Retained penalised-Hessian LV uncertainty is a
 #'   local posterior approximation conditional on `tau`, with delta-method
 #'   propagation for trait effects, not calibrated repeated-sampling coverage.

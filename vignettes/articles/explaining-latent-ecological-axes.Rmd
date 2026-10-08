@@ -211,10 +211,10 @@ predictor-informed latent fits, so keep `ellipse = FALSE`.
 
 A loading ridge can be requested with
 `control = gllvmTMBcontrol(loading_ridge = 2)`. The value is the prior standard
-deviation $\tau$ on free unit-tier loadings: $\tau = 2$ means independent
+deviation $\tau$ on free ordinary between-unit loadings: $\tau = 2$ means independent
 $N(0, 2^2)$ priors. Smaller positive values apply stronger shrinkage, and
-`loading_ridge = Inf` disables the penalty. For unstable binomial latent
-fits, an explicit $\tau = 2$ fit is a starting sensitivity analysis. The
+`loading_ridge = Inf` disables the penalty. For unstable binomial fits with ordinary between-unit latent loadings,
+an explicit $\tau = 2$ fit is a starting sensitivity analysis. The
 ordinary Laplace default remains unpenalised; evidence for this sensitivity
 choice does not justify changing the default across response families.
 A ridged fit is a penalised estimate. Do not compare it with an unpenalised

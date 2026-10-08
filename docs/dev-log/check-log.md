@@ -1,3 +1,11 @@
+## 2026-10-07: issue 1467 public-surface audit
+
+README, article and control help now limit ridge advice to ordinary
+between-unit loadings. Rd regeneration, pkgdown references and prose checks
+passed. Independent public-surface audit: OK, no remaining blockers. The
+completion report contains technical validation only; supplied-data results
+and fit evidence remain private. Final CI receipt is tracked on PR 1468.
+
 ## 2026-10-07: issue 1467 diagnostic consistency
 
 Aligned the inherited near-constant diagnostic assertion with explicit ridge

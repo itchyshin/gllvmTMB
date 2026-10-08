@@ -1,3 +1,12 @@
+## 2026-10-07: issue 1467 diagnostic consistency
+
+Aligned the inherited near-constant diagnostic assertion with explicit ridge
+guidance and updated the neighbouring weak-axis action. All three ridge
+recommendations now state their ordinary between-unit loading scope.
+Sanity, diagnostic and summary regressions: 150 passed, zero failed, with
+one inherited implicit-unit deprecation warning. Independent review confirms
+the advice matches the theta_rr_B-only penalty; thresholds are unchanged.
+
 ## 2026-10-07: issue 1467 CI portability repairs
 
 CI exposed an extra bare abort, an S3 trace interception difference and a

@@ -745,9 +745,9 @@
     if (!identical(status, "WARN")) {
       "none"
     } else if (runaway_hit) {
-      "treat the fit as unusable rather than interpreting it: this is quasi-complete separation, which lowering the rank does not resolve; try gllvmTMBcontrol(loading_ridge = 0.25) (0.25 to 0.5; larger tau shrinks less) to shrink runaway loadings, or gllvmTMBcontrol(integration = 'va') for latent(..., unique = FALSE) fits with at least 100 units and d <= 2 -- either makes the result a penalised (MAP) or variational estimate, so logLik(), AIC() and BIC() no longer apply to it"
+      "treat the fit as unusable rather than interpreting it: this is quasi-complete separation, which lowering the rank does not resolve; for ordinary between-unit latent loadings, try gllvmTMBcontrol(loading_ridge = 0.25) (0.25 to 0.5; larger tau shrinks less) to shrink runaway loadings, or gllvmTMBcontrol(integration = 'va') for latent(..., unique = FALSE) fits with at least 100 units and d <= 2 -- either makes the result a penalised (MAP) or variational estimate, so logLik(), AIC() and BIC() no longer apply to it"
     } else {
-      "check the near-constant binary indicator and compare a regularised refit with gllvmTMBcontrol(loading_ridge = 2); this is a Normal(0, 2^2) loading prior, with smaller scales giving stronger shrinkage. Lowering rank will not resolve quasi-separation by itself"
+      "check the near-constant binary indicator; for ordinary between-unit latent loadings, compare a regularised refit with gllvmTMBcontrol(loading_ridge = 2); this is a Normal(0, 2^2) loading prior, with smaller scales giving stronger shrinkage. Lowering rank will not resolve quasi-separation by itself"
     }
   )
   ## Which path fired, so the weak-axis row can give matching advice: a
@@ -1907,7 +1907,7 @@ check_gllvmTMB <- function(
           if (isTRUE(binomial_runaway)) {
             "if driven by a runaway trait loading, treat the fit as an improper solution rather than re-ranking it; otherwise compare lower ranks and use known-DGP simulations to evaluate the selection rule"
           } else if (isTRUE(binomial_warn)) {
-            "if driven by a high-loading near-constant binary trait, remove or re-code that indicator; otherwise compare lower ranks and use known-DGP simulations to evaluate the selection rule"
+            "if driven by a high-loading near-constant binary trait, check indicator coding; for ordinary between-unit latent loadings, compare a regularised refit with gllvmTMBcontrol(loading_ridge = 2); otherwise compare lower ranks and use known-DGP simulations to evaluate the selection rule"
           } else {
             "compare lower ranks, inspect fit stability, and avoid over-interpreting weak axes"
           }

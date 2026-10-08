@@ -1254,7 +1254,7 @@ gllvmTMB <- function(
   ## blocks). Earlier versions dispatched these to sdmTMB() with
   ## spatial = "off"; that path is removed in 0.2.0 because the
   ## single-response sdmTMB() engine is no longer bundled.
-  parsed <- parse_multi_formula(formula)
+  parsed <- parse_multi_formula(formula, trait_col = trait)
   if (isTRUE(temporal_spec$active)) {
     has_stable_unit_component <- any(vapply(parsed$covstructs, function(cs) {
       identical(all.vars(cs$group), site)

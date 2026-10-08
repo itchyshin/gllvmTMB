@@ -1,3 +1,15 @@
+## 2026-10-08: issue 1467 consistent trait-column naming
+
+Reconciled the previously local trait-selector fix into PR 1468. The selected
+column reaches shared classifiers, canonical rewrites, the main parser and
+screening. Paired probit tests cover actual names in both terms, renamed
+trait in both terms, and the historical mixed form at d1, d2 and ridge d2.
+The new and neighbouring parser checks passed 93 expectations. Summary,
+curvature, plotting and factor checks were rerun; actionable-error checks
+passed 7 expectations with NOT_CRAN=true. Independent source and public
+reviews are OK. Documentation checks and article rendering passed. Supplied
+data outcomes remain private; final exact-head CI will be linked on the PR.
+
 ## 2026-10-07: issue 1467 public-surface audit
 
 README, article and control help now limit ridge advice to ordinary

@@ -33,7 +33,7 @@ for (label in names(settings)) {
   set.seed(1467)
   elapsed <- system.time(fit <- withCallingHandlers(
     gllvmTMB(word_present ~ 0 + analysis_word +
-               latent(0 + trait | article_id, d = s$d, lv = ~ Fox_Nativeness),
+               latent(0 + analysis_word | article_id, d = s$d, lv = ~ Fox_Nativeness),
              trait = 'analysis_word', unit = 'article_id',
              family = binomial(link = 'probit'), data = dat,
              control = fit_control),

@@ -204,6 +204,14 @@ stacked-trait model and produce the same fit (identical log-likelihood and
 estimates). The [Get started](https://itchyshin.github.io/gllvmTMB/articles/gllvmTMB.html)
 vignette shows the runnable wide/long equivalence.
 
+When the response-column factor has another name, such as `analysis_word`,
+use that name in the fixed effects and set `trait = "analysis_word"`.
+Use the same name in both places: `0 + analysis_word` and
+`latent(0 + analysis_word | unit, ...)`. If the data column is named `trait`,
+use `0 + trait` and `latent(0 + trait | unit, ...)` with `trait = "trait"`.
+The historical placeholder `trait` inside `latent()` remains accepted when
+a different response-column name is selected, including with `lv = ~ predictor`.
+
 For `latent(..., lv = ~ predictor)`, `summary(fit)` reports the predictor's
 latent-axis coefficients and trait-scale effects. Axis coefficients depend
 on axis orientation; trait-scale effects are the basis for comparisons.

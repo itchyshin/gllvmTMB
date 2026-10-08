@@ -243,6 +243,13 @@ Replace the file path with your local CSV. The checks require 35 articles,
 22 words, and one nativeness category per article. Keep the raw CSV outside
 the package repository.
 
+Use one spelling consistently: the actual response-column name,
+`analysis_word`, appears in both the fixed intercepts and the latent loading
+block. If you rename the data column to `trait`, use `trait` in both places
+and set `trait = "trait"`. The placeholder `trait`
+inside `latent()` is equivalent when `trait = "analysis_word"` is supplied.
+This equivalence also holds with the LV predictor and loading prior.
+
 Choose Introduced as the reference before fitting. With the default
 treatment contrasts, `Fox_NativenessNative` then means Native minus
 Introduced. Its trait effect is a difference on each word's probit linear
@@ -266,7 +273,7 @@ stopifnot(nlevels(dat$article_id) == 35L,
 set.seed(1467)
 m1 <- gllvmTMB(
   word_present ~ 0 + analysis_word +
-    latent(0 + trait | article_id, d = 1, lv = ~ Fox_Nativeness),
+    latent(0 + analysis_word | article_id, d = 1, lv = ~ Fox_Nativeness),
   data = dat, trait = "analysis_word", unit = "article_id",
   family = binomial(link = "probit"),
   control = gllvmTMBcontrol(loading_ridge = Inf)
@@ -274,7 +281,7 @@ m1 <- gllvmTMB(
 set.seed(1467)
 m2 <- gllvmTMB(
   word_present ~ 0 + analysis_word +
-    latent(0 + trait | article_id, d = 2, lv = ~ Fox_Nativeness),
+    latent(0 + analysis_word | article_id, d = 2, lv = ~ Fox_Nativeness),
   data = dat, trait = "analysis_word", unit = "article_id",
   family = binomial(link = "probit"),
   control = gllvmTMBcontrol(loading_ridge = Inf)
@@ -282,7 +289,7 @@ m2 <- gllvmTMB(
 set.seed(1467)
 m2_ridge <- gllvmTMB(
   word_present ~ 0 + analysis_word +
-    latent(0 + trait | article_id, d = 2, lv = ~ Fox_Nativeness),
+    latent(0 + analysis_word | article_id, d = 2, lv = ~ Fox_Nativeness),
   data = dat, trait = "analysis_word", unit = "article_id",
   family = binomial(link = "probit"),
   control = gllvmTMBcontrol(loading_ridge = 2)

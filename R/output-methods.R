@@ -444,7 +444,10 @@ ordiplot.gllvmTMB_multi <- function(
   one_axis <- length(axes) == 1L
   if (isTRUE(ellipse) && one_axis) {
     cli::cli_abort(
-      "ellipse = TRUE requires two latent axes; one-axis uncertainty intervals are not supported by ordiplot().",
+      c(
+        "ellipse = TRUE requires two latent axes; one-axis uncertainty intervals are not supported by ordiplot().",
+        ">" = "Use {.code ellipse = FALSE} for a one-axis plot."
+      ),
       class = "gllvmTMB_ordiplot_ellipse_one_axis_unsupported"
     )
   }

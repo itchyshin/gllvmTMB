@@ -1,3 +1,12 @@
+## 2026-10-07: issue 1467 CI portability repairs
+
+CI exposed an extra bare abort, an S3 trace interception difference and a
+platform-dependent factor-fixture optimizer stop. Added an actionable one-axis
+error suggestion, traced the actual graphics generic, and used explicit BFGS
+with tighter objective stopping for recovery. All accuracy thresholds remain
+unchanged. Installed-package plotting: 6 passed; factor recovery: 45 passed;
+error-action ratchet: 7 passed. Independent narrow review: no blocking findings.
+
 ## 2026-10-07: issue 1467 posterior uncertainty
 
 Corrected prior curvature supplies conditional posterior SDs in fit-time,

@@ -50,16 +50,18 @@ test_that("ordiplot() user xlab ylab pch col asp override plot defaults", {
   fit <- make_tiny_ordiplot_fit()
   assign(".gllvmTMB_ordiplot_plot_args", NULL, envir = globalenv())
   on.exit(rm(".gllvmTMB_ordiplot_plot_args", envir = globalenv()), add = TRUE)
+  # Trace the generic called directly. S3 tables can retain an untraced
+  # plot.default method in installed packages on other R versions.
   suppressMessages(trace(
-    graphics::plot.default,
+    graphics::plot,
     tracer = quote({
       dots <- list(...)
       assign(
         ".gllvmTMB_ordiplot_plot_args",
         list(
-          xlab = xlab,
-          ylab = ylab,
-          asp = asp,
+          xlab = dots$xlab,
+          ylab = dots$ylab,
+          asp = dots$asp,
           pch = dots$pch,
           col = dots$col
         ),
@@ -68,7 +70,7 @@ test_that("ordiplot() user xlab ylab pch col asp override plot defaults", {
     }),
     print = FALSE
   ))
-  on.exit(suppressMessages(untrace(graphics::plot.default)), add = TRUE)
+  on.exit(suppressMessages(untrace(graphics::plot)), add = TRUE)
   grDevices::pdf(NULL)
   on.exit(grDevices::dev.off(), add = TRUE)
   expect_no_error(

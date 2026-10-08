@@ -62,7 +62,14 @@ fit_lv_factor_runtime <- function(data = make_lv_factor_runtime_data()) {
     data = data,
     unit = "unit",
     trait = "trait",
-    control = gllvmTMBcontrol(se = FALSE)
+    # The runtime recovery gate checks the gradient as well as the objective.
+    # Use explicit BFGS with tighter objective stopping for this recovery test.
+    # Tighter nlminb stopping reported false convergence on the rare-level fit.
+    # The 3e-3 gradient bound and all recovery thresholds remain unchanged.
+    control = gllvmTMBcontrol(
+      se = FALSE, optimizer = "optim",
+      optArgs = list(method = "BFGS", control = list(reltol = 1e-12, maxit = 2000L))
+    )
   ))
 }
 

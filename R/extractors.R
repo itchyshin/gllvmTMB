@@ -458,7 +458,8 @@ extract_communality <- function(
 #' @param component Score component to return. `"total"` returns the latent
 #'   score entering the linear predictor. `"innovation"` returns the zero-mean
 #'   latent innovation. `"mean"` returns the predictor-informed score mean and
-#'   is non-zero only for `latent(..., lv = ~ x)` fits.
+#'   is non-zero only for `latent(..., lv = ~ x)` fits. Temporal ordination
+#'   supports `"total"` only; other component requests raise an error.
 #' @return A list with `scores` (units or within-unit observations in rows,
 #'   latent axes in columns) and `loadings` (traits in rows, axes in columns).
 #'
@@ -517,6 +518,13 @@ extract_ordination <- function(
       if (!identical(fit$temporal$mode, "latent") || fit$temporal$d < 1L) {
         return(NULL)
       }
+      if (!identical(component, "total")) {
+        cli::cli_abort(c(
+          "Temporal ordination does not support {.code component = {.val {component}}}.",
+          "i" = "Only the reconstructed total temporal states are available through this extractor.",
+          ">" = "Use {.code component = \"total\"} for temporal ordination."
+        ), class = "gllvmTMB_ordination_temporal_component_unsupported")
+      }
       ## TMB optimises independent innovations for numerical stability.  The
       ## public scores are the reconstructed persisted states, which carry
       ## the AR1/OU covariance promised by the temporal source contract.
@@ -541,7 +549,7 @@ extract_ordination <- function(
     if (!fit$use$rr_B) {
       return(NULL)
     }
-    z_B <- matrix(par[names(par) == "z_B"], nrow = fit$d_B, ncol = fit$n_sites)
+    z_B <- .ordination_score_matrix(par, "z_B", fit$d_B, fit$n_sites)
     Lambda <- fit$report$Lambda_B
     rownames(Lambda) <- trait_names
     colnames(Lambda) <- paste0("LV", seq_len(ncol(Lambda)))
@@ -571,11 +579,7 @@ extract_ordination <- function(
     if (!fit$use$rr_W) {
       return(NULL)
     }
-    z_W <- matrix(
-      par[names(par) == "z_W"],
-      nrow = fit$d_W,
-      ncol = fit$n_site_species
-    )
+    z_W <- .ordination_score_matrix(par, "z_W", fit$d_W, fit$n_site_species)
     Lambda <- fit$report$Lambda_W
     rownames(Lambda) <- trait_names
     colnames(Lambda) <- paste0("LV", seq_len(ncol(Lambda)))
@@ -601,6 +605,18 @@ extract_ordination <- function(
       row_id = ss_names
     )
   }
+}
+
+.ordination_score_matrix <- function(par, block, d, n) {
+  values <- par[which(names(par) == block)]
+  if (!is.numeric(par) || length(values) != d * n) {
+    cli::cli_abort(c(
+      "The retained {.field {block}} score block does not match the fitted ordination dimensions.",
+      "i" = "Expected {d * n} entries (d = {d}, n = {n}); found {length(values)}.",
+      ">" = "Use a fit with its complete retained TMB parameter vector, or refit in this session."
+    ), class = "gllvmTMB_ordination_score_block_mismatch")
+  }
+  matrix(values, nrow = d, ncol = n)
 }
 
 #' Predictor effects on latent-score means
@@ -834,21 +850,24 @@ extract_lv_effects <- function(
   )
 }
 
+.lv_loading_ridge_curvature_matches <- function(fit) {
+  curvature <- attr(fit$sd_report, "loading_ridge_curvature")
+  is.list(curvature) &&
+    identical(curvature$objective, "likelihood_plus_gaussian_loading_prior") &&
+    identical(curvature$interpretation, "local_approximate_posterior_curvature_at_map") &&
+    identical(curvature$ridge_tau, fit$aghq$ridge_tau) &&
+    identical(curvature$parameter_names, names(fit$opt$par)) &&
+    identical(curvature$parameter_vector, fit$opt$par)
+}
+
 .lv_sdreport_effect_se <- function(fit, n_effects, row_name, component) {
   empty <- function(status) {
     list(std.error = rep(NA_real_, n_effects), status = status)
   }
 
   ridge <- isTRUE(fit$aghq$penalised)
-  if (ridge) {
-    curvature <- attr(fit$sd_report, "loading_ridge_curvature")
-    matched <- is.list(curvature) &&
-      identical(curvature$objective, "likelihood_plus_gaussian_loading_prior") &&
-      identical(curvature$interpretation, "local_approximate_posterior_curvature_at_map") &&
-      identical(curvature$ridge_tau, fit$aghq$ridge_tau) &&
-      identical(curvature$parameter_names, names(fit$opt$par)) &&
-      identical(curvature$parameter_vector, fit$opt$par)
-    if (!isTRUE(matched)) return(empty("loading_ridge_point_only_no_lv_se"))
+  if (ridge && !.lv_loading_ridge_curvature_matches(fit)) {
+    return(empty("loading_ridge_point_only_no_lv_se"))
   }
 
   if (is.null(fit$sd_report)) {

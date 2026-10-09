@@ -140,6 +140,11 @@ extract_loadings <- function(
 #'     error.
 #' }
 #'
+#' For loading-ridge fits, score SDs require matching retained
+#' penalised-curvature metadata. They are local posterior approximations
+#' conditional on the ridge scale. Older or mismatched reports raise a warning
+#' and return `NA` SDs, while preserving the score point estimates.
+#'
 #' For a `gllvmTMB_va` (variational) fit, `se` is instead the per-unit
 #' **variational posterior SD** read from the fit's own variational
 #' distribution at its optimum -- not a Wald standard error, and not
@@ -260,6 +265,14 @@ getLV <- function(
       "i" = "This fit has no {.field sd_report} ({.code gllvmTMBcontrol(se = FALSE)}, or {.fn sdreport} failed at fitting time).",
       ">" = "Refit with {.code control = gllvmTMBcontrol(se = TRUE)} (the default)."
     ), class = "gllvmTMB_getLV_se_no_sdreport")
+  }
+  if (isTRUE(fit$aghq$penalised) && !.lv_loading_ridge_curvature_matches(fit)) {
+    cli::cli_warn(c(
+      "Loading-ridge score uncertainty is withheld because its penalised-curvature provenance is missing or mismatched.",
+      "i" = "Returning {.code NA} score standard deviations; point estimates remain available.",
+      ">" = "Refit with the current package to retain matching penalised-Hessian metadata."
+    ), class = "gllvmTMB_getLV_se_loading_ridge_unverified")
+    return(matrix(NA_real_, nrow(scores), ncol(scores), dimnames = dimnames(scores)))
   }
   z_name <- if (level == "B") "z_B" else "z_W"
   d <- if (level == "B") fit$d_B else fit$d_W

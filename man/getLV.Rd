@@ -65,6 +65,11 @@ not yet propagated) and raise an error.
 error.
 }
 
+For loading-ridge fits, score SDs require matching retained
+penalised-curvature metadata. They are local posterior approximations
+conditional on the ridge scale. Older or mismatched reports raise a warning
+and return \code{NA} SDs, while preserving the score point estimates.
+
 For a \code{gllvmTMB_va} (variational) fit, \code{se} is instead the per-unit
 \strong{variational posterior SD} read from the fit's own variational
 distribution at its optimum -- not a Wald standard error, and not

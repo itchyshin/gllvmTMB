@@ -2,7 +2,7 @@
 
 ## 1. Goal
 
-Repair missing LV predictor summaries, factor coding, one-axis plotting and loading-ridge uncertainty. Provide discoverable fitting code and push a reviewed change. Collaborator reply work remains stopped.
+Repair missing LV predictor summaries, factor coding, one-axis plotting and loading-ridge uncertainty. Provide discoverable fitting code and push a reviewed change. The maintainer subsequently authorised push, merge and final Fox Nativeness replay on 8 October.
 
 ## 2. Implemented
 
@@ -20,15 +20,15 @@ R/brms-sugar.R, R/lv-predictor.R, R/fit-multi.R, R/extractors.R, R/methods-gllvm
 
 The initial focused regression set passed 776 expectations. A fresh native installation passed all 94 curvature and LV-summary checks. Independent numerical curvature and joint precision tests passed. CI portability repairs passed installed plotting (6), factor recovery (45) and actionable-error checks (7). Final diagnostic, sanity and summary checks passed 150 expectations, with one inherited implicit-unit deprecation warning. Rd regeneration, pkgdown reference checks, article rendering, reader-surface checks, Actions boundary checks and git diff checks passed.
 
-A committed-source tarball passed R CMD check with tests run separately: zero errors, zero warnings and one inherited TMB internal-call note. Its SHA-256 is 3f315ec521bd28e40cc9a3584f887ca4cfb37dc81aa7716100d976d493babc46. Final remote CI receipts are on PR 1468; this report is written before that final run completes. Routine CI excludes gated heavy recovery checks.
+A committed-source tarball passed R CMD check with tests run separately: zero errors, zero warnings and one inherited TMB internal-call note. Its SHA-256 is 3f315ec521bd28e40cc9a3584f887ca4cfb37dc81aa7716100d976d493babc46. Final remote CI receipts are on PR 1468; this report is written before that final run completes. Routine CI excludes gated heavy recovery checks. A fresh installation of the combined source passed all 13 focused test files for LV effects, contrasts, trait naming, ridge curvature and disclosure, ordination, and full correlation output on 8 October.
 
 ## 6. Tests of the Tests
 
-Producer failures were reproduced before the output fixes. Prior-curvature tests compare against an independent penalised quadratic reference and verify full covariance propagation. Legacy and mismatched reports are guarded. Real graphics devices exercise one-axis plotting. The plotting regression traces the actual generic called, avoiding platform-dependent S3 method interception. Factor recovery retains its original gradient and accuracy thresholds; the fixture explicitly uses BFGS after tighter nlminb stopping reported false convergence.
+Producer failures were reproduced before the output fixes. Prior-curvature tests compare against an independent penalised quadratic reference and verify full covariance propagation. Legacy and mismatched reports are guarded. Real graphics devices exercise one-axis plotting. The plotting regression captures the actual generic with a local mocked binding, avoiding platform-dependent S3 method interception and global tracing state. Factor recovery retains its original gradient and accuracy thresholds; the fixture explicitly uses BFGS after tighter nlminb stopping reported false convergence.
 
 ## 7a. Issue Ledger
 
-Issue 1467 output, factor and ridge uncertainty repairs are implemented on codex/issue-1467-fixes in PR 1468. Dataset-specific results, CSVs, fitted objects and fit logs remain local. No collaborator reply is included. The separate trait-name grammar lane is outside this patch.
+Issue 1467 output, factor and ridge uncertainty repairs are implemented on codex/issue-1467-fixes in PR 1468. Dataset-specific results, CSVs, fitted objects and fit logs remain local. No collaborator reply is included. The selected trait-column repair is included: tests cover the actual column name in both fixed and latent terms, a renamed trait column in both terms, and the legacy mixed form.
 
 ## 8. Consistency Audit
 
@@ -40,7 +40,7 @@ CI found an extra unactionable error, a graphics trace interception difference, 
 
 ## 10. Known Residuals
 
-Final remote checks were pending when this report was written. Merge and release are outside the authorised publication step. Predictor-informed score uncertainty remains unsupported. Scientific rank selection, interval calibration and other-family recovery are not certified. The report structure validator passes, while repository-wide inherited unrelated acceptance ledgers remain unmet; those goals are not closed here.
+The original PR head passed all four CI shards. On 8 October the maintainer authorised merge. Conflict resolution preserves the correlation-table fixes from main and the newer graphics capture test. Fresh combined-source CI and post-merge validation are pending at this report revision. This task does not authorise a CRAN release. Predictor-informed score uncertainty remains unsupported. Scientific rank selection, interval calibration and other-family recovery are not certified. The report structure validator passes, while repository-wide inherited unrelated acceptance ledgers remain unmet; those goals are not closed here.
 
 ## 11. Team Learning
 

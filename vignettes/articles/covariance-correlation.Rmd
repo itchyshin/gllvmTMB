@@ -419,6 +419,43 @@ extract_communality(fit_A, level = "unit")  # no-residual fit: all = 1
 extract_communality(fit_B, level = "unit")  # ordinary latent with Psi
 ```
 
+By default, `extract_correlations()` returns a table of unique pairs, rather than a
+square matrix. For eight items it has 28 rows: A-B is present once, without
+B-A or the diagonal. The first item appears only in `trait_i`, and the
+last only in `trait_j`; both are present in the combined table. This is
+also true for `ordinal_probit()` fits. Directly plotting these rows with
+`geom_tile()` leaves half the cells blank. Alphabetical axis ordering can
+make the gaps look scattered.
+
+Use the package plot for a symmetric display:
+
+```{r correlation-symmetric-point-matrix, fig.width=7.4, fig.height=5.1}
+plot_correlations(fit_B, tier = "unit", style = "heatmap", triangle = "full")
+```
+
+For a custom plot, request a full table directly from the correlation extractor.
+For matrix calculations, request the square matrix:
+
+```{r correlation-full-matrix-table}
+R_B <- extract_Sigma(fit_B, level = "unit", link_residual = "auto")$R
+full_B <- extract_correlations(
+  fit_B, tier = "unit", entries = "all", link_residual = "auto"
+)
+# Both directions, without self-pairs:
+offdiag_B <- extract_correlations(
+  fit_B, tier = "unit", entries = "offdiag", link_residual = "auto"
+)
+```
+
+The full table retains the `correlation` column and interval schema. Diagonal
+rows are fixed at 1, with `method = "fixed"` and no estimated interval. Mirrored
+rows carry the same interval bounds and should not be counted as independent
+estimates. Keep `entries = "unique"` for pairwise analyses and interval/eye plots.
+The `pair` argument is restricted to that unique layout. For ordinal
+probit responses, `link_residual = "auto"` reports correlations on the
+underlying liability scale, rather than Pearson correlations of the observed
+category labels.
+
 For the report surface, keep the exact table but display the rows as a
 matrix. `extract_correlations()` supplies the point estimates and
 Fisher-z interval bounds; `plot_correlations()` arranges those supplied

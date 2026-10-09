@@ -142,6 +142,10 @@ fit <- gllvmTMB(
 fit
 extract_communality(fit, level = "unit")
 extract_Sigma_table(fit, level = "unit")
+# Complete symmetric correlation table, including the diagonal:
+extract_correlations(fit, tier = "unit", entries = "all")
+# Symmetric heatmap:
+plot_correlations(fit, tier = "unit", style = "heatmap")
 ```
 
 In an interactive session the first ordinary `latent()` fit prints a

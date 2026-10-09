@@ -3,14 +3,17 @@
 * `engine = "julia"` fixes. Julia fits now support `tidy()` (point estimates
   for intercepts and covariate coefficients, latent standard deviations,
   dispersion and ordinal cutpoints) and
-  `residuals(type = "simulation_rank")`. `check_gllvmTMB()` now explains that
-  it needs `engine = "tmb"`; before, it said the fit was not returned by
+  `residuals(type = "simulation_rank")`, with the same terms, cutpoint labels
+  and row order as `engine = "tmb"`. `check_gllvmTMB()` and the other
+  functions that need a native TMB fit now explain that they need
+  `engine = "tmb"`; before, they said the fit was not returned by
   `gllvmTMB()` (#1329). `ordinal_logit()` now passes the Julia family check.
   Before, the check rejected it while its error message listed "ordinal" as
   supported (#1332). Without fixed-effect covariates, the Julia route fits one
   Gamma shape shared by all traits, while `engine = "tmb"` fits one shape per
   trait. Multi-trait Gamma fits on that route are now refused by default
-  instead of only warning. Set `options(gllvmTMB.julia_gamma_shared_shape =
+  instead of only warning; a fixed-effect `X` with at least one column fits
+  per-trait shapes and is unaffected, and a zero-column `X` now stops in R. Set `options(gllvmTMB.julia_gamma_shared_shape =
   TRUE)` to fit the shared-shape model on purpose (#1334).
 
 * Neighbouring output and refit guards now reject fractional trait-pair indices,

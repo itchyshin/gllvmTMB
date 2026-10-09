@@ -132,7 +132,7 @@ coverage_study <- function(
   progress = TRUE
 ) {
   if (!inherits(fit, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+    .gllvmTMB_abort_not_multi_fit(fit)
   }
   n_reps <- as.integer(n_reps)
   if (length(n_reps) != 1L || is.na(n_reps) || n_reps < 2L) {

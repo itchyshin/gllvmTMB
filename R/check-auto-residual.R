@@ -59,7 +59,7 @@
 #' @export
 check_auto_residual <- function(fit) {
   if (!inherits(fit, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+    .gllvmTMB_abort_not_multi_fit(fit)
   }
 
   fids <- fit$tmb_data$family_id_vec

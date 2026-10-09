@@ -78,7 +78,7 @@ extract_cutpoints <- function(fit, quiet = FALSE) {
     stringsAsFactors = FALSE
   )
   if (!inherits(fit, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+    .gllvmTMB_abort_not_multi_fit(fit)
   }
   .gllvmTMB_require_unweighted_inference(fit, "extract_cutpoints()")
   fids <- fit$tmb_data$family_id_vec

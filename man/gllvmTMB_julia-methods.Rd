@@ -72,9 +72,10 @@
 \item{x}{A Julia bridge fit (for \code{tidy()}).}
 
 \item{effects}{For \code{tidy()}: one of \code{"fixed"} (per-trait intercepts and
-covariate coefficients), \code{"ran_pars"} (per-trait latent standard
-deviations and dispersion parameters), or \code{"cutpoint"} (ordinal
-cutpoints).}
+covariate coefficients), \code{"ran_pars"} (per-trait shared latent standard
+deviations \verb{sqrt(diag(Lambda Lambda^T))} and dispersion parameters), or
+\code{"cutpoint"} (the free ordinal cutpoints \code{cutpoint_2}, ...,
+\verb{cutpoint_\{K-1\}}, named as on \code{engine = "tmb"}).}
 
 \item{conf.int, conf.level}{For \code{tidy()}: Julia bridge fits carry point
 estimates only, so \code{conf.int = TRUE} is refused with a pointer to
@@ -92,11 +93,14 @@ probabilities and \code{"class"} returns the modal category. For \code{residuals
 and \code{"pearson"} divides by the family-specific standard deviation.
 Binomial rows use the observed proportion, \code{y / N}, on the response scale.
 \code{"simulation_rank"} returns a long data frame of randomized
-simulation-rank residuals (one row per trait-unit cell, with \code{observed},
-\code{u}, \code{residual} and \code{status} columns) built from the conditional
-\code{simulate()} draws; pass \code{nsim} (default 250), \code{seed}, \code{scale}
-(\code{"normal"} or \code{"uniform"}) and \code{trait} through \code{...}. Ordinal rows are
-refused because \code{simulate()} does not cover them yet.}
+simulation-rank residuals (with \code{observed}, \code{u}, \code{residual} and \code{status}
+columns) built from the conditional \code{simulate()} draws; pass \code{nsim}
+(default 250), \code{seed}, \code{scale} (\code{"normal"} or \code{"uniform"}) and \code{trait}
+through \code{...}. For a \code{gllvmTMB(..., engine = "julia")} fit the rows follow
+the input data rows with missing-response rows dropped, as on
+\code{engine = "tmb"}; a direct \code{\link[=gllvm_julia_fit]{gllvm_julia_fit()}} fit returns every
+trait-unit cell in \code{simulate()} order with masked cells flagged. Ordinal
+rows are refused because \code{simulate()} does not cover them yet.}
 
 \item{nsim}{Number of replicate response vectors to draw for \code{simulate()}.}
 

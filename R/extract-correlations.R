@@ -529,7 +529,7 @@ extract_correlations <- function(
     )))
   }
   if (!inherits(fit, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a fit returned by {.fun gllvmTMB}.")
+    .gllvmTMB_abort_not_multi_fit(fit)
   }
   if (!identical(method, "none")) {
     .gllvmTMB_mspl_assert_inference(

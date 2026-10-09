@@ -86,6 +86,10 @@ test_that("#1329 tidy() works on a Julia bridge fit", {
   rp <- tidy(fit, effects = "ran_pars")
   expect_equal(rp$term, c("sd_global[sp1]", "sd_global[sp2]"))
   expect_equal(rp$estimate, c(0.5, 0.3))
+  ## sd_global comes from Lambda, never from a Sigma payload that carries a
+  ## residual / link-residual diagonal (e.g. pi^2 / 3 for logit rows)
+  fit$Sigma <- fit$Sigma + diag(pi^2 / 3, 2L)
+  expect_equal(tidy(fit, effects = "ran_pars")$estimate, c(0.5, 0.3))
 
   expect_equal(nrow(tidy(fit, effects = "cutpoint")), 0L)
   expect_error(tidy(fit, conf.int = TRUE), class = "gllvmTMB_julia_gate")
@@ -109,18 +113,19 @@ test_that("#1329 tidy() reports covariate coefficients, dispersion and cutpoints
 
   ord <- j1329_fake_fit("ordinal")
   ord$alpha <- c(NaN, NaN)
-  ord$cutpoints <- matrix(c(0, 0.4, NaN, 0, -0.1, 1.2), nrow = 2L, byrow = TRUE)
+  ## tau_1 = 0 is fixed (not an estimate); free cutpoints use TMB's labels
+  ord$cutpoints <- matrix(c(0, 0.4, NaN, 0, 0.3, 1.2), nrow = 2L, byrow = TRUE)
   expect_equal(nrow(tidy(ord)), 0L)
   cp <- tidy(ord, effects = "cutpoint")
   expect_equal(
     cp$term,
     c(
-      "ordinal_cutpoint[sp1, 1]", "ordinal_cutpoint[sp1, 2]",
-      "ordinal_cutpoint[sp2, 1]", "ordinal_cutpoint[sp2, 2]",
-      "ordinal_cutpoint[sp2, 3]"
+      "ordinal_cutpoint[sp1, cutpoint_2]",
+      "ordinal_cutpoint[sp2, cutpoint_2]",
+      "ordinal_cutpoint[sp2, cutpoint_3]"
     )
   )
-  expect_equal(cp$estimate, c(0, 0.4, 0, -0.1, 1.2))
+  expect_equal(cp$estimate, c(0.4, 0.3, 1.2))
 })
 
 test_that("#1329 residuals(type = 'simulation_rank') works on a Julia bridge fit", {
@@ -360,4 +365,233 @@ test_that("live: Julia fits support tidy(), simulation-rank residuals, ordinal_l
              family = Gamma(link = "log"), engine = "julia"),
     class = "gllvmTMB_julia_gamma_shape_refused"
   )
+})
+
+# --- review follow-ups on PR #1474 -----------------------------------------
+
+j1329_fake_from_y <- function(y, family = "poisson") {
+  p <- nrow(y)
+  n <- ncol(y)
+  fit <- structure(
+    list(
+      family = family, model = paste0(family, "_rr"), d = 1L,
+      n_traits = p, n_units = n,
+      trait_names = rownames(y), unit_names = colnames(y),
+      alpha = rep(log(3), p),
+      loadings = matrix(seq(0.2, 0.6, length.out = p), ncol = 1L),
+      Sigma = diag(p), correlation = diag(p), communality = rep(1, p),
+      loglik = -10, aic = 30, bic = 35, df = 2L * p, nobs = p * n,
+      converged = TRUE, message = "converged"
+    ),
+    class = c("gllvmTMB_julia", "list")
+  )
+  fit <- .gllvm_julia_normalise_result(fit)
+  fit$engine <- "julia"
+  fit$scores <- matrix(seq(-0.3, 0.3, length.out = n), ncol = 1L,
+                       dimnames = list(colnames(y), "LV1"))
+  fit$bridge_input <- list(y = y, family = family, num.lv = 1L, N = NULL,
+                           X = NULL, mask = NULL, units_are_rows = FALSE,
+                           setup_args = list())
+  fit
+}
+
+test_that("#1329 simulation-rank rows follow the input data rows (p != n, permuted)", {
+  set.seed(5)
+  traits <- c("aa", "bb", "cc")
+  n_unit <- 5L
+  df <- data.frame(
+    unit = factor(rep(paste0("u", seq_len(n_unit)), times = 3L)),
+    trait = factor(rep(traits, each = n_unit)),
+    value = c(0:4, 10:14, 20:24)  # every cell distinct: a transpose shows
+  )
+  df <- df[sample(nrow(df)), ]
+  rownames(df) <- NULL
+  df$value[df$trait == "bb" & df$unit == "u3"] <- NA  # one masked cell
+  testthat::local_mocked_bindings(
+    gllvm_julia_fit = function(y, family, ...) j1329_fake_from_y(y)
+  )
+  fj <- gllvmTMB(
+    value ~ 0 + trait + latent(0 + trait | unit, d = 1, unique = FALSE),
+    data = df, trait = "trait", unit = "unit", family = poisson(),
+    engine = "julia"
+  )
+  r <- residuals(fj, type = "simulation_rank", nsim = 19, seed = 1)
+  keep <- !is.na(df$value)
+  ## input row order, masked row dropped (as the TMB engine drops it)
+  expect_equal(nrow(r), sum(keep))
+  expect_equal(r$observed, df$value[keep])
+  expect_equal(r$trait, as.character(df$trait[keep]))
+  expect_equal(r$unit, as.character(df$unit[keep]))
+  expect_true(all(r$status == "ok"))
+
+  ## direct gllvm_julia_fit() objects keep every p x n cell in simulate()'s
+  ## order, with the masked cell flagged rather than dropped
+  direct <- j1329_fake_from_y(fj$bridge_input$y)
+  direct$response_mask <- fj$response_mask
+  rd <- residuals(direct, type = "simulation_rank", nsim = 19, seed = 1)
+  expect_equal(nrow(rd), 15L)
+  expect_equal(sum(rd$status == "missing_response"), 1L)
+  expect_equal(
+    rd$observed[rd$status == "ok"],
+    as.vector(direct$bridge_input$y)[rd$status == "ok"]
+  )
+  sim_names <- rownames(simulate(direct, nsim = 1L, seed = 1))
+  expect_equal(paste(rd$trait, rd$unit, sep = ":"), sim_names)
+
+  ## same row order as the TMB engine's simulation-rank residuals
+  skip_on_cran()
+  ft <- suppressWarnings(suppressMessages(gllvmTMB(
+    value ~ 0 + trait + latent(0 + trait | unit, d = 1, unique = FALSE),
+    data = df, trait = "trait", unit = "unit", family = poisson(),
+    control = gllvmTMBcontrol(se = FALSE)
+  )))
+  rt <- residuals(ft, type = "simulation_rank", nsim = 19, seed = 1)
+  expect_equal(nrow(r), nrow(rt))
+  expect_equal(r$observed, rt$observed)
+  expect_equal(r$trait, as.character(rt$trait))
+})
+
+test_that("#1334 a zero-column X stops in R; an intercept-only X is not refused", {
+  withr::local_options(gllvmTMB.julia_gamma_shared_shape = NULL)
+  y <- matrix(stats::rgamma(3 * 10, shape = 2, rate = 1), 3, 10)
+  err_class <- function(X, family = Gamma(link = "log")) {
+    err <- tryCatch(
+      gllvm_julia_fit(y, family = family, num.lv = 1L, X = X),
+      error = function(e) e
+    )
+    class(err)
+  }
+  ## zero-column X: classed R error before Julia, for any family
+  expect_true("gllvmTMB_julia_x_empty" %in% err_class(array(0, c(3L, 10L, 0L))))
+  expect_true("gllvmTMB_julia_x_empty" %in%
+    err_class(array(0, c(3L, 10L, 0L)), family = poisson()))
+  ## intercept-only X takes the fixed-effect-X route (per-trait shape)
+  cls <- err_class(array(1, c(3L, 10L, 1L)))
+  expect_false("gllvmTMB_julia_gamma_shape_refused" %in% cls)
+  expect_false("gllvmTMB_julia_x_empty" %in% cls)
+  expect_false(.gllvm_julia_has_covariates(NULL))
+  expect_true(.gllvm_julia_has_covariates(array(1, c(3L, 10L, 1L))))
+})
+
+test_that("#1329 sibling gates explain the Julia boundary instead of denying the fit", {
+  fit <- j1329_fake_fit()
+  for (f in list(
+    function() rotate_loadings(fit),
+    function() extract_Gamma(fit),
+    function() check_identifiability(fit)
+  )) {
+    err <- tryCatch(f(), error = function(e) e)
+    expect_s3_class(err, "gllvmTMB_julia_gate")
+    expect_no_match(conditionMessage(err), "Provide a fit returned by")
+    expect_match(conditionMessage(err), "engine = \"tmb\"", fixed = TRUE)
+  }
+  expect_error(rotate_loadings(list()), "Provide a fit returned by")
+})
+
+test_that("#1329 tidy() on a Julia fit matches the TMB engine's ran_pars and cutpoints", {
+  skip_on_cran()
+  set.seed(7)
+  n <- 60L
+  z <- stats::rnorm(n)
+  traits <- paste0("q", 1:3)
+  eta <- outer(z, c(1.2, 0.8, -0.6))
+  ycat <- apply(eta + matrix(stats::rlogis(3 * n), n), 2L, function(v) {
+    as.integer(cut(v, c(-Inf, -0.7, 0.4, 1.3, Inf)))
+  })
+  df <- data.frame(
+    unit = factor(rep(seq_len(n), 3L)),
+    trait = factor(rep(traits, each = n)),
+    value = as.vector(ycat)
+  )
+  ft <- suppressWarnings(suppressMessages(gllvmTMB(
+    value ~ 0 + trait + latent(0 + trait | unit, d = 1, unique = FALSE),
+    data = df, trait = "trait", unit = "unit", family = ordinal_logit(),
+    control = gllvmTMBcontrol(se = FALSE)
+  )))
+  L <- as.matrix(extract_ordination(ft, level = "unit")$loadings)
+  cuts_tmb <- extract_cutpoints(ft, quiet = TRUE)
+  K <- max(df$value)
+  cut_mat <- matrix(NaN, 3L, K - 1L, dimnames = list(traits, NULL))
+  cut_mat[, 1L] <- 0
+  cut_mat[cbind(match(cuts_tmb$trait, traits), cuts_tmb$cutpoint_index)] <-
+    cuts_tmb$tau_estimate
+  ## a Julia payload carrying the same Lambda and cutpoints; its Sigma adds
+  ## the logit link-residual diagonal, which tidy() must not report
+  fj <- structure(
+    list(family = "ordinal", d = 1L, n_traits = 3L, trait_names = traits,
+         loadings = L, Sigma = L %*% t(L) + diag(pi^2 / 3, 3L),
+         alpha = rep(NaN, 3L), cutpoints = cut_mat, trait_col = "trait"),
+    class = c("gllvmTMB_julia", "list")
+  )
+  rp_t <- tidy(ft, effects = "ran_pars")
+  rp_t <- rp_t[startsWith(rp_t$term, "sd_global["), ]
+  rp_j <- tidy(fj, effects = "ran_pars")
+  expect_equal(rp_j$term, rp_t$term)
+  expect_equal(rp_j$estimate, rp_t$estimate, tolerance = 1e-8)
+  cp_t <- tidy(ft, effects = "cutpoint")
+  cp_j <- tidy(fj, effects = "cutpoint")
+  expect_equal(cp_j$term, cp_t$term)
+  expect_equal(cp_j$estimate, cp_t$estimate, tolerance = 1e-8)
+})
+
+j1329_skip_if_no_live_julia <- function() {
+  skip_on_cran()
+  skip_if_not_installed("JuliaCall")
+  if (!nzchar(.gllvm_julia_project_path())) {
+    skip("GLLVModels.jl path not configured (set GLLVMODELS_JL_PATH).")
+  }
+}
+
+test_that("live: simulation-rank row keys match the TMB engine on a masked fit", {
+  j1329_skip_if_no_live_julia()
+  set.seed(21)
+  n <- 20L
+  traits <- c("t1", "t2", "t3")
+  z <- stats::rnorm(n)
+  df <- data.frame(
+    unit = factor(rep(seq_len(n), 3L)),
+    trait = factor(rep(traits, each = n))
+  )
+  df$value <- stats::rpois(3L * n, exp(0.5 + rep(z, 3L) * 0.6))
+  df$value[c(4L, 27L)] <- NA
+  f <- value ~ 0 + trait + latent(0 + trait | unit, d = 1, unique = FALSE)
+  fj <- gllvmTMB(f, data = df, trait = "trait", unit = "unit",
+                 family = poisson(), engine = "julia")
+  ft <- suppressWarnings(suppressMessages(gllvmTMB(
+    f, data = df, trait = "trait", unit = "unit", family = poisson(),
+    control = gllvmTMBcontrol(se = FALSE)
+  )))
+  rj <- residuals(fj, type = "simulation_rank", nsim = 49, seed = 1)
+  rt <- residuals(ft, type = "simulation_rank", nsim = 49, seed = 1)
+  expect_equal(nrow(rj), nrow(rt))
+  expect_equal(nrow(rj), sum(!is.na(df$value)))
+  expect_equal(rj$trait, as.character(rt$trait))
+  expect_equal(rj$observed, rt$observed)
+})
+
+test_that("live: intercept-only X Gamma fits per-trait shape and matches TMB logLik", {
+  j1329_skip_if_no_live_julia()
+  withr::local_options(gllvmTMB.julia_gamma_shared_shape = NULL)
+  set.seed(31)
+  n <- 40L
+  z <- stats::rnorm(n)
+  shape <- c(2, 8, 30)  # very different CVs: a shared shape would fit badly
+  y <- t(sapply(1:3, function(j) {
+    stats::rgamma(n, shape = shape[j], rate = shape[j] / exp(0.3 * j + 0.5 * z))
+  }))
+  dimnames(y) <- list(paste0("t", 1:3), paste0("u", seq_len(n)))
+  fx <- gllvm_julia_fit(y, family = Gamma(link = "log"), num.lv = 1L,
+                        X = array(1, c(3L, n, 1L),
+                                  dimnames = list(NULL, NULL, "one")))
+  df <- data.frame(
+    unit = factor(rep(colnames(y), each = 3L), levels = colnames(y)),
+    trait = factor(rep(rownames(y), times = n)),
+    value = as.vector(y)
+  )
+  ft <- suppressWarnings(suppressMessages(gllvmTMB(
+    value ~ 0 + trait + latent(0 + trait | unit, d = 1, unique = FALSE),
+    data = df, trait = "trait", unit = "unit", family = Gamma(link = "log"),
+    control = gllvmTMBcontrol(se = FALSE)
+  )))
+  expect_equal(as.numeric(logLik(fx)), as.numeric(logLik(ft)), tolerance = 1e-4)
 })

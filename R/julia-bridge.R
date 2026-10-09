@@ -742,6 +742,25 @@ gllvm_julia_capabilities <- function() {
   invisible(n_gamma > 1L)
 }
 
+# A fixed-effect X array must carry at least one column. A zero-column X used
+# to reach GLLVModels.jl and fail there with a MethodError; stop in R instead.
+# Any X with q >= 1 (including an intercept-only column) takes the bridge's
+# fixed-effect-X route, which fits per-trait Gamma shapes.
+.gllvm_julia_has_covariates <- function(X) {
+  if (is.null(X)) {
+    return(FALSE)
+  }
+  d <- dim(X)
+  q <- if (length(d) >= 3L) d[3L] else if (length(d) == 2L) d[2L] else length(X)
+  if (!q) {
+    cli::cli_abort(c(
+      "[GJL-GATE-X-EMPTY] engine = 'julia': the fixed-effect {.arg X} array has no covariate columns.",
+      "i" = "Pass {.code X = NULL} for an intercept-only fit, or give {.arg X} at least one column."
+    ), class = c("gllvmTMB_julia_x_empty", "gllvmTMB_julia_gate"))
+  }
+  TRUE
+}
+
 .gllvm_julia_check_gamma_shape <- function(fam, p, has_x = FALSE) {
   n_gamma <- .gllvm_julia_n_gamma(fam, p)
   if (n_gamma <= 1L || isTRUE(has_x)) {
@@ -820,8 +839,8 @@ gllvm_julia_capabilities <- function() {
           "engine = 'julia': unsupported family '",
           fam,
           "'. Supported: gaussian(), poisson(), binomial() with logit, ",
-          "probit, or cloglog link, nbinom2(), nbinom1(), Beta(), ",
-          "Gamma(link = \"log\"), ordinal_logit(), and ordinal_probit() ",
+          "probit, or cloglog link, nbinom2(), nbinom1(), Beta(), Gamma(), ",
+          "ordinal_logit(), and ordinal_probit() ",
           "(or a narrow list for mixed gaussian/poisson/binomial responses). ",
           "Use engine = 'tmb' for other families."
         ),
@@ -2743,7 +2762,8 @@ gllvm_julia_fit <- function(
       N <- t(N)
     }
   }
-  .gllvm_julia_check_gamma_shape(fam, nrow(y), has_x = !is.null(X))
+  has_x <- .gllvm_julia_has_covariates(X)
+  .gllvm_julia_check_gamma_shape(fam, nrow(y), has_x = has_x)
   if (!is.null(mask)) {
     mask <- as.matrix(mask)
     if (isTRUE(units_are_rows)) {
@@ -3144,11 +3164,14 @@ gllvm_julia_fit <- function(
 #'   and `"pearson"` divides by the family-specific standard deviation.
 #'   Binomial rows use the observed proportion, `y / N`, on the response scale.
 #'   `"simulation_rank"` returns a long data frame of randomized
-#'   simulation-rank residuals (one row per trait-unit cell, with `observed`,
-#'   `u`, `residual` and `status` columns) built from the conditional
-#'   `simulate()` draws; pass `nsim` (default 250), `seed`, `scale`
-#'   (`"normal"` or `"uniform"`) and `trait` through `...`. Ordinal rows are
-#'   refused because `simulate()` does not cover them yet.
+#'   simulation-rank residuals (with `observed`, `u`, `residual` and `status`
+#'   columns) built from the conditional `simulate()` draws; pass `nsim`
+#'   (default 250), `seed`, `scale` (`"normal"` or `"uniform"`) and `trait`
+#'   through `...`. For a `gllvmTMB(..., engine = "julia")` fit the rows follow
+#'   the input data rows with missing-response rows dropped, as on
+#'   `engine = "tmb"`; a direct [gllvm_julia_fit()] fit returns every
+#'   trait-unit cell in `simulate()` order with masked cells flagged. Ordinal
+#'   rows are refused because `simulate()` does not cover them yet.
 #' @param level Confidence level requested by `confint()`. Stored Julia bridge
 #'   payloads can only be read at their stored level; post-fit requests recompute
 #'   the admitted Julia CI payload at the requested level.
@@ -3221,9 +3244,10 @@ coef.gllvmTMB_julia <- function(object, ...) {
 #' @rdname gllvmTMB_julia-methods
 #' @param x A Julia bridge fit (for `tidy()`).
 #' @param effects For `tidy()`: one of `"fixed"` (per-trait intercepts and
-#'   covariate coefficients), `"ran_pars"` (per-trait latent standard
-#'   deviations and dispersion parameters), or `"cutpoint"` (ordinal
-#'   cutpoints).
+#'   covariate coefficients), `"ran_pars"` (per-trait shared latent standard
+#'   deviations `sqrt(diag(Lambda Lambda^T))` and dispersion parameters), or
+#'   `"cutpoint"` (the free ordinal cutpoints `cutpoint_2`, ...,
+#'   `cutpoint_{K-1}`, named as on `engine = "tmb"`).
 #' @param conf.int,conf.level For `tidy()`: Julia bridge fits carry point
 #'   estimates only, so `conf.int = TRUE` is refused with a pointer to
 #'   `confint(fit, method = "wald")`.
@@ -3263,14 +3287,19 @@ tidy.gllvmTMB_julia <- function(
     if (nrow(cuts) != length(traits)) {
       return(empty)
     }
-    idx <- which(is.finite(cuts), arr.ind = TRUE)
+    ## Julia stores tau_1..tau_{K-1} per trait with tau_1 = 0 fixed for
+    ## identifiability (the TMB engine's convention). Report only the free
+    ## tau_2..tau_{K-1}, labelled exactly as tidy.gllvmTMB_multi() does.
+    free <- is.finite(cuts)
+    free[, 1L] <- free[, 1L] & abs(cuts[, 1L]) > 1e-12
+    idx <- which(free, arr.ind = TRUE)
     if (!nrow(idx)) {
       return(empty)
     }
     idx <- idx[order(idx[, "row"], idx[, "col"]), , drop = FALSE]
     return(data.frame(
       term = sprintf(
-        "ordinal_cutpoint[%s, %d]",
+        "ordinal_cutpoint[%s, cutpoint_%d]",
         traits[idx[, "row"]],
         idx[, "col"]
       ),
@@ -3280,13 +3309,17 @@ tidy.gllvmTMB_julia <- function(
   }
   if (identical(effects, "ran_pars")) {
     rows <- list()
-    Sigma <- x$Sigma
-    if (!is.null(Sigma) && (x$d %||% 0L) > 0L) {
-      Sigma <- as.matrix(Sigma)
-      if (nrow(Sigma) == length(traits)) {
+    ## sd_global is the shared latent SD, sqrt(diag(Lambda Lambda^T)), as on
+    ## the TMB engine. The raw Julia Sigma payload can carry a residual
+    ## (Gaussian) or link-residual (e.g. pi^2/3 for logit) diagonal, so it is
+    ## not used here.
+    L <- x$loadings
+    if (!is.null(L) && (x$d %||% 0L) > 0L) {
+      L <- as.matrix(L)
+      if (nrow(L) == length(traits)) {
         rows[[length(rows) + 1L]] <- data.frame(
           term = paste0("sd_global[", traits, "]"),
-          estimate = sqrt(pmax(diag(Sigma), 0)),
+          estimate = sqrt(rowSums(L^2)),
           stringsAsFactors = FALSE
         )
       }
@@ -3587,6 +3620,23 @@ residuals.gllvmTMB_julia <- function(
       stringsAsFactors = FALSE
     )
   )
+  ## Routed gllvmTMB() fits: return rows in the input long-data order with
+  ## missing-response rows dropped, as the TMB engine does (`.row` is the
+  ## input row index). Direct gllvm_julia_fit() fits keep every p x n cell in
+  ## simulate()'s order (trait fastest within unit), masked cells flagged.
+  long_index <- object$long_index
+  if (
+    !is.null(long_index) &&
+      all(long_index[, "trait"] >= 1L & long_index[, "trait"] <= p) &&
+      all(long_index[, "unit"] >= 1L & long_index[, "unit"] <= n)
+  ) {
+    cell <- (long_index[, "unit"] - 1L) * p + long_index[, "trait"]
+    out <- out[cell, , drop = FALSE]
+    out$.row <- seq_len(nrow(out))
+    ## The TMB engine drops rows with a missing response before fitting, so
+    ## its residual table has no row for them; match that row set.
+    out <- out[out$status != "missing_response", , drop = FALSE]
+  }
   if (!is.null(trait)) {
     unknown <- setdiff(trait, traits)
     if (length(unknown)) {
@@ -4386,6 +4436,9 @@ print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
   )
   fit$call <- call
   fit$trait_col <- trait
+  ## Input long-data row -> (trait, unit) cell, so row-wise post-fit output
+  ## (simulation-rank residuals) can come back in the caller's row order.
+  fit$long_index <- cbind(trait = as.integer(ft), unit = as.integer(fu))
   fit$trait_levels <- traits
   fit$unit_levels <- units
   fit$X_fix_names <- x_cols

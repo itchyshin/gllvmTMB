@@ -1,3 +1,14 @@
+## 2026-10-08: issue 1467 merged-source completion
+
+PR 1468 head `501b750a4` passed all four shards in run 37876570244 and
+merged as `dc8ee6380d3ef85c987e38c782f11701861b2d32`. Main run 37878327730
+passed all four shards. Fresh merged-source installation, all 13 focused
+test files and the d1/d2/ridged-d2 Fox output replay passed. The unpenalised
+d2 replay remains nonconverged with an indefinite Hessian, and correctly
+withholds SDs; d1 and ridged d2 report supported uncertainty. Input and fit
+results stay private. Independent merge-integration audit: OK.
+Report: after-task/2026-10-07-issue-1467-completion.md.
+
 ## 2026-10-08: issue 1467 merge integration
 
 Resolved overlap with the merged issue 1469 changes, retaining both NEWS and

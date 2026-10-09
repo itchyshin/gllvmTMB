@@ -16,6 +16,12 @@
   jittered restarts. It does not replace multi-start checks: on negative
   binomial cells, only jittered restarts (`n_init = 10`) found the better
   optima (#1331).
+  **Some default fits now land on a different, better optimum**, so their
+  estimates and `logLik()` change. Use `gllvmTMBcontrol(svd_start = FALSE)`
+  to reproduce earlier default-fit results. Later restarts, svd or jittered, also no
+  longer replace a converged fit with a non-converged one. With
+  `engine = "julia"`, an explicit `svd_start = FALSE` or `n_init > 1` is now
+  refused rather than silently ignored.
 
 * Zero-inflated `zi_poisson()` and `zi_nbinom2()` fits, and
   `censored_poisson()` fits, now start their intercepts on the log scale.

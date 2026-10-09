@@ -102,3 +102,45 @@ test_that("#1331 the default fit reaches the optimum the single start missed", {
   expect_lt(abs(new$tmb_obj$fn(new$opt$par) - new$opt$objective), 1e-6)
   expect_identical(new$opt$convergence, 0L)
 })
+
+## #1331 review: engine = "julia" passes no start or restart settings to
+## GLLVModels.jl, so an explicit request for one is refused in R (before any
+## Julia call) instead of being silently ignored.
+test_that("engine = 'julia' refuses an explicit n_init > 1 before calling Julia", {
+  dat <- data.frame(site = factor(rep(1:5, 2)), trait = factor(rep(1:2, each = 5)),
+                    value = c(1, 0, 2, 3, 1, 0, 1, 1, 2, 0))
+  local_mocked_bindings(.gllvmTMB_julia_dispatch = function(...) {
+    stop("Julia dispatch must not be reached")
+  })
+  expect_error(
+    gllvmTMB(value ~ 0 + trait, data = dat, unit = "site", family = poisson(),
+             engine = "julia", control = gllvmTMBcontrol(n_init = 2)),
+    "n_init",
+    class = "gllvmTMB_julia_unsupported_control"
+  )
+  expect_true(gllvmTMBcontrol(n_init = 2)$n_init_explicit)
+  expect_false(gllvmTMBcontrol()$n_init_explicit)
+})
+
+test_that("engine = 'julia' refuses an explicit svd_start = FALSE before calling Julia", {
+  dat <- data.frame(site = factor(rep(1:5, 2)), trait = factor(rep(1:2, each = 5)),
+                    value = c(1, 0, 2, 3, 1, 0, 1, 1, 2, 0))
+  local_mocked_bindings(.gllvmTMB_julia_dispatch = function(...) {
+    stop("Julia dispatch must not be reached")
+  })
+  expect_error(
+    gllvmTMB(value ~ 0 + trait, data = dat, unit = "site", family = poisson(),
+             engine = "julia", control = gllvmTMBcontrol(svd_start = FALSE)),
+    "svd_start",
+    class = "gllvmTMB_julia_unsupported_control"
+  )
+  ## The defaults describe the native engine and are not refused: the call
+  ## reaches the (mocked) dispatch.
+  expect_error(
+    gllvmTMB(value ~ 0 + trait, data = dat, unit = "site", family = poisson(),
+             engine = "julia"),
+    "Julia dispatch must not be reached"
+  )
+  expect_true(gllvmTMBcontrol(svd_start = FALSE)$svd_start_explicit)
+  expect_false(gllvmTMBcontrol()$svd_start_explicit)
+})

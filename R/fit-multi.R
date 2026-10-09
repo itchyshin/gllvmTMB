@@ -8248,6 +8248,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         lp[svd_restart$z_idx] <- svd_restart$z
         obj$env$last.par.best <- lp
         obj$env$last.par <- lp
+        ## Reset TMB's best-value tracker so restart 1's value cannot keep
+        ## the inner start pinned away from these scores.
+        obj$env$value.best <- Inf
         svd_restart$par
       },
       jitter = .gllvmTMB_reclamp_start_par(
@@ -8329,21 +8332,20 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       evaluations = opt_i$evaluations %||% NA_integer_,
       success = success_i
     )
-    ## #1331: the svd start replaces an earlier restart only on a material
-    ## improvement, so a tie (the same optimum reached from both starts)
-    ## keeps the default start's fit exactly. It also never displaces a
-    ## converged fit with a non-converged one: on zero-inflated data (#1330)
-    ## a non-converged stop can sit at a LOWER objective because it is a
-    ## Laplace artefact, not a better optimum.
-    improve_tol <- 0
-    svd_blocked <- FALSE
-    if (identical(start_labels[i], "svd")) {
-      improve_tol <- 1e-6 * max(1, abs(best_obj[is.finite(best_obj)]))
-      svd_blocked <- !is.null(best_opt) &&
-        identical(as.integer(best_opt$convergence %||% NA_integer_), 0L) &&
-        !identical(as.integer(opt_i$convergence %||% NA_integer_), 0L)
-    }
-    if (success_i && !svd_blocked && objective_i < best_obj - improve_tol) {
+    ## #1331: no later restart (svd or jitter) displaces a converged fit
+    ## with a non-converged one: on zero-inflated data (#1330) a
+    ## non-converged stop can sit at a LOWER objective because it is a
+    ## Laplace artefact, not a better optimum. The svd start also replaces an
+    ## earlier restart only on a material improvement, so a tie (the same
+    ## optimum reached from both starts) keeps the default start's fit
+    ## exactly.
+    improve_tol <- if (identical(start_labels[i], "svd")) {
+      1e-6 * max(1, abs(best_obj[is.finite(best_obj)]))
+    } else 0
+    converged_blocked <- !is.null(best_opt) &&
+      identical(as.integer(best_opt$convergence %||% NA_integer_), 0L) &&
+      !identical(as.integer(opt_i$convergence %||% NA_integer_), 0L)
+    if (success_i && !converged_blocked && objective_i < best_obj - improve_tol) {
       best_obj <- objective_i
       best_opt <- opt_i
       best_state <- state_i

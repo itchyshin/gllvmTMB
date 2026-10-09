@@ -707,7 +707,27 @@ gllvmTMB <- function(
       "{.arg optimizer_passes} greater than one requires the native TMB Laplace engine.",
       "i" = "The Julia dispatch has its own optimizer and does not consume this control.",
       ">" = "Use {.code optimizer_passes = 1L}, or fit with {.code engine = \"tmb\"}."
-    ))
+    ), class = "gllvmTMB_julia_unsupported_control")
+  }
+  ## The Julia dispatch passes no start or restart settings to GLLVModels.jl,
+  ## so an explicit request for either would be silently ignored. The
+  ## defaults (`svd_start = TRUE`, `n_init = 1`) describe the native engine
+  ## and are not refused; only an explicit non-default request is.
+  if (identical(engine, "julia") &&
+      isTRUE(control$n_init_explicit) && (control$n_init %||% 1L) > 1L) {
+    cli::cli_abort(c(
+      "{.arg n_init} greater than one requires the native TMB engine.",
+      "i" = "The Julia dispatch has its own optimizer and does not run gllvmTMB restarts.",
+      ">" = "Use {.code n_init = 1L}, or fit with {.code engine = \"tmb\"}."
+    ), class = "gllvmTMB_julia_unsupported_control")
+  }
+  if (identical(engine, "julia") &&
+      isTRUE(control$svd_start_explicit) && isFALSE(control$svd_start)) {
+    cli::cli_abort(c(
+      "{.code svd_start = FALSE} requires the native TMB engine.",
+      "i" = "The Julia dispatch has its own optimizer and does not consume gllvmTMB start settings.",
+      ">" = "Omit {.arg svd_start}, or fit with {.code engine = \"tmb\"}."
+    ), class = "gllvmTMB_julia_unsupported_control")
   }
   structured_rho_capture <- .parse_structured_rho_formula(formula, trait_col = trait, strip = FALSE)
   .structured_rho_dispatch_fence(structured_rho_capture$spec, engine = engine,
@@ -2388,6 +2408,10 @@ gllvmTMBcontrol <- function(
   ## cannot see. So the Laplace-path ridge is opt-in ONLY: it fires when the
   ## caller names `aghq_ridge` and never from the default.
   aghq_ridge_explicit <- !missing(aghq_ridge)
+  ## Recorded so engine = "julia" can refuse an explicit start/restart
+  ## request it would otherwise ignore (#1331 review).
+  n_init_explicit <- !missing(n_init)
+  svd_start_explicit <- !missing(svd_start)
   loading_ridge_explicit <- !missing(loading_ridge) && !is.null(loading_ridge)
   if (isTRUE(aghq_ridge_explicit) && isTRUE(loading_ridge_explicit)) {
     cli::cli_abort(c(
@@ -2539,7 +2563,9 @@ gllvmTMBcontrol <- function(
     va_H = as.integer(va_H),
     va_eval_method = va_eval_method,
     n_init = as.integer(n_init),
+    n_init_explicit = n_init_explicit,
     svd_start = svd_start,
+    svd_start_explicit = svd_start_explicit,
     optimizer = optimizer,
     optArgs = optArgs,
     optimizer_passes = as.integer(optimizer_passes),

@@ -16,7 +16,7 @@
                                                         relative_step = 1e-5) {
   raw <- names(par)
   if (is.null(raw) || length(raw) != length(par)) raw <- rep("outer", length(par))
-  labels <- paste0(raw, "[", ave(seq_along(raw), raw, FUN = seq_along), "]")
+  labels <- paste0(raw, "[", stats::ave(seq_along(raw), raw, FUN = seq_along), "]")
   empty <- list(
     labels = labels, step = stats::setNames(rep(NA_real_, length(par)), labels),
     central = stats::setNames(rep(NA_real_, length(par)), labels),
@@ -458,6 +458,55 @@
     if (length(li)) g[li] <- g[li] + par[li] / (ridge_tau^2)
   }
   g
+}
+
+## The ridge lives outside the TMB tape. Its local MAP curvature is the
+## likelihood fixed-parameter Hessian plus exact prior precision on free
+## ordinary loadings only. TMB has no marginal obj$he() for random-effect
+## models: use its own sdreport convention, finite differences of AD gradients.
+.gllvmTMB_loading_ridge_hessian <- function(obj, par, ridge_tau) {
+  if (!.gllvmTMB_loading_ridge_applies(ridge_tau, names(obj$par))) return(NULL)
+  H <- if (length(obj$env$random) == 0L && is.function(obj$he)) {
+    obj$he(par)
+  } else {
+    stats::optimHess(par, obj$fn, obj$gr)
+  }
+  li <- .gllvmTMB_ridge_block_index(names(obj$par))
+  H[cbind(li, li)] <- H[cbind(li, li)] + 1 / ridge_tau^2
+  H
+}
+
+## AGHQ tapes differentiate the quadrature objective with adaptation nodes
+## held fixed as data. This records that conditional approximation explicitly;
+## the covariance does not include uncertainty from re-adapting the nodes.
+.gllvmTMB_loading_ridge_curvature_provenance <- function(obj, par, ridge_tau) {
+  fixed_adaptation <- isTRUE(as.integer(obj$env$data$use_aghq) == 1L)
+  list(
+    objective = "likelihood_plus_gaussian_loading_prior",
+    interpretation = "local_approximate_posterior_curvature_at_map",
+    method = if (length(obj$env$random) == 0L && is.function(obj$he)) {
+      "ad_hessian_plus_exact_loading_prior_precision"
+    } else "finite_difference_ad_gradient_plus_exact_loading_prior_precision",
+    ridge_tau = ridge_tau,
+    parameter_names = names(obj$par),
+    parameter_vector = par,
+    loading_indices = .gllvmTMB_ridge_block_index(names(obj$par)),
+    integration = if (fixed_adaptation) "aghq_fixed_adaptation" else "laplace",
+    adaptation_nodes_fixed = fixed_adaptation,
+    calibrated_sampling_covariance = FALSE
+  )
+}
+
+.gllvmTMB_sdreport_loading_ridge <- function(obj, par, ridge_tau, ...) {
+  H <- .gllvmTMB_loading_ridge_hessian(obj, par, ridge_tau)
+  ans <- TMB::sdreport(obj, par.fixed = par, hessian.fixed = H, ...)
+  if (!is.null(H)) {
+    ans$gradient.fixed.unpenalised <- ans$gradient.fixed
+    ans$gradient.fixed <- .gllvmTMB_penalised_gradient(obj, par, ridge_tau)
+    attr(ans, "loading_ridge_curvature") <-
+      .gllvmTMB_loading_ridge_curvature_provenance(obj, par, ridge_tau)
+  }
+  ans
 }
 
 ## #1330: zero-inflated count fits (zi_poisson / zi_nbinom2 / zi_binomial,
@@ -7714,7 +7763,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     if (is.null(raw) || length(raw) != length(par)) {
       raw <- rep("outer", length(par))
     }
-    occurrence <- ave(seq_along(raw), raw, FUN = seq_along)
+    occurrence <- stats::ave(seq_along(raw), raw, FUN = seq_along)
     paste0(raw, "[", occurrence, "]")
   }
 
@@ -9096,7 +9145,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ## Cell means add n_traits * n_sites ADREPORT entries. Their marginal
       ## variances suffice for getREsd(); avoid allocating their dense joint
       ## report covariance while retaining all fixed-parameter covariance.
-      TMB::sdreport(obj, par.fixed = opt$par,
+      .gllvmTMB_sdreport_loading_ridge(obj, opt$par, aghq_info$ridge_tau,
                     getJointPrecision = FALSE,
                     getReportCovariance = !integrated_gaussian_diag_B),
       error = function(e) {
@@ -9148,6 +9197,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ),
       opt          = opt,
       sd_report    = sd_rep,
+      loading_ridge_curvature = attr(sd_rep, "loading_ridge_curvature"),
       report       = rep,
       mspl         = if (identical(estimator, "mspl")) {
         list(
@@ -9555,7 +9605,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         warm_report <- obj$report()
         warm_sdreport_error <- NULL
         warm_sd_report <- tryCatch(
-          TMB::sdreport(obj, par.fixed = warm_opt$par,
+          .gllvmTMB_sdreport_loading_ridge(obj, warm_opt$par, aghq_info$ridge_tau,
                         getJointPrecision = FALSE,
                         getReportCovariance = !integrated_gaussian_diag_B),
           error = function(e) {
@@ -9567,6 +9617,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         warm_fit$opt <- warm_opt
         warm_fit$report <- warm_report
         warm_fit$sd_report <- warm_sd_report
+        warm_fit$loading_ridge_curvature <- attr(warm_sd_report, "loading_ridge_curvature")
         warm_fit$sdreport_error <- warm_sdreport_error
         warm_health <- .gllvmTMB_build_fit_health(warm_fit)
       }
@@ -9666,7 +9717,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
           obj$env$last.par.best <- obj$env$last.par
           newton_sdreport_error <- NULL
           newton_sd_report <- tryCatch(
-            TMB::sdreport(obj, par.fixed = newton_par,
+            .gllvmTMB_sdreport_loading_ridge(obj, newton_par, aghq_info$ridge_tau,
                           getJointPrecision = FALSE,
                           getReportCovariance = !integrated_gaussian_diag_B),
             error = function(e) {
@@ -9683,6 +9734,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
           newton_fit$opt <- newton_opt
           newton_fit$report <- obj$report()
           newton_fit$sd_report <- newton_sd_report
+          newton_fit$loading_ridge_curvature <- attr(newton_sd_report, "loading_ridge_curvature")
           newton_fit$sdreport_error <- newton_sdreport_error
           newton_health <- .gllvmTMB_build_fit_health(newton_fit)
           newton_diagnostics <- list(
@@ -9788,6 +9840,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       fit$opt <- opt
       fit$report <- rep
       fit$sd_report <- sd_rep
+      fit$loading_ridge_curvature <- attr(sd_rep, "loading_ridge_curvature")
       fit$sdreport_error <- sdreport_error
       fit$fit_health <- warm_health
       selected <- which(fit$restart_history$selected)

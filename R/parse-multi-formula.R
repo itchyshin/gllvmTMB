@@ -59,7 +59,7 @@
 #'
 #' @keywords internal
 #' @noRd
-parse_multi_formula <- function(formula) {
+parse_multi_formula <- function(formula, trait_col = "trait") {
   rhs <- formula[[length(formula)]]
   lhs <- if (length(formula) == 3L) formula[[2L]] else NULL
   ## Capture the formula's environment so per-term in-keyword args
@@ -99,7 +99,8 @@ parse_multi_formula <- function(formula) {
       }
       if (fn %in% c("rr", "diag", "propto", "equalto", "spde", "phylo_rr",
                     "phylo_slope")) {
-        cs <- parse_covstruct_call(e, fn, eval_env = formula_env)
+        cs <- parse_covstruct_call(e, fn, eval_env = formula_env,
+          trait_col = trait_col)
         covstructs[[length(covstructs) + 1L]] <<- cs
         return(invisible())
       }
@@ -110,7 +111,7 @@ parse_multi_formula <- function(formula) {
       ## are not yet supported — see ?re_int.
       if (fn == "(" && length(e) == 2L && is.call(e[[2L]])
           && identical(e[[2L]][[1L]], as.name("|"))) {
-        cs <- parse_re_int_call(e[[2L]])
+        cs <- parse_re_int_call(e[[2L]], trait_col = trait_col)
         covstructs[[length(covstructs) + 1L]] <<- cs
         return(invisible())
       }
@@ -252,7 +253,8 @@ parse_multi_formula <- function(formula) {
 #'
 #' @keywords internal
 #' @noRd
-parse_covstruct_call <- function(e, fn, eval_env = parent.frame()) {
+parse_covstruct_call <- function(e, fn, eval_env = parent.frame(),
+                                 trait_col = "trait") {
   ## phylo_rr is the only covstruct that takes a bare species column instead
   ## of an lhs | group bar — the bar form would be redundant since species
   ## is implicitly the random-effect dimension. Translate to a synthetic bar.
@@ -269,7 +271,7 @@ parse_covstruct_call <- function(e, fn, eval_env = parent.frame()) {
     stop(sprintf("%s() argument must be of the form 'lhs | group'", fn))
   cov_lhs   <- bar[[2L]]
   cov_group <- bar[[3L]]
-  lhs_info <- .gllvmTMB_lhs_form(cov_lhs)
+  lhs_info <- .gllvmTMB_lhs_form(cov_lhs, trait_col = trait_col)
   ## Remaining named args. Evaluate each in `eval_env` (the formula's
   ## environment, i.e. the user's calling frame) so that per-term args
   ## like `tree = my_tree`, `coords = c("lon", "lat")`, `vcv = Cphy`
@@ -323,7 +325,7 @@ parse_covstruct_call <- function(e, fn, eval_env = parent.frame()) {
 #'
 #' @keywords internal
 #' @noRd
-parse_re_int_call <- function(bar) {
+parse_re_int_call <- function(bar, trait_col = "trait") {
   cov_lhs   <- bar[[2L]]
   cov_group <- bar[[3L]]
   ## Accept only `1 | group` for now. A LHS that is anything other than
@@ -339,8 +341,8 @@ parse_re_int_call <- function(bar) {
     ## response-column slope grammar; grouping by an ordinary column with
     ## a single intercept+slope LHS is the augmented latent()/unique()
     ## random-regression grammar; anything else has no supported route.
-    rhs_is_trait <- is.name(cov_group) && identical(as.character(cov_group), "trait")
-    is_single_slope <- .gllvmTMB_lhs_form(cov_lhs)$lhs_form %in%
+    rhs_is_trait <- is.name(cov_group) && as.character(cov_group) %in% c(trait_col, "trait")
+    is_single_slope <- .gllvmTMB_lhs_form(cov_lhs, trait_col = trait_col)$lhs_form %in%
       c("wide_intercept_slope", "long_intercept_slope")
     next_step <- if (rhs_is_trait) {
       "Use the response-column slope grammar instead: {.fn slope}, {.fn phylo_slope}, or {.fn animal_slope}, e.g. {.code phylo_slope(x | trait, tree = tree)}."

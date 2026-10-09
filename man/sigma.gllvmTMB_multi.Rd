@@ -20,3 +20,4 @@ single residual scale is not meaningful across mixed response families.
 Use family-specific dispersion extractors instead (for example
 \code{\link[=extract_Sigma]{extract_Sigma()}} on Gaussian traits).
 }
+\keyword{internal}

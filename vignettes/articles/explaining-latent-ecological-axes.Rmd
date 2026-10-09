@@ -161,6 +161,34 @@ data shapes for the same model; they are not two independent analyses.
 
 ## Interpret the trait-scale association
 
+`summary(fit_long)` includes the latent predictor coefficients by axis and
+the corresponding trait-scale effects. The axis coefficients depend on the
+orientation of the fitted axes; compare trait-scale effects across fits.
+For a binary probit model, a trait-scale effect describes a change on the
+probit linear-predictor scale, rather than a constant change in probability.
+
+For loading-ridge fits, retained penalised-Hessian metadata supplies local
+posterior standard deviations for the axis coefficients and delta-method
+uncertainty for trait effects. This approximation is conditional on the
+chosen ridge scale; it does not establish repeated-sampling coverage.
+The `std.error` column then holds an approximate posterior SD; `lower` and
+`upper` are normal-approximation credible bounds, not sampling confidence
+intervals.
+Older fits without that metadata return LV point estimates with unavailable
+standard errors and bounds. Inspect `uncertainty_status` before interpreting
+any uncertainty column.
+For a categorical predictor, use `lv = ~ group`. Default treatment coding
+compares each level with the reference level, which you can choose with
+`relevel()` before fitting. For example, `Fox_NativenessNative` represents
+Native minus Introduced when Introduced is the reference. The corresponding
+trait-scale coefficient is that contrast on each word's link scale.
+Explicit `lv = ~ 0 + group` creates full group indicators and is rejected
+because they span a constant under the no-LV-intercept contract.
+
+```{r latent-summary}
+summary(fit_long)
+```
+
 `extract_lv_effects(type = "trait_effect")` returns $B_{lv}$, with one row
 per trait and LV predictor. For this native Gaussian route, `method = "wald"`
 requests delta-method standard errors and Wald bounds from the fitted model.
@@ -176,6 +204,22 @@ B_hat <- extract_lv_effects(
 B_hat[c("trait", "predictor", "estimate", "std.error", "lower", "upper")]
 ```
 
+With one latent axis, both `ordiplot(fit_long)` and
+`plot(fit_long, type = "ordination")` show a one-dimensional display.
+There is no second axis. Score uncertainty is currently unavailable for
+predictor-informed latent fits, so keep `ellipse = FALSE`.
+
+A loading ridge can be requested with
+`control = gllvmTMBcontrol(loading_ridge = 2)`. The value is the prior standard
+deviation $\tau$ on free ordinary between-unit loadings: $\tau = 2$ means independent
+$N(0, 2^2)$ priors. Smaller positive values apply stronger shrinkage, and
+`loading_ridge = Inf` disables the penalty. For unstable binomial fits with ordinary between-unit latent loadings,
+an explicit $\tau = 2$ fit is a starting sensitivity analysis. The
+ordinary Laplace default remains unpenalised; evidence for this sensitivity
+choice does not justify changing the default across response families.
+A ridged fit is a penalised estimate. Do not compare it with an unpenalised
+fit using ordinary AIC, BIC, or a likelihood-ratio test.
+
 Because Gaussian responses use the identity link, an estimate is the fitted
 change in that trait's mean for a one-unit increase in the standardized
 moisture gradient through the shared latent axis. A positive estimate means
@@ -189,6 +233,89 @@ These are Wald summaries, not a promise that every fitted model has calibrated
 Gaussian regime, with failed Hessian or unavailable-interval attempts counted
 separately. Do not transfer that evidence to a different family, rank, missing
 data pattern, or covariance tier.
+
+## A categorical predictor: 35 articles and 22 words
+
+The following complete example uses your own long-format CSV with columns
+`word_present` (0 or 1), `analysis_word`, `article_id`, and `Fox_Nativeness`.
+It is not run when building this article because the input is user data.
+Replace the file path with your local CSV. The checks require 35 articles,
+22 words, and one nativeness category per article. Keep the raw CSV outside
+the package repository.
+
+Use one spelling consistently: the actual response-column name,
+`analysis_word`, appears in both the fixed intercepts and the latent loading
+block. If you rename the data column to `trait`, use `trait` in both places
+and set `trait = "trait"`. The placeholder `trait`
+inside `latent()` is equivalent when `trait = "analysis_word"` is supplied.
+This equivalence also holds with the LV predictor and loading prior.
+
+Choose Introduced as the reference before fitting. With the default
+treatment contrasts, `Fox_NativenessNative` then means Native minus
+Introduced. Its trait effect is a difference on each word's probit linear
+predictor scale, not a constant probability difference.
+
+```{r fox-word-sensitivity, eval=FALSE}
+library(gllvmTMB)
+dat <- read.csv("path/to/fox-word-data.csv", check.names = FALSE)
+needed <- c("word_present", "analysis_word", "article_id", "Fox_Nativeness")
+stopifnot(all(needed %in% names(dat)), !anyNA(dat[needed]))
+stopifnot(all(dat$word_present %in% c(0, 1)))
+stopifnot(all(vapply(split(dat$Fox_Nativeness, dat$article_id),
+                    function(x) length(unique(x)) == 1L, logical(1))))
+dat$article_id <- factor(dat$article_id)
+dat$analysis_word <- factor(dat$analysis_word)
+dat$Fox_Nativeness <- relevel(factor(dat$Fox_Nativeness), ref = "Introduced")
+stopifnot(nlevels(dat$article_id) == 35L,
+          nlevels(dat$analysis_word) == 22L,
+          setequal(levels(dat$Fox_Nativeness), c("Introduced", "Native")))
+
+set.seed(1467)
+m1 <- gllvmTMB(
+  word_present ~ 0 + analysis_word +
+    latent(0 + analysis_word | article_id, d = 1, lv = ~ Fox_Nativeness),
+  data = dat, trait = "analysis_word", unit = "article_id",
+  family = binomial(link = "probit"),
+  control = gllvmTMBcontrol(loading_ridge = Inf)
+)
+set.seed(1467)
+m2 <- gllvmTMB(
+  word_present ~ 0 + analysis_word +
+    latent(0 + analysis_word | article_id, d = 2, lv = ~ Fox_Nativeness),
+  data = dat, trait = "analysis_word", unit = "article_id",
+  family = binomial(link = "probit"),
+  control = gllvmTMBcontrol(loading_ridge = Inf)
+)
+set.seed(1467)
+m2_ridge <- gllvmTMB(
+  word_present ~ 0 + analysis_word +
+    latent(0 + analysis_word | article_id, d = 2, lv = ~ Fox_Nativeness),
+  data = dat, trait = "analysis_word", unit = "article_id",
+  family = binomial(link = "probit"),
+  control = gllvmTMBcontrol(loading_ridge = 2)
+)
+
+# Each summary includes the separate LV predictor coefficient block.
+summary(m1)
+summary(m2)
+summary(m2_ridge)
+fits <- list(d1 = m1, d2 = m2, d2_ridge_tau2 = m2_ridge)
+trait_effects <- lapply(fits, extract_lv_effects, type = "trait_effect")
+trait_effects
+diagnostics <- lapply(fits, gllvmTMB_diagnose)
+diagnostics
+
+# One-dimensional scores only; vertical position is a plotting baseline.
+ordiplot(m1, axes = 1L, biplot = FALSE, ellipse = FALSE)
+```
+
+Inspect the diagnostics before interpreting differences between these fits.
+Compare the named-word trait effects across ranks and ridge choices;
+raw-axis coefficients can change orientation. The ridge may reduce runaway
+loadings, but it does not guarantee a stable fit or accurate effects for
+this data set. Any finite ridged LV uncertainty is conditional on $\tau = 2$
+and remains a local posterior approximation. Predictor-informed score
+uncertainty is unavailable in `ordiplot()`, including for the ridged fit.
 
 ## Decompose each fitted score
 

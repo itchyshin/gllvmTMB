@@ -24,6 +24,12 @@ diagonal \eqn{\boldsymbol\Psi} companion to one shared variance across
 traits. Only applies when \code{unique = TRUE}.}
 
 \item{lv}{One-sided formula for predictor-informed latent-score means.
+The model matrix retains the formula's factor contrasts, then its
+intercept column is removed. With default treatment contrasts,
+\code{lv = ~ group} estimates differences from the factor reference level.
+Use \code{\link[stats:relevel]{stats::relevel()}} to select that level. Designs spanning a constant,
+including \code{lv = ~ 0 + group}, violate the no-LV-intercept contract
+and are rejected. Numeric \code{lv = ~ x} and \code{lv = ~ 0 + x} are equivalent.
 Runtime support is limited to ordinary unit-tier
 \code{latent(..., lv = ~ x)}. Registered native family/link rows compose in one
 complete-response ordinary unit-tier block. The loadings-only

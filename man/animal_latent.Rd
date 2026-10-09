@@ -19,10 +19,16 @@ animal_latent(
 
 \item{d}{Number of latent factors (\eqn{K \le T}). Default 1.}
 
-\item{pedigree}{A 3-column data frame with columns \code{id}, \code{sire},
-\code{dam} (unknown parents encoded as \code{NA}). Converted internally
-to \strong{A} via Henderson's recursive formula. Only one of
-\code{pedigree}, \code{A}, or \code{Ainv} should be given.}
+\item{pedigree}{A 3-column data frame identifying individuals and
+parents. Columns are resolved by name using the synonyms
+\code{id}/\code{animal}, \code{sire}/\code{father}, and \code{dam}/\code{mother}; if none
+match, column 1 is id, column 2 is sire, and column 3 is dam.
+Unknown parents may be \code{NA}, \code{""}, or \code{"0"}. Converted internally
+to a sparse inverse relationship matrix \eqn{\mathbf A^{-1}} by
+\code{\link[=pedigree_to_Ainv_sparse]{pedigree_to_Ainv_sparse()}} (Henderson/Quaas), not to a dense
+\eqn{\mathbf A}. Must be passed by name (\code{pedigree = ped}). If
+several of \code{pedigree}, \code{A}, and \code{Ainv} are given, \code{pedigree}
+wins, then \code{A}, then \code{Ainv}.}
 
 \item{A}{Dense relatedness matrix (\eqn{n \times n}); rownames /
 colnames must match levels of \code{id}.}

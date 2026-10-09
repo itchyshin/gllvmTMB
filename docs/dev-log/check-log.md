@@ -1,3 +1,71 @@
+## 2026-10-08: issue 1467 merge integration
+
+Resolved overlap with the merged issue 1469 changes, retaining both NEWS and
+check-log entries and the local mocked graphics capture regression. A fresh
+native installation passed all 13 focused test files for LV output, ridge
+curvature and disclosure, factor contrasts, selected trait names, ordination
+and full correlation tables. Fresh remote CI and post-merge replay remain
+pending at this revision. No test tolerances changed.
+
+## 2026-10-08: issue 1467 consistent trait-column naming
+
+Reconciled the previously local trait-selector fix into PR 1468. The selected
+column reaches shared classifiers, canonical rewrites, the main parser and
+screening. Paired probit tests cover actual names in both terms, renamed
+trait in both terms, and the historical mixed form at d1, d2 and ridge d2.
+The new and neighbouring parser checks passed 93 expectations. Summary,
+curvature, plotting and factor checks were rerun; actionable-error checks
+passed 7 expectations with NOT_CRAN=true. Independent source and public
+reviews are OK. Documentation checks and article rendering passed. Supplied
+data outcomes remain private; final exact-head CI will be linked on the PR.
+
+## 2026-10-07: issue 1467 public-surface audit
+
+README, article and control help now limit ridge advice to ordinary
+between-unit loadings. Rd regeneration, pkgdown references and prose checks
+passed. Independent public-surface audit: OK, no remaining blockers. The
+completion report contains technical validation only; supplied-data results
+and fit evidence remain private. Final CI receipt is tracked on PR 1468.
+
+## 2026-10-07: issue 1467 diagnostic consistency
+
+Aligned the inherited near-constant diagnostic assertion with explicit ridge
+guidance and updated the neighbouring weak-axis action. All three ridge
+recommendations now state their ordinary between-unit loading scope.
+Sanity, diagnostic and summary regressions: 150 passed, zero failed, with
+one inherited implicit-unit deprecation warning. Independent review confirms
+the advice matches the theta_rr_B-only penalty; thresholds are unchanged.
+
+## 2026-10-07: issue 1467 CI portability repairs
+
+CI exposed an extra bare abort, an S3 trace interception difference and a
+platform-dependent factor-fixture optimizer stop. Added an actionable one-axis
+error suggestion, traced the actual graphics generic, and used explicit BFGS
+with tighter objective stopping for recovery. All accuracy thresholds remain
+unchanged. Installed-package plotting: 6 passed; factor recovery: 45 passed;
+error-action ratchet: 7 passed. Independent narrow review: no blocking findings.
+
+## 2026-10-07: issue 1467 posterior uncertainty
+
+Corrected prior curvature supplies conditional posterior SDs in fit-time,
+lazy and joint paths. 776 focused checks passed. Complete runnable ridge code
+and diagnostic suggestions ship. Independent review found no blocking findings.
+Supplied-data numerical results and fit artifacts remain private.
+Report: after-task/2026-10-07-issue-1467-completion.md.
+
+## 2026-10-07: issue 1467 LV summary and one-axis ordiplot
+
+Separate lane codex/issue-1467-output-20261007, base 02b46cfc8.
+Final source-loaded tests: summary 38, one-axis ordiplot 20, existing ordiplot-multi 9,
+ordiplot-VP 32, all passed. Three synthetic binomial-probit refits (d1, d2,
+d2 loading_ridge = 2) converged. Rd regeneration, pkgdown reference check,
+and predictor-informed tutorial render passed. Independent scoped review OK.
+Ridge summary likelihood/criterion distinction corrected; older stored objects
+retain printable summaries with an unavailable-likelihood note.
+Exact-data refits pending inaccessible Drive CSV. Full R CMD check and package
+suite not run; local patch only, no push or merge. Report:
+after-task/2026-10-07-issue-1467-output.md.
+
 ## 2026-10-08: Issue 1469 full correlation tables and diagonal controls
 
 Fresh source installation succeeded. Installed tests: full entries 149 assertions,

@@ -565,6 +565,12 @@ meta <- function(value, sampling_var) {
 #'   diagonal \eqn{\boldsymbol\Psi} companion to one shared variance across
 #'   traits. Only applies when `unique = TRUE`.
 #' @param lv One-sided formula for predictor-informed latent-score means.
+#'   The model matrix retains the formula's factor contrasts, then its
+#'   intercept column is removed. With default treatment contrasts,
+#'   `lv = ~ group` estimates differences from the factor reference level.
+#'   Use [stats::relevel()] to select that level. Designs spanning a constant,
+#'   including `lv = ~ 0 + group`, violate the no-LV-intercept contract
+#'   and are rejected. Numeric `lv = ~ x` and `lv = ~ 0 + x` are equivalent.
 #'   Runtime support is limited to ordinary unit-tier
 #'   `latent(..., lv = ~ x)`. Registered native family/link rows compose in one
 #'   complete-response ordinary unit-tier block. The loadings-only
@@ -2186,8 +2192,8 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL, rho = 1) {
     (is.symbol(e) && identical(as.character(e), "1"))
 }
 
-.is_zero_plus_trait <- function(e) {
-  ## TRUE if `e` is the call `0 + trait`, i.e. `+(0, trait)`.
+.is_zero_plus_trait <- function(e, trait_col = "trait") {
+  ## TRUE for the selected trait column or its legacy literal `trait` alias.
   e <- .strip_lhs_parens(e)
   is.call(e) &&
     identical(e[[1L]], as.name("+")) &&
@@ -2196,7 +2202,7 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL, rho = 1) {
     length(e[[2L]]) == 1L &&
     e[[2L]] == 0 &&
     is.name(e[[3L]]) &&
-    identical(as.character(e[[3L]]), "trait")
+    as.character(e[[3L]]) %in% c(trait_col, "trait")
 }
 
 ## Flatten a left-nested `a + b + c` LHS expression into the ordered list of
@@ -2205,13 +2211,13 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL, rho = 1) {
 ## the left `+` spine recovers `list(1, x1, x2)` in source order. A bare
 ## (non-`+`) expression returns a length-1 list. Used to generalise the
 ## augmented intercept+slope LHS from one covariate (s = 1) to s >= 1.
-.flatten_lhs_plus <- function(e) {
+.flatten_lhs_plus <- function(e, trait_col = "trait") {
   e <- .strip_lhs_parens(e)
   ## `0 + trait` is itself a `+` call but is an ATOMIC per-trait-intercept
   ## term (the leading term of the long form), never a `0`/`trait` pair to
   ## split. Treat it as a leaf so `0 + trait + (0+trait):x1 + ...` flattens to
   ## list(`0 + trait`, (0+trait):x1, ...) rather than splitting the head.
-  if (.is_zero_plus_trait(e)) {
+  if (.is_zero_plus_trait(e, trait_col = trait_col)) {
     return(list(e))
   }
   if (
@@ -2219,7 +2225,8 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL, rho = 1) {
       identical(e[[1L]], as.name("+")) &&
       length(e) == 3L
   ) {
-    return(c(.flatten_lhs_plus(e[[2L]]), list(.strip_lhs_parens(e[[3L]]))))
+    return(c(.flatten_lhs_plus(e[[2L]], trait_col = trait_col),
+      list(.strip_lhs_parens(e[[3L]]))))
   }
   list(e)
 }
@@ -2244,14 +2251,14 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL, rho = 1) {
   invisible(cols)
 }
 
-.match_wide_intercept_slopes <- function(lhs) {
-  terms <- .flatten_lhs_plus(lhs)
+.match_wide_intercept_slopes <- function(lhs, trait_col = "trait") {
+  terms <- .flatten_lhs_plus(lhs, trait_col = trait_col)
   if (length(terms) < 2L || !.is_one_lhs(terms[[1L]])) {
     return(NULL)
   }
   cols <- character(0L)
   for (term in terms[-1L]) {
-    if (!is.name(term) || identical(as.character(term), "trait")) {
+    if (!is.name(term) || as.character(term) %in% c(trait_col, "trait")) {
       return(NULL)
     }
     cols <- c(cols, as.character(term))
@@ -2264,9 +2271,9 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL, rho = 1) {
 ## `0 + trait + (0 + trait):x1 + (0 + trait):x2 + ...` (s >= 1 interactions
 ## after the leading `0 + trait`). Returns the ordered character vector of
 ## slope columns, or NULL when the shape does not match.
-.match_long_intercept_slopes <- function(lhs) {
-  terms <- .flatten_lhs_plus(lhs)
-  if (length(terms) < 2L || !.is_zero_plus_trait(terms[[1L]])) {
+.match_long_intercept_slopes <- function(lhs, trait_col = "trait") {
+  terms <- .flatten_lhs_plus(lhs, trait_col = trait_col)
+  if (length(terms) < 2L || !.is_zero_plus_trait(terms[[1L]], trait_col = trait_col)) {
     return(NULL)
   }
   cols <- character(0L)
@@ -2276,12 +2283,12 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL, rho = 1) {
       !(is.call(slope) &&
         identical(slope[[1L]], as.name(":")) &&
         length(slope) == 3L &&
-        .is_zero_plus_trait(slope[[2L]]))
+        .is_zero_plus_trait(slope[[2L]], trait_col = trait_col))
     ) {
       return(NULL)
     }
     sc <- .strip_lhs_parens(slope[[3L]])
-    if (!is.name(sc) || identical(as.character(sc), "trait")) {
+    if (!is.name(sc) || as.character(sc) %in% c(trait_col, "trait")) {
       return(NULL)
     }
     cols <- c(cols, as.character(sc))
@@ -2298,8 +2305,8 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL, rho = 1) {
 ## intercept-only forms; everything else -- including the MULTI-slope
 ## `1 + x1 + x2 | g` -- stays `"unsupported"` exactly as before. Multi-slope is
 ## activated for the phylo_dep path ONLY, via `.gllvmTMB_lhs_form_multi()`.
-.gllvmTMB_lhs_form <- function(lhs) {
-  info <- .gllvmTMB_lhs_form_multi(lhs)
+.gllvmTMB_lhs_form <- function(lhs, trait_col = "trait") {
+  info <- .gllvmTMB_lhs_form_multi(lhs, trait_col = trait_col)
   if (
     info$lhs_form %in%
       c("wide_intercept_slope", "long_intercept_slope") &&
@@ -2316,16 +2323,16 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL, rho = 1) {
 ## (wide) and `0 + trait + (0 + trait):x1 + (0 + trait):x2 + ... | g` (long)
 ## with s >= 2 distinct slope covariates, returning the full ordered
 ## `slope_cols` vector (`slope_col` keeps the first for back-compat consumers).
-.gllvmTMB_lhs_form_multi <- function(lhs) {
+.gllvmTMB_lhs_form_multi <- function(lhs, trait_col = "trait") {
   lhs <- .strip_lhs_parens(lhs)
-  if (.is_one_lhs(lhs) || .is_zero_plus_trait(lhs)) {
+  if (.is_one_lhs(lhs) || .is_zero_plus_trait(lhs, trait_col = trait_col)) {
     return(list(
       lhs_form = "intercept_only",
       slope_col = NULL,
       slope_cols = NULL
     ))
   }
-  wide_cols <- .match_wide_intercept_slopes(lhs)
+  wide_cols <- .match_wide_intercept_slopes(lhs, trait_col = trait_col)
   if (!is.null(wide_cols)) {
     return(list(
       lhs_form = "wide_intercept_slope",
@@ -2333,7 +2340,7 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL, rho = 1) {
       slope_cols = wide_cols
     ))
   }
-  long_cols <- .match_long_intercept_slopes(lhs)
+  long_cols <- .match_long_intercept_slopes(lhs, trait_col = trait_col)
   if (!is.null(long_cols)) {
     return(list(
       lhs_form = "long_intercept_slope",
@@ -2466,7 +2473,7 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL, rho = 1) {
   ## route for non-spatial, non-trait groupings. More than one slope
   ## covariate (`1 + x1 + x2 | g`) has no supported single-term route at
   ## all, spatial or not.
-  is_single_slope <- .gllvmTMB_lhs_form(lhs)$lhs_form %in%
+  is_single_slope <- .gllvmTMB_lhs_form(lhs, trait_col = trait_col)$lhs_form %in%
     c("wide_intercept_slope", "long_intercept_slope")
   next_step <- if (rhs_is_trait) {
     "Use the response-column slope grammar instead: {.fn slope}, {.fn phylo_slope}, or {.fn animal_slope}, e.g. {.code phylo_slope(x | trait, tree = tree)}."
@@ -3376,7 +3383,7 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
             identical(arg[[1L]], as.name("|")) &&
             length(arg) == 3L
           if (arg_is_bar) {
-            lhs_info <- .gllvmTMB_lhs_form(arg[[2L]])
+            lhs_info <- .gllvmTMB_lhs_form(arg[[2L]], trait_col = trait_col)
           }
           if (
             arg_is_bar &&
@@ -3431,7 +3438,7 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
             identical(arg[[1L]], as.name("|")) &&
             length(arg) == 3L
           if (arg_is_bar) {
-            lhs_form <- .gllvmTMB_lhs_form(arg[[2L]])
+            lhs_form <- .gllvmTMB_lhs_form(arg[[2L]], trait_col = trait_col)
             if (
               lhs_form$lhs_form %in%
                 c("wide_intercept_slope", "long_intercept_slope")
@@ -3553,7 +3560,7 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
           ## but with the structural matrix A (pedigree/A/Ainv) supplied
           ## via vcv, and atanh_cor_b pinned to 0 via the TMB map
           ## (fit-multi.R reads the `.indep` marker). No new C++.
-          lhs_form <- .gllvmTMB_lhs_form(bar[[2L]])
+          lhs_form <- .gllvmTMB_lhs_form(bar[[2L]], trait_col = trait_col)
           ## `common = TRUE` (Design 79 scalar-collapse): tie the T per-trait
           ## additive-genetic variances to ONE shared variance -- byte-identical
           ## to the (soft-deprecated) `animal_scalar(id)` (`phylo(id, vcv = A)`).
@@ -3630,7 +3637,7 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
               list(vcv = vcv_expr)
             )))
           }
-          lhs_form <- .gllvmTMB_lhs_form(bar[[2L]])
+          lhs_form <- .gllvmTMB_lhs_form(bar[[2L]], trait_col = trait_col)
           ## Augmented intercept+slope LHS: route via the dep-slope engine.
           if (
             lhs_form$lhs_form %in%
@@ -3703,7 +3710,7 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
             identical(unit_arg[[1L]], as.name("|")) &&
             length(unit_arg) == 3L
         ) {
-          lhs_form <- .gllvmTMB_lhs_form(unit_arg[[2L]])
+          lhs_form <- .gllvmTMB_lhs_form(unit_arg[[2L]], trait_col = trait_col)
           is_slope <- lhs_form$lhs_form %in%
             c("wide_intercept_slope", "long_intercept_slope")
           if (is_slope && fn %in% c("kernel_indep", "kernel_dep")) {
@@ -3814,6 +3821,14 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
       }
       ## latent / unique / phylo_latent / spatial_unique: just rename the head
       if (fn %in% c("latent", "phylo_latent", "spatial_unique", "spatial")) {
+        if (identical(fn, "latent") &&
+            (length(e) < 2L || !is.call(e[[2L]]) ||
+             !identical(e[[2L]][[1L]], as.name("|")) || length(e[[2L]]) != 3L)) {
+          cli::cli_abort(c(
+            "{.fn latent} requires an argument of the form {.code lhs | group}.",
+            ">" = "Use {.code latent(0 + {trait_col} | unit, d = K)}."
+          ))
+        }
         ## Ordinary individual-level random regression:
         ## latent(1 + x | unit, d = K) and the long form
         ## latent(0 + trait + (0 + trait):x | unit, d = K) route to a marked
@@ -3829,7 +3844,7 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
             length(e[[2L]]) == 3L
         ) {
           bar <- e[[2L]]
-          lhs_form <- .gllvmTMB_lhs_form(bar[[2L]])
+          lhs_form <- .gllvmTMB_lhs_form(bar[[2L]], trait_col = trait_col)
           if (
             lhs_form$lhs_form %in%
               c("wide_intercept_slope", "long_intercept_slope")
@@ -3928,7 +3943,7 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
             length(e[[2L]]) == 3L
         ) {
           bar <- e[[2L]]
-          lhs_form <- .gllvmTMB_lhs_form(bar[[2L]])
+          lhs_form <- .gllvmTMB_lhs_form(bar[[2L]], trait_col = trait_col)
           if (
             lhs_form$lhs_form %in%
               c("wide_intercept_slope", "long_intercept_slope")
@@ -4004,7 +4019,7 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
             length(e[[2L]]) == 3L
         ) {
           bar <- e[[2L]]
-          lhs_form <- .gllvmTMB_lhs_form(bar[[2L]])
+          lhs_form <- .gllvmTMB_lhs_form(bar[[2L]], trait_col = trait_col)
           if (
             lhs_form$lhs_form %in%
               c("wide_intercept_slope", "long_intercept_slope")
@@ -4230,7 +4245,7 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
             length(e[[2L]]) == 3L
         ) {
           bar <- e[[2L]]
-          lhs_form <- .gllvmTMB_lhs_form(bar[[2L]])
+          lhs_form <- .gllvmTMB_lhs_form(bar[[2L]], trait_col = trait_col)
           if (
             lhs_form$lhs_form %in%
               c("wide_intercept_slope", "long_intercept_slope")
@@ -4414,7 +4429,7 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
             length(e[[2L]]) == 3L
         ) {
           bar <- e[[2L]]
-          lhs_form <- .gllvmTMB_lhs_form(bar[[2L]])
+          lhs_form <- .gllvmTMB_lhs_form(bar[[2L]], trait_col = trait_col)
           species_arg <- bar[[3L]]
           if (!is.name(species_arg)) {
             cli::cli_abort(c(
@@ -4511,7 +4526,7 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
             length(e[[2L]]) == 3L
         ) {
           bar <- e[[2L]]
-          lhs_form <- .gllvmTMB_lhs_form(bar[[2L]])
+          lhs_form <- .gllvmTMB_lhs_form(bar[[2L]], trait_col = trait_col)
           if (
             lhs_form$lhs_form %in%
               c("wide_intercept_slope", "long_intercept_slope")
@@ -4678,7 +4693,7 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
         ## b_phy_aug engine as phylo_unique() but with atanh_cor_b pinned to 0
         ## via the TMB map (fit-multi.R reads the `.indep` marker on the
         ## phylo_slope covstruct). No new C++ likelihood block.
-        lhs_form <- .gllvmTMB_lhs_form(lhs_bar)
+        lhs_form <- .gllvmTMB_lhs_form(lhs_bar, trait_col = trait_col)
         if (
           lhs_form$lhs_form %in%
             c("wide_intercept_slope", "long_intercept_slope")
@@ -4747,7 +4762,7 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
               is.call(e[[2L]]) &&
               identical(e[[2L]][[1L]], as.name("|")) &&
               length(e[[2L]]) == 3L &&
-              .gllvmTMB_lhs_form(e[[2L]][[2L]])$lhs_form %in%
+              .gllvmTMB_lhs_form(e[[2L]][[2L]], trait_col = trait_col)$lhs_form %in%
                 c("wide_intercept_slope", "long_intercept_slope")
           ) {
             cli::cli_abort(c(
@@ -4775,7 +4790,7 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
             length(e[[2L]]) == 3L
         ) {
           bar <- e[[2L]]
-          lhs_form <- .gllvmTMB_lhs_form(bar[[2L]])
+          lhs_form <- .gllvmTMB_lhs_form(bar[[2L]], trait_col = trait_col)
           if (
             lhs_form$lhs_form %in%
               c("wide_intercept_slope", "long_intercept_slope")
@@ -4881,7 +4896,7 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
         ## C++ dep path is already dimension-general in `C = n_lhs_cols`). Uses
         ## the MULTI-slope classifier so s >= 2 is recognised on this path only;
         ## every other keyword keeps the single-slope `.gllvmTMB_lhs_form()`.
-        lhs_form <- .gllvmTMB_lhs_form_multi(lhs_bar)
+        lhs_form <- .gllvmTMB_lhs_form_multi(lhs_bar, trait_col = trait_col)
         if (
           lhs_form$lhs_form %in%
             c("wide_intercept_slope", "long_intercept_slope")
@@ -4942,7 +4957,7 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
             length(e[[2L]]) == 3L
         ) {
           bar <- e[[2L]]
-          lhs_form <- .gllvmTMB_lhs_form(bar[[2L]])
+          lhs_form <- .gllvmTMB_lhs_form(bar[[2L]], trait_col = trait_col)
           if (
             lhs_form$lhs_form %in%
               c("wide_intercept_slope", "long_intercept_slope")

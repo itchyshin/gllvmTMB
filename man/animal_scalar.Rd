@@ -9,10 +9,16 @@ animal_scalar(id, pedigree = NULL, A = NULL, Ainv = NULL)
 \arguments{
 \item{id}{Bare column name of the individual factor.}
 
-\item{pedigree}{A 3-column data frame with columns \code{id}, \code{sire},
-\code{dam} (unknown parents encoded as \code{NA}). Converted internally
-to \strong{A} via Henderson's recursive formula. Only one of
-\code{pedigree}, \code{A}, or \code{Ainv} should be given.}
+\item{pedigree}{A 3-column data frame identifying individuals and
+parents. Columns are resolved by name using the synonyms
+\code{id}/\code{animal}, \code{sire}/\code{father}, and \code{dam}/\code{mother}; if none
+match, column 1 is id, column 2 is sire, and column 3 is dam.
+Unknown parents may be \code{NA}, \code{""}, or \code{"0"}. Converted internally
+to a sparse inverse relationship matrix \eqn{\mathbf A^{-1}} by
+\code{\link[=pedigree_to_Ainv_sparse]{pedigree_to_Ainv_sparse()}} (Henderson/Quaas), not to a dense
+\eqn{\mathbf A}. Must be passed by name (\code{pedigree = ped}). If
+several of \code{pedigree}, \code{A}, and \code{Ainv} are given, \code{pedigree}
+wins, then \code{A}, then \code{Ainv}.}
 
 \item{A}{Dense relatedness matrix (\eqn{n \times n}); rownames /
 colnames must match levels of \code{id}.}
@@ -37,10 +43,14 @@ where \eqn{\mathbf A} is the \strong{additive genetic relatedness matrix}
 }
 \details{
 Mathematical parallel to \code{\link[=phylo_scalar]{phylo_scalar()}} -- same engine path; the
-only difference is that \strong{A} is supplied via \verb{pedigree =} (a
-3-column data frame: id, sire, dam), \verb{A =} (dense \eqn{n \times n}
-relatedness matrix), or \verb{Ainv =} (precision matrix). Sparse \code{Ainv}
-inputs use the sparse precision route.
+only difference is the relatedness input. Pass one \strong{named}
+argument: \verb{pedigree =} (converted to a sparse inverse relationship
+matrix \eqn{\mathbf A^{-1}} via Henderson/Quaas), \verb{A =} (dense
+\eqn{n \times n} relatedness matrix), or \verb{Ainv =} (precision
+matrix). Sparse \code{Ainv} inputs use the sparse precision route.
+A positional pedigree such as \code{animal_scalar(id, ped)} is not
+recognised. If more than one of \code{pedigree}, \code{A}, and \code{Ainv} is
+supplied, the first match wins in that order.
 }
 \examples{
 \dontrun{

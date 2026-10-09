@@ -1254,7 +1254,7 @@ gllvmTMB <- function(
   ## blocks). Earlier versions dispatched these to sdmTMB() with
   ## spatial = "off"; that path is removed in 0.2.0 because the
   ## single-response sdmTMB() engine is no longer bundled.
-  parsed <- parse_multi_formula(formula)
+  parsed <- parse_multi_formula(formula, trait_col = trait)
   if (isTRUE(temporal_spec$active)) {
     has_stable_unit_component <- any(vapply(parsed$covstructs, function(cs) {
       identical(all.vars(cs$group), site)
@@ -2147,7 +2147,17 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #'   suggesting that the penalty belongs to AGHQ. The default `NULL` preserves
 #'   historical unpenalised Laplace fits. Supply at most one of
 #'   `loading_ridge` and `aghq_ridge`; neither may be combined with
-#'   `estimator = "mspl"`.
+#'   `estimator = "mspl"`. A finite positive value is the standard deviation
+#'   `tau` of independent zero-mean normal priors on free ordinary between-unit loadings:
+#'   `loading_ridge = 2` means variance `2^2`, smaller positive values apply
+#'   stronger shrinkage, and `Inf` disables the penalty. For unstable binomial
+#'   fits with ordinary between-unit latent loadings, an explicit
+#'   `loading_ridge = 2` fit is a starting sensitivity analysis; this does not
+#'   change the ordinary Laplace default. Estimates
+#'   are penalised MAP points. Retained penalised-Hessian LV uncertainty is a
+#'   local posterior approximation conditional on `tau`, with delta-method
+#'   propagation for trait effects, not calibrated repeated-sampling coverage.
+#'   Older fits without the required metadata withhold LV uncertainty.
 #' @param warn_runaway If `TRUE` (default), warn when a binomial
 #'   latent-variable fit triggers the package's existing runaway-loading
 #'   diagnostic. The warning is shown once per session for each distinct

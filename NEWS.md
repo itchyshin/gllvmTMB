@@ -1,5 +1,29 @@
 # Development (unreleased)
 
+* Factor predictors in `lv = ~ group` now retain their formula contrasts
+  when the intercept column is removed. Default treatment coding estimates
+  level differences from the reference, avoiding the redundant full group
+  indicators previously created internally. Explicit designs spanning a
+  constant, including `lv = ~ 0 + group`, now fail with a clear error.
+  Refit older factor-LV models; their separate group means were aliased
+  with free trait intercepts (#1467).
+
+* Predictor-informed latent models now show latent-axis predictor coefficients
+  and trait-scale effects in `summary()`, including uncertainty status. Raw
+  axis coefficients depend on orientation; trait effects use the response
+  link scale. `ordiplot()` now draws a one-axis fit on a horizontal baseline
+  and still rejects requests for an unavailable second axis (#1467).
+  The summary header for a ridged fit now reports the unpenalised likelihood
+  at its MAP point, consistently with `logLik()`, rather than the penalised
+  optimisation criterion. Loading-ridge LV uncertainty uses retained
+  penalised-Hessian metadata for local posterior standard deviations and
+  delta-method trait effects, conditional on the chosen ridge scale.
+  This approximation does not establish repeated-sampling coverage;
+  older fits without the metadata withhold LV uncertainty. The latent-axis
+  article now includes an explicit `loading_ridge = 2` sensitivity example
+  for a 35-article, 22-word binomial model. Ordinary Laplace fits remain
+  unpenalised by default.
+
 * `extract_correlations()` now accepts `entries = "all"` for a complete
   symmetric table, or `entries = "offdiag"` for both directions without the
   diagonal. The default `entries = "unique"` preserves existing pair output.

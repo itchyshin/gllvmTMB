@@ -52,6 +52,7 @@ update.gllvmTMB_multi <- function(object, ..., evaluate = TRUE) {
 #' @param ... Not used.
 #' @return An error is always thrown.
 #' @importFrom stats sigma
+#' @keywords internal
 #' @export
 sigma.gllvmTMB_multi <- function(object, ...) {
   cli::cli_abort(c(
@@ -714,6 +715,13 @@ sigma.gllvmTMB_va <- sigma.gllvmTMB_multi
 #' * For ML fits, `summary()` adds a fixed-effects table with SEs, the global and
 #'   local trait correlation matrices, per-trait ICCs,
 #'   and global / local communalities.
+#' * For predictor-informed `latent(..., lv = ~ x)` fits, `summary()` also
+#'   returns `lv_effects`, with `axis_effect` and `trait_effect` tables from
+#'   [extract_lv_effects()]. Printed raw-axis coefficients depend on axis
+#'   orientation; trait effects are on the response link scale. Unavailable
+#'   uncertainty is labelled, and experimental Wald output does not establish
+#'   interval coverage. MSPL and non-unit likelihood weights withhold this
+#'   block's inference with an explicit reason.
 #' * For an unpenalised native-Laplace ML fit, `logLik()` is the converged
 #'   maximum with `df = length(opt$par)` and `nobs` equal to the number of
 #'   likelihood-contributing response cells. AGHQ has a distinct integration
@@ -869,6 +877,12 @@ summary.gllvmTMB_multi <- function(object, ...) {
     estimator = object$estimator %||% if (isTRUE(object$REML)) "REML" else "ML",
     logLik = if (.gllvmTMB_is_mspl(object)) {
       object$mspl$unpenalized_loglik_at_estimate
+    } else if (isTRUE(object$aghq$penalised) &&
+               !isTRUE(object$likelihood_weights$active)) {
+      tryCatch(
+        as.numeric(suppressWarnings(stats::logLik(object))),
+        gllvmTMB_penalised_logLik_unavailable = function(e) NA_real_
+      )
     } else {
       -object$opt$objective
     },
@@ -909,6 +923,22 @@ summary.gllvmTMB_multi <- function(object, ...) {
       df$Std.Err[] <- NA_real_
     }
     out$fixef <- df
+  }
+  ## Predictor-informed score means are a separate coefficient block from
+  ## b_fix. Reuse the extractor's uncertainty checks, without crossing the
+  ## weighted-objective or experimental MSPL inference boundaries.
+  if (isTRUE(object$use$lv_B)) {
+    if (.gllvmTMB_is_mspl(object) || isTRUE(object$likelihood_weights$active)) {
+      out$lv_effects <- list(
+        status = "withheld_unsupported_inference",
+        reason = "LV-effect extraction is not supported for MSPL or non-unit likelihood weights"
+      )
+    } else {
+      out$lv_effects <- list(
+        axis_effect = extract_lv_effects(object, type = "axis_effect"),
+        trait_effect = extract_lv_effects(object, type = "trait_effect")
+      )
+    }
   }
   out$Sigma_B <- .extract_Sigma_legacy_payload(object, level = "unit")
   out$Sigma_W <- .extract_Sigma_legacy_payload(object, level = "unit_obs")
@@ -1025,6 +1055,9 @@ print.summary.gllvmTMB_multi <- function(x, digits = 3, ...) {
         cat("  Note: ordinary Wald and likelihood-based inference is not validated for non-unit likelihood weights.\n")
       } else if (penalised) {
         cat("  Note: parameters are a penalised MAP point; ordinary AIC, BIC, and likelihood-ratio interpretations do not apply.\n")
+        if (!is.finite(logLik)) {
+          cat("  Log L is unavailable: this stored fit has no retained unpenalised likelihood or usable TMB objective. Refit to obtain it.\n")
+        }
       }
     }
   })
@@ -1076,6 +1109,33 @@ print.summary.gllvmTMB_multi <- function(x, digits = 3, ...) {
           sep = ""
         )
       }
+    }
+  }
+
+  if (!is.null(x$lv_effects)) {
+    cat("\nPredictor-informed latent-variable effects (unit tier):\n")
+    if (!is.null(x$lv_effects$reason)) {
+      cat("  ", x$lv_effects$reason, ".\n", sep = "")
+    } else {
+      print_lv_table <- function(table, labels) {
+        tbl <- table[, c(labels, "estimate", "std.error", "uncertainty_status"),
+                     drop = FALSE]
+        tbl$estimate <- round(tbl$estimate, digits)
+        tbl$std.error <- round(tbl$std.error, digits)
+        print(tbl, row.names = FALSE)
+      }
+      cat("  Raw-axis coefficients (axis scale and rotation dependent):\n")
+      print_lv_table(x$lv_effects$axis_effect, c("axis", "predictor"))
+      cat("\n  Induced trait effects (loading times score coefficient; response link scale):\n")
+      print_lv_table(x$lv_effects$trait_effect, c("trait", "predictor"))
+      posterior <- any(grepl("loading_ridge_posterior_sd", x$lv_effects$axis_effect$uncertainty_status,
+                             fixed = TRUE))
+      if (posterior) {
+        cat("  std.error reports approximate posterior SDs conditional on the loading ridge; sampling interval coverage is not validated.\n")
+      } else {
+        cat("  Wald standard errors, when available, are experimental; interval coverage is not validated.\n")
+      }
+      cat("  NA standard errors are explained by uncertainty_status; see extract_lv_effects().\n")
     }
   }
 
@@ -3622,7 +3682,8 @@ deviance.gllvmTMB_multi <- function(object, ...) {
     return(var_eta)
   }
 
-  sdr_joint <- TMB::sdreport(fit$tmb_obj, getJointPrecision = TRUE)
+  sdr_joint <- .gllvmTMB_sdreport_loading_ridge(fit$tmb_obj, fit$opt$par,
+    fit$aghq$ridge_tau %||% Inf, getJointPrecision = TRUE)
   Q <- sdr_joint$jointPrecision
   if (is.null(Q)) {
     cli::cli_abort(c(
@@ -3800,7 +3861,8 @@ deviance.gllvmTMB_multi <- function(object, ...) {
   )
   n_sim <- as.integer(round(n_sim))
 
-  sdr_joint <- TMB::sdreport(fit$tmb_obj, getJointPrecision = TRUE)
+  sdr_joint <- .gllvmTMB_sdreport_loading_ridge(fit$tmb_obj, fit$opt$par,
+    fit$aghq$ridge_tau %||% Inf, getJointPrecision = TRUE)
   Q <- sdr_joint$jointPrecision
   if (is.null(Q)) {
     cli::cli_abort(c(

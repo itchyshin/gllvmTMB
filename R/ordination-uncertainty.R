@@ -244,7 +244,10 @@ ordination_uncertainty <- function(fit, level = "unit") {
   ## the fit's production sdreport() (getJointPrecision = FALSE) does not
   ## carry. Same route as `.gllvmTMB_predict_missing_var_eta_joint()` /
   ## `.gllvmTMB_predict_missing_sim()` (R/methods-gllvmTMB.R).
-  sdr_joint <- TMB::sdreport(fit$tmb_obj, getJointPrecision = TRUE)
+  sdr_joint <- .gllvmTMB_sdreport_loading_ridge(
+    fit$tmb_obj, fit$opt$par, fit$aghq$ridge_tau %||% Inf,
+    getJointPrecision = TRUE
+  )
   Q <- sdr_joint$jointPrecision
   if (is.null(Q)) {
     cli::cli_abort(c(

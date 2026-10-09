@@ -612,6 +612,11 @@ extract_ordination <- function(
 #' `extract_lv_effects()` reports either the raw axis-scale
 #' \eqn{\boldsymbol\alpha} coefficients or the induced trait-scale contribution
 #' \eqn{\mathbf B_{\mathrm{lv}} = \boldsymbol\Lambda \boldsymbol\alpha^\top}.
+#' Factor predictor names follow the fitted model-matrix contrasts. With
+#' default treatment contrasts, each coefficient compares its level with
+#' the reference level; trait effects report that same contrast on the link
+#' scale. Use [stats::relevel()] before fitting to choose the reference.
+#'
 #' The axis-scale table is the default because it matches the usual constrained
 #' latent-variable / ordination coefficient. It is conditional on the fitted
 #' loading constraint and axis orientation: like the loadings themselves
@@ -634,7 +639,16 @@ extract_ordination <- function(
 #' helper that performs this composition; it must be assembled from
 #' `rotate_loadings()`'s `T` and the `estimate` column here.
 #'
-#' For native TMB fits, `std.error` is populated from a positive-definite
+#' Loading-ridge fits with verified penalised curvature report local approximate
+#' posterior SDs in `std.error` and normal-approximation credible bounds in
+#' `lower` and `upper`, conditional on the loading prior scale, fitted model,
+#' and axis parameterisation. These are not calibrated sampling standard
+#' errors or confidence intervals. Trait-effect SDs include loading-coefficient
+#' covariance through TMB's delta method. Older stored ridge fits without
+#' matched curvature provenance retain point estimates but withhold uncertainty
+#' (`loading_ridge_point_only_no_lv_se`); refit to obtain corrected SDs.
+#'
+#' For unpenalised native TMB fits, `std.error` is populated from a positive-definite
 #' `sdreport()` when available. Axis-effect SEs come from the fixed-parameter
 #' block for `alpha_lv_B`; trait-effect SEs come from TMB's delta-method
 #' `ADREPORT(B_lv_unit)` output. `lower` and `upper` are Wald intervals using
@@ -825,6 +839,18 @@ extract_lv_effects <- function(
     list(std.error = rep(NA_real_, n_effects), status = status)
   }
 
+  ridge <- isTRUE(fit$aghq$penalised)
+  if (ridge) {
+    curvature <- attr(fit$sd_report, "loading_ridge_curvature")
+    matched <- is.list(curvature) &&
+      identical(curvature$objective, "likelihood_plus_gaussian_loading_prior") &&
+      identical(curvature$interpretation, "local_approximate_posterior_curvature_at_map") &&
+      identical(curvature$ridge_tau, fit$aghq$ridge_tau) &&
+      identical(curvature$parameter_names, names(fit$opt$par)) &&
+      identical(curvature$parameter_vector, fit$opt$par)
+    if (!isTRUE(matched)) return(empty("loading_ridge_point_only_no_lv_se"))
+  }
+
   if (is.null(fit$sd_report)) {
     sdreport_error <- fit$sdreport_error %||% ""
     status <- if (grepl("skipped", sdreport_error, ignore.case = TRUE)) {
@@ -837,7 +863,8 @@ extract_lv_effects <- function(
     return(empty(status))
   }
   if (!isTRUE(fit$sd_report$pdHess)) {
-    return(empty("sdreport_non_pd_hessian_no_lv_se"))
+    return(empty(if (ridge) "loading_ridge_non_pd_posterior_hessian_no_lv_se" else
+      "sdreport_non_pd_hessian_no_lv_se"))
   }
 
   table <- tryCatch(
@@ -860,7 +887,8 @@ extract_lv_effects <- function(
 
   list(
     std.error = se,
-    status = "wald_sdreport_no_ci_validation"
+    status = if (ridge) "loading_ridge_posterior_sd_no_sampling_ci_validation" else
+      "wald_sdreport_no_ci_validation"
   )
 }
 

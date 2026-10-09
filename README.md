@@ -148,6 +148,11 @@ extract_correlations(fit, tier = "unit", entries = "all")
 plot_correlations(fit, tier = "unit", style = "heatmap")
 ```
 
+Numeric pair indices must be whole numbers. Matrix plots accept identical
+mirrored rows and reject conflicting values or intervals for the same pair.
+Native Laplace/AGHQ `bootstrap_Sigma()` refits retain ridge, integration, optimiser and REML
+settings while skipping the unused standard-error calculation in refits.
+
 In an interactive session the first ordinary `latent()` fit prints a
 one-time warning that `latent()` includes per-trait Psi by default; that
 note is expected, not a failed fit.

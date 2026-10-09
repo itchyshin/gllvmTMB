@@ -46,6 +46,7 @@ bootstrap_ci_lv_effects <- function(fit,
     cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
   }
   .temporal_assert_no_iid_inference(fit, "bootstrap_ci_lv_effects")
+  .gllvmTMB_mspl_assert_inference(fit, "bootstrap_ci_lv_effects")
   B_hat <- fit$report[["B_lv_unit"]]
   if (is.null(B_hat)) {
     cli::cli_abort(c(
@@ -53,11 +54,15 @@ bootstrap_ci_lv_effects <- function(fit,
       "i" = "Fit with {.code latent(0 + trait | unit, d = K, lv = ~ x)}."
     ))
   }
-  if (!is.numeric(conf) || conf <= 0 || conf >= 1) {
-    cli::cli_abort("{.arg conf} must be in (0, 1); got {conf}.")
+  if (!is.numeric(conf) || length(conf) != 1L || is.na(conf) ||
+      !is.finite(conf) || conf <= 0 || conf >= 1) {
+    cli::cli_abort(c(
+      "{.arg conf} must be a single finite number between 0 and 1.",
+      ">" = "Choose a confidence level strictly inside (0, 1)."
+    ))
   }
-  n_boot <- as.integer(n_boot)
-  n_cores <- as.integer(n_cores)
+  n_boot <- .bootstrap_validate_count(n_boot, "n_boot")
+  n_cores <- .bootstrap_validate_count(n_cores, "n_cores")
   B_hat <- as.matrix(B_hat)
   n_tr <- nrow(B_hat)
   n_pr <- ncol(B_hat)
@@ -73,7 +78,7 @@ bootstrap_ci_lv_effects <- function(fit,
   family <- if (!is.null(fit$family_input)) fit$family_input else fit$family
   data <- fit$data
   resp <- all.vars(fit$formula)[1]
-  reml <- tryCatch(
+  reml <- if (!is.null(fit$REML)) isTRUE(fit$REML) else tryCatch(
     "b_fix" %in% names(fit$tmb_obj$env$par[fit$tmb_obj$env$random]),
     error = function(e) FALSE
   )
@@ -117,7 +122,7 @@ bootstrap_ci_lv_effects <- function(fit,
         ## `stats::confint(refit, ...)` on every replicate and therefore genuinely
         ## NEEDS its per-replicate SEs; it was checked and deliberately left
         ## alone. Each refit path must be checked on its own evidence.
-        control = gllvmTMBcontrol(se = FALSE)
+        control = .bootstrap_refit_control(fit)
       ),
       aux
     )

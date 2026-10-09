@@ -1,3 +1,13 @@
+## 2026-10-08: neighbouring output and bootstrap refit audit
+
+Reproduced and repaired correlation-index truncation, conflicting mirrored
+plot rows, malformed ordination blocks, ignored temporal component requests,
+legacy loading-prior score provenance and lost native bootstrap fit settings.
+Bootstrap scalar guards and the internal MSPL refusal close adjacent cases.
+Final frozen-source installation: 24 focused test files passed; explicit heavy
+and CRAN skip gates remained active. Independent reviews passed. CI is pending
+at this revision. Report: after-task/2026-10-08-neighbour-output-refit-audit.md.
+
 ## 2026-10-08: issue 1467 merged-source completion
 
 PR 1468 head `501b750a4` passed all four shards in run 37876570244 and

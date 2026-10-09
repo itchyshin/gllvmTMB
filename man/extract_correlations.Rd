@@ -33,7 +33,8 @@ every level present in the fit. Canonical inputs are \code{"unit"},
 \item{pair}{Optional length-2 character or integer vector specifying
 one trait pair (\code{c("trait_1", "trait_2")} or \code{c(1, 2)}).
 When supplied, only that pair is returned for each requested tier.
-Default \code{NULL} (all pairs).}
+Numeric indices must be finite, distinct whole numbers within the trait
+range; fractional indices are rejected. Default \code{NULL} (all pairs).}
 
 \item{level}{Confidence level in (0, 1). Default 0.95.}
 

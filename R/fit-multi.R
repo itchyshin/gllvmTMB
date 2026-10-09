@@ -9182,6 +9182,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       standardized_column_coef = standardized_column_coef,
       column_coef_physical_start = column_coef_physical_start,
       REML         = REML,
+      control      = control,
       estimator    = if (identical(estimator, "mspl")) {
         "MSPL"
       } else if (isTRUE(REML)) {

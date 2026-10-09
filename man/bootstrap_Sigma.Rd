@@ -138,6 +138,11 @@ Each bootstrap replicate (1) draws a new response vector from
 \code{simulate(fit, nsim = 1)}, (2) refits the model with the same formula
 on the simulated data, (3) extracts the requested summaries via
 \code{\link[=extract_Sigma]{extract_Sigma()}}, \code{\link[=extract_communality]{extract_communality()}}, and \code{\link[=extract_ICC_site]{extract_ICC_site()}}.
+Native Laplace/AGHQ refits retain the fitted ridge, integration, optimiser
+and REML settings;
+only the replicate standard-error calculation is disabled. Older fits
+without the full control record recover retained ridge and integration
+metadata, but their unrecorded optimiser options cannot be recovered.
 Replicates whose refit fails to converge are recorded but excluded
 from CI calculation.
 

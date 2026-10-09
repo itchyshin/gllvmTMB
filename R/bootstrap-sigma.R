@@ -32,6 +32,39 @@
   stats::as.formula(paste(deparse(call("~", lhs, rhs)), collapse = " "))
 }
 
+.bootstrap_validate_count <- function(x, arg) {
+  if (!is.numeric(x) || length(x) != 1L || is.na(x) ||
+      !is.finite(x) || x < 1 || x > .Machine$integer.max || x != trunc(x)) {
+    cli::cli_abort(c(
+      "{.arg {arg}} must be a single positive integer.",
+      ">" = "Use a finite whole-number count of at least 1."
+    ))
+  }
+  as.integer(x)
+}
+
+# Retain the fitted estimator and optimisation settings for response refits.
+# Older fits lack the full control record; recover their retained integration
+# and ridge metadata instead of silently removing the loading penalty.
+.bootstrap_refit_control <- function(fit) {
+  control <- fit$control
+  if (is.null(control)) {
+    args <- list(se = FALSE)
+    if (!is.null(fit$aghq$optimizer)) args$optimizer <- fit$aghq$optimizer
+    if (isTRUE(fit$aghq$used)) {
+      args$aghq <- fit$aghq$k
+      if (!is.null(fit$aghq$ridge_tau)) args$aghq_ridge <- fit$aghq$ridge_tau
+    } else if (is.numeric(fit$aghq$ridge_tau) &&
+               length(fit$aghq$ridge_tau) == 1L &&
+               is.finite(fit$aghq$ridge_tau)) {
+      args$loading_ridge <- fit$aghq$ridge_tau
+    }
+    control <- do.call(gllvmTMBcontrol, args)
+  }
+  control$se <- FALSE
+  control
+}
+
 #' Bootstrap covariance, correlation, communality, and ICC summaries
 #'
 #' Use `bootstrap_Sigma()` when Hessian, Wald, or profile intervals are
@@ -62,6 +95,11 @@
 #' `simulate(fit, nsim = 1)`, (2) refits the model with the same formula
 #' on the simulated data, (3) extracts the requested summaries via
 #' [extract_Sigma()], [extract_communality()], and [extract_ICC_site()].
+#' Native Laplace/AGHQ refits retain the fitted ridge, integration, optimiser
+#' and REML settings;
+#' only the replicate standard-error calculation is disabled. Older fits
+#' without the full control record recover retained ridge and integration
+#' metadata, but their unrecorded optimiser options cannot be recovered.
 #' Replicates whose refit fails to converge are recorded but excluded
 #' from CI calculation.
 #'
@@ -223,14 +261,15 @@ bootstrap_Sigma <- function(
   level <- vapply(level, .normalise_level, character(1L), arg_name = "level")
   what <- match.arg(what, several.ok = TRUE)
   link_residual <- match.arg(link_residual)
-  if (!is.numeric(conf) || conf <= 0 || conf >= 1) {
-    cli::cli_abort("{.arg conf} must be in (0, 1); got {conf}.")
+  if (!is.numeric(conf) || length(conf) != 1L || is.na(conf) ||
+      !is.finite(conf) || conf <= 0 || conf >= 1) {
+    cli::cli_abort(c(
+      "{.arg conf} must be a single finite number between 0 and 1.",
+      ">" = "Choose a confidence level strictly inside (0, 1)."
+    ))
   }
-  if (!is.numeric(n_boot) || n_boot < 1) {
-    cli::cli_abort("{.arg n_boot} must be a positive integer; got {n_boot}.")
-  }
-  n_boot <- as.integer(n_boot)
-  n_cores <- as.integer(n_cores)
+  n_boot <- .bootstrap_validate_count(n_boot, "n_boot")
+  n_cores <- .bootstrap_validate_count(n_cores, "n_cores")
 
   ## Arithmetic floor on n_boot (2026-08-02).
   ##
@@ -380,6 +419,7 @@ bootstrap_Sigma <- function(
         site = site,
         species = species,
         family = family,
+        REML = isTRUE(fit$REML),
         silent = TRUE,
         ## A bootstrap replicate's OWN standard errors are never read: the
         ## intervals this routine returns are PERCENTILE CIs across the replicate
@@ -395,7 +435,7 @@ bootstrap_Sigma <- function(
         ## unchanged, because they never depended on per-replicate SEs; the
         ## user's ORIGINAL fit keeps its own `sdreport()`. Only the throwaway
         ## refits skip it.
-        control = gllvmTMBcontrol(se = FALSE)
+        control = .bootstrap_refit_control(fit)
       ),
       aux
     )

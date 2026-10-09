@@ -1,5 +1,14 @@
 # Development (unreleased)
 
+* Neighbouring output and refit guards now reject fractional trait-pair indices,
+  invalid bootstrap counts, conflicting mirrored correlation rows, and malformed
+  retained ordination scores. Temporal ordination no longer silently ignores an
+  unsupported component request. Legacy loading-ridge score uncertainty without
+  matching curvature metadata is withheld, consistently with LV-effect output.
+  Native bootstrap refits retain fitted ridge, integration, optimiser and REML
+  settings; the internal LV prototype refuses MSPL inference instead of silently
+  refitting a different estimator. No new SE fallback is introduced.
+
 * Factor predictors in `lv = ~ group` now retain their formula contrasts
   when the intercept column is removed. Default treatment coding estimates
   level differences from the reference, avoiding the redundant full group

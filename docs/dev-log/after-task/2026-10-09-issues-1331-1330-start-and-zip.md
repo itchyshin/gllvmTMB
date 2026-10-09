@@ -172,7 +172,17 @@ seed `20260927 + 1000 * cell + rep`.
   - `test-multi-start-sdreport-consistency.R`, `test-warm-nlminb-restart.R`;
   - `test-gllvmTMBcontrol.R`, `test-sanity-multi.R`,
     `test-start-method-residual.R`.
-- Full suite: see the PR body.
+- Full suite: all 678 test files ran with `NOT_CRAN=true` against
+  `pkgload::load_all()`, as one sequential pass plus four shards.
+  - Totals: 28,472 expectations passed, 51 failed and 27 errored.
+  - All 23 files with failures or errors were re-run on `origin/main`
+    (`9354ac2`) in the same environment and fail identically there.
+    The causes are environmental:
+    - glmmTMB/TMB version mismatches with the apt builds;
+    - missing optional packages and fixtures;
+    - vdiffr snapshots;
+    - an undeclared `optimizer_diagnostics` control field.
+  - No failure is introduced by this branch.
 
 ## 5. Tests of the Tests
 

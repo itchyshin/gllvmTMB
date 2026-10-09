@@ -28,6 +28,13 @@ skip_if_no_julia <- function() {
       "GLLVModels.jl path not configured (set GLLVMODELS_JL_PATH / options(gllvmTMB.GLLVModels.jl.path=); legacy aliases also work)."
     )
   }
+  ## The live grouped-dispersion / mask / CI cases exercise the bridge's
+  ## shared-shape multi-trait Gamma payload on purpose. Since #1334 that model
+  ## is refused unless the caller opts in, so opt in for the calling test only.
+  withr::local_options(
+    gllvmTMB.julia_gamma_shared_shape = TRUE,
+    .local_envir = parent.frame()
+  )
 }
 
 test_that("Julia bridge path resolution prefers GLLVModels names and retains legacy aliases", {

@@ -1630,6 +1630,17 @@ check_gllvmTMB <- function(
   ## real dispersion, hence 1e4.
   phi_nbinom2_ceiling_thresh = 1e4
 ) {
+  if (inherits(object, "gllvmTMB_julia")) {
+    ## #1329: a Julia bridge fit IS returned by gllvmTMB(), but it carries no
+    ## TMB objective, gradient, Hessian or sdreport, which every check here
+    ## reads. Say so instead of claiming the fit is not a gllvmTMB() fit.
+    cli::cli_abort(c(
+      "{.fn check_gllvmTMB} is not available for {.code engine = \"julia\"} fits.",
+      "i" = "Its checks read the TMB gradient, Hessian and standard errors, which a Julia bridge fit does not carry.",
+      ">" = "Use {.code summary(fit)} for the Julia convergence flag and log-likelihood, and {.code residuals(fit, type = \"simulation_rank\")} for residual checks.",
+      ">" = "Refit with {.code engine = \"tmb\"} to run {.fn check_gllvmTMB}."
+    ), class = "gllvmTMB_julia_gate")
+  }
   if (!inherits(object, "gllvmTMB_multi")) {
     cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
   }

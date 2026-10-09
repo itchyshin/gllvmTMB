@@ -1,3 +1,21 @@
+## 2026-10-08: Issue 1469 full correlation tables and diagonal controls
+
+Fresh source installation succeeded. Installed tests: full entries 149 assertions,
+diagonal controls 17, pair layout 15, existing plotting 263; all passed.
+Sigma-table and Fisher-z checks passed their enabled cases, with CRAN-gated cases skipped.
+Original ordinal data: d=1/d=2 crossed with original/alphabetical item order,
+all four passed named-pair equality, reversed-pair equality, matrix symmetry,
+64-cell full tables and 56-cell plots with the diagonal hidden.
+Roxygen, help parsing, article rendering, pkgdown reference check, reader-surface
+and Actions-boundary guards passed. Independent runtime and docs reviews: OK.
+Full local check: 25,523 pass, 11 failures (5 graphics tracing, 3 baseline-reproduced
+visual snapshots, 1 installed-file ordering, 2 unchanged VA prototype assertions).
+R CMD check: 1 error, 2 warnings, 4 notes. Graphics harness and campaign-file
+guard ordering repaired without relaxing assertions; loading help default synced.
+Check repairs: 54 assertions passed; a separate absent-campaign-root replay passed with the intended skip.
+The broad local suite is not claimed clean. Landing receipts follow.
+Report: `after-task/2026-10-08-issue-1469-full-correlation-output.md`.
+
 ## 2026-10-04 - #1403: ordinary `update()` no longer asks for a missing `call`
 
 Lane `cursor/oct4-1403` (worktree `/Users/z3437171/local-scratch/lanes/gllvmTMB-oct4-1403`).

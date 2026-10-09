@@ -1,9 +1,13 @@
 # Development (unreleased)
 
-* Clarified that `extract_correlations()` returns unique unordered pairs,
-  including for ordinal models. Its help now points directly to the symmetric
-  heatmap and full matrix/table outputs, with regression checks for item order
-  and complete symmetric displays (issue #1469).
+* `extract_correlations()` now accepts `entries = "all"` for a complete
+  symmetric table, or `entries = "offdiag"` for both directions without the
+  diagonal. The default `entries = "unique"` preserves existing pair output.
+  Mirrored rows retain their interval payload; fixed diagonal rows have no
+  estimated interval. This also applies to ordinal models and point-only
+  Julia bridge tables. Matrix correlation plots now honour
+  `include_diagonal = FALSE` when supplied tables already contain self-pairs.
+  Help and examples explain the layouts (issue #1469).
 
 * `check_gllvmTMB()` now flags degenerate `ordinal_probit()` fits by default.
   The `ordinal_liability_loading` row already existed but both of its

@@ -825,7 +825,7 @@ extract_Sigma <- function(
     ))
   }
   if (!inherits(fit, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a fit returned by {.fun gllvmTMB}.")
+    .gllvmTMB_abort_not_multi_fit(fit)
   }
   ## Fixed-effect fence (Design 83 / FAM-20): fail loud on an unordered
   ## categorical fit with no admitted latent tier rather than returning a
@@ -1989,7 +1989,7 @@ extract_Gamma <- function(
   scale = c("shape", "effect")
 ) {
   if (!inherits(fit, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a fit returned by {.fun gllvmTMB}.")
+    .gllvmTMB_abort_not_multi_fit(fit)
   }
   scale <- match.arg(scale)
   if (
@@ -2108,7 +2108,7 @@ predict_cross_covariance <- function(
   col_traits
 ) {
   if (!inherits(fit, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a fit returned by {.fun gllvmTMB}.")
+    .gllvmTMB_abort_not_multi_fit(fit)
   }
   if (
     missing(level) ||
@@ -2475,7 +2475,7 @@ extract_coevolution_modules <- function(
   tol = sqrt(.Machine$double.eps)
 ) {
   if (!inherits(fit, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a fit returned by {.fun gllvmTMB}.")
+    .gllvmTMB_abort_not_multi_fit(fit)
   }
   scale <- match.arg(scale)
   if (

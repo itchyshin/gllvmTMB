@@ -58,7 +58,10 @@ test_that("#1330 negative controls: healthy zi_poisson fit, non-zi family, mild 
   expect_no_warning(gllvmTMB:::.gllvmTMB_warn_zi_nonconvergence(hp, rep(0L, 10)))
 })
 
-test_that("#1334 engine = 'julia' Gamma with 3 traits warns about one shared shape", {
+test_that("#1334 engine = 'julia' Gamma with 3 traits warns about one shared shape when opted in", {
+  ## Since the follow-up fix the shared-shape model is refused by default
+  ## (test-julia-engine-1329-1332-1334.R); the warning remains on the opt-in.
+  withr::local_options(gllvmTMB.julia_gamma_shared_shape = TRUE)
   y <- matrix(stats::rgamma(3 * 20, shape = 2, rate = 1), 3, 20)
   caught <- character()
   tryCatch(

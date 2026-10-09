@@ -94,7 +94,7 @@
 #' @noRd
 profile_ci_repeatability <- function(fit, trait_idx = NULL, level = 0.95) {
   if (!inherits(fit, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+    .gllvmTMB_abort_not_multi_fit(fit)
   }
   .temporal_assert_no_iid_inference(fit, "profile_ci_repeatability")
   ix_B <- .par_indices(fit, "theta_diag_B")
@@ -176,7 +176,7 @@ profile_ci_repeatability <- function(fit, trait_idx = NULL, level = 0.95) {
 #' @export
 profile_ci_phylo_signal <- function(fit, trait_idx = NULL, level = 0.95) {
   if (!inherits(fit, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+    .gllvmTMB_abort_not_multi_fit(fit)
   }
   .temporal_assert_no_iid_inference(fit, "profile_ci_phylo_signal")
   .structured_rho_source_allocation_assert(fit, "profile_ci_phylo_signal")
@@ -554,7 +554,7 @@ profile_ci_communality <- function(
   level = 0.95
 ) {
   if (!inherits(fit, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+    .gllvmTMB_abort_not_multi_fit(fit)
   }
   .temporal_assert_no_iid_inference(fit, "profile_ci_communality")
   tier <- match.arg(tier)
@@ -718,7 +718,7 @@ profile_ci_communality <- function(
   tier = c("unit", "unit_obs", "phy", "B", "W")
 ) {
   if (!inherits(fit, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+    .gllvmTMB_abort_not_multi_fit(fit)
   }
   tier <- match.arg(tier)
   tier <- .normalise_level(tier, arg_name = "tier")
@@ -1188,7 +1188,7 @@ profile_ci_correlation <- function(
   diag_resid = NULL
 ) {
   if (!inherits(fit, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+    .gllvmTMB_abort_not_multi_fit(fit)
   }
   .temporal_assert_no_iid_inference(fit, "profile_ci_correlation")
   tier <- match.arg(tier)
@@ -1646,7 +1646,7 @@ profile_ci_proportions <- function(
   level      = 0.95
 ) {
   if (!inherits(fit, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+    .gllvmTMB_abort_not_multi_fit(fit)
   }
   .temporal_assert_no_iid_inference(fit, "profile_ci_proportions")
   pt <- suppressMessages(extract_proportions(fit, format = "long"))

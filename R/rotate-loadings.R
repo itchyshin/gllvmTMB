@@ -100,7 +100,7 @@ rotate_loadings <- function(
   method <- match.arg(method)
   sign_anchor <- match.arg(sign_anchor)
   if (!inherits(fit, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+    .gllvmTMB_abort_not_multi_fit(fit)
   }
 
   ord <- extract_ordination(fit, level = .canonical_level_name(level))

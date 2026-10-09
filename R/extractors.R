@@ -726,7 +726,7 @@ extract_lv_effects <- function(
     ))
   }
   if (!inherits(fit, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a fit returned by {.fun gllvmTMB}.")
+    .gllvmTMB_abort_not_multi_fit(fit)
   }
   .gllvmTMB_mspl_assert_inference(fit, "extract_lv_effects")
   .gllvmTMB_require_unweighted_inference(fit, "extract_lv_effects")

@@ -14,7 +14,7 @@
 
 .gllvmTMB_build_fit_health <- function(object) {
   if (!inherits(object, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+    .gllvmTMB_abort_not_multi_fit(object)
   }
 
   ## #1092: judge the objective the fit actually optimised. On a ridged fit
@@ -1630,8 +1630,19 @@ check_gllvmTMB <- function(
   ## real dispersion, hence 1e4.
   phi_nbinom2_ceiling_thresh = 1e4
 ) {
+  if (inherits(object, "gllvmTMB_julia")) {
+    ## #1329: a Julia bridge fit IS returned by gllvmTMB(), but it carries no
+    ## TMB objective, gradient, Hessian or sdreport, which every check here
+    ## reads. Say so instead of claiming the fit is not a gllvmTMB() fit.
+    cli::cli_abort(c(
+      "{.fn check_gllvmTMB} is not available for {.code engine = \"julia\"} fits.",
+      "i" = "Its checks read the TMB gradient, Hessian and standard errors, which a Julia bridge fit does not carry.",
+      ">" = "Use {.code summary(fit)} for the Julia convergence flag and log-likelihood, and {.code residuals(fit, type = \"simulation_rank\")} for residual checks.",
+      ">" = "Refit with {.code engine = \"tmb\"} to run {.fn check_gllvmTMB}."
+    ), class = "gllvmTMB_julia_gate")
+  }
   if (!inherits(object, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+    .gllvmTMB_abort_not_multi_fit(object)
   }
   is_mspl <- .gllvmTMB_is_mspl(object)
   health <- object$fit_health %||% .gllvmTMB_build_fit_health(object)
@@ -2180,7 +2191,7 @@ gllvmTMB_diagnose <- function(
   verbose = TRUE
 ) {
   if (!inherits(object, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+    .gllvmTMB_abort_not_multi_fit(object)
   }
   is_mspl <- .gllvmTMB_is_mspl(object)
 
@@ -2423,4 +2434,22 @@ gllvmTMB_diagnose <- function(
     communality_W = comm_W,
     hints = hints
   ))
+}
+
+## #1329: shared gate message for functions that need a native TMB fit.
+## A Julia bridge fit IS returned by gllvmTMB(), so it gets an explanation and
+## a next step instead of "Provide a fit returned by gllvmTMB()".
+.gllvmTMB_abort_not_multi_fit <- function(object, call = rlang::caller_env()) {
+  if (inherits(object, "gllvmTMB_julia")) {
+    caller <- sys.call(-1L)
+    fn <- if (is.null(caller)) "This function" else {
+      paste0("{.fn ", gsub("[{}]", "", deparse(caller[[1L]])[1L]), "}")
+    }
+    cli::cli_abort(c(
+      paste(fn, "is not available for {.code engine = \"julia\"} fits."),
+      "i" = "It needs the native TMB objective, which a Julia bridge fit does not carry.",
+      ">" = "Refit with {.code engine = \"tmb\"} to use it."
+    ), class = "gllvmTMB_julia_gate", call = call)
+  }
+  cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.", call = call)
 }

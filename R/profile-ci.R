@@ -386,7 +386,7 @@ tmbprofile_wrapper <- function(
   parm.range = c(-Inf, Inf)
 ) {
   if (!inherits(fit, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+    .gllvmTMB_abort_not_multi_fit(fit)
   }
   .structured_rho_interval_assert(fit,name,which,lincomb)
   .gllvmTMB_mspl_assert_inference(fit, "tmbprofile_wrapper")

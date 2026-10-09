@@ -111,7 +111,7 @@ check_identifiability <- function(
 ) {
   ## ---- validation -----------------------------------------------------
   if (!inherits(fit, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+    .gllvmTMB_abort_not_multi_fit(fit)
   }
   .gllvmTMB_mspl_assert_inference(fit, "check_identifiability")
   sim_reps <- as.integer(sim_reps)

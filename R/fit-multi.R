@@ -511,27 +511,93 @@
 
 ## #1330: zero-inflated count fits (zi_poisson / zi_nbinom2 / zi_binomial,
 ## family ids 17-19) sometimes stop with a non-zero optimiser code at a
-## numerically absurd point (huge gradient or objective). Warn only; start
-## values, optimiser and results are unchanged. Healthy fits are silent.
+## numerically absurd point (huge gradient or objective). Warn only; results
+## are unchanged. Healthy fits are silent.
+##
+## Root cause, measured on the #1330 replicates: the zero-inflated likelihood
+## is not log-concave in eta (for y = 0 its curvature in eta is negative once
+## mu is moderate), so a unit's conditional curvature, prior plus data, can
+## cancel to zero along one latent direction. The Laplace objective contains
+## +0.5 * log det of that curvature, so it falls without bound as the outer
+## optimiser tunes the loadings towards the cancellation: every failing
+## replicate stopped with a unit-block eigenvalue of 4e-6 to 7e-5 (healthy
+## fits: 0.4 to 0.8), and a barrier at any threshold just moves the stop to
+## the barrier. The point the optimiser chases is an artefact of the Laplace
+## approximation, not an optimum of the zero-inflated likelihood, so more
+## random starts do not help. `min_random_curvature` (fit_health) records it.
+.gllvmTMB_zi_degenerate_curvature_tol <- 1e-3
+
 .gllvmTMB_warn_zi_nonconvergence <- function(health, family_id_vec) {
   if (!any(as.integer(family_id_vec) %in% c(17L, 18L, 19L), na.rm = TRUE)) {
     return(invisible(FALSE))
   }
   conv <- health$convergence
-  if (is.null(conv) || length(conv) != 1L || is.na(conv) || conv == 0L) {
-    return(invisible(FALSE))
-  }
+  curv <- health$min_random_curvature %||% NA_real_
+  degenerate <- isTRUE(is.finite(curv) &&
+                         curv < .gllvmTMB_zi_degenerate_curvature_tol)
+  nonconverged <- !(is.null(conv) || length(conv) != 1L || is.na(conv) ||
+                      conv == 0L)
+  if (!nonconverged && !degenerate) return(invisible(FALSE))
   obj <- health$objective
   grad <- health$max_gradient
   absurd <- !is.finite(obj) || abs(obj) > 1e8 ||
     !is.finite(grad) || grad > 1e3
-  if (!absurd) return(invisible(FALSE))
+  if (!absurd && !degenerate) return(invisible(FALSE))
+  if (degenerate) {
+    cli::cli_warn(c(
+      "The zero-inflated fit stopped where the Laplace approximation is degenerate (optimiser code {conv}, max |gradient| = {signif(grad, 3)}).",
+      "i" = "The smallest curvature of a unit's latent scores is {signif(curv, 3)} (healthy fits are near 1). Zero inflation is not log-concave, so the Laplace log-likelihood grows without bound as that curvature cancels; the returned point is an artefact of the approximation, not a maximum.",
+      "i" = "Estimates and {.fn logLik} from this fit are not reliable, and more random starts will not fix it.",
+      ">" = "Try a smaller {.arg d}, the non-inflated count family, or fewer zero-inflated traits."
+    ), class = "gllvmTMB_zi_nonconvergence")
+    return(invisible(TRUE))
+  }
   cli::cli_warn(c(
     "The zero-inflated fit did not converge (optimiser code {conv}, max |gradient| = {signif(grad, 3)}, objective = {signif(obj, 4)}).",
     "i" = "Estimates and {.fn logLik} from this fit are not reliable.",
     ">" = "Refit with {.code control = gllvmTMBcontrol(n_init = 5)} (several random starts), a different {.arg start_method}, or a smaller {.arg d}."
   ), class = "gllvmTMB_zi_nonconvergence")
   invisible(TRUE)
+}
+
+## Smallest eigenvalue of the Laplace inner Hessian (the conditional
+## curvature of the random effects) at `par`, taken block by block over the
+## connected components of its sparsity pattern. NA when it cannot be
+## computed cheaply (no random effects, a block larger than `max_block`, or
+## any error). Evaluates `obj$fn(par)`, which refreshes TMB's inner mode at
+## `par`; callers use it after the fit is final.
+.gllvmTMB_min_random_curvature <- function(obj, par, max_block = 200L) {
+  out <- tryCatch({
+    env <- obj$env
+    if (is.null(env$random) || !length(env$random)) return(NA_real_)
+    v <- obj$fn(par)
+    if (!is.finite(v)) return(NA_real_)
+    H <- env$spHess(env$last.par, random = TRUE)
+    Ht <- methods::as(H, "TsparseMatrix")
+    n <- nrow(Ht)
+    ## Union-find over the nonzero pattern.
+    parent <- seq_len(n)
+    find <- function(i) {
+      while (parent[i] != i) i <- parent[i]
+      i
+    }
+    ii <- Ht@i + 1L
+    jj <- Ht@j + 1L
+    off <- ii != jj
+    for (k in which(off)) {
+      a <- find(ii[k])
+      b <- find(jj[k])
+      if (a != b) parent[max(a, b)] <- min(a, b)
+    }
+    roots <- vapply(seq_len(n), find, integer(1L))
+    blocks <- split(seq_len(n), roots)
+    if (max(lengths(blocks)) > max_block) return(NA_real_)
+    min(vapply(blocks, function(ix) {
+      min(eigen(as.matrix(H[ix, ix, drop = FALSE]), symmetric = TRUE,
+                only.values = TRUE)$values)
+    }, numeric(1L)))
+  }, error = function(e) NA_real_)
+  as.numeric(out)
 }
 
 .gllvmTMB_objective_components <- function(obj, opt, aghq) {
@@ -4343,7 +4409,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## intercepts of ~mean(succ) which are way off the logit scale and the
   ## inner Newton diverges. Bernoulli rows (n_trials == 1) and non-binomial
   ## rows keep the previous behaviour exactly.
-  has_multi_trial <- any(family_id_vec == 1L) && any(n_trials > 1)
+  ## zi_binomial (19) is a multi-trial logit-link count by admission, so it
+  ## takes the same empirical-logit start (#1330).
+  has_multi_trial <- any(family_id_vec %in% c(1L, 19L)) && any(n_trials > 1)
   ## Beta-binomial rows behave like multi-trial binomial for initialisation:
   ## empirical-logit on y/n is the right scale for the logit-link b_fix.
   has_betabinom_trial <- any(family_id_vec == 8L) && any(n_trials > 1)
@@ -4355,7 +4423,15 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## Includes delta families (12/13) which use a log link on the positive
   ## component (and zeros are well-handled by log(0 + 0.5)) and the
   ## truncated count families (10/11) which use a log link.
-  log_link_only <- all(family_id_vec %in% c(2L, 3L, 4L, 5L, 6L, 10L, 11L, 12L, 13L, 15L))
+  ## #1330: the log-link zero-inflated families (17 zi_poisson, 18
+  ## zi_nbinom2) and censored_poisson (21) belong here too. They used to fall
+  ## through to OLS on the RAW counts, which starts every intercept at the
+  ## mean count instead of its log (mu = exp(4.5) ~ 90 for a mean count of
+  ## ~5) and seeds the latent scores from raw-scale residuals; the optimiser
+  ## then spent its iterations recovering from the start and stopped on a
+  ## non-finite evaluation ("false convergence", max|grad| 1e5-1e11).
+  log_link_only <- all(family_id_vec %in% c(2L, 3L, 4L, 5L, 6L, 10L, 11L, 12L, 13L, 15L,
+                                            17L, 18L, 21L))
   ## Beta family init: empirical-logit on y in (0, 1) gives a much better
   ## starting b_fix than raw y on the (0,1) scale (the latter can leave the
   ## inner Newton stuck when mu = invlogit(eta) is far from y).
@@ -6162,6 +6238,16 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     ordinal_log_increments = if (any_ordinal_probit && length(ordinal_init_log_incs) > 0L)
                                ordinal_init_log_incs else 0.0
   )
+
+  ## #1331: the alternative "svd" start (see `.gllvmTMB_svd_latent_start()`),
+  ## computed from the same residuals as the default start. Used by the
+  ## restart loop below; NULL when there is no free B-tier latent block.
+  svd_latent_start <- if (use_rr_B && !use_lv_B && d_B >= 1L) {
+    .gllvmTMB_svd_latent_start(
+      resid = resid_init, trait_id = trait_id, group_id = site_id,
+      n_traits = n_traits, n_groups = n_sites, rank = d_B
+    )
+  } else NULL
 
   ## Phase 2a/2b missing-predictor PARAMETERS. beta_mi / log_sigma_mi are the
   ## Gaussian covariate-model coefficients + log residual SD; x_mis is the
@@ -8125,16 +8211,49 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   best_opt <- NULL
   best_obj <- Inf
   best_state <- NULL
-  n_restarts <- max(1L, control$n_init)
+  best_i <- NA_integer_
+  ## #1331: besides the default start, try the data-informed "svd" start
+  ## (restart 2) unless the caller opted out with `svd_start = FALSE` or chose
+  ## the start themselves (`start_from`, `start_method`). It adds one
+  ## optimisation to the default fit; restart 1 is still the default start,
+  ## so the returned fit only changes when the svd start reaches a strictly
+  ## lower objective. Jittered restarts (`n_init > 1`) follow it.
+  svd_restart <- NULL
+  if (!isFALSE(control$svd_start) && !is.null(svd_latent_start) &&
+      identical(estimator, "ml") && !isTRUE(start_provenance$start_from) &&
+      is.null(start_method$method) && is.null(tmb_map[["theta_rr_B"]])) {
+    theta_idx <- which(names(obj$par) == "theta_rr_B")
+    z_idx <- which(names(obj$env$par) == "z_B")
+    if (length(theta_idx) == length(svd_latent_start$theta) &&
+        length(z_idx) == length(svd_latent_start$z) &&
+        all(z_idx %in% obj$env$random)) {
+      svd_par <- obj$par
+      svd_par[theta_idx] <- svd_latent_start$theta
+      svd_restart <- list(par = svd_par, z_idx = z_idx,
+                          z = as.vector(svd_latent_start$z))
+    }
+  }
+  n_jitter <- max(1L, control$n_init) - 1L
+  start_labels <- c("initial", if (!is.null(svd_restart)) "svd",
+                    rep("jitter", n_jitter))
+  n_restarts <- length(start_labels)
   restart_history <- vector("list", n_restarts)
   for (i in seq_len(n_restarts)) {
-    par0 <- if (i == 1L) {
-      obj$par
-    } else {
-      .gllvmTMB_reclamp_start_par(
+    par0 <- switch(
+      start_labels[i],
+      initial = obj$par,
+      svd = {
+        ## Seed TMB's inner (random-effect) start with the matching scores.
+        lp <- obj$env$last.par.best
+        lp[svd_restart$z_idx] <- svd_restart$z
+        obj$env$last.par.best <- lp
+        obj$env$last.par <- lp
+        svd_restart$par
+      },
+      jitter = .gllvmTMB_reclamp_start_par(
         obj$par + stats::rnorm(length(obj$par), sd = control$init_jitter)
       )
-    }
+    )
     elapsed_start <- proc.time()[["elapsed"]]
     opt_i <- tryCatch(run_passes(par0, .ridge_tau = laplace_ridge_tau),
                       error = function(e) e)
@@ -8142,10 +8261,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     if (inherits(opt_i, "error")) {
       restart_history[[i]] <- .gllvmTMB_restart_history_row(
         restart = i,
-        start_label = if (i == 1L) "initial" else "jitter",
+        start_label = start_labels[i],
         start_method = start_provenance$start_method,
         optimizer = control$optimizer,
-        jitter_sd = if (i == 1L) 0 else control$init_jitter,
+        jitter_sd = if (start_labels[i] == "jitter") control$init_jitter else 0,
         objective = NA_real_,
         convergence = NA_integer_,
         message = conditionMessage(opt_i),
@@ -8196,10 +8315,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                   ifelse(is.null(opt_i$convergence), "?", opt_i$convergence)))
     restart_history[[i]] <- .gllvmTMB_restart_history_row(
       restart = i,
-      start_label = if (i == 1L) "initial" else "jitter",
+      start_label = start_labels[i],
       start_method = start_provenance$start_method,
       optimizer = opt_i$optimizer_used %||% control$optimizer,
-      jitter_sd = if (i == 1L) 0 else control$init_jitter,
+      jitter_sd = if (start_labels[i] == "jitter") control$init_jitter else 0,
       objective = objective_i,
       convergence = opt_i$convergence %||% NA_integer_,
       message = paste(c(if (nzchar(opt_i$message %||% "")) opt_i$message,
@@ -8210,10 +8329,25 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       evaluations = opt_i$evaluations %||% NA_integer_,
       success = success_i
     )
-    if (success_i && objective_i < best_obj) {
+    ## #1331: the svd start replaces an earlier restart only on a material
+    ## improvement, so a tie (the same optimum reached from both starts)
+    ## keeps the default start's fit exactly. It also never displaces a
+    ## converged fit with a non-converged one: on zero-inflated data (#1330)
+    ## a non-converged stop can sit at a LOWER objective because it is a
+    ## Laplace artefact, not a better optimum.
+    improve_tol <- 0
+    svd_blocked <- FALSE
+    if (identical(start_labels[i], "svd")) {
+      improve_tol <- 1e-6 * max(1, abs(best_obj[is.finite(best_obj)]))
+      svd_blocked <- !is.null(best_opt) &&
+        identical(as.integer(best_opt$convergence %||% NA_integer_), 0L) &&
+        !identical(as.integer(opt_i$convergence %||% NA_integer_), 0L)
+    }
+    if (success_i && !svd_blocked && objective_i < best_obj - improve_tol) {
       best_obj <- objective_i
       best_opt <- opt_i
       best_state <- state_i
+      best_i <- i
     }
   }
   restart_history <- do.call(rbind, restart_history)
@@ -8221,6 +8355,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     .gllvmTMB_abort_all_restarts_failed(restart_history)
   opt <- best_opt
   restart_history <- .gllvmTMB_select_restart_history(restart_history)
+  restart_history$selected <- restart_history$restart == best_i
   start_provenance$selected_restart <- restart_history$restart[
     which(restart_history$selected)[1L]
   ]
@@ -9923,6 +10058,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     fit$tmb_obj, fit$opt, fit$aghq
   )
   fit$fit_health <- .gllvmTMB_build_fit_health(fit)
+  if (any(family_id_vec %in% c(17L, 18L, 19L))) {
+    fit$fit_health$min_random_curvature <-
+      .gllvmTMB_min_random_curvature(fit$tmb_obj, fit$opt$par)
+  }
   .gllvmTMB_warn_zi_nonconvergence(fit$fit_health, family_id_vec)
   if (structured_rho_estimated) {
     structured_rho$value <- as.numeric(stats::plogis(fit$opt$par[names(fit$opt$par)=="eta_structured_rho"]))

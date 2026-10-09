@@ -36,6 +36,7 @@ gllvmTMBcontrol(
   allow_nongaussian_reml = FALSE,
   loading_ridge = NULL,
   optimizer_passes = 1L,
+  svd_start = TRUE,
   ...
 )
 }
@@ -54,7 +55,12 @@ are often multimodal because the latent-factor likelihood has many
 equivalent local maxima; running several restarts with different
 starting values and keeping the fit with the lowest \code{-logLik}
 reduces the risk of settling on a suboptimal solution. Default
-1 (single fit). Increase to 5–10 for two-level rr models.}
+1 (the default start, plus the \code{svd_start} restart when that applies).
+Increase to 5–10 for two-level rr models, and to check any fit whose
+log-likelihood will be compared: a single start can stop at a lower
+local optimum while reporting \code{convergence = 0}, a positive-definite
+Hessian and a small gradient. The jittered restarts use R's random
+number generator, so call \code{\link[=set.seed]{set.seed()}} first for a reproducible fit.}
 
 \item{optimizer}{One of \code{"nlminb"} (default) or \code{"optim"}. Use the
 latter together with \code{optArgs} for finicky two-level rr fits.}
@@ -330,6 +336,17 @@ the preceding estimate. The default \code{1} retains the historical single
 pass. A later pass is retained only when it converges and does not increase
 the objective. It is available for native Laplace fits with \code{aghq = FALSE}.
 The setting is saved in the public call and replayed by \code{\link[=update]{update()}}.}
+
+\item{svd_start}{Logical. If \code{TRUE} (default), a fit with an ordinary
+\code{latent()} block is also optimised from a second, data-informed start
+whose loadings and latent scores come from one singular value
+decomposition of the residual matrix, and the start with the lower
+objective is kept (\code{restart_history} labels it \code{"svd"}). The default
+start alone sometimes stopped at a lower local optimum with clean
+diagnostics. This adds one optimisation per fit and uses
+no random numbers. It is skipped when \code{start_from} or \code{start_method} is
+supplied and on the \code{estimator = "mspl"} route. Set \code{FALSE} for the
+single-start behaviour of gllvmTMB 0.8.0 and earlier.}
 
 \item{...}{Reserved for future use. Currently ignored with a warning.}
 }

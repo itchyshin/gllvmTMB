@@ -1,5 +1,20 @@
 # Development (unreleased)
 
+* Three converged-but-wrong optima are now prevented or reported.
+  `Gamma()` and the `delta_gamma()` positive part use a numerically stable
+  log-density: at a very large shape the old one lost all precision and could
+  report a logLik of +1e16 that `n_init` restarts then picked as best (#1377).
+  Such a shape is now reported as a `boundary_phi_gamma` boundary flag and a
+  per-trait `check_gllvmTMB()` row. **Default change:** ordinary `latent()` no
+  longer estimates its between-unit Psi for an `ordinal_probit()` /
+  `ordinal_logit()` trait with one observation per unit. That variance only
+  rescales the cutpoints, and leaving it free let Laplace drift to Psi in the
+  hundreds with a logLik several hundred units too high (#1390). Fits with such
+  traits change. `check_gllvmTMB()` gains a `laplace_accuracy` row. It
+  re-evaluates the marginal logLik at the fitted parameters by adaptive
+  Gauss-Hermite quadrature and warns when Laplace is optimistic, as on a probit
+  two-factor fit that was 67 log-likelihood units too high (#1389).
+
 * Neighbouring output and refit guards now reject fractional trait-pair indices,
   invalid bootstrap counts, conflicting mirrored correlation rows, and malformed
   retained ordination scores. Temporal ordination no longer silently ignores an

@@ -90,6 +90,43 @@ Type gll_one_minus_exp_neg(Type x)
   return CppAD::CondExpLt(x, cut, series, direct);
 }
 
+// Gamma log-density in the mean-shape parametrisation (E(y) = mu = exp(eta),
+// shape k = exp(log_shape)), written so that no O(k log k) terms cancel
+// (#1377). Algebraically identical to dgamma(y, k, mu / k, true):
+//   log f = -k * D(r) - log(y) + S(k),   r = y / mu,
+//   D(r)  = r - 1 - log(r) >= 0,         S(k) = k log k - k - lgamma(k).
+// TMB's dgamma forms k log k, k log y, k y / mu and lgamma(k) separately; at
+// k ~ 1e18-1e29 their rounding error (~1e15) swamped the true value, so a
+// runaway shape returned logLik up to +7.7e16 instead of -Inf. Here D is
+// formed from log(r) (series near r = 1) and S from Stirling's series for
+// large k, so the density decreases monotonically as k -> Inf unless y = mu.
+// Branch inputs are clamped because CppAD CondExp evaluates both branches.
+template <class Type>
+Type gll_dgamma_mean_shape(Type y, Type eta, Type log_shape)
+{
+  Type k = exp(log_shape);
+  Type lr = log(y) - eta;
+  Type cut = Type(1e-3);
+  Type lr2 = lr * lr;
+  Type lr_s = CppAD::CondExpLt(lr2, cut * cut, lr, cut);
+  Type D_series = lr_s * lr_s / Type(2) + lr_s * lr_s * lr_s / Type(6) +
+    lr_s * lr_s * lr_s * lr_s / Type(24) +
+    lr_s * lr_s * lr_s * lr_s * lr_s / Type(120);
+  Type lr_d = CppAD::CondExpLt(lr2, cut * cut, cut, lr);
+  Type D_direct = exp(lr_d) - Type(1) - lr_d;
+  Type D = CppAD::CondExpLt(lr2, cut * cut, D_series, D_direct);
+  Type k_cut = Type(50);
+  Type k_s = CppAD::CondExpGt(k, k_cut, k, k_cut);
+  Type ik = Type(1) / k_s;
+  Type ik2 = ik * ik;
+  Type S_stirling = Type(0.5) * (log(k_s) - log(Type(2) * Type(M_PI))) -
+    ik / Type(12) + ik * ik2 / Type(360) - ik * ik2 * ik2 / Type(1260);
+  Type k_d = CppAD::CondExpGt(k, k_cut, k_cut, k);
+  Type S_direct = k_d * log(k_d) - k_d - lgamma(k_d);
+  Type S = CppAD::CondExpGt(k, k_cut, S_stirling, S_direct);
+  return -k * D - log(y) + S;
+}
+
 // Stable log helpers for the cumulative-logit ordered missing-PREDICTOR prior
 // (Phase 5b, design 68 sec.1.2). Ported verbatim from drmTMB src/drm_numeric.h
 // (drm_log_inv_logit / drm_log1m_inv_logit / drm_log1mexp / drm_log_inv_logit_
@@ -3345,10 +3382,7 @@ Type objective_function<Type>::operator()()
       // mu = exp(eta); per-trait shape phi = exp(log_phi_gamma(t)).
       // scale = mu / phi so E(y) = mu and CV(y) = 1 / sqrt(phi).
       int t = trait_id(o);
-      Type mu_g    = exp(eta_o);
-      Type shape_g = exp(log_phi_gamma(t));
-      Type scale_g = mu_g / shape_g;
-      ll += dgamma(y(o), shape_g, scale_g, true);
+      ll += gll_dgamma_mean_shape(y(o), eta_o, log_phi_gamma(t));
     } else if (fid == 5) {
       // NB2 (negative binomial, type 2), log link.
       // Var(y) = mu + mu^2 / phi, with one log_phi per trait.
@@ -3451,11 +3485,9 @@ Type objective_function<Type>::operator()()
       Type x_pres = (y(o) > Type(0)) ? Type(1.0) : Type(0.0);
       ll += dbinom_robust(x_pres, Type(1.0), eta_o, true);
       if (y(o) > Type(0)) {
-        Type phi_t   = exp(log_phi_gamma_delta(t));
-        Type mu_g    = exp(eta_o);
-        Type shape_g = Type(1.0) / (phi_t * phi_t);
-        Type scale_g = mu_g / shape_g;
-        ll += dgamma(y(o), shape_g, scale_g, true);
+        // shape = 1 / phi^2, i.e. log shape = -2 log phi (#1377 stable form).
+        ll += gll_dgamma_mean_shape(y(o), eta_o,
+                                    Type(-2.0) * log_phi_gamma_delta(t));
       }
     } else if (fid == 14) {
       // ordinal_probit (Wright/Falconer/Hadfield threshold model).

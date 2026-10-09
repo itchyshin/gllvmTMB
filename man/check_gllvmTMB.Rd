@@ -25,7 +25,10 @@ check_gllvmTMB(
   multinomial_range_collapse_thresh = 0.02,
   ordinal_loading_runaway_thresh = Inf,
   ordinal_loading_absolute_thresh = 30,
-  phi_nbinom2_ceiling_thresh = 10000
+  phi_nbinom2_ceiling_thresh = 10000,
+  phi_gamma_ceiling_thresh = 1e+08,
+  laplace_accuracy = TRUE,
+  laplace_accuracy_thresh = 2
 )
 }
 \arguments{
@@ -205,6 +208,23 @@ warning: the trait has run to the Poisson limit (no overdispersion left to
 estimate), which usually means the data cannot separate dispersion from the
 zero-inflation or latent structure. Try a plain \code{poisson()} / \code{zi_poisson()} for
 that trait, or more sites.}
+
+\item{phi_gamma_ceiling_thresh}{Numeric scalar. A Gamma (or \code{delta_gamma()}
+positive-part) shape estimate at or above this value is reported as a
+\verb{boundary_phi_gamma_<trait>} warning: the trait's residual coefficient of
+variation has collapsed to about zero, a Heywood-type boundary.}
+
+\item{laplace_accuracy}{Logical. If \code{TRUE} (default), and the fit's only
+random effects are the \code{latent()} scores with \code{d <= 3}, the marginal
+log-likelihood is re-evaluated at the fitted parameters by adaptive
+Gauss-Hermite quadrature and compared with the Laplace value
+(\code{laplace_accuracy} row). Skipped for all-Gaussian fits, where Laplace is
+exact. Set to \code{FALSE} to skip the extra evaluation on very large fits.}
+
+\item{laplace_accuracy_thresh}{Numeric scalar. The \code{laplace_accuracy} row
+warns when the Laplace logLik exceeds the quadrature logLik by more than
+this many log-likelihood units (an optimistic Laplace approximation, which
+biases logLik / AIC / likelihood-ratio comparisons toward that fit).}
 }
 \value{
 A data frame with columns \code{component}, \code{status}, \code{value},

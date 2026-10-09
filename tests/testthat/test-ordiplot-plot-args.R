@@ -48,41 +48,32 @@ make_tiny_ordiplot_fit <- function(d = 2L, n_units = 4L, n_traits = 3L) {
 
 test_that("ordiplot() user xlab ylab pch col asp override plot defaults", {
   fit <- make_tiny_ordiplot_fit()
-  assign(".gllvmTMB_ordiplot_plot_args", NULL, envir = globalenv())
-  on.exit(rm(".gllvmTMB_ordiplot_plot_args", envir = globalenv()), add = TRUE)
-  suppressMessages(trace(
-    graphics::plot.default,
-    tracer = quote({
-      dots <- list(...)
-      assign(
-        ".gllvmTMB_ordiplot_plot_args",
-        list(
-          xlab = xlab,
-          ylab = ylab,
-          asp = asp,
-          pch = dots$pch,
-          col = dots$col
-        ),
-        envir = globalenv()
-      )
-    }),
-    print = FALSE
-  ))
-  on.exit(suppressMessages(untrace(graphics::plot.default)), add = TRUE)
+  capture <- new.env(parent = emptyenv())
+  capture$args <- NULL
+  original_plot <- graphics::plot
   grDevices::pdf(NULL)
   on.exit(grDevices::dev.off(), add = TRUE)
-  expect_no_error(
-    ordiplot(
-      fit,
-      xlab = "a",
-      ylab = "b",
-      pch = 1,
-      col = "red",
-      asp = NA,
-      biplot = FALSE
-    )
+  # Capture the generic called directly; S3 dispatch can retain an untraced
+  # plot.default. graphics re-exports this generic from base on current R.
+  testthat::with_mocked_bindings(
+    expect_no_error(
+      ordiplot(
+        fit,
+        xlab = "a",
+        ylab = "b",
+        pch = 1,
+        col = "red",
+        asp = NA,
+        biplot = FALSE
+      )
+    ),
+    plot = function(...) {
+      capture$args <- list(...)
+      original_plot(...)
+    },
+    .package = environmentName(environment(original_plot))
   )
-  captured <- get(".gllvmTMB_ordiplot_plot_args", envir = globalenv())
+  captured <- capture$args
   expect_identical(captured$xlab, "a")
   expect_identical(captured$ylab, "b")
   expect_identical(captured$pch, 1)

@@ -57993,3 +57993,17 @@ the 0.7.1 release site.
 - Exact consistency patterns run: `rg "\bS_B\b|\bS_W\b|\\bf S" .`; `rg -n "gllvmTMB\(" R vignettes README.md NEWS.md docs/design`; `rg "in prep|in preparation" docs vignettes`; `rg "\bphylo\(|\bgr\(|\bmeta\(|block_V\(|phylo_rr\(" vignettes`; `rg "meta_known_V" README.md NEWS.md docs vignettes`; `rg "gllvmTMB_wide" README.md NEWS.md docs vignettes`. These found existing repository/historical references (329, 893, 98, 3, 371, and 600 matching lines, respectively); no call, example, or prose in this repair changed.
 - Inspected issues #1098, #847, and #1120; all were already closed. No issue state or discussion changed.
 - After-task report: `docs/dev-log/after-task/2026-09-29-pkgdown-public-surface-fix.md`. Local scanner evidence only; PR, CI, merge, deployment, and live-page inspection remain pending. This repair does not advance the separate 0.7.1 release ledger.
+
+
+## 2026-10-08: issue 1469 correlation pair layout
+
+Synthetic ordinal regression: 15 pass, zero failures (unique pairs, symmetric
+matrix, full table and built heatmap). Public issue replay: layout verified
+with d=1, private scratch results; no collaborator data committed. Roxygen
+Rd generation completed; unrelated regenerated files restored. pkgdown check
+blocked by pre-existing sigma.gllvmTMB_multi index omission. Article HTML render
+and Rd parsing passed. No native code or
+API changed. Exact scan: `rg -n 'unique pairs|symmetric|entries = "all"'
+R/extract-correlations.R man/extract_correlations.Rd
+vignettes/articles/covariance-correlation.Rmd
+docs/design/06-extractors-contract.md`. Routes agree.

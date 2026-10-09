@@ -1,5 +1,10 @@
 # Development (unreleased)
 
+* Clarified that `extract_correlations()` returns unique unordered pairs,
+  including for ordinal models. Its help now points directly to the symmetric
+  heatmap and full matrix/table outputs, with regression checks for item order
+  and complete symmetric displays (issue #1469).
+
 * `check_gllvmTMB()` now flags degenerate `ordinal_probit()` fits by default.
   The `ordinal_liability_loading` row already existed but both of its
   thresholds defaulted to `Inf`, so a fit with a unit-tier loading of 42 or 185

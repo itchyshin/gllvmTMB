@@ -363,6 +363,15 @@ function-first roadmap is the validation gate.
 upper-triangular trait pair and columns `tier`, `trait_i`,
 `trait_j`, `correlation`, `lower`, `upper`, and `method`.
 
+Each unordered pair occurs once in fitted trait order, without its reverse
+or the diagonal. Unequal sets in `trait_i` and `trait_j` are expected; their
+union contains all traits when at least two traits are present. This applies
+to ordinal and continuous responses alike. For a symmetric display use
+`plot_correlations(..., style = "heatmap")`; for a full matrix use
+`extract_Sigma(... )$R`, or request all cells with
+`extract_Sigma_table(..., measure = "correlation", entries = "all")`.
+Keep `link_residual` identical across these routes.
+
 The `link_residual = "auto"` default invokes the per-family
 link-residual computation (`R/extract-sigma.R`
 `link_residual_per_trait()`) before computing Pearson

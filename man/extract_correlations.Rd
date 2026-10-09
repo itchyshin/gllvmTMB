@@ -110,9 +110,6 @@ names in new calls.}
 bootstrap route computes intervals, but this function does not certify
 their frequentist coverage for the fitted target.}
 }
-
-For an \code{engine = "julia"} bridge fit, \code{lower}/\code{upper} are
-\code{NA}, \code{method = "none"}, and \code{interval_status = "none"}.
 }
 \description{
 Returns the implied cross-trait correlations from a fit returned by
@@ -159,6 +156,27 @@ For T traits at one tier, there are T(T-1)/2 unique correlations.
 A fit with T = 6 and four covariance levels present has up to 60
 cross-trait correlations to report.
 }
+\section{Pair table versus correlation matrix}{
+
+Each unordered pair appears once, in fitted trait order. With \eqn{p}
+traits, a single tier returns \eqn{p(p-1)/2} rows; reversed pairs and
+diagonal entries are omitted. The first trait therefore appears only in
+\code{trait_i}, and the last only in \code{trait_j}. No trait is missing
+from the combined pair table when at least two traits are present.
+This also applies to ordinal responses.
+
+Plotting these rows directly with \code{geom_tile()} leaves the reversed
+cells blank; alphabetical axis ordering can scatter those blanks.
+Use \code{plot_correlations(cors, style = "heatmap")} for a symmetric
+display, \code{extract_Sigma(fit, level = "unit")$R} for a square matrix,
+or \code{extract_Sigma_table(fit, level = "unit", measure = "correlation",
+entries = "all")} for a full table including the diagonal. Use the same
+\code{link_residual} convention when comparing these outputs.
+
+For an \code{engine = "julia"} bridge fit, \code{lower}/\code{upper} are
+\code{NA}, \code{method = "none"}, and \code{interval_status = "none"}.
+}
+
 \section{Caveats}{
 
 \itemize{
@@ -189,6 +207,12 @@ fit <- gllvmTMB(
 )
 ## Default: point correlations only.
 cors <- extract_correlations(fit, tier = "unit")
+## A symmetric heatmap from the unique-pair table.
+plot_correlations(cors, style = "heatmap")
+## Full square matrix, or all cells in a long table.
+R <- extract_Sigma(fit, level = "unit")$R
+full <- extract_Sigma_table(fit, level = "unit",
+                            measure = "correlation", entries = "all")
 ## Opt-in Fisher-z sensitivity bounds with an explicitly justified n_eff.
 cors2 <- extract_correlations(fit, tier = "unit", method = "fisher-z",
                                n_eff = 60L)
@@ -200,5 +224,6 @@ cors_b <- extract_correlations(fit, tier = "unit", method = "bootstrap",
 \seealso{
 \code{\link{extract_Sigma}}, \code{\link{bootstrap_Sigma}},
 \code{\link{confint.gllvmTMB_multi}},
-\code{\link{extract_communality}}.
+\code{\link{extract_communality}}, \code{\link{plot_correlations}},
+\code{\link{extract_Sigma_table}}.
 }

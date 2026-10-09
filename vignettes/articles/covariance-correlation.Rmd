@@ -451,6 +451,9 @@ The full table retains the `correlation` column and interval schema. Diagonal
 rows are fixed at 1, with `method = "fixed"` and no estimated interval. Mirrored
 rows carry the same interval bounds and should not be counted as independent
 estimates. Keep `entries = "unique"` for pairwise analyses and interval/eye plots.
+Numeric pair indices must be finite whole numbers. When passing a full table
+to a matrix plot, mirrored rows must have matching estimates, intervals and
+provenance; conflicting rows produce an error instead of an order-dependent plot.
 The `pair` argument is restricted to that unique layout. For ordinal
 probit responses, `link_residual = "auto"` reports correlations on the
 underlying liability scale, rather than Pearson correlations of the observed

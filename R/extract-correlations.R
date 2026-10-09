@@ -194,10 +194,15 @@
       }
       pair_idx <- sort(c(pi, pj))
     } else if (is.numeric(pair)) {
-      pair_idx <- sort(as.integer(pair))
-      if (any(pair_idx < 1L) || any(pair_idx > T)) {
-        cli::cli_abort("{.arg pair} indices out of range.")
+      if (anyNA(pair) || any(!is.finite(pair)) ||
+          any(pair != trunc(pair)) || any(pair < 1 | pair > T) ||
+          anyDuplicated(pair)) {
+        cli::cli_abort(c(
+          "{.arg pair} must contain two distinct finite integer indices between 1 and {T}.",
+          ">" = "Use two trait names, or two valid integer indices."
+        ), class = "gllvmTMB_correlation_invalid_pair")
       }
+      pair_idx <- sort(as.integer(pair))
     } else {
       cli::cli_abort("{.arg pair} must be character or integer.")
     }
@@ -300,7 +305,8 @@
 #' @param pair Optional length-2 character or integer vector specifying
 #'   one trait pair (\code{c("trait_1", "trait_2")} or \code{c(1, 2)}).
 #'   When supplied, only that pair is returned for each requested tier.
-#'   Default \code{NULL} (all pairs).
+#'   Numeric indices must be finite, distinct whole numbers within the trait
+#'   range; fractional indices are rejected. Default \code{NULL} (all pairs).
 #' @param level Confidence level in (0, 1). Default 0.95.
 #' @param method One of \code{"none"} (default), \code{"fisher-z"},
 #'   \code{"wald"} (alias of \code{"fisher-z"}), or \code{"bootstrap"}.
@@ -681,10 +687,15 @@ extract_correlations <- function(
       }
       pair_idx <- sort(c(pi, pj))
     } else if (is.numeric(pair)) {
-      pair_idx <- sort(as.integer(pair))
-      if (any(pair_idx < 1L) || any(pair_idx > T)) {
-        cli::cli_abort("{.arg pair} indices out of range.")
+      if (anyNA(pair) || any(!is.finite(pair)) ||
+          any(pair != trunc(pair)) || any(pair < 1 | pair > T) ||
+          anyDuplicated(pair)) {
+        cli::cli_abort(c(
+          "{.arg pair} must contain two distinct finite integer indices between 1 and {T}.",
+          ">" = "Use two trait names, or two valid integer indices."
+        ), class = "gllvmTMB_correlation_invalid_pair")
       }
+      pair_idx <- sort(as.integer(pair))
     } else {
       cli::cli_abort("{.arg pair} must be character or integer.")
     }
@@ -699,7 +710,7 @@ extract_correlations <- function(
     if (length(boot_levels) > 0L) {
       boot_R <- suppressMessages(bootstrap_Sigma(
         fit,
-        n_boot = as.integer(nsim),
+        n_boot = nsim,
         level = vapply(
           boot_levels,
           .canonical_level_name,
@@ -1039,7 +1050,7 @@ extract_cross_correlations <- function(fit, level = "unit", contrasts = FALSE,
   if (method == "bootstrap") {
     boot <- suppressMessages(bootstrap_Sigma(
       fit,
-      n_boot = as.integer(nsim),
+      n_boot = nsim,
       level = level,
       what = "cross_corr",
       conf = conf,

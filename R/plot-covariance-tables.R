@@ -351,6 +351,35 @@
   dat
 }
 
+.gtmb_check_correlation_duplicates <- function(dat) {
+  # Numeric keys avoid collisions when trait names themselves contain separators.
+  traits <- unique(c(as.character(dat$trait_i), as.character(dat$trait_j)))
+  i <- match(as.character(dat$trait_i), traits)
+  j <- match(as.character(dat$trait_j), traits)
+  keys <- paste(match(as.character(dat$tier), unique(as.character(dat$tier))),
+                pmin(i, j), pmax(i, j), sep = ":")
+  groups <- split(seq_len(nrow(dat)), keys)
+  # These columns describe the direction of a row, rather than its payload.
+  payload <- setdiff(names(dat), c("trait_i", "trait_j", "i", "j", "triangle"))
+  for (rows in groups) {
+    if (length(rows) < 2L) next
+    first <- rows[[1L]]
+    for (row in rows[-1L]) {
+      conflict <- payload[!vapply(payload, function(column) {
+        identical(dat[[column]][first], dat[[column]][row])
+      }, logical(1L))]
+      if (length(conflict)) {
+        cli::cli_abort(c(
+          "Conflicting duplicate correlation rows for {.val {dat$trait_i[first]}} and {.val {dat$trait_j[first]}} at tier {.val {dat$tier[first]}}.",
+          "i" = "Conflicting fields: {.val {conflict}}.",
+          ">" = "Supply one row per pair and tier, or identical mirrored estimates, intervals, and provenance."
+        ), class = "gllvmTMB_correlation_conflicting_duplicates")
+      }
+    }
+  }
+  invisible(dat)
+}
+
 .gtmb_prepare_correlation_matrix_rows <- function(
   dat,
   triangle,
@@ -379,6 +408,7 @@
     c("auto", "estimate", "ci", "estimate_ci", "none")
   )
 
+  .gtmb_check_correlation_duplicates(dat)
   dat$tier <- as.character(dat$tier)
   dat$trait_i <- as.character(dat$trait_i)
   dat$trait_j <- as.character(dat$trait_j)
@@ -1010,6 +1040,9 @@
 #'   `R_B` / `R_W` summaries, or a data frame returned by
 #'   [extract_correlations()]. Data frames must contain `tier`, `trait_i`,
 #'   `trait_j`, `correlation`, `lower`, `upper`, and `method`.
+#'   Matrix displays accept identical mirrored rows. Duplicate rows for the
+#'   same pair and tier must agree in estimates, intervals and provenance;
+#'   conflicting rows are rejected rather than selected by input order.
 #' @param tier,pair,level,method,n_eff,nsim,seed,link_residual Passed to
 #'   [extract_correlations()] when `x` is a fitted model. Ignored when `x` is
 #'   already a data frame.

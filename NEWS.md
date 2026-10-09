@@ -1,5 +1,38 @@
 # Development (unreleased)
 
+* **Behaviour change: default fits now try two starts.** A fit with an
+  ordinary `latent()` block is now also optimised from a second, data-informed
+  start. Its loadings and latent scores come from one singular value
+  decomposition of the residual matrix. The fit keeps whichever start reaches
+  the lower objective, and `restart_history` labels the new start `"svd"`.
+  Before this change, the default single start sometimes stopped at a lower
+  local optimum while reporting `convergence = 0`, a positive-definite
+  Hessian and a small gradient. On the reported Poisson cells, the new start
+  reaches the optimum that `n_init = 10` and the Julia twin find. If both
+  starts reach the same optimum, the default start's fit is returned
+  unchanged. Each default fit now runs one more optimisation; set
+  `gllvmTMBcontrol(svd_start = FALSE)` to restore the single start. The new
+  start uses no random numbers, so seeded `n_init` runs reproduce their
+  jittered restarts. It does not replace multi-start checks: on negative
+  binomial cells, only jittered restarts (`n_init = 10`) found the better
+  optima (#1331).
+  **Some default fits now land on a different, better optimum**, so their
+  estimates and `logLik()` change. Use `gllvmTMBcontrol(svd_start = FALSE)`
+  to reproduce earlier default-fit results. Later restarts, svd or jittered, also no
+  longer replace a converged fit with a non-converged one. With
+  `engine = "julia"`, an explicit `svd_start = FALSE` or `n_init > 1` is now
+  refused rather than silently ignored.
+
+* Zero-inflated `zi_poisson()` and `zi_nbinom2()` fits, and
+  `censored_poisson()` fits, now start their intercepts on the log scale.
+  `zi_binomial()` starts from the empirical logit. Previously these fits
+  started from the raw counts. The remaining non-converged zero-inflated
+  fits stop where one unit's latent curvature has collapsed to near zero.
+  There the Laplace log-likelihood has no maximum, so more random starts do
+  not help. Such fits now record `fit_health$min_random_curvature`, warn
+  with that cause, and fail a new `laplace_curvature` row in
+  `check_gllvmTMB()` (#1330).
+
 * Neighbouring output and refit guards now reject fractional trait-pair indices,
   invalid bootstrap counts, conflicting mirrored correlation rows, and malformed
   retained ordination scores. Temporal ordination no longer silently ignores an

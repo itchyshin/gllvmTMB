@@ -1762,6 +1762,25 @@ check_gllvmTMB <- function(
     )))
   }
 
+  ## #1330: recorded for zero-inflated fits only (see
+  ## `.gllvmTMB_min_random_curvature()`); absent elsewhere, so no row.
+  curv <- health$min_random_curvature %||% NA_real_
+  if (length(curv) == 1L && is.finite(curv)) {
+    curv_tol <- .gllvmTMB_zi_degenerate_curvature_tol
+    rows <- c(rows, list(.gllvmTMB_check_row(
+      "laplace_curvature",
+      if (curv < curv_tol) "FAIL" else "PASS",
+      signif(curv, 4),
+      paste0(">= ", curv_tol),
+      if (curv < curv_tol) {
+        "a unit's latent-score curvature has collapsed; the Laplace log-likelihood is degenerate here, so the fit is an artefact of the approximation"
+      } else {
+        "smallest curvature of a unit's latent scores at the fit"
+      },
+      "treat the fit as failed; try a smaller d, the non-inflated count family, or fewer zero-inflated traits"
+    )))
+  }
+
   restart_history <- object$restart_history %||% data.frame()
   rows <- c(
     rows,

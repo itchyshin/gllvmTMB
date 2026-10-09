@@ -707,7 +707,27 @@ gllvmTMB <- function(
       "{.arg optimizer_passes} greater than one requires the native TMB Laplace engine.",
       "i" = "The Julia dispatch has its own optimizer and does not consume this control.",
       ">" = "Use {.code optimizer_passes = 1L}, or fit with {.code engine = \"tmb\"}."
-    ))
+    ), class = "gllvmTMB_julia_unsupported_control")
+  }
+  ## The Julia dispatch passes no start or restart settings to GLLVModels.jl,
+  ## so an explicit request for either would be silently ignored. The
+  ## defaults (`svd_start = TRUE`, `n_init = 1`) describe the native engine
+  ## and are not refused; only an explicit non-default request is.
+  if (identical(engine, "julia") &&
+      isTRUE(control$n_init_explicit) && (control$n_init %||% 1L) > 1L) {
+    cli::cli_abort(c(
+      "{.arg n_init} greater than one requires the native TMB engine.",
+      "i" = "The Julia dispatch has its own optimizer and does not run gllvmTMB restarts.",
+      ">" = "Use {.code n_init = 1L}, or fit with {.code engine = \"tmb\"}."
+    ), class = "gllvmTMB_julia_unsupported_control")
+  }
+  if (identical(engine, "julia") &&
+      isTRUE(control$svd_start_explicit) && isFALSE(control$svd_start)) {
+    cli::cli_abort(c(
+      "{.code svd_start = FALSE} requires the native TMB engine.",
+      "i" = "The Julia dispatch has its own optimizer and does not consume gllvmTMB start settings.",
+      ">" = "Omit {.arg svd_start}, or fit with {.code engine = \"tmb\"}."
+    ), class = "gllvmTMB_julia_unsupported_control")
   }
   structured_rho_capture <- .parse_structured_rho_formula(formula, trait_col = trait, strip = FALSE)
   .structured_rho_dispatch_fence(structured_rho_capture$spec, engine = engine,
@@ -1946,7 +1966,22 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #'   equivalent local maxima; running several restarts with different
 #'   starting values and keeping the fit with the lowest `-logLik`
 #'   reduces the risk of settling on a suboptimal solution. Default
-#'   1 (single fit). Increase to 5–10 for two-level rr models.
+#'   1 (the default start, plus the `svd_start` restart when that applies).
+#'   Increase to 5–10 for two-level rr models, and to check any fit whose
+#'   log-likelihood will be compared: a single start can stop at a lower
+#'   local optimum while reporting `convergence = 0`, a positive-definite
+#'   Hessian and a small gradient. The jittered restarts use R's random
+#'   number generator, so call [set.seed()] first for a reproducible fit.
+#' @param svd_start Logical. If `TRUE` (default), a fit with an ordinary
+#'   `latent()` block is also optimised from a second, data-informed start
+#'   whose loadings and latent scores come from one singular value
+#'   decomposition of the residual matrix, and the start with the lower
+#'   objective is kept (`restart_history` labels it `"svd"`). The default
+#'   start alone sometimes stopped at a lower local optimum with clean
+#'   diagnostics. This adds one optimisation per fit and uses
+#'   no random numbers. It is skipped when `start_from` or `start_method` is
+#'   supplied and on the `estimator = "mspl"` route. Set `FALSE` for the
+#'   single-start behaviour of gllvmTMB 0.8.0 and earlier.
 #' @param optimizer One of `"nlminb"` (default) or `"optim"`. Use the
 #'   latter together with `optArgs` for finicky two-level rr fits.
 #' @param optArgs A list of arguments passed to the optimiser. For
@@ -2353,6 +2388,7 @@ gllvmTMBcontrol <- function(
   allow_nongaussian_reml = FALSE,
   loading_ridge = NULL,
   optimizer_passes = 1L,
+  svd_start = TRUE,
   ...
 ) {
   ## Did the CALLER name `aghq_ridge`, or is this the package default? The
@@ -2372,6 +2408,10 @@ gllvmTMBcontrol <- function(
   ## cannot see. So the Laplace-path ridge is opt-in ONLY: it fires when the
   ## caller names `aghq_ridge` and never from the default.
   aghq_ridge_explicit <- !missing(aghq_ridge)
+  ## Recorded so engine = "julia" can refuse an explicit start/restart
+  ## request it would otherwise ignore (#1331 review).
+  n_init_explicit <- !missing(n_init)
+  svd_start_explicit <- !missing(svd_start)
   loading_ridge_explicit <- !missing(loading_ridge) && !is.null(loading_ridge)
   if (isTRUE(aghq_ridge_explicit) && isTRUE(loading_ridge_explicit)) {
     cli::cli_abort(c(
@@ -2491,6 +2531,12 @@ gllvmTMBcontrol <- function(
       ">" = "Use {.code n_init = 1L} for a single start, or a positive integer such as {.code 5L}."
     ))
   }
+  if (!is.logical(svd_start) || length(svd_start) != 1L || is.na(svd_start)) {
+    cli::cli_abort(c(
+      "{.arg svd_start} must be {.code TRUE} or {.code FALSE}.",
+      ">" = "Use {.code svd_start = FALSE} to fit from the default start only."
+    ))
+  }
   if (n_init < 1L || n_init != as.integer(n_init)) {
     cli::cli_abort(c(
       "{.arg n_init} must be an integer greater than or equal to 1.",
@@ -2517,6 +2563,9 @@ gllvmTMBcontrol <- function(
     va_H = as.integer(va_H),
     va_eval_method = va_eval_method,
     n_init = as.integer(n_init),
+    n_init_explicit = n_init_explicit,
+    svd_start = svd_start,
+    svd_start_explicit = svd_start_explicit,
     optimizer = optimizer,
     optArgs = optArgs,
     optimizer_passes = as.integer(optimizer_passes),

@@ -35,7 +35,23 @@ Fresh `R CMD INSTALL` compiled the current native source and loaded successfully
 
 The supplied data were replayed at d=1 and d=2, each under original and alphabetical item orders. All four runs returned 28 unique pairs, exactly symmetric matrices, zero named-pair discrepancies and identical reversed-pair requests.
 
-Roxygen generation, Rd parsing and article rendering completed. `pkgdown::check_pkgdown()`, reader-surface and Actions-boundary checks passed. Existing plotting tests passed 263 assertions. The required full local check ran: 25,523 assertions passed, with 11 failures, 58 test warnings and 1,242 skips; R CMD check reported 1 error, 2 warnings and 4 notes. Five failures were a cached-S3 plot tracing harness; its local generic-capture replacement preserves all six assertions and passes in isolation. A campaign-file guard was placed after a file-dependent assertion; it now precedes the assertion. Three visual snapshot failures reproduce with the baseline correlation-display code. Two unchanged variational-prototype assertions report three healthy starts rather than four on this Mac. These remaining checks are not a clean full-suite certificate. The generated loading help default was also synchronized with its existing function signature. The two repaired check files passed 54 assertions together. A separate replay with no campaign root passed with the intended skip. Final landing receipts follow in the check log.
+Roxygen generation, Rd parsing and article rendering completed. `pkgdown::check_pkgdown()`, reader-surface and Actions-boundary checks passed. Existing plotting tests passed 263 assertions. The required full local check ran: 25,523 assertions passed, with 11 failures, 58 test warnings and 1,242 skips; R CMD check reported 1 error, 2 warnings and 4 notes. Five failures were a cached-S3 plot tracing harness; its local generic-capture replacement preserves all six assertions and passes in isolation. A campaign-file guard was placed after a file-dependent assertion; it now precedes the assertion. Three visual snapshot failures reproduce with the baseline correlation-display code. Two unchanged variational-prototype assertions report three healthy starts rather than four on this Mac. These remaining checks are not a clean full-suite certificate. The generated loading help default was also synchronized with its existing function signature. The two repaired check files passed 54 assertions together. A separate replay with no campaign root passed with the intended skip. The landing receipt below binds these results to the merged commit.
+
+
+### Landing receipt
+
+PR #1470 head `3bf541243592145ecfcc6208c4e7a786ae94a90e` passed all four
+R-CMD-check shards in run 37870005610 before the merge gate landed it at
+2026-10-09 01:54:37 UTC. Merge commit:
+`4b595ac221c4559e3b4a72fa2f9aa5ca4c8163ce`.
+Its tree is identical to the reviewed PR head. Main run 37872026904 completed
+successfully, all four shards green. The merged source was reinstalled and all
+181 correlation assertions passed again. The public ordinal example passed
+all four rank/order replays again, including 64 full cells and 56 cells with
+self-correlations hidden. The narrower metadata check had zero errors,
+one test-dependency warning and four notes; the loading-help mismatch is gone.
+The broad local residuals above remain explicitly outside this completion claim.
+No issue reply has been posted.
 
 ## 6. Tests of the Tests
 

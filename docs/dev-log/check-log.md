@@ -13,7 +13,11 @@ visual snapshots, 1 installed-file ordering, 2 unchanged VA prototype assertions
 R CMD check: 1 error, 2 warnings, 4 notes. Graphics harness and campaign-file
 guard ordering repaired without relaxing assertions; loading help default synced.
 Check repairs: 54 assertions passed; a separate absent-campaign-root replay passed with the intended skip.
-The broad local suite is not claimed clean. Landing receipts follow.
+The broad local suite is not claimed clean. PR #1470: all four exact-head shards passed in run 37870005610;
+merged as `4b595ac221c4559e3b4a72fa2f9aa5ca4c8163ce`.
+Main run 37872026904: four of four success. Reinstalled merged source:
+181 assertions and all four public-data rank/order replays passed again.
+Narrow metadata check: zero errors, one warning, four notes; help mismatch gone.
 Report: `after-task/2026-10-08-issue-1469-full-correlation-output.md`.
 
 ## 2026-10-04 - #1403: ordinary `update()` no longer asks for a missing `call`

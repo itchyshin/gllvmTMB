@@ -267,13 +267,14 @@ source(testthat::test_path(
 ))
 
 test_that("qualification controls retain the failed campaign and localize an injected derivative fault", {
+  root <- .temporal_program_repo_root()
+  skip_if(is.null(root), "temporal programme files are unavailable in an installed check")
+
   controls <- .temporal_phylo_optimizer_qualification_controls()
   expect_true(.temporal_phylo_optimizer_qualification_validate_controls(controls))
   controls$retained_summary <- "DESCRIPTION"
   expect_false(.temporal_phylo_optimizer_qualification_validate_controls(controls))
 
-  root <- .temporal_program_repo_root()
-  skip_if(is.null(root), "temporal programme files are unavailable in an installed check")
   summary_path <- file.path(root, "dev", "temporal-program", "results", "failed",
     "phylo-recovery-160-fir-59096255-20260910",
     "phylo-recovery-160-summary-20260909.csv")

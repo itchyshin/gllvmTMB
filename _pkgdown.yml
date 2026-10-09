@@ -379,6 +379,7 @@ reference:
     - logLik.gllvmTMB_multi
     - fitted.gllvmTMB_multi
     - deviance.gllvmTMB_multi
+    - sigma.gllvmTMB_multi
     - gllvmTMB_multi-vcov
     - confint.gllvmTMB_multi
     - tidy.gllvmTMB_multi

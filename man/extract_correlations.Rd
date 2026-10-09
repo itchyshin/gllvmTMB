@@ -13,15 +13,16 @@ extract_correlations(
   n_eff = NULL,
   nsim = 500L,
   seed = NULL,
-  link_residual = c("auto", "none")
+  link_residual = c("auto", "none"),
+  entries = c("unique", "all", "offdiag")
 )
 }
 \arguments{
 \item{fit}{A fit returned by \code{\link{gllvmTMB}}. Julia bridge
 (\code{engine = "julia"}) fits expose the ordinary unit tier only and carry no
-correlation-interval payload, so they return point-only rows: the same
-schema with \code{lower} and \code{upper} set to \code{NA}, \code{method = "none"},
-and \code{interval_status = "none"}. Use
+correlation-interval payload. Their off-diagonal rows have \code{lower} and
+\code{upper} set to \code{NA}, \code{method = "none"}, and \code{interval_status = "none"}.
+With \code{entries = "all"}, self-pairs instead have \code{method = "fixed"}. Use
 \code{engine = "tmb"} when you need correlation confidence intervals.}
 
 \item{tier}{Character vector. Use \code{"all"} (the default) to request
@@ -91,6 +92,12 @@ session that a non-Gaussian fit is processed without an explicit
 \code{link_residual} argument. Pass \code{link_residual = "auto"}
 to suppress the warning and lock the new behaviour, or
 \code{link_residual = "none"} to restore the previous behaviour.}
+
+\item{entries}{Table layout. \code{"unique"} (default) returns each unordered
+pair once, without the diagonal. \code{"offdiag"} includes both directions,
+without the diagonal. \code{"all"} includes both directions and the diagonal.
+A single tier with p traits has p(p-1)/2, p(p-1), or p squared rows,
+respectively. Non-unique layouts cannot be combined with \code{pair}.}
 }
 \value{
 A data frame (tibble-like) with columns:
@@ -99,7 +106,8 @@ A data frame (tibble-like) with columns:
 internal labels \code{"B"}, \code{"W"}, \code{"phy"}, and
 \code{"spde"}; use \code{"unit"} and \code{"unit_obs"} as input
 names in new calls.}
-\item{\code{trait_i}, \code{trait_j}}{Trait names with i < j.}
+\item{\code{trait_i}, \code{trait_j}}{Trait names. The default
+unique layout has i < j in fitted trait order.}
 \item{\code{correlation}}{Point estimate.}
 \item{\code{lower}, \code{upper}}{Confidence-interval bounds.}
 \item{\code{method}}{Method used to compute the CI.}
@@ -110,9 +118,6 @@ names in new calls.}
 bootstrap route computes intervals, but this function does not certify
 their frequentist coverage for the fitted target.}
 }
-
-For an \code{engine = "julia"} bridge fit, \code{lower}/\code{upper} are
-\code{NA}, \code{method = "none"}, and \code{interval_status = "none"}.
 }
 \description{
 Returns the implied cross-trait correlations from a fit returned by
@@ -159,6 +164,37 @@ For T traits at one tier, there are T(T-1)/2 unique correlations.
 A fit with T = 6 and four covariance levels present has up to 60
 cross-trait correlations to report.
 }
+\section{Pair table versus correlation matrix}{
+
+By default, each unordered pair appears once, in fitted trait order. With \eqn{p}
+traits, a single tier returns \eqn{p(p-1)/2} rows; reversed pairs and
+diagonal entries are omitted. The first trait therefore appears only in
+\code{trait_i}, and the last only in \code{trait_j}. No trait is missing
+from the combined pair table when at least two traits are present.
+This also applies to ordinal responses.
+
+Plotting these rows directly with \code{geom_tile()} leaves the reversed
+cells blank; alphabetical axis ordering can scatter those blanks.
+Use \code{extract_correlations(fit, tier = "unit", entries = "all")}
+for a complete table, or \code{entries = "offdiag"} to omit self-pairs.
+Mirrored rows retain the same estimates and interval columns; they are
+duplicate representations of one correlation, rather than independent
+estimates. Diagonal rows are fixed at 1, with \code{method = "fixed"},
+\code{interval_status = "none"}, and \code{NA} interval bounds.
+Use \code{entries = "unique"} for interval/eye plots and pairwise analyses
+that should count each correlation once.
+
+Use \code{plot_correlations(cors, style = "heatmap")} for a symmetric
+display, \code{extract_Sigma(fit, level = "unit")$R} for a square matrix,
+or \code{extract_Sigma_table(fit, level = "unit", measure = "correlation",
+entries = "all")} for a full table including the diagonal. Use the same
+\code{link_residual} convention when comparing these outputs.
+
+For off-diagonal rows from an \code{engine = "julia"} bridge fit,
+\code{lower}/\code{upper} are \code{NA}, \code{method = "none"},
+and \code{interval_status = "none"}.
+}
+
 \section{Caveats}{
 
 \itemize{
@@ -189,6 +225,14 @@ fit <- gllvmTMB(
 )
 ## Default: point correlations only.
 cors <- extract_correlations(fit, tier = "unit")
+## A symmetric heatmap from the unique-pair table.
+plot_correlations(cors, style = "heatmap")
+## Full table using the same correlation column and interval schema.
+full <- extract_correlations(fit, tier = "unit", entries = "all")
+## Full square matrix, or all cells with matrix-entry metadata.
+R <- extract_Sigma(fit, level = "unit")$R
+full_sigma <- extract_Sigma_table(fit, level = "unit",
+                            measure = "correlation", entries = "all")
 ## Opt-in Fisher-z sensitivity bounds with an explicitly justified n_eff.
 cors2 <- extract_correlations(fit, tier = "unit", method = "fisher-z",
                                n_eff = 60L)
@@ -200,5 +244,6 @@ cors_b <- extract_correlations(fit, tier = "unit", method = "bootstrap",
 \seealso{
 \code{\link{extract_Sigma}}, \code{\link{bootstrap_Sigma}},
 \code{\link{confint.gllvmTMB_multi}},
-\code{\link{extract_communality}}.
+\code{\link{extract_communality}}, \code{\link{plot_correlations}},
+\code{\link{extract_Sigma_table}}.
 }

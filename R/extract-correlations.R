@@ -117,11 +117,36 @@
 ## appended. The
 ## correlation matrix is read via the documented point-only route
 ## extract_Sigma(fit, level = "unit", part = "total")$R.
+.correlation_expand_entries <- function(out, entries, trait_names, tiers) {
+  if (identical(entries, "unique")) return(out)
+  mirror <- out
+  mirror$trait_i <- out$trait_j
+  mirror$trait_j <- out$trait_i
+  out <- rbind(out, mirror)
+  if (identical(entries, "all") && length(tiers) > 0L &&
+      length(trait_names) > 0L) {
+    diagonal <- data.frame(
+      tier = rep(tiers, each = length(trait_names)),
+      trait_i = rep(trait_names, times = length(tiers)),
+      trait_j = rep(trait_names, times = length(tiers)),
+      correlation = 1, lower = NA_real_, upper = NA_real_,
+      method = "fixed", interval_status = "none", stringsAsFactors = FALSE
+    )
+    out <- rbind(out, diagonal)
+  }
+  out <- out[order(match(out$tier, tiers),
+                   match(out$trait_j, trait_names),
+                   match(out$trait_i, trait_names)), , drop = FALSE]
+  rownames(out) <- NULL
+  out
+}
+
 .extract_correlations_julia_point <- function(
   fit,
   tier = "all",
   pair = NULL,
-  link_residual = "auto"
+  link_residual = "auto",
+  entries = "unique"
 ) {
   ## `tier` arrives already normalised to internal slot names by the caller
   ## (extract_correlations() runs .normalise_level() at its boundary before
@@ -188,7 +213,7 @@
   }
 
   if (nrow(pairs) == 0L) {
-    return(data.frame(
+    out <- data.frame(
       tier = character(0),
       trait_i = character(0),
       trait_j = character(0),
@@ -198,7 +223,8 @@
       method = character(0),
       interval_status = character(0),
       stringsAsFactors = FALSE
-    ))
+    )
+    return(.correlation_expand_entries(out, entries, trait_names, "B"))
   }
 
   out <- data.frame(
@@ -213,7 +239,7 @@
     stringsAsFactors = FALSE
   )
   rownames(out) <- NULL
-  out
+  .correlation_expand_entries(out, entries, trait_names, "B")
 }
 
 #' Extract cross-trait correlations
@@ -263,9 +289,9 @@
 #'
 #' @param fit A fit returned by \code{\link{gllvmTMB}}. Julia bridge
 #'   (`engine = "julia"`) fits expose the ordinary unit tier only and carry no
-#'   correlation-interval payload, so they return point-only rows: the same
-#'   schema with `lower` and `upper` set to `NA`, `method = "none"`,
-#'   and `interval_status = "none"`. Use
+#'   correlation-interval payload. Their off-diagonal rows have `lower` and
+#'   `upper` set to `NA`, `method = "none"`, and `interval_status = "none"`.
+#'   With `entries = "all"`, self-pairs instead have `method = "fixed"`. Use
 #'   `engine = "tmb"` when you need correlation confidence intervals.
 #' @param tier Character vector. Use \code{"all"} (the default) to request
 #'   every level present in the fit. Canonical inputs are \code{"unit"},
@@ -328,13 +354,20 @@
 #'   to suppress the warning and lock the new behaviour, or
 #'   \code{link_residual = "none"} to restore the previous behaviour.
 #'
+#' @param entries Table layout. `"unique"` (default) returns each unordered
+#'   pair once, without the diagonal. `"offdiag"` includes both directions,
+#'   without the diagonal. `"all"` includes both directions and the diagonal.
+#'   A single tier with p traits has p(p-1)/2, p(p-1), or p squared rows,
+#'   respectively. Non-unique layouts cannot be combined with `pair`.
+#'
 #' @return A data frame (tibble-like) with columns:
 #' \describe{
 #'   \item{\code{tier}}{Character level label. The current output stores
 #'     internal labels \code{"B"}, \code{"W"}, \code{"phy"}, and
 #'     \code{"spde"}; use \code{"unit"} and \code{"unit_obs"} as input
 #'     names in new calls.}
-#'   \item{\code{trait_i}, \code{trait_j}}{Trait names with i < j.}
+#'   \item{\code{trait_i}, \code{trait_j}}{Trait names. The default
+#'     unique layout has i < j in fitted trait order.}
 #'   \item{\code{correlation}}{Point estimate.}
 #'   \item{\code{lower}, \code{upper}}{Confidence-interval bounds.}
 #'   \item{\code{method}}{Method used to compute the CI.}
@@ -346,8 +379,34 @@
 #'     their frequentist coverage for the fitted target.}
 #' }
 #'
-#' For an `engine = "julia"` bridge fit, \code{lower}/\code{upper} are
-#' \code{NA}, \code{method = "none"}, and \code{interval_status = "none"}.
+#' @section Pair table versus correlation matrix:
+#' By default, each unordered pair appears once, in fitted trait order. With \eqn{p}
+#' traits, a single tier returns \eqn{p(p-1)/2} rows; reversed pairs and
+#' diagonal entries are omitted. The first trait therefore appears only in
+#' \code{trait_i}, and the last only in \code{trait_j}. No trait is missing
+#' from the combined pair table when at least two traits are present.
+#' This also applies to ordinal responses.
+#'
+#' Plotting these rows directly with \code{geom_tile()} leaves the reversed
+#' cells blank; alphabetical axis ordering can scatter those blanks.
+#' Use \code{extract_correlations(fit, tier = "unit", entries = "all")}
+#' for a complete table, or \code{entries = "offdiag"} to omit self-pairs.
+#' Mirrored rows retain the same estimates and interval columns; they are
+#' duplicate representations of one correlation, rather than independent
+#' estimates. Diagonal rows are fixed at 1, with \code{method = "fixed"},
+#' \code{interval_status = "none"}, and \code{NA} interval bounds.
+#' Use \code{entries = "unique"} for interval/eye plots and pairwise analyses
+#' that should count each correlation once.
+#'
+#' Use \code{plot_correlations(cors, style = "heatmap")} for a symmetric
+#' display, \code{extract_Sigma(fit, level = "unit")$R} for a square matrix,
+#' or \code{extract_Sigma_table(fit, level = "unit", measure = "correlation",
+#' entries = "all")} for a full table including the diagonal. Use the same
+#' \code{link_residual} convention when comparing these outputs.
+#'
+#' For off-diagonal rows from an `engine = "julia"` bridge fit,
+#' \code{lower}/\code{upper} are \code{NA}, \code{method = "none"},
+#' and \code{interval_status = "none"}.
 #'
 #' @section Caveats:
 #' \itemize{
@@ -362,7 +421,8 @@
 #'
 #' @seealso \code{\link{extract_Sigma}}, \code{\link{bootstrap_Sigma}},
 #'   \code{\link{confint.gllvmTMB_multi}},
-#'   \code{\link{extract_communality}}.
+#'   \code{\link{extract_communality}}, \code{\link{plot_correlations}},
+#'   \code{\link{extract_Sigma_table}}.
 #'
 #' @export
 #' @examples
@@ -382,6 +442,14 @@
 #' )
 #' ## Default: point correlations only.
 #' cors <- extract_correlations(fit, tier = "unit")
+#' ## A symmetric heatmap from the unique-pair table.
+#' plot_correlations(cors, style = "heatmap")
+#' ## Full table using the same correlation column and interval schema.
+#' full <- extract_correlations(fit, tier = "unit", entries = "all")
+#' ## Full square matrix, or all cells with matrix-entry metadata.
+#' R <- extract_Sigma(fit, level = "unit")$R
+#' full_sigma <- extract_Sigma_table(fit, level = "unit",
+#'                             measure = "correlation", entries = "all")
 #' ## Opt-in Fisher-z sensitivity bounds with an explicitly justified n_eff.
 #' cors2 <- extract_correlations(fit, tier = "unit", method = "fisher-z",
 #'                                n_eff = 60L)
@@ -398,12 +466,20 @@ extract_correlations <- function(
   n_eff = NULL,
   nsim = 500L,
   seed = NULL,
-  link_residual = c("auto", "none")
+  link_residual = c("auto", "none"),
+  entries = c("unique", "all", "offdiag")
 ) {
   ## Detect whether the caller passed link_residual explicitly BEFORE
   ## match.arg() reassigns the variable. Used below to fire the once-
   ## per-session warning about the default change.
   link_residual_missing <- missing(link_residual)
+  entries <- match.arg(entries)
+  if (!is.null(pair) && !identical(entries, "unique")) {
+    cli::cli_abort(c(
+      "{.arg pair} can only be combined with {.code entries = \"unique\"}.",
+      ">" = "Omit {.arg pair} to request a full correlation table."
+    ))
+  }
   method <- match.arg(method)
   if (method %in% c("fisher-z", "wald")) {
     level <- .gtmb_validate_interval_level(level, arg = "level")
@@ -442,7 +518,8 @@ extract_correlations <- function(
       fit = fit,
       tier = tier,
       pair = pair,
-      link_residual = link_residual
+      link_residual = link_residual,
+      entries = entries
     )))
   }
   if (!inherits(fit, "gllvmTMB_multi")) {
@@ -640,6 +717,7 @@ extract_correlations <- function(
 
   ## Build pairs for each tier
   results <- vector("list", length(tier))
+  present_tiers <- character(0)
   for (k in seq_along(tier)) {
     tk <- tier[k]
     ## Get point estimate Sigma at this tier
@@ -658,6 +736,7 @@ extract_correlations <- function(
       next
     }
     R <- sig$R
+    present_tiers <- c(present_tiers, tk)
     if (is.null(rownames(R))) {
       rownames(R) <- trait_names
     }
@@ -768,7 +847,9 @@ extract_correlations <- function(
     out$interval_status <- .correlation_interval_status(out_method_label)
   }
   rownames(out) <- NULL
-  .reportable_table(out)
+  .reportable_table(.correlation_expand_entries(
+    out, entries, trait_names, present_tiers
+  ))
 }
 
 .cross_ordinal_partner_traits <- function(fit) {

@@ -455,6 +455,10 @@
     }
   }
 
+  ## Rebuild self-correlations below so supplied diagonal rows also obey
+  ## include_diagonal; retain dat as the template for a one-item display.
+  cells <- cells[cells$trait_i != cells$trait_j, , drop = FALSE]
+
   if (isTRUE(include_diagonal)) {
     diag_facets <- if (identical(matrix_layout, "levels")) {
       "All rows"

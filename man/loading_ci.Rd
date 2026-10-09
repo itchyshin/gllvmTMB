@@ -6,7 +6,7 @@
 \usage{
 loading_ci(
   fit,
-  level = c("unit", "unit_obs"),
+  level = "unit",
   method = c("wald", "wald_asym", "profile"),
   conf_level = 0.95,
   sigma_d2 = 1,

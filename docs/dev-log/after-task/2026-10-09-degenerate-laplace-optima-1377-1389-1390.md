@@ -118,3 +118,29 @@ N/A.
   alone because it is a deliberate model choice.
 - Calibrate `laplace_accuracy_thresh` on a fit pool; decide whether a WARN
   should also be emitted at fit time.
+
+## 9. Review follow-up (second push)
+
+Non-blocking review items folded in:
+
+- (a) The `boundary_phi_gamma` aggregate flag follows `phi_gamma_ceiling_thresh`
+  in `check_gllvmTMB()`. The fit-time `fit_health` flag keeps the 1e8 default.
+- (b) Gamma density: Stirling's term is built from `log_shape`, and the shape
+  that multiplies `D` is capped at `exp(700)`. Above `log_shape` ~709.8 the
+  density is now finite or `-Inf`; before, it was NaN (on `main` too). The
+  series switch moved to `|log r| < 0.05`, with terms through `lr^9/9!`.
+  Tested on both sides of each switch point against `dgamma()` (1e-10
+  relative), and at log shapes 699-800 with the latent scores fixed. At such
+  shapes the Laplace inner Newton step can still overflow on its own. That
+  is a separate issue and not fixed here.
+- (c) `laplace_accuracy` skips, with an INFO row, when rows x nodes > 2e7, and
+  it restores the fit's `last.par` / `last.par.best` with `on.exit`.
+- (d) The Psi-skip message id has one component per skipped category
+  (`binomial`, `multinomial`, `ordinal`).
+- (e) New tests:
+  - a gated Gaussian + single-observation ordinal fit matches its exact
+    marginal (81-node GH);
+  - a fit that mixes replicated, partly replicated and single-observation
+    ordinal traits gates only the single-observation trait.
+- (f) `man/check_gllvmTMB.Rd` regenerated with roxygen2 (only that file is
+  taken).

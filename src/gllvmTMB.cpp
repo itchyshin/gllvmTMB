@@ -97,33 +97,49 @@ Type gll_one_minus_exp_neg(Type x)
 //   D(r)  = r - 1 - log(r) >= 0,         S(k) = k log k - k - lgamma(k).
 // TMB's dgamma forms k log k, k log y, k y / mu and lgamma(k) separately; at
 // k ~ 1e18-1e29 their rounding error (~1e15) swamped the true value, so a
-// runaway shape returned logLik up to +7.7e16 instead of -Inf. Here D is
-// formed from log(r) (series near r = 1) and S from Stirling's series for
-// large k, so the density decreases monotonically as k -> Inf unless y = mu.
+// runaway shape returned logLik up to +7.7e16 instead of -Inf. Here:
+//   * D is formed from log(r): the Taylor series sum_{n=2..9} lr^n / n! for
+//     |lr| < 0.05 (truncation < 1e-16 relative), exp(lr) - 1 - lr otherwise;
+//   * S is Stirling's series written in log_shape (no exp) for k > 50, so it
+//     stays finite for any log_shape;
+//   * the k multiplying D is capped at exp(700), so an overflowing shape
+//     gives a finite value (y = mu) or -Inf, never Inf - Inf = NaN.
 // Branch inputs are clamped because CppAD CondExp evaluates both branches.
 template <class Type>
 Type gll_dgamma_mean_shape(Type y, Type eta, Type log_shape)
 {
-  Type k = exp(log_shape);
   Type lr = log(y) - eta;
-  Type cut = Type(1e-3);
+  Type lr_cut = Type(0.05);
   Type lr2 = lr * lr;
-  Type lr_s = CppAD::CondExpLt(lr2, cut * cut, lr, cut);
-  Type D_series = lr_s * lr_s / Type(2) + lr_s * lr_s * lr_s / Type(6) +
-    lr_s * lr_s * lr_s * lr_s / Type(24) +
-    lr_s * lr_s * lr_s * lr_s * lr_s / Type(120);
-  Type lr_d = CppAD::CondExpLt(lr2, cut * cut, cut, lr);
+  Type cut2 = lr_cut * lr_cut;
+  Type x = CppAD::CondExpLt(lr2, cut2, lr, lr_cut);
+  // Horner form of x^2 (1/2! + x (1/3! + x (... + x / 9!))).
+  Type poly = Type(1.0 / 362880.0);
+  poly = Type(1.0 / 40320.0) + x * poly;
+  poly = Type(1.0 / 5040.0) + x * poly;
+  poly = Type(1.0 / 720.0) + x * poly;
+  poly = Type(1.0 / 120.0) + x * poly;
+  poly = Type(1.0 / 24.0) + x * poly;
+  poly = Type(1.0 / 6.0) + x * poly;
+  poly = Type(0.5) + x * poly;
+  Type D_series = x * x * poly;
+  Type lr_d = CppAD::CondExpLt(lr2, cut2, lr_cut, lr);
   Type D_direct = exp(lr_d) - Type(1) - lr_d;
-  Type D = CppAD::CondExpLt(lr2, cut * cut, D_series, D_direct);
-  Type k_cut = Type(50);
-  Type k_s = CppAD::CondExpGt(k, k_cut, k, k_cut);
-  Type ik = Type(1) / k_s;
+  Type D = CppAD::CondExpLt(lr2, cut2, D_series, D_direct);
+
+  Type ls_cut = log(Type(50));
+  Type ls_s = CppAD::CondExpGt(log_shape, ls_cut, log_shape, ls_cut);
+  Type ik = exp(-ls_s);
   Type ik2 = ik * ik;
-  Type S_stirling = Type(0.5) * (log(k_s) - log(Type(2) * Type(M_PI))) -
+  Type S_stirling = Type(0.5) * (ls_s - log(Type(2) * Type(M_PI))) -
     ik / Type(12) + ik * ik2 / Type(360) - ik * ik2 * ik2 / Type(1260);
-  Type k_d = CppAD::CondExpGt(k, k_cut, k_cut, k);
-  Type S_direct = k_d * log(k_d) - k_d - lgamma(k_d);
-  Type S = CppAD::CondExpGt(k, k_cut, S_stirling, S_direct);
+  Type ls_d = CppAD::CondExpGt(log_shape, ls_cut, ls_cut, log_shape);
+  Type k_d = exp(ls_d);
+  Type S_direct = k_d * ls_d - k_d - lgamma(k_d);
+  Type S = CppAD::CondExpGt(log_shape, ls_cut, S_stirling, S_direct);
+
+  Type ls_cap = Type(700);
+  Type k = exp(CppAD::CondExpGt(log_shape, ls_cap, ls_cap, log_shape));
   return -k * D - log(y) + S;
 }
 

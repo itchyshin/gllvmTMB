@@ -102,18 +102,16 @@
 .auto_psi_skip_frequency_id <- function(binomial_labs = character(),
                                         multinomial_labs = character(),
                                         ordinal_labs = character()) {
-  has_binomial <- length(binomial_labs) > 0L
-  has_multinomial <- length(multinomial_labs) > 0L
-  suffix <- if (has_binomial && has_multinomial) {
-    "binomial-multinomial"
-  } else if (has_multinomial) {
-    "multinomial"
-  } else if (has_binomial || length(ordinal_labs) == 0L) {
-    "binomial"
-  } else {
-    "ordinal"
-  }
-  if (has_binomial && length(ordinal_labs) > 0L) suffix <- paste0(suffix, "-ordinal")
+  ## One component per skipped category, in a fixed order, so every
+  ## combination (including multinomial + ordinal) has its own once-per-session
+  ## id. Binomial-only, multinomial-only and binomial-multinomial keep the ids
+  ## they had before the ordinal arm existed.
+  parts <- c(
+    if (length(binomial_labs) > 0L) "binomial",
+    if (length(multinomial_labs) > 0L) "multinomial",
+    if (length(ordinal_labs) > 0L) "ordinal"
+  )
+  suffix <- if (length(parts)) paste(parts, collapse = "-") else "binomial"
   paste0("gllvmTMB-psi-skip-", suffix)
 }
 

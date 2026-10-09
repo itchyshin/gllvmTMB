@@ -214,7 +214,8 @@
   object,
   loading_thresh = 1e-3,
   sd_thresh = 1e-4,
-  sd_rel_thresh = 1e-3
+  sd_rel_thresh = 1e-3,
+  phi_gamma_ceiling_thresh = 1e8
 ) {
   flags <- character(0)
   rep <- object$report
@@ -275,7 +276,7 @@
   ## Gamma shape at infinity (#1377): a trait whose residual CV has collapsed
   ## to zero (a Heywood-type boundary for the Gamma family) is a boundary fit
   ## just like a collapsed variance component, and was previously unflagged.
-  if (.gllvmTMB_gamma_shape_at_ceiling(object)) {
+  if (.gllvmTMB_gamma_shape_at_ceiling(object, phi_gamma_ceiling_thresh)) {
     flags <- c(flags, "boundary_phi_gamma")
   }
   unique(flags)
@@ -305,7 +306,7 @@
   out
 }
 
-.gllvmTMB_gamma_shape_at_ceiling <- function(object, ceiling = 1e8) {
+.gllvmTMB_gamma_shape_at_ceiling <- function(object, ceiling) {
   shapes <- tryCatch(.gllvmTMB_gamma_shapes(object), error = function(e) numeric(0L))
   length(shapes) > 0L && any(!is.finite(shapes) | shapes >= ceiling)
 }
@@ -1629,7 +1630,8 @@
 #'   log-likelihood is re-evaluated at the fitted parameters by adaptive
 #'   Gauss-Hermite quadrature and compared with the Laplace value
 #'   (`laplace_accuracy` row). Skipped for all-Gaussian fits, where Laplace is
-#'   exact. Set to `FALSE` to skip the extra evaluation on very large fits.
+#'   exact, and reported as `INFO` (not evaluated) when rows x nodes exceeds
+#'   2e7. Set to `FALSE` to skip the extra evaluation entirely.
 #' @param laplace_accuracy_thresh Numeric scalar. The `laplace_accuracy` row
 #'   warns when the Laplace logLik exceeds the quadrature logLik by more than
 #'   this many log-likelihood units (an optimistic Laplace approximation, which
@@ -1838,6 +1840,12 @@ check_gllvmTMB <- function(
   )
 
   flags <- health$boundary_flags %||% character(0)
+  ## The cached fit-time flag uses the default Gamma ceiling; re-judge it at
+  ## the caller's `phi_gamma_ceiling_thresh`.
+  flags <- setdiff(flags, "boundary_phi_gamma")
+  if (.gllvmTMB_gamma_shape_at_ceiling(object, phi_gamma_ceiling_thresh)) {
+    flags <- c(flags, "boundary_phi_gamma")
+  }
   if (length(flags) == 0L) {
     rows <- c(
       rows,
@@ -2207,7 +2215,13 @@ check_gllvmTMB <- function(
   ## the SAME parameters and warn when Laplace is optimistic.
   if (isTRUE(laplace_accuracy) && !is_mspl) {
     la <- tryCatch(.gllvmTMB_laplace_accuracy(object), error = function(e) NULL)
-    if (is.list(la) && isTRUE(la$evaluated)) {
+    if (is.list(la) && isTRUE(la$too_large)) {
+      rows <- c(rows, list(.gllvmTMB_check_row(
+        "laplace_accuracy", "INFO", NA_character_, laplace_accuracy_thresh,
+        paste0("not evaluated: ", la$reason),
+        "for a direct check, refit a subsample or compare with gllvmTMBcontrol(aghq = 9)"
+      )))
+    } else if (is.list(la) && isTRUE(la$evaluated)) {
       bad <- la$optimism > laplace_accuracy_thresh
       rows <- c(rows, list(.gllvmTMB_check_row(
         "laplace_accuracy",

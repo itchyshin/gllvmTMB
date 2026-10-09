@@ -26,8 +26,10 @@
   c(15L, 9L, 5L)[[d]]
 }
 
-.gllvmTMB_laplace_accuracy <- function(object, k = NULL) {
-  skip <- function(reason) list(evaluated = FALSE, reason = reason)
+.gllvmTMB_laplace_accuracy <- function(object, k = NULL, max_work = 2e7) {
+  skip <- function(reason, too_large = FALSE) {
+    list(evaluated = FALSE, reason = reason, too_large = too_large)
+  }
   obj <- object$tmb_obj
   if (is.null(obj) || is.null(obj$env)) return(skip("no TMB object on the fit"))
   if (isTRUE(object$aghq$used)) {
@@ -62,6 +64,25 @@
   par <- object$opt$par
   if (is.null(par) || !all(is.finite(par))) return(skip("non-finite parameters"))
   k <- as.integer(k %||% .gllvmTMB_laplace_accuracy_k(d_B))
+  ## Cost is one likelihood evaluation per (row, node): cap it so the audit
+  ## stays a few seconds (about 2 s at 1.9e6 on a 23k-row d = 2 fit).
+  work <- as.numeric(length(fid)) * as.numeric(k)^d_B
+  if (!is.finite(work) || work > max_work) {
+    return(skip(sprintf(
+      "problem too large for the audit (%.3g row-node evaluations > %.3g)",
+      work, max_work), too_large = TRUE))
+  }
+
+  ## The adaptation and the Laplace evaluation below move the fitted object's
+  ## inner state (last.par / last.par.best, which seed the next inner
+  ## optimisation). Put it back however this function exits.
+  env <- obj$env
+  last_par <- env$last.par
+  last_par_best <- env$last.par.best
+  on.exit({
+    env$last.par <- last_par
+    env$last.par.best <- last_par_best
+  }, add = TRUE)
 
   res <- tryCatch({
     ad <- .gllvmTMB_aghq_adapt(obj, par, d_B, n_sites)
@@ -94,8 +115,6 @@
       stop("quadrature parameter vector does not align with the fit")
     }
     nll_q <- as.numeric(obj_q$env$f(par, order = 0, type = "double"))
-    ## Restore the fitted object's inner state at the optimum.
-    invisible(obj$fn(par))
     list(nll_laplace = nll_laplace, nll_quadrature = nll_q)
   }, error = function(e) e)
   if (inherits(res, "error")) {

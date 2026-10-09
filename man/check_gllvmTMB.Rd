@@ -219,7 +219,8 @@ random effects are the \code{latent()} scores with \code{d <= 3}, the marginal
 log-likelihood is re-evaluated at the fitted parameters by adaptive
 Gauss-Hermite quadrature and compared with the Laplace value
 (\code{laplace_accuracy} row). Skipped for all-Gaussian fits, where Laplace is
-exact. Set to \code{FALSE} to skip the extra evaluation on very large fits.}
+exact, and reported as \code{INFO} (not evaluated) when rows x nodes exceeds
+2e7. Set to \code{FALSE} to skip the extra evaluation entirely.}
 
 \item{laplace_accuracy_thresh}{Numeric scalar. The \code{laplace_accuracy} row
 warns when the Laplace logLik exceeds the quadrature logLik by more than

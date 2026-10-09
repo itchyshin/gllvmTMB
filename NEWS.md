@@ -13,7 +13,12 @@
   Gamma shape shared by all traits, while `engine = "tmb"` fits one shape per
   trait. Multi-trait Gamma fits on that route are now refused by default
   instead of only warning; a fixed-effect `X` with at least one column fits
-  per-trait shapes and is unaffected, and a zero-column `X` now stops in R. Set `options(gllvmTMB.julia_gamma_shared_shape =
+  per-trait shapes and is unaffected, and a zero-column or 2-D `X` now
+  stops in R. `engine = "julia"` also checks each family's link against the
+  link the Julia bridge fits, so `Gamma()` (inverse link),
+  `poisson(link = "sqrt")` or `gaussian(link = "log")` are refused instead of
+  being fitted silently with the bridge's own link; `Gamma(link = "log")` and
+  probit/cloglog `binomial()` still fit (#1475). Set `options(gllvmTMB.julia_gamma_shared_shape =
   TRUE)` to fit the shared-shape model on purpose (#1334).
 
 * Neighbouring output and refit guards now reject fractional trait-pair indices,

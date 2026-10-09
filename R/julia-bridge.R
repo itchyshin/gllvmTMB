@@ -751,7 +751,14 @@ gllvm_julia_capabilities <- function() {
     return(FALSE)
   }
   d <- dim(X)
-  q <- if (length(d) >= 3L) d[3L] else if (length(d) == 2L) d[2L] else length(X)
+  if (length(d) != 3L) {
+    cli::cli_abort(c(
+      "[GJL-GATE-X-SHAPE] engine = 'julia': the fixed-effect {.arg X} must be a 3-D trait x unit x covariate array.",
+      "i" = "Got {if (is.null(d)) 'a vector' else paste0('a ', length(d), '-D object with dim ', paste(d, collapse = ' x '))}. A plain matrix is ambiguous (unit x covariate or trait x unit), so it is not reshaped.",
+      ">" = "Build {.code array(..., dim = c(n_traits, n_units, n_covariates))}."
+    ), class = c("gllvmTMB_julia_x_shape", "gllvmTMB_julia_gate"))
+  }
+  q <- d[3L]
   if (!q) {
     cli::cli_abort(c(
       "[GJL-GATE-X-EMPTY] engine = 'julia': the fixed-effect {.arg X} array has no covariate columns.",
@@ -777,7 +784,29 @@ gllvm_julia_capabilities <- function() {
   .gllvm_julia_warn_gamma_shared_shape(fam, p)
 }
 
+# Link name the GLLVModels.jl bridge actually uses for a bridge key, in R's
+# spelling ("log", "logit", ...), derived from `.gllvm_julia_default_link()`.
+.gllvm_julia_engine_link <- function(key) {
+  jl <- .gllvm_julia_default_link(key)
+  if (is.na(jl)) {
+    return(NA_character_)
+  }
+  switch(
+    jl,
+    IdentityLink = "identity",
+    LogLink = "log",
+    LogitLink = "logit",
+    ProbitLink = "probit",
+    CLogLogLink = "cloglog",
+    NA_character_
+  )
+}
+
 # Map one R family (a `family` object or a string) to the GLLVModels.jl bridge key.
+# A family object's link is checked against the link the bridge really fits
+# for that key (#1475): the map below collapses e.g. Gamma() (inverse link)
+# and Gamma(link = "log") to the same "gamma" key, which would otherwise fit a
+# log-link model silently. Strings carry no link and map as before.
 .gllvm_julia_family_scalar <- function(family) {
   if (inherits(family, "family")) {
     if (identical(family$family, "binomial")) {
@@ -798,7 +827,9 @@ gllvm_julia_capabilities <- function() {
         )
       ))
     }
-    family <- family$family
+    key <- .gllvm_julia_family_scalar(family$family)
+    .gllvm_julia_check_link(family, key)
+    return(key)
   }
   fam <- tolower(as.character(family))
   if (length(fam) != 1L || is.na(fam)) {
@@ -852,6 +883,19 @@ gllvm_julia_capabilities <- function() {
 
 # Map an R family (a `family` object, a string, a character vector, or a list of
 # one family per trait) to the GLLVModels.jl bridge family string(s).
+.gllvm_julia_check_link <- function(family, key) {
+  link <- tolower(as.character(family$link %||% NA_character_))
+  want <- .gllvm_julia_engine_link(key)
+  if (length(link) != 1L || is.na(link) || is.na(want) || identical(link, want)) {
+    return(invisible(TRUE))
+  }
+  cli::cli_abort(c(
+    "[GJL-GATE-LINK] engine = 'julia': {.code {family$family}(link = \"{link}\")} is not supported.",
+    "i" = "The Julia bridge fits the {.val {family$family}} family with the {.val {want}} link only.",
+    ">" = "Use {.code link = \"{want}\"}, or {.code engine = \"tmb\"} for the {.val {link}} link."
+  ), class = c("gllvmTMB_julia_link_unsupported", "gllvmTMB_julia_gate"))
+}
+
 .gllvm_julia_family <- function(family) {
   if (is.list(family) && !inherits(family, "family")) {
     fam <- vapply(family, .gllvm_julia_family_scalar, character(1))
@@ -3291,7 +3335,7 @@ tidy.gllvmTMB_julia <- function(
     ## identifiability (the TMB engine's convention). Report only the free
     ## tau_2..tau_{K-1}, labelled exactly as tidy.gllvmTMB_multi() does.
     free <- is.finite(cuts)
-    free[, 1L] <- free[, 1L] & abs(cuts[, 1L]) > 1e-12
+    free[, 1L] <- FALSE
     idx <- which(free, arr.ind = TRUE)
     if (!nrow(idx)) {
       return(empty)

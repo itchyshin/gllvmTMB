@@ -595,3 +595,103 @@ test_that("live: intercept-only X Gamma fits per-trait shape and matches TMB log
   )))
   expect_equal(as.numeric(logLik(fx)), as.numeric(logLik(ft)), tolerance = 1e-4)
 })
+
+# --- #1475: link check against the link the bridge actually fits ------------
+
+test_that("#1475 a family link the bridge does not fit is refused before any map collapse", {
+  link_err <- function(fam) {
+    err <- tryCatch(.gllvm_julia_family(fam), error = function(e) e)
+    inherits(err, "gllvmTMB_julia_link_unsupported")
+  }
+  ## refused: Gamma() is the inverse link; the bridge's Gamma is log-link
+  expect_true(link_err(Gamma()))
+  expect_true(link_err(poisson(link = "sqrt")))
+  expect_true(link_err(gaussian(link = "log")))
+  expect_true(link_err(Beta(link = "probit")))
+  msg <- tryCatch(.gllvm_julia_family(Gamma()), error = conditionMessage)
+  expect_match(msg, "GJL-GATE-LINK", fixed = TRUE)
+  expect_match(msg, "\"log\"", fixed = TRUE)
+  ## accepted: the link each bridge key really fits
+  expect_identical(.gllvm_julia_family(Gamma(link = "log")), "gamma")
+  expect_identical(.gllvm_julia_family(binomial(link = "probit")), "binomial_probit")
+  expect_identical(.gllvm_julia_family(binomial(link = "cloglog")), "binomial_cloglog")
+  expect_identical(.gllvm_julia_family(binomial()), "binomial")
+  expect_identical(.gllvm_julia_family(gaussian()), "gaussian")
+  expect_identical(.gllvm_julia_family(poisson()), "poisson")
+  expect_identical(.gllvm_julia_family(nbinom2()), "negbinomial")
+  expect_identical(.gllvm_julia_family(nbinom1()), "nb1")
+  expect_identical(.gllvm_julia_family(Beta()), "beta")
+  expect_identical(.gllvm_julia_family(ordinal_logit()), "ordinal")
+  expect_identical(.gllvm_julia_family(ordinal_probit()), "ordinal_probit")
+  ## strings carry no link and map as before
+  expect_identical(.gllvm_julia_family("gamma"), "gamma")
+})
+
+test_that("#1475 the link refusal fires before the shared-shape Gamma gate", {
+  withr::local_options(gllvmTMB.julia_gamma_shared_shape = NULL)
+  y <- matrix(stats::rgamma(3 * 10, shape = 2, rate = 1), 3, 10)
+  expect_error(
+    gllvm_julia_fit(y, family = Gamma(), num.lv = 1L),
+    class = "gllvmTMB_julia_link_unsupported"
+  )
+  df <- j1329_long(n_unit = 10L)
+  df$value <- stats::rpois(nrow(df), 3)
+  expect_error(
+    gllvmTMB(
+      value ~ 0 + trait + latent(0 + trait | unit, d = 1, unique = FALSE),
+      data = df, trait = "trait", unit = "unit",
+      family = poisson(link = "sqrt"), engine = "julia"
+    ),
+    class = "gllvmTMB_julia_link_unsupported"
+  )
+})
+
+test_that("#1334 a 2-D X is refused, not reshaped", {
+  y <- matrix(stats::rpois(3 * 10, 3), 3, 10)
+  for (X in list(matrix(1, 10L, 2L), matrix(1, 3L, 10L), rep(1, 30))) {
+    expect_error(
+      gllvm_julia_fit(y, family = poisson(), num.lv = 1L, X = X),
+      class = "gllvmTMB_julia_x_shape"
+    )
+  }
+})
+
+test_that("live: accepted links keep fitting (Gamma log with X, binomial probit/cloglog)", {
+  j1329_skip_if_no_live_julia()
+  set.seed(41)
+  n <- 60L
+  z <- stats::rnorm(n)
+  x <- stats::rnorm(n)
+  df <- data.frame(
+    unit = factor(rep(seq_len(n), 3L)),
+    trait = factor(rep(paste0("t", 1:3), each = n)),
+    x = rep(x, 3L)
+  )
+  shape <- rep(c(2, 6, 20), each = n)
+  mu <- exp(0.4 + 0.3 * df$x + rep(z, 3L) * rep(c(0.6, 0.4, 0.2), each = n))
+  df$pos <- stats::rgamma(3L * n, shape = shape, rate = shape / mu)
+  fg <- pos ~ 0 + trait + x + latent(0 + trait | unit, d = 1, unique = FALSE)
+  gj <- gllvmTMB(fg, data = df, trait = "trait", unit = "unit",
+                 family = Gamma(link = "log"), engine = "julia")
+  gt <- suppressWarnings(suppressMessages(gllvmTMB(
+    fg, data = df, trait = "trait", unit = "unit",
+    family = Gamma(link = "log"), control = gllvmTMBcontrol(se = FALSE)
+  )))
+  expect_equal(as.numeric(logLik(gj)), as.numeric(logLik(gt)), tolerance = 1e-4)
+
+  eta <- rep(z, 3L) * rep(c(1.2, 0.9, 0.6), each = n)
+  fb <- yb ~ 0 + trait + latent(0 + trait | unit, d = 1, unique = FALSE)
+  for (lk in c("probit", "cloglog")) {
+    df$yb <- stats::rbinom(3L * n, 1, binomial(link = lk)$linkinv(eta))
+    bj <- gllvmTMB(fb, data = df, trait = "trait", unit = "unit",
+                   family = binomial(link = lk), engine = "julia")
+    expect_s3_class(bj, "gllvmTMB_julia")
+    expect_identical(bj$bridge_input$family, paste0("binomial_", lk))
+    bt <- suppressWarnings(suppressMessages(gllvmTMB(
+      fb, data = df, trait = "trait", unit = "unit",
+      family = binomial(link = lk), control = gllvmTMBcontrol(se = FALSE)
+    )))
+    expect_equal(as.numeric(logLik(bj)), as.numeric(logLik(bt)),
+                 tolerance = 1e-3, label = paste(lk, "logLik"))
+  }
+})

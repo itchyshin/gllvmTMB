@@ -110,7 +110,7 @@ forecast_temporal <- function(object, newdata, se.fit = FALSE) {
   }
 
   nd <- .gllvmTMB_restore_newdata_factor_levels(newdata, object$data)
-  X_new <- stats::model.matrix(stats::delete.response(stats::terms(object$formula)), nd)
+  X_new <- .gllvmTMB_newdata_model_matrix(object, nd)
   eta_fixed_new <- .gllvmTMB_predict_fixed_eta(object, X_new) + .gllvmTMB_offset_newdata(object, nd)
   eta_fixed_observed <- as.numeric(td$X_fix %*% .gllvmTMB_b_fix_values(object)) + .gllvmTMB_offset_vec(object)
   response_col <- all.vars(object$formula[[2L]])

@@ -299,6 +299,56 @@ test_that("Psi-skip message id keeps every skipped category (#1390)", {
   expect_identical(id(multinomial_labs = "m", ordinal_labs = "o"),
                    "gllvmTMB-psi-skip-multinomial-ordinal")
   expect_identical(id("b", "m", "o"), "gllvmTMB-psi-skip-binomial-multinomial-ordinal")
+  expect_identical(id("b", ordinal_labs = "o"), "gllvmTMB-psi-skip-binomial-ordinal")
+})
+
+test_that("binomial + ordinal Psi skip names both traits in one message (#1390)", {
+  ## Unit: the message carries the binomial line AND the ordinal line.
+  msg <- gllvmTMB:::.auto_psi_skip_message(binomial_labs = "bin",
+                                          ordinal_labs = "ord")
+  expect_match(msg[[1L]], "for 2 binary / categorical-contrast / single-observation ordinal traits")
+  expect_true(any(grepl("Affected traits: bin, ord", msg, fixed = TRUE)))
+  expect_true(any(grepl("Single-trial binomial traits bin", msg, fixed = TRUE)))
+  expect_true(any(grepl("Ordinal traits ord have one observation", msg, fixed = TRUE)))
+
+  ## Integration: a Gaussian + single-trial binary + single-observation
+  ## ordinal fit gates both non-Gaussian traits and shows both notes.
+  ## Force the once-per-session message to display even if an earlier test
+  ## in this session already used the same frequency id.
+  withr::local_options(rlib_message_verbosity = "verbose")
+  set.seed(13902)
+  n <- 150
+  z <- stats::rnorm(n)
+  ystar <- 0.8 * z + stats::rnorm(n)
+  df <- data.frame(
+    unit = factor(rep(seq_len(n), 3L)),
+    trait = factor(rep(c("g", "bin", "ord"), each = n),
+                   levels = c("g", "bin", "ord")),
+    family = factor(rep(c("g", "b", "o"), each = n), levels = c("g", "b", "o")),
+    value = c(0.7 * z + stats::rnorm(n, sd = 0.6),
+              stats::rbinom(n, 1, stats::pnorm(0.6 * z)),
+              1L + (ystar > -0.5) + (ystar > 0.3) + (ystar > 1.1))
+  )
+  fam <- list(g = gaussian(), b = binomial(link = "probit"), o = ordinal_probit())
+  attr(fam, "family_var") <- "family"
+  msgs <- character()
+  fit <- withCallingHandlers(
+    suppressWarnings(gllvmTMB(
+      value ~ 0 + trait + latent(0 + trait | unit, d = 1),
+      data = df, trait = "trait", unit = "unit", family = fam,
+      control = gllvmTMBcontrol(se = FALSE)
+    )),
+    message = function(m) {
+      msgs <<- c(msgs, conditionMessage(m))
+      invokeRestart("muffleMessage")
+    }
+  )
+  expect_equal(fit$opt$convergence, 0L)
+  expect_identical(as.integer(fit$tmb_data$diag_B_skip), c(0L, 1L, 1L))
+  skip_msg <- msgs[grepl("Skipping the default between-unit", msgs)]
+  expect_length(skip_msg, 1L)
+  expect_match(skip_msg, "Single-trial binomial traits bin")
+  expect_match(skip_msg, "Ordinal traits ord have one observation")
 })
 
 ## ---- #1389: Laplace-accuracy diagnostic ---------------------------------

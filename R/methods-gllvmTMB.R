@@ -229,13 +229,19 @@ sigma.gllvmTMB_va <- sigma.gllvmTMB_multi
   common <- intersect(names(nd), names(training_data))
   for (nm in common) {
     ref <- training_data[[nm]]
-    if (!is.factor(ref)) {
+    is_chr <- is.character(ref)
+    if (!is.factor(ref) && !is_chr) {
       next
     }
     raw <- as.character(nd[[nm]])
+    ## Character training columns become factors with the same levels
+    ## `model.frame()` would have used (`sort(unique(ref))`). Otherwise a
+    ## newdata grid that omits the baseline level rebuilds a different
+    ## dummy coding and silently predicts those rows as the baseline (#1425).
+    lv <- if (is.factor(ref)) levels(ref) else levels(factor(ref))
     restored <- factor(
       raw,
-      levels = levels(ref),
+      levels = lv,
       ordered = is.ordered(ref)
     )
     unseen <- unique(raw[!is.na(raw) & is.na(restored)])
@@ -249,6 +255,15 @@ sigma.gllvmTMB_va <- sigma.gllvmTMB_multi
       } else {
         NULL
       })
+    }
+    ## `factor()` drops contrasts. Copy any user-set coding (contr.sum,
+    ## contr.helmert, ...) so model.matrix() does not fall back to
+    ## treatment dummies whose column names are absent from the fit (#1424).
+    if (is.factor(ref)) {
+      ctr <- attr(ref, "contrasts")
+      if (!is.null(ctr) && nlevels(restored) >= 2L) {
+        contrasts(restored) <- ctr
+      }
     }
     nd[[nm]] <- restored
   }
@@ -274,8 +289,105 @@ sigma.gllvmTMB_va <- sigma.gllvmTMB_multi
       "i" = "Check factor levels, contrasts, and fixed-effect terms in {.arg newdata}."
     ))
   }
+  ## Multiplying only the columns that happen to be present treats a
+  ## missing dummy as zero -- the #1425 silent misprediction when a
+  ## character predictor's baseline level is absent from newdata.
+  missing <- setdiff(train_cols, colnames(X_new))
+  if (length(missing)) {
+    shown <- missing[seq_len(min(length(missing), 8L))]
+    suffix <- if (length(missing) > 8L) " ..." else ""
+    cli::cli_abort(c(
+      "New data is missing fixed-effect column(s) present in the fitted model.",
+      "x" = "Missing column(s): {.val {shown}}{suffix}.",
+      "i" = "This usually means a character or factor predictor in {.arg newdata} does not carry the training levels."
+    ), class = "gllvmTMB_predict_missing_columns")
+  }
   names(bfix) <- train_cols
-  as.numeric(X_new %*% bfix[colnames(X_new)])
+  as.numeric(X_new[, train_cols, drop = FALSE] %*% bfix)
+}
+
+## Training-frame terms, factor levels, and contrasts for newdata designs.
+## `terms(formula)` has no predvars, so scale()/poly()/ns() would be
+## re-evaluated on newdata. Building the model frame on the training data
+## freezes those constants the way predict.lm does (#1423). The same frame
+## supplies xlevels (character predictors become factors with the training
+## levels; #1425) and the fitted contrasts (#1424).
+.gllvmTMB_predict_design_basis <- function(fit) {
+  if (is.null(fit$formula) || is.null(fit$data)) {
+    cli::cli_abort(c(
+      "Cannot rebuild the fixed-effect design for {.arg newdata}.",
+      "x" = "The fitted object stores no formula or training data."
+    ))
+  }
+  form <- stats::delete.response(stats::terms(fit$formula))
+  mf <- stats::model.frame(
+    form,
+    data = as.data.frame(fit$data),
+    na.action = stats::na.pass
+  )
+  tt <- stats::terms(mf)
+  mm <- stats::model.matrix(tt, mf)
+  list(
+    terms = tt,
+    xlevels = stats::.getXlevels(tt, mf),
+    contrasts = attr(mm, "contrasts")
+  )
+}
+
+## Put a shortened model.matrix back onto the newdata row index.
+## model.matrix() drops rows with an NA covariate unless the frame used
+## na.pass. If a row is still dropped, pad with NA rather than recycling
+## a shorter eta onto the wrong newdata rows (#1384).
+.gllvmTMB_align_design_rows <- function(X_new, nd) {
+  n_nd <- nrow(nd)
+  if (nrow(X_new) == n_nd) {
+    return(X_new)
+  }
+  out <- matrix(
+    NA_real_,
+    nrow = n_nd,
+    ncol = ncol(X_new),
+    dimnames = list(rownames(nd), colnames(X_new))
+  )
+  rn_x <- rownames(X_new)
+  rn_nd <- rownames(nd)
+  if (!is.null(rn_x) && !is.null(rn_nd)) {
+    idx <- match(rn_x, rn_nd)
+    if (!anyNA(idx)) {
+      out[idx, ] <- X_new
+      return(out)
+    }
+  }
+  cli::cli_abort(c(
+    "The fixed-effect design for {.arg newdata} has {nrow(X_new)} row{?s} but {.arg newdata} has {n_nd}.",
+    "i" = "Rows with a missing covariate should stay in place as NA predictions."
+  ), class = "gllvmTMB_predict_newdata_row_mismatch")
+}
+
+## Fixed-effect design for predict(newdata), row-aligned with newdata.
+.gllvmTMB_newdata_model_matrix <- function(fit, nd) {
+  basis <- .gllvmTMB_predict_design_basis(fit)
+  mf <- tryCatch(
+    stats::model.frame(
+      basis$terms,
+      data = nd,
+      xlev = basis$xlevels,
+      na.action = stats::na.pass
+    ),
+    error = function(e) {
+      cli::cli_abort(c(
+        "Cannot build the fixed-effect design for {.arg newdata}.",
+        "x" = conditionMessage(e),
+        "i" = "Use the training factor levels and the same transforms as the fitted formula."
+      ), parent = e)
+    }
+  )
+  mm <- stats::model.matrix(
+    basis$terms,
+    mf,
+    contrasts.arg = basis$contrasts
+  )
+  .gllvmTMB_align_design_rows(mm, nd)
 }
 
 .gllvmTMB_b_fix_se <- function(fit) {
@@ -2833,7 +2945,13 @@ sanity_multi <- function(object, gradient_thresh = 1e-2, se_thresh = 100) {
 #'
 #' @param object A fit returned by [gllvmTMB()].
 #' @param newdata Optional new data frame. If `NULL`, predictions are
-#'   produced for the training rows.
+#'   produced for the training rows. A missing covariate stays `NA` in
+#'   that row; the other rows keep their own predictions. Data-dependent
+#'   transforms in the fixed formula (`scale()`, `poly()`, `ns()`) reuse
+#'   the training centre, scale, and basis, so a row's value does not
+#'   depend on which other rows travel with it. Character predictors use
+#'   the training levels, and user-set factor contrasts (for example
+#'   `contr.sum`) are copied onto the restored factor.
 #' @param type One of `"link"` (default) or `"response"`.
 #'
 #'   `"response"` includes the row's **offset**, so on a fit with an effort
@@ -3024,16 +3142,12 @@ predict.gllvmTMB_multi <- function(
       typed_observation = observation_vars
     )
 
-    ## Build the design from the RIGHT-HAND SIDE only (#1154). `model.matrix()`
-    ## on a two-sided formula constructs a `model.frame()` first, which
-    ## evaluates the LHS -- so `predict(newdata = )` used to fail with
-    ## `object '<response>' not found` unless the caller supplied a dummy
-    ## response column. A prediction grid has no response by construction;
-    ## that is the entire point of predicting on one.
-    X_new <- stats::model.matrix(
-      stats::delete.response(stats::terms(object$formula)),
-      nd
-    )
+    ## Build the design from the RIGHT-HAND SIDE only (#1154), using the
+    ## training model-frame terms so `predvars`, factor levels, and
+    ## contrasts stay those of the fit (#1423, #1424, #1425). `na.pass`
+    ## keeps a row with a missing covariate; the prediction is NA there
+    ## instead of recycling a shorter vector onto the wrong rows (#1384).
+    X_new <- .gllvmTMB_newdata_model_matrix(object, nd)
     if (!is.null(isdm_observation)) {
       X_new <- .gll_isdm_observation_prediction_design(
         X_fix = X_new,

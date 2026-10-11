@@ -1,5 +1,34 @@
 # Development (unreleased)
 
+* Several likelihoods are now numerically stable at extreme parameter values
+  that an optimiser can reach. Before, they lost precision or went flat there.
+  - Binomial `logit` / `probit` no longer clamp the probability to
+    `[1e-12, 1 - 1e-12]`. Past `|eta|` of 27.6 (logit) or 7 (probit) each
+    observation used to contribute a constant with zero gradient, so a fit
+    wandering into that tail was not pulled back (#1362). The same applies to
+    the `log(1e-12)` floor on a multinomial observed category.
+  - `nbinom2()`, `nbinom1()`, `zi_nbinom2()` and `truncated_nbinom2()` now reach
+    their Poisson limit cleanly. `truncated_nbinom2()` could return a
+    log-likelihood of `+Inf` at a dispersion of about 1e14 (#1363).
+  - `student()` and `betabinomial()` no longer exceed their Gaussian / binomial
+    limit at very large `df` / precision. Before, Student-t data with
+    `df` above about 1e13 could score above the Gaussian maximum (#1364).
+    Residuals for `betabinomial()` use the same stable form; their CDF could
+    exceed 1 at a very large precision.
+  - The phylogenetic and spatial intercept-slope correlation (`phylo_unique(1 +
+    x | species)` and its spatial twin) stays finite as the correlation
+    approaches +-1. It used to give an infinite objective from
+    `|atanh(rho)|` of about 19.5 (#1386).
+  At ordinary parameter values the log-likelihood agrees with the previous
+  one to about 1e-10. **Fits change where a trait's dispersion runs to its
+  limit.** That is common: an `nbinom2()` / `zi_nbinom2()` /
+  `truncated_nbinom2()` / `betabinomial()` trait whose data show no extra
+  variation sends its dispersion there. The old value was wrong by up to
+  several log-likelihood units at such a point, so these fits can now report
+  a different logLik, and some that stopped short of convergence now converge.
+  The intercept-slope correlation is now bounded at `|rho| < 1 - 1e-6`, as for
+  the temporal AR1 correlation.
+
 * Three converged-but-wrong optima are now prevented or reported.
   `Gamma()` and the `delta_gamma()` positive part use a numerically stable
   log-density: at a very large shape the old one lost all precision and could

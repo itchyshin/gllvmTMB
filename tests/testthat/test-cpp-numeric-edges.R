@@ -343,7 +343,9 @@ test_that("phylo intercept-slope prior has a finite gradient at |atanh_cor_b| = 
     g <- as.numeric(obj$gr(p1))
     expect_true(is.finite(f))
     expect_true(all(is.finite(g)))
-    expect_gte(f, f_hat - 1e-6)
+    ## The profile is legitimately near-flat toward rho = +-1 (a fit can sit
+    ## ~1e-6 above it); the unbounded form showed a 1.2-unit spurious gain.
+    expect_gte(f, f_hat - 1e-3)
   }
   ## The reported correlation stays strictly inside (-1, 1).
   invisible(obj$fn(p1))

@@ -4,10 +4,10 @@
   that its grouping token "is ignored". With `rho = NULL` or `rho = 0.5`, the
   name after `|` is the column that identifies each location, and the fit
   reads it; the warning stays for the default `rho = 1`, where the token
-  really is ignored. The structured-source-strength article now names its
-  `location` column in the two estimated-`rho` fits; with `| coords` they
-  stopped with "Spatial attenuation requires an observed grouping column",
-  which kept the pkgdown site from rebuilding.
+  really is ignored. The help pages for `spatial_latent()`, `spatial_indep()`
+  and `spatial_dep()` now say so. An estimated-`rho` fit that wrote
+  `| coords` stops with "Spatial attenuation requires an observed grouping
+  column"; name the location column instead.
 
 * `engine = "julia"` fixes. Julia fits now support `tidy()` (point estimates
   for intercepts and covariate coefficients, latent standard deviations,

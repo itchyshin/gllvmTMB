@@ -26,7 +26,11 @@ covariance. Omitted or explicit \code{1} preserves the existing model. Range
 remains a separate estimated parameter. Attenuation preserves the projected
 marginal variance at each modeled location and applies to the whole trait
 covariance, including Psi. The grouping column must identify locations
-consistently across replicates. Estimated latent models require rank one
+consistently across replicates. With \code{rho = NULL} or any value other
+than 1, the name after \code{|} is that grouping column and must be a real
+column of \code{data}, for example \code{0 + trait | location}; \code{| coords} stops
+with an error there. At the default \code{rho = 1} the name is ignored, and
+\code{| coords} is the usual spelling. Estimated latent models require rank one
 and at least four traits. The frozen spatial study found no passing recovery
 cell (14 partial and 2 blocked); rho intervals remain unvalidated.
 new-location prediction is not supported for attenuated models.}

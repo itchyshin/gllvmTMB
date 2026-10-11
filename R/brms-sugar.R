@@ -1395,7 +1395,11 @@ spatial_scalar <- function(formula, coords = NULL, mesh = NULL) {
 #'   remains a separate estimated parameter. Attenuation preserves the projected
 #'   marginal variance at each modeled location and applies to the whole trait
 #'   covariance, including Psi. The grouping column must identify locations
-#'   consistently across replicates. Estimated latent models require rank one
+#'   consistently across replicates. With `rho = NULL` or any value other
+#'   than 1, the name after `|` is that grouping column and must be a real
+#'   column of `data`, for example `0 + trait | location`; `| coords` stops
+#'   with an error there. At the default `rho = 1` the name is ignored, and
+#'   `| coords` is the usual spelling. Estimated latent models require rank one
 #'   and at least four traits. The frozen spatial study found no passing recovery
 #'   cell (14 partial and 2 blocked); rho intervals remain unvalidated.
 #'   new-location prediction is not supported for attenuated models.
@@ -1912,7 +1916,11 @@ phylo_indep <- function(
 #'   remains a separate estimated parameter. Attenuation preserves the projected
 #'   marginal variance at each modeled location and applies to the whole trait
 #'   covariance, including Psi. The grouping column must identify locations
-#'   consistently across replicates. Estimated latent models require rank one
+#'   consistently across replicates. With `rho = NULL` or any value other
+#'   than 1, the name after `|` is that grouping column and must be a real
+#'   column of `data`, for example `0 + trait | location`; `| coords` stops
+#'   with an error there. At the default `rho = 1` the name is ignored, and
+#'   `| coords` is the usual spelling. Estimated latent models require rank one
 #'   and at least four traits. The frozen spatial study found no passing recovery
 #'   cell (14 partial and 2 blocked); rho intervals remain unvalidated.
 #'   new-location prediction is not supported for attenuated models.
@@ -2144,7 +2152,11 @@ phylo_dep <- function(formula, tree = NULL, vcv = NULL, A = NULL, Ainv = NULL, r
 #'   remains a separate estimated parameter. Attenuation preserves the projected
 #'   marginal variance at each modeled location and applies to the whole trait
 #'   covariance, including Psi. The grouping column must identify locations
-#'   consistently across replicates. Estimated latent models require rank one
+#'   consistently across replicates. With `rho = NULL` or any value other
+#'   than 1, the name after `|` is that grouping column and must be a real
+#'   column of `data`, for example `0 + trait | location`; `| coords` stops
+#'   with an error there. At the default `rho = 1` the name is ignored, and
+#'   `| coords` is the usual spelling. Estimated latent models require rank one
 #'   and at least four traits. The frozen spatial study found no passing recovery
 #'   cell (14 partial and 2 blocked); rho intervals remain unvalidated.
 #'   new-location prediction is not supported for attenuated models.
@@ -2528,12 +2540,23 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL, rho = 1) {
     return(invisible(NULL))
   }
   ## Estimated or fixed non-unit `rho` reads this token as the location
-  ## identifier, so it is not ignored (see `.gllvmTMB_spatial_token_consumed`).
+  ## identifier, so it is not ignored. Two ways to know: gllvmTMB() has already
+  ## stripped `rho` from the call and recorded the consumed token
+  ## (`.gllvmTMB_spatial_token_consumed`); callers that rewrite the formula
+  ## directly (screen_gllvmTMB(), suggest_lambda_constraint()) still see a
+  ## literal `rho =` argument that is not 1.
   if (
     is.symbol(rhs) &&
       identical(as.character(rhs), .gllvmTMB_spatial_token_consumed$token)
   ) {
     return(invisible(NULL))
+  }
+  call_names <- names(e)
+  if (!is.null(call_names) && "rho" %in% call_names) {
+    rho_arg <- e[[which(call_names == "rho")[1L]]]
+    if (!(is.numeric(rho_arg) && length(rho_arg) == 1L && isTRUE(rho_arg == 1))) {
+      return(invisible(NULL))
+    }
   }
   ## The package's own env-based one-shot tracker (used throughout this
   ## file for grammar notices) rather than `cli_warn(.frequency = "once")`,

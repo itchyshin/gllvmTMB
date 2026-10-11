@@ -1,3 +1,23 @@
+## 2026-10-11: predict(newdata) follow-up classes, #1424 subset, forecast_temporal (#1480)
+
+Unseen-level aborts now carry `gllvmTMB_predict_unseen_level` for every
+variable (iSDM keeps `gllvmTMB_predict_isdm_observation_level` as extra).
+The newdata design wrapper is `gllvmTMB_predict_newdata_design`. Added
+`predict(d[d$g != "a", ])` under `contr.sum`, and a `forecast_temporal()`
+test for `scale(x)`, a missing factor level, and an NA covariate row (stays
+NA). Follow-up issue #1481 (`refs #1480`).
+Focused: `test-predict-newdata-alignment.R` FAIL 0 / PASS 33;
+`test-temporal-program-forecast.R` FAIL 0 / PASS 12.
+Neighbours: `test-tidy-predict.R` FAIL 0 / PASS 20 (4 CRAN skips);
+`test-isdm-predict.R` FAIL 0 / PASS 36 / SKIP 9;
+`test-isdm-requalification-prediction.R` FAIL 0 / PASS 21;
+`test-oct4-news-doc-fixes.R` FAIL 0 / PASS 25.
+Stale-wording scans (this slice):
+`rg -n "gllvmTMB_predict_unseen_level|gllvmTMB_predict_newdata_design" R tests`
+`rg -n "Fixes |Closes |Resolves " docs/dev-log NEWS.md`
+`rg -n "forecast_temporal" tests/testthat/test-temporal-program-forecast.R`
+Report: after-task/2026-10-11-predict-newdata-alignment-followup.md.
+
 ## 2026-10-11: predict(newdata) row alignment (#1384, #1423, #1425, #1424)
 
 Reproduced on `main` `9354ac2f` before the edit. `model.matrix(terms(formula), nd)`

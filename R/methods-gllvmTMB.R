@@ -367,10 +367,19 @@ sigma.gllvmTMB_va <- sigma.gllvmTMB_multi
 ## Fixed-effect design for predict(newdata), row-aligned with newdata.
 .gllvmTMB_newdata_model_matrix <- function(fit, nd) {
   basis <- .gllvmTMB_predict_design_basis(fit)
+  ## model.frame(xlev=) rebuilds each factor and warns "contrasts dropped"
+  ## if the column already carries a contrasts attribute. The fitted coding
+  ## is reapplied below via contrasts.arg, so strip it here.
+  nd_mf <- nd
+  for (nm in names(basis$xlevels)) {
+    if (nm %in% names(nd_mf) && is.factor(nd_mf[[nm]])) {
+      attr(nd_mf[[nm]], "contrasts") <- NULL
+    }
+  }
   mf <- tryCatch(
     stats::model.frame(
       basis$terms,
-      data = nd,
+      data = nd_mf,
       xlev = basis$xlevels,
       na.action = stats::na.pass
     ),

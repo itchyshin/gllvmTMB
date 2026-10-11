@@ -9,7 +9,9 @@ Helpers now restore character columns and contrasts, rebuild the design from
 the training model frame (`predvars` / `xlevels` / `contrasts.arg`,
 `na.action = na.pass`), abort on missing training columns, and pad a
 shortened design back onto the newdata row index.
-Focused tests: `test-predict-newdata-alignment.R`.
+Focused tests: `test-predict-newdata-alignment.R` FAIL 0 / PASS 29.
+Neighbours: `test-tidy-predict.R` FAIL 0 / PASS 20; `test-isdm-predict.R` FAIL 0 / PASS 36;
+`test-isdm-requalification-prediction.R` FAIL 0 / PASS 21; `test-oct4-news-doc-fixes.R` FAIL 0 / PASS 25.
 Stale-wording scans (this slice):
 `rg -n "model.matrix\\(stats::delete.response" R`
 `rg -n "Fixes |Closes |Resolves " docs/dev-log NEWS.md`

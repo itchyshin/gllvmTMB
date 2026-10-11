@@ -1,3 +1,21 @@
+## 2026-10-11: predict(newdata) row alignment (#1384, #1423, #1425, #1424)
+
+Reproduced on `main` `9354ac2f` before the edit. `model.matrix(terms(formula), nd)`
+dropped NA covariate rows and recycled `eta` (#1384); `terms(formula)` had no
+`predvars` so `scale()` was re-evaluated on newdata (#1423); character
+predictors rebuilt levels from the supplied rows (#1425);
+`restore_newdata_factor_levels()` dropped user-set contrasts (#1424).
+Helpers now restore character columns and contrasts, rebuild the design from
+the training model frame (`predvars` / `xlevels` / `contrasts.arg`,
+`na.action = na.pass`), abort on missing training columns, and pad a
+shortened design back onto the newdata row index.
+Focused tests: `test-predict-newdata-alignment.R`.
+Stale-wording scans (this slice):
+`rg -n "model.matrix\\(stats::delete.response" R`
+`rg -n "Fixes |Closes |Resolves " docs/dev-log NEWS.md`
+`rg -n "recycle|predvars|contr.sum" R/methods-gllvmTMB.R tests/testthat/test-predict-newdata-alignment.R`
+Report: after-task/2026-10-11-predict-newdata-alignment.md.
+
 ## 2026-10-08: neighbouring output and bootstrap refit audit
 
 Reproduced and repaired correlation-index truncation, conflicting mirrored

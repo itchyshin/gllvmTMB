@@ -194,4 +194,5 @@ test_that("forecast_temporal newdata matches the training-design forecast for sc
   na_fc <- forecast_temporal(fit, na_future)
   expect_true(is.na(na_fc$est[1L]))
   expect_false(anyNA(na_fc$est[-1L]))
+  expect_equal(na_fc$est[-1L], ref$est[-1L], tolerance = 1e-8)
 })

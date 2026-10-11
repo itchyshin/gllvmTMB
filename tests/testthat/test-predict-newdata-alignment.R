@@ -24,7 +24,7 @@
         rep("b_fix", length(beta))
       )),
       use = list(),
-      tmb_data = list()
+      tmb_data = list(X_fix = X_train)
     ),
     class = "gllvmTMB_multi"
   )
@@ -215,7 +215,7 @@ test_that("#1424 restore_newdata_factor_levels copies user-set contrasts", {
   expect_equal(contrasts(restored$g), contrasts(train$g), tolerance = 1e-12)
 
   ins <- predict(fit, re_form = ~0)
-  nd <- predict(fit, newdata = train, re_form = ~0)
+  expect_no_warning(nd <- predict(fit, newdata = train, re_form = ~0))
   expect_equal(nd$est, ins$est, tolerance = 1e-10)
 })
 
@@ -236,7 +236,9 @@ test_that("#1424 real fit: contr.sum newdata matches training predictions", {
     silent = TRUE
   )))
   ins <- suppressMessages(predict(fit, re_form = ~0))
-  nd <- suppressMessages(predict(fit, newdata = d, re_form = ~0))
+  expect_no_warning(
+    nd <- suppressMessages(predict(fit, newdata = d, re_form = ~0))
+  )
   expect_equal(nd$est, ins$est, tolerance = 1e-8)
 })
 

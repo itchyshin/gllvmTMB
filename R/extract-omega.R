@@ -95,7 +95,7 @@
 #' }
 extract_residual_split <- function(fit) {
   if (!inherits(fit, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+    .gllvmTMB_abort_not_multi_fit(fit)
   }
 
   trait_names <- levels(fit$data[[fit$trait_col]])
@@ -193,7 +193,7 @@ extract_Omega <- function(
   link_residual = c("auto", "none")
 ) {
   if (!inherits(fit, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+    .gllvmTMB_abort_not_multi_fit(fit)
   }
   link_residual <- match.arg(link_residual)
   if (is.null(tiers)) {
@@ -477,7 +477,7 @@ extract_phylo_signal <- function(
 ) {
   .structured_rho_source_allocation_assert(fit, "extract_phylo_signal")
   if (!inherits(fit, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+    .gllvmTMB_abort_not_multi_fit(fit)
   }
   link_residual <- match.arg(link_residual)
   method <- match.arg(method)
@@ -741,7 +741,7 @@ extract_proportions <- function(
 ) {
   .structured_rho_source_allocation_assert(fit, "extract_proportions")
   if (!inherits(fit, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+    .gllvmTMB_abort_not_multi_fit(fit)
   }
   link_residual <- match.arg(link_residual)
   format <- match.arg(format)

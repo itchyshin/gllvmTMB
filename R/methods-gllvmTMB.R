@@ -2469,7 +2469,7 @@ simulate.gllvmTMB_multi <- function(
 #' @export
 sanity_multi <- function(object, gradient_thresh = 1e-2, se_thresh = 100) {
   if (!inherits(object, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+    .gllvmTMB_abort_not_multi_fit(object)
   }
   is_mspl <- .gllvmTMB_is_mspl(object)
   flags <- list()
@@ -4563,7 +4563,7 @@ predict_missing <- function(
   ...
 ) {
   if (!inherits(object, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+    .gllvmTMB_abort_not_multi_fit(object)
   }
   type <- match.arg(type)
   se_route <- match.arg(se_route)

@@ -240,6 +240,47 @@ test_that("#1424 real fit: contr.sum newdata matches training predictions", {
     nd <- suppressMessages(predict(fit, newdata = d, re_form = ~0))
   )
   expect_equal(nd$est, ins$est, tolerance = 1e-8)
+  sub <- d[d$g != "a", , drop = FALSE]
+  expect_no_warning(
+    nd_sub <- suppressMessages(predict(fit, newdata = sub, re_form = ~0))
+  )
+  expect_equal(nd_sub$est, ins$est[d$g != "a"], tolerance = 1e-8)
+})
+
+test_that("unseen factor levels abort with gllvmTMB_predict_unseen_level", {
+  train <- expand.grid(
+    unit = factor("u1"),
+    species = factor("sp1"),
+    trait = factor(c("t1", "t2")),
+    g = factor(c("a", "b"), levels = c("a", "b")),
+    KEEP.OUT.ATTRS = FALSE
+  )
+  train$value <- 0
+  fit <- .alignment_stub_fit(train, value ~ 0 + trait + g)
+  nd <- train
+  nd$g <- "z"
+  expect_error(
+    predict(fit, newdata = nd, re_form = ~0),
+    class = "gllvmTMB_predict_unseen_level"
+  )
+})
+
+test_that("newdata design rebuild aborts with gllvmTMB_predict_newdata_design", {
+  train <- expand.grid(
+    unit = factor("u1"),
+    species = factor("sp1"),
+    trait = factor(c("t1", "t2")),
+    x = c(-1, 1),
+    KEEP.OUT.ATTRS = FALSE
+  )
+  train$value <- 0
+  fit <- .alignment_stub_fit(train, value ~ 0 + trait + x)
+  nd <- train
+  nd$x <- NULL
+  expect_error(
+    predict(fit, newdata = nd, re_form = ~0),
+    class = "gllvmTMB_predict_newdata_design"
+  )
 })
 
 test_that(".gllvmTMB_predict_fixed_eta aborts when a training column is missing", {

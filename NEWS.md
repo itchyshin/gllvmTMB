@@ -1,5 +1,14 @@
 # Development (unreleased)
 
+* A `spatial_*()` term with estimated or fixed non-unit `rho` no longer warns
+  that its grouping token "is ignored". With `rho = NULL` or `rho = 0.5`, the
+  name after `|` is the column that identifies each location, and the fit
+  reads it; the warning stays for the default `rho = 1`, where the token
+  really is ignored. The structured-source-strength article now names its
+  `location` column in the two estimated-`rho` fits; with `| coords` they
+  stopped with "Spatial attenuation requires an observed grouping column",
+  which kept the pkgdown site from rebuilding.
+
 * `engine = "julia"` fixes. Julia fits now support `tidy()` (point estimates
   for intercepts and covariate coefficients, latent standard deviations,
   dispersion and ordinal cutpoints) and

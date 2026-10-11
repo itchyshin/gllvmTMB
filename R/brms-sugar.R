@@ -88,6 +88,24 @@
 ## Issued once per old keyword per R session. Avoids spamming when an
 ## article (or a user's pasted code) uses the old name throughout.
 .gllvmTMB_deprecation_seen <- new.env(parent = emptyenv())
+
+## The spatial grouping token the structured-rho parser consumed for the
+## fit currently being parsed (NULL when none). With `rho = NULL` or
+## `rho = <not 1>` on a spatial_*() helper, the token right of `|` is a real
+## location-identifier column (spec$grouping), so the "token is ignored"
+## warning below must stay silent for it. `.parse_structured_rho_formula()`
+## strips `rho` before the sugar rewriter runs, so this cannot be read from
+## the call itself. Set and cleared by gllvmTMB() around one fit.
+.gllvmTMB_spatial_token_consumed <- new.env(parent = emptyenv())
+.gllvmTMB_set_spatial_token_consumed <- function(spec) {
+  .gllvmTMB_spatial_token_consumed$token <-
+    if (!is.null(spec) && identical(spec$source, "spatial")) {
+      spec$grouping
+    } else {
+      NULL
+    }
+  invisible(NULL)
+}
 .gllvmTMB_warn_keyword_deprecated <- function(
   old,
   new_name,
@@ -2507,6 +2525,14 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL, rho = 1) {
   }
   rhs <- e[[2L]][[3L]]
   if (is.symbol(rhs) && identical(as.character(rhs), "coords")) {
+    return(invisible(NULL))
+  }
+  ## Estimated or fixed non-unit `rho` reads this token as the location
+  ## identifier, so it is not ignored (see `.gllvmTMB_spatial_token_consumed`).
+  if (
+    is.symbol(rhs) &&
+      identical(as.character(rhs), .gllvmTMB_spatial_token_consumed$token)
+  ) {
     return(invisible(NULL))
   }
   ## The package's own env-based one-shot tracker (used throughout this

@@ -359,6 +359,32 @@ Type gll_log1m_capped_tanh2(Type x)
 
 #include "gllvmTMB_cloglog.h"
 
+// log Phi(x) as a TMB atomic (#1362). Value from R's pnorm(log.p = TRUE), exact
+// in both tails to double precision; the derivative is the inverse Mills ratio
+// r(x) = dnorm(x) / Phi(x) = exp(-x^2 / 2 - log(2 pi) / 2 - log Phi(x)), which is
+// written through the atomic's own output so every higher derivative (the
+// Laplace Hessian) recurses correctly. Measured against R at x in
+// {-40 ... 300}: value, gradient and Hessian agree to 10 digits and nothing is
+// NaN. It replaces the two-branch gll_log_pnorm on the binomial-probit path
+// only: that form evaluates a series AND a direct branch on every row
+// (CondExp) and tripled the probit gradient cost on psychTools::ability
+// (0.023 -> 0.069 s per gr() call); the atomic matches the old clamp's cost.
+namespace atomic {
+TMB_ATOMIC_STATIC_FUNCTION(
+  gll_logpnorm1, 1,
+  ty[0] = Rmath::Rf_pnorm5(tx[0], 0, 1, 1, 1);
+  ,
+  px[0] = exp(-Type(0.5) * tx[0] * tx[0] - Type(0.9189385332046727) - ty[0]) * py[0];
+)
+}
+template <class Type>
+Type gll_log_pnorm_atomic(Type x)
+{
+  CppAD::vector<Type> tx(1);
+  tx[0] = x;
+  return atomic::gll_logpnorm1(tx)[0];
+}
+
 template <class Type>
 Type gll_log_pnorm(Type x)
 {
@@ -3518,8 +3544,8 @@ Type objective_function<Type>::operator()()
           log_p1 = gll_log_inv_logit(eta_o);
           log_p0 = gll_log1m_inv_logit(eta_o);
         } else if (lid == 1) {
-          log_p1 = gll_log_pnorm(eta_o);
-          log_p0 = gll_log_pnorm(-eta_o);
+          log_p1 = gll_log_pnorm_atomic(eta_o);
+          log_p0 = gll_log_pnorm_atomic(-eta_o);
         } else {
           error("gllvmTMB_multi: unknown link_id for binomial family");
         }

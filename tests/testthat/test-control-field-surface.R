@@ -31,6 +31,8 @@ test_that("gllvmTMBcontrol consumers use declared or intentional fields", {
   internal <- c(
     ".internal_continuation",
     "aghq_ridge_explicit",
+    "n_init_explicit",
+    "svd_start_explicit",
     "aghq_start_par",
     "vgh_warm_start",
     "vgh_warm_start_fixed",

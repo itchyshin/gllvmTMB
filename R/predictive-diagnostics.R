@@ -595,8 +595,8 @@ residuals.gllvmTMB_multi <- function(
       ## mu = invlogit(eta) (same hardcoded-logit note as fid == 7; also
       ## enforced at fit time -- R/fit-multi.R aborts on any other link),
       ## a = mu*phi, b = (1 - mu)*phi. No base-R CDF exists, so the pmf is
-      ## hand-rolled from the SAME lgamma terms as the engine's log-density
-      ## and cumulatively summed.
+      ## hand-rolled from the same stable decomposition as the engine's
+      ## log-density and cumulatively summed.
       Nt <- n_trials[i]
       if (!is.finite(Nt) || Nt <= 0 || Nt != floor(Nt)) {
         status[i] <- "missing_trials"
@@ -1558,14 +1558,31 @@ residuals.gllvmTMB_multi <- function(
 
 ## Beta-binomial CDF at k = 0 .. N, given Beta-mixing shape parameters a, b
 ## (mu = a / (a + b), phi = a + b). No base-R or already-imported CDF exists
-## for this distribution, so the pmf is hand-rolled from the SAME lgamma
-## terms as the engine's log-density (src/gllvmTMB.cpp fid == 8) --
-## lchoose(N, k) + lbeta(k + a, N - k + b) - lbeta(a, b) -- and cumulatively
-## summed. Returns a length-(N + 1) vector; element k + 1 is P(Y <= k). `k`
+## for this distribution, so the pmf is hand-rolled from the same
+## decomposition as the engine's log-density (src/gllvmTMB.cpp fid == 8) and
+## cumulatively summed. Returns a length-(N + 1) vector; element k + 1 is P(Y <= k). `k`
 ## may be passed in precomputed (the caller caches 0:N by trial count N,
 ## since N is typically constant within a trait across many rows).
+##
+## The lbeta() difference is NOT used: like the engine's old nine-lgamma sum
+## it cancels at large phi (the log pmf is off by 1e-3 at phi = 1e13 and the
+## "CDF" exceeds 1 at phi = 1e300; #1364). The same rewrite as the engine's
+## gll_lgamma_shift form is used instead:
+##   log pmf(k) = lchoose(N, k) + k log(mu) + (N - k) log(1 - mu)
+##              + S_a(k) + S_b(N - k) - S_phi(N),
+##   S_x(m) = sum_{i < m} log1p(i / x),
+## which is exact for every a, b > 0 and tends to the binomial pmf as phi
+## grows.
 .gllvmTMB_betabinom_cdf <- function(N, a, b, k = 0:N) {
-  log_pmf <- lchoose(N, k) + lbeta(k + a, N - k + b) - lbeta(a, b)
+  phi <- a + b
+  log_mu <- log(a) - log(phi)
+  log_1m_mu <- log(b) - log(phi)
+  i <- seq_len(N) - 1
+  S_a <- c(0, cumsum(log1p(i / a)))
+  S_b <- c(0, cumsum(log1p(i / b)))
+  S_phi <- sum(log1p(i / phi))
+  log_pmf <- lchoose(N, k) + k * log_mu + (N - k) * log_1m_mu +
+    S_a[k + 1L] + S_b[N - k + 1L] - S_phi
   cumsum(exp(log_pmf))
 }
 

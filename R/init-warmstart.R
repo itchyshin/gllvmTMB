@@ -507,3 +507,65 @@
   out[!is.finite(out)] <- 0
   out
 }
+
+## #1331: an alternative, data-informed start for the B-tier loadings.
+##
+## The default start pairs SVD-seeded latent scores with a FIXED loading
+## pattern (0.5 on the diagonal, 0 elsewhere), so the scores carry the
+## residual correlation directions while the loadings do not. On the Wave 1
+## Poisson cells that single start stopped at a lower local optimum in 3 of
+## 100 replicates (logLik 0.13-0.32 below the optimum `n_init = 10` and the
+## Julia twin reach) while every health check passed. Starting instead from
+## loadings and scores taken from ONE rank-`rank` SVD of the group x trait
+## residual matrix, rotated to the package's lower-triangular loading layout,
+## reached the higher optimum in all 3. `gllvmTMB()` runs it as an extra
+## restart (label "svd"), so the default start is still tried and the better
+## objective is kept.
+##
+## Returns NULL whenever the decomposition is degenerate; otherwise
+## `list(theta = <packed loadings>, z = <rank x n_groups scores>)`. The
+## scores have unit variance, and Lambda %*% z reproduces the rank-`rank`
+## SVD approximation of the residual matrix.
+.gllvmTMB_svd_latent_start <- function(resid, trait_id, group_id,
+                                       n_traits, n_groups, rank) {
+  rank <- as.integer(rank)
+  if (rank < 1L || n_groups < 2L || n_traits < rank) return(NULL)
+  mat <- tryCatch(
+    .gllvmTMB_group_trait_residual_matrix(
+      resid = resid, trait_id = trait_id, group_id = group_id,
+      n_traits = n_traits, n_groups = n_groups
+    ),
+    error = function(e) NULL
+  )
+  if (is.null(mat)) return(NULL)
+  R <- mat$resid
+  R[!is.finite(R)] <- 0
+  if (stats::var(as.numeric(R)) <= 1e-12) return(NULL)
+  sv <- tryCatch(svd(R, nu = rank, nv = rank), error = function(e) NULL)
+  if (is.null(sv) || length(sv$d) < rank ||
+      any(sv$d[seq_len(rank)] <= sqrt(.Machine$double.eps))) {
+    return(NULL)
+  }
+  s <- sqrt(max(n_groups - 1L, 1L))
+  L <- sv$v[, seq_len(rank), drop = FALSE] %*%
+    diag(sv$d[seq_len(rank)] / s, rank)
+  Z <- sv$u[, seq_len(rank), drop = FALSE] * s
+  ## Rotate so the top rank x rank block of Lambda is lower triangular with a
+  ## positive diagonal (the packed layout of `gll_unpack_rr_loadings()`); the
+  ## scores take the same orthogonal rotation, so Lambda %*% t(Z) is unchanged.
+  Q <- qr.Q(qr(t(L[seq_len(rank), , drop = FALSE])))
+  L <- L %*% Q
+  Z <- Z %*% Q
+  sgn <- sign(diag(L[seq_len(rank), , drop = FALSE]))
+  sgn[sgn == 0] <- 1
+  L <- L %*% diag(sgn, rank)
+  Z <- Z %*% diag(sgn, rank)
+  theta <- c(
+    diag(L[seq_len(rank), , drop = FALSE]),
+    unlist(lapply(seq_len(rank), function(k) {
+      if (k < n_traits) L[(k + 1L):n_traits, k] else numeric(0)
+    }))
+  )
+  if (any(!is.finite(theta)) || any(!is.finite(Z))) return(NULL)
+  list(theta = unname(theta), z = t(Z))
+}

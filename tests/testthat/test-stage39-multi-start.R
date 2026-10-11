@@ -21,7 +21,10 @@ test_that("Stage 39: n_init > 1 runs the requested number of restarts", {
   expect_equal(fit$opt$convergence, 0L)
   expect_true(is.finite(-fit$opt$objective))
   expect_s3_class(fit$restart_history, "data.frame")
-  expect_equal(nrow(fit$restart_history), 3L)
+  ## n_init = 3: the default start, the deterministic "svd" start (#1331)
+  ## and two jittered restarts.
+  expect_equal(fit$restart_history$start_label,
+               c("initial", "svd", "jitter", "jitter"))
   expect_equal(sum(fit$restart_history$selected), 1L)
   expect_equal(
     fit$start_provenance$selected_restart,

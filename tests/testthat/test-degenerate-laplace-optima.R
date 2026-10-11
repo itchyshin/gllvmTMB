@@ -388,6 +388,25 @@ exact_probit_d1 <- function(y, beta, lambda, m = 81L) {
   sum(mx + log(colSums(exp(sweep(lg, 2L, mx)))))
 }
 
+## Exact d = 1 marginal logLik by per-unit adaptive integration. Used at a
+## spike loading, where the posterior of the score has a sharp probit edge
+## and the fixed 81-node grid above is itself ~1 unit off.
+exact_probit_d1_integrate <- function(y, beta, lambda) {
+  sum(vapply(seq_len(nrow(y)), function(i) {
+    lf <- function(z) {
+      eta <- outer(z, lambda) + matrix(beta, length(z), length(beta), byrow = TRUE)
+      lp <- ifelse(matrix(y[i, ] == 1, length(z), length(beta), byrow = TRUE),
+                   stats::pnorm(eta, log.p = TRUE),
+                   stats::pnorm(-eta, log.p = TRUE))
+      rowSums(lp) + stats::dnorm(z, log = TRUE)
+    }
+    zz <- seq(-8, 8, length.out = 2001L)
+    m <- max(lf(zz))
+    m + log(stats::integrate(function(z) exp(lf(z) - m), -Inf, Inf,
+                             subdivisions = 2000L, rel.tol = 1e-10)$value)
+  }, numeric(1)))
+}
+
 test_that("laplace_accuracy reproduces the exact marginal logLik (#1389)", {
   fx <- probit_fixture()
   fit <- suppressMessages(suppressWarnings(gllvmTMB(
@@ -404,16 +423,23 @@ test_that("laplace_accuracy reproduces the exact marginal logLik (#1389)", {
   expect_equal(la$loglik_laplace, as.numeric(logLik(fit)), tolerance = 1e-8)
 
   ## A spike loading puts Laplace far from the integral; the audit must track
-  ## the exact value there too, not the Laplace one.
+  ## the exact value there too, not the Laplace one. (Under the old 1e-12
+  ## probit clamp, #1362, Laplace was ~410 units off here; that was mostly the
+  ## clamp's flat tail. With the log-scale kernel it is ~16 units off.)
   fit2 <- fit
   p2 <- p
   p2[which(names(p2) == "theta_rr_B")[1L]] <- 15
   fit2$opt$par <- p2
   la2 <- gllvmTMB:::.gllvmTMB_laplace_accuracy(fit2)
-  ex2 <- exact_probit_d1(fx$y, beta, p2[names(p2) == "theta_rr_B"])
-  expect_gt(abs(la2$optimism), 100)
-  ## Quadrature error is < 1% of the Laplace error it measures.
-  expect_lt(abs(la2$loglik_quadrature - ex2), 0.01 * abs(la2$optimism))
+  ex2 <- exact_probit_d1_integrate(fx$y, beta, p2[names(p2) == "theta_rr_B"])
+  err_laplace <- abs(la2$loglik_laplace - ex2)
+  expect_gt(err_laplace, 10)
+  ## The default nodes are much closer to the integral than Laplace, and the
+  ## audit converges to it as nodes are added (the sharp probit edge makes
+  ## the posterior non-Gaussian, so k = 15 alone is coarse here).
+  expect_lt(3 * abs(la2$loglik_quadrature - ex2), err_laplace)
+  la2_fine <- gllvmTMB:::.gllvmTMB_laplace_accuracy(fit2, k = 61L)
+  expect_lt(abs(la2_fine$loglik_quadrature - ex2), 0.05 * err_laplace)
 
   chk <- check_gllvmTMB(fit)
   expect_identical(chk$status[chk$component == "laplace_accuracy"], "PASS")

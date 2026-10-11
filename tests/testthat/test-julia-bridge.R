@@ -28,6 +28,13 @@ skip_if_no_julia <- function() {
       "GLLVModels.jl path not configured (set GLLVMODELS_JL_PATH / options(gllvmTMB.GLLVModels.jl.path=); legacy aliases also work)."
     )
   }
+  ## The live grouped-dispersion / mask / CI cases exercise the bridge's
+  ## shared-shape multi-trait Gamma payload on purpose. Since #1334 that model
+  ## is refused unless the caller opts in, so opt in for the calling test only.
+  withr::local_options(
+    gllvmTMB.julia_gamma_shared_shape = TRUE,
+    .local_envir = parent.frame()
+  )
 }
 
 test_that("Julia bridge path resolution prefers GLLVModels names and retains legacy aliases", {
@@ -4077,7 +4084,11 @@ test_that("gllvm_julia_fit routes live binary predictor-informed LV payloads", {
 test_that("engine = 'julia' Gaussian logLik matches engine = 'tmb'", {
   skip_if_no_julia()
   df <- make_long(n_unit = 40L, seed = 7L)
-  f <- value ~ 0 + trait + latent(0 + trait | unit, d = 1)
+  ## unique = FALSE: the Julia route fits Lambda Lambda^T only (it drops the
+  ## default Psi), so both engines must be asked for the same model. With the
+  ## default unique = TRUE, TMB fits Lambda Lambda^T + Psi (df 9 vs 7) and the
+  ## logLik gap (-159.22 vs -159.40) is a model difference, not an engine one.
+  f <- value ~ 0 + trait + latent(0 + trait | unit, d = 1, unique = FALSE)
   fit_tmb <- gllvmTMB(
     f,
     data = df,
@@ -4107,8 +4118,10 @@ test_that("engine = 'julia' Gaussian logLik matches engine = 'tmb'", {
     level = "unit",
     link_residual = "none"
   ))
-  expect_equal(sigma_jl$Sigma, sigma_tmb$Sigma, tolerance = 1e-5)
-  expect_equal(sigma_jl$R, sigma_tmb$R, tolerance = 1e-5)
+  ## Two independent optimisers: Sigma agrees to ~1e-5 relative (measured
+  ## 6.8e-6 absolute on this fixture), so use the logLik tolerance here.
+  expect_equal(sigma_jl$Sigma, sigma_tmb$Sigma, tolerance = 1e-4)
+  expect_equal(sigma_jl$R, sigma_tmb$R, tolerance = 1e-4)
   sigma_jl_auto <- suppressMessages(extract_Sigma(fit_jl))
   expect_equal(sigma_jl_auto$Sigma, sigma_jl$Sigma, tolerance = 1e-10)
   expect_equal(sigma_jl_auto$R, sigma_jl$R, tolerance = 1e-10)

@@ -14,7 +14,7 @@
 
 .gllvmTMB_build_fit_health <- function(object) {
   if (!inherits(object, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+    .gllvmTMB_abort_not_multi_fit(object)
   }
 
   ## #1092: judge the objective the fit actually optimised. On a ridged fit
@@ -1684,8 +1684,19 @@ check_gllvmTMB <- function(
   laplace_accuracy = TRUE,
   laplace_accuracy_thresh = 2
 ) {
+  if (inherits(object, "gllvmTMB_julia")) {
+    ## #1329: a Julia bridge fit IS returned by gllvmTMB(), but it carries no
+    ## TMB objective, gradient, Hessian or sdreport, which every check here
+    ## reads. Say so instead of claiming the fit is not a gllvmTMB() fit.
+    cli::cli_abort(c(
+      "{.fn check_gllvmTMB} is not available for {.code engine = \"julia\"} fits.",
+      "i" = "Its checks read the TMB gradient, Hessian and standard errors, which a Julia bridge fit does not carry.",
+      ">" = "Use {.code summary(fit)} for the Julia convergence flag and log-likelihood, and {.code residuals(fit, type = \"simulation_rank\")} for residual checks.",
+      ">" = "Refit with {.code engine = \"tmb\"} to run {.fn check_gllvmTMB}."
+    ), class = "gllvmTMB_julia_gate")
+  }
   if (!inherits(object, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+    .gllvmTMB_abort_not_multi_fit(object)
   }
   is_mspl <- .gllvmTMB_is_mspl(object)
   health <- object$fit_health %||% .gllvmTMB_build_fit_health(object)
@@ -1813,6 +1824,25 @@ check_gllvmTMB <- function(
       "> 2 iterations at a finite, plausible objective",
       "optimizer stopped after <= 2 iterations at a non-finite or astronomically large objective; the reported convergence code is not trustworthy",
       "treat the fit as failed; rescale the response/offset or try different starts"
+    )))
+  }
+
+  ## #1330: recorded for zero-inflated fits only (see
+  ## `.gllvmTMB_min_random_curvature()`); absent elsewhere, so no row.
+  curv <- health$min_random_curvature %||% NA_real_
+  if (length(curv) == 1L && is.finite(curv)) {
+    curv_tol <- .gllvmTMB_zi_degenerate_curvature_tol
+    rows <- c(rows, list(.gllvmTMB_check_row(
+      "laplace_curvature",
+      if (curv < curv_tol) "FAIL" else "PASS",
+      signif(curv, 4),
+      paste0(">= ", curv_tol),
+      if (curv < curv_tol) {
+        "a unit's latent-score curvature has collapsed; the Laplace log-likelihood is degenerate here, so the fit is an artefact of the approximation"
+      } else {
+        "smallest curvature of a unit's latent scores at the fit"
+      },
+      "treat the fit as failed; try a smaller d, the non-inflated count family, or fewer zero-inflated traits"
     )))
   }
 
@@ -2294,7 +2324,7 @@ gllvmTMB_diagnose <- function(
   verbose = TRUE
 ) {
   if (!inherits(object, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+    .gllvmTMB_abort_not_multi_fit(object)
   }
   is_mspl <- .gllvmTMB_is_mspl(object)
 
@@ -2537,4 +2567,22 @@ gllvmTMB_diagnose <- function(
     communality_W = comm_W,
     hints = hints
   ))
+}
+
+## #1329: shared gate message for functions that need a native TMB fit.
+## A Julia bridge fit IS returned by gllvmTMB(), so it gets an explanation and
+## a next step instead of "Provide a fit returned by gllvmTMB()".
+.gllvmTMB_abort_not_multi_fit <- function(object, call = rlang::caller_env()) {
+  if (inherits(object, "gllvmTMB_julia")) {
+    caller <- sys.call(-1L)
+    fn <- if (is.null(caller)) "This function" else {
+      paste0("{.fn ", gsub("[{}]", "", deparse(caller[[1L]])[1L]), "}")
+    }
+    cli::cli_abort(c(
+      paste(fn, "is not available for {.code engine = \"julia\"} fits."),
+      "i" = "It needs the native TMB objective, which a Julia bridge fit does not carry.",
+      ">" = "Refit with {.code engine = \"tmb\"} to use it."
+    ), class = "gllvmTMB_julia_gate", call = call)
+  }
+  cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.", call = call)
 }

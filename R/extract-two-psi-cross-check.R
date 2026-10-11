@@ -111,7 +111,7 @@
 .refit_inputs <- function(fit_two_psi) {
   .structured_rho_refit_assert(fit_two_psi, "two-Psi comparison")
   if (!inherits(fit_two_psi, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+    .gllvmTMB_abort_not_multi_fit(fit_two_psi)
   }
   if (!.is_two_psi_fit(fit_two_psi)) {
     cli::cli_abort(c(

@@ -44,7 +44,7 @@
   level
 ) {
   if (!inherits(fit, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+    .gllvmTMB_abort_not_multi_fit(fit)
   }
   if (!is.numeric(level) || length(level) != 1L || level <= 0 || level >= 1) {
     cli::cli_abort("{.arg level} must be a scalar in (0, 1); got {.val {level}}.")

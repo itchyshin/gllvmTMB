@@ -52,7 +52,10 @@ test_that("#1335 default n_init = 1 fit is unchanged (parity pin)", {
   expect_equal(fit$opt$objective, 665.09608921189783, tolerance = 1e-6)
   expect_equal(as.numeric(logLik(fit)), -665.09608921189783,
                tolerance = 1e-6)
-  expect_identical(nrow(fit$restart_history), 1L)
+  ## #1331: the default fit also runs the deterministic "svd" start. Here it
+  ## reaches the same optimum, so the default start's fit is kept unchanged.
+  expect_identical(fit$restart_history$start_label, c("initial", "svd"))
+  expect_identical(fit$restart_history$selected, c(TRUE, FALSE))
 })
 
 test_that("#1335 the selected restart is the fit that is returned", {
@@ -98,7 +101,7 @@ test_that("#1333 all-restarts-failed abort reports each restart's reason", {
       value ~ 0 + trait + latent(0 + trait | site, d = 2) +
         unique(0 + trait | site),
       data = sim$data,
-      control = gllvmTMBcontrol(n_init = 2)
+      control = gllvmTMBcontrol(n_init = 2, svd_start = FALSE)
     ))),
     class = "gllvmTMB_all_restarts_failed"
   )

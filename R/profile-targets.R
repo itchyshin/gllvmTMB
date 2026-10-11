@@ -461,7 +461,7 @@
 #' @export
 profile_targets <- function(object, ready_only = FALSE) {
   if (!inherits(object, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+    .gllvmTMB_abort_not_multi_fit(object)
   }
   .temporal_assert_no_iid_inference(object, "profile_targets")
   .gllvmTMB_mspl_assert_inference(object, "profile_targets")

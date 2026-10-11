@@ -5,6 +5,7 @@
 \alias{logLik.gllvmTMB_julia}
 \alias{print.gllvmTMB_julia}
 \alias{coef.gllvmTMB_julia}
+\alias{tidy.gllvmTMB_julia}
 \alias{predict.gllvmTMB_julia}
 \alias{fitted.gllvmTMB_julia}
 \alias{residuals.gllvmTMB_julia}
@@ -20,6 +21,14 @@
 
 \method{coef}{gllvmTMB_julia}(object, ...)
 
+\method{tidy}{gllvmTMB_julia}(
+  x,
+  effects = c("fixed", "ran_pars", "cutpoint"),
+  conf.int = FALSE,
+  conf.level = 0.95,
+  ...
+)
+
 \method{predict}{gllvmTMB_julia}(
   object,
   newdata = NULL,
@@ -29,7 +38,7 @@
 
 \method{fitted}{gllvmTMB_julia}(object, type = c("response", "link", "prob", "class"), ...)
 
-\method{residuals}{gllvmTMB_julia}(object, type = c("response", "pearson"), ...)
+\method{residuals}{gllvmTMB_julia}(object, type = c("response", "pearson", "simulation_rank"), ...)
 
 \method{simulate}{gllvmTMB_julia}(
   object,
@@ -60,6 +69,18 @@
 
 \item{...}{Unused.}
 
+\item{x}{A Julia bridge fit (for \code{tidy()}).}
+
+\item{effects}{For \code{tidy()}: one of \code{"fixed"} (per-trait intercepts and
+covariate coefficients), \code{"ran_pars"} (per-trait shared latent standard
+deviations \verb{sqrt(diag(Lambda Lambda^T))} and dispersion parameters), or
+\code{"cutpoint"} (the free ordinal cutpoints \code{cutpoint_2}, ...,
+\verb{cutpoint_\{K-1\}}, named as on \code{engine = "tmb"}).}
+
+\item{conf.int, conf.level}{For \code{tidy()}: Julia bridge fits carry point
+estimates only, so \code{conf.int = TRUE} is refused with a pointer to
+\code{confint(fit, method = "wald")}.}
+
 \item{newdata}{Unsupported for Julia bridge fits; current prediction and
 simulation methods return in-sample values from the retained bridge payload.}
 
@@ -70,7 +91,16 @@ ordinal bridge fits, \code{"response"} and \code{"prob"} return fitted category
 probabilities and \code{"class"} returns the modal category. For \code{residuals()},
 \code{"response"} returns observed-minus-fitted residuals on the response scale
 and \code{"pearson"} divides by the family-specific standard deviation.
-Binomial rows use the observed proportion, \code{y / N}, on the response scale.}
+Binomial rows use the observed proportion, \code{y / N}, on the response scale.
+\code{"simulation_rank"} returns a long data frame of randomized
+simulation-rank residuals (with \code{observed}, \code{u}, \code{residual} and \code{status}
+columns) built from the conditional \code{simulate()} draws; pass \code{nsim}
+(default 250), \code{seed}, \code{scale} (\code{"normal"} or \code{"uniform"}) and \code{trait}
+through \code{...}. For a \code{gllvmTMB(..., engine = "julia")} fit the rows follow
+the input data rows with missing-response rows dropped, as on
+\code{engine = "tmb"}; a direct \code{\link[=gllvm_julia_fit]{gllvm_julia_fit()}} fit returns every
+trait-unit cell in \code{simulate()} order with masked cells flagged. Ordinal
+rows are refused because \code{simulate()} does not cover them yet.}
 
 \item{nsim}{Number of replicate response vectors to draw for \code{simulate()}.}
 

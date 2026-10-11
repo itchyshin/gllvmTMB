@@ -58,13 +58,14 @@
 }
 
 .auto_psi_skip_message <- function(binomial_labs = character(),
-                                   multinomial_labs = character()) {
-  affected <- c(binomial_labs, multinomial_labs)
+                                   multinomial_labs = character(),
+                                   ordinal_labs = character()) {
+  affected <- c(binomial_labs, multinomial_labs, ordinal_labs)
   n_affected <- length(affected)
   noun <- if (n_affected == 1L) "trait" else "traits"
   msg <- c(
     "i" = sprintf(
-      "Skipping the default between-unit {.field Psi} for %d binary / categorical-contrast %s under the family-specific identifiability gate.",
+      "Skipping the default between-unit {.field Psi} for %d binary / categorical-contrast / single-observation ordinal %s under the family-specific identifiability gate.",
       n_affected, noun
     ),
     "i" = sprintf("Affected %s: %s.", noun, paste(affected, collapse = ", "))
@@ -85,22 +86,32 @@
       )
     )
   }
+  if (length(ordinal_labs) > 0L) {
+    msg <- c(msg,
+      "i" = sprintf(
+        "Ordinal traits %s have one observation per (trait, unit) cell: the threshold model fixes the link-residual variance, so a between-unit Psi only rescales the cutpoints and is not identified. Replicated observations per unit identify it.",
+        paste(ordinal_labs, collapse = ", ")
+      )
+    )
+  }
   c(msg,
     "*" = "Mapped {.code theta_diag_B[t]} and the corresponding {.code s_B} row off."
   )
 }
 
 .auto_psi_skip_frequency_id <- function(binomial_labs = character(),
-                                        multinomial_labs = character()) {
-  has_binomial <- length(binomial_labs) > 0L
-  has_multinomial <- length(multinomial_labs) > 0L
-  suffix <- if (has_binomial && has_multinomial) {
-    "binomial-multinomial"
-  } else if (has_multinomial) {
-    "multinomial"
-  } else {
-    "binomial"
-  }
+                                        multinomial_labs = character(),
+                                        ordinal_labs = character()) {
+  ## One component per skipped category, in a fixed order, so every
+  ## combination (including multinomial + ordinal) has its own once-per-session
+  ## id. Binomial-only, multinomial-only and binomial-multinomial keep the ids
+  ## they had before the ordinal arm existed.
+  parts <- c(
+    if (length(binomial_labs) > 0L) "binomial",
+    if (length(multinomial_labs) > 0L) "multinomial",
+    if (length(ordinal_labs) > 0L) "ordinal"
+  )
+  suffix <- if (length(parts)) paste(parts, collapse = "-") else "binomial"
   paste0("gllvmTMB-psi-skip-", suffix)
 }
 
@@ -7290,8 +7301,17 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ## unique = TRUE work for the admitted shared-latent route while identified
       ## partner traits keep their Psi and the fixed softmax link residual remains
       ## a separate extraction-time quantity.
+      ## Ordinal threshold traits (fid 14 / 20, #1390): with ONE observation
+      ## per (trait, unit) cell, P(y = k) depends on (tau_k - eta) / sqrt(s2 +
+      ## psi) only, so psi, the cutpoints and the loading rescale together
+      ## along an exactly flat ridge of the marginal likelihood. Laplace is not
+      ## invariant along that ridge and climbs it (psi 435-649, cutpoints
+      ## 6-29, logLik 400-520 above the exact marginal on real data). Gate it
+      ## exactly as single-trial binary; replicated cells keep their Psi.
       isTRUE(all(family_id_vec[rows_t] == 1L) && all(n_trials[rows_t] == 1)) ||
-        isTRUE(all(family_id_vec[rows_t] == 16L))
+        isTRUE(all(family_id_vec[rows_t] == 16L)) ||
+        isTRUE(all(family_id_vec[rows_t] %in% c(14L, 20L)) &&
+                 !anyDuplicated(site_id[rows_t]))
     }, logical(1))
     if (any(skip_psi_b_t)) {
       ## Tell the C++ objective which traits were pinned. Without this the
@@ -7329,15 +7349,22 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         isTRUE(length(rows_t) > 0L && all(family_id_vec[rows_t] == 16L))
       }, logical(1))
       skipped_labs <- levels(data[[trait]])[skipped_idx]
-      binomial_labs <- skipped_labs[!skipped_is_multinomial]
+      skipped_is_ordinal <- vapply(skipped_idx, function(t) {
+        rows_t <- which(trait_id == (t - 1L))
+        isTRUE(length(rows_t) > 0L && all(family_id_vec[rows_t] %in% c(14L, 20L)))
+      }, logical(1))
+      binomial_labs <- skipped_labs[!skipped_is_multinomial & !skipped_is_ordinal]
       multinomial_labs <- skipped_labs[skipped_is_multinomial]
+      ordinal_labs <- skipped_labs[skipped_is_ordinal]
       cli::cli_inform(.auto_psi_skip_message(
         binomial_labs = binomial_labs,
-        multinomial_labs = multinomial_labs
+        multinomial_labs = multinomial_labs,
+        ordinal_labs = ordinal_labs
       ), .frequency = "once",
          .frequency_id = .auto_psi_skip_frequency_id(
            binomial_labs = binomial_labs,
-           multinomial_labs = multinomial_labs
+           multinomial_labs = multinomial_labs,
+           ordinal_labs = ordinal_labs
          ))
     }
   }

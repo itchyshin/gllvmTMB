@@ -214,7 +214,8 @@
   object,
   loading_thresh = 1e-3,
   sd_thresh = 1e-4,
-  sd_rel_thresh = 1e-3
+  sd_rel_thresh = 1e-3,
+  phi_gamma_ceiling_thresh = 1e8
 ) {
   flags <- character(0)
   rep <- object$report
@@ -272,7 +273,42 @@
       flags <- c(flags, paste0("near_zero_", nm))
     }
   }
+  ## Gamma shape at infinity (#1377): a trait whose residual CV has collapsed
+  ## to zero (a Heywood-type boundary for the Gamma family) is a boundary fit
+  ## just like a collapsed variance component, and was previously unflagged.
+  if (.gllvmTMB_gamma_shape_at_ceiling(object, phi_gamma_ceiling_thresh)) {
+    flags <- c(flags, "boundary_phi_gamma")
+  }
   unique(flags)
+}
+
+## Per-trait Gamma shape (fid 4: shape = phi_gamma; fid 13 positive part:
+## shape = 1 / phi_gamma_delta^2) for the traits that actually use it.
+## Returns a named numeric vector (possibly empty).
+.gllvmTMB_gamma_shapes <- function(object) {
+  rep <- object$report
+  fid <- as.integer(object$tmb_data$family_id_vec %||% integer(0L))
+  tid <- as.integer(object$tmb_data$trait_id %||% integer(0L))
+  if (!length(fid) || length(tid) != length(fid)) return(numeric(0L))
+  out <- numeric(0L)
+  tn <- .gllvmTMB_trait_names(object)
+  pick <- function(vals, traits, transform) {
+    vals <- as.numeric(vals %||% numeric(0L))
+    traits <- traits[traits + 1L <= length(vals)]
+    if (!length(traits)) return(numeric(0L))
+    stats::setNames(transform(vals[traits + 1L]),
+                    vapply(traits + 1L, function(t) .gllvmTMB_trait_label(tn, t),
+                           character(1)))
+  }
+  out <- c(out, pick(rep$phi_gamma, sort(unique(tid[fid == 4L])), identity))
+  out <- c(out, pick(rep$phi_gamma_delta, sort(unique(tid[fid == 13L])),
+                     function(p) 1 / p^2))
+  out
+}
+
+.gllvmTMB_gamma_shape_at_ceiling <- function(object, ceiling) {
+  shapes <- tryCatch(.gllvmTMB_gamma_shapes(object), error = function(e) numeric(0L))
+  length(shapes) > 0L && any(!is.finite(shapes) | shapes >= ceiling)
 }
 
 .gllvmTMB_check_row <- function(
@@ -1585,6 +1621,21 @@
 #'   estimate), which usually means the data cannot separate dispersion from the
 #'   zero-inflation or latent structure. Try a plain `poisson()` / `zi_poisson()` for
 #'   that trait, or more sites.
+#' @param phi_gamma_ceiling_thresh Numeric scalar. A Gamma (or `delta_gamma()`
+#'   positive-part) shape estimate at or above this value is reported as a
+#'   `boundary_phi_gamma_<trait>` warning: the trait's residual coefficient of
+#'   variation has collapsed to about zero, a Heywood-type boundary.
+#' @param laplace_accuracy Logical. If `TRUE` (default), and the fit's only
+#'   random effects are the `latent()` scores with `d <= 3`, the marginal
+#'   log-likelihood is re-evaluated at the fitted parameters by adaptive
+#'   Gauss-Hermite quadrature and compared with the Laplace value
+#'   (`laplace_accuracy` row). Skipped for all-Gaussian fits, where Laplace is
+#'   exact, and reported as `INFO` (not evaluated) when rows x nodes exceeds
+#'   2e7. Set to `FALSE` to skip the extra evaluation entirely.
+#' @param laplace_accuracy_thresh Numeric scalar. The `laplace_accuracy` row
+#'   warns when the Laplace logLik exceeds the quadrature logLik by more than
+#'   this many log-likelihood units (an optimistic Laplace approximation, which
+#'   biases logLik / AIC / likelihood-ratio comparisons toward that fit).
 #' @return A data frame with columns `component`, `status`, `value`,
 #'   `threshold`, `message`, and `action`. Status values are `"PASS"`,
 #'   `"WARN"`, `"FAIL"`, or `"INFO"` (informational rows on MSPL and other
@@ -1628,7 +1679,10 @@ check_gllvmTMB <- function(
   ## multi.R's `.clamp_log_phi()`); two orders of magnitude beyond its
   ## upper bound is unambiguously a runaway, not a plausible large but
   ## real dispersion, hence 1e4.
-  phi_nbinom2_ceiling_thresh = 1e4
+  phi_nbinom2_ceiling_thresh = 1e4,
+  phi_gamma_ceiling_thresh = 1e8,
+  laplace_accuracy = TRUE,
+  laplace_accuracy_thresh = 2
 ) {
   if (!inherits(object, "gllvmTMB_multi")) {
     cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
@@ -1786,6 +1840,12 @@ check_gllvmTMB <- function(
   )
 
   flags <- health$boundary_flags %||% character(0)
+  ## The cached fit-time flag uses the default Gamma ceiling; re-judge it at
+  ## the caller's `phi_gamma_ceiling_thresh`.
+  flags <- setdiff(flags, "boundary_phi_gamma")
+  if (.gllvmTMB_gamma_shape_at_ceiling(object, phi_gamma_ceiling_thresh)) {
+    flags <- c(flags, "boundary_phi_gamma")
+  }
   if (length(flags) == 0L) {
     rows <- c(
       rows,
@@ -2125,6 +2185,60 @@ check_gllvmTMB <- function(
           "if phi is at the ceiling, the NB2 overdispersion is not identified for this trait at this sample size; consider poisson()/zi_poisson() instead, or more data"
         ))
       )
+    }
+  }
+
+  ## Gamma shape boundary (#1377): fid 4 Gamma and the fid 13 delta_gamma
+  ## positive part. A shape at the ceiling is a trait whose residual CV has
+  ## collapsed (a Gamma Heywood case); before the stable density it was also
+  ## where floating-point cancellation turned the logLik into +1e16.
+  gamma_shapes <- tryCatch(.gllvmTMB_gamma_shapes(object), error = function(e) numeric(0L))
+  for (nm in names(gamma_shapes)) {
+    k_t <- gamma_shapes[[nm]]
+    at_ceiling <- !is.finite(k_t) || k_t >= phi_gamma_ceiling_thresh
+    rows <- c(rows, list(.gllvmTMB_check_row(
+      paste0("boundary_phi_gamma_", nm),
+      if (at_ceiling) "WARN" else "PASS",
+      .gllvmTMB_fmt_num(k_t, digits = 4L),
+      phi_gamma_ceiling_thresh,
+      if (at_ceiling) {
+        "Gamma shape has run to the boundary: this trait's residual coefficient of variation is ~0 (a Heywood-type case), so its dispersion is not identified"
+      } else {
+        "Gamma shape is within the sane range"
+      },
+      "compare with n_init restarts; if the shape stays at the ceiling, the latent factor is absorbing this trait completely -- consider lognormal(), fewer latent dimensions, or more data"
+    )))
+  }
+
+  ## Laplace accuracy (#1389): the fitted logLik is a Laplace approximation;
+  ## evaluate the marginal likelihood by adaptive Gauss-Hermite quadrature at
+  ## the SAME parameters and warn when Laplace is optimistic.
+  if (isTRUE(laplace_accuracy) && !is_mspl) {
+    la <- tryCatch(.gllvmTMB_laplace_accuracy(object), error = function(e) NULL)
+    if (is.list(la) && isTRUE(la$too_large)) {
+      rows <- c(rows, list(.gllvmTMB_check_row(
+        "laplace_accuracy", "INFO", NA_character_, laplace_accuracy_thresh,
+        paste0("not evaluated: ", la$reason),
+        "for a direct check, refit a subsample or compare with gllvmTMBcontrol(aghq = 9)"
+      )))
+    } else if (is.list(la) && isTRUE(la$evaluated)) {
+      bad <- la$optimism > laplace_accuracy_thresh
+      rows <- c(rows, list(.gllvmTMB_check_row(
+        "laplace_accuracy",
+        if (bad) "WARN" else "PASS",
+        sprintf("%.3f", la$optimism),
+        laplace_accuracy_thresh,
+        sprintf(
+          "%s: Laplace logLik %.3f vs adaptive Gauss-Hermite logLik %.3f (k = %d per axis) at the fitted parameters",
+          if (bad) {
+            "Laplace logLik is ABOVE the marginal likelihood it approximates; logLik/AIC/LRT comparisons with this fit are unreliable and the optimum is likely a Laplace artifact"
+          } else {
+            "Laplace logLik is not optimistic"
+          },
+          la$loglik_laplace, la$loglik_quadrature, la$k
+        ),
+        "refit with gllvmTMBcontrol(aghq = 9) (AGHQ optimises the accurate objective), compare against a logit link or fewer latent dimensions, or check for a quasi-separated item with a very large loading"
+      )))
     }
   }
 

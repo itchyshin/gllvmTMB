@@ -246,15 +246,15 @@ sigma.gllvmTMB_va <- sigma.gllvmTMB_multi
     )
     unseen <- unique(raw[!is.na(raw) & is.na(restored)])
     if (length(unseen) && !nm %in% allow_unseen) {
+      err_class <- "gllvmTMB_predict_unseen_level"
+      if (nm %in% typed_observation) {
+        err_class <- c(err_class, "gllvmTMB_predict_isdm_observation_level")
+      }
       cli::cli_abort(c(
         "New data contains unseen level(s) in factor {.arg {nm}}.",
         "x" = "Unseen level(s): {.val {unseen}}.",
         "i" = "Use levels present in the training data or refit the model with the expanded factor scale."
-      ), class = if (nm %in% typed_observation) {
-        "gllvmTMB_predict_isdm_observation_level"
-      } else {
-        NULL
-      })
+      ), class = err_class)
     }
     ## `factor()` drops contrasts. Copy any user-set coding (contr.sum,
     ## contr.helmert, ...) so model.matrix() does not fall back to
@@ -388,7 +388,7 @@ sigma.gllvmTMB_va <- sigma.gllvmTMB_multi
         "Cannot build the fixed-effect design for {.arg newdata}.",
         "x" = conditionMessage(e),
         "i" = "Use the training factor levels and the same transforms as the fitted formula."
-      ), parent = e)
+      ), parent = e, class = "gllvmTMB_predict_newdata_design")
     }
   )
   mm <- stats::model.matrix(

@@ -40,7 +40,18 @@ Before-fix on `main` `9354ac2f` (installed 0.8.0.9000):
 - #1425: `b` rows without baseline are 0.71 below in-sample.
 - #1424: `newdata = training` errors `Unknown column(s): "gb" and "gc"`.
 
-Focused tests and after-fix repros are recorded after the first installed check on this branch.
+After-fix on this branch (pkgload::load_all, compile = FALSE):
+
+- #1384: NA rows are `NA`; complete rows 1.748 / 0.789 match row-by-row; no recycle warning.
+- #1423: `scale(x)` max|diff| = 0; one-row newdata returns.
+- #1425: `b` rows with levels `b,c` match in-sample; diff = 0.
+- #1424: `newdata = training` has 180 rows, max|diff| = 0.
+
+`test-predict-newdata-alignment.R`: FAIL 0 / ERR 0 / WARN 0 / SKIP 0 / PASS 29.
+`test-tidy-predict.R`: FAIL 0 / PASS 20 (4 CRAN skips; pre-existing `unit = "site"` deprecation warning).
+`test-isdm-predict.R`: FAIL 0 / PASS 36 / SKIP 9.
+`test-isdm-requalification-prediction.R`: FAIL 0 / PASS 21.
+`test-oct4-news-doc-fixes.R`: FAIL 0 / PASS 25.
 
 Stale-wording scans:
 

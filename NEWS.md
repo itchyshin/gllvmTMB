@@ -1,10 +1,19 @@
 # Development (unreleased)
 
-* Wide `traits()` now accepts multi-trial binomial responses:
-  `traits(cbind(s1, f1), cbind(s2, f2)) ~ ...`. Before, this failed with
-  "object 's1' not found" (#1494). The second column is failures, not trials
-  (use `cbind(s, trials - s)`); every trait must use `cbind()`, and cells with
-  an `NA` count or zero trials are treated as missing.
+* Multi-trial binomial counts can now be mixed with other families in one
+  model, in long and wide format (#1494).
+  - Wide `traits()` accepts `cbind(successes, failures)` pairs next to plain
+    columns: `traits(cbind(s1, f1), mass, count) ~ ...` with a `family` list
+    named by trait. Before, any `cbind()` inside `traits()` failed with
+    "object 's1' not found".
+  - In long format, a `cbind(value, failures)` response no longer treats every
+    row as binomial. The second column is read only on `binomial()`,
+    `betabinomial()` and `zi_binomial()` rows; on other rows it must be 0.
+    Before, a negative Gaussian value or a zero count aborted the fit.
+  - The second column is failures, not trials (use `cbind(s, trials - s)`).
+    The fit is identical to the single-column `weights = trials` route.
+  - `engine = "julia"` still requires every family to be binomial for a
+    two-column response.
 
 * Several likelihoods are now numerically stable at extreme parameter values
   that an optimiser can reach. Before, they lost precision or went flat there.

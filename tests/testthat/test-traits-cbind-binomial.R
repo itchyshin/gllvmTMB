@@ -53,13 +53,8 @@ test_that("cbind pairs: NA / zero-trial cells are dropped, expressions work", {
                    "cbind(.succ_wide_, .fail_wide_)")
 })
 
-test_that("cbind in traits(): mixed and malformed forms are refused", {
+test_that("cbind in traits(): malformed forms are refused", {
   d <- .cbind_fixture(20L)
-  expect_error(
-    gllvmTMB:::rewrite_traits_lhs(
-      traits(cbind(s1, f1), s2) ~ 1 + latent(1 | id, d = 1), data = d),
-    class = "gllvmTMB_traits_cbind_mixed"
-  )
   expect_error(
     gllvmTMB:::rewrite_traits_lhs(
       traits(cbind(s1), cbind(s2, f2)) ~ 1 + latent(1 | id, d = 1), data = d),
@@ -71,4 +66,72 @@ test_that("cbind in traits(): mixed and malformed forms are refused", {
       data = d),
     class = "gllvmTMB_traits_cbind_names"
   )
+})
+
+## Mixed families (#1494 follow-up): the oracle is the single-column
+## `weights = trials` route, which hands TMB the same inputs.
+.mixed_long <- function(d) {
+  lv <- c("s1", "s2", "mass")
+  out <- do.call(rbind, lapply(seq_len(nrow(d)), function(i) data.frame(
+    id = d$id[i], trait = lv,
+    value = c(d$s1[i], d$s2[i], d$mass[i]),
+    fail = c(d$f1[i], d$f2[i], 0),
+    n = c(d$s1[i] + d$f1[i], d$s2[i] + d$f2[i], 1)
+  )))
+  out$trait <- factor(out$trait, levels = lv)
+  out
+}
+
+test_that("long mixed-family cbind() equals the weights route", {
+  skip_on_cran()
+  d <- .cbind_fixture()
+  d$mass <- rnorm(nrow(d), mean = -1)          # negative Gaussian values
+  L <- .mixed_long(d)
+  fams <- list(s1 = binomial(), s2 = binomial(), mass = gaussian())
+  attr(fams, "family_var") <- "trait"
+  ctl <- gllvmTMBcontrol(se = FALSE, n_init = 1L)
+  fml <- ~ 0 + trait + latent(0 + trait | id, d = 1, unique = FALSE)
+  fa <- suppressMessages(suppressWarnings(gllvmTMB(
+    stats::update(fml, cbind(value, fail) ~ .), data = L, unit = "id",
+    trait = "trait", family = fams, control = ctl)))
+  fb <- suppressMessages(suppressWarnings(gllvmTMB(
+    stats::update(fml, value ~ .), data = L, unit = "id", trait = "trait",
+    family = fams, control = ctl, weights = L$n)))
+  expect_equal(fa$tmb_data$n_trials, fb$tmb_data$n_trials)
+  expect_true(all(fa$tmb_data$n_trials[L$trait == "mass"] == 1))
+  expect_equal(fa$opt$objective, fb$opt$objective, tolerance = 1e-8)
+
+  ## wide twin
+  fw <- suppressMessages(suppressWarnings(gllvmTMB(
+    traits(cbind(s1, f1), cbind(s2, f2), mass) ~ 1 +
+      latent(1 | id, d = 1, unique = FALSE),
+    data = d, unit = "id", control = ctl,
+    family = list(s1 = binomial(), s2 = binomial(), mass = gaussian()))))
+  expect_equal(fw$opt$objective, fa$opt$objective, tolerance = 1e-8)
+})
+
+test_that("mixed-family cbind(): refusals", {
+  d <- .cbind_fixture(30L)
+  d$mass <- rnorm(nrow(d))
+  L <- .mixed_long(d)
+  L$fail[L$trait == "mass"][1] <- 1
+  fams <- list(s1 = binomial(), s2 = binomial(), mass = gaussian())
+  attr(fams, "family_var") <- "trait"
+  expect_error(suppressMessages(gllvmTMB(
+    cbind(value, fail) ~ 0 + trait + latent(0 + trait | id, d = 1),
+    data = L, unit = "id", trait = "trait", family = fams)),
+    class = "gllvmTMB_cbind_second_column_nonbinomial")
+  expect_error(suppressMessages(gllvmTMB(
+    traits(cbind(s1, f1), mass) ~ 1 + latent(1 | id, d = 1),
+    data = d, unit = "id", family = list(s1 = gaussian(), mass = gaussian()))),
+    class = "gllvmTMB_traits_cbind_family")
+  expect_error(suppressMessages(gllvmTMB(
+    traits(cbind(s1, f1), mass) ~ 1 + latent(1 | id, d = 1),
+    data = d, unit = "id", family = list(infected = binomial(), mass = gaussian()))),
+    class = "gllvmTMB_traits_family_names")
+  d$cnt <- d$s2
+  expect_error(suppressMessages(gllvmTMB(
+    traits(cbind(s1, f1), cnt) ~ 1 + latent(1 | id, d = 1),
+    data = d, unit = "id", family = list(s1 = binomial(), cnt = binomial()))),
+    class = "gllvmTMB_traits_plain_binomial_not_binary")
 })

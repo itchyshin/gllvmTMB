@@ -502,33 +502,18 @@ rewrite_traits_lhs <- function(
   )
   cbind_mode <- any(is_cbind)
   cbind_succ <- cbind_fail <- NULL
+  cbind_traits <- character()
   if (cbind_mode) {
-    if (!all(is_cbind)) {
-      cli::cli_abort(c(
-        "{.fn traits} cannot mix {.code cbind(successes, failures)} arguments with plain columns.",
-        "i" = "A two-column response applies to every trait in the call.",
-        ">" = "Give every trait a {.code cbind()} pair, or fit the mixed-response model in long format."
-      ), class = "gllvmTMB_traits_cbind_mixed")
-    }
-    if (any(lengths(args) != 3L)) {
+    ## Mixed calls are allowed (#1494): plain-column arguments are resolved
+    ## with tidyselect one argument at a time, so the trait order is exactly
+    ## the order written in traits(). A plain trait carries succ = column and
+    ## fail = 0; gllvmTMB() rewrites fail for a plain binomial-type trait
+    ## (Bernoulli) once the family is known.
+    if (any(lengths(args[is_cbind]) != 3L)) {
       cli::cli_abort(c(
         "Each {.code cbind()} inside {.fn traits} needs exactly two arguments: {.code cbind(successes, failures)}.",
         "i" = "The second column is the number of FAILURES, not the number of trials. For a trials column use {.code cbind(s, trials - s)}."
       ), class = "gllvmTMB_traits_cbind_arity")
-    }
-    trait_cols <- names(args)
-    if (is.null(trait_cols)) trait_cols <- rep("", length(args))
-    blank <- !nzchar(trait_cols)
-    trait_cols[blank] <- vapply(
-      args[blank], function(a) paste(deparse(a[[2L]]), collapse = ""),
-      character(1L)
-    )
-    if (anyDuplicated(trait_cols)) {
-      cli::cli_abort(c(
-        "{.fn traits} {.code cbind()} arguments need distinct trait names.",
-        "x" = "Duplicated: {.val {unique(trait_cols[duplicated(trait_cols)])}}.",
-        ">" = "Name each pair, e.g. {.code traits(infected = cbind(s1, f1), disease = cbind(s2, f2))}."
-      ), class = "gllvmTMB_traits_cbind_names")
     }
     eval_col <- function(expr) {
       v <- tryCatch(
@@ -544,12 +529,55 @@ rewrite_traits_lhs <- function(
         ), class = "gllvmTMB_traits_cbind_eval")
       as.numeric(v)
     }
-    cbind_succ <- vapply(args, function(a) eval_col(a[[2L]]),
-                         numeric(nrow(data)))
-    cbind_fail <- vapply(args, function(a) eval_col(a[[3L]]),
-                         numeric(nrow(data)))
-    cbind_succ <- matrix(cbind_succ, nrow = nrow(data))
-    cbind_fail <- matrix(cbind_fail, nrow = nrow(data))
+    arg_names <- names(args)
+    if (is.null(arg_names)) arg_names <- rep("", length(args))
+    trait_cols <- character()
+    succ_cols <- fail_cols <- list()
+    is_pair <- logical()
+    for (i in seq_along(args)) {
+      a <- args[[i]]
+      if (is_cbind[[i]]) {
+        nm <- if (nzchar(arg_names[[i]])) arg_names[[i]] else
+          paste(deparse(a[[2L]]), collapse = "")
+        trait_cols <- c(trait_cols, nm)
+        succ_cols[[length(succ_cols) + 1L]] <- eval_col(a[[2L]])
+        fail_cols[[length(fail_cols) + 1L]] <- eval_col(a[[3L]])
+        is_pair <- c(is_pair, TRUE)
+      } else {
+        sel <- as.call(c(list(quote(c)), args[i]))
+        resolved <- tryCatch(
+          tidyselect::eval_select(rlang::new_quosure(sel, env = eval_env),
+                                  data = data),
+          error = function(e) cli::cli_abort(c(
+            "{.fn traits} could not resolve the column selection.",
+            "x" = conditionMessage(e),
+            "i" = "Check that the columns exist in {.arg data} or use {.fn all_of} for variables holding column names."
+          ))
+        )
+        for (j in seq_along(resolved)) {
+          v <- data[[resolved[[j]]]]
+          if (!is.numeric(v) && !is.logical(v))
+            cli::cli_abort(c(
+              "{.fn traits}: column {.field {names(resolved)[[j]]}} must be numeric when {.code cbind()} pairs are also used.",
+              ">" = "Recode it to numbers, or fit this model in long format."
+            ), class = "gllvmTMB_traits_cbind_eval")
+          trait_cols <- c(trait_cols, names(resolved)[[j]])
+          succ_cols[[length(succ_cols) + 1L]] <- as.numeric(v)
+          fail_cols[[length(fail_cols) + 1L]] <- rep(0, nrow(data))
+          is_pair <- c(is_pair, FALSE)
+        }
+      }
+    }
+    if (anyDuplicated(trait_cols)) {
+      cli::cli_abort(c(
+        "{.fn traits} arguments need distinct trait names.",
+        "x" = "Duplicated: {.val {unique(trait_cols[duplicated(trait_cols)])}}.",
+        ">" = "Name each pair, e.g. {.code traits(infected = cbind(s1, f1), disease = cbind(s2, f2))}."
+      ), class = "gllvmTMB_traits_cbind_names")
+    }
+    cbind_succ <- matrix(unlist(succ_cols), nrow = nrow(data))
+    cbind_fail <- matrix(unlist(fail_cols), nrow = nrow(data))
+    cbind_traits <- trait_cols[is_pair]
     for (nm in c(".succ_wide_", ".fail_wide_")) {
       if (nm %in% names(data))
         cli::cli_abort(c(
@@ -581,7 +609,11 @@ rewrite_traits_lhs <- function(
   ## (row, trait) response-missing mask. For cbind pairs a cell is missing if
   ## either count is NA or the cell has zero trials (no information).
   na_mat <- if (cbind_mode) {
-    is.na(cbind_succ) | is.na(cbind_fail) | (cbind_succ + cbind_fail == 0)
+    m <- is.na(cbind_succ) | is.na(cbind_fail)
+    pair_cols <- which(trait_cols %in% cbind_traits)
+    m[, pair_cols] <- m[, pair_cols] |
+      (cbind_succ[, pair_cols, drop = FALSE] + cbind_fail[, pair_cols, drop = FALSE] == 0)
+    m
   } else {
     is.na(as.matrix(data[trait_cols]))
   }
@@ -746,6 +778,70 @@ rewrite_traits_lhs <- function(
     source_row = as.integer(source_row),
     ## Under response = "include" no cell is dropped (NA cells are kept and
     ## masked); n_dropped reflects the cells actually removed from the stack.
-    n_dropped = if (drop_na_cells) n_NA_in_traits else 0L
+    n_dropped = if (drop_na_cells) n_NA_in_traits else 0L,
+    ## Traits written as cbind(successes, failures); empty when none.
+    cbind_traits = cbind_traits
   )
+}
+
+## ---- Internal: family-aware fix-up for wide cbind() calls (#1494) -------
+##
+## rewrite_traits_lhs() cannot see `family`, so a plain column in a call that
+## also has cbind() pairs is stacked as cbind(value, 0). Here, with the family
+## known: a cbind() pair must belong to a binomial-type family, and a plain
+## column of a binomial-type family keeps its single-column meaning -- one
+## Bernoulli trial -- so its failures become 1 - y. Non-binomial plain columns
+## keep failures = 0, which the engine reads as "column 1 is the response".
+.traits_cbind_family_fixup <- function(rewrite, family, family_long) {
+  d <- rewrite$data_long
+  trait_cols <- rewrite$trait_cols
+  if (is.function(family)) family <- family()
+  if (inherits(family, "family")) {
+    fam_of <- stats::setNames(rep(family$family, length(trait_cols)), trait_cols)
+  } else if (is.list(family)) {
+    if (!is.null(attr(family, "family_var", exact = TRUE))) return(d)
+    nms <- names(family)
+    if (is.null(nms) || !setequal(nms, trait_cols) ||
+        length(nms) != length(trait_cols)) {
+      missing_nms <- setdiff(trait_cols, nms)
+      extra_nms <- setdiff(nms, trait_cols)
+      cli::cli_abort(c(
+        "With {.code cbind()} in {.fn traits}, a {.arg family} list must be named by trait.",
+        "i" = "Trait names: {.val {trait_cols}}. A {.code cbind(s, f)} pair is named after {.code s}, or after its argument name ({.code traits(infected = cbind(s, f))}).",
+        "x" = if (length(missing_nms)) "No family for: {.val {missing_nms}}." else NULL,
+        "x" = if (length(extra_nms)) "Not a trait: {.val {extra_nms}}." else NULL,
+        "x" = if (is.null(nms)) "The {.arg family} list has no names." else NULL
+      ), class = "gllvmTMB_traits_family_names")
+    }
+    fam_of <- vapply(family[trait_cols], function(f) {
+      if (is.function(f)) f <- f()
+      if (inherits(f, "family")) f$family else NA_character_
+    }, character(1L))
+  } else {
+    return(d)
+  }
+  bin_type <- c("binomial", "betabinomial", "zi_binomial")
+  bad_pair <- intersect(rewrite$cbind_traits,
+                        names(fam_of)[!fam_of %in% bin_type])
+  if (length(bad_pair)) {
+    cli::cli_abort(c(
+      "{.code cbind(successes, failures)} is only meaningful for binomial-type families.",
+      "x" = "Non-binomial family on a {.code cbind()} trait: {.val {paste(bad_pair, fam_of[bad_pair], sep = ' = ')}}.",
+      ">" = "Use {.fn binomial}, {.fn betabinomial} or {.fn zi_binomial} for a {.code cbind()} trait, or give the trait as a plain column."
+    ), class = "gllvmTMB_traits_cbind_family")
+  }
+  plain_bin <- setdiff(names(fam_of)[fam_of %in% bin_type], rewrite$cbind_traits)
+  for (t in plain_bin) {
+    rows <- which(as.character(d$trait) == t & !is.na(d$.succ_wide_))
+    v <- d$.succ_wide_[rows]
+    if (any(!v %in% c(0, 1))) {
+      cli::cli_abort(c(
+        "Trait {.val {t}} is a plain column with a binomial-type family, so it must be 0/1.",
+        "x" = "Found values outside {{0, 1}}.",
+        ">" = "For counts out of a number of trials, write it as {.code cbind(successes, failures)}."
+      ), class = "gllvmTMB_traits_plain_binomial_not_binary")
+    }
+    d$.fail_wide_[rows] <- 1 - v
+  }
+  d
 }

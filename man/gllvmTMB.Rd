@@ -485,7 +485,34 @@ per-row trial count, use either:
 \item a flat response \code{y} with \code{weights = n_trials} (the alternative
 glmmTMB API).
 }
-Both interfaces produce identical fits. For Bernoulli data, omit
+The second \code{cbind()} column is the number of \strong{failures}, not trials; for
+a trials column write \code{cbind(s, trials - s)}. Both interfaces produce
+identical fits.
+
+\emph{Mixing with other families.} Binomial counts can share one model with
+Gaussian, count or other traits. In a mixed fit the second \code{cbind()} column
+is read only on binomial-type rows (\code{binomial()}, \code{betabinomial()},
+\code{zi_binomial()}); on every other row the first column is the response and
+the second must be \code{0}. Long format, with a per-trait \code{family} list:
+\preformatted{
+fams <- list(infected = binomial(), mass = gaussian(), count = poisson())
+attr(fams, "family_var") <- "trait"
+gllvmTMB(cbind(value, failures) ~ 0 + trait + latent(0 + trait | site, d = 2),
+         data = long, trait = "trait", unit = "site", family = fams)
+}
+Wide format: give each binomial trait its own pair inside \code{traits()} and
+name the \code{family} list by trait. A pair takes its trait name from its first
+argument, or from an argument name (\code{traits(infected = cbind(s, f))}):
+\preformatted{
+gllvmTMB(traits(cbind(n_inf, n_uninf), mass, count) ~ 1 + latent(1 | site, d = 2),
+         data = wide, unit = "site",
+         family = list(n_inf = binomial(), mass = gaussian(), count = poisson()))
+}
+In wide format a plain column with a binomial-type family stays a 0/1
+(Bernoulli) response, and cells with an \code{NA} count or zero trials are
+treated as missing. The single-column route (\code{value} with
+\code{weights = trials}, \code{1} on non-binomial rows) gives the same fit but does
+not cover \code{zi_binomial()}. For Bernoulli data, omit
 \code{weights} and use a 0/1 response; the engine sets \code{n_trials = 1} and
 the likelihood is identical to the previous Bernoulli-only behaviour.
 

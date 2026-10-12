@@ -450,6 +450,13 @@
 #'   \item a flat response `y` with `weights = n_trials` (the alternative
 #'         glmmTMB API).
 #' }
+#' In wide format, give each trait its own pair inside `traits()`, e.g.
+#' `traits(cbind(s1, f1), cbind(s2, f2)) ~ 1 + latent(1 | id, d = 1)`.
+#' The second column is the number of **failures**, not trials; for a trials
+#' column write `cbind(s, trials - s)`. Name a pair to set its trait label
+#' (`traits(a = cbind(s1, f1), ...)`). Every trait in the call must use
+#' `cbind()` (mixing with plain columns is refused), and cells with an `NA`
+#' count or zero trials are treated as missing.
 #' Both interfaces produce identical fits. For Bernoulli data, omit
 #' `weights` and use a 0/1 response; the engine sets `n_trials = 1` and
 #' the likelihood is identical to the previous Bernoulli-only behaviour.

@@ -1,5 +1,11 @@
 # Development (unreleased)
 
+* Wide `traits()` now accepts multi-trial binomial responses:
+  `traits(cbind(s1, f1), cbind(s2, f2)) ~ ...`. Before, this failed with
+  "object 's1' not found" (#1494). The second column is failures, not trials
+  (use `cbind(s, trials - s)`); every trait must use `cbind()`, and cells with
+  an `NA` count or zero trials are treated as missing.
+
 * Several likelihoods are now numerically stable at extreme parameter values
   that an optimiser can reach. Before, they lost precision or went flat there.
   - Binomial `logit` / `probit` no longer clamp the probability to

@@ -492,24 +492,98 @@ rewrite_traits_lhs <- function(
   ## Using as.call(c(quote(c), args)) keeps each arg as an unevaluated
   ## expression; rlang::new_quosure attaches the user's calling env so
   ## tidyselect verbs resolve correctly.
-  cols_expr <- as.call(c(list(quote(c)), args))
-  cols_quo <- rlang::new_quosure(cols_expr, env = eval_env)
-  resolved <- tryCatch(
-    tidyselect::eval_select(cols_quo, data = data),
-    error = function(e) {
-      cli::cli_abort(c(
-        "{.fn traits} could not resolve the column selection.",
-        "x" = conditionMessage(e),
-        "i" = "Check that the columns exist in {.arg data} or use {.fn all_of} for variables holding column names."
-      ))
-    }
+  ## Multi-trial binomial: `cbind(successes, failures)` arguments, one per
+  ## trait. Evaluated against `data` (so `cbind(s, n - s)` works); the pair is
+  ## stacked below and handed to the long engine as a two-column response.
+  is_cbind <- vapply(
+    args,
+    function(a) is.call(a) && identical(.traits_call_name(a), "cbind"),
+    logical(1L)
   )
-  trait_cols <- names(resolved)
+  cbind_mode <- any(is_cbind)
+  cbind_succ <- cbind_fail <- NULL
+  if (cbind_mode) {
+    if (!all(is_cbind)) {
+      cli::cli_abort(c(
+        "{.fn traits} cannot mix {.code cbind(successes, failures)} arguments with plain columns.",
+        "i" = "A two-column response applies to every trait in the call.",
+        ">" = "Give every trait a {.code cbind()} pair, or fit the mixed-response model in long format."
+      ), class = "gllvmTMB_traits_cbind_mixed")
+    }
+    if (any(lengths(args) != 3L)) {
+      cli::cli_abort(c(
+        "Each {.code cbind()} inside {.fn traits} needs exactly two arguments: {.code cbind(successes, failures)}.",
+        "i" = "The second column is the number of FAILURES, not the number of trials. For a trials column use {.code cbind(s, trials - s)}."
+      ), class = "gllvmTMB_traits_cbind_arity")
+    }
+    trait_cols <- names(args)
+    if (is.null(trait_cols)) trait_cols <- rep("", length(args))
+    blank <- !nzchar(trait_cols)
+    trait_cols[blank] <- vapply(
+      args[blank], function(a) paste(deparse(a[[2L]]), collapse = ""),
+      character(1L)
+    )
+    if (anyDuplicated(trait_cols)) {
+      cli::cli_abort(c(
+        "{.fn traits} {.code cbind()} arguments need distinct trait names.",
+        "x" = "Duplicated: {.val {unique(trait_cols[duplicated(trait_cols)])}}.",
+        ">" = "Name each pair, e.g. {.code traits(infected = cbind(s1, f1), disease = cbind(s2, f2))}."
+      ), class = "gllvmTMB_traits_cbind_names")
+    }
+    eval_col <- function(expr) {
+      v <- tryCatch(
+        eval(expr, data, eval_env),
+        error = function(e) cli::cli_abort(c(
+          "{.fn traits} could not evaluate {.code {deparse(expr)}}.",
+          "x" = conditionMessage(e)
+        ), class = "gllvmTMB_traits_cbind_eval")
+      )
+      if (!is.numeric(v) || length(v) != nrow(data))
+        cli::cli_abort(c(
+          "{.code {deparse(expr)}} must be a numeric column with one value per row of {.arg data}."
+        ), class = "gllvmTMB_traits_cbind_eval")
+      as.numeric(v)
+    }
+    cbind_succ <- vapply(args, function(a) eval_col(a[[2L]]),
+                         numeric(nrow(data)))
+    cbind_fail <- vapply(args, function(a) eval_col(a[[3L]]),
+                         numeric(nrow(data)))
+    cbind_succ <- matrix(cbind_succ, nrow = nrow(data))
+    cbind_fail <- matrix(cbind_fail, nrow = nrow(data))
+    for (nm in c(".succ_wide_", ".fail_wide_")) {
+      if (nm %in% names(data))
+        cli::cli_abort(c(
+          "{.fn traits} reserves the column name {.code {nm}} for {.code cbind()} responses.",
+          "i" = "Rename that column in {.arg data}."
+        ))
+    }
+  } else {
+    cols_expr <- as.call(c(list(quote(c)), args))
+    cols_quo <- rlang::new_quosure(cols_expr, env = eval_env)
+    resolved <- tryCatch(
+      tidyselect::eval_select(cols_quo, data = data),
+      error = function(e) {
+        cli::cli_abort(c(
+          "{.fn traits} could not resolve the column selection.",
+          "x" = conditionMessage(e),
+          "i" = "Check that the columns exist in {.arg data} or use {.fn all_of} for variables holding column names."
+        ))
+      }
+    )
+    trait_cols <- names(resolved)
+  }
   if (length(trait_cols) == 0L) {
     cli::cli_abort(c(
       "{.fn traits} resolved to zero columns.",
       "i" = "Check the tidyselect expression matches at least one column in {.arg data}."
     ))
+  }
+  ## (row, trait) response-missing mask. For cbind pairs a cell is missing if
+  ## either count is NA or the cell has zero trials (no information).
+  na_mat <- if (cbind_mode) {
+    is.na(cbind_succ) | is.na(cbind_fail) | (cbind_succ + cbind_fail == 0)
+  } else {
+    is.na(as.matrix(data[trait_cols]))
   }
 
   prepared_column_data <- .column_data_prepare(
@@ -530,11 +604,7 @@ rewrite_traits_lhs <- function(
   )
 
   ## Number of NA (trait, row) cells in the wide response block.
-  n_NA_in_traits <- sum(vapply(
-    trait_cols,
-    function(cn) sum(is.na(data[[cn]])),
-    integer(1L)
-  ))
+  n_NA_in_traits <- sum(na_mat)
 
   ## ---- Phase 1 sub-slice 2: wide cell-identity mask (design 59 sec.4b) ----
   ## The audit's critical risk (Phase 0 audit sec.1): the historical pivot
@@ -566,19 +636,36 @@ rewrite_traits_lhs <- function(
     n_units = nrow(data),
     n_traits = length(trait_cols),
     na_mask = if (drop_na_cells) {
-      is.na(as.matrix(data[trait_cols]))
+      na_mat
     } else {
       NULL
     }
   )
 
-  data_long <- tidyr::pivot_longer(
-    data,
-    cols = tidyselect::all_of(trait_cols),
-    names_to = "trait",
-    values_to = ".y_wide_",
-    values_drop_na = drop_na_cells
-  )
+  if (cbind_mode) {
+    ## Stack ROW-MAJOR (traits vary within source row), matching
+    ## pivot_longer() and `source_row` below; the paired counts travel as two
+    ## columns that the formula LHS rebinds as `cbind(succ, fail)`.
+    k <- length(trait_cols)
+    data_long <- data[rep(seq_len(nrow(data)), each = k), , drop = FALSE]
+    data_long$trait <- rep(trait_cols, times = nrow(data))
+    data_long$.succ_wide_ <- as.vector(t(cbind_succ))
+    data_long$.fail_wide_ <- as.vector(t(cbind_fail))
+    cell_na <- as.vector(t(na_mat))
+    ## Zero-trial cells carry no information; blank them so "include" masks
+    ## them rather than tripping the engine's zero-trials abort.
+    data_long$.succ_wide_[cell_na] <- NA_real_
+    data_long$.fail_wide_[cell_na] <- NA_real_
+    if (drop_na_cells) data_long <- data_long[!cell_na, , drop = FALSE]
+  } else {
+    data_long <- tidyr::pivot_longer(
+      data,
+      cols = tidyselect::all_of(trait_cols),
+      names_to = "trait",
+      values_to = ".y_wide_",
+      values_drop_na = drop_na_cells
+    )
+  }
   ## Preserve the user-supplied trait column order as factor levels —
   ## avoids the alphabetic-sort gotcha called out in the maintainer's
   ## six recurring pitfalls (see vignettes/articles/pitfalls.Rmd).
@@ -593,7 +680,7 @@ rewrite_traits_lhs <- function(
   ## Under response = "drop", remove the same NA cells as the pivot.
   source_row <- rep(seq_len(nrow(data)), each = length(trait_cols))
   if (drop_na_cells) {
-    source_row <- source_row[!as.vector(t(is.na(as.matrix(data[trait_cols]))))]
+    source_row <- source_row[!as.vector(t(na_mat))]
   }
 
   ## Stack the per-trait offset the same way, so it survives the NA-cell drop
@@ -601,7 +688,7 @@ rewrite_traits_lhs <- function(
   if (!is.null(offset_rw$values)) {
     off_long <- as.vector(t(offset_rw$values))
     if (drop_na_cells) {
-      off_long <- off_long[!as.vector(t(is.na(as.matrix(data[trait_cols]))))]
+      off_long <- off_long[!as.vector(t(na_mat))]
     }
     data_long[[".offset_wide_"]] <- off_long
   }
@@ -640,8 +727,13 @@ rewrite_traits_lhs <- function(
   rhs <- .traits_expand_rhs(
     shared_rhs, column_vars = column_vars, shared_marker = shared_marker
   )
+  lhs_long <- if (cbind_mode) {
+    quote(cbind(.succ_wide_, .fail_wide_))
+  } else {
+    quote(.y_wide_)
+  }
   formula_long <- stats::as.formula(
-    bquote(.y_wide_ ~ .(rhs), splice = TRUE),
+    bquote(.(lhs_long) ~ .(rhs), splice = TRUE),
     env = eval_env
   )
 

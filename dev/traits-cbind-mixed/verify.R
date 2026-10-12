@@ -131,6 +131,36 @@ if (gate == "wide") {
     data = w, unit = "id", control = ctl,
     family = list(s1 = binomial(), count = binomial()))), error = identity)
   ok(inherits(e3, "gllvmTMB_traits_plain_binomial_not_binary"), "T5 non-0/1 plain binomial column refused")
+  ## Review findings (G6) -- each must now behave.
+  wide_fit <- function(fam, f = traits(cbind(s1, f1), mass, b) ~ 1 +
+                         latent(1 | id, d = 1, unique = FALSE)) quiet(gllvmTMB(
+    f, data = w, unit = "id", control = ctl, family = fam))
+  ref <- wide_fit(list(s1 = binomial(), mass = gaussian(), b = binomial()))
+  fv <- list(s1 = binomial(), mass = gaussian(), b = binomial())
+  attr(fv, "family_var") <- "trait"
+  ok(abs(wide_fit(fv)$opt$objective - ref$opt$objective) < 1e-8,
+     "R1 user family_var = 'trait' still gets the Bernoulli fix-up")
+  ok(abs(wide_fit(list(s1 = "binomial", mass = "gaussian", b = "binomial"))$opt$objective -
+           ref$opt$objective) < 1e-8, "R2 character family names in a list")
+  fc <- quiet(gllvmTMB(traits(cbind(s1, f1), b) ~ 1 + latent(1 | id, d = 1, unique = FALSE),
+    data = w, unit = "id", control = ctl, family = "binomial"))
+  fo <- quiet(gllvmTMB(traits(cbind(s1, f1), b) ~ 1 + latent(1 | id, d = 1, unique = FALSE),
+    data = w, unit = "id", control = ctl, family = binomial()))
+  ok(abs(fc$opt$objective - fo$opt$objective) < 1e-8, "R2 single character family")
+  w$pos <- ifelse(w$count > 0, exp(w$mass), 0)
+  e4 <- tryCatch(quiet(gllvmTMB(traits(cbind(s1, f1), pos) ~ 1 + latent(1 | id, d = 1),
+    data = w, unit = "id", control = ctl,
+    family = list(s1 = binomial(), pos = delta_gamma()))), error = identity)
+  ok(!inherits(e4, "error") || !grepl("values must be length 1", conditionMessage(e4)),
+     "R3 delta family in the list does not crash the fix-up")
+  wneg <- w; wneg$f1[1] <- -2
+  e5 <- tryCatch(quiet(gllvmTMB(traits(cbind(s1, f1), mass) ~ 1 + latent(1 | id, d = 1),
+    data = wneg, unit = "id", control = ctl,
+    family = list(s1 = binomial(), mass = gaussian()))), error = identity)
+  ok(inherits(e5, "gllvmTMB_traits_cbind_negative"), "R5 negative pair count refused, not blanked")
+  e6 <- tryCatch(quiet(gllvmTMB(traits(cbind(s1, f1), -c(id, f1)) ~ 1 + latent(1 | id, d = 1),
+    data = w, unit = "id", control = ctl, family = binomial())), error = identity)
+  ok(inherits(e6, "gllvmTMB_traits_cbind_negative_selection"), "R6 negative selection refused")
   cat("CBIND_MIXED_WIDE_PASS (", checks, "checks )\n")
 }
 

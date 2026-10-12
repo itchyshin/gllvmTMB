@@ -3577,7 +3577,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     ## #1494: in a mixed-family fit only the binomial-type rows (binomial,
     ## betabinomial, zi_binomial -- the only families whose likelihood reads
     ## n_trials) treat column 2 as failures. Every other non-censored row
-    ## uses column 1 as its response; its column 2 must be 0 (or NA).
+    ## uses column 1 as its response; its column 2 must be 0. (An NA in
+    ## either column makes model.frame() treat the row as a missing response.)
     trials_rows <- family_id_vec %in% c(1L, 8L, 19L) & !cens_rows
     other_rows  <- !trials_rows & !cens_rows
     if (!is.null(weights) && any(cbind_binom_rows)) {

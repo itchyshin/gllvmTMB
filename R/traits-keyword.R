@@ -544,6 +544,12 @@ rewrite_traits_lhs <- function(
         fail_cols[[length(fail_cols) + 1L]] <- eval_col(a[[3L]])
         is_pair <- c(is_pair, TRUE)
       } else {
+        if (is.call(a) && isTRUE(.traits_call_name(a) %in% c("-", "!")))
+          cli::cli_abort(c(
+            "With {.code cbind()} pairs, {.fn traits} needs positive column selections.",
+            "x" = "{.code {deparse(a)}} excludes columns, which would select the id and count columns too.",
+            ">" = "Name the extra trait columns directly, e.g. {.code traits(cbind(s, f), mass, count)}."
+          ), class = "gllvmTMB_traits_cbind_negative_selection")
         sel <- as.call(c(list(quote(c)), args[i]))
         resolved <- tryCatch(
           tidyselect::eval_select(rlang::new_quosure(sel, env = eval_env),
@@ -578,6 +584,17 @@ rewrite_traits_lhs <- function(
     cbind_succ <- matrix(unlist(succ_cols), nrow = nrow(data))
     cbind_fail <- matrix(unlist(fail_cols), nrow = nrow(data))
     cbind_traits <- trait_cols[is_pair]
+    pair_vals <- c(cbind_succ[, is_pair], cbind_fail[, is_pair])
+    if (any(pair_vals < 0, na.rm = TRUE)) {
+      bad <- trait_cols[is_pair][colSums(
+        cbind_succ[, is_pair, drop = FALSE] < 0 |
+          cbind_fail[, is_pair, drop = FALSE] < 0, na.rm = TRUE) > 0]
+      cli::cli_abort(c(
+        "{.code cbind(successes, failures)}: counts must be non-negative.",
+        "x" = "Negative values in: {.val {bad}}.",
+        "i" = "With {.code cbind(s, trials - s)}, this means some {.code s > trials}."
+      ), class = "gllvmTMB_traits_cbind_negative")
+    }
     for (nm in c(".succ_wide_", ".fail_wide_")) {
       if (nm %in% names(data))
         cli::cli_abort(c(
@@ -795,14 +812,30 @@ rewrite_traits_lhs <- function(
 .traits_cbind_family_fixup <- function(rewrite, family, family_long) {
   d <- rewrite$data_long
   trait_cols <- rewrite$trait_cols
-  if (is.function(family)) family <- family()
-  if (inherits(family, "family")) {
-    fam_of <- stats::setNames(rep(family$family, length(trait_cols)), trait_cols)
+  ## Family name for the binomial-type test. Accepts a family object, a
+  ## constructor function, or a character name (as the engine does). Delta /
+  ## hurdle families carry a length-2 $family and are never binomial-type.
+  fam_name <- function(f) {
+    if (is.character(f) && length(f) == 1L) return(f)
+    if (is.function(f) && !inherits(f, "family")) f <- f()
+    if (inherits(f, "family")) {
+      return(if (length(f$family) == 1L) f$family else "delta")
+    }
+    NA_character_
+  }
+  if (inherits(family, "family") || is.function(family) ||
+      (is.character(family) && length(family) == 1L)) {
+    fam_of <- stats::setNames(rep(fam_name(family), length(trait_cols)), trait_cols)
   } else if (is.list(family)) {
-    if (!is.null(attr(family, "family_var", exact = TRUE))) return(d)
     nms <- names(family)
-    if (is.null(nms) || !setequal(nms, trait_cols) ||
-        length(nms) != length(trait_cols)) {
+    names_ok <- !is.null(nms) && length(nms) == length(trait_cols) &&
+      setequal(nms, trait_cols)
+    ## A user-set family_var naming some other data column is a long-format
+    ## construction we cannot map by trait; leave it to the engine.
+    user_var <- attr(family, "family_var", exact = TRUE)
+    if (!names_ok && !is.null(user_var) && !identical(user_var, "trait"))
+      return(d)
+    if (!names_ok) {
       missing_nms <- setdiff(trait_cols, nms)
       extra_nms <- setdiff(nms, trait_cols)
       cli::cli_abort(c(
@@ -813,10 +846,7 @@ rewrite_traits_lhs <- function(
         "x" = if (is.null(nms)) "The {.arg family} list has no names." else NULL
       ), class = "gllvmTMB_traits_family_names")
     }
-    fam_of <- vapply(family[trait_cols], function(f) {
-      if (is.function(f)) f <- f()
-      if (inherits(f, "family")) f$family else NA_character_
-    }, character(1L))
+    fam_of <- vapply(family[trait_cols], fam_name, character(1L))
   } else {
     return(d)
   }

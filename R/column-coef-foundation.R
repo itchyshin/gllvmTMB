@@ -266,7 +266,7 @@ spatial_coef <- function(formula, mesh, rho = 1) invisible(NULL)
   variables <- setdiff(names(column_data), trait_col)
   reserved_internal <- intersect(
     variables,
-    c(".y_wide_", ".offset_wide_", ".multinom_group_", ".multinom_L_")
+    c(".y_wide_", ".succ_wide_", ".fail_wide_", ".offset_wide_", ".multinom_group_", ".multinom_L_")
   )
   if (length(reserved_internal))
     .column_data_abort(c(

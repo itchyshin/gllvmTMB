@@ -4172,7 +4172,10 @@ print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
   }
   cbind_trials <- NULL
   if (is.matrix(yraw) && ncol(yraw) == 2L) {
-    if (!any(fam_str %in% .GLLVM_JULIA_BINOMIAL_FAMILIES)) {
+    ## #1494: the TMB engine admits mixed-family cbind() fits (column 2 used
+    ## only on binomial-type rows); this bridge sums both columns into a trial
+    ## count on every row, so it admits only all-binomial two-column fits.
+    if (!all(fam_str %in% .GLLVM_JULIA_BINOMIAL_FAMILIES)) {
       stop(
         .gllvm_julia_gate_message(
           "GJL-GATE-FAMILY",
@@ -4180,7 +4183,8 @@ print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
           "responses with a binomial family; the supplied response has two ",
           "columns but the family maps to '",
           paste(fam_str, collapse = ", "),
-          "'. Use a single-column response or engine = 'tmb'."
+          "'. Every family must be binomial; for a mixed-family cbind() fit ",
+          "use engine = 'tmb'."
         ),
         call. = FALSE
       )

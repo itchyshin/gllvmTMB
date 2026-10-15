@@ -3574,6 +3574,13 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     ## likelihood; refuse the combination instead of fitting the
     ## unweighted model.
     cbind_binom_rows <- family_id_vec %in% c(1L, 8L) & !cens_rows
+    ## #1494: in a mixed-family fit only the binomial-type rows (binomial,
+    ## betabinomial, zi_binomial -- the only families whose likelihood reads
+    ## n_trials) treat column 2 as failures. Every other non-censored row
+    ## uses column 1 as its response; its column 2 must be 0. (An NA in
+    ## either column makes model.frame() treat the row as a missing response.)
+    trials_rows <- family_id_vec %in% c(1L, 8L, 19L) & !cens_rows
+    other_rows  <- !trials_rows & !cens_rows
     if (!is.null(weights) && any(cbind_binom_rows)) {
       cli::cli_abort(c(
         "{.arg weights} is not used when the binomial response is {.code cbind(successes, failures)}.",
@@ -3602,7 +3609,17 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     ## Masked rows (response = "include") carry NA in both columns; they are
     ## gated out of the likelihood in TMB, so validate only observed rows
     ## (na.rm) and sentinel-fill their y / n_trials below.
-    if (any(succ[!cens_rows] < 0, na.rm = TRUE) || any(fail[!cens_rows] < 0, na.rm = TRUE))
+    if (any(other_rows)) {
+      other_fail <- fail[other_rows]
+      if (any(other_fail[!is.na(other_fail)] != 0))
+        cli::cli_abort(c(
+          "The second {.code cbind()} column is only used by binomial-type traits.",
+          "x" = "{sum(other_fail != 0, na.rm = TRUE)} row{?s} of a non-binomial family ha{?s/ve} a non-zero second column.",
+          "i" = "For other families the first column is the response.",
+          ">" = "Set the second column to 0 on those rows, e.g. {.code cbind(value, ifelse(is_binomial, failures, 0))}."
+        ), class = "gllvmTMB_cbind_second_column_nonbinomial")
+    }
+    if (any(succ[trials_rows] < 0, na.rm = TRUE) || any(fail[trials_rows] < 0, na.rm = TRUE))
       cli::cli_abort(c(
         "cbind(successes, failures): both columns must be non-negative.",
         ">" = "Check the successes and failures columns for negative values before fitting."
@@ -3610,7 +3627,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     y         <- succ
     n_trials  <- succ + fail
     n_trials[cens_rows] <- 1  # unused by fid 21; keep out of the zero-trials check below
-    if (any(n_trials[!cens_rows] <= 0, na.rm = TRUE))
+    n_trials[other_rows] <- 1 # unused by non-binomial families (no-op in TMB)
+    if (any(n_trials[trials_rows] <= 0, na.rm = TRUE))
       cli::cli_abort(c(
         "cbind(successes, failures): rows with zero trials are not allowed.",
         ">" = "Drop rows where successes + failures == 0, or check for a data-entry error."

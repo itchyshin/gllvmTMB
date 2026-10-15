@@ -450,7 +450,34 @@
 #'   \item a flat response `y` with `weights = n_trials` (the alternative
 #'         glmmTMB API).
 #' }
-#' Both interfaces produce identical fits. For Bernoulli data, omit
+#' The second `cbind()` column is the number of **failures**, not trials; for
+#' a trials column write `cbind(s, trials - s)`. Both interfaces produce
+#' identical fits.
+#'
+#' *Mixing with other families.* Binomial counts can share one model with
+#' Gaussian, count or other traits. In a mixed fit the second `cbind()` column
+#' is read only on binomial-type rows (`binomial()`, `betabinomial()`,
+#' `zi_binomial()`); on every other row the first column is the response and
+#' the second must be `0`. Long format, with a per-trait `family` list:
+#' \preformatted{
+#' fams <- list(infected = binomial(), mass = gaussian(), count = poisson())
+#' attr(fams, "family_var") <- "trait"
+#' gllvmTMB(cbind(value, failures) ~ 0 + trait + latent(0 + trait | site, d = 2),
+#'          data = long, trait = "trait", unit = "site", family = fams)
+#' }
+#' Wide format: give each binomial trait its own pair inside `traits()` and
+#' name the `family` list by trait. A pair takes its trait name from its first
+#' argument, or from an argument name (`traits(infected = cbind(s, f))`):
+#' \preformatted{
+#' gllvmTMB(traits(cbind(n_inf, n_uninf), mass, count) ~ 1 + latent(1 | site, d = 2),
+#'          data = wide, unit = "site",
+#'          family = list(n_inf = binomial(), mass = gaussian(), count = poisson()))
+#' }
+#' In wide format a plain column with a binomial-type family stays a 0/1
+#' (Bernoulli) response, and cells with an `NA` count or zero trials are
+#' treated as missing. The single-column route (`value` with
+#' `weights = trials`, `1` on non-binomial rows) gives the same fit but does
+#' not cover `zi_binomial()`. For Bernoulli data, omit
 #' `weights` and use a 0/1 response; the engine sets `n_trials = 1` and
 #' the likelihood is identical to the previous Bernoulli-only behaviour.
 #'
@@ -874,6 +901,11 @@ gllvmTMB <- function(
           attr(family_long, "family_var") <- family_var
         }
       }
+    }
+    if (length(rewrite$cbind_traits)) {
+      rewrite$data_long <- .traits_cbind_family_fixup(
+        rewrite, family, family_long
+      )
     }
     attr(
       rewrite$data_long,

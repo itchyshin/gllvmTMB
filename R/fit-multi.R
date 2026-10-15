@@ -1,6 +1,24 @@
 ## Stage 2 of gllvmTMB: fit a multivariate stacked-trait model with rr() +
 ## diag() covariance structures using src/gllvmTMB.cpp.
 
+## Are two `phylo` trees the same tree? Tip labels are matched by name (tip
+## ORDER is storage, not identity) and the patristic distances are compared,
+## so a different topology or different branch lengths on the same tips is a
+## different tree (#1350). Without ape the tip-label set is all that can be
+## checked.
+.gllvmTMB_same_phylo_tree <- function(a, b, tol = 1e-8) {
+  if (!setequal(a$tip.label, b$tip.label) ||
+      anyDuplicated(a$tip.label) || anyDuplicated(b$tip.label)) {
+    return(FALSE)
+  }
+  if (!requireNamespace("ape", quietly = TRUE)) {
+    return(TRUE)
+  }
+  da <- ape::cophenetic.phylo(a)
+  db <- ape::cophenetic.phylo(b)[rownames(da), colnames(da), drop = FALSE]
+  isTRUE(all.equal(unname(da), unname(db), tolerance = tol))
+}
+
 .kernel_overlap_class <- function(similarity) {
   ifelse(
     similarity < 0.25, "near_orthogonal",
@@ -4029,7 +4047,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         ))
       if (is.null(phylo_tree)) {
         phylo_tree <- cov_tree
-      } else if (!identical(phylo_tree$tip.label, cov_tree$tip.label)) {
+      } else if (!.gllvmTMB_same_phylo_tree(phylo_tree, cov_tree)) {
         cli::cli_abort(c(
           "The {.fn phylo} covariate tree differs from the response phylogenetic tree.",
           ">" = "One tree per fit in this version; the covariate and response phylo terms must share a tree (multi-tree is a later phase)."
@@ -4562,7 +4580,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       if (!is.null(tree_inkey) && inherits(tree_inkey, "phylo")) {
         if (is.null(phylo_tree)) {
           phylo_tree <- tree_inkey
-        } else if (!identical(phylo_tree$tip.label, tree_inkey$tip.label)) {
+        } else if (!.gllvmTMB_same_phylo_tree(phylo_tree, tree_inkey)) {
           cli::cli_warn(c(
             "{.code tree =} inside a phylo keyword disagrees with the global {.arg phylo_tree}.",
             "i" = "Using the global {.arg phylo_tree}; remove one to silence this warning."

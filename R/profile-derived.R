@@ -1464,14 +1464,45 @@ profile_ci_correlation <- function(
   use_rr_phy <- isTRUE(fit$use$phylo_rr)
   use_diag_phy <- isTRUE(fit$use$phylo_diag)
 
+  ## A per-trait block whose map fixes or ties some entries carries fewer free
+  ## values than its indexing below assumes, so `par[ix][trait_idx]` would
+  ## read another trait's value (for example the pinned Psi of binary traits
+  ## in a mixed fit). Report no target rather than a wrong one.
+  par_map <- fit$tmb_obj$env$map %||% list()
+  partly_fixed <- function(name, used) {
+    m <- par_map[[name]]
+    used && !is.null(m) &&
+      (anyNA(m) || anyDuplicated(as.character(m[!is.na(m)])) > 0L)
+  }
+  if (
+    partly_fixed("theta_rr_B", use_rr_B) ||
+      partly_fixed("theta_diag_B", use_diag_B) ||
+      partly_fixed("theta_rr_W", use_rr_W) ||
+      partly_fixed("theta_diag_W", use_diag_W) ||
+      partly_fixed("theta_diag_species", use_diag_cluster) ||
+      partly_fixed("theta_diag_cluster2", use_diag_cluster2) ||
+      partly_fixed("theta_rr_phy", use_rr_phy) ||
+      partly_fixed("log_sd_phy_diag", use_diag_phy)
+  ) {
+    return(NULL)
+  }
+
   ## Gaussian/lognormal observation residual sigma_eps^2 (#1399). It floats
-  ## with log_sigma_eps; a pinned sigma_eps is not a free parameter and is
-  ## not a component in extract_proportions(), so it is left out here too.
+  ## with log_sigma_eps when that is free. When the engine fixed sigma_eps
+  ## (a per-row diagonal term is present) it is a constant offset in the
+  ## denominator, like the link residual, and its own proportion has no
+  ## profile target.
   ix_sigma_eps <- which(par_names == "log_sigma_eps")
   resid_slots <- .variance_share_residual_slots(fit)
-  use_resid <- length(ix_sigma_eps) > 0L &&
-    length(resid_slots) == T &&
-    any(resid_slots > 0L)
+  has_resid <- length(resid_slots) == T && any(resid_slots > 0L)
+  use_resid <- has_resid && length(ix_sigma_eps) > 0L
+  resid_fixed <- if (
+    has_resid && !use_resid && .gllvmTMB_sigma_eps_mapped_off(fit)
+  ) {
+    unname(.variance_share_residual_per_trait(fit))
+  } else {
+    rep(0, T)
+  }
   resid_var <- function(par) {
     v <- numeric(T)
     on <- resid_slots > 0L
@@ -1603,7 +1634,7 @@ profile_ci_correlation <- function(
     if (use_resid) {
       s <- s + resid_var(par)[trait_idx]
     }
-    s + link_resid_vec[trait_idx]
+    s + resid_fixed[trait_idx] + link_resid_vec[trait_idx]
   }
 
   function(par, fit) {

@@ -19,8 +19,8 @@ link's implicit residual as its own per-trait component (e.g.
 Poisson log; see "Family-aware link residuals" in \code{\link[=extract_Sigma]{extract_Sigma()}}
 for the full per-family table). Mixed-family fits get the residual
 implied by each trait's family/link. \code{"none"} omits the link-implicit
-component. The Gaussian and lognormal \code{residual} is an estimated
-variance, not a link-implied constant, so it is kept under either value.}
+component. The Gaussian and lognormal \code{residual} is a model variance,
+not a link-implied constant, so it is kept under either value.}
 
 \item{format}{\code{"long"} (default) returns a tibble-like data frame
 with one row per (trait, component); \code{"wide"} returns one row per
@@ -42,31 +42,36 @@ diagonal term, usually written as per-row \code{indep()} in new code (see
 \code{\link[=extract_residual_split]{extract_residual_split()}}), the \code{unique_unit_obs} component is
 \eqn{\sigma^2_e} (the estimated OLRE variance) and the \code{link_residual}
 component is \eqn{\sigma^2_d} (the distribution-specific latent residual).
-For a Gaussian or lognormal trait the per-row term is the observation
-residual: the package pins \eqn{\sigma_\varepsilon} at about 1/1000 of
-the response SD to keep the density defined, and that pinned value is not
-counted, so no \code{residual} component appears.
+For a Gaussian or lognormal trait with such a per-row term (including the
+default \code{latent()} Psi when each unit has one observation per trait), the
+package does not estimate \eqn{\sigma_\varepsilon}: it fixes it at 1/1000
+of the standard deviation of all responses pooled on the raw scale. That
+fixed value is still part of the fitted variance and appears as
+\code{residual}. It is negligible when the traits share a scale, but not when
+trait scales differ widely or when lognormal responses are large.
 }
 \description{
 For each trait, returns the proportion of total latent variance
 attributable to each component present in the model:
 shared (rr) and unique (diag) at each tier (unit, unit_obs, phy), diagonal
-cluster / cluster2 components when present, the estimated observation
-residual \eqn{\sigma^2_\varepsilon} of Gaussian and lognormal traits
-(\code{residual}), plus optionally the link's implicit residual of
-non-Gaussian traits.
+cluster / cluster2 components when present, the observation residual
+\eqn{\sigma^2_\varepsilon} of Gaussian and lognormal traits (\code{residual}),
+plus optionally the link's implicit residual of non-Gaussian traits.
 }
 \details{
 Some active components are not partitioned here: \code{(1 | group)} random
-intercepts, the common phylogenetic variance of
-\code{phylo_indep(common = TRUE)}, spatial fields, multi-kernel terms, temporal
-states, random slopes, and the known sampling variance of \code{meta_V()}.
-\code{extract_proportions()} leaves each of them out, names them in a warning of
-class \code{gllvmTMB_proportions_component_omitted}, and records them in the
+intercepts, common-variance phylogenetic terms such as
+\code{phylo_indep(common = TRUE)}, terms of a fit with several named
+\verb{kernel_*()} terms, spatial fields, random-slope terms (intercepts
+included), response-column slopes and coefficients, temporal states, and
+the known sampling variance of \code{meta_V()}. \code{extract_proportions()} leaves
+each of them out, names them in a warning of class
+\code{gllvmTMB_proportions_component_omitted}, and records them in the
 \code{"omitted_components"} attribute of the result. The proportions are then
 shares of the included components only, and \code{total_variance} is their sum,
-not the trait's total variance. \code{\link[=VP]{VP()}} does count \code{(1 | group)} intercepts
-and the \code{phylo_indep(common = TRUE)} variance.
+not the trait's total variance. \code{\link[=VP]{VP()}} does count the \code{(1 | group)}
+intercepts, the common-variance phylogenetic terms and the multi-kernel
+terms.
 
 This is the most general proportion-decomposition function in the
 package. \code{\link[=extract_phylo_signal]{extract_phylo_signal()}} is the focused PGLLVM

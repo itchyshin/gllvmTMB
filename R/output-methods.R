@@ -534,30 +534,41 @@ ordiplot.gllvmTMB_multi <- function(
 #' contributions from the active random-effect components of the model and
 #' the Gaussian or lognormal observation residual. Column names follow the
 #' fitted report blocks: `rr_B`, `diag_B`, `rr_W`, `diag_W`, `diag_species`,
-#' `diag_cluster2`, `phylo_rr`, `phylo_diag`, `propto`, one `re_int_<group>`
-#' column per `(1 | group)` random intercept, and `residual`.
+#' `diag_cluster2`, `phylo_rr`, `phylo_diag`, `propto`, one `kernel_<name>`
+#' column per term of a fit with several named `kernel_*()` terms, one
+#' `re_int_<group>` column per `(1 | group)` random intercept, and `residual`.
 #'
 #' A `(1 | group)` intercept is a single draw per group level added to every
-#' trait, so its column carries the same variance in every row. `residual` is
-#' the estimated observation variance \eqn{\sigma^2_\varepsilon} of Gaussian
-#' and lognormal traits. When a per-observation `indep()` term absorbs the
-#' observation residual, the package pins \eqn{\sigma_\varepsilon} at about
-#' 1/1000 of the response SD to keep the density defined; that pinned value is
-#' not counted, because the per-observation term is the residual.
-#' Non-Gaussian link-implicit residual shares are handled by
-#' [extract_proportions()], not by `VP()`.
+#' trait, so its column carries the same variance in every row. Phylogenetic
+#' and kernel columns are on the scale of the supplied tree, pedigree or
+#' kernel matrix; they are variances per species or level when that matrix
+#' has a unit diagonal, as an ultrametric tree rescaled to unit height does.
 #'
-#' Some active components have no constant per-trait variance that `VP()` can
-#' compute from the fit: spatial fields, multi-kernel terms, temporal states,
-#' random slopes, and the known sampling variance of `meta_V()`. `VP()` leaves
+#' `residual` is the observation variance \eqn{\sigma^2_\varepsilon} of
+#' Gaussian and lognormal traits (on the log scale for lognormal). When a
+#' diagonal term has one row per observation (an `indep()` term at the
+#' observation level, or the default `latent()` Psi when each unit has one
+#' observation per trait), the package does not estimate
+#' \eqn{\sigma_\varepsilon}: it fixes it at 1/1000 of the standard deviation
+#' of all responses pooled on the raw scale. That fixed value is still part
+#' of the fitted variance, so it is counted. It is negligible when the traits
+#' share a scale, but not when trait scales differ widely or when lognormal
+#' responses are large. Non-Gaussian link-implicit residual shares are
+#' handled by [extract_proportions()], not by `VP()`.
+#'
+#' Some active components have no single per-trait variance: spatial fields
+#' (their variance changes with location), random-slope terms (their
+#' variance, intercept included, changes with the covariate value),
+#' response-column slopes and coefficients, temporal states, and the known
+#' sampling variance of `meta_V()` (it differs by observation). `VP()` leaves
 #' each of them out, names them in a warning of class
 #' `gllvmTMB_vp_component_omitted`, and records them in the
 #' `"omitted_components"` attribute of the result. The shares are then
-#' proportions of the included components only. Fixed effects, including the
-#' predictor part of `latent(..., lv = ~ x)`, are not variance components and
-#' are not partitioned.
+#' proportions of the included components only.
 #'
-#' Mirrors `gllvm::VP()` / `gllvm::plotVP()`.
+#' `VP()` serves the same purpose as `gllvm::VP()` / `gllvm::plotVP()`, but
+#' partitions random-effect and residual variance. Fixed effects, including
+#' the predictor part of `latent(..., lv = ~ x)`, are not partitioned.
 #'
 #'
 #' Structured trait-intercept rho fits are excluded; use `extract_Sigma()` and
@@ -576,8 +587,14 @@ ordiplot.gllvmTMB_multi <- function(
 #' @export
 VP <- function(fit) {
   .structured_rho_source_allocation_assert(fit, "VP")
+  if (inherits(fit, "gllvmTMB_julia")) {
+    .gllvmTMB_abort_not_multi_fit(fit)
+  }
   trait_names <- levels(fit$data[[fit$trait_col]])
   Tn <- length(trait_names)
+  if (Tn == 0L) {
+    .gllvmTMB_abort_not_multi_fit(fit)
+  }
   comps <- list()
   omitted <- character(0)
   ## Keep a component only when it is one finite variance per trait. An active
@@ -585,7 +602,7 @@ VP <- function(fit) {
   add_comp <- function(name, v, label = name) {
     v <- as.numeric(v)
     if (length(v) != Tn || anyNA(v)) {
-      omitted <<- c(omitted, label)
+      omitted <<- c(omitted, stats::setNames(label, ""))
     } else {
       comps[[name]] <<- v
     }
@@ -624,13 +641,27 @@ VP <- function(fit) {
     lam <- fit$report$lam_phy %||% exp(unname(fit$opt$par["loglambda_phy"]))
     add_comp("propto", rep(as.numeric(lam)[1L], Tn))
   }
+  ## Two or more named kernel_*() terms share one multi-kernel block; each
+  ## tier's loadings are Lambda_kernel[, 1:rank, index], counted like the
+  ## single-kernel phylo_rr column.
+  for (k in .variance_share_kernel_tiers(fit)) {
+    Lk <- fit$report$Lambda_kernel
+    v <- NULL
+    if (length(dim(Lk)) == 3L && k$index <= dim(Lk)[3L]) {
+      v <- loading_var(matrix(
+        Lk[, seq_len(min(k$rank, dim(Lk)[2L])), k$index, drop = FALSE],
+        nrow = dim(Lk)[1L]
+      ))
+    }
+    add_comp(paste0("kernel_", k$name), v, label = k$label)
+  }
   if (isTRUE(fit$use$re_int)) {
     ## One sigma per `(1 | group)` term, in formula order. The intercept has
     ## no trait index, so each trait receives the same variance (#1395).
     sig <- exp(as.numeric(fit$report$log_sigma_re_int %||% numeric(0)))
     groups <- as.character(fit$re_int$groups %||% character(0))
     if (!length(sig) || length(groups) != length(sig)) {
-      omitted <- c(omitted, "(1 | group) random intercepts")
+      omitted <- c(omitted, stats::setNames("(1 | group) random intercepts", ""))
     } else {
       cols <- make.unique(paste0("re_int_", groups), sep = "_")
       for (k in seq_along(sig)) {
@@ -650,7 +681,7 @@ VP <- function(fit) {
 
   omitted <- c(
     omitted,
-    unname(.variance_share_active_tiers(fit, handled = c("re_int", "propto")))
+    .variance_share_active_tiers(fit, handled = c("re_int", "propto", "kernel"))
   )
   .variance_share_warn_omitted(
     omitted,
@@ -671,7 +702,7 @@ VP <- function(fit) {
     M <- .safe_variance_proportion_matrix(M)
   }
   if (length(omitted)) {
-    attr(M, "omitted_components") <- omitted
+    attr(M, "omitted_components") <- unname(omitted)
   }
   M
 }
@@ -681,15 +712,16 @@ VP <- function(fit) {
 ## Per-trait slot of the observation residual sigma_eps: 0 = the trait does
 ## not use it, 1 = the Gaussian slot, 2 = the lognormal slot of a fit that has
 ## both families (the engine then carries two sigma_eps values). A trait's
-## family is the modal family of its rows. A pinned sigma_eps (a per-row
-## indep() term is the residual) and a fit with no family metadata give 0 for
-## every trait, so no residual is invented.
+## family is the modal family of its rows. A fit with no family metadata
+## gives 0 for every trait, so no residual is invented. A sigma_eps fixed by
+## the engine (a per-row diagonal term is present) still enters the
+## likelihood, so it keeps its slot.
 .variance_share_residual_slots <- function(fit) {
   trait_names <- levels(fit$data[[fit$trait_col]])
   Tn <- length(trait_names)
   out <- stats::setNames(integer(Tn), trait_names)
   fids <- fit$tmb_data$family_id_vec
-  if (is.null(fids) || .gllvmTMB_sigma_eps_mapped_off(fit)) {
+  if (is.null(fids)) {
     return(out)
   }
   fids <- as.integer(fids)
@@ -735,10 +767,30 @@ VP <- function(fit) {
   out
 }
 
-## Active components with no constant per-trait variance that the variance
-## share helpers compute. Returns reader-facing labels named by an internal
-## key; `handled` drops the keys a caller does compute (VP() handles "re_int"
-## and "propto"; extract_proportions() handles neither).
+## Tiers of the multi-kernel block (two or more named kernel_*() terms), as a
+## list of list(name, index, rank, label). A single named kernel rides the
+## phylo_rr slot and is not listed here.
+.variance_share_kernel_tiers <- function(fit) {
+  kl <- fit$kernel_levels
+  if (!is.data.frame(kl) ||
+      !all(c("name", "internal_level", "index") %in% names(kl))) {
+    return(list())
+  }
+  kl <- kl[kl$internal_level == "kernel", , drop = FALSE]
+  lapply(seq_len(nrow(kl)), function(j) {
+    list(
+      name = as.character(kl$name[j]),
+      index = as.integer(kl$index[j]),
+      rank = as.integer(kl$rank[j] %||% 1L),
+      label = sprintf("kernel_*() term '%s'", kl$name[j])
+    )
+  })
+}
+
+## Active components the variance-share helpers do not turn into a per-trait
+## column. Returns reader-facing labels named by an internal key; `handled`
+## drops the keys a caller does compute (VP() handles "re_int", "propto" and
+## "kernel"; extract_proportions() handles none of them).
 .variance_share_active_tiers <- function(fit, handled = character(0)) {
   use <- fit$use %||% list()
   on <- function(flag) isTRUE(use[[flag]])
@@ -755,34 +807,39 @@ VP <- function(fit) {
     add("re_int", sprintf("(1 | %s)", groups))
   }
   if (on("propto")) {
-    add("propto", "phylo_indep(common = TRUE) phylogenetic variance")
+    add("propto", "common-variance phylogenetic or pedigree term (phylo_indep(common = TRUE))")
+  }
+  kernel_tiers <- .variance_share_kernel_tiers(fit)
+  if (length(kernel_tiers)) {
+    add("kernel", vapply(kernel_tiers, `[[`, character(1), "label"))
   }
   if (on("spde")) {
     add("spatial", "spatial_*() field")
   }
-  if (any_on(c("spde_slope", "spde_dep_slope", "spde_latent_slope",
-               "spatial_column_slope"))) {
-    add("spatial_slope", "spatial random slopes")
+  ## A response-column slope or coefficient term (slope(), phylo_slope(),
+  ## kernel_slope(), spatial_slope(), *_coef()) runs on the augmented
+  ## phylo / SPDE slope engine, so it also raises those engines' flags.
+  ## Name it once.
+  column_term <- any_on(c("phylo_column_slope", "response_column_coef",
+                          "spatial_column_slope"))
+  if (column_term) {
+    add("column_slope", "response-column slope or coefficient term")
   }
-  kl <- fit$kernel_levels
-  if (is.data.frame(kl) && all(c("name", "internal_level") %in% names(kl))) {
-    kernel_names <- as.character(kl$name[kl$internal_level == "kernel"])
-    if (length(kernel_names)) {
-      add("kernel", sprintf("kernel_*() term '%s'", kernel_names))
-    }
+  if (on("spde_latent_slope") ||
+      (!column_term && any_on(c("spde_slope", "spde_dep_slope")))) {
+    add("spatial_slope", "spatial random intercepts and slopes")
+  }
+  if (any_on(c("rr_B_slope", "diag_B_slope"))) {
+    add("unit_slope", "unit-level random intercepts and slopes")
+  }
+  if (on("phylo_latent_slope") ||
+      (!column_term &&
+         (any_on(c("phylo_dep_slope", "phylo_indep_slope")) ||
+            td_on("use_phylo_slope") || td_on("use_phylo_slope_correlated")))) {
+    add("phylo_slope", "phylogenetic or pedigree random intercepts and slopes")
   }
   if (isTRUE(fit$temporal$active)) {
     add("temporal", "temporal_*() state")
-  }
-  if (any_on(c("rr_B_slope", "diag_B_slope"))) {
-    add("unit_slope", "unit-level random slopes")
-  }
-  if (any_on(c("phylo_latent_slope", "phylo_dep_slope", "phylo_indep_slope")) ||
-      td_on("use_phylo_slope") || td_on("use_phylo_slope_correlated")) {
-    add("phylo_slope", "phylogenetic or pedigree random slopes")
-  }
-  if (any_on(c("phylo_column_slope", "response_column_coef"))) {
-    add("column_slope", "response-column slopes or coefficients")
   }
   if (on("equalto")) {
     add("meta_V", "meta_V() known sampling variance")
@@ -790,28 +847,37 @@ VP <- function(fit) {
   out[!names(out) %in% handled]
 }
 
-## `vp_counts` is TRUE when an omitted component is one VP() does count
-## (`(1 | group)` intercepts, phylo_indep(common = TRUE)).
-.variance_share_warn_omitted <- function(omitted, caller, class,
-                                         vp_counts = FALSE) {
+## Warn about omitted components. `omitted` is named by the keys of
+## .variance_share_active_tiers() ("" for a component whose report slot had
+## the wrong shape); the keys pick the next-step hints.
+.variance_share_warn_omitted <- function(omitted, caller, class) {
   if (!length(omitted)) {
     return(invisible(NULL))
   }
+  keys <- names(omitted) %||% rep("", length(omitted))
   omitted <- unname(omitted)
   n_omitted <- length(omitted)
   msg <- c(
-    "{.fn {caller}} left out {n_omitted} active variance component{?s} it cannot partition: {omitted}.",
+    "{.fn {caller}} does not partition {n_omitted} active variance component{?s}: {omitted}.",
     "!" = "Each share is a proportion of the included components only, so it overstates that component's share of the total variance."
   )
-  if (isTRUE(vp_counts)) {
-    msg <- c(
-      msg,
-      ">" = "{.fn VP} does count {.code (1 | group)} random intercepts and the {.code phylo_indep(common = TRUE)} variance."
-    )
-  }
-  msg <- c(
-    msg,
-    "i" = "Read the omitted {cli::qty(n_omitted)}variance{?s} from the fit (for example with {.fn extract_Sigma} or {.fn extract_temporal}) before interpreting the shares."
+  hints <- c(
+    vp = "{.fn VP} does count {.code (1 | group)} random intercepts, common-variance phylogenetic terms and multi-kernel terms.",
+    spatial = "A spatial field's variance changes with location, so it has no single per-trait value.",
+    slope = "A random-slope term's variance, intercept included, changes with the covariate value; {.fn extract_Sigma} reports its intercept-slope covariance.",
+    temporal = "{.fn extract_temporal} reports the temporal loadings and variances.",
+    meta_V = "The known sampling variances are the {.code V} given to {.fn meta_V}; they differ by observation."
   )
+  use_hint <- c(
+    vp = any(keys %in% c("re_int", "propto", "kernel")),
+    spatial = "spatial" %in% keys,
+    slope = any(keys %in% c("spatial_slope", "unit_slope", "phylo_slope",
+                            "column_slope")),
+    temporal = "temporal" %in% keys,
+    meta_V = "meta_V" %in% keys
+  )
+  for (h in names(hints)[use_hint]) {
+    msg <- c(msg, if (identical(h, "vp")) c(">" = hints[[h]]) else c("i" = hints[[h]]))
+  }
   cli::cli_warn(msg, class = c(class, "gllvmTMB_variance_component_omitted"))
 }

@@ -684,21 +684,23 @@ extract_phylo_signal <- function(
 #' For each trait, returns the proportion of total latent variance
 #' attributable to each component present in the model:
 #' shared (rr) and unique (diag) at each tier (unit, unit_obs, phy), diagonal
-#' cluster / cluster2 components when present, the estimated observation
-#' residual \eqn{\sigma^2_\varepsilon} of Gaussian and lognormal traits
-#' (`residual`), plus optionally the link's implicit residual of
-#' non-Gaussian traits.
+#' cluster / cluster2 components when present, the observation residual
+#' \eqn{\sigma^2_\varepsilon} of Gaussian and lognormal traits (`residual`),
+#' plus optionally the link's implicit residual of non-Gaussian traits.
 #'
 #' Some active components are not partitioned here: `(1 | group)` random
-#' intercepts, the common phylogenetic variance of
-#' `phylo_indep(common = TRUE)`, spatial fields, multi-kernel terms, temporal
-#' states, random slopes, and the known sampling variance of `meta_V()`.
-#' `extract_proportions()` leaves each of them out, names them in a warning of
-#' class `gllvmTMB_proportions_component_omitted`, and records them in the
+#' intercepts, common-variance phylogenetic terms such as
+#' `phylo_indep(common = TRUE)`, terms of a fit with several named
+#' `kernel_*()` terms, spatial fields, random-slope terms (intercepts
+#' included), response-column slopes and coefficients, temporal states, and
+#' the known sampling variance of `meta_V()`. `extract_proportions()` leaves
+#' each of them out, names them in a warning of class
+#' `gllvmTMB_proportions_component_omitted`, and records them in the
 #' `"omitted_components"` attribute of the result. The proportions are then
 #' shares of the included components only, and `total_variance` is their sum,
-#' not the trait's total variance. [VP()] does count `(1 | group)` intercepts
-#' and the `phylo_indep(common = TRUE)` variance.
+#' not the trait's total variance. [VP()] does count the `(1 | group)`
+#' intercepts, the common-variance phylogenetic terms and the multi-kernel
+#' terms.
 #'
 #' This is the most general proportion-decomposition function in the
 #' package. [extract_phylo_signal()] is the focused PGLLVM
@@ -720,8 +722,8 @@ extract_phylo_signal <- function(
 #'   Poisson log; see "Family-aware link residuals" in [extract_Sigma()]
 #'   for the full per-family table). Mixed-family fits get the residual
 #'   implied by each trait's family/link. `"none"` omits the link-implicit
-#'   component. The Gaussian and lognormal `residual` is an estimated
-#'   variance, not a link-implied constant, so it is kept under either value.
+#'   component. The Gaussian and lognormal `residual` is a model variance,
+#'   not a link-implied constant, so it is kept under either value.
 #' @param format `"long"` (default) returns a tibble-like data frame
 #'   with one row per (trait, component); `"wide"` returns one row per
 #'   trait with one column per component.
@@ -740,10 +742,13 @@ extract_phylo_signal <- function(
 #'   [extract_residual_split()]), the `unique_unit_obs` component is
 #'   \eqn{\sigma^2_e} (the estimated OLRE variance) and the `link_residual`
 #'   component is \eqn{\sigma^2_d} (the distribution-specific latent residual).
-#'   For a Gaussian or lognormal trait the per-row term is the observation
-#'   residual: the package pins \eqn{\sigma_\varepsilon} at about 1/1000 of
-#'   the response SD to keep the density defined, and that pinned value is not
-#'   counted, so no `residual` component appears.
+#'   For a Gaussian or lognormal trait with such a per-row term (including the
+#'   default `latent()` Psi when each unit has one observation per trait), the
+#'   package does not estimate \eqn{\sigma_\varepsilon}: it fixes it at 1/1000
+#'   of the standard deviation of all responses pooled on the raw scale. That
+#'   fixed value is still part of the fitted variance and appears as
+#'   `residual`. It is negligible when the traits share a scale, but not when
+#'   trait scales differ widely or when lognormal responses are large.
 #' @seealso [extract_phylo_signal()] — the PGLLVM-specific shortcut;
 #'   [extract_communality()]; [extract_ICC_site()];
 #'   [extract_residual_split()] — explicit \eqn{\sigma^2_d / \sigma^2_e}
@@ -837,9 +842,10 @@ extract_proportions <- function(
     if (!is.null(out)) add_comp("unique_cluster2", out$s)
   }
   ## Observation residual sigma_eps^2 of Gaussian and lognormal traits
-  ## (#1399). It is an estimated variance, not a link-implied constant, so it
-  ## is counted under either `link_residual` value. Non-Gaussian traits and a
-  ## pinned sigma_eps (a per-row indep() term is the residual) contribute 0.
+  ## (#1399). It is a model variance, not a link-implied constant, so it is
+  ## counted under either `link_residual` value, and also when the engine
+  ## fixed sigma_eps because a per-row diagonal term is present (the fixed
+  ## value still enters the likelihood). Non-Gaussian traits contribute 0.
   add_comp("residual", .variance_share_residual_per_trait(fit))
   ## Optional per-trait link-implicit residual (family-aware: gaussian/
   ## lognormal contribute 0; binomial/poisson/Gamma each contribute their
@@ -849,14 +855,16 @@ extract_proportions <- function(
     if (anyNA(v) || any(v != 0)) add_comp("link_residual", v)
   }
 
-  tiers <- .variance_share_active_tiers(fit)
-  omitted <- c(omitted, unname(tiers))
+  omitted <- c(
+    stats::setNames(omitted, rep("", length(omitted))),
+    .variance_share_active_tiers(fit)
+  )
   .variance_share_warn_omitted(
     omitted,
     caller = "extract_proportions",
-    class = "gllvmTMB_proportions_component_omitted",
-    vp_counts = any(names(tiers) %in% c("re_int", "propto"))
+    class = "gllvmTMB_proportions_component_omitted"
   )
+  omitted <- unname(omitted)
 
   if (length(comps) == 0L) {
     cli::cli_abort("No identifiable variance components in this fit.")

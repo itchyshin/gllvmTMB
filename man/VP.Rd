@@ -20,31 +20,42 @@ Decomposes each trait's variance on the linear-predictor scale into
 contributions from the active random-effect components of the model and
 the Gaussian or lognormal observation residual. Column names follow the
 fitted report blocks: \code{rr_B}, \code{diag_B}, \code{rr_W}, \code{diag_W}, \code{diag_species},
-\code{diag_cluster2}, \code{phylo_rr}, \code{phylo_diag}, \code{propto}, one \verb{re_int_<group>}
-column per \code{(1 | group)} random intercept, and \code{residual}.
+\code{diag_cluster2}, \code{phylo_rr}, \code{phylo_diag}, \code{propto}, one \verb{kernel_<name>}
+column per term of a fit with several named \verb{kernel_*()} terms, one
+\verb{re_int_<group>} column per \code{(1 | group)} random intercept, and \code{residual}.
 }
 \details{
 A \code{(1 | group)} intercept is a single draw per group level added to every
-trait, so its column carries the same variance in every row. \code{residual} is
-the estimated observation variance \eqn{\sigma^2_\varepsilon} of Gaussian
-and lognormal traits. When a per-observation \code{indep()} term absorbs the
-observation residual, the package pins \eqn{\sigma_\varepsilon} at about
-1/1000 of the response SD to keep the density defined; that pinned value is
-not counted, because the per-observation term is the residual.
-Non-Gaussian link-implicit residual shares are handled by
-\code{\link[=extract_proportions]{extract_proportions()}}, not by \code{VP()}.
+trait, so its column carries the same variance in every row. Phylogenetic
+and kernel columns are on the scale of the supplied tree, pedigree or
+kernel matrix; they are variances per species or level when that matrix
+has a unit diagonal, as an ultrametric tree rescaled to unit height does.
 
-Some active components have no constant per-trait variance that \code{VP()} can
-compute from the fit: spatial fields, multi-kernel terms, temporal states,
-random slopes, and the known sampling variance of \code{meta_V()}. \code{VP()} leaves
+\code{residual} is the observation variance \eqn{\sigma^2_\varepsilon} of
+Gaussian and lognormal traits (on the log scale for lognormal). When a
+diagonal term has one row per observation (an \code{indep()} term at the
+observation level, or the default \code{latent()} Psi when each unit has one
+observation per trait), the package does not estimate
+\eqn{\sigma_\varepsilon}: it fixes it at 1/1000 of the standard deviation
+of all responses pooled on the raw scale. That fixed value is still part
+of the fitted variance, so it is counted. It is negligible when the traits
+share a scale, but not when trait scales differ widely or when lognormal
+responses are large. Non-Gaussian link-implicit residual shares are
+handled by \code{\link[=extract_proportions]{extract_proportions()}}, not by \code{VP()}.
+
+Some active components have no single per-trait variance: spatial fields
+(their variance changes with location), random-slope terms (their
+variance, intercept included, changes with the covariate value),
+response-column slopes and coefficients, temporal states, and the known
+sampling variance of \code{meta_V()} (it differs by observation). \code{VP()} leaves
 each of them out, names them in a warning of class
 \code{gllvmTMB_vp_component_omitted}, and records them in the
 \code{"omitted_components"} attribute of the result. The shares are then
-proportions of the included components only. Fixed effects, including the
-predictor part of \code{latent(..., lv = ~ x)}, are not variance components and
-are not partitioned.
+proportions of the included components only.
 
-Mirrors \code{gllvm::VP()} / \code{gllvm::plotVP()}.
+\code{VP()} serves the same purpose as \code{gllvm::VP()} / \code{gllvm::plotVP()}, but
+partitions random-effect and residual variance. Fixed effects, including
+the predictor part of \code{latent(..., lv = ~ x)}, are not partitioned.
 
 Structured trait-intercept rho fits are excluded; use \code{extract_Sigma()} and
 its \code{source_strength} metadata.

@@ -157,27 +157,94 @@ test_that("plot(type = 'variance') labels and colours the residual (#1399)", {
   fit <- make_vp_1399_fit()
   p <- suppressMessages(plot(fit, type = "variance"))
   expect_true("Residual" %in% levels(p$data$component_label))
+  ## A level missing from the manual palette would be drawn in the scale's
+  ## grey50 fallback, not NA, so check for the residual's own colour.
   built <- ggplot2::ggplot_build(p)
-  expect_false(anyNA(built$data[[1]]$fill))
+  expect_true(
+    gllvmTMB:::.gtmb_plot_palette[["grey"]] %in% built$data[[1]]$fill
+  )
 })
 
-test_that("a per-row indep() residual is not double counted with pinned sigma_eps", {
+test_that("a sigma_eps fixed by the engine is still counted (#1399)", {
   skip_on_cran()
-  set.seed(11)
-  sim <- simulate_site_trait(
-    n_sites = 25, n_species = 5, n_traits = 3, mean_species_per_site = 3,
-    psi_B = c(0.3, 0.3, 0.3), psi_W = c(0.3, 0.3, 0.3), seed = 11
+  ## One observation per unit and trait: the default latent() Psi is then
+  ## per-row, so the engine fixes sigma_eps at sd(all responses) / 1000
+  ## instead of estimating it. With one trait on a 1000-fold larger scale,
+  ## that fixed value is a large part of the unit-scale traits' variance.
+  set.seed(6)
+  n <- 150
+  d <- expand.grid(
+    trait = factor(c("mass_g", "ratio", "score")),
+    unit = factor(sprintf("u%03d", seq_len(n)))
   )
+  z <- stats::rnorm(n)
+  ti <- as.integer(d$trait)
+  d$value <- c(1000, 1, 1)[ti] *
+    (c(0.8, 0.5, -0.6)[ti] * z[as.integer(d$unit)] +
+       stats::rnorm(nrow(d), sd = 0.6))
   fit <- suppressMessages(suppressWarnings(gllvmTMB(
-    value ~ 0 + trait + indep(0 + trait | site) + indep(0 + trait | site_species),
-    data = sim$data, control = gllvmTMBcontrol(n_init = 1, se = FALSE)
+    value ~ 0 + trait + latent(0 + trait | unit, d = 1),
+    data = d, unit = "unit", trait = "trait", family = gaussian(),
+    silent = TRUE, control = gllvmTMBcontrol(n_init = 1, se = FALSE)
   )))
-  ## The per-row indep() term IS the residual; the package pins sigma_eps at
-  ## about sd(y) / 1000 to keep the density defined.
   expect_true(gllvmTMB:::.gllvmTMB_sigma_eps_mapped_off(fit))
+  s2 <- as.numeric(fit$report$sigma_eps)^2
+
+  vp <- VP(fit)
   p <- extract_proportions(fit, format = "wide")
-  expect_false("residual" %in% names(p))
-  expect_false("residual" %in% colnames(VP(fit)))
+  expect_true("residual" %in% colnames(vp))
+  expect_true("residual" %in% names(p))
+  expect_equal(unname(p$residual * p$total_variance), rep(s2, 3L),
+               tolerance = 1e-8)
+  expect_equal(unname(p$residual), unname(vp[, "residual"]), tolerance = 1e-8)
+  expect_equal(unname(p$shared_unit), unname(vp[, "rr_B"]), tolerance = 1e-8)
+  expect_true(all(p$residual[2:3] > 0.1))
+
+  ## A fixed sigma_eps is a constant offset in the profile denominator; its
+  ## own proportion has no profile target, as for the link residual.
+  expect_null(gllvmTMB:::.proportion_target_fn(fit, "residual", 2L))
+  target <- gllvmTMB:::.proportion_target_fn(fit, "shared_unit", 2L)
+  expect_equal(target(fit$opt$par, fit), unname(p$shared_unit[2L]),
+               tolerance = 1e-8)
+})
+
+test_that("profile targets refuse partly fixed per-trait blocks instead of misreading them", {
+  skip_on_cran()
+  ## Gaussian and binomial traits under one latent(): the engine fixes the
+  ## binomial traits' Psi, so theta_diag_B has fewer free values than traits.
+  set.seed(7)
+  n <- 40
+  d <- expand.grid(
+    trait = factor(c("a", "b", "c", "d")),
+    unit = factor(sprintf("u%02d", seq_len(n))),
+    rep = 1:3
+  )
+  fam <- c(a = "b", b = "g", c = "b", d = "g")
+  d$family <- factor(fam[as.character(d$trait)], levels = c("g", "b"))
+  eta <- c(0.9, 0.8, 1.0, -0.6)[as.integer(d$trait)] *
+    stats::rnorm(n)[as.integer(d$unit)]
+  d$value <- ifelse(d$family == "b", stats::rbinom(nrow(d), 1, stats::plogis(eta)),
+                    eta + stats::rnorm(nrow(d)))
+  families <- list(g = stats::gaussian(), b = stats::binomial())
+  attr(families, "family_var") <- "family"
+  fit <- suppressMessages(suppressWarnings(gllvmTMB(
+    value ~ 0 + trait + latent(0 + trait | unit, d = 1),
+    data = d, unit = "unit", trait = "trait", family = families,
+    silent = TRUE, control = gllvmTMBcontrol(n_init = 1, se = FALSE)
+  )))
+  expect_true(anyNA(fit$tmb_obj$env$map$theta_diag_B))
+  expect_null(gllvmTMB:::.proportion_target_fn(fit, "residual", 2L))
+  expect_null(gllvmTMB:::.proportion_target_fn(fit, "shared_unit", 2L))
+
+  ## The report-based Wald reconstruction is unaffected and still matches.
+  p <- extract_proportions(fit, format = "wide")
+  expect_equal(unname(p$residual[c(1L, 3L)]), c(0, 0))
+  comps <- gllvmTMB:::.proportions_components_present(fit)
+  base <- gllvmTMB:::.proportions_components_at(
+    fit, fit$tmb_obj$env$last.par.best, comps, 4L
+  )
+  expect_equal(unname((base$num / base$den)[, "residual"]),
+               unname(p$residual), tolerance = 1e-8)
 })
 
 # ---- #1395: components VP() used to drop ----------------------------------
@@ -250,12 +317,15 @@ test_that("VP() warns, by name, about random slopes it cannot partition (#1395)"
     silent = TRUE, control = gllvmTMBcontrol(n_init = 1, se = FALSE)
   )))
   expect_true(isTRUE(fit$use$rr_B_slope))
-  ## Before the fix VP() returned residual = 1 for every trait, with no
-  ## warning, although the unit-level slopes carry most of the variance.
-  expect_warning(VP(fit), regexp = "slope",
+  ## The whole unit-level term (its intercepts and slopes) has no single
+  ## per-trait variance. Before the fix VP() dropped it without a warning and
+  ## returned residual = 1 for every trait, although that term carries most of
+  ## the variance.
+  expect_warning(VP(fit), regexp = "intercepts and slopes",
                  class = "gllvmTMB_vp_component_omitted")
   vp <- suppressWarnings(VP(fit))
-  expect_true(length(attr(vp, "omitted_components")) >= 1L)
+  expect_equal(attr(vp, "omitted_components"),
+               "unit-level random intercepts and slopes")
 })
 
 test_that("VP() adds cluster2 and names each tier it omits (#1395)", {
@@ -273,9 +343,9 @@ test_that("VP() adds cluster2 and names each tier it omits (#1395)", {
     }
   )
   expect_false(is.null(w))
-  expect_match(w, "spatial")
-  expect_match(w, "temporal")
-  expect_match(w, "meta_V")
+  expect_match(w, "spatial_*() field", fixed = TRUE)
+  expect_match(w, "temporal_*() state", fixed = TRUE)
+  expect_match(w, "meta_V() known sampling variance", fixed = TRUE)
   expect_equal(length(attr(M, "omitted_components")), 3L)
 
   ## diag_B = 1, cluster2 = c(1, 4), residual = 1.
@@ -291,4 +361,65 @@ test_that("VP() stays silent and unchanged on fits it fully partitions", {
   expect_null(attr(M, "omitted_components"))
   expect_equal(colnames(M), c("diag_B", "residual"))
   expect_equal(unname(M[, "diag_B"]), c(0.5, 0.5))
+})
+
+test_that("VP() gives one column per (1 | group) term, propto and kernel tier (#1395)", {
+  fit <- make_fake_vp_fit_1395(
+    use_extra = list(re_int = TRUE, propto = TRUE, kernel = TRUE),
+    report_extra = list(
+      log_sigma_re_int = log(c(1, 2)),
+      lam_phy = 3,
+      ## T x rank x tier: kernel k1 loadings (1, 2), k2 loadings (3, 1).
+      Lambda_kernel = array(c(1, 2, 3, 1), dim = c(2L, 1L, 2L))
+    ),
+    extra = list(
+      re_int = list(groups = c("study", "site")),
+      kernel_levels = data.frame(
+        name = c("k1", "k2"), internal_level = "kernel", index = 1:2,
+        rank = 1L, stringsAsFactors = FALSE
+      )
+    )
+  )
+  expect_no_warning(M <- VP(fit))
+  expect_equal(
+    colnames(M),
+    c("diag_B", "propto", "kernel_k1", "kernel_k2", "re_int_study",
+      "re_int_site", "residual")
+  )
+  ## t1: 1 + 3 + 1 + 9 + 1 + 4 + 1 = 20; t2: 1 + 3 + 4 + 1 + 1 + 4 + 1 = 15.
+  expect_equal(unname(M["t1", ]), c(1, 3, 1, 9, 1, 4, 1) / 20)
+  expect_equal(unname(M["t2", ]), c(1, 3, 4, 1, 1, 4, 1) / 15)
+})
+
+test_that("VP() reads the Gaussian and lognormal sigma_eps slots separately", {
+  fit <- make_fake_vp_fit_1395(
+    report_extra = list(sigma_eps = c(1, 2)),
+    extra = list(tmb_data = list(family_id_vec = c(0L, 0L, 3L, 3L)))
+  )
+  M <- VP(fit)
+  ## diag_B = 1; residual = 1^2 for the Gaussian trait, 2^2 for the lognormal.
+  expect_equal(unname(M["t1", ]), c(1, 1) / 2)
+  expect_equal(unname(M["t2", ]), c(1, 4) / 5)
+})
+
+test_that("VP() names one response-column slope term once", {
+  fit <- make_fake_vp_fit_1395(
+    use_extra = list(phylo_dep_slope = TRUE, phylo_column_slope = TRUE),
+    extra = list(tmb_data = list(
+      use_phylo_slope = 1L,
+      use_phylo_slope_correlated = 1L
+    ))
+  )
+  expect_warning(M <- VP(fit), class = "gllvmTMB_vp_component_omitted")
+  expect_equal(attr(M, "omitted_components"),
+               "response-column slope or coefficient term")
+})
+
+test_that("VP() refuses a Julia bridge fit instead of returning an empty matrix", {
+  fake <- structure(
+    list(trait_col = "trait", trait_levels = c("a", "b"),
+         use = list(lv_B = TRUE)),
+    class = c("gllvmTMB_julia", "list")
+  )
+  expect_error(VP(fake), class = "gllvmTMB_julia_gate")
 })

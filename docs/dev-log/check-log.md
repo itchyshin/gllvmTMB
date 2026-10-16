@@ -58203,3 +58203,9 @@ and a partition-only concurrency suffix, preserving unsharded scheduled/tag
 behavior and120-minute limit. Existing partition tests and exact-head manifest
 will verify exhaustive/disjoint coverage before four dispatches. No test gate,
 scientific threshold, credential or runner permission is changed.
+
+## 2026-10-16 — issue1496 full-suite blocker follow-up
+
+Separate branch codex/issue-1496-suite-blockers preserves prior failure logs. Narrow fixes: explicit single-start warm fixtures (all assertions retained), scalar unit default in loading flag wrapper, source-level duplicate Julia x documentation removal. New clean red:3fail/10pass/0error/warn/skip. Roxygen compileFALSE, pkgdown, renderedRd, parser, Actions boundary and reader-surface passed; generator-only sigma NAMESPACE drift restored. Scan: `rg 'flag_unreliable_loadings\(|level *= *c\("unit", *"unit_obs"\)' R/loading-ci.R man/flag_unreliable_loadings.Rd README.md vignettes NEWS.md`. Independent review found no blocker. Full exact-head standard/heavyCI and eventual authorized main integration remain gates; final outcomes retained in PR and dev/issue-1496-blockers receipts. After-task:2026-10-16-suite-blockers-1496.md. No likelihood/grammar/family/native/security change.
+
+Core blocker tests:214pass/0fail/error/warn/skip in35.8s; existing shard selection188pass. Existing broader loading/profile file remains running locally, not claimed complete.

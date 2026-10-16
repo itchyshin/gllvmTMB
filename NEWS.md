@@ -2192,3 +2192,5 @@ infrastructure.
 * **`meta_known_V()` is a deprecated alias of `meta_V()`.**
 
 See the later release sections above for subsequent syntax and scope changes.
+
+- `flag_unreliable_loadings()` now uses the scalar unit loading tier by default, matching its documented behavior. Explicit loading-tier choices and the existing Wald/profile inference boundaries are unchanged. Julia bridge methods help now documents `x` only once.

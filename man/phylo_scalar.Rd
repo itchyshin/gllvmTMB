@@ -39,7 +39,8 @@ Hadfield & Nakagawa 2010) or \code{vcv = Cphy}
 for the full discussion of the two paths.
 }
 \examples{
-\dontrun{
+if (requireNamespace("ape", quietly = TRUE)) {
+  set.seed(1)
   tree <- ape::rcoal(8); tree$tip.label <- paste0("sp", seq_len(8))
   sim <- simulate_site_trait(
     n_sites = 1, n_species = 8, n_traits = 3,
@@ -52,12 +53,11 @@ for the full discussion of the two paths.
     levels = tree$tip.label
   )
   fit <- gllvmTMB(
-    value ~ 0 + trait + phylo_scalar(species),
-    data       = sim$data,
-    trait      = "trait",
-    unit       = "species",
-    cluster    = "species",
-    phylo_tree = tree
+    value ~ 0 + trait + phylo_scalar(species, tree = tree),
+    data    = sim$data,
+    trait   = "trait",
+    unit    = "species",
+    cluster = "species"
   )
 }
 }

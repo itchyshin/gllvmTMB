@@ -28,21 +28,33 @@ reader, but is \strong{not} used by the engine. Same convention as
 \code{\link[=phylo]{phylo()}} and \code{\link[=phylo_rr]{phylo_rr()}}.
 }
 \examples{
-\dontrun{
-# Recommended:
-fit <- gllvmTMB(value ~ 0 + trait + gr(species),
-                data      = df,
-                trait     = "trait",
-                unit      = "species",
-                cluster   = "species",
-                phylo_vcv = Cphy)
-# Also valid (cov = Cphy ignored by engine):
-fit <- gllvmTMB(value ~ 0 + trait + gr(species, cov = Cphy),
-                data      = df,
-                trait     = "trait",
-                unit      = "species",
-                cluster   = "species",
-                phylo_vcv = Cphy)
+if (requireNamespace("ape", quietly = TRUE)) {
+  set.seed(1)
+  tree <- ape::rcoal(20); tree$tip.label <- paste0("sp", seq_len(20))
+  sim <- simulate_site_trait(
+    n_sites = 1, n_species = 20, n_traits = 3,
+    mean_species_per_site = 20,
+    Cphy = ape::vcv(tree, corr = TRUE),
+    sigma2_phy = rep(1, 3), seed = 1
+  )
+  df <- sim$data
+  df$species <- factor(tree$tip.label[as.integer(df$species)],
+                       levels = tree$tip.label)
+  Cphy <- ape::vcv(tree, corr = TRUE)
+  # Recommended:
+  fit <- gllvmTMB(value ~ 0 + trait + gr(species),
+                  data      = df,
+                  trait     = "trait",
+                  unit      = "species",
+                  cluster   = "species",
+                  phylo_vcv = Cphy)
+  # Also valid (cov = Cphy ignored by engine):
+  fit <- gllvmTMB(value ~ 0 + trait + gr(species, cov = Cphy),
+                  data      = df,
+                  trait     = "trait",
+                  unit      = "species",
+                  cluster   = "species",
+                  phylo_vcv = Cphy)
 }
 }
 \keyword{internal}

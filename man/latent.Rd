@@ -79,7 +79,6 @@ use \code{common = TRUE}; this replaces the older two-term spelling for
 ordinary intercept-only latent terms.
 }
 \examples{
-\dontrun{
 # Long-format stacked traits: a 2-factor latent random effect at `site`.
 # Ordinary latent() carries its diagonal Psi by default
 # (Sigma = Lambda Lambda^T + diag(psi)).
@@ -92,7 +91,6 @@ fit <- gllvmTMB(
   data = df, unit = "site"
 )
 extract_Sigma(fit)
-}
 }
 \seealso{
 \code{\link[=indep]{indep()}}, \code{\link[=phylo_latent]{phylo_latent()}}, \link{diag_re}, \code{\link[=extract_Sigma]{extract_Sigma()}},

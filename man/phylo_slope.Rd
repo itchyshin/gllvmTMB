@@ -54,15 +54,25 @@ the resolved response-column factor on the RHS.
 }
 }
 \examples{
-\dontrun{if (requireNamespace("ape", quietly = TRUE)) {
+if (requireNamespace("ape", quietly = TRUE)) {
   set.seed(1); tree <- ape::rcoal(6); tree$tip.label <- paste0("sp", 1:6)
-  dat <- expand.grid(site = factor(paste0("s", 1:12)), trait = factor(tree$tip.label))
+  dat <- expand.grid(site = factor(paste0("s", 1:12)),
+                     trait = factor(tree$tip.label, levels = tree$tip.label))
   dat$elevation <- rnorm(nrow(dat)); dat$forest_cover <- rnorm(nrow(dat))
-  dat$value <- rnorm(nrow(dat))
-  fit <- gllvmTMB(value ~ 0 + trait + phylo_slope(elevation + forest_cover | trait, tree = tree),
-    data = dat, trait = "trait", unit = "site", family = gaussian())
+  # Slopes that covary along the tree (K_phy is the tree's correlation).
+  L <- t(chol(ape::vcv(tree, corr = TRUE)))
+  b_elev <- drop(L \%*\% rnorm(6, sd = 0.5))
+  b_forest <- drop(L \%*\% rnorm(6, sd = 0.3))
+  k <- as.integer(dat$trait)
+  dat$value <- b_elev[k] * dat$elevation + b_forest[k] * dat$forest_cover +
+    rnorm(nrow(dat), sd = 0.3)
+  fit <- gllvmTMB(
+    value ~ 0 + trait +
+      phylo_slope(elevation + forest_cover | trait, tree = tree),
+    data = dat, trait = "trait", unit = "site", family = gaussian()
+  )
   extract_Sigma(fit, level = "column_slope")
-}}
+}
 }
 \seealso{
 \code{\link[=slope]{slope()}}, \code{\link[=animal_slope]{animal_slope()}}, \code{\link[=kernel_slope]{kernel_slope()}}, \code{\link[=spatial_slope]{spatial_slope()}},

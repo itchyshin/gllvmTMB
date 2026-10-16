@@ -61,16 +61,25 @@ gllvmTMB(value ~ 0 + trait + phylo_rr(species, d = 2),
 }\if{html}{\out{</div>}}
 }
 \examples{
-\dontrun{
-library(ape)
-tree   <- rcoal(20); tree$tip.label <- paste0("sp", 1:20)
-Cphy   <- vcv(tree, corr = TRUE)
-fit <- gllvmTMB(value ~ 0 + trait + phylo_rr(species, d = 2),
-                data      = df,
-                trait     = "trait",
-                unit      = "species",
-                cluster   = "species",
-                phylo_vcv = Cphy)
+if (requireNamespace("ape", quietly = TRUE)) {
+  set.seed(1)
+  tree <- ape::rcoal(20); tree$tip.label <- paste0("sp", seq_len(20))
+  sim <- simulate_site_trait(
+    n_sites = 1, n_species = 20, n_traits = 3,
+    mean_species_per_site = 20,
+    Cphy = ape::vcv(tree, corr = TRUE),
+    sigma2_phy = rep(1, 3), seed = 1
+  )
+  df <- sim$data
+  df$species <- factor(tree$tip.label[as.integer(df$species)],
+                       levels = tree$tip.label)
+  Cphy <- ape::vcv(tree, corr = TRUE)
+  fit <- gllvmTMB(value ~ 0 + trait + phylo_rr(species, d = 2),
+                  data      = df,
+                  trait     = "trait",
+                  unit      = "species",
+                  cluster   = "species",
+                  phylo_vcv = Cphy)
 }
 }
 \keyword{internal}

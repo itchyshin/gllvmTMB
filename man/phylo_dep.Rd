@@ -77,7 +77,8 @@ Pass the phylogeny via \code{tree = phylo} (canonical, sparse \eqn{\mathbf{A}^{-
 }
 }
 \examples{
-\dontrun{
+if (requireNamespace("ape", quietly = TRUE)) {
+  set.seed(1)
   tree <- ape::rcoal(8); tree$tip.label <- paste0("sp", seq_len(8))
   sim <- simulate_site_trait(
     n_sites = 1, n_species = 8, n_traits = 3,
@@ -90,12 +91,11 @@ Pass the phylogeny via \code{tree = phylo} (canonical, sparse \eqn{\mathbf{A}^{-
     levels = tree$tip.label
   )
   fit <- gllvmTMB(
-    value ~ 0 + trait + phylo_dep(0 + trait | species),
-    data       = sim$data,
-    trait      = "trait",
-    unit       = "species",
-    cluster    = "species",
-    phylo_tree = tree
+    value ~ 0 + trait + phylo_dep(0 + trait | species, tree = tree),
+    data    = sim$data,
+    trait   = "trait",
+    unit    = "species",
+    cluster = "species"
   )
 }
 }

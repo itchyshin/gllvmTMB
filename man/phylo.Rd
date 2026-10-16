@@ -98,38 +98,47 @@ transfers.
 }
 
 \examples{
-\dontrun{
-library(ape)
-tree <- rcoal(20); tree$tip.label <- paste0("sp", 1:20)
-# Single shared phylogenetic variance (= phylo_scalar)
-fit_s <- gllvmTMB(value ~ 0 + trait + phylo(1 | species, tree = tree),
-                  data    = df,
-                  trait   = "trait",
-                  unit    = "species",
-                  cluster = "species")
-# Per-trait independent phylogenetic variances on shared A
-fit_u <- gllvmTMB(value ~ 0 + trait +
-                    phylo(0 + trait | species, mode = "indep", tree = tree),
-                  data    = df,
-                  trait   = "trait",
-                  unit    = "species",
-                  cluster = "species")
-# Reduced-rank cross-trait phylogenetic decomposition (= phylo_latent)
-fit_l <- gllvmTMB(value ~ 0 + trait +
-                    phylo(0 + trait | species, mode = "latent",
-                          d = 2, tree = tree),
-                  data    = df,
-                  trait   = "trait",
-                  unit    = "species",
-                  cluster = "species")
-# Backward-compat: legacy bare-name form
-Cphy <- vcv(tree, corr = TRUE)
-fit_legacy <- gllvmTMB(value ~ 0 + trait + phylo(species),
-                       data      = df,
-                       trait     = "trait",
-                       unit      = "species",
-                       cluster   = "species",
-                       phylo_vcv = Cphy)
+if (requireNamespace("ape", quietly = TRUE)) {
+  set.seed(1)
+  tree <- ape::rcoal(20); tree$tip.label <- paste0("sp", seq_len(20))
+  sim <- simulate_site_trait(
+    n_sites = 1, n_species = 20, n_traits = 3,
+    mean_species_per_site = 20,
+    Cphy = ape::vcv(tree, corr = TRUE),
+    sigma2_phy = rep(1, 3), seed = 1
+  )
+  df <- sim$data
+  df$species <- factor(tree$tip.label[as.integer(df$species)],
+                       levels = tree$tip.label)
+  # Single shared phylogenetic variance (= phylo_indep(..., common = TRUE))
+  fit_s <- gllvmTMB(value ~ 0 + trait + phylo(1 | species, tree = tree),
+                    data    = df,
+                    trait   = "trait",
+                    unit    = "species",
+                    cluster = "species")
+  # Per-trait independent phylogenetic variances on shared A
+  fit_u <- gllvmTMB(value ~ 0 + trait +
+                      phylo(0 + trait | species, mode = "indep", tree = tree),
+                    data    = df,
+                    trait   = "trait",
+                    unit    = "species",
+                    cluster = "species")
+  # Reduced-rank cross-trait phylogenetic decomposition (= phylo_latent)
+  fit_l <- gllvmTMB(value ~ 0 + trait +
+                      phylo(0 + trait | species, mode = "latent",
+                            d = 2, tree = tree),
+                    data    = df,
+                    trait   = "trait",
+                    unit    = "species",
+                    cluster = "species")
+  # Backward-compat: legacy bare-name form
+  Cphy <- ape::vcv(tree, corr = TRUE)
+  fit_legacy <- gllvmTMB(value ~ 0 + trait + phylo(species),
+                         data      = df,
+                         trait     = "trait",
+                         unit      = "species",
+                         cluster   = "species",
+                         phylo_vcv = Cphy)
 }
 }
 \seealso{

@@ -102,34 +102,40 @@ convention; user muscle memory transfers.
 }
 
 \examples{
-\dontrun{
-library(fmesher)
+sim <- simulate_site_trait(
+  n_sites = 30, n_species = 6, n_traits = 3, mean_species_per_site = 5,
+  spatial_range = 0.4, sigma2_spa = rep(0.5, 3), seed = 1
+)
+df <- sim$data
+mesh <- make_mesh(df, c("lon", "lat"), cutoff = 0.1)
+# env_1 and env_2 are the simulated site covariates.
 # Single shared spatial-field variance (= spatial_indep(..., common = TRUE))
-fit_s <- gllvmTMB(value ~ 0 + trait + spatial(1 | site, mesh = mesh),
+fit_s <- gllvmTMB(value ~ 0 + trait + (0 + trait):(env_1 + env_2) +
+                    spatial(1 | site, mesh = mesh),
                   data  = df,
                   trait = "trait",
                   unit  = "site")
 # Per-trait independent fields on a shared mesh
-fit_u <- gllvmTMB(value ~ 0 + trait +
+fit_u <- gllvmTMB(value ~ 0 + trait + (0 + trait):(env_1 + env_2) +
                     spatial(0 + trait | coords, mode = "indep",
                             mesh = mesh),
                   data  = df,
                   trait = "trait",
                   unit  = "site")
 # Reduced-rank shared spatial latent factors (= spatial_latent)
-fit_l <- gllvmTMB(value ~ 0 + trait +
+fit_l <- gllvmTMB(value ~ 0 + trait + (0 + trait):(env_1 + env_2) +
                     spatial(0 + trait | coords, mode = "latent",
                             d = 2, mesh = mesh),
                   data  = df,
                   trait = "trait",
                   unit  = "site")
 # Backward-compat: legacy bare-formula form
-fit_legacy <- gllvmTMB(value ~ 0 + trait + spatial(0 + trait | coords),
+fit_legacy <- gllvmTMB(value ~ 0 + trait + (0 + trait):(env_1 + env_2) +
+                         spatial(0 + trait | coords),
                        data  = df,
                        trait = "trait",
                        unit  = "site",
                        mesh  = mesh)
-}
 }
 \seealso{
 \code{\link[=spatial_indep]{spatial_indep()}},

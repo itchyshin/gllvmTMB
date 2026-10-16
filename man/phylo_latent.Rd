@@ -105,7 +105,8 @@ for the benchmark.
 }
 }
 \examples{
-\dontrun{
+if (requireNamespace("ape", quietly = TRUE)) {
+  set.seed(1)
   tree <- ape::rcoal(20); tree$tip.label <- paste0("sp", seq_len(20))
   sim <- simulate_site_trait(
     n_sites = 1, n_species = 20, n_traits = 4,
@@ -118,12 +119,11 @@ for the benchmark.
     levels = tree$tip.label
   )
   fit <- gllvmTMB(
-    value ~ 0 + trait + phylo_latent(species, d = 2),
-    data       = sim$data,
-    trait      = "trait",
-    unit       = "species",
-    cluster    = "species",
-    phylo_tree = tree
+    value ~ 0 + trait + phylo_latent(species, d = 2, tree = tree),
+    data    = sim$data,
+    trait   = "trait",
+    unit    = "species",
+    cluster = "species"
   )
 }
 }

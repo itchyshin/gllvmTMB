@@ -54,20 +54,29 @@ similarly redundant and also errors.
 }
 }
 \examples{
-\dontrun{
+# Three traits on 50 units with trait-specific between-unit variances
+# and no between-unit trait correlation.
+sim <- simulate_unit_trait(
+  n_units = 50, n_obs_per_unit = 3, n_traits = 3,
+  psi_B = c(0.8, 0.5, 0.3), seed = 1
+)
+df <- sim$data
+
 # Marginal-only fit (per-trait variance, identity correlation):
-fit <- gllvmTMB(value ~ 0 + trait + indep(0 + trait | site),
-                data = df, trait = "trait", unit = "site")
+fit <- gllvmTMB(value ~ 0 + trait + indep(0 + trait | unit),
+                data = df, trait = "trait", unit = "unit")
+extract_Sigma(fit)$Sigma
 
 # Scalar marginal-only fit (one shared variance across traits):
-fit <- gllvmTMB(value ~ 0 + trait + indep(0 + trait | site, common = TRUE),
-                data = df, trait = "trait", unit = "site")
+fit_common <- gllvmTMB(
+  value ~ 0 + trait + indep(0 + trait | unit, common = TRUE),
+  data = df, trait = "trait", unit = "unit"
+)
 
 # ERROR: indep + latent on the same grouping is over-parameterised.
 # gllvmTMB(value ~ 0 + trait +
-#           indep(0 + trait | site) +
-#           latent(0 + trait | site, d = 2), data = df)
-}
+#           indep(0 + trait | unit) +
+#           latent(0 + trait | unit, d = 2), data = df)
 }
 \seealso{
 \code{\link[=latent]{latent()}}, \code{\link[=phylo_indep]{phylo_indep()}}, \code{\link[=spatial_indep]{spatial_indep()}},

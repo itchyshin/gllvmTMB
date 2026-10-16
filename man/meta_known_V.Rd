@@ -25,7 +25,6 @@ code should use \code{meta_V(V = V)}. \code{meta_known_V()} remains available fo
 backward compatibility.
 }
 \examples{
-\dontrun{
 # Deprecated alias of meta_V(); both desugar identically.
 # New code should use meta_V(V = V).
 set.seed(131)
@@ -41,7 +40,6 @@ fit <- gllvmTMB(
     meta_known_V(V = V),
   data = df, trait = "trait", unit = "site", known_V = V
 )
-}
 }
 \seealso{
 \code{\link[=meta_V]{meta_V()}} (canonical name; preferred for new code);

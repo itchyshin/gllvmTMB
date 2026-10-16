@@ -11,7 +11,8 @@
 ##      that would justify one; and
 ##   2. the code that tools::Rd2ex() extracts from it, with \donttest{} code
 ##      included as `R CMD check --run-donttest` runs it, contains at least one
-##      executable expression and evaluates without error.
+##      executable expression and evaluates, printing included, without an
+##      error or a warning.
 
 .ex1346b_topics <- c(
   "animal_dep", "animal_indep", "animal_latent", "animal_scalar",
@@ -53,26 +54,56 @@
 }
 
 ## Extract one page's examples as R CMD check --run-donttest would run them
-## (\dontrun commented out, \donttest kept) and evaluate them in a fresh
-## environment. Returns the number of executable top-level expressions and the
-## error message, if any.
+## (\dontrun commented out, \donttest kept) and evaluate them the way it does:
+## visible top-level values are printed, so a failing print method fails here
+## too, and the developer's workspace is not visible (attached packages are).
+## Returns the number of executable top-level expressions, the error message
+## (NA if none) and any warnings raised. R CMD check remains the authority on
+## whether an example uses only exported functions: under devtools::test() the
+## package's internal functions are attached as well.
 .ex1346b_run_page <- function(rd) {
   tf <- tempfile(fileext = ".R")
   on.exit(unlink(tf), add = TRUE)
   tools::Rd2ex(rd, out = tf, commentDontrun = TRUE, commentDonttest = FALSE)
   exprs <- if (file.exists(tf)) parse(tf, keep.source = FALSE) else expression()
   err <- NA_character_
+  warns <- character()
   if (length(exprs) > 0L) {
-    env <- new.env(parent = globalenv())
+    ## Silence, without recording, the package's fire-on-use notes and
+    ## rlang's once-per-session messages, so that running the examples here
+    ## does not use up notices that later tests in this process assert.
+    withr::local_options(
+      gllvmTMB.quiet_grammar_notes = TRUE,
+      rlib_message_verbosity = "quiet",
+      lifecycle_verbosity = "quiet"
+    )
+    env <- new.env(parent = parent.env(globalenv()))
+    ## print() is called from `env`, so S3 dispatch also finds methods that
+    ## the example itself defines, as it does for top-level auto-printing.
+    run <- function() {
+      for (e in exprs) {
+        res <- withVisible(eval(e, envir = env))
+        if (res$visible) {
+          assign(".ex1346b_value", res$value, envir = env)
+          eval(quote(print(.ex1346b_value)), envir = env)
+        }
+      }
+    }
     err <- tryCatch(
-      withr::with_preserve_seed(suppressMessages(suppressWarnings(
-        for (e in exprs) eval(e, envir = env)
-      ))),
+      withr::with_preserve_seed(withCallingHandlers(
+        {
+          utils::capture.output(suppressMessages(run()))
+          NA_character_
+        },
+        warning = function(w) {
+          warns <<- c(warns, conditionMessage(w))
+          invokeRestart("muffleWarning")
+        }
+      )),
       error = function(e) conditionMessage(e)
     )
-    if (!is.character(err)) err <- NA_character_
   }
-  list(n_expr = length(exprs), error = err)
+  list(n_expr = length(exprs), error = err, warnings = unique(warns))
 }
 
 test_that("#1346b: keyword and family help pages keep no \\dontrun{} examples", {
@@ -88,7 +119,7 @@ test_that("#1346b: keyword and family help pages keep no \\dontrun{} examples", 
   expect_identical(names(dontrun)[dontrun], character(0))
 })
 
-test_that("#1346b: keyword and family help examples execute without error", {
+test_that("#1346b: keyword and family help examples run without error or warning", {
   ## R CMD check runs these examples itself; this test re-runs them so a broken
   ## example also fails devtools::test(). Kept off CRAN to spare test time.
   skip_on_cran()
@@ -102,4 +133,9 @@ test_that("#1346b: keyword and family help examples execute without error", {
   ## Pages whose examples stop with an error: topic -> message.
   errors <- vapply(runs, function(x) x$error, character(1))
   expect_identical(errors[!is.na(errors)], setNames(character(0), character(0)))
+
+  ## Pages whose examples raise a warning (for example a fit that stops on a
+  ## boundary): topic -> messages. Examples should run cleanly.
+  warns <- lapply(runs, function(x) x$warnings)
+  expect_identical(warns[lengths(warns) > 0L], setNames(list(), character(0)))
 })

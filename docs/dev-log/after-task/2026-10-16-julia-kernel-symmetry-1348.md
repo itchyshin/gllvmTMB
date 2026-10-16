@@ -32,7 +32,16 @@ it had been run.
 - Gate code is unchanged in substance. The tolerance is named (`k_tol`), the
   comment now describes `isSymmetric()` correctly, and the message states the
   rule the code applies: `sqrt(.Machine$double.eps) * max(1, max|K|)`, with
-  its value.
+  its value. It also says the rule applies to the grouping levels in the
+  data, because K is subset to those levels before the check.
+- A 13-agent adversarial review (four lenses, each finding checked by an
+  independent skeptic) confirmed the forcing premise. It held with a 2.45x
+  margin under libm +-1 ulp perturbations, in the R sources from 4.1.0 to
+  trunk, and in every locale tested. It also confirmed that S3 dispatch and
+  R CMD check are unchanged by the `NAMESPACE` lines, and that #1532 and
+  #1530 do not overlap. Two wording nits were confirmed and fixed: the
+  message's `max|K|` refers to the levels in the data, and the code comment
+  now names the row pre-check.
 - `devtools::document()` (roxygen2 8.0.0) rewrote three `NAMESPACE` lines,
   `S3method(stats::sigma, ...)` to `S3method(sigma, ...)`. This is drift
   already on `main`: `273b777` (#1407) edited them by hand, and the roxygen

@@ -73,19 +73,32 @@
 #'   }
 #'
 #' @examples
-#' \dontrun{
-#' sug <- suggest_lambda_constraint(
-#'   value ~ 0 + trait + latent(0 + trait | site, d = 2),
-#'   data = my_data
-#' )
-#' fit <- gllvmTMB(
-#'   value ~ 0 + trait + latent(0 + trait | site, d = 2),
-#'   data              = my_data,
-#'   trait             = "trait",
-#'   unit              = "site",
-#'   lambda_constraint = list(unit = sug$constraint)
-#' )
-#' }
+#' set.seed(1)
+#' # Simulate six traits measured twice on each of 100 units, with two
+#' # latent axes: traits 1-3 load on the first, traits 4-6 on the second.
+#' Lambda <- cbind(c(0.9, 0.8, 0.7, 0.0, 0.0, 0.0),
+#'                 c(0.0, 0.0, 0.0, 0.8, 0.7, 0.6))
+#' sim <- simulate_unit_trait(n_units = 100, n_obs_per_unit = 2,
+#'                            n_traits = 6, Lambda_B = Lambda,
+#'                            psi_B = 0.3, sigma2_eps = 0.3)
+#' form <- value ~ 0 + trait +
+#'   latent(0 + trait | unit, d = 2, unique = TRUE)
+#'
+#' # Before fitting: suggest a constraint matrix for the 6 x 2 loadings
+#' # (NA = estimated, 0 = pinned). With two axes, one zero is enough to
+#' # stop the axes from rotating freely.
+#' sug <- suggest_lambda_constraint(form, data = sim$data, unit = "unit")
+#' sug$constraint
+#' sug$note
+#'
+#' # Fit with the matrix: trait_1's loading on axis 2 is held at zero and
+#' # the other loadings are estimated. gllvmTMB uses this same orientation
+#' # when no matrix is given, so the estimates do not change; passing the
+#' # matrix states the choice explicitly. The orientation is only a
+#' # convention; rotate_loadings() gives a more interpretable one.
+#' fit <- gllvmTMB(form, data = sim$data, trait = "trait", unit = "unit",
+#'                 lambda_constraint = list(unit = sug$constraint))
+#' round(extract_loadings(fit, level = "unit"), 2)
 #' @export
 suggest_lambda_constraint <- function(
   fit_or_formula,
@@ -529,27 +542,47 @@ suggest_lambda_constraint <- function(
 #'   }
 #'
 #' @examples
-#' \dontrun{
+#' set.seed(1)
+#' # Simulate six traits measured twice on each of 100 units. Traits 1, 3
+#' # and 5 share one latent axis; traits 2, 4 and 6 share a second one.
+#' Lambda <- cbind(c(1.0, 0.0, 0.9, 0.0, 0.8, 0.0),
+#'                 c(0.0, 0.7, 0.0, 0.7, 0.0, 0.6))
+#' sim <- simulate_unit_trait(n_units = 100, n_obs_per_unit = 2,
+#'                            n_traits = 6, Lambda_B = Lambda,
+#'                            psi_B = 0.3, sigma2_eps = 0.3)
+#' form <- value ~ 0 + trait +
+#'   latent(0 + trait | unit, d = 2, unique = TRUE)
+#'
+#' # Exploratory fit: all loadings are estimated, apart from the single
+#' # zero the model always uses to fix the orientation of the two axes.
+#' fit <- gllvmTMB(form, data = sim$data, trait = "trait", unit = "unit")
+#'
+#' # Two quick suggestions, neither of which refits the model: a hard
+#' # cut-off on the rotated, standardised loadings, and a version that
+#' # also accounts for their uncertainty.
 #' cmp <- suggest_lambda_constraints(
 #'   fit,
 #'   methods = c("varimax_threshold", "wald_retention"),
 #'   threshold = 0.30,
 #'   retention_prob = 0.90
 #' )
-#' cmp$summary
-#' fit_con <- gllvmTMB(
-#'   value ~ 0 + trait + latent(0 + trait | site, d = 2),
-#'   data = df,
-#'   family = binomial(),
-#'   lambda_constraint = list(unit = cmp$recommended$constraint)
-#' )
+#' cmp$summary[, c("method", "cost", "n_pins", "n_free")]
 #'
-#' # Expensive: one likelihood-ratio refit per testable loading.
-#' cmp_profile <- suggest_lambda_constraints(
-#'   fit,
-#'   methods = "profile_retention"
-#' )
-#' }
+#' # The recommended matrix: 0 = pinned to zero, NA = estimated.
+#' cmp$recommended_method
+#' cmp$recommended$constraint
+#'
+#' # Refit with those zeros pinned. The pins were chosen from these same
+#' # data, so read the AIC comparison as a sanity check, not as
+#' # independent evidence that the pattern is right.
+#' fit_con <- gllvmTMB(form, data = sim$data, trait = "trait", unit = "unit",
+#'                     lambda_constraint = list(
+#'                       unit = cmp$recommended$constraint))
+#' round(extract_loadings(fit_con, level = "unit"), 2)
+#' AIC(fit, fit_con)
+#'
+#' # A likelihood-ratio version, methods = "profile_retention", is also
+#' # available. It is expensive: one refit per testable loading.
 #' @export
 suggest_lambda_constraints <- function(
   fit_or_formula,

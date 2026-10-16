@@ -1642,11 +1642,31 @@
 #'   routes where a check does not apply to the fitted estimator).
 #' @export
 #' @examples
-#' \dontrun{
-#' fit <- gllvmTMB(value ~ 0 + trait + latent(0 + trait | site, d = 2),
-#'                 data = dat, trait = "trait", unit = "site")
-#' check_gllvmTMB(fit)
-#' }
+#' set.seed(1)
+#' # Eight traits on 100 units, each unit measured twice. Odd-numbered
+#' # traits share one latent axis, even-numbered traits share the other.
+#' # Repeat measurements let the model separate each trait's own
+#' # unit-level variance (Psi) from measurement noise.
+#' Lambda <- cbind(c(0.9, 0, 0.8, 0, 0.7, 0, 0.6, 0),
+#'                 c(0, 0.9, 0, 0.8, 0, 0.7, 0, 0.6))
+#' sim <- simulate_unit_trait(n_units = 100, n_obs_per_unit = 2,
+#'                            n_traits = 8, Lambda_B = Lambda,
+#'                            psi_B = 0.3, sigma2_eps = 0.3)
+#' fit <- gllvmTMB(
+#'   value ~ 0 + trait + latent(0 + trait | unit, d = 2, unique = TRUE),
+#'   data = sim$data, trait = "trait", unit = "unit"
+#' )
+#'
+#' # One row per check. The status column is PASS, WARN, FAIL or INFO.
+#' chk <- check_gllvmTMB(fit)
+#' chk[, c("component", "status", "value")]
+#' table(chk$status)
+#'
+#' # Read the rows that did not pass, with the suggested action. With two
+#' # latent axes the loadings are defined only up to a rotation, so a WARN
+#' # on rotation_convention is expected here: interpret Sigma and the trait
+#' # correlations, or rotate the loadings before comparing axes.
+#' chk[chk$status != "PASS", c("component", "status", "message", "action")]
 check_gllvmTMB <- function(
   object,
   gradient_thresh = 1e-2,
@@ -2311,11 +2331,34 @@ check_gllvmTMB <- function(
 #'   [compare_dep_vs_two_psi()] / [compare_indep_vs_two_psi()] for
 #'   identifiability cross-checks on the paired phylogenetic fit.
 #' @examples
-#' \dontrun{
-#' fit <- gllvmTMB(value ~ 0 + trait + latent(0 + trait | site, d = 2),
-#'                 data = dat, trait = "trait", unit = "site")
-#' gllvmTMB_diagnose(fit)
-#' }
+#' set.seed(1)
+#' # Eight traits on 100 units, each unit measured twice. Odd-numbered
+#' # traits share one latent axis, even-numbered traits share the other.
+#' Lambda <- cbind(c(0.9, 0, 0.8, 0, 0.7, 0, 0.6, 0),
+#'                 c(0, 0.9, 0, 0.8, 0, 0.7, 0, 0.6))
+#' sim <- simulate_unit_trait(n_units = 100, n_obs_per_unit = 2,
+#'                            n_traits = 8, Lambda_B = Lambda,
+#'                            psi_B = 0.3, sigma2_eps = 0.3)
+#' fit <- gllvmTMB(
+#'   value ~ 0 + trait + latent(0 + trait | unit, d = 2, unique = TRUE),
+#'   data = sim$data, trait = "trait", unit = "unit"
+#' )
+#'
+#' # The printed report has four parts: optimiser checks, rotation,
+#' # biological summaries (variances, strong trait correlations and
+#' # communalities) and suggested next steps.
+#' dx <- gllvmTMB_diagnose(fit)
+#'
+#' # The same results come back invisibly as a list, for use in scripts.
+#' names(dx)
+#' dx$hints
+#' round(dx$Sigma_B$R_B, 2)
+#' dx$communality_B
+#'
+#' # verbose = FALSE skips the printed report; the numbers behind the
+#' # optimiser checks are in $sanity.
+#' quiet <- gllvmTMB_diagnose(fit, verbose = FALSE)
+#' str(quiet$sanity)
 gllvmTMB_diagnose <- function(
   object,
   gradient_thresh = 1e-2,

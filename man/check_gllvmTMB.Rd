@@ -259,9 +259,29 @@ itself proof that the fitted mean, likelihood, or rotation-invariant
 covariance summaries are unusable.
 }
 \examples{
-\dontrun{
-fit <- gllvmTMB(value ~ 0 + trait + latent(0 + trait | site, d = 2),
-                data = dat, trait = "trait", unit = "site")
-check_gllvmTMB(fit)
-}
+set.seed(1)
+# Eight traits on 100 units, each unit measured twice. Odd-numbered
+# traits share one latent axis, even-numbered traits share the other.
+# Repeat measurements let the model separate each trait's own
+# unit-level variance (Psi) from measurement noise.
+Lambda <- cbind(c(0.9, 0, 0.8, 0, 0.7, 0, 0.6, 0),
+                c(0, 0.9, 0, 0.8, 0, 0.7, 0, 0.6))
+sim <- simulate_unit_trait(n_units = 100, n_obs_per_unit = 2,
+                           n_traits = 8, Lambda_B = Lambda,
+                           psi_B = 0.3, sigma2_eps = 0.3)
+fit <- gllvmTMB(
+  value ~ 0 + trait + latent(0 + trait | unit, d = 2, unique = TRUE),
+  data = sim$data, trait = "trait", unit = "unit"
+)
+
+# One row per check. The status column is PASS, WARN, FAIL or INFO.
+chk <- check_gllvmTMB(fit)
+chk[, c("component", "status", "value")]
+table(chk$status)
+
+# Read the rows that did not pass, with the suggested action. With two
+# latent axes the loadings are defined only up to a rotation, so a WARN
+# on rotation_convention is expected here: interpret Sigma and the trait
+# correlations, or rotate the loadings before comparing axes.
+chk[chk$status != "PASS", c("component", "status", "message", "action")]
 }

@@ -2945,6 +2945,82 @@ sanity_multi <- function(object, gradient_thresh = 1e-2, se_thresh = 100) {
 }
 
 
+## ---- predict(): near-miss argument spellings and wide newdata (#1414, #1412) --
+##
+## `predict.gllvmTMB_multi()` takes `re_form` and `se.fit`, but the lme4 /
+## glmmTMB habit is `re.form` (and `se_fit` is the other near miss). Both used
+## to vanish into `...` with no message, so `re.form = NA` silently returned
+## the conditional predictor. The two near-miss spellings are accepted as
+## aliases; any other named argument in `...` warns instead of being dropped.
+.gllvmTMB_predict_resolve_dots <- function(dots, re_form, se.fit,
+                                           re_form_given, se_fit_given) {
+  out <- list(re_form = re_form, se.fit = se.fit)
+  if (!length(dots)) return(out)
+  nms <- names(dots)
+  if (is.null(nms)) nms <- rep("", length(dots))
+  alias_re <- nms == "re.form"
+  alias_se <- nms == "se_fit"
+  if (any(alias_re)) {
+    if (re_form_given) {
+      cli::cli_abort(c(
+        "Both {.arg re_form} and its alias {.arg re.form} were supplied.",
+        "i" = "Use {.arg re_form} only."
+      ), class = "gllvmTMB_predict_alias_conflict")
+    }
+    out$re_form <- dots[[which(alias_re)[1L]]]
+  }
+  if (any(alias_se)) {
+    if (se_fit_given) {
+      cli::cli_abort(c(
+        "Both {.arg se.fit} and its alias {.arg se_fit} were supplied.",
+        "i" = "Use {.arg se.fit} only."
+      ), class = "gllvmTMB_predict_alias_conflict")
+    }
+    out$se.fit <- dots[[which(alias_se)[1L]]]
+  }
+  unused <- nms[!(alias_re | alias_se)]
+  n_unnamed <- sum(!(alias_re | alias_se) & !nzchar(nms))
+  unused <- unused[nzchar(unused)]
+  if (length(unused) || n_unnamed) {
+    shown <- c(unused, rep("<unnamed>", n_unnamed))
+    cli::cli_warn(c(
+      "{.fn predict} ignored {cli::qty(length(shown))}argument{?s} {.arg {shown}}.",
+      "i" = "The arguments it uses are {.arg newdata}, {.arg type}, {.arg re_form} and {.arg se.fit}."
+    ), class = "gllvmTMB_predict_unused_arg")
+  }
+  out
+}
+
+## A wide `traits()` fit is stacked long internally (rows unit-major, traits
+## varying fastest, trait factor in the order given to `traits()`). Wide
+## `newdata` -- no `trait` column -- is stacked the same way so the training
+## row-to-trait convention holds. Long `newdata` is returned unchanged.
+.gllvmTMB_predict_prepare_newdata <- function(object, newdata) {
+  newdata <- as.data.frame(newdata)
+  trait_col <- object$trait_col %||% "trait"
+  if (trait_col %in% names(newdata)) return(newdata)
+  meta <- object$traits_meta
+  if (identical(meta$input_shape, "wide_data_frame") &&
+      length(meta$trait_cols)) {
+    tcols <- meta$trait_cols
+    k <- length(tcols)
+    keep <- setdiff(names(newdata), tcols)
+    nd <- newdata[rep(seq_len(nrow(newdata)), each = k), keep, drop = FALSE]
+    nd[[trait_col]] <- factor(rep(tcols, times = nrow(newdata)), levels = tcols)
+    rownames(nd) <- NULL
+    return(nd)
+  }
+  fixed_vars <- all.vars(stats::delete.response(stats::terms(object$formula)))
+  if (trait_col %in% fixed_vars) {
+    cli::cli_abort(c(
+      "{.arg newdata} needs a {.field {trait_col}} column.",
+      "i" = "Supply stacked long-format rows: one row per unit and trait, with {.field {trait_col}} a factor whose levels are the training traits.",
+      "i" = "A wide fit made with {.fn traits} also accepts wide {.arg newdata}, which is stacked the way the training data was."
+    ), class = "gllvmTMB_predict_newdata_no_trait")
+  }
+  newdata
+}
+
 #' Predict from a fitted gllvmTMB model
 #'
 #' Returns the linear predictor or inverse-link response at each observation
@@ -2954,7 +3030,14 @@ sanity_multi <- function(object, gradient_thresh = 1e-2, se_thresh = 100) {
 #'
 #' @param object A fit returned by [gllvmTMB()].
 #' @param newdata Optional new data frame. If `NULL`, predictions are
-#'   produced for the training rows. A missing covariate stays `NA` in
+#'   produced for the training rows. Otherwise `newdata` must be in the
+#'   stacked long form the model is fitted on: one row per unit and trait,
+#'   with a `trait` factor column (levels as in the training data). For a
+#'   fit made with wide `traits(...)` data, wide `newdata` (one row per
+#'   unit, no `trait` column) is also accepted and is stacked the way the
+#'   training data was: rows keep their order and each expands to one row per
+#'   trait, in the order given to `traits()`; the wide response columns, if
+#'   present, are dropped from the returned data frame. A missing covariate stays `NA` in
 #'   that row; the other rows keep their own predictions. Data-dependent
 #'   transforms in the fixed formula (`scale()`, `poly()`, `ns()`) reuse
 #'   the training centre, scale, and basis, so a row's value does not
@@ -2984,7 +3067,8 @@ sanity_multi <- function(object, gradient_thresh = 1e-2, se_thresh = 100) {
 #'   `newdata` path, and there only as the literal `~ 0`). For `newdata`
 #'   with sites/species not present in the training data the random
 #'   effects cannot be drawn, so those rows are fixed-effects-only
-#'   regardless of `re_form`.
+#'   regardless of `re_form`. The lme4 / glmmTMB spelling `re.form` is
+#'   accepted as an alias.
 #'
 #'   On `newdata`, `predict()` rebuilds the linear predictor in R and can
 #'   re-add only some of the model's random-effect tiers (the unit-level
@@ -3011,7 +3095,10 @@ sanity_multi <- function(object, gradient_thresh = 1e-2, se_thresh = 100) {
 #'   fits, fits without an active `mi()` missing-covariate model, and fits with
 #'   unit likelihood weights. A non-unit weighted objective has no certified
 #'   prediction-standard-error route.
-#' @param ... Unused.
+#'   (`se_fit` is accepted as an alias.)
+#' @param ... Unused. The aliases `re.form` (for `re_form`) and `se_fit`
+#'   (for `se.fit`) are recognised; any other argument is ignored with a
+#'   warning.
 #'
 #' @return A data frame with the original row identifiers plus an `est`
 #'   column on the requested link or response scale, and (if
@@ -3027,6 +3114,12 @@ predict.gllvmTMB_multi <- function(
   ...
 ) {
   type <- match.arg(type)
+  .dots <- .gllvmTMB_predict_resolve_dots(
+    list(...), re_form, se.fit,
+    re_form_given = !missing(re_form), se_fit_given = !missing(se.fit)
+  )
+  re_form <- .dots$re_form
+  se.fit <- .dots$se.fit
   if (isTRUE(object$temporal$active) && !is.null(newdata)) {
     cli::cli_abort(c(
       "{.fn predict} with {.arg newdata} is not yet available for {.fn temporal_latent} fits.",
@@ -3105,6 +3198,7 @@ predict.gllvmTMB_multi <- function(
       out <- out[, c(setdiff(names(out), "est"), "est"), drop = FALSE]
     }
   } else {
+    newdata <- .gllvmTMB_predict_prepare_newdata(object, newdata)
     isdm_observation <- attr(
       object$family_input, "isdm_observation", exact = TRUE
     )

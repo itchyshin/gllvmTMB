@@ -2943,6 +2943,19 @@ sanity_multi <- function(object, gradient_thresh = 1e-2, se_thresh = 100) {
 }
 
 
+## #1406: internal sentinels that `gllvmTMB()` writes into `object$data` and
+## that must not surface in user-facing prediction output.
+.gllvmTMB_is_placeholder_col <- function(x) {
+  !is.null(x) && length(x) > 0L && !anyNA(x) &&
+    all(as.character(x) == "placeholder")
+}
+
+## The auto-generated wide mixed-family label is `.family_wide_`, prefixed
+## with extra dots if that name was already taken (see `gllvmTMB()`).
+.gllvmTMB_is_auto_family_var <- function(x) {
+  is.character(x) && length(x) == 1L && grepl("^\\.+family_wide_$", x)
+}
+
 #' Predict from a fitted gllvmTMB model
 #'
 #' Returns the linear predictor or inverse-link response at each observation
@@ -3088,6 +3101,13 @@ predict.gllvmTMB_multi <- function(
         stringsAsFactors = FALSE
       )
       names(out)[1:3] <- c(unit_lbl, species_lbl, trait_lbl)
+      ## #1406: `gllvmTMB()` synthesises a constant "placeholder" species
+      ## column when the user supplied no species/cluster grouping. It is an
+      ## internal sentinel, so it must not be returned as if it were data.
+      if (.gllvmTMB_is_placeholder_col(object$data[[species_lbl]]) &&
+          !species_lbl %in% c(unit_lbl, trait_lbl)) {
+        out[[species_lbl]] <- NULL
+      }
     }
     ## Carry the arm/source label through (#1133 item 3). On a mixed-family
     ## fit -- an isdm_sources() fit above all -- `est` mixes scales: Poisson
@@ -3098,7 +3118,14 @@ predict.gllvmTMB_multi <- function(
     ## `fitted()`, which wraps it -- was the one missing the label.
     ## Single-family fits carry no `family_var` column and are unchanged.
     fam_var <- attr(object$family_input, "family_var") %||% "family"
-    if (fam_var %in% names(object$data) && !fam_var %in% names(out)) {
+    ## #1406: a wide `traits()` mixed-family fit auto-generates a
+    ## `.family_wide_` label (a copy of the trait). It is not user-supplied,
+    ## so it is not carried into the output.
+    if (.gllvmTMB_is_auto_family_var(fam_var)) {
+      fam_var <- NULL
+    }
+    if (!is.null(fam_var) && fam_var %in% names(object$data) &&
+        !fam_var %in% names(out)) {
       out[[fam_var]] <- object$data[[fam_var]]
       out <- out[, c(setdiff(names(out), "est"), "est"), drop = FALSE]
     }

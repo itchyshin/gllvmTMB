@@ -55718,3 +55718,24 @@ Both Windows services accepted identical alias gllvmTMB_0.7.1-dd8a811f.tar.gz,
 4428330bytes; results pending. Full3OSCI38889563471 at876b4fab7 queued.
 Executable release ledger currently claims tarball-clean only. Panel and CRAN
 submission/confirmation remain owed. Do not reuse any600b result for this hash.
+
+
+## 2026-10-16T15:36:02.493493+00:00 — CRAN071 exact archive submission gate
+
+Source876b / archive dd8a811fbc273774db44b3284ca7cac7b724da5539c5fafebc14fcac0a2df557
+4428330bytes889entries unchanged. Full3OSCI38889563471 success, allStatusOK;
+actual Windows/CI logs and12/13testwarnings independently adjudicated in
+evidence/final-panel-grace.md and current after-task report. Exact CRAN-mode
+outputs1408PASS/33SKIP/0FAIL/0WARN. Winrelease318s/devel340s check, with13s
+vignettes; service-email timing fields re-read and retained. Devel rootRplots NOTE
+is unexplained and disclosed; no archive entry matches. No source fix justified.
+Isolateddiagnostic38916443924 stoppedassetHTTP403 beforeRsetup/check; no package
+result. Originalworkflow restored/pushed8cb5570e4; unpublished draft fixture
+deleted, GET404 and no tagref verified. Fresh Grace/Rose/Pat eachREADY.
+python3 ~/shinichi-brain/tools/cran_release_gate.py --selftest passed; exact
+release-ledger.json submission-ready passed (final-release-gate.log).
+No repeated package check/build or simulation; no sanitizer/coverageclaim.
+Stale-state scan: rg 'pending|in progress|spurious|uploaded|confirmed' cran-comments.md
+docs/dev-log/after-task/2026-10-16-cran-071-resubmission.md (historical pending
+sections retained as predecessors; current closeout governs). Upload and newest
+confirmation remain owed. Foreign lanes preserved.

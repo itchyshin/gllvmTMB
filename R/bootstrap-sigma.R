@@ -370,9 +370,7 @@ bootstrap_Sigma <- function(
   ## Pre-draw the simulated response matrix once, in the parent process,
   ## so the replicates are reproducible regardless of n_cores. Each
   ## column is one bootstrap response vector.
-  if (!is.null(seed)) {
-    set.seed(seed)
-  }
+  .gllvmTMB_local_seed(seed)
   Y_sim <- simulate(fit, nsim = n_boot)
   if (!is.matrix(Y_sim) || ncol(Y_sim) != n_boot) {
     cli::cli_abort(

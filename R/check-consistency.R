@@ -142,9 +142,7 @@ gllvmTMB_check_consistency <- function(
   if (length(n_sim) != 1L || is.na(n_sim) || n_sim < 2L) {
     cli::cli_abort("{.arg n_sim} must be an integer >= 2.")
   }
-  if (!is.null(seed)) {
-    set.seed(seed)
-  }
+  .gllvmTMB_local_seed(seed)
 
   ## TMB::checkConsistency emits a `Failed to invert information
   ## matrix` warning on tiny fixtures (small n, weakly identified

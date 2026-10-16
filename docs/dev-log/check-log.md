@@ -58197,3 +58197,9 @@ Commands/limits: dev/issue-1496/CV-RESULTS.md and after-task/2026-10-16-binomial
 Full heavy run timed out at120min before CV work; fresh complete heavy validation
 remains pending. Optional manual sharding approval is pending; no workflow,
 license or security change. No merge, issue closure or Sage contact.
+
+Manual heavy partition selector approved08:11 UTC. Add optional all/1-of-4 input
+and a partition-only concurrency suffix, preserving unsharded scheduled/tag
+behavior and120-minute limit. Existing partition tests and exact-head manifest
+will verify exhaustive/disjoint coverage before four dispatches. No test gate,
+scientific threshold, credential or runner permission is changed.

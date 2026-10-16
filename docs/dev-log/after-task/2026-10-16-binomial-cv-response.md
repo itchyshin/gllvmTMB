@@ -14,7 +14,7 @@ For valid grouped-binomial cells(S_i,N_i,p_i): LogScore=sum log dbinom(S_i,N_i,p
 
 ## 3. Files changed
 
-R/cv-internal.R; R/cv-metrics.R; tests/testthat/test-cv-binomial-response.R; NEWS.md; dev/issue-1496/CV-RESULTS.md; this report; docs/dev-log/check-log.md. No NAMESPACE, man, native code, version, README, roadmap or public article change.
+R/cv-internal.R; R/cv-metrics.R; tests/testthat/test-cv-binomial-response.R; NEWS.md; dev/issue-1496/CV-RESULTS.md; this report; docs/dev-log/check-log.md; .github/workflows/full-check.yaml. No NAMESPACE, man, native code, version, README, roadmap or public article change.
 
 ## 3a. Decisions and rejected alternatives
 
@@ -58,4 +58,4 @@ Grace: compiler-free testing against unchanged native code allows useful progres
 
 ## 10. Limitations and next actions
 
-Publish as a draft stacked on1507, verify normal CI at its exact head, and complete heavy validation through an explicitly approved route. Optional manual heavy sharding approval is pending; no test/time limit/security changes made. No claim of scientific interval calibration or new family scoring. Original raw wide input is not the CV driver input: use fit$data, its stacked model frame. The pre-existing null-model degeneracy policy is unchanged. Integration remains a maintainer decision; do not close1496 or merge either draft automatically.
+Publish as a draft stacked on1507, verify normal CI at its exact head, and complete heavy validation through an explicitly approved route. Optional manual heavy sharding was approved; only dispatch selection/concurrency suffix is changed, with no test/time limit/security change. No claim of scientific interval calibration or new family scoring. Original raw wide input is not the CV driver input: use fit$data, its stacked model frame. The pre-existing null-model degeneracy policy is unchanged. Integration remains a maintainer decision; do not close1496 or merge either draft automatically.

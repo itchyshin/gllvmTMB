@@ -55739,3 +55739,14 @@ Stale-state scan: rg 'pending|in progress|spurious|uploaded|confirmed' cran-comm
 docs/dev-log/after-task/2026-10-16-cran-071-resubmission.md (historical pending
 sections retained as predecessors; current closeout governs). Upload and newest
 confirmation remain owed. Foreign lanes preserved.
+
+
+## 2026-10-16T15:43:48.799131+00:00 — CRAN071 resubmission confirmed
+
+Canonicaldd8a SHA256/4428330bytes reverified immediatelybeforeCRANupload.
+Submission359118 parsedmetadata matched0.7.1/maintainer/GPL-3. Submitted and
+newestconfirmation completed; endpointreturned 'This submission has already
+been confirmed'. Exactreceipts cran-submission-359118.json /
+cran-confirmation-359118.json inexternal evidence. No secondarchiveupload.
+Heartbeatstopped(PAUSED) atconfirmedstopcondition. Accepted/incoming/live
+unproven. No source/tarballchanges, no packagecheckrerun ornewcampaign.

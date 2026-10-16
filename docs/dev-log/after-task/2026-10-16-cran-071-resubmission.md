@@ -1,7 +1,7 @@
 # gllvmTMB 0.7.1 CRAN review repairs
 
 ## 1. Goal
-Address the five requests in Konstanze Lauseker's 15 October 2026 email and resubmit one checked 0.7.1 archive. The exact archive has passed local and three-platform checks. Windows R-devel reports an unexplained file NOTE, disclosed in the submission comments. Fresh independent review and the executable ledger passed; resubmission remains pending. No CRAN upload is claimed.
+Address the five requests in Konstanze Lauseker's 15 October 2026 email and resubmit one checked 0.7.1 archive. The exact archive has passed local and three-platform checks. Windows R-devel reports an unexplained file NOTE, disclosed in the submission comments. Fresh independent review and the executable ledger passed. The exact archive was resubmitted as359118 and maintainer-confirmed on16October2026; the server explicitly reports already confirmed. CRAN acceptance and live publication are not established.
 
 ## 2. Implemented
 Added shared accessor return documentation; replaced unnecessary dontrun blocks; labelled incomplete reference syntax as templates; corrected animal-example unit metadata; made sanity diagnostics suppressible; moved developer-test output into temporary fixtures; required explicit output destinations in five shipped simulation launch scripts.
@@ -30,7 +30,7 @@ Independent Rose/Emmy source review found no P0/P1 blocker in the return documen
 The Gmail connector points to snakagaw@ualberta.ca; the email was found in the existing itchyshin@gmail.com browser tab. System Git triggers an unaccepted Xcode licence; a bundled Git works. Native worktree creation failed for the same reason, so a separate fallback-Git worktree was created. Setting DEVELOPER_DIR to CommandLineTools permits compilation without accepting new licence terms. Initial diagnostic archives precede later example repairs and are not submission files.
 
 ## 10. Known Residuals
-CRAN upload and confirmation remain pending; final panel and submission-ready ledger have passed. The current Windows R-devel file NOTE remains unexplained; no source defect was established. No CRAN acceptance or publication is claimed. Broad interval coverage and later development features remain outside scope.
+Resubmission359118 and its newest maintainer confirmation are complete; final panel and executable ledger have passed. CRAN incoming review, acceptance and publication remain unproven. The current Windows R-devel file NOTE remains unexplained; no source defect was established. No CRAN acceptance or publication is claimed. Broad interval coverage and later development features remain outside scope.
 
 ## 11. Team Learning
 Converting dontrun to donttest reveals broken examples; parse checks alone cannot establish runnable examples. A file-write audit must include shipped shell launchers and developer tests, even when package runtime already uses tempdir.
@@ -168,3 +168,23 @@ Pat found no blocking reader confusion; future fixed-effects-only prediction
 wording and an extra biological interpretation sentence are nonblocking polish.
 No new feature or article work was started. Upload and confirmation are next;
 acceptance, scheduling and live CRAN publication remain unproven.
+
+## Confirmed resubmission closeout
+
+The canonical frozen dd8a archive (4,428,330bytes) was rehashed immediately before
+upload, then submitted to CRAN as359118 on16October2026. The parsed package,
+version0.7.1, maintainerShinichiNakagawa/itchyshin@gmail.com, authorroles andGPL-3
+matched DESCRIPTION. The newest confirmation email arrived at09:38Edmonton time
+and contained this candidate hash/size and coveringcomments. Its policy and
+current-R-devel check attestations were completed using the retained service
+check evidence. CRAN reported successful upload to the submission team. A repeat
+of that same confirmation endpoint explicitly returned: 'This submission has
+already been confirmed'. No second archive upload was made.
+
+Receipts: evidence/cran-submission-359118.json and cran-confirmation-359118.json.
+Highest proven rung is confirmed. Incoming-passed, accepted/scheduled and live
+CRAN publication remain unproven. The automatic continuation was paused after
+this verified stop condition; no ongoing monitoring or additional submission is
+claimed. All requested repairs, resubmission and confirmation are now complete.
+The historical release branch remains separate from main under the recorded
+exception, with no tag or public-site deployment added by this task.

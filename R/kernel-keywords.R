@@ -30,26 +30,36 @@
 #' @return A formula marker; never evaluated as a regular R function.
 #'
 #' @examples
-#' \dontrun{
-#' A <- diag(5)
+#' set.seed(1)
+#' ## A known similarity among 12 sites along an environmental gradient; any
+#' ## dense positive-semidefinite covariance or correlation matrix can be K.
+#' x <- seq(0, 1, length.out = 12)
+#' K <- exp(-abs(outer(x, x, "-")) / 0.3)
+#' dimnames(K) <- list(paste0("s", 1:12), paste0("s", 1:12))
+#' ## Four traits load on one K-correlated latent field, plus trait-specific
+#' ## K-correlated deviations; four replicate observations per site.
+#' L <- t(chol(K))
+#' lambda <- c(0.8, 0.6, -0.5, 0.4)
+#' site_eff <- outer(drop(L %*% rnorm(12)), lambda) +
+#'   (L %*% matrix(rnorm(12 * 4), 12, 4)) %*% diag(sqrt(0.2), 4)
 #' dat <- data.frame(
-#'   unit = factor(rep(paste0("u", 1:5), each = 2), levels = paste0("u", 1:5)),
-#'   obs = factor(seq_len(10)),
-#'   y1 = rnorm(10),
-#'   y2 = rnorm(10)
+#'   site = factor(rep(rownames(K), each = 4), levels = rownames(K)),
+#'   obs  = factor(seq_len(48))
 #' )
-#' rownames(A) <- colnames(A) <- levels(dat$unit)
+#' Y <- site_eff[as.integer(dat$site), ] + matrix(rnorm(48 * 4, sd = 0.4), 48, 4)
+#' dat[paste0("y", 1:4)] <- as.data.frame(Y)
 #' fit <- gllvmTMB(
-#'   traits(y1, y2) ~
-#'     1 + kernel_latent(unit, K = A, d = 1, name = "known",
-#'                       unique = TRUE),
-#'   data = dat,
-#'   unit = "obs",
-#'   cluster = "unit",
-#'   family = gaussian()
+#'   traits(y1, y2, y3, y4) ~
+#'     1 + kernel_latent(site, K = K, d = 1, name = "gradient", unique = TRUE),
+#'   data = dat, unit = "obs", cluster = "site"
 #' )
-#' extract_Sigma(fit, level = "known")
-#' }
+#' extract_Sigma(fit, level = "gradient")$Sigma
+#' ## The diagonal-only and full-rank tiers use the same K:
+#' fit_indep <- gllvmTMB(
+#'   traits(y1, y2, y3, y4) ~ 1 + kernel_indep(site, K = K, name = "gradient"),
+#'   data = dat, unit = "obs", cluster = "site"
+#' )
+#' extract_Sigma(fit_indep, level = "gradient")$Sigma
 #'
 #' @export
 #' @param rho Source strength: a number in `[0,1]` fixes

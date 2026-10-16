@@ -93,20 +93,22 @@ column aligned with \verb{(unit, trait)} rows. The legacy matrix wrapper
 \code{\link[=gllvmTMB_wide]{gllvmTMB_wide()}} still accepts matrix weights for migration code.
 }
 \examples{
-\dontrun{
-# Wide format: one column per trait; traits() stacks them internally.
-# The LHS *is* the trait spec, so no `trait =` argument is needed.
+## Wide format: one column per trait; traits() stacks them internally.
+## The LHS *is* the trait spec, so no `trait =` argument is needed.
 set.seed(1)
+n <- 60
+z <- rnorm(n)  # one latent axis shared by the three traits
 df_wide <- data.frame(
-  unit = factor(paste0("u", 1:40)),
-  t1 = rnorm(40), t2 = rnorm(40), t3 = rnorm(40)
+  unit = factor(paste0("u", seq_len(n))),
+  t1 = 0.9 * z + rnorm(n, sd = 0.5),
+  t2 = 0.7 * z + rnorm(n, sd = 0.5),
+  t3 = -0.6 * z + rnorm(n, sd = 0.5)
 )
 fit <- gllvmTMB(
-  traits(t1, t2, t3) ~ 1 + latent(1 | unit, d = 2),
+  traits(t1, t2, t3) ~ 1 + latent(1 | unit, d = 1, unique = TRUE),
   data = df_wide, unit = "unit"
 )
 extract_Sigma(fit)
-}
 }
 \seealso{
 \code{\link[=gllvmTMB]{gllvmTMB()}} for model fitting. The legacy

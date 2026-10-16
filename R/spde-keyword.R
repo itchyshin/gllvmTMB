@@ -136,7 +136,6 @@
 #'   Methodology)* **73**(4): 423–498.
 #'   \doi{10.1111/j.1467-9868.2011.00777.x}
 #' @examples
-#' \dontrun{
 #' set.seed(2025)
 #' s <- simulate_site_trait(
 #'   n_sites = 60, n_species = 1, n_traits = 3, mean_species_per_site = 1,
@@ -151,7 +150,6 @@
 #'                  mesh  = mesh)
 #' fit$report$kappa            # inverse-range parameter
 #' sqrt(8) / fit$report$kappa  # practical range
-#' }
 spde <- function(coords, trait) {
   ## Documentation-only stub. Never called at evaluation time —
   ## parse_multi_formula() walks the AST of the gllvmTMB() formula and

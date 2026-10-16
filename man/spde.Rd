@@ -135,7 +135,6 @@ session; see \code{\link[=spatial_indep]{spatial_indep()}}.
 }
 }
 \examples{
-\dontrun{
 set.seed(2025)
 s <- simulate_site_trait(
   n_sites = 60, n_species = 1, n_traits = 3, mean_species_per_site = 1,
@@ -150,7 +149,6 @@ fit  <- gllvmTMB(value ~ 0 + trait + spatial_indep(0 + trait | coords),
                  mesh  = mesh)
 fit$report$kappa            # inverse-range parameter
 sqrt(8) / fit$report$kappa  # practical range
-}
 }
 \references{
 Lindgren, F., Rue, H. & Lindström, J. (2011). An explicit link

@@ -19,6 +19,49 @@
   isTRUE(all.equal(unname(da), unname(db), tolerance = tol))
 }
 
+## A user-supplied dense covariance must be positive (semi)definite before it
+## is inverted and its log-determinant taken: `determinant()$modulus` is
+## log|det|, so an indefinite matrix gives a finite number that is not a
+## log-determinant and the optimiser sees nonsense (#1373). `K` is the matrix
+## AFTER the 1e-8 jitter the callers add; a Cholesky of it fails exactly when
+## the jittered matrix is not positive definite.
+.gllvmTMB_assert_pd_vcv <- function(K, arg, call = rlang::caller_env()) {
+  Km <- as.matrix(K)
+  ok <- all(is.finite(Km)) &&
+    !inherits(try(chol(Km), silent = TRUE), "try-error")
+  if (!ok) {
+    ev <- if (all(is.finite(Km))) {
+      min(eigen(Km, symmetric = TRUE, only.values = TRUE)$values)
+    } else {
+      NA_real_
+    }
+    cli::cli_abort(c(
+      "{.arg {arg}} must be a positive semidefinite covariance matrix.",
+      "x" = if (is.na(ev)) {
+        "The matrix has non-finite entries."
+      } else {
+        "Its smallest eigenvalue is {signif(ev, 3)} (after a 1e-8 diagonal jitter the matrix is still not positive definite)."
+      },
+      ">" = "Check the matrix for a typo, a wrong sign, or a correlation matrix assembled by hand; a tree-derived {.code ape::vcv(tree)} is always valid."
+    ), call = call)
+  }
+  invisible(K)
+}
+
+## Do two phylogenetic covariance inputs (dense or sparse A^{-1}) carry the
+## same matrix? Rows are matched by name when both carry dimnames (#1372).
+.gllvmTMB_same_vcv <- function(a, b, tol = 1e-8) {
+  if (!identical(dim(a), dim(b))) return(FALSE)
+  ra <- rownames(a); rb <- rownames(b)
+  if (!is.null(ra) && !is.null(rb)) {
+    if (!setequal(ra, rb)) return(FALSE)
+    b <- b[ra, ra, drop = FALSE]
+  }
+  d <- a - b
+  d <- if (inherits(d, "sparseMatrix")) d@x else as.numeric(as.matrix(d))
+  length(d) == 0L || max(abs(d)) <= tol * max(1, max(abs(as.matrix(a))))
+}
+
 .kernel_overlap_class <- function(similarity) {
   ifelse(
     similarity < 0.25, "near_orthogonal",
@@ -990,6 +1033,7 @@
   )
   Aphy <- phylo_vcv[levs, levs, drop = FALSE]
   Aphy <- Aphy + diag(1e-8, nrow(Aphy))
+  .gllvmTMB_assert_pd_vcv(Aphy, "vcv")
   list(
     Ainv = Matrix::Matrix(solve(Aphy), sparse = TRUE),
     log_det = as.numeric(determinant(Aphy, logarithm = TRUE)$modulus),
@@ -4604,6 +4648,15 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
             "{.code vcv =} inside a phylo keyword disagrees with the global {.arg phylo_vcv}.",
             "i" = "Using the global {.arg phylo_vcv}; remove one to silence this warning."
           ))
+        } else if (!.gllvmTMB_same_vcv(phylo_vcv, vcv_inkey)) {
+          ## Same size but different values: the second matrix used to be
+          ## dropped with no message at all (#1372). The fit takes one
+          ## phylogenetic covariance, so refuse rather than guess which wins.
+          cli::cli_abort(c(
+            "{.code vcv =} inside a phylo keyword differs from the {.arg phylo_vcv} already set for this fit.",
+            "x" = "A fit uses one phylogenetic covariance matrix; the two inputs are not the same matrix.",
+            ">" = "Pass the matrix once (inside the keyword with {.code vcv =}, or as {.arg phylo_vcv}) and give every phylo term the same one."
+          ))
         }
       }
     }
@@ -4984,6 +5037,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       )
       Aphy <- phylo_vcv[levs, levs, drop = FALSE]
       Aphy <- Aphy + diag(1e-8, nrow = nrow(Aphy))
+      .gllvmTMB_assert_pd_vcv(Aphy, "phylo_vcv")
       if (!is.null(structured_rho)) {
         structured_rho_diagonal <- diag(Aphy)
         # Resolve the old scale and conditioning BEFORE attenuation.
@@ -5199,6 +5253,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       } else {
         Cphy <- phylo_vcv[levs, levs, drop = FALSE]
         Cphy <- Cphy + diag(1e-8, nrow = nrow(Cphy)) ## numerical jitter
+        .gllvmTMB_assert_pd_vcv(Cphy, "phylo_vcv")
         Cphy_inv     <- solve(Cphy)
         log_det_Cphy <- as.numeric(determinant(Cphy, logarithm = TRUE)$modulus)
       }

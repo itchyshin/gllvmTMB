@@ -717,3 +717,47 @@ test_that("predict() with re_form ~ . differs from re_form ~ 0", {
   ## RE-augmented predictions should differ from fixed-only on most rows.
   expect_true(any(abs(p_re$est - p_fx$est) > 1e-6))
 })
+
+## #1352: a non-finite (or failing) gradient must be reported, not crash
+## sanity_multi(), and its `converged` verdict must agree with `fit_health`.
+test_that("sanity_multi() survives a non-finite gradient and agrees with fit_health (#1352)", {
+  skip_on_cran()
+  set.seed(1)
+  n <- 30L
+  p <- 3L
+  df <- expand.grid(
+    unit = factor(seq_len(n)),
+    trait = factor(paste0("t", seq_len(p))),
+    KEEP.OUT.ATTRS = FALSE
+  )
+  z <- stats::rnorm(n)
+  df$value <- c(1, .7, -.5)[as.integer(df$trait)] * z[as.integer(df$unit)] +
+    stats::rnorm(nrow(df))
+  fit <- suppressMessages(suppressWarnings(gllvmTMB(
+    value ~ 0 + trait + latent(0 + trait | unit, d = 1),
+    data = df, unit = "unit", trait = "trait"
+  )))
+
+  for (bad_gr in list(
+    function(...) rep(NaN, length(fit$opt$par)),
+    function(...) stop("gradient unavailable")
+  )) {
+    bad <- fit
+    bad$tmb_obj$gr <- bad_gr
+    h <- gllvmTMB:::.gllvmTMB_build_fit_health(bad)
+    expect_false(h$converged)
+    out <- NULL
+    txt <- capture.output(out <- sanity_multi(bad))
+    expect_false(out$converged)
+    expect_identical(out$converged, h$converged)
+    expect_true(is.na(out$max_gradient))
+    expect_true(any(grepl("gradient not finite", txt, fixed = TRUE)))
+  }
+
+  ## A healthy fit is unchanged.
+  ok <- NULL
+  capture.output(ok <- sanity_multi(fit))
+  expect_true(ok$converged)
+  expect_identical(ok$converged, isTRUE(fit$fit_health$converged))
+  expect_true(is.finite(ok$max_gradient))
+})

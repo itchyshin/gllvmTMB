@@ -9,9 +9,9 @@
 ##
 ## Call it once near the top of the function that owns `seed`; the restore is
 ## registered on that function's exit (`on.exit(add = TRUE)`), including on
-## error. `seed = NULL` is a no-op and the stream is left alone.
+## error. `seed = NULL` (or any zero-length value) is a no-op and the stream is left alone.
 .gllvmTMB_local_seed <- function(seed, .envir = parent.frame()) {
-  if (is.null(seed)) {
+  if (!length(seed)) {
     return(invisible(NULL))
   }
   genv <- globalenv()

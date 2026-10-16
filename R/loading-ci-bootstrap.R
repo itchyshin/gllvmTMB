@@ -145,7 +145,7 @@
   pinned <- as.logical(!is.na(M_user))
 
   ## ---- Simulate response vectors (reuse the parametric simulator) ----
-  if (!is.null(seed)) set.seed(seed)
+  .gllvmTMB_local_seed(seed)
   Y_sim <- simulate(fit, nsim = nsim)
   if (!is.matrix(Y_sim) || ncol(Y_sim) != nsim)
     cli::cli_abort(

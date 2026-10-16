@@ -32,6 +32,7 @@
 #' @return `x`, invisibly.
 #' @keywords internal
 #' @exportS3Method print gllvmTMB_reportable_table
+#' @method print gllvmTMB_reportable_table
 print.gllvmTMB_reportable_table <- function(x, ...) {
   visible <- x
   class(visible) <- "data.frame"

@@ -269,6 +269,33 @@ test_that("bootstrap refits reproduce a lone phylo_indep() fit (#1393)", {
   ))))
 })
 
+test_that("bootstrap refits reproduce a two-kernel fit (#1393)", {
+  ## Each kernel_latent() term is stored as phylo_rr(); the refit formula
+  ## used to wrap its species bar twice, so every refit of a fit with two
+  ## named kernels failed.
+  skip_if_not_installed("ape")
+  set.seed(126)
+  n_sp <- 15
+  tree <- ape::rcoal(n_sp)
+  tree$tip.label <- paste0("sp", seq_len(n_sp))
+  K <- ape::vcv(tree, corr = TRUE)
+  x <- seq(-1, 1, length.out = n_sp)
+  K2 <- exp(-abs(outer(x, x, "-")) / 0.4)
+  dimnames(K2) <- dimnames(K)
+  df <- gllvmTMB::simulate_site_trait(
+    n_sites = 30, n_species = n_sp, n_traits = 3,
+    mean_species_per_site = 5, Cphy = K, sigma2_phy = rep(0.4, 3),
+    seed = 126
+  )$data
+  levels(df$species) <- paste0("sp", seq_len(n_sp))
+  expect_refit_reproduces_1393(suppressMessages(suppressWarnings(gllvmTMB(
+    value ~ 0 + trait + latent(0 + trait | site, d = 1) +
+      kernel_latent(species, K = K, d = 1, name = "phy") +
+      kernel_latent(species, K = K2, d = 1, name = "non"),
+    data = df, unit = "site", cluster = "species"
+  ))))
+})
+
 ## Call bootstrap_Sigma() with simulate() and the refit both trapped, so a
 ## refusal is shown to come before any simulation or refit.
 refuse_1393 <- function(fit) {

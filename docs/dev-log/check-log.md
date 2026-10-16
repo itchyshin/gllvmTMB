@@ -58181,3 +58181,19 @@ Corrected-source bounded package check repeated: 0 errors, 1 warning, 3 notes,
 exit 1. Static R analysis passed; the unchanged Julia-help duplicate-x warning
 and the same three environment/dependency notes remain. Receipt:
 `dev/issue-1496/check-review-final.log` and `check-review-00check.log`.
+
+
+## 2026-10-16 — binomial CV response/trial continuation (issue1496)
+
+User-approved CV follow-up on codex/issue-1496-cv, based on bootstrap PR1507.
+Canonical paired responses and original trial totals now survive main/null folds;
+pre-existing missing cells are excluded. Grouped binomial probability metrics
+match explicit Bernoulli expansion; RMSE uses equal-cell proportions.
+Old-code tests:20 failed assertions/2 errors. Corrected source:308 assertions
+across seven files,0 failure/error/warning/skip. Independent review caught and
+verified the predictor-column alignment correction. Separate affected heavy
+bootstrap sweep:437 passes,0 failure/error/skip,23 warning captures.
+Commands/limits: dev/issue-1496/CV-RESULTS.md and after-task/2026-10-16-binomial-cv-response.md.
+Full heavy run timed out at120min before CV work; fresh complete heavy validation
+remains pending. Optional manual sharding approval is pending; no workflow,
+license or security change. No merge, issue closure or Sage contact.

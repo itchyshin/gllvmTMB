@@ -92,7 +92,9 @@
 #' @keywords internal
 #' @noRd
 .cv_make_folds <- function(fit, n_folds = 5L, seed = NULL) {
-  if (!is.null(seed)) set.seed(seed)
+  if (!is.null(seed)) {
+    set.seed(seed)
+  }
 
   is_obs <- fit$tmb_data$is_y_observed == 1L
   trait_id <- fit$tmb_data$trait_id ## 0-based
@@ -134,7 +136,9 @@
   for (t in seq_len(n_traits) - 1L) {
     cells_t <- obs_idx[trait_id[obs_idx] == t]
     n_t <- length(cells_t)
-    if (n_t == 0L) next
+    if (n_t == 0L) {
+      next
+    }
     labs <- rep(seq_len(n_folds), length.out = n_t)
     labs <- ((labs - 1L + offset) %% n_folds) + 1L
     fold_of[cells_t] <- sample(labs)
@@ -146,9 +150,13 @@
   ## outcome classes present if `binom_t`.
   fold_ok <- function(assignment, rows_t, k, binom_t) {
     train_rows <- rows_t[assignment[rows_t] != k]
-    if (length(train_rows) < min_train) return(FALSE)
+    if (length(train_rows) < min_train) {
+      return(FALSE)
+    }
     if (binom_t) {
-      if (!(any(y[train_rows] > 0) && any(y[train_rows] < n_trials[train_rows]))) {
+      if (
+        !(any(y[train_rows] > 0) && any(y[train_rows] < n_trials[train_rows]))
+      ) {
         return(FALSE)
       }
     }
@@ -161,7 +169,9 @@
   ## grows the source fold's training count, so this terminates.
   for (t in seq_len(n_traits) - 1L) {
     rows_t <- which(trait_id == t & is_obs)
-    if (length(rows_t) == 0L) next
+    if (length(rows_t) == 0L) {
+      next
+    }
     trait_label <- if (t + 1L <= length(trait_levels)) {
       trait_levels[t + 1L]
     } else {
@@ -174,7 +184,9 @@
         function(k) !fold_ok(fold_of, rows_t, k, binom_t),
         seq_len(n_folds)
       )
-      if (length(bad_folds) == 0L) break
+      if (length(bad_folds) == 0L) {
+        break
+      }
 
       k <- bad_folds[[1L]]
       cells_in_k <- rows_t[fold_of[rows_t] == k]
@@ -205,7 +217,8 @@
           "x" = paste0(
             "No re-assignment of held-out cells keeps every fold's training ",
             "set for trait {.val {trait_label}} at or above {min_train} ",
-            "cells", if (binom_t) " with both outcome classes present" else "",
+            "cells",
+            if (binom_t) " with both outcome classes present" else "",
             "."
           ),
           "i" = "Reduce {.arg n_folds}, or exclude this trait from cross-validation."
@@ -238,7 +251,11 @@
     )
   }
   for (col in response_col) {
-    data[rows, col] <- NA
+    if (is.matrix(data[[col]])) {
+      data[[col]][rows, ] <- NA_real_
+    } else {
+      data[rows, col] <- NA
+    }
   }
   data
 }
@@ -257,11 +274,52 @@
   out <- data.frame(
     original_row = seq_len(nrow(data)),
     trait = data[[trait_col]],
-    truth = data[[truth_col]],
+    truth = if (is.matrix(data[[truth_col]])) {
+      data[[truth_col]][, 1L]
+    } else {
+      data[[truth_col]]
+    },
     stringsAsFactors = FALSE
   )
   names(out) <- c("original_row", trait_col, truth_col)
   out
+}
+
+# Canonical response shared by the main fit and all nulls. A private matrix
+# keeps cbind expressions independent of predictors/offsets used on the RHS.
+.cv_response_setup <- function(fit, data) {
+  required <- unique(c(
+    intersect(all.vars(fit$formula), names(fit$data)),
+    fit$trait_col,
+    fit$unit_col,
+    fit$unit_obs_col,
+    fit$cluster_col,
+    fit$cluster2_col
+  ))
+  if (!all(required %in% names(data))) {
+    cli::cli_abort(
+      "{.arg data} must contain the fitted response, predictors and grouping columns to align with {.arg fit$data}."
+    )
+  }
+  common <- intersect(names(fit$data), names(data))
+  if (
+    nrow(data) != nrow(fit$data) ||
+      !isTRUE(all.equal(
+        data[, common, drop = FALSE],
+        fit$data[, common, drop = FALSE],
+        check.attributes = FALSE
+      ))
+  ) {
+    cli::cli_abort(
+      "{.arg data} must align with {.arg fit$data} in the same row order and values."
+    )
+  }
+  response <- .bootstrap_response_setup(fit)
+  raw <- eval(fit$formula[[2L]], data, environment(fit$formula))
+  y <- if (is.matrix(raw)) raw[, 1L] else raw
+  response$data <- data
+  response$data <- .bootstrap_response_data(response, y)
+  response
 }
 
 ## Refit `fit`'s formula (or a caller-supplied `formula`, for the null
@@ -295,6 +353,7 @@
       cluster = fit$cluster_col,
       cluster2 = fit$cluster2_col,
       family = fit$family_input %||% fit$family,
+      weights = .bootstrap_response_setup(fit)$weights,
       missing = miss_control(response = "include"),
       silent = TRUE
     ),
@@ -318,7 +377,12 @@
     sprintf("(0 + `%s`):`%s`", trait_col, env_cols),
     collapse = " + "
   )
-  stats::as.formula(sprintf("`%s` ~ 0 + `%s` + %s", truth_col, trait_col, terms))
+  stats::as.formula(sprintf(
+    "`%s` ~ 0 + `%s` + %s",
+    truth_col,
+    trait_col,
+    terms
+  ))
 }
 
 ## `value ~ 0 + trait + indep(0 + trait | site)`: the null_diag reference --
@@ -342,7 +406,10 @@
 .cv_null_formula_diag <- function(truth_col, trait_col, unit_col) {
   stats::as.formula(sprintf(
     "`%s` ~ 0 + `%s` + indep(0 + `%s` | `%s`)",
-    truth_col, trait_col, trait_col, unit_col
+    truth_col,
+    trait_col,
+    trait_col,
+    unit_col
   ))
 }
 
@@ -354,8 +421,12 @@
 ## leave pdHess TRUE while individual SEs blow up.
 .cv_fit_degenerate <- function(fit) {
   sd_rep <- fit$sd_report
-  if (is.null(sd_rep)) return(TRUE)
-  if (!isTRUE(sd_rep$pdHess)) return(TRUE)
+  if (is.null(sd_rep)) {
+    return(TRUE)
+  }
+  if (!isTRUE(sd_rep$pdHess)) {
+    return(TRUE)
+  }
   fixed_se <- tryCatch(
     {
       fx <- suppressWarnings(summary(sd_rep, "fixed"))
@@ -367,7 +438,10 @@
     return(TRUE)
   }
   diag_random <- sd_rep$diag.cov.random
-  if (!is.null(diag_random) && (anyNA(diag_random) || any(!is.finite(diag_random)))) {
+  if (
+    !is.null(diag_random) &&
+      (anyNA(diag_random) || any(!is.finite(diag_random)))
+  ) {
     return(TRUE)
   }
   FALSE
@@ -395,8 +469,12 @@
 ## fold, silently yields NA rather than a fabricated comparison.
 .cv_delta_logscore <- function(main_df, baseline_df, id_col) {
   n <- nrow(main_df)
-  if (n == 0L) return(numeric(0))
-  if (is.null(baseline_df) || nrow(baseline_df) == 0L) return(rep(NA_real_, n))
+  if (n == 0L) {
+    return(numeric(0))
+  }
+  if (is.null(baseline_df) || nrow(baseline_df) == 0L) {
+    return(rep(NA_real_, n))
+  }
   key_main <- paste(main_df$fold, main_df[[id_col]])
   key_base <- paste(baseline_df$fold, baseline_df[[id_col]])
   idx <- match(key_main, key_base)
@@ -407,21 +485,41 @@
 ## pooled score columns when exactly one pooled (family) row exists for
 ## it (the common single-family-per-fit case this harness targets), else
 ## an all-NA score template -- no guessing across families.
-.cv_per_fold_row <- function(fold, status, n_heldout, message, elapsed_sec,
-                             pooled_for_fold) {
+.cv_per_fold_row <- function(
+  fold,
+  status,
+  n_heldout,
+  message,
+  elapsed_sec,
+  pooled_for_fold
+) {
   base <- data.frame(
-    fold = fold, status = status, n_heldout = n_heldout,
-    message = message, elapsed_sec = elapsed_sec,
+    fold = fold,
+    status = status,
+    n_heldout = n_heldout,
+    message = message,
+    elapsed_sec = elapsed_sec,
     stringsAsFactors = FALSE
   )
   score_template <- data.frame(
-    family_id = NA_integer_, n_scored = NA_integer_,
-    RMSE = NA_real_, R2 = NA_real_, TjurR2 = NA_real_, AUC = NA_real_,
-    Brier = NA_real_, SpearmanR2 = NA_real_, O.AUC = NA_real_,
-    O.TjurR2 = NA_real_, C.RMSE = NA_real_, LogScore = NA_real_
+    family_id = NA_integer_,
+    n_scored = NA_integer_,
+    RMSE = NA_real_,
+    R2 = NA_real_,
+    TjurR2 = NA_real_,
+    AUC = NA_real_,
+    Brier = NA_real_,
+    SpearmanR2 = NA_real_,
+    O.AUC = NA_real_,
+    O.TjurR2 = NA_real_,
+    C.RMSE = NA_real_,
+    LogScore = NA_real_
   )
   scores <- if (!is.null(pooled_for_fold) && nrow(pooled_for_fold) == 1L) {
-    sc <- pooled_for_fold[, setdiff(names(pooled_for_fold), "label"), drop = FALSE]
+    sc <- pooled_for_fold[,
+      setdiff(names(pooled_for_fold), "label"),
+      drop = FALSE
+    ]
     names(sc)[names(sc) == "n"] <- "n_scored"
     sc[, names(score_template), drop = FALSE]
   } else {
@@ -470,9 +568,13 @@
 #' @keywords internal
 #' @noRd
 .cv_baselines <- function(fit, data, response_col, folds, seed = NULL) {
-  if (!is.null(seed)) set.seed(seed)
+  if (!is.null(seed)) {
+    set.seed(seed)
+  }
 
-  truth_col <- response_col[[1L]]
+  response <- .cv_response_setup(fit, data)
+  data <- response$data
+  response_col <- truth_col <- response$name
   trait_col <- fit$trait_col
   truth_data <- .cv_truth_frame(data, trait_col, truth_col)
 
@@ -493,7 +595,8 @@
       list(
         formula = NULL,
         skip_reason = paste0(
-          "data has no ", paste(env_cols, collapse = "/"),
+          "data has no ",
+          paste(env_cols, collapse = "/"),
           " column(s); null_env skipped."
         )
       )
@@ -516,8 +619,10 @@
     def <- null_defs[[nm]]
     if (is.null(def$formula)) {
       out[[nm]] <- list(
-        by_trait = NULL, pooled = NULL,
-        skipped = TRUE, reason = def$skip_reason
+        by_trait = NULL,
+        pooled = NULL,
+        skipped = TRUE,
+        reason = def$skip_reason
       )
       next
     }
@@ -529,12 +634,24 @@
       res <- tryCatch(
         {
           masked <- .cv_mask_response(data, response_col, held_rows)
-          refit <- .cv_do_refit(fit, def$formula, masked, use_covstructs = FALSE)
+          refit <- .cv_do_refit(
+            fit,
+            def$formula,
+            masked,
+            use_covstructs = FALSE
+          )
           if (!isTRUE(refit$opt$convergence == 0L)) {
             stop("refit did not converge")
           }
           pm_out <- predict_missing(refit, type = "response")
-          joined <- .cv_join_truth(refit, pm_out, truth_data, truth_col)
+          pm_out <- pm_out[pm_out$model_row %in% held_rows, , drop = FALSE]
+          joined <- .cv_join_truth(
+            refit,
+            pm_out,
+            truth_data,
+            truth_col,
+            n_trials = response$trials
+          )
           joined$logscore <- .cv_logscore(joined, refit)
           .cv_score(joined)
         },
@@ -554,7 +671,8 @@
     out[[nm]] <- list(
       by_trait = .cv_rbind_or_empty(bt_rows),
       pooled = .cv_rbind_or_empty(pl_rows),
-      skipped = FALSE, reason = NULL
+      skipped = FALSE,
+      reason = NULL
     )
   }
   out
@@ -595,14 +713,15 @@
 #' @param fit A fit returned by [gllvmTMB()]. Passed through
 #'   `.cv_check_cv_supported()` here.
 #' @param data The SAME long-format data frame (same row order) used to
-#'   fit `fit` -- fold row indices from `.cv_make_folds()` index into it
-#'   directly, and it supplies the pre-mask truth.
-#' @param response_col Character vector of response column name(s), as for
-#'   `.cv_mask_response()`. Only `response_col[[1]]` feeds
-#'   `.cv_join_truth()`, scoring, and the null-model formulas; a length-2
-#'   `cbind(successes, failures)` response is masked in full but scored
-#'   only against its first column -- full binomial-trials scoring is out
-#'   of scope for this driver.
+#'   fit `fit` (or `fit$data`, the stacked frame for a wide fit). Fold row
+#'   indices index this frame directly. Its fitted columns must align in order
+#'   and value; it supplies the pre-mask truth.
+#' @param response_col Character vector of response column name(s), retained
+#'   for compatibility. The fitted response expression supplies the canonical
+#'   response for both the main model and all nulls. Paired successes/failures
+#'   and single-column trial weights preserve pre-mask trial totals; predictors
+#'   used inside response expressions are not masked. Only the current fold's
+#'   held-out observed cells are scored, excluding pre-existing missing cells.
 #' @param n_folds Integer; number of folds. Default 5.
 #' @param seed Optional integer RNG seed, forwarded to `.cv_make_folds()`
 #'   and `.cv_baselines()`.
@@ -626,8 +745,14 @@
 #'   }
 #' @keywords internal
 #' @noRd
-.cv_run <- function(fit, data, response_col, n_folds = 5L, seed = NULL,
-                    baselines = TRUE) {
+.cv_run <- function(
+  fit,
+  data,
+  response_col,
+  n_folds = 5L,
+  seed = NULL,
+  baselines = TRUE
+) {
   if (!inherits(fit, "gllvmTMB_multi")) {
     cli::cli_abort("{.arg fit} must be a {.cls gllvmTMB_multi} fit.")
   }
@@ -639,12 +764,14 @@
   }
   .cv_check_cv_supported(fit)
 
-  truth_col <- response_col[[1L]]
+  response <- .cv_response_setup(fit, data)
+  canonical_data <- response$data
+  truth_col <- response$name
   trait_col <- fit$trait_col
 
   folds <- .cv_make_folds(fit, n_folds = n_folds, seed = seed)
   n_folds <- length(folds)
-  truth_data <- .cv_truth_frame(data, trait_col, truth_col)
+  truth_data <- .cv_truth_frame(canonical_data, trait_col, truth_col)
 
   baseline_res <- if (isTRUE(baselines)) {
     .cv_baselines(fit, data, response_col, folds, seed = seed)
@@ -662,9 +789,12 @@
 
     step <- tryCatch(
       {
-        masked <- .cv_mask_response(data, response_col, held_rows)
+        masked <- .cv_mask_response(canonical_data, truth_col, held_rows)
         refit <- .cv_do_refit(
-          fit, .reconstruct_multi_formula(fit), masked, use_covstructs = TRUE
+          fit,
+          response$formula,
+          masked,
+          use_covstructs = TRUE
         )
         if (!isTRUE(refit$opt$convergence == 0L)) {
           stop(sprintf(
@@ -680,7 +810,12 @@
 
     if (!is.null(step$error)) {
       per_fold_rows[[i]] <- .cv_per_fold_row(
-        i, "failed", length(held_rows), step$error, elapsed, NULL
+        i,
+        "failed",
+        length(held_rows),
+        step$error,
+        elapsed,
+        NULL
       )
       next
     }
@@ -691,7 +826,14 @@
     score_step <- tryCatch(
       {
         pm_out <- predict_missing(refit, type = "response")
-        joined <- .cv_join_truth(refit, pm_out, truth_data, truth_col)
+        pm_out <- pm_out[pm_out$model_row %in% held_rows, , drop = FALSE]
+        joined <- .cv_join_truth(
+          refit,
+          pm_out,
+          truth_data,
+          truth_col,
+          n_trials = response$trials
+        )
         joined$logscore <- .cv_logscore(joined, refit)
         .cv_score(joined)
       },
@@ -700,8 +842,12 @@
 
     if (is.null(score_step)) {
       per_fold_rows[[i]] <- .cv_per_fold_row(
-        i, "failed", length(held_rows),
-        "scoring failed after a successful refit", elapsed, NULL
+        i,
+        "failed",
+        length(held_rows),
+        "scoring failed after a successful refit",
+        elapsed,
+        NULL
       )
       next
     }
@@ -727,7 +873,12 @@
     }
 
     per_fold_rows[[i]] <- .cv_per_fold_row(
-      i, status, length(held_rows), msg, elapsed, pl
+      i,
+      status,
+      length(held_rows),
+      msg,
+      elapsed,
+      pl
     )
   }
 
@@ -770,7 +921,9 @@
   message <- if (status == "error") {
     sprintf(
       "No fold produced usable scores (%d failed, %d degenerate, out of %d).",
-      n_failed, n_degenerate, n_folds
+      n_failed,
+      n_degenerate,
+      n_folds
     )
   } else {
     NULL

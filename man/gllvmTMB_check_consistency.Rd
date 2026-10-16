@@ -115,8 +115,9 @@ fit <- gllvmTMB(
   data = dat, family = poisson(), trait = "trait", unit = "site"
 )
 
-# Run the check with 50 replicates. n_sim must be at least the number
-# of fitted parameters (8 here); more replicates give a steadier test.
+# Run the check with 50 replicates. n_sim must be larger than the
+# number of fitted parameters (8 here); more replicates give a
+# steadier test.
 cc <- gllvmTMB_check_consistency(fit, n_sim = 50, seed = 1)
 cc
 

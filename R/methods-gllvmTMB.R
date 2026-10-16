@@ -2595,28 +2595,53 @@ sanity_multi <- function(object, gradient_thresh = 1e-2, se_thresh = 100) {
   is_mspl <- .gllvmTMB_is_mspl(object)
   flags <- list()
 
-  ## 1. nlminb convergence
-  flags$converged <- (object$opt$convergence == 0L)
+  ## 1. Convergence. #1352: take the verdict from the same builder as
+  ## `fit$fit_health`, so the two reports agree. `opt$convergence == 0` alone
+  ## said PASS on a fit whose gradient is non-finite, then the gradient step
+  ## below crashed.
+  health <- tryCatch(
+    .gllvmTMB_build_fit_health(object),
+    error = function(e) NULL
+  )
+  flags$optimizer_converged <- isTRUE(object$opt$convergence == 0L)
+  flags$converged <- if (is.null(health)) {
+    flags$optimizer_converged
+  } else {
+    isTRUE(health$converged)
+  }
   cat(sprintf(
     "%-44s %s\n",
-    "Optimiser convergence (== 0):",
+    "Converged (optimiser, objective, gradient):",
     if (flags$converged) "PASS" else "FAIL"
   ))
 
   ## 2. Max gradient. #1092: on a ridged fit the raw `tmb_obj$gr()` reports
   ## the UNPENALISED gradient at the PENALISED optimum (|lambda|/tau^2, not
   ## ~0), so this check must judge the objective the fit actually optimised.
-  g <- .gllvmTMB_penalised_gradient(
-    object$tmb_obj, object$opt$par, object$aghq$ridge_tau %||% Inf
+  ## #1352: a failing or non-finite gradient is a WARN, not a crash.
+  g <- tryCatch(
+    .gllvmTMB_penalised_gradient(
+      object$tmb_obj, object$opt$par, object$aghq$ridge_tau %||% Inf
+    ),
+    error = function(e) NA_real_
   )
-  flags$max_gradient <- max(abs(g))
-  cat(sprintf(
-    "%-44s %s (max |gr| = %.3g%s)\n",
-    sprintf("Max |gradient| < %.1e:", gradient_thresh),
-    if (flags$max_gradient < gradient_thresh) "PASS" else "WARN",
-    flags$max_gradient,
-    if (isTRUE(object$aghq$penalised)) ", penalised objective" else ""
-  ))
+  g_ok <- length(g) > 0L && all(is.finite(g))
+  flags$max_gradient <- if (g_ok) max(abs(g)) else NA_real_
+  if (g_ok) {
+    cat(sprintf(
+      "%-44s %s (max |gr| = %.3g%s)\n",
+      sprintf("Max |gradient| < %.1e:", gradient_thresh),
+      if (flags$max_gradient < gradient_thresh) "PASS" else "WARN",
+      flags$max_gradient,
+      if (isTRUE(object$aghq$penalised)) ", penalised objective" else ""
+    ))
+  } else {
+    cat(sprintf(
+      "%-44s %s\n",
+      sprintf("Max |gradient| < %.1e:", gradient_thresh),
+      "WARN (gradient not finite)"
+    ))
+  }
 
   ## 3. Hessian PD-ness
   sdreport_ok <- !is.null(object$sd_report)

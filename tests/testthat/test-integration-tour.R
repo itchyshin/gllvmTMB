@@ -78,6 +78,6 @@ test_that("integration: simulate -> fit -> all extractors -> predict -> simulate
   expect_equal(ncol(ord$scores), 2)
 
   ## Sanity (just ensure no error and returns named list)
-  flags <- capture.output(s_flags <- sanity_multi(fit))
+  flags <- capture.output(s_flags <- sanity_multi(fit), type = "message")
   expect_true("converged" %in% names(s_flags))
 })

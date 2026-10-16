@@ -55654,3 +55654,44 @@ Both Windows services accepted identical-byte alias
 gllvmTMB_0.7.1-600b1786.tar.gz; results pending. Current threeOS CI38862492778
 is queued with no assigned runners. No CRAN upload or confirmation occurred.
 Prior archives and their checks/uploads are predecessor-only evidence.
+
+
+## 2026-10-16 — CRAN full-CI message assertion correction (Codex)
+
+The maintainer renewed authorization to continue unattended and use Codex's own
+browser. The in-app browser is signed in to itchyshin Gmail and reaches the
+CRAN upload form without the locked Mac's Chrome-extension restriction.
+
+Candidate600b1786 Windows R-release passed0E/0W/1NOTE(newsubmission), check513s;
+R-devel passed0E/0W/2NOTEs(newsubmission and unexplained rootRplots.pdf), check566s.
+Vignette rebuilds each21s. Saved raw check/install logs in evidence/win-final-*.
+Grace traced the top-level snapshot to before installation/examples; no rootPDF
+exists in the immutable archive. Same bytes were sent again to R-devel as
+600b1786-r2 for diagnosis, not as proof of a later candidate.
+
+SourceCI38862492778 then found one stale stdout assertion in test-mspl-api.R360:
+sanity_multi() now uses suppressible messages as requested by CRAN. Reproduced
+1failure/54passes before editing. Corrected two capture.output() sites to use
+message capture (MSPL and integrationtour). Focused verification:82passes,
+0failures/0warnings/0skips (55MSPL,8suppression,19integration assertions).
+The suppression test checks empty stdout and unchanged return flags.
+Scan: rg 'sanity_multi|capture.output' tests/testthat; exact diff is two
+capture.output(..., type="message") argument additions. No productcode changed.
+
+Cancelled only this superseded CI run; terminal cancelled status verified.
+The included test change requires a fresh archive/hash and new exact checks.
+All600b archive results remain predecessor evidence. No CRAN upload/confirmation,
+main merge, tag, public-site deployment, or simulation campaign occurred.
+
+Retained green log: evidence/ci-assertion-focused-green.log (parent rerun exit0).
+Exact command: OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1
+VECLIB_MAXIMUM_THREADS=1 DEVELOPER_DIR=/Library/Developer/CommandLineTools
+Rscript --vanilla -e 'pkgload::load_all(".", quiet=TRUE, compile=FALSE);
+library(testthat); x <- parse("tests/testthat/test-mspl-api.R");
+for (e in x) { if (!is.call(e) || !identical(e[[1]], as.name("test_that")))
+eval(e) else if (identical(e[[2]], "MSPL inference and likelihood-comparison methods fail closed")) eval(e) };
+test_file("tests/testthat/test-sanity-messages.R");
+test_file("tests/testthat/test-integration-tour.R")'.
+The initial red run is worker tool session94947 (1failure/54passes), not a
+saved raw log; the CI log independently retains the same failure.
+After-task structure and exact-draft assessment checks passed for v3.

@@ -356,7 +356,7 @@ test_that("MSPL inference and likelihood-comparison methods fail closed", {
     expect_s3_class(plot(fit, type = "loadings", boot = NULL), "ggplot")
   }
 
-  sanity_text <- capture.output(sanity_multi(fit))
+  sanity_text <- capture.output(sanity_multi(fit), type = "message")
   expect_match(
     paste(sanity_text, collapse = "\n"),
     "WITHHELD (MSPL point estimate)",

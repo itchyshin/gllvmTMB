@@ -1,3 +1,6 @@
+DRAFT: the archive and results below describe predecessor600b. A fresh archive
+is required after the included message-capture assertion correction. Do not upload.
+
 # Resubmission: gllvmTMB 0.7.1
 
 This resubmission addresses Konstanze Lauseker's review of 15 October 2026.

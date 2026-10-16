@@ -94,7 +94,8 @@ df <- data.frame(
 fit <- gllvmTMB(
   value ~ 0 + trait + animal_latent(individual, d = 1, pedigree = ped,
                                     unique = TRUE),
-  data = df, unit = "individual", cluster = "individual"
+  data = df, trait = "trait", unit = "individual",
+  cluster = "individual"
 )
 extract_Sigma(fit, level = "phy")$Sigma  # estimated G
 }

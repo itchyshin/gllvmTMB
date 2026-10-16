@@ -31,33 +31,34 @@
 #'
 #' @examples
 #' set.seed(1)
-#' ## A known similarity among 12 sites along an environmental gradient; any
+#' ## A known similarity among 30 sites along an environmental gradient; any
 #' ## dense positive-semidefinite covariance or correlation matrix can be K.
-#' x <- seq(0, 1, length.out = 12)
-#' K <- exp(-abs(outer(x, x, "-")) / 0.3)
-#' dimnames(K) <- list(paste0("s", 1:12), paste0("s", 1:12))
-#' ## Four traits load on one K-correlated latent field, plus trait-specific
-#' ## K-correlated deviations; four replicate observations per site.
+#' x <- seq(0, 1, length.out = 30)
+#' K <- exp(-abs(outer(x, x, "-")) / 0.1)
+#' dimnames(K) <- list(paste0("s", 1:30), paste0("s", 1:30))
+#' ## Four traits load on one K-correlated latent field and carry their own
+#' ## K-correlated deviations, so the site-level trait covariance is
+#' ## lambda lambda^T + diag(0.2).
 #' L <- t(chol(K))
 #' lambda <- c(0.8, 0.6, -0.5, 0.4)
-#' site_eff <- outer(drop(L %*% rnorm(12)), lambda) +
-#'   (L %*% matrix(rnorm(12 * 4), 12, 4)) %*% diag(sqrt(0.2), 4)
-#' dat <- data.frame(
-#'   site = factor(rep(rownames(K), each = 4), levels = rownames(K)),
-#'   obs  = factor(seq_len(48))
-#' )
-#' Y <- site_eff[as.integer(dat$site), ] + matrix(rnorm(48 * 4, sd = 0.4), 48, 4)
-#' dat[paste0("y", 1:4)] <- as.data.frame(Y)
+#' site_eff <- outer(drop(L %*% rnorm(30)), lambda) +
+#'   L %*% matrix(rnorm(30 * 4, sd = sqrt(0.2)), 30, 4)
+#' ## Long format: four replicate visits per site, one row per (visit, trait).
+#' dat <- expand.grid(trait = factor(paste0("y", 1:4)), visit = 1:4,
+#'                    site = factor(rownames(K), levels = rownames(K)))
+#' dat$obs <- factor(paste(dat$site, dat$visit, sep = "_"))
+#' dat$value <- site_eff[cbind(as.integer(dat$site), as.integer(dat$trait))] +
+#'   rnorm(nrow(dat), sd = 0.4)
 #' fit <- gllvmTMB(
-#'   traits(y1, y2, y3, y4) ~
-#'     1 + kernel_latent(site, K = K, d = 1, name = "gradient", unique = TRUE),
-#'   data = dat, unit = "obs", cluster = "site"
+#'   value ~ 0 + trait +
+#'     kernel_latent(site, K = K, d = 1, name = "gradient", unique = TRUE),
+#'   data = dat, trait = "trait", unit = "obs", cluster = "site"
 #' )
 #' extract_Sigma(fit, level = "gradient")$Sigma
-#' ## The diagonal-only and full-rank tiers use the same K:
+#' ## kernel_indep(): trait-specific variances only, on the same K:
 #' fit_indep <- gllvmTMB(
-#'   traits(y1, y2, y3, y4) ~ 1 + kernel_indep(site, K = K, name = "gradient"),
-#'   data = dat, unit = "obs", cluster = "site"
+#'   value ~ 0 + trait + kernel_indep(site, K = K, name = "gradient"),
+#'   data = dat, trait = "trait", unit = "obs", cluster = "site"
 #' )
 #' extract_Sigma(fit_indep, level = "gradient")$Sigma
 #'

@@ -75,14 +75,17 @@ df <- data.frame(
 )
 fit <- gllvmTMB(
   value ~ 0 + trait + animal_scalar(individual, pedigree = ped),
-  data = df, unit = "individual", cluster = "individual"
+  data = df, trait = "trait", unit = "individual",
+  cluster = "individual"
 )
 fit
-## The canonical spelling fits the same model:
+## The recommended spelling, animal_indep(..., common = TRUE), fits the
+## same model:
 fit2 <- gllvmTMB(
   value ~ 0 + trait +
     animal_indep(0 + trait | individual, pedigree = ped, common = TRUE),
-  data = df, unit = "individual", cluster = "individual"
+  data = df, trait = "trait", unit = "individual",
+  cluster = "individual"
 )
 c(logLik(fit), logLik(fit2))
 

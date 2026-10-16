@@ -89,14 +89,17 @@
 #' )
 #' fit <- gllvmTMB(
 #'   value ~ 0 + trait + animal_scalar(individual, pedigree = ped),
-#'   data = df, unit = "individual", cluster = "individual"
+#'   data = df, trait = "trait", unit = "individual",
+#'   cluster = "individual"
 #' )
 #' fit
-#' ## The canonical spelling fits the same model:
+#' ## The recommended spelling, animal_indep(..., common = TRUE), fits the
+#' ## same model:
 #' fit2 <- gllvmTMB(
 #'   value ~ 0 + trait +
 #'     animal_indep(0 + trait | individual, pedigree = ped, common = TRUE),
-#'   data = df, unit = "individual", cluster = "individual"
+#'   data = df, trait = "trait", unit = "individual",
+#'   cluster = "individual"
 #' )
 #' c(logLik(fit), logLik(fit2))
 #'
@@ -159,13 +162,16 @@ animal_scalar <- function(id, pedigree = NULL, A = NULL, Ainv = NULL) {
 #' )
 #' fit <- gllvmTMB(
 #'   value ~ 0 + trait + animal_unique(individual, pedigree = ped),
-#'   data = df, unit = "individual", cluster = "individual"
+#'   data = df, trait = "trait", unit = "individual",
+#'   cluster = "individual"
 #' )
 #' extract_Sigma(fit, level = "phy")$Sigma
-#' ## The canonical spelling fits the same model:
+#' ## The recommended spelling for a standalone diagonal term,
+#' ## animal_indep(), fits the same model:
 #' fit2 <- gllvmTMB(
 #'   value ~ 0 + trait + animal_indep(0 + trait | individual, pedigree = ped),
-#'   data = df, unit = "individual", cluster = "individual"
+#'   data = df, trait = "trait", unit = "individual",
+#'   cluster = "individual"
 #' )
 #' c(logLik(fit), logLik(fit2))
 #' @export
@@ -211,7 +217,8 @@ animal_unique <- function(id, pedigree = NULL, A = NULL, Ainv = NULL) {
 #' ## Pass the dense relatedness matrix A directly:
 #' fit <- gllvmTMB(
 #'   value ~ 0 + trait + animal_indep(0 + trait | individual, A = A),
-#'   data = df, unit = "individual", cluster = "individual"
+#'   data = df, trait = "trait", unit = "individual",
+#'   cluster = "individual"
 #' )
 #' extract_Sigma(fit, level = "phy")$Sigma  # estimated G (diagonal)
 #' @export
@@ -277,7 +284,8 @@ animal_indep <- function(formula, pedigree = NULL, A = NULL, Ainv = NULL,
 #' fit <- gllvmTMB(
 #'   value ~ 0 + trait + animal_latent(individual, d = 1, pedigree = ped,
 #'                                     unique = TRUE),
-#'   data = df, unit = "individual", cluster = "individual"
+#'   data = df, trait = "trait", unit = "individual",
+#'   cluster = "individual"
 #' )
 #' extract_Sigma(fit, level = "phy")$Sigma  # estimated G
 #' @export
@@ -334,7 +342,8 @@ animal_latent <- function(
 #' )
 #' fit <- gllvmTMB(
 #'   value ~ 0 + trait + animal_dep(0 + trait | individual, A = A),
-#'   data = df, unit = "individual", cluster = "individual"
+#'   data = df, trait = "trait", unit = "individual",
+#'   cluster = "individual"
 #' )
 #' extract_Sigma(fit, level = "phy")$Sigma  # estimated G
 #' @export

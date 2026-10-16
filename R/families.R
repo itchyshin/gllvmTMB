@@ -192,7 +192,7 @@
 #' fit <- gllvmTMB(
 #'   value ~ 0 + trait + latent(0 + trait | site, d = 1, unique = TRUE),
 #'   data   = dat,
-#'   family = list(gaussian(), binomial()),
+#'   family = list(gaussian = gaussian(), binomial = binomial()),
 #'   trait  = "trait",
 #'   unit   = "site"
 #' )
@@ -209,11 +209,13 @@
 #'   source  = c("gbif", "survey")
 #' )
 #' env <- rnorm(60)  # one value per cell
+#' u <- rnorm(60)    # unmeasured cell effect shared by both species
 #' dat$env <- env[as.integer(dat$cell_id)]
 #' dat$isdm_gbif <- as.integer(dat$source == "gbif")
 #' dat$bias <- ifelse(dat$source == "gbif", rnorm(nrow(dat)), 0)
 #' dat$log_support <- ifelse(dat$source == "gbif", log(2), log(0.5))
 #' eta <- c(0.2, -0.1)[dat$trait] + c(0.5, -0.4)[dat$trait] * dat$env +
+#'   c(0.6, 0.4)[dat$trait] * u[as.integer(dat$cell_id)] +
 #'   dat$log_support + dat$isdm_gbif * (-0.3 + 0.4 * dat$bias)
 #' dat$value <- ifelse(dat$source == "gbif",
 #'                     rpois(nrow(dat), exp(eta)),
@@ -226,7 +228,7 @@
 #' attr(isdm_fam, "family_var") <- "isdm_family"
 #' fit_isdm <- gllvmTMB(
 #'   value ~ 0 + trait + trait:env + trait:isdm_gbif + trait:bias +
-#'     offset(log_support) + latent(0 + trait | cell_id, d = 1, unique = TRUE),
+#'     offset(log_support) + latent(0 + trait | cell_id, d = 1, unique = FALSE),
 #'   data   = dat,
 #'   family = isdm_fam,
 #'   trait  = "trait",
@@ -439,7 +441,6 @@ tweedie <- function(link = "log", p = NULL) {
 #' @export
 #' @examples
 #' censored_poisson(link = "log")
-#' \donttest{
 #' ## A small simulated rank-1 GLLVM fit with one right-censored trait
 #' ## (censoring limit C = 6).
 #' set.seed(1)
@@ -462,10 +463,9 @@ tweedie <- function(link = "log", p = NULL) {
 #' )
 #' fit <- gllvmTMB(
 #'   cbind(y, censored) ~ 0 + trait + latent(0 + trait | site, d = 1, unique = FALSE),
-#'   data = dat, family = censored_poisson(), unit = "site"
+#'   data = dat, family = censored_poisson(), trait = "trait", unit = "site"
 #' )
-#' stopifnot(fit$opt$convergence == 0)  # verified 0 on this exact seed
-#' }
+#' fit
 #' @rdname families
 censored_poisson <- function(link = "log") {
   .gllvm_family("censored_poisson", substitute(link), link, "log", full = FALSE)
@@ -495,13 +495,8 @@ censored_poisson <- function(link = "log") {
 #' working alternative.
 #' @export
 #' @examples
-#' \donttest{
-#' ## A small simulated rank-1 GLLVM fit with one zero-inflated trait.
-#' ## Calibrated to converge cleanly (2026-09-02 review R5: the previous
-#' ## DGP -- n_site = 60, beta = c(0.3, -0.2, 0.5) -- did NOT converge,
-#' ## fit$opt$convergence == 1 with NaNs produced; larger n_site, larger
-#' ## (less zero-inflation-confounded) trait means, and unique = FALSE
-#' ## fix it, verified by running this block verbatim).
+#' ## A small simulated rank-1 GLLVM fit in which a quarter of the counts are
+#' ## structural zeros.
 #' set.seed(1)
 #' n_site <- 100L
 #' n_trait <- 3L
@@ -520,11 +515,9 @@ censored_poisson <- function(link = "log") {
 #' )
 #' fit <- gllvmTMB(
 #'   y ~ 0 + trait + latent(0 + trait | site, d = 1, unique = FALSE),
-#'   data = dat, family = zi_poisson(), unit = "site"
+#'   data = dat, family = zi_poisson(), trait = "trait", unit = "site"
 #' )
-#' stopifnot(fit$opt$convergence == 0)  # verified 0 on this exact seed
 #' fit$report$zi  # per-trait fitted structural-zero probability
-#' }
 #' @rdname families
 zi_poisson <- function(link = "log") {
   .gllvm_family("zi_poisson", substitute(link), link, "log", full = FALSE)

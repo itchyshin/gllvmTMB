@@ -116,6 +116,7 @@ isdm_source <- function(family, observation) {
 #'   isdm_source = factor(c("gbif", "survey"))
 #' )
 #' env <- rnorm(60)  # one value per cell
+#' u <- rnorm(60)    # unmeasured cell effect shared by both species
 #' dat$env <- env[as.integer(dat$cell_id)]
 #' is_gbif <- dat$isdm_source == "gbif"
 #' dat$log_support <- ifelse(is_gbif, log(2), 0)
@@ -124,13 +125,14 @@ isdm_source <- function(family, observation) {
 #' dat$observer <- factor(ifelse(is_gbif, NA, sample(c("o1", "o2"), nrow(dat), TRUE)))
 #' dat$method <- factor(ifelse(is_gbif, NA, sample(c("walk", "point"), nrow(dat), TRUE)))
 #' eta <- c(0.2, -0.1)[dat$trait] + c(0.5, -0.4)[dat$trait] * dat$env +
+#'   c(0.6, 0.4)[dat$trait] * u[as.integer(dat$cell_id)] +
 #'   dat$log_support +
 #'   ifelse(is_gbif, -0.3 + 0.4 * dat$access + 0.2 * dat$popdens,
 #'          0.3 * (dat$observer == "o2") - 0.2 * (dat$method == "point"))
 #' dat$value <- rpois(nrow(dat), exp(eta))
 #' fit <- gllvmTMB(
 #'   value ~ 0 + trait + trait:env +
-#'     offset(log_support) + latent(0 + trait | cell_id, d = 1, unique = TRUE),
+#'     offset(log_support) + latent(0 + trait | cell_id, d = 1, unique = FALSE),
 #'   data = dat, trait = "trait", unit = "cell_id", family = fam
 #' )
 #' fit

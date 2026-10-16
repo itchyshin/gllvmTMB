@@ -192,13 +192,16 @@ formula keyword.
 }
 }
 \examples{
-## Behavioural-syndrome / two-level pattern: 40 individuals ("unit"), each
-## measured on four traits in three sessions ("unit_observation").
+## Behavioural-syndrome / two-level pattern: 60 individuals ("unit"), each
+## measured on five traits in three sessions ("unit_observation").
+## Between individuals: two shared axes plus trait-specific variances;
+## within individuals: one shared axis plus trait-specific variances.
 sim <- simulate_unit_trait(
-  n_units = 40, n_obs_per_unit = 3, n_traits = 4,
-  Lambda_B = matrix(c(0.9, 0.7, -0.4, 0.2, 0.1, -0.2, 0.6, 0.8), 4, 2),
-  psi_B = 0.2,
-  Lambda_W = matrix(c(0.5, 0.4, -0.3, 0.3), 4, 1),
+  n_units = 60, n_obs_per_unit = 3, n_traits = 5,
+  Lambda_B = matrix(c(0.9, 0.7, -0.4, 0.2, 0.5,
+                      0.1, -0.2, 0.6, 0.8, -0.4), 5, 2),
+  psi_B = 0.3,
+  Lambda_W = matrix(c(0.5, 0.4, -0.3, 0.3, 0.2), 5, 1),
   seed = 1
 )
 fit <- gllvmTMB(

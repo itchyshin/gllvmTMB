@@ -81,13 +81,16 @@ df <- data.frame(
 )
 fit <- gllvmTMB(
   value ~ 0 + trait + animal_unique(individual, pedigree = ped),
-  data = df, unit = "individual", cluster = "individual"
+  data = df, trait = "trait", unit = "individual",
+  cluster = "individual"
 )
 extract_Sigma(fit, level = "phy")$Sigma
-## The canonical spelling fits the same model:
+## The recommended spelling for a standalone diagonal term,
+## animal_indep(), fits the same model:
 fit2 <- gllvmTMB(
   value ~ 0 + trait + animal_indep(0 + trait | individual, pedigree = ped),
-  data = df, unit = "individual", cluster = "individual"
+  data = df, trait = "trait", unit = "individual",
+  cluster = "individual"
 )
 c(logLik(fit), logLik(fit2))
 }

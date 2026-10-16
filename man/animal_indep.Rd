@@ -65,7 +65,8 @@ df <- data.frame(
 ## Pass the dense relatedness matrix A directly:
 fit <- gllvmTMB(
   value ~ 0 + trait + animal_indep(0 + trait | individual, A = A),
-  data = df, unit = "individual", cluster = "individual"
+  data = df, trait = "trait", unit = "individual",
+  cluster = "individual"
 )
 extract_Sigma(fit, level = "phy")$Sigma  # estimated G (diagonal)
 }

@@ -138,7 +138,7 @@ session; see \code{\link[=spatial_indep]{spatial_indep()}}.
 set.seed(2025)
 s <- simulate_site_trait(
   n_sites = 60, n_species = 1, n_traits = 3, mean_species_per_site = 1,
-  spatial_range = 0.3, sigma2_spa = rep(0.4, 3), seed = 1
+  spatial_range = 0.3, sigma2_spa = rep(0.4, 3), seed = 2
 )
 df   <- s$data
 mesh <- make_mesh(df, c("lon", "lat"), cutoff = 0.07)
@@ -149,6 +149,11 @@ fit  <- gllvmTMB(value ~ 0 + trait + spatial_indep(0 + trait | coords),
                  mesh  = mesh)
 fit$report$kappa            # inverse-range parameter
 sqrt(8) / fit$report$kappa  # practical range
+## The simulator's spatial_range is the scale of an exponential
+## correlation, exp(-distance / 0.3); the practical range is the distance
+## at which the fitted Matern correlation falls to about 0.14, so the two
+## numbers measure different things and need not agree. With 60 sites the
+## range estimate is imprecise and depends on the mesh.
 }
 \references{
 Lindgren, F., Rue, H. & Lindström, J. (2011). An explicit link

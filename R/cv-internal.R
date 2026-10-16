@@ -92,7 +92,7 @@
 #' @keywords internal
 #' @noRd
 .cv_make_folds <- function(fit, n_folds = 5L, seed = NULL) {
-  if (!is.null(seed)) set.seed(seed)
+  .gllvmTMB_local_seed(seed)
 
   is_obs <- fit$tmb_data$is_y_observed == 1L
   trait_id <- fit$tmb_data$trait_id ## 0-based
@@ -470,7 +470,7 @@
 #' @keywords internal
 #' @noRd
 .cv_baselines <- function(fit, data, response_col, folds, seed = NULL) {
-  if (!is.null(seed)) set.seed(seed)
+  .gllvmTMB_local_seed(seed)
 
   truth_col <- response_col[[1L]]
   trait_col <- fit$trait_col

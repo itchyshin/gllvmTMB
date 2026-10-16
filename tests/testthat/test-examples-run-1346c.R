@@ -12,7 +12,8 @@
 #      (cheap, no fitting);
 #   2. dynamic: that always-run code -- tools::Rd2ex() with \dontrun and
 #      \donttest commented out, as a plain R CMD check runs it -- parses to at
-#      least one expression and evaluates without error and without warnings;
+#      least one expression and evaluates without error and without warnings
+#      (apart from warnings pinned below as known package bugs);
 #   3. dynamic, heavy tests only: the code example() runs interactively and
 #      R CMD check --as-cran runs (\donttest kept) evaluates without error.
 #      A \donttest part may warn on purpose (e.g. bootstrap_Sigma() warns that
@@ -32,6 +33,16 @@ pages_1346c <- c(
   "extract_cutpoints", "extract_latent_scores", "extract_ordination",
   "extract_repeatability", "getREsd", "gllvmTMB_multi-vcov",
   "predict_cross_covariance", "standard_errors"
+)
+
+# Known package bugs that make an example warn. Each entry pins the exact
+# warning text: the warning must still occur and must be the only one. When
+# the bug is fixed the pin fails on purpose -- then delete the entry here and
+# the note about the warning in that page's example.
+known_warnings_1346c <- list(
+  # #1568: the internal refit passes an unused unit_obs argument.
+  compare_dep_vs_two_psi = "Unused optional grouping argument",
+  compare_indep_vs_two_psi = "Unused optional grouping argument"
 )
 
 rd_page_1346c <- function(page) {
@@ -128,6 +139,16 @@ for (page in pages_1346c) {
       )
       # A help example should run cleanly: a warning means deprecated syntax,
       # a non-converged fit, or an example that no longer matches the code.
+      known <- known_warnings_1346c[[page]]
+      if (!is.null(known)) {
+        is_known <- grepl(known, warned, fixed = TRUE)
+        expect_true(
+          any(is_known),
+          label = paste0("pinned known-bug warning still raised by example(",
+                         page, ") (delete the pin once fixed)")
+        )
+        warned <- warned[!is_known]
+      }
       expect_identical(warned, character(),
                        label = paste0("warnings from example(", page, ")"))
       # Every example builds data and a fit, so an empty environment means

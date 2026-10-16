@@ -300,18 +300,40 @@ with a clear unsupported-level message.
 }
 }
 \examples{
-\dontrun{
+set.seed(1)
+## Five traits measured three times on each of 60 units. Between units,
+## the traits share two latent axes (Lambda) plus a trait-specific
+## unique variance (psi = 0.2 for every trait). Each measurement also
+## carries independent noise (variance 0.3).
+Lambda <- matrix(c(0.9, 0.7, 0.5, -0.3, 0.2,
+                   0.0, 0.4, -0.5, 0.6, 0.8), nrow = 5, ncol = 2)
+sim <- simulate_unit_trait(
+  n_units = 60, n_obs_per_unit = 3, n_traits = 5,
+  Lambda_B = Lambda, psi_B = rep(0.2, 5), sigma2_eps = 0.3
+)
+## latent(unique = TRUE) fits Sigma = Lambda Lambda^T + diag(psi)
 fit <- gllvmTMB(
-  value ~ 0 + trait +
-          latent(0 + trait | unit, d = 2),
-  data  = df,
+  value ~ 0 + trait + latent(0 + trait | unit, d = 2, unique = TRUE),
+  data  = sim$data,
   trait = "trait",
   unit  = "unit"
 )
-extract_Sigma(fit, level = "unit", part = "total")$Sigma   # full T x T cov
-extract_Sigma(fit, level = "unit", part = "shared")$Sigma  # rr-only
-extract_Sigma(fit, level = "unit", part = "unique")$s      # diag(s_unit)
-}
+## Total between-unit covariance, Lambda Lambda^T + diag(psi). The
+## measurement noise is not part of it.
+tot <- extract_Sigma(fit, level = "unit", part = "total")
+tot$Sigma
+## The same matrix as correlations
+tot$R
+## Shared part, Lambda Lambda^T, carried by the two latent axes
+shared <- extract_Sigma(fit, level = "unit", part = "shared")
+shared$Sigma
+## Unique part: one variance per trait (the diagonal of Psi)
+psi <- extract_Sigma(fit, level = "unit", part = "unique")$s
+psi
+## The total is the sum of the two parts. How the total splits into
+## shared and unique parts is less certain than the total itself, so
+## base interpretation on the total.
+all.equal(tot$Sigma, shared$Sigma + diag(psi))
 }
 \references{
 Nakagawa, S. & Schielzeth, H. (2010). Repeatability for Gaussian and

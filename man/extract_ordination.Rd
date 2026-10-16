@@ -39,21 +39,45 @@ latent axes in columns) and \code{loadings} (traits in rows, axes in columns).
 Extract ordination scores and loadings from a fitted multivariate model
 }
 \examples{
-\dontrun{
-  sim <- simulate_site_trait(
-    n_sites = 20, n_species = 6, n_traits = 4,
-    mean_species_per_site = 4, seed = 1
-  )
-  fit <- gllvmTMB(
-    value ~ 0 + trait +
-            latent(0 + trait | site, d = 2),
-    data  = sim$data,
-    trait = "trait",
-    unit  = "site"
-  )
-  ord <- extract_ordination(fit, level = "unit")
-  head(ord$scores)
-  ord$loadings
-}
+## Simulate 6 traits recorded on a few species at each of 80 sites.
+## Between sites, the traits vary along two latent axes (the loadings
+## in Lambda_B): traits 1-2 load mainly on the first, traits 4-5 on
+## the second, and traits 3 and 6 on both. Each trait also has its
+## own unique variance (psi_B), and sigma2_eps is the variance of the
+## remaining noise in each observation. beta = 0 turns off the
+## simulator's environmental effects, which this model does not
+## include.
+set.seed(5)
+Lambda_B <- cbind(c(0.9, 0.7, 0.5, 0.0, 0.0, 0.3),
+                  c(0.0, 0.3, 0.5, 0.9, 0.7, -0.4))
+sim <- simulate_site_trait(
+  n_sites = 80, n_species = 10, n_traits = 6,
+  mean_species_per_site = 3,
+  beta = matrix(0, 6, 2),
+  Lambda_B = Lambda_B,
+  psi_B = rep(0.3, 6),
+  sigma2_eps = 0.3
+)
+## Two latent axes between sites, plus a unique variance for each
+## trait (unique = TRUE)
+fit <- gllvmTMB(
+  value ~ 0 + trait +
+    latent(0 + trait | site, d = 2, unique = TRUE),
+  data  = sim$data,
+  trait = "trait",
+  unit  = "site"
+)
+## level = "unit" asks for the between-site ordination
+ord <- extract_ordination(fit, level = "unit")
+## Site scores: each site's predicted position on the two latent
+## axes (one row per site, one column per axis)
+dim(ord$scores)
+head(ord$scores)
+## Trait loadings: how strongly each trait follows each axis. A site
+## with a high LV1 score tends to have high values of the traits with
+## positive LV1 loadings. Rotating the axes (or flipping the sign of
+## one) fits the data equally well; gllvmTMB fixes trait_1's loading
+## on LV2 at zero, which settles the rotation but not the signs.
+ord$loadings
 
 }

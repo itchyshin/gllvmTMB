@@ -99,10 +99,45 @@
 #' @keywords internal
 #' @export
 #' @examples
-#' \dontrun{
+#' ## Thirty sites (the "unit" column), each visited twice, with three
+#' ## traits measured at every visit. Sites differ in each trait
+#' ## independently of the other traits (psi_B holds the per-trait
+#' ## variances of these site effects).
+#' set.seed(1)
+#' sim <- simulate_unit_trait(
+#'   n_units = 30, n_obs_per_unit = 2, n_traits = 3,
+#'   psi_B = c(0.8, 0.5, 0.6), sigma2_eps = 0.2
+#' )
+#' dat <- sim$data
+#' ## Each of the 60 visits (labelled in the unit_observation column) is
+#' ## made by one of six observers, and each observer shifts all of their
+#' ## readings by the same amount.
+#' visit_observer <- sample(rep(1:6, 10))
+#' dat$observer <- factor(visit_observer[as.integer(dat$unit_observation)])
+#' observer_shift <- rnorm(6, sd = 0.7)
+#' dat$value <- dat$value + observer_shift[as.integer(dat$observer)]
+#'
+#' ## indep(0 + trait | unit): one effect per site and trait (block
+#' ## "diag_unit"); (1 | observer): one effect per observer, shared by
+#' ## all traits (block "re_int").
+#' fit <- gllvmTMB(
+#'   value ~ 0 + trait + indep(0 + trait | unit) + (1 | observer),
+#'   data = dat, trait = "trait", unit = "unit"
+#' )
+#'
+#' ## Wald (delta-method) standard errors of the estimated site and
+#' ## observer effects. Intervals built from them have not been checked
+#' ## for coverage.
+#' ## "re_int" gives a list with one vector per (1 | group) term, named
+#' ## by its grouping column: here 6 values, one per observer, in the
+#' ## order of levels(dat$observer).
 #' getREsd(fit, block = "re_int")
-#' getREsd(fit, block = "diag_unit")
-#' }
+#' ## "diag_unit" gives a traits x sites matrix (here 3 x 30); rows and
+#' ## columns follow levels(dat$trait) and levels(dat$unit).
+#' se_site <- getREsd(fit, block = "diag_unit")
+#' dim(se_site)
+#' dimnames(se_site) <- list(levels(dat$trait), levels(dat$unit))
+#' round(se_site[, 1:5], 2)
 getREsd <- function(
   fit,
   block = c(

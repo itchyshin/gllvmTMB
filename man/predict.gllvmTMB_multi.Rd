@@ -17,7 +17,14 @@
 \item{object}{A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}.}
 
 \item{newdata}{Optional new data frame. If \code{NULL}, predictions are
-produced for the training rows. A missing covariate stays \code{NA} in
+produced for the training rows. Otherwise \code{newdata} must be in the
+stacked long form the model is fitted on: one row per unit and trait,
+with a \code{trait} factor column (levels as in the training data). For a
+fit made with wide \code{traits(...)} data, wide \code{newdata} (one row per
+unit, no \code{trait} column) is also accepted and is stacked the way the
+training data was: rows keep their order and each expands to one row per
+trait, in the order given to \code{traits()}; the wide response columns, if
+present, are dropped from the returned data frame. A missing covariate stays \code{NA} in
 that row; the other rows keep their own predictions. Data-dependent
 transforms in the fixed formula (\code{scale()}, \code{poly()}, \code{ns()}) reuse
 the training centre, scale, and basis, so a row's value does not
@@ -49,7 +56,8 @@ and the \code{newdata} path (before 0.7.1 it was read only on the
 \code{newdata} path, and there only as the literal \code{~ 0}). For \code{newdata}
 with sites/species not present in the training data the random
 effects cannot be drawn, so those rows are fixed-effects-only
-regardless of \code{re_form}.
+regardless of \code{re_form}. The lme4 / glmmTMB spelling \code{re.form} is
+accepted as an alias.
 
 On \code{newdata}, \code{predict()} rebuilds the linear predictor in R and can
 re-add only some of the model's random-effect tiers (the unit-level
@@ -76,9 +84,12 @@ inverse-link fitted value, not an exact one. Currently only
 supported for \code{newdata = NULL} (training rows), non-\code{multinomial()}
 fits, fits without an active \code{mi()} missing-covariate model, and fits with
 unit likelihood weights. A non-unit weighted objective has no certified
-prediction-standard-error route.}
+prediction-standard-error route.
+(\code{se_fit} is accepted as an alias.)}
 
-\item{...}{Unused.}
+\item{...}{Unused. The aliases \code{re.form} (for \code{re_form}) and \code{se_fit}
+(for \code{se.fit}) are recognised; any other argument is ignored with a
+warning.}
 }
 \value{
 A data frame with the original row identifiers plus an \code{est}

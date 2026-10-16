@@ -27,6 +27,14 @@ a fixed parameter was not estimated, so it has no sampling covariance.
 \code{coef()} returns the fixed-effect point estimates; \code{vcov()} returns their
 covariance matrix, taken from the fit's TMB \code{sdreport()}.
 }
+\details{
+Template for an existing fitted model or data set; replace the named
+inputs with your own objects before running this code.
+\preformatted{
+coef(fit)
+vcov(fit)
+}
+}
 \section{Point estimates need no standard errors}{
 
 \code{coef()} works on any fit, including one made with
@@ -49,12 +57,6 @@ with non-unit likelihood weights: that fit targets a weighted estimating
 objective and has no certified sandwich covariance.
 }
 
-\examples{
-\dontrun{
-coef(fit)
-vcov(fit)
-}
-}
 \seealso{
 \code{\link[=standard_errors]{standard_errors()}} to compute the \code{sdreport()} after fitting;
 \code{\link[=confint]{confint()}} for intervals; \code{\link[=summary]{summary()}} for a coefficient table.

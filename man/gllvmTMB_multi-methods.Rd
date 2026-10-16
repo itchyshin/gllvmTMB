@@ -9,11 +9,11 @@
 \alias{nobs.gllvmTMB_multi}
 \title{Methods on a fitted gllvmTMB model}
 \usage{
-\method{print}{gllvmTMB_multi}(x, ...)
+print.gllvmTMB_multi(x, ...)
 
-\method{summary}{gllvmTMB_multi}(object, ...)
+summary.gllvmTMB_multi(object, ...)
 
-\method{print}{summary.gllvmTMB_multi}(x, digits = 3, ...)
+print.summary.gllvmTMB_multi(x, digits = 3, ...)
 
 \method{logLik}{gllvmTMB_multi}(object, ...)
 
@@ -25,6 +25,15 @@
 \item{...}{Currently unused.}
 
 \item{digits}{Decimal digits in the printed summary. Default 3.}
+}
+\value{
+\code{print()} returns its input invisibly, after displaying the fit or
+summary. \code{summary()} returns a list of class \code{summary.gllvmTMB_multi}
+containing the model header, fixed-effect estimates, covariance summaries,
+and convergence diagnostics. \code{logLik()} returns a scalar of class \code{logLik}
+with \code{df} and \code{nobs} attributes for supported likelihood fits. \code{nobs()}
+returns the number of likelihood-contributing response cells as a numeric
+scalar. Estimator restrictions described below apply to these accessors.
 }
 \description{
 Standard model-object accessors for a multivariate fit returned by

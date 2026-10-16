@@ -251,10 +251,10 @@ with a soft-deprecation message.
 release adds 3+ latent tiers, \code{level = "<colname>"} will dispatch to the
 corresponding tier without API change. For now, custom strings error
 with a clear unsupported-level message.
-}
-}
-\examples{
-\dontrun{
+
+Template for an existing fitted model or data set; replace the named
+inputs with your own objects before running this code.
+\preformatted{
 fit <- gllvmTMB(
   value ~ 0 + trait +
           latent(0 + trait | unit, d = 2),
@@ -265,6 +265,7 @@ fit <- gllvmTMB(
 extract_Sigma(fit, level = "unit", part = "total")$Sigma   # full T x T cov
 extract_Sigma(fit, level = "unit", part = "shared")$Sigma  # rr-only
 extract_Sigma(fit, level = "unit", part = "unique")$s      # diag(s_unit)
+}
 }
 }
 \references{

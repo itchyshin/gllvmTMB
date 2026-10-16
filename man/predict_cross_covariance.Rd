@@ -48,8 +48,10 @@ named species/lineage pairs. It does not estimate \code{rho}, produce
 intervals, calibrate null thresholds, or combine components into a universal
 total \code{Gamma}.
 }
-\examples{
-\dontrun{
+\details{
+Template for an existing fitted model or data set; replace the named
+inputs with your own objects before running this code.
+\preformatted{
 predict_cross_covariance(
   fit,
   level = "phy",
@@ -59,5 +61,4 @@ predict_cross_covariance(
   col_traits = c("partner_size", "partner_attack")
 )
 }
-
 }

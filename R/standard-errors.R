@@ -81,8 +81,10 @@
 #'   calculation; [getREsd()] and [getLV()] for accessors that read the
 #'   resulting `sd_report`.
 #' @export
-#' @examples
-#' \dontrun{
+#' @details
+#' Template for an existing fitted model or data set; replace the named
+#' inputs with your own objects before running this code.
+#' \preformatted{
 #' ## Fit fast, decide later whether standard errors are needed.
 #' fit <- gllvmTMB(
 #'   traits(y1, y2) ~ 1 + latent(1 | site, d = 1),

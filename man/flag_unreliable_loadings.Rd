@@ -43,9 +43,10 @@ species responds non-trivially to the axis.
 \details{
 Pinned entries (set explicitly by \code{lambda_constraint}) are reported
 with \code{unreliable = NA} because no inference is being made about them.
-}
-\examples{
-\dontrun{
+
+Template for an existing fitted model or data set; replace the named
+inputs with your own objects before running this code.
+\preformatted{
 ## Grounded in tests/testthat/test-loading-ci.R. flag_unreliable_loadings()
 ## accepts either a fit or a loading_ci() data frame directly.
 fit <- gllvmTMB(
@@ -58,7 +59,6 @@ flag_unreliable_loadings(fit, null_region = c(-0.1, 0.1))
 ci <- loading_ci(fit, level = "unit")
 flag_unreliable_loadings(ci, null_region = c(-0.1, 0.1))
 }
-
 }
 \seealso{
 \code{\link[=loading_ci]{loading_ci()}}.

@@ -109,7 +109,7 @@
 #'   `gllvmTMBcontrol()`'s `loading_ridge` argument.
 #' @export
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' n <- 40
 #' df <- data.frame(
 #'   unit = factor(seq_len(n)),

@@ -79,7 +79,7 @@ test_that("rotation hint is silenced when lambda_constraint is supplied", {
 
 test_that("verbose = TRUE produces output (printed via cli + cat)", {
   fit <- make_basic_fit()
-  ## sanity_multi() uses cat() to stdout; cli messages go to stderr.
+  ## sanity_multi() and cli emit messages; verbose summaries also use stdout.
   ## Capture both streams.
   stdout_capture <- capture.output(
     msg_capture <- capture.output(

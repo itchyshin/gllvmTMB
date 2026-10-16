@@ -103,7 +103,10 @@ isdm_source <- function(family, observation) {
 #'   survey = isdm_source(poisson(), observation = ~ observer + method)
 #' )
 #' names(fam)
-#' \dontrun{
+#' @details
+#' Template for an existing fitted model or data set; replace the named
+#' inputs with your own objects before running this code.
+#' \preformatted{
 #' ## `dat` is long, one row per (cell, species, source), with an isdm_source
 #' ## column naming each row's source and log_support its known effort/area.
 #' fit <- gllvmTMB(

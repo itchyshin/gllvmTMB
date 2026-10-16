@@ -66,10 +66,10 @@ Family \tab Link \tab \eqn{\sigma^2_d} \cr
 \code{Beta} \tab logit \tab \eqn{\psi_1(\hat\mu_t \hat\phi) + \psi_1((1 - \hat\mu_t)\hat\phi)} (Smithson & Verkuilen 2006) \cr
 \code{betabinomial} \tab logit \tab \eqn{\pi^2/3 + \psi_1(\hat\mu_t \hat\phi) + \psi_1((1 - \hat\mu_t)\hat\phi)}
 }
-}
-}
-\examples{
-\dontrun{
+
+Template for an existing fitted model or data set; replace the named
+inputs with your own objects before running this code.
+\preformatted{
 ## Add a site_species column (one level per row) as the obs-level grouping.
 df$site_species <- factor(seq_len(nrow(df)))
 fit <- gllvmTMB(
@@ -81,6 +81,7 @@ fit <- gllvmTMB(
   family   = poisson()
 )
 extract_residual_split(fit)
+}
 }
 }
 \references{

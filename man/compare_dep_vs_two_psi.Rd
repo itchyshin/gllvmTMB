@@ -85,9 +85,10 @@ pre-requisite for Level 3 to be meaningful.}
 
 Computational scope: tractable for T <= ~30. For larger T, prefer
 \code{\link[=compare_indep_vs_two_psi]{compare_indep_vs_two_psi()}}.
-}
-\examples{
-\dontrun{
+
+Template for an existing fitted model or data set; replace the named
+inputs with your own objects before running this code.
+\preformatted{
 library(ape)
 tree <- ape::rcoal(200)
 tree$tip.label <- paste0("sp", seq_len(200))

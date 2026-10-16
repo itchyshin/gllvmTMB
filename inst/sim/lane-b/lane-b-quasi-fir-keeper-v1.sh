@@ -4,13 +4,15 @@
 #SBATCH --time=00:30:00
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=2G
-#SBATCH --output=/scratch/snakagaw/lane_b_quasi_20260808_v3/logs/keeper-%j.out
+#SBATCH --output=/dev/null
 
 set -euo pipefail
-KEEP=/home/snakagaw/lane_b_quasi_20260808_v3_keep
+# Pass sbatch --output explicitly to retain scheduler logs.
+RUN_ROOT=${GLLVMTMB_LANE_B_RUN_ROOT:?set GLLVMTMB_LANE_B_RUN_ROOT}
+KEEP=${GLLVMTMB_LANE_B_KEEP_ROOT:?set GLLVMTMB_LANE_B_KEEP_ROOT}
 mkdir -p "${KEEP}"
-tar -C /scratch/snakagaw/lane_b_quasi_20260808_v3 -czf \
+tar -C "${RUN_ROOT}" -czf \
   "${KEEP}/lane-b-quasi-results-v3.tar.gz" results
 sha256sum "${KEEP}/lane-b-quasi-results-v3.tar.gz" > \
   "${KEEP}/lane-b-quasi-results-v3.sha256"
-cp /scratch/snakagaw/lane_b_quasi_20260808_v3/logs/aggregate-*.out "${KEEP}/"
+cp "${RUN_ROOT}"/logs/aggregate-*.out "${KEEP}/"

@@ -190,7 +190,7 @@
 #'
 #' @export
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' set.seed(1)
 #' s <- simulate_site_trait(n_sites = 30, n_species = 1, n_traits = 3,
 #'                          mean_species_per_site = 1,
@@ -200,6 +200,7 @@
 #'                 data  = s$data,
 #'                 trait = "trait",
 #'                 unit  = "site")
+#' # Fifty refits illustrate the API; they do not establish interval coverage.
 #' boot <- bootstrap_Sigma(fit, n_boot = 50, level = "unit",
 #'                         what = c("Sigma", "R"), seed = 42)
 #' boot$point_est$Sigma_B

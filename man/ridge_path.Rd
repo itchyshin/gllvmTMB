@@ -120,7 +120,7 @@ point; the classifier then falls back to the finite-\code{tau} elasticity
 comparison, since a failed \code{Inf} refit contributes no loading to compare.
 }
 \examples{
-\dontrun{
+\donttest{
 n <- 40
 df <- data.frame(
   unit = factor(seq_len(n)),

@@ -51,10 +51,10 @@ decide whether trait variance lives in the shared component or the
 marginal component). The parser raises a \code{cli::cli_abort()} in this
 case. Combining \code{indep} with \code{unique} on the same grouping is
 similarly redundant and also errors.
-}
-}
-\examples{
-\dontrun{
+
+Template for an existing fitted model or data set; replace the named
+inputs with your own objects before running this code.
+\preformatted{
 # Marginal-only fit (per-trait variance, identity correlation):
 fit <- gllvmTMB(value ~ 0 + trait + indep(0 + trait | site),
                 data = df, trait = "trait", unit = "site")
@@ -67,6 +67,7 @@ fit <- gllvmTMB(value ~ 0 + trait + indep(0 + trait | site, common = TRUE),
 # gllvmTMB(value ~ 0 + trait +
 #           indep(0 + trait | site) +
 #           latent(0 + trait | site, d = 2), data = df)
+}
 }
 }
 \seealso{

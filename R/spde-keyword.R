@@ -136,7 +136,7 @@
 #'   Methodology)* **73**(4): 423–498.
 #'   \doi{10.1111/j.1467-9868.2011.00777.x}
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' set.seed(2025)
 #' s <- simulate_site_trait(
 #'   n_sites = 60, n_species = 1, n_traits = 3, mean_species_per_site = 1,

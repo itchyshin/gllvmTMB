@@ -49,6 +49,25 @@ and observation-level components.
 Also known as the intraclass correlation coefficient (ICC) at the unit
 level.
 }
+\details{
+Template for an existing fitted model or data set; replace the named
+inputs with your own objects before running this code.
+\preformatted{
+fit <- gllvmTMB(
+  value ~ 0 + trait +
+          latent(0 + trait | site, d = 1) +
+          latent(0 + trait | site_species, d = 1),
+  data     = df,
+  trait    = "trait",
+  unit     = "site",
+  unit_obs = "site_species"
+)
+extract_repeatability(fit)
+boot <- bootstrap_Sigma(fit, n_boot = 50, level = c("unit", "unit_obs"),
+                        what = "ICC", progress = FALSE)
+extract_repeatability(boot)
+}
+}
 \section{Interval calibration}{
 
 The point estimates are the supported claim. The Wald and bootstrap interval
@@ -75,23 +94,6 @@ non-Gaussian data: a practical guide for biologists. \emph{Biological
 Reviews} \strong{85}, 935-956. \doi{10.1111/j.1469-185X.2010.00141.x}
 }
 
-\examples{
-\dontrun{
-fit <- gllvmTMB(
-  value ~ 0 + trait +
-          latent(0 + trait | site, d = 1) +
-          latent(0 + trait | site_species, d = 1),
-  data     = df,
-  trait    = "trait",
-  unit     = "site",
-  unit_obs = "site_species"
-)
-extract_repeatability(fit)
-boot <- bootstrap_Sigma(fit, n_boot = 50, level = c("unit", "unit_obs"),
-                        what = "ICC", progress = FALSE)
-extract_repeatability(boot)
-}
-}
 \seealso{
 \code{\link{extract_communality}},
 \code{\link{extract_correlations}},

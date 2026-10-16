@@ -53,7 +53,7 @@ alias and emits a one-shot \code{lifecycle::deprecate_warn()} per session
 }
 
 \examples{
-\dontrun{
+\donttest{
   sim <- simulate_site_trait(
     n_sites = 20, n_species = 4, mean_species_per_site = 4,
     spatial_range = 0.4, sigma2_spa = rep(0.3, 4), seed = 1

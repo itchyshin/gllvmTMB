@@ -45,14 +45,10 @@ every trait must be observed by every declared source. Everything such a
 fit reports is relative intensity: presence-only data cannot identify
 absolute abundance, occupancy, or detectability, and none are estimated.
 This interface is experimental and may change.
-}
-\examples{
-fam <- isdm_sources(
-  gbif = isdm_source(poisson(), observation = ~ access + popdens),
-  survey = isdm_source(poisson(), observation = ~ observer + method)
-)
-names(fam)
-\dontrun{
+
+Template for an existing fitted model or data set; replace the named
+inputs with your own objects before running this code.
+\preformatted{
 ## `dat` is long, one row per (cell, species, source), with an isdm_source
 ## column naming each row's source and log_support its known effort/area.
 fit <- gllvmTMB(
@@ -61,4 +57,11 @@ fit <- gllvmTMB(
   data = dat, trait = "trait", unit = "cell_id", family = fam
 )
 }
+}
+\examples{
+fam <- isdm_sources(
+  gbif = isdm_source(poisson(), observation = ~ access + popdens),
+  survey = isdm_source(poisson(), observation = ~ observer + method)
+)
+names(fam)
 }

@@ -55,7 +55,7 @@ engine path with a pedigree-derived relatedness matrix instead of
 phylogenetic VCV.
 }
 \examples{
-\dontrun{
+\donttest{
 # Factor-analytic G-matrix (d latent factors plus diagonal Psi).
 # Grounded in test-animal-keyword.R.
 ped <- data.frame(
@@ -76,7 +76,7 @@ df <- data.frame(
 fit <- gllvmTMB(
   value ~ 0 + trait + animal_latent(species, d = 1, pedigree = ped,
                                    unique = TRUE),
-  data = df, family = gaussian()
+  data = df, family = gaussian(), unit = "species", cluster = "species"
 )
 }
 }

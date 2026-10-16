@@ -90,7 +90,7 @@ contrast correlations, labelled by category-vs-baseline.
 }
 }
 \examples{
-\dontrun{
+\donttest{
 set.seed(12)
 n_unit <- 120L
 n_rep <- 3L

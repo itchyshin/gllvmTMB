@@ -35,7 +35,7 @@ the engine recycles the same \eqn{\mathbf A^{-1}} prepared by
 \code{\link[=animal_scalar]{animal_scalar()}} / \code{\link[=animal_latent]{animal_latent()}}.
 }
 \examples{
-\dontrun{
+\donttest{
 # Additive-genetic random regression: one heritable slope variance on a
 # continuous covariate x, slopes correlated by the relatedness matrix A.
 # Grounded in test-animal-slope-recovery.R.

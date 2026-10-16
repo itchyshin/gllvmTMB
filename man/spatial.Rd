@@ -55,6 +55,37 @@ additive alias matching the lme4 / brms / drmTMB convention.
 This is the spatial parallel of the \code{\link[=phylo]{phylo()}} mode-dispatch wrapper:
 same dispatch logic, different engine slots (SPDE Matern instead of
 Hadfield A^-1).
+
+Template for an existing fitted model or data set; replace the named
+inputs with your own objects before running this code.
+\preformatted{
+library(fmesher)
+# Single shared spatial-field variance (= spatial_indep(..., common = TRUE))
+fit_s <- gllvmTMB(value ~ 0 + trait + spatial(1 | site, mesh = mesh),
+                  data  = df,
+                  trait = "trait",
+                  unit  = "site")
+# Per-trait independent fields on a shared mesh
+fit_u <- gllvmTMB(value ~ 0 + trait +
+                    spatial(0 + trait | coords, mode = "indep",
+                            mesh = mesh),
+                  data  = df,
+                  trait = "trait",
+                  unit  = "site")
+# Reduced-rank shared spatial latent factors (= spatial_latent)
+fit_l <- gllvmTMB(value ~ 0 + trait +
+                    spatial(0 + trait | coords, mode = "latent",
+                            d = 2, mesh = mesh),
+                  data  = df,
+                  trait = "trait",
+                  unit  = "site")
+# Backward-compat: legacy bare-formula form
+fit_legacy <- gllvmTMB(value ~ 0 + trait + spatial(0 + trait | coords),
+                       data  = df,
+                       trait = "trait",
+                       unit  = "site",
+                       mesh  = mesh)
+}
 }
 \section{Dispatch rules}{
 \tabular{lll}{
@@ -101,36 +132,6 @@ SPDE Matern internal path. Both packages share the same calling
 convention; user muscle memory transfers.
 }
 
-\examples{
-\dontrun{
-library(fmesher)
-# Single shared spatial-field variance (= spatial_indep(..., common = TRUE))
-fit_s <- gllvmTMB(value ~ 0 + trait + spatial(1 | site, mesh = mesh),
-                  data  = df,
-                  trait = "trait",
-                  unit  = "site")
-# Per-trait independent fields on a shared mesh
-fit_u <- gllvmTMB(value ~ 0 + trait +
-                    spatial(0 + trait | coords, mode = "indep",
-                            mesh = mesh),
-                  data  = df,
-                  trait = "trait",
-                  unit  = "site")
-# Reduced-rank shared spatial latent factors (= spatial_latent)
-fit_l <- gllvmTMB(value ~ 0 + trait +
-                    spatial(0 + trait | coords, mode = "latent",
-                            d = 2, mesh = mesh),
-                  data  = df,
-                  trait = "trait",
-                  unit  = "site")
-# Backward-compat: legacy bare-formula form
-fit_legacy <- gllvmTMB(value ~ 0 + trait + spatial(0 + trait | coords),
-                       data  = df,
-                       trait = "trait",
-                       unit  = "site",
-                       mesh  = mesh)
-}
-}
 \seealso{
 \code{\link[=spatial_indep]{spatial_indep()}},
 \code{\link[=spatial_latent]{spatial_latent()}}, \code{\link[=spatial_dep]{spatial_dep()}}, \code{\link[=phylo]{phylo()}} (phylogenetic

@@ -83,6 +83,22 @@ phylogenetic Psi) plus a species-level \code{latent()} term, which carries its
 diagonal Psi companion by default. If the species-tier Psi is absent (a
 \code{latent(..., unique = FALSE)} subset), \eqn{\psi_t = 0} for all traits and a
 \code{cli::cli_inform()} advisory fires.
+
+Template for an existing fitted model or data set; replace the named
+inputs with your own objects before running this code.
+\preformatted{
+fit <- gllvmTMB(
+  value ~ 0 + trait + phylo_latent(species, d = 2) +
+                      latent(0 + trait | species, d = 2) +
+                      indep(0 + trait | species),
+  data       = df,
+  trait      = "trait",
+  unit       = "species",
+  cluster    = "species",
+  phylo_tree = tree
+)
+extract_phylo_signal(fit)
+}
 }
 \section{Interval calibration}{
 
@@ -152,21 +168,6 @@ compatibility. \code{ci = TRUE} is not yet implemented for the
 liability-scale denominator and refuses with a typed error.
 }
 
-\examples{
-\dontrun{
-fit <- gllvmTMB(
-  value ~ 0 + trait + phylo_latent(species, d = 2) +
-                      latent(0 + trait | species, d = 2) +
-                      indep(0 + trait | species),
-  data       = df,
-  trait      = "trait",
-  unit       = "species",
-  cluster    = "species",
-  phylo_tree = tree
-)
-extract_phylo_signal(fit)
-}
-}
 \seealso{
 \code{\link[=extract_Sigma]{extract_Sigma()}}; \code{\link[=extract_Omega]{extract_Omega()}}; \code{\link[=extract_proportions]{extract_proportions()}};
 \code{\link[=extract_repeatability]{extract_repeatability()}}; \code{\link[=extract_communality]{extract_communality()}};

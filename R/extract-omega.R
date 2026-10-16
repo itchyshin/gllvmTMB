@@ -78,8 +78,10 @@
 #'   `link_residual` component is \eqn{\sigma^2_d} for OLRE-style fits).
 #' @keywords internal
 #' @export
-#' @examples
-#' \dontrun{
+#' @details
+#' Template for an existing fitted model or data set; replace the named
+#' inputs with your own objects before running this code.
+#' \preformatted{
 #' ## Add a site_species column (one level per row) as the obs-level grouping.
 #' df$site_species <- factor(seq_len(nrow(df)))
 #' fit <- gllvmTMB(
@@ -177,8 +179,10 @@ extract_residual_split <- function(fit) {
 #' @seealso [extract_Sigma()]; [extract_phylo_signal()];
 #'   [extract_proportions()]; [extract_residual_split()].
 #' @export
-#' @examples
-#' \dontrun{
+#' @details
+#' Template for an existing fitted model or data set; replace the named
+#' inputs with your own objects before running this code.
+#' \preformatted{
 #' # PGLLVM three-piece total
 #' om <- extract_Omega(fit, tiers = c("phy", "B"))
 #' round(om$R_Omega, 2)
@@ -446,8 +450,10 @@ extract_Omega <- function(
 #'   [extract_repeatability()]; [extract_communality()];
 #'   [extract_correlations()].
 #' @export
-#' @examples
-#' \dontrun{
+#' @details
+#' Template for an existing fitted model or data set; replace the named
+#' inputs with your own objects before running this code.
+#' \preformatted{
 #' fit <- gllvmTMB(
 #'   value ~ 0 + trait + phylo_latent(species, d = 2) +
 #'                       latent(0 + trait | species, d = 2) +
@@ -717,8 +723,10 @@ extract_phylo_signal <- function(
 #'   [extract_residual_split()] — explicit \eqn{\sigma^2_d / \sigma^2_e}
 #'   decomposition for OLRE fits.
 #' @export
-#' @examples
-#' \dontrun{
+#' @details
+#' Template for an existing fitted model or data set; replace the named
+#' inputs with your own objects before running this code.
+#' \preformatted{
 #' extract_proportions(fit)                           # long format
 #' extract_proportions(fit, format = "wide")          # one row per trait
 #' }

@@ -4,7 +4,7 @@
 \alias{print.gllvmTMB_reportable_table}
 \title{Print a report-ready gllvmTMB covariance/correlation table}
 \usage{
-\method{print}{gllvmTMB_reportable_table}(x, ...)
+print.gllvmTMB_reportable_table(x, ...)
 }
 \arguments{
 \item{x}{A \code{gllvmTMB_reportable_table} object.}

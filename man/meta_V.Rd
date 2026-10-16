@@ -34,7 +34,7 @@ block-diagonal within-study correlation, build \code{V} via \code{\link[=block_V
 rather than silently treated as exact.
 }
 \examples{
-\dontrun{
+\donttest{
 # Two-stage meta-regression with a known per-row sampling-variance V.
 set.seed(131)
 df <- expand.grid(

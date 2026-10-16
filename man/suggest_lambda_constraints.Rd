@@ -88,9 +88,10 @@ before choosing the matrix to pass to \code{lambda_constraint}.
 The default compares \code{varimax_threshold} and \code{wald_retention}. Add
 \code{"profile_retention"} to \code{methods} when you want the likelihood-ratio
 version; it is slower because it refits once per testable loading entry.
-}
-\examples{
-\dontrun{
+
+Template for an existing fitted model or data set; replace the named
+inputs with your own objects before running this code.
+\preformatted{
 cmp <- suggest_lambda_constraints(
   fit,
   methods = c("varimax_threshold", "wald_retention"),

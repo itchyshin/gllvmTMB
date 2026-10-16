@@ -74,18 +74,10 @@ biological quantity. This function therefore errors on exploratory
 fits and points the user at \code{\link[=confirmatory_lambda]{confirmatory_lambda()}} /
 \code{\link[=suggest_lambda_constraint]{suggest_lambda_constraint()}}, or at \code{\link[=extract_communality]{extract_communality()}} /
 \code{\link[=extract_Sigma]{extract_Sigma()}} for rotation-invariant summaries.
-}
-\section{Interval calibration}{
 
-The point estimates are the supported claim. The interval methods here are
-provided for exploration: their empirical coverage is not certified for this
-estimand (the worked example below is a binomial-probit fit), so treat the
-intervals as exploratory rather than coverage-calibrated. See \code{NEWS.md} for
-the current coverage status.
-}
-
-\examples{
-\dontrun{
+Template for an existing fitted model or data set; replace the named
+inputs with your own objects before running this code.
+\preformatted{
 # Build a confirmatory fit
 M <- confirmatory_lambda(
   species  = species_names,
@@ -102,8 +94,16 @@ fit <- gllvmTMB(
 loading_ci(fit, level = "unit")
 loading_ci(fit, level = "unit", loading_scale = "standardized")
 }
-
 }
+\section{Interval calibration}{
+
+The point estimates are the supported claim. The interval methods here are
+provided for exploration: their empirical coverage is not certified for this
+estimand (the worked example below is a binomial-probit fit), so treat the
+intervals as exploratory rather than coverage-calibrated. See \code{NEWS.md} for
+the current coverage status.
+}
+
 \seealso{
 \code{\link[=flag_unreliable_loadings]{flag_unreliable_loadings()}} for a decision-aid summary;
 \code{\link[=confirmatory_lambda]{confirmatory_lambda()}} to build a confirmatory constraint matrix;

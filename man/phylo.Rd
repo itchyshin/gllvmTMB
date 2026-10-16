@@ -53,6 +53,43 @@ based on the LHS shape and the optional \code{mode = ...} argument. The
 three current keywords stay first-class -- \code{phylo()} is an additive
 alias matching the lme4 / brms / drmTMB convention.
 }
+\details{
+Template for an existing fitted model or data set; replace the named
+inputs with your own objects before running this code.
+\preformatted{
+library(ape)
+tree <- rcoal(20); tree$tip.label <- paste0("sp", 1:20)
+# Single shared phylogenetic variance (= phylo_scalar)
+fit_s <- gllvmTMB(value ~ 0 + trait + phylo(1 | species, tree = tree),
+                  data    = df,
+                  trait   = "trait",
+                  unit    = "species",
+                  cluster = "species")
+# Per-trait independent phylogenetic variances on shared A
+fit_u <- gllvmTMB(value ~ 0 + trait +
+                    phylo(0 + trait | species, mode = "indep", tree = tree),
+                  data    = df,
+                  trait   = "trait",
+                  unit    = "species",
+                  cluster = "species")
+# Reduced-rank cross-trait phylogenetic decomposition (= phylo_latent)
+fit_l <- gllvmTMB(value ~ 0 + trait +
+                    phylo(0 + trait | species, mode = "latent",
+                          d = 2, tree = tree),
+                  data    = df,
+                  trait   = "trait",
+                  unit    = "species",
+                  cluster = "species")
+# Backward-compat: legacy bare-name form
+Cphy <- vcv(tree, corr = TRUE)
+fit_legacy <- gllvmTMB(value ~ 0 + trait + phylo(species),
+                       data      = df,
+                       trait     = "trait",
+                       unit      = "species",
+                       cluster   = "species",
+                       phylo_vcv = Cphy)
+}
+}
 \section{Dispatch rules}{
 \tabular{lll}{
    Form \tab Mode default \tab Rewrites to \cr
@@ -97,41 +134,6 @@ packages share the same calling convention; user muscle memory
 transfers.
 }
 
-\examples{
-\dontrun{
-library(ape)
-tree <- rcoal(20); tree$tip.label <- paste0("sp", 1:20)
-# Single shared phylogenetic variance (= phylo_scalar)
-fit_s <- gllvmTMB(value ~ 0 + trait + phylo(1 | species, tree = tree),
-                  data    = df,
-                  trait   = "trait",
-                  unit    = "species",
-                  cluster = "species")
-# Per-trait independent phylogenetic variances on shared A
-fit_u <- gllvmTMB(value ~ 0 + trait +
-                    phylo(0 + trait | species, mode = "indep", tree = tree),
-                  data    = df,
-                  trait   = "trait",
-                  unit    = "species",
-                  cluster = "species")
-# Reduced-rank cross-trait phylogenetic decomposition (= phylo_latent)
-fit_l <- gllvmTMB(value ~ 0 + trait +
-                    phylo(0 + trait | species, mode = "latent",
-                          d = 2, tree = tree),
-                  data    = df,
-                  trait   = "trait",
-                  unit    = "species",
-                  cluster = "species")
-# Backward-compat: legacy bare-name form
-Cphy <- vcv(tree, corr = TRUE)
-fit_legacy <- gllvmTMB(value ~ 0 + trait + phylo(species),
-                       data      = df,
-                       trait     = "trait",
-                       unit      = "species",
-                       cluster   = "species",
-                       phylo_vcv = Cphy)
-}
-}
 \seealso{
 \code{\link[=phylo_scalar]{phylo_scalar()}}, \code{\link[=phylo_indep]{phylo_indep()}},
 \code{\link[=phylo_latent]{phylo_latent()}}, \code{\link[=phylo_dep]{phylo_dep()}}.

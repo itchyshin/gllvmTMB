@@ -55,9 +55,10 @@ species-level case; \code{\link[=extract_communality]{extract_communality()}} gi
 "shared" proportion at one tier; \code{\link[=extract_ICC_site]{extract_ICC_site()}} gives the
 between-vs-within proportion. \code{extract_proportions()} returns all of
 these in one tidy frame.
-}
-\examples{
-\dontrun{
+
+Template for an existing fitted model or data set; replace the named
+inputs with your own objects before running this code.
+\preformatted{
 extract_proportions(fit)                           # long format
 extract_proportions(fit, format = "wide")          # one row per trait
 }

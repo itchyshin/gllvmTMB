@@ -385,12 +385,26 @@ test_that("a live-root V2 terminal is the only accepted Paper 2 prerequisite", {
   isdm_dev_path()  # skips when dev/ did not ship in the built package
   contract <- bfgs_contract_env()
   pkg <- normalizePath(testthat::test_path("..", ".."), mustWork = TRUE)
-  results <- file.path(pkg, "dev", "isdm-package-recovery", "results")
-  dir.create(results, recursive = TRUE, showWarnings = FALSE)
+  scratch_pkg <- withr::local_tempdir()
+  relative <- c(
+    "dev/isdm-package-recovery/run-bfgs-paper2-smoke.R",
+    "dev/isdm-package-recovery/g2h-360cell-fixture.R",
+    "dev/isdm-package-recovery/2026-08-14-bfgs-exact-gradient-continuation-design.md",
+    "dev/isdm-package-recovery/bfgs-smoke-contract.R",
+    "R/fit-multi.R", "R/isdm-developer-fit.R",
+    "src/gllvmTMB.cpp", "src/gllvmTMB.so"
+  )
+  for (relative_path in relative) {
+    target <- file.path(scratch_pkg, relative_path)
+    dir.create(dirname(target), recursive = TRUE, showWarnings = FALSE)
+    expect_true(file.copy(file.path(pkg, relative_path), target))
+  }
+  results <- file.path(scratch_pkg, "dev", "isdm-package-recovery", "results")
+  dir.create(results, recursive = TRUE)
   root <- tempfile("test-bfgs-p2-", tmpdir = results)
   dir.create(root)
-  withr::defer(unlink(root, recursive = TRUE))
-  ledger <- bfgs_v2_normal_ledger(contract, root, live = TRUE)
+  ledger <- bfgs_v2_normal_ledger(contract, root, live = TRUE,
+    live_pkg = scratch_pkg)
   fit <- attr(ledger, "bfgs_fixture_fit", exact = TRUE)
   ledger <- bfgs_v2_materialize(contract, ledger, fit)
   expected <- list(

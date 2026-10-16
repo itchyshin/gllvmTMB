@@ -38,7 +38,7 @@ latent axes in columns) and \code{loadings} (traits in rows, axes in columns).
 Extract ordination scores and loadings from a fitted multivariate model
 }
 \examples{
-\dontrun{
+\donttest{
   sim <- simulate_site_trait(
     n_sites = 20, n_species = 6, n_traits = 4,
     mean_species_per_site = 4, seed = 1

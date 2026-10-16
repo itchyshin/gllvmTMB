@@ -68,9 +68,10 @@ compute confidence intervals from a fitted model directly. Use
 \code{\link[=extract_correlations]{extract_correlations()}} when you need pairwise correlation intervals, or
 \code{\link[=bootstrap_Sigma]{bootstrap_Sigma()}} followed by \code{extract_Sigma_table()} when you need
 bootstrap intervals for Sigma or correlation matrix entries.
-}
-\examples{
-\dontrun{
+
+Template for an existing fitted model or data set; replace the named
+inputs with your own objects before running this code.
+\preformatted{
 fit <- gllvmTMB(
   value ~ 0 + trait +
           latent(0 + trait | unit, d = 2),

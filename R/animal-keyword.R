@@ -57,7 +57,7 @@
 #'   [meta_V()] (sampling variance, distinct from relatedness).
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' # Pedigree-derived additive-genetic relatedness; single shared
 #' # variance across traits. Grounded in test-animal-keyword.R.
 #' ped <- data.frame(
@@ -77,7 +77,7 @@
 #' )
 #' fit <- gllvmTMB(
 #'   value ~ 0 + trait + animal_scalar(species, pedigree = ped),
-#'   data = df, family = gaussian()
+#'   data = df, family = gaussian(), unit = "species", cluster = "species"
 #' )
 #' }
 #'
@@ -120,7 +120,7 @@ animal_scalar <- function(id, pedigree = NULL, A = NULL, Ainv = NULL) {
 #' @seealso [animal_scalar()], [animal_indep()], [animal_latent()],
 #'   [animal_dep()], [phylo_indep()].
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' # Per-trait independent additive-genetic variances on a shared A.
 #' # Grounded in test-animal-keyword.R.
 #' ped <- data.frame(
@@ -140,7 +140,7 @@ animal_scalar <- function(id, pedigree = NULL, A = NULL, Ainv = NULL) {
 #' )
 #' fit <- gllvmTMB(
 #'   value ~ 0 + trait + animal_unique(species, pedigree = ped),
-#'   data = df, family = gaussian()
+#'   data = df, family = gaussian(), unit = "species", cluster = "species"
 #' )
 #' }
 #' @export
@@ -165,7 +165,7 @@ animal_unique <- function(id, pedigree = NULL, A = NULL, Ainv = NULL) {
 #' @return See [animal_scalar()].
 #' @seealso [phylo_indep()].
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' # Independent per-trait animal-model intercepts via the bar form,
 #' # passing the dense relatedness matrix A directly.
 #' # Grounded in test-animal-keyword.R.
@@ -186,7 +186,7 @@ animal_unique <- function(id, pedigree = NULL, A = NULL, Ainv = NULL) {
 #' )
 #' fit <- gllvmTMB(
 #'   value ~ 0 + trait + animal_indep(0 + trait | species, A = A),
-#'   data = df, family = gaussian()
+#'   data = df, family = gaussian(), unit = "species", cluster = "species"
 #' )
 #' }
 #' @export
@@ -221,7 +221,7 @@ animal_indep <- function(formula, pedigree = NULL, A = NULL, Ainv = NULL,
 #' @return See [animal_scalar()].
 #' @seealso [animal_scalar()], [animal_indep()], [phylo_latent()].
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' # Factor-analytic G-matrix (d latent factors plus diagonal Psi).
 #' # Grounded in test-animal-keyword.R.
 #' ped <- data.frame(
@@ -242,7 +242,7 @@ animal_indep <- function(formula, pedigree = NULL, A = NULL, Ainv = NULL,
 #' fit <- gllvmTMB(
 #'   value ~ 0 + trait + animal_latent(species, d = 1, pedigree = ped,
 #'                                    unique = TRUE),
-#'   data = df, family = gaussian()
+#'   data = df, family = gaussian(), unit = "species", cluster = "species"
 #' )
 #' }
 #' @export
@@ -270,7 +270,7 @@ animal_latent <- function(
 #' @return See [animal_scalar()].
 #' @seealso [animal_latent()], [phylo_dep()].
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' # Full unstructured additive-genetic trait covariance (rank = n_traits).
 #' # Grounded in test-animal-keyword.R.
 #' ped <- data.frame(
@@ -290,7 +290,7 @@ animal_latent <- function(
 #' )
 #' fit <- gllvmTMB(
 #'   value ~ 0 + trait + animal_dep(0 + trait | species, A = A),
-#'   data = df, family = gaussian()
+#'   data = df, family = gaussian(), unit = "species", cluster = "species"
 #' )
 #' }
 #' @export
@@ -323,7 +323,7 @@ animal_dep <- function(formula, pedigree = NULL, A = NULL, Ainv = NULL) {
 #' @return See [animal_scalar()].
 #' @seealso [animal_scalar()], [animal_latent()], [phylo_slope()].
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' # Additive-genetic random regression: one heritable slope variance on a
 #' # continuous covariate x, slopes correlated by the relatedness matrix A.
 #' # Grounded in test-animal-slope-recovery.R.
@@ -562,7 +562,6 @@ pedigree_to_A <- function(pedigree) {
 #' implementation this builder is validated against.)
 #' @export
 #' @examples
-#' \dontrun{
 #' ped <- data.frame(
 #'   id   = paste0("i", 1:6),
 #'   sire = c(NA, NA, "i1", "i1", "i3", "i3"),
@@ -571,7 +570,6 @@ pedigree_to_A <- function(pedigree) {
 #' Ainv <- pedigree_to_Ainv_sparse(ped)
 #' class(Ainv)  # "dgCMatrix"
 #' dim(Ainv)    # 6 x 6
-#' }
 pedigree_to_Ainv_sparse <- function(pedigree) {
   if (!is.data.frame(pedigree) || ncol(pedigree) < 3L) {
     cli::cli_abort(c(

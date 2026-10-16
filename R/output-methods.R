@@ -26,8 +26,10 @@
 #'   returns scores and loadings together.
 #' @keywords internal
 #' @export
-#' @examples
-#' \dontrun{
+#' @details
+#' Template for an existing fitted model or data set; replace the named
+#' inputs with your own objects before running this code.
+#' \preformatted{
 #' getLoadings(fit, level = "unit", rotate = "varimax")
 #' }
 getLoadings <- function(
@@ -80,8 +82,10 @@ getLoadings <- function(
 #' @seealso [extract_ordination()] for scores and loadings together;
 #'   [getLoadings()] for the `gllvm`-style spelling.
 #' @export
-#' @examples
-#' \dontrun{
+#' @details
+#' Template for an existing fitted model or data set; replace the named
+#' inputs with your own objects before running this code.
+#' \preformatted{
 #' extract_loadings(fit, level = "unit", rotate = "varimax")
 #' }
 extract_loadings <- function(
@@ -160,8 +164,10 @@ extract_loadings <- function(
 #' @seealso [extract_ordination()] for scores and loadings together.
 #' @keywords internal
 #' @export
-#' @examples
-#' \dontrun{
+#' @details
+#' Template for an existing fitted model or data set; replace the named
+#' inputs with your own objects before running this code.
+#' \preformatted{
 #' getLV(fit, level = "unit")
 #' getLV(fit, level = "unit", se = TRUE)
 #' }

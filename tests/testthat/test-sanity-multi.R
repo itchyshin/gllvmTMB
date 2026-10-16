@@ -17,7 +17,7 @@ test_that("sanity_multi() reports the expected fields", {
       latent(0 + trait | site, d = 2),
     data = sim$data
   )
-  flags <- capture.output(out <- sanity_multi(fit))
+  flags <- capture.output(out <- sanity_multi(fit), type = "message")
   expect_true(out$converged)
   expect_true(is.finite(out$max_gradient))
   expect_true(is.logical(out$pd_hessian))
@@ -590,7 +590,7 @@ test_that("diagnostics degrade gracefully when sdreport is unavailable", {
   fit$fit_health <- NULL
   fit$sdreport_error <- "forced sdreport failure"
 
-  flags <- capture.output(out <- sanity_multi(fit))
+  flags <- capture.output(out <- sanity_multi(fit), type = "message")
   expect_false(out$sdreport_ok)
   expect_equal(out$sdreport_error, "forced sdreport failure")
 
@@ -637,7 +637,7 @@ test_that("gllvmTMB records an in-fit TMB::sdreport failure", {
   )
   expect_false(fit$fit_health$sdreport_ok)
 
-  flags <- capture.output(out <- sanity_multi(fit))
+  flags <- capture.output(out <- sanity_multi(fit), type = "message")
   expect_false(out$sdreport_ok)
   expect_match(
     out$sdreport_error,

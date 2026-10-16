@@ -54,10 +54,10 @@ on the same grouping is \strong{over-parameterised}. Combining \code{dep} with
 \code{unique} or \code{indep} on the same grouping is \strong{redundant} (\code{dep}
 standalone already includes the trait-level diagonal). The parser
 raises \code{cli::cli_abort()} in any of these cases.
-}
-}
-\examples{
-\dontrun{
+
+Template for an existing fitted model or data set; replace the named
+inputs with your own objects before running this code.
+\preformatted{
 # Full unstructured trait covariance fit:
 fit <- gllvmTMB(value ~ 0 + trait + dep(0 + trait | site),
                 data = df, trait = "trait", unit = "site")
@@ -70,6 +70,7 @@ fit <- gllvmTMB(value ~ 0 + trait + latent(0 + trait | site, d = T),
 # gllvmTMB(value ~ 0 + trait +
 #           dep(0 + trait | site) +
 #           latent(0 + trait | site, d = 2), data = df)
+}
 }
 }
 \seealso{

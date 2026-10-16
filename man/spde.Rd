@@ -135,7 +135,7 @@ session; see \code{\link[=spatial_indep]{spatial_indep()}}.
 }
 }
 \examples{
-\dontrun{
+\donttest{
 set.seed(2025)
 s <- simulate_site_trait(
   n_sites = 60, n_species = 1, n_traits = 3, mean_species_per_site = 1,

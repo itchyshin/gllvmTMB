@@ -618,6 +618,13 @@
 #' @param x,object A fit returned by [gllvmTMB()].
 #' @param digits Decimal digits in the printed summary. Default 3.
 #' @param ... Currently unused.
+#' @return `print()` returns its input invisibly, after displaying the fit or
+#'   summary. `summary()` returns a list of class `summary.gllvmTMB_multi`
+#'   containing the model header, fixed-effect estimates, covariance summaries,
+#'   and convergence diagnostics. `logLik()` returns a scalar of class `logLik`
+#'   with `df` and `nobs` attributes for supported likelihood fits. `nobs()`
+#'   returns the number of likelihood-contributing response cells as a numeric
+#'   scalar. Estimator restrictions described below apply to these accessors.
 #' @name gllvmTMB_multi-methods
 #' @export
 print.gllvmTMB_multi <- function(x, ...) {
@@ -2023,7 +2030,7 @@ sanity_multi <- function(object, gradient_thresh = 1e-2, se_thresh = 100) {
 
   ## 1. nlminb convergence
   flags$converged <- (object$opt$convergence == 0L)
-  cat(sprintf(
+  message(sprintf(
     "%-44s %s\n",
     "Optimiser convergence (== 0):",
     if (flags$converged) "PASS" else "FAIL"
@@ -2036,7 +2043,7 @@ sanity_multi <- function(object, gradient_thresh = 1e-2, se_thresh = 100) {
     object$tmb_obj, object$opt$par, object$aghq$ridge_tau %||% Inf
   )
   flags$max_gradient <- max(abs(g))
-  cat(sprintf(
+  message(sprintf(
     "%-44s %s (max |gr| = %.3g%s)\n",
     sprintf("Max |gradient| < %.1e:", gradient_thresh),
     if (flags$max_gradient < gradient_thresh) "PASS" else "WARN",
@@ -2058,13 +2065,13 @@ sanity_multi <- function(object, gradient_thresh = 1e-2, se_thresh = 100) {
       object$sd_report$pdHess
   }
   flags$pd_hessian <- pd
-  cat(sprintf(
+  message(sprintf(
     "%-44s %s\n",
     "Hessian positive-definite:",
     if (is_mspl) "WITHHELD (MSPL point estimate)" else if (pd) "PASS" else "WARN"
   ))
   if (!sdreport_ok && !is_mspl) {
-    cat(sprintf(
+    message(sprintf(
       "%-44s WARN (%s)\n",
       "sdreport available:",
       flags$sdreport_error
@@ -2088,13 +2095,13 @@ sanity_multi <- function(object, gradient_thresh = 1e-2, se_thresh = 100) {
     max(se, na.rm = TRUE)
   }
   if (is_mspl) {
-    cat(sprintf(
+    message(sprintf(
       "%-44s %s\n",
       sprintf("Max fixed-effect SE < %g:", se_thresh),
       "WITHHELD (MSPL point estimate)"
     ))
   } else {
-    cat(sprintf(
+    message(sprintf(
       "%-44s %s (max SE = %.3g)\n",
       sprintf("Max fixed-effect SE < %g:", se_thresh),
       if (!is.na(flags$max_se) && flags$max_se < se_thresh) "PASS" else "WARN",
@@ -2111,7 +2118,7 @@ sanity_multi <- function(object, gradient_thresh = 1e-2, se_thresh = 100) {
     ])
     flags$rr_B_min_loading <- min(abs(diag_B))
     b_lbl <- if (!is.null(object$unit_col)) object$unit_col else "unit"
-    cat(sprintf(
+    message(sprintf(
       "%-44s %s (min |Lambda_B diag| = %.3g)\n",
       sprintf("latent(%s, d=B) diag loadings non-zero:", b_lbl),
       if (flags$rr_B_min_loading > 1e-3) "PASS" else "WARN",
@@ -2130,7 +2137,7 @@ sanity_multi <- function(object, gradient_thresh = 1e-2, se_thresh = 100) {
     } else {
       "site_species"
     }
-    cat(sprintf(
+    message(sprintf(
       "%-44s %s (min |Lambda_W diag| = %.3g)\n",
       sprintf("latent(%s, d=W) diag loadings non-zero:", w_lbl),
       if (flags$rr_W_min_loading > 1e-3) "PASS" else "WARN",

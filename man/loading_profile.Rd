@@ -56,14 +56,14 @@ This is \strong{expensive}: each entry requires \code{n_grid} partial refits,
 so a 20-species 2-factor fit at default \code{n_grid = 11} is ~440 fits.
 For binary probit at the scale of this article's fixture, expect
 minutes. Use \code{entries} to restrict to a subset when iterating.
-}
-\examples{
-\dontrun{
+
+Template for an existing fitted model or data set; replace the named
+inputs with your own objects before running this code.
+\preformatted{
 pf <- loading_profile(fit, level = "unit")
 plot(pf)                              # all entries faceted
 loading_ci(fit, method = "profile")   # inverts pf internally
 }
-
 }
 \seealso{
 \code{\link[=loading_ci]{loading_ci()}} for the inverted-CI version,

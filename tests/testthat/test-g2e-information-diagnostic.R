@@ -56,6 +56,7 @@ test_that("G2e preflight retains a re-readable provenance root without fitting",
   isdm_dev_path()  # skips when dev/ did not ship in the built package
   pkg_root <- normalizePath(file.path(testthat::test_path(), "..", ".."), mustWork = TRUE)
   script <- file.path(pkg_root, "dev", "isdm-package-recovery", "run-g2e-information-diagnostic.R")
+  pkg_root <- isdm_temp_package(pkg_root)
   out <- file.path(pkg_root, "dev", "isdm-package-recovery", "results", paste0("testthat-g2e-preflight-", Sys.getpid()))
   on.exit(unlink(out, recursive = TRUE, force = TRUE), add = TRUE)
   result <- system2(file.path(R.home("bin"), "Rscript"), c("--vanilla", script, "--mode=preflight", paste0("--output=", out), paste0("--pkg=", pkg_root)), stdout = TRUE, stderr = TRUE)

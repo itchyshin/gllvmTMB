@@ -60,8 +60,10 @@
 #' @seealso [loading_ci()] for the inverted-CI version,
 #'   [plot.profile_loadings()] for the U-shape visualisation.
 #'
-#' @examples
-#' \dontrun{
+#' @details
+#' Template for an existing fitted model or data set; replace the named
+#' inputs with your own objects before running this code.
+#' \preformatted{
 #' pf <- loading_profile(fit, level = "unit")
 #' plot(pf)                              # all entries faceted
 #' loading_ci(fit, method = "profile")   # inverts pf internally

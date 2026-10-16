@@ -609,7 +609,7 @@ conditional-joint and marginal quantities from different penalty regimes.
 }
 
 \examples{
-\dontrun{
+\donttest{
 set.seed(1)
 sim <- simulate_site_trait(n_sites = 50, n_species = 8, n_traits = 3,
                            mean_species_per_site = 5)

@@ -52,6 +52,14 @@ fit's TMB \code{sdreport()} -- but no accessor exposed it. \code{getREsd()} clos
 that gap for the blocks whose point-estimate reshape convention is
 already established elsewhere in the package (see \code{block} below).
 }
+\details{
+Template for an existing fitted model or data set; replace the named
+inputs with your own objects before running this code.
+\preformatted{
+getREsd(fit, block = "re_int")
+getREsd(fit, block = "diag_unit")
+}
+}
 \section{What this is, and is not}{
 
 Every number returned here is a \strong{Wald / \code{sdreport()} marginal standard
@@ -92,12 +100,6 @@ them safely needs that groundwork first; this function raises a clear
 error naming the block rather than silently mis-reshaping.
 }
 
-\examples{
-\dontrun{
-getREsd(fit, block = "re_int")
-getREsd(fit, block = "diag_unit")
-}
-}
 \seealso{
 \code{\link[=getLV]{getLV()}} for the ordinary latent-score standard errors this
 function generalises.

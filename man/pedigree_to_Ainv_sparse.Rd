@@ -46,7 +46,6 @@ order, OR named columns matching \code{id}/\code{animal}, \code{sire}/\code{fath
 \code{NA} or \code{0}. Founders (both parents unknown) are treated as unrelated.
 }
 \examples{
-\dontrun{
 ped <- data.frame(
   id   = paste0("i", 1:6),
   sire = c(NA, NA, "i1", "i1", "i3", "i3"),
@@ -55,7 +54,6 @@ ped <- data.frame(
 Ainv <- pedigree_to_Ainv_sparse(ped)
 class(Ainv)  # "dgCMatrix"
 dim(Ainv)    # 6 x 6
-}
 }
 \references{
 Henderson, C. R. (1976). A simple method for computing the inverse

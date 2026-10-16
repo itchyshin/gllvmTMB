@@ -20,8 +20,10 @@ orthogonal transform that brings one matrix as close as possible to the
 other, then reports the residual disagreement. This is mainly a validation
 helper for comparing \code{\link[=gllvmTMB]{gllvmTMB()}} with another implementation.
 }
-\examples{
-\dontrun{
+\details{
+Template for an existing fitted model or data set; replace the named
+inputs with your own objects before running this code.
+\preformatted{
 fit_g <- gllvmTMB(value ~ 0 + trait + latent(0 + trait | site, d = 2),
                   data = df, trait = "trait", unit = "site")
 fit_t <- glmmTMB::glmmTMB(value ~ 0 + trait + rr(0 + trait | site, d = 2),

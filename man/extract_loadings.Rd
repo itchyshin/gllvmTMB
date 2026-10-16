@@ -27,8 +27,10 @@ the canonical snake_case accessor in the \verb{extract_*()} family; \code{\link[
 is an accepted compatibility spelling for readers coming from \code{gllvm}. Both
 return the same matrix.
 }
-\examples{
-\dontrun{
+\details{
+Template for an existing fitted model or data set; replace the named
+inputs with your own objects before running this code.
+\preformatted{
 extract_loadings(fit, level = "unit", rotate = "varimax")
 }
 }

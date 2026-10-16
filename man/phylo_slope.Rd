@@ -64,7 +64,7 @@ augmented \code{phylo_indep()}, \code{phylo_latent()}, or \code{phylo_dep()} syn
 }
 }
 \examples{
-\dontrun{
+\donttest{
   tree <- ape::rcoal(20); tree$tip.label <- paste0("sp", seq_len(20))
   sim <- simulate_site_trait(
     n_sites = 10, n_species = 20, n_traits = 3,

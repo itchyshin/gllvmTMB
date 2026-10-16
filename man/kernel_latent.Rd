@@ -52,7 +52,7 @@ strength. \code{\link[=extract_Gamma]{extract_Gamma()}} returns descriptive poin
 provide calibrated intervals or establish a causal evolutionary process.
 }
 \examples{
-\dontrun{
+\donttest{
 A <- diag(5)
 dat <- data.frame(
   unit = factor(rep(paste0("u", 1:5), each = 2), levels = paste0("u", 1:5)),

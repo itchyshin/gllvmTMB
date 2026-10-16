@@ -43,7 +43,7 @@ relatedness matrix), or \verb{Ainv =} (precision matrix). Sparse \code{Ainv}
 inputs use the sparse precision route.
 }
 \examples{
-\dontrun{
+\donttest{
 # Pedigree-derived additive-genetic relatedness; single shared
 # variance across traits. Grounded in test-animal-keyword.R.
 ped <- data.frame(
@@ -63,7 +63,7 @@ df <- data.frame(
 )
 fit <- gllvmTMB(
   value ~ 0 + trait + animal_scalar(species, pedigree = ped),
-  data = df, family = gaussian()
+  data = df, family = gaussian(), unit = "species", cluster = "species"
 )
 }
 

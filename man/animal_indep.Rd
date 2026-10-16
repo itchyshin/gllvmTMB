@@ -27,7 +27,7 @@ disambiguates printing.
 Mathematical parallel to \code{\link[=phylo_indep]{phylo_indep()}}.
 }
 \examples{
-\dontrun{
+\donttest{
 # Independent per-trait animal-model intercepts via the bar form,
 # passing the dense relatedness matrix A directly.
 # Grounded in test-animal-keyword.R.
@@ -48,7 +48,7 @@ df <- data.frame(
 )
 fit <- gllvmTMB(
   value ~ 0 + trait + animal_indep(0 + trait | species, A = A),
-  data = df, family = gaussian()
+  data = df, family = gaussian(), unit = "species", cluster = "species"
 )
 }
 }

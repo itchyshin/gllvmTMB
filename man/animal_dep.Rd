@@ -22,7 +22,7 @@ of a rank-\eqn{T} \eqn{\boldsymbol\Lambda} (i.e. the
 \code{\link[=phylo_dep]{phylo_dep()}}.
 }
 \examples{
-\dontrun{
+\donttest{
 # Full unstructured additive-genetic trait covariance (rank = n_traits).
 # Grounded in test-animal-keyword.R.
 ped <- data.frame(
@@ -42,7 +42,7 @@ df <- data.frame(
 )
 fit <- gllvmTMB(
   value ~ 0 + trait + animal_dep(0 + trait | species, A = A),
-  data = df, family = gaussian()
+  data = df, family = gaussian(), unit = "species", cluster = "species"
 )
 }
 }

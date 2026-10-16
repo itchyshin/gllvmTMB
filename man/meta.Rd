@@ -37,10 +37,10 @@ individual, etc.), within-study sampling errors are correlated and
 V is \strong{block-diagonal}. The engine supports any positive-definite
 \eqn{n \times n} V via \code{solve(V)} internally. Build a block-diagonal
 V with \code{\link[=block_V]{block_V()}} and pass it to \code{gllvmTMB()} as \code{known_V = V_block}.
-}
-}
-\examples{
-\dontrun{
+
+Template for an existing fitted model or data set; replace the named
+inputs with your own objects before running this code.
+\preformatted{
 # Preferred (canonical) form -- use meta_V():
 V    <- diag(stage1_summary$sampling_var)
 fit2 <- gllvmTMB(value ~ 0 + trait +
@@ -59,6 +59,7 @@ fit2 <- gllvmTMB(value ~ 0 + trait +
                  trait   = "trait",
                  unit    = "site",
                  known_V = V)
+}
 }
 }
 \seealso{

@@ -45,8 +45,10 @@
 #' @seealso [ordinal_probit()] for the family constructor and the
 #'   threshold-trait theory reference list.
 #'
-#' @examples
-#' \dontrun{
+#' @details
+#' Template for an existing fitted model or data set; replace the named
+#' inputs with your own objects before running this code.
+#' \preformatted{
 #' fit <- gllvmTMB(
 #'   value ~ 0 + trait + phylo_indep(species, tree = tree),
 #'   data    = ordinal_dat,

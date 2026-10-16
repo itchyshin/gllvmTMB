@@ -45,9 +45,10 @@ summaries but does not replace profile, bootstrap, or
 simulation calibration. Target-explicit validation will
 decide which interval warnings can be promoted to broader
 guarantees.
-}
-\examples{
-\dontrun{
+
+Template for an existing fitted model or data set; replace the named
+inputs with your own objects before running this code.
+\preformatted{
 fit <- gllvmTMB(value ~ 0 + trait + latent(0 + trait | site, d = 2),
                 data = dat, trait = "trait", unit = "site")
 gllvmTMB_diagnose(fit)

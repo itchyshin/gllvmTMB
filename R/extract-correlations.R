@@ -366,7 +366,7 @@
 #'
 #' @export
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' set.seed(1)
 #' s <- simulate_site_trait(
 #'   n_sites = 80, n_species = 6, n_traits = 4,
@@ -385,9 +385,10 @@
 #' ## Opt-in Fisher-z sensitivity bounds with an explicitly justified n_eff.
 #' cors2 <- extract_correlations(fit, tier = "unit", method = "fisher-z",
 #'                                n_eff = 60L)
-#' ## Bootstrap (B = 200).
+#' ## Fifty refits illustrate the API, rather than establish coverage.
+#' ## Inspect failed refits and increase B for a scientific analysis.
 #' cors_b <- extract_correlations(fit, tier = "unit", method = "bootstrap",
-#'                                nsim = 200, seed = 42)
+#'                                nsim = 50, seed = 42)
 #' }
 extract_correlations <- function(
   fit,
@@ -851,7 +852,7 @@ extract_correlations <- function(
 #'   for `"bootstrap"`) -- coverage is not yet certified for any
 #'   route (recovery evidence for this route is not yet complete).
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' set.seed(12)
 #' n_unit <- 120L
 #' n_rep <- 3L

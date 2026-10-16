@@ -71,7 +71,7 @@ promax, \code{T} is oblique and the columns of \eqn{\Lambda_{\text{rot}}}
 are no longer orthogonal.
 }
 \examples{
-\dontrun{
+\donttest{
 set.seed(1)
 sim <- simulate_site_trait(
   n_sites = 60, n_species = 12, n_traits = 4,

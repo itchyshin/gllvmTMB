@@ -189,10 +189,10 @@ formula keyword \code{unique(0 + trait | group)} inside a \code{gllvmTMB()}
 formula is recognised by the formula parser at fit time; it is
 \strong{not} a call to \code{\link[base:diag]{base::diag()}}. This help page documents the
 formula keyword.
-}
-}
-\examples{
-\dontrun{
+
+Template for an existing fitted model or data set; replace the named
+inputs with your own objects before running this code.
+\preformatted{
 # Behavioural-syndrome / two-level pattern:
 fit <- gllvmTMB(
   value ~ 0 + trait +
@@ -206,6 +206,7 @@ fit <- gllvmTMB(
 extract_Sigma(fit, level = "unit", part = "shared")$Sigma # Lambda Lambda^T
 extract_Sigma(fit, level = "unit", part = "unique")$s     # diag(Psi)
 extract_Sigma(fit, level = "unit", part = "total")$Sigma  # both, summed
+}
 }
 }
 \references{

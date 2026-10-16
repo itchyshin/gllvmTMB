@@ -212,7 +212,7 @@ inspired this work, in
 }
 
 \examples{
-\dontrun{
+\donttest{
 ## Fit a tiny example
 set.seed(1)
 s <- simulate_site_trait(
@@ -229,13 +229,12 @@ fit <- gllvmTMB(
   unit  = "site"
 )
 
-## Profile-likelihood CIs for the between-site covariance matrix (default)
-ci_unit <- confint(fit, parm = "Sigma_unit")
+## Bootstrap CIs for the between-site covariance matrix.
+## Fifty refits illustrate the API; they do not establish interval coverage.
+## Inspect failed refits and use more replicates for a scientific analysis.
+ci_unit <- confint(fit, parm = "Sigma_unit", method = "bootstrap",
+                   nsim = 50, seed = 42)
 ci_unit
-
-## Bootstrap route (slow; inspect failed refits and target calibration)
-ci_unit_boot <- confint(fit, parm = "Sigma_unit", method = "bootstrap",
-                        nsim = 200, seed = 42)
 
 ## Wald CIs for fixed effects
 confint(fit)

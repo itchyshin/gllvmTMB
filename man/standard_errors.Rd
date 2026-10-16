@@ -35,6 +35,20 @@ Fits made with non-unit likelihood weights use a weighted objective rather
 than an ordinary likelihood. \code{standard_errors()} refuses those fits because
 the package does not yet provide sandwich-calibrated uncertainty for them;
 point estimates remain available from the fitted model.
+
+Template for an existing fitted model or data set; replace the named
+inputs with your own objects before running this code.
+\preformatted{
+## Fit fast, decide later whether standard errors are needed.
+fit <- gllvmTMB(
+  traits(y1, y2) ~ 1 + latent(1 | site, d = 1),
+  data = dat, family = gaussian(),
+  control = gllvmTMBcontrol(se = FALSE)
+)
+
+fit <- standard_errors(fit)
+summary(fit)
+}
 }
 \section{When this helps}{
 
@@ -66,19 +80,6 @@ honesty caveat that already applies to Wald standard errors from this
 package.
 }
 
-\examples{
-\dontrun{
-## Fit fast, decide later whether standard errors are needed.
-fit <- gllvmTMB(
-  traits(y1, y2) ~ 1 + latent(1 | site, d = 1),
-  data = dat, family = gaussian(),
-  control = gllvmTMBcontrol(se = FALSE)
-)
-
-fit <- standard_errors(fit)
-summary(fit)
-}
-}
 \seealso{
 \code{\link[=gllvmTMBcontrol]{gllvmTMBcontrol()}} for the \code{se} argument that defers the
 calculation; \code{\link[=getREsd]{getREsd()}} and \code{\link[=getLV]{getLV()}} for accessors that read the

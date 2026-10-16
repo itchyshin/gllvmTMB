@@ -54,9 +54,10 @@ kernel-similarity diagnostics. If the requested component participates in a
 high-overlap kernel pair, the returned block is still available, but a
 warning reminds the caller that component-specific separation is weak
 evidence.
-}
-\examples{
-\dontrun{
+
+Template for an existing fitted model or data set; replace the named
+inputs with your own objects before running this code.
+\preformatted{
 Gamma_HP <- extract_Gamma(
   fit,
   level = "cross",
@@ -64,5 +65,4 @@ Gamma_HP <- extract_Gamma(
   col_traits = c("partner_size", "partner_attack")
 )
 }
-
 }

@@ -150,7 +150,7 @@ not point estimates (\code{R/bootstrap-sigma.R}, \code{R/cv-internal.R}).
 }
 
 \examples{
-\dontrun{
+\donttest{
 set.seed(1)
 n_ind <- 30L
 n_traits <- 2L

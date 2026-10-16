@@ -45,9 +45,10 @@ For two-level behavioural-syndrome fits, \code{tiers = c("B", "W")}
 returns the \strong{phenotypic} trait covariance
 \eqn{\boldsymbol\Sigma_P = \boldsymbol\Sigma_B + \boldsymbol\Sigma_W}
 .
-}
-\examples{
-\dontrun{
+
+Template for an existing fitted model or data set; replace the named
+inputs with your own objects before running this code.
+\preformatted{
 # PGLLVM three-piece total
 om <- extract_Omega(fit, tiers = c("phy", "B"))
 round(om$R_Omega, 2)

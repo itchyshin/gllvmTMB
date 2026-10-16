@@ -219,9 +219,10 @@ A \code{WARN} row, including \code{pdHess = FALSE}, means that Wald standard
 errors or curvature-based inference need more care; it is not by
 itself proof that the fitted mean, likelihood, or rotation-invariant
 covariance summaries are unusable.
-}
-\examples{
-\dontrun{
+
+Template for an existing fitted model or data set; replace the named
+inputs with your own objects before running this code.
+\preformatted{
 fit <- gllvmTMB(value ~ 0 + trait + latent(0 + trait | site, d = 2),
                 data = dat, trait = "trait", unit = "site")
 check_gllvmTMB(fit)

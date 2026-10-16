@@ -83,7 +83,7 @@ Pass the phylogeny via \code{tree = phylo} (canonical, sparse \eqn{\mathbf{A}^{-
 }
 }
 \examples{
-\dontrun{
+\donttest{
   tree <- ape::rcoal(8); tree$tip.label <- paste0("sp", seq_len(8))
   sim <- simulate_site_trait(
     n_sites = 1, n_species = 8, n_traits = 3,

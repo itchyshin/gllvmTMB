@@ -89,8 +89,10 @@
 #'   [confirmatory_lambda()] to build a confirmatory constraint matrix;
 #'   [extract_communality()] for rotation-invariant alternatives.
 #'
-#' @examples
-#' \dontrun{
+#' @details
+#' Template for an existing fitted model or data set; replace the named
+#' inputs with your own objects before running this code.
+#' \preformatted{
 #' # Build a confirmatory fit
 #' M <- confirmatory_lambda(
 #'   species  = species_names,
@@ -344,8 +346,10 @@ loading_ci <- function(fit,
 #'
 #' @seealso [loading_ci()].
 #'
-#' @examples
-#' \dontrun{
+#' @details
+#' Template for an existing fitted model or data set; replace the named
+#' inputs with your own objects before running this code.
+#' \preformatted{
 #' ## Grounded in tests/testthat/test-loading-ci.R. flag_unreliable_loadings()
 #' ## accepts either a fit or a loading_ci() data frame directly.
 #' fit <- gllvmTMB(

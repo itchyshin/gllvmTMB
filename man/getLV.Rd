@@ -36,6 +36,14 @@ Returns latent scores from a fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}
 compatibility wrapper around \code{\link[=extract_ordination]{extract_ordination()}} for readers familiar
 with \code{gllvm::getLV()}.
 }
+\details{
+Template for an existing fitted model or data set; replace the named
+inputs with your own objects before running this code.
+\preformatted{
+getLV(fit, level = "unit")
+getLV(fit, level = "unit", se = TRUE)
+}
+}
 \section{Score uncertainty}{
 
 For an ordinary Laplace fit, \code{se = TRUE} reads the marginal standard error
@@ -83,12 +91,6 @@ provable under \code{"ac"} (Albert-Chib) and was \emph{measured} on a Gaussian f
 catch.
 }
 
-\examples{
-\dontrun{
-getLV(fit, level = "unit")
-getLV(fit, level = "unit", se = TRUE)
-}
-}
 \seealso{
 \code{\link[=extract_ordination]{extract_ordination()}} for scores and loadings together.
 }

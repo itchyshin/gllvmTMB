@@ -30,6 +30,7 @@ test_that("G2f preflight retains a readable, self-contained no-fit contract", {
   isdm_dev_path()  # skips when dev/ did not ship in the built package
   pkg <- normalizePath(file.path(testthat::test_path(), "..", ".."), mustWork = TRUE)
   script <- file.path(pkg, "dev", "isdm-package-recovery", "run-g2f-pa-replication.R")
+  pkg <- isdm_temp_package(pkg)
   root <- file.path(pkg, "dev", "isdm-package-recovery", "results", paste0("g2f-test-preflight-", as.integer(Sys.time())))
   on.exit(unlink(root, recursive = TRUE), add = TRUE)
   result <- system2(file.path(R.home("bin"), "Rscript"), c("--vanilla", script, "--mode=preflight", paste0("--output=", root), paste0("--pkg=", pkg)), stdout = TRUE, stderr = TRUE)
@@ -66,6 +67,7 @@ test_that("G2f reconciliation closes only an existing unclosed smoke root withou
   isdm_dev_path()  # skips when dev/ did not ship in the built package
   pkg <- normalizePath(file.path(testthat::test_path(), "..", ".."), mustWork = TRUE)
   script <- file.path(pkg, "dev", "isdm-package-recovery", "run-g2f-pa-replication-smoke.R")
+  pkg <- isdm_temp_package(pkg)
   root <- file.path(pkg, "dev", "isdm-package-recovery", "results", paste0("g2f-test-reconcile-", Sys.getpid()))
   dir.create(root, recursive = TRUE)
   on.exit(unlink(root, recursive = TRUE, force = TRUE), add = TRUE)

@@ -1530,8 +1530,10 @@
 #'   `threshold`, `message`, and `action`. Status values are `"PASS"`,
 #'   `"WARN"`, or `"FAIL"`.
 #' @export
-#' @examples
-#' \dontrun{
+#' @details
+#' Template for an existing fitted model or data set; replace the named
+#' inputs with your own objects before running this code.
+#' \preformatted{
 #' fit <- gllvmTMB(value ~ 0 + trait + latent(0 + trait | site, d = 2),
 #'                 data = dat, trait = "trait", unit = "site")
 #' check_gllvmTMB(fit)
@@ -1987,8 +1989,10 @@ check_gllvmTMB <- function(
 #'   [extract_Sigma()], [extract_communality()],
 #'   [compare_dep_vs_two_psi()] / [compare_indep_vs_two_psi()] for
 #'   identifiability cross-checks on the paired phylogenetic fit.
-#' @examples
-#' \dontrun{
+#' @details
+#' Template for an existing fitted model or data set; replace the named
+#' inputs with your own objects before running this code.
+#' \preformatted{
 #' fit <- gllvmTMB(value ~ 0 + trait + latent(0 + trait | site, d = 2),
 #'                 data = dat, trait = "trait", unit = "site")
 #' gllvmTMB_diagnose(fit)
@@ -2016,15 +2020,11 @@ gllvmTMB_diagnose <- function(
       se_thresh = se_thresh
     )
   } else {
-    ## Capture the print output so silent calls don't pollute stdout
-    suppressWarnings(utils::capture.output({
-      flags <- sanity_multi(
-        object,
-        gradient_thresh = gradient_thresh,
-        se_thresh = se_thresh
-      )
-    }))
-    flags
+    suppressMessages(sanity_multi(
+      object,
+      gradient_thresh = gradient_thresh,
+      se_thresh = se_thresh
+    ))
   }
 
   ## ---- Pillar 2: rotation identifiability --------------------------

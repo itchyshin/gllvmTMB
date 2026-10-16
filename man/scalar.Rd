@@ -31,9 +31,10 @@ The shared variance still couples grouping levels through the source
 (identity for the no-prefix row). The source-specific \code{phylo_scalar()},
 \code{animal_scalar()}, and \code{spatial_scalar()} carry the same one-shared-variance
 meaning on their respective relationship operators.
-}
-\examples{
-\dontrun{
+
+Template for an existing fitted model or data set; replace the named
+inputs with your own objects before running this code.
+\preformatted{
 # One shared trait variance across all traits (identity cross-trait):
 fit <- gllvmTMB(value ~ 0 + trait + scalar(0 + trait | site),
                 data = df, trait = "trait", unit = "site")

@@ -60,13 +60,13 @@ loading display in JSDM is the site-score uncertainty plot of Hoegh
 scores rather than species loadings. To my knowledge no equivalent
 plot of per-species Lambda uncertainty exists in the ML/TMB JSDM
 lineage (gllvm, sjSDM, ecoCopula).
-}
-\examples{
-\dontrun{
+
+Template for an existing fitted model or data set; replace the named
+inputs with your own objects before running this code.
+\preformatted{
 plot_loadings_confidence_eye(fit, level = "unit",
                              null_region = c(-0.1, 0.1))
 }
-
 }
 \seealso{
 \code{\link[=loading_ci]{loading_ci()}}, \code{\link[=flag_unreliable_loadings]{flag_unreliable_loadings()}}.

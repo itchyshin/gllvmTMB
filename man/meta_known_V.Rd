@@ -25,7 +25,7 @@ code should use \code{meta_V(V = V)}. \code{meta_known_V()} remains available fo
 backward compatibility.
 }
 \examples{
-\dontrun{
+\donttest{
 # Deprecated alias of meta_V(); both desugar identically.
 # New code should use meta_V(V = V).
 set.seed(131)

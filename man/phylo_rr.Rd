@@ -59,9 +59,10 @@ gllvmTMB(value ~ 0 + trait + phylo_rr(species, d = 2),
          cluster   = "species",
          phylo_vcv = Cphy)
 }\if{html}{\out{</div>}}
-}
-\examples{
-\dontrun{
+
+Template for an existing fitted model or data set; replace the named
+inputs with your own objects before running this code.
+\preformatted{
 library(ape)
 tree   <- rcoal(20); tree$tip.label <- paste0("sp", 1:20)
 Cphy   <- vcv(tree, corr = TRUE)

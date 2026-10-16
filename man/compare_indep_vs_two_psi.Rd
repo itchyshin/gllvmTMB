@@ -61,9 +61,10 @@ Cross-check intent: the per-trait diagonals are the simplest summary
 the joint two-psi fit and the marginal baseline both target. If the
 diagonals already disagree beyond the threshold, no inspection of
 the cross-trait off-diagonals is warranted.
-}
-\examples{
-\dontrun{
+
+Template for an existing fitted model or data set; replace the named
+inputs with your own objects before running this code.
+\preformatted{
 diag <- compare_indep_vs_two_psi(fit)
 diag$flag
 diag$agreement

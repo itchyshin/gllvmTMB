@@ -61,7 +61,7 @@ or simulation-based uncertainty is not yet implemented and remains
 possible future work for a later inference slice.
 }
 \examples{
-\dontrun{
+\donttest{
 sim <- simulate_site_trait(
   n_sites = 60, n_species = 12, n_traits = 4,
   Lambda_B = matrix(c(1.0, 0.7, -0.3, 0.5,

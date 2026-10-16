@@ -44,9 +44,10 @@ reports K - 1 cutpoints as \verb{Intercept[1..K-1]}.
 This extractor includes Wald standard errors, so it refuses fits made with
 non-unit likelihood weights. The fitted cutpoint parameters remain point
 estimates, but weighted-objective uncertainty is not calibrated.
-}
-\examples{
-\dontrun{
+
+Template for an existing fitted model or data set; replace the named
+inputs with your own objects before running this code.
+\preformatted{
 fit <- gllvmTMB(
   value ~ 0 + trait + phylo_indep(species, tree = tree),
   data    = ordinal_dat,
@@ -57,7 +58,6 @@ fit <- gllvmTMB(
 )
 extract_cutpoints(fit)
 }
-
 }
 \references{
 Hadfield, J. D. (2015). Increasing the efficiency of MCMC for

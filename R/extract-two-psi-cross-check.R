@@ -466,8 +466,10 @@
 #'   extractor.
 #'
 #' @export
-#' @examples
-#' \dontrun{
+#' @details
+#' Template for an existing fitted model or data set; replace the named
+#' inputs with your own objects before running this code.
+#' \preformatted{
 #' library(ape)
 #' tree <- ape::rcoal(200)
 #' tree$tip.label <- paste0("sp", seq_len(200))
@@ -607,8 +609,10 @@ compare_dep_vs_two_psi <- function(
 #'   [extract_Sigma()].
 #'
 #' @export
-#' @examples
-#' \dontrun{
+#' @details
+#' Template for an existing fitted model or data set; replace the named
+#' inputs with your own objects before running this code.
+#' \preformatted{
 #' diag <- compare_indep_vs_two_psi(fit)
 #' diag$flag
 #' diag$agreement

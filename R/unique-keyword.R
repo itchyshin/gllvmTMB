@@ -203,8 +203,10 @@
 #' @name diag_re
 #' @aliases diag-keyword
 #' @keywords internal
-#' @examples
-#' \dontrun{
+#' @details
+#' Template for an existing fitted model or data set; replace the named
+#' inputs with your own objects before running this code.
+#' \preformatted{
 #' # Behavioural-syndrome / two-level pattern:
 #' fit <- gllvmTMB(
 #'   value ~ 0 + trait +

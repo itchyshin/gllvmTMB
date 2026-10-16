@@ -176,7 +176,10 @@
 #'
 #' @examples
 #' Beta(link = "logit")
-#' \dontrun{
+#' @details
+#' Template for an existing fitted model or data set; replace the named
+#' inputs with your own objects before running this code.
+#' \preformatted{
 #' ## Mixed-family example: per-row family chosen by a `family` column
 #' sim <- simulate_site_trait(n_sites = 40, n_species = 10, n_traits = 2,
 #'                            mean_species_per_site = 5)

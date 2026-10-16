@@ -4,7 +4,7 @@
 \alias{print.gllvmTMB_Sigma_phy_slope}
 \title{Print an augmented latent-slope Sigma extraction}
 \usage{
-\method{print}{gllvmTMB_Sigma_phy_slope}(x, digits = 3, ...)
+print.gllvmTMB_Sigma_phy_slope(x, digits = 3, ...)
 }
 \arguments{
 \item{x}{A \code{gllvmTMB_Sigma_phy_slope} object from

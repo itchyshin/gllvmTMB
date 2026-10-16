@@ -670,8 +670,10 @@ link_residual_per_trait <- function(fit) {
 #'   [extract_Omega()] for the multi-tier sum.
 #'
 #' @export
-#' @examples
-#' \dontrun{
+#' @details
+#' Template for an existing fitted model or data set; replace the named
+#' inputs with your own objects before running this code.
+#' \preformatted{
 #' fit <- gllvmTMB(
 #'   value ~ 0 + trait +
 #'           latent(0 + trait | unit, d = 2),
@@ -1705,8 +1707,10 @@ extract_Sigma <- function(
 #'
 #' @return A numeric matrix with rows `row_traits` and columns `col_traits`.
 #'
-#' @examples
-#' \dontrun{
+#' @details
+#' Template for an existing fitted model or data set; replace the named
+#' inputs with your own objects before running this code.
+#' \preformatted{
 #' Gamma_HP <- extract_Gamma(
 #'   fit,
 #'   level = "cross",
@@ -1821,8 +1825,10 @@ extract_Gamma <- function(
 #'   `kernel_value`, `gamma_shape`, `covariance`, `rho`, and
 #'   `kernel_includes_rho`.
 #'
-#' @examples
-#' \dontrun{
+#' @details
+#' Template for an existing fitted model or data set; replace the named
+#' inputs with your own objects before running this code.
+#' \preformatted{
 #' predict_cross_covariance(
 #'   fit,
 #'   level = "phy",
@@ -2186,8 +2192,10 @@ print.gllvmTMB_Sigma_phy_slope <- function(x, digits = 3, ...) {
 #'   per singular axis with its singular value and squared-value share.
 #'   `row_axes` and `col_axes` contain trait loadings for each coupled axis.
 #'
-#' @examples
-#' \dontrun{
+#' @details
+#' Template for an existing fitted model or data set; replace the named
+#' inputs with your own objects before running this code.
+#' \preformatted{
 #' mods <- extract_coevolution_modules(
 #'   fit,
 #'   level = "phy",

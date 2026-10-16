@@ -97,9 +97,10 @@ depend on the Laplace approximation being a good fit).
 \item Validating against \code{tmbstan::tmbstan(fit$tmb_obj)} (the
 audit's recommended Bayesian-comparison path).
 }
-}
-\examples{
-\dontrun{
+
+Template for an existing fitted model or data set; replace the named
+inputs with your own objects before running this code.
+\preformatted{
 fit <- gllvmTMB(value ~ 0 + trait +
                 latent(0 + trait | site, d = 1),
                 data  = sim$data,
@@ -110,7 +111,6 @@ res
 res$marginal_bias
 res$flagged_parameters
 }
-
 }
 \seealso{
 \code{\link[=sanity_multi]{sanity_multi()}} (structural / convergence checks),

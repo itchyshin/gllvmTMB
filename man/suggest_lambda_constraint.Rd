@@ -96,8 +96,10 @@ not discover biological factor structure; a low or pinned loading is a
 constraint choice or a result to interpret, not by itself grounds to
 exclude a trait.
 }
-\examples{
-\dontrun{
+\details{
+Template for an existing fitted model or data set; replace the named
+inputs with your own objects before running this code.
+\preformatted{
 sug <- suggest_lambda_constraint(
   value ~ 0 + trait + latent(0 + trait | site, d = 2),
   data = my_data

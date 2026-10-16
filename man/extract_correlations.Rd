@@ -173,7 +173,7 @@ as final.
 }
 
 \examples{
-\dontrun{
+\donttest{
 set.seed(1)
 s <- simulate_site_trait(
   n_sites = 80, n_species = 6, n_traits = 4,
@@ -192,9 +192,10 @@ cors <- extract_correlations(fit, tier = "unit")
 ## Opt-in Fisher-z sensitivity bounds with an explicitly justified n_eff.
 cors2 <- extract_correlations(fit, tier = "unit", method = "fisher-z",
                                n_eff = 60L)
-## Bootstrap (B = 200).
+## Fifty refits illustrate the API, rather than establish coverage.
+## Inspect failed refits and increase B for a scientific analysis.
 cors_b <- extract_correlations(fit, tier = "unit", method = "bootstrap",
-                               nsim = 200, seed = 42)
+                               nsim = 50, seed = 42)
 }
 }
 \seealso{

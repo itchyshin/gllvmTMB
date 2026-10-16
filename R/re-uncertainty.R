@@ -91,8 +91,10 @@
 #'   function generalises.
 #' @keywords internal
 #' @export
-#' @examples
-#' \dontrun{
+#' @details
+#' Template for an existing fitted model or data set; replace the named
+#' inputs with your own objects before running this code.
+#' \preformatted{
 #' getREsd(fit, block = "re_int")
 #' getREsd(fit, block = "diag_unit")
 #' }

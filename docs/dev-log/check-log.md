@@ -55605,3 +55605,28 @@ The latest R-release Win-builder result is the 2y10cf run: 1,044 seconds total, 
 Deliberately not run yet: package build/check, platform matrix, R-hub, pkgdown or URL checks, and CRAN upload; they follow the clean-source commit and exact-tarball freeze. The public docs and installed code are unchanged.
 
 Search/command evidence: `gh pr list --state open` failed because `api.github.com` was unreachable; `git log --all --name-only --since='6 hours ago'` found only the earlier release-core commit among the owned test files; `rg -n 'skip_on_cran|test_that'` confirmed the multinomial fit tests skip on CRAN and the admitted-family missing-response file has no CRAN skips. `rg -n 'NOT_CRAN|GITHUB_ACTIONS|testthat' .github/workflows/R-CMD-check.yaml .github/workflows/full-check.yaml` confirmed the full CI path sets `NOT_CRAN=true`. The repository's lane-preflight script and graft index are absent in this historical checkout.
+
+## 2026-10-16 — CRAN 0.7.1 manual-review repairs (Codex)
+
+Dedicated historical-source lane: codex/cran-071-resubmit-20261016, base
+53ade2c64. Addressed Oct15 email's return docs, examples, console output and
+file-write requests. Generated Rd from roxygen, corrected animal grouping
+metadata, and bounded executable bootstrap examples to 50 demonstration refits.
+No likelihood, parameterisation, grammar or capability extension.
+
+Checks: focused sanity-messages/sanity-multi/diagnose tests pass;
+pkgdown::check_pkgdown passes; all Rd and extracted example scripts parse;
+six animal examples and the bounded confint example execute. File-write worker
+ran BFGS/G2d/G2e/G2f and MSPL-contract tests (pass; one expected MSPL conditional
+skip), bash -n and unset-variable negative controls. Diagnostic tarball check:
+installation, loading, S3 registration and CRAN test subset pass; old animal
+example failed, since corrected. This diagnostic archive is not a final candidate.
+
+Scans: rg 'saveRDS|save\(|write[.(_]|dir.create|sink\(|pdf\(|png\(' R;
+rg 'write|save|dir.create|setwd|path.expand|~/' tests vignettes R;
+rg '\\dontrun' man; rg 'predict' man/gllvmTMB.Rd man/slope_sd_ci.Rd NAMESPACE.
+Only Julia external-software dontrun remains. Installed prediction registrations
+verified with getS3method for multi, VA and Julia. Full current example sweep,
+final archive checks, external Windows and artifact reviews pending. No upload,
+confirmation, acceptance or publication claim. No simulation campaign run.
+Evidence: /Users/z3437171/local-scratch/gllvmTMB-cran-071-evidence/.

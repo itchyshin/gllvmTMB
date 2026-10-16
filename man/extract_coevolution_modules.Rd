@@ -53,8 +53,10 @@ uncertainty, choose the biological rank, estimate \code{rho}, or calibrate null
 thresholds. Use simulation, bootstrap, and kernel-separability checks before
 treating the returned axes as scientific evidence.
 }
-\examples{
-\dontrun{
+\details{
+Template for an existing fitted model or data set; replace the named
+inputs with your own objects before running this code.
+\preformatted{
 mods <- extract_coevolution_modules(
   fit,
   level = "phy",
@@ -65,5 +67,4 @@ mods$modules
 mods$row_axes
 mods$col_axes
 }
-
 }

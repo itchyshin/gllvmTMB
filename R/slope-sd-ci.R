@@ -438,7 +438,7 @@
 #'   the full augmented covariance (point estimates only).
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' set.seed(1)
 #' n_ind <- 30L
 #' n_traits <- 2L

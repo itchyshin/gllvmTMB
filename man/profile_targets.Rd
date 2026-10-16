@@ -62,9 +62,10 @@ target-explicit profile calibration remains future work.
 
 The output uses a controlled vocabulary for direct target classes,
 transformations, and readiness notes.
-}
-\examples{
-\dontrun{
+
+Template for an existing fitted model or data set; replace the named
+inputs with your own objects before running this code.
+\preformatted{
 fit <- gllvmTMB(value ~ 0 + trait + latent(0 + trait | site, d = 1),
                 data  = sim$data,
                 trait = "trait",
@@ -73,7 +74,6 @@ targets <- profile_targets(fit)
 head(targets)
 profile_targets(fit, ready_only = TRUE)
 }
-
 }
 \seealso{
 \code{\link[=confint.gllvmTMB_multi]{confint.gllvmTMB_multi()}} for the routing of

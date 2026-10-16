@@ -306,8 +306,10 @@
 #' @seealso [phylo_scalar()], [phylo_indep()],
 #'   [phylo_latent()], [phylo_dep()].
 #' @export
-#' @examples
-#' \dontrun{
+#' @details
+#' Template for an existing fitted model or data set; replace the named
+#' inputs with your own objects before running this code.
+#' \preformatted{
 #' library(ape)
 #' tree <- rcoal(20); tree$tip.label <- paste0("sp", 1:20)
 #' # Single shared phylogenetic variance (= phylo_scalar)
@@ -407,8 +409,10 @@ phylo <- function(
 #' @return A formula marker; never evaluated.
 #' @export
 #' @keywords internal
-#' @examples
-#' \dontrun{
+#' @details
+#' Template for an existing fitted model or data set; replace the named
+#' inputs with your own objects before running this code.
+#' \preformatted{
 #' library(ape)
 #' tree   <- rcoal(20); tree$tip.label <- paste0("sp", 1:20)
 #' Cphy   <- vcv(tree, corr = TRUE)
@@ -443,8 +447,10 @@ phylo_rr <- function(species, d = 1) {
 #' @return A formula marker; never evaluated.
 #' @export
 #' @keywords internal
-#' @examples
-#' \dontrun{
+#' @details
+#' Template for an existing fitted model or data set; replace the named
+#' inputs with your own objects before running this code.
+#' \preformatted{
 #' # Recommended:
 #' fit <- gllvmTMB(value ~ 0 + trait + gr(species),
 #'                 data      = df,
@@ -498,8 +504,10 @@ gr <- function(group, cov = NULL) {
 #'   [gllvmTMB()] for the stage-2 fit.
 #' @export
 #' @keywords internal
-#' @examples
-#' \dontrun{
+#' @details
+#' Template for an existing fitted model or data set; replace the named
+#' inputs with your own objects before running this code.
+#' \preformatted{
 #' # Preferred (canonical) form -- use meta_V():
 #' V    <- diag(stage1_summary$sampling_var)
 #' fit2 <- gllvmTMB(value ~ 0 + trait +
@@ -580,7 +588,7 @@ meta <- function(value, sampling_var) {
 #' @seealso [indep()], [phylo_latent()], [diag_re], [extract_Sigma()],
 #'   [extract_lv_effects()] for predictor-informed latent-score coefficients.
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' # Long-format stacked traits: a 2-factor latent random effect at `site`.
 #' # Ordinary latent() carries its diagonal Psi by default
 #' # (Sigma = Lambda Lambda^T + diag(psi)).
@@ -731,7 +739,7 @@ NULL
 #'   and multi-trait models for continuous and categorical characters.
 #'   *J. Evol. Biol.* 23: 494-508. \doi{10.1111/j.1420-9101.2009.01915.x}
 #' @examples
-#' \dontrun{
+#' \donttest{
 #'   tree <- ape::rcoal(20); tree$tip.label <- paste0("sp", seq_len(20))
 #'   sim <- simulate_site_trait(
 #'     n_sites = 1, n_species = 20, n_traits = 4,
@@ -815,7 +823,7 @@ phylo_latent <- function(
 #' @return A formula marker; never evaluated.
 #' @seealso [phylo_latent()], [phylo_scalar()].
 #' @examples
-#' \dontrun{
+#' \donttest{
 #'   tree <- ape::rcoal(20); tree$tip.label <- paste0("sp", seq_len(20))
 #'   sim <- simulate_site_trait(
 #'     n_sites = 10, n_species = 20, n_traits = 3,
@@ -866,7 +874,7 @@ phylo_slope <- function(formula) {
 #' @seealso [phylo_latent()], [phylo_indep()],
 #'   [phylo_dep()], [phylo()] (deprecated alias).
 #' @examples
-#' \dontrun{
+#' \donttest{
 #'   tree <- ape::rcoal(8); tree$tip.label <- paste0("sp", seq_len(8))
 #'   sim <- simulate_site_trait(
 #'     n_sites = 1, n_species = 8, n_traits = 3,
@@ -975,7 +983,7 @@ phylo_scalar <- function(
 #'   properties of reduced-rank estimates of genetic covariance matrices.
 #'   *Genetics* 178(4): 2223-2240.
 #' @examples
-#' \dontrun{
+#' \donttest{
 #'   tree <- ape::rcoal(8); tree$tip.label <- paste0("sp", seq_len(8))
 #'   sim <- simulate_site_trait(
 #'     n_sites = 1, n_species = 8, n_traits = 3,
@@ -1048,7 +1056,7 @@ phylo_unique <- function(
 #' @return A formula marker; never evaluated.
 #' @seealso [spatial_indep()], [spatial_latent()], [spde()] (deprecated alias).
 #' @examples
-#' \dontrun{
+#' \donttest{
 #'   sim <- simulate_site_trait(
 #'     n_sites = 20, n_species = 4, mean_species_per_site = 4,
 #'     spatial_range = 0.4, sigma2_spa = rep(0.3, 4), seed = 1
@@ -1107,7 +1115,7 @@ spatial_unique <- function(formula, coords = NULL, mesh = NULL) {
 #' @return A formula marker; never evaluated.
 #' @seealso [spatial_indep()], [spatial_latent()], [spde()] (deprecated alias).
 #' @examples
-#' \dontrun{
+#' \donttest{
 #'   sim <- simulate_site_trait(
 #'     n_sites = 20, n_species = 4, mean_species_per_site = 4,
 #'     spatial_range = 0.4, sigma2_spa = rep(0.3, 4), seed = 1
@@ -1183,7 +1191,7 @@ spatial_scalar <- function(formula, coords = NULL, mesh = NULL) {
 #' @return A formula marker; never evaluated.
 #' @seealso [spatial_indep()], [spatial_dep()], [phylo_latent()].
 #' @examples
-#' \dontrun{
+#' \donttest{
 #'   sim <- simulate_site_trait(
 #'     n_sites = 30, n_species = 6, mean_species_per_site = 5,
 #'     spatial_range = 0.4, sigma2_spa = rep(0.3, 6), seed = 1
@@ -1277,8 +1285,10 @@ spatial_latent <- function(formula, d = 1, unique = FALSE,
 #'   [spatial_latent()], [spatial_dep()], [phylo()] (phylogenetic
 #'   parallel), [spde()] (deeper deprecated alias).
 #' @export
-#' @examples
-#' \dontrun{
+#' @details
+#' Template for an existing fitted model or data set; replace the named
+#' inputs with your own objects before running this code.
+#' \preformatted{
 #' library(fmesher)
 #' # Single shared spatial-field variance (= spatial_indep(..., common = TRUE))
 #' fit_s <- gllvmTMB(value ~ 0 + trait + spatial(1 | site, mesh = mesh),
@@ -1336,7 +1346,7 @@ spatial <- function(
 #'   [meta()] (older deprecated short alias); [block_V()];
 #'   [gllvmTMB()].
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' # Deprecated alias of meta_V(); both desugar identically.
 #' # New code should use meta_V(V = V).
 #' set.seed(131)
@@ -1384,7 +1394,7 @@ meta_known_V <- function(V, type = "exact") {
 #' @seealso [meta_known_V()] (deprecated alias); [block_V()];
 #'   [gllvmTMB()].
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' # Two-stage meta-regression with a known per-row sampling-variance V.
 #' set.seed(131)
 #' df <- expand.grid(
@@ -1454,8 +1464,10 @@ meta_V <- function(V, type = "exact") {
 #' @seealso [latent()], [phylo_indep()], [spatial_indep()],
 #'   [extract_Sigma()].
 #' @export
-#' @examples
-#' \dontrun{
+#' @details
+#' Template for an existing fitted model or data set; replace the named
+#' inputs with your own objects before running this code.
+#' \preformatted{
 #' # Marginal-only fit (per-trait variance, identity correlation):
 #' fit <- gllvmTMB(value ~ 0 + trait + indep(0 + trait | site),
 #'                 data = df, trait = "trait", unit = "site")
@@ -1497,8 +1509,10 @@ indep <- function(formula, common = FALSE) {
 #' @return A formula marker; never evaluated.
 #' @seealso [indep()], [dep()], [latent()], [phylo_scalar()], [extract_Sigma()].
 #' @export
-#' @examples
-#' \dontrun{
+#' @details
+#' Template for an existing fitted model or data set; replace the named
+#' inputs with your own objects before running this code.
+#' \preformatted{
 #' # One shared trait variance across all traits (identity cross-trait):
 #' fit <- gllvmTMB(value ~ 0 + trait + scalar(0 + trait | site),
 #'                 data = df, trait = "trait", unit = "site")
@@ -1596,8 +1610,10 @@ scalar <- function(formula) {
 #'   2025.12.20.695312. The marginal `phylo_indep + indep` standalone
 #'   form stacked across traits matches their PGLMM Eq. 3.
 #' @export
-#' @examples
-#' \dontrun{
+#' @details
+#' Template for an existing fitted model or data set; replace the named
+#' inputs with your own objects before running this code.
+#' \preformatted{
 #' library(ape)
 #' tree <- rcoal(20); tree$tip.label <- paste0("sp", 1:20)
 #' fit <- gllvmTMB(value ~ 0 + trait +
@@ -1665,7 +1681,7 @@ phylo_indep <- function(
 #' @seealso [spatial_latent()], [indep()],
 #'   [phylo_indep()], [extract_Sigma()].
 #' @examples
-#' \dontrun{
+#' \donttest{
 #'   sim <- simulate_site_trait(
 #'     n_sites = 20, n_species = 4, mean_species_per_site = 4,
 #'     spatial_range = 0.4, sigma2_spa = rep(0.3, 4), seed = 1
@@ -1738,8 +1754,10 @@ spatial_indep <- function(formula, coords = NULL, mesh = NULL, common = FALSE) {
 #' @seealso [latent()], [indep()], [phylo_dep()],
 #'   [spatial_dep()], [extract_Sigma()].
 #' @export
-#' @examples
-#' \dontrun{
+#' @details
+#' Template for an existing fitted model or data set; replace the named
+#' inputs with your own objects before running this code.
+#' \preformatted{
 #' # Full unstructured trait covariance fit:
 #' fit <- gllvmTMB(value ~ 0 + trait + dep(0 + trait | site),
 #'                 data = df, trait = "trait", unit = "site")
@@ -1811,7 +1829,7 @@ dep <- function(formula) {
 #' @seealso [phylo_latent()], [phylo_indep()],
 #'   [dep()], [spatial_dep()], [extract_Sigma()].
 #' @examples
-#' \dontrun{
+#' \donttest{
 #'   tree <- ape::rcoal(8); tree$tip.label <- paste0("sp", seq_len(8))
 #'   sim <- simulate_site_trait(
 #'     n_sites = 1, n_species = 8, n_traits = 3,
@@ -1875,7 +1893,7 @@ phylo_dep <- function(formula, tree = NULL, vcv = NULL, A = NULL, Ainv = NULL) {
 #' @seealso [spatial_latent()], [spatial_indep()],
 #'   [dep()], [phylo_dep()], [extract_Sigma()].
 #' @examples
-#' \dontrun{
+#' \donttest{
 #'   sim <- simulate_site_trait(
 #'     n_sites = 30, n_species = 6, mean_species_per_site = 5,
 #'     spatial_range = 0.4, sigma2_spa = rep(0.3, 6), seed = 1

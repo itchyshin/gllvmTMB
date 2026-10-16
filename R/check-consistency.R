@@ -114,8 +114,10 @@
 #'   [gllvmTMB_diagnose()] (holistic fit summary),
 #'   [TMB::checkConsistency()] (the underlying TMB call).
 #'
-#' @examples
-#' \dontrun{
+#' @details
+#' Template for an existing fitted model or data set; replace the named
+#' inputs with your own objects before running this code.
+#' \preformatted{
 #' fit <- gllvmTMB(value ~ 0 + trait +
 #'                 latent(0 + trait | site, d = 1),
 #'                 data  = sim$data,

@@ -27,8 +27,10 @@ is a small compatibility wrapper around \code{\link[=extract_ordination]{extract
 familiar with \code{gllvm::getLoadings()}. The canonical snake_case spelling in
 this package is \code{\link[=extract_loadings]{extract_loadings()}}, which forwards here.
 }
-\examples{
-\dontrun{
+\details{
+Template for an existing fitted model or data set; replace the named
+inputs with your own objects before running this code.
+\preformatted{
 getLoadings(fit, level = "unit", rotate = "varimax")
 }
 }

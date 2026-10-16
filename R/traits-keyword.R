@@ -99,7 +99,7 @@
 #'   0.2.0; wide-data examples now use the `traits(...)` LHS through
 #'   [gllvmTMB()].
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' # Wide format: one column per trait; traits() stacks them internally.
 #' # The LHS *is* the trait spec, so no `trait =` argument is needed.
 #' set.seed(1)

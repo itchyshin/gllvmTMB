@@ -201,29 +201,9 @@ Poisson-link constructors use \code{"log"}. The older
 as deprecated wrappers.
 }
 
-\code{gengamma()} uses the Prentice parameterisation. Its fitted \code{gengamma_Q}
-value controls shape; the limiting case at zero is lognormal.
-
-Several constructors remain exported for compatibility although the
-current multivariate fitter rejects them. In particular, this applies to
-generalized-gamma, mixture, censored Poisson, truncated NB1, and most delta
-variants. A rejected constructor is not silently mapped to another family.
-
-Names ending in \verb{_mix()} describe two mean components that share a
-scale parameter. \code{p_extreme} is the probability assigned to the component
-with the larger mean; leave it \code{NULL} to estimate that probability.
-
-NB2 has variance \eqn{\mu + \mu^2 / \phi}; its extra variance therefore grows
-quadratically with the mean.
-
-NB1 has variance \eqn{\mu(1 + \phi)}, so its extra variance grows linearly
-with the mean.
-
-\code{student()} estimates degrees of freedom unless \code{df} is supplied.
-}
-\examples{
-Beta(link = "logit")
-\dontrun{
+Template for an existing fitted model or data set; replace the named
+inputs with your own objects before running this code.
+\preformatted{
 ## Mixed-family example: per-row family chosen by a `family` column
 sim <- simulate_site_trait(n_sites = 40, n_species = 10, n_traits = 2,
                            mean_species_per_site = 5)
@@ -258,6 +238,29 @@ fit_isdm <- gllvmTMB(
   unit   = "cell_id"
 )
 }
+
+\code{gengamma()} uses the Prentice parameterisation. Its fitted \code{gengamma_Q}
+value controls shape; the limiting case at zero is lognormal.
+
+Several constructors remain exported for compatibility although the
+current multivariate fitter rejects them. In particular, this applies to
+generalized-gamma, mixture, censored Poisson, truncated NB1, and most delta
+variants. A rejected constructor is not silently mapped to another family.
+
+Names ending in \verb{_mix()} describe two mean components that share a
+scale parameter. \code{p_extreme} is the probability assigned to the component
+with the larger mean; leave it \code{NULL} to estimate that probability.
+
+NB2 has variance \eqn{\mu + \mu^2 / \phi}; its extra variance therefore grows
+quadratically with the mean.
+
+NB1 has variance \eqn{\mu(1 + \phi)}, so its extra variance grows linearly
+with the mean.
+
+\code{student()} estimates degrees of freedom unless \code{df} is supplied.
+}
+\examples{
+Beta(link = "logit")
 lognormal(link = "log")
 gamma_mix(link = "log")
 lognormal_mix(link = "log")

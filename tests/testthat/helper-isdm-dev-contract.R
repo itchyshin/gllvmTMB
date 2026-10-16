@@ -42,3 +42,25 @@ isdm_dev_path <- function(...) {
   }
   path
 }
+
+# Preserve developer runners' package-relative output contract in a temporary
+# checkout, including a private copy of compiled source fixtures.
+isdm_temp_package <- function(pkg, .local_envir = parent.frame()) {
+  scratch <- normalizePath(withr::local_tempdir(.local_envir = .local_envir),
+    mustWork = TRUE)
+  target <- file.path(scratch, "dev", "isdm-package-recovery")
+  dir.create(target, recursive = TRUE)
+  source <- file.path(pkg, "dev", "isdm-package-recovery")
+  paths <- list.files(source, full.names = TRUE)
+  paths <- paths[!file.info(paths)$isdir]
+  stopifnot(all(file.copy(paths, target)))
+  for (part in c("R", "src", "DESCRIPTION", "NAMESPACE", "inst", "data")) {
+    if (!file.exists(file.path(pkg, part))) next
+    stopifnot(file.copy(file.path(pkg, part), scratch, recursive = TRUE))
+  }
+  git_dir <- system2("git", c("-C", shQuote(pkg), "rev-parse",
+    "--absolute-git-dir"), stdout = TRUE)
+  stopifnot(length(git_dir) == 1L, is.null(attr(git_dir, "status")))
+  writeLines(paste("gitdir:", git_dir), file.path(scratch, ".git"))
+  scratch
+}

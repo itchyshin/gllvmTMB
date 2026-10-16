@@ -18,11 +18,11 @@
 \alias{predict.gllvmTMB_va}
 \title{Methods for variational (\code{integration = "va"}) fits}
 \usage{
-\method{print}{gllvmTMB_va}(x, digits = 3, ...)
+print.gllvmTMB_va(x, digits = 3, ...)
 
-\method{summary}{gllvmTMB_va}(object, ...)
+summary.gllvmTMB_va(object, ...)
 
-\method{print}{summary.gllvmTMB_va}(x, digits = 3, ...)
+print.summary.gllvmTMB_va(x, digits = 3, ...)
 
 \method{nobs}{gllvmTMB_va}(object, ...)
 

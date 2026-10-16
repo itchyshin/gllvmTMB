@@ -39,7 +39,7 @@ Hadfield & Nakagawa 2010) or \code{vcv = Cphy}
 for the full discussion of the two paths.
 }
 \examples{
-\dontrun{
+\donttest{
   tree <- ape::rcoal(8); tree$tip.label <- paste0("sp", seq_len(8))
   sim <- simulate_site_trait(
     n_sites = 1, n_species = 8, n_traits = 3,

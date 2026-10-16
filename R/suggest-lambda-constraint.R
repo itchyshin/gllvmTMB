@@ -72,8 +72,10 @@
 #'       the returned matrix with [gllvmTMB()].}
 #'   }
 #'
-#' @examples
-#' \dontrun{
+#' @details
+#' Template for an existing fitted model or data set; replace the named
+#' inputs with your own objects before running this code.
+#' \preformatted{
 #' sug <- suggest_lambda_constraint(
 #'   value ~ 0 + trait + latent(0 + trait | site, d = 2),
 #'   data = my_data
@@ -518,8 +520,10 @@ suggest_lambda_constraint <- function(
 #'       `recommended_method`.}
 #'   }
 #'
-#' @examples
-#' \dontrun{
+#' @details
+#' Template for an existing fitted model or data set; replace the named
+#' inputs with your own objects before running this code.
+#' \preformatted{
 #' cmp <- suggest_lambda_constraints(
 #'   fit,
 #'   methods = c("varimax_threshold", "wald_retention"),

@@ -16,7 +16,7 @@
 \usage{
 \method{logLik}{gllvmTMB_julia}(object, ...)
 
-\method{print}{gllvmTMB_julia}(x, ...)
+print.gllvmTMB_julia(x, ...)
 
 \method{coef}{gllvmTMB_julia}(object, ...)
 
@@ -50,9 +50,9 @@
   ...
 )
 
-\method{summary}{gllvmTMB_julia}(object, ...)
+summary.gllvmTMB_julia(object, ...)
 
-\method{print}{summary.gllvmTMB_julia}(x, digits = 3, ...)
+print.summary.gllvmTMB_julia(x, digits = 3, ...)
 }
 \arguments{
 \item{object, x}{A fit returned by \code{gllvmTMB(..., engine = "julia")} or

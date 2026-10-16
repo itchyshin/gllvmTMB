@@ -67,7 +67,7 @@
 #'
 #' @export
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' set.seed(1)
 #' sim <- simulate_site_trait(
 #'   n_sites = 60, n_species = 12, n_traits = 4,
@@ -257,7 +257,7 @@ rotate_loadings <- function(
 #'   [plot.gllvmTMB_multi()].
 #' @export
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' sim <- simulate_site_trait(
 #'   n_sites = 60, n_species = 12, n_traits = 4,
 #'   Lambda_B = matrix(c(1.0, 0.7, -0.3, 0.5,
@@ -415,8 +415,10 @@ extract_rotated_loadings_table <- function(
 #' @return A list with the optimal rotation `R`, the rotated `Lambda_a_rot`,
 #'   and the Frobenius distance after alignment.
 #' @export
-#' @examples
-#' \dontrun{
+#' @details
+#' Template for an existing fitted model or data set; replace the named
+#' inputs with your own objects before running this code.
+#' \preformatted{
 #' fit_g <- gllvmTMB(value ~ 0 + trait + latent(0 + trait | site, d = 2),
 #'                   data = df, trait = "trait", unit = "site")
 #' fit_t <- glmmTMB::glmmTMB(value ~ 0 + trait + rr(0 + trait | site, d = 2),

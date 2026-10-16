@@ -92,7 +92,7 @@ column aligned with \verb{(unit, trait)} rows. The legacy matrix wrapper
 \code{\link[=gllvmTMB_wide]{gllvmTMB_wide()}} still accepts matrix weights for migration code.
 }
 \examples{
-\dontrun{
+\donttest{
 # Wide format: one column per trait; traits() stacks them internally.
 # The LHS *is* the trait spec, so no `trait =` argument is needed.
 set.seed(1)

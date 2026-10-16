@@ -47,8 +47,10 @@
 #' @seealso [standard_errors()] to compute the `sdreport()` after fitting;
 #'   [confint()] for intervals; [summary()] for a coefficient table.
 #' @name gllvmTMB_multi-vcov
-#' @examples
-#' \dontrun{
+#' @details
+#' Template for an existing fitted model or data set; replace the named
+#' inputs with your own objects before running this code.
+#' \preformatted{
 #' coef(fit)
 #' vcov(fit)
 #' }

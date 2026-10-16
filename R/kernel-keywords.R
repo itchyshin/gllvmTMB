@@ -30,7 +30,7 @@
 #' @return A formula marker; never evaluated as a regular R function.
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' A <- diag(5)
 #' dat <- data.frame(
 #'   unit = factor(rep(paste0("u", 1:5), each = 2), levels = paste0("u", 1:5)),

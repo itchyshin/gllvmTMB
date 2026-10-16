@@ -53,7 +53,7 @@ Combining \code{spatial_dep(0 + trait | coords)} with \code{spatial_latent} is
 }
 
 \examples{
-\dontrun{
+\donttest{
   sim <- simulate_site_trait(
     n_sites = 30, n_species = 6, mean_species_per_site = 5,
     spatial_range = 0.4, sigma2_spa = rep(0.3, 6), seed = 1

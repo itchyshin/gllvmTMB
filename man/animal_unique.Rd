@@ -55,7 +55,7 @@ through the same augmented engine as \code{\link[=phylo_unique]{phylo_unique()}}
 }
 
 \examples{
-\dontrun{
+\donttest{
 # Per-trait independent additive-genetic variances on a shared A.
 # Grounded in test-animal-keyword.R.
 ped <- data.frame(
@@ -75,7 +75,7 @@ df <- data.frame(
 )
 fit <- gllvmTMB(
   value ~ 0 + trait + animal_unique(species, pedigree = ped),
-  data = df, family = gaussian()
+  data = df, family = gaussian(), unit = "species", cluster = "species"
 )
 }
 }

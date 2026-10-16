@@ -123,7 +123,7 @@ bfgs_v2_materialize <- function(contract, ledger, fit = NULL) {
   ledger
 }
 
-bfgs_v2_normal_ledger <- function(contract, root, live = FALSE) {
+bfgs_v2_normal_ledger <- function(contract, root, live = FALSE, live_pkg = NULL) {
   control <- list(n_init = 1L, .internal_continuation = FALSE)
   saveRDS(list(fixture = TRUE), file.path(root, "fixture.rds"), version = 3)
   saveRDS(list(session = TRUE), file.path(root, "session-info.rds"), version = 3)
@@ -132,7 +132,8 @@ bfgs_v2_normal_ledger <- function(contract, root, live = FALSE) {
     writeLines("synthetic sealed DLL", file.path(root, "gllvmTMB.so"))
   receipt <- bfgs_v2_receipt(contract, root, control)
   if (isTRUE(live)) {
-    pkg <- normalizePath(testthat::test_path("..", ".."), mustWork = TRUE)
+    source_pkg <- normalizePath(testthat::test_path("..", ".."), mustWork = TRUE)
+    pkg <- if (is.null(live_pkg)) source_pkg else normalizePath(live_pkg, mustWork = TRUE)
     control <- gllvmTMB::gllvmTMBcontrol(n_init = 1L, init_jitter = 0,
       se = TRUE, aghq = FALSE, warn_runaway = TRUE)
     control$.internal_continuation <- FALSE
@@ -151,7 +152,7 @@ bfgs_v2_normal_ledger <- function(contract, root, live = FALSE) {
     md5 <- as.character(tools::md5sum(paths))
     names(md5) <- names(paths)
     receipt <- bfgs_v2_receipt(contract, root, control,
-      commit = system2("git", c("-C", shQuote(pkg), "rev-parse", "HEAD"),
+      commit = system2("git", c("-C", shQuote(source_pkg), "rev-parse", "HEAD"),
         stdout = TRUE)[[1L]])
     receipt$runner_md5 <- md5[["runner"]]
     receipt$core_runner_md5 <- md5[["core_runner"]]

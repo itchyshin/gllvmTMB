@@ -110,9 +110,10 @@ search.
 it automatically with bootstrap output unless simulation, refits, failed
 replicate counts, and Monte Carlo resolution are credible for that target.
 }
-}
-\examples{
-\dontrun{
+
+Template for an existing fitted model or data set; replace the named
+inputs with your own objects before running this code.
+\preformatted{
 fit <- gllvmTMB(value ~ 0 + trait +
                 latent(0 + trait | site, d = 1),
                 data  = sim$data,
@@ -123,7 +124,6 @@ inspect$bounds       # the CI + Wald comparison
 inspect$diagnostics  # any shape flags
 inspect$plot         # ggplot of the profile curve
 }
-
 }
 \seealso{
 \code{\link[=confint.gllvmTMB_multi]{confint.gllvmTMB_multi()}} (the corresponding CI

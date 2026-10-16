@@ -99,10 +99,10 @@ responses; wide-format and non-Gaussian column slopes are planned work.
 Pass the phylogeny via \code{tree = phylo} (canonical, sparse \eqn{\mathbf{A}^{-1}}) or
 \code{vcv = Cphy} (\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#superseded}{\figure{lifecycle-superseded.svg}{options: alt='[Superseded]'}}}{\strong{[Superseded]}}, dense). See
 \code{\link[=phylo_latent]{phylo_latent()}} for the full discussion of the two paths.
-}
-}
-\examples{
-\dontrun{
+
+Template for an existing fitted model or data set; replace the named
+inputs with your own objects before running this code.
+\preformatted{
 library(ape)
 tree <- rcoal(20); tree$tip.label <- paste0("sp", 1:20)
 fit <- gllvmTMB(value ~ 0 + trait +
@@ -111,6 +111,7 @@ fit <- gllvmTMB(value ~ 0 + trait +
                 trait   = "trait",
                 unit    = "species",
                 cluster = "species")
+}
 }
 }
 \references{

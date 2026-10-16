@@ -27,8 +27,10 @@ formula is retained for backward compatibility and as a hint to the
 reader, but is \strong{not} used by the engine. Same convention as
 \code{\link[=phylo]{phylo()}} and \code{\link[=phylo_rr]{phylo_rr()}}.
 }
-\examples{
-\dontrun{
+\details{
+Template for an existing fitted model or data set; replace the named
+inputs with your own objects before running this code.
+\preformatted{
 # Recommended:
 fit <- gllvmTMB(value ~ 0 + trait + gr(species),
                 data      = df,

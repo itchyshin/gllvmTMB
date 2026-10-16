@@ -79,7 +79,7 @@ denominator by default; pass \code{link_residual = "none"} to suppress.
 }
 }
 \examples{
-\dontrun{
+\donttest{
   sim <- simulate_site_trait(
     n_sites = 20, n_species = 6, n_traits = 4,
     mean_species_per_site = 4, seed = 1
@@ -95,6 +95,7 @@ denominator by default; pass \code{link_residual = "none"} to suppress.
   extract_communality(fit, level = "unit")
   ## With delta-method Wald CIs.
   extract_communality(fit, level = "unit", ci = TRUE, method = "wald")
+  # Fifty refits illustrate the API; they do not establish interval coverage.
   boot <- bootstrap_Sigma(fit, n_boot = 50, level = "unit",
                           what = "communality", progress = FALSE)
   extract_communality(boot, level = "unit", ci = TRUE)

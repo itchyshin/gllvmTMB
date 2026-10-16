@@ -64,8 +64,10 @@
 #' Reviews} \strong{85}, 935-956. \doi{10.1111/j.1469-185X.2010.00141.x}
 #'
 #' @export
-#' @examples
-#' \dontrun{
+#' @details
+#' Template for an existing fitted model or data set; replace the named
+#' inputs with your own objects before running this code.
+#' \preformatted{
 #' fit <- gllvmTMB(
 #'   value ~ 0 + trait +
 #'           latent(0 + trait | site, d = 1) +

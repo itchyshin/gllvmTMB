@@ -17,6 +17,7 @@ test_that("G2d preflight seals a writable root without fitting", {
   isdm_dev_path()  # skips when dev/ did not ship in the built package
   pkg_root <- normalizePath(file.path(testthat::test_path(), "..", ".."), mustWork = TRUE)
   script <- file.path(pkg_root, "dev", "isdm-package-recovery", "run-g2d-six-species-recovery.R")
+  pkg_root <- isdm_temp_package(pkg_root)
   out_abs <- file.path(pkg_root, "dev", "isdm-package-recovery", "results", paste0("testthat-g2d-preflight-", Sys.getpid()))
   on.exit(unlink(out_abs, recursive = TRUE, force = TRUE), add = TRUE)
   sha <- system2("git", c("-C", pkg_root, "rev-parse", "HEAD"), stdout = TRUE)
@@ -31,6 +32,7 @@ test_that("G2d smoke-boundary diagnostic proves the shared pre-fit path", {
   isdm_dev_path()  # skips when dev/ did not ship in the built package
   pkg_root <- normalizePath(file.path(testthat::test_path(), "..", ".."), mustWork = TRUE)
   script <- file.path(pkg_root, "dev", "isdm-package-recovery", "run-g2d-six-species-recovery.R")
+  pkg_root <- isdm_temp_package(pkg_root)
   out_abs <- file.path(pkg_root, "dev", "isdm-package-recovery", "results", paste0("testthat-g2d-smoke-boundary-", Sys.getpid()))
   on.exit(unlink(out_abs, recursive = TRUE, force = TRUE), add = TRUE)
   sha <- system2("git", c("-C", pkg_root, "rev-parse", "HEAD"), stdout = TRUE)

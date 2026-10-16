@@ -56,8 +56,10 @@
 #'
 #' @seealso [loading_ci()], [flag_unreliable_loadings()].
 #'
-#' @examples
-#' \dontrun{
+#' @details
+#' Template for an existing fitted model or data set; replace the named
+#' inputs with your own objects before running this code.
+#' \preformatted{
 #' plot_loadings_confidence_eye(fit, level = "unit",
 #'                              null_region = c(-0.1, 0.1))
 #' }

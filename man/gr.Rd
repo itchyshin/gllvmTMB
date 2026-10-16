@@ -49,13 +49,6 @@ if (requireNamespace("ape", quietly = TRUE)) {
                   unit      = "species",
                   cluster   = "species",
                   phylo_vcv = Cphy)
-  # When both are given, the top-level phylo_vcv = is used, not cov =:
-  fit <- gllvmTMB(value ~ 0 + trait + gr(species, cov = Cphy),
-                  data      = df,
-                  trait     = "trait",
-                  unit      = "species",
-                  cluster   = "species",
-                  phylo_vcv = Cphy)
 }
 }
 \keyword{internal}

@@ -470,9 +470,7 @@
   )
   aux <- aux[!vapply(aux, is.null, logical(1))]
 
-  if (!is.null(seed)) {
-    set.seed(seed)
-  }
+  .gllvmTMB_local_seed(seed)
   Y_sim <- simulate(fit, nsim = nsim)
   if (!is.matrix(Y_sim) || ncol(Y_sim) != nsim) {
     cli::cli_abort(

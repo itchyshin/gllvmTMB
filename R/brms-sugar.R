@@ -572,7 +572,22 @@ meta <- function(value, sampling_var) {
 #'
 #' @param formula `0 + trait | g` style formula (LHS is the response
 #'   factor, typically `0 + trait`; RHS is the grouping factor).
-#' @param d Integer; number of latent factors.
+#' @param d Integer; number of latent factors. The hard guard only requires
+#'   `d <= n_traits` (the number of traits), but that is not the limit of what
+#'   the data can identify. With the default `unique = TRUE`, each unit-trait
+#'   cell observed once, and \eqn{T} traits, the covariance
+#'   \eqn{\boldsymbol\Sigma = \boldsymbol\Lambda\boldsymbol\Lambda^\top + \boldsymbol\Psi}
+#'   has \eqn{T(T + 1)/2} free entries to estimate
+#'   \eqn{T d - d(d - 1)/2 + T} parameters (loadings up to rotation, plus the
+#'   diagonal \eqn{\boldsymbol\Psi}). The counting rule of thumb is
+#'   \eqn{(T - d)^2 \ge T + d}: \eqn{T = 3} and \eqn{T = 4} allow
+#'   `d <= 1`, \eqn{T = 5} allows `d <= 2`, and \eqn{T = 10} allows
+#'   `d <= 6`. Above it the split between
+#'   \eqn{\boldsymbol\Lambda\boldsymbol\Lambda^\top} and
+#'   \eqn{\boldsymbol\Psi} is not identified, and [check_gllvmTMB()] can
+#'   flag only the symptoms (boundary \eqn{\psi}, weak axes) after the fit.
+#'   The rule is a necessary count, not a recovery guarantee. Replication
+#'   within a unit, or `unique = FALSE`, changes the count.
 #' @param unique Logical; `TRUE` (default) auto-includes the diagonal
 #'   trait-specific \eqn{\boldsymbol\Psi} companion
 #'   (\eqn{\boldsymbol\Sigma = \boldsymbol\Lambda\boldsymbol\Lambda^\top + \boldsymbol\Psi}).

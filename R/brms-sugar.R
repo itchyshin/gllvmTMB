@@ -740,7 +740,9 @@ NULL
 #'   *J. Evol. Biol.* 23: 494-508. \doi{10.1111/j.1420-9101.2009.01915.x}
 #' @examples
 #' \donttest{
-#'   tree <- ape::rcoal(20); tree$tip.label <- paste0("sp", seq_len(20))
+#'   tree <- ape::rcoal(20)
+#'   # Match the simulator species levels to the covariance matrix row order.
+#'   tree$tip.label <- as.character(seq_len(20))
 #'   sim <- simulate_site_trait(
 #'     n_sites = 1, n_species = 20, n_traits = 4,
 #'     mean_species_per_site = 20,
@@ -824,7 +826,9 @@ phylo_latent <- function(
 #' @seealso [phylo_latent()], [phylo_scalar()].
 #' @examples
 #' \donttest{
-#'   tree <- ape::rcoal(20); tree$tip.label <- paste0("sp", seq_len(20))
+#'   tree <- ape::rcoal(20)
+#'   # Match the simulator species levels to the covariance matrix row order.
+#'   tree$tip.label <- as.character(seq_len(20))
 #'   sim <- simulate_site_trait(
 #'     n_sites = 10, n_species = 20, n_traits = 3,
 #'     mean_species_per_site = 10,
@@ -875,7 +879,9 @@ phylo_slope <- function(formula) {
 #'   [phylo_dep()], [phylo()] (deprecated alias).
 #' @examples
 #' \donttest{
-#'   tree <- ape::rcoal(8); tree$tip.label <- paste0("sp", seq_len(8))
+#'   tree <- ape::rcoal(8)
+#'   # Match the simulator species levels to the covariance matrix row order.
+#'   tree$tip.label <- as.character(seq_len(8))
 #'   sim <- simulate_site_trait(
 #'     n_sites = 1, n_species = 8, n_traits = 3,
 #'     mean_species_per_site = 8,
@@ -984,7 +990,9 @@ phylo_scalar <- function(
 #'   *Genetics* 178(4): 2223-2240.
 #' @examples
 #' \donttest{
-#'   tree <- ape::rcoal(8); tree$tip.label <- paste0("sp", seq_len(8))
+#'   tree <- ape::rcoal(8)
+#'   # Match the simulator species levels to the covariance matrix row order.
+#'   tree$tip.label <- as.character(seq_len(8))
 #'   sim <- simulate_site_trait(
 #'     n_sites = 1, n_species = 8, n_traits = 3,
 #'     mean_species_per_site = 8,
@@ -1830,7 +1838,9 @@ dep <- function(formula) {
 #'   [dep()], [spatial_dep()], [extract_Sigma()].
 #' @examples
 #' \donttest{
-#'   tree <- ape::rcoal(8); tree$tip.label <- paste0("sp", seq_len(8))
+#'   tree <- ape::rcoal(8)
+#'   # Match the simulator species levels to the covariance matrix row order.
+#'   tree$tip.label <- as.character(seq_len(8))
 #'   sim <- simulate_site_trait(
 #'     n_sites = 1, n_species = 8, n_traits = 3,
 #'     mean_species_per_site = 8,

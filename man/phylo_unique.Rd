@@ -84,7 +84,9 @@ Pass the phylogeny via \code{tree = phylo} (canonical, sparse \eqn{\mathbf{A}^{-
 }
 \examples{
 \donttest{
-  tree <- ape::rcoal(8); tree$tip.label <- paste0("sp", seq_len(8))
+  tree <- ape::rcoal(8)
+  # Match the simulator species levels to the covariance matrix row order.
+  tree$tip.label <- as.character(seq_len(8))
   sim <- simulate_site_trait(
     n_sites = 1, n_species = 8, n_traits = 3,
     mean_species_per_site = 8,

@@ -95,7 +95,9 @@ for the benchmark.
 }
 \examples{
 \donttest{
-  tree <- ape::rcoal(20); tree$tip.label <- paste0("sp", seq_len(20))
+  tree <- ape::rcoal(20)
+  # Match the simulator species levels to the covariance matrix row order.
+  tree$tip.label <- as.character(seq_len(20))
   sim <- simulate_site_trait(
     n_sites = 1, n_species = 20, n_traits = 4,
     mean_species_per_site = 20,

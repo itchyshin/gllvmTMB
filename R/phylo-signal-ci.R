@@ -434,18 +434,12 @@
 
   ## Reconstruct the original formula (via the same helper bootstrap_Sigma
   ## uses; lives in R/bootstrap-sigma.R).
-  formula <- .reconstruct_multi_formula(fit)
+  response <- .bootstrap_response_setup(fit)
+  formula <- response$formula
   trait <- fit$trait_col
   site <- fit$unit_col
   species <- fit$species_col
   family <- if (!is.null(fit$family_input)) fit$family_input else fit$family
-  data <- fit$data
-  resp <- all.vars(fit$formula)[1]
-  if (!resp %in% names(data)) {
-    cli::cli_abort(
-      "Response column {.var {resp}} not found in {.code fit$data}."
-    )
-  }
   ## `phylo_unique()` auto-populates `lambda_constraint$phy` to make
   ## Lambda_phy diagonal; passing that back to gllvmTMB() during refit
   ## triggers a guard ("phylo_unique() supplies its own diagonal
@@ -459,6 +453,8 @@
     }
   }
   aux <- list(
+    weights = response$weights,
+    missing = response$missing,
     phylo_vcv = fit$phylo_vcv,
     phylo_tree = fit$phylo_tree,
     mesh = fit$mesh,
@@ -479,8 +475,7 @@
 
   ## Per-replicate worker.
   refit_one <- function(b) {
-    dat <- data
-    dat[[resp]] <- Y_sim[, b]
+    dat <- .bootstrap_response_data(response, Y_sim[, b])
     call_args <- c(
       list(
         formula = formula,

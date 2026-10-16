@@ -58118,3 +58118,66 @@ API changed. Exact scan: `rg -n 'unique pairs|symmetric|entries = "all"'
 R/extract-correlations.R man/extract_correlations.Rd
 vignettes/articles/covariance-correlation.Rmd
 docs/design/06-extractors-contract.md`. Routes agree.
+
+## 2026-10-16 — issue 1496 bootstrap response metadata (local patch)
+
+Observed three trial-total failures on aec24e166 before editing. Shared internal
+response preparation now retains binomial trial totals, trial weights and the
+observed-response mask across the seven bootstrap/refit helpers. It stores a
+paired response in a private matrix column so cbind expressions do not require
+mutating predictor columns. No native likelihood, public API or grammar change.
+
+Final new regression: 69 assertions, zero failures/errors/warnings/skips. Broad
+eight-file bootstrap subset: 249 passing assertions, zero assertion failures,
+24 warning captures and one sandbox serverSocket error. The existing
+bootstrap-Sigma file then passed with permitted local sockets and a matching
+temporary install: 50 assertions, zero failures/errors, 12 warnings, zero skips.
+The dedicated cbind-expression/masked-row parallel check passed with 3/3 refits
+and draws equal to its sequential reference. pkgdown check and document passed;
+roxygen's unrelated sigma-registration spelling diff was restored. Whitespace
+check passed. Full command strings, raw logs and environment versions are in
+`dev/issue-1496/RESULTS.md` and its neighboring logs. No full package test suite
+or coverage campaign was run. Final package-check result is recorded in RESULTS.
+
+Exact consistency scans: `rg -n 'all.vars\(fit\$formula|\[\[resp.*\]\] <-|\[\[response.*\]\] <-' R`;
+`rg -n 'bootstrap|simulate' docs/dev-log/decisions.md`;
+`rg -n 'bootstrap|cbind' docs/design/35-validation-debt-register.md`.
+Verdict: seven affected generic simulate/refit paths repaired; Gaussian-only
+temporal bootstrap unchanged; related CV scoring/null-model defects remain
+separate. MIX-08/EXT-13 gain input-correctness evidence, no calibration promotion.
+
+After-task report: `docs/dev-log/after-task/2026-10-16-binomial-bootstrap-response.md`.
+Primary checkout's unrelated untracked work is unchanged. Integration review
+must account for open PR #1501 (bootstrap-Sigma default-level warning) and #1505
+(phylogenetic-signal bootstrap extractor). No external-agent contact, posting,
+email, push, PR creation, merge, release or issue closure was performed.
+
+Final bounded package check (`document=FALSE`, `vignettes=FALSE`,
+`--no-manual --no-tests --no-examples`): 0 errors, 1 warning, 3 notes, exit 1.
+Warning: duplicated `x` argument in unchanged gllvmTMB_julia-methods.Rd.
+Notes: offline clock check, existing TMB:::EvalADFunObject, xcrun_db temp detritus.
+Static R code checks passed; no tail() note remains. This is not a clean full
+package check. Full receipt: `dev/issue-1496/check-final.log` and `00check.log`.
+
+### Review correction — preserve the integrated-source no-weights contract
+
+Independent review found that the first patch supplied all-unit weights to an
+integrated three-source fit, violating its existing explicit-weight refusal.
+Read and replayed /tmp/review1496.R and its counterexample log. Added a regression
+that failed three assertions before the correction. The helper now omits exactly
+all-unit vectors, preserving all non-unit trial counts and likelihood weights;
+it does not bypass or alter the integrated-source guard.
+
+Corrected-source focused sweep: 225 assertions across eight files, zero failures,
+errors, warnings or skips, including 69 binomial and 7 new integrated-source
+assertions. The reviewer reproducer now yields patched bootstrap 0/3 failures,
+equal to original HEAD's 0/3; the new regression compares the complete three-draw
+list to explicit unweighted manual refits. Exact commands and logs:
+`dev/issue-1496/RESULTS.md`, `review-correction.log`,
+`review-correction-summary.log`, `review-reproducer-fixed.log`, `isdm-red.log`.
+No publication or unrelated edit was made. Full-suite and CI remain outstanding.
+
+Corrected-source bounded package check repeated: 0 errors, 1 warning, 3 notes,
+exit 1. Static R analysis passed; the unchanged Julia-help duplicate-x warning
+and the same three environment/dependency notes remain. Receipt:
+`dev/issue-1496/check-review-final.log` and `check-review-00check.log`.

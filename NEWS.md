@@ -1,5 +1,12 @@
 # Development (unreleased)
 
+* Parametric bootstrap and response-refit helpers now preserve the fitted
+  binomial trial totals for two-column responses, including wide `traits()`
+  input and expressions such as `cbind(s, n - s)`. Non-unit single-column trial
+  weights and retained missing-response masks are also passed to refits. These are
+  corrections to simulation/refit inputs; non-Gaussian and mixed-family
+  interval coverage remains uncertified (#1496).
+
 * Multi-trial binomial counts can now be mixed with other families in one
   model, in long and wide format (#1494).
   - Wide `traits()` accepts `cbind(successes, failures)` pairs next to plain

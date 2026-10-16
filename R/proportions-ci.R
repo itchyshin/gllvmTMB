@@ -448,21 +448,17 @@
   link_resid_fixed <- .proportions_link_resid_fixed(fit)
 
   ## --- Set up the refit closure (parallels bootstrap_Sigma()) ---------
-  formula <- .reconstruct_multi_formula(fit)
+  response <- .bootstrap_response_setup(fit)
+  formula <- response$formula
   trait <- fit$trait_col
   unit <- fit$unit_col
   unit_obs <- fit$unit_obs_col
   cluster <- fit$cluster_col %||% fit$species_col
   cluster2 <- fit$cluster2_col
   family <- if (!is.null(fit$family_input)) fit$family_input else fit$family
-  data <- fit$data
-  resp <- all.vars(fit$formula)[1]
-  if (!resp %in% names(data)) {
-    cli::cli_abort(
-      "Response column {.var {resp}} not found in {.code fit$data}."
-    )
-  }
   aux <- list(
+    weights = response$weights,
+    missing = response$missing,
     phylo_vcv = fit$phylo_vcv,
     phylo_tree = fit$phylo_tree,
     mesh = fit$mesh,
@@ -481,8 +477,7 @@
   }
 
   refit_one <- function(b) {
-    dat <- data
-    dat[[resp]] <- Y_sim[, b]
+    dat <- .bootstrap_response_data(response, Y_sim[, b])
     call_args <- c(
       list(
         formula = formula,

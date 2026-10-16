@@ -5,13 +5,18 @@
 #
 # Before this slice every one of these pages wrapped its whole \examples
 # section in \dontrun{}, so example(<topic>) ran nothing and R CMD check never
-# executed a line of it. Two checks per page:
+# executed a line of it. Three checks per page:
 #
-#   1. static: the \examples section is not a single \dontrun{} block, i.e. it
-#      contains code outside \dontrun{} (cheap, no fitting);
-#   2. dynamic: the code example() would run -- tools::Rd2ex() with \dontrun
-#      commented out and \donttest kept -- parses to at least one expression
-#      and evaluates without error and without warnings.
+#   1. static: the \examples section has code outside both \dontrun{} and
+#      \donttest{}, i.e. the page carries a small example that always runs
+#      (cheap, no fitting);
+#   2. dynamic: that always-run code -- tools::Rd2ex() with \dontrun and
+#      \donttest commented out, as a plain R CMD check runs it -- parses to at
+#      least one expression and evaluates without error and without warnings;
+#   3. dynamic, heavy tests only: the code example() runs interactively and
+#      R CMD check --as-cran runs (\donttest kept) evaluates without error.
+#      A \donttest part may warn on purpose (e.g. bootstrap_Sigma() warns that
+#      a small n_boot gives noisy bounds), so warnings are not asserted there.
 #
 # The Rd source is read from man/ when the tests run from a source tree
 # (devtools::test()) and from the installed package's Rd database otherwise
@@ -43,16 +48,16 @@ rd_page_1346c <- function(page) {
   db[[key]]
 }
 
-# TRUE when an Rd fragment holds code that example() would execute: any
-# non-blank R code outside \dontrun{} (code inside \donttest{} counts, since
-# example() and R CMD check --run-donttest run it).
-rd_has_runnable_code_1346c <- function(x) {
+# TRUE when an Rd fragment holds code that always runs: any non-blank R code
+# outside \dontrun{} and \donttest{}.
+rd_has_always_run_code_1346c <- function(x) {
   tag <- attr(x, "Rd_tag")
-  if (identical(tag, "\\dontrun") || identical(tag, "COMMENT")) {
+  if (identical(tag, "\\dontrun") || identical(tag, "\\donttest") ||
+      identical(tag, "COMMENT")) {
     return(FALSE)
   }
   if (is.list(x)) {
-    return(any(vapply(x, rd_has_runnable_code_1346c, logical(1))))
+    return(any(vapply(x, rd_has_always_run_code_1346c, logical(1))))
   }
   is.character(x) && any(grepl("[^[:space:]]", sub("#.*$", "", x)))
 }
@@ -65,16 +70,27 @@ rd_examples_1346c <- function(rd) {
   rd[tags == "\\examples"]
 }
 
-# The code example() runs, as parsed expressions.
-rd_example_exprs_1346c <- function(rd) {
+# The example code as parsed expressions: with \donttest commented out (what a
+# plain R CMD check runs) or kept (what example() and --as-cran run).
+rd_example_exprs_1346c <- function(rd, donttest = FALSE) {
   ex_file <- tempfile(fileext = ".R")
   on.exit(unlink(ex_file), add = TRUE)
   tools::Rd2ex(rd, out = ex_file, commentDontrun = TRUE,
-               commentDonttest = FALSE)
+               commentDonttest = !donttest)
   if (!file.exists(ex_file)) {
     return(expression())
   }
   parse(file = ex_file, keep.source = FALSE)
+}
+
+# Skip, rather than pass vacuously, when an example is guarded by
+# requireNamespace() and that package is missing.
+skip_if_example_needs_1346c <- function(exprs) {
+  code <- unlist(lapply(exprs, deparse))
+  needs <- regmatches(
+    code, gregexpr('(?<=requireNamespace\\(")[^"]+', code, perl = TRUE)
+  )
+  for (pkg in unique(unlist(needs))) skip_if_not_installed(pkg)
 }
 
 for (page in pages_1346c) {
@@ -85,8 +101,8 @@ for (page in pages_1346c) {
       examples <- rd_examples_1346c(rd_page_1346c(page))
       expect_length(examples, 1L)
       expect_true(
-        rd_has_runnable_code_1346c(examples[[1L]]),
-        label = paste0("?", page, " has example code outside \\dontrun{}")
+        rd_has_always_run_code_1346c(examples[[1L]]),
+        label = paste0("?", page, " has example code outside \\dontrun{} and \\donttest{}")
       )
     })
 
@@ -94,14 +110,8 @@ for (page in pages_1346c) {
       skip_on_cran()
       exprs <- rd_example_exprs_1346c(rd_page_1346c(page))
       expect_gt(length(exprs), 0L,
-                label = paste0("expressions example(", page, ") executes"))
-      # An example guarded by requireNamespace() would pass without running
-      # anything when that package is missing, so skip instead.
-      code <- unlist(lapply(exprs, deparse))
-      needs <- regmatches(
-        code, gregexpr('(?<=requireNamespace\\(")[^"]+', code, perl = TRUE)
-      )
-      for (pkg in unique(unlist(needs))) skip_if_not_installed(pkg)
+                label = paste0("expressions example(", page, ") always runs"))
+      skip_if_example_needs_1346c(exprs)
       env <- new.env(parent = globalenv())
       withr::local_seed(1346L)
       grDevices::pdf(NULL)
@@ -124,6 +134,22 @@ for (page in pages_1346c) {
       # the body did not run.
       expect_gt(length(ls(env)), 0L,
                 label = paste0("objects example(", page, ") creates"))
+    })
+
+    test_that(paste0("?", page, " examples run with \\donttest code (#1346)"), {
+      skip_on_cran()
+      skip_if_not_heavy()
+      exprs <- rd_example_exprs_1346c(rd_page_1346c(page), donttest = TRUE)
+      expect_gt(length(exprs), 0L,
+                label = paste0("expressions example(", page, ") runs"))
+      skip_if_example_needs_1346c(exprs)
+      env <- new.env(parent = globalenv())
+      withr::local_seed(1346L)
+      grDevices::pdf(NULL)
+      withr::defer(grDevices::dev.off())
+      expect_no_error(suppressWarnings(
+        for (expr in exprs) eval(expr, envir = env)
+      ))
     })
   })
 }

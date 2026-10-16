@@ -19,6 +19,33 @@
   isTRUE(all.equal(unname(da), unname(db), tolerance = tol))
 }
 
+## Fixed-effect design rank check, shared by ML and REML (#1388). A column
+## that is an exact combination of the others makes the Hessian singular, and
+## under ML it used to surface only as "All N restarts failed." (NA/NaN
+## gradient). Name the redundant columns, as `lm()` reports aliased ones. The
+## pivoted QR puts the dependent columns last, so those are the ones that could
+## be dropped.
+.gllvmTMB_check_fixed_rank <- function(X, reml = FALSE) {
+  if (ncol(X) == 0L) {
+    return(invisible(NULL))
+  }
+  qrX <- qr(X)
+  if (qrX$rank >= ncol(X)) {
+    return(invisible(NULL))
+  }
+  redundant <- colnames(X)[qrX$pivot[seq.int(qrX$rank + 1L, ncol(X))]]
+  cli::cli_abort(c(
+    if (isTRUE(reml)) {
+      "{.arg REML = TRUE} requires a full-rank fixed-effect design matrix."
+    } else {
+      "The fixed-effect design matrix is not full rank."
+    },
+    "x" = "The observed-row fixed-effect design has rank {qrX$rank}, but {ncol(X)} column{?s}.",
+    "x" = "Redundant (linearly dependent) column{?s}: {.val {redundant}}.",
+    ">" = "Remove the redundant column(s) from the formula; a transformed copy of a covariate, or a dummy plus an intercept-like {.code 0 + trait} term, is the usual cause."
+  ), class = "gllvmTMB_rank_deficient_design")
+}
+
 .kernel_overlap_class <- function(similarity) {
   ifelse(
     similarity < 0.25, "near_orthogonal",
@@ -4072,6 +4099,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ">" = "Missing response rows are allowed and dropped before fitting; missing predictors still need to be removed or imputed before fitting (or declared with {.code mi()} under {.code missing = miss_control(predictor = \"model\")})."
     ))
   }
+  if (!isTRUE(REML)) {
+    .gllvmTMB_check_fixed_rank(X_fix[!masked_response, , drop = FALSE])
+  }
   if (isTRUE(REML)) {
     ## NON-GAUSSIAN REML IS THE COX-REID ADJUSTED PROFILE LIKELIHOOD.
     ##
@@ -4156,13 +4186,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ))
     }
     X_reml <- X_fix[!masked_response, , drop = FALSE]
-    if (ncol(X_reml) > 0L && qr(X_reml)$rank < ncol(X_reml)) {
-      cli::cli_abort(c(
-        "{.arg REML = TRUE} requires a full-rank fixed-effect design matrix.",
-        "x" = "The observed-row fixed-effect design has rank {qr(X_reml)$rank}, but {ncol(X_reml)} column{?s}.",
-        ">" = "Remove redundant fixed-effect columns or use {.code REML = FALSE}."
-      ))
-    }
+    .gllvmTMB_check_fixed_rank(X_reml, reml = TRUE)
     if (nrow(X_reml) <= ncol(X_reml)) {
       cli::cli_abort(c(
         "{.arg REML = TRUE} requires positive residual degrees of freedom.",

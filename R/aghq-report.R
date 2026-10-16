@@ -207,6 +207,40 @@
 ## and a NAMESPACE `S3method()` line solve this the same way; the latter is
 ## the idiomatic, roxygen2-maintained mechanism and is what CRAN expects.
 
+## REML log-likelihoods are only comparable between REML fits that share the
+## same fixed effects, so `AIC()` / `BIC()` warn when a REML fit is tabulated
+## with an ML fit, or with a REML fit whose fixed effects differ. `anova()`
+## refuses REML outright (see `.gllvmTMB_anova_global_check()`); the
+## information criteria warn instead, as `drmTMB` does, because a lone REML
+## fit and REML fits with identical fixed effects remain legitimate to rank.
+.gllvmTMB_check_reml_comparability <- function(objs, fn_label = "AIC") {
+  objs <- objs[vapply(objs, inherits, logical(1L), what = "gllvmTMB_multi")]
+  if (length(objs) < 2L) {
+    return(invisible(NULL))
+  }
+  is_reml <- vapply(objs, function(f) isTRUE(f$REML), logical(1L))
+  if (!any(is_reml)) {
+    return(invisible(NULL))
+  }
+  if (!all(is_reml)) {
+    cli::cli_warn(c(
+      "{fn_label}() is comparing {.code REML = TRUE} and ML fits; the values are not comparable.",
+      "i" = "A REML likelihood is a likelihood of residual contrasts, so it cannot be ranked against an ML likelihood.",
+      ">" = "Refit every model with {.code REML = FALSE} (the default) before comparing with {fn_label}()."
+    ), class = "gllvmTMB_ic_reml_not_comparable")
+    return(invisible(NULL))
+  }
+  fixed_sets <- lapply(objs, function(f) sort(as.character(f$X_fix_names %||% character(0))))
+  if (length(unique(fixed_sets)) > 1L) {
+    cli::cli_warn(c(
+      "{fn_label}() is comparing {.code REML = TRUE} fits with different fixed effects; the values are not comparable.",
+      "i" = "REML likelihoods are comparable only between models with identical fixed-effect structure.",
+      ">" = "Refit every model with {.code REML = FALSE} (the default) to compare models with different fixed effects."
+    ), class = "gllvmTMB_ic_reml_not_comparable")
+  }
+  invisible(NULL)
+}
+
 #' @rdname gllvmTMB_multi-methods
 #' @param k Penalty per parameter for [AIC()]; default `2` (ordinary AIC).
 #' @export
@@ -214,6 +248,7 @@ AIC.gllvmTMB_multi <- function(object, ..., k = 2) {
   .gllvmTMB_check_weighted_objective(c(list(object), list(...)), "AIC")
   .aghq_check_engine_consistency(c(list(object), list(...)))
   .aghq_check_penalised(c(list(object), list(...)), "AIC")
+  .gllvmTMB_check_reml_comparability(c(list(object), list(...)), "AIC")
   NextMethod()
 }
 
@@ -223,6 +258,7 @@ BIC.gllvmTMB_multi <- function(object, ...) {
   .gllvmTMB_check_weighted_objective(c(list(object), list(...)), "BIC")
   .aghq_check_engine_consistency(c(list(object), list(...)))
   .aghq_check_penalised(c(list(object), list(...)), "BIC")
+  .gllvmTMB_check_reml_comparability(c(list(object), list(...)), "BIC")
   NextMethod()
 }
 

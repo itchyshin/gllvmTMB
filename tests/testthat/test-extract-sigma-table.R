@@ -370,7 +370,7 @@ test_that("extract_Sigma_table(part = 'unique') returns table rows, not the extr
   fit <- make_sigma_table_fit()
   tbl <- suppressMessages(extract_Sigma_table(fit, level = "unit", part = "unique"))
   expect_s3_class(tbl, "data.frame")
-  expect_null(tbl$s)
+  expect_false("s" %in% names(tbl))
   expect_equal(unique(tbl$matrix), "Psi")
   expect_equal(unique(tbl$component), "unique")
   ## "psi" is an alias of extract_Sigma() only

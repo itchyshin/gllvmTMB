@@ -23,7 +23,6 @@ jobs:
       NOT_CRAN: 'false'
       _R_CHECK_FORCE_SUGGESTS_: 'true'
       _R_CHECK_LIMIT_CORES_: 'true'
-      R_LIBS_USER: ${{ runner.temp }}/cran071-private-library
     steps:
       - name: Download and verify the pinned draft asset before setup
         shell: pwsh
@@ -40,6 +39,9 @@ jobs:
           $bytes = (Get-Item $file).Length
           if ($hash -ne 'dd8a811fbc273774db44b3284ca7cac7b724da5539c5fafebc14fcac0a2df557' -or $bytes -ne 4428330) { throw 'Frozen archive identity mismatch' }
           @{sha256=$hash; size_bytes=$bytes; release_id=414918132; asset_id=647209908; source_commit='876b4fab7a50404ce2765e8924f69b5085e2d0c4'; fetched_utc=(Get-Date).ToUniversalTime().ToString('o')} | ConvertTo-Json | Set-Content "$root/records/asset-identity.json"
+          $privateLibrary = Join-Path $env:RUNNER_TEMP 'cran071-private-library'
+          New-Item -ItemType Directory -Path $privateLibrary -Force | Out-Null
+          "R_LIBS_USER=$privateLibrary" >> $env:GITHUB_ENV
           "DIAG_ROOT=$root" >> $env:GITHUB_ENV
           "FROZEN_ARCHIVE=$file" >> $env:GITHUB_ENV
       - uses: actions/checkout@v5

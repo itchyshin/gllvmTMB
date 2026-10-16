@@ -42,3 +42,16 @@ Rplots.pdf NOTE remains an unexplained input/service anomaly; no source defect
 is established. Newest external resume/artifact/ledger records govern resumption.
 No blocking maintainer question. Automatic continuation ends at confirmation or
 2026-10-16 22:00 UTC. Preserve every foreign lane.
+
+## Dispatch correction, 14:34 UTC
+
+Process commit b3311983b and governance833259051 were pushed. GitHub rejected
+the first dispatch before creating a diagnostic run: HTTP422, job-level
+R_LIBS_USER referred to unavailable runner context. The official context table
+confirms that restriction. The corrected workflow sets the private library
+through GITHUB_ENV in the first PowerShell step. No permission expansion,
+archive change, or source substitution. New workflow SHA256
+7661d425663c24a059981db83eccdf21a0c0affb08d9ca96ff2dbec733e5d244. YAML and
+embedded R parse passed. Grace independently re-reviewed all remaining context
+uses and found no further context blocker. Commit/push this scoped correction
+and dispatch with no inputs; record the resulting run in external resume state.

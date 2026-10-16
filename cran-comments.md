@@ -19,7 +19,28 @@ This resubmission addresses Konstanze Lauseker's review of 15 October 2026.
 
 ## Check results
 
-Pending exact-candidate local and Windows checks. Do not upload this draft.
+The exact candidate has SHA-256
+600b178631a79199d63c8568806394da2fdbfb986ef08fd3f85de960a9dc68f2
+and size 4,428,282 bytes, built from clean release source
+e158795cd08292e6b2400912629ba409855ba955.
+
+Local macOS arm64, R 4.6.0: R CMD check --as-cran --run-donttest,
+including vignette rebuilding and PDF/HTML manuals, completed with
+0 errors, 0 warnings and 2 NOTEs:
+
+* New submission.
+* The extract_correlations demonstration takes about six seconds when
+  donttest examples are explicitly enabled. It is wrapped in donttest and
+  uses 50 bootstrap refits to keep the example bounded. This is an API
+  demonstration; its small resample count does not certify interval coverage.
+
+The CRAN test subset passed 1,408 assertions, with 33 documented conditional
+skips, no failures and no warnings. Separate focused tests cover the changed
+message and temporary-file behavior. Independent installed-package smoke
+checks passed prediction dispatch, accessors and a README model workflow.
+
+Windows R-release/R-devel and three-OS CI results are pending.
+Do not upload this draft until those checks and release reviews are complete.
 
 ## Scope
 

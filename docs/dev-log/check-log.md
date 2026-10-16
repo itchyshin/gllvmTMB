@@ -55630,3 +55630,27 @@ verified with getS3method for multi, VA and Julia. Full current example sweep,
 final archive checks, external Windows and artifact reviews pending. No upload,
 confirmation, acceptance or publication claim. No simulation campaign run.
 Evidence: /Users/z3437171/local-scratch/gllvmTMB-cran-071-evidence/.
+
+### Local verification complete; platform gate pending
+
+Final upload candidate source e158795cd08292e6b2400912629ba409855ba955,
+SHA256600b178631a79199d63c8568806394da2fdbfb986ef08fd3f85de960a9dc68f2,
+4,428,282bytes,889entries. Full R CMD check --as-cran --run-donttest including
+vignette rebuild and PDF/HTML manuals passed 0E/0W/2NOTEs (newsubmission,
+extract_correlations donttest example6.016sec). Test subset:1408pass/33skip,
+0fail/0warn. Final independent installed-reader/predict smoke passed in0.94sec;
+Grace and Pat/Rose verified final identity and no Rplots.pdf. Explicit @method
+source comments remove the prior S3usage NOTE. Root graphics output now excluded.
+
+Commands: DEVELOPER_DIR=/Library/Developer/CommandLineTools R CMD build .;
+R CMD check --as-cran --run-donttest <immutable-archive>;
+python3 ~/shinichi-brain/tools/cran_release_gate.py <evidence>/release-ledger.json
+(tarball-clean accepted); --selftest (all negative controls passed);
+Rscript ~/shinichi-brain/tools/check-after-task.R <report> (structure passes);
+benchmark.py assessment-check <report> <assessment> --mode independent
+--version local-verified-v2 (exact-draft assessment recorded, not validation).
+
+Both Windows services accepted identical-byte alias
+gllvmTMB_0.7.1-600b1786.tar.gz; results pending. Current threeOS CI38862492778
+is queued with no assigned runners. No CRAN upload or confirmation occurred.
+Prior archives and their checks/uploads are predecessor-only evidence.

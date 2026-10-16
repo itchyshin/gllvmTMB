@@ -4422,19 +4422,20 @@ print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
       )
     }
     Kal <- Kmat[levels(grpf), levels(grpf), drop = FALSE]
-    ## A kernel symmetric up to rounding (e.g. `solve(solve(K))`, ~1e-16 off)
-    ## is symmetrised explicitly; anything beyond isSymmetric()'s tolerance
-    ## (sqrt(.Machine$double.eps), mean relative difference) still aborts.
-    ## No jitter is applied either way.
-    if (!isSymmetric(unname(Kal), tol = sqrt(.Machine$double.eps))) {
+    ## A kernel symmetric to rounding (e.g. `solve(solve(K))`, ~1e-16 off) is
+    ## symmetrised explicitly. The check is entry-wise, scaled by the largest
+    ## entry: isSymmetric() averages the difference, so one bad entry in a
+    ## large K would slip through. No jitter is applied either way.
+    k_asym <- max(abs(Kal - t(Kal)))
+    if (k_asym > sqrt(.Machine$double.eps) * max(1, max(abs(Kal)))) {
       stop(
         .gllvm_julia_gate_message(
           "GJL-GATE-STRUCTURED-TERMS",
-          "kernel K must be exactly symmetric; no jitter is applied. ",
-          "(max|K - t(K)| = ", format(max(abs(Kal - t(Kal))), digits = 3),
-          "; only asymmetry at rounding level, within ",
-          "sqrt(.Machine$double.eps), is symmetrised. Pass a symmetric ",
-          "kernel, for example (K + t(K)) / 2.)"
+          "kernel K must be symmetric to rounding; no jitter is applied. ",
+          "(max|K - t(K)| = ", format(k_asym, digits = 3),
+          "; only asymmetry within sqrt(.Machine$double.eps) of the largest ",
+          "entry is symmetrised. Pass a symmetric kernel, for example ",
+          "(K + t(K)) / 2.)"
         ),
         call. = FALSE
       )

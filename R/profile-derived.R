@@ -1417,7 +1417,8 @@ profile_ci_correlation <- function(
 ## ---- Variance proportions: fix-and-refit profile -------------------------
 ## extract_proportions(fit) returns per-trait variance partitions across all
 ## components (shared_unit, unique_unit, shared_unit_obs, unique_unit_obs,
-## unique_cluster, unique_cluster2, shared_phy, unique_phy, link_residual).
+## unique_cluster, unique_cluster2, shared_phy, unique_phy, residual,
+## link_residual).
 ## profile_ci_proportions() supplies profile-likelihood CIs for each
 ## (trait, component) by Lagrange-style fix-and-refit on the proportion itself
 ## (not the raw numerator).
@@ -1462,6 +1463,21 @@ profile_ci_correlation <- function(
   use_diag_cluster2 <- isTRUE(fit$use$diag_cluster2)
   use_rr_phy <- isTRUE(fit$use$phylo_rr)
   use_diag_phy <- isTRUE(fit$use$phylo_diag)
+
+  ## Gaussian/lognormal observation residual sigma_eps^2 (#1399). It floats
+  ## with log_sigma_eps; a pinned sigma_eps is not a free parameter and is
+  ## not a component in extract_proportions(), so it is left out here too.
+  ix_sigma_eps <- which(par_names == "log_sigma_eps")
+  resid_slots <- .variance_share_residual_slots(fit)
+  use_resid <- length(ix_sigma_eps) > 0L &&
+    length(resid_slots) == T &&
+    any(resid_slots > 0L)
+  resid_var <- function(par) {
+    v <- numeric(T)
+    on <- resid_slots > 0L
+    v[on] <- exp(2 * par[ix_sigma_eps][pmin(resid_slots[on], length(ix_sigma_eps))])
+    v
+  }
 
   ## Per-trait link-residual is constant w.r.t. fitted parameters for the
   ## families this stage supports (Gaussian -> 0, binomial -> pi^2/3,
@@ -1543,6 +1559,9 @@ profile_ci_correlation <- function(
     unique_phy = if (use_diag_phy && length(ix_diag_phy) > 0L) {
       function(par) exp(2 * par[ix_diag_phy][trait_idx])
     } else NULL,
+    residual = if (use_resid) {
+      function(par) resid_var(par)[trait_idx]
+    } else NULL,
     link_residual = NULL,
     NULL
   )
@@ -1580,6 +1599,9 @@ profile_ci_correlation <- function(
     }
     if (use_diag_phy && length(ix_diag_phy) > 0L) {
       s <- s + exp(2 * par[ix_diag_phy][trait_idx])
+    }
+    if (use_resid) {
+      s <- s + resid_var(par)[trait_idx]
     }
     s + link_resid_vec[trait_idx]
   }

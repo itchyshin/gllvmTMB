@@ -10,18 +10,40 @@ VP(fit)
 \item{fit}{A fitted multivariate model returned by \code{\link[=gllvmTMB]{gllvmTMB()}}.}
 }
 \value{
-An \verb{n_traits × n_components} matrix of variance shares (rows
-sum to 1). Columns are only those active in \code{fit$use}.
+An \verb{n_traits × n_components} matrix of variance shares; each row
+sums to 1 over the included components (a row whose total is not positive
+is \code{NA}). Columns are only the components active in the fit. When a
+component was left out, the \code{"omitted_components"} attribute names it.
 }
 \description{
-Decomposes the marginal trait variance into contributions from each
-active component of the model. Column names follow the fitted report
-blocks: \code{rr_B}, \code{diag_B}, \code{rr_W}, \code{diag_W}, \code{diag_species}, \code{phylo_rr},
-\code{phylo_diag}, \code{propto}, and \code{residual} (Gaussian/lognormal observation
-variance where present). Non-Gaussian link-implicit residual shares are
-handled by \code{\link[=extract_proportions]{extract_proportions()}}, not by \code{VP()}.
+Decomposes each trait's variance on the linear-predictor scale into
+contributions from the active random-effect components of the model and
+the Gaussian or lognormal observation residual. Column names follow the
+fitted report blocks: \code{rr_B}, \code{diag_B}, \code{rr_W}, \code{diag_W}, \code{diag_species},
+\code{diag_cluster2}, \code{phylo_rr}, \code{phylo_diag}, \code{propto}, one \verb{re_int_<group>}
+column per \code{(1 | group)} random intercept, and \code{residual}.
 }
 \details{
+A \code{(1 | group)} intercept is a single draw per group level added to every
+trait, so its column carries the same variance in every row. \code{residual} is
+the estimated observation variance \eqn{\sigma^2_\varepsilon} of Gaussian
+and lognormal traits. When a per-observation \code{indep()} term absorbs the
+observation residual, the package pins \eqn{\sigma_\varepsilon} at about
+1/1000 of the response SD to keep the density defined; that pinned value is
+not counted, because the per-observation term is the residual.
+Non-Gaussian link-implicit residual shares are handled by
+\code{\link[=extract_proportions]{extract_proportions()}}, not by \code{VP()}.
+
+Some active components have no constant per-trait variance that \code{VP()} can
+compute from the fit: spatial fields, multi-kernel terms, temporal states,
+random slopes, and the known sampling variance of \code{meta_V()}. \code{VP()} leaves
+each of them out, names them in a warning of class
+\code{gllvmTMB_vp_component_omitted}, and records them in the
+\code{"omitted_components"} attribute of the result. The shares are then
+proportions of the included components only. Fixed effects, including the
+predictor part of \code{latent(..., lv = ~ x)}, are not variance components and
+are not partitioned.
+
 Mirrors \code{gllvm::VP()} / \code{gllvm::plotVP()}.
 
 Structured trait-intercept rho fits are excluded; use \code{extract_Sigma()} and

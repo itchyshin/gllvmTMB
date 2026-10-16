@@ -19,7 +19,8 @@ link's implicit residual as its own per-trait component (e.g.
 Poisson log; see "Family-aware link residuals" in \code{\link[=extract_Sigma]{extract_Sigma()}}
 for the full per-family table). Mixed-family fits get the residual
 implied by each trait's family/link. \code{"none"} omits the link-implicit
-component.}
+component. The Gaussian and lognormal \code{residual} is an estimated
+variance, not a link-implied constant, so it is kept under either value.}
 
 \item{format}{\code{"long"} (default) returns a tibble-like data frame
 with one row per (trait, component); \code{"wide"} returns one row per
@@ -29,25 +30,44 @@ trait with one column per component.}
 Long format: data frame with columns \code{trait}, \code{component}
 (e.g. \code{"shared_unit"}, \code{"unique_unit"}, \code{"shared_unit_obs"},
 \code{"unique_unit_obs"}, \code{"unique_phy"}, \code{"shared_phy"}, \code{"unique_cluster"},
-\code{"unique_cluster2"}, \code{"link_residual"}),
+\code{"unique_cluster2"}, \code{"residual"}, \code{"link_residual"}),
 \code{variance} (the absolute variance), \code{proportion} (the share of
 the total). Wide format: data frame with one column per component
 plus a \code{total_variance} column; the per-trait proportions sum to 1.
+When a component was left out, the \code{"omitted_components"} attribute
+names it.
 
 \strong{OLRE interpretation:} for fits with a genuine observation-level
 diagonal term, usually written as per-row \code{indep()} in new code (see
 \code{\link[=extract_residual_split]{extract_residual_split()}}), the \code{unique_unit_obs} component is
 \eqn{\sigma^2_e} (the estimated OLRE variance) and the \code{link_residual}
 component is \eqn{\sigma^2_d} (the distribution-specific latent residual).
+For a Gaussian or lognormal trait the per-row term is the observation
+residual: the package pins \eqn{\sigma_\varepsilon} at about 1/1000 of
+the response SD to keep the density defined, and that pinned value is not
+counted, so no \code{residual} component appears.
 }
 \description{
 For each trait, returns the proportion of total latent variance
 attributable to each component present in the model:
 shared (rr) and unique (diag) at each tier (unit, unit_obs, phy), diagonal
-cluster / cluster2 components when present, plus optionally the binomial
-link's implicit residual.
+cluster / cluster2 components when present, the estimated observation
+residual \eqn{\sigma^2_\varepsilon} of Gaussian and lognormal traits
+(\code{residual}), plus optionally the link's implicit residual of
+non-Gaussian traits.
 }
 \details{
+Some active components are not partitioned here: \code{(1 | group)} random
+intercepts, the common phylogenetic variance of
+\code{phylo_indep(common = TRUE)}, spatial fields, multi-kernel terms, temporal
+states, random slopes, and the known sampling variance of \code{meta_V()}.
+\code{extract_proportions()} leaves each of them out, names them in a warning of
+class \code{gllvmTMB_proportions_component_omitted}, and records them in the
+\code{"omitted_components"} attribute of the result. The proportions are then
+shares of the included components only, and \code{total_variance} is their sum,
+not the trait's total variance. \code{\link[=VP]{VP()}} does count \code{(1 | group)} intercepts
+and the \code{phylo_indep(common = TRUE)} variance.
+
 This is the most general proportion-decomposition function in the
 package. \code{\link[=extract_phylo_signal]{extract_phylo_signal()}} is the focused PGLLVM
 \eqn{H^2 / C^2_\text{non} / \psi^2} convenience wrapper for the

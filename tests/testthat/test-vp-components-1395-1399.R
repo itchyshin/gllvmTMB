@@ -151,6 +151,16 @@ test_that("proportion intervals rebuild the same residual-inclusive shares (#139
   }
 })
 
+test_that("plot(type = 'variance') labels and colours the residual (#1399)", {
+  skip_on_cran()
+  skip_if_not_installed("ggplot2")
+  fit <- make_vp_1399_fit()
+  p <- suppressMessages(plot(fit, type = "variance"))
+  expect_true("Residual" %in% levels(p$data$component_label))
+  built <- ggplot2::ggplot_build(p)
+  expect_false(anyNA(built$data[[1]]$fill))
+})
+
 test_that("a per-row indep() residual is not double counted with pinned sigma_eps", {
   skip_on_cran()
   set.seed(11)
@@ -203,6 +213,19 @@ test_that("extract_proportions() names the (1 | group) term it leaves out (#1395
   )
   p <- suppressWarnings(extract_proportions(fit, format = "wide"))
   expect_true("(1 | study)" %in% attr(p, "omitted_components"))
+  expect_false("re_int_study" %in% names(p))
+
+  ## The interval machinery re-calls extract_proportions(); the user sees the
+  ## omission once per request, not once per internal call.
+  n_warn <- 0L
+  withCallingHandlers(
+    gllvmTMB:::.proportions_validate_inputs(fit, NULL, NULL, 0.95),
+    gllvmTMB_proportions_component_omitted = function(cnd) {
+      n_warn <<- n_warn + 1L
+      invokeRestart("muffleWarning")
+    }
+  )
+  expect_equal(n_warn, 1L)
 })
 
 test_that("VP() warns, by name, about random slopes it cannot partition (#1395)", {

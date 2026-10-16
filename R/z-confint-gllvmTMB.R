@@ -1115,6 +1115,7 @@
     "unique_cluster2",
     "shared_phy",
     "unique_phy",
+    "residual",
     "link_residual"
   )
 }

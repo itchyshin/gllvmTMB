@@ -1,7 +1,7 @@
 ## Issue #1348: engine = "julia" kernel_latent() required a bit-exactly
 ## symmetric K (isSymmetric(tol = 0)), rejecting a kernel symmetric to rounding.
 ## Contract: K is symmetrised with (K + t(K)) / 2 only when
-## isSymmetric(K, tol = sqrt(.Machine$double.eps)); a clearly asymmetric K
+## an entry-wise max|K - t(K)| <= sqrt(eps) * max(1, max|K|); a clearly asymmetric K
 ## still stops with the gate error. The mocked tests stop at gllvm_julia_fit(),
 ## so the gate runs first and no Julia is started; the live test is gated.
 
@@ -71,6 +71,36 @@ test_that("julia kernel_latent() still stops on a clearly asymmetric kernel (1e-
     .kernel_1348_fit(fx$df, fx$K),
     "GJL-GATE-STRUCTURED-TERMS.*kernel K must be exactly symmetric.*max\\|K - t\\(K\\)\\| = 0\\.001"
   )
+})
+
+test_that("julia kernel_latent() stops on one 1e-3 entry in a 200 x 200 kernel before any Julia call", {
+  skip_if_no_julia_1348()
+  set.seed(2)
+  m <- 200L
+  lv <- as.character(seq_len(m))
+  K <- 0.5^abs(outer(seq_len(m), seq_len(m), "-"))
+  dimnames(K) <- list(lv, lv)
+  K[1, 2] <- K[1, 2] + 1e-3
+  expect_gt(max(abs(K - t(K))), sqrt(.Machine$double.eps) * max(1, max(abs(K))))
+  df <- expand.grid(
+    unit = factor(seq_len(m)), trait = factor(paste0("t", 1:3)),
+    KEEP.OUT.ATTRS = FALSE
+  )
+  df$value <- rnorm(nrow(df))
+  df$group <- factor(as.character(df$unit), levels = lv)
+  withr::local_envvar(GLLVMODELS_JL_PATH = tempdir())
+  reached <- FALSE
+  testthat::local_mocked_bindings(
+    gllvm_julia_fit = function(y, ...) {
+      reached <<- TRUE
+      stop("STUB: reached gllvm_julia_fit")
+    }
+  )
+  expect_error(
+    .kernel_1348_fit(df, K),
+    "GJL-GATE-STRUCTURED-TERMS.*kernel K must be exactly symmetric.*max\\|K - t\\(K\\)\\| = 0\\.001"
+  )
+  expect_false(reached)
 })
 
 test_that("engine = 'julia' kernel_latent() fits end to end with 1e-12 asymmetry", {

@@ -208,10 +208,11 @@ test_that("a sigma_eps fixed by the engine is still counted (#1399)", {
                tolerance = 1e-8)
 })
 
-test_that("profile targets refuse partly fixed per-trait blocks instead of misreading them", {
+test_that("proportion targets read partly fixed per-trait blocks through the map", {
   skip_on_cran()
   ## Gaussian and binomial traits under one latent(): the engine fixes the
   ## binomial traits' Psi, so theta_diag_B has fewer free values than traits.
+  ## Indexing the free vector by trait used to read another trait's value.
   set.seed(7)
   n <- 40
   d <- expand.grid(
@@ -230,21 +231,72 @@ test_that("profile targets refuse partly fixed per-trait blocks instead of misre
   fit <- suppressMessages(suppressWarnings(gllvmTMB(
     value ~ 0 + trait + latent(0 + trait | unit, d = 1),
     data = d, unit = "unit", trait = "trait", family = families,
-    silent = TRUE, control = gllvmTMBcontrol(n_init = 1, se = FALSE)
+    silent = TRUE, control = gllvmTMBcontrol(n_init = 1, se = TRUE)
   )))
   expect_true(anyNA(fit$tmb_obj$env$map$theta_diag_B))
-  expect_null(gllvmTMB:::.proportion_target_fn(fit, "residual", 2L))
-  expect_null(gllvmTMB:::.proportion_target_fn(fit, "shared_unit", 2L))
-
-  ## The report-based Wald reconstruction is unaffected and still matches.
   p <- extract_proportions(fit, format = "wide")
   expect_equal(unname(p$residual[c(1L, 3L)]), c(0, 0))
+  for (t in 1:4) {
+    for (cc in c("shared_unit", "unique_unit", "link_residual", "residual")) {
+      target <- gllvmTMB:::.proportion_target_fn(fit, cc, trait_idx = t)
+      if (cc == "link_residual" || (cc == "residual" && t %in% c(1L, 3L))) {
+        ## Constant in theta: no profile target.
+        expect_null(target)
+      } else {
+        expect_equal(target(fit$opt$par, fit), unname(p[[cc]][t]),
+                     tolerance = 1e-8)
+      }
+    }
+  }
+
+  ## The report-based Wald route matches too, and reports the binomial
+  ## traits' structurally zero residual like the fixed link residual.
   comps <- gllvmTMB:::.proportions_components_present(fit)
   base <- gllvmTMB:::.proportions_components_at(
     fit, fit$tmb_obj$env$last.par.best, comps, 4L
   )
   expect_equal(unname((base$num / base$den)[, "residual"]),
                unname(p$residual), tolerance = 1e-8)
+  ci <- gllvmTMB:::.proportions_wald_ci(fit, components = "residual")
+  expect_equal(ci$method, c("(unavailable)", "wald", "(unavailable)", "wald"))
+  expect_equal(ci$lower[c(1L, 3L)], c(0, 0))
+  expect_true(all(ci$lower[c(2L, 4L)] < ci$proportion[c(2L, 4L)]))
+  expect_true(all(ci$proportion[c(2L, 4L)] < ci$upper[c(2L, 4L)]))
+})
+
+test_that("proportion targets are exact for a diagonal phylo_indep() loading block", {
+  skip_on_cran()
+  skip_if_not_installed("ape")
+  ## Lone phylo_indep() runs on the phylo_rr slot with its lower triangle
+  ## pinned at 0 by the map.
+  set.seed(21)
+  nsp <- 20
+  tree <- ape::rcoal(nsp)
+  tree$tip.label <- paste0("sp", seq_len(nsp))
+  C <- ape::vcv(tree, corr = TRUE)
+  d <- expand.grid(
+    trait = factor(c("a", "b", "c")),
+    rep = 1:3,
+    species = factor(tree$tip.label, levels = tree$tip.label)
+  )
+  d$unit <- factor(paste(d$species, d$rep, sep = "_"))
+  gp <- as.numeric(t(chol(C)) %*% stats::rnorm(nsp))
+  names(gp) <- tree$tip.label
+  d$value <- c(0.8, 0.5, -0.6)[as.integer(d$trait)] *
+    gp[as.character(d$species)] + stats::rnorm(nrow(d), sd = 0.5)
+  fit <- suppressMessages(suppressWarnings(gllvmTMB(
+    value ~ 0 + trait + phylo_indep(0 + trait | species, tree = tree),
+    data = d, unit = "unit", trait = "trait", cluster = "species",
+    family = gaussian(), silent = TRUE,
+    control = gllvmTMBcontrol(n_init = 1, se = FALSE)
+  )))
+  expect_true(anyNA(fit$tmb_obj$env$map$theta_rr_phy))
+  p <- extract_proportions(fit, format = "wide")
+  for (cc in c("shared_phy", "residual")) {
+    target <- gllvmTMB:::.proportion_target_fn(fit, cc, trait_idx = 2L)
+    expect_equal(target(fit$opt$par, fit), unname(p[[cc]][2L]),
+                 tolerance = 1e-8)
+  }
 })
 
 # ---- #1395: components VP() used to drop ----------------------------------
@@ -400,6 +452,26 @@ test_that("VP() reads the Gaussian and lognormal sigma_eps slots separately", {
   ## diag_B = 1; residual = 1^2 for the Gaussian trait, 2^2 for the lognormal.
   expect_equal(unname(M["t1", ]), c(1, 1) / 2)
   expect_equal(unname(M["t2", ]), c(1, 4) / 5)
+})
+
+test_that("VP() names a slope-only phylo_slope() term without an intercept", {
+  fit <- make_fake_vp_fit_1395(
+    extra = list(tmb_data = list(
+      use_phylo_slope = 1L,
+      use_phylo_slope_correlated = 0L
+    ))
+  )
+  w <- NULL
+  M <- withCallingHandlers(
+    VP(fit),
+    gllvmTMB_vp_component_omitted = function(cnd) {
+      w <<- conditionMessage(cnd)
+      invokeRestart("muffleWarning")
+    }
+  )
+  expect_equal(attr(M, "omitted_components"),
+               "phylogenetic or pedigree random slope")
+  expect_no_match(w, "intercept")
 })
 
 test_that("VP() names one response-column slope term once", {

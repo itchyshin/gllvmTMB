@@ -539,10 +539,13 @@ ordiplot.gllvmTMB_multi <- function(
 #' `re_int_<group>` column per `(1 | group)` random intercept, and `residual`.
 #'
 #' A `(1 | group)` intercept is a single draw per group level added to every
-#' trait, so its column carries the same variance in every row. Phylogenetic
-#' and kernel columns are on the scale of the supplied tree, pedigree or
-#' kernel matrix; they are variances per species or level when that matrix
-#' has a unit diagonal, as an ultrametric tree rescaled to unit height does.
+#' trait, so its column carries the same variance in every row. A `tree =`
+#' input is rescaled to unit root-to-tip height, so phylogenetic columns are
+#' variances per species. A `vcv =`, `A =`, pedigree or kernel `K =` matrix
+#' is used as supplied: when its diagonal is not 1, the column holds the
+#' loading variance rather than the per-level variance, and the shares
+#' change with the matrix's scale (rescale it to a unit diagonal first, for
+#' example with `ape::vcv(tree, corr = TRUE)`).
 #'
 #' `residual` is the observation variance \eqn{\sigma^2_\varepsilon} of
 #' Gaussian and lognormal traits (on the log scale for lognormal). When a
@@ -556,11 +559,12 @@ ordiplot.gllvmTMB_multi <- function(
 #' responses are large. Non-Gaussian link-implicit residual shares are
 #' handled by [extract_proportions()], not by `VP()`.
 #'
-#' Some active components have no single per-trait variance: spatial fields
-#' (their variance changes with location), random-slope terms (their
+#' Some active components are not partitioned: random-slope terms (their
 #' variance, intercept included, changes with the covariate value),
-#' response-column slopes and coefficients, temporal states, and the known
-#' sampling variance of `meta_V()` (it differs by observation). `VP()` leaves
+#' response-column slopes and coefficients (likewise), the known sampling
+#' variance of `meta_V()` (it differs by observation), spatial fields (their
+#' variance is on the SPDE parameter scale) and temporal states
+#' ([extract_temporal()] reports their per-trait variances). `VP()` leaves
 #' each of them out, names them in a warning of class
 #' `gllvmTMB_vp_component_omitted`, and records them in the
 #' `"omitted_components"` attribute of the result. The shares are then
@@ -835,8 +839,12 @@ VP <- function(fit) {
   if (on("phylo_latent_slope") ||
       (!column_term &&
          (any_on(c("phylo_dep_slope", "phylo_indep_slope")) ||
-            td_on("use_phylo_slope") || td_on("use_phylo_slope_correlated")))) {
+            td_on("use_phylo_slope_correlated")))) {
     add("phylo_slope", "phylogenetic or pedigree random intercepts and slopes")
+  } else if (!column_term && td_on("use_phylo_slope")) {
+    ## Legacy phylo_slope(x | species) / animal_slope(x | id): one slope per
+    ## level shared across traits, with no random intercept.
+    add("phylo_slope_only", "phylogenetic or pedigree random slope")
   }
   if (isTRUE(fit$temporal$active)) {
     add("temporal", "temporal_*() state")
@@ -863,16 +871,19 @@ VP <- function(fit) {
   )
   hints <- c(
     vp = "{.fn VP} does count {.code (1 | group)} random intercepts, common-variance phylogenetic terms and multi-kernel terms.",
-    spatial = "A spatial field's variance changes with location, so it has no single per-trait value.",
-    slope = "A random-slope term's variance, intercept included, changes with the covariate value; {.fn extract_Sigma} reports its intercept-slope covariance.",
-    temporal = "{.fn extract_temporal} reports the temporal loadings and variances.",
+    spatial = "A spatial field's variance is on the SPDE parameter scale, and these shares do not convert it to a per-trait variance.",
+    slope = "A random-slope term's variance, intercept included, changes with the covariate value; {.fn extract_Sigma} reports its intercept-slope covariance (level {.code \"unit_slope\"}, {.code \"phy\"}, {.code \"phy_slope\"} or {.code \"spatial\"}).",
+    slope_only = "A random slope's variance changes with the covariate value, so it has no single per-trait share.",
+    column = "A response-column slope's variance changes with the covariate values; {.code extract_Sigma(fit, level = \"column_slope\")} reports its covariance across the slope columns.",
+    temporal = "{.fn extract_temporal} reports the temporal loadings and per-trait variances; these shares do not add them yet.",
     meta_V = "The known sampling variances are the {.code V} given to {.fn meta_V}; they differ by observation."
   )
   use_hint <- c(
     vp = any(keys %in% c("re_int", "propto", "kernel")),
     spatial = "spatial" %in% keys,
-    slope = any(keys %in% c("spatial_slope", "unit_slope", "phylo_slope",
-                            "column_slope")),
+    slope = any(keys %in% c("spatial_slope", "unit_slope", "phylo_slope")),
+    slope_only = "phylo_slope_only" %in% keys,
+    column = "column_slope" %in% keys,
     temporal = "temporal" %in% keys,
     meta_V = "meta_V" %in% keys
   )

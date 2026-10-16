@@ -26,10 +26,13 @@ column per term of a fit with several named \verb{kernel_*()} terms, one
 }
 \details{
 A \code{(1 | group)} intercept is a single draw per group level added to every
-trait, so its column carries the same variance in every row. Phylogenetic
-and kernel columns are on the scale of the supplied tree, pedigree or
-kernel matrix; they are variances per species or level when that matrix
-has a unit diagonal, as an ultrametric tree rescaled to unit height does.
+trait, so its column carries the same variance in every row. A \verb{tree =}
+input is rescaled to unit root-to-tip height, so phylogenetic columns are
+variances per species. A \verb{vcv =}, \verb{A =}, pedigree or kernel \verb{K =} matrix
+is used as supplied: when its diagonal is not 1, the column holds the
+loading variance rather than the per-level variance, and the shares
+change with the matrix's scale (rescale it to a unit diagonal first, for
+example with \code{ape::vcv(tree, corr = TRUE)}).
 
 \code{residual} is the observation variance \eqn{\sigma^2_\varepsilon} of
 Gaussian and lognormal traits (on the log scale for lognormal). When a
@@ -43,11 +46,12 @@ share a scale, but not when trait scales differ widely or when lognormal
 responses are large. Non-Gaussian link-implicit residual shares are
 handled by \code{\link[=extract_proportions]{extract_proportions()}}, not by \code{VP()}.
 
-Some active components have no single per-trait variance: spatial fields
-(their variance changes with location), random-slope terms (their
+Some active components are not partitioned: random-slope terms (their
 variance, intercept included, changes with the covariate value),
-response-column slopes and coefficients, temporal states, and the known
-sampling variance of \code{meta_V()} (it differs by observation). \code{VP()} leaves
+response-column slopes and coefficients (likewise), the known sampling
+variance of \code{meta_V()} (it differs by observation), spatial fields (their
+variance is on the SPDE parameter scale) and temporal states
+(\code{\link[=extract_temporal]{extract_temporal()}} reports their per-trait variances). \code{VP()} leaves
 each of them out, names them in a warning of class
 \code{gllvmTMB_vp_component_omitted}, and records them in the
 \code{"omitted_components"} attribute of the result. The shares are then

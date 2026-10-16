@@ -1441,74 +1441,61 @@ profile_ci_correlation <- function(
   par_names <- names(fit$opt$par)
   T <- fit$n_traits %||% length(levels(fit$data[[fit$trait_col]]))
 
-  ## Per-tier index blocks (NULL if tier absent).
-  ix_rr_B    <- which(par_names == "theta_rr_B")
-  ix_diag_B  <- which(par_names == "theta_diag_B")
-  ix_rr_W    <- which(par_names == "theta_rr_W")
-  ix_diag_W  <- which(par_names == "theta_diag_W")
-  ix_diag_cluster <- which(par_names == "theta_diag_species")
-  ix_diag_cluster2 <- which(par_names == "theta_diag_cluster2")
-  ix_rr_phy  <- which(par_names == "theta_rr_phy")
-  ix_diag_phy <- which(par_names == "log_sd_phy_diag")
+  ## Read each tier's parameters through the TMB map, so entries the engine
+  ## fixed (the pinned Psi of binary traits, the zero lower triangle of a
+  ## diagonal phylo_indep() loading block) or tied (indep(common = TRUE)) come
+  ## back at full length. Indexing the free vector by trait read another
+  ## trait's value whenever a block was partly fixed. Fits without a TMB
+  ## object (unit-test fakes) read the named entries of `par` directly.
+  par_list <- fit$tmb_obj$env$parList
+  blocks <- function(par) {
+    if (is.function(par_list)) {
+      return(par_list(par))
+    }
+    split(unname(par), factor(par_names, levels = unique(par_names)))
+  }
+  b_hat <- blocks(fit$opt$par)
+  has_block <- function(name, used) used && length(b_hat[[name]]) > 0L
 
   d_B   <- fit$d_B %||% 0L
   d_W   <- fit$d_W %||% 0L
   d_phy <- fit$d_phy %||% 0L
 
-  use_rr_B   <- isTRUE(fit$use$rr_B)
-  use_diag_B <- isTRUE(fit$use$diag_B)
-  use_rr_W   <- isTRUE(fit$use$rr_W)
-  use_diag_W <- isTRUE(fit$use$diag_W)
-  use_diag_cluster <- isTRUE(fit$use$diag_species)
-  use_diag_cluster2 <- isTRUE(fit$use$diag_cluster2)
-  use_rr_phy <- isTRUE(fit$use$phylo_rr)
-  use_diag_phy <- isTRUE(fit$use$phylo_diag)
+  use_rr_B   <- has_block("theta_rr_B", isTRUE(fit$use$rr_B))
+  use_diag_B <- has_block("theta_diag_B", isTRUE(fit$use$diag_B))
+  use_rr_W   <- has_block("theta_rr_W", isTRUE(fit$use$rr_W))
+  use_diag_W <- has_block("theta_diag_W", isTRUE(fit$use$diag_W))
+  use_diag_cluster <- has_block(
+    "theta_diag_species",
+    isTRUE(fit$use$diag_species)
+  )
+  use_diag_cluster2 <- has_block(
+    "theta_diag_cluster2",
+    isTRUE(fit$use$diag_cluster2)
+  )
+  use_rr_phy <- has_block("theta_rr_phy", isTRUE(fit$use$phylo_rr))
+  use_diag_phy <- has_block("log_sd_phy_diag", isTRUE(fit$use$phylo_diag))
 
-  ## A per-trait block whose map fixes or ties some entries carries fewer free
-  ## values than its indexing below assumes, so `par[ix][trait_idx]` would
-  ## read another trait's value (for example the pinned Psi of binary traits
-  ## in a mixed fit). Report no target rather than a wrong one.
-  par_map <- fit$tmb_obj$env$map %||% list()
-  partly_fixed <- function(name, used) {
-    m <- par_map[[name]]
-    used && !is.null(m) &&
-      (anyNA(m) || anyDuplicated(as.character(m[!is.na(m)])) > 0L)
-  }
-  if (
-    partly_fixed("theta_rr_B", use_rr_B) ||
-      partly_fixed("theta_diag_B", use_diag_B) ||
-      partly_fixed("theta_rr_W", use_rr_W) ||
-      partly_fixed("theta_diag_W", use_diag_W) ||
-      partly_fixed("theta_diag_species", use_diag_cluster) ||
-      partly_fixed("theta_diag_cluster2", use_diag_cluster2) ||
-      partly_fixed("theta_rr_phy", use_rr_phy) ||
-      partly_fixed("log_sd_phy_diag", use_diag_phy)
-  ) {
-    return(NULL)
-  }
-
-  ## Gaussian/lognormal observation residual sigma_eps^2 (#1399). It floats
-  ## with log_sigma_eps when that is free. When the engine fixed sigma_eps
-  ## (a per-row diagonal term is present) it is a constant offset in the
-  ## denominator, like the link residual, and its own proportion has no
-  ## profile target.
-  ix_sigma_eps <- which(par_names == "log_sigma_eps")
+  ## Gaussian/lognormal observation residual sigma_eps^2 (#1399), one slot
+  ## per family. It always enters the denominator, including a sigma_eps the
+  ## engine fixed because a per-row diagonal term is present. Its own
+  ## proportion has a target only when sigma_eps is free and the trait uses
+  ## it; a fixed or structurally zero residual is a constant, like the link
+  ## residual.
   resid_slots <- .variance_share_residual_slots(fit)
-  has_resid <- length(resid_slots) == T && any(resid_slots > 0L)
-  use_resid <- has_resid && length(ix_sigma_eps) > 0L
-  resid_fixed <- if (
-    has_resid && !use_resid && .gllvmTMB_sigma_eps_mapped_off(fit)
-  ) {
-    unname(.variance_share_residual_per_trait(fit))
-  } else {
-    rep(0, T)
-  }
-  resid_var <- function(par) {
+  use_resid <- length(resid_slots) == T &&
+    any(resid_slots > 0L) &&
+    length(b_hat$log_sigma_eps) > 0L
+  resid_var <- function(b) {
     v <- numeric(T)
     on <- resid_slots > 0L
-    v[on] <- exp(2 * par[ix_sigma_eps][pmin(resid_slots[on], length(ix_sigma_eps))])
+    ls <- b$log_sigma_eps
+    v[on] <- exp(2 * ls[pmin(resid_slots[on], length(ls))])
     v
   }
+  resid_target <- use_resid &&
+    any(par_names == "log_sigma_eps") &&
+    all(resid_slots[trait_idx] > 0L)
 
   ## Per-trait link-residual is constant w.r.t. fitted parameters for the
   ## families this stage supports (Gaussian -> 0, binomial -> pi^2/3,
@@ -1548,50 +1535,42 @@ profile_ci_correlation <- function(
     }
     L
   }
+  loading_var <- function(theta_rr, rank) {
+    L <- build_Lambda(theta_rr, p = T, rank = rank)
+    diag(L %*% t(L))[trait_idx]
+  }
+  diag_var <- function(theta) exp(2 * theta[trait_idx])
 
-  ## Per-component numerator builder (function of par). NULL when the
-  ## component is structurally absent.
+  ## Per-component numerator builder (function of the block list). NULL when
+  ## the component is structurally absent or constant in theta.
   num_fn <- switch(
     component,
-    shared_unit = if (use_rr_B && length(ix_rr_B) > 0L) {
-      function(par) {
-        L <- build_Lambda(par[ix_rr_B], p = T, rank = d_B)
-        diag(L %*% t(L))[trait_idx]
-      }
+    shared_unit = if (use_rr_B) {
+      function(b) loading_var(b$theta_rr_B, d_B)
     } else NULL,
-    unique_unit = if (use_diag_B && length(ix_diag_B) > 0L) {
-      function(par) exp(2 * par[ix_diag_B][trait_idx])
+    unique_unit = if (use_diag_B) {
+      function(b) diag_var(b$theta_diag_B)
     } else NULL,
-    shared_unit_obs = if (use_rr_W && length(ix_rr_W) > 0L) {
-      function(par) {
-        L <- build_Lambda(par[ix_rr_W], p = T, rank = d_W)
-        diag(L %*% t(L))[trait_idx]
-      }
+    shared_unit_obs = if (use_rr_W) {
+      function(b) loading_var(b$theta_rr_W, d_W)
     } else NULL,
-    unique_unit_obs = if (use_diag_W && length(ix_diag_W) > 0L) {
-      function(par) exp(2 * par[ix_diag_W][trait_idx])
+    unique_unit_obs = if (use_diag_W) {
+      function(b) diag_var(b$theta_diag_W)
     } else NULL,
-    unique_cluster = if (
-      use_diag_cluster && length(ix_diag_cluster) > 0L
-    ) {
-      function(par) exp(2 * par[ix_diag_cluster][trait_idx])
+    unique_cluster = if (use_diag_cluster) {
+      function(b) diag_var(b$theta_diag_species)
     } else NULL,
-    unique_cluster2 = if (
-      use_diag_cluster2 && length(ix_diag_cluster2) > 0L
-    ) {
-      function(par) exp(2 * par[ix_diag_cluster2][trait_idx])
+    unique_cluster2 = if (use_diag_cluster2) {
+      function(b) diag_var(b$theta_diag_cluster2)
     } else NULL,
-    shared_phy = if (use_rr_phy && length(ix_rr_phy) > 0L) {
-      function(par) {
-        L <- build_Lambda(par[ix_rr_phy], p = T, rank = d_phy)
-        diag(L %*% t(L))[trait_idx]
-      }
+    shared_phy = if (use_rr_phy) {
+      function(b) loading_var(b$theta_rr_phy, d_phy)
     } else NULL,
-    unique_phy = if (use_diag_phy && length(ix_diag_phy) > 0L) {
-      function(par) exp(2 * par[ix_diag_phy][trait_idx])
+    unique_phy = if (use_diag_phy) {
+      function(b) diag_var(b$log_sd_phy_diag)
     } else NULL,
-    residual = if (use_resid) {
-      function(par) resid_var(par)[trait_idx]
+    residual = if (resid_target) {
+      function(b) resid_var(b)[trait_idx]
     } else NULL,
     link_residual = NULL,
     NULL
@@ -1602,44 +1581,24 @@ profile_ci_correlation <- function(
 
   ## Full denominator: sum of all component variances at trait t,
   ## across whatever tiers the fit uses, plus the link-residual offset.
-  total_fn <- function(par) {
+  total_fn <- function(b) {
     s <- rep(0, length(trait_idx))
-    if (use_rr_B && length(ix_rr_B) > 0L) {
-      L <- build_Lambda(par[ix_rr_B], p = T, rank = d_B)
-      s <- s + diag(L %*% t(L))[trait_idx]
-    }
-    if (use_diag_B && length(ix_diag_B) > 0L) {
-      s <- s + exp(2 * par[ix_diag_B][trait_idx])
-    }
-    if (use_rr_W && length(ix_rr_W) > 0L) {
-      L <- build_Lambda(par[ix_rr_W], p = T, rank = d_W)
-      s <- s + diag(L %*% t(L))[trait_idx]
-    }
-    if (use_diag_W && length(ix_diag_W) > 0L) {
-      s <- s + exp(2 * par[ix_diag_W][trait_idx])
-    }
-    if (use_diag_cluster && length(ix_diag_cluster) > 0L) {
-      s <- s + exp(2 * par[ix_diag_cluster][trait_idx])
-    }
-    if (use_diag_cluster2 && length(ix_diag_cluster2) > 0L) {
-      s <- s + exp(2 * par[ix_diag_cluster2][trait_idx])
-    }
-    if (use_rr_phy && length(ix_rr_phy) > 0L) {
-      L <- build_Lambda(par[ix_rr_phy], p = T, rank = d_phy)
-      s <- s + diag(L %*% t(L))[trait_idx]
-    }
-    if (use_diag_phy && length(ix_diag_phy) > 0L) {
-      s <- s + exp(2 * par[ix_diag_phy][trait_idx])
-    }
-    if (use_resid) {
-      s <- s + resid_var(par)[trait_idx]
-    }
-    s + resid_fixed[trait_idx] + link_resid_vec[trait_idx]
+    if (use_rr_B) s <- s + loading_var(b$theta_rr_B, d_B)
+    if (use_diag_B) s <- s + diag_var(b$theta_diag_B)
+    if (use_rr_W) s <- s + loading_var(b$theta_rr_W, d_W)
+    if (use_diag_W) s <- s + diag_var(b$theta_diag_W)
+    if (use_diag_cluster) s <- s + diag_var(b$theta_diag_species)
+    if (use_diag_cluster2) s <- s + diag_var(b$theta_diag_cluster2)
+    if (use_rr_phy) s <- s + loading_var(b$theta_rr_phy, d_phy)
+    if (use_diag_phy) s <- s + diag_var(b$log_sd_phy_diag)
+    if (use_resid) s <- s + resid_var(b)[trait_idx]
+    s + link_resid_vec[trait_idx]
   }
 
   function(par, fit) {
-    num <- num_fn(par)
-    den <- total_fn(par)
+    b <- blocks(par)
+    num <- num_fn(b)
+    den <- total_fn(b)
     if (any(!is.finite(num)) || any(!is.finite(den)) || any(den <= 0)) {
       return(NA_real_)
     }

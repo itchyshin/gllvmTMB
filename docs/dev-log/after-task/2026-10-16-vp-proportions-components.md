@@ -20,14 +20,18 @@ Make the two variance-share functions count every active variance component they
   - One `re_int_<group>` column per `(1 | group)` term ($\sigma_k^2$, the same in every trait, because the intercept has no trait index; `src/gllvmTMB.cpp` 3462-3467).
   - On the #1395 data, `re_int_study` is 0.73-0.80, the largest component, as the issue expected.
 - **Classed warnings for what is left out.** Both functions warn about every active component they do not partition, with classes `gllvmTMB_vp_component_omitted` / `gllvmTMB_proportions_component_omitted`. Both share the parent class `gllvmTMB_variance_component_omitted`. The warning names each component, and the `"omitted_components"` attribute repeats the names.
-  - `VP()` leaves out components with no single per-trait variance: spatial fields, random-slope terms (intercepts included), response-column slopes and coefficients, temporal states, and `meta_V()` sampling variance.
+  - `VP()` leaves out four kinds of component:
+    - random-slope terms, intercepts included, whose variance changes with the covariate;
+    - response-column slopes and coefficients;
+    - `meta_V()` sampling variance, which differs by observation;
+    - spatial fields and temporal states. These have stationary per-trait variances, but converting them (SPDE scale; `extract_temporal()`) is not done here and stays a follow-up.
   - `extract_proportions()` additionally leaves out `(1 | group)`, propto and multi-kernel terms. The warning points to `VP()` for those.
-  - Each warning carries a hint specific to the tier it names.
-- **Julia fits.** `VP()` refuses a Julia bridge fit (class `gllvmTMB_julia_gate`) instead of returning a silent 0×0 matrix.
+  - Each warning carries a next step specific to the kind of tier it names. A slope-only `phylo_slope(x | g)` is labelled without an intercept, and a column slope points to `extract_Sigma(level = "column_slope")`.
+- **Julia fits.** `VP()` refuses a Julia bridge fit with a classed `gllvmTMB_julia_gate` error. `main` failed there with an opaque "argument is of length zero", and an intermediate draft of this branch returned an empty matrix.
 - **Interval machinery** (so intervals stay centred on the extractor's estimate):
   - The Wald reconstruction `.proportions_components_at()` reads `residual` from `report(par)$sigma_eps`.
-  - `.proportion_target_fn()` floats a free $\sigma_\varepsilon$ in the denominator, or adds a fixed one as a constant offset (the fixed residual itself gets no target, the same convention as `link_residual`).
-  - `.proportion_target_fn()` now returns no target when a per-trait block is partly fixed. Before, it misread another trait's parameter. That was a pre-existing defect, found by review.
+  - `.proportion_target_fn()` now reads every parameter block through the TMB map (`obj$env$parList()`), so fixed and tied entries come back at full length. These include a binary trait's pinned Psi, the zero lower triangle of a diagonal `phylo_indep()` block, `indep(common = TRUE)` ties and `lambda_constraint` pins. Indexing the free vector by trait had read another trait's value whenever a block was partly fixed (pre-existing, found in review). A first attempt refused such fits instead, and review showed that this also refused fits whose targets had been exact.
+  - $\sigma^2_\varepsilon$ always enters the denominator. A residual whose numerator is constant in $\theta$ follows the `link_residual` convention in both the Wald and the profile route: the estimate, method `"(unavailable)"`. That covers a structurally zero residual (non-Gaussian trait) and a fixed $\sigma_\varepsilon$.
   - `confint(parm = "proportion:residual")` is accepted.
   - The internal re-calls of `extract_proportions()` raise the omitted-component warning once per request.
 - **Plot.** `plot(type = "variance")` labels and colours `Residual`.
@@ -52,7 +56,7 @@ Make the two variance-share functions count every active variance component they
 ## 3a. Decisions and Rejected Alternatives
 
 - **Count a fixed $\sigma_\varepsilon$.**
-  - Rationale: the engine fixes $\sigma_\varepsilon$ at $10^{-3}\,\mathrm{sd}(y)$, where $y$ pools all traits on the raw scale (`R/fit-multi.R` 7224-7226). It does this whenever a diagonal term has one row per observation, including the default `latent()` Psi with one observation per unit and trait. The fixed value still enters the likelihood (`src/gllvmTMB.cpp` 3501-3509, 3563). It is negligible only when traits share a scale. For a trait 1000-fold smaller than another it was 44-57% of that trait's variance; for lognormal traits a raw-scale SD is used as a log-scale SD.
+  - Rationale: the engine fixes $\sigma_\varepsilon$ at $10^{-3}\,\mathrm{sd}(y)$, where $y$ pools all traits on the raw scale (`R/fit-multi.R` 7224-7226). It does this whenever a diagonal term has one row per observation, including the default `latent()` Psi with one observation per unit and trait. The fixed value still enters the likelihood (`src/gllvmTMB.cpp` 3501-3509, 3563). It is negligible only when traits share a scale. For a trait 1000-fold smaller than another it was 43-57% of that trait's variance; for lognormal traits a raw-scale SD is used as a log-scale SD.
   - Rejected: the first version excluded it as "a stabiliser". The Gauss lens showed that this brought back the #1399 symptom (`score shared_unit = 1.000`), and both verifiers confirmed it.
   - Confidence: high.
 - **`extract_proportions()` warns about `(1 | group)`, propto and multi-kernel instead of adding them.**
@@ -69,9 +73,9 @@ Make the two variance-share functions count every active variance component they
 R 4.5.3 (conda-forge), TMB 1.9.23 and roxygen2 8.0.0 in a cloud session. `NOT_CRAN=true` throughout. `options(Matrix.warnDeprecatedCoerce = 2)` as in `tests/testthat.R`.
 
 - **Forcing test.**
-  - On base `aec24e16` (installed): 12 of 14 tests fail, each for the issue's reason. The two that pass are regression guards: a fully partitioned fit, and the two-slot residual that `main` already handled.
-  - On this branch: 68/68 expectations pass.
-- **Directly affected suites** (`test-ordiplot-VP`, `test-extract-omega`, `test-proportions-cluster-components`, `test-mixed-response-sigma`, `test-plot-gllvmTMB`, `test-structured-rho-workflow`, `test-gapclose-next-steps`): 637 expectations pass, 0 fail.
+  - On base `aec24e16` (installed), each behavioural test fails for the issue's reason. The tests that pass on base are regression guards: a fully partitioned fit, and the two-slot residual that `main` already handled. Exact counts are in the PR body.
+  - On this branch, every expectation passes.
+- **Directly affected suites** (`test-ordiplot-VP`, `test-extract-omega`, `test-proportions-cluster-components`, `test-mixed-response-sigma`, `test-plot-gllvmTMB`, `test-structured-rho-workflow`, `test-gapclose-next-steps`, `test-mspl-api`, `test-lme4-style-weights`): see the PR body for the final run on the last commit.
 - **Heavy proportion tests** (`GLLVMTMB_HEAVY_TESTS=true`: `test-proportions-ci`, `test-profile-proportions`, `test-profile-derived-curves`): see the PR body for the final run.
 - **`devtools::test()`, full suite.**
   - Result: 29,330 pass, 42 fail, 5 error, 900 skip.
@@ -89,7 +93,9 @@ R 4.5.3 (conda-forge), TMB 1.9.23 and roxygen2 8.0.0 in a cloud session. `NOT_CR
   - The Gaussian+lognormal two-slot residual.
   - Two `(1 | group)` terms, propto and two kernel tiers in one fit, with exact shares.
   - A fixed $\sigma_\varepsilon$ on mixed-scale traits.
-  - A mixed Gaussian+binomial fit with a partly fixed `theta_diag_B`.
+  - A mixed Gaussian+binomial fit with a partly fixed `theta_diag_B`: exact profile targets, and Wald rows `"(unavailable)"` for the binomial traits' residual.
+  - A diagonal `phylo_indep()` block: an exact profile target.
+  - A slope-only `phylo_slope()` label.
   - One response-column slope term.
   - A Julia fit.
 
@@ -119,7 +125,7 @@ N/A.
 ## 9. Team Learning (per AGENTS.md Standing Review Roles)
 
 - **Gauss**: Caught the blocking issue. The "negligible stabiliser" is $10^{-3}$ of the pooled raw-scale SD. It is applied on the log scale for lognormal traits, so it can dominate a small-scale or lognormal trait. Watch for any summary that drops a mapped-but-present likelihood term.
-- **Fisher**: Verified that the Wald and profile rebuilds reproduce the extractor at the MLE for Gaussian, lognormal, two-slot and OLRE fits. Found the pre-existing misindexing of partly fixed per-trait blocks in `.proportion_target_fn()`, which the new residual would have inherited.
+- **Fisher**: Verified that the Wald and profile rebuilds reproduce the extractor at the MLE for Gaussian, lognormal, two-slot and OLRE fits. Found the pre-existing misindexing of partly fixed per-trait blocks in `.proportion_target_fn()`, which the new residual would have inherited. In the second round, showed that refusing those fits was too blunt, which led to the map-aware rebuild. Also found the degenerate Wald interval for a structurally zero residual.
 - **Emmy**: Found that one response-column slope term raised two omission labels, one of them wrongly "phylogenetic". Found that Julia fits now fell through to an empty matrix.
 - **Curie**: Found the two vacuous assertions and the untested two-slot and multi-term branches.
 - **Rose / Pat**: Found that "random slopes" hid the dropped intercept variance, and that "Mirrors `gllvm::VP()`" contradicted the new text, because `gllvm::VP()` partitions fixed effects. Also found that the hint "use `extract_Sigma()`" led nowhere for `(1 | group)` terms.
@@ -131,4 +137,7 @@ N/A.
   - `R/fit-multi.R` 7224-7226 fixes $\sigma_\varepsilon$ from the pooled raw-scale SD even for lognormal traits, where it acts on the log scale. This can wreck lognormal OLRE fits.
   - Phylogenetic and kernel shares assume a unit-diagonal source matrix. Dense `vcv =`, pedigree and user kernels are not rescaled.
   - The proportion bootstrap rebuilds `(1 | group)` as the internal `re_int()` keyword (review finding, unverified here).
+- **Possible later additions to `VP()`:**
+  - temporal states, using `extract_temporal()`'s per-trait variances;
+  - spatial fields, using the stationary Matérn variance $1/(4\pi\kappa^2)$ times the field-scale diagonal. This needs its own validation, because the finite-mesh variance inflates near the boundary.
 - Update the validation-debt rows EXT-32 and EXT-34 and the check-log entry when the shared docs next move.

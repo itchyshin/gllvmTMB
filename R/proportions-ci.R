@@ -364,10 +364,26 @@
 
   zcrit <- stats::qnorm(0.5 + level / 2)
 
+  ## The residual numerator is constant in theta for a trait that does not
+  ## use sigma_eps (structurally 0) and for a sigma_eps the engine fixed (a
+  ## per-row diagonal term is present). Report those rows like the
+  ## fixed-scale link residual: the estimate, method "(unavailable)".
+  resid_constant <- .variance_share_residual_slots(fit) == 0L |
+    .gllvmTMB_sigma_eps_mapped_off(fit)
+
   out_rows <- list()
   for (comp in components) {
     for (t in trait_idx) {
       p_hat <- pt_mat[t, comp]
+
+      if (identical(comp, "residual") && isTRUE(resid_constant[t])) {
+        out_rows[[length(out_rows) + 1L]] <- .proportions_row(
+          trait_names[t], comp, p_hat,
+          lower = p_hat, upper = p_hat,
+          method = "(unavailable)"
+        )
+        next
+      }
 
       if (identical(comp, "link_residual")) {
         if (link_resid_fixed) {

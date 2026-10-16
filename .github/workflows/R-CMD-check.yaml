@@ -1,285 +1,130 @@
+name: Isolated frozen archive Windows R-devel
+
 on:
-  push:
-    branches: [main, master]
-    tags: ["v*"]
-  pull_request:
-    branches: [main, master]
   workflow_dispatch:
-    inputs:
-      full_matrix:
-        description: "Also run macOS + Windows (pre-release / CRAN check)"
-        type: boolean
-        default: false
 
-name: R-CMD-check
-
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+permissions:
+  contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  # Never cancel main integration runs — pkgdown deploys on their success.
-  # Only supersede in-progress runs on PR / feature branches.
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+  group: cran071-frozen-win-devel-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
-  R-CMD-check:
-    runs-on: ${{ matrix.config.os }}
-    # The full test suite has outgrown the previous 45-minute ceiling: the
-    # Phase B "matrix completion" wave added ~30 test-matrix-*.R files (~180
-    # real TMB fits), pushing Windows from ~26 min at #309 to >45 min, where
-    # it was being killed by this timeout (runs 26656376351, 26682886014).
-    # 75 minutes restores headroom on the slowest runner (Windows). This does
-    # not raise per-run billing — Actions bills actual minutes used, so a job
-    # that finishes early costs the same regardless of the ceiling; the
-    # ceiling only prevents a premature kill of a run that is still healthy.
-    # Ignored-source/process PRs still skip the expensive dependency/check
-    # steps below while preserving this OS-named check for branch-protection
-    # compatibility.
-    timeout-minutes: 75
-
-    name: ${{ matrix.config.os }} (${{ matrix.config.r }})
-
-    strategy:
-      fail-fast: false
-      # Routine runs (push / PR) are ubuntu-only: the full suite (~180 TMB
-      # fits) exceeds the Windows runner time ceiling, and macOS/Windows bill
-      # 10x / 2x. Run all three OSes only before a release via
-      # workflow_dispatch -> full_matrix = true. (main is not branch-protected,
-      # so there are no required OS-named checks to preserve.)
-      #
-      # This is the FAST check. The slow recovery/matrix/profile/bootstrap
-      # tests are gated behind the GLLVMTMB_HEAVY_TESTS env flag (see
-      # tests/testthat/setup.R::skip_if_not_heavy). It is intentionally NOT set
-      # here, so those tests skip and routine PR CI stays fast (~12 min). The
-      # bounded full heavy package-regression suite runs nightly and on demand
-      # on Ubuntu via .github/workflows/full-check.yaml; release tags run its
-      # three-OS matrix. Scientific recovery/coverage/power campaigns are never
-      # GitHub Actions jobs (D-50): they run on Totoro/DRAC with local keepers.
-      matrix:
-        config: ${{ fromJSON((github.event_name == 'workflow_dispatch' && inputs.full_matrix) && '[{"os":"ubuntu-latest","r":"release"},{"os":"macos-latest","r":"release"},{"os":"windows-latest","r":"release"}]' || '[{"os":"ubuntu-latest","r":"release"}]') }}
-
+  frozen-check:
+    runs-on: windows-latest
+    timeout-minutes: 45
     env:
-      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
-      R_KEEP_PKG_SOURCE: yes
-
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+      OPENBLAS_NUM_THREADS: '1'
+      OMP_NUM_THREADS: '1'
+      VECLIB_MAXIMUM_THREADS: '1'
+      MAKEFLAGS: '-j2'
+      NOT_CRAN: 'false'
+      _R_CHECK_FORCE_SUGGESTS_: 'true'
+      _R_CHECK_LIMIT_CORES_: 'true'
+      R_LIBS_USER: ${{ runner.temp }}/cran071-private-library
     steps:
+      - name: Download and verify the pinned draft asset before setup
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $root = Join-Path $env:RUNNER_TEMP 'cran071-dd8a811f-isolated'
+          if (Test-Path $root) { throw 'Diagnostic directory already exists' }
+          New-Item -ItemType Directory -Path "$root/input", "$root/records" | Out-Null
+          $file = Join-Path $root 'input/gllvmTMB_0.7.1.tar.gz'
+          curl.exe --fail --location --silent --show-error -H "Accept: application/octet-stream" -H "Authorization: Bearer $env:GH_TOKEN" -o $file https://api.github.com/repos/itchyshin/gllvmTMB/releases/assets/647209908
+          if ($LASTEXITCODE -ne 0) { throw 'Pinned draft asset download failed; do not substitute another archive' }
+          $hash = (Get-FileHash -Algorithm SHA256 $file).Hash.ToLowerInvariant()
+          $bytes = (Get-Item $file).Length
+          if ($hash -ne 'dd8a811fbc273774db44b3284ca7cac7b724da5539c5fafebc14fcac0a2df557' -or $bytes -ne 4428330) { throw 'Frozen archive identity mismatch' }
+          @{sha256=$hash; size_bytes=$bytes; release_id=414918132; asset_id=647209908; source_commit='876b4fab7a50404ce2765e8924f69b5085e2d0c4'; fetched_utc=(Get-Date).ToUniversalTime().ToString('o')} | ConvertTo-Json | Set-Content "$root/records/asset-identity.json"
+          "DIAG_ROOT=$root" >> $env:GITHUB_ENV
+          "FROZEN_ARCHIVE=$file" >> $env:GITHUB_ENV
       - uses: actions/checkout@v5
         with:
-          fetch-depth: 0
-
-      - name: Enforce GitHub Actions compute boundary
-        shell: bash
-        run: bash tools/check-actions-boundary.sh
-
-      - name: Classify R CMD check scope
-        id: scope
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          full_required=true
-          reason="R CMD check required by default."
-
-          is_fast_path_allowed() {
-            case "$1" in
-              AGENTS.md) return 0 ;;
-              CLAUDE.md) return 0 ;;
-              .github/pull_request_template.md) return 0 ;;
-              CONTRIBUTING.md) return 0 ;;
-              ROADMAP.md) return 0 ;;
-              docs/*) return 0 ;;
-              docs/**) return 0 ;;
-              dev/*) return 0 ;;
-              dev/**) return 0 ;;
-              docs/dev-log/check-log.md) return 0 ;;
-              docs/dev-log/coordination-board.md) return 0 ;;
-              docs/dev-log/team-improvements.md) return 0 ;;
-              docs/dev-log/after-task/*) return 0 ;;
-              docs/dev-log/shannon-audits/*) return 0 ;;
-              docs/dev-log/while-away/*) return 0 ;;
-              docs/dev-log/recovery-checkpoints/*) return 0 ;;
-              *) return 1 ;;
-            esac
-          }
-
-          requires_light_r_parse() {
-            case "$1" in
-              dev/*.R) return 0 ;;
-              dev/**/*.R) return 0 ;;
-              *) return 1 ;;
-            esac
-          }
-
-          changed_file_args=()
-          light_r_required=false
-
-          collect_changed_files() {
-            changed_file_args=()
-            while IFS= read -r path; do
-              [[ -n "$path" ]] && changed_file_args+=("$path")
-            done < <(git diff --name-only "$@")
-          }
-
-          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            git fetch --no-tags origin "+refs/heads/${{ github.base_ref }}:refs/remotes/origin/${{ github.base_ref }}"
-            base_ref="origin/${{ github.base_ref }}"
-            collect_changed_files "${base_ref}...HEAD"
-            full_required=false
-            reason="PR changes are limited to ignored-source/process paths."
-          elif [[ "${{ github.event_name }}" == "push" && "${{ github.ref_type }}" != "tag" ]]; then
-            before="${{ github.event.before }}"
-            if [[ "$before" =~ ^0+$ ]]; then
-              changed_file_args=()
-              full_required=true
-              reason="Push has no usable before SHA; running full R CMD check."
-            else
-              collect_changed_files "$before" "${{ github.sha }}"
-              full_required=false
-              reason="Push changes are limited to ignored-source/process paths."
-            fi
-          else
-            changed_file_args=()
-            full_required=true
-            reason="Manual dispatch or tag build; running full R CMD check."
-          fi
-
-          if [[ ${#changed_file_args[@]} -eq 0 && "$full_required" == "false" ]]; then
-            full_required=true
-            reason="No changed files detected; running full R CMD check."
-          fi
-
-          if [[ "$full_required" == "false" ]]; then
-            for path in "${changed_file_args[@]}"; do
-              if ! is_fast_path_allowed "$path"; then
-                full_required=true
-                reason="R CMD check required because '${path}' is outside ignored-source/process paths."
-                break
-              fi
-              if requires_light_r_parse "$path" && [[ -f "$path" ]]; then
-                light_r_required=true
-              fi
-            done
-          fi
-
-          if [[ "$full_required" == "true" ]]; then
-            light_r_required=false
-          fi
-
-          {
-            echo "full_required=${full_required}"
-            echo "light_r_required=${light_r_required}"
-            echo "reason=${reason}"
-          } >> "$GITHUB_OUTPUT"
-
-          {
-            echo "### R CMD check scope"
-            echo
-            echo "- Full R CMD check required: \`${full_required}\`"
-            echo "- Light R parse required: \`${light_r_required}\`"
-            echo "- Reason: ${reason}"
-            echo
-            echo "Changed files:"
-            if [[ ${#changed_file_args[@]} -eq 0 ]]; then
-              echo "- (none detected)"
-            else
-              for path in "${changed_file_args[@]}"; do
-                echo "- \`${path}\`"
-              done
-            fi
-          } >> "$GITHUB_STEP_SUMMARY"
-
+          ref: 876b4fab7a50404ce2765e8924f69b5085e2d0c4
+          fetch-depth: 1
       - uses: r-lib/actions/setup-pandoc@v2
-        if: steps.scope.outputs.full_required == 'true'
-
       - uses: r-lib/actions/setup-r@v2
-        if: steps.scope.outputs.full_required == 'true'
         with:
-          r-version: ${{ matrix.config.r }}
+          r-version: devel
           use-public-rspm: true
-
-      - uses: r-lib/actions/setup-r@v2
-        if: steps.scope.outputs.full_required != 'true' && steps.scope.outputs.light_r_required == 'true'
-        with:
-          r-version: ${{ matrix.config.r }}
-          use-public-rspm: true
-
       - uses: r-lib/actions/setup-r-dependencies@v2
-        if: steps.scope.outputs.full_required == 'true'
         with:
-          extra-packages: any::rcmdcheck
+          extra-packages: any::rcmdcheck, any::jsonlite
           needs: check
-
-      - uses: r-lib/actions/check-r-package@v2
-        if: steps.scope.outputs.full_required == 'true'
-        with:
-          upload-snapshots: false
-          upload-results: never
-          # Routine PRs: fail only on real errors; cosmetic CRAN warnings
-          # (non-ASCII, NEWS format) are caught by the nightly full-check.yaml.
-          error-on: '"error"'
-
-      - name: Fast pass for ignored-source/process change
-        if: steps.scope.outputs.full_required != 'true'
-        shell: bash
+      - uses: r-lib/actions/setup-tinytex@v2
+      - name: Check the exact archive in clean directories
+        shell: Rscript {0}
         run: |
-          set -euo pipefail
-
-          changed_file_args=()
-          collect_changed_files() {
-            changed_file_args=()
-            while IFS= read -r path; do
-              [[ -n "$path" ]] && changed_file_args+=("$path")
-            done < <(git diff --name-only "$@")
+          main <- function() {
+            root <- Sys.getenv('DIAG_ROOT')
+            records <- file.path(root, 'records')
+            archive <- Sys.getenv('FROZEN_ARCHIVE')
+            inspection <- file.path(root, 'inspection')
+            checkdir <- file.path(root, 'check')
+            stopifnot(!dir.exists(inspection), !dir.exists(checkdir))
+            dir.create(inspection)
+            dir.create(checkdir)
+            sha256 <- function(path) {
+              out <- system2('certutil', c('-hashfile', shQuote(path), 'SHA256'), stdout=TRUE)
+              h <- grep('^[a-fA-F0-9]{64}$', trimws(out), value=TRUE)
+              stopifnot(length(h)==1L)
+              tolower(h)
+            }
+            on.exit({
+              writeLines(.libPaths(), file.path(records, 'library-paths.txt'))
+              vars <- c('R_LIBS_USER','R_LIBS_SITE','R_LIBS','NOT_CRAN','_R_CHECK_FORCE_SUGGESTS_','R_ENVIRON_USER','R_PROFILE_USER','OPENBLAS_NUM_THREADS','OMP_NUM_THREADS','MAKEFLAGS')
+              jsonlite::write_json(as.list(Sys.getenv(vars)), file.path(records, 'relevant-environment.json'), pretty=TRUE, auto_unbox=TRUE)
+              plots <- unique(c(list.files(root, all.files=TRUE, recursive=TRUE, full.names=TRUE), list.files(Sys.getenv('GITHUB_WORKSPACE'), all.files=TRUE, recursive=TRUE, full.names=TRUE)))
+              plots <- plots[grepl('(^|/)Rplots[.]pdf$', plots, ignore.case=TRUE)]
+              metadata <- lapply(plots, function(f) tryCatch(list(path=f, size_bytes=file.info(f)$size, ctime=as.character(file.info(f)$ctime), mtime=as.character(file.info(f)$mtime), sha256=sha256(f)), error=function(e) list(path=f,error=conditionMessage(e))))
+              jsonlite::write_json(metadata, file.path(records, 'rplots-metadata.json'), pretty=TRUE, auto_unbox=TRUE)
+              writeLines(capture.output(sessionInfo()), file.path(records, 'session-info.txt'))
+              write.table(installed.packages()[,c('Package','Version','LibPath')], file.path(records, 'dependency-versions.tsv'), sep='\t', row.names=FALSE, quote=FALSE)
+              writeLines(list.files(root, all.files=TRUE, recursive=TRUE, no..=TRUE), file.path(records, 'directory-listing-after.txt'))
+              logs <- list.files(checkdir, recursive=TRUE, full.names=TRUE)
+              logs <- logs[grepl('(^|/)(00check[.]log|00install[.]out|testthat[.]Rout([.]fail)?)$', logs)]
+              for (f in logs) {
+                rel <- substring(f, nchar(checkdir)+2L)
+                dest <- file.path(records, 'check-logs', rel)
+                dir.create(dirname(dest), recursive=TRUE, showWarnings=FALSE)
+                file.copy(f, dest)
+              }
+            }, add=TRUE)
+            expected_library <- file.path(Sys.getenv('RUNNER_TEMP'), 'cran071-private-library')
+            stopifnot(dir.exists(expected_library), tolower(normalizePath(expected_library)) %in% tolower(normalizePath(.libPaths())))
+            writeLines(c(R.version.string, paste('svn revision:', R.version$svn.rev)), file.path(records, 'r-devel-version.txt'))
+            entries <- utils::untar(archive, list=TRUE)
+            writeLines(entries, file.path(records, 'archive-inventory.txt'))
+            normalized <- gsub('\\\\', '/', entries)
+            stopifnot(length(entries)==889L, !any(grepl('(^|/)Rplots[.]pdf$', normalized, ignore.case=TRUE)))
+            utils::untar(archive, exdir=inspection)
+            writeLines(list.files(inspection, all.files=TRUE, recursive=TRUE, no..=TRUE), file.path(records, 'source-listing-before-check.txt'))
+            stopifnot(!file.exists(file.path(inspection, 'gllvmTMB', 'Rplots.pdf')))
+            stopifnot(length(list.files(checkdir, all.files=TRUE, no..=TRUE))==0L)
+            hash <- system2('certutil', c('-hashfile', shQuote(archive), 'SHA256'), stdout=TRUE)
+            stopifnot(any(grepl('dd8a811fbc273774db44b3284ca7cac7b724da5539c5fafebc14fcac0a2df557', tolower(hash), fixed=TRUE)), file.info(archive)$size==4428330)
+            writeLines(hash, file.path(records, 'hash-immediately-before-check.txt'))
+            start <- Sys.time()
+            result <- rcmdcheck::rcmdcheck(path=archive, args=c('--as-cran','--run-donttest'), check_dir=checkdir, error_on='never')
+            checked_copy <- file.path(checkdir, 'gllvmTMB_0.7.1.tar.gz')
+            stopifnot(file.exists(checked_copy))
+            copy_identity <- list(path=checked_copy, sha256=sha256(checked_copy), size_bytes=file.info(checked_copy)$size)
+            jsonlite::write_json(copy_identity, file.path(records, 'checked-copy-identity.json'), pretty=TRUE, auto_unbox=TRUE)
+            stopifnot(copy_identity$sha256=='dd8a811fbc273774db44b3284ca7cac7b724da5539c5fafebc14fcac0a2df557', copy_identity$size_bytes==4428330)
+            summary <- list(sha256='dd8a811fbc273774db44b3284ca7cac7b724da5539c5fafebc14fcac0a2df557', r_version=R.version.string, elapsed_seconds=as.numeric(difftime(Sys.time(),start,units='secs')), errors=result$errors, warnings=result$warnings, notes=result$notes)
+            jsonlite::write_json(summary, file.path(records,'check-summary.json'), auto_unbox=TRUE, pretty=TRUE)
+            stopifnot(length(result$errors)==0L, length(result$warnings)==0L, !any(grepl('Rplots[.]pdf', result$notes, ignore.case=TRUE)))
           }
-
-          diff_check() {
-            git diff --check "$@"
-          }
-
-          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            git fetch --no-tags origin "+refs/heads/${{ github.base_ref }}:refs/remotes/origin/${{ github.base_ref }}"
-            base_ref="origin/${{ github.base_ref }}"
-            collect_changed_files "${base_ref}...HEAD"
-            diff_check "${base_ref}...HEAD"
-          elif [[ "${{ github.event_name }}" == "push" && "${{ github.ref_type }}" != "tag" ]]; then
-            before="${{ github.event.before }}"
-            if [[ "$before" =~ ^0+$ ]]; then
-              echo "No fast-path diff available for this event; classifier should have required full R CMD check."
-              exit 1
-            fi
-            collect_changed_files "$before" "${{ github.sha }}"
-            diff_check "$before" "${{ github.sha }}"
-          else
-            echo "No fast-path diff available for this event; classifier should have required full R CMD check."
-            exit 1
-          fi
-
-          r_files=()
-          for path in "${changed_file_args[@]}"; do
-            case "$path" in
-              dev/*.R|dev/**/*.R)
-                [[ -f "$path" ]] && r_files+=("$path")
-                ;;
-            esac
-          done
-
-          if [[ "${{ steps.scope.outputs.light_r_required }}" == "true" ]]; then
-            if [[ ${#r_files[@]} -eq 0 ]]; then
-              echo "Expected changed dev/*.R files but found none."
-              exit 1
-            fi
-            Rscript --vanilla -e 'files <- commandArgs(TRUE); for (f in files) parse(file = f)' "${r_files[@]}"
-          fi
-
-          {
-            echo "### Fast-path validation"
-            echo
-            echo "Full R CMD check skipped: ${{ steps.scope.outputs.reason }}"
-            echo
-            echo "Validation run:"
-            echo "- \`git diff --check\` on the changed-file range"
-            if [[ ${#r_files[@]} -gt 0 ]]; then
-              echo "- \`Rscript parse(file = ...)\` for changed ignored dev R scripts"
-            fi
-          } >> "$GITHUB_STEP_SUMMARY"
+          main()
+      - name: Retain diagnostic logs only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cran071-dd8a811f-isolated-windows-devel-logs
+          path: ${{ runner.temp }}/cran071-dd8a811f-isolated/records
+          retention-days: 1
+          if-no-files-found: warn

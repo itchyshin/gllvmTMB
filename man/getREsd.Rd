@@ -42,6 +42,9 @@ reshape into).
 \value{
 As described per \code{block} above. Standard errors are always
 \code{NA} (with a warning) when the fit's Hessian is not positive-definite.
+For \code{block = "diag_unit"} / \code{"diag_unit_obs"}, a trait whose diagonal was
+not estimated (single-trial binomial, multinomial contrast, or
+single-observation ordinal trait) has an all-\code{NA} row.
 }
 \description{
 \code{\link[=getLV]{getLV()}} exposes standard errors for the ordinary latent-variable score

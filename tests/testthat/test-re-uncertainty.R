@@ -191,3 +191,29 @@ test_that("getREsd() call signature (fit, block=) is unchanged by later addition
   expect_identical(se_positional, se_named)
   expect_identical(getREsd(fit, "diag_unit"), getREsd(fit, "diag_unit"))
 })
+
+test_that("getREsd(diag_unit) returns NA rows for traits whose s_B rows are mapped off (#1405)", {
+  skip_on_cran()
+  set.seed(21); n <- 100
+  z <- rnorm(n)
+  d <- expand.grid(trait = factor(c("g", "p", "b")),
+                   unit = factor(sprintf("u%03d", 1:n)))
+  u <- as.integer(d$unit); tt <- as.character(d$trait); eta <- 0.8 * z[u]
+  d$y <- NA_real_
+  d$y[tt == "g"] <- eta[tt == "g"] + rnorm(sum(tt == "g"), sd = 0.5)
+  d$y[tt == "p"] <- rpois(sum(tt == "p"), exp(0.5 + 0.5 * eta[tt == "p"]))
+  d$y[tt == "b"] <- rbinom(sum(tt == "b"), 1, plogis(eta[tt == "b"]))
+  fam <- lapply(levels(d$trait), function(l)
+    switch(l, g = gaussian(), p = poisson(), b = binomial()))
+  attr(fam, "family_var") <- "trait"
+  fit <- suppressWarnings(suppressMessages(gllvmTMB(
+    y ~ 0 + trait + latent(0 + trait | unit, d = 1), data = d,
+    unit = "unit", trait = "trait", family = fam, silent = TRUE,
+    control = gllvmTMBcontrol(n_init = 1)
+  )))
+  se <- getREsd(fit, block = "diag_unit")
+  expect_equal(dim(se), c(3L, n))
+  b <- which(levels(d$trait) == "b")
+  expect_true(all(is.na(se[b, ])))
+  expect_true(all(is.finite(se[-b, ])))
+})

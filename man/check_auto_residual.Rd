@@ -17,9 +17,9 @@ from a successful return because \code{cli::cli_abort} halts) and
 when \code{status = "ok"}).
 }
 \description{
-Inspects the fit's per-row family vector and flags two configurations
-that make the \code{link_residual = "auto"} path incoherent. Within-trait
-family mixing errors. Ordinal traits do not warn: the liability
+Inspects the fit's per-row family vector and flags the one configuration
+that makes the \code{link_residual = "auto"} path incoherent: within-trait
+family mixing, which errors. Ordinal traits do not warn: the liability
 residual (1 for \code{\link[=ordinal_probit]{ordinal_probit()}}, pi^2/3 for \code{\link[=ordinal_logit]{ordinal_logit()}}) enters
 the total covariance only through \code{"auto"}, so \code{"auto"} is the correct
 setting and \code{link_residual = "none"} would drop it and give unit-tier

@@ -36,11 +36,12 @@ partner is then a deterministic function of the block). This is correct but
 uninformative, which is why \code{"auto"} (full-rank via the residual) is the
 sensible default for the model-scale single-number summary; read the per-pair latent
 correlations from \code{\link[=extract_Sigma]{extract_Sigma()}} / \code{\link[=extract_correlations]{extract_correlations()}} instead.
-An ordinal-probit partner is not admitted with \code{"auto"}: its latent
-residual is already fixed at 1 by the threshold model, so adding another
-unit residual would double-count it. Use a supported non-ordinal partner
-set for the one-number summary, or report latent-scale pairwise quantities
-with \code{extract_Sigma(..., part = "shared", link_residual = "none")}.}
+An ordinal (probit or logit) partner is not admitted with \code{"auto"} for this
+one-number summary. This is a scope limit, not a double count: \code{"auto"}
+adds the ordinal liability residual (1 for probit, pi^2/3 for logit)
+exactly once. Use a supported non-ordinal partner set for the one-number
+summary, or report latent-scale pairwise quantities with
+\code{extract_Sigma(..., part = "shared", link_residual = "none")}.}
 
 \item{method}{one of \code{"point"} (default; point estimates only, no interval
 columns), \code{"wald"} (fast Fisher-z intervals on BOTH \code{multiple_r} and

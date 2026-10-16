@@ -33,9 +33,9 @@
 
 #' Check whether `link_residual = "auto"` is coherent for this fit
 #'
-#' Inspects the fit's per-row family vector and flags two configurations
-#' that make the `link_residual = "auto"` path incoherent. Within-trait
-#' family mixing errors. Ordinal traits do not warn: the liability
+#' Inspects the fit's per-row family vector and flags the one configuration
+#' that makes the `link_residual = "auto"` path incoherent: within-trait
+#' family mixing, which errors. Ordinal traits do not warn: the liability
 #' residual (1 for [ordinal_probit()], pi^2/3 for [ordinal_logit()]) enters
 #' the total covariance only through `"auto"`, so `"auto"` is the correct
 #' setting and `link_residual = "none"` would drop it and give unit-tier

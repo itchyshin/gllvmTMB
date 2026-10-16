@@ -19,6 +19,23 @@
   isTRUE(all.equal(unname(da), unname(db), tolerance = tol))
 }
 
+## A random-slope covariate copied from `data` into a TMB design vector. A
+## non-finite value would make the first objective evaluation NaN and surface
+## only as "All N restarts failed." (#1394, #1375), so refuse it here and name
+## the column, as the fixed-effect design check does.
+.gllvmTMB_slope_covariate <- function(data, col, term) {
+  x <- as.numeric(data[[col]])
+  bad <- !is.finite(x)
+  if (any(bad)) {
+    cli::cli_abort(c(
+      "The {term} slope covariate {.val {col}} has {sum(bad)} missing or non-finite value(s).",
+      "x" = "Affected rows (first 10): {paste(utils::head(which(bad), 10), collapse = ', ')}.",
+      ">" = "Remove or impute the missing {.val {col}} values before fitting."
+    ), class = "gllvmTMB_slope_covariate_nonfinite")
+  }
+  x
+}
+
 .kernel_overlap_class <- function(similarity) {
   ifelse(
     similarity < 0.25, "near_orthogonal",
@@ -3652,6 +3669,22 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         ">" = "Drop rows where successes + failures == 0, or check for a data-entry error."
       ))
   } else {
+    ## #1396: a factor response is only meaningful for the categorical
+    ## families (ordinal / multinomial read its level codes by design). On any
+    ## other row `as.numeric()` would model the integer level CODES -- a
+    ## numeric column read in as a factor (a stray "-" or "NA" string in the
+    ## CSV) would fit with no complaint to values unrelated to the data.
+    if (is.factor(y_raw) && !all(family_id_vec %in% c(14L, 16L, 20L))) {
+      resp_lab <- if (length(parsed$fixed) == 3L) {
+        paste(deparse(parsed$fixed[[2L]]), collapse = "")
+      } else "response"
+      cli::cli_abort(c(
+        "The response {.code {resp_lab}} is a factor, so it would be fitted as its integer level codes.",
+        "x" = "A factor response is only valid for {.fn ordinal_probit}, {.fn ordinal_logit} and {.fn multinomial} traits.",
+        "i" = "A numeric column read in as a factor (a stray {.val -} or {.val NA} string in the file is the usual cause) looks like this.",
+        ">" = "Convert it explicitly, e.g. {.code as.numeric(as.character({resp_lab}))}, after checking for non-numeric entries."
+      ), class = "gllvmTMB_factor_response")
+    }
     y <- as.numeric(y_raw)
     ## Optional API (B): when binomial / beta-binomial rows are present,
     ## `weights = n_trials` is interpreted as the per-row trial count
@@ -4182,6 +4215,38 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         "Binomial rows: `y` (successes) must satisfy 0 <= y <= n_trials.",
         ">" = "If you used {.code cbind(succ, fail)}, both columns must be non-negative integers."
       ))
+  }
+  ## #1356: plain poisson / nbinom2 / nbinom1 had no support check, so a
+  ## negative count surfaced only as "All 1 restarts failed." and a
+  ## non-integer count was fitted silently. Same rule as the zi_* / censored /
+  ## truncated families: a non-negative whole number.
+  plain_count_rows <- (family_id_vec %in% c(2L, 5L, 15L)) & !masked_response
+  if (any(plain_count_rows)) {
+    yc <- y[plain_count_rows]
+    if (any(yc < 0) || any(abs(yc - round(yc)) > 1e-8)) {
+      bad_rows <- which(plain_count_rows)[yc < 0 | abs(yc - round(yc)) > 1e-8]
+      fam_lab <- unique(c("poisson", "nbinom2", "nbinom1")[
+        match(family_id_vec[plain_count_rows], c(2L, 5L, 15L))])
+      cli::cli_abort(c(
+        "{paste0(fam_lab, '()', collapse = '/')} rows: {.code y} must be a non-negative integer (a count).",
+        "x" = "{length(bad_rows)} row(s) are negative or not a whole number (first 10: {paste(utils::head(bad_rows, 10), collapse = ', ')}).",
+        ">" = "Round or recode {.code y} to non-negative integers, or use a continuous family such as {.fn Gamma} or {.fn gaussian}."
+      ), class = "gllvmTMB_count_response_support")
+    }
+  }
+  ## Binomial / beta-binomial successes are counts too, but the existing
+  ## range check never tested integrality, so `y = 0.5` with one trial was
+  ## accepted silently. A warning (not an error): a proportion-style response
+  ## is the usual cause, and it is not a binomial count.
+  binom_count_rows <- (family_id_vec %in% c(1L, 8L)) & !masked_response
+  if (any(binom_count_rows) &&
+      any(abs(y[binom_count_rows] - round(y[binom_count_rows])) > 1e-8)) {
+    cli::cli_warn(c(
+      "{.fn binomial}/{.fn betabinomial} rows: {.code y} (successes) should be whole numbers.",
+      "x" = "{sum(abs(y[binom_count_rows] - round(y[binom_count_rows])) > 1e-8)} row(s) have a non-integer success count.",
+      "i" = "A proportion is not a binomial count; the likelihood treats {.code y} as the number of successes out of {.code n_trials}.",
+      ">" = "Supply counts via {.code cbind(successes, failures)}, or counts plus {.arg weights} as the trial size."
+    ), class = "gllvmTMB_binomial_noninteger")
   }
   ## Beta rows: y must be in the open unit interval (0, 1). The likelihood
   ## clips y away from the boundaries internally for numerical safety, but
@@ -5460,7 +5525,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ))
     }
     if (use_spde_dep_slope) {
-      x_dep <- as.numeric(data[[spde_slope_xcol]])
+      x_dep <- .gllvmTMB_slope_covariate(data, spde_slope_xcol, "spatial slope term")
       for (o in seq_len(n_obs)) {
         t0 <- trait_id[o]                       # 0-based trait index
         Z_spde_aug[o, 2L * t0 + 1L] <- 1.0      # intercept field col for trait t0
@@ -5468,7 +5533,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       }
     } else {
       Z_spde_aug[, 1L] <- 1.0
-      Z_spde_aug[, 2L] <- as.numeric(data[[spde_slope_xcol]])
+      Z_spde_aug[, 2L] <- .gllvmTMB_slope_covariate(data, spde_slope_xcol, "spatial slope term")
     }
   }
 
@@ -5532,7 +5597,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       cli::cli_abort(c(
         "{.arg phylo_slope({phylo_slope_xcol} | {species})} references column {.val {phylo_slope_xcol}}, which is not in {.arg data}.",
         ">" = "Add the covariate column to the data frame."))
-    as.numeric(data[[phylo_slope_xcol]])
+    .gllvmTMB_slope_covariate(data, phylo_slope_xcol, "phylo_slope()")
   } else rep(0.0, n_obs)
   ## Design 130: predictor design for slope-only response-column fields.
   ## Deliberately raw numeric columns: transforms and factor expansions are
@@ -5589,7 +5654,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
           ">" = "Add the covariate column{?s} to the data frame."))
       }
       matrix(
-        as.numeric(unlist(lapply(phylo_slope_xcols, function(col) as.numeric(data[[col]])))),
+        as.numeric(unlist(lapply(phylo_slope_xcols, function(col) .gllvmTMB_slope_covariate(data, col, "phylo_dep() slope term")))),
         nrow = n_obs, ncol = n_phy_slope
       )
     }
@@ -5685,7 +5750,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ))
     }
     Z_phy_lat[, 1L] <- 1.0
-    Z_phy_lat[, 2L] <- as.numeric(data[[phylo_latent_slope_xcol]])
+    Z_phy_lat[, 2L] <- .gllvmTMB_slope_covariate(data, phylo_latent_slope_xcol, "phylo_latent() slope term")
   }
 
   ## Ordinary B-tier augmented latent random regression:
@@ -5712,7 +5777,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         ">" = "Add the covariate column to the data frame."
       ))
     }
-    x_B_slope <- as.numeric(data[[rr_B_slope_xcol]])
+    x_B_slope <- .gllvmTMB_slope_covariate(data, rr_B_slope_xcol, "latent() slope term")
     stride <- 2L
     for (o in seq_len(n_obs)) {
       t0 <- trait_id[o]
@@ -5744,7 +5809,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         ">" = "Add the covariate column to the data frame."
       ))
     }
-    x_B_diag <- as.numeric(data[[diag_B_slope_xcol]])
+    x_B_diag <- .gllvmTMB_slope_covariate(data, diag_B_slope_xcol, "indep()/unique() slope term")
     stride <- 2L
     for (o in seq_len(n_obs)) {
       t0 <- trait_id[o]

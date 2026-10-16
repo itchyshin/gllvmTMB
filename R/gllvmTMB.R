@@ -1104,6 +1104,17 @@ gllvmTMB <- function(
   if (!is.factor(data[[trait]])) {
     data[[trait]] <- factor(data[[trait]])
   }
+  ## #1387: a trait level with no rows would still be counted by
+  ## nlevels(), adding a fixed effect, a loading and a Psi term that no
+  ## data inform (df / AIC inflated, sd_report NULL). Drop it, and say so.
+  empty_trait_levels <- setdiff(levels(data[[trait]]), as.character(data[[trait]]))
+  if (length(empty_trait_levels)) {
+    cli::cli_inform(c(
+      "Dropped {length(empty_trait_levels)} unused level{?s} of {.var {trait}} (no rows): {.val {empty_trait_levels}}.",
+      "i" = "An empty trait level would add parameters that no data inform; this is the same as calling {.fn droplevels} on the column first."
+    ))
+    data[[trait]] <- droplevels(data[[trait]])
+  }
   inherited_column_vars <- attr(data, "gllvmTMB_column_vars") %||% character()
   prepared_column_data <- .column_data_prepare(
     column_data = column_data,

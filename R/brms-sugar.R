@@ -310,12 +310,12 @@
 #' @examples
 #' if (requireNamespace("ape", quietly = TRUE)) {
 #'   set.seed(1)
-#'   tree <- ape::rcoal(20); tree$tip.label <- paste0("sp", seq_len(20))
+#'   tree <- ape::rcoal(60); tree$tip.label <- paste0("sp", seq_len(60))
 #'   sim <- simulate_site_trait(
-#'     n_sites = 1, n_species = 20, n_traits = 3,
-#'     mean_species_per_site = 20,
+#'     n_sites = 1, n_species = 60, n_traits = 3,
+#'     mean_species_per_site = 60,
 #'     Cphy = ape::vcv(tree, corr = TRUE),
-#'     sigma2_phy = rep(1, 3), seed = 1
+#'     sigma2_phy = rep(1, 3), sigma2_eps = 0.2, seed = 1
 #'   )
 #'   df <- sim$data
 #'   df$species <- factor(tree$tip.label[as.integer(df$species)],
@@ -420,17 +420,18 @@ phylo <- function(
 #' @examples
 #' if (requireNamespace("ape", quietly = TRUE)) {
 #'   set.seed(1)
-#'   tree <- ape::rcoal(20); tree$tip.label <- paste0("sp", seq_len(20))
+#'   tree <- ape::rcoal(60); tree$tip.label <- paste0("sp", seq_len(60))
 #'   sim <- simulate_site_trait(
-#'     n_sites = 1, n_species = 20, n_traits = 3,
-#'     mean_species_per_site = 20,
+#'     n_sites = 1, n_species = 60, n_traits = 3,
+#'     mean_species_per_site = 60,
 #'     Cphy = ape::vcv(tree, corr = TRUE),
-#'     sigma2_phy = rep(1, 3), seed = 1
+#'     sigma2_phy = rep(1, 3), sigma2_eps = 0.2, seed = 1
 #'   )
 #'   df <- sim$data
 #'   df$species <- factor(tree$tip.label[as.integer(df$species)],
 #'                        levels = tree$tip.label)
 #'   Cphy <- ape::vcv(tree, corr = TRUE)
+#'   # phylo_rr() is a deprecated alias of phylo_latent() and prints a message.
 #'   fit <- gllvmTMB(value ~ 0 + trait + phylo_rr(species, d = 2),
 #'                   data      = df,
 #'                   trait     = "trait",
@@ -465,25 +466,26 @@ phylo_rr <- function(species, d = 1) {
 #' @examples
 #' if (requireNamespace("ape", quietly = TRUE)) {
 #'   set.seed(1)
-#'   tree <- ape::rcoal(20); tree$tip.label <- paste0("sp", seq_len(20))
+#'   tree <- ape::rcoal(60); tree$tip.label <- paste0("sp", seq_len(60))
 #'   sim <- simulate_site_trait(
-#'     n_sites = 1, n_species = 20, n_traits = 3,
-#'     mean_species_per_site = 20,
+#'     n_sites = 1, n_species = 60, n_traits = 3,
+#'     mean_species_per_site = 60,
 #'     Cphy = ape::vcv(tree, corr = TRUE),
-#'     sigma2_phy = rep(1, 3), seed = 1
+#'     sigma2_phy = rep(1, 3), sigma2_eps = 0.2, seed = 1
 #'   )
 #'   df <- sim$data
 #'   df$species <- factor(tree$tip.label[as.integer(df$species)],
 #'                        levels = tree$tip.label)
 #'   Cphy <- ape::vcv(tree, corr = TRUE)
-#'   # Recommended:
+#'   # gr() is a deprecated alias and prints a message; new code can use
+#'   # phylo_indep(0 + trait | species, tree = tree, common = TRUE).
 #'   fit <- gllvmTMB(value ~ 0 + trait + gr(species),
 #'                   data      = df,
 #'                   trait     = "trait",
 #'                   unit      = "species",
 #'                   cluster   = "species",
 #'                   phylo_vcv = Cphy)
-#'   # Also valid (cov = Cphy ignored by engine):
+#'   # When both are given, the top-level phylo_vcv = is used, not cov =:
 #'   fit <- gllvmTMB(value ~ 0 + trait + gr(species, cov = Cphy),
 #'                   data      = df,
 #'                   trait     = "trait",
@@ -551,7 +553,7 @@ gr <- function(group, cov = NULL) {
 #'                  unit    = "site",
 #'                  known_V = V)
 #'
-#' # Deprecated form (still works, emits a warning):
+#' # Deprecated form (still works, prints a deprecation message):
 #' fit2 <- gllvmTMB(value ~ 0 + trait +
 #'                    latent(0 + trait | site, d = 1) +
 #'                    meta(value, sampling_var = sampling_var),
@@ -634,16 +636,19 @@ meta <- function(value, sampling_var) {
 #' @seealso [indep()], [phylo_latent()], [diag_re], [extract_Sigma()],
 #'   [extract_lv_effects()] for predictor-informed latent-score coefficients.
 #' @examples
-#' # Long-format stacked traits: a 2-factor latent random effect at `site`.
-#' # Ordinary latent() carries its diagonal Psi by default
-#' # (Sigma = Lambda Lambda^T + diag(psi)).
-#' df <- simulate_site_trait(
-#'   n_sites = 30, n_species = 4, n_traits = 4,
-#'   mean_species_per_site = 4, seed = 42
-#' )$data
+#' # Six traits on 60 units (3 replicate observations per unit): the
+#' # between-unit trait covariance is rank two plus a trait-specific diagonal.
+#' Lambda <- matrix(c(0.9, 0.7, 0.5, -0.4, 0.3, 0,
+#'                    0, 0.2, -0.3, 0.6, 0.7, 0.8), ncol = 2)
+#' sim <- simulate_unit_trait(
+#'   n_units = 60, n_obs_per_unit = 3, n_traits = 6,
+#'   Lambda_B = Lambda, psi_B = rep(0.2, 6), seed = 1
+#' )
+#' # A 2-factor latent random effect at `unit`. Ordinary latent() carries its
+#' # diagonal Psi by default (Sigma = Lambda Lambda^T + diag(psi)).
 #' fit <- gllvmTMB(
-#'   value ~ 0 + trait + latent(0 + trait | site, d = 2),
-#'   data = df, unit = "site"
+#'   value ~ 0 + trait + latent(0 + trait | unit, d = 2),
+#'   data = sim$data, trait = "trait", unit = "unit"
 #' )
 #' extract_Sigma(fit)
 #' @export
@@ -785,12 +790,12 @@ NULL
 #' @examples
 #' if (requireNamespace("ape", quietly = TRUE)) {
 #'   set.seed(1)
-#'   tree <- ape::rcoal(20); tree$tip.label <- paste0("sp", seq_len(20))
+#'   tree <- ape::rcoal(60); tree$tip.label <- paste0("sp", seq_len(60))
 #'   sim <- simulate_site_trait(
-#'     n_sites = 1, n_species = 20, n_traits = 4,
-#'     mean_species_per_site = 20,
+#'     n_sites = 1, n_species = 60, n_traits = 3,
+#'     mean_species_per_site = 60,
 #'     Cphy = ape::vcv(tree, corr = TRUE),
-#'     sigma2_phy = rep(0.3, 4), seed = 1
+#'     sigma2_phy = rep(1, 3), sigma2_eps = 0.2, seed = 1
 #'   )
 #'   sim$data$species <- factor(
 #'     tree$tip.label[as.integer(sim$data$species)],
@@ -1093,17 +1098,20 @@ spatial_slope <- function(formula, mesh) {
 #' @examples
 #' if (requireNamespace("ape", quietly = TRUE)) {
 #'   set.seed(1)
-#'   tree <- ape::rcoal(8); tree$tip.label <- paste0("sp", seq_len(8))
+#'   tree <- ape::rcoal(60); tree$tip.label <- paste0("sp", seq_len(60))
 #'   sim <- simulate_site_trait(
-#'     n_sites = 1, n_species = 8, n_traits = 3,
-#'     mean_species_per_site = 8,
+#'     n_sites = 1, n_species = 60, n_traits = 3,
+#'     mean_species_per_site = 60,
 #'     Cphy = ape::vcv(tree, corr = TRUE),
-#'     sigma2_phy = rep(0.3, 3), seed = 1
+#'     sigma2_phy = rep(1, 3), sigma2_eps = 0.2, seed = 1
 #'   )
 #'   sim$data$species <- factor(
 #'     tree$tip.label[as.integer(sim$data$species)],
 #'     levels = tree$tip.label
 #'   )
+#'   # phylo_scalar() is compatibility syntax and warns once per session;
+#'   # the same model is phylo_indep(0 + trait | species, tree = tree,
+#'   # common = TRUE).
 #'   fit <- gllvmTMB(
 #'     value ~ 0 + trait + phylo_scalar(species, tree = tree),
 #'     data    = sim$data,
@@ -1205,17 +1213,19 @@ phylo_scalar <- function(
 #' @examples
 #' if (requireNamespace("ape", quietly = TRUE)) {
 #'   set.seed(1)
-#'   tree <- ape::rcoal(8); tree$tip.label <- paste0("sp", seq_len(8))
+#'   tree <- ape::rcoal(60); tree$tip.label <- paste0("sp", seq_len(60))
 #'   sim <- simulate_site_trait(
-#'     n_sites = 1, n_species = 8, n_traits = 3,
-#'     mean_species_per_site = 8,
+#'     n_sites = 1, n_species = 60, n_traits = 3,
+#'     mean_species_per_site = 60,
 #'     Cphy = ape::vcv(tree, corr = TRUE),
-#'     sigma2_phy = rep(0.3, 3), seed = 1
+#'     sigma2_phy = rep(1, 3), sigma2_eps = 0.2, seed = 1
 #'   )
 #'   sim$data$species <- factor(
 #'     tree$tip.label[as.integer(sim$data$species)],
 #'     levels = tree$tip.label
 #'   )
+#'   # phylo_unique() is compatibility syntax and warns once per session;
+#'   # the same model is phylo_indep(0 + trait | species, tree = tree).
 #'   fit <- gllvmTMB(
 #'     value ~ 0 + trait + phylo_unique(species, tree = tree),
 #'     data    = sim$data,
@@ -1732,7 +1742,8 @@ meta_V <- function(V, type = "exact") {
 #' # ERROR: indep + latent on the same grouping is over-parameterised.
 #' # gllvmTMB(value ~ 0 + trait +
 #' #           indep(0 + trait | unit) +
-#' #           latent(0 + trait | unit, d = 2), data = df)
+#' #           latent(0 + trait | unit, d = 2),
+#' #           data = df, trait = "trait", unit = "unit")
 indep <- function(formula, common = FALSE) {
   invisible(NULL)
 }
@@ -1768,7 +1779,8 @@ indep <- function(formula, common = FALSE) {
 #' )
 #' df <- sim$data
 #'
-#' # One shared trait variance across all traits (identity cross-trait):
+#' # One shared trait variance across all traits (identity cross-trait).
+#' # scalar() is compatibility syntax and warns once per session.
 #' fit <- gllvmTMB(value ~ 0 + trait + scalar(0 + trait | unit),
 #'                 data = df, trait = "trait", unit = "unit")
 #'
@@ -1868,12 +1880,12 @@ scalar <- function(formula) {
 #' @examples
 #' if (requireNamespace("ape", quietly = TRUE)) {
 #'   set.seed(1)
-#'   tree <- ape::rcoal(20); tree$tip.label <- paste0("sp", seq_len(20))
+#'   tree <- ape::rcoal(60); tree$tip.label <- paste0("sp", seq_len(60))
 #'   sim <- simulate_site_trait(
-#'     n_sites = 1, n_species = 20, n_traits = 3,
-#'     mean_species_per_site = 20,
+#'     n_sites = 1, n_species = 60, n_traits = 3,
+#'     mean_species_per_site = 60,
 #'     Cphy = ape::vcv(tree, corr = TRUE),
-#'     sigma2_phy = rep(1, 3), seed = 1
+#'     sigma2_phy = rep(1, 3), sigma2_eps = 0.2, seed = 1
 #'   )
 #'   df <- sim$data
 #'   df$species <- factor(tree$tip.label[as.integer(df$species)],
@@ -2061,7 +2073,8 @@ spatial_indep <- function(formula, coords = NULL, mesh = NULL, common = FALSE, r
 #' # ERROR: dep + latent on the same grouping is over-parameterised.
 #' # gllvmTMB(value ~ 0 + trait +
 #' #           dep(0 + trait | unit) +
-#' #           latent(0 + trait | unit, d = 2), data = df)
+#' #           latent(0 + trait | unit, d = 2),
+#' #           data = df, trait = "trait", unit = "unit")
 dep <- function(formula) {
   invisible(NULL)
 }
@@ -2122,12 +2135,12 @@ dep <- function(formula) {
 #' @examples
 #' if (requireNamespace("ape", quietly = TRUE)) {
 #'   set.seed(1)
-#'   tree <- ape::rcoal(8); tree$tip.label <- paste0("sp", seq_len(8))
+#'   tree <- ape::rcoal(60); tree$tip.label <- paste0("sp", seq_len(60))
 #'   sim <- simulate_site_trait(
-#'     n_sites = 1, n_species = 8, n_traits = 3,
-#'     mean_species_per_site = 8,
+#'     n_sites = 1, n_species = 60, n_traits = 3,
+#'     mean_species_per_site = 60,
 #'     Cphy = ape::vcv(tree, corr = TRUE),
-#'     sigma2_phy = rep(0.3, 3), seed = 1
+#'     sigma2_phy = rep(1, 3), sigma2_eps = 0.2, seed = 1
 #'   )
 #'   sim$data$species <- factor(
 #'     tree$tip.label[as.integer(sim$data$species)],

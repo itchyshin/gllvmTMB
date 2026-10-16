@@ -100,12 +100,12 @@ transfers.
 \examples{
 if (requireNamespace("ape", quietly = TRUE)) {
   set.seed(1)
-  tree <- ape::rcoal(20); tree$tip.label <- paste0("sp", seq_len(20))
+  tree <- ape::rcoal(60); tree$tip.label <- paste0("sp", seq_len(60))
   sim <- simulate_site_trait(
-    n_sites = 1, n_species = 20, n_traits = 3,
-    mean_species_per_site = 20,
+    n_sites = 1, n_species = 60, n_traits = 3,
+    mean_species_per_site = 60,
     Cphy = ape::vcv(tree, corr = TRUE),
-    sigma2_phy = rep(1, 3), seed = 1
+    sigma2_phy = rep(1, 3), sigma2_eps = 0.2, seed = 1
   )
   df <- sim$data
   df$species <- factor(tree$tip.label[as.integer(df$species)],

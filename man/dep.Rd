@@ -82,7 +82,8 @@ c(dep = logLik(fit), latent = logLik(fit_lat))
 # ERROR: dep + latent on the same grouping is over-parameterised.
 # gllvmTMB(value ~ 0 + trait +
 #           dep(0 + trait | unit) +
-#           latent(0 + trait | unit, d = 2), data = df)
+#           latent(0 + trait | unit, d = 2),
+#           data = df, trait = "trait", unit = "unit")
 }
 \seealso{
 \code{\link[=latent]{latent()}}, \code{\link[=indep]{indep()}}, \code{\link[=phylo_dep]{phylo_dep()}},

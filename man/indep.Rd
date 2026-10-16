@@ -76,7 +76,8 @@ fit_common <- gllvmTMB(
 # ERROR: indep + latent on the same grouping is over-parameterised.
 # gllvmTMB(value ~ 0 + trait +
 #           indep(0 + trait | unit) +
-#           latent(0 + trait | unit, d = 2), data = df)
+#           latent(0 + trait | unit, d = 2),
+#           data = df, trait = "trait", unit = "unit")
 }
 \seealso{
 \code{\link[=latent]{latent()}}, \code{\link[=phylo_indep]{phylo_indep()}}, \code{\link[=spatial_indep]{spatial_indep()}},

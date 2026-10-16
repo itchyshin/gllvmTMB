@@ -61,7 +61,7 @@ fit2 <- gllvmTMB(value ~ 0 + trait +
                  unit    = "site",
                  known_V = V)
 
-# Deprecated form (still works, emits a warning):
+# Deprecated form (still works, prints a deprecation message):
 fit2 <- gllvmTMB(value ~ 0 + trait +
                    latent(0 + trait | site, d = 1) +
                    meta(value, sampling_var = sampling_var),

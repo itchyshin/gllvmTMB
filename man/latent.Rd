@@ -79,16 +79,19 @@ use \code{common = TRUE}; this replaces the older two-term spelling for
 ordinary intercept-only latent terms.
 }
 \examples{
-# Long-format stacked traits: a 2-factor latent random effect at `site`.
-# Ordinary latent() carries its diagonal Psi by default
-# (Sigma = Lambda Lambda^T + diag(psi)).
-df <- simulate_site_trait(
-  n_sites = 30, n_species = 4, n_traits = 4,
-  mean_species_per_site = 4, seed = 42
-)$data
+# Six traits on 60 units (3 replicate observations per unit): the
+# between-unit trait covariance is rank two plus a trait-specific diagonal.
+Lambda <- matrix(c(0.9, 0.7, 0.5, -0.4, 0.3, 0,
+                   0, 0.2, -0.3, 0.6, 0.7, 0.8), ncol = 2)
+sim <- simulate_unit_trait(
+  n_units = 60, n_obs_per_unit = 3, n_traits = 6,
+  Lambda_B = Lambda, psi_B = rep(0.2, 6), seed = 1
+)
+# A 2-factor latent random effect at `unit`. Ordinary latent() carries its
+# diagonal Psi by default (Sigma = Lambda Lambda^T + diag(psi)).
 fit <- gllvmTMB(
-  value ~ 0 + trait + latent(0 + trait | site, d = 2),
-  data = df, unit = "site"
+  value ~ 0 + trait + latent(0 + trait | unit, d = 2),
+  data = sim$data, trait = "trait", unit = "unit"
 )
 extract_Sigma(fit)
 }

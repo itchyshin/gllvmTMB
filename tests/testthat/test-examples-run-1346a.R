@@ -89,6 +89,13 @@ for (page in pages_1346a) {
       exprs <- rd_example_exprs_1346a(rd_page_1346a(page))
       expect_gt(length(exprs), 0L,
                 label = paste0("expressions example(", page, ") executes"))
+      # An example guarded by requireNamespace() would pass without running
+      # anything when that package is missing, so skip instead.
+      code <- unlist(lapply(exprs, deparse))
+      needs <- regmatches(
+        code, gregexpr('(?<=requireNamespace\\(")[^"]+', code, perl = TRUE)
+      )
+      for (pkg in unique(unlist(needs))) skip_if_not_installed(pkg)
       env <- new.env(parent = globalenv())
       withr::local_seed(1346L)
       # Pages for deprecated aliases demonstrate them on purpose.
@@ -98,6 +105,10 @@ for (page in pages_1346a) {
       expect_no_error(
         for (expr in exprs) eval(expr, envir = env)
       )
+      # Every example builds data and a fit, so an empty environment means
+      # the body did not run.
+      expect_gt(length(ls(env)), 0L,
+                label = paste0("objects example(", page, ") creates"))
     })
   })
 }

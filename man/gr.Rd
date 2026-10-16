@@ -30,25 +30,26 @@ reader, but is \strong{not} used by the engine. Same convention as
 \examples{
 if (requireNamespace("ape", quietly = TRUE)) {
   set.seed(1)
-  tree <- ape::rcoal(20); tree$tip.label <- paste0("sp", seq_len(20))
+  tree <- ape::rcoal(60); tree$tip.label <- paste0("sp", seq_len(60))
   sim <- simulate_site_trait(
-    n_sites = 1, n_species = 20, n_traits = 3,
-    mean_species_per_site = 20,
+    n_sites = 1, n_species = 60, n_traits = 3,
+    mean_species_per_site = 60,
     Cphy = ape::vcv(tree, corr = TRUE),
-    sigma2_phy = rep(1, 3), seed = 1
+    sigma2_phy = rep(1, 3), sigma2_eps = 0.2, seed = 1
   )
   df <- sim$data
   df$species <- factor(tree$tip.label[as.integer(df$species)],
                        levels = tree$tip.label)
   Cphy <- ape::vcv(tree, corr = TRUE)
-  # Recommended:
+  # gr() is a deprecated alias and prints a message; new code can use
+  # phylo_indep(0 + trait | species, tree = tree, common = TRUE).
   fit <- gllvmTMB(value ~ 0 + trait + gr(species),
                   data      = df,
                   trait     = "trait",
                   unit      = "species",
                   cluster   = "species",
                   phylo_vcv = Cphy)
-  # Also valid (cov = Cphy ignored by engine):
+  # When both are given, the top-level phylo_vcv = is used, not cov =:
   fit <- gllvmTMB(value ~ 0 + trait + gr(species, cov = Cphy),
                   data      = df,
                   trait     = "trait",

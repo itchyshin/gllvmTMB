@@ -39,7 +39,8 @@ sim <- simulate_unit_trait(
 )
 df <- sim$data
 
-# One shared trait variance across all traits (identity cross-trait):
+# One shared trait variance across all traits (identity cross-trait).
+# scalar() is compatibility syntax and warns once per session.
 fit <- gllvmTMB(value ~ 0 + trait + scalar(0 + trait | unit),
                 data = df, trait = "trait", unit = "unit")
 

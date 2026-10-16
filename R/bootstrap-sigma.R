@@ -257,8 +257,12 @@ bootstrap_Sigma <- function(
   }
   .gllvmTMB_mspl_assert_inference(fit, "bootstrap_Sigma")
   .gllvmTMB_require_unweighted_inference(fit, "bootstrap_Sigma")
+  ## The default vector lists the legacy aliases "B"/"W" so every tier is
+  ## matched; only warn when the user supplied a deprecated value (#1409).
+  level_supplied <- !missing(level)
   level <- match.arg(level, several.ok = TRUE)
-  level <- vapply(level, .normalise_level, character(1L), arg_name = "level")
+  level <- vapply(level, .normalise_level, character(1L), arg_name = "level",
+                  .skip_warn = !level_supplied)
   what <- match.arg(what, several.ok = TRUE)
   link_residual <- match.arg(link_residual)
   if (!is.numeric(conf) || length(conf) != 1L || is.na(conf) ||

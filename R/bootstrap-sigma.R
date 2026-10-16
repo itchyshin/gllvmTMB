@@ -25,6 +25,16 @@
       return(call("(", bar))
     }
     extra <- cs$extra
+    ## phylo_rr (from phylo_*, animal_* and kernel_* terms) takes a bare
+    ## species argument, and the parser stores the bar it built from it,
+    ## `0 + species | trait`. Write the bare argument back: re-parsing the
+    ## stored bar wraps it a second time, which made every refit of a
+    ## multi-kernel fit fail.
+    lhs <- cs$lhs
+    if (identical(cs$kind, "phylo_rr") && is.call(lhs) && length(lhs) == 3L &&
+        identical(lhs[[1L]], as.name("+")) && identical(lhs[[2L]], 0)) {
+      return(as.call(c(list(as.name("phylo_rr"), lhs[[3L]]), extra)))
+    }
     if (length(extra) == 0L) {
       as.call(c(list(as.name(cs$kind)), list(bar)))
     } else {

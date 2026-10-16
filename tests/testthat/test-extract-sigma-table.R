@@ -365,3 +365,28 @@ test_that("compare_Sigma_table validates truth names", {
     regexp = "missing trait name"
   )
 })
+
+test_that("extract_Sigma_table(part = 'unique') returns table rows, not the extract_Sigma() vector", {
+  fit <- make_sigma_table_fit()
+  tbl <- suppressMessages(extract_Sigma_table(fit, level = "unit", part = "unique"))
+  expect_s3_class(tbl, "data.frame")
+  expect_null(tbl$s)
+  expect_equal(unique(tbl$matrix), "Psi")
+  expect_equal(unique(tbl$component), "unique")
+  ## "psi" is an alias of extract_Sigma() only
+  expect_error(extract_Sigma_table(fit, level = "unit", part = "psi"), "should be one of")
+  s_psi <- suppressMessages(extract_Sigma(fit, level = "unit", part = "psi"))$s
+  s_uni <- suppressMessages(extract_Sigma(fit, level = "unit", part = "unique"))$s
+  expect_equal(s_psi, s_uni)
+  expect_true(is.numeric(s_uni) && !is.null(names(s_uni)))
+})
+
+test_that("covariance-correlation article describes part = 'unique' as table rows (#1370)", {
+  art <- testthat::test_path("..", "..", "vignettes", "articles", "covariance-correlation.Rmd")
+  testthat::skip_if_not(file.exists(art), "vignettes/articles not present")
+  txt <- paste(readLines(art, warn = FALSE), collapse = " ")
+  txt <- gsub("\\s+", " ", txt)
+  expect_false(grepl("returns the diagonal of \\$\\\\boldsymbol\\\\Psi\\$ in its `s` component", txt))
+  expect_true(grepl("as table rows", txt, fixed = TRUE))
+  expect_true(grepl("extract_Sigma(fit, part = \"unique\")$s", txt, fixed = TRUE))
+})

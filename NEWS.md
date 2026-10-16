@@ -1,10 +1,5 @@
 # Development (unreleased)
 
-* `extract_phylo_signal(ci = TRUE, method = "bootstrap")` now runs the
-  parametric bootstrap. Before, it reported "running N replicates" but
-  returned `NA` bounds without refitting; `nsim` and `seed` were ignored. It now
-  agrees with `confint(fit, parm = "phylo_signal", method = "bootstrap")` (#1398).
-
 * Multi-trial binomial counts can now be mixed with other families in one
   model, in long and wide format (#1494).
   - Wide `traits()` accepts `cbind(successes, failures)` pairs next to plain

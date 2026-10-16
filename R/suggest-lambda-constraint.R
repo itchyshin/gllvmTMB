@@ -166,6 +166,19 @@ suggest_lambda_constraint <- function(
         "{.arg data} is required when {.arg fit_or_formula} is a formula."
       )
     }
+    ## Wide `traits(a, b, ...) ~ ...` formulas: expand to the long format
+    ## the same way gllvmTMB() does (#1410); the trait column is then the
+    ## synthetic `trait` factor of the rewritten data.
+    if (is_traits_lhs(fit_or_formula)) {
+      rewrite <- rewrite_traits_lhs(
+        formula = fit_or_formula,
+        data = data,
+        eval_env = environment(fit_or_formula)
+      )
+      fit_or_formula <- rewrite$formula_long
+      data <- rewrite$data_long
+      trait <- "trait"
+    }
     ## Run the canonical-keyword + brms-sugar rewriter so that formulas
     ## using `latent()` / `unique()` / `phylo_latent()` etc. are
     ## recognised by parse_multi_formula() (which only knows the

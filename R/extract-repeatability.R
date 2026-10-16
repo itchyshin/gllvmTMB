@@ -133,6 +133,20 @@ extract_repeatability <- function(
         "Wald repeatability requires {.code sd_report}; check Hessian."
       )
     }
+    ## #1379: same gate as confint(method = "wald") -- an all-non-finite
+    ## covariance (non-PD Hessian) is an error, not a NaN interval.
+    .confint_require_sdreport(fit, "wald", caller = "extract_repeatability")
+    ## A finite covariance from a non-PD Hessian is not a trustworthy
+    ## curvature estimate either; say so rather than return a clean-looking CI.
+    if (isFALSE(fit$sd_report$pdHess)) {
+      cli::cli_warn(
+        c(
+          "The Hessian is not positive-definite ({.code pdHess = FALSE}); the Wald repeatability intervals are not reliable.",
+          "i" = "Diagnose with {.run gllvmTMB_diagnose(fit)}, or use a bootstrap interval ({.code method = \"bootstrap\"})."
+        ),
+        class = "gllvmTMB_repeatability_nonpd_hessian"
+      )
+    }
     par_full_at_mle <- fit$tmb_obj$env$last.par.best
     random_idx <- fit$tmb_obj$env$random
     fix_idx <- if (length(random_idx) > 0L) {

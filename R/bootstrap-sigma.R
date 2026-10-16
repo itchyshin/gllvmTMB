@@ -167,9 +167,9 @@
     ## refits skip it.
     control = .bootstrap_refit_control(fit),
     ## Masked missing responses come from .bootstrap_response_setup(), and
-    ## the caller sets them (#1496). Modelled missing predictors are refused:
-    ## `impute` is not kept on the fit, and `fit$formula` holds the bare
-    ## predictor rather than `mi()`.
+    ## the caller sets them (#1496). Modelled missing predictors are refused,
+    ## because `impute` is not kept on the fit and `fit$formula` holds the
+    ## bare predictor, not `mi()`.
     missing = NULL,
     impute = NULL,
     silent = TRUE,
@@ -189,6 +189,18 @@
     ## Already joined into `fit$data` when the model was fitted.
     column_data = NULL
   )
+}
+
+# One line saying why a refit failed: the error's header, unwrapped. A cli
+# error's conditionMessage() is wrapped to the console width and carries its
+# bullets on further lines; an empty or missing message still yields text.
+.bootstrap_failure_reason <- function(e) {
+  msg <- tryCatch(
+    if (inherits(e, "rlang_error")) rlang::cnd_header(e) else conditionMessage(e),
+    error = function(err) character(0)
+  )
+  msg <- gsub("[[:space:]]+", " ", trimws(paste(msg[!is.na(msg)], collapse = " ")))
+  if (nzchar(msg)) msg else "an error without a message"
 }
 
 # The non-default refit arguments, after refusing fits whose inputs the fitted
@@ -555,7 +567,7 @@ bootstrap_Sigma <- function(
     ## Keep why the refit failed, so a bootstrap whose refits all fail can
     ## say so instead of returning NA bounds silently (#1393).
     reason <- if (inherits(out, "error")) {
-      conditionMessage(out)
+      .bootstrap_failure_reason(out)
     } else if (!inherits(out, "gllvmTMB_multi")) {
       "the refit did not return a gllvmTMB fit"
     } else if (!isTRUE(out$opt$convergence == 0L)) {
@@ -612,11 +624,8 @@ bootstrap_Sigma <- function(
   ## own error: `$n_failed` was the only trace, and for matrix summaries the
   ## attrition check below never fired (#1393).
   if (n_failed == n_boot) {
-    reasons <- vapply(draws, function(d) {
-      ## First line only: a cli-formatted error carries its own bullets.
-      r <- strsplit(attr(d, "reason") %||% "unknown", "\n", fixed = TRUE)[[1L]]
-      if (length(r)) r[[1L]] else "unknown"
-    }, character(1))
+    reasons <- vapply(draws, function(d) attr(d, "reason") %||% "unknown",
+                      character(1))
     top_reason <- names(sort(table(reasons), decreasing = TRUE))[[1L]]
     n_top <- sum(reasons == top_reason)
     cli::cli_warn(c(

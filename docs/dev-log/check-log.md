@@ -55695,3 +55695,26 @@ test_file("tests/testthat/test-integration-tour.R")'.
 The initial red run is worker tool session94947 (1failure/54passes), not a
 saved raw log; the CI log independently retains the same failure.
 After-task structure and exact-draft assessment checks passed for v3.
+
+
+## 2026-10-16 — fresh exact archive after message-assertion fix (Codex)
+
+Clean source876b4fab7a50404ce2765e8924f69b5085e2d0c4 produced immutable archive
+SHA256dd8a811fbc273774db44b3284ca7cac7b724da5539c5fafebc14fcac0a2df557,
+4428330bytes,889entries. Tar payload differs from600b only in the two test
+assertions and DESCRIPTION's R-generated Packaged timestamp. Runtime code,
+help, data and native source are byte-identical. Inventory has no rootRplots.pdf,
+native binaries, docs/dev/.git/.codex payload. Source status was empty at freeze.
+
+Thread-capped R CMD build exited0 (recheck2-build.log). Exact R CMD check
+--as-cran --run-donttest, including rebuilt vignette and PDF/HTML manuals,
+exited0 with0errors/0warnings/2NOTEs: newsubmission and explicit bootstrap
+example6.072seconds. Tests1408PASS/33SKIP/0FAIL/0WARN. Full logs under
+recheck2-check/gllvmTMB.Rcheck. Installed README/predict smoke exited0 in0.98s,
+270correctfinitepredictions/convergence0/no-workdirwrites; existing latent
+transitionwarning was preserved. Log recheck2-installed-smoke.log.
+
+Both Windows services accepted identical alias gllvmTMB_0.7.1-dd8a811f.tar.gz,
+4428330bytes; results pending. Full3OSCI38889563471 at876b4fab7 queued.
+Executable release ledger currently claims tarball-clean only. Panel and CRAN
+submission/confirmation remain owed. Do not reuse any600b result for this hash.

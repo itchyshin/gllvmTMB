@@ -1,6 +1,3 @@
-DRAFT: the archive and results below describe predecessor600b. A fresh archive
-is required after the included message-capture assertion correction. Do not upload.
-
 # Resubmission: gllvmTMB 0.7.1
 
 This resubmission addresses Konstanze Lauseker's review of 15 October 2026.
@@ -23,9 +20,9 @@ This resubmission addresses Konstanze Lauseker's review of 15 October 2026.
 ## Check results
 
 The exact candidate has SHA-256
-600b178631a79199d63c8568806394da2fdbfb986ef08fd3f85de960a9dc68f2
-and size 4,428,282 bytes, built from clean release source
-e158795cd08292e6b2400912629ba409855ba955.
+dd8a811fbc273774db44b3284ca7cac7b724da5539c5fafebc14fcac0a2df557
+and size 4,428,330 bytes, built from clean release source
+876b4fab7a50404ce2765e8924f69b5085e2d0c4.
 
 Local macOS arm64, R 4.6.0: R CMD check --as-cran --run-donttest,
 including vignette rebuilding and PDF/HTML manuals, completed with

@@ -1,7 +1,7 @@
 # gllvmTMB 0.7.1 CRAN review repairs
 
 ## 1. Goal
-Address the five requests in Konstanze Lauseker's 15 October 2026 email and resubmit one checked 0.7.1 archive. Source repairs and focused verification are complete; fresh archive/platform checks and resubmission remain pending after the included test correction below. No CRAN upload is claimed.
+Address the five requests in Konstanze Lauseker's 15 October 2026 email and resubmit one checked 0.7.1 archive. The fresh archive has passed local verification; external platform checks and resubmission remain pending after the included test correction below. No CRAN upload is claimed.
 
 ## 2. Implemented
 Added shared accessor return documentation; replaced unnecessary dontrun blocks; labelled incomplete reference syntax as templates; corrected animal-example unit metadata; made sanity diagnostics suppressible; moved developer-test output into temporary fixtures; required explicit output destinations in five shipped simulation launch scripts.
@@ -30,7 +30,7 @@ Independent Rose/Emmy source review found no P0/P1 blocker in the return documen
 The Gmail connector points to snakagaw@ualberta.ca; the email was found in the existing itchyshin@gmail.com browser tab. System Git triggers an unaccepted Xcode licence; a bundled Git works. Native worktree creation failed for the same reason, so a separate fallback-Git worktree was created. Setting DEVELOPER_DIR to CommandLineTools permits compilation without accepting new licence terms. Initial diagnostic archives precede later example repairs and are not submission files.
 
 ## 10. Known Residuals
-Fresh archive checks, its Windows/three-OS CI results, final submission-readiness panel decisions, CRAN upload and confirmation remain pending. No CRAN acceptance or publication is claimed. Broad interval coverage and later development features remain outside scope.
+The fresh archive's Windows/three-OS CI results, final submission-readiness panel decisions, CRAN upload and confirmation remain pending. No CRAN acceptance or publication is claimed. Broad interval coverage and later development features remain outside scope.
 
 ## 11. Team Learning
 Converting dontrun to donttest reveals broken examples; parse checks alone cannot establish runnable examples. A file-write audit must include shipped shell launchers and developer tests, even when package runtime already uses tempdir.
@@ -87,3 +87,21 @@ included test correction. No CRAN resubmission or confirmation has occurred.
 The user requested Codex's own browser. It works, is signed in to itchyshin
 Gmail, and reaches the CRAN form; a Mac unlock is no longer needed for this route.
 Automatic continuation remains active during the maintainer's absence.
+
+
+## Fresh candidate update (10:55 UTC)
+
+Clean source876b4fab7a50404ce2765e8924f69b5085e2d0c4 produced immutable archive
+dd8a811fbc273774db44b3284ca7cac7b724da5539c5fafebc14fcac0a2df557,
+4428330bytes and889entries. Payload comparison found only the two test changes
+and R's Packaged timestamp; runtime code/help/data/native source are unchanged.
+The exact as-cran/run-donttest check passed0errors/0warnings/2explainednotes,
+1408passedassertions/33skips/0failures/0warnings, rebuilt vignette and both manuals.
+The exact installed workflow passed270predictions, convergence0 and no workdir
+writes. Its existing latent-default transition warning was retained.
+
+Both Windows services accepted the checksum-labelled dd8a811f alias. Their
+reports and full3OSCI38889563471 are pending. Current highest proven rung is
+therefore tarball-clean. Independent final panel, submission and confirmation
+remain owed; no CRAN upload or acceptance is claimed. Automatic continuation
+uses the latest evidence state JSON and the working in-app browser.

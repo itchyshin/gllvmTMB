@@ -74,7 +74,6 @@ test_that("julia kernel_latent() still stops on a clearly asymmetric kernel (1e-
 })
 
 test_that("julia kernel_latent() stops on one 1e-3 entry in a 200 x 200 kernel before any Julia call", {
-  skip_if_no_julia_1348()
   set.seed(2)
   m <- 200L
   lv <- as.character(seq_len(m))

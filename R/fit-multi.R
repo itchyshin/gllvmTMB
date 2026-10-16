@@ -4580,7 +4580,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       if (!is.null(tree_inkey) && inherits(tree_inkey, "phylo")) {
         if (is.null(phylo_tree)) {
           phylo_tree <- tree_inkey
-        } else if (!.gllvmTMB_same_phylo_tree(phylo_tree, tree_inkey)) {
+        } else if (!identical(phylo_tree$tip.label, tree_inkey$tip.label)) {
           cli::cli_warn(c(
             "{.code tree =} inside a phylo keyword disagrees with the global {.arg phylo_tree}.",
             "i" = "Using the global {.arg phylo_tree}; remove one to silence this warning."

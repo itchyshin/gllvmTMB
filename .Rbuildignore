@@ -44,3 +44,5 @@
 ^.*/\.DS_Store$
 ^pkgdown-site$
 ^lanes$
+
+^Rplots\.pdf$

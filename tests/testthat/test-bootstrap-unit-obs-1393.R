@@ -109,6 +109,47 @@ test_that("bootstrap_Sigma() warns when every refit fails (#1393)", {
   ## The warning carries the refit's own error, not just a count.
   expect_match(conditionMessage(failed[[1L]]), "refit exploded on purpose",
                fixed = TRUE)
+  ## ... and replaces the attrition warning rather than repeating it.
+  msgs <- vapply(res$warnings, conditionMessage, character(1))
+  expect_false(any(grepl("attrition", msgs, fixed = TRUE)))
+})
+
+test_that("the all-failed warning quotes a whole error header (#1393)", {
+  fit <- unit_obs_1393_fit()
+  header <- paste(
+    "A refit failure header long enough to be wrapped at the console width",
+    "when cli formats it, naming `unit_obs`"
+  )
+  res <- testthat::with_mocked_bindings(
+    gllvmTMB = function(...) {
+      cli::cli_abort(c(
+        "A refit failure header long enough to be wrapped at the console width when cli formats it, naming {.arg unit_obs}",
+        "i" = "A bullet that is not part of the header."
+      ))
+    },
+    .package = "gllvmTMB",
+    boot_1393(fit, n_boot = 3, level = "unit", what = "Sigma")
+  )
+  failed <- Filter(
+    function(w) inherits(w, "gllvmTMB_bootstrap_refits_failed"),
+    res$warnings
+  )
+  expect_length(failed, 1L)
+  ## The warning's own text is wrapped too, so compare with whitespace folded.
+  msg <- gsub("[[:space:]]+", " ", conditionMessage(failed[[1L]]))
+  expect_match(msg, header, fixed = TRUE)
+  expect_false(grepl("not part of the header", msg, fixed = TRUE))
+
+  ## A condition with no message text must not break the summary.
+  empty <- structure(class = c("error", "condition"),
+                     list(message = character(0), call = NULL))
+  res <- testthat::with_mocked_bindings(
+    gllvmTMB = function(...) stop(empty),
+    .package = "gllvmTMB",
+    boot_1393(fit, n_boot = 3, level = "unit", what = "Sigma")
+  )
+  expect_true(has_class_1393(res$warnings,
+                             "gllvmTMB_bootstrap_refits_failed"))
 })
 
 test_that("bootstrap_Sigma() reports attrition for matrix summaries (#1393)", {
@@ -228,6 +269,29 @@ test_that("bootstrap refits reproduce a lone phylo_indep() fit (#1393)", {
   ))))
 })
 
+## Call bootstrap_Sigma() with simulate() and the refit both trapped, so a
+## refusal is shown to come before any simulation or refit.
+refuse_1393 <- function(fit) {
+  reached <- character()
+  err <- testthat::with_mocked_bindings(
+    simulate = function(...) {
+      reached <<- c(reached, "simulate")
+      stop("simulate reached")
+    },
+    gllvmTMB = function(...) {
+      reached <<- c(reached, "refit")
+      stop("refit reached")
+    },
+    .package = "gllvmTMB",
+    tryCatch(
+      suppressWarnings(bootstrap_Sigma(fit, n_boot = 2, level = "unit",
+                                       what = "Sigma", progress = FALSE)),
+      error = function(e) e
+    )
+  )
+  list(error = err, reached = reached)
+}
+
 test_that("bootstrap_Sigma() refuses fits whose inputs it cannot recover (#1393)", {
   ## meta_V(): the fitted object does not keep the known_V matrix.
   set.seed(131)
@@ -243,11 +307,9 @@ test_that("bootstrap_Sigma() refuses fits whose inputs it cannot recover (#1393)
       meta_V(V = V, type = "exact"),
     data = df, unit = "site", known_V = V
   )))
-  expect_error(
-    suppressWarnings(bootstrap_Sigma(fit_v, n_boot = 2, level = "unit",
-                                     what = "Sigma", progress = FALSE)),
-    class = "gllvmTMB_bootstrap_refit_unsupported"
-  )
+  refused <- refuse_1393(fit_v)
+  expect_s3_class(refused$error, "gllvmTMB_bootstrap_refit_unsupported")
+  expect_length(refused$reached, 0L)
 
   ## mi(): the fitted object does not keep the `impute` model.
   s <- site_trait_1393()
@@ -259,9 +321,7 @@ test_that("bootstrap_Sigma() refuses fits whose inputs it cannot recover (#1393)
     data = s, unit = "site",
     missing = miss_control(predictor = "model"), impute = list(x ~ 1)
   )))
-  expect_error(
-    suppressWarnings(bootstrap_Sigma(fit_mi, n_boot = 2, level = "unit",
-                                     what = "Sigma", progress = FALSE)),
-    class = "gllvmTMB_bootstrap_refit_unsupported"
-  )
+  refused <- refuse_1393(fit_mi)
+  expect_s3_class(refused$error, "gllvmTMB_bootstrap_refit_unsupported")
+  expect_length(refused$reached, 0L)
 })

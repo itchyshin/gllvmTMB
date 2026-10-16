@@ -3065,6 +3065,7 @@ logLik.gllvmTMB_julia <- function(object, ...) {
 
 #' @rdname gllvmTMB_julia-methods
 #' @export
+#' @method print gllvmTMB_julia
 print.gllvmTMB_julia <- function(x, ...) {
   cat("gllvmTMB fit (engine = 'julia', via GLLVM.jl)\n")
   cat(sprintf(
@@ -3414,6 +3415,7 @@ confint.gllvmTMB_julia <- function(
 
 #' @rdname gllvmTMB_julia-methods
 #' @export
+#' @method summary gllvmTMB_julia
 summary.gllvmTMB_julia <- function(object, ...) {
   out <- list(
     header = list(
@@ -3454,6 +3456,7 @@ summary.gllvmTMB_julia <- function(object, ...) {
 
 #' @rdname gllvmTMB_julia-methods
 #' @export
+#' @method print summary.gllvmTMB_julia
 print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
   h <- x$header
   cat("gllvmTMB Julia bridge summary\n")

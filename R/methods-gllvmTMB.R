@@ -627,6 +627,7 @@
 #'   scalar. Estimator restrictions described below apply to these accessors.
 #' @name gllvmTMB_multi-methods
 #' @export
+#' @method print gllvmTMB_multi
 print.gllvmTMB_multi <- function(x, ...) {
   cat("Stacked-trait gllvmTMB fit\n")
   unit_label <- if (!is.null(x$unit_col)) x$unit_col else "sites"
@@ -748,6 +749,7 @@ print.gllvmTMB_multi <- function(x, ...) {
 
 #' @rdname gllvmTMB_multi-methods
 #' @export
+#' @method summary gllvmTMB_multi
 summary.gllvmTMB_multi <- function(object, ...) {
   out <- list()
   out$header <- list(
@@ -870,6 +872,7 @@ summary.gllvmTMB_multi <- function(object, ...) {
 
 #' @rdname gllvmTMB_multi-methods
 #' @export
+#' @method print summary.gllvmTMB_multi
 print.summary.gllvmTMB_multi <- function(x, digits = 3, ...) {
   ## Header block: dimensions, covstructs, optimiser convergence.
   with(x$header, {

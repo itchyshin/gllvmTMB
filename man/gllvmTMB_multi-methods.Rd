@@ -9,11 +9,11 @@
 \alias{nobs.gllvmTMB_multi}
 \title{Methods on a fitted gllvmTMB model}
 \usage{
-print.gllvmTMB_multi(x, ...)
+\method{print}{gllvmTMB_multi}(x, ...)
 
-summary.gllvmTMB_multi(object, ...)
+\method{summary}{gllvmTMB_multi}(object, ...)
 
-print.summary.gllvmTMB_multi(x, digits = 3, ...)
+\method{print}{summary.gllvmTMB_multi}(x, digits = 3, ...)
 
 \method{logLik}{gllvmTMB_multi}(object, ...)
 

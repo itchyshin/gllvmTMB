@@ -72,6 +72,7 @@ NULL
 
 #' @rdname gllvmTMB_va-methods
 #' @export
+#' @method print gllvmTMB_va
 print.gllvmTMB_va <- function(x, digits = 3, ...) {
   cat("Variational-approximation gllvmTMB fit (VA-R3, research route)\n")
   if (!is.null(x$call)) {
@@ -106,6 +107,7 @@ print.gllvmTMB_va <- function(x, digits = 3, ...) {
 
 #' @rdname gllvmTMB_va-methods
 #' @export
+#' @method summary gllvmTMB_va
 summary.gllvmTMB_va <- function(object, ...) {
   pars <- object$fitted$parameters
   out <- list(
@@ -133,6 +135,7 @@ summary.gllvmTMB_va <- function(object, ...) {
 
 #' @rdname gllvmTMB_va-methods
 #' @export
+#' @method print summary.gllvmTMB_va
 print.summary.gllvmTMB_va <- function(x, digits = 3, ...) {
   h <- x$header
   cat("Variational-approximation gllvmTMB fit (VA-R3, research route)\n")

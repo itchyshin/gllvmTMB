@@ -2140,6 +2140,7 @@ predict_cross_covariance <- function(
 #' @param ... Ignored.
 #' @return `x`, invisibly.
 #' @export
+#' @method print gllvmTMB_Sigma_phy_slope
 print.gllvmTMB_Sigma_phy_slope <- function(x, digits = 3, ...) {
   hdr <- x$header %||% "phylo_latent"
   cat(sprintf("%s random slope -- per-LHS-column cross-trait Sigma\n", hdr))

@@ -91,6 +91,8 @@ for (page in pages_1346a) {
                 label = paste0("expressions example(", page, ") executes"))
       env <- new.env(parent = globalenv())
       withr::local_seed(1346L)
+      # Pages for deprecated aliases demonstrate them on purpose.
+      withr::local_options(lifecycle_verbosity = "quiet")
       grDevices::pdf(NULL)
       withr::defer(grDevices::dev.off())
       expect_no_error(

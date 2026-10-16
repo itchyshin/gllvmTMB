@@ -44,9 +44,11 @@ b_lat <- rnorm(8, sd = 0.5); b_temp <- rnorm(8, sd = 0.3)
 k <- as.integer(dat$trait)
 dat$value <- 0.2 * k + b_lat[k] * dat$lat + b_temp[k] * dat$temp +
   rnorm(nrow(dat), sd = 0.3)
+\donttest{
 fit <- gllvmTMB(value ~ 0 + trait + slope(lat + temp | trait), data = dat,
   trait = "trait", unit = "unit", family = gaussian())
 extract_Sigma(fit, level = "column_slope")
+}
 }
 \seealso{
 \code{\link[=phylo_slope]{phylo_slope()}}, \code{\link[=animal_slope]{animal_slope()}}, \code{\link[=kernel_slope]{kernel_slope()}}, \code{\link[=spatial_slope]{spatial_slope()}},

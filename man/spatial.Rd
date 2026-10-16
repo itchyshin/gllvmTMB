@@ -109,6 +109,7 @@ sim <- simulate_site_trait(
 df <- sim$data
 mesh <- make_mesh(df, c("lon", "lat"), cutoff = 0.1)
 # env_1 and env_2 are the simulated site covariates.
+\donttest{
 # Single shared spatial-field variance (= spatial_indep(..., common = TRUE))
 fit_s <- gllvmTMB(value ~ 0 + trait + (0 + trait):(env_1 + env_2) +
                     spatial(1 | site, mesh = mesh),
@@ -136,6 +137,7 @@ fit_legacy <- gllvmTMB(value ~ 0 + trait + (0 + trait):(env_1 + env_2) +
                        trait = "trait",
                        unit  = "site",
                        mesh  = mesh)
+}
 }
 \seealso{
 \code{\link[=spatial_indep]{spatial_indep()}},

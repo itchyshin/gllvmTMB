@@ -125,12 +125,14 @@ if (requireNamespace("ape", quietly = TRUE)) {
   df <- sim$data
   df$species <- factor(tree$tip.label[as.integer(df$species)],
                        levels = tree$tip.label)
+  \donttest{
   fit <- gllvmTMB(value ~ 0 + trait +
                     phylo_indep(0 + trait | species, tree = tree),
                   data    = df,
                   trait   = "trait",
                   unit    = "species",
                   cluster = "species")
+  }
 }
 }
 \references{

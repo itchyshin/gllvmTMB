@@ -118,6 +118,7 @@ if (requireNamespace("ape", quietly = TRUE)) {
     tree$tip.label[as.integer(sim$data$species)],
     levels = tree$tip.label
   )
+  \donttest{
   fit <- gllvmTMB(
     value ~ 0 + trait + phylo_latent(species, d = 2, tree = tree),
     data    = sim$data,
@@ -125,6 +126,7 @@ if (requireNamespace("ape", quietly = TRUE)) {
     unit    = "species",
     cluster = "species"
   )
+  }
 }
 }
 \references{

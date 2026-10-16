@@ -35,11 +35,13 @@ df <- expand.grid(
 df$value <- rnorm(nrow(df), sd = 0.5)
 df$sampling_var <- runif(nrow(df), min = 0.02, max = 0.08)
 V <- diag(df$sampling_var)
+\donttest{
 fit <- gllvmTMB(
   value ~ 0 + trait + latent(0 + trait | site, d = 1) +
     meta_known_V(V = V),
   data = df, trait = "trait", unit = "site", known_V = V
 )
+}
 }
 \seealso{
 \code{\link[=meta_V]{meta_V()}} (canonical name; preferred for new code);

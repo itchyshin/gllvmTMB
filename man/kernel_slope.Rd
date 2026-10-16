@@ -52,12 +52,14 @@ dat$value <- 0.2 * k + b_lat[k] * dat$lat + b_temp[k] * dat$temp +
 # positive-definite K (e.g. a similarity among response columns) works.
 K <- diag(nlevels(dat$trait))
 dimnames(K) <- list(levels(dat$trait), levels(dat$trait))
+\donttest{
 fit <- gllvmTMB(
   value ~ 0 + trait + kernel_slope(lat + temp | trait, K = K),
   data = dat, trait = "trait", unit = "unit",
   family = gaussian()
 )
 extract_Sigma(fit, level = "column_slope")
+}
 }
 \seealso{
 \code{\link[=slope]{slope()}}, \code{\link[=phylo_slope]{phylo_slope()}}, \code{\link[=animal_slope]{animal_slope()}}, \code{\link[=extract_Sigma]{extract_Sigma()}}.

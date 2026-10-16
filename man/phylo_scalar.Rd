@@ -55,6 +55,7 @@ if (requireNamespace("ape", quietly = TRUE)) {
   # phylo_scalar() is compatibility syntax and warns once per session;
   # the same model is phylo_indep(0 + trait | species, tree = tree,
   # common = TRUE).
+  \donttest{
   fit <- gllvmTMB(
     value ~ 0 + trait + phylo_scalar(species, tree = tree),
     data    = sim$data,
@@ -62,6 +63,7 @@ if (requireNamespace("ape", quietly = TRUE)) {
     unit    = "species",
     cluster = "species"
   )
+  }
 }
 }
 \seealso{

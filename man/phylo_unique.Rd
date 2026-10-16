@@ -98,6 +98,7 @@ if (requireNamespace("ape", quietly = TRUE)) {
   )
   # phylo_unique() is compatibility syntax and warns once per session;
   # the same model is phylo_indep(0 + trait | species, tree = tree).
+  \donttest{
   fit <- gllvmTMB(
     value ~ 0 + trait + phylo_unique(species, tree = tree),
     data    = sim$data,
@@ -105,6 +106,7 @@ if (requireNamespace("ape", quietly = TRUE)) {
     unit    = "species",
     cluster = "species"
   )
+  }
 }
 }
 \references{

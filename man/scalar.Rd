@@ -39,6 +39,7 @@ sim <- simulate_unit_trait(
 )
 df <- sim$data
 
+\donttest{
 # One shared trait variance across all traits (identity cross-trait).
 # scalar() is compatibility syntax and warns once per session.
 fit <- gllvmTMB(value ~ 0 + trait + scalar(0 + trait | unit),
@@ -48,6 +49,7 @@ fit <- gllvmTMB(value ~ 0 + trait + scalar(0 + trait | unit),
 fit2 <- gllvmTMB(value ~ 0 + trait + indep(0 + trait | unit, common = TRUE),
                  data = df, trait = "trait", unit = "unit")
 c(scalar = logLik(fit), indep_common = logLik(fit2))
+}
 }
 \seealso{
 \code{\link[=indep]{indep()}}, \code{\link[=dep]{dep()}}, \code{\link[=latent]{latent()}}, \code{\link[=phylo_scalar]{phylo_scalar()}}, \code{\link[=extract_Sigma]{extract_Sigma()}}.

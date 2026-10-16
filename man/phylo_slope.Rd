@@ -66,12 +66,14 @@ if (requireNamespace("ape", quietly = TRUE)) {
   k <- as.integer(dat$trait)
   dat$value <- b_elev[k] * dat$elevation + b_forest[k] * dat$forest_cover +
     rnorm(nrow(dat), sd = 0.3)
+  \donttest{
   fit <- gllvmTMB(
     value ~ 0 + trait +
       phylo_slope(elevation + forest_cover | trait, tree = tree),
     data = dat, trait = "trait", unit = "site", family = gaussian()
   )
   extract_Sigma(fit, level = "column_slope")
+  }
 }
 }
 \seealso{

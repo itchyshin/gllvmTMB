@@ -41,6 +41,7 @@ if (requireNamespace("ape", quietly = TRUE)) {
   df$species <- factor(tree$tip.label[as.integer(df$species)],
                        levels = tree$tip.label)
   Cphy <- ape::vcv(tree, corr = TRUE)
+  \donttest{
   # gr() is a deprecated alias and prints a message; new code can use
   # phylo_indep(0 + trait | species, tree = tree, common = TRUE).
   fit <- gllvmTMB(value ~ 0 + trait + gr(species),
@@ -49,6 +50,7 @@ if (requireNamespace("ape", quietly = TRUE)) {
                   unit      = "species",
                   cluster   = "species",
                   phylo_vcv = Cphy)
+  }
 }
 }
 \keyword{internal}

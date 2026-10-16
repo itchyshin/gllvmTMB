@@ -59,6 +59,7 @@ sim <- simulate_site_trait(
 )
 mesh <- make_mesh(sim$data, c("lon", "lat"), cutoff = 0.1)
 # env_1 and env_2 are the simulated site covariates.
+\donttest{
 fit <- gllvmTMB(
   value ~ 0 + trait + (0 + trait):(env_1 + env_2) +
           spatial_indep(0 + trait | coords, mesh = mesh, common = TRUE),
@@ -66,6 +67,7 @@ fit <- gllvmTMB(
   trait = "trait",
   unit  = "site"
 )
+}
 }
 \seealso{
 \code{\link[=spatial_indep]{spatial_indep()}}, \code{\link[=spatial_latent]{spatial_latent()}}, \code{\link[=spde]{spde()}} (deprecated alias).

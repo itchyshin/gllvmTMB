@@ -89,11 +89,13 @@ sim <- simulate_unit_trait(
 )
 # A 2-factor latent random effect at `unit`. Ordinary latent() carries its
 # diagonal Psi by default (Sigma = Lambda Lambda^T + diag(psi)).
+\donttest{
 fit <- gllvmTMB(
   value ~ 0 + trait + latent(0 + trait | unit, d = 2),
   data = sim$data, trait = "trait", unit = "unit"
 )
 extract_Sigma(fit)
+}
 }
 \seealso{
 \code{\link[=indep]{indep()}}, \code{\link[=phylo_latent]{phylo_latent()}}, \link{diag_re}, \code{\link[=extract_Sigma]{extract_Sigma()}},

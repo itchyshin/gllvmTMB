@@ -74,6 +74,7 @@ if (requireNamespace("ape", quietly = TRUE)) {
   df$species <- factor(tree$tip.label[as.integer(df$species)],
                        levels = tree$tip.label)
   Cphy <- ape::vcv(tree, corr = TRUE)
+  \donttest{
   # phylo_rr() is a deprecated alias of phylo_latent() and prints a message.
   fit <- gllvmTMB(value ~ 0 + trait + phylo_rr(species, d = 2),
                   data      = df,
@@ -81,6 +82,7 @@ if (requireNamespace("ape", quietly = TRUE)) {
                   unit      = "species",
                   cluster   = "species",
                   phylo_vcv = Cphy)
+  }
 }
 }
 \keyword{internal}

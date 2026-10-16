@@ -320,6 +320,8 @@
 #'   df <- sim$data
 #'   df$species <- factor(tree$tip.label[as.integer(df$species)],
 #'                        levels = tree$tip.label)
+#'   Cphy <- ape::vcv(tree, corr = TRUE)
+#'   \donttest{
 #'   # Single shared phylogenetic variance (= phylo_indep(..., common = TRUE))
 #'   fit_s <- gllvmTMB(value ~ 0 + trait + phylo(1 | species, tree = tree),
 #'                     data    = df,
@@ -342,13 +344,13 @@
 #'                     unit    = "species",
 #'                     cluster = "species")
 #'   # Backward-compat: legacy bare-name form
-#'   Cphy <- ape::vcv(tree, corr = TRUE)
 #'   fit_legacy <- gllvmTMB(value ~ 0 + trait + phylo(species),
 #'                          data      = df,
 #'                          trait     = "trait",
 #'                          unit      = "species",
 #'                          cluster   = "species",
 #'                          phylo_vcv = Cphy)
+#'   }
 #' }
 phylo <- function(
   formula,
@@ -431,6 +433,7 @@ phylo <- function(
 #'   df$species <- factor(tree$tip.label[as.integer(df$species)],
 #'                        levels = tree$tip.label)
 #'   Cphy <- ape::vcv(tree, corr = TRUE)
+#'   \donttest{
 #'   # phylo_rr() is a deprecated alias of phylo_latent() and prints a message.
 #'   fit <- gllvmTMB(value ~ 0 + trait + phylo_rr(species, d = 2),
 #'                   data      = df,
@@ -438,6 +441,7 @@ phylo <- function(
 #'                   unit      = "species",
 #'                   cluster   = "species",
 #'                   phylo_vcv = Cphy)
+#'   }
 #' }
 phylo_rr <- function(species, d = 1) {
   invisible(NULL)
@@ -477,6 +481,7 @@ phylo_rr <- function(species, d = 1) {
 #'   df$species <- factor(tree$tip.label[as.integer(df$species)],
 #'                        levels = tree$tip.label)
 #'   Cphy <- ape::vcv(tree, corr = TRUE)
+#'   \donttest{
 #'   # gr() is a deprecated alias and prints a message; new code can use
 #'   # phylo_indep(0 + trait | species, tree = tree, common = TRUE).
 #'   fit <- gllvmTMB(value ~ 0 + trait + gr(species),
@@ -485,6 +490,7 @@ phylo_rr <- function(species, d = 1) {
 #'                   unit      = "species",
 #'                   cluster   = "species",
 #'                   phylo_vcv = Cphy)
+#'   }
 #' }
 gr <- function(group, cov = NULL) {
   invisible(NULL)
@@ -538,6 +544,7 @@ gr <- function(group, cov = NULL) {
 #'
 #' # Preferred (canonical) form -- use meta_V():
 #' V    <- diag(stage1_summary$sampling_var)
+#' \donttest{
 #' fit2 <- gllvmTMB(value ~ 0 + trait +
 #'                    latent(0 + trait | site, d = 1) +
 #'                    meta_V(V = V),
@@ -554,6 +561,7 @@ gr <- function(group, cov = NULL) {
 #'                  trait   = "trait",
 #'                  unit    = "site",
 #'                  known_V = V)
+#' }
 meta <- function(value, sampling_var) {
   invisible(NULL)
 }
@@ -639,11 +647,13 @@ meta <- function(value, sampling_var) {
 #' )
 #' # A 2-factor latent random effect at `unit`. Ordinary latent() carries its
 #' # diagonal Psi by default (Sigma = Lambda Lambda^T + diag(psi)).
+#' \donttest{
 #' fit <- gllvmTMB(
 #'   value ~ 0 + trait + latent(0 + trait | unit, d = 2),
 #'   data = sim$data, trait = "trait", unit = "unit"
 #' )
 #' extract_Sigma(fit)
+#' }
 #' @export
 latent <- function(formula, d = 1, unique = TRUE, common = FALSE, lv = NULL) {
   invisible(NULL)
@@ -794,6 +804,7 @@ NULL
 #'     tree$tip.label[as.integer(sim$data$species)],
 #'     levels = tree$tip.label
 #'   )
+#'   \donttest{
 #'   fit <- gllvmTMB(
 #'     value ~ 0 + trait + phylo_latent(species, d = 2, tree = tree),
 #'     data    = sim$data,
@@ -801,6 +812,7 @@ NULL
 #'     unit    = "species",
 #'     cluster = "species"
 #'   )
+#'   }
 #' }
 #' @export
 #' @param rho Source strength: a number in `[0,1]` fixes
@@ -878,12 +890,14 @@ phylo_latent <- function(
 #'   k <- as.integer(dat$trait)
 #'   dat$value <- b_elev[k] * dat$elevation + b_forest[k] * dat$forest_cover +
 #'     rnorm(nrow(dat), sd = 0.3)
+#'   \donttest{
 #'   fit <- gllvmTMB(
 #'     value ~ 0 + trait +
 #'       phylo_slope(elevation + forest_cover | trait, tree = tree),
 #'     data = dat, trait = "trait", unit = "site", family = gaussian()
 #'   )
 #'   extract_Sigma(fit, level = "column_slope")
+#'   }
 #' }
 #' @export
 phylo_slope <- function(
@@ -931,9 +945,11 @@ phylo_slope <- function(
 #' k <- as.integer(dat$trait)
 #' dat$value <- 0.2 * k + b_lat[k] * dat$lat + b_temp[k] * dat$temp +
 #'   rnorm(nrow(dat), sd = 0.3)
+#' \donttest{
 #' fit <- gllvmTMB(value ~ 0 + trait + slope(lat + temp | trait), data = dat,
 #'   trait = "trait", unit = "unit", family = gaussian())
 #' extract_Sigma(fit, level = "column_slope")
+#' }
 #' @export
 slope <- function(formula) {
   invisible(NULL)
@@ -979,12 +995,14 @@ slope <- function(formula) {
 #' # positive-definite K (e.g. a similarity among response columns) works.
 #' K <- diag(nlevels(dat$trait))
 #' dimnames(K) <- list(levels(dat$trait), levels(dat$trait))
+#' \donttest{
 #' fit <- gllvmTMB(
 #'   value ~ 0 + trait + kernel_slope(lat + temp | trait, K = K),
 #'   data = dat, trait = "trait", unit = "unit",
 #'   family = gaussian()
 #' )
 #' extract_Sigma(fit, level = "column_slope")
+#' }
 #' @export
 kernel_slope <- function(formula, K, name = "kernel") {
   invisible(NULL)
@@ -1105,6 +1123,7 @@ spatial_slope <- function(formula, mesh) {
 #'   # phylo_scalar() is compatibility syntax and warns once per session;
 #'   # the same model is phylo_indep(0 + trait | species, tree = tree,
 #'   # common = TRUE).
+#'   \donttest{
 #'   fit <- gllvmTMB(
 #'     value ~ 0 + trait + phylo_scalar(species, tree = tree),
 #'     data    = sim$data,
@@ -1112,6 +1131,7 @@ spatial_slope <- function(formula, mesh) {
 #'     unit    = "species",
 #'     cluster = "species"
 #'   )
+#'   }
 #' }
 #' @export
 phylo_scalar <- function(
@@ -1219,6 +1239,7 @@ phylo_scalar <- function(
 #'   )
 #'   # phylo_unique() is compatibility syntax and warns once per session;
 #'   # the same model is phylo_indep(0 + trait | species, tree = tree).
+#'   \donttest{
 #'   fit <- gllvmTMB(
 #'     value ~ 0 + trait + phylo_unique(species, tree = tree),
 #'     data    = sim$data,
@@ -1226,6 +1247,7 @@ phylo_scalar <- function(
 #'     unit    = "species",
 #'     cluster = "species"
 #'   )
+#'   }
 #' }
 #' @export
 phylo_unique <- function(
@@ -1288,6 +1310,7 @@ phylo_unique <- function(
 #' )
 #' mesh <- make_mesh(sim$data, c("lon", "lat"), cutoff = 0.1)
 #' # env_1 and env_2 are the simulated site covariates.
+#' \donttest{
 #' fit <- gllvmTMB(
 #'   value ~ 0 + trait + (0 + trait):(env_1 + env_2) +
 #'           spatial_indep(0 + trait | coords, mesh = mesh),
@@ -1295,6 +1318,7 @@ phylo_unique <- function(
 #'   trait = "trait",
 #'   unit  = "site"
 #' )
+#' }
 #' @export
 spatial_unique <- function(formula, coords = NULL, mesh = NULL) {
   invisible(NULL)
@@ -1346,6 +1370,7 @@ spatial_unique <- function(formula, coords = NULL, mesh = NULL) {
 #' )
 #' mesh <- make_mesh(sim$data, c("lon", "lat"), cutoff = 0.1)
 #' # env_1 and env_2 are the simulated site covariates.
+#' \donttest{
 #' fit <- gllvmTMB(
 #'   value ~ 0 + trait + (0 + trait):(env_1 + env_2) +
 #'           spatial_indep(0 + trait | coords, mesh = mesh, common = TRUE),
@@ -1353,6 +1378,7 @@ spatial_unique <- function(formula, coords = NULL, mesh = NULL) {
 #'   trait = "trait",
 #'   unit  = "site"
 #' )
+#' }
 #' @export
 spatial_scalar <- function(formula, coords = NULL, mesh = NULL) {
   invisible(NULL)
@@ -1421,6 +1447,7 @@ spatial_scalar <- function(formula, coords = NULL, mesh = NULL) {
 #' )
 #' mesh <- make_mesh(sim$data, c("lon", "lat"), cutoff = 0.1)
 #' # env_1 and env_2 are the simulated site covariates.
+#' \donttest{
 #' fit <- gllvmTMB(
 #'   value ~ 0 + trait + (0 + trait):(env_1 + env_2) +
 #'           spatial_latent(0 + trait | coords, d = 2, mesh = mesh),
@@ -1428,6 +1455,7 @@ spatial_scalar <- function(formula, coords = NULL, mesh = NULL) {
 #'   trait = "trait",
 #'   unit  = "site"
 #' )
+#' }
 #' @export
 #' @param rho Source-strength attenuation between 0 and 1, or `NULL` to estimate it
 #'   in a complete replicated multivariate Gaussian model without competing
@@ -1526,6 +1554,7 @@ spatial_latent <- function(formula, d = 1, unique = FALSE,
 #' df <- sim$data
 #' mesh <- make_mesh(df, c("lon", "lat"), cutoff = 0.1)
 #' # env_1 and env_2 are the simulated site covariates.
+#' \donttest{
 #' # Single shared spatial-field variance (= spatial_indep(..., common = TRUE))
 #' fit_s <- gllvmTMB(value ~ 0 + trait + (0 + trait):(env_1 + env_2) +
 #'                     spatial(1 | site, mesh = mesh),
@@ -1553,6 +1582,7 @@ spatial_latent <- function(formula, d = 1, unique = FALSE,
 #'                        trait = "trait",
 #'                        unit  = "site",
 #'                        mesh  = mesh)
+#' }
 spatial <- function(
   formula,
   mesh = NULL,
@@ -1593,11 +1623,13 @@ spatial <- function(
 #' df$value <- rnorm(nrow(df), sd = 0.5)
 #' df$sampling_var <- runif(nrow(df), min = 0.02, max = 0.08)
 #' V <- diag(df$sampling_var)
+#' \donttest{
 #' fit <- gllvmTMB(
 #'   value ~ 0 + trait + latent(0 + trait | site, d = 1) +
 #'     meta_known_V(V = V),
 #'   data = df, trait = "trait", unit = "site", known_V = V
 #' )
+#' }
 #' @export
 #' @keywords internal
 meta_known_V <- function(V, type = "exact") {
@@ -1653,11 +1685,13 @@ meta_known_V <- function(V, type = "exact") {
 #' df$value <- rnorm(nrow(df), sd = 0.5)
 #' df$sampling_var <- runif(nrow(df), min = 0.02, max = 0.08)
 #' V <- diag(df$sampling_var)
+#' \donttest{
 #' fit <- gllvmTMB(
 #'   value ~ 0 + trait + latent(0 + trait | site, d = 1) +
 #'     meta_V(V = V, type = "exact"),
 #'   data = df, trait = "trait", unit = "site", known_V = V
 #' )
+#' }
 #' @export
 meta_V <- function(V, type = "exact") {
   invisible(NULL)
@@ -1721,6 +1755,7 @@ meta_V <- function(V, type = "exact") {
 #' )
 #' df <- sim$data
 #'
+#' \donttest{
 #' # Marginal-only fit (per-trait variance, identity correlation):
 #' fit <- gllvmTMB(value ~ 0 + trait + indep(0 + trait | unit),
 #'                 data = df, trait = "trait", unit = "unit")
@@ -1731,6 +1766,7 @@ meta_V <- function(V, type = "exact") {
 #'   value ~ 0 + trait + indep(0 + trait | unit, common = TRUE),
 #'   data = df, trait = "trait", unit = "unit"
 #' )
+#' }
 #'
 #' # ERROR: indep + latent on the same grouping is over-parameterised.
 #' # gllvmTMB(value ~ 0 + trait +
@@ -1772,6 +1808,7 @@ indep <- function(formula, common = FALSE) {
 #' )
 #' df <- sim$data
 #'
+#' \donttest{
 #' # One shared trait variance across all traits (identity cross-trait).
 #' # scalar() is compatibility syntax and warns once per session.
 #' fit <- gllvmTMB(value ~ 0 + trait + scalar(0 + trait | unit),
@@ -1781,6 +1818,7 @@ indep <- function(formula, common = FALSE) {
 #' fit2 <- gllvmTMB(value ~ 0 + trait + indep(0 + trait | unit, common = TRUE),
 #'                  data = df, trait = "trait", unit = "unit")
 #' c(scalar = logLik(fit), indep_common = logLik(fit2))
+#' }
 scalar <- function(formula) {
   invisible(NULL)
 }
@@ -1883,12 +1921,14 @@ scalar <- function(formula) {
 #'   df <- sim$data
 #'   df$species <- factor(tree$tip.label[as.integer(df$species)],
 #'                        levels = tree$tip.label)
+#'   \donttest{
 #'   fit <- gllvmTMB(value ~ 0 + trait +
 #'                     phylo_indep(0 + trait | species, tree = tree),
 #'                   data    = df,
 #'                   trait   = "trait",
 #'                   unit    = "species",
 #'                   cluster = "species")
+#'   }
 #' }
 #' @param rho Source strength: a number in `[0,1]` fixes
 #'   `rho * K + (1-rho) * diag(diag(K))` on the legacy-resolved source scale.
@@ -1964,6 +2004,7 @@ phylo_indep <- function(
 #' )
 #' mesh <- make_mesh(sim$data, c("lon", "lat"), cutoff = 0.1)
 #' # env_1 and env_2 are the simulated site covariates.
+#' \donttest{
 #' fit <- gllvmTMB(
 #'   value ~ 0 + trait + (0 + trait):(env_1 + env_2) +
 #'           spatial_indep(0 + trait | coords, mesh = mesh),
@@ -1971,6 +2012,7 @@ phylo_indep <- function(
 #'   trait = "trait",
 #'   unit  = "site"
 #' )
+#' }
 #' @export
 #' @param rho Source-strength attenuation between 0 and 1, or `NULL` to estimate it
 #'   in a complete replicated multivariate Gaussian model without competing
@@ -2051,6 +2093,7 @@ spatial_indep <- function(formula, coords = NULL, mesh = NULL, common = FALSE, r
 #' df <- sim$data
 #' n_traits <- nlevels(df$trait)
 #'
+#' \donttest{
 #' # Full unstructured trait covariance fit:
 #' fit <- gllvmTMB(value ~ 0 + trait + dep(0 + trait | unit),
 #'                 data = df, trait = "trait", unit = "unit")
@@ -2062,6 +2105,7 @@ spatial_indep <- function(formula, coords = NULL, mesh = NULL, common = FALSE, r
 #'   data = df, trait = "trait", unit = "unit"
 #' )
 #' c(dep = logLik(fit), latent = logLik(fit_lat))
+#' }
 #'
 #' # ERROR: dep + latent on the same grouping is over-parameterised.
 #' # gllvmTMB(value ~ 0 + trait +
@@ -2139,6 +2183,7 @@ dep <- function(formula) {
 #'     tree$tip.label[as.integer(sim$data$species)],
 #'     levels = tree$tip.label
 #'   )
+#'   \donttest{
 #'   fit <- gllvmTMB(
 #'     value ~ 0 + trait + phylo_dep(0 + trait | species, tree = tree),
 #'     data    = sim$data,
@@ -2146,6 +2191,7 @@ dep <- function(formula) {
 #'     unit    = "species",
 #'     cluster = "species"
 #'   )
+#'   }
 #' }
 #' @export
 #' @param rho Source strength: a number in `[0,1]` fixes
@@ -2208,6 +2254,7 @@ phylo_dep <- function(formula, tree = NULL, vcv = NULL, A = NULL, Ainv = NULL, r
 #' )
 #' mesh <- make_mesh(sim$data, c("lon", "lat"), cutoff = 0.1)
 #' # env_1 and env_2 are the simulated site covariates.
+#' \donttest{
 #' fit <- gllvmTMB(
 #'   value ~ 0 + trait + (0 + trait):(env_1 + env_2) +
 #'           spatial_dep(0 + trait | coords, mesh = mesh),
@@ -2215,6 +2262,7 @@ phylo_dep <- function(formula, tree = NULL, vcv = NULL, A = NULL, Ainv = NULL, r
 #'   trait = "trait",
 #'   unit  = "site"
 #' )
+#' }
 #' @export
 #' @param rho Source-strength attenuation between 0 and 1, or `NULL` to estimate it
 #'   in a complete replicated multivariate Gaussian model without competing

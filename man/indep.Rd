@@ -62,6 +62,7 @@ sim <- simulate_unit_trait(
 )
 df <- sim$data
 
+\donttest{
 # Marginal-only fit (per-trait variance, identity correlation):
 fit <- gllvmTMB(value ~ 0 + trait + indep(0 + trait | unit),
                 data = df, trait = "trait", unit = "unit")
@@ -72,6 +73,7 @@ fit_common <- gllvmTMB(
   value ~ 0 + trait + indep(0 + trait | unit, common = TRUE),
   data = df, trait = "trait", unit = "unit"
 )
+}
 
 # ERROR: indep + latent on the same grouping is over-parameterised.
 # gllvmTMB(value ~ 0 + trait +

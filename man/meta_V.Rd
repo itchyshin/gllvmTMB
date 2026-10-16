@@ -43,11 +43,13 @@ df <- expand.grid(
 df$value <- rnorm(nrow(df), sd = 0.5)
 df$sampling_var <- runif(nrow(df), min = 0.02, max = 0.08)
 V <- diag(df$sampling_var)
+\donttest{
 fit <- gllvmTMB(
   value ~ 0 + trait + latent(0 + trait | site, d = 1) +
     meta_V(V = V, type = "exact"),
   data = df, trait = "trait", unit = "site", known_V = V
 )
+}
 }
 \seealso{
 \code{\link[=meta_known_V]{meta_known_V()}} (deprecated alias); \code{\link[=block_V]{block_V()}};

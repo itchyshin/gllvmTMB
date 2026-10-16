@@ -53,6 +53,7 @@ stage1_summary$sampling_var <- runif(n, min = 0.02, max = 0.08)
 
 # Preferred (canonical) form -- use meta_V():
 V    <- diag(stage1_summary$sampling_var)
+\donttest{
 fit2 <- gllvmTMB(value ~ 0 + trait +
                    latent(0 + trait | site, d = 1) +
                    meta_V(V = V),
@@ -69,6 +70,7 @@ fit2 <- gllvmTMB(value ~ 0 + trait +
                  trait   = "trait",
                  unit    = "site",
                  known_V = V)
+}
 }
 \seealso{
 \code{\link[=meta_V]{meta_V()}} (canonical replacement); \code{\link[=block_V]{block_V()}} for

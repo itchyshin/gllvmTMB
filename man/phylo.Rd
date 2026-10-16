@@ -110,6 +110,8 @@ if (requireNamespace("ape", quietly = TRUE)) {
   df <- sim$data
   df$species <- factor(tree$tip.label[as.integer(df$species)],
                        levels = tree$tip.label)
+  Cphy <- ape::vcv(tree, corr = TRUE)
+  \donttest{
   # Single shared phylogenetic variance (= phylo_indep(..., common = TRUE))
   fit_s <- gllvmTMB(value ~ 0 + trait + phylo(1 | species, tree = tree),
                     data    = df,
@@ -132,13 +134,13 @@ if (requireNamespace("ape", quietly = TRUE)) {
                     unit    = "species",
                     cluster = "species")
   # Backward-compat: legacy bare-name form
-  Cphy <- ape::vcv(tree, corr = TRUE)
   fit_legacy <- gllvmTMB(value ~ 0 + trait + phylo(species),
                          data      = df,
                          trait     = "trait",
                          unit      = "species",
                          cluster   = "species",
                          phylo_vcv = Cphy)
+  }
 }
 }
 \seealso{

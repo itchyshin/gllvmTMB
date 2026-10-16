@@ -19,7 +19,7 @@
 - **Every page runs.** Each example is self-contained on simulated data and has no `\dontrun{}` or
   `\donttest{}`. Under `R CMD check --as-cran --run-donttest --timings` each page takes at most
   2.14 s elapsed (`meta`); the 24 together take 13.8 s.
-- **Each example fits a non-degenerate model.** All 33 fits created by the examples converge
+- **Each example fits a non-degenerate model.** All 32 fits created by the examples converge
   (nlminb code 0) with a positive-definite Hessian. Three design choices make this so:
   - `latent` simulates six traits with a true rank-2 covariance, which identifies `d = 2` plus Psi.
     The old example fitted 11 parameters to 10 covariance elements on data with no latent
@@ -79,6 +79,10 @@ conda-forge, because CRAN is not reachable from the session; TMB 1.9.23. `NOT_CR
 
   They found 0 blockers. The verified findings (the unidentified `latent` example, boundary
   phylo fits, the vacuous `ape` pass and five comment nits) are fixed in the second commit.
+- **Maintainer R review on #1561** ("SHIP once CI is green"):
+  - The redundant `gr(species, cov = Cphy)` call is dropped (`e95beb2`).
+  - `\donttest{}` was declined, because the slowest page takes 2.14 s.
+  - Gating the test behind an env var is deferred until CI time shows it is needed.
 
 ## Follow-up
 - **Filed while doing this:**

@@ -33,3 +33,9 @@ Shannon perspective: this branch is stacked on the exact cbind/CV head, with ori
 ## Issue ledger and next action
 
 Refs #1496 and historical PR1478. No issue comments or closures made during repair. No third-party contact. Complete exact-head standard/four-heavy verification, merge related PRs in dependency order under merge-when-green, then verify final main CI. No release, security settings change or Xcode-license acceptance/bypass.
+
+## Current-main integration phase
+
+The original five runs at0ebe passed: standard27090 assertions; four heavy partitions33967 assertions, zero failures (139 warning captures,405 skips); each package check1NOTEonly. Before promotion, main was found10commits ahead atcedf2746934c345d2515fd79df291f8f8951157b. Those already merged changes were integrated without conflicts; independent review checked the overlapping bootstrap default-level and phylogenetic-CI changes retain both main behavior and the original-trial response helpers. No other PR was merged by this task.
+
+Relevant combined-source tests:162passes/0failures/errors/skips in53.1s; one expected tiny-B interval warning in the main-provided default-level regression. Fresh standard/four-heavy checks are required at the integration commit; prior green evidence is retained as the previous phase, not substituted for it.

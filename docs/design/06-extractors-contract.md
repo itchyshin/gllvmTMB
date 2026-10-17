@@ -439,10 +439,9 @@ a general correlation extractor for multiple nominal traits, structured
 phylogenetic or spatial tiers, or models without the shared ordinary latent
 structure. Any level that does not normalize to the ordinary `B` / `unit` tier
 fails with `gllvmTMB_cross_level_unsupported`. With
-`link_residual = "auto"`, ordinal-probit partners fail with
-`gllvmTMB_cross_auto_ordinal_unsupported`: their threshold model already fixes
-the latent residual at one, so the current automatic addition would count it
-twice. Latent-scale pairwise covariance remains available through
+`link_residual = "auto"`, ordinal (probit or logit) partners fail with
+`gllvmTMB_cross_auto_ordinal_unsupported`. This is a scope limit, not a double
+count: `"auto"` adds the ordinal liability residual exactly once. Latent-scale pairwise covariance remains available through
 `extract_Sigma(..., part = "shared", link_residual = "none")`; the one-number
 nominal summary should be reported from an admitted non-ordinal partner set.
 

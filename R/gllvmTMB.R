@@ -761,6 +761,13 @@ gllvmTMB <- function(
     integration = control$integration %||% "laplace", estimator = estimator,
     aghq = control$aghq %||% FALSE)
   formula <- structured_rho_capture$formula
+  ## A spatial `rho` term reads the token right of `|` as its location
+  ## column, so the "grouping token is ignored" warning must not fire for it.
+  spatial_token_previous <- .gllvmTMB_spatial_token_consumed$token
+  .gllvmTMB_set_spatial_token_consumed(structured_rho_capture$spec)
+  on.exit({
+    .gllvmTMB_spatial_token_consumed$token <- spatial_token_previous
+  }, add = TRUE)
   if (isTRUE(REML) && !estimator_missing) {
     cli::cli_abort(c(
       "Do not combine an explicit {.arg estimator} with {.code REML = TRUE}.",

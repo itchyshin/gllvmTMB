@@ -234,7 +234,7 @@ Gaussian regime, with failed Hessian or unavailable-interval attempts counted
 separately. Do not transfer that evidence to a different family, rank, missing
 data pattern, or covariance tier.
 
-## A categorical predictor: 35 articles and 22 words
+## A categorical predictor: 35 articles and 22 words {#categorical-predictor}
 
 The following complete example uses your own long-format CSV with columns
 `word_present` (0 or 1), `analysis_word`, `article_id`, and `Fox_Nativeness`.
@@ -271,7 +271,7 @@ stopifnot(nlevels(dat$article_id) == 35L,
           setequal(levels(dat$Fox_Nativeness), c("Introduced", "Native")))
 
 set.seed(1467)
-m1 <- gllvmTMB(
+fit_rank1 <- gllvmTMB(
   word_present ~ 0 + analysis_word +
     latent(0 + analysis_word | article_id, d = 1, lv = ~ Fox_Nativeness),
   data = dat, trait = "analysis_word", unit = "article_id",
@@ -279,7 +279,7 @@ m1 <- gllvmTMB(
   control = gllvmTMBcontrol(loading_ridge = Inf)
 )
 set.seed(1467)
-m2 <- gllvmTMB(
+fit_rank2 <- gllvmTMB(
   word_present ~ 0 + analysis_word +
     latent(0 + analysis_word | article_id, d = 2, lv = ~ Fox_Nativeness),
   data = dat, trait = "analysis_word", unit = "article_id",
@@ -287,7 +287,7 @@ m2 <- gllvmTMB(
   control = gllvmTMBcontrol(loading_ridge = Inf)
 )
 set.seed(1467)
-m2_ridge <- gllvmTMB(
+fit_rank2_ridge <- gllvmTMB(
   word_present ~ 0 + analysis_word +
     latent(0 + analysis_word | article_id, d = 2, lv = ~ Fox_Nativeness),
   data = dat, trait = "analysis_word", unit = "article_id",
@@ -296,17 +296,17 @@ m2_ridge <- gllvmTMB(
 )
 
 # Each summary includes the separate LV predictor coefficient block.
-summary(m1)
-summary(m2)
-summary(m2_ridge)
-fits <- list(d1 = m1, d2 = m2, d2_ridge_tau2 = m2_ridge)
+summary(fit_rank1)
+summary(fit_rank2)
+summary(fit_rank2_ridge)
+fits <- list(d1 = fit_rank1, d2 = fit_rank2, d2_ridge_tau2 = fit_rank2_ridge)
 trait_effects <- lapply(fits, extract_lv_effects, type = "trait_effect")
 trait_effects
 diagnostics <- lapply(fits, gllvmTMB_diagnose)
 diagnostics
 
 # One-dimensional scores only; vertical position is a plotting baseline.
-ordiplot(m1, axes = 1L, biplot = FALSE, ellipse = FALSE)
+ordiplot(fit_rank1, axes = 1L, biplot = FALSE, ellipse = FALSE)
 ```
 
 Inspect the diagnostics before interpreting differences between these fits.

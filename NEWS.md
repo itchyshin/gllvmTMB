@@ -30,6 +30,16 @@
   - `engine = "julia"` still requires every family to be binomial for a
     two-column response.
 
+* A `spatial_*()` term with estimated or fixed non-unit `rho` no longer warns
+  that its grouping token "is ignored". With `rho = NULL` or `rho = 0.5`, the
+  name after `|` is the column that identifies each location, and the fit
+  reads it; the warning stays for the default `rho = 1`, where the token
+  really is ignored. The help pages for `spatial_latent()`, `spatial_indep()`
+  and `spatial_dep()` now say so. An estimated-`rho` fit using the placeholder
+  `| coords` fails if no location-ID column has that name; name the observed
+  location column instead. This changes the notice and examples, not the
+  model's covariance or fitted likelihood.
+
 * Several likelihoods are now numerically stable at extreme parameter values
   that an optimiser can reach. Before, they lost precision or went flat there.
   - Binomial `logit` / `probit` no longer clamp the probability to

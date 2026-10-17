@@ -48,6 +48,9 @@
 #'   }
 #' @return As described per `block` above. Standard errors are always
 #'   `NA` (with a warning) when the fit's Hessian is not positive-definite.
+#'   For `block = "diag_unit"` / `"diag_unit_obs"`, a trait whose diagonal was
+#'   not estimated (single-trial binomial, multinomial contrast, or
+#'   single-observation ordinal trait) has an all-`NA` row.
 #'
 #' @section What this is, and is not:
 #' Every number returned here is a **Wald / `sdreport()` marginal standard
@@ -220,6 +223,26 @@ getREsd <- function(
   }
   if (block == "equalto") {
     return(se_vec)
+  }
+
+  ## Traits whose diagonal was deliberately not estimated (single-trial
+  ## Bernoulli, multinomial contrasts, single-observation ordinal cells) have
+  ## their `s_B` / `s_W` rows mapped off at fit time, so `par.random` holds
+  ## only the free rows. Report those traits as NA rather than mistaking the
+  ## shorter vector for a stale sd_report.
+  skip_mask <- switch(
+    block,
+    diag_unit = fit$tmb_data$diag_B_skip,
+    diag_unit_obs = fit$tmb_data$diag_W_skip,
+    NULL
+  )
+  skip_mask <- as.logical(skip_mask)
+  if (!integrated && !is.null(spec$nrow) && length(skip_mask) == spec$nrow &&
+      any(skip_mask) &&
+      length(idx) == sum(!skip_mask) * spec$ncol) {
+    out <- matrix(NA_real_, nrow = spec$nrow, ncol = spec$ncol)
+    out[!skip_mask, ] <- matrix(se_vec, nrow = sum(!skip_mask), ncol = spec$ncol)
+    return(out)
   }
 
   if (length(idx) != spec$nrow * spec$ncol) {

@@ -1,3 +1,14 @@
+## 2026-10-16: wrap #1561 example fits in `\donttest{}` (refs #1346)
+
+R review on #1561: wrap `gllvmTMB()` fits in `\donttest{}`, keep data set-up
+bare. 24 `@examples` blocks in `R/brms-sugar.R`; `devtools::document(roclets =
+"rd")` with roxygen2 8.0.0 regenerated the matching 24 `man/*.Rd` files;
+`NAMESPACE` left untouched (#1558). `devtools::test(filter =
+"examples-run-1346a")`: 48 blocks, failed=0, skipped=0, error=0, warning=0.
+`rg -n '\\\\donttest\\{' R/brms-sugar.R` → 24. `rg -n '\\\\dontrun' ` on those
+24 Rd files → 0. Report:
+`docs/dev-log/after-task/2026-10-16-donttest-example-fits-1346a.md`.
+
 ## 2026-10-08: neighbouring output and bootstrap refit audit
 
 Reproduced and repaired correlation-index truncation, conflicting mirrored

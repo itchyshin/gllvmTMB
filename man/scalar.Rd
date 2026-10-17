@@ -33,14 +33,22 @@ The shared variance still couples grouping levels through the source
 meaning on their respective relationship operators.
 }
 \examples{
-\dontrun{
-# One shared trait variance across all traits (identity cross-trait):
-fit <- gllvmTMB(value ~ 0 + trait + scalar(0 + trait | site),
-                data = df, trait = "trait", unit = "site")
+sim <- simulate_unit_trait(
+  n_units = 40, n_obs_per_unit = 3, n_traits = 3,
+  psi_B = rep(0.4, 3), seed = 1
+)
+df <- sim$data
+
+\donttest{
+# One shared trait variance across all traits (identity cross-trait).
+# scalar() is compatibility syntax and warns once per session.
+fit <- gllvmTMB(value ~ 0 + trait + scalar(0 + trait | unit),
+                data = df, trait = "trait", unit = "unit")
 
 # Equivalent longhand:
-fit <- gllvmTMB(value ~ 0 + trait + indep(0 + trait | site, common = TRUE),
-                data = df, trait = "trait", unit = "site")
+fit2 <- gllvmTMB(value ~ 0 + trait + indep(0 + trait | unit, common = TRUE),
+                 data = df, trait = "trait", unit = "unit")
+c(scalar = logLik(fit), indep_common = logLik(fit2))
 }
 }
 \seealso{

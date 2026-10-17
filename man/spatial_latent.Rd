@@ -90,19 +90,20 @@ alias and emits a one-shot \code{lifecycle::deprecate_warn()} per session
 }
 
 \examples{
-\dontrun{
-  sim <- simulate_site_trait(
-    n_sites = 30, n_species = 6, mean_species_per_site = 5,
-    spatial_range = 0.4, sigma2_spa = rep(0.3, 6), seed = 1
-  )
-  mesh <- make_mesh(sim$data, c("lon", "lat"), cutoff = 0.1)
-  fit <- gllvmTMB(
-    value ~ 0 + trait +
-            spatial_latent(0 + trait | site, d = 2, mesh = mesh),
-    data  = sim$data,
-    trait = "trait",
-    unit  = "site"
-  )
+sim <- simulate_site_trait(
+  n_sites = 30, n_species = 6, n_traits = 3, mean_species_per_site = 5,
+  spatial_range = 0.4, sigma2_spa = rep(0.5, 3), seed = 1
+)
+mesh <- make_mesh(sim$data, c("lon", "lat"), cutoff = 0.1)
+# env_1 and env_2 are the simulated site covariates.
+\donttest{
+fit <- gllvmTMB(
+  value ~ 0 + trait + (0 + trait):(env_1 + env_2) +
+          spatial_latent(0 + trait | coords, d = 2, mesh = mesh),
+  data  = sim$data,
+  trait = "trait",
+  unit  = "site"
+)
 }
 }
 \seealso{

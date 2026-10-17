@@ -42,16 +42,29 @@ They are compatibility behaviour, not the teaching API; new code uses the
 resolved response-column factor on the RHS.
 }
 \examples{
-\dontrun{
-set.seed(1); ids <- paste0("sp", 1:4); A <- diag(4); dimnames(A) <- list(ids, ids)
-dat <- expand.grid(unit = factor(1:12), trait = factor(ids, levels = ids))
+set.seed(1)
+## Six response columns (e.g. six related lines) whose relatedness is a
+## pedigree-derived additive-genetic matrix A; labels match the trait levels.
+ped <- data.frame(
+  id   = paste0("line", 1:6),
+  sire = c(NA, NA, "line1", "line1", "line3", "line3"),
+  dam  = c(NA, NA, "line2", "line2", "line4", "line4")
+)
+A <- pedigree_to_A(ped)
+## Column-specific slopes on two predictors: Cov(vec(t(B))) = A \%x\% Sigma.
+Sigma <- matrix(c(0.5, 0.2, 0.2, 0.3), 2, 2)
+B <- t(chol(A)) \%*\% matrix(rnorm(6 * 2), 6, 2) \%*\% chol(Sigma)
+dat <- expand.grid(unit = factor(1:40), trait = factor(ped$id, levels = ped$id))
 dat$elevation <- rnorm(nrow(dat))
 dat$forest_cover <- rnorm(nrow(dat))
-dat$value <- rnorm(nrow(dat))
-fit <- gllvmTMB(value ~ 0 + trait + animal_slope(elevation + forest_cover | trait, A = A),
-  data = dat, trait = "trait", unit = "unit", family = gaussian())
-extract_Sigma(fit, level = "column_slope")
-}
+col <- as.integer(dat$trait)
+dat$value <- B[col, 1] * dat$elevation + B[col, 2] * dat$forest_cover +
+  rnorm(nrow(dat), sd = 0.5)
+fit <- gllvmTMB(
+  value ~ 0 + trait + animal_slope(elevation + forest_cover | trait, A = A),
+  data = dat, trait = "trait", unit = "unit"
+)
+extract_Sigma(fit, level = "column_slope")$Sigma
 }
 \seealso{
 \code{\link[=slope]{slope()}}, \code{\link[=phylo_slope]{phylo_slope()}}, \code{\link[=kernel_slope]{kernel_slope()}}, \code{\link[=spatial_slope]{spatial_slope()}},

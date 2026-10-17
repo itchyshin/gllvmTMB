@@ -1625,6 +1625,19 @@
 #'   positive-part) shape estimate at or above this value is reported as a
 #'   `boundary_phi_gamma_<trait>` warning: the trait's residual coefficient of
 #'   variation has collapsed to about zero, a Heywood-type boundary.
+#' @param phi_truncnb2_ceiling_thresh,phi_nbinom1_ceiling_thresh,phi_betabinom_ceiling_thresh
+#'   Numeric scalars. A `truncated_nbinom2()`, `nbinom1()` or `betabinomial()`
+#'   dispersion estimate at or above this value is reported as a
+#'   `boundary_phi_truncnb2_<trait>`, `boundary_phi_nbinom1_<trait>` or
+#'   `boundary_phi_betabinom_<trait>` warning. For the truncated NB2 and
+#'   beta-binomial this is the Poisson / binomial limit, where the extra
+#'   dispersion is no longer identified; for `nbinom1()` it is a degenerate
+#'   heavy-tailed limit.
+#' @param df_student_ceiling_thresh Numeric scalar. A `student()` degrees-of-freedom
+#'   estimate at or above this value is reported as a
+#'   `boundary_df_student_<trait>` warning: the trait has run to the Gaussian
+#'   limit, so the heavy tails are not identified. Use `gaussian()` for that
+#'   trait, or fix `df`.
 #' @param laplace_accuracy Logical. If `TRUE` (default), and the fit's only
 #'   random effects are the `latent()` scores with `d <= 3`, the marginal
 #'   log-likelihood is re-evaluated at the fitted parameters by adaptive
@@ -1681,6 +1694,10 @@ check_gllvmTMB <- function(
   ## real dispersion, hence 1e4.
   phi_nbinom2_ceiling_thresh = 1e4,
   phi_gamma_ceiling_thresh = 1e8,
+  phi_truncnb2_ceiling_thresh = 1e4,
+  phi_nbinom1_ceiling_thresh = 1e4,
+  df_student_ceiling_thresh = 1e3,
+  phi_betabinom_ceiling_thresh = 1e4,
   laplace_accuracy = TRUE,
   laplace_accuracy_thresh = 2
 ) {
@@ -2238,6 +2255,71 @@ check_gllvmTMB <- function(
       },
       "compare with n_init restarts; if the shape stays at the ceiling, the latent factor is absorbing this trait completely -- consider lognormal(), fewer latent dimensions, or more data"
     )))
+  }
+
+  ## Dispersion / df ceilings for the four families that had no row (#1486):
+  ## truncated_nbinom2 phi (fid 11), nbinom1 phi (fid 15), Student df (fid 9)
+  ## and beta-binomial phi (fid 8). The #1479 kernels are finite at the
+  ## Poisson / normal / binomial limits, so a fit can now converge with the
+  ## parameter at its ceiling and every other row printing PASS.
+  fid_ceil <- as.integer(object$tmb_data$family_id_vec %||% integer(0L))
+  tid_ceil <- as.integer(object$tmb_data$trait_id %||% integer(0L))
+  ceil_specs <- list(
+    list(
+      fid = 11L, report = "phi_truncnb2", prefix = "boundary_phi_truncnb2_",
+      thresh = phi_truncnb2_ceiling_thresh,
+      what = "truncated NB2 dispersion (phi)",
+      limit = "the zero-truncated Poisson limit (phi -> Inf)",
+      action = "if phi is at the ceiling, the overdispersion is not identified for this trait at this sample size; consider truncated_poisson() instead, or more data"
+    ),
+    list(
+      fid = 15L, report = "phi_nbinom1", prefix = "boundary_phi_nbinom1_",
+      thresh = phi_nbinom1_ceiling_thresh,
+      what = "NB1 dispersion (phi)",
+      limit = "a degenerate heavy-tailed limit (NB size mu / phi -> 0)",
+      action = "if phi is at the ceiling, the NB1 variance Var(y) = mu * (1 + phi) is not identified for this trait; consider nbinom2(), or check for outliers and a misspecified mean"
+    ),
+    list(
+      fid = 9L, report = "df_student", prefix = "boundary_df_student_",
+      thresh = df_student_ceiling_thresh,
+      what = "Student-t degrees of freedom (df)",
+      limit = "the Gaussian limit (df -> Inf)",
+      action = "if df is at the ceiling, the tails are not heavier than Gaussian for this trait; consider gaussian(), or fix df with student(df = )"
+    ),
+    list(
+      fid = 8L, report = "phi_betabinom", prefix = "boundary_phi_betabinom_",
+      thresh = phi_betabinom_ceiling_thresh,
+      what = "beta-binomial precision (phi)",
+      limit = "the binomial limit (phi -> Inf)",
+      action = "if phi is at the ceiling, the extra-binomial variation is not identified for this trait at this sample size; consider binomial(), or more data"
+    )
+  )
+  if (length(fid_ceil) && length(tid_ceil) == length(fid_ceil)) {
+    trait_names_ceil <- .gllvmTMB_trait_names(object)
+    for (sp in ceil_specs) {
+      vals <- as.numeric(object$report[[sp$report]] %||% numeric(0L))
+      traits <- sort(unique(tid_ceil[fid_ceil == sp$fid]))
+      if (!length(traits) || length(vals) < max(traits) + 1L) next
+      for (t in traits) {
+        v_t <- vals[t + 1L]
+        at_ceiling <- !is.finite(v_t) || v_t >= sp$thresh
+        rows <- c(rows, list(.gllvmTMB_check_row(
+          paste0(sp$prefix, .gllvmTMB_trait_label(trait_names_ceil, t + 1L)),
+          if (at_ceiling) "WARN" else "PASS",
+          .gllvmTMB_fmt_num(v_t, digits = 4L),
+          sp$thresh,
+          if (!is.finite(v_t)) {
+            paste(sp$what, "is not finite")
+          } else if (at_ceiling) {
+            paste0(sp$what, " has run to the numerical ceiling: the fit is indistinguishable from ",
+                   sp$limit, " for this trait")
+          } else {
+            paste(sp$what, "is within the sane range")
+          },
+          sp$action
+        )))
+      }
+    }
   }
 
   ## Laplace accuracy (#1389): the fitted logLik is a Laplace approximation;

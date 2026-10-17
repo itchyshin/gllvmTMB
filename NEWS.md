@@ -1,5 +1,20 @@
 # Development (unreleased)
 
+* Internal cross-validation now retains binomial trial totals in held-out
+  scores and in all three null-model refits, including paired response
+  expressions and single-column trial weights. Previously missing cells are
+  excluded from each fold's scores. Grouped-binomial RMSE uses cell proportions;
+  Brier, AUC and Tjur scores use trial frequencies and agree with explicitly
+  expanded Bernoulli trials. Log scores remain conditional plug-in densities,
+  without integrating parameter or latent uncertainty (#1496).
+
+* Parametric bootstrap and response-refit helpers now preserve the fitted
+  binomial trial totals for two-column responses, including wide `traits()`
+  input and expressions such as `cbind(s, n - s)`. Non-unit single-column trial
+  weights and retained missing-response masks are also passed to refits. These are
+  corrections to simulation/refit inputs; non-Gaussian and mixed-family
+  interval coverage remains uncertified (#1496).
+
 * Multi-trial binomial counts can now be mixed with other families in one
   model, in long and wide format (#1494).
   - Wide `traits()` accepts `cbind(successes, failures)` pairs next to plain
@@ -2177,3 +2192,5 @@ infrastructure.
 * **`meta_known_V()` is a deprecated alias of `meta_V()`.**
 
 See the later release sections above for subsequent syntax and scope changes.
+
+- `flag_unreliable_loadings()` now uses the scalar unit loading tier by default, matching its documented behavior. Explicit loading-tier choices and the existing Wald/profile inference boundaries are unchanged. Julia bridge methods help now documents `x` only once.

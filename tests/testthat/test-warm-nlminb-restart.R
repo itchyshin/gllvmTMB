@@ -156,8 +156,13 @@
   list(data = dat, family = family, weights = weights)
 }
 
+# These tests isolate initial + warm optimization. The public default also
+# tries an SVD start; that separate optimization must not become the mocked
+# warm candidate or enter single-start accounting/rollback assertions.
 .fit_warm_restart_fixture <- function(family_name, n_unit, seed,
-                                      control = NULL) {
+                                      control = gllvmTMB::gllvmTMBcontrol(
+                                        svd_start = FALSE
+                                      )) {
   fixture <- .warm_restart_fixture(family_name, n_unit, seed)
   args <- list(
     formula = value ~ 0 + trait + trait:x +

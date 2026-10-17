@@ -352,7 +352,8 @@ bootstrap_Sigma <- function(
   ## Reconstruct the original formula. The user can override by editing
   ## fit$formula / fit$covstructs upstream; we deliberately do not take a
   ## formula argument here to keep the API minimal.
-  formula <- .reconstruct_multi_formula(fit)
+  response <- .bootstrap_response_setup(fit)
+  formula <- response$formula
   trait <- fit$trait_col
   site <- fit$unit_col
   species <- fit$species_col
@@ -361,15 +362,6 @@ bootstrap_Sigma <- function(
   ## first-family-only view used by predict's linkinv). Pre-M1.8 fits
   ## without family_input fall back to family.
   family <- if (!is.null(fit$family_input)) fit$family_input else fit$family
-  data <- fit$data
-  ## get_response() was an sdmTMB helper; the trimmed package extracts
-  ## the response symbol directly here.
-  resp <- all.vars(fit$formula)[1]
-  if (!resp %in% names(data)) {
-    cli::cli_abort(
-      "Response column {.var {resp}} not found in {.code fit$data}."
-    )
-  }
 
   ## Pre-draw the simulated response matrix once, in the parent process,
   ## so the replicates are reproducible regardless of n_cores. Each
@@ -405,6 +397,8 @@ bootstrap_Sigma <- function(
   ## tree, SPDE mesh, lambda_constraint, etc. Without these, refits of
   ## phylogenetic / spatial fits all fail.
   aux <- list(
+    weights = response$weights,
+    missing = response$missing,
     phylo_vcv = fit$phylo_vcv,
     phylo_tree = fit$phylo_tree,
     mesh = fit$mesh,
@@ -413,8 +407,7 @@ bootstrap_Sigma <- function(
   aux <- aux[!vapply(aux, is.null, logical(1))]
 
   refit_one <- function(b) {
-    dat <- data
-    dat[[resp]] <- Y_sim[, b]
+    dat <- .bootstrap_response_data(response, Y_sim[, b])
     call_args <- c(
       list(
         formula = formula,

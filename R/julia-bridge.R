@@ -3286,7 +3286,6 @@ coef.gllvmTMB_julia <- function(object, ...) {
 }
 
 #' @rdname gllvmTMB_julia-methods
-#' @param x A Julia bridge fit (for `tidy()`).
 #' @param effects For `tidy()`: one of `"fixed"` (per-trait intercepts and
 #'   covariate coefficients), `"ran_pars"` (per-trait shared latent standard
 #'   deviations `sqrt(diag(Lambda Lambda^T))` and dispersion parameters), or

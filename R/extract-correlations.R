@@ -913,11 +913,12 @@ extract_correlations <- function(
 #'   uninformative, which is why `"auto"` (full-rank via the residual) is the
 #'   sensible default for the model-scale single-number summary; read the per-pair latent
 #'   correlations from [extract_Sigma()] / [extract_correlations()] instead.
-#'   An ordinal-probit partner is not admitted with `"auto"`: its latent
-#'   residual is already fixed at 1 by the threshold model, so adding another
-#'   unit residual would double-count it. Use a supported non-ordinal partner
-#'   set for the one-number summary, or report latent-scale pairwise quantities
-#'   with `extract_Sigma(..., part = "shared", link_residual = "none")`.
+#'   An ordinal (probit or logit) partner is not admitted with `"auto"` for this
+#'   one-number summary. This is a scope limit, not a double count: `"auto"`
+#'   adds the ordinal liability residual (1 for probit, pi^2/3 for logit)
+#'   exactly once. Use a supported non-ordinal partner set for the one-number
+#'   summary, or report latent-scale pairwise quantities with
+#'   `extract_Sigma(..., part = "shared", link_residual = "none")`.
 #' @param method one of `"point"` (default; point estimates only, no interval
 #'   columns), `"wald"` (fast Fisher-z intervals on BOTH `multiple_r` and
 #'   `contrast_r`; no refits or root-finding; heuristic bounds can be unavailable
@@ -1019,14 +1020,11 @@ extract_cross_correlations <- function(fit, level = "unit", contrasts = FALSE,
     ordinal_traits <- .cross_ordinal_partner_traits(fit)
     if (length(ordinal_traits) > 0L) {
       cli::cli_abort(c(
-        "The residual-augmented model-scale nominal summary is unavailable with an ordinal (probit/logit) partner.",
+        "The residual-augmented model-scale nominal summary is not admitted with an ordinal (probit/logit) partner.",
         "i" = "Ordinal partner traits: {paste(ordinal_traits, collapse = ', ')}.",
-        "i" = "The threshold model already fixes each ordinal latent residual by construction (1 for ordinal_probit, pi^2/3 for ordinal_logit); {.code link_residual = \"auto\"} would add it again.",
+        "i" = "This is a scope limit, not a double count: {.code link_residual = \"auto\"} adds each ordinal liability residual (1 for ordinal_probit, pi^2/3 for ordinal_logit) exactly once.",
         ">" = "Use a supported non-ordinal partner set for {.fn extract_cross_correlations}, or report latent-scale pairwise quantities with {.code extract_Sigma(..., part = \"shared\", link_residual = \"none\")}."
-      ), class = c(
-        "gllvmTMB_cross_auto_ordinal_unsupported",
-        "gllvmTMB_auto_residual_ordinal_probit_overcount"
-      ))
+      ), class = "gllvmTMB_cross_auto_ordinal_unsupported")
     }
   }
 

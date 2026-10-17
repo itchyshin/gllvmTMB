@@ -15,29 +15,31 @@
 ##       while the other family's rows still contribute to the trait
 ##       block of Sigma. The reported correlation is misleading.
 ##
-##   (b) **Ordinal-probit traits.** The probit link's latent residual
-##       is **already** fixed at 1 by construction of the threshold
-##       model -- the cutpoints absorb the location and the latent
-##       variance is standardised. `link_residual = "auto"` adds 1
-##       again, which over-counts. The user should pass
-##       `link_residual = "none"` for ordinal-probit fits to avoid
-##       this double-count.
+##   (b) **Ordinal traits are NOT a problem.** The threshold model's
+##       liability residual (1 for probit, pi^2/3 for logit) is not
+##       estimated; it is added to Sigma exactly once, and only by the
+##       `link_residual = "auto"` path (`link_residual_per_trait()` in
+##       `R/extract-sigma.R`, fids 14 and 20). `link_residual = "none"`
+##       drops it, which makes the unit-tier correlation matrix +/-1
+##       (issue #1400). Ordinal traits therefore need no warning.
 ##
 ## `check_auto_residual()` inspects the fit and:
 ##   - errors on (a) -- it is a genuine modelling incoherence.
-##   - warns on (b) -- the user can proceed but the result is not
-##     what they probably want.
-##   - is silent when both conditions are absent.
+##   - is silent on ordinal traits (b); "auto" is the correct setting.
+##   - is silent when (a) is absent.
 ##
 ## Designed to be callable directly by users for introspection AND
 ## by future internal pre-flight checks inside the extractors.
 
 #' Check whether `link_residual = "auto"` is coherent for this fit
 #'
-#' Inspects the fit's per-row family vector and flags two configurations
-#' that make the `link_residual = "auto"` path incoherent: within-trait
-#' family mixing (errors) and ordinal-probit traits (warns; the latent
-#' residual is already standardised at 1, so adding 1 again over-counts).
+#' Inspects the fit's per-row family vector and flags the one configuration
+#' that makes the `link_residual = "auto"` path incoherent: within-trait
+#' family mixing, which errors. Ordinal traits do not warn: the liability
+#' residual (1 for [ordinal_probit()], pi^2/3 for [ordinal_logit()]) enters
+#' the total covariance only through `"auto"`, so `"auto"` is the correct
+#' setting and `link_residual = "none"` would drop it and give unit-tier
+#' correlations of exactly +/-1.
 #'
 #' @param fit A fit returned by [gllvmTMB()].
 #'
@@ -50,8 +52,7 @@
 #' @section Side effects:
 #'   - `"err"` path: `cli::cli_abort` is fired and the function does
 #'     not return.
-#'   - `"warn"` path: `cli::cli_warn` is fired before the function
-#'     returns the list invisibly.
+#'   - `"warn"` path: reserved; no configuration currently reaches it.
 #'   - `"ok"` path: silent.
 #'
 #' @seealso [extract_correlations()], [extract_Sigma()], [extract_Omega()].
@@ -115,35 +116,10 @@ check_auto_residual <- function(fit) {
     )
   }
 
-  ## ---- check (b): ordinal-probit / ordinal-logit traits ------------------
-  ## Class name kept as `..._ordinal_probit_overcount` for compatibility
-  ## with existing callers/tests that match on it (R/extract-correlations.R
-  ## included); it now fires for either ordinal family, not probit alone.
-  if (length(ordinal_traits) > 0L) {
-    msg <- paste0(
-      "Ordinal (probit/logit) trait",
-      if (length(ordinal_traits) > 1L) "s" else "",
-      " present: ",
-      paste(paste0("{.val ", ordinal_traits, "}"), collapse = ", "),
-      "."
-    )
-    cli::cli_warn(
-      c(
-        "{.code link_residual = \"auto\"} over-counts the latent residual for ordinal traits.",
-        "i" = msg,
-        "i" = "The threshold model's latent residual is already fixed by construction (1 for {.fn ordinal_probit}, pi^2/3 for {.fn ordinal_logit}; cutpoints absorb location, latent variance is standardised).",
-        ">" = "Pass {.code link_residual = \"none\"} for ordinal fits, or extract per tier and adjust manually."
-      ),
-      class = "gllvmTMB_auto_residual_ordinal_probit_overcount"
-    )
-    return(invisible(list(
-      status = "warn",
-      messages = paste(
-        "Ordinal (probit/logit) traits present;",
-        "link_residual = 'auto' over-counts the latent residual (already fixed by construction)."
-      )
-    )))
-  }
+  ## ---- ordinal traits: deliberately no warning ------------------------------
+  ## `ordinal_traits` is collected above only to document the decision. The
+  ## liability residual is added once, by `link_residual = "auto"`; advising
+  ## "none" would remove it and return correlations of +/-1 (issue #1400).
 
   invisible(list(status = "ok", messages = character()))
 }

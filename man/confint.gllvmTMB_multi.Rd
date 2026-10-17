@@ -80,7 +80,8 @@ components). Components are by name (\code{"shared_unit"},
 \code{"unique_unit"}, \code{"shared_unit_obs"},
 \code{"unique_unit_obs"}, \code{"unique_cluster"},
 \code{"unique_cluster2"}, \code{"shared_phy"},
-\code{"unique_phy"}, \code{"link_residual"}). Defaults to Wald;
+\code{"unique_phy"}, \code{"residual"}, \code{"link_residual"}).
+Defaults to Wald;
 bootstrap is available explicitly. The nonlinear profile prototype is
 withheld.
 \item An integer index vector or character vector of fixed-effect

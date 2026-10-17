@@ -556,17 +556,24 @@ residuals.gllvmTMB_multi <- function(
         next
       }
       size <- phi_nbinom2[tid]
-      if (!is.finite(size) || size <= 0) {
+      ## `size = Inf` is the Poisson limit, as in the engine's NB2 kernel
+      ## (#1491); only NaN / NA / non-positive dispersions are missing.
+      if (is.na(size) || size <= 0) {
         status[i] <- "missing_phi"
         next
       }
       mu <- exp(eta[i])
-      lower[i] <- if (y_i <= 0) {
-        0
+      if (is.infinite(size)) {
+        lower[i] <- if (y_i <= 0) 0 else stats::ppois(y_i - 1, lambda = mu)
+        upper[i] <- stats::ppois(y_i, lambda = mu)
       } else {
-        stats::pnbinom(y_i - 1, size = size, mu = mu)
+        lower[i] <- if (y_i <= 0) {
+          0
+        } else {
+          stats::pnbinom(y_i - 1, size = size, mu = mu)
+        }
+        upper[i] <- stats::pnbinom(y_i, size = size, mu = mu)
       }
-      upper[i] <- stats::pnbinom(y_i, size = size, mu = mu)
       u[i] <- stats::runif(1L, min = lower[i], max = upper[i])
     } else if (fid == 7L) {
       ## Beta, mean-precision parametrisation (src/gllvmTMB.cpp fid == 7):
@@ -611,9 +618,14 @@ residuals.gllvmTMB_multi <- function(
         status[i] <- "missing_phi"
         next
       }
-      mu_bb <- stats::plogis(eta[i])
-      a_bb <- mu_bb * phi_bb
-      b_bb <- (1 - mu_bb) * phi_bb
+      ## Shapes from plogis(eta) and plogis(-eta): `1 - plogis(eta)` is
+      ## exactly 0 for eta >= 37 and would zero `b` (#1490).
+      a_bb <- stats::plogis(eta[i]) * phi_bb
+      b_bb <- stats::plogis(-eta[i]) * phi_bb
+      if (!is.finite(a_bb) || !is.finite(b_bb) || a_bb <= 0 || b_bb <= 0) {
+        status[i] <- "nonfinite_residual"
+        next
+      }
       Nt_key <- as.character(Nt)
       k_bb <- bb_k_cache[[Nt_key]]
       if (is.null(k_bb)) {
@@ -630,9 +642,11 @@ residuals.gllvmTMB_multi <- function(
       ## (the engine never applies log/inverse to eta here).
       sigma_t <- sigma_student[tid]
       df_t <- df_student[tid]
+      ## `df = Inf` is the normal limit, as in the engine's Student kernel
+      ## (#1491); stats::pt(df = Inf) is already pnorm.
       if (
         !is.finite(sigma_t) || sigma_t <= 0 ||
-          !is.finite(df_t) || df_t <= 1
+          is.na(df_t) || df_t <= 1
       ) {
         status[i] <- "missing_phi"
         next
@@ -673,12 +687,18 @@ residuals.gllvmTMB_multi <- function(
         next
       }
       size_t <- phi_truncnb2[tid]
-      if (!is.finite(size_t) || size_t <= 0) {
+      ## `size = Inf` is the zero-truncated Poisson limit (#1491).
+      if (is.na(size_t) || size_t <= 0) {
         status[i] <- "missing_phi"
         next
       }
       mu_t <- exp(eta[i])
-      p0_t <- stats::pnbinom(0, size = size_t, mu = mu_t)
+      cdf_t <- if (is.infinite(size_t)) {
+        function(q) stats::ppois(q, lambda = mu_t)
+      } else {
+        function(q) stats::pnbinom(q, size = size_t, mu = mu_t)
+      }
+      p0_t <- cdf_t(0)
       denom_t <- 1 - p0_t
       if (!is.finite(denom_t) || denom_t <= 0) {
         status[i] <- "nonfinite_residual"
@@ -687,9 +707,9 @@ residuals.gllvmTMB_multi <- function(
       lower[i] <- if (y_i <= 1) {
         0
       } else {
-        (stats::pnbinom(y_i - 1, size = size_t, mu = mu_t) - p0_t) / denom_t
+        (cdf_t(y_i - 1) - p0_t) / denom_t
       }
-      upper[i] <- (stats::pnbinom(y_i, size = size_t, mu = mu_t) - p0_t) / denom_t
+      upper[i] <- (cdf_t(y_i) - p0_t) / denom_t
       u[i] <- stats::runif(1L, min = lower[i], max = upper[i])
     } else if (fid == 14L) {
       ## ordinal_probit (Wright/Falconer/Hadfield threshold model; Hadfield

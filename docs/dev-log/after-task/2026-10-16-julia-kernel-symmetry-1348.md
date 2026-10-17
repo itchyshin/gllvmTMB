@@ -46,8 +46,11 @@ it had been run.
   `S3method(stats::sigma, ...)` to `S3method(sigma, ...)`. This is drift
   already on `main`: `273b777` (#1407) edited them by hand, and the roxygen
   tags (`@export` with `@importFrom stats sigma`) generate the unqualified
-  form, the same as `residuals`. Registration is unchanged. It is in its own
-  commit.
+  form, the same as `residuals`. Registration is unchanged. It was committed
+  on its own (`216a17b`), and at review it was judged churn unrelated to
+  #1348 that would conflict with other PRs. It was reverted in `51ab9a9`, so
+  `NAMESPACE` matches `main`. `document()` will keep rewriting those lines
+  on `main` until an `@exportS3Method stats::sigma` tag lands in its own PR.
 
 ## Checks
 

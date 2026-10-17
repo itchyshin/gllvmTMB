@@ -1065,7 +1065,10 @@ field is the entire point of the map.
 
 There is no column called `coords` in the data, and there does not need to be.
 The geometry comes entirely from `mesh =`; the token to the right of the `|`
-is never read.
+is never read. (This holds at the default `rho = 1`, which every spatial term
+in this article uses. With `rho = NULL` or another value, the name after the
+`|` is the column that identifies each location, and it must be a real column
+of the data.)
 
 ```{r token-inert}
 sp_obj <- function(tok) FIT(stats::as.formula(paste0(
@@ -1080,7 +1083,8 @@ cat("largest difference:", max(o) - min(o), "\n")
 `cell_id` is a real column with a real meaning, and it makes no difference
 whatsoever -- which is the direction that matters. Writing
 `spatial_latent(0 + trait | site)` with a real `site` column and a real
-intention will *also* be ignored, and nothing will say so.
+intention will *also* be ignored; the package says so once per session, so
+watch for that notice.
 
 ## 4. A mesh passed without a spatial term does nothing
 
@@ -1479,7 +1483,8 @@ slopes come back shrunk.
 
 - At large counts, some fits stop after one optimiser iteration without clearly
   flagging the failure.
-- A grouping token on a `spatial_*()` term is currently inert.
+- A grouping token on a `spatial_*()` term is currently inert at the default
+  `rho = 1`.
 - A mesh supplied without a `spatial_*()` term is ignored. The package now
   warns, as shown in section 4 above.
 

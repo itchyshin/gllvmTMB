@@ -1,0 +1,117 @@
+{
+  "label": "wide10",
+  "elapsed": 0.69700000000000006,
+  "opt": {
+    "par": [0.38977075526867094, 0.11835593433909576, 0.24598250644631925, 0.20308000654813024, 0.086996876822515667, -0.1432761605481124, 0.51976910176391, 0.15783210009643553, 0.46637512650344104, 0.15752033047956071, 0.36815314852205755, -0.11447201954101147, -1.5065581424299732, -2.0175519786196872, -1.6475350263485369, -2.5450601376553674, -1.8499998507807114, -3.4048515394817014, -0.25502771820676889, -0.17055820825520626, -0.11911134182433766, -2.2318934179086019, -2.083029165033873, -2.1312566206422878],
+    "objective": 24.618624883267103,
+    "convergence": 0,
+    "message": "",
+    "iterations": 295,
+    "evaluations": 87,
+    "pass_history": [
+      {
+        "pass": 1,
+        "objective": 24.618624883267103,
+        "convergence": 0,
+        "message": "",
+        "iterations": 295,
+        "evaluations": 87,
+        "accepted": true
+      }
+    ],
+    "passes_requested": 1,
+    "passes_accepted": 1
+  },
+  "max_gradient": 0.00023625510337466486,
+  "gradient": [2.1967038145659109e-06, 3.6362884671107131e-05, -3.8163351736663349e-05, -1.5265207933064674e-05, 2.6627997888680275e-05, -7.1913434282215293e-05, -2.4416862248339783e-05, -9.5419945290003916e-06, 2.9508670816076562e-05, 2.092845812485947e-05, -2.0104641856385979e-05, -0.00020307091696491014, 2.3970359250452089e-05, -1.5335710212374515e-05, 4.9450360796478559e-06, -4.1859752337380051e-06, -8.2216794295169809e-06, -1.5966970686394911e-06, -0.00019924904454013886, 0.00023625510337466486, -5.1332171662936122e-06, -3.380634567346179e-06, -3.1006825936275171e-05, 1.3292922328231525e-05],
+  "parameter_names": ["b_fix", "b_fix", "b_fix", "b_fix", "b_fix", "b_fix", "theta_rr_B_slope", "theta_rr_B_slope", "theta_rr_B_slope", "theta_rr_B_slope", "theta_rr_B_slope", "theta_rr_B_slope", "theta_diag_B_slope", "theta_diag_B_slope", "theta_diag_B_slope", "theta_diag_B_slope", "theta_diag_B_slope", "theta_diag_B_slope", "theta_rr_W", "theta_rr_W", "theta_rr_W", "theta_diag_W", "theta_diag_W", "theta_diag_W"],
+  "fit_health": {
+    "optimizer": "optim",
+    "convergence": 0,
+    "message": "",
+    "objective": 24.618624883267103,
+    "max_gradient": 0.00023625510337466486,
+    "gradient_is_penalised": false,
+    "scaled_gradient": 9.2220056482803553e-06,
+    "stationary_by_scaled_gradient": true,
+    "stationary_by_gradient": true,
+    "optimizer_converged": true,
+    "converged": true,
+    "premature_termination": false,
+    "pd_hessian": null,
+    "sdreport_ok": false,
+    "sdreport_error": "standard-error calculation skipped by gllvmTMBcontrol(se = FALSE)",
+    "max_fixed_se": "NA",
+    "boundary_flags": [],
+    "start_provenance": {
+      "init_strategy": "default",
+      "start_method": "default",
+      "start_method_jitter_sd": 0,
+      "start_from": false,
+      "start_from_source": {},
+      "start_from_copied": [],
+      "auto_indep_fit": false,
+      "selected_restart": 1
+    },
+    "selected_restart": 1
+  },
+  "loading_ridge": "Inf",
+  "diagnostic": [
+    {
+      "component": "optimizer_convergence",
+      "status": "PASS",
+      "value": "0",
+      "threshold": "0",
+      "message": "optimizer reported convergence",
+      "action": "try multiple starts, stronger starts, rescaling, or an alternative optimizer"
+    },
+    {
+      "component": "max_gradient",
+      "status": "PASS",
+      "value": "0.0002363",
+      "threshold": "0.01",
+      "message": "largest absolute gradient component at the selected optimum",
+      "action": "tighten optimization, rescale predictors, or inspect weak components"
+    }
+  ],
+  "fixed": [
+    {
+      "term": "traitboldness",
+      "estimate": 0.38977075526867094,
+      "link": "identity"
+    },
+    {
+      "term": "traitexploration",
+      "estimate": 0.11835593433909576,
+      "link": "identity"
+    },
+    {
+      "term": "traitactivity",
+      "estimate": 0.24598250644631925,
+      "link": "identity"
+    },
+    {
+      "term": "traitboldness:temperature",
+      "estimate": 0.20308000654813024,
+      "link": "identity"
+    },
+    {
+      "term": "traitexploration:temperature",
+      "estimate": 0.086996876822515667,
+      "link": "identity"
+    },
+    {
+      "term": "traitactivity:temperature",
+      "estimate": -0.1432761605481124,
+      "link": "identity"
+    }
+  ],
+  "Sigma": [
+    [0.31929823008970376, 0.082036248896635827, 0.24240738058772346, 0.081874200682915524, 0.19135463131886521, -0.05949901877393228],
+    [0.082036248896635827, 0.042594813475111876, 0.07360896564877889, 0.024861764567473632, 0.058106384588351281, -0.018067359246438045],
+    [0.24240738058772346, 0.07360896564877889, 0.25457120704272074, 0.073463564054268959, 0.17169747121461471, -0.053386902594543595],
+    [0.081874200682915524, 0.024861764567473632, 0.073463564054268959, 0.030969933788343115, 0.057991605622285301, -0.018031670348762859],
+    [0.19135463131886521, 0.058106384588351281, 0.17169747121461471, 0.057991605622285301, 0.16026027461549872, -0.042143234411701869],
+    [-0.05949901877393228, -0.018067359246438045, -0.053386902594543595, -0.018031670348762859, -0.042143234411701869, 0.01420686361908699]
+  ]
+}

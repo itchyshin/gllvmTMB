@@ -2675,8 +2675,11 @@
                         )))
       next
     }
+    ## Capture the selected primary method before secondary solvers can replace
+    ## `opt`; start metadata must describe the requested primary stage.
+    primary_optimizer <- opt$optimizer %||% .va_r3_optimizer_label(optimizer)
     optimizer_attempts <- list(list(
-      stage = "primary", method = opt$optimizer %||% optimizer,
+      stage = "primary", method = primary_optimizer,
       convergence = opt$convergence, message = opt$message,
       objective = unname(opt$objective),
       function_evaluations = .va_r3_attempt_count(opt, "function"),
@@ -2684,12 +2687,30 @@
       iterations = opt$iterations %||% NA_integer_
     ))
     polish_passes <- 0L
+    ## `optArgs$lower` and `$upper` constrain the whole fit, including polish.
+    ## The primary method's control list is not portable across native solvers:
+    ## in particular, `optim`'s `maxit`/`fnscale` must not be passed to nlminb.
+    ## Preserve the historical auto/nlminb path exactly, and give the nlminb
+    ## polisher its ordinary budget when the selected primary is an `optim`
+    ## method.
+    polish_nlminb_control <- control
+    if (length(optimizer_request) == 1L &&
+        optimizer_request %in% c("BFGS", "L-BFGS-B")) {
+      polish_nlminb_control <- list(eval.max = 2000L, iter.max = 2000L)
+    }
+    polish_nlminb_args <- optimizer_args[
+      intersect(names(optimizer_args), c("lower", "upper", "scale"))
+    ]
+    polish_lbfgsb_args <- optimizer_args[
+      intersect(names(optimizer_args), c("lower", "upper"))
+    ]
     if (isTRUE(va_polish)) for (polish in seq_len(2L)) {
       current_gradient <- tryCatch(obj$gr(opt$par), error = function(e) NA_real_)
       if (all(is.finite(current_gradient)) &&
           max(abs(current_gradient)) < .VA_R3_POLISH_GRADIENT_TARGET) break
       candidate <- tryCatch(
-        .va_r3_nlminb(opt$par, obj$fn, obj$gr, control),
+        .va_r3_nlminb(opt$par, obj$fn, obj$gr, polish_nlminb_control,
+                      polish_nlminb_args),
         error = function(e) structure(list(error = conditionMessage(e)),
                                       class = "va_r3_optimizer_error")
       )
@@ -2721,7 +2742,8 @@
       ## 1e-12 / .Machine$double.eps is the translation of BFGS's reltol = 1e-12.
       lbfgsb <- tryCatch(
         .va_r3_run_primary("lbfgsb", obj, opt$par,
-                           list(maxit = 500L, factr = 1e-12 / .Machine$double.eps)),
+                           list(maxit = 500L, factr = 1e-12 / .Machine$double.eps),
+                           optimizer_args = polish_lbfgsb_args),
         error = function(e) structure(list(error = conditionMessage(e)),
                                       class = "va_r3_optimizer_error")
       )
@@ -2786,7 +2808,7 @@
       polish_passes = polish_passes,
       polish_optimizer = if (isTRUE(va_polish)) polish_optimizer else "disabled",
       optimizer_request = optimizer_request,
-      primary_optimizer = opt$optimizer %||% .va_r3_optimizer_label(optimizer),
+      primary_optimizer = primary_optimizer,
       optimizer_attempts = optimizer_attempts
     )
     if (profile_variational) fits[[k]]$outer_par <- outer_par

@@ -151,7 +151,7 @@
   if ("scale" %in% names(opt_args) && any(opt_args$scale <= 0)) {
     cli::cli_abort("VA {.arg optArgs$scale} entries must be positive.")
   }
-  if (identical(method, "optim")) {
+  if (identical(optimizer, "optim")) {
     for (name in intersect(c("fnscale", "parscale", "ndeps"), names(native_control))) {
       value <- native_control[[name]]
       if (!is.numeric(value) || !length(value) || anyNA(value) ||

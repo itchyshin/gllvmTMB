@@ -415,6 +415,55 @@ gllvmTMBcontrol(n_init = 3, init_jitter = 0.2)
 # Switch the optimiser to optim + BFGS for finicky two-level rr fits.
 gllvmTMBcontrol(optimizer = "optim", optArgs = list(method = "BFGS"))
 
+# Compare VA primary solvers on the same model and four seeded starts.
+# This example is deliberately not run automatically because each method
+# performs four variational fits. Reset the seed for each method and disable
+# polish so the comparison isolates the selected primary solver.
+\dontrun{
+set.seed(20260802L)
+n <- 120L
+p <- 4L
+va_data <- data.frame(
+  y = rbinom(n * p, 1L, 0.5),
+  trait = factor(rep(seq_len(p), times = n)),
+  site = factor(rep(seq_len(n), each = p))
+)
+va_formula <- y ~ 0 + trait + latent(0 + trait | site, d = 1,
+                                     unique = FALSE)
+va_methods <- list(
+  nlminb = list(optimizer = "nlminb",
+                optArgs = list(control = list(iter.max = 2000L,
+                                               eval.max = 2000L))),
+  BFGS = list(optimizer = "optim",
+              optArgs = list(method = "BFGS",
+                              control = list(maxit = 2000L))),
+  `L-BFGS-B` = list(optimizer = "optim",
+                    optArgs = list(method = "L-BFGS-B",
+                                    control = list(maxit = 2000L)))
+)
+va_fits <- lapply(va_methods, function(method) {
+  set.seed(1595L)
+  gllvmTMB(
+    va_formula, data = va_data,
+    family = stats::binomial(link = "probit"), unit = "site",
+    control = gllvmTMBcontrol(
+      integration = "va", va_H = 7L, va_eval_method = "gh",
+      optimizer = method$optimizer, optArgs = method$optArgs,
+      va_polish = FALSE
+    )
+  )
+})
+lapply(va_fits, function(fit) {
+  starts <- fit$engine_result$starts
+  data.frame(
+    start = vapply(starts, `[[`, integer(1), "start"),
+    primary = vapply(starts, `[[`, character(1), "primary_optimizer"),
+    objective = vapply(starts, `[[`, numeric(1), "objective"),
+    convergence = vapply(starts, `[[`, integer(1), "convergence")
+  )
+})
+}
+
 # Experimental, opt-in scale-aware ridge for the evaluated Bernoulli AGHQ
 # scope. The route uses a fixed 9-node multi-start rule; this is not an
 # interval-calibration certificate.

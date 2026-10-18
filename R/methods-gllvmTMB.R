@@ -262,7 +262,7 @@ sigma.gllvmTMB_va <- sigma.gllvmTMB_multi
     if (is.factor(ref)) {
       ctr <- attr(ref, "contrasts")
       if (!is.null(ctr) && nlevels(restored) >= 2L) {
-        contrasts(restored) <- ctr
+        restored <- stats::`contrasts<-`(restored, value = ctr)
       }
     }
     nd[[nm]] <- restored

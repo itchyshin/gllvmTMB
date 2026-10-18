@@ -229,7 +229,13 @@ an explicit sensitivity fit with
 `control = gllvmTMBcontrol(loading_ridge = 2)`. This puts a zero-mean normal
 prior with standard deviation 2 on the free ordinary between-unit loadings; smaller
 positive values shrink more, and `Inf` disables the penalty. Ordinary
-Laplace fits remain unpenalised by default. Ridged fits are penalised
+Laplace fits remain unpenalised by default, equivalent to `loading_ridge = Inf`.
+A 24,000-fit native-Laplace comparison found modest recovery benefits from
+`2`, but no overall Hessian or interval-coverage improvement. Use it as an
+explicit sensitivity choice when ordinary unit-tier loadings become extreme
+or unstable, and compare covariance and effect estimates as well as fit health.
+See [when to try a loading ridge](https://itchyshin.github.io/gllvmTMB/articles/fit-diagnostics.html#loading-ridge-sensitivity)
+for the measured recovery and coverage trade-offs. Ridged fits are penalised
 estimates, so ordinary AIC, BIC, and likelihood-ratio comparisons do not
 apply. With retained penalised-Hessian metadata, their LV uncertainty is a
 local posterior approximation conditional on the chosen ridge scale,

@@ -2967,3 +2967,23 @@ refuse; (4) FAM-22 stays `partial` with the measured 2/6-trait dispersion caveat
 behind it (D-204): twin parity is both ways for user-facing capabilities; the bridge stays R → Julia.
 Owed before any FAM-21..23 row leaves `partial`: Totoro pre-run then DRAC job-array multi-seed recovery
 against GLLVM.jl's ADEMP campaign.
+
+
+## 2026-10-18 Retain the unpenalised ordinary-Laplace loading default
+
+Shinichi explicitly approved retaining the effective loading_ridge = Inf
+default after the completed 24,000-fit native-engine comparison. The formal
+loading_ridge = NULL default remains unchanged, as do the separate AGHQ
+controls. At 6,000 attempts per scale, non-positive-definite Hessian counts
+were Inf 64, 1 56, 2 66 and 4 62. Ridge 2 gave modest recovery gains but no
+overall Hessian-availability or consistent coverage gain. It restored
+intervals on 16 datasets relative to Inf and lost them on 18. Document 2 as
+an explicit sensitivity choice for extreme or unstable ordinary between-unit
+loadings, with prior-scale, MAP and interval-coverage qualifications. Do not
+choose or promote it solely to obtain a positive-definite Hessian. The
+fixed-truth rank-two comparison covers only its named families, sample sizes
+and loading scales; broader calibration remains partial. Record, aggregate
+outputs, exact source and retention receipts:
+`docs/dev-log/research/2026-10-18-loading-ridge-comparison/`.
+Validation mapping: EXT-31 and MSPL-05 retain their existing scope/statuses;
+this comparison does not compare ridge with MSPL or promote a new estimator.

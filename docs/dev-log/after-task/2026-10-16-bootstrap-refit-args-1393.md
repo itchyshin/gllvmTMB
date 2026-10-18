@@ -70,8 +70,12 @@ Cloud session, R 4.5.3 (conda-forge), TMB 1.9.23, roxygen2 8.1.0.
 - `tools/check-reader-surface.sh`: PASS.
 
 ## Follow-up
-- Open PR #1507 owns binomial trial totals and missing-response masks. On
-  rebase, its `weights`/`missing` go into the table's two `NULL` entries.
+- #1507 (binomial trial totals and missing-response masks) has merged. In the
+  rebase onto main, `bootstrap_Sigma()` calls `.bootstrap_refit_args()` first,
+  then takes `formula`, `weights` and `missing` from
+  `.bootstrap_response_setup()`, and `refit_one` builds each replicate's data
+  with `.bootstrap_response_data()`. #1507's hand-picked `aux` list is gone, so
+  the table's processed `lambda_constraint` is the one forwarded.
 - `known_V` is not stored on the fit. Storing it (in `R/fit-multi.R`) would let
   `meta_V()` fits bootstrap. The refit formula also deparses the V matrix by
   value: a 150 x 150 V took 142 s per refit just to reach the engine.

@@ -1,0 +1,44 @@
+{
+  "assessment_performed": true,
+  "draft_sha256": "2ee69fc89f83a058427875593cdd9ecc4b3f0fe18112f3cddb2fa3286aead523",
+  "draft_version": "v1",
+  "requested_mode": "independent",
+  "assessor_type": "self",
+  "reviewer": "Codex",
+  "method": "Post-draft check against full-check receipt, failed-test log, matched baseline diagnostics and staged/source diff",
+  "genre": "Publication preflight receipt",
+  "coverage": "Whole exact file",
+  "score": 3,
+  "style_status": "assessed",
+  "score_reason": "Concrete counts and failures dominate; receipt structure remains formal.",
+  "confidence": "medium",
+  "confidence_reason": "Self-review, not an authorship or human-style test.",
+  "examples": [
+    {
+      "location": "line 9",
+      "line": 9,
+      "quote": "The suite reported FAIL 1, WARN 60, SKIP 1259 and PASS 26633. Its single failing assertion is test-example-behavioural-reaction-norm.R:194: max_gradient expected PASS but was WARN. A targeted reproduction using the checked installation and the unchanged source-161abe09 pilot binary returned the same result in both: optimiser code 0, raw max gradient 0.01817 above the unchanged 0.01 threshold. The fixture MD5 and recorded objective agree. This establishes a pre-existing local baseline failure, not a documentation regression. It is retained rather than hidden, skipped or repaired by changing defaults or test thresholds.",
+      "cue": "Exact failing check and unchanged-baseline evidence",
+      "impact": "Makes the local failure and merge gate explicit",
+      "repair": "no change needed"
+    },
+    {
+      "location": "line 11",
+      "line": 11,
+      "quote": "The docs-only PR proceeds with that baseline limitation disclosed. Merging remains conditional on every GitHub check on the PR's exact head settling green; no bypass or admin merge is authorised. Main's own post-merge check must also complete. The source check receipts and both targeted baseline diagnostics are in publication-receipts/.",
+      "cue": "Exact failing check and unchanged-baseline evidence",
+      "impact": "Makes the local failure and merge gate explicit",
+      "repair": "no change needed"
+    }
+  ],
+  "evidence_none_reason": null,
+  "science_gate": "pass",
+  "science_gate_reason": "Does not turn a baseline failure or optimiser code zero into successful inference.",
+  "facts_gate": "pass",
+  "facts_gate_reason": "Counts and diagnostics compared with retained receipts; runtime/tests/default diff is empty.",
+  "references_gate": "pass",
+  "references_gate_reason": "Local receipt paths and source/tar hashes identify checked evidence.",
+  "date": "2026-10-18",
+  "calibration_status": "No held-out controls; earlier report and writing guidance already seen.",
+  "interpretation": "perceived_style_not_authorship"
+}

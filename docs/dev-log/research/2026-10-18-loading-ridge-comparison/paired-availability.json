@@ -1,0 +1,20 @@
+{
+  "1": {
+    "both_available": 5908,
+    "rescued": 36,
+    "lost": 28,
+    "both_unavailable": 28
+  },
+  "2": {
+    "both_available": 5918,
+    "rescued": 16,
+    "lost": 18,
+    "both_unavailable": 48
+  },
+  "4": {
+    "both_available": 5931,
+    "rescued": 7,
+    "lost": 5,
+    "both_unavailable": 57
+  }
+}

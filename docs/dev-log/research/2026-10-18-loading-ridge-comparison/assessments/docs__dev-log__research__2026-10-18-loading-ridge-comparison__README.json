@@ -1,0 +1,44 @@
+{
+  "assessment_performed": true,
+  "draft_sha256": "05516ba610542733bd6e675e03d5c463dd99cbf54a004a312a26f406adb7c40f",
+  "draft_version": "v1",
+  "requested_mode": "independent",
+  "assessor_type": "self",
+  "reviewer": "Codex",
+  "method": "Separate post-draft review against audited CSVs, independent statistical/Rose review and successful local article execution",
+  "genre": "R-package documentation and retained simulation evidence",
+  "coverage": "Whole exact study record",
+  "score": 2,
+  "style_status": "assessed",
+  "score_reason": "Concrete model settings, denominators and actions dominate; fixed reporting headings remain formulaic.",
+  "confidence": "medium",
+  "confidence_reason": "Self-review of the stated sections, not a human naturalness or authorship test.",
+  "examples": [
+    {
+      "location": "line 6",
+      "line": 6,
+      "quote": "loading_ridge = Inf. Its formal NULL spelling and separate AGHQ defaults",
+      "cue": "Concrete decision, numerical evidence or stated scope",
+      "impact": "Lets the reader connect the recommendation with checked evidence and limits",
+      "repair": "no change needed"
+    },
+    {
+      "location": "line 7",
+      "line": 7,
+      "quote": "are unchanged. Shinichi approved this decision after reviewing the completed",
+      "cue": "Concrete decision, numerical evidence or stated scope",
+      "impact": "Lets the reader connect the recommendation with checked evidence and limits",
+      "repair": "no change needed"
+    }
+  ],
+  "evidence_none_reason": null,
+  "science_gate": "pass",
+  "science_gate_reason": "Keeps effective Inf default and named model scope; separates finite-interval coverage, availability, all-attempt containment and MAP interpretation.",
+  "facts_gate": "pass",
+  "facts_gate_reason": "All new numerical claims match retained summaries; source defaults unchanged; article and long/wide covariance comparison executed successfully.",
+  "references_gate": "pass",
+  "references_gate_reason": "New claims point to source-pinned retained evidence; public links target the documented article anchor and eventual main record, with local-only publication status stated.",
+  "date": "2026-10-18",
+  "calibration_status": "No held-out controls used; prior pilot and writing guidance were already seen.",
+  "interpretation": "perceived_style_not_authorship"
+}

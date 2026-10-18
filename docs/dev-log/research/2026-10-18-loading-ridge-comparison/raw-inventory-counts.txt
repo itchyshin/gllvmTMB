@@ -1,0 +1,2 @@
+{'result': 24000, 'fixture': 6000, 'effects': 24000, 'arm': 24000, 'fit': 24000}
+bytes=27417045096

@@ -2194,7 +2194,19 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #'   optimiser policy, `optimizer` and `optArgs` select the VA primary solver,
 #'   while `va_polish` controls the existing secondary-solver sequence. If
 #'   `optimizer` is omitted, the family registry still selects the primary
-#'   solver. The settings `n_init`, `start_from`, `init_*` and `se` have no effect
+#'   solver. For a fitted VA object, per-start diagnostics are in
+#'   `fit$engine_result$starts[[i]]`: `primary_optimizer` names the selected
+#'   primary method and `final_optimizer` names the method whose parameter
+#'   vector and objective were retained. `polish_optimizer` summarizes the
+#'   polish methods actually attempted (`"disabled"`, `"not_attempted"`,
+#'   `"nlminb_attempted"`, or `"nlminb_then_L-BFGS-B_attempted"`). The ordered
+#'   `optimizer_attempts` records include an `accepted` flag. The primary result
+#'   starts accepted; a polish record is accepted only when it replaces the
+#'   retained result. Acceptance records replacement, not convergence or a
+#'   healthy fit; inspect `convergence` and `healthy` separately. Thus the last
+#'   accepted attempt identifies `final_optimizer`; a failed primary has no
+#'   retained solver and records `NA`. The settings `n_init`, `start_from`,
+#'   `init_*` and `se` have no effect
 #'   on this route. Any model structure the route cannot represent (a latent
 #'   term away from the unit grouping, a constrained ordination, an offset,
 #'   weights, `REML`, `lambda_constraint`, `Xcoef_fixed`, or a further random
@@ -2383,6 +2395,8 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #'   data.frame(
 #'     start = vapply(starts, `[[`, integer(1), "start"),
 #'     primary = vapply(starts, `[[`, character(1), "primary_optimizer"),
+#'     final = vapply(starts, `[[`, character(1), "final_optimizer"),
+#'     polish = vapply(starts, `[[`, character(1), "polish_optimizer"),
 #'     objective = vapply(starts, `[[`, numeric(1), "objective"),
 #'     convergence = vapply(starts, `[[`, integer(1), "convergence")
 #'   )

@@ -199,7 +199,19 @@ returning a number. Because the engine runs its own multi-start and
 optimiser policy, \code{optimizer} and \code{optArgs} select the VA primary solver,
 while \code{va_polish} controls the existing secondary-solver sequence. If
 \code{optimizer} is omitted, the family registry still selects the primary
-solver. The settings \code{n_init}, \code{start_from}, \verb{init_*} and \code{se} have no effect
+solver. For a fitted VA object, per-start diagnostics are in
+\code{fit$engine_result$starts[[i]]}: \code{primary_optimizer} names the selected
+primary method and \code{final_optimizer} names the method whose parameter
+vector and objective were retained. \code{polish_optimizer} summarizes the
+polish methods actually attempted (\code{"disabled"}, \code{"not_attempted"},
+\code{"nlminb_attempted"}, or \code{"nlminb_then_L-BFGS-B_attempted"}). The ordered
+\code{optimizer_attempts} records include an \code{accepted} flag. The primary result
+starts accepted; a polish record is accepted only when it replaces the
+retained result. Acceptance records replacement, not convergence or a
+healthy fit; inspect \code{convergence} and \code{healthy} separately. Thus the last
+accepted attempt identifies \code{final_optimizer}; a failed primary has no
+retained solver and records \code{NA}. The settings \code{n_init}, \code{start_from},
+\verb{init_*} and \code{se} have no effect
 on this route. Any model structure the route cannot represent (a latent
 term away from the unit grouping, a constrained ordination, an offset,
 weights, \code{REML}, \code{lambda_constraint}, \code{Xcoef_fixed}, or a further random
@@ -458,6 +470,8 @@ lapply(va_fits, function(fit) {
   data.frame(
     start = vapply(starts, `[[`, integer(1), "start"),
     primary = vapply(starts, `[[`, character(1), "primary_optimizer"),
+    final = vapply(starts, `[[`, character(1), "final_optimizer"),
+    polish = vapply(starts, `[[`, character(1), "polish_optimizer"),
     objective = vapply(starts, `[[`, numeric(1), "objective"),
     convergence = vapply(starts, `[[`, integer(1), "convergence")
   )

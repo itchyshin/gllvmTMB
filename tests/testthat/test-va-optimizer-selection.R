@@ -281,10 +281,85 @@ test_that("VA polish retains bounds and primary-method metadata", {
   )
   expect_true(all(vapply(polished_bfgs$starts, function(x) {
     identical(x$primary_optimizer, "BFGS") &&
+      identical(x$final_optimizer, "L-BFGS-B") &&
       any(vapply(x$optimizer_attempts, function(a) {
-        identical(a$stage, "polish") && identical(a$method, "L-BFGS-B")
+        identical(a$stage, "polish") && identical(a$method, "L-BFGS-B") &&
+          isTRUE(a$accepted)
       }, logical(1)))
   }, logical(1))))
+})
+
+test_that("VA final optimizer distinguishes skipped and rejected polish", {
+  set.seed(1595L)
+  n <- 60L
+  p <- 4L
+  dat <- data.frame(
+    y = rbinom(n * p, 1L, 0.5),
+    trait = factor(rep(seq_len(p), times = n)),
+    unit = rep(seq_len(n), each = p)
+  )
+  X <- model.matrix(~ 0 + trait, dat)
+  y <- dat$y
+
+  local_mocked_bindings(
+    .VA_R3_POLISH_GRADIENT_TARGET = Inf,
+    .package = "gllvmTMB"
+  )
+  set.seed(1595L)
+  skipped <- .va_r3_fit(
+    y = y, n_trials = rep.int(1L, length(y)), X = X,
+    unit_id = dat$unit, trait_id = as.integer(dat$trait), q = 1L,
+    family = "binomial", link = "logit", H = 3L, n_starts = 1L,
+    optimizer = "bfgs", optimizer_request = "BFGS",
+    control = list(maxit = 2L), va_polish = TRUE
+  )$starts[[1L]]
+  expect_identical(skipped$primary_optimizer, "BFGS")
+  expect_identical(skipped$final_optimizer, "BFGS")
+  expect_identical(skipped$polish_optimizer, "not_attempted")
+  expect_length(skipped$optimizer_attempts, 1L)
+  expect_true(isTRUE(skipped$optimizer_attempts[[1L]]$accepted))
+
+  real_primary <- .va_r3_run_primary
+  local_mocked_bindings(
+    .VA_R3_POLISH_GRADIENT_TARGET = -1,
+    .va_r3_nlminb = function(start, objective, gradient, control,
+                             opt_args = list()) {
+      list(par = start, objective = objective(start) + 1,
+           convergence = 0L, message = "test rejection",
+           evaluations = c(`function` = 1L, gradient = 1L), iterations = 1L)
+    },
+    .va_r3_run_primary = function(optimizer, obj, start, control,
+                                  optimizer_args = list()) {
+      if (identical(optimizer, "lbfgsb") &&
+          identical(control$maxit, 500L)) {
+        return(list(par = start, objective = obj$fn(start) + 1,
+                    convergence = 0L, message = "test rejection",
+                    evaluations = c(`function` = 1L, gradient = 1L),
+                    iterations = NA_integer_, optimizer = "L-BFGS-B"))
+      }
+      real_primary(optimizer, obj, start, control, optimizer_args)
+    },
+    .package = "gllvmTMB"
+  )
+  set.seed(1595L)
+  rejected <- .va_r3_fit(
+    y = y, n_trials = rep.int(1L, length(y)), X = X,
+    unit_id = dat$unit, trait_id = as.integer(dat$trait), q = 1L,
+    family = "binomial", link = "logit", H = 3L, n_starts = 1L,
+    optimizer = "bfgs", optimizer_request = "BFGS",
+    control = list(maxit = 2L), va_polish = TRUE
+  )$starts[[1L]]
+  expect_identical(rejected$primary_optimizer, "BFGS")
+  expect_identical(rejected$final_optimizer, "BFGS")
+  expect_identical(rejected$polish_optimizer,
+                   "nlminb_then_L-BFGS-B_attempted")
+  polish_attempts <- Filter(function(a) identical(a$stage, "polish"),
+                            rejected$optimizer_attempts)
+  expect_length(polish_attempts, 2L)
+  expect_true(all(vapply(polish_attempts, function(a) {
+    identical(a$accepted, FALSE)
+  }, logical(1))))
+  expect_true(isTRUE(rejected$optimizer_attempts[[1L]]$accepted))
 })
 
 test_that("VA polish can be disabled without changing the default", {

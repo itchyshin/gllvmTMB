@@ -2666,10 +2666,12 @@
                         agreement_eligible = FALSE, healthy = FALSE,
                         message = opt$message,
                         optimizer_request = optimizer_request,
-                        primary_optimizer = optimizer,
+                        primary_optimizer = .va_r3_optimizer_label(optimizer),
+                        final_optimizer = NA_character_,
                         optimizer_attempts = list(list(
                           stage = "primary", method = .va_r3_optimizer_label(optimizer),
-                          error = opt$message, convergence = NA_integer_,
+                          error = opt$message, accepted = FALSE,
+                          convergence = NA_integer_,
                           function_evaluations = NA_integer_,
                           gradient_evaluations = NA_integer_, iterations = NA_integer_
                         )))
@@ -2678,8 +2680,9 @@
     ## Capture the selected primary method before secondary solvers can replace
     ## `opt`; start metadata must describe the requested primary stage.
     primary_optimizer <- opt$optimizer %||% .va_r3_optimizer_label(optimizer)
+    final_optimizer <- primary_optimizer
     optimizer_attempts <- list(list(
-      stage = "primary", method = primary_optimizer,
+      stage = "primary", method = primary_optimizer, accepted = TRUE,
       convergence = opt$convergence, message = opt$message,
       objective = unname(opt$objective),
       function_evaluations = .va_r3_attempt_count(opt, "function"),
@@ -2704,10 +2707,12 @@
     polish_lbfgsb_args <- optimizer_args[
       intersect(names(optimizer_args), c("lower", "upper"))
     ]
+    polish_optimizer <- "not_attempted"
     if (isTRUE(va_polish)) for (polish in seq_len(2L)) {
       current_gradient <- tryCatch(obj$gr(opt$par), error = function(e) NA_real_)
       if (all(is.finite(current_gradient)) &&
           max(abs(current_gradient)) < .VA_R3_POLISH_GRADIENT_TARGET) break
+      polish_optimizer <- "nlminb_attempted"
       candidate <- tryCatch(
         .va_r3_nlminb(opt$par, obj$fn, obj$gr, polish_nlminb_control,
                       polish_nlminb_args),
@@ -2716,10 +2721,12 @@
       )
       optimizer_attempts[[length(optimizer_attempts) + 1L]] <- if (inherits(candidate, "va_r3_optimizer_error")) {
         list(stage = "polish", method = "nlminb", error = candidate$error,
-             convergence = NA_integer_, function_evaluations = NA_integer_,
+             accepted = FALSE, convergence = NA_integer_,
+             function_evaluations = NA_integer_,
              gradient_evaluations = NA_integer_, iterations = NA_integer_)
       } else {
         list(stage = "polish", method = "nlminb", convergence = candidate$convergence,
+             accepted = FALSE,
              message = candidate$message, objective = unname(candidate$objective),
              function_evaluations = .va_r3_attempt_count(candidate, "function"),
              gradient_evaluations = .va_r3_attempt_count(candidate, "gradient"),
@@ -2728,10 +2735,11 @@
       if (inherits(candidate, "va_r3_optimizer_error")) break
       if (is.null(candidate) || !is.finite(candidate$objective) ||
           candidate$objective > opt$objective + 1e-8) break
+      optimizer_attempts[[length(optimizer_attempts)]]$accepted <- TRUE
       opt <- candidate
+      final_optimizer <- "nlminb"
       polish_passes <- polish
     }
-    polish_optimizer <- "nlminb_only"
     post_nlminb_gradient <- tryCatch(obj$gr(opt$par), error = function(e) NA_real_)
     if (isTRUE(va_polish) && (!all(is.finite(post_nlminb_gradient)) ||
         max(abs(post_nlminb_gradient)) >= .VA_R3_POLISH_GRADIENT_TARGET)) {
@@ -2740,6 +2748,7 @@
       ## coordinates, so its cost grows with n while L-BFGS-B's limited memory
       ## stays flat. factr is L-BFGS-B's relative-tolerance control and
       ## 1e-12 / .Machine$double.eps is the translation of BFGS's reltol = 1e-12.
+      polish_optimizer <- "nlminb_then_L-BFGS-B_attempted"
       lbfgsb <- tryCatch(
         .va_r3_run_primary("lbfgsb", obj, opt$par,
                            list(maxit = 500L, factr = 1e-12 / .Machine$double.eps),
@@ -2749,10 +2758,12 @@
       )
       optimizer_attempts[[length(optimizer_attempts) + 1L]] <- if (inherits(lbfgsb, "va_r3_optimizer_error")) {
         list(stage = "polish", method = "L-BFGS-B", error = lbfgsb$error,
-             convergence = NA_integer_, function_evaluations = NA_integer_,
+             accepted = FALSE, convergence = NA_integer_,
+             function_evaluations = NA_integer_,
              gradient_evaluations = NA_integer_, iterations = NA_integer_)
       } else {
         list(stage = "polish", method = "L-BFGS-B", convergence = lbfgsb$convergence,
+             accepted = FALSE,
              message = lbfgsb$message, objective = unname(lbfgsb$objective),
              function_evaluations = .va_r3_attempt_count(lbfgsb, "function"),
              gradient_evaluations = .va_r3_attempt_count(lbfgsb, "gradient"),
@@ -2760,8 +2771,9 @@
       }
       if (!inherits(lbfgsb, "va_r3_optimizer_error") && identical(lbfgsb$convergence, 0L) &&
           is.finite(lbfgsb$objective) && lbfgsb$objective <= opt$objective + 1e-8) {
+        optimizer_attempts[[length(optimizer_attempts)]]$accepted <- TRUE
         opt <- lbfgsb
-        polish_optimizer <- "nlminb_then_lbfgsb"
+        final_optimizer <- "L-BFGS-B"
       }
     }
     gradient <- tryCatch(obj$gr(opt$par), error = function(e) rep(NA_real_, length(opt$par)))
@@ -2809,6 +2821,7 @@
       polish_optimizer = if (isTRUE(va_polish)) polish_optimizer else "disabled",
       optimizer_request = optimizer_request,
       primary_optimizer = primary_optimizer,
+      final_optimizer = final_optimizer,
       optimizer_attempts = optimizer_attempts
     )
     if (profile_variational) fits[[k]]$outer_par <- outer_par

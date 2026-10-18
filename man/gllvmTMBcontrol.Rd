@@ -37,6 +37,7 @@ gllvmTMBcontrol(
   loading_ridge = NULL,
   optimizer_passes = 1L,
   svd_start = TRUE,
+  va_polish = TRUE,
   ...
 )
 }
@@ -62,15 +63,17 @@ local optimum while reporting \code{convergence = 0}, a positive-definite
 Hessian and a small gradient. The jittered restarts use R's random
 number generator, so call \code{\link[=set.seed]{set.seed()}} first for a reproducible fit.}
 
-\item{optimizer}{One of \code{"nlminb"} (default) or \code{"optim"}. Use the
-latter together with \code{optArgs} for finicky two-level rr fits.}
+\item{optimizer}{Optimiser for the native Laplace and AGHQ routes. For the
+experimental VA route, omission keeps the family registry's automatic
+primary solver; explicitly set \code{"nlminb"} to pin that solver or \code{"optim"}
+to select \code{"BFGS"} or \code{"L-BFGS-B"} through \code{optArgs$method}.}
 
-\item{optArgs}{A list of arguments passed to the optimiser. For
-\code{nlminb}, only \code{control}, \code{lower}, \code{upper}, and \code{scale} are forwarded
-(put \code{iter.max} and other limits in \code{optArgs$control}). For \code{optim}, only
-\code{method}, \code{control}, \code{hessian}, \code{lower}, and \code{upper} are forwarded (put
-\code{maxit} in \code{optArgs$control}). Top-level names such as \code{iter.max} or
-\code{maxit} are ignored with a warning.}
+\item{optArgs}{Native optimiser arguments. Existing Laplace and AGHQ
+behavior is unchanged. For VA, \code{nlminb} accepts \code{control}, \code{lower},
+\code{upper}, and \code{scale}; \code{optim} accepts a nested \code{control} list and
+\code{method = "BFGS"} or \code{"L-BFGS-B"} (the latter also accepts bounds).
+Put native stopping controls such as \code{maxit} inside \code{control}; unknown or
+method-incompatible values are rejected before the VA objective is built.}
 
 \item{init_jitter}{Standard deviation of N(0, sigma) jitter applied to
 the starting parameter vector across the \code{n_init} restarts.
@@ -193,8 +196,10 @@ start admitted on a positive-definite Hessian.
 \link{gllvmTMB_va-methods}) rather than an ordinary fit, so that every method
 which would treat its objective as a likelihood fails loudly instead of
 returning a number. Because the engine runs its own multi-start and
-optimiser policy, the search settings of \code{\link[=gllvmTMBcontrol]{gllvmTMBcontrol()}} — \code{n_init},
-\code{optimizer}, \code{optArgs}, \code{start_from}, \verb{init_*} and \code{se} — have no effect
+optimiser policy, \code{optimizer} and \code{optArgs} select the VA primary solver,
+while \code{va_polish} controls the existing secondary-solver sequence. If
+\code{optimizer} is omitted, the family registry still selects the primary
+solver. The settings \code{n_init}, \code{start_from}, \verb{init_*} and \code{se} have no effect
 on this route. Any model structure the route cannot represent (a latent
 term away from the unit grouping, a constrained ordination, an offset,
 weights, \code{REML}, \code{lambda_constraint}, \code{Xcoef_fixed}, or a further random
@@ -347,6 +352,14 @@ diagnostics. This adds one optimisation per fit and uses
 no random numbers. It is skipped when \code{start_from} or \code{start_method} is
 supplied and on the \code{estimator = "mspl"} route. Set \code{FALSE} for the
 single-start behaviour of gllvmTMB 0.8.0 and earlier.}
+
+\item{va_polish}{For VA fits, whether to run the existing secondary solver
+polishing sequence after each primary start. Defaults to \code{TRUE} to retain
+prior behavior; \code{FALSE} disables every secondary solver and is useful for
+controlled optimizer comparisons. The four primary starts and their
+existing agreement rule are unchanged. BFGS uses a dense inverse-Hessian
+approximation, so its memory use grows quadratically with the parameter
+count; use it as an opt-in method for modest models.}
 
 \item{...}{Reserved for future use. Currently ignored with a warning.}
 }

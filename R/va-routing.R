@@ -42,6 +42,139 @@
   ), call = NULL, .envir = .envir)
 }
 
+## Translate the package's existing optimiser controls to the VA primary
+## solver. Omitted `optimizer` is deliberately distinct from explicit
+## `optimizer = "nlminb"`: the former keeps the VA family registry's `auto`
+## policy, while the latter pins nlminb.
+.va_route_optimizer_spec <- function(control) {
+  optimizer <- control$optimizer %||% "nlminb"
+  explicit <- isTRUE(control$optimizer_explicit)
+  opt_args <- control$optArgs %||% list()
+  va_polish <- control$va_polish %||% TRUE
+
+  if (!is.logical(va_polish) || length(va_polish) != 1L || is.na(va_polish)) {
+    cli::cli_abort("{.arg va_polish} must be one non-missing logical value.")
+  }
+  if (!explicit) {
+    if (length(opt_args)) {
+      cli::cli_abort(c(
+        "VA optimiser controls in {.arg optArgs} require an explicit {.arg optimizer}.",
+        ">" = "Name {.code optimizer = \"nlminb\"} or {.code optimizer = \"optim\"} to select a native solver."
+      ))
+    }
+    return(list(requested = "auto", primary = "auto", opt_args = list(),
+                control = list(eval.max = 2000L, iter.max = 2000L),
+                va_polish = va_polish))
+  }
+
+  if (!is.list(opt_args) || (length(opt_args) &&
+      (is.null(names(opt_args)) || any(!nzchar(names(opt_args))) ||
+       anyDuplicated(names(opt_args))))) {
+    cli::cli_abort("{.arg optArgs} must be a uniquely named list for VA optimisation.")
+  }
+  if (identical(optimizer, "nlminb")) {
+    allowed <- c("control", "lower", "upper", "scale")
+    if (length(setdiff(names(opt_args), allowed))) {
+      cli::cli_abort(c(
+        "VA {.val nlminb} does not accept these {.arg optArgs}: {.val {paste(setdiff(names(opt_args), allowed), collapse = ', ')}}.",
+        "i" = "Use only {.code control}, {.code lower}, {.code upper}, and {.code scale}."
+      ))
+    }
+    native_control <- utils::modifyList(
+      list(eval.max = 2000L, iter.max = 2000L), opt_args$control %||% list()
+    )
+    allowed_control <- c("eval.max", "iter.max", "trace", "abs.tol", "rel.tol",
+                         "x.tol", "xf.tol", "step.min", "diff.g")
+    method <- "nlminb"
+  } else if (identical(optimizer, "optim")) {
+    method <- opt_args$method %||% "BFGS"
+    if (!method %in% c("BFGS", "L-BFGS-B")) {
+      cli::cli_abort(c(
+        "VA {.val optim} supports only {.val BFGS} or {.val L-BFGS-B}.",
+        "x" = "Requested method: {.val {method}}."
+      ))
+    }
+    allowed <- c("method", "control", if (identical(method, "L-BFGS-B")) c("lower", "upper"))
+    if (length(setdiff(names(opt_args), allowed))) {
+      cli::cli_abort(c(
+        "VA {.val optim} does not accept these {.arg optArgs}: {.val {paste(setdiff(names(opt_args), allowed), collapse = ', ')}}.",
+        "i" = "The primary solver does not use a Hessian argument; L-BFGS-B alone accepts bounds."
+      ))
+    }
+    native_control <- utils::modifyList(
+      list(maxit = 2000L), opt_args$control %||% list()
+    )
+    allowed_control <- if (identical(method, "BFGS")) {
+      c("trace", "fnscale", "parscale", "ndeps", "maxit", "abstol", "reltol",
+        "alpha", "beta", "gamma", "REPORT", "type")
+    } else {
+      c("trace", "fnscale", "parscale", "ndeps", "maxit", "abstol", "factr",
+        "pgtol", "lmm", "REPORT")
+    }
+  } else {
+    cli::cli_abort("VA {.arg optimizer} must be {.val nlminb} or {.val optim}.")
+  }
+
+  if (!is.list(native_control) || (length(native_control) &&
+      (is.null(names(native_control)) || any(!nzchar(names(native_control))) ||
+       anyDuplicated(names(native_control))))) {
+    cli::cli_abort("The native optimiser {.arg control} must be a uniquely named list.")
+  }
+  bad_control <- setdiff(names(native_control), allowed_control)
+  if (length(bad_control)) {
+    cli::cli_abort(c(
+      "Unsupported native control for {.val {method}}: {.val {paste(bad_control, collapse = ', ')}}.",
+      ">" = "Use controls accepted by the selected native R optimiser."
+    ))
+  }
+  for (name in names(native_control)) {
+    value <- native_control[[name]]
+    vector_control <- name %in% c("parscale", "ndeps")
+    malformed <- if (vector_control) {
+      !is.numeric(value) || !length(value) || anyNA(value) || any(!is.finite(value))
+    } else {
+      !(is.numeric(value) || is.logical(value)) || length(value) != 1L ||
+        is.na(value) || (is.numeric(value) && !is.finite(value))
+    }
+    if (malformed) {
+      cli::cli_abort("Native optimiser control {.arg {name}} has an invalid type, length, or non-finite value.")
+    }
+  }
+  for (name in intersect(c("lower", "upper", "scale"), names(opt_args))) {
+    value <- opt_args[[name]]
+    if (!is.numeric(value) || !length(value) || anyNA(value) ||
+        any(!is.finite(value) & !(name %in% c("lower", "upper") & is.infinite(value)))) {
+      cli::cli_abort(paste0("VA optArgs$", name,
+                            " must be a non-empty numeric vector with valid bounds/scale values."))
+    }
+  }
+  if ("scale" %in% names(opt_args) && any(opt_args$scale <= 0)) {
+    cli::cli_abort("VA {.arg optArgs$scale} entries must be positive.")
+  }
+  if (identical(method, "optim")) {
+    for (name in intersect(c("fnscale", "parscale", "ndeps"), names(native_control))) {
+      value <- native_control[[name]]
+      if (!is.numeric(value) || !length(value) || anyNA(value) ||
+          any(!is.finite(value)) || any(value <= 0)) {
+        cli::cli_abort("Native optimiser control {.arg {name}} must contain positive finite numeric values.")
+      }
+    }
+    for (name in intersect(c("maxit", "trace", "REPORT", "type", "lmm"), names(native_control))) {
+      value <- native_control[[name]]
+      if (!is.numeric(value) || length(value) != 1L || is.na(value) ||
+          !is.finite(value) || value < 0 || value != as.integer(value)) {
+        cli::cli_abort("Native optimiser control {.arg {name}} must be one non-negative integer.")
+      }
+    }
+  }
+
+  list(requested = if (identical(optimizer, "optim")) method else "nlminb",
+       primary = if (identical(optimizer, "optim")) {
+         if (identical(method, "BFGS")) "bfgs" else "lbfgsb"
+       } else "nlminb",
+       opt_args = opt_args, control = native_control, va_polish = va_polish)
+}
+
 ## Resolve family / link vectors for the fence and VA engine (Design 108 Stage 2).
 ## Mixed families are admitted when every row maps to a fenced VA family/link.
 .va_route_family_link <- function(family_per_row, family_id_vec, link_id_vec) {
@@ -239,7 +372,13 @@
                                offset_expr, REML = FALSE,
                                lambda_constraint = NULL, Xcoef_fixed = NULL,
                                engine = "tmb", call = NULL,
-                               va_H = 7L, va_eval_method = "auto") {
+                               va_H = 7L, va_eval_method = "auto",
+                               optimizer = "nlminb", optimizer_explicit = FALSE,
+                               optArgs = list(), va_polish = TRUE) {
+  optimizer_spec <- .va_route_optimizer_spec(list(
+    optimizer = optimizer, optimizer_explicit = optimizer_explicit,
+    optArgs = optArgs, va_polish = va_polish
+  ))
   covstructs <- parsed$covstructs
   rr_idx <- .va_route_ordinary_rr_idx(covstructs)
 
@@ -465,15 +604,11 @@
     va_eval_method
   }
 
-  ## KNOWN LIMITATION, recorded rather than guarded. The engine runs its own
-  ## multi-start and optimiser policy, so `gllvmTMBcontrol()`'s search settings
-  ## -- n_init, optimizer, optArgs, start_from, init_*, se -- do not reach it
-  ## and have no effect on this route. They are search settings, not model
-  ## structure: unlike the refusals above, ignoring them cannot change WHICH
-  ## model is fitted, only how it is searched for. They are therefore accepted
-  ## silently rather than made errors, which would break callers who set a
-  ## house-standard control object and switch routes. Documented in
-  ## ?gllvmTMBcontrol under `integration`.
+  ## The VA route keeps its four-start agreement policy, but the primary
+  ## optimiser is selectable through the existing package controls. Omission
+  ## preserves the family registry's auto choice. Secondary solver polishing
+  ## remains on by default for compatibility and can be disabled for direct
+  ## comparisons.
 
   fit <- tryCatch(
     .approximation_engine_fit(
@@ -492,7 +627,12 @@
       ordinal_offset_per_trait = ordinal$ordinal_offset_per_trait,
       ordinal_log_increments_start = ordinal$ordinal_log_increments_start,
       fixed_tweedie_power = fixed_family$tweedie_power,
-      fixed_student_df = fixed_family$student_df
+      fixed_student_df = fixed_family$student_df,
+      optimizer = optimizer_spec$primary,
+      optimizer_args = optimizer_spec$opt_args,
+      optimizer_request = optimizer_spec$requested,
+      va_polish = optimizer_spec$va_polish,
+      control = optimizer_spec$control
     ),
     error = function(e) {
       cli::cli_abort(c(

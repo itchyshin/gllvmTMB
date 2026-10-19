@@ -1,5 +1,10 @@
 # Development (unreleased)
 
+* `engine = "julia"` now refuses, instead of silently ignoring, `weights` for
+  non-binomial families and non-default `gllvmTMBcontrol()` values of
+  `optimizer`, `optArgs`, `init_jitter`, `start_from` and `se`. Each message
+  names the argument and points to `engine = "tmb"` (#1347).
+
 * Zero-truncated Poisson and NB2 likelihoods stay finite when the linear
   predictor is far below zero. The truncation term `log(1 - P(0))` was
   `logspace_sub(0, log P(0))`, whose derivatives grow like `1 / mu^k`: the

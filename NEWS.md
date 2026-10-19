@@ -1,5 +1,10 @@
 # Development (unreleased)
 
+* `predict_cross_covariance()` now accepts `level = "phy"` on a fit with one
+  `kernel_*()` tier, as `extract_Gamma()` and `extract_Sigma()` already did, and
+  returns the same result as the tier's own name (for example `"cross"`).
+  Previously it errored, naming only the tier name (#1578).
+
 * Zero-truncated Poisson and NB2 likelihoods stay finite when the linear
   predictor is far below zero. The truncation term `log(1 - P(0))` was
   `logspace_sub(0, log P(0))`, whose derivatives grow like `1 / mu^k`: the

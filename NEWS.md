@@ -1,5 +1,10 @@
 # Development (unreleased)
 
+* `extract_communality()` and `extract_correlations()` now report the canonical
+  tier name (`"unit"`, `"unit_obs"`) in the `tier` column instead of the
+  deprecated internal code (`"B"`, `"W"`), and `extract_cutpoints()` no longer
+  copies sdreport row names into its result (#1577).
+
 * Zero-truncated Poisson and NB2 likelihoods stay finite when the linear
   predictor is far below zero. The truncation term `log(1 - P(0))` was
   `logspace_sub(0, log P(0))`, whose derivatives grow like `1 / mu^k`: the

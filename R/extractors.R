@@ -298,7 +298,7 @@ extract_communality <- function(
       )
       data.frame(
         trait = trait_names[t],
-        tier = level,
+        tier = .canonical_level_name(level),
         c2 = unname(ci_t["estimate"]),
         lower = unname(ci_t["lower"]),
         upper = unname(ci_t["upper"]),
@@ -326,7 +326,7 @@ extract_communality <- function(
   if (is.null(pe)) {
     return(data.frame(
       trait = trait_names,
-      tier = level,
+      tier = .canonical_level_name(level),
       c2 = out_pe,
       lower = NA_real_,
       upper = NA_real_,
@@ -336,7 +336,7 @@ extract_communality <- function(
   }
   data.frame(
     trait = trait_names,
-    tier = level,
+    tier = .canonical_level_name(level),
     c2 = as.numeric(pe),
     lower = as.numeric(lo),
     upper = as.numeric(hi),
@@ -418,7 +418,7 @@ extract_communality <- function(
   )
   tbl <- data.frame(
     trait = trait_names,
-    tier = level,
+    tier = .canonical_level_name(level),
     c2 = unname(out),
     lower = lower,
     upper = upper,

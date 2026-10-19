@@ -106,7 +106,7 @@ extract_cutpoints <- function(fit, quiet = FALSE) {
     adr <- summary(fit$sd_report, "report")
     rows <- grep("^ordinal_cutpoints$", rownames(adr))
     if (length(rows) == length(taus)) {
-      ses <- adr[rows, "Std. Error"]
+      ses <- unname(adr[rows, "Std. Error"])
     }
   }
   rows <- list()

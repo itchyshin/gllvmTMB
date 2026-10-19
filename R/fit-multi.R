@@ -4471,6 +4471,21 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
           "{fam_label_t}: trait {t} response exceeds inferred K = {Kt}.",
           ">" = "All observed categories must lie in 1..K; check for missing intermediate levels."
         ))
+      ## An intermediate category with no observed rows leaves its cutpoint
+      ## unidentified: the optimiser drives that log-increment to the boundary
+      ## (about -21, SE in the thousands) while convergence and pdHess still
+      ## report success, so the fit looks healthy. Warn at fit time, naming
+      ## the empty codes (refs #1397). Masked rows carry a sentinel y and do
+      ## not count as observed. An unobserved TOP category is not detectable
+      ## from integer codes (K is the largest observed code).
+      obs_t <- as.integer(y[rows_t][!masked_response[rows_t]])
+      empty_cats <- setdiff(seq_len(Kt), obs_t)
+      if (length(empty_cats) > 0L)
+        cli::cli_warn(c(
+          "{fam_label_t}: trait {t} has no observations in {cli::qty(length(empty_cats))}categor{?y/ies} {empty_cats} of 1..{Kt}.",
+          "x" = "The cutpoint(s) around an empty category are not identified; the fit can report a boundary cutpoint (log-increment near -21, huge SE) and still pass convergence checks.",
+          ">" = "Merge the empty category into a neighbour and recode to consecutive integers, e.g. {.code as.integer(factor(y))}."
+        ))
       ordinal_K_per_trait[t]      <- Kt
       n_ordinal_cuts_per_trait[t] <- Kt - 2L
       ordinal_offset_per_trait[t] <- cum_offset

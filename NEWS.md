@@ -1,5 +1,12 @@
 # Development (unreleased)
 
+* Internal cross-validation now scores held-out binomial cells on the log
+  scale from the linear predictor and link (logit, probit, cloglog). The score
+  was recomputed from the response-scale probability, which rounds to exactly 1
+  at probit `eta` of about 8.3 or logit `eta` of about 37, so a held-out miss
+  scored `-Inf` while the fitted kernel stayed finite. Ordinary cells change
+  only by rounding (#1489).
+
 * The `sigma()` refusal methods are now registered from roxygen with
   `@exportS3Method stats::sigma`, matching the `stats::sigma` entries already in
   `NAMESPACE`, so `devtools::document()` no longer rewrites them. Behaviour is

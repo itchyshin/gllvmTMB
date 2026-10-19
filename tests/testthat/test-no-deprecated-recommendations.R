@@ -64,3 +64,45 @@ test_that("no user-facing message recommends a numeric aghq_ridge over loading_r
   }
   expect_equal(offenders, character())
 })
+
+## #1557: keyword deprecation messages must not misfire.
+reset_keyword_deprecation_cache <- function() {
+  seen <- gllvmTMB:::.gllvmTMB_deprecation_seen
+  rm(list = ls(seen, all.names = TRUE), envir = seen)
+}
+
+test_that("documented phylo(1 | g) / spatial(1 | g) forms do not warn about *_scalar() (#1557)", {
+  withr::local_options(gllvmTMB.quiet_grammar_notes = FALSE)
+  reset_keyword_deprecation_cache()
+  expect_no_warning(gllvmTMB:::rewrite_canonical_aliases(
+    value ~ 0 + trait + phylo(1 | species, tree = tree)
+  ))
+  expect_no_warning(gllvmTMB:::rewrite_canonical_aliases(
+    value ~ 0 + trait + spatial(1 | site, mesh = mesh)
+  ))
+  ## The typed soft-deprecated keywords still warn.
+  reset_keyword_deprecation_cache()
+  expect_warning(
+    gllvmTMB:::rewrite_canonical_aliases(value ~ 0 + trait + phylo_scalar(species)),
+    "phylo_scalar"
+  )
+  reset_keyword_deprecation_cache()
+  expect_warning(
+    gllvmTMB:::rewrite_canonical_aliases(
+      value ~ 0 + trait + spatial_scalar(0 + trait | coords, mesh = mesh)
+    ),
+    "spatial_scalar"
+  )
+})
+
+test_that("gr() / legacy phylo() alias messages recommend phylo_indep(common = TRUE) (#1557)", {
+  for (kw in c("gr(species)", "phylo(species)")) {
+    reset_keyword_deprecation_cache()
+    msg <- testthat::capture_messages(
+      gllvmTMB:::scan_for_deprecated(str2lang(kw))
+    )
+    msg <- paste(msg, collapse = "\n")
+    expect_match(msg, "phylo_indep", info = kw)
+    expect_no_match(msg, "phylo_scalar", info = kw)
+  }
+})

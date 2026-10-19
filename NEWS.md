@@ -1,5 +1,13 @@
 # Development (unreleased)
 
+* Keyword deprecation messages no longer misfire. The documented
+  `phylo(1 | g)` and `spatial(1 | g)` forms no longer warn about
+  `phylo_scalar()` / `spatial_scalar()`, which the user never typed; the
+  `gr()` and legacy `phylo(species)` alias messages recommend
+  `phylo_indep(..., common = TRUE)` rather than the soft-deprecated
+  `phylo_scalar()`; and the legacy `spatial(0 + trait | coords)` warning names
+  the deprecated form and is attributed to the caller, not the package (#1557).
+
 * Zero-truncated Poisson and NB2 likelihoods stay finite when the linear
   predictor is far below zero. The truncation term `log(1 - P(0))` was
   `logspace_sub(0, log P(0))`, whose derivatives grow like `1 / mu^k`: the

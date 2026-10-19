@@ -64,7 +64,7 @@
 #'
 #' @export
 plot_loadings_confidence_eye <- function(fit,
-                                         level       = c("unit", "unit_obs"),
+                                         level       = "unit",
                                          method      = "wald",
                                          conf_level  = 0.95,
                                          null_region = NULL,

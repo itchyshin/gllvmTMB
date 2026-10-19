@@ -14,7 +14,8 @@ typically \code{0 + trait}; RHS is the grouping factor).}
 A formula marker; never evaluated.
 }
 \description{
-Canonical no-prefix name for the \strong{one-shared-variance} trait covariance:
+Soft-deprecated; use \code{indep(0 + trait | g, common = TRUE)}. No-prefix
+name for the \strong{one-shared-variance} trait covariance:
 a single variance \eqn{\sigma^2} shared by every trait with zero cross-trait
 covariance, giving \eqn{\boldsymbol\Sigma_T = \sigma^2 \mathbf I_T}. It is the
 most parsimonious mode in the covariance grid.

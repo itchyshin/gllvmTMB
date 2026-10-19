@@ -1762,6 +1762,16 @@ expand_multinomial_response <- function(formula, data, family, trait_col) {
     if (is.null(fam_names)) {
       .gllvmTMB_resolve_unnamed_family_list(fams, fam_levels, fam_var)
     }
+    ## When the family list is keyed by the trait column itself, the expansion
+    ## below rewrites that column into contrast pseudo-traits, so the list is
+    ## checked here, against the user's own trait levels (issue #1575).
+    if (identical(fam_var, trait_col) && length(fam_levels) != length(fams)) {
+      cli::cli_abort(c(
+        "length(family) must match the number of distinct levels in {.var {fam_var}}.",
+        "x" = "Got {length(fams)} famil{?y/ies} for {length(fam_levels)} level{?s}.",
+        ">" = "Supply one family per level of {.var {fam_var}}, e.g. {.code list(<level> = <family>(), ...)}."
+      ))
+    }
     mn_level   <- if (!is.null(fam_names) && all(nzchar(fam_names))) fam_names[mn_pos] else fam_levels[mn_pos]
     mn_rows    <- which(as.character(fam_col) == as.character(mn_level))
     if (length(mn_rows) == 0L) {
@@ -1826,6 +1836,24 @@ expand_multinomial_response <- function(formula, data, family, trait_col) {
     combined[[trait_col]] <- factor(as.character(combined[[trait_col]]),
                                     levels = c(other_lvls, ps_levels))
     rownames(combined) <- NULL
+    ## Family list keyed by the trait column: carry the multinomial entry
+    ## through to each of its K-1 contrast pseudo-traits so the list matches
+    ## the expanded trait levels one-to-one.
+    if (identical(fam_var, trait_col)) {
+      fam_key  <- if (!is.null(fam_names) && all(nzchar(fam_names))) fam_names
+                  else fam_levels
+      new_fam  <- list()
+      for (i in seq_along(fams)) {
+        if (i == mn_pos) {
+          for (lv in ps_levels) new_fam[[lv]] <- fams[[i]]
+        } else {
+          new_fam[[fam_key[i]]] <- fams[[i]]
+        }
+      }
+      new_fam <- new_fam[levels(combined[[trait_col]])]
+      attr(new_fam, "family_var") <- trait_col
+      family <- new_fam
+    }
     return(list(data = combined,
                 family = family, expanded = TRUE,
                 K = K, categories = cats, baseline = cats[1L]))

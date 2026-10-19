@@ -1,5 +1,12 @@
 # Development (unreleased)
 
+* A per-trait family list keyed by the trait column
+  (`attr(fams, "family_var") <- "trait"`) now works when one trait is
+  `multinomial()`. The list is matched against your own trait levels before the
+  categorical response is expanded into contrast pseudo-traits, and the
+  multinomial entry is carried to each of them; a list of the wrong length
+  reports the count of your traits rather than the expanded count (#1575).
+
 * The `sigma()` refusal methods are now registered from roxygen with
   `@exportS3Method stats::sigma`, matching the `stats::sigma` entries already in
   `NAMESPACE`, so `devtools::document()` no longer rewrites them. Behaviour is

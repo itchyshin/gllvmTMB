@@ -1,5 +1,12 @@
 # Development (unreleased)
 
+* A `student()` trait whose degrees of freedom run past the Gaussian limit
+  (`report$df_student` is `Inf` once `log_df` exceeds about 709) is now
+  treated as normal in the link-scale variance summaries and the
+  distribution-argument accessor, instead of warning that the variance is
+  undefined and returning `NA`. Exact residuals and simulation already did
+  this. (#1487)
+
 * The experimental VA route now honors the package's existing `optimizer` and
   `optArgs` controls for its four primary starts. Omitted `optimizer` keeps the
   family registry's automatic choice; explicit `nlminb` pins that solver, and

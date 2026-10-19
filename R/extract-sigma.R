@@ -275,7 +275,11 @@ link_residual_per_trait <- function(fit) {
       df_vec <- as.numeric(fit$report$df_student %||% rep(Inf, Tn))
       sigma_t <- if (length(sigma_vec) >= t) sigma_vec[t] else sigma_vec[1]
       df_t <- if (length(df_vec) >= t) df_vec[t] else df_vec[1]
-      if (is.finite(df_t) && df_t > 2) {
+      if (isTRUE(df_t == Inf)) {
+        ## df = Inf is the Gaussian limit (report$df_student overflows to
+        ## Inf past log_df ~ 709): the variance is sigma^2 (#1487).
+        out[t] <- sigma_t^2
+      } else if (is.finite(df_t) && df_t > 2) {
         out[t] <- sigma_t^2 * df_t / (df_t - 2)
       } else {
         warning(

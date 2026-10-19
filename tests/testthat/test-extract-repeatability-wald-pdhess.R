@@ -18,6 +18,13 @@ make_nonpd_repeatability_fit <- function(seed = 1, nu = 15, nr = 2, nt = 4) {
   )))
 }
 
+## The optimiser's own covariance is NaN on some BLAS builds (CI), so the
+## finite-covariance cases pin a finite one rather than rely on the fit.
+finite_cov <- function(fit) {
+  k <- nrow(fit$sd_report$cov.fixed)
+  diag(1e-3, k)
+}
+
 test_that("Wald repeatability errors when the covariance is all non-finite", {
   fit <- make_nonpd_repeatability_fit()
   ## The NaN covariance of the issue's seed-7 fit is BLAS-dependent, so
@@ -32,6 +39,7 @@ test_that("Wald repeatability errors when the covariance is all non-finite", {
 
 test_that("Wald repeatability warns, naming pdHess, on a finite non-PD Hessian", {
   fit <- make_nonpd_repeatability_fit()
+  fit$sd_report$cov.fixed <- finite_cov(fit)
   fit$sd_report$pdHess <- FALSE
   expect_warning(
     out <- extract_repeatability(fit, method = "wald"),
@@ -48,6 +56,7 @@ test_that("Wald repeatability warns, naming pdHess, on a finite non-PD Hessian",
 
 test_that("Wald repeatability is silent when the Hessian is positive-definite", {
   fit <- make_nonpd_repeatability_fit()
+  fit$sd_report$cov.fixed <- finite_cov(fit)
   fit$sd_report$pdHess <- TRUE
   expect_no_warning(extract_repeatability(fit, method = "wald"))
 })

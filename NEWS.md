@@ -1,5 +1,13 @@
 # Development (unreleased)
 
+* `engine = "julia"` with no `latent()` term now stops with
+  `[GJL-GATE-NO-LATENT]` for every non-Gaussian family except NB2. GLLVModels.jl
+  returned `logLik = -Inf` and `converged = FALSE` for Poisson, binomial, nb1,
+  beta, Gamma and ordinal fits at latent rank 0, and R passed the object back
+  with no error. NB2 matches `engine = "tmb"` there and is unchanged; Gaussian
+  already refused inside Julia. Add a `latent()` term or use `engine = "tmb"`
+  (#1562).
+
 * Zero-truncated Poisson and NB2 likelihoods stay finite when the linear
   predictor is far below zero. The truncation term `log(1 - P(0))` was
   `logspace_sub(0, log P(0))`, whose derivatives grow like `1 / mu^k`: the

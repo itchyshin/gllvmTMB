@@ -58213,3 +58213,19 @@ Core blocker tests:214pass/0fail/error/warn/skip in35.8s; existing shard selecti
 Integration refresh: main advanced tocedf274 (10alreadymergedcommits). Clean merge preserved main fixes and task response helpers; independent review checked bootstrap-sigma/extract-omega overlap. Combined targeted tests162pass/0fail/error/skip,1tiny-Bwarning,53.1s. Fresh exact-head standard+four-heavyCI required before any authorized landing. Original0ebe five-run green evidence retained separately.
 
 2026-10-17 integration: main advanced10commits tocedf274. Cleanmerge into task branch preserves alreadymergedwork; noactualconflicts(gertcommitFALSEmessagewasmisleading, git_conflicts0rows). Independentoverlapreviewpass. Relevantlocalintegrationtests162pass/0fail/error/skip,1tiny-Bwarning,53.1s; pkgdownNo problems,allRparse. Fresh5CIrunsrequiredatnewcombinedhead; nooldgreen-headcertificationofnewbase.
+
+## 2026-10-19 — README optimizer-selection example
+
+Added a discovery-table link and concise VA primary-optimizer controls to README.md. The sample uses the documented nlminb and optim/BFGS APIs, disables VA polishing to isolate the primary solver, calls for the same seed before each fit, and says native iteration budgets are not equal effort. It keeps VA labelled experimental and makes no convergence or accuracy claim. The complete fit comparison and returned diagnostics remain in gllvmTMBcontrol() help.
+
+Base: fresh GitHub origin/main a674f29fb4f87f9e12558c372ca2417015025b34. Checks: extracted README R block executed after devtools::load_all() from source and passed assertions for both controls and their optimizer, method, iteration-limit, and va_polish fields; pkgdown::check_pkgdown() reported “No problems found” (existing Pandoc --mathml deprecation notices only); the targeted after-task structure validator passed. No model fits or package tests were run because only README prose changed.
+
+Consistency scans (exact patterns and scope):
+- rg "\bS_B\b|\bS_W\b|\\bf S" . — existing matches occur outside README; no hit in the edited README.
+- rg -n "gllvmTMB\(" R vignettes README.md NEWS.md docs/design — existing README calls include wide form and the long-form example has trait = "trait"; the new section only names the API and adds no model call.
+- rg "in prep|in preparation" docs vignettes — matches are outside README; no new foundational or in-prep claim was added.
+- rg "\bphylo\(|\bgr\(|\bmeta\(|block_V\(|phylo_rr\(" vignettes — existing vignette matches only; no README hit.
+- rg "meta_known_V" README.md NEWS.md docs vignettes — existing matches are outside README; no README hit.
+- rg "gllvmTMB_wide" README.md NEWS.md docs vignettes — existing matches are outside README; no README hit.
+
+No likelihood, API, formula grammar, family, generated Rd, article, or pkgdown navigation change.

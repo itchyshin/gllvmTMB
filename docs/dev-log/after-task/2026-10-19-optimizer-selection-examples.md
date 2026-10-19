@@ -26,13 +26,13 @@ Kept the README snippet to control objects so it remains short and can be applie
 
 ## 5. Checks Run
 
-- python3 /Users/z3437171/shinichi-brain/tools/route.py gllvmTMB — loaded the gllvmTMB LOAD-FIRST manifest.
-- bash /Users/z3437171/shinichi-brain/tools/lane_preflight.sh /Users/z3437171/Dropbox/Github Local/gllvmTMB — reported no recent active local branches; the PR line was “none (or gh not authenticated)” and therefore did not confirm the open-PR inventory; origin/main had one recent commit at that time.
+- python3 /Users/z3437171/shinichi-brain/tools/route.py gllvmTMB: loaded the gllvmTMB LOAD-FIRST manifest.
+- bash /Users/z3437171/shinichi-brain/tools/lane_preflight.sh /Users/z3437171/Dropbox/Github Local/gllvmTMB: reported no recent active local branches; the PR line was “none (or gh not authenticated)” and therefore did not confirm the open-PR inventory; origin/main had one recent commit at that time.
 - Lease readback: the live lease covered README.md, docs/dev-log/check-log.md, and this report path before editing.
-- GitHub refresh in the isolated clone — fetched live origin/main at a674f29fb4f87f9e12558c372ca2417015025b34; replayed the README draft and confirmed a clean base before edits.
-- Extracted the README R block and ran it after devtools::load_all() from the current source — both control objects passed assertions for optimizer, optArgs, eval.max, method, and va_polish fields; no fit was run.
-- pkgdown::check_pkgdown() — “No problems found”; emitted existing Pandoc --mathml deprecation notices.
-- source("/Users/z3437171/shinichi-brain/tools/check-after-task.R"); check_after_task(report) — structure check passed, including required headings and section 12 negative-space marker.
+- GitHub refresh in the isolated clone: fetched live origin/main at a674f29fb4f87f9e12558c372ca2417015025b34; replayed the README draft and confirmed a clean base before edits.
+- Extracted the README R block and ran it after devtools::load_all() from the current source: both control objects passed assertions for optimizer, optArgs, eval.max, method, and va_polish fields; no fit was run.
+- pkgdown::check_pkgdown(): “No problems found”; emitted existing Pandoc --mathml deprecation notices.
+- source("/Users/z3437171/shinichi-brain/tools/check-after-task.R"); check_after_task(report): structure check passed, including required headings and section 12 negative-space marker.
 - No model fits or package tests were run; this is a README-only user-facing change.
 
 An initial check against the installed package was discarded as evidence because that installation predates these controls and warned that the arguments were ignored. The source-level check above supersedes it.
@@ -43,12 +43,12 @@ No tests were added or changed. Constructor checks confirmed the displayed contr
 
 ## 8. Consistency Audit
 
-- rg "\bS_B\b|\bS_W\b|\\bf S" . — existing matches are outside the edited README; no hit in the new section.
-- rg -n "gllvmTMB\(" R vignettes README.md NEWS.md docs/design — existing README wide and long calls remain; the long-format call includes trait = "trait". The new section has no model call.
-- rg "in prep|in preparation" docs vignettes — matches are outside README; no new literature claim was added.
-- rg "\bphylo\(|\bgr\(|\bmeta\(|block_V\(|phylo_rr\(" vignettes — existing vignette matches; no README hit.
-- rg "meta_known_V" README.md NEWS.md docs vignettes — existing matches outside README; no README hit.
-- rg "gllvmTMB_wide" README.md NEWS.md docs vignettes — existing matches outside README; no README hit.
+- rg "\bS_B\b|\bS_W\b|\\bf S" .: existing matches are outside the edited README; no hit in the new section.
+- rg -n "gllvmTMB\(" R vignettes README.md NEWS.md docs/design: existing README wide and long calls remain; the long-format call includes trait = "trait". The new section has no model call.
+- rg "in prep|in preparation" docs vignettes: matches are outside README; no new literature claim was added.
+- rg "\bphylo\(|\bgr\(|\bmeta\(|block_V\(|phylo_rr\(" vignettes: existing vignette matches; no README hit.
+- rg "meta_known_V" README.md NEWS.md docs vignettes: existing matches outside README; no README hit.
+- rg "gllvmTMB_wide" README.md NEWS.md docs vignettes: existing matches outside README; no README hit.
 - Register boundary: the prose presents optimizer controls on the experimental VA route, with the route admission and boundary traceable internally to VA-01 and VA-02. It does not generalize optimizer performance or VA recovery.
 
 ## 7. Roadmap Tick
@@ -61,7 +61,7 @@ The targeted gh issue list --state open --search 'VA optimizer' --limit 20 reque
 
 ## 9. What Did Not Go Smoothly
 
-The first local clone inherited a stale local main reference. It was refreshed from GitHub in the isolated clone and rebased to current main before the final checks. The installed R package was also stale; its constructor result was discarded and replaced by a source-level check.
+The first local clone inherited a stale local main reference. It was refreshed from GitHub in the isolated clone and rebased to current main before the final checks. The installed R package was also stale; its constructor result was discarded and replaced by a source-level check. Relative paths made the prose checker resolve against the brain repository, so it was rerun with absolute paths to this checkout.
 
 ## 11. Team Learning
 

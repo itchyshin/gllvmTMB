@@ -58228,4 +58228,4 @@ Consistency scans (exact patterns and scope):
 - rg "meta_known_V" README.md NEWS.md docs vignettes — existing matches are outside README; no README hit.
 - rg "gllvmTMB_wide" README.md NEWS.md docs vignettes — existing matches are outside README; no README hit.
 
-No likelihood, API, formula grammar, family, generated Rd, article, or pkgdown navigation change.
+Absolute-path slop check covered README, check-log, report, and PR body; no file exceeded the review threshold. No likelihood, API, formula grammar, family, generated Rd, article, or pkgdown navigation change.

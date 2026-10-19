@@ -1636,9 +1636,7 @@ simulate.gllvmTMB_multi <- function(
   }
   nsim <- as.integer(nsim_value)
 
-  if (!is.null(seed)) {
-    set.seed(seed)
-  }
+  .gllvmTMB_local_seed(seed)
 
   if (isTRUE(object$temporal$active) && is.null(newdata)) {
     if (isTRUE(condition_on_RE)) {

@@ -3590,8 +3590,10 @@ Type objective_function<Type>::operator()()
         ll += log_choose + y(o) * log_p1 + (n_trials(o) - y(o)) * log_p0;
       }
     } else if (fid == 2) {
-      // Poisson, log link
-      ll += dpois(y(o), exp(eta_o), true);
+      // Poisson, log link, on the eta scale (#1603): dpois(y, exp(eta))
+      // forms y log(exp(eta)), which is y log(0) = -Inf once exp(eta)
+      // underflows, although the row is a finite y eta - exp(eta) - lgamma(y+1).
+      ll += y(o) * eta_o - exp(eta_o) - lgamma(y(o) + Type(1.0));
     } else if (fid == 3) {
       // Lognormal, log link
       // y > 0 strictly. log(y) ~ Normal(eta, sigma_eps); add Jacobian -log(y).
@@ -3871,7 +3873,8 @@ Type objective_function<Type>::operator()()
       if (asDouble(y(o)) == 0.0) {
         ll += logspace_add(log_zi, log_one_minus_zi - mu);   // dpois(0,mu,log=T) = -mu
       } else {
-        ll += log_one_minus_zi + dpois(y(o), mu, true);
+        // dpois(y, mu, log=T) on the eta scale (#1603), as fid 2.
+        ll += log_one_minus_zi + y(o) * eta_o - mu - lgamma(y(o) + Type(1.0));
       }
     } else if (fid == 18) {
       // zi_nbinom2: same mixture, NB2 count kernel. REUSES log_phi_nbinom2
@@ -3925,7 +3928,8 @@ Type objective_function<Type>::operator()()
       if (C > Type(0.0)) {
         ll += log(pgamma(mu, C, Type(1.0)));
       } else {
-        ll += dpois(y(o), mu, true);
+        // Uncensored row: dpois(y, mu, log=T) on the eta scale (#1603).
+        ll += y(o) * eta_o - mu - lgamma(y(o) + Type(1.0));
       }
     } else {
       error("gllvmTMB_multi: unknown family_id");

@@ -69,6 +69,27 @@ Cloud session, R 4.5.3 (conda-forge), TMB 1.9.23, roxygen2 8.1.0.
   churn came from roxygen2 8.1.0 against the pinned 8.0.0, and I reverted it.
 - `tools/check-reader-surface.sh`: PASS.
 
+### Reviewer fixes (18 Oct)
+
+Local Mac, R 4.6, roxygen2 8.0.0, BLAS threads capped at 1.
+- Each of the nine test blocks in `test-bootstrap-unit-obs-1393.R` now
+  starts with `skip_on_cran()`, because every block fits a model. With
+  `NOT_CRAN=false` all nine skip (1.6 s). In the full suite they pass:
+  53 expectations, 0 failed, about 19 s.
+- The PR title now says "Closes #1393", as the body does. The overlap note
+  records that #1507 and #1501 merged on 17 Oct, and that #1543 still merges
+  onto this head without conflict (`git merge-tree`).
+- `devtools::test()`, full suite: 690 files, 29,800 expectations passed,
+  887 skipped, 18 failed and 1 error in 9 files. Run alone in clean
+  worktrees, those 9 files give the same failures, test by test, on
+  `origin/main` (`55f41d27`) and on this head. The error comes from a pinned
+  commit (`822024b1`) that this clone does not have.
+- #1507's `test-bootstrap-binomial-response.R` on the rebased branch:
+  69 expectations, 0 failed.
+- `devtools::document()`: no `man/` change. It rewrote
+  `S3method(stats::sigma, ...)` as `S3method(sigma, ...)` in `NAMESPACE`,
+  with roxygen2 8.0.0 too. `NAMESPACE` here matches `main`, so I reverted it.
+
 ## Follow-up
 - #1507 (binomial trial totals and missing-response masks) has merged. In the
   rebase onto main, `bootstrap_Sigma()` calls `.bootstrap_refit_args()` first,

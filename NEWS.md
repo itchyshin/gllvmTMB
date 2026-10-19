@@ -1,5 +1,10 @@
 # Development (unreleased)
 
+* `compare_dep_vs_two_psi()` and `compare_indep_vs_two_psi()` no longer warn
+  "Unused optional grouping argument(s): unit_obs" on every call. The refit
+  now passes `unit_obs` only when the generated alternative formula uses that
+  column (#1568).
+
 * Zero-truncated Poisson and NB2 likelihoods stay finite when the linear
   predictor is far below zero. The truncation term `log(1 - P(0))` was
   `logspace_sub(0, log P(0))`, whose derivatives grow like `1 / mu^k`: the

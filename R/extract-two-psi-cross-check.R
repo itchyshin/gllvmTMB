@@ -293,11 +293,15 @@
     data = inputs$data,
     trait = inputs$trait,
     unit = inputs$unit,
-    unit_obs = inputs$unit_obs %||% "site_species",
     cluster = inputs$cluster,
     family = inputs$family,
     silent = silent
   )
+  ## The generated alt formulas group by the cluster column only, so pass
+  ## unit_obs just when the formula actually uses that column (#1568).
+  if (!is.null(inputs$unit_obs) && inputs$unit_obs %in% all.vars(alt_form)) {
+    call_args$unit_obs <- inputs$unit_obs
+  }
   if (!is.null(inputs$phylo_vcv)) {
     call_args$phylo_vcv <- inputs$phylo_vcv
   }

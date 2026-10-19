@@ -455,6 +455,7 @@ test_that("R's beta-binomial CDF (residuals) agrees with the exact pmf at large 
 }
 
 test_that("zero-truncated Poisson and NB2 stay finite deep in the left tail of eta (#1483)", {
+  skip_on_cran()
   df <- .count_fixture(1483, truncated = TRUE)
   y <- df$value
   tr <- as.integer(df$trait)

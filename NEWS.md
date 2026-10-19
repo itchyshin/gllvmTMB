@@ -1,5 +1,12 @@
 # Development (unreleased)
 
+* `simulate_site_trait()` builds its long-format data frame from preallocated
+  columns instead of one `data.frame()` per row joined by `rbind()`, so 1.5k
+  rows take a few milliseconds rather than about 0.3 s. Values, factor
+  levels and the random-number draw order are unchanged; the old `rbind()`
+  could leave scrambled character row names on larger outputs, which are now
+  plain `1..n` (#1581).
+
 * Zero-truncated Poisson and NB2 likelihoods stay finite when the linear
   predictor is far below zero. The truncation term `log(1 - P(0))` was
   `logspace_sub(0, log P(0))`, whose derivatives grow like `1 / mu^k`: the

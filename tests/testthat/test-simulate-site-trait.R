@@ -250,3 +250,57 @@ test_that("simulate_site_trait(): n_traits = 1 produces a single-trait dataset",
                            mean_species_per_site = 3, seed = 1)
   expect_equal(nlevels(s$data$trait), 1L)
 })
+
+# ---- output is unchanged by the vectorised row builder (#1581) -----------
+## Hashes were recorded from the per-row data.frame + rbind implementation.
+## Values are rounded to 8 digits so BLAS differences cannot trip the check;
+## the RNG draw order and every column, type and level must match exactly.
+## Row names are reset: the old rbind could leave scrambled character row
+## names (e.g. "1", "110", "111", ...) on larger outputs, which are not data.
+
+test_that("simulate_site_trait(): output is identical to the per-row builder (#1581)", {
+  hash_sim <- function(r) {
+    rownames(r$data) <- NULL
+    r$data$value <- round(r$data$value, 8)
+    r$truth <- lapply(r$truth, function(x) if (is.numeric(x)) round(x, 8) else x)
+    rlang::hash(r)
+  }
+  shapes <- list(
+    a = list(n_sites = 30, n_species = 8, n_traits = 3,
+             mean_species_per_site = 4, seed = 11),
+    b = list(n_sites = 20, n_species = 6, n_traits = 1,
+             mean_species_per_site = 3, seed = 12),
+    c = list(n_sites = 25, n_species = 7, n_traits = 2,
+             mean_species_per_site = 3, alpha = c(0, 1),
+             beta = matrix(c(.3, -.2, .1, .4), 2, 2), seed = 13),
+    d = list(n_sites = 20, n_species = 6, n_traits = 3,
+             mean_species_per_site = 3,
+             Lambda_W = matrix(c(.8, .5, .2), 3, 1), psi_W = c(.2, .3, .4),
+             Lambda_B = matrix(c(.6, .4, .3), 3, 1), psi_B = .1,
+             sigma2_sp = .3, seed = 14),
+    e = list(n_sites = 15, n_species = 5, n_traits = 2,
+             mean_species_per_site = 2, spatial_range = .5, sigma2_spa = .4,
+             sigma2_phy = .5, Cphy = diag(5), seed = 15),
+    f = list(n_sites = 10, n_species = 1, n_traits = 2,
+             mean_species_per_site = 1, seed = 16)
+  )
+  expected <- c(a = "5ee364ee4484255ecaee722216cf8c02",
+                b = "1ae44311907300f1e6432af46a50df0e",
+                c = "d681c265d463ebb3777cb77562dfa089",
+                d = "8322fd14fd44bc4319d8dda567006703",
+                e = "63d2174e7936e4cf3967976a884fecda",
+                f = "211346a7d80f3fb07d531c4581525e93")
+  got <- vapply(shapes, function(a) hash_sim(do.call(simulate_site_trait, a)),
+                character(1))
+  expect_identical(got, expected)
+})
+
+test_that("simulate_site_trait(): 1.5k rows build quickly (#1581)", {
+  skip_on_cran()
+  el <- system.time(
+    s <- simulate_site_trait(n_sites = 100, n_species = 20, n_traits = 3,
+                             mean_species_per_site = 5, seed = 1)
+  )[["elapsed"]]
+  expect_gt(nrow(s$data), 1000)
+  expect_lt(el, 0.15)
+})

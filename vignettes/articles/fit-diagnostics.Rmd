@@ -336,8 +336,10 @@ reducing coverage. The negative effect in the weak-loading Poisson condition
 with 100 units retained about 91% coverage at every setting. The study does
 not establish general 95% coverage, and its predictor-informed rank-two
 results do not certify intercept-only ordination or latent-score intervals.
-[The retained study record](https://github.com/itchyshin/gllvmTMB/tree/main/docs/dev-log/research/2026-10-18-loading-ridge-comparison)
-gives all condition-specific denominators, uncertainty and provenance.
+[Download the aggregated study tables and fixed-truth data generator](../loading-ridge-study-2026-10-18.zip)
+for the condition-specific results, uncertainty summaries and provenance.
+The archive contains aggregate tables, not raw fits or the complete fitting
+materials.
 
 ### Compare the same model in either data shape
 

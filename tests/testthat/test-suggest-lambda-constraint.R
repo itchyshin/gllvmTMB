@@ -226,5 +226,12 @@ test_that("profile_retention refits emit no unused-argument or alias notes (#158
   )
   expect_false(any(grepl("deprecated alias", msgs)))
   expect_equal(dim(res$constraint), c(n_t, 2L))
-  expect_true(all(res$constraint[!is.na(res$constraint)] == 0))
+  ## Equality with the result of the pre-fix route (rr() + diag() refits):
+  ## t4-t6 are pinned in f1; every other entry stays free. An all-NA matrix
+  ## means the refits errored and were skipped silently, so guard that too.
+  expected <- matrix(NA_real_, n_t, 2L, dimnames = dimnames(res$constraint))
+  expected[4:6, 1L] <- 0
+  expect_true(any(res$constraint == 0, na.rm = TRUE))
+  expect_equal(res$constraint, expected)
+  expect_match(res$note, "Tested 9 entries; 2 skipped", fixed = TRUE)
 })

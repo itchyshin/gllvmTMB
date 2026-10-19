@@ -10,7 +10,9 @@
 ##   * `rr` + the auto-added Psi (`.auto_unique`) on one grouping -> `latent(d)`;
 ##   * `rr` with no `diag` on its grouping -> `latent(d, unique = FALSE)`;
 ##   * a lone `diag` -> `indep()`.
-## Anything else (e.g. an explicit user `rr` + `diag` pair, which `latent()`
+## The parser-added `lhs_form = "intercept_only"` tag is dropped on rewritten
+## terms (`latent()` / `indep()` reject it and it is re-derived on parse); a
+## term with any other `lhs_form` is left as stored. Anything else (e.g. an explicit user `rr` + `diag` pair, which `latent()`
 ## cannot express) is left as stored.
 .slc_refit_formula <- function(fit) {
   cs_all <- fit$covstructs
@@ -18,14 +20,20 @@
   kind <- vapply(cs_all, function(cs) cs$kind, "")
   auto <- vapply(cs_all, function(cs) isTRUE(cs$extra$.auto_unique), logical(1))
   keep <- rep(TRUE, length(cs_all))
+  plain <- function(cs) {
+    is.null(cs$extra$lhs_form) || identical(cs$extra$lhs_form, "intercept_only")
+  }
   for (i in seq_along(cs_all)) {
     cs <- cs_all[[i]]
+    if (!plain(cs)) {
+      next
+    }
     if (kind[i] == "rr" && !any(startsWith(names(cs$extra), "."))) {
       partner <- which(kind == "diag" & grp == grp[i])
       if (length(partner) == 0L) {
         cs$extra$unique <- FALSE
         cs$kind <- "latent"
-      } else if (all(auto[partner])) {
+      } else if (all(auto[partner]) && all(vapply(cs_all[partner], plain, TRUE))) {
         cs$kind <- "latent"
         keep[partner] <- FALSE
       }
@@ -33,6 +41,9 @@
       kind[i] == "diag" && !auto[i] && !any(kind == "rr" & grp == grp[i])
     ) {
       cs$kind <- "indep"
+    }
+    if (cs$kind %in% c("latent", "indep")) {
+      cs$extra$lhs_form <- NULL
     }
     cs_all[[i]] <- cs
   }

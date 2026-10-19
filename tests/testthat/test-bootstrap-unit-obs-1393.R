@@ -80,6 +80,7 @@ site_trait_1393 <- function() {
 }
 
 test_that("bootstrap_Sigma() refits a custom unit_obs fit (#1393)", {
+  skip_on_cran()
   fit <- unit_obs_1393_fit()
   res <- boot_1393(fit, n_boot = 3, level = c("unit", "unit_obs"),
                    what = "Sigma")
@@ -93,6 +94,7 @@ test_that("bootstrap_Sigma() refits a custom unit_obs fit (#1393)", {
 })
 
 test_that("bootstrap_Sigma() warns when every refit fails (#1393)", {
+  skip_on_cran()
   fit <- unit_obs_1393_fit()
   res <- testthat::with_mocked_bindings(
     gllvmTMB = function(...) stop("refit exploded on purpose"),
@@ -115,6 +117,7 @@ test_that("bootstrap_Sigma() warns when every refit fails (#1393)", {
 })
 
 test_that("the all-failed warning quotes a whole error header (#1393)", {
+  skip_on_cran()
   fit <- unit_obs_1393_fit()
   header <- paste(
     "A refit failure header long enough to be wrapped at the console width",
@@ -153,6 +156,7 @@ test_that("the all-failed warning quotes a whole error header (#1393)", {
 })
 
 test_that("bootstrap_Sigma() reports attrition for matrix summaries (#1393)", {
+  skip_on_cran()
   fit <- unit_obs_1393_fit()
   real_gllvmTMB <- gllvmTMB
   calls <- 0L
@@ -175,6 +179,7 @@ test_that("bootstrap_Sigma() reports attrition for matrix summaries (#1393)", {
 })
 
 test_that("the refit argument table covers every gllvmTMB() argument (#1393)", {
+  skip_on_cran()
   fit <- unit_obs_1393_fit()
   expect_setequal(
     names(.bootstrap_refit_arg_table(fit)),
@@ -183,6 +188,7 @@ test_that("the refit argument table covers every gllvmTMB() argument (#1393)", {
 })
 
 test_that("bootstrap refits reproduce the original fit (#1393)", {
+  skip_on_cran()
   ## Custom unit_obs (the reported case).
   expect_refit_reproduces_1393(unit_obs_1393_fit())
 
@@ -250,6 +256,7 @@ test_that("bootstrap refits reproduce the original fit (#1393)", {
 })
 
 test_that("bootstrap refits reproduce a lone phylo_indep() fit (#1393)", {
+  skip_on_cran()
   skip_if_not_installed("ape")
   set.seed(126)
   n_sp <- 20
@@ -270,6 +277,7 @@ test_that("bootstrap refits reproduce a lone phylo_indep() fit (#1393)", {
 })
 
 test_that("bootstrap refits reproduce a two-kernel fit (#1393)", {
+  skip_on_cran()
   ## Each kernel_latent() term is stored as phylo_rr(); the refit formula
   ## used to wrap its species bar twice, so every refit of a fit with two
   ## named kernels failed.
@@ -320,6 +328,7 @@ refuse_1393 <- function(fit) {
 }
 
 test_that("bootstrap_Sigma() refuses fits whose inputs it cannot recover (#1393)", {
+  skip_on_cran()
   ## meta_V(): the fitted object does not keep the known_V matrix.
   set.seed(131)
   ## Kept small: on the unfixed code each refit spends seconds parsing the

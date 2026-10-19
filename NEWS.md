@@ -1,5 +1,10 @@
 # Development (unreleased)
 
+* `slope_sd_ci()`: the print method no longer calls a loadings-only total
+  "UNIQUE (Psi) ... only" (it decides from the `component` column, not an
+  attribute), and the refusal for a fit with no random slopes recommends a
+  `latent()` slope term instead of `indep()`, which refuses slopes (#1589).
+  The `scale = "variance"` behaviour of `total_sd` is unchanged here.
 * Zero-truncated Poisson and NB2 likelihoods stay finite when the linear
   predictor is far below zero. The truncation term `log(1 - P(0))` was
   `logspace_sub(0, log P(0))`, whose derivatives grow like `1 / mu^k`: the

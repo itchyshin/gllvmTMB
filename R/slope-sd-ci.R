@@ -514,7 +514,7 @@ slope_sd_ci <- function(fit, level = 0.95, scale = c("sd", "variance")) {
       return(.slope_sd_ci_loadings_only(fit, level, scale, pd_ok))
     cli::cli_abort(c(
       "Fit has no augmented random-slope structure ({.code theta_diag_B_slope}, {.code theta_rr_B_slope}, or {.code theta_dep_chol}) to summarise.",
-      "i" = "Refit with a {.fn latent} or {.fn indep} term of the form {.code (0 + trait + (0 + trait):x | unit, d = K)}, or a {.fn phylo_dep} / {.fn phylo_indep} random-regression term."
+      "i" = "Refit with a {.fn latent} term of the form {.code (0 + trait + (0 + trait):x | unit, d = K)}, or a {.fn phylo_dep} / {.fn phylo_indep} random-regression term."
     ))
   }
 
@@ -666,7 +666,7 @@ print.gllvmTMB_slope_ci <- function(x, ...) {
     "the applicable validation boundary.",
     sep = "\n"
   )
-  if (isTRUE(attr(x, "rr_B_slope_present"))) {
+  if (any(x$component == "unique_psi")) {
     cat(
       "This fit also has a shared random-slope loadings component",
       "(theta_rr_B_slope); `estimate` is the per-trait UNIQUE (Psi)",

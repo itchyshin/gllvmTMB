@@ -1,5 +1,19 @@
 # Development (unreleased)
 
+* The experimental VA route now honors the package's existing `optimizer` and
+  `optArgs` controls for its four primary starts. Omitted `optimizer` keeps the
+  family registry's automatic choice; explicit `nlminb` pins that solver, and
+  `optimizer = "optim"` accepts `method = "BFGS"` or `"L-BFGS-B"` with native
+  controls nested in `optArgs$control`. Unsupported or mismatched controls now
+  fail before objective construction. `va_polish = TRUE` preserves the legacy
+  secondary-solver sequence; setting it to `FALSE` disables every secondary
+  solver for controlled comparisons. The default VA route, four-start
+  agreement rule, family admission, and likelihood code are unchanged. This
+  changes optimizer selection only; it does not establish VA accuracy,
+  convergence, or inference claims. BFGS is opt-in and uses dense
+  inverse-Hessian storage, so its memory cost grows quadratically with the
+  parameter count. (#1595)
+
 * Internal cross-validation now retains binomial trial totals in held-out
   scores and in all three null-model refits, including paired response
   expressions and single-column trial weights. Previously missing cells are

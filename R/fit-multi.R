@@ -3849,7 +3849,11 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ## a saved object) behaves exactly as before rather than silently changing
       ## the quadrature order or the tier.
       va_H           = control$va_H %||% 7L,
-      va_eval_method = control$va_eval_method %||% "auto"
+      va_eval_method = control$va_eval_method %||% "auto",
+      optimizer      = control$optimizer %||% "nlminb",
+      optimizer_explicit = isTRUE(control$optimizer_explicit),
+      optArgs        = control$optArgs %||% list(),
+      va_polish      = control$va_polish %||% TRUE
     ))
   }
 

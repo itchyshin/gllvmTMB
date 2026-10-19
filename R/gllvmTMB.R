@@ -806,6 +806,14 @@ gllvmTMB <- function(
   ## resolved until the formula and data have been parsed, so the fence is
   ## called a SECOND time inside `gllvmTMB_multi_fit()` with those values.
   integration_route <- control$integration %||% "laplace"
+  if (!identical(integration_route, "va") &&
+      identical(control$va_polish %||% TRUE, FALSE)) {
+    cli::cli_abort(c(
+      "{.arg va_polish} applies only to the VA integration route.",
+      "i" = "Other routes do not run the VA secondary-solver sequence.",
+      ">" = "Use {.code integration = \"va\"}, or leave {.arg va_polish} at its default."
+    ), class = "gllvmTMB_unsupported_control")
+  }
   if (!identical(integration_route, "laplace")) {
     .gllvmTMB_check_integration_fence(integration_route, engine = engine)
     ## `gllvmTMBcontrol()` admits only "laplace" and "va", so anything else here
@@ -2021,14 +2029,23 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #'   no random numbers. It is skipped when `start_from` or `start_method` is
 #'   supplied and on the `estimator = "mspl"` route. Set `FALSE` for the
 #'   single-start behaviour of gllvmTMB 0.8.0 and earlier.
-#' @param optimizer One of `"nlminb"` (default) or `"optim"`. Use the
-#'   latter together with `optArgs` for finicky two-level rr fits.
-#' @param optArgs A list of arguments passed to the optimiser. For
-#'   `nlminb`, only `control`, `lower`, `upper`, and `scale` are forwarded
-#'   (put `iter.max` and other limits in `optArgs$control`). For `optim`, only
-#'   `method`, `control`, `hessian`, `lower`, and `upper` are forwarded (put
-#'   `maxit` in `optArgs$control`). Top-level names such as `iter.max` or
-#'   `maxit` are ignored with a warning.
+#' @param optimizer Optimiser for the native Laplace and AGHQ routes. For the
+#'   experimental VA route, omission keeps the family registry's automatic
+#'   primary solver; explicitly set `"nlminb"` to pin that solver or `"optim"`
+#'   to select `"BFGS"` or `"L-BFGS-B"` through `optArgs$method`.
+#' @param optArgs Native optimiser arguments. Existing Laplace and AGHQ
+#'   behavior is unchanged. For VA, `nlminb` accepts `control`, `lower`,
+#'   `upper`, and `scale`; `optim` accepts a nested `control` list and
+#'   `method = "BFGS"` or `"L-BFGS-B"` (the latter also accepts bounds).
+#'   Put native stopping controls such as `maxit` inside `control`; unknown or
+#'   method-incompatible values are rejected before the VA objective is built.
+#' @param va_polish For VA fits, whether to run the existing secondary solver
+#'   polishing sequence after each primary start. Defaults to `TRUE` to retain
+#'   prior behavior; `FALSE` disables every secondary solver and is useful for
+#'   controlled optimizer comparisons. The four primary starts and their
+#'   existing agreement rule are unchanged. BFGS uses a dense inverse-Hessian
+#'   approximation, so its memory use grows quadratically with the parameter
+#'   count; use it as an opt-in method for modest models.
 #' @param optimizer_passes Number of exact-gradient optimisation passes from
 #'   the preceding estimate. The default `1` retains the historical single
 #'   pass. A later pass is retained only when it converges and does not increase
@@ -2174,8 +2191,22 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #'   [gllvmTMB_va-methods]) rather than an ordinary fit, so that every method
 #'   which would treat its objective as a likelihood fails loudly instead of
 #'   returning a number. Because the engine runs its own multi-start and
-#'   optimiser policy, the search settings of [gllvmTMBcontrol()] — `n_init`,
-#'   `optimizer`, `optArgs`, `start_from`, `init_*` and `se` — have no effect
+#'   optimiser policy, `optimizer` and `optArgs` select the VA primary solver,
+#'   while `va_polish` controls the existing secondary-solver sequence. If
+#'   `optimizer` is omitted, the family registry still selects the primary
+#'   solver. For a fitted VA object, per-start diagnostics are in
+#'   `fit$engine_result$starts[[i]]`: `primary_optimizer` names the selected
+#'   primary method and `final_optimizer` names the method whose parameter
+#'   vector and objective were retained. `polish_optimizer` summarizes the
+#'   polish methods actually attempted (`"disabled"`, `"not_attempted"`,
+#'   `"nlminb_attempted"`, or `"nlminb_then_L-BFGS-B_attempted"`). The ordered
+#'   `optimizer_attempts` records include an `accepted` flag. The primary result
+#'   starts accepted; a polish record is accepted only when it replaces the
+#'   retained result. Acceptance records replacement, not convergence or a
+#'   healthy fit; inspect `convergence` and `healthy` separately. Thus the last
+#'   accepted attempt identifies `final_optimizer`; a failed primary has no
+#'   retained solver and records `NA`. The settings `n_init`, `start_from`,
+#'   `init_*` and `se` have no effect
 #'   on this route. Any model structure the route cannot represent (a latent
 #'   term away from the unit grouping, a constrained ordination, an offset,
 #'   weights, `REML`, `lambda_constraint`, `Xcoef_fixed`, or a further random
@@ -2321,6 +2352,57 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #' # Switch the optimiser to optim + BFGS for finicky two-level rr fits.
 #' gllvmTMBcontrol(optimizer = "optim", optArgs = list(method = "BFGS"))
 #'
+#' # Compare VA primary solvers on the same model and four seeded starts.
+#' # This example is deliberately not run automatically because each method
+#' # performs four variational fits. Reset the seed for each method and disable
+#' # polish so the comparison isolates the selected primary solver.
+#' \dontrun{
+#' set.seed(20260802L)
+#' n <- 120L
+#' p <- 4L
+#' va_data <- data.frame(
+#'   y = rbinom(n * p, 1L, 0.5),
+#'   trait = factor(rep(seq_len(p), times = n)),
+#'   site = factor(rep(seq_len(n), each = p))
+#' )
+#' va_formula <- y ~ 0 + trait + latent(0 + trait | site, d = 1,
+#'                                      unique = FALSE)
+#' va_methods <- list(
+#'   nlminb = list(optimizer = "nlminb",
+#'                 optArgs = list(control = list(iter.max = 2000L,
+#'                                                eval.max = 2000L))),
+#'   BFGS = list(optimizer = "optim",
+#'               optArgs = list(method = "BFGS",
+#'                               control = list(maxit = 2000L))),
+#'   `L-BFGS-B` = list(optimizer = "optim",
+#'                     optArgs = list(method = "L-BFGS-B",
+#'                                     control = list(maxit = 2000L)))
+#' )
+#' va_fits <- lapply(va_methods, function(method) {
+#'   set.seed(1595L)
+#'   gllvmTMB(
+#'     va_formula, data = va_data,
+#'     family = stats::binomial(link = "probit"), unit = "site",
+#'     control = gllvmTMBcontrol(
+#'       integration = "va", va_H = 7L, va_eval_method = "gh",
+#'       optimizer = method$optimizer, optArgs = method$optArgs,
+#'       va_polish = FALSE
+#'     )
+#'   )
+#' })
+#' lapply(va_fits, function(fit) {
+#'   starts <- fit$engine_result$starts
+#'   data.frame(
+#'     start = vapply(starts, `[[`, integer(1), "start"),
+#'     primary = vapply(starts, `[[`, character(1), "primary_optimizer"),
+#'     final = vapply(starts, `[[`, character(1), "final_optimizer"),
+#'     polish = vapply(starts, `[[`, character(1), "polish_optimizer"),
+#'     objective = vapply(starts, `[[`, numeric(1), "objective"),
+#'     convergence = vapply(starts, `[[`, integer(1), "convergence")
+#'   )
+#' })
+#' }
+#'
 #' # Experimental, opt-in scale-aware ridge for the evaluated Bernoulli AGHQ
 #' # scope. The route uses a fixed 9-node multi-start rule; this is not an
 #' # interval-calibration certificate.
@@ -2428,6 +2510,7 @@ gllvmTMBcontrol <- function(
   loading_ridge = NULL,
   optimizer_passes = 1L,
   svd_start = TRUE,
+  va_polish = TRUE,
   ...
 ) {
   ## Did the CALLER name `aghq_ridge`, or is this the package default? The
@@ -2451,6 +2534,7 @@ gllvmTMBcontrol <- function(
   ## request it would otherwise ignore (#1331 review).
   n_init_explicit <- !missing(n_init)
   svd_start_explicit <- !missing(svd_start)
+  optimizer_explicit <- !missing(optimizer)
   loading_ridge_explicit <- !missing(loading_ridge) && !is.null(loading_ridge)
   if (isTRUE(aghq_ridge_explicit) && isTRUE(loading_ridge_explicit)) {
     cli::cli_abort(c(
@@ -2479,6 +2563,18 @@ gllvmTMBcontrol <- function(
   start_method <- .gllvmTMB_normalize_start_method(start_method)
   integration <- match.arg(integration)
   va_eval_method <- match.arg(va_eval_method)
+  if (!is.logical(va_polish) || length(va_polish) != 1L || is.na(va_polish)) {
+    cli::cli_abort("{.arg va_polish} must be one non-missing logical value.")
+  }
+  if (identical(integration, "va")) {
+    ## Validate method-native arguments at construction, before the VA route
+    ## can assemble an objective. The route repeats this check for hand-built
+    ## or older saved controls.
+    .va_route_optimizer_spec(list(
+      optimizer = optimizer, optimizer_explicit = optimizer_explicit,
+      optArgs = optArgs, va_polish = va_polish
+    ))
+  }
   ## isTRUE() treats 1 as off. Coerce 1/0 first so a numeric on-switch reaches
   ## the later auto-ridge check as a real logical (#1426).
   aghq_continuation <- .gllvmTMB_as_flag(aghq_continuation, "aghq_continuation")
@@ -2606,7 +2702,9 @@ gllvmTMBcontrol <- function(
     svd_start = svd_start,
     svd_start_explicit = svd_start_explicit,
     optimizer = optimizer,
+    optimizer_explicit = optimizer_explicit,
     optArgs = optArgs,
+    va_polish = va_polish,
     optimizer_passes = as.integer(optimizer_passes),
     init_jitter = init_jitter,
     init_strategy = init_strategy,

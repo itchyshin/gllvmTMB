@@ -35,6 +35,14 @@ test_that("Wald repeatability errors when the covariance is all non-finite", {
     extract_repeatability(fit, method = "wald"),
     class = "gllvmTMB_confint_nonfinite_se"
   )
+  ## The way out must be one this function accepts: its profile route is
+  ## withdrawn and aborts, so the error names the bootstrap instead.
+  err <- tryCatch(
+    extract_repeatability(fit, method = "wald"),
+    error = function(e) conditionMessage(e)
+  )
+  expect_match(err, "method = \"bootstrap\"", fixed = TRUE)
+  expect_no_match(err, "method = \"profile\"", fixed = TRUE)
 })
 
 test_that("Wald repeatability warns, naming pdHess, on a finite non-PD Hessian", {

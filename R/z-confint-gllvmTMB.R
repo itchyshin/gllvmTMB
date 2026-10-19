@@ -765,10 +765,16 @@
 ## cover a `sd_report` that exists but yields non-finite SEs (a non-positive
 ## -definite Hessian), which still surfaces as bare `NaN`. That is a separate
 ## defect, recorded rather than silently folded in.
-.confint_require_sdreport <- function(object, method, caller = "confint") {
+.confint_require_sdreport <- function(object, method, caller = "confint",
+                                      route = "profile") {
   if (identical(method, "profile")) {
     return(invisible(NULL))
   }
+  ## `route` is the Hessian-free method the error offers. It must be one the
+  ## CALLER accepts: extract_repeatability() has withdrawn "profile", so it
+  ## passes "bootstrap". Pasted into the template (not interpolated as a value)
+  ## so the {.code} markup is rendered.
+  route_md <- paste0("{.code method = \"", route, "\"}")
 
   ## Second way to have no usable standard errors: sd_report EXISTS but its
   ## fixed-effect covariance is entirely non-finite -- the signature of a
@@ -785,8 +791,8 @@
         "x" = "This usually means the Hessian is not positive-definite.",
         "i" = "This is a property of the fit -- {.fn standard_errors} will not
                help, because the numbers were already computed.",
-        ">" = "Diagnose it with {.run gllvmTMB_diagnose(fit)}, or use
-               {.code method = \"profile\"}, which does not use the Hessian."
+        ">" = paste0("Diagnose it with {.run gllvmTMB_diagnose(fit)}, or use ",
+                     route_md, ", which does not use the Hessian.")
       ), class = "gllvmTMB_confint_nonfinite_se")
     }
     return(invisible(NULL))
@@ -800,7 +806,7 @@
     "{.fn {caller}} needs standard errors, and this fit has none.",
     "x" = "This fit has no {.field sd_report}: {reason}",
     ">" = "Compute them without refitting: {.code fit <- standard_errors(fit)}",
-    "i" = "Or use {.code method = \"profile\"}, which does not need them."
+    "i" = paste0("Or use ", route_md, ", which does not need them.")
   ), class = "gllvmTMB_confint_no_sdreport")
 }
 

@@ -135,7 +135,8 @@ extract_repeatability <- function(
     }
     ## #1379: same gate as confint(method = "wald") -- an all-non-finite
     ## covariance (non-PD Hessian) is an error, not a NaN interval.
-    .confint_require_sdreport(fit, "wald", caller = "extract_repeatability")
+    .confint_require_sdreport(fit, "wald", caller = "extract_repeatability",
+                              route = "bootstrap")
     ## A finite covariance from a non-PD Hessian is not a trustworthy
     ## curvature estimate either; say so rather than return a clean-looking CI.
     if (isFALSE(fit$sd_report$pdHess)) {

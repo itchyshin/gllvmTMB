@@ -26,6 +26,7 @@ finite_cov <- function(fit) {
 }
 
 test_that("Wald repeatability errors when the covariance is all non-finite", {
+  skip_on_cran()
   fit <- make_nonpd_repeatability_fit()
   ## The NaN covariance of the issue's seed-7 fit is BLAS-dependent, so
   ## reproduce its signature on a copy rather than rely on the optimiser.
@@ -46,6 +47,7 @@ test_that("Wald repeatability errors when the covariance is all non-finite", {
 })
 
 test_that("Wald repeatability warns, naming pdHess, on a finite non-PD Hessian", {
+  skip_on_cran()
   fit <- make_nonpd_repeatability_fit()
   fit$sd_report$cov.fixed <- finite_cov(fit)
   fit$sd_report$pdHess <- FALSE
@@ -63,8 +65,35 @@ test_that("Wald repeatability warns, naming pdHess, on a finite non-PD Hessian",
 })
 
 test_that("Wald repeatability is silent when the Hessian is positive-definite", {
+  skip_on_cran()
   fit <- make_nonpd_repeatability_fit()
   fit$sd_report$cov.fixed <- finite_cov(fit)
   fit$sd_report$pdHess <- TRUE
   expect_no_warning(extract_repeatability(fit, method = "wald"))
+})
+
+test_that("Wald repeatability gives the classed error when the fit has no sd_report", {
+  skip_on_cran()
+  fit <- make_nonpd_repeatability_fit()
+  fit$sd_report <- NULL
+  expect_error(
+    extract_repeatability(fit, method = "wald"),
+    class = "gllvmTMB_confint_no_sdreport"
+  )
+  err <- tryCatch(
+    extract_repeatability(fit, method = "wald"),
+    error = function(e) conditionMessage(e)
+  )
+  expect_match(err, "method = \"bootstrap\"", fixed = TRUE)
+  expect_no_match(err, "method = \"profile\"", fixed = TRUE)
+})
+
+test_that("Wald repeatability gives a classed error when sd_report has no cov.fixed", {
+  skip_on_cran()
+  fit <- make_nonpd_repeatability_fit()
+  fit$sd_report$cov.fixed <- NULL
+  expect_error(
+    extract_repeatability(fit, method = "wald"),
+    class = "gllvmTMB_repeatability_no_cov_fixed"
+  )
 })

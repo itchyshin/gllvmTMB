@@ -1,5 +1,12 @@
 # Development (unreleased)
 
+* `suggest_lambda_constraint(convention = "profile_retention")` no longer warns
+  "Unused optional grouping argument(s)" or prints `rr()` / `diag()` deprecated-alias
+  notes on its refits. The refits now pass `unit_obs` and `cluster` only when the
+  formula uses them and rebuild the formula through `latent()` / `indep()`. The
+  suggested matrix is unchanged. Naming the `unit_obs` column for the formula path
+  stays open (#1587).
+
 * Zero-truncated Poisson and NB2 likelihoods stay finite when the linear
   predictor is far below zero. The truncation term `log(1 - P(0))` was
   `logspace_sub(0, log P(0))`, whose derivatives grow like `1 / mu^k`: the

@@ -4482,7 +4482,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       empty_cats <- setdiff(seq_len(Kt), obs_t)
       if (length(empty_cats) > 0L)
         cli::cli_warn(c(
-          "{fam_label_t}: trait {t} has no observations in category {?code/codes} {empty_cats} of 1..{Kt}.",
+          "{fam_label_t}: trait {t} has no observations in {cli::qty(length(empty_cats))}categor{?y/ies} {empty_cats} of 1..{Kt}.",
           "x" = "The cutpoint(s) around an empty category are not identified; the fit can report a boundary cutpoint (log-increment near -21, huge SE) and still pass convergence checks.",
           ">" = "Merge the empty category into a neighbour and recode to consecutive integers, e.g. {.code as.integer(factor(y))}."
         ))

@@ -768,6 +768,43 @@ gllvm_julia_capabilities <- function() {
   TRUE
 }
 
+# The Julia bridge has no no-latent (d = 0) route for most families:
+# GLLVModels.bridge_fit(d = 0) returns loglik = -Inf, converged = FALSE and
+# unestimated coefficients for poisson, binomial, nb1, beta, gamma and ordinal.
+# NB2 fits correctly and Gaussian already errors loudly in Julia (#1562).
+.GLLVM_JULIA_NO_LATENT_FAMILIES <- c("negbinomial")
+
+.gllvm_julia_check_no_latent <- function(fam, num.lv) {
+  num.lv <- suppressWarnings(as.integer(num.lv)[1L])
+  if (is.na(num.lv) || num.lv > 0L) {
+    return(invisible(FALSE))
+  }
+  bad <- setdiff(unique(fam), c(.GLLVM_JULIA_NO_LATENT_FAMILIES, "gaussian"))
+  if (!length(bad)) {
+    return(invisible(FALSE))
+  }
+  cli::cli_abort(c(
+    "engine = 'julia' cannot fit a model with no latent term ({.code num.lv = 0}) for {.val {bad}}.",
+    "i" = "GLLVModels.jl returns {.code logLik = -Inf} for these families without a latent block, so the fit would be unusable.",
+    ">" = "Add a {.code latent(1 | unit, d = K)} term, or use {.code engine = \"tmb\"}."
+  ), class = c("gllvmTMB_julia_no_latent_refused", "gllvmTMB_julia_gate"))
+}
+
+# Never hand back a bridge fit that did not converge and has no finite
+# log-likelihood: it carries unestimated coefficients and no error (#1562).
+.gllvm_julia_check_fit_finite <- function(res) {
+  ll <- suppressWarnings(as.numeric(res$loglik)[1L])
+  conv <- res$converged
+  if (length(ll) == 1L && !is.na(ll) && !is.finite(ll) && !isTRUE(conv)) {
+    cli::cli_abort(c(
+      "engine = 'julia' returned a non-converged fit with a non-finite log-likelihood ({.val {ll}}).",
+      "i" = "The coefficients of such a fit are not estimated, so it is not returned.",
+      ">" = "Use {.code engine = \"tmb\"}, or check the model / starting values."
+    ), class = c("gllvmTMB_julia_nonfinite_fit", "gllvmTMB_julia_gate"))
+  }
+  invisible(FALSE)
+}
+
 .gllvm_julia_check_gamma_shape <- function(fam, p, has_x = FALSE) {
   n_gamma <- .gllvm_julia_n_gamma(fam, p)
   if (n_gamma <= 1L || isTRUE(has_x)) {
@@ -2807,6 +2844,7 @@ gllvm_julia_fit <- function(
     }
   }
   has_x <- .gllvm_julia_has_covariates(X)
+  .gllvm_julia_check_no_latent(fam, num.lv)
   .gllvm_julia_check_gamma_shape(fam, nrow(y), has_x = has_x)
   if (!is.null(mask)) {
     mask <- as.matrix(mask)
@@ -3009,6 +3047,7 @@ gllvm_julia_fit <- function(
   do.call(gllvm_julia_setup, setup_args)
   res <- do.call(JuliaCall::julia_call, args)
   res <- .gllvm_julia_normalise_result(res)
+  .gllvm_julia_check_fit_finite(res)
   if (!is.null(X)) {
     x_names <- dimnames(X)[[3L]]
     if (!is.null(res$gamma) && length(res$gamma) == length(x_names)) {

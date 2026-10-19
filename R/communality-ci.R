@@ -99,6 +99,10 @@
       "Fit does not carry a TMB {.code sdreport}.",
       i = "Refit so {.code fit$sd_report} is populated."
     ))
+  ## #1379: all-non-finite covariance is an error; pdHess = FALSE a warning.
+  .confint_require_sdreport(fit, "wald", caller = "extract_communality",
+                            route = "bootstrap")
+  .wald_warn_nonpd_hessian(fit, "communality")
 
   lam_name <- switch(
     tier,

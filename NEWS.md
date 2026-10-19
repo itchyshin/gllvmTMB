@@ -1,5 +1,13 @@
 # Development (unreleased)
 
+* The Wald readers for communality and phylogenetic signal no longer return
+  NA or NaN intervals from a covariance that is entirely non-finite: they stop
+  with the classed `gllvmTMB_confint_nonfinite_se` error, as `confint()` and
+  `extract_repeatability()` already do. A finite covariance from a Hessian that
+  is not positive-definite (`pdHess = FALSE`) now raises the classed warning
+  `gllvmTMB_wald_nonpd_hessian`; the interval is still returned. The
+  proportions and loading-uncertainty readers are not yet changed (#1379).
+
 * Zero-truncated Poisson and NB2 likelihoods stay finite when the linear
   predictor is far below zero. The truncation term `log(1 - P(0))` was
   `logspace_sub(0, log P(0))`, whose derivatives grow like `1 / mu^k`: the

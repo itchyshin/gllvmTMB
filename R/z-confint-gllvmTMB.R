@@ -810,6 +810,24 @@
   ), class = "gllvmTMB_confint_no_sdreport")
 }
 
+## #1379: a finite covariance from a Hessian that is not positive-definite is
+## not a trustworthy curvature estimate. `.confint_require_sdreport()` catches
+## the all-non-finite case as an error; this is the warning for the finite
+## case, shared by the Wald readers other than extract_repeatability() (which
+## keeps its own classed warning). The interval is still returned.
+.wald_warn_nonpd_hessian <- function(object, what) {
+  if (isFALSE(object$sd_report$pdHess)) {
+    cli::cli_warn(
+      c(
+        "The Hessian is not positive-definite ({.code pdHess = FALSE}); the Wald {what} intervals are not reliable.",
+        "i" = "Diagnose with {.run gllvmTMB_diagnose(fit)}, or use a bootstrap interval ({.code method = \"bootstrap\"})."
+      ),
+      class = "gllvmTMB_wald_nonpd_hessian"
+    )
+  }
+  invisible(NULL)
+}
+
 .confint_colnames <- function(level) {
   c(
     sprintf("%.1f %%", 100 * (1 - level) / 2),

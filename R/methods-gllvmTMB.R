@@ -53,7 +53,7 @@ update.gllvmTMB_multi <- function(object, ..., evaluate = TRUE) {
 #' @return An error is always thrown.
 #' @importFrom stats sigma
 #' @keywords internal
-#' @export
+#' @exportS3Method stats::sigma
 sigma.gllvmTMB_multi <- function(object, ...) {
   cli::cli_abort(c(
     "{.fn sigma} is not defined for {.cls gllvmTMB} fits.",
@@ -62,10 +62,10 @@ sigma.gllvmTMB_multi <- function(object, ...) {
   ))
 }
 
-#' @export
+#' @exportS3Method stats::sigma
 sigma.gllvmTMB_julia <- sigma.gllvmTMB_multi
 
-#' @export
+#' @exportS3Method stats::sigma
 sigma.gllvmTMB_va <- sigma.gllvmTMB_multi
 
 .modal_integer_id <- function(x, fallback = NA_integer_) {

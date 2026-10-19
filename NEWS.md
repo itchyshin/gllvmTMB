@@ -1,5 +1,13 @@
 # Development (unreleased)
 
+* Zero-truncated Poisson and NB2 likelihoods stay finite when the linear
+  predictor is far below zero. The truncation term `log(1 - P(0))` was
+  `logspace_sub(0, log P(0))`, whose derivatives grow like `1 / mu^k`: the
+  Laplace gradient was NaN from `eta` near -237 and the objective from near
+  -355, and below -745 the mean rounded to 0 and the term was `log(0)`. It is
+  now computed from `log(-log P(0))`, by a series below -20 and by the old
+  expression above it, so ordinary fits change only by rounding (#1483).
+
 * The experimental VA route now honors the package's existing `optimizer` and
   `optArgs` controls for its four primary starts. Omitted `optimizer` keeps the
   family registry's automatic choice; explicit `nlminb` pins that solver, and

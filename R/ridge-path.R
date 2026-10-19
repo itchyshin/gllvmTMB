@@ -76,8 +76,8 @@
 #'   directly. `unit` has no default -- it must name the sampling-unit
 #'   column, matching [gllvmTMB()]'s own required argument.
 #' @param tau Numeric vector of ridge scales to sweep. Order does not
-#'   matter: the function sorts internally, both for refitting and for the
-#'   printed classification. Every entry must be a positive number; `Inf`
+#'   matter for the classification, which sorts internally. The refits and
+#'   the returned rows follow the order given. Every entry must be a positive number; `Inf`
 #'   is allowed and requests plain ML. Default `c(0.5, 1, 2, 4, 8, Inf)`.
 #' @param control A [gllvmTMBcontrol()] object providing every OTHER setting
 #'   (`n_init`, `se`, `warn_runaway`, ...). Its own `loading_ridge` /

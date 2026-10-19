@@ -370,10 +370,10 @@ bases, grouping columns, or covariance sources. In wide input, key this
 table by the synthetic column name \code{trait} and omit the \code{trait} argument.}
 }
 \value{
-A \code{gllvmTMB} object. With no covariance-structure terms in
-the formula the result has class \code{"gllvmTMB"} (single-response
-engine); with \code{latent()} or other covstruct sugar it has class
-\code{c("gllvmTMB_multi", "gllvmTMB")} (multi-trait engine).
+A \code{gllvmTMB} object. Every native fit, with or without
+covariance-structure terms in the formula, has class
+\code{c("gllvmTMB_multi", "gllvmTMB")}. \code{integration = "va"} returns class
+\code{c("gllvmTMB_va", "gllvmTMB")} instead.
 S3 methods are registered on the \strong{subclasses}, not on bare
 \code{gllvmTMB}: for a multi-trait fit (\code{gllvmTMB_multi}), \code{tidy()},
 \code{predict()}, \code{summary()}, \code{confint()} and \code{logLik()} are available, and

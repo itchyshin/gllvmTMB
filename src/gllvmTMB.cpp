@@ -328,6 +328,27 @@ Type gll_nbinom_log_p0(Type log_mu, Type log_size)
   return -exp(log_mu) * gll_log1p_ratio(exp(dc));
 }
 
+// log P(Y > 0) = log(1 - exp(-m)) for m = exp(log_m) >= 0, the zero-truncation
+// term of ZT-Poisson (m = mu) and ZT-NB2 (m = -log P(0)). Forming m first
+// underflows to 0 once eta < -745, where logspace_sub(0, -m) is log(0) = -Inf
+// (#1483). Below m = 1e-4 use log m + log((1 - e^-m) / m) from a quartic series
+// (truncation m^4 / 120 < 1e-18), so log m = log_m is carried unexponentiated;
+// above it use gll_log1mexp. Each branch gets its own clamped input (CondExp
+// evaluates both).
+template <class Type>
+Type gll_log_pos_prob(Type log_m)
+{
+  Type cut = Type(1e-4);
+  Type lm = CppAD::CondExpGt(log_m, Type(700), Type(700), log_m);
+  Type m = exp(lm);
+  Type ms = CppAD::CondExpLt(m, cut, m, cut);
+  Type series = log_m + log(Type(1) - ms * (Type(0.5) - ms * (Type(1.0 / 6.0) -
+    ms * Type(1.0 / 24.0))));
+  Type md = CppAD::CondExpLt(m, cut, cut, m);
+  Type direct = gll_log1mexp(-md);
+  return CppAD::CondExpLt(m, cut, series, direct);
+}
+
 // Bounded correlation for the 2x2 intercept-slope priors (#1386):
 //   rho = (1 - delta) tanh(x),  delta = 1e-6,
 // the same smooth cap the temporal AR1 blocks use. Without a bound the
@@ -3655,8 +3676,10 @@ Type objective_function<Type>::operator()()
     } else if (fid == 10) {
       // Zero-truncated Poisson, log link.
       Type lambda_t = exp(eta_o);
-      ll += dpois(y(o), lambda_t, true)
-             - logspace_sub(Type(0.0), -lambda_t);
+      // y * eta - lambda - lgamma(y + 1) keeps the numerator finite when
+      // lambda = exp(eta) underflows (dpois at lambda = 0 is -Inf, #1483).
+      ll += y(o) * eta_o - lambda_t - lgamma(y(o) + Type(1.0))
+             - gll_log_pos_prob(eta_o);
     } else if (fid == 11) {
       // Zero-truncated NB2, log link.
       // log P(0) = -phi log1p(mu / phi) via gll_nbinom_log_p0 (#1363): the
@@ -3666,9 +3689,14 @@ Type objective_function<Type>::operator()()
       // Poisson (fid 10) as phi -> Inf.
       int t = trait_id(o);
       Type log_mu = eta_o;
-      Type log_p0 = gll_nbinom_log_p0(log_mu, log_phi_truncnb2(t));
+      // -log P(0) = mu * log1p(x) / x, x = mu / phi; its log is carried as
+      // log_mu + log(ratio) so it stays finite when exp(log_mu) underflows
+      // (#1483).
+      Type d_t = log_mu - log_phi_truncnb2(t);
+      Type dc_t = CppAD::CondExpGt(d_t, Type(700), Type(700), d_t);
+      Type log_m0 = log_mu + log(gll_log1p_ratio(exp(dc_t)));
       ll += gll_dnbinom_mu_size(y(o), log_mu, log_phi_truncnb2(t))
-             - logspace_sub(Type(0.0), log_p0);
+             - gll_log_pos_prob(log_m0);
     } else if (fid == 12) {
       // delta_lognormal (hurdle): one shared eta drives both components.
       //   Presence: I{y>0} ~ Bernoulli(invlogit(eta))   via dbinom_robust

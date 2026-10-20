@@ -1,5 +1,12 @@
 # Development (unreleased)
 
+* The zero-truncated Poisson and zero-truncated NB2 likelihoods no longer
+  return `-Inf` when the linear predictor falls below about -745, where
+  `exp(eta)` underflows to zero. The truncation term `log P(Y > 0)` is now
+  evaluated from `log(mu)` directly, so the row likelihood stays finite and
+  tends to its analytic limit. Values at ordinary `eta` are unchanged to
+  rounding. (#1483)
+
 * The experimental VA route now honors the package's existing `optimizer` and
   `optArgs` controls for its four primary starts. Omitted `optimizer` keeps the
   family registry's automatic choice; explicit `nlminb` pins that solver, and

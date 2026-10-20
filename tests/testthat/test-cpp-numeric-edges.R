@@ -174,6 +174,42 @@ test_that("zero-truncated NB2 stays finite at phi = 1e14 and matches the ZT-Pois
   invisible(obj$fn(fit$opt$par))
 })
 
+test_that("zero-truncated Poisson / NB2 stay finite when exp(eta) underflows (#1483)", {
+  df <- .count_fixture(1483, truncated = TRUE)
+  y <- df$value
+  ## As mu -> 0 the truncated pmf of y = 1 -> 1 and log P(Y > 0) -> log mu = eta,
+  ## so row ll = y * eta - lgamma(y + 1) - eta; exp(eta) is exactly 0 for
+  ## eta < -745, where logspace_sub(0, 0) was -Inf.
+  fit <- .edge_fit(df, truncated_poisson())
+  obj <- fit$tmb_obj
+  p <- .edge_par(fit)
+  for (eta in c(-30, -300, -800)) {
+    p1 <- .edge_set(p, "b_fix", eta)
+    got <- as.numeric(obj$fn(p1))
+    expect_true(is.finite(got))
+    expect_equal(got, -sum(y * eta - lgamma(y + 1) - eta), tolerance = 1e-9)
+    expect_true(all(is.finite(as.numeric(obj$gr(p1)))))
+  }
+  fitn <- .edge_fit(df, truncated_nbinom2())
+  objn <- fitn$tmb_obj
+  pn <- .edge_par(fitn)
+  for (eta in c(-300, -800)) {
+    for (lphi in c(log(5), 40)) {
+      p2 <- .edge_set(.edge_set(pn, "b_fix", eta), "log_phi_truncnb2", lphi)
+      got <- as.numeric(objn$fn(p2))
+      expect_true(is.finite(got))
+      phi <- exp(lphi)
+      ## log(Gamma(y + phi) / Gamma(phi) / phi^y) as a sum, which does not
+      ## cancel at large phi.
+      lrise <- vapply(y, function(yy) sum(log1p(seq_len(yy) / phi - 1 / phi) +
+                                            lphi) - yy * lphi, 0)
+      ref <- -sum(y * eta - lgamma(y + 1) - eta + lrise)
+      expect_equal(got, ref, tolerance = 1e-9)
+      expect_true(all(is.finite(as.numeric(objn$gr(p2)))))
+    }
+  }
+})
+
 test_that("NB2, NB1 and zi_nbinom2 kernels reach their Poisson limits (#1363 siblings)", {
   df <- .count_fixture(13631, mu = 2)
   y <- df$value

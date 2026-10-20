@@ -1,5 +1,11 @@
 # Development (unreleased)
 
+* `compare_dep_vs_two_psi()` now stops up front, with a classed error
+  (`gllvmTMB_two_psi_unit_cluster`) that names both columns, when the fit's
+  `unit` differs from its `cluster`. Before, the `dep` refit failed inside and
+  the warning blamed an "unstable" alternative fit. `compare_indep_vs_two_psi()`
+  supports this layout and is unchanged (#1572).
+
 * The `sigma()` refusal methods are now registered from roxygen with
   `@exportS3Method stats::sigma`, matching the `stats::sigma` entries already in
   `NAMESPACE`, so `devtools::document()` no longer rewrites them. Behaviour is

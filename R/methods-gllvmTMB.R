@@ -429,6 +429,20 @@ sigma.gllvmTMB_va <- sigma.gllvmTMB_multi
   rep(NA_real_, n)
 }
 
+## Why Wald standard errors from `fit$sd_report` cannot be trusted, or NULL when
+## they can. Used by tidy(): a non-positive-definite Hessian still yields finite
+## numbers from `sdreport()`, but they are not standard errors.
+.gllvmTMB_wald_unusable_reason <- function(fit) {
+  sdr <- fit$sd_report
+  if (is.null(sdr)) {
+    return("sdreport_unavailable")
+  }
+  if (!isTRUE(sdr$pdHess)) {
+    return("non_positive_definite_hessian")
+  }
+  NULL
+}
+
 .gllvmTMB_b_fix_table <- function(fit) {
   n <- length(fit$X_fix_names %||% character(0))
   if (n == 0L) {
@@ -1469,7 +1483,9 @@ nobs.gllvmTMB_multi <- function(object, ...) {
 #'   ordinal-probit thresholds. For a non-unit weighted objective, fixed-effect
 #'   point estimates remain available but `std.error` is `NA`, an
 #'   `inference_status` column explains the boundary, and `conf.int = TRUE`
-#'   fails because no sandwich interval is certified.
+#'   fails because no sandwich interval is certified. When the Hessian is not
+#'   positive definite (or the `sdreport()` is missing), `std.error` is `NA`,
+#'   `conf.low` / `conf.high` are `NA`, and `inference_status` says why.
 #' @export
 tidy.gllvmTMB_multi <- function(
   x,
@@ -1498,6 +1514,9 @@ tidy.gllvmTMB_multi <- function(
     )
     if (weighted) {
       out$inference_status <- "point_estimate_only_weighted_objective"
+    } else if (!is.null(reason <- .gllvmTMB_wald_unusable_reason(x))) {
+      out$std.error <- rep(NA_real_, nrow(out))
+      out$inference_status <- reason
     }
     ## Per-trait link column. For single-family fits this is a single
     ## value repeated; for mixed-family fits each row carries the link

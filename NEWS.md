@@ -1,5 +1,10 @@
 # Development (unreleased)
 
+* `tidy(fit, "fixed")` no longer returns finite standard errors from a Hessian
+  that is not positive definite (or from a missing `sdreport()`). `std.error`,
+  `conf.low` and `conf.high` are `NA` and an `inference_status` column says
+  why, as it already does for a weighted objective. Fits with a positive
+  definite Hessian are unchanged. Part of #1351.
 * The `sigma()` refusal methods are now registered from roxygen with
   `@exportS3Method stats::sigma`, matching the `stats::sigma` entries already in
   `NAMESPACE`, so `devtools::document()` no longer rewrites them. Behaviour is

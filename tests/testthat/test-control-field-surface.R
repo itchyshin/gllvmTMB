@@ -32,6 +32,11 @@ test_that("gllvmTMBcontrol consumers use declared or intentional fields", {
     ".internal_continuation",
     "aghq_ridge_explicit",
     "n_init_explicit",
+    ## set by gllvmTMB() from missing(optimizer); consumed by va-routing.R
+    "optimizer_explicit",
+    ## developer-only, opt-in qualification hook (R/fit-multi.R, see the
+    ## comment above `optimizer_diagnostics`); deliberately not a formal
+    "optimizer_diagnostics",
     "svd_start_explicit",
     "aghq_start_par",
     "vgh_warm_start",

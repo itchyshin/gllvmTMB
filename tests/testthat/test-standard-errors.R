@@ -455,3 +455,30 @@ test_that("lazy ridge uncertainty uses the same penalised MAP curvature as eager
   expect_identical(lazy$loading_ridge_curvature$interpretation,
     "local_approximate_posterior_curvature_at_map")
 })
+
+## #1573: the cached fit$fit_health was built at fit time with se = FALSE and
+## never refreshed, so check_gllvmTMB() kept reporting "standard-error
+## calculation skipped" after standard_errors() had added the sdreport.
+test_that("standard_errors() refreshes fit_health so check_gllvmTMB() sees the Hessian (#1573)", {
+  skip_on_cran()
+  dat <- .se_test_data()
+  lazy <- .se_fit(dat, se = FALSE)
+
+  before <- check_gllvmTMB(lazy)
+  expect_equal(before$status[before$component == "sdreport"], "WARN")
+
+  lazy <- standard_errors(lazy)
+  expect_true(isTRUE(lazy$sd_report$pdHess))
+  expect_true(lazy$fit_health$sdreport_ok)
+  expect_true(isTRUE(lazy$fit_health$pd_hessian))
+  expect_true(is.finite(lazy$fit_health$max_fixed_se))
+
+  after <- check_gllvmTMB(lazy)
+  for (comp in c("sdreport", "pd_hessian", "max_fixed_se")) {
+    expect_equal(after$status[after$component == comp], "PASS", info = comp)
+  }
+
+  ## Matches the eager path.
+  eager <- check_gllvmTMB(.se_fit(dat, se = TRUE))
+  expect_equal(after$status, eager$status)
+})

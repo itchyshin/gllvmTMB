@@ -1,5 +1,9 @@
 # Development (unreleased)
 
+* The `sigma()` refusal methods are now registered from roxygen with
+  `@exportS3Method stats::sigma`, matching the `stats::sigma` entries already in
+  `NAMESPACE`, so `devtools::document()` no longer rewrites them. Behaviour is
+  unchanged (#1558).
 * The Wald readers for communality and phylogenetic signal no longer return
   NA or NaN intervals from a covariance that is entirely non-finite: they stop
   with the classed `gllvmTMB_confint_nonfinite_se` error, as `confint()` and
@@ -506,6 +510,22 @@
   passing cell), so this release makes no spatial range–rho recovery claim.
   Attenuated spatial prediction requires known locations. See the new
   source-strength worked example for long and wide calls.
+* `predict(newdata)` keeps one row for every row of `newdata`. A missing
+  covariate stays `NA` in that row instead of dropping it and recycling the
+  shorter prediction vector onto the wrong places. Data-dependent transforms
+  in the fixed formula (`scale()`, `poly()`, `ns()`) reuse the training
+  centre, scale and basis, so a row's prediction no longer depends on which
+  other rows travel with it, and a one-row `newdata` works. Character
+  predictors use the training levels, so a grid that omits the baseline
+  level is no longer silently predicted as the baseline. User-set factor
+  contrasts (for example `contr.sum`) are copied onto the restored factor,
+  so `predict(fit, newdata = training)` matches the training predictions.
+  **In scope:** the native `predict(newdata)` fixed-effect design, including
+  `simulate(newdata)` which calls `predict()`, and the temporal-forecast
+  design rebuild that uses the same helpers. **Not in scope:**
+  `engine = "julia"` still refuses `newdata`; `fitted()` and `residuals()`
+  stay training-row methods. Point prediction only; prediction intervals
+  are unchanged.
 
 # gllvmTMB 0.7.1 (release candidate)
 

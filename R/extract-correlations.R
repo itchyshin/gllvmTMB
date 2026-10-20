@@ -1028,7 +1028,9 @@ extract_cross_correlations <- function(fit, level = "unit", contrasts = FALSE,
     }
   }
 
-  S <- extract_Sigma(fit, level = level, part = "total", link_residual = link_residual)
+  S <- suppressMessages(extract_Sigma(
+    fit, level = level, part = "total", link_residual = link_residual
+  ))
   Sigma <- if (is.list(S) && !is.null(S$Sigma)) S$Sigma else S
   tn <- rownames(Sigma)
   mnK <- fit$tmb_data$multinom_K_per_trait

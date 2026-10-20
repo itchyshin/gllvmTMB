@@ -1,5 +1,13 @@
 # Development (unreleased)
 
+* `print()` and `summary()` now list each covariance term once: a single
+  `indep(0 + trait | unit)` prints `Covstructs: indep_unit` (it printed
+  `indep_unit, indep_unit`), and `latent(..., unique = TRUE)` prints
+  `latent_unit` rather than its internal `latent_unit, indep_unit` split.
+  `extract_cross_correlations()` no longer repeats `extract_Sigma()`'s
+  link-residual notes on every call, matching `extract_correlations()`
+  (part of #1580).
+
 * The `sigma()` refusal methods are now registered from roxygen with
   `@exportS3Method stats::sigma`, matching the `stats::sigma` entries already in
   `NAMESPACE`, so `devtools::document()` no longer rewrites them. Behaviour is

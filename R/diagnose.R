@@ -2359,6 +2359,12 @@ check_gllvmTMB <- function(
   out
 }
 
+## TRUE when extract_Sigma()'s default adds a non-zero per-trait link residual.
+.gllvmTMB_diag_has_link_residual <- function(object) {
+  lr <- tryCatch(link_residual_per_trait(object), error = function(e) NULL)
+  any(lr != 0, na.rm = TRUE)
+}
+
 #' Diagnose a fitted model and suggest next actions
 #'
 #' This is the human-readable diagnostic to call right after
@@ -2454,39 +2460,65 @@ gllvmTMB_diagnose <- function(
   }
 
   ## ---- Pillar 3: biological summaries ------------------------------
-  out_Sigma_B <- tryCatch(
-    .extract_Sigma_legacy_payload(object, level = "unit"),
+  ## Same scale as the communalities and the extract_Sigma() defaults: the
+  ## per-trait link residual is included on non-Gaussian fits (#1586). The
+  ## advisory message that says so is only shown in the verbose report.
+  quiet <- function(expr) {
+    if (verbose) expr else suppressMessages(expr)
+  }
+  legacy_payload <- function(level) {
+    out <- quiet(extract_Sigma(object, level = level))
+    if (is.null(out)) {
+      return(NULL)
+    }
+    suffix <- if (identical(level, "unit")) "B" else "W"
+    stats::setNames(
+      list(out$Sigma, out$R),
+      c(paste0("Sigma_", suffix), paste0("R_", suffix))
+    )
+  }
+  out_Sigma_B <- tryCatch(legacy_payload("unit"), error = function(e) NULL)
+  out_Sigma_W <- tryCatch(legacy_payload("unit_obs"), error = function(e) NULL)
+  ICC_site <- tryCatch(
+    quiet(extract_ICC_site(object)),
     error = function(e) NULL
   )
-  out_Sigma_W <- tryCatch(
-    .extract_Sigma_legacy_payload(object, level = "unit_obs"),
+  comm_B <- tryCatch(
+    quiet(extract_communality(object, "unit")),
     error = function(e) NULL
   )
-  ICC_site <- tryCatch(extract_ICC_site(object), error = function(e) NULL)
-  comm_B <- tryCatch(extract_communality(object, "unit"), error = function(e) {
-    NULL
-  })
   comm_W <- tryCatch(
-    extract_communality(object, "unit_obs"),
+    quiet(extract_communality(object, "unit_obs")),
     error = function(e) NULL
   )
 
   if (verbose) {
     cli::cli_h2("3. Biological summaries")
     if (!is.null(out_Sigma_B)) {
-      cat("\n  Sigma_B (between-unit covariance) diagonal:\n  ")
+      cat("\n  Sigma_B (between-unit covariance) diagonal and correlations")
+      cat(if (.gllvmTMB_diag_has_link_residual(object)) {
+        " (link residual included, as in extract_Sigma()):\n  "
+      } else {
+        ":\n  "
+      })
       cat(paste(round(diag(out_Sigma_B$Sigma_B), 3), collapse = "  "), "\n")
       ## Surface large correlations
       R <- out_Sigma_B$R_B
       big <- which(abs(R) > big_corr_thresh & lower.tri(R), arr.ind = TRUE)
       if (nrow(big) > 0) {
         nm <- rownames(R) %||% paste0("trait", seq_len(nrow(R)))
+        n_show <- min(nrow(big), 8L)
         cat(sprintf(
-          "  %d trait pair(s) with |corr| > %.2f:\n",
+          "  %d trait pair(s) with |corr| > %.2f%s:\n",
           nrow(big),
-          big_corr_thresh
+          big_corr_thresh,
+          if (n_show < nrow(big)) {
+            sprintf(" (showing %d of %d)", n_show, nrow(big))
+          } else {
+            ""
+          }
         ))
-        for (i in seq_len(min(nrow(big), 8L))) {
+        for (i in seq_len(n_show)) {
           cat(sprintf(
             "    %s ~ %s : %+.2f\n",
             nm[big[i, 1]],

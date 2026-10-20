@@ -1,5 +1,11 @@
 # Development (unreleased)
 
+* A `lambda_constraint` that pins a diagonal loading `Lambda[k, k]` at 0 no
+  longer leaves the free loadings on axis `k` stuck at exactly 0. They now
+  start at 0.5, so the optimiser can move them; before, the fit reported
+  convergence with that axis all zeros and a much lower log-likelihood. Part
+  of #1585.
+
 * The `sigma()` refusal methods are now registered from roxygen with
   `@exportS3Method stats::sigma`, matching the `stats::sigma` entries already in
   `NAMESPACE`, so `devtools::document()` no longer rewrites them. Behaviour is

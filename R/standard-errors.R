@@ -165,5 +165,12 @@ standard_errors <- function(fit) {
   fit$sd_report <- sd_rep
   fit$loading_ridge_curvature <- attr(sd_rep, "loading_ridge_curvature")
   fit$sdreport_error <- NULL
+  ## #1573: `fit$fit_health` was cached at fit time, without the sdreport.
+  ## Rebuild it so check_gllvmTMB() reports the Hessian and SEs the fit now has.
+  ## Fields set by the fit pipeline after the build are carried over.
+  old_health <- fit$fit_health
+  fit$fit_health <- .gllvmTMB_build_fit_health(fit)
+  keep <- setdiff(names(old_health), names(fit$fit_health))
+  fit$fit_health[keep] <- old_health[keep]
   fit
 }

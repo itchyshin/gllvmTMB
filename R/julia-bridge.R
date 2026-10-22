@@ -3286,7 +3286,6 @@ coef.gllvmTMB_julia <- function(object, ...) {
 }
 
 #' @rdname gllvmTMB_julia-methods
-#' @param x A Julia bridge fit (for `tidy()`).
 #' @param effects For `tidy()`: one of `"fixed"` (per-trait intercepts and
 #'   covariate coefficients), `"ran_pars"` (per-trait shared latent standard
 #'   deviations `sqrt(diag(Lambda Lambda^T))` and dispersion parameters), or
@@ -3625,9 +3624,7 @@ residuals.gllvmTMB_julia <- function(
   )
   observed <- as.vector(observed)
   missing_response <- !as.vector(mask)
-  if (!is.null(seed)) {
-    set.seed(seed + 1L)
-  }
+  .gllvmTMB_local_seed(seed + 1L)
   nsim <- ncol(simulations)
   nonfinite_observed <- !is.finite(observed)
   nonfinite_simulation <- !is.finite(rowSums(simulations))
@@ -3738,9 +3735,7 @@ simulate.gllvmTMB_julia <- function(
       call. = FALSE
     )
   }
-  if (!is.null(seed)) {
-    set.seed(seed)
-  }
+  .gllvmTMB_local_seed(seed)
 
   y <- .gllvm_julia_training_y(object)
   p <- nrow(y)

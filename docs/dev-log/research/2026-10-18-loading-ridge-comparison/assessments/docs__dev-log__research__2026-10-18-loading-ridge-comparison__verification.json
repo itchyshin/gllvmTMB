@@ -1,0 +1,44 @@
+{
+  "assessment_performed": true,
+  "draft_sha256": "7f9d3f3af681a88fcfd7773c9ad74b42db7b69163c55fb5e4b5310bc47c6e520",
+  "draft_version": "v1",
+  "requested_mode": "independent",
+  "assessor_type": "self",
+  "reviewer": "Codex",
+  "method": "Separate post-draft review against audited CSVs, independent statistical/Rose review and successful local article execution",
+  "genre": "R-package documentation and retained simulation evidence",
+  "coverage": "Whole exact verification record",
+  "score": 2,
+  "style_status": "assessed",
+  "score_reason": "Concrete model settings, denominators and actions dominate; fixed reporting headings remain formulaic.",
+  "confidence": "medium",
+  "confidence_reason": "Self-review of the stated sections, not a human naturalness or authorship test.",
+  "examples": [
+    {
+      "location": "line 3",
+      "line": 3,
+      "quote": "The copied aggregate CSVs and summary JSON match the audited campaign files byte for byte. Exactly 24,000 attempts, 6,000 paired datasets, 144,000 effect rows, 48 recovery cells and 500 attempts per cell/scale were checked. The frozen evidence SHA256SUMS passed before documentation assessment; the final manifest includes the added verification files.",
+      "cue": "Concrete decision, numerical evidence or stated scope",
+      "impact": "Lets the reader connect the recommendation with checked evidence and limits",
+      "repair": "no change needed"
+    },
+    {
+      "location": "line 8",
+      "line": 8,
+      "quote": "- `pkgdown::check_pkgdown()`: passed, \"No problems found\". Pandoc emitted existing math-rendering deprecation notices.",
+      "cue": "Concrete decision, numerical evidence or stated scope",
+      "impact": "Lets the reader connect the recommendation with checked evidence and limits",
+      "repair": "no change needed"
+    }
+  ],
+  "evidence_none_reason": null,
+  "science_gate": "pass",
+  "science_gate_reason": "Keeps effective Inf default and named model scope; separates finite-interval coverage, availability, all-attempt containment and MAP interpretation.",
+  "facts_gate": "pass",
+  "facts_gate_reason": "All new numerical claims match retained summaries; source defaults unchanged; article and long/wide covariance comparison executed successfully.",
+  "references_gate": "pass",
+  "references_gate_reason": "New claims point to source-pinned retained evidence; public links target the documented article anchor and eventual main record, with local-only publication status stated.",
+  "date": "2026-10-18",
+  "calibration_status": "No held-out controls used; prior pilot and writing guidance were already seen.",
+  "interpretation": "perceived_style_not_authorship"
+}

@@ -44,30 +44,31 @@ disambiguates printing.
 Mathematical parallel to \code{\link[=phylo_indep]{phylo_indep()}}.
 }
 \examples{
-\dontrun{
-# Independent per-trait animal-model intercepts via the bar form,
-# passing the dense relatedness matrix A directly.
-# Grounded in test-animal-keyword.R.
+set.seed(1)
+## Pedigree: ten founders (five sires, five dams) and 90 offspring.
 ped <- data.frame(
-  id   = paste0("i", 1:12),
-  sire = c(rep(NA, 4), rep(c("i1", "i2"), length.out = 8)),
-  dam  = c(rep(NA, 4), rep(c("i3", "i4"), length.out = 8))
+  id   = paste0("i", 1:100),
+  sire = c(rep(NA, 10), sample(paste0("i", 1:5), 90, replace = TRUE)),
+  dam  = c(rep(NA, 10), sample(paste0("i", 6:10), 90, replace = TRUE))
 )
 A <- pedigree_to_A(ped)
-yvec <- as.numeric(MASS::mvrnorm(
-  1, mu = rep(0, 2 * 12),
-  Sigma = kronecker(diag(2), A) * 0.5 + diag(2 * 12) * 0.5
-))
+## Two traits with their own additive-genetic variances and no genetic
+## covariance: vec(bv) ~ N(0, G \%x\% A) with G = diag(0.6, 0.4). Residual
+## noise is added; one row per (individual, trait).
+G <- diag(c(0.6, 0.4))
+bv <- t(chol(A)) \%*\% matrix(rnorm(100 * 2), 100, 2) \%*\% chol(G)
 df <- data.frame(
-  species = factor(rep(ped$id, each = 2), levels = ped$id),
-  trait   = factor(rep(c("t1", "t2"), times = 12), levels = c("t1", "t2")),
-  value   = yvec
+  individual = factor(rep(ped$id, each = 2), levels = ped$id),
+  trait      = factor(rep(c("t1", "t2"), times = 100)),
+  value      = as.vector(t(bv)) + rnorm(100 * 2, sd = 0.6)
 )
+## Pass the dense relatedness matrix A directly:
 fit <- gllvmTMB(
-  value ~ 0 + trait + animal_indep(0 + trait | species, A = A),
-  data = df, unit = "species", family = gaussian()
+  value ~ 0 + trait + animal_indep(0 + trait | individual, A = A),
+  data = df, trait = "trait", unit = "individual",
+  cluster = "individual"
 )
-}
+extract_Sigma(fit, level = "phy")$Sigma  # estimated G (diagonal)
 }
 \seealso{
 \code{\link[=phylo_indep]{phylo_indep()}}.

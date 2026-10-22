@@ -1,0 +1,36 @@
+{
+  "assessment_performed": true,
+  "draft_sha256": "508398c05b3f591eacad66ecb95d81a60d9bed213a266809ddf19e8a6ae6fe4e",
+  "draft_version": "v1",
+  "requested_mode": "independent",
+  "assessor_type": "self",
+  "reviewer": "Codex",
+  "method": "Separate post-draft review against audited CSVs, independent statistical/Rose review and successful local article execution",
+  "genre": "R-package documentation and retained simulation evidence",
+  "coverage": "EXT-31 loading-ridge addendum only",
+  "score": 2,
+  "style_status": "assessed",
+  "score_reason": "Concrete model settings, denominators and actions dominate; fixed reporting headings remain formulaic.",
+  "confidence": "medium",
+  "confidence_reason": "Self-review of the stated sections, not a human naturalness or authorship test.",
+  "examples": [
+    {
+      "location": "line 413",
+      "line": 413,
+      "quote": "| EXT-31 | `extract_lv_effects()` and `extract_ordination(component = ...)` for predictor-informed latent scores | `partial` | `test-lv-parser-guard.R`; `test-julia-bridge.R`; `test-lv-gaussian-recovery.R`; `test-lv-bernoulli-depth.R`; `test-lv-factor-runtime.R`; `test-lv-missing-response.R`; `docs/dev-log/artifacts/lv-wald-coverage/2026-06-28-local-r500-summary.csv`; `docs/dev-log/artifacts/lv-wald-coverage/2026-06-30-local-binomial-r500-summary.csv`; `test-lv-cross-family-predictor-bridge.R`; `test-mixed-gaussian-lognormal-scale.R`; `docs/dev-log/artifacts/cross-family-lv-predictor/2026-08-27-local-canary-pre-run-receipt.md`; `docs/dev-log/artifacts/cross-family-lv-predictor/2026-08-27-all-family-pre-run-receipt.md` | `extract_lv_effects(type = \"trait_effect\")` returns rotation-invariant `B_lv = Lambda alpha^T`; `extract_ordination(component = c(\"total\", \"innovation\", \"mean\"))` preserves total = innovation + mean. These point extractors operate on the admitted native registered-family composition route, and live all-family canaries return finite `B_lv_unit`. Raw axis `alpha` and `Lambda` remain orientation-dependent and are not cross-fit targets. Wald calibration remains limited to the previously certified Gaussian, binomial, and eight named Gaussian-anchor cells; arbitrary-composition intervals, factor intervals, non-Gaussian masks, Julia calibration, and structured-tier parity remain partial. **2026-10-18 loading-ridge addendum:** `docs/dev-log/research/2026-10-18-loading-ridge-comparison/` retains the completed 24,000-fit fixed-truth native-Laplace comparison: 500 datasets per family/n/loading-scale cell, paired Inf/1/2/4, induced trait-effect coverage with available-interval and all-attempt denominators. Ridge 2 improves observed point recovery modestly but gives 66 unavailable-interval fits versus 64 for Inf across 6,000 attempts each; no general coverage or Hessian benefit. Keep this row partial: rank-two grouped-probit/replicated-Gaussian/replicated-Poisson evidence does not certify arbitrary compositions, score intervals, intercept-only ordination, or general 95% coverage. The effective unpenalised default is retained by maintainer decision. |",
+      "cue": "Concrete decision, numerical evidence or stated scope",
+      "impact": "Lets the reader connect the recommendation with checked evidence and limits",
+      "repair": "no change needed"
+    }
+  ],
+  "evidence_none_reason": null,
+  "science_gate": "pass",
+  "science_gate_reason": "Keeps effective Inf default and named model scope; separates finite-interval coverage, availability, all-attempt containment and MAP interpretation.",
+  "facts_gate": "pass",
+  "facts_gate_reason": "All new numerical claims match retained summaries; source defaults unchanged; article and long/wide covariance comparison executed successfully.",
+  "references_gate": "pass",
+  "references_gate_reason": "New claims point to source-pinned retained evidence; public links target the documented article anchor and eventual main record, with local-only publication status stated.",
+  "date": "2026-10-18",
+  "calibration_status": "No held-out controls used; prior pilot and writing guidance were already seen.",
+  "interpretation": "perceived_style_not_authorship"
+}

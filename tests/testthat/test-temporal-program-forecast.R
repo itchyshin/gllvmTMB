@@ -143,3 +143,56 @@ test_that("temporal forecasts preserve negative AR1 and translated OU covariance
     forecast_temporal(shifted, shifted_future, se.fit = TRUE)[c("est", "se.fit")],
     tolerance = 1e-10)
 })
+
+test_that("forecast_temporal newdata matches the training-design forecast for scale() and missing levels", {
+  set.seed(11)
+  data <- expand.grid(
+    series = c("s1", "s2"), occasion = c(1L, 2L, 3L),
+    trait = c("t1", "t2", "t3"), KEEP.OUT.ATTRS = FALSE,
+    stringsAsFactors = FALSE
+  )
+  ## g is constant inside each series--occasion so dropping a level still
+  ## leaves a complete trait panel.
+  data$g <- factor(c("a", "b", "c")[data$occasion], levels = c("a", "b", "c"))
+  data$x <- rnorm(nrow(data), 10, 3)
+  data$value <- with(
+    data,
+    as.numeric(factor(trait)) / 4 + as.numeric(factor(series)) / 5 +
+      occasion / 10 + 0.2 * x
+  )
+  fit <- suppressWarnings(gllvmTMB(
+    value ~ 0 + trait + scale(x) + g +
+      temporal_indep(0 + trait | series, time = occasion),
+    data = data, unit = "series", family = gaussian(), silent = TRUE,
+    control = gllvmTMBcontrol(se = FALSE)
+  ))
+  future <- expand.grid(
+    series = c("s1", "s2"), occasion = c(4L, 5L),
+    trait = c("t1", "t2", "t3"), KEEP.OUT.ATTRS = FALSE,
+    stringsAsFactors = FALSE
+  )
+  future$g <- factor(
+    c("b", "a")[match(future$occasion, c(4L, 5L))],
+    levels = c("a", "b", "c")
+  )
+  future$x <- rnorm(nrow(future), 10, 3)
+  ref <- forecast_temporal(fit, future)
+
+  ## One future occasion would recompute scale() if predvars were ignored.
+  one_occ <- future[future$occasion == 4L, , drop = FALSE]
+  sc <- forecast_temporal(fit, one_occ)
+  expect_equal(sc$est, ref$est[future$occasion == 4L], tolerance = 1e-8)
+
+  ## Dropping the training baseline level must keep the same row forecasts.
+  sub <- future[future$g != "a", , drop = FALSE]
+  sub_fc <- forecast_temporal(fit, sub)
+  expect_equal(sub_fc$est, ref$est[future$g != "a"], tolerance = 1e-8)
+
+  ## An NA covariate (not series/time/trait) stays NA on that row.
+  na_future <- future
+  na_future$x[1L] <- NA_real_
+  na_fc <- forecast_temporal(fit, na_future)
+  expect_true(is.na(na_fc$est[1L]))
+  expect_false(anyNA(na_fc$est[-1L]))
+  expect_equal(na_fc$est[-1L], ref$est[-1L], tolerance = 1e-8)
+})

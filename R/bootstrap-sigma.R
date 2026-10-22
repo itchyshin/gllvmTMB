@@ -4,12 +4,13 @@
 ## refits the same formula, and accumulates percentile CIs across the
 ## requested levels and summaries.
 
-#' Reconstruct the full formula (fixed + covstructs) from a
+#' Reconstruct the full formula (fixed + covstructs + offset) from a
 #' fitted gllvmTMB model. Used internally by `bootstrap_Sigma()` so the
 #' caller does not have to pass the original formula manually.
 #'
 #' @param fit A fit returned by [gllvmTMB()].
-#' @return A formula object combining `fit$formula` and `fit$covstructs`.
+#' @return A formula object combining `fit$formula`, `fit$covstructs` and
+#'   `fit$offset_expr`.
 #' @keywords internal
 #' @noRd
 .reconstruct_multi_formula <- function(fit) {
@@ -17,7 +18,23 @@
   ## Rebuild a covstruct expression from the parsed list element.
   build_one <- function(cs) {
     bar <- call("|", cs$lhs, cs$group)
+    ## An ordinary random intercept is parsed from `(1 | g)` and stored as
+    ## kind "re_int". There is no re_int() function, so write the bar back
+    ## as the user typed it; `re_int(1 | g)` made every refit fail (#1393).
+    if (identical(cs$kind, "re_int")) {
+      return(call("(", bar))
+    }
     extra <- cs$extra
+    ## phylo_rr (from phylo_*, animal_* and kernel_* terms) takes a bare
+    ## species argument, and the parser stores the bar it built from it,
+    ## `0 + species | trait`. Write the bare argument back: re-parsing the
+    ## stored bar wraps it a second time, which made every refit of a
+    ## multi-kernel fit fail.
+    lhs <- cs$lhs
+    if (identical(cs$kind, "phylo_rr") && is.call(lhs) && length(lhs) == 3L &&
+        identical(lhs[[1L]], as.name("+")) && identical(lhs[[2L]], 0)) {
+      return(as.call(c(list(as.name("phylo_rr"), lhs[[3L]]), extra)))
+    }
     if (length(extra) == 0L) {
       as.call(c(list(as.name(cs$kind)), list(bar)))
     } else {
@@ -27,6 +44,12 @@
   rhs <- fit$formula[[length(fit$formula)]]
   for (cs in fit$covstructs) {
     rhs <- call("+", rhs, build_one(cs))
+  }
+  ## The parser holds a formula offset out of `fit$formula` (model.matrix()
+  ## would drop it) and keeps it in `fit$offset_expr`. Without it a refit of
+  ## an offset model runs, but fits a different model (#1393).
+  if (!is.null(fit$offset_expr)) {
+    rhs <- call("+", rhs, call("offset", fit$offset_expr))
   }
   lhs <- fit$formula[[2L]]
   stats::as.formula(paste(deparse(call("~", lhs, rhs)), collapse = " "))
@@ -63,6 +86,152 @@
   }
   control$se <- FALSE
   control
+}
+
+# The fit stores the loading constraint as the engine consumed it. A lone
+# diagonal phylogenetic / kernel term adds its own `phy` entry, which a refit
+# re-derives from the formula and refuses to be handed back; the B / W slot
+# names are returned under their canonical names so a refit does not use up
+# the caller's once-per-session deprecation notice.
+.bootstrap_refit_lambda_constraint <- function(fit) {
+  lc <- fit$lambda_constraint
+  if (is.null(lc)) {
+    return(NULL)
+  }
+  if (isTRUE(fit$use$phylo_unique)) {
+    lc$phy <- NULL
+  }
+  nm <- names(lc)
+  nm[nm == "B"] <- "unit"
+  nm[nm == "W"] <- "unit_obs"
+  names(lc) <- nm
+  if (length(lc)) lc else NULL
+}
+
+# The fit stores the normalised `Xcoef_fixed` list; gllvmTMB() takes the named
+# vector of pinned fixed-effect columns (structural zeros only).
+.bootstrap_refit_xcoef_fixed <- function(fit) {
+  xf <- fit$Xcoef_fixed
+  if (is.numeric(xf) && !is.null(names(xf))) {
+    return(xf)
+  }
+  if (!is.list(xf) || !isTRUE(xf$has_fixed)) {
+    return(NULL)
+  }
+  stats::setNames(rep(0, length(xf$terms)), xf$terms)
+}
+
+# How a bootstrap refit recovers each gllvmTMB() argument from the fitted
+# object (#1393). Every formal of gllvmTMB() has an entry, and a test compares
+# the names with `names(formals(gllvmTMB))`, so a new argument cannot be left
+# out by omission the way `unit_obs` was. A NULL entry leaves the gllvmTMB()
+# default, for the reason given beside it. `formula` and `data` are supplied
+# per replicate by the caller.
+.bootstrap_refit_arg_table <- function(fit) {
+  ## Forward an optional grouping slot only when it differs from the default
+  ## it resolves to: passing the default marks the slot as user-supplied,
+  ## which changes gllvmTMB()'s unused-slot check.
+  non_default <- function(x, default) {
+    if (is.null(x) || identical(x, default)) NULL else x
+  }
+  list(
+    ## Rebuilt by .reconstruct_multi_formula().
+    formula = NULL,
+    ## `fit$data` with the simulated response.
+    data = NULL,
+    trait = fit$trait_col,
+    unit = fit$unit_col,
+    unit_obs = non_default(fit$unit_obs_col, "site_species"),
+    cluster = non_default(fit$cluster_col %||% fit$species_col, "species"),
+    cluster2 = fit$cluster2_col,
+    ## M1.8 (2026-05-17): prefer family_input (the original family list with
+    ## family_var attribute for mixed-family fits) over family (the
+    ## first-family-only view used by predict's linkinv). Pre-M1.8 fits
+    ## without family_input fall back to family.
+    family = fit$family_input %||% fit$family,
+    ## Non-unit likelihood weights are refused before any refit. Binomial
+    ## trial totals come from .bootstrap_response_setup(), and the caller
+    ## sets them (#1496).
+    weights = NULL,
+    REML = isTRUE(fit$REML),
+    mesh = fit$mesh,
+    phylo_vcv = fit$phylo_vcv,
+    phylo_tree = fit$phylo_tree,
+    ## Not kept on the fit; .bootstrap_refit_args() refuses meta_V() fits.
+    known_V = NULL,
+    lambda_constraint = .bootstrap_refit_lambda_constraint(fit),
+    Xcoef_fixed = .bootstrap_refit_xcoef_fixed(fit),
+    ## A bootstrap replicate's OWN standard errors are never read: the
+    ## intervals this routine returns are PERCENTILE CIs across the replicate
+    ## spread, and `.extract_summaries()` -- the only thing applied to each
+    ## refit -- contains zero references to `sd_report`. So every replicate
+    ## was running a full `TMB::sdreport()` and throwing the result away.
+    ##
+    ## Measured cost of that discard: `sdreport` is 22-39% of Laplace
+    ## wall-clock across N in {250,1000,2500} x q in {2,5}
+    ## (docs/design/laplace-cost-profile.md), paid `nsim` times over.
+    ##
+    ## This does NOT reduce what the caller gets. The returned intervals are
+    ## unchanged, because they never depended on per-replicate SEs; the
+    ## user's ORIGINAL fit keeps its own `sdreport()`. Only the throwaway
+    ## refits skip it.
+    control = .bootstrap_refit_control(fit),
+    ## Masked missing responses come from .bootstrap_response_setup(), and
+    ## the caller sets them (#1496). Modelled missing predictors are refused,
+    ## because `impute` is not kept on the fit and `fit$formula` holds the
+    ## bare predictor, not `mi()`.
+    missing = NULL,
+    impute = NULL,
+    silent = TRUE,
+    ## Only native TMB fits reach a refit. The TMB engine accepts only the
+    ## default interval settings, and a replicate's own intervals are unused.
+    engine = NULL,
+    ci_method = NULL,
+    ci_level = NULL,
+    ci_nboot = NULL,
+    ci_seed = NULL,
+    ## Deprecated aliases of `unit` and `cluster`, forwarded above.
+    site = NULL,
+    species = NULL,
+    ## MSPL fits are refused before any refit; `REML` carries the ML / REML
+    ## choice, and an explicit `estimator` together with REML = TRUE aborts.
+    estimator = NULL,
+    ## Already joined into `fit$data` when the model was fitted.
+    column_data = NULL
+  )
+}
+
+# One line saying why a refit failed: the error's header, unwrapped. A cli
+# error's conditionMessage() is wrapped to the console width and carries its
+# bullets on further lines; an empty or missing message still yields text.
+.bootstrap_failure_reason <- function(e) {
+  msg <- tryCatch(
+    if (inherits(e, "rlang_error")) rlang::cnd_header(e) else conditionMessage(e),
+    error = function(err) character(0)
+  )
+  msg <- gsub("[[:space:]]+", " ", trimws(paste(msg[!is.na(msg)], collapse = " ")))
+  if (nzchar(msg)) msg else "an error without a message"
+}
+
+# The non-default refit arguments, after refusing fits whose inputs the fitted
+# object does not keep: every refit of those would fail.
+.bootstrap_refit_args <- function(fit, caller, call = rlang::caller_env()) {
+  if (isTRUE(fit$use$equalto)) {
+    cli::cli_abort(c(
+      "{.fn {caller}} cannot refit a model with a known sampling covariance ({.fn meta_V}).",
+      "x" = "The fitted object does not keep the {.arg known_V} matrix that each refit needs.",
+      ">" = "Use the point estimates from {.fn extract_Sigma}; refit-based intervals are not available for this model."
+    ), class = "gllvmTMB_bootstrap_refit_unsupported", call = call)
+  }
+  if (length(fit$missing_data$predictors) > 0L) {
+    cli::cli_abort(c(
+      "{.fn {caller}} cannot refit a model with a modelled missing predictor ({.fn mi}).",
+      "x" = "The fitted object does not keep the {.arg impute} model, so each refit would stop on the missing predictor values.",
+      ">" = "Use the point estimates from {.fn extract_Sigma}; refit-based intervals are not available for this model."
+    ), class = "gllvmTMB_bootstrap_refit_unsupported", call = call)
+  }
+  args <- .bootstrap_refit_arg_table(fit)
+  args[!vapply(args, is.null, logical(1))]
 }
 
 #' Bootstrap covariance, correlation, communality, and ICC summaries
@@ -257,8 +426,12 @@ bootstrap_Sigma <- function(
   }
   .gllvmTMB_mspl_assert_inference(fit, "bootstrap_Sigma")
   .gllvmTMB_require_unweighted_inference(fit, "bootstrap_Sigma")
+  ## The default vector lists the legacy aliases "B"/"W" so every tier is
+  ## matched; only warn when the user supplied a deprecated value (#1409).
+  level_supplied <- !missing(level)
   level <- match.arg(level, several.ok = TRUE)
-  level <- vapply(level, .normalise_level, character(1L), arg_name = "level")
+  level <- vapply(level, .normalise_level, character(1L), arg_name = "level",
+                  .skip_warn = !level_supplied)
   what <- match.arg(what, several.ok = TRUE)
   link_residual <- match.arg(link_residual)
   if (!is.numeric(conf) || length(conf) != 1L || is.na(conf) ||
@@ -345,34 +518,26 @@ bootstrap_Sigma <- function(
     want_icc <- FALSE
   }
 
+  ## Every gllvmTMB() argument the original fit used, recovered from the
+  ## fitted object. A hand-picked list dropped `unit_obs`, `cluster2` and
+  ## `Xcoef_fixed`, so refits failed or fitted a different model (#1393).
+  ## Called first, so a fit whose inputs cannot be recovered is refused
+  ## before any other work.
+  refit_args <- .bootstrap_refit_args(fit, "bootstrap_Sigma")
   ## Reconstruct the original formula. The user can override by editing
   ## fit$formula / fit$covstructs upstream; we deliberately do not take a
   ## formula argument here to keep the API minimal.
-  formula <- .reconstruct_multi_formula(fit)
-  trait <- fit$trait_col
-  site <- fit$unit_col
-  species <- fit$species_col
-  ## M1.8 (2026-05-17): prefer family_input (the original family list with
-  ## family_var attribute for mixed-family fits) over family (the
-  ## first-family-only view used by predict's linkinv). Pre-M1.8 fits
-  ## without family_input fall back to family.
-  family <- if (!is.null(fit$family_input)) fit$family_input else fit$family
-  data <- fit$data
-  ## get_response() was an sdmTMB helper; the trimmed package extracts
-  ## the response symbol directly here.
-  resp <- all.vars(fit$formula)[1]
-  if (!resp %in% names(data)) {
-    cli::cli_abort(
-      "Response column {.var {resp}} not found in {.code fit$data}."
-    )
-  }
+  response <- .bootstrap_response_setup(fit)
+  formula <- response$formula
+  ## Binomial trial totals and masked missing responses come from the
+  ## response setup (#1496).
+  refit_args$weights <- response$weights
+  refit_args$missing <- response$missing
 
   ## Pre-draw the simulated response matrix once, in the parent process,
   ## so the replicates are reproducible regardless of n_cores. Each
   ## column is one bootstrap response vector.
-  if (!is.null(seed)) {
-    set.seed(seed)
-  }
+  .gllvmTMB_local_seed(seed)
   Y_sim <- simulate(fit, nsim = n_boot)
   if (!is.matrix(Y_sim) || ncol(Y_sim) != n_boot) {
     cli::cli_abort(
@@ -397,60 +562,30 @@ bootstrap_Sigma <- function(
   ## namespace, not bootstrap_Sigma()'s calling env).
   extract_fn <- .extract_summaries
   na_fn <- .na_summaries
-  ## Auxiliary fit arguments to forward: phylo correlation matrix or
-  ## tree, SPDE mesh, lambda_constraint, etc. Without these, refits of
-  ## phylogenetic / spatial fits all fail.
-  aux <- list(
-    phylo_vcv = fit$phylo_vcv,
-    phylo_tree = fit$phylo_tree,
-    mesh = fit$mesh,
-    lambda_constraint = fit$lambda_constraint
-  )
-  aux <- aux[!vapply(aux, is.null, logical(1))]
 
   refit_one <- function(b) {
-    dat <- data
-    dat[[resp]] <- Y_sim[, b]
-    call_args <- c(
-      list(
-        formula = formula,
-        data = dat,
-        trait = trait,
-        site = site,
-        species = species,
-        family = family,
-        REML = isTRUE(fit$REML),
-        silent = TRUE,
-        ## A bootstrap replicate's OWN standard errors are never read: the
-        ## intervals this routine returns are PERCENTILE CIs across the replicate
-        ## spread, and `.extract_summaries()` -- the only thing applied to each
-        ## refit -- contains zero references to `sd_report`. So every replicate
-        ## was running a full `TMB::sdreport()` and throwing the result away.
-        ##
-        ## Measured cost of that discard: `sdreport` is 22-39% of Laplace
-        ## wall-clock across N in {250,1000,2500} x q in {2,5}
-        ## (docs/design/laplace-cost-profile.md), paid `nsim` times over.
-        ##
-        ## This does NOT reduce what the caller gets. The returned intervals are
-        ## unchanged, because they never depended on per-replicate SEs; the
-        ## user's ORIGINAL fit keeps its own `sdreport()`. Only the throwaway
-        ## refits skip it.
-        control = .bootstrap_refit_control(fit)
-      ),
-      aux
-    )
+    dat <- .bootstrap_response_data(response, Y_sim[, b])
+    call_args <- c(list(formula = formula, data = dat), refit_args)
     out <- tryCatch(
       suppressMessages(suppressWarnings(
         do.call(gllvmTMB, call_args)
       )),
-      error = function(e) NULL
+      error = function(e) e
     )
-    if (
-      is.null(out) ||
-        !inherits(out, "gllvmTMB_multi") ||
-        !isTRUE(out$opt$convergence == 0L)
-    ) {
-      return(na_fn(point_est))
+    ## Keep why the refit failed, so a bootstrap whose refits all fail can
+    ## say so instead of returning NA bounds silently (#1393).
+    reason <- if (inherits(out, "error")) {
+      .bootstrap_failure_reason(out)
+    } else if (!inherits(out, "gllvmTMB_multi")) {
+      "the refit did not return a gllvmTMB fit"
+    } else if (!isTRUE(out$opt$convergence == 0L)) {
+      paste0("the optimiser did not converge (code ",
+             format(out$opt$convergence %||% NA), ")")
+    }
+    if (!is.null(reason)) {
+      failed <- na_fn(point_est)
+      attr(failed, "reason") <- reason
+      return(failed)
     }
     extract_fn(out, level = level, what = what, link_residual = link_residual)
   }
@@ -493,6 +628,21 @@ bootstrap_Sigma <- function(
 
   ci <- .summarise_draws(draws, point_est, conf = conf)
 
+  ## Every refit failed, so every bound is NA. Say so loudly, with the refits'
+  ## own error: `$n_failed` was the only trace, and for matrix summaries the
+  ## attrition check below never fired (#1393).
+  if (n_failed == n_boot) {
+    reasons <- vapply(draws, function(d) attr(d, "reason") %||% "unknown",
+                      character(1))
+    top_reason <- names(sort(table(reasons), decreasing = TRUE))[[1L]]
+    n_top <- sum(reasons == top_reason)
+    cli::cli_warn(c(
+      "Every bootstrap refit failed ({n_boot} of {n_boot}), so every interval bound is {.code NA}.",
+      "x" = "{n_top} of {n_boot} refit{?s} stopped with: {top_reason}",
+      "i" = "Each refit calls {.fn gllvmTMB} with the fitted model's formula and arguments on a simulated response."
+    ), class = "gllvmTMB_bootstrap_refits_failed")
+  }
+
   ## Attrition surfacing (2026-08-02). `.summarise_draws()` already NA-s the
   ## bounds of `multiple_r_*` entries whose surviving draws fall below 80% of
   ## `n_boot`, because percentile bounds over only the survivors bias the
@@ -503,17 +653,25 @@ bootstrap_Sigma <- function(
   ## so this warns instead: the numbers are unchanged, the thinning is no longer
   ## invisible, and `n_effective` (already returned per element) is named as the
   ## place to check. Promoting this to a hard floor is a maintainer decision.
+  ##
+  ## Matrix summaries (`Sigma_*`, `R_*`) carry no `n_effective`, so their
+  ## attrition went unreported (#1393): for them, count the refits that
+  ## produced the summary at all.
   thin_report <- vapply(
-    names(ci$n_effective),
+    names(point_est),
     function(nm) {
       ne <- ci$n_effective[[nm]]
-      if (is.null(ne) || !length(ne)) return(NA_real_)
-      min(ne, na.rm = TRUE) / n_boot
+      if (!is.null(ne) && length(ne)) {
+        return(min(ne, na.rm = TRUE) / n_boot)
+      }
+      sum(vapply(draws, function(d) any(is.finite(d[[nm]])), logical(1))) /
+        n_boot
     },
     numeric(1)
   )
   thin_report <- thin_report[is.finite(thin_report) & thin_report < 0.8]
-  if (length(thin_report)) {
+  ## When every refit failed, the warning above already says so.
+  if (length(thin_report) && n_failed < n_boot) {
     worst <- names(thin_report)[which.min(thin_report)]
     cli::cli_warn(c(
       "Bootstrap attrition: {length(thin_report)} summar{?y/ies} lost more than 20% of replicates.",
@@ -522,7 +680,7 @@ bootstrap_Sigma <- function(
         "Percentile bounds computed over only the surviving refits are biased ",
         "narrow, so these intervals read tighter than they should."
       ),
-      "i" = "Per-element counts are in {.code $n_effective}; failed refits are in {.code $n_failed}."
+      "i" = "Per-element counts for vector summaries are in {.code $n_effective}; failed refits are in {.code $n_failed}."
     ))
   }
 

@@ -88,6 +88,24 @@
 ## Issued once per old keyword per R session. Avoids spamming when an
 ## article (or a user's pasted code) uses the old name throughout.
 .gllvmTMB_deprecation_seen <- new.env(parent = emptyenv())
+
+## The spatial grouping token the structured-rho parser consumed for the
+## fit currently being parsed (NULL when none). With `rho = NULL` or
+## `rho = <not 1>` on a spatial_*() helper, the token right of `|` is a real
+## location-identifier column (spec$grouping), so the "token is ignored"
+## warning below must stay silent for it. `.parse_structured_rho_formula()`
+## strips `rho` before the sugar rewriter runs, so this cannot be read from
+## the call itself. Scoped and restored by gllvmTMB() around one fit.
+.gllvmTMB_spatial_token_consumed <- new.env(parent = emptyenv())
+.gllvmTMB_set_spatial_token_consumed <- function(spec) {
+  .gllvmTMB_spatial_token_consumed$token <-
+    if (!is.null(spec) && identical(spec$source, "spatial")) {
+      spec$grouping
+    } else {
+      NULL
+    }
+  invisible(NULL)
+}
 .gllvmTMB_warn_keyword_deprecated <- function(
   old,
   new_name,
@@ -1463,7 +1481,12 @@ spatial_scalar <- function(formula, coords = NULL, mesh = NULL) {
 #'   remains a separate estimated parameter. Attenuation preserves the projected
 #'   marginal variance at each modeled location and applies to the whole trait
 #'   covariance, including Psi. The grouping column must identify locations
-#'   consistently across replicates. Estimated latent models require rank one
+#'   consistently across replicates. With `rho = NULL` or any value other
+#'   than 1, the name after `|` is that grouping column and must be a real
+#'   column of `data`, for example `0 + trait | location`. The placeholder
+#'   `| coords` fails when `data` has no location-ID column named `coords`.
+#'   At the default `rho = 1` the name is ignored, and `| coords` is the usual
+#'   spelling. Estimated latent models require rank one
 #'   and at least four traits. The frozen spatial study found no passing recovery
 #'   cell (14 partial and 2 blocked); rho intervals remain unvalidated.
 #'   new-location prediction is not supported for attenuated models.
@@ -2020,7 +2043,12 @@ phylo_indep <- function(
 #'   remains a separate estimated parameter. Attenuation preserves the projected
 #'   marginal variance at each modeled location and applies to the whole trait
 #'   covariance, including Psi. The grouping column must identify locations
-#'   consistently across replicates. Estimated latent models require rank one
+#'   consistently across replicates. With `rho = NULL` or any value other
+#'   than 1, the name after `|` is that grouping column and must be a real
+#'   column of `data`, for example `0 + trait | location`. The placeholder
+#'   `| coords` fails when `data` has no location-ID column named `coords`.
+#'   At the default `rho = 1` the name is ignored, and `| coords` is the usual
+#'   spelling. Estimated latent models require rank one
 #'   and at least four traits. The frozen spatial study found no passing recovery
 #'   cell (14 partial and 2 blocked); rho intervals remain unvalidated.
 #'   new-location prediction is not supported for attenuated models.
@@ -2270,7 +2298,12 @@ phylo_dep <- function(formula, tree = NULL, vcv = NULL, A = NULL, Ainv = NULL, r
 #'   remains a separate estimated parameter. Attenuation preserves the projected
 #'   marginal variance at each modeled location and applies to the whole trait
 #'   covariance, including Psi. The grouping column must identify locations
-#'   consistently across replicates. Estimated latent models require rank one
+#'   consistently across replicates. With `rho = NULL` or any value other
+#'   than 1, the name after `|` is that grouping column and must be a real
+#'   column of `data`, for example `0 + trait | location`. The placeholder
+#'   `| coords` fails when `data` has no location-ID column named `coords`.
+#'   At the default `rho = 1` the name is ignored, and `| coords` is the usual
+#'   spelling. Estimated latent models require rank one
 #'   and at least four traits. The frozen spatial study found no passing recovery
 #'   cell (14 partial and 2 blocked); rho intervals remain unvalidated.
 #'   new-location prediction is not supported for attenuated models.
@@ -2636,12 +2669,11 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL, rho = 1) {
   ))
 }
 
-## #1163: the RHS of the `|` in a spatial_*() keyword is a fixed
-## placeholder (canonically spelled `coords`) -- the spatial field is always
-## driven by `mesh =` (or `coords =`, naming real columns) passed as an
-## argument, never by this token. `spatial_scalar(0 + trait | banana)`
-## therefore fits identically to `| coords`; warn once so silence is not
-## mistaken for the token doing anything.
+## #1163: at the default rho = 1, the RHS of `|` in a spatial_*()
+## keyword is a placeholder (canonically spelled `coords`). The field reads
+## locations from `mesh =` or `coords =`; the token does not select a column.
+## A non-unit or estimated rho instead consumes an observed location-ID
+## column, so only the default-rho case receives the notice below.
 .warn_spatial_grouping_token <- function(fn, e) {
   if (
     !is.call(e) || length(e) < 2L || !is.call(e[[2L]]) ||
@@ -2653,6 +2685,25 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL, rho = 1) {
   if (is.symbol(rhs) && identical(as.character(rhs), "coords")) {
     return(invisible(NULL))
   }
+  ## Estimated or fixed non-unit `rho` reads this token as the location
+  ## identifier, so it is not ignored. Two ways to know: gllvmTMB() has already
+  ## stripped `rho` from the call and recorded the consumed token
+  ## (`.gllvmTMB_spatial_token_consumed`); callers that rewrite the formula
+  ## directly (screen_gllvmTMB(), suggest_lambda_constraint()) still see a
+  ## literal `rho =` argument that is not 1.
+  if (
+    is.symbol(rhs) &&
+      identical(as.character(rhs), .gllvmTMB_spatial_token_consumed$token)
+  ) {
+    return(invisible(NULL))
+  }
+  call_names <- names(e)
+  if (!is.null(call_names) && "rho" %in% call_names) {
+    rho_arg <- e[[which(call_names == "rho")[1L]]]
+    if (!(is.numeric(rho_arg) && length(rho_arg) == 1L && isTRUE(rho_arg == 1))) {
+      return(invisible(NULL))
+    }
+  }
   ## The package's own env-based one-shot tracker (used throughout this
   ## file for grammar notices) rather than `cli_warn(.frequency = "once")`,
   ## whose internal throttle is not resettable from tests.
@@ -2663,7 +2714,7 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL, rho = 1) {
   if (!isTRUE(.gllvmTMB_deprecation_seen[[key]])) {
     cli::cli_warn(c(
       "{.fn {fn}}'s {.code | {deparse(rhs)}} grouping token is ignored.",
-      "i" = "Spatial keywords always read locations from {.arg mesh} (or {.arg coords}), never from the token right of {.code |}.",
+      "i" = "At the default {.code rho = 1}, spatial keywords read locations from {.arg mesh} (or {.arg coords}), rather than the token right of {.code |}.",
       ">" = "Write {.code {fn}(..., | coords)} for clarity, and pass {.code mesh = ...} (or {.code coords = ...}) to supply the actual locations."
     ))
     .gllvmTMB_deprecation_seen[[key]] <- TRUE

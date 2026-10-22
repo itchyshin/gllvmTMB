@@ -27,6 +27,10 @@ check_gllvmTMB(
   ordinal_loading_absolute_thresh = 30,
   phi_nbinom2_ceiling_thresh = 10000,
   phi_gamma_ceiling_thresh = 1e+08,
+  phi_truncnb2_ceiling_thresh = 10000,
+  phi_nbinom1_ceiling_thresh = 10000,
+  df_student_ceiling_thresh = 1000,
+  phi_betabinom_ceiling_thresh = 10000,
   laplace_accuracy = TRUE,
   laplace_accuracy_thresh = 2
 )
@@ -214,6 +218,20 @@ positive-part) shape estimate at or above this value is reported as a
 \verb{boundary_phi_gamma_<trait>} warning: the trait's residual coefficient of
 variation has collapsed to about zero, a Heywood-type boundary.}
 
+\item{phi_truncnb2_ceiling_thresh, phi_nbinom1_ceiling_thresh, phi_betabinom_ceiling_thresh}{Numeric scalars. A \code{truncated_nbinom2()}, \code{nbinom1()} or \code{betabinomial()}
+dispersion estimate at or above this value is reported as a
+\verb{boundary_phi_truncnb2_<trait>}, \verb{boundary_phi_nbinom1_<trait>} or
+\verb{boundary_phi_betabinom_<trait>} warning. For the truncated NB2 and
+beta-binomial this is the Poisson / binomial limit, where the extra
+dispersion is no longer identified; for \code{nbinom1()} it is a degenerate
+heavy-tailed limit.}
+
+\item{df_student_ceiling_thresh}{Numeric scalar. A \code{student()} degrees-of-freedom
+estimate at or above this value is reported as a
+\verb{boundary_df_student_<trait>} warning: the trait has run to the Gaussian
+limit, so the heavy tails are not identified. Use \code{gaussian()} for that
+trait, or fix \code{df}.}
+
 \item{laplace_accuracy}{Logical. If \code{TRUE} (default), and the fit's only
 random effects are the \code{latent()} scores with \code{d <= 3}, the marginal
 log-likelihood is re-evaluated at the fitted parameters by adaptive
@@ -259,9 +277,29 @@ itself proof that the fitted mean, likelihood, or rotation-invariant
 covariance summaries are unusable.
 }
 \examples{
-\dontrun{
-fit <- gllvmTMB(value ~ 0 + trait + latent(0 + trait | site, d = 2),
-                data = dat, trait = "trait", unit = "site")
-check_gllvmTMB(fit)
-}
+set.seed(1)
+# Eight traits on 100 units, each unit measured twice. Odd-numbered
+# traits share one latent axis, even-numbered traits share the other.
+# Repeat measurements let the model separate each trait's own
+# unit-level variance (Psi) from measurement noise.
+Lambda <- cbind(c(0.9, 0, 0.8, 0, 0.7, 0, 0.6, 0),
+                c(0, 0.9, 0, 0.8, 0, 0.7, 0, 0.6))
+sim <- simulate_unit_trait(n_units = 100, n_obs_per_unit = 2,
+                           n_traits = 8, Lambda_B = Lambda,
+                           psi_B = 0.3, sigma2_eps = 0.3)
+fit <- gllvmTMB(
+  value ~ 0 + trait + latent(0 + trait | unit, d = 2, unique = TRUE),
+  data = sim$data, trait = "trait", unit = "unit"
+)
+
+# One row per check. The status column is PASS, WARN, FAIL or INFO.
+chk <- check_gllvmTMB(fit)
+chk[, c("component", "status", "value")]
+table(chk$status)
+
+# Read the rows that did not pass, with the suggested action. With two
+# latent axes the loadings are defined only up to a rotation, so a WARN
+# on rotation_convention is expected here: interpret Sigma and the trait
+# correlations, or rotate the loadings before comparing axes.
+chk[chk$status != "PASS", c("component", "status", "message", "action")]
 }

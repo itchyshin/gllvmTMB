@@ -69,8 +69,6 @@
 
 \item{...}{Unused.}
 
-\item{x}{A Julia bridge fit (for \code{tidy()}).}
-
 \item{effects}{For \code{tidy()}: one of \code{"fixed"} (per-trait intercepts and
 covariate coefficients), \code{"ran_pars"} (per-trait shared latent standard
 deviations \verb{sqrt(diag(Lambda Lambda^T))} and dispersion parameters), or

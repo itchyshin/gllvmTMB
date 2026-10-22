@@ -1,0 +1,44 @@
+{
+  "assessment_performed": true,
+  "draft_sha256": "990be7e613d3e9cc21da400af9aa88ec23af6c1186b381c59f49378a453b4360",
+  "draft_version": "v1",
+  "requested_mode": "independent",
+  "assessor_type": "self",
+  "reviewer": "Codex",
+  "method": "Separate post-draft review against audited CSVs, independent statistical/Rose review and successful local article execution",
+  "genre": "R-package documentation and retained simulation evidence",
+  "coverage": "Modified loading-ridge guidance paragraph only",
+  "score": 2,
+  "style_status": "assessed",
+  "score_reason": "Concrete model settings, denominators and actions dominate; fixed reporting headings remain formulaic.",
+  "confidence": "medium",
+  "confidence_reason": "Self-review of the stated sections, not a human naturalness or authorship test.",
+  "examples": [
+    {
+      "location": "line 226",
+      "line": 226,
+      "quote": "on axis orientation; trait-scale effects are the basis for comparisons.",
+      "cue": "Concrete decision, numerical evidence or stated scope",
+      "impact": "Lets the reader connect the recommendation with checked evidence and limits",
+      "repair": "no change needed"
+    },
+    {
+      "location": "line 227",
+      "line": 227,
+      "quote": "For unstable binomial fits with ordinary between-unit latent loadings, try",
+      "cue": "Concrete decision, numerical evidence or stated scope",
+      "impact": "Lets the reader connect the recommendation with checked evidence and limits",
+      "repair": "no change needed"
+    }
+  ],
+  "evidence_none_reason": null,
+  "science_gate": "pass",
+  "science_gate_reason": "Keeps effective Inf default and named model scope; separates finite-interval coverage, availability, all-attempt containment and MAP interpretation.",
+  "facts_gate": "pass",
+  "facts_gate_reason": "All new numerical claims match retained summaries; source defaults unchanged; article and long/wide covariance comparison executed successfully.",
+  "references_gate": "pass",
+  "references_gate_reason": "New claims point to source-pinned retained evidence; public links target the documented article anchor and eventual main record, with local-only publication status stated.",
+  "date": "2026-10-18",
+  "calibration_status": "No held-out controls used; prior pilot and writing guidance were already seen.",
+  "interpretation": "perceived_style_not_authorship"
+}

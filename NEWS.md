@@ -1,5 +1,56 @@
 # Development (unreleased)
 
+* The `sigma()` refusal methods are now registered from roxygen with
+  `@exportS3Method stats::sigma`, matching the `stats::sigma` entries already in
+  `NAMESPACE`, so `devtools::document()` no longer rewrites them. Behaviour is
+  unchanged (#1558).
+* `plot_loadings_confidence_eye()` called on a fitted model without `level =`
+  no longer stops with "'arg' must be of length 1". Its default is now
+  `level = "unit"`, matching `loading_ci()` and `flag_unreliable_loadings()`
+  (#1583).
+
+* `extract_Sigma()` no longer prints the "latent-only ... refit without
+  `unique = FALSE`" advisory for a full-rank loading block. `dep()` is carried
+  as a full-rank `rr` term with no diagonal, so the advisory fired on it even
+  though no residual Psi is missing and following its advice would change the
+  model. It now fires only for rank-deficient loadings (`d < n_traits`) (#1556).
+* Zero-truncated Poisson and NB2 likelihoods stay finite when the linear
+  predictor is far below zero. The truncation term `log(1 - P(0))` was
+  `logspace_sub(0, log P(0))`, whose derivatives grow like `1 / mu^k`: the
+  Laplace gradient was NaN from `eta` near -237 and the objective from near
+  -355, and below -745 the mean rounded to 0 and the term was `log(0)`. It is
+  now computed from `log(-log P(0))`, by a series below -20 and by the old
+  expression above it, so ordinary fits change only by rounding (#1483).
+
+* The experimental VA route now honors the package's existing `optimizer` and
+  `optArgs` controls for its four primary starts. Omitted `optimizer` keeps the
+  family registry's automatic choice; explicit `nlminb` pins that solver, and
+  `optimizer = "optim"` accepts `method = "BFGS"` or `"L-BFGS-B"` with native
+  controls nested in `optArgs$control`. Unsupported or mismatched controls now
+  fail before objective construction. `va_polish = TRUE` preserves the legacy
+  secondary-solver sequence; setting it to `FALSE` disables every secondary
+  solver for controlled comparisons. The default VA route, four-start
+  agreement rule, family admission, and likelihood code are unchanged. This
+  changes optimizer selection only; it does not establish VA accuracy,
+  convergence, or inference claims. BFGS is opt-in and uses dense
+  inverse-Hessian storage, so its memory cost grows quadratically with the
+  parameter count. (#1595)
+
+* Internal cross-validation now retains binomial trial totals in held-out
+  scores and in all three null-model refits, including paired response
+  expressions and single-column trial weights. Previously missing cells are
+  excluded from each fold's scores. Grouped-binomial RMSE uses cell proportions;
+  Brier, AUC and Tjur scores use trial frequencies and agree with explicitly
+  expanded Bernoulli trials. Log scores remain conditional plug-in densities,
+  without integrating parameter or latent uncertainty (#1496).
+
+* Parametric bootstrap and response-refit helpers now preserve the fitted
+  binomial trial totals for two-column responses, including wide `traits()`
+  input and expressions such as `cbind(s, n - s)`. Non-unit single-column trial
+  weights and retained missing-response masks are also passed to refits. These are
+  corrections to simulation/refit inputs; non-Gaussian and mixed-family
+  interval coverage remains uncertified (#1496).
+
 * Multi-trial binomial counts can now be mixed with other families in one
   model, in long and wide format (#1494).
   - Wide `traits()` accepts `cbind(successes, failures)` pairs next to plain
@@ -14,6 +65,16 @@
     The fit is identical to the single-column `weights = trials` route.
   - `engine = "julia"` still requires every family to be binomial for a
     two-column response.
+
+* A `spatial_*()` term with estimated or fixed non-unit `rho` no longer warns
+  that its grouping token "is ignored". With `rho = NULL` or `rho = 0.5`, the
+  name after `|` is the column that identifies each location, and the fit
+  reads it; the warning stays for the default `rho = 1`, where the token
+  really is ignored. The help pages for `spatial_latent()`, `spatial_indep()`
+  and `spatial_dep()` now say so. An estimated-`rho` fit using the placeholder
+  `| coords` fails if no location-ID column has that name; name the observed
+  location column instead. This changes the notice and examples, not the
+  model's covariance or fitted likelihood.
 
 * Several likelihoods are now numerically stable at extreme parameter values
   that an optimiser can reach. Before, they lost precision or went flat there.
@@ -451,6 +512,22 @@
   passing cell), so this release makes no spatial range–rho recovery claim.
   Attenuated spatial prediction requires known locations. See the new
   source-strength worked example for long and wide calls.
+* `predict(newdata)` keeps one row for every row of `newdata`. A missing
+  covariate stays `NA` in that row instead of dropping it and recycling the
+  shorter prediction vector onto the wrong places. Data-dependent transforms
+  in the fixed formula (`scale()`, `poly()`, `ns()`) reuse the training
+  centre, scale and basis, so a row's prediction no longer depends on which
+  other rows travel with it, and a one-row `newdata` works. Character
+  predictors use the training levels, so a grid that omits the baseline
+  level is no longer silently predicted as the baseline. User-set factor
+  contrasts (for example `contr.sum`) are copied onto the restored factor,
+  so `predict(fit, newdata = training)` matches the training predictions.
+  **In scope:** the native `predict(newdata)` fixed-effect design, including
+  `simulate(newdata)` which calls `predict()`, and the temporal-forecast
+  design rebuild that uses the same helpers. **Not in scope:**
+  `engine = "julia"` still refuses `newdata`; `fitted()` and `residuals()`
+  stay training-row methods. Point prediction only; prediction intervals
+  are unchanged.
 
 # gllvmTMB 0.7.1 (release candidate)
 
@@ -2177,3 +2254,5 @@ infrastructure.
 * **`meta_known_V()` is a deprecated alias of `meta_V()`.**
 
 See the later release sections above for subsequent syntax and scope changes.
+
+- `flag_unreliable_loadings()` now uses the scalar unit loading tier by default, matching its documented behavior. Explicit loading-tier choices and the existing Wald/profile inference boundaries are unchanged. Julia bridge methods help now documents `x` only once.

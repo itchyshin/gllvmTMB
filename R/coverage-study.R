@@ -177,9 +177,7 @@ coverage_study <- function(
   names(truth) <- parm
 
   ## ---- Simulate response paths once -------------------------------
-  if (!is.null(seed)) {
-    set.seed(seed)
-  }
+  .gllvmTMB_local_seed(seed)
   if (isTRUE(progress)) {
     cli::cli_inform("Simulating {n_reps} response datasets ...")
   }
@@ -191,9 +189,11 @@ coverage_study <- function(
   ## ---- Build the per-rep intervals data ---------------------------
   intervals <- list()
   n_failed <- 0L
-  full_formula <- .reconstruct_multi_formula(fit)
-  response_name <- all.vars(fit$formula[[2L]])[1L]
+  response <- .bootstrap_response_setup(fit)
+  full_formula <- response$formula
   aux <- list(
+    weights = response$weights,
+    missing = response$missing,
     phylo_vcv = fit$phylo_vcv,
     phylo_tree = fit$phylo_tree,
     mesh = fit$mesh,
@@ -206,8 +206,7 @@ coverage_study <- function(
     if (isTRUE(progress) && (i %% progress_step == 0L || i == n_reps)) {
       cli::cli_inform("  rep {i}/{n_reps}")
     }
-    df_i <- fit$data
-    df_i[[response_name]] <- as.numeric(sim_y[, i])
+    df_i <- .bootstrap_response_data(response, sim_y[, i])
     call_args <- c(
       list(
         formula = full_formula,

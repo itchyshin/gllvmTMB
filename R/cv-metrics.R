@@ -29,11 +29,11 @@
 #' as a per-row `disp` column, keyed on the 1-based `trait_id` from
 #' `.gllvmTMB_diagnostic_row_metadata()`.
 #'
-#' `n_trials` is not read from `fit$tmb_data` (sentinel-corrupted for masked
-#' rows); it defaults to 1 (Bernoulli) for every row. Reconstructing a true
-#' multi-trial (`cbind(successes, failures)` / `weights =`) trial count from
-#' `truth_data` is out of scope here -- the fitted object does not retain
-#' the original weights column name to look it up.
+#' Trial totals come from the pre-mask success/failure pair, a two-column
+#' matrix response, or an explicit `n_trials` vector aligned with `truth_data`.
+#' A single-column response without explicit totals defaults to Bernoulli.
+#' The CV driver supplies the original fit's totals before masking; totals are
+#' never recovered from the fold refit's sentinel-corrupted held-out rows.
 #'
 #' @param fit A `gllvmTMB_multi` fit.
 #' @param pm_out The data frame returned by `predict_missing(fit, type =
@@ -42,32 +42,48 @@
 #' @param truth_data A pre-mask, long-format data frame with the fit's
 #'   trait column, an `original_row` column, and the true response in
 #'   `response_col`.
-#' @param response_col Single column name in `truth_data` holding the true
-#'   response value.
+#' @param response_col A response column name (numeric or a two-column matrix),
+#'   or two names identifying successes and failures in `truth_data`.
+#' @param n_trials Optional numeric vector with one original trial total per
+#'   row of `truth_data`, required for multi-trial single-column truth.
 #'
 #' @return A data frame with one row per row of `pm_out`, with columns
 #'   `original_row`, `model_row`, `trait`, `trait_id` (1-based), `family_id`,
 #'   `est`, `y_true`, `n_trials`, `disp`.
 #' @keywords internal
 #' @noRd
-.cv_join_truth <- function(fit, pm_out, truth_data, response_col) {
+.cv_join_truth <- function(
+  fit,
+  pm_out,
+  truth_data,
+  response_col,
+  n_trials = NULL
+) {
   if (!inherits(fit, "gllvmTMB_multi")) {
     cli::cli_abort("{.arg fit} must be a {.cls gllvmTMB_multi} fit.")
   }
   if (!is.data.frame(pm_out)) {
-    cli::cli_abort("{.arg pm_out} must be a data frame (the {.fn predict_missing} return).")
+    cli::cli_abort(
+      "{.arg pm_out} must be a data frame (the {.fn predict_missing} return)."
+    )
   }
   if (!is.data.frame(truth_data)) {
     cli::cli_abort("{.arg truth_data} must be a data frame.")
   }
-  if (!is.character(response_col) || length(response_col) != 1L) {
-    cli::cli_abort("{.arg response_col} must be a single column name.")
+  if (!is.character(response_col) || !length(response_col) %in% 1:2) {
+    cli::cli_abort(
+      "{.arg response_col} must name one response column or a success/failure pair."
+    )
   }
-  if (!response_col %in% names(truth_data)) {
-    cli::cli_abort("{.arg truth_data} has no column named {.val {response_col}}.")
+  if (!all(response_col %in% names(truth_data))) {
+    cli::cli_abort(
+      "{.arg truth_data} has no column named {.val {response_col}}."
+    )
   }
   if (!"original_row" %in% names(pm_out)) {
-    cli::cli_abort("{.arg pm_out} has no {.field original_row} column; supply the {.fn predict_missing} return.")
+    cli::cli_abort(
+      "{.arg pm_out} has no {.field original_row} column; supply the {.fn predict_missing} return."
+    )
   }
   if (!"original_row" %in% names(truth_data)) {
     cli::cli_abort(c(
@@ -78,7 +94,8 @@
 
   trait_col <- fit$trait_col
   if (
-    is.null(trait_col) || !trait_col %in% names(pm_out) ||
+    is.null(trait_col) ||
+      !trait_col %in% names(pm_out) ||
       !trait_col %in% names(truth_data)
   ) {
     cli::cli_abort(c(
@@ -88,10 +105,16 @@
   }
 
   empty_template <- data.frame(
-    original_row = integer(0), model_row = integer(0),
-    trait = character(0), trait_id = integer(0), family_id = integer(0),
-    est = numeric(0), y_true = numeric(0), n_trials = numeric(0),
-    disp = numeric(0), stringsAsFactors = FALSE
+    original_row = integer(0),
+    model_row = integer(0),
+    trait = character(0),
+    trait_id = integer(0),
+    family_id = integer(0),
+    est = numeric(0),
+    y_true = numeric(0),
+    n_trials = numeric(0),
+    disp = numeric(0),
+    stringsAsFactors = FALSE
   )
   if (nrow(pm_out) == 0L) {
     return(empty_template)
@@ -101,7 +124,9 @@
   row_meta <- .gllvmTMB_diagnostic_row_metadata(fit)
   meta_idx <- match(pm_out$model_row, row_meta$.row)
   if (anyNA(meta_idx)) {
-    cli::cli_abort("Internal error: {.field pm_out$model_row} does not align with the fit's row metadata.")
+    cli::cli_abort(
+      "Internal error: {.field pm_out$model_row} does not align with the fit's row metadata."
+    )
   }
 
   pm_key <- data.frame(
@@ -114,17 +139,38 @@
     est = pm_out$est,
     stringsAsFactors = FALSE
   )
+  raw_truth <- truth_data[[response_col[[1L]]]]
+  paired <- length(response_col) == 2L ||
+    (is.matrix(raw_truth) && ncol(raw_truth) == 2L)
+  y_true <- if (is.matrix(raw_truth)) raw_truth[, 1L] else raw_truth
+  if (is.null(n_trials)) {
+    n_trials <- if (length(response_col) == 2L) {
+      y_true + truth_data[[response_col[[2L]]]]
+    } else if (paired) {
+      rowSums(raw_truth)
+    } else {
+      rep(1, nrow(truth_data))
+    }
+  }
+  if (!is.numeric(n_trials) || length(n_trials) != nrow(truth_data)) {
+    cli::cli_abort(
+      "{.arg n_trials} must supply one pre-mask trial total per row of {.arg truth_data}."
+    )
+  }
   truth_key <- data.frame(
     original_row = as.integer(truth_data$original_row),
     trait_join = as.character(truth_data[[trait_col]]),
-    y_true = truth_data[[response_col]],
+    y_true = y_true,
+    truth_trials = n_trials,
     stringsAsFactors = FALSE
   )
 
   merged <- merge(
-    pm_key, truth_key,
+    pm_key,
+    truth_key,
     by = c("original_row", "trait_join"),
-    all.x = TRUE, sort = FALSE
+    all.x = TRUE,
+    sort = FALSE
   )
 
   ## The row-count assertion that matters most: a duplicate (original_row,
@@ -149,7 +195,8 @@
   }
 
   fid <- merged$family_id
-  n_trials <- rep(1, nrow(merged)) # Bernoulli default; see @details above
+  n_trials <- merged$truth_trials
+  n_trials[!fid %in% c(1L, 8L, 19L)] <- 1
 
   disp <- rep(NA_real_, nrow(merged))
   phi_nbinom2 <- fit$report$phi_nbinom2
@@ -178,7 +225,9 @@
   rownames(out) <- NULL
 
   if (nrow(out) != nrow(pm_out)) {
-    cli::cli_abort("Internal error: final joined row count does not match {.arg pm_out}.")
+    cli::cli_abort(
+      "Internal error: final joined row count does not match {.arg pm_out}."
+    )
   }
 
   out
@@ -196,11 +245,15 @@
 .cv_signed_r2 <- function(y, yhat, method = c("pearson", "spearman")) {
   method <- match.arg(method)
   ok <- stats::complete.cases(y, yhat)
-  if (sum(ok) < 3L || length(unique(y[ok])) < 2L || length(unique(yhat[ok])) < 2L) {
+  if (
+    sum(ok) < 3L || length(unique(y[ok])) < 2L || length(unique(yhat[ok])) < 2L
+  ) {
     return(NA_real_)
   }
   r <- suppressWarnings(stats::cor(y[ok], yhat[ok], method = method))
-  if (!is.finite(r)) return(NA_real_)
+  if (!is.finite(r)) {
+    return(NA_real_)
+  }
   sign(r) * r^2
 }
 
@@ -215,7 +268,9 @@
   neg <- p[y == 0]
   n1 <- length(pos)
   n0 <- length(neg)
-  if (n1 == 0L || n0 == 0L) return(NA_real_)
+  if (n1 == 0L || n0 == 0L) {
+    return(NA_real_)
+  }
   r <- rank(c(pos, neg))
   r1 <- sum(r[seq_len(n1)])
   (r1 - n1 * (n1 + 1) / 2) / (n1 * n0)
@@ -226,7 +281,9 @@
   ok <- stats::complete.cases(y, p)
   y <- y[ok]
   p <- p[ok]
-  if (sum(y == 1) == 0L || sum(y == 0) == 0L) return(NA_real_)
+  if (sum(y == 1) == 0L || sum(y == 0) == 0L) {
+    return(NA_real_)
+  }
   mean(p[y == 1]) - mean(p[y == 0])
 }
 
@@ -234,11 +291,19 @@
 ## rbind()-ing rows from different families never breaks on ragged columns.
 .cv_score_empty_template <- function() {
   data.frame(
-    label = character(0), family_id = integer(0), n = integer(0),
-    RMSE = numeric(0), R2 = numeric(0),
-    TjurR2 = numeric(0), AUC = numeric(0), Brier = numeric(0),
-    SpearmanR2 = numeric(0), O.AUC = numeric(0), O.TjurR2 = numeric(0),
-    C.RMSE = numeric(0), LogScore = numeric(0),
+    label = character(0),
+    family_id = integer(0),
+    n = integer(0),
+    RMSE = numeric(0),
+    R2 = numeric(0),
+    TjurR2 = numeric(0),
+    AUC = numeric(0),
+    Brier = numeric(0),
+    SpearmanR2 = numeric(0),
+    O.AUC = numeric(0),
+    O.TjurR2 = numeric(0),
+    C.RMSE = numeric(0),
+    LogScore = numeric(0),
     stringsAsFactors = FALSE
   )
 }
@@ -260,11 +325,45 @@
     row$RMSE <- .cv_rmse(y, mu)
     row$R2 <- .cv_signed_r2(y, mu, "pearson")
   } else if (identical(fid, 1L)) {
-    ## binomial
-    row$RMSE <- .cv_rmse(y, mu)
-    row$Brier <- mean((y - mu)^2, na.rm = TRUE)
-    row$TjurR2 <- .cv_tjur_r2(y, mu)
-    row$AUC <- .cv_auc(y, mu)
+    ## Equal-cell proportion RMSE; the remaining metrics count Bernoulli
+    ## trials, exactly as if each grouped row were expanded to N trials.
+    n <- sub$n_trials
+    known <- stats::complete.cases(y, n, mu)
+    invalid <- known &
+      (!is.finite(y) |
+        !is.finite(n) |
+        !is.finite(mu) |
+        n < 0 |
+        n != floor(n) |
+        y < 0 |
+        y > n |
+        y != floor(y) |
+        mu < 0 |
+        mu > 1)
+    if (any(invalid)) {
+      cli::cli_abort(
+        "Binomial CV scores require integer successes and trial totals with 0 <= successes <= trials and probabilities in [0, 1]."
+      )
+    }
+    ok <- known & n > 0
+    if (any(ok)) {
+      y <- y[ok]
+      n <- n[ok]
+      mu <- mu[ok]
+      failures <- n - y
+      row$RMSE <- .cv_rmse(y / n, mu)
+      row$Brier <- sum(y * (1 - mu)^2 + failures * mu^2) / sum(n)
+      if (sum(y) > 0 && sum(failures) > 0) {
+        row$TjurR2 <- sum(y * mu) / sum(y) - sum(failures * mu) / sum(failures)
+        ord <- order(mu)
+        group <- cumsum(c(TRUE, diff(mu[ord]) != 0))
+        successes <- as.numeric(rowsum(y[ord], group, reorder = FALSE))
+        negatives <- as.numeric(rowsum(failures[ord], group, reorder = FALSE))
+        below <- c(0, utils::head(cumsum(negatives), -1L))
+        row$AUC <- sum(successes * (below + negatives / 2)) /
+          (sum(y) * sum(failures))
+      }
+    }
   } else if (fid %in% c(2L, 5L)) {
     ## poisson (2) / nbinom2 (5)
     row$RMSE <- .cv_rmse(y, mu)
@@ -304,17 +403,23 @@
 #'
 #' Computes family-aware held-out scoring metrics from the output of
 #' `.cv_join_truth()`. Branches by `family_id`: gaussian (0) gets RMSE and a
-#' signed Pearson R2; binomial (1) gets RMSE, Tjur R2, a closed-form AUC, and
-#' Brier score; poisson (2) and nbinom2 (5) get RMSE, a signed Spearman R2,
+#' signed Pearson R2; binomial (1) gets equal-cell RMSE of `S/N` against `p`,
+#' plus trial-frequency Brier, Tjur R2 and AUC. Brier averages Bernoulli-trial
+#' squared losses, Tjur compares trial-weighted probabilities among successes
+#' and failures, and AUC gives half credit to tied success/failure pairs. These
+#' three metrics equal explicit trial expansion and reduce to the Bernoulli
+#' formulas when `N = 1`. Zero-total rows do not contribute to probability
+#' metrics (the fitting interface still refuses such rows). Poisson (2) and nbinom2 (5) get RMSE, a signed Spearman R2,
 #' and an occurrence/conditional split (`O.AUC`, `O.TjurR2` on `1*(y>0)`
 #' using the closed-form `P(Y>0)`, and `C.RMSE` on observed presences using
 #' `E[Y|Y>0] = mu / (1 - P(Y=0))`). Any other `family_id` reports `NA` for
 #' every metric rather than guessing.
 #'
 #' Both a **per-trait** breakdown and a **pooled** (within-family, across all
-#' its traits) summary are returned -- pooled RMSE is dominated by whichever
-#' trait contributes the most held-out cells, so the per-trait distribution
-#' is the honest primary read.
+#' its traits) summary are returned. RMSE weights cells equally; grouped-binomial
+#' Brier, AUC and Tjur weight trials. The pooled summary can therefore be
+#' dominated by traits contributing more cells or trials respectively; the
+#' per-trait distribution is the primary read.
 #'
 #' The `LogScore` column (summed `.cv_logscore()` plug-in log predictive
 #' density) is populated only if `joined` already carries a `logscore`
@@ -334,7 +439,9 @@
   required_cols <- c("trait", "family_id", "est", "y_true", "n_trials")
   missing_cols <- setdiff(required_cols, names(joined))
   if (length(missing_cols) > 0L) {
-    cli::cli_abort("{.arg joined} is missing required column(s): {.val {missing_cols}}.")
+    cli::cli_abort(
+      "{.arg joined} is missing required column(s): {.val {missing_cols}}."
+    )
   }
 
   if (nrow(joined) == 0L) {
@@ -345,15 +452,29 @@
   has_logscore <- "logscore" %in% names(joined)
 
   traits <- unique(joined$trait)
-  by_trait <- do.call(rbind, lapply(traits, function(tr) {
-    .cv_score_one(joined[joined$trait == tr, , drop = FALSE], label = tr, has_logscore = has_logscore)
-  }))
+  by_trait <- do.call(
+    rbind,
+    lapply(traits, function(tr) {
+      .cv_score_one(
+        joined[joined$trait == tr, , drop = FALSE],
+        label = tr,
+        has_logscore = has_logscore
+      )
+    })
+  )
 
   fam_ids <- unique(joined$family_id)
-  pooled <- do.call(rbind, lapply(fam_ids, function(fid) {
-    label <- paste0("POOLED_family_", fid)
-    .cv_score_one(joined[joined$family_id == fid, , drop = FALSE], label = label, has_logscore = has_logscore)
-  }))
+  pooled <- do.call(
+    rbind,
+    lapply(fam_ids, function(fid) {
+      label <- paste0("POOLED_family_", fid)
+      .cv_score_one(
+        joined[joined$family_id == fid, , drop = FALSE],
+        label = label,
+        has_logscore = has_logscore
+      )
+    })
+  )
 
   rownames(by_trait) <- NULL
   rownames(pooled) <- NULL
@@ -392,7 +513,9 @@
   required_cols <- c("family_id", "est", "y_true", "n_trials", "disp")
   missing_cols <- setdiff(required_cols, names(joined))
   if (length(missing_cols) > 0L) {
-    cli::cli_abort("{.arg joined} is missing required column(s): {.val {missing_cols}}.")
+    cli::cli_abort(
+      "{.arg joined} is missing required column(s): {.val {missing_cols}}."
+    )
   }
   if (!inherits(fit, "gllvmTMB_multi")) {
     cli::cli_abort("{.arg fit} must be a {.cls gllvmTMB_multi} fit.")
@@ -400,7 +523,9 @@
 
   n <- nrow(joined)
   out <- rep(NA_real_, n)
-  if (n == 0L) return(out)
+  if (n == 0L) {
+    return(out)
+  }
 
   fid <- joined$family_id
   mu <- joined$est
@@ -409,13 +534,23 @@
 
   idx0 <- which(fid == 0L)
   if (length(idx0) > 0L) {
-    out[idx0] <- stats::dnorm(y[idx0], mean = mu[idx0], sd = sigma_eps, log = TRUE)
+    out[idx0] <- stats::dnorm(
+      y[idx0],
+      mean = mu[idx0],
+      sd = sigma_eps,
+      log = TRUE
+    )
   }
 
   idx1 <- which(fid == 1L)
   if (length(idx1) > 0L) {
     p <- pmin(pmax(mu[idx1], 0), 1)
-    out[idx1] <- stats::dbinom(y[idx1], size = joined$n_trials[idx1], prob = p, log = TRUE)
+    out[idx1] <- stats::dbinom(
+      y[idx1],
+      size = joined$n_trials[idx1],
+      prob = p,
+      log = TRUE
+    )
   }
 
   idx2 <- which(fid == 2L)
@@ -428,7 +563,10 @@
     size <- joined$disp[idx5]
     valid <- is.finite(size) & size > 0
     out[idx5[valid]] <- stats::dnbinom(
-      y[idx5[valid]], size = size[valid], mu = mu[idx5[valid]], log = TRUE
+      y[idx5[valid]],
+      size = size[valid],
+      mu = mu[idx5[valid]],
+      log = TRUE
     )
   }
 

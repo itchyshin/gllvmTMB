@@ -8,6 +8,45 @@ bare. 24 `@examples` blocks in `R/brms-sugar.R`; `devtools::document(roclets =
 `rg -n '\\\\donttest\\{' R/brms-sugar.R` → 24. `rg -n '\\\\dontrun' ` on those
 24 Rd files → 0. Report:
 `docs/dev-log/after-task/2026-10-16-donttest-example-fits-1346a.md`.
+## 2026-10-11: predict(newdata) follow-up classes, #1424 subset, forecast_temporal (#1480)
+
+Unseen-level aborts now carry `gllvmTMB_predict_unseen_level` for every
+variable (iSDM keeps `gllvmTMB_predict_isdm_observation_level` as extra).
+The newdata design wrapper is `gllvmTMB_predict_newdata_design`. Added
+`predict(d[d$g != "a", ])` under `contr.sum`, and a `forecast_temporal()`
+test for `scale(x)`, a missing factor level, and an NA covariate row (stays
+NA). Follow-up issue #1481 (`refs #1480`).
+Focused: `test-predict-newdata-alignment.R` FAIL 0 / PASS 33;
+`test-temporal-program-forecast.R` FAIL 0 / PASS 12.
+Neighbours: `test-tidy-predict.R` FAIL 0 / PASS 20 (4 CRAN skips);
+`test-isdm-predict.R` FAIL 0 / PASS 36 / SKIP 9;
+`test-isdm-requalification-prediction.R` FAIL 0 / PASS 21;
+`test-oct4-news-doc-fixes.R` FAIL 0 / PASS 25.
+Stale-wording scans (this slice):
+`rg -n "gllvmTMB_predict_unseen_level|gllvmTMB_predict_newdata_design" R tests`
+`rg -n "Fixes |Closes |Resolves " docs/dev-log NEWS.md`
+`rg -n "forecast_temporal" tests/testthat/test-temporal-program-forecast.R`
+Report: after-task/2026-10-11-predict-newdata-alignment-followup.md.
+
+## 2026-10-11: predict(newdata) row alignment (#1384, #1423, #1425, #1424)
+
+Reproduced on `main` `9354ac2f` before the edit. `model.matrix(terms(formula), nd)`
+dropped NA covariate rows and recycled `eta` (#1384); `terms(formula)` had no
+`predvars` so `scale()` was re-evaluated on newdata (#1423); character
+predictors rebuilt levels from the supplied rows (#1425);
+`restore_newdata_factor_levels()` dropped user-set contrasts (#1424).
+Helpers now restore character columns and contrasts, rebuild the design from
+the training model frame (`predvars` / `xlevels` / `contrasts.arg`,
+`na.action = na.pass`), abort on missing training columns, and pad a
+shortened design back onto the newdata row index.
+Focused tests: `test-predict-newdata-alignment.R` FAIL 0 / PASS 29.
+Neighbours: `test-tidy-predict.R` FAIL 0 / PASS 20; `test-isdm-predict.R` FAIL 0 / PASS 36;
+`test-isdm-requalification-prediction.R` FAIL 0 / PASS 21; `test-oct4-news-doc-fixes.R` FAIL 0 / PASS 25.
+Stale-wording scans (this slice):
+`rg -n "model.matrix\\(stats::delete.response" R`
+`rg -n "Fixes |Closes |Resolves " docs/dev-log NEWS.md`
+`rg -n "recycle|predvars|contr.sum" R/methods-gllvmTMB.R tests/testthat/test-predict-newdata-alignment.R`
+Report: after-task/2026-10-11-predict-newdata-alignment.md.
 
 ## 2026-10-08: neighbouring output and bootstrap refit audit
 
@@ -58129,3 +58168,114 @@ API changed. Exact scan: `rg -n 'unique pairs|symmetric|entries = "all"'
 R/extract-correlations.R man/extract_correlations.Rd
 vignettes/articles/covariance-correlation.Rmd
 docs/design/06-extractors-contract.md`. Routes agree.
+
+## 2026-10-16 — issue 1496 bootstrap response metadata (local patch)
+
+Observed three trial-total failures on aec24e166 before editing. Shared internal
+response preparation now retains binomial trial totals, trial weights and the
+observed-response mask across the seven bootstrap/refit helpers. It stores a
+paired response in a private matrix column so cbind expressions do not require
+mutating predictor columns. No native likelihood, public API or grammar change.
+
+Final new regression: 69 assertions, zero failures/errors/warnings/skips. Broad
+eight-file bootstrap subset: 249 passing assertions, zero assertion failures,
+24 warning captures and one sandbox serverSocket error. The existing
+bootstrap-Sigma file then passed with permitted local sockets and a matching
+temporary install: 50 assertions, zero failures/errors, 12 warnings, zero skips.
+The dedicated cbind-expression/masked-row parallel check passed with 3/3 refits
+and draws equal to its sequential reference. pkgdown check and document passed;
+roxygen's unrelated sigma-registration spelling diff was restored. Whitespace
+check passed. Full command strings, raw logs and environment versions are in
+`dev/issue-1496/RESULTS.md` and its neighboring logs. No full package test suite
+or coverage campaign was run. Final package-check result is recorded in RESULTS.
+
+Exact consistency scans: `rg -n 'all.vars\(fit\$formula|\[\[resp.*\]\] <-|\[\[response.*\]\] <-' R`;
+`rg -n 'bootstrap|simulate' docs/dev-log/decisions.md`;
+`rg -n 'bootstrap|cbind' docs/design/35-validation-debt-register.md`.
+Verdict: seven affected generic simulate/refit paths repaired; Gaussian-only
+temporal bootstrap unchanged; related CV scoring/null-model defects remain
+separate. MIX-08/EXT-13 gain input-correctness evidence, no calibration promotion.
+
+After-task report: `docs/dev-log/after-task/2026-10-16-binomial-bootstrap-response.md`.
+Primary checkout's unrelated untracked work is unchanged. Integration review
+must account for open PR #1501 (bootstrap-Sigma default-level warning) and #1505
+(phylogenetic-signal bootstrap extractor). No external-agent contact, posting,
+email, push, PR creation, merge, release or issue closure was performed.
+
+Final bounded package check (`document=FALSE`, `vignettes=FALSE`,
+`--no-manual --no-tests --no-examples`): 0 errors, 1 warning, 3 notes, exit 1.
+Warning: duplicated `x` argument in unchanged gllvmTMB_julia-methods.Rd.
+Notes: offline clock check, existing TMB:::EvalADFunObject, xcrun_db temp detritus.
+Static R code checks passed; no tail() note remains. This is not a clean full
+package check. Full receipt: `dev/issue-1496/check-final.log` and `00check.log`.
+
+### Review correction — preserve the integrated-source no-weights contract
+
+Independent review found that the first patch supplied all-unit weights to an
+integrated three-source fit, violating its existing explicit-weight refusal.
+Read and replayed /tmp/review1496.R and its counterexample log. Added a regression
+that failed three assertions before the correction. The helper now omits exactly
+all-unit vectors, preserving all non-unit trial counts and likelihood weights;
+it does not bypass or alter the integrated-source guard.
+
+Corrected-source focused sweep: 225 assertions across eight files, zero failures,
+errors, warnings or skips, including 69 binomial and 7 new integrated-source
+assertions. The reviewer reproducer now yields patched bootstrap 0/3 failures,
+equal to original HEAD's 0/3; the new regression compares the complete three-draw
+list to explicit unweighted manual refits. Exact commands and logs:
+`dev/issue-1496/RESULTS.md`, `review-correction.log`,
+`review-correction-summary.log`, `review-reproducer-fixed.log`, `isdm-red.log`.
+No publication or unrelated edit was made. Full-suite and CI remain outstanding.
+
+Corrected-source bounded package check repeated: 0 errors, 1 warning, 3 notes,
+exit 1. Static R analysis passed; the unchanged Julia-help duplicate-x warning
+and the same three environment/dependency notes remain. Receipt:
+`dev/issue-1496/check-review-final.log` and `check-review-00check.log`.
+
+
+## 2026-10-16 — binomial CV response/trial continuation (issue1496)
+
+User-approved CV follow-up on codex/issue-1496-cv, based on bootstrap PR1507.
+Canonical paired responses and original trial totals now survive main/null folds;
+pre-existing missing cells are excluded. Grouped binomial probability metrics
+match explicit Bernoulli expansion; RMSE uses equal-cell proportions.
+Old-code tests:20 failed assertions/2 errors. Corrected source:308 assertions
+across seven files,0 failure/error/warning/skip. Independent review caught and
+verified the predictor-column alignment correction. Separate affected heavy
+bootstrap sweep:437 passes,0 failure/error/skip,23 warning captures.
+Commands/limits: dev/issue-1496/CV-RESULTS.md and after-task/2026-10-16-binomial-cv-response.md.
+Full heavy run timed out at120min before CV work; fresh complete heavy validation
+remains pending. Optional manual sharding approval is pending; no workflow,
+license or security change. No merge, issue closure or Sage contact.
+
+Manual heavy partition selector approved08:11 UTC. Add optional all/1-of-4 input
+and a partition-only concurrency suffix, preserving unsharded scheduled/tag
+behavior and120-minute limit. Existing partition tests and exact-head manifest
+will verify exhaustive/disjoint coverage before four dispatches. No test gate,
+scientific threshold, credential or runner permission is changed.
+
+## 2026-10-16 — issue1496 full-suite blocker follow-up
+
+Separate branch codex/issue-1496-suite-blockers preserves prior failure logs. Narrow fixes: explicit single-start warm fixtures (all assertions retained), scalar unit default in loading flag wrapper, source-level duplicate Julia x documentation removal. New clean red:3fail/10pass/0error/warn/skip. Roxygen compileFALSE, pkgdown, renderedRd, parser, Actions boundary and reader-surface passed; generator-only sigma NAMESPACE drift restored. Scan: `rg 'flag_unreliable_loadings\(|level *= *c\("unit", *"unit_obs"\)' R/loading-ci.R man/flag_unreliable_loadings.Rd README.md vignettes NEWS.md`. Independent review found no blocker. Full exact-head standard/heavyCI and eventual authorized main integration remain gates; final outcomes retained in PR and dev/issue-1496-blockers receipts. After-task:2026-10-16-suite-blockers-1496.md. No likelihood/grammar/family/native/security change.
+
+Core blocker tests:214pass/0fail/error/warn/skip in35.8s; existing shard selection188pass. Existing broader loading/profile file remains running locally, not claimed complete.
+
+Integration refresh: main advanced tocedf274 (10alreadymergedcommits). Clean merge preserved main fixes and task response helpers; independent review checked bootstrap-sigma/extract-omega overlap. Combined targeted tests162pass/0fail/error/skip,1tiny-Bwarning,53.1s. Fresh exact-head standard+four-heavyCI required before any authorized landing. Original0ebe five-run green evidence retained separately.
+
+2026-10-17 integration: main advanced10commits tocedf274. Cleanmerge into task branch preserves alreadymergedwork; noactualconflicts(gertcommitFALSEmessagewasmisleading, git_conflicts0rows). Independentoverlapreviewpass. Relevantlocalintegrationtests162pass/0fail/error/skip,1tiny-Bwarning,53.1s; pkgdownNo problems,allRparse. Fresh5CIrunsrequiredatnewcombinedhead; nooldgreen-headcertificationofnewbase.
+
+## 2026-10-19 — README optimizer-selection example
+
+Added a discovery-table link and concise VA primary-optimizer controls to README.md. The sample uses the documented nlminb and optim/BFGS APIs, disables VA polishing to isolate the primary solver, calls for the same seed before each fit, and says native iteration budgets are not equal effort. It keeps VA labelled experimental and makes no convergence or accuracy claim. The complete fit comparison and returned diagnostics remain in gllvmTMBcontrol() help.
+
+Base: fresh GitHub origin/main a674f29fb4f87f9e12558c372ca2417015025b34. Checks: extracted README R block executed after devtools::load_all() from source and passed assertions for both controls and their optimizer, method, iteration-limit, and va_polish fields; pkgdown::check_pkgdown() reported “No problems found” (existing Pandoc --mathml deprecation notices only); the targeted after-task structure validator passed. No model fits or package tests were run because only README prose changed.
+
+Consistency scans (exact patterns and scope):
+- rg "\bS_B\b|\bS_W\b|\\bf S" . — existing matches occur outside README; no hit in the edited README.
+- rg -n "gllvmTMB\(" R vignettes README.md NEWS.md docs/design — existing README calls include wide form and the long-form example has trait = "trait"; the new section only names the API and adds no model call.
+- rg "in prep|in preparation" docs vignettes — matches are outside README; no new foundational or in-prep claim was added.
+- rg "\bphylo\(|\bgr\(|\bmeta\(|block_V\(|phylo_rr\(" vignettes — existing vignette matches only; no README hit.
+- rg "meta_known_V" README.md NEWS.md docs vignettes — existing matches are outside README; no README hit.
+- rg "gllvmTMB_wide" README.md NEWS.md docs vignettes — existing matches are outside README; no README hit.
+
+Absolute-path slop check covered README, check-log, report, and PR body; no file exceeded the review threshold. No likelihood, API, formula grammar, family, generated Rd, article, or pkgdown navigation change.

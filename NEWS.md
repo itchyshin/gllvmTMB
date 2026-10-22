@@ -4,6 +4,12 @@
   `@exportS3Method stats::sigma`, matching the `stats::sigma` entries already in
   `NAMESPACE`, so `devtools::document()` no longer rewrites them. Behaviour is
   unchanged (#1558).
+* `poisson()`, `zi_poisson()` and the uncensored rows of `censored_poisson()`
+  stay finite when the linear predictor is far below zero. The row was
+  `dpois(y, exp(eta))`, which forms `y * log(exp(eta))` and is `-Inf` once
+  `exp(eta)` underflows (`eta` below about -745, with digits lost from -709).
+  It is now written on the `eta` scale as `y * eta - exp(eta) - lgamma(y + 1)`,
+  so ordinary fits change only by rounding (#1603).
 
 * Zero-truncated Poisson and NB2 likelihoods stay finite when the linear
   predictor is far below zero. The truncation term `log(1 - P(0))` was

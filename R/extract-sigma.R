@@ -774,18 +774,40 @@ link_residual_per_trait <- function(fit) {
 #'
 #' @export
 #' @examples
-#' \dontrun{
+#' set.seed(1)
+#' ## Five traits measured three times on each of 60 units. Between units,
+#' ## the traits share two latent axes (Lambda) plus a trait-specific
+#' ## unique variance (psi = 0.2 for every trait). Each measurement also
+#' ## carries independent noise (variance 0.3).
+#' Lambda <- matrix(c(0.9, 0.7, 0.5, -0.3, 0.2,
+#'                    0.0, 0.4, -0.5, 0.6, 0.8), nrow = 5, ncol = 2)
+#' sim <- simulate_unit_trait(
+#'   n_units = 60, n_obs_per_unit = 3, n_traits = 5,
+#'   Lambda_B = Lambda, psi_B = rep(0.2, 5), sigma2_eps = 0.3
+#' )
+#' ## latent(unique = TRUE) fits Sigma = Lambda Lambda^T + diag(psi)
 #' fit <- gllvmTMB(
-#'   value ~ 0 + trait +
-#'           latent(0 + trait | unit, d = 2),
-#'   data  = df,
+#'   value ~ 0 + trait + latent(0 + trait | unit, d = 2, unique = TRUE),
+#'   data  = sim$data,
 #'   trait = "trait",
 #'   unit  = "unit"
 #' )
-#' extract_Sigma(fit, level = "unit", part = "total")$Sigma   # full T x T cov
-#' extract_Sigma(fit, level = "unit", part = "shared")$Sigma  # rr-only
-#' extract_Sigma(fit, level = "unit", part = "unique")$s      # diag(s_unit)
-#' }
+#' ## Total between-unit covariance, Lambda Lambda^T + diag(psi). The
+#' ## measurement noise is not part of it.
+#' tot <- extract_Sigma(fit, level = "unit", part = "total")
+#' tot$Sigma
+#' ## The same matrix as correlations
+#' tot$R
+#' ## Shared part, Lambda Lambda^T, carried by the two latent axes
+#' shared <- extract_Sigma(fit, level = "unit", part = "shared")
+#' shared$Sigma
+#' ## Unique part: one variance per trait (the diagonal of Psi)
+#' psi <- extract_Sigma(fit, level = "unit", part = "unique")$s
+#' psi
+#' ## The total is the sum of the two parts. How the total splits into
+#' ## shared and unique parts is less certain than the total itself, so
+#' ## base interpretation on the total.
+#' all.equal(tot$Sigma, shared$Sigma + diag(psi))
 extract_Sigma <- function(
   fit,
   level = c(
@@ -1767,7 +1789,11 @@ extract_Sigma <- function(
     }
     fids <- fit$tmb_data$family_id_vec
     has_continuous <- any(fids %in% c(0L, 3L, 4L)) # gaussian / lognormal / Gamma
-    if (rr_used && !diag_used && has_continuous && part == "total") {
+    ## A full-rank loading block (d == n_traits) is already an unstructured
+    ## covariance -- this is how `dep()` is carried -- so no Psi is missing.
+    rank_deficient <- is.null(L) || ncol(as.matrix(L)) < T
+    if (rr_used && !diag_used && has_continuous && rank_deficient &&
+        part == "total") {
       notes <- c(
         notes,
         paste0(
@@ -1971,14 +1997,59 @@ extract_Sigma <- function(
 #' @return A numeric matrix with rows `row_traits` and columns `col_traits`.
 #'
 #' @examples
-#' \dontrun{
-#' Gamma_HP <- extract_Gamma(
-#'   fit,
-#'   level = "cross",
-#'   row_traits = c("host_size", "host_defence"),
-#'   col_traits = c("partner_size", "partner_attack")
+#' set.seed(1)
+#' ## A small host-partner system: 12 host and 12 partner species. Each
+#' ## lineage has its own similarity matrix. Here similarity decays with
+#' ## distance along a species ordering, a stand-in for a phylogenetic
+#' ## correlation matrix such as ape::vcv(tree, corr = TRUE).
+#' host <- paste0("H", 1:12)
+#' partner <- paste0("P", 1:12)
+#' A_H <- 0.6^abs(outer(1:12, 1:12, "-"))
+#' A_P <- A_H
+#' dimnames(A_H) <- list(host, host)
+#' dimnames(A_P) <- list(partner, partner)
+#' ## W records which hosts interact with which partners: host i interacts
+#' ## with partners i - 1, i and i + 1.
+#' W <- 1 * (abs(outer(1:12, 1:12, "-")) <= 1)
+#' dimnames(W) <- list(host, partner)
+#' ## One kernel over all 24 species; the fixed rho sets how strongly
+#' ## interacting hosts and partners are linked.
+#' K <- make_cross_kernel(A_H, A_P, W, rho = 0.9)
+#'
+#' ## Simulate one latent axis shared by all four traits. Host traits are
+#' ## measured on hosts only and partner traits on partners only: four
+#' ## replicate measurements per species, each with noise (SD 0.3).
+#' lambda <- c(h_size = 0.9, h_defence = 0.6, p_size = 0.8, p_attack = -0.5)
+#' z <- drop(t(chol(K)) %*% rnorm(24))
+#' names(z) <- rownames(K)
+#' dat <- expand.grid(rep = 1:4, trait = names(lambda),
+#'                    species = rownames(K), stringsAsFactors = FALSE)
+#' dat <- dat[startsWith(dat$species, "H") == startsWith(dat$trait, "h_"), ]
+#' dat$value <- lambda[dat$trait] * z[dat$species] +
+#'   rnorm(nrow(dat), sd = 0.3)
+#' dat$trait <- factor(dat$trait, levels = names(lambda))
+#' dat$species <- factor(dat$species, levels = rownames(K))
+#' ## Each record (one species, one replicate) is a sampling unit
+#' dat$obs <- factor(paste(dat$species, dat$rep))
+#'
+#' ## One latent axis whose species scores are correlated as in K. The
+#' ## term is named "cross"; the functions below refer to it by name.
+#' fit <- gllvmTMB(
+#'   value ~ 0 + trait + kernel_latent(species, K = K, d = 1, name = "cross"),
+#'   data = dat, trait = "trait", unit = "obs", cluster = "species"
 #' )
-#' }
+#' ## Gamma, the host-by-partner block of the fitted trait covariance: how
+#' ## each host trait covaries with each partner trait. It is a point
+#' ## estimate; this helper reports no uncertainty.
+#' extract_Gamma(fit, level = "cross",
+#'               row_traits = c("h_size", "h_defence"),
+#'               col_traits = c("p_size", "p_attack"))
+#' ## The simulated truth, for comparison
+#' outer(lambda[1:2], lambda[3:4])
+#' ## The same block multiplied by the kernel's fixed rho (0.9)
+#' extract_Gamma(fit, level = "cross",
+#'               row_traits = c("h_size", "h_defence"),
+#'               col_traits = c("p_size", "p_attack"), scale = "effect")
 #'
 #' @export
 extract_Gamma <- function(
@@ -2087,16 +2158,61 @@ extract_Gamma <- function(
 #'   `kernel_includes_rho`.
 #'
 #' @examples
-#' \dontrun{
+#' set.seed(1)
+#' ## A small host-partner system: 12 host and 12 partner species. Each
+#' ## lineage has its own similarity matrix. Here similarity decays with
+#' ## distance along a species ordering, a stand-in for a phylogenetic
+#' ## correlation matrix such as ape::vcv(tree, corr = TRUE).
+#' host <- paste0("H", 1:12)
+#' partner <- paste0("P", 1:12)
+#' A_H <- 0.6^abs(outer(1:12, 1:12, "-"))
+#' A_P <- A_H
+#' dimnames(A_H) <- list(host, host)
+#' dimnames(A_P) <- list(partner, partner)
+#' ## W records which hosts interact with which partners: host i interacts
+#' ## with partners i - 1, i and i + 1.
+#' W <- 1 * (abs(outer(1:12, 1:12, "-")) <= 1)
+#' dimnames(W) <- list(host, partner)
+#' ## One kernel over all 24 species; the fixed rho sets how strongly
+#' ## interacting hosts and partners are linked.
+#' K <- make_cross_kernel(A_H, A_P, W, rho = 0.9)
+#'
+#' ## Simulate one latent axis shared by all four traits. Host traits are
+#' ## measured on hosts only and partner traits on partners only: four
+#' ## replicate measurements per species, each with noise (SD 0.3).
+#' lambda <- c(h_size = 0.9, h_defence = 0.6, p_size = 0.8, p_attack = -0.5)
+#' z <- drop(t(chol(K)) %*% rnorm(24))
+#' names(z) <- rownames(K)
+#' dat <- expand.grid(rep = 1:4, trait = names(lambda),
+#'                    species = rownames(K), stringsAsFactors = FALSE)
+#' dat <- dat[startsWith(dat$species, "H") == startsWith(dat$trait, "h_"), ]
+#' dat$value <- lambda[dat$trait] * z[dat$species] +
+#'   rnorm(nrow(dat), sd = 0.3)
+#' dat$trait <- factor(dat$trait, levels = names(lambda))
+#' dat$species <- factor(dat$species, levels = rownames(K))
+#' ## Each record (one species, one replicate) is a sampling unit
+#' dat$obs <- factor(paste(dat$species, dat$rep))
+#'
+#' ## One latent axis whose species scores are correlated as in K. The
+#' ## term is named "cross"; the functions below refer to it by name.
+#' fit <- gllvmTMB(
+#'   value ~ 0 + trait + kernel_latent(species, K = K, d = 1, name = "cross"),
+#'   data = dat, trait = "trait", unit = "obs", cluster = "species"
+#' )
+#' ## Predicted covariance between host traits in hosts H1 and H2 and
+#' ## partner traits in partners P1 and P12 (point estimates only). Each
+#' ## covariance is the kernel entry for that host-partner pair times
+#' ## the Gamma entry for that trait pair (kernel_value * gamma_shape).
+#' ## Both hosts interact with P1 but not with the distant P12, so their
+#' ## predicted covariances with P12 are close to zero.
 #' predict_cross_covariance(
 #'   fit,
-#'   level = "phy",
+#'   level = "cross",
 #'   row_levels = c("H1", "H2"),
-#'   col_levels = c("P1", "P2"),
-#'   row_traits = c("host_size", "host_defence"),
-#'   col_traits = c("partner_size", "partner_attack")
+#'   col_levels = c("P1", "P12"),
+#'   row_traits = c("h_size", "h_defence"),
+#'   col_traits = c("p_size", "p_attack")
 #' )
-#' }
 #'
 #' @export
 predict_cross_covariance <- function(
@@ -2471,17 +2587,63 @@ print.gllvmTMB_Sigma_phy_slope <- function(x, digits = 3, ...) {
 #'   `row_axes` and `col_axes` contain trait loadings for each coupled axis.
 #'
 #' @examples
-#' \dontrun{
+#' set.seed(1)
+#' ## A small host-partner system: 12 host and 12 partner species. Each
+#' ## lineage has its own similarity matrix. Here similarity decays with
+#' ## distance along a species ordering, a stand-in for a phylogenetic
+#' ## correlation matrix such as ape::vcv(tree, corr = TRUE).
+#' host <- paste0("H", 1:12)
+#' partner <- paste0("P", 1:12)
+#' A_H <- 0.6^abs(outer(1:12, 1:12, "-"))
+#' A_P <- A_H
+#' dimnames(A_H) <- list(host, host)
+#' dimnames(A_P) <- list(partner, partner)
+#' ## W records which hosts interact with which partners: host i interacts
+#' ## with partners i - 1, i and i + 1.
+#' W <- 1 * (abs(outer(1:12, 1:12, "-")) <= 1)
+#' dimnames(W) <- list(host, partner)
+#' ## One kernel over all 24 species; the fixed rho sets how strongly
+#' ## interacting hosts and partners are linked.
+#' K <- make_cross_kernel(A_H, A_P, W, rho = 0.9)
+#'
+#' ## Simulate one latent axis shared by all four traits. Host traits are
+#' ## measured on hosts only and partner traits on partners only: four
+#' ## replicate measurements per species, each with noise (SD 0.3).
+#' lambda <- c(h_size = 0.9, h_defence = 0.6, p_size = 0.8, p_attack = -0.5)
+#' z <- drop(t(chol(K)) %*% rnorm(24))
+#' names(z) <- rownames(K)
+#' dat <- expand.grid(rep = 1:4, trait = names(lambda),
+#'                    species = rownames(K), stringsAsFactors = FALSE)
+#' dat <- dat[startsWith(dat$species, "H") == startsWith(dat$trait, "h_"), ]
+#' dat$value <- lambda[dat$trait] * z[dat$species] +
+#'   rnorm(nrow(dat), sd = 0.3)
+#' dat$trait <- factor(dat$trait, levels = names(lambda))
+#' dat$species <- factor(dat$species, levels = rownames(K))
+#' ## Each record (one species, one replicate) is a sampling unit
+#' dat$obs <- factor(paste(dat$species, dat$rep))
+#'
+#' ## One latent axis whose species scores are correlated as in K. The
+#' ## term is named "cross"; the functions below refer to it by name.
+#' fit <- gllvmTMB(
+#'   value ~ 0 + trait + kernel_latent(species, K = K, d = 1, name = "cross"),
+#'   data = dat, trait = "trait", unit = "obs", cluster = "species"
+#' )
+#' ## Coupled host and partner trait axes (point estimates only). With
+#' ## one latent axis (d = 1) there is a single module (n_modules = 1),
+#' ## and its singular value is 1 by construction, so read the trait
+#' ## loadings: hosts with larger size and defence are linked with
+#' ## partners of larger size and lower attack. Flipping the signs of
+#' ## both axes gives the same module.
 #' mods <- extract_coevolution_modules(
 #'   fit,
-#'   level = "phy",
-#'   row_traits = c("host_size", "host_defence"),
-#'   col_traits = c("partner_size", "partner_attack")
+#'   level = "cross",
+#'   row_traits = c("h_size", "h_defence"),
+#'   col_traits = c("p_size", "p_attack"),
+#'   n_modules = 1
 #' )
 #' mods$modules
 #' mods$row_axes
 #' mods$col_axes
-#' }
 #'
 #' @export
 extract_coevolution_modules <- function(

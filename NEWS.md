@@ -13,6 +13,12 @@
   `d = T`; `?gr` says `cov =` is used unless a top-level `phylo_vcv` is also
   given; `?scalar` and `?phylo_scalar` say soft-deprecated rather than
   "Canonical" (#1560).
+* `suggest_lambda_constraint(convention = "profile_retention")` no longer warns
+  "Unused optional grouping argument(s)" or prints `rr()` / `diag()` deprecated-alias
+  notes on its refits. The refits now pass `unit_obs` and `cluster` only when the
+  formula uses them and rebuild the formula through `latent()` / `indep()`. The
+  suggested matrix is unchanged. Naming the `unit_obs` column for the formula path
+  stays open (#1587).
 
 * `extract_Sigma()` no longer prints the "latent-only ... refit without
   `unique = FALSE`" advisory for a full-rank loading block. `dep()` is carried

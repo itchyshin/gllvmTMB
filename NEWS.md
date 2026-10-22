@@ -32,6 +32,12 @@
   -355, and below -745 the mean rounded to 0 and the term was `log(0)`. It is
   now computed from `log(-log P(0))`, by a series below -20 and by the old
   expression above it, so ordinary fits change only by rounding (#1483).
+* A `student()` trait whose degrees of freedom run past the Gaussian limit
+  (`report$df_student` is `Inf` once `log_df` exceeds about 709) is now
+  treated as normal in the link-scale variance summaries and the
+  distribution-argument accessor, instead of warning that the variance is
+  undefined and returning `NA`. Exact residuals and simulation already did
+  this. (#1487)
 
 * The experimental VA route now honors the package's existing `optimizer` and
   `optArgs` controls for its four primary starts. Omitted `optimizer` keeps the

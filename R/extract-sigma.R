@@ -1767,7 +1767,11 @@ extract_Sigma <- function(
     }
     fids <- fit$tmb_data$family_id_vec
     has_continuous <- any(fids %in% c(0L, 3L, 4L)) # gaussian / lognormal / Gamma
-    if (rr_used && !diag_used && has_continuous && part == "total") {
+    ## A full-rank loading block (d == n_traits) is already an unstructured
+    ## covariance -- this is how `dep()` is carried -- so no Psi is missing.
+    rank_deficient <- is.null(L) || ncol(as.matrix(L)) < T
+    if (rr_used && !diag_used && has_continuous && rank_deficient &&
+        part == "total") {
       notes <- c(
         notes,
         paste0(

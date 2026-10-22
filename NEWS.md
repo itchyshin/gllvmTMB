@@ -9,6 +9,11 @@
   `level = "unit"`, matching `loading_ci()` and `flag_unreliable_loadings()`
   (#1583).
 
+* `extract_Sigma()` no longer prints the "latent-only ... refit without
+  `unique = FALSE`" advisory for a full-rank loading block. `dep()` is carried
+  as a full-rank `rr` term with no diagonal, so the advisory fired on it even
+  though no residual Psi is missing and following its advice would change the
+  model. It now fires only for rank-deficient loadings (`d < n_traits`) (#1556).
 * Zero-truncated Poisson and NB2 likelihoods stay finite when the linear
   predictor is far below zero. The truncation term `log(1 - P(0))` was
   `logspace_sub(0, log P(0))`, whose derivatives grow like `1 / mu^k`: the

@@ -9,9 +9,9 @@ gr(group, cov = NULL)
 \arguments{
 \item{group}{An unquoted column name giving the grouping factor.}
 
-\item{cov}{Optional, ignored by the engine. The matrix actually
-used is whatever is passed to the \code{phylo_vcv} argument of
-\code{\link[=gllvmTMB]{gllvmTMB()}}.}
+\item{cov}{Optional covariance matrix. Used when no top-level
+\code{phylo_vcv} is passed to \code{\link[=gllvmTMB]{gllvmTMB()}}; ignored when \code{phylo_vcv} is
+also supplied.}
 }
 \value{
 A formula marker; never evaluated.
@@ -21,11 +21,10 @@ A user-friendly wrapper for any random effect whose covariance is a
 user-supplied matrix. Mirrors brms's \code{(1 | gr(species, cov = M))}.
 Inside a \code{gllvmTMB()} formula, this desugars to
 \code{propto(0 + group | trait)}. The actual covariance matrix used by
-the engine is whatever is passed to the top-level \verb{phylo_vcv =}
-argument of \code{\link[=gllvmTMB]{gllvmTMB()}}; the optional \verb{cov =} argument inside the
-formula is retained for backward compatibility and as a hint to the
-reader, but is \strong{not} used by the engine. Same convention as
-\code{\link[=phylo]{phylo()}} and \code{\link[=phylo_rr]{phylo_rr()}}.
+the engine is the top-level \verb{phylo_vcv =} argument of \code{\link[=gllvmTMB]{gllvmTMB()}} when
+one is supplied; otherwise the formula-level \verb{cov =} matrix is used. When
+both are given, the top-level \verb{phylo_vcv =} wins and \verb{cov =} is ignored.
+Same convention as \code{\link[=phylo]{phylo()}} and \code{\link[=phylo_rr]{phylo_rr()}}.
 }
 \examples{
 \dontrun{

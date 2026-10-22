@@ -18,7 +18,7 @@ Canonical name for the \strong{always-alone full-unstructured} trait
 covariance term. Fits a full \eqn{T \times T} \eqn{\boldsymbol\Sigma}
 with \eqn{T(T+1)/2} free parameters via a Cholesky parameterisation
 \eqn{\boldsymbol\Sigma = \mathbf{L}\mathbf{L}^\top}. Mathematically
-identical to \code{latent(0 + trait | g, d = T)} standalone (where \eqn{T}
+identical to \code{latent(0 + trait | g, d = n_traits, unique = FALSE)} standalone (where \eqn{T}
 is the number of traits) -- the engine's existing packed-triangular
 \eqn{\boldsymbol\Lambda} at full rank IS the Cholesky factor of an
 unstructured \eqn{\boldsymbol\Sigma}. The keyword choice is

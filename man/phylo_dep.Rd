@@ -40,7 +40,7 @@ Canonical name for the \strong{full unstructured cross-trait phylogenetic
 covariance} \eqn{\boldsymbol\Sigma_{\text{phy}} \otimes \mathbf{A}},
 with \eqn{T(T+1)/2} free parameters (\eqn{\boldsymbol\Sigma_{\text{phy}}}
 parameterised via Cholesky for PSD-ness). Mathematically identical to
-\code{phylo_latent(species, d = T)} standalone; the keyword choice is
+\code{phylo_latent(species, d = n_traits, unique = FALSE)} standalone; the keyword choice is
 documentary.
 }
 \details{

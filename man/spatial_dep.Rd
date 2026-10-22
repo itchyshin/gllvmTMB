@@ -44,7 +44,7 @@ Canonical name for the \strong{full unstructured cross-trait spatial
 covariance} \eqn{\boldsymbol\Sigma_{\text{spa}} \otimes \mathbf{Q}^{-1}},
 with \eqn{T(T+1)/2} free parameters
 (\eqn{\boldsymbol\Sigma_{\text{spa}}} parameterised via Cholesky).
-Mathematically identical to \code{spatial_latent(0 + trait | coords, d = T)}
+Mathematically identical to \code{spatial_latent(0 + trait | coords, d = n_traits, unique = FALSE)}
 standalone; the keyword choice is documentary.
 }
 \details{

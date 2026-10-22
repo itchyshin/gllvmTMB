@@ -4,7 +4,21 @@
   `@exportS3Method stats::sigma`, matching the `stats::sigma` entries already in
   `NAMESPACE`, so `devtools::document()` no longer rewrites them. Behaviour is
   unchanged (#1558).
+* `plot_loadings_confidence_eye()` called on a fitted model without `level =`
+  no longer stops with "'arg' must be of length 1". Its default is now
+  `level = "unit"`, matching `loading_ci()` and `flag_unreliable_loadings()`
+  (#1583).
+* Help pages for `dep()`, `phylo_dep()` and `spatial_dep()` now write the
+  full-rank equivalent as `d = n_traits, unique = FALSE` instead of the invalid
+  `d = T`; `?gr` says `cov =` is used unless a top-level `phylo_vcv` is also
+  given; `?scalar` and `?phylo_scalar` say soft-deprecated rather than
+  "Canonical" (#1560).
 
+* `extract_Sigma()` no longer prints the "latent-only ... refit without
+  `unique = FALSE`" advisory for a full-rank loading block. `dep()` is carried
+  as a full-rank `rr` term with no diagonal, so the advisory fired on it even
+  though no residual Psi is missing and following its advice would change the
+  model. It now fires only for rank-deficient loadings (`d < n_traits`) (#1556).
 * `slope_sd_ci()`: the print method no longer calls a loadings-only total
   "UNIQUE (Psi) ... only" (it decides from the `component` column, not an
   attribute), and the refusal for a fit with no random slopes recommends a

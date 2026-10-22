@@ -463,9 +463,7 @@
   aux <- aux[!vapply(aux, is.null, logical(1))]
 
   ## Pre-draw simulated responses in the parent process for reproducibility.
-  if (!is.null(seed)) {
-    set.seed(seed)
-  }
+  .gllvmTMB_local_seed(seed)
   Y_sim <- stats::simulate(fit, nsim = nsim)
   if (!is.matrix(Y_sim) || ncol(Y_sim) != nsim) {
     cli::cli_abort(

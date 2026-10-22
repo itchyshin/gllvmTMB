@@ -1,5 +1,31 @@
 # Development (unreleased)
 
+* The `sigma()` refusal methods are now registered from roxygen with
+  `@exportS3Method stats::sigma`, matching the `stats::sigma` entries already in
+  `NAMESPACE`, so `devtools::document()` no longer rewrites them. Behaviour is
+  unchanged (#1558).
+* `plot_loadings_confidence_eye()` called on a fitted model without `level =`
+  no longer stops with "'arg' must be of length 1". Its default is now
+  `level = "unit"`, matching `loading_ci()` and `flag_unreliable_loadings()`
+  (#1583).
+* Help pages for `dep()`, `phylo_dep()` and `spatial_dep()` now write the
+  full-rank equivalent as `d = n_traits, unique = FALSE` instead of the invalid
+  `d = T`; `?gr` says `cov =` is used unless a top-level `phylo_vcv` is also
+  given; `?scalar` and `?phylo_scalar` say soft-deprecated rather than
+  "Canonical" (#1560).
+
+* `extract_Sigma()` no longer prints the "latent-only ... refit without
+  `unique = FALSE`" advisory for a full-rank loading block. `dep()` is carried
+  as a full-rank `rr` term with no diagonal, so the advisory fired on it even
+  though no residual Psi is missing and following its advice would change the
+  model. It now fires only for rank-deficient loadings (`d < n_traits`) (#1556).
+* Zero-truncated Poisson and NB2 likelihoods stay finite when the linear
+  predictor is far below zero. The truncation term `log(1 - P(0))` was
+  `logspace_sub(0, log P(0))`, whose derivatives grow like `1 / mu^k`: the
+  Laplace gradient was NaN from `eta` near -237 and the objective from near
+  -355, and below -745 the mean rounded to 0 and the term was `log(0)`. It is
+  now computed from `log(-log P(0))`, by a series below -20 and by the old
+  expression above it, so ordinary fits change only by rounding (#1483).
 * A `student()` trait whose degrees of freedom run past the Gaussian limit
   (`report$df_student` is `Inf` once `log_df` exceeds about 709) is now
   treated as normal in the link-scale variance summaries and the
@@ -497,6 +523,22 @@
   passing cell), so this release makes no spatial range–rho recovery claim.
   Attenuated spatial prediction requires known locations. See the new
   source-strength worked example for long and wide calls.
+* `predict(newdata)` keeps one row for every row of `newdata`. A missing
+  covariate stays `NA` in that row instead of dropping it and recycling the
+  shorter prediction vector onto the wrong places. Data-dependent transforms
+  in the fixed formula (`scale()`, `poly()`, `ns()`) reuse the training
+  centre, scale and basis, so a row's prediction no longer depends on which
+  other rows travel with it, and a one-row `newdata` works. Character
+  predictors use the training levels, so a grid that omits the baseline
+  level is no longer silently predicted as the baseline. User-set factor
+  contrasts (for example `contr.sum`) are copied onto the restored factor,
+  so `predict(fit, newdata = training)` matches the training predictions.
+  **In scope:** the native `predict(newdata)` fixed-effect design, including
+  `simulate(newdata)` which calls `predict()`, and the temporal-forecast
+  design rebuild that uses the same helpers. **Not in scope:**
+  `engine = "julia"` still refuses `newdata`; `fitted()` and `residuals()`
+  stay training-row methods. Point prediction only; prediction intervals
+  are unchanged.
 
 # gllvmTMB 0.7.1 (release candidate)
 

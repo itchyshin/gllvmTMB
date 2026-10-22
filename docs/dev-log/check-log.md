@@ -1,3 +1,53 @@
+## 2026-10-16: wrap #1561 example fits in `\donttest{}` (refs #1346)
+
+R review on #1561: wrap `gllvmTMB()` fits in `\donttest{}`, keep data set-up
+bare. 24 `@examples` blocks in `R/brms-sugar.R`; `devtools::document(roclets =
+"rd")` with roxygen2 8.0.0 regenerated the matching 24 `man/*.Rd` files;
+`NAMESPACE` left untouched (#1558). `devtools::test(filter =
+"examples-run-1346a")`: 48 blocks, failed=0, skipped=0, error=0, warning=0.
+`rg -n '\\\\donttest\\{' R/brms-sugar.R` → 24. `rg -n '\\\\dontrun' ` on those
+24 Rd files → 0. Report:
+`docs/dev-log/after-task/2026-10-16-donttest-example-fits-1346a.md`.
+## 2026-10-11: predict(newdata) follow-up classes, #1424 subset, forecast_temporal (#1480)
+
+Unseen-level aborts now carry `gllvmTMB_predict_unseen_level` for every
+variable (iSDM keeps `gllvmTMB_predict_isdm_observation_level` as extra).
+The newdata design wrapper is `gllvmTMB_predict_newdata_design`. Added
+`predict(d[d$g != "a", ])` under `contr.sum`, and a `forecast_temporal()`
+test for `scale(x)`, a missing factor level, and an NA covariate row (stays
+NA). Follow-up issue #1481 (`refs #1480`).
+Focused: `test-predict-newdata-alignment.R` FAIL 0 / PASS 33;
+`test-temporal-program-forecast.R` FAIL 0 / PASS 12.
+Neighbours: `test-tidy-predict.R` FAIL 0 / PASS 20 (4 CRAN skips);
+`test-isdm-predict.R` FAIL 0 / PASS 36 / SKIP 9;
+`test-isdm-requalification-prediction.R` FAIL 0 / PASS 21;
+`test-oct4-news-doc-fixes.R` FAIL 0 / PASS 25.
+Stale-wording scans (this slice):
+`rg -n "gllvmTMB_predict_unseen_level|gllvmTMB_predict_newdata_design" R tests`
+`rg -n "Fixes |Closes |Resolves " docs/dev-log NEWS.md`
+`rg -n "forecast_temporal" tests/testthat/test-temporal-program-forecast.R`
+Report: after-task/2026-10-11-predict-newdata-alignment-followup.md.
+
+## 2026-10-11: predict(newdata) row alignment (#1384, #1423, #1425, #1424)
+
+Reproduced on `main` `9354ac2f` before the edit. `model.matrix(terms(formula), nd)`
+dropped NA covariate rows and recycled `eta` (#1384); `terms(formula)` had no
+`predvars` so `scale()` was re-evaluated on newdata (#1423); character
+predictors rebuilt levels from the supplied rows (#1425);
+`restore_newdata_factor_levels()` dropped user-set contrasts (#1424).
+Helpers now restore character columns and contrasts, rebuild the design from
+the training model frame (`predvars` / `xlevels` / `contrasts.arg`,
+`na.action = na.pass`), abort on missing training columns, and pad a
+shortened design back onto the newdata row index.
+Focused tests: `test-predict-newdata-alignment.R` FAIL 0 / PASS 29.
+Neighbours: `test-tidy-predict.R` FAIL 0 / PASS 20; `test-isdm-predict.R` FAIL 0 / PASS 36;
+`test-isdm-requalification-prediction.R` FAIL 0 / PASS 21; `test-oct4-news-doc-fixes.R` FAIL 0 / PASS 25.
+Stale-wording scans (this slice):
+`rg -n "model.matrix\\(stats::delete.response" R`
+`rg -n "Fixes |Closes |Resolves " docs/dev-log NEWS.md`
+`rg -n "recycle|predvars|contr.sum" R/methods-gllvmTMB.R tests/testthat/test-predict-newdata-alignment.R`
+Report: after-task/2026-10-11-predict-newdata-alignment.md.
+
 ## 2026-10-08: neighbouring output and bootstrap refit audit
 
 Reproduced and repaired correlation-index truncation, conflicting mirrored
@@ -58213,3 +58263,19 @@ Core blocker tests:214pass/0fail/error/warn/skip in35.8s; existing shard selecti
 Integration refresh: main advanced tocedf274 (10alreadymergedcommits). Clean merge preserved main fixes and task response helpers; independent review checked bootstrap-sigma/extract-omega overlap. Combined targeted tests162pass/0fail/error/skip,1tiny-Bwarning,53.1s. Fresh exact-head standard+four-heavyCI required before any authorized landing. Original0ebe five-run green evidence retained separately.
 
 2026-10-17 integration: main advanced10commits tocedf274. Cleanmerge into task branch preserves alreadymergedwork; noactualconflicts(gertcommitFALSEmessagewasmisleading, git_conflicts0rows). Independentoverlapreviewpass. Relevantlocalintegrationtests162pass/0fail/error/skip,1tiny-Bwarning,53.1s; pkgdownNo problems,allRparse. Fresh5CIrunsrequiredatnewcombinedhead; nooldgreen-headcertificationofnewbase.
+
+## 2026-10-19 — README optimizer-selection example
+
+Added a discovery-table link and concise VA primary-optimizer controls to README.md. The sample uses the documented nlminb and optim/BFGS APIs, disables VA polishing to isolate the primary solver, calls for the same seed before each fit, and says native iteration budgets are not equal effort. It keeps VA labelled experimental and makes no convergence or accuracy claim. The complete fit comparison and returned diagnostics remain in gllvmTMBcontrol() help.
+
+Base: fresh GitHub origin/main a674f29fb4f87f9e12558c372ca2417015025b34. Checks: extracted README R block executed after devtools::load_all() from source and passed assertions for both controls and their optimizer, method, iteration-limit, and va_polish fields; pkgdown::check_pkgdown() reported “No problems found” (existing Pandoc --mathml deprecation notices only); the targeted after-task structure validator passed. No model fits or package tests were run because only README prose changed.
+
+Consistency scans (exact patterns and scope):
+- rg "\bS_B\b|\bS_W\b|\\bf S" . — existing matches occur outside README; no hit in the edited README.
+- rg -n "gllvmTMB\(" R vignettes README.md NEWS.md docs/design — existing README calls include wide form and the long-form example has trait = "trait"; the new section only names the API and adds no model call.
+- rg "in prep|in preparation" docs vignettes — matches are outside README; no new foundational or in-prep claim was added.
+- rg "\bphylo\(|\bgr\(|\bmeta\(|block_V\(|phylo_rr\(" vignettes — existing vignette matches only; no README hit.
+- rg "meta_known_V" README.md NEWS.md docs vignettes — existing matches are outside README; no README hit.
+- rg "gllvmTMB_wide" README.md NEWS.md docs vignettes — existing matches are outside README; no README hit.
+
+Absolute-path slop check covered README, check-log, report, and PR body; no file exceeded the review threshold. No likelihood, API, formula grammar, family, generated Rd, article, or pkgdown navigation change.

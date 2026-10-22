@@ -2236,6 +2236,7 @@ predict_cross_covariance <- function(
     cli::cli_abort("{.arg level} must be one non-empty character string.")
   }
 
+  level <- .kernel_level_resolve_alias(fit, level)
   K <- .kernel_level_matrix(fit, level)
   meta <- .cross_kernel_metadata(K)
   if (is.null(row_levels)) {
@@ -2337,6 +2338,24 @@ predict_cross_covariance <- function(
     "rho",
     "kernel_includes_rho"
   )]
+}
+
+## extract_Sigma() / extract_Gamma() read level = "phy" as the internal level
+## of a kernel tier. Map that alias to the tier name when exactly one fitted
+## kernel tier uses the internal "phy" slot, so predict_cross_covariance()
+## accepts the same names (#1578). Anything else is returned unchanged.
+.kernel_level_resolve_alias <- function(fit, level) {
+  if (!is.null(.kernel_level_alias(fit, level)) || !identical(level, "phy")) {
+    return(level)
+  }
+  kernel_levels <- fit$kernel_levels
+  name <- kernel_levels$name
+  if (!is.character(name) || !length(name)) {
+    return(level)
+  }
+  internal <- kernel_levels$internal_level %||% rep("phy", length(name))
+  idx <- which(internal == "phy")
+  if (length(idx) == 1L) name[[idx]] else level
 }
 
 .kernel_level_matrix <- function(fit, level) {

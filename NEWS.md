@@ -13,6 +13,10 @@
   `d = T`; `?gr` says `cov =` is used unless a top-level `phylo_vcv` is also
   given; `?scalar` and `?phylo_scalar` say soft-deprecated rather than
   "Canonical" (#1560).
+* `predict_cross_covariance()` now accepts `level = "phy"` on a fit with one
+  `kernel_*()` tier, as `extract_Gamma()` and `extract_Sigma()` already did, and
+  returns the same result as the tier's own name (for example `"cross"`).
+  Previously it errored, naming only the tier name (#1578).
 
 * `extract_Sigma()` no longer prints the "latent-only ... refit without
   `unique = FALSE`" advisory for a full-rank loading block. `dep()` is carried

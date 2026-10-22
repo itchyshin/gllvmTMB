@@ -123,8 +123,7 @@ extract_loadings <- function(
 #' mathematically equivalent to inverting the fit's full joint precision
 #' matrix (`TMB::sdreport(getJointPrecision = TRUE)`) and reading the
 #' diagonal of the same block; the two routes were verified to agree to
-#' machine precision during development (see
-#' `dev/getlv-score-se-RESULTS.md`). Requirements:
+#' machine precision during development. Requirements:
 #' \itemize{
 #'   \item The fit must carry a valid `sdreport()`
 #'     (`gllvmTMBcontrol(se = TRUE)`, the default) with a positive-definite
@@ -141,10 +140,15 @@ extract_loadings <- function(
 #'     error.
 #' }
 #'
+#' For loading-ridge fits, score SDs require matching retained
+#' penalised-curvature metadata. They are local posterior approximations
+#' conditional on the ridge scale. Older or mismatched reports raise a warning
+#' and return `NA` SDs, while preserving the score point estimates.
+#'
 #' For a `gllvmTMB_va` (variational) fit, `se` is instead the per-unit
 #' **variational posterior SD** read from the fit's own variational
 #' distribution at its optimum -- not a Wald standard error, and not
-#' calibrated (Design 85 s10; the returned matrix carries a
+#' calibrated (the returned matrix carries a
 #' `"uncertainty_basis"` and `"calibrated"` attribute making this explicit in
 #' the object itself, not only here -- though those attributes are silently
 #' dropped by `se[i, ]`, `head(se)` and `as.data.frame(se)`).
@@ -156,7 +160,7 @@ extract_loadings <- function(
 #' per unit while containing no per-unit information. That degeneracy is
 #' provable under `"ac"` (Albert-Chib) and was *measured* on a Gaussian fit
 #' (coefficient of variation 1.6e-15) which the tier gate alone did not
-#' catch. See `docs/design/va-latent-uncertainty.md`.
+#' catch.
 #'
 #' @seealso [extract_ordination()] for scores and loadings together.
 #' @keywords internal
@@ -205,16 +209,29 @@ getLV <- function(
   }
   if (!isTRUE(se)) {
     if (rotate == "none") {
-      return(ord$scores)
+      scores <- ord$scores
+      if (isTRUE(fit$temporal$active)) {
+        attr(scores, "temporal_index") <- ord$row_index
+      }
+      return(scores)
     }
-    return(rotate_loadings(fit, .canonical_level_name(level), rotate)$scores)
+    scores <- rotate_loadings(fit, .canonical_level_name(level), rotate)$scores
+    if (isTRUE(fit$temporal$active)) {
+      attr(scores, "temporal_index") <- ord$row_index
+    }
+    return(scores)
   }
   se_mat <- if (inherits(fit, "gllvmTMB_va")) {
     .va_getLV_se(fit, scores = ord$scores)
   } else {
     .getLV_se(fit, level = level, scores = ord$scores)
   }
-  list(scores = ord$scores, se = se_mat)
+  out <- list(scores = ord$scores, se = se_mat)
+  if (isTRUE(fit$temporal$active)) {
+    attr(out$scores, "temporal_index") <- ord$row_index
+    out$temporal_index <- ord$row_index
+  }
+  out
 }
 
 #' Standard error of every unit-level (or within-unit) latent score
@@ -224,8 +241,8 @@ getLV <- function(
 #' it with the same `matrix(nrow = d, ncol = n)` then transpose convention
 #' [extract_ordination()] uses for the point estimates, so a misordered
 #' reshape here would silently pair the wrong SE with the wrong (unit,
-#' axis) score cell -- see `dev/getlv-score-se-RESULTS.md` for the
-#' verification this guards against.
+#' axis) score cell. The returned standard-error matrix has the same
+#' dimensions and dimnames as the point estimates.
 #'
 #' @param fit A `gllvmTMB_multi` fit.
 #' @param level Canonical `"B"` or `"W"` (already normalised by the caller).
@@ -248,6 +265,14 @@ getLV <- function(
       "i" = "This fit has no {.field sd_report} ({.code gllvmTMBcontrol(se = FALSE)}, or {.fn sdreport} failed at fitting time).",
       ">" = "Refit with {.code control = gllvmTMBcontrol(se = TRUE)} (the default)."
     ), class = "gllvmTMB_getLV_se_no_sdreport")
+  }
+  if (isTRUE(fit$aghq$penalised) && !.lv_loading_ridge_curvature_matches(fit)) {
+    cli::cli_warn(c(
+      "Loading-ridge score uncertainty is withheld because its penalised-curvature provenance is missing or mismatched.",
+      "i" = "Returning {.code NA} score standard deviations; point estimates remain available.",
+      ">" = "Refit with the current package to retain matching penalised-Hessian metadata."
+    ), class = "gllvmTMB_getLV_se_loading_ridge_unverified")
+    return(matrix(NA_real_, nrow(scores), ncol(scores), dimnames = dimnames(scores)))
   }
   z_name <- if (level == "B") "z_B" else "z_W"
   d <- if (level == "B") fit$d_B else fit$d_W
@@ -295,7 +320,10 @@ getLV <- function(
 getResidualCov <- function(fit, level = "unit") {
   level <- match.arg(level, c("unit", "unit_obs", "B", "W"))
   level <- .normalise_level(level, arg_name = "level")
-  out <- if (level == "B") extract_Sigma_B(fit) else extract_Sigma_W(fit)
+  out <- .extract_Sigma_legacy_payload(
+    fit,
+    level = if (level == "B") "unit" else "unit_obs"
+  )
   if (is.null(out)) {
     return(NULL)
   }
@@ -308,7 +336,10 @@ getResidualCov <- function(fit, level = "unit") {
 getResidualCor <- function(fit, level = "unit") {
   level <- match.arg(level, c("unit", "unit_obs", "B", "W"))
   level <- .normalise_level(level, arg_name = "level")
-  out <- if (level == "B") extract_Sigma_B(fit) else extract_Sigma_W(fit)
+  out <- .extract_Sigma_legacy_payload(
+    fit,
+    level = if (level == "B") "unit" else "unit_obs"
+  )
   if (is.null(out)) {
     return(NULL)
   }
@@ -338,7 +369,7 @@ extract_residual_cor <- function(fit, level = "unit") {
 }
 
 
-#' Draw a two-axis ordination plot for a fitted multivariate model
+#' Draw a one- or two-axis ordination plot for a fitted multivariate model
 #'
 #' Draws a simple base-R biplot of latent scores, with optional trait loadings
 #' overlaid, for a fit returned by [gllvmTMB()]. This method is a compatibility
@@ -354,17 +385,28 @@ extract_residual_cor <- function(fit, level = "unit") {
 #' @param fit A fitted multivariate model returned by [gllvmTMB()].
 #' @param level `"unit"` (between-unit) or `"unit_obs"` (within-unit).
 #'   Deprecated aliases `"B"` and `"W"` are still accepted with a warning.
-#' @param axes Length-2 integer vector picking which two latent axes
-#'   to plot. Default `c(1, 2)`.
+#' @param axes Integer vector selecting one or two distinct latent axes.
+#'   When omitted, uses axis 1 for a one-axis fit and `c(1, 2)` otherwise.
+#'   A one-axis plot places scores and loading arrows along a horizontal
+#'   baseline; its vertical position has no latent-variable meaning.
 #' @param biplot Logical; if `TRUE`, overlay scaled trait loadings as
 #'   arrows (default `TRUE`).
 #' @param rotate Rotation after fitting: `"none"` (default), `"varimax"`, or
 #'   `"promax"`.
+#' @param ellipse Logical; if `TRUE`, draw an asymptotic-normal score
+#'   -uncertainty ellipse around every site, from [ordination_uncertainty()].
+#'   Only supported for two-axis plots with `rotate = "none"` (the default) -- see
+#'   [ordination_uncertainty()]'s Rotation section for why. The ellipse
+#'   level is unmeasured for coverage; it is a standard Wald construction,
+#'   not a certified interval.
+#' @param ellipse_level Nominal confidence level for the `ellipse` outline
+#'   (default `0.95`). Only used when `ellipse = TRUE`.
 #' @param ... Passed to `plot()`.
 #' @return Invisibly, a list with the plotted `scores` matrix and the
 #'   corresponding `loadings` matrix. The function is primarily called for its
 #'   plotting side effect.
-#' @seealso [plot.gllvmTMB_multi()] for the available `type` choices.
+#' @seealso [plot.gllvmTMB_multi()] for the available `type` choices;
+#'   [ordination_uncertainty()] for the covariance `ellipse = TRUE` draws.
 #' @keywords internal
 #' @export
 #' @rawNamespace if (requireNamespace("gllvm", quietly = TRUE)) S3method(gllvm::ordiplot, gllvmTMB_multi)
@@ -381,44 +423,90 @@ ordiplot.gllvmTMB_multi <- function(
   axes = c(1, 2),
   biplot = TRUE,
   rotate = c("none", "varimax", "promax"),
+  ellipse = FALSE,
+  ellipse_level = 0.95,
   ...
 ) {
   level <- match.arg(level, c("unit", "unit_obs", "B", "W"))
   level <- .normalise_level(level, arg_name = "level")
   canonical_level <- .canonical_level_name(level)
   rotate <- match.arg(rotate)
-  if (length(axes) != 2L) {
-    cli::cli_abort("axes must be length 2.")
+  axes_supplied <- !missing(axes)
+  if (axes_supplied && (
+    !is.numeric(axes) || !length(axes) %in% 1:2 || anyNA(axes) ||
+    any(!is.finite(axes)) || any(axes < 1 | axes != trunc(axes)) ||
+    anyDuplicated(axes)
+  )) {
+    cli::cli_abort("axes must be length 1 or length 2, with distinct positive integer indices.")
+  }
+  if (isTRUE(ellipse) && rotate != "none") {
+    cli::cli_abort(c(
+      "{.code ellipse = TRUE} is not supported together with {.code rotate != \"none\"}.",
+      "i" = "Rotating scores changes their covariance, which {.fn ordination_uncertainty} does not propagate.",
+      ">" = "Request {.code rotate = \"none\", ellipse = TRUE} for uncertainty ellipses."
+    ), class = "gllvmTMB_ordiplot_ellipse_rotated_unsupported")
   }
 
   scores <- getLV(fit, canonical_level, rotate)
   loadings <- getLoadings(fit, canonical_level, rotate)
+  if (!axes_supplied) axes <- if (!is.null(scores) && ncol(scores) == 1L) 1L else c(1L, 2L)
   if (is.null(scores) || ncol(scores) < max(axes)) {
     cli::cli_abort("Not enough latent axes for the requested {.code axes}.")
   }
 
+  one_axis <- length(axes) == 1L
+  if (isTRUE(ellipse) && one_axis) {
+    cli::cli_abort(
+      c(
+        "ellipse = TRUE requires two latent axes; one-axis uncertainty intervals are not supported by ordiplot().",
+        ">" = "Use {.code ellipse = FALSE} for a one-axis plot."
+      ),
+      class = "gllvmTMB_ordiplot_ellipse_one_axis_unsupported"
+    )
+  }
   rng <- function(x) range(x, na.rm = TRUE)
   xs <- scores[, axes[1L]]
-  ys <- scores[, axes[2L]]
+  ys <- if (one_axis) rep(0, nrow(scores)) else scores[, axes[2L]]
 
-  graphics::plot(
-    xs,
-    ys,
-    xlab = paste0("LV", axes[1L]),
-    ylab = paste0("LV", axes[2L]),
-    pch = 19,
-    col = "grey40",
-    asp = 1,
-    ...
+  plot_args <- utils::modifyList(
+    list(
+      x = xs,
+      y = ys,
+      xlab = paste0("LV", axes[1L]),
+      ylab = if (one_axis) "" else paste0("LV", axes[2L]),
+      pch = 19,
+      col = "grey40",
+      asp = if (one_axis) NA else 1,
+      yaxt = if (one_axis) "n" else "s"
+    ),
+    list(...)
   )
+  do.call(graphics::plot, plot_args)
   graphics::abline(h = 0, v = 0, lty = 2, col = "grey80")
+
+  if (isTRUE(ellipse)) {
+    unc <- ordination_uncertainty(fit, canonical_level)
+    if (is.null(unc)) {
+      cli::cli_abort(c(
+        "{.fn ordination_uncertainty} returned {.code NULL} for {.code level = \"{canonical_level}\"}.",
+        ">" = "Request {.code ellipse = FALSE}, or fit a {.fn latent} term at this level."
+      ), class = "gllvmTMB_ordiplot_ellipse_no_uncertainty")
+    }
+    for (s in seq_len(nrow(scores))) {
+      mu <- c(xs[s], ys[s])
+      Sigma2 <- unc$cov[axes, axes, s]
+      if (anyNA(Sigma2)) next
+      poly <- .gllvmTMB_ellipse_xy(mu, Sigma2, conf = ellipse_level)
+      graphics::lines(poly[, "x"], poly[, "y"], col = "grey40", lwd = 1)
+    }
+  }
 
   if (isTRUE(biplot) && !is.null(loadings) && ncol(loadings) >= max(axes)) {
     sc <- max(abs(rng(xs)), abs(rng(ys))) /
       max(abs(loadings[, axes]), 1e-9) *
       0.7
     arrows_x <- loadings[, axes[1L]] * sc
-    arrows_y <- loadings[, axes[2L]] * sc
+    arrows_y <- if (one_axis) rep(0, nrow(loadings)) else loadings[, axes[2L]] * sc
     graphics::arrows(
       0,
       0,
@@ -443,25 +531,29 @@ ordiplot.gllvmTMB_multi <- function(
 #' Variance partition by source
 #'
 #' Decomposes the marginal trait variance into contributions from each
-#' active component of the model: between-unit shared (`latent_B`),
-#' between-unit unique (`unique_B`), within-unit shared (`latent_W`),
-#' within-unit unique (`unique_W`), phylogenetic (`phylo_scalar` /
-#' `phylo_latent`), non-phylogenetic species, spatial (`spatial`), and
-#' Gaussian/lognormal observation residual where present. Non-Gaussian
-#' link-implicit residual shares are handled by [extract_proportions()].
+#' active component of the model. Column names follow the fitted report
+#' blocks: `rr_B`, `diag_B`, `rr_W`, `diag_W`, `diag_species`, `phylo_rr`,
+#' `phylo_diag`, `propto`, and `residual` (Gaussian/lognormal observation
+#' variance where present). Non-Gaussian link-implicit residual shares are
+#' handled by [extract_proportions()], not by `VP()`.
 #'
 #' Mirrors `gllvm::VP()` / `gllvm::plotVP()`.
+#'
+#'
+#' Structured trait-intercept rho fits are excluded; use `extract_Sigma()` and
+#' its `source_strength` metadata.
 #'
 #' @param fit A fitted multivariate model returned by [gllvmTMB()].
 #' @return An `n_traits × n_components` matrix of variance shares (rows
 #'   sum to 1). Columns are only those active in `fit$use`.
 #'
 #' @seealso [extract_proportions()] for the canonical per-trait
-#'   variance-share decomposition with explicit B / W / phy / link-residual
-#'   columns.
+#'   variance-share decomposition (`shared_unit`, `unique_unit_obs`, phy
+#'   tiers, link-residual, etc.).
 #' @keywords internal
 #' @export
 VP <- function(fit) {
+  .structured_rho_source_allocation_assert(fit, "VP")
   comps <- list()
   if (fit$use$rr_B) {
     LL_B <- fit$report$Lambda_B %*% t(fit$report$Lambda_B)
@@ -522,8 +614,8 @@ VP <- function(fit) {
   out <- numeric(Tn)
   names(out) <- trait_names
 
-  sigma_eps <- as.numeric(fit$report$sigma_eps %||% numeric(0))
-  if (!length(sigma_eps) || !is.finite(sigma_eps[1L]) || sigma_eps[1L] <= 0) {
+  sigma_eps <- .gllvmTMB_sigma_eps_vector(fit)
+  if (!length(sigma_eps)) {
     return(out)
   }
 
@@ -541,7 +633,7 @@ VP <- function(fit) {
     tab <- tabulate(match(as.integer(fams_t), fams_uniq))
     fid <- fams_uniq[which.max(tab)]
     if (fid %in% c(0L, 3L)) {
-      out[t] <- sigma_eps[1L]^2
+      out[t] <- .gllvmTMB_sigma_eps_for_family(fit, fid)^2
     }
   }
   out

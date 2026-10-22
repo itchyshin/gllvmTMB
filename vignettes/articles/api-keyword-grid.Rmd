@@ -1,7 +1,7 @@
 ---
 title: "Formula keyword grid"
 description: "Choose a correlation source and covariance mode, then translate the intended model into matching long and traits(...) wide formulas."
-tier: 2
+tier: 2 # Technical lookup; worked tree examples live in where-does-the-tree-go.
 output:
   rmarkdown::html_vignette:
     toc: true
@@ -28,9 +28,19 @@ The keywords below are live API, but a valid formula does not guarantee that a
 complex covariance is estimable from a particular data set. Fit health,
 replication, trait count, and the scientific covariance question still matter.
 
+Most readers only need the two choices below; the optional `rho` setting on a
+structured term is covered later, in [Advanced: estimating the source
+strength](#advanced-estimating-the-source-strength).
+
 ## Choose in two steps
 
-### 1. What relates the grouping levels?
+### 1. What is being related?
+
+The first five sources describe relationships **among stable units**: for
+example, individuals, species, locations, or rows of a supplied relatedness
+matrix. Temporal is the additional source for **ordered repeated states within
+a series**. It uses the same three trait-covariance modes, but its series and
+time coordinates have a different scientific meaning.
 
 - **No prefix:** levels are independent, as in an ordinary random effect.
 - **`animal_`:** individuals are related through a pedigree, `A`, or `Ainv`.
@@ -40,6 +50,9 @@ replication, trait count, and the scientific covariance question still matter.
   locations can be correlated.
 - **`kernel_`:** levels are related through a supplied dense covariance matrix
   `K` — the generic dense-matrix source (the fifth grid row).
+- **`temporal_`:** ordered states within each `series` share an AR1 or OU
+  kernel. `time =` names the occasion or elapsed-time column; AR1 preserves
+  integer gaps and OU uses elapsed-time distances.
 
 These sources are alternatives based on study design, not a progression from
 fine to broad scale. Add a source prefix only when that structured relationship
@@ -61,9 +74,10 @@ There are **three fundamental cross-trait structures**, from simplest to richest
   companion.
 
 **`scalar` and `unique` are modifiers, not separate modes.** `scalar` is
-`indep` with the variances tied to one shared value; `unique` is `latent` with
-its diagonal-\(\Psi\) companion. This mirrors how the deprecated `unique()`
-keyword now lives as `latent(unique = TRUE)`. The named `scalar()`,
+`indep` with the variances tied to one shared value; `unique = TRUE` adds the
+diagonal-\(\Psi\) companion to a `latent` term. The standalone deprecated
+`unique()` keyword remains compatibility syntax for the plain diagonal case.
+The named `scalar()`,
 `phylo_scalar()`, `animal_scalar()`, `spatial_scalar()`, and `kernel_scalar()`
 keywords fit exactly this model but are **soft-deprecated compatibility syntax**
 (they emit a one-time warning); write `indep(..., common = TRUE)` in new code.
@@ -72,16 +86,17 @@ All fitted keyword covariances are random-effect covariances on the model's
 linear-predictor or latent scale. They are not automatically response-scale
 covariances for non-Gaussian traits.
 
-## The 5 × 3 grid
+## The 5 × 3 grid, plus temporal
 
-The rows are the five correlation **sources** across grouping levels; the
-columns are the three fundamental trait-covariance **modes**. Every cell is a
-live keyword. The *scalar* and *unique* sub-cases are modifiers, listed under
-the table.
+The five stable-unit sources form the familiar 5 × 3 grid. Temporal adds a
+sixth, within-series row with the same three trait-covariance modes. Thus the
+formal grammar is a 6 × 3 source-by-mode grid, while this presentation keeps
+the important distinction visible. Every cell is a live keyword. The *scalar*
+and *unique* sub-cases are modifiers, listed under the table.
 
 <div class="table-responsive">
 <table class="table table-striped" style="min-width: 640px;">
-<caption>Source × mode covariance keyword grid</caption>
+<caption>Stable-unit sources and the additional temporal source, each paired with a trait-covariance mode</caption>
 <thead><tr>
 <th>Source</th><th>Independent</th><th>Dependent</th><th>Latent</th>
 </tr></thead>
@@ -96,6 +111,8 @@ the table.
 <td><code>spatial_dep()</code></td><td><code>spatial_latent()</code></td></tr>
 <tr><th>kernel</th><td><code>kernel_indep()</code></td>
 <td><code>kernel_dep()</code></td><td><code>kernel_latent()</code></td></tr>
+<tr><th>temporal (within series)</th><td><code>temporal_indep()</code></td>
+<td><code>temporal_dep()</code></td><td><code>temporal_latent()</code></td></tr>
 </tbody>
 </table>
 </div>
@@ -110,6 +127,42 @@ term is fitted.
 term (see the latent default below). The standalone `unique()` keyword is
 soft-deprecated in favour of `indep()` (for a plain diagonal) and
 `latent(unique = TRUE)` (for the paired companion).
+
+## The temporal addition
+
+`temporal_indep(0 + trait | series, time = occasion)`,
+`temporal_dep(...)`, and `temporal_latent(..., d = 1)` form the temporal row.
+Here `series` identifies one independent trajectory, and `time = occasion`
+uses the bare `occasion` column from the data: it is neither a formula term nor
+a character string. A `replicate = measurement` column identifies repeated
+measurements at the same `(series, occasion)` state. The provider creates that
+state index privately; it does not change `unit` or `unit_obs`, which retain
+their ordinary stable-unit and within-unit meanings.
+
+AR1 accepts ordered integer occasions and preserves unobserved occasions as
+gaps; OU accepts elapsed numeric time without automatic rescaling. With
+`temporal_latent(unique = TRUE)`, Psi is itself correlated through the temporal
+kernel, not IID occasion noise. The temporal article shows matching long and
+`traits(...)` wide calls. **In scope:** focused Gaussian local fits, source
+parsing, covariance oracles, simulation, and ordinary unit/unit-observation
+composition. **Partial:** recovery is not yet a general claim. The bounded
+temporal-only forecast, profile, bootstrap, and supplied-candidate comparison
+helpers have their own contracts; generic forecasts, new-data prediction,
+generic intervals/profiles, and automatic selection remain unavailable. Four
+replicated-AR1 additive `temporal_indep()` pairs with one diagonal kernel,
+phylogenetic, animal, or spatial source are separately implemented, with
+pair-specific local evidence only: the kernel combination met its prespecified
+recovery criteria in one local simulated example, while the phylogenetic,
+animal, and spatial recovery studies retain failed cases. These pairs
+require complete Gaussian identity-link data, native TMB/Laplace ML, at least
+two complete measurements per series--occasion, and a source fixed at `rho = 1`.
+Supply the source inside its keyword (`K =`, `tree =`/`vcv =`,
+`pedigree =`/`A =`/`Ainv =`, or `mesh =`). The spatial route needs time and space
+contrasts that are not proportional. OU source combinations, temporal
+`dep`/`latent` combinations, temporal slopes, other families, higher rank,
+source-by-time interactions, and other structured-source combinations are
+unavailable. See [Temporal covariance](temporal-ar1.html) for the standalone
+workflow and the adjacent source-combination limits.
 
 ## What the modes estimate
 
@@ -271,78 +324,119 @@ or reciprocal process. When more than one named kernel is fitted, use
 collapse indistinguishable kernels rather than assigning them separate
 biological stories.
 
-## Other formula markers
+## What sits outside the grid
 
-### Random slopes
+### Slope variation by response column
 
-`phylo_slope(x | species)` and `animal_slope(x | id)` are live slope-only
-structured routes. They are not additional covariance modes and should not be
-confused with an augmented intercept-and-slope covariance such as
-`animal_dep(1 + x | id, ...)` or `spatial_latent(1 + x | site, ...)`.
+<div class="slope-chooser">
 
-An augmented random-slope term describes deviations around a fixed
-population-average slope. Include that fixed slope separately:
+The 6 × 3 grid describes **trait covariance for random effects**. The slope
+helpers answer a separate question: *how do fixed-predictor coefficients vary
+across the response columns?* They are not a new grid row, column, or mode.
 
-```{r structured-slope-syntax, eval = FALSE}
-# Long form
-value ~ 0 + trait + (0 + trait):x +
-  phylo_indep(0 + trait + (0 + trait):x | species)
+<div class="table-responsive">
 
-# Equivalent wide form
-traits(t1, t2, t3) ~ 1 + x +
-  phylo_indep(1 + x | species)
+| Column relationship | Use |
+|---|---|
+| no supplied relationship | `slope(x | trait)` |
+| a phylogenetic tree | `phylo_slope(x | trait, tree = tree)` |
+| a pedigree or relationship matrix | `animal_slope(x | trait, A = A)` |
+| a labelled covariance matrix | `kernel_slope(x | trait, K = K)` |
+| one coordinate pair per column | `spatial_slope(x | trait, mesh = column_mesh)` |
+
+</div>
+
+For this helper family, the right side must be the variable that labels the
+response columns, supplied through `trait =` and usually named `trait`. The
+helper adds no random intercept. With
+two or more predictors, `|` estimates their full covariance and `||` keeps
+their predictor variances but fixes their covariance to zero.
+Retrieve that predictor-by-predictor matrix with
+`extract_Sigma(fit, level = "column_slope")`.
+
+```r
+value ~ 0 + trait + moisture + canopy +
+  phylo_slope(moisture + canopy | trait, tree = tree)
 ```
 
-The three structured modes do not merely represent increasing computational
-complexity. They estimate different covariance objects (for a single slope `x`
-and \(T\) traits):
+This is Gaussian long-format point estimation only. Wide column-slope grammar,
+non-Gaussian responses, latent predictor covariance, several helpers in one
+model, and intervals are deliberately deferred. Group-indexed
+`phylo_slope(x | species)` and `animal_slope(x | id)` remain current and
+warning-free for models whose coefficients vary across sampled units. They
+answer a different grouping-axis question from the response-column slope
+helpers described here. In short: use `phylo_slope(x | trait, tree = tree)`
+when the slope of `x` should vary **across response columns** (e.g. across
+traits or species treated as responses) and use `phylo_slope(x | species)`
+when the slope of `x` should vary **across the sampled grouping units**
+(e.g. across individuals or sites) that the tree relates.
 
-- `*_indep(1 + x | g)` estimates **\(T\) independent per-trait \(2 \times 2\)
-  (intercept, slope) blocks** -- each trait gets its own intercept variance,
-  slope variance, and intercept--slope correlation, with no covariance across
-  traits. Extract it at `level = "phy"` / `"spatial"`; a `kernel_` tier is
-  addressed by the `name` you gave it, so a tier declared
-  `kernel_indep(..., name = "known")` is extracted at `level = "known"`.
-- `*_dep(1 + x | g)` estimates a **full interleaved \(2T \times 2T\)** covariance
-  across all trait intercepts and slopes. Same extraction levels.
-- `*_latent(1 + x | g, d = K)` estimates **separate reduced-rank cross-trait
-  covariance matrices** for the intercept and slope columns; it does not
-  estimate intercept--slope covariance. Extract the per-column matrices at
-  `level = "phy_slope"` or `level = "spde_slope"`.
+### Intercepts and slopes by response column
 
-#### Correlated and uncorrelated slopes: `|` and `||`
+`column_coef()`, `phylo_coef()`, `animal_coef()`, `kernel_coef()`, and
+`spatial_coef()` extend the coefficient
+basis to an explicit random intercept, a slope, or both. They are also outside
+the 6 × 3 grid: their covariance is across coefficient-basis columns, not a new
+trait-covariance mode.
 
-There is one more choice for a random slope -- whether the intercept and slope
-are **correlated** -- and it is set by the number of bars, matching lme4/glmmTMB:
+```r
+# IID response-column intercepts and slopes
+value ~ 1 + column_coef(1 + moisture | trait)
 
-- A **single bar**, `mode(1 + x | g)`, **estimates the intercept--slope
-  correlation** (the default).
-- A **double bar**, `mode(1 + x || g)`, drops it: the intercept and slope are
-  **uncorrelated**. It is exactly `mode(1 | g) + mode(0 + x | g)`.
+# Tree-correlated response-column intercepts and slopes; estimate rho
+value ~ 1 + phylo_coef(1 + moisture | trait, tree = tree, rho = NULL)
 
-The bar count sets only the intercept--slope coupling; the mode still sets the
-cross-trait structure. For \(T\) traits:
+# Pedigree-correlated response-column intercepts and slopes; fix rho
+value ~ 1 + animal_coef(1 + moisture | trait, pedigree = pedigree, rho = 1)
 
-| mode | `1 + x \| g` (correlated) | `1 + x \|\| g` (uncorrelated) |
-|---|---|---|
-| `indep` | a separate \(2 \times 2\) per trait | a per-trait intercept variance + slope variance (fully diagonal) |
-| `dep` | full \(2T \times 2T\) across all trait intercepts and slopes | a full intercept covariance and a full slope covariance, with intercepts \(\perp\) slopes (\(\boldsymbol\Sigma_{\text{int}} \oplus \boldsymbol\Sigma_{\text{slope}}\)) |
-| `latent` | separate reduced-rank \(\boldsymbol\Lambda\) per column block (already uncorrelated) | the same -- `\|\|` is the explicit spelling |
+# C3/C4 grand intercepts and slopes, plus kernel-correlated
+# response-column intercept and slope deviations; estimate rho
+value ~ 0 + pathway + moisture:pathway +
+  kernel_coef(1 + moisture | trait, K = K, name = "environment", rho = NULL)
 
-Both bar forms are available for the `phylo_` and `animal_` sources, for
-`spatial_indep()` / `spatial_dep()` / `spatial_latent()`, and for
-`kernel_indep()` / `kernel_dep()`. `kernel_latent()` currently takes the single
-`|` only: a `||` there stops with a message rather than silently fitting the
-correlated form you wrote `||` to avoid.
+# The same hierarchical model from a wide response data frame;
+# pass the keyed pathway table through column_data
+traits(sp1, sp2, sp3, sp4) ~ 0 + pathway + moisture:pathway +
+  kernel_coef(1 + moisture | trait, K = K, name = "environment", rho = NULL)
 
-Choose the mode from the scientific covariance assumption, not as an automatic
-fallback after a difficult fit. Centre and scale `x`, retain the transformation,
-and confirm repeated, overlapping within-unit coverage before fitting a random
-slope. The [behavioural reaction-norm guide](random-regression-reaction-norms.html)
-shows those design checks for the ordinary Gaussian case. Family-specific
-response requirements still apply; changing `family =` is not the only change
-needed when moving from continuous traits to counts, proportions, trials, or
-ordered categories.
+# Species locations as the response-column relationship; rho is fixed at 1
+value ~ 0 + pathway + moisture:pathway +
+  spatial_coef(1 + moisture | trait, mesh = column_mesh)
+```
+
+Use `|` for a full coefficient covariance and `||` for a diagonal one. Retrieve
+the ordered basis covariance and source metadata with
+`extract_Sigma(fit, level = "column_coef")`. All five helpers support Gaussian
+point models through long or `traits(...)` wide input. Numeric `rho` fixes the
+phylogenetic, animal, or dense-kernel mixture; `phylo_coef(rho = NULL)` and
+`kernel_coef(rho = NULL)` estimate one interior value. `animal_coef()` accepts
+exactly one pedigree, relationship covariance `A`, or precision `Ainv`;
+`kernel_coef()` accepts one labelled dense positive-definite covariance `K` and
+reports its name and supplied scale. `spatial_coef()` accepts one mesh built
+with exactly one labelled coordinate pair per response column and currently
+requires `rho = 1`; its extractor reports the aligned coordinates, fitted
+range, and projected unit-diagonal source covariance. Estimated animal `rho`,
+spatial IID mixtures, non-Gaussian responses, and intervals remain unavailable.
+The existing slope-only helpers above remain current, warning-free, and
+non-deprecated.
+
+For exact compatibility, a no-intercept dense-`vcv` `phylo_coef(..., rho = 1)`
+call uses the released `phylo_slope()` conditioning `K + 1e-8 I`. Other
+fixed/estimated coefficient routes use the raw covariance-scale mixture.
+At the corresponding no-intercept `rho = 1` endpoint, `animal_coef()` uses the
+released `animal_slope()` route exactly. Its dense-`A` route therefore inherits
+the released `A + 1e-8 I` conditioning seam; pedigree and sparse-`Ainv`
+endpoints retain their released precision.
+At the no-intercept `rho = 1` kernel endpoint, `kernel_coef()` uses
+`kernel_slope()` exactly and therefore retains raw `K` without a ridge.
+At the no-intercept spatial endpoint, `spatial_coef()` uses
+`spatial_slope()` exactly and retains its projected-SPDE normalization and
+range parameter.
+
+For a worked comparison of a tree among sampled species and a tree among
+response columns, read [Where does the phylogeny belong?](where-does-the-tree-go.html).
+
+</div>
 
 ### Known sampling covariance
 
@@ -375,6 +469,27 @@ story:
 Different grouping levels can carry different covariance terms—for example, a
 between-individual `latent()` term and a within-individual `indep()` term—when
 the design identifies both.
+
+## Advanced: estimating the source strength
+
+Canonical `phylo_*`, `animal_*` and `kernel_*` indep/dep/latent terms also
+accept trailing `rho = 1`. Fixed values between zero and one attenuate
+between-level source covariance while preserving the resolved source diagonal.
+This does not add a grid row or mode. With `unique = TRUE`, the same strength
+applies to both the loadings and Psi; ordinary intercept effects stay separate.
+Omitted rho and explicit one preserve existing models, including multi-kernel
+endpoints. New attenuation currently supports one structured trait-intercept
+block per fit.
+
+`rho = NULL` estimates one strength only in the documented complete, replicated
+Gaussian design with retained observation noise and no competing ordinary
+covariance. Estimated latent terms require rank one and at least four traits.
+Spatial terms use the same attenuation weight while range stays separately
+estimated. Spatial recovery remains unvalidated. Augmented slopes and
+source-strength intervals are not included. A converged optimizer does not establish identification or recovery.
+See [Strength of a known source](structured-source-strength.html) for runnable
+long and wide examples, extraction and interpretation. These defaults do not
+change the separate response-column coefficient helpers.
 
 ## If the first choice is too complex
 

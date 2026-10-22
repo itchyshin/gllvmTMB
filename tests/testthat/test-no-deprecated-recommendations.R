@@ -45,3 +45,22 @@ test_that("no user-facing message recommends the soft-deprecated residual start"
   }
   expect_equal(offenders, character())
 })
+
+test_that("no user-facing message recommends a numeric aghq_ridge over loading_ridge", {
+  testthat::skip_if_not(dir.exists(r_dir), "R/ not present")
+
+  ## `loading_ridge` is the integration-neutral spelling for a runaway-loading
+  ## fix (#gapclose task d); `aghq_ridge = <number>` recommendations should
+  ## have moved to it. `aghq_ridge = "auto"` and `aghq_ridge = Inf` are left
+  ## alone -- those are AGHQ-specific ladder/likelihood-comparison meanings
+  ## that `loading_ridge` does not carry.
+  offenders <- character()
+  for (f in list.files(r_dir, pattern = "[.]R$", full.names = TRUE)) {
+    lits <- string_literals(f)
+    hits <- grep("aghq_ridge\\s*=\\s*[0-9]", lits, value = TRUE)
+    if (length(hits)) {
+      offenders <- c(offenders, sprintf("%s: %s", basename(f), substr(hits, 1, 60)))
+    }
+  }
+  expect_equal(offenders, character())
+})

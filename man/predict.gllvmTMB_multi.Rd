@@ -17,7 +17,13 @@
 \item{object}{A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}.}
 
 \item{newdata}{Optional new data frame. If \code{NULL}, predictions are
-produced for the training rows.}
+produced for the training rows. A missing covariate stays \code{NA} in
+that row; the other rows keep their own predictions. Data-dependent
+transforms in the fixed formula (\code{scale()}, \code{poly()}, \code{ns()}) reuse
+the training centre, scale, and basis, so a row's value does not
+depend on which other rows travel with it. Character predictors use
+the training levels, and user-set factor contrasts (for example
+\code{contr.sum}) are copied onto the restored factor.}
 
 \item{type}{One of \code{"link"} (default) or \code{"response"}.
 
@@ -47,7 +53,9 @@ regardless of \code{re_form}.
 
 On \code{newdata}, \code{predict()} rebuilds the linear predictor in R and can
 re-add only some of the model's random-effect tiers (the unit-level
-\code{rr}/\code{diag} terms, \code{propto}, and the spatial SPDE field). A fit
+\code{rr}/\code{diag} terms, \code{propto}, and the spatial SPDE field). Structured
+intercepts also include their shared and folded Psi effects
+at known source levels; ancestral prediction is not added. A fit
 carrying any other active tier gets a warning naming exactly what was
 omitted; \code{newdata = NULL} always returns the full conditional
 predictor.}

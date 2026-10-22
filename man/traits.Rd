@@ -83,28 +83,34 @@ per-cell identity and original-row accounting in \code{fit$missing_data}. Users
 who want strict listwise drop should pre-filter the wide data before
 calling.
 
-Mixed-family fits (\code{family = list(...)} keyed by trait) use the same
-family handling after internal stacking; \code{traits()} does not
-intercept the family argument. Per-row weight vectors of length
-\code{nrow(data)} are also replicated across traits automatically. For
+For a mixed-family wide fit, pass a named \code{family = list(...)} whose names
+exactly match the response columns selected by \code{traits()}. The internal
+stacking step creates the corresponding per-row family selector; long data
+may instead continue to provide an explicit \code{family_var} column. Per-row
+weight vectors of length \code{nrow(data)} are replicated across traits. For
 per-cell weight matrices, pivot to long format and pass a \code{weights}
 column aligned with \verb{(unit, trait)} rows. The legacy matrix wrapper
 \code{\link[=gllvmTMB_wide]{gllvmTMB_wide()}} still accepts matrix weights for migration code.
 }
 \examples{
-\dontrun{
-# Wide format: one column per trait; traits() stacks them internally.
-# The LHS *is* the trait spec, so no `trait =` argument is needed.
-set.seed(1)
-df_wide <- data.frame(
-  unit = factor(paste0("u", 1:40)),
-  t1 = rnorm(40), t2 = rnorm(40), t3 = rnorm(40)
-)
-fit <- gllvmTMB(
-  traits(t1, t2, t3) ~ 1 + latent(1 | unit, d = 2),
-  data = df_wide, unit = "unit"
-)
-extract_Sigma(fit)
+## Wide format: one column per trait; traits() stacks them internally.
+## The LHS *is* the trait spec, so no `trait =` argument is needed.
+## traits() uses the tidyr package to stack the columns.
+if (requireNamespace("tidyr", quietly = TRUE)) {
+  set.seed(1)
+  n <- 60
+  z <- rnorm(n)  # one latent axis shared by the three traits
+  df_wide <- data.frame(
+    unit = factor(paste0("u", seq_len(n))),
+    t1 = 0.9 * z + rnorm(n, sd = 0.5),
+    t2 = 0.7 * z + rnorm(n, sd = 0.5),
+    t3 = -0.6 * z + rnorm(n, sd = 0.5)
+  )
+  fit <- gllvmTMB(
+    traits(t1, t2, t3) ~ 1 + latent(1 | unit, d = 1, unique = TRUE),
+    data = df_wide, unit = "unit"
+  )
+  print(extract_Sigma(fit))
 }
 }
 \seealso{

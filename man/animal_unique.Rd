@@ -9,10 +9,16 @@ animal_unique(id, pedigree = NULL, A = NULL, Ainv = NULL)
 \arguments{
 \item{id}{Bare column name of the individual factor.}
 
-\item{pedigree}{A 3-column data frame with columns \code{id}, \code{sire},
-\code{dam} (unknown parents encoded as \code{NA}). Converted internally
-to \strong{A} via Henderson's recursive formula. Only one of
-\code{pedigree}, \code{A}, or \code{Ainv} should be given.}
+\item{pedigree}{A 3-column data frame identifying individuals and
+parents. Columns are resolved by name using the synonyms
+\code{id}/\code{animal}, \code{sire}/\code{father}, and \code{dam}/\code{mother}; if none
+match, column 1 is id, column 2 is sire, and column 3 is dam.
+Unknown parents may be \code{NA}, \code{""}, or \code{"0"}. Converted internally
+to a sparse inverse relationship matrix \eqn{\mathbf A^{-1}} by
+\code{\link[=pedigree_to_Ainv_sparse]{pedigree_to_Ainv_sparse()}} (Henderson/Quaas), not to a dense
+\eqn{\mathbf A}. Must be passed by name (\code{pedigree = ped}). If
+several of \code{pedigree}, \code{A}, and \code{Ainv} are given, \code{pedigree}
+wins, then \code{A}, then \code{Ainv}.}
 
 \item{A}{Dense relatedness matrix (\eqn{n \times n}); rownames /
 colnames must match levels of \code{id}.}
@@ -55,29 +61,38 @@ through the same augmented engine as \code{\link[=phylo_unique]{phylo_unique()}}
 }
 
 \examples{
-\dontrun{
-# Per-trait independent additive-genetic variances on a shared A.
-# Grounded in test-animal-keyword.R.
+set.seed(1)
+## Pedigree: ten founders (five sires, five dams) and 90 offspring.
 ped <- data.frame(
-  id   = paste0("i", 1:12),
-  sire = c(rep(NA, 4), rep(c("i1", "i2"), length.out = 8)),
-  dam  = c(rep(NA, 4), rep(c("i3", "i4"), length.out = 8))
+  id   = paste0("i", 1:100),
+  sire = c(rep(NA, 10), sample(paste0("i", 1:5), 90, replace = TRUE)),
+  dam  = c(rep(NA, 10), sample(paste0("i", 6:10), 90, replace = TRUE))
 )
 A <- pedigree_to_A(ped)
-yvec <- as.numeric(MASS::mvrnorm(
-  1, mu = rep(0, 2 * 12),
-  Sigma = kronecker(diag(2), A) * 0.5 + diag(2 * 12) * 0.5
-))
+## Two traits with their own additive-genetic variances and no genetic
+## covariance: vec(bv) ~ N(0, G \%x\% A) with G = diag(0.6, 0.4). Residual
+## noise is added; one row per (individual, trait).
+G <- diag(c(0.6, 0.4))
+bv <- t(chol(A)) \%*\% matrix(rnorm(100 * 2), 100, 2) \%*\% chol(G)
 df <- data.frame(
-  species = factor(rep(ped$id, each = 2), levels = ped$id),
-  trait   = factor(rep(c("t1", "t2"), times = 12), levels = c("t1", "t2")),
-  value   = yvec
+  individual = factor(rep(ped$id, each = 2), levels = ped$id),
+  trait      = factor(rep(c("t1", "t2"), times = 100)),
+  value      = as.vector(t(bv)) + rnorm(100 * 2, sd = 0.6)
 )
 fit <- gllvmTMB(
-  value ~ 0 + trait + animal_unique(species, pedigree = ped),
-  data = df, family = gaussian()
+  value ~ 0 + trait + animal_unique(individual, pedigree = ped),
+  data = df, trait = "trait", unit = "individual",
+  cluster = "individual"
 )
-}
+extract_Sigma(fit, level = "phy")$Sigma
+## The recommended spelling for a standalone diagonal term,
+## animal_indep(), fits the same model:
+fit2 <- gllvmTMB(
+  value ~ 0 + trait + animal_indep(0 + trait | individual, pedigree = ped),
+  data = df, trait = "trait", unit = "individual",
+  cluster = "individual"
+)
+c(logLik(fit), logLik(fit2))
 }
 \seealso{
 \code{\link[=animal_scalar]{animal_scalar()}}, \code{\link[=animal_indep]{animal_indep()}}, \code{\link[=animal_latent]{animal_latent()}},

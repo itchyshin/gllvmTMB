@@ -1,0 +1,20 @@
+{
+  "kind": "engineering",
+  "attempts": 8,
+  "seconds": 2.781848434358835,
+  "bundle_hash": "30434660f352573591ed0e8e0301c481827c07acdf5c270db81c59d02683a465",
+  "fixture_manifest_sha256": "70b7a9ea572722b954dbeeb2e35bde702460e5742eda0484e7b4d54493dd4571",
+  "counts": {
+    "planned": 8,
+    "launched": 8,
+    "returned": 8,
+    "numerical_success": 6,
+    "numerical_failure": 2,
+    "fit_errors": 0,
+    "timeout": 0,
+    "optimizer_entry_violations": 0,
+    "missing_result": 0,
+    "not_launched": 0
+  },
+  "peak_rss_kib": 279504
+}

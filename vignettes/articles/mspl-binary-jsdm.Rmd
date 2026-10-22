@@ -1,7 +1,6 @@
 ---
 title: "Rare items and runaway estimates in Paper × Items evidence synthesis"
 description: "Ordinate a papers-by-items evidence table with a probit GLLVM, then meet the two ways such fits break — runaway loadings and separated rare items — and the matched remedy for each: an opt-in loading ridge for one, the opt-in MSPL estimator for the other, never both in one fit."
-tier: 1
 output:
   rmarkdown::html_vignette:
     toc: true
@@ -21,6 +20,12 @@ knitr::opts_chunk$set(
   cache = FALSE
 )
 ```
+
+> **Advanced evidence-synthesis case study.** This is not the beginner route
+> through gllvmTMB. It deliberately studies difficult binary-data failures and
+> uses opt-in remedies, including the experimental MSPL estimator. Start with
+> [Get started](gllvmTMB.html) and [Choose a response
+> family](response-families.html) for ordinary modelling workflows.
 
 Evidence synthesis teams increasingly work with a **papers-by-items table**: each
 row a published study, each column a binary indicator — did the paper report an

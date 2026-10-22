@@ -35,7 +35,10 @@ plot_correlations(
 \item{x}{Either a fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}, a \code{bootstrap_Sigma} object with
 \code{R_B} / \code{R_W} summaries, or a data frame returned by
 \code{\link[=extract_correlations]{extract_correlations()}}. Data frames must contain \code{tier}, \code{trait_i},
-\code{trait_j}, \code{correlation}, \code{lower}, \code{upper}, and \code{method}.}
+\code{trait_j}, \code{correlation}, \code{lower}, \code{upper}, and \code{method}.
+Matrix displays accept identical mirrored rows. Duplicate rows for the
+same pair and tier must agree in estimates, intervals and provenance;
+conflicting rows are rejected rather than selected by input order.}
 
 \item{tier, pair, level, method, n_eff, nsim, seed, link_residual}{Passed to
 \code{\link[=extract_correlations]{extract_correlations()}} when \code{x} is a fitted model. Ignored when \code{x} is

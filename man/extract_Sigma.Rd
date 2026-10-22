@@ -6,8 +6,9 @@
 \usage{
 extract_Sigma(
   fit,
-  level = c("unit", "unit_slope", "unit_obs", "phy", "phy_slope", "spatial",
-    "spde_slope", "cluster", "cluster2", "B", "B_slope", "W", "spde"),
+  level = c("unit", "unit_slope", "unit_obs", "phy", "phy_slope", "column_coef",
+    "column_slope", "spatial", "spde_slope", "cluster", "cluster2", "B", "B_slope", "W",
+    "spde"),
   part = c("total", "shared", "unique", "psi"),
   link_residual = c("auto", "none"),
   .skip_warn = FALSE
@@ -17,13 +18,18 @@ extract_Sigma(
 \item{fit}{A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}. Admitted \code{engine = "julia"}
 bridge fits expose the ordinary unit tier only: \code{link_residual = "none"}
 reconstructs \eqn{\Lambda\Lambda^\top} from retained loadings, while
-\code{link_residual = "auto"} uses the retained GLLVM.jl residual-augmented
+\code{link_residual = "auto"} uses the retained GLLVModels.jl residual-augmented
 payload where available and keeps Gaussian / lognormal rows on the native
 no-op convention. \code{unit_obs}, structured tiers, and augmented-slope tiers
 remain gated for Julia bridge extractors.}
 
 \item{level}{One of \code{"unit"} (between-unit), \code{"unit_obs"} (within-unit),
-\code{"phy"} (phylogenetic), \code{"spatial"}, \code{"cluster"}, or \code{"cluster2"} (a
+\code{"phy"} (phylogenetic), \code{"column_coef"} (the response-column coefficient
+basis covariance), \code{"column_slope"} (the predictor-basis covariance
+from \code{\link[=slope]{slope()}}, \code{\link[=phylo_slope]{phylo_slope()}}, \code{\link[=animal_slope]{animal_slope()}}, \code{\link[=kernel_slope]{kernel_slope()}},
+\code{\link[=spatial_slope]{spatial_slope()}}, or the corresponding \verb{*_indep()} / \verb{*_dep()} canonical
+form), \code{"spatial"},
+\code{"cluster"}, or \code{"cluster2"} (a
 second, independent diagonal grouping alongside \code{"cluster"} -- see the
 \code{cluster2} argument to \code{\link[=gllvmTMB]{gllvmTMB()}}). Legacy aliases
 \code{"B"}, \code{"W"}, and \code{"spde"} are accepted with a soft-deprecation
@@ -58,6 +64,48 @@ advisory messages, e.g. about a no-Psi \code{unique = FALSE} fit).
 
 For \code{part = "unique"}: a list with \code{s} (length-T named numeric
 vector of unique variances), \code{level}, \code{part}, \code{note}.
+
+A structured trait-intercept fit with fixed \code{rho < 1} or estimated
+\code{rho = NULL} also returns \code{source_strength} at \code{level = "phy"} (or its
+named kernel alias), or \code{level = "spatial"} for spatial terms. It contains \code{term}, \code{source}, \code{grouping}, \code{labels},
+\code{resolved_scale}, \code{source_diagonal}, \code{value}, and \code{status} (fixed or
+estimated), plus mode and diagnostic metadata. Spatial metadata also
+reports \code{kappa}; its source diagonal is evaluated at that fitted inverse
+range, without normalization. \code{Sigma} remains the
+trait covariance; the covariance across source levels is
+\eqn{K_\rho = \rho K + (1-\rho)\mathrm{diag}(\mathrm{diag}(K))}.
+The source covariance is not materialized for extraction. Strength is
+distinct from a variance share; source-strength intervals are unavailable.
+Estimated fits report \code{nll_score_logit} and \code{nll_score_rho}, derivatives
+of the negative log likelihood on the fitted logit and physical strength
+scales. A small logit derivative alone is not evidence of an interior
+optimum near zero or one; an unrepresentable physical score is \code{NA}.
+
+For \code{level = "column_slope"}: a list with the named \verb{1 x 1} or \verb{P x P}
+predictor covariance \code{Sigma}, its correlation matrix \code{R}, \code{level},
+\code{part}, \code{predictors}, \code{column_labels}, \code{source}, and \code{note}. \code{source}
+contains \code{type} (\code{"ordinary"}, \code{"phylo"}, \code{"animal"}, \code{"kernel"}, or
+\code{"spatial"}),
+the response-column \code{grouping}, and its aligned \code{labels}; kernel sources
+additionally report \code{name} and \code{scale = "as_supplied"}. Spatial sources
+additionally report aligned coordinates, coordinate-column names and
+supplied units, \code{kappa}, practical range, projected-normalization method,
+and \code{K_column}. Use only \code{level = "column_slope"} for a
+\code{\link[=spatial_slope]{spatial_slope()}} fit; \code{level = "spatial"} is reserved for the separate
+observation-space SPDE covariance and fails clearly for this model. The fitted
+coefficient contract is
+\eqn{\mathrm{Cov}(\mathrm{vec}(B^\mathsf{T})) = K_\mathrm{column}
+  \otimes \Sigma}. For \code{P = 1}, full and diagonal bars are the same model
+and return the same object with canonical \code{part = "dep"}.
+
+For \code{level = "column_coef"}: a list with coefficient-basis covariance
+\code{Sigma}, correlation \code{R}, ordered \code{basis}, aligned response-column
+\code{source}, \code{rho_status}, \code{rho}, and (for \code{\link[=phylo_coef]{phylo_coef()}}, \code{\link[=animal_coef]{animal_coef()}},
+\code{\link[=kernel_coef]{kernel_coef()}}, or \code{\link[=spatial_coef]{spatial_coef()}} fits) the effective source covariance
+\code{K_rho}. Spatial sources additionally report the same aligned coordinates,
+range, normalization, and \code{K_column} metadata as \code{\link[=spatial_slope]{spatial_slope()}}. IID
+\code{\link[=column_coef]{column_coef()}} fits report \code{rho_status = "not_applicable"}, \code{rho = NULL},
+and \code{K_rho = NULL}.
 
 For a \code{phylo_dep(1 + x1 + ... + xs | species)} fit with one or more
 slopes, call with \code{level = "phy"}: the result is the single full
@@ -104,6 +152,14 @@ decomposition the behavioural-syndromes / phenotypic-integration literature
 uses (Bartholomew et al. 2011).
 }
 \details{
+\subsection{Legacy covariance wrappers}{
+
+\code{extract_Sigma_B()} and \code{extract_Sigma_W()} are soft-deprecated
+compatibility wrappers. They still return their historical \code{Sigma_B} /
+\code{R_B} and \code{Sigma_W} / \code{R_W} field names, respectively, but new code should
+call this function with \code{level = "unit"} or \code{level = "unit_obs"}.
+}
+
 \subsection{When a fit has no Psi component}{
 
 If the formula deliberately uses

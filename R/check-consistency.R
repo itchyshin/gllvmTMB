@@ -135,16 +135,14 @@ gllvmTMB_check_consistency <- function(
   estimate = FALSE
 ) {
   if (!inherits(fit, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+    .gllvmTMB_abort_not_multi_fit(fit)
   }
   .gllvmTMB_mspl_assert_inference(fit, "gllvmTMB_check_consistency")
   n_sim <- as.integer(n_sim)
   if (length(n_sim) != 1L || is.na(n_sim) || n_sim < 2L) {
     cli::cli_abort("{.arg n_sim} must be an integer >= 2.")
   }
-  if (!is.null(seed)) {
-    set.seed(seed)
-  }
+  .gllvmTMB_local_seed(seed)
 
   ## TMB::checkConsistency emits a `Failed to invert information
   ## matrix` warning on tiny fixtures (small n, weakly identified

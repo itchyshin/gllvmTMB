@@ -1,6 +1,6 @@
 ---
 title: "Start here: which species distribution model do your data allow?"
-description: "The front door to the species distribution articles. Every model on this site describes the same thing — a surface of expected abundance across a landscape — and your data type is a window onto it. This page shows the four windows, gives a decision tree and a routing table from what you have to what to read, and says plainly where a different package is the better tool."
+description: "The front door to the species distribution articles. Counts, binary records, and repeated surveys do not identify the same ecological quantity: this page separates relative intensity, occurrence or observation probability, and detection, then routes readers from their data to the right worked article or a better tool elsewhere."
 output:
   rmarkdown::html_vignette:
     toc: true
@@ -30,30 +30,47 @@ the package installs straight from GitHub:
 remotes::install_github("itchyshin/gllvmTMB")
 ```
 
-# One surface, four windows
+# Related targets, four windows
 
-Every model on this site — and its close neighbours, including occupancy
-models — is describing the same underlying object: a **surface of expected
-abundance**, one for each species, spread across the landscape. High where the
-species thrives, low where it does not. That surface is what you actually want
-to know about. You never observe it.
+The routes on this site do **not** all estimate one ecological quantity. Keep
+three targets separate before choosing a model:
 
-What you observe is a **window** onto it, and the shape of the window is
-decided by how the data were collected:
+- **Abundance or intensity** describes how many individuals, records, or
+  events are expected per unit of effort or sampled support. The count and
+  integrated routes here estimate **relative ecological intensity**: where it
+  is higher or lower, not absolute abundance.
+- **Occurrence or observation probability** is a probability between zero and
+  one. The ordinary binary JSDM models $P(Y=1)$ for a species-site cell. That
+  can be called occurrence probability only when the survey design makes a 1 a
+  record of occurrence and assumes no separate imperfect-detection process;
+  otherwise it is the probability of an observed 1 under that protocol.
+- A **detection process** asks for the chance of observing a species given that
+  it is present. Separating that chance from occurrence requires repeat visits
+  and an occupancy model with a detection submodel. Neither the single-visit
+  binary JSDM nor the integrated route on this site estimates detectability.
 
-- **Counts with effort** — a checklist, a trap-night, a timed transect — see
-  the surface almost directly, scaled by how hard you looked. Twice the effort,
-  roughly twice the count.
-- **Detection / non-detection** sees only whether the surface was above zero
-  at the places you visited. A rich site and a merely adequate one both come
-  back as a 1.
+The illustration below uses one **shared-intensity** scenario so the four data
+windows can be compared on common ground. This is the specific construction
+used by the package's integrated Poisson and complementary-log-log routes, not
+a claim that every SDM targets intensity. What you observe is decided by how
+the data were collected:
+
+- **Counts with effort** — a checklist, a trap-night, a timed transect — are
+  random counts whose expected value scales with intensity and how hard you
+  looked. Doubling known effort doubles the expected count, not every realized
+  count.
+- **Detection / non-detection** is a random 0/1 outcome. In the integrated
+  shared-intensity route, a visit with support $a$ and intensity $\lambda$ has
+  $P(Y=1)=1-\exp(-a\lambda)$: a low-intensity site can still produce a 1 and a
+  high-intensity site can still produce a 0. The binary result does not report
+  how many individuals or records were available.
 - **Presence-only records** — one photo, one point, uploaded by a stranger —
   see the surface through a second filter: *where people go*. A road, a
   car park, and a popular reserve all look like good habitat.
 - **Grid cells** see the surface averaged over squares. Averaging flattens
   peaks; a hotspot smaller than a cell stops existing.
 
-```{r windows, ref.label = "windows-code", echo = FALSE, fig.width = 7.2, fig.height = 3.9, dpi = 150, out.width = "100%", fig.cap = "One simulated landscape, seen four ways. The centre panel is the true surface of expected abundance per unit of effort, which no data type observes directly; the flanking panels show what each kind of survey would have recorded from it. (a) counts at twenty places, printed as numbers, with text size marking how much effort each place received. (b) detection or non-detection at thirty-four places, one visit each: filled circles found the species, open circles did not. (c) eighty-five presence-only records, proposed where people are and then thinned by the surface, so they pile up both on the real hotspot and in the accessible bottom-right corner. (d) the same surface averaged into twenty-five coarse cells on the same colour scale, which visibly drains the bright peak. This is a drawn illustration on simulated data, not a fitted model.", fig.alt = "A five-panel figure. The large central panel is a smooth colour surface on a viridis scale with white contour lines, showing a large bright peak in the upper left and a smaller peak in the lower right against a dark background. Four smaller white panels flank it. Panel a shows scattered printed numbers, larger and higher in the upper-left region. Panel b shows scattered circles, mostly filled in the upper left and more often open in the lower right. Panel c shows scattered plus signs forming two clumps, one on the upper-left peak and a denser one in the lower-right corner. Panel d shows a five-by-five grid of coloured squares on the same scale as the central panel, with the peak reduced to a single mid-bright square."}
+```{r windows, ref.label = "windows-code", echo = FALSE, fig.width = 7.2, fig.height = 3.9, dpi = 150, out.width = "100%", fig.cap = "One simulated shared-intensity landscape, seen four ways. The centre panel is relative intensity per unit of support, which no data type observes directly; the flanking panels show one random realization from each observation window. (a) counts at twenty places, printed as numbers, with text size marking how much effort each place received. (b) one Bernoulli detection/non-detection draw at each of thirty-four places: filled circles are 1 and open circles are 0, with probability 1 - exp(-intensity) rather than a deterministic intensity threshold. (c) eighty-five presence-only records, proposed where people are and then thinned by intensity, so they pile up both on the ecological hotspot and in the accessible bottom-right corner. (d) the same intensity averaged into twenty-five coarse cells on the same colour scale, which visibly drains the bright peak. This is a drawn illustration on simulated data, not a fitted model and not a claim that every route estimates intensity.", fig.alt = "A five-panel figure. The large central panel is a smooth relative-intensity surface on a viridis scale with white contour lines, showing a large bright peak in the upper left and a smaller peak in the lower right against a dark background. Four smaller white panels flank it. Panel a shows random counts as printed numbers, with larger counts more common in the upper-left region and text size showing effort. Panel b shows one random binary draw per site as circles, mostly filled in the upper left but with both outcomes possible across the surface. Panel c shows presence-only records as plus signs forming two clumps, one on the upper-left ecological peak and a denser one in the accessible lower-right corner. Panel d shows a five-by-five grid of coloured squares on the same scale as the central panel, with the peak reduced to a single mid-bright square."}
 ```
 
 The consequence is the single most useful idea on this site: **the model you
@@ -61,17 +78,22 @@ need is not chosen by your species or your region — it is chosen by your
 window.** Two people studying the same warbler in the same valley need
 different models if one of them has checklists and the other has photographs.
 
-And it is why combining sources is worth the trouble. Two windows onto one
-surface are strictly more informative than either alone, provided the model
-knows they are windows and lets each keep its own distortion. That is what the
-integrated models on this site do.
+Combining sources can be worth the trouble, but it is not automatically more
+informative. It can improve identification or precision when the sources can
+validly share an ecological state, their effort and observation biases are
+represented, and their spatial support is compatible. It can instead add bias
+or conflict when those assumptions fail. The integrated route on this site
+therefore admits a narrow pairing: Poisson counts and Bernoulli-cloglog 0/1
+observations that can both be written as thinnings of one shared relative
+intensity, with each source retaining its own observation law. It does not turn
+that shared intensity into absolute abundance, occupancy, or detectability.
 
 # Two questions decide your route
 
 **What do you have?** (the window) and **what do you want to know?** (the
 question). The tree answers the first; the table underneath adds the second.
 
-```{r tree, ref.label = "tree-code", echo = FALSE, fig.width = 7.2, fig.height = 6.4, dpi = 150, out.width = "100%", fig.cap = "Routing by data type. Read downwards: the top row is what your data look like, the diamonds are the two follow-up questions where the answer sends you off this site, and the bottom row is a destination. Solid boxes are articles here; dashed boxes are honest exits to a better tool elsewhere, distinguished by border style rather than by colour so the distinction survives greyscale printing. The band along the foot applies whenever you hold more than one of the four data types at once.", fig.alt = "A flow chart reading top to bottom. A grey box at the top reads: what do your data look like? Four arrows lead to four boxes: presence-only records; counts with effort; detection or non-detection with one visit per place; and repeat-visit histories. The presence-only box leads to a diamond asking whether the question is a trend over years, whose yes branch reaches a dashed box reading grid cells plus list-based occupancy models, and whose no branch reaches a solid box reading joint intensity from records, counted per grid cell. Counts with effort leads straight to a solid box reading joint intensity from records, count arm, no recording-bias term. Detection or non-detection leads straight to a solid box reading binary joint SDM, with one visit detection cannot be separated from occurrence. Repeat-visit histories leads to a diamond asking whether presence must be split from detection, whose yes branch reaches a dashed box reading spOccupancy carries the detection submodel, and whose no branch reaches a solid box reading what repeat visits add to one shared intensity. Dotted lines gather the four solid boxes into a wide band at the foot reading: have two or more of these at once? That is the integrated model, one shared surface with each source keeping its own window; this site's centrepiece and the only route that uses all of your data."}
+```{r tree, ref.label = "tree-code", echo = FALSE, fig.width = 7.2, fig.height = 6.4, dpi = 150, out.width = "100%", fig.cap = "Routing by data type. Read downwards: the top row is what your data look like, the diamonds are the two follow-up questions where the answer sends you off this site, and the bottom row is a destination. Solid boxes are articles here; dashed boxes are honest exits to a better tool elsewhere, distinguished by border style rather than by colour so the distinction survives greyscale printing. The band along the foot applies when two or more sources satisfy the shared-intensity assumptions described in the text.", fig.alt = "A flow chart reading top to bottom. A grey box at the top reads: what do your data look like? Four arrows lead to four boxes: presence-only records; counts with effort; detection or non-detection with one visit per place; and repeat-visit histories. The presence-only box leads to a diamond asking whether the question is a trend over years, whose yes branch reaches a dashed box reading grid cells plus list-based occupancy models, and whose no branch reaches a solid box reading joint intensity from records, counted per grid cell. Counts with effort leads straight to a solid box reading joint intensity from records, count arm, no recording-bias term. Detection or non-detection leads straight to a solid box reading binary joint SDM, with one observed-1 probability and no occurrence/detection split. Repeat-visit histories leads to a diamond asking whether occurrence must be split from detection, whose yes branch reaches a dashed box reading spOccupancy carries the detection submodel, and whose no branch reaches a solid box reading what repeat visits add to one shared intensity. Dotted lines gather the compatible source boxes into a wide band at the foot reading: have two or more compatible sources at once? That is the integrated model, one shared relative intensity with each source keeping its own observation law."}
 ```
 
 The tree routes on data alone. Your question splits the destinations further:
@@ -84,13 +106,15 @@ The tree routes on data alone. Your question splits the destinations further:
 | **presence-only** <br> one photo, one point | [joint intensity from records](gbif-joint-intensity.html) — records counted per grid cell. For the **point-process** treatment (each record a location, with background points) see [the recipe in the Warbler article](isdm-canada-warbler.html) | the same fit | **the occupancy-trend tradition** — see [the honest exits](#the-honest-exits) |
 | **mixed sources** <br> [eBird](https://ebird.org) plus your own survey | **[the integrated model, end to end](isdm-canada-warbler.html)** · [start smaller](integrated-two-source-example.html) · [go wider](integrated-multi-source-example.html) | yes, and it is the same fit | only as far as the survey arm's visits allow |
 
-Two honesty notes about that table. There is no article here devoted to
-counts from a *single designed* survey; the machinery for it lives inside the
-presence-only article, because a designed count is the same likelihood with
-the bias term switched off. And every route in the table returns **relative** intensity — the
-expected-abundance surface from the figure above, known only up to an overall
-constant — not absolute abundance or occupancy probability. The individual
-articles are specific about what that rules out.
+Two honesty notes about that table. There is no article here devoted to counts
+from a *single designed* survey; the machinery for it lives inside the
+presence-only article, because a designed count uses the same Poisson
+likelihood with the recording-bias term switched off. Those count and
+integrated routes return **relative intensity**, not absolute abundance,
+occupancy probability, or detectability. The ordinary binary JSDM instead
+models $P(Y=1)$ with a binomial link. With one visit and no detection submodel,
+that fitted probability cannot be decomposed into occurrence and detection.
+The individual articles state the interpretation boundary for each route.
 
 # The honest exits
 
@@ -116,18 +140,17 @@ species distribution models on `INLA`/`inlabru` instead, and are the better
 starting point if your lab already works that way or you want a single-species
 integrated fit.
 
-**Occupancy models.** These are in the *same family* as the binary joint SDM
-above, with one extra layer: a **detection submodel**, a second process that
-says how often you find the species given that it is there. That extra layer
-is only estimable because **repeat visits** give you the information to split
-the two. If you have repeat visits *and* your question genuinely needs "was it
-there" separated from "did we find it" — absolute occupancy, or a long-term
-trend from opportunistic data — use
+**Occupancy models.** These separate two probabilities: occurrence and a
+**detection submodel**, the chance of observing the species given that it is
+present. **Repeat visits** supply the within-site detection history needed to
+estimate that split. If you have repeat visits *and* your question genuinely
+needs "was it there" separated from "did we find it" — absolute occupancy, or
+a long-term trend from opportunistic data — use
 [spOccupancy](https://www.jeffdoser.com/files/spoccupancy-web/), which is built
-for exactly that. With a single visit the two models collapse into the same
-thing, and that collapsed model is the one this package fits. So this is not a
-rival framework; it is one layer further along the same road, and the layer
-needs data you may not have.
+for exactly that. With a single visit, occurrence and detection are not
+separately identified. The binary JSDM here fits the resulting observed-1
+probability as one quantity; it does not estimate an occupancy/detection
+decomposition.
 
 **Trends from one-photo records**, the way insect recording schemes work. The
 established route is grid cells plus occupancy modelling of *list-based visits*
@@ -176,13 +199,15 @@ says where its own evidence stops.
 # How the figures were drawn
 
 Both figures use only base R and take about a second. Nothing in them is
-fitted; they are drawings of a definition.
+fitted; they draw one shared-intensity observation scenario and the resulting
+reader routes.
 
 ```{r windows-code, eval = FALSE}
 set.seed(7)
 
-## One smooth surface: expected abundance per unit of effort on a unit square.
-## Nothing here is a fit -- this picture is a definition, not a result.
+## One smooth surface: relative intensity per unit of support on a unit square.
+## Nothing here is a fit -- this is one shared-intensity scenario, not a claim
+## that all species-distribution models target the same quantity.
 lambda <- function(x, y) {
   6.0 * exp(-((x - 0.30)^2 + (y - 0.72)^2) / 0.075) +
   3.2 * exp(-((x - 0.78)^2 + (y - 0.24)^2) / 0.045) + 0.35
@@ -237,8 +262,8 @@ image(gx, gy, Z, col = pal, breaks = brks, axes = FALSE, xlab = "", ylab = "",
 contour(gx, gy, Z, add = TRUE, drawlabels = FALSE, col = "white", lwd = 0.6,
         levels = pretty(range(Z), 6))
 box(col = "grey20", lwd = 1.4)
-mtext("What every model here is after", side = 3, line = 0.25, cex = 0.82, font = 2)
-mtext("expected abundance per unit of effort, everywhere", side = 1,
+mtext("Shared-intensity example", side = 3, line = 0.25, cex = 0.82, font = 2)
+mtext("relative intensity per unit of support", side = 1,
       line = 0.30, cex = 0.66)
 
 blank(); text(ax, ay, cnt, cex = 0.60 + 0.20 * log2(eff * 2.5), col = "grey10")
@@ -321,7 +346,7 @@ for (x in c(cxs[1], cxs[4])) arrows(x, 72, x, 66.7, length = 0.055, col = INK, l
 bx( 5.6, 35.5, 10.6, 14.5, c("grid cells +", "list-based", "occupancy", "models"), "exit", 3.2)
 bx(20.2, 35.5, 14.4, 14.5, c("joint intensity", "from records", "counted per", "grid cell"), "leaf", 3.2)
 bx(cxs[2], 35.5, 23, 14.5, c("joint intensity", "from records — count", "arm, no recording-", "bias term"), "leaf", 3.2)
-bx(cxs[3], 35.5, 23, 14.5, c("binary joint SDM", "with one visit, detection", "cannot be separated", "from occurrence"), "leaf", 3.2)
+bx(cxs[3], 35.5, 23, 14.5, c("binary joint SDM", "one observed-1", "probability; no", "occurrence/detection split"), "leaf", 3.2)
 bx(79.2, 35.5, 12.4, 14.5, c("spOccupancy", "carries the", "detection", "submodel"), "exit", 3.2)
 bx(93.2, 35.5, 12.4, 14.5, c("what repeat", "visits add", "to one shared", "intensity"), "leaf", 3.2)
 
@@ -340,10 +365,10 @@ segments(50, 25.5, 50, 22.5, col = INK, lwd = 1.1)
 arrows(50, 24, 50, 21.5, length = 0.06, col = INK, lwd = 1.1)
 
 rect(2, 4.5, 98, 20.5, col = "#D9E6F2", border = INK, lwd = 1.9)
-text(50, 16.0, "Have TWO OR MORE of these at once?", cex = 0.78, font = 2, col = INK)
-text(50, 11.3, "That is the integrated model: one shared surface, each source keeping its own window.",
+text(50, 16.0, "Have TWO OR MORE COMPATIBLE sources?", cex = 0.78, font = 2, col = INK)
+text(50, 11.3, "Compatible sources can share relative intensity while keeping their own observation laws.",
      cex = 0.66, col = INK)
-text(50,  7.4, "It is this site's centrepiece, and the only route that uses all of your data.",
+text(50,  7.4, "This route can use them together only when its shared-intensity assumptions hold.",
      cex = 0.66, font = 3, col = INK)
 
 ## Legend, parked below everything so it can collide with nothing.

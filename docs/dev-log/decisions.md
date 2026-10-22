@@ -2955,3 +2955,35 @@ Shinichi (chat, 2026-08-18): *"1 approve 2 do it and 3 merge"* against the three
 3. **PR #1125 merge authorized** (probe + tests + Design 126 + ISDM-03), and
    with it the Design 126 §5 issue filings (A: three predict-newdata defects;
    B: prediction-map API).
+
+## 2026-09-02 — Zero-inflated families approved; gap-closure PRs merged in order (Shinichi; vault D-207, D-204)
+
+Verbatim: *"approve all four points, merge #1239 then #1240."* The four ARC D1 points approved as built:
+(1) `zi_poisson()` / `zi_nbinom2()` / `zi_binomial()` carry a per-trait, intercept-only zero-inflation
+probability on the logit scale; latent variables and the covariance grid act on the count linear
+predictor only (Design 62 Decision 2); (2) `zi_binomial()` requires trials ≥ 2 and names `binomial()`
+otherwise; (3) AGHQ declines these families to Laplace with a reason-specific warning, VA and MSPL
+refuse; (4) FAM-22 stays `partial` with the measured 2/6-trait dispersion caveat. Standing rule
+behind it (D-204): twin parity is both ways for user-facing capabilities; the bridge stays R → Julia.
+Owed before any FAM-21..23 row leaves `partial`: Totoro pre-run then DRAC job-array multi-seed recovery
+against GLLVM.jl's ADEMP campaign.
+
+
+## 2026-10-18 Retain the unpenalised ordinary-Laplace loading default
+
+Shinichi explicitly approved retaining the effective loading_ridge = Inf
+default after the completed 24,000-fit native-engine comparison. The formal
+loading_ridge = NULL default remains unchanged, as do the separate AGHQ
+controls. At 6,000 attempts per scale, non-positive-definite Hessian counts
+were Inf 64, 1 56, 2 66 and 4 62. Ridge 2 gave modest recovery gains but no
+overall Hessian-availability or consistent coverage gain. It restored
+intervals on 16 datasets relative to Inf and lost them on 18. Document 2 as
+an explicit sensitivity choice for extreme or unstable ordinary between-unit
+loadings, with prior-scale, MAP and interval-coverage qualifications. Do not
+choose or promote it solely to obtain a positive-definite Hessian. The
+fixed-truth rank-two comparison covers only its named families, sample sizes
+and loading scales; broader calibration remains partial. Record, aggregate
+outputs, exact source and retention receipts:
+`docs/dev-log/research/2026-10-18-loading-ridge-comparison/`.
+Validation mapping: EXT-31 and MSPL-05 retain their existing scope/statuses;
+this comparison does not compare ridge with MSPL or promote a new estimator.

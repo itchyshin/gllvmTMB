@@ -124,9 +124,9 @@ mesh <- make_mesh(
 In the fitted formula below, `site` identifies the sampling unit, whereas the
 geometry comes from the pre-built `mesh`. The `mesh = mesh` argument must refer
 to a mesh made from the coordinate rows in the data supplied to `gllvmTMB()`.
-For long data, that means one coordinate row per site--trait response cell;
-for wide data, the mesh must be expanded to the corresponding internal stacked
-row order.
+For long data, that means one coordinate row per site--trait response cell.
+For wide data, expand the mesh coordinates to the row order used when the
+model turns the response matrix into long data.
 
 The compact summary below confirms that all three SPDE finite-element matrices
 are present without printing their sparse entries or every coordinate row.
@@ -167,9 +167,9 @@ without a fringe of extremely narrow triangles. A mesh that is too coarse can
 erase short-range structure; a needlessly fine mesh adds latent variables and
 can make optimization slower.
 
-The projection matrix must follow the rows of the internally stacked data.
-The long data already have that order. If your data start wide, make an
-equivalent row-major coordinate frame before calling `make_mesh()`:
+The projection matrix must follow the rows used by the model. The long data
+already have that order. If your data start wide, make an equivalent row-major
+coordinate frame before calling `make_mesh()`:
 
 ```{r wide-mesh-data, eval = FALSE}
 trait_cols <- c("trait_1", "trait_2", "trait_3")
@@ -327,6 +327,29 @@ fit_dep <- gllvmTMB(
 )
 ```
 
+The matching wide-data formulas are unevaluated structural translations. They
+reuse the stacked mesh-coordinate construction shown above, but this article
+does not demonstrate long/wide fit parity for either correlated alternative:
+
+```{r correlated-spatial-fits-wide, eval = FALSE}
+fit_latent_wide <- gllvmTMB(
+  traits(trait_1, trait_2, trait_3) ~
+    1 + spatial_latent(1 | site, d = 2, unique = TRUE),
+  data = spatial_wide,
+  unit = "site",
+  mesh = mesh,
+  silent = TRUE
+)
+
+fit_dep_wide <- gllvmTMB(
+  traits(trait_1, trait_2, trait_3) ~ 1 + spatial_dep(1 | site),
+  data = spatial_wide,
+  unit = "site",
+  mesh = mesh,
+  silent = TRUE
+)
+```
+
 ```{r spatial-mode-comparison, echo = FALSE}
 spatial_comparison <- data.frame(
   mode = c("indep", "latent (d = 2, unique = TRUE)", "dep"),
@@ -347,8 +370,19 @@ trait-specific spatial diagonal, so
 $\Sigma_{\mathrm{spatial}} = \Lambda_{\mathrm{spatial}}
 \Lambda_{\mathrm{spatial}}^\top + \Psi_{\mathrm{spatial}}$. As with every
 loading matrix in this package, the rotation and sign of
-$\Lambda_{\mathrm{spatial}}$ are arbitrary — only the product
-$\Lambda\Lambda^\top$ is identified.
+$\Lambda_{\mathrm{spatial}}$ are arbitrary. In this three-trait rank-two
+example, however, the split between $\Lambda\Lambda^\top$ and
+$\Psi_{\mathrm{spatial}}$ is also not unique beyond those rotations: different
+shared diagonals and positive diagonal $\Psi_{\mathrm{spatial}}$ values can
+give the same total spatial covariance. For example, the loading rows
+$$(1,0),\ (1/2,1),\ (1/2,1/2)$$
+and
+$$ (\sqrt{2},0),\ (1/(2\sqrt{2}),1),\ (1/(2\sqrt{2}),5/8)$$
+both give off-diagonals $(1/2,1/2,3/4)$, but their shared diagonals are
+$(1,5/4,1/2)$ and $(2,9/8,33/64)$. Different positive diagonal Psi companions can bring
+the total diagonal to $(3,3,3)$ in each decomposition. This is a structural decomposition ambiguity, not a
+failed fit. Interpret shared axes and communality as decomposition-sensitive;
+the total spatial covariance is the intended covariance target.
 `spatial_dep()` estimates the full
 cross-trait spatial covariance. The data were generated with independent
 trait fields, so this table demonstrates runnable syntax and relative fit on
@@ -368,7 +402,8 @@ layer were derived from sdmTMB's GPL-3 implementation. Repository history and
 The current helpers in `R/mesh.R`, `R/crs.R`, and `R/plot.R` were substantially
 rewritten for gllvmTMB from the published SPDE/GMRF construction and the public
 `fmesher` API. They remain distributed under
-[GPL-3](../LICENSE.html), which is compatible with their sdmTMB source lineage.
+[GPL-3](https://github.com/itchyshin/gllvmTMB/blob/main/LICENSE), which is
+compatible with their sdmTMB source lineage.
 The repository records the detailed code-provenance boundary in
 [`inst/COPYRIGHTS`](https://github.com/itchyshin/gllvmTMB/blob/main/inst/COPYRIGHTS).
 

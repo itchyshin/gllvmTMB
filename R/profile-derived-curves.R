@@ -394,7 +394,7 @@ profile_repeatability <- function(
   conf_level = 0.95
 ) {
   if (!inherits(fit, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+    .gllvmTMB_abort_not_multi_fit(fit)
   }
   par_names <- names(fit$opt$par)
   ix_B <- which(par_names == "theta_diag_B")
@@ -502,7 +502,7 @@ profile_phylo_signal <- function(
   conf_level = 0.95
 ) {
   if (!inherits(fit, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+    .gllvmTMB_abort_not_multi_fit(fit)
   }
   .gllvmTMB_mspl_assert_inference(fit, "profile_phylo_signal")
   .gllvmTMB_require_unweighted_inference(fit, "profile_phylo_signal")
@@ -621,7 +621,7 @@ profile_communality <- function(
   conf_level = 0.95
 ) {
   if (!inherits(fit, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+    .gllvmTMB_abort_not_multi_fit(fit)
   }
   tier <- match.arg(tier)
   tier_user <- if (tier %in% c("B", "W")) {
@@ -780,7 +780,7 @@ profile_correlation <- function(
   conf_level = 0.95
 ) {
   if (!inherits(fit, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+    .gllvmTMB_abort_not_multi_fit(fit)
   }
   tier <- match.arg(tier)
   tier_user <- switch(tier,
@@ -962,7 +962,7 @@ profile_proportions <- function(
   conf_level = 0.95
 ) {
   if (!inherits(fit, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+    .gllvmTMB_abort_not_multi_fit(fit)
   }
   pt <- suppressMessages(extract_proportions(fit, format = "long"))
   comps_present <- as.character(unique(pt$component))

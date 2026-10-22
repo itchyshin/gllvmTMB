@@ -25,6 +25,7 @@
 
 #define TMB_LIB_INIT R_init_gllvmTMB
 #include "lane_b_jeffreys_maxvol_atomic_v8.h"
+#include "../inst/include/gllvmTMB/detail/column_prior.hpp"
 
 // Independently implemented standard lower-triangular factor-loading unpack.
 // Keeping one cursor-based implementation prevents the packing convention
@@ -56,6 +57,90 @@ matrix<Type> gll_unpack_rr_loadings(const vector<Type>& theta,
   if (cursor != theta.size())
     error("gllvmTMB_multi: packed loading vector was not exhausted exactly");
   return loading;
+}
+
+// Integer power by squaring keeps signed AR1 persistence AD-safe.  Calling a
+// generic real-valued pow() on a negative base can take a logarithm; repeated
+// multiplication is correct but makes an accidental huge gap O(gap).
+template <class Type>
+Type gll_integer_power(Type base, int exponent)
+{
+  Type result = Type(1);
+  while (exponent > 0) {
+    if (exponent & 1) result *= base;
+    base *= base;
+    exponent >>= 1;
+  }
+  return result;
+}
+
+// Stable 1 - exp(-x) for x >= 0 without relying on an expm1 overload for
+// every TMB AD type. The two branch inputs are clamped independently because
+// CppAD CondExp evaluates both: the series must not see huge x, and the direct
+// subtraction must not see a tiny x that rounds exp(-x) to one.
+template <class Type>
+Type gll_one_minus_exp_neg(Type x)
+{
+  Type cut = Type(1e-4);
+  Type x_series = CppAD::CondExpLt(x, cut, x, cut);
+  Type series = x_series - x_series * x_series / Type(2) +
+    x_series * x_series * x_series / Type(6);
+  Type x_direct = CppAD::CondExpLt(x, cut, cut, x);
+  Type direct = Type(1) - exp(-x_direct);
+  return CppAD::CondExpLt(x, cut, series, direct);
+}
+
+// Gamma log-density in the mean-shape parametrisation (E(y) = mu = exp(eta),
+// shape k = exp(log_shape)), written so that no O(k log k) terms cancel
+// (#1377). Algebraically identical to dgamma(y, k, mu / k, true):
+//   log f = -k * D(r) - log(y) + S(k),   r = y / mu,
+//   D(r)  = r - 1 - log(r) >= 0,         S(k) = k log k - k - lgamma(k).
+// TMB's dgamma forms k log k, k log y, k y / mu and lgamma(k) separately; at
+// k ~ 1e18-1e29 their rounding error (~1e15) swamped the true value, so a
+// runaway shape returned logLik up to +7.7e16 instead of -Inf. Here:
+//   * D is formed from log(r): the Taylor series sum_{n=2..9} lr^n / n! for
+//     |lr| < 0.05 (truncation < 1e-16 relative), exp(lr) - 1 - lr otherwise;
+//   * S is Stirling's series written in log_shape (no exp) for k > 50, so it
+//     stays finite for any log_shape;
+//   * the k multiplying D is capped at exp(700), so an overflowing shape
+//     gives a finite value (y = mu) or -Inf, never Inf - Inf = NaN.
+// Branch inputs are clamped because CppAD CondExp evaluates both branches.
+template <class Type>
+Type gll_dgamma_mean_shape(Type y, Type eta, Type log_shape)
+{
+  Type lr = log(y) - eta;
+  Type lr_cut = Type(0.05);
+  Type lr2 = lr * lr;
+  Type cut2 = lr_cut * lr_cut;
+  Type x = CppAD::CondExpLt(lr2, cut2, lr, lr_cut);
+  // Horner form of x^2 (1/2! + x (1/3! + x (... + x / 9!))).
+  Type poly = Type(1.0 / 362880.0);
+  poly = Type(1.0 / 40320.0) + x * poly;
+  poly = Type(1.0 / 5040.0) + x * poly;
+  poly = Type(1.0 / 720.0) + x * poly;
+  poly = Type(1.0 / 120.0) + x * poly;
+  poly = Type(1.0 / 24.0) + x * poly;
+  poly = Type(1.0 / 6.0) + x * poly;
+  poly = Type(0.5) + x * poly;
+  Type D_series = x * x * poly;
+  Type lr_d = CppAD::CondExpLt(lr2, cut2, lr_cut, lr);
+  Type D_direct = exp(lr_d) - Type(1) - lr_d;
+  Type D = CppAD::CondExpLt(lr2, cut2, D_series, D_direct);
+
+  Type ls_cut = log(Type(50));
+  Type ls_s = CppAD::CondExpGt(log_shape, ls_cut, log_shape, ls_cut);
+  Type ik = exp(-ls_s);
+  Type ik2 = ik * ik;
+  Type S_stirling = Type(0.5) * (ls_s - log(Type(2) * Type(M_PI))) -
+    ik / Type(12) + ik * ik2 / Type(360) - ik * ik2 * ik2 / Type(1260);
+  Type ls_d = CppAD::CondExpGt(log_shape, ls_cut, ls_cut, log_shape);
+  Type k_d = exp(ls_d);
+  Type S_direct = k_d * ls_d - k_d - lgamma(k_d);
+  Type S = CppAD::CondExpGt(log_shape, ls_cut, S_stirling, S_direct);
+
+  Type ls_cap = Type(700);
+  Type k = exp(CppAD::CondExpGt(log_shape, ls_cap, ls_cap, log_shape));
+  return -k * D - log(y) + S;
 }
 
 // Stable log helpers for the cumulative-logit ordered missing-PREDICTOR prior
@@ -140,7 +225,201 @@ Type gll_clamp(Type x, Type lower, Type upper)
   return x;
 }
 
+// Large-parameter numerics for the count / Student / correlation kernels
+// (#1362, #1363, #1364, #1386). Every helper below follows the
+// gll_dgamma_mean_shape pattern: CppAD CondExp evaluates BOTH branches, so
+// each branch is fed its own clamped input and stays finite where it is not
+// selected, and nothing is ever exp()'d past ~exp(700).
+
+// log(1 + u) for u >= 0: quartic Taylor series below 1e-4 (truncation
+// u^5 / 5 < 2e-21), direct log(1 + u) above.
+template <class Type>
+Type gll_log1p_pos(Type u)
+{
+  Type cut = Type(1e-4);
+  Type us = CppAD::CondExpLt(u, cut, u, cut);
+  Type series = us * (Type(1) - us * (Type(0.5) - us * (Type(1.0 / 3.0) -
+    us * Type(0.25))));
+  Type ud = CppAD::CondExpLt(u, cut, cut, u);
+  Type direct = log(Type(1) + ud);
+  return CppAD::CondExpLt(u, cut, series, direct);
+}
+
+// log(1 + u) / u for u >= 0, -> 1 as u -> 0. Series below 1e-3 (truncation
+// u^5 / 6 < 2e-16), direct ratio above.
+template <class Type>
+Type gll_log1p_ratio(Type u)
+{
+  Type cut = Type(1e-3);
+  Type us = CppAD::CondExpLt(u, cut, u, cut);
+  Type series = Type(1) - us * (Type(0.5) - us * (Type(1.0 / 3.0) -
+    us * (Type(0.25) - us * Type(0.2))));
+  Type ud = CppAD::CondExpLt(u, cut, cut, u);
+  Type direct = log(Type(1) + ud) / ud;
+  return CppAD::CondExpLt(u, cut, series, direct);
+}
+
+// lgamma(x + n) - lgamma(x) - n * log(x), with x = exp(log_x) > 0 and n >= 0
+// fixed (data or a constant). This is the piece that the lgamma-sum kernels
+// (Student, beta-binomial, NB2) lose to cancellation: lgamma(x) ~ x log x, so
+// at x ~ 1e12 each lgamma carries ~1e-3 absolute rounding error while the
+// difference itself tends to n(n - 1) / (2x) -> 0. For x > 50 it is evaluated
+// from Stirling's series for the DIFFERENCE,
+//   (x + n - 1/2) log1p(n / x) - n + c(x + n) - c(x),
+//   c(z) = 1/(12z) - 1/(360z^3) + 1/(1260z^5) - 1/(1680z^7),
+// which never forms an O(x log x) term (truncation < 1e-18 at x = 50); below
+// 50 the direct lgamma difference is already accurate. The Stirling branch
+// caps log_x at 700 so x never overflows (the value there is ~0 anyway); the
+// direct branch floors log_x at -700 so x never underflows to 0.
+template <class Type>
+Type gll_lgamma_shift(Type log_x, Type n)
+{
+  Type lcut = log(Type(50));
+  Type ls = CppAD::CondExpGt(log_x, lcut, log_x, lcut);
+  ls = CppAD::CondExpGt(ls, Type(700), Type(700), ls);
+  Type xs = exp(ls);
+  Type xn = xs + n;
+  Type ix = Type(1) / xs;
+  Type ixn = Type(1) / xn;
+  Type ix2 = ix * ix;
+  Type ixn2 = ixn * ixn;
+  Type c_x = ix * (Type(1.0 / 12.0) - ix2 * (Type(1.0 / 360.0) -
+    ix2 * (Type(1.0 / 1260.0) - ix2 * Type(1.0 / 1680.0))));
+  Type c_xn = ixn * (Type(1.0 / 12.0) - ixn2 * (Type(1.0 / 360.0) -
+    ixn2 * (Type(1.0 / 1260.0) - ixn2 * Type(1.0 / 1680.0))));
+  Type stirling = (xn - Type(0.5)) * gll_log1p_pos(n * ix) - n + c_xn - c_x;
+  Type ld = CppAD::CondExpGt(log_x, lcut, lcut, log_x);
+  ld = CppAD::CondExpLt(ld, Type(-700), Type(-700), ld);
+  Type xd = exp(ld);
+  Type direct = lgamma(xd + n) - lgamma(xd) - n * ld;
+  return CppAD::CondExpGt(log_x, lcut, stirling, direct);
+}
+
+// Negative-binomial log pmf in (mean, size) form, size = exp(log_size):
+//   lgamma(y + size) - lgamma(size) - lgamma(y + 1)
+//     + size log(size / (size + mu)) + y log(mu / (size + mu)).
+// Rewritten with x = mu / size so that nothing cancels as size -> Inf:
+//   gll_lgamma_shift(log_size, y) + y (log_mu - log1p(x)) - lgamma(y + 1)
+//     - mu * log1p(x) / x,
+// whose size -> Inf limit is exactly the Poisson log pmf. Replaces TMB's
+// dnbinom_robust, which forms lgamma(y + n) - lgamma(n) directly and so
+// carries the same O(n log n) rounding error at the Poisson limit (#1363).
+// The x fed to the ratio is capped at exp(700); log1p(x) itself comes from
+// logspace_add(0, log x), which is stable on both sides.
+template <class Type>
+Type gll_dnbinom_mu_size(Type y, Type log_mu, Type log_size)
+{
+  Type d = log_mu - log_size;                       // log(mu / size)
+  Type l1px = logspace_add(Type(0), d);             // log1p(mu / size)
+  Type dc = CppAD::CondExpGt(d, Type(700), Type(700), d);
+  Type size_l1px = exp(log_mu) * gll_log1p_ratio(exp(dc));   // size * log1p(x)
+  return gll_lgamma_shift(log_size, y) + y * (log_mu - l1px) -
+    lgamma(y + Type(1)) - size_l1px;
+}
+
+// log P(Y = 0) for the same negative binomial: -size log1p(mu / size)
+// = -mu log1p(x) / x. Never rounds to 0 while mu > 0 (#1363; the old
+// size * (log size - log(mu + size)) was exactly 0 at size = 1e14, mu = 0.1).
+template <class Type>
+Type gll_nbinom_log_p0(Type log_mu, Type log_size)
+{
+  Type d = log_mu - log_size;
+  Type dc = CppAD::CondExpGt(d, Type(700), Type(700), d);
+  return -exp(log_mu) * gll_log1p_ratio(exp(dc));
+}
+
+// log(-log P(Y = 0)) for the same negative binomial: log_mu + log(log1p(x) / x),
+// the log of the quantity gll_nbinom_log_p0 negates. It never multiplies by
+// exp(log_mu), so it stays finite when mu underflows (#1483).
+template <class Type>
+Type gll_nbinom_log_neg_log_p0(Type log_mu, Type log_size)
+{
+  Type d = log_mu - log_size;
+  Type dc = CppAD::CondExpGt(d, Type(700), Type(700), d);
+  return log_mu + log(gll_log1p_ratio(exp(dc)));
+}
+
+// log P(Y >= 1) = log(1 - exp(-a)) for a count with P(Y = 0) = exp(-a), taken
+// from log_a = log(a) (#1483): a = mu for the zero-truncated Poisson, a = size
+// log1p(mu / size) for the zero-truncated NB2. logspace_sub(0, -a) is exact
+// while a is a normal double, but its k-th derivative in log_a carries 1 / a^k,
+// which overflows once a is tiny (the Laplace gradient was NaN from eta ~ -237,
+// the objective from ~ -355), and a = exp(eta) itself rounds to 0 below
+// eta ~ -745, where logspace_sub(0, 0) is log(0). Below log_a = -20 the series
+//   log(1 - exp(-a)) = log_a - a / 2 + a^2 / 24 + O(a^4)
+// is exact to double precision (a^4 / 2880 < 1e-37) and never forms 1 / a;
+// above it logspace_sub is unchanged. The series branch sees log_a <= -20 and
+// the logspace_sub branch log_a in [-20, 700], so neither is non-finite where
+// it is not selected.
+template <class Type>
+Type gll_log1mexp_neg_exp(Type log_a)
+{
+  Type cut = Type(-20);
+  Type ls = CppAD::CondExpLt(log_a, cut, log_a, cut);
+  Type as = exp(ls);
+  Type series = ls - as / Type(2) + as * as / Type(24);
+  Type ld = CppAD::CondExpLt(log_a, cut, cut, log_a);
+  ld = CppAD::CondExpGt(ld, Type(700), Type(700), ld);
+  Type direct = logspace_sub(Type(0), -exp(ld));
+  return CppAD::CondExpLt(log_a, cut, series, direct);
+}
+
+// Bounded correlation for the 2x2 intercept-slope priors (#1386):
+//   rho = (1 - delta) tanh(x),  delta = 1e-6,
+// the same smooth cap the temporal AR1 blocks use. Without a bound the
+// precision 1 / (1 - rho^2) reaches ~1e16 by |x| = 20, and the Laplace inner
+// Hessian is then numerically indefinite (measured: the marginal objective
+// is spurious from |x| ~ 12 and NaN from ~16), whatever form 1 - rho^2 takes.
+// The cap is never flat: d rho / dx = (1 - delta) sech(x)^2 > 0.
+template <class Type>
+Type gll_capped_tanh(Type x)
+{
+  return (Type(1) - Type(1e-6)) * tanh(x);
+}
+
+// log(1 - rho^2) for rho = gll_capped_tanh(x), with no cancellation:
+//   1 - rho^2 = sech(x)^2 + tanh(x)^2 delta (2 - delta),
+// both terms >= 0, and sech(x)^2 = 4 exp(-2 logspace_add(x, -x)) exactly.
+// The old 1 - rho * rho lost digits from |x| ~ 10 and was exactly 0 (Inf
+// precisions, log(0)) from |x| ~ 19.5. x is clamped to +/-350 only inside
+// sech^2, where the term has long underflowed relative to the delta term.
+template <class Type>
+Type gll_log1m_capped_tanh2(Type x)
+{
+  Type delta = Type(1e-6);
+  Type xc = gll_clamp(x, Type(-350), Type(350));
+  Type sech2 = exp(Type(2) * log(Type(2)) - Type(2) * logspace_add(xc, -xc));
+  Type t = tanh(x);
+  return log(sech2 + t * t * delta * (Type(2) - delta));
+}
+
 #include "gllvmTMB_cloglog.h"
+
+// log Phi(x) as a TMB atomic (#1362). Value from R's pnorm(log.p = TRUE), exact
+// in both tails to double precision; the derivative is the inverse Mills ratio
+// r(x) = dnorm(x) / Phi(x) = exp(-x^2 / 2 - log(2 pi) / 2 - log Phi(x)), which is
+// written through the atomic's own output so every higher derivative (the
+// Laplace Hessian) recurses correctly. Measured against R at x in
+// {-40 ... 300}: value, gradient and Hessian agree to 10 digits and nothing is
+// NaN. It replaces the two-branch gll_log_pnorm on the binomial-probit path
+// only: that form evaluates a series AND a direct branch on every row
+// (CondExp) and tripled the probit gradient cost on psychTools::ability
+// (0.023 -> 0.069 s per gr() call); the atomic matches the old clamp's cost.
+namespace atomic {
+TMB_ATOMIC_STATIC_FUNCTION(
+  gll_logpnorm1, 1,
+  ty[0] = Rmath::Rf_pnorm5(tx[0], 0, 1, 1, 1);
+  ,
+  px[0] = exp(-Type(0.5) * tx[0] * tx[0] - Type(0.9189385332046727) - ty[0]) * py[0];
+)
+}
+template <class Type>
+Type gll_log_pnorm_atomic(Type x)
+{
+  CppAD::vector<Type> tx(1);
+  tx[0] = x;
+  return atomic::gll_logpnorm1(tx)[0];
+}
 
 template <class Type>
 Type gll_log_pnorm(Type x)
@@ -550,6 +829,14 @@ Type objective_function<Type>::operator()()
                                    // (set to 1.0 by R). For Bernoulli rows it
                                    // is 1.0; for binomial(k-of-n) rows it is
                                    // the trial count and y is the success count.
+  DATA_VECTOR(cens_limit);         // length n_obs; right-censoring limit for
+                                   // censored_poisson (fid 21; Arc E, #1244). ordinal_logit holds fid 20 (PR #1250).
+                                   // 0 = uncensored (y holds the count); C >= 1
+                                   // = right-censored at Y >= C (y is unused on
+                                   // that branch). For every other family the
+                                   // entry is unused (set to 0.0 by R), same
+                                   // no-op convention as n_trials above. See
+                                   // dev/gapclose/arcE/alignment-censored-poisson.md.
   DATA_MATRIX(X_fix);              // fixed-effects design matrix (n_obs x p)
   DATA_IVECTOR(trait_id);          // 0-indexed trait per row
   DATA_IVECTOR(site_id);           // 0-indexed site per row
@@ -560,10 +847,76 @@ Type objective_function<Type>::operator()()
   DATA_INTEGER(d_B);               // rank of between-site rr term (>= 1 if used)
   DATA_INTEGER(d_W);               // rank of within-site rr term  (>= 1 if used)
   DATA_INTEGER(use_rr_B);          // 1/0
+  DATA_INTEGER(use_temporal_B);    // temporal AR1 prior on B-tier scores
+  DATA_INTEGER(temporal_iid_total); // unreplicated temporal total iid variance
+  DATA_IVECTOR(temporal_series_id); // one per B-tier score column
+  DATA_IVECTOR(temporal_time_index); // zero-based within-series occasion
+  DATA_INTEGER(n_temporal_series);
+  if (use_temporal_B == 1) {
+    if (temporal_series_id.size() != n_sites ||
+        temporal_time_index.size() != n_sites ||
+        n_temporal_series < 1)
+      error("gllvmTMB_multi: malformed temporal score index");
+    for (int s = 0; s < n_sites; s++) {
+      if (temporal_series_id(s) < 0 || temporal_series_id(s) >= n_temporal_series ||
+          temporal_time_index(s) < 0)
+        error("gllvmTMB_multi: temporal score index is out of range");
+    }
+  }
+  // Sixth covariance source: a private `(series, time)` state tier.  It is
+  // intentionally separate from B-tier sites and from unit_obs.
+  DATA_INTEGER(use_temporal);
+  DATA_IVECTOR(temporal_state_id);       // one per observation
+  DATA_IVECTOR(temporal_predecessor);    // one per temporal state; -1 at starts
+  DATA_IVECTOR(temporal_gap);            // integer AR1 gaps; 0 at starts
+  DATA_VECTOR(temporal_elapsed);         // numeric OU elapsed gaps; 0 at starts
+  DATA_INTEGER(n_temporal_states);
+  DATA_INTEGER(temporal_mode);           // 0 indep, 1 dep, 2 latent
+  DATA_INTEGER(temporal_structure);      // 0 AR1, 1 OU
+  DATA_INTEGER(temporal_rank);
+  DATA_INTEGER(temporal_unique);
+  if (use_temporal == 1) {
+    if (temporal_state_id.size() != y.size() ||
+        temporal_predecessor.size() != n_temporal_states ||
+        temporal_gap.size() != n_temporal_states ||
+        temporal_elapsed.size() != n_temporal_states ||
+        n_temporal_states < 1)
+      error("gllvmTMB_multi: malformed dedicated temporal state payload");
+    for (int o = 0; o < y.size(); ++o)
+      if (temporal_state_id(o) < 0 || temporal_state_id(o) >= n_temporal_states)
+        error("gllvmTMB_multi: temporal observation state index is out of range");
+    for (int s = 0; s < n_temporal_states; ++s) {
+      int p = temporal_predecessor(s);
+      if (p >= s || p < -1 || temporal_gap(s) < 0 || temporal_elapsed(s) < Type(0))
+        error("gllvmTMB_multi: malformed temporal predecessor or gap");
+      if ((p < 0 && (temporal_gap(s) != 0 || temporal_elapsed(s) != Type(0))) ||
+          (p >= 0 && temporal_structure == 0 && temporal_gap(s) < 1) ||
+          (p >= 0 && temporal_structure == 1 && temporal_elapsed(s) <= Type(0)))
+        error("gllvmTMB_multi: temporal starts and transitions have inconsistent gaps");
+    }
+    if (temporal_mode < 0 || temporal_mode > 2 ||
+        temporal_structure < 0 || temporal_structure > 1 ||
+        temporal_rank < 0 || temporal_unique < 0 || temporal_unique > 1)
+      error("gllvmTMB_multi: malformed temporal mode payload");
+  }
   DATA_INTEGER(use_lv_B);          // 1/0 predictor-informed mean for B-tier scores
   DATA_INTEGER(n_lv_B);            // columns in X_lv_B (>= 1 stub when inactive)
   DATA_MATRIX(X_lv_B);             // n_sites x n_lv_B unit-level score-mean design
   DATA_INTEGER(use_diag_B);        // 1/0
+  // Optional for saved pre-repair tapes: absence preserves the original joint
+  // Gaussian calculation. New R fits set this only after the private cell gate.
+  SEXP gaussian_diag_B_flag = getListElement(
+    TMB_OBJECTIVE_PTR->data, "integrate_gaussian_diag_B");
+  int integrate_gaussian_diag_B = 0;
+  if (!Rf_isNull(gaussian_diag_B_flag)) {
+    if (Rf_length(gaussian_diag_B_flag) != 1 ||
+        !(Rf_isInteger(gaussian_diag_B_flag) || Rf_isReal(gaussian_diag_B_flag)))
+      error("gllvmTMB_multi: integrate_gaussian_diag_B must be scalar 0 or 1");
+    double flag = Rf_asReal(gaussian_diag_B_flag);
+    if (flag != 0.0 && flag != 1.0)
+      error("gllvmTMB_multi: integrate_gaussian_diag_B must be 0 or 1");
+    integrate_gaussian_diag_B = static_cast<int>(flag);
+  }
   // Per-trait mask (length n_traits): 1 = this trait's between-unit Psi was
   // pinned off by the R-side identifiability gate (single-trial binary /
   // categorical traits), 0 = free. A pinned trait has s_B(t,.) fixed at 0 and
@@ -637,6 +990,12 @@ Type objective_function<Type>::operator()()
   DATA_INTEGER(n_mesh);
   (void)n_mesh;                    // retained in the data contract for mesh sanity checks in R
   DATA_SPARSE_MATRIX(A_proj);      // n_obs x n_mesh
+  // Dedicated response-column SPDE projection. Unlike A_proj, A_column has
+  // one row per response column and is used to normalize the projected field
+  // to unit marginal variance at those exact coordinates. It is a 1x1 zero
+  // stub unless use_spatial_column_slope == 1.
+  DATA_INTEGER(use_spatial_column_slope);
+  DATA_MATRIX(A_column);           // n_traits x n_mesh when active
   DATA_SPARSE_MATRIX(spde_M0);     // n_mesh x n_mesh
   DATA_SPARSE_MATRIX(spde_M1);
   DATA_SPARSE_MATRIX(spde_M2);
@@ -708,6 +1067,15 @@ Type objective_function<Type>::operator()()
   //                        multinom_group_id; the softmax density is evaluated
   //                        ONCE at the group's anchor (first) row, NOT per row.
   //                        See multinom_group_id / multinom_K_per_trait below.
+  //  20 = ordinal_logit   (cumulative-LOGIT threshold model; same
+  //                        Hadfield/Wright/Falconer threshold apparatus as
+  //                        fid 14 -- same n_ordinal_cuts_per_trait /
+  //                        ordinal_offset_per_trait / ordinal_log_increments
+  //                        DATA and PARAMETER vectors -- but the cell
+  //                        probability uses the standard logistic CDF
+  //                        instead of Phi, so the link-residual variance is
+  //                        pi^2/3, not 1. See fid == 20 below; 17/18/19 are
+  //                        the zero-inflated families (Design 62).
   // For single-family fits the vector is filled with the same value.
   // sigma_eps is mapped off when no row has family_id_vec(o) in {0, 3}.
   // Ordinary Gamma (fid 4) has its own per-trait shape/CV parameter below.
@@ -812,6 +1180,15 @@ Type objective_function<Type>::operator()()
   DATA_SPARSE_MATRIX(Ainv_phy_rr);   // n_aug_phy x n_aug_phy (sparse)
   DATA_SCALAR(log_det_A_phy_rr);     // precomputed
   DATA_IVECTOR(species_aug_id);      // n_obs, 0-indexed row in g_phy (== species_id in legacy path)
+  DATA_INTEGER(structured_rho_sparse);
+  DATA_INTEGER(structured_rho_spatial);
+  DATA_IVECTOR(spatial_rho_group_id);
+  DATA_SPARSE_MATRIX(spatial_rho_A);
+  DATA_SCALAR(structured_rho_value);
+  DATA_VECTOR(structured_rho_diagonal);
+  DATA_INTEGER(structured_rho_estimated);
+  DATA_MATRIX(structured_rho_eigenvectors);
+  DATA_VECTOR(structured_rho_eigenvalues);
 
   // Design 65 C3.1: generic fixed dense multi-kernel tiers. This is active
   // only for two or more named kernel_* tiers; the one-name path stays in the
@@ -844,18 +1221,49 @@ Type objective_function<Type>::operator()()
   DATA_INTEGER(use_phylo_diag);
 
   // Phylogenetic random slope (Q6):
-  //   eta(o) += b_phy_slope(species_aug_id(o)) * x_phy_slope(o)
+  //   eta(o) += b_phy_slope(phylo_slope_aug_id(o)) * x_phy_slope(o)
   //   b_phy_slope ~ N(0, sigma_slope^2 * A_phy)
   // Slopes are shared across traits (one per species, applied uniformly to
-  // every trait). Reuses Ainv_phy_rr / n_aug_phy / species_aug_id from the
-  // phylo_rr machinery. When use_phylo_slope == 0, b_phy_slope is mapped
+  // every trait). Its precision and map are resolved from the term RHS, not
+  // from the global cluster tier. When use_phylo_slope == 0, b_phy_slope is mapped
   // off and x_phy_slope is unused.
   DATA_INTEGER(use_phylo_slope);
   DATA_VECTOR(x_phy_slope);          // length n_obs; covariate values
+  // PR-0: legacy slope-only terms have their own RHS-controlled grouping
+  // map and precision.  This keeps the global cluster-tier phylogenetic
+  // fields independent when `phylo_slope(x | g)` uses a different `g`.
+  DATA_INTEGER(n_aug_phy_slope);
+  DATA_SPARSE_MATRIX(Ainv_phy_slope);
+  DATA_SCALAR(log_det_A_phy_slope);
+  DATA_IVECTOR(phylo_slope_aug_id);
   // Augmented-LHS random-regression path (live). The default R-side flag is
   // 0, so the legacy b_phy_slope path above remains active and byte-identical
   // for non-augmented fits; the parser/R design-matrix routes set it to 1.
   DATA_INTEGER(use_phylo_slope_correlated);
+  // Slope-only response-column submode.  It reuses the augmented
+  // matrix-normal likelihood below, but its precision and row map are the
+  // term-local RHS-resolved fields above rather than the shared cluster tier.
+  DATA_INTEGER(use_phylo_column_slope);
+  DATA_INTEGER(use_column_coef_estimated_rho);
+  // Old serialized payloads retain centred B coordinates when this private
+  // flag is absent. Admitted new fits use b_phy_aug as standardized U instead.
+  SEXP column_standardization_flag = getListElement(
+    TMB_OBJECTIVE_PTR->data, "standardize_column_coef");
+  int standardize_column_coef = 0;
+  if (!Rf_isNull(column_standardization_flag)) {
+    if (Rf_length(column_standardization_flag) != 1 ||
+        !(Rf_isInteger(column_standardization_flag) ||
+          Rf_isReal(column_standardization_flag)))
+      error("gllvmTMB_multi: standardize_column_coef must be scalar 0 or 1");
+    double flag = Rf_asReal(column_standardization_flag);
+    if (flag != 0.0 && flag != 1.0)
+      error("gllvmTMB_multi: standardize_column_coef must be 0 or 1");
+    standardize_column_coef = static_cast<int>(flag);
+  }
+  DATA_MATRIX(column_coef_source_U);
+  DATA_VECTOR(column_coef_source_lambda);
+  DATA_VECTOR(column_coef_source_inv_d);
+  DATA_SCALAR(column_coef_source_logdet_D2);
   DATA_INTEGER(n_lhs_cols);           // block-local LHS columns: 1 or 2 (unique/indep);
                                       // C = 2*n_traits for the phylo_dep slope path
   DATA_ARRAY(Z_phy_aug);              // n_obs x n_lhs_cols x n_phy_aug_blocks
@@ -998,7 +1406,7 @@ Type objective_function<Type>::operator()()
 
   // -------- PARAMETERS --------------------------------------------------
   PARAMETER_VECTOR(b_fix);                       // fixed-effects coefficients (p)
-  PARAMETER(log_sigma_eps);                      // residual log-SD
+  PARAMETER_VECTOR(log_sigma_eps);               // residual log-SD slot(s)
 
   // Missing-predictor (Phase 2a): Gaussian covariate-model coefficients,
   // log residual SD, and the latent missing UNIT-level x values (random).
@@ -1028,7 +1436,16 @@ Type objective_function<Type>::operator()()
   // Between-site rr: Lambda_B (n_traits x d_B) packed as theta_rr_B
   // length = d_B + (n_traits - d_B) * d_B = n_traits*d_B - d_B*(d_B-1)/2
   PARAMETER_VECTOR(theta_rr_B);
+  PARAMETER(theta_temporal_phi);
   PARAMETER_MATRIX(z_B);                         // d_B x n_sites spherical N(0, I)
+  // Dedicated temporal-source coordinates.  These must never alias B-tier
+  // score/diagonal matrices because ordinary unit and unit_obs effects can
+  // coexist with the temporal source.
+  PARAMETER(theta_temporal_time);
+  PARAMETER_VECTOR(theta_temporal_rr);
+  PARAMETER_VECTOR(theta_temporal_diag);
+  PARAMETER_MATRIX(z_temporal);
+  PARAMETER_MATRIX(q_temporal);
   PARAMETER_MATRIX(alpha_lv_B);                  // n_lv_B x d_B score-mean coefficients
   // Augmented between-site random regression:
   // Lambda_B_slope is C x d_B_slope where C = 2*n_traits for the single
@@ -1075,6 +1492,8 @@ Type objective_function<Type>::operator()()
   PARAMETER_VECTOR(log_tau_spde);                // length n_traits (or 1 if unused)
   PARAMETER(log_kappa_spde);                     // shared
   PARAMETER_MATRIX(omega_spde);                  // n_mesh x n_traits
+  PARAMETER_MATRIX(omega_spde_iid);              // modeled locations x traits
+  PARAMETER_MATRIX(omega_spde_lv_iid);           // modeled locations x rank
 
   // spatial_latent: low-rank SPDE loadings + K_S shared spatial fields.
   // Same packed lower-triangular layout as theta_rr_B / theta_rr_W /
@@ -1111,6 +1530,9 @@ Type objective_function<Type>::operator()()
   // Stage-35 PGLLVM: phylogenetic reduced-rank loadings + species factors.
   PARAMETER_VECTOR(theta_rr_phy);                // packed lower-triangular Lambda_phy
   PARAMETER_MATRIX(g_phy);                       // n_species x d_phy
+  PARAMETER_MATRIX(g_phy_iid);                   // modeled levels only
+  PARAMETER_MATRIX(g_phy_diag_iid);              // folded Psi companion
+  PARAMETER(eta_structured_rho);                 // distinct outer parameter
   // Two-U PGLLVM: per-trait phylogenetic random intercepts and their log-SDs.
   // log_sd_phy_diag is length n_traits (or 1 if unused); g_phy_diag is
   // n_aug_phy x n_traits (or n_aug_phy x 1 if unused). Each trait column is
@@ -1126,7 +1548,7 @@ Type objective_function<Type>::operator()()
   PARAMETER_VECTOR(log_sd_kernel_diag);          // optional Psi log-SDs
   PARAMETER_VECTOR(g_kernel_diag);               // optional Psi fields
   // phylo_slope params (Q6)
-  PARAMETER_VECTOR(b_phy_slope);                 // length n_aug_phy; per-species slopes
+  PARAMETER_VECTOR(b_phy_slope);                 // length n_aug_phy_slope; per-group slopes
   PARAMETER(log_sigma_slope);                    // scalar; log slope sd
   PARAMETER_ARRAY(b_phy_aug);                     // n_aug_phy x n_lhs_cols x n_phy_aug_blocks
   PARAMETER_VECTOR(log_sd_b);                     // length n_lhs_cols
@@ -1146,6 +1568,7 @@ Type objective_function<Type>::operator()()
   // (and mapped off) for the legacy / unique / indep paths (C in {1,2}),
   // so those fits are byte-identical. See Sigma_b construction below.
   PARAMETER_VECTOR(theta_dep_chol);               // length C(C+1)/2 when use_phylo_dep_slope; else 0
+  PARAMETER(eta_column_coef_rho);                 // outer fixed parameter; never Laplace-random
 
   // Generic random intercepts: flat vector across all (1|g) terms.
   PARAMETER_VECTOR(u_re_int);                    // length sum(re_int_n_groups) (or 1 if unused)
@@ -1189,6 +1612,19 @@ Type objective_function<Type>::operator()()
   // Mapped off when no row has fid 11.
   PARAMETER_VECTOR(log_phi_truncnb2);            // length n_traits (or 1 if unused)
 
+  // Zero-inflated families (fid 17 zi_poisson, 18 zi_nbinom2, 19
+  // zi_binomial; Design 62 reserves the zi_* name for a TRUE mixture, not
+  // the delta/hurdle families above). logit_zi is a per-trait, intercept-
+  // only structural-zero probability: zi = invlogit(logit_zi), NO
+  // covariates and NO random effects on the zero part (recon Decision 2 --
+  // matches GLLVM.jl's v1 scope, Lambda_z = 0). Mapped off (per-trait) when
+  // the trait has no zi_* row, same convention as every other dispersion
+  // vector above. zi_nbinom2 REUSES log_phi_nbinom2 above for its count-
+  // process dispersion rather than adding a second NB2 phi vector (recon
+  // open question 2 -- a deliberate per-trait departure from GLLVM.jl's
+  // single shared-scalar r).
+  PARAMETER_VECTOR(logit_zi);                    // length n_traits (or 1 if unused)
+
   // Delta (hurdle) families: per-trait dispersion of the *positive*
   // component only. The Bernoulli presence component has no extra
   // dispersion. Mapped off when fid 12/13 is absent.
@@ -1213,6 +1649,92 @@ Type objective_function<Type>::operator()()
   int mspl_family_mode = 0; // 0 unused, 1 Bernoulli, 2 Gaussian FA (pick C)
   if (estimator_id != 0 && estimator_id != 1 && estimator_id != 2)
     error("gllvmTMB_multi: estimator_id must be 0 (ML), 1 (MSPL), or 2 (internal penalty-off MSPL)");
+
+  // Nonspatial Gaussian response-column coefficients only. The coefficient
+  // covariance/source parameters and the observation model remain unchanged;
+  // the private R gate additionally excludes fixed or tied physical-B maps.
+  if (standardize_column_coef == 1) {
+    SEXP reml_data = getListElement(TMB_OBJECTIVE_PTR->data, "REML");
+    bool gaussian_reml = !Rf_isNull(reml_data) && Rf_asLogical(reml_data) != 0;
+    if (use_phylo_column_slope != 1 || use_phylo_slope_correlated != 1 ||
+        use_phylo_dep_slope != 1 || estimator_id != 0 || gaussian_reml ||
+        use_aghq != 0 || has_mi != 0 || use_equalto != 0 || use_lv_B != 0 ||
+        use_rr_W != 0 || use_diag_W != 0 || use_rr_B_slope != 0 ||
+        use_diag_B_slope != 0 || use_propto != 0 || use_diag_species != 0 ||
+        use_diag_cluster2 != 0 || use_spde != 0 ||
+        use_spatial_column_slope != 0 || use_spde_slope != 0 ||
+        use_spde_dep_slope != 0 || use_spde_latent_slope != 0 ||
+        n_kernel_tiers != 0 || use_phylo_latent_slope != 0 || use_re_int != 0)
+      error("gllvmTMB_multi: unsupported standardized Gaussian coefficient composition");
+    if (n_traits < 1 || n_sites < 1 || y.size() != n_traits * n_sites ||
+        family_id_vec.size() != y.size() || link_id_vec.size() != y.size() ||
+        is_y_observed.size() != y.size() || weights_i.size() != y.size() ||
+        trait_id.size() != y.size() || site_id.size() != y.size())
+      error("gllvmTMB_multi: coefficient standardization requires a complete cell matrix");
+    vector<int> cell_counts(n_traits * n_sites);
+    cell_counts.setZero();
+    for (int o = 0; o < y.size(); ++o) {
+      if (family_id_vec(o) != 0 || link_id_vec(o) != 0 ||
+          is_y_observed(o) != 1 || asDouble(weights_i(o)) != 1.0 ||
+          trait_id(o) < 0 || trait_id(o) >= n_traits ||
+          site_id(o) < 0 || site_id(o) >= n_sites)
+        error("gllvmTMB_multi: coefficient standardization requires observed unit-weight identity Gaussian rows");
+      int cell = trait_id(o) + n_traits * site_id(o);
+      if (++cell_counts(cell) != 1)
+        error("gllvmTMB_multi: coefficient standardization requires one observation per cell");
+    }
+  }
+
+  // Exact scalar Gaussian convolution is admitted only for complete independent
+  // cell effects in the reviewed ordinary/phylogenetic ML compositions. Keep
+  // this fence on direct template calls as well as the R-side admission gate.
+  if (integrate_gaussian_diag_B != 0 && integrate_gaussian_diag_B != 1)
+    error("gllvmTMB_multi: integrate_gaussian_diag_B must be 0 or 1");
+  if (integrate_gaussian_diag_B == 1) {
+    bool temporal_replicated = use_temporal_B == 1 && temporal_iid_total == 0;
+    SEXP reml_data = getListElement(TMB_OBJECTIVE_PTR->data, "REML");
+    bool gaussian_reml = !Rf_isNull(reml_data) && Rf_asLogical(reml_data) != 0;
+    if (use_diag_B != 1 || estimator_id != 0 || gaussian_reml || use_aghq != 0 ||
+        has_mi != 0 || use_equalto != 0 || use_lv_B != 0 ||
+        use_rr_W != 0 || use_diag_W != 0 || use_rr_B_slope != 0 ||
+        use_diag_B_slope != 0 || use_propto != 0 || use_diag_species != 0 ||
+        use_diag_cluster2 != 0 || use_spde != 0 ||
+        use_spatial_column_slope != 0 || use_spde_slope != 0 ||
+        use_spde_dep_slope != 0 || use_spde_latent_slope != 0 ||
+        n_kernel_tiers != 0 || use_phylo_latent_slope != 0 || use_re_int != 0 ||
+        (use_phylo_slope != 0 && use_phylo_column_slope != 1))
+      error("gllvmTMB_multi: unsupported Gaussian cell-integration composition");
+    if (n_traits < 1 || n_sites < 1 ||
+        (!temporal_replicated && y.size() != n_traits * n_sites) ||
+        s_B.rows() != n_traits || s_B.cols() != n_sites ||
+        diag_B_skip.size() != n_traits || family_id_vec.size() != y.size() ||
+        link_id_vec.size() != y.size() || is_y_observed.size() != y.size() ||
+        weights_i.size() != y.size() || trait_id.size() != y.size() ||
+        site_id.size() != y.size())
+      error("gllvmTMB_multi: Gaussian cell integration requires a complete cell matrix");
+    vector<int> cell_counts(n_traits * n_sites);
+    cell_counts.setZero();
+    for (int t = 0; t < n_traits; ++t)
+      if (diag_B_skip(t) != 0)
+        error("gllvmTMB_multi: Gaussian cell integration cannot skip Psi coordinates");
+    for (int o = 0; o < y.size(); ++o) {
+      if (family_id_vec(o) != 0 || link_id_vec(o) != 0 ||
+          is_y_observed(o) != 1 || asDouble(weights_i(o)) != 1.0 ||
+          trait_id(o) < 0 || trait_id(o) >= n_traits ||
+          site_id(o) < 0 || site_id(o) >= n_sites)
+        error("gllvmTMB_multi: Gaussian cell integration requires observed unit-weight identity Gaussian rows");
+      int cell = trait_id(o) + n_traits * site_id(o);
+      int count = ++cell_counts(cell);
+      if ((!temporal_replicated && count != 1) ||
+          (temporal_replicated && count < 1))
+        error("gllvmTMB_multi: Gaussian cell integration has an invalid observation count");
+    }
+    for (int cell = 0; cell < cell_counts.size(); ++cell) {
+      if ((!temporal_replicated && cell_counts(cell) != 1) ||
+          (temporal_replicated && cell_counts(cell) < 2))
+        error("gllvmTMB_multi: Gaussian cell integration has an incomplete temporal block");
+    }
+  }
 
   // Fail closed for direct template callers. The R fence repeats these checks
   // before MakeADFun(), but unsupported structures must not acquire an MSPL
@@ -1492,6 +2014,80 @@ Type objective_function<Type>::operator()()
     ADREPORT(sigma_mi);
   }
 
+  // -------- Dedicated temporal covariance source -------------------------
+  matrix<Type> Lambda_temporal(n_traits, std::max(temporal_rank, 1));
+  Lambda_temporal.setZero();
+  // `z_temporal` and `q_temporal` are standard-normal innovations.  The
+  // corresponding persisted states below enter eta.  Working in innovations
+  // is algebraically the same AR1/OU process but avoids a nearly singular
+  // Laplace Hessian when an OU rate is close to zero.
+  matrix<Type> z_temporal_state(std::max(temporal_rank, 1), n_temporal_states);
+  z_temporal_state.setZero();
+  matrix<Type> q_temporal_state(n_traits, n_temporal_states);
+  q_temporal_state.setZero();
+  if (use_temporal == 1) {
+    if (theta_temporal_diag.size() != n_traits ||
+        z_temporal.rows() != std::max(temporal_rank, 1) ||
+        z_temporal.cols() != n_temporal_states ||
+        q_temporal.rows() != n_traits || q_temporal.cols() != n_temporal_states)
+      error("gllvmTMB_multi: dedicated temporal parameter shape mismatch");
+    if (temporal_rank > 0) {
+      int expected_rr = n_traits * temporal_rank -
+        temporal_rank * (temporal_rank - 1) / 2;
+      if (theta_temporal_rr.size() != expected_rr)
+        error("gllvmTMB_multi: temporal loading parameter has wrong length");
+      Lambda_temporal = gll_unpack_rr_loadings(
+        theta_temporal_rr, n_traits, temporal_rank);
+    }
+    Type phi_temporal = (Type(1) - Type(1e-6)) * tanh(theta_temporal_time);
+    Type ou_rate = exp(theta_temporal_time);
+    vector<Type> temporal_sd = exp(theta_temporal_diag);
+    for (int s = 0; s < n_temporal_states; ++s) {
+      int previous = temporal_predecessor(s);
+      Type a = Type(0);
+      Type innovation_sd = Type(1);
+      if (previous >= 0) {
+        if (temporal_structure == 0) {
+          a = gll_integer_power(phi_temporal, temporal_gap(s));
+        } else {
+          a = exp(-ou_rate * temporal_elapsed(s));
+        }
+        // For OU rates near zero, `a` rounds to one and `1-a*a` suffers
+        // catastrophic cancellation. The stable helper is evaluated only on
+        // a transition; a series start has no innovation density at all.
+        innovation_sd = temporal_structure == 1
+          ? sqrt(gll_one_minus_exp_neg(Type(2) * ou_rate * temporal_elapsed(s)))
+          : sqrt(Type(1) - a * a);
+      }
+      if (temporal_rank > 0) {
+        for (int k = 0; k < temporal_rank; ++k) {
+          if (previous < 0)
+            z_temporal_state(k, s) = z_temporal(k, s);
+          else
+            z_temporal_state(k, s) = a * z_temporal_state(k, previous) +
+              innovation_sd * z_temporal(k, s);
+          nll -= dnorm(z_temporal(k, s), Type(0), Type(1), true);
+        }
+      }
+      if (temporal_unique == 1) {
+        for (int t = 0; t < n_traits; ++t) {
+          if (previous < 0)
+            q_temporal_state(t, s) = temporal_sd(t) * q_temporal(t, s);
+          else
+            q_temporal_state(t, s) = a * q_temporal_state(t, previous) +
+              temporal_sd(t) * innovation_sd * q_temporal(t, s);
+          nll -= dnorm(q_temporal(t, s), Type(0), Type(1), true);
+        }
+      }
+    }
+    REPORT(Lambda_temporal);
+    REPORT(z_temporal_state);
+    if (temporal_unique == 1) REPORT(q_temporal_state);
+    REPORT(phi_temporal);
+    REPORT(ou_rate);
+    REPORT(temporal_sd);
+  }
+
   // -------- Construct Lambda_B (n_traits x d_B), lower-triangular -------
   matrix<Type> Lambda_B(n_traits, std::max(d_B, 1));
   Lambda_B.setZero();
@@ -1504,9 +2100,33 @@ Type objective_function<Type>::operator()()
     // off and the N(0, I) prior is evaluated INSIDE the quadrature (at each
     // node), so it must not also be added here.
     if (use_aghq == 0) {
-      for (int s = 0; s < n_sites; s++) {
-        vector<Type> col_s = z_B.col(s);
-        nll -= dnorm(col_s, Type(0), Type(1), true).sum();
+      if (use_temporal_B == 1) {
+        Type phi = (Type(1) - Type(1e-6)) * tanh(theta_temporal_phi);
+        Type transition_sd = sqrt(Type(1) - phi * phi);
+        for (int s = 0; s < n_sites; s++) {
+          for (int k = 0; k < d_B; k++) {
+            if (temporal_time_index(s) == 0) {
+              nll -= dnorm(z_B(k, s), Type(0), Type(1), true);
+            } else {
+              int previous = -1;
+              for (int q = 0; q < n_sites; q++) {
+                if (temporal_series_id(q) == temporal_series_id(s) &&
+                    temporal_time_index(q) == temporal_time_index(s) - 1) {
+                  previous = q;
+                  break;
+                }
+              }
+              if (previous < 0) error("gllvmTMB_multi: temporal score index has no previous occasion");
+              nll -= dnorm(z_B(k, s), phi * z_B(k, previous), transition_sd, true);
+            }
+          }
+        }
+        REPORT(phi);
+      } else {
+        for (int s = 0; s < n_sites; s++) {
+          vector<Type> col_s = z_B.col(s);
+          nll -= dnorm(col_s, Type(0), Type(1), true).sum();
+        }
       }
     }
     REPORT(Lambda_B);
@@ -1605,7 +2225,7 @@ Type objective_function<Type>::operator()()
         // term.  Including it would add dnorm(0, 0, ~1e-6, log = TRUE), a
         // large POSITIVE constant, once per (trait, site) cell -- which is
         // how a Bernoulli fit could report a positive log-likelihood.
-        if (diag_B_skip(t) == 1) continue;
+        if (diag_B_skip(t) == 1 || integrate_gaussian_diag_B == 1) continue;
         nll -= dnorm(s_B(t, s), Type(0), sd_B(t), true);
       }
     }
@@ -1693,6 +2313,46 @@ Type objective_function<Type>::operator()()
     }
   }
 
+  // Source strength for the single admitted structured trait-intercept block.
+  // All branching is on fixed DATA; estimated weights stay on the AD tape.
+  bool structured_rho_field_active = structured_rho_estimated == 1 ||
+    structured_rho_sparse == 0 || asDouble(structured_rho_value) > 0;
+  Type structured_rho_wK = Type(1), structured_rho_wD = Type(0);
+  Type rho_structured = structured_rho_value;
+  if (structured_rho_estimated == 1) {
+    structured_rho_wK = exp(-Type(0.5) * logspace_add(Type(0), -eta_structured_rho));
+    structured_rho_wD = exp(-Type(0.5) * logspace_add(Type(0), eta_structured_rho));
+    rho_structured = structured_rho_wK * structured_rho_wK;
+    REPORT(rho_structured); // point estimate only; no interval contract
+  } else if (structured_rho_sparse == 1 || structured_rho_spatial == 1) {
+    structured_rho_wK = sqrt(structured_rho_value);
+    structured_rho_wD = sqrt(Type(1) - structured_rho_value);
+  }
+  bool structured_rho_dense_estimated = structured_rho_estimated == 1 &&
+    structured_rho_sparse == 0 && structured_rho_spatial == 0;
+  vector<Type> structured_rho_spectral_var(structured_rho_eigenvalues.size());
+  Type structured_rho_logdet = Type(0);
+  if (structured_rho_dense_estimated) {
+    for (int j = 0; j < n_species; j++) {
+      structured_rho_spectral_var(j) = structured_rho_wD * structured_rho_wD +
+        rho_structured * structured_rho_eigenvalues(j);
+      structured_rho_logdet += log(structured_rho_diagonal(j)) +
+        log(structured_rho_spectral_var(j));
+    }
+  }
+  auto structured_rho_quad = [&](const vector<Type>& field) -> Type {
+    Type quad = Type(0);
+    for (int j = 0; j < n_species; j++) {
+      Type projected = Type(0);
+      for (int i = 0; i < n_species; i++) {
+        projected += structured_rho_eigenvectors(i,j) * field(i) /
+          sqrt(structured_rho_diagonal(i));
+      }
+      quad += projected * projected / structured_rho_spectral_var(j);
+    }
+    return quad;
+  };
+
   // -------- propto phylogenetic random effect (per trait) ---------------
   // For each trait t, p_phy.col(t) ~ MVN(0, exp(loglambda_phy) * Cphy)
   // -log p = 0.5 * (n_species*log(2*pi) + n_species*loglambda_phy + log_det_Cphy
@@ -1703,9 +2363,10 @@ Type objective_function<Type>::operator()()
     for (int t = 0; t < n_traits; t++) {
       vector<Type> p_t = p_phy.col(t);
       Type quad = (p_t.matrix().transpose() * Cphy_inv * p_t.matrix())(0, 0);
+      if (structured_rho_dense_estimated) quad = structured_rho_quad(p_t);
       nll += 0.5 * (Type(n_species) * log(2.0 * M_PI)
                     + Type(n_species) * loglambda_phy
-                    + log_det_Cphy
+                    + (structured_rho_dense_estimated ? structured_rho_logdet : log_det_Cphy)
                     + inv_lam * quad);
     }
     REPORT(lam_phy);
@@ -1752,11 +2413,17 @@ Type objective_function<Type>::operator()()
     // one row per EDGE of the tree (tips + internal nodes, root excluded) --
     // 2*n_tips - 2 only when the tree is fully bifurcating, and never
     // 2*n_tips - 1. In the legacy dense path n_aug_phy == n_species.
-    for (int k = 0; k < d_phy; k++) {
+    if (structured_rho_field_active) for (int k = 0; k < d_phy; k++) {
       vector<Type> g_k = g_phy.col(k);
       Type quad = (g_k.matrix().transpose() * Ainv_phy_rr * g_k.matrix())(0, 0);
+      if (structured_rho_dense_estimated) quad = structured_rho_quad(g_k);
       nll += 0.5 * (Type(n_aug_phy) * log(2.0 * M_PI)
-                    + log_det_A_phy_rr + quad);
+                    + (structured_rho_dense_estimated ? structured_rho_logdet : log_det_A_phy_rr) + quad);
+    }
+    if (structured_rho_sparse == 1) {
+      for (int j = 0; j < n_species; j++)
+        for (int k = 0; k < d_phy; k++)
+          nll -= dnorm(g_phy_iid(j, k), Type(0), Type(1), true);
     }
     REPORT(Lambda_phy);
     matrix<Type> Sigma_phy = Lambda_phy * Lambda_phy.transpose();
@@ -1785,11 +2452,17 @@ Type objective_function<Type>::operator()()
     REPORT(Sigma_phy_diag);
     // Prior: each column ~ N(0, A).
     // -log p(g_t) = 0.5 * (n_aug_phy * log(2pi) + log_det_A + g_t' Ainv g_t)
-    for (int t = 0; t < n_traits; t++) {
+    if (structured_rho_field_active) for (int t = 0; t < n_traits; t++) {
       vector<Type> g_t = g_phy_diag.col(t);
       Type quad = (g_t.matrix().transpose() * Ainv_phy_rr * g_t.matrix())(0, 0);
+      if (structured_rho_dense_estimated) quad = structured_rho_quad(g_t);
       nll += 0.5 * (Type(n_aug_phy) * log(2.0 * M_PI)
-                    + log_det_A_phy_rr + quad);
+                    + (structured_rho_dense_estimated ? structured_rho_logdet : log_det_A_phy_rr) + quad);
+    }
+    if (structured_rho_sparse == 1) {
+      for (int j = 0; j < n_species; j++)
+        for (int t = 0; t < n_traits; t++)
+          nll -= dnorm(g_phy_diag_iid(j, t), Type(0), Type(1), true);
     }
   }
 
@@ -1906,20 +2579,32 @@ Type objective_function<Type>::operator()()
   // through the sparse Ainv. The augmented path below is live (parser
   // activation has landed); keeping this branch active preserves current
   // phylo_slope() fits and parameter names byte-for-byte.
-  // -log p(b) = 0.5 * (n_aug_phy * log(2pi) + 2 n_aug_phy log_sigma_slope
-  //                    + log_det_A_phy_rr
+  // -log p(b) = 0.5 * (n_aug_phy_slope * log(2pi)
+  //                    + 2 n_aug_phy_slope log_sigma_slope
+  //                    + log_det_A_phy_slope
   //                    + b' Ainv b / sigma_slope^2)
   if (use_phylo_slope == 1 && use_phylo_slope_correlated == 0) {
+    if (b_phy_slope.size() != n_aug_phy_slope ||
+        Ainv_phy_slope.rows() != n_aug_phy_slope ||
+        Ainv_phy_slope.cols() != n_aug_phy_slope ||
+        phylo_slope_aug_id.size() != y.size())
+      error("gllvmTMB_multi: legacy phylo_slope dimensions are inconsistent");
+    for (int o = 0; o < y.size(); ++o)
+      if (phylo_slope_aug_id(o) < 0 || phylo_slope_aug_id(o) >= n_aug_phy_slope)
+        error("gllvmTMB_multi: legacy phylo_slope RHS map is out of bounds");
     Type sigma_slope = exp(log_sigma_slope);
     Type sigma_slope2 = sigma_slope * sigma_slope;
     vector<Type> b = b_phy_slope;
-    Type quad = (b.matrix().transpose() * Ainv_phy_rr * b.matrix())(0, 0);
-    nll += 0.5 * (Type(n_aug_phy) * log(2.0 * M_PI)
-                  + Type(2) * Type(n_aug_phy) * log_sigma_slope
-                  + log_det_A_phy_rr
+    Type quad = (b.matrix().transpose() * Ainv_phy_slope * b.matrix())(0, 0);
+    nll += 0.5 * (Type(n_aug_phy_slope) * log(2.0 * M_PI)
+                  + Type(2) * Type(n_aug_phy_slope) * log_sigma_slope
+                  + log_det_A_phy_slope
                   + quad / sigma_slope2);
     REPORT(sigma_slope);
   }
+  // Physical coefficients enter predictors and reports even when the private
+  // parameter block contains standardized U. Preserve the centred fallback.
+  array<Type> b_phy_aug_physical = b_phy_aug;
   // Augmented path (live): vec(B) ~ N(0, Sigma_b \otimes A_phy), where
   // Sigma_b is block-local across LHS columns (1 = legacy slope-only;
   // 2 = intercept + slope). Driven by the phylo_unique / phylo_indep /
@@ -1935,8 +2620,27 @@ Type objective_function<Type>::operator()()
       error("gllvmTMB_multi: n_lhs_cols must be >= 1 in the phylo_dep slope path");
     if (b_phy_aug.dim.size() != 3 || Z_phy_aug.dim.size() != 3)
       error("gllvmTMB_multi: b_phy_aug and Z_phy_aug must be 3D arrays");
-    if (b_phy_aug.dim[0] != n_aug_phy)
-      error("gllvmTMB_multi: b_phy_aug first dimension must equal n_aug_phy");
+    int n_aug_phy_aug = use_phylo_column_slope == 1 ?
+      n_aug_phy_slope : n_aug_phy;
+    if (use_phylo_column_slope == 1) {
+      if (n_aug_phy_slope < 1 ||
+          Ainv_phy_slope.rows() != n_aug_phy_slope ||
+          Ainv_phy_slope.cols() != n_aug_phy_slope ||
+          phylo_slope_aug_id.size() != y.size())
+        error("gllvmTMB_multi: column-slope phylogenetic source dimensions are inconsistent");
+      for (int o = 0; o < y.size(); ++o)
+        if (phylo_slope_aug_id(o) < 0 ||
+            phylo_slope_aug_id(o) >= n_aug_phy_slope)
+          error("gllvmTMB_multi: column-slope RHS map is out of bounds");
+      if (use_column_coef_estimated_rho == 1 &&
+          (column_coef_source_U.rows() != n_aug_phy_slope ||
+           column_coef_source_U.cols() != n_aug_phy_slope ||
+           column_coef_source_lambda.size() != n_aug_phy_slope ||
+           column_coef_source_inv_d.size() != n_aug_phy_slope))
+        error("gllvmTMB_multi: estimated-rho spectral source dimensions are inconsistent");
+    }
+    if (b_phy_aug.dim[0] != n_aug_phy_aug)
+      error("gllvmTMB_multi: b_phy_aug first dimension has wrong phylogenetic source size");
     if (b_phy_aug.dim[1] != n_lhs_cols || Z_phy_aug.dim[1] != n_lhs_cols)
       error("gllvmTMB_multi: n_lhs_cols does not match augmented phylo arrays");
     if (Z_phy_aug.dim[0] != y.size())
@@ -1974,7 +2678,6 @@ Type objective_function<Type>::operator()()
         }
       }
       matrix<Type> Sigma_b_dep = Lb * Lb.transpose();
-      matrix<Type> Sigma_b_inv = atomic::matinv(Sigma_b_dep);
       // log det Sigma_b = 2 * sum_j log L_jj.
       Type logdet_Sigma_b = Type(0);
       for (int j = 0; j < C; j++) logdet_Sigma_b += Type(2) * log(Lb(j, j));
@@ -2000,23 +2703,54 @@ Type objective_function<Type>::operator()()
           cor_b_mat(a, bcol) = Sigma_b_dep(a, bcol) / (sd_b(a) * sd_b(bcol));
       REPORT(cor_b_mat);
       REPORT(Sigma_b_dep);
-      // -log p(vec(B)) = 0.5 [ n*C*log(2pi) + n*logdet(Sigma_b)
-      //                        + C*logdet(A) + tr(Sigma_b^{-1} B' A^{-1} B) ].
+      matrix<Type> prior_L = Lb;
+      if (standardize_column_coef == 1) {
+        // B = U L'. Independent source-prior columns of U have identity
+        // coefficient covariance: no inverse L enters their random Hessian.
+        prior_L.setZero();
+        for (int j = 0; j < C; ++j) prior_L(j, j) = Type(1);
+        for (int k = 0; k < b_phy_aug.dim[2]; ++k)
+          for (int i = 0; i < n_aug_phy_aug; ++i)
+            for (int j = 0; j < C; ++j) {
+              Type value = Type(0);
+              for (int l = 0; l <= j; ++l)
+                value += b_phy_aug(i, l, k) * Lb(j, l);
+              b_phy_aug_physical(i, j, k) = value;
+            }
+      }
+      Type column_coef_rho = invlogit(eta_column_coef_rho);
+      Type column_coef_logdet_K_rho = log_det_A_phy_slope;
+      if (use_column_coef_estimated_rho == 1) {
+        column_coef_logdet_K_rho = column_coef_source_logdet_D2;
+        for (int i = 0; i < n_aug_phy_slope; ++i) {
+          Type s_i = Type(1) - column_coef_rho +
+            column_coef_rho * column_coef_source_lambda(i);
+          column_coef_logdet_K_rho += log(s_i);
+        }
+        REPORT(column_coef_rho);
+        ADREPORT(column_coef_rho);
+        REPORT(column_coef_logdet_K_rho);
+      }
+      // Centred: -log p(B) = .5[n*C*log(2pi) + n*logdet(Sigma_b)
+      //                         + C*logdet(K) + tr(Sigma_b^{-1} B' K^-1 B)].
+      // Standardized: p(U) is normalized with identity coefficient covariance.
+      // The change-of-variable Jacobian cancels the coefficient determinant;
+      // adding it again would alter the marginal likelihood.
       for (int k = 0; k < b_phy_aug.dim[2]; k++) {
-        // Q(j,l) = b_j' A^{-1} b_l, C x C.
-        matrix<Type> Bmat(n_aug_phy, C);
+        // Gather the source-by-coefficient deviations for this block.
+        matrix<Type> Bmat(n_aug_phy_aug, C);
         for (int j = 0; j < C; j++)
-          for (int i = 0; i < n_aug_phy; i++) Bmat(i, j) = b_phy_aug(i, j, k);
-        matrix<Type> AinvB = Ainv_phy_rr * Bmat;        // n_aug_phy x C
-        matrix<Type> Q = Bmat.transpose() * AinvB;      // C x C
-        // tr(Sigma_b^{-1} Q) = sum_{j,l} Sigma_b_inv(j,l) * Q(l,j).
-        Type quad = Type(0);
-        for (int j = 0; j < C; j++)
-          for (int l = 0; l < C; l++)
-            quad += Sigma_b_inv(j, l) * Q(l, j);
-        nll += Type(0.5) * (Type(n_aug_phy * C) * log(2.0 * M_PI)
-                            + Type(n_aug_phy) * logdet_Sigma_b
-                            + Type(C) * log_det_A_phy_rr
+          for (int i = 0; i < n_aug_phy_aug; i++) Bmat(i, j) = b_phy_aug(i, j, k);
+        Type quad = gll_column_coef_quad(
+          Bmat, prior_L, use_phylo_column_slope == 1 ? Ainv_phy_slope : Ainv_phy_rr,
+          use_column_coef_estimated_rho, column_coef_source_U,
+          column_coef_source_lambda, column_coef_source_inv_d, column_coef_rho);
+        nll += Type(0.5) * (Type(n_aug_phy_aug * C) * log(2.0 * M_PI)
+                            + (standardize_column_coef == 1 ? Type(0) :
+                               Type(n_aug_phy_aug) * logdet_Sigma_b)
+                            + Type(C) * (use_column_coef_estimated_rho == 1 ?
+                              column_coef_logdet_K_rho :
+                              (use_phylo_column_slope == 1 ? log_det_A_phy_slope : log_det_A_phy_rr))
                             + quad);
       }
     } else {
@@ -2043,14 +2777,16 @@ Type objective_function<Type>::operator()()
                             + inv00 * quad00);
       }
     } else {
-      Type rho = tanh(atanh_cor_b(0));
-      Type one_minus_rho2 = Type(1) - rho * rho;
-      Type inv00 = Type(1) / (sd_b(0) * sd_b(0) * one_minus_rho2);
-      Type inv11 = Type(1) / (sd_b(1) * sd_b(1) * one_minus_rho2);
-      Type inv01 = -rho / (sd_b(0) * sd_b(1) * one_minus_rho2);
+      // Bounded rho and a cancellation-free log(1 - rho^2) (#1386): the old
+      // tanh() / 1 - rho * rho gave Inf precisions from |atanh_cor_b| ~ 19.5.
+      Type rho = gll_capped_tanh(atanh_cor_b(0));
+      Type log_om = gll_log1m_capped_tanh2(atanh_cor_b(0));
+      Type inv00 = exp(-Type(2) * log_sd_b(0) - log_om);
+      Type inv11 = exp(-Type(2) * log_sd_b(1) - log_om);
+      Type inv01 = -rho * exp(-log_sd_b(0) - log_sd_b(1) - log_om);
       Type logdet_Sigma_b = Type(2) * log_sd_b(0) +
                              Type(2) * log_sd_b(1) +
-                             log(one_minus_rho2);
+                             log_om;
       vector<Type> cor_b(1);
       cor_b(0) = rho;
       REPORT(cor_b);
@@ -2072,6 +2808,13 @@ Type objective_function<Type>::operator()()
       }
     }
     }  // end closed-form (use_phylo_dep_slope == 0) branch
+  }
+
+  if (standardize_column_coef == 1) {
+    REPORT(b_phy_aug_physical);
+    // U remains a random effect. Delta-method propagation through U and L
+    // includes their joint uncertainty; there is no eliminated-effect add-on.
+    ADREPORT(b_phy_aug_physical);
   }
 
   // -------- phylo_latent slope (Design 56 Sec. 5.3 / 9.5a) -------------
@@ -2159,18 +2902,39 @@ Type objective_function<Type>::operator()()
   //     the diagonal Psi_spde companion.
   matrix<Type> Lambda_spde(n_traits, std::max(spde_lv_k, 1));
   Lambda_spde.setZero();
+  vector<Type> spatial_rho_diagonal(spatial_rho_A.rows());
+  spatial_rho_diagonal.setOnes();
+  bool spatial_rho_field_active = structured_rho_spatial == 0 ||
+    structured_rho_estimated == 1 || asDouble(structured_rho_value) > 0;
   if (use_spde == 1) {
     Type kappa  = exp(log_kappa_spde);
     Type kappa2 = kappa * kappa;
     Type kappa4 = kappa2 * kappa2;
     Eigen::SparseMatrix<Type> Q_base =
       kappa4 * spde_M0 + Type(2.0) * kappa2 * spde_M1 + spde_M2;
+    if (structured_rho_spatial == 1) {
+      // One sparse factorization, one projected-variance solve per location.
+      // Keep kappa on the AD tape; neither Q^-1 nor a full K is materialized.
+      Eigen::SimplicialLDLT< Eigen::SparseMatrix<Type> > spatial_ldlt(Q_base);
+      Eigen::SparseMatrix<Type> spatial_rho_At = spatial_rho_A.transpose();
+      for (int j=0; j<spatial_rho_A.rows(); j++) {
+        matrix<Type> a(Q_base.rows(),1);
+        a.setZero();
+        for (typename Eigen::SparseMatrix<Type>::InnerIterator it(spatial_rho_At,j); it; ++it)
+          a(it.row(),0) = it.value();
+        matrix<Type> solved = spatial_ldlt.solve(a);
+        spatial_rho_diagonal(j) = (a.transpose()*solved)(0,0);
+      }
+      REPORT(spatial_rho_diagonal);
+    }
     if (spde_lv_k == 0 || spde_lv_unique == 1) {
       // Per-trait path, or diagonal Psi companion for spatial_latent(unique=TRUE).
       for (int t = 0; t < n_traits; t++) {
         Type tau = exp(log_tau_spde(t));
         vector<Type> omega_t = omega_spde.col(t);
-        nll += SCALE(GMRF(Q_base), Type(1.0) / tau)(omega_t);
+        if (spatial_rho_field_active) nll += SCALE(GMRF(Q_base), Type(1.0) / tau)(omega_t);
+        if (structured_rho_spatial == 1) for(int j=0;j<omega_spde_iid.rows();j++)
+          nll -= dnorm(omega_spde_iid(j,t),Type(0),Type(1),true);
       }
       REPORT(log_tau_spde);
     }
@@ -2184,7 +2948,9 @@ Type objective_function<Type>::operator()()
       // absorbed into Lambda_spde).
       for (int k = 0; k < spde_lv_k; k++) {
         vector<Type> omega_k = omega_spde_lv.col(k);
-        nll += GMRF(Q_base)(omega_k);
+        if (spatial_rho_field_active) nll += GMRF(Q_base)(omega_k);
+        if (structured_rho_spatial == 1) for(int j=0;j<omega_spde_lv_iid.rows();j++)
+          nll -= dnorm(omega_spde_lv_iid(j,k),Type(0),Type(1),true);
       }
       REPORT(Lambda_spde);
       matrix<Type> Sigma_spde_shared = Lambda_spde * Lambda_spde.transpose();
@@ -2218,10 +2984,13 @@ Type objective_function<Type>::operator()()
   //   nll = GMRF(Q)(om0) + GMRF(Q)(om1)               // gives 2n log2pi - 2 logdetQ + q00 + q11
   //       + 0.5 * n_mesh * logdet(Sigma_field)
   //       + 0.5 * [ (Sinv00 - 1) q00 + (Sinv11 - 1) q11 + 2 Sinv01 q01 ]
-  // where qij = om_i' Q om_j (sparse Q via GMRF::Quadform / Q*x). This uses
-  // ONLY the sparse SPDE machinery already exercised by the per-trait path
-  // above; no new atomic / sparse-solve op is introduced. Validated against a
-  // dense Sigma_field (x) Q^-1 MVN density to < 1e-9 (see tests).
+  // where qij = om_i' Q om_j (sparse Q via GMRF::Quadform / Q*x). The field
+  // prior uses the sparse machinery already exercised by the per-trait path.
+  // The response-column submode below additionally factorizes Q once and
+  // solves only the T projection right-hand sides to obtain its exact
+  // projected unit-diagonal normalization.
+  vector<Type> spatial_column_inv_sd(n_traits);
+  spatial_column_inv_sd.setOnes();
   if (use_spde_slope == 1) {
     // Closed-form Sigma_field paths (base unique / indep) require
     // n_lhs_cols_spde in {1, 2}. The spatial_dep slope path
@@ -2244,6 +3013,35 @@ Type objective_function<Type>::operator()()
     Eigen::SparseMatrix<Type> Q_slope =
       kappa_s4 * spde_M0 + Type(2.0) * kappa_s2 * spde_M1 + spde_M2;
     density::GMRF_t<Type> gmrf_slope(Q_slope);
+
+    if (use_spatial_column_slope == 1) {
+      if (A_column.rows() != n_traits || A_column.cols() != Q_slope.rows())
+        error("gllvmTMB_multi: A_column must be n_traits x n_mesh");
+      // Exact projected covariance without forming dense Q^{-1}: factor the
+      // sparse Q once and solve only the T right-hand sides A_column'.
+      // C_raw = A Q^{-1} A'; K = D^{-1/2} C_raw D^{-1/2}.
+      Eigen::SimplicialLDLT< Eigen::SparseMatrix<Type> > column_ldlt(Q_slope);
+      matrix<Type> Qinv_At = column_ldlt.solve(A_column.transpose());
+      matrix<Type> C_raw = A_column * Qinv_At;
+      vector<Type> spatial_column_variance_raw(n_traits);
+      for (int t = 0; t < n_traits; t++) {
+        Type variance_t = C_raw(t, t);
+        double variance_value = asDouble(variance_t);
+        if (!R_FINITE(variance_value) || variance_value <= 0.0)
+          error("gllvmTMB_multi: projected spatial column variance must be finite and positive");
+        spatial_column_variance_raw(t) = variance_t;
+        spatial_column_inv_sd(t) = Type(1.0) / sqrt(variance_t);
+      }
+      matrix<Type> spatial_column_K(n_traits, n_traits);
+      for (int t = 0; t < n_traits; t++) {
+        for (int u = 0; u < n_traits; u++) {
+          spatial_column_K(t, u) = (t == u) ? Type(1.0) :
+            C_raw(t, u) * spatial_column_inv_sd(t) * spatial_column_inv_sd(u);
+        }
+      }
+      REPORT(spatial_column_variance_raw);
+      REPORT(spatial_column_K);
+    }
 
     if (use_spde_dep_slope == 1) {
       // ---- spatial_dep slope: full unstructured C x C Sigma_field = L L^T ----
@@ -2324,14 +3122,16 @@ Type objective_function<Type>::operator()()
       for (int i = 0; i < omega_spde_aug.dim[0]; i++) om0(i) = omega_spde_aug(i, 0);
       nll += SCALE(gmrf_slope, sd_spde_b(0))(om0);
     } else {
-      Type rho = tanh(atanh_cor_spde_b(0));
-      Type one_minus_rho2 = Type(1) - rho * rho;
-      Type Sinv00 =  Type(1) / (sd_spde_b(0) * sd_spde_b(0) * one_minus_rho2);
-      Type Sinv11 =  Type(1) / (sd_spde_b(1) * sd_spde_b(1) * one_minus_rho2);
-      Type Sinv01 = -rho / (sd_spde_b(0) * sd_spde_b(1) * one_minus_rho2);
+      // Bounded rho and cancellation-free log(1 - rho^2), as for atanh_cor_b
+      // above (#1386).
+      Type rho = gll_capped_tanh(atanh_cor_spde_b(0));
+      Type log_om = gll_log1m_capped_tanh2(atanh_cor_spde_b(0));
+      Type Sinv00 =  exp(-Type(2) * log_sd_spde_b(0) - log_om);
+      Type Sinv11 =  exp(-Type(2) * log_sd_spde_b(1) - log_om);
+      Type Sinv01 = -rho * exp(-log_sd_spde_b(0) - log_sd_spde_b(1) - log_om);
       Type logdet_Sigma_field = Type(2) * log_sd_spde_b(0)
                               + Type(2) * log_sd_spde_b(1)
-                              + log(one_minus_rho2);
+                              + log_om;
       vector<Type> cor_spde_b(1);
       cor_spde_b(0) = rho;
       REPORT(cor_spde_b);
@@ -2471,14 +3271,28 @@ Type objective_function<Type>::operator()()
       for (int t = 0; t < n_traits; t++) {
         vector<Type> omega_t = omega_spde.col(t);
         vector<Type> Ao_t = A_proj * omega_t;
-        for (int o = 0; o < y.size(); o++) A_omega(o, t) = Ao_t(o);
+        for (int o = 0; o < y.size(); o++) {
+          A_omega(o,t) = Ao_t(o);
+          if (structured_rho_spatial == 1) {
+            int j = spatial_rho_group_id(o);
+            A_omega(o,t) = structured_rho_wK*Ao_t(o) + structured_rho_wD*
+              sqrt(spatial_rho_diagonal(j))*exp(-log_tau_spde(t))*omega_spde_iid(j,t);
+          }
+        }
       }
     }
     if (spde_lv_k > 0) {
       for (int k = 0; k < spde_lv_k; k++) {
         vector<Type> omega_k = omega_spde_lv.col(k);
         vector<Type> Ao_k = A_proj * omega_k;
-        for (int o = 0; o < y.size(); o++) A_omega_lv(o, k) = Ao_k(o);
+        for (int o = 0; o < y.size(); o++) {
+          A_omega_lv(o,k) = Ao_k(o);
+          if (structured_rho_spatial == 1) {
+            int j = spatial_rho_group_id(o);
+            A_omega_lv(o,k) = structured_rho_wK*Ao_k(o) + structured_rho_wD*
+              sqrt(spatial_rho_diagonal(j))*omega_spde_lv_iid(j,k);
+          }
+        }
       }
     }
   }
@@ -2493,7 +3307,10 @@ Type objective_function<Type>::operator()()
       vector<Type> omega_j(omega_spde_aug.dim[0]);
       for (int i = 0; i < omega_spde_aug.dim[0]; i++) omega_j(i) = omega_spde_aug(i, j);
       vector<Type> Ao_j = A_proj * omega_j;
-      for (int o = 0; o < y.size(); o++) A_omega_aug(o, j) = Ao_j(o);
+      for (int o = 0; o < y.size(); o++) {
+        A_omega_aug(o, j) = use_spatial_column_slope == 1 ?
+          Ao_j(o) * spatial_column_inv_sd(trait_id(o)) : Ao_j(o);
+      }
     }
   }
 
@@ -2533,6 +3350,17 @@ Type objective_function<Type>::operator()()
       }
       eta(o) += u_B_st;
     }
+    if (use_temporal == 1) {
+      int ts = temporal_state_id(o);
+      if (temporal_rank > 0) {
+        Type u_temporal = Type(0);
+        for (int k = 0; k < temporal_rank; ++k)
+          u_temporal += Lambda_temporal(t, k) * z_temporal_state(k, ts);
+        eta(o) += u_temporal;
+      }
+      if (temporal_unique == 1)
+        eta(o) += q_temporal_state(t, ts);
+    }
     if (use_rr_B_slope == 1) {
       Type u_B_aug = 0;
       for (int j = 0; j < n_lhs_cols_B_lat; j++) {
@@ -2543,7 +3371,7 @@ Type objective_function<Type>::operator()()
       }
       eta(o) += u_B_aug;
     }
-    if (use_diag_B == 1)
+    if (use_diag_B == 1 && integrate_gaussian_diag_B == 0)
       eta(o) += s_B(t, s);
     if (use_diag_B_slope == 1) {
       Type u_B_diag_aug = 0;
@@ -2603,13 +3431,22 @@ Type objective_function<Type>::operator()()
     }
     if (use_phylo_rr == 1) {
       Type contrib = 0;
-      for (int k = 0; k < d_phy; k++)
-        contrib += Lambda_phy(t, k) * g_phy(species_aug_id(o), k);
+      for (int k = 0; k < d_phy; k++) {
+        Type score = g_phy(species_aug_id(o), k);
+        if (structured_rho_sparse == 1)
+          score = structured_rho_wK * score + structured_rho_wD *
+            sqrt(structured_rho_diagonal(species_id(o))) * g_phy_iid(species_id(o), k);
+        contrib += Lambda_phy(t, k) * score;
+      }
       eta(o) += contrib;
     }
     if (use_phylo_diag == 1) {
       // Per-trait phylogenetic random intercept.
-      eta(o) += exp(log_sd_phy_diag(t)) * g_phy_diag(species_aug_id(o), t);
+      Type score = g_phy_diag(species_aug_id(o), t);
+      if (structured_rho_sparse == 1)
+        score = structured_rho_wK * score + structured_rho_wD *
+          sqrt(structured_rho_diagonal(species_id(o))) * g_phy_diag_iid(species_id(o), t);
+      eta(o) += exp(log_sd_phy_diag(t)) * score;
     }
     if (n_kernel_tiers > 0) {
       int kid = kernel_group_id(o);
@@ -2635,11 +3472,14 @@ Type objective_function<Type>::operator()()
       Type contrib_aug = 0;
       for (int k = 0; k < b_phy_aug.dim[2]; k++)
         for (int j = 0; j < n_lhs_cols; j++)
-          contrib_aug += b_phy_aug(species_aug_id(o), j, k) * Z_phy_aug(o, j, k);
+          contrib_aug += b_phy_aug_physical(
+            use_phylo_column_slope == 1 ? phylo_slope_aug_id(o) : species_aug_id(o),
+            j, k
+          ) * Z_phy_aug(o, j, k);
       eta(o) += contrib_aug;
     } else if (use_phylo_slope == 1) {
       // Per-species slope on x, shared across traits.
-      eta(o) += b_phy_slope(species_aug_id(o)) * x_phy_slope(o);
+      eta(o) += b_phy_slope(phylo_slope_aug_id(o)) * x_phy_slope(o);
     }
     if (use_phylo_latent_slope == 1) {
       // Block-diagonal reduced-rank random regression: per LHS column k,
@@ -2664,7 +3504,22 @@ Type objective_function<Type>::operator()()
   }
 
   // -------- Observation likelihood --------------------------------------
-  Type sigma_eps = exp(log_sigma_eps);
+  bool has_gaussian_rows = false;
+  bool has_lognormal_rows = false;
+  for (int o = 0; o < family_id_vec.size(); o++) {
+    has_gaussian_rows = has_gaussian_rows || family_id_vec(o) == 0;
+    has_lognormal_rows = has_lognormal_rows || family_id_vec(o) == 3;
+  }
+  int expected_sigma_slots =
+    has_gaussian_rows && has_lognormal_rows ? 2 : 1;
+  if (log_sigma_eps.size() != expected_sigma_slots)
+    error("gllvmTMB_multi: log_sigma_eps shape does not match active Gaussian/lognormal families");
+  vector<Type> sigma_eps(log_sigma_eps.size());
+  for (int j = 0; j < log_sigma_eps.size(); j++)
+    sigma_eps(j) = exp(log_sigma_eps(j));
+  Type sigma_eps_gaussian = sigma_eps(0);
+  Type sigma_eps_lognormal =
+    log_sigma_eps.size() == 2 ? sigma_eps(1) : sigma_eps(0);
   REPORT(sigma_eps);
   // Per-row response log-density log p(y(o) | eta_o), factored out of the
   // family-dispatch loop so the SAME kernels can be evaluated at a STATE-
@@ -2679,7 +3534,16 @@ Type objective_function<Type>::operator()()
     Type ll = Type(0.0);
     if (fid == 0) {
       // Gaussian, identity link
-      ll += dnorm(y(o), eta_o, sigma_eps, true);
+      if (integrate_gaussian_diag_B == 1) {
+        // Integrate s_B ~ N(0, psi) exactly. The independent observation
+        // stabilizer remains unchanged and contributes its original variance.
+        Type variance = exp(Type(2) * theta_diag_B(trait_id(o)));
+        if (temporal_iid_total == 0)
+          variance += sigma_eps_gaussian * sigma_eps_gaussian;
+        ll += dnorm(y(o), eta_o, sqrt(variance), true);
+      } else {
+        ll += dnorm(y(o), eta_o, sigma_eps_gaussian, true);
+      }
     } else if (fid == 1) {
       // Bernoulli / binomial(k-of-n). Link depends on link_id_vec(o):
       //   0 = logit:    p = 1 / (1 + exp(-eta))
@@ -2694,8 +3558,8 @@ Type objective_function<Type>::operator()()
       // opt-in estimator takes the row when active -- its kernel owns every
       // link, including its own cloglog tail counter. On the ML path, cloglog
       // routes to the iSDM tail-safe kernel (series expansion below eta = -20,
-      // cap at 700) instead of the naive clamped form; logit and probit keep
-      // the clamped dbinom path unchanged.
+      // cap at 700) instead of the naive clamped form; logit and probit use
+      // the log-scale form below (no probability clamp; #1362).
       if (estimator_id != 0) {
         ll += gll_mspl_bernoulli_loglik(y(o), eta_o, lid);
         if (lid == 2) {
@@ -2705,18 +3569,25 @@ Type objective_function<Type>::operator()()
       } else if (lid == 2) {
         ll += gll_dbinom_cloglog(y(o), n_trials(o), eta_o);
       } else {
-        Type p;
+        // Log-scale binomial (#1362). This used to clamp p to
+        // [1e-12, 1 - 1e-12] and call dbinom(), which made each row's
+        // contribution the constant -27.63 with an exactly zero gradient
+        // once eta was more than 27.6 (logit) or 7.03 (probit) into the
+        // wrong tail. log p and log(1 - p) are now formed directly and keep
+        // their true slope at any eta.
+        Type log_p1, log_p0;
         if (lid == 0) {
-          p = Type(1.0) / (Type(1.0) + exp(-eta_o));
+          log_p1 = gll_log_inv_logit(eta_o);
+          log_p0 = gll_log1m_inv_logit(eta_o);
         } else if (lid == 1) {
-          p = pnorm(eta_o);
+          log_p1 = gll_log_pnorm_atomic(eta_o);
+          log_p0 = gll_log_pnorm_atomic(-eta_o);
         } else {
           error("gllvmTMB_multi: unknown link_id for binomial family");
         }
-        // Numerical safety: clip away from 0/1 to prevent log(0).
-        Type tiny = Type(1e-12);
-        p = gll_clamp(p, tiny, Type(1.0) - tiny);
-        ll += dbinom(y(o), n_trials(o), p, true);
+        Type log_choose = lgamma(n_trials(o) + Type(1.0)) -
+          lgamma(y(o) + Type(1.0)) - lgamma(n_trials(o) - y(o) + Type(1.0));
+        ll += log_choose + y(o) * log_p1 + (n_trials(o) - y(o)) * log_p0;
       }
     } else if (fid == 2) {
       // Poisson, log link
@@ -2724,25 +3595,24 @@ Type objective_function<Type>::operator()()
     } else if (fid == 3) {
       // Lognormal, log link
       // y > 0 strictly. log(y) ~ Normal(eta, sigma_eps); add Jacobian -log(y).
-      ll += dnorm(log(y(o)), eta_o, sigma_eps, true) - log(y(o));
+      ll += dnorm(
+        log(y(o)), eta_o, sigma_eps_lognormal, true
+      ) - log(y(o));
     } else if (fid == 4) {
       // Gamma, log link, mean-shape parametrization
       // mu = exp(eta); per-trait shape phi = exp(log_phi_gamma(t)).
       // scale = mu / phi so E(y) = mu and CV(y) = 1 / sqrt(phi).
       int t = trait_id(o);
-      Type mu_g    = exp(eta_o);
-      Type shape_g = exp(log_phi_gamma(t));
-      Type scale_g = mu_g / shape_g;
-      ll += dgamma(y(o), shape_g, scale_g, true);
+      ll += gll_dgamma_mean_shape(y(o), eta_o, log_phi_gamma(t));
     } else if (fid == 5) {
       // NB2 (negative binomial, type 2), log link.
       // Var(y) = mu + mu^2 / phi, with one log_phi per trait.
-      // Use dnbinom_robust (numerically stable; takes log_mu and log(var-mu)).
-      // log(var - mu) = log(mu^2 / phi) = 2*log(mu) - log(phi).
+      // gll_dnbinom_mu_size with size = phi: stable at the Poisson limit
+      // phi -> Inf, where TMB's dnbinom_robust loses lgamma(y + phi) -
+      // lgamma(phi) to cancellation (#1363).
       int t = trait_id(o);
       Type log_mu = eta_o;                         // log link
-      Type log_v_minus_mu = Type(2.0) * log_mu - log_phi_nbinom2(t);
-      ll += dnbinom_robust(y(o), log_mu, log_v_minus_mu, true);
+      ll += gll_dnbinom_mu_size(y(o), log_mu, log_phi_nbinom2(t));
     } else if (fid == 6) {
       // Tweedie compound Poisson-Gamma, log link.
       // y >= 0 (point mass at zero plus continuous positive part).
@@ -2773,46 +3643,72 @@ Type objective_function<Type>::operator()()
       ll += ld;
     } else if (fid == 8) {
       // Beta-binomial family (Hilbe 2014; Bolker 2008).
+      // mu = invlogit(eta), a = mu phi, b = (1 - mu) phi:
+      //   log f = lchoose(N, y) + lgamma(y + a) - lgamma(a)
+      //         + lgamma(N - y + b) - lgamma(b)
+      //         - lgamma(N + phi) + lgamma(phi).
+      // Each lgamma difference is taken as gll_lgamma_shift + n log x, and
+      // the n log x pieces collapse to y log mu + (N - y) log(1 - mu) -- the
+      // binomial log pmf -- so nothing of size phi log phi is ever formed and
+      // the phi -> Inf limit is exactly binomial (#1364). The old nine-term
+      // lgamma sum was wrong by ~0.04 at phi = 2.7e10 and unbounded beyond.
       int t = trait_id(o);
-      Type mu_bb  = invlogit(eta_o);
-      Type phi_bb = exp(log_phi_betabinom(t));
-      Type a_bb   = mu_bb * phi_bb;
-      Type b_bb   = (Type(1.0) - mu_bb) * phi_bb;
+      Type log_phi_bb = log_phi_betabinom(t);
+      Type log_mu_bb  = gll_log_inv_logit(eta_o);
+      Type log_1m_bb  = gll_log1m_inv_logit(eta_o);
       Type N      = n_trials(o);
       Type yo     = y(o);
       Type ld = lgamma(N + Type(1.0))
-              + lgamma(yo + a_bb)
-              + lgamma(N - yo + b_bb)
-              + lgamma(a_bb + b_bb)
               - lgamma(yo + Type(1.0))
               - lgamma(N - yo + Type(1.0))
-              - lgamma(a_bb)
-              - lgamma(b_bb)
-              - lgamma(N + a_bb + b_bb);
+              + yo * log_mu_bb + (N - yo) * log_1m_bb
+              + gll_lgamma_shift(log_mu_bb + log_phi_bb, yo)
+              + gll_lgamma_shift(log_1m_bb + log_phi_bb, N - yo)
+              - gll_lgamma_shift(log_phi_bb, N);
       ll += ld;
     } else if (fid == 9) {
       // Student-t, identity link.
       int t = trait_id(o);
       Type mu_t    = eta_o;
       Type sigma_t = exp(log_sigma_student(t));
-      Type df_t    = Type(1.0) + exp(log_df_student(t));
-      Type z_t     = (y(o) - mu_t) / sigma_t;
-      ll += dt(z_t, df_t, true) - log(sigma_t);
+      // log t_nu(z) = G - log(2 pi) / 2 - (nu + 1) / 2 log1p(z^2 / nu),
+      // G = lgamma(nu/2 + 1/2) - lgamma(nu/2) - log(nu/2) / 2 -> 0, with
+      // nu = 1 + exp(log_df). TMB's dt() forms the lgamma difference and
+      // log(1 + z^2 / nu) directly; from nu ~ 1e10 it is wrong by > 1e-3 and
+      // above ~1e13 it EXCEEDS the Gaussian limit (#1364). Here G comes from
+      // gll_lgamma_shift and the kernel is -(z^2 / 2)(1 + 1/nu) log1p(u) / u,
+      // u = z^2 / nu, so the nu -> Inf limit is exactly dnorm(z, log = TRUE).
+      Type log_nu   = logspace_add(Type(0.0), log_df_student(t));
+      Type log_half_nu = log_nu - log(Type(2.0));
+      Type G_t      = gll_lgamma_shift(log_half_nu, Type(0.5));
+      Type z_t      = (y(o) - mu_t) / sigma_t;
+      Type inv_nu   = exp(-log_nu);
+      Type z2_t     = z_t * z_t;
+      ll += G_t - Type(0.5) * log(Type(2.0) * M_PI)
+            - Type(0.5) * z2_t * (Type(1.0) + inv_nu) *
+              gll_log1p_ratio(z2_t * inv_nu)
+            - log_sigma_student(t);
     } else if (fid == 10) {
-      // Zero-truncated Poisson, log link.
+      // Zero-truncated Poisson, log link, on the eta scale (#1483):
+      // dpois(y, exp(eta)) forms y log(exp(eta)), which is y log(0) = -Inf
+      // once exp(eta) underflows, although the truncated pmf there is a
+      // finite ~ exp((y - 1) eta) / y!.
       Type lambda_t = exp(eta_o);
-      ll += dpois(y(o), lambda_t, true)
-             - logspace_sub(Type(0.0), -lambda_t);
+      ll += y(o) * eta_o - lambda_t - lgamma(y(o) + Type(1.0))
+             - gll_log1mexp_neg_exp(eta_o);
     } else if (fid == 11) {
       // Zero-truncated NB2, log link.
+      // log P(0) = -phi log1p(mu / phi), from the ratio log1p(x) / x (#1363):
+      // the old phi * (log phi - log(mu + phi)) cancelled at large phi and
+      // was exactly 0 at phi = 1e14, mu = 0.1, so log(1 - p0) = -Inf and the
+      // row log-likelihood +Inf. Both pieces now tend to the zero-truncated
+      // Poisson (fid 10) as phi -> Inf. log(1 - p0) is formed from
+      // log(-log p0), not from log p0, so it survives mu -> 0 (#1483).
       int t = trait_id(o);
       Type log_mu = eta_o;
-      Type mu_t   = exp(log_mu);
-      Type phi_t  = exp(log_phi_truncnb2(t));
-      Type log_v_minus_mu = Type(2.0) * log_mu - log_phi_truncnb2(t);
-      Type log_p0 = phi_t * (log_phi_truncnb2(t) - log(mu_t + phi_t));
-      ll += dnbinom_robust(y(o), log_mu, log_v_minus_mu, true)
-             - logspace_sub(Type(0.0), log_p0);
+      Type log_a = gll_nbinom_log_neg_log_p0(log_mu, log_phi_truncnb2(t));
+      ll += gll_dnbinom_mu_size(y(o), log_mu, log_phi_truncnb2(t))
+             - gll_log1mexp_neg_exp(log_a);
     } else if (fid == 12) {
       // delta_lognormal (hurdle): one shared eta drives both components.
       //   Presence: I{y>0} ~ Bernoulli(invlogit(eta))   via dbinom_robust
@@ -2836,11 +3732,9 @@ Type objective_function<Type>::operator()()
       Type x_pres = (y(o) > Type(0)) ? Type(1.0) : Type(0.0);
       ll += dbinom_robust(x_pres, Type(1.0), eta_o, true);
       if (y(o) > Type(0)) {
-        Type phi_t   = exp(log_phi_gamma_delta(t));
-        Type mu_g    = exp(eta_o);
-        Type shape_g = Type(1.0) / (phi_t * phi_t);
-        Type scale_g = mu_g / shape_g;
-        ll += dgamma(y(o), shape_g, scale_g, true);
+        // shape = 1 / phi^2, i.e. log shape = -2 log phi (#1377 stable form).
+        ll += gll_dgamma_mean_shape(y(o), eta_o,
+                                    Type(-2.0) * log_phi_gamma_delta(t));
       }
     } else if (fid == 14) {
       // ordinal_probit (Wright/Falconer/Hadfield threshold model).
@@ -2887,21 +3781,152 @@ Type objective_function<Type>::operator()()
       Type log_tiny_ord = Type(-690.7755278982137);   // log(1e-300)
       logp_k = CppAD::CondExpLt(logp_k, log_tiny_ord, log_tiny_ord, logp_k);
       ll += logp_k;
+    } else if (fid == 20) {
+      // ordinal_logit: the SAME cumulative-threshold apparatus as fid 14
+      // (ordinal_probit) -- identical n_ordinal_cuts_per_trait /
+      // ordinal_offset_per_trait / ordinal_log_increments cutpoint
+      // reconstruction, byte-for-byte -- with the standard LOGISTIC CDF in
+      // place of Phi:
+      //   y* = eta + e,  e ~ Logistic(0, 1)   (link-residual variance = pi^2/3)
+      //   y = k iff tau_{k-1} < y* <= tau_k
+      //   tau_0 = -Inf, tau_1 = 0, tau_K = +Inf
+      //   Free params: tau_2, ..., tau_{K-1}  (K - 2 cutpoints)
+      // P(y = k | eta) = F(tau_k - eta) - F(tau_{k-1} - eta), F = plogis.
+      // K = 2 reduces to binomial(logit) by the same eqn-10-style argument
+      // as the probit case. y is 1-indexed (1, 2, ..., K).
+      int t       = trait_id(o);
+      int K_minus_2 = n_ordinal_cuts_per_trait(t);   // = K_t - 2
+      int offset  = ordinal_offset_per_trait(t);
+      int K       = K_minus_2 + 2;                   // number of categories
+      // Cutpoint reconstruction is IDENTICAL to fid 14 -- same flat
+      // ordinal_log_increments vector, same per-trait offset, same
+      // guarantee tau_1 = 0 < tau_2 < tau_3 < ... by construction.
+      vector<Type> cuts(K - 1);
+      cuts(0) = Type(0.0);   // tau_1 fixed at 0 for identifiability
+      for (int j = 1; j < K - 1; j++) {
+        cuts(j) = cuts(j - 1) + exp(ordinal_log_increments(offset + j - 1));
+      }
+      int yk = CppAD::Integer(y(o));   // observed category, 1..K
+      // log P(y = yk) = log( F(upper - eta) - F(lower - eta) ), via
+      // gll_log_inv_logit / gll_log_inv_logit_diff (already used by the
+      // cumulative-logit missing-PREDICTOR family; NOT the same family as
+      // this RESPONSE family -- see the naming note at those definitions).
+      //
+      // Why no separate ~8.3-style far-tail switch is needed here, unlike
+      // gll_log_pnorm's Mills-ratio branch: pnorm(x) rounds to EXACTLY 1.0
+      // once x > 8.2924 because the Gaussian tail 1 - Phi(x) decays like
+      // exp(-x^2/2) -- doubly-exponential in x, so it drops below the
+      // double unit roundoff (~1.1e-16) by x ~ 8.3. The logistic complement
+      // 1 - F(x) = 1/(1+exp(x)) decays only like exp(-x) -- a single
+      // exponential -- so it does not underflow to the same roundoff until
+      // x ~ -log(1.1e-16) ~ 36.7. gll_log_inv_logit / logspace_add already
+      // handle that full range without a separate asymptotic expansion
+      // (log1p(exp(x)) is the standard stable form for all real x). The
+      // adjacent-cutpoint collision this DOES still reach -- two free
+      // cutpoints landing within ~1e-16 of each other on the eta scale, so
+      // logp_k underflows to log(0) = -Inf before the -log(1e-300) floor
+      // below catches it -- is exactly the gll_log1mexp input-ceiling case
+      // documented at that function's definition and at
+      // gll_log_inv_logit_diff's own comment; nothing new is needed here.
+      Type logp_k;
+      if (yk >= K) {
+        // Top category: P = 1 - F(lower - eta) = F(eta - lower).
+        logp_k = gll_log_inv_logit(eta_o - cuts(yk - 2));
+      } else if (yk <= 1) {
+        // Bottom category: P = F(upper - eta).
+        logp_k = gll_log_inv_logit(cuts(yk - 1) - eta_o);
+      } else {
+        logp_k = gll_log_inv_logit_diff(cuts(yk - 1) - eta_o,
+                                        cuts(yk - 2) - eta_o);
+      }
+      Type log_tiny_ord = Type(-690.7755278982137);   // log(1e-300)
+      logp_k = CppAD::CondExpLt(logp_k, log_tiny_ord, log_tiny_ord, logp_k);
+      ll += logp_k;
     } else if (fid == 15) {
       // NB1 (negative binomial, type 1), log link.
       // Var(y) = mu * (1 + phi) = mu + phi * mu, with one log_phi per trait
       // (linear mean-variance; phi -> 0 recovers Poisson). Hilbe (2011).
-      // Use dnbinom_robust (numerically stable; takes log_mu and log(var-mu)).
-      // Contrast NB2 (fid 5), where var - mu = mu^2 / phi so the second
-      // argument is 2*log(mu) - log(phi); here var - mu = phi * mu so it is
-      // log(phi) + log(mu) = log_mu + log_phi_nbinom1(t).
+      // As a (mean, size) negative binomial the size is mu / phi (contrast
+      // NB2, fid 5, where it is phi), so log_size = log_mu - log_phi. Uses
+      // gll_dnbinom_mu_size, stable at the Poisson limit phi -> 0 where
+      // dnbinom_robust loses lgamma(y + size) - lgamma(size) (#1363).
       int t = trait_id(o);
       Type log_mu = eta_o;                         // log link
-      Type log_v_minus_mu = log_mu + log_phi_nbinom1(t);
-      ll += dnbinom_robust(y(o), log_mu, log_v_minus_mu, true);
+      ll += gll_dnbinom_mu_size(y(o), log_mu, log_mu - log_phi_nbinom1(t));
     } else if (fid == 16) {
       error("gllvmTMB_multi: multinomial (fid 16) is evaluated as a grouped "
             "softmax at its anchor row, not per-row via obs_loglik");
+    } else if (fid == 17) {
+      // zi_poisson: TRUE zero-inflation mixture (Design 62 -- not the
+      // fid 12/13 hurdle path; the count process is active at y == 0 too).
+      //   P(y=0) = pi + (1-pi)*dpois(0, mu);  P(y=k>0) = (1-pi)*dpois(k, mu)
+      // logit_zi is per-trait, intercept-only (recon Decision 2).
+      // log(sigmoid(x)) = -logspace_add(0,-x); log(1-sigmoid(x)) =
+      // -logspace_add(0,x) -- same numerically-stable idiom drmTMB uses for
+      // its zi_poisson (recon section D).
+      int t = trait_id(o);
+      Type log_zi          = -logspace_add(Type(0.0), -logit_zi(t));
+      Type log_one_minus_zi = -logspace_add(Type(0.0), logit_zi(t));
+      Type mu = exp(eta_o);
+      if (asDouble(y(o)) == 0.0) {
+        ll += logspace_add(log_zi, log_one_minus_zi - mu);   // dpois(0,mu,log=T) = -mu
+      } else {
+        ll += log_one_minus_zi + dpois(y(o), mu, true);
+      }
+    } else if (fid == 18) {
+      // zi_nbinom2: same mixture, NB2 count kernel. REUSES log_phi_nbinom2
+      // (per-trait) rather than a new shared-scalar dispersion (recon open
+      // question 2 -- a deliberate departure from GLLVM.jl's shared r).
+      int t = trait_id(o);
+      Type log_zi          = -logspace_add(Type(0.0), -logit_zi(t));
+      Type log_one_minus_zi = -logspace_add(Type(0.0), logit_zi(t));
+      // Same stable NB2 kernel as fid 5 (#1363).
+      Type log_mu = eta_o;
+      if (asDouble(y(o)) == 0.0) {
+        Type log_p0 = gll_nbinom_log_p0(log_mu, log_phi_nbinom2(t));
+        ll += logspace_add(log_zi, log_one_minus_zi + log_p0);
+      } else {
+        ll += log_one_minus_zi +
+          gll_dnbinom_mu_size(y(o), log_mu, log_phi_nbinom2(t));
+      }
+    } else if (fid == 19) {
+      // zi_binomial: mixture over a multi-trial Binomial(N_i, p) count part,
+      // logit link only. Admission (R/fit-multi.R) refuses N_i == 1 rows --
+      // the single-trial mixture is not identified (recon Decision 6 /
+      // alignment-zi.md). dbinom_robust takes logit(p) directly, matching
+      // the fid 12/13 hurdle presence term's idiom elsewhere in this file.
+      int t = trait_id(o);
+      Type log_zi          = -logspace_add(Type(0.0), -logit_zi(t));
+      Type log_one_minus_zi = -logspace_add(Type(0.0), logit_zi(t));
+      if (asDouble(y(o)) == 0.0) {
+        Type log_p0 = dbinom_robust(Type(0.0), n_trials(o), eta_o, true);
+        ll += logspace_add(log_zi, log_one_minus_zi + log_p0);
+      } else {
+        ll += log_one_minus_zi + dbinom_robust(y(o), n_trials(o), eta_o, true);
+      }
+    } else if (fid == 21) {
+      // censored_poisson (Arc E, issue #1244): right-censoring only, log
+      // link only (Identity lock -- see
+      // dev/gapclose/arcE/alignment-censored-poisson.md). RENUMBERED
+      // 2026-09-03 from fid 20 to fid 21: family_id 20 is now reserved for
+      // ordinal_logit (PR #1250, maintainer-approved, merges first) --
+      // this branch loses the tie and moves to the next free id.
+      //   cens_limit(o) == 0: ordinary Poisson row, y(o) is the count.
+      //   cens_limit(o) == C >= 1: right-censored, only Y >= C known; y(o)
+      //     is UNUSED on this branch (R sets it equal to C by convention).
+      // Right-censored log-density via the Poisson-Gamma duality:
+      //   log P(Y >= C | mu) = log pgamma(mu, shape = C, scale = 1)
+      // (the lower-tail regularized incomplete gamma at mu; TMB's pgamma
+      // is AD-differentiable through the D_incpl_gamma_shape atomic, so no
+      // hand-coded score/weight is needed here, unlike the Julia oracle's
+      // custom Newton core).
+      Type mu = exp(eta_o);
+      Type C  = cens_limit(o);
+      if (C > Type(0.0)) {
+        ll += log(pgamma(mu, C, Type(1.0)));
+      } else {
+        ll += dpois(y(o), mu, true);
+      }
     } else {
       error("gllvmTMB_multi: unknown family_id");
     }
@@ -3150,9 +4175,11 @@ Type objective_function<Type>::operator()()
         for (int j = 0; j < L_mn; ++j) {
           num_mn += y(o + j) * eta(o + j);            // one-hot picks observed eta
         }
+        // No probability floor (#1362): log_denom_mn is a max-shifted
+        // log-sum-exp, finite at every eta, so the old log(1e-12) floor only
+        // flattened the objective (constant, zero gradient) for a badly
+        // mis-fit observed category.
         Type logp_mn = num_mn - log_denom_mn;
-        Type log_tiny_mn = log(Type(1e-12));          // defensive AD-safe floor
-        logp_mn = CppAD::CondExpLt(logp_mn, log_tiny_mn, log_tiny_mn, logp_mn);
         nll -= logp_mn;
       }
     }
@@ -3172,7 +4199,12 @@ Type objective_function<Type>::operator()()
     // evaluate any family density on it (that is the sentinel-invariance
     // guarantee, design 59 sec.9). When all rows are observed (response="drop")
     // this guard is always true -> an exact no-op.
-    if (family_id_vec(o) != 16 && is_y_observed(o) && !mi_missing_row) {
+    if (use_temporal_B == 1 && temporal_iid_total == 0) {
+      // Replicated temporal Gaussian observations are evaluated below as one
+      // normalized block per (occasion, trait), after integrating the
+      // occasion-shared diagonal effect.  A row-wise density here would lose
+      // the within-occasion covariance.
+    } else if (family_id_vec(o) != 16 && is_y_observed(o) && !mi_missing_row) {
       // Ordinary path: observed-y row whose predictor value is NOT a missing
       // discrete x (observed-x units take this path with the true x in eta(o)).
       // fid-16 rows are handled by the multinomial group branch above and skip
@@ -3247,6 +4279,47 @@ Type objective_function<Type>::operator()()
       observation_nll(o) = row_nll * weights_i(o);
   }
   if (report_obs_nll == 1 && use_aghq == 0) REPORT(observation_nll);
+
+  // -------- Replicated temporal Gaussian observation blocks -------------
+  // Integrating the occasion-shared diagonal term from
+  // y_gtrj = eta_gtrj + s_gtj + epsilon_gtrj gives
+  // psi_j 11' + sigma_eps^2 I within each (series, occasion, trait) block.
+  // This is an exact Gaussian marginal likelihood; it does not make s_B an
+  // iid persistent score or enter it into the temporal AR1 prior.
+  if (use_temporal_B == 1 && temporal_iid_total == 0) {
+    if (use_aghq == 1)
+      error("gllvmTMB_multi: replicated temporal likelihood requires Laplace");
+    for (int s = 0; s < n_sites; ++s) {
+      for (int t = 0; t < n_traits; ++t) {
+        int n_group = 0;
+        for (int o = 0; o < y.size(); ++o) {
+          if (site_id(o) == s && trait_id(o) == t) {
+            if (family_id_vec(o) != 0 || is_y_observed(o) != 1 ||
+                weights_i(o) != Type(1))
+              error("gllvmTMB_multi: malformed replicated temporal observation block");
+            ++n_group;
+          }
+        }
+        if (n_group < 2)
+          error("gllvmTMB_multi: replicated temporal blocks require at least two measurements");
+        vector<Type> residual(n_group);
+        matrix<Type> covariance(n_group, n_group);
+        Type psi = exp(Type(2) * theta_diag_B(t));
+        Type eps2 = sigma_eps_gaussian * sigma_eps_gaussian;
+        int j = 0;
+        for (int o = 0; o < y.size(); ++o) {
+          if (site_id(o) == s && trait_id(o) == t) {
+            residual(j) = y(o) - eta(o);
+            for (int q = 0; q < n_group; ++q)
+              covariance(j, q) = psi + (j == q ? eps2 : Type(0));
+            ++j;
+          }
+        }
+        density::MVNORM_t<Type> block_density(covariance);
+        nll += block_density(residual);
+      }
+    }
+  }
 
   // -------- AGHQ collapse: log-sum-exp over the quadrature nodes ---------
   // log L_i = logdet_i + log sum_j exp( logw_j + inner_ll(i, j) ).
@@ -3544,6 +4617,27 @@ Type objective_function<Type>::operator()()
   REPORT(mspl_Lambda_spde_reference);
 
   ADREPORT(b_fix);
+  if (integrate_gaussian_diag_B == 1 && use_temporal_B == 0) {
+    // These moments condition on the retained random effects and parameters.
+    // ADREPORT(mean) propagates their uncertainty; R adds the conditional
+    // variance below to recover the original s_B marginal standard errors.
+    // Reconstruct eta only AFTER every likelihood/penalty use of eta_0.
+    matrix<Type> s_B_conditional_mean(n_traits, n_sites);
+    matrix<Type> s_B_conditional_variance(n_traits, n_sites);
+    Type eps_variance = sigma_eps_gaussian * sigma_eps_gaussian;
+    for (int o = 0; o < y.size(); ++o) {
+      int t = trait_id(o);
+      int s = site_id(o);
+      Type psi = exp(Type(2) * theta_diag_B(t));
+      Type weight = psi / (psi + eps_variance);
+      s_B_conditional_mean(t, s) = weight * (y(o) - eta(o));
+      s_B_conditional_variance(t, s) = weight * eps_variance;
+      eta(o) += s_B_conditional_mean(t, s);
+    }
+    REPORT(s_B_conditional_mean);
+    ADREPORT(s_B_conditional_mean);
+    REPORT(s_B_conditional_variance);
+  }
   REPORT(eta);
 
   // Per-trait dispersion / power for NB2 and Tweedie. These are reported
@@ -3566,6 +4660,12 @@ Type objective_function<Type>::operator()()
   REPORT(p_tweedie);
   REPORT(phi_beta);
   REPORT(phi_betabinom);
+
+  // Zero-inflated families (fid 17/18/19): per-trait structural-zero
+  // probability. REPORT only (not ADREPORT), matching every other
+  // dispersion vector above -- none of them get a delta-method SE either.
+  vector<Type> zi = invlogit(logit_zi);
+  REPORT(zi);
 
   // Student-t per-trait sigma and df (df = 1 + exp(log_df_student)).
   vector<Type> sigma_student = exp(log_sigma_student);

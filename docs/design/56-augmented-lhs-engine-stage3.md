@@ -11,6 +11,11 @@ in PR #279).
 **Status:** Active design contract. Stub opened 2026-05-26 by
 Design 55 §A1 closeout; expanded into the full design the same
 day after maintainer go-ahead.
+**2026-08-24 reconciliation:** Design 130 supersedes the helper migration and
+deprecation proposals in §§8, 9.6, and 10.2. The augmented-LHS engine remains
+an active contract for intercept-plus-slope random regressions, but it does not
+replace the public response-column slope helper family. The superseded text is
+retained below as history.
 **Triggered by:**
 [Design 55 §A1 closeout memo](../dev-log/audits/2026-05-26-design-55-a1-closeout.md) —
 parser-only hypothesis structurally disconfirmed by code review.
@@ -420,7 +425,11 @@ Concretely:
    the formula carries `(1 + x | id)`) and assert the engine
    `Rcpp::stop()`s.
 
-## 8. Migration of `phylo_slope()` and `animal_slope()`
+## 8. Superseded migration of `phylo_slope()` and `animal_slope()`
+
+**Not normative after 2026-08-24.** Under Design 130, RHS-equals-declared-trait
+calls are public response-column sugar and RHS-not-trait calls retain their
+historical runtime behaviour. Neither helper is deprecated or migrated away.
 
 Per Design 55 §6.1 and §6.2:
 
@@ -583,7 +592,10 @@ Each sub-phase is its own PR.
 (engine verification per cell). **Reviewers**: Noether + Rose.
 **~3-5 days total**.
 
-### 9.6 Phase 56.6 — soft-deprecation + register update
+### 9.6 Superseded Phase 56.6 — soft-deprecation + register update
+
+The deprecation actions in this subsection must not be executed. Design 130
+replaces them with helper-family documentation and compatibility tests.
 
 Per Design 55 §A6:
 
@@ -613,7 +625,7 @@ Per Design 55 §A6:
 | 56.3 | Parser permits new LHS forms; `Z_phy_aug` correctly built; PR-review checklist enforced (§7.1) |
 | 56.4 | Recovery test passes for `phylo_unique(1+x|sp)` Gaussian; byte-identity wide↔long; negative test passes |
 | 56.5 (each sub-phase) | Per-cell recovery test passes; byte-identity check passes |
-| 56.6 | Soft-deprecation live; articles updated; validation-debt register reflects merged state |
+| 56.6 | **Superseded by Design 130:** helper-family docs and compatibility evidence replace deprecation |
 
 ### 10.2 Stage 3 overall close (= Design 55 Phase A close)
 
@@ -625,7 +637,8 @@ All hold:
    Gaussian).
 3. Byte-identity contract (Design 55 §3) passes on at least one
    representative cell per structural family.
-4. `phylo_slope()` and `animal_slope()` soft-deprecated.
+4. **Superseded by Design 130:** both helpers remain public; new
+   response-column and historical compatibility routes are tested.
 5. Six articles updated per Design 55 §6.4.
 6. Validation-debt rows walked to `covered (Gaussian)`.
 7. `pkgdown::check_pkgdown()` clean.

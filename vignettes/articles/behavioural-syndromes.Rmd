@@ -115,7 +115,7 @@ trait grid is incomplete.
 library(gllvmTMB)
 ```
 
-We simulate six behaviours for 150 individuals measured on six occasions.
+We simulate six behaviours for 60 individuals measured on four occasions.
 The between-individual tier has two anonymous latent axes; the occasion tier
 has one. We do not attach biological names to raw latent axes because their
 orientation and sign are not identified without an explicit rotation or
@@ -123,8 +123,8 @@ constraint.
 
 ```{r simulate}
 set.seed(2025)
-n_individual <- 150L
-n_occasion <- 6L
+n_individual <- 60L
+n_occasion <- 4L
 trait_names <- c(
   "boldness", "exploration", "latency_emerge",
   "aggression", "activity", "restlessness"
@@ -226,7 +226,7 @@ fit_control <- gllvmTMBcontrol(
   optimizer = "optim",
   optArgs = list(
     method = "BFGS",
-    control = list(maxit = 3000, reltol = 1e-12)
+    control = list(maxit = 500, reltol = 1e-8)
   )
 )
 

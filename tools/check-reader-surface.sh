@@ -44,8 +44,9 @@ milestone_codes='\bM[0-9]\.[0-9]\b'
 decision_codes='\bD-[0-9]{1,3}\b'
 design_refs='\bDesign [0-9]{2}\b'
 dead_paths='docs/(design|dev-log)/'
+retired_julia_names='\bGLLVM\.jl\b|\bGLLVM_JL_PATH\b|\bgllvmTMB\.GLLVM\.jl\.path\b'
 
-pattern="${register_codes}|${phase_codes}|${milestone_codes}|${decision_codes}|${design_refs}|${dead_paths}"
+pattern="${register_codes}|${phase_codes}|${milestone_codes}|${decision_codes}|${design_refs}|${dead_paths}|${retired_julia_names}"
 
 # --- surfaces a user actually reads ---------------------------------------
 #
@@ -58,6 +59,26 @@ pattern="${register_codes}|${phase_codes}|${milestone_codes}|${decision_codes}|$
 surfaces=(README.md NEWS.md DESCRIPTION)
 [ -d man ] && surfaces+=(man)
 [ -d vignettes ] && surfaces+=(vignettes)
+
+# --- home-page first-read contract ----------------------------------------
+#
+# A banned-token sweep cannot establish that a new reader encounters the
+# purpose of the package before caveats or implementation language. Keep this
+# narrow and concrete: the README is pkgdown's home-page body, so it must name
+# the model in plain language, say what it is for, and do both before the
+# experimental warning. A rendered-site check accompanies this source contract
+# in the documentation job; this check catches a regression before a build is
+# published.
+#
+landing_text=$(tr '\n' ' ' < README.md)
+gllvm_definition=$(printf '%s' "$landing_text" | grep -bo 'GLLVM\*\* means \*\*generalized linear latent-variable model' | head -1 | cut -d: -f1 || true)
+purpose=$(printf '%s' "$landing_text" | grep -bo 'several responses together' | head -1 | cut -d: -f1 || true)
+warning=$(printf '%s' "$landing_text" | grep -bo 'Experimental software' | head -1 | cut -d: -f1 || true)
+
+if [ -z "$gllvm_definition" ] || [ -z "$purpose" ] || [ -z "$warning" ] || \
+   [ "$gllvm_definition" -ge "$warning" ] || [ "$purpose" -ge "$warning" ]; then
+  violations=$(printf '%s\nREADME.md: landing page must define GLLVM and its multi-response purpose before the experimental warning' "$violations")
+fi
 
 # --- documented exclusions -------------------------------------------------
 #
@@ -91,6 +112,7 @@ violations=$(grep -rInE "$pattern" "${surfaces[@]}" 2>/dev/null \
 if [ -d R ]; then
   r_violations=$(grep -rInE "\"[^\"]*(${pattern})" R 2>/dev/null \
     | grep -vE '^[^:]+:[0-9]+: *#' \
+    | grep -vE 'R/julia-bridge\.R:[0-9]+:.*(getOption|Sys\.getenv)\(' \
     | grep -vE "$exclude_re" || true)
   if [ -n "$r_violations" ]; then
     violations=$(printf '%s\n%s' "$violations" "$r_violations")
@@ -119,7 +141,7 @@ violations=$(printf '%s' "$violations" | sed '/^$/d')
 if [ -n "$violations" ]; then
   echo "READER-SURFACE CHECK: FAIL"
   echo
-  echo "Internal identifiers or unshipped paths found on user-facing surfaces."
+  echo "Internal identifiers, retired Julia names, or unshipped paths found on user-facing surfaces."
   echo "These contradict the claim NEWS.md makes about itself, and docs/ paths"
   echo "are dead links because .Rbuildignore strips ^docs\$ from the tarball."
   echo
@@ -135,6 +157,8 @@ echo "  runtime  : R/ string literals (cli/stop/warning message text and"
 echo "             character values returned to users; comments exempt)"
 echo "  links    : shipped vignettes carry no relative *.html links to"
 echo "             articles that .Rbuildignore strips from the tarball"
+echo "  landing  : README defines GLLVM and its multi-response purpose before"
+echo "             the experimental warning"
 echo
 echo "NOT covered: whether the prose that replaced a removed identifier is TRUE."
 echo "No grep can establish that. Four panels withheld on exactly that gap."

@@ -155,7 +155,7 @@
     paper_reporting_rationale = paste(
       "Sterzinger & Kosmidis (2023) report SEs from the negative Hessian",
       "of the approximate / unpenalized log-likelihood at the MSPL point;",
-      "Q_P/Q_0 PD is D-149 availability only (Ranga 2026-08-16)."
+      "Q_P/Q_0 positive definiteness establishes availability only."
     ),
     penalised = c(
       list(

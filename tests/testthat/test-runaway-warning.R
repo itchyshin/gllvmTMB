@@ -16,6 +16,8 @@
 ## the warning to actually fire.
 .rw_reset <- function() {
   try(rlang::reset_warning_verbosity("gllvmTMB-loading-runaway"), silent = TRUE)
+  ## the id is now per fit signature (#1367); this clears every id emitted so far
+  gllvmTMB:::.gllvmTMB_reset_runaway_warnings()
   invisible(NULL)
 }
 
@@ -55,7 +57,7 @@ test_that("a runaway fit warns by default, and the warning is actionable", {
     gllvmTMB::gllvmTMB(d$fml, data = d$df, family = stats::binomial()); NULL
   }, warning = function(x) conditionMessage(x))
   if (!is.null(w)) {
-    expect_match(w, "aghq_ridge")
+    expect_match(w, "loading_ridge")  # 2026-09-02: message now names loading_ridge, not aghq_ridge, by design
     expect_match(w, "MAP|penalised")     # says the remedy changes the estimand
     expect_match(w, "warn_runaway")      # says how to silence it
   }
@@ -178,6 +180,7 @@ test_that("the multinomial degeneracy warning fires once, honours warn_runaway, 
   ## R CMD check runs the whole suite in one).
   rlang::reset_warning_verbosity("gllvmTMB-multinomial-degeneracy")
   rlang::reset_warning_verbosity("gllvmTMB-loading-runaway")
+  gllvmTMB:::.gllvmTMB_reset_runaway_warnings()
 
   expect_true(
     is.function(gllvmTMB:::.gllvmTMB_multinomial_degeneracy_row),

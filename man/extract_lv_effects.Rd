@@ -51,6 +51,12 @@ where the innovation \eqn{\mathbf z_s} keeps the usual standard-normal prior.
 \code{extract_lv_effects()} reports either the raw axis-scale
 \eqn{\boldsymbol\alpha} coefficients or the induced trait-scale contribution
 \eqn{\mathbf B_{\mathrm{lv}} = \boldsymbol\Lambda \boldsymbol\alpha^\top}.
+Factor predictor names follow the fitted model-matrix contrasts. With
+default treatment contrasts, each coefficient compares its level with
+the reference level; trait effects report that same contrast on the link
+scale. Use \code{\link[stats:relevel]{stats::relevel()}} before fitting to choose the reference.
+}
+\details{
 The axis-scale table is the default because it matches the usual constrained
 latent-variable / ordination coefficient. It is conditional on the fitted
 loading constraint and axis orientation: like the loadings themselves
@@ -62,8 +68,7 @@ is intrinsic to latent-variable identifiability, not a defect. For
 \strong{cross-fit comparison}, prefer \code{type = "trait_effect"}, the
 rotation-invariant induced slope surface on the trait linear-predictor
 scale, described next.
-}
-\details{
+
 If the axis-scale representation is specifically required and cross-fit
 alignment matters, apply the same rotation used for the loadings: the
 mean latent score is \eqn{\mathbf X_s \boldsymbol\alpha}, so it rotates
@@ -74,7 +79,16 @@ rotated mean score to machine precision). There is no separate exported
 helper that performs this composition; it must be assembled from
 \code{rotate_loadings()}'s \code{T} and the \code{estimate} column here.
 
-For native TMB fits, \code{std.error} is populated from a positive-definite
+Loading-ridge fits with verified penalised curvature report local approximate
+posterior SDs in \code{std.error} and normal-approximation credible bounds in
+\code{lower} and \code{upper}, conditional on the loading prior scale, fitted model,
+and axis parameterisation. These are not calibrated sampling standard
+errors or confidence intervals. Trait-effect SDs include loading-coefficient
+covariance through TMB's delta method. Older stored ridge fits without
+matched curvature provenance retain point estimates but withhold uncertainty
+(\code{loading_ridge_point_only_no_lv_se}); refit to obtain corrected SDs.
+
+For unpenalised native TMB fits, \code{std.error} is populated from a positive-definite
 \code{sdreport()} when available. Axis-effect SEs come from the fixed-parameter
 block for \code{alpha_lv_B}; trait-effect SEs come from TMB's delta-method
 \code{ADREPORT(B_lv_unit)} output. \code{lower} and \code{upper} are Wald intervals using

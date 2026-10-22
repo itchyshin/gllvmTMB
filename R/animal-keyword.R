@@ -32,16 +32,26 @@
 #' \eqn{\sigma^{2}_{\text{a}}} is shared across traits.
 #'
 #' Mathematical parallel to [phylo_scalar()] -- same engine path; the
-#' only difference is that **A** is supplied via `pedigree =` (a
-#' 3-column data frame: id, sire, dam), `A =` (dense \eqn{n \times n}
-#' relatedness matrix), or `Ainv =` (precision matrix). Sparse `Ainv`
-#' inputs use the sparse precision route.
+#' only difference is the relatedness input. Pass one **named**
+#' argument: `pedigree =` (converted to a sparse inverse relationship
+#' matrix \eqn{\mathbf A^{-1}} via Henderson/Quaas), `A =` (dense
+#' \eqn{n \times n} relatedness matrix), or `Ainv =` (precision
+#' matrix). Sparse `Ainv` inputs use the sparse precision route.
+#' A positional pedigree such as `animal_scalar(id, ped)` is not
+#' recognised. If more than one of `pedigree`, `A`, and `Ainv` is
+#' supplied, the first match wins in that order.
 #'
 #' @param id Bare column name of the individual factor.
-#' @param pedigree A 3-column data frame with columns `id`, `sire`,
-#'   `dam` (unknown parents encoded as `NA`). Converted internally
-#'   to **A** via Henderson's recursive formula. Only one of
-#'   `pedigree`, `A`, or `Ainv` should be given.
+#' @param pedigree A 3-column data frame identifying individuals and
+#'   parents. Columns are resolved by name using the synonyms
+#'   `id`/`animal`, `sire`/`father`, and `dam`/`mother`; if none
+#'   match, column 1 is id, column 2 is sire, and column 3 is dam.
+#'   Unknown parents may be `NA`, `""`, or `"0"`. Converted internally
+#'   to a sparse inverse relationship matrix \eqn{\mathbf A^{-1}} by
+#'   [pedigree_to_Ainv_sparse()] (Henderson/Quaas), not to a dense
+#'   \eqn{\mathbf A}. Must be passed by name (`pedigree = ped`). If
+#'   several of `pedigree`, `A`, and `Ainv` are given, `pedigree`
+#'   wins, then `A`, then `Ainv`.
 #' @param A Dense relatedness matrix (\eqn{n \times n}); rownames /
 #'   colnames must match levels of `id`.
 #' @param Ainv Precision matrix (inverse of A). Sparse matrix inputs are
@@ -57,29 +67,41 @@
 #'   [meta_V()] (sampling variance, distinct from relatedness).
 #'
 #' @examples
-#' \dontrun{
-#' # Pedigree-derived additive-genetic relatedness; single shared
-#' # variance across traits. Grounded in test-animal-keyword.R.
+#' set.seed(1)
+#' ## Pedigree: ten founders (five sires, five dams) and 90 offspring.
 #' ped <- data.frame(
-#'   id   = paste0("i", 1:12),
-#'   sire = c(rep(NA, 4), rep(c("i1", "i2"), length.out = 8)),
-#'   dam  = c(rep(NA, 4), rep(c("i3", "i4"), length.out = 8))
+#'   id   = paste0("i", 1:100),
+#'   sire = c(rep(NA, 10), sample(paste0("i", 1:5), 90, replace = TRUE)),
+#'   dam  = c(rep(NA, 10), sample(paste0("i", 6:10), 90, replace = TRUE))
 #' )
 #' A <- pedigree_to_A(ped)
-#' yvec <- as.numeric(MASS::mvrnorm(
-#'   1, mu = rep(0, 2 * 12),
-#'   Sigma = kronecker(diag(2), A) * 0.5 + diag(2 * 12) * 0.5
-#' ))
+#' ## Two traits sharing one additive-genetic variance: the breeding values
+#' ## bv (individuals x traits) have vec(bv) ~ N(0, G %x% A) with G = 0.5 I.
+#' ## Residual noise is added and the data stacked one row per
+#' ## (individual, trait); the individual column also fills the `cluster`
+#' ## slot, which carries the relatedness matrix.
+#' G <- diag(0.5, 2)
+#' bv <- t(chol(A)) %*% matrix(rnorm(100 * 2), 100, 2) %*% chol(G)
 #' df <- data.frame(
-#'   species = factor(rep(ped$id, each = 2), levels = ped$id),
-#'   trait   = factor(rep(c("t1", "t2"), times = 12), levels = c("t1", "t2")),
-#'   value   = yvec
+#'   individual = factor(rep(ped$id, each = 2), levels = ped$id),
+#'   trait      = factor(rep(c("t1", "t2"), times = 100)),
+#'   value      = as.vector(t(bv)) + rnorm(100 * 2, sd = 0.6)
 #' )
 #' fit <- gllvmTMB(
-#'   value ~ 0 + trait + animal_scalar(species, pedigree = ped),
-#'   data = df, family = gaussian()
+#'   value ~ 0 + trait + animal_scalar(individual, pedigree = ped),
+#'   data = df, trait = "trait", unit = "individual",
+#'   cluster = "individual"
 #' )
-#' }
+#' fit
+#' ## The recommended spelling, animal_indep(..., common = TRUE), fits the
+#' ## same model:
+#' fit2 <- gllvmTMB(
+#'   value ~ 0 + trait +
+#'     animal_indep(0 + trait | individual, pedigree = ped, common = TRUE),
+#'   data = df, trait = "trait", unit = "individual",
+#'   cluster = "individual"
+#' )
+#' c(logLik(fit), logLik(fit2))
 #'
 #' @export
 animal_scalar <- function(id, pedigree = NULL, A = NULL, Ainv = NULL) {
@@ -120,29 +142,38 @@ animal_scalar <- function(id, pedigree = NULL, A = NULL, Ainv = NULL) {
 #' @seealso [animal_scalar()], [animal_indep()], [animal_latent()],
 #'   [animal_dep()], [phylo_indep()].
 #' @examples
-#' \dontrun{
-#' # Per-trait independent additive-genetic variances on a shared A.
-#' # Grounded in test-animal-keyword.R.
+#' set.seed(1)
+#' ## Pedigree: ten founders (five sires, five dams) and 90 offspring.
 #' ped <- data.frame(
-#'   id   = paste0("i", 1:12),
-#'   sire = c(rep(NA, 4), rep(c("i1", "i2"), length.out = 8)),
-#'   dam  = c(rep(NA, 4), rep(c("i3", "i4"), length.out = 8))
+#'   id   = paste0("i", 1:100),
+#'   sire = c(rep(NA, 10), sample(paste0("i", 1:5), 90, replace = TRUE)),
+#'   dam  = c(rep(NA, 10), sample(paste0("i", 6:10), 90, replace = TRUE))
 #' )
 #' A <- pedigree_to_A(ped)
-#' yvec <- as.numeric(MASS::mvrnorm(
-#'   1, mu = rep(0, 2 * 12),
-#'   Sigma = kronecker(diag(2), A) * 0.5 + diag(2 * 12) * 0.5
-#' ))
+#' ## Two traits with their own additive-genetic variances and no genetic
+#' ## covariance: vec(bv) ~ N(0, G %x% A) with G = diag(0.6, 0.4). Residual
+#' ## noise is added; one row per (individual, trait).
+#' G <- diag(c(0.6, 0.4))
+#' bv <- t(chol(A)) %*% matrix(rnorm(100 * 2), 100, 2) %*% chol(G)
 #' df <- data.frame(
-#'   species = factor(rep(ped$id, each = 2), levels = ped$id),
-#'   trait   = factor(rep(c("t1", "t2"), times = 12), levels = c("t1", "t2")),
-#'   value   = yvec
+#'   individual = factor(rep(ped$id, each = 2), levels = ped$id),
+#'   trait      = factor(rep(c("t1", "t2"), times = 100)),
+#'   value      = as.vector(t(bv)) + rnorm(100 * 2, sd = 0.6)
 #' )
 #' fit <- gllvmTMB(
-#'   value ~ 0 + trait + animal_unique(species, pedigree = ped),
-#'   data = df, family = gaussian()
+#'   value ~ 0 + trait + animal_unique(individual, pedigree = ped),
+#'   data = df, trait = "trait", unit = "individual",
+#'   cluster = "individual"
 #' )
-#' }
+#' extract_Sigma(fit, level = "phy")$Sigma
+#' ## The recommended spelling for a standalone diagonal term,
+#' ## animal_indep(), fits the same model:
+#' fit2 <- gllvmTMB(
+#'   value ~ 0 + trait + animal_indep(0 + trait | individual, pedigree = ped),
+#'   data = df, trait = "trait", unit = "individual",
+#'   cluster = "individual"
+#' )
+#' c(logLik(fit), logLik(fit2))
 #' @export
 animal_unique <- function(id, pedigree = NULL, A = NULL, Ainv = NULL) {
   invisible(NULL)
@@ -165,33 +196,43 @@ animal_unique <- function(id, pedigree = NULL, A = NULL, Ainv = NULL) {
 #' @return See [animal_scalar()].
 #' @seealso [phylo_indep()].
 #' @examples
-#' \dontrun{
-#' # Independent per-trait animal-model intercepts via the bar form,
-#' # passing the dense relatedness matrix A directly.
-#' # Grounded in test-animal-keyword.R.
+#' set.seed(1)
+#' ## Pedigree: ten founders (five sires, five dams) and 90 offspring.
 #' ped <- data.frame(
-#'   id   = paste0("i", 1:12),
-#'   sire = c(rep(NA, 4), rep(c("i1", "i2"), length.out = 8)),
-#'   dam  = c(rep(NA, 4), rep(c("i3", "i4"), length.out = 8))
+#'   id   = paste0("i", 1:100),
+#'   sire = c(rep(NA, 10), sample(paste0("i", 1:5), 90, replace = TRUE)),
+#'   dam  = c(rep(NA, 10), sample(paste0("i", 6:10), 90, replace = TRUE))
 #' )
 #' A <- pedigree_to_A(ped)
-#' yvec <- as.numeric(MASS::mvrnorm(
-#'   1, mu = rep(0, 2 * 12),
-#'   Sigma = kronecker(diag(2), A) * 0.5 + diag(2 * 12) * 0.5
-#' ))
+#' ## Two traits with their own additive-genetic variances and no genetic
+#' ## covariance: vec(bv) ~ N(0, G %x% A) with G = diag(0.6, 0.4). Residual
+#' ## noise is added; one row per (individual, trait).
+#' G <- diag(c(0.6, 0.4))
+#' bv <- t(chol(A)) %*% matrix(rnorm(100 * 2), 100, 2) %*% chol(G)
 #' df <- data.frame(
-#'   species = factor(rep(ped$id, each = 2), levels = ped$id),
-#'   trait   = factor(rep(c("t1", "t2"), times = 12), levels = c("t1", "t2")),
-#'   value   = yvec
+#'   individual = factor(rep(ped$id, each = 2), levels = ped$id),
+#'   trait      = factor(rep(c("t1", "t2"), times = 100)),
+#'   value      = as.vector(t(bv)) + rnorm(100 * 2, sd = 0.6)
 #' )
+#' ## Pass the dense relatedness matrix A directly:
 #' fit <- gllvmTMB(
-#'   value ~ 0 + trait + animal_indep(0 + trait | species, A = A),
-#'   data = df, family = gaussian()
+#'   value ~ 0 + trait + animal_indep(0 + trait | individual, A = A),
+#'   data = df, trait = "trait", unit = "individual",
+#'   cluster = "individual"
 #' )
-#' }
+#' extract_Sigma(fit, level = "phy")$Sigma  # estimated G (diagonal)
 #' @export
+#' @param rho Source strength: a number in `[0,1]` fixes
+#'   `rho * K + (1-rho) * diag(diag(K))` on the legacy-resolved source scale.
+#'   Omitted or explicit `1` preserves the existing model. `NULL` estimates
+#'   strength for one Gaussian structured trait-intercept block with complete
+#'   replicated multivariate observations and no competing ordinary covariance.
+#'   Estimated latent terms require rank one and at least four traits. The same
+#'   strength applies to the entire latent-plus-Psi covariance. This parameter
+#'   is not a variance-share summary. Fixed attenuation and the admitted
+#'   Gaussian estimator have implementation checks; recovery is regime-specific.
 animal_indep <- function(formula, pedigree = NULL, A = NULL, Ainv = NULL,
-                         common = FALSE) {
+                         common = FALSE, rho = 1) {
   invisible(NULL)
 }
 
@@ -221,38 +262,50 @@ animal_indep <- function(formula, pedigree = NULL, A = NULL, Ainv = NULL,
 #' @return See [animal_scalar()].
 #' @seealso [animal_scalar()], [animal_indep()], [phylo_latent()].
 #' @examples
-#' \dontrun{
-#' # Factor-analytic G-matrix (d latent factors plus diagonal Psi).
-#' # Grounded in test-animal-keyword.R.
+#' set.seed(1)
+#' ## Pedigree: ten founders (five sires, five dams) and 90 offspring.
 #' ped <- data.frame(
-#'   id   = paste0("i", 1:12),
-#'   sire = c(rep(NA, 4), rep(c("i1", "i2"), length.out = 8)),
-#'   dam  = c(rep(NA, 4), rep(c("i3", "i4"), length.out = 8))
+#'   id   = paste0("i", 1:100),
+#'   sire = c(rep(NA, 10), sample(paste0("i", 1:5), 90, replace = TRUE)),
+#'   dam  = c(rep(NA, 10), sample(paste0("i", 6:10), 90, replace = TRUE))
 #' )
 #' A <- pedigree_to_A(ped)
-#' yvec <- as.numeric(MASS::mvrnorm(
-#'   1, mu = rep(0, 2 * 12),
-#'   Sigma = kronecker(diag(2), A) * 0.5 + diag(2 * 12) * 0.5
-#' ))
+#' ## Four traits whose additive-genetic covariance is one factor plus a
+#' ## diagonal, G = lambda lambda^T + diag(psi): vec(bv) ~ N(0, G %x% A).
+#' ## Residual noise is added; one row per (individual, trait).
+#' lambda <- c(0.7, 0.6, -0.5, 0.4)
+#' G <- tcrossprod(lambda) + diag(0.2, 4)
+#' bv <- t(chol(A)) %*% matrix(rnorm(100 * 4), 100, 4) %*% chol(G)
 #' df <- data.frame(
-#'   species = factor(rep(ped$id, each = 2), levels = ped$id),
-#'   trait   = factor(rep(c("t1", "t2"), times = 12), levels = c("t1", "t2")),
-#'   value   = yvec
+#'   individual = factor(rep(ped$id, each = 4), levels = ped$id),
+#'   trait      = factor(rep(paste0("t", 1:4), times = 100)),
+#'   value      = as.vector(t(bv)) + rnorm(100 * 4, sd = 0.5)
 #' )
 #' fit <- gllvmTMB(
-#'   value ~ 0 + trait + animal_latent(species, d = 1, pedigree = ped,
-#'                                    unique = TRUE),
-#'   data = df, family = gaussian()
+#'   value ~ 0 + trait + animal_latent(individual, d = 1, pedigree = ped,
+#'                                     unique = TRUE),
+#'   data = df, trait = "trait", unit = "individual",
+#'   cluster = "individual"
 #' )
-#' }
+#' extract_Sigma(fit, level = "phy")$Sigma  # estimated G
 #' @export
+#' @param rho Source strength: a number in `[0,1]` fixes
+#'   `rho * K + (1-rho) * diag(diag(K))` on the legacy-resolved source scale.
+#'   Omitted or explicit `1` preserves the existing model. `NULL` estimates
+#'   strength for one Gaussian structured trait-intercept block with complete
+#'   replicated multivariate observations and no competing ordinary covariance.
+#'   Estimated latent terms require rank one and at least four traits. The same
+#'   strength applies to the entire latent-plus-Psi covariance. This parameter
+#'   is not a variance-share summary. Fixed attenuation and the admitted
+#'   Gaussian estimator have implementation checks; recovery is regime-specific.
 animal_latent <- function(
   id,
   d = 1,
   pedigree = NULL,
   A = NULL,
   Ainv = NULL,
-  unique = FALSE
+  unique = FALSE,
+  rho = 1
 ) {
   invisible(NULL)
 }
@@ -270,77 +323,101 @@ animal_latent <- function(
 #' @return See [animal_scalar()].
 #' @seealso [animal_latent()], [phylo_dep()].
 #' @examples
-#' \dontrun{
-#' # Full unstructured additive-genetic trait covariance (rank = n_traits).
-#' # Grounded in test-animal-keyword.R.
+#' set.seed(1)
+#' ## Pedigree: ten founders (five sires, five dams) and 90 offspring.
 #' ped <- data.frame(
-#'   id   = paste0("i", 1:12),
-#'   sire = c(rep(NA, 4), rep(c("i1", "i2"), length.out = 8)),
-#'   dam  = c(rep(NA, 4), rep(c("i3", "i4"), length.out = 8))
+#'   id   = paste0("i", 1:100),
+#'   sire = c(rep(NA, 10), sample(paste0("i", 1:5), 90, replace = TRUE)),
+#'   dam  = c(rep(NA, 10), sample(paste0("i", 6:10), 90, replace = TRUE))
 #' )
 #' A <- pedigree_to_A(ped)
-#' yvec <- as.numeric(MASS::mvrnorm(
-#'   1, mu = rep(0, 2 * 12),
-#'   Sigma = kronecker(diag(2), A) * 0.5 + diag(2 * 12) * 0.5
-#' ))
+#' ## Two genetically correlated traits: vec(bv) ~ N(0, G %x% A) with an
+#' ## unstructured G. Residual noise is added; one row per (individual, trait).
+#' G <- matrix(c(0.6, 0.3, 0.3, 0.5), 2, 2)
+#' bv <- t(chol(A)) %*% matrix(rnorm(100 * 2), 100, 2) %*% chol(G)
 #' df <- data.frame(
-#'   species = factor(rep(ped$id, each = 2), levels = ped$id),
-#'   trait   = factor(rep(c("t1", "t2"), times = 12), levels = c("t1", "t2")),
-#'   value   = yvec
+#'   individual = factor(rep(ped$id, each = 2), levels = ped$id),
+#'   trait      = factor(rep(c("t1", "t2"), times = 100)),
+#'   value      = as.vector(t(bv)) + rnorm(100 * 2, sd = 0.6)
 #' )
 #' fit <- gllvmTMB(
-#'   value ~ 0 + trait + animal_dep(0 + trait | species, A = A),
-#'   data = df, family = gaussian()
+#'   value ~ 0 + trait + animal_dep(0 + trait | individual, A = A),
+#'   data = df, trait = "trait", unit = "individual",
+#'   cluster = "individual"
 #' )
-#' }
+#' extract_Sigma(fit, level = "phy")$Sigma  # estimated G
 #' @export
-animal_dep <- function(formula, pedigree = NULL, A = NULL, Ainv = NULL) {
+#' @param rho Source strength: a number in `[0,1]` fixes
+#'   `rho * K + (1-rho) * diag(diag(K))` on the legacy-resolved source scale.
+#'   Omitted or explicit `1` preserves the existing model. `NULL` estimates
+#'   strength for one Gaussian structured trait-intercept block with complete
+#'   replicated multivariate observations and no competing ordinary covariance.
+#'   Estimated latent terms require rank one and at least four traits. The same
+#'   strength applies to the entire latent-plus-Psi covariance. This parameter
+#'   is not a variance-share summary. Fixed attenuation and the admitted
+#'   Gaussian estimator have implementation checks; recovery is regime-specific.
+animal_dep <- function(formula, pedigree = NULL, A = NULL, Ainv = NULL, rho = 1) {
   invisible(NULL)
 }
 
-#' Animal-model random slope on a continuous covariate
+#' Animal response-column slopes
 #'
-#' Adds a per-individual random slope on a continuous covariate `x`,
-#' with individual-level slopes correlated according to the additive-
-#' genetic relatedness matrix \eqn{\mathbf A}. Mathematically:
-#' \deqn{\eta_{io} \;\mathrel{{+}{=}}\; \beta_{\text{a}}(i)\, x_{io}, \qquad
-#'       \boldsymbol\beta_{\text{a}} \sim \mathcal{N}\bigl(\mathbf 0,\,
-#'       \sigma^2_{\text{slope}}\,\mathbf A\bigr).}
+#' Adds slope-only predictor deviations across response columns, with an
+#' additive-genetic relationship matrix \eqn{A} relating those columns. If
+#' `B` is the response-column by predictor coefficient matrix, the model is
+#' \deqn{\mathrm{Cov}(\mathrm{vec}(B^\mathsf{T})) =
+#' A \otimes \Sigma_\mathrm{predictor}.}
+#' The RHS must be the response-column factor resolved from `trait =`, and the
+#' pedigree or matrix labels must match its levels. A single `|` estimates a
+#' full predictor covariance; `||` gives separate predictor variances with
+#' zero covariance. The term never adds a random intercept.
 #'
-#' This is the canonical **quantitative-genetic random-regression**
-#' (reaction-norm) model -- heritable variation in the slope on an
-#' environmental gradient. Mathematical parallel to [phylo_slope()];
-#' the engine recycles the same \eqn{\mathbf A^{-1}} prepared by
-#' [animal_scalar()] / [animal_latent()].
+#' This route is covered for Gaussian long-format data with bare finite numeric
+#' predictors. Wide-format column slopes, non-Gaussian responses, transformed
+#' or factor bases, latent predictor covariance, and intervals are not
+#' supported in this release. Use
+#' `extract_Sigma(fit, level = "column_slope")` for
+#' \eqn{\Sigma_\mathrm{predictor}}.
 #'
-#' @param formula An lme4-bar formula of the form `x | id`.
-#' @return See [animal_scalar()].
-#' @seealso [animal_scalar()], [animal_latent()], [phylo_slope()].
+#' Historical non-trait RHS forms remain accepted to preserve existing fits.
+#' They are compatibility behaviour, not the teaching API; new code uses the
+#' resolved response-column factor on the RHS.
+#'
+#' @param formula An lme4-bar formula. With one or more bare predictors and
+#'   the resolved response-column factor on the RHS, `x1 + x2 | trait` is the
+#'   full column-slope covariance alias and `x1 + x2 || trait` is its diagonal
+#'   alias. For one predictor the two bars fit the same `1 x 1` covariance.
+#' @param pedigree,A,Ainv One relatedness input for the column-slope aliases:
+#'   a pedigree, additive-genetic covariance matrix, or its precision.
+#' @return A formula marker; never evaluated.
+#' @seealso [slope()], [phylo_slope()], [kernel_slope()], [spatial_slope()],
+#'   [animal_dep()], [animal_indep()], [extract_Sigma()].
 #' @examples
-#' \dontrun{
-#' # Additive-genetic random regression: one heritable slope variance on a
-#' # continuous covariate x, slopes correlated by the relatedness matrix A.
-#' # Grounded in test-animal-slope-recovery.R.
+#' set.seed(1)
+#' ## Six response columns (e.g. six related lines) whose relatedness is a
+#' ## pedigree-derived additive-genetic matrix A; labels match the trait levels.
 #' ped <- data.frame(
-#'   id   = paste0("i", 1:12),
-#'   sire = c(rep(NA, 4), rep(c("i1", "i2"), length.out = 8)),
-#'   dam  = c(rep(NA, 4), rep(c("i3", "i4"), length.out = 8))
+#'   id   = paste0("line", 1:6),
+#'   sire = c(NA, NA, "line1", "line1", "line3", "line3"),
+#'   dam  = c(NA, NA, "line2", "line2", "line4", "line4")
 #' )
 #' A <- pedigree_to_A(ped)
-#' df <- expand.grid(
-#'   species = factor(rownames(A), levels = rownames(A)),
-#'   trait   = factor(c("t1", "t2", "t3")),
-#'   rep     = 1:5
-#' )
-#' df$x <- rnorm(nrow(df))
-#' df$value <- rnorm(nrow(df))
+#' ## Column-specific slopes on two predictors: Cov(vec(t(B))) = A %x% Sigma.
+#' Sigma <- matrix(c(0.5, 0.2, 0.2, 0.3), 2, 2)
+#' B <- t(chol(A)) %*% matrix(rnorm(6 * 2), 6, 2) %*% chol(Sigma)
+#' dat <- expand.grid(unit = factor(1:40), trait = factor(ped$id, levels = ped$id))
+#' dat$elevation <- rnorm(nrow(dat))
+#' dat$forest_cover <- rnorm(nrow(dat))
+#' col <- as.integer(dat$trait)
+#' dat$value <- B[col, 1] * dat$elevation + B[col, 2] * dat$forest_cover +
+#'   rnorm(nrow(dat), sd = 0.5)
 #' fit <- gllvmTMB(
-#'   value ~ 0 + trait + animal_slope(x | species, A = A),
-#'   data = df, unit = "species", cluster = "species"
+#'   value ~ 0 + trait + animal_slope(elevation + forest_cover | trait, A = A),
+#'   data = dat, trait = "trait", unit = "unit"
 #' )
-#' }
+#' extract_Sigma(fit, level = "column_slope")$Sigma
 #' @export
-animal_slope <- function(formula) {
+animal_slope <- function(formula, pedigree = NULL, A = NULL, Ainv = NULL) {
   invisible(NULL)
 }
 
@@ -513,12 +590,10 @@ pedigree_to_A <- function(pedigree) {
 #' this is the canonical fast path for wild pedigrees with
 #' \eqn{n_{\text{individuals}} > 500}. The construction is the standard
 #' Henderson (1976) / Quaas (1976) sparse inverse: inbreeding coefficients
-#' \eqn{F} are derived from the dense tabular relatedness matrix, then
-#' \eqn{\mathbf A^{-1}} is assembled directly from the per-individual
-#' Mendelian sampling variances. It reproduces
-#' `MCMCglmm::inverseA(pedigree)$Ainv` exactly. (The current inbreeding
-#' step forms the dense \eqn{n \times n} \eqn{\mathbf A}, an \eqn{O(n^2)}
-#' one-time cost.)
+#' \eqn{F} are computed by the Meuwissen & Luo (1992) walk (no dense
+#' \eqn{\mathbf A} on the fit path), then \eqn{\mathbf A^{-1}} is assembled
+#' from the per-individual Mendelian sampling variances. It reproduces
+#' `MCMCglmm::inverseA(pedigree)$Ainv` exactly.
 #'
 #' Usage:
 #'
@@ -550,13 +625,15 @@ pedigree_to_A <- function(pedigree) {
 #' Quaas, R. L. (1976). Computing the diagonal elements and inverse of a
 #' large numerator relationship matrix. *Biometrics* 32: 949-953.
 #'
+#' Meuwissen, T. H. E., and Luo, Z. (1992). Computing inbreeding coefficients
+#' in large populations. *Genetics Selection Evolution* 24: 305-313.
+#'
 #' Hadfield, J. D. (2010). MCMC methods for multi-response generalised
 #' linear mixed models: the MCMCglmm R package. *Journal of Statistical
 #' Software* 33: 1-22. (The `MCMCglmm::inverseA()` reference
 #' implementation this builder is validated against.)
 #' @export
 #' @examples
-#' \dontrun{
 #' ped <- data.frame(
 #'   id   = paste0("i", 1:6),
 #'   sire = c(NA, NA, "i1", "i1", "i3", "i3"),
@@ -565,7 +642,8 @@ pedigree_to_A <- function(pedigree) {
 #' Ainv <- pedigree_to_Ainv_sparse(ped)
 #' class(Ainv)  # "dgCMatrix"
 #' dim(Ainv)    # 6 x 6
-#' }
+#' ## The sparse precision inverts the dense relationship matrix:
+#' all.equal(as.matrix(solve(Ainv)), pedigree_to_A(ped), check.attributes = FALSE)
 pedigree_to_Ainv_sparse <- function(pedigree) {
   if (!is.data.frame(pedigree) || ncol(pedigree) < 3L) {
     cli::cli_abort(c(

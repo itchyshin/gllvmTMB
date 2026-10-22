@@ -24,9 +24,10 @@ add_utm_columns <- function(
   units = c("km", "m")
 ) {
   if (!requireNamespace("sf", quietly = TRUE)) {
-    cli::cli_abort(
-      "The {.pkg sf} package must be installed to transform coordinates."
-    )
+    cli::cli_abort(c(
+      "The {.pkg sf} package must be installed to transform coordinates.",
+      ">" = "Run {.code install.packages(\"sf\")}, then retry."
+    ))
   }
   .gllvm_validate_coordinate_names(dat, ll_names, "ll_names")
   if (
@@ -34,7 +35,10 @@ add_utm_columns <- function(
       length(utm_names) != 2L ||
       anyDuplicated(utm_names)
   ) {
-    cli::cli_abort("{.arg utm_names} must contain two distinct output names.")
+    cli::cli_abort(c(
+      "{.arg utm_names} must contain two distinct output names.",
+      ">" = "Pass e.g. {.code utm_names = c(\"X\", \"Y\")} (the default)."
+    ))
   }
   if (any(utm_names %in% names(dat))) {
     cli::cli_abort(
@@ -50,9 +54,10 @@ add_utm_columns <- function(
   units <- match.arg(units)
   coordinates <- as.matrix(dat[, ll_names, drop = FALSE])
   if (!is.numeric(coordinates) || any(!is.finite(coordinates))) {
-    cli::cli_abort(
-      "Longitude and latitude columns must be finite numeric values."
-    )
+    cli::cli_abort(c(
+      "Longitude and latitude columns must be finite numeric values.",
+      ">" = "Check {.arg ll_names} points at the right columns, and drop or impute rows with NA/Inf coordinates first."
+    ))
   }
   points <- sf::st_as_sf(dat, coords = ll_names, crs = ll_crs, remove = FALSE)
   transformed <- sf::st_coordinates(sf::st_transform(points, utm_crs))
@@ -80,9 +85,10 @@ get_crs <- function(dat, ll_names = c("longitude", "latitude")) {
       any(longitude < -180 | longitude > 180) ||
       any(latitude < -90 | latitude > 90)
   ) {
-    cli::cli_abort(
-      "Longitude must lie in [-180, 180] and latitude in [-90, 90]."
-    )
+    cli::cli_abort(c(
+      "Longitude must lie in [-180, 180] and latitude in [-90, 90].",
+      ">" = "Check {.arg ll_names} names the longitude column first and the latitude column second, in that order."
+    ))
   }
   zone <- floor((longitude + 180) / 6) + 1L
   zone[zone == 61L] <- 60L
@@ -117,7 +123,10 @@ get_crs <- function(dat, ll_names = c("longitude", "latitude")) {
 
 .gllvm_validate_coordinate_names <- function(dat, coordinate_names, argument) {
   if (!is.data.frame(dat) || !nrow(dat)) {
-    cli::cli_abort("{.arg dat} must be a non-empty data frame.")
+    cli::cli_abort(c(
+      "{.arg dat} must be a non-empty data frame.",
+      ">" = "Pass the data frame that holds your coordinate columns, with at least one row."
+    ))
   }
   if (
     !is.character(coordinate_names) ||
@@ -125,9 +134,10 @@ get_crs <- function(dat, ll_names = c("longitude", "latitude")) {
       anyDuplicated(coordinate_names) ||
       !all(coordinate_names %in% names(dat))
   ) {
-    cli::cli_abort(
-      "{.arg {argument}} must name two distinct columns in {.arg dat}."
-    )
+    cli::cli_abort(c(
+      "{.arg {argument}} must name two distinct columns in {.arg dat}.",
+      ">" = "Pass two column names that both exist in {.arg dat}, e.g. {.code ll_names = c(\"longitude\", \"latitude\")}."
+    ))
   }
   invisible(NULL)
 }

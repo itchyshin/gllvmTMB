@@ -836,30 +836,17 @@ rownames(trunc) <- c("0.5", "1.0")
   result in a review of spatial-resolution choices in species distribution
   modelling.
 
-## For the record
+## Evidence behind the results
 
-Everything on this page is built from replicate-level result files tracked in
-the repository, so no sentence above can drift from the numbers beneath it. For
-anyone reproducing or extending the work:
+Every numerical statement on this page is calculated from retained
+replicate-level results. The evidence comprises the three arm-size designs,
+the sampling-biased opportunistic-arm study, the surrogate-error reversal,
+and the correlation-length accuracy grid described above.
 
-- **Simulation scripts and per-replicate results:** `dev/isdm-precision/`.
-  `generate-arm-weighting-results.R` produces the three-design run,
-  `generate-biased-po-results.R` the biased-opportunistic-arm run,
-  `generate-surrogate-error-results.R` the reversal run, and
-  `generate-cor-length-grid.R` the recipe-accuracy grid. Each writes the
-  matching `.rds` this article reads.
-- **A worked case of the training/prediction scaling defect**, with measured
-  magnitudes, is in `dev/isdm-precision/READER-BLOCKS.md` (Block 5).
-- **Changes since earlier versions of this page**, recorded so that anyone
-  holding an older copy can see what moved: the correlation-length recipe used
-  to return `NA` silently when it could not measure `phi`, and now stops with a
-  message naming which of the two failure modes occurred; the recipe-accuracy
-  experiment used to vary map width and cell spacing together and so could not
-  separate them, and now crosses them; the claim that the recipe's error is
-  "always downward" was a statement about a mean over surfaces and has been
-  replaced with the per-surface spread reported above; the paired-comparison
-  count is now reported by distance from the truth as well as by sign, and the
-  smaller count is the one quoted; the reversal table gained the
-  surrogate-error-only row that isolates the mechanism; and an earlier version
-  of this article recommended matching covariate resolution to positional
-  precision, which Gábor et al. (2022) tested and found does not work.
+The correlation-length study crosses map width with cell spacing because the
+two failure modes are different. Results are reported across individual
+surfaces rather than only as a mean, and paired comparisons use distance from
+the truth as well as sign. The surrogate-error-only comparison isolates the
+mechanism behind the reversal. Finally, this page does not recommend matching
+covariate resolution to positional precision: Gábor et al. (2022) tested that
+idea and found that coarsening does not remove positional-error bias.

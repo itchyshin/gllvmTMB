@@ -5,7 +5,7 @@ test_that("G2c three-visit fixture contract validates without fitting", {
   out <- tempfile("g2c-validate-")
   result <- system2(
     file.path(R.home("bin"), "Rscript"),
-    c("--vanilla", script, "--mode=validate", paste0("--output=", out), paste0("--pkg=", pkg_root)),
+    shQuote(c("--vanilla", script, "--mode=validate", paste0("--output=", out), paste0("--pkg=", pkg_root))),
     stdout = TRUE, stderr = TRUE
   )
   expect_true(is.null(attr(result, "status")) || identical(attr(result, "status"), 0L))

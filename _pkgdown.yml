@@ -4,8 +4,9 @@ url: https://itchyshin.github.io/gllvmTMB/
 # Matches drmTMB's _pkgdown.yml convention.
 destination: pkgdown-site
 
-# D-41: a prominent, site-wide EXPERIMENTAL callout on the home sidebar,
-# in addition to the README badge + callout and the DESCRIPTION line.
+# A visible, concise safety note belongs beside the home page. Detailed
+# validation records belong on the linked limits page, not in a reader's first
+# screen.
 home:
   sidebar:
     structure: [experimental, links, license, community, citation, authors, dev]
@@ -13,14 +14,13 @@ home:
       experimental:
         title: Status
         text: >-
-          **Experimental — use at your own risk.** Not complete, not fully
-          human-verified, needs extensive further validation. CRAN availability
-          is not scientific maturity. Point estimates are the primary
-          inferential output, but their evidence is route- and regime-specific.
-          Broad package-wide interval coverage is not certified; one
-          narrow two-sided Gaussian total-variance profile regime has a
-          documented 0.94 coverage floor. Read [Current limitations and
-          boundaries](articles/current-limits.html) before choosing a model.
+          **Experimental development documentation for 0.8.0.9000.** The
+          planned first CRAN submission is the earlier, bounded 0.7.1 source.
+          Start with a documented example, check the fitted model, and read
+          [Current limitations and
+          boundaries](articles/current-limits.html) before reporting a result.
+          A model that converges alone does not establish that every extension
+          is reliable.
 template:
   bootstrap: 5
   bootswatch: flatly
@@ -35,20 +35,24 @@ template:
 
 navbar:
   structure:
-    left:  [intro, model_guides, sdm, concepts, diagnostics, reference, news]
+    left:  [intro, general_guides, sdm, pcm, concepts_diagnostics, advanced_evidence, reference, news]
     right: [search, github]
   components:
     intro:
       text: Get started
       menu:
-      - text: Get started with gllvmTMB
+      - text: Start with shared versus response-specific variation
         href: articles/gllvmTMB.html
+      - text: First Gaussian morphology model
+        href: articles/morphometrics.html
+      - text: Read covariance, correlation, and communality
+        href: articles/covariance-correlation.html
       - text: Current limitations and boundaries
         href: articles/current-limits.html
       - text: Function map and cheat sheet
         href: articles/function-map-cheatsheet.html
-    model_guides:
-      text: Model Guides
+    general_guides:
+      text: General model guides
       menu:
       - text: First Gaussian morphology model
         href: articles/morphometrics.html
@@ -56,47 +60,62 @@ navbar:
         href: articles/behavioural-syndromes.html
       - text: Behavioural reaction norms with random slopes
         href: articles/random-regression-reaction-norms.html
+      - text: Temporal latent scores
+        href: articles/temporal-ar1.html
       - text: Choosing latent rank
         href: articles/model-selection-latent-rank.html
+      - text: Explaining latent ecological axes with predictors
+        href: articles/explaining-latent-ecological-axes.html
       - text: Explore loading constraints
         href: articles/lambda-constraint-suggest.html
-      - text: Rare items and runaway estimates
-        href: articles/mspl-binary-jsdm.html
+      - text: Cross-family correlations and predictors
+        href: articles/cross-family-correlations.html
+      - text: Choose a response family
+        href: articles/response-families.html
+      - text: Unordered categories with multinomial()
+        href: articles/multinomial.html
       - text: Multivariate spatial models
         href: articles/spatial-models.html
-      - text: Phylogenetic covariance among traits
-        href: articles/phylogenetic-gllvm.html
-      - text: Phylogenetic ordinal and nominal PGLMMs
-        href: articles/phylogenetic-categorical-pglmm.html
       - text: Handling missing data
         href: articles/missing-data.html
-      - text: Structured random slopes for non-Gaussian traits
-        href: articles/random-slopes-nongaussian.html
+      - text: "Strength of a known source"
+        href: articles/structured-source-strength.html
+    pcm:
+      text: Phylogenetic comparative models
+      menu:
+      - text: "Where does the phylogeny belong?"
+        href: articles/where-does-the-tree-go.html
+      - text: Phylogenetic covariance among traits
+        href: articles/phylogenetic-gllvm.html
+      - text: Cross-lineage plant--bumblebee covariance
+        href: articles/plant-bumblebee-coevolution.html
+      - text: Phylogenetic ordinal and nominal PGLMMs
+        href: articles/phylogenetic-categorical-pglmm.html
     sdm:
       text: Species Distribution Models
       menu:
       - text: "Start here: which SDM do your data allow?"
         href: articles/sdm-start-here.html
+      - text: Joint intensity from opportunistic records
+        href: articles/gbif-joint-intensity.html
       - text: Joint species distribution model
         href: articles/joint-sdm.html
       - text: When a rare species breaks the JSDM
         href: articles/rare-species-jsdm.html
-      - text: Joint intensity from opportunistic records
-        href: articles/gbif-joint-intensity.html
       - text: Integrating records with a designed survey
         href: articles/integrated-two-source-example.html
+      - text: What do repeated visits add?
+        href: articles/integrated-repeated-visits.html
+      - text: More than two sources
+        href: articles/integrated-multi-source-example.html
       - text: An integrated SDM end to end, and the map at the end of it
         href: articles/isdm-canada-warbler.html
       - text: When one data source knows where it is and the other does not
         href: articles/isdm-spatial-precision.html
       - text: How much survey do you need?
         href: articles/integrated-survey-design.html
-      - text: More than two sources
-        href: articles/integrated-multi-source-example.html
-      - text: What do repeated visits add?
-        href: articles/integrated-repeated-visits.html
-    concepts:
-      text: Concepts
+    concepts_diagnostics:
+      text: Concepts and diagnostics
       menu:
       - text: What is a site? The unit of analysis
         href: articles/unit-of-analysis.html
@@ -104,19 +123,10 @@ navbar:
         href: articles/gllvm-vocabulary.html
       - text: Covariance and correlation
         href: articles/covariance-correlation.html
-      - text: Cross-family correlations (incl. nominal)
-        href: articles/cross-family-correlations.html
       - text: Formula keyword grid
         href: articles/api-keyword-grid.html
       - text: Response-specific predictor effects
         href: articles/fixed-effect-zero-constraints.html
-      - text: Choose a response family
-        href: articles/response-families.html
-      - text: Unordered categories with multinomial()
-        href: articles/multinomial.html
-    diagnostics:
-      text: Diagnostics
-      menu:
       - text: Screen binary traits before fitting
         href: articles/pre-fit-response-screening.html
       - text: Can I trust this fit?
@@ -127,8 +137,15 @@ navbar:
         href: articles/profile-likelihood-ci.html
       - text: Common pitfalls
         href: articles/pitfalls.html
-      - text: Validation oracles
+    advanced_evidence:
+      text: Specialist methods and evidence
+      menu:
+      - text: "Rare binary items and runaway estimates (experimental)"
+        href: articles/mspl-binary-jsdm.html
+      - text: "How gllvmTMB is checked and what those checks miss"
         href: articles/validation-oracles.html
+      - text: "Structured random slopes for non-Gaussian traits: current evidence and limits"
+        href: articles/random-slopes-nongaussian.html
 
 articles:
   - title: Getting started
@@ -137,19 +154,24 @@ articles:
     - articles/current-limits
     - articles/function-map-cheatsheet
 
-  - title: Model Guides
+  - title: General model guides
+    desc: >
+      Reusable multivariate models and methods, starting with continuous
+      Gaussian traits before choosing a response-specific observation model.
     contents:
     - articles/morphometrics
     - articles/behavioural-syndromes
     - articles/random-regression-reaction-norms
+    - articles/temporal-ar1
     - articles/model-selection-latent-rank
+    - articles/explaining-latent-ecological-axes
     - articles/lambda-constraint-suggest
-    - articles/mspl-binary-jsdm
+    - articles/cross-family-correlations
+    - articles/response-families
+    - articles/multinomial
     - articles/spatial-models
-    - articles/phylogenetic-gllvm
-    - articles/phylogenetic-categorical-pglmm
     - articles/missing-data
-    - articles/random-slopes-nongaussian
+    - articles/structured-source-strength
 
   - title: Species distribution models
     desc: >
@@ -158,35 +180,52 @@ articles:
       experimental.
     contents:
     - articles/sdm-start-here
+    - articles/gbif-joint-intensity
     - articles/joint-sdm
     - articles/rare-species-jsdm
-    - articles/isdm-canada-warbler
-    - articles/isdm-spatial-precision
-    - articles/gbif-joint-intensity
     - articles/integrated-two-source-example
     - articles/integrated-repeated-visits
-    - articles/integrated-survey-design
     - articles/integrated-multi-source-example
+    - articles/isdm-canada-warbler
+    - articles/isdm-spatial-precision
+    - articles/integrated-survey-design
 
-  - title: Concepts
+  - title: Phylogenetic comparative models
+    desc: >
+      Stacked-trait models that use a known phylogeny as a relationship source;
+      this is not a general single-response comparative-methods guide.
+    contents:
+    - articles/where-does-the-tree-go
+    - articles/phylogenetic-gllvm
+    - articles/plant-bumblebee-coevolution
+    - articles/phylogenetic-categorical-pglmm
+
+  - title: Concepts and diagnostics
+    desc: >
+      Supporting concepts, syntax, and fit checks that readers use across all
+      three model routes.
     contents:
     - articles/unit-of-analysis
     - articles/gllvm-vocabulary
     - articles/covariance-correlation
-    - articles/cross-family-correlations
     - articles/api-keyword-grid
     - articles/fixed-effect-zero-constraints
-    - articles/response-families
-    - articles/multinomial
-
-  - title: Diagnostics and validation
-    contents:
     - articles/pre-fit-response-screening
     - articles/fit-diagnostics
     - articles/convergence-start-values
     - articles/profile-likelihood-ci
     - articles/pitfalls
+
+  - title: Specialist methods and evidence
+    desc: >
+      Specialist case studies and evidence notes, not a beginner route. The
+      rare-binary example uses an opt-in experimental estimator; the checking
+      guide explains what has and has not been evaluated; and the structured-slope
+      page states its current evidence and limits.
+    contents:
+    - articles/mspl-binary-jsdm
     - articles/validation-oracles
+    - articles/random-slopes-nongaussian
 
 reference:
   - title: Start here
@@ -204,6 +243,15 @@ reference:
     - latent
     - indep
     - dep
+    - temporal_latent
+
+  - title: Temporal covariance helpers
+    desc: Bounded Gaussian temporal forecasting, direct profiles, bootstrap, and candidate comparison.
+    contents:
+    - forecast_temporal
+    - profile_temporal
+    - bootstrap_temporal
+    - compare_temporal
 
   - title: Advanced formula keywords and shorthands
     desc: First-class mode-dispatch wrappers; the bar form (e.g. phylo(0 + trait | species, mode = ...)) is current, while the legacy bare-alias form is soft-deprecated. Public articles prefer the explicit core keywords
@@ -235,6 +283,7 @@ reference:
       current reader-facing boundary.
     contents:
     - Families
+    - isdm_source
     - isdm_sources
     - Beta
     - lognormal
@@ -259,6 +308,7 @@ reference:
     - betabinomial
     - delta_beta
     - ordinal_probit
+    - ordinal_logit
     - multinomial
 
   - title: Predictor-model families (modelled missing predictors)
@@ -309,10 +359,14 @@ reference:
     - extract_phylo_signal
     - extract_proportions
     - extract_ordination
+    - extract_latent_scores
+    - ordination_uncertainty
     - extract_loadings
     - extract_lv_effects
+    - getREsd
     - extract_rotated_loadings_table
     - extract_cutpoints
+    - extract_temporal
 
   - title: Methods and plots on fitted models
     desc: Standard summaries, predictions, simulations, confidence intervals, and current plotting entry point
@@ -325,11 +379,14 @@ reference:
     - logLik.gllvmTMB_multi
     - fitted.gllvmTMB_multi
     - deviance.gllvmTMB_multi
+    - sigma.gllvmTMB_multi
     - gllvmTMB_multi-vcov
     - confint.gllvmTMB_multi
     - tidy.gllvmTMB_multi
+    - reexports
     - simulate.gllvmTMB_multi
     - predict.gllvmTMB_multi
+    - update.gllvmTMB_multi
     - predict_missing
     - imputed
     - imputed.gllvmTMB
@@ -339,6 +396,14 @@ reference:
     - plot_Sigma_table
     - plot_Sigma_heatmap
     - plot_Sigma_comparison
+
+  - title: Model comparison and latent-rank selection
+    desc: Compare fitted models and choose an ordinary latent rank with the stated boundary assumptions.
+    contents:
+    - anova.gllvmTMB_multi
+    - chibar2_pvalue
+    - variance_lrt
+    - select_lv
 
   - title: First-line diagnostics and uncertainty
     desc: Start here before interpreting covariance, ordination, or interval estimates
@@ -419,8 +484,7 @@ reference:
       Only the functions listed here are deprecated; the broader animal, phylogenetic, spatial and
       kernel APIs remain current. The scalar family (one shared variance) was soft-deprecated as of
       0.5.0 and is now indep(..., common = TRUE). The *_unique diagonal companion was soft-deprecated
-      earlier, as of 0.2.0, and folds into latent(). The standalone slope keywords are superseded by
-      the reduced-rank latent / indep / dep slope forms. Existing calls keep working and warn once
+      earlier, as of 0.2.0, and folds into latent(). Existing compatibility calls keep working and warn once
       per session.
     contents:
     - scalar
@@ -433,8 +497,24 @@ reference:
     - phylo_unique
     - spatial_unique
     - kernel_unique
-    - animal_slope
+
+  - title: Response-column slope helpers
+    desc: Gaussian long-format predictor-only slope covariance; the response-column factor on the right of | is the relationship axis.
+    contents:
+    - slope
     - phylo_slope
+    - animal_slope
+    - kernel_slope
+    - spatial_slope
+
+  - title: Response-column coefficient helpers
+    desc: Gaussian long- and wide-format random intercept/slope bases across response columns; IID, phylogenetic, animal, dense-kernel, or spatial sources.
+    contents:
+    - column_coef
+    - phylo_coef
+    - animal_coef
+    - kernel_coef
+    - spatial_coef
 
   - title: Deprecated and compatibility aliases
     desc: Soft-deprecated spellings and gllvm-style accessors retained for migration; new code should prefer the canonical keywords and extract_*() functions
@@ -459,12 +539,12 @@ reference:
     - getResidualCov
     - ordiplot
 
-## news.releases intentionally omitted until the maintainer creates a 0.6.0 tag
-## and GitHub release. The current site is pre-release documentation.
+## news.releases is omitted while this site documents the unreleased
+## 0.8.0.9000 development source.
 ##
 ## NOT 0.5.0: the premature v0.5.0 tag was DROPPED. 0.5 was the
-## "cover-everything" dev cycle, never a release; the first CRAN release is
-## 0.6.0 (D-66). Updated at the M3 freeze, 2026-07-22.
+## "cover-everything" dev cycle, never a release; the planned first CRAN
+## submission is the bounded historical 0.7.1 source (2026-09-27).
 ##
 ## In the meantime, the navbar "News" dropdown will show only the
-## "Changelog" entry (NEWS.md) — which is the correct pre-release UX.
+## "Changelog" entry (NEWS.md), which is the correct development-site path.

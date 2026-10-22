@@ -187,6 +187,9 @@ covariance for any orthogonal $\mathbf Q$. The covariance is
 rotation-invariant; the loading coordinates are not. Rotation invariance does
 not guarantee precise estimation, so check fit health and uncertainty
 separately.
+The first ordinary `latent()` use in a session prints a one-time warning that
+`latent()` includes per-trait Psi by default; `suggest_lambda_constraint()`
+triggers it here.
 
 ```{r pitfall-4}
 # Sigma is rotation-invariant

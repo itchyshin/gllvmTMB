@@ -100,7 +100,7 @@ suggest_lambda_constraint <- function(
     "profile_retention"
   ),
   trait = "trait",
-  unit = "site",
+  unit = NULL,
   threshold = 0.30, # Comrey-Lee convention on standardised loading
   retention_prob = 0.90, # Unified across `wald_retention` and `profile_retention`:
   #   * wald_retention: pin if Pr(|rho| > threshold) < retention_prob
@@ -166,6 +166,19 @@ suggest_lambda_constraint <- function(
         "{.arg data} is required when {.arg fit_or_formula} is a formula."
       )
     }
+    ## Wide `traits(a, b, ...) ~ ...` formulas: expand to the long format
+    ## the same way gllvmTMB() does (#1410); the trait column is then the
+    ## synthetic `trait` factor of the rewritten data.
+    if (is_traits_lhs(fit_or_formula)) {
+      rewrite <- rewrite_traits_lhs(
+        formula = fit_or_formula,
+        data = data,
+        eval_env = environment(fit_or_formula)
+      )
+      fit_or_formula <- rewrite$formula_long
+      data <- rewrite$data_long
+      trait <- "trait"
+    }
     ## Run the canonical-keyword + brms-sugar rewriter so that formulas
     ## using `latent()` / `unique()` / `phylo_latent()` etc. are
     ## recognised by parse_multi_formula() (which only knows the
@@ -178,6 +191,13 @@ suggest_lambda_constraint <- function(
       function(cs) deparse(cs$group),
       character(1)
     )
+    ## #1196 (2026-09-02 full-suite follow-up): `unit` has no default, so
+    ## resolve it via the same staged rule as gllvmTMB() itself -- only
+    ## needed when level == "B" (the between-unit tier), since the
+    ## within-unit tier always targets the fixed "site_species" group.
+    if (level == "B") {
+      unit <- .gllvmTMB_resolve_unit_staged(unit, data)
+    }
     target_group <- if (level == "B") unit else "site_species"
     idx <- which(kinds == "rr" & groups == target_group)
     if (length(idx) == 0L) {
@@ -188,7 +208,10 @@ suggest_lambda_constraint <- function(
     cs <- parsed$covstructs[[idx[1]]]
     K <- as.integer(cs$extra$d %||% 1L)
     if (!trait %in% names(data)) {
-      cli::cli_abort("Column {.val {trait}} not found in {.arg data}.")
+      cli::cli_abort(c(
+        "Column {.val {trait}} not found in {.arg data}.",
+        ">" = "Pass the correct trait column name via {.arg trait = ...}."
+      ))
     }
     tcol <- data[[trait]]
     trait_names <- if (is.factor(tcol)) {
@@ -547,7 +570,7 @@ suggest_lambda_constraints <- function(
   level = "unit",
   methods = c("varimax_threshold", "wald_retention"),
   trait = "trait",
-  unit = "site",
+  unit = NULL,
   threshold = 0.30,
   retention_prob = 0.90,
   sigma_d2 = 1,

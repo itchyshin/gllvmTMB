@@ -8,9 +8,9 @@ gllvmTMB(
   formula,
   data,
   trait = "trait",
-  unit = "site",
-  unit_obs = "site_species",
-  cluster = "species",
+  unit = NULL,
+  unit_obs = NULL,
+  cluster = NULL,
   cluster2 = NULL,
   family = gaussian(),
   weights = NULL,
@@ -32,14 +32,18 @@ gllvmTMB(
   ci_seed = 0L,
   site = NULL,
   species = NULL,
-  estimator = c("ml", "mspl")
+  estimator = c("ml", "mspl"),
+  column_data = NULL
 )
 }
 \arguments{
 \item{formula}{A glmmTMB-style formula, e.g.
 \code{value ~ 0 + trait + (0 + trait):env_temp + (0 + trait):env_precip}.
 Fixed effects and any of the three-mode grid covstructs above are
-supported (plus \code{\link[=phylo_slope]{phylo_slope()}}, \code{\link[=animal_slope]{animal_slope()}}, and \code{\link[=meta_V]{meta_V()}}).
+supported (plus \code{\link[=slope]{slope()}}, \code{\link[=phylo_slope]{phylo_slope()}}, \code{\link[=animal_slope]{animal_slope()}},
+\code{\link[=kernel_slope]{kernel_slope()}}, \code{\link[=spatial_slope]{spatial_slope()}}, \code{\link[=column_coef]{column_coef()}}, \code{\link[=phylo_coef]{phylo_coef()}},
+\code{\link[=animal_coef]{animal_coef()}}, \code{\link[=kernel_coef]{kernel_coef()}}, \code{\link[=spatial_coef]{spatial_coef()}}, and
+\code{\link[=meta_V]{meta_V()}}).
 
 An \code{offset()} term is supported for \strong{count responses only} — \code{poisson()},
 \code{nbinom1()}, \code{nbinom2()}, \code{truncated_poisson()}, and
@@ -78,28 +82,44 @@ still error; explicitly modelled missing predictors use \code{mi(x)} with
 factor (the "unit" dimension of the unit × trait response matrix).
 Examples: \code{"site"} for site × species data, \code{"individual"} for
 behavioural-syndrome data, \code{"species"} for PGLLVM, \code{"paper"} for
-systematic mapping. Default \code{"site"}.}
+systematic mapping. Required — every dataset has its own natural
+sampling-unit column, and \code{\link[=gllvmTMB]{gllvmTMB()}} aborts naming \code{unit = ...} if
+it is omitted and \code{data} has no \code{"site"} column to fall back to.
+Omitting \code{unit} when \code{data} has a \code{"site"} column still works via a
+deprecated implicit fallback (a one-time warning); pass
+\code{unit = "site"} explicitly to silence it. The fallback remains for
+now; a future release will require \code{unit}.}
 
-\item{unit_obs}{Name of the column holding the \strong{within-unit}
+\item{unit_obs}{Optional. Name of the column holding the \strong{within-unit}
 grouping factor — one level per (unit, replicate) cell — used by
 \code{latent(0 + trait | unit_obs, ...)} and
 \code{indep(0 + trait | unit_obs)} for the W-tier covariance.
-Default \code{"site_species"} (the conventional name in joint species
-distribution modelling; safe for site × species data). For other
-domains pass e.g. \code{unit_obs = "obs"} for behavioural syndromes.}
+Default \code{NULL}, which resolves to \code{"site_species"} (the conventional
+name in joint species distribution modelling; safe for site × species
+data). If your data has no such column, omit \code{unit_obs}; the engine
+synthesises it from \code{unit} × \code{cluster}. For other domains pass e.g.
+\code{unit_obs = "obs"} for behavioural syndromes. If supplied but no
+covariance keyword uses that column, \code{\link[=gllvmTMB]{gllvmTMB()}} warns; omit the
+argument or use the column in the intended covariance keyword.}
 
-\item{cluster}{Name of the column holding the \strong{third grouping}
-factor (the "cluster" slot). When the column name matches the
-row/column names of \code{phylo_vcv} (or the tip labels of
+\item{cluster}{Optional. Name of the column holding the \strong{third
+grouping} factor (the "cluster" slot). When the column name matches
+the row/column names of \code{phylo_vcv} (or the tip labels of
 \code{phylo_tree}), this slot also drives the phylogenetic random
 effects (\code{phylo_latent}, \code{phylo_scalar}, \code{phylo_indep},
-\code{phylo_slope}). When the column does \strong{not} match a phylogenetic
+and the historical non-trait-RHS \code{phylo_slope} route). The
+response-column form \code{phylo_slope(x | trait, tree = tree)} instead takes
+its column axis from the parsed RHS and does not use \code{cluster}. When the
+column does \strong{not} match a phylogenetic
 correlation, the slot still functions as a regular crossed/nested
 third grouping (e.g. \code{cluster = "population"} for 3-level
 personality data, \code{cluster = "study"} for multi-study
-meta-analysis). Default \code{"species"}. For datasets with no third
-grouping the column may be absent from \code{data}; the engine will
-synthesise a placeholder.
+meta-analysis). Default \code{NULL}, which resolves to \code{"species"}. For
+datasets with no third grouping the column may be absent from \code{data}
+entirely (with or without passing \code{cluster}); the engine will
+synthesise a placeholder. If supplied but no covariance keyword uses
+that column, \code{\link[=gllvmTMB]{gllvmTMB()}} warns; omit the argument or use the column in
+the intended covariance keyword.
 
 The engine does \strong{not} enforce nesting between \code{unit_obs},
 \code{unit}, and \code{cluster} — crossed and nested designs both fit. Two
@@ -132,8 +152,9 @@ column matches).}
 \item{family}{A \code{family} object. The multivariate engine
 (formulas with \code{latent()}, \code{indep()}, etc.) supports \code{gaussian()},
 \code{binomial()} (logit / probit / cloglog), \code{poisson()} (log link),
-\code{\link[=ordinal_probit]{ordinal_probit()}} (the gllvmTMB-native ordinal threshold family
-with sigma_d = 1 fixed exactly; no delta-method approximation),
+\code{\link[=ordinal_probit]{ordinal_probit()}} and \code{\link[=ordinal_logit]{ordinal_logit()}} (the gllvmTMB-native ordinal
+threshold families with sigma_d fixed exactly -- 1 for probit,
+pi^2/3 for logit; no delta-method approximation),
 \code{lognormal()} (log link), \code{Gamma(link = "log")},
 \code{nbinom2()} (NB2 negative binomial; log link),
 \code{nbinom1()} (NB1 negative binomial; log link),
@@ -242,7 +263,8 @@ nodes natively, using only \pkg{ape} and \pkg{Matrix} -- \strong{no
 \code{MCMCglmm} dependency}. The construction is the deterministic
 Hadfield & Nakagawa (2010) sparse phylogenetic inverse (appendix
 eqs. 26-29), adopted from that method and ported from the sister
-package drmTMB (see \code{inst/COPYRIGHTS}). The result is \verb{~5n}
+package drmTMB. Provenance is recorded in the package's COPYRIGHTS
+file. The result is \verb{~5n}
 non-zeros for an \code{n}-tip tree, vs \code{n^2} for the dense path. \strong{This is
 the recommended path} at any \code{n_species}; the speedup grows to ~24× at
 \code{n_species = 1000}.}
@@ -255,8 +277,9 @@ matrices are available from a prior stage of estimation.}
 \code{unit_obs} (plus \code{phy}, \code{spde} for structural levels), each an
 \verb{n_traits × d} matrix of confirmatory loading constraints
 (galamm-style). \code{NA} entries are estimated; numerical entries are
-pinned. Upper-triangle entries are silently ignored — the engine's
-lower-triangular parameterisation already fixes those at zero.
+pinned. Upper-triangle zeros are already structural zeros and are
+accepted. A non-zero upper-triangle pin is an error — the engine's
+lower-triangular parameterisation has no packed slot for it.
 Default \code{NULL} uses the engine's exploratory lower-triangular
 convention. See \code{\link[=confirmatory_lambda]{confirmatory_lambda()}} to build the matrix from
 functional-group membership, or \code{\link[=suggest_lambda_constraint]{suggest_lambda_constraint()}} for a
@@ -272,7 +295,7 @@ pinning those coefficients exactly at structural zero. Use this when a
 predictor is meaningful for some responses but should be fixed at zero
 for others. Native TMB fits use a parameter map; admitted
 \code{engine = "julia"} fixed-effect-X rows pass the same zero mask to
-GLLVM.jl. This is ML-only: \code{REML = TRUE} stops loudly. Native fitted
+GLLVModels.jl. This is ML-only: \code{REML = TRUE} stops loudly. Native fitted
 objects still report all fixed-effect rows; pinned rows have
 \code{estimate = 0}, \code{std.error = NA}, and \code{status = "fixed"} in
 \code{tidy(fit, "fixed")}.}
@@ -298,10 +321,13 @@ predictor-model formula (for Gaussian sugar, e.g. \code{x ~ z}) or an
 \item{silent}{Logical; suppress TMB and gllvmTMB chatter. Default \code{TRUE}.}
 
 \item{engine}{Character; \code{"tmb"} (default) fits with the native TMB engine,
-\code{"julia"} routes the fit through the experimental GLLVM.jl bridge fitting
-path via JuliaCall (see \code{R/julia-bridge.R}). The Julia path currently maps
+\code{"julia"} routes the fit through the experimental GLLVModels.jl bridge via
+JuliaCall. The Julia path currently maps
 the unconstrained-ordination core (a single \code{latent()} block + per-trait
-intercepts) and errors on structures it does not yet support.}
+intercepts) and errors on structures it does not yet support.
+For unstructured Gaussian models (\code{gaussian()} with ordinary \code{latent()} and
+no phylo/spatial structure), \code{engine = "julia"} uses the GLLVModels.jl
+closed-form profile path instead of the native Laplace engine.}
 
 \item{ci_method}{Confidence-interval route requested at fit time for
 admitted \code{engine = "julia"} no-X rows. One of \code{"none"} (default),
@@ -336,6 +362,12 @@ all-zero offsets; and the native Laplace engine. Unsupported
 structures fail before optimisation.
 MSPL does not activate automatically after a separation warning and never
 changes the default ML fit.}
+
+\item{column_data}{Optional keyed response-column metadata. Its key column
+must have the same name as \code{trait} and exactly match the response columns.
+Joined fields are available to fixed effects but cannot be coefficient
+bases, grouping columns, or covariance sources. In wide input, key this
+table by the synthetic column name \code{trait} and omit the \code{trait} argument.}
 }
 \value{
 A \code{gllvmTMB} object. With no covariance-structure terms in
@@ -373,7 +405,8 @@ data with one row per \verb{(unit, trait)} observation. Both routes estimate
 the same trait covariance, pairwise correlations, shared latent axes,
 and trait-specific variance. The formula syntax also supports fixed
 effects plus covariance-structure keywords organised by
-\emph{correlation source} (none / animal / phylo / spatial) and
+\emph{correlation source} (none / animal / phylo / spatial / kernel /
+temporal) and
 three \emph{modes} (independent / dependent / latent). The \code{common = TRUE}
 modifier on \verb{*_indep()} gives the one-shared-variance special case:
 }
@@ -384,7 +417,15 @@ modifier on \verb{*_indep()} gives the one-shared-variance special case:
 \emph{animal}  \tab \code{\link[=animal_indep]{animal_indep()}}  \tab \code{\link[=animal_dep]{animal_dep()}}  \tab \code{\link[=animal_latent]{animal_latent()}}  \cr
 \emph{phylo}   \tab \code{\link[=phylo_indep]{phylo_indep()}}   \tab \code{\link[=phylo_dep]{phylo_dep()}}   \tab \code{\link[=phylo_latent]{phylo_latent()}}   \cr
 \emph{spatial} \tab \code{\link[=spatial_indep]{spatial_indep()}} \tab \code{\link[=spatial_dep]{spatial_dep()}} \tab \code{\link[=spatial_latent]{spatial_latent()}} \cr
+\emph{kernel}  \tab \code{\link[=kernel_indep]{kernel_indep()}}  \tab \code{\link[=kernel_dep]{kernel_dep()}}  \tab \code{\link[=kernel_latent]{kernel_latent()}}  \cr
+\emph{temporal} \tab \code{\link[=temporal_indep]{temporal_indep()}} \tab \code{\link[=temporal_dep]{temporal_dep()}} \tab \code{\link[=temporal_latent]{temporal_latent()}} \cr
 }
+
+The temporal row is currently a Gaussian identity-link ML/Laplace route:
+it accepts one ordered \code{series}--\code{time} provider, AR1 integer occasions or
+OU elapsed time, and may coexist with ordinary \code{unit} and \code{unit_obs}
+covariance. Other structured sources, new-data prediction, intervals, and
+rank above one remain unavailable for temporal fits.
 
 The three covariance modes (\code{indep} / \code{dep} / \code{latent}) encode
 covstruct intent across traits:
@@ -402,13 +443,26 @@ variance, no cross-trait covariance.
 is free with \eqn{T(T+1)/2} parameters via a Cholesky factor.
 }
 
-Plus the supporting \code{\link[=phylo_slope]{phylo_slope()}} / \code{\link[=animal_slope]{animal_slope()}} (random
-slopes), \code{\link[=meta_V]{meta_V()}} (known-V meta-analytic; \code{\link[=meta_known_V]{meta_known_V()}} is a
+The five Gaussian long-format response-column slope helpers are \code{\link[=slope]{slope()}},
+\code{\link[=phylo_slope]{phylo_slope()}}, \code{\link[=animal_slope]{animal_slope()}}, \code{\link[=kernel_slope]{kernel_slope()}}, and \code{\link[=spatial_slope]{spatial_slope()}}.
+Their RHS is the resolved response-column factor, so they are not extra
+grid modes. Plus \code{\link[=meta_V]{meta_V()}} (known-V meta-analytic; \code{\link[=meta_known_V]{meta_known_V()}} is a
 deprecated alias), and the engine-internal \code{propto()} /
 \code{equalto()} covstructs (used by the canonical keywords above; not
 typically called directly). See the
 \href{https://itchyshin.github.io/gllvmTMB/articles/api-keyword-grid.html}{formula keyword grid article}
 for a one-paragraph tour of each cell.
+
+Response-column coefficient helpers are also outside the grid.
+\code{\link[=column_coef]{column_coef()}} fits IID random intercept/slope bases across response
+columns; \code{\link[=phylo_coef]{phylo_coef()}} fits the same bases with fixed or estimated
+phylogenetic correlation strength; \code{\link[=animal_coef]{animal_coef()}} fits them from a pedigree,
+relationship covariance, or relationship precision with fixed correlation
+strength; \code{\link[=kernel_coef]{kernel_coef()}} uses one labelled dense kernel with fixed or
+estimated strength; and \code{\link[=spatial_coef]{spatial_coef()}} uses one labelled response-column
+mesh with \code{rho = 1}. All five support Gaussian point models in long and
+\code{traits(...)} wide form. Non-Gaussian coefficient models, spatial IID
+mixtures, and interval inference remain unavailable.
 
 \code{gllvmTMB()} parses the glmmTMB-style formula, converts wide
 \code{\link[=traits]{traits()}} input to the same internal stacked-trait representation as
@@ -431,7 +485,34 @@ per-row trial count, use either:
 \item a flat response \code{y} with \code{weights = n_trials} (the alternative
 glmmTMB API).
 }
-Both interfaces produce identical fits. For Bernoulli data, omit
+The second \code{cbind()} column is the number of \strong{failures}, not trials; for
+a trials column write \code{cbind(s, trials - s)}. Both interfaces produce
+identical fits.
+
+\emph{Mixing with other families.} Binomial counts can share one model with
+Gaussian, count or other traits. In a mixed fit the second \code{cbind()} column
+is read only on binomial-type rows (\code{binomial()}, \code{betabinomial()},
+\code{zi_binomial()}); on every other row the first column is the response and
+the second must be \code{0}. Long format, with a per-trait \code{family} list:
+\preformatted{
+fams <- list(infected = binomial(), mass = gaussian(), count = poisson())
+attr(fams, "family_var") <- "trait"
+gllvmTMB(cbind(value, failures) ~ 0 + trait + latent(0 + trait | site, d = 2),
+         data = long, trait = "trait", unit = "site", family = fams)
+}
+Wide format: give each binomial trait its own pair inside \code{traits()} and
+name the \code{family} list by trait. A pair takes its trait name from its first
+argument, or from an argument name (\code{traits(infected = cbind(s, f))}):
+\preformatted{
+gllvmTMB(traits(cbind(n_inf, n_uninf), mass, count) ~ 1 + latent(1 | site, d = 2),
+         data = wide, unit = "site",
+         family = list(n_inf = binomial(), mass = gaussian(), count = poisson()))
+}
+In wide format a plain column with a binomial-type family stays a 0/1
+(Bernoulli) response, and cells with an \code{NA} count or zero trials are
+treated as missing. The single-column route (\code{value} with
+\code{weights = trials}, \code{1} on non-binomial rows) gives the same fit but does
+not cover \code{zi_binomial()}. For Bernoulli data, omit
 \code{weights} and use a 0/1 response; the engine sets \code{n_trials = 1} and
 the likelihood is identical to the previous Bernoulli-only behaviour.
 
@@ -471,7 +552,7 @@ non-negative.
 "Residual" in a mixed-effects model is \strong{scale-relative}: what
 counts as residual variance shifts as you add levels to the model.
 In a Gaussian fit without a per-row diagonal term, the residual is row-level
-noise captured by a single shared \code{sigma_eps}. Once you add a per-row
+noise captured by a within-family shared \code{sigma_eps}. Once you add a per-row
 \code{indep(0 + trait | obs)} term,
 the \emph{row-level} residual is now T per-trait random-effect variances and
 \code{sigma_eps} is auto-suppressed to avoid double-counting. If you also add a
@@ -480,15 +561,18 @@ the \code{site}-level term is now an additional, \emph{higher-level} random effe
 a residual at all. The dispatch table below records this explicitly for the
 configurations the engine supports today.
 
-Gaussian and lognormal responses have one residual scale parameter,
-\code{sigma_eps}. Ordinary Gamma responses instead carry a per-trait shape
+Gaussian and lognormal responses each have a residual scale parameter,
+\code{sigma_eps}, shared within family. Pure fits retain one slot; a joint
+Gaussian-lognormal fit has separate raw- and log-scale slots. Ordinary
+Gamma responses instead carry a per-trait shape
 \code{phi_gamma} (CV = \code{1 / sqrt(phi_gamma)}). Per-trait residual variances
 only appear if you explicitly add a per-row \code{indep(...)} term.
 The dispatch is automatic:
 
 \describe{
-\item{No per-row \code{indep}, Gaussian/lognormal present}{One
-shared \code{sigma_eps} across Gaussian/lognormal rows. \emph{Not} per-trait.}
+\item{No per-row \code{indep}, Gaussian/lognormal present}{One slot in a
+pure fit; separate Gaussian raw-scale and lognormal log-scale slots when
+both coexist. Each slot is shared within family, \emph{not} per-trait.}
 \item{No per-row \code{indep}, no Gaussian/lognormal rows}{\code{sigma_eps}
 is mapped off; the family's intrinsic dispersion handles the residual
 (for ordinary Gamma, \code{phi_gamma}).}
@@ -511,7 +595,7 @@ selection" below).}
 }
 
 Mnemonic: Gaussian/lognormal \code{sigma_eps} is the default; ordinary Gamma uses
-\code{phi_gamma}; per-row \code{indep} replaces the Gaussian/lognormal scalar residual
+\code{phi_gamma}; per-row \code{indep} replaces the Gaussian/lognormal family residual
 with T per-trait residuals; non-per-row \code{indep} adds a higher-level random
 effect on top of the family residual;
 non-continuous families never carry \code{sigma_eps} regardless.
@@ -549,12 +633,13 @@ Schielzeth (2017) \emph{J. R. Soc. Interface} 14: 20170213.
 
 The fitted object's \verb{$report} carries per-family dispersion quantities on
 the natural scale, each a vector of length \code{n_traits} indexed by trait
-(except \code{sigma_eps}, a single scalar). Their names follow the engine's
+(except \code{sigma_eps}, which has one slot normally and two slots only when
+Gaussian and lognormal responses coexist). Their names follow the engine's
 internal parameterisation, \strong{not} standard R distribution arguments —
 several are easy to misread. What each one IS, and how it maps to
 standard R arguments (\code{mu = exp(eta)} unless noted):\tabular{lll}{
    Family (report name) \tab What it is \tab Standard-R conversion \cr
-   gaussian, lognormal (\code{sigma_eps}) \tab residual SD / sdlog; \strong{one scalar shared} by all gaussian \emph{and} lognormal traits \tab \code{pnorm(y, mean = eta, sd = sigma_eps)}; \code{plnorm(y, meanlog = eta, sdlog = sigma_eps)} \cr
+   gaussian, lognormal (\code{sigma_eps}) \tab residual SD / sdlog; one within-family shared slot in pure fits, or separate Gaussian raw-scale and lognormal log-scale slots when both coexist \tab \code{pnorm(y, mean = eta, sd = sigma_eps[1])}; \code{plnorm(y, meanlog = eta, sdlog = sigma_eps[2])} in a joint fit \cr
    Gamma (\code{phi_gamma}) \tab the \strong{shape}, not a dispersion \tab \code{pgamma(y, shape = phi, scale = mu / phi)}; \code{CV(y) = 1 / sqrt(phi)} \cr
    nbinom2 (\code{phi_nbinom2}) \tab the NB \code{size} \tab \code{pnbinom(y, size = phi, mu = mu)}; \code{Var(y) = mu + mu^2 / phi} \cr
    nbinom1 (\code{phi_nbinom1}) \tab linear overdispersion, \code{Var(y) = mu * (1 + phi)} \tab \code{pnbinom(y, size = mu / phi, mu = mu)} — the size is mean-dependent \cr
@@ -569,7 +654,7 @@ standard R arguments (\code{mu = exp(eta)} unless noted):\tabular{lll}{
 }
 
 \section{Objective provenance}{
- report\$joint_nll_* vs objective_components:
+ joint_nll report fields vs objective_components:
 A fitted object carries two different surfaces that both look like "the
 objective", and they answer different questions.
 
@@ -600,14 +685,34 @@ conditional-joint and marginal quantities from different penalty regimes.
 set.seed(1)
 sim <- simulate_site_trait(n_sites = 50, n_species = 8, n_traits = 3,
                            mean_species_per_site = 5)
-fit <- gllvmTMB(
+# Long format: one response value per site-species-trait row.
+fit_long <- gllvmTMB(
   value ~ 0 + trait + (0 + trait):env_1 + (0 + trait):env_2,
   data   = sim$data,
   family = gaussian(),
   trait  = "trait",
-  unit   = "site"
+  unit   = "site_species"
 )
-summary(fit)
+
+# Wide format: one row per site-species, with the same three traits.
+# `traits()` expands `1 + env_1 + env_2` to the explicit long terms above.
+wide_values <- stats::reshape(
+  sim$data[c("site_species", "trait", "value")],
+  idvar = "site_species", timevar = "trait", direction = "wide"
+)
+wide <- merge(
+  unique(sim$data[c("site_species", "env_1", "env_2")]), wide_values,
+  by = "site_species", sort = FALSE
+)
+names(wide) <- sub("^value[.]", "", names(wide))
+fit_wide <- gllvmTMB(
+  traits(trait_1, trait_2, trait_3) ~ 1 + env_1 + env_2,
+  data   = wide,
+  family = gaussian(),
+  unit   = "site_species"
+)
+summary(fit_long)
+summary(fit_wide)
 }
 }
 \references{
@@ -628,6 +733,6 @@ for the screen-first LA-MSPL workflow; \code{\link[=traits]{traits()}} for wide 
 generating recovery test data;
 \code{\link[=extract_Sigma]{extract_Sigma()}} for the unified post-fit covariance API;
 \code{\link[=gllvmTMB_diagnose]{gllvmTMB_diagnose()}} for a one-stop convergence + identifiability
-health check; \code{\link[=ordinal_probit]{ordinal_probit()}} for the gllvmTMB-native ordinal
-threshold family.
+health check; \code{\link[=ordinal_probit]{ordinal_probit()}} and \code{\link[=ordinal_logit]{ordinal_logit()}} for the
+gllvmTMB-native ordinal threshold families.
 }

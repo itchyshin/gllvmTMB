@@ -24,7 +24,15 @@ check_gllvmTMB(
   multinomial_rail_thresh = 0.99,
   multinomial_range_collapse_thresh = 0.02,
   ordinal_loading_runaway_thresh = Inf,
-  ordinal_loading_absolute_thresh = Inf
+  ordinal_loading_absolute_thresh = 30,
+  phi_nbinom2_ceiling_thresh = 10000,
+  phi_gamma_ceiling_thresh = 1e+08,
+  phi_truncnb2_ceiling_thresh = 10000,
+  phi_nbinom1_ceiling_thresh = 10000,
+  df_student_ceiling_thresh = 1000,
+  phi_betabinom_ceiling_thresh = 10000,
+  laplace_accuracy = TRUE,
+  laplace_accuracy_thresh = 2
 )
 }
 \arguments{
@@ -110,13 +118,13 @@ meaningful because the latent scores are standard normal by
 identification, so a binomial loading is the trait's latent standard
 deviation in link units: a value of this size already implies a
 fitted probability indistinguishable from 0 or 1 across an ordinary
-swing of the axis. Default 8, raised from 6 (issue #1098) after the
+swing of the axis. Default 8, raised from 6 after the
 earlier calibration pool (3,944 simulated binomial fits, no healthy
 fit above 3.99) turned out to be unrepresentative: its true loading
 scale never reached the regime where this arm misfires. A second pool
 built specifically to cross \verb{sigma_lambda in c(0.7, 3.0)} (928 healthy
-/ 272 degenerate binomial-probit fits) -- 3.0 chosen to hit issue
-#847's \code{aghq_ridge} ridge-failure regime, not argued for realism --
+/ 272 degenerate binomial-probit fits) -- 3.0 chosen to probe the
+\code{aghq_ridge} ridge-failure regime, not argued for realism --
 measured this arm as the SOLE source of every false positive found
 (232/928 at threshold 6, all attributable to this arm alone). Raising
 the threshold to 8 lowers the false-positive rate on that pool from
@@ -134,57 +142,55 @@ that regime. \code{aghq_ridge = 2} reduces but does not remove the problem
 link-scale quantity it does not transport to families whose response
 scale is arbitrary, which is why this row is binomial-only. This gate
 applies to every link (\code{family_id == 1L}), but the calibration above
-is probit-only: logit loadings run larger than probit loadings for
-the same underlying model (the standard logistic/probit
-variance-matching ratio, commonly cited as ~1.6-1.8), so the same
-fixed threshold is reached by a smaller true effect on the logit
-link, and the false-positive rate measured here should be read as a
-lower bound on logit fits, not a transportable number -- no logit
-evidence exists in the calibration pool. See
-\code{dev/heywood/fp-scale-dependence.md} for the full mechanism note.}
+is probit-only. No logit evidence exists in the calibration pool, so
+this false-positive rate should not be transported to logit fits.}
 
 \item{multinomial_collapse_floor}{Absolute floor on a \code{multinomial()}
-(fid 16) contrast pseudo-trait's fitted loading energy
+contrast's fitted loading energy
 (\code{rowSums(Lambda^2)}), at or below which it is a collapsed contrast.
-Default \code{1e-10}, the campaign code's own guard. Provisional pending the
-S3 calibration campaign; labeled evidence: 7/20 \code{phylo_indep} seeds at
+Default \code{1e-10}. Evidence is limited to the tested model designs:
+7/20 simulated \code{phylo_indep()} fits had loading energy at
 or below \code{1e-9}, every one reporting \code{convergence = 0} and a
-positive-definite Hessian.}
+positive-definite Hessian. Check whether a flagged component was
+intentionally fixed at zero or whether its variance has collapsed.}
 
 \item{multinomial_collapse_rel_thresh}{Threshold on the ratio of the
 smallest to the largest fitted contrast loading energy within one
 \code{multinomial()} response's K-1 contrasts, below which the smallest is
-flagged as collapsed relative to its siblings. Default \code{Inf}
-(disarmed): those K-1 contrasts are \code{pi^2/6}-correlated siblings through
-their shared baseline category, not the independent siblings
-\code{psi_rel_thresh} was calibrated on, so this arm is provisional pending
-the S3 calibration campaign.}
+flagged as collapsed relative to the others. Default \code{Inf} (disabled).
+These contrasts share a baseline category and have \code{pi^2/6} error
+covariance, so the threshold for independent components
+(\code{psi_rel_thresh}) cannot be assumed to apply. A reliable relative
+cutoff has not been established; inspect the contrast variances before
+choosing a finite threshold for your model.}
 
 \item{multinomial_rail_thresh}{Threshold on the largest absolute
 off-diagonal correlation of the implied contrast-level covariance
 within one \code{multinomial()} response's contrasts, at or above which two
-contrasts are reported as rail-correlated. Only evaluated at tiers with
+contrasts are flagged as nearly perfectly correlated. Only evaluated at tiers with
 rank \code{d >= 2} -- at \code{d = 1} every healthy fit reaches \verb{|rho| = 1}
-exactly by row proportionality. Default \code{0.99}, provisional pending the
-S3 calibration campaign; labeled evidence: 8/20 seeds at or above it.}
+exactly by row proportionality. Default \code{0.99}; 8/20 simulated fits
+in the tested design reached or exceeded it. Performance in other
+designs may differ. If flagged, compare a lower rank and check the
+baseline-category coding.}
 
 \item{multinomial_range_collapse_thresh}{Threshold on the fitted spatial
 practical range (\code{sqrt(8) / kappa}) relative to the coordinate-domain
 diameter (when the fit's mesh coordinates are reachable), or on the
 practical range itself in absolute coordinate units (the fallback when
-they are not), at or below which a \code{multinomial()} response's spatial
-field is reported as collapsed. Default \code{0.02}, provisional pending the
-S3 calibration campaign; labeled evidence: collapsed ratios 7e-5 to
-3.4e-4.}
+they are not), below which a \code{multinomial()} response's spatial
+field is reported as collapsed. Default \code{0.02}; collapsed ratios in
+the tested design ranged from 7e-5 to 3.4e-4. Performance in other
+designs may differ. Check mesh resolution and whether the data support
+estimating a spatial range for this response.}
 
 \item{ordinal_loading_runaway_thresh}{Threshold on an \code{ordinal_probit()}
-(fid 14) trait's largest loading relative to the typical loading among
+trait's largest loading relative to the typical loading among
 the other ordinal traits, at or above which the loading is reported on
-its own. Mirrors \code{loading_runaway_thresh}'s binomial arm. Default \code{Inf}
-(disarmed): the detector-S1 mechanism probe
-(\code{dev/ordinal-degeneracy/probe-criteria.md}) established that degenerate
-ordinal fits share binomial's quasi-complete-separation mechanism, but
-the threshold itself awaits the detector-S2 calibration campaign.}
+its own. Default \code{Inf} (disabled): the tested loading thresholds could
+not reliably distinguish poorly identified fits from healthy fits.
+Inspect the reported loadings and category frequencies; a large loading
+alone is not evidence of a failed fit.}
 
 \item{ordinal_loading_absolute_thresh}{Threshold on an \code{ordinal_probit()}
 trait's largest loading on the link (liability) scale, unit tiers only,
@@ -192,13 +198,58 @@ at or above which it is reported regardless of the other traits.
 Meaningful because the probit-liability residual variance is exactly 1
 under the Wright/Falconer/Hadfield threshold convention, so a loading
 is the trait's latent standard deviation in liability units, mirroring
-\code{loading_absolute_thresh}'s binomial justification. Default \code{Inf}
-(disarmed pending the detector-S2 calibration campaign).}
+\code{loading_absolute_thresh}'s binomial justification. Default \code{30}. At that
+value the screen flagged 0 of 122 fresh-seed fits whose covariance
+was recovered (within a relative Frobenius error of 10) and 81\% of the
+degenerate ones, in a simulation with \code{n = 100}, four traits and two
+latent variables; it misses degenerate fits whose largest loading is
+below 30, and healthy fits with genuinely heterogeneous loading scales
+can exceed it. Use \code{Inf} to disable it.}
+
+\item{phi_nbinom2_ceiling_thresh}{Numeric scalar. A negative-binomial dispersion
+estimate at or above this value is reported as a \verb{boundary_phi_nbinom2_<trait>}
+warning: the trait has run to the Poisson limit (no overdispersion left to
+estimate), which usually means the data cannot separate dispersion from the
+zero-inflation or latent structure. Try a plain \code{poisson()} / \code{zi_poisson()} for
+that trait, or more sites.}
+
+\item{phi_gamma_ceiling_thresh}{Numeric scalar. A Gamma (or \code{delta_gamma()}
+positive-part) shape estimate at or above this value is reported as a
+\verb{boundary_phi_gamma_<trait>} warning: the trait's residual coefficient of
+variation has collapsed to about zero, a Heywood-type boundary.}
+
+\item{phi_truncnb2_ceiling_thresh, phi_nbinom1_ceiling_thresh, phi_betabinom_ceiling_thresh}{Numeric scalars. A \code{truncated_nbinom2()}, \code{nbinom1()} or \code{betabinomial()}
+dispersion estimate at or above this value is reported as a
+\verb{boundary_phi_truncnb2_<trait>}, \verb{boundary_phi_nbinom1_<trait>} or
+\verb{boundary_phi_betabinom_<trait>} warning. For the truncated NB2 and
+beta-binomial this is the Poisson / binomial limit, where the extra
+dispersion is no longer identified; for \code{nbinom1()} it is a degenerate
+heavy-tailed limit.}
+
+\item{df_student_ceiling_thresh}{Numeric scalar. A \code{student()} degrees-of-freedom
+estimate at or above this value is reported as a
+\verb{boundary_df_student_<trait>} warning: the trait has run to the Gaussian
+limit, so the heavy tails are not identified. Use \code{gaussian()} for that
+trait, or fix \code{df}.}
+
+\item{laplace_accuracy}{Logical. If \code{TRUE} (default), and the fit's only
+random effects are the \code{latent()} scores with \code{d <= 3}, the marginal
+log-likelihood is re-evaluated at the fitted parameters by adaptive
+Gauss-Hermite quadrature and compared with the Laplace value
+(\code{laplace_accuracy} row). Skipped for all-Gaussian fits, where Laplace is
+exact, and reported as \code{INFO} (not evaluated) when rows x nodes exceeds
+2e7. Set to \code{FALSE} to skip the extra evaluation entirely.}
+
+\item{laplace_accuracy_thresh}{Numeric scalar. The \code{laplace_accuracy} row
+warns when the Laplace logLik exceeds the quadrature logLik by more than
+this many log-likelihood units (an optimistic Laplace approximation, which
+biases logLik / AIC / likelihood-ratio comparisons toward that fit).}
 }
 \value{
 A data frame with columns \code{component}, \code{status}, \code{value},
 \code{threshold}, \code{message}, and \code{action}. Status values are \code{"PASS"},
-\code{"WARN"}, or \code{"FAIL"}.
+\code{"WARN"}, \code{"FAIL"}, or \code{"INFO"} (informational rows on MSPL and other
+routes where a check does not apply to the fitted estimator).
 }
 \description{
 Run \code{check_gllvmTMB()} right after fitting, before interpreting

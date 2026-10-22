@@ -73,8 +73,8 @@
 #'
 #' @param formula,data,family,unit,trait,weights,missing Passed to
 #'   [gllvmTMB()] at every grid point, exactly as you would call it
-#'   directly. `unit` defaults to `"site"`, matching [gllvmTMB()]'s own
-#'   default.
+#'   directly. `unit` has no default -- it must name the sampling-unit
+#'   column, matching [gllvmTMB()]'s own required argument.
 #' @param tau Numeric vector of ridge scales to sweep. Order does not
 #'   matter: the function sorts internally, both for refitting and for the
 #'   printed classification. Every entry must be a positive number; `Inf`
@@ -130,7 +130,7 @@ ridge_path <- function(
   data,
   family,
   tau = c(0.5, 1, 2, 4, 8, Inf),
-  unit = "site",
+  unit = NULL,
   trait = "trait",
   weights = NULL,
   missing = miss_control(),
@@ -140,6 +140,14 @@ ridge_path <- function(
   if (!is.numeric(tau) || length(tau) < 1L || anyNA(tau) || any(tau <= 0)) {
     cli::cli_abort("{.arg tau} must be one or more positive numbers ({.code Inf} is allowed).")
   }
+  ## #1196 (2026-09-02 full-suite follow-up): resolve `unit` up front via
+  ## the same staged rule as gllvmTMB() itself. Without this, an omitted
+  ## `unit=` on data with no literal "site" column reached every grid
+  ## point's internal gllvmTMB() call, which aborted -- caught by this
+  ## function's own per-point `tryCatch`, so the whole grid silently
+  ## returned `fit_error = "unit = ... is required."` on every row instead
+  ## of one clear, immediate abort.
+  unit <- .gllvmTMB_resolve_unit_staged(unit, data)
 
   prep <- .screen_prepare_formula_data(
     formula = formula,

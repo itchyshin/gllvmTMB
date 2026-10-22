@@ -1,0 +1,3 @@
+"rep","seed","truth","estimate","lower","upper","fit_converged","ci_failed","eligible","covered","endpoint_reason","family","tier","mode","unique","d","n_units","trait","profile_scale","level","runtime_s"
+50001,152002,1.7562413089287,1.74356421663025,1.5235267778525,2.00900407220655,TRUE,FALSE,TRUE,TRUE,"ok","gaussian","unit","latent",TRUE,2,400,1,"log_V",0.95,10.9959590435028
+50002,152003,3.10221686819883,3.06827964921301,2.68104388807329,3.53537417160572,TRUE,FALSE,TRUE,TRUE,"ok","gaussian","unit","latent",TRUE,2,400,1,"log_V",0.95,9.78699707984924

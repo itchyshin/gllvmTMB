@@ -22,32 +22,47 @@ knitr::opts_chunk$set(
 )
 ```
 
-`gllvmTMB` fits multivariate models for data where each site,
-individual, species, or study has several responses. The first
-question is usually not mathematical:
+GLLVM means **generalized linear latent-variable model**. It models several
+responses together and uses a small number of unobserved variables to describe
+how those responses vary together after accounting for measured predictors.
+`gllvmTMB` fits these models in R. Your responses might be species counts at
+survey sites, morphological traits of individuals, or environmental measurements
+at sampling locations. Each site or individual is a sampling unit; each species,
+trait, or measurement is a response.
 
 > Which responses vary together, and how much variation is shared
 > rather than response-specific?
 
-This page does one small, reproducible example. It loads a prepared
-morphometrics object, fits the model from a wide trait table first,
+This page works through one small, reproducible **simulated** example with
+continuous morphological traits. It loads a prepared morphometrics object,
+fits the model from a wide trait table first,
 checks the equivalent long-data call, and extracts the covariance,
 correlation, communality, and ordination summaries a reader normally
-wants first.
+wants first. To run it now, go to
+[First fit: wide individual-by-trait morphology](#first-fit-wide-individual-by-trait-morphology).
+The data are included with the package, and the example shows both wide data
+(one row per individual) and long data (one row per individual and trait). As
+they are simulated, the object also contains the known generating values used
+later to check what the fit recovered.
 
-`gllvmTMB` has an experimental lifecycle: the formula grammar,
-defaults, and reported summaries and intervals may still change as
-the API matures.
+`gllvmTMB` is experimental: the formula grammar, defaults, and reported
+summaries and intervals may still change as the API matures.
 
-Before choosing a family, covariance source, estimator, or interval method,
-read [Current limitations and boundaries](https://itchyshin.github.io/gllvmTMB/articles/current-limits.html). That
-page distinguishes narrow tested-regime evidence from experimental or partial
-routes and states what each result can and cannot support. The Gaussian latent
-model below is retained as a teaching example for the covariance decomposition
-and rotation-invariant summaries. Its production pair remains
-characterization-only, so this tutorial is not a dependable-core claim. The
-narrow tested-regime Gaussian point evidence starts with `indep()` or `dep()`,
-with fit-health checks and no general interval certificate.
+Use this example to learn how to fit a model and read its covariance summaries.
+Successful fitting does not establish that the estimates are accurate for your
+data or that an interval has its stated coverage. The Gaussian latent model
+taught here has not passed all of its parameter-recovery checks. For continuous
+traits, simpler models with independent trait variation (`indep()`) or a full
+trait covariance (`dep()`) have stronger point-estimation evidence in the tested
+three-trait, complete-data examples.
+
+Before adapting the example to counts, presence/absence, missing observations,
+or a spatial or phylogenetic model, read
+[Current limitations and boundaries](https://itchyshin.github.io/gllvmTMB/articles/current-limits.html).
+It explains which results have been checked, where estimates can fail even when
+the fit appears healthy, and why uncertainty needs a separate check.
+
+## What the first model means
 
 The fitted Gaussian model starts with observations, not with the
 covariance matrix. For each individual and trait, the teaching model is:
@@ -135,13 +150,13 @@ here.
 library(gllvmTMB)
 ```
 
-For a first fit, load the prepared morphometrics example object. It
-contains long data, wide data, the truth table, and the two formulas
-used below. The reproducible generator is
-`data-raw/examples/make-morphometrics-example.R`, but beginners do not
-need to read the generator before fitting the model.
+For a first fit, load the prepared morphometrics example object. It contains
+simulated long and wide data, the known generating values (`truth`), and the
+two formulas used below. The generating code is available in the source
+repository for reproducibility, but beginners do not need to read it before
+fitting the model.
 
-```{r example-data, eval = FALSE}
+```{r example-data}
 morph <- readRDS(system.file(
   "extdata", "examples", "morphometrics-example.rds",
   package = "gllvmTMB"
@@ -149,6 +164,9 @@ morph <- readRDS(system.file(
 df <- morph$data_long
 df_wide <- morph$data_wide
 truth <- morph$truth
+trait_names <- truth$trait_names
+n_traits <- length(trait_names)
+Lambda_true <- truth$Lambda
 ```
 
 ```{r example-data-load, include = FALSE}
@@ -169,9 +187,6 @@ morph <- readRDS(example_path)
 df <- morph$data_long
 df_wide <- morph$data_wide
 truth <- morph$truth
-trait_names <- truth$trait_names
-n_traits <- length(trait_names)
-Lambda_true <- truth$Lambda
 ```
 
 ```{r example-data-preview}
@@ -192,7 +207,12 @@ long form.
 
 Fit a `d = 2` reduced-rank GLLVM with ordinary `latent()` at the
 individual level — the shared low-rank structure plus trait-specific
-unique variance, which ordinary `latent()` carries by default:
+unique variance, which ordinary `latent()` carries by default.
+In an interactive session (this page hides messages when knitted), the first
+ordinary `latent()` fit prints a one-time warning that `latent()` includes
+per-trait Psi by default, and the fit may note that `sigma_eps` was fixed
+because an internal `indep(0 + trait | individual)` term already absorbs
+observation-level residual variance on the stacked rows.
 
 ```{r fit-call}
 morph$formula_wide
@@ -246,9 +266,12 @@ Before interpreting `Sigma`, separate two questions. First, ask whether
 the numerical fit looks healthy. Then ask whether the fitted response
 distribution is visibly mismatched to the observed stacked traits. For
 this Gaussian example, use `check_gllvmTMB()` first; if a row is not
-`PASS`, read its `action` before interpreting covariance. The residual
-and predictive-check plots are diagnostic displays here. They do not
-prove the latent rank or calibrate uncertainty intervals.
+`PASS`, read its `action` before interpreting covariance.
+With `d = 2`, a `rotation_convention` row with status `WARN` is expected:
+`Lambda_B` names the unit-tier loadings, which are identified only up to
+rotation and sign until you rotate or constrain them.
+The residual and predictive-check plots are diagnostic displays here. They
+do not prove the latent rank or calibrate uncertainty intervals.
 
 ```{r fit-health}
 health <- check_gllvmTMB(fit)
@@ -347,10 +370,10 @@ correlation matrix:
 plot_correlations(corr_rows, sort = "magnitude")
 ```
 
-The matrix form is a display over the same rows: the upper triangle
-shows point estimates, and the lower triangle shows the finite Fisher-z
-interval bounds supplied by `extract_correlations()`. The plot does not
-compute or calibrate uncertainty itself.
+The matrix form is another display of the same point estimates. This first-fit
+object does not contain interval bounds. If you explicitly request Fisher-z
+bounds, treat them as a fast heuristic rather than a generally calibrated
+interval; the plot itself does not compute uncertainty.
 
 ```{r cor-matrix, fig.width = 7.4, fig.height = 5.1, out.extra='class="wide-scientific-figure"', fig.cap = "Point estimates of trait correlations from the first fitted model. The matrix is descriptive; interval routes are target-specific and opt-in."}
 plot_correlations(

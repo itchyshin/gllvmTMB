@@ -24,18 +24,32 @@ diagonal \eqn{\boldsymbol\Psi} companion to one shared variance across
 traits. Only applies when \code{unique = TRUE}.}
 
 \item{lv}{One-sided formula for predictor-informed latent-score means.
+The model matrix retains the formula's factor contrasts, then its
+intercept column is removed. With default treatment contrasts,
+\code{lv = ~ group} estimates differences from the factor reference level.
+Use \code{\link[stats:relevel]{stats::relevel()}} to select that level. Designs spanning a constant,
+including \code{lv = ~ 0 + group}, violate the no-LV-intercept contract
+and are rejected. Numeric \code{lv = ~ x} and \code{lv = ~ 0 + x} are equivalent.
 Runtime support is limited to ordinary unit-tier
-\code{latent(..., lv = ~ x)}, and only Gaussian and pure binomial
-(logit/probit/cloglog) fits are currently admitted (partial coverage,
-supported for the ordinary-latent case). Source-specific \verb{*_latent(..., lv = ~ x)} forms are
+\code{latent(..., lv = ~ x)}. Registered native family/link rows compose in one
+complete-response ordinary unit-tier block. The loadings-only
+\code{unique = FALSE} form admits ranks through the number of logical responses;
+automatic \code{Psi} additionally requires that its physical loading,
+latent-predictor, and engine-free diagonal parameters pass a necessary
+joint mean-covariance dimension screen. Passing that screen is not a
+recovery or interval-calibration certificate. Bounded
+rank-2/rank-3 canaries exercise every registered family, but broad
+composition recovery and interval calibration remain partial. Retained
+recovery and interval claims remain limited to their named cells.
+Source-specific \verb{*_latent(..., lv = ~ x)} forms are
 parsed and then fail loud (not yet fittable). Where it is admitted, the
 fit is experimental and exploratory: extract the coefficients with
 \code{\link[=extract_lv_effects]{extract_lv_effects()}}, whose default \code{type = "axis_effect"} output is
 rotation-dependent (an intrinsic latent-axis indeterminacy, not a
 defect -- see \code{\link[=extract_lv_effects]{extract_lv_effects()}} for the rotation-invariant
-\code{type = "trait_effect"} alternative), and whose standard errors and
-intervals are Wald approximations with no established repeated-sampling
-coverage; do not treat them as calibrated.}
+\code{type = "trait_effect"} alternative). Repeated-sampling interval evidence
+is cell-specific; do not infer an interval claim for the mixed-response
+programme from its point-recovery evidence.}
 }
 \value{
 A formula marker; never evaluated.

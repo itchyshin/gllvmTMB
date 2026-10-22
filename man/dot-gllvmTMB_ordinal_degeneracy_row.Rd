@@ -7,7 +7,7 @@
 .gllvmTMB_ordinal_degeneracy_row(
   object,
   ordinal_loading_runaway_thresh = Inf,
-  ordinal_loading_absolute_thresh = Inf
+  ordinal_loading_absolute_thresh = 30
 )
 }
 \arguments{
@@ -26,50 +26,57 @@ largest unit-tier loading in liability units (O2). Unit tiers only —
 never the SPDE tier, whose loadings carry a different normalisation.
 Scale-free by construction: the probit-liability residual variance is
 exactly 1, so an ordinal loading IS the trait's latent SD in liability
-units. Default \code{Inf} — \strong{DISARMED}.
+units. Default \code{30} (#897); \code{Inf} disables the arm.
 
-Both ordinal arms ship disarmed because a pre-registered 315-fit
-calibration (2026-08-17; four arms — degenerate, healthy, transport,
-mixed) could not find a threshold meeting its frozen targets
-(sensitivity >= 90\% on the degenerate arm AND zero false positives
-across the healthy, transport and mixed arms combined). Measured under
-that rule: at a threshold of 6, sensitivity 100\% but \strong{39.2\% false
-positives}; at 40, 80.5\% and 11.0\%; the first zero-FP point sits at
-250, where sensitivity is 0\%. The classes are not separable at all on
-this statistic, because the healthy pool reaches \code{max_loading_unit}
-216.9 while the degenerate arm starts at 13.5.
+A pre-registered 315-fit calibration (2026-08-17; four arms — degenerate,
+healthy, transport, mixed) could not find a threshold meeting its frozen
+targets (sensitivity >= 90\% on the degenerate arm AND zero false
+positives across the healthy, transport and mixed arms combined) and the
+arms shipped disarmed. Measured under that rule: at a threshold of 6,
+sensitivity 100\% but \strong{39.2\% false positives}; at 40, 80.5\% and 11.0\%;
+the first zero-FP point sat at 250, where sensitivity was 0\%. That rule
+scored a design arm, not a fit, so a \code{healthy}-arm fit that itself ran
+away (\code{max_loading_unit} up to 216.9) counted as a false positive. The
+per-fit scoring in the roxygen block above is what the default of 30 rests
+on.
+
+What the default does NOT catch: a degenerate fit whose largest unit-tier
+loading is below 30 (for example \code{rel_frob} 26.6 at \code{max_loading_unit}
+22.3 in the recorded fixture), a single over-large loading that is
+moderate in size, and anything on a structured tier (the absolute arm
+reads the unit tiers only). Convergence and \code{pdHess} do not help here:
+every one of the 240 fresh-seed fits, flagged or not, reported
+\code{convergence = 0}.
 
 Two findings from that campaign are worth stating. First, borrowing
 binomial's own threshold of 6 would have shipped a screen with a ~39\%
-false-alarm rate — reproducing on ordinal exactly the defect issue #897
-reports in binomial (25\%), which is precisely why that issue insists
-ordinal thresholds be set on ordinal evidence rather than inherited.
+false-alarm rate, similar to the problem previously observed for
+binomial (25\%). Ordinal thresholds therefore need ordinal evidence rather
+than an inherited threshold.
 Second, the false alarms concentrate in designs with heterogeneous
 per-trait loading scales: an absolute liability-scale threshold cannot
 transport across them, because a legitimately large loading on a
 wide-cutpoint trait is indistinguishable from a runaway.
 
-The row still computes and reports its statistics, so a user who wants
-the screen can set either threshold explicitly. Arming a default is a
-maintainer decision that this evidence does not support.}
+The row reports its statistics for every \code{ordinal_probit()} fit; set
+\code{ordinal_loading_absolute_thresh = Inf} to turn the absolute arm off.}
 }
 \value{
 A one-row data frame in the \code{\link[=check_gllvmTMB]{check_gllvmTMB()}} row shape, or
 \code{NULL} when the fit has no \code{ordinal_probit()} (family_id 14) trait.
 }
 \description{
-\code{ordinal_probit()} (family_id 14) traits drop the auto-Psi at parse time
-(\code{auto_unique_off_family} in \code{R/fit-multi.R}, fids 12/13/14), so a
-pure-ordinal fit has no \code{report$sd_B} and the \verb{near_zero_psi_*} rows
-elsewhere in \code{\link[=check_gllvmTMB]{check_gllvmTMB()}} are dark by design -- these two loading
-arms are the ONLY degeneracy coverage a default all-ordinal fit gets,
-which is exactly issue #897's gap in one sentence (\code{ordinal_probit} had
-zero detector coverage, 239/239 fits unflagged, where the binomial screen
-caught 272/272).
+\code{ordinal_probit()} does not include the automatic Psi component, so a
+pure-ordinal fit has no \code{report$sd_B} and the \verb{near_zero_psi_*} checks
+in \code{\link[=check_gllvmTMB]{check_gllvmTMB()}} are unavailable. These two loading arms are
+available when a user supplies finite thresholds; both are disarmed by
+default because the completed calibration did not identify a threshold
+that met its targets. They address the earlier detector-coverage gap
+(\code{ordinal_probit} had zero detector coverage, 239/239 fits unflagged,
+where the binomial screen caught 272/272).
 }
 \details{
-The detector-S1 mechanism probe (\code{dev/ordinal-degeneracy/probe-criteria.md},
-VERDICT 2026-08-17) measured the mechanism behind 24 degenerate ordinal
+A mechanism probe completed on 2026-08-17 measured the cause of 24 degenerate ordinal
 fits over a 60-fit grid and found \strong{category-level separation, not link
 saturation}: \code{gll_log_pnorm_diff}'s cutpoint-underflow condition (both
 bracketing cutpoints more than 8.2924 from \code{eta} on the same side) never
@@ -104,27 +111,48 @@ comment on the \code{sqrt(4*pi)*kappa} normalisation hazard, measured at
 \code{ordinal_loading_absolute_thresh}. This is scale-free for
 \code{ordinal_probit} by the same argument that justifies binomial's
 absolute arm: the probit-liability residual variance is EXACTLY 1
-under the Wright/Falconer/Hadfield threshold convention
-(\code{R/extract-sigma.R}, \code{sigma_d^2 = 1} fixed, no free scale
-parameter), so a loading IS the trait's latent SD in liability units.
+under the probit threshold convention (\code{sigma_d^2 = 1} is fixed,
+with no free scale parameter), so a loading is the trait's latent SD
+in liability units.
 }
 
-Both thresholds default to \code{Inf} (fully disarmed) pending the detector-S2
-calibration campaign staged at \verb{dev/ordinal-degeneracy/}
-(\code{campaign-ordinal-calibration.R}, \code{pass-criteria-ordinal.md}) -- shipping
-an armed default ahead of that evidence would repeat the mistake the
-binomial thresholds in this file were originally calibrated to correct.
+\code{ordinal_loading_absolute_thresh} (O2) defaults to 30 (#897);
+\code{ordinal_loading_runaway_thresh} (O1) stays disarmed at \code{Inf}. The
+pre-registered 315-fit calibration scored false positives by DESIGN ARM, so
+a fit from the \code{healthy} arm that itself ran away counted as a false alarm,
+and found no threshold meeting its targets. Scored per fit instead, against
+that fit's own \code{rel_frob > 10} truth, the same recorded fits and two further
+sets give (O2, \code{max_loading_unit}; sensitivity = degenerate fits flagged,
+false positive = fits with \code{rel_frob <= 10} flagged):\tabular{llll}{
+   threshold \tab 315-fit set \tab 380-fit set \tab 240 fresh-seed fits \cr
+   20 \tab 91\% / 12\% \tab 94\% / 8.3\% \tab 97.5\% / 0.8\% \cr
+   30 \tab 67\% / 4.2\% \tab 78\% / 4.4\% \tab 81\% / 0\% \cr
+   40 \tab 60\% / 0\% \tab 63\% / 2.9\% \tab 63\% / 0\% \cr
+}
 
-A third statistic is computed and reported for the calibration campaign's
-own use but is \strong{NOT} wired into \code{flag} or \code{status}: \code{cutpoint_span}
+
+(sensitivity / false positive). The false positives at 30 and above are
+the \code{transport} design, whose true loadings are themselves heterogeneous
+and large, and a \code{sigma_lambda = 8} design; the fresh-seed set (probit
+\code{sigma_lambda} 0.7 and 3, n = 100, seeds 3001-3120, run on Totoro
+2026-10-04 after the threshold was chosen from the first two sets) has none.
+30 is a loading standard deviation of 30 against a residual standard
+deviation of 1 (communality above 0.998). It is a screen that misses
+roughly a quarter of degenerate fits, not the 90\% sensitivity the
+pre-registration asked for; see the \code{ordinal_loading_absolute_thresh}
+parameter for what it does not catch.
+
+A third statistic is computed and reported for follow-up calibration but
+is \strong{NOT} wired into \code{flag} or \code{status}: \code{cutpoint_span}
 (a trait's fitted cutpoint span, \code{max(tau) - min(tau)} over its free
 cutpoints \verb{tau_2 .. tau_\{K-1\}}, via
 \code{.gllvmTMB_ordinal_cutpoint_span_by_trait()}) and the derived
 \code{loading_over_span} (\code{max_loading_unit / cutpoint_span}). Whether this
 variant adds sensitivity beyond O1/O2, and whether the span itself is
 confounded with the degeneracy label it would be screening for (a
-precondition the calibration campaign must report before this variant
-could ever ship), is exactly what that campaign is for. \code{K = 2} traits
+precondition follow-up calibration must report before this variant
+could ever ship), is exactly what follow-up calibration would assess.
+\code{K = 2} traits
 (no free cutpoint under the Hadfield \code{tau_1 = 0} convention) return \code{NA}
 for \code{cutpoint_span} rather than dividing by zero, and \code{loading_over_span}
 is \code{NA} wherever \code{cutpoint_span} is \code{NA} or non-positive.

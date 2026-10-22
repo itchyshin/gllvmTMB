@@ -1,0 +1,12 @@
+arcG ordination_uncertainty() coverage grid — provenance
+============================================================
+Compute: Totoro (snakagaw@totoro.biology.ualberta.ca), mc.cores=150.
+ControlMaster: ~/.ssh/cm-snakagaw@totoro.biology.ualberta.ca:22 (no Duo).
+Remote base: ~/gllvmtmb-arcG-coverage/
+
+gllvmTMB: lane HEAD fc08d83f1, remotes::install_local to priv-lib on Totoro.
+Grid: 9 cells x 500 seeds = 4500 fits (seeds 1:500).
+Wall: 73.266 s (run_grid.log). Core-seconds sum: 5752.38 (~1.60 core-h).
+
+Raw RDS: dev/gapclose/arcG/results/raw/ (4500 files, ~30M on Totoro).
+Summaries: dev/gapclose/arcG/results/summary/{per_seed,per_cell,campaign_meta}.csv

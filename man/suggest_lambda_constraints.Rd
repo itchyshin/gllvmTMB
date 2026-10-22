@@ -10,7 +10,7 @@ suggest_lambda_constraints(
   level = "unit",
   methods = c("varimax_threshold", "wald_retention"),
   trait = "trait",
-  unit = "site",
+  unit = NULL,
   threshold = 0.3,
   retention_prob = 0.9,
   sigma_d2 = 1,

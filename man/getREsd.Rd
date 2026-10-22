@@ -42,6 +42,9 @@ reshape into).
 \value{
 As described per \code{block} above. Standard errors are always
 \code{NA} (with a warning) when the fit's Hessian is not positive-definite.
+For \code{block = "diag_unit"} / \code{"diag_unit_obs"}, a trait whose diagonal was
+not estimated (single-trial binomial, multinomial contrast, or
+single-observation ordinal trait) has an all-\code{NA} row.
 }
 \description{
 \code{\link[=getLV]{getLV()}} exposes standard errors for the ordinary latent-variable score
@@ -65,6 +68,13 @@ measuring its coverage. \code{diag.cov.random} reflects fixed-effect-uncertainty
 NOT give cross-block or random-vs-fixed covariance (that needs
 \code{sdreport(getJointPrecision = TRUE)}, which this fit's single production
 \code{sdreport()} call does not request).
+For eligible Gaussian fits, the ordinary cell effects are integrated out
+analytically. Their standard errors combine the propagated uncertainty of
+their reconstructed conditional means with their conditional variances.
+This preserves the same first-order uncertainty convention.
+Their removed coordinates are not present in the reduced tape's raw joint
+precision; cross-covariances involving these cells also require conditional
+reconstruction, rather than only \code{getJointPrecision = TRUE}.
 
 Because of that fixed-effect-uncertainty propagation, a near-saturated or
 otherwise degenerate design (e.g. an \code{indep()} diagonal term at a grouping

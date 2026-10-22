@@ -3,7 +3,7 @@
 ## The package exposes a layer of plain-English formula keywords that
 ## desugar to the underlying glmmTMB-style covstruct calls. The new
 ## canonical names match the unit x trait framework directly. The full
-## 5 x 3 keyword grid (correlation source x covariance mode) is:
+## 6 x 3 keyword grid (correlation source x covariance mode) is:
 ##
 ##                    | indep             | dep             | latent
 ##   -----------------+-------------------+-----------------+-------------------
@@ -12,6 +12,7 @@
 ##   phylo            | phylo_indep()     | phylo_dep()     | phylo_latent()
 ##   spatial          | spatial_indep()   | spatial_dep()   | spatial_latent()
 ##   kernel           | kernel_indep()    | kernel_dep()    | kernel_latent()
+##   temporal         | temporal_indep()  | temporal_dep()  | temporal_latent()
 ##
 ## `scalar` is `indep(..., common = TRUE)` and `unique` is the diagonal-Psi
 ## modifier on `latent`; neither is an additional covariance mode.
@@ -87,6 +88,24 @@
 ## Issued once per old keyword per R session. Avoids spamming when an
 ## article (or a user's pasted code) uses the old name throughout.
 .gllvmTMB_deprecation_seen <- new.env(parent = emptyenv())
+
+## The spatial grouping token the structured-rho parser consumed for the
+## fit currently being parsed (NULL when none). With `rho = NULL` or
+## `rho = <not 1>` on a spatial_*() helper, the token right of `|` is a real
+## location-identifier column (spec$grouping), so the "token is ignored"
+## warning below must stay silent for it. `.parse_structured_rho_formula()`
+## strips `rho` before the sugar rewriter runs, so this cannot be read from
+## the call itself. Scoped and restored by gllvmTMB() around one fit.
+.gllvmTMB_spatial_token_consumed <- new.env(parent = emptyenv())
+.gllvmTMB_set_spatial_token_consumed <- function(spec) {
+  .gllvmTMB_spatial_token_consumed$token <-
+    if (!is.null(spec) && identical(spec$source, "spatial")) {
+      spec$grouping
+    } else {
+      NULL
+    }
+  invisible(NULL)
+}
 .gllvmTMB_warn_keyword_deprecated <- function(
   old,
   new_name,
@@ -564,18 +583,32 @@ meta <- function(value, sampling_var) {
 #'   diagonal \eqn{\boldsymbol\Psi} companion to one shared variance across
 #'   traits. Only applies when `unique = TRUE`.
 #' @param lv One-sided formula for predictor-informed latent-score means.
+#'   The model matrix retains the formula's factor contrasts, then its
+#'   intercept column is removed. With default treatment contrasts,
+#'   `lv = ~ group` estimates differences from the factor reference level.
+#'   Use [stats::relevel()] to select that level. Designs spanning a constant,
+#'   including `lv = ~ 0 + group`, violate the no-LV-intercept contract
+#'   and are rejected. Numeric `lv = ~ x` and `lv = ~ 0 + x` are equivalent.
 #'   Runtime support is limited to ordinary unit-tier
-#'   `latent(..., lv = ~ x)`, and only Gaussian and pure binomial
-#'   (logit/probit/cloglog) fits are currently admitted (partial coverage,
-#'   supported for the ordinary-latent case). Source-specific `*_latent(..., lv = ~ x)` forms are
+#'   `latent(..., lv = ~ x)`. Registered native family/link rows compose in one
+#'   complete-response ordinary unit-tier block. The loadings-only
+#'   `unique = FALSE` form admits ranks through the number of logical responses;
+#'   automatic `Psi` additionally requires that its physical loading,
+#'   latent-predictor, and engine-free diagonal parameters pass a necessary
+#'   joint mean-covariance dimension screen. Passing that screen is not a
+#'   recovery or interval-calibration certificate. Bounded
+#'   rank-2/rank-3 canaries exercise every registered family, but broad
+#'   composition recovery and interval calibration remain partial. Retained
+#'   recovery and interval claims remain limited to their named cells.
+#'   Source-specific `*_latent(..., lv = ~ x)` forms are
 #'   parsed and then fail loud (not yet fittable). Where it is admitted, the
 #'   fit is experimental and exploratory: extract the coefficients with
 #'   [extract_lv_effects()], whose default `type = "axis_effect"` output is
 #'   rotation-dependent (an intrinsic latent-axis indeterminacy, not a
 #'   defect -- see [extract_lv_effects()] for the rotation-invariant
-#'   `type = "trait_effect"` alternative), and whose standard errors and
-#'   intervals are Wald approximations with no established repeated-sampling
-#'   coverage; do not treat them as calibrated.
+#'   `type = "trait_effect"` alternative). Repeated-sampling interval evidence
+#'   is cell-specific; do not infer an interval claim for the mixed-response
+#'   programme from its point-recovery evidence.
 #' @return A formula marker; never evaluated.
 #' @seealso [indep()], [phylo_latent()], [diag_re], [extract_Sigma()],
 #'   [extract_lv_effects()] for predictor-informed latent-score coefficients.
@@ -739,7 +772,10 @@ NULL
 #'     Cphy = ape::vcv(tree, corr = TRUE),
 #'     sigma2_phy = rep(0.3, 4), seed = 1
 #'   )
-#'   sim$data$species <- factor(sim$data$species, levels = tree$tip.label)
+#'   sim$data$species <- factor(
+#'     tree$tip.label[as.integer(sim$data$species)],
+#'     levels = tree$tip.label
+#'   )
 #'   fit <- gllvmTMB(
 #'     value ~ 0 + trait + phylo_latent(species, d = 2),
 #'     data       = sim$data,
@@ -750,6 +786,15 @@ NULL
 #'   )
 #' }
 #' @export
+#' @param rho Source strength: a number in `[0,1]` fixes
+#'   `rho * K + (1-rho) * diag(diag(K))` on the legacy-resolved source scale.
+#'   Omitted or explicit `1` preserves the existing model. `NULL` estimates
+#'   strength for one Gaussian structured trait-intercept block with complete
+#'   replicated multivariate observations and no competing ordinary covariance.
+#'   Estimated latent terms require rank one and at least four traits. The same
+#'   strength applies to the entire latent-plus-Psi covariance. This parameter
+#'   is not a variance-share summary. Fixed attenuation and the admitted
+#'   Gaussian estimator have implementation checks; recovery is regime-specific.
 phylo_latent <- function(
   species,
   d = 1,
@@ -757,76 +802,225 @@ phylo_latent <- function(
   vcv = NULL,
   A = NULL,
   Ainv = NULL,
-  unique = FALSE
+  unique = FALSE,
+  rho = 1
 ) {
   invisible(NULL)
 }
 
-#' Phylogenetic random slope on a continuous covariate
+#' Phylogenetic response-column slopes
 #'
-#' Adds a per-species random slope on a continuous covariate `x`, with
-#' species-level slopes correlated according to the supplied phylogeny.
-#' Mathematically:
-#'
-#' \deqn{\eta_{it} \;\mathrel{{+}{=}}\; \beta_{\text{phy}}(i)\, x_{io}, \qquad
-#'       \boldsymbol\beta_{\text{phy}} \sim \mathcal{N}\bigl(\mathbf 0, \,
-#'       \sigma^2_{\text{slope}}\,\mathbf A_{\text{phy}}\bigr).}
-#'
-#' The slope vector \eqn{\boldsymbol\beta_{\text{phy}}} has length
-#' \eqn{n_{\text{species}}} (one slope per species). It is shared
-#' across traits -- the same \eqn{\beta_{\text{phy}}(i)} multiplies
-#' \eqn{x_{io}} for every trait \eqn{t} of species \eqn{i}. This is
-#' the "random regression" pattern from quantitative genetics, with the
-#' phylogenetic A-matrix as the slope-covariance prior.
-#'
-#' Used inside a `gllvmTMB()` formula:
-#' ```r
-#' value ~ 0 + trait + (0 + trait):x +     # fixed-effect of x per trait
-#'         phylo_latent(species, d = 2) +  # main phylogenetic random effect
-#'         phylo_slope(x | species)        # phylo random slope on x
-#' ```
-#'
-#' Reuses the same \eqn{\mathbf A_{\text{phy}}^{-1}} as
-#' [phylo_latent()] (sparse via `phylo_tree =`, dense via
-#' `phylo_vcv =`); only one tree / VCV is needed even with both terms.
+#' Adds slope-only predictor deviations across response columns, with a tree
+#' relating those columns. If `B` is the response-column by predictor
+#' coefficient matrix, the model is
+#' \deqn{\mathrm{Cov}(\mathrm{vec}(B^\mathsf{T})) =
+#' K_\mathrm{phy} \otimes \Sigma_\mathrm{predictor}.}
+#' The RHS must be the response-column factor resolved from `trait =`, and the
+#' tree's tips must match its levels. A single `|` estimates a full predictor
+#' covariance; `||` gives separate predictor variances with zero covariance.
+#' Both bars are identical with one predictor. The term never adds a random
+#' intercept; put column intercepts in the main formula with `0 + trait`.
 #'
 #' ## Scope
 #'
-#' This helper supports:
-#' * **One** continuous covariate `x` (a single column name).
-#' * **One** shared slope variance \eqn{\sigma^2_{\text{slope}}}.
-#' * **Slopes shared across traits** (same \eqn{\beta_{\text{phy}}}(i)
-#'   for every trait of species \eqn{i}).
+#' This route is covered for Gaussian long-format data with one or more bare,
+#' finite numeric predictors. Wide-format column slopes, non-Gaussian
+#' responses, transformed/factor bases, latent predictor covariance, and
+#' intervals are not supported in this release. Use
+#' `extract_Sigma(fit, level = "column_slope")` for
+#' \eqn{\Sigma_\mathrm{predictor}}.
 #'
 #' For trait-specific intercept-and-slope covariance, use the corresponding
 #' augmented `phylo_indep()`, `phylo_latent()`, or `phylo_dep()` syntax.
 #'
-#' @param formula `x | species` style formula (LHS is the continuous
-#'   covariate column name; RHS must be the species factor).
+#' A historical non-trait RHS route remains accepted to preserve existing
+#' fits. It is compatibility behaviour, not the teaching API; new code puts
+#' the resolved response-column factor on the RHS.
+#'
+#' @param formula A slope-only `x1 + ... + xP | trait` or `|| trait` formula.
+#' @param tree An `ape::phylo` object whose tip labels match the resolved
+#'   response-column levels. **Canonical.**
+#' @param vcv A labelled response-column covariance/correlation matrix. Legacy
+#'   alias of `A =`.
+#' @param A A labelled response-column relatedness matrix; alias of `vcv =`.
+#' @param Ainv A labelled response-column precision matrix (inverse of `A`).
+#'   Sparse inputs are preserved.
 #' @return A formula marker; never evaluated.
-#' @seealso [phylo_latent()], [phylo_scalar()].
+#' @seealso [slope()], [animal_slope()], [kernel_slope()], [spatial_slope()],
+#'   [phylo_dep()], [phylo_indep()], [extract_Sigma()].
+#' @examples
+#' \dontrun{if (requireNamespace("ape", quietly = TRUE)) {
+#'   set.seed(1); tree <- ape::rcoal(6); tree$tip.label <- paste0("sp", 1:6)
+#'   dat <- expand.grid(site = factor(paste0("s", 1:12)), trait = factor(tree$tip.label))
+#'   dat$elevation <- rnorm(nrow(dat)); dat$forest_cover <- rnorm(nrow(dat))
+#'   dat$value <- rnorm(nrow(dat))
+#'   fit <- gllvmTMB(value ~ 0 + trait + phylo_slope(elevation + forest_cover | trait, tree = tree),
+#'     data = dat, trait = "trait", unit = "site", family = gaussian())
+#'   extract_Sigma(fit, level = "column_slope")
+#' }}
+#' @export
+phylo_slope <- function(
+  formula,
+  tree = NULL,
+  vcv = NULL,
+  A = NULL,
+  Ainv = NULL
+) {
+  invisible(NULL)
+}
+
+#' Ordinary response-column slopes
+#'
+#' Adds slope-only deviations across the response columns of a long-format
+#' Gaussian model.  If `B` is the response-column by predictor coefficient
+#' matrix and `Sigma` is the fitted covariance among its predictor columns,
+#' this helper uses
+#' \deqn{\mathrm{Cov}(\mathrm{vec}(B^\mathsf{T})) = I \otimes \Sigma.}
+#' Write `x1 + x2 | trait` for a full predictor covariance or
+#' `x1 + x2 || trait` for a diagonal predictor covariance.  Both spellings
+#' give the same one-variance model when there is only one predictor.  The
+#' term never adds a random intercept; keep response-column intercepts in the
+#' main formula with `0 + trait`.
+#'
+#' ## Scope
+#'
+#' This route is covered for Gaussian long-format data with one or more bare,
+#' finite numeric predictors. Wide-format column slopes, non-Gaussian
+#' responses, transformed/factor bases, and a random intercept inside this
+#' term are not supported in this release.
+#'
+#' @param formula A slope-only bar formula with bare numeric predictor names
+#'   on the left and the resolved response-column factor on the right, for
+#'   example `x | trait` or `x1 + x2 || trait`.
+#' @return A formula marker; never evaluated.
+#' @seealso [phylo_slope()], [animal_slope()], [kernel_slope()], [spatial_slope()],
+#'   [extract_Sigma()].
 #' @examples
 #' \dontrun{
-#'   tree <- ape::rcoal(20); tree$tip.label <- paste0("sp", seq_len(20))
-#'   sim <- simulate_site_trait(
-#'     n_sites = 10, n_species = 20, n_traits = 3,
-#'     mean_species_per_site = 10,
-#'     Cphy = ape::vcv(tree, corr = TRUE),
-#'     sigma2_phy = rep(0.3, 3), seed = 1
-#'   )
-#'   sim$data$species <- factor(sim$data$species, levels = tree$tip.label)
-#'   sim$data$x <- rnorm(nrow(sim$data))
-#'   fit <- gllvmTMB(
-#'     value ~ 0 + trait + (0 + trait):x + phylo_slope(x | species),
-#'     data       = sim$data,
-#'     trait      = "trait",
-#'     unit       = "species",
-#'     cluster    = "species",
-#'     phylo_tree = tree
-#'   )
+#' set.seed(1); dat <- expand.grid(unit = factor(1:12), trait = factor(paste0("sp", 1:4)))
+#' dat$lat <- rnorm(nrow(dat)); dat$temp <- rnorm(nrow(dat)); dat$value <- rnorm(nrow(dat))
+#' fit <- gllvmTMB(value ~ 0 + trait + slope(lat + temp | trait), data = dat,
+#'   trait = "trait", unit = "unit", family = gaussian())
+#' extract_Sigma(fit, level = "column_slope")
 #' }
 #' @export
-phylo_slope <- function(formula) {
+slope <- function(formula) {
+  invisible(NULL)
+}
+
+#' Fixed-kernel response-column slopes
+#'
+#' Adds slope-only response-column deviations coupled by a supplied labelled
+#' covariance matrix `K`.  With response-column by predictor coefficient
+#' matrix `B`, the model is
+#' \deqn{\mathrm{Cov}(\mathrm{vec}(B^\mathsf{T})) = K \otimes \Sigma.}
+#' A single `|` estimates a full predictor covariance `Sigma`; `||` makes it
+#' diagonal.  For one predictor these are the same model.  `K` must be finite,
+#' symmetric, positive definite, and have row and column names matching the
+#' levels of the response-column factor.  Its storage order need not match the
+#' factor order because labels are used for alignment.
+#'
+#' ## Scope
+#'
+#' This route is covered for one labelled positive-definite kernel, Gaussian
+#' long-format data, and one or more bare, finite numeric predictors. The
+#' supplied matrix is used on its original scale. Wide-format column slopes,
+#' non-Gaussian responses, transformed/factor bases, and a random intercept
+#' inside this term are not supported in this release.
+#'
+#' @param formula A slope-only bar formula with bare numeric predictor names
+#'   on the left and the resolved response-column factor on the right.
+#' @param K A labelled positive-definite covariance matrix for the response
+#'   columns.
+#' @param name A non-empty label retained in extractor source metadata.
+#' @return A formula marker; never evaluated.
+#' @seealso [slope()], [phylo_slope()], [animal_slope()], [extract_Sigma()].
+#' @examples
+#' \dontrun{
+#' set.seed(1); dat <- expand.grid(unit = factor(1:12), trait = factor(paste0("sp", 1:4)))
+#' dat$lat <- rnorm(nrow(dat)); dat$temp <- rnorm(nrow(dat)); dat$value <- rnorm(nrow(dat))
+#' K <- diag(nlevels(dat$trait)); dimnames(K) <- list(levels(dat$trait), levels(dat$trait))
+#' fit <- gllvmTMB(
+#'   value ~ 0 + trait + kernel_slope(lat + temp | trait, K = K),
+#'   data = dat, trait = "trait", unit = "unit",
+#'   family = gaussian()
+#' )
+#' extract_Sigma(fit, level = "column_slope")
+#' }
+#' @export
+kernel_slope <- function(formula, K, name = "kernel") {
+  invisible(NULL)
+}
+
+#' Spatial response-column slopes
+#'
+#' Adds slope-only response-column deviations whose dependence is a Matérn
+#' field evaluated at one labelled coordinate pair per response column. With
+#' response-column by predictor coefficient matrix `B`, the model is
+#' \deqn{\mathrm{Cov}(\mathrm{vec}(B^\mathsf{T})) =
+#' K_\mathrm{column}(\kappa) \otimes \Sigma,}
+#' where the projected SPDE covariance is normalized to unit diagonal at the
+#' response-column coordinates. Thus `Sigma` alone carries marginal predictor
+#' variance, while `kappa` controls practical range. Write a single `|` for a
+#' full predictor covariance and `||` for a diagonal covariance. Both bars are
+#' identical for one predictor. This term never adds a random intercept.
+#'
+#' Build `mesh` from a trait-level coordinate table with
+#' `make_mesh(..., id_col = "trait")`. Every response-column label must have
+#' exactly one unique finite coordinate pair; labels are aligned by value, not
+#' row order.
+#'
+#' ## Scope
+#'
+#' This route is covered for Gaussian long-format data and bare finite numeric
+#' predictors. Wide-format column slopes, non-Gaussian responses,
+#' transformed/factor bases, and latent predictor covariance are not supported
+#' in this release. Coordinate units are used as supplied; use an
+#' equal-distance projection and document the unit.
+#'
+#' @param formula A slope-only bar formula with bare numeric predictor names
+#'   on the left and the resolved response-column factor on the right.
+#' @param mesh A labelled `gllvmTMBmesh` built with [make_mesh()] and a
+#'   non-`NULL` `id_col` matching the resolved `trait =` column name. Its
+#'   retained row labels must match the response-column levels exactly.
+#' @return A formula marker; never evaluated.
+#' @seealso [make_mesh()], [slope()], [phylo_slope()], [kernel_slope()],
+#'   [extract_Sigma()].
+#' @examples
+#' if (requireNamespace("fmesher", quietly = TRUE)) {
+#' column_locations <- data.frame(
+#'   trait = paste0("sp", 1:6),
+#'   east_km = c(0, 1, 0, 1, 2, 2),
+#'   north_km = c(0, 0, 1, 1, 0, 1)
+#' )
+#' column_mesh <- make_mesh(
+#'   column_locations, c("east_km", "north_km"),
+#'   cutoff = 0.2, id_col = "trait"
+#' )
+#' df_long <- expand.grid(
+#'   unit = factor(paste0("site", 1:12)),
+#'   trait = factor(column_locations$trait, levels = column_locations$trait),
+#'   KEEP.OUT.ATTRS = FALSE
+#' )
+#' set.seed(130)
+#' df_long$lat <- rnorm(nrow(df_long))
+#' df_long$temp <- rnorm(nrow(df_long))
+#' trait_id <- as.integer(df_long$trait)
+#' df_long$value <- 0.1 * trait_id +
+#'   df_long$lat * seq(-0.3, 0.3, length.out = 6)[trait_id] +
+#'   df_long$temp * rep(c(-0.2, 0.2), 3)[trait_id] +
+#'   rnorm(nrow(df_long), sd = 0.25)
+#' fit <- gllvmTMB(
+#'   value ~ 0 + trait + spatial_slope(lat + temp | trait,
+#'                                      mesh = column_mesh),
+#'   data = df_long, trait = "trait", unit = "unit",
+#'   family = gaussian(),
+#'   control = gllvmTMBcontrol(se = FALSE), silent = TRUE
+#' )
+#' extract_Sigma(fit, level = "column_slope")
+#' }
+#' @export
+spatial_slope <- function(formula, mesh) {
   invisible(NULL)
 }
 
@@ -865,7 +1059,10 @@ phylo_slope <- function(formula) {
 #'     Cphy = ape::vcv(tree, corr = TRUE),
 #'     sigma2_phy = rep(0.3, 3), seed = 1
 #'   )
-#'   sim$data$species <- factor(sim$data$species, levels = tree$tip.label)
+#'   sim$data$species <- factor(
+#'     tree$tip.label[as.integer(sim$data$species)],
+#'     levels = tree$tip.label
+#'   )
 #'   fit <- gllvmTMB(
 #'     value ~ 0 + trait + phylo_scalar(species),
 #'     data       = sim$data,
@@ -974,7 +1171,10 @@ phylo_scalar <- function(
 #'     Cphy = ape::vcv(tree, corr = TRUE),
 #'     sigma2_phy = rep(0.3, 3), seed = 1
 #'   )
-#'   sim$data$species <- factor(sim$data$species, levels = tree$tip.label)
+#'   sim$data$species <- factor(
+#'     tree$tip.label[as.integer(sim$data$species)],
+#'     levels = tree$tip.label
+#'   )
 #'   fit <- gllvmTMB(
 #'     value ~ 0 + trait + phylo_unique(species),
 #'     data       = sim$data,
@@ -1189,8 +1389,23 @@ spatial_scalar <- function(formula, coords = NULL, mesh = NULL) {
 #'   )
 #' }
 #' @export
+#' @param rho Source-strength attenuation between 0 and 1, or `NULL` to estimate it
+#'   in a complete replicated multivariate Gaussian model without competing
+#'   covariance. Omitted or explicit `1` preserves the existing model. Range
+#'   remains a separate estimated parameter. Attenuation preserves the projected
+#'   marginal variance at each modeled location and applies to the whole trait
+#'   covariance, including Psi. The grouping column must identify locations
+#'   consistently across replicates. With `rho = NULL` or any value other
+#'   than 1, the name after `|` is that grouping column and must be a real
+#'   column of `data`, for example `0 + trait | location`. The placeholder
+#'   `| coords` fails when `data` has no location-ID column named `coords`.
+#'   At the default `rho = 1` the name is ignored, and `| coords` is the usual
+#'   spelling. Estimated latent models require rank one
+#'   and at least four traits. The frozen spatial study found no passing recovery
+#'   cell (14 partial and 2 blocked); rho intervals remain unvalidated.
+#'   new-location prediction is not supported for attenuated models.
 spatial_latent <- function(formula, d = 1, unique = FALSE,
-                           coords = NULL, mesh = NULL) {
+                           coords = NULL, mesh = NULL, rho = 1) {
   invisible(NULL)
 }
 
@@ -1347,6 +1562,21 @@ spatial <- function(
 #' @export
 #' @keywords internal
 meta_known_V <- function(V, type = "exact") {
+  ## Fire-on-use notice for the meta_known_V() -> meta_V() rename (0.2.0).
+  ## This is a formula MARKER: its body is never evaluated when the keyword
+  ## appears inside a `~` formula (the parser recognises "meta_known_V" by
+  ## name and desugars it directly; see the `fn == "meta_V" || fn ==
+  ## "meta_known_V"` branch in brms-sugar.R). lifecycle::deprecate_soft()
+  ## therefore only reaches the user when this function is called directly
+  ## (console/script top level, or from a test); mirrors the once-per-session
+  ## tracker `.gllvmTMB_warn_scalar_family_deprecated()` /
+  ## `.gllvmTMB_warn_latent_residual_alias()` already use.
+  if (!isTRUE(getOption("gllvmTMB.quiet_grammar_notes", FALSE))) {
+    if (!isTRUE(.gllvmTMB_deprecation_seen[["meta_known_V"]])) {
+      lifecycle::deprecate_soft("0.2.0", "meta_known_V()", "meta_V()")
+      .gllvmTMB_deprecation_seen[["meta_known_V"]] <- TRUE
+    }
+  }
   invisible(NULL)
 }
 
@@ -1532,19 +1762,45 @@ scalar <- function(formula) {
 #' A single-covariate random regression uses
 #' `phylo_indep(1 + x | species)` in wide syntax or
 #' `phylo_indep(0 + trait + (0 + trait):x | species)` in explicit long syntax.
-#' It estimates an intercept--slope block with their correlation fixed to zero.
+#' It estimates independent trait-specific intercept--slope blocks. The
+#' intercept--slope correlation is estimated within each trait; cross-trait
+#' blocks are structurally zero.
+#'
+#' ## Slope-only response-column form
+#'
+#' For a long-format Gaussian model, `phylo_indep(0 + lat + temp | trait)`
+#' adds response-column deviations to the fixed slopes without adding a random
+#' intercept. The phylogeny is indexed by the response-column factor on the
+#' right of `|`; `indep` makes the covariance among `lat` and `temp` slopes
+#' diagonal. With slope coefficient matrix \eqn{\mathbf B} (rows are
+#' response columns and columns are predictors), let
+#' \eqn{\mathbf b=\mathrm{vec}(\mathbf B^\mathsf{T})} order coefficients by
+#' response column: `lat`, `temp` for column 1, then `lat`, `temp` for column
+#' 2, and so on. Then
+#' \eqn{\mathrm{Cov}(\mathbf b) = \mathbf A_{\mathrm{phy}}
+#' \otimes \mathrm{diag}(\sigma^2_{\mathrm{lat}},
+#' \sigma^2_{\mathrm{temp}})}. (The native implementation stores the
+#' permutation-equivalent column-major vector.) Retrieve that predictor-basis covariance with
+#' `extract_Sigma(fit, level = "column_slope")`. It is not a trait-level
+#' \eqn{\boldsymbol\Sigma}. This V1 route requires bare finite numeric
+#' predictors, exactly the resolved `trait` column on the RHS, and Gaussian
+#' responses; wide-format and non-Gaussian column slopes are planned work.
 #'
 #' Pass the phylogeny via `tree = phylo` (canonical, sparse \eqn{\mathbf{A}^{-1}}) or
 #' `vcv = Cphy` (`r lifecycle::badge("superseded")`, dense). See
 #' [phylo_latent()] for the full discussion of the two paths.
 #'
-#' @param formula Intercept-only `0 + trait | species`, or the supported
-#'   one-covariate intercept-and-slope form described above.
+#' @param formula Intercept-only `0 + trait | species`, the supported
+#'   intercept-and-slope form described above, or the Gaussian long-format
+#'   slope-only response-column form `0 + x1 + ... | trait`.
 #' @param tree An `ape::phylo` object. **Canonical.**
 #' @param vcv A tip-only phylogenetic correlation matrix
-#'   (`n_species x n_species`). Legacy alias of `A =`.
-#' @param A Tip-level relatedness matrix (`n_species x n_species`)
-#'   -- alias of `vcv =`, aligned with the `animal_*` family's
+#'   (`n_species x n_species`) for the ordinary forms. For the slope-only
+#'   response-column form it is instead `n_traits x n_traits`, with row names
+#'   matching the resolved RHS `trait` levels. Legacy alias of `A =`.
+#' @param A Tip-level relatedness matrix (`n_species x n_species`) for the
+#'   ordinary forms; for the slope-only response-column form, the corresponding
+#'   trait-level matrix. Alias of `vcv =`, aligned with the `animal_*` family's
 #'   argument naming.
 #' @param Ainv Sparse precision matrix (inverse of `A`).
 #' @param common `FALSE` (default) for a separate phylogenetic variance per
@@ -1572,13 +1828,23 @@ scalar <- function(formula) {
 #'                 unit    = "species",
 #'                 cluster = "species")
 #' }
+#' @param rho Source strength: a number in `[0,1]` fixes
+#'   `rho * K + (1-rho) * diag(diag(K))` on the legacy-resolved source scale.
+#'   Omitted or explicit `1` preserves the existing model. `NULL` estimates
+#'   strength for one Gaussian structured trait-intercept block with complete
+#'   replicated multivariate observations and no competing ordinary covariance.
+#'   Estimated latent terms require rank one and at least four traits. The same
+#'   strength applies to the entire latent-plus-Psi covariance. This parameter
+#'   is not a variance-share summary. Fixed attenuation and the admitted
+#'   Gaussian estimator have implementation checks; recovery is regime-specific.
 phylo_indep <- function(
   formula,
   tree = NULL,
   vcv = NULL,
   A = NULL,
   Ainv = NULL,
-  common = FALSE
+  common = FALSE,
+  rho = 1
 ) {
   invisible(NULL)
 }
@@ -1645,7 +1911,22 @@ phylo_indep <- function(
 #'   )
 #' }
 #' @export
-spatial_indep <- function(formula, coords = NULL, mesh = NULL, common = FALSE) {
+#' @param rho Source-strength attenuation between 0 and 1, or `NULL` to estimate it
+#'   in a complete replicated multivariate Gaussian model without competing
+#'   covariance. Omitted or explicit `1` preserves the existing model. Range
+#'   remains a separate estimated parameter. Attenuation preserves the projected
+#'   marginal variance at each modeled location and applies to the whole trait
+#'   covariance, including Psi. The grouping column must identify locations
+#'   consistently across replicates. With `rho = NULL` or any value other
+#'   than 1, the name after `|` is that grouping column and must be a real
+#'   column of `data`, for example `0 + trait | location`. The placeholder
+#'   `| coords` fails when `data` has no location-ID column named `coords`.
+#'   At the default `rho = 1` the name is ignored, and `| coords` is the usual
+#'   spelling. Estimated latent models require rank one
+#'   and at least four traits. The frozen spatial study found no passing recovery
+#'   cell (14 partial and 2 blocked); rho intervals remain unvalidated.
+#'   new-location prediction is not supported for attenuated models.
+spatial_indep <- function(formula, coords = NULL, mesh = NULL, common = FALSE, rho = 1) {
   invisible(NULL)
 }
 
@@ -1740,6 +2021,16 @@ dep <- function(formula) {
 #' phylogenetic decomposition. Use
 #' `phylo_indep()` for the marginal-only per-trait variance fit.
 #'
+#' ## Slope-only response-column form
+#'
+#' In a Gaussian long-format model, `phylo_dep(0 + lat + temp | trait)` gives
+#' response-column slope deviations with a full positive-definite covariance
+#' among predictors. Fixed column intercepts remain `0 + trait` in the main
+#' formula; this term never adds a random intercept. Retrieve the predictor
+#' covariance with `extract_Sigma(fit, level = "column_slope")`. Use
+#' `phylo_indep()` for a diagonal predictor covariance. The helper
+#' `phylo_slope(lat + temp | trait)` is an alias for this full route.
+#'
 #' ## Mutual exclusion with `phylo_latent()` / `phylo_indep()`
 #'
 #' Combining `phylo_dep(0 + trait | species)` with `phylo_latent` is
@@ -1752,8 +2043,9 @@ dep <- function(formula) {
 #' `vcv = Cphy` (`r lifecycle::badge("superseded")`, dense). See
 #' [phylo_latent()] for the full discussion of the two paths.
 #'
-#' @param formula `0 + trait | species` style formula. The LHS must be
-#'   `0 + trait` (the trait factor); the RHS is the species column.
+#' @param formula `0 + trait | species` style formula, an admitted
+#'   intercept-and-slope form, or the Gaussian slope-only response-column form
+#'   `0 + x1 + ... | trait`.
 #' @param tree An `ape::phylo` object. **Canonical.**
 #' @param vcv A tip-only phylogenetic correlation matrix
 #'   (`n_species x n_species`). Legacy alias of `A =`.
@@ -1773,7 +2065,10 @@ dep <- function(formula) {
 #'     Cphy = ape::vcv(tree, corr = TRUE),
 #'     sigma2_phy = rep(0.3, 3), seed = 1
 #'   )
-#'   sim$data$species <- factor(sim$data$species, levels = tree$tip.label)
+#'   sim$data$species <- factor(
+#'     tree$tip.label[as.integer(sim$data$species)],
+#'     levels = tree$tip.label
+#'   )
 #'   fit <- gllvmTMB(
 #'     value ~ 0 + trait + phylo_dep(0 + trait | species),
 #'     data       = sim$data,
@@ -1784,7 +2079,16 @@ dep <- function(formula) {
 #'   )
 #' }
 #' @export
-phylo_dep <- function(formula, tree = NULL, vcv = NULL, A = NULL, Ainv = NULL) {
+#' @param rho Source strength: a number in `[0,1]` fixes
+#'   `rho * K + (1-rho) * diag(diag(K))` on the legacy-resolved source scale.
+#'   Omitted or explicit `1` preserves the existing model. `NULL` estimates
+#'   strength for one Gaussian structured trait-intercept block with complete
+#'   replicated multivariate observations and no competing ordinary covariance.
+#'   Estimated latent terms require rank one and at least four traits. The same
+#'   strength applies to the entire latent-plus-Psi covariance. This parameter
+#'   is not a variance-share summary. Fixed attenuation and the admitted
+#'   Gaussian estimator have implementation checks; recovery is regime-specific.
+phylo_dep <- function(formula, tree = NULL, vcv = NULL, A = NULL, Ainv = NULL, rho = 1) {
   invisible(NULL)
 }
 
@@ -1844,7 +2148,22 @@ phylo_dep <- function(formula, tree = NULL, vcv = NULL, A = NULL, Ainv = NULL) {
 #'   )
 #' }
 #' @export
-spatial_dep <- function(formula, coords = NULL, mesh = NULL) {
+#' @param rho Source-strength attenuation between 0 and 1, or `NULL` to estimate it
+#'   in a complete replicated multivariate Gaussian model without competing
+#'   covariance. Omitted or explicit `1` preserves the existing model. Range
+#'   remains a separate estimated parameter. Attenuation preserves the projected
+#'   marginal variance at each modeled location and applies to the whole trait
+#'   covariance, including Psi. The grouping column must identify locations
+#'   consistently across replicates. With `rho = NULL` or any value other
+#'   than 1, the name after `|` is that grouping column and must be a real
+#'   column of `data`, for example `0 + trait | location`. The placeholder
+#'   `| coords` fails when `data` has no location-ID column named `coords`.
+#'   At the default `rho = 1` the name is ignored, and `| coords` is the usual
+#'   spelling. Estimated latent models require rank one
+#'   and at least four traits. The frozen spatial study found no passing recovery
+#'   cell (14 partial and 2 blocked); rho intervals remain unvalidated.
+#'   new-location prediction is not supported for attenuated models.
+spatial_dep <- function(formula, coords = NULL, mesh = NULL, rho = 1) {
   invisible(NULL)
 }
 
@@ -1906,8 +2225,8 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL) {
     (is.symbol(e) && identical(as.character(e), "1"))
 }
 
-.is_zero_plus_trait <- function(e) {
-  ## TRUE if `e` is the call `0 + trait`, i.e. `+(0, trait)`.
+.is_zero_plus_trait <- function(e, trait_col = "trait") {
+  ## TRUE for the selected trait column or its legacy literal `trait` alias.
   e <- .strip_lhs_parens(e)
   is.call(e) &&
     identical(e[[1L]], as.name("+")) &&
@@ -1916,7 +2235,7 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL) {
     length(e[[2L]]) == 1L &&
     e[[2L]] == 0 &&
     is.name(e[[3L]]) &&
-    identical(as.character(e[[3L]]), "trait")
+    as.character(e[[3L]]) %in% c(trait_col, "trait")
 }
 
 ## Flatten a left-nested `a + b + c` LHS expression into the ordered list of
@@ -1925,13 +2244,13 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL) {
 ## the left `+` spine recovers `list(1, x1, x2)` in source order. A bare
 ## (non-`+`) expression returns a length-1 list. Used to generalise the
 ## augmented intercept+slope LHS from one covariate (s = 1) to s >= 1.
-.flatten_lhs_plus <- function(e) {
+.flatten_lhs_plus <- function(e, trait_col = "trait") {
   e <- .strip_lhs_parens(e)
   ## `0 + trait` is itself a `+` call but is an ATOMIC per-trait-intercept
   ## term (the leading term of the long form), never a `0`/`trait` pair to
   ## split. Treat it as a leaf so `0 + trait + (0+trait):x1 + ...` flattens to
   ## list(`0 + trait`, (0+trait):x1, ...) rather than splitting the head.
-  if (.is_zero_plus_trait(e)) {
+  if (.is_zero_plus_trait(e, trait_col = trait_col)) {
     return(list(e))
   }
   if (
@@ -1939,7 +2258,8 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL) {
       identical(e[[1L]], as.name("+")) &&
       length(e) == 3L
   ) {
-    return(c(.flatten_lhs_plus(e[[2L]]), list(.strip_lhs_parens(e[[3L]]))))
+    return(c(.flatten_lhs_plus(e[[2L]], trait_col = trait_col),
+      list(.strip_lhs_parens(e[[3L]]))))
   }
   list(e)
 }
@@ -1964,14 +2284,14 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL) {
   invisible(cols)
 }
 
-.match_wide_intercept_slopes <- function(lhs) {
-  terms <- .flatten_lhs_plus(lhs)
+.match_wide_intercept_slopes <- function(lhs, trait_col = "trait") {
+  terms <- .flatten_lhs_plus(lhs, trait_col = trait_col)
   if (length(terms) < 2L || !.is_one_lhs(terms[[1L]])) {
     return(NULL)
   }
   cols <- character(0L)
   for (term in terms[-1L]) {
-    if (!is.name(term) || identical(as.character(term), "trait")) {
+    if (!is.name(term) || as.character(term) %in% c(trait_col, "trait")) {
       return(NULL)
     }
     cols <- c(cols, as.character(term))
@@ -1984,9 +2304,9 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL) {
 ## `0 + trait + (0 + trait):x1 + (0 + trait):x2 + ...` (s >= 1 interactions
 ## after the leading `0 + trait`). Returns the ordered character vector of
 ## slope columns, or NULL when the shape does not match.
-.match_long_intercept_slopes <- function(lhs) {
-  terms <- .flatten_lhs_plus(lhs)
-  if (length(terms) < 2L || !.is_zero_plus_trait(terms[[1L]])) {
+.match_long_intercept_slopes <- function(lhs, trait_col = "trait") {
+  terms <- .flatten_lhs_plus(lhs, trait_col = trait_col)
+  if (length(terms) < 2L || !.is_zero_plus_trait(terms[[1L]], trait_col = trait_col)) {
     return(NULL)
   }
   cols <- character(0L)
@@ -1996,12 +2316,12 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL) {
       !(is.call(slope) &&
         identical(slope[[1L]], as.name(":")) &&
         length(slope) == 3L &&
-        .is_zero_plus_trait(slope[[2L]]))
+        .is_zero_plus_trait(slope[[2L]], trait_col = trait_col))
     ) {
       return(NULL)
     }
     sc <- .strip_lhs_parens(slope[[3L]])
-    if (!is.name(sc) || identical(as.character(sc), "trait")) {
+    if (!is.name(sc) || as.character(sc) %in% c(trait_col, "trait")) {
       return(NULL)
     }
     cols <- c(cols, as.character(sc))
@@ -2018,8 +2338,8 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL) {
 ## intercept-only forms; everything else -- including the MULTI-slope
 ## `1 + x1 + x2 | g` -- stays `"unsupported"` exactly as before. Multi-slope is
 ## activated for the phylo_dep path ONLY, via `.gllvmTMB_lhs_form_multi()`.
-.gllvmTMB_lhs_form <- function(lhs) {
-  info <- .gllvmTMB_lhs_form_multi(lhs)
+.gllvmTMB_lhs_form <- function(lhs, trait_col = "trait") {
+  info <- .gllvmTMB_lhs_form_multi(lhs, trait_col = trait_col)
   if (
     info$lhs_form %in%
       c("wide_intercept_slope", "long_intercept_slope") &&
@@ -2036,16 +2356,16 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL) {
 ## (wide) and `0 + trait + (0 + trait):x1 + (0 + trait):x2 + ... | g` (long)
 ## with s >= 2 distinct slope covariates, returning the full ordered
 ## `slope_cols` vector (`slope_col` keeps the first for back-compat consumers).
-.gllvmTMB_lhs_form_multi <- function(lhs) {
+.gllvmTMB_lhs_form_multi <- function(lhs, trait_col = "trait") {
   lhs <- .strip_lhs_parens(lhs)
-  if (.is_one_lhs(lhs) || .is_zero_plus_trait(lhs)) {
+  if (.is_one_lhs(lhs) || .is_zero_plus_trait(lhs, trait_col = trait_col)) {
     return(list(
       lhs_form = "intercept_only",
       slope_col = NULL,
       slope_cols = NULL
     ))
   }
-  wide_cols <- .match_wide_intercept_slopes(lhs)
+  wide_cols <- .match_wide_intercept_slopes(lhs, trait_col = trait_col)
   if (!is.null(wide_cols)) {
     return(list(
       lhs_form = "wide_intercept_slope",
@@ -2053,7 +2373,7 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL) {
       slope_cols = wide_cols
     ))
   }
-  long_cols <- .match_long_intercept_slopes(lhs)
+  long_cols <- .match_long_intercept_slopes(lhs, trait_col = trait_col)
   if (!is.null(long_cols)) {
     return(list(
       lhs_form = "long_intercept_slope",
@@ -2062,6 +2382,51 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL) {
     ))
   }
   list(lhs_form = "unsupported", slope_col = NULL, slope_cols = NULL)
+}
+
+## Column-slope grammar is deliberately distinct from the existing augmented
+## intercept-and-slope grammar. It accepts only a slope-only bare-variable
+## basis, e.g. `0 + lat + temp`: no intercept, trait indicator, transform, or
+## factor expansion can enter this first matrix-normal route by accident.
+.gllvmTMB_column_slope_cols <- function(lhs, trait_col = "trait") {
+  terms <- .flatten_lhs_plus(.strip_lhs_parens(lhs))
+  if (length(terms) < 2L ||
+      !is.numeric(terms[[1L]]) || length(terms[[1L]]) != 1L ||
+      terms[[1L]] != 0 ||
+      !all(vapply(terms[-1L], is.name, logical(1)))) {
+    return(NULL)
+  }
+  cols <- vapply(terms[-1L], as.character, character(1))
+  if (trait_col %in% cols) {
+    cli::cli_abort(c(
+      "A column-slope basis cannot include the response-column factor {.var {trait_col}}.",
+      "i" = "The response-column intercept belongs in the main formula, e.g. {.code 0 + {trait_col}}.",
+      ">" = "Use {.code phylo_indep(0 + lat + temp | {trait_col}, tree = tree)}."
+    ))
+  }
+  .assert_distinct_slope_cols(cols)
+  cols
+}
+
+## The memorable slope helper deliberately has a smaller, unambiguous grammar:
+## one or more bare predictor names.  Whether a one-predictor phylo/animal
+## helper means this column route is decided from its RHS: only the resolved
+## response-column factor opts in, preserving `phylo_slope(x | species)`.
+.gllvmTMB_column_slope_helper_cols <- function(lhs, trait_col = "trait") {
+  terms <- .flatten_lhs_plus(.strip_lhs_parens(lhs))
+  if (length(terms) < 1L || !all(vapply(terms, is.name, logical(1)))) {
+    return(NULL)
+  }
+  cols <- vapply(terms, as.character, character(1))
+  if (trait_col %in% cols) {
+    cli::cli_abort(c(
+      "A column-slope basis cannot include the response-column factor {.var {trait_col}}.",
+      "i" = "The response-column intercept belongs in the main formula, e.g. {.code 0 + {trait_col}}.",
+      ">" = "Use predictor columns on the left, for example {.code slope(lat + temp | {trait_col})}."
+    ))
+  }
+  .assert_distinct_slope_cols(cols)
+  cols
 }
 
 ## Design 07 Stage 2.5 (May 2026): fail-loud guard against augmented LHS
@@ -2082,7 +2447,7 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL) {
 ## anything other than `1` or `0 + trait`, abort with a Stage-3 redirect.
 ## If the first arg is not a bar at all (e.g. legacy `unique(grp)` bare-
 ## name form), this helper is a no-op.
-.assert_no_augmented_lhs <- function(fn, e) {
+.assert_no_augmented_lhs <- function(fn, e, trait_col = "trait") {
   if (!is.call(e) || length(e) < 2L) {
     return(invisible(NULL))
   }
@@ -2094,11 +2459,18 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL) {
   }
   lhs <- .strip_lhs_parens(bar[[2L]])
   ## Match exactly the same shape detection the phylo()/spatial() wrappers
-  ## use (df76c705 / 8b1ddc92): `1` (intercept-only) or `0 + trait`
+  ## use (df76c705 / 8b1ddc92): `1` (intercept-only) or `0 + <trait col>`
   ## (per-trait intercepts). Anything else is augmented LHS, not yet
   ## supported by the engine. Enclosing parens around the LHS (e.g.
   ## `indep((0 + trait) | site)`) are stripped first so they don't cause
   ## a false-positive augmented-LHS classification (#626).
+  ##
+  ## #1188: the resolved `trait =` column name is the primary spelling to
+  ## accept -- comparing only against the literal `"trait"` rejected a
+  ## user's OWN correct `0 + <their trait column> | g` form whenever they
+  ## named the column something other than `"trait"`. The literal `"trait"`
+  ## is still accepted regardless of `trait_col` so existing code (and every
+  ## fixture that writes the LHS as literal `trait`) keeps working.
   is_intercept_only <- (is.numeric(lhs) && length(lhs) == 1L && lhs == 1) ||
     (is.symbol(lhs) && identical(as.character(lhs), "1"))
   is_zero_plus_trait <- is.call(lhs) &&
@@ -2107,16 +2479,103 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL) {
     is.numeric(lhs[[2L]]) &&
     lhs[[2L]] == 0 &&
     is.symbol(lhs[[3L]]) &&
-    identical(as.character(lhs[[3L]]), "trait")
+    as.character(lhs[[3L]]) %in% c(trait_col, "trait")
   if (is_intercept_only || is_zero_plus_trait) {
     return(invisible(NULL))
+  }
+  ## #1196: point at a route that actually fits, conditioned on the RHS
+  ## (right of `|`) the caller supplied. Grouping by the trait column
+  ## itself (`fn(x | trait)`) is almost always someone reaching for the
+  ## response-column slope grammar; grouping by an ordinary column
+  ## (species/site/...) is the group-axis random-slope grammar instead.
+  ## Neither of those is `*_indep`/`*_latent`/`*_dep`, which also refuse
+  ## a slope LHS -- naming them here was the bug.
+  rhs <- bar[[3L]]
+  rhs_is_trait <- is.symbol(rhs) && as.character(rhs) %in% c(trait_col, "trait")
+  is_spatial <- startsWith(fn, "spatial_")
+  ## #1196 B2 correction (adversarial review 2026-09-02): `phylo_slope`/
+  ## `animal_slope` require a genuine phylogenetic/pedigree relatedness
+  ## axis -- naming them for an ordinary column (`site`) or the spatial
+  ## placeholder (`coords`) points at a route that REFUSES (no tree covers
+  ## those levels; a pedigree over coordinates is meaningless), and
+  ## `.warn_spatial_grouping_token()` already says `coords` is decorative,
+  ## contradicting a `tree =` recommendation there. The single-slope form
+  ## `1 + x | group` DOES fit via `latent()`/`unique()`'s own augmented
+  ## random-regression engine (verified: `latent(1 + x | site, d = K)` and
+  ## `unique(1 + x | site)` both converge) -- that is the actual working
+  ## route for non-spatial, non-trait groupings. More than one slope
+  ## covariate (`1 + x1 + x2 | g`) has no supported single-term route at
+  ## all, spatial or not.
+  is_single_slope <- .gllvmTMB_lhs_form(lhs, trait_col = trait_col)$lhs_form %in%
+    c("wide_intercept_slope", "long_intercept_slope")
+  next_step <- if (rhs_is_trait) {
+    "Use the response-column slope grammar instead: {.fn slope}, {.fn phylo_slope}, or {.fn animal_slope}, e.g. {.code phylo_slope(x | trait, tree = tree)}."
+  } else if (is_spatial) {
+    "There is no supported route for more than one slope covariate here; fit separate models, one covariate per {.fn {fn}} term."
+  } else if (is_single_slope) {
+    "Use {.code latent(1 + x | {deparse(rhs)}, d = K)} or {.code unique(1 + x | {deparse(rhs)})} instead -- {.fn {fn}} itself does not support a slope term."
+  } else {
+    "There is no supported route for more than one slope covariate here; fit separate models, one covariate per term."
   }
   cli::cli_abort(c(
     "{.fn {fn}} augmented LHS is not yet supported.",
     "i" = "You wrote {.code {fn}({deparse(bar)})}.",
-    "x" = "This wrapper accepts only intercept-only {.code 0 + trait | g} or {.code 1 | g} forms.",
-    ">" = "Use the source-specific {.fn *_indep}, {.fn *_latent}, or {.fn *_dep} keyword when you need a supported intercept-and-slope covariance."
+    "x" = "This wrapper accepts only intercept-only {.code 0 + {trait_col} | g} or {.code 1 | g} forms.",
+    ">" = next_step
   ))
+}
+
+## #1163: at the default rho = 1, the RHS of `|` in a spatial_*()
+## keyword is a placeholder (canonically spelled `coords`). The field reads
+## locations from `mesh =` or `coords =`; the token does not select a column.
+## A non-unit or estimated rho instead consumes an observed location-ID
+## column, so only the default-rho case receives the notice below.
+.warn_spatial_grouping_token <- function(fn, e) {
+  if (
+    !is.call(e) || length(e) < 2L || !is.call(e[[2L]]) ||
+      !identical(e[[2L]][[1L]], as.name("|")) || length(e[[2L]]) != 3L
+  ) {
+    return(invisible(NULL))
+  }
+  rhs <- e[[2L]][[3L]]
+  if (is.symbol(rhs) && identical(as.character(rhs), "coords")) {
+    return(invisible(NULL))
+  }
+  ## Estimated or fixed non-unit `rho` reads this token as the location
+  ## identifier, so it is not ignored. Two ways to know: gllvmTMB() has already
+  ## stripped `rho` from the call and recorded the consumed token
+  ## (`.gllvmTMB_spatial_token_consumed`); callers that rewrite the formula
+  ## directly (screen_gllvmTMB(), suggest_lambda_constraint()) still see a
+  ## literal `rho =` argument that is not 1.
+  if (
+    is.symbol(rhs) &&
+      identical(as.character(rhs), .gllvmTMB_spatial_token_consumed$token)
+  ) {
+    return(invisible(NULL))
+  }
+  call_names <- names(e)
+  if (!is.null(call_names) && "rho" %in% call_names) {
+    rho_arg <- e[[which(call_names == "rho")[1L]]]
+    if (!(is.numeric(rho_arg) && length(rho_arg) == 1L && isTRUE(rho_arg == 1))) {
+      return(invisible(NULL))
+    }
+  }
+  ## The package's own env-based one-shot tracker (used throughout this
+  ## file for grammar notices) rather than `cli_warn(.frequency = "once")`,
+  ## whose internal throttle is not resettable from tests.
+  if (isTRUE(getOption("gllvmTMB.quiet_grammar_notes", FALSE))) {
+    return(invisible(NULL))
+  }
+  key <- sprintf("spatial-grouping-token-%s", fn)
+  if (!isTRUE(.gllvmTMB_deprecation_seen[[key]])) {
+    cli::cli_warn(c(
+      "{.fn {fn}}'s {.code | {deparse(rhs)}} grouping token is ignored.",
+      "i" = "At the default {.code rho = 1}, spatial keywords read locations from {.arg mesh} (or {.arg coords}), rather than the token right of {.code |}.",
+      ">" = "Write {.code {fn}(..., | coords)} for clarity, and pass {.code mesh = ...} (or {.code coords = ...}) to supply the actual locations."
+    ))
+    .gllvmTMB_deprecation_seen[[key]] <- TRUE
+  }
+  invisible(NULL)
 }
 
 normalise_spatial_orientation <- function(e) {
@@ -2301,7 +2760,7 @@ normalise_spatial_orientation <- function(e) {
 ## rename. The pre-0.1.4 orientation `coords | trait` triggers a one-shot
 ## lifecycle deprecation warning per keyword per session; the engine
 ## itself reads neither side of the bar so the flip is purely cosmetic.
-rewrite_canonical_aliases <- function(formula) {
+rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
   ## Phase L (May 2026): per-term `tree = ...`, `vcv = ...`,
   ## `coords = ...`, `mesh = ...` arguments inside phylo_*() / spatial_*()
   ## keywords must survive the rewrite to the canonical engine kinds
@@ -2356,7 +2815,8 @@ rewrite_canonical_aliases <- function(formula) {
     "spatial_latent", "spatial_dep", "spde",
     "animal_scalar", "animal_unique", "animal_indep",
     "animal_latent", "animal_dep", "animal_slope",
-    "kernel_latent", "kernel_unique", "kernel_indep", "kernel_dep"
+    "kernel_latent", "kernel_unique", "kernel_indep", "kernel_dep",
+    "slope", "kernel_slope", "spatial_slope"
   )
   .has_named_arg <- function(e, arg) {
     nm <- names(e)
@@ -2387,7 +2847,7 @@ rewrite_canonical_aliases <- function(formula) {
     cli::cli_abort(c(
       "{.arg lv} is reserved for ordinary {.fn latent} only.",
       "x" = "{.fn {fn}} does not support predictor-informed latent-score means.",
-      "i" = "Predictor-informed latent-score means are limited to ordinary unit-tier {.code latent(..., lv = ~ x)} with Gaussian or pure binomial logit/probit/cloglog responses.",
+      "i" = "Predictor-informed latent-score means are limited to one ordinary unit-tier {.code latent(..., lv = ~ x)} block. Registered response families compose through that block under the complete-response family-wide contract.",
       ">" = "Remove {.arg lv} from {.fn {fn}}; predictor-informed latent scores are not implemented for this covariance source."
     ))
   }
@@ -2474,7 +2934,7 @@ rewrite_canonical_aliases <- function(formula) {
       ## block in `R/fit-multi.R` detects sparse input and uses it
       ## directly as Ainv_phy_rr (mirroring the phylo_tree route at
       ## `R/fit-multi.R:1037`).
-      return(bquote(pedigree_to_Ainv_sparse(.(ped_expr))))
+      return(bquote(gllvmTMB::pedigree_to_Ainv_sparse(.(ped_expr))))
     }
     if ("A" %in% nm) {
       return(e[[which(nm == "A")]])
@@ -2485,7 +2945,11 @@ rewrite_canonical_aliases <- function(formula) {
       ## unchanged so fit-multi.R's sparse-Ainv path detects it.
       ## Dense Ainv inputs are inverted to dense A for the legacy
       ## dense path (preserves backward compatibility).
-      return(bquote(.gllvmTMB_maybe_keep_sparse_ainv(.(Ainv_expr))))
+      return(bquote(
+        (function(.Ainv) {
+          if (inherits(.Ainv, "sparseMatrix")) .Ainv else solve(as.matrix(.Ainv))
+        })(.(Ainv_expr))
+      ))
     }
     if (fn == "animal_slope") {
       return(NULL)
@@ -2497,7 +2961,97 @@ rewrite_canonical_aliases <- function(formula) {
   }
   rewrite <- function(e) {
     if (is.call(e)) {
-      fn <- as.character(e[[1L]])
+      ## A source expression may contain a namespaced call (`pkg::fun(x)`) or
+      ## an inline normaliser. Those are ordinary argument expressions, not
+      ## covariance keywords, so only a symbol head can name a keyword here.
+      fn <- if (is.symbol(e[[1L]])) as.character(e[[1L]]) else ""
+      ## Fixed-source response-column helpers.  They all reduce to the proven
+      ## matrix-normal phylo_slope core; the marker controls the source
+      ## precision and public metadata without changing the C++ likelihood.
+      if (
+        length(fn) == 1L && fn %in% c("slope", "kernel_slope", "spatial_slope") &&
+          length(e) >= 2L && is.call(e[[2L]]) &&
+          as.character(e[[2L]][[1L]]) %in% c("|", "||")
+      ) {
+        bar <- e[[2L]]
+        if (!is.name(bar[[3L]]) ||
+            !identical(as.character(bar[[3L]]), trait_col)) {
+          cli::cli_abort(c(
+            "{.fn {fn}} must use the resolved response-column factor on the right of the bar.",
+            "i" = "This model resolves the response-column factor as {.var {trait_col}}.",
+            ">" = "Write {.code {fn}(x | {trait_col})} (full) or {.code {fn}(x || {trait_col})} (diagonal)."
+          ))
+        }
+        helper_cols <- .gllvmTMB_column_slope_helper_cols(bar[[2L]], trait_col)
+        if (is.null(helper_cols)) {
+          cli::cli_abort(c(
+            "{.fn {fn}} requires one or more bare predictor names and no intercept.",
+            ">" = "Use {.code {fn}(x1 + x2 | {trait_col})}; keep {.code 0 + {trait_col}} in the main formula."
+          ))
+        }
+        mode <- if (identical(as.character(bar[[1L]]), "||")) "indep" else "dep"
+        bar[[1L]] <- as.name("|")
+        bar[[2L]] <- Reduce(function(acc, col) call("+", acc, as.name(col)),
+                           helper_cols, init = 0)
+        marks <- list(
+          .column_slope_mode = mode,
+          column_slope_cols = helper_cols,
+          .column_slope_source = switch(
+            fn,
+            slope = "ordinary",
+            kernel_slope = "kernel",
+            spatial_slope = "spatial"
+          )
+        )
+        if (identical(fn, "kernel_slope")) {
+          nm <- names(e)
+          if (is.null(nm) || !"K" %in% nm) {
+            cli::cli_abort(c(
+              "{.fn kernel_slope} requires a named {.arg K} matrix.",
+              ">" = "Use {.code kernel_slope(x | trait, K = K_matrix)}."
+            ))
+          }
+          marks$vcv <- e[[which(nm == "K")[[1L]]]]
+          marks$.kernel_name <- if ("name" %in% nm) {
+            e[[which(nm == "name")[[1L]]]]
+          } else {
+            "kernel"
+          }
+        } else if (identical(fn, "spatial_slope")) {
+          nm <- names(e)
+          if (is.null(nm) || !"mesh" %in% nm) {
+            cli::cli_abort(c(
+              "{.fn spatial_slope} requires a named {.arg mesh} object.",
+              ">" = "Use {.code spatial_slope(x | trait, mesh = column_mesh)}."
+            ))
+          }
+          marks$mesh <- e[[which(nm == "mesh")[[1L]]]]
+        }
+        return(as.call(c(list(as.name("phylo_slope"), bar), marks)))
+      }
+      ## `phylo_slope()` / `animal_slope()` opt into column semantics only
+      ## when their RHS is exactly the resolved response-column factor.  This
+      ## is the compatibility boundary: every other one-predictor call follows
+      ## the historical scalar slope route byte-for-byte.
+      if (
+        length(fn) == 1L && fn %in% c("phylo_slope", "animal_slope") &&
+          length(e) >= 2L && is.call(e[[2L]]) &&
+          identical(e[[2L]][[1L]], as.name("|")) &&
+          is.name(e[[2L]][[3L]]) &&
+          identical(as.character(e[[2L]][[3L]]), trait_col)
+      ) {
+        helper_cols <- .gllvmTMB_column_slope_helper_cols(e[[2L]][[2L]], trait_col)
+        if (!is.null(helper_cols)) {
+          bar <- e[[2L]]
+          lhs <- Reduce(function(acc, col) call("+", acc, as.name(col)),
+                        helper_cols, init = 0)
+          bar[[2L]] <- lhs
+          target <- if (identical(fn, "phylo_slope")) "phylo_dep" else "animal_dep"
+          e[[1L]] <- as.name(target)
+          e[[2L]] <- bar
+          return(rewrite(e))
+        }
+      }
       ## `||` uncorrelated intercept-slope coupling (Design 79 §3-4):
       ## `mode(1 + x || g)` == `mode(1|g) + mode(0+x|g)` -- intercept and slope
       ## get their own variances with NO intercept-slope covariance. In R the bar
@@ -2513,6 +3067,24 @@ rewrite_canonical_aliases <- function(formula) {
           is.call(e[[2L]]) &&
           identical(e[[2L]][[1L]], as.name("||"))
       ) {
+        ## Response-column helper aliases use `||` for a
+        ## diagonal predictor covariance. Convert them to the canonical
+        ## `*_indep(0 + x1 + x2 | trait)` spelling before the ordinary
+        ## intercept--slope `||` route below.
+        if (fn %in% c("phylo_slope", "animal_slope") &&
+            is.name(e[[2L]][[3L]]) &&
+            identical(as.character(e[[2L]][[3L]]), trait_col)) {
+          helper_cols <- .gllvmTMB_column_slope_helper_cols(e[[2L]][[2L]], trait_col)
+          if (!is.null(helper_cols)) {
+            bar <- e[[2L]]
+            bar[[1L]] <- as.name("|")
+            bar[[2L]] <- Reduce(function(acc, col) call("+", acc, as.name(col)),
+                                  helper_cols, init = 0)
+            e[[1L]] <- as.name(if (identical(fn, "phylo_slope")) "phylo_indep" else "animal_indep")
+            e[[2L]] <- bar
+            return(rewrite(e))
+          }
+        }
         .uncorr_marked <- c("phylo_indep", "animal_indep",
                              "phylo_dep", "animal_dep",
                              "kernel_indep", "kernel_dep",
@@ -2556,7 +3128,7 @@ rewrite_canonical_aliases <- function(formula) {
         }
         cli::cli_abort(c(
           "{.code ||} on {.fn {fn}} did not resolve to a random-slope term.",
-          "i" = "`||` requires an intercept-and-slope LHS, e.g. {.code {fn}(1 + x || g)}."
+          ">" = "`||` requires an intercept-and-slope LHS, e.g. {.code {fn}(1 + x || g)}."
         ))
       }
       if (length(fn) == 1L && fn %in% .source_specific_lv_keywords) {
@@ -2730,7 +3302,7 @@ rewrite_canonical_aliases <- function(formula) {
           if (!mode_str %in% valid_modes) {
             cli::cli_abort(c(
               "{.code mode = {.val {mode_str}}} is not a recognised mode.",
-              "i" = "Current modes for LHS = {.code 0 + trait} are {.val indep}, {.val latent}, and {.val dep}."
+              ">" = "Current modes for LHS = {.code 0 + trait} are {.val indep}, {.val latent}, and {.val dep}."
             ))
           }
 
@@ -2798,7 +3370,7 @@ rewrite_canonical_aliases <- function(formula) {
           if ("vcv" %in% nm) {
             cli::cli_abort(c(
               "{.fn {fn}} got both {.arg A} and {.arg vcv}.",
-              "i" = "These are aliases -- supply only one."
+              ">" = "These are aliases -- supply only one."
             ))
           }
           e[["vcv"]] <- e[[which(nm == "A")]]
@@ -2809,7 +3381,7 @@ rewrite_canonical_aliases <- function(formula) {
           if ("vcv" %in% nm) {
             cli::cli_abort(c(
               "{.fn {fn}} got both {.arg Ainv} and {.arg vcv}.",
-              "i" = "These are aliases -- supply only one."
+              ">" = "These are aliases -- supply only one."
             ))
           }
           Ainv_expr <- e[[which(nm == "Ainv")]]
@@ -2862,7 +3434,7 @@ rewrite_canonical_aliases <- function(formula) {
             identical(arg[[1L]], as.name("|")) &&
             length(arg) == 3L
           if (arg_is_bar) {
-            lhs_info <- .gllvmTMB_lhs_form(arg[[2L]])
+            lhs_info <- .gllvmTMB_lhs_form(arg[[2L]], trait_col = trait_col)
           }
           if (
             arg_is_bar &&
@@ -2917,7 +3489,7 @@ rewrite_canonical_aliases <- function(formula) {
             identical(arg[[1L]], as.name("|")) &&
             length(arg) == 3L
           if (arg_is_bar) {
-            lhs_form <- .gllvmTMB_lhs_form(arg[[2L]])
+            lhs_form <- .gllvmTMB_lhs_form(arg[[2L]], trait_col = trait_col)
             if (
               lhs_form$lhs_form %in%
                 c("wide_intercept_slope", "long_intercept_slope")
@@ -3014,6 +3586,24 @@ rewrite_canonical_aliases <- function(formula) {
             ))
           }
           species_arg <- bar[[3L]]
+          column_slope_cols <- .gllvmTMB_column_slope_cols(bar[[2L]], trait_col)
+          if (!is.null(column_slope_cols)) {
+            if (isTRUE(.read_common_flag(e, fn))) {
+              cli::cli_abort(c(
+                "{.code common = TRUE} is not defined for column-predictor slopes.",
+                ">" = "Use {.code animal_indep(0 + x1 + x2 | trait, pedigree = ped)} without {.code common = TRUE}."
+              ))
+            }
+            return(as.call(c(
+              list(as.name("phylo_slope"), bar),
+              list(
+                .column_slope_mode = "indep",
+                column_slope_cols = column_slope_cols,
+                .animal_source = TRUE
+              ),
+              list(vcv = vcv_expr)
+            )))
+          }
           ## Augmented intercept+slope LHS (`1 + x | id` or the long form
           ## `0 + trait + (0 + trait):x | id`). animal_indep means the
           ## intercept-slope correlation is FIXED at 0, i.e. the SAME
@@ -3021,7 +3611,7 @@ rewrite_canonical_aliases <- function(formula) {
           ## but with the structural matrix A (pedigree/A/Ainv) supplied
           ## via vcv, and atanh_cor_b pinned to 0 via the TMB map
           ## (fit-multi.R reads the `.indep` marker). No new C++.
-          lhs_form <- .gllvmTMB_lhs_form(bar[[2L]])
+          lhs_form <- .gllvmTMB_lhs_form(bar[[2L]], trait_col = trait_col)
           ## `common = TRUE` (Design 79 scalar-collapse): tie the T per-trait
           ## additive-genetic variances to ONE shared variance -- byte-identical
           ## to the (soft-deprecated) `animal_scalar(id)` (`phylo(id, vcv = A)`).
@@ -3086,7 +3676,19 @@ rewrite_canonical_aliases <- function(formula) {
             ))
           }
           species_arg <- bar[[3L]]
-          lhs_form <- .gllvmTMB_lhs_form(bar[[2L]])
+          column_slope_cols <- .gllvmTMB_column_slope_cols(bar[[2L]], trait_col)
+          if (!is.null(column_slope_cols)) {
+            return(as.call(c(
+              list(as.name("phylo_slope"), bar),
+              list(
+                .column_slope_mode = "dep",
+                column_slope_cols = column_slope_cols,
+                .animal_source = TRUE
+              ),
+              list(vcv = vcv_expr)
+            )))
+          }
+          lhs_form <- .gllvmTMB_lhs_form(bar[[2L]], trait_col = trait_col)
           ## Augmented intercept+slope LHS: route via the dep-slope engine.
           if (
             lhs_form$lhs_form %in%
@@ -3159,7 +3761,7 @@ rewrite_canonical_aliases <- function(formula) {
             identical(unit_arg[[1L]], as.name("|")) &&
             length(unit_arg) == 3L
         ) {
-          lhs_form <- .gllvmTMB_lhs_form(unit_arg[[2L]])
+          lhs_form <- .gllvmTMB_lhs_form(unit_arg[[2L]], trait_col = trait_col)
           is_slope <- lhs_form$lhs_form %in%
             c("wide_intercept_slope", "long_intercept_slope")
           if (is_slope && fn %in% c("kernel_indep", "kernel_dep")) {
@@ -3270,6 +3872,14 @@ rewrite_canonical_aliases <- function(formula) {
       }
       ## latent / unique / phylo_latent / spatial_unique: just rename the head
       if (fn %in% c("latent", "phylo_latent", "spatial_unique", "spatial")) {
+        if (identical(fn, "latent") &&
+            (length(e) < 2L || !is.call(e[[2L]]) ||
+             !identical(e[[2L]][[1L]], as.name("|")) || length(e[[2L]]) != 3L)) {
+          cli::cli_abort(c(
+            "{.fn latent} requires an argument of the form {.code lhs | group}.",
+            ">" = "Use {.code latent(0 + {trait_col} | unit, d = K)}."
+          ))
+        }
         ## Ordinary individual-level random regression:
         ## latent(1 + x | unit, d = K) and the long form
         ## latent(0 + trait + (0 + trait):x | unit, d = K) route to a marked
@@ -3285,7 +3895,7 @@ rewrite_canonical_aliases <- function(formula) {
             length(e[[2L]]) == 3L
         ) {
           bar <- e[[2L]]
-          lhs_form <- .gllvmTMB_lhs_form(bar[[2L]])
+          lhs_form <- .gllvmTMB_lhs_form(bar[[2L]], trait_col = trait_col)
           if (
             lhs_form$lhs_form %in%
               c("wide_intercept_slope", "long_intercept_slope")
@@ -3364,7 +3974,7 @@ rewrite_canonical_aliases <- function(formula) {
               )
             )))
           }
-          .assert_no_augmented_lhs(fn, e)
+          .assert_no_augmented_lhs(fn, e, trait_col)
         }
         ## Design 56 Sec. 9.5a: augmented phylo_latent random regression.
         ## `phylo_latent` normally renames straight to `phylo_rr`, which reads
@@ -3384,7 +3994,7 @@ rewrite_canonical_aliases <- function(formula) {
             length(e[[2L]]) == 3L
         ) {
           bar <- e[[2L]]
-          lhs_form <- .gllvmTMB_lhs_form(bar[[2L]])
+          lhs_form <- .gllvmTMB_lhs_form(bar[[2L]], trait_col = trait_col)
           if (
             lhs_form$lhs_form %in%
               c("wide_intercept_slope", "long_intercept_slope")
@@ -3460,7 +4070,7 @@ rewrite_canonical_aliases <- function(formula) {
             length(e[[2L]]) == 3L
         ) {
           bar <- e[[2L]]
-          lhs_form <- .gllvmTMB_lhs_form(bar[[2L]])
+          lhs_form <- .gllvmTMB_lhs_form(bar[[2L]], trait_col = trait_col)
           if (
             lhs_form$lhs_form %in%
               c("wide_intercept_slope", "long_intercept_slope")
@@ -3505,6 +4115,51 @@ rewrite_canonical_aliases <- function(formula) {
           ))
         }
         if (identical(fn, "latent")) {
+          latent_arg_names <- names(e)
+          if (!is.null(latent_arg_names) && length(e) > 2L) {
+            named <- latent_arg_names[-c(1L, 2L)]
+            named <- named[nzchar(named)]
+            allowed <- c("d", "unique", "residual", "common", "lv")
+            unknown <- setdiff(named, allowed)
+            if (length(unknown) > 0L) {
+              cli::cli_abort(c(
+                "Unknown argument {.arg {unknown[[1L]]}} in {.fn latent}.",
+                "i" = "Valid arguments are {.arg d}, {.arg unique}, {.arg common}, and {.arg lv}."
+              ))
+            }
+          }
+          d_positional <- length(e) >= 3L && {
+            pos_nm <- latent_arg_names[[3L]]
+            is.null(pos_nm) || is.na(pos_nm) || !nzchar(pos_nm)
+          }
+          if (.has_named_arg(e, "d") || d_positional) {
+            d_val <- .named_or_positional_arg(e, "d", 3L, default = NULL)
+            ## Formula `d` can still be a symbol or call (`d = q`,
+            ## `d = n_traits + 1`). Those evaluate later; only guard
+            ## values that are already numeric.
+            if (is.numeric(d_val)) {
+              if (length(d_val) != 1L) {
+                cli::cli_abort(c(
+                  "{.arg d} in {.fn latent} must be a whole number >= 1.",
+                  ">" = "Pass a single rank, e.g. {.code latent(..., d = 2)}."
+                ))
+              }
+              d_num <- suppressWarnings(as.numeric(d_val))
+              if (length(d_num) != 1L || is.na(d_num)) {
+                cli::cli_abort(c(
+                  "{.arg d} in {.fn latent} must be a whole number >= 1.",
+                  ">" = "Pass a single rank, e.g. {.code latent(..., d = 2)}."
+                ))
+              }
+              d_int <- as.integer(d_num)
+              if (d_int < 1L || !identical(d_num, as.numeric(d_int))) {
+                cli::cli_abort(c(
+                  "{.arg d} in {.fn latent} must be a whole number >= 1.",
+                  ">" = "Pass a single rank, e.g. {.code latent(..., d = 2)}."
+                ))
+              }
+            }
+          }
           ## `unique =` is the canonical argument (matches
           ## extract_Sigma(part = "unique")). `residual =` is a soft-deprecated
           ## alias for the argument shipped in 0.2.0 (#505); it routes to `unique`.
@@ -3641,7 +4296,7 @@ rewrite_canonical_aliases <- function(formula) {
             length(e[[2L]]) == 3L
         ) {
           bar <- e[[2L]]
-          lhs_form <- .gllvmTMB_lhs_form(bar[[2L]])
+          lhs_form <- .gllvmTMB_lhs_form(bar[[2L]], trait_col = trait_col)
           if (
             lhs_form$lhs_form %in%
               c("wide_intercept_slope", "long_intercept_slope")
@@ -3655,7 +4310,7 @@ rewrite_canonical_aliases <- function(formula) {
           }
         }
         ## Remaining augmented LHS forms are still unsupported.
-        .assert_no_augmented_lhs(fn, e)
+        .assert_no_augmented_lhs(fn, e, trait_col)
         new_call <- e
         new_call[[1L]] <- as.name("diag")
         return(new_call)
@@ -3771,7 +4426,7 @@ rewrite_canonical_aliases <- function(formula) {
         if (!mode_str %in% valid_modes) {
           cli::cli_abort(c(
             "{.code mode = {.val {mode_str}}} is not a recognised mode.",
-            "i" = "Current modes for LHS = {.code 0 + trait} are {.val indep}, {.val latent}, and {.val dep}."
+            ">" = "Current modes for LHS = {.code 0 + trait} are {.val indep}, {.val latent}, and {.val dep}."
           ))
         }
 
@@ -3825,7 +4480,7 @@ rewrite_canonical_aliases <- function(formula) {
             length(e[[2L]]) == 3L
         ) {
           bar <- e[[2L]]
-          lhs_form <- .gllvmTMB_lhs_form(bar[[2L]])
+          lhs_form <- .gllvmTMB_lhs_form(bar[[2L]], trait_col = trait_col)
           species_arg <- bar[[3L]]
           if (!is.name(species_arg)) {
             cli::cli_abort(c(
@@ -3876,6 +4531,7 @@ rewrite_canonical_aliases <- function(formula) {
       ## when it sees the marker.
       if (fn == "spatial_scalar") {
         .gllvmTMB_warn_scalar_family_deprecated(fn)
+        .warn_spatial_grouping_token(fn, e)
         extras <- .pass_through_extras(e, c("coords", "mesh"))
         new_call <- as.call(c(
           list(as.name("spde"), e[[2L]]),
@@ -3888,6 +4544,7 @@ rewrite_canonical_aliases <- function(formula) {
       ## fit-multi.R flips the cpp template's `spde_lv_k` switch to d and
       ## allocates Lambda_spde (T x K_S) plus K_S shared spatial fields.
       if (fn == "spatial_latent") {
+        .warn_spatial_grouping_token(fn, e)
         d_val <- .named_or_positional_arg(e, "d", 3L, default = 1L)
         unique_arg <- .named_or_positional_arg(
           e, "unique", 4L, default = FALSE
@@ -3920,7 +4577,7 @@ rewrite_canonical_aliases <- function(formula) {
             length(e[[2L]]) == 3L
         ) {
           bar <- e[[2L]]
-          lhs_form <- .gllvmTMB_lhs_form(bar[[2L]])
+          lhs_form <- .gllvmTMB_lhs_form(bar[[2L]], trait_col = trait_col)
           if (
             lhs_form$lhs_form %in%
               c("wide_intercept_slope", "long_intercept_slope")
@@ -3987,7 +4644,7 @@ rewrite_canonical_aliases <- function(formula) {
       ## over-parameterisation guard.
       if (fn == "indep") {
         ## Stage 2.5: fail-loud against augmented LHS.
-        .assert_no_augmented_lhs(fn, e)
+        .assert_no_augmented_lhs(fn, e, trait_col)
         extras <- list(.indep = TRUE)
         common_arg <- .named_or_positional_arg(
           e, "common", 3L, default = NULL
@@ -4006,7 +4663,7 @@ rewrite_canonical_aliases <- function(formula) {
       ## fail loud rather than silently drop or malform it.
       if (fn == "scalar") {
         .gllvmTMB_warn_scalar_family_deprecated(fn)
-        .assert_no_augmented_lhs(fn, e)
+        .assert_no_augmented_lhs(fn, e, trait_col)
         new_call <- as.call(c(
           list(as.name("diag"), e[[2L]]),
           list(.indep = TRUE, common = TRUE)
@@ -4041,6 +4698,31 @@ rewrite_canonical_aliases <- function(formula) {
             ">" = "Use {.code phylo_indep(0 + trait | species)}."
           ))
         }
+        ## Column-predictor slope-only route (Design 130): the RHS is the
+        ## response-column factor, while the tree / A matrix supplies its
+        ## dependence. The random coefficient basis is deliberately `0 + x`
+        ## rather than `0 + trait + trait:x`: fixed trait intercepts remain in
+        ## the main formula and this term never gains a random intercept.
+        column_slope_cols <- .gllvmTMB_column_slope_cols(lhs_bar, trait_col)
+        if (!is.null(column_slope_cols)) {
+          if (isTRUE(.read_common_flag(e, fn))) {
+            cli::cli_abort(c(
+              "{.code common = TRUE} is not defined for column-predictor slopes.",
+              "i" = "Each predictor has its own slope variance in {.code phylo_indep(0 + x1 + x2 | trait)}.",
+              ">" = "Drop {.code common = TRUE}, or use an intercept-only {.code phylo_indep(0 + trait | species, common = TRUE)} term."
+            ))
+          }
+          extras <- .pass_through_extras(e, c("tree", "vcv", "A", "Ainv"))
+          new_call <- as.call(c(
+            list(as.name("phylo_slope"), bar),
+            list(
+              .column_slope_mode = "indep",
+              column_slope_cols = column_slope_cols
+            ),
+            extras
+          ))
+          return(new_call)
+        }
         ## `common = TRUE` (Design 79 scalar-collapse): tie the T per-trait
         ## phylogenetic variances to ONE shared variance -- byte-identical to the
         ## (soft-deprecated) `phylo_scalar(species)`, which renames to `phylo()`.
@@ -4062,7 +4744,7 @@ rewrite_canonical_aliases <- function(formula) {
         ## b_phy_aug engine as phylo_unique() but with atanh_cor_b pinned to 0
         ## via the TMB map (fit-multi.R reads the `.indep` marker on the
         ## phylo_slope covstruct). No new C++ likelihood block.
-        lhs_form <- .gllvmTMB_lhs_form(lhs_bar)
+        lhs_form <- .gllvmTMB_lhs_form(lhs_bar, trait_col = trait_col)
         if (
           lhs_form$lhs_form %in%
             c("wide_intercept_slope", "long_intercept_slope")
@@ -4088,10 +4770,21 @@ rewrite_canonical_aliases <- function(formula) {
         ## is reserved for trait-specific phylogenetic random slopes. Recognise
         ## the syntax but error gracefully for now.
         if (!.is_zero_plus_trait(lhs_bar)) {
+          ## #1196: name a route that fits, conditioned on the RHS. Grouping
+          ## by the trait column itself is someone reaching for the
+          ## response-column slope grammar; an ordinary grouping column is
+          ## the group-axis grammar instead.
+          species_is_trait <- is.symbol(species_arg) &&
+            as.character(species_arg) %in% c(trait_col, "trait")
+          phylo_indep_next_step <- if (species_is_trait) {
+            "Use the response-column slope grammar instead: {.fn slope}, {.fn phylo_slope}, or {.fn animal_slope}, e.g. {.code phylo_slope(x | trait, tree = tree)}."
+          } else {
+            "Use the group-axis slope grammar instead, e.g. {.code phylo_slope(x | {deparse(species_arg)}, tree = tree)}; {.code phylo_indep(0 + trait | species)} remains the per-trait phylogenetic variance fit."
+          }
           cli::cli_abort(c(
             "{.fn phylo_indep} LHS richer than {.code 0 + trait} is not yet supported.",
             "i" = "Got LHS: {.code {deparse(lhs_bar)}}.",
-            ">" = "Trait-specific phylogenetic random slopes (e.g. {.code phylo_indep(0 + trait + trait:x | species)}) are reserved for a future release; use {.code phylo_indep(0 + trait | species)} for the per-trait phylogenetic variance fit."
+            ">" = phylo_indep_next_step
           ))
         }
         extras <- .pass_through_extras(e, c("tree", "vcv", "A", "Ainv"))
@@ -4108,6 +4801,7 @@ rewrite_canonical_aliases <- function(formula) {
       ## changes the printed label and triggers the spatial_indep+spatial_latent
       ## over-parameterisation guard.
       if (fn == "spatial_indep") {
+        .warn_spatial_grouping_token(fn, e)
         extras <- .pass_through_extras(e, c("coords", "mesh"))
         ## `common = TRUE` (Design 79 scalar-collapse): tie the T per-trait
         ## spatial-field variances to ONE shared variance -- byte-identical to the
@@ -4119,7 +4813,7 @@ rewrite_canonical_aliases <- function(formula) {
               is.call(e[[2L]]) &&
               identical(e[[2L]][[1L]], as.name("|")) &&
               length(e[[2L]]) == 3L &&
-              .gllvmTMB_lhs_form(e[[2L]][[2L]])$lhs_form %in%
+              .gllvmTMB_lhs_form(e[[2L]][[2L]], trait_col = trait_col)$lhs_form %in%
                 c("wide_intercept_slope", "long_intercept_slope")
           ) {
             cli::cli_abort(c(
@@ -4147,7 +4841,7 @@ rewrite_canonical_aliases <- function(formula) {
             length(e[[2L]]) == 3L
         ) {
           bar <- e[[2L]]
-          lhs_form <- .gllvmTMB_lhs_form(bar[[2L]])
+          lhs_form <- .gllvmTMB_lhs_form(bar[[2L]], trait_col = trait_col)
           if (
             lhs_form$lhs_form %in%
               c("wide_intercept_slope", "long_intercept_slope")
@@ -4192,7 +4886,7 @@ rewrite_canonical_aliases <- function(formula) {
       ## d = n_traits resolution pattern.
       if (fn == "dep") {
         ## Stage 2.5: fail-loud against augmented LHS.
-        .assert_no_augmented_lhs(fn, e)
+        .assert_no_augmented_lhs(fn, e, trait_col)
         new_call <- as.call(c(
           list(as.name("rr"), e[[2L]]),
           list(d = as.name(".deferred_n_traits"), .dep = TRUE)
@@ -4226,6 +4920,22 @@ rewrite_canonical_aliases <- function(formula) {
             ">" = "Use {.code phylo_dep(0 + trait | species)}."
           ))
         }
+        ## Slope-only response-column route: same predictor-only design as
+        ## phylo_indep(), but leave the lower Cholesky entries free so the
+        ## predictor slopes have a full positive-definite covariance.
+        column_slope_cols <- .gllvmTMB_column_slope_cols(lhs_bar, trait_col)
+        if (!is.null(column_slope_cols)) {
+          extras <- .pass_through_extras(e, c("tree", "vcv", "A", "Ainv"))
+          new_call <- as.call(c(
+            list(as.name("phylo_slope"), bar),
+            list(
+              .column_slope_mode = "dep",
+              column_slope_cols = column_slope_cols
+            ),
+            extras
+          ))
+          return(new_call)
+        }
         ## Stage 3 (Design 56 Sec. 9.5c) + RE-03 multi-slope: the augmented
         ## intercept+slope LHS (`1 + x1 + ... + xs | species` wide, or
         ## `0 + trait + (0 + trait):x1 + ... | species` long, s >= 1) routes
@@ -4237,7 +4947,7 @@ rewrite_canonical_aliases <- function(formula) {
         ## C++ dep path is already dimension-general in `C = n_lhs_cols`). Uses
         ## the MULTI-slope classifier so s >= 2 is recognised on this path only;
         ## every other keyword keeps the single-slope `.gllvmTMB_lhs_form()`.
-        lhs_form <- .gllvmTMB_lhs_form_multi(lhs_bar)
+        lhs_form <- .gllvmTMB_lhs_form_multi(lhs_bar, trait_col = trait_col)
         if (
           lhs_form$lhs_form %in%
             c("wide_intercept_slope", "long_intercept_slope")
@@ -4281,6 +4991,7 @@ rewrite_canonical_aliases <- function(formula) {
       ## packed-triangular Lambda_spde at full rank acting as the Cholesky
       ## factor of unstructured Sigma_spatial.
       if (fn == "spatial_dep") {
+        .warn_spatial_grouping_token(fn, e)
         ## Design 64 §2: augmented spatial_dep(1 + x | coords) random regression.
         ## The augmented intercept+slope LHS (`1 + x | coords` wide or
         ## `0 + trait + (0 + trait):x | coords` long) routes through the
@@ -4297,7 +5008,7 @@ rewrite_canonical_aliases <- function(formula) {
             length(e[[2L]]) == 3L
         ) {
           bar <- e[[2L]]
-          lhs_form <- .gllvmTMB_lhs_form(bar[[2L]])
+          lhs_form <- .gllvmTMB_lhs_form(bar[[2L]], trait_col = trait_col)
           if (
             lhs_form$lhs_form %in%
               c("wide_intercept_slope", "long_intercept_slope")
@@ -4318,7 +5029,7 @@ rewrite_canonical_aliases <- function(formula) {
         ## Stage 2.5: fail-loud against any OTHER augmented LHS (multi-covariate
         ## or richer per-trait slope forms). Intercept-only `0 + trait | coords`
         ## passes through to the spatial_latent(d = T) engine path below.
-        .assert_no_augmented_lhs(fn, e)
+        .assert_no_augmented_lhs(fn, e, trait_col)
         extras <- .pass_through_extras(e, c("coords", "mesh"))
         new_call <- as.call(c(
           list(as.name("spde"), e[[2L]]),
@@ -4475,7 +5186,7 @@ desugar_brms_sugar <- function(
   ## / phylo_scalar / spatial / meta_V / meta_known_V) to engine-internal names.
   ## Done before the legacy brms desugaring below so e.g. phylo_scalar
   ## becomes phylo() which then becomes propto().
-  formula <- rewrite_canonical_aliases(formula)
+  formula <- rewrite_canonical_aliases(formula, trait_col = trait_col)
 
   walk <- function(e) {
     if (is.call(e)) {

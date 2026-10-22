@@ -45,7 +45,7 @@
     transformation = "linear_predictor"
   ),
 
-  ## Gaussian residual SD ----------------------------------------
+  ## Continuous-family residual SD slot(s) ----------------------
   list(
     tmb_parameter = "log_sigma_eps",
     label_prefix = "sigma_eps",
@@ -431,9 +431,9 @@
 #'       scale (the TMB internal scale).}
 #'     \item{`scale`}{Either `"natural"` (after applying the
 #'       transformation) or `"link"` (for raw packed entries).}
-#'     \item{`transformation`}{One of `linear_predictor`, `exp`,
-#'       `logit`, `logit_p_tweedie`, `lambda_packed`,
-#'       or `ordinal_threshold`.}
+#'     \item{`transformation`}{Currently emitted: `linear_predictor`, `exp`,
+#'       `logit_p_tweedie`, `lambda_packed`, or `ordinal_threshold`.
+#'       Reserved (allowed, not currently returned): `logit`.}
 #'     \item{`target_type`}{Always `"direct"` for currently returned rows.}
 #'     \item{`profile_ready`}{`TRUE` iff the target can be passed
 #'       directly to `confint(fit, parm = ..., method = "profile")`.}
@@ -461,8 +461,9 @@
 #' @export
 profile_targets <- function(object, ready_only = FALSE) {
   if (!inherits(object, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+    .gllvmTMB_abort_not_multi_fit(object)
   }
+  .temporal_assert_no_iid_inference(object, "profile_targets")
   .gllvmTMB_mspl_assert_inference(object, "profile_targets")
 
   has_tmb_obj <- !is.null(object$tmb_obj)

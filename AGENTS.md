@@ -11,22 +11,29 @@ Model Builder.
 > GitHub Actions here is for **package checks + docs only**, with **short artifact retention**. (Hub
 > `AGENTS.md` Compute section · shinichi-brain `DECISIONS.md` D-50.)
 
-> **Rehydrate (2026-08-08).** This is a **multi-lane** repo. Ownership map:
-> `docs/dev-log/handover/2026-07-25-active-lane-split.md` (read **every** lane row). CRAN 0.7
-> Codex baton: `docs/dev-log/handover/2026-08-08-codex-handover.md`. Do not treat a single
+> **Rehydrate (2026-09-25).** This is a **multi-lane** repo. Ownership map:
+> `docs/dev-log/handover/2026-07-25-active-lane-split.md` (read **every** lane row)
+> and `docs/dev-log/coordination-board.md` Active lanes. Do not treat a single
 > snapshot bullet as the whole project. Milestone state is re-derived from `git`.
-> **0.6 hardening completion / next Codex intake (2026-08-12):**
-> `docs/dev-log/handover/2026-08-12-codex-handover.md`. It succeeds the 0.6
-> artifact evidence phase and starts a read-first 0.7 integration intake; it
-> does not supersede the multi-lane map or authorise a version bump/release.
+> **Cursor Meuwissen-Luo F twin (2026-09-25):** new lane after drmTMB #1422-#1428
+> closed. START HERE for that lane only:
+> `docs/dev-log/handover/2026-09-25-cursor-handover-meuwissen-twin.md`. Does not
+> supersede docs/MSPL/`engine=julia` siblings.
+> **Article-model handover (2026-08-30):** still linked from the split table;
+> `docs/dev-log/handover/2026-08-30-codex-tree-axis-latent-handover.md`.
+> **0.6 hardening / 0.7 intake (2026-08-12):** `docs/dev-log/handover/2026-08-12-codex-handover.md`
+> remains historical intake context; it does not authorise a version bump.
+> **Snapshot refresh (2026-08-26):** response-column coef baton stays at
+> `docs/dev-log/handover/2026-08-26-codex-handover.md`; read beside every active
+> lane row, never as a replacement for the ownership map.
 
 ## Core Scope
 
 - The package fits multi-response models on long-format data: one row
   per `(unit, trait)` observation. The "unit" is typically a site or
   individual; the "trait" is one column of a multivariate response.
-- The covariance dispatch is the **5 x 3 keyword grid**: rows are the
-  five correlation **sources** across grouping levels, columns are the
+- The covariance dispatch is the **6 x 3 keyword grid**: rows are the
+  six correlation **sources** across grouping levels, columns are the
   three fundamental trait-covariance **modes**. Every cell is a live
   keyword. (Canonical surface:
   `vignettes/articles/api-keyword-grid.Rmd`.)
@@ -38,6 +45,21 @@ Model Builder.
 | phylo   | `phylo_indep()`   | `phylo_dep()`   | `phylo_latent()`   |
 | spatial | `spatial_indep()` | `spatial_dep()` | `spatial_latent()` |
 | kernel  | `kernel_indep()`  | `kernel_dep()`  | `kernel_latent()`  |
+| temporal | `temporal_indep()` | `temporal_dep()` | `temporal_latent()` |
+
+- Structured-rho development arc (2026-08-31): canonical phylo/animal/kernel/spatial
+  helpers have trailing `rho = 1`; spatial range stays separately estimated.
+  New attenuation is one trait-intercept block (including folded Psi), and
+  `rho = NULL` is restricted to complete replicated Gaussian observations
+  without competing covariance. Source strength is separate from trait mode,
+  ordinary variance components, coefficient rho, and variance-share summaries.
+  Fixed attenuation and the admitted Gaussian estimator have completed their
+  implementation/workflow gates. The spatial recovery study has 14 `partial`
+  and 2 `blocked` cells, with no passing cell; range--rho recovery is therefore
+  not a broad public claim. Contract and evidence:
+  `dev/structured-rho/spatial-recovery/PLAN.md`,
+  `dev/structured-rho/spatial-recovery/RESULTS.md`, and
+  `.unlazy/structured-rho-spatial/GATES.md`.
 
 - **`scalar` and `unique` are MODIFIERS, not modes.** `scalar` is
   `indep` with the trait variances tied to one shared value --
@@ -108,7 +130,7 @@ Model Builder.
    and a runnable example. The return-value contract for every
    exported `extract_*()` is recorded in
    `docs/design/06-extractors-contract.md`.
-3. Do not change formula grammar (the 5 x 3 keyword grid, the
+3. Do not change formula grammar (the 6 x 3 keyword grid, the
    `scalar` / `unique` modifiers, or `traits()` LHS) without updating
    `docs/design/01-formula-grammar.md` (the canonical grammar
    contract), the grid / kernel note in this file, and the parallel
@@ -285,7 +307,8 @@ package contributors.
 - For tutorials and error-message docs, tell the reader what to try
   next when a model or syntax is unsupported.
 - When demonstrating how to fit a `gllvmTMB` model in user-facing
-  prose -- README, vignettes, and Tier-1 articles -- show **both**
+  prose -- README, vignettes, Tier-1 articles, and the primary
+  `gllvmTMB()` help topic -- show **both**
   long-format and wide-format calls side by side, through the single
   `gllvmTMB()` entry point. The long form
   (`gllvmTMB(value ~ ..., data = df_long)`) is canonical; the wide
@@ -398,7 +421,7 @@ implementation reviewer.
 Use one narrow Rose pre-publish audit for any PR that touches
 README, vignettes, `_pkgdown.yml`, NEWS, roxygen for exported
 functions, or generated Rd files. The gate checks method lists,
-default-value claims, exported function names, the 5 x 3 keyword grid,
+default-value claims, exported function names, the 6 x 3 keyword grid,
 argument names, family lists, and stale terminology. It does not
 replace Boole, Gauss, Noether, Grace, Pat, or Darwin; it only checks
 cross-file consistency before user-facing content is published.
@@ -475,3 +498,45 @@ section.
 > Read first — personal operating contract & second brain (house rules, memory, agents): /Users/z3437171/Dropbox/Github Local/Shinichi/AGENTS.md  (repo rules override the hub where they differ)
 <!-- shinichi-hub -->
 > Read \`~/shinichi-brain/AGENTS.md\` first; this repository's rules override the personal hub where they differ.
+
+<!-- graft:start -->
+## Graft — repo context graph
+
+This repo is indexed in `graft/`: small linked markdown nodes that explain each
+system and carry exact file:line spans, kept in sync with the code through git.
+
+For ANY task here — understanding how something works, finding where code lives,
+or scoping a change — get context from the graph before grepping or opening
+source files. Re-ask freely (it's cheap) and reuse literal identifiers you
+already have (symbol, error string, file name) as the query. New to this repo?
+Run `graft map` first — a token-budgeted orientation (dir clusters, hubs,
+hotspots), no LLM, no key.
+
+- Run `graft ask "<your question>" --source` → ranked nodes with the relevant
+  code spans inlined (each hit's ≤8-line crux by default; `--full` for whole
+  definitions when the crux isn't enough). Match the tool to the task shape:
+  for understanding or editing, the top node IS the answer — cite its
+  `covers:` file:line spans and edit straight from `--source`. For
+  exhaustive tasks ("every occurrence / every caller of this pattern"), ranked
+  results are top-N, not complete — run `graft grep "<literal>"` instead
+  (exhaustive over indexed files, grouped by enclosing symbol), falling back
+  to raw `grep -rn` only for unindexed files.
+- `graft skeleton <file>` → every definition's signature + span, ~10× cheaper
+  than reading the file; use it to skim an API surface.
+- `graft callers <symbol>` gives precomputed, exact edges — who calls this.
+  Add `--direction out` for what it calls, or `--depth N` to walk
+  transitively for the full blast radius. For structural questions, skip
+  ranking and use this directly.
+- Or browse: `graft/INDEX.md` lists every node; follow the links.
+- Monorepos and folders of multiple repos rank fairly across sub-projects —
+  hits carry `[scope/]` labels naming which one they're from. Narrow with
+  `graft ask "<task>" --in <scope>/` once you know where you're working.
+
+If a returned span is truncated ("+N more lines"), open the file at that exact
+range before finalizing. Only open source files when a node genuinely lacks a
+needed detail, and then at the exact file:line the node points to — never
+re-read whole files.
+
+After big code changes, refresh the graph with `graft build` (deterministic,
+no API key, $0).
+<!-- graft:end -->

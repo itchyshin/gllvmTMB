@@ -1,0 +1,88 @@
+{
+  "status": "Completed diagnostic; article convergence gate remains failed",
+  "authority": "Earlier focused numerical investigation explicitly confirmed by coordinator; no new fit approval needed",
+  "script_sha256": "e69f721b97b253bc56a1d43b1cc9fb249b1dcedf85a437767201eb123141e98a",
+  "outer_optimizer_calls": 0,
+  "process_seconds": 2.645,
+  "estimate_seconds": [5, 30],
+  "cap_seconds": 30,
+  "cumulative_optimizer_attempts": 20,
+  "endpoints": {
+    "N2-start1": {
+      "nll": 5039.69128101363,
+      "qr_minus_spectral": 1.81898940354586e-12,
+      "qr_minus_tmb": 6.77027855999768e-09,
+      "independent_max_gradient": 0.00438605575013613,
+      "tmb_max_gradient": 0.00438605328459903,
+      "max_score_discrepancy": 8.03684058057119e-09,
+      "directional_fd_error_h1e4": 1.67414657657717e-06,
+      "directional_fd_error_h1e5": 6.51545093759793e-07,
+      "rho": 0,
+      "receipt_md5": "4f112a2702d3ed961a4971f2ff5a121d"
+    },
+    "N2-start2": {
+      "nll": 5039.69128037364,
+      "qr_minus_spectral": -2.72848410531878e-11,
+      "qr_minus_tmb": 1.65346136782318e-09,
+      "independent_max_gradient": 0.000911807592250008,
+      "tmb_max_gradient": 0.000911801484268668,
+      "max_score_discrepancy": 1.42687696569517e-08,
+      "directional_fd_error_h1e4": 1.66969614785365e-06,
+      "directional_fd_error_h1e5": 5.11288336993081e-07,
+      "rho": 0,
+      "receipt_md5": "4f112a2702d3ed961a4971f2ff5a121d"
+    },
+    "N2-start3": {
+      "nll": 5039.69128030615,
+      "qr_minus_spectral": -1.2732925824821e-11,
+      "qr_minus_tmb": 1.13141140900552e-09,
+      "independent_max_gradient": 0.00335015214706551,
+      "tmb_max_gradient": 0.00335015131523859,
+      "max_score_discrepancy": 1.10322492315076e-08,
+      "directional_fd_error_h1e4": 1.6685745197143e-06,
+      "directional_fd_error_h1e5": 6.63766482717496e-07,
+      "rho": 0,
+      "receipt_md5": "4f112a2702d3ed961a4971f2ff5a121d"
+    },
+    "N3-start1": {
+      "nll": 5039.69128060854,
+      "qr_minus_spectral": 0,
+      "qr_minus_tmb": -2.08619894692674e-08,
+      "independent_max_gradient": 0.00255199329402296,
+      "tmb_max_gradient": 0.00255199576455635,
+      "max_score_discrepancy": 9.17676066104593e-09,
+      "directional_fd_error_h1e4": 1.66646360864116e-06,
+      "directional_fd_error_h1e5": 3.52022904026236e-07,
+      "rho": 1.50130533524769e-07,
+      "receipt_md5": "ecd5ff6f55a8d46a2b79ed4b83ba5cdf"
+    },
+    "N3-start2": {
+      "nll": 5039.69128107456,
+      "qr_minus_spectral": -9.09494701772928e-12,
+      "qr_minus_tmb": -2.03490344574675e-08,
+      "independent_max_gradient": 0.00335445341883356,
+      "tmb_max_gradient": 0.0033544534056717,
+      "max_score_discrepancy": 1.07516761869465e-08,
+      "directional_fd_error_h1e4": 1.67469980078423e-06,
+      "directional_fd_error_h1e5": 2.7927147769761e-07,
+      "rho": 3.3108767723252e-07,
+      "receipt_md5": "ecd5ff6f55a8d46a2b79ed4b83ba5cdf"
+    },
+    "N3-start3": {
+      "nll": 5039.69128075003,
+      "qr_minus_spectral": 9.09494701772928e-12,
+      "qr_minus_tmb": -1.09494067146443e-08,
+      "independent_max_gradient": 0.0022650403748975,
+      "tmb_max_gradient": 0.00226504036237256,
+      "max_score_discrepancy": 1.16524471130842e-08,
+      "directional_fd_error_h1e4": 1.67087310545439e-06,
+      "directional_fd_error_h1e5": 1.13913535304978e-06,
+      "rho": 2.21849839019487e-07,
+      "receipt_md5": "ecd5ff6f55a8d46a2b79ed4b83ba5cdf"
+    }
+  },
+  "full_receipt_sha256": "d291f106443b75d1e8443bb6d6253e11303f7f70298d073d8657fe93d18fdf90",
+  "conclusion": "Independent exact Gaussian values and analytic gradients agree with repaired TMB at all saved endpoints; no evidence of endpoint objective or gradient defect. No convergence waiver, recovery claim or new optimizer run.",
+  "original_algebra": "dev/tree-axis-latent/check-gaussian-likelihood.R",
+  "evidence_directory": "/private/tmp/gllvm-tree-axis-latent-20260830/repaired-nlminb-7c88"
+}

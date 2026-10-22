@@ -16,22 +16,22 @@
 \item{x}{A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}.}
 
 \item{effects}{One of \code{"fixed"} (default), \code{"ran_pars"}, or
-\code{"cutpoint"}. The \code{"cutpoint"} class returns the ordinal-probit
+\code{"cutpoint"}. The \code{"cutpoint"} class returns the ordinal
 cutpoints (one row per (trait, threshold) pair); it is empty for
-fits with no \code{ordinal_probit()} traits. (Earlier releases lumped
-the cutpoints into \code{"ran_pars"} as a categorisation hack — see
-\emph{NEWS}.)}
+fits with no \code{ordinal_probit()} / \code{ordinal_logit()} traits. (Earlier
+releases lumped the cutpoints into \code{"ran_pars"} as a categorisation
+hack — see \emph{NEWS}.)}
 
 \item{conf.int}{Whether to add \code{conf.low} / \code{conf.high} columns.}
 
-\item{conf.level}{Confidence level for the CI.}
+\item{conf.level}{Confidence level in (0, 1). Default 0.95.}
 
 \item{...}{Currently unused.}
 }
 \value{
-A data.frame. \code{effect = "fixed"} rows include a \code{link} column
+A data.frame. \code{effects = "fixed"} rows include a \code{link} column
 reporting each trait's link function (\code{"identity"}, \code{"probit"},
-\code{"log"}, \code{"logit"}, …). \code{effect = "cutpoint"} rows carry the
+\code{"log"}, \code{"logit"}, …). \code{effects = "cutpoint"} rows carry the
 ordinal-probit thresholds. For a non-unit weighted objective, fixed-effect
 point estimates remain available but \code{std.error} is \code{NA}, an
 \code{inference_status} column explains the boundary, and \code{conf.int = TRUE}
@@ -41,6 +41,6 @@ fails because no sandwich interval is certified.
 Returns a tibble (or data.frame) of either the fixed-effect coefficient
 table, the random-effects variance / covariance terms, or the ordinal
 threshold cutpoints. Mirrors the \code{tidy.sdmTMB()} API but augmented for
-the additional covstructs and the gllvmTMB-native \code{ordinal_probit()}
-family.
+the additional covstructs and the gllvmTMB-native \code{ordinal_probit()} /
+\code{ordinal_logit()} families.
 }

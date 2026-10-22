@@ -1,0 +1,506 @@
+---
+title: "Explaining Latent Ecological Axes With Predictors"
+description: "Relate an observed environmental gradient to a shared latent ecological axis, then interpret the rotation-invariant trait-scale effect."
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+vignette: >
+  %\VignetteIndexEntry{Explaining Latent Ecological Axes With Predictors}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  cache = FALSE,
+  eval = TRUE,
+  message = FALSE,
+  warning = FALSE
+)
+```
+
+## Scientific question
+
+Suppose an ecologist has measured three continuous community traits at each
+site. Does a moisture gradient accompany a coordinated change across those
+traits, beyond the unexplained site-to-site position on the same shared
+ecological axis?
+
+This article fits a **predictor-informed latent variable**: moisture shifts the
+mean of a latent ecological score, while a standard-normal innovation retains
+unexplained differences among sites. The target for interpretation is the
+trait-scale effect $B_{lv}$, not the arbitrary orientation of a fitted latent
+axis. The result describes an association between moisture and community
+traits; the model and these simulated data do not identify a causal effect.
+
+## Simulate one healthy teaching example
+
+The example has 72 sites, three Gaussian responses, and one latent axis. We
+simulate this fixture directly because its known $B_{lv}$ and score components
+are the quantities that this article needs to explain. The seed, factor levels,
+and predictor values are fixed, so the long and wide data frames contain the
+same observations.
+
+```{r setup}
+library(gllvmTMB)
+
+set.seed(7301)
+
+n_sites <- 72L
+trait_names <- c("leaf_area", "wood_density", "seed_mass")
+site_names <- sprintf("site_%02d", seq_len(n_sites))
+moisture <- as.numeric(scale(seq(-1.5, 1.5, length.out = n_sites)))
+
+Lambda <- matrix(c(0.70, -0.45, 0.55), ncol = 1,
+                 dimnames = list(trait_names, "LV1"))
+alpha <- 0.65
+trait_intercept <- c(0.10, -0.05, 0.08)
+psi <- c(0.18, 0.14, 0.16)
+
+score_innovation <- rnorm(n_sites)
+score_mean <- moisture * alpha
+score_total <- score_mean + score_innovation
+
+mu <- outer(score_total, Lambda[, 1])
+mu <- sweep(mu, 2, trait_intercept, "+")
+Y <- mu + matrix(
+  rnorm(n_sites * length(trait_names),
+        sd = rep(psi, each = n_sites)),
+  nrow = n_sites,
+  dimnames = list(site_names, trait_names)
+)
+
+df_wide <- data.frame(
+  site = factor(site_names, levels = site_names),
+  moisture = moisture,
+  Y,
+  check.names = FALSE
+)
+
+df_long <- data.frame(
+  site = factor(rep(site_names, each = length(trait_names)),
+                levels = site_names),
+  trait = factor(rep(trait_names, times = n_sites),
+                 levels = trait_names),
+  moisture = rep(moisture, each = length(trait_names)),
+  value = as.vector(t(Y))
+)
+
+head(df_long, 6)
+head(df_wide, 3)
+```
+
+For site $i$, the score model is
+
+\[
+z_i = M_i\alpha + e_i, \qquad e_i \sim N(0,1).
+\]
+
+Here $M_i$ is the site's numeric moisture value. The loading matrix
+$\Lambda$ maps the score to the three response traits. The ordinary native
+`latent()` model includes a diagonal unique-variance companion $\Psi$ by
+default, so its unit-tier covariance is
+
+\[
+\Sigma = \Lambda\Lambda^\top + \Psi.
+\]
+
+The moisture association on the trait linear-predictor scale is
+
+\[
+B_{lv} = \Lambda\alpha^\top.
+\]
+
+Unlike the separate fitted values of $\Lambda$ and $\alpha$, $B_{lv}$ does
+not change under an orthogonal rotation of the latent axis. It is therefore
+the appropriate quantity for comparing the scientific association across
+fits.
+
+## Fit the same model from long or wide data
+
+Both calls use `gllvmTMB()`. The long formula names each response row with
+`trait`; the compact wide formula names the three response columns with
+`traits()`. Moisture appears only in `lv = ~ moisture`. It is deliberately not
+also included as an ordinary fixed effect, because the combined fixed-effect
+and latent-score route is outside the supported model taught here.
+
+```{r fit-long}
+fit_long <- gllvmTMB(
+  value ~ 0 + trait +
+    latent(0 + trait | site, d = 1, lv = ~ moisture),
+  data = df_long,
+  unit = "site",
+  trait = "trait",
+  control = gllvmTMBcontrol(
+    se = TRUE,
+    optimizer = "optim",
+    optArgs = list(method = "BFGS")
+  )
+)
+```
+
+```{r fit-wide}
+fit_wide <- gllvmTMB(
+  traits(leaf_area, wood_density, seed_mass) ~ 1 +
+    latent(1 | site, d = 1, lv = ~ moisture),
+  data = df_wide,
+  unit = "site",
+  control = gllvmTMBcontrol(
+    se = TRUE,
+    optimizer = "optim",
+    optArgs = list(method = "BFGS")
+  )
+)
+```
+
+The remainder of the article uses `fit_long`. The two calls are equivalent
+data shapes for the same model; they are not two independent analyses.
+
+## Interpret the trait-scale association
+
+`summary(fit_long)` includes the latent predictor coefficients by axis and
+the corresponding trait-scale effects. The axis coefficients depend on the
+orientation of the fitted axes; compare trait-scale effects across fits.
+For a binary probit model, a trait-scale effect describes a change on the
+probit linear-predictor scale, rather than a constant change in probability.
+
+For loading-ridge fits, retained penalised-Hessian metadata supplies local
+posterior standard deviations for the axis coefficients and delta-method
+uncertainty for trait effects. This approximation is conditional on the
+chosen ridge scale; it does not establish repeated-sampling coverage.
+The `std.error` column then holds an approximate posterior SD; `lower` and
+`upper` are normal-approximation credible bounds, not sampling confidence
+intervals.
+Older fits without that metadata return LV point estimates with unavailable
+standard errors and bounds. Inspect `uncertainty_status` before interpreting
+any uncertainty column.
+For a categorical predictor, use `lv = ~ group`. Default treatment coding
+compares each level with the reference level, which you can choose with
+`relevel()` before fitting. For example, `Fox_NativenessNative` represents
+Native minus Introduced when Introduced is the reference. The corresponding
+trait-scale coefficient is that contrast on each word's link scale.
+Explicit `lv = ~ 0 + group` creates full group indicators and is rejected
+because they span a constant under the no-LV-intercept contract.
+
+```{r latent-summary}
+summary(fit_long)
+```
+
+`extract_lv_effects(type = "trait_effect")` returns $B_{lv}$, with one row
+per trait and LV predictor. For this native Gaussian route, `method = "wald"`
+requests delta-method standard errors and Wald bounds from the fitted model.
+
+```{r trait-effect}
+B_hat <- extract_lv_effects(
+  fit_long,
+  type = "trait_effect",
+  method = "wald",
+  conf.level = 0.95
+)
+
+B_hat[c("trait", "predictor", "estimate", "std.error", "lower", "upper")]
+```
+
+With one latent axis, both `ordiplot(fit_long)` and
+`plot(fit_long, type = "ordination")` show a one-dimensional display.
+There is no second axis. Score uncertainty is currently unavailable for
+predictor-informed latent fits, so keep `ellipse = FALSE`.
+
+A loading ridge can be requested with
+`control = gllvmTMBcontrol(loading_ridge = 2)`. The value is the prior standard
+deviation $\tau$ on free ordinary between-unit loadings: $\tau = 2$ means independent
+$N(0, 2^2)$ priors. Smaller positive values apply stronger shrinkage, and
+`loading_ridge = Inf` disables the penalty. For unstable binomial fits with ordinary between-unit latent loadings,
+an explicit $\tau = 2$ fit is a starting sensitivity analysis. The
+ordinary Laplace default remains unpenalised; evidence for this sensitivity
+choice does not justify changing the default across response families.
+A ridged fit is a penalised estimate. Do not compare it with an unpenalised
+fit using ordinary AIC, BIC, or a likelihood-ratio test.
+
+Because Gaussian responses use the identity link, an estimate is the fitted
+change in that trait's mean for a one-unit increase in the standardized
+moisture gradient through the shared latent axis. A positive estimate means
+the trait increases along the moisture-associated component; a negative
+estimate means it decreases. The signs and magnitudes belong to the named
+traits and remain interpretable even if the fitted latent axis is rotated or
+sign-flipped.
+
+These are Wald summaries, not a promise that every fitted model has calibrated
+95% coverage. Retained simulation evidence supports the named complete-response
+Gaussian regime, with failed Hessian or unavailable-interval attempts counted
+separately. Do not transfer that evidence to a different family, rank, missing
+data pattern, or covariance tier.
+
+## A categorical predictor: 35 articles and 22 words {#categorical-predictor}
+
+The following complete example uses your own long-format CSV with columns
+`word_present` (0 or 1), `analysis_word`, `article_id`, and `Fox_Nativeness`.
+It is not run when building this article because the input is user data.
+Replace the file path with your local CSV. The checks require 35 articles,
+22 words, and one nativeness category per article. Keep the raw CSV outside
+the package repository.
+
+Use one spelling consistently: the actual response-column name,
+`analysis_word`, appears in both the fixed intercepts and the latent loading
+block. If you rename the data column to `trait`, use `trait` in both places
+and set `trait = "trait"`. The placeholder `trait`
+inside `latent()` is equivalent when `trait = "analysis_word"` is supplied.
+This equivalence also holds with the LV predictor and loading prior.
+
+Choose Introduced as the reference before fitting. With the default
+treatment contrasts, `Fox_NativenessNative` then means Native minus
+Introduced. Its trait effect is a difference on each word's probit linear
+predictor scale, not a constant probability difference.
+
+```{r fox-word-sensitivity, eval=FALSE}
+library(gllvmTMB)
+dat <- read.csv("path/to/fox-word-data.csv", check.names = FALSE)
+needed <- c("word_present", "analysis_word", "article_id", "Fox_Nativeness")
+stopifnot(all(needed %in% names(dat)), !anyNA(dat[needed]))
+stopifnot(all(dat$word_present %in% c(0, 1)))
+stopifnot(all(vapply(split(dat$Fox_Nativeness, dat$article_id),
+                    function(x) length(unique(x)) == 1L, logical(1))))
+dat$article_id <- factor(dat$article_id)
+dat$analysis_word <- factor(dat$analysis_word)
+dat$Fox_Nativeness <- relevel(factor(dat$Fox_Nativeness), ref = "Introduced")
+stopifnot(nlevels(dat$article_id) == 35L,
+          nlevels(dat$analysis_word) == 22L,
+          setequal(levels(dat$Fox_Nativeness), c("Introduced", "Native")))
+
+set.seed(1467)
+fit_rank1 <- gllvmTMB(
+  word_present ~ 0 + analysis_word +
+    latent(0 + analysis_word | article_id, d = 1, lv = ~ Fox_Nativeness),
+  data = dat, trait = "analysis_word", unit = "article_id",
+  family = binomial(link = "probit"),
+  control = gllvmTMBcontrol(loading_ridge = Inf)
+)
+set.seed(1467)
+fit_rank2 <- gllvmTMB(
+  word_present ~ 0 + analysis_word +
+    latent(0 + analysis_word | article_id, d = 2, lv = ~ Fox_Nativeness),
+  data = dat, trait = "analysis_word", unit = "article_id",
+  family = binomial(link = "probit"),
+  control = gllvmTMBcontrol(loading_ridge = Inf)
+)
+set.seed(1467)
+fit_rank2_ridge <- gllvmTMB(
+  word_present ~ 0 + analysis_word +
+    latent(0 + analysis_word | article_id, d = 2, lv = ~ Fox_Nativeness),
+  data = dat, trait = "analysis_word", unit = "article_id",
+  family = binomial(link = "probit"),
+  control = gllvmTMBcontrol(loading_ridge = 2)
+)
+
+# Each summary includes the separate LV predictor coefficient block.
+summary(fit_rank1)
+summary(fit_rank2)
+summary(fit_rank2_ridge)
+fits <- list(d1 = fit_rank1, d2 = fit_rank2, d2_ridge_tau2 = fit_rank2_ridge)
+trait_effects <- lapply(fits, extract_lv_effects, type = "trait_effect")
+trait_effects
+diagnostics <- lapply(fits, gllvmTMB_diagnose)
+diagnostics
+
+# One-dimensional scores only; vertical position is a plotting baseline.
+ordiplot(fit_rank1, axes = 1L, biplot = FALSE, ellipse = FALSE)
+```
+
+Inspect the diagnostics before interpreting differences between these fits.
+Compare the named-word trait effects across ranks and ridge choices;
+raw-axis coefficients can change orientation. The ridge may reduce runaway
+loadings, but it does not guarantee a stable fit or accurate effects for
+this data set. Any finite ridged LV uncertainty is conditional on $\tau = 2$
+and remains a local posterior approximation. Predictor-informed score
+uncertainty is unavailable in `ordiplot()`, including for the ridged fit.
+
+## Decompose each fitted score
+
+The total fitted score is the sum of the moisture-informed mean and the
+site-specific innovation. `extract_ordination()` exposes all three components
+on the same fitted axis.
+
+```{r score-decomposition}
+ord_total <- extract_ordination(fit_long, level = "unit", component = "total")
+ord_mean <- extract_ordination(fit_long, level = "unit", component = "mean")
+ord_innovation <- extract_ordination(
+  fit_long,
+  level = "unit",
+  component = "innovation"
+)
+
+score_check <- max(abs(
+  ord_total$scores - ord_mean$scores - ord_innovation$scores
+))
+score_check
+
+head(data.frame(
+  site = rownames(ord_total$scores),
+  total = ord_total$scores[, 1],
+  mean = ord_mean$scores[, 1],
+  innovation = ord_innovation$scores[, 1]
+))
+```
+
+The identity `total = mean + innovation` checks the score decomposition. The
+mean component answers how moisture is associated with the shared axis; the
+innovation records remaining site-to-site position after that association.
+Neither component, by itself, makes moisture a causal exposure.
+
+## Use one latent axis across two response families
+
+A named mixed-response route can place a continuous trait and a count trait on
+the same predictor-informed axis. Here temperature is associated with both
+responses through that axis. The Gaussian response uses an identity link; the
+Poisson response uses a log link. The shared $B_{lv}$ estimates therefore live
+on each response's linear-predictor scale, not on one common response scale.
+
+```{r mixed-data}
+set.seed(7302)
+
+temperature <- as.numeric(scale(seq(-1.4, 1.4, length.out = n_sites)))
+mixed_score <- 0.60 * temperature + rnorm(n_sites)
+continuous <- rnorm(n_sites, 0.15 + 0.70 * mixed_score, 0.30)
+abundance <- rpois(n_sites, exp(log(4) - 0.55 * mixed_score))
+
+mixed_wide <- data.frame(
+  site = factor(site_names, levels = site_names),
+  temperature = temperature,
+  continuous = continuous,
+  abundance = abundance
+)
+
+mixed_long <- data.frame(
+  site = factor(rep(site_names, each = 2L), levels = site_names),
+  trait = factor(
+    rep(c("continuous", "abundance"), n_sites),
+    levels = c("continuous", "abundance")
+  ),
+  family = factor(
+    rep(c("continuous", "abundance"), n_sites),
+    levels = c("continuous", "abundance")
+  ),
+  temperature = rep(temperature, each = 2L),
+  value = as.vector(rbind(continuous, abundance))
+)
+
+mixed_families_long <- list(
+  continuous = gaussian(),
+  abundance = poisson()
+)
+attr(mixed_families_long, "family_var") <- "family"
+
+mixed_families_wide <- list(
+  continuous = gaussian(),
+  abundance = poisson()
+)
+```
+
+The long call uses an explicit `family` selector column. In the `traits()`
+call, the names of the family list match the selected response columns, so the
+wide-to-long rewrite supplies the same selector internally.
+
+```{r mixed-fit-long}
+fit_mixed_long <- gllvmTMB(
+  value ~ 0 + trait +
+    latent(0 + trait | site, d = 1, unique = FALSE,
+           lv = ~ temperature),
+  data = mixed_long,
+  unit = "site",
+  trait = "trait",
+  family = mixed_families_long,
+  control = gllvmTMBcontrol(se = FALSE)
+)
+```
+
+```{r mixed-fit-wide}
+fit_mixed_wide <- gllvmTMB(
+  traits(continuous, abundance) ~ 1 +
+    latent(1 | site, d = 1, unique = FALSE,
+           lv = ~ temperature),
+  data = mixed_wide,
+  unit = "site",
+  family = mixed_families_wide,
+  control = gllvmTMBcontrol(se = FALSE)
+)
+```
+
+```{r mixed-effects}
+B_mixed_long <- extract_lv_effects(
+  fit_mixed_long,
+  type = "trait_effect"
+)
+B_mixed_wide <- extract_lv_effects(
+  fit_mixed_wide,
+  type = "trait_effect"
+)
+
+data.frame(
+  trait = B_mixed_long$trait,
+  predictor = B_mixed_long$predictor,
+  long_estimate = B_mixed_long$estimate,
+  wide_estimate = B_mixed_wide$estimate
+)
+```
+
+For `continuous`, the estimate is an associated change in the Gaussian mean
+per one-unit increase in standardized temperature through the shared axis. For
+`abundance`, it is a change in the log expected count; exponentiating it gives
+the corresponding multiplicative change. This named rank-1,
+`unique = FALSE`, complete-response route has retained point-recovery evidence.
+The example deliberately requests no standard errors so the teaching path does
+not turn a family-specific calibration result into a general interval claim.
+Separately retained simulation evidence supports target-wise `B_lv` Wald
+coverage for this exact Gaussian + Poisson archetype.
+
+> **Which analyses does the evidence support?** This article demonstrates
+> complete-response Gaussian models and a Gaussian + Poisson model with one
+> latent axis and `unique = FALSE`, all fitted with the native TMB engine at
+> the ordinary unit level. Other supported response-family and link
+> combinations can be fitted with one numeric unit-level `lv` predictor and
+> no ordinary fixed-effect covariates. With `unique = FALSE`, the latent rank
+> can range from one to the number of responses before any multinomial
+> expansion. The default $\Psi$ component adds further restrictions to avoid
+> fitting more mean and covariance parameters than the data can distinguish.
+> Small rank-2 and rank-3 examples have fitted successfully across all supported
+> families; these checks alone do not establish accurate estimates or reliable
+> confidence intervals for every combination.
+>
+> Simulation evidence supports estimates and Wald intervals in the tested
+> Gaussian rank-1 and rank-2 settings. For binomial-only models, interval
+> evidence is limited to rank-1 models with multiple trials per observation
+> and logit, probit, or cloglog links. Categorical `lv` predictors have
+> point-estimate recovery evidence for Gaussian responses, but their interval
+> coverage has not been established. Tested mixed-response models have
+> point-estimate recovery evidence at rank 1 with `unique = FALSE`. Eight
+> tested combinations containing Gaussian responses, including the Gaussian +
+> Poisson example here, also have evidence for the coverage of each individual
+> $B_{lv}$ Wald interval. This does not establish simultaneous coverage of all
+> effects or coverage for arbitrary mixtures of response families.
+>
+> Beta-only models did not converge reliably enough in the recovery study;
+> ordinal-probit-only models did not recover the shared covariance reliably
+> enough. Treat those estimates as exploratory. Before interpreting a different
+> response combination, check its family-specific evidence and use simulations
+> resembling your data to assess estimation and interval coverage.
+>
+> The Julia bridge supports complete-response Gaussian point estimates with
+> `unique = FALSE`; its optional Wald intervals have not been shown to achieve
+> their stated coverage. Native ordinary `latent()` instead uses
+> $\Lambda\Lambda^\top + \Psi$ by default. The examples here do not establish
+> support for REML, ordinary fixed-effect covariates alongside `lv` predictors
+> (including the same predictor in both), calibrated Julia intervals, broader
+> missing-response patterns, non-canonical links, ranks above the number of
+> responses, extra grouping levels, phylogenetic, spatial, animal, or kernel
+> covariance, missing `lv` predictors, or profile and bootstrap intervals.
+
+## What to report
+
+For an applied analysis, report the response family and link, latent rank,
+unit tier, the exact `lv` predictor, the trait-scale $B_{lv}$ estimates, and
+the interval method. State that $B_{lv}$ is rotation-invariant, describe the
+score innovation, and keep the conclusion associational unless the study
+design supplies a separate causal argument.

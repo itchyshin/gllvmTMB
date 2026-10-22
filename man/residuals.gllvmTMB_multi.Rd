@@ -71,9 +71,8 @@ at zero with a continuous part and need an explicit design decision for
 splitting the point mass, and multinomial's categories are unordered so a
 randomized-quantile residual is undefined without inventing an ordering.
 Unsupported families are retained with row status rather than promoted
-to exact residual claims. Formal residual tests (beyond the recovery
-checks in \code{tests/testthat/test-exact-rq-residuals-families.R}) remain
-later validation work.
+to exact residual claims. Formal residual calibration beyond the
+current family-specific recovery checks remains later validation work.
 
 The returned data frame also carries \code{attr(x, "gllvmTMB_diagnostic")}
 with \code{\link[=check_gllvmTMB]{check_gllvmTMB()}} output and the fitted object's \code{fit_health}

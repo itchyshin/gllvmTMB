@@ -1,0 +1,496 @@
+file	line	kind	has_next_step	class	message_head
+R/gllvmTMB.R	676	cli_abort	no	bare	"{.arg REML} mus  be a si gle {.code TRUE} or {.code FALSE} value.")   }
+R/gllvmTMB.R	687	cli_abort	yes	ok	"Do  o  combi e a  explici  {.arg es ima or} wi h {.code REML = TRUE}.",       "i" = "Omi  {.arg es 
+R/gllvmTMB.R	731	cli_abort	no	bare	 he defaul )."       )
+R/gllvmTMB.R	755	cli_abort	yes	ok	"{.arg ci_me hod}, {.arg ci_level}, {.arg ci_ boo }, a d {.arg ci_seed} are curre  ly fi - ime co  r
+R/gllvmTMB.R	777	cli_abort	yes	ok	"Wide {.f   rai s} i pu  uses  he sy  he ic respo se-colum  key {.field  rai }.",         "x" = "A  
+R/gllvmTMB.R	784	cli_abort	no	bare	x |  rai )} or  he correspo di g fixed-source helper."       ), class = "gllvmTMB_colum _slope_wide_
+R/gllvmTMB.R	890	cli_abort	yes	ok	"Pass ei her {.arg u i } or {.arg si e},  o  bo h. {.arg si e} is  he depreca ed alias."       
+R/gllvmTMB.R	920	cli_abort	yes	ok	"Pass ei her {.arg clus er} or {.arg species},  o  bo h. {.arg species} is  he depreca ed alias."   
+R/gllvmTMB.R	976	cli_abort	yes	ok	"{.arg u i _obs = {.val {u i _obs}}} is  o  a colum  i  {.arg da a}.",       "i" = "If you do '  hav
+R/gllvmTMB.R	985	cli_abort	yes	ok	"{.arg  rai  = {.val { rai }}} is  o  a colum  i  {.arg da a}.",       "i" = "Pass  he  ame of  he c
+R/gllvmTMB.R	991	cli_abort	no	bare	si e, i dividual, paper, ...)."     )
+R/gllvmTMB.R	1135	cli_abort	yes	ok	"Covaria ce-s ruc ure  erms  o  ye  suppor ed:",       "x" = "Fou d {.f  {u suppor ed}} i  formula."
+R/gllvmTMB.R	1218	cli_abort	yes	ok	"{.code e gi e =  "julia "} does  o  suppor  {.f  offse }  erms.",         "i" = "The GLLVM.jl bridg
+R/gllvmTMB.R	1441	cli_abort	no	bare	i em 2a-ii admi s exac ly o e)."     )
+R/gllvmTMB.R	1454	cli_abort	no	bare	):  he respo se mus  be a si gle colum  o   he formula LHS.")     }
+R/gllvmTMB.R	1460	cli_abort	no	bare	family, 'family_var') <- 'col ame'} or add a {.var family} colum ."       )
+R/gllvmTMB.R	1481	cli_abort	no	bare	"No rows map  o  he {.f  mul i omial} family level {.val {m _level}} i  {.var {fam_var}}.")     }
+R/gllvmTMB.R	1485	cli_abort	no	bare	m _ rai _lvls, collapse = ', ')} o  mul i omial rows."       )
+R/gllvmTMB.R	1502	cli_abort	no	bare	"{.f  mul i omial}: baseli e {.val {reques ed_baseli e}} is  o  a ca egory.")       }
+R/gllvmTMB.R	1508	cli_abort	no	bare	"{.f  mul i omial} requires a  u ordered respo se wi h >= 3 ca egories.")     }
+R/gllvmTMB.R	1541	cli_abort	no	bare	):  he respo se mus  be a si gle ca egorical variable o   he formula LHS.")   }
+R/gllvmTMB.R	1554	cli_abort	no	bare	li k =  "logi  ")}."     )
+R/gllvmTMB.R	1565	cli_abort	yes	ok	"{.f  mul i omial}: {.code baseli e = {reques ed_baseli e}} is  o  a ca egory of  he respo se.",    
+R/gllvmTMB.R	1624	cli_abort	yes	ok	"All respo se rows are missi g.",         "i" = "A  leas  o e observed respo se value is required  o
+R/gllvmTMB.R	1652	cli_abort	yes	ok	"All respo se rows are missi g.",       "i" = "A  leas  o e observed respo se value is required  o f
+R/gllvmTMB.R	1661	cli_abort	yes	ok	w_dim, collapse = ', ')}).",         "i" = "For per-cell weigh s alig ed wi h a wide respo se ma rix
+R/gllvmTMB.R	1668	cli_abort	no	bare	weigh s)[1]}}."       )
+R/gllvmTMB.R	1674	cli_abort	no	bare	weigh s)}."       )
+R/gllvmTMB.R	2118	cli_abort	yes	ok	"Supply o ly o e loadi g-ridge argume  .",       "x" = "Bo h {.arg aghq_ridge} a d i s i  egra io - 
+R/gllvmTMB.R	2141	cli_abort	yes	ok	"{.arg va_H} mus  be a si gle odd i  eger >= 3.",       "x" = "Go  {.val {va_H}}.",       "i" = "H i
+R/gllvmTMB.R	2154	cli_abort	yes	ok	"{.code aghq_ridge =  "au o "} ca  o  be combi ed wi h a  explici  {.code aghq = FALSE}.",         "
+R/gllvmTMB.R	2179	cli_abort	yes	ok	"{.arg i  egra io } = {.val {i  egra io }} ca  o  be combi ed wi h {.arg aghq}.",       "i" = "AGHQ 
+R/gllvmTMB.R	2186	cli_abort	no	bare	"{.arg se} mus  be a si gle {.code TRUE} or {.code FALSE} value.")   }
+R/gllvmTMB.R	2246	cli_abort	yes	ok	 he curre   defaul ).",     "i" = "{.code aghq =  "au o "} le s  he package choose  he  ode cou  .",
+R/gllvmTMB.R	2319	cli_abort	yes	ok	REML = TRUE)} for  he  arrow Gaussia -o ly REML pilo .",       "i" = "Remove {.arg es ima or} from  
+R/gllvmTMB.R	2337	cli_abort	yes	ok	"{.code e gi e = {.val {e gi e}}} is a reserved  ame,  o  ye  suppor ed.",         "i" = "This versi
+R/gllvmTMB.R	2342	cli_abort	no	bare	{.val em} / {.val profile} are reserved  ames)."     )
+R/gllvmTMB.R	2363	cli_abort	no	bare	me hod =  "res ", ji  er.sd = 0.2)}.")   }
+R/gllvmTMB.R	2372	cli_abort	no	bare	"{.arg s ar _me hod$me hod} mus  be NULL or  he s ri g {.val res}.")     }
+R/gllvmTMB.R	2375	cli_abort	no	bare	defaul ), {.code  "res "}, or {.code  "i dep "}."       )
+R/gllvmTMB.R	2392	cli_abort	no	bare	"{.arg s ar _me hod$ji  er.sd} mus  be o e fi i e  o - ega ive  umber.")   }
+R/parse-multi-formula.R	29	cli_abort	yes	ok	expr)}}.",     ">" = guida ce   ), class = "gllvmTMB_u suppor ed_formula_helper"
+R/parse-multi-formula.R	157	cli_abort	no	bare	e1, e2, ...)} is wide-forma  o ly; i  lo g forma  each row already  ames i s  rai , so o e colum  ca
+R/parse-multi-formula.R	163	cli_abort	yes	ok	e[[2L]])}}.",             ">" = "Combi e  hem i  o a si gle colum ."           )
+R/parse-multi-formula.R	169	cli_abort	no	bare	-log_effor )}."           )
+R/parse-multi-formula.R	190	cli_abort	no	bare	log_effor )}."       )
+R/parse-multi-formula.R	265	stop	no	bare	) requires a  leas  o e argume  ", f ))   bar <- e[[2L]]
+R/parse-multi-formula.R	268	stop	no	bare	) argume   mus  be of  he form 'lhs | group'", f ))   cov_lhs   <- bar[[2L]]
+R/parse-multi-formula.R	293	cli_abort	yes	ok	ex ra_args[[i]])}}.",           ">" = "Name i  explici ly, e.g. {.code d = ...}, {.code  ree = ...},
+R/parse-multi-formula.R	335	cli_abort	no	bare	1 + x | group)} are comi g i  a fu ure release."     )
+R/parse-multi-formula.R	342	cli_abort	no	bare	)
+R/isdm-sources.R	50	cli_abort	no	bare	li k =  "log ")}.")   }
+R/isdm-sources.R	53	cli_abort	yes	ok	"{.arg observa io } mus  be a o e-sided formula.",       ">" = "Use {.code observa io  = ~ access + 
+R/isdm-sources.R	126	cli_abort	no	bare	 "cloglog "))}."     )
+R/isdm-sources.R	132	cli_abort	no	bare	 ms)][1]}} is declared  wice.")   }
+R/isdm-sources.R	137	cli_abort	no	bare	de ec io / o -de ec io ), because bo h observe a  hi  i g of o e shared i  e si y.",       "x" = "Lo
+R/isdm-sources.R	152	cli_abort	no	bare	)} source, or fi   he surveys separa ely."     )
+R/isdm-sources.R	176	cli_abort	yes	ok	"Top-level {.var isdm_source} fixed effec s duplica e a  {.f  isdm_source} observa io  formula.",   
+R/isdm-sources.R	184	cli_abort	no	internal	"I  er al: iSDM observa io  formulas are  o  alig ed wi h declared sources.")   }
+R/isdm-sources.R	193	cli_abort	no	internal	"I  er al: declared iSDM source {.val {src}} has  o rows af er fil eri g.")     }
+R/isdm-sources.R	198	cli_abort	yes	ok	"Observa io  formula for source {.val {src}} uses variable{?s}  o  fou d i  {.arg da a}.",         "
+R/isdm-sources.R	209	cli_abort	yes	ok	"Observa io  formula for source {.val {src}} has missi g values af er source fil eri g.",         ">
+R/isdm-sources.R	232	cli_abort	yes	ok	"Source labels a d observa io   erms produce ambiguous fixed-effec  colum s.",       "x" = "Collidi 
+R/isdm-sources.R	281	cli_abort	no	internal	"I  er al: fi  ed source-observa io  colum s lack  heir declara io .")     }
+R/isdm-sources.R	286	cli_abort	no	internal	"I  er al: predic io  desig  already co  ai s iSDM source colum s.")   }
+R/isdm-sources.R	290	cli_abort	no	internal	"I  er al: iSDM observa io  formulas are  o  alig ed wi h declared sources.")   }
+R/isdm-sources.R	295	cli_abort	yes	ok	"New da a  ames u declared i  egra ed source{?s}: {.val {u k ow }}.",       "i" = "Use  he source  a
+R/isdm-sources.R	310	cli_abort	yes	ok	"Observa io  formula for source {.val {src}} uses variable{?s} abse   from {.arg  ewda a}.",        
+R/isdm-sources.R	318	cli_abort	no	internal	"I  er al: fi  ed iSDM source {.val {src}} has  o  rai i g rows.")     }
+R/isdm-sources.R	346	cli_abort	yes	ok	e),           "i" = "Use observa io -covaria e values a d fac or levels admi  ed by  he fi  ed sourc
+R/isdm-sources.R	358	cli_abort	yes	ok	"Observa io  formula for source {.val {src}} has missi g values i  {.arg  ewda a}.",         ">" = "
+R/isdm-sources.R	371	cli_abort	no	bare	s): {.val {abse  }}."       ), class = "gllvmTMB_predic _isdm_observa io _desig "
+R/isdm-sources.R	428	cli_abort	no	internal	"I  er al: i  egra ed-source observa io  mask is misalig ed.")   }
+R/isdm-sources.R	442	cli_abort	yes	ok	"Every declared i  egra ed source- rai  arm  eeds a  observed respo se.",       "x" = "No observed r
+R/family-cdf-args.R	60	cli_abort	no	bare	"{.arg  rai _id} mus  be a si gle posi ive i  eger.")   }
+R/family-cdf-args.R	65	cli_abort	no	bare	"No rows wi h  rai _id { rai _id} i  {.code fi $ mb_da a$ rai _id}."     
+R/family-cdf-args.R	71	cli_abort	no	bare	"Trai  { rai _id} does  o  map  o a si gle k ow  family_id."     
+R/fit-multi.R	142	cli_abort	no	bare	), ...)}."     ), class = "gllvmTMB_mixed_family_u  amed_ambiguous"
+R/fit-multi.R	155	cli_abort	no	bare	), ...)}."     ), class = "gllvmTMB_mixed_family_u  amed_ambiguous"
+R/fit-multi.R	195	cli_abort	no	bare	), ...)}."   ), class = "gllvmTMB_mixed_family_u  amed_ambiguous"
+R/fit-multi.R	211	cli_abort	yes	ok	"Mixed-family {.arg family} lis s mus  be ei her fully  amed or fully u  amed.",       "i" = "Use  a
+R/fit-multi.R	217	cli_abort	no	bare	"Mixed-family {.arg family} lis   ames mus  be u ique.")   }
+R/fit-multi.R	223	cli_abort	no	bare	ex ra_ ames, collapse = ', ')}"     )
+R/fit-multi.R	255	cli_abort	no	bare	 "cloglog "))}, a d give {.arg da a} a  {.var isdm_source} colum   ami g each row's source. Every  r
+R/fit-multi.R	416	cli_abort	no	bare	"Could  o  evalua e  he u pe alised likelihood objec ive a   he selec ed fi .",       class = "gllvm
+R/fit-multi.R	449	cli_abort	yes	ok	"{.f  {caller}} is  o  available for a  o -u i  weigh ed objec ive.",     "x" = "The fi  ed curva ur
+R/fit-multi.R	490	stop	no	internal	"I  er al: augme  ed-slope family a d li k vec ors mus  have equal le g h.", call. = FALSE)   }
+R/fit-multi.R	527	stop	no	internal	"I  er al: augme  ed spa ial_la e   slope colum  is abse   from da a.",          call. = FALSE
+R/fit-multi.R	532	stop	no	internal	"I  er al: augme  ed spa ial_la e   slope colum  mus  be fi i e.",          call. = FALSE
+R/fit-multi.R	595	cli_abort	no	bare	bulle s) }
+R/fit-multi.R	600	cli_abort	no	bare	"Sparse {.arg phylo_vcv}/{.arg Ai v} mus  have row ames ma chi g levels of {.var species}.")   }
+R/fit-multi.R	607	cli_abort	no	bare	"Sparse {.arg phylo_vcv}/{.arg Ai v} row ames a d col ames mus   ame  he same levels.")   }
+R/fit-multi.R	610	cli_abort	no	bare	"Sparse {.arg phylo_vcv}/{.arg Ai v} row ames do  o  cover all species levels.")   }
+R/fit-multi.R	639	cli_abort	no	bare	"Sparse {.arg phylo_vcv}/{.arg Ai v} mus  be square.")   }
+R/fit-multi.R	642	cli_abort	no	bare	"Sparse {.arg phylo_vcv}/{.arg Ai v} mus  have row ames ma chi g levels of {.var species}.")   }
+R/fit-multi.R	648	cli_abort	no	bare	"Sparse {.arg phylo_vcv}/{.arg Ai v} row ames a d col ames mus  be u ique.")   }
+R/fit-multi.R	651	cli_abort	no	bare	"Sparse {.arg phylo_vcv}/{.arg Ai v} row ames a d col ames mus   ame  he same levels.")   }
+R/fit-multi.R	654	cli_abort	no	bare	"Sparse {.arg phylo_vcv}/{.arg Ai v} row ames do  o  cover all species levels.")   }
+R/fit-multi.R	693	cli_abort	no	bare	"The {.arg  ree} supplied  o {.f  phylo_slope} mus  be a  {.cls ape::phylo}  ree.")     }
+R/fit-multi.R	702	cli_abort	no	bare	) group labels were  o  fou d i   he  ree precisio  row  ames.")     }
+R/fit-multi.R	713	cli_abort	no	bare	)."     )
+R/fit-multi.R	730	cli_abort	no	bare	"{.arg vcv} for {.f  phylo_slope} mus  have row  ames ma chi g levels of {.var {group}}.")   }
+R/fit-multi.R	756	cli_abort	no	bare	"{.arg rho} for  he i  er al fixed {.f  {helper}} rou e mus  be o e fi i e  umeric value i  [0, 1]."
+R/fit-multi.R	766	cli_abort	no	bare	"The {.arg  ree} supplied  o {.f  {helper}} mus  be a  {.cls ape::phylo}  ree.",         class = "gl
+R/fit-multi.R	781	cli_abort	no	internal	"I  er al: {.f  {helper}} respo se-colum  labels did  o  map  o  ree  ips."       
+R/fit-multi.R	789	cli_abort	yes	ok	helper, "a imal_coef")) {           "Supply exac ly o e  o -NULL {.arg pedigree}, {.arg A}, or {.arg
+R/fit-multi.R	809	cli_abort	no	bare	"The sparse precisio  for {.f  {helper}} mus  be fi i e a d symme ric.",           class = "gllvmTMB
+R/fit-multi.R	817	cli_abort	no	bare	"The sparse precisio  for {.f  {helper}} mus  be posi ive defi i e before i versio .",           cla
+R/fit-multi.R	825	cli_abort	no	internal	"I  er al:  he sparse source for {.f  {helper}} did  o  map every respo se-colum  level."         
+R/fit-multi.R	835	cli_abort	no	bare	"The source for {.f  {helper}} mus  be a fi i e square  umeric ma rix.",           class = "gllvmTMB
+R/fit-multi.R	849	cli_abort	no	bare	allow_label_superse )) {             "The source labels mus  cover every respo se-colum  level."    
+R/fit-multi.R	864	cli_abort	no	bare	"The respo se-colum  covaria ce for {.f  {helper}} mus  be symme ric.",       class = "gllvmTMB_colu
+R/fit-multi.R	871	cli_abort	no	bare	"The source covaria ce for {.f  {helper}} mus  be posi ive defi i e before mixi g.",       class = "
+R/fit-multi.R	882	cli_abort	no	bare	"The mixed respo se-colum  covaria ce for {.f  {helper}} mus  be posi ive defi i e.",       class = 
+R/fit-multi.R	918	cli_abort	no	bare	"The s a dardized respo se-colum  covaria ce for {.f  phylo_coef} mus  be posi ive defi i e.",      
+R/fit-multi.R	924	cli_abort	yes	ok	"{.arg rho} is  o  ide  ifiable from  his {.f  phylo_coef} source.",       "x" = "Af er margi al-sca
+R/fit-multi.R	952	cli_abort	no	bare	levs)} respo se-colum  level{?s}."     ), class = "gllvmTMB_colum _slope_ker el_i valid"
+R/fit-multi.R	958	cli_abort	no	bare	"{.arg K} for {.f  ker el_slope} mus  co  ai  o ly fi i e values.",                    class = "gllv
+R/fit-multi.R	965	cli_abort	yes	ok	"{.arg K} for {.f  ker el_slope} mus  have u ique,  o -emp y row a d colum   ames.",       ">" = "Us
+R/fit-multi.R	972	cli_abort	yes	ok	"{.arg K} labels for {.f  ker el_slope} mus  ma ch  he respo se-colum  levels exac ly.",       "i" =
+R/fit-multi.R	980	cli_abort	no	bare	"{.arg K} for {.f  ker el_slope} mus  be symme ric.",                    class = "gllvmTMB_colum _sl
+R/fit-multi.R	986	cli_abort	no	bare	"{.arg K} for {.f  ker el_slope} mus  be posi ive defi i e.",                    class = "gllvmTMB_c
+R/fit-multi.R	1026	cli_abort	no	bare	"The s a dardized respo se-colum  covaria ce for {.f  ker el_coef} mus  be posi ive defi i e.",     
+R/fit-multi.R	1032	cli_abort	yes	ok	"{.arg rho} is  o  ide  ifiable from  his {.f  ker el_coef} source.",       "x" = "Af er margi al-sc
+R/fit-multi.R	1075	cli_abort	no	bare	"{.arg REML} mus  be a si gle {.code TRUE} or {.code FALSE} value.")   }
+R/fit-multi.R	1127	cli_abort	yes	ok	defaul  {.code  ype =  "s a dard "}).",           "*" = "{.code  ype =  "poisso -li k "} is  o  impl
+R/fit-multi.R	1137	cli_abort	no	bare	)}."         )
+R/fit-multi.R	1143	cli_abort	no	bare	f$li k[2], "log")
+R/fit-multi.R	1145	cli_abort	no	bare	del a_id, 0L)
+R/fit-multi.R	1168	cli_abort	no	bare	)}."       )
+R/fit-multi.R	1180	cli_abort	no	bare	li k =  "cloglog ")}."         )
+R/fit-multi.R	1193	cli_abort	no	bare	li k =  "log ")} model  he log scale direc ly."       )
+R/fit-multi.R	1199	cli_abort	no	bare	f$li k, "log")
+R/fit-multi.R	1201	cli_abort	no	bare	f$li k, "log")
+R/fit-multi.R	1203	cli_abort	no	bare	f$li k, "log")
+R/fit-multi.R	1205	cli_abort	no	bare	f$li k, "log")
+R/fit-multi.R	1207	cli_abort	no	bare	f$li k, "logi ")
+R/fit-multi.R	1209	cli_abort	no	bare	f$li k, "logi ")
+R/fit-multi.R	1211	cli_abort	no	bare	f$li k, "ide  i y")
+R/fit-multi.R	1213	cli_abort	no	bare	f$li k, "log")
+R/fit-multi.R	1215	cli_abort	no	bare	f$li k, "log")
+R/fit-multi.R	1217	cli_abort	no	bare	f$li k, "probi ")
+R/fit-multi.R	1219	cli_abort	no	bare	f$li k, "log")
+R/fit-multi.R	1221	cli_abort	no	bare	f$li k, "logi ")
+R/fit-multi.R	1223	cli_abort	no	bare	fid, lid
+R/fit-multi.R	1255	cli_abort	no	bare	family, 'family_var') <- 'col ame'} or i clude a {.var family} colum ."       )
+R/fit-multi.R	1262	cli_abort	no	bare	family, fam_levels, fam_var
+R/fit-multi.R	1296	cli_abort	yes	ok	"The i  er al iSDM marker has a  i valid observa io  co  rac .",       "i" = "The developer marker a
+R/fit-multi.R	1552	cli_abort	yes	ok	..., u ique = TRUE)}.",         ">" = "The folded a d explici   erms  arge   he same diago al covari
+R/fit-multi.R	1612	cli_abort	no	bare	"O ly o e augme  ed ordi ary {.f  la e  } ra dom-regressio   erm is suppor ed a   he {.arg u i }  ie
+R/fit-multi.R	1616	cli_abort	no	bare	"O ly o e augme  ed ordi ary diago al-compa ibili y ra dom-regressio   erm is suppor ed a   he {.arg
+R/fit-multi.R	1654	cli_abort	no	bare	1 + x | u i , d = K)}  erm for  he u i - ier reac io   orm, or move  he i  ercep -o ly {.f  la e  } 
+R/fit-multi.R	1662	cli_abort	no	bare	1 + x | u i , d = K)}  erm for  he defaul  shared + diago al-Psi reac io   orm."     )
+R/fit-multi.R	1684	cli_abort	no	bare	1 + x | {si e}, d = K)} for  he i dividual-level ra dom-regressio  slope, a d keep  he {.arg u i _ob
+R/fit-multi.R	1692	cli_abort	no	bare	1 + x | {si e}, d = K)} for  he i dividual-level reac io - orm slope."     )
+R/fit-multi.R	1753	cli_abort	no	bare	"O ly o e augme  ed spa ial ra dom-regressio   erm is suppor ed per formula.")   }
+R/fit-multi.R	1782	cli_abort	no	internal	"I  er al: augme  ed spa ial ra dom regressio  is missi g {.code slope_col}.")     }
+R/fit-multi.R	1800	cli_abort	yes	ok	),           "i" = "The full-u s ruc ured spa ial rou e has i s ow  evide ce bou dary;  he admi  ed 
+R/fit-multi.R	1812	cli_abort	yes	ok	),         "i" = "The spa ial_u ique/spa ial_i dep rou e has i s ow  evide ce bou dary;  he admi  ed
+R/fit-multi.R	1831	cli_abort	no	bare	ra dom-slope)  erm is suppor ed per formula.")   }
+R/fit-multi.R	1861	cli_abort	yes	ok	),         "i" = "The reduced-ra k spa ial rou e has i s ow  evide ce bou dary;  he admi  ed family/
+R/fit-multi.R	1875	cli_abort	no	bare	{ _ rai s});  he la e   ra k mus  sa isfy d <=  _ rai s."       
+R/fit-multi.R	1888	cli_abort	no	internal	"I  er al: augme  ed spa ial_la e   ra dom regressio  is missi g {.code slope_col}.")     }
+R/fit-multi.R	1958	cli_abort	yes	ok	0 +  rai  | {g ame}, d = K)} appear i   he formula.",         ">" = "Use {.f  dep} alo e for  he ful
+R/fit-multi.R	1973	cli_abort	yes	ok	0 +  rai  | {g ame})} appear i   he formula.",         ">" = "{.f  dep} s a dalo e already i cludes 
+R/fit-multi.R	1982	cli_abort	yes	ok	0 +  rai  | {g ame})} appear i   he formula.",         ">" = "{.f  dep} s a dalo e already i cludes 
+R/fit-multi.R	1995	cli_abort	yes	ok	0 +  rai  | {g ame}, d = K)} appear i   he formula.",         ">" = "Use {.f  i dep} alo e for  he m
+R/fit-multi.R	2009	cli_abort	yes	ok	0 +  rai  | {g ame})} appear i   he formula.",         ">" = "Remove  he depreca ed {.f  u ique}  er
+R/fit-multi.R	2065	cli_abort	yes	ok	"{.f  ker el_*}  erms ca  o  be mixed wi h {.f  phylo_*}  erms i   he same firs -wave ker el block."
+R/fit-multi.R	2071	cli_abort	no	bare	"{.arg  ame} i  {.f  ker el_*}  erms mus  be a  o -emp y s ri g."       
+R/fit-multi.R	2078	cli_abort	yes	ok	"Mul i-ker el {.f  ker el_dep} is  o  i   he firs  e gi e wave.",         "i" = "Use  amed {.f  ker 
+R/fit-multi.R	2092	cli_abort	no	bare	ra dom-slope)  erm is suppor ed per formula.")   ## ---- phylo_dep over-parame erisa io  guards ----
+R/fit-multi.R	2104	cli_abort	no	bare	..., u ique = TRUE)} for  he phyloge e ic decomposi io . They ca  o  coexis ."       )
+R/fit-multi.R	2111	cli_abort	yes	ok	species)} appear i   he formula.",         ">" = "{.f  phylo_dep} s a dalo e already i cludes  he pe
+R/fit-multi.R	2118	cli_abort	yes	ok	0 +  rai  | species)} appear i   he formula.",         ">" = "{.f  phylo_dep} s a dalo e already i c
+R/fit-multi.R	2126	cli_abort	no	bare	phylo_diag_idx) > 1L
+R/fit-multi.R	2128	cli_abort	no	bare	"O ly o e {.f  phylo_u ique}  erm is suppor ed per formula.")   ## ---- phylo_i dep over-parame eris
+R/fit-multi.R	2139	cli_abort	no	bare	..., u ique = TRUE)} for  he phyloge e ic decomposi io . They ca  o  coexis ."       )
+R/fit-multi.R	2153	cli_abort	yes	ok	"{.f  phylo_i dep} a d {.f  phylo_u ique} are redu da    oge her.",         "i" = "Bo h appear i   h
+R/fit-multi.R	2239	cli_abort	no	bare	wi h op io al {.code u ique = TRUE}) for  he ra k-reduced decomposi io . They ca  o  coexis ."      
+R/fit-multi.R	2248	cli_abort	yes	ok	0 +  rai  | coords)} appear i   he formula.",         ">" = "{.f  spa ial_dep} s a dalo e already i 
+R/fit-multi.R	2256	cli_abort	yes	ok	0 +  rai  | coords, commo  = TRUE)} appear i   he formula.",         ">" = "{.f  spa ial_dep} s a da
+R/fit-multi.R	2264	cli_abort	yes	ok	0 +  rai  | coords, d = K)}.",       ">" = "Use  he margi al  erm alo e for per- rai  smoo hi g, or 
+R/fit-multi.R	2275	cli_abort	yes	ok	"{.f  spa ial_i dep} a d {.f  spa ial_u ique} are redu da    oge her.",         "i" = "Bo h appear i
+R/fit-multi.R	2298	cli_abort	yes	ok	..., u ique = TRUE)} a d a separa e explici  diago al spa ial  erm; keep o ly  he folded form.",    
+R/fit-multi.R	2324	cli_abort	no	bare	{ _ rai s});  he la e   ra k mus  sa isfy d <=  _ rai s."         
+R/fit-multi.R	2338	cli_abort	no	bare	"O ly o e phyloge e ic ra dom-regressio   erm is suppor ed per formula.")   }
+R/fit-multi.R	2370	cli_abort	no	internal	"I  er al: u k ow  respo se-colum  slope source {.val {phylo_colum _slope_source}}.")   }
+R/fit-multi.R	2384	cli_abort	no	bare	)}, or remove {.f  spa ial_slope} from  his model."     ), class = "gllvmTMB_spa ial_colum _slope_fa
+R/fit-multi.R	2392	cli_abort	yes	ok	"{.f  spa ial_slope} ca  o  ye  share a fi  wi h a o her spa ial  erm.",       "i" = "The respo se-c
+R/fit-multi.R	2411	cli_abort	no	bare	"{.arg  ame} i  {.f  ker el_slope} mus  be o e  o -emp y s ri g.")     }
+R/fit-multi.R	2456	cli_abort	yes	ok	0 + x1 + ... |  rai )}.",       ">" = "Remove  he i  ercep  a d {.var { rai }} from  he s ruc ured b
+R/fit-multi.R	2468	cli_abort	no	bare	la  |  rai ,  ree =  ree)}."       )
+R/fit-multi.R	2478	cli_abort	yes	ok	"{.f  phylo_slope} groups o  colum  {.var {phylo_slope_group}}, bu   ha  colum  is  o  i  {.arg da a
+R/fit-multi.R	2489	cli_abort	no	bare	0 + la  +  emp | { rai },  ree =  ree)}."       )
+R/fit-multi.R	2497	cli_abort	yes	ok	"Respo se-colum  coefficie  s are curre  ly available for Gaussia  respo ses o ly.",           "i" =
+R/fit-multi.R	2503	cli_abort	yes	ok	"Mul i-predic or colum  slopes are curre  ly available for Gaussia  respo ses o ly.",           "i" 
+R/fit-multi.R	2531	cli_abort	no	bare	0 +  rai  | species)} for  he per- rai  phyloge e ic varia ce fi , a d do  o   rea  a  u admi  ed co
+R/fit-multi.R	2564	cli_abort	no	bare	0 +  rai  | species)} for  he i  ercep -o ly u s ruc ured phyloge e ic fi , a d do  o   rea  a  u ad
+R/fit-multi.R	2580	cli_abort	no	internal	"I  er al: augme  ed phyloge e ic ra dom regressio  is missi g {.code slope_col}.")       }
+R/fit-multi.R	2591	cli_abort	no	internal	"I  er al: colum -slope  erm is missi g i s predic or colum s.")     }
+R/fit-multi.R	2609	cli_abort	no	internal	"I  er al: augme  ed phylo_dep ra dom regressio  is missi g {.code slope_cols}.")     }
+R/fit-multi.R	2621	cli_abort	yes	ok	+) Sigma_slope} is defi ed for o e ra dom slope.",       ">" = "Use o e slope, or  he correla ed {.c
+R/fit-multi.R	2633	cli_abort	no	bare	)} u  il  ha  sweep clears."     )
+R/fit-multi.R	2656	cli_abort	no	bare	0 +  rai  | species)} for  he per- rai  phyloge e ic varia ce fi , a d do  o   rea  a  u admi  ed co
+R/fit-multi.R	2667	cli_abort	no	bare	{ _ rai s});  he la e   ra k mus  sa isfy d <=  _ rai s."       
+R/fit-multi.R	2680	cli_abort	no	internal	"I  er al: augme  ed phylo_la e   ra dom regressio  is missi g {.code slope_col}.")     }
+R/fit-multi.R	2689	cli_abort	no	bare	1 + x | u i , d = K)}, or fi   he del a / hurdle model wi hou  i dividual ra dom slopes."     )
+R/fit-multi.R	2701	cli_abort	no	internal	"I  er al: augme  ed ordi ary la e   ra dom regressio  is missi g {.code slope_col}.")     }
+R/fit-multi.R	2709	cli_abort	no	bare	{ _lhs_cols_B_la });  he la e   ra k mus  sa isfy d <= 2 *  _ rai s for a si gle-slope augme  ed B- 
+R/fit-multi.R	2724	cli_abort	no	bare	1 + x | u i , d = K)} for Gaussia  reac io - orm fi s, or omi   he augme  ed diago al Psi  erm for  
+R/fit-multi.R	2731	cli_abort	no	bare	1 + x | u i , d = K)} grammar for  ew reac io - orm fi s."     )
+R/fit-multi.R	2743	cli_abort	no	internal	"I  er al: augme  ed ordi ary diago al-compa ibili y ra dom regressio  is missi g {.code slope_col}.
+R/fit-multi.R	2751	cli_abort	yes	ok	1 + x | u i , d = K)}  erm. If you keep  he explici  compa ibili y pair, bo h  erms mus  use  he sam
+R/fit-multi.R	2766	cli_abort	no	bare	{ _ rai s});  he la e   ra k mus  sa isfy d <=  _ rai s."       
+R/fit-multi.R	2777	cli_abort	no	bare	{ _ rai s});  he la e   ra k mus  sa isfy d <=  _ rai s."       
+R/fit-multi.R	2787	cli_abort	yes	ok	s) {.val {ki ds[u recog ised]}}.",       "i" = "Suppor ed: {.f  la e  }, {.f  i dep}, {.f  prop o}, 
+R/fit-multi.R	2816	cli_abort	no	bare	B)  ier."       )
+R/fit-multi.R	2840	cli_abort	yes	ok	or {.code u i _obs = {.val {clus er2_col}}})  o {.f  gllvmTMB} i s ead."       )
+R/fit-multi.R	2854	cli_abort	no	bare	 he e gi e maps i   o  he i  er al {.val si e_species} fac or)."     )
+R/fit-multi.R	2888	cli_abort	yes	ok	1 | {g ame})} fou d i  formula bu  {.var {g ame}} is  o  a colum  i  {.arg da a}.",           "i" = 
+R/fit-multi.R	2899	cli_abort	yes	ok	"{.var {g ame}} has { _bad} missi g value{?s}, bu  a groupi g fac or ca  o  be {.code NA}.",        
+R/fit-multi.R	2924	cli_abort	yes	ok	## Cou   s acked rows,  o  cells of  he user's wide frame -- say so, or a         ## wide user reads
+R/fit-multi.R	2953	cli_abort	no	bare	s): {.val {missi g_lv_u i s}}."       )
+R/fit-multi.R	2991	cli_abort	no	bare	{mi_var})}."       )
+R/fit-multi.R	3012	cli_abort	yes	ok	"I  er al error:  he bi ary {.f  mi} predic or {.val {mi_var}} is  o  a da a colum .",         "i" =
+R/fit-multi.R	3035	cli_abort	yes	ok	"I  er al error:  he ordered {.f  mi} predic or {.val {mi_var}} is  o  a da a colum .",         "i" 
+R/fit-multi.R	3065	cli_abort	yes	ok	"I  er al error:  he u ordered {.f  mi} predic or {.val {mi_var}} is  o  a da a colum .",         "i
+R/fit-multi.R	3129	cli_abort	no	bare	successes, failures): bo h colum s mus  be  o - ega ive.")     y         <- succ
+R/fit-multi.R	3133	cli_abort	no	bare	successes, failures): rows wi h zero  rials are  o  allowed.")   } else {
+R/fit-multi.R	3147	cli_abort	no	bare	used as bi omial size) mus  be posi ive a d fi i e.")     } else {
+R/fit-multi.R	3176	cli_abort	yes	ok	"{.arg weigh s} is  o  admi  ed for  he i  egra ed mul i-source model.",         "x" = "Across  his 
+R/fit-multi.R	3185	cli_abort	no	bare	successes, failures)} respo se."       ), class = "gllvmTMB_isdm_mul i rial_u suppor ed"
+R/fit-multi.R	3208	cli_abort	no	bare	is_y_observed)}; expec ed { _obs}."       )
+R/fit-multi.R	3229	cli_abort	no	internal	"I  er al: declared i  egra ed-source selec or is u available.")     }
+R/fit-multi.R	3259	cli_abort	no	bare	weigh s)}; expec ed { _obs}."       )
+R/fit-multi.R	3264	cli_abort	no	bare	weigh s < 0)
+R/fit-multi.R	3266	cli_abort	no	bare	weigh s
+R/fit-multi.R	3299	cli_abort	no	bare	 he defaul )."       )
+R/fit-multi.R	3305	cli_abort	no	bare	 he defaul )."       ), class = "gllvmTMB_colum _coef_i  egra io _u suppor ed"
+R/fit-multi.R	3369	cli_abort	yes	ok	"I  er al error:  he {.f  mi} predic or {.val {mi_col ame}} is  o  a colum  of  he fixed-effec s des
+R/fit-multi.R	3473	cli_abort	yes	ok	1 + {mi_var} | ...)}) reads  he raw {.val {mi_var}} wi h i s {.code NA}s.",         "i" = "Use {.f  
+R/fit-multi.R	3495	cli_abort	yes	ok	1 | {mi_model$phylo$group})}, bu   he fi 's species groupi g is {.val {species}}.",         "i" = "T
+R/fit-multi.R	3503	cli_abort	yes	ok	1 | {species},  ree =  ree)}, or supply {.arg phylo_ ree}  o {.f  gllvmTMB}."       )
+R/fit-multi.R	3510	cli_abort	no	bare	phylo_ ree)) {
+R/fit-multi.R	3514	cli_abort	no	bare	mul i- ree is a la er phase)."         )
+R/fit-multi.R	3523	cli_abort	no	bare	respo se =  "i clude ") missi g respo se rows before fi  i g; please repor   his i  er al preprocess
+R/fit-multi.R	3529	cli_abort	no	bare	predic or =  "model ")})."     )
+R/fit-multi.R	3571	cli_abort	no	bare	allow_ o gaussia _reml = TRUE)}."         )       )
+R/fit-multi.R	3590	cli_abort	yes	ok	"{.arg REML = TRUE} does  o  ye  suppor  observa io  weigh s.",         "i" = "Use {.code REML = FAL
+R/fit-multi.R	3612	cli_abort	no	bare	predic or =  "model ")}."       )
+R/fit-multi.R	3619	cli_abort	yes	ok	X_reml)} colum {?s}.",         "i" = "Remove redu da   fixed-effec  colum s or use {.code REML = FAL
+R/fit-multi.R	3626	cli_abort	yes	ok	X_reml)} colum {?s}.",         "i" = "Use more observed rows  ha  fixed-effec  coefficie  s, or use 
+R/fit-multi.R	3640	cli_abort	no	bare	succ, fail)}, bo h colum s mus  be  o - ega ive i  egers."       )
+R/fit-multi.R	3652	cli_abort	yes	ok	"Be a rows: {.code y} mus  sa isfy 0 < y < 1.",         "i" = "Exac  0s or 1s require a zero-/o e-i 
+R/fit-multi.R	3663	cli_abort	yes	ok	"Log ormal a d Gamma rows: {.code y} mus  be s ric ly posi ive.",         "i" = "Exac  zeros  eed a 
+R/fit-multi.R	3672	cli_abort	no	bare	succ, fail)}, bo h colum s mus  be  o - ega ive i  egers."       )
+R/fit-multi.R	3684	cli_abort	yes	ok	)} i s ead."       )
+R/fit-multi.R	3697	cli_abort	yes	ok	zero or posi ive).",         "i" = "{.f  del a_log ormal}/{.f  del a_gamma} are hurdle models wi h a
+R/fit-multi.R	3744	cli_abort	yes	ok	y))} or pass a  ordered fac or."       )
+R/fit-multi.R	3749	cli_abort	no	bare	y[ordi al_obs_rows])}; ca egories mus  s ar  a  1."       )
+R/fit-multi.R	3765	cli_abort	no	bare	cu poi  s are es ima ed per  rai )."         )
+R/fit-multi.R	3771	cli_abort	yes	ok	"ordi al_probi :  rai  { } has o ly {K } observed ca egor{?y/ies}.",           "i" = "Need a  leas  
+R/fit-multi.R	3787	cli_abort	yes	ok	"ordi al_probi :  rai  { } respo se exceeds i ferred K = {K }.",           "i" = "All observed ca eg
+R/fit-multi.R	4073	cli_abort	yes	ok	la e  _idx)} la e    erms.",           ">" = "The Paper 2 mul i-ker el pa h is la e  -o ly i   his f
+R/fit-multi.R	4080	cli_abort	yes	ok	"The firs  mul i-ker el e gi e wave is la e  -o ly.",           "i" = "Tier {.val { m}} i cludes a k
+R/fit-multi.R	4090	cli_abort	yes	ok	"Mul i-ker el firs  wave requires all {.f  ker el_*}  iers  o use  he {.arg clus er} groupi g.",    
+R/fit-multi.R	4099	cli_abort	no	bare	"{.arg d} for {.f  ker el_la e  }  ier {.val { m}} mus  be a posi ive i  eger.")       }
+R/fit-multi.R	4102	cli_abort	no	bare	{ _ rai s});  he la e   ra k mus  sa isfy d <=  _ rai s."         
+R/fit-multi.R	4110	cli_abort	no	bare	"{.arg K} for {.f  ker el_la e  }  ier {.val { m}} mus  be a  umeric square ma rix."         
+R/fit-multi.R	4115	cli_abort	no	bare	"{.arg K} for {.f  ker el_la e  }  ier {.val { m}} mus  have row  ames ma chi g levels of {.var {spe
+R/fit-multi.R	4120	cli_abort	no	bare	K))}}."         )
+R/fit-multi.R	4127	cli_abort	no	bare	"{.arg K} for {.f  ker el_la e  }  ier {.val { m}} mus  be symme ric."         
+R/fit-multi.R	4132	cli_abort	no	bare	"{.arg K} for {.f  ker el_la e  }  ier {.val { m}} mus  co  ai  o ly fi i e values."         
+R/fit-multi.R	4138	cli_abort	no	bare	evals), digi s = 4)}."         )
+R/fit-multi.R	4213	cli_abort	yes	ok	"A s ruc ured respo se-colum  slope source ca  o  ye  be combi ed wi h a o her phyloge e ic  ier.", 
+R/fit-multi.R	4235	cli_abort	no	bare	species, d = 2,  ree =  ree)}), or drop {.arg {supplied_arg}} if you did  o  mea   o fi  a phyloge e
+R/fit-multi.R	4253	cli_abort	no	bare	"This s ruc ured {.arg rho} co figura io  does  o  resolve  o o e  rai -i  ercep  covaria ce block."
+R/fit-multi.R	4281	cli_abort	no	bare	da a[[species]]
+R/fit-multi.R	4295	cli_abort	no	internal	"I  er al:  ip  ames  o  all fou d i   he phylo precisio  row  ames.")       species_aug_id <-  ip_ 
+R/fit-multi.R	4312	cli_abort	no	bare	da a[[species]]
+R/fit-multi.R	4330	cli_abort	no	bare	phylo_vcv))
+R/fit-multi.R	4332	cli_abort	no	bare	da a[[species]]
+R/fit-multi.R	4366	cli_abort	no	bare	"S ruc ured {.arg rho} requires posi ive fi i e resolved source diago als.",         class = "gllvmT
+R/fit-multi.R	4489	cli_abort	yes	ok	"I  er al error:  he {.f  phylo} covaria e species ->  ode map is i comple e.",         "i" = "A la 
+R/fit-multi.R	4512	cli_abort	no	bare	levs, phylo_ ree$ ip.label, da a, species, "{.arg phylo_ ree}  ip labels"       
+R/fit-multi.R	4522	cli_abort	yes	ok	or {.code vcv = Cphy}) i side  he keyword, or supply {.arg phylo_ ree}/{.arg phylo_vcv}  o {.f  gllv
+R/fit-multi.R	4528	cli_abort	no	bare	phylo_vcv), da a, species, "{.arg phylo_vcv} row ames"       
+R/fit-multi.R	4636	cli_abort	no	bare	mesh
+R/fit-multi.R	4641	cli_abort	no	bare	 "x ",  "y "), ..., id_col =  "{ rai } ")}."         ), class = "gllvmTMB_spa ial_colum _slope_mesh_
+R/fit-multi.R	4648	cli_abort	yes	ok	"The labelled mesh uses {.var {mesh$id_col}}, bu   his model resolves  he respo se-colum  fac or as 
+R/fit-multi.R	4656	cli_abort	no	bare	"The labelled mesh rows mus  ma ch  he respo se-colum  levels exac ly.",           "x" = "Missi g la
+R/fit-multi.R	4663	cli_abort	no	bare	"{.f  spa ial_slope} requires a u ique coordi a e pair for every respo se colum .",           "x" = 
+R/fit-multi.R	4676	cli_abort	no	bare	)."         )
+R/fit-multi.R	4748	cli_abort	yes	ok	"Colum -slope predic or{?s} {.val {missi g_cols}}  o  fou d i  {.arg da a}.",         ">" = "Add  he
+R/fit-multi.R	4757	cli_abort	yes	ok	"Colum -slope predic ors mus  be  umeric colum s.",         "i" = "No - umeric predic or{?s}: {.val 
+R/fit-multi.R	4774	cli_abort	yes	ok	"Colum -slope predic ors mus  be fi i e af er row fil eri g.",         ">" = "Remove or impu e missi
+R/fit-multi.R	4784	cli_abort	no	bare	1 + x | coords, u ique = TRUE)}."       )
+R/fit-multi.R	4791	cli_abort	yes	ok	"The augme  ed spa ial ra dom-regressio   erm refere ces colum  {.val {spde_slope_xcol}}, which is  
+R/fit-multi.R	4819	cli_abort	no	bare	0 +  rai ):x | coords, d = K)}."       )
+R/fit-multi.R	4826	cli_abort	yes	ok	1 + {spde_la e  _slope_xcol} | coords, d = K)} refere ces colum  {.val {spde_la e  _slope_xcol}}, wh
+R/fit-multi.R	4839	cli_abort	no	bare	k ow _V
+R/fit-multi.R	4842	cli_abort	no	bare	V)
+R/fit-multi.R	4860	cli_abort	yes	ok	{phylo_slope_xcol} | {species})} refere ces colum  {.val {phylo_slope_xcol}}, which is  o  i  {.arg 
+R/fit-multi.R	4873	cli_abort	yes	ok	"Colum -slope predic or{?s} {.val {missi g_cols}}  o  fou d i  {.arg da a}.",         ">" = "Add  he
+R/fit-multi.R	4882	cli_abort	yes	ok	"Colum -slope predic ors mus  be  umeric colum s.",         "i" = "No - umeric predic or{?s}: {.val 
+R/fit-multi.R	4894	cli_abort	yes	ok	"Colum -slope predic ors mus  be fi i e af er row fil eri g.",         ">" = "Remove or impu e missi
+R/fit-multi.R	4915	cli_abort	yes	ok	"{.f  phylo_dep} slope covaria e{?s} {.val {missi g_cols}}  o  fou d i  {.arg da a}.",           "i"
+R/fit-multi.R	4960	cli_abort	no	bare	0 +  rai ):x | species)}."       )
+R/fit-multi.R	4982	cli_abort	no	bare	1 + x | species, u ique = TRUE)}."       )
+R/fit-multi.R	5003	cli_abort	no	bare	0 +  rai ):x | species, d = K)}."       )
+R/fit-multi.R	5010	cli_abort	yes	ok	1 + {phylo_la e  _slope_xcol} | {species})} refere ces colum  {.val {phylo_la e  _slope_xcol}}, whic
+R/fit-multi.R	5031	cli_abort	no	bare	0 +  rai ):x | u i , d = K)}."       )
+R/fit-multi.R	5038	cli_abort	yes	ok	1 + {rr_B_slope_xcol} | {si e}, d = K)} refere ces colum  {.val {rr_B_slope_xcol}}, which is  o  i  
+R/fit-multi.R	5063	cli_abort	no	bare	1 + x | u i , d = K)} or i s lo g-form equivale  ."       )
+R/fit-multi.R	5070	cli_abort	yes	ok	"The augme  ed ordi ary ra dom-regressio   erm refere ces colum  {.val {diag_B_slope_xcol}}, which i
+R/fit-multi.R	5673	cli_abort	yes	ok	))  erm  arge i g o ly NON-mul i omial  rai s i  a mixed-family fi  is also blocked i   his release 
+R/fit-multi.R	5870	stop	no	bare	"VGH warm s ar  did  o  la d i  ` he a_rr_B`.", call. = FALSE)       }
+R/fit-multi.R	5954	cli_abort	no	bare	0 +  rai  | u i , d = K)} pa h."     )
+R/fit-multi.R	5981	cli_abort	no	bare	NA_real_,  row =  _ rai s,  col = d_phy
+R/fit-multi.R	6275	cli_abort	yes	ok	"{.code ||} o  {.f  spa ial_dep} is curre  ly si gle-slope o ly.",         ">" = "Use o e slope, or 
+R/fit-multi.R	6377	cli_abort	no	bare	go  {df_vals[1]}).")         df_pi [ ] <- df_vals[1]
+R/fit-multi.R	7134	cli_abort	no	bare	"All {co  rol$ _i i } res ar s failed.")   op  <- bes _op 
+R/fit-multi.R	7284	cli_abort	no	bare	"{.code co  rol$aghq_s ar _par} does  o  ma ch  he fi  ed parame er vec or.")         }
+R/fit-multi.R	9382	stop	no	bare	"objec ive re ur ed a  o -fi i e scalar", call. = FALSE)         }
+R/fit-multi.R	9400	stop	no	bare	"gradie   re ur ed a  i valid posi io al vec or", call. = FALSE)         }
+R/fit-multi.R	9966	stop	no	bare	"gradie   re ur ed a  i valid posi io al vec or", call. = FALSE)       }
+R/fit-multi.R	10216	stop	no	bare	"ca dida e_a  emp s mus  be a lis ", call. = FALSE)   }
+R/fit-multi.R	10329	cli_abort	no	bare	"No successful res ar  has a fi i e objec ive.")   }
+R/fit-multi.R	10445	stop	no	bare	full[ridx],  row = d_B,  col =  _si es)   # colum -major
+R/fit-multi.R	10585	cli_abort	no	bare	"Physical coefficie   s ar s mus  be a fi i e  hree-dime sio al array.")   }
+R/fit-multi.R	10590	cli_abort	no	bare	"Coefficie   covaria ce s ar s have i valid Cholesky coordi a es.")   }
+R/fit-multi.R	10596	cli_abort	no	bare	"Coefficie   covaria ce s ar s mus  have fi i e posi ive Cholesky diago als.")   }
+R/fit-multi.R	10604	cli_abort	no	bare	"Physical coefficie   s ar s could  o  be s a dardized  o fi i e values.")   }
+R/fit-multi.R	10621	stop	no	bare	a
+R/brms-sugar.R	2209	cli_abort	yes	ok	s): {.field {dup_label}}.",       "i" = "Each slope colum  crea es a separa e ra dom-effec  block; d
+R/brms-sugar.R	2333	cli_abort	no	bare	0 + la  +  emp | { rai _col},  ree =  ree)}."     )
+R/brms-sugar.R	2354	cli_abort	no	bare	la  +  emp | { rai _col})}."     )
+R/brms-sugar.R	2418	cli_abort	yes	ok	bar)})}.",     "x" = "This wrapper accep s o ly i  ercep -o ly {.code 0 + { rai _col} | g} or {.code
+R/brms-sugar.R	2449	cli_abort	no	bare	0 +  rai  | coords)};  he depreca ed orie  a io  {.code coords |  rai } is also accep ed."     )
+R/brms-sugar.R	2504	cli_abort	yes	ok	bar)}}.",       ">" = "{.f  spa ial_i dep} was i  roduced pos -orie  a io -flip a d o ly accep s  he
+R/brms-sugar.R	2512	cli_abort	no	bare	0 +  rai  | coords)} for  he ca o ical spa ial orie  a io ."       )
+R/brms-sugar.R	2546	cli_abort	no	bare	e.g. {.code coords})."   )
+R/brms-sugar.R	2649	cli_abort	no	bare	1 + e v | group, d = K)} whe   ha  rou e is valida ed for  he source."     )
+R/brms-sugar.R	2684	cli_abort	no	bare	..., commo  = TRUE)}  o  ie all  rai  varia ces  o o e shared varia ce."       )
+R/brms-sugar.R	2692	cli_abort	yes	ok	..., lv = ~ x)} block. Regis ered respo se families compose  hrough  ha  block u der  he comple e-re
+R/brms-sugar.R	2707	cli_abort	yes	ok	V = V,  ype =  "exac  ")}.",         "i" = "{.code  ype =  "propor io al "} is  o  impleme  ed;  he 
+R/brms-sugar.R	2714	cli_abort	no	bare	V = V,  ype =  "exac  ")}."       )
+R/brms-sugar.R	2722	cli_abort	no	bare	V = V,  ype =  "exac  ")} wi h {.arg k ow _V = V}."       )
+R/brms-sugar.R	2751	cli_abort	yes	ok	V = V)} a d pass  he ma rix i self as {.code k ow _V = V}  o {.f  gllvmTMB}."     )
+R/brms-sugar.R	2769	cli_abort	no	bare	id, pedigree = ped)}."       )
+R/brms-sugar.R	2802	cli_abort	no	bare	id, pedigree = ped)}."     )
+R/brms-sugar.R	2824	cli_abort	no	bare	diago al)."           )
+R/brms-sugar.R	2832	cli_abort	no	bare	x1 + x2 | { rai _col})}; keep {.code 0 + { rai _col}} i   he mai  formula."           )
+R/brms-sugar.R	2854	cli_abort	no	bare	x |  rai , K = K_ma rix)}."             )
+R/brms-sugar.R	2868	cli_abort	no	bare	x |  rai , mesh = colum _mesh)}."             )
+R/brms-sugar.R	2945	cli_abort	yes	ok	u correla ed i  ercep --slope) is  o  ye  suppor ed for {.f  {f }}.",             "i" = "The {.code 
+R/brms-sugar.R	2974	cli_abort	no	bare	1 + x || g)}."         )
+R/brms-sugar.R	3100	cli_abort	yes	ok	bar)})}.",               "x" = "The u ified {.f  spa ial} wrapper accep s o ly i  ercep -o ly {.code
+R/brms-sugar.R	3117	cli_abort	yes	ok	i  ercep -o ly).",                 "i" = "Use {.code 0 +  rai } LHS for per- rai  covaria ce modes."
+R/brms-sugar.R	3141	cli_abort	no	bare	full u s ruc ured T x T)."             )
+R/brms-sugar.R	3148	cli_abort	yes	ok	"{.code mode = {.val {mode_s r}}} is  o  a recog ised mode.",               "i" = "Curre   modes for
+R/brms-sugar.R	3216	cli_abort	yes	ok	"{.f  {f }} go  bo h {.arg A} a d {.arg vcv}.",               "i" = "These are aliases -- supply o l
+R/brms-sugar.R	3227	cli_abort	yes	ok	"{.f  {f }} go  bo h {.arg Ai v} a d {.arg vcv}.",               "i" = "These are aliases -- supply 
+R/brms-sugar.R	3306	cli_abort	no	bare	1 + x | id, pedigree = ped)} for a full covaria ce."             )
+R/brms-sugar.R	3356	cli_abort	no	bare	..., u ique = FALSE)} for  he loadi gs-o ly subse ."                 )
+R/brms-sugar.R	3403	cli_abort	no	bare	..., u ique = FALSE)} for  he loadi gs-o ly subse ."             )
+R/brms-sugar.R	3427	cli_abort	no	bare	0 +  rai  | id, pedigree = ped)}."             )
+R/brms-sugar.R	3437	cli_abort	no	bare	0 + x1 + x2 |  rai , pedigree = ped)} wi hou  {.code commo  = TRUE}."               )
+R/brms-sugar.R	3468	cli_abort	no	bare	0 +  rai  | id, commo  = TRUE)};  he shared-varia ce ra dom slope is  o  ye  suppor ed."            
+R/brms-sugar.R	3517	cli_abort	no	bare	0 +  rai  | id, pedigree = ped)}."             )
+R/brms-sugar.R	3589	cli_abort	no	bare	u i , K = K_ma rix)}."           )
+R/brms-sugar.R	3629	cli_abort	yes	ok	{.code 1 + x | g}); o her ker el modes are o   he way.",             ">" = "Use {.f  ker el_i dep}/{
+R/brms-sugar.R	3652	cli_abort	no	bare	..., u ique = FALSE)} for  he loadi gs-o ly subse ."             )
+R/brms-sugar.R	3747	cli_abort	yes	ok	"{.arg commo } i  {.f  la e  } mus  be a li eral {.code TRUE} or {.code FALSE}.",                   
+R/brms-sugar.R	3753	cli_abort	no	bare	0 +  rai  | u i , d = K, commo  = TRUE)} for i  ercep -o ly scalar Psi, or omi  {.arg commo } for au
+R/brms-sugar.R	3771	cli_abort	no	bare	..., u ique = ...)}."               )
+R/brms-sugar.R	3791	cli_abort	no	bare	1 + x | g, d = K, u ique = FALSE)} for  he low-ra k-o ly subse ."               )
+R/brms-sugar.R	3797	cli_abort	no	bare	0 +  rai  | u i , d = K, lv = ~ x)} wi hou  a  augme  ed LHS."               )
+R/brms-sugar.R	3853	cli_abort	no	bare	..., u ique = FALSE)} for  he loadi gs-o ly subse ."               )
+R/brms-sugar.R	3961	cli_abort	no	bare	..., u ique = ...)}."             )
+R/brms-sugar.R	3981	cli_abort	no	bare	..., u ique = FALSE)} for  he loadi gs-o ly subse ."             )
+R/brms-sugar.R	3996	cli_abort	no	bare	..., commo  = TRUE)} for o e shared ordi ary Psi varia ce across  rai s."             )
+R/brms-sugar.R	4014	cli_abort	no	bare	..., u ique = FALSE)},  o  bo h."             )
+R/brms-sugar.R	4052	cli_abort	no	bare	..., u ique = FALSE)} for  he loadi gs-o ly subse ."             )
+R/brms-sugar.R	4182	cli_abort	yes	ok	bar)})}.",             "x" = "The u ified {.f  phylo} wrapper accep s o ly i  ercep -o ly {.code 1 |
+R/brms-sugar.R	4199	cli_abort	yes	ok	i  ercep -o ly).",               "i" = "Use {.code 0 +  rai } LHS for per- rai  covaria ce modes."  
+R/brms-sugar.R	4212	cli_abort	no	bare	full u s ruc ured T x T covaria ce)."           )
+R/brms-sugar.R	4219	cli_abort	yes	ok	"{.code mode = {.val {mode_s r}}} is  o  a recog ised mode.",             "i" = "Curre   modes for L
+R/brms-sugar.R	4278	cli_abort	no	bare	1 + x | species)} for a full covaria ce."             )
+R/brms-sugar.R	4307	cli_abort	yes	ok	0 +  rai ):x | species}.",             ">" = "Use o e  amed slope covaria e a d keep  he i  ercep  i
+R/brms-sugar.R	4348	cli_abort	no	bare	..., u ique = TRUE)} for  he  o al spa ial covaria ce {.code Lambda Lambda^T + Psi}, or omi  i  for 
+R/brms-sugar.R	4476	cli_abort	no	bare	0 +  rai  | species)}."           )
+R/brms-sugar.R	4485	cli_abort	no	bare	0 +  rai  | species)}."           )
+R/brms-sugar.R	4499	cli_abort	no	bare	0 +  rai  | species, commo  = TRUE)}  erm."             )
+R/brms-sugar.R	4521	cli_abort	no	bare	1 + x | g)}) is  o  ye  suppor ed."             )
+R/brms-sugar.R	4563	cli_abort	no	bare	0 +  rai  | species)} for  he per- rai  phyloge e ic varia ce fi ."           )
+R/brms-sugar.R	4597	cli_abort	no	bare	0 +  rai  | coords, commo  = TRUE)};  he shared-varia ce spa ial ra dom slope is  o  ye  suppor ed."
+R/brms-sugar.R	4686	cli_abort	no	bare	0 +  rai  | species)}."           )
+R/brms-sugar.R	4695	cli_abort	no	bare	0 +  rai  | species)}."           )
+R/brms-sugar.R	4758	cli_abort	yes	ok	lo g).",           ">" = "Each slope  erm mus  be a plai  covaria e  ame; keep richer per- rai  slop
+R/suggest-lambda-constraint.R	148	cli_abort	no	bare	... | u i , ...)}  erm --  o hi g  o co s rai  a  level {.val u i }."         
+R/suggest-lambda-constraint.R	155	cli_abort	no	bare	)}  erm a   he wi hi -u i   ier --  o hi g  o co s rai  a  level {.val u i _obs}."         
+R/suggest-lambda-constraint.R	165	cli_abort	no	bare	"{.arg da a} is required whe  {.arg fi _or_formula} is a formula."       
+R/suggest-lambda-constraint.R	184	cli_abort	no	bare	... | { arge _group}, ...)}  erm --  o hi g  o co s rai  a  level {.val {level}}."       
+R/suggest-lambda-constraint.R	191	cli_abort	no	bare	"Colum  {.val { rai }}  o  fou d i  {.arg da a}.")     }
+R/suggest-lambda-constraint.R	201	cli_abort	no	bare	"{.arg fi _or_formula} mus  be a fi  re ur ed by {.fu  gllvmTMB} or a formula."     
+R/suggest-lambda-constraint.R	208	cli_abort	yes	ok	"Number of fac ors K = {K} exceeds  umber of  rai s T = { _ rai s}.",       "i" = "A T x K loadi gs 
+R/suggest-lambda-constraint.R	217	cli_abort	no	bare	"{.arg  hreshold} mus  be o e fi i e  umber i  [0, 1) for s a dardised-loadi g re e  io ."
+R/suggest-lambda-constraint.R	225	cli_abort	no	bare	0, 1)."     
+R/suggest-lambda-constraint.R	269	cli_abort	no	bare	"{.code co ve  io  =  "varimax_ hreshold "} requires a fi  ed {.fu  gllvmTMB} model; ca  o  be suppl
+R/suggest-lambda-constraint.R	306	cli_abort	no	bare	"{.code co ve  io  =  "wald_re e  io  "} requires a fi  ed {.fu  gllvmTMB} model; ca  o  be supplied
+R/suggest-lambda-constraint.R	369	cli_abort	no	bare	"{.code co ve  io  =  "profile_re e  io  "} requires a fi  ed {.fu  gllvmTMB} model; ca  o  be suppl
+R/suggest-lambda-constraint.R	578	cli_abort	no	bare	"{.arg me hods} mus  be a  o -emp y charac er vec or.")   }
+R/suggest-lambda-constraint.R	582	cli_abort	yes	ok	"{.arg me hods} co  ai s u suppor ed co ve  io  values.",       "x" = "U suppor ed: {.val {bad}}.", 
+R/ridge-path.R	141	cli_abort	no	bare	{.code I f} is allowed).")   }
+R/ridge-path.R	154	cli_abort	no	bare	"No  rai s were fou d for {.arg formula}/{.arg da a}.")   }
+R/diagnose.R	17	cli_abort	no	bare	"Provide a fi  re ur ed by {.f  gllvmTMB}.")   }
+R/diagnose.R	1574	cli_abort	no	bare	"Provide a fi  re ur ed by {.f  gllvmTMB}.")   }
+R/diagnose.R	2025	cli_abort	no	bare	"Provide a fi  re ur ed by {.f  gllvmTMB}.")   }
+R/methods-gllvmTMB.R	173	cli_abort	no	bare	 m %i %  yped_observa io ) {         "gllvmTMB_predic _isdm_observa io _level"       } else {       
+R/methods-gllvmTMB.R	192	cli_abort	no	bare	s)."     )
+R/methods-gllvmTMB.R	201	cli_abort	yes	ok	s): {.val {show }}{suffix}.",       "i" = "Check fac or levels, co  ras s, a d fixed-effec   erms i 
+R/methods-gllvmTMB.R	411	cli_abort	no	bare	{.code  ewda a = NULL})."     ), class = "gllvmTMB_predic _se_ ewda a_u suppor ed"
+R/methods-gllvmTMB.R	418	cli_abort	yes	ok	"{.code se.fi  = TRUE} is  o  suppor ed for {.f  mul i omial} fi s.",       "i" = "The respo se is a
+R/methods-gllvmTMB.R	424	cli_abort	yes	ok	"{.code se.fi  = TRUE} is  o  ye  suppor ed for fi s wi h a missi g-covaria e {.f  mi} model.",     
+R/methods-gllvmTMB.R	430	cli_abort	yes	ok	)} ca  o  read a {.field b_fix} covaria ce block for i .",       ">" = "Refi  wi h {.code REML = FAL
+R/methods-gllvmTMB.R	437	cli_abort	no	bare	 he defaul )."     ), class = "gllvmTMB_predic _se_ o_sdrepor "
+R/methods-gllvmTMB.R	479	cli_abort	yes	ok	idx)}.",       "i" = "This usually mea s {.field sd_repor } is s ale rela ive  o {.field  mb_obj}; r
+R/methods-gllvmTMB.R	1034	cli_abort	yes	ok	"{.f  logLik} is  o  defi ed for a  {.code es ima or =  "mspl "} fi .",       "i" = "The fi  s ores 
+R/methods-gllvmTMB.R	1041	cli_abort	yes	ok	"{.f  logLik} is u defi ed for  his  o -u i  weigh ed objec ive.",       "i" = "The fi  ed poi   mi 
+R/methods-gllvmTMB.R	1059	cli_abort	yes	ok	"The u pe alised likelihood a   his s ored MAP poi   is u available.",           "i" = "Older pe ali
+R/methods-gllvmTMB.R	1855	cli_abort	yes	internal	"I  er al: mul i omial rows prese   bu  {.code fi $ mb_da a$mul i om_group_id} is missi g.",        
+R/methods-gllvmTMB.R	2059	cli_abort	no	bare	"Provide a fi  re ur ed by {.f  gllvmTMB}.")   }
+R/methods-gllvmTMB.R	2298	cli_abort	no	bare	"K ow  spa ial loca io  ide  ifiers mus  re ai   heir fi  ed coordi a es.",           class="gllvmTM
+R/methods-gllvmTMB.R	2372	cli_abort	no	bare	"Ca  o  build  he fixed-effec s-o ly predic io .",       "x" = "The fi  ed objec  s ores  o fixed-ef
+R/methods-gllvmTMB.R	2503	cli_abort	yes	ok	"{.f  predic } wi h {.arg  ewda a} is  o  ye  suppor ed for {.f  mul i omial} fi s.",         "i" = 
+R/methods-gllvmTMB.R	2563	cli_abort	yes	ok	"I  egra ed-source predic io   eeds source colum  {.arg {isdm_family_var}} i  {.arg  ewda a}.",     
+R/methods-gllvmTMB.R	2570	cli_abort	no	bare	"I  egra ed-source predic io  does  o  allow missi g source labels i  {.arg  ewda a}.",           cl
+R/methods-gllvmTMB.R	2577	cli_abort	yes	ok	"New da a  ames u declared i  egra ed source{?s}: {.val {u k ow _source}}.",           "i" = "Use  h
+R/methods-gllvmTMB.R	2675	cli_abort	no	bare	"The fi  ed u i -level diago al effec s have i compa ible dime sio s.")         }
+R/methods-gllvmTMB.R	3076	cli_abort	yes	ok	se = TRUE)} is o ly impleme  ed for gaussia  fi s i   his slice.",       "i" = "Desig  119 Slice 3 w
+R/methods-gllvmTMB.R	3209	cli_abort	yes	ok	"{.code rou e =  "joi   "} requires a joi   precisio  from {.f  sdrepor }.",       "i" = "{.f  TMB::
+R/methods-gllvmTMB.R	3221	cli_abort	no	bare	bfix_pos)}."     ), class = "gllvmTMB_predic _missi g_se_joi  _block_misma ch"
+R/methods-gllvmTMB.R	3236	cli_abort	no	bare	zB_pos)}."       ), class = "gllvmTMB_predic _missi g_se_joi  _block_misma ch"
+R/methods-gllvmTMB.R	3256	cli_abort	no	bare	 he a_idx)}."         ), class = "gllvmTMB_predic _missi g_se_joi  _block_misma ch"
+R/methods-gllvmTMB.R	3387	cli_abort	yes	ok	"{.code rou e =  "sim "} requires a joi   precisio  from {.f  sdrepor }.",       "i" = "{.f  TMB::sd
+R/methods-gllvmTMB.R	3400	cli_abort	no	bare	bfix_pos_all)}."     ), class = "gllvmTMB_predic _missi g_se_joi  _block_misma ch"
+R/methods-gllvmTMB.R	3430	cli_abort	no	bare	zB_pos)}."       ), class = "gllvmTMB_predic _missi g_se_joi  _block_misma ch"
+R/methods-gllvmTMB.R	3447	cli_abort	no	bare	 he a_idx)}."       ), class = "gllvmTMB_predic _missi g_se_joi  _block_misma ch"
+R/methods-gllvmTMB.R	3492	cli_abort	no	bare	"{.code rou e =  "sim "}:  he i volved-parame er covaria ce is  o   umerically posi ive defi i e.", 
+R/methods-gllvmTMB.R	3695	cli_abort	yes	ok	"{.code se_rou e =  "boo  "} curre  ly suppor s gaussia  fi s wi h a si gle ordi ary loadi gs-o ly {
+R/methods-gllvmTMB.R	3794	cli_abort	yes	ok	"{.code se_rou e =  "boo  ", boo _dgp =  "reml "}:  he auxiliary REML fi  failed or did  o  co verge
+R/methods-gllvmTMB.R	4083	cli_abort	no	bare	"Provide a fi  re ur ed by {.f  gllvmTMB}.")   }
+R/families.R	14	cli_abort	no	bare	"{.f  {caller}} requires o e li k  ame.")   }
+R/families.R	19	cli_abort	no	bare	e)       )
+R/families.R	47	cli_abort	no	bare	"{.f  {caller}} requires {.arg {argume  }}  o be NULL or o e  umber s ric ly be wee  0 a d 1."     
+R/families.R	370	cli_abort	no	bare	go  {df})."     
+R/families.R	392	cli_abort	no	bare	go  {p})."     
+R/families.R	557	cli_abort	no	bare	"The depreca ed Poisso -li k wrapper accep s o ly log li ks.")   }
+R/families.R	568	cli_abort	no	bare	"The depreca ed Poisso -li k wrapper accep s o ly log li ks.")   }
+R/families.R	582	cli_abort	yes	ok	"{.f  be abi omial} suppor s o ly logi  a d cloglog li ks.",       "i" = "Received {.val {li k_ ame}
+R/families.R	686	cli_abort	no	bare	"{.f  ordi al_probi } suppor s o ly  he probi  li k.")   }
+R/families.R	816	cli_abort	no	bare	"{.f  mul i omial} suppor s o ly  he baseli e-ca egory logi  li k.")   }
+R/families.R	819	cli_abort	no	bare	"{.f  mul i omial} requires {.arg baseli e}  o be NULL or o e ca egory value.")   }
+R/mesh.R	64	cli_abort	no	bare	"{.arg fmesher_fu c} mus  be a mesh-co s ruc io  fu c io .")   }
+R/mesh.R	69	cli_abort	yes	ok	"Do  o  supply {.arg cu off} or {.arg  _k o s} wi h a pre-buil  {.arg mesh}."       
+R/mesh.R	74	cli_abort	no	bare	"{.arg mesh} mus  i heri  from {.cls fm_mesh_2d}.")     }
+R/mesh.R	82	cli_abort	no	bare	"{.arg cu off} is required for {.code  ype = 'cu off'}.")   }
+R/mesh.R	85	cli_abort	no	bare	"{.arg  _k o s} is required for {.code  ype = '{ ype}'}.")   }
+R/mesh.R	88	cli_abort	no	bare	"{.arg  _k o s} is  o  used wi h {.code  ype = 'cu off'}.")   }
+R/mesh.R	120	cli_abort	no	bare	"K-mea s mesh co s ruc io   eeds a  leas   wo dis i c  coordi a e rows."         
+R/mesh.R	162	cli_abort	no	bare	"{.arg {argume  }} mus  be o e fi i e  umber {rela io } {lower}."     
+R/mesh.R	172	cli_abort	no	bare	"{.arg {argume  }} mus  be a whole  umber.")   }
+R/mesh.R	179	cli_abort	no	bare	"{.arg da a} mus  be a  o -emp y da a frame.")   }
+R/mesh.R	184	cli_abort	no	bare	"{.arg xy_cols} mus   ame exac ly  wo dis i c  coordi a e colum s."     
+R/mesh.R	189	cli_abort	no	bare	"Every {.arg xy_cols} e  ry mus   ame a colum  i  {.arg da a}."     
+R/mesh.R	195	cli_abort	no	bare	"Coordi a e colum s mus  be  umeric a d co  ai   o missi g or i fi i e values."     
+R/mesh.R	207	cli_abort	no	bare	"{.arg id_col} mus  be `NULL` or o e  o -emp y colum   ame.")   }
+R/mesh.R	210	cli_abort	no	bare	"{.arg id_col} mus   ame a colum  i  {.arg da a}.")   }
+R/mesh.R	214	cli_abort	no	bare	"{.arg id_col} values mus  be  o -missi g a d  o -emp y.")   }
+R/mesh.R	218	cli_abort	no	bare	"{.arg id_col} mus  ide  ify every mesh projec io  row u iquely.",       "x" = "Duplica ed label{?s}
+R/mesh.R	261	cli_abort	no	bare	"{.code  ype = 'cu off_search'}  eeds coordi a es spa  i g  wo dime sio s."     
+R/mesh.R	270	cli_abort	no	bare	"{.code  ype = 'cu off_search'}  eeds coordi a es spa  i g  wo dime sio s."     
+R/mesh.R	302	cli_abort	no	bare	"Could  o  co s ruc  a valid mesh duri g {.code  ype = 'cu off_search'}."     
+R/mesh.R	354	cli_abort	no	bare	"{.arg mesh} mus  be a  `fmesher` mesh wi h a posi ive {.field  }."     
+R/mesh.R	361	cli_abort	no	bare	)` did  o  re ur   he required c0, g1, a d g2 ma rices."     
+R/mesh.R	386	cli_abort	no	bare	missi g, collapse = ', ')}."     
+R/mesh.R	395	cli_abort	no	bare	"Mesh {.field loc_xy} mus  be a fi i e  wo-colum   umeric ma rix."     
+R/mesh.R	407	cli_abort	no	bare	"Labelled mesh me ada a mus  co  ai  o e  o -emp y u ique",         "{.field row_labels} value per p
+R/mesh.R	414	cli_abort	no	bare	"Mesh {.field xy_cols} mus  co  ai   wo coordi a e  ames.")   }
+R/mesh.R	422	cli_abort	no	bare	"Mesh {.field A_s } mus  be a sparse projec io  wi h o e row per coordi a e row."     
+R/mesh.R	436	cli_abort	no	bare	"Mesh {.field spde} mus  co  ai  sparse c0, g1, a d g2 ma rices."     
+R/mesh.R	453	cli_abort	no	bare	"Mesh fi i e-eleme   ma rices mus  be square, fi i e, a d mu ually",         "co formable wi h  he p
+R/mesh.R	480	cli_abort	yes	ok	"Pass {.arg mesh} as a resul  of {.f  make_mesh}.")   }

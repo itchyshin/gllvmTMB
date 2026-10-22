@@ -31,9 +31,9 @@ columns:
 scale (the TMB internal scale).}
 \item{\code{scale}}{Either \code{"natural"} (after applying the
 transformation) or \code{"link"} (for raw packed entries).}
-\item{\code{transformation}}{One of \code{linear_predictor}, \code{exp},
-\code{logit}, \code{logit_p_tweedie}, \code{lambda_packed},
-or \code{ordinal_threshold}.}
+\item{\code{transformation}}{Currently emitted: \code{linear_predictor}, \code{exp},
+\code{logit_p_tweedie}, \code{lambda_packed}, or \code{ordinal_threshold}.
+Reserved (allowed, not currently returned): \code{logit}.}
 \item{\code{target_type}}{Always \code{"direct"} for currently returned rows.}
 \item{\code{profile_ready}}{\code{TRUE} iff the target can be passed
 directly to \code{confint(fit, parm = ..., method = "profile")}.}

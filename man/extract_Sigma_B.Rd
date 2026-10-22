@@ -2,7 +2,7 @@
 % Please edit documentation in R/extractors.R
 \name{extract_Sigma_B}
 \alias{extract_Sigma_B}
-\title{Between-site covariance matrix Sigma_B (backward-compat wrapper)}
+\title{Between-site covariance matrix Sigma_B (soft-deprecated compatibility wrapper)}
 \usage{
 extract_Sigma_B(fit)
 }
@@ -27,6 +27,13 @@ for the rr-only \code{"shared"} component or the diag-only \code{"unique"}
 component, exposes the binomial-link implicit-residual option, and
 will be the entry point for 3+ rr tiers when the engine adds them.
 }
+\section{Lifecycle}{
+
+Soft-deprecated in 0.7.0. Existing calls continue to return the historical
+\code{Sigma_B} / \code{R_B} names, but new code should use
+\code{extract_Sigma(fit, level = "unit")}.
+}
+
 \seealso{
 \code{\link[=extract_Sigma]{extract_Sigma()}} — the canonical unified API; pass
 \code{level = "unit"} for the same matrix.

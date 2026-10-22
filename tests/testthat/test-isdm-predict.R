@@ -366,10 +366,9 @@ test_that("#1132: coordinates outside the mesh hull warn instead of returning a 
 ## because a non-zero contribution proves nothing about a transposed reshape.
 ##
 ## Deliberately still NOT re-added, and still warned about: `equalto` (indexed
-## by observation, so it has no meaning for arbitrary new rows), `re_int` (its
-## group mapping is not a top-level field on the fit), `diag_cluster2` / the
-## `*_slope` and phylo-diagonal blocks (no established reshape convention --
-## see getREsd()'s roxygen). See #1138.
+## by observation, so it has no meaning for arbitrary new rows),
+## `diag_cluster2`, and the `*_slope` and phylo-diagonal blocks (no
+## established reshape convention -- see getREsd()'s roxygen). See #1138.
 ## ---------------------------------------------------------------------------
 
 .pred_tier_df <- function(seed = 4L) {

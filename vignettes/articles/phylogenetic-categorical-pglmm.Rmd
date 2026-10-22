@@ -288,8 +288,8 @@ ggplot(ps2, aes(x = trait, y = H2)) +
 
 > **One categorical draw per species — read the correlation with
 > caution, or not at all.** This dataset has exactly one lifestyle
-> observation per species, the regime the package's own recovery
-> campaign (documented for this exact call shape) found unreliable for
+> observation per species, the regime a simulation study using this same
+> model and data structure found unreliable for
 > the **among-category correlation**: variance/H^2 components separate
 > and recover correctly, but the correlation estimate rails toward
 > +/-1 in a substantial fraction of simulated fits under one draw per
@@ -345,9 +345,8 @@ outside this article's scope. The comparison for Example 2 is
 
 ## The paper-equation to `gllvmTMB`-call map
 
-The rows below are reproduced from `gllvmTMB`'s own internal design
-record for this alignment (not re-derived here), restricted to the
-models this article uses.
+The rows below map the paper's equations to the `gllvmTMB` calls used in this
+article.
 
 | Paper eq | Model | `gllvmTMB` call | Status |
 |---|---|---|---|
@@ -359,10 +358,8 @@ models this article uses.
 | 8 | Phylogenetic correlation between traits/contrasts | `extract_correlations(fit, tier = "phy")` | supported for admitted phylogenetic tiers, including ordinal and multinomial |
 | A.1-A.9 | Contrast-matrix reparameterisation of the softmax | n/a | no action needed — `gllvmTMB` already fits the equivalent baseline-category-logit softmax directly |
 
-The full table (20 rows, every mode/source combination, with the
-recovery-campaign evidence behind each verdict) is in
-`docs/design/123-multinomial-structured-surface.md` inside the package
-repository, alongside the register rows it feeds.
+The status column states the supported scope directly. Combinations not listed
+here should not be inferred from a neighbouring supported model.
 
 ## What this article does *not* claim
 

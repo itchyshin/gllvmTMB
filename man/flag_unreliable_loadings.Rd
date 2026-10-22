@@ -7,7 +7,7 @@
 flag_unreliable_loadings(
   fit,
   null_region = c(-0.1, 0.1),
-  level = c("unit", "unit_obs"),
+  level = "unit",
   method = "wald",
   conf_level = 0.95,
   loading_scale = NULL
@@ -46,8 +46,8 @@ with \code{unreliable = NA} because no inference is being made about them.
 }
 \examples{
 \dontrun{
-## Grounded in tests/testthat/test-loading-ci.R. flag_unreliable_loadings()
-## accepts either a fit or a loading_ci() data frame directly.
+## flag_unreliable_loadings() accepts either a fit or a loading_ci()
+## data frame directly.
 fit <- gllvmTMB(
   value ~ 0 + trait + latent(0 + trait | site, d = 2L),
   data = df, family = stats::binomial(link = "probit")

@@ -12,9 +12,9 @@
 ##     SD = sigma * sqrt(df / (df - 2)), undefined for df <= 2.
 ##   * `phi_truncnb2` (truncated_nbinom2, fid 11) is a SEPARATE per-trait
 ##     vector from `phi_nbinom2` (its own log_phi_truncnb2 PARAMETER_VECTOR).
-##   * `sigma_eps` is ONE scalar SHARED by every gaussian (fid 0) AND
-##     lognormal (fid 3) trait (R/fit-multi.R gates any_sigma_eps on
-##     family_id %in% c(0L, 3L)), not a per-trait vector.
+##   * `sigma_eps` has one within-family shared slot in pure fits. When
+##     gaussian (fid 0) and lognormal (fid 3) coexist it has two slots:
+##     Gaussian raw-scale SD, then lognormal log-scale SD. It is not per-trait.
 ##
 ## `.gllvmTMB_family_cdf_args()` converts a trait's reported values into
 ## standard R distribution arguments once, in one place. NOTE ON THE SOURCE
@@ -56,21 +56,27 @@
 #' @noRd
 .gllvmTMB_family_cdf_args <- function(fit, trait_id, eta = NULL) {
   trait_id <- as.integer(trait_id)
+  n_traits <- length(unique(as.integer(fit$tmb_data$trait_id)))
   if (length(trait_id) != 1L || is.na(trait_id) || trait_id < 1L) {
-    cli::cli_abort("{.arg trait_id} must be a single positive integer.")
+    cli::cli_abort(c(
+      "{.arg trait_id} must be a single positive integer.",
+      ">" = "Pass a value from 1 to {n_traits} (this fit's number of traits), matching {.code fit$tmb_data$trait_id + 1L}."
+    ))
   }
   tid_rows <- as.integer(fit$tmb_data$trait_id) + 1L
   rows <- which(tid_rows == trait_id)
   if (length(rows) == 0L) {
-    cli::cli_abort(
-      "No rows with trait_id {trait_id} in {.code fit$tmb_data$trait_id}."
-    )
+    cli::cli_abort(c(
+      "No rows with trait_id {trait_id} in {.code fit$tmb_data$trait_id}.",
+      ">" = "This fit has {n_traits} trait(s); pass a {.arg trait_id} from 1 to {n_traits}."
+    ))
   }
   fid <- unique(as.integer(fit$tmb_data$family_id_vec[rows]))
   if (length(fid) != 1L || is.na(fid)) {
-    cli::cli_abort(
-      "Trait {trait_id} does not map to a single known family_id."
-    )
+    cli::cli_abort(c(
+      "Trait {trait_id} does not map to a single known family_id.",
+      ">" = "This usually means mixed families were assigned inconsistently within the trait; check {.code fit$family_input} for this trait."
+    ))
   }
   lid <- unique(as.integer(fit$tmb_data$link_id_vec[rows]))
   lid <- if (length(lid) == 1L) lid else NA_integer_
@@ -92,16 +98,15 @@
   )
 
   if (fid == 0L) {
-    ## Gaussian, identity link: y ~ Normal(eta, sigma_eps). sigma_eps is
-    ## ONE scalar shared by ALL gaussian and lognormal traits.
-    sigma_eps <- .gllvmTMB_sigma_eps(fit)
+    ## Gaussian, identity link: y ~ Normal(eta, sigma_eps). Joint Gaussian-
+    ## lognormal fits use the raw-scale Gaussian slot.
+    sigma_eps <- .gllvmTMB_sigma_eps_for_family(fit, 0L)
     out$dist <- "norm"
     out$report <- list(sigma_eps = sigma_eps)
     out$args <- list(sd = sigma_eps)
     if (has_eta) out$args$mean <- eta
     out$note <- paste(
-      "sigma_eps is a single scalar SHARED by all gaussian and lognormal",
-      "traits; mean = eta."
+      "Gaussian raw-scale sigma_eps; shared by Gaussian traits; mean = eta."
     )
   } else if (fid == 1L) {
     ## Binomial: prob = linkinv(eta) per link_id (0 logit, 1 probit,
@@ -119,15 +124,15 @@
     if (has_eta) out$args$lambda <- exp(eta)
     out$note <- "lambda = exp(eta)."
   } else if (fid == 3L) {
-    ## Lognormal: log(y) ~ Normal(eta, sigma_eps), SAME shared scalar as
-    ## gaussian.
-    sigma_eps <- .gllvmTMB_sigma_eps(fit)
+    ## Lognormal: log(y) ~ Normal(eta, sigma_eps). Joint Gaussian-lognormal
+    ## fits use the distinct log-scale slot.
+    sigma_eps <- .gllvmTMB_sigma_eps_for_family(fit, 3L)
     out$dist <- "lnorm"
     out$report <- list(sigma_eps = sigma_eps)
     out$args <- list(sdlog = sigma_eps)
     if (has_eta) out$args$meanlog <- eta
     out$note <- paste(
-      "sigma_eps is the SAME shared scalar the gaussian traits use;",
+      "lognormal log-scale sigma_eps; shared by lognormal traits;",
       "meanlog = eta."
     )
   } else if (fid == 4L) {
@@ -272,6 +277,29 @@
     out$note <- paste(
       "Threshold model with unit link-scale variance: P(y <= k) =",
       "pnorm(tau_k - eta), tau_1 = 0 fixed."
+    )
+  } else if (fid == 20L) {
+    ## ordinal_logit: identical cutpoint reconstruction to fid 14, with the
+    ## logistic CDF instead of pnorm (link-scale variance pi^2/3, not 1).
+    n_cuts <- as.integer(fit$tmb_data$n_ordinal_cuts_per_trait %||% integer(0))
+    offsets <- as.integer(fit$tmb_data$ordinal_offset_per_trait %||% integer(0))
+    flat <- as.numeric(rep_$ordinal_cutpoints %||% numeric(0))
+    cuts <- if (t <= length(n_cuts) && !is.na(n_cuts[t]) && n_cuts[t] >= 0L) {
+      extra <- if (n_cuts[t] > 0L) {
+        flat[(offsets[t] + 1L):(offsets[t] + n_cuts[t])]
+      } else {
+        numeric(0)
+      }
+      c(0, extra)
+    } else {
+      NULL
+    }
+    out$report <- list(ordinal_cutpoints = cuts)
+    out$args <- list(cutpoints = cuts)
+    if (has_eta) out$args$mean <- eta
+    out$note <- paste(
+      "Threshold model with pi^2/3 link-scale variance: P(y <= k) =",
+      "plogis(tau_k - eta), tau_1 = 0 fixed."
     )
   } else if (fid == 15L) {
     ## NB1: linear mean-variance Var = mu * (1 + phi); the NB size is

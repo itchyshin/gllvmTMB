@@ -88,6 +88,7 @@ extract_repeatability <- function(
   seed = NULL
 ) {
   method <- match.arg(method)
+  .temporal_assert_no_iid_inference(fit, "extract_repeatability")
   if (.gllvmTMB_is_mspl(fit)) {
     .gllvmTMB_mspl_assert_inference(fit, "extract_repeatability")
   }
@@ -126,10 +127,27 @@ extract_repeatability <- function(
     ## R[t] = plogis(log_v[t]). SE(log_v) computed via numerical
     ## Jacobian of log_v wrt the fixed parameters, times the joint
     ## fixed-parameter covariance from sd_report.
-    cov_fix <- if (!is.null(fit$sd_report)) fit$sd_report$cov.fixed else NULL
+    ## #1379: same gate as confint(method = "wald"), run first -- a missing
+    ## sd_report or an all-non-finite covariance (non-PD Hessian) is a classed
+    ## error that names the bootstrap, not a NaN interval.
+    .confint_require_sdreport(fit, "wald", caller = "extract_repeatability",
+                              route = "bootstrap")
+    cov_fix <- fit$sd_report$cov.fixed
     if (is.null(cov_fix)) {
       cli::cli_abort(
-        "Wald repeatability requires {.code sd_report}; check Hessian."
+        "Wald repeatability requires {.code sd_report$cov.fixed}, and this fit's {.field sd_report} has none.",
+        class = "gllvmTMB_repeatability_no_cov_fixed"
+      )
+    }
+    ## A finite covariance from a non-PD Hessian is not a trustworthy
+    ## curvature estimate either; say so rather than return a clean-looking CI.
+    if (isFALSE(fit$sd_report$pdHess)) {
+      cli::cli_warn(
+        c(
+          "The Hessian is not positive-definite ({.code pdHess = FALSE}); the Wald repeatability intervals are not reliable.",
+          "i" = "Diagnose with {.run gllvmTMB_diagnose(fit)}, or use a bootstrap interval ({.code method = \"bootstrap\"})."
+        ),
+        class = "gllvmTMB_repeatability_nonpd_hessian"
       )
     }
     par_full_at_mle <- fit$tmb_obj$env$last.par.best

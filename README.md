@@ -6,66 +6,106 @@
 [![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
 <!-- badges: end -->
 
+## Find shared patterns across many responses
+
+**GLLVM** means **generalized linear latent-variable model**. A GLLVM analyses
+several responses together and uses a small number of unobserved shared
+patterns, called latent variables, to describe how those responses vary together.
+The word *generalized* means the model can use response distributions suited
+to different data, such as continuous measurements, counts, or presence and
+absence. The supported choices and their limits are in
+[Response families](https://itchyshin.github.io/gllvmTMB/articles/response-families.html).
+
+`gllvmTMB` is an R package for data in which each site, individual, species, or
+study has several measurements: body traits, species counts or occurrences,
+behaviours, clinical outcomes, or similar data. It helps answer questions such
+as:
+
+- Which traits vary together across individuals?
+- Which species tend to occur together after accounting for measured conditions?
+- How much variation is shared, and how much is specific to each response?
+
+Latent variables describe patterns of association. They do not, by themselves,
+show that one trait, species, or treatment causes another to change.
+
 > [!WARNING]
-> **`gllvmTMB` is experimental — use at your own risk.** It is not complete, is
-> not fully human-verified, and needs extensive further validation. CRAN
-> availability is not a statement of scientific maturity. Point estimates are the
-> primary inferential output, but their evidence is route- and regime-specific.
-> Broad package-wide interval coverage is not certified;
-> one narrowly scoped two-sided Gaussian total-variance profile regime has a
-> documented 0.94 coverage floor. This is not nominal 95% certification or a
-> guarantee for an individual fit. Covariance routes otherwise have cell-specific
-> evidence only.
+> **Experimental software.** Start with a documented example, check the fitted
+> model, and read [Current limitations and
+> boundaries](https://itchyshin.github.io/gllvmTMB/articles/current-limits.html)
+> before reporting a result. A model that converges is not, by itself, evidence
+> that every extension is reliable.
 
-`gllvmTMB` fits multivariate models for data where each site,
-individual, species, or study has several responses: body traits,
-species occurrences, behaviours, outcomes, or similar measurements.
-The main question is simple:
+`gllvmTMB` uses **Template Model Builder (TMB)** to fit models by default.
+`GLLVModels.jl` is an optional Julia companion. The experimental
+`engine = "julia"` option fits a supported subset of models from R; it does
+not provide every R/TMB feature. See the
+[Julia setup reference](https://itchyshin.github.io/gllvmTMB/reference/gllvm_julia_setup.html)
+and the Julia-engine entry in
+[Current limitations and boundaries](https://itchyshin.github.io/gllvmTMB/articles/current-limits.html).
+Julia is not required to install or use the default R workflow.
 
-> Which responses vary together, and how much of that variation is shared
-> versus response-specific?
-
-Unlike PCA or NMDS, `gllvmTMB` estimates latent structure **inside a
-likelihood** rather than from a distance matrix or eigen-decomposition.
-Loadings, correlations, and communalities can be paired with model-based
-uncertainty where a target-specific route is supported; broad interval
-calibration remains incomplete.
-
-## Start Here
+## Start with your scientific question
 
 | If you want to... | Read this |
 |---|---|
-| fit your first model | [Get started with gllvmTMB](https://itchyshin.github.io/gllvmTMB/articles/gllvmTMB.html) |
-| decide whether your model and intended result are inside the current evidence boundary | [Current limitations and boundaries](https://itchyshin.github.io/gllvmTMB/articles/current-limits.html) |
-| choose the guide matching your data and question | [Browse all articles](https://itchyshin.github.io/gllvmTMB/articles/) |
-| check whether a fit is interpretable | [Can I trust this fit?](https://itchyshin.github.io/gllvmTMB/articles/fit-diagnostics.html) |
-| look up formulas, covariance terms, or families | [Reference index](https://itchyshin.github.io/gllvmTMB/reference/) |
+| learn from a first continuous-trait model | [Get started with gllvmTMB](https://itchyshin.github.io/gllvmTMB/articles/gllvmTMB.html) |
+| model community counts at sites | [Response families](https://itchyshin.github.io/gllvmTMB/articles/response-families.html), then [choose the matching example](https://itchyshin.github.io/gllvmTMB/articles/) |
+| model presence or absence of many species | [Joint species distribution models](https://itchyshin.github.io/gllvmTMB/articles/joint-sdm.html) |
+| model traits measured repeatedly through time | [Temporal covariance](https://itchyshin.github.io/gllvmTMB/articles/temporal-ar1.html) |
+| check whether a fitted model is interpretable | [Can I trust this fit?](https://itchyshin.github.io/gllvmTMB/articles/fit-diagnostics.html) |
+| compare primary optimisers for a variational approximation (VA) fit | [Compare VA optimisers](#compare-va-optimisers) |
+| choose another guide | [Browse all articles](https://itchyshin.github.io/gllvmTMB/articles/) |
 
-`gllvmTMB` is under active development and has lifecycle **experimental**: the
-formula grammar, defaults, and extractor output may still change as the API
-matures. The public path above is deliberately bounded. For Gaussian models,
-the narrow tested-regime point evidence starts with `indep()` or `dep()`; inspect
-the covariance point estimate. The latent model below remains the clearest way
-to teach `Sigma = Lambda Lambda^T + Psi`, but its production pair is
-characterization-only rather than a dependable-core claim. Bare-bar
-`(1 + x | g)` slopes remain reserved.
+The first tutorials focus on continuous responses and explain how to interpret
+shared and response-specific variation. For random slopes, temporal dependence,
+phylogeny, spatial structure, or another response family, start with the linked
+guide and use its stated boundary rather than extending a simple example by
+analogy.
+
+The comparison with PCA or NMDS, the likelihood, and technical terms such as
+loadings and communality are explained after the first example. They are useful
+for interpreting a fitted model, not prerequisites for deciding whether this is
+the right question for your data.
+
+## Compare VA optimisers
+
+For an experimental variational approximation (VA) fit, set the primary
+optimiser in `gllvmTMBcontrol()` and pass that control object to your usual
+`gllvmTMB()` call. These controls compare `nlminb` with BFGS while turning off
+the secondary polishing sequence:
+
+```r
+library(gllvmTMB)
+
+ctrl_nlminb <- gllvmTMBcontrol(
+  integration = "va", optimizer = "nlminb",
+  optArgs = list(control = list(iter.max = 2000L, eval.max = 4000L)),
+  va_polish = FALSE
+)
+ctrl_bfgs <- gllvmTMBcontrol(
+  integration = "va", optimizer = "optim",
+  optArgs = list(method = "BFGS", control = list(maxit = 2000L)),
+  va_polish = FALSE
+)
+```
+
+Pass each control object to the same model call and reset `set.seed()` before
+each fit to use the same four seeded starts. The iteration limits above are
+native to each optimiser, so they do not represent equal computational effort.
+BFGS uses a dense inverse-Hessian approximation and is best reserved for
+modest models. See [`gllvmTMBcontrol()`](https://itchyshin.github.io/gllvmTMB/reference/gllvmTMBcontrol.html)
+for a complete comparison example and the returned start-level diagnostics.
+VA remains experimental; these settings do not establish that either optimiser
+will converge or recover the best solution for a particular model.
 
 ## What the model does
 
 The teaching example uses one ordinary Gaussian `latent()` model. It splits
 the trait covariance matrix into shared axes plus trait-specific variance:
 
-$$
-\boldsymbol{\Sigma}
-=
-\boldsymbol{\Lambda}\boldsymbol{\Lambda}^{\mathsf T}
-+
-\boldsymbol{\Psi},
-\qquad
-\boldsymbol{\Psi}
-=
-\operatorname{diag}(\psi_1,\ldots,\psi_T).
-$$
+```math
+\boldsymbol{\Sigma} = \boldsymbol{\Lambda}\boldsymbol{\Lambda}^{\mathsf{T}} + \boldsymbol{\Psi}, \qquad \boldsymbol{\Psi} = \mathrm{diag}(\psi_1,\ldots,\psi_T).
+```
 
 In words: total trait covariance = shared multivariate structure +
 response-specific variation. Read the equation from left to right:
@@ -96,13 +136,7 @@ interface lets you supply the stacked table yourself.
 
 ## Install
 
-After the first CRAN release is accepted, install the released package with:
-
-```r
-install.packages("gllvmTMB")
-```
-
-Until then, install the development build from GitHub with `pak`:
+Install the current development version from GitHub with `pak`:
 
 ```r
 install.packages("pak")
@@ -140,13 +174,50 @@ fit <- gllvmTMB(
 fit
 extract_communality(fit, level = "unit")
 extract_Sigma_table(fit, level = "unit")
+# Complete symmetric correlation table, including the diagonal:
+extract_correlations(fit, tier = "unit", entries = "all")
+# Symmetric heatmap:
+plot_correlations(fit, tier = "unit", style = "heatmap")
 ```
+
+Numeric pair indices must be whole numbers. Matrix plots accept identical
+mirrored rows and reject conflicting values or intervals for the same pair.
+Native Laplace/AGHQ `bootstrap_Sigma()` refits retain ridge, integration, optimiser and REML
+settings while skipping the unused standard-error calculation in refits.
+
+In an interactive session the first ordinary `latent()` fit prints a
+one-time warning that `latent()` includes per-trait Psi by default; that
+note is expected, not a failed fit.
+The printed `Covstructs:` line uses internal names: `latent_unit` is your
+`latent()` term and `indep_unit` is the automatic per-row Gaussian residual
+structure the stacked model adds even when you did not type `indep()`.
+If the print method mentions `gllvmTMB_diagnose()`, use `check_gllvmTMB()`
+for the same health checklist taught in [Get started with
+gllvmTMB](https://itchyshin.github.io/gllvmTMB/articles/gllvmTMB.html).
 
 You need R 4.1.0 or newer and a working compiler toolchain because
 TMB models are compiled during installation. If installation fails
 while compiling C++, install the usual R build tools for your
 platform: Rtools on Windows, Xcode Command Line Tools on macOS,
 or the R development toolchain on Linux.
+
+On Linux, installation also builds a spatial stack even if you never fit
+a spatial model: `gllvmTMB` imports `fmesher`, which imports `sf`, which
+needs `s2` and `units`. Building those from source needs system libraries
+(GDAL, GEOS, PROJ, SQLite, udunits2, and abseil plus cmake for `s2`), and
+installing them usually needs administrator rights. On Debian or Ubuntu:
+
+```sh
+sudo apt-get install libgdal-dev gdal-bin libgeos-dev libproj-dev \
+  libsqlite3-dev libudunits2-dev libabsl-dev cmake
+```
+
+Without administrator rights (for example on a cluster), install binary
+builds of `sf` and `fmesher` first, for example from
+[Posit Package Manager](https://packagemanager.posit.co) or
+[r-universe](https://r-universe.dev), then install `gllvmTMB`.
+If the failure names `s2`, `sf`, `units` or `fmesher`, the problem is
+this spatial stack, not the TMB toolchain.
 
 ## Data shapes: wide or long, one entry point
 
@@ -173,6 +244,45 @@ Predictors go into the formula in either form. Both paths reach the same
 stacked-trait model and produce the same fit (identical log-likelihood and
 estimates). The [Get started](https://itchyshin.github.io/gllvmTMB/articles/gllvmTMB.html)
 vignette shows the runnable wide/long equivalence.
+
+When the response-column factor has another name, such as `analysis_word`,
+use that name in the fixed effects and set `trait = "analysis_word"`.
+Use the same name in both places: `0 + analysis_word` and
+`latent(0 + analysis_word | unit, ...)`. If the data column is named `trait`,
+use `0 + trait` and `latent(0 + trait | unit, ...)` with `trait = "trait"`.
+The historical placeholder `trait` inside `latent()` remains accepted when
+a different response-column name is selected, including with `lv = ~ predictor`.
+
+For `latent(..., lv = ~ predictor)`, `summary(fit)` reports the predictor's
+latent-axis coefficients and trait-scale effects. Axis coefficients depend
+on axis orientation; trait-scale effects are the basis for comparisons.
+For unstable binomial fits with ordinary between-unit latent loadings, try
+an explicit sensitivity fit with
+`control = gllvmTMBcontrol(loading_ridge = 2)`. This puts a zero-mean normal
+prior with standard deviation 2 on the free ordinary between-unit loadings; smaller
+positive values shrink more, and `Inf` disables the penalty. Ordinary
+Laplace fits remain unpenalised by default, equivalent to `loading_ridge = Inf`.
+A 24,000-fit native-Laplace comparison found modest recovery benefits from
+`2`, but no overall Hessian or interval-coverage improvement. Use it as an
+explicit sensitivity choice when ordinary unit-tier loadings become extreme
+or unstable, and compare covariance and effect estimates as well as fit health.
+See [when to try a loading ridge](https://itchyshin.github.io/gllvmTMB/articles/fit-diagnostics.html#loading-ridge-sensitivity)
+for the measured recovery and coverage trade-offs. Ridged fits are penalised
+estimates, so ordinary AIC, BIC, and likelihood-ratio comparisons do not
+apply. With retained penalised-Hessian metadata, their LV uncertainty is a
+local posterior approximation conditional on the chosen ridge scale,
+including delta-method propagation for trait effects. It does not establish
+repeated-sampling coverage: `std.error` holds an approximate posterior SD,
+and bounds are normal-approximation credible bounds. Older fits without
+that metadata withhold LV uncertainty.
+For a factor in `lv = ~ group`, default treatment contrasts compare levels
+with the reference level, selected using `relevel()` before fitting.
+Use this form rather than `lv = ~ 0 + group`, whose full indicator coding
+violates the no-LV-intercept contract.
+`ordiplot(fit)` also supports a single latent axis. See
+[Explaining latent ecological axes](https://itchyshin.github.io/gllvmTMB/articles/explaining-latent-ecological-axes.html)
+for interpretation, uncertainty limits, and a complete CSV-to-fit example
+with 35 articles, 22 words, and `Fox_Nativeness` as the LV predictor.
 
 Missing response cells are allowed. In a wide `traits(...)` data frame,
 an `NA` trait value can be treated as an unobserved unit-trait cell; in
@@ -207,6 +317,13 @@ method. In brief:
 - do not infer interval calibration from the availability of Wald, bootstrap,
   or profile bounds.
 
+Intervals cost more than the fit. `confint()` defaults to
+`method = "profile"`, which refits the model many times for every
+parameter it profiles, so on models with many traits or latent dimensions it
+can take far longer than the original fit. Start with `method = "wald"` (one
+Hessian, fast), profile only the parameters you will report through
+`parm`, and keep the profile run for the final model.
+
 `gllvmTMB` is for stacked-trait multivariate models. Use `glmmTMB` for a
 single-response GLMM, `sdmTMB` for a single-response spatial model, and
 `drmTMB` for one- or two-response distributional regression.
@@ -216,8 +333,8 @@ single-response GLMM, `sdmTMB` for a single-response spatial model, and
 If you use gllvmTMB, please cite the package and its TMB engine.
 Run `citation("gllvmTMB")` for formatted entries:
 
-- **gllvmTMB**: Nakagawa S (2026). *gllvmTMB: Fit Multivariate
-  Models from Wide Response Data.* R package version 0.6.0.
+- **gllvmTMB**: Nakagawa S (2026). *gllvmTMB: Generalised Linear
+  Latent Variable Models with TMB.* R package version 0.8.0.9000.
   <https://itchyshin.github.io/gllvmTMB/>
 - **TMB engine**: Kristensen K, Nielsen A, Berg CW, Skaug H,
   Bell BM (2016). *TMB: Automatic Differentiation and Laplace

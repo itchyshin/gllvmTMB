@@ -67,3 +67,52 @@ dispersion_trait_map <- function(family_mask, user_pin_mask = NULL) {
   m[free_mask] <- seq_len(sum(free_mask))
   factor(m)
 }
+
+#' Per-trait starting value for the zero-inflation logit parameter
+#'
+#' `logit_zi` starting values, one per trait, for the zero-inflated families
+#' (fid 17 zi_poisson, 18 zi_nbinom2, 19 zi_binomial; Arc D / Design 62).
+#' Method-of-moments: solve the ZI identity
+#' \eqn{P(y=0) = \pi + (1-\pi) P_c(0)} for \eqn{\pi} using the OBSERVED
+#' proportion of zeros and a naive plug-in count-process zero probability
+#' \eqn{P_c(0)} (Poisson: `exp(-mbar)`; NB2: NB(size = 1, mu = mbar) as a
+#' phi = 1 naive guess, matching the package's phi starting convention
+#' elsewhere; binomial: `(1 - pbar)^Nbar`). Traits with no zi_* row keep a
+#' neutral default (`qlogis(0.1)`, never read since the map pins them off).
+#' Clamped to `qlogis(c(0.02, 0.8))` per the task brief.
+#'
+#' @param y Response vector (length n_obs).
+#' @param trait_id Zero-based per-row trait index (length n_obs).
+#' @param family_id_vec Per-row family id (length n_obs).
+#' @param n_trials Per-row trial count (length n_obs); only read for fid 19.
+#' @param n_traits Number of traits.
+#' @return `numeric(n_traits)`, one starting `logit_zi` value per trait.
+#' @keywords internal
+#' @noRd
+zi_logit_start <- function(y, trait_id, family_id_vec, n_trials, n_traits) {
+  out <- rep(stats::qlogis(0.1), n_traits)
+  lo <- stats::qlogis(0.02)
+  hi <- stats::qlogis(0.8)
+  for (t in seq_len(n_traits) - 1L) {
+    rows_t <- which(trait_id == t & family_id_vec %in% c(17L, 18L, 19L))
+    if (length(rows_t) == 0L) next
+    fid_t <- family_id_vec[rows_t[1L]]
+    y_t <- y[rows_t]
+    p0_obs <- mean(y_t == 0)
+    if (fid_t == 19L) {
+      Nt <- n_trials[rows_t]
+      pbar <- if (sum(Nt) > 0) sum(y_t) / sum(Nt) else 0.5
+      p_count_zero <- (1 - pbar)^mean(Nt)
+    } else if (fid_t == 18L) {
+      mbar <- mean(y_t)
+      p_count_zero <- stats::dnbinom(0, size = 1, mu = mbar) # naive phi = 1 guess
+    } else {
+      mbar <- mean(y_t)
+      p_count_zero <- exp(-mbar)
+    }
+    pi_hat <- (p0_obs - p_count_zero) / max(1 - p_count_zero, 1e-6)
+    pi_hat <- min(max(pi_hat, 0.02), 0.8)
+    out[t + 1L] <- stats::qlogis(pi_hat)
+  }
+  pmin(pmax(out, lo), hi)
+}

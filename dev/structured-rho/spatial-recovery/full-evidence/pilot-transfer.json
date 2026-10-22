@@ -1,0 +1,16 @@
+{
+  "source_root": "/home/snakagaw/spatial-rho-recovery-9c6746cb5",
+  "pilot_bundle_hash": "78e17ceb0c4589fff1c7983949a9f7cdfaa80e4e4699d0ab75870764d15d3383",
+  "continuation_bundle_hash": "688e8533931bc21032d6c7b5ab797017a4076eaf14d7915a5a34a0d72d976ac3",
+  "fixture_manifest_sha256": "692380327512a8ede39849eab813319469948d96c477f86b190e4f85d90181c3",
+  "pilot_attempts": 32,
+  "prelaunch_ledger_rows": 54,
+  "pilot_attempts_csv_sha256": "987481d77437e1dcde16c09d9b48dabdb48832b3a696c443f35f47766fe41511",
+  "pilot_completion_json_sha256": "4059263a21eada2d3a322e293b28434f0ae35c1750dd5f6bcc46d3970fa66d97",
+  "pilot_archive_sha256_file_sha256": "d89abdbf2f037e8dd43c8aa59d59c16a02840a8281befb3d1839f748bd7d3a98",
+  "pilot_evidence_path_mapping": {
+    "from": "/home/snakagaw/spatial-rho-recovery-9c6746cb5/results/pilot/",
+    "to": "/home/snakagaw/spatial-rho-recovery-a32726b19/results/pilot/",
+    "reason": "The continuation bundle copied the immutable pilot results into its isolated root before concatenating the 32 pilot and 1,568 remainder rows. This table records the rewritten locations; the hashes above bind the original pilot table and completion receipt."
+  }
+}

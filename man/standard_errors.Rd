@@ -64,6 +64,11 @@ TMB \code{sdreport()} call, on the same converged parameter vector, to the bit.
 Deferring the calculation does not change it, and does not change any
 honesty caveat that already applies to Wald standard errors from this
 package.
+
+With finite loading ridge, the calculation includes the Gaussian loading
+prior precision at the fitted MAP point. These are local approximate
+posterior standard deviations conditional on the chosen ridge scale,
+model, and latent-axis orientation, not calibrated sampling standard errors.
 }
 
 \examples{

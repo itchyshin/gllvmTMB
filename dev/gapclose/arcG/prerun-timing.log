@@ -1,0 +1,46 @@
+gllvmTMB is EXPERIMENTAL (lifecycle: experimental). Use at your own risk: the package is not complete, is not fully human-verified, and needs extensive further validation. Point estimates are the primary output, and how well they are supported depends on the exact model and route used. Broad interval coverage is not yet confirmed. A handful of interval calculations for standardized factor loadings have been checked and shown accurate, but only for one Gaussian model, in a few fixed sample-size and rank combinations, fitted to one fixed simulated dataset with known true values, and only for fits that converge cleanly; this does not carry over to any other sample size, rank, or dataset. Total-variance penalty profiles are still only an approximate calculation: even in previously checked cases, we have not confirmed they match the exact answer. See the Current limitations and boundaries page for scope.
+
+=== cell d1_n40 (n_sites=40, n_traits=4, d=1) ===
+  seed 9001 ... fit=1.33s sdr_joint=0.13s ordu_full=0.13s solve_only=0.00s (W ncol=40, Q dim=213)
+  seed 9002 ... fit=7.05s sdr_joint=0.11s ordu_full=0.16s solve_only=0.00s (W ncol=40, Q dim=213)
+
+=== cell d1_n320 (n_sites=320, n_traits=4, d=1) ===
+  seed 9001 ... fit=4.99s sdr_joint=0.97s ordu_full=0.99s solve_only=0.01s (W ncol=320, Q dim=1613)
+  seed 9002 ... fit=4.38s sdr_joint=0.94s ordu_full=0.97s solve_only=0.01s (W ncol=320, Q dim=1613)
+
+=== cell d2_n40 (n_sites=40, n_traits=4, d=2) ===
+  seed 9001 ... fit=0.56s sdr_joint=0.16s ordu_full=0.16s solve_only=0.00s (W ncol=80, Q dim=256)
+  seed 9002 ... fit=0.53s sdr_joint=0.15s ordu_full=0.16s solve_only=0.00s (W ncol=80, Q dim=256)
+
+=== cell d2_n320 (n_sites=320, n_traits=4, d=2) ===
+  seed 9001 ... fit=4.33s sdr_joint=1.16s ordu_full=1.20s solve_only=0.02s (W ncol=640, Q dim=1936)
+  seed 9002 ... fit=6.20s sdr_joint=1.17s ordu_full=1.19s solve_only=0.02s (W ncol=640, Q dim=1936)
+
+=== cell nt8_d2_n80 (n_sites=80, n_traits=8, d=2) ===
+  seed 9001 ... fit=3.13s sdr_joint=0.95s ordu_full=0.95s solve_only=0.00s (W ncol=160, Q dim=832)
+  seed 9002 ... fit=4.62s sdr_joint=0.94s ordu_full=0.96s solve_only=0.00s (W ncol=160, Q dim=832)
+
+
+=== SUMMARY ===
+       cell n_sites n_traits d seed t_fit t_sdreport_joint t_ordu_full
+     d1_n40      40        4 1 9001 1.328            0.129       0.134
+     d1_n40      40        4 1 9002 7.047            0.114       0.159
+    d1_n320     320        4 1 9001 4.987            0.974       0.987
+    d1_n320     320        4 1 9002 4.382            0.944       0.967
+     d2_n40      40        4 2 9001 0.559            0.162       0.164
+     d2_n40      40        4 2 9002 0.528            0.151       0.156
+    d2_n320     320        4 2 9001 4.327            1.164       1.198
+    d2_n320     320        4 2 9002 6.196            1.173       1.188
+ nt8_d2_n80      80        8 2 9001 3.135            0.951       0.951
+ nt8_d2_n80      80        8 2 9002 4.620            0.941       0.958
+ t_solve_only W_ncol Q_dim converged pdHess status
+        0.001     40   213      TRUE   TRUE     ok
+        0.001     40   213      TRUE   TRUE     ok
+        0.008    320  1613      TRUE   TRUE     ok
+        0.006    320  1613      TRUE   TRUE     ok
+        0.001     80   256      TRUE   TRUE     ok
+        0.001     80   256      TRUE   TRUE     ok
+        0.018    640  1936      TRUE   TRUE     ok
+        0.015    640  1936      TRUE   TRUE     ok
+        0.003    160   832      TRUE   TRUE     ok
+        0.003    160   832      TRUE   TRUE     ok

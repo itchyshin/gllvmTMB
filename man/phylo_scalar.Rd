@@ -47,7 +47,10 @@ for the full discussion of the two paths.
     Cphy = ape::vcv(tree, corr = TRUE),
     sigma2_phy = rep(0.3, 3), seed = 1
   )
-  sim$data$species <- factor(sim$data$species, levels = tree$tip.label)
+  sim$data$species <- factor(
+    tree$tip.label[as.integer(sim$data$species)],
+    levels = tree$tip.label
+  )
   fit <- gllvmTMB(
     value ~ 0 + trait + phylo_scalar(species),
     data       = sim$data,

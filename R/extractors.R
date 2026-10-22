@@ -2,7 +2,7 @@
 ## gllvmTMB(). These compute the manuscript's Sigma_B, Sigma_W, ICCs,
 ## communalities, and ordination scores from $report and $opt$par.
 
-#' Between-site covariance matrix Sigma_B (backward-compat wrapper)
+#' Between-site covariance matrix Sigma_B (soft-deprecated compatibility wrapper)
 #'
 #' Returns the implied between-unit trait covariance
 #' \eqn{\Sigma_B = \Lambda_B \Lambda_B^\top + \boldsymbol\Psi_B} and its correlation
@@ -16,6 +16,11 @@
 #' component, exposes the binomial-link implicit-residual option, and
 #' will be the entry point for 3+ rr tiers when the engine adds them.
 #'
+#' @section Lifecycle:
+#' Soft-deprecated in 0.7.0. Existing calls continue to return the historical
+#' `Sigma_B` / `R_B` names, but new code should use
+#' `extract_Sigma(fit, level = "unit")`.
+#'
 #' @param fit A fit returned by [gllvmTMB()].
 #' @return A list with `Sigma_B` (T x T covariance), `R_B` (correlation),
 #'   or `NULL` if no rr/diag term is present at the between-unit tier.
@@ -24,23 +29,33 @@
 #' @keywords internal
 #' @export
 extract_Sigma_B <- function(fit) {
-  out <- extract_Sigma(
-    fit,
-    level = "unit",
-    part = "total",
-    link_residual = "none"
+  lifecycle::deprecate_soft(
+    "0.7.0",
+    "extract_Sigma_B()",
+    "extract_Sigma(level = \"unit\")"
   )
+  .extract_Sigma_legacy_payload(fit, level = "unit")
+}
+
+.extract_Sigma_legacy_payload <- function(fit, level) {
+  out <- extract_Sigma(fit, level = level, part = "total", link_residual = "none")
   if (is.null(out)) {
     return(NULL)
   }
-  list(Sigma_B = out$Sigma, R_B = out$R)
+  suffix <- if (identical(level, "unit")) "B" else "W"
+  stats::setNames(list(out$Sigma, out$R), c(paste0("Sigma_", suffix), paste0("R_", suffix)))
 }
 
-#' Within-site covariance matrix Sigma_W (backward-compat wrapper)
+#' Within-site covariance matrix Sigma_W (soft-deprecated compatibility wrapper)
 #'
 #' Returns \eqn{\Sigma_W = \Lambda_W \Lambda_W^\top + \boldsymbol\Psi_W} and the
 #' correlation. Thin wrapper around [extract_Sigma()] with
 #' `level = "unit_obs"`. Prefer the unified interface for new code.
+#'
+#' @section Lifecycle:
+#' Soft-deprecated in 0.7.0. Existing calls continue to return the historical
+#' `Sigma_W` / `R_W` names, but new code should use
+#' `extract_Sigma(fit, level = "unit_obs")`.
 #'
 #' @inheritParams extract_Sigma_B
 #' @return A list with `Sigma_W` and `R_W`, or `NULL`.
@@ -49,16 +64,12 @@ extract_Sigma_B <- function(fit) {
 #' @keywords internal
 #' @export
 extract_Sigma_W <- function(fit) {
-  out <- extract_Sigma(
-    fit,
-    level = "unit_obs",
-    part = "total",
-    link_residual = "none"
+  lifecycle::deprecate_soft(
+    "0.7.0",
+    "extract_Sigma_W()",
+    "extract_Sigma(level = \"unit_obs\")"
   )
-  if (is.null(out)) {
-    return(NULL)
-  }
-  list(Sigma_W = out$Sigma, R_W = out$R)
+  .extract_Sigma_legacy_payload(fit, level = "unit_obs")
 }
 
 #' Site / individual-level ICC per trait
@@ -72,14 +83,15 @@ extract_Sigma_W <- function(fit) {
 #' `latent(..., unique = FALSE)`, the corresponding advisory message
 #' fires and the ICC is computed against the no-Psi diagonal.
 #'
-#' For binomial fits the implicit link residual is included in the
-#' within-unit variance by default (matching the marginal latent-scale
-#' ICC convention); set `link_residual = "none"` to suppress.
+#' For non-Gaussian fits the per-trait link-implicit residual is included
+#' in the within-unit variance by default when `link_residual = "auto"`
+#' (see [extract_Sigma()]); set
+#' `link_residual = "none"` for the latent/Psi-implied scale only.
 #'
 #' @inheritParams extract_Sigma_B
-#' @param link_residual For binomial fits: `"auto"` (default) adds the
-#'   link-specific implicit residual to \eqn{(\boldsymbol\Sigma_W)_{tt}};
-#'   `"none"` returns ICC on the latent/Psi-implied scale only.
+#' @param link_residual For non-Gaussian fits: `"auto"` (default) adds each
+#'   trait's family/link implicit residual to \eqn{(\boldsymbol\Sigma_W)_{tt}};
+#'   `"none"` omits those additions.
 #' @return Numeric vector indexed by trait, or `NULL` if either Sigma_B or
 #'   Sigma_W is unavailable.
 #' @seealso [extract_proportions()] for the canonical per-trait variance
@@ -142,9 +154,10 @@ extract_ICC_site <- function(fit, link_residual = c("auto", "none")) {
 #' meaningful communalities, use ordinary `latent()` with the default
 #' `unique = TRUE`.
 #'
-#' For binomial fits the link-specific implicit residual (\eqn{\pi^2/3}
-#' for logit, 1 for probit, \eqn{\pi^2/6} for cloglog) is added to the
-#' denominator by default; pass `link_residual = "none"` to suppress.
+#' For non-Gaussian fits the per-trait link-implicit residual (e.g.
+#' \eqn{\pi^2/3} for binomial logit, \eqn{\log(1 + 1/\hat\mu)} for Poisson
+#' log) is added to the denominator by default when `link_residual = "auto"`;
+#' pass `link_residual = "none"` to suppress (see [extract_Sigma()]).
 #'
 #' @param fit A fit returned by [gllvmTMB()]. A [bootstrap_Sigma()] result is
 #'   also accepted when it contains `communality` summaries; in that case the
@@ -153,10 +166,10 @@ extract_ICC_site <- function(fit, link_residual = c("auto", "none")) {
 #' @param level `"unit"` (between-unit), `"unit_obs"` (within-unit), or
 #'   `"phy"` (phylogenetic tier). Legacy aliases `"B"` and `"W"` are accepted
 #'   with a deprecation warning.
-#' @param link_residual For binomial fits: `"auto"` (default) adds the
-#'   link-specific implicit residual to the denominator; `"none"` returns
-#'   communalities on the fitted model covariance scale without link-residual
-#'   additions.
+#' @param link_residual For non-Gaussian fits: `"auto"` (default) adds each
+#'   trait's family/link implicit residual to the denominator; `"none"`
+#'   returns communalities on the fitted model covariance scale without
+#'   link-residual additions.
 #' @param ci Logical. When `TRUE`, returns a tidy data frame with
 #'   confidence-interval columns; when `FALSE` (the default), returns a
 #'   plain named numeric vector for backward compatibility.
@@ -445,7 +458,8 @@ extract_communality <- function(
 #' @param component Score component to return. `"total"` returns the latent
 #'   score entering the linear predictor. `"innovation"` returns the zero-mean
 #'   latent innovation. `"mean"` returns the predictor-informed score mean and
-#'   is non-zero only for `latent(..., lv = ~ x)` fits.
+#'   is non-zero only for `latent(..., lv = ~ x)` fits. Temporal ordination
+#'   supports `"total"` only; other component requests raise an error.
 #' @return A list with `scores` (units or within-unit observations in rows,
 #'   latent axes in columns) and `loadings` (traits in rows, axes in columns).
 #'
@@ -494,10 +508,48 @@ extract_ordination <- function(
   par <- obj$env$last.par.best
   trait_names <- levels(fit$data[[fit$trait_col]])
   if (level == "B") {
+    ## A temporal source has its own state axis.  It must be extracted before
+    ## consulting the ordinary B-tier flags: temporal states are deliberately
+    ## neither `unit` nor `unit_obs` scores.  Only the rank-one latent cell is
+    ## an ordination; indep/dep expose their covariance through
+    ## `extract_temporal()` rather than presenting an arbitrary factorisation
+    ## as fitted LV scores.
+    if (isTRUE(fit$temporal$active) && !isTRUE(fit$use$rr_B)) {
+      if (!identical(fit$temporal$mode, "latent") || fit$temporal$d < 1L) {
+        return(NULL)
+      }
+      if (!identical(component, "total")) {
+        cli::cli_abort(c(
+          "Temporal ordination does not support {.code component = {.val {component}}}.",
+          "i" = "Only the reconstructed total temporal states are available through this extractor.",
+          ">" = "Use {.code component = \"total\"} for temporal ordination."
+        ), class = "gllvmTMB_ordination_temporal_component_unsupported")
+      }
+      ## TMB optimises independent innovations for numerical stability.  The
+      ## public scores are the reconstructed persisted states, which carry
+      ## the AR1/OU covariance promised by the temporal source contract.
+      z_temporal <- as.matrix(fit$report$z_temporal_state)
+      Lambda <- as.matrix(fit$report$Lambda_temporal)
+      rownames(Lambda) <- trait_names
+      colnames(Lambda) <- paste0("LV", seq_len(ncol(Lambda)))
+      temporal_sign <- .temporal_report_sign(Lambda)
+      Lambda <- Lambda * temporal_sign$multiplier
+      scores <- t(z_temporal) * temporal_sign$multiplier
+      colnames(scores) <- paste0("LV", seq_len(ncol(scores)))
+      row_index <- fit$temporal$pair_table
+      rownames(scores) <- row_index$pair_id
+      return(list(
+        scores = scores,
+        loadings = Lambda,
+        row_id = row_index$pair_id,
+        row_index = row_index,
+        temporal_sign = temporal_sign
+      ))
+    }
     if (!fit$use$rr_B) {
       return(NULL)
     }
-    z_B <- matrix(par[names(par) == "z_B"], nrow = fit$d_B, ncol = fit$n_sites)
+    z_B <- .ordination_score_matrix(par, "z_B", fit$d_B, fit$n_sites)
     Lambda <- fit$report$Lambda_B
     rownames(Lambda) <- trait_names
     colnames(Lambda) <- paste0("LV", seq_len(ncol(Lambda)))
@@ -516,20 +568,18 @@ extract_ordination <- function(
     )
     rownames(scores) <- site_names
     colnames(scores) <- paste0("LV", seq_len(ncol(scores)))
-    list(
+    row_index <- site_names
+    out <- list(
       scores = scores,
       loadings = Lambda,
       row_id = site_names
     )
+    out
   } else {
     if (!fit$use$rr_W) {
       return(NULL)
     }
-    z_W <- matrix(
-      par[names(par) == "z_W"],
-      nrow = fit$d_W,
-      ncol = fit$n_site_species
-    )
+    z_W <- .ordination_score_matrix(par, "z_W", fit$d_W, fit$n_site_species)
     Lambda <- fit$report$Lambda_W
     rownames(Lambda) <- trait_names
     colnames(Lambda) <- paste0("LV", seq_len(ncol(Lambda)))
@@ -557,6 +607,18 @@ extract_ordination <- function(
   }
 }
 
+.ordination_score_matrix <- function(par, block, d, n) {
+  values <- par[which(names(par) == block)]
+  if (!is.numeric(par) || length(values) != d * n) {
+    cli::cli_abort(c(
+      "The retained {.field {block}} score block does not match the fitted ordination dimensions.",
+      "i" = "Expected {d * n} entries (d = {d}, n = {n}); found {length(values)}.",
+      ">" = "Use a fit with its complete retained TMB parameter vector, or refit in this session."
+    ), class = "gllvmTMB_ordination_score_block_mismatch")
+  }
+  matrix(values, nrow = d, ncol = n)
+}
+
 #' Predictor effects on latent-score means
 #'
 #' For a predictor-informed ordinary latent fit, `latent(..., lv = ~ x)` uses
@@ -566,6 +628,11 @@ extract_ordination <- function(
 #' `extract_lv_effects()` reports either the raw axis-scale
 #' \eqn{\boldsymbol\alpha} coefficients or the induced trait-scale contribution
 #' \eqn{\mathbf B_{\mathrm{lv}} = \boldsymbol\Lambda \boldsymbol\alpha^\top}.
+#' Factor predictor names follow the fitted model-matrix contrasts. With
+#' default treatment contrasts, each coefficient compares its level with
+#' the reference level; trait effects report that same contrast on the link
+#' scale. Use [stats::relevel()] before fitting to choose the reference.
+#'
 #' The axis-scale table is the default because it matches the usual constrained
 #' latent-variable / ordination coefficient. It is conditional on the fitted
 #' loading constraint and axis orientation: like the loadings themselves
@@ -588,7 +655,16 @@ extract_ordination <- function(
 #' helper that performs this composition; it must be assembled from
 #' `rotate_loadings()`'s `T` and the `estimate` column here.
 #'
-#' For native TMB fits, `std.error` is populated from a positive-definite
+#' Loading-ridge fits with verified penalised curvature report local approximate
+#' posterior SDs in `std.error` and normal-approximation credible bounds in
+#' `lower` and `upper`, conditional on the loading prior scale, fitted model,
+#' and axis parameterisation. These are not calibrated sampling standard
+#' errors or confidence intervals. Trait-effect SDs include loading-coefficient
+#' covariance through TMB's delta method. Older stored ridge fits without
+#' matched curvature provenance retain point estimates but withhold uncertainty
+#' (`loading_ridge_point_only_no_lv_se`); refit to obtain corrected SDs.
+#'
+#' For unpenalised native TMB fits, `std.error` is populated from a positive-definite
 #' `sdreport()` when available. Axis-effect SEs come from the fixed-parameter
 #' block for `alpha_lv_B`; trait-effect SEs come from TMB's delta-method
 #' `ADREPORT(B_lv_unit)` output. `lower` and `upper` are Wald intervals using
@@ -650,7 +726,7 @@ extract_lv_effects <- function(
     ))
   }
   if (!inherits(fit, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a fit returned by {.fun gllvmTMB}.")
+    .gllvmTMB_abort_not_multi_fit(fit)
   }
   .gllvmTMB_mspl_assert_inference(fit, "extract_lv_effects")
   .gllvmTMB_require_unweighted_inference(fit, "extract_lv_effects")
@@ -774,9 +850,24 @@ extract_lv_effects <- function(
   )
 }
 
+.lv_loading_ridge_curvature_matches <- function(fit) {
+  curvature <- attr(fit$sd_report, "loading_ridge_curvature")
+  is.list(curvature) &&
+    identical(curvature$objective, "likelihood_plus_gaussian_loading_prior") &&
+    identical(curvature$interpretation, "local_approximate_posterior_curvature_at_map") &&
+    identical(curvature$ridge_tau, fit$aghq$ridge_tau) &&
+    identical(curvature$parameter_names, names(fit$opt$par)) &&
+    identical(curvature$parameter_vector, fit$opt$par)
+}
+
 .lv_sdreport_effect_se <- function(fit, n_effects, row_name, component) {
   empty <- function(status) {
     list(std.error = rep(NA_real_, n_effects), status = status)
+  }
+
+  ridge <- isTRUE(fit$aghq$penalised)
+  if (ridge && !.lv_loading_ridge_curvature_matches(fit)) {
+    return(empty("loading_ridge_point_only_no_lv_se"))
   }
 
   if (is.null(fit$sd_report)) {
@@ -791,7 +882,8 @@ extract_lv_effects <- function(
     return(empty(status))
   }
   if (!isTRUE(fit$sd_report$pdHess)) {
-    return(empty("sdreport_non_pd_hessian_no_lv_se"))
+    return(empty(if (ridge) "loading_ridge_non_pd_posterior_hessian_no_lv_se" else
+      "sdreport_non_pd_hessian_no_lv_se"))
   }
 
   table <- tryCatch(
@@ -814,7 +906,8 @@ extract_lv_effects <- function(
 
   list(
     std.error = se,
-    status = "wald_sdreport_no_ci_validation"
+    status = if (ridge) "loading_ridge_posterior_sd_no_sampling_ci_validation" else
+      "wald_sdreport_no_ci_validation"
   )
 }
 

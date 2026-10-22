@@ -19,7 +19,8 @@ make_lv_fit <- function(seed = 42) {
   site_x <- stats::setNames(stats::rnorm(length(site_levels)), site_levels)
   df$x <- site_x[as.character(df$site)]
   fit <- suppressWarnings(gllvmTMB(
-    value ~ 0 + trait + latent(0 + trait | site, d = 2, lv = ~x),
+    value ~ 0 + trait +
+      latent(0 + trait | site, d = 2, unique = FALSE, lv = ~x),
     data = df, unit = "site"
   ))
   list(fit = fit, site_x = site_x)

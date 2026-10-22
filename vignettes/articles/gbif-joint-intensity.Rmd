@@ -206,7 +206,8 @@ $\Sigma = \Lambda \Lambda^\top + \Psi$:
 corr_rows <- extract_correlations(
   fit,
   tier = "unit",
-  method = "fisher-z"
+  method = "fisher-z",
+  link_residual = "auto"
 )
 head(corr_rows[order(-abs(corr_rows$correlation)), ], 5)
 ```

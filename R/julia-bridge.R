@@ -784,6 +784,24 @@ gllvm_julia_capabilities <- function() {
   .gllvm_julia_warn_gamma_shared_shape(fam, p)
 }
 
+# #1562: with no latent block (d = 0) GLLVModels.jl returns loglik = -Inf and
+# converged = FALSE for every non-Gaussian family except NB2. Gaussian already
+# refuses loudly inside Julia, so only the silent cases are gated here.
+.gllvm_julia_check_latent_rank <- function(K, fam_str) {
+  if (K >= 1L) {
+    return(invisible(FALSE))
+  }
+  bad <- setdiff(unique(fam_str), c("gaussian", "negbinomial"))
+  if (length(bad)) {
+    cli::cli_abort(c(
+      "[GJL-GATE-NO-LATENT] engine = 'julia' cannot fit a model with no {.code latent()} term for family {.val {bad}}.",
+      "i" = "GLLVModels.jl returns a log-likelihood of -Inf for these families when the latent rank is 0, and the fit is not estimated.",
+      ">" = "Add a {.code latent()} term, or use {.code engine = \"tmb\"}."
+    ), class = c("gllvmTMB_julia_no_latent", "gllvmTMB_julia_gate"))
+  }
+  invisible(FALSE)
+}
+
 # Link name the GLLVModels.jl bridge actually uses for a bridge key, in R's
 # spelling ("log", "logit", ...), derived from `.gllvm_julia_default_link()`.
 .gllvm_julia_engine_link <- function(key) {
@@ -4139,6 +4157,7 @@ print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
   )
   yraw <- stats::model.response(mf)
   fam_str <- .gllvm_julia_family(family)
+  .gllvm_julia_check_latent_rank(K, fam_str)
   if (
     has_lv &&
       (length(fam_str) != 1L || !(fam_str %in% .GLLVM_JULIA_XLV_FAMILIES))

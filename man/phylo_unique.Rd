@@ -83,26 +83,30 @@ Pass the phylogeny via \code{tree = phylo} (canonical, sparse \eqn{\mathbf{A}^{-
 }
 }
 \examples{
-\dontrun{
-  tree <- ape::rcoal(8); tree$tip.label <- paste0("sp", seq_len(8))
+if (requireNamespace("ape", quietly = TRUE)) {
+  set.seed(1)
+  tree <- ape::rcoal(60); tree$tip.label <- paste0("sp", seq_len(60))
   sim <- simulate_site_trait(
-    n_sites = 1, n_species = 8, n_traits = 3,
-    mean_species_per_site = 8,
+    n_sites = 1, n_species = 60, n_traits = 3,
+    mean_species_per_site = 60,
     Cphy = ape::vcv(tree, corr = TRUE),
-    sigma2_phy = rep(0.3, 3), seed = 1
+    sigma2_phy = rep(1, 3), sigma2_eps = 0.2, seed = 1
   )
   sim$data$species <- factor(
     tree$tip.label[as.integer(sim$data$species)],
     levels = tree$tip.label
   )
+  # phylo_unique() is compatibility syntax and warns once per session;
+  # the same model is phylo_indep(0 + trait | species, tree = tree).
+  \donttest{
   fit <- gllvmTMB(
-    value ~ 0 + trait + phylo_unique(species),
-    data       = sim$data,
-    trait      = "trait",
-    unit       = "species",
-    cluster    = "species",
-    phylo_tree = tree
+    value ~ 0 + trait + phylo_unique(species, tree = tree),
+    data    = sim$data,
+    trait   = "trait",
+    unit    = "species",
+    cluster = "species"
   )
+  }
 }
 }
 \references{

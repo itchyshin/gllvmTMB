@@ -448,16 +448,15 @@ phylo_rr <- function(species, d = 1) {
 #' user-supplied matrix. Mirrors brms's `(1 | gr(species, cov = M))`.
 #' Inside a `gllvmTMB()` formula, this desugars to
 #' `propto(0 + group | trait)`. The actual covariance matrix used by
-#' the engine is whatever is passed to the top-level `phylo_vcv =`
-#' argument of [gllvmTMB()]; the optional `cov =` argument inside the
-#' formula is retained for backward compatibility and as a hint to the
-#' reader, but is **not** used by the engine. Same convention as
-#' [phylo()] and [phylo_rr()].
+#' the engine is the top-level `phylo_vcv =` argument of [gllvmTMB()] when
+#' one is supplied; otherwise the formula-level `cov =` matrix is used. When
+#' both are given, the top-level `phylo_vcv =` wins and `cov =` is ignored.
+#' Same convention as [phylo()] and [phylo_rr()].
 #'
 #' @param group An unquoted column name giving the grouping factor.
-#' @param cov Optional, ignored by the engine. The matrix actually
-#'   used is whatever is passed to the `phylo_vcv` argument of
-#'   [gllvmTMB()].
+#' @param cov Optional covariance matrix. Used when no top-level
+#'   `phylo_vcv` is passed to [gllvmTMB()]; ignored when `phylo_vcv` is
+#'   also supplied.
 #'
 #' @return A formula marker; never evaluated.
 #' @export
@@ -1026,7 +1025,8 @@ spatial_slope <- function(formula, mesh) {
 
 #' Single-shared-variance phylogenetic random effect: `phylo_scalar(species)`
 #'
-#' Canonical name for the single-scalar (per-trait) phylogenetic random
+#' Soft-deprecated; use `phylo_indep(0 + trait | species, common = TRUE)`.
+#' Name for the single-scalar (per-trait) phylogenetic random
 #' intercept. Each trait carries an independent length-`n_species` draw
 #' \eqn{\mathbf p_t \sim \mathcal{N}(\mathbf{0}, \sigma^{2}_{\text{phy}}\,\mathbf{C}_{\text{phy}})}
 #' with **one shared scaling** \eqn{\sigma^{2}_{\text{phy}}} across all
@@ -1696,7 +1696,8 @@ indep <- function(formula, common = FALSE) {
 
 #' One shared trait variance: `scalar(0 + trait | g)`
 #'
-#' Canonical no-prefix name for the **one-shared-variance** trait covariance:
+#' Soft-deprecated; use `indep(0 + trait | g, common = TRUE)`. No-prefix
+#' name for the **one-shared-variance** trait covariance:
 #' a single variance \eqn{\sigma^2} shared by every trait with zero cross-trait
 #' covariance, giving \eqn{\boldsymbol\Sigma_T = \sigma^2 \mathbf I_T}. It is the
 #' most parsimonious mode in the covariance grid.
@@ -1941,7 +1942,7 @@ spatial_indep <- function(formula, coords = NULL, mesh = NULL, common = FALSE, r
 #' covariance term. Fits a full \eqn{T \times T} \eqn{\boldsymbol\Sigma}
 #' with \eqn{T(T+1)/2} free parameters via a Cholesky parameterisation
 #' \eqn{\boldsymbol\Sigma = \mathbf{L}\mathbf{L}^\top}. Mathematically
-#' identical to `latent(0 + trait | g, d = T)` standalone (where \eqn{T}
+#' identical to `latent(0 + trait | g, d = n_traits, unique = FALSE)` standalone (where \eqn{T}
 #' is the number of traits) -- the engine's existing packed-triangular
 #' \eqn{\boldsymbol\Lambda} at full rank IS the Cholesky factor of an
 #' unstructured \eqn{\boldsymbol\Sigma}. The keyword choice is
@@ -2009,7 +2010,7 @@ dep <- function(formula) {
 #' covariance** \eqn{\boldsymbol\Sigma_{\text{phy}} \otimes \mathbf{A}},
 #' with \eqn{T(T+1)/2} free parameters (\eqn{\boldsymbol\Sigma_{\text{phy}}}
 #' parameterised via Cholesky for PSD-ness). Mathematically identical to
-#' `phylo_latent(species, d = T)` standalone; the keyword choice is
+#' `phylo_latent(species, d = n_traits, unique = FALSE)` standalone; the keyword choice is
 #' documentary.
 #'
 #' \deqn{\mathrm{vec}(\mathbf P) \sim \mathcal{N}(\mathbf 0,\,
@@ -2098,7 +2099,7 @@ phylo_dep <- function(formula, tree = NULL, vcv = NULL, A = NULL, Ainv = NULL, r
 #' covariance** \eqn{\boldsymbol\Sigma_{\text{spa}} \otimes \mathbf{Q}^{-1}},
 #' with \eqn{T(T+1)/2} free parameters
 #' (\eqn{\boldsymbol\Sigma_{\text{spa}}} parameterised via Cholesky).
-#' Mathematically identical to `spatial_latent(0 + trait | coords, d = T)`
+#' Mathematically identical to `spatial_latent(0 + trait | coords, d = n_traits, unique = FALSE)`
 #' standalone; the keyword choice is documentary.
 #'
 #' Use `spatial_dep()` when you want an explicit full-unstructured

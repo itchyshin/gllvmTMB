@@ -24,7 +24,8 @@ argument naming.}
 A formula marker; never evaluated.
 }
 \description{
-Canonical name for the single-scalar (per-trait) phylogenetic random
+Soft-deprecated; use \code{phylo_indep(0 + trait | species, common = TRUE)}.
+Name for the single-scalar (per-trait) phylogenetic random
 intercept. Each trait carries an independent length-\code{n_species} draw
 \eqn{\mathbf p_t \sim \mathcal{N}(\mathbf{0}, \sigma^{2}_{\text{phy}}\,\mathbf{C}_{\text{phy}})}
 with \strong{one shared scaling} \eqn{\sigma^{2}_{\text{phy}}} across all

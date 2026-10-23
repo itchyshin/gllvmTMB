@@ -1,6 +1,22 @@
 ## Stage 2 of gllvmTMB: fit a multivariate stacked-trait model with rr() +
 ## diag() covariance structures using src/gllvmTMB.cpp.
 
+## Stop with a named message when a random-slope covariate has a non-finite
+## value. Slope covariates enter the Z design matrices (not X_fix), so the
+## X_fix NA guard never sees them; without this the objective is NaN from the
+## first evaluation and the user only gets "All 1 restarts failed." (#1394,
+## #1375).
+.gllvmTMB_check_finite_slope <- function(x, col) {
+  bad <- sum(!is.finite(x))
+  if (bad > 0L) {
+    cli::cli_abort(c(
+      "Random-slope covariate {.code {col}} has {bad} non-finite value{?s} (NA, NaN or Inf).",
+      ">" = "Missing response rows are allowed and dropped before fitting; missing predictors still need to be removed or imputed before fitting."
+    ))
+  }
+  invisible(x)
+}
+
 ## Are two `phylo` trees the same tree? Tip labels are matched by name (tip
 ## ORDER is storage, not identity) and the patristic distances are compared,
 ## so a different topology or different branch lengths on the same tips is a
@@ -5473,7 +5489,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ))
     }
     if (use_spde_dep_slope) {
-      x_dep <- as.numeric(data[[spde_slope_xcol]])
+      x_dep <- .gllvmTMB_check_finite_slope(
+        as.numeric(data[[spde_slope_xcol]]), spde_slope_xcol
+      )
       for (o in seq_len(n_obs)) {
         t0 <- trait_id[o]                       # 0-based trait index
         Z_spde_aug[o, 2L * t0 + 1L] <- 1.0      # intercept field col for trait t0
@@ -5481,7 +5499,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       }
     } else {
       Z_spde_aug[, 1L] <- 1.0
-      Z_spde_aug[, 2L] <- as.numeric(data[[spde_slope_xcol]])
+      Z_spde_aug[, 2L] <- .gllvmTMB_check_finite_slope(
+        as.numeric(data[[spde_slope_xcol]]), spde_slope_xcol
+      )
     }
   }
 
@@ -5507,6 +5527,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         ">" = "Add the covariate column to the data frame."
       ))
     }
+    .gllvmTMB_check_finite_slope(
+      as.numeric(data[[spde_latent_slope_xcol]]), spde_latent_slope_xcol
+    )
     Z_spde_lat <- .spde_latent_slope_design(data, spde_latent_slope_xcol)
   }
 
@@ -5545,7 +5568,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       cli::cli_abort(c(
         "{.arg phylo_slope({phylo_slope_xcol} | {species})} references column {.val {phylo_slope_xcol}}, which is not in {.arg data}.",
         ">" = "Add the covariate column to the data frame."))
-    as.numeric(data[[phylo_slope_xcol]])
+    .gllvmTMB_check_finite_slope(
+      as.numeric(data[[phylo_slope_xcol]]), phylo_slope_xcol
+    )
   } else rep(0.0, n_obs)
   ## Design 130: predictor design for slope-only response-column fields.
   ## Deliberately raw numeric columns: transforms and factor expansions are
@@ -5602,7 +5627,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
           ">" = "Add the covariate column{?s} to the data frame."))
       }
       matrix(
-        as.numeric(unlist(lapply(phylo_slope_xcols, function(col) as.numeric(data[[col]])))),
+        as.numeric(unlist(lapply(phylo_slope_xcols, function(col) {
+          .gllvmTMB_check_finite_slope(as.numeric(data[[col]]), col)
+        }))),
         nrow = n_obs, ncol = n_phy_slope
       )
     }
@@ -5698,7 +5725,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ))
     }
     Z_phy_lat[, 1L] <- 1.0
-    Z_phy_lat[, 2L] <- as.numeric(data[[phylo_latent_slope_xcol]])
+    Z_phy_lat[, 2L] <- .gllvmTMB_check_finite_slope(
+      as.numeric(data[[phylo_latent_slope_xcol]]), phylo_latent_slope_xcol
+    )
   }
 
   ## Ordinary B-tier augmented latent random regression:
@@ -5725,7 +5754,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         ">" = "Add the covariate column to the data frame."
       ))
     }
-    x_B_slope <- as.numeric(data[[rr_B_slope_xcol]])
+    x_B_slope <- .gllvmTMB_check_finite_slope(
+      as.numeric(data[[rr_B_slope_xcol]]), rr_B_slope_xcol
+    )
     stride <- 2L
     for (o in seq_len(n_obs)) {
       t0 <- trait_id[o]
@@ -5757,7 +5788,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         ">" = "Add the covariate column to the data frame."
       ))
     }
-    x_B_diag <- as.numeric(data[[diag_B_slope_xcol]])
+    x_B_diag <- .gllvmTMB_check_finite_slope(
+      as.numeric(data[[diag_B_slope_xcol]]), diag_B_slope_xcol
+    )
     stride <- 2L
     for (o in seq_len(n_obs)) {
       t0 <- trait_id[o]

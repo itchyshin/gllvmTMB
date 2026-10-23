@@ -19,14 +19,14 @@
       role = "signature",
       public = FALSE,
       status = "not_constructed",
-      doctrine = "D-12 hero / house brand; this sitting: signature error"
+      doctrine = "signature interval; primary claim path; not constructed here"
     ),
     wald_q0 = list(
       role = "quickest_baseline",
       tape = "Q_0",
       public = FALSE,
       status = "availability_check_only",
-      doctrine = "D-12 speed order + D-149 / Ranga paper target"
+      doctrine = "quickest baseline and paper Wald target"
     ),
     bootstrap = list(
       role = "asymmetry",
@@ -34,10 +34,8 @@
       status = "not_constructed",
       doctrine = "non-symmetric sampling; not a Wald-undercoverage repair"
     ),
-    binding = c("D-12", "D-157", "D-149", "D-148"),
     design_118 = "parked",
-    sibling_triad_note =
-      "docs/dev-log/research/2026-08-17-mspl-ci-wald-plus-profile.md"
+    sibling_triad_note = "see the dev-log research note on the Wald plus profile triad"
   )
 }
 
@@ -88,13 +86,13 @@
     wald$hessian_pd <- pin$penalty_off$hessian_pd
     wald$minimum_eigenvalue <- pin$penalty_off$minimum_eigenvalue
     wald$note <- paste(
-      "Q_0 availability / paper Wald target (D-149).",
+      "Q_0 availability / paper Wald target.",
       "Not the signature CI. Non-PD stays typed; no repair."
     )
   } else {
     wald$status <- "not_run"
     wald$note <- paste(
-      "Set run_wald_q0=TRUE to attach the existing D-149 Q_0 pin.",
+      "Set run_wald_q0=TRUE to attach the existing Q_0 pin.",
       "That pin is a quick baseline, not a public Wald interval."
     )
   }
@@ -118,7 +116,7 @@
         "Binomial profile *computability* exists on main (#1090",
         ".gllvmTMB_mspl_profile_feasibility; calibrated=FALSE); that probe",
         "is binomial-fenced and is not this toy gaussian/poisson stub.",
-        "D-157 still requires a new construction for any claim path;",
+        "Any claim path still requires a new construction;",
         "Design 118 stays parked; public confint remains refused."
       ),
       objective_fork_unpicked = c(

@@ -187,3 +187,39 @@ test_that("phylo_dep(1 + x | sp) still routes to the dep branch (unique guard ex
   expect_identical(es$level, "phy_dep")
   expect_true(grepl("intercept", rownames(es$Sigma)[1L]))
 })
+
+## #1556 -- the "latent-only ... refit without unique = FALSE" advisory must
+## not fire for a full-rank loading block. dep() is carried as a full-rank rr
+## term with no diagonal, and a full-rank latent(unique = FALSE) is the same
+## model, so there is no missing Psi. It must still fire for d < n_traits.
+.make_1556_data <- function() {
+  simulate_unit_trait(
+    n_units = 40, n_obs_per_unit = 3, n_traits = 3,
+    Lambda_B = matrix(c(0.9, 0.5, -0.4), ncol = 1),
+    psi_B = rep(0.2, 3), seed = 1
+  )$data
+}
+
+test_that("extract_Sigma() on a dep() fit gives no latent-only advisory (#1556)", {
+  testthat::skip_on_cran()
+  dat <- .make_1556_data()
+  fit <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+    value ~ 0 + trait + dep(0 + trait | unit),
+    data = dat, trait = "trait", unit = "unit",
+    control = gllvmTMB::gllvmTMBcontrol(se = FALSE)
+  )))
+  expect_no_message(out <- extract_Sigma(fit, level = "unit", part = "total"))
+  expect_false(any(grepl("latent-only", out$note, fixed = TRUE)))
+})
+
+test_that("rank-deficient latent(unique = FALSE) still gets the latent-only advisory (#1556)", {
+  testthat::skip_on_cran()
+  dat <- .make_1556_data()
+  fit <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+    value ~ 0 + trait + latent(0 + trait | unit, d = 1, unique = FALSE),
+    data = dat, trait = "trait", unit = "unit",
+    control = gllvmTMB::gllvmTMBcontrol(se = FALSE)
+  )))
+  out <- suppressMessages(extract_Sigma(fit, level = "unit", part = "total"))
+  expect_true(any(grepl("latent-only", out$note, fixed = TRUE)))
+})

@@ -18,6 +18,13 @@
   the classed error `gllvmTMB_julia_nonfinite_fit` instead of being returned
   silently. Follow-up to #1562.
 
+* A per-trait family list keyed by the trait column
+  (`attr(fams, "family_var") <- "trait"`) now works when one trait is
+  `multinomial()`. The list is matched against your own trait levels before the
+  categorical response is expanded into contrast pseudo-traits, and the
+  multinomial entry is carried to each of them; a list of the wrong length
+  reports the count of your traits rather than the expanded count (#1575).
+
 * The `sigma()` refusal methods are now registered from roxygen with
   `@exportS3Method stats::sigma`, matching the `stats::sigma` entries already in
   `NAMESPACE`, so `devtools::document()` no longer rewrites them. Behaviour is
@@ -47,6 +54,11 @@
   as a full-rank `rr` term with no diagonal, so the advisory fired on it even
   though no residual Psi is missing and following its advice would change the
   model. It now fires only for rank-deficient loadings (`d < n_traits`) (#1556).
+* `slope_sd_ci()`: the print method no longer calls a loadings-only total
+  "UNIQUE (Psi) ... only" (it decides from the `component` column, not an
+  attribute), and the refusal for a fit with no random slopes recommends a
+  `latent()` slope term instead of `indep()`, which refuses slopes (#1589).
+  The `scale = "variance"` behaviour of `total_sd` is unchanged here.
 * Zero-truncated Poisson and NB2 likelihoods stay finite when the linear
   predictor is far below zero. The truncation term `log(1 - P(0))` was
   `logspace_sub(0, log P(0))`, whose derivatives grow like `1 / mu^k`: the

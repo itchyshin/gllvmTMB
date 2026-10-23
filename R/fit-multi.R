@@ -3562,6 +3562,19 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   )
 
   y_raw <- stats::model.response(mf)
+  ## #1396: a factor / character response was fitted as its integer level
+  ## codes (as.numeric(y_raw) below) with no message. Only the categorical
+  ## families (ordinal_probit 14, multinomial 16, ordinal_logit 20) take a
+  ## factor response; every other row needs an explicit numeric response.
+  if ((is.factor(y_raw) || is.character(y_raw)) &&
+      any(!family_id_vec %in% c(14L, 16L, 20L))) {
+    resp_name <- paste(deparse(parsed$fixed[[2L]]), collapse = " ")
+    cli::cli_abort(c(
+      "The response {.field {resp_name}} is a {if (is.factor(y_raw)) 'factor' else 'character'} column, which would be fitted as its integer level codes.",
+      "x" = "Only {.fn ordinal_probit}, {.fn ordinal_logit} and {.fn multinomial} traits take a factor response.",
+      ">" = "Convert it to numbers explicitly, e.g. {.code as.numeric(as.character({resp_name}))}, and check for stray non-numeric entries such as \"-\" or \"NA\" strings."
+    ), class = "gllvmTMB_factor_response_unsupported")
+  }
   ## censored_poisson (fid 21, renumbered 2026-09-03 from 20 --
   ## ordinal_logit, PR #1250, holds 20) rows: default every row to
   ## uncensored (cens_limit = 0), overridden below only for rows whose LHS

@@ -28,6 +28,12 @@
   tier name (`"unit"`, `"unit_obs"`) in the `tier` column instead of the
   deprecated internal code (`"B"`, `"W"`), and `extract_cutpoints()` no longer
   copies sdreport row names into its result (#1577).
+* `simulate_site_trait()` builds its long-format data frame from preallocated
+  columns instead of one `data.frame()` per row joined by `rbind()`, so 1.5k
+  rows take a few milliseconds rather than about 0.3 s. Values, factor
+  levels and the random-number draw order are unchanged; the old `rbind()`
+  could leave scrambled character row names on larger outputs, which are now
+  plain `1..n` (#1581).
 * `plot_loadings_confidence_eye()` called on a fitted model without `level =`
   no longer stops with "'arg' must be of length 1". Its default is now
   `level = "unit"`, matching `loading_ci()` and `flag_unreliable_loadings()`

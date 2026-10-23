@@ -152,7 +152,10 @@ ridge_path <- function(
   ...
 ) {
   if (!is.numeric(tau) || length(tau) < 1L || anyNA(tau) || any(tau <= 0)) {
-    cli::cli_abort("{.arg tau} must be one or more positive numbers ({.code Inf} is allowed).")
+    cli::cli_abort(c(
+      "{.arg tau} must be one or more positive numbers ({.code Inf} is allowed).",
+      ">" = "Pass a numeric vector such as {.code tau = c(0.5, 2, 8, Inf)}."
+    ))
   }
   ## #1196 (2026-09-02 full-suite follow-up): resolve `unit` up front via
   ## the same staged rule as gllvmTMB() itself. Without this, an omitted
@@ -173,7 +176,10 @@ ridge_path <- function(
   )
   trait_names <- levels(prep$data[[prep$trait_col]])
   if (length(trait_names) == 0L) {
-    cli::cli_abort("No traits were found for {.arg formula}/{.arg data}.")
+    cli::cli_abort(c(
+      "No traits were found for {.arg formula}/{.arg data}.",
+      ">" = "Check that {.arg trait} names a column of {.arg data} with at least one level, and that {.arg data} has rows."
+    ))
   }
 
   rows <- lapply(tau, function(tau_i) {

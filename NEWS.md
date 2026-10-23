@@ -47,6 +47,13 @@
   levels and the random-number draw order are unchanged; the old `rbind()`
   could leave scrambled character row names on larger outputs, which are now
   plain `1..n` (#1581).
+* The Wald readers for communality and phylogenetic signal no longer return
+  NA or NaN intervals from a covariance that is entirely non-finite: they stop
+  with the classed `gllvmTMB_confint_nonfinite_se` error, as `confint()` and
+  `extract_repeatability()` already do. A finite covariance from a Hessian that
+  is not positive-definite (`pdHess = FALSE`) now raises the classed warning
+  `gllvmTMB_wald_nonpd_hessian`; the interval is still returned. The
+  proportions and loading-uncertainty readers are not yet changed (#1379).
 * `plot_loadings_confidence_eye()` called on a fitted model without `level =`
   no longer stops with "'arg' must be of length 1". Its default is now
   `level = "unit"`, matching `loading_ci()` and `flag_unreliable_loadings()`

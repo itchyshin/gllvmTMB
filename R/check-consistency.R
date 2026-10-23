@@ -115,17 +115,34 @@
 #'   [TMB::checkConsistency()] (the underlying TMB call).
 #'
 #' @examples
-#' \dontrun{
-#' fit <- gllvmTMB(value ~ 0 + trait +
-#'                 latent(0 + trait | site, d = 1),
-#'                 data  = sim$data,
-#'                 trait = "trait",
-#'                 unit  = "site")
-#' res <- gllvmTMB_check_consistency(fit, n_sim = 50L, seed = 1)
-#' res
-#' res$marginal_bias
-#' res$flagged_parameters
-#' }
+#' set.seed(1)
+#' # Counts of four species at 100 sites, driven by one shared latent axis.
+#' # The check matters most for non-Gaussian responses like these, where
+#' # the Laplace approximation is not exact.
+#' n_sites <- 100
+#' z <- rnorm(n_sites)
+#' loadings <- c(0.8, 0.6, 0.5, 0.3)
+#' dat <- expand.grid(site = factor(seq_len(n_sites)),
+#'                    trait = factor(paste0("sp", 1:4)))
+#' mu <- exp(0.5 + loadings[as.integer(dat$trait)] * z[as.integer(dat$site)])
+#' dat$count <- rpois(nrow(dat), mu)
+#' fit <- gllvmTMB(
+#'   count ~ 0 + trait + latent(0 + trait | site, d = 1, unique = FALSE),
+#'   data = dat, family = poisson(), trait = "trait", unit = "site"
+#' )
+#'
+#' # Run the check with 50 replicates. n_sim must be larger than the
+#' # number of fitted parameters (8 here); more replicates give a
+#' # steadier test.
+#' cc <- gllvmTMB_check_consistency(fit, n_sim = 50, seed = 1)
+#' cc
+#'
+#' # The overall verdict and any parameters whose estimated bias exceeds
+#' # the threshold. "no_centring_warning" means no sign of trouble was
+#' # found (not a guarantee); "information_matrix_singular" means the
+#' # check could not reach a verdict either way.
+#' cc$diagnostics
+#' cc$flagged_parameters
 #'
 #' @export
 gllvmTMB_check_consistency <- function(
@@ -135,16 +152,14 @@ gllvmTMB_check_consistency <- function(
   estimate = FALSE
 ) {
   if (!inherits(fit, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+    .gllvmTMB_abort_not_multi_fit(fit)
   }
   .gllvmTMB_mspl_assert_inference(fit, "gllvmTMB_check_consistency")
   n_sim <- as.integer(n_sim)
   if (length(n_sim) != 1L || is.na(n_sim) || n_sim < 2L) {
     cli::cli_abort("{.arg n_sim} must be an integer >= 2.")
   }
-  if (!is.null(seed)) {
-    set.seed(seed)
-  }
+  .gllvmTMB_local_seed(seed)
 
   ## TMB::checkConsistency emits a `Failed to invert information
   ## matrix` warning on tiny fixtures (small n, weakly identified

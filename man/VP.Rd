@@ -15,12 +15,11 @@ sum to 1). Columns are only those active in \code{fit$use}.
 }
 \description{
 Decomposes the marginal trait variance into contributions from each
-active component of the model: between-unit shared (\code{latent_B}),
-between-unit unique (\code{unique_B}), within-unit shared (\code{latent_W}),
-within-unit unique (\code{unique_W}), phylogenetic (\code{phylo_scalar} /
-\code{phylo_latent}), non-phylogenetic species, spatial (\code{spatial}), and
-Gaussian/lognormal observation residual where present. Non-Gaussian
-link-implicit residual shares are handled by \code{\link[=extract_proportions]{extract_proportions()}}.
+active component of the model. Column names follow the fitted report
+blocks: \code{rr_B}, \code{diag_B}, \code{rr_W}, \code{diag_W}, \code{diag_species}, \code{phylo_rr},
+\code{phylo_diag}, \code{propto}, and \code{residual} (Gaussian/lognormal observation
+variance where present). Non-Gaussian link-implicit residual shares are
+handled by \code{\link[=extract_proportions]{extract_proportions()}}, not by \code{VP()}.
 }
 \details{
 Mirrors \code{gllvm::VP()} / \code{gllvm::plotVP()}.
@@ -30,7 +29,7 @@ its \code{source_strength} metadata.
 }
 \seealso{
 \code{\link[=extract_proportions]{extract_proportions()}} for the canonical per-trait
-variance-share decomposition with explicit B / W / phy / link-residual
-columns.
+variance-share decomposition (\code{shared_unit}, \code{unique_unit_obs}, phy
+tiers, link-residual, etc.).
 }
 \keyword{internal}

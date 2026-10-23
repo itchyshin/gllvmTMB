@@ -49,6 +49,13 @@ effects, and the converged log-likelihood.
 \item For ML fits, \code{summary()} adds a fixed-effects table with SEs, the global and
 local trait correlation matrices, per-trait ICCs,
 and global / local communalities.
+\item For predictor-informed \code{latent(..., lv = ~ x)} fits, \code{summary()} also
+returns \code{lv_effects}, with \code{axis_effect} and \code{trait_effect} tables from
+\code{\link[=extract_lv_effects]{extract_lv_effects()}}. Printed raw-axis coefficients depend on axis
+orientation; trait effects are on the response link scale. Unavailable
+uncertainty is labelled, and experimental Wald output does not establish
+interval coverage. MSPL and non-unit likelihood weights withhold this
+block's inference with an explicit reason.
 \item For an unpenalised native-Laplace ML fit, \code{logLik()} is the converged
 maximum with \code{df = length(opt$par)} and \code{nobs} equal to the number of
 likelihood-contributing response cells. AGHQ has a distinct integration

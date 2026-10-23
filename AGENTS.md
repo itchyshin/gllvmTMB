@@ -11,23 +11,21 @@ Model Builder.
 > GitHub Actions here is for **package checks + docs only**, with **short artifact retention**. (Hub
 > `AGENTS.md` Compute section · shinichi-brain `DECISIONS.md` D-50.)
 
-> **Rehydrate (2026-08-08).** This is a **multi-lane** repo. Ownership map:
-> `docs/dev-log/handover/2026-07-25-active-lane-split.md` (read **every** lane row). CRAN 0.7
-> Codex baton: `docs/dev-log/handover/2026-08-08-codex-handover.md`. Do not treat a single
+> **Rehydrate (2026-09-25).** This is a **multi-lane** repo. Ownership map:
+> `docs/dev-log/handover/2026-07-25-active-lane-split.md` (read **every** lane row)
+> and `docs/dev-log/coordination-board.md` Active lanes. Do not treat a single
 > snapshot bullet as the whole project. Milestone state is re-derived from `git`.
-> **Article-model handover (2026-08-30):** the multi-lane split above remains
-> the ownership entrypoint. For the requested phylogeny-article latent-component
-> correction, also read `docs/dev-log/handover/2026-08-30-codex-tree-axis-latent-handover.md`
-> on `codex/tree-axis-latent-handover-20260830`. This handover changes no model
-> or capability claim; article implementation and validation remain owed.
-> **0.6 hardening completion / next Codex intake (2026-08-12):**
-> `docs/dev-log/handover/2026-08-12-codex-handover.md`. It succeeds the 0.6
-> artifact evidence phase and starts a read-first 0.7 integration intake; it
-> does not supersede the multi-lane map or authorise a version bump/release.
-> **Snapshot refresh (2026-08-26):** `START HERE` remains the multi-lane split
-> above. The response-column coefficient foundation and next-arc baton are at
-> `docs/dev-log/handover/2026-08-26-codex-handover.md`; read it alongside every
-> active lane row, never as a replacement for the ownership map.
+> **Cursor Meuwissen-Luo F twin (2026-09-25):** new lane after drmTMB #1422-#1428
+> closed. START HERE for that lane only:
+> `docs/dev-log/handover/2026-09-25-cursor-handover-meuwissen-twin.md`. Does not
+> supersede docs/MSPL/`engine=julia` siblings.
+> **Article-model handover (2026-08-30):** still linked from the split table;
+> `docs/dev-log/handover/2026-08-30-codex-tree-axis-latent-handover.md`.
+> **0.6 hardening / 0.7 intake (2026-08-12):** `docs/dev-log/handover/2026-08-12-codex-handover.md`
+> remains historical intake context; it does not authorise a version bump.
+> **Snapshot refresh (2026-08-26):** response-column coef baton stays at
+> `docs/dev-log/handover/2026-08-26-codex-handover.md`; read beside every active
+> lane row, never as a replacement for the ownership map.
 
 ## Core Scope
 

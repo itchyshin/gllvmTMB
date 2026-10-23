@@ -765,10 +765,16 @@
 ## cover a `sd_report` that exists but yields non-finite SEs (a non-positive
 ## -definite Hessian), which still surfaces as bare `NaN`. That is a separate
 ## defect, recorded rather than silently folded in.
-.confint_require_sdreport <- function(object, method, caller = "confint") {
+.confint_require_sdreport <- function(object, method, caller = "confint",
+                                      route = "profile") {
   if (identical(method, "profile")) {
     return(invisible(NULL))
   }
+  ## `route` is the Hessian-free method the error offers. It must be one the
+  ## CALLER accepts: extract_repeatability() has withdrawn "profile", so it
+  ## passes "bootstrap". Pasted into the template (not interpolated as a value)
+  ## so the {.code} markup is rendered.
+  route_md <- paste0("{.code method = \"", route, "\"}")
 
   ## Second way to have no usable standard errors: sd_report EXISTS but its
   ## fixed-effect covariance is entirely non-finite -- the signature of a
@@ -785,8 +791,8 @@
         "x" = "This usually means the Hessian is not positive-definite.",
         "i" = "This is a property of the fit -- {.fn standard_errors} will not
                help, because the numbers were already computed.",
-        ">" = "Diagnose it with {.run gllvmTMB_diagnose(fit)}, or use
-               {.code method = \"profile\"}, which does not use the Hessian."
+        ">" = paste0("Diagnose it with {.run gllvmTMB_diagnose(fit)}, or use ",
+                     route_md, ", which does not use the Hessian.")
       ), class = "gllvmTMB_confint_nonfinite_se")
     }
     return(invisible(NULL))
@@ -800,7 +806,7 @@
     "{.fn {caller}} needs standard errors, and this fit has none.",
     "x" = "This fit has no {.field sd_report}: {reason}",
     ">" = "Compute them without refitting: {.code fit <- standard_errors(fit)}",
-    "i" = "Or use {.code method = \"profile\"}, which does not need them."
+    "i" = paste0("Or use ", route_md, ", which does not need them.")
   ), class = "gllvmTMB_confint_no_sdreport")
 }
 
@@ -1486,10 +1492,14 @@
 #'     \item \code{"rho:<tier>:i,j"} (one pair) or
 #'       \code{"rho:<tier>:i,j;k,l"} (multiple pairs). Tier is one of
 #'       \code{"unit"} / \code{"unit_slope"} / \code{"unit_obs"} /
-#'       \code{"phy"} / \code{"spatial"} (legacy \code{"B"} / \code{"W"} /
+#'       \code{"cluster"} / \code{"cluster2"} / \code{"phy"} /
+#'       \code{"spatial"} (legacy \code{"B"} / \code{"W"} /
 #'       \code{"spde"}). \code{"unit_slope"} indexes the augmented
-#'       \code{2T} coefficient vector by numeric position and is currently a
-#'       not currently an interval target. Other tiers route to
+#'       \code{2T} coefficient vector by numeric position and is not
+#'       currently an interval target. \code{"cluster"} and
+#'       \code{"cluster2"} are recognised but profile intervals are
+#'       withheld (see the error from [extract_correlations()]).
+#'       Other tiers route to
 #'       [extract_correlations()] (\code{"fisher-z"} / \code{"wald"} /
 #'       \code{"bootstrap"}); Fisher-z is the default for this \code{confint()}
 #'       token. The nonlinear profile prototype is withheld.
@@ -1574,34 +1584,45 @@
 #' \url{https://github.com/kelseybmccune/Time-to-Event_Repeatability/blob/main/R/rptRsurv.R}.
 #'
 #' @examples
-#' \dontrun{
-#' ## Fit a tiny example
 #' set.seed(1)
-#' s <- simulate_site_trait(
-#'   n_sites = 30, n_species = 4, n_traits = 3,
-#'   mean_species_per_site = 4,
-#'   Lambda_B = matrix(c(0.9, 0.4, -0.3), 3, 1),
-#'   psi_B = c(0.20, 0.15, 0.10),
-#'   beta = matrix(0, 3, 2), seed = 1
-#' )
-#' fit <- gllvmTMB(
-#'   value ~ 0 + trait + latent(0 + trait | site, d = 1),
-#'   data  = s$data,
-#'   trait = "trait",
-#'   unit  = "site"
-#' )
+#' # Four traits measured twice on each of 80 units (e.g. individuals).
+#' # All four traits load on one shared latent axis, and each trait also
+#' # has its own unit-level variance.
+#' sim <- simulate_unit_trait(n_units = 80, n_obs_per_unit = 2,
+#'                            n_traits = 4,
+#'                            Lambda_B = matrix(c(0.9, 0.8, -0.7, 0.5)),
+#'                            psi_B = 0.3, sigma2_eps = 0.3)
+#' fit <- gllvmTMB(value ~ 0 + trait +
+#'                   latent(0 + trait | unit, d = 1, unique = TRUE),
+#'                 data = sim$data, trait = "trait", unit = "unit")
 #'
-#' ## Profile-likelihood CIs for the between-site covariance matrix (default)
-#' ci_unit <- confint(fit, parm = "Sigma_unit")
-#' ci_unit
+#' # Wald intervals for the fixed effects (here the four trait means).
+#' # Without `method`, confint() profiles the likelihood instead, which
+#' # is slower: one profile per coefficient.
+#' confint(fit, method = "wald")
 #'
-#' ## Bootstrap route (slow; inspect failed refits and target calibration)
-#' ci_unit_boot <- confint(fit, parm = "Sigma_unit", method = "bootstrap",
-#'                         nsim = 200, seed = 42)
+#' # Derived summaries are requested by name: the unit-level correlation
+#' # between traits 1 and 3 (a Fisher-z interval), and each trait's
+#' # communality, the share of its unit-level variance that comes from
+#' # the shared axis (Wald intervals).
+#' confint(fit, parm = "rho:unit:1,3")
+#' confint(fit, parm = "communality:unit")
 #'
-#' ## Wald CIs for fixed effects
-#' confint(fit)
-#' }
+#' # Trait covariance matrices. With indep(), each diagonal entry of
+#' # Sigma_unit is one variance parameter, so its profile-likelihood
+#' # interval is computed directly; the off-diagonal entries are zero by
+#' # construction.
+#' sim2 <- simulate_unit_trait(n_units = 50, n_obs_per_unit = 2,
+#'                             n_traits = 3, psi_B = c(1, 0.6, 0.4),
+#'                             sigma2_eps = 0.3)
+#' fit2 <- gllvmTMB(value ~ 0 + trait + indep(0 + trait | unit),
+#'                  data = sim2$data, trait = "trait", unit = "unit")
+#' confint(fit2, parm = "Sigma_unit")
+#'
+#' # With latent(), each Sigma_unit entry combines several parameters, so
+#' # confint(fit, parm = "Sigma_unit") switches to a parametric bootstrap
+#' # that refits the model `nsim` times. Use nsim = 999 or more (smaller
+#' # values give a warning); that takes minutes, so it is not run here.
 #'
 #' @export
 #' @method confint gllvmTMB_multi
@@ -1614,6 +1635,7 @@ confint.gllvmTMB_multi <- function(
   seed = NULL,
   ...
 ) {
+  level <- .gtmb_validate_interval_level(level, arg = "level")
   .temporal_assert_no_iid_inference(object, "confint")
   .gllvmTMB_mspl_assert_inference(object, "confint")
   .gllvmTMB_require_unweighted_inference(object, "confint")

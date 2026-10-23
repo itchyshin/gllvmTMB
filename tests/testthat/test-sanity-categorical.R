@@ -434,12 +434,11 @@ test_that("a healthy ordinal fit PASSes under calibration-style armed thresholds
   expect_equal(row$status, "PASS")
 })
 
-test_that("the disarmed defaults fire nothing; explicit thresholds arm the arms", {
-  ## Both ordinal thresholds ship at Inf. The 2026-08-17 calibration could
-  ## not find a value meeting its frozen targets (see
-  ## dev/ordinal-degeneracy/pass-criteria-ordinal.md), so the pre-registered
-  ## ship-disarmed fallback applies: the row reports its statistics and a
-  ## user arms it explicitly if they want the verdict.
+test_that("O1 stays disabled by default and a loading of 20 is under the O2 default of 30", {
+  ## O1 ships at Inf; O2 ships at 30 (#897, see
+  ## tests/testthat/test-ordinal-loading-default-897.R). A loading of 20 is
+  ## below 30, so the defaults leave this fixture alone and an explicit O1
+  ## threshold is what arms the runaway verdict.
   lam <- matrix(
     c(0.5, -0.4, 20),
     nrow = 3, dimnames = list(paste0("ord", 1:3), "LV1")

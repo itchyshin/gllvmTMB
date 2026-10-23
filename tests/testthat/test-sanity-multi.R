@@ -202,11 +202,16 @@ test_that("check_gllvmTMB flags near-constant binary traits with dominant loadin
   expect_equal(nrow(row), 1L)
   expect_equal(row$status, "WARN")
   expect_match(row$value, "item4")
-  expect_match(row$action, "remove or re-code")
+  expect_match(row$action, "check the near-constant binary indicator")
+  expect_match(row$action, "gllvmTMBcontrol(loading_ridge = 2)", fixed = TRUE)
+  expect_match(row$action, "smaller scales giving stronger shrinkage")
+  expect_match(row$action, "ordinary between-unit latent loadings")
   expect_match(
     chk$action[chk$component == "weak_axis_unit"],
     "near-constant binary trait"
   )
+  expect_match(chk$action[chk$component == "weak_axis_unit"],
+    "gllvmTMBcontrol(loading_ridge = 2)", fixed = TRUE)
 })
 
 test_that("check_gllvmTMB flags a runaway loading at moderate prevalence", {

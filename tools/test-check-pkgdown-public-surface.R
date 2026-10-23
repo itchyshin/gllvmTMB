@@ -1,6 +1,10 @@
 #!/usr/bin/env Rscript
 
 checker <- normalizePath("tools/check-pkgdown-public-surface.R", mustWork = TRUE)
+article_source <- readLines("vignettes/articles/fit-diagnostics.Rmd", warn = FALSE)
+download_link <- "[Download the aggregated study tables and fixed-truth data generator](../loading-ridge-study-2026-10-18.zip)"
+stopifnot(any(grepl(download_link, article_source, fixed = TRUE)))
+stopifnot(file.exists("pkgdown/assets/loading-ridge-study-2026-10-18.zip"))
 
 make_site <- function() {
   root <- tempfile("pkgdown-public-surface-")
@@ -60,6 +64,28 @@ writeLines(
 status <- attr(run_checker(site), "status")
 stopifnot(!is.null(status) && status != 0L)
 writeLines("{}", file.path(site, "search.json"))
+
+writeLines(
+  paste0(
+    "<html><body><p><a href='../loading-ridge-study-2026-10-18.zip'>",
+    "Download the aggregated study tables</a></p></body></html>"
+  ),
+  file.path(site, "articles", "gllvmTMB.html")
+)
+status <- attr(run_checker(site), "status")
+stopifnot(is.null(status) || status == 0L)
+
+# Public study material must not link back into the internal development log.
+writeLines(
+  paste0(
+    "<html><body><p><a href='https://github.com/itchyshin/gllvmTMB/",
+    "tree/main/docs/dev-log/research/2026-10-18-loading-ridge-comparison'>",
+    "The retained study record</a></p></body></html>"
+  ),
+  file.path(site, "articles", "gllvmTMB.html")
+)
+status <- attr(run_checker(site), "status")
+stopifnot(!is.null(status) && status != 0L)
 
 writeLines(
   "<html><body><p>This implementation lane closes PR #456.</p></body></html>",

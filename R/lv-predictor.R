@@ -421,7 +421,7 @@ gll_prepare_lv_predictor_setup <- function(
   lv_no_intercept <- gll_lv_no_intercept_formula(lv_formula)
   mf <- tryCatch(
     stats::model.frame(
-      lv_no_intercept,
+      lv_formula,
       data = data,
       na.action = stats::na.pass
     ),
@@ -433,7 +433,7 @@ gll_prepare_lv_predictor_setup <- function(
     }
   )
   X_row <- tryCatch(
-    stats::model.matrix(lv_no_intercept, mf),
+    stats::model.matrix(lv_formula, mf),
     error = function(err) {
       cli::cli_abort(c(
         "Could not build the {.arg lv} model matrix.",
@@ -441,6 +441,9 @@ gll_prepare_lv_predictor_setup <- function(
       ))
     }
   )
+  ## Build from the original formula so factors retain their chosen contrasts.
+  ## Removing an intercept from the formula first would create full indicators.
+  X_row <- X_row[, colnames(X_row) != "(Intercept)", drop = FALSE]
   if (ncol(X_row) == 0L) {
     cli::cli_abort(c(
       "{.arg lv} must contain at least one predictor column after intercept removal.",
@@ -500,6 +503,14 @@ gll_prepare_lv_predictor_setup <- function(
       "{.arg lv} predictor design is rank deficient.",
       "x" = "Rank {qr(X_lv_B)$rank} for {ncol(X_lv_B)} column(s).",
       "i" = "Remove aliased columns or empty factor levels before using {.arg lv}."
+    ))
+  }
+
+  if (qr(cbind(1, X_lv_B))$rank < ncol(X_lv_B) + 1L) {
+    cli::cli_abort(c(
+      "{.arg lv} predictor design spans a constant, violating the no-LV-intercept contract.",
+      "x" = "Latent-score means must not contain an intercept direction; with free trait intercepts this also creates an alias.",
+      ">" = "Use {.code lv = ~ factor} to retain factor contrasts, or remove the constant predictor direction."
     ))
   }
 
@@ -575,6 +586,8 @@ gll_prepare_lv_predictor_setup <- function(
     term_index = lv_idx,
     term_label = label,
     formula = lv_formula,
+    ## Legacy metadata only: rebuild the matrix from formula, then remove its
+    ## actual intercept column; this formula does not preserve factor coding.
     formula_no_intercept = lv_no_intercept,
     X_lv_B = X_lv_B,
     X_lv_B_names = colnames(X_lv_B),

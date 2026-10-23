@@ -90,6 +90,59 @@ Type gll_one_minus_exp_neg(Type x)
   return CppAD::CondExpLt(x, cut, series, direct);
 }
 
+// Gamma log-density in the mean-shape parametrisation (E(y) = mu = exp(eta),
+// shape k = exp(log_shape)), written so that no O(k log k) terms cancel
+// (#1377). Algebraically identical to dgamma(y, k, mu / k, true):
+//   log f = -k * D(r) - log(y) + S(k),   r = y / mu,
+//   D(r)  = r - 1 - log(r) >= 0,         S(k) = k log k - k - lgamma(k).
+// TMB's dgamma forms k log k, k log y, k y / mu and lgamma(k) separately; at
+// k ~ 1e18-1e29 their rounding error (~1e15) swamped the true value, so a
+// runaway shape returned logLik up to +7.7e16 instead of -Inf. Here:
+//   * D is formed from log(r): the Taylor series sum_{n=2..9} lr^n / n! for
+//     |lr| < 0.05 (truncation < 1e-16 relative), exp(lr) - 1 - lr otherwise;
+//   * S is Stirling's series written in log_shape (no exp) for k > 50, so it
+//     stays finite for any log_shape;
+//   * the k multiplying D is capped at exp(700), so an overflowing shape
+//     gives a finite value (y = mu) or -Inf, never Inf - Inf = NaN.
+// Branch inputs are clamped because CppAD CondExp evaluates both branches.
+template <class Type>
+Type gll_dgamma_mean_shape(Type y, Type eta, Type log_shape)
+{
+  Type lr = log(y) - eta;
+  Type lr_cut = Type(0.05);
+  Type lr2 = lr * lr;
+  Type cut2 = lr_cut * lr_cut;
+  Type x = CppAD::CondExpLt(lr2, cut2, lr, lr_cut);
+  // Horner form of x^2 (1/2! + x (1/3! + x (... + x / 9!))).
+  Type poly = Type(1.0 / 362880.0);
+  poly = Type(1.0 / 40320.0) + x * poly;
+  poly = Type(1.0 / 5040.0) + x * poly;
+  poly = Type(1.0 / 720.0) + x * poly;
+  poly = Type(1.0 / 120.0) + x * poly;
+  poly = Type(1.0 / 24.0) + x * poly;
+  poly = Type(1.0 / 6.0) + x * poly;
+  poly = Type(0.5) + x * poly;
+  Type D_series = x * x * poly;
+  Type lr_d = CppAD::CondExpLt(lr2, cut2, lr_cut, lr);
+  Type D_direct = exp(lr_d) - Type(1) - lr_d;
+  Type D = CppAD::CondExpLt(lr2, cut2, D_series, D_direct);
+
+  Type ls_cut = log(Type(50));
+  Type ls_s = CppAD::CondExpGt(log_shape, ls_cut, log_shape, ls_cut);
+  Type ik = exp(-ls_s);
+  Type ik2 = ik * ik;
+  Type S_stirling = Type(0.5) * (ls_s - log(Type(2) * Type(M_PI))) -
+    ik / Type(12) + ik * ik2 / Type(360) - ik * ik2 * ik2 / Type(1260);
+  Type ls_d = CppAD::CondExpGt(log_shape, ls_cut, ls_cut, log_shape);
+  Type k_d = exp(ls_d);
+  Type S_direct = k_d * ls_d - k_d - lgamma(k_d);
+  Type S = CppAD::CondExpGt(log_shape, ls_cut, S_stirling, S_direct);
+
+  Type ls_cap = Type(700);
+  Type k = exp(CppAD::CondExpGt(log_shape, ls_cap, ls_cap, log_shape));
+  return -k * D - log(y) + S;
+}
+
 // Stable log helpers for the cumulative-logit ordered missing-PREDICTOR prior
 // (Phase 5b, design 68 sec.1.2). Ported verbatim from drmTMB src/drm_numeric.h
 // (drm_log_inv_logit / drm_log1m_inv_logit / drm_log1mexp / drm_log_inv_logit_
@@ -172,7 +225,201 @@ Type gll_clamp(Type x, Type lower, Type upper)
   return x;
 }
 
+// Large-parameter numerics for the count / Student / correlation kernels
+// (#1362, #1363, #1364, #1386). Every helper below follows the
+// gll_dgamma_mean_shape pattern: CppAD CondExp evaluates BOTH branches, so
+// each branch is fed its own clamped input and stays finite where it is not
+// selected, and nothing is ever exp()'d past ~exp(700).
+
+// log(1 + u) for u >= 0: quartic Taylor series below 1e-4 (truncation
+// u^5 / 5 < 2e-21), direct log(1 + u) above.
+template <class Type>
+Type gll_log1p_pos(Type u)
+{
+  Type cut = Type(1e-4);
+  Type us = CppAD::CondExpLt(u, cut, u, cut);
+  Type series = us * (Type(1) - us * (Type(0.5) - us * (Type(1.0 / 3.0) -
+    us * Type(0.25))));
+  Type ud = CppAD::CondExpLt(u, cut, cut, u);
+  Type direct = log(Type(1) + ud);
+  return CppAD::CondExpLt(u, cut, series, direct);
+}
+
+// log(1 + u) / u for u >= 0, -> 1 as u -> 0. Series below 1e-3 (truncation
+// u^5 / 6 < 2e-16), direct ratio above.
+template <class Type>
+Type gll_log1p_ratio(Type u)
+{
+  Type cut = Type(1e-3);
+  Type us = CppAD::CondExpLt(u, cut, u, cut);
+  Type series = Type(1) - us * (Type(0.5) - us * (Type(1.0 / 3.0) -
+    us * (Type(0.25) - us * Type(0.2))));
+  Type ud = CppAD::CondExpLt(u, cut, cut, u);
+  Type direct = log(Type(1) + ud) / ud;
+  return CppAD::CondExpLt(u, cut, series, direct);
+}
+
+// lgamma(x + n) - lgamma(x) - n * log(x), with x = exp(log_x) > 0 and n >= 0
+// fixed (data or a constant). This is the piece that the lgamma-sum kernels
+// (Student, beta-binomial, NB2) lose to cancellation: lgamma(x) ~ x log x, so
+// at x ~ 1e12 each lgamma carries ~1e-3 absolute rounding error while the
+// difference itself tends to n(n - 1) / (2x) -> 0. For x > 50 it is evaluated
+// from Stirling's series for the DIFFERENCE,
+//   (x + n - 1/2) log1p(n / x) - n + c(x + n) - c(x),
+//   c(z) = 1/(12z) - 1/(360z^3) + 1/(1260z^5) - 1/(1680z^7),
+// which never forms an O(x log x) term (truncation < 1e-18 at x = 50); below
+// 50 the direct lgamma difference is already accurate. The Stirling branch
+// caps log_x at 700 so x never overflows (the value there is ~0 anyway); the
+// direct branch floors log_x at -700 so x never underflows to 0.
+template <class Type>
+Type gll_lgamma_shift(Type log_x, Type n)
+{
+  Type lcut = log(Type(50));
+  Type ls = CppAD::CondExpGt(log_x, lcut, log_x, lcut);
+  ls = CppAD::CondExpGt(ls, Type(700), Type(700), ls);
+  Type xs = exp(ls);
+  Type xn = xs + n;
+  Type ix = Type(1) / xs;
+  Type ixn = Type(1) / xn;
+  Type ix2 = ix * ix;
+  Type ixn2 = ixn * ixn;
+  Type c_x = ix * (Type(1.0 / 12.0) - ix2 * (Type(1.0 / 360.0) -
+    ix2 * (Type(1.0 / 1260.0) - ix2 * Type(1.0 / 1680.0))));
+  Type c_xn = ixn * (Type(1.0 / 12.0) - ixn2 * (Type(1.0 / 360.0) -
+    ixn2 * (Type(1.0 / 1260.0) - ixn2 * Type(1.0 / 1680.0))));
+  Type stirling = (xn - Type(0.5)) * gll_log1p_pos(n * ix) - n + c_xn - c_x;
+  Type ld = CppAD::CondExpGt(log_x, lcut, lcut, log_x);
+  ld = CppAD::CondExpLt(ld, Type(-700), Type(-700), ld);
+  Type xd = exp(ld);
+  Type direct = lgamma(xd + n) - lgamma(xd) - n * ld;
+  return CppAD::CondExpGt(log_x, lcut, stirling, direct);
+}
+
+// Negative-binomial log pmf in (mean, size) form, size = exp(log_size):
+//   lgamma(y + size) - lgamma(size) - lgamma(y + 1)
+//     + size log(size / (size + mu)) + y log(mu / (size + mu)).
+// Rewritten with x = mu / size so that nothing cancels as size -> Inf:
+//   gll_lgamma_shift(log_size, y) + y (log_mu - log1p(x)) - lgamma(y + 1)
+//     - mu * log1p(x) / x,
+// whose size -> Inf limit is exactly the Poisson log pmf. Replaces TMB's
+// dnbinom_robust, which forms lgamma(y + n) - lgamma(n) directly and so
+// carries the same O(n log n) rounding error at the Poisson limit (#1363).
+// The x fed to the ratio is capped at exp(700); log1p(x) itself comes from
+// logspace_add(0, log x), which is stable on both sides.
+template <class Type>
+Type gll_dnbinom_mu_size(Type y, Type log_mu, Type log_size)
+{
+  Type d = log_mu - log_size;                       // log(mu / size)
+  Type l1px = logspace_add(Type(0), d);             // log1p(mu / size)
+  Type dc = CppAD::CondExpGt(d, Type(700), Type(700), d);
+  Type size_l1px = exp(log_mu) * gll_log1p_ratio(exp(dc));   // size * log1p(x)
+  return gll_lgamma_shift(log_size, y) + y * (log_mu - l1px) -
+    lgamma(y + Type(1)) - size_l1px;
+}
+
+// log P(Y = 0) for the same negative binomial: -size log1p(mu / size)
+// = -mu log1p(x) / x. Never rounds to 0 while mu > 0 (#1363; the old
+// size * (log size - log(mu + size)) was exactly 0 at size = 1e14, mu = 0.1).
+template <class Type>
+Type gll_nbinom_log_p0(Type log_mu, Type log_size)
+{
+  Type d = log_mu - log_size;
+  Type dc = CppAD::CondExpGt(d, Type(700), Type(700), d);
+  return -exp(log_mu) * gll_log1p_ratio(exp(dc));
+}
+
+// log(-log P(Y = 0)) for the same negative binomial: log_mu + log(log1p(x) / x),
+// the log of the quantity gll_nbinom_log_p0 negates. It never multiplies by
+// exp(log_mu), so it stays finite when mu underflows (#1483).
+template <class Type>
+Type gll_nbinom_log_neg_log_p0(Type log_mu, Type log_size)
+{
+  Type d = log_mu - log_size;
+  Type dc = CppAD::CondExpGt(d, Type(700), Type(700), d);
+  return log_mu + log(gll_log1p_ratio(exp(dc)));
+}
+
+// log P(Y >= 1) = log(1 - exp(-a)) for a count with P(Y = 0) = exp(-a), taken
+// from log_a = log(a) (#1483): a = mu for the zero-truncated Poisson, a = size
+// log1p(mu / size) for the zero-truncated NB2. logspace_sub(0, -a) is exact
+// while a is a normal double, but its k-th derivative in log_a carries 1 / a^k,
+// which overflows once a is tiny (the Laplace gradient was NaN from eta ~ -237,
+// the objective from ~ -355), and a = exp(eta) itself rounds to 0 below
+// eta ~ -745, where logspace_sub(0, 0) is log(0). Below log_a = -20 the series
+//   log(1 - exp(-a)) = log_a - a / 2 + a^2 / 24 + O(a^4)
+// is exact to double precision (a^4 / 2880 < 1e-37) and never forms 1 / a;
+// above it logspace_sub is unchanged. The series branch sees log_a <= -20 and
+// the logspace_sub branch log_a in [-20, 700], so neither is non-finite where
+// it is not selected.
+template <class Type>
+Type gll_log1mexp_neg_exp(Type log_a)
+{
+  Type cut = Type(-20);
+  Type ls = CppAD::CondExpLt(log_a, cut, log_a, cut);
+  Type as = exp(ls);
+  Type series = ls - as / Type(2) + as * as / Type(24);
+  Type ld = CppAD::CondExpLt(log_a, cut, cut, log_a);
+  ld = CppAD::CondExpGt(ld, Type(700), Type(700), ld);
+  Type direct = logspace_sub(Type(0), -exp(ld));
+  return CppAD::CondExpLt(log_a, cut, series, direct);
+}
+
+// Bounded correlation for the 2x2 intercept-slope priors (#1386):
+//   rho = (1 - delta) tanh(x),  delta = 1e-6,
+// the same smooth cap the temporal AR1 blocks use. Without a bound the
+// precision 1 / (1 - rho^2) reaches ~1e16 by |x| = 20, and the Laplace inner
+// Hessian is then numerically indefinite (measured: the marginal objective
+// is spurious from |x| ~ 12 and NaN from ~16), whatever form 1 - rho^2 takes.
+// The cap is never flat: d rho / dx = (1 - delta) sech(x)^2 > 0.
+template <class Type>
+Type gll_capped_tanh(Type x)
+{
+  return (Type(1) - Type(1e-6)) * tanh(x);
+}
+
+// log(1 - rho^2) for rho = gll_capped_tanh(x), with no cancellation:
+//   1 - rho^2 = sech(x)^2 + tanh(x)^2 delta (2 - delta),
+// both terms >= 0, and sech(x)^2 = 4 exp(-2 logspace_add(x, -x)) exactly.
+// The old 1 - rho * rho lost digits from |x| ~ 10 and was exactly 0 (Inf
+// precisions, log(0)) from |x| ~ 19.5. x is clamped to +/-350 only inside
+// sech^2, where the term has long underflowed relative to the delta term.
+template <class Type>
+Type gll_log1m_capped_tanh2(Type x)
+{
+  Type delta = Type(1e-6);
+  Type xc = gll_clamp(x, Type(-350), Type(350));
+  Type sech2 = exp(Type(2) * log(Type(2)) - Type(2) * logspace_add(xc, -xc));
+  Type t = tanh(x);
+  return log(sech2 + t * t * delta * (Type(2) - delta));
+}
+
 #include "gllvmTMB_cloglog.h"
+
+// log Phi(x) as a TMB atomic (#1362). Value from R's pnorm(log.p = TRUE), exact
+// in both tails to double precision; the derivative is the inverse Mills ratio
+// r(x) = dnorm(x) / Phi(x) = exp(-x^2 / 2 - log(2 pi) / 2 - log Phi(x)), which is
+// written through the atomic's own output so every higher derivative (the
+// Laplace Hessian) recurses correctly. Measured against R at x in
+// {-40 ... 300}: value, gradient and Hessian agree to 10 digits and nothing is
+// NaN. It replaces the two-branch gll_log_pnorm on the binomial-probit path
+// only: that form evaluates a series AND a direct branch on every row
+// (CondExp) and tripled the probit gradient cost on psychTools::ability
+// (0.023 -> 0.069 s per gr() call); the atomic matches the old clamp's cost.
+namespace atomic {
+TMB_ATOMIC_STATIC_FUNCTION(
+  gll_logpnorm1, 1,
+  ty[0] = Rmath::Rf_pnorm5(tx[0], 0, 1, 1, 1);
+  ,
+  px[0] = exp(-Type(0.5) * tx[0] * tx[0] - Type(0.9189385332046727) - ty[0]) * py[0];
+)
+}
+template <class Type>
+Type gll_log_pnorm_atomic(Type x)
+{
+  CppAD::vector<Type> tx(1);
+  tx[0] = x;
+  return atomic::gll_logpnorm1(tx)[0];
+}
 
 template <class Type>
 Type gll_log_pnorm(Type x)
@@ -2530,14 +2777,16 @@ Type objective_function<Type>::operator()()
                             + inv00 * quad00);
       }
     } else {
-      Type rho = tanh(atanh_cor_b(0));
-      Type one_minus_rho2 = Type(1) - rho * rho;
-      Type inv00 = Type(1) / (sd_b(0) * sd_b(0) * one_minus_rho2);
-      Type inv11 = Type(1) / (sd_b(1) * sd_b(1) * one_minus_rho2);
-      Type inv01 = -rho / (sd_b(0) * sd_b(1) * one_minus_rho2);
+      // Bounded rho and a cancellation-free log(1 - rho^2) (#1386): the old
+      // tanh() / 1 - rho * rho gave Inf precisions from |atanh_cor_b| ~ 19.5.
+      Type rho = gll_capped_tanh(atanh_cor_b(0));
+      Type log_om = gll_log1m_capped_tanh2(atanh_cor_b(0));
+      Type inv00 = exp(-Type(2) * log_sd_b(0) - log_om);
+      Type inv11 = exp(-Type(2) * log_sd_b(1) - log_om);
+      Type inv01 = -rho * exp(-log_sd_b(0) - log_sd_b(1) - log_om);
       Type logdet_Sigma_b = Type(2) * log_sd_b(0) +
                              Type(2) * log_sd_b(1) +
-                             log(one_minus_rho2);
+                             log_om;
       vector<Type> cor_b(1);
       cor_b(0) = rho;
       REPORT(cor_b);
@@ -2873,14 +3122,16 @@ Type objective_function<Type>::operator()()
       for (int i = 0; i < omega_spde_aug.dim[0]; i++) om0(i) = omega_spde_aug(i, 0);
       nll += SCALE(gmrf_slope, sd_spde_b(0))(om0);
     } else {
-      Type rho = tanh(atanh_cor_spde_b(0));
-      Type one_minus_rho2 = Type(1) - rho * rho;
-      Type Sinv00 =  Type(1) / (sd_spde_b(0) * sd_spde_b(0) * one_minus_rho2);
-      Type Sinv11 =  Type(1) / (sd_spde_b(1) * sd_spde_b(1) * one_minus_rho2);
-      Type Sinv01 = -rho / (sd_spde_b(0) * sd_spde_b(1) * one_minus_rho2);
+      // Bounded rho and cancellation-free log(1 - rho^2), as for atanh_cor_b
+      // above (#1386).
+      Type rho = gll_capped_tanh(atanh_cor_spde_b(0));
+      Type log_om = gll_log1m_capped_tanh2(atanh_cor_spde_b(0));
+      Type Sinv00 =  exp(-Type(2) * log_sd_spde_b(0) - log_om);
+      Type Sinv11 =  exp(-Type(2) * log_sd_spde_b(1) - log_om);
+      Type Sinv01 = -rho * exp(-log_sd_spde_b(0) - log_sd_spde_b(1) - log_om);
       Type logdet_Sigma_field = Type(2) * log_sd_spde_b(0)
                               + Type(2) * log_sd_spde_b(1)
-                              + log(one_minus_rho2);
+                              + log_om;
       vector<Type> cor_spde_b(1);
       cor_spde_b(0) = rho;
       REPORT(cor_spde_b);
@@ -3307,8 +3558,8 @@ Type objective_function<Type>::operator()()
       // opt-in estimator takes the row when active -- its kernel owns every
       // link, including its own cloglog tail counter. On the ML path, cloglog
       // routes to the iSDM tail-safe kernel (series expansion below eta = -20,
-      // cap at 700) instead of the naive clamped form; logit and probit keep
-      // the clamped dbinom path unchanged.
+      // cap at 700) instead of the naive clamped form; logit and probit use
+      // the log-scale form below (no probability clamp; #1362).
       if (estimator_id != 0) {
         ll += gll_mspl_bernoulli_loglik(y(o), eta_o, lid);
         if (lid == 2) {
@@ -3318,18 +3569,25 @@ Type objective_function<Type>::operator()()
       } else if (lid == 2) {
         ll += gll_dbinom_cloglog(y(o), n_trials(o), eta_o);
       } else {
-        Type p;
+        // Log-scale binomial (#1362). This used to clamp p to
+        // [1e-12, 1 - 1e-12] and call dbinom(), which made each row's
+        // contribution the constant -27.63 with an exactly zero gradient
+        // once eta was more than 27.6 (logit) or 7.03 (probit) into the
+        // wrong tail. log p and log(1 - p) are now formed directly and keep
+        // their true slope at any eta.
+        Type log_p1, log_p0;
         if (lid == 0) {
-          p = Type(1.0) / (Type(1.0) + exp(-eta_o));
+          log_p1 = gll_log_inv_logit(eta_o);
+          log_p0 = gll_log1m_inv_logit(eta_o);
         } else if (lid == 1) {
-          p = pnorm(eta_o);
+          log_p1 = gll_log_pnorm_atomic(eta_o);
+          log_p0 = gll_log_pnorm_atomic(-eta_o);
         } else {
           error("gllvmTMB_multi: unknown link_id for binomial family");
         }
-        // Numerical safety: clip away from 0/1 to prevent log(0).
-        Type tiny = Type(1e-12);
-        p = gll_clamp(p, tiny, Type(1.0) - tiny);
-        ll += dbinom(y(o), n_trials(o), p, true);
+        Type log_choose = lgamma(n_trials(o) + Type(1.0)) -
+          lgamma(y(o) + Type(1.0)) - lgamma(n_trials(o) - y(o) + Type(1.0));
+        ll += log_choose + y(o) * log_p1 + (n_trials(o) - y(o)) * log_p0;
       }
     } else if (fid == 2) {
       // Poisson, log link
@@ -3345,19 +3603,16 @@ Type objective_function<Type>::operator()()
       // mu = exp(eta); per-trait shape phi = exp(log_phi_gamma(t)).
       // scale = mu / phi so E(y) = mu and CV(y) = 1 / sqrt(phi).
       int t = trait_id(o);
-      Type mu_g    = exp(eta_o);
-      Type shape_g = exp(log_phi_gamma(t));
-      Type scale_g = mu_g / shape_g;
-      ll += dgamma(y(o), shape_g, scale_g, true);
+      ll += gll_dgamma_mean_shape(y(o), eta_o, log_phi_gamma(t));
     } else if (fid == 5) {
       // NB2 (negative binomial, type 2), log link.
       // Var(y) = mu + mu^2 / phi, with one log_phi per trait.
-      // Use dnbinom_robust (numerically stable; takes log_mu and log(var-mu)).
-      // log(var - mu) = log(mu^2 / phi) = 2*log(mu) - log(phi).
+      // gll_dnbinom_mu_size with size = phi: stable at the Poisson limit
+      // phi -> Inf, where TMB's dnbinom_robust loses lgamma(y + phi) -
+      // lgamma(phi) to cancellation (#1363).
       int t = trait_id(o);
       Type log_mu = eta_o;                         // log link
-      Type log_v_minus_mu = Type(2.0) * log_mu - log_phi_nbinom2(t);
-      ll += dnbinom_robust(y(o), log_mu, log_v_minus_mu, true);
+      ll += gll_dnbinom_mu_size(y(o), log_mu, log_phi_nbinom2(t));
     } else if (fid == 6) {
       // Tweedie compound Poisson-Gamma, log link.
       // y >= 0 (point mass at zero plus continuous positive part).
@@ -3388,46 +3643,72 @@ Type objective_function<Type>::operator()()
       ll += ld;
     } else if (fid == 8) {
       // Beta-binomial family (Hilbe 2014; Bolker 2008).
+      // mu = invlogit(eta), a = mu phi, b = (1 - mu) phi:
+      //   log f = lchoose(N, y) + lgamma(y + a) - lgamma(a)
+      //         + lgamma(N - y + b) - lgamma(b)
+      //         - lgamma(N + phi) + lgamma(phi).
+      // Each lgamma difference is taken as gll_lgamma_shift + n log x, and
+      // the n log x pieces collapse to y log mu + (N - y) log(1 - mu) -- the
+      // binomial log pmf -- so nothing of size phi log phi is ever formed and
+      // the phi -> Inf limit is exactly binomial (#1364). The old nine-term
+      // lgamma sum was wrong by ~0.04 at phi = 2.7e10 and unbounded beyond.
       int t = trait_id(o);
-      Type mu_bb  = invlogit(eta_o);
-      Type phi_bb = exp(log_phi_betabinom(t));
-      Type a_bb   = mu_bb * phi_bb;
-      Type b_bb   = (Type(1.0) - mu_bb) * phi_bb;
+      Type log_phi_bb = log_phi_betabinom(t);
+      Type log_mu_bb  = gll_log_inv_logit(eta_o);
+      Type log_1m_bb  = gll_log1m_inv_logit(eta_o);
       Type N      = n_trials(o);
       Type yo     = y(o);
       Type ld = lgamma(N + Type(1.0))
-              + lgamma(yo + a_bb)
-              + lgamma(N - yo + b_bb)
-              + lgamma(a_bb + b_bb)
               - lgamma(yo + Type(1.0))
               - lgamma(N - yo + Type(1.0))
-              - lgamma(a_bb)
-              - lgamma(b_bb)
-              - lgamma(N + a_bb + b_bb);
+              + yo * log_mu_bb + (N - yo) * log_1m_bb
+              + gll_lgamma_shift(log_mu_bb + log_phi_bb, yo)
+              + gll_lgamma_shift(log_1m_bb + log_phi_bb, N - yo)
+              - gll_lgamma_shift(log_phi_bb, N);
       ll += ld;
     } else if (fid == 9) {
       // Student-t, identity link.
       int t = trait_id(o);
       Type mu_t    = eta_o;
       Type sigma_t = exp(log_sigma_student(t));
-      Type df_t    = Type(1.0) + exp(log_df_student(t));
-      Type z_t     = (y(o) - mu_t) / sigma_t;
-      ll += dt(z_t, df_t, true) - log(sigma_t);
+      // log t_nu(z) = G - log(2 pi) / 2 - (nu + 1) / 2 log1p(z^2 / nu),
+      // G = lgamma(nu/2 + 1/2) - lgamma(nu/2) - log(nu/2) / 2 -> 0, with
+      // nu = 1 + exp(log_df). TMB's dt() forms the lgamma difference and
+      // log(1 + z^2 / nu) directly; from nu ~ 1e10 it is wrong by > 1e-3 and
+      // above ~1e13 it EXCEEDS the Gaussian limit (#1364). Here G comes from
+      // gll_lgamma_shift and the kernel is -(z^2 / 2)(1 + 1/nu) log1p(u) / u,
+      // u = z^2 / nu, so the nu -> Inf limit is exactly dnorm(z, log = TRUE).
+      Type log_nu   = logspace_add(Type(0.0), log_df_student(t));
+      Type log_half_nu = log_nu - log(Type(2.0));
+      Type G_t      = gll_lgamma_shift(log_half_nu, Type(0.5));
+      Type z_t      = (y(o) - mu_t) / sigma_t;
+      Type inv_nu   = exp(-log_nu);
+      Type z2_t     = z_t * z_t;
+      ll += G_t - Type(0.5) * log(Type(2.0) * M_PI)
+            - Type(0.5) * z2_t * (Type(1.0) + inv_nu) *
+              gll_log1p_ratio(z2_t * inv_nu)
+            - log_sigma_student(t);
     } else if (fid == 10) {
-      // Zero-truncated Poisson, log link.
+      // Zero-truncated Poisson, log link, on the eta scale (#1483):
+      // dpois(y, exp(eta)) forms y log(exp(eta)), which is y log(0) = -Inf
+      // once exp(eta) underflows, although the truncated pmf there is a
+      // finite ~ exp((y - 1) eta) / y!.
       Type lambda_t = exp(eta_o);
-      ll += dpois(y(o), lambda_t, true)
-             - logspace_sub(Type(0.0), -lambda_t);
+      ll += y(o) * eta_o - lambda_t - lgamma(y(o) + Type(1.0))
+             - gll_log1mexp_neg_exp(eta_o);
     } else if (fid == 11) {
       // Zero-truncated NB2, log link.
+      // log P(0) = -phi log1p(mu / phi), from the ratio log1p(x) / x (#1363):
+      // the old phi * (log phi - log(mu + phi)) cancelled at large phi and
+      // was exactly 0 at phi = 1e14, mu = 0.1, so log(1 - p0) = -Inf and the
+      // row log-likelihood +Inf. Both pieces now tend to the zero-truncated
+      // Poisson (fid 10) as phi -> Inf. log(1 - p0) is formed from
+      // log(-log p0), not from log p0, so it survives mu -> 0 (#1483).
       int t = trait_id(o);
       Type log_mu = eta_o;
-      Type mu_t   = exp(log_mu);
-      Type phi_t  = exp(log_phi_truncnb2(t));
-      Type log_v_minus_mu = Type(2.0) * log_mu - log_phi_truncnb2(t);
-      Type log_p0 = phi_t * (log_phi_truncnb2(t) - log(mu_t + phi_t));
-      ll += dnbinom_robust(y(o), log_mu, log_v_minus_mu, true)
-             - logspace_sub(Type(0.0), log_p0);
+      Type log_a = gll_nbinom_log_neg_log_p0(log_mu, log_phi_truncnb2(t));
+      ll += gll_dnbinom_mu_size(y(o), log_mu, log_phi_truncnb2(t))
+             - gll_log1mexp_neg_exp(log_a);
     } else if (fid == 12) {
       // delta_lognormal (hurdle): one shared eta drives both components.
       //   Presence: I{y>0} ~ Bernoulli(invlogit(eta))   via dbinom_robust
@@ -3451,11 +3732,9 @@ Type objective_function<Type>::operator()()
       Type x_pres = (y(o) > Type(0)) ? Type(1.0) : Type(0.0);
       ll += dbinom_robust(x_pres, Type(1.0), eta_o, true);
       if (y(o) > Type(0)) {
-        Type phi_t   = exp(log_phi_gamma_delta(t));
-        Type mu_g    = exp(eta_o);
-        Type shape_g = Type(1.0) / (phi_t * phi_t);
-        Type scale_g = mu_g / shape_g;
-        ll += dgamma(y(o), shape_g, scale_g, true);
+        // shape = 1 / phi^2, i.e. log shape = -2 log phi (#1377 stable form).
+        ll += gll_dgamma_mean_shape(y(o), eta_o,
+                                    Type(-2.0) * log_phi_gamma_delta(t));
       }
     } else if (fid == 14) {
       // ordinal_probit (Wright/Falconer/Hadfield threshold model).
@@ -3567,14 +3846,13 @@ Type objective_function<Type>::operator()()
       // NB1 (negative binomial, type 1), log link.
       // Var(y) = mu * (1 + phi) = mu + phi * mu, with one log_phi per trait
       // (linear mean-variance; phi -> 0 recovers Poisson). Hilbe (2011).
-      // Use dnbinom_robust (numerically stable; takes log_mu and log(var-mu)).
-      // Contrast NB2 (fid 5), where var - mu = mu^2 / phi so the second
-      // argument is 2*log(mu) - log(phi); here var - mu = phi * mu so it is
-      // log(phi) + log(mu) = log_mu + log_phi_nbinom1(t).
+      // As a (mean, size) negative binomial the size is mu / phi (contrast
+      // NB2, fid 5, where it is phi), so log_size = log_mu - log_phi. Uses
+      // gll_dnbinom_mu_size, stable at the Poisson limit phi -> 0 where
+      // dnbinom_robust loses lgamma(y + size) - lgamma(size) (#1363).
       int t = trait_id(o);
       Type log_mu = eta_o;                         // log link
-      Type log_v_minus_mu = log_mu + log_phi_nbinom1(t);
-      ll += dnbinom_robust(y(o), log_mu, log_v_minus_mu, true);
+      ll += gll_dnbinom_mu_size(y(o), log_mu, log_mu - log_phi_nbinom1(t));
     } else if (fid == 16) {
       error("gllvmTMB_multi: multinomial (fid 16) is evaluated as a grouped "
             "softmax at its anchor row, not per-row via obs_loglik");
@@ -3602,13 +3880,14 @@ Type objective_function<Type>::operator()()
       int t = trait_id(o);
       Type log_zi          = -logspace_add(Type(0.0), -logit_zi(t));
       Type log_one_minus_zi = -logspace_add(Type(0.0), logit_zi(t));
+      // Same stable NB2 kernel as fid 5 (#1363).
       Type log_mu = eta_o;
-      Type log_v_minus_mu = Type(2.0) * log_mu - log_phi_nbinom2(t);
       if (asDouble(y(o)) == 0.0) {
-        Type log_p0 = dnbinom_robust(Type(0.0), log_mu, log_v_minus_mu, true);
+        Type log_p0 = gll_nbinom_log_p0(log_mu, log_phi_nbinom2(t));
         ll += logspace_add(log_zi, log_one_minus_zi + log_p0);
       } else {
-        ll += log_one_minus_zi + dnbinom_robust(y(o), log_mu, log_v_minus_mu, true);
+        ll += log_one_minus_zi +
+          gll_dnbinom_mu_size(y(o), log_mu, log_phi_nbinom2(t));
       }
     } else if (fid == 19) {
       // zi_binomial: mixture over a multi-trial Binomial(N_i, p) count part,
@@ -3896,9 +4175,11 @@ Type objective_function<Type>::operator()()
         for (int j = 0; j < L_mn; ++j) {
           num_mn += y(o + j) * eta(o + j);            // one-hot picks observed eta
         }
+        // No probability floor (#1362): log_denom_mn is a max-shifted
+        // log-sum-exp, finite at every eta, so the old log(1e-12) floor only
+        // flattened the objective (constant, zero gradient) for a badly
+        // mis-fit observed category.
         Type logp_mn = num_mn - log_denom_mn;
-        Type log_tiny_mn = log(Type(1e-12));          // defensive AD-safe floor
-        logp_mn = CppAD::CondExpLt(logp_mn, log_tiny_mn, log_tiny_mn, logp_mn);
         nll -= logp_mn;
       }
     }

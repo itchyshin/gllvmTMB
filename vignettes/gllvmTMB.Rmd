@@ -110,7 +110,12 @@ long form.
 Fit the model with two latent axes (`d = 2`) using ordinary `latent()`
 at the individual level. That term estimates the shared structure the
 axes carry plus the trait-specific variance, which ordinary `latent()`
-includes by default:
+includes by default. In an interactive session (this page hides messages
+when knitted), the first ordinary `latent()` fit prints a one-time warning
+that `latent()` includes per-trait Psi by default, and the fit may note that
+`sigma_eps` was fixed because an internal `indep(0 + trait | individual)`
+term already absorbs observation-level residual variance on the stacked
+rows:
 
 ```{r fit-call}
 morph$formula_wide
@@ -183,7 +188,8 @@ health[, c("component", "status", "message", "action")]
 ```
 
 The `WARN` on `rotation_convention_unit` is expected for every latent
-fit: the loadings are identified only up to rotation and sign. Its
+fit: `Lambda_B` names the unit-tier loadings, which are identified
+only up to rotation and sign until you rotate or constrain them. Its
 `action` says to read `Sigma`, correlations, and communality rather than
 raw loadings, which is the order this page follows.
 

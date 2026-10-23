@@ -163,11 +163,33 @@
 #'   function returns.
 #' @export
 #' @examples
-#' \dontrun{
+#' set.seed(1)
+#' # Simulate six traits, each measured twice on 100 units (e.g. sites),
+#' # driven by two latent axes plus trait-specific variation.
+#' Lambda <- cbind(c(0.7, 1.0, 0.9, 0.0, 0.0, 0.0),
+#'                 c(0.7, 0.0, 0.0, 1.0, 0.9, 0.8))
+#' sim <- simulate_unit_trait(n_units = 100, n_obs_per_unit = 2,
+#'                            n_traits = 6, Lambda_B = Lambda,
+#'                            psi_B = 0.4, sigma2_eps = 0.3)
+#' fit <- gllvmTMB(value ~ 0 + trait +
+#'                   latent(0 + trait | unit, d = 2, unique = TRUE),
+#'                 data = sim$data, trait = "trait", unit = "unit")
+#'
+#' # Score uncertainty for every unit on both latent axes.
 #' u <- ordination_uncertainty(fit, level = "unit")
-#' u$se           # same numbers as getLV(fit, "unit", se = TRUE)$se
-#' u$cov[, , 1]   # site 1's 2x2 (or dxd) score covariance
-#' }
+#' u
+#' # Uncertainty (standard deviation) of each unit's score on each axis,
+#' # for the first six units.
+#' head(round(u$se, 3))
+#' # Unit 1's 2 x 2 score covariance: the squares of those values on the
+#' # diagonal; the off-diagonal term sets the tilt of its ellipse.
+#' round(u$cov[, , 1], 4)
+#' # These are the same numbers getLV(se = TRUE) gives, one axis at a time.
+#' all.equal(u$se, getLV(fit, "unit", se = TRUE)$se)
+#' # Ordination plot with an approximate 95% ellipse around every unit.
+#' # Each unit is scored from only six traits, so its position is
+#' # uncertain: the ellipses are wide and overlap.
+#' ordiplot(fit, level = "unit", ellipse = TRUE)
 ordination_uncertainty <- function(fit, level = "unit") {
   level <- match.arg(level, c("unit", "unit_obs", "B", "W"))
   level <- .normalise_level(level, arg_name = "level")
@@ -244,7 +266,10 @@ ordination_uncertainty <- function(fit, level = "unit") {
   ## the fit's production sdreport() (getJointPrecision = FALSE) does not
   ## carry. Same route as `.gllvmTMB_predict_missing_var_eta_joint()` /
   ## `.gllvmTMB_predict_missing_sim()` (R/methods-gllvmTMB.R).
-  sdr_joint <- TMB::sdreport(fit$tmb_obj, getJointPrecision = TRUE)
+  sdr_joint <- .gllvmTMB_sdreport_loading_ridge(
+    fit$tmb_obj, fit$opt$par, fit$aghq$ridge_tau %||% Inf,
+    getJointPrecision = TRUE
+  )
   Q <- sdr_joint$jointPrecision
   if (is.null(Q)) {
     cli::cli_abort(c(

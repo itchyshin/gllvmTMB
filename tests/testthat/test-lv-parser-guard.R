@@ -353,12 +353,15 @@ test_that("latent lv preflight treats factor formulas as no-intercept designs", 
   by_default <- lv_preflight_setup(
     value ~ 0 + trait + latent(0 + trait | unit, d = 1, lv = ~fac)
   )
-  explicit_zero <- lv_preflight_setup(
-    value ~ 0 + trait + latent(0 + trait | unit, d = 1, lv = ~ 0 + fac)
+  expect_error(
+    lv_preflight_setup(
+      value ~ 0 + trait + latent(0 + trait | unit, d = 1, lv = ~ 0 + fac)
+    ),
+    regexp = "spans a constant"
   )
 
-  expect_equal(by_default$X_lv_B, explicit_zero$X_lv_B)
-  expect_equal(colnames(by_default$X_lv_B), c("faca", "facb"))
+  expect_equal(as.numeric(by_default$X_lv_B), c(0, 1, 0, 1))
+  expect_equal(colnames(by_default$X_lv_B), "facb")
 })
 
 test_that("latent lv C1 engine reports score-mean quantities", {

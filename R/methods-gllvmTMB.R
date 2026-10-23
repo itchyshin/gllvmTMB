@@ -5,6 +5,9 @@
 #' Replays the public long- or wide-format call saved for a
 #' [temporal_latent()] fit. Private pair identifiers are rebuilt from the
 #' supplied data and are never reused as public input.
+#' Ordinary (non-temporal) fits do not store a public call, so
+#' `update()` refuses them rather than forwarding to
+#' [stats::update.default()].
 #'
 #' @param object A fitted `gllvmTMB_multi` temporal model.
 #' @param ... Named arguments to replace in the saved public call.
@@ -13,7 +16,10 @@
 #' @export
 update.gllvmTMB_multi <- function(object, ..., evaluate = TRUE) {
   if (!isTRUE(object$temporal$active)) {
-    return(stats::update.default(object, ..., evaluate = evaluate))
+    cli::cli_abort(c(
+      "{.fn update} is only supported for temporal latent fits.",
+      ">" = "Refit from the original formula and data."
+    ))
   }
   call <- object$call_wide %||% object$call
   if (is.null(call) || !is.call(call)) {
@@ -33,6 +39,34 @@ update.gllvmTMB_multi <- function(object, ..., evaluate = TRUE) {
   }
   eval(call, envir = parent.frame())
 }
+
+#' Residual standard deviation for gllvmTMB fits
+#'
+#' @description
+#' `stats::sigma()` is not defined for multivariate `gllvmTMB()` fits: a
+#' single residual scale is not meaningful across mixed response families.
+#' Use family-specific dispersion extractors instead (for example
+#' [extract_Sigma()] on Gaussian traits).
+#'
+#' @param object A fitted `gllvmTMB` object.
+#' @param ... Not used.
+#' @return An error is always thrown.
+#' @importFrom stats sigma
+#' @keywords internal
+#' @exportS3Method stats::sigma
+sigma.gllvmTMB_multi <- function(object, ...) {
+  cli::cli_abort(c(
+    "{.fn sigma} is not defined for {.cls gllvmTMB} fits.",
+    "i" = "Multivariate fits can mix families, so there is no single residual standard deviation.",
+    ">" = "For Gaussian traits use {.fn extract_Sigma} or the per-trait dispersion columns from {.fn tidy}."
+  ))
+}
+
+#' @exportS3Method stats::sigma
+sigma.gllvmTMB_julia <- sigma.gllvmTMB_multi
+
+#' @exportS3Method stats::sigma
+sigma.gllvmTMB_va <- sigma.gllvmTMB_multi
 
 .modal_integer_id <- function(x, fallback = NA_integer_) {
   x <- as.integer(x)
@@ -195,26 +229,41 @@ update.gllvmTMB_multi <- function(object, ..., evaluate = TRUE) {
   common <- intersect(names(nd), names(training_data))
   for (nm in common) {
     ref <- training_data[[nm]]
-    if (!is.factor(ref)) {
+    is_chr <- is.character(ref)
+    if (!is.factor(ref) && !is_chr) {
       next
     }
     raw <- as.character(nd[[nm]])
+    ## Character training columns become factors with the same levels
+    ## `model.frame()` would have used (`sort(unique(ref))`). Otherwise a
+    ## newdata grid that omits the baseline level rebuilds a different
+    ## dummy coding and silently predicts those rows as the baseline (#1425).
+    lv <- if (is.factor(ref)) levels(ref) else levels(factor(ref))
     restored <- factor(
       raw,
-      levels = levels(ref),
+      levels = lv,
       ordered = is.ordered(ref)
     )
     unseen <- unique(raw[!is.na(raw) & is.na(restored)])
     if (length(unseen) && !nm %in% allow_unseen) {
+      err_class <- "gllvmTMB_predict_unseen_level"
+      if (nm %in% typed_observation) {
+        err_class <- c(err_class, "gllvmTMB_predict_isdm_observation_level")
+      }
       cli::cli_abort(c(
         "New data contains unseen level(s) in factor {.arg {nm}}.",
         "x" = "Unseen level(s): {.val {unseen}}.",
         "i" = "Use levels present in the training data or refit the model with the expanded factor scale."
-      ), class = if (nm %in% typed_observation) {
-        "gllvmTMB_predict_isdm_observation_level"
-      } else {
-        NULL
-      })
+      ), class = err_class)
+    }
+    ## `factor()` drops contrasts. Copy any user-set coding (contr.sum,
+    ## contr.helmert, ...) so model.matrix() does not fall back to
+    ## treatment dummies whose column names are absent from the fit (#1424).
+    if (is.factor(ref)) {
+      ctr <- attr(ref, "contrasts")
+      if (!is.null(ctr) && nlevels(restored) >= 2L) {
+        restored <- stats::`contrasts<-`(restored, value = ctr)
+      }
     }
     nd[[nm]] <- restored
   }
@@ -240,8 +289,114 @@ update.gllvmTMB_multi <- function(object, ..., evaluate = TRUE) {
       "i" = "Check factor levels, contrasts, and fixed-effect terms in {.arg newdata}."
     ))
   }
+  ## Multiplying only the columns that happen to be present treats a
+  ## missing dummy as zero -- the #1425 silent misprediction when a
+  ## character predictor's baseline level is absent from newdata.
+  missing <- setdiff(train_cols, colnames(X_new))
+  if (length(missing)) {
+    shown <- missing[seq_len(min(length(missing), 8L))]
+    suffix <- if (length(missing) > 8L) " ..." else ""
+    cli::cli_abort(c(
+      "New data is missing fixed-effect column(s) present in the fitted model.",
+      "x" = "Missing column(s): {.val {shown}}{suffix}.",
+      "i" = "This usually means a character or factor predictor in {.arg newdata} does not carry the training levels."
+    ), class = "gllvmTMB_predict_missing_columns")
+  }
   names(bfix) <- train_cols
-  as.numeric(X_new %*% bfix[colnames(X_new)])
+  as.numeric(X_new[, train_cols, drop = FALSE] %*% bfix)
+}
+
+## Training-frame terms, factor levels, and contrasts for newdata designs.
+## `terms(formula)` has no predvars, so scale()/poly()/ns() would be
+## re-evaluated on newdata. Building the model frame on the training data
+## freezes those constants the way predict.lm does (#1423). The same frame
+## supplies xlevels (character predictors become factors with the training
+## levels; #1425) and the fitted contrasts (#1424).
+.gllvmTMB_predict_design_basis <- function(fit) {
+  if (is.null(fit$formula) || is.null(fit$data)) {
+    cli::cli_abort(c(
+      "Cannot rebuild the fixed-effect design for {.arg newdata}.",
+      "x" = "The fitted object stores no formula or training data."
+    ))
+  }
+  form <- stats::delete.response(stats::terms(fit$formula))
+  mf <- stats::model.frame(
+    form,
+    data = as.data.frame(fit$data),
+    na.action = stats::na.pass
+  )
+  tt <- stats::terms(mf)
+  mm <- stats::model.matrix(tt, mf)
+  list(
+    terms = tt,
+    xlevels = stats::.getXlevels(tt, mf),
+    contrasts = attr(mm, "contrasts")
+  )
+}
+
+## Put a shortened model.matrix back onto the newdata row index.
+## model.matrix() drops rows with an NA covariate unless the frame used
+## na.pass. If a row is still dropped, pad with NA rather than recycling
+## a shorter eta onto the wrong newdata rows (#1384).
+.gllvmTMB_align_design_rows <- function(X_new, nd) {
+  n_nd <- nrow(nd)
+  if (nrow(X_new) == n_nd) {
+    return(X_new)
+  }
+  out <- matrix(
+    NA_real_,
+    nrow = n_nd,
+    ncol = ncol(X_new),
+    dimnames = list(rownames(nd), colnames(X_new))
+  )
+  rn_x <- rownames(X_new)
+  rn_nd <- rownames(nd)
+  if (!is.null(rn_x) && !is.null(rn_nd)) {
+    idx <- match(rn_x, rn_nd)
+    if (!anyNA(idx)) {
+      out[idx, ] <- X_new
+      return(out)
+    }
+  }
+  cli::cli_abort(c(
+    "The fixed-effect design for {.arg newdata} has {nrow(X_new)} row{?s} but {.arg newdata} has {n_nd}.",
+    "i" = "Rows with a missing covariate should stay in place as NA predictions."
+  ), class = "gllvmTMB_predict_newdata_row_mismatch")
+}
+
+## Fixed-effect design for predict(newdata), row-aligned with newdata.
+.gllvmTMB_newdata_model_matrix <- function(fit, nd) {
+  basis <- .gllvmTMB_predict_design_basis(fit)
+  ## model.frame(xlev=) rebuilds each factor and warns "contrasts dropped"
+  ## if the column already carries a contrasts attribute. The fitted coding
+  ## is reapplied below via contrasts.arg, so strip it here.
+  nd_mf <- nd
+  for (nm in names(basis$xlevels)) {
+    if (nm %in% names(nd_mf) && is.factor(nd_mf[[nm]])) {
+      attr(nd_mf[[nm]], "contrasts") <- NULL
+    }
+  }
+  mf <- tryCatch(
+    stats::model.frame(
+      basis$terms,
+      data = nd_mf,
+      xlev = basis$xlevels,
+      na.action = stats::na.pass
+    ),
+    error = function(e) {
+      cli::cli_abort(c(
+        "Cannot build the fixed-effect design for {.arg newdata}.",
+        "x" = conditionMessage(e),
+        "i" = "Use the training factor levels and the same transforms as the fitted formula."
+      ), parent = e, class = "gllvmTMB_predict_newdata_design")
+    }
+  )
+  mm <- stats::model.matrix(
+    basis$terms,
+    mf,
+    contrasts.arg = basis$contrasts
+  )
+  .gllvmTMB_align_design_rows(mm, nd)
 }
 
 .gllvmTMB_b_fix_se <- function(fit) {
@@ -681,6 +836,13 @@ update.gllvmTMB_multi <- function(object, ..., evaluate = TRUE) {
 #' * For ML fits, `summary()` adds a fixed-effects table with SEs, the global and
 #'   local trait correlation matrices, per-trait ICCs,
 #'   and global / local communalities.
+#' * For predictor-informed `latent(..., lv = ~ x)` fits, `summary()` also
+#'   returns `lv_effects`, with `axis_effect` and `trait_effect` tables from
+#'   [extract_lv_effects()]. Printed raw-axis coefficients depend on axis
+#'   orientation; trait effects are on the response link scale. Unavailable
+#'   uncertainty is labelled, and experimental Wald output does not establish
+#'   interval coverage. MSPL and non-unit likelihood weights withhold this
+#'   block's inference with an explicit reason.
 #' * For an unpenalised native-Laplace ML fit, `logLik()` is the converged
 #'   maximum with `df = length(opt$par)` and `nobs` equal to the number of
 #'   likelihood-contributing response cells. AGHQ has a distinct integration
@@ -836,6 +998,12 @@ summary.gllvmTMB_multi <- function(object, ...) {
     estimator = object$estimator %||% if (isTRUE(object$REML)) "REML" else "ML",
     logLik = if (.gllvmTMB_is_mspl(object)) {
       object$mspl$unpenalized_loglik_at_estimate
+    } else if (isTRUE(object$aghq$penalised) &&
+               !isTRUE(object$likelihood_weights$active)) {
+      tryCatch(
+        as.numeric(suppressWarnings(stats::logLik(object))),
+        gllvmTMB_penalised_logLik_unavailable = function(e) NA_real_
+      )
     } else {
       -object$opt$objective
     },
@@ -876,6 +1044,22 @@ summary.gllvmTMB_multi <- function(object, ...) {
       df$Std.Err[] <- NA_real_
     }
     out$fixef <- df
+  }
+  ## Predictor-informed score means are a separate coefficient block from
+  ## b_fix. Reuse the extractor's uncertainty checks, without crossing the
+  ## weighted-objective or experimental MSPL inference boundaries.
+  if (isTRUE(object$use$lv_B)) {
+    if (.gllvmTMB_is_mspl(object) || isTRUE(object$likelihood_weights$active)) {
+      out$lv_effects <- list(
+        status = "withheld_unsupported_inference",
+        reason = "LV-effect extraction is not supported for MSPL or non-unit likelihood weights"
+      )
+    } else {
+      out$lv_effects <- list(
+        axis_effect = extract_lv_effects(object, type = "axis_effect"),
+        trait_effect = extract_lv_effects(object, type = "trait_effect")
+      )
+    }
   }
   out$Sigma_B <- .extract_Sigma_legacy_payload(object, level = "unit")
   out$Sigma_W <- .extract_Sigma_legacy_payload(object, level = "unit_obs")
@@ -992,6 +1176,9 @@ print.summary.gllvmTMB_multi <- function(x, digits = 3, ...) {
         cat("  Note: ordinary Wald and likelihood-based inference is not validated for non-unit likelihood weights.\n")
       } else if (penalised) {
         cat("  Note: parameters are a penalised MAP point; ordinary AIC, BIC, and likelihood-ratio interpretations do not apply.\n")
+        if (!is.finite(logLik)) {
+          cat("  Log L is unavailable: this stored fit has no retained unpenalised likelihood or usable TMB objective. Refit to obtain it.\n")
+        }
       }
     }
   })
@@ -1043,6 +1230,33 @@ print.summary.gllvmTMB_multi <- function(x, digits = 3, ...) {
           sep = ""
         )
       }
+    }
+  }
+
+  if (!is.null(x$lv_effects)) {
+    cat("\nPredictor-informed latent-variable effects (unit tier):\n")
+    if (!is.null(x$lv_effects$reason)) {
+      cat("  ", x$lv_effects$reason, ".\n", sep = "")
+    } else {
+      print_lv_table <- function(table, labels) {
+        tbl <- table[, c(labels, "estimate", "std.error", "uncertainty_status"),
+                     drop = FALSE]
+        tbl$estimate <- round(tbl$estimate, digits)
+        tbl$std.error <- round(tbl$std.error, digits)
+        print(tbl, row.names = FALSE)
+      }
+      cat("  Raw-axis coefficients (axis scale and rotation dependent):\n")
+      print_lv_table(x$lv_effects$axis_effect, c("axis", "predictor"))
+      cat("\n  Induced trait effects (loading times score coefficient; response link scale):\n")
+      print_lv_table(x$lv_effects$trait_effect, c("trait", "predictor"))
+      posterior <- any(grepl("loading_ridge_posterior_sd", x$lv_effects$axis_effect$uncertainty_status,
+                             fixed = TRUE))
+      if (posterior) {
+        cat("  std.error reports approximate posterior SDs conditional on the loading ridge; sampling interval coverage is not validated.\n")
+      } else {
+        cat("  Wald standard errors, when available, are experimental; interval coverage is not validated.\n")
+      }
+      cat("  NA standard errors are explained by uncertainty_status; see extract_lv_effects().\n")
     }
   }
 
@@ -1246,12 +1460,12 @@ nobs.gllvmTMB_multi <- function(object, ...) {
 #'   releases lumped the cutpoints into `"ran_pars"` as a categorisation
 #'   hack — see *NEWS*.)
 #' @param conf.int Whether to add `conf.low` / `conf.high` columns.
-#' @param conf.level Confidence level for the CI.
+#' @param conf.level Confidence level in (0, 1). Default 0.95.
 #' @param ... Currently unused.
 #'
-#' @return A data.frame. `effect = "fixed"` rows include a `link` column
+#' @return A data.frame. `effects = "fixed"` rows include a `link` column
 #'   reporting each trait's link function (`"identity"`, `"probit"`,
-#'   `"log"`, `"logit"`, …). `effect = "cutpoint"` rows carry the
+#'   `"log"`, `"logit"`, …). `effects = "cutpoint"` rows carry the
 #'   ordinal-probit thresholds. For a non-unit weighted objective, fixed-effect
 #'   point estimates remain available but `std.error` is `NA`, an
 #'   `inference_status` column explains the boundary, and `conf.int = TRUE`
@@ -1266,6 +1480,7 @@ tidy.gllvmTMB_multi <- function(
 ) {
   effects <- match.arg(effects)
   if (isTRUE(conf.int)) {
+    conf.level <- .gtmb_validate_interval_level(conf.level, arg = "conf.level")
     .gllvmTMB_mspl_assert_inference(x, "tidy(conf.int = TRUE)")
   }
   if (effects == "fixed") {
@@ -1470,7 +1685,8 @@ tidy.gllvmTMB_multi <- function(
 #'   components produce an error instead of a conditional fallback. This
 #'   supports simulation; automatic covariance bootstrap refits are not yet
 #'   supported for these fits.
-#' @param nsim Number of replicate response vectors to draw. Default 1.
+#' @param nsim Number of replicate response vectors to draw. Must be a
+#'   single positive integer. Default 1.
 #' @param seed Optional RNG seed.
 #' @param newdata Optional new data frame; if supplied, predictions are
 #'   computed at `newdata` and noise is drawn around them. The newdata
@@ -1528,9 +1744,20 @@ simulate.gllvmTMB_multi <- function(
   condition_on_RE = FALSE,
   ...
 ) {
-  if (!is.null(seed)) {
-    set.seed(seed)
+  nsim_value <- suppressWarnings(as.numeric(nsim))
+  if (
+    length(nsim) != 1L ||
+      length(nsim_value) != 1L ||
+      is.na(nsim_value) ||
+      !is.finite(nsim_value) ||
+      nsim_value < 1L ||
+      nsim_value != floor(nsim_value)
+  ) {
+    cli::cli_abort("{.arg nsim} must be a single positive integer.")
   }
+  nsim <- as.integer(nsim_value)
+
+  .gllvmTMB_local_seed(seed)
 
   if (isTRUE(object$temporal$active) && is.null(newdata)) {
     if (isTRUE(condition_on_RE)) {
@@ -2361,7 +2588,7 @@ simulate.gllvmTMB_multi <- function(
 #' @export
 sanity_multi <- function(object, gradient_thresh = 1e-2, se_thresh = 100) {
   if (!inherits(object, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+    .gllvmTMB_abort_not_multi_fit(object)
   }
   is_mspl <- .gllvmTMB_is_mspl(object)
   flags <- list()
@@ -2725,7 +2952,13 @@ sanity_multi <- function(object, gradient_thresh = 1e-2, se_thresh = 100) {
 #'
 #' @param object A fit returned by [gllvmTMB()].
 #' @param newdata Optional new data frame. If `NULL`, predictions are
-#'   produced for the training rows.
+#'   produced for the training rows. A missing covariate stays `NA` in
+#'   that row; the other rows keep their own predictions. Data-dependent
+#'   transforms in the fixed formula (`scale()`, `poly()`, `ns()`) reuse
+#'   the training centre, scale, and basis, so a row's value does not
+#'   depend on which other rows travel with it. Character predictors use
+#'   the training levels, and user-set factor contrasts (for example
+#'   `contr.sum`) are copied onto the restored factor.
 #' @param type One of `"link"` (default) or `"response"`.
 #'
 #'   `"response"` includes the row's **offset**, so on a fit with an effort
@@ -2916,16 +3149,12 @@ predict.gllvmTMB_multi <- function(
       typed_observation = observation_vars
     )
 
-    ## Build the design from the RIGHT-HAND SIDE only (#1154). `model.matrix()`
-    ## on a two-sided formula constructs a `model.frame()` first, which
-    ## evaluates the LHS -- so `predict(newdata = )` used to fail with
-    ## `object '<response>' not found` unless the caller supplied a dummy
-    ## response column. A prediction grid has no response by construction;
-    ## that is the entire point of predicting on one.
-    X_new <- stats::model.matrix(
-      stats::delete.response(stats::terms(object$formula)),
-      nd
-    )
+    ## Build the design from the RIGHT-HAND SIDE only (#1154), using the
+    ## training model-frame terms so `predvars`, factor levels, and
+    ## contrasts stay those of the fit (#1423, #1424, #1425). `na.pass`
+    ## keeps a row with a missing covariate; the prediction is NA there
+    ## instead of recycling a shorter vector onto the wrong rows (#1384).
+    X_new <- .gllvmTMB_newdata_model_matrix(object, nd)
     if (!is.null(isdm_observation)) {
       X_new <- .gll_isdm_observation_prediction_design(
         X_fix = X_new,
@@ -3574,7 +3803,8 @@ deviance.gllvmTMB_multi <- function(object, ...) {
     return(var_eta)
   }
 
-  sdr_joint <- TMB::sdreport(fit$tmb_obj, getJointPrecision = TRUE)
+  sdr_joint <- .gllvmTMB_sdreport_loading_ridge(fit$tmb_obj, fit$opt$par,
+    fit$aghq$ridge_tau %||% Inf, getJointPrecision = TRUE)
   Q <- sdr_joint$jointPrecision
   if (is.null(Q)) {
     cli::cli_abort(c(
@@ -3752,7 +3982,8 @@ deviance.gllvmTMB_multi <- function(object, ...) {
   )
   n_sim <- as.integer(round(n_sim))
 
-  sdr_joint <- TMB::sdreport(fit$tmb_obj, getJointPrecision = TRUE)
+  sdr_joint <- .gllvmTMB_sdreport_loading_ridge(fit$tmb_obj, fit$opt$par,
+    fit$aghq$ridge_tau %||% Inf, getJointPrecision = TRUE)
   Q <- sdr_joint$jointPrecision
   if (is.null(Q)) {
     cli::cli_abort(c(
@@ -4453,7 +4684,7 @@ predict_missing <- function(
   ...
 ) {
   if (!inherits(object, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+    .gllvmTMB_abort_not_multi_fit(object)
   }
   type <- match.arg(type)
   se_route <- match.arg(se_route)

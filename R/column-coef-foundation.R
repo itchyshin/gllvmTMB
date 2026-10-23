@@ -266,7 +266,7 @@ spatial_coef <- function(formula, mesh, rho = 1) invisible(NULL)
   variables <- setdiff(names(column_data), trait_col)
   reserved_internal <- intersect(
     variables,
-    c(".y_wide_", ".offset_wide_", ".multinom_group_", ".multinom_L_")
+    c(".y_wide_", ".succ_wide_", ".fail_wide_", ".offset_wide_", ".multinom_group_", ".multinom_L_")
   )
   if (length(reserved_internal))
     .column_data_abort(c(
@@ -1026,8 +1026,10 @@ spatial_coef <- function(formula, mesh, rho = 1) invisible(NULL)
     return(if (isTRUE(unwrap)) inner else call("shared", inner))
   }
   out <- expr
+  ## `out[i] <- list(...)`, not `out[[i]] <-`: assigning NULL with `[[<-`
+  ## deletes the element, so a literal NULL argument shortened the call (#1493).
   for (i in seq_along(out)[-1L])
-    out[[i]] <- .shared_rewrite(out[[i]], row_vars, column_vars, response_vars,
-                                unwrap = unwrap)
+    out[i] <- list(.shared_rewrite(out[[i]], row_vars, column_vars,
+                                   response_vars, unwrap = unwrap))
   out
 }

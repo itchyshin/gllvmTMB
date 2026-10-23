@@ -88,6 +88,24 @@
 ## Issued once per old keyword per R session. Avoids spamming when an
 ## article (or a user's pasted code) uses the old name throughout.
 .gllvmTMB_deprecation_seen <- new.env(parent = emptyenv())
+
+## The spatial grouping token the structured-rho parser consumed for the
+## fit currently being parsed (NULL when none). With `rho = NULL` or
+## `rho = <not 1>` on a spatial_*() helper, the token right of `|` is a real
+## location-identifier column (spec$grouping), so the "token is ignored"
+## warning below must stay silent for it. `.parse_structured_rho_formula()`
+## strips `rho` before the sugar rewriter runs, so this cannot be read from
+## the call itself. Scoped and restored by gllvmTMB() around one fit.
+.gllvmTMB_spatial_token_consumed <- new.env(parent = emptyenv())
+.gllvmTMB_set_spatial_token_consumed <- function(spec) {
+  .gllvmTMB_spatial_token_consumed$token <-
+    if (!is.null(spec) && identical(spec$source, "spatial")) {
+      spec$grouping
+    } else {
+      NULL
+    }
+  invisible(NULL)
+}
 .gllvmTMB_warn_keyword_deprecated <- function(
   old,
   new_name,
@@ -308,38 +326,49 @@
 #'   [phylo_latent()], [phylo_dep()].
 #' @export
 #' @examples
-#' \dontrun{
-#' library(ape)
-#' tree <- rcoal(20); tree$tip.label <- paste0("sp", 1:20)
-#' # Single shared phylogenetic variance (= phylo_scalar)
-#' fit_s <- gllvmTMB(value ~ 0 + trait + phylo(1 | species, tree = tree),
-#'                   data    = df,
-#'                   trait   = "trait",
-#'                   unit    = "species",
-#'                   cluster = "species")
-#' # Per-trait independent phylogenetic variances on shared A
-#' fit_u <- gllvmTMB(value ~ 0 + trait +
-#'                     phylo(0 + trait | species, mode = "indep", tree = tree),
-#'                   data    = df,
-#'                   trait   = "trait",
-#'                   unit    = "species",
-#'                   cluster = "species")
-#' # Reduced-rank cross-trait phylogenetic decomposition (= phylo_latent)
-#' fit_l <- gllvmTMB(value ~ 0 + trait +
-#'                     phylo(0 + trait | species, mode = "latent",
-#'                           d = 2, tree = tree),
-#'                   data    = df,
-#'                   trait   = "trait",
-#'                   unit    = "species",
-#'                   cluster = "species")
-#' # Backward-compat: legacy bare-name form
-#' Cphy <- vcv(tree, corr = TRUE)
-#' fit_legacy <- gllvmTMB(value ~ 0 + trait + phylo(species),
-#'                        data      = df,
-#'                        trait     = "trait",
-#'                        unit      = "species",
-#'                        cluster   = "species",
-#'                        phylo_vcv = Cphy)
+#' if (requireNamespace("ape", quietly = TRUE)) {
+#'   set.seed(1)
+#'   tree <- ape::rcoal(60); tree$tip.label <- paste0("sp", seq_len(60))
+#'   sim <- simulate_site_trait(
+#'     n_sites = 1, n_species = 60, n_traits = 3,
+#'     mean_species_per_site = 60,
+#'     Cphy = ape::vcv(tree, corr = TRUE),
+#'     sigma2_phy = rep(1, 3), sigma2_eps = 0.2, seed = 1
+#'   )
+#'   df <- sim$data
+#'   df$species <- factor(tree$tip.label[as.integer(df$species)],
+#'                        levels = tree$tip.label)
+#'   Cphy <- ape::vcv(tree, corr = TRUE)
+#'   \donttest{
+#'   # Single shared phylogenetic variance (= phylo_indep(..., common = TRUE))
+#'   fit_s <- gllvmTMB(value ~ 0 + trait + phylo(1 | species, tree = tree),
+#'                     data    = df,
+#'                     trait   = "trait",
+#'                     unit    = "species",
+#'                     cluster = "species")
+#'   # Per-trait independent phylogenetic variances on shared A
+#'   fit_u <- gllvmTMB(value ~ 0 + trait +
+#'                       phylo(0 + trait | species, mode = "indep", tree = tree),
+#'                     data    = df,
+#'                     trait   = "trait",
+#'                     unit    = "species",
+#'                     cluster = "species")
+#'   # Reduced-rank cross-trait phylogenetic decomposition (= phylo_latent)
+#'   fit_l <- gllvmTMB(value ~ 0 + trait +
+#'                       phylo(0 + trait | species, mode = "latent",
+#'                             d = 2, tree = tree),
+#'                     data    = df,
+#'                     trait   = "trait",
+#'                     unit    = "species",
+#'                     cluster = "species")
+#'   # Backward-compat: legacy bare-name form
+#'   fit_legacy <- gllvmTMB(value ~ 0 + trait + phylo(species),
+#'                          data      = df,
+#'                          trait     = "trait",
+#'                          unit      = "species",
+#'                          cluster   = "species",
+#'                          phylo_vcv = Cphy)
+#'   }
 #' }
 phylo <- function(
   formula,
@@ -409,16 +438,28 @@ phylo <- function(
 #' @export
 #' @keywords internal
 #' @examples
-#' \dontrun{
-#' library(ape)
-#' tree   <- rcoal(20); tree$tip.label <- paste0("sp", 1:20)
-#' Cphy   <- vcv(tree, corr = TRUE)
-#' fit <- gllvmTMB(value ~ 0 + trait + phylo_rr(species, d = 2),
-#'                 data      = df,
-#'                 trait     = "trait",
-#'                 unit      = "species",
-#'                 cluster   = "species",
-#'                 phylo_vcv = Cphy)
+#' if (requireNamespace("ape", quietly = TRUE)) {
+#'   set.seed(1)
+#'   tree <- ape::rcoal(60); tree$tip.label <- paste0("sp", seq_len(60))
+#'   sim <- simulate_site_trait(
+#'     n_sites = 1, n_species = 60, n_traits = 3,
+#'     mean_species_per_site = 60,
+#'     Cphy = ape::vcv(tree, corr = TRUE),
+#'     sigma2_phy = rep(1, 3), sigma2_eps = 0.2, seed = 1
+#'   )
+#'   df <- sim$data
+#'   df$species <- factor(tree$tip.label[as.integer(df$species)],
+#'                        levels = tree$tip.label)
+#'   Cphy <- ape::vcv(tree, corr = TRUE)
+#'   \donttest{
+#'   # phylo_rr() is a deprecated alias of phylo_latent() and prints a message.
+#'   fit <- gllvmTMB(value ~ 0 + trait + phylo_rr(species, d = 2),
+#'                   data      = df,
+#'                   trait     = "trait",
+#'                   unit      = "species",
+#'                   cluster   = "species",
+#'                   phylo_vcv = Cphy)
+#'   }
 #' }
 phylo_rr <- function(species, d = 1) {
   invisible(NULL)
@@ -430,36 +471,43 @@ phylo_rr <- function(species, d = 1) {
 #' user-supplied matrix. Mirrors brms's `(1 | gr(species, cov = M))`.
 #' Inside a `gllvmTMB()` formula, this desugars to
 #' `propto(0 + group | trait)`. The actual covariance matrix used by
-#' the engine is whatever is passed to the top-level `phylo_vcv =`
-#' argument of [gllvmTMB()]; the optional `cov =` argument inside the
-#' formula is retained for backward compatibility and as a hint to the
-#' reader, but is **not** used by the engine. Same convention as
-#' [phylo()] and [phylo_rr()].
+#' the engine is the top-level `phylo_vcv =` argument of [gllvmTMB()] when
+#' one is supplied; otherwise the formula-level `cov =` matrix is used. When
+#' both are given, the top-level `phylo_vcv =` wins and `cov =` is ignored.
+#' Same convention as [phylo()] and [phylo_rr()].
 #'
 #' @param group An unquoted column name giving the grouping factor.
-#' @param cov Optional, ignored by the engine. The matrix actually
-#'   used is whatever is passed to the `phylo_vcv` argument of
-#'   [gllvmTMB()].
+#' @param cov Optional covariance matrix. Used when no top-level
+#'   `phylo_vcv` is passed to [gllvmTMB()]; ignored when `phylo_vcv` is
+#'   also supplied.
 #'
 #' @return A formula marker; never evaluated.
 #' @export
 #' @keywords internal
 #' @examples
-#' \dontrun{
-#' # Recommended:
-#' fit <- gllvmTMB(value ~ 0 + trait + gr(species),
-#'                 data      = df,
-#'                 trait     = "trait",
-#'                 unit      = "species",
-#'                 cluster   = "species",
-#'                 phylo_vcv = Cphy)
-#' # Also valid (cov = Cphy ignored by engine):
-#' fit <- gllvmTMB(value ~ 0 + trait + gr(species, cov = Cphy),
-#'                 data      = df,
-#'                 trait     = "trait",
-#'                 unit      = "species",
-#'                 cluster   = "species",
-#'                 phylo_vcv = Cphy)
+#' if (requireNamespace("ape", quietly = TRUE)) {
+#'   set.seed(1)
+#'   tree <- ape::rcoal(60); tree$tip.label <- paste0("sp", seq_len(60))
+#'   sim <- simulate_site_trait(
+#'     n_sites = 1, n_species = 60, n_traits = 3,
+#'     mean_species_per_site = 60,
+#'     Cphy = ape::vcv(tree, corr = TRUE),
+#'     sigma2_phy = rep(1, 3), sigma2_eps = 0.2, seed = 1
+#'   )
+#'   df <- sim$data
+#'   df$species <- factor(tree$tip.label[as.integer(df$species)],
+#'                        levels = tree$tip.label)
+#'   Cphy <- ape::vcv(tree, corr = TRUE)
+#'   \donttest{
+#'   # gr() is a deprecated alias and prints a message; new code can use
+#'   # phylo_indep(0 + trait | species, tree = tree, common = TRUE).
+#'   fit <- gllvmTMB(value ~ 0 + trait + gr(species),
+#'                   data      = df,
+#'                   trait     = "trait",
+#'                   unit      = "species",
+#'                   cluster   = "species",
+#'                   phylo_vcv = Cphy)
+#'   }
 #' }
 gr <- function(group, cov = NULL) {
   invisible(NULL)
@@ -500,20 +548,31 @@ gr <- function(group, cov = NULL) {
 #' @export
 #' @keywords internal
 #' @examples
-#' \dontrun{
+#' # A stage-1 summary: one estimate per site and trait, each with a known
+#' # sampling variance.
+#' set.seed(131)
+#' stage1_summary <- expand.grid(
+#'   site  = factor(seq_len(50)),
+#'   trait = factor(paste0("t", 1:3))
+#' )
+#' n <- nrow(stage1_summary)
+#' stage1_summary$value <- rnorm(n, sd = 0.5)
+#' stage1_summary$sampling_var <- runif(n, min = 0.02, max = 0.08)
+#'
 #' # Preferred (canonical) form -- use meta_V():
 #' V    <- diag(stage1_summary$sampling_var)
+#' \donttest{
 #' fit2 <- gllvmTMB(value ~ 0 + trait +
-#'                    latent(0 + trait | site, d = 2) +
+#'                    latent(0 + trait | site, d = 1) +
 #'                    meta_V(V = V),
 #'                  data    = stage1_summary,
 #'                  trait   = "trait",
 #'                  unit    = "site",
 #'                  known_V = V)
 #'
-#' # Deprecated form (still works, emits a warning):
+#' # Deprecated form (still works, prints a deprecation message):
 #' fit2 <- gllvmTMB(value ~ 0 + trait +
-#'                    latent(0 + trait | site, d = 2) +
+#'                    latent(0 + trait | site, d = 1) +
 #'                    meta(value, sampling_var = sampling_var),
 #'                  data    = stage1_summary,
 #'                  trait   = "trait",
@@ -565,6 +624,12 @@ meta <- function(value, sampling_var) {
 #'   diagonal \eqn{\boldsymbol\Psi} companion to one shared variance across
 #'   traits. Only applies when `unique = TRUE`.
 #' @param lv One-sided formula for predictor-informed latent-score means.
+#'   The model matrix retains the formula's factor contrasts, then its
+#'   intercept column is removed. With default treatment contrasts,
+#'   `lv = ~ group` estimates differences from the factor reference level.
+#'   Use [stats::relevel()] to select that level. Designs spanning a constant,
+#'   including `lv = ~ 0 + group`, violate the no-LV-intercept contract
+#'   and are rejected. Numeric `lv = ~ x` and `lv = ~ 0 + x` are equivalent.
 #'   Runtime support is limited to ordinary unit-tier
 #'   `latent(..., lv = ~ x)`. Registered native family/link rows compose in one
 #'   complete-response ordinary unit-tier block. The loadings-only
@@ -589,17 +654,20 @@ meta <- function(value, sampling_var) {
 #' @seealso [indep()], [phylo_latent()], [diag_re], [extract_Sigma()],
 #'   [extract_lv_effects()] for predictor-informed latent-score coefficients.
 #' @examples
-#' \dontrun{
-#' # Long-format stacked traits: a 2-factor latent random effect at `site`.
-#' # Ordinary latent() carries its diagonal Psi by default
-#' # (Sigma = Lambda Lambda^T + diag(psi)).
-#' df <- simulate_site_trait(
-#'   n_sites = 30, n_species = 4, n_traits = 4,
-#'   mean_species_per_site = 4, seed = 42
-#' )$data
+#' # Six traits on 60 units (3 replicate observations per unit): the
+#' # between-unit trait covariance is rank two plus a trait-specific diagonal.
+#' Lambda <- matrix(c(0.9, 0.7, 0.5, -0.4, 0.3, 0,
+#'                    0, 0.2, -0.3, 0.6, 0.7, 0.8), ncol = 2)
+#' sim <- simulate_unit_trait(
+#'   n_units = 60, n_obs_per_unit = 3, n_traits = 6,
+#'   Lambda_B = Lambda, psi_B = rep(0.2, 6), seed = 1
+#' )
+#' # A 2-factor latent random effect at `unit`. Ordinary latent() carries its
+#' # diagonal Psi by default (Sigma = Lambda Lambda^T + diag(psi)).
+#' \donttest{
 #' fit <- gllvmTMB(
-#'   value ~ 0 + trait + latent(0 + trait | site, d = 2),
-#'   data = df, unit = "site"
+#'   value ~ 0 + trait + latent(0 + trait | unit, d = 2),
+#'   data = sim$data, trait = "trait", unit = "unit"
 #' )
 #' extract_Sigma(fit)
 #' }
@@ -740,23 +808,28 @@ NULL
 #'   and multi-trait models for continuous and categorical characters.
 #'   *J. Evol. Biol.* 23: 494-508. \doi{10.1111/j.1420-9101.2009.01915.x}
 #' @examples
-#' \dontrun{
-#'   tree <- ape::rcoal(20); tree$tip.label <- paste0("sp", seq_len(20))
+#' if (requireNamespace("ape", quietly = TRUE)) {
+#'   set.seed(1)
+#'   tree <- ape::rcoal(60); tree$tip.label <- paste0("sp", seq_len(60))
 #'   sim <- simulate_site_trait(
-#'     n_sites = 1, n_species = 20, n_traits = 4,
-#'     mean_species_per_site = 20,
+#'     n_sites = 1, n_species = 60, n_traits = 3,
+#'     mean_species_per_site = 60,
 #'     Cphy = ape::vcv(tree, corr = TRUE),
-#'     sigma2_phy = rep(0.3, 4), seed = 1
+#'     sigma2_phy = rep(1, 3), sigma2_eps = 0.2, seed = 1
 #'   )
-#'   sim$data$species <- factor(sim$data$species, levels = tree$tip.label)
+#'   sim$data$species <- factor(
+#'     tree$tip.label[as.integer(sim$data$species)],
+#'     levels = tree$tip.label
+#'   )
+#'   \donttest{
 #'   fit <- gllvmTMB(
-#'     value ~ 0 + trait + phylo_latent(species, d = 2),
-#'     data       = sim$data,
-#'     trait      = "trait",
-#'     unit       = "species",
-#'     cluster    = "species",
-#'     phylo_tree = tree
+#'     value ~ 0 + trait + phylo_latent(species, d = 2, tree = tree),
+#'     data    = sim$data,
+#'     trait   = "trait",
+#'     unit    = "species",
+#'     cluster = "species"
 #'   )
+#'   }
 #' }
 #' @export
 #' @param rho Source strength: a number in `[0,1]` fixes
@@ -822,15 +895,27 @@ phylo_latent <- function(
 #' @seealso [slope()], [animal_slope()], [kernel_slope()], [spatial_slope()],
 #'   [phylo_dep()], [phylo_indep()], [extract_Sigma()].
 #' @examples
-#' \dontrun{if (requireNamespace("ape", quietly = TRUE)) {
+#' if (requireNamespace("ape", quietly = TRUE)) {
 #'   set.seed(1); tree <- ape::rcoal(6); tree$tip.label <- paste0("sp", 1:6)
-#'   dat <- expand.grid(site = factor(paste0("s", 1:12)), trait = factor(tree$tip.label))
+#'   dat <- expand.grid(site = factor(paste0("s", 1:12)),
+#'                      trait = factor(tree$tip.label, levels = tree$tip.label))
 #'   dat$elevation <- rnorm(nrow(dat)); dat$forest_cover <- rnorm(nrow(dat))
-#'   dat$value <- rnorm(nrow(dat))
-#'   fit <- gllvmTMB(value ~ 0 + trait + phylo_slope(elevation + forest_cover | trait, tree = tree),
-#'     data = dat, trait = "trait", unit = "site", family = gaussian())
+#'   # Slopes that covary along the tree (K_phy is the tree's correlation).
+#'   L <- t(chol(ape::vcv(tree, corr = TRUE)))
+#'   b_elev <- drop(L %*% rnorm(6, sd = 0.5))
+#'   b_forest <- drop(L %*% rnorm(6, sd = 0.3))
+#'   k <- as.integer(dat$trait)
+#'   dat$value <- b_elev[k] * dat$elevation + b_forest[k] * dat$forest_cover +
+#'     rnorm(nrow(dat), sd = 0.3)
+#'   \donttest{
+#'   fit <- gllvmTMB(
+#'     value ~ 0 + trait +
+#'       phylo_slope(elevation + forest_cover | trait, tree = tree),
+#'     data = dat, trait = "trait", unit = "site", family = gaussian()
+#'   )
 #'   extract_Sigma(fit, level = "column_slope")
-#' }}
+#'   }
+#' }
 #' @export
 phylo_slope <- function(
   formula,
@@ -869,9 +954,15 @@ phylo_slope <- function(
 #' @seealso [phylo_slope()], [animal_slope()], [kernel_slope()], [spatial_slope()],
 #'   [extract_Sigma()].
 #' @examples
-#' \dontrun{
-#' set.seed(1); dat <- expand.grid(unit = factor(1:12), trait = factor(paste0("sp", 1:4)))
-#' dat$lat <- rnorm(nrow(dat)); dat$temp <- rnorm(nrow(dat)); dat$value <- rnorm(nrow(dat))
+#' set.seed(1)
+#' dat <- expand.grid(unit = factor(1:20), trait = factor(paste0("sp", 1:8)))
+#' dat$lat <- rnorm(nrow(dat)); dat$temp <- rnorm(nrow(dat))
+#' # Each response column has its own slopes on lat and temp.
+#' b_lat <- rnorm(8, sd = 0.5); b_temp <- rnorm(8, sd = 0.3)
+#' k <- as.integer(dat$trait)
+#' dat$value <- 0.2 * k + b_lat[k] * dat$lat + b_temp[k] * dat$temp +
+#'   rnorm(nrow(dat), sd = 0.3)
+#' \donttest{
 #' fit <- gllvmTMB(value ~ 0 + trait + slope(lat + temp | trait), data = dat,
 #'   trait = "trait", unit = "unit", family = gaussian())
 #' extract_Sigma(fit, level = "column_slope")
@@ -909,10 +1000,19 @@ slope <- function(formula) {
 #' @return A formula marker; never evaluated.
 #' @seealso [slope()], [phylo_slope()], [animal_slope()], [extract_Sigma()].
 #' @examples
-#' \dontrun{
-#' set.seed(1); dat <- expand.grid(unit = factor(1:12), trait = factor(paste0("sp", 1:4)))
-#' dat$lat <- rnorm(nrow(dat)); dat$temp <- rnorm(nrow(dat)); dat$value <- rnorm(nrow(dat))
-#' K <- diag(nlevels(dat$trait)); dimnames(K) <- list(levels(dat$trait), levels(dat$trait))
+#' set.seed(1)
+#' dat <- expand.grid(unit = factor(1:20), trait = factor(paste0("sp", 1:8)))
+#' dat$lat <- rnorm(nrow(dat)); dat$temp <- rnorm(nrow(dat))
+#' # Each response column has its own slopes on lat and temp.
+#' b_lat <- rnorm(8, sd = 0.5); b_temp <- rnorm(8, sd = 0.3)
+#' k <- as.integer(dat$trait)
+#' dat$value <- 0.2 * k + b_lat[k] * dat$lat + b_temp[k] * dat$temp +
+#'   rnorm(nrow(dat), sd = 0.3)
+#' # With K = diag(n) this is the same model as slope(); any labelled
+#' # positive-definite K (e.g. a similarity among response columns) works.
+#' K <- diag(nlevels(dat$trait))
+#' dimnames(K) <- list(levels(dat$trait), levels(dat$trait))
+#' \donttest{
 #' fit <- gllvmTMB(
 #'   value ~ 0 + trait + kernel_slope(lat + temp | trait, K = K),
 #'   data = dat, trait = "trait", unit = "unit",
@@ -999,7 +1099,8 @@ spatial_slope <- function(formula, mesh) {
 
 #' Single-shared-variance phylogenetic random effect: `phylo_scalar(species)`
 #'
-#' Canonical name for the single-scalar (per-trait) phylogenetic random
+#' Soft-deprecated; use `phylo_indep(0 + trait | species, common = TRUE)`.
+#' Name for the single-scalar (per-trait) phylogenetic random
 #' intercept. Each trait carries an independent length-`n_species` draw
 #' \eqn{\mathbf p_t \sim \mathcal{N}(\mathbf{0}, \sigma^{2}_{\text{phy}}\,\mathbf{C}_{\text{phy}})}
 #' with **one shared scaling** \eqn{\sigma^{2}_{\text{phy}}} across all
@@ -1024,23 +1125,31 @@ spatial_slope <- function(formula, mesh) {
 #' @seealso [phylo_latent()], [phylo_indep()],
 #'   [phylo_dep()], [phylo()] (deprecated alias).
 #' @examples
-#' \dontrun{
-#'   tree <- ape::rcoal(8); tree$tip.label <- paste0("sp", seq_len(8))
+#' if (requireNamespace("ape", quietly = TRUE)) {
+#'   set.seed(1)
+#'   tree <- ape::rcoal(60); tree$tip.label <- paste0("sp", seq_len(60))
 #'   sim <- simulate_site_trait(
-#'     n_sites = 1, n_species = 8, n_traits = 3,
-#'     mean_species_per_site = 8,
+#'     n_sites = 1, n_species = 60, n_traits = 3,
+#'     mean_species_per_site = 60,
 #'     Cphy = ape::vcv(tree, corr = TRUE),
-#'     sigma2_phy = rep(0.3, 3), seed = 1
+#'     sigma2_phy = rep(1, 3), sigma2_eps = 0.2, seed = 1
 #'   )
-#'   sim$data$species <- factor(sim$data$species, levels = tree$tip.label)
+#'   sim$data$species <- factor(
+#'     tree$tip.label[as.integer(sim$data$species)],
+#'     levels = tree$tip.label
+#'   )
+#'   # phylo_scalar() is compatibility syntax and warns once per session;
+#'   # the same model is phylo_indep(0 + trait | species, tree = tree,
+#'   # common = TRUE).
+#'   \donttest{
 #'   fit <- gllvmTMB(
-#'     value ~ 0 + trait + phylo_scalar(species),
-#'     data       = sim$data,
-#'     trait      = "trait",
-#'     unit       = "species",
-#'     cluster    = "species",
-#'     phylo_tree = tree
+#'     value ~ 0 + trait + phylo_scalar(species, tree = tree),
+#'     data    = sim$data,
+#'     trait   = "trait",
+#'     unit    = "species",
+#'     cluster = "species"
 #'   )
+#'   }
 #' }
 #' @export
 phylo_scalar <- function(
@@ -1133,23 +1242,30 @@ phylo_scalar <- function(
 #'   properties of reduced-rank estimates of genetic covariance matrices.
 #'   *Genetics* 178(4): 2223-2240.
 #' @examples
-#' \dontrun{
-#'   tree <- ape::rcoal(8); tree$tip.label <- paste0("sp", seq_len(8))
+#' if (requireNamespace("ape", quietly = TRUE)) {
+#'   set.seed(1)
+#'   tree <- ape::rcoal(60); tree$tip.label <- paste0("sp", seq_len(60))
 #'   sim <- simulate_site_trait(
-#'     n_sites = 1, n_species = 8, n_traits = 3,
-#'     mean_species_per_site = 8,
+#'     n_sites = 1, n_species = 60, n_traits = 3,
+#'     mean_species_per_site = 60,
 #'     Cphy = ape::vcv(tree, corr = TRUE),
-#'     sigma2_phy = rep(0.3, 3), seed = 1
+#'     sigma2_phy = rep(1, 3), sigma2_eps = 0.2, seed = 1
 #'   )
-#'   sim$data$species <- factor(sim$data$species, levels = tree$tip.label)
+#'   sim$data$species <- factor(
+#'     tree$tip.label[as.integer(sim$data$species)],
+#'     levels = tree$tip.label
+#'   )
+#'   # phylo_unique() is compatibility syntax and warns once per session;
+#'   # the same model is phylo_indep(0 + trait | species, tree = tree).
+#'   \donttest{
 #'   fit <- gllvmTMB(
-#'     value ~ 0 + trait + phylo_unique(species),
-#'     data       = sim$data,
-#'     trait      = "trait",
-#'     unit       = "species",
-#'     cluster    = "species",
-#'     phylo_tree = tree
+#'     value ~ 0 + trait + phylo_unique(species, tree = tree),
+#'     data    = sim$data,
+#'     trait   = "trait",
+#'     unit    = "species",
+#'     cluster = "species"
 #'   )
+#'   }
 #' }
 #' @export
 phylo_unique <- function(
@@ -1206,19 +1322,20 @@ phylo_unique <- function(
 #' @return A formula marker; never evaluated.
 #' @seealso [spatial_indep()], [spatial_latent()], [spde()] (deprecated alias).
 #' @examples
-#' \dontrun{
-#'   sim <- simulate_site_trait(
-#'     n_sites = 20, n_species = 4, mean_species_per_site = 4,
-#'     spatial_range = 0.4, sigma2_spa = rep(0.3, 4), seed = 1
-#'   )
-#'   mesh <- make_mesh(sim$data, c("lon", "lat"), cutoff = 0.1)
-#'   fit <- gllvmTMB(
-#'     value ~ 0 + trait +
-#'             spatial_indep(0 + trait | site, mesh = mesh),
-#'     data  = sim$data,
-#'     trait = "trait",
-#'     unit  = "site"
-#'   )
+#' sim <- simulate_site_trait(
+#'   n_sites = 30, n_species = 6, n_traits = 3, mean_species_per_site = 5,
+#'   spatial_range = 0.4, sigma2_spa = rep(0.5, 3), seed = 1
+#' )
+#' mesh <- make_mesh(sim$data, c("lon", "lat"), cutoff = 0.1)
+#' # env_1 and env_2 are the simulated site covariates.
+#' \donttest{
+#' fit <- gllvmTMB(
+#'   value ~ 0 + trait + (0 + trait):(env_1 + env_2) +
+#'           spatial_indep(0 + trait | coords, mesh = mesh),
+#'   data  = sim$data,
+#'   trait = "trait",
+#'   unit  = "site"
+#' )
 #' }
 #' @export
 spatial_unique <- function(formula, coords = NULL, mesh = NULL) {
@@ -1265,19 +1382,20 @@ spatial_unique <- function(formula, coords = NULL, mesh = NULL) {
 #' @return A formula marker; never evaluated.
 #' @seealso [spatial_indep()], [spatial_latent()], [spde()] (deprecated alias).
 #' @examples
-#' \dontrun{
-#'   sim <- simulate_site_trait(
-#'     n_sites = 20, n_species = 4, mean_species_per_site = 4,
-#'     spatial_range = 0.4, sigma2_spa = rep(0.3, 4), seed = 1
-#'   )
-#'   mesh <- make_mesh(sim$data, c("lon", "lat"), cutoff = 0.1)
-#'   fit <- gllvmTMB(
-#'     value ~ 0 + trait +
-#'             spatial_indep(0 + trait | site, mesh = mesh, common = TRUE),
-#'     data  = sim$data,
-#'     trait = "trait",
-#'     unit  = "site"
-#'   )
+#' sim <- simulate_site_trait(
+#'   n_sites = 30, n_species = 6, n_traits = 3, mean_species_per_site = 5,
+#'   spatial_range = 0.4, sigma2_spa = rep(0.5, 3), seed = 1
+#' )
+#' mesh <- make_mesh(sim$data, c("lon", "lat"), cutoff = 0.1)
+#' # env_1 and env_2 are the simulated site covariates.
+#' \donttest{
+#' fit <- gllvmTMB(
+#'   value ~ 0 + trait + (0 + trait):(env_1 + env_2) +
+#'           spatial_indep(0 + trait | coords, mesh = mesh, common = TRUE),
+#'   data  = sim$data,
+#'   trait = "trait",
+#'   unit  = "site"
+#' )
 #' }
 #' @export
 spatial_scalar <- function(formula, coords = NULL, mesh = NULL) {
@@ -1341,19 +1459,20 @@ spatial_scalar <- function(formula, coords = NULL, mesh = NULL) {
 #' @return A formula marker; never evaluated.
 #' @seealso [spatial_indep()], [spatial_dep()], [phylo_latent()].
 #' @examples
-#' \dontrun{
-#'   sim <- simulate_site_trait(
-#'     n_sites = 30, n_species = 6, mean_species_per_site = 5,
-#'     spatial_range = 0.4, sigma2_spa = rep(0.3, 6), seed = 1
-#'   )
-#'   mesh <- make_mesh(sim$data, c("lon", "lat"), cutoff = 0.1)
-#'   fit <- gllvmTMB(
-#'     value ~ 0 + trait +
-#'             spatial_latent(0 + trait | site, d = 2, mesh = mesh),
-#'     data  = sim$data,
-#'     trait = "trait",
-#'     unit  = "site"
-#'   )
+#' sim <- simulate_site_trait(
+#'   n_sites = 30, n_species = 6, n_traits = 3, mean_species_per_site = 5,
+#'   spatial_range = 0.4, sigma2_spa = rep(0.5, 3), seed = 1
+#' )
+#' mesh <- make_mesh(sim$data, c("lon", "lat"), cutoff = 0.1)
+#' # env_1 and env_2 are the simulated site covariates.
+#' \donttest{
+#' fit <- gllvmTMB(
+#'   value ~ 0 + trait + (0 + trait):(env_1 + env_2) +
+#'           spatial_latent(0 + trait | coords, d = 2, mesh = mesh),
+#'   data  = sim$data,
+#'   trait = "trait",
+#'   unit  = "site"
+#' )
 #' }
 #' @export
 #' @param rho Source-strength attenuation between 0 and 1, or `NULL` to estimate it
@@ -1362,7 +1481,12 @@ spatial_scalar <- function(formula, coords = NULL, mesh = NULL) {
 #'   remains a separate estimated parameter. Attenuation preserves the projected
 #'   marginal variance at each modeled location and applies to the whole trait
 #'   covariance, including Psi. The grouping column must identify locations
-#'   consistently across replicates. Estimated latent models require rank one
+#'   consistently across replicates. With `rho = NULL` or any value other
+#'   than 1, the name after `|` is that grouping column and must be a real
+#'   column of `data`, for example `0 + trait | location`. The placeholder
+#'   `| coords` fails when `data` has no location-ID column named `coords`.
+#'   At the default `rho = 1` the name is ignored, and `| coords` is the usual
+#'   spelling. Estimated latent models require rank one
 #'   and at least four traits. The frozen spatial study found no passing recovery
 #'   cell (14 partial and 2 blocked); rho intervals remain unvalidated.
 #'   new-location prediction is not supported for attenuated models.
@@ -1446,29 +1570,37 @@ spatial_latent <- function(formula, d = 1, unique = FALSE,
 #'   parallel), [spde()] (deeper deprecated alias).
 #' @export
 #' @examples
-#' \dontrun{
-#' library(fmesher)
+#' sim <- simulate_site_trait(
+#'   n_sites = 30, n_species = 6, n_traits = 3, mean_species_per_site = 5,
+#'   spatial_range = 0.4, sigma2_spa = rep(0.5, 3), seed = 1
+#' )
+#' df <- sim$data
+#' mesh <- make_mesh(df, c("lon", "lat"), cutoff = 0.1)
+#' # env_1 and env_2 are the simulated site covariates.
+#' \donttest{
 #' # Single shared spatial-field variance (= spatial_indep(..., common = TRUE))
-#' fit_s <- gllvmTMB(value ~ 0 + trait + spatial(1 | site, mesh = mesh),
+#' fit_s <- gllvmTMB(value ~ 0 + trait + (0 + trait):(env_1 + env_2) +
+#'                     spatial(1 | site, mesh = mesh),
 #'                   data  = df,
 #'                   trait = "trait",
 #'                   unit  = "site")
 #' # Per-trait independent fields on a shared mesh
-#' fit_u <- gllvmTMB(value ~ 0 + trait +
+#' fit_u <- gllvmTMB(value ~ 0 + trait + (0 + trait):(env_1 + env_2) +
 #'                     spatial(0 + trait | coords, mode = "indep",
 #'                             mesh = mesh),
 #'                   data  = df,
 #'                   trait = "trait",
 #'                   unit  = "site")
 #' # Reduced-rank shared spatial latent factors (= spatial_latent)
-#' fit_l <- gllvmTMB(value ~ 0 + trait +
+#' fit_l <- gllvmTMB(value ~ 0 + trait + (0 + trait):(env_1 + env_2) +
 #'                     spatial(0 + trait | coords, mode = "latent",
 #'                             d = 2, mesh = mesh),
 #'                   data  = df,
 #'                   trait = "trait",
 #'                   unit  = "site")
 #' # Backward-compat: legacy bare-formula form
-#' fit_legacy <- gllvmTMB(value ~ 0 + trait + spatial(0 + trait | coords),
+#' fit_legacy <- gllvmTMB(value ~ 0 + trait + (0 + trait):(env_1 + env_2) +
+#'                          spatial(0 + trait | coords),
 #'                        data  = df,
 #'                        trait = "trait",
 #'                        unit  = "site",
@@ -1504,7 +1636,6 @@ spatial <- function(
 #'   [meta()] (older deprecated short alias); [block_V()];
 #'   [gllvmTMB()].
 #' @examples
-#' \dontrun{
 #' # Deprecated alias of meta_V(); both desugar identically.
 #' # New code should use meta_V(V = V).
 #' set.seed(131)
@@ -1515,6 +1646,7 @@ spatial <- function(
 #' df$value <- rnorm(nrow(df), sd = 0.5)
 #' df$sampling_var <- runif(nrow(df), min = 0.02, max = 0.08)
 #' V <- diag(df$sampling_var)
+#' \donttest{
 #' fit <- gllvmTMB(
 #'   value ~ 0 + trait + latent(0 + trait | site, d = 1) +
 #'     meta_known_V(V = V),
@@ -1567,7 +1699,6 @@ meta_known_V <- function(V, type = "exact") {
 #' @seealso [meta_known_V()] (deprecated alias); [block_V()];
 #'   [gllvmTMB()].
 #' @examples
-#' \dontrun{
 #' # Two-stage meta-regression with a known per-row sampling-variance V.
 #' set.seed(131)
 #' df <- expand.grid(
@@ -1577,6 +1708,7 @@ meta_known_V <- function(V, type = "exact") {
 #' df$value <- rnorm(nrow(df), sd = 0.5)
 #' df$sampling_var <- runif(nrow(df), min = 0.02, max = 0.08)
 #' V <- diag(df$sampling_var)
+#' \donttest{
 #' fit <- gllvmTMB(
 #'   value ~ 0 + trait + latent(0 + trait | site, d = 1) +
 #'     meta_V(V = V, type = "exact"),
@@ -1638,27 +1770,40 @@ meta_V <- function(V, type = "exact") {
 #'   [extract_Sigma()].
 #' @export
 #' @examples
-#' \dontrun{
+#' # Three traits on 50 units with trait-specific between-unit variances
+#' # and no between-unit trait correlation.
+#' sim <- simulate_unit_trait(
+#'   n_units = 50, n_obs_per_unit = 3, n_traits = 3,
+#'   psi_B = c(0.8, 0.5, 0.3), seed = 1
+#' )
+#' df <- sim$data
+#'
+#' \donttest{
 #' # Marginal-only fit (per-trait variance, identity correlation):
-#' fit <- gllvmTMB(value ~ 0 + trait + indep(0 + trait | site),
-#'                 data = df, trait = "trait", unit = "site")
+#' fit <- gllvmTMB(value ~ 0 + trait + indep(0 + trait | unit),
+#'                 data = df, trait = "trait", unit = "unit")
+#' extract_Sigma(fit)$Sigma
 #'
 #' # Scalar marginal-only fit (one shared variance across traits):
-#' fit <- gllvmTMB(value ~ 0 + trait + indep(0 + trait | site, common = TRUE),
-#'                 data = df, trait = "trait", unit = "site")
+#' fit_common <- gllvmTMB(
+#'   value ~ 0 + trait + indep(0 + trait | unit, common = TRUE),
+#'   data = df, trait = "trait", unit = "unit"
+#' )
+#' }
 #'
 #' # ERROR: indep + latent on the same grouping is over-parameterised.
 #' # gllvmTMB(value ~ 0 + trait +
-#' #           indep(0 + trait | site) +
-#' #           latent(0 + trait | site, d = 2), data = df)
-#' }
+#' #           indep(0 + trait | unit) +
+#' #           latent(0 + trait | unit, d = 2),
+#' #           data = df, trait = "trait", unit = "unit")
 indep <- function(formula, common = FALSE) {
   invisible(NULL)
 }
 
 #' One shared trait variance: `scalar(0 + trait | g)`
 #'
-#' Canonical no-prefix name for the **one-shared-variance** trait covariance:
+#' Soft-deprecated; use `indep(0 + trait | g, common = TRUE)`. No-prefix
+#' name for the **one-shared-variance** trait covariance:
 #' a single variance \eqn{\sigma^2} shared by every trait with zero cross-trait
 #' covariance, giving \eqn{\boldsymbol\Sigma_T = \sigma^2 \mathbf I_T}. It is the
 #' most parsimonious mode in the covariance grid.
@@ -1681,14 +1826,22 @@ indep <- function(formula, common = FALSE) {
 #' @seealso [indep()], [dep()], [latent()], [phylo_scalar()], [extract_Sigma()].
 #' @export
 #' @examples
-#' \dontrun{
-#' # One shared trait variance across all traits (identity cross-trait):
-#' fit <- gllvmTMB(value ~ 0 + trait + scalar(0 + trait | site),
-#'                 data = df, trait = "trait", unit = "site")
+#' sim <- simulate_unit_trait(
+#'   n_units = 40, n_obs_per_unit = 3, n_traits = 3,
+#'   psi_B = rep(0.4, 3), seed = 1
+#' )
+#' df <- sim$data
+#'
+#' \donttest{
+#' # One shared trait variance across all traits (identity cross-trait).
+#' # scalar() is compatibility syntax and warns once per session.
+#' fit <- gllvmTMB(value ~ 0 + trait + scalar(0 + trait | unit),
+#'                 data = df, trait = "trait", unit = "unit")
 #'
 #' # Equivalent longhand:
-#' fit <- gllvmTMB(value ~ 0 + trait + indep(0 + trait | site, common = TRUE),
-#'                 data = df, trait = "trait", unit = "site")
+#' fit2 <- gllvmTMB(value ~ 0 + trait + indep(0 + trait | unit, common = TRUE),
+#'                  data = df, trait = "trait", unit = "unit")
+#' c(scalar = logLik(fit), indep_common = logLik(fit2))
 #' }
 scalar <- function(formula) {
   invisible(NULL)
@@ -1780,15 +1933,26 @@ scalar <- function(formula) {
 #'   form stacked across traits matches their PGLMM Eq. 3.
 #' @export
 #' @examples
-#' \dontrun{
-#' library(ape)
-#' tree <- rcoal(20); tree$tip.label <- paste0("sp", 1:20)
-#' fit <- gllvmTMB(value ~ 0 + trait +
-#'                   phylo_indep(0 + trait | species, tree = tree),
-#'                 data    = df,
-#'                 trait   = "trait",
-#'                 unit    = "species",
-#'                 cluster = "species")
+#' if (requireNamespace("ape", quietly = TRUE)) {
+#'   set.seed(1)
+#'   tree <- ape::rcoal(60); tree$tip.label <- paste0("sp", seq_len(60))
+#'   sim <- simulate_site_trait(
+#'     n_sites = 1, n_species = 60, n_traits = 3,
+#'     mean_species_per_site = 60,
+#'     Cphy = ape::vcv(tree, corr = TRUE),
+#'     sigma2_phy = rep(1, 3), sigma2_eps = 0.2, seed = 1
+#'   )
+#'   df <- sim$data
+#'   df$species <- factor(tree$tip.label[as.integer(df$species)],
+#'                        levels = tree$tip.label)
+#'   \donttest{
+#'   fit <- gllvmTMB(value ~ 0 + trait +
+#'                     phylo_indep(0 + trait | species, tree = tree),
+#'                   data    = df,
+#'                   trait   = "trait",
+#'                   unit    = "species",
+#'                   cluster = "species")
+#'   }
 #' }
 #' @param rho Source strength: a number in `[0,1]` fixes
 #'   `rho * K + (1-rho) * diag(diag(K))` on the legacy-resolved source scale.
@@ -1858,19 +2022,20 @@ phylo_indep <- function(
 #' @seealso [spatial_latent()], [indep()],
 #'   [phylo_indep()], [extract_Sigma()].
 #' @examples
-#' \dontrun{
-#'   sim <- simulate_site_trait(
-#'     n_sites = 20, n_species = 4, mean_species_per_site = 4,
-#'     spatial_range = 0.4, sigma2_spa = rep(0.3, 4), seed = 1
-#'   )
-#'   mesh <- make_mesh(sim$data, c("lon", "lat"), cutoff = 0.1)
-#'   fit <- gllvmTMB(
-#'     value ~ 0 + trait +
-#'             spatial_indep(0 + trait | site, mesh = mesh),
-#'     data  = sim$data,
-#'     trait = "trait",
-#'     unit  = "site"
-#'   )
+#' sim <- simulate_site_trait(
+#'   n_sites = 30, n_species = 6, n_traits = 3, mean_species_per_site = 5,
+#'   spatial_range = 0.4, sigma2_spa = rep(0.5, 3), seed = 1
+#' )
+#' mesh <- make_mesh(sim$data, c("lon", "lat"), cutoff = 0.1)
+#' # env_1 and env_2 are the simulated site covariates.
+#' \donttest{
+#' fit <- gllvmTMB(
+#'   value ~ 0 + trait + (0 + trait):(env_1 + env_2) +
+#'           spatial_indep(0 + trait | coords, mesh = mesh),
+#'   data  = sim$data,
+#'   trait = "trait",
+#'   unit  = "site"
+#' )
 #' }
 #' @export
 #' @param rho Source-strength attenuation between 0 and 1, or `NULL` to estimate it
@@ -1879,7 +2044,12 @@ phylo_indep <- function(
 #'   remains a separate estimated parameter. Attenuation preserves the projected
 #'   marginal variance at each modeled location and applies to the whole trait
 #'   covariance, including Psi. The grouping column must identify locations
-#'   consistently across replicates. Estimated latent models require rank one
+#'   consistently across replicates. With `rho = NULL` or any value other
+#'   than 1, the name after `|` is that grouping column and must be a real
+#'   column of `data`, for example `0 + trait | location`. The placeholder
+#'   `| coords` fails when `data` has no location-ID column named `coords`.
+#'   At the default `rho = 1` the name is ignored, and `| coords` is the usual
+#'   spelling. Estimated latent models require rank one
 #'   and at least four traits. The frozen spatial study found no passing recovery
 #'   cell (14 partial and 2 blocked); rho intervals remain unvalidated.
 #'   new-location prediction is not supported for attenuated models.
@@ -1898,7 +2068,7 @@ spatial_indep <- function(formula, coords = NULL, mesh = NULL, common = FALSE, r
 #' covariance term. Fits a full \eqn{T \times T} \eqn{\boldsymbol\Sigma}
 #' with \eqn{T(T+1)/2} free parameters via a Cholesky parameterisation
 #' \eqn{\boldsymbol\Sigma = \mathbf{L}\mathbf{L}^\top}. Mathematically
-#' identical to `latent(0 + trait | g, d = T)` standalone (where \eqn{T}
+#' identical to `latent(0 + trait | g, d = n_traits, unique = FALSE)` standalone (where \eqn{T}
 #' is the number of traits) -- the engine's existing packed-triangular
 #' \eqn{\boldsymbol\Lambda} at full rank IS the Cholesky factor of an
 #' unstructured \eqn{\boldsymbol\Sigma}. The keyword choice is
@@ -1942,20 +2112,35 @@ spatial_indep <- function(formula, coords = NULL, mesh = NULL, common = FALSE, r
 #'   [spatial_dep()], [extract_Sigma()].
 #' @export
 #' @examples
-#' \dontrun{
-#' # Full unstructured trait covariance fit:
-#' fit <- gllvmTMB(value ~ 0 + trait + dep(0 + trait | site),
-#'                 data = df, trait = "trait", unit = "site")
+#' # Three traits on 40 units (3 replicate observations per unit); the
+#' # between-unit trait covariance is rank one plus a diagonal.
+#' sim <- simulate_unit_trait(
+#'   n_units = 40, n_obs_per_unit = 3, n_traits = 3,
+#'   Lambda_B = matrix(c(0.9, 0.5, -0.4), ncol = 1),
+#'   psi_B = c(0.2, 0.2, 0.2), seed = 1
+#' )
+#' df <- sim$data
+#' n_traits <- nlevels(df$trait)
 #'
-#' # The mathematically-equivalent decomposition form (full rank):
-#' fit <- gllvmTMB(value ~ 0 + trait + latent(0 + trait | site, d = T),
-#'                 data = df, trait = "trait", unit = "site")
+#' \donttest{
+#' # Full unstructured trait covariance fit:
+#' fit <- gllvmTMB(value ~ 0 + trait + dep(0 + trait | unit),
+#'                 data = df, trait = "trait", unit = "unit")
+#'
+#' # The mathematically equivalent decomposition: a full-rank,
+#' # loadings-only latent term reaches the same log-likelihood.
+#' fit_lat <- gllvmTMB(
+#'   value ~ 0 + trait + latent(0 + trait | unit, d = n_traits, unique = FALSE),
+#'   data = df, trait = "trait", unit = "unit"
+#' )
+#' c(dep = logLik(fit), latent = logLik(fit_lat))
+#' }
 #'
 #' # ERROR: dep + latent on the same grouping is over-parameterised.
 #' # gllvmTMB(value ~ 0 + trait +
-#' #           dep(0 + trait | site) +
-#' #           latent(0 + trait | site, d = 2), data = df)
-#' }
+#' #           dep(0 + trait | unit) +
+#' #           latent(0 + trait | unit, d = 2),
+#' #           data = df, trait = "trait", unit = "unit")
 dep <- function(formula) {
   invisible(NULL)
 }
@@ -1966,7 +2151,7 @@ dep <- function(formula) {
 #' covariance** \eqn{\boldsymbol\Sigma_{\text{phy}} \otimes \mathbf{A}},
 #' with \eqn{T(T+1)/2} free parameters (\eqn{\boldsymbol\Sigma_{\text{phy}}}
 #' parameterised via Cholesky for PSD-ness). Mathematically identical to
-#' `phylo_latent(species, d = T)` standalone; the keyword choice is
+#' `phylo_latent(species, d = n_traits, unique = FALSE)` standalone; the keyword choice is
 #' documentary.
 #'
 #' \deqn{\mathrm{vec}(\mathbf P) \sim \mathcal{N}(\mathbf 0,\,
@@ -2014,23 +2199,28 @@ dep <- function(formula) {
 #' @seealso [phylo_latent()], [phylo_indep()],
 #'   [dep()], [spatial_dep()], [extract_Sigma()].
 #' @examples
-#' \dontrun{
-#'   tree <- ape::rcoal(8); tree$tip.label <- paste0("sp", seq_len(8))
+#' if (requireNamespace("ape", quietly = TRUE)) {
+#'   set.seed(1)
+#'   tree <- ape::rcoal(60); tree$tip.label <- paste0("sp", seq_len(60))
 #'   sim <- simulate_site_trait(
-#'     n_sites = 1, n_species = 8, n_traits = 3,
-#'     mean_species_per_site = 8,
+#'     n_sites = 1, n_species = 60, n_traits = 3,
+#'     mean_species_per_site = 60,
 #'     Cphy = ape::vcv(tree, corr = TRUE),
-#'     sigma2_phy = rep(0.3, 3), seed = 1
+#'     sigma2_phy = rep(1, 3), sigma2_eps = 0.2, seed = 1
 #'   )
-#'   sim$data$species <- factor(sim$data$species, levels = tree$tip.label)
+#'   sim$data$species <- factor(
+#'     tree$tip.label[as.integer(sim$data$species)],
+#'     levels = tree$tip.label
+#'   )
+#'   \donttest{
 #'   fit <- gllvmTMB(
-#'     value ~ 0 + trait + phylo_dep(0 + trait | species),
-#'     data       = sim$data,
-#'     trait      = "trait",
-#'     unit       = "species",
-#'     cluster    = "species",
-#'     phylo_tree = tree
+#'     value ~ 0 + trait + phylo_dep(0 + trait | species, tree = tree),
+#'     data    = sim$data,
+#'     trait   = "trait",
+#'     unit    = "species",
+#'     cluster = "species"
 #'   )
+#'   }
 #' }
 #' @export
 #' @param rho Source strength: a number in `[0,1]` fixes
@@ -2052,7 +2242,7 @@ phylo_dep <- function(formula, tree = NULL, vcv = NULL, A = NULL, Ainv = NULL, r
 #' covariance** \eqn{\boldsymbol\Sigma_{\text{spa}} \otimes \mathbf{Q}^{-1}},
 #' with \eqn{T(T+1)/2} free parameters
 #' (\eqn{\boldsymbol\Sigma_{\text{spa}}} parameterised via Cholesky).
-#' Mathematically identical to `spatial_latent(0 + trait | coords, d = T)`
+#' Mathematically identical to `spatial_latent(0 + trait | coords, d = n_traits, unique = FALSE)`
 #' standalone; the keyword choice is documentary.
 #'
 #' Use `spatial_dep()` when you want an explicit full-unstructured
@@ -2087,19 +2277,20 @@ phylo_dep <- function(formula, tree = NULL, vcv = NULL, A = NULL, Ainv = NULL, r
 #' @seealso [spatial_latent()], [spatial_indep()],
 #'   [dep()], [phylo_dep()], [extract_Sigma()].
 #' @examples
-#' \dontrun{
-#'   sim <- simulate_site_trait(
-#'     n_sites = 30, n_species = 6, mean_species_per_site = 5,
-#'     spatial_range = 0.4, sigma2_spa = rep(0.3, 6), seed = 1
-#'   )
-#'   mesh <- make_mesh(sim$data, c("lon", "lat"), cutoff = 0.1)
-#'   fit <- gllvmTMB(
-#'     value ~ 0 + trait +
-#'             spatial_dep(0 + trait | site, mesh = mesh),
-#'     data  = sim$data,
-#'     trait = "trait",
-#'     unit  = "site"
-#'   )
+#' sim <- simulate_site_trait(
+#'   n_sites = 30, n_species = 6, n_traits = 3, mean_species_per_site = 5,
+#'   spatial_range = 0.4, sigma2_spa = rep(0.5, 3), seed = 1
+#' )
+#' mesh <- make_mesh(sim$data, c("lon", "lat"), cutoff = 0.1)
+#' # env_1 and env_2 are the simulated site covariates.
+#' \donttest{
+#' fit <- gllvmTMB(
+#'   value ~ 0 + trait + (0 + trait):(env_1 + env_2) +
+#'           spatial_dep(0 + trait | coords, mesh = mesh),
+#'   data  = sim$data,
+#'   trait = "trait",
+#'   unit  = "site"
+#' )
 #' }
 #' @export
 #' @param rho Source-strength attenuation between 0 and 1, or `NULL` to estimate it
@@ -2108,7 +2299,12 @@ phylo_dep <- function(formula, tree = NULL, vcv = NULL, A = NULL, Ainv = NULL, r
 #'   remains a separate estimated parameter. Attenuation preserves the projected
 #'   marginal variance at each modeled location and applies to the whole trait
 #'   covariance, including Psi. The grouping column must identify locations
-#'   consistently across replicates. Estimated latent models require rank one
+#'   consistently across replicates. With `rho = NULL` or any value other
+#'   than 1, the name after `|` is that grouping column and must be a real
+#'   column of `data`, for example `0 + trait | location`. The placeholder
+#'   `| coords` fails when `data` has no location-ID column named `coords`.
+#'   At the default `rho = 1` the name is ignored, and `| coords` is the usual
+#'   spelling. Estimated latent models require rank one
 #'   and at least four traits. The frozen spatial study found no passing recovery
 #'   cell (14 partial and 2 blocked); rho intervals remain unvalidated.
 #'   new-location prediction is not supported for attenuated models.
@@ -2174,8 +2370,8 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL, rho = 1) {
     (is.symbol(e) && identical(as.character(e), "1"))
 }
 
-.is_zero_plus_trait <- function(e) {
-  ## TRUE if `e` is the call `0 + trait`, i.e. `+(0, trait)`.
+.is_zero_plus_trait <- function(e, trait_col = "trait") {
+  ## TRUE for the selected trait column or its legacy literal `trait` alias.
   e <- .strip_lhs_parens(e)
   is.call(e) &&
     identical(e[[1L]], as.name("+")) &&
@@ -2184,7 +2380,7 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL, rho = 1) {
     length(e[[2L]]) == 1L &&
     e[[2L]] == 0 &&
     is.name(e[[3L]]) &&
-    identical(as.character(e[[3L]]), "trait")
+    as.character(e[[3L]]) %in% c(trait_col, "trait")
 }
 
 ## Flatten a left-nested `a + b + c` LHS expression into the ordered list of
@@ -2193,13 +2389,13 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL, rho = 1) {
 ## the left `+` spine recovers `list(1, x1, x2)` in source order. A bare
 ## (non-`+`) expression returns a length-1 list. Used to generalise the
 ## augmented intercept+slope LHS from one covariate (s = 1) to s >= 1.
-.flatten_lhs_plus <- function(e) {
+.flatten_lhs_plus <- function(e, trait_col = "trait") {
   e <- .strip_lhs_parens(e)
   ## `0 + trait` is itself a `+` call but is an ATOMIC per-trait-intercept
   ## term (the leading term of the long form), never a `0`/`trait` pair to
   ## split. Treat it as a leaf so `0 + trait + (0+trait):x1 + ...` flattens to
   ## list(`0 + trait`, (0+trait):x1, ...) rather than splitting the head.
-  if (.is_zero_plus_trait(e)) {
+  if (.is_zero_plus_trait(e, trait_col = trait_col)) {
     return(list(e))
   }
   if (
@@ -2207,7 +2403,8 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL, rho = 1) {
       identical(e[[1L]], as.name("+")) &&
       length(e) == 3L
   ) {
-    return(c(.flatten_lhs_plus(e[[2L]]), list(.strip_lhs_parens(e[[3L]]))))
+    return(c(.flatten_lhs_plus(e[[2L]], trait_col = trait_col),
+      list(.strip_lhs_parens(e[[3L]]))))
   }
   list(e)
 }
@@ -2232,14 +2429,14 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL, rho = 1) {
   invisible(cols)
 }
 
-.match_wide_intercept_slopes <- function(lhs) {
-  terms <- .flatten_lhs_plus(lhs)
+.match_wide_intercept_slopes <- function(lhs, trait_col = "trait") {
+  terms <- .flatten_lhs_plus(lhs, trait_col = trait_col)
   if (length(terms) < 2L || !.is_one_lhs(terms[[1L]])) {
     return(NULL)
   }
   cols <- character(0L)
   for (term in terms[-1L]) {
-    if (!is.name(term) || identical(as.character(term), "trait")) {
+    if (!is.name(term) || as.character(term) %in% c(trait_col, "trait")) {
       return(NULL)
     }
     cols <- c(cols, as.character(term))
@@ -2252,9 +2449,9 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL, rho = 1) {
 ## `0 + trait + (0 + trait):x1 + (0 + trait):x2 + ...` (s >= 1 interactions
 ## after the leading `0 + trait`). Returns the ordered character vector of
 ## slope columns, or NULL when the shape does not match.
-.match_long_intercept_slopes <- function(lhs) {
-  terms <- .flatten_lhs_plus(lhs)
-  if (length(terms) < 2L || !.is_zero_plus_trait(terms[[1L]])) {
+.match_long_intercept_slopes <- function(lhs, trait_col = "trait") {
+  terms <- .flatten_lhs_plus(lhs, trait_col = trait_col)
+  if (length(terms) < 2L || !.is_zero_plus_trait(terms[[1L]], trait_col = trait_col)) {
     return(NULL)
   }
   cols <- character(0L)
@@ -2264,12 +2461,12 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL, rho = 1) {
       !(is.call(slope) &&
         identical(slope[[1L]], as.name(":")) &&
         length(slope) == 3L &&
-        .is_zero_plus_trait(slope[[2L]]))
+        .is_zero_plus_trait(slope[[2L]], trait_col = trait_col))
     ) {
       return(NULL)
     }
     sc <- .strip_lhs_parens(slope[[3L]])
-    if (!is.name(sc) || identical(as.character(sc), "trait")) {
+    if (!is.name(sc) || as.character(sc) %in% c(trait_col, "trait")) {
       return(NULL)
     }
     cols <- c(cols, as.character(sc))
@@ -2286,8 +2483,8 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL, rho = 1) {
 ## intercept-only forms; everything else -- including the MULTI-slope
 ## `1 + x1 + x2 | g` -- stays `"unsupported"` exactly as before. Multi-slope is
 ## activated for the phylo_dep path ONLY, via `.gllvmTMB_lhs_form_multi()`.
-.gllvmTMB_lhs_form <- function(lhs) {
-  info <- .gllvmTMB_lhs_form_multi(lhs)
+.gllvmTMB_lhs_form <- function(lhs, trait_col = "trait") {
+  info <- .gllvmTMB_lhs_form_multi(lhs, trait_col = trait_col)
   if (
     info$lhs_form %in%
       c("wide_intercept_slope", "long_intercept_slope") &&
@@ -2304,16 +2501,16 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL, rho = 1) {
 ## (wide) and `0 + trait + (0 + trait):x1 + (0 + trait):x2 + ... | g` (long)
 ## with s >= 2 distinct slope covariates, returning the full ordered
 ## `slope_cols` vector (`slope_col` keeps the first for back-compat consumers).
-.gllvmTMB_lhs_form_multi <- function(lhs) {
+.gllvmTMB_lhs_form_multi <- function(lhs, trait_col = "trait") {
   lhs <- .strip_lhs_parens(lhs)
-  if (.is_one_lhs(lhs) || .is_zero_plus_trait(lhs)) {
+  if (.is_one_lhs(lhs) || .is_zero_plus_trait(lhs, trait_col = trait_col)) {
     return(list(
       lhs_form = "intercept_only",
       slope_col = NULL,
       slope_cols = NULL
     ))
   }
-  wide_cols <- .match_wide_intercept_slopes(lhs)
+  wide_cols <- .match_wide_intercept_slopes(lhs, trait_col = trait_col)
   if (!is.null(wide_cols)) {
     return(list(
       lhs_form = "wide_intercept_slope",
@@ -2321,7 +2518,7 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL, rho = 1) {
       slope_cols = wide_cols
     ))
   }
-  long_cols <- .match_long_intercept_slopes(lhs)
+  long_cols <- .match_long_intercept_slopes(lhs, trait_col = trait_col)
   if (!is.null(long_cols)) {
     return(list(
       lhs_form = "long_intercept_slope",
@@ -2454,7 +2651,7 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL, rho = 1) {
   ## route for non-spatial, non-trait groupings. More than one slope
   ## covariate (`1 + x1 + x2 | g`) has no supported single-term route at
   ## all, spatial or not.
-  is_single_slope <- .gllvmTMB_lhs_form(lhs)$lhs_form %in%
+  is_single_slope <- .gllvmTMB_lhs_form(lhs, trait_col = trait_col)$lhs_form %in%
     c("wide_intercept_slope", "long_intercept_slope")
   next_step <- if (rhs_is_trait) {
     "Use the response-column slope grammar instead: {.fn slope}, {.fn phylo_slope}, or {.fn animal_slope}, e.g. {.code phylo_slope(x | trait, tree = tree)}."
@@ -2473,12 +2670,11 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL, rho = 1) {
   ))
 }
 
-## #1163: the RHS of the `|` in a spatial_*() keyword is a fixed
-## placeholder (canonically spelled `coords`) -- the spatial field is always
-## driven by `mesh =` (or `coords =`, naming real columns) passed as an
-## argument, never by this token. `spatial_scalar(0 + trait | banana)`
-## therefore fits identically to `| coords`; warn once so silence is not
-## mistaken for the token doing anything.
+## #1163: at the default rho = 1, the RHS of `|` in a spatial_*()
+## keyword is a placeholder (canonically spelled `coords`). The field reads
+## locations from `mesh =` or `coords =`; the token does not select a column.
+## A non-unit or estimated rho instead consumes an observed location-ID
+## column, so only the default-rho case receives the notice below.
 .warn_spatial_grouping_token <- function(fn, e) {
   if (
     !is.call(e) || length(e) < 2L || !is.call(e[[2L]]) ||
@@ -2490,6 +2686,25 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL, rho = 1) {
   if (is.symbol(rhs) && identical(as.character(rhs), "coords")) {
     return(invisible(NULL))
   }
+  ## Estimated or fixed non-unit `rho` reads this token as the location
+  ## identifier, so it is not ignored. Two ways to know: gllvmTMB() has already
+  ## stripped `rho` from the call and recorded the consumed token
+  ## (`.gllvmTMB_spatial_token_consumed`); callers that rewrite the formula
+  ## directly (screen_gllvmTMB(), suggest_lambda_constraint()) still see a
+  ## literal `rho =` argument that is not 1.
+  if (
+    is.symbol(rhs) &&
+      identical(as.character(rhs), .gllvmTMB_spatial_token_consumed$token)
+  ) {
+    return(invisible(NULL))
+  }
+  call_names <- names(e)
+  if (!is.null(call_names) && "rho" %in% call_names) {
+    rho_arg <- e[[which(call_names == "rho")[1L]]]
+    if (!(is.numeric(rho_arg) && length(rho_arg) == 1L && isTRUE(rho_arg == 1))) {
+      return(invisible(NULL))
+    }
+  }
   ## The package's own env-based one-shot tracker (used throughout this
   ## file for grammar notices) rather than `cli_warn(.frequency = "once")`,
   ## whose internal throttle is not resettable from tests.
@@ -2500,7 +2715,7 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL, rho = 1) {
   if (!isTRUE(.gllvmTMB_deprecation_seen[[key]])) {
     cli::cli_warn(c(
       "{.fn {fn}}'s {.code | {deparse(rhs)}} grouping token is ignored.",
-      "i" = "Spatial keywords always read locations from {.arg mesh} (or {.arg coords}), never from the token right of {.code |}.",
+      "i" = "At the default {.code rho = 1}, spatial keywords read locations from {.arg mesh} (or {.arg coords}), rather than the token right of {.code |}.",
       ">" = "Write {.code {fn}(..., | coords)} for clarity, and pass {.code mesh = ...} (or {.code coords = ...}) to supply the actual locations."
     ))
     .gllvmTMB_deprecation_seen[[key]] <- TRUE
@@ -3364,7 +3579,7 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
             identical(arg[[1L]], as.name("|")) &&
             length(arg) == 3L
           if (arg_is_bar) {
-            lhs_info <- .gllvmTMB_lhs_form(arg[[2L]])
+            lhs_info <- .gllvmTMB_lhs_form(arg[[2L]], trait_col = trait_col)
           }
           if (
             arg_is_bar &&
@@ -3419,7 +3634,7 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
             identical(arg[[1L]], as.name("|")) &&
             length(arg) == 3L
           if (arg_is_bar) {
-            lhs_form <- .gllvmTMB_lhs_form(arg[[2L]])
+            lhs_form <- .gllvmTMB_lhs_form(arg[[2L]], trait_col = trait_col)
             if (
               lhs_form$lhs_form %in%
                 c("wide_intercept_slope", "long_intercept_slope")
@@ -3541,7 +3756,7 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
           ## but with the structural matrix A (pedigree/A/Ainv) supplied
           ## via vcv, and atanh_cor_b pinned to 0 via the TMB map
           ## (fit-multi.R reads the `.indep` marker). No new C++.
-          lhs_form <- .gllvmTMB_lhs_form(bar[[2L]])
+          lhs_form <- .gllvmTMB_lhs_form(bar[[2L]], trait_col = trait_col)
           ## `common = TRUE` (Design 79 scalar-collapse): tie the T per-trait
           ## additive-genetic variances to ONE shared variance -- byte-identical
           ## to the (soft-deprecated) `animal_scalar(id)` (`phylo(id, vcv = A)`).
@@ -3618,7 +3833,7 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
               list(vcv = vcv_expr)
             )))
           }
-          lhs_form <- .gllvmTMB_lhs_form(bar[[2L]])
+          lhs_form <- .gllvmTMB_lhs_form(bar[[2L]], trait_col = trait_col)
           ## Augmented intercept+slope LHS: route via the dep-slope engine.
           if (
             lhs_form$lhs_form %in%
@@ -3691,7 +3906,7 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
             identical(unit_arg[[1L]], as.name("|")) &&
             length(unit_arg) == 3L
         ) {
-          lhs_form <- .gllvmTMB_lhs_form(unit_arg[[2L]])
+          lhs_form <- .gllvmTMB_lhs_form(unit_arg[[2L]], trait_col = trait_col)
           is_slope <- lhs_form$lhs_form %in%
             c("wide_intercept_slope", "long_intercept_slope")
           if (is_slope && fn %in% c("kernel_indep", "kernel_dep")) {
@@ -3802,6 +4017,14 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
       }
       ## latent / unique / phylo_latent / spatial_unique: just rename the head
       if (fn %in% c("latent", "phylo_latent", "spatial_unique", "spatial")) {
+        if (identical(fn, "latent") &&
+            (length(e) < 2L || !is.call(e[[2L]]) ||
+             !identical(e[[2L]][[1L]], as.name("|")) || length(e[[2L]]) != 3L)) {
+          cli::cli_abort(c(
+            "{.fn latent} requires an argument of the form {.code lhs | group}.",
+            ">" = "Use {.code latent(0 + {trait_col} | unit, d = K)}."
+          ))
+        }
         ## Ordinary individual-level random regression:
         ## latent(1 + x | unit, d = K) and the long form
         ## latent(0 + trait + (0 + trait):x | unit, d = K) route to a marked
@@ -3817,7 +4040,7 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
             length(e[[2L]]) == 3L
         ) {
           bar <- e[[2L]]
-          lhs_form <- .gllvmTMB_lhs_form(bar[[2L]])
+          lhs_form <- .gllvmTMB_lhs_form(bar[[2L]], trait_col = trait_col)
           if (
             lhs_form$lhs_form %in%
               c("wide_intercept_slope", "long_intercept_slope")
@@ -3916,7 +4139,7 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
             length(e[[2L]]) == 3L
         ) {
           bar <- e[[2L]]
-          lhs_form <- .gllvmTMB_lhs_form(bar[[2L]])
+          lhs_form <- .gllvmTMB_lhs_form(bar[[2L]], trait_col = trait_col)
           if (
             lhs_form$lhs_form %in%
               c("wide_intercept_slope", "long_intercept_slope")
@@ -3992,7 +4215,7 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
             length(e[[2L]]) == 3L
         ) {
           bar <- e[[2L]]
-          lhs_form <- .gllvmTMB_lhs_form(bar[[2L]])
+          lhs_form <- .gllvmTMB_lhs_form(bar[[2L]], trait_col = trait_col)
           if (
             lhs_form$lhs_form %in%
               c("wide_intercept_slope", "long_intercept_slope")
@@ -4037,6 +4260,51 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
           ))
         }
         if (identical(fn, "latent")) {
+          latent_arg_names <- names(e)
+          if (!is.null(latent_arg_names) && length(e) > 2L) {
+            named <- latent_arg_names[-c(1L, 2L)]
+            named <- named[nzchar(named)]
+            allowed <- c("d", "unique", "residual", "common", "lv")
+            unknown <- setdiff(named, allowed)
+            if (length(unknown) > 0L) {
+              cli::cli_abort(c(
+                "Unknown argument {.arg {unknown[[1L]]}} in {.fn latent}.",
+                "i" = "Valid arguments are {.arg d}, {.arg unique}, {.arg common}, and {.arg lv}."
+              ))
+            }
+          }
+          d_positional <- length(e) >= 3L && {
+            pos_nm <- latent_arg_names[[3L]]
+            is.null(pos_nm) || is.na(pos_nm) || !nzchar(pos_nm)
+          }
+          if (.has_named_arg(e, "d") || d_positional) {
+            d_val <- .named_or_positional_arg(e, "d", 3L, default = NULL)
+            ## Formula `d` can still be a symbol or call (`d = q`,
+            ## `d = n_traits + 1`). Those evaluate later; only guard
+            ## values that are already numeric.
+            if (is.numeric(d_val)) {
+              if (length(d_val) != 1L) {
+                cli::cli_abort(c(
+                  "{.arg d} in {.fn latent} must be a whole number >= 1.",
+                  ">" = "Pass a single rank, e.g. {.code latent(..., d = 2)}."
+                ))
+              }
+              d_num <- suppressWarnings(as.numeric(d_val))
+              if (length(d_num) != 1L || is.na(d_num)) {
+                cli::cli_abort(c(
+                  "{.arg d} in {.fn latent} must be a whole number >= 1.",
+                  ">" = "Pass a single rank, e.g. {.code latent(..., d = 2)}."
+                ))
+              }
+              d_int <- as.integer(d_num)
+              if (d_int < 1L || !identical(d_num, as.numeric(d_int))) {
+                cli::cli_abort(c(
+                  "{.arg d} in {.fn latent} must be a whole number >= 1.",
+                  ">" = "Pass a single rank, e.g. {.code latent(..., d = 2)}."
+                ))
+              }
+            }
+          }
           ## `unique =` is the canonical argument (matches
           ## extract_Sigma(part = "unique")). `residual =` is a soft-deprecated
           ## alias for the argument shipped in 0.2.0 (#505); it routes to `unique`.
@@ -4173,7 +4441,7 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
             length(e[[2L]]) == 3L
         ) {
           bar <- e[[2L]]
-          lhs_form <- .gllvmTMB_lhs_form(bar[[2L]])
+          lhs_form <- .gllvmTMB_lhs_form(bar[[2L]], trait_col = trait_col)
           if (
             lhs_form$lhs_form %in%
               c("wide_intercept_slope", "long_intercept_slope")
@@ -4357,7 +4625,7 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
             length(e[[2L]]) == 3L
         ) {
           bar <- e[[2L]]
-          lhs_form <- .gllvmTMB_lhs_form(bar[[2L]])
+          lhs_form <- .gllvmTMB_lhs_form(bar[[2L]], trait_col = trait_col)
           species_arg <- bar[[3L]]
           if (!is.name(species_arg)) {
             cli::cli_abort(c(
@@ -4454,7 +4722,7 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
             length(e[[2L]]) == 3L
         ) {
           bar <- e[[2L]]
-          lhs_form <- .gllvmTMB_lhs_form(bar[[2L]])
+          lhs_form <- .gllvmTMB_lhs_form(bar[[2L]], trait_col = trait_col)
           if (
             lhs_form$lhs_form %in%
               c("wide_intercept_slope", "long_intercept_slope")
@@ -4621,7 +4889,7 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
         ## b_phy_aug engine as phylo_unique() but with atanh_cor_b pinned to 0
         ## via the TMB map (fit-multi.R reads the `.indep` marker on the
         ## phylo_slope covstruct). No new C++ likelihood block.
-        lhs_form <- .gllvmTMB_lhs_form(lhs_bar)
+        lhs_form <- .gllvmTMB_lhs_form(lhs_bar, trait_col = trait_col)
         if (
           lhs_form$lhs_form %in%
             c("wide_intercept_slope", "long_intercept_slope")
@@ -4690,7 +4958,7 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
               is.call(e[[2L]]) &&
               identical(e[[2L]][[1L]], as.name("|")) &&
               length(e[[2L]]) == 3L &&
-              .gllvmTMB_lhs_form(e[[2L]][[2L]])$lhs_form %in%
+              .gllvmTMB_lhs_form(e[[2L]][[2L]], trait_col = trait_col)$lhs_form %in%
                 c("wide_intercept_slope", "long_intercept_slope")
           ) {
             cli::cli_abort(c(
@@ -4718,7 +4986,7 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
             length(e[[2L]]) == 3L
         ) {
           bar <- e[[2L]]
-          lhs_form <- .gllvmTMB_lhs_form(bar[[2L]])
+          lhs_form <- .gllvmTMB_lhs_form(bar[[2L]], trait_col = trait_col)
           if (
             lhs_form$lhs_form %in%
               c("wide_intercept_slope", "long_intercept_slope")
@@ -4824,7 +5092,7 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
         ## C++ dep path is already dimension-general in `C = n_lhs_cols`). Uses
         ## the MULTI-slope classifier so s >= 2 is recognised on this path only;
         ## every other keyword keeps the single-slope `.gllvmTMB_lhs_form()`.
-        lhs_form <- .gllvmTMB_lhs_form_multi(lhs_bar)
+        lhs_form <- .gllvmTMB_lhs_form_multi(lhs_bar, trait_col = trait_col)
         if (
           lhs_form$lhs_form %in%
             c("wide_intercept_slope", "long_intercept_slope")
@@ -4885,7 +5153,7 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
             length(e[[2L]]) == 3L
         ) {
           bar <- e[[2L]]
-          lhs_form <- .gllvmTMB_lhs_form(bar[[2L]])
+          lhs_form <- .gllvmTMB_lhs_form(bar[[2L]], trait_col = trait_col)
           if (
             lhs_form$lhs_form %in%
               c("wide_intercept_slope", "long_intercept_slope")

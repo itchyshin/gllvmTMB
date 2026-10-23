@@ -539,7 +539,7 @@ print.gllvmTMB_screen <- function(x, ...) {
   }
 
   formula <- desugar_brms_sugar(formula, trait_col = trait)
-  parsed <- parse_multi_formula(formula)
+  parsed <- parse_multi_formula(formula, trait_col = trait)
   observed_response <- drop_missing_response_rows(
     fixed_formula = parsed$fixed,
     data = data,

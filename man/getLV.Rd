@@ -49,7 +49,7 @@ and \code{se[i, k]} always refer to the same (unit, axis) cell. This value is
 mathematically equivalent to inverting the fit's full joint precision
 matrix (\code{TMB::sdreport(getJointPrecision = TRUE)}) and reading the
 diagonal of the same block; the two routes were verified to agree to
-machine precision. Requirements:
+machine precision during development. Requirements:
 \itemize{
 \item The fit must carry a valid \code{sdreport()}
 (\code{gllvmTMBcontrol(se = TRUE)}, the default) with a positive-definite
@@ -65,6 +65,11 @@ not yet propagated) and raise an error.
 error.
 }
 
+For loading-ridge fits, score SDs require matching retained
+penalised-curvature metadata. They are local posterior approximations
+conditional on the ridge scale. Older or mismatched reports raise a warning
+and return \code{NA} SDs, while preserving the score point estimates.
+
 For a \code{gllvmTMB_va} (variational) fit, \code{se} is instead the per-unit
 \strong{variational posterior SD} read from the fit's own variational
 distribution at its optimum -- not a Wald standard error, and not
@@ -73,13 +78,13 @@ calibrated (the returned matrix carries a
 the object itself, not only here -- though those attributes are silently
 dropped by \code{se[i, ]}, \code{head(se)} and \code{as.data.frame(se)}).
 
-Two independent restrictions apply. \strong{By method}, an explicitly requested
+Two independent gates restrict it. \strong{By tier}, an explicitly requested
 \code{"jj"} (Jaakkola-Jordan) fit is refused pending its own measurement.
 \strong{By mechanism}, any fit whose per-unit SD turns out to be
 constant across units is refused outright: the array would carry one row
 per unit while containing no per-unit information. That degeneracy is
 provable under \code{"ac"} (Albert-Chib) and was \emph{measured} on a Gaussian fit
-(coefficient of variation 1.6e-15) which the method restriction alone did not
+(coefficient of variation 1.6e-15) which the tier gate alone did not
 catch.
 }
 

@@ -58,6 +58,66 @@
   ifelse(is.finite(denom) & denom > 0, aic + (2 * npar * (npar + 1)) / denom, NA_real_)
 }
 
+## Resolve one family constructor (mirrors the string shortcut in fit-multi.R).
+.select_lv_resolve_family <- function(f) {
+  if (is.character(f) && length(f) == 1L) {
+    f <- switch(
+      f,
+      delta_lognormal = delta_lognormal(),
+      delta_gamma = delta_gamma(),
+      f
+    )
+  }
+  if (!inherits(f, "family")) {
+    f <- f()
+  }
+  f
+}
+
+## Binomial / beta-binomial rows treat `weights` as trial counts, not as
+## lme4-style likelihood multipliers (fit-multi.R weights_i construction).
+.select_lv_family_uses_likelihood_weights <- function(f) {
+  f <- .select_lv_resolve_family(f)
+  !identical(f$family, "binomial") && !identical(f$family, "betabinomial")
+}
+
+## Same weighted-objective gate as logLik()/AIC()/anova(), evaluated on the
+## forwarded `weights =` argument before any sweep fit is attempted.
+.select_lv_likelihood_weights_would_be_active <- function(weights, dots, data) {
+  if (is.null(weights)) {
+    return(FALSE)
+  }
+  n_obs <- nrow(data)
+  if (!is.numeric(weights) || length(weights) != n_obs) {
+    return(FALSE)
+  }
+  weights_i <- as.numeric(weights)
+  if (!any(abs(weights_i - 1) > sqrt(.Machine$double.eps))) {
+    return(FALSE)
+  }
+  fam <- dots$family %||% gaussian()
+  if (is.list(fam) && !inherits(fam, "family")) {
+    fam_var <- attr(fam, "family_var") %||% "family"
+    if (!fam_var %in% names(data)) {
+      return(TRUE)
+    }
+    fam_levels <- if (is.factor(data[[fam_var]])) {
+      levels(data[[fam_var]])
+    } else {
+      sort(unique(as.character(data[[fam_var]])))
+    }
+    if (length(fam_levels) != length(fam)) {
+      return(TRUE)
+    }
+    fam <- .align_mixed_family_list(fam, fam_levels, fam_var)
+    fam_idx <- match(as.character(data[[fam_var]]), fam_levels)
+    uses_lw <- vapply(fam[fam_idx], .select_lv_family_uses_likelihood_weights, logical(1L))
+  } else {
+    uses_lw <- rep(.select_lv_family_uses_likelihood_weights(fam), n_obs)
+  }
+  any(uses_lw & abs(weights_i - 1) > sqrt(.Machine$double.eps))
+}
+
 #' Select a latent-variable rank by information criterion
 #'
 #' @description
@@ -84,8 +144,8 @@
 #'   function selects.
 #' @param data A data frame, as passed to [gllvmTMB()].
 #' @param ... Further arguments forwarded to [gllvmTMB()] for every fit in
-#'   the sweep (`trait =`, `unit =`, `family =`, `control =`, `weights =`,
-#'   etc.). Must not include `REML = TRUE` (see Details).
+#'   the sweep (`trait =`, `unit =`, `family =`, `control =`, etc.). Must not
+#'   include `REML = TRUE` or non-unit likelihood `weights =` (see Details).
 #' @param d_max Single positive integer: the largest rank to try. Fitting is
 #'   only identifiable up to the number of traits `p` (a `p`-row loading
 #'   matrix cannot have rank greater than `p`); `d_max` greater than `p` is
@@ -172,6 +232,13 @@ select_lv <- function(formula, data, ..., d_max, criterion = c("bic", "aic", "ai
       "i" = "Information-criterion comparisons across models with different latent rank {.arg d} are not meaningful under REML, whose conditioning changes with the random-effect structure being compared.",
       ">" = "Omit {.arg REML} or pass {.code REML = FALSE} (the default)."
     ), class = "gllvmTMB_select_lv_bad_args")
+  }
+  if (.select_lv_likelihood_weights_would_be_active(dots$weights, dots, data)) {
+    cli::cli_abort(c(
+      "select_lv() is undefined for a non-unit weighted objective.",
+      "i" = "Ordinary information criteria require a maximized likelihood; this fit uses a weighted estimating criterion.",
+      ">" = "Refit with unit likelihood weights before likelihood-based model comparison."
+    ), class = "gllvmTMB_weighted_objective_no_information_criterion")
   }
   if (!is.numeric(d_max) || length(d_max) != 1L || is.na(d_max) ||
       d_max != as.integer(d_max) || d_max < 1L) {

@@ -1,0 +1,1 @@
+PASS: 48,000 CSV member digests match remote manifest; 24,000 arm rows and 144,000 effect rows retained. Archive, inventory and CSV manifest top-level SHA256 digests also match.

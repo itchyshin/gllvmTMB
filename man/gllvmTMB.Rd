@@ -85,10 +85,10 @@ behavioural-syndrome data, \code{"species"} for PGLLVM, \code{"paper"} for
 systematic mapping. Required — every dataset has its own natural
 sampling-unit column, and \code{\link[=gllvmTMB]{gllvmTMB()}} aborts naming \code{unit = ...} if
 it is omitted and \code{data} has no \code{"site"} column to fall back to.
-For one release, omitting \code{unit} when \code{data} DOES have a \code{"site"}
-column still works via a deprecated implicit fallback (a one-time
-warning); pass \code{unit = "site"} explicitly to silence it. The implicit
-fallback is removed in 0.8.0.}
+Omitting \code{unit} when \code{data} has a \code{"site"} column still works via a
+deprecated implicit fallback (a one-time warning); pass
+\code{unit = "site"} explicitly to silence it. The fallback remains for
+now; a future release will require \code{unit}.}
 
 \item{unit_obs}{Optional. Name of the column holding the \strong{within-unit}
 grouping factor — one level per (unit, replicate) cell — used by
@@ -263,7 +263,8 @@ nodes natively, using only \pkg{ape} and \pkg{Matrix} -- \strong{no
 \code{MCMCglmm} dependency}. The construction is the deterministic
 Hadfield & Nakagawa (2010) sparse phylogenetic inverse (appendix
 eqs. 26-29), adopted from that method and ported from the sister
-package drmTMB (see \code{inst/COPYRIGHTS}). The result is \verb{~5n}
+package drmTMB. Provenance is recorded in the package's COPYRIGHTS
+file. The result is \verb{~5n}
 non-zeros for an \code{n}-tip tree, vs \code{n^2} for the dense path. \strong{This is
 the recommended path} at any \code{n_species}; the speedup grows to ~24× at
 \code{n_species = 1000}.}
@@ -276,8 +277,9 @@ matrices are available from a prior stage of estimation.}
 \code{unit_obs} (plus \code{phy}, \code{spde} for structural levels), each an
 \verb{n_traits × d} matrix of confirmatory loading constraints
 (galamm-style). \code{NA} entries are estimated; numerical entries are
-pinned. Upper-triangle entries are silently ignored — the engine's
-lower-triangular parameterisation already fixes those at zero.
+pinned. Upper-triangle zeros are already structural zeros and are
+accepted. A non-zero upper-triangle pin is an error — the engine's
+lower-triangular parameterisation has no packed slot for it.
 Default \code{NULL} uses the engine's exploratory lower-triangular
 convention. See \code{\link[=confirmatory_lambda]{confirmatory_lambda()}} to build the matrix from
 functional-group membership, or \code{\link[=suggest_lambda_constraint]{suggest_lambda_constraint()}} for a
@@ -319,10 +321,13 @@ predictor-model formula (for Gaussian sugar, e.g. \code{x ~ z}) or an
 \item{silent}{Logical; suppress TMB and gllvmTMB chatter. Default \code{TRUE}.}
 
 \item{engine}{Character; \code{"tmb"} (default) fits with the native TMB engine,
-\code{"julia"} routes the fit through the experimental GLLVModels.jl bridge fitting
-path via JuliaCall (see \code{R/julia-bridge.R}). The Julia path currently maps
+\code{"julia"} routes the fit through the experimental GLLVModels.jl bridge via
+JuliaCall. The Julia path currently maps
 the unconstrained-ordination core (a single \code{latent()} block + per-trait
-intercepts) and errors on structures it does not yet support.}
+intercepts) and errors on structures it does not yet support.
+For unstructured Gaussian models (\code{gaussian()} with ordinary \code{latent()} and
+no phylo/spatial structure), \code{engine = "julia"} uses the GLLVModels.jl
+closed-form profile path instead of the native Laplace engine.}
 
 \item{ci_method}{Confidence-interval route requested at fit time for
 admitted \code{engine = "julia"} no-X rows. One of \code{"none"} (default),
@@ -480,7 +485,34 @@ per-row trial count, use either:
 \item a flat response \code{y} with \code{weights = n_trials} (the alternative
 glmmTMB API).
 }
-Both interfaces produce identical fits. For Bernoulli data, omit
+The second \code{cbind()} column is the number of \strong{failures}, not trials; for
+a trials column write \code{cbind(s, trials - s)}. Both interfaces produce
+identical fits.
+
+\emph{Mixing with other families.} Binomial counts can share one model with
+Gaussian, count or other traits. In a mixed fit the second \code{cbind()} column
+is read only on binomial-type rows (\code{binomial()}, \code{betabinomial()},
+\code{zi_binomial()}); on every other row the first column is the response and
+the second must be \code{0}. Long format, with a per-trait \code{family} list:
+\preformatted{
+fams <- list(infected = binomial(), mass = gaussian(), count = poisson())
+attr(fams, "family_var") <- "trait"
+gllvmTMB(cbind(value, failures) ~ 0 + trait + latent(0 + trait | site, d = 2),
+         data = long, trait = "trait", unit = "site", family = fams)
+}
+Wide format: give each binomial trait its own pair inside \code{traits()} and
+name the \code{family} list by trait. A pair takes its trait name from its first
+argument, or from an argument name (\code{traits(infected = cbind(s, f))}):
+\preformatted{
+gllvmTMB(traits(cbind(n_inf, n_uninf), mass, count) ~ 1 + latent(1 | site, d = 2),
+         data = wide, unit = "site",
+         family = list(n_inf = binomial(), mass = gaussian(), count = poisson()))
+}
+In wide format a plain column with a binomial-type family stays a 0/1
+(Bernoulli) response, and cells with an \code{NA} count or zero trials are
+treated as missing. The single-column route (\code{value} with
+\code{weights = trials}, \code{1} on non-binomial rows) gives the same fit but does
+not cover \code{zi_binomial()}. For Bernoulli data, omit
 \code{weights} and use a 0/1 response; the engine sets \code{n_trials = 1} and
 the likelihood is identical to the previous Bernoulli-only behaviour.
 
@@ -649,39 +681,56 @@ conditional-joint and marginal quantities from different penalty regimes.
 }
 
 \examples{
-\dontrun{
 set.seed(1)
-sim <- simulate_site_trait(n_sites = 50, n_species = 8, n_traits = 3,
-                           mean_species_per_site = 5)
-# Long format: one response value per site-species-trait row.
+# Simulate 60 individuals, each measured on two occasions for five traits.
+# All five traits load on one shared latent axis (trait_4 negatively),
+# and each also has its own between-individual variance (psi_B). Every
+# measurement carries residual noise as well (sigma2_eps).
+loadings <- matrix(c(0.9, 0.8, 0.7, -0.6, 0.5), ncol = 1)
+sim <- simulate_unit_trait(n_units = 60, n_obs_per_unit = 2, n_traits = 5,
+                           Lambda_B = loadings, psi_B = 0.2,
+                           sigma2_eps = 0.3)
+long <- sim$data[c("unit", "observation", "trait", "value")]
+names(long)[1] <- "individual"
+
+# Long format: one row per (individual, occasion, trait) value.
+head(long)
+
+# `0 + trait` gives each trait its own mean. latent() fits one shared
+# axis (d = 1) across individuals; unique = TRUE adds each trait's own
+# between-individual variance (Psi) on top of it.
 fit_long <- gllvmTMB(
-  value ~ 0 + trait + (0 + trait):env_1 + (0 + trait):env_2,
-  data   = sim$data,
-  family = gaussian(),
-  trait  = "trait",
-  unit   = "site_species"
+  value ~ 0 + trait + latent(0 + trait | individual, d = 1, unique = TRUE),
+  data = long, trait = "trait", unit = "individual"
 )
 
-# Wide format: one row per site-species, with the same three traits.
-# `traits()` expands `1 + env_1 + env_2` to the explicit long terms above.
-wide_values <- stats::reshape(
-  sim$data[c("site_species", "trait", "value")],
-  idvar = "site_species", timevar = "trait", direction = "wide"
-)
-wide <- merge(
-  unique(sim$data[c("site_species", "env_1", "env_2")]), wide_values,
-  by = "site_species", sort = FALSE
-)
+# Wide format: one row per (individual, occasion), one column per trait.
+wide <- stats::reshape(long, idvar = c("individual", "observation"),
+                       timevar = "trait", direction = "wide")
 names(wide) <- sub("^value[.]", "", names(wide))
-fit_wide <- gllvmTMB(
-  traits(trait_1, trait_2, trait_3) ~ 1 + env_1 + env_2,
-  data   = wide,
-  family = gaussian(),
-  unit   = "site_species"
-)
-summary(fit_long)
-summary(fit_wide)
+head(wide)
+
+# traits() names the response columns. On the right-hand side, `1` means
+# one intercept per trait and latent(1 | individual) means
+# latent(0 + trait | individual), so this is the same model.
+if (requireNamespace("tidyr", quietly = TRUE)) {
+  fit_wide <- gllvmTMB(
+    traits(trait_1, trait_2, trait_3, trait_4, trait_5) ~ 1 +
+      latent(1 | individual, d = 1, unique = TRUE),
+    data = wide, unit = "individual"
+  )
+  # Same model, same data: the two fits agree.
+  c(long = logLik(fit_long), wide = logLik(fit_wide))
 }
+
+# Trait means, between-individual correlations (trait_4 is negatively
+# correlated with the rest), and the share of each trait's
+# between-individual variance carried by the latent axis.
+summary(fit_long)
+
+# The fitted between-individual covariance: the shared-axis part
+# (Lambda Lambda') plus the trait-specific part (Psi).
+round(extract_Sigma(fit_long, level = "unit")$Sigma, 2)
 }
 \references{
 Sterzinger, P. and Kosmidis, I. (2023). Maximum softly-penalized

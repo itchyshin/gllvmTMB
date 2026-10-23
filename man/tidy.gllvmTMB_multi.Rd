@@ -24,14 +24,14 @@ hack — see \emph{NEWS}.)}
 
 \item{conf.int}{Whether to add \code{conf.low} / \code{conf.high} columns.}
 
-\item{conf.level}{Confidence level for the CI.}
+\item{conf.level}{Confidence level in (0, 1). Default 0.95.}
 
 \item{...}{Currently unused.}
 }
 \value{
-A data.frame. \code{effect = "fixed"} rows include a \code{link} column
+A data.frame. \code{effects = "fixed"} rows include a \code{link} column
 reporting each trait's link function (\code{"identity"}, \code{"probit"},
-\code{"log"}, \code{"logit"}, …). \code{effect = "cutpoint"} rows carry the
+\code{"log"}, \code{"logit"}, …). \code{effects = "cutpoint"} rows carry the
 ordinal-probit thresholds. For a non-unit weighted objective, fixed-effect
 point estimates remain available but \code{std.error} is \code{NA}, an
 \code{inference_status} column explains the boundary, and \code{conf.int = TRUE}

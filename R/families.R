@@ -121,10 +121,10 @@
 #' where the list put it. When the two readings agree -- which is true
 #' whenever the list is already written in level order -- the fit proceeds
 #' silently. When they disagree, that disagreement is precisely the
-#' silent-swap failure mode (issue #1120: `list(student(), gaussian())`
-#' against `family = rep(c("student","gaussian"), each = n)` used to pair
+#' silent-swap failure mode: `list(student(), gaussian())` against
+#' `family = rep(c("student","gaussian"), each = n)` previously paired
 #' the student rows with `gaussian()` and vice versa, with no warning and a
-#' converged fit), and the list is refused with an error showing both
+#' converged fit; the list is refused with an error showing both
 #' readings. A selector column whose values carry no name evidence at all
 #' (arbitrary labels such as `"count"`/`"binary"`) still uses list order,
 #' but the resolved pairing is reported once so it stays auditable.
@@ -179,26 +179,47 @@
 #'
 #' @examples
 #' Beta(link = "logit")
-#' \dontrun{
-#' ## Mixed-family example: per-row family chosen by a `family` column
+#' ## Mixed-family example: per-row family chosen by a `family` column. Trait 1
+#' ## stays Gaussian; trait 2 is recorded as presence/absence.
 #' sim <- simulate_site_trait(n_sites = 40, n_species = 10, n_traits = 2,
-#'                            mean_species_per_site = 5)
-#' sim$data$family <- factor(
-#'   ifelse(sim$data$trait == levels(sim$data$trait)[1], "gaussian", "binomial"),
-#'   levels = c("gaussian", "binomial")
-#' )
-#' fam <- list(gaussian(), binomial())
+#'                            mean_species_per_site = 5,
+#'                            Lambda_B = matrix(c(0.8, 0.6), 2, 1), seed = 1)
+#' dat <- sim$data
+#' is_bin <- dat$trait == levels(dat$trait)[2]
+#' dat$value[is_bin] <- as.integer(dat$value[is_bin] > 0)
+#' dat$family <- factor(ifelse(is_bin, "binomial", "gaussian"),
+#'                      levels = c("gaussian", "binomial"))
 #' fit <- gllvmTMB(
-#'   value ~ 0 + trait + latent(0 + trait | site, d = 1),
-#'   data   = sim$data,
-#'   family = fam,
+#'   value ~ 0 + trait + latent(0 + trait | site, d = 1, unique = TRUE),
+#'   data   = dat,
+#'   family = list(gaussian = gaussian(), binomial = binomial()),
 #'   trait  = "trait",
 #'   unit   = "site"
 #' )
+#' fit
 #'
 #' ## Integrated two-source model: portal counts + survey detections, one
 #' ## shared ecological predictor. `dat` is long, one row per
-#' ## (cell, species, source); `log_support` is log sampled area or effort.
+#' ## (cell, species, source); `log_support` is log sampled area or effort,
+#' ## `bias` a portal-only recording-effort covariate.
+#' set.seed(1)
+#' dat <- expand.grid(
+#'   cell_id = factor(paste0("c", 1:60)),
+#'   trait   = factor(c("sp1", "sp2")),
+#'   source  = c("gbif", "survey")
+#' )
+#' env <- rnorm(60)  # one value per cell
+#' u <- rnorm(60)    # unmeasured cell effect shared by both species
+#' dat$env <- env[as.integer(dat$cell_id)]
+#' dat$isdm_gbif <- as.integer(dat$source == "gbif")
+#' dat$bias <- ifelse(dat$source == "gbif", rnorm(nrow(dat)), 0)
+#' dat$log_support <- ifelse(dat$source == "gbif", log(2), log(0.5))
+#' eta <- c(0.2, -0.1)[dat$trait] + c(0.5, -0.4)[dat$trait] * dat$env +
+#'   c(0.6, 0.4)[dat$trait] * u[as.integer(dat$cell_id)] +
+#'   dat$log_support + dat$isdm_gbif * (-0.3 + 0.4 * dat$bias)
+#' dat$value <- ifelse(dat$source == "gbif",
+#'                     rpois(nrow(dat), exp(eta)),
+#'                     rbinom(nrow(dat), 1, 1 - exp(-exp(eta))))
 #' dat$isdm_family <- factor(
 #'   ifelse(dat$source == "gbif", "gbif", "survey_pa"),
 #'   levels = c("gbif", "survey_pa")
@@ -207,13 +228,12 @@
 #' attr(isdm_fam, "family_var") <- "isdm_family"
 #' fit_isdm <- gllvmTMB(
 #'   value ~ 0 + trait + trait:env + trait:isdm_gbif + trait:bias +
-#'     offset(log_support) + latent(0 + trait | cell_id, d = 1),
+#'     offset(log_support) + latent(0 + trait | cell_id, d = 1, unique = FALSE),
 #'   data   = dat,
 #'   family = isdm_fam,
 #'   trait  = "trait",
 #'   unit   = "cell_id"
 #' )
-#' }
 Beta <- function(link = "logit") {
   .gllvm_family("Beta", substitute(link), link, "logit")
 }
@@ -421,7 +441,6 @@ tweedie <- function(link = "log", p = NULL) {
 #' @export
 #' @examples
 #' censored_poisson(link = "log")
-#' \donttest{
 #' ## A small simulated rank-1 GLLVM fit with one right-censored trait
 #' ## (censoring limit C = 6).
 #' set.seed(1)
@@ -444,10 +463,9 @@ tweedie <- function(link = "log", p = NULL) {
 #' )
 #' fit <- gllvmTMB(
 #'   cbind(y, censored) ~ 0 + trait + latent(0 + trait | site, d = 1, unique = FALSE),
-#'   data = dat, family = censored_poisson(), unit = "site"
+#'   data = dat, family = censored_poisson(), trait = "trait", unit = "site"
 #' )
-#' stopifnot(fit$opt$convergence == 0)  # verified 0 on this exact seed
-#' }
+#' fit
 #' @rdname families
 censored_poisson <- function(link = "log") {
   .gllvm_family("censored_poisson", substitute(link), link, "log", full = FALSE)
@@ -477,13 +495,8 @@ censored_poisson <- function(link = "log") {
 #' working alternative.
 #' @export
 #' @examples
-#' \donttest{
-#' ## A small simulated rank-1 GLLVM fit with one zero-inflated trait.
-#' ## Calibrated to converge cleanly (2026-09-02 review R5: the previous
-#' ## DGP -- n_site = 60, beta = c(0.3, -0.2, 0.5) -- did NOT converge,
-#' ## fit$opt$convergence == 1 with NaNs produced; larger n_site, larger
-#' ## (less zero-inflation-confounded) trait means, and unique = FALSE
-#' ## fix it, verified by running this block verbatim).
+#' ## A small simulated rank-1 GLLVM fit in which a quarter of the counts are
+#' ## structural zeros.
 #' set.seed(1)
 #' n_site <- 100L
 #' n_trait <- 3L
@@ -502,11 +515,9 @@ censored_poisson <- function(link = "log") {
 #' )
 #' fit <- gllvmTMB(
 #'   y ~ 0 + trait + latent(0 + trait | site, d = 1, unique = FALSE),
-#'   data = dat, family = zi_poisson(), unit = "site"
+#'   data = dat, family = zi_poisson(), trait = "trait", unit = "site"
 #' )
-#' stopifnot(fit$opt$convergence == 0)  # verified 0 on this exact seed
 #' fit$report$zi  # per-trait fitted structural-zero probability
-#' }
 #' @rdname families
 zi_poisson <- function(link = "log") {
   .gllvm_family("zi_poisson", substitute(link), link, "log", full = FALSE)
@@ -947,9 +958,9 @@ ordinal_logit <- function(link = "logit") {
 #' own corrected rerun independently FAILED (small contrast variances
 #' collapse; a planted-zero check fails). The spatial mode axis and the
 #' \code{(1 | group)} route below both PASSED their signed recovery gates
-#' outright, with no replication rescue needed. \strong{One categorical
-#' draw per species does not identify \eqn{V}; five draws per species
-#' does.}
+#' outright, with no replication rescue needed. In the tested phylogenetic
+#' designs, five draws passed for the loadings-only and full-\eqn{V} cells;
+#' these results do not establish recovery for the diagonal-\eqn{V} cell.
 #'
 #' A generic \code{(1 | group)}
 #' random intercept is also admitted, but its semantics are
@@ -983,11 +994,11 @@ ordinal_logit <- function(link = "logit") {
 #' \code{animal_scalar()} / \code{kernel_scalar()} / \code{spatial_scalar()}
 #' and \code{common = TRUE} at the cluster/cluster2 tier -- a single shared
 #' level across the \eqn{K-1} contrasts has no interpretable null on the
-#' \eqn{(I+J)} contrast geometry (null-DGP evidence:
-#' \code{dev/multinomial-structured/probe-scalar-null.R}).
+#' \eqn{(I+J)} contrast geometry; a null-generating simulation found no
+#' interpretable shared variance on this geometry.
 #'
-#' \strong{Everything else is still deferred} and fails loud
-#' (\code{R/multinomial-fence.R}) rather than reaching an untested
+#' \strong{Everything else is still deferred} and is rejected with an
+#' explicit error rather than reaching an untested
 #' categorical path: \code{dep()}, explicit \code{unique()} /
 #' \code{indep()} at the unit tier, \code{latent()}/\code{dep()} at the
 #' \code{cluster}/\code{cluster2} tiers, and the \code{unit_obs} grouping

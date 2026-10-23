@@ -1,0 +1,13 @@
+# Publication preflight, 18 October 2026
+
+After the completed local-guidance checkpoint, the maintainer explicitly authorised committing the documentation and results, opening a PR and merging only when its checks are green. The local-only statements in verification.md and the original after-task report describe that earlier checkpoint. Runtime code, defaults and tests remain unchanged.
+
+Fresh devtools::document() and pkgdown::check_pkgdown() completed successfully. Documentation generation produced unrelated NAMESPACE drift; the generated file was backed up and its three existing qualified registrations were retained with a narrow patch. No NAMESPACE or man change is included.
+
+The complete package check ran on Totoro with R 4.6.1, single-thread numerical libraries and a two-process compile cap. An initial build stopped because Pandoc was unavailable. Official Pandoc 3.1.11.1 was installed only in the private check directory, and the check was rerun. It completed in 1,515.34 seconds with 1 ERROR, 0 WARNINGs and 2 NOTEs. The NOTEs concern existing TMB:::EvalADFunObject use and the server R compiler's non-portable flags. Ordinary and donttest examples, package loading, static checks and vignette rebuilding passed.
+
+The suite reported FAIL 1, WARN 60, SKIP 1259 and PASS 26633. Its single failing assertion is test-example-behavioural-reaction-norm.R:194: max_gradient expected PASS but was WARN. A targeted reproduction using the checked installation and the unchanged source-161abe09 pilot binary returned the same result in both: optimiser code 0, raw max gradient 0.01817 above the unchanged 0.01 threshold. The fixture MD5 and recorded objective agree. This establishes a pre-existing local baseline failure, not a documentation regression. It is retained rather than hidden, skipped or repaired by changing defaults or test thresholds.
+
+The docs-only PR proceeds with that baseline limitation disclosed. Merging remains conditional on every GitHub check on the PR's exact head settling green; no bypass or admin merge is authorised. Main's own post-merge check must also complete. The source check receipts and both targeted baseline diagnostics are in publication-receipts/.
+
+The source tarball SHA256 is 662ecbb7f54e56ae62ad938199c94ba8017244c882818c64506dabfa9b931169. The remote check directory is /home/snakagaw/gllvmtmb_ridge_docs_check_20261018. Source files and tests are byte-for-byte unchanged by this slice. All staged evidence files were checked against SHA256SUMS. The local .gitattributes recognises CRLF as a valid CSV line ending while preserving normal whitespace checks; it prevents Git whitespace reports from treating the audited CSV record terminators as content changes. CSV bytes and numerical results are unchanged.

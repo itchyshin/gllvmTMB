@@ -117,11 +117,36 @@
 ## appended. The
 ## correlation matrix is read via the documented point-only route
 ## extract_Sigma(fit, level = "unit", part = "total")$R.
+.correlation_expand_entries <- function(out, entries, trait_names, tiers) {
+  if (identical(entries, "unique")) return(out)
+  mirror <- out
+  mirror$trait_i <- out$trait_j
+  mirror$trait_j <- out$trait_i
+  out <- rbind(out, mirror)
+  if (identical(entries, "all") && length(tiers) > 0L &&
+      length(trait_names) > 0L) {
+    diagonal <- data.frame(
+      tier = rep(tiers, each = length(trait_names)),
+      trait_i = rep(trait_names, times = length(tiers)),
+      trait_j = rep(trait_names, times = length(tiers)),
+      correlation = 1, lower = NA_real_, upper = NA_real_,
+      method = "fixed", interval_status = "none", stringsAsFactors = FALSE
+    )
+    out <- rbind(out, diagonal)
+  }
+  out <- out[order(match(out$tier, tiers),
+                   match(out$trait_j, trait_names),
+                   match(out$trait_i, trait_names)), , drop = FALSE]
+  rownames(out) <- NULL
+  out
+}
+
 .extract_correlations_julia_point <- function(
   fit,
   tier = "all",
   pair = NULL,
-  link_residual = "auto"
+  link_residual = "auto",
+  entries = "unique"
 ) {
   ## `tier` arrives already normalised to internal slot names by the caller
   ## (extract_correlations() runs .normalise_level() at its boundary before
@@ -169,10 +194,15 @@
       }
       pair_idx <- sort(c(pi, pj))
     } else if (is.numeric(pair)) {
-      pair_idx <- sort(as.integer(pair))
-      if (any(pair_idx < 1L) || any(pair_idx > T)) {
-        cli::cli_abort("{.arg pair} indices out of range.")
+      if (anyNA(pair) || any(!is.finite(pair)) ||
+          any(pair != trunc(pair)) || any(pair < 1 | pair > T) ||
+          anyDuplicated(pair)) {
+        cli::cli_abort(c(
+          "{.arg pair} must contain two distinct finite integer indices between 1 and {T}.",
+          ">" = "Use two trait names, or two valid integer indices."
+        ), class = "gllvmTMB_correlation_invalid_pair")
       }
+      pair_idx <- sort(as.integer(pair))
     } else {
       cli::cli_abort("{.arg pair} must be character or integer.")
     }
@@ -188,7 +218,7 @@
   }
 
   if (nrow(pairs) == 0L) {
-    return(data.frame(
+    out <- data.frame(
       tier = character(0),
       trait_i = character(0),
       trait_j = character(0),
@@ -198,7 +228,8 @@
       method = character(0),
       interval_status = character(0),
       stringsAsFactors = FALSE
-    ))
+    )
+    return(.correlation_expand_entries(out, entries, trait_names, "B"))
   }
 
   out <- data.frame(
@@ -213,7 +244,7 @@
     stringsAsFactors = FALSE
   )
   rownames(out) <- NULL
-  out
+  .correlation_expand_entries(out, entries, trait_names, "B")
 }
 
 #' Extract cross-trait correlations
@@ -263,9 +294,9 @@
 #'
 #' @param fit A fit returned by \code{\link{gllvmTMB}}. Julia bridge
 #'   (`engine = "julia"`) fits expose the ordinary unit tier only and carry no
-#'   correlation-interval payload, so they return point-only rows: the same
-#'   schema with `lower` and `upper` set to `NA`, `method = "none"`,
-#'   and `interval_status = "none"`. Use
+#'   correlation-interval payload. Their off-diagonal rows have `lower` and
+#'   `upper` set to `NA`, `method = "none"`, and `interval_status = "none"`.
+#'   With `entries = "all"`, self-pairs instead have `method = "fixed"`. Use
 #'   `engine = "tmb"` when you need correlation confidence intervals.
 #' @param tier Character vector. Use \code{"all"} (the default) to request
 #'   every level present in the fit. Canonical inputs are \code{"unit"},
@@ -274,7 +305,8 @@
 #' @param pair Optional length-2 character or integer vector specifying
 #'   one trait pair (\code{c("trait_1", "trait_2")} or \code{c(1, 2)}).
 #'   When supplied, only that pair is returned for each requested tier.
-#'   Default \code{NULL} (all pairs).
+#'   Numeric indices must be finite, distinct whole numbers within the trait
+#'   range; fractional indices are rejected. Default \code{NULL} (all pairs).
 #' @param level Confidence level in (0, 1). Default 0.95.
 #' @param method One of \code{"none"} (default), \code{"fisher-z"},
 #'   \code{"wald"} (alias of \code{"fisher-z"}), or \code{"bootstrap"}.
@@ -328,13 +360,20 @@
 #'   to suppress the warning and lock the new behaviour, or
 #'   \code{link_residual = "none"} to restore the previous behaviour.
 #'
+#' @param entries Table layout. `"unique"` (default) returns each unordered
+#'   pair once, without the diagonal. `"offdiag"` includes both directions,
+#'   without the diagonal. `"all"` includes both directions and the diagonal.
+#'   A single tier with p traits has p(p-1)/2, p(p-1), or p squared rows,
+#'   respectively. Non-unique layouts cannot be combined with `pair`.
+#'
 #' @return A data frame (tibble-like) with columns:
 #' \describe{
 #'   \item{\code{tier}}{Character level label. The current output stores
 #'     internal labels \code{"B"}, \code{"W"}, \code{"phy"}, and
 #'     \code{"spde"}; use \code{"unit"} and \code{"unit_obs"} as input
 #'     names in new calls.}
-#'   \item{\code{trait_i}, \code{trait_j}}{Trait names with i < j.}
+#'   \item{\code{trait_i}, \code{trait_j}}{Trait names. The default
+#'     unique layout has i < j in fitted trait order.}
 #'   \item{\code{correlation}}{Point estimate.}
 #'   \item{\code{lower}, \code{upper}}{Confidence-interval bounds.}
 #'   \item{\code{method}}{Method used to compute the CI.}
@@ -346,8 +385,34 @@
 #'     their frequentist coverage for the fitted target.}
 #' }
 #'
-#' For an `engine = "julia"` bridge fit, \code{lower}/\code{upper} are
-#' \code{NA}, \code{method = "none"}, and \code{interval_status = "none"}.
+#' @section Pair table versus correlation matrix:
+#' By default, each unordered pair appears once, in fitted trait order. With \eqn{p}
+#' traits, a single tier returns \eqn{p(p-1)/2} rows; reversed pairs and
+#' diagonal entries are omitted. The first trait therefore appears only in
+#' \code{trait_i}, and the last only in \code{trait_j}. No trait is missing
+#' from the combined pair table when at least two traits are present.
+#' This also applies to ordinal responses.
+#'
+#' Plotting these rows directly with \code{geom_tile()} leaves the reversed
+#' cells blank; alphabetical axis ordering can scatter those blanks.
+#' Use \code{extract_correlations(fit, tier = "unit", entries = "all")}
+#' for a complete table, or \code{entries = "offdiag"} to omit self-pairs.
+#' Mirrored rows retain the same estimates and interval columns; they are
+#' duplicate representations of one correlation, rather than independent
+#' estimates. Diagonal rows are fixed at 1, with \code{method = "fixed"},
+#' \code{interval_status = "none"}, and \code{NA} interval bounds.
+#' Use \code{entries = "unique"} for interval/eye plots and pairwise analyses
+#' that should count each correlation once.
+#'
+#' Use \code{plot_correlations(cors, style = "heatmap")} for a symmetric
+#' display, \code{extract_Sigma(fit, level = "unit")$R} for a square matrix,
+#' or \code{extract_Sigma_table(fit, level = "unit", measure = "correlation",
+#' entries = "all")} for a full table including the diagonal. Use the same
+#' \code{link_residual} convention when comparing these outputs.
+#'
+#' For off-diagonal rows from an `engine = "julia"` bridge fit,
+#' \code{lower}/\code{upper} are \code{NA}, \code{method = "none"},
+#' and \code{interval_status = "none"}.
 #'
 #' @section Caveats:
 #' \itemize{
@@ -362,32 +427,72 @@
 #'
 #' @seealso \code{\link{extract_Sigma}}, \code{\link{bootstrap_Sigma}},
 #'   \code{\link{confint.gllvmTMB_multi}},
-#'   \code{\link{extract_communality}}.
+#'   \code{\link{extract_communality}}, \code{\link{plot_correlations}},
+#'   \code{\link{extract_Sigma_table}}.
 #'
 #' @export
 #' @examples
-#' \dontrun{
+#' ## Simulate 80 units (for example, individual animals), each measured
+#' ## three times on four traits. Between units, the traits share one latent
+#' ## factor plus trait-specific variation, so they are correlated.
+#' ## Lambda holds each trait's loading on the shared factor; psi holds each
+#' ## trait's own between-unit variance.
 #' set.seed(1)
-#' s <- simulate_site_trait(
-#'   n_sites = 80, n_species = 6, n_traits = 4,
-#'   mean_species_per_site = 4,
-#'   Lambda_B = matrix(c(0.9, 0.4, -0.3, 0.5), 4, 1),
-#'   psi_B = c(0.4, 0.3, 0.5, 0.2)
+#' Lambda <- matrix(c(0.9, 0.4, -0.3, 0.5), ncol = 1)
+#' psi <- c(0.4, 0.3, 0.5, 0.2)
+#' sim <- simulate_unit_trait(
+#'   n_units = 80, n_obs_per_unit = 3, n_traits = 4,
+#'   Lambda_B = Lambda, psi_B = psi
 #' )
+#' ## One latent factor across units plus a per-trait variance (Psi).
 #' fit <- gllvmTMB(
-#'   value ~ 0 + trait + latent(0 + trait | site, d = 1),
-#'   data  = s$data,
-#'   trait = "trait",
-#'   unit  = "site"
+#'   value ~ 0 + trait + latent(0 + trait | unit, d = 1, unique = TRUE),
+#'   data = sim$data, trait = "trait", unit = "unit"
 #' )
-#' ## Default: point correlations only.
+#'
+#' ## Default: point estimates of the between-unit correlations, one row per
+#' ## pair of traits ("B" in the tier column means the unit level).
 #' cors <- extract_correlations(fit, tier = "unit")
-#' ## Opt-in Fisher-z sensitivity bounds with an explicitly justified n_eff.
-#' cors2 <- extract_correlations(fit, tier = "unit", method = "fisher-z",
+#' cors
+#' ## The correlations used to simulate the data; the estimates above differ
+#' ## from them by sampling error.
+#' round(cov2cor(tcrossprod(Lambda) + diag(psi)), 2)
+#'
+#' ## A symmetric heatmap drawn from the pair table (needs ggplot2).
+#' if (requireNamespace("ggplot2", quietly = TRUE)) {
+#'   plot_correlations(cors, style = "heatmap")
+#' }
+#'
+#' ## The same estimates as a full table (both directions plus the
+#' ## diagonal: 4 x 4 = 16 rows), as a square matrix, or as a table of
+#' ## matrix entries.
+#' full <- extract_correlations(fit, tier = "unit", entries = "all")
+#' nrow(full)
+#' R <- extract_Sigma(fit, level = "unit")$R
+#' round(R, 2)
+#' full_sigma <- extract_Sigma_table(fit, level = "unit",
+#'                                   measure = "correlation", entries = "all")
+#'
+#' ## Fisher-z bounds are opt-in and depend on an effective sample size, n_eff.
+#' ## By default it is the number of units (80 here). We pass a more
+#' ## cautious 60 as an illustration, because each unit is seen only through
+#' ## three noisy measurements; in your own analysis, choose n_eff from your
+#' ## design and report why. These are rough bounds, not intervals
+#' ## calibrated to give 95% coverage in a mixed model.
+#' cors_z <- extract_correlations(fit, tier = "unit", method = "fisher-z",
 #'                                n_eff = 60L)
-#' ## Bootstrap (B = 200).
+#' cors_z
+#'
+#' ## A parametric bootstrap simulates new data from the fitted model and
+#' ## refits it each time. nsim = 40 keeps this example short, so expect a
+#' ## warning (it calls nsim `n_boot`) that so few resamples give noisy
+#' ## bounds; it stays quiet only from 999 resamples, and real analyses need
+#' ## at least several hundred. Bootstrap bounds are not certified to reach
+#' ## 95% coverage either.
+#' \donttest{
 #' cors_b <- extract_correlations(fit, tier = "unit", method = "bootstrap",
-#'                                nsim = 200, seed = 42)
+#'                                nsim = 40, seed = 42)
+#' cors_b
 #' }
 extract_correlations <- function(
   fit,
@@ -398,13 +503,24 @@ extract_correlations <- function(
   n_eff = NULL,
   nsim = 500L,
   seed = NULL,
-  link_residual = c("auto", "none")
+  link_residual = c("auto", "none"),
+  entries = c("unique", "all", "offdiag")
 ) {
   ## Detect whether the caller passed link_residual explicitly BEFORE
   ## match.arg() reassigns the variable. Used below to fire the once-
   ## per-session warning about the default change.
   link_residual_missing <- missing(link_residual)
+  entries <- match.arg(entries)
+  if (!is.null(pair) && !identical(entries, "unique")) {
+    cli::cli_abort(c(
+      "{.arg pair} can only be combined with {.code entries = \"unique\"}.",
+      ">" = "Omit {.arg pair} to request a full correlation table."
+    ))
+  }
   method <- match.arg(method)
+  if (method %in% c("fisher-z", "wald")) {
+    level <- .gtmb_validate_interval_level(level, arg = "level")
+  }
   if (!identical(method, "none") && .gllvmTMB_is_mspl(fit)) {
     .gllvmTMB_mspl_assert_inference(
       fit,
@@ -439,11 +555,12 @@ extract_correlations <- function(
       fit = fit,
       tier = tier,
       pair = pair,
-      link_residual = link_residual
+      link_residual = link_residual,
+      entries = entries
     )))
   }
   if (!inherits(fit, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a fit returned by {.fun gllvmTMB}.")
+    .gllvmTMB_abort_not_multi_fit(fit)
   }
   if (!identical(method, "none")) {
     .gllvmTMB_mspl_assert_inference(
@@ -601,10 +718,15 @@ extract_correlations <- function(
       }
       pair_idx <- sort(c(pi, pj))
     } else if (is.numeric(pair)) {
-      pair_idx <- sort(as.integer(pair))
-      if (any(pair_idx < 1L) || any(pair_idx > T)) {
-        cli::cli_abort("{.arg pair} indices out of range.")
+      if (anyNA(pair) || any(!is.finite(pair)) ||
+          any(pair != trunc(pair)) || any(pair < 1 | pair > T) ||
+          anyDuplicated(pair)) {
+        cli::cli_abort(c(
+          "{.arg pair} must contain two distinct finite integer indices between 1 and {T}.",
+          ">" = "Use two trait names, or two valid integer indices."
+        ), class = "gllvmTMB_correlation_invalid_pair")
       }
+      pair_idx <- sort(as.integer(pair))
     } else {
       cli::cli_abort("{.arg pair} must be character or integer.")
     }
@@ -619,7 +741,7 @@ extract_correlations <- function(
     if (length(boot_levels) > 0L) {
       boot_R <- suppressMessages(bootstrap_Sigma(
         fit,
-        n_boot = as.integer(nsim),
+        n_boot = nsim,
         level = vapply(
           boot_levels,
           .canonical_level_name,
@@ -637,6 +759,7 @@ extract_correlations <- function(
 
   ## Build pairs for each tier
   results <- vector("list", length(tier))
+  present_tiers <- character(0)
   for (k in seq_along(tier)) {
     tk <- tier[k]
     ## Get point estimate Sigma at this tier
@@ -655,6 +778,7 @@ extract_correlations <- function(
       next
     }
     R <- sig$R
+    present_tiers <- c(present_tiers, tk)
     if (is.null(rownames(R))) {
       rownames(R) <- trait_names
     }
@@ -765,7 +889,9 @@ extract_correlations <- function(
     out$interval_status <- .correlation_interval_status(out_method_label)
   }
   rownames(out) <- NULL
-  .reportable_table(out)
+  .reportable_table(.correlation_expand_entries(
+    out, entries, trait_names, present_tiers
+  ))
 }
 
 .cross_ordinal_partner_traits <- function(fit) {
@@ -818,11 +944,12 @@ extract_correlations <- function(
 #'   uninformative, which is why `"auto"` (full-rank via the residual) is the
 #'   sensible default for the model-scale single-number summary; read the per-pair latent
 #'   correlations from [extract_Sigma()] / [extract_correlations()] instead.
-#'   An ordinal-probit partner is not admitted with `"auto"`: its latent
-#'   residual is already fixed at 1 by the threshold model, so adding another
-#'   unit residual would double-count it. Use a supported non-ordinal partner
-#'   set for the one-number summary, or report latent-scale pairwise quantities
-#'   with `extract_Sigma(..., part = "shared", link_residual = "none")`.
+#'   An ordinal (probit or logit) partner is not admitted with `"auto"` for this
+#'   one-number summary. This is a scope limit, not a double count: `"auto"`
+#'   adds the ordinal liability residual (1 for probit, pi^2/3 for logit)
+#'   exactly once. Use a supported non-ordinal partner set for the one-number
+#'   summary, or report latent-scale pairwise quantities with
+#'   `extract_Sigma(..., part = "shared", link_residual = "none")`.
 #' @param method one of `"point"` (default; point estimates only, no interval
 #'   columns), `"wald"` (fast Fisher-z intervals on BOTH `multiple_r` and
 #'   `contrast_r`; no refits or root-finding; heuristic bounds can be unavailable
@@ -853,35 +980,51 @@ extract_correlations <- function(
 #'   for `"bootstrap"`) -- coverage is not yet certified for any
 #'   route (recovery evidence for this route is not yet complete).
 #' @examples
-#' \dontrun{
+#' ## Simulate 120 animals, each watched on three occasions. On each occasion
+#' ## we record a body-condition score (continuous) and the behaviour seen
+#' ## (1 = resting, 2 = foraging, 3 = travelling). One shared animal-level
+#' ## score raises condition and the odds of foraging and lowers the odds of
+#' ## travelling; condition also varies between animals for other reasons.
 #' set.seed(12)
 #' n_unit <- 120L
 #' n_rep <- 3L
 #' unit_id <- rep(seq_len(n_unit), each = n_rep)
-#' score <- stats::rnorm(n_unit)
-#' score_obs <- score[unit_id]
-#' gaussian_y <- 0.8 * score_obs + stats::rnorm(length(unit_id), sd = 0.4)
-#' category_y <- vapply(seq_along(unit_id), function(i) {
-#'   eta <- c(0, 0.9 * score_obs[i], -0.6 * score_obs[i])
-#'   prob <- exp(eta - max(eta))
-#'   sample.int(3L, 1L, prob = prob / sum(prob))
+#' score <- rnorm(n_unit)[unit_id]
+#' own <- rnorm(n_unit, sd = 0.5)[unit_id]
+#' condition <- 0.8 * score + own + rnorm(length(unit_id), sd = 0.4)
+#' behaviour <- vapply(score, function(s) {
+#'   ## log-odds of each behaviour relative to resting
+#'   p <- exp(c(0, 0.9 * s, -0.6 * s))
+#'   sample.int(3L, 1L, prob = p / sum(p))
 #' }, integer(1L))
 #' dat <- data.frame(
-#'   unit = factor(c(unit_id, unit_id)),
-#'   trait = factor(rep(c("g", "cat"), each = length(unit_id)),
-#'                  levels = c("g", "cat")),
-#'   family = factor(rep(c("g", "m"), each = length(unit_id)),
-#'                   levels = c("g", "m")),
-#'   value = c(gaussian_y, category_y)
+#'   unit   = factor(rep(unit_id, 2)),
+#'   trait  = factor(rep(c("condition", "behaviour"), each = length(unit_id)),
+#'                   levels = c("condition", "behaviour")),
+#'   family = rep(c("gaussian", "multinomial"), each = length(unit_id)),
+#'   value  = c(condition, behaviour)
 #' )
-#' families <- list(g = gaussian(), m = multinomial())
-#' attr(families, "family_var") <- "family"
+#' ## The `family` column picks the response family for each row.
+#' families <- list(gaussian = gaussian(), multinomial = multinomial())
+#' ## One shared factor across animals. With unique = TRUE, condition also
+#' ## gets its own between-animal variance; the behaviour categories do not
+#' ## (the fit may print a note saying so), which matches the simulation.
 #' fit <- gllvmTMB(
 #'   value ~ 0 + trait + latent(0 + trait | unit, d = 1, unique = TRUE),
 #'   data = dat, family = families, trait = "trait", unit = "unit"
 #' )
-#' extract_cross_correlations(fit, contrasts = TRUE)
-#' }
+#' ## Both summaries are between-animal correlations on the model's latent
+#' ## scale, after adding the residual variance of the categorical
+#' ## (softmax) link, as the printed message reports; they are not
+#' ## correlations between the raw observations.
+#' ## multiple_r (0 to 1): how strongly condition goes with behaviour as a
+#' ## whole; it does not depend on which category is the baseline.
+#' ## contrast_r: the correlation of condition with the log-odds of each
+#' ## other category against the baseline (category 1, resting); here
+#' ## positive for foraging and negative for travelling, as simulated.
+#' cc <- extract_cross_correlations(fit, contrasts = TRUE)
+#' cc
+#' cc$contrast_r[[1]]
 #' @export
 extract_cross_correlations <- function(fit, level = "unit", contrasts = FALSE,
                                        link_residual = c("auto", "none"),
@@ -924,14 +1067,11 @@ extract_cross_correlations <- function(fit, level = "unit", contrasts = FALSE,
     ordinal_traits <- .cross_ordinal_partner_traits(fit)
     if (length(ordinal_traits) > 0L) {
       cli::cli_abort(c(
-        "The residual-augmented model-scale nominal summary is unavailable with an ordinal (probit/logit) partner.",
+        "The residual-augmented model-scale nominal summary is not admitted with an ordinal (probit/logit) partner.",
         "i" = "Ordinal partner traits: {paste(ordinal_traits, collapse = ', ')}.",
-        "i" = "The threshold model already fixes each ordinal latent residual by construction (1 for ordinal_probit, pi^2/3 for ordinal_logit); {.code link_residual = \"auto\"} would add it again.",
+        "i" = "This is a scope limit, not a double count: {.code link_residual = \"auto\"} adds each ordinal liability residual (1 for ordinal_probit, pi^2/3 for ordinal_logit) exactly once.",
         ">" = "Use a supported non-ordinal partner set for {.fn extract_cross_correlations}, or report latent-scale pairwise quantities with {.code extract_Sigma(..., part = \"shared\", link_residual = \"none\")}."
-      ), class = c(
-        "gllvmTMB_cross_auto_ordinal_unsupported",
-        "gllvmTMB_auto_residual_ordinal_probit_overcount"
-      ))
+      ), class = "gllvmTMB_cross_auto_ordinal_unsupported")
     }
   }
 
@@ -955,7 +1095,7 @@ extract_cross_correlations <- function(fit, level = "unit", contrasts = FALSE,
   if (method == "bootstrap") {
     boot <- suppressMessages(bootstrap_Sigma(
       fit,
-      n_boot = as.integer(nsim),
+      n_boot = nsim,
       level = level,
       what = "cross_corr",
       conf = conf,

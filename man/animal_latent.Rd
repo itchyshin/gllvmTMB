@@ -19,10 +19,16 @@ animal_latent(
 
 \item{d}{Number of latent factors (\eqn{K \le T}). Default 1.}
 
-\item{pedigree}{A 3-column data frame with columns \code{id}, \code{sire},
-\code{dam} (unknown parents encoded as \code{NA}). Converted internally
-to \strong{A} via Henderson's recursive formula. Only one of
-\code{pedigree}, \code{A}, or \code{Ainv} should be given.}
+\item{pedigree}{A 3-column data frame identifying individuals and
+parents. Columns are resolved by name using the synonyms
+\code{id}/\code{animal}, \code{sire}/\code{father}, and \code{dam}/\code{mother}; if none
+match, column 1 is id, column 2 is sire, and column 3 is dam.
+Unknown parents may be \code{NA}, \code{""}, or \code{"0"}. Converted internally
+to a sparse inverse relationship matrix \eqn{\mathbf A^{-1}} by
+\code{\link[=pedigree_to_Ainv_sparse]{pedigree_to_Ainv_sparse()}} (Henderson/Quaas), not to a dense
+\eqn{\mathbf A}. Must be passed by name (\code{pedigree = ped}). If
+several of \code{pedigree}, \code{A}, and \code{Ainv} are given, \code{pedigree}
+wins, then \code{A}, then \code{Ainv}.}
 
 \item{A}{Dense relatedness matrix (\eqn{n \times n}); rownames /
 colnames must match levels of \code{id}.}
@@ -66,30 +72,32 @@ engine path with a pedigree-derived relatedness matrix instead of
 phylogenetic VCV.
 }
 \examples{
-\dontrun{
-# Factor-analytic G-matrix (d latent factors plus diagonal Psi).
-# Grounded in test-animal-keyword.R.
+set.seed(1)
+## Pedigree: ten founders (five sires, five dams) and 90 offspring.
 ped <- data.frame(
-  id   = paste0("i", 1:12),
-  sire = c(rep(NA, 4), rep(c("i1", "i2"), length.out = 8)),
-  dam  = c(rep(NA, 4), rep(c("i3", "i4"), length.out = 8))
+  id   = paste0("i", 1:100),
+  sire = c(rep(NA, 10), sample(paste0("i", 1:5), 90, replace = TRUE)),
+  dam  = c(rep(NA, 10), sample(paste0("i", 6:10), 90, replace = TRUE))
 )
 A <- pedigree_to_A(ped)
-yvec <- as.numeric(MASS::mvrnorm(
-  1, mu = rep(0, 2 * 12),
-  Sigma = kronecker(diag(2), A) * 0.5 + diag(2 * 12) * 0.5
-))
+## Four traits whose additive-genetic covariance is one factor plus a
+## diagonal, G = lambda lambda^T + diag(psi): vec(bv) ~ N(0, G \%x\% A).
+## Residual noise is added; one row per (individual, trait).
+lambda <- c(0.7, 0.6, -0.5, 0.4)
+G <- tcrossprod(lambda) + diag(0.2, 4)
+bv <- t(chol(A)) \%*\% matrix(rnorm(100 * 4), 100, 4) \%*\% chol(G)
 df <- data.frame(
-  species = factor(rep(ped$id, each = 2), levels = ped$id),
-  trait   = factor(rep(c("t1", "t2"), times = 12), levels = c("t1", "t2")),
-  value   = yvec
+  individual = factor(rep(ped$id, each = 4), levels = ped$id),
+  trait      = factor(rep(paste0("t", 1:4), times = 100)),
+  value      = as.vector(t(bv)) + rnorm(100 * 4, sd = 0.5)
 )
 fit <- gllvmTMB(
-  value ~ 0 + trait + animal_latent(species, d = 1, pedigree = ped,
-                                   unique = TRUE),
-  data = df, unit = "species", family = gaussian()
+  value ~ 0 + trait + animal_latent(individual, d = 1, pedigree = ped,
+                                    unique = TRUE),
+  data = df, trait = "trait", unit = "individual",
+  cluster = "individual"
 )
-}
+extract_Sigma(fit, level = "phy")$Sigma  # estimated G
 }
 \seealso{
 \code{\link[=animal_scalar]{animal_scalar()}}, \code{\link[=animal_indep]{animal_indep()}}, \code{\link[=phylo_latent]{phylo_latent()}}.

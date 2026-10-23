@@ -24,6 +24,12 @@ diagonal \eqn{\boldsymbol\Psi} companion to one shared variance across
 traits. Only applies when \code{unique = TRUE}.}
 
 \item{lv}{One-sided formula for predictor-informed latent-score means.
+The model matrix retains the formula's factor contrasts, then its
+intercept column is removed. With default treatment contrasts,
+\code{lv = ~ group} estimates differences from the factor reference level.
+Use \code{\link[stats:relevel]{stats::relevel()}} to select that level. Designs spanning a constant,
+including \code{lv = ~ 0 + group}, violate the no-LV-intercept contract
+and are rejected. Numeric \code{lv = ~ x} and \code{lv = ~ 0 + x} are equivalent.
 Runtime support is limited to ordinary unit-tier
 \code{latent(..., lv = ~ x)}. Registered native family/link rows compose in one
 complete-response ordinary unit-tier block. The loadings-only
@@ -32,7 +38,7 @@ automatic \code{Psi} additionally requires that its physical loading,
 latent-predictor, and engine-free diagonal parameters pass a necessary
 joint mean-covariance dimension screen. Passing that screen is not a
 recovery or interval-calibration certificate. Bounded
-rank-2/rank-3 checks exercise every supported family, but broad
+rank-2/rank-3 canaries exercise every registered family, but broad
 composition recovery and interval calibration remain partial. Retained
 recovery and interval claims remain limited to their named cells.
 Source-specific \verb{*_latent(..., lv = ~ x)} forms are
@@ -73,17 +79,20 @@ use \code{common = TRUE}; this replaces the older two-term spelling for
 ordinary intercept-only latent terms.
 }
 \examples{
-\dontrun{
-# Long-format stacked traits: a 2-factor latent random effect at `site`.
-# Ordinary latent() carries its diagonal Psi by default
-# (Sigma = Lambda Lambda^T + diag(psi)).
-df <- simulate_site_trait(
-  n_sites = 30, n_species = 4, n_traits = 4,
-  mean_species_per_site = 4, seed = 42
-)$data
+# Six traits on 60 units (3 replicate observations per unit): the
+# between-unit trait covariance is rank two plus a trait-specific diagonal.
+Lambda <- matrix(c(0.9, 0.7, 0.5, -0.4, 0.3, 0,
+                   0, 0.2, -0.3, 0.6, 0.7, 0.8), ncol = 2)
+sim <- simulate_unit_trait(
+  n_units = 60, n_obs_per_unit = 3, n_traits = 6,
+  Lambda_B = Lambda, psi_B = rep(0.2, 6), seed = 1
+)
+# A 2-factor latent random effect at `unit`. Ordinary latent() carries its
+# diagonal Psi by default (Sigma = Lambda Lambda^T + diag(psi)).
+\donttest{
 fit <- gllvmTMB(
-  value ~ 0 + trait + latent(0 + trait | site, d = 2),
-  data = df, unit = "site"
+  value ~ 0 + trait + latent(0 + trait | unit, d = 2),
+  data = sim$data, trait = "trait", unit = "unit"
 )
 extract_Sigma(fit)
 }

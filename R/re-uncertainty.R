@@ -48,6 +48,9 @@
 #'   }
 #' @return As described per `block` above. Standard errors are always
 #'   `NA` (with a warning) when the fit's Hessian is not positive-definite.
+#'   For `block = "diag_unit"` / `"diag_unit_obs"`, a trait whose diagonal was
+#'   not estimated (single-trial binomial, multinomial contrast, or
+#'   single-observation ordinal trait) has an all-`NA` row.
 #'
 #' @section What this is, and is not:
 #' Every number returned here is a **Wald / `sdreport()` marginal standard
@@ -99,10 +102,45 @@
 #' @keywords internal
 #' @export
 #' @examples
-#' \dontrun{
+#' ## Thirty sites (the "unit" column), each visited twice, with three
+#' ## traits measured at every visit. Sites differ in each trait
+#' ## independently of the other traits (psi_B holds the per-trait
+#' ## variances of these site effects).
+#' set.seed(1)
+#' sim <- simulate_unit_trait(
+#'   n_units = 30, n_obs_per_unit = 2, n_traits = 3,
+#'   psi_B = c(0.8, 0.5, 0.6), sigma2_eps = 0.2
+#' )
+#' dat <- sim$data
+#' ## Each of the 60 visits (labelled in the unit_observation column) is
+#' ## made by one of six observers, and each observer shifts all of their
+#' ## readings by the same amount.
+#' visit_observer <- sample(rep(1:6, 10))
+#' dat$observer <- factor(visit_observer[as.integer(dat$unit_observation)])
+#' observer_shift <- rnorm(6, sd = 0.7)
+#' dat$value <- dat$value + observer_shift[as.integer(dat$observer)]
+#'
+#' ## indep(0 + trait | unit): one effect per site and trait (block
+#' ## "diag_unit"); (1 | observer): one effect per observer, shared by
+#' ## all traits (block "re_int").
+#' fit <- gllvmTMB(
+#'   value ~ 0 + trait + indep(0 + trait | unit) + (1 | observer),
+#'   data = dat, trait = "trait", unit = "unit"
+#' )
+#'
+#' ## Wald (delta-method) standard errors of the estimated site and
+#' ## observer effects. Intervals built from them have not been checked
+#' ## for coverage.
+#' ## "re_int" gives a list with one vector per (1 | group) term, named
+#' ## by its grouping column: here 6 values, one per observer, in the
+#' ## order of levels(dat$observer).
 #' getREsd(fit, block = "re_int")
-#' getREsd(fit, block = "diag_unit")
-#' }
+#' ## "diag_unit" gives a traits x sites matrix (here 3 x 30); rows and
+#' ## columns follow levels(dat$trait) and levels(dat$unit).
+#' se_site <- getREsd(fit, block = "diag_unit")
+#' dim(se_site)
+#' dimnames(se_site) <- list(levels(dat$trait), levels(dat$unit))
+#' round(se_site[, 1:5], 2)
 getREsd <- function(
   fit,
   block = c(
@@ -220,6 +258,26 @@ getREsd <- function(
   }
   if (block == "equalto") {
     return(se_vec)
+  }
+
+  ## Traits whose diagonal was deliberately not estimated (single-trial
+  ## Bernoulli, multinomial contrasts, single-observation ordinal cells) have
+  ## their `s_B` / `s_W` rows mapped off at fit time, so `par.random` holds
+  ## only the free rows. Report those traits as NA rather than mistaking the
+  ## shorter vector for a stale sd_report.
+  skip_mask <- switch(
+    block,
+    diag_unit = fit$tmb_data$diag_B_skip,
+    diag_unit_obs = fit$tmb_data$diag_W_skip,
+    NULL
+  )
+  skip_mask <- as.logical(skip_mask)
+  if (!integrated && !is.null(spec$nrow) && length(skip_mask) == spec$nrow &&
+      any(skip_mask) &&
+      length(idx) == sum(!skip_mask) * spec$ncol) {
+    out <- matrix(NA_real_, nrow = spec$nrow, ncol = spec$ncol)
+    out[!skip_mask, ] <- matrix(se_vec, nrow = sum(!skip_mask), ncol = spec$ncol)
+    return(out)
   }
 
   if (length(idx) != spec$nrow * spec$ncol) {

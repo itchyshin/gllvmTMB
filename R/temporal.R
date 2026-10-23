@@ -86,6 +86,15 @@ temporal_dep <- function(formula, time, structure = "ar1", replicate = NULL) {
 #' and profiles, automatic selection, and source-pair versions of those routes
 #' remain unavailable.
 #'
+#' @section Requirements:
+#' `temporal_indep()`, `temporal_dep()`, and `temporal_latent()` abort unless
+#' the response is one complete Gaussian column (no missing values); the
+#' long-form term is exactly `0 + trait | series` (the wide `traits(...)`
+#' interface is expanded to this form first); the data have at least three
+#' traits; and each series has at least three strictly ordered occasions.
+#' `time` must be finite numeric; AR1 also requires integer-valued occasions
+#' that preserve their gaps.
+#'
 #' @rdname temporal_latent
 #' @param d Latent rank. This version supports `1`.
 #' @param unique For `temporal_latent()`, include a trait-diagonal temporal Psi.

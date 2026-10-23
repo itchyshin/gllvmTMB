@@ -25,6 +25,12 @@ on:
     # which is when cross-platform evidence is actually needed.
     - cron: "0 6 * * 1"
   workflow_dispatch:
+    inputs:
+      test_shard:
+        description: "Optional test partition; run all four partitions for complete coverage"
+        type: choice
+        default: all
+        options: [all, "1/4", "2/4", "3/4", "4/4"]
   push:
     tags: ["v*"]
 
@@ -38,7 +44,8 @@ env:
   GLLVMTMB_HEAVY_TESTS: "1"
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  # Distinct manual partitions may run together; the default group is unchanged.
+  group: ${{ github.workflow }}-${{ github.ref }}${{ github.event_name == 'workflow_dispatch' && inputs.test_shard != 'all' && format('-shard-{0}', inputs.test_shard) || '' }}
   cancel-in-progress: true
 
 jobs:
@@ -74,6 +81,7 @@ jobs:
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
       R_KEEP_PKG_SOURCE: yes
+      GLLVMTMB_TEST_SHARD: ${{ github.event_name == 'workflow_dispatch' && inputs.test_shard != 'all' && inputs.test_shard || '' }}
 
     steps:
       - uses: actions/checkout@v5

@@ -142,6 +142,12 @@ support from end-to-end verification:
 | `meta_V(V = V, type = "proportional")` | **planned (post-CRAN)** | Unification of known-additive and proportional sampling-variance forms per Nakagawa 2022 EcoLetters. See vision doc "Planned extensions". |
 | `weights = w` argument | **planned (post-CRAN)** | glmmTMB-style row-weights, separate from `meta_V()`. See vision doc "Planned extensions". |
 
+For a long-format trait column named by `trait = "response_column"`, the
+ordinary predictor-informed loading block accepts both
+`latent(0 + response_column | unit, lv = ~ x)` and the placeholder
+`latent(0 + trait | unit, lv = ~ x)`. They identify the same loading basis;
+the alias does not admit augmented random-regression combinations.
+
 **Source-specific `lv` guard (2026-07-01; widened 2026-07-01):** `lv = ~ env`
 is predictor-informed ordinary-latent syntax only. It is not active for
 source-specific structural keywords: `phylo_*()`, `spatial_*()`,

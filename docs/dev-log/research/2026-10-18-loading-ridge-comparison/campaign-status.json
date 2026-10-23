@@ -1,0 +1,205 @@
+{
+  "pid": 3785500,
+  "started_utc": "2026-10-18T16:13:10.210400+00:00",
+  "workers": 32,
+  "mode": "full",
+  "cap_seconds": 3600,
+  "root": "/home/snakagaw/gllvmtmb_ridge_full_20261018_161abe",
+  "elapsed_seconds": 860.6110572991893,
+  "active_workers": 0,
+  "completed_arms": 24000,
+  "worker_status": [
+    {
+      "worker": "worker-25",
+      "pid": 3785621,
+      "returncode": 0,
+      "elapsed": 572.7123650792055
+    },
+    {
+      "worker": "worker-31",
+      "pid": 3785660,
+      "returncode": 0,
+      "elapsed": 572.7123650792055
+    },
+    {
+      "worker": "worker-03",
+      "pid": 3785503,
+      "returncode": 0,
+      "elapsed": 577.7592374880332
+    },
+    {
+      "worker": "worker-07",
+      "pid": 3785519,
+      "returncode": 0,
+      "elapsed": 577.7592374880332
+    },
+    {
+      "worker": "worker-13",
+      "pid": 3785544,
+      "returncode": 0,
+      "elapsed": 577.7592374880332
+    },
+    {
+      "worker": "worker-19",
+      "pid": 3785595,
+      "returncode": 0,
+      "elapsed": 577.7592374880332
+    },
+    {
+      "worker": "worker-27",
+      "pid": 3785632,
+      "returncode": 0,
+      "elapsed": 577.7592374880332
+    },
+    {
+      "worker": "worker-29",
+      "pid": 3785644,
+      "returncode": 0,
+      "elapsed": 577.7592374880332
+    },
+    {
+      "worker": "worker-05",
+      "pid": 3785509,
+      "returncode": 0,
+      "elapsed": 582.8065199530683
+    },
+    {
+      "worker": "worker-09",
+      "pid": 3785522,
+      "returncode": 0,
+      "elapsed": 582.8065199530683
+    },
+    {
+      "worker": "worker-11",
+      "pid": 3785529,
+      "returncode": 0,
+      "elapsed": 582.8065199530683
+    },
+    {
+      "worker": "worker-17",
+      "pid": 3785582,
+      "returncode": 0,
+      "elapsed": 582.8065199530683
+    },
+    {
+      "worker": "worker-21",
+      "pid": 3785603,
+      "returncode": 0,
+      "elapsed": 582.8065199530683
+    },
+    {
+      "worker": "worker-23",
+      "pid": 3785610,
+      "returncode": 0,
+      "elapsed": 582.8065199530683
+    },
+    {
+      "worker": "worker-01",
+      "pid": 3785501,
+      "returncode": 0,
+      "elapsed": 587.8535670500714
+    },
+    {
+      "worker": "worker-15",
+      "pid": 3785557,
+      "returncode": 0,
+      "elapsed": 587.8535670500714
+    },
+    {
+      "worker": "worker-26",
+      "pid": 3785626,
+      "returncode": 0,
+      "elapsed": 835.3388755752239
+    },
+    {
+      "worker": "worker-32",
+      "pid": 3785666,
+      "returncode": 0,
+      "elapsed": 835.3388755752239
+    },
+    {
+      "worker": "worker-18",
+      "pid": 3785592,
+      "returncode": 0,
+      "elapsed": 840.3943790080957
+    },
+    {
+      "worker": "worker-20",
+      "pid": 3785598,
+      "returncode": 0,
+      "elapsed": 840.3943790080957
+    },
+    {
+      "worker": "worker-22",
+      "pid": 3785606,
+      "returncode": 0,
+      "elapsed": 840.3943790080957
+    },
+    {
+      "worker": "worker-30",
+      "pid": 3785654,
+      "returncode": 0,
+      "elapsed": 840.3943790080957
+    },
+    {
+      "worker": "worker-02",
+      "pid": 3785502,
+      "returncode": 0,
+      "elapsed": 845.4490428450517
+    },
+    {
+      "worker": "worker-12",
+      "pid": 3785539,
+      "returncode": 0,
+      "elapsed": 845.4490428450517
+    },
+    {
+      "worker": "worker-14",
+      "pid": 3785549,
+      "returncode": 0,
+      "elapsed": 845.4490428450517
+    },
+    {
+      "worker": "worker-28",
+      "pid": 3785636,
+      "returncode": 0,
+      "elapsed": 845.4490428450517
+    },
+    {
+      "worker": "worker-06",
+      "pid": 3785512,
+      "returncode": 0,
+      "elapsed": 850.504098745063
+    },
+    {
+      "worker": "worker-16",
+      "pid": 3785570,
+      "returncode": 0,
+      "elapsed": 850.504098745063
+    },
+    {
+      "worker": "worker-24",
+      "pid": 3785614,
+      "returncode": 0,
+      "elapsed": 850.504098745063
+    },
+    {
+      "worker": "worker-08",
+      "pid": 3785521,
+      "returncode": 0,
+      "elapsed": 855.5585593830328
+    },
+    {
+      "worker": "worker-04",
+      "pid": 3785505,
+      "returncode": 0,
+      "elapsed": 860.6110572991893
+    },
+    {
+      "worker": "worker-10",
+      "pid": 3785524,
+      "returncode": 0,
+      "elapsed": 860.6110572991893
+    }
+  ]
+}

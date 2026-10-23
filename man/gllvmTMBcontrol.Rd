@@ -36,30 +36,44 @@ gllvmTMBcontrol(
   allow_nongaussian_reml = FALSE,
   loading_ridge = NULL,
   optimizer_passes = 1L,
+  svd_start = TRUE,
+  va_polish = TRUE,
   ...
 )
 }
 \arguments{
-\item{d_B, d_W}{Latent dimensions for the between-unit and within-unit
-reduced-rank components. Set to a positive integer to enable
-\code{latent()} / \code{indep()} covariance structures at the corresponding tier.}
+\item{d_B, d_W}{\strong{Not read by the fitter.} Retained in the control list for
+backward compatibility only. Set latent rank in the formula with
+\code{latent(..., d = K)} (or the \code{d} argument on the keyword helper), not
+here.}
 
-\item{spde_mode}{\code{"per_trait"} (default) fits one independent SPDE field
-per trait when a \code{spatial()} term is present; \code{"shared"} fits one shared
-SPDE field with trait-specific scalar loadings.}
+\item{spde_mode}{\strong{Not read by the fitter.} Retained for backward
+compatibility only. Spatial field sharing is determined by the
+\verb{spatial_*()} formula keyword, not by this control argument.}
 
 \item{n_init}{Number of random-start replicates. Reduced-rank GLLVMs
 are often multimodal because the latent-factor likelihood has many
 equivalent local maxima; running several restarts with different
 starting values and keeping the fit with the lowest \code{-logLik}
 reduces the risk of settling on a suboptimal solution. Default
-1 (single fit). Increase to 5–10 for two-level rr models.}
+1 (the default start, plus the \code{svd_start} restart when that applies).
+Increase to 5–10 for two-level rr models, and to check any fit whose
+log-likelihood will be compared: a single start can stop at a lower
+local optimum while reporting \code{convergence = 0}, a positive-definite
+Hessian and a small gradient. The jittered restarts use R's random
+number generator, so call \code{\link[=set.seed]{set.seed()}} first for a reproducible fit.}
 
-\item{optimizer}{One of \code{"nlminb"} (default) or \code{"optim"}. Use the
-latter together with \code{optArgs} for finicky two-level rr fits.}
+\item{optimizer}{Optimiser for the native Laplace and AGHQ routes. For the
+experimental VA route, omission keeps the family registry's automatic
+primary solver; explicitly set \code{"nlminb"} to pin that solver or \code{"optim"}
+to select \code{"BFGS"} or \code{"L-BFGS-B"} through \code{optArgs$method}.}
 
-\item{optArgs}{A list of arguments passed to the optimiser. For
-\code{optim} the most useful is \code{list(method = "BFGS")}.}
+\item{optArgs}{Native optimiser arguments. Existing Laplace and AGHQ
+behavior is unchanged. For VA, \code{nlminb} accepts \code{control}, \code{lower},
+\code{upper}, and \code{scale}; \code{optim} accepts a nested \code{control} list and
+\code{method = "BFGS"} or \code{"L-BFGS-B"} (the latter also accepts bounds).
+Put native stopping controls such as \code{maxit} inside \code{control}; unknown or
+method-incompatible values are rejected before the VA objective is built.}
 
 \item{init_jitter}{Standard deviation of N(0, sigma) jitter applied to
 the starting parameter vector across the \code{n_init} restarts.
@@ -123,14 +137,14 @@ which is not a frequentist random-effect standard error. No nominal
 coverage claim is made. A bound must not be compared across ranks or
 models, so it cannot be used for model or rank selection.
 
-It is admitted only inside the current experimental region —
+It is currently admitted only for these model conditions:
 \code{latent(..., unique = FALSE)}, the 18 scalar family/link cells in the
 response-family registry, \code{d} up to 2, up to 80 responses, at least 100
-units, and the native TMB engine — and
-requesting it outside that region is an \strong{error}, not a warning. The \code{d}
-limit is retained from an earlier preregistered explicit-JJ recovery study:
-\code{d = 4} was measured and refused because, with few responses, the
-planted axes collapsed more often than the prespecified criterion allowed. This is an
+units, and the native TMB engine. Requesting it outside these conditions
+is an \strong{error}, not a warning. The \code{d}
+limit is retained from the historical explicit-JJ preregistered recovery
+gate: \code{d = 4} was measured and refused because, with few responses, the
+planted axes collapsed more often than that gate allowed. This is an
 implementation admission fence, not recovery evidence for the current
 automatic GH-H7 route. In the current 36-cell family-by-rank campaign only
 the Poisson-log \code{q = 5} cell passed the overall point route, and that rank
@@ -150,11 +164,11 @@ uncalibrated VA-Wald uncertainty; \code{getLV(se = TRUE)} returns a variational
 \code{eval_method} resolves to \code{"gh"}. Loading/covariance intervals remain
 unavailable.
 
-\strong{Earlier explicit-JJ evidence.} Recovery of the ordination below was
+\strong{Historical explicit-JJ evidence.} Recovery of the ordination below was
 measured with the earlier JJ evaluator against planted truth at the
 admitted cells (\code{d = 2}, 8 responses, n = 150 and 400, 50 seeds per cell),
-with the Laplace route run on the
-same simulated data as a control. This campaign predates the current
+with the Laplace route run on the same simulated data as a control. This
+campaign predates the current
 automatic Gauss-Hermite default and must not be used as evidence for the
 accuracy of the current GH-default route:
 \itemize{
@@ -175,15 +189,29 @@ its loadings.
 }
 
 The comparison is not effort-matched: the historical JJ arm ran four starts
-and retained fits meeting agreement and gradient criteria, while the Laplace
-arm used one start and required a positive-definite Hessian.
+behind an agreement-and-gradient health gate, the Laplace arm a single
+start admitted on a positive-definite Hessian.
 
 \code{"va"} returns an object of class \code{"gllvmTMB_va"} (see
 \link{gllvmTMB_va-methods}) rather than an ordinary fit, so that every method
 which would treat its objective as a likelihood fails loudly instead of
 returning a number. Because the engine runs its own multi-start and
-optimiser policy, the search settings of \code{\link[=gllvmTMBcontrol]{gllvmTMBcontrol()}} — \code{n_init},
-\code{optimizer}, \code{optArgs}, \code{start_from}, \verb{init_*} and \code{se} — have no effect
+optimiser policy, \code{optimizer} and \code{optArgs} select the VA primary solver,
+while \code{va_polish} controls the existing secondary-solver sequence. If
+\code{optimizer} is omitted, the family registry still selects the primary
+solver. For a fitted VA object, per-start diagnostics are in
+\code{fit$engine_result$starts[[i]]}: \code{primary_optimizer} names the selected
+primary method and \code{final_optimizer} names the method whose parameter
+vector and objective were retained. \code{polish_optimizer} summarizes the
+polish methods actually attempted (\code{"disabled"}, \code{"not_attempted"},
+\code{"nlminb_attempted"}, or \code{"nlminb_then_L-BFGS-B_attempted"}). The ordered
+\code{optimizer_attempts} records include an \code{accepted} flag. The primary result
+starts accepted; a polish record is accepted only when it replaces the
+retained result. Acceptance records replacement, not convergence or a
+healthy fit; inspect \code{convergence} and \code{healthy} separately. Thus the last
+accepted attempt identifies \code{final_optimizer}; a failed primary has no
+retained solver and records \code{NA}. The settings \code{n_init}, \code{start_from},
+\verb{init_*} and \code{se} have no effect
 on this route. Any model structure the route cannot represent (a latent
 term away from the unit grouping, a constrained ordination, an offset,
 weights, \code{REML}, \code{lambda_constraint}, \code{Xcoef_fixed}, or a further random
@@ -205,8 +233,9 @@ in \code{H}, so this is the main speed control on that route. On a binomial
 probit cell with 20 traits, \code{H = 7} was indistinguishable from \code{H = 61} in
 both the recovered loading scale and the recovered linear predictor, at
 two and at five latent dimensions, while running 3.4-6.7 times faster.
-\code{H = 5} was measurably worse at five latent dimensions. The default is
-therefore \code{H = 7}; \code{H = 61} remains available as a diagnostic.}
+\code{H = 5} was measurably worse at five latent dimensions. These results
+support \code{H = 7} as the default; \code{H = 61} remains available as a
+diagnostic.}
 
 \item{va_eval_method}{How the variational route evaluates the per-observation
 expectation. \code{"auto"} (default) selects Gauss-Hermite quadrature for every
@@ -285,16 +314,18 @@ cap is escalated. Default \code{3L}.}
 \item{aghq_rho_min}{Minimum trust-region-style acceptance ratio for a pass.
 Default \code{1/64}.}
 
-\item{warn_runaway}{If \code{TRUE} (default), warn once per session when a
-binomial latent-variable fit triggers the package's existing runaway-loading
-diagnostic. Set \code{FALSE} to silence the fit-time warning; the diagnostic
-remains available through \code{\link[=gllvmTMB_diagnose]{gllvmTMB_diagnose()}}. The same switch also
-governs the multinomial contrast-degeneracy warning (collapsed contrast
+\item{warn_runaway}{If \code{TRUE} (default), warn when a binomial
+latent-variable fit triggers the package's existing runaway-loading
+diagnostic. The warning is shown once per session for each distinct
+dataset and model (response, family and link, and loading-matrix shape), so
+a second, different runaway fit in the same session still warns while a
+re-fit of the same data and model does not. Set \code{FALSE} to silence the
+fit-time warning; the diagnostic remains available through
+\code{\link[=gllvmTMB_diagnose]{gllvmTMB_diagnose()}}. The same switch also governs the multinomial contrast-degeneracy warning (collapsed contrast
 variance, rail-correlated contrasts, or a collapsed spatial range), which
 uses its own once-per-session slot so neither family's warning can
-suppress the other's. Ordinal fits emit no fit-time warning: that row's
-arms ship disarmed because no threshold met its calibration targets, so
-it reports statistics through \code{\link[=check_gllvmTMB]{check_gllvmTMB()}} only.}
+suppress the other's. Ordinal fits emit no fit-time warning: the
+\code{ordinal_probit()} loading screen reports through \code{\link[=check_gllvmTMB]{check_gllvmTMB()}} only.}
 
 \item{allow_nongaussian_reml}{Permit \code{REML = TRUE} for non-Gaussian families.
 Default \code{FALSE}; the restricted likelihood is defined by a Gaussian
@@ -305,13 +336,42 @@ spelling to request the same loading MAP penalty on a Laplace fit without
 suggesting that the penalty belongs to AGHQ. The default \code{NULL} preserves
 historical unpenalised Laplace fits. Supply at most one of
 \code{loading_ridge} and \code{aghq_ridge}; neither may be combined with
-\code{estimator = "mspl"}.}
+\code{estimator = "mspl"}. A finite positive value is the standard deviation
+\code{tau} of independent zero-mean normal priors on free ordinary between-unit loadings:
+\code{loading_ridge = 2} means variance \code{2^2}, smaller positive values apply
+stronger shrinkage, and \code{Inf} disables the penalty. For unstable binomial
+fits with ordinary between-unit latent loadings, an explicit
+\code{loading_ridge = 2} fit is a starting sensitivity analysis; this does not
+change the ordinary Laplace default. Estimates
+are penalised MAP points. Retained penalised-Hessian LV uncertainty is a
+local posterior approximation conditional on \code{tau}, with delta-method
+propagation for trait effects, not calibrated repeated-sampling coverage.
+Older fits without the required metadata withhold LV uncertainty.}
 
 \item{optimizer_passes}{Number of exact-gradient optimisation passes from
 the preceding estimate. The default \code{1} retains the historical single
 pass. A later pass is retained only when it converges and does not increase
 the objective. It is available for native Laplace fits with \code{aghq = FALSE}.
 The setting is saved in the public call and replayed by \code{\link[=update]{update()}}.}
+
+\item{svd_start}{Logical. If \code{TRUE} (default), a fit with an ordinary
+\code{latent()} block is also optimised from a second, data-informed start
+whose loadings and latent scores come from one singular value
+decomposition of the residual matrix, and the start with the lower
+objective is kept (\code{restart_history} labels it \code{"svd"}). The default
+start alone sometimes stopped at a lower local optimum with clean
+diagnostics. This adds one optimisation per fit and uses
+no random numbers. It is skipped when \code{start_from} or \code{start_method} is
+supplied and on the \code{estimator = "mspl"} route. Set \code{FALSE} for the
+single-start behaviour of gllvmTMB 0.8.0 and earlier.}
+
+\item{va_polish}{For VA fits, whether to run the existing secondary solver
+polishing sequence after each primary start. Defaults to \code{TRUE} to retain
+prior behavior; \code{FALSE} disables every secondary solver and is useful for
+controlled optimizer comparisons. The four primary starts and their
+existing agreement rule are unchanged. BFGS uses a dense inverse-Hessian
+approximation, so its memory use grows quadratically with the parameter
+count; use it as an opt-in method for modest models.}
 
 \item{...}{Reserved for future use. Currently ignored with a warning.}
 }
@@ -366,6 +426,57 @@ gllvmTMBcontrol(n_init = 3, init_jitter = 0.2)
 
 # Switch the optimiser to optim + BFGS for finicky two-level rr fits.
 gllvmTMBcontrol(optimizer = "optim", optArgs = list(method = "BFGS"))
+
+# Compare VA primary solvers on the same model and four seeded starts.
+# This example is deliberately not run automatically because each method
+# performs four variational fits. Reset the seed for each method and disable
+# polish so the comparison isolates the selected primary solver.
+\dontrun{
+set.seed(20260802L)
+n <- 120L
+p <- 4L
+va_data <- data.frame(
+  y = rbinom(n * p, 1L, 0.5),
+  trait = factor(rep(seq_len(p), times = n)),
+  site = factor(rep(seq_len(n), each = p))
+)
+va_formula <- y ~ 0 + trait + latent(0 + trait | site, d = 1,
+                                     unique = FALSE)
+va_methods <- list(
+  nlminb = list(optimizer = "nlminb",
+                optArgs = list(control = list(iter.max = 2000L,
+                                               eval.max = 2000L))),
+  BFGS = list(optimizer = "optim",
+              optArgs = list(method = "BFGS",
+                              control = list(maxit = 2000L))),
+  `L-BFGS-B` = list(optimizer = "optim",
+                    optArgs = list(method = "L-BFGS-B",
+                                    control = list(maxit = 2000L)))
+)
+va_fits <- lapply(va_methods, function(method) {
+  set.seed(1595L)
+  gllvmTMB(
+    va_formula, data = va_data,
+    family = stats::binomial(link = "probit"), unit = "site",
+    control = gllvmTMBcontrol(
+      integration = "va", va_H = 7L, va_eval_method = "gh",
+      optimizer = method$optimizer, optArgs = method$optArgs,
+      va_polish = FALSE
+    )
+  )
+})
+lapply(va_fits, function(fit) {
+  starts <- fit$engine_result$starts
+  data.frame(
+    start = vapply(starts, `[[`, integer(1), "start"),
+    primary = vapply(starts, `[[`, character(1), "primary_optimizer"),
+    final = vapply(starts, `[[`, character(1), "final_optimizer"),
+    polish = vapply(starts, `[[`, character(1), "polish_optimizer"),
+    objective = vapply(starts, `[[`, numeric(1), "objective"),
+    convergence = vapply(starts, `[[`, integer(1), "convergence")
+  )
+})
+}
 
 # Experimental, opt-in scale-aware ridge for the evaluated Bernoulli AGHQ
 # scope. The route uses a fixed 9-node multi-start rule; this is not an

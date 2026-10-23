@@ -107,6 +107,23 @@ simulate_site_trait <- function(n_sites = 50,
               dimnames = list(NULL, paste0("env_", seq_len(n_predictors))))
 
   ## ---- Spatial r_{st} (optional) ------------------------------------------
+  ## Both spatial_range and sigma2_spa are required to draw r_st; otherwise no
+  ## spatial signal is simulated yet truth would advertise variance that never
+  ## entered the DGP (#1419; same pattern as sigma2_phy / Cphy in #655).
+  if (!is.null(spatial_range) && is.null(sigma2_spa)) {
+    cli::cli_abort(c(
+      "{.arg spatial_range} was supplied but {.arg sigma2_spa} is {.code NULL}.",
+      "x" = "No spatial signal can be simulated without the per-trait spatial variance.",
+      ">" = "Pass {.arg sigma2_spa}, or omit {.arg spatial_range}."
+    ))
+  }
+  if (!is.null(sigma2_spa) && is.null(spatial_range)) {
+    cli::cli_abort(c(
+      "{.arg sigma2_spa} was supplied but {.arg spatial_range} is {.code NULL}.",
+      "x" = "No spatial signal can be simulated without the spatial range.",
+      ">" = "Pass {.arg spatial_range}, or omit {.arg sigma2_spa}."
+    ))
+  }
   r_mat <- matrix(0, nrow = n_sites, ncol = n_traits)
   if (!is.null(spatial_range) && !is.null(sigma2_spa)) {
     if (is.null(coords)) coords <- cbind(lon = stats::runif(n_sites),

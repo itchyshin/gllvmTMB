@@ -1,7 +1,6 @@
 ## Canonical citation(s) returned by `citation("gllvmTMB")`.
 ##
-## - Primary entry: the gllvmTMB methods paper (Nakagawa et al., in prep).
-##   Update the DOI / journal / volume / pages when the paper lands.
+## - Primary entry: the versioned gllvmTMB software package.
 ## - Recommended companion: cite TMB (Kristensen et al. 2016) for any
 ##   gllvmTMB fit.
 ##
@@ -14,18 +13,17 @@ pkg_version <- if (!is.null(meta$Version)) meta$Version else "unknown"
 bibentry(
   bibtype  = "Manual",
   key      = "gllvmTMB",
-  title    = "gllvmTMB: Fit Multivariate Models from Wide Response
-             Data",
+  title    = "gllvmTMB: Generalised Linear Latent Variable Models with TMB",
   author   = c(
     person("Shinichi", "Nakagawa")
   ),
   year     = "2026",
-  note     = paste0("R package version ", pkg_version, "; methods paper in preparation"),
+  note     = paste0("R package version ", pkg_version),
   url      = "https://itchyshin.github.io/gllvmTMB/",
   textVersion = paste(
     "Nakagawa S (2026).",
-    "gllvmTMB: Fit Multivariate Models from Wide Response Data.",
-    paste0("R package version ", pkg_version, "; methods paper in preparation."),
+    "gllvmTMB: Generalised Linear Latent Variable Models with TMB.",
+    paste0("R package version ", pkg_version, "."),
     "https://itchyshin.github.io/gllvmTMB/"
   ),
   header   = paste(

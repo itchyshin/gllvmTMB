@@ -62,25 +62,36 @@ strength. \code{\link[=extract_Gamma]{extract_Gamma()}} returns descriptive poin
 provide calibrated intervals or establish a causal evolutionary process.
 }
 \examples{
-\dontrun{
-A <- diag(5)
-dat <- data.frame(
-  unit = factor(rep(paste0("u", 1:5), each = 2), levels = paste0("u", 1:5)),
-  obs = factor(seq_len(10)),
-  y1 = rnorm(10),
-  y2 = rnorm(10)
-)
-rownames(A) <- colnames(A) <- levels(dat$unit)
+set.seed(1)
+## A known similarity among 30 sites along an environmental gradient; any
+## dense positive-semidefinite covariance or correlation matrix can be K.
+x <- seq(0, 1, length.out = 30)
+K <- exp(-abs(outer(x, x, "-")) / 0.1)
+dimnames(K) <- list(paste0("s", 1:30), paste0("s", 1:30))
+## Four traits load on one K-correlated latent field and carry their own
+## K-correlated deviations, so the site-level trait covariance is
+## lambda lambda^T + diag(0.2).
+L <- t(chol(K))
+lambda <- c(0.8, 0.6, -0.5, 0.4)
+site_eff <- outer(drop(L \%*\% rnorm(30)), lambda) +
+  L \%*\% matrix(rnorm(30 * 4, sd = sqrt(0.2)), 30, 4)
+## Long format: four replicate visits per site, one row per (visit, trait).
+dat <- expand.grid(trait = factor(paste0("y", 1:4)), visit = 1:4,
+                   site = factor(rownames(K), levels = rownames(K)))
+dat$obs <- factor(paste(dat$site, dat$visit, sep = "_"))
+dat$value <- site_eff[cbind(as.integer(dat$site), as.integer(dat$trait))] +
+  rnorm(nrow(dat), sd = 0.4)
 fit <- gllvmTMB(
-  traits(y1, y2) ~
-    1 + kernel_latent(unit, K = A, d = 1, name = "known",
-                      unique = TRUE),
-  data = dat,
-  unit = "obs",
-  cluster = "unit",
-  family = gaussian()
+  value ~ 0 + trait +
+    kernel_latent(site, K = K, d = 1, name = "gradient", unique = TRUE),
+  data = dat, trait = "trait", unit = "obs", cluster = "site"
 )
-extract_Sigma(fit, level = "known")
-}
+extract_Sigma(fit, level = "gradient")$Sigma
+## kernel_indep(): trait-specific variances only, on the same K:
+fit_indep <- gllvmTMB(
+  value ~ 0 + trait + kernel_indep(site, K = K, name = "gradient"),
+  data = dat, trait = "trait", unit = "obs", cluster = "site"
+)
+extract_Sigma(fit_indep, level = "gradient")$Sigma
 
 }

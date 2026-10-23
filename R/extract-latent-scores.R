@@ -25,26 +25,49 @@
 #' @export
 #'
 #' @examples
-#' \dontrun{
+#' ## Simulate 4 traits recorded on a few species at each of 30 sites. The
+#' ## between-site trait variation comes from one latent axis (one loading
+#' ## per trait in Lambda_B) plus some trait-specific variation (psi_B).
+#' ## beta = 0 turns off the simulator's environmental effects, which this
+#' ## model does not include.
+#' set.seed(1)
 #' sim <- simulate_site_trait(
-#'   n_sites = 20, n_species = 6, n_traits = 4,
+#'   n_sites = 30, n_species = 6, n_traits = 4,
 #'   mean_species_per_site = 4,
+#'   beta = matrix(0, 4, 2),
 #'   Lambda_B = matrix(c(0.9, 0.6, -0.4, 0.5), nrow = 4, ncol = 1),
-#'   seed = 1
+#'   psi_B = rep(0.2, 4)
 #' )
+#' ## The true site scores the simulation drew: one row per site, one
+#' ## column per latent axis
 #' u_true <- extract_latent_scores(sim, level = "unit")
+#' head(u_true)
+#' ## Fit one latent axis between sites; unique = TRUE also fits the
+#' ## trait-specific variances, as in the simulated data
 #' fit <- gllvmTMB(
-#'   value ~ 0 + trait + latent(0 + trait | site, d = 1),
-#'   data = sim$data
+#'   value ~ 0 + trait + latent(0 + trait | site, d = 1, unique = TRUE),
+#'   data  = sim$data,
+#'   trait = "trait",
+#'   unit  = "site"
 #' )
+#' ## The estimated site scores (posterior modes), in the same layout
 #' z_hat <- extract_latent_scores(fit, level = "unit")
-#' }
+#' head(z_hat)
+#' ## The sign of a latent axis is arbitrary, so compare up to sign: the
+#' ## estimated scores are strongly correlated with the true ones
+#' abs(cor(z_hat[, "LV1"], u_true[, "LV1"]))
+#' ## This model has no latent term within sites, so there are no
+#' ## within-site scores to return
+#' extract_latent_scores(fit, level = "unit_obs")
 extract_latent_scores <- function(x, level = c("unit", "unit_obs")) {
   UseMethod("extract_latent_scores")
 }
 
 #' @export
 extract_latent_scores.gllvmTMB_multi <- function(x, level = c("unit", "unit_obs")) {
+  if (length(level) > 1L) {
+    level <- match.arg(level)
+  }
   level <- match.arg(level, c("unit", "unit_obs", "B", "W"))
   ord <- extract_ordination(x, level = level, component = "innovation")
   if (is.null(ord)) {
@@ -60,6 +83,9 @@ extract_latent_scores.gllvmTMB_va <- function(x, level = c("unit", "unit_obs")) 
 
 #' @export
 extract_latent_scores.gllvmTMB_site_trait_sim <- function(x, level = c("unit", "unit_obs")) {
+  if (length(level) > 1L) {
+    level <- match.arg(level)
+  }
   level <- match.arg(level, c("unit", "unit_obs", "B", "W"))
   level <- .normalise_level(level, arg_name = "level")
   z <- if (level == "B") x$truth$z_B else x$truth$z_W

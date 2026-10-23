@@ -1,3 +1,181 @@
+## 2026-10-16: wrap #1561 example fits in `\donttest{}` (refs #1346)
+
+R review on #1561: wrap `gllvmTMB()` fits in `\donttest{}`, keep data set-up
+bare. 24 `@examples` blocks in `R/brms-sugar.R`; `devtools::document(roclets =
+"rd")` with roxygen2 8.0.0 regenerated the matching 24 `man/*.Rd` files;
+`NAMESPACE` left untouched (#1558). `devtools::test(filter =
+"examples-run-1346a")`: 48 blocks, failed=0, skipped=0, error=0, warning=0.
+`rg -n '\\\\donttest\\{' R/brms-sugar.R` → 24. `rg -n '\\\\dontrun' ` on those
+24 Rd files → 0. Report:
+`docs/dev-log/after-task/2026-10-16-donttest-example-fits-1346a.md`.
+## 2026-10-11: predict(newdata) follow-up classes, #1424 subset, forecast_temporal (#1480)
+
+Unseen-level aborts now carry `gllvmTMB_predict_unseen_level` for every
+variable (iSDM keeps `gllvmTMB_predict_isdm_observation_level` as extra).
+The newdata design wrapper is `gllvmTMB_predict_newdata_design`. Added
+`predict(d[d$g != "a", ])` under `contr.sum`, and a `forecast_temporal()`
+test for `scale(x)`, a missing factor level, and an NA covariate row (stays
+NA). Follow-up issue #1481 (`refs #1480`).
+Focused: `test-predict-newdata-alignment.R` FAIL 0 / PASS 33;
+`test-temporal-program-forecast.R` FAIL 0 / PASS 12.
+Neighbours: `test-tidy-predict.R` FAIL 0 / PASS 20 (4 CRAN skips);
+`test-isdm-predict.R` FAIL 0 / PASS 36 / SKIP 9;
+`test-isdm-requalification-prediction.R` FAIL 0 / PASS 21;
+`test-oct4-news-doc-fixes.R` FAIL 0 / PASS 25.
+Stale-wording scans (this slice):
+`rg -n "gllvmTMB_predict_unseen_level|gllvmTMB_predict_newdata_design" R tests`
+`rg -n "Fixes |Closes |Resolves " docs/dev-log NEWS.md`
+`rg -n "forecast_temporal" tests/testthat/test-temporal-program-forecast.R`
+Report: after-task/2026-10-11-predict-newdata-alignment-followup.md.
+
+## 2026-10-11: predict(newdata) row alignment (#1384, #1423, #1425, #1424)
+
+Reproduced on `main` `9354ac2f` before the edit. `model.matrix(terms(formula), nd)`
+dropped NA covariate rows and recycled `eta` (#1384); `terms(formula)` had no
+`predvars` so `scale()` was re-evaluated on newdata (#1423); character
+predictors rebuilt levels from the supplied rows (#1425);
+`restore_newdata_factor_levels()` dropped user-set contrasts (#1424).
+Helpers now restore character columns and contrasts, rebuild the design from
+the training model frame (`predvars` / `xlevels` / `contrasts.arg`,
+`na.action = na.pass`), abort on missing training columns, and pad a
+shortened design back onto the newdata row index.
+Focused tests: `test-predict-newdata-alignment.R` FAIL 0 / PASS 29.
+Neighbours: `test-tidy-predict.R` FAIL 0 / PASS 20; `test-isdm-predict.R` FAIL 0 / PASS 36;
+`test-isdm-requalification-prediction.R` FAIL 0 / PASS 21; `test-oct4-news-doc-fixes.R` FAIL 0 / PASS 25.
+Stale-wording scans (this slice):
+`rg -n "model.matrix\\(stats::delete.response" R`
+`rg -n "Fixes |Closes |Resolves " docs/dev-log NEWS.md`
+`rg -n "recycle|predvars|contr.sum" R/methods-gllvmTMB.R tests/testthat/test-predict-newdata-alignment.R`
+Report: after-task/2026-10-11-predict-newdata-alignment.md.
+
+## 2026-10-08: neighbouring output and bootstrap refit audit
+
+Reproduced and repaired correlation-index truncation, conflicting mirrored
+plot rows, malformed ordination blocks, ignored temporal component requests,
+legacy loading-prior score provenance and lost native bootstrap fit settings.
+Bootstrap scalar guards and the internal MSPL refusal close adjacent cases.
+Final frozen-source installation: 24 focused test files passed; explicit heavy
+and CRAN skip gates remained active. Independent reviews passed. CI is pending
+at this revision. Report: after-task/2026-10-08-neighbour-output-refit-audit.md.
+
+## 2026-10-08: issue 1467 merged-source completion
+
+PR 1468 head `501b750a4` passed all four shards in run 37876570244 and
+merged as `dc8ee6380d3ef85c987e38c782f11701861b2d32`. Main run 37878327730
+passed all four shards. Fresh merged-source installation, all 13 focused
+test files and the d1/d2/ridged-d2 Fox output replay passed. The unpenalised
+d2 replay remains nonconverged with an indefinite Hessian, and correctly
+withholds SDs; d1 and ridged d2 report supported uncertainty. Input and fit
+results stay private. Independent merge-integration audit: OK.
+Report: after-task/2026-10-07-issue-1467-completion.md.
+
+## 2026-10-08: issue 1467 merge integration
+
+Resolved overlap with the merged issue 1469 changes, retaining both NEWS and
+check-log entries and the local mocked graphics capture regression. A fresh
+native installation passed all 13 focused test files for LV output, ridge
+curvature and disclosure, factor contrasts, selected trait names, ordination
+and full correlation tables. Fresh remote CI and post-merge replay remain
+pending at this revision. No test tolerances changed.
+
+## 2026-10-08: issue 1467 consistent trait-column naming
+
+Reconciled the previously local trait-selector fix into PR 1468. The selected
+column reaches shared classifiers, canonical rewrites, the main parser and
+screening. Paired probit tests cover actual names in both terms, renamed
+trait in both terms, and the historical mixed form at d1, d2 and ridge d2.
+The new and neighbouring parser checks passed 93 expectations. Summary,
+curvature, plotting and factor checks were rerun; actionable-error checks
+passed 7 expectations with NOT_CRAN=true. Independent source and public
+reviews are OK. Documentation checks and article rendering passed. Supplied
+data outcomes remain private; final exact-head CI will be linked on the PR.
+
+## 2026-10-07: issue 1467 public-surface audit
+
+README, article and control help now limit ridge advice to ordinary
+between-unit loadings. Rd regeneration, pkgdown references and prose checks
+passed. Independent public-surface audit: OK, no remaining blockers. The
+completion report contains technical validation only; supplied-data results
+and fit evidence remain private. Final CI receipt is tracked on PR 1468.
+
+## 2026-10-07: issue 1467 diagnostic consistency
+
+Aligned the inherited near-constant diagnostic assertion with explicit ridge
+guidance and updated the neighbouring weak-axis action. All three ridge
+recommendations now state their ordinary between-unit loading scope.
+Sanity, diagnostic and summary regressions: 150 passed, zero failed, with
+one inherited implicit-unit deprecation warning. Independent review confirms
+the advice matches the theta_rr_B-only penalty; thresholds are unchanged.
+
+## 2026-10-07: issue 1467 CI portability repairs
+
+CI exposed an extra bare abort, an S3 trace interception difference and a
+platform-dependent factor-fixture optimizer stop. Added an actionable one-axis
+error suggestion, traced the actual graphics generic, and used explicit BFGS
+with tighter objective stopping for recovery. All accuracy thresholds remain
+unchanged. Installed-package plotting: 6 passed; factor recovery: 45 passed;
+error-action ratchet: 7 passed. Independent narrow review: no blocking findings.
+
+## 2026-10-07: issue 1467 posterior uncertainty
+
+Corrected prior curvature supplies conditional posterior SDs in fit-time,
+lazy and joint paths. 776 focused checks passed. Complete runnable ridge code
+and diagnostic suggestions ship. Independent review found no blocking findings.
+Supplied-data numerical results and fit artifacts remain private.
+Report: after-task/2026-10-07-issue-1467-completion.md.
+
+## 2026-10-07: issue 1467 LV summary and one-axis ordiplot
+
+Separate lane codex/issue-1467-output-20261007, base 02b46cfc8.
+Final source-loaded tests: summary 38, one-axis ordiplot 20, existing ordiplot-multi 9,
+ordiplot-VP 32, all passed. Three synthetic binomial-probit refits (d1, d2,
+d2 loading_ridge = 2) converged. Rd regeneration, pkgdown reference check,
+and predictor-informed tutorial render passed. Independent scoped review OK.
+Ridge summary likelihood/criterion distinction corrected; older stored objects
+retain printable summaries with an unavailable-likelihood note.
+Exact-data refits pending inaccessible Drive CSV. Full R CMD check and package
+suite not run; local patch only, no push or merge. Report:
+after-task/2026-10-07-issue-1467-output.md.
+
+## 2026-10-08: Issue 1469 full correlation tables and diagonal controls
+
+Fresh source installation succeeded. Installed tests: full entries 149 assertions,
+diagonal controls 17, pair layout 15, existing plotting 263; all passed.
+Sigma-table and Fisher-z checks passed their enabled cases, with CRAN-gated cases skipped.
+Original ordinal data: d=1/d=2 crossed with original/alphabetical item order,
+all four passed named-pair equality, reversed-pair equality, matrix symmetry,
+64-cell full tables and 56-cell plots with the diagonal hidden.
+Roxygen, help parsing, article rendering, pkgdown reference check, reader-surface
+and Actions-boundary guards passed. Independent runtime and docs reviews: OK.
+Full local check: 25,523 pass, 11 failures (5 graphics tracing, 3 baseline-reproduced
+visual snapshots, 1 installed-file ordering, 2 unchanged VA prototype assertions).
+R CMD check: 1 error, 2 warnings, 4 notes. Graphics harness and campaign-file
+guard ordering repaired without relaxing assertions; loading help default synced.
+Check repairs: 54 assertions passed; a separate absent-campaign-root replay passed with the intended skip.
+The broad local suite is not claimed clean. PR #1470: all four exact-head shards passed in run 37870005610;
+merged as `4b595ac221c4559e3b4a72fa2f9aa5ca4c8163ce`.
+Main run 37872026904: four of four success. Reinstalled merged source:
+181 assertions and all four public-data rank/order replays passed again.
+Narrow metadata check: zero errors, one warning, four notes; help mismatch gone.
+Report: `after-task/2026-10-08-issue-1469-full-correlation-output.md`.
+
+## 2026-10-04 - #1403: ordinary `update()` no longer asks for a missing `call`
+
+Lane `cursor/oct4-1403` (worktree `/Users/z3437171/local-scratch/lanes/gllvmTMB-oct4-1403`).
+
+**Change:** `update.gllvmTMB_multi()` refuses non-temporal fits with a temporal-only
+message instead of `stats::update.default()`. `simulate.gllvmTMB_multi()` rejects
+invalid `nsim` before any draw.
+
+**Verify:**
+```sh
+Rscript --vanilla -e 'pkgload::load_all(".", compile = FALSE, quiet = TRUE); testthat::test_file("tests/testthat/test-update-nsim.R")'
+# [ FAIL 0 | WARN 0 | SKIP 0 | PASS 6 ]
+```
+
+Watched the new tests fail first (`need an object with call component`;
+`invalid 'length' argument` from `integer(n)`), then pass after the guards.
+
 ## 2026-09-04 — parity_ledger.R: `--r-ref` pins R capability ledger (Option A S2)
 
 Twin lane `cursor/lane-gllvm-twin-20260904`. G0: Option A + Ada defaults.
@@ -57947,3 +58125,188 @@ Deliberately not run: Totoro 9×500 grid dispatch; full `devtools::test()`.
   the clean clone), full site build, `R CMD check`. Prose-order evidence only;
   no fit, coverage, or release claim. Report:
   `docs/dev-log/after-task/2026-09-21-get-started-first-route.md`.
+
+## 2026-09-28 — development and CRAN reader boundary
+
+- Updated `vignettes/articles/current-limits.Rmd` to label its 0.8.0.9000
+  development status before the evidence table and direct 0.7.1 users to the
+  help and vignette installed with that package. The table preserves the
+  validation register's distinction between partial and blocked estimated-rho
+  results. This article follows the current development branch; it is not the
+  0.7.1 release artifact.
+- Exact commands and outcomes:
+  - `Rscript --vanilla -e 'rmarkdown::render("vignettes/articles/current-limits.Rmd", output_file="/private/tmp/gllvmtmb-071-cran-evidence/dev-site-preview-2026-09-28/current-limits.html", intermediates_dir="/private/tmp/gllvmtmb-071-cran-evidence/dev-site-preview-2026-09-28/intermediates", quiet=TRUE)'` — passed; rendered HTML contains the version label, archive boundary, installed-help route, and corrected evidence wording.
+  - `Rscript --vanilla -e 'pkgdown::check_pkgdown()'` — passed, “No problems found.”
+  - `python3 ~/shinichi-brain/tools/slop_check.py /Users/z3437171/.codex/worktrees/cran-071-dev-identity/gllvmTMB/vignettes/articles/current-limits.Rmd` — `FINDINGS: 0`.
+  - `git diff --check` — passed.
+- Rose's version-boundary and estimated-rho wording reviews passed; Pat's local
+  reader-path review passed. Receipts are retained under
+  `/private/tmp/gllvmtmb-071-cran-evidence/` as
+  `rose-current-limits-version-boundary-2026-09-28.md`,
+  `rose-current-limits-source-strength-boundary-2026-09-28.md`, and
+  `pat-current-limits-dev-boundary-followup-2026-09-28.md`.
+- Deliberately not run for this prose-only edit: package tests, `R CMD check`,
+  a full development-site build, or deployment. These checks do not replace the
+  exact 0.7.1 tarball and live-site release gates; deployment remains unverified.
+
+## 2026-09-28 follow-up — clean development-site build
+
+This follow-up supersedes the earlier targeted-edit note that a full development
+site build had not yet been run. It records the build of the pushed commit, not
+the 0.7.1 release site.
+
+- `git archive --format=tar --output=/private/tmp/gllvmtmb-071-cran-evidence/dev-source-303738c4/source.tar 303738c4a76ba6cf2ade2b19d1ac31cf0f65422f` — passed. SHA-256: `b76541245fd4efebdefd1b84b7270566dab18185957cc352b7518101845c2498`.
+- `tar -xf /private/tmp/gllvmtmb-071-cran-evidence/dev-source-303738c4/source.tar -C /private/tmp/gllvmtmb-071-cran-evidence/dev-source-303738c4` — passed.
+- Initial `Rscript --vanilla -e 'pkgdown::build_site(devel = TRUE, lazy = FALSE)'` — failed because the sandbox could not resolve `cloud.r-project.org` and could not write the default Sass cache.
+- `R_USER_CACHE_DIR=/private/tmp/gllvmtmb-071-cran-evidence/dev-source-303738c4/cache Rscript --vanilla -e 'pkgdown::build_site(devel = TRUE, lazy = FALSE)'` — passed with exit 0 and completed the full site build.
+- Verified the generated homepage displays `0.8.0.9000` as experimental development documentation and says the planned first CRAN submission uses the earlier bounded 0.7.1 source. The generated Current limitations page displays the development label, directs 0.7.1 readers to `?gllvmTMB` and `vignette("gllvmTMB")`, and retains the partial/blocked source-strength wording.
+- Full-build receipt: `/private/tmp/gllvmtmb-071-cran-evidence/dev-site-build-303738c4.md`. Local build only; merge, deployment, and live-page inspection remain outstanding.
+
+## 2026-09-28 follow-up: reviewed help corrections and full local verification
+
+- The working-tree follow-up corrected stale internal-path and calibration wording in roxygen descriptions and regenerated the matching `man/*.Rd` pages. It also aligned the help text with the completed ordinal calibration: no threshold met its targets, so defaults remain disarmed. The changed source/help files are `R/diagnose.R`, `R/families.R`, `R/gllvmTMB.R`, `R/loading-ci.R`, `R/output-methods.R`, `R/predictive-diagnostics.R`, `R/slope-sd-ci.R`, and the 20 generated help topics shown by `git diff --name-only`, plus `DESCRIPTION`, `README.md`, and `inst/CITATION`. No example code, test file, likelihood, TMB source, `NAMESPACE`, `NEWS.md`, or formula grammar changed.
+- Exact commands and outcomes:
+  - `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'` — passed earlier in this follow-up; generated help matches roxygen.
+  - `Rscript --vanilla -e 'pkgdown::check_pkgdown()'` — passed earlier in this follow-up, “No problems found.”
+  - `Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'` in the writable source copy — exit 1 after 23m39.4s; 24,989 PASS, 6 FAIL, 54 warning captures, 1,231 SKIP, and four NOTEs. Failures: three `vdiffr` snapshots with small SVG coordinate changes; the temporal optimizer-control fixture at `test-temporal-phylo-optimizer-qualification.R:271`; and two seed-12 R3 prototype assertions at `test-va-r3-prototype.R:116,121` (three healthy starts where four were expected, plus failed start eligibility). The isolated temporal test passed; the R3 seed-12 failure reproduced in the focused run. These test and fitting files are unchanged by this documentation follow-up. Do not accept new snapshots from this local platform run or use this development-source check as evidence for the separate 0.7.1 archive. Full log: `/private/tmp/gllvmtmb-071-cran-evidence/pr1325-full-check-writable-2026-09-28.log`.
+  - `Rscript --vanilla -e 'devtools::test(filter = "plot-visual-snapshots|temporal-phylo-optimizer-qualification|va-r3-prototype", reporter = "summary")'` in the writable source copy — confirmed the temporal file passes in isolation, three plot snapshots differ, and the R3 seed-12 assertions still fail. Log: `/private/tmp/gllvmtmb-071-cran-evidence/pr1325-focused-failures-writable-2026-09-28.log`.
+  - Initial `Rscript --vanilla -e 'pkgdown::build_site(devel = TRUE, lazy = FALSE)'` — blocked before page generation because this sandbox could not resolve `cloud.r-project.org` and could not write the default user Sass cache. This is not the final build result.
+  - `R_USER_CACHE_DIR=/private/tmp/gllvmtmb-071-cran-evidence/R-cache XDG_CACHE_HOME=/private/tmp/gllvmtmb-071-cran-evidence/XDG-cache Rscript --vanilla -e 'pkgdown::build_site(devel = TRUE, lazy = FALSE)'` — passed with exit 0; full site build finished. Log: `/private/tmp/gllvmtmb-071-cran-evidence/pr1325-full-site-build-network-2026-09-28.log`.
+  - `rg -n -C 1 'Experimental development documentation for 0\.8\.0\.9000|planned first CRAN submission|bounded 0\.7\.1|Development documentation \(0\.8\.0\.9000\)|consult the help and vignette installed' pkgdown-site/index.html pkgdown-site/articles/current-limits.html` — confirmed the generated homepage names 0.8.0.9000 as development documentation and identifies the bounded 0.7.1 submission source; Current limitations directs 0.7.1 users to their installed help and vignette.
+  - `git diff --check` — passed in the dev-identity worktree.
+- The full build used a copy of the reviewed working tree under `/private/tmp`. This is local render evidence; merge, deployment, and live-page verification remain open. The exact f613 0.7.1 artifact retains its separate passing check and platform evidence. The 0.8.0.9000 development-source check does not change that artifact or its hash.
+
+## 2026-09-29 — Remove internal issue labels from public help
+
+- Removed internal issue identifiers from the `check_gllvmTMB()` and family-list roxygen descriptions, retained their reader-facing explanations, and regenerated `man/check_gllvmTMB.Rd` and `man/families.Rd`. No API, likelihood, formula grammar, family, vignette, or frozen 0.7.1 tarball changed.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'` — passed, “No problems found.”
+- `Rscript --vanilla tools/build-pkgdown.R && Rscript --vanilla tools/check-pkgdown-public-surface.R && git diff --check` — passed on rebased current `main`; full build completed and printed `PKGDOWN PUBLIC SURFACE PASS`.
+- `roxygen2::roxygenise(roclets="rd", load_code="source")` — passed. `tools::Rd2txt("man/check_gllvmTMB.Rd", out=tempfile())` — passed. `git diff --cached --check` — passed.
+- Exact consistency patterns run: `rg "\bS_B\b|\bS_W\b|\\bf S" .`; `rg -n "gllvmTMB\(" R vignettes README.md NEWS.md docs/design`; `rg "in prep|in preparation" docs vignettes`; `rg "\bphylo\(|\bgr\(|\bmeta\(|block_V\(|phylo_rr\(" vignettes`; `rg "meta_known_V" README.md NEWS.md docs vignettes`; `rg "gllvmTMB_wide" README.md NEWS.md docs vignettes`. These found existing repository/historical references (329, 893, 98, 3, 371, and 600 matching lines, respectively); no call, example, or prose in this repair changed.
+- Inspected issues #1098, #847, and #1120; all were already closed. No issue state or discussion changed.
+- After-task report: `docs/dev-log/after-task/2026-09-29-pkgdown-public-surface-fix.md`. Local scanner evidence only; PR, CI, merge, deployment, and live-page inspection remain pending. This repair does not advance the separate 0.7.1 release ledger.
+
+
+## 2026-10-08: issue 1469 correlation pair layout
+
+Synthetic ordinal regression: 15 pass, zero failures (unique pairs, symmetric
+matrix, full table and built heatmap). Public issue replay: layout verified
+with d=1, private scratch results; no collaborator data committed. Roxygen
+Rd generation completed; unrelated regenerated files restored. pkgdown check
+blocked by pre-existing sigma.gllvmTMB_multi index omission. Article HTML render
+and Rd parsing passed. No native code or
+API changed. Exact scan: `rg -n 'unique pairs|symmetric|entries = "all"'
+R/extract-correlations.R man/extract_correlations.Rd
+vignettes/articles/covariance-correlation.Rmd
+docs/design/06-extractors-contract.md`. Routes agree.
+
+## 2026-10-16 — issue 1496 bootstrap response metadata (local patch)
+
+Observed three trial-total failures on aec24e166 before editing. Shared internal
+response preparation now retains binomial trial totals, trial weights and the
+observed-response mask across the seven bootstrap/refit helpers. It stores a
+paired response in a private matrix column so cbind expressions do not require
+mutating predictor columns. No native likelihood, public API or grammar change.
+
+Final new regression: 69 assertions, zero failures/errors/warnings/skips. Broad
+eight-file bootstrap subset: 249 passing assertions, zero assertion failures,
+24 warning captures and one sandbox serverSocket error. The existing
+bootstrap-Sigma file then passed with permitted local sockets and a matching
+temporary install: 50 assertions, zero failures/errors, 12 warnings, zero skips.
+The dedicated cbind-expression/masked-row parallel check passed with 3/3 refits
+and draws equal to its sequential reference. pkgdown check and document passed;
+roxygen's unrelated sigma-registration spelling diff was restored. Whitespace
+check passed. Full command strings, raw logs and environment versions are in
+`dev/issue-1496/RESULTS.md` and its neighboring logs. No full package test suite
+or coverage campaign was run. Final package-check result is recorded in RESULTS.
+
+Exact consistency scans: `rg -n 'all.vars\(fit\$formula|\[\[resp.*\]\] <-|\[\[response.*\]\] <-' R`;
+`rg -n 'bootstrap|simulate' docs/dev-log/decisions.md`;
+`rg -n 'bootstrap|cbind' docs/design/35-validation-debt-register.md`.
+Verdict: seven affected generic simulate/refit paths repaired; Gaussian-only
+temporal bootstrap unchanged; related CV scoring/null-model defects remain
+separate. MIX-08/EXT-13 gain input-correctness evidence, no calibration promotion.
+
+After-task report: `docs/dev-log/after-task/2026-10-16-binomial-bootstrap-response.md`.
+Primary checkout's unrelated untracked work is unchanged. Integration review
+must account for open PR #1501 (bootstrap-Sigma default-level warning) and #1505
+(phylogenetic-signal bootstrap extractor). No external-agent contact, posting,
+email, push, PR creation, merge, release or issue closure was performed.
+
+Final bounded package check (`document=FALSE`, `vignettes=FALSE`,
+`--no-manual --no-tests --no-examples`): 0 errors, 1 warning, 3 notes, exit 1.
+Warning: duplicated `x` argument in unchanged gllvmTMB_julia-methods.Rd.
+Notes: offline clock check, existing TMB:::EvalADFunObject, xcrun_db temp detritus.
+Static R code checks passed; no tail() note remains. This is not a clean full
+package check. Full receipt: `dev/issue-1496/check-final.log` and `00check.log`.
+
+### Review correction — preserve the integrated-source no-weights contract
+
+Independent review found that the first patch supplied all-unit weights to an
+integrated three-source fit, violating its existing explicit-weight refusal.
+Read and replayed /tmp/review1496.R and its counterexample log. Added a regression
+that failed three assertions before the correction. The helper now omits exactly
+all-unit vectors, preserving all non-unit trial counts and likelihood weights;
+it does not bypass or alter the integrated-source guard.
+
+Corrected-source focused sweep: 225 assertions across eight files, zero failures,
+errors, warnings or skips, including 69 binomial and 7 new integrated-source
+assertions. The reviewer reproducer now yields patched bootstrap 0/3 failures,
+equal to original HEAD's 0/3; the new regression compares the complete three-draw
+list to explicit unweighted manual refits. Exact commands and logs:
+`dev/issue-1496/RESULTS.md`, `review-correction.log`,
+`review-correction-summary.log`, `review-reproducer-fixed.log`, `isdm-red.log`.
+No publication or unrelated edit was made. Full-suite and CI remain outstanding.
+
+Corrected-source bounded package check repeated: 0 errors, 1 warning, 3 notes,
+exit 1. Static R analysis passed; the unchanged Julia-help duplicate-x warning
+and the same three environment/dependency notes remain. Receipt:
+`dev/issue-1496/check-review-final.log` and `check-review-00check.log`.
+
+
+## 2026-10-16 — binomial CV response/trial continuation (issue1496)
+
+User-approved CV follow-up on codex/issue-1496-cv, based on bootstrap PR1507.
+Canonical paired responses and original trial totals now survive main/null folds;
+pre-existing missing cells are excluded. Grouped binomial probability metrics
+match explicit Bernoulli expansion; RMSE uses equal-cell proportions.
+Old-code tests:20 failed assertions/2 errors. Corrected source:308 assertions
+across seven files,0 failure/error/warning/skip. Independent review caught and
+verified the predictor-column alignment correction. Separate affected heavy
+bootstrap sweep:437 passes,0 failure/error/skip,23 warning captures.
+Commands/limits: dev/issue-1496/CV-RESULTS.md and after-task/2026-10-16-binomial-cv-response.md.
+Full heavy run timed out at120min before CV work; fresh complete heavy validation
+remains pending. Optional manual sharding approval is pending; no workflow,
+license or security change. No merge, issue closure or Sage contact.
+
+Manual heavy partition selector approved08:11 UTC. Add optional all/1-of-4 input
+and a partition-only concurrency suffix, preserving unsharded scheduled/tag
+behavior and120-minute limit. Existing partition tests and exact-head manifest
+will verify exhaustive/disjoint coverage before four dispatches. No test gate,
+scientific threshold, credential or runner permission is changed.
+
+## 2026-10-16 — issue1496 full-suite blocker follow-up
+
+Separate branch codex/issue-1496-suite-blockers preserves prior failure logs. Narrow fixes: explicit single-start warm fixtures (all assertions retained), scalar unit default in loading flag wrapper, source-level duplicate Julia x documentation removal. New clean red:3fail/10pass/0error/warn/skip. Roxygen compileFALSE, pkgdown, renderedRd, parser, Actions boundary and reader-surface passed; generator-only sigma NAMESPACE drift restored. Scan: `rg 'flag_unreliable_loadings\(|level *= *c\("unit", *"unit_obs"\)' R/loading-ci.R man/flag_unreliable_loadings.Rd README.md vignettes NEWS.md`. Independent review found no blocker. Full exact-head standard/heavyCI and eventual authorized main integration remain gates; final outcomes retained in PR and dev/issue-1496-blockers receipts. After-task:2026-10-16-suite-blockers-1496.md. No likelihood/grammar/family/native/security change.
+
+Core blocker tests:214pass/0fail/error/warn/skip in35.8s; existing shard selection188pass. Existing broader loading/profile file remains running locally, not claimed complete.
+
+Integration refresh: main advanced tocedf274 (10alreadymergedcommits). Clean merge preserved main fixes and task response helpers; independent review checked bootstrap-sigma/extract-omega overlap. Combined targeted tests162pass/0fail/error/skip,1tiny-Bwarning,53.1s. Fresh exact-head standard+four-heavyCI required before any authorized landing. Original0ebe five-run green evidence retained separately.
+
+2026-10-17 integration: main advanced10commits tocedf274. Cleanmerge into task branch preserves alreadymergedwork; noactualconflicts(gertcommitFALSEmessagewasmisleading, git_conflicts0rows). Independentoverlapreviewpass. Relevantlocalintegrationtests162pass/0fail/error/skip,1tiny-Bwarning,53.1s; pkgdownNo problems,allRparse. Fresh5CIrunsrequiredatnewcombinedhead; nooldgreen-headcertificationofnewbase.
+
+## 2026-10-19 — README optimizer-selection example
+
+Added a discovery-table link and concise VA primary-optimizer controls to README.md. The sample uses the documented nlminb and optim/BFGS APIs, disables VA polishing to isolate the primary solver, calls for the same seed before each fit, and says native iteration budgets are not equal effort. It keeps VA labelled experimental and makes no convergence or accuracy claim. The complete fit comparison and returned diagnostics remain in gllvmTMBcontrol() help.
+
+Base: fresh GitHub origin/main a674f29fb4f87f9e12558c372ca2417015025b34. Checks: extracted README R block executed after devtools::load_all() from source and passed assertions for both controls and their optimizer, method, iteration-limit, and va_polish fields; pkgdown::check_pkgdown() reported “No problems found” (existing Pandoc --mathml deprecation notices only); the targeted after-task structure validator passed. No model fits or package tests were run because only README prose changed.
+
+Consistency scans (exact patterns and scope):
+- rg "\bS_B\b|\bS_W\b|\\bf S" . — existing matches occur outside README; no hit in the edited README.
+- rg -n "gllvmTMB\(" R vignettes README.md NEWS.md docs/design — existing README calls include wide form and the long-form example has trait = "trait"; the new section only names the API and adds no model call.
+- rg "in prep|in preparation" docs vignettes — matches are outside README; no new foundational or in-prep claim was added.
+- rg "\bphylo\(|\bgr\(|\bmeta\(|block_V\(|phylo_rr\(" vignettes — existing vignette matches only; no README hit.
+- rg "meta_known_V" README.md NEWS.md docs vignettes — existing matches are outside README; no README hit.
+- rg "gllvmTMB_wide" README.md NEWS.md docs vignettes — existing matches are outside README; no README hit.
+
+Absolute-path slop check covered README, check-log, report, and PR body; no file exceeded the review threshold. No likelihood, API, formula grammar, family, generated Rd, article, or pkgdown navigation change.

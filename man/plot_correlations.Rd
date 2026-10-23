@@ -35,7 +35,10 @@ plot_correlations(
 \item{x}{Either a fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}, a \code{bootstrap_Sigma} object with
 \code{R_B} / \code{R_W} summaries, or a data frame returned by
 \code{\link[=extract_correlations]{extract_correlations()}}. Data frames must contain \code{tier}, \code{trait_i},
-\code{trait_j}, \code{correlation}, \code{lower}, \code{upper}, and \code{method}.}
+\code{trait_j}, \code{correlation}, \code{lower}, \code{upper}, and \code{method}.
+Matrix displays accept identical mirrored rows. Duplicate rows for the
+same pair and tier must agree in estimates, intervals and provenance;
+conflicting rows are rejected rather than selected by input order.}
 
 \item{tier, pair, level, method, n_eff, nsim, seed, link_residual}{Passed to
 \code{\link[=extract_correlations]{extract_correlations()}} when \code{x} is a fitted model. Ignored when \code{x} is
@@ -115,7 +118,7 @@ For fitted-object calls, open points can often be investigated by trying
 \code{\link[=extract_correlations]{extract_correlations()}}.
 }
 \details{
-Julia bridge (\code{engine = "julia"}) fits currently fail with an explicit error
+Julia bridge (\code{engine = "julia"}) fits currently fail with an explicit gate
 because this helper depends on interval-bearing \code{\link[=extract_correlations]{extract_correlations()}}
 rows. Use \code{\link[=plot_Sigma_table]{plot_Sigma_table()}} or \code{\link[=plot_Sigma_heatmap]{plot_Sigma_heatmap()}} for point-only
 Julia bridge correlation displays.

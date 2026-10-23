@@ -52,8 +52,13 @@ variance to zero.}
 }
 \value{
 A length-3 named numeric vector (\code{estimate}, \code{lower}, \code{upper}).
-\code{lower} or \code{upper} may be \code{NA} when the profile is one-sided
-(variance pinned at boundary).
+When the profile crosses the threshold on both sides, bounds are finite
+interior values after \code{transform}. When the likelihood is one-sided at a
+natural boundary (deviance asymptotes), the affected bound is the
+transformed limit (e.g. \code{lower = 0} with \code{transform = exp}; see
+\strong{Boundary behaviour}). \code{NA} marks a bound that could not be located
+(truncated profile search or \code{tmbprofile()} failure), not a one-sided
+asymptote at the parameter boundary.
 }
 \description{
 Wraps \code{TMB::tmbprofile()} with a chi-square root-finding step to return

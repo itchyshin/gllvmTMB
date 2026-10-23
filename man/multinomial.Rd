@@ -31,8 +31,8 @@ This is a \strong{response} family and must not be confused with the
 \code{\link{categorical}()} constructor, which is a missing-\emph{predictor}
 imputation family. Because an unordered categorical response spans
 \eqn{K-1} latent liability dimensions rather than one, the admitted
-structured-term surface is bounded and every combination below was decided by
-a signed recovery study, not construction alone.
+structured-term surface is bounded and every cell below was decided by a
+signed recovery campaign, not construction alone.
 
 \strong{Admitted:} fixed effects always; an ordinary
 shared \code{latent(0 + trait | unit, d = k)} ordination, which connects
@@ -54,21 +54,21 @@ phylogenetic/relatedness cells are loadings-only: none emits a
 \eqn{\Psi} companion, and \code{unique = TRUE} (a free phylogenetic
 \eqn{\Psi}) is NOT admitted.
 
-\strong{Recovery evidence:} on the phylogenetic/relatedness surface, the
-one-categorical-draw-per-species study did not meet its prespecified criterion
-(rail rate 8/20 against a 6/20 threshold, identically for
+\strong{The honest evidence, not softened:} on the phylogenetic/
+relatedness surface, the one-categorical-draw-per-species recovery gate
+FAILED (rail rate 8/20 against a 6/20 threshold, identically for
 \code{phylo_latent()}/\code{animal_latent()}/\code{kernel_latent()} by
 proven engine identity; \code{phylo_dep()} rails 8/20 separately). A
-pre-registered replication study -- five categorical draws per species
-rather than one -- met the criterion for the loadings-only and full-\eqn{V} combinations
+pre-registered replication rescue -- five categorical draws per species
+rather than one -- PASSED for the loadings-only and full-\eqn{V} cells
 (rail rate 4/20, median \eqn{\hat\rho} 0.680 against a true 0.6) but has
 NOT been tested for \code{phylo_indep()}'s diagonal-\eqn{V} mode, whose
-own corrected rerun independently did not meet the criterion (small contrast
-variances collapse; a planted-zero check fails). The spatial mode axis and the
-\code{(1 | group)} route below both met their signed recovery criteria
-outright, with no replication rescue needed. \strong{One categorical
-draw per species does not identify \eqn{V}; five draws per species
-does.}
+own corrected rerun independently FAILED (small contrast variances
+collapse; a planted-zero check fails). The spatial mode axis and the
+\code{(1 | group)} route below both PASSED their signed recovery gates
+outright, with no replication rescue needed. In the tested phylogenetic
+designs, five draws passed for the loadings-only and full-\eqn{V} cells;
+these results do not establish recovery for the diagonal-\eqn{V} cell.
 
 A generic \code{(1 | group)}
 random intercept is also admitted, but its semantics are
@@ -102,10 +102,11 @@ is fixed.
 \code{animal_scalar()} / \code{kernel_scalar()} / \code{spatial_scalar()}
 and \code{common = TRUE} at the cluster/cluster2 tier -- a single shared
 level across the \eqn{K-1} contrasts has no interpretable null on the
-\eqn{(I+J)} contrast geometry, as confirmed in a null-generating simulation.
+\eqn{(I+J)} contrast geometry; a null-generating simulation found no
+interpretable shared variance on this geometry.
 
-\strong{Everything else is still deferred} and fails with an explicit error
-rather than reaching an untested
+\strong{Everything else is still deferred} and is rejected with an
+explicit error rather than reaching an untested
 categorical path: \code{dep()}, explicit \code{unique()} /
 \code{indep()} at the unit tier, \code{latent()}/\code{dep()} at the
 \code{cluster}/\code{cluster2} tiers, and the \code{unit_obs} grouping

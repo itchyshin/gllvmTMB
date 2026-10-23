@@ -6,7 +6,7 @@
 \usage{
 loading_ci(
   fit,
-  level = c("unit", "unit_obs"),
+  level = "unit",
   method = c("wald", "wald_asym", "profile"),
   conf_level = 0.95,
   sigma_d2 = 1,
@@ -82,7 +82,7 @@ certificate only for the structurally free strict-lower targets in native
 Laplace, pinned, unrotated, lower-triangular ordinary Gaussian unit-tier
 three-trait cells \verb{(n_units=150,d=2)}, \verb{(n_units=400,d=1)}, and
 \verb{(n_units=400,d=2)}, at \code{conf_level = 0.95}. The \verb{(n_units=150,d=1)} cell
-did not meet the prespecified lower-coverage criterion. This is one simulation design: trait intercepts
+failed its lower-band gate. This is one frozen DGP: trait intercepts
 \verb{(-0.20, 0.10, 0.25)}, unique standard deviations
 \verb{(0.70, 0.80, 0.90)}, and loading vector \verb{(0.80, 0.45, -0.35)} for \code{d=1},
 with the second column \verb{(0, 0.70, 0.40)} added for \code{d=2}. Coverage is
@@ -99,23 +99,53 @@ cells. See \code{NEWS.md} for the current coverage status.
 }
 
 \examples{
-\dontrun{
-# Build a confirmatory fit
-M <- confirmatory_lambda(
-  species  = species_names,
-  group    = species_group,
-  d        = 2L,
-  loads_on = list(A = 1L, B = 2L)
-)
-fit <- gllvmTMB(
-  value ~ 0 + trait + latent(0 + trait | site, d = 2L),
-  data              = df_long,
-  family            = binomial(link = "probit"),
-  lambda_constraint = list(unit = M)
-)
-loading_ci(fit, level = "unit")
-loading_ci(fit, level = "unit", loading_scale = "standardized")
-}
+set.seed(1)
+# Presence (1) or absence (0) of eight species at 200 sites. Odd-numbered
+# species respond to one latent environmental gradient and even-numbered
+# species to another; sp7 responds only weakly.
+n_sites <- 200
+Lambda <- cbind(c(1.0, 0, 0.8, 0, 0.7, 0, 0.2, 0),
+                c(0, 1.0, 0, 0.9, 0, 0.7, 0, 0.6))
+scores <- matrix(rnorm(2 * n_sites), n_sites, 2)
+dat <- expand.grid(site = factor(seq_len(n_sites)),
+                   trait = factor(paste0("sp", 1:8)))
+liability <- rowSums(scores[dat$site, ] * Lambda[dat$trait, ])
+dat$present <- rbinom(nrow(dat), 1, pnorm(liability))
+
+# Confirmatory hypothesis: group A (odd species) loads only on axis 1 and
+# group B (even species) only on axis 2. These fixed zeros pin down the
+# axes (up to sign); anchors = NA leaves all other loadings free.
+M <- confirmatory_lambda(species = levels(dat$trait),
+                         group = rep(c("A", "B"), times = 4), d = 2,
+                         loads_on = list(A = 1, B = 2),
+                         anchors = c(NA, NA))
+M
+# One 0/1 record per species and site cannot separate extra
+# species-specific variation from coin-flip noise, so the latent term
+# carries loadings only (unique = FALSE).
+fit <- gllvmTMB(present ~ 0 + trait +
+                  latent(0 + trait | site, d = 2, unique = FALSE),
+                data = dat, family = binomial(link = "probit"),
+                trait = "trait", unit = "site",
+                lambda_constraint = list(unit = M))
+
+# 95\% Wald intervals for every loading, on the probit (liability) scale.
+# Fixed entries (pinned = TRUE) have zero width; the interval for sp7's
+# weak loading is wide relative to its size.
+ci <- loading_ci(fit)
+ci[, c("trait", "axis", "estimate", "se", "lower", "upper", "pinned")]
+
+# Standardized loadings divide each loading by the species' total
+# latent-scale standard deviation (shared part plus the probit residual
+# of 1), so they read as the correlation between the species' liability
+# and the axis.
+ci_std <- loading_ci(fit, loading_scale = "standardized")
+ci_std[!ci_std$pinned, c("trait", "axis", "estimate", "lower", "upper")]
+
+# Symmetric intervals can spill past +/-1 on this scale; "wald_asym"
+# builds them on Fisher's z scale, so they stay inside (-1, 1).
+ci_asym <- loading_ci(fit, method = "wald_asym")
+ci_asym[!ci_asym$pinned, c("trait", "axis", "estimate", "lower", "upper")]
 
 }
 \seealso{

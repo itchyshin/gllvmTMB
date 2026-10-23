@@ -149,6 +149,9 @@ Prevalence outside the displayed interval is flagged; it is not a deletion
 cutoff. Minority counts take priority, which prevents a large data set with a
 low prevalence from receiving the same warning as a tiny data set with only a
 few minority outcomes.
+The first ordinary `latent()` use in a session prints a one-time warning that
+`latent()` includes per-trait Psi by default; expect that message when this
+screen runs its internal fit.
 
 ```{r screen-wide}
 scr <- screen_gllvmTMB(

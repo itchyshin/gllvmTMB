@@ -74,8 +74,9 @@
 #'   \doi{10.1098/rsif.2017.0213}
 #' @seealso [extract_Omega()] (returns `residual_split` as a list component
 #'   when `link_residual = "auto"`); [extract_Sigma()]; [extract_proportions()]
-#'   (the `unique_W` component in its output is \eqn{\sigma^2_e} and the
-#'   `link_residual` component is \eqn{\sigma^2_d} for OLRE-style fits).
+#'   (`unique_unit_obs` carries \eqn{\sigma^2_e} and `link_residual` carries
+#'   \eqn{\sigma^2_d} for OLRE-style fits; legacy `unique_W` labels are not
+#'   used).
 #' @keywords internal
 #' @export
 #' @examples
@@ -94,7 +95,7 @@
 #' }
 extract_residual_split <- function(fit) {
   if (!inherits(fit, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+    .gllvmTMB_abort_not_multi_fit(fit)
   }
 
   trait_names <- levels(fit$data[[fit$trait_col]])
@@ -192,7 +193,7 @@ extract_Omega <- function(
   link_residual = c("auto", "none")
 ) {
   if (!inherits(fit, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+    .gllvmTMB_abort_not_multi_fit(fit)
   }
   link_residual <- match.arg(link_residual)
   if (is.null(tiers)) {
@@ -476,7 +477,7 @@ extract_phylo_signal <- function(
 ) {
   .structured_rho_source_allocation_assert(fit, "extract_phylo_signal")
   if (!inherits(fit, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+    .gllvmTMB_abort_not_multi_fit(fit)
   }
   link_residual <- match.arg(link_residual)
   method <- match.arg(method)
@@ -650,18 +651,22 @@ extract_phylo_signal <- function(
     pe_df$H2_method <- h2_ci$method
     return(pe_df)
   }
-  ## bootstrap on H^2: re-fit with simulate, recompute extract_phylo_signal
-  ## per replicate. We borrow bootstrap_Sigma's machinery for simulate +
-  ## refit and aggregate H2 manually (extracting H2 per draw needs a
-  ## small wrapper).
+  ## Parametric bootstrap on H^2: delegate to the same worker that
+  ## confint(fit, parm = "phylo_signal", method = "bootstrap") uses, so
+  ## both entry points agree for a given `nsim` / `seed` (issue #1398; this
+  ## branch used to log "running N replicates" and return NA bounds).
   cli::cli_inform(
-    "Bootstrap CI for H^2: running {.val {nsim}} replicates via {.fn bootstrap_Sigma} machinery."
+    "Bootstrap CI for H^2: running {.val {nsim}} replicates (parametric re-fit)."
   )
-  ## Use bootstrap_Sigma with a custom hook: easier to call the core
-  ## refit one replicate at a time via simulate + gllvmTMB.
-  pe_df$H2_lower <- NA_real_
-  pe_df$H2_upper <- NA_real_
-  pe_df$H2_method <- "bootstrap"
+  h2_ci <- .phylo_signal_bootstrap_ci(
+    fit,
+    level = conf_level,
+    nsim = nsim,
+    seed = seed
+  )
+  pe_df$H2_lower <- h2_ci$lower
+  pe_df$H2_upper <- h2_ci$upper
+  pe_df$H2_method <- h2_ci$method
   pe_df
 }
 
@@ -711,18 +716,18 @@ extract_phylo_signal <- function(
 #'   with one row per (trait, component); `"wide"` returns one row per
 #'   trait with one column per component.
 #' @return Long format: data frame with columns `trait`, `component`
-#'   (e.g. `"shared_unit"`, `"unique_unit"`, `"unique_cluster"`,
-#'   `"shared_phy"`, `"link_residual"`),
+#'   (e.g. `"shared_unit"`, `"unique_unit"`, `"shared_unit_obs"`,
+#'   `"unique_unit_obs"`, `"unique_phy"`, `"shared_phy"`, `"unique_cluster"`,
+#'   `"unique_cluster2"`, `"link_residual"`),
 #'   `variance` (the absolute variance), `proportion` (the share of
 #'   the total). Wide format: data frame with one column per component
 #'   plus a `total_variance` column; the per-trait proportions sum to 1.
 #'
 #'   **OLRE interpretation:** for fits with a genuine observation-level
 #'   diagonal term, usually written as per-row `indep()` in new code (see
-#'   [extract_residual_split()]), the historical `unique_W` component in this
-#'   output corresponds to \eqn{\sigma^2_e} (the estimated OLRE variance) and
-#'   the `link_residual` component corresponds to \eqn{\sigma^2_d} (the
-#'   distribution-specific latent residual).
+#'   [extract_residual_split()]), the `unique_unit_obs` component is
+#'   \eqn{\sigma^2_e} (the estimated OLRE variance) and the `link_residual`
+#'   component is \eqn{\sigma^2_d} (the distribution-specific latent residual).
 #' @seealso [extract_phylo_signal()] — the PGLLVM-specific shortcut;
 #'   [extract_communality()]; [extract_ICC_site()];
 #'   [extract_residual_split()] — explicit \eqn{\sigma^2_d / \sigma^2_e}
@@ -740,7 +745,7 @@ extract_proportions <- function(
 ) {
   .structured_rho_source_allocation_assert(fit, "extract_proportions")
   if (!inherits(fit, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+    .gllvmTMB_abort_not_multi_fit(fit)
   }
   link_residual <- match.arg(link_residual)
   format <- match.arg(format)

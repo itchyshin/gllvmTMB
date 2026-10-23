@@ -1,6 +1,24 @@
 ## Stage 2 of gllvmTMB: fit a multivariate stacked-trait model with rr() +
 ## diag() covariance structures using src/gllvmTMB.cpp.
 
+## Are two `phylo` trees the same tree? Tip labels are matched by name (tip
+## ORDER is storage, not identity) and the patristic distances are compared,
+## so a different topology or different branch lengths on the same tips is a
+## different tree (#1350). Without ape the tip-label set is all that can be
+## checked.
+.gllvmTMB_same_phylo_tree <- function(a, b, tol = 1e-8) {
+  if (!setequal(a$tip.label, b$tip.label) ||
+      anyDuplicated(a$tip.label) || anyDuplicated(b$tip.label)) {
+    return(FALSE)
+  }
+  if (!requireNamespace("ape", quietly = TRUE)) {
+    return(TRUE)
+  }
+  da <- ape::cophenetic.phylo(a)
+  db <- ape::cophenetic.phylo(b)[rownames(da), colnames(da), drop = FALSE]
+  isTRUE(all.equal(unname(da), unname(db), tolerance = tol))
+}
+
 .kernel_overlap_class <- function(similarity) {
   ifelse(
     similarity < 0.25, "near_orthogonal",
@@ -16,7 +34,7 @@
                                                         relative_step = 1e-5) {
   raw <- names(par)
   if (is.null(raw) || length(raw) != length(par)) raw <- rep("outer", length(par))
-  labels <- paste0(raw, "[", ave(seq_along(raw), raw, FUN = seq_along), "]")
+  labels <- paste0(raw, "[", stats::ave(seq_along(raw), raw, FUN = seq_along), "]")
   empty <- list(
     labels = labels, step = stats::setNames(rep(NA_real_, length(par)), labels),
     central = stats::setNames(rep(NA_real_, length(par)), labels),
@@ -58,13 +76,14 @@
 }
 
 .auto_psi_skip_message <- function(binomial_labs = character(),
-                                   multinomial_labs = character()) {
-  affected <- c(binomial_labs, multinomial_labs)
+                                   multinomial_labs = character(),
+                                   ordinal_labs = character()) {
+  affected <- c(binomial_labs, multinomial_labs, ordinal_labs)
   n_affected <- length(affected)
   noun <- if (n_affected == 1L) "trait" else "traits"
   msg <- c(
     "i" = sprintf(
-      "Skipping the default between-unit {.field Psi} for %d binary / categorical-contrast %s under the family-specific identifiability gate.",
+      "Skipping the default between-unit {.field Psi} for %d binary / categorical-contrast / single-observation ordinal %s under the family-specific identifiability gate.",
       n_affected, noun
     ),
     "i" = sprintf("Affected %s: %s.", noun, paste(affected, collapse = ", "))
@@ -85,22 +104,32 @@
       )
     )
   }
+  if (length(ordinal_labs) > 0L) {
+    msg <- c(msg,
+      "i" = sprintf(
+        "Ordinal traits %s have one observation per (trait, unit) cell: the threshold model fixes the link-residual variance, so a between-unit Psi only rescales the cutpoints and is not identified. Replicated observations per unit identify it.",
+        paste(ordinal_labs, collapse = ", ")
+      )
+    )
+  }
   c(msg,
     "*" = "Mapped {.code theta_diag_B[t]} and the corresponding {.code s_B} row off."
   )
 }
 
 .auto_psi_skip_frequency_id <- function(binomial_labs = character(),
-                                        multinomial_labs = character()) {
-  has_binomial <- length(binomial_labs) > 0L
-  has_multinomial <- length(multinomial_labs) > 0L
-  suffix <- if (has_binomial && has_multinomial) {
-    "binomial-multinomial"
-  } else if (has_multinomial) {
-    "multinomial"
-  } else {
-    "binomial"
-  }
+                                        multinomial_labs = character(),
+                                        ordinal_labs = character()) {
+  ## One component per skipped category, in a fixed order, so every
+  ## combination (including multinomial + ordinal) has its own once-per-session
+  ## id. Binomial-only, multinomial-only and binomial-multinomial keep the ids
+  ## they had before the ordinal arm existed.
+  parts <- c(
+    if (length(binomial_labs) > 0L) "binomial",
+    if (length(multinomial_labs) > 0L) "multinomial",
+    if (length(ordinal_labs) > 0L) "ordinal"
+  )
+  suffix <- if (length(parts)) paste(parts, collapse = "-") else "binomial"
   paste0("gllvmTMB-psi-skip-", suffix)
 }
 
@@ -458,6 +487,146 @@
     if (length(li)) g[li] <- g[li] + par[li] / (ridge_tau^2)
   }
   g
+}
+
+## The ridge lives outside the TMB tape. Its local MAP curvature is the
+## likelihood fixed-parameter Hessian plus exact prior precision on free
+## ordinary loadings only. TMB has no marginal obj$he() for random-effect
+## models: use its own sdreport convention, finite differences of AD gradients.
+.gllvmTMB_loading_ridge_hessian <- function(obj, par, ridge_tau) {
+  if (!.gllvmTMB_loading_ridge_applies(ridge_tau, names(obj$par))) return(NULL)
+  H <- if (length(obj$env$random) == 0L && is.function(obj$he)) {
+    obj$he(par)
+  } else {
+    stats::optimHess(par, obj$fn, obj$gr)
+  }
+  li <- .gllvmTMB_ridge_block_index(names(obj$par))
+  H[cbind(li, li)] <- H[cbind(li, li)] + 1 / ridge_tau^2
+  H
+}
+
+## AGHQ tapes differentiate the quadrature objective with adaptation nodes
+## held fixed as data. This records that conditional approximation explicitly;
+## the covariance does not include uncertainty from re-adapting the nodes.
+.gllvmTMB_loading_ridge_curvature_provenance <- function(obj, par, ridge_tau) {
+  fixed_adaptation <- isTRUE(as.integer(obj$env$data$use_aghq) == 1L)
+  list(
+    objective = "likelihood_plus_gaussian_loading_prior",
+    interpretation = "local_approximate_posterior_curvature_at_map",
+    method = if (length(obj$env$random) == 0L && is.function(obj$he)) {
+      "ad_hessian_plus_exact_loading_prior_precision"
+    } else "finite_difference_ad_gradient_plus_exact_loading_prior_precision",
+    ridge_tau = ridge_tau,
+    parameter_names = names(obj$par),
+    parameter_vector = par,
+    loading_indices = .gllvmTMB_ridge_block_index(names(obj$par)),
+    integration = if (fixed_adaptation) "aghq_fixed_adaptation" else "laplace",
+    adaptation_nodes_fixed = fixed_adaptation,
+    calibrated_sampling_covariance = FALSE
+  )
+}
+
+.gllvmTMB_sdreport_loading_ridge <- function(obj, par, ridge_tau, ...) {
+  H <- .gllvmTMB_loading_ridge_hessian(obj, par, ridge_tau)
+  ans <- TMB::sdreport(obj, par.fixed = par, hessian.fixed = H, ...)
+  if (!is.null(H)) {
+    ans$gradient.fixed.unpenalised <- ans$gradient.fixed
+    ans$gradient.fixed <- .gllvmTMB_penalised_gradient(obj, par, ridge_tau)
+    attr(ans, "loading_ridge_curvature") <-
+      .gllvmTMB_loading_ridge_curvature_provenance(obj, par, ridge_tau)
+  }
+  ans
+}
+
+## #1330: zero-inflated count fits (zi_poisson / zi_nbinom2 / zi_binomial,
+## family ids 17-19) sometimes stop with a non-zero optimiser code at a
+## numerically absurd point (huge gradient or objective). Warn only; results
+## are unchanged. Healthy fits are silent.
+##
+## Root cause, measured on the #1330 replicates: the zero-inflated likelihood
+## is not log-concave in eta (for y = 0 its curvature in eta is negative once
+## mu is moderate), so a unit's conditional curvature, prior plus data, can
+## cancel to zero along one latent direction. The Laplace objective contains
+## +0.5 * log det of that curvature, so it falls without bound as the outer
+## optimiser tunes the loadings towards the cancellation: every failing
+## replicate stopped with a unit-block eigenvalue of 4e-6 to 7e-5 (healthy
+## fits: 0.4 to 0.8), and a barrier at any threshold just moves the stop to
+## the barrier. The point the optimiser chases is an artefact of the Laplace
+## approximation, not an optimum of the zero-inflated likelihood, so more
+## random starts do not help. `min_random_curvature` (fit_health) records it.
+.gllvmTMB_zi_degenerate_curvature_tol <- 1e-3
+
+.gllvmTMB_warn_zi_nonconvergence <- function(health, family_id_vec) {
+  if (!any(as.integer(family_id_vec) %in% c(17L, 18L, 19L), na.rm = TRUE)) {
+    return(invisible(FALSE))
+  }
+  conv <- health$convergence
+  curv <- health$min_random_curvature %||% NA_real_
+  degenerate <- isTRUE(is.finite(curv) &&
+                         curv < .gllvmTMB_zi_degenerate_curvature_tol)
+  nonconverged <- !(is.null(conv) || length(conv) != 1L || is.na(conv) ||
+                      conv == 0L)
+  if (!nonconverged && !degenerate) return(invisible(FALSE))
+  obj <- health$objective
+  grad <- health$max_gradient
+  absurd <- !is.finite(obj) || abs(obj) > 1e8 ||
+    !is.finite(grad) || grad > 1e3
+  if (!absurd && !degenerate) return(invisible(FALSE))
+  if (degenerate) {
+    cli::cli_warn(c(
+      "The zero-inflated fit stopped where the Laplace approximation is degenerate (optimiser code {conv}, max |gradient| = {signif(grad, 3)}).",
+      "i" = "The smallest curvature of a unit's latent scores is {signif(curv, 3)} (healthy fits are near 1). Zero inflation is not log-concave, so the Laplace log-likelihood grows without bound as that curvature cancels; the returned point is an artefact of the approximation, not a maximum.",
+      "i" = "Estimates and {.fn logLik} from this fit are not reliable, and more random starts will not fix it.",
+      ">" = "Try a smaller {.arg d}, the non-inflated count family, or fewer zero-inflated traits."
+    ), class = "gllvmTMB_zi_nonconvergence")
+    return(invisible(TRUE))
+  }
+  cli::cli_warn(c(
+    "The zero-inflated fit did not converge (optimiser code {conv}, max |gradient| = {signif(grad, 3)}, objective = {signif(obj, 4)}).",
+    "i" = "Estimates and {.fn logLik} from this fit are not reliable.",
+    ">" = "Refit with {.code control = gllvmTMBcontrol(n_init = 5)} (several random starts), a different {.arg start_method}, or a smaller {.arg d}."
+  ), class = "gllvmTMB_zi_nonconvergence")
+  invisible(TRUE)
+}
+
+## Smallest eigenvalue of the Laplace inner Hessian (the conditional
+## curvature of the random effects) at `par`, taken block by block over the
+## connected components of its sparsity pattern. NA when it cannot be
+## computed cheaply (no random effects, a block larger than `max_block`, or
+## any error). Evaluates `obj$fn(par)`, which refreshes TMB's inner mode at
+## `par`; callers use it after the fit is final.
+.gllvmTMB_min_random_curvature <- function(obj, par, max_block = 200L) {
+  out <- tryCatch({
+    env <- obj$env
+    if (is.null(env$random) || !length(env$random)) return(NA_real_)
+    v <- obj$fn(par)
+    if (!is.finite(v)) return(NA_real_)
+    H <- env$spHess(env$last.par, random = TRUE)
+    Ht <- methods::as(H, "TsparseMatrix")
+    n <- nrow(Ht)
+    ## Union-find over the nonzero pattern.
+    parent <- seq_len(n)
+    find <- function(i) {
+      while (parent[i] != i) i <- parent[i]
+      i
+    }
+    ii <- Ht@i + 1L
+    jj <- Ht@j + 1L
+    off <- ii != jj
+    for (k in which(off)) {
+      a <- find(ii[k])
+      b <- find(jj[k])
+      if (a != b) parent[max(a, b)] <- min(a, b)
+    }
+    roots <- vapply(seq_len(n), find, integer(1L))
+    blocks <- split(seq_len(n), roots)
+    if (max(lengths(blocks)) > max_block) return(NA_real_)
+    min(vapply(blocks, function(ix) {
+      min(eigen(as.matrix(H[ix, ix, drop = FALSE]), symmetric = TRUE,
+                only.values = TRUE)$values)
+    }, numeric(1L)))
+  }, error = function(e) NA_real_)
+  as.numeric(out)
 }
 
 .gllvmTMB_objective_components <- function(obj, opt, aghq) {
@@ -1213,17 +1382,50 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## For non-binomial families, link_id is fixed at 0 (canonical) for now.
   family_to_id <- function(f) {
     ## Allow "delta_lognormal" / "delta_gamma" as character shortcuts to
-    ## the constructors in R/families.R. Other character entries are
-    ## passed through to do.call() below if they name a family function.
+    ## the constructors in R/families.R. Other single character strings
+    ## name a package-defined constructor or one of four stats:: families.
     if (is.character(f) && length(f) == 1L) {
       f <- switch(
         f,
         delta_lognormal = delta_lognormal(),
         delta_gamma     = delta_gamma(),
-        f
+        {
+          nm <- f
+          pkg_env <- asNamespace("gllvmTMB")
+          stats_families <- c("gaussian", "binomial", "Gamma", "poisson")
+          fn <- NULL
+          if (exists(nm, envir = pkg_env, mode = "function", inherits = FALSE)) {
+            fn <- get(nm, envir = pkg_env, mode = "function", inherits = FALSE)
+          } else if (nm %in% stats_families) {
+            stats_env <- asNamespace("stats")
+            if (exists(nm, envir = stats_env, mode = "function", inherits = FALSE)) {
+              fn <- get(nm, envir = stats_env, mode = "function", inherits = FALSE)
+            }
+          }
+          if (is.null(fn)) {
+            cli::cli_abort(c(
+              "Unsupported family: {.val {nm}}.",
+              ">" = "Use a family object like {.code gaussian()} or a character name that matches a family constructor."
+            ))
+          }
+          f <- fn()
+          if (!inherits(f, "family")) {
+            cli::cli_abort(c(
+              "Unsupported family: {.val {nm}}.",
+              ">" = "Use a family object like {.code gaussian()} or a character name that matches a family constructor."
+            ))
+          }
+          f
+        }
       )
+    } else if (is.function(f) && !inherits(f, "family")) {
+      f <- f()
+    } else if (!inherits(f, "family")) {
+      cli::cli_abort(c(
+        "Unsupported family.",
+        "i" = "Pass a family object like {.code gaussian()} or a single character constructor name."
+      ))
     }
-    if (!inherits(f, "family")) f <- f()
     ## Delta (hurdle) families: $delta = TRUE and $family is a length-2
     ## character vector ("binomial", "lognormal" / "Gamma"). Detect via the
     ## $delta flag rather than by name so future delta_<x> additions can
@@ -3383,6 +3585,28 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## otherwise misinterpret a valid uncensored y = 0, censored = 0 row as
   ## "zero trials" and abort).
   if (is.matrix(y_raw) && ncol(y_raw) == 2L) {
+    ## #1369: cbind(succ, fail) already supplies n_trials. The weights_i
+    ## block below then forces binomial / beta-binomial rows to 1, so a
+    ## user `weights` argument is accepted and silently ignored. Honoring
+    ## those weights as likelihood multipliers would change the fitted
+    ## likelihood; refuse the combination instead of fitting the
+    ## unweighted model.
+    cbind_binom_rows <- family_id_vec %in% c(1L, 8L) & !cens_rows
+    ## #1494: in a mixed-family fit only the binomial-type rows (binomial,
+    ## betabinomial, zi_binomial -- the only families whose likelihood reads
+    ## n_trials) treat column 2 as failures. Every other non-censored row
+    ## uses column 1 as its response; its column 2 must be 0. (An NA in
+    ## either column makes model.frame() treat the row as a missing response.)
+    trials_rows <- family_id_vec %in% c(1L, 8L, 19L) & !cens_rows
+    other_rows  <- !trials_rows & !cens_rows
+    if (!is.null(weights) && any(cbind_binom_rows)) {
+      cli::cli_abort(c(
+        "{.arg weights} is not used when the binomial response is {.code cbind(successes, failures)}.",
+        "x" = "Trial counts already come from the two-column response. Applying {.arg weights} as a likelihood multiplier would change the fitted likelihood.",
+        "i" = "Without {.code cbind()}, {.arg weights} is the per-row binomial trial count.",
+        ">" = "Drop {.arg weights}, or use a single-column success response with {.arg weights} as the trial count."
+      ), class = "gllvmTMB_cbind_binomial_weights_unsupported")
+    }
     succ <- as.numeric(y_raw[, 1L])
     fail <- as.numeric(y_raw[, 2L])
     if (any(cens_rows)) {
@@ -3403,7 +3627,17 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     ## Masked rows (response = "include") carry NA in both columns; they are
     ## gated out of the likelihood in TMB, so validate only observed rows
     ## (na.rm) and sentinel-fill their y / n_trials below.
-    if (any(succ[!cens_rows] < 0, na.rm = TRUE) || any(fail[!cens_rows] < 0, na.rm = TRUE))
+    if (any(other_rows)) {
+      other_fail <- fail[other_rows]
+      if (any(other_fail[!is.na(other_fail)] != 0))
+        cli::cli_abort(c(
+          "The second {.code cbind()} column is only used by binomial-type traits.",
+          "x" = "{sum(other_fail != 0, na.rm = TRUE)} row{?s} of a non-binomial family ha{?s/ve} a non-zero second column.",
+          "i" = "For other families the first column is the response.",
+          ">" = "Set the second column to 0 on those rows, e.g. {.code cbind(value, ifelse(is_binomial, failures, 0))}."
+        ), class = "gllvmTMB_cbind_second_column_nonbinomial")
+    }
+    if (any(succ[trials_rows] < 0, na.rm = TRUE) || any(fail[trials_rows] < 0, na.rm = TRUE))
       cli::cli_abort(c(
         "cbind(successes, failures): both columns must be non-negative.",
         ">" = "Check the successes and failures columns for negative values before fitting."
@@ -3411,7 +3645,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     y         <- succ
     n_trials  <- succ + fail
     n_trials[cens_rows] <- 1  # unused by fid 21; keep out of the zero-trials check below
-    if (any(n_trials[!cens_rows] <= 0, na.rm = TRUE))
+    n_trials[other_rows] <- 1 # unused by non-binomial families (no-op in TMB)
+    if (any(n_trials[trials_rows] <= 0, na.rm = TRUE))
       cli::cli_abort(c(
         "cbind(successes, failures): rows with zero trials are not allowed.",
         ">" = "Drop rows where successes + failures == 0, or check for a data-entry error."
@@ -3632,7 +3867,11 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ## a saved object) behaves exactly as before rather than silently changing
       ## the quadrature order or the tier.
       va_H           = control$va_H %||% 7L,
-      va_eval_method = control$va_eval_method %||% "auto"
+      va_eval_method = control$va_eval_method %||% "auto",
+      optimizer      = control$optimizer %||% "nlminb",
+      optimizer_explicit = isTRUE(control$optimizer_explicit),
+      optArgs        = control$optArgs %||% list(),
+      va_polish      = control$va_polish %||% TRUE
     ))
   }
 
@@ -3812,7 +4051,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         ))
       if (is.null(phylo_tree)) {
         phylo_tree <- cov_tree
-      } else if (!identical(phylo_tree$tip.label, cov_tree$tip.label)) {
+      } else if (!.gllvmTMB_same_phylo_tree(phylo_tree, cov_tree)) {
         cli::cli_abort(c(
           "The {.fn phylo} covariate tree differs from the response phylogenetic tree.",
           ">" = "One tree per fit in this version; the covariate and response phylo terms must share a tree (multi-tree is a later phase)."
@@ -4221,7 +4460,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## intercepts of ~mean(succ) which are way off the logit scale and the
   ## inner Newton diverges. Bernoulli rows (n_trials == 1) and non-binomial
   ## rows keep the previous behaviour exactly.
-  has_multi_trial <- any(family_id_vec == 1L) && any(n_trials > 1)
+  ## zi_binomial (19) is a multi-trial logit-link count by admission, so it
+  ## takes the same empirical-logit start (#1330).
+  has_multi_trial <- any(family_id_vec %in% c(1L, 19L)) && any(n_trials > 1)
   ## Beta-binomial rows behave like multi-trial binomial for initialisation:
   ## empirical-logit on y/n is the right scale for the logit-link b_fix.
   has_betabinom_trial <- any(family_id_vec == 8L) && any(n_trials > 1)
@@ -4233,7 +4474,15 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## Includes delta families (12/13) which use a log link on the positive
   ## component (and zeros are well-handled by log(0 + 0.5)) and the
   ## truncated count families (10/11) which use a log link.
-  log_link_only <- all(family_id_vec %in% c(2L, 3L, 4L, 5L, 6L, 10L, 11L, 12L, 13L, 15L))
+  ## #1330: the log-link zero-inflated families (17 zi_poisson, 18
+  ## zi_nbinom2) and censored_poisson (21) belong here too. They used to fall
+  ## through to OLS on the RAW counts, which starts every intercept at the
+  ## mean count instead of its log (mu = exp(4.5) ~ 90 for a mean count of
+  ## ~5) and seeds the latent scores from raw-scale residuals; the optimiser
+  ## then spent its iterations recovering from the start and stopped on a
+  ## non-finite evaluation ("false convergence", max|grad| 1e5-1e11).
+  log_link_only <- all(family_id_vec %in% c(2L, 3L, 4L, 5L, 6L, 10L, 11L, 12L, 13L, 15L,
+                                            17L, 18L, 21L))
   ## Beta family init: empirical-logit on y in (0, 1) gives a much better
   ## starting b_fix than raw y on the (0,1) scale (the latter can leave the
   ## inner Newton stuck when mu = invlogit(eta) is far from y).
@@ -6041,6 +6290,16 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                                ordinal_init_log_incs else 0.0
   )
 
+  ## #1331: the alternative "svd" start (see `.gllvmTMB_svd_latent_start()`),
+  ## computed from the same residuals as the default start. Used by the
+  ## restart loop below; NULL when there is no free B-tier latent block.
+  svd_latent_start <- if (use_rr_B && !use_lv_B && d_B >= 1L) {
+    .gllvmTMB_svd_latent_start(
+      resid = resid_init, trait_id = trait_id, group_id = site_id,
+      n_traits = n_traits, n_groups = n_sites, rank = d_B
+    )
+  } else NULL
+
   ## Phase 2a/2b missing-predictor PARAMETERS. beta_mi / log_sigma_mi are the
   ## Gaussian covariate-model coefficients + log residual SD; x_mis is the
   ## latent vector of missing UNIT-level x values (joins `random`). Phase 2b
@@ -6473,6 +6732,31 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## that respect the engine's lower-triangular structure: diagonal and
   ## strict-lower-triangle of an n_traits x rank Lambda. Upper-triangle
   ## constraints are silently ignored (those entries are already 0).
+  if (!is.null(lambda_constraint$B) && !use_rr_B) {
+    cli::cli_abort(c(
+      "!" = "{.code lambda_constraint$unit} was supplied but the model has no unit-level {.fn latent} term.",
+      ">" = "Add {.code latent(... | {unit}, d = K)} to the formula, or remove {.code unit} from {.code lambda_constraint}."
+    ))
+  }
+  if (!is.null(lambda_constraint$W) && !use_rr_W) {
+    cli::cli_abort(c(
+      "!" = "{.code lambda_constraint$unit_obs} was supplied but the model has no {.var {unit_obs}}-level {.fn latent} term.",
+      ">" = "Add {.code latent(... | {unit_obs}, d = K)} to the formula, or remove {.code unit_obs} from {.code lambda_constraint}."
+    ))
+  }
+  if (!is.null(lambda_constraint$phy) && !use_phylo_rr) {
+    cli::cli_abort(c(
+      "!" = "{.code lambda_constraint$phy} was supplied but the model has no phylogenetic {.fn latent} term.",
+      ">" = "Add a {.code phylo_latent(...)} term to the formula, or remove {.code phy} from {.code lambda_constraint}."
+    ))
+  }
+  if (!is.null(lambda_constraint$spde) &&
+      !(isTRUE(use_spde) && isTRUE(is_spatial_latent))) {
+    cli::cli_abort(c(
+      "!" = "{.code lambda_constraint$spde} was supplied but the model has no {.fn spatial_latent} term.",
+      ">" = "Add {.fn spatial_latent} to the formula, or remove {.code spde} from {.code lambda_constraint}."
+    ))
+  }
   if (use_rr_B_slope && !is.null(lambda_constraint$B)) {
     cli::cli_abort(c(
       "{.code lambda_constraint$B} is not yet implemented for augmented ordinary {.fn latent} random-regression slopes.",
@@ -7143,8 +7427,17 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ## unique = TRUE work for the admitted shared-latent route while identified
       ## partner traits keep their Psi and the fixed softmax link residual remains
       ## a separate extraction-time quantity.
+      ## Ordinal threshold traits (fid 14 / 20, #1390): with ONE observation
+      ## per (trait, unit) cell, P(y = k) depends on (tau_k - eta) / sqrt(s2 +
+      ## psi) only, so psi, the cutpoints and the loading rescale together
+      ## along an exactly flat ridge of the marginal likelihood. Laplace is not
+      ## invariant along that ridge and climbs it (psi 435-649, cutpoints
+      ## 6-29, logLik 400-520 above the exact marginal on real data). Gate it
+      ## exactly as single-trial binary; replicated cells keep their Psi.
       isTRUE(all(family_id_vec[rows_t] == 1L) && all(n_trials[rows_t] == 1)) ||
-        isTRUE(all(family_id_vec[rows_t] == 16L))
+        isTRUE(all(family_id_vec[rows_t] == 16L)) ||
+        isTRUE(all(family_id_vec[rows_t] %in% c(14L, 20L)) &&
+                 !anyDuplicated(site_id[rows_t]))
     }, logical(1))
     if (any(skip_psi_b_t)) {
       ## Tell the C++ objective which traits were pinned. Without this the
@@ -7182,15 +7475,22 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         isTRUE(length(rows_t) > 0L && all(family_id_vec[rows_t] == 16L))
       }, logical(1))
       skipped_labs <- levels(data[[trait]])[skipped_idx]
-      binomial_labs <- skipped_labs[!skipped_is_multinomial]
+      skipped_is_ordinal <- vapply(skipped_idx, function(t) {
+        rows_t <- which(trait_id == (t - 1L))
+        isTRUE(length(rows_t) > 0L && all(family_id_vec[rows_t] %in% c(14L, 20L)))
+      }, logical(1))
+      binomial_labs <- skipped_labs[!skipped_is_multinomial & !skipped_is_ordinal]
       multinomial_labs <- skipped_labs[skipped_is_multinomial]
+      ordinal_labs <- skipped_labs[skipped_is_ordinal]
       cli::cli_inform(.auto_psi_skip_message(
         binomial_labs = binomial_labs,
-        multinomial_labs = multinomial_labs
+        multinomial_labs = multinomial_labs,
+        ordinal_labs = ordinal_labs
       ), .frequency = "once",
          .frequency_id = .auto_psi_skip_frequency_id(
            binomial_labs = binomial_labs,
-           multinomial_labs = multinomial_labs
+           multinomial_labs = multinomial_labs,
+           ordinal_labs = ordinal_labs
          ))
     }
   }
@@ -7422,6 +7722,29 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     }
   }
 
+  .gllvmTMB_warn_ignored_opt_args <- function(ignored, optimizer) {
+    if (!length(ignored)) return(invisible(NULL))
+    nested <- if (identical(optimizer, "optim")) {
+      c("Use {.code optArgs = list(control = list(maxit = ...))} for iteration limits.")
+    } else {
+      c("Use {.code optArgs = list(control = list(iter.max = ...))} for iteration limits.")
+    }
+    cli::cli_warn(c(
+      "{.code gllvmTMBcontrol(optArgs = ...)} ignored: {.field {ignored}}.",
+      i = paste0(
+        "Only ",
+        if (identical(optimizer, "optim")) {
+          "{.code method}, {.code control}, {.code hessian}, {.code lower}, and {.code upper}"
+        } else {
+          "{.code control}, {.code lower}, {.code upper}, and {.code scale}"
+        },
+        " are passed to {.val {optimizer}}."
+      ),
+      i = nested
+    ))
+    invisible(NULL)
+  }
+
   ## Optimiser dispatch: nlminb (default) or optim with user-supplied
   ## method (per Maeve McGillycuddy's email — optim/BFGS is often more
   ## robust than nlminb for two-level rr fits).
@@ -7482,6 +7805,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     }
     if (identical(control$optimizer, "optim")) {
       opt_args <- control$optArgs
+      keep_optim <- names(opt_args) %in% c("method", "control", "hessian", "lower", "upper")
+      .gllvmTMB_warn_ignored_opt_args(names(opt_args)[!keep_optim], "optim")
+      opt_args <- opt_args[keep_optim]
       method <- opt_args$method %||% "BFGS"
       opt_args$method <- method
       opt_args$control <- utils::modifyList(
@@ -7497,6 +7823,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     } else {
       nlminb_args <- control$optArgs
       keep <- names(nlminb_args) %in% c("control", "lower", "upper", "scale")
+      .gllvmTMB_warn_ignored_opt_args(names(nlminb_args)[!keep], "nlminb")
       if (length(nlminb_args) > 0L && any(!keep) && isTRUE(control$verbose)) {
         cat(sprintf(
           "  nlminb optArgs ignored: %s\n",
@@ -7589,7 +7916,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     if (is.null(raw) || length(raw) != length(par)) {
       raw <- rep("outer", length(par))
     }
-    occurrence <- ave(seq_along(raw), raw, FUN = seq_along)
+    occurrence <- stats::ave(seq_along(raw), raw, FUN = seq_along)
     paste0(raw, "[", occurrence, "]")
   }
 
@@ -7950,16 +8277,53 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## vectors (per Maeve McGillycuddy's recommendation), keep the best.
   best_opt <- NULL
   best_obj <- Inf
-  n_restarts <- max(1L, control$n_init)
+  best_state <- NULL
+  best_i <- NA_integer_
+  ## #1331: besides the default start, try the data-informed "svd" start
+  ## (restart 2) unless the caller opted out with `svd_start = FALSE` or chose
+  ## the start themselves (`start_from`, `start_method`). It adds one
+  ## optimisation to the default fit; restart 1 is still the default start,
+  ## so the returned fit only changes when the svd start reaches a strictly
+  ## lower objective. Jittered restarts (`n_init > 1`) follow it.
+  svd_restart <- NULL
+  if (!isFALSE(control$svd_start) && !is.null(svd_latent_start) &&
+      identical(estimator, "ml") && !isTRUE(start_provenance$start_from) &&
+      is.null(start_method$method) && is.null(tmb_map[["theta_rr_B"]])) {
+    theta_idx <- which(names(obj$par) == "theta_rr_B")
+    z_idx <- which(names(obj$env$par) == "z_B")
+    if (length(theta_idx) == length(svd_latent_start$theta) &&
+        length(z_idx) == length(svd_latent_start$z) &&
+        all(z_idx %in% obj$env$random)) {
+      svd_par <- obj$par
+      svd_par[theta_idx] <- svd_latent_start$theta
+      svd_restart <- list(par = svd_par, z_idx = z_idx,
+                          z = as.vector(svd_latent_start$z))
+    }
+  }
+  n_jitter <- max(1L, control$n_init) - 1L
+  start_labels <- c("initial", if (!is.null(svd_restart)) "svd",
+                    rep("jitter", n_jitter))
+  n_restarts <- length(start_labels)
   restart_history <- vector("list", n_restarts)
   for (i in seq_len(n_restarts)) {
-    par0 <- if (i == 1L) {
-      obj$par
-    } else {
-      .gllvmTMB_reclamp_start_par(
+    par0 <- switch(
+      start_labels[i],
+      initial = obj$par,
+      svd = {
+        ## Seed TMB's inner (random-effect) start with the matching scores.
+        lp <- obj$env$last.par.best
+        lp[svd_restart$z_idx] <- svd_restart$z
+        obj$env$last.par.best <- lp
+        obj$env$last.par <- lp
+        ## Reset TMB's best-value tracker so restart 1's value cannot keep
+        ## the inner start pinned away from these scores.
+        obj$env$value.best <- Inf
+        svd_restart$par
+      },
+      jitter = .gllvmTMB_reclamp_start_par(
         obj$par + stats::rnorm(length(obj$par), sd = control$init_jitter)
       )
-    }
+    )
     elapsed_start <- proc.time()[["elapsed"]]
     opt_i <- tryCatch(run_passes(par0, .ridge_tau = laplace_ridge_tau),
                       error = function(e) e)
@@ -7967,10 +8331,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     if (inherits(opt_i, "error")) {
       restart_history[[i]] <- .gllvmTMB_restart_history_row(
         restart = i,
-        start_label = if (i == 1L) "initial" else "jitter",
+        start_label = start_labels[i],
         start_method = start_provenance$start_method,
         optimizer = control$optimizer,
-        jitter_sd = if (i == 1L) 0 else control$init_jitter,
+        jitter_sd = if (start_labels[i] == "jitter") control$init_jitter else 0,
         objective = NA_real_,
         convergence = NA_integer_,
         message = conditionMessage(opt_i),
@@ -7983,37 +8347,95 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     }
     objective_i <- .gllvmTMB_restart_objective(opt_i)
     success_i <- is.finite(objective_i)
+    ## #1335: with more than one restart, rank restarts by the objective
+    ## re-evaluated at each restart's returned parameters, not the value the
+    ## optimizer reported. When the inner (Laplace) Hessian is near-singular
+    ## at the returned point (seen with student()), the reported value
+    ## depends on where TMB's inner Newton solve happened to start and need
+    ## not be reproducible by `obj$fn(opt$par)`; selecting on it returned a
+    ## fit whose logLik was worse than restart 1. The TMB state the
+    ## re-evaluation started from is kept so the post-loop refresh at the
+    ## selected optimum repeats the same computation. Skipped for
+    ## n_init = 1 so the default single-start path is unchanged.
+    state_i <- NULL
+    reeval_note <- ""
+    if (n_restarts > 1L && success_i) {
+      state_i <- list(
+        last.par = obj$env$last.par,
+        last.par.best = obj$env$last.par.best,
+        value.best = obj$env$value.best
+      )
+      reevaluated_i <- .gllvmTMB_restart_reevaluate(
+        obj, opt_i$par, laplace_ridge_tau
+      )
+      if (!isTRUE(abs(reevaluated_i - objective_i) <= 1e-8 *
+                    max(1, abs(objective_i)))) {
+        reeval_note <- sprintf(
+          "optimizer reported objective %.6f; re-evaluated at the returned parameters as %.6f",
+          objective_i, reevaluated_i
+        )
+      }
+      objective_i <- reevaluated_i
+      opt_i$objective <- reevaluated_i
+      success_i <- is.finite(objective_i)
+    }
     if (isTRUE(control$verbose))
       cat(sprintf("  restart %d: -logLik = %.3f, conv = %s\n",
                   i, objective_i,
                   ifelse(is.null(opt_i$convergence), "?", opt_i$convergence)))
     restart_history[[i]] <- .gllvmTMB_restart_history_row(
       restart = i,
-      start_label = if (i == 1L) "initial" else "jitter",
+      start_label = start_labels[i],
       start_method = start_provenance$start_method,
       optimizer = opt_i$optimizer_used %||% control$optimizer,
-      jitter_sd = if (i == 1L) 0 else control$init_jitter,
+      jitter_sd = if (start_labels[i] == "jitter") control$init_jitter else 0,
       objective = objective_i,
       convergence = opt_i$convergence %||% NA_integer_,
-      message = opt_i$message %||% "",
+      message = paste(c(if (nzchar(opt_i$message %||% "")) opt_i$message,
+                        if (nzchar(reeval_note)) reeval_note),
+                      collapse = "; "),
       elapsed_s = elapsed_s,
       iterations = opt_i$iterations %||% NA_integer_,
       evaluations = opt_i$evaluations %||% NA_integer_,
       success = success_i
     )
-    if (success_i && objective_i < best_obj) {
+    ## #1331: no later restart (svd or jitter) displaces a converged fit
+    ## with a non-converged one: on zero-inflated data (#1330) a
+    ## non-converged stop can sit at a LOWER objective because it is a
+    ## Laplace artefact, not a better optimum. The svd start also replaces an
+    ## earlier restart only on a material improvement, so a tie (the same
+    ## optimum reached from both starts) keeps the default start's fit
+    ## exactly.
+    improve_tol <- if (identical(start_labels[i], "svd")) {
+      1e-6 * max(1, abs(best_obj[is.finite(best_obj)]))
+    } else 0
+    converged_blocked <- !is.null(best_opt) &&
+      identical(as.integer(best_opt$convergence %||% NA_integer_), 0L) &&
+      !identical(as.integer(opt_i$convergence %||% NA_integer_), 0L)
+    if (success_i && !converged_blocked && objective_i < best_obj - improve_tol) {
       best_obj <- objective_i
       best_opt <- opt_i
+      best_state <- state_i
+      best_i <- i
     }
   }
   restart_history <- do.call(rbind, restart_history)
   if (is.null(best_opt))
-    cli::cli_abort("All {control$n_init} restarts failed.")
+    .gllvmTMB_abort_all_restarts_failed(restart_history)
   opt <- best_opt
   restart_history <- .gllvmTMB_select_restart_history(restart_history)
+  restart_history$selected <- restart_history$restart == best_i
   start_provenance$selected_restart <- restart_history$restart[
     which(restart_history$selected)[1L]
   ]
+  ## #1335: hand TMB back the state the selected restart was re-evaluated
+  ## from, so every later `obj$fn(opt$par)` reproduces its objective rather
+  ## than starting the inner solve from another restart's random effects.
+  if (!is.null(best_state)) {
+    obj$env$last.par <- best_state$last.par
+    obj$env$last.par.best <- best_state$last.par.best
+    obj$env$value.best <- best_state$value.best
+  }
 
   ## ---- AGHQ outer adaptation loop (Stage 1a: the z_B block) ------------
   ## The Laplace fit above is the ADAPTATION source, not the answer: AGHQ is
@@ -8927,7 +9349,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ## Cell means add n_traits * n_sites ADREPORT entries. Their marginal
       ## variances suffice for getREsd(); avoid allocating their dense joint
       ## report covariance while retaining all fixed-parameter covariance.
-      TMB::sdreport(obj, par.fixed = opt$par,
+      .gllvmTMB_sdreport_loading_ridge(obj, opt$par, aghq_info$ridge_tau,
                     getJointPrecision = FALSE,
                     getReportCovariance = !integrated_gaussian_diag_B),
       error = function(e) {
@@ -8964,6 +9386,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       standardized_column_coef = standardized_column_coef,
       column_coef_physical_start = column_coef_physical_start,
       REML         = REML,
+      control      = control,
       estimator    = if (identical(estimator, "mspl")) {
         "MSPL"
       } else if (isTRUE(REML)) {
@@ -8979,6 +9402,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ),
       opt          = opt,
       sd_report    = sd_rep,
+      loading_ridge_curvature = attr(sd_rep, "loading_ridge_curvature"),
       report       = rep,
       mspl         = if (identical(estimator, "mspl")) {
         list(
@@ -9386,7 +9810,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         warm_report <- obj$report()
         warm_sdreport_error <- NULL
         warm_sd_report <- tryCatch(
-          TMB::sdreport(obj, par.fixed = warm_opt$par,
+          .gllvmTMB_sdreport_loading_ridge(obj, warm_opt$par, aghq_info$ridge_tau,
                         getJointPrecision = FALSE,
                         getReportCovariance = !integrated_gaussian_diag_B),
           error = function(e) {
@@ -9398,6 +9822,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         warm_fit$opt <- warm_opt
         warm_fit$report <- warm_report
         warm_fit$sd_report <- warm_sd_report
+        warm_fit$loading_ridge_curvature <- attr(warm_sd_report, "loading_ridge_curvature")
         warm_fit$sdreport_error <- warm_sdreport_error
         warm_health <- .gllvmTMB_build_fit_health(warm_fit)
       }
@@ -9497,7 +9922,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
           obj$env$last.par.best <- obj$env$last.par
           newton_sdreport_error <- NULL
           newton_sd_report <- tryCatch(
-            TMB::sdreport(obj, par.fixed = newton_par,
+            .gllvmTMB_sdreport_loading_ridge(obj, newton_par, aghq_info$ridge_tau,
                           getJointPrecision = FALSE,
                           getReportCovariance = !integrated_gaussian_diag_B),
             error = function(e) {
@@ -9514,6 +9939,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
           newton_fit$opt <- newton_opt
           newton_fit$report <- obj$report()
           newton_fit$sd_report <- newton_sd_report
+          newton_fit$loading_ridge_curvature <- attr(newton_sd_report, "loading_ridge_curvature")
           newton_fit$sdreport_error <- newton_sdreport_error
           newton_health <- .gllvmTMB_build_fit_health(newton_fit)
           newton_diagnostics <- list(
@@ -9619,6 +10045,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       fit$opt <- opt
       fit$report <- rep
       fit$sd_report <- sd_rep
+      fit$loading_ridge_curvature <- attr(sd_rep, "loading_ridge_curvature")
       fit$sdreport_error <- sdreport_error
       fit$fit_health <- warm_health
       selected <- which(fit$restart_history$selected)
@@ -9700,6 +10127,11 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     fit$tmb_obj, fit$opt, fit$aghq
   )
   fit$fit_health <- .gllvmTMB_build_fit_health(fit)
+  if (any(family_id_vec %in% c(17L, 18L, 19L))) {
+    fit$fit_health$min_random_curvature <-
+      .gllvmTMB_min_random_curvature(fit$tmb_obj, fit$opt$par)
+  }
+  .gllvmTMB_warn_zi_nonconvergence(fit$fit_health, family_id_vec)
   if (structured_rho_estimated) {
     structured_rho$value <- as.numeric(stats::plogis(fit$opt$par[names(fit$opt$par)=="eta_structured_rho"]))
     structured_rho$boundary <- structured_rho$value < 1e-4 || structured_rho$value > 1-1e-4
@@ -11215,6 +11647,47 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     return(NA_real_)
   }
   as.numeric(objective)[[1L]]
+}
+
+## #1335: the restart objective at `par`, evaluated afresh. Adds the R-level
+## loading ridge exactly as `run_one()` does, so penalised restarts are still
+## ranked on the criterion they minimised.
+.gllvmTMB_restart_reevaluate <- function(obj, par, ridge_tau) {
+  value <- tryCatch(as.numeric(obj$fn(par))[1L], error = function(e) NA_real_)
+  if (is.finite(value) &&
+      .gllvmTMB_loading_ridge_applies(ridge_tau, names(obj$par))) {
+    li <- .gllvmTMB_ridge_block_index(names(obj$par))
+    if (length(li)) value <- value + 0.5 * sum(par[li]^2) / (ridge_tau^2)
+  }
+  value
+}
+
+## #1333: say why each restart failed instead of only that they all did.
+.gllvmTMB_abort_all_restarts_failed <- function(restart_history) {
+  escape <- function(x) gsub("}", "}}", gsub("{", "{{", x, fixed = TRUE),
+                             fixed = TRUE)
+  reasons <- vapply(seq_len(nrow(restart_history)), function(k) {
+    row <- restart_history[k, , drop = FALSE]
+    parts <- character()
+    ## An optimizer error leaves objective and code NA; its message says it.
+    if (!is.finite(row$objective) && !is.na(row$convergence)) {
+      parts <- c(parts, paste0("objective ", format(row$objective)))
+    }
+    if (!is.na(row$convergence)) {
+      parts <- c(parts, paste0("convergence code ", row$convergence))
+    }
+    if (nzchar(row$message)) parts <- c(parts, row$message)
+    if (!length(parts)) parts <- "no reason recorded"
+    paste0("Restart ", row$restart, " (", row$start_label, "): ",
+           paste(parts, collapse = "; "))
+  }, character(1))
+  n <- nrow(restart_history)
+  cli::cli_abort(c(
+    "All {n} restart{?s} failed.",
+    stats::setNames(escape(reasons), rep("x", length(reasons))),
+    "i" = "A non-finite objective usually means the start sits where the likelihood cannot be evaluated (for example near-separation in binary data, or too many latent dimensions for the data).",
+    ">" = "Try more restarts ({.code gllvmTMBcontrol(n_init = 5)}), a different {.arg start_method}, or a smaller {.arg d}."
+  ), class = "gllvmTMB_all_restarts_failed")
 }
 
 .gllvmTMB_select_restart_history <- function(restart_history) {

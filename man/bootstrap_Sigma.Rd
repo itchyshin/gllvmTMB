@@ -21,13 +21,14 @@ bootstrap_Sigma(
 \item{fit}{A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}.}
 
 \item{n_boot}{Integer; number of bootstrap replicates. Default 999.
-Values below \code{2 / (1 - conf) - 1} (39 at the default \code{conf = 0.95}) are
-refused: the widest interval \code{B} draws can produce is \verb{[min, max]}, whose
+Values below \code{2 / (1 - conf) - 1} (39 at the default \code{conf = 0.95}) trigger
+a warning: the widest interval \code{B} draws can produce is \verb{[min, max]}, whose
 coverage is at most \code{(B - 1) / (B + 1)}, so a smaller \code{B} cannot reach the
-requested level whatever the data are. Values below 999 warn.
+requested level whatever the data are. The fit still runs. Values below 999
+warn for endpoint noise.
 
 Two different things bound \code{n_boot}, and they bite at different scales.
-Below the refusal threshold the \emph{arithmetic ceiling} binds: the interval
+Below the arithmetic floor the \emph{arithmetic ceiling} binds: the interval
 cannot reach the requested level however much data you have. Above it, what
 binds is Monte Carlo error in the endpoints, which is a precision question
 and shrinks with \code{B}. Conflating the two is how a replicate count comes to
@@ -127,8 +128,8 @@ per-trait site-level ICCs
 \eqn{R_t = (\Sigma_\mathrm{unit})_{tt} /
 [(\Sigma_\mathrm{unit})_{tt} + (\Sigma_\mathrm{unit\_obs})_{tt}]}.
 
-Scope: Gaussian bootstrap summaries and mixed-family refitting are exercised
-across the currently supported routes.
+Scope: Gaussian bootstrap summaries and mixed-family refit
+plumbing are covered by current tests.
 Non-Gaussian bootstrap calibration is experimental: its repeated-sampling
 behaviour has not been certified, and there is no production calibration
 evidence for mixed-family intervals. Treat those intervals as indicative.
@@ -137,6 +138,11 @@ Each bootstrap replicate (1) draws a new response vector from
 \code{simulate(fit, nsim = 1)}, (2) refits the model with the same formula
 on the simulated data, (3) extracts the requested summaries via
 \code{\link[=extract_Sigma]{extract_Sigma()}}, \code{\link[=extract_communality]{extract_communality()}}, and \code{\link[=extract_ICC_site]{extract_ICC_site()}}.
+Native Laplace/AGHQ refits retain the fitted ridge, integration, optimiser
+and REML settings;
+only the replicate standard-error calculation is disabled. Older fits
+without the full control record recover retained ridge and integration
+metadata, but their unrecorded optimiser options cannot be recovered.
 Replicates whose refit fails to converge are recorded but excluded
 from CI calculation.
 

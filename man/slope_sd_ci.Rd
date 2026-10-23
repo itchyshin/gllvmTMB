@@ -96,7 +96,7 @@ approximation and propagates it through a monotone log/exp transform.
 It is \strong{not a calibrated coverage statement} -- no repeated-sampling
 coverage campaign has been run for any of these estimands, and
 \code{interval_status = "wald_uncalibrated"} marks every row as such. The
-implementation is tested, but repeated-sampling coverage is not certified.
+calculation is tested; its repeated-sampling coverage is not.
 
 When the fit's random-slope term carries BOTH a diagonal Psi companion
 and a shared loadings component (\code{theta_rr_B_slope}, the default
@@ -104,7 +104,7 @@ alongside \code{theta_diag_B_slope} for ordinary \code{latent()}), \code{estimat
 that route is the per-trait UNIQUE (Psi) component of slope variance
 only -- it excludes the shared loadings contribution to the marginal
 slope variance, and can understate the total marginal slope SD
-substantially (measured up to ~45\% in a recovery study). This
+substantially (measured up to ~45\% in a recovery simulation). This
 restriction travels with the \strong{data}, not only the print method: the
 \code{component} column reads \code{"unique_psi"} in that case (\code{"total"}
 otherwise -- including for the phylogenetic and loadings-only routes,
@@ -140,53 +140,53 @@ logged;
 OTHER slope coordinates on the SAME route (only evaluated when there
 is more than one to compare against); \code{status = "near_zero_relative"},
 mirroring the package's relative-to-siblings convention for a
-collapsed variance component (\code{psi_rel_thresh} / \verb{near_zero_psi_*},
-\code{R/diagnose.R}).
+collapsed variance component (\code{psi_rel_thresh} / \verb{near_zero_psi_*}).
 }
-The point estimate (\code{estimate}, \code{theta}) is always returned, following
-the house line that a non-PD Hessian disqualifies standard errors but
-not point estimates (\code{R/bootstrap-sigma.R}, \code{R/cv-internal.R}).
+The point estimate (\code{estimate}, \code{theta}) is always returned. A
+non-positive-definite Hessian disqualifies standard errors, but not
+point estimates.
 }
 
 \examples{
-\dontrun{
 set.seed(1)
-n_ind <- 30L
-n_traits <- 2L
-trait_levels <- paste0("t", seq_len(n_traits))
-individuals <- paste0("id", seq_len(n_ind))
-df <- expand.grid(
-  individual = factor(individuals, levels = individuals),
-  rep = 1:5,
-  trait = factor(trait_levels, levels = trait_levels)
-)
-df$x <- stats::rnorm(nrow(df))
-alpha <- c(0.2, -0.1)
-beta <- c(0.3, -0.2)
-psi_noise <- matrix(stats::rnorm(4L * n_ind, sd = 0.25), nrow = 4L)
-eta <- numeric(nrow(df))
-for (o in seq_len(nrow(df))) {
-  tt <- as.integer(df$trait[o])
-  ii <- as.integer(df$individual[o])
-  base <- 2L * (tt - 1L)
-  eta[o] <- alpha[tt] + beta[tt] * df$x[o] +
-    psi_noise[base + 1L, ii] + psi_noise[base + 2L, ii] * df$x[o]
-}
-df$value <- eta + stats::rnorm(nrow(df), sd = 0.3)
+# Two traits (t1, t2) measured on five occasions for each of 60
+# individuals. An environmental covariate x is recorded once per
+# occasion and applies to both traits.
+n_ind <- 60
+dat <- expand.grid(occasion = 1:5, individual = factor(1:n_ind),
+                   trait = factor(c("t1", "t2")))
+dat$x <- rep(rnorm(5 * n_ind), times = 2)
 
-options(gllvmTMB.quiet_grammar_notes = TRUE)
+# Each individual has its own intercept and its own slope on x for each
+# trait, in the order (t1 intercept, t1 slope, t2 intercept, t2 slope).
+# Two latent axes generate them: the first shifts both intercepts, the
+# second shifts both slopes. The true slope SDs are 0.5 and 0.4.
+Lambda <- cbind(c(0.8, 0, 0.6, 0), c(0, 0.5, 0, 0.4))
+coefs <- matrix(rnorm(2 * n_ind), n_ind) \%*\% t(Lambda)
+ind <- as.integer(dat$individual)
+tr <- as.integer(dat$trait)
+dat$value <- c(0.2, -0.1)[tr] + c(0.3, -0.2)[tr] * dat$x +
+  coefs[cbind(ind, 2 * tr - 1)] + coefs[cbind(ind, 2 * tr)] * dat$x +
+  rnorm(nrow(dat), sd = 0.3)
+
+# Random intercepts and slopes for both traits. Their covariance is
+# built from two latent axes; unique = FALSE adds no extra per-trait
+# variance on top of the axes.
 fit <- gllvmTMB(
   value ~ 0 + trait + (0 + trait):x +
-    unique(0 + trait + (0 + trait):x | individual),
-  data = df,
-  trait = "trait",
-  unit  = "individual",
-  control = gllvmTMBcontrol(se = TRUE, optimizer = "optim",
-                             optArgs = list(method = "BFGS"))
+    latent(0 + trait + (0 + trait):x | individual, d = 2,
+           unique = FALSE),
+  data = dat, trait = "trait", unit = "individual"
 )
-slope_sd_ci(fit)
-slope_sd_ci(fit, level = 0.90, scale = "variance")
-}
+
+# 95\% Wald intervals for how much individuals differ in their slopes,
+# one row per trait, on the standard-deviation scale.
+ci <- slope_sd_ci(fit)
+ci[, c("trait", "term", "estimate", "lower", "upper")]
+
+# The same quantity as 90\% intervals on the variance scale.
+ci_var <- slope_sd_ci(fit, level = 0.90, scale = "variance")
+ci_var[, c("trait", "term", "estimate", "lower", "upper")]
 
 }
 \seealso{

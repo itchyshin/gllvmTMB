@@ -14,7 +14,7 @@
 
 .gllvmTMB_build_fit_health <- function(object) {
   if (!inherits(object, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+    .gllvmTMB_abort_not_multi_fit(object)
   }
 
   ## #1092: judge the objective the fit actually optimised. On a ridged fit
@@ -73,8 +73,16 @@
   )
   stationary_by_gradient <- isTRUE(max_grad_val < .gllvmTMB_converged_gtol)
   optimizer_converged <- isTRUE(identical(object$opt$convergence, 0L))
+  ## #1167: an SPDE fit can exit nlminb with code 0 after ONE iteration at an
+  ## objective of ~1e21 with every spatial parameter still at its start. No
+  ## genuine fit takes <= 2 iterations to an absurd or non-finite objective,
+  ## so flag it and refuse to call it converged. Healthy fits are untouched.
+  n_iter <- suppressWarnings(as.numeric(object$opt$iterations %||% NA_real_))
+  premature_termination <- length(n_iter) == 1L && is.finite(n_iter) &&
+    n_iter <= 2 && (!is.finite(obj_val) || abs(obj_val) > 1e12)
   converged <- isTRUE(
-    optimizer_converged && is.finite(obj_val) && stationary_by_gradient
+    optimizer_converged && is.finite(obj_val) && stationary_by_gradient &&
+      !premature_termination
   )
 
   list(
@@ -95,6 +103,7 @@
     stationary_by_gradient = stationary_by_gradient,
     optimizer_converged = optimizer_converged,
     converged = converged,
+    premature_termination = premature_termination,
     pd_hessian = if (
       !is.null(object$sd_report) &&
         !is.null(object$sd_report$pdHess)
@@ -205,7 +214,8 @@
   object,
   loading_thresh = 1e-3,
   sd_thresh = 1e-4,
-  sd_rel_thresh = 1e-3
+  sd_rel_thresh = 1e-3,
+  phi_gamma_ceiling_thresh = 1e8
 ) {
   flags <- character(0)
   rep <- object$report
@@ -263,7 +273,42 @@
       flags <- c(flags, paste0("near_zero_", nm))
     }
   }
+  ## Gamma shape at infinity (#1377): a trait whose residual CV has collapsed
+  ## to zero (a Heywood-type boundary for the Gamma family) is a boundary fit
+  ## just like a collapsed variance component, and was previously unflagged.
+  if (.gllvmTMB_gamma_shape_at_ceiling(object, phi_gamma_ceiling_thresh)) {
+    flags <- c(flags, "boundary_phi_gamma")
+  }
   unique(flags)
+}
+
+## Per-trait Gamma shape (fid 4: shape = phi_gamma; fid 13 positive part:
+## shape = 1 / phi_gamma_delta^2) for the traits that actually use it.
+## Returns a named numeric vector (possibly empty).
+.gllvmTMB_gamma_shapes <- function(object) {
+  rep <- object$report
+  fid <- as.integer(object$tmb_data$family_id_vec %||% integer(0L))
+  tid <- as.integer(object$tmb_data$trait_id %||% integer(0L))
+  if (!length(fid) || length(tid) != length(fid)) return(numeric(0L))
+  out <- numeric(0L)
+  tn <- .gllvmTMB_trait_names(object)
+  pick <- function(vals, traits, transform) {
+    vals <- as.numeric(vals %||% numeric(0L))
+    traits <- traits[traits + 1L <= length(vals)]
+    if (!length(traits)) return(numeric(0L))
+    stats::setNames(transform(vals[traits + 1L]),
+                    vapply(traits + 1L, function(t) .gllvmTMB_trait_label(tn, t),
+                           character(1)))
+  }
+  out <- c(out, pick(rep$phi_gamma, sort(unique(tid[fid == 4L])), identity))
+  out <- c(out, pick(rep$phi_gamma_delta, sort(unique(tid[fid == 13L])),
+                     function(p) 1 / p^2))
+  out
+}
+
+.gllvmTMB_gamma_shape_at_ceiling <- function(object, ceiling) {
+  shapes <- tryCatch(.gllvmTMB_gamma_shapes(object), error = function(e) numeric(0L))
+  length(shapes) > 0L && any(!is.finite(shapes) | shapes >= ceiling)
 }
 
 .gllvmTMB_check_row <- function(
@@ -736,9 +781,9 @@
     if (!identical(status, "WARN")) {
       "none"
     } else if (runaway_hit) {
-      "treat the fit as unusable rather than interpreting it: this is quasi-complete separation, which lowering the rank does not resolve; try gllvmTMBcontrol(loading_ridge = 0.25) (0.25 to 0.5; larger tau shrinks less) to shrink runaway loadings, or gllvmTMBcontrol(integration = 'va') for latent(..., unique = FALSE) fits with at least 100 units and d <= 2 -- either makes the result a penalised (MAP) or variational estimate, so logLik(), AIC() and BIC() no longer apply to it"
+      "treat the fit as unusable rather than interpreting it: this is quasi-complete separation, which lowering the rank does not resolve; for ordinary between-unit latent loadings, try gllvmTMBcontrol(loading_ridge = 0.25) (0.25 to 0.5; larger tau shrinks less) to shrink runaway loadings, or gllvmTMBcontrol(integration = 'va') for latent(..., unique = FALSE) fits with at least 100 units and d <= 2 -- either makes the result a penalised (MAP) or variational estimate, so logLik(), AIC() and BIC() no longer apply to it"
     } else {
-      "remove or re-code the near-constant binary indicator; lowering rank will not resolve quasi-separation by itself"
+      "check the near-constant binary indicator; for ordinary between-unit latent loadings, compare a regularised refit with gllvmTMBcontrol(loading_ridge = 2); this is a Normal(0, 2^2) loading prior, with smaller scales giving stronger shrinkage. Lowering rank will not resolve quasi-separation by itself"
     }
   )
   ## Which path fired, so the weak-axis row can give matching advice: a
@@ -1158,17 +1203,16 @@
 
 #' Ordinal-probit loading degeneracy screen
 #'
-#' `ordinal_probit()` (family_id 14) traits drop the auto-Psi at parse time
-#' (`auto_unique_off_family` in `R/fit-multi.R`, fids 12/13/14), so a
-#' pure-ordinal fit has no `report$sd_B` and the `near_zero_psi_*` rows
-#' elsewhere in [check_gllvmTMB()] are dark by design -- these two loading
-#' arms are the ONLY degeneracy coverage a default all-ordinal fit gets,
-#' which addresses the earlier coverage gap (`ordinal_probit` had
-#' zero detector coverage, 239/239 fits unflagged, where the binomial screen
-#' caught 272/272).
+#' `ordinal_probit()` does not include the automatic Psi component, so a
+#' pure-ordinal fit has no `report$sd_B` and the `near_zero_psi_*` checks
+#' in [check_gllvmTMB()] are unavailable. These two loading arms are
+#' available when a user supplies finite thresholds; both are disarmed by
+#' default because the completed calibration did not identify a threshold
+#' that met its targets. They address the earlier detector-coverage gap
+#' (`ordinal_probit` had zero detector coverage, 239/239 fits unflagged,
+#' where the binomial screen caught 272/272).
 #'
-#' The detector-S1 mechanism probe (`dev/ordinal-degeneracy/probe-criteria.md`,
-#' VERDICT 2026-08-17) measured the mechanism behind 24 degenerate ordinal
+#' A mechanism probe completed on 2026-08-17 measured the cause of 24 degenerate ordinal
 #' fits over a 60-fit grid and found **category-level separation, not link
 #' saturation**: `gll_log_pnorm_diff`'s cutpoint-underflow condition (both
 #' bracketing cutpoints more than 8.2924 from `eta` on the same side) never
@@ -1203,26 +1247,47 @@
 #'     `ordinal_loading_absolute_thresh`. This is scale-free for
 #'     `ordinal_probit` by the same argument that justifies binomial's
 #'     absolute arm: the probit-liability residual variance is EXACTLY 1
-#'     under the Wright/Falconer/Hadfield threshold convention
-#'     (`R/extract-sigma.R`, `sigma_d^2 = 1` fixed, no free scale
-#'     parameter), so a loading IS the trait's latent SD in liability units.
+#'     under the probit threshold convention (`sigma_d^2 = 1` is fixed,
+#'     with no free scale parameter), so a loading is the trait's latent SD
+#'     in liability units.
 #'
-#' Both thresholds default to `Inf` (fully disarmed) pending the detector-S2
-#' calibration campaign staged at `dev/ordinal-degeneracy/`
-#' (`campaign-ordinal-calibration.R`, `pass-criteria-ordinal.md`) -- shipping
-#' an armed default ahead of that evidence would repeat the mistake the
-#' binomial thresholds in this file were originally calibrated to correct.
+#' `ordinal_loading_absolute_thresh` (O2) defaults to 30 (#897);
+#' `ordinal_loading_runaway_thresh` (O1) stays disarmed at `Inf`. The
+#' pre-registered 315-fit calibration scored false positives by DESIGN ARM, so
+#' a fit from the `healthy` arm that itself ran away counted as a false alarm,
+#' and found no threshold meeting its targets. Scored per fit instead, against
+#' that fit's own `rel_frob > 10` truth, the same recorded fits and two further
+#' sets give (O2, `max_loading_unit`; sensitivity = degenerate fits flagged,
+#' false positive = fits with `rel_frob <= 10` flagged):
 #'
-#' A third statistic is computed and reported for the calibration campaign's
-#' own use but is **NOT** wired into `flag` or `status`: `cutpoint_span`
+#' | threshold | 315-fit set | 380-fit set | 240 fresh-seed fits |
+#' |---|---|---|---|
+#' | 20 | 91% / 12% | 94% / 8.3% | 97.5% / 0.8% |
+#' | 30 | 67% / 4.2% | 78% / 4.4% | 81% / 0% |
+#' | 40 | 60% / 0% | 63% / 2.9% | 63% / 0% |
+#'
+#' (sensitivity / false positive). The false positives at 30 and above are
+#' the `transport` design, whose true loadings are themselves heterogeneous
+#' and large, and a `sigma_lambda = 8` design; the fresh-seed set (probit
+#' `sigma_lambda` 0.7 and 3, n = 100, seeds 3001-3120, run on Totoro
+#' 2026-10-04 after the threshold was chosen from the first two sets) has none.
+#' 30 is a loading standard deviation of 30 against a residual standard
+#' deviation of 1 (communality above 0.998). It is a screen that misses
+#' roughly a quarter of degenerate fits, not the 90% sensitivity the
+#' pre-registration asked for; see the `ordinal_loading_absolute_thresh`
+#' parameter for what it does not catch.
+#'
+#' A third statistic is computed and reported for follow-up calibration but
+#' is **NOT** wired into `flag` or `status`: `cutpoint_span`
 #' (a trait's fitted cutpoint span, `max(tau) - min(tau)` over its free
 #' cutpoints `tau_2 .. tau_{K-1}`, via
 #' `.gllvmTMB_ordinal_cutpoint_span_by_trait()`) and the derived
 #' `loading_over_span` (`max_loading_unit / cutpoint_span`). Whether this
 #' variant adds sensitivity beyond O1/O2, and whether the span itself is
 #' confounded with the degeneracy label it would be screening for (a
-#' precondition the calibration campaign must report before this variant
-#' could ever ship), is exactly what that campaign is for. `K = 2` traits
+#' precondition follow-up calibration must report before this variant
+#' could ever ship), is exactly what follow-up calibration would assess.
+#' `K = 2` traits
 #' (no free cutpoint under the Hadfield `tau_1 = 0` convention) return `NA`
 #' for `cutpoint_span` rather than dividing by zero, and `loading_over_span`
 #' is `NA` wherever `cutpoint_span` is `NA` or non-positive.
@@ -1240,18 +1305,27 @@
 #'   never the SPDE tier, whose loadings carry a different normalisation.
 #'   Scale-free by construction: the probit-liability residual variance is
 #'   exactly 1, so an ordinal loading IS the trait's latent SD in liability
-#'   units. Default `Inf` — **DISARMED**.
+#'   units. Default `30` (#897); `Inf` disables the arm.
 #'
-#'   Both ordinal arms ship disarmed because a pre-registered 315-fit
-#'   calibration (2026-08-17; four arms — degenerate, healthy, transport,
-#'   mixed) could not find a threshold meeting its frozen targets
-#'   (sensitivity >= 90% on the degenerate arm AND zero false positives
-#'   across the healthy, transport and mixed arms combined). Measured under
-#'   that rule: at a threshold of 6, sensitivity 100% but **39.2% false
-#'   positives**; at 40, 80.5% and 11.0%; the first zero-FP point sits at
-#'   250, where sensitivity is 0%. The classes are not separable at all on
-#'   this statistic, because the healthy pool reaches `max_loading_unit`
-#'   216.9 while the degenerate arm starts at 13.5.
+#'   A pre-registered 315-fit calibration (2026-08-17; four arms — degenerate,
+#'   healthy, transport, mixed) could not find a threshold meeting its frozen
+#'   targets (sensitivity >= 90% on the degenerate arm AND zero false
+#'   positives across the healthy, transport and mixed arms combined) and the
+#'   arms shipped disarmed. Measured under that rule: at a threshold of 6,
+#'   sensitivity 100% but **39.2% false positives**; at 40, 80.5% and 11.0%;
+#'   the first zero-FP point sat at 250, where sensitivity was 0%. That rule
+#'   scored a design arm, not a fit, so a `healthy`-arm fit that itself ran
+#'   away (`max_loading_unit` up to 216.9) counted as a false positive. The
+#'   per-fit scoring in the roxygen block above is what the default of 30 rests
+#'   on.
+#'
+#'   What the default does NOT catch: a degenerate fit whose largest unit-tier
+#'   loading is below 30 (for example `rel_frob` 26.6 at `max_loading_unit`
+#'   22.3 in the recorded fixture), a single over-large loading that is
+#'   moderate in size, and anything on a structured tier (the absolute arm
+#'   reads the unit tiers only). Convergence and `pdHess` do not help here:
+#'   every one of the 240 fresh-seed fits, flagged or not, reported
+#'   `convergence = 0`.
 #'
 #'   Two findings from that campaign are worth stating. First, borrowing
 #'   binomial's own threshold of 6 would have shipped a screen with a ~39%
@@ -1263,16 +1337,15 @@
 #'   transport across them, because a legitimately large loading on a
 #'   wide-cutpoint trait is indistinguishable from a runaway.
 #'
-#'   The row still computes and reports its statistics, so a user who wants
-#'   the screen can set either threshold explicitly. Arming a default is a
-#'   maintainer decision that this evidence does not support.
+#'   The row reports its statistics for every `ordinal_probit()` fit; set
+#'   `ordinal_loading_absolute_thresh = Inf` to turn the absolute arm off.
 #' @return A one-row data frame in the [check_gllvmTMB()] row shape, or
 #'   `NULL` when the fit has no `ordinal_probit()` (family_id 14) trait.
 #' @keywords internal
 .gllvmTMB_ordinal_degeneracy_row <- function(
   object,
   ordinal_loading_runaway_thresh = Inf,
-  ordinal_loading_absolute_thresh = Inf
+  ordinal_loading_absolute_thresh = 30
 ) {
   required <- c("family_id_vec", "trait_id")
   tmb <- .gllvmTMB_tmb_data_or_null(object, required)
@@ -1329,14 +1402,14 @@
   } else {
     paste0(
       "ordinal trait loading has run away from the rest (quasi-complete ",
-      "category-level separation; see dev/ordinal-degeneracy/probe-criteria.md; arms: ",
+      "category-level separation; arms: ",
       paste(arms, collapse = ","), ")"
     )
   }
   action <- if (!identical(status, "WARN")) {
     "none"
   } else {
-    "treat the fit as unusable rather than interpreting it: the S1 probe found this is the same quasi-complete-separation geometry the binomial screen catches (24/24 dichotomised refits fired binomial_prevalence_loading); try gllvmTMBcontrol(loading_ridge = 0.25) (0.25 to 0.5; larger tau shrinks less) to shrink runaway loadings, or gllvmTMBcontrol(integration = 'va') for latent(..., unique = FALSE) fits with at least 100 units and d <= 2 -- either makes the result a penalised (MAP) or variational estimate, so logLik(), AIC() and BIC() no longer apply to it"
+    "treat the fit as unusable rather than interpreting it: a loading this large on a probit liability scale (residual SD 1) is the signature of category-level separation; try gllvmTMBcontrol(loading_ridge = 0.25) (0.25 to 0.5; larger tau shrinks less) to shrink runaway loadings, or gllvmTMBcontrol(integration = 'va') for latent(..., unique = FALSE) fits with at least 100 units and d <= 2 -- either makes the result a penalised (MAP) or variational estimate, so logLik(), AIC() and BIC() no longer apply to it"
   }
 
   .gllvmTMB_check_row(
@@ -1352,7 +1425,7 @@
     paste0(
       "relative_loading >= ", ordinal_loading_runaway_thresh,
       " (O1) or max_loading_unit >= ", ordinal_loading_absolute_thresh,
-      " on the link scale (O2); both disarmed at Inf pending the detector-S2 calibration campaign"
+      " on the link scale (O2); the O1 default is Inf (disabled) and the O2 default is 30, a screen that misses roughly a quarter of degenerate fits"
     ),
     msg,
     action
@@ -1461,13 +1534,13 @@
 #'   identification, so a binomial loading is the trait's latent standard
 #'   deviation in link units: a value of this size already implies a
 #'   fitted probability indistinguishable from 0 or 1 across an ordinary
-#'   swing of the axis. Default 8, raised from 6 (issue #1098) after the
+#'   swing of the axis. Default 8, raised from 6 after the
 #'   earlier calibration pool (3,944 simulated binomial fits, no healthy
 #'   fit above 3.99) turned out to be unrepresentative: its true loading
 #'   scale never reached the regime where this arm misfires. A second pool
 #'   built specifically to cross `sigma_lambda in c(0.7, 3.0)` (928 healthy
-#'   / 272 degenerate binomial-probit fits) -- 3.0 chosen to hit issue
-#'   #847's `aghq_ridge` ridge-failure regime, not argued for realism --
+#'   / 272 degenerate binomial-probit fits) -- 3.0 chosen to probe the
+#'   `aghq_ridge` ridge-failure regime, not argued for realism --
 #'   measured this arm as the SOLE source of every false positive found
 #'   (232/928 at threshold 6, all attributable to this arm alone). Raising
 #'   the threshold to 8 lowers the false-positive rate on that pool from
@@ -1485,14 +1558,8 @@
 #'   link-scale quantity it does not transport to families whose response
 #'   scale is arbitrary, which is why this row is binomial-only. This gate
 #'   applies to every link (`family_id == 1L`), but the calibration above
-#'   is probit-only: logit loadings run larger than probit loadings for
-#'   the same underlying model (the standard logistic/probit
-#'   variance-matching ratio, commonly cited as ~1.6-1.8), so the same
-#'   fixed threshold is reached by a smaller true effect on the logit
-#'   link, and the false-positive rate measured here should be read as a
-#'   lower bound on logit fits, not a transportable number -- no logit
-#'   evidence exists in the calibration pool. See
-#'   `dev/heywood/fp-scale-dependence.md` for the full mechanism note.
+#'   is probit-only. No logit evidence exists in the calibration pool, so
+#'   this false-positive rate should not be transported to logit fits.
 #' @param multinomial_collapse_floor Absolute floor on a `multinomial()`
 #'   contrast's fitted loading energy
 #'   (`rowSums(Lambda^2)`), at or below which it is a collapsed contrast.
@@ -1541,26 +1608,78 @@
 #'   Meaningful because the probit-liability residual variance is exactly 1
 #'   under the Wright/Falconer/Hadfield threshold convention, so a loading
 #'   is the trait's latent standard deviation in liability units, mirroring
-#'   `loading_absolute_thresh`'s binomial justification. Default `Inf`
-#'   (disabled): healthy ordinal traits can also have large loadings.
-#'   Inspect loadings alongside category frequencies and the other fit
-#'   diagnostics before choosing a finite threshold for your model.
+#'   `loading_absolute_thresh`'s binomial justification. Default `30`. At that
+#'   value the screen flagged 0 of 122 fresh-seed fits whose covariance
+#'   was recovered (within a relative Frobenius error of 10) and 81% of the
+#'   degenerate ones, in a simulation with `n = 100`, four traits and two
+#'   latent variables; it misses degenerate fits whose largest loading is
+#'   below 30, and healthy fits with genuinely heterogeneous loading scales
+#'   can exceed it. Use `Inf` to disable it.
 #' @param phi_nbinom2_ceiling_thresh Numeric scalar. A negative-binomial dispersion
 #'   estimate at or above this value is reported as a `boundary_phi_nbinom2_<trait>`
 #'   warning: the trait has run to the Poisson limit (no overdispersion left to
 #'   estimate), which usually means the data cannot separate dispersion from the
 #'   zero-inflation or latent structure. Try a plain `poisson()` / `zi_poisson()` for
 #'   that trait, or more sites.
+#' @param phi_gamma_ceiling_thresh Numeric scalar. A Gamma (or `delta_gamma()`
+#'   positive-part) shape estimate at or above this value is reported as a
+#'   `boundary_phi_gamma_<trait>` warning: the trait's residual coefficient of
+#'   variation has collapsed to about zero, a Heywood-type boundary.
+#' @param phi_truncnb2_ceiling_thresh,phi_nbinom1_ceiling_thresh,phi_betabinom_ceiling_thresh
+#'   Numeric scalars. A `truncated_nbinom2()`, `nbinom1()` or `betabinomial()`
+#'   dispersion estimate at or above this value is reported as a
+#'   `boundary_phi_truncnb2_<trait>`, `boundary_phi_nbinom1_<trait>` or
+#'   `boundary_phi_betabinom_<trait>` warning. For the truncated NB2 and
+#'   beta-binomial this is the Poisson / binomial limit, where the extra
+#'   dispersion is no longer identified; for `nbinom1()` it is a degenerate
+#'   heavy-tailed limit.
+#' @param df_student_ceiling_thresh Numeric scalar. A `student()` degrees-of-freedom
+#'   estimate at or above this value is reported as a
+#'   `boundary_df_student_<trait>` warning: the trait has run to the Gaussian
+#'   limit, so the heavy tails are not identified. Use `gaussian()` for that
+#'   trait, or fix `df`.
+#' @param laplace_accuracy Logical. If `TRUE` (default), and the fit's only
+#'   random effects are the `latent()` scores with `d <= 3`, the marginal
+#'   log-likelihood is re-evaluated at the fitted parameters by adaptive
+#'   Gauss-Hermite quadrature and compared with the Laplace value
+#'   (`laplace_accuracy` row). Skipped for all-Gaussian fits, where Laplace is
+#'   exact, and reported as `INFO` (not evaluated) when rows x nodes exceeds
+#'   2e7. Set to `FALSE` to skip the extra evaluation entirely.
+#' @param laplace_accuracy_thresh Numeric scalar. The `laplace_accuracy` row
+#'   warns when the Laplace logLik exceeds the quadrature logLik by more than
+#'   this many log-likelihood units (an optimistic Laplace approximation, which
+#'   biases logLik / AIC / likelihood-ratio comparisons toward that fit).
 #' @return A data frame with columns `component`, `status`, `value`,
 #'   `threshold`, `message`, and `action`. Status values are `"PASS"`,
-#'   `"WARN"`, or `"FAIL"`.
+#'   `"WARN"`, `"FAIL"`, or `"INFO"` (informational rows on MSPL and other
+#'   routes where a check does not apply to the fitted estimator).
 #' @export
 #' @examples
-#' \dontrun{
-#' fit <- gllvmTMB(value ~ 0 + trait + latent(0 + trait | site, d = 2),
-#'                 data = dat, trait = "trait", unit = "site")
-#' check_gllvmTMB(fit)
-#' }
+#' set.seed(1)
+#' # Eight traits on 100 units, each unit measured twice. Odd-numbered
+#' # traits share one latent axis, even-numbered traits share the other.
+#' # Repeat measurements let the model separate each trait's own
+#' # unit-level variance (Psi) from measurement noise.
+#' Lambda <- cbind(c(0.9, 0, 0.8, 0, 0.7, 0, 0.6, 0),
+#'                 c(0, 0.9, 0, 0.8, 0, 0.7, 0, 0.6))
+#' sim <- simulate_unit_trait(n_units = 100, n_obs_per_unit = 2,
+#'                            n_traits = 8, Lambda_B = Lambda,
+#'                            psi_B = 0.3, sigma2_eps = 0.3)
+#' fit <- gllvmTMB(
+#'   value ~ 0 + trait + latent(0 + trait | unit, d = 2, unique = TRUE),
+#'   data = sim$data, trait = "trait", unit = "unit"
+#' )
+#'
+#' # One row per check. The status column is PASS, WARN, FAIL or INFO.
+#' chk <- check_gllvmTMB(fit)
+#' chk[, c("component", "status", "value")]
+#' table(chk$status)
+#'
+#' # Read the rows that did not pass, with the suggested action. With two
+#' # latent axes the loadings are defined only up to a rotation, so a WARN
+#' # on rotation_convention is expected here: interpret Sigma and the trait
+#' # correlations, or rotate the loadings before comparing axes.
+#' chk[chk$status != "PASS", c("component", "status", "message", "action")]
 check_gllvmTMB <- function(
   object,
   gradient_thresh = 1e-2,
@@ -1581,7 +1700,7 @@ check_gllvmTMB <- function(
   multinomial_rail_thresh = 0.99,
   multinomial_range_collapse_thresh = 0.02,
   ordinal_loading_runaway_thresh = Inf,
-  ordinal_loading_absolute_thresh = Inf,
+  ordinal_loading_absolute_thresh = 30,
   ## R4 (2026-09-02 review): a per-trait NB2 dispersion (fid 5 nbinom2 OR
   ## fid 18 zi_nbinom2, which REUSES the same log_phi_nbinom2 vector) can
   ## run to the Poisson boundary (phi -> Inf) while reporting
@@ -1593,10 +1712,28 @@ check_gllvmTMB <- function(
   ## multi.R's `.clamp_log_phi()`); two orders of magnitude beyond its
   ## upper bound is unambiguously a runaway, not a plausible large but
   ## real dispersion, hence 1e4.
-  phi_nbinom2_ceiling_thresh = 1e4
+  phi_nbinom2_ceiling_thresh = 1e4,
+  phi_gamma_ceiling_thresh = 1e8,
+  phi_truncnb2_ceiling_thresh = 1e4,
+  phi_nbinom1_ceiling_thresh = 1e4,
+  df_student_ceiling_thresh = 1e3,
+  phi_betabinom_ceiling_thresh = 1e4,
+  laplace_accuracy = TRUE,
+  laplace_accuracy_thresh = 2
 ) {
+  if (inherits(object, "gllvmTMB_julia")) {
+    ## #1329: a Julia bridge fit IS returned by gllvmTMB(), but it carries no
+    ## TMB objective, gradient, Hessian or sdreport, which every check here
+    ## reads. Say so instead of claiming the fit is not a gllvmTMB() fit.
+    cli::cli_abort(c(
+      "{.fn check_gllvmTMB} is not available for {.code engine = \"julia\"} fits.",
+      "i" = "Its checks read the TMB gradient, Hessian and standard errors, which a Julia bridge fit does not carry.",
+      ">" = "Use {.code summary(fit)} for the Julia convergence flag and log-likelihood, and {.code residuals(fit, type = \"simulation_rank\")} for residual checks.",
+      ">" = "Refit with {.code engine = \"tmb\"} to run {.fn check_gllvmTMB}."
+    ), class = "gllvmTMB_julia_gate")
+  }
   if (!inherits(object, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+    .gllvmTMB_abort_not_multi_fit(object)
   }
   is_mspl <- .gllvmTMB_is_mspl(object)
   health <- object$fit_health %||% .gllvmTMB_build_fit_health(object)
@@ -1716,6 +1853,36 @@ check_gllvmTMB <- function(
     )
   )
 
+  if (isTRUE(health$premature_termination)) {
+    rows <- c(rows, list(.gllvmTMB_check_row(
+      "premature_termination",
+      "FAIL",
+      signif(health$objective, 4),
+      "> 2 iterations at a finite, plausible objective",
+      "optimizer stopped after <= 2 iterations at a non-finite or astronomically large objective; the reported convergence code is not trustworthy",
+      "treat the fit as failed; rescale the response/offset or try different starts"
+    )))
+  }
+
+  ## #1330: recorded for zero-inflated fits only (see
+  ## `.gllvmTMB_min_random_curvature()`); absent elsewhere, so no row.
+  curv <- health$min_random_curvature %||% NA_real_
+  if (length(curv) == 1L && is.finite(curv)) {
+    curv_tol <- .gllvmTMB_zi_degenerate_curvature_tol
+    rows <- c(rows, list(.gllvmTMB_check_row(
+      "laplace_curvature",
+      if (curv < curv_tol) "FAIL" else "PASS",
+      signif(curv, 4),
+      paste0(">= ", curv_tol),
+      if (curv < curv_tol) {
+        "a unit's latent-score curvature has collapsed; the Laplace log-likelihood is degenerate here, so the fit is an artefact of the approximation"
+      } else {
+        "smallest curvature of a unit's latent scores at the fit"
+      },
+      "treat the fit as failed; try a smaller d, the non-inflated count family, or fewer zero-inflated traits"
+    )))
+  }
+
   restart_history <- object$restart_history %||% data.frame()
   rows <- c(
     rows,
@@ -1740,6 +1907,12 @@ check_gllvmTMB <- function(
   )
 
   flags <- health$boundary_flags %||% character(0)
+  ## The cached fit-time flag uses the default Gamma ceiling; re-judge it at
+  ## the caller's `phi_gamma_ceiling_thresh`.
+  flags <- setdiff(flags, "boundary_phi_gamma")
+  if (.gllvmTMB_gamma_shape_at_ceiling(object, phi_gamma_ceiling_thresh)) {
+    flags <- c(flags, "boundary_phi_gamma")
+  }
   if (length(flags) == 0L) {
     rows <- c(
       rows,
@@ -1861,7 +2034,7 @@ check_gllvmTMB <- function(
           if (isTRUE(binomial_runaway)) {
             "if driven by a runaway trait loading, treat the fit as an improper solution rather than re-ranking it; otherwise compare lower ranks and use known-DGP simulations to evaluate the selection rule"
           } else if (isTRUE(binomial_warn)) {
-            "if driven by a high-loading near-constant binary trait, remove or re-code that indicator; otherwise compare lower ranks and use known-DGP simulations to evaluate the selection rule"
+            "if driven by a high-loading near-constant binary trait, check indicator coding; for ordinary between-unit latent loadings, compare a regularised refit with gllvmTMBcontrol(loading_ridge = 2); otherwise compare lower ranks and use known-DGP simulations to evaluate the selection rule"
           } else {
             "compare lower ranks, inspect fit stability, and avoid over-interpreting weak axes"
           }
@@ -2082,6 +2255,125 @@ check_gllvmTMB <- function(
     }
   }
 
+  ## Gamma shape boundary (#1377): fid 4 Gamma and the fid 13 delta_gamma
+  ## positive part. A shape at the ceiling is a trait whose residual CV has
+  ## collapsed (a Gamma Heywood case); before the stable density it was also
+  ## where floating-point cancellation turned the logLik into +1e16.
+  gamma_shapes <- tryCatch(.gllvmTMB_gamma_shapes(object), error = function(e) numeric(0L))
+  for (nm in names(gamma_shapes)) {
+    k_t <- gamma_shapes[[nm]]
+    at_ceiling <- !is.finite(k_t) || k_t >= phi_gamma_ceiling_thresh
+    rows <- c(rows, list(.gllvmTMB_check_row(
+      paste0("boundary_phi_gamma_", nm),
+      if (at_ceiling) "WARN" else "PASS",
+      .gllvmTMB_fmt_num(k_t, digits = 4L),
+      phi_gamma_ceiling_thresh,
+      if (at_ceiling) {
+        "Gamma shape has run to the boundary: this trait's residual coefficient of variation is ~0 (a Heywood-type case), so its dispersion is not identified"
+      } else {
+        "Gamma shape is within the sane range"
+      },
+      "compare with n_init restarts; if the shape stays at the ceiling, the latent factor is absorbing this trait completely -- consider lognormal(), fewer latent dimensions, or more data"
+    )))
+  }
+
+  ## Dispersion / df ceilings for the four families that had no row (#1486):
+  ## truncated_nbinom2 phi (fid 11), nbinom1 phi (fid 15), Student df (fid 9)
+  ## and beta-binomial phi (fid 8). The #1479 kernels are finite at the
+  ## Poisson / normal / binomial limits, so a fit can now converge with the
+  ## parameter at its ceiling and every other row printing PASS.
+  fid_ceil <- as.integer(object$tmb_data$family_id_vec %||% integer(0L))
+  tid_ceil <- as.integer(object$tmb_data$trait_id %||% integer(0L))
+  ceil_specs <- list(
+    list(
+      fid = 11L, report = "phi_truncnb2", prefix = "boundary_phi_truncnb2_",
+      thresh = phi_truncnb2_ceiling_thresh,
+      what = "truncated NB2 dispersion (phi)",
+      limit = "the zero-truncated Poisson limit (phi -> Inf)",
+      action = "if phi is at the ceiling, the overdispersion is not identified for this trait at this sample size; consider truncated_poisson() instead, or more data"
+    ),
+    list(
+      fid = 15L, report = "phi_nbinom1", prefix = "boundary_phi_nbinom1_",
+      thresh = phi_nbinom1_ceiling_thresh,
+      what = "NB1 dispersion (phi)",
+      limit = "a degenerate heavy-tailed limit (NB size mu / phi -> 0)",
+      action = "if phi is at the ceiling, the NB1 variance Var(y) = mu * (1 + phi) is not identified for this trait; consider nbinom2(), or check for outliers and a misspecified mean"
+    ),
+    list(
+      fid = 9L, report = "df_student", prefix = "boundary_df_student_",
+      thresh = df_student_ceiling_thresh,
+      what = "Student-t degrees of freedom (df)",
+      limit = "the Gaussian limit (df -> Inf)",
+      action = "if df is at the ceiling, the tails are not heavier than Gaussian for this trait; consider gaussian(), or fix df with student(df = )"
+    ),
+    list(
+      fid = 8L, report = "phi_betabinom", prefix = "boundary_phi_betabinom_",
+      thresh = phi_betabinom_ceiling_thresh,
+      what = "beta-binomial precision (phi)",
+      limit = "the binomial limit (phi -> Inf)",
+      action = "if phi is at the ceiling, the extra-binomial variation is not identified for this trait at this sample size; consider binomial(), or more data"
+    )
+  )
+  if (length(fid_ceil) && length(tid_ceil) == length(fid_ceil)) {
+    trait_names_ceil <- .gllvmTMB_trait_names(object)
+    for (sp in ceil_specs) {
+      vals <- as.numeric(object$report[[sp$report]] %||% numeric(0L))
+      traits <- sort(unique(tid_ceil[fid_ceil == sp$fid]))
+      if (!length(traits) || length(vals) < max(traits) + 1L) next
+      for (t in traits) {
+        v_t <- vals[t + 1L]
+        at_ceiling <- !is.finite(v_t) || v_t >= sp$thresh
+        rows <- c(rows, list(.gllvmTMB_check_row(
+          paste0(sp$prefix, .gllvmTMB_trait_label(trait_names_ceil, t + 1L)),
+          if (at_ceiling) "WARN" else "PASS",
+          .gllvmTMB_fmt_num(v_t, digits = 4L),
+          sp$thresh,
+          if (!is.finite(v_t)) {
+            paste(sp$what, "is not finite")
+          } else if (at_ceiling) {
+            paste0(sp$what, " has run to the numerical ceiling: the fit is indistinguishable from ",
+                   sp$limit, " for this trait")
+          } else {
+            paste(sp$what, "is within the sane range")
+          },
+          sp$action
+        )))
+      }
+    }
+  }
+
+  ## Laplace accuracy (#1389): the fitted logLik is a Laplace approximation;
+  ## evaluate the marginal likelihood by adaptive Gauss-Hermite quadrature at
+  ## the SAME parameters and warn when Laplace is optimistic.
+  if (isTRUE(laplace_accuracy) && !is_mspl) {
+    la <- tryCatch(.gllvmTMB_laplace_accuracy(object), error = function(e) NULL)
+    if (is.list(la) && isTRUE(la$too_large)) {
+      rows <- c(rows, list(.gllvmTMB_check_row(
+        "laplace_accuracy", "INFO", NA_character_, laplace_accuracy_thresh,
+        paste0("not evaluated: ", la$reason),
+        "for a direct check, refit a subsample or compare with gllvmTMBcontrol(aghq = 9)"
+      )))
+    } else if (is.list(la) && isTRUE(la$evaluated)) {
+      bad <- la$optimism > laplace_accuracy_thresh
+      rows <- c(rows, list(.gllvmTMB_check_row(
+        "laplace_accuracy",
+        if (bad) "WARN" else "PASS",
+        sprintf("%.3f", la$optimism),
+        laplace_accuracy_thresh,
+        sprintf(
+          "%s: Laplace logLik %.3f vs adaptive Gauss-Hermite logLik %.3f (k = %d per axis) at the fitted parameters",
+          if (bad) {
+            "Laplace logLik is ABOVE the marginal likelihood it approximates; logLik/AIC/LRT comparisons with this fit are unreliable and the optimum is likely a Laplace artifact"
+          } else {
+            "Laplace logLik is not optimistic"
+          },
+          la$loglik_laplace, la$loglik_quadrature, la$k
+        ),
+        "refit with gllvmTMBcontrol(aghq = 9) (AGHQ optimises the accurate objective), compare against a logit link or fewer latent dimensions, or check for a quasi-separated item with a very large loading"
+      )))
+    }
+  }
+
   out <- do.call(rbind, rows)
   rownames(out) <- NULL
   out
@@ -2121,11 +2413,34 @@ check_gllvmTMB <- function(
 #'   [compare_dep_vs_two_psi()] / [compare_indep_vs_two_psi()] for
 #'   identifiability cross-checks on the paired phylogenetic fit.
 #' @examples
-#' \dontrun{
-#' fit <- gllvmTMB(value ~ 0 + trait + latent(0 + trait | site, d = 2),
-#'                 data = dat, trait = "trait", unit = "site")
-#' gllvmTMB_diagnose(fit)
-#' }
+#' set.seed(1)
+#' # Eight traits on 100 units, each unit measured twice. Odd-numbered
+#' # traits share one latent axis, even-numbered traits share the other.
+#' Lambda <- cbind(c(0.9, 0, 0.8, 0, 0.7, 0, 0.6, 0),
+#'                 c(0, 0.9, 0, 0.8, 0, 0.7, 0, 0.6))
+#' sim <- simulate_unit_trait(n_units = 100, n_obs_per_unit = 2,
+#'                            n_traits = 8, Lambda_B = Lambda,
+#'                            psi_B = 0.3, sigma2_eps = 0.3)
+#' fit <- gllvmTMB(
+#'   value ~ 0 + trait + latent(0 + trait | unit, d = 2, unique = TRUE),
+#'   data = sim$data, trait = "trait", unit = "unit"
+#' )
+#'
+#' # The printed report has four parts: optimiser checks, rotation,
+#' # biological summaries (variances, strong trait correlations and
+#' # communalities) and suggested next steps.
+#' dx <- gllvmTMB_diagnose(fit)
+#'
+#' # The same results come back invisibly as a list, for use in scripts.
+#' names(dx)
+#' dx$hints
+#' round(dx$Sigma_B$R_B, 2)
+#' dx$communality_B
+#'
+#' # verbose = FALSE skips the printed report; the numbers behind the
+#' # optimiser checks are in $sanity.
+#' quiet <- gllvmTMB_diagnose(fit, verbose = FALSE)
+#' str(quiet$sanity)
 gllvmTMB_diagnose <- function(
   object,
   gradient_thresh = 1e-2,
@@ -2134,7 +2449,7 @@ gllvmTMB_diagnose <- function(
   verbose = TRUE
 ) {
   if (!inherits(object, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+    .gllvmTMB_abort_not_multi_fit(object)
   }
   is_mspl <- .gllvmTMB_is_mspl(object)
 
@@ -2244,6 +2559,11 @@ gllvmTMB_diagnose <- function(
 
   ## ---- Pillar 4: actionable hints ----------------------------------
   hints <- character(0)
+  binomial_screen <- .gllvmTMB_binomial_prevalence_loading_row(object)
+  if (!is.null(binomial_screen) && identical(binomial_screen$status[[1L]], "WARN")) {
+    hints <- c(hints, paste(binomial_screen$message[[1L]],
+                           binomial_screen$action[[1L]]))
+  }
   if (!isTRUE(san$converged)) {
     hints <- c(
       hints,
@@ -2255,6 +2575,17 @@ gllvmTMB_diagnose <- function(
         "for simpler-model warm starts."
       )
     )
+  }
+  if (!is_mspl && !isTRUE(object$likelihood_weights$active) &&
+      isTRUE(object$use$rr_B) && !isTRUE(object$aghq$penalised) &&
+      any(object$tmb_data$family_id_vec == 1L) &&
+      (!isTRUE(san$converged) || identical(san$pd_hessian, FALSE))) {
+    hints <- c(hints, paste(
+      "For an unstable binomial latent fit, compare an explicit regularised refit with",
+      "`gllvmTMBcontrol(loading_ridge = 2)`: free loadings have a Normal(0, 2^2) prior.",
+      "Smaller scales shrink more. This changes ML to MAP; inspect convergence and",
+      "posterior SDs and compare prior scales before interpretation."
+    ))
   }
   if (isTRUE(san$max_gradient >= gradient_thresh)) {
     hints <- c(
@@ -2313,6 +2644,33 @@ gllvmTMB_diagnose <- function(
     )
   }
 
+  chk <- check_gllvmTMB(
+    object,
+    gradient_thresh = gradient_thresh,
+    se_thresh = se_thresh
+  )
+  chk_warn <- chk[
+    chk$status == "WARN" &
+      (chk$component == "boundary_flags" |
+        grepl("^near_zero_psi_", chk$component)),
+    ,
+    drop = FALSE
+  ]
+  if (nrow(chk_warn) > 0L) {
+    for (i in seq_len(nrow(chk_warn))) {
+      row <- chk_warn[i, , drop = FALSE]
+      detail <- if (identical(row$component[[1L]], "boundary_flags")) {
+        paste0(" (", row$value[[1L]], ")")
+      } else {
+        ""
+      }
+      hints <- c(
+        hints,
+        paste0(row$message[[1L]], detail, " ", row$action[[1L]])
+      )
+    }
+  }
+
   if (verbose) {
     cli::cli_h2("4. Suggested next steps")
     if (length(hints) == 0) {
@@ -2334,4 +2692,22 @@ gllvmTMB_diagnose <- function(
     communality_W = comm_W,
     hints = hints
   ))
+}
+
+## #1329: shared gate message for functions that need a native TMB fit.
+## A Julia bridge fit IS returned by gllvmTMB(), so it gets an explanation and
+## a next step instead of "Provide a fit returned by gllvmTMB()".
+.gllvmTMB_abort_not_multi_fit <- function(object, call = rlang::caller_env()) {
+  if (inherits(object, "gllvmTMB_julia")) {
+    caller <- sys.call(-1L)
+    fn <- if (is.null(caller)) "This function" else {
+      paste0("{.fn ", gsub("[{}]", "", deparse(caller[[1L]])[1L]), "}")
+    }
+    cli::cli_abort(c(
+      paste(fn, "is not available for {.code engine = \"julia\"} fits."),
+      "i" = "It needs the native TMB objective, which a Julia bridge fit does not carry.",
+      ">" = "Refit with {.code engine = \"tmb\"} to use it."
+    ), class = "gllvmTMB_julia_gate", call = call)
+  }
+  cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.", call = call)
 }

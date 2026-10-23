@@ -24,8 +24,15 @@ check_gllvmTMB(
   multinomial_rail_thresh = 0.99,
   multinomial_range_collapse_thresh = 0.02,
   ordinal_loading_runaway_thresh = Inf,
-  ordinal_loading_absolute_thresh = Inf,
-  phi_nbinom2_ceiling_thresh = 10000
+  ordinal_loading_absolute_thresh = 30,
+  phi_nbinom2_ceiling_thresh = 10000,
+  phi_gamma_ceiling_thresh = 1e+08,
+  phi_truncnb2_ceiling_thresh = 10000,
+  phi_nbinom1_ceiling_thresh = 10000,
+  df_student_ceiling_thresh = 1000,
+  phi_betabinom_ceiling_thresh = 10000,
+  laplace_accuracy = TRUE,
+  laplace_accuracy_thresh = 2
 )
 }
 \arguments{
@@ -133,15 +140,10 @@ scales, and this default should not be read as calibrated against
 that regime. \code{aghq_ridge = 2} reduces but does not remove the problem
 (46.0\% -> 13.5\% false positives at \code{sigma_lambda = 3.0}). Being a
 link-scale quantity it does not transport to families whose response
-scale is arbitrary, which is why this row is binomial-only. This rule
+scale is arbitrary, which is why this row is binomial-only. This gate
 applies to every link (\code{family_id == 1L}), but the calibration above
-is probit-only: logit loadings run larger than probit loadings for
-the same underlying model (the standard logistic/probit
-variance-matching ratio, commonly cited as ~1.6-1.8), so the same
-fixed threshold is reached by a smaller true effect on the logit
-link, and the false-positive rate measured here should be read as a
-lower bound on logit fits, not a transportable number -- no logit
-evidence exists in the calibration pool.}
+is probit-only. No logit evidence exists in the calibration pool, so
+this false-positive rate should not be transported to logit fits.}
 
 \item{multinomial_collapse_floor}{Absolute floor on a \code{multinomial()}
 contrast's fitted loading energy
@@ -196,10 +198,13 @@ at or above which it is reported regardless of the other traits.
 Meaningful because the probit-liability residual variance is exactly 1
 under the Wright/Falconer/Hadfield threshold convention, so a loading
 is the trait's latent standard deviation in liability units, mirroring
-\code{loading_absolute_thresh}'s binomial justification. Default \code{Inf}
-(disabled): healthy ordinal traits can also have large loadings.
-Inspect loadings alongside category frequencies and the other fit
-diagnostics before choosing a finite threshold for your model.}
+\code{loading_absolute_thresh}'s binomial justification. Default \code{30}. At that
+value the screen flagged 0 of 122 fresh-seed fits whose covariance
+was recovered (within a relative Frobenius error of 10) and 81\% of the
+degenerate ones, in a simulation with \code{n = 100}, four traits and two
+latent variables; it misses degenerate fits whose largest loading is
+below 30, and healthy fits with genuinely heterogeneous loading scales
+can exceed it. Use \code{Inf} to disable it.}
 
 \item{phi_nbinom2_ceiling_thresh}{Numeric scalar. A negative-binomial dispersion
 estimate at or above this value is reported as a \verb{boundary_phi_nbinom2_<trait>}
@@ -207,11 +212,44 @@ warning: the trait has run to the Poisson limit (no overdispersion left to
 estimate), which usually means the data cannot separate dispersion from the
 zero-inflation or latent structure. Try a plain \code{poisson()} / \code{zi_poisson()} for
 that trait, or more sites.}
+
+\item{phi_gamma_ceiling_thresh}{Numeric scalar. A Gamma (or \code{delta_gamma()}
+positive-part) shape estimate at or above this value is reported as a
+\verb{boundary_phi_gamma_<trait>} warning: the trait's residual coefficient of
+variation has collapsed to about zero, a Heywood-type boundary.}
+
+\item{phi_truncnb2_ceiling_thresh, phi_nbinom1_ceiling_thresh, phi_betabinom_ceiling_thresh}{Numeric scalars. A \code{truncated_nbinom2()}, \code{nbinom1()} or \code{betabinomial()}
+dispersion estimate at or above this value is reported as a
+\verb{boundary_phi_truncnb2_<trait>}, \verb{boundary_phi_nbinom1_<trait>} or
+\verb{boundary_phi_betabinom_<trait>} warning. For the truncated NB2 and
+beta-binomial this is the Poisson / binomial limit, where the extra
+dispersion is no longer identified; for \code{nbinom1()} it is a degenerate
+heavy-tailed limit.}
+
+\item{df_student_ceiling_thresh}{Numeric scalar. A \code{student()} degrees-of-freedom
+estimate at or above this value is reported as a
+\verb{boundary_df_student_<trait>} warning: the trait has run to the Gaussian
+limit, so the heavy tails are not identified. Use \code{gaussian()} for that
+trait, or fix \code{df}.}
+
+\item{laplace_accuracy}{Logical. If \code{TRUE} (default), and the fit's only
+random effects are the \code{latent()} scores with \code{d <= 3}, the marginal
+log-likelihood is re-evaluated at the fitted parameters by adaptive
+Gauss-Hermite quadrature and compared with the Laplace value
+(\code{laplace_accuracy} row). Skipped for all-Gaussian fits, where Laplace is
+exact, and reported as \code{INFO} (not evaluated) when rows x nodes exceeds
+2e7. Set to \code{FALSE} to skip the extra evaluation entirely.}
+
+\item{laplace_accuracy_thresh}{Numeric scalar. The \code{laplace_accuracy} row
+warns when the Laplace logLik exceeds the quadrature logLik by more than
+this many log-likelihood units (an optimistic Laplace approximation, which
+biases logLik / AIC / likelihood-ratio comparisons toward that fit).}
 }
 \value{
 A data frame with columns \code{component}, \code{status}, \code{value},
 \code{threshold}, \code{message}, and \code{action}. Status values are \code{"PASS"},
-\code{"WARN"}, or \code{"FAIL"}.
+\code{"WARN"}, \code{"FAIL"}, or \code{"INFO"} (informational rows on MSPL and other
+routes where a check does not apply to the fitted estimator).
 }
 \description{
 Run \code{check_gllvmTMB()} right after fitting, before interpreting
@@ -239,9 +277,29 @@ itself proof that the fitted mean, likelihood, or rotation-invariant
 covariance summaries are unusable.
 }
 \examples{
-\dontrun{
-fit <- gllvmTMB(value ~ 0 + trait + latent(0 + trait | site, d = 2),
-                data = dat, trait = "trait", unit = "site")
-check_gllvmTMB(fit)
-}
+set.seed(1)
+# Eight traits on 100 units, each unit measured twice. Odd-numbered
+# traits share one latent axis, even-numbered traits share the other.
+# Repeat measurements let the model separate each trait's own
+# unit-level variance (Psi) from measurement noise.
+Lambda <- cbind(c(0.9, 0, 0.8, 0, 0.7, 0, 0.6, 0),
+                c(0, 0.9, 0, 0.8, 0, 0.7, 0, 0.6))
+sim <- simulate_unit_trait(n_units = 100, n_obs_per_unit = 2,
+                           n_traits = 8, Lambda_B = Lambda,
+                           psi_B = 0.3, sigma2_eps = 0.3)
+fit <- gllvmTMB(
+  value ~ 0 + trait + latent(0 + trait | unit, d = 2, unique = TRUE),
+  data = sim$data, trait = "trait", unit = "unit"
+)
+
+# One row per check. The status column is PASS, WARN, FAIL or INFO.
+chk <- check_gllvmTMB(fit)
+chk[, c("component", "status", "value")]
+table(chk$status)
+
+# Read the rows that did not pass, with the suggested action. With two
+# latent axes the loadings are defined only up to a rotation, so a WARN
+# on rotation_convention is expected here: interpret Sigma and the trait
+# correlations, or rotate the loadings before comparing axes.
+chk[chk$status != "PASS", c("component", "status", "message", "action")]
 }

@@ -189,10 +189,11 @@ health[
 ]
 ```
 
-These six displayed rows pass for this example. The full table contains more
-checks, so always inspect every warning rather than treating a selected subset
-as the whole verdict. Here are all non-passing rows, including their thresholds,
-meaning, and suggested action.
+These six displayed rows are the headline fit-health checks for this example;
+read each `status` column literally (`pd_hessian` warns here). The full table
+contains more checks, so always inspect every warning rather than treating a
+selected subset as the whole verdict. Here are all non-passing rows, including
+their thresholds, meaning, and suggested action.
 
 ```{r fit-health-warnings}
 health[
@@ -267,6 +268,136 @@ no_se_health[
 For hard fits, move from this table to the
 [Convergence and start values](convergence-start-values.html) article
 before making scientific claims.
+
+## When to try `loading_ridge = 2` {#loading-ridge-sensitivity}
+
+Ordinary native Laplace fits stay unpenalised by default, equivalent to
+`loading_ridge = Inf`. The control constructor keeps `loading_ridge = NULL`
+to preserve that behaviour; it does not impose an infinitely strong penalty.
+This section concerns ordinary Laplace fits. Opt-in AGHQ has its own
+`aghq_ridge` default, described in `?gllvmTMBcontrol`.
+
+Try `loading_ridge = 2` as a separate sensitivity fit when ordinary
+between-unit latent loadings become extreme or change substantially between
+fits. If a Hessian warning remains after checking the data, latent rank and
+starting values, it is also reasonable to compare this fit, provided a loading
+prior makes scientific sense. A better Hessian alone is not a reason to
+choose the result: the prior can supply curvature that the data lack.
+
+The setting puts a zero-mean normal prior with standard deviation 2,
+variance 4, on free ordinary between-unit loadings. It favours smaller
+loadings. Smaller positive settings shrink more, while `Inf` removes the
+penalty. It does not penalise the trait-specific diagonal covariance or
+silently extend to spatial, phylogenetic or within-unit loadings. It does not
+repair separated fixed effects; see [When a rare species breaks the
+JSDM](rare-species-jsdm.html).
+
+### What the comparison found
+
+A native-Laplace study fitted 6,000 datasets at each of `Inf`, `1`, `2` and
+`4`: 24,000 attempts in total. It used six traits, two latent axes, estimated
+trait-specific diagonal covariance and one latent predictor. There were
+500 independent datasets per condition: grouped-binomial probit, replicated
+Gaussian and replicated Poisson, with 100 or 400 units and two loading scales.
+Failed fits and unavailable intervals stayed in the results.
+
+| Loading prior SD | Attempts | Fits with unavailable trait-effect intervals |
+|---|---:|---:|
+| `Inf` | 6,000 | 64 |
+| `1` | 6,000 | 56 |
+| `2` | 6,000 | 66 |
+| `4` | 6,000 | 62 |
+
+All optimiser exit codes were zero. The unavailable intervals came from
+non-positive-definite Hessians, illustrating why that code is insufficient
+for inference. Ridge `2` restored intervals on 16 datasets relative to `Inf`
+but lost them on 18 others. It did not improve availability overall.
+
+Ridge `2` gave modest recovery gains. The largest observed reduction in mean
+total-covariance error was in the strong-loading binomial condition with 100
+units: relative matrix error fell from 0.255 to 0.237. Its paired reduction
+was 0.0181, with Monte Carlo standard error 0.0021. Trait-effect estimates
+changed little in the Gaussian conditions.
+
+Coverage means the fraction of repeated datasets whose interval contains
+the true effect. In the same small-sample binomial condition, the
+nominal 95% interval for a zero effect covered it in 94.8% of available
+intervals with `Inf`, 92.5% with `1`, 94.1% with `2` and 94.4% with `4`.
+For a positive effect, coverage was 92.1%, 90.1%, 91.6% and 92.1%, respectively.
+The coverage estimates have about one percentage point of Monte Carlo
+uncertainty each. The `2` minus `Inf` differences in the fractions of all
+attempts producing an interval containing truth were -0.6 percentage points
+for the zero effect and -0.4 for the positive effect, with paired Monte Carlo
+standard errors of about one percentage point. Thus the small differences
+do not establish a clear coverage improvement or deterioration.
+
+Stronger shrinkage can improve point recovery while narrowing intervals and
+reducing coverage. The negative effect in the weak-loading Poisson condition
+with 100 units retained about 91% coverage at every setting. The study does
+not establish general 95% coverage, and its predictor-informed rank-two
+results do not certify intercept-only ordination or latent-score intervals.
+[Download the aggregated study tables and fixed-truth data generator](../loading-ridge-study-2026-10-18.zip)
+for the condition-specific results, uncertainty summaries and provenance.
+The archive contains aggregate tables, not raw fits or the complete fitting
+materials.
+
+### Compare the same model in either data shape
+
+The following calls use the same data and rank as the earlier example.
+They illustrate the sensitivity workflow; they do not repeat the coverage
+study. Keep the original fit alongside the penalised fit.
+
+```{r ridge-long-wide}
+ridge_control <- gllvmTMBcontrol(
+  n_init = 2, init_jitter = 0.03, loading_ridge = 2
+)
+
+# Long data: one row per individual and trait.
+set.seed(20261018)
+fit_ridge_long <- gllvmTMB(
+  count ~ 0 + trait + latent(0 + trait | individual, d = 1),
+  data = df_long, trait = "trait", unit = "individual",
+  family = poisson(), control = ridge_control
+)
+
+# Wide data: the same model through traits().
+set.seed(20261018)
+fit_ridge_wide <- gllvmTMB(
+  traits(forage, alarm, explore) ~ 1 + latent(1 | individual, d = 1),
+  data = df_wide, unit = "individual",
+  family = poisson(), control = ridge_control
+)
+
+# Compare trait-scale covariance, which does not depend on axis rotation.
+covariance_sensitivity <- lapply(
+  list(unpenalised = fit_long, ridge2 = fit_ridge_long),
+  extract_Sigma, level = "unit", part = "total", link_residual = "none"
+)
+lapply(covariance_sensitivity, function(x) round(x$Sigma, 3))
+
+# The long and wide ridge fits target the same covariance.
+wide_covariance <- extract_Sigma(
+  fit_ridge_wide, level = "unit", part = "total", link_residual = "none"
+)
+signif(max(abs(wide_covariance$Sigma -
+               covariance_sensitivity$ridge2$Sigma)), 3)
+check_gllvmTMB(fit_ridge_long)
+```
+
+Inspect whether covariance, fitted means and the effects you intend to report
+change materially. For a model with `lv = ~ x`, compare
+`extract_lv_effects(fit, type = "trait_effect")`; raw axis coefficients can
+rotate between fits. If the result is sensitive, report that sensitivity and
+consider the model structure and prior scale. Comparing `1`, `2`, `4` and
+`Inf` can help; selecting a scale solely because its Hessian passes cannot
+establish identification or interval calibration.
+
+Finite ridge gives a maximum a posteriori estimate, rather than an ordinary
+maximum-likelihood estimate. With matching retained curvature metadata,
+trait-effect intervals are local approximate posterior intervals conditional
+on the selected prior scale. Unsupported uncertainty remains unavailable.
+Ordinary AIC, BIC and likelihood-ratio interpretations do not apply to these
+penalised estimates. The default remains unpenalised.
 
 ## Check Response Diagnostics
 

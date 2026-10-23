@@ -11,10 +11,11 @@
 ##
 ## To "pin" a Lambda entry to a user-specified value v, we set the
 ## corresponding theta_rr_B entry to v and mark it via a TMB `map` so
-## the optimiser leaves it alone. Upper-triangle pins are ignored
-## (those entries are zero by construction). All other entries remain
-## free, so the rest of the lower-triangular Cholesky structure is
-## preserved.
+## the optimiser leaves it alone. Upper-triangle zeros are already
+## satisfied (those entries are zero by construction) and are skipped.
+## A non-zero upper-triangle pin cannot be placed in the packed
+## theta and is an error (#1418). All other entries remain free, so
+## the rest of the lower-triangular Cholesky structure is preserved.
 ##
 ## This covers the galamm-style "fix the leading loading of each factor
 ## to 1" pattern (`lambda_constraint = list(B = diag(1, n_traits, d))`)
@@ -45,7 +46,8 @@ lambda_packed_index <- function(i, j, p, rank) {
 #' Build a TMB map + init pair from a Lambda constraint matrix
 #'
 #' @param constraint An `n_traits × rank` matrix; `NA` = free, numeric
-#'   = pin to that value. Upper-triangle entries are silently ignored.
+#'   = pin to that value. Upper-triangle zeros are skipped (already
+#'   structural zeros). A non-zero upper-triangle pin is an error.
 #' @param n_traits Number of trait rows of Lambda.
 #' @param rank Number of factors (columns of Lambda).
 #' @param theta_init Current init vector for the packed theta.
@@ -114,18 +116,55 @@ lambda_packed_map <- function(constraint, n_traits, rank, theta_init) {
     ))
   map <- seq_along(theta_init)
   init <- theta_init
+  unsupported_i <- integer(0)
+  unsupported_j <- integer(0)
+  unsupported_v <- numeric(0)
   for (i in seq_len(n_traits)) {
     for (j in seq_len(rank)) {
-      if (j > i) next
       v <- constraint[i, j]
-      if (!is.na(v)) {
-        idx <- lambda_packed_index(i - 1L, j - 1L, n_traits, rank)
-        if (!is.na(idx)) {
-          map[idx]  <- NA
-          init[idx] <- v
+      if (is.na(v)) next
+      if (j > i) {
+        ## Structural zero: a requested 0 is already satisfied.
+        ## Any other pin has no packed-theta slot (#1418).
+        if (!isTRUE(all.equal(as.numeric(v), 0))) {
+          unsupported_i <- c(unsupported_i, i)
+          unsupported_j <- c(unsupported_j, j)
+          unsupported_v <- c(unsupported_v, as.numeric(v))
         }
+        next
+      }
+      idx <- lambda_packed_index(i - 1L, j - 1L, n_traits, rank)
+      if (!is.na(idx)) {
+        map[idx]  <- NA
+        init[idx] <- v
       }
     }
+  }
+  if (length(unsupported_i) > 0L) {
+    rn <- rownames(constraint)
+    row_lab <- if (!is.null(rn) && nzchar(rn[unsupported_i[1]])) {
+      rn[unsupported_i[1]]
+    } else {
+      as.character(unsupported_i[1])
+    }
+    cn <- colnames(constraint)
+    col_lab <- if (!is.null(cn) && nzchar(cn[unsupported_j[1]])) {
+      cn[unsupported_j[1]]
+    } else {
+      paste0("axis ", unsupported_j[1])
+    }
+    extra <- if (length(unsupported_i) > 1L) {
+      c("i" = "{length(unsupported_i) - 1L} additional non-zero upper-triangle pin{?s} {?was/were} also requested.")
+    } else {
+      character()
+    }
+    cli::cli_abort(c(
+      "lambda_constraint pin at ({.val {row_lab}}, {.val {col_lab}}) = {.val {unsupported_v[1]}} lies in the strict upper triangle.",
+      "x" = "The engine's lower-triangular loading parameterisation has no packed slot for Lambda[i, j] when j > i, so this pin cannot be applied.",
+      extra,
+      "i" = "Pins of 0 in the upper triangle are already structural zeros and are accepted.",
+      ">" = "Move the pin onto or below the diagonal (row index >= axis index), or omit it."
+    ))
   }
   list(map = factor(map), init = init)
 }

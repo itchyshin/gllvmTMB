@@ -1,0 +1,13 @@
+cell_id,family,link,seed,n_species,n_rep,admission_basis
+gaussian_identity,gaussian,identity,81001,60,8,route_specific
+binomial_logit,binomial,logit,81002,80,8,route_specific
+binomial_probit,binomial,probit,81003,80,8,route_specific
+poisson_log,poisson,log,81004,60,8,route_specific
+lognormal_log,lognormal,log,81005,60,8,c1_partial
+gamma_log,Gamma,log,81006,60,8,route_specific
+nbinom2_log,nbinom2,log,81007,60,8,route_specific
+beta_logit,Beta,logit,81008,60,8,route_specific
+betabinomial_logit,betabinomial,logit,81009,140,8,c1_partial
+student_identity,student,identity,81010,60,8,c1_partial
+ordinal_probit,ordinal_probit,probit,81011,80,8,route_specific
+nbinom1_log,nbinom1,log,81012,60,8,route_specific

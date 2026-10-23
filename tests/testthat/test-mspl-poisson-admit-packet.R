@@ -29,6 +29,13 @@
   0.5 * as.numeric(determinant(I, logarithm = TRUE)$modulus)
 }
 
+.poisson_Pj_working <- function(X, eta) {
+  mu_star <- stats::plogis(as.numeric(eta))
+  w <- mu_star * (1 - mu_star)
+  I <- crossprod(as.matrix(X), as.matrix(X) * w)
+  0.5 * as.numeric(determinant(I, logarithm = TRUE)$modulus)
+}
+
 .poisson_V_bernoulli <- function(Lambda) {
   Lambda <- as.matrix(Lambda)
   sum(sqrt(1 + rowSums(Lambda * Lambda)) - 1)
@@ -187,23 +194,29 @@ test_that("A5: Poisson loading atom is coercive as ||lambda|| grows at ybar>0", 
   expect_equal(V0, rep(0, length(grid)), tolerance = 0)
 })
 
-test_that("A6: Jeffreys atom still uses W=diag(mu); loading atom uses ybar", {
+test_that("A6: Jeffreys twin uses working W_*; loading atom uses ybar", {
   X <- cbind(1, c(-1, 0, 1, 2))
-  mu <- c(0.4, 1.1, 2.0, 0.7)
+  eta <- c(-0.8, 0.2, 1.1, -0.3)
   Lambda <- matrix(c(0.8, -0.5, 0.3, 0.6), 4L, 1L)
   ybar <- c(0.5, 1.0, 1.5, 0.2)
   expect_equal(
-    .gllvmTMB_mspl_poisson_jeffreys(X, mu),
-    .poisson_Pj(X, mu),
+    .gllvmTMB_mspl_poisson_jeffreys(X, eta),
+    .poisson_Pj_working(X, eta),
     tolerance = 1e-12
   )
+  ## True-W contrast still differs from the live twin.
+  expect_false(isTRUE(all.equal(
+    .gllvmTMB_mspl_poisson_jeffreys(X, eta),
+    .poisson_Pj(X, exp(eta)),
+    tolerance = 1e-6
+  )))
   V <- .gllvmTMB_mspl_poisson_loading_atom(Lambda, ybar)
   expect_equal(V, .poisson_V_event(Lambda, ybar), tolerance = 1e-15)
-  mu_up <- mu
-  mu_up[1L] <- mu_up[1L] + 1e-4
+  eta_up <- eta
+  eta_up[1L] <- eta_up[1L] + 1e-4
   expect_false(isTRUE(all.equal(
-    .gllvmTMB_mspl_poisson_jeffreys(X, mu),
-    .gllvmTMB_mspl_poisson_jeffreys(X, mu_up),
+    .gllvmTMB_mspl_poisson_jeffreys(X, eta),
+    .gllvmTMB_mspl_poisson_jeffreys(X, eta_up),
     tolerance = 1e-10
   )))
   expect_equal(
@@ -246,12 +259,17 @@ test_that("A7: live Poisson tape reports pinned c_P and event-weighted V", {
   X <- fit$mspl$fixed_design$X %||% fit$tmb_data$X_mspl
   b <- fit$tmb_obj$env$parList(fit$opt$par)$b_fix
   eta <- as.numeric(fit$tmb_data$X_fix %*% b + fit$tmb_data$offset_vec)
-  mu <- exp(eta)
   expect_equal(
     as.numeric(fit$report$mspl_logdet_information),
-    2 * .gllvmTMB_mspl_poisson_jeffreys(X, mu),
+    2 * .gllvmTMB_mspl_poisson_jeffreys(X, eta),
     tolerance = 2e-8
   )
+  ## Live twin is W_*, not true Poisson W=diag(mu).
+  expect_false(isTRUE(all.equal(
+    as.numeric(fit$report$mspl_logdet_information),
+    2 * .poisson_Pj(X, exp(eta)),
+    tolerance = 1e-4
+  )))
 })
 
 test_that("A8: Poisson ordinary cells are experimental-point admitted after G0", {
@@ -265,4 +283,6 @@ test_that("A8: Poisson ordinary cells are experimental-point admitted after G0",
   expect_match(p1$notes, "admit-evidence FAIL")
   expect_match(p1$notes, "not a covered campaign")
   expect_match(p1$notes, "no public SE")
+  expect_match(p1$notes, "working logistic W_\\*")
+  expect_match(p1$notes, "G0 REPLACE")
 })

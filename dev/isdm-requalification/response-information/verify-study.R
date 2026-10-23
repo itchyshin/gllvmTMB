@@ -1,0 +1,17 @@
+args <- commandArgs(trailingOnly = TRUE)
+if (length(args) != 3L) stop("usage: verify-study.R <scientific-plan.rds> <output-dir> <new-summary.rds>", call. = FALSE)
+source("dev/isdm-requalification/response-information/summarise-independent.R", local = TRUE)
+plan <- readRDS(args[[1L]])
+records <- isdm_respinfo_terminal_dispositions(plan, args[[2L]])
+runtime_path <- file.path(args[[2L]], "runtime-identity.rds")
+if (!file.exists(runtime_path)) stop("study output lacks the frozen runtime identity", call. = FALSE)
+runtime <- readRDS(runtime_path)
+if (!is.list(runtime) || !identical(runtime$schema, "isdm-response-information-runtime-identity-v1")) stop("study runtime identity is malformed", call. = FALSE)
+for (field in c("source_sha", "harness_manifest_sha256")) {
+  values <- unique(vapply(records, `[[`, character(1L), field))
+  if (length(values) != 1L || !identical(values, runtime[[field]])) stop("study records are not bound to the frozen runtime identity", call. = FALSE)
+}
+summary <- isdm_respinfo_independent_summary(args[[1L]], args[[2L]])
+if (summary$denominators$planned != 800L || summary$denominators$terminal != 800L) stop("study does not reconcile exactly 800 terminal identities", call. = FALSE)
+isdm_respinfo_atomic_save(summary, args[[3L]])
+cat("response information study verification passed\n")

@@ -1,0 +1,366 @@
+{
+  "status": "BLOCKED_AT_NUMERICAL_GATE",
+  "optimizer_attempts": 12,
+  "unrun": ["W2", "W3"],
+  "fits": [
+    {
+      "id": "C1",
+      "model": "morphology",
+      "shape": "long",
+      "size": "canary",
+      "elapsed_s": 0.78749513626098633,
+      "objective": 100.36746689488865,
+      "convergence": 0,
+      "gradient": 1.8589217733390448e-05,
+      "fixture_checksum": "6c3bae640dd86491171cb20fbb56b0e4",
+      "restart_history": [
+        {
+          "restart": 1,
+          "start_label": "initial",
+          "start_method": "default",
+          "optimizer": "nlminb",
+          "jitter_sd": 0,
+          "objective": 100.36746689488865,
+          "convergence": 0,
+          "message": "relative convergence (4)",
+          "elapsed_s": 0.22799999999999998,
+          "iterations": 125,
+          "evaluations": 271,
+          "success": true,
+          "selected": true
+        }
+      ],
+      "gaussian": {
+        "mapped": true,
+        "all_na": true,
+        "map": "NA",
+        "fixed_value": -6.7020128341384115,
+        "expected_fixed_value": -6.7020128341384115,
+        "fixed_value_ok": true
+      },
+      "coefficient_rho": null
+    },
+    {
+      "id": "C2",
+      "model": "community_phylo",
+      "shape": "long",
+      "size": "canary",
+      "elapsed_s": 1.4643158912658691,
+      "objective": 737.94273685121266,
+      "convergence": 0,
+      "gradient": 0.00017556012327187977,
+      "fixture_checksum": "6c3bae640dd86491171cb20fbb56b0e4",
+      "restart_history": [
+        {
+          "restart": 1,
+          "start_label": "initial",
+          "start_method": "default",
+          "optimizer": "nlminb",
+          "jitter_sd": 0,
+          "objective": 737.94273685121266,
+          "convergence": 0,
+          "message": "relative convergence (4)",
+          "elapsed_s": 0.8839999999999999,
+          "iterations": 176,
+          "evaluations": 376,
+          "success": true,
+          "selected": true
+        }
+      ],
+      "gaussian": {
+        "mapped": true,
+        "all_na": true,
+        "map": "NA",
+        "fixed_value": -6.9118368602613964,
+        "expected_fixed_value": -6.9118368602613964,
+        "fixed_value_ok": true
+      },
+      "coefficient_rho": null
+    },
+    {
+      "id": "M1",
+      "model": "morphology",
+      "shape": "long",
+      "size": "target",
+      "elapsed_s": 3.8010270595550537,
+      "objective": 449.79514942826358,
+      "convergence": 0,
+      "gradient": 0.0002562859636176107,
+      "fixture_checksum": "6c3bae640dd86491171cb20fbb56b0e4",
+      "restart_history": [
+        {
+          "restart": 1,
+          "start_label": "initial",
+          "start_method": "default",
+          "optimizer": "nlminb",
+          "jitter_sd": 0,
+          "objective": 449.79514945576307,
+          "convergence": 0,
+          "message": "relative convergence (4)",
+          "elapsed_s": 0.92000000000000015,
+          "iterations": 172,
+          "evaluations": 377,
+          "success": true,
+          "selected": false
+        },
+        {
+          "restart": 2,
+          "start_label": "jitter",
+          "start_method": "default",
+          "optimizer": "nlminb",
+          "jitter_sd": 0.14999999999999999,
+          "objective": 449.79514942826358,
+          "convergence": 0,
+          "message": "relative convergence (4)",
+          "elapsed_s": 1.1970000000000001,
+          "iterations": 190,
+          "evaluations": 421,
+          "success": true,
+          "selected": true
+        },
+        {
+          "restart": 3,
+          "start_label": "jitter",
+          "start_method": "default",
+          "optimizer": "nlminb",
+          "jitter_sd": 0.14999999999999999,
+          "objective": 449.79514944252992,
+          "convergence": 0,
+          "message": "relative convergence (4)",
+          "elapsed_s": 1.0190000000000001,
+          "iterations": 169,
+          "evaluations": 351,
+          "success": true,
+          "selected": false
+        }
+      ],
+      "gaussian": {
+        "mapped": true,
+        "all_na": true,
+        "map": "NA",
+        "fixed_value": -6.7981501845414183,
+        "expected_fixed_value": -6.7981501845414183,
+        "fixed_value_ok": true
+      },
+      "coefficient_rho": null
+    },
+    {
+      "id": "M2",
+      "model": "community_iid",
+      "shape": "long",
+      "size": "target",
+      "elapsed_s": 59.030035972595215,
+      "objective": 5039.6912803800005,
+      "convergence": 0,
+      "gradient": 0.0019213794593631304,
+      "fixture_checksum": "6c3bae640dd86491171cb20fbb56b0e4",
+      "restart_history": [
+        {
+          "restart": 1,
+          "start_label": "initial",
+          "start_method": "default",
+          "optimizer": "nlminb",
+          "jitter_sd": 0,
+          "objective": 5039.6912805913598,
+          "convergence": 1,
+          "message": "false convergence (8)",
+          "elapsed_s": 12.137,
+          "iterations": 231,
+          "evaluations": 487,
+          "success": true,
+          "selected": false
+        },
+        {
+          "restart": 2,
+          "start_label": "jitter",
+          "start_method": "default",
+          "optimizer": "nlminb",
+          "jitter_sd": 0.14999999999999999,
+          "objective": 5039.6912804032036,
+          "convergence": 1,
+          "message": "false convergence (8)",
+          "elapsed_s": 24.302,
+          "iterations": 376,
+          "evaluations": 784,
+          "success": true,
+          "selected": false
+        },
+        {
+          "restart": 3,
+          "start_label": "jitter",
+          "start_method": "default",
+          "optimizer": "nlminb",
+          "jitter_sd": 0.14999999999999999,
+          "objective": 5039.6912803800005,
+          "convergence": 0,
+          "message": "relative convergence (4)",
+          "elapsed_s": 21.734000000000002,
+          "iterations": 360,
+          "evaluations": 733,
+          "success": true,
+          "selected": true
+        }
+      ],
+      "gaussian": {
+        "mapped": true,
+        "all_na": true,
+        "map": "NA",
+        "fixed_value": -7.0750702890130981,
+        "expected_fixed_value": -7.0750702890130981,
+        "fixed_value_ok": true
+      },
+      "coefficient_rho": null
+    },
+    {
+      "id": "M3",
+      "model": "community_phylo",
+      "shape": "long",
+      "size": "target",
+      "elapsed_s": 135.36552000045776,
+      "objective": 5039.6912808211564,
+      "convergence": 0,
+      "gradient": 0.002283602183320898,
+      "fixture_checksum": "6c3bae640dd86491171cb20fbb56b0e4",
+      "restart_history": [
+        {
+          "restart": 1,
+          "start_label": "initial",
+          "start_method": "default",
+          "optimizer": "nlminb",
+          "jitter_sd": 0,
+          "objective": 5039.6912811752118,
+          "convergence": 0,
+          "message": "relative convergence (4)",
+          "elapsed_s": 39.978000000000002,
+          "iterations": 764,
+          "evaluations": 1595,
+          "success": true,
+          "selected": false
+        },
+        {
+          "restart": 2,
+          "start_label": "jitter",
+          "start_method": "default",
+          "optimizer": "nlminb",
+          "jitter_sd": 0.14999999999999999,
+          "objective": 5039.6912808211564,
+          "convergence": 0,
+          "message": "relative convergence (4)",
+          "elapsed_s": 47.296000000000006,
+          "iterations": 726,
+          "evaluations": 1470,
+          "success": true,
+          "selected": true
+        },
+        {
+          "restart": 3,
+          "start_label": "jitter",
+          "start_method": "default",
+          "optimizer": "nlminb",
+          "jitter_sd": 0.14999999999999999,
+          "objective": 5039.6912851281741,
+          "convergence": 1,
+          "message": "false convergence (8)",
+          "elapsed_s": 47.234999999999999,
+          "iterations": 769,
+          "evaluations": 1583,
+          "success": true,
+          "selected": false
+        }
+      ],
+      "gaussian": {
+        "mapped": true,
+        "all_na": true,
+        "map": "NA",
+        "fixed_value": -7.0750702890130981,
+        "expected_fixed_value": -7.0750702890130981,
+        "fixed_value_ok": true
+      },
+      "coefficient_rho": 2.3474650145822708e-07
+    },
+    {
+      "id": "W1",
+      "model": "morphology",
+      "shape": "wide",
+      "size": "target",
+      "elapsed_s": 2.2212111949920654,
+      "objective": 449.79514945576307,
+      "convergence": 0,
+      "gradient": 0.00030157696041763281,
+      "fixture_checksum": "6c3bae640dd86491171cb20fbb56b0e4",
+      "restart_history": [
+        {
+          "restart": 1,
+          "start_label": "initial",
+          "start_method": "default",
+          "optimizer": "nlminb",
+          "jitter_sd": 0,
+          "objective": 449.79514945576307,
+          "convergence": 0,
+          "message": "relative convergence (4)",
+          "elapsed_s": 1.4020000000000001,
+          "iterations": 172,
+          "evaluations": 377,
+          "success": true,
+          "selected": true
+        }
+      ],
+      "gaussian": {
+        "mapped": true,
+        "all_na": true,
+        "map": "NA",
+        "fixed_value": -6.7981501845414183,
+        "expected_fixed_value": -6.7981501845414183,
+        "fixed_value_ok": true
+      },
+      "coefficient_rho": null
+    }
+  ],
+  "stability": {
+    "M1": {
+      "pass": true,
+      "conditions": [true, true, true, true, true, true, true, true, true, true],
+      "objectives": [449.79514945576307, 449.79514942826358, 449.79514944252992],
+      "gradients": [0.00030157696045194862, 0.00025628594314364454, 0.00047133342584823097],
+      "objective_relative_spread": 6.113779092051339e-11,
+      "relative_norms": [
+        [0, 0, 0, 0, 0, 0, 0, 0],
+        [6.8887218724033735e-06, 6.8887146949219225e-06, 0.01899315442593277, 7.7030633035919087e-06, 2.7359921793108779e-06, 1.9601577267131319e-06, 3.5237540015391275e-06, 2.8738205772393214e-06],
+        [7.4099093973419151e-06, 7.4099184712442485e-06, 0.016230101790082049, 5.3499207192987812e-06, 7.2058928225797038e-06, 5.6765538933732641e-06, 8.3044642314115066e-06, 6.3416395642109988e-06]
+      ]
+    },
+    "M2": {
+      "pass": false,
+      "conditions": [true, true, true, true, true, true, true, false, true, true],
+      "objectives": [5039.6912805913598, 5039.6912804032036, 5039.6912803800005],
+      "gradients": [0.00089600225030592238, 0.00073707251727238711, 0.0019213794593870169],
+      "objective_relative_spread": 4.1938936529159289e-11,
+      "relative_norms": [
+        [0, 0, 0, 0, 0],
+        [6.9481345490507101e-05, 6.5703940649397937e-05, 1.7626219075216338e-06, 4.4097368667530526e-05, 1.9032136569988992e-06],
+        [6.5651894084817615e-05, 6.2084741257305764e-05, 1.5723027765725372e-06, 4.0901906855105305e-05, 1.2490619074036239e-06]
+      ]
+    },
+    "M3": {
+      "pass": false,
+      "conditions": [true, true, true, true, true, true, true, false, true, true],
+      "objectives": [5039.6912811752118, 5039.6912808211564, 5039.6912851281741],
+      "gradients": [0.0011508643433045683, 0.0022836021833130792, 0.002612715358886616],
+      "objective_relative_spread": 8.5461934504236764e-10,
+      "relative_norms": [
+        [0, 0, 0, 0, 0, 0],
+        [5.13432789138959e-06, 4.9211912276846771e-06, 3.1982022972524441e-06, 5.2042190051448006e-06, 2.9490527037608968e-06, 6.8442581945640244e-07],
+        [3.3036022156299063e-06, 3.1670340864075606e-06, 2.8258870631543261e-06, 3.0455092990864523e-06, 1.1110977394225088e-05, 6.8127891049861629e-06]
+      ]
+    }
+  },
+  "wide_equivalence": {
+    "M1": {
+      "pass": true,
+      "objective_relative_difference": 6.113779092051339e-11,
+      "fitted_response_sd_difference": 2.9689661770818181e-11
+    }
+  },
+  "source_sha": "739213bfd211036b1f915b9a0c8da047a918d83e",
+  "raw_receipts": "/private/tmp/gllvm-tree-axis-latent-20260830/results"
+}

@@ -61,3 +61,4 @@
     Condition
       Error:
       ! B is GBIF-only: survey rows must be NA in every B column.
+

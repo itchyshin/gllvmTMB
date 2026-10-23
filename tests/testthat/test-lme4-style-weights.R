@@ -351,11 +351,22 @@ test_that("Mixed-family fit: per-row weight dispatch works", {
   p <- plogis(0.2 + 0.5 * df$x)
   df$value[!is_g] <- stats::rbinom(sum(!is_g), size = n_trials_vec[!is_g],
                                    prob = p[!is_g])
-  ## Family vector (one per trait level). The factor levels of `family`
-  ## sort alphabetically to c("binomial", "gaussian"), so `fams` must be
-  ## in that order for the multi-fit dispatcher to pair them correctly.
+  ## Family vector (one per trait level). `family` is a plain character
+  ## column with NO stored order. This test originally read:
+  ##   "The factor levels of `family` sort alphabetically to
+  ##    c('binomial', 'gaussian'), so `fams` must be in that order for the
+  ##    multi-fit dispatcher to pair them correctly."
+  ## i.e. it asserted the ALPHABETICAL-SORT PAIRING AS IF IT WERE THE
+  ## CONTRACT -- exactly the #1120 defect (`.align_mixed_family_list()`
+  ## silently matched an unnamed list's i-th entry to the i-th alphabetical
+  ## level). It happened not to swap here only because this test's list
+  ## order and "binomial" < "gaussian" alphabetical order coincide; a test
+  ## written this way could not have told the difference between "correctly
+  ## paired" and "coincidentally not swapped". Named explicitly instead, and
+  ## the pairing this fit actually produced is now pinned directly below
+  ## rather than assumed.
   df$family <- ifelse(is_g, "gaussian", "binomial")
-  fams <- list(binomial(), gaussian())
+  fams <- list(binomial = binomial(), gaussian = gaussian())
   attr(fams, "family_var") <- "family"
 
   ## Fit with weights = n_trials. For Gaussian rows, weights=1 (unit);
@@ -371,6 +382,12 @@ test_that("Mixed-family fit: per-row weight dispatch works", {
     silent  = TRUE
   )))
   expect_equal(fit_mixed$opt$convergence, 0L)
+  ## Pin the corrected pairing EXPLICITLY against ground truth (df$trait),
+  ## not against family_id_vec's own value as this test did before: trait
+  ## "b1" rows must carry family_id 1 (binomial) and "g1" rows family_id 0
+  ## (gaussian).
+  expect_true(all(fit_mixed$tmb_data$family_id_vec[df$trait == "b1"] == 1L))
+  expect_true(all(fit_mixed$tmb_data$family_id_vec[df$trait == "g1"] == 0L))
   ## tmb_data should carry weights_i = 1 for binomial rows and the
   ## user-supplied value for gaussian rows.
   expect_true("weights_i" %in% names(fit_mixed$tmb_data))

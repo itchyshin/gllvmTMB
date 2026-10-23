@@ -1,0 +1,129 @@
+"cell","seed","convergence","pdHess","labeled_degenerate","det_present","det_status","det_m1","det_m2","det_m3","det_message","min_var_hat","elapsed_sec","rho_hat","range_hat"
+"deg_m1_phylo_indep",201,0,TRUE,FALSE,TRUE,"PASS",FALSE,FALSE,FALSE,"multinomial K-1 contrast pseudo-trait degeneracy screen",0.377506778649833,10.0445950031281,NA,NA
+"deg_m1_phylo_indep",202,0,TRUE,TRUE,TRUE,"WARN",TRUE,FALSE,FALSE,"multinomial contrast degeneracy detected (arms: M1)",2.94481475920548e-11,9.97204995155334,NA,NA
+"deg_m1_phylo_indep",203,0,TRUE,TRUE,TRUE,"PASS",FALSE,FALSE,FALSE,"multinomial K-1 contrast pseudo-trait degeneracy screen",1.78725489059345e-10,10.0094170570374,NA,NA
+"deg_m1_phylo_indep",204,0,TRUE,FALSE,TRUE,"PASS",FALSE,FALSE,FALSE,"multinomial K-1 contrast pseudo-trait degeneracy screen",0.348945816873915,9.97994899749756,NA,NA
+"deg_m1_phylo_indep",205,0,TRUE,TRUE,TRUE,"WARN",TRUE,FALSE,FALSE,"multinomial contrast degeneracy detected (arms: M1)",2.37937316143216e-13,10.3471050262451,NA,NA
+"deg_m1_phylo_indep",206,0,TRUE,TRUE,TRUE,"WARN",TRUE,FALSE,FALSE,"multinomial contrast degeneracy detected (arms: M1)",6.76218975433058e-14,10.2053830623627,NA,NA
+"deg_m1_phylo_indep",207,0,TRUE,TRUE,TRUE,"WARN",TRUE,FALSE,FALSE,"multinomial contrast degeneracy detected (arms: M1)",1.86681070764198e-12,10.2749929428101,NA,NA
+"deg_m1_phylo_indep",208,0,TRUE,TRUE,TRUE,"WARN",TRUE,FALSE,FALSE,"multinomial contrast degeneracy detected (arms: M1)",5.600793052405e-18,10.2655398845673,NA,NA
+"deg_m1_phylo_indep",209,0,TRUE,TRUE,TRUE,"WARN",TRUE,FALSE,FALSE,"multinomial contrast degeneracy detected (arms: M1)",1.0871905468673e-14,10.230749130249,NA,NA
+"deg_m1_phylo_indep",210,0,TRUE,FALSE,TRUE,"PASS",FALSE,FALSE,FALSE,"multinomial K-1 contrast pseudo-trait degeneracy screen",0.0642916369724419,10.0884120464325,NA,NA
+"deg_m1_phylo_indep",211,0,TRUE,FALSE,TRUE,"PASS",FALSE,FALSE,FALSE,"multinomial K-1 contrast pseudo-trait degeneracy screen",0.151974661678298,9.42031097412109,NA,NA
+"deg_m1_phylo_indep",212,0,TRUE,FALSE,TRUE,"PASS",FALSE,FALSE,FALSE,"multinomial K-1 contrast pseudo-trait degeneracy screen",0.189483027070336,9.21159410476685,NA,NA
+"deg_m1_phylo_indep",213,0,TRUE,FALSE,TRUE,"PASS",FALSE,FALSE,FALSE,"multinomial K-1 contrast pseudo-trait degeneracy screen",0.0553980475342165,9.38767099380493,NA,NA
+"deg_m1_phylo_indep",214,0,TRUE,FALSE,TRUE,"PASS",FALSE,FALSE,FALSE,"multinomial K-1 contrast pseudo-trait degeneracy screen",0.00308141446707071,9.3113579750061,NA,NA
+"deg_m1_phylo_indep",215,0,TRUE,FALSE,TRUE,"PASS",FALSE,FALSE,FALSE,"multinomial K-1 contrast pseudo-trait degeneracy screen",0.433678612859177,9.38126707077026,NA,NA
+"deg_m1_phylo_indep",216,0,TRUE,FALSE,TRUE,"PASS",FALSE,FALSE,FALSE,"multinomial K-1 contrast pseudo-trait degeneracy screen",0.291694519237208,9.2830171585083,NA,NA
+"deg_m1_phylo_indep",217,0,TRUE,FALSE,TRUE,"PASS",FALSE,FALSE,FALSE,"multinomial K-1 contrast pseudo-trait degeneracy screen",0.0344462312340551,9.4440541267395,NA,NA
+"deg_m1_phylo_indep",218,0,TRUE,FALSE,TRUE,"PASS",FALSE,FALSE,FALSE,"multinomial K-1 contrast pseudo-trait degeneracy screen",0.122874841173949,9.42997789382935,NA,NA
+"deg_m1_phylo_indep",219,0,TRUE,FALSE,TRUE,"PASS",FALSE,FALSE,FALSE,"multinomial K-1 contrast pseudo-trait degeneracy screen",0.273482633868342,9.34915494918823,NA,NA
+"deg_m1_phylo_indep",220,0,TRUE,FALSE,TRUE,"PASS",FALSE,FALSE,FALSE,"multinomial K-1 contrast pseudo-trait degeneracy screen",0.0915657995807131,9.33816194534302,NA,NA
+"deg_m2_phylo_dep",201,0,TRUE,FALSE,TRUE,"PASS",FALSE,FALSE,FALSE,"multinomial K-1 contrast pseudo-trait degeneracy screen",NA,10.7382378578186,0.73145829232915,NA
+"deg_m2_phylo_dep",202,0,TRUE,TRUE,TRUE,"WARN",FALSE,TRUE,FALSE,"multinomial contrast degeneracy detected (arms: M2)",NA,11.2825059890747,0.99999999989635,NA
+"deg_m2_phylo_dep",203,0,TRUE,TRUE,TRUE,"WARN",FALSE,TRUE,FALSE,"multinomial contrast degeneracy detected (arms: M2)",NA,10.9599719047546,-0.999999988740976,NA
+"deg_m2_phylo_dep",204,0,TRUE,FALSE,TRUE,"PASS",FALSE,FALSE,FALSE,"multinomial K-1 contrast pseudo-trait degeneracy screen",NA,10.8737049102783,-0.171419102097559,NA
+"deg_m2_phylo_dep",205,0,TRUE,TRUE,TRUE,"WARN",FALSE,TRUE,FALSE,"multinomial contrast degeneracy detected (arms: M2)",NA,10.8837900161743,0.999999999989397,NA
+"deg_m2_phylo_dep",206,0,TRUE,TRUE,TRUE,"WARN",FALSE,TRUE,FALSE,"multinomial contrast degeneracy detected (arms: M2)",NA,10.9161448478699,0.999999999833373,NA
+"deg_m2_phylo_dep",207,0,TRUE,TRUE,TRUE,"WARN",FALSE,TRUE,FALSE,"multinomial contrast degeneracy detected (arms: M2)",NA,11.2916860580444,0.999999999999964,NA
+"deg_m2_phylo_dep",208,0,TRUE,FALSE,TRUE,"PASS",FALSE,FALSE,FALSE,"multinomial K-1 contrast pseudo-trait degeneracy screen",NA,10.8186068534851,0.986697733019632,NA
+"deg_m2_phylo_dep",209,0,TRUE,FALSE,TRUE,"PASS",FALSE,FALSE,FALSE,"multinomial K-1 contrast pseudo-trait degeneracy screen",NA,10.8430891036987,0.940627902121664,NA
+"deg_m2_phylo_dep",210,0,TRUE,FALSE,TRUE,"PASS",FALSE,FALSE,FALSE,"multinomial K-1 contrast pseudo-trait degeneracy screen",NA,11.1027128696442,0.830444668290188,NA
+"deg_m2_phylo_dep",211,0,TRUE,FALSE,TRUE,"PASS",FALSE,FALSE,FALSE,"multinomial K-1 contrast pseudo-trait degeneracy screen",NA,10.6193749904633,0.193207188723324,NA
+"deg_m2_phylo_dep",212,0,TRUE,FALSE,TRUE,"PASS",FALSE,FALSE,FALSE,"multinomial K-1 contrast pseudo-trait degeneracy screen",NA,10.5438599586487,0.887921969200278,NA
+"deg_m2_phylo_dep",213,0,TRUE,FALSE,TRUE,"PASS",FALSE,FALSE,FALSE,"multinomial K-1 contrast pseudo-trait degeneracy screen",NA,10.6289010047913,-0.0237738071064561,NA
+"deg_m2_phylo_dep",214,0,TRUE,FALSE,TRUE,"PASS",FALSE,FALSE,FALSE,"multinomial K-1 contrast pseudo-trait degeneracy screen",NA,10.824266910553,0.709575282830815,NA
+"deg_m2_phylo_dep",215,0,TRUE,FALSE,TRUE,"PASS",FALSE,FALSE,FALSE,"multinomial K-1 contrast pseudo-trait degeneracy screen",NA,10.8421399593353,0.933800590031429,NA
+"deg_m2_phylo_dep",216,0,TRUE,FALSE,TRUE,"PASS",FALSE,FALSE,FALSE,"multinomial K-1 contrast pseudo-trait degeneracy screen",NA,10.6960570812225,0.590498105271142,NA
+"deg_m2_phylo_dep",217,0,TRUE,TRUE,TRUE,"WARN",FALSE,TRUE,FALSE,"multinomial contrast degeneracy detected (arms: M2)",NA,10.7276718616486,0.999999999999941,NA
+"deg_m2_phylo_dep",218,0,TRUE,TRUE,TRUE,"WARN",FALSE,TRUE,FALSE,"multinomial contrast degeneracy detected (arms: M2)",NA,10.6452679634094,0.999999999999998,NA
+"deg_m2_phylo_dep",219,0,TRUE,TRUE,TRUE,"WARN",FALSE,TRUE,FALSE,"multinomial contrast degeneracy detected (arms: M2)",NA,10.5590929985046,0.999999999950224,NA
+"deg_m2_phylo_dep",220,0,TRUE,FALSE,TRUE,"PASS",FALSE,FALSE,FALSE,"multinomial K-1 contrast pseudo-trait degeneracy screen",NA,10.7935769557953,0.897637023315526,NA
+"deg_m3_spatial_indep",301,0,FALSE,FALSE,FALSE,NA,FALSE,FALSE,FALSE,NA,NA,2.28138303756714,NA,0.000513015862527371
+"deg_m3_spatial_indep",302,0,FALSE,FALSE,FALSE,NA,FALSE,FALSE,FALSE,NA,NA,1.71083188056946,NA,0.018269173483636
+"deg_m3_spatial_indep",303,0,TRUE,TRUE,FALSE,NA,FALSE,FALSE,FALSE,NA,NA,2.02479887008667,NA,6.90681959237506e-05
+"deg_m3_spatial_indep",304,0,TRUE,TRUE,FALSE,NA,FALSE,FALSE,FALSE,NA,NA,2.4559760093689,NA,9.59262543206961e-05
+"deg_m3_spatial_indep",305,0,TRUE,FALSE,FALSE,NA,FALSE,FALSE,FALSE,NA,NA,1.76459193229675,NA,0.212317888855858
+"deg_m3_spatial_indep",306,0,TRUE,FALSE,FALSE,NA,FALSE,FALSE,FALSE,NA,NA,1.91869592666626,NA,0.698360694911839
+"deg_m3_spatial_indep",307,0,TRUE,FALSE,FALSE,NA,FALSE,FALSE,FALSE,NA,NA,1.69358682632446,NA,0.227906749728894
+"deg_m3_spatial_indep",308,0,TRUE,FALSE,FALSE,NA,FALSE,FALSE,FALSE,NA,NA,1.97172403335571,NA,0.411151462687431
+"deg_m3_spatial_indep",309,0,TRUE,FALSE,FALSE,NA,FALSE,FALSE,FALSE,NA,NA,2.16313791275024,NA,0.286876295114902
+"deg_m3_spatial_indep",310,0,FALSE,FALSE,FALSE,NA,FALSE,FALSE,FALSE,NA,NA,1.74577188491821,NA,0.0234681090046536
+"deg_m3_spatial_indep",311,0,TRUE,FALSE,FALSE,NA,FALSE,FALSE,FALSE,NA,NA,1.62434387207031,NA,0.535914103970093
+"deg_m3_spatial_indep",312,0,TRUE,TRUE,FALSE,NA,FALSE,FALSE,FALSE,NA,NA,2.51187610626221,NA,0.000103291966287418
+"deg_m3_spatial_indep",313,0,FALSE,FALSE,FALSE,NA,FALSE,FALSE,FALSE,NA,NA,1.22087001800537,NA,0.0303986910376767
+"deg_m3_spatial_indep",314,0,TRUE,FALSE,FALSE,NA,FALSE,FALSE,FALSE,NA,NA,1.34675407409668,NA,0.290836375478256
+"deg_m3_spatial_indep",315,0,TRUE,FALSE,FALSE,NA,FALSE,FALSE,FALSE,NA,NA,1.46823000907898,NA,0.364632976177258
+"deg_m3_spatial_indep",316,0,TRUE,FALSE,FALSE,NA,FALSE,FALSE,FALSE,NA,NA,1.59393692016602,NA,0.27648725146761
+"deg_m3_spatial_indep",317,0,TRUE,FALSE,FALSE,NA,FALSE,FALSE,FALSE,NA,NA,1.39301991462708,NA,0.338566345813664
+"deg_m3_spatial_indep",318,0,FALSE,FALSE,FALSE,NA,FALSE,FALSE,FALSE,NA,NA,1.67843794822693,NA,2.11375191444662e-05
+"deg_m3_spatial_indep",319,0,TRUE,FALSE,FALSE,NA,FALSE,FALSE,FALSE,NA,NA,1.60746216773987,NA,0.335237688258745
+"deg_m3_spatial_indep",320,0,FALSE,FALSE,FALSE,NA,FALSE,FALSE,FALSE,NA,NA,1.33219790458679,NA,0.0231412294613479
+"healthy_s4_re_int",201,0,TRUE,FALSE,FALSE,NA,FALSE,FALSE,FALSE,NA,NA,0.442256927490234,NA,NA
+"healthy_s4_re_int",202,0,TRUE,FALSE,FALSE,NA,FALSE,FALSE,FALSE,NA,NA,0.395088195800781,NA,NA
+"healthy_s4_re_int",203,0,TRUE,FALSE,FALSE,NA,FALSE,FALSE,FALSE,NA,NA,0.435698986053467,NA,NA
+"healthy_s4_re_int",204,0,TRUE,FALSE,FALSE,NA,FALSE,FALSE,FALSE,NA,NA,0.387590885162354,NA,NA
+"healthy_s4_re_int",205,0,TRUE,FALSE,FALSE,NA,FALSE,FALSE,FALSE,NA,NA,0.38367486000061,NA,NA
+"healthy_s4_re_int",206,0,TRUE,FALSE,FALSE,NA,FALSE,FALSE,FALSE,NA,NA,0.404958009719849,NA,NA
+"healthy_s4_re_int",207,0,TRUE,FALSE,FALSE,NA,FALSE,FALSE,FALSE,NA,NA,0.379307985305786,NA,NA
+"healthy_s4_re_int",208,0,TRUE,FALSE,FALSE,NA,FALSE,FALSE,FALSE,NA,NA,0.391995191574097,NA,NA
+"healthy_s4_re_int",209,0,TRUE,FALSE,FALSE,NA,FALSE,FALSE,FALSE,NA,NA,0.362046957015991,NA,NA
+"healthy_s4_re_int",210,0,TRUE,FALSE,FALSE,NA,FALSE,FALSE,FALSE,NA,NA,0.41345477104187,NA,NA
+"healthy_s4_re_int",211,0,TRUE,FALSE,FALSE,NA,FALSE,FALSE,FALSE,NA,NA,0.250851154327393,NA,NA
+"healthy_s4_re_int",212,0,TRUE,FALSE,FALSE,NA,FALSE,FALSE,FALSE,NA,NA,0.251257181167603,NA,NA
+"healthy_s4_re_int",213,0,TRUE,FALSE,FALSE,NA,FALSE,FALSE,FALSE,NA,NA,0.234200000762939,NA,NA
+"healthy_s4_re_int",214,0,TRUE,FALSE,FALSE,NA,FALSE,FALSE,FALSE,NA,NA,0.226656198501587,NA,NA
+"healthy_s4_re_int",215,0,TRUE,FALSE,FALSE,NA,FALSE,FALSE,FALSE,NA,NA,0.244804859161377,NA,NA
+"healthy_s4_re_int",216,0,TRUE,FALSE,FALSE,NA,FALSE,FALSE,FALSE,NA,NA,0.24169397354126,NA,NA
+"healthy_s4_re_int",217,0,TRUE,FALSE,FALSE,NA,FALSE,FALSE,FALSE,NA,NA,0.261875867843628,NA,NA
+"healthy_s4_re_int",218,0,TRUE,FALSE,FALSE,NA,FALSE,FALSE,FALSE,NA,NA,0.232169151306152,NA,NA
+"healthy_s4_re_int",219,0,TRUE,FALSE,FALSE,NA,FALSE,FALSE,FALSE,NA,NA,0.2376708984375,NA,NA
+"healthy_s4_re_int",220,0,TRUE,FALSE,FALSE,NA,FALSE,FALSE,FALSE,NA,NA,0.268686056137085,NA,NA
+"healthy_s1b_phylo_latent_rep",301,0,TRUE,FALSE,TRUE,"PASS",FALSE,FALSE,FALSE,"multinomial K-1 contrast pseudo-trait degeneracy screen",NA,1.38453912734985,NA,NA
+"healthy_s1b_phylo_latent_rep",302,0,TRUE,FALSE,TRUE,"PASS",FALSE,FALSE,FALSE,"multinomial K-1 contrast pseudo-trait degeneracy screen",NA,1.3427140712738,NA,NA
+"healthy_s1b_phylo_latent_rep",303,0,TRUE,FALSE,TRUE,"PASS",FALSE,FALSE,FALSE,"multinomial K-1 contrast pseudo-trait degeneracy screen",NA,1.2410581111908,NA,NA
+"healthy_s1b_phylo_latent_rep",304,0,TRUE,FALSE,TRUE,"WARN",FALSE,TRUE,FALSE,"multinomial contrast degeneracy detected (arms: M2)",NA,1.62154006958008,NA,NA
+"healthy_s1b_phylo_latent_rep",305,0,TRUE,FALSE,TRUE,"PASS",FALSE,FALSE,FALSE,"multinomial K-1 contrast pseudo-trait degeneracy screen",NA,1.38592004776001,NA,NA
+"healthy_s1b_phylo_latent_rep",306,0,TRUE,FALSE,TRUE,"PASS",FALSE,FALSE,FALSE,"multinomial K-1 contrast pseudo-trait degeneracy screen",NA,1.33573794364929,NA,NA
+"healthy_s1b_phylo_latent_rep",307,0,TRUE,FALSE,TRUE,"PASS",FALSE,FALSE,FALSE,"multinomial K-1 contrast pseudo-trait degeneracy screen",NA,1.31429219245911,NA,NA
+"healthy_s1b_phylo_latent_rep",308,0,TRUE,FALSE,TRUE,"PASS",FALSE,FALSE,FALSE,"multinomial K-1 contrast pseudo-trait degeneracy screen",NA,1.43023610115051,NA,NA
+"healthy_s1b_phylo_latent_rep",309,0,TRUE,FALSE,TRUE,"PASS",FALSE,FALSE,FALSE,"multinomial K-1 contrast pseudo-trait degeneracy screen",NA,1.32581496238708,NA,NA
+"healthy_s1b_phylo_latent_rep",310,0,TRUE,FALSE,TRUE,"PASS",FALSE,FALSE,FALSE,"multinomial K-1 contrast pseudo-trait degeneracy screen",NA,1.29527807235718,NA,NA
+"healthy_s1b_phylo_latent_rep",311,0,TRUE,FALSE,TRUE,"WARN",FALSE,TRUE,FALSE,"multinomial contrast degeneracy detected (arms: M2)",NA,1.27891993522644,NA,NA
+"healthy_s1b_phylo_latent_rep",312,0,TRUE,FALSE,TRUE,"WARN",FALSE,TRUE,FALSE,"multinomial contrast degeneracy detected (arms: M2)",NA,1.35634899139404,NA,NA
+"healthy_s1b_phylo_latent_rep",313,0,TRUE,FALSE,TRUE,"PASS",FALSE,FALSE,FALSE,"multinomial K-1 contrast pseudo-trait degeneracy screen",NA,1.1247980594635,NA,NA
+"healthy_s1b_phylo_latent_rep",314,0,TRUE,FALSE,TRUE,"PASS",FALSE,FALSE,FALSE,"multinomial K-1 contrast pseudo-trait degeneracy screen",NA,1.198979139328,NA,NA
+"healthy_s1b_phylo_latent_rep",315,0,TRUE,FALSE,TRUE,"PASS",FALSE,FALSE,FALSE,"multinomial K-1 contrast pseudo-trait degeneracy screen",NA,1.10507583618164,NA,NA
+"healthy_s1b_phylo_latent_rep",316,0,TRUE,FALSE,TRUE,"WARN",FALSE,TRUE,FALSE,"multinomial contrast degeneracy detected (arms: M2)",NA,1.45603203773499,NA,NA
+"healthy_s1b_phylo_latent_rep",317,0,TRUE,FALSE,TRUE,"PASS",FALSE,FALSE,FALSE,"multinomial K-1 contrast pseudo-trait degeneracy screen",NA,1.2442319393158,NA,NA
+"healthy_s1b_phylo_latent_rep",318,0,TRUE,FALSE,TRUE,"PASS",FALSE,FALSE,FALSE,"multinomial K-1 contrast pseudo-trait degeneracy screen",NA,1.17955684661865,NA,NA
+"healthy_s1b_phylo_latent_rep",319,0,TRUE,FALSE,TRUE,"PASS",FALSE,FALSE,FALSE,"multinomial K-1 contrast pseudo-trait degeneracy screen",NA,1.122318983078,NA,NA
+"healthy_s1b_phylo_latent_rep",320,0,TRUE,FALSE,TRUE,"PASS",FALSE,FALSE,FALSE,"multinomial K-1 contrast pseudo-trait degeneracy screen",NA,1.13470602035522,NA,NA
+"healthy_d1_phylo_latent",401,0,TRUE,FALSE,TRUE,"PASS",FALSE,FALSE,FALSE,"multinomial K-1 contrast pseudo-trait degeneracy screen",NA,9.4506950378418,NA,NA
+"healthy_d1_phylo_latent",402,0,TRUE,FALSE,TRUE,"PASS",FALSE,FALSE,FALSE,"multinomial K-1 contrast pseudo-trait degeneracy screen",NA,9.58792614936829,NA,NA
+"healthy_d1_phylo_latent",403,0,TRUE,FALSE,TRUE,"PASS",FALSE,FALSE,FALSE,"multinomial K-1 contrast pseudo-trait degeneracy screen",NA,9.610267162323,NA,NA
+"healthy_d1_phylo_latent",404,0,TRUE,FALSE,TRUE,"PASS",FALSE,FALSE,FALSE,"multinomial K-1 contrast pseudo-trait degeneracy screen",NA,9.55898690223694,NA,NA
+"healthy_d1_phylo_latent",405,0,TRUE,FALSE,TRUE,"PASS",FALSE,FALSE,FALSE,"multinomial K-1 contrast pseudo-trait degeneracy screen",NA,9.74459290504456,NA,NA
+"healthy_d1_phylo_latent",406,0,TRUE,FALSE,TRUE,"PASS",FALSE,FALSE,FALSE,"multinomial K-1 contrast pseudo-trait degeneracy screen",NA,9.70538592338562,NA,NA
+"healthy_d1_phylo_latent",407,0,TRUE,FALSE,TRUE,"PASS",FALSE,FALSE,FALSE,"multinomial K-1 contrast pseudo-trait degeneracy screen",NA,9.55317687988281,NA,NA
+"healthy_d1_phylo_latent",408,0,TRUE,FALSE,TRUE,"PASS",FALSE,FALSE,FALSE,"multinomial K-1 contrast pseudo-trait degeneracy screen",NA,9.76252913475037,NA,NA
+"healthy_d1_phylo_latent",409,0,TRUE,FALSE,TRUE,"PASS",FALSE,FALSE,FALSE,"multinomial K-1 contrast pseudo-trait degeneracy screen",NA,9.71164679527283,NA,NA
+"healthy_d1_phylo_latent",410,0,TRUE,FALSE,TRUE,"PASS",FALSE,FALSE,FALSE,"multinomial K-1 contrast pseudo-trait degeneracy screen",NA,9.62494802474976,NA,NA
+"healthy_d1_phylo_latent",411,0,TRUE,FALSE,TRUE,"PASS",FALSE,FALSE,FALSE,"multinomial K-1 contrast pseudo-trait degeneracy screen",NA,8.6125750541687,NA,NA
+"healthy_d1_phylo_latent",412,0,TRUE,FALSE,TRUE,"PASS",FALSE,FALSE,FALSE,"multinomial K-1 contrast pseudo-trait degeneracy screen",NA,8.75308394432068,NA,NA
+"healthy_d1_phylo_latent",413,0,TRUE,FALSE,TRUE,"PASS",FALSE,FALSE,FALSE,"multinomial K-1 contrast pseudo-trait degeneracy screen",NA,8.89224910736084,NA,NA
+"healthy_d1_phylo_latent",414,0,TRUE,FALSE,TRUE,"PASS",FALSE,FALSE,FALSE,"multinomial K-1 contrast pseudo-trait degeneracy screen",NA,8.85896492004395,NA,NA
+"healthy_d1_phylo_latent",415,0,TRUE,FALSE,TRUE,"PASS",FALSE,FALSE,FALSE,"multinomial K-1 contrast pseudo-trait degeneracy screen",NA,8.83987498283386,NA,NA
+"healthy_d1_phylo_latent",416,0,TRUE,FALSE,TRUE,"PASS",FALSE,FALSE,FALSE,"multinomial K-1 contrast pseudo-trait degeneracy screen",NA,8.74691605567932,NA,NA
+"healthy_d1_phylo_latent",417,0,TRUE,FALSE,TRUE,"PASS",FALSE,FALSE,FALSE,"multinomial K-1 contrast pseudo-trait degeneracy screen",NA,8.92126607894897,NA,NA
+"healthy_d1_phylo_latent",418,0,TRUE,FALSE,TRUE,"PASS",FALSE,FALSE,FALSE,"multinomial K-1 contrast pseudo-trait degeneracy screen",NA,8.89128994941711,NA,NA
+"healthy_d1_phylo_latent",419,0,TRUE,FALSE,TRUE,"PASS",FALSE,FALSE,FALSE,"multinomial K-1 contrast pseudo-trait degeneracy screen",NA,8.82084202766418,NA,NA
+"healthy_d1_phylo_latent",420,0,TRUE,FALSE,TRUE,"PASS",FALSE,FALSE,FALSE,"multinomial K-1 contrast pseudo-trait degeneracy screen",NA,8.71909999847412,NA,NA
+"null_phylo_indep",601,0,TRUE,TRUE,TRUE,"WARN",TRUE,FALSE,FALSE,"multinomial contrast degeneracy detected (arms: M1)",NA,0.770037889480591,NA,NA
+"null_phylo_indep",602,0,TRUE,TRUE,TRUE,"WARN",TRUE,FALSE,FALSE,"multinomial contrast degeneracy detected (arms: M1)",NA,0.799479961395264,NA,NA
+"null_phylo_indep",603,0,TRUE,TRUE,TRUE,"WARN",TRUE,FALSE,FALSE,"multinomial contrast degeneracy detected (arms: M1)",NA,0.728344917297363,NA,NA
+"null_phylo_indep",604,0,TRUE,TRUE,TRUE,"WARN",TRUE,FALSE,FALSE,"multinomial contrast degeneracy detected (arms: M1)",NA,0.753989934921265,NA,NA
+"null_phylo_indep",605,0,TRUE,TRUE,TRUE,"WARN",TRUE,FALSE,FALSE,"multinomial contrast degeneracy detected (arms: M1)",NA,0.687191963195801,NA,NA
+"null_phylo_indep",606,0,TRUE,TRUE,TRUE,"WARN",TRUE,FALSE,FALSE,"multinomial contrast degeneracy detected (arms: M1)",NA,0.726606845855713,NA,NA
+"null_phylo_indep",607,0,TRUE,TRUE,TRUE,"WARN",TRUE,FALSE,FALSE,"multinomial contrast degeneracy detected (arms: M1)",NA,0.745825052261353,NA,NA
+"null_phylo_indep",608,0,TRUE,TRUE,TRUE,"WARN",TRUE,FALSE,FALSE,"multinomial contrast degeneracy detected (arms: M1)",NA,0.743140935897827,NA,NA

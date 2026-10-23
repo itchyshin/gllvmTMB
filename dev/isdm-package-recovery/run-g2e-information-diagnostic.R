@@ -14,13 +14,16 @@ if (!mode %in% c("validate", "preflight")) stop("mode must be validate or prefli
 if (is.null(root)) stop("--output=<result-root> is required", call. = FALSE)
 root <- normalizePath(if (grepl("^/", root)) root else file.path(getwd(), root), mustWork = FALSE)
 script_arg <- grep("^--file=", commandArgs(trailingOnly = FALSE), value = TRUE)
-runner_file <- normalizePath(sub("^--file=", "", script_arg[[1L]]), mustWork = TRUE)
+runner_file <- normalizePath(
+  gsub("~+~", " ", sub("^--file=", "", script_arg[[1L]]), fixed = TRUE),
+  mustWork = TRUE
+)
 source(file.path(dirname(runner_file), "g2e-support-fixture.R"), local = TRUE)
 protocol_file <- file.path(dirname(runner_file), "2026-08-11-g2e-information-diagnostic-protocol.md")
 decision_file <- file.path(dirname(runner_file), "2026-08-11-g2e-information-diagnostic-decision.md")
 smoke_runner_file <- file.path(dirname(runner_file), "run-g2e-information-smoke.R")
 hash_file <- function(path) unname(tools::md5sum(path))[[1L]]
-package_commit <- function() system2("git", c("-C", pkg, "rev-parse", "HEAD"), stdout = TRUE, stderr = FALSE)[[1L]]
+package_commit <- function() system2("git", c("-C", shQuote(pkg), "rev-parse", "HEAD"), stdout = TRUE, stderr = FALSE)[[1L]]
 validate <- function() {
   fx <- g2e_make_fixture()
   g2e_validate_fixture(fx)

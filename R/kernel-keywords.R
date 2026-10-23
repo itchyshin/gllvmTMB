@@ -30,29 +30,49 @@
 #' @return A formula marker; never evaluated as a regular R function.
 #'
 #' @examples
-#' \dontrun{
-#' A <- diag(5)
-#' dat <- data.frame(
-#'   unit = factor(rep(paste0("u", 1:5), each = 2), levels = paste0("u", 1:5)),
-#'   obs = factor(seq_len(10)),
-#'   y1 = rnorm(10),
-#'   y2 = rnorm(10)
-#' )
-#' rownames(A) <- colnames(A) <- levels(dat$unit)
+#' set.seed(1)
+#' ## A known similarity among 30 sites along an environmental gradient; any
+#' ## dense positive-semidefinite covariance or correlation matrix can be K.
+#' x <- seq(0, 1, length.out = 30)
+#' K <- exp(-abs(outer(x, x, "-")) / 0.1)
+#' dimnames(K) <- list(paste0("s", 1:30), paste0("s", 1:30))
+#' ## Four traits load on one K-correlated latent field and carry their own
+#' ## K-correlated deviations, so the site-level trait covariance is
+#' ## lambda lambda^T + diag(0.2).
+#' L <- t(chol(K))
+#' lambda <- c(0.8, 0.6, -0.5, 0.4)
+#' site_eff <- outer(drop(L %*% rnorm(30)), lambda) +
+#'   L %*% matrix(rnorm(30 * 4, sd = sqrt(0.2)), 30, 4)
+#' ## Long format: four replicate visits per site, one row per (visit, trait).
+#' dat <- expand.grid(trait = factor(paste0("y", 1:4)), visit = 1:4,
+#'                    site = factor(rownames(K), levels = rownames(K)))
+#' dat$obs <- factor(paste(dat$site, dat$visit, sep = "_"))
+#' dat$value <- site_eff[cbind(as.integer(dat$site), as.integer(dat$trait))] +
+#'   rnorm(nrow(dat), sd = 0.4)
 #' fit <- gllvmTMB(
-#'   traits(y1, y2) ~
-#'     1 + kernel_latent(unit, K = A, d = 1, name = "known",
-#'                       unique = TRUE),
-#'   data = dat,
-#'   unit = "obs",
-#'   cluster = "unit",
-#'   family = gaussian()
+#'   value ~ 0 + trait +
+#'     kernel_latent(site, K = K, d = 1, name = "gradient", unique = TRUE),
+#'   data = dat, trait = "trait", unit = "obs", cluster = "site"
 #' )
-#' extract_Sigma(fit, level = "known")
-#' }
+#' extract_Sigma(fit, level = "gradient")$Sigma
+#' ## kernel_indep(): trait-specific variances only, on the same K:
+#' fit_indep <- gllvmTMB(
+#'   value ~ 0 + trait + kernel_indep(site, K = K, name = "gradient"),
+#'   data = dat, trait = "trait", unit = "obs", cluster = "site"
+#' )
+#' extract_Sigma(fit_indep, level = "gradient")$Sigma
 #'
 #' @export
-kernel_latent <- function(unit, K, d = 1, name = "kernel", unique = FALSE) {
+#' @param rho Source strength: a number in `[0,1]` fixes
+#'   `rho * K + (1-rho) * diag(diag(K))` on the legacy-resolved source scale.
+#'   Omitted or explicit `1` preserves the existing model. `NULL` estimates
+#'   strength for one Gaussian structured trait-intercept block with complete
+#'   replicated multivariate observations and no competing ordinary covariance.
+#'   Estimated latent terms require rank one and at least four traits. The same
+#'   strength applies to the entire latent-plus-Psi covariance. This parameter
+#'   is not a variance-share summary. Fixed attenuation and the admitted
+#'   Gaussian estimator have implementation checks; recovery is regime-specific.
+kernel_latent <- function(unit, K, d = 1, name = "kernel", unique = FALSE, rho = 1) {
   invisible(NULL)
 }
 
@@ -71,6 +91,26 @@ kernel_latent <- function(unit, K, d = 1, name = "kernel", unique = FALSE) {
 #' @return A formula marker; never evaluated as a regular R function.
 #' @export
 kernel_unique <- function(unit, K, name = "kernel") {
+  ## Fire-on-use notice when this marker is called directly. The formula
+  ## parser already warns on `kernel_unique(...)` used inside a `~` formula
+  ## via the shared `.gllvmTMB_warn_unique_family_deprecated()` cli_warn
+  ## tracker (R/brms-sugar.R) -- that path is unaffected. This function's own
+  ## BODY, though, is never evaluated when the keyword appears inside a
+  ## formula (only its name is matched), so a direct call to
+  ## `kernel_unique()` -- outside a formula, e.g. in a script or test -- was
+  ## previously silent. Mirrors the once-per-session tracker
+  ## `.gllvmTMB_warn_scalar_family_deprecated()` /
+  ## `.gllvmTMB_warn_latent_residual_alias()` use in R/brms-sugar.R.
+  if (!isTRUE(getOption("gllvmTMB.quiet_grammar_notes", FALSE))) {
+    if (!isTRUE(.gllvmTMB_deprecation_seen[["kernel_unique_direct_call"]])) {
+      lifecycle::deprecate_soft(
+        "0.2.0",
+        "kernel_unique()",
+        "kernel_indep()"
+      )
+      .gllvmTMB_deprecation_seen[["kernel_unique_direct_call"]] <- TRUE
+    }
+  }
   invisible(NULL)
 }
 
@@ -79,13 +119,13 @@ kernel_unique <- function(unit, K, name = "kernel") {
 #'   trait (`kernel_indep`); `TRUE` ties all traits to one shared variance,
 #'   the canonical spelling for the soft-deprecated [kernel_scalar()].
 #' @export
-kernel_indep <- function(unit, K, name = "kernel", common = FALSE) {
+kernel_indep <- function(unit, K, name = "kernel", common = FALSE, rho = 1) {
   invisible(NULL)
 }
 
 #' @rdname kernel_latent
 #' @export
-kernel_dep <- function(unit, K, name = "kernel") {
+kernel_dep <- function(unit, K, name = "kernel", rho = 1) {
   invisible(NULL)
 }
 

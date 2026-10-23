@@ -24,21 +24,24 @@ shared ordinary unit tier (\code{latent(0 + trait | unit, d)}).}
 \item{contrasts}{if \code{TRUE}, also return the per-contrast (K-1)-vector (as a
 list column).}
 
-\item{link_residual}{passed to \code{\link[=extract_Sigma]{extract_Sigma()}}; \code{"auto"} (default) puts the
-nominal block on the observation scale via the \eqn{(\pi^2/6)(I+J)} softmax
-residual, making \code{multiple_r} commensurable with single-scale partners;
+\item{link_residual}{passed to \code{\link[=extract_Sigma]{extract_Sigma()}}; \code{"auto"} (default) adds the
+\eqn{(\pi^2/6)(I+J)} softmax residual to form a residual-augmented
+latent-liability (model-scale) association, not a correlation of observed
+responses; it applies the documented residual convention to the nominal
+block and each admitted partner;
 \code{"none"} uses the latent (loadings) scale. Note: with \code{"none"} and a
 loadings-only fit whose shared factor the contrast block spans (e.g. the
 block dimension >= the partner's), \code{multiple_r} degenerates to 1 (the
 partner is then a deterministic function of the block). This is correct but
 uninformative, which is why \code{"auto"} (full-rank via the residual) is the
-sensible default for the single-number summary; read the per-pair latent
+sensible default for the model-scale single-number summary; read the per-pair latent
 correlations from \code{\link[=extract_Sigma]{extract_Sigma()}} / \code{\link[=extract_correlations]{extract_correlations()}} instead.
-An ordinal-probit partner is not admitted with \code{"auto"}: its latent
-residual is already fixed at 1 by the threshold model, so adding another
-unit residual would double-count it. Use a supported non-ordinal partner
-set for the one-number summary, or report latent-scale pairwise quantities
-with \code{extract_Sigma(..., part = "shared", link_residual = "none")}.}
+An ordinal (probit or logit) partner is not admitted with \code{"auto"} for this
+one-number summary. This is a scope limit, not a double count: \code{"auto"}
+adds the ordinal liability residual (1 for probit, pi^2/3 for logit)
+exactly once. Use a supported non-ordinal partner set for the one-number
+summary, or report latent-scale pairwise quantities with
+\code{extract_Sigma(..., part = "shared", link_residual = "none")}.}
 
 \item{method}{one of \code{"point"} (default; point estimates only, no interval
 columns), \code{"wald"} (fast Fisher-z intervals on BOTH \code{multiple_r} and
@@ -90,33 +93,49 @@ contrast correlations, labelled by category-vs-baseline.
 }
 }
 \examples{
-\dontrun{
+## Simulate 120 animals, each watched on three occasions. On each occasion
+## we record a body-condition score (continuous) and the behaviour seen
+## (1 = resting, 2 = foraging, 3 = travelling). One shared animal-level
+## score raises condition and the odds of foraging and lowers the odds of
+## travelling; condition also varies between animals for other reasons.
 set.seed(12)
 n_unit <- 120L
 n_rep <- 3L
 unit_id <- rep(seq_len(n_unit), each = n_rep)
-score <- stats::rnorm(n_unit)
-score_obs <- score[unit_id]
-gaussian_y <- 0.8 * score_obs + stats::rnorm(length(unit_id), sd = 0.4)
-category_y <- vapply(seq_along(unit_id), function(i) {
-  eta <- c(0, 0.9 * score_obs[i], -0.6 * score_obs[i])
-  prob <- exp(eta - max(eta))
-  sample.int(3L, 1L, prob = prob / sum(prob))
+score <- rnorm(n_unit)[unit_id]
+own <- rnorm(n_unit, sd = 0.5)[unit_id]
+condition <- 0.8 * score + own + rnorm(length(unit_id), sd = 0.4)
+behaviour <- vapply(score, function(s) {
+  ## log-odds of each behaviour relative to resting
+  p <- exp(c(0, 0.9 * s, -0.6 * s))
+  sample.int(3L, 1L, prob = p / sum(p))
 }, integer(1L))
 dat <- data.frame(
-  unit = factor(c(unit_id, unit_id)),
-  trait = factor(rep(c("g", "cat"), each = length(unit_id)),
-                 levels = c("g", "cat")),
-  family = factor(rep(c("g", "m"), each = length(unit_id)),
-                  levels = c("g", "m")),
-  value = c(gaussian_y, category_y)
+  unit   = factor(rep(unit_id, 2)),
+  trait  = factor(rep(c("condition", "behaviour"), each = length(unit_id)),
+                  levels = c("condition", "behaviour")),
+  family = rep(c("gaussian", "multinomial"), each = length(unit_id)),
+  value  = c(condition, behaviour)
 )
-families <- list(g = gaussian(), m = multinomial())
-attr(families, "family_var") <- "family"
+## The `family` column picks the response family for each row.
+families <- list(gaussian = gaussian(), multinomial = multinomial())
+## One shared factor across animals. With unique = TRUE, condition also
+## gets its own between-animal variance; the behaviour categories do not
+## (the fit may print a note saying so), which matches the simulation.
 fit <- gllvmTMB(
   value ~ 0 + trait + latent(0 + trait | unit, d = 1, unique = TRUE),
   data = dat, family = families, trait = "trait", unit = "unit"
 )
-extract_cross_correlations(fit, contrasts = TRUE)
-}
+## Both summaries are between-animal correlations on the model's latent
+## scale, after adding the residual variance of the categorical
+## (softmax) link, as the printed message reports; they are not
+## correlations between the raw observations.
+## multiple_r (0 to 1): how strongly condition goes with behaviour as a
+## whole; it does not depend on which category is the baseline.
+## contrast_r: the correlation of condition with the log-odds of each
+## other category against the baseline (category 1, resting); here
+## positive for foraging and negative for travelling, as simulated.
+cc <- extract_cross_correlations(fit, contrasts = TRUE)
+cc
+cc$contrast_r[[1]]
 }

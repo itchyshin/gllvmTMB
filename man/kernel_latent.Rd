@@ -6,11 +6,11 @@
 \alias{kernel_dep}
 \title{Generic dense-kernel covariance keywords}
 \usage{
-kernel_latent(unit, K, d = 1, name = "kernel", unique = FALSE)
+kernel_latent(unit, K, d = 1, name = "kernel", unique = FALSE, rho = 1)
 
-kernel_indep(unit, K, name = "kernel", common = FALSE)
+kernel_indep(unit, K, name = "kernel", common = FALSE, rho = 1)
 
-kernel_dep(unit, K, name = "kernel")
+kernel_dep(unit, K, name = "kernel", rho = 1)
 }
 \arguments{
 \item{unit}{Unquoted grouping column whose levels align with \code{rownames(K)}.}
@@ -26,6 +26,16 @@ matrix aligned to the grouping levels.}
 \item{unique}{Logical; \code{TRUE} auto-includes the kernel-structured diagonal
 trait-specific \eqn{\boldsymbol\Psi} companion for a single dense-kernel
 tier. The default \code{FALSE} preserves the loadings-only subset.}
+
+\item{rho}{Source strength: a number in \verb{[0,1]} fixes
+\code{rho * K + (1-rho) * diag(diag(K))} on the legacy-resolved source scale.
+Omitted or explicit \code{1} preserves the existing model. \code{NULL} estimates
+strength for one Gaussian structured trait-intercept block with complete
+replicated multivariate observations and no competing ordinary covariance.
+Estimated latent terms require rank one and at least four traits. The same
+strength applies to the entire latent-plus-Psi covariance. This parameter
+is not a variance-share summary. Fixed attenuation and the admitted
+Gaussian estimator have implementation checks; recovery is regime-specific.}
 
 \item{common}{\code{FALSE} (default) for a separate dense-kernel variance per
 trait (\code{kernel_indep}); \code{TRUE} ties all traits to one shared variance,
@@ -52,25 +62,36 @@ strength. \code{\link[=extract_Gamma]{extract_Gamma()}} returns descriptive poin
 provide calibrated intervals or establish a causal evolutionary process.
 }
 \examples{
-\dontrun{
-A <- diag(5)
-dat <- data.frame(
-  unit = factor(rep(paste0("u", 1:5), each = 2), levels = paste0("u", 1:5)),
-  obs = factor(seq_len(10)),
-  y1 = rnorm(10),
-  y2 = rnorm(10)
-)
-rownames(A) <- colnames(A) <- levels(dat$unit)
+set.seed(1)
+## A known similarity among 30 sites along an environmental gradient; any
+## dense positive-semidefinite covariance or correlation matrix can be K.
+x <- seq(0, 1, length.out = 30)
+K <- exp(-abs(outer(x, x, "-")) / 0.1)
+dimnames(K) <- list(paste0("s", 1:30), paste0("s", 1:30))
+## Four traits load on one K-correlated latent field and carry their own
+## K-correlated deviations, so the site-level trait covariance is
+## lambda lambda^T + diag(0.2).
+L <- t(chol(K))
+lambda <- c(0.8, 0.6, -0.5, 0.4)
+site_eff <- outer(drop(L \%*\% rnorm(30)), lambda) +
+  L \%*\% matrix(rnorm(30 * 4, sd = sqrt(0.2)), 30, 4)
+## Long format: four replicate visits per site, one row per (visit, trait).
+dat <- expand.grid(trait = factor(paste0("y", 1:4)), visit = 1:4,
+                   site = factor(rownames(K), levels = rownames(K)))
+dat$obs <- factor(paste(dat$site, dat$visit, sep = "_"))
+dat$value <- site_eff[cbind(as.integer(dat$site), as.integer(dat$trait))] +
+  rnorm(nrow(dat), sd = 0.4)
 fit <- gllvmTMB(
-  traits(y1, y2) ~
-    1 + kernel_latent(unit, K = A, d = 1, name = "known",
-                      unique = TRUE),
-  data = dat,
-  unit = "obs",
-  cluster = "unit",
-  family = gaussian()
+  value ~ 0 + trait +
+    kernel_latent(site, K = K, d = 1, name = "gradient", unique = TRUE),
+  data = dat, trait = "trait", unit = "obs", cluster = "site"
 )
-extract_Sigma(fit, level = "known")
-}
+extract_Sigma(fit, level = "gradient")$Sigma
+## kernel_indep(): trait-specific variances only, on the same K:
+fit_indep <- gllvmTMB(
+  value ~ 0 + trait + kernel_indep(site, K = K, name = "gradient"),
+  data = dat, trait = "trait", unit = "obs", cluster = "site"
+)
+extract_Sigma(fit_indep, level = "gradient")$Sigma
 
 }

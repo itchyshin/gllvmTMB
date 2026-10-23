@@ -51,11 +51,11 @@ test_that("phylo_slope: sigma_slope and per-species slopes are recovered", {
     fit$opt$par[grepl("log_sigma_slope", names(fit$opt$par))])
   expect_equal(unname(sigma_slope_hat), sqrt(sigma2_slope_true), tolerance = 0.15)
 
-  ## Per-species slope recovery: pull b_phy_slope from the augmented A^-1
-  ## and align to tip species names via the rownames of Ainv_phy_rr.
+  ## Per-species slope recovery: pull b_phy_slope from its dedicated
+  ## RHS-controlled precision and align through its augmented-node names.
   b_full <- fit$tmb_obj$env$last.par.best
   b      <- as.numeric(b_full[names(b_full) == "b_phy_slope"])
-  aug_names <- rownames(fit$tmb_data$Ainv_phy_rr)
+  aug_names <- rownames(fit$tmb_data$Ainv_phy_slope)
   tip_idx   <- match(tree$tip.label, aug_names)
   b_tips    <- b[tip_idx]
   ## Strong positive correlation between fitted and true tip-level slopes.

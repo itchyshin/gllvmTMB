@@ -106,7 +106,9 @@ research-only). No tape from a gap list. Planned ≠ admitted.
 | Public `se=TRUE` / `vcov` / `confint`? | **still withheld** |
 | Aftermath G0 | park vs B2 vs a new construction — **Shinichi**, Lane B |
 
-**Codex Lane B** stays the binomial SE / interval owner. D-148 stands.
+**Codex Lane B** stays the binomial SE / interval owner (D-149). The
+MSPL-interval withhold stands — **D-159**, committed as `D-148` and
+renumbered 2026-08-18.
 Do not absorb sandwich / profile / bootstrap from Cursor.
 
 ---

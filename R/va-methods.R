@@ -98,7 +98,7 @@ print.gllvmTMB_va <- function(x, digits = 3, ...) {
                 h$healthy_starts, h$attempted_starts,
                 format(x$diagnostics$max_abs_gradient, digits = 2)))
   }
-  cat("\n  Research-only route (Design 85). The objective is a lower bound, so\n")
+  cat("\n  Research-only route. The objective is a lower bound, so\n")
   cat("  logLik()/AIC()/BIC() are not defined. Fixed-effect VA-Wald intervals\n")
   cat("  use profiled Schur information and remain calibrated = FALSE.\n")
   invisible(x)

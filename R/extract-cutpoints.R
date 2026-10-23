@@ -1,14 +1,18 @@
-## Extractor for ordinal_probit cutpoints.
+## Extractor for ordinal_probit() / ordinal_logit() cutpoints.
 ##
 ## Implements Hadfield's (2015) convention: tau_1 = 0 fixed for
 ## identifiability, K - 2 free cutpoints {tau_2, ..., tau_{K-1}} estimated
-## per ordinal trait. Returns one row per (trait, cutpoint) pair.
+## per ordinal trait. Returns one row per (trait, cutpoint) pair. fid 14
+## (ordinal_probit) and fid 20 (ordinal_logit) share this extractor
+## unchanged -- the cutpoint metadata is family-agnostic; only the link
+## scale the tau's live on differs (probit vs logit).
 
-#' Extract ordinal-probit cutpoints from a fitted gllvmTMB model
+#' Extract ordinal cutpoints from a fitted gllvmTMB model
 #'
-#' For traits fitted with [ordinal_probit()], returns a tidy data frame
-#' with the K - 2 estimated cutpoints \eqn{\tau_2, \ldots, \tau_{K-1}}
-#' per trait, with optional standard errors from the joint sdreport.
+#' For traits fitted with [ordinal_probit()] or [ordinal_logit()], returns
+#' a tidy data frame with the K - 2 estimated cutpoints
+#' \eqn{\tau_2, \ldots, \tau_{K-1}} per trait, with optional standard
+#' errors from the joint sdreport.
 #'
 #' Convention: `gllvmTMB` follows Hadfield (2015) — \eqn{\tau_1 = 0} is
 #' fixed for identifiability and the K - 2 free cutpoints are reported
@@ -20,21 +24,22 @@
 #' estimates, but weighted-objective uncertainty is not calibrated.
 #'
 #' @param fit A fit returned by [gllvmTMB()] with at least one
-#'   [ordinal_probit()] trait.
+#'   [ordinal_probit()] or [ordinal_logit()] trait.
 #'
 #' @return A data frame with columns
 #'   \describe{
 #'     \item{`trait`}{Trait label (factor level from `data[[trait]]`).}
 #'     \item{`cutpoint_index`}{Integer index \eqn{k \in \{2, \ldots, K-1\}}.}
 #'     \item{`cutpoint_label`}{Character label `"cutpoint_<k>"`.}
-#'     \item{`tau_estimate`}{Estimated \eqn{\tau_k} on the latent (probit)
-#'       scale.}
+#'     \item{`tau_estimate`}{Estimated \eqn{\tau_k} on the trait's own
+#'       latent scale (probit for an [ordinal_probit()] trait, logit for
+#'       an [ordinal_logit()] trait).}
 #'     \item{`tau_se`}{Standard error from the joint sdreport, or `NA` if
 #'       the report is unavailable.}
 #'   }
 #'
-#'   If the fit contains no `ordinal_probit()` traits, returns a
-#'   zero-row data frame with the same columns.
+#'   If the fit contains no `ordinal_probit()` or `ordinal_logit()`
+#'   traits, returns a zero-row data frame with the same columns.
 #'
 #' @references
 #' Hadfield, J. D. (2015). Increasing the efficiency of MCMC for
@@ -46,17 +51,62 @@
 #'   threshold-trait theory reference list.
 #'
 #' @examples
-#' \dontrun{
-#' fit <- gllvmTMB(
-#'   value ~ 0 + trait + phylo_indep(species, tree = tree),
-#'   data    = ordinal_dat,
-#'   trait   = "trait",
-#'   unit    = "individual",
-#'   cluster = "species",
-#'   family  = ordinal_probit()
-#' )
-#' extract_cutpoints(fit)
+#' ## Three ordinal traits scored on 5 plants at each of 30 sites: vigour
+#' ## (3 categories), leaf damage (4) and flowering (3). Each score comes
+#' ## from a hidden continuous "liability" -- the trait mean, plus a site
+#' ## effect, plus noise with standard deviation 1 -- cut at thresholds
+#' ## (stored in cuts, starting at tau_1 = 0): score 1 if the liability is
+#' ## below tau_1, score 2 if it lies between tau_1 and tau_2, and so on.
+#' set.seed(1)
+#' cuts <- list(vigour = c(0, 0.8), damage = c(0, 0.6, 1.4),
+#'              flower = c(0, 1))
+#' mu <- c(vigour = 0.3, damage = 0.2, flower = -0.2)
+#' n_site <- 30
+#' dat <- expand.grid(plant = 1:5, site = seq_len(n_site),
+#'                    trait = names(cuts))
+#' site_eff <- matrix(rnorm(n_site * 3, sd = 0.8), n_site, 3)
+#' liability <- mu[as.character(dat$trait)] +
+#'   site_eff[cbind(dat$site, as.integer(dat$trait))] + rnorm(nrow(dat))
+#' dat$value <- NA_integer_
+#' for (tr in names(cuts)) {
+#'   rows <- dat$trait == tr
+#'   dat$value[rows] <- findInterval(liability[rows], cuts[[tr]]) + 1L
 #' }
+#' dat$site <- factor(dat$site)
+#'
+#' ## Ordinal responses are coded 1, 2, ..., K. indep() gives each trait
+#' ## its own between-site variance; the 5 plants per site make it
+#' ## estimable.
+#' fit <- gllvmTMB(
+#'   value ~ 0 + trait + indep(0 + trait | site),
+#'   data   = dat,
+#'   trait  = "trait",
+#'   unit   = "site",
+#'   family = ordinal_probit()
+#' )
+#'
+#' ## The cutpoints are the thresholds on the liability (probit) scale.
+#' ## The first threshold is fixed at tau_1 = 0 to identify the model, so
+#' ## a trait with K categories has K - 2 estimated cutpoints: one each
+#' ## for vigour and flowering, two for damage. tau_se is a large-sample
+#' ## (Wald) standard error.
+#' cp <- extract_cutpoints(fit)
+#' ## Add the thresholds used to simulate the data, for comparison
+#' cp$tau_true <- c(cuts$vigour[2], cuts$damage[2:3], cuts$flower[2])
+#' cp
+#'
+#' ## Standard errors are optional. A fit made with se = FALSE skips them
+#' ## and gives the same cutpoints, with tau_se = NA. extract_cutpoints()
+#' ## then prints a note saying so; quiet = TRUE turns the note off.
+#' fit_no_se <- gllvmTMB(
+#'   value ~ 0 + trait + indep(0 + trait | site),
+#'   data    = dat,
+#'   trait   = "trait",
+#'   unit    = "site",
+#'   family  = ordinal_probit(),
+#'   control = gllvmTMBcontrol(se = FALSE)
+#' )
+#' extract_cutpoints(fit_no_se, quiet = TRUE)
 #'
 #' @param quiet Suppress the note emitted when `tau_se` cannot be filled in
 #'   because the fit has no `sd_report`. Internal callers that display only the
@@ -73,11 +123,11 @@ extract_cutpoints <- function(fit, quiet = FALSE) {
     stringsAsFactors = FALSE
   )
   if (!inherits(fit, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+    .gllvmTMB_abort_not_multi_fit(fit)
   }
   .gllvmTMB_require_unweighted_inference(fit, "extract_cutpoints()")
   fids <- fit$tmb_data$family_id_vec
-  if (!any(fids == 14L)) {
+  if (!any(fids %in% c(14L, 20L))) {
     return(out_empty)
   }
   n_cuts_pt <- as.integer(fit$tmb_data$n_ordinal_cuts_per_trait)

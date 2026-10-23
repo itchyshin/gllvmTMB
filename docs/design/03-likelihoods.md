@@ -12,6 +12,20 @@ density looks like on the link scale, what the numerical scales
 are, what boundary cases are tested, and what comparator alignment
 holds.
 
+## Temporal Gaussian source
+
+For temporal state covariance \(K\), the native Gaussian temporal tier uses
+`indep`: \(K\otimes\operatorname{diag}(v)\), `dep`:
+\(K\otimes\Sigma_T\), and rank-one `latent`:
+\(K\otimes\Lambda\Lambda^T\), with \(K\otimes\Psi_T\) added only by
+`latent(unique = TRUE)`. AR1 innovations use the observed integer gap; OU
+innovations use the supplied elapsed-time gap. The temporal random coordinates
+are separate from ordinary B and W coordinates. The independent dense Gaussian
+oracle and central gradients for every AR1/OU cell are in
+`tests/testthat/test-temporal-sixth-source-oracles.R`. This is local
+implementation evidence, not a general recovery, calibration, or interval
+claim.
+
 **Status discipline**: this doc uses the 4-state vocabulary from
 `docs/design/01-formula-grammar.md` (`covered / claimed / reserved
 / planned`). Most per-family rows are currently `claimed`; Phase
@@ -68,6 +82,14 @@ drmTMB convention.
 | `student()` | `sigma`, `nu` | scale + d.o.f. | larger `sigma` ⇒ wider core; larger `nu` ⇒ lighter tails |
 | `lognormal()` | `sigma` | SD of $\log y$ | larger `sigma` ⇒ wider distribution of $y$ |
 
+Gaussian and lognormal scales do not share numerical units. Pure fits retain
+the historical length-one `log_sigma_eps` parameter. When the two families
+coexist, the native TMB route allocates exactly two slots in fixed order:
+Gaussian raw-scale residual SD, then lognormal log-scale residual SD. Each slot
+is shared among traits of its own family; this change does not create a
+per-trait residual-variance model. The likelihood, simulation, residual-CDF,
+prediction, and variance-partition consumers select the slot by family.
+
 ## Notation
 
 In mathematical prose, $\mathcal{N}(a, b)$ uses variance as the
@@ -123,9 +145,11 @@ When `family = list(f_1, f_2, ..., f_T)` is passed, `R/fit-multi.R`:
 4. Passes the per-row family code to `src/gllvmTMB.cpp` as an
    integer column in the data block. The TMB template
    dispatches at the row level via a `switch` on this code.
-5. Rejects configurations that include a delta/hurdle family in
-   a mixed-family fit (see `docs/design/02-family-registry.md`
-   "Hurdle / delta families — DEFERRED to post-CRAN").
+5. Routes the standard delta families through the same per-row dispatch. Their
+   native likelihood uses one shared `eta` for occurrence and positive-part
+   log mean. Automatic delta link-residual correlation is not implied by fit
+   admission; the bounded predictor-informed LV cells use
+   `link_residual = "none"`.
 
 ## Random-effects integration
 
@@ -166,22 +190,30 @@ need their own named recovery evidence before a certificate claim.
 
 - **Predictor-informed latent-score means** from the
   `latent(..., lv = ~ x)` surface (Design 73): for ordinary unit-tier
-  C1 fits, currently Gaussian and pure binomial logit/probit/cloglog only, the score
-  is split as
+  fits, the score is split as
   $\mathbf{z}_i = M_i\alpha + \mathbf{e}_i$ with
   $\mathbf{e}_i \sim \mathcal{N}(0, I_K)$. The TMB change is a mean
   shift inside the existing reduced-rank contribution,
   $\eta_{it} = \mu_{it} + \boldsymbol\lambda_t^\top
   (M_i\alpha + \mathbf{e}_i) + q_{it}$. The innovation prior remains
-  centred at zero, and the diagonal $\Psi$ companion remains the
-  ordinary `latent()` companion. Current support is C1 partial: R
+  centred at zero. The default ordinary `latent()` model retains its diagonal
+  $\Psi$ companion, but the family-wide named programme cells are explicitly
+  rank one and loadings-only (`unique = FALSE`). Current support remains
+  partial: R
   validates the `lv` formula, builds unit-level `X_lv_B`, estimates
   `alpha_lv_B`, reports `B_lv_unit`, and tests focused native Gaussian
   recovery plus pure-binomial standard-link trait-scale `B_lv`
-  recovery/algebra fits. This is not yet interval evidence;
-  `REML = TRUE`, unsupported non-Gaussian families,
-  unsupported tiers, and fixed/LV predictor overlap remain rejected
-  until the corresponding validation rows move.
+  recovery/algebra fits. A retained 19-cell mixed/sentinel r200 campaign adds
+  point-recovery evidence for the frozen native ML, rank-1, loadings-only,
+  complete-response allow-list: all 3,800 attempts are retained, and the
+  cross-fit targets are rotation-invariant `B_lv` and shared
+  $\Lambda\Lambda^\top$, not raw axes. That campaign used `se = FALSE`, so it
+  supports no interval conclusion. The separate pure r200 passes 17/19 cells;
+  pure Beta and ordinal-probit retain HOLDs. Eight preregistered mixed
+  Gaussian-anchor cells pass target-wise `B_lv` Wald calibration, without a
+  simultaneous-coverage or arbitrary-mixture claim. `REML = TRUE`, unlisted family
+  combinations, unsupported tiers, and fixed/LV predictor overlap remain
+  rejected until the corresponding validation rows move.
 
 - **Ordinary augmented Gaussian random regression** from
   `latent(0 + trait + (0 + trait):x | unit, d = K)` or the equivalent
@@ -222,7 +254,7 @@ need their own named recovery evidence before a certificate claim.
 
 The phylogenetic and spatial keywords plug into the same
 random-effects machinery via the correlation-source rows of the
-4 × 3 grid plus its `common` and `unique` modifiers (see
+6 × 3 grid plus its `common` and `unique` modifiers (see
 `docs/design/01-formula-grammar.md`).
 
 ### Laplace accuracy caveat
@@ -299,6 +331,83 @@ channels as `phy_indep_slope` and `phy_dep`, respectively, while the
 legacy/shared path returns `phy_unique_slope`. Validation is
 family-by-route specific (PHY-11--PHY-18 and RE-14), not a universal
 family or interval-calibration claim.
+
+### Stable coefficient-prior evaluation
+
+The full coefficient channel above, also used by `column_coef()` and
+`phylo_coef()`, evaluates its Gaussian quadratic through the parameterized
+lower-triangular factor. With $\Sigma_b=L_bL_b^\top$, define
+$W=B L_b^{-\top}$ by forward substitution. Then
+
+$$
+\operatorname{tr}(\Sigma_b^{-1}B^\top A^{-1}B)
+=\operatorname{tr}(W^\top A^{-1}W).
+$$
+
+For estimated `rho`, the same column whitening precedes the existing source
+transform $U^\top D^{-1}W$. If $K=D U\operatorname{diag}(\lambda)U^\top D$,
+the quadratic is the sum of squared transformed entries divided by
+$1-\rho+\rho\lambda_r$. This preserves
+$K_\rho=\rho K+(1-\rho)\operatorname{diag}\{\operatorname{diag}(K)\}$,
+all normalization constants, and the reported $\Sigma_b$.
+
+Forming and inverting $L_bL_b^\top$ is avoided in this prior because it squares
+the factor's condition number. An ill-conditioned retained article attempt
+produced a negative quadratic under that arithmetic; the same point provides
+a regression check, not a biological result or a convergence guarantee.
+The helper is private implementation, with compiled tests in
+`tests/testthat/test-column-coef-triangular-density.R`. The separate spatial
+coefficient implementation is outside this bounded repair and requires its own
+numerical review.
+
+
+### Gaussian response-column coefficient coordinates
+
+For eligible nonspatial Gaussian identity ML compositions, the internal
+coefficient random variables are standardized before constructing the Laplace
+objective. The statistical model remains
+
+$$
+B=U L_b^\top,\qquad U\sim\operatorname{MN}(0,K_\rho,I),\qquad
+\Sigma_b=L_bL_b^\top.
+$$
+
+Here $U$ denotes coefficient random variables, not the source eigenvector
+matrix used above. Its negative log prior is
+
+$$
+\tfrac12\{nC\log(2\pi)+C\log|K_\rho|
+ +\operatorname{tr}(U^\top K_\rho^{-1}U)\}.
+$$
+
+The coefficient determinant is absent because the density is now with respect
+to $U$; the change of variables cancels the corresponding determinant in the
+centred density. The linear predictor uses physical $B$. Thus the marginal
+Gaussian likelihood is unchanged, while the random-effect prior no longer
+contains the inverse of a nearly singular $L_b$. The prior on the source axis,
+including estimated-rho diagonal scaling, is unchanged.
+
+| Quantity | Internal operation | Preserved contract |
+|---|---|---|
+| $\Sigma_b=L_bL_b^\top$ | Same packed Cholesky parameters | Same covariance and rho reports |
+| $B=U L_b^\top$ | Reconstruct before predictor/report | Same fitted coefficient effects |
+| Physical start $B_0$ | $U_0=B_0L_{b,0}^{-\top}$ | Same physical initial coefficients |
+| Fixed/tied physical $B$ maps | Keep centred path when incompatible | Never reinterpret constraints as maps on $U$ |
+| Uncertainty of $B$ | Differentiate reconstructed $B$ through retained random and outer parameters | First-order physical-effect uncertainty |
+
+Unlike the analytically eliminated singleton cell effect, $U$ remains a random
+effect. Its transformed uncertainty therefore needs no added conditional
+variance. Raw standardized-effect precision must not be presented as physical
+coefficient precision. Warm starts must recover physical coefficients before
+conversion to the target coordinates.
+
+The intended admission is complete, unit-weight Gaussian identity ML for the
+existing nonspatial response-column sources and their supported aliases.
+Spatial coefficients, non-Gaussian models, other augmented-slope channels and
+unsupported compositions retain the centred path. This is a numerical repair,
+not a new estimator or a claim of interval coverage. Implementation and
+validation status are tracked in the tree-axis after-task report; approval
+alone does not establish that the new checks pass.
 
 ## SPDE / GMRF spatial integration
 
@@ -419,11 +528,13 @@ the implied trait covariance before correlation conversion.
   warned; the probit latent residual is already $1$ by
   construction, so the auto path over-counts. Users should set
   `link_residual = "none"` for clarity. See PR #104.
-- **Delta/hurdle families in mixed-family fits**: handled route-only
-  as of 2026-07-05 (latent on the positive submodel only; see
-  `02-family-registry.md` §Hurdle/delta). The earlier "rejected" +
-  planned `class = "gllvmTMB_auto_residual_delta_undefined"` were never
-  built (no such class exists); delta is not auto-rejected.
+- **Delta/hurdle families in mixed-family fits**: the compiled standard delta
+  likelihoods use one shared `eta` for occurrence log-odds and positive-part
+  log mean; they do not implement the historical positive-part-only design.
+  The bounded predictor-informed LV programme targets only the shared loading
+  covariance with `link_residual = "none"`. Automatic delta link-residual
+  correlation remains a separate, uncalibrated surface. The earlier planned
+  `gllvmTMB_auto_residual_delta_undefined` class was never built.
 
 ## Per-family likelihood subsections
 
@@ -623,6 +734,57 @@ verification runs):
   unfixed engine** — an earlier version that pushed cutpoints instead of
   $\eta$ passed against the defect and guarded nothing.
 
+### Ordinal logit (FAM-24, Arc O4)
+
+- Status: `partial` (FAM-24). Point recovery + density/gradient evidence
+  only; no NEW interval work beyond `ordinal_probit()`'s existing
+  cutpoint SEs.
+- Family_id **20** — the cumulative-**logit** analogue of `ordinal_probit`
+  (family_id 14, above). A link swap on the SAME threshold apparatus, not
+  a new architecture: identical `n_ordinal_cuts_per_trait` /
+  `ordinal_offset_per_trait` / `ordinal_log_increments` DATA/PARAMETER
+  vectors, identical per-trait cutpoint reconstruction and
+  `extract_cutpoints()` reporting.
+- Parameters: latent `mu` (identity; the underlying continuous liability
+  on the logistic scale), `cutpoints` (vector; ordered, same
+  log-difference reconstruction as `ordinal_probit`).
+- Density: $\Pr(y_i = k) = F(c_k - \eta_i) - F(c_{k-1} - \eta_i)$ with
+  $F = \operatorname{plogis}$ (the standard logistic CDF) in place of
+  $\Phi$. $K = 2$ reduces exactly to `binomial(link = "logit")`, the
+  logit analogue of the probit family's Hadfield (2015) eqn 10 reduction.
+- Numerical: latent residual variance fixed at $\pi^2/3$ by construction
+  (vs. `ordinal_probit`'s exact $1$); cutpoints estimated on log-difference
+  scale to preserve ordering, unchanged from `ordinal_probit`.
+  Implemented via the existing `gll_log_inv_logit` /
+  `gll_log_inv_logit_diff` helpers (`src/gllvmTMB.cpp:69-79,514-532`,
+  originally built for the `cumulative_logit()` missing-PREDICTOR family
+  and reused here for a different, response-side family — see the
+  naming note on both constructors).
+- **Why no separate far-tail asymptotic branch is needed, unlike
+  `gll_log_pnorm`'s Mills-ratio expansion at $x < -20$.** `pnorm(x)`
+  rounds to exactly $1.0$ once $x > 8.2924$ because the Gaussian tail
+  decays like $e^{-x^2/2}$ (double-exponential), underflowing the double
+  unit roundoff by $x \approx 8.3$. The logistic complement
+  $1 - F(x) = 1/(1+e^x)$ decays only like $e^{-x}$ (single exponential),
+  so it does not round to exactly $1.0$ until $x \approx 36.7$ — over
+  four times further out — and `logspace_add(0, x) = \log(1+e^x)` (what
+  `gll_log_inv_logit`/`gll_log_inv_logit_diff` are built on) is already
+  the standard numerically-stable form across that whole range, with no
+  analogue of `gll_log_pnorm`'s explicit $-20$ switch point.
+- **The adjacent-cutpoint collision guard IS still reachable here**,
+  exactly as documented above for `ordinal_probit`: two free cutpoints
+  landing within $\sim10^{-16}$ of each other on the $\eta$ scale makes
+  `gll_log_inv_logit_diff` underflow via `gll_log1mexp`'s existing
+  input-ceiling guard before the shared `log(1e-300)` residual floor
+  catches it — the SAME mechanism, already covering both ordinal
+  families (see `gll_log_inv_logit_diff`'s own comment, added when it
+  was first built for `cumulative_logit()`). Nothing new was added for
+  fid 20.
+- Evidence: `dev/gapclose/arcD/alignment-ordinal-logit.md` (the symbolic
+  alignment table), `dev/gapclose/arcD/O4-report.md` (density identity,
+  FD gradient, per-seed recovery numbers),
+  `tests/testthat/test-ordinal-logit.R`.
+
 ### Tweedie
 
 - Status: `claimed`.
@@ -631,14 +793,82 @@ verification runs):
 - Density: compound Poisson-Gamma with $\Pr(y = 0) > 0$ and
   continuous-positive for $y > 0$.
 
+### Zero-inflated families (zi_poisson / zi_nbinom2 / zi_binomial)
+
+- Status: `partial` (FAM-21/22/23, Arc D). Point recovery evidence only; no
+  interval on `zi`.
+- Parameters: `mu` (log for zi_poisson/zi_nbinom2, logit for zi_binomial),
+  `sigma` for zi_nbinom2 (log; reuses the ordinary `nbinom2()` per-trait
+  dispersion convention, not a new vector), `zi` (logit; per-trait,
+  intercept-only -- no covariates, no random effects).
+- TMB template: `src/gllvmTMB.cpp`, `obs_loglik` fid 17/18/19 blocks (the
+  same per-row lambda the plain Laplace loop and the AGHQ per-node loop both
+  call -- though AGHQ itself refuses these three family ids, see below).
+  `PARAMETER_VECTOR(logit_zi)`.
+- R constructor: `R/families.R` (`zi_poisson()`, `zi_nbinom2()`,
+  `zi_binomial()`).
+- Density: a TRUE mixture (Design 62 -- not the delta/hurdle shared-`eta`
+  architecture below; the count process is active at every row, including
+  $y = 0$):
+  $$
+  P(Y=0) = \pi_t + (1-\pi_t) f_c(0 \mid \mu, \ldots), \qquad
+  P(Y=k>0) = (1-\pi_t) f_c(k \mid \mu, \ldots)
+  $$
+  with $f_c$ the ordinary Poisson / NB2 / Binomial($N_i$, $p$) pmf and
+  $\pi_t = \text{invlogit}(\text{logit\_zi}_t)$. Consequently the mixture
+  CDF has the closed form $F_{\text{mix}}(y) = \pi_t + (1-\pi_t) F_c(y)$,
+  used by the randomized-quantile residual.
+- Numerical: `logspace_add`/the log-sigmoid identity
+  ($\log \pi = -\text{logspace\_add}(0, -\text{logit\_zi})$), matching
+  drmTMB's `zi_poisson`/`zi_nbinom2` idiom (its `model_type == 6` branch)
+  exactly; `zi_nbinom2` reuses the plain `nbinom2()` `dnbinom_robust` call;
+  `zi_binomial` reuses `dbinom_robust` (logit-parameterised), the same
+  numerically-stable primitive the delta-family presence term uses.
+- Identifiability: `zi_binomial` is refused at parse time
+  (`R/fit-multi.R`) for single-trial (0/1) response data -- with $N=1$,
+  $P(y=1) = (1-\pi)p$ collapses $\pi$ and $p$ into one free product, with
+  no curvature to separate them. At least one row per trait must carry
+  $N \ge 2$.
+- Boundary cases tested: exact TMB-vs-hand-density identity (1e-8) and a
+  finite-difference gradient check at the starting values, both on a tiny
+  fixed-effects-only fixture (`tests/testthat/test-zi-families.R`); a
+  known-DGP rank-1-latent recovery test per family
+  (`tests/testthat/test-zi-recovery.R`) -- see
+  `dev/gapclose/arcD/D1-report.md` for the exact numbers, including a
+  documented small-sample limit on `zi_nbinom2`'s per-trait dispersion
+  recovery at n = 150 (not zero-inflation-specific; the same limit
+  reproduces on plain `nbinom2()` under the identical DGP).
+- Comparator-test alignment: `dev/gapclose/arcD/alignment-zi.md`'s
+  symbolic derivation, checked against `stats::dpois`/`dnbinom`/`dbinom`
+  directly in the exactness test; drmTMB's `model_type == 6` zi_poisson
+  branch (`src/drmTMB.cpp`) and GLLVM.jl's `src/families/twopart.jl` are
+  the two independent oracle derivations the density form was checked
+  against (recon, `dev/gapclose/arcD/recon-zi.md`).
+- Not established: `integration = "va"` and `estimator = "mspl"` both
+  refuse the three family ids (`R/va-routing.R`'s `0:15` allow-list; the
+  MSPL registry has no matching rows) -- no evidence exists for either
+  route here. `aghq` DECLINES to a plain Laplace fit with a warning
+  instead (`R/fit-multi.R`'s eligibility chain -- consistent with how
+  every OTHER ineligible model is handled there, e.g. `multinomial()`
+  rows; corrected 2026-09-02, review R3, was previously stated as a
+  refusal).
+- Test file: `tests/testthat/test-zi-families.R`,
+  `tests/testthat/test-zi-recovery.R`.
+
 ### Delta / hurdle families
 
-**Status: `planned (post-CRAN)`** — see
-`docs/design/02-family-registry.md` "Hurdle / delta families —
-DEFERRED to post-CRAN" for the two-scales rationale. The engine
-has the constructors and densities; the deferral is to the
-public-API surface (latent-scale correlations across delta and
-other families is not yet defined).
+**Status: `covered` for the standard fixed-effect family routes; `partial` for
+the bounded predictor-informed LV cells.** The engine wires
+`delta_lognormal()` and `delta_gamma()` with one shared `eta` controlling
+occurrence log-odds and positive-part log mean. Point-recovery evidence covers
+the named mixed/sentinel delta cells and the pure delta-lognormal and
+delta-Gamma cells in the native rank-1, loadings-only, complete-response
+programme; their targets are `B_lv` and `Lambda %*% t(Lambda)` with
+`link_residual = "none"`. The Gaussian + delta-Gamma archetype also passes its
+target-wise Wald calibration gate. This evidence does not
+establish an unconditional response-mean effect, an automatic delta
+link-residual correlation, default `+ Psi`, or the constructor-only delta
+families. See Design 02 for the exact contract.
 
 ## Boundary conditions and edge cases
 
@@ -663,6 +893,25 @@ the multi-trait case):
   family-list length mismatches rejected.
 
 ## Cross-references
+
+### Opt-in LA-MSPL GLM-outer weights (Poisson REPLACE)
+
+`estimator = "mspl"` builds a GLM-outer Jeffreys atom from
+`gll_mspl_log_weight_glm` (not Laplace-marginal \(I(\beta)\)).
+
+- **Bernoulli** (`family_id == 1`): link-specific \(W\) via
+  `gll_mspl_log_weight(eta, link_id)`.
+- **Poisson** (`family_id == 2`, G0 SIGNED REPLACE 2026-08-17 / #1102):
+  live weight is working logistic \(W_*=\mu_*(1-\mu_*)\),
+  \(\mu_*=\operatorname{logit}^{-1}(\eta)\), via
+  `return gll_mspl_log_weight(eta, /*logit*/ 0)` (Tweedie
+  `family_id == 6` precedent; existence device, not true-model
+  Jeffreys). True Poisson \(W=\operatorname{diag}(\mu)\) /
+  `return eta` is one-sided (\(0/+\infty\)) and remains the
+  historical contrast only (#1064 W1/W2). Experimental point;
+  **no** public `se` / `vcov` / `confint`; **not** NEWS `covered`.
+- **Tweedie** (`family_id == 6`, planned): same working-logistic device;
+  true \(W=\mu^{2-p}/\phi\) rewards \(\phi\to 0\).
 
 ### Opt-in binary LA-MSPL objective
 
@@ -725,6 +974,59 @@ AIC/BIC/LRT or interval route is licensed by a finite penalised Hessian.
 
 ## How this doc grows
 
+### Gaussian singleton-cell integration (2026-08-30; bounded validation)
+
+The ordinary unit-level diagonal effect can be integrated analytically when
+each cell has one observed Gaussian response. Write its variance as
+`psi = exp(2 * theta_diag_B)` and keep the observation variance
+`e = sigma_eps^2` separate. The identity is
+
+\[
+ s_i\sim N(0,\psi_t),\quad y_i\mid s_i\sim N(\eta_{0i}+s_i,e)
+ \quad\Longrightarrow\quad y_i\sim N(\eta_{0i},\psi_t+e).
+\]
+
+This changes integration arithmetic, not the marginal model. In particular,
+the documented fixed stabilizer is retained; it is not set to zero or absorbed
+into the reported Psi. Ordinary shared latent variation, phylogenetic shared
+and diagonal variation, and response-column coefficient variation remain
+separate components with unchanged parameters.
+
+| Quantity | Native implementation | Output meaning |
+|---|---|---|
+| Cell variance `psi` | `exp(2 * theta_diag_B)` | Ordinary unique covariance |
+| Observation variance `e` | Fixed `exp(2 * log_sigma_eps)` | Same stabilizer as before |
+| Integrated density | Gaussian variance `psi + e` | Same marginal likelihood |
+| Conditional cell mean `m` | `psi/(psi+e) * (y-eta0)` | Reconstructed ordinary cell effect |
+| Conditional cell variance `v` | `psi*e/(psi+e)` | Remaining uncertainty conditional on other parameters/effects |
+
+The reconstructed predictor is `eta0 + m`. Prediction for existing units uses
+the saved reconstructed cell effects. Unconditional simulation continues to
+draw the original separate components. `extract_ordination(level="unit")`
+continues to read the retained ordinary latent scores.
+
+For uncertainty, ADREPORT of `m` propagates uncertainty from the remaining
+random effects and fixed/covariance parameters. `getREsd(block="diag_unit")`
+adds `v` to that propagated variance before taking square roots. Adding only
+the variance of `m` would omit conditional uncertainty. No additional variance
+of the estimated `v` is added: the original TMB first-order convention uses
+conditional variance evaluated at fitted covariance parameters. Removed cell
+coordinates are not fabricated in the reduced tape's raw joint precision.
+
+The initial implementation is restricted to complete, unit-weight Gaussian ML
+models with singleton ordinary cells and the supported ordinary/phylogenetic
+latent or response-column coefficient composition. Other families, repeated
+cells, missingness, incompatible maps, and other excluded model paths retain
+the existing integration route. This restriction is computational eligibility,
+not a new model keyword or public engine. Compiled likelihood/gradient/output
+checks and all twelve approved frozen fits pass. Evidence is recorded in
+`dev/tree-axis-latent/evidence/2026-08-30-cell-integration.json` and
+`tests/testthat/test-gaussian-cell-collapse.R`. This validates the named
+Gaussian compositions and first-order conditional uncertainty calculation;
+it does not establish parameter recovery or interval coverage. FG-20 remains
+partial for response-column coefficients. Package, publication and landing
+receipts remain separate gates.
+
 drmTMB's `03-likelihoods.md` is 1374 lines because they've
 validated many families. gllvmTMB's lives at this thinner
 stage today, but the **structure mirrors drmTMB exactly** so
@@ -740,3 +1042,81 @@ subsections grow with:
 A mature `03-likelihoods.md` at v0.3.x will look much like
 drmTMB's today. The path is: write the structure now; let
 evidence accumulate; promote claims to covered as it lands.
+
+## Structured source attenuation (development arc, 2026-08-31)
+
+The approved contract is `dev/structured-rho/spatial-recovery/PLAN.md`. Fixed
+attenuation and the admitted Gaussian estimator are implemented with scoped
+workflow checks. Spatial recovery evidence remains limited: 14 cells are
+partial, 2 are blocked, and none passes the predeclared joint range--rho gate.
+For the legacy-resolved source covariance K,
+define D = diag(diag(K)) and K_rho = rho K + (1-rho)D. The entire trait
+covariance S = Lambda Lambda' + Psi receives the same source strength.
+Ordinary variance components and Gaussian observation noise stay separate.
+
+Dense sources are mixed after existing scaling and diagonal conditioning,
+before inversion/determinant calculation. Sparse augmented sources retain Q
+and their ancestor map: at modeled source level j, the effective score is
+sqrt(rho) g_aug[j] + sqrt(1-rho) sqrt(D[j]) e[j]. Independent e lives at
+source levels, not observations. Separate factor and Psi scores share rho.
+At rho=0 augmented scores and their priors are inactive; their loading/SD
+parameters remain active. Omitted/explicit rho=1 follows the old engine branch.
+The common-variance propto route retains its own legacy marginal resolution.
+
+Source diagonals are selected entries of the inverse FULL precision, obtained
+with a reusable sparse factorization. Neither reciprocal precision diagonals
+nor the inverse of a tip-only precision submatrix gives the required marginal
+variance when ancestors are retained. Existing phylo(Ainv=) sugar resolves
+densely; animal(Ainv=) retains sparse precision. Do not silently equate them.
+
+`test-structured-rho-fixed-oracle.R` independently constructs the Gaussian
+observation covariance, including replication and residual noise, to check
+fixed-point likelihoods. No recovery claim follows from this check. Estimated
+rho uses a separate outer logit parameter initialized at zero (rho=.5). The
+dense prior uses an eigendecomposition of D^-1/2 K D^-1/2, with eigenvalues
+(1-rho)+rho*lambda and log determinant sum(log(D))+sum(log(eigenvalues)).
+Sparse estimated strength uses stable square-root logistic weights on both
+fields. Observation-level admission requires at least two traits and complete repeated vectors on
+unit_obs, every modeled group observed, positive diagonals and observed source
+contrast. Competing ordinary covariance and other unproved configurations are
+rejected. Rank-one latent admission with four traits is generic: weak/zero
+loading configurations still need diagnostics and do not prove Psi separation.
+Downstream methods and full fixed-family equivalence now have passing scoped
+checks. The retained spatial study completed with 14 partial and 2 blocked
+cells, so it makes no broad joint range--rho recovery claim. The separate
+coefficient-rho parameter and defaults are unchanged.
+
+### Spatial extension (maintainer addendum, 2026-08-31)
+
+The approved spatial contract is retained in
+`dev/structured-rho/spatial-recovery/PLAN.md`. With one
+projection row per modeled location, K(kappa) = A_g Q(kappa)^(-1) A_g', where
+Q(kappa) = kappa^4 M0 + 2 kappa^2 M1 + M2 uses the existing mesh scale.
+The same K_rho formula applies, with its diagonal recomputed as kappa changes.
+For latent scores, use sqrt(rho) A_g omega + sqrt(1-rho) sqrt(D) e before
+the loading map. For independent/Psi effects, the mesh field already includes
+1/tau; the IID companion receives exactly one 1/tau. Replication happens last.
+
+Sparse projections stay sparse, and one differentiated sparse factorization
+computes selected projected diagonals by location-wise solves. Neither dense
+Q inverse nor full location covariance is needed by the likelihood. Omitted
+and explicit rho one retain the literal old path. At fixed zero the mesh fields
+are mapped off, but kappa stays active because D(kappa) still depends on it.
+Proportional diagonal changes can confound range with trait scale at this endpoint.
+
+Estimated spatial strength retains Gaussian replicated-vector admission and
+adds a local source-shape check. H=K_rho/trace(K) removes amplitude; finite
+differences in log(kappa) and the analytic rho derivative must have numerically
+independent normalized columns (relative singular value >1e-8). Reference
+kappa values are .5,1,2 and rho=.5, independent of data-generation truth.
+Geometry uses at most 64 deterministically spaced modeled rows to bound memory.
+Failure at all three points rejects this admission test, not a claimed theorem
+of global nonidentification. Fitted diagnostics report the selected indices,
+conditioning, and the fixed-rho range-shape derivative norm. Ancillary failures
+return an unavailable reason rather than discard the fit.
+
+Independent spatial tests vary both kappa and rho and construct the full
+Gaussian observation covariance separately. Fixed-family comparison must
+preserve spatial Psi even when the phylogenetic reference family maps its own
+Psi companion off: encode that whole trait covariance through dense `dep()`.
+The frozen nonspatial recovery study supplies no spatial recovery claim.

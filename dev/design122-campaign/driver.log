@@ -1,0 +1,6 @@
+[driver] START Mon Aug 17 01:35:49 PM UTC 2026
+[driver] waiting for chunk-023.csv (verification run in flight)...
+[driver] chunk-023.csv landed after 1440s -- proceeding
+[driver] === starting chunk 1 Mon Aug 17 01:59:49 PM UTC 2026 ===
+[driver] === chunk 1 finished exit=0 Mon Aug 17 02:00:24 PM UTC 2026 ===
+[driver] === starting chunk 2 Mon Aug 17 02:00:24 PM UTC 2026 ===

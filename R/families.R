@@ -11,7 +11,10 @@
   }
   if (!is.character(candidate) || length(candidate) != 1L || is.na(candidate) ||
       !nzchar(candidate)) {
-    cli::cli_abort("{.fn {caller}} requires one link name.")
+    cli::cli_abort(c(
+      "{.fn {caller}} requires one link name.",
+      ">" = "Pass a single unquoted or quoted link name, e.g. {.code {caller}(link = \"log\")}."
+    ))
   }
   tryCatch(
     stats::make.link(candidate),
@@ -44,9 +47,10 @@
 .gllvm_probability <- function(x, argument, caller) {
   if (is.null(x)) return(NULL)
   if (!is.numeric(x) || length(x) != 1L || !is.finite(x) || x <= 0 || x >= 1) {
-    cli::cli_abort(
-      "{.fn {caller}} requires {.arg {argument}} to be NULL or one number strictly between 0 and 1."
-    )
+    cli::cli_abort(c(
+      "{.fn {caller}} requires {.arg {argument}} to be NULL or one number strictly between 0 and 1.",
+      ">" = "Omit {.arg {argument}} to use the default, or pass a single value like {.code 0.5}."
+    ))
   }
   as.numeric(x)
 }
@@ -105,8 +109,25 @@
 #'
 #' Supply a list of descriptors when response traits use different families.
 #' The data column `family` selects an element for each row. Set
-#' `attr(families, "family_var")` to select a differently named column. Names on
-#' the list are matched to selector levels; an unnamed list is matched by order.
+#' `attr(families, "family_var")` to select a differently named column.
+#'
+#' **Ordering contract.** Name the list to match the selector column's
+#' values, e.g. `list(gaussian = gaussian(), student = student())` --
+#' matching by name is unambiguous and always accepted. An *unnamed* list is
+#' matched positionally to the selector column's levels (`levels()` for a
+#' factor, alphabetical `sort(unique(...))` otherwise); this is validated,
+#' not merely assumed, by checking that reading against each family's own
+#' name (e.g. a `"student"` level naturally means `student()`) agrees with
+#' where the list put it. When the two readings agree -- which is true
+#' whenever the list is already written in level order -- the fit proceeds
+#' silently. When they disagree, that disagreement is precisely the
+#' silent-swap failure mode: `list(student(), gaussian())` against
+#' `family = rep(c("student","gaussian"), each = n)` previously paired
+#' the student rows with `gaussian()` and vice versa, with no warning and a
+#' converged fit; the list is refused with an error showing both
+#' readings. A selector column whose values carry no name evidence at all
+#' (arbitrary labels such as `"count"`/`"binary"`) still uses list order,
+#' but the resolved pairing is reported once so it stays auditable.
 #'
 #' Ordinarily the family may vary *between* traits but not *within* one: all
 #' rows of a given trait must share one family and link, and a fit that mixes
@@ -158,26 +179,47 @@
 #'
 #' @examples
 #' Beta(link = "logit")
-#' \dontrun{
-#' ## Mixed-family example: per-row family chosen by a `family` column
+#' ## Mixed-family example: per-row family chosen by a `family` column. Trait 1
+#' ## stays Gaussian; trait 2 is recorded as presence/absence.
 #' sim <- simulate_site_trait(n_sites = 40, n_species = 10, n_traits = 2,
-#'                            mean_species_per_site = 5)
-#' sim$data$family <- factor(
-#'   ifelse(sim$data$trait == levels(sim$data$trait)[1], "gaussian", "binomial"),
-#'   levels = c("gaussian", "binomial")
-#' )
-#' fam <- list(gaussian(), binomial())
+#'                            mean_species_per_site = 5,
+#'                            Lambda_B = matrix(c(0.8, 0.6), 2, 1), seed = 1)
+#' dat <- sim$data
+#' is_bin <- dat$trait == levels(dat$trait)[2]
+#' dat$value[is_bin] <- as.integer(dat$value[is_bin] > 0)
+#' dat$family <- factor(ifelse(is_bin, "binomial", "gaussian"),
+#'                      levels = c("gaussian", "binomial"))
 #' fit <- gllvmTMB(
-#'   value ~ 0 + trait + latent(0 + trait | site, d = 1),
-#'   data   = sim$data,
-#'   family = fam,
+#'   value ~ 0 + trait + latent(0 + trait | site, d = 1, unique = TRUE),
+#'   data   = dat,
+#'   family = list(gaussian = gaussian(), binomial = binomial()),
 #'   trait  = "trait",
 #'   unit   = "site"
 #' )
+#' fit
 #'
 #' ## Integrated two-source model: portal counts + survey detections, one
 #' ## shared ecological predictor. `dat` is long, one row per
-#' ## (cell, species, source); `log_support` is log sampled area or effort.
+#' ## (cell, species, source); `log_support` is log sampled area or effort,
+#' ## `bias` a portal-only recording-effort covariate.
+#' set.seed(1)
+#' dat <- expand.grid(
+#'   cell_id = factor(paste0("c", 1:60)),
+#'   trait   = factor(c("sp1", "sp2")),
+#'   source  = c("gbif", "survey")
+#' )
+#' env <- rnorm(60)  # one value per cell
+#' u <- rnorm(60)    # unmeasured cell effect shared by both species
+#' dat$env <- env[as.integer(dat$cell_id)]
+#' dat$isdm_gbif <- as.integer(dat$source == "gbif")
+#' dat$bias <- ifelse(dat$source == "gbif", rnorm(nrow(dat)), 0)
+#' dat$log_support <- ifelse(dat$source == "gbif", log(2), log(0.5))
+#' eta <- c(0.2, -0.1)[dat$trait] + c(0.5, -0.4)[dat$trait] * dat$env +
+#'   c(0.6, 0.4)[dat$trait] * u[as.integer(dat$cell_id)] +
+#'   dat$log_support + dat$isdm_gbif * (-0.3 + 0.4 * dat$bias)
+#' dat$value <- ifelse(dat$source == "gbif",
+#'                     rpois(nrow(dat), exp(eta)),
+#'                     rbinom(nrow(dat), 1, 1 - exp(-exp(eta))))
 #' dat$isdm_family <- factor(
 #'   ifelse(dat$source == "gbif", "gbif", "survey_pa"),
 #'   levels = c("gbif", "survey_pa")
@@ -186,13 +228,12 @@
 #' attr(isdm_fam, "family_var") <- "isdm_family"
 #' fit_isdm <- gllvmTMB(
 #'   value ~ 0 + trait + trait:env + trait:isdm_gbif + trait:bias +
-#'     offset(log_support) + latent(0 + trait | cell_id, d = 1),
+#'     offset(log_support) + latent(0 + trait | cell_id, d = 1, unique = FALSE),
 #'   data   = dat,
 #'   family = isdm_fam,
 #'   trait  = "trait",
 #'   unit   = "cell_id"
 #' )
-#' }
 Beta <- function(link = "logit") {
   .gllvm_family("Beta", substitute(link), link, "logit")
 }
@@ -350,9 +391,10 @@ truncated_nbinom1 <- function(link = "log") {
 student <- function(link = "identity", df = NULL) {
   if (!is.null(df) &&
       (!is.numeric(df) || length(df) != 1L || !is.finite(df) || df <= 1)) {
-    cli::cli_abort(
-      "student(): {.code df} must be one finite number greater than 1 (got {df})."
-    )
+    cli::cli_abort(c(
+      "student(): {.code df} must be one finite number greater than 1 (got {df}).",
+      ">" = "Pass e.g. {.code df = 3}, or omit {.arg df} to estimate it."
+    ))
   }
 
   if (is.null(df)) {
@@ -372,20 +414,125 @@ student <- function(link = "identity", df = NULL) {
 tweedie <- function(link = "log", p = NULL) {
   if (!is.null(p) &&
       (!is.numeric(p) || length(p) != 1L || !is.finite(p) || p <= 1 || p >= 2)) {
-    cli::cli_abort(
-      "tweedie(): {.code p} (the power) must be a single number strictly between 1 and 2 (got {p})."
-    )
+    cli::cli_abort(c(
+      "tweedie(): {.code p} (the power) must be a single number strictly between 1 and 2 (got {p}).",
+      ">" = "Pass e.g. {.code p = 1.5}, or omit {.arg p} to estimate it."
+    ))
   }
   .gllvm_family("tweedie", substitute(link), link, c("log", "identity"),
                 list(p = p))
 }
 
+#' @details
+#' \code{censored_poisson()} is a right-censored Poisson family (log link
+#' only): each row is either an ordinary observed count, or is only known
+#' to satisfy \code{Y >= C} for some censoring limit \code{C} (e.g. a
+#' detection ceiling). Supply the response as \code{cbind(y, censored) ~
+#' ...}, where column 1 is the observed count (uncensored rows) or the
+#' censoring limit \code{C} (censored rows), and column 2 is a strict
+#' \code{\{0, 1\}} right-censoring indicator per row. A plain \code{y ~
+#' ...} response is also accepted and treats every row as uncensored
+#' (identical to \code{\link{poisson}()}). Left-censoring and
+#' interval-censoring are \strong{not} supported -- right-censoring only.
+#' \code{fitted()}/\code{predict(type = "response")} report the mean of
+#' the underlying uncensored Poisson process (\code{exp(eta)}), not a
+#' censoring-adjusted expectation, matching how \code{\link{truncated_poisson}()}
+#' reports its untruncated mean.
 #' @export
 #' @examples
 #' censored_poisson(link = "log")
+#' ## A small simulated rank-1 GLLVM fit with one right-censored trait
+#' ## (censoring limit C = 6).
+#' set.seed(1)
+#' n_site <- 100L
+#' n_trait <- 3L
+#' u <- rnorm(n_site)
+#' lambda <- c(0.6, -0.5, 0.4)
+#' beta <- c(1.2, 0.9, 1.4)
+#' C <- 6
+#' eta <- outer(u, lambda) + matrix(beta, n_site, n_trait, byrow = TRUE)
+#' mu <- exp(eta)
+#' y_true <- matrix(rpois(n_site * n_trait, mu), n_site, n_trait)
+#' censored <- y_true >= C
+#' y_obs <- ifelse(censored, C, y_true)
+#' dat <- data.frame(
+#'   site     = factor(rep(seq_len(n_site), n_trait)),
+#'   trait    = factor(rep(seq_len(n_trait), each = n_site)),
+#'   y        = as.vector(y_obs),
+#'   censored = as.integer(as.vector(censored))
+#' )
+#' fit <- gllvmTMB(
+#'   cbind(y, censored) ~ 0 + trait + latent(0 + trait | site, d = 1, unique = FALSE),
+#'   data = dat, family = censored_poisson(), trait = "trait", unit = "site"
+#' )
+#' fit
 #' @rdname families
 censored_poisson <- function(link = "log") {
   .gllvm_family("censored_poisson", substitute(link), link, "log", full = FALSE)
+}
+
+#' @details
+#' \code{zi_poisson()}, \code{zi_nbinom2()}, and \code{zi_binomial()} are
+#' TRUE zero-inflation mixtures: the count process (log-link mean, or
+#' logit-link probability for \code{zi_binomial()}) is active at every
+#' observation, including \code{y = 0}, on top of a per-trait,
+#' intercept-only structural-zero probability \code{zi} (logit link, no
+#' covariates and no random effects on the zero part). This is different
+#' from \code{\link{delta_lognormal}()}/\code{\link{delta_gamma}()}, which
+#' are hurdle models -- a strictly positive component conditional on
+#' presence, with no second zero-generating process (see
+#' \code{vignette("current-limits", package = "gllvmTMB")} for guidance on
+#' choosing between these models). \strong{Boundary:} the count process (its fixed
+#' effects, \code{\link{latent}()} structure, and every correlation gllvmTMB
+#' reports) is conditional on the non-structural component; \code{zi} itself
+#' carries no covariates, no random effects, and no reported interval.
+#' \code{zi_nbinom2()} reuses the ordinary \code{\link{nbinom2}()} per-trait
+#' dispersion convention (not a shared scalar across traits).
+#' \code{zi_binomial()} requires multi-trial data (\code{cbind(successes,
+#' failures)} or a trials column) with at least one row per trait carrying
+#' \code{n_trials >= 2}; single-trial (0/1) responses do not identify the
+#' mixture and are refused with \code{\link{binomial}()} named as the
+#' working alternative.
+#' @export
+#' @examples
+#' ## A small simulated rank-1 GLLVM fit in which a quarter of the counts are
+#' ## structural zeros.
+#' set.seed(1)
+#' n_site <- 100L
+#' n_trait <- 3L
+#' u <- rnorm(n_site)
+#' lambda <- c(0.6, -0.5, 0.4)
+#' beta <- c(1.2, 0.9, 1.4)
+#' pi_true <- 0.25
+#' eta <- outer(u, lambda) + matrix(beta, n_site, n_trait, byrow = TRUE)
+#' mu <- exp(eta)
+#' z <- matrix(rbinom(n_site * n_trait, 1L, 1 - pi_true), n_site, n_trait)
+#' y <- matrix(rpois(n_site * n_trait, mu), n_site, n_trait) * z
+#' dat <- data.frame(
+#'   site  = factor(rep(seq_len(n_site), n_trait)),
+#'   trait = factor(rep(seq_len(n_trait), each = n_site)),
+#'   y     = as.vector(y)
+#' )
+#' fit <- gllvmTMB(
+#'   y ~ 0 + trait + latent(0 + trait | site, d = 1, unique = FALSE),
+#'   data = dat, family = zi_poisson(), trait = "trait", unit = "site"
+#' )
+#' fit$report$zi  # per-trait fitted structural-zero probability
+#' @rdname families
+zi_poisson <- function(link = "log") {
+  .gllvm_family("zi_poisson", substitute(link), link, "log", full = FALSE)
+}
+
+#' @export
+#' @rdname families
+zi_nbinom2 <- function(link = "log") {
+  .gllvm_family("zi_nbinom2", substitute(link), link, "log", full = FALSE)
+}
+
+#' @export
+#' @rdname families
+zi_binomial <- function(link = "logit") {
+  .gllvm_family("zi_binomial", substitute(link), link, "logit", full = FALSE)
 }
 
 #' @export
@@ -537,7 +684,10 @@ delta_truncated_nbinom1 <- function(link1 = "logit", link2 = "log") {
 #' @keywords internal
 delta_poisson_link_gamma <- function(link1 = "log", link2 = "log") {
   if (!identical(link1, "log") || !identical(link2, "log")) {
-    cli::cli_abort("The deprecated Poisson-link wrapper accepts only log links.")
+    cli::cli_abort(c(
+      "The deprecated Poisson-link wrapper accepts only log links.",
+      ">" = "Use {.code delta_gamma(link1 = \"logit\", link2 = \"log\", type = \"poisson-link\")} directly instead."
+    ))
   }
   lifecycle::deprecate_warn("0.4.2.9000", "delta_poisson_link_gamma()", "delta_gamma(type)")
   delta_gamma(link1 = "logit", link2 = "log", type = "poisson-link")
@@ -548,7 +698,10 @@ delta_poisson_link_gamma <- function(link1 = "log", link2 = "log") {
 #' @keywords internal
 delta_poisson_link_lognormal <- function(link1 = "log", link2 = "log") {
   if (!identical(link1, "log") || !identical(link2, "log")) {
-    cli::cli_abort("The deprecated Poisson-link wrapper accepts only log links.")
+    cli::cli_abort(c(
+      "The deprecated Poisson-link wrapper accepts only log links.",
+      ">" = "Use {.code delta_lognormal(link1 = \"logit\", link2 = \"log\", type = \"poisson-link\")} directly instead."
+    ))
   }
   lifecycle::deprecate_warn("0.4.2.9000", "delta_poisson_link_lognormal()", "delta_lognormal(type)")
   delta_lognormal(link1 = "logit", link2 = "log", type = "poisson-link")
@@ -564,7 +717,8 @@ betabinomial <- function(link = "logit") {
   if (!link_name %in% c("logit", "cloglog")) {
     cli::cli_abort(c(
       "{.fn betabinomial} supports only logit and cloglog links.",
-      "i" = "Received {.val {link_name}}."
+      "i" = "Received {.val {link_name}}.",
+      ">" = "Pass {.code link = \"logit\"} (the default) or {.code link = \"cloglog\"}."
     ))
   }
   .gllvm_family("betabinomial", link_name, link_name,
@@ -620,7 +774,7 @@ delta_beta <- function(link1 = "logit", link2 = "logit") {
 #'
 #' Cross-engine note: `gllvmTMB`'s `ordinal_probit()` is a probit
 #' threshold model (unit latent variance; Hadfield 2015), whereas
-#' `GLLVM.jl`'s ordinal family is a cumulative-*logit* model. Cutpoints
+#' `GLLVModels.jl`'s ordinal family is a cumulative-*logit* model. Cutpoints
 #' and loadings therefore live on different link scales (differing by a
 #' factor of roughly \eqn{\pi / \sqrt{3}}) and must not be compared
 #' across engines at machine tolerance; the `engine = "julia"` bridge
@@ -666,10 +820,91 @@ ordinal_probit <- function(link = "probit") {
   link_name <- .gllvm_link(substitute(link), link, "probit",
                            "ordinal_probit()")$name
   if (!identical(link_name, "probit")) {
-    cli::cli_abort("{.fn ordinal_probit} supports only the probit link.")
+    cli::cli_abort(c(
+      "{.fn ordinal_probit} supports only the probit link.",
+      ">" = "Omit {.arg link} to use the default {.code \"probit\"}."
+    ))
   }
   .gllvm_family("ordinal_probit", "probit", "probit", "probit",
                 full = FALSE, class = c("ordinal_probit", "family"))
+}
+
+#' Ordinal-logit threshold family for the multivariate engine
+#'
+#' The cumulative-**logit** analogue of [ordinal_probit()]: the same
+#' Wright/Falconer/Dempster-Lerner threshold model for K-category ordinal
+#' data with K >= 3, fitted on the latent (logistic) scale instead of the
+#' probit scale. The latent variable representation is
+#' \eqn{y^* = \eta + \varepsilon}, with \eqn{\varepsilon \sim
+#' \text{Logistic}(0, 1)} and the observed category \eqn{y = k} iff
+#' \eqn{\tau_{k-1} < y^* \le \tau_k}, using cutpoints \eqn{\tau_0 =
+#' -\infty}, \eqn{\tau_1 = 0} (fixed for identifiability), \eqn{\tau_2,
+#' \ldots, \tau_{K-1}}, \eqn{\tau_K = +\infty}. A K-category trait
+#' therefore estimates K - 2 free cutpoints, reconstructed and reported
+#' via the SAME [extract_cutpoints()] convention as `ordinal_probit()`.
+#'
+#' Because the standard logistic distribution has variance
+#' \eqn{\pi^2 / 3}, the link-residual variance
+#' \eqn{\sigma^2_d = \pi^2 / 3} *exactly* -- the logit analogue of
+#' `ordinal_probit()`'s \eqn{\sigma^2_d = 1}. As with `ordinal_probit()`,
+#' this fixes the ordinal liability scale; it does not by itself make
+#' estimates directly comparable with an observed continuous response.
+#'
+#' The K = 2 case reduces exactly to `binomial(link = "logit")`, the
+#' logit analogue of the probit family's Hadfield (2015) eqn 10 reduction
+#' (`ordinal_probit()` with K = 2 reduces to `binomial(link = "probit")`).
+#' Use `binomial()` for binary outcomes and `ordinal_logit()` for K >= 3.
+#'
+#' \strong{Not to be confused with `cumulative_logit()`.}
+#' [cumulative_logit()] is an unrelated \emph{predictor}-model family tag
+#' consumed by `impute_model(family = cumulative_logit())` for an ORDERED
+#' CATEGORICAL missing covariate inside `mi()`; it declares no response
+#' family and never appears in the top-level `family = ` argument of
+#' [gllvmTMB()]. `ordinal_logit()`, declared here, is a RESPONSE family
+#' for [gllvmTMB()]'s `family = ` argument, exactly parallel to
+#' `ordinal_probit()`. Both happen to use a cumulative-logit cell
+#' probability, but one models a missing predictor's marginal distribution
+#' and the other models the observed multivariate response; they are not
+#' interchangeable and share no code path.
+#'
+#' Cross-engine note: `GLLVModels.jl`'s ordinal family is a cumulative-logit
+#' model, so `ordinal_logit()` is the gllvmTMB family that is directly
+#' comparable to it on the link scale (unlike `ordinal_probit()`, which
+#' differs by a factor of roughly \eqn{\pi / \sqrt{3}}; see the
+#' cross-engine note on [ordinal_probit()]).
+#'
+#' @param link Always `"logit"`; provided for API symmetry with the
+#'   other family constructors.
+#'
+#' @return A family object with class `c("ordinal_logit", "family")`.
+#'   The cutpoints are estimated as part of the model fit; recover them
+#'   with [extract_cutpoints()].
+#'
+#' @references
+#' Hadfield, J. D. (2015). Increasing the efficiency of MCMC for
+#'   hierarchical phylogenetic models of categorical traits using
+#'   reduced mixed models. *Methods Ecol. Evol.* 6:706-714.
+#'   \doi{10.1111/2041-210X.12354}
+#'
+#' @seealso [ordinal_probit()] for the probit threshold family;
+#'   [extract_cutpoints()] to recover \eqn{\tau_2, \ldots, \tau_{K-1}}
+#'   after fitting; [cumulative_logit()] for the UNRELATED
+#'   missing-predictor family of the same name shape.
+#'
+#' @export
+#' @examples
+#' ordinal_logit()
+ordinal_logit <- function(link = "logit") {
+  link_name <- .gllvm_link(substitute(link), link, "logit",
+                           "ordinal_logit()")$name
+  if (!identical(link_name, "logit")) {
+    cli::cli_abort(c(
+      "{.fn ordinal_logit} supports only the logit link.",
+      "i" = "Use {.fn ordinal_probit} for the probit link."
+    ))
+  }
+  .gllvm_family("ordinal_logit", "logit", "logit", "logit",
+                full = FALSE, class = c("ordinal_logit", "family"))
 }
 
 #' Multinomial (baseline-category logit) family
@@ -689,9 +924,7 @@ ordinal_probit <- function(link = "probit") {
 #' imputation family. Because an unordered categorical response spans
 #' \eqn{K-1} latent liability dimensions rather than one, the admitted
 #' structured-term surface is bounded and every cell below was decided by a
-#' signed recovery campaign, not construction alone (Design 123, Slices 1-4,
-#' 2026-08-16; full per-cell table and campaign numbers:
-#' \code{docs/design/123-multinomial-structured-surface.md}).
+#' signed recovery campaign, not construction alone.
 #'
 #' \strong{Admitted:} fixed effects always; an ordinary
 #' shared \code{latent(0 + trait | unit, d = k)} ordination, which connects
@@ -725,9 +958,9 @@ ordinal_probit <- function(link = "probit") {
 #' own corrected rerun independently FAILED (small contrast variances
 #' collapse; a planted-zero check fails). The spatial mode axis and the
 #' \code{(1 | group)} route below both PASSED their signed recovery gates
-#' outright, with no replication rescue needed. \strong{One categorical
-#' draw per species does not identify \eqn{V}; five draws per species
-#' does.}
+#' outright, with no replication rescue needed. In the tested phylogenetic
+#' designs, five draws passed for the loadings-only and full-\eqn{V} cells;
+#' these results do not establish recovery for the diagonal-\eqn{V} cell.
 #'
 #' A generic \code{(1 | group)}
 #' random intercept is also admitted, but its semantics are
@@ -761,11 +994,11 @@ ordinal_probit <- function(link = "probit") {
 #' \code{animal_scalar()} / \code{kernel_scalar()} / \code{spatial_scalar()}
 #' and \code{common = TRUE} at the cluster/cluster2 tier -- a single shared
 #' level across the \eqn{K-1} contrasts has no interpretable null on the
-#' \eqn{(I+J)} contrast geometry (null-DGP evidence:
-#' \code{dev/multinomial-structured/probe-scalar-null.R}).
+#' \eqn{(I+J)} contrast geometry; a null-generating simulation found no
+#' interpretable shared variance on this geometry.
 #'
-#' \strong{Everything else is still deferred} and fails loud
-#' (\code{R/multinomial-fence.R}) rather than reaching an untested
+#' \strong{Everything else is still deferred} and is rejected with an
+#' explicit error rather than reaching an untested
 #' categorical path: \code{dep()}, explicit \code{unique()} /
 #' \code{indep()} at the unit tier, \code{latent()}/\code{dep()} at the
 #' \code{cluster}/\code{cluster2} tiers, and the \code{unit_obs} grouping
@@ -798,10 +1031,16 @@ ordinal_probit <- function(link = "probit") {
 multinomial <- function(link = "logit", baseline = NULL) {
   link_name <- .gllvm_link(substitute(link), link, "logit", "multinomial()")$name
   if (!identical(link_name, "logit")) {
-    cli::cli_abort("{.fn multinomial} supports only the baseline-category logit link.")
+    cli::cli_abort(c(
+      "{.fn multinomial} supports only the baseline-category logit link.",
+      ">" = "Omit {.arg link} to use the default {.code \"logit\"}."
+    ))
   }
   if (!is.null(baseline) && (length(baseline) != 1L || is.na(baseline))) {
-    cli::cli_abort("{.fn multinomial} requires {.arg baseline} to be NULL or one category value.")
+    cli::cli_abort(c(
+      "{.fn multinomial} requires {.arg baseline} to be NULL or one category value.",
+      ">" = "Omit {.arg baseline} to use the first factor level, or pass one existing category, e.g. {.code baseline = \"a\"}."
+    ))
   }
   out <- .gllvm_family(
     "multinomial", "logit", "logit", "logit", full = FALSE,

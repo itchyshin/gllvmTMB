@@ -1,0 +1,8 @@
+# Preserve verbatim R output, including console padding and the final blank line.
+full-testthat.Rout whitespace=-blank-at-eol
+package-build-pandoc-error.log whitespace=-blank-at-eol
+package-check.log whitespace=-blank-at-eol,-blank-at-eof
+session-info.txt whitespace=-blank-at-eol
+test-green.log whitespace=-blank-at-eof
+test-red-clean.log whitespace=-blank-at-eol,-blank-at-eof
+test-red.log whitespace=-blank-at-eol

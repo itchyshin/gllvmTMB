@@ -4,7 +4,7 @@
 \alias{spatial_dep}
 \title{Full unstructured spatial trait covariance: \code{spatial_dep(0 + trait | coords)}}
 \usage{
-spatial_dep(formula, coords = NULL, mesh = NULL)
+spatial_dep(formula, coords = NULL, mesh = NULL, rho = 1)
 }
 \arguments{
 \item{formula}{\code{0 + trait | coords} style formula (LHS is the trait
@@ -19,6 +19,22 @@ the coordinates via the formula RHS.}
 \item{mesh}{An \code{fmesher} mesh object built via \code{\link[=make_mesh]{make_mesh()}}. It may be
 supplied here or through the top-level \verb{mesh =} argument to \code{\link[=gllvmTMB]{gllvmTMB()}}.
 The engine does not construct a mesh automatically from \code{coords}.}
+
+\item{rho}{Source-strength attenuation between 0 and 1, or \code{NULL} to estimate it
+in a complete replicated multivariate Gaussian model without competing
+covariance. Omitted or explicit \code{1} preserves the existing model. Range
+remains a separate estimated parameter. Attenuation preserves the projected
+marginal variance at each modeled location and applies to the whole trait
+covariance, including Psi. The grouping column must identify locations
+consistently across replicates. With \code{rho = NULL} or any value other
+than 1, the name after \code{|} is that grouping column and must be a real
+column of \code{data}, for example \code{0 + trait | location}. The placeholder
+\verb{| coords} fails when \code{data} has no location-ID column named \code{coords}.
+At the default \code{rho = 1} the name is ignored, and \verb{| coords} is the usual
+spelling. Estimated latent models require rank one
+and at least four traits. The frozen spatial study found no passing recovery
+cell (14 partial and 2 blocked); rho intervals remain unvalidated.
+new-location prediction is not supported for attenuated models.}
 }
 \value{
 A formula marker; never evaluated.
@@ -28,7 +44,7 @@ Canonical name for the \strong{full unstructured cross-trait spatial
 covariance} \eqn{\boldsymbol\Sigma_{\text{spa}} \otimes \mathbf{Q}^{-1}},
 with \eqn{T(T+1)/2} free parameters
 (\eqn{\boldsymbol\Sigma_{\text{spa}}} parameterised via Cholesky).
-Mathematically identical to \code{spatial_latent(0 + trait | coords, d = T)}
+Mathematically identical to \code{spatial_latent(0 + trait | coords, d = n_traits, unique = FALSE)}
 standalone; the keyword choice is documentary.
 }
 \details{
@@ -53,19 +69,20 @@ Combining \code{spatial_dep(0 + trait | coords)} with \code{spatial_latent} is
 }
 
 \examples{
-\dontrun{
-  sim <- simulate_site_trait(
-    n_sites = 30, n_species = 6, mean_species_per_site = 5,
-    spatial_range = 0.4, sigma2_spa = rep(0.3, 6), seed = 1
-  )
-  mesh <- make_mesh(sim$data, c("lon", "lat"), cutoff = 0.1)
-  fit <- gllvmTMB(
-    value ~ 0 + trait +
-            spatial_dep(0 + trait | site, mesh = mesh),
-    data  = sim$data,
-    trait = "trait",
-    unit  = "site"
-  )
+sim <- simulate_site_trait(
+  n_sites = 30, n_species = 6, n_traits = 3, mean_species_per_site = 5,
+  spatial_range = 0.4, sigma2_spa = rep(0.5, 3), seed = 1
+)
+mesh <- make_mesh(sim$data, c("lon", "lat"), cutoff = 0.1)
+# env_1 and env_2 are the simulated site covariates.
+\donttest{
+fit <- gllvmTMB(
+  value ~ 0 + trait + (0 + trait):(env_1 + env_2) +
+          spatial_dep(0 + trait | coords, mesh = mesh),
+  data  = sim$data,
+  trait = "trait",
+  unit  = "site"
+)
 }
 }
 \seealso{

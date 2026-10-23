@@ -3,7 +3,7 @@
 # The capability guards in .gllvmTMB_julia_dispatch() fire BEFORE any Julia call
 # (gllvm_julia_fit -> gllvm_julia_setup -> JuliaCall happens only at the very end),
 # so the guard + family-mapping tests are pure-R and run in CI without JuliaCall.
-# The numerical round-trip is gated behind a live JuliaCall + GLLVM.jl.
+# The numerical round-trip is gated behind a live JuliaCall + GLLVModels.jl.
 
 # --- helpers ----------------------------------------------------------------
 
@@ -22,13 +22,45 @@ make_long <- function(n_unit = 10L, traits = c("t1", "t2", "t3"), seed = 1L) {
 
 skip_if_no_julia <- function() {
   testthat::skip_if_not_installed("JuliaCall")
-  jl <- getOption("gllvmTMB.GLLVM.jl.path", Sys.getenv("GLLVM_JL_PATH", ""))
+  jl <- .gllvm_julia_project_path()
   if (!nzchar(jl)) {
     testthat::skip(
-      "GLLVM.jl path not configured (set GLLVM_JL_PATH / options(gllvmTMB.GLLVM.jl.path=))."
+      "GLLVModels.jl path not configured (set GLLVMODELS_JL_PATH / options(gllvmTMB.GLLVModels.jl.path=); legacy aliases also work)."
     )
   }
+  ## The live grouped-dispersion / mask / CI cases exercise the bridge's
+  ## shared-shape multi-trait Gamma payload on purpose. Since #1334 that model
+  ## is refused unless the caller opts in, so opt in for the calling test only.
+  withr::local_options(
+    gllvmTMB.julia_gamma_shared_shape = TRUE,
+    .local_envir = parent.frame()
+  )
 }
+
+test_that("Julia bridge path resolution prefers GLLVModels names and retains legacy aliases", {
+  old_modern_option <- getOption("gllvmTMB.GLLVModels.jl.path")
+  old_legacy_option <- getOption("gllvmTMB.GLLVM.jl.path")
+  old_env <- Sys.getenv(c("GLLVMODELS_JL_PATH", "GLLVM_JL_PATH"), unset = NA_character_)
+  on.exit({
+    options(
+      gllvmTMB.GLLVModels.jl.path = old_modern_option,
+      gllvmTMB.GLLVM.jl.path = old_legacy_option
+    )
+    for (name in names(old_env)) {
+      if (is.na(old_env[[name]])) Sys.unsetenv(name) else do.call(Sys.setenv, stats::setNames(list(old_env[[name]]), name))
+    }
+  }, add = TRUE)
+  Sys.unsetenv(c("GLLVMODELS_JL_PATH", "GLLVM_JL_PATH"))
+  expect_identical(.gllvm_julia_project_path(), "")
+  Sys.setenv(GLLVM_JL_PATH = "/legacy/env/GLLVM.jl")
+  expect_identical(.gllvm_julia_project_path(), "/legacy/env/GLLVM.jl")
+  options(gllvmTMB.GLLVM.jl.path = "/legacy/option/GLLVM.jl")
+  expect_identical(.gllvm_julia_project_path(), "/legacy/option/GLLVM.jl")
+  Sys.setenv(GLLVMODELS_JL_PATH = "/current/env/GLLVModels.jl")
+  expect_identical(.gllvm_julia_project_path(), "/current/env/GLLVModels.jl")
+  options(gllvmTMB.GLLVModels.jl.path = "/current/option/GLLVModels.jl")
+  expect_identical(.gllvm_julia_project_path(), "/current/option/GLLVModels.jl")
+})
 
 fake_grouped_dispersion_julia_fit <- function(
   family = "negbinomial",
@@ -913,7 +945,7 @@ test_that("Julia bridge covariance and raw ordination accessors are routed narro
   expect_equal(total$Sigma, fit$Sigma)
   expect_equal(total$R, fit$correlation)
   expect_true(any(grepl(
-    "retained GLLVM.jl Sigma/correlation payload",
+    "retained GLLVModels.jl Sigma/correlation payload",
     total$note
   )))
 
@@ -1890,7 +1922,7 @@ test_that("confint recomputes from retained Julia bridge input", {
     X = NULL,
     mask = NULL,
     units_are_rows = FALSE,
-    setup_args = list(jl_path = "/tmp/GLLVM.jl")
+    setup_args = list(jl_path = "/tmp/GLLVModels.jl")
   )
 
   testthat::local_mocked_bindings(
@@ -1919,7 +1951,7 @@ test_that("confint recomputes from retained Julia bridge input", {
       expect_equal(ci_level, 0.9)
       expect_equal(ci_nboot, 7L)
       expect_equal(ci_seed, 123L)
-      expect_equal(jl_path, "/tmp/GLLVM.jl")
+      expect_equal(jl_path, "/tmp/GLLVModels.jl")
       out <- .gllvm_julia_normalise_result(fake_ci_julia_fit())
       out$engine <- "julia"
       out$ci_method <- ci_method
@@ -2843,12 +2875,12 @@ test_that("engine argument is validated by match.arg", {
   )
 })
 
-# --- numerical round-trip (gated behind a live JuliaCall + GLLVM.jl) --------
+# --- numerical round-trip (gated behind a live JuliaCall + GLLVModels.jl) ----
 
-test_that("live GLLVM.jl bridge capabilities drift only through registered gates", {
+test_that("live GLLVModels.jl bridge capabilities drift only through registered gates", {
   skip_if_no_julia()
   gllvm_julia_setup()
-  engine_caps <- JuliaCall::julia_eval("GLLVM.bridge_capabilities()")
+  engine_caps <- JuliaCall::julia_eval("GLLVModels.bridge_capabilities()")
   drift <- .gllvm_julia_capability_drift(julia_caps = engine_caps)
   ## The cbind(successes, failures) binomial route is now marshalled and
   ## parity-tested on both sides, so the R and engine capability surfaces
@@ -2964,7 +2996,7 @@ test_that("engine = 'julia' cbind(successes, failures) matches a direct trials-m
   )
 })
 
-test_that("gllvm_julia_fit consumes grouped-dispersion payloads from GLLVM.jl", {
+test_that("gllvm_julia_fit consumes grouped-dispersion payloads from GLLVModels.jl", {
   skip_if_no_julia()
   cases <- julia_grouped_dispersion_cases()
 
@@ -3032,7 +3064,7 @@ test_that("gllvm_julia_fit consumes grouped-dispersion payloads from GLLVM.jl", 
   }
 })
 
-test_that("gllvm_julia_fit passes response masks through to GLLVM.jl", {
+test_that("gllvm_julia_fit passes response masks through to GLLVModels.jl", {
   skip_if_no_julia()
 
   for (case in julia_response_mask_cases()) {
@@ -3149,7 +3181,7 @@ test_that("engine = 'julia' main dispatch routes complete non-Gaussian fixed-eff
   }
 })
 
-test_that("engine = 'julia' main dispatch routes Xcoef_fixed to live GLLVM.jl", {
+test_that("engine = 'julia' main dispatch routes Xcoef_fixed to live GLLVModels.jl", {
   skip_if_no_julia()
 
   case <- julia_fixed_x_cases()$poisson
@@ -3207,9 +3239,9 @@ test_that("NB1 grouped likelihood matches the native linear-variance kernel at f
   JuliaCall::julia_assign("nb1_phi", phi)
   julia_loglik <- JuliaCall::julia_eval(
     paste0(
-      "GLLVM.nb1_grouped_marginal_loglik_laplace(",
+      "GLLVModels.nb1_grouped_marginal_loglik_laplace(",
       "nb1_Y, nb1_Lambda, nb1_beta, nb1_phi;",
-      " link = GLLVM.LogLink())"
+      " link = GLLVModels.LogLink())"
     )
   )
 
@@ -3649,7 +3681,7 @@ test_that("engine = 'julia' main dispatch routes mixed-family postfit", {
   expect_true(all(is.finite(ord$scores)))
 })
 
-test_that("gllvm_julia_fit consumes per-trait ordinal cutpoint payloads from GLLVM.jl", {
+test_that("gllvm_julia_fit consumes per-trait ordinal cutpoint payloads from GLLVModels.jl", {
   skip_if_no_julia()
   y_ord <- matrix(
     c(1, 2, 3, 1, 2, 3, 1, 2, 1, 2, 3, 4, 1, 2, 3, 4),
@@ -3727,7 +3759,7 @@ test_that("gllvm_julia_fit consumes per-trait ordinal cutpoint payloads from GLL
   expect_true(all(cls["sp2", ] %in% seq_len(fit$n_categories[["sp2"]])))
 })
 
-test_that("gllvm_julia_fit routes no-X CI payloads from GLLVM.jl", {
+test_that("gllvm_julia_fit routes no-X CI payloads from GLLVModels.jl", {
   skip_if_no_julia()
   set.seed(488)
   cases <- list(
@@ -4052,7 +4084,11 @@ test_that("gllvm_julia_fit routes live binary predictor-informed LV payloads", {
 test_that("engine = 'julia' Gaussian logLik matches engine = 'tmb'", {
   skip_if_no_julia()
   df <- make_long(n_unit = 40L, seed = 7L)
-  f <- value ~ 0 + trait + latent(0 + trait | unit, d = 1)
+  ## unique = FALSE: the Julia route fits Lambda Lambda^T only (it drops the
+  ## default Psi), so both engines must be asked for the same model. With the
+  ## default unique = TRUE, TMB fits Lambda Lambda^T + Psi (df 9 vs 7) and the
+  ## logLik gap (-159.22 vs -159.40) is a model difference, not an engine one.
+  f <- value ~ 0 + trait + latent(0 + trait | unit, d = 1, unique = FALSE)
   fit_tmb <- gllvmTMB(
     f,
     data = df,
@@ -4082,8 +4118,10 @@ test_that("engine = 'julia' Gaussian logLik matches engine = 'tmb'", {
     level = "unit",
     link_residual = "none"
   ))
-  expect_equal(sigma_jl$Sigma, sigma_tmb$Sigma, tolerance = 1e-5)
-  expect_equal(sigma_jl$R, sigma_tmb$R, tolerance = 1e-5)
+  ## Two independent optimisers: Sigma agrees to ~1e-5 relative (measured
+  ## 6.8e-6 absolute on this fixture), so use the logLik tolerance here.
+  expect_equal(sigma_jl$Sigma, sigma_tmb$Sigma, tolerance = 1e-4)
+  expect_equal(sigma_jl$R, sigma_tmb$R, tolerance = 1e-4)
   sigma_jl_auto <- suppressMessages(extract_Sigma(fit_jl))
   expect_equal(sigma_jl_auto$Sigma, sigma_jl$Sigma, tolerance = 1e-10)
   expect_equal(sigma_jl_auto$R, sigma_jl$R, tolerance = 1e-10)

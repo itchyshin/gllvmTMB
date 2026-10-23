@@ -82,7 +82,8 @@ trait) observation: columns \code{site}, \code{species}, \code{trait}, \code{val
 and \code{lat} if coords were generated.}
 \item{\code{truth}}{Named list of true parameter values (alpha, beta,
 Lambda_B, Lambda_W, psi_B, psi_W, sigma2_phy, sigma2_sp, sigma2_spa,
-spatial_range, sigma2_eps).}
+spatial_range, sigma2_eps, and when reduced-rank terms are used,
+\code{z_B} / \code{z_W} latent-score draws for \code{\link[=extract_latent_scores]{extract_latent_scores()}}.}
 \item{\code{Cphy}}{The phylogenetic correlation matrix used (or \code{NULL}).}
 \item{\code{coords}}{Site coordinates used (or \code{NULL}).}
 }

@@ -1,30 +1,61 @@
 # Design 73 -- Predictor-Informed Latent Scores
 
-**Status:** C1 ordinary unit-tier parser + TMB support for Gaussian and
-pure binomial logit/probit/cloglog fits; ordinary Gaussian response masks are
-validated when the `lv` predictors remain observed and complete at the unit
-level; the R-to-Julia bridge also has point-only complete-response Poisson,
-NB2, Gamma, and Beta routes. Native TMB Gaussian recovery and interval
-evidence now cover the current ordinary Gaussian cells, and unsupported native
-family/link plus REML/lv-formula boundaries have fail-loud guard tests, but
-broader interval, family, tier, source-specific, and bridge parity claims remain
-gated row by row.
+**Status:** Native ordinary unit-tier predictor-informed `latent()` now admits
+compositions of all registered response families under the complete-response
+family-wide contract. Loadings-only `unique = FALSE` admits rank from one to
+the number of logical responses. The ordinary automatic `Psi` companion is
+admitted only when its physical loading, latent-predictor, and engine-free
+diagonal parameters pass a necessary joint mean-covariance dimension screen.
+Construction tests cover
+family IDs 0--16 and repeated-family traits. Live route-health fits cover a
+five-family rank-2/rank-3 composition including ordinal and multinomial rows,
+and one rank-3 fit containing IDs 0--15; multinomial ID 16 is covered by the
+five-family cells. These route-health results do not transfer recovery or
+interval calibration to arbitrary compositions.
+
+The earlier evidence remains cell-specific: native Gaussian rank-1/rank-2 and
+rank-1 multi-trial binomial standard-link cells have recovery and Wald
+evidence; the retained 19-cell r200 campaign supplies point recovery for its
+named rank-1 loadings-only cells; the pure r200 passed 17/19 cells, with Beta
+and ordinal-probit HOLDs; and eight Gaussian-anchor cells have target-wise
+`B_lv` Wald calibration. The R-to-Julia bridge remains a separate narrow
+complete-response, loadings-only point route with optional uncalibrated Wald
+plumbing. Design 73 remains partial for broad recovery/calibration, masks,
+tiers, structured sources, REML, fixed `X + X_lv`, and bridge parity.
 **Maintained by:** Boole (formula grammar), Gauss (TMB implementation),
 Noether (math contract), Emmy (extractor contract), Curie (simulation
 tests), Fisher (identifiability and inference), Rose (scope audit).
-**Validation rows:** `FG-18`, `RE-13`, `EXT-31`, `LV-01` through
-`LV-07` in `docs/design/35-validation-debt-register.md`.
+**Validation rows:** `FG-18`, `RE-13`, `EXT-31`, and `LV-01` through
+`LV-09` in `docs/design/35-validation-debt-register.md`.
 
 This design adds an `lv = ~ ...` argument to ordinary `latent()` terms.
 The argument is a term-local fixed-effect formula for the mean of the
 latent scores. It is not a random-effects formula, not a loading model,
 and not a replacement for trait-specific fixed effects. The current
-implementation admits only the C1 ordinary unit-tier surface: native
-TMB Gaussian fits, including response masks when `lv` predictors are
-observed and complete, native TMB pure-binomial standard-link fits, and a
-narrow R-to-Julia bridge point route for complete-response Gaussian,
-Poisson, NB2, Gamma, Beta, and binomial standard-link fits. All other rows
-remain planned or blocked as listed below.
+implementation admits the ordinary unit-tier surface: native TMB Gaussian
+fits, including the named response-mask compatibility cell, native pure
+binomial standard-link fits, and complete-response compositions of registered
+native families. Each trait must map to one family and one link; repeated
+families across traits are allowed. Rank cannot exceed the number of logical
+responses for loadings-only `unique = FALSE`. The default automatic `Psi`
+companion additionally passes a necessary joint mean-covariance dimension gate
+based on the physical loading rows and slots the engine estimates. Passing the
+screen does not establish local/global identification, stable recovery, or
+calibrated uncertainty. An extra explicit unit-tier diagonal covariance
+term remains rejected.
+For the named Gaussian--multinomial anchor, the upstream $K-1$ baseline-
+contrast pseudo-traits count as one logical categorical response only when the
+complete multinomial expansion metadata is present; malformed/noncontiguous
+contrast groups remain rejected.
+Missing responses are refused before either long- or wide-format default-drop
+handling can remove them. Seventeen pure cells also pass point recovery;
+pure Beta and pure ordinal-probit retain their cell-specific HOLD verdicts.
+Eight named Gaussian-anchor mixed cells have target-wise Wald calibration
+evidence. Arbitrary compositions currently have route-health rather than
+general recovery or calibration evidence. The implementation also has a
+narrow R-to-Julia bridge point route, with optional uncalibrated Wald plumbing,
+for complete-response Gaussian, Poisson, NB2, Gamma, Beta, and binomial
+standard-link fits. All other rows remain planned or blocked as listed below.
 
 The first public target remains ordinary Gaussian unit-tier support:
 
@@ -44,11 +75,25 @@ single-family `binomial()` with one of the package's three supported
 binary links (`"logit"`, `"probit"`, or `"cloglog"`) and the same
 ordinary unit-tier score-mean model. Bridge-only Poisson, NB2, Gamma, and
 Beta point routes are also admitted for complete-response `engine = "julia"`
-fits with `unique = FALSE`, no fixed-effect `X`, no response mask, and no
-CIs. Native TMB count-family support, nonstandard binomial links, ordinal, NB1,
-mixed-family, response-mask bridge, and delta/hurdle bridge rows remain blocked
-until their own validation rows move. Unsupported native family/link calls fail
-loudly; that guard is not support for those families.
+fits as loadings-only reduced-rank models. For that bridge route, explicit
+`unique = FALSE` is the canonical spelling; a default ordinary `latent()` is
+warning-demoted to the same loadings-only fitted model. The bridge admits no
+fixed-effect `X` and no response mask. Native family compositions instead
+retain ordinary `latent()` semantics: automatic `Psi` by default, or
+loadings-only with `unique = FALSE`. A
+retained Julia Wald payload may be exposed as uncalibrated reader plumbing; no
+profile, bootstrap, or calibrated bridge-interval claim is admitted. Native
+composition support remains bounded to registered family/link rows, complete
+responses, one untransformed numeric unit predictor, no fixed RHS, and one
+ordinary unit-tier latent block. Nonstandard binomial links, response masks
+beyond the named Gaussian cell, rank above logical responses, and every
+source/tier expansion remain blocked. The native mixed/sentinel r200
+run used `se = FALSE`, so it supplies no Wald, profile, or bootstrap claim.
+The separate r500 interval conclusion applies only to its eight preregistered
+Gaussian-anchor archetypes and individual trait-scale `B_lv` targets.
+Response-mask bridge, NB1 bridge, ordinal bridge, multinomial bridge, and
+delta/hurdle bridge rows remain blocked. Unsupported calls fail loudly; that
+guard is not support for those rows.
 
 ## Model Contract
 
@@ -124,17 +169,29 @@ and latent-variable modelling, not evidence that this specific
 
 ## Non-Negotiable Decisions
 
-- C1 native TMB support covers **ordinary unit-tier Gaussian and pure
-  binomial logit/probit/cloglog `latent()` only**. The R-to-Julia bridge
+- Native TMB support covers the original **ordinary unit-tier Gaussian and
+  pure binomial logit/probit/cloglog C1 cells**, plus complete-response
+  compositions of registered families at ranks passing the necessary parser
+  screen with default `Psi`, or the logical-response rank cap with
+  `unique = FALSE`. Retained
+  point-recovery evidence covers all 19 named mixed/sentinel cells and 17 of
+  19 pure cells; pure Beta and pure ordinal-probit retain their frozen HOLD
+  verdicts. Target-wise Wald evidence covers eight preregistered mixed
+  Gaussian-anchor archetypes. The R-to-Julia bridge
   additionally admits complete-response Poisson, NB2, Gamma, and Beta point
   routes under the bridge restrictions in Section 4a.
 - `lv` accepts a one-sided fixed-effect formula only.
 - Random-effect bars, offsets, `mi()`, smooth terms, and response or
   trait columns inside `lv` are rejected; top-level guard tests cover
   random-effect bars, `offset()`, `mi()`, and smooth terms.
-- `lv = ~ x` is accepted, but the intercept is dropped internally.
-  The parser records a fit note and tests equivalence to
-  `lv = ~ 0 + x`.
+- `lv = ~ x` is accepted; its model matrix is built from the original
+  formula, then the actual intercept column is removed. For numeric `x`,
+  this is equivalent to `lv = ~ 0 + x`. For factors, retain the original
+  contrasts: default treatment coding estimates differences from a
+  reference level. Full factor indicators and other designs spanning a
+  constant are rejected under the no-LV-intercept contract. This corrects
+  the redundant factor coding found in issue #1467; see
+  `../dev-log/decisions/2026-10-07-lv-factor-contrasts.md`.
 - Predictors in `lv` must be constant within the grouping level of the
   outer `latent()` term. The parser errors rather than averaging.
 - Any ordinary fixed-effect RHS covariate is rejected in C1 when a
@@ -145,12 +202,13 @@ and latent-variable modelling, not evidence that this specific
 - `REML = TRUE` with `lv` is rejected by a top-level guard test. REML /
   AI-REML language remains Gaussian-only and needs a separate derivation even
   for this Gaussian C1 surface.
-- Other non-Gaussian families, native count-family `lv`, nonstandard binomial
-  links, ordinal `lv`, and mixed-family `lv` fits are rejected until their own
-  validation rows move. The native fail-loud guards currently cover binomial
-  cauchit, ordinal-probit, mixed Gaussian/binomial/Poisson family lists,
-  Poisson, NB1, NB2, lognormal, Gamma, Beta, Tweedie, Student-t, truncated
-  Poisson, truncated NB2, beta-binomial, delta-lognormal, and delta-Gamma.
+- Nonstandard binomial links, rank above logical responses, response masks
+  beyond the named Gaussian cell, and every source/tier expansion remain
+  rejected. Arbitrary registered-family compositions are admitted with
+  route-health evidence only; admission is not recovery or calibration
+  evidence. Pure Beta and
+  pure ordinal-probit remain held, and mixed-family Wald evidence remains
+  limited to the eight individually passing preregistered archetypes.
 - C1 supports at most one ordinary unit-tier `latent()` term carrying
   `lv`.
 - `extract_Sigma()` keeps its current meaning:
@@ -168,7 +226,7 @@ but C1 exposes only ordinary unit-tier support.
 
 | Tier / source | Eventual target | C1 behaviour |
 |---|---|---|
-| `latent(... | unit, lv = ~ x_unit)` | Unit-level latent-score mean | C1 partial: ordinary Gaussian plus pure binomial logit/probit/cloglog on the TMB path, and a narrow complete-response Gaussian, Poisson, NB2, Gamma, Beta, and binomial logit/probit/cloglog `engine = "julia"` point route; smoke/algebra evidence, focused native Gaussian recovery, standard-link binary latent-predictor trait-effect recovery, and rank-1 multi-trial standard-link binomial interval evidence |
+| `latent(... | unit, lv = ~ x_unit)` | Unit-level latent-score mean | Registered native families compose with complete responses, one numeric unit predictor, no fixed RHS, and no extra covariance tier. Loadings-only `unique = FALSE` admits rank through logical responses; automatic `Psi` also requires that its physical loading, latent-predictor, and engine-free diagonal parameters pass a necessary joint mean-covariance dimension screen. Route-health covers all family IDs 0--16; retained recovery and Wald evidence remain limited to the previously named cells. Factor intervals, broader masks, structured tiers, and bridge calibration remain open. The narrow complete-response `engine = "julia"` route is loadings-only point support with optional uncalibrated Wald plumbing. |
 | `latent(... | unit_obs, lv = ~ x_obs)` | Within-unit/session latent-score mean | Reject as planned |
 | `latent(... | cluster, lv = ~ x_cluster)` | Cluster latent-score mean if a reduced-rank cluster slot is added | Reject as planned |
 | `latent(... | cluster2, lv = ~ x_cluster2)` | Not valid today; `cluster2` is diagonal-only | Reject |
@@ -203,7 +261,7 @@ navigation.
 - Validate one-sided formulas, predictor availability, intercept
   dropping (`lv = ~ x` equals `lv = ~ 0 + x`), factor expansion,
   within-unit constancy, rank, fixed-RHS overlap, unsupported terms,
-  unsupported tiers/sources, unsupported native-TMB non-Gaussian families,
+  unsupported tiers/sources, invalid per-trait family/link mappings,
   unsupported bridge families, unsupported binary links, and `REML = TRUE`.
 - Reject augmented random-regression combinations such as
   `latent(1 + x | unit, d = K, lv = ~ z)` until a separate design
@@ -211,15 +269,28 @@ navigation.
 - At that stage, runtime still aborted before TMB construction. Later
   C1 slices added `alpha_lv_B`, ADREPORT output, point-estimate
   extractors, and `ADREPORT(B_lv_unit)` standard-error extraction for
-  positive-definite `sdreport()` fits; focused Gaussian recovery is now
-  partial, and interval evidence remains pending.
+  positive-definite `sdreport()` fits. The later family-wide slice first added
+  a frozen rank-1 loadings-only allow-list and retained mixed/sentinel point
+  recovery; the 2026-08-27 composition slice supersedes that parser allow-list
+  with registered-family composition and rank up to logical responses. The
+  final retained campaigns add 17/19 pure point PASS verdicts,
+  two pure HOLD verdicts, and target-wise Wald calibration for eight named
+  mixed Gaussian-anchor archetypes.
 
 ### 3. TMB PR
 
-Status: landed for the C1 ordinary Gaussian unit-tier smoke/algebra
-gate, focused native TMB Gaussian recovery, and the first pure-binomial
-logit/probit/cloglog trait-scale `B_lv` recovery/algebra gate. Interval
-coverage and broader family recovery are still Stage 5 work.
+Status: landed for the C1 ordinary Gaussian unit-tier smoke/algebra and
+rank-1/rank-2 recovery cells, plus pure-binomial logit/probit/cloglog
+trait-scale `B_lv` recovery/algebra. Production-size Wald evidence closes
+the named Gaussian cells and the three rank-1 multi-trial binomial cells. The
+family-wide native composition route is also implemented. Its earlier 19 named
+mixed/sentinel cells have retained point-recovery evidence for `B_lv`, shared
+`Lambda Lambda^T`, intercepts, and score identity. Their r200 run used
+`se = FALSE`, so no interval claim follows. Pure non-Gaussian programme
+recovery passed 17/19 named cells; pure Beta and pure ordinal-probit retain
+their explicit HOLD verdicts. Rank-2/rank-3 arbitrary-composition canaries now
+provide route health only. Broader recovery, masks, factor intervals, tiers,
+and sources remain outside the earned boundary.
 
 - Add data flags and matrices: `use_lv_B`, `n_lv_B`, `X_lv_B`.
 - Add parameter matrix `alpha_lv_B[p_lv, d_B]`, unconstrained and
@@ -237,12 +308,19 @@ eta(o) += sum_k Lambda_B(t, k) * score_k;
 
 ### 4. Extractor PR
 
-Status: landed as C1 extractors for the admitted Gaussian and
-pure-binomial standard-link R-side fits. Trait-scale `B_lv` standard
+Status: landed for the C1 Gaussian and pure-binomial standard-link R-side
+fits and for point extraction from native family compositions.
+Trait-scale `B_lv` standard
 errors are returned only when `se = TRUE` produces a positive-definite
-`sdreport()` for `ADREPORT(B_lv_unit)`. Focused Gaussian recovery and
-rank-1 delta-SE validation now exist, but interval claims are deliberately
-withheld until coverage/calibration evidence lands.
+`sdreport()` for `ADREPORT(B_lv_unit)`. Interval claims are limited to
+the named native Gaussian cells, rank-1 multi-trial standard-link binomial
+cells, and eight preregistered rank-1 loadings-only mixed Gaussian-anchor
+archetypes: binomial-logit, Poisson, NB2, Gamma, Beta, ordinal-probit,
+delta-Gamma, and multinomial. The mixed/sentinel r200 programme used
+`se = FALSE`, so its evidence says only point recovery; its interval boundary
+comes from the separate r500 campaign. That campaign supports individual
+target-wise `B_lv` Wald coverage only, not simultaneous all-target coverage or
+transfer to arbitrary compositions, which currently have route-health only.
 
 - Add `extract_lv_effects(fit, level = "unit",
   type = "trait_effect")`.
@@ -259,12 +337,13 @@ withheld until coverage/calibration evidence lands.
 ### 4a. R-to-Julia bridge PR
 
 Status: landed for narrow Gaussian, Poisson, NB2, Gamma, Beta, and binomial
-logit/probit/cloglog point routes only. The R bridge builds the same
+logit/probit/cloglog point routes with optional uncalibrated Wald plumbing.
+The R bridge builds the same
 unit-level `X_lv` design through the Design 73 parser setup and passes it
 to `GLLVM.bridge_fit(X_lv = ...)` for complete Gaussian, Poisson, NB2,
 Gamma, Beta, and binomial logit/probit/cloglog
 `latent(..., unique = FALSE, lv = ~ x)` rows with no fixed-effect `X`, no
-response mask, and `ci_method = "none"`.
+response mask, and `ci_method = "none"` or experimental `"wald"`.
 
 - Retained Julia payloads are `lv_effects`, `alpha_lv`,
   `scores_mean`, and `scores_innovation`.
@@ -278,9 +357,10 @@ response mask, and `ci_method = "none"`.
   is routed for those retained Gaussian, Poisson, NB2, Gamma, Beta, and
   binomial bridge score payloads.
 - NB1, ordinal, mixed-family `X_lv`, fixed-effect `X` plus `X_lv`,
-  response masks plus `X_lv`, and any CI/profile/bootstrap route remain
-  gated under `JUL-01`, `JUL-01A`, and `LV-01`. The same fixed-effect
-  `X + X_lv` boundary is enforced on the native path before fitting.
+  response masks plus `X_lv`, and profile/bootstrap or calibrated interval
+  routes remain gated under `JUL-01`, `JUL-01A`, and `LV-01`. The same
+  fixed-effect `X + X_lv` boundary is enforced on the native path before
+  fitting.
 
 ### 4b. Native Wald coverage campaign
 
@@ -368,22 +448,34 @@ header-only because no replicate failed convergence, Hessian, `sdreport()`, or
 CI availability checks. The `wald_t_unit` comparator improved four of nine
 paired target rows by 0.002, tied the other five, and was never worse. This
 promotes the narrow native binomial interval subclaim for the three rank-1
-multi-trial standard-link cells only; `LV-05` remains partial for native
-count-family, nonstandard binomial-link, ordinal, mixed-family, response-mask,
-source/tier-expanded, and Julia-bridge interval support.
+multi-trial standard-link cells. Separately, the retained mixed r500 promotes
+target-wise `B_lv` Wald coverage for the eight named Gaussian-anchor archetypes
+listed above. `LV-05` remains partial for pure-family intervals, nonstandard
+binomial links, arbitrary-composition recovery/calibration, simultaneous
+all-target coverage, response masks, source/tier expansion, and Julia-bridge
+interval support.
 
 ### 5. Public docs/article PR
 
-Only after C1 recovery evidence, add a Tier-1 article:
-**Explaining Latent Ecological Axes With Predictors**.
+Status: delivered by
+`vignettes/articles/explaining-latent-ecological-axes.Rmd` and the upgraded
+`vignettes/articles/cross-family-correlations.Rmd`.
 
-The article must show long and `traits(...)` wide calls side by side,
-use distinct fixed-effect and LV predictors, and include a scope box:
-IN ordinary Gaussian and pure binomial logit/probit/cloglog native
-unit-tier fits; PARTIAL bridge-only Poisson point rows; PLANNED native
-count-family support, other non-Gaussian families, mixed-family rows,
-`unit_obs`, `cluster`, `cluster2`, phylo, animal, spatial, kernel, and
-mean-only reduced-rank modes.
+The Tier-1 article **Explaining Latent Ecological Axes With Predictors** shows
+long and `traits(...)` wide calls side by side, uses a numeric LV predictor
+without a fixed-effect `X`, interprets rotation-invariant $B_{lv}$, and
+states the score decomposition and interval boundary. It additionally works
+through the one named Gaussian + Poisson rank-1, loadings-only route in both
+long and `traits(...)` wide form, with point extraction in the teaching code
+and a plain-language note that this exact archetype has target-wise Wald
+calibration evidence. **Cross-family correlations and environmental
+predictors** composes the existing correlation route with `lv = ~ x`, reports
+rotation-invariant `B_lv`, and states that arbitrary-family rank-2/rank-3
+evidence is route health rather than general recovery or calibration. Both
+articles keep the two pure HOLD cells (Beta and
+ordinal-probit), pure-family intervals, factor intervals, Julia calibration, `unit_obs`, clusters,
+structured sources, REML, and
+profile/bootstrap outside the article claim.
 
 ## Test Contract
 
@@ -393,15 +485,20 @@ CRAN-safe tests for the parser/API PR:
 - `lv = ~ x` and `lv = ~ 0 + x` build the same `X_lv`.
 - Random-effect syntax, offsets, `mi()`, smooths, missing predictors,
   response/trait columns, rank-deficient designs, nonconstant
-  within-unit predictors, exact fixed-RHS overlap, `REML = TRUE`,
-  unsupported native-TMB non-Gaussian families, unsupported bridge
-  families, unsupported tiers/sources, and augmented random-regression
-  combinations fail loudly.
+  within-unit predictors, exact fixed-RHS overlap, `REML = TRUE`, invalid
+  family/link mappings, unsupported bridge families, rank above logical
+  responses, explicit extra diagonal terms, masks, unsupported
+  tiers/sources, and augmented random-regression combinations fail loudly.
 - Small Gaussian rank-1 fit reaches finite reports and correct
   extractor dimensions.
 - Pure binomial logit/probit/cloglog rank-1 fits reach finite reports,
   recover trait-scale `B_lv` on small multi-trial fixtures, and preserve
   `total = innovation + mean`.
+- The compositional route has positive/negative parser tests across family IDs
+  0--16, repeated-family traits, rank, and explicit-companion boundaries. The
+  earlier named mixed/sentinel r200 harness retains every attempt and
+  separately adjudicates `B_lv`, shared `Sigma`, intercept, and score-identity
+  targets. Pure-route and interval evidence are separate campaign gates.
 
 Heavy tests under `GLLVMTMB_HEAVY_TESTS=1`:
 
@@ -445,11 +542,13 @@ target for `K > 1`.
 This is a twin-lane concept for `gllvmTMB` and `GLLVM.jl`, but parity
 must move row by row. Named Julia bridge rows now exist only for the
 complete-response Gaussian, Poisson, NB2, Gamma, Beta, and binomial
-logit/probit/cloglog point routes described above. Public docs must not imply
-native count-family support, NB1, ordinal, mixed-family `X_lv`, Julia bridge
-response masks with `X_lv`, fixed-effect `X` plus `X_lv`, CI/profile/bootstrap
-support, or broad native-vs-Julia parity until those rows are implemented and
-validated. Current parser guards reject fixed-effect `X + X_lv` formulas on
+logit/probit/cloglog point routes, with optional uncalibrated Wald plumbing,
+described above. Public docs must not imply
+arbitrary native family support, Julia NB1/ordinal/mixed-family `X_lv`, Julia bridge
+response masks with `X_lv`, fixed-effect `X` plus `X_lv`, calibrated
+interval, profile/bootstrap support, or broad native-vs-Julia parity until
+those rows are implemented and validated. Current parser guards reject
+fixed-effect `X + X_lv` formulas on
 both the overlapping and non-overlapping covariate paths, and top-level guards
 reject unsupported family/link plus REML/lv-formula calls before fitting.
 

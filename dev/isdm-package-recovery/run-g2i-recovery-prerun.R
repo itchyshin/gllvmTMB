@@ -15,13 +15,13 @@ if (!mode %in% c("validate", "prerun") || is.null(root)) {
 }
 
 script <- normalizePath(
-  sub("^--file=", "", grep("^--file=", commandArgs(FALSE), value = TRUE)[[1L]]),
+  gsub("~+~", " ", sub("^--file=", "", grep("^--file=", commandArgs(FALSE), value = TRUE)[[1L]]), fixed = TRUE),
   mustWork = TRUE
 )
 base <- dirname(script)
 source(file.path(base, "g2h-360cell-fixture.R"), local = TRUE)
 hash <- function(path) unname(tools::md5sum(path))[[1L]]
-commit <- function() system2("git", c("-C", pkg, "rev-parse", "HEAD"), stdout = TRUE)[[1L]]
+commit <- function() system2("git", c("-C", shQuote(pkg), "rev-parse", "HEAD"), stdout = TRUE)[[1L]]
 if (length(seed) != 1L || is.na(seed) || seed < 1L) stop("--seed must be one positive integer", call. = FALSE)
 check_fixture <- function() {
   fixture <- g2h_make_fixture(seed = seed)

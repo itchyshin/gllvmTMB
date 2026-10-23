@@ -1,0 +1,6 @@
+{
+  "source_root": "/home/snakagaw/spatial-rho-recovery-5600c7515",
+  "source_bundle_hash": "30434660f352573591ed0e8e0301c481827c07acdf5c270db81c59d02683a465",
+  "completion_sha256": "1a4c34347e27129cf0b71ac64359f1e859840a2a84c15b695eb56459b24556de",
+  "purpose": "preserve exact smoke evidence; package functional files unchanged; recovery fixture script changed after smoke"
+}

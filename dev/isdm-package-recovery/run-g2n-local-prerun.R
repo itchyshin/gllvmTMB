@@ -17,14 +17,14 @@ if (!mode %in% c("validate", "prerun") || is.null(root_arg)) {
   stop("require --mode=validate|prerun and --output=PATH", call. = FALSE)
 }
 
-script <- normalizePath(sub("^--file=", "", grep(
+script <- normalizePath(gsub("~+~", " ", sub("^--file=", "", grep(
   "^--file=", commandArgs(FALSE), value = TRUE
-)[[1L]]), mustWork = TRUE)
+)[[1L]]), fixed = TRUE), mustWork = TRUE)
 base <- dirname(script)
 legacy <- file.path(base, "run-g2i-recovery-prerun.R")
 fixture_file <- file.path(base, "g2h-360cell-fixture.R")
 hash <- function(path) unname(tools::md5sum(path))[[1L]]
-commit <- function() system2("git", c("-C", pkg, "rev-parse", "HEAD"), stdout = TRUE)[[1L]]
+commit <- function() system2("git", c("-C", shQuote(pkg), "rev-parse", "HEAD"), stdout = TRUE)[[1L]]
 source(fixture_file, local = TRUE)
 
 validate_contract <- function() {

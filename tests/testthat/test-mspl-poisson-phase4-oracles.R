@@ -4,6 +4,8 @@
 ##   docs/dev-log/research/2026-08-15-mspl-phase4-poisson-prep.md
 ## Helpers stay in this file. Do not call live MSPL on Poisson.
 ## The public door lives in test-mspl-poisson-public-door.R.
+## After G0 REPLACE (#1102) the live C++/Jeffreys twin is working W_*;
+## E1–E3 keep true W=diag(mu) algebra as the historical contrast.
 ## Do not rebuild E1-E7 science. Do not flip planned -> admitted.
 
 .poisson_mu <- function(eta, exposure = 1) {
@@ -91,7 +93,7 @@
   )
 }
 
-test_that("E1: Poisson information uses W=diag(mu); Bernoulli W_g differs", {
+test_that("E1: true Poisson I uses W=diag(mu); Bernoulli W_g differs (live tape is W_*)", {
   fx <- .poisson_fixture()
   I <- .poisson_I(fx$X, fx$mu)
   expect_equal(I, crossprod(fx$X, fx$X * fx$mu), tolerance = 1e-12)
@@ -406,18 +408,20 @@ test_that("Phase-4 oracles never invoke a live Poisson MSPL fit", {
   paste(readLines(path, warn = FALSE), collapse = "\n")
 }
 
-test_that("prepare public door is gaussian/bernoulli/poisson only (source pin)", {
+test_that("prepare public door lists admitted/planned prepare IDs (source pin)", {
   ## Read-only pin. This test must not edit R/mspl.R.
-  ## After #978 the planned public door includes Poisson (family_id 2).
-  ## NB1/NB2/beta/Tweedie stay out. Not admission.
+  ## Live prepare allow-list (post phase-4 family doors): gaussian/bernoulli/
+  ## poisson plus fenced planned nbinom2/beta/nbinom1. Tweedie still probe-only.
+  ## Not admission; not public SE; REPLACE lane only refreshes the pin.
   mspl_src <- .mspl_r_source("mspl.R")
-  expect_true(grepl("fam_ids %in% c\\(0L, 1L, 2L\\)", mspl_src))
-  expect_false(grepl("fam_ids %in% c\\(0L, 1L, 2L, 3L\\)", mspl_src))
   expect_true(grepl(
-    "NB1, NB2, beta, Tweedie, and mixed-family MSPL remain deferred",
+    "fam_ids %in% c\\(0L, 1L, 2L, 5L, 7L, 15L\\)",
     mspl_src
   ))
-  ## Poisson is family_id 2 in R/enum.R; it is in the planned door, not admitted.
+  expect_true(grepl(
+    "Tweedie and mixed-family MSPL remain deferred at the public door",
+    mspl_src
+  ))
   enum_src <- .mspl_r_source("enum.R")
   expect_true(grepl("poisson\\s*=\\s*2L", enum_src))
 })

@@ -7,7 +7,8 @@
 #' the same trait covariance, pairwise correlations, shared latent axes,
 #' and trait-specific variance. The formula syntax also supports fixed
 #' effects plus covariance-structure keywords organised by
-#' \emph{correlation source} (none / animal / phylo / spatial) and
+#' \emph{correlation source} (none / animal / phylo / spatial / kernel /
+#' temporal) and
 #' three \emph{modes} (independent / dependent / latent). The `common = TRUE`
 #' modifier on `*_indep()` gives the one-shared-variance special case:
 #'
@@ -17,7 +18,15 @@
 #'   \emph{animal}  \tab [animal_indep()]  \tab [animal_dep()]  \tab [animal_latent()]  \cr
 #'   \emph{phylo}   \tab [phylo_indep()]   \tab [phylo_dep()]   \tab [phylo_latent()]   \cr
 #'   \emph{spatial} \tab [spatial_indep()] \tab [spatial_dep()] \tab [spatial_latent()] \cr
+#'   \emph{kernel}  \tab [kernel_indep()]  \tab [kernel_dep()]  \tab [kernel_latent()]  \cr
+#'   \emph{temporal} \tab [temporal_indep()] \tab [temporal_dep()] \tab [temporal_latent()] \cr
 #' }
+#'
+#' The temporal row is currently a Gaussian identity-link ML/Laplace route:
+#' it accepts one ordered `series`--`time` provider, AR1 integer occasions or
+#' OU elapsed time, and may coexist with ordinary `unit` and `unit_obs`
+#' covariance. Other structured sources, new-data prediction, intervals, and
+#' rank above one remain unavailable for temporal fits.
 #'
 #' The three covariance modes (`indep` / `dep` / `latent`) encode
 #' covstruct intent across traits:
@@ -34,18 +43,34 @@
 #' * `dep` — the **full unstructured** mode: \eqn{\boldsymbol\Sigma}
 #'   is free with \eqn{T(T+1)/2} parameters via a Cholesky factor.
 #'
-#' Plus the supporting [phylo_slope()] / [animal_slope()] (random
-#' slopes), [meta_V()] (known-V meta-analytic; [meta_known_V()] is a
+#' The five Gaussian long-format response-column slope helpers are [slope()],
+#' [phylo_slope()], [animal_slope()], [kernel_slope()], and [spatial_slope()].
+#' Their RHS is the resolved response-column factor, so they are not extra
+#' grid modes. Plus [meta_V()] (known-V meta-analytic; [meta_known_V()] is a
 #' deprecated alias), and the engine-internal `propto()` /
 #' `equalto()` covstructs (used by the canonical keywords above; not
 #' typically called directly). See the
 #' [formula keyword grid article](https://itchyshin.github.io/gllvmTMB/articles/api-keyword-grid.html)
 #' for a one-paragraph tour of each cell.
 #'
+#' Response-column coefficient helpers are also outside the grid.
+#' [column_coef()] fits IID random intercept/slope bases across response
+#' columns; [phylo_coef()] fits the same bases with fixed or estimated
+#' phylogenetic correlation strength; [animal_coef()] fits them from a pedigree,
+#' relationship covariance, or relationship precision with fixed correlation
+#' strength; [kernel_coef()] uses one labelled dense kernel with fixed or
+#' estimated strength; and [spatial_coef()] uses one labelled response-column
+#' mesh with `rho = 1`. All five support Gaussian point models in long and
+#' `traits(...)` wide form. Non-Gaussian coefficient models, spatial IID
+#' mixtures, and interval inference remain unavailable.
+#'
 #' @param formula A glmmTMB-style formula, e.g.
 #'   `value ~ 0 + trait + (0 + trait):env_temp + (0 + trait):env_precip`.
 #'   Fixed effects and any of the three-mode grid covstructs above are
-#'   supported (plus [phylo_slope()], [animal_slope()], and [meta_V()]).
+#'   supported (plus [slope()], [phylo_slope()], [animal_slope()],
+#'   [kernel_slope()], [spatial_slope()], [column_coef()], [phylo_coef()],
+#'   [animal_coef()], [kernel_coef()], [spatial_coef()], and
+#'   [meta_V()]).
 #'
 #'   An `offset()` term is supported for **count responses only** — `poisson()`,
 #'   `nbinom1()`, `nbinom2()`, `truncated_poisson()`, and
@@ -74,6 +99,11 @@
 #'   Ordinary missing predictors, grouping variables, and design-matrix values
 #'   still error; explicitly modelled missing predictors use `mi(x)` with
 #'   `missing = miss_control(predictor = "model")` and `impute = list(...)`.
+#' @param column_data Optional keyed response-column metadata. Its key column
+#'   must have the same name as `trait` and exactly match the response columns.
+#'   Joined fields are available to fixed effects but cannot be coefficient
+#'   bases, grouping columns, or covariance sources. In wide input, key this
+#'   table by the synthetic column name `trait` and omit the `trait` argument.
 #' @param trait Name of the column holding the trait factor (the
 #'   "trait" dimension of the unit × trait response matrix). Default
 #'   `"trait"`.
@@ -81,28 +111,44 @@
 #'   factor (the "unit" dimension of the unit × trait response matrix).
 #'   Examples: `"site"` for site × species data, `"individual"` for
 #'   behavioural-syndrome data, `"species"` for PGLLVM, `"paper"` for
-#'   systematic mapping. Default `"site"`.
-#' @param unit_obs Name of the column holding the **within-unit**
+#'   systematic mapping. Required — every dataset has its own natural
+#'   sampling-unit column, and [gllvmTMB()] aborts naming `unit = ...` if
+#'   it is omitted and `data` has no `"site"` column to fall back to.
+#'   Omitting `unit` when `data` has a `"site"` column still works via a
+#'   deprecated implicit fallback (a one-time warning); pass
+#'   `unit = "site"` explicitly to silence it. The fallback remains for
+#'   now; a future release will require `unit`.
+#' @param unit_obs Optional. Name of the column holding the **within-unit**
 #'   grouping factor — one level per (unit, replicate) cell — used by
 #'   `latent(0 + trait | unit_obs, ...)` and
 #'   `indep(0 + trait | unit_obs)` for the W-tier covariance.
-#'   Default `"site_species"` (the conventional name in joint species
-#'   distribution modelling; safe for site × species data). For other
-#'   domains pass e.g. `unit_obs = "obs"` for behavioural syndromes.
+#'   Default `NULL`, which resolves to `"site_species"` (the conventional
+#'   name in joint species distribution modelling; safe for site × species
+#'   data). If your data has no such column, omit `unit_obs`; the engine
+#'   synthesises it from `unit` × `cluster`. For other domains pass e.g.
+#'   `unit_obs = "obs"` for behavioural syndromes. If supplied but no
+#'   covariance keyword uses that column, [gllvmTMB()] warns; omit the
+#'   argument or use the column in the intended covariance keyword.
 #' @param site (deprecated) alias for `unit`. Kept for backward
 #'   compatibility. Use `unit = ...` in new code.
-#' @param cluster Name of the column holding the **third grouping**
-#'   factor (the "cluster" slot). When the column name matches the
-#'   row/column names of `phylo_vcv` (or the tip labels of
+#' @param cluster Optional. Name of the column holding the **third
+#'   grouping** factor (the "cluster" slot). When the column name matches
+#'   the row/column names of `phylo_vcv` (or the tip labels of
 #'   `phylo_tree`), this slot also drives the phylogenetic random
 #'   effects (`phylo_latent`, `phylo_scalar`, `phylo_indep`,
-#'   `phylo_slope`). When the column does **not** match a phylogenetic
+#'   and the historical non-trait-RHS `phylo_slope` route). The
+#'   response-column form `phylo_slope(x | trait, tree = tree)` instead takes
+#'   its column axis from the parsed RHS and does not use `cluster`. When the
+#'   column does **not** match a phylogenetic
 #'   correlation, the slot still functions as a regular crossed/nested
 #'   third grouping (e.g. `cluster = "population"` for 3-level
 #'   personality data, `cluster = "study"` for multi-study
-#'   meta-analysis). Default `"species"`. For datasets with no third
-#'   grouping the column may be absent from `data`; the engine will
-#'   synthesise a placeholder.
+#'   meta-analysis). Default `NULL`, which resolves to `"species"`. For
+#'   datasets with no third grouping the column may be absent from `data`
+#'   entirely (with or without passing `cluster`); the engine will
+#'   synthesise a placeholder. If supplied but no covariance keyword uses
+#'   that column, [gllvmTMB()] warns; omit the argument or use the column in
+#'   the intended covariance keyword.
 #'
 #'   The engine does **not** enforce nesting between `unit_obs`,
 #'   `unit`, and `cluster` — crossed and nested designs both fit. Two
@@ -136,8 +182,9 @@
 #' @param family A `family` object. The multivariate engine
 #'   (formulas with `latent()`, `indep()`, etc.) supports `gaussian()`,
 #'   `binomial()` (logit / probit / cloglog), `poisson()` (log link),
-#'   [ordinal_probit()] (the gllvmTMB-native ordinal threshold family
-#'   with sigma_d = 1 fixed exactly; no delta-method approximation),
+#'   [ordinal_probit()] and [ordinal_logit()] (the gllvmTMB-native ordinal
+#'   threshold families with sigma_d fixed exactly -- 1 for probit,
+#'   pi^2/3 for logit; no delta-method approximation),
 #'   `lognormal()` (log link), `Gamma(link = "log")`,
 #'   `nbinom2()` (NB2 negative binomial; log link),
 #'   `nbinom1()` (NB1 negative binomial; log link),
@@ -221,7 +268,9 @@
 #'   separately-scoped evidence; AGHQ and `REML = TRUE` cannot be combined.
 #' @param mesh Optional mesh object from [make_mesh()]. Required for any
 #'   `spatial_*()` or `spatial()` term unless that term supplies its own
-#'   `mesh =` argument; ignored only when the model has no spatial term.
+#'   `mesh =` argument. A supplied mesh with no spatial term is unused:
+#'   the fit warns, and a raw fmesher/INLA mesh is rejected, rather than
+#'   being silently ignored.
 #' @param phylo_tree (legacy global) Optional `ape::phylo` tree. The current
 #'   syntax is to pass `tree =` inside
 #'   each `phylo_*()` keyword (e.g. `phylo_latent(species, d = K, tree =
@@ -232,7 +281,8 @@
 #'   `MCMCglmm` dependency**. The construction is the deterministic
 #'   Hadfield & Nakagawa (2010) sparse phylogenetic inverse (appendix
 #'   eqs. 26-29), adopted from that method and ported from the sister
-#'   package drmTMB (see `inst/COPYRIGHTS`). The result is `~5n`
+#'   package drmTMB. Provenance is recorded in the package's COPYRIGHTS
+#'   file. The result is `~5n`
 #'   non-zeros for an `n`-tip tree, vs `n^2` for the dense path. **This is
 #'   the recommended path** at any `n_species`; the speedup grows to ~24× at
 #'   `n_species = 1000`.
@@ -250,8 +300,9 @@
 #'   `unit_obs` (plus `phy`, `spde` for structural levels), each an
 #'   `n_traits × d` matrix of confirmatory loading constraints
 #'   (galamm-style). `NA` entries are estimated; numerical entries are
-#'   pinned. Upper-triangle entries are silently ignored — the engine's
-#'   lower-triangular parameterisation already fixes those at zero.
+#'   pinned. Upper-triangle zeros are already structural zeros and are
+#'   accepted. A non-zero upper-triangle pin is an error — the engine's
+#'   lower-triangular parameterisation has no packed slot for it.
 #'   Default `NULL` uses the engine's exploratory lower-triangular
 #'   convention. See [confirmatory_lambda()] to build the matrix from
 #'   functional-group membership, or [suggest_lambda_constraint()] for a
@@ -266,7 +317,7 @@
 #'   predictor is meaningful for some responses but should be fixed at zero
 #'   for others. Native TMB fits use a parameter map; admitted
 #'   `engine = "julia"` fixed-effect-X rows pass the same zero mask to
-#'   GLLVM.jl. This is ML-only: `REML = TRUE` stops loudly. Native fitted
+#'   GLLVModels.jl. This is ML-only: `REML = TRUE` stops loudly. Native fitted
 #'   objects still report all fixed-effect rows; pinned rows have
 #'   `estimate = 0`, `std.error = NA`, and `status = "fixed"` in
 #'   `tidy(fit, "fixed")`.
@@ -287,10 +338,13 @@
 #'   `NULL` is appropriate when no `mi()` term is present.
 #' @param silent Logical; suppress TMB and gllvmTMB chatter. Default `TRUE`.
 #' @param engine Character; `"tmb"` (default) fits with the native TMB engine,
-#'   `"julia"` routes the fit through the experimental GLLVM.jl bridge fitting
-#'   path via JuliaCall (see `R/julia-bridge.R`). The Julia path currently maps
+#'   `"julia"` routes the fit through the experimental GLLVModels.jl bridge via
+#'   JuliaCall. The Julia path currently maps
 #'   the unconstrained-ordination core (a single `latent()` block + per-trait
 #'   intercepts) and errors on structures it does not yet support.
+#'   For unstructured Gaussian models (`gaussian()` with ordinary `latent()` and
+#'   no phylo/spatial structure), `engine = "julia"` uses the GLLVModels.jl
+#'   closed-form profile path instead of the native Laplace engine.
 #' @param ci_method Confidence-interval route requested at fit time for
 #'   admitted `engine = "julia"` no-X rows. One of `"none"` (default),
 #'   `"wald"`, `"profile"`, or `"bootstrap"`. Native `engine = "tmb"` fits use
@@ -342,6 +396,29 @@
 #'   corrected first, then the two methods were added, which is why the
 #'   promise now holds.
 #'
+#' @section Dispersion parameters in the report slot:
+#' The fitted object's `$report` carries per-family dispersion quantities on
+#' the natural scale, each a vector of length `n_traits` indexed by trait
+#' (except `sigma_eps`, which has one slot normally and two slots only when
+#' Gaussian and lognormal responses coexist). Their names follow the engine's
+#' internal parameterisation, **not** standard R distribution arguments —
+#' several are easy to misread. What each one IS, and how it maps to
+#' standard R arguments (`mu = exp(eta)` unless noted):
+#'
+#' | Family (report name) | What it is | Standard-R conversion |
+#' |---|---|---|
+#' | gaussian, lognormal (`sigma_eps`) | residual SD / sdlog; one within-family shared slot in pure fits, or separate Gaussian raw-scale and lognormal log-scale slots when both coexist | `pnorm(y, mean = eta, sd = sigma_eps[1])`; `plnorm(y, meanlog = eta, sdlog = sigma_eps[2])` in a joint fit |
+#' | Gamma (`phi_gamma`) | the **shape**, not a dispersion | `pgamma(y, shape = phi, scale = mu / phi)`; `CV(y) = 1 / sqrt(phi)` |
+#' | nbinom2 (`phi_nbinom2`) | the NB `size` | `pnbinom(y, size = phi, mu = mu)`; `Var(y) = mu + mu^2 / phi` |
+#' | nbinom1 (`phi_nbinom1`) | linear overdispersion, `Var(y) = mu * (1 + phi)` | `pnbinom(y, size = mu / phi, mu = mu)` — the size is mean-dependent |
+#' | tweedie (`phi_tweedie`, `p_tweedie`) | dispersion and power `p` in (1, 2) | no base-R CDF; `tweedie::ptweedie(y, mu = mu, phi = phi, power = p)` |
+#' | Beta (`phi_beta`) | the precision | `pbeta(y, shape1 = mu * phi, shape2 = (1 - mu) * phi)` with `mu = plogis(eta)` |
+#' | betabinomial (`phi_betabinom`) | precision of the Beta mixing | `a = mu * phi`, `b = (1 - mu) * phi` with `mu = plogis(eta)`; no base-R CDF |
+#' | student (`sigma_student`, `df_student`) | the **scale**, not the SD | `pt((y - eta) / sigma, df)`; `SD(y) = sigma * sqrt(df / (df - 2))`, undefined for `df <= 2` |
+#' | truncated_nbinom2 (`phi_truncnb2`) | the NB `size`; a **separate** vector from `phi_nbinom2` | `pnbinom(y, size = phi, mu = mu)` renormalised by `1 - pnbinom(0, ...)` |
+#' | delta_lognormal (`sigma_lognormal_delta`) | sdlog of the positive part | `plnorm(y, meanlog = eta, sdlog = sigma)` for `y > 0`; `P(y > 0) = plogis(eta)` |
+#' | delta_gamma (`phi_gamma_delta`) | the **CV** of the positive part, not a shape | `pgamma(y, shape = 1 / phi^2, scale = mu * phi^2)` for `y > 0`; `P(y > 0) = plogis(eta)` |
+#'
 #' @references
 #' Sterzinger, P. and Kosmidis, I. (2023). Maximum softly-penalized
 #' likelihood for mixed effects logistic regression. *Statistics and
@@ -373,7 +450,34 @@
 #'   \item a flat response `y` with `weights = n_trials` (the alternative
 #'         glmmTMB API).
 #' }
-#' Both interfaces produce identical fits. For Bernoulli data, omit
+#' The second `cbind()` column is the number of **failures**, not trials; for
+#' a trials column write `cbind(s, trials - s)`. Both interfaces produce
+#' identical fits.
+#'
+#' *Mixing with other families.* Binomial counts can share one model with
+#' Gaussian, count or other traits. In a mixed fit the second `cbind()` column
+#' is read only on binomial-type rows (`binomial()`, `betabinomial()`,
+#' `zi_binomial()`); on every other row the first column is the response and
+#' the second must be `0`. Long format, with a per-trait `family` list:
+#' \preformatted{
+#' fams <- list(infected = binomial(), mass = gaussian(), count = poisson())
+#' attr(fams, "family_var") <- "trait"
+#' gllvmTMB(cbind(value, failures) ~ 0 + trait + latent(0 + trait | site, d = 2),
+#'          data = long, trait = "trait", unit = "site", family = fams)
+#' }
+#' Wide format: give each binomial trait its own pair inside `traits()` and
+#' name the `family` list by trait. A pair takes its trait name from its first
+#' argument, or from an argument name (`traits(infected = cbind(s, f))`):
+#' \preformatted{
+#' gllvmTMB(traits(cbind(n_inf, n_uninf), mass, count) ~ 1 + latent(1 | site, d = 2),
+#'          data = wide, unit = "site",
+#'          family = list(n_inf = binomial(), mass = gaussian(), count = poisson()))
+#' }
+#' In wide format a plain column with a binomial-type family stays a 0/1
+#' (Bernoulli) response, and cells with an `NA` count or zero trials are
+#' treated as missing. The single-column route (`value` with
+#' `weights = trials`, `1` on non-binomial rows) gives the same fit but does
+#' not cover `zi_binomial()`. For Bernoulli data, omit
 #' `weights` and use a 0/1 response; the engine sets `n_trials = 1` and
 #' the likelihood is identical to the previous Bernoulli-only behaviour.
 #'
@@ -414,7 +518,7 @@
 #' "Residual" in a mixed-effects model is **scale-relative**: what
 #' counts as residual variance shifts as you add levels to the model.
 #' In a Gaussian fit without a per-row diagonal term, the residual is row-level
-#' noise captured by a single shared `sigma_eps`. Once you add a per-row
+#' noise captured by a within-family shared `sigma_eps`. Once you add a per-row
 #' `indep(0 + trait | obs)` term,
 #' the *row-level* residual is now T per-trait random-effect variances and
 #' `sigma_eps` is auto-suppressed to avoid double-counting. If you also add a
@@ -423,15 +527,18 @@
 #' a residual at all. The dispatch table below records this explicitly for the
 #' configurations the engine supports today.
 #'
-#' Gaussian and lognormal responses have one residual scale parameter,
-#' `sigma_eps`. Ordinary Gamma responses instead carry a per-trait shape
+#' Gaussian and lognormal responses each have a residual scale parameter,
+#' `sigma_eps`, shared within family. Pure fits retain one slot; a joint
+#' Gaussian-lognormal fit has separate raw- and log-scale slots. Ordinary
+#' Gamma responses instead carry a per-trait shape
 #' `phi_gamma` (CV = `1 / sqrt(phi_gamma)`). Per-trait residual variances
 #' only appear if you explicitly add a per-row `indep(...)` term.
 #' The dispatch is automatic:
 #'
 #' \describe{
-#'   \item{No per-row `indep`, Gaussian/lognormal present}{One
-#'     shared `sigma_eps` across Gaussian/lognormal rows. *Not* per-trait.}
+#'   \item{No per-row `indep`, Gaussian/lognormal present}{One slot in a
+#'     pure fit; separate Gaussian raw-scale and lognormal log-scale slots when
+#'     both coexist. Each slot is shared within family, *not* per-trait.}
 #'   \item{No per-row `indep`, no Gaussian/lognormal rows}{`sigma_eps`
 #'     is mapped off; the family's intrinsic dispersion handles the residual
 #'     (for ordinary Gamma, `phi_gamma`).}
@@ -454,7 +561,7 @@
 #' }
 #'
 #' Mnemonic: Gaussian/lognormal `sigma_eps` is the default; ordinary Gamma uses
-#' `phi_gamma`; per-row `indep` replaces the Gaussian/lognormal scalar residual
+#' `phi_gamma`; per-row `indep` replaces the Gaussian/lognormal family residual
 #' with T per-trait residuals; non-per-row `indep` adds a higher-level random
 #' effect on top of the family residual;
 #' non-continuous families never carry `sigma_eps` regardless.
@@ -487,6 +594,31 @@
 #' Schielzeth (2010) \emph{Biol. Rev.} 85: 935-956; Nakagawa, Johnson &
 #' Schielzeth (2017) \emph{J. R. Soc. Interface} 14: 20170213.
 #'
+#' @section Objective provenance: joint_nll report fields vs objective_components:
+#' A fitted object carries two different surfaces that both look like "the
+#' objective", and they answer different questions.
+#'
+#' `report$joint_nll_unpenalized` and `report$joint_nll_penalized` are
+#' **conditional joint** quantities computed on the TMB tape (the negative
+#' log-likelihood of the data and random effects at their current values,
+#' before and after TMB-side MSPL penalty terms are added). They see only
+#' penalties applied *inside* the C++ template -- the LA-MSPL penalties
+#' documented above -- and never see anything computed at the R level.
+#'
+#' `fit$objective_components` is the **marginal** surface: the value TMB's
+#' Laplace approximation integrates the random effects out of, decomposed
+#' into `likelihood_nll` (the unpenalised marginal negative log-likelihood),
+#' `ridge_penalty` (the R-level loading ridge from `aghq_ridge`, added
+#' *outside* the TMB objective -- see `.gllvmTMB_penalised_gradient()`),
+#' `optimization_nll` (their sum, the objective the optimiser actually
+#' minimised), and `optimizer_reported` (the value `nlminb()` / `optim()`
+#' returned). This is the **only** place the R-level loading ridge appears;
+#' `report$joint_nll_*` cannot see it because it never reaches the TMB tape.
+#'
+#' The two surfaces are **not expected to match**, on a ridged fit or
+#' otherwise, and a difference between them is not itself an error: they are
+#' conditional-joint and marginal quantities from different penalty regimes.
+#'
 #' @seealso [screen_gllvmTMB()] for the opt-in fixed-design separation
 #'   certificate; \code{vignette("mspl-binary-jsdm", package = "gllvmTMB")}
 #'   for the screen-first LA-MSPL workflow; [traits()] for wide data-frame formula input;
@@ -495,31 +627,68 @@
 #'   generating recovery test data;
 #'   [extract_Sigma()] for the unified post-fit covariance API;
 #'   [gllvmTMB_diagnose()] for a one-stop convergence + identifiability
-#'   health check; [ordinal_probit()] for the gllvmTMB-native ordinal
-#'   threshold family.
+#'   health check; [ordinal_probit()] and [ordinal_logit()] for the
+#'   gllvmTMB-native ordinal threshold families.
 #'
 #' @export
 #' @examples
-#' \dontrun{
 #' set.seed(1)
-#' sim <- simulate_site_trait(n_sites = 50, n_species = 8, n_traits = 3,
-#'                            mean_species_per_site = 5)
-#' fit <- gllvmTMB(
-#'   value ~ 0 + trait + (0 + trait):env_1 + (0 + trait):env_2,
-#'   data   = sim$data,
-#'   family = gaussian(),
-#'   trait  = "trait",
-#'   unit   = "site"
+#' # Simulate 60 individuals, each measured on two occasions for five traits.
+#' # All five traits load on one shared latent axis (trait_4 negatively),
+#' # and each also has its own between-individual variance (psi_B). Every
+#' # measurement carries residual noise as well (sigma2_eps).
+#' loadings <- matrix(c(0.9, 0.8, 0.7, -0.6, 0.5), ncol = 1)
+#' sim <- simulate_unit_trait(n_units = 60, n_obs_per_unit = 2, n_traits = 5,
+#'                            Lambda_B = loadings, psi_B = 0.2,
+#'                            sigma2_eps = 0.3)
+#' long <- sim$data[c("unit", "observation", "trait", "value")]
+#' names(long)[1] <- "individual"
+#'
+#' # Long format: one row per (individual, occasion, trait) value.
+#' head(long)
+#'
+#' # `0 + trait` gives each trait its own mean. latent() fits one shared
+#' # axis (d = 1) across individuals; unique = TRUE adds each trait's own
+#' # between-individual variance (Psi) on top of it.
+#' fit_long <- gllvmTMB(
+#'   value ~ 0 + trait + latent(0 + trait | individual, d = 1, unique = TRUE),
+#'   data = long, trait = "trait", unit = "individual"
 #' )
-#' summary(fit)
+#'
+#' # Wide format: one row per (individual, occasion), one column per trait.
+#' wide <- stats::reshape(long, idvar = c("individual", "observation"),
+#'                        timevar = "trait", direction = "wide")
+#' names(wide) <- sub("^value[.]", "", names(wide))
+#' head(wide)
+#'
+#' # traits() names the response columns. On the right-hand side, `1` means
+#' # one intercept per trait and latent(1 | individual) means
+#' # latent(0 + trait | individual), so this is the same model.
+#' if (requireNamespace("tidyr", quietly = TRUE)) {
+#'   fit_wide <- gllvmTMB(
+#'     traits(trait_1, trait_2, trait_3, trait_4, trait_5) ~ 1 +
+#'       latent(1 | individual, d = 1, unique = TRUE),
+#'     data = wide, unit = "individual"
+#'   )
+#'   # Same model, same data: the two fits agree.
+#'   c(long = logLik(fit_long), wide = logLik(fit_wide))
 #' }
+#'
+#' # Trait means, between-individual correlations (trait_4 is negatively
+#' # correlated with the rest), and the share of each trait's
+#' # between-individual variance carried by the latent axis.
+#' summary(fit_long)
+#'
+#' # The fitted between-individual covariance: the shared-axis part
+#' # (Lambda Lambda') plus the trait-specific part (Psi).
+#' round(extract_Sigma(fit_long, level = "unit")$Sigma, 2)
 gllvmTMB <- function(
   formula,
   data,
   trait = "trait",
-  unit = "site",
-  unit_obs = "site_species",
-  cluster = "species",
+  unit = NULL,
+  unit_obs = NULL,
+  cluster = NULL,
   cluster2 = NULL,
   family = gaussian(),
   weights = NULL,
@@ -541,23 +710,85 @@ gllvmTMB <- function(
   ci_seed = 0L,
   site = NULL, # deprecated alias for `unit`
   species = NULL,
-  estimator = c("ml", "mspl")
+  estimator = c("ml", "mspl"),
+  column_data = NULL
 ) {
   # deprecated alias for `cluster`
+
+  ## ---- Resolve optional slot defaults ------------------------------------
+  ## `unit_obs` and `cluster` are OPTIONAL grouping slots: most callers have
+  ## no reason to supply them and should not have to invent columns just to
+  ## satisfy a signature that looked mandatory. `NULL` (the new default)
+  ## resolves here, immediately, to the historical concrete defaults so
+  ## every downstream consumer -- and the wide-format recursion below, whose
+  ## recursive call re-resolves independently -- sees exactly the values it
+  ## always did. Passing `unit_obs = NULL` / `cluster = NULL` explicitly is
+  ## therefore equivalent to omitting them.
+  ## Record actual caller intent before resolving the historical defaults.
+  ## This distinction is needed for the unused-slot warning below and must
+  ## survive the traits()-wide recursion: a default we forward internally is
+  ## not an argument the caller supplied.
+  unit_obs_supplied <- !missing(unit_obs) && !is.null(unit_obs)
+  cluster_supplied <- !missing(cluster) && !is.null(cluster)
+  unit_obs <- unit_obs %||% "site_species"
+  cluster <- cluster %||% "species"
 
   estimator_missing <- missing(estimator)
   estimator <- match.arg(estimator)
 
   if (!is.logical(REML) || length(REML) != 1L || is.na(REML)) {
-    cli::cli_abort("{.arg REML} must be a single {.code TRUE} or {.code FALSE} value.")
+    cli::cli_abort(c(
+      "{.arg REML} must be a single {.code TRUE} or {.code FALSE} value.",
+      ">" = "Pass {.code REML = TRUE} or {.code REML = FALSE}."
+    ))
   }
-  ## engine = "julia" routes through the experimental GLLVM.jl bridge fitting
+  ## engine = "julia" routes through the experimental GLLVModels.jl bridge fitting
   ## path via JuliaCall; "tmb" (default) keeps the native TMB engine below.
   engine <- match.arg(engine)
+  if (identical(engine, "julia") &&
+      (control$optimizer_passes %||% 1L) > 1L) {
+    cli::cli_abort(c(
+      "{.arg optimizer_passes} greater than one requires the native TMB Laplace engine.",
+      "i" = "The Julia dispatch has its own optimizer and does not consume this control.",
+      ">" = "Use {.code optimizer_passes = 1L}, or fit with {.code engine = \"tmb\"}."
+    ), class = "gllvmTMB_julia_unsupported_control")
+  }
+  ## The Julia dispatch passes no start or restart settings to GLLVModels.jl,
+  ## so an explicit request for either would be silently ignored. The
+  ## defaults (`svd_start = TRUE`, `n_init = 1`) describe the native engine
+  ## and are not refused; only an explicit non-default request is.
+  if (identical(engine, "julia") &&
+      isTRUE(control$n_init_explicit) && (control$n_init %||% 1L) > 1L) {
+    cli::cli_abort(c(
+      "{.arg n_init} greater than one requires the native TMB engine.",
+      "i" = "The Julia dispatch has its own optimizer and does not run gllvmTMB restarts.",
+      ">" = "Use {.code n_init = 1L}, or fit with {.code engine = \"tmb\"}."
+    ), class = "gllvmTMB_julia_unsupported_control")
+  }
+  if (identical(engine, "julia") &&
+      isTRUE(control$svd_start_explicit) && isFALSE(control$svd_start)) {
+    cli::cli_abort(c(
+      "{.code svd_start = FALSE} requires the native TMB engine.",
+      "i" = "The Julia dispatch has its own optimizer and does not consume gllvmTMB start settings.",
+      ">" = "Omit {.arg svd_start}, or fit with {.code engine = \"tmb\"}."
+    ), class = "gllvmTMB_julia_unsupported_control")
+  }
+  structured_rho_capture <- .parse_structured_rho_formula(formula, trait_col = trait, strip = FALSE)
+  .structured_rho_dispatch_fence(structured_rho_capture$spec, engine = engine,
+    integration = control$integration %||% "laplace", estimator = estimator,
+    aghq = control$aghq %||% FALSE)
+  formula <- structured_rho_capture$formula
+  ## A spatial `rho` term reads the token right of `|` as its location
+  ## column, so the "grouping token is ignored" warning must not fire for it.
+  spatial_token_previous <- .gllvmTMB_spatial_token_consumed$token
+  .gllvmTMB_set_spatial_token_consumed(structured_rho_capture$spec)
+  on.exit({
+    .gllvmTMB_spatial_token_consumed$token <- spatial_token_previous
+  }, add = TRUE)
   if (isTRUE(REML) && !estimator_missing) {
     cli::cli_abort(c(
       "Do not combine an explicit {.arg estimator} with {.code REML = TRUE}.",
-      "i" = "Omit {.arg estimator} to retain the existing Gaussian REML route, or set {.code REML = FALSE}."
+      ">" = "Omit {.arg estimator} to retain the existing Gaussian REML route, or set {.code REML = FALSE}."
     ), class = "gllvmTMB_estimator_reml_conflict")
   }
   if (identical(estimator, "mspl")) {
@@ -592,6 +823,14 @@ gllvmTMB <- function(
   ## resolved until the formula and data have been parsed, so the fence is
   ## called a SECOND time inside `gllvmTMB_multi_fit()` with those values.
   integration_route <- control$integration %||% "laplace"
+  if (!identical(integration_route, "va") &&
+      identical(control$va_polish %||% TRUE, FALSE)) {
+    cli::cli_abort(c(
+      "{.arg va_polish} applies only to the VA integration route.",
+      "i" = "Other routes do not run the VA secondary-solver sequence.",
+      ">" = "Use {.code integration = \"va\"}, or leave {.arg va_polish} at its default."
+    ), class = "gllvmTMB_unsupported_control")
+  }
   if (!identical(integration_route, "laplace")) {
     .gllvmTMB_check_integration_fence(integration_route, engine = engine)
     ## `gllvmTMBcontrol()` admits only "laplace" and "va", so anything else here
@@ -625,7 +864,7 @@ gllvmTMB <- function(
   if (!identical(engine, "julia") && !ci_defaults) {
     cli::cli_abort(c(
       "{.arg ci_method}, {.arg ci_level}, {.arg ci_nboot}, and {.arg ci_seed} are currently fit-time controls only for {.code engine = \"julia\"}.",
-      "i" = "For native {.code engine = \"tmb\"} fits, fit the model first and call {.fn confint} with the desired method."
+      ">" = "For native {.code engine = \"tmb\"} fits, fit the model first and call {.fn confint} with the desired method."
     ))
   }
 
@@ -644,23 +883,73 @@ gllvmTMB <- function(
   ## (`0 + trait`, `(0 + trait):x`, latent(0 + trait | g), ...), and
   ## recurse into gllvmTMB() with the long-format data + formula.
   if (is_traits_lhs(formula)) {
+    if (!identical(trait, "trait")) {
+      cli::cli_abort(c(
+        "Wide {.fn traits} input uses the synthetic response-column key {.field trait}.",
+        "x" = "A non-default {.arg trait = {.val {trait}}} was supplied.",
+        ">" = "Omit {.arg trait} for wide input and key {.arg column_data} by a column named {.field trait}."
+      ), class = "gllvmTMB_traits_custom_trait_unsupported")
+    }
+    if (.traits_has_column_slope(formula[[3L]])) {
+      cli::cli_abort(c(
+        "Response-column slope helpers currently require long-format data.",
+        "i" = "The slope term is indexed by the explicit response-column factor in the long data.",
+        ">" = "Pivot to one row per (unit, trait) observation, then use {.code value ~ 0 + trait + slope(x | trait)} or the corresponding fixed-source helper."
+      ), class = "gllvmTMB_column_slope_wide_unsupported")
+    }
     .call_wide <- match.call()
     rewrite <- rewrite_traits_lhs(
       formula = formula,
       data = data,
+      column_data = column_data,
       weights = weights,
       eval_env = environment(formula),
       missing = missing
     )
+    family_long <- family
+    if (is.list(family_long) && !inherits(family_long, "family")) {
+      explicit_family_var <- attr(
+        family_long,
+        "family_var",
+        exact = TRUE
+      )
+      if (is.null(explicit_family_var)) {
+        family_names <- names(family_long)
+        names_match_traits <-
+          !is.null(family_names) &&
+          length(family_names) == length(rewrite$trait_cols) &&
+          !anyNA(family_names) &&
+          all(nzchar(family_names)) &&
+          setequal(family_names, rewrite$trait_cols)
+        if (names_match_traits) {
+          family_var <- ".family_wide_"
+          while (family_var %in% names(rewrite$data_long)) {
+            family_var <- paste0(".", family_var)
+          }
+          rewrite$data_long[[family_var]] <- factor(
+            as.character(rewrite$data_long$trait),
+            levels = rewrite$trait_cols
+          )
+          attr(family_long, "family_var") <- family_var
+        }
+      }
+    }
+    if (length(rewrite$cbind_traits)) {
+      rewrite$data_long <- .traits_cbind_family_fixup(
+        rewrite, family, family_long
+      )
+    }
+    attr(
+      rewrite$data_long,
+      ".gllvmTMB_traits_n_dropped_response"
+    ) <- rewrite$n_dropped
     recurse_args <- list(
       formula = rewrite$formula_long,
       data = rewrite$data_long,
       trait = trait,
       unit = unit,
-      unit_obs = unit_obs,
-      cluster = cluster,
       cluster2 = cluster2,
-      family = family,
+      family = family_long,
       weights = rewrite$weights_long,
       REML = REML,
       mesh = mesh,
@@ -681,6 +970,11 @@ gllvmTMB <- function(
       site = site,
       species = species
     )
+    ## Keep genuinely omitted / NULL optional slots omitted in the recursive
+    ## long-format call. Otherwise their resolved defaults would incorrectly
+    ## appear to have been explicitly supplied by the caller.
+    if (unit_obs_supplied) recurse_args$unit_obs <- unit_obs
+    if (cluster_supplied) recurse_args$cluster <- cluster
     ## Preserve missing(estimator) through the wide-to-long recursion.  This is
     ## load-bearing for the legacy REML route: passing the default "ml"
     ## explicitly would turn an omitted estimator into an API conflict.
@@ -700,6 +994,14 @@ gllvmTMB <- function(
     return(fit)
   }
 
+  ## `data` must be a data.frame before ANY of the grouping-argument checks
+  ## below inspect it via `names(data)` -- on a non-data-frame `data`,
+  ## `names()` returns NULL/something else, so `"site" %in% names(data)`
+  ## silently evaluates FALSE rather than erroring, which let the #1196
+  ## `unit` requirement below fire first with a misleading "unit is
+  ## required" instead of the real "data is not a data.frame" complaint.
+  assertthat::assert_that(is.data.frame(data))
+
   ## ---- Honour deprecated `site = ...` alias for `unit = ...` -------------
   ## The package was originally written for site × species data, so the
   ## between-unit grouping argument was named `site`. The unit × trait
@@ -707,7 +1009,7 @@ gllvmTMB <- function(
   ## sites, individuals, species, papers); `site` is now a deprecated
   ## alias that emits a one-shot soft warning and is forwarded to `unit`.
   if (!is.null(site)) {
-    if (!missing(unit) && !identical(unit, "site")) {
+    if (!missing(unit) && !is.null(unit)) {
       cli::cli_abort(
         "Pass either {.arg unit} or {.arg site}, not both. {.arg site} is the deprecated alias."
       )
@@ -723,9 +1025,21 @@ gllvmTMB <- function(
     )
     unit <- site
   }
+  ## #1196: `unit` has no default -- every dataset has its own natural
+  ## sampling-unit column (site, individual, paper, ...) and guessing one
+  ## silently risks fitting the wrong grouping. Mirrors the `unit_obs` /
+  ## `cluster` NULL handling above: a required slot names itself rather
+  ## than failing on a downstream `%in%` with an unhelpful message.
+  ## Shared with `suggest_lambda_constraint()`/`suggest_lambda_constraints()`
+  ## and `ridge_path()` via `.gllvmTMB_resolve_unit_staged()` (2026-09-02
+  ## full-suite follow-up) -- see that function for the staged-rollout
+  ## rationale.
+  unit <- .gllvmTMB_resolve_unit_staged(unit, data)
   ## Engine-internal name remains `site` to avoid touching every line in
   ## the parser / TMB template / extractors. User-facing argument is `unit`.
   site <- unit
+
+  temporal_spec <- list(active = FALSE)
 
   ## ---- Honour deprecated `species = ...` alias for `cluster = ...` -----
   ## The package was originally written for site × species data, so the
@@ -796,20 +1110,55 @@ gllvmTMB <- function(
   if (!identical(unit_obs, "site_species") && !unit_obs %in% names(data)) {
     cli::cli_abort(c(
       "{.arg unit_obs = {.val {unit_obs}}} is not a column in {.arg data}.",
-      "i" = "If you don't have a within-unit replicate column, omit {.arg unit_obs}; the engine will synthesise the default {.field site_species} from {.arg unit} and {.arg species}."
+      ">" = "If you don't have a within-unit replicate column, omit {.arg unit_obs}; the engine will synthesise the default {.field site_species} from {.arg unit} and {.arg species}."
     ))
   }
 
   ## ---- Validate input ----------------------------------------------------
-  assertthat::assert_that(is.data.frame(data))
-  for (col in c(trait, site)) {
-    assertthat::assert_that(
-      col %in% names(data),
-      msg = sprintf("Column %s not found in data", col)
-    )
+  ## `is.data.frame(data)` now runs earlier (see the comment above the
+  ## `site =`/`unit =` alias block) so it fires before the #1196 `unit`
+  ## requirement, whose own `"site" %in% names(data)` check silently
+  ## returns FALSE (not an error) for a non-data-frame `data` -- that
+  ## masked the real "not a data.frame" complaint behind an unrelated
+  ## "unit is required" one (found in the full suite, 2026-09-02).
+  if (!trait %in% names(data)) {
+    cli::cli_abort(c(
+      "{.arg trait = {.val {trait}}} is not a column in {.arg data}.",
+      "i" = "Pass the name of the column that identifies which trait each row belongs to."
+    ))
+  }
+  if (!site %in% names(data)) {
+    cli::cli_abort(c(
+      "{.arg unit = {.val {site}}} is not a column in {.arg data}.",
+      "i" = "Pass the name of the column that identifies the between-unit grouping (site, individual, paper, ...)."
+    ))
   }
   if (!is.factor(data[[trait]])) {
     data[[trait]] <- factor(data[[trait]])
+  }
+  inherited_column_vars <- attr(data, "gllvmTMB_column_vars") %||% character()
+  prepared_column_data <- .column_data_prepare(
+    column_data = column_data,
+    trait_col = trait,
+    trait_levels = levels(data[[trait]]),
+    row_data_names = names(data)
+  )
+  if (!is.null(prepared_column_data)) {
+    data <- .column_data_join(data, prepared_column_data, trait)
+  }
+  column_vars <- unique(c(
+    inherited_column_vars,
+    attr(data, "gllvmTMB_column_vars") %||% character()
+  ))
+  reserved_column_vars <- intersect(
+    column_vars,
+    unique(stats::na.omit(c(site, unit_obs, species, cluster2)))
+  )
+  if (length(reserved_column_vars)) {
+    .column_data_abort(c(
+      "{.arg column_data} fields cannot be grouping columns: {.field {reserved_column_vars}}.",
+      "i" = "Response-column metadata are fixed-effect metadata only; rename these fields."
+    ))
   }
   if (!is.factor(data[[site]])) {
     data[[site]] <- factor(data[[site]])
@@ -842,6 +1191,94 @@ gllvmTMB <- function(
     data[[unit_obs]] <- factor(data[[unit_obs]])
   }
 
+  ## Design 131: validate and unwrap shared fixed effects, then parse
+  ## response-column coefficient markers. All five public sources are rewritten
+  ## below into their admitted matrix-normal / projected-SPDE engine routes;
+  ## any future reserved source still meets the fail-closed engine fence.
+  structured_rho_capture <- .parse_structured_rho_formula(formula, trait_col = trait)
+  formula <- structured_rho_capture$formula
+  .column_data_assert_fixed_only(formula[[3L]], column_vars)
+  if (.shared_marker_active(environment(formula))) {
+    formula[[3L]] <- .shared_rewrite(
+      formula[[3L]],
+      row_vars = setdiff(names(data), column_vars),
+      column_vars = column_vars,
+      response_vars = all.vars(formula[[2L]]),
+      unwrap = TRUE
+    )
+  }
+  column_coef_spec <- .parse_column_coef_formula(
+    formula = formula,
+    trait_col = trait,
+    row_vars = setdiff(names(data), column_vars),
+    column_vars = column_vars,
+    response_vars = all.vars(formula[[2L]])
+  )
+  if (!is.null(column_coef_spec)) {
+    .column_coef_assert_gaussian_family(family, column_coef_spec$helper)
+    .column_coef_assert_no_overlap(formula, data, trait, column_coef_spec)
+    if (!column_coef_spec$helper %in%
+        c("column_coef", "phylo_coef", "animal_coef", "kernel_coef",
+          "spatial_coef")) {
+      .column_coef_engine_fence(column_coef_spec)
+    }
+  }
+
+  ## Capture temporal syntax after the wide/data pre-passes, immediately
+  ## before generic desugaring. This keeps model-frame construction from ever
+  ## attempting to evaluate the formula marker.
+  temporal_capture <- .parse_temporal_latent_formula(formula, data, trait_col = trait)
+  temporal_spec <- temporal_capture$spec
+  if (isTRUE(temporal_spec$active)) {
+    if (!identical(engine, "tmb") || isTRUE(REML) || !identical(estimator, "ml") ||
+        !identical(family$family, "gaussian") || !identical(family$link, "identity")) {
+      cli::cli_abort(c("{.fn temporal_latent} currently requires the native Gaussian identity-link ML route.", ">" = "Use the Gaussian identity-link ML temporal workflow."))
+    }
+    if (!identical(control$integration %||% "laplace", "laplace") ||
+        !isFALSE(control$aghq %||% FALSE)) {
+      cli::cli_abort(c(
+        "{.fn temporal_latent} currently requires native TMB Laplace integration.",
+        "i" = "Variational integration and adaptive Gauss-Hermite quadrature have iid latent-score algorithms.",
+        ">" = "Use {.code gllvmTMBcontrol(integration = \"laplace\", aghq = FALSE)}."
+      ))
+    }
+    if (!is.null(known_V) || !is.null(mesh) || !is.null(phylo_vcv) ||
+        !is.null(phylo_tree) || !is.null(column_coef_spec) ||
+        !is.null(structured_rho_capture$spec)) {
+      cli::cli_abort(c(
+        "{.fn temporal_latent} cannot be combined with another covariance provider in this version.",
+        ">" = "Use one temporal intercept block with fixed effects only."
+      ))
+    }
+    formula <- temporal_capture$formula
+    data <- temporal_capture$data
+    temporal_spec$unit_col <- site
+    ## The temporal labels are public metadata and may differ from `unit`.
+    ## The partition condition is deferred until ordinary covariance terms
+    ## have been parsed: a temporal-only model has no stable-unit component to
+    ## constrain.
+    same_partition <- function(left, right) {
+      left <- as.character(left)
+      right <- as.character(right)
+      all(vapply(split(right, left), function(x) length(unique(x)) == 1L,
+        logical(1))) &&
+        all(vapply(split(left, right), function(x) length(unique(x)) == 1L,
+          logical(1)))
+    }
+    temporal_spec$same_unit_partition <- same_partition(
+      data[[temporal_spec$series_col]], data[[site]]
+    )
+    if (isTRUE(unit_obs_supplied) && unit_obs %in% names(data)) {
+      unit_per_unit_obs <- tapply(
+        as.character(data[[site]]), data[[unit_obs]],
+        function(x) length(unique(x))
+      )
+      if (any(unit_per_unit_obs != 1L)) {
+        cli::cli_abort(c("Each {.arg unit_obs} level must be nested inside one {.arg unit} level.", ">" = "Use a unit_obs identifier nested within unit."))
+      }
+    }
+  }
+
   ## ---- Multinomial response expansion (Design 83) ----------------------
   ## Expand a multinomial() response into K-1 category-contrast pseudo-trait
   ## rows BEFORE desugar/parse so the ordinary trait grammar builds the
@@ -851,6 +1288,27 @@ gllvmTMB <- function(
   family <- .mn_expand$family
 
   ## ---- Desugar brms-style sugar (phylo / gr / meta) ---------------------
+  if (!is.null(column_coef_spec)) {
+    formula[[3L]] <- if (identical(column_coef_spec$helper, "column_coef")) {
+      .column_coef_rewrite_iid(formula[[3L]], column_coef_spec)
+    } else if (identical(column_coef_spec$helper, "animal_coef")) {
+      .column_coef_rewrite_fixed_animal(
+        formula[[3L]], column_coef_spec, data = data,
+        envir = environment(formula)
+      )
+    } else if (identical(column_coef_spec$helper, "kernel_coef")) {
+      .column_coef_rewrite_kernel(formula[[3L]], column_coef_spec)
+    } else if (identical(column_coef_spec$helper, "spatial_coef")) {
+      .column_coef_rewrite_spatial(formula[[3L]], column_coef_spec)
+    } else if (identical(column_coef_spec$rho_mode, "fixed")) {
+      .column_coef_rewrite_fixed_phylo(
+        formula[[3L]], column_coef_spec, data = data,
+        envir = environment(formula)
+      )
+    } else {
+      .column_coef_rewrite_estimated_phylo(formula[[3L]], column_coef_spec)
+    }
+  }
   formula <- desugar_brms_sugar(formula, trait_col = trait)
 
   ## ---- Detect covariance-structure terms (Stages 2-4) --------------------
@@ -872,7 +1330,7 @@ gllvmTMB <- function(
     cli::cli_abort(c(
       "Covariance-structure terms not yet supported:",
       "x" = "Found {.fn {unsupported}} in formula.",
-      "i" = "{.fn exp}/{.fn gau}/{.fn ar1}/{.fn ou}/{.fn cs}/{.fn toep}/{.fn us} are not in scope; use {.fn spde} for fast spatial fields."
+      ">" = "{.fn exp}/{.fn gau}/{.fn ar1}/{.fn ou}/{.fn cs}/{.fn toep}/{.fn us} are not in scope; use {.fn spde} for fast spatial fields."
     ))
   }
   ## A formula with no covstruct keyword still routes through the
@@ -880,7 +1338,93 @@ gllvmTMB <- function(
   ## blocks). Earlier versions dispatched these to sdmTMB() with
   ## spatial = "off"; that path is removed in 0.2.0 because the
   ## single-response sdmTMB() engine is no longer bundled.
-  parsed <- parse_multi_formula(formula)
+  parsed <- parse_multi_formula(formula, trait_col = trait)
+  if (isTRUE(temporal_spec$active)) {
+    has_stable_unit_component <- any(vapply(parsed$covstructs, function(cs) {
+      identical(all.vars(cs$group), site)
+    }, logical(1)))
+    if (has_stable_unit_component && !isTRUE(temporal_spec$same_unit_partition)) {
+      cli::cli_abort(c(
+        "The temporal {.code series} column must have the same partition as {.arg unit} when a stable unit covariance component is included.",
+        "i" = "Temporal states are separate from ordinary units, but the two components must index the same stable entities.",
+        ">" = "Use matching unit groups, even when their labels differ, or omit the stable-unit covariance component."
+      ))
+    }
+  }
+  if (!is.null(structured_rho_capture$spec)) {
+    parsed$structured_rho <- structured_rho_capture$spec
+  }
+  ## An explicitly named optional grouping slot is useful only when a
+  ## covariance keyword routes through it.  Warn at the R boundary rather than
+  ## changing the assembled TMB inputs: unused slots remain exactly the same
+  ## harmless historical defaults they were before this diagnostic.
+  ## Most covariance keywords consume their grouping column on the right of
+  ## `|`, but kernel / phylogenetic terms can carry it on the parsed left-hand
+  ## side (for example, `kernel_indep(species, K = K)`).  Both sides therefore
+  ## count as use of an explicitly supplied optional slot.
+  covstruct_columns <- unique(unlist(lapply(parsed$covstructs, function(cs) {
+    c(all.vars(cs$lhs), all.vars(cs$group))
+  }), use.names = FALSE))
+  if (!is.null(parsed$structured_rho) && parsed$structured_rho$status == "estimated") {
+    # Replicate-vector identity is an actual admission input for estimated
+    # source strength even without an ordinary covariance term on unit_obs.
+    covstruct_columns <- union(covstruct_columns, unit_obs)
+  }
+  unused_slots <- c(
+    if (unit_obs_supplied && !unit_obs %in% covstruct_columns) "unit_obs",
+    if (cluster_supplied && !cluster %in% covstruct_columns) "cluster"
+  )
+  if (length(unused_slots) > 0L) {
+    cli::cli_warn(c(
+      "Unused optional grouping argument(s): {.field {unused_slots}}.",
+      "i" = "No formula covariance keyword uses {cli::cli_vec(unused_slots)}.",
+      ">" = "Remove the unused optional grouping argument(s), or use its column in a covariance keyword."
+    ))
+  }
+  ## #1196: a plain random-effect grouping column whose VALUES are
+  ## identical to the trait column collides with the fixed per-trait
+  ## intercepts (`0 + trait`) -- every random level ends up pinned to one
+  ## trait's worth of data, which is a silent fixed/random intercept
+  ## collision rather than a useful random effect. Scoped to the
+  ## intercept-only covstruct kinds that take a real `lhs | group` bar
+  ## (`latent`/`indep`/`dep`/`unique`/`scalar` desugar to
+  ## `rr`/`diag`/`propto`/`equalto`). `phylo_slope`/`slope`/`kernel_slope`/
+  ## `spatial_slope` are excluded because grouping by `trait` is their
+  ## intended, supported response-column-slope form.
+  ##
+  ## A group symbol whose NAME is literally the trait column is also
+  ## excluded outright (not just `phylo_rr`, which was the first case
+  ## found): several desugar rewrites -- `phylo_rr`'s bare-species form,
+  ## AND `animal_scalar()`/`phylo_scalar()`'s `common = TRUE` collapse to
+  ## `propto(0 + species | trait, Ainv)` (found via testing R7's animal_*
+  ## examples) -- manufacture a SYNTHETIC literal `trait` symbol as
+  ## `$group` that is an engine marker, not a user-chosen column; comparing
+  ## `data[["trait"]]` to itself is trivially a false "collision" for any
+  ## covstruct kind that pattern reaches, not just `phylo_rr`.
+  if (trait %in% all.vars(parsed$fixed)) {
+    trait_values <- as.character(data[[trait]])
+    collision_kinds <- c("rr", "diag", "propto", "equalto")
+    colliding_group_cols <- unique(unlist(lapply(parsed$covstructs, function(cs) {
+      if (!cs$kind %in% collision_kinds) {
+        return(NULL)
+      }
+      grp_vars <- all.vars(cs$group)
+      if (length(grp_vars) != 1L || !grp_vars %in% names(data)) {
+        return(NULL)
+      }
+      if (identical(grp_vars, trait) || identical(grp_vars, "trait")) {
+        return(NULL)
+      }
+      if (identical(as.character(data[[grp_vars]]), trait_values)) grp_vars else NULL
+    })))
+    if (length(colliding_group_cols) > 0L) {
+      cli::cli_abort(c(
+        "A random-effect grouping column is identical to {.arg trait = {.val {trait}}}.",
+        "i" = "{.field {colliding_group_cols}} takes exactly the same values as {.var {trait}}, so its random effect collides with the fixed per-trait intercepts.",
+        ">" = "Use the response-column slope grammar instead (e.g. {.code slope(x | trait)}, {.code phylo_slope(x | trait, tree = tree)}), or group by a different column."
+      ))
+    }
+  }
   ## ---- Phase 2a: validate mi() BEFORE any model.frame on parsed$fixed ----
   ## drop_missing_response_rows() (below) builds a model.frame on parsed$fixed.
   ## For an invalid mi() term (e.g. mi(log(x)), mi(x):z) the parser leaves the
@@ -891,6 +1435,12 @@ gllvmTMB <- function(
   invisible(gll_prepare_mi_setup(parsed$mi_rhs, impute, missing))
   ## Snapshot the pre-drop data so the fit can report original-row accounting
   ## (fit$data_original) regardless of the response mode.
+  traits_n_dropped_response <- attr(
+    data,
+    ".gllvmTMB_traits_n_dropped_response",
+    exact = TRUE
+  ) %||% 0L
+  attr(data, ".gllvmTMB_traits_n_dropped_response") <- NULL
   data_original <- data
   observed_response <- drop_missing_response_rows(
     fixed_formula = parsed$fixed,
@@ -905,7 +1455,7 @@ gllvmTMB <- function(
     response_shape = "long",
     n_obs = nrow(data)
   )
-  ## ---- engine = "julia": route to the GLLVM.jl bridge ---------------------
+  ## ---- engine = "julia": route to the GLLVModels.jl bridge ----------------
   ## `parsed` already reflects the desugared user grammar, so the Julia path
   ## interprets latent/dep/indep/unique exactly as the TMB engine does. The
   ## dispatch maps the unconstrained-ordination core and errors loudly on
@@ -918,7 +1468,7 @@ gllvmTMB <- function(
     if (!is.null(parsed$offset_expr))
       cli::cli_abort(c(
         "{.code engine = \"julia\"} does not support {.fn offset} terms.",
-        "i" = "The GLLVM.jl bridge has no offset in its linear predictor, so the term would be dropped from the fit rather than applied.",
+        "i" = "The GLLVModels.jl bridge has no offset in its linear predictor, so the term would be dropped from the fit rather than applied.",
         ">" = "Use the default {.code engine = \"tmb\"} for a model with an offset."
       ))
     return(.gllvmTMB_julia_dispatch(
@@ -964,9 +1514,11 @@ gllvmTMB <- function(
       predictor = missing$predictor,
       engine = missing$engine,
       original_row = observed_response$original_row,
-      n_missing_response = observed_response$n_missing_response,
+      n_missing_response = observed_response$n_missing_response +
+        as.integer(traits_n_dropped_response),
       data_original = data_original
     ),
+    temporal = temporal_spec,
     estimator = estimator,
     engine = engine
   )
@@ -974,6 +1526,23 @@ gllvmTMB <- function(
     .gllvmTMB_fit_aghq_auto_ridge(fit_once, control)
   } else {
     fit_once(control)
+  }
+  ## Public coefficient provenance is attached after fitting. In particular,
+  ## no-intercept phylo_coef(..., rho = 1) deliberately hard-dispatches through
+  ## the released phylo_slope() TMB bytes; post-fit metadata preserves that
+  ## exact engine identity while still giving the coefficient extractor the
+  ## user's basis and source semantics.
+  if (!is.null(column_coef_spec)) {
+    .fit$use$response_column_coef <- TRUE
+    .fit$use$response_column_coef_basis <- column_coef_spec$basis
+    .fit$use$response_column_coef_source <- column_coef_spec$source
+    .fit$use$response_column_coef_rho_status <- switch(
+      column_coef_spec$rho_mode,
+      none = "not_applicable",
+      fixed = "fixed",
+      estimated = "estimated"
+    )
+    .fit$use$response_column_coef_rho <- column_coef_spec$rho
   }
   ## Attach multinomial category metadata (baseline label + category order) so
   ## predict(type = "response") can reconstruct per-category softmax
@@ -985,6 +1554,10 @@ gllvmTMB <- function(
   ## see the user's call. Attach it here, where match.call() is the call the
   ## user actually wrote, so print() can show it.
   if (inherits(.fit, "gllvmTMB_va")) {
+    .fit$call <- match.call()
+  }
+  if (isTRUE(temporal_spec$active)) {
+    .fit$temporal <- temporal_spec
     .fit$call <- match.call()
   }
   ## Arc 1A: record resolved integration / criterion / kernel / penalty-eval.
@@ -1041,26 +1614,96 @@ gllvmTMB <- function(
   ##
   ## Scoped to binomial because that is the family the 12,000 fits measured.
   if (!identical(control$warn_runaway, FALSE)) {
-    .rw <- tryCatch(
-      .gllvmTMB_binomial_prevalence_loading_row(.fit),
+    .gllvmTMB_warn_runaway_loading(.fit)
+
+    ## Multinomial contrast degeneracy (fid 16), same control, same
+    ## once-per-session discipline, but its OWN frequency id so one family's
+    ## slot cannot swallow another's. Armed on the 2026-08-17 calibration:
+    ## M1 6/7 labeled collapses plus 7/7 fully out-of-sample, M2 8/8 rails,
+    ## M3 3/3 spatial range collapses, zero false positives across the
+    ## informative healthy pool. The ORDINAL row is deliberately NOT wired
+    ## here: its absolute arm (default 30, #897) misses about a quarter of
+    ## degenerate fits and has no fit-time warning decision behind it, so it
+    ## reports through check_gllvmTMB() only.
+    .mn <- tryCatch(
+      .gllvmTMB_multinomial_degeneracy_row(.fit),
       error = function(e) NULL
     )
-    if (!is.null(.rw) && identical(as.character(.rw$status), "WARN")) {
-      ## Surface the check's OWN message/action verbatim rather than writing a
-      ## second copy here. Two reasons: the wording is already reviewed and shipped
-      ## via `gllvmTMB_diagnose()`, and a second copy would drift from the first the
-      ## moment either is edited.
+    if (!is.null(.mn) && identical(as.character(.mn$status), "WARN")) {
       cli::cli_warn(c(
-        "This fit shows a runaway trait loading; {.emph treat it as unusable until checked}.",
-        "*" = "{as.character(.rw$value)}",
-        "i" = "{as.character(.rw$message)}",
-        ">" = "{as.character(.rw$action)}",
-        ">" = "Full check: {.run gllvmTMB_diagnose(fit)}. Silence this with \\
+        "This fit shows a degenerate multinomial contrast structure; \
+         {.emph treat the among-category covariance as unusable until checked}.",
+        "*" = "{as.character(.mn$value)}",
+        "i" = "{as.character(.mn$message)}",
+        ">" = "{as.character(.mn$action)}",
+        ">" = "Full check: {.run gllvmTMB_diagnose(fit)}. Silence this with \
                {.code gllvmTMBcontrol(warn_runaway = FALSE)}."
-      ), .frequency = "once", .frequency_id = "gllvmTMB-loading-runaway")
+      ), .frequency = "once", .frequency_id = "gllvmTMB-multinomial-degeneracy")
     }
   }
   .fit
+}
+
+## Fit-time runaway-loading warning (binomial). Factored out of `gllvmTMB()` so
+## the warning can be exercised on a recorded fit without refitting.
+##
+## ONCE PER FIT SIGNATURE, NOT ONCE PER SESSION (#1367). The first version used
+## one session-wide frequency id, so after any fit tripped the warning every
+## later runaway fit in the same R session was silent -- including a probit d = 1
+## fit with a loading column norm of 1.6e4 that followed a probit d = 2 fit. On
+## the vegan::sipoo data the three fits (probit d = 2, probit d = 1, logit d = 2)
+## ran in one session gave warnings 1, 0, 0 while `check_gllvmTMB()` flagged all
+## three. The id now carries a hash of what makes a fit a different problem (the
+## response, the family/link ids, and the shape of each loading matrix), so a
+## re-fit of the same data and model (n_init loops, the same script run twice)
+## stays quiet and a different dataset or model warns again. Silence everything
+## with `gllvmTMBcontrol(warn_runaway = FALSE)`.
+.gllvmTMB_runaway_signature <- function(fit) {
+  tmb <- fit$tmb_data
+  shapes <- lapply(
+    tryCatch(.gllvmTMB_latent_specs(fit), error = function(e) list()),
+    function(spec) c(spec$level, dim(spec$matrix))
+  )
+  rlang::hash(list(
+    tmb$y, tmb$family_id_vec, tmb$link_id_vec, tmb$trait_id, shapes
+  ))
+}
+
+## Ids this session has emitted, so a test (or a user who wants the warning
+## again) can reset them: rlang has no "reset everything with this prefix".
+.gllvmTMB_runaway_ids <- new.env(parent = emptyenv())
+
+.gllvmTMB_reset_runaway_warnings <- function() {
+  for (id in ls(.gllvmTMB_runaway_ids)) {
+    rlang::reset_warning_verbosity(id)
+  }
+  rm(list = ls(.gllvmTMB_runaway_ids), envir = .gllvmTMB_runaway_ids)
+  invisible(NULL)
+}
+
+.gllvmTMB_warn_runaway_loading <- function(fit) {
+  rw <- tryCatch(
+    .gllvmTMB_binomial_prevalence_loading_row(fit),
+    error = function(e) NULL
+  )
+  if (is.null(rw) || !identical(as.character(rw$status), "WARN")) {
+    return(invisible(FALSE))
+  }
+  ## Surface the check's OWN message/action verbatim rather than writing a
+  ## second copy here. Two reasons: the wording is already reviewed and shipped
+  ## via `gllvmTMB_diagnose()`, and a second copy would drift from the first the
+  ## moment either is edited.
+  id <- paste0("gllvmTMB-loading-runaway:", .gllvmTMB_runaway_signature(fit))
+  assign(id, TRUE, envir = .gllvmTMB_runaway_ids)
+  cli::cli_warn(c(
+    "This fit shows a runaway trait loading; {.emph treat it as unusable until checked}.",
+    "*" = "{as.character(rw$value)}",
+    "i" = "{as.character(rw$message)}",
+    ">" = "{as.character(rw$action)}",
+    ">" = "Full check: {.run gllvmTMB_diagnose(fit)}. Silence this with \\
+           {.code gllvmTMBcontrol(warn_runaway = FALSE)}."
+  ), .frequency = "once", .frequency_id = id)
+  invisible(TRUE)
 }
 
 ## Multinomial (baseline-category logit) response expansion (Design 83).
@@ -1098,7 +1741,7 @@ expand_multinomial_response <- function(formula, data, family, trait_col) {
   if (sum(fam_is_mn) > 1L) {
     cli::cli_abort(c(
       "More than one {.fn multinomial} trait in a single fit is not supported yet.",
-      "i" = "Fit one categorical response per model (item 2a-ii admits exactly one)."
+      ">" = "Fit one categorical response per model (item 2a-ii admits exactly one)."
     ))
   }
   ## A mixed-family list with exactly one multinomial: expand ONLY the
@@ -1109,7 +1752,10 @@ expand_multinomial_response <- function(formula, data, family, trait_col) {
   if (!inherits(family, "family") && is.list(family) && length(family) > 1L) {
     resp <- all.vars(formula[[2L]])
     if (length(resp) != 1L || !(resp %in% names(data))) {
-      cli::cli_abort("multinomial(): the response must be a single column on the formula LHS.")
+      cli::cli_abort(c(
+        "multinomial(): the response must be a single column on the formula LHS.",
+        ">" = "Write the formula as {.code category ~ ...}, not {.code cbind(a, b, c) ~ ...}."
+      ))
     }
     mn_family <- fams[[which(fam_is_mn)[1L]]]
     requested_baseline <- if (inherits(mn_family, "family")) mn_family$baseline else NULL
@@ -1117,26 +1763,36 @@ expand_multinomial_response <- function(formula, data, family, trait_col) {
     if (!(fam_var %in% names(data))) {
       cli::cli_abort(c(
         "A mixed-family {.code list(...)} needs a {.var {fam_var}} column mapping each row to a family.",
-        "i" = "Set {.code attr(family, 'family_var') <- 'colname'} or add a {.var family} column."
+        ">" = "Add a {.var {fam_var}} column, or set {.code attr(family, 'family_var') <- 'colname'} to point at an existing one."
       ))
     }
     ## Identify the multinomial family level, matching the fit's family_var ->
     ## list alignment (named lists by name; unnamed lists in family_var-level
-    ## order).
+    ## order). This runs BEFORE `.align_mixed_family_list()` (R/fit-multi.R),
+    ## so it repeats the same disagreement-keyed ambiguity guard
+    ## (`.gllvmTMB_resolve_unnamed_family_list()`) rather than inheriting it
+    ## -- see issue #1120.
     fam_col    <- data[[fam_var]]
     fam_levels <- if (is.factor(fam_col)) levels(fam_col) else sort(unique(as.character(fam_col)))
     fam_names  <- names(fams)
     mn_pos     <- which(fam_is_mn)[1L]
+    if (is.null(fam_names)) {
+      .gllvmTMB_resolve_unnamed_family_list(fams, fam_levels, fam_var)
+    }
     mn_level   <- if (!is.null(fam_names) && all(nzchar(fam_names))) fam_names[mn_pos] else fam_levels[mn_pos]
     mn_rows    <- which(as.character(fam_col) == as.character(mn_level))
     if (length(mn_rows) == 0L) {
-      cli::cli_abort("No rows map to the {.fn multinomial} family level {.val {mn_level}} in {.var {fam_var}}.")
+      cli::cli_abort(c(
+        "No rows map to the {.fn multinomial} family level {.val {mn_level}} in {.var {fam_var}}.",
+        ">" = "Check {.var {fam_var}}'s values against the names of the mixed-family {.code list(...)}."
+      ))
     }
     mn_trait_lvls <- unique(as.character(data[[trait_col]])[mn_rows])
     if (length(mn_trait_lvls) != 1L) {
       cli::cli_abort(c(
         "The {.fn multinomial} family must map to exactly one trait.",
-        "i" = "Found trait(s) {paste(mn_trait_lvls, collapse = ', ')} on multinomial rows."
+        "x" = "Found trait(s) {paste(mn_trait_lvls, collapse = ', ')} on multinomial rows.",
+        ">" = "Check every row where {.var {fam_var}} is {.val {mn_level}} shares one {.arg trait} level."
       ))
     }
     mn_trait <- mn_trait_lvls
@@ -1151,13 +1807,19 @@ expand_multinomial_response <- function(formula, data, family, trait_col) {
     if (!is.null(requested_baseline)) {
       requested_baseline <- as.character(requested_baseline)
       if (!(requested_baseline %in% levels(yf))) {
-        cli::cli_abort("{.fn multinomial}: baseline {.val {requested_baseline}} is not a category.")
+        cli::cli_abort(c(
+          "{.fn multinomial}: baseline {.val {requested_baseline}} is not a category.",
+          ">" = "Choose {.arg baseline} from the response's observed categories: {.val {levels(yf)}}."
+        ))
       }
       yf <- stats::relevel(yf, ref = requested_baseline)
     }
     cats <- levels(yf); K <- length(cats)
     if (K < 3L) {
-      cli::cli_abort("{.fn multinomial} requires an unordered response with >= 3 categories.")
+      cli::cli_abort(c(
+        "{.fn multinomial} requires an unordered response with >= 3 categories.",
+        ">" = "Use {.fn binomial} for a two-category response, or {.fn ordinal_probit} if the categories are ordered."
+      ))
     }
     L <- K - 1L
     yint <- as.integer(yf)
@@ -1190,7 +1852,10 @@ expand_multinomial_response <- function(formula, data, family, trait_col) {
   requested_baseline <- if (inherits(mn_family, "family")) mn_family$baseline else NULL
   resp <- all.vars(formula[[2L]])
   if (length(resp) != 1L || !(resp %in% names(data))) {
-    cli::cli_abort("multinomial(): the response must be a single categorical variable on the formula LHS.")
+    cli::cli_abort(c(
+      "multinomial(): the response must be a single categorical variable on the formula LHS.",
+      ">" = "Write the formula as {.code category ~ ...}, where {.code category} is a factor."
+    ))
   }
   y_raw <- data[[resp]]
   ## NA categorical responses are admitted: as.integer(yf) is NA for them, so
@@ -1205,7 +1870,7 @@ expand_multinomial_response <- function(formula, data, family, trait_col) {
   if (K < 3L) {
     cli::cli_abort(c(
       "{.fn multinomial} requires an unordered response with >= 3 categories.",
-      "i" = "A 2-category response is {.fn binomial}; use {.code family = binomial(link = \"logit\")}."
+      ">" = "A 2-category response is {.fn binomial}; use {.code family = binomial(link = \"logit\")}."
     ))
   }
   ## Honour multinomial(baseline=): pin the requested category at eta = 0 by
@@ -1216,7 +1881,7 @@ expand_multinomial_response <- function(formula, data, family, trait_col) {
     if (length(requested_baseline) != 1L || !(requested_baseline %in% cats)) {
       cli::cli_abort(c(
         "{.fn multinomial}: {.code baseline = {requested_baseline}} is not a category of the response.",
-        "i" = "Response categories are {.val {cats}}."
+        ">" = "Choose {.arg baseline} from the response's observed categories: {.val {cats}}."
       ))
     }
     yf   <- stats::relevel(yf, ref = requested_baseline)
@@ -1275,7 +1940,7 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
     if (!any(!response_missing)) {
       cli::cli_abort(c(
         "All response rows are missing.",
-        "i" = "At least one observed response value is required to fit a model."
+        ">" = "Check the response column was read correctly; at least one observed value is required to fit a model."
       ))
     }
     return(list(
@@ -1303,7 +1968,7 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
   if (!any(keep)) {
     cli::cli_abort(c(
       "All response rows are missing.",
-      "i" = "At least one observed response value is required to fit a model."
+      ">" = "Check the response column was read correctly; at least one observed value is required to fit a model."
     ))
   }
 
@@ -1312,20 +1977,22 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
     if (!is.null(w_dim)) {
       cli::cli_abort(c(
         "{.arg weights} must be a length-{nrow(data)} numeric vector in the long-format API.",
-        "i" = "Got {.code dim(weights)} = c({paste(w_dim, collapse = ', ')}).",
-        "i" = "For per-cell weights aligned with a wide response matrix, use {.fn gllvmTMB_wide}."
+        "x" = "Got {.code dim(weights)} = c({paste(w_dim, collapse = ', ')}).",
+        ">" = "For per-cell weights aligned with a wide response matrix, use {.fn gllvmTMB_wide}."
       ))
     }
     if (!is.numeric(weights)) {
       cli::cli_abort(c(
         "{.arg weights} must be numeric.",
-        "i" = "Got class {.cls {class(weights)[1]}}."
+        "x" = "Got class {.cls {class(weights)[1]}}.",
+        ">" = "Pass a numeric vector, e.g. {.code as.numeric(weights)}."
       ))
     }
     if (length(weights) != nrow(data)) {
       cli::cli_abort(c(
         "{.arg weights} must be a length-{nrow(data)} numeric vector in the long-format API.",
-        "i" = "Got length {length(weights)}."
+        "x" = "Got length {length(weights)}.",
+        ">" = "Pass one weight per row of {.arg data}."
       ))
     }
     weights <- as.numeric(weights)[keep]
@@ -1351,22 +2018,56 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 
 #' Control parameters for [gllvmTMB()]
 #'
-#' @param d_B,d_W Latent dimensions for the between-unit and within-unit
-#'   reduced-rank components. Set to a positive integer to enable
-#'   `latent()` / `indep()` covariance structures at the corresponding tier.
-#' @param spde_mode `"per_trait"` (default) fits one independent SPDE field
-#'   per trait when a `spatial()` term is present; `"shared"` fits one shared
-#'   SPDE field with trait-specific scalar loadings.
+#' @param d_B,d_W **Not read by the fitter.** Retained in the control list for
+#'   backward compatibility only. Set latent rank in the formula with
+#'   `latent(..., d = K)` (or the `d` argument on the keyword helper), not
+#'   here.
+#' @param spde_mode **Not read by the fitter.** Retained for backward
+#'   compatibility only. Spatial field sharing is determined by the
+#'   `spatial_*()` formula keyword, not by this control argument.
 #' @param n_init Number of random-start replicates. Reduced-rank GLLVMs
 #'   are often multimodal because the latent-factor likelihood has many
 #'   equivalent local maxima; running several restarts with different
 #'   starting values and keeping the fit with the lowest `-logLik`
 #'   reduces the risk of settling on a suboptimal solution. Default
-#'   1 (single fit). Increase to 5–10 for two-level rr models.
-#' @param optimizer One of `"nlminb"` (default) or `"optim"`. Use the
-#'   latter together with `optArgs` for finicky two-level rr fits.
-#' @param optArgs A list of arguments passed to the optimiser. For
-#'   `optim` the most useful is `list(method = "BFGS")`.
+#'   1 (the default start, plus the `svd_start` restart when that applies).
+#'   Increase to 5–10 for two-level rr models, and to check any fit whose
+#'   log-likelihood will be compared: a single start can stop at a lower
+#'   local optimum while reporting `convergence = 0`, a positive-definite
+#'   Hessian and a small gradient. The jittered restarts use R's random
+#'   number generator, so call [set.seed()] first for a reproducible fit.
+#' @param svd_start Logical. If `TRUE` (default), a fit with an ordinary
+#'   `latent()` block is also optimised from a second, data-informed start
+#'   whose loadings and latent scores come from one singular value
+#'   decomposition of the residual matrix, and the start with the lower
+#'   objective is kept (`restart_history` labels it `"svd"`). The default
+#'   start alone sometimes stopped at a lower local optimum with clean
+#'   diagnostics. This adds one optimisation per fit and uses
+#'   no random numbers. It is skipped when `start_from` or `start_method` is
+#'   supplied and on the `estimator = "mspl"` route. Set `FALSE` for the
+#'   single-start behaviour of gllvmTMB 0.8.0 and earlier.
+#' @param optimizer Optimiser for the native Laplace and AGHQ routes. For the
+#'   experimental VA route, omission keeps the family registry's automatic
+#'   primary solver; explicitly set `"nlminb"` to pin that solver or `"optim"`
+#'   to select `"BFGS"` or `"L-BFGS-B"` through `optArgs$method`.
+#' @param optArgs Native optimiser arguments. Existing Laplace and AGHQ
+#'   behavior is unchanged. For VA, `nlminb` accepts `control`, `lower`,
+#'   `upper`, and `scale`; `optim` accepts a nested `control` list and
+#'   `method = "BFGS"` or `"L-BFGS-B"` (the latter also accepts bounds).
+#'   Put native stopping controls such as `maxit` inside `control`; unknown or
+#'   method-incompatible values are rejected before the VA objective is built.
+#' @param va_polish For VA fits, whether to run the existing secondary solver
+#'   polishing sequence after each primary start. Defaults to `TRUE` to retain
+#'   prior behavior; `FALSE` disables every secondary solver and is useful for
+#'   controlled optimizer comparisons. The four primary starts and their
+#'   existing agreement rule are unchanged. BFGS uses a dense inverse-Hessian
+#'   approximation, so its memory use grows quadratically with the parameter
+#'   count; use it as an opt-in method for modest models.
+#' @param optimizer_passes Number of exact-gradient optimisation passes from
+#'   the preceding estimate. The default `1` retains the historical single
+#'   pass. A later pass is retained only when it converges and does not increase
+#'   the objective. It is available for native Laplace fits with `aghq = FALSE`.
+#'   The setting is saved in the public call and replayed by [update()].
 #' @param init_jitter Standard deviation of N(0, sigma) jitter applied to
 #'   the starting parameter vector across the `n_init` restarts.
 #'   Default 0.3.
@@ -1415,8 +2116,9 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #'   probit cell with 20 traits, `H = 7` was indistinguishable from `H = 61` in
 #'   both the recovered loading scale and the recovered linear predictor, at
 #'   two and at five latent dimensions, while running 3.4-6.7 times faster.
-#'   `H = 5` was measurably worse at five latent dimensions. Gate E therefore
-#'   promoted `H = 7`; `H = 61` remains available as a diagnostic.
+#'   `H = 5` was measurably worse at five latent dimensions. These results
+#'   support `H = 7` as the default; `H = 61` remains available as a
+#'   diagnostic.
 #'
 #' @param va_eval_method How the variational route evaluates the per-observation
 #'   expectation. `"auto"` (default) selects Gauss-Hermite quadrature for every
@@ -1448,11 +2150,11 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #'   coverage claim is made. A bound must not be compared across ranks or
 #'   models, so it cannot be used for model or rank selection.
 #'
-#'   It is admitted only inside the Gate-E implementation/light-fit region —
+#'   It is currently admitted only for these model conditions:
 #'   `latent(..., unique = FALSE)`, the 18 scalar family/link cells in the
 #'   response-family registry, `d` up to 2, up to 80 responses, at least 100
-#'   units, and the native TMB engine — and
-#'   requesting it outside that region is an **error**, not a warning. The `d`
+#'   units, and the native TMB engine. Requesting it outside these conditions
+#'   is an **error**, not a warning. The `d`
 #'   limit is retained from the historical explicit-JJ preregistered recovery
 #'   gate: `d = 4` was measured and refused because, with few responses, the
 #'   planted axes collapsed more often than that gate allowed. This is an
@@ -1477,9 +2179,9 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #'
 #'   **Historical explicit-JJ evidence.** Recovery of the ordination below was
 #'   measured with the earlier JJ evaluator against planted truth at the
-#'   admitted cells (`d = 2`, 8 responses, n = 150 and 400, 50 seeds per cell;
-#'   `dev/va-usability/A2-ATTENUATION.md`), with the Laplace route run on the
-#'   same simulated data as a control. This campaign predates the current
+#'   admitted cells (`d = 2`, 8 responses, n = 150 and 400, 50 seeds per cell),
+#'   with the Laplace route run on the same simulated data as a control. This
+#'   campaign predates the current
 #'   automatic Gauss-Hermite default and must not be used as evidence for the
 #'   accuracy of the current GH-default route:
 #'
@@ -1506,8 +2208,22 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #'   [gllvmTMB_va-methods]) rather than an ordinary fit, so that every method
 #'   which would treat its objective as a likelihood fails loudly instead of
 #'   returning a number. Because the engine runs its own multi-start and
-#'   optimiser policy, the search settings of [gllvmTMBcontrol()] — `n_init`,
-#'   `optimizer`, `optArgs`, `start_from`, `init_*` and `se` — have no effect
+#'   optimiser policy, `optimizer` and `optArgs` select the VA primary solver,
+#'   while `va_polish` controls the existing secondary-solver sequence. If
+#'   `optimizer` is omitted, the family registry still selects the primary
+#'   solver. For a fitted VA object, per-start diagnostics are in
+#'   `fit$engine_result$starts[[i]]`: `primary_optimizer` names the selected
+#'   primary method and `final_optimizer` names the method whose parameter
+#'   vector and objective were retained. `polish_optimizer` summarizes the
+#'   polish methods actually attempted (`"disabled"`, `"not_attempted"`,
+#'   `"nlminb_attempted"`, or `"nlminb_then_L-BFGS-B_attempted"`). The ordered
+#'   `optimizer_attempts` records include an `accepted` flag. The primary result
+#'   starts accepted; a polish record is accepted only when it replaces the
+#'   retained result. Acceptance records replacement, not convergence or a
+#'   healthy fit; inspect `convergence` and `healthy` separately. Thus the last
+#'   accepted attempt identifies `final_optimizer`; a failed primary has no
+#'   retained solver and records `NA`. The settings `n_init`, `start_from`,
+#'   `init_*` and `se` have no effect
 #'   on this route. Any model structure the route cannot represent (a latent
 #'   term away from the unit grouping, a constrained ordination, an offset,
 #'   weights, `REML`, `lambda_constraint`, `Xcoef_fixed`, or a further random
@@ -1553,11 +2269,29 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #'   suggesting that the penalty belongs to AGHQ. The default `NULL` preserves
 #'   historical unpenalised Laplace fits. Supply at most one of
 #'   `loading_ridge` and `aghq_ridge`; neither may be combined with
-#'   `estimator = "mspl"`.
-#' @param warn_runaway If `TRUE` (default), warn once per session when a
-#'   binomial latent-variable fit triggers the package's existing runaway-loading
-#'   diagnostic. Set `FALSE` to silence the fit-time warning; the diagnostic
-#'   remains available through [gllvmTMB_diagnose()].
+#'   `estimator = "mspl"`. A finite positive value is the standard deviation
+#'   `tau` of independent zero-mean normal priors on free ordinary between-unit loadings:
+#'   `loading_ridge = 2` means variance `2^2`, smaller positive values apply
+#'   stronger shrinkage, and `Inf` disables the penalty. For unstable binomial
+#'   fits with ordinary between-unit latent loadings, an explicit
+#'   `loading_ridge = 2` fit is a starting sensitivity analysis; this does not
+#'   change the ordinary Laplace default. Estimates
+#'   are penalised MAP points. Retained penalised-Hessian LV uncertainty is a
+#'   local posterior approximation conditional on `tau`, with delta-method
+#'   propagation for trait effects, not calibrated repeated-sampling coverage.
+#'   Older fits without the required metadata withhold LV uncertainty.
+#' @param warn_runaway If `TRUE` (default), warn when a binomial
+#'   latent-variable fit triggers the package's existing runaway-loading
+#'   diagnostic. The warning is shown once per session for each distinct
+#'   dataset and model (response, family and link, and loading-matrix shape), so
+#'   a second, different runaway fit in the same session still warns while a
+#'   re-fit of the same data and model does not. Set `FALSE` to silence the
+#'   fit-time warning; the diagnostic remains available through
+#'   [gllvmTMB_diagnose()]. The same switch also governs the multinomial contrast-degeneracy warning (collapsed contrast
+#'   variance, rail-correlated contrasts, or a collapsed spatial range), which
+#'   uses its own once-per-session slot so neither family's warning can
+#'   suppress the other's. Ordinal fits emit no fit-time warning: the
+#'   `ordinal_probit()` loading screen reports through [check_gllvmTMB()] only.
 #' @param aghq_continuation If `TRUE` (default), the adaptation loop may raise
 #'   `aghq_iter_cap` across passes. `FALSE` pins the cap and disables escalation.
 #' @param aghq_shift_tol,aghq_grad_tol,aghq_f_tol Convergence tolerances for the
@@ -1634,6 +2368,57 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #'
 #' # Switch the optimiser to optim + BFGS for finicky two-level rr fits.
 #' gllvmTMBcontrol(optimizer = "optim", optArgs = list(method = "BFGS"))
+#'
+#' # Compare VA primary solvers on the same model and four seeded starts.
+#' # This example is deliberately not run automatically because each method
+#' # performs four variational fits. Reset the seed for each method and disable
+#' # polish so the comparison isolates the selected primary solver.
+#' \dontrun{
+#' set.seed(20260802L)
+#' n <- 120L
+#' p <- 4L
+#' va_data <- data.frame(
+#'   y = rbinom(n * p, 1L, 0.5),
+#'   trait = factor(rep(seq_len(p), times = n)),
+#'   site = factor(rep(seq_len(n), each = p))
+#' )
+#' va_formula <- y ~ 0 + trait + latent(0 + trait | site, d = 1,
+#'                                      unique = FALSE)
+#' va_methods <- list(
+#'   nlminb = list(optimizer = "nlminb",
+#'                 optArgs = list(control = list(iter.max = 2000L,
+#'                                                eval.max = 2000L))),
+#'   BFGS = list(optimizer = "optim",
+#'               optArgs = list(method = "BFGS",
+#'                               control = list(maxit = 2000L))),
+#'   `L-BFGS-B` = list(optimizer = "optim",
+#'                     optArgs = list(method = "L-BFGS-B",
+#'                                     control = list(maxit = 2000L)))
+#' )
+#' va_fits <- lapply(va_methods, function(method) {
+#'   set.seed(1595L)
+#'   gllvmTMB(
+#'     va_formula, data = va_data,
+#'     family = stats::binomial(link = "probit"), unit = "site",
+#'     control = gllvmTMBcontrol(
+#'       integration = "va", va_H = 7L, va_eval_method = "gh",
+#'       optimizer = method$optimizer, optArgs = method$optArgs,
+#'       va_polish = FALSE
+#'     )
+#'   )
+#' })
+#' lapply(va_fits, function(fit) {
+#'   starts <- fit$engine_result$starts
+#'   data.frame(
+#'     start = vapply(starts, `[[`, integer(1), "start"),
+#'     primary = vapply(starts, `[[`, character(1), "primary_optimizer"),
+#'     final = vapply(starts, `[[`, character(1), "final_optimizer"),
+#'     polish = vapply(starts, `[[`, character(1), "polish_optimizer"),
+#'     objective = vapply(starts, `[[`, numeric(1), "objective"),
+#'     convergence = vapply(starts, `[[`, integer(1), "convergence")
+#'   )
+#' })
+#' }
 #'
 #' # Experimental, opt-in scale-aware ridge for the evaluated Bernoulli AGHQ
 #' # scope. The route uses a fixed 9-node multi-start rule; this is not an
@@ -1740,6 +2525,9 @@ gllvmTMBcontrol <- function(
   warn_runaway = TRUE,
   allow_nongaussian_reml = FALSE,
   loading_ridge = NULL,
+  optimizer_passes = 1L,
+  svd_start = TRUE,
+  va_polish = TRUE,
   ...
 ) {
   ## Did the CALLER name `aghq_ridge`, or is this the package default? The
@@ -1759,6 +2547,11 @@ gllvmTMBcontrol <- function(
   ## cannot see. So the Laplace-path ridge is opt-in ONLY: it fires when the
   ## caller names `aghq_ridge` and never from the default.
   aghq_ridge_explicit <- !missing(aghq_ridge)
+  ## Recorded so engine = "julia" can refuse an explicit start/restart
+  ## request it would otherwise ignore (#1331 review).
+  n_init_explicit <- !missing(n_init)
+  svd_start_explicit <- !missing(svd_start)
+  optimizer_explicit <- !missing(optimizer)
   loading_ridge_explicit <- !missing(loading_ridge) && !is.null(loading_ridge)
   if (isTRUE(aghq_ridge_explicit) && isTRUE(loading_ridge_explicit)) {
     cli::cli_abort(c(
@@ -1775,10 +2568,51 @@ gllvmTMBcontrol <- function(
   aghq_multistart_explicit <- !missing(aghq_multistart)
   spde_mode <- match.arg(spde_mode)
   optimizer <- match.arg(optimizer)
+  if (!is.numeric(optimizer_passes) || length(optimizer_passes) != 1L ||
+      is.na(optimizer_passes) || !is.finite(optimizer_passes) ||
+      optimizer_passes != as.integer(optimizer_passes) || optimizer_passes < 1L) {
+    cli::cli_abort(c(
+      "{.arg optimizer_passes} must be one or more whole-number passes.",
+      ">" = "Use {.code optimizer_passes = 1L} for the historical single pass."
+    ))
+  }
   init_strategy <- match.arg(init_strategy)
   start_method <- .gllvmTMB_normalize_start_method(start_method)
   integration <- match.arg(integration)
   va_eval_method <- match.arg(va_eval_method)
+  if (!is.logical(va_polish) || length(va_polish) != 1L || is.na(va_polish)) {
+    cli::cli_abort("{.arg va_polish} must be one non-missing logical value.")
+  }
+  if (identical(integration, "va")) {
+    ## Validate method-native arguments at construction, before the VA route
+    ## can assemble an objective. The route repeats this check for hand-built
+    ## or older saved controls.
+    .va_route_optimizer_spec(list(
+      optimizer = optimizer, optimizer_explicit = optimizer_explicit,
+      optArgs = optArgs, va_polish = va_polish
+    ))
+  }
+  ## isTRUE() treats 1 as off. Coerce 1/0 first so a numeric on-switch reaches
+  ## the later auto-ridge check as a real logical (#1426).
+  aghq_continuation <- .gllvmTMB_as_flag(aghq_continuation, "aghq_continuation")
+  aghq_multistart <- .gllvmTMB_as_flag(aghq_multistart, "aghq_multistart")
+  warn_runaway <- .gllvmTMB_as_flag(warn_runaway, "warn_runaway")
+  allow_nongaussian_reml <- .gllvmTMB_as_flag(
+    allow_nongaussian_reml, "allow_nongaussian_reml"
+  )
+  aghq_iter_cap <- .gllvmTMB_as_count(aghq_iter_cap, "aghq_iter_cap")
+  aghq_n_adapt <- .gllvmTMB_as_count(aghq_n_adapt, "aghq_n_adapt")
+  aghq_escalate_patience <- .gllvmTMB_as_count(
+    aghq_escalate_patience, "aghq_escalate_patience"
+  )
+  aghq_shift_tol <- .gllvmTMB_as_tol(aghq_shift_tol, "aghq_shift_tol")
+  aghq_grad_tol <- .gllvmTMB_as_tol(aghq_grad_tol, "aghq_grad_tol")
+  aghq_f_tol <- .gllvmTMB_as_tol(aghq_f_tol, "aghq_f_tol")
+  aghq_grad_tol_rel <- .gllvmTMB_as_tol(
+    aghq_grad_tol_rel, "aghq_grad_tol_rel",
+    allow_zero = TRUE
+  )
+  aghq_rho_min <- .gllvmTMB_as_tol(aghq_rho_min, "aghq_rho_min", upper = 1)
   ## Validate here rather than deep in the engine, so a typo fails at the call
   ## the user wrote. The odd-only rule is the GH rule's own contract: an odd
   ## order keeps a node at the variational mean, where the integrand's mass is.
@@ -1828,8 +2662,45 @@ gllvmTMBcontrol <- function(
       ">" = "Set {.code aghq = FALSE}, or use {.code integration = \"laplace\"}."
     ))
   }
+  if (optimizer_passes > 1L &&
+      (!identical(integration, "laplace") || !isFALSE(aghq))) {
+    cli::cli_abort(c(
+      "{.arg optimizer_passes} greater than one requires native Laplace optimisation with {.code aghq = FALSE}.",
+      "i" = "Variational and adaptive-quadrature routes use their own optimisation loops.",
+      ">" = "Use {.code optimizer_passes = 1L}, or fit the native Laplace route."
+    ))
+  }
   if (!is.logical(se) || length(se) != 1L || is.na(se)) {
-    cli::cli_abort("{.arg se} must be a single {.code TRUE} or {.code FALSE} value.")
+    cli::cli_abort(c(
+      "{.arg se} must be a single {.code TRUE} or {.code FALSE} value.",
+      ">" = "Pass {.code se = TRUE} or {.code se = FALSE} to {.fn gllvmTMBcontrol}."
+    ))
+  }
+  if (!is.numeric(n_init) || length(n_init) != 1L || is.na(n_init) ||
+      !is.finite(n_init)) {
+    cli::cli_abort(c(
+      "{.arg n_init} must be one finite whole number of random starts.",
+      ">" = "Use {.code n_init = 1L} for a single start, or a positive integer such as {.code 5L}."
+    ))
+  }
+  if (!is.logical(svd_start) || length(svd_start) != 1L || is.na(svd_start)) {
+    cli::cli_abort(c(
+      "{.arg svd_start} must be {.code TRUE} or {.code FALSE}.",
+      ">" = "Use {.code svd_start = FALSE} to fit from the default start only."
+    ))
+  }
+  if (n_init < 1L || n_init != as.integer(n_init)) {
+    cli::cli_abort(c(
+      "{.arg n_init} must be an integer greater than or equal to 1.",
+      ">" = "Fractional values such as {.code 5.5} are not accepted."
+    ))
+  }
+  if (!is.numeric(init_jitter) || length(init_jitter) != 1L ||
+      is.na(init_jitter) || !is.finite(init_jitter) || init_jitter < 0) {
+    cli::cli_abort(c(
+      "{.arg init_jitter} must be one finite non-negative number.",
+      ">" = "Use {.code init_jitter = 0} to disable jitter between restarts."
+    ))
   }
   if (...length() > 0L) {
     cli::cli_warn(
@@ -1844,8 +2715,14 @@ gllvmTMBcontrol <- function(
     va_H = as.integer(va_H),
     va_eval_method = va_eval_method,
     n_init = as.integer(n_init),
+    n_init_explicit = n_init_explicit,
+    svd_start = svd_start,
+    svd_start_explicit = svd_start_explicit,
     optimizer = optimizer,
+    optimizer_explicit = optimizer_explicit,
     optArgs = optArgs,
+    va_polish = va_polish,
+    optimizer_passes = as.integer(optimizer_passes),
     init_jitter = init_jitter,
     init_strategy = init_strategy,
     start_method = start_method,
@@ -1853,24 +2730,66 @@ gllvmTMBcontrol <- function(
     se = se,
     verbose = verbose,
     aghq = aghq,
-    aghq_iter_cap = as.integer(aghq_iter_cap),
-    aghq_n_adapt = as.integer(aghq_n_adapt),
+    aghq_iter_cap = aghq_iter_cap,
+    aghq_n_adapt = aghq_n_adapt,
     aghq_ridge = aghq_ridge,
     aghq_ridge_explicit = aghq_ridge_explicit,
     loading_ridge = if (isTRUE(loading_ridge_explicit)) aghq_ridge else NULL,
     loading_ridge_explicit = loading_ridge_explicit,
-    aghq_continuation = isTRUE(aghq_continuation),
-    aghq_shift_tol = as.numeric(aghq_shift_tol),
-    aghq_grad_tol = as.numeric(aghq_grad_tol),
-    aghq_grad_tol_rel = as.numeric(aghq_grad_tol_rel),
-    aghq_multistart = isTRUE(aghq_multistart),
-    aghq_f_tol = as.numeric(aghq_f_tol),
-    aghq_escalate_patience = as.integer(aghq_escalate_patience),
-    aghq_rho_min = as.numeric(aghq_rho_min),
-    warn_runaway = isTRUE(warn_runaway),
-    allow_nongaussian_reml = isTRUE(allow_nongaussian_reml)
+    aghq_continuation = aghq_continuation,
+    aghq_shift_tol = aghq_shift_tol,
+    aghq_grad_tol = aghq_grad_tol,
+    aghq_grad_tol_rel = aghq_grad_tol_rel,
+    aghq_multistart = aghq_multistart,
+    aghq_f_tol = aghq_f_tol,
+    aghq_escalate_patience = aghq_escalate_patience,
+    aghq_rho_min = aghq_rho_min,
+    warn_runaway = warn_runaway,
+    allow_nongaussian_reml = allow_nongaussian_reml
   )
 }
+
+## #1196 staged-rollout resolver for `unit` (2026-09-02 full-suite
+## follow-up). `unit` has no default -- every caller must name the column
+## that identifies the sampling unit -- but a hard abort here would break
+## every existing call site (across `gllvmTMB()` and, discovered later,
+## `suggest_lambda_constraint()`/`suggest_lambda_constraints()` and
+## `ridge_path()`) that omits `unit=` and relies on the historical
+## implicit "site" default (D-88 -- a mechanical rewrite would bleed into
+## files other lanes own). So for one release the implicit default still
+## resolves when `data` has a literal "site" column, with a one-time
+## deprecation warning shared across all four entry points (one
+## `getOption()` key); the abort fires only when that fallback column
+## does not exist. A future release will require explicit `unit` (NEWS).
+##
+## Returns the resolved `unit` string, or aborts naming `{.arg unit}`.
+.gllvmTMB_resolve_unit_staged <- function(unit, data) {
+  if (!is.null(unit)) {
+    return(unit)
+  }
+  if ("site" %in% names(data)) {
+    ## `cli::cli_warn(.frequency = "once")`'s internal throttle is not
+    ## resettable from tests (see R/normalise-level.R for the same
+    ## finding); an `getOption()`-cached one-shot, resettable via
+    ## `withr::local_options()`, mirrors that established pattern.
+    if (!isTRUE(getOption("gllvmTMB.warned_unit_implicit_site"))) {
+      cli::cli_warn(
+        c(
+          "!" = "Relying on the implicit {.code unit = \"site\"} default is deprecated.",
+          "i" = "Pass {.arg unit = \"site\"} explicitly; the implicit fallback still applies for now but will be removed in a future release."
+        ),
+        class = "lifecycle_warning_deprecated"
+      )
+      options(gllvmTMB.warned_unit_implicit_site = TRUE)
+    }
+    return("site")
+  }
+  cli::cli_abort(c(
+    "{.arg unit = ...} is required.",
+    ">" = "Pass the name of the column that identifies the sampling unit (site, individual, paper, ...)."
+  ))
+}
+
 
 ## `aghq` accepts FALSE (Laplace, the current default), "auto" (let the package
 ## decide), or a positive integer node count. Anything else is a user error and is
@@ -1881,6 +2800,54 @@ gllvmTMBcontrol <- function(
 ## head-to-head evidence decides, because flipping it would change every existing
 ## user's numbers while touching no export and so would be invisible to R CMD check.
 ## See docs/dev-log/decisions.md. When that evidence lands, this one word is the flip.
+.gllvmTMB_as_flag <- function(x, arg) {
+  if (is.logical(x) && length(x) == 1L && !is.na(x)) {
+    return(x)
+  }
+  if (is.numeric(x) && length(x) == 1L && is.finite(x) && x %in% c(0, 1)) {
+    return(as.logical(x))
+  }
+  cli::cli_abort(c(
+    "{.arg {arg}} must be {.code TRUE}, {.code FALSE}, {.code 1}, or {.code 0}.",
+    "x" = "Got {.val {x}}.",
+    ">" = "Pass {.code TRUE} or {.code FALSE} (or {.code 1} / {.code 0}) to {.fn gllvmTMBcontrol}."
+  ))
+}
+
+.gllvmTMB_as_count <- function(x, arg) {
+  if (is.numeric(x) && length(x) == 1L && is.finite(x) &&
+      x == as.integer(x) && x >= 1) {
+    return(as.integer(x))
+  }
+  cli::cli_abort(c(
+    "{.arg {arg}} must be a single positive whole number.",
+    "x" = "Got {.val {x}}.",
+    ">" = "Pass a whole number of at least 1, e.g. {.code {arg} = 1}."
+  ))
+}
+
+.gllvmTMB_as_tol <- function(x, arg, allow_zero = FALSE, upper = Inf) {
+  lower_ok <- if (isTRUE(allow_zero)) {
+    is.numeric(x) && length(x) == 1L && is.finite(x) && x >= 0
+  } else {
+    is.numeric(x) && length(x) == 1L && is.finite(x) && x > 0
+  }
+  if (lower_ok && x <= upper) {
+    return(as.numeric(x))
+  }
+  kind <- if (isTRUE(allow_zero)) "non-negative" else "positive"
+  ceiling <- if (is.finite(upper)) {
+    paste0(" and at most ", upper)
+  } else {
+    ""
+  }
+  cli::cli_abort(c(
+    "{.arg {arg}} must be a single finite {kind} number{ceiling}.",
+    "x" = "Got {.val {x}}.",
+    ">" = "Pass a finite {kind} number{ceiling} to {.fn gllvmTMBcontrol}."
+  ))
+}
+
 .gllvmTMB_normalize_aghq <- function(aghq) {
   if (is.null(aghq) || isFALSE(aghq)) return(FALSE)
   if (is.character(aghq) && length(aghq) == 1L && identical(aghq, "auto")) return("auto")
@@ -1893,7 +2860,7 @@ gllvmTMBcontrol <- function(
     "{.arg aghq} must be {.code FALSE}, {.val auto}, or a single positive integer.",
     "i" = "{.code aghq = FALSE} uses the Laplace approximation (the current default).",
     "i" = "{.code aghq = \"auto\"} lets the package choose the node count.",
-    "i" = "{.code aghq = 9} uses a fixed 9-node rule per latent dimension."
+    ">" = "Pass {.code aghq = 9} for a fixed 9-node rule per latent dimension, or omit {.arg aghq} for the default."
   ))
 }
 
@@ -1982,12 +2949,12 @@ miss_control <- function(
     if (engine %in% c("em", "profile")) {
       cli::cli_abort(c(
         "{.code engine = {.val {engine}}} is a reserved name, not yet supported.",
-        "i" = "This version supports {.code engine = \"laplace\"} only."
+        ">" = "Omit {.arg engine} or pass {.code engine = \"laplace\"} (the only supported value)."
       ))
     }
     cli::cli_abort(c(
       "Unknown {.arg engine}: {.val {engine}}.",
-      "i" = "This version supports {.code engine = \"laplace\"} only ({.val em} / {.val profile} are reserved names)."
+      ">" = "Omit {.arg engine} or pass {.code engine = \"laplace\"} ({.val em} / {.val profile} are reserved names)."
     ))
   }
 
@@ -2006,7 +2973,10 @@ miss_control <- function(
     start_method <- list(method = start_method)
   }
   if (!is.list(start_method)) {
-    cli::cli_abort("{.arg start_method} must be a list, e.g. {.code list(method = \"res\", jitter.sd = 0.2)}.")
+    cli::cli_abort(c(
+      "{.arg start_method} must be a list.",
+      ">" = "Omit {.arg start_method} for the default start, or pass e.g. {.code list(method = \"res\", jitter.sd = 0.2)} for the soft-deprecated residual start."
+    ))
   }
 
   method <- start_method$method
@@ -2015,12 +2985,15 @@ miss_control <- function(
     method <- NULL
   } else {
     if (!is.character(method) || length(method) != 1L) {
-      cli::cli_abort("{.arg start_method$method} must be NULL or the string {.val res}.")
+      cli::cli_abort(c(
+        "{.arg start_method$method} must be NULL or the string {.val res}.",
+        ">" = "Omit {.arg start_method} for the default start (recommended); {.val res} is the only other accepted value, and it is soft-deprecated."
+      ))
     }
     if (!method %in% c("res", "indep")) {
       cli::cli_abort(c(
         "Unknown {.arg start_method$method}: {.val {method}}.",
-        "i" = "Currently supported: {.code NULL} (default), {.code \"res\"}, or {.code \"indep\"}."
+        ">" = "Pass {.code NULL} (default), {.code \"res\"}, or {.code \"indep\"}."
       ))
     }
     ## `"res"` remains accepted compatibility syntax but warns once per session:
@@ -2035,7 +3008,10 @@ miss_control <- function(
   jitter.sd <- start_method$jitter.sd %||% 0
   if (!is.numeric(jitter.sd) || length(jitter.sd) != 1L ||
       !is.finite(jitter.sd) || jitter.sd < 0) {
-    cli::cli_abort("{.arg start_method$jitter.sd} must be one finite non-negative number.")
+    cli::cli_abort(c(
+      "{.arg start_method$jitter.sd} must be one finite non-negative number.",
+      ">" = "{.arg jitter.sd} only applies with the soft-deprecated {.code method = \"res\"} start; pass e.g. {.code 0.2}, or {.code 0} for no jitter."
+    ))
   }
   list(method = method, jitter.sd = as.numeric(jitter.sd))
 }

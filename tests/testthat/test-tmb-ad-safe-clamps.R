@@ -16,7 +16,19 @@ test_that("TMB likelihood probability clamps avoid AD-driven ternary branches", 
   cpp <- paste(readLines(cpp_path, warn = FALSE), collapse = "\n")
 
   expect_match(cpp, "Type gll_clamp\\(Type x, Type lower, Type upper\\)")
-  expect_match(cpp, "p = gll_clamp\\(p, tiny, Type\\(1\\.0\\) - tiny\\);")
+  ## The binomial logit/probit guard moved to the LOG scale (#1362). The old
+  ## `p = gll_clamp(p, 1e-12, 1 - 1e-12)` before dbinom() made each row a
+  ## constant with zero gradient beyond |eta| 27.6 (logit) / 7.03 (probit). The
+  ## row is now lchoose + y log p + (n - y) log(1 - p) from the tail-safe log
+  ## helpers, so no probability clamp may come back on that path.
+  expect_no_match(cpp, "p = gll_clamp\\(p, tiny, Type\\(1\\.0\\) - tiny\\);")
+  expect_match(cpp, "log_p1 = gll_log_pnorm_atomic\\(eta_o\\);")
+  expect_match(cpp, "log_p0 = gll_log_pnorm_atomic\\(-eta_o\\);")
+  expect_match(cpp, "log_p1 = gll_log_inv_logit\\(eta_o\\);")
+  expect_match(
+    cpp,
+    "ll \\+= log_choose \\+ y\\(o\\) \\* log_p1 \\+ \\(n_trials\\(o\\) - y\\(o\\)\\) \\* log_p0;"
+  )
   expect_match(
     cpp,
     "y_safe = gll_clamp\\(y_safe, tiny_y, Type\\(1\\.0\\) - tiny_y\\);"

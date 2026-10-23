@@ -1,0 +1,5 @@
+"n","sigma_lambda","seed","seconds_fit","status","rel_frob","degenerate","n_random_effects","dNLL_1.5_sum","dNLL_2.0_sum","dNLL_1.5_per_obs","dNLL_2.0_per_obs","n_obs","n_interior","flat_row_share","dichot_status","dichot_rel_frob","dichot_degenerate","dichot_detector_fired","note"
+100,0.7,1,5.718,"OK",0.920898159658785,FALSE,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,""
+400,0.7,1,30.305,"OK",0.164523026135427,FALSE,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,""
+100,3,1,4.95800000000001,"OK",2.84815940212598,FALSE,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,""
+400,3,1,48.655,"OK",82.1671718634177,TRUE,800,56.6175915477452,100.978974754164,0.0353859947173407,0.0631118592213522,1600,254,0,"OK",3.18268654226646,FALSE,TRUE,""

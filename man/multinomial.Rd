@@ -32,9 +32,7 @@ This is a \strong{response} family and must not be confused with the
 imputation family. Because an unordered categorical response spans
 \eqn{K-1} latent liability dimensions rather than one, the admitted
 structured-term surface is bounded and every cell below was decided by a
-signed recovery campaign, not construction alone (Design 123, Slices 1-4,
-2026-08-16; full per-cell table and campaign numbers:
-\code{docs/design/123-multinomial-structured-surface.md}).
+signed recovery campaign, not construction alone.
 
 \strong{Admitted:} fixed effects always; an ordinary
 shared \code{latent(0 + trait | unit, d = k)} ordination, which connects
@@ -68,9 +66,9 @@ NOT been tested for \code{phylo_indep()}'s diagonal-\eqn{V} mode, whose
 own corrected rerun independently FAILED (small contrast variances
 collapse; a planted-zero check fails). The spatial mode axis and the
 \code{(1 | group)} route below both PASSED their signed recovery gates
-outright, with no replication rescue needed. \strong{One categorical
-draw per species does not identify \eqn{V}; five draws per species
-does.}
+outright, with no replication rescue needed. In the tested phylogenetic
+designs, five draws passed for the loadings-only and full-\eqn{V} cells;
+these results do not establish recovery for the diagonal-\eqn{V} cell.
 
 A generic \code{(1 | group)}
 random intercept is also admitted, but its semantics are
@@ -104,11 +102,11 @@ is fixed.
 \code{animal_scalar()} / \code{kernel_scalar()} / \code{spatial_scalar()}
 and \code{common = TRUE} at the cluster/cluster2 tier -- a single shared
 level across the \eqn{K-1} contrasts has no interpretable null on the
-\eqn{(I+J)} contrast geometry (null-DGP evidence:
-\code{dev/multinomial-structured/probe-scalar-null.R}).
+\eqn{(I+J)} contrast geometry; a null-generating simulation found no
+interpretable shared variance on this geometry.
 
-\strong{Everything else is still deferred} and fails loud
-(\code{R/multinomial-fence.R}) rather than reaching an untested
+\strong{Everything else is still deferred} and is rejected with an
+explicit error rather than reaching an untested
 categorical path: \code{dep()}, explicit \code{unique()} /
 \code{indep()} at the unit tier, \code{latent()}/\code{dep()} at the
 \code{cluster}/\code{cluster2} tiers, and the \code{unit_obs} grouping

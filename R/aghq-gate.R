@@ -191,6 +191,7 @@
 #'   Hessian's connected components: `block`, `size`, `n_components`,
 #'   `treewidth`, `route` (`"quadrature"` | `"laplace"`), `reason`.
 #' @keywords internal
+#' @noRd
 .aghq_gate <- function(obj, data, threshold = 4L) {
   random_idx <- obj$env$random
   if (length(random_idx) == 0L) {

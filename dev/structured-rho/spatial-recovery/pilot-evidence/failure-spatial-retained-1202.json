@@ -1,0 +1,36 @@
+{
+  "status": "returned",
+  "numerical_success": false,
+  "rho": 4.44109907218097e-18,
+  "rho_truth": 0.3,
+  "kappa": 0.0706271976857404,
+  "kappa_truth": 0.7,
+  "kappa_relative_error": -0.899104003306085,
+  "objective": 2115.38764443852,
+  "convergence": 0,
+  "pd_hessian": true,
+  "max_gradient": 0.146696962850565,
+  "boundary": true,
+  "source_covariance_relative_error": 0.957775911119086,
+  "total_covariance_relative_error": 0.951800684144814,
+  "residual_variance": 0.359217320473308,
+  "attempt_id": "spatial-retained-1202",
+  "job": [
+    {
+      "attempt_id": "spatial-retained-1202",
+      "dataset_id": 601,
+      "dataset": "data/dataset-0601.rds",
+      "regime": "irregular_long",
+      "mode": "latent",
+      "rho": 0.3,
+      "replication": 1,
+      "seed": 3202601,
+      "fit_seed": 730601,
+      "method": "estimated",
+      "pilot": true
+    }
+  ],
+  "warnings": [],
+  "optimizer_entries": 1,
+  "elapsed_seconds": 6.028
+}

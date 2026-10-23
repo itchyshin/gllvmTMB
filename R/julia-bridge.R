@@ -1,15 +1,15 @@
 # ---------------------------------------------------------------------------
-# R -> Julia bridge: run the experimental GLLVM.jl bridge fitting path from R.
+# R -> Julia bridge: run the experimental GLLVModels.jl bridge fitting path from R.
 #
 # `gllvmTMB(..., engine = "julia")` routes here: we marshal the response matrix +
-# model spec to GLLVM.jl's flat `bridge_fit` contract, run the Julia fitter, and
+# model spec to GLLVModels.jl's flat `bridge_fit` contract, run the Julia fitter, and
 # unmarshal the result into a gllvmTMB-compatible list. JuliaCall is a SUGGESTED
-# dependency — everything here errors cleanly if it (or the GLLVM.jl path) is absent.
+# dependency — everything here errors cleanly if it (or the GLLVModels.jl path) is absent.
 #
-# Contract + family mapping: GLLVM.jl docs/dev-log/2026-06-10-bridge-fit-contract-and-r-wiring.md.
+# Contract + family mapping: GLLVModels.jl bridge contract.
 # ---------------------------------------------------------------------------
 
-# session cache so JuliaCall + GLLVM.jl load only once
+# session cache so JuliaCall + GLLVModels.jl load only once
 .gllvm_jl_env <- new.env(parent = emptyenv())
 
 # Bridge family strings admitted by the lean R bridge. Keep this conservative:
@@ -261,19 +261,46 @@ gllvm_julia_gate_registry <- function() {
   paste0("[", gate_id, "] ", paste0(...))
 }
 
-#' Set up JuliaCall and load the GLLVM.jl engine (once per R session).
+# Set up JuliaCall and load the GLLVModels.jl engine (once per R session).
+#
+# The GLLVModels path names are canonical. Earlier path names are retained as
+# compatibility aliases so existing local configurations continue to locate the
+# renamed checkout.
+.gllvm_julia_project_path <- function() {
+  candidates <- c(
+    getOption("gllvmTMB.GLLVModels.jl.path", ""),
+    Sys.getenv("GLLVMODELS_JL_PATH", ""),
+    getOption("gllvmTMB.GLLVM.jl.path", ""),
+    Sys.getenv("GLLVM_JL_PATH", "")
+  )
+  candidates <- as.character(candidates)
+  candidates <- candidates[!is.na(candidates) & nzchar(candidates)]
+  if (length(candidates)) candidates[[1L]] else ""
+}
+
+.gllvm_julia_quote <- function(path) {
+  chars <- strsplit(path, "", fixed = TRUE)[[1L]]
+  paste0(
+    vapply(
+      chars,
+      function(ch) if (ch %in% c("\\", '"')) paste0("\\", ch) else ch,
+      character(1)
+    ),
+    collapse = ""
+  )
+}
+#' Set up JuliaCall and load the GLLVModels.jl engine (once per R session).
 #'
-#' @param jl_path Path to the GLLVM.jl project that provides `bridge_fit`
-#'   (default: option `gllvmTMB.GLLVM.jl.path` or env `GLLVM_JL_PATH`).
+#' @param jl_path Path to the GLLVModels.jl project that provides `bridge_fit`
+#'   (default: option `gllvmTMB.GLLVModels.jl.path` or env
+#'   `GLLVMODELS_JL_PATH`). Earlier path settings remain accepted as
+#'   compatibility aliases.
 #' @param julia_home Julia `bin` directory (default: option `gllvmTMB.julia_home`
 #'   or env `JULIA_HOME`; if unset, JuliaCall auto-discovers).
 #' @return Invisibly `TRUE` once ready.
 #' @export
 gllvm_julia_setup <- function(
-  jl_path = getOption(
-    "gllvmTMB.GLLVM.jl.path",
-    Sys.getenv("GLLVM_JL_PATH", "")
-  ),
+  jl_path = .gllvm_julia_project_path(),
   julia_home = getOption("gllvmTMB.julia_home", Sys.getenv("JULIA_HOME", ""))
 ) {
   if (isTRUE(.gllvm_jl_env$ready)) {
@@ -287,8 +314,9 @@ gllvm_julia_setup <- function(
   }
   if (identical(jl_path, "")) {
     stop(
-      "engine = 'julia': set the GLLVM.jl project path via ",
-      "options(gllvmTMB.GLLVM.jl.path = '/path/to/GLLVM.jl') or the GLLVM_JL_PATH env var.",
+      "engine = 'julia': set the GLLVModels.jl project path via ",
+      "options(gllvmTMB.GLLVModels.jl.path = '/path/to/GLLVModels.jl') or the GLLVMODELS_JL_PATH env var. ",
+      "Earlier path settings remain accepted as compatibility aliases.",
       call. = FALSE
     )
   }
@@ -302,8 +330,13 @@ gllvm_julia_setup <- function(
     )
   }
   JuliaCall::julia_command(sprintf(
-    'import Pkg; Pkg.activate("%s"); using GLLVM',
-    jl_path
+    paste0(
+      'import Pkg; Pkg.activate("%s"); ',
+      'try; @eval using GLLVModels; ',
+      'catch err; error("gllvmTMB now loads GLLVModels.jl. Update the checkout at this path to GLLVModels.jl; ',
+      'earlier path aliases select a path only and cannot load the current module. Original error: $(sprint(showerror, err))"); end'
+    ),
+    .gllvm_julia_quote(jl_path)
   ))
   .gllvm_jl_env$ready <- TRUE
   invisible(TRUE)
@@ -313,7 +346,7 @@ gllvm_julia_setup <- function(
 #'
 #' `gllvm_julia_capabilities()` reports the rows currently admitted by the lean
 #' R `engine = "julia"` bridge before any JuliaCall setup. It is deliberately
-#' conservative: the paired `GLLVM.jl` checkout may expose broader engine rows
+#' conservative: the paired `GLLVModels.jl` checkout may expose broader engine rows
 #' before R-side payload labels, public-scale maps, confidence-interval status,
 #' and native `gllvmTMB` parity evidence are complete.
 #'
@@ -647,8 +680,10 @@ gllvm_julia_capabilities <- function() {
   if (identical(family, "gamma")) {
     return(paste0(
       "single reduced-rank point route; default no-X Julia payload uses ",
-      "shared Gamma grouped dispersion to match current native scalar-CV ",
-      "Gamma; per-trait Gamma is a native-expansion follow-up; ",
+      "shared Gamma grouped dispersion, so multi-trait no-X and X_lv Gamma ",
+      "rows are refused unless options(gllvmTMB.julia_gamma_shared_shape = ",
+      "TRUE) (engine = 'tmb' fits per-trait shape); fixed-effect-X rows fit ",
+      "per-trait shape; ",
       mask_clause,
       x_clause,
       xlv_clause,
@@ -680,7 +715,113 @@ gllvm_julia_capabilities <- function() {
   )
 }
 
-# Map one R family (a `family` object or a string) to the GLLVM.jl bridge key.
+# #1334: the no-X and X_lv Julia bridge routes fit ONE shared Gamma shape for
+# every Gamma trait (GLLVModels.jl `bridge_fit` hard-codes a single dispersion
+# group there), while engine = "tmb" fits a per-trait shape. That is a different
+# model, not an approximation, so it is refused by default. The fixed-effect-X
+# route is unaffected: GLLVModels.jl already fits per-trait Gamma shapes there.
+# `options(gllvmTMB.julia_gamma_shared_shape = TRUE)` opts in to the shared-shape
+# model knowingly; the fit then still warns.
+.gllvm_julia_n_gamma <- function(fam, p) {
+  if (length(fam) == 1L) {
+    if (identical(fam, "gamma")) as.integer(p) else 0L
+  } else {
+    sum(fam == "gamma")
+  }
+}
+
+.gllvm_julia_warn_gamma_shared_shape <- function(fam, p) {
+  n_gamma <- .gllvm_julia_n_gamma(fam, p)
+  if (n_gamma > 1L) {
+    cli::cli_warn(c(
+      "engine = 'julia' fits one shared Gamma shape for all {n_gamma} Gamma traits.",
+      "i" = "engine = 'tmb' fits a per-trait Gamma shape, so the two engines can differ substantially in logLik (155 units on {.code ape::carnivora}).",
+      ">" = "Use {.code engine = \"tmb\"} if traits have different coefficients of variation."
+    ), class = "gllvmTMB_julia_gamma_shared_shape")
+  }
+  invisible(n_gamma > 1L)
+}
+
+# A fixed-effect X array must carry at least one column. A zero-column X used
+# to reach GLLVModels.jl and fail there with a MethodError; stop in R instead.
+# Any X with q >= 1 (including an intercept-only column) takes the bridge's
+# fixed-effect-X route, which fits per-trait Gamma shapes.
+.gllvm_julia_has_covariates <- function(X) {
+  if (is.null(X)) {
+    return(FALSE)
+  }
+  d <- dim(X)
+  if (length(d) != 3L) {
+    cli::cli_abort(c(
+      "[GJL-GATE-X-SHAPE] engine = 'julia': the fixed-effect {.arg X} must be a 3-D trait x unit x covariate array.",
+      "i" = "Got {if (is.null(d)) 'a vector' else paste0('a ', length(d), '-D object with dim ', paste(d, collapse = ' x '))}. A plain matrix is ambiguous (unit x covariate or trait x unit), so it is not reshaped.",
+      ">" = "Build {.code array(..., dim = c(n_traits, n_units, n_covariates))}."
+    ), class = c("gllvmTMB_julia_x_shape", "gllvmTMB_julia_gate"))
+  }
+  q <- d[3L]
+  if (!q) {
+    cli::cli_abort(c(
+      "[GJL-GATE-X-EMPTY] engine = 'julia': the fixed-effect {.arg X} array has no covariate columns.",
+      "i" = "Pass {.code X = NULL} for an intercept-only fit, or give {.arg X} at least one column."
+    ), class = c("gllvmTMB_julia_x_empty", "gllvmTMB_julia_gate"))
+  }
+  TRUE
+}
+
+# Never hand back a bridge fit that did not converge and has no finite
+# log-likelihood: it carries unestimated coefficients and no error (#1562).
+.gllvm_julia_check_fit_finite <- function(res) {
+  ll <- suppressWarnings(as.numeric(res$loglik)[1L])
+  conv <- res$converged
+  if (length(ll) == 1L && !is.na(ll) && !is.finite(ll) && !isTRUE(conv)) {
+    cli::cli_abort(c(
+      "engine = 'julia' returned a non-converged fit with a non-finite log-likelihood ({.val {ll}}).",
+      "i" = "The coefficients of such a fit are not estimated, so it is not returned.",
+      ">" = "Use {.code engine = \"tmb\"}, or check the model / starting values."
+    ), class = c("gllvmTMB_julia_nonfinite_fit", "gllvmTMB_julia_gate"))
+  }
+  invisible(FALSE)
+}
+
+.gllvm_julia_check_gamma_shape <- function(fam, p, has_x = FALSE) {
+  n_gamma <- .gllvm_julia_n_gamma(fam, p)
+  if (n_gamma <= 1L || isTRUE(has_x)) {
+    return(invisible(FALSE))
+  }
+  if (!isTRUE(getOption("gllvmTMB.julia_gamma_shared_shape", FALSE))) {
+    cli::cli_abort(c(
+      "[GJL-GATE-GAMMA-SHAPE] engine = 'julia' cannot fit a per-trait Gamma shape for these {n_gamma} Gamma traits.",
+      "i" = "Without fixed-effect covariates, the Julia bridge fits one shape shared by every Gamma trait. {.code engine = \"tmb\"} fits one shape per trait, which is a different model; on {.code ape::carnivora} the two differ by 155 log-likelihood units.",
+      ">" = "Use {.code engine = \"tmb\"} for per-trait Gamma shapes.",
+      ">" = "To fit the shared-shape model on purpose, set {.code options(gllvmTMB.julia_gamma_shared_shape = TRUE)}."
+    ), class = c("gllvmTMB_julia_gamma_shape_refused", "gllvmTMB_julia_gate"))
+  }
+  .gllvm_julia_warn_gamma_shared_shape(fam, p)
+}
+
+# Link name the GLLVModels.jl bridge actually uses for a bridge key, in R's
+# spelling ("log", "logit", ...), derived from `.gllvm_julia_default_link()`.
+.gllvm_julia_engine_link <- function(key) {
+  jl <- .gllvm_julia_default_link(key)
+  if (is.na(jl)) {
+    return(NA_character_)
+  }
+  switch(
+    jl,
+    IdentityLink = "identity",
+    LogLink = "log",
+    LogitLink = "logit",
+    ProbitLink = "probit",
+    CLogLogLink = "cloglog",
+    NA_character_
+  )
+}
+
+# Map one R family (a `family` object or a string) to the GLLVModels.jl bridge key.
+# A family object's link is checked against the link the bridge really fits
+# for that key (#1475): the map below collapses e.g. Gamma() (inverse link)
+# and Gamma(link = "log") to the same "gamma" key, which would otherwise fit a
+# log-link model silently. Strings carry no link and map as before.
 .gllvm_julia_family_scalar <- function(family) {
   if (inherits(family, "family")) {
     if (identical(family$family, "binomial")) {
@@ -701,7 +842,9 @@ gllvm_julia_capabilities <- function() {
         )
       ))
     }
-    family <- family$family
+    key <- .gllvm_julia_family_scalar(family$family)
+    .gllvm_julia_check_link(family, key)
+    return(key)
   }
   fam <- tolower(as.character(family))
   if (length(fam) != 1L || is.na(fam)) {
@@ -730,7 +873,10 @@ gllvm_julia_capabilities <- function() {
     nb1 = "nb1",
     beta = "beta",
     gamma = "gamma",
+    ## #1332: the exported constructor is ordinal_logit(); the bridge key for
+    ## the cumulative-logit ordinal fitter is "ordinal".
     ordinal = "ordinal",
+    ordinal_logit = "ordinal",
     ordinal_probit = "ordinal_probit",
     {
       stop(
@@ -738,10 +884,11 @@ gllvm_julia_capabilities <- function() {
           "GJL-GATE-FAMILY",
           "engine = 'julia': unsupported family '",
           fam,
-          "'. Supported: gaussian, poisson, ",
-          "binomial, binomial_probit, binomial_cloglog, nbinom2, nbinom1, ",
-          "beta, gamma, ordinal, ordinal_probit ",
-          "(or a narrow list for mixed gaussian/poisson/binomial responses)."
+          "'. Supported: gaussian(), poisson(), binomial() with logit, ",
+          "probit, or cloglog link, nbinom2(), nbinom1(), Beta(), Gamma(), ",
+          "ordinal_logit(), and ordinal_probit() ",
+          "(or a narrow list for mixed gaussian/poisson/binomial responses). ",
+          "Use engine = 'tmb' for other families."
         ),
         call. = FALSE
       )
@@ -750,7 +897,20 @@ gllvm_julia_capabilities <- function() {
 }
 
 # Map an R family (a `family` object, a string, a character vector, or a list of
-# one family per trait) to the GLLVM.jl bridge family string(s).
+# one family per trait) to the GLLVModels.jl bridge family string(s).
+.gllvm_julia_check_link <- function(family, key) {
+  link <- tolower(as.character(family$link %||% NA_character_))
+  want <- .gllvm_julia_engine_link(key)
+  if (length(link) != 1L || is.na(link) || is.na(want) || identical(link, want)) {
+    return(invisible(TRUE))
+  }
+  cli::cli_abort(c(
+    "[GJL-GATE-LINK] engine = 'julia': {.code {family$family}(link = \"{link}\")} is not supported.",
+    "i" = "The Julia bridge fits the {.val {family$family}} family with the {.val {want}} link only.",
+    ">" = "Use {.code link = \"{want}\"}, or {.code engine = \"tmb\"} for the {.val {link}} link."
+  ), class = c("gllvmTMB_julia_link_unsupported", "gllvmTMB_julia_gate"))
+}
+
 .gllvm_julia_family <- function(family) {
   if (is.list(family) && !inherits(family, "family")) {
     fam <- vapply(family, .gllvm_julia_family_scalar, character(1))
@@ -1394,6 +1554,38 @@ gllvm_julia_capabilities <- function() {
   link_residual,
   .skip_warn = FALSE
 ) {
+  source_levels <- as.character(fit$source_names %||% character(0))
+  if (length(level) == 1L && level %in% source_levels) {
+    part <- match.arg(part, c("total", "shared", "unique"))
+    if (part != "total") {
+      cli::cli_abort(c(
+        "The Julia dense-kernel source extractor exposes source {.val {level}} as its full B covariance only.",
+        "i" = "Use {.code extract_Sigma(fit, level = \"{level}\")} for B = Lambda Lambda' + Psi."
+      ))
+    }
+    traits <- .gllvm_julia_trait_names(fit, .gllvm_julia_n_traits(fit))
+    B <- as.matrix(fit$source_covariance %||% fit$Sigma)
+    if (!identical(dim(B), c(length(traits), length(traits)))) {
+      cli::cli_abort(c(
+        "engine = 'julia': dense-kernel source covariance dimensions do not match traits.",
+        ">" = "Retry with {.code engine = \"tmb\"} and report this bridge consistency error."
+      ))
+    }
+    dimnames(B) <- list(traits, traits)
+    R <- .gllvm_julia_cov2cor(B, traits)
+    note <- paste0(
+      "engine = 'julia': source ", level,
+      " returns B = Lambda Lambda' + Psi; no independent residual variance ",
+      "is included in this source covariance."
+    )
+    return(list(
+      Sigma = B,
+      R = R,
+      level = level,
+      part = "total",
+      note = note
+    ))
+  }
   if (length(level) > 1L) {
     level <- match.arg(
       level,
@@ -1488,7 +1680,7 @@ gllvm_julia_capabilities <- function() {
     note <- c(
       note,
       if (has_retained_sigma) {
-        "engine = 'julia': link_residual = 'auto' uses the retained GLLVM.jl Sigma/correlation payload on the engine-provided latent or link-residual scale."
+        "engine = 'julia': link_residual = 'auto' uses the retained GLLVModels.jl Sigma/correlation payload on the engine-provided latent or link-residual scale."
       } else {
         "engine = 'julia': link_residual = 'auto' has no retained Sigma payload for this row, so the shared Lambda Lambda^T block is returned."
       }
@@ -2467,7 +2659,7 @@ gllvm_julia_capabilities <- function() {
   invisible(x)
 }
 
-#' Fit a GLLVM with the Julia engine (GLLVM.jl `bridge_fit`).
+#' Fit a GLLVM with the Julia engine (GLLVModels.jl `bridge_fit`).
 #'
 #' @param y Response matrix, p x n (traits x units), or n x p (set `units_are_rows`).
 #' @param family A family object/string, or a list of them (one per trait -> mixed).
@@ -2499,6 +2691,9 @@ gllvm_julia_capabilities <- function() {
 #'   ignored. Currently routed for one-part no-X non-Gaussian point fits, with
 #'   masked no-X CI payloads for Poisson, Bernoulli binomial, NB2, NB1, Beta,
 #'   and Gamma.
+#' @param sources Optional structured-source payload forwarded to the Julia
+#'   bridge. This is used by the internal `engine = "julia"` routing layer;
+#'   direct users should normally leave it as `NULL`.
 #' @param units_are_rows If `TRUE`, `y` is n x p and is transposed to p x n.
 #' @param ci_method Confidence-interval route for admitted no-X bridge rows:
 #'   Gaussian, Poisson, Bernoulli binomial, and grouped-dispersion NB2, NB1,
@@ -2521,7 +2716,7 @@ gllvm_julia_capabilities <- function() {
 #'   list also carries flat CI fields consumed by `confint()`.
 #' @examples
 #' \dontrun{
-#' # Requires a local GLLVM.jl install (see [gllvm_julia_setup()]).
+#' # Requires a local GLLVModels.jl install (see [gllvm_julia_setup()]).
 #' # `y` is traits x units (p x n): two Gaussian traits, 40 units, K = 2.
 #' set.seed(1)
 #' y <- matrix(rnorm(2 * 40), nrow = 2)
@@ -2556,6 +2751,7 @@ gllvm_julia_fit <- function(
   X_lv = NULL,
   coef_fixed = NULL,
   mask = NULL,
+  sources = NULL,
   units_are_rows = FALSE,
   ci_method = c("none", "wald", "profile", "bootstrap"),
   ci_level = 0.95,
@@ -2625,6 +2821,8 @@ gllvm_julia_fit <- function(
       N <- t(N)
     }
   }
+  has_x <- .gllvm_julia_has_covariates(X)
+  .gllvm_julia_check_gamma_shape(fam, nrow(y), has_x = has_x)
   if (!is.null(mask)) {
     mask <- as.matrix(mask)
     if (isTRUE(units_are_rows)) {
@@ -2750,7 +2948,7 @@ gllvm_julia_fit <- function(
   ) {
     storage.mode(y) <- "integer"
   }
-  args <- list("GLLVM.bridge_fit", y = y, family = fam, d = as.integer(num.lv))
+  args <- list("GLLVModels.bridge_fit", y = y, family = fam, d = as.integer(num.lv))
   if (!is.null(rownames(y))) {
     args$trait_names <- rownames(y)
   }
@@ -2765,6 +2963,9 @@ gllvm_julia_fit <- function(
   }
   if (!is.null(X_lv)) {
     args$X_lv <- X_lv
+  }
+  if (!is.null(sources)) {
+    args$sources <- sources
   }
   coef_fixed_option <- NULL
   if (!is.null(coef_fixed)) {
@@ -2791,7 +2992,7 @@ gllvm_julia_fit <- function(
     fixed_idx <- which(coef_fixed)
     if (length(fixed_idx)) {
       ## JuliaCall simplifies length-1 R vectors to scalar Julia values. Use
-      ## GLLVM.jl's index=>0 dictionary route so one-column masks stay vectors
+      ## GLLVModels.jl's index=>0 dictionary route so one-column masks stay vectors
       ## semantically and multi-column masks use the same transport.
       coef_fixed_option <- stats::setNames(
         as.list(rep(0, length(fixed_idx))),
@@ -2823,6 +3024,7 @@ gllvm_julia_fit <- function(
   do.call(gllvm_julia_setup, setup_args)
   res <- do.call(JuliaCall::julia_call, args)
   res <- .gllvm_julia_normalise_result(res)
+  .gllvm_julia_check_fit_finite(res)
   if (!is.null(X)) {
     x_names <- dimnames(X)[[3L]]
     if (!is.null(res$gamma) && length(res$gamma) == length(x_names)) {
@@ -3021,6 +3223,15 @@ gllvm_julia_fit <- function(
 #'   `"response"` returns observed-minus-fitted residuals on the response scale
 #'   and `"pearson"` divides by the family-specific standard deviation.
 #'   Binomial rows use the observed proportion, `y / N`, on the response scale.
+#'   `"simulation_rank"` returns a long data frame of randomized
+#'   simulation-rank residuals (with `observed`, `u`, `residual` and `status`
+#'   columns) built from the conditional `simulate()` draws; pass `nsim`
+#'   (default 250), `seed`, `scale` (`"normal"` or `"uniform"`) and `trait`
+#'   through `...`. For a `gllvmTMB(..., engine = "julia")` fit the rows follow
+#'   the input data rows with missing-response rows dropped, as on
+#'   `engine = "tmb"`; a direct [gllvm_julia_fit()] fit returns every
+#'   trait-unit cell in `simulate()` order with masked cells flagged. Ordinal
+#'   rows are refused because `simulate()` does not cover them yet.
 #' @param level Confidence level requested by `confint()`. Stored Julia bridge
 #'   payloads can only be read at their stored level; post-fit requests recompute
 #'   the admitted Julia CI payload at the requested level.
@@ -3066,7 +3277,7 @@ logLik.gllvmTMB_julia <- function(object, ...) {
 #' @rdname gllvmTMB_julia-methods
 #' @export
 print.gllvmTMB_julia <- function(x, ...) {
-  cat("gllvmTMB fit (engine = 'julia', via GLLVM.jl)\n")
+  cat("gllvmTMB fit (engine = 'julia', via GLLVModels.jl)\n")
   cat(sprintf(
     "  family: %s | K = %d | %d traits x %d units\n",
     paste(unique(x$family), collapse = ","),
@@ -3088,6 +3299,166 @@ print.gllvmTMB_julia <- function(x, ...) {
 #' @export
 coef.gllvmTMB_julia <- function(object, ...) {
   .gllvm_julia_coef_payload(object)
+}
+
+#' @rdname gllvmTMB_julia-methods
+#' @param effects For `tidy()`: one of `"fixed"` (per-trait intercepts and
+#'   covariate coefficients), `"ran_pars"` (per-trait shared latent standard
+#'   deviations `sqrt(diag(Lambda Lambda^T))` and dispersion parameters), or
+#'   `"cutpoint"` (the free ordinal cutpoints `cutpoint_2`, ...,
+#'   `cutpoint_{K-1}`, named as on `engine = "tmb"`).
+#' @param conf.int,conf.level For `tidy()`: Julia bridge fits carry point
+#'   estimates only, so `conf.int = TRUE` is refused with a pointer to
+#'   `confint(fit, method = "wald")`.
+#' @export
+tidy.gllvmTMB_julia <- function(
+  x,
+  effects = c("fixed", "ran_pars", "cutpoint"),
+  conf.int = FALSE,
+  conf.level = 0.95,
+  ...
+) {
+  effects <- match.arg(effects)
+  if (isTRUE(conf.int)) {
+    cli::cli_abort(c(
+      "{.code tidy(conf.int = TRUE)} is not available for {.code engine = \"julia\"} fits.",
+      "i" = "Julia bridge fits carry point estimates; their intervals come from the Julia engine directly.",
+      ">" = "Use {.code confint(fit, method = \"wald\")} on this fit, or refit with {.code engine = \"tmb\"}."
+    ), class = "gllvmTMB_julia_gate")
+  }
+  .gllvm_julia_tidy(x, effects)
+}
+
+.gllvm_julia_tidy <- function(x, effects) {
+  empty <- data.frame(
+    term = character(0),
+    estimate = numeric(0),
+    stringsAsFactors = FALSE
+  )
+  p <- .gllvm_julia_n_traits(x)
+  traits <- if (p > 0L) .gllvm_julia_trait_names(x, p) else character(0)
+  if (identical(effects, "cutpoint")) {
+    cuts <- x$cutpoints
+    if (is.null(cuts)) {
+      return(empty)
+    }
+    cuts <- as.matrix(cuts)
+    if (nrow(cuts) != length(traits)) {
+      return(empty)
+    }
+    ## Julia stores tau_1..tau_{K-1} per trait with tau_1 = 0 fixed for
+    ## identifiability (the TMB engine's convention). Report only the free
+    ## tau_2..tau_{K-1}, labelled exactly as tidy.gllvmTMB_multi() does.
+    free <- is.finite(cuts)
+    free[, 1L] <- FALSE
+    idx <- which(free, arr.ind = TRUE)
+    if (!nrow(idx)) {
+      return(empty)
+    }
+    idx <- idx[order(idx[, "row"], idx[, "col"]), , drop = FALSE]
+    return(data.frame(
+      term = sprintf(
+        "ordinal_cutpoint[%s, cutpoint_%d]",
+        traits[idx[, "row"]],
+        idx[, "col"]
+      ),
+      estimate = cuts[idx],
+      stringsAsFactors = FALSE
+    ))
+  }
+  if (identical(effects, "ran_pars")) {
+    rows <- list()
+    ## sd_global is the shared latent SD, sqrt(diag(Lambda Lambda^T)), as on
+    ## the TMB engine. The raw Julia Sigma payload can carry a residual
+    ## (Gaussian) or link-residual (e.g. pi^2/3 for logit) diagonal, so it is
+    ## not used here.
+    L <- x$loadings
+    if (!is.null(L) && (x$d %||% 0L) > 0L) {
+      L <- as.matrix(L)
+      if (nrow(L) == length(traits)) {
+        rows[[length(rows) + 1L]] <- data.frame(
+          term = paste0("sd_global[", traits, "]"),
+          estimate = sqrt(rowSums(L^2)),
+          stringsAsFactors = FALSE
+        )
+      }
+    }
+    disp <- x$dispersion_public %||% x$dispersion
+    disp_name <- if (!is.null(x$dispersion_public)) {
+      x$dispersion_public_parameter %||% "dispersion"
+    } else {
+      "dispersion"
+    }
+    if (!is.null(disp)) {
+      disp <- as.numeric(disp)
+      if (length(disp) == 1L && length(traits) > 1L) {
+        disp <- rep(disp, length(traits))
+      }
+      keep <- is.finite(disp)
+      if (length(disp) == length(traits) && any(keep)) {
+        rows[[length(rows) + 1L]] <- data.frame(
+          term = paste0(disp_name, "[", traits[keep], "]"),
+          estimate = disp[keep],
+          stringsAsFactors = FALSE
+        )
+      }
+    }
+    if (!length(rows)) {
+      return(empty)
+    }
+    out <- do.call(rbind, rows)
+    rownames(out) <- NULL
+    return(out)
+  }
+
+  ## effects == "fixed": per-trait intercepts (named like the TMB engine's
+  ## `0 + trait` columns) followed by covariate coefficients.
+  trait_col <- x$trait_col %||% "trait"
+  term <- character(0)
+  estimate <- numeric(0)
+  status <- character(0)
+  if (!is.null(x$mean_coef)) {
+    mc <- as.numeric(x$mean_coef)
+    nm <- names(x$mean_coef) %||% paste0("mean_coef", seq_along(mc))
+    term <- nm
+    estimate <- mc
+    status <- as.character(x$mean_coef_status %||% rep("estimated", length(mc)))
+  } else {
+    intercept <- x$beta_cov %||% x$alpha
+    if (!is.null(intercept)) {
+      intercept <- as.numeric(intercept)
+      if (length(intercept) == length(traits)) {
+        keep <- is.finite(intercept)
+        term <- if (any(keep)) paste0(trait_col, traits[keep]) else character(0)
+        estimate <- intercept[keep]
+        status <- rep("estimated", sum(keep))
+      }
+    }
+    if (!is.null(x$gamma)) {
+      g <- as.numeric(x$gamma)
+      term <- c(term, names(x$gamma) %||% paste0("gamma", seq_along(g)))
+      estimate <- c(estimate, g)
+      status <- c(
+        status,
+        as.character(x$gamma_status %||% rep("estimated", length(g)))
+      )
+    }
+  }
+  if (!length(term)) {
+    return(empty)
+  }
+  out <- data.frame(
+    term = term,
+    estimate = estimate,
+    std.error = NA_real_,
+    inference_status = "point_estimate_only_julia_bridge",
+    stringsAsFactors = FALSE,
+    row.names = NULL
+  )
+  if (any(status == "fixed")) {
+    out$status <- status
+  }
+  out
 }
 
 #' @rdname gllvmTMB_julia-methods
@@ -3173,10 +3544,13 @@ fitted.gllvmTMB_julia <- function(
 #' @export
 residuals.gllvmTMB_julia <- function(
   object,
-  type = c("response", "pearson"),
+  type = c("response", "pearson", "simulation_rank"),
   ...
 ) {
   type <- match.arg(type)
+  if (identical(type, "simulation_rank")) {
+    return(.gllvm_julia_simulation_rank_residuals(object, ...))
+  }
   y <- .gllvm_julia_training_y(object)
   p <- nrow(y)
   n <- ncol(y)
@@ -3213,6 +3587,124 @@ residuals.gllvmTMB_julia <- function(
   var <- .gllvm_julia_residual_variance(object, families, mu)
   out <- out / sqrt(var)
   out[!mask] <- NA_real_
+  out
+}
+
+# #1329: simulation-rank residuals for Julia bridge fits. Same randomized
+# rank-PIT construction as the TMB engine's
+# `.gllvmTMB_simulation_rank_residuals()`, built on the bridge's own
+# conditional `simulate.gllvmTMB_julia()` draws, so the family coverage is
+# exactly what that simulate method admits (ordinal rows are refused there).
+.gllvm_julia_simulation_rank_residuals <- function(
+  object,
+  nsim = NULL,
+  ndraws = NULL,
+  seed = NULL,
+  trait = NULL,
+  condition_on_RE = TRUE,
+  scale = c("normal", "uniform"),
+  ...
+) {
+  scale <- match.arg(scale)
+  nsim <- nsim %||% ndraws %||% 250L
+  if (!is.null(seed)) {
+    if (exists(".Random.seed", envir = globalenv(), inherits = FALSE)) {
+      old_seed <- get(".Random.seed", envir = globalenv(), inherits = FALSE)
+      on.exit(assign(".Random.seed", old_seed, envir = globalenv()), add = TRUE)
+    } else {
+      on.exit(suppressWarnings(rm(".Random.seed", envir = globalenv())), add = TRUE)
+    }
+  }
+  simulations <- simulate(
+    object,
+    nsim = nsim,
+    seed = seed,
+    condition_on_RE = condition_on_RE
+  )
+  y <- .gllvm_julia_training_y(object)
+  p <- nrow(y)
+  n <- ncol(y)
+  families <- .gllvm_julia_family_vector(object, p)
+  ## simulate() returns counts for binomial rows, so rank the raw response
+  ## (successes), not the proportion used by response/Pearson residuals.
+  observed <- y
+  mask <- .gllvm_julia_response_mask(object, p, n)
+  traits <- rownames(y) %||% paste0("trait", seq_len(p))
+  units <- colnames(y) %||% paste0("unit", seq_len(n))
+  row_data <- data.frame(
+    .row = seq_len(p * n),
+    trait = rep(traits, times = n),
+    unit = rep(units, each = p),
+    family = rep(families, times = n),
+    stringsAsFactors = FALSE
+  )
+  observed <- as.vector(observed)
+  missing_response <- !as.vector(mask)
+  .gllvmTMB_local_seed(seed + 1L)
+  nsim <- ncol(simulations)
+  nonfinite_observed <- !is.finite(observed)
+  nonfinite_simulation <- !is.finite(rowSums(simulations))
+  ok <- !(nonfinite_observed | nonfinite_simulation | missing_response)
+  u <- rep(NA_real_, length(observed))
+  residual <- rep(NA_real_, length(observed))
+  if (any(ok)) {
+    less <- rowSums(simulations[ok, , drop = FALSE] < observed[ok])
+    ties <- rowSums(simulations[ok, , drop = FALSE] == observed[ok])
+    u_ok <- (less + stats::runif(sum(ok), min = 0, max = ties + 1)) /
+      (nsim + 1)
+    u_ok <- .gllvmTMB_clip_unit_interval(u_ok)
+    u[ok] <- u_ok
+    residual[ok] <- if (identical(scale, "normal")) stats::qnorm(u_ok) else u_ok
+  }
+  status <- rep("ok", length(observed))
+  status[missing_response] <- "missing_response"
+  status[!missing_response & nonfinite_observed] <- "nonfinite_observed"
+  status[!missing_response & !nonfinite_observed & nonfinite_simulation] <-
+    "nonfinite_simulation"
+  status[!is.finite(residual) & status == "ok"] <- "nonfinite_residual"
+  out <- cbind(
+    row_data,
+    data.frame(
+      observed = observed,
+      u = u,
+      residual = residual,
+      status = status,
+      scale = scale,
+      method = "simulation_rank_residuals",
+      nsim = nsim,
+      seed = if (is.null(seed)) NA_integer_ else seed,
+      condition_on_RE = isTRUE(condition_on_RE),
+      stringsAsFactors = FALSE
+    )
+  )
+  ## Routed gllvmTMB() fits: return rows in the input long-data order with
+  ## missing-response rows dropped, as the TMB engine does (`.row` is the
+  ## input row index). Direct gllvm_julia_fit() fits keep every p x n cell in
+  ## simulate()'s order (trait fastest within unit), masked cells flagged.
+  long_index <- object$long_index
+  if (
+    !is.null(long_index) &&
+      all(long_index[, "trait"] >= 1L & long_index[, "trait"] <= p) &&
+      all(long_index[, "unit"] >= 1L & long_index[, "unit"] <= n)
+  ) {
+    cell <- (long_index[, "unit"] - 1L) * p + long_index[, "trait"]
+    out <- out[cell, , drop = FALSE]
+    out$.row <- seq_len(nrow(out))
+    ## The TMB engine drops rows with a missing response before fitting, so
+    ## its residual table has no row for them; match that row set.
+    out <- out[out$status != "missing_response", , drop = FALSE]
+  }
+  if (!is.null(trait)) {
+    unknown <- setdiff(trait, traits)
+    if (length(unknown)) {
+      cli::cli_abort("Unknown trait name(s): {.val {unknown}}.")
+    }
+    out <- out[out$trait %in% trait, , drop = FALSE]
+  }
+  rownames(out) <- NULL
+  attr(out, "residual_type") <- "simulation_rank"
+  attr(out, "method") <- "simulation_rank_residuals"
+  attr(out, "engine") <- "julia"
   out
 }
 
@@ -3259,9 +3751,7 @@ simulate.gllvmTMB_julia <- function(
       call. = FALSE
     )
   }
-  if (!is.null(seed)) {
-    set.seed(seed)
-  }
+  .gllvmTMB_local_seed(seed)
 
   y <- .gllvm_julia_training_y(object)
   p <- nrow(y)
@@ -3521,7 +4011,7 @@ print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
 # Called from gllvmTMB() AFTER desugar_brms_sugar() + parse_multi_formula(), so
 # the user grammar (latent/dep/indep/unique -> rr/diag/...) is already interpreted
 # exactly as the TMB engine interprets it. We map the unconstrained-ordination
-# core that GLLVM.jl's bridge_fit currently exposes (a single reduced-rank latent
+# core that GLLVModels.jl's bridge_fit currently exposes (a single reduced-rank latent
 # block + per-trait intercepts, every family) and reject anything else loudly with
 # a pointer to engine = "tmb" -- never a silent approximation.
 # ---------------------------------------------------------------------------
@@ -3573,6 +4063,54 @@ print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
     vapply(cs, function(z) z$kind, character(1))
   } else {
     character(0)
+  }
+
+  ## --- bounded dense-kernel source route ---------------------------------
+  ## Only one fixed Gaussian kernel source is admitted here.  The parser
+  ## represents kernel_latent(unique = TRUE) as a latent phylo_rr marker plus
+  ## an auto-generated unique companion; retain the pair as one Julia source
+  ## with B = Lambda Lambda' + Psi.  Trees, pedigrees, multiple sources, and
+  ## the deprecated kernel_unique() marker remain outside this bridge slice.
+  structured_source_term <- NULL
+  structured_kernel_unique <- FALSE
+  fam_str_pre <- tryCatch(.gllvm_julia_family(family), error = function(e) NULL)
+  kernel_terms <- which(vapply(
+    cs,
+    function(z) identical(z$kind, "phylo_rr") &&
+      !is.null(z$extra$.kernel_mode),
+    logical(1)
+  ))
+  if (length(kernel_terms) > 0L) {
+    if (
+      length(cs) == 2L &&
+        length(kernel_terms) == 2L &&
+        identical(cs[[1L]]$extra$.kernel_mode, "latent") &&
+        identical(cs[[2L]]$extra$.kernel_mode, "unique") &&
+        isTRUE(cs[[2L]]$extra$.auto_unique)
+    ) {
+      structured_source_term <- cs[[1L]]
+      structured_kernel_unique <- TRUE
+    } else {
+      stop(
+        .gllvm_julia_gate_message(
+          "GJL-GATE-STRUCTURED-TERMS",
+          "engine = 'julia' admits exactly one kernel_latent(..., ",
+          "unique = TRUE) source. The no-Psi unique = FALSE exception, ",
+          "multiple kernel sources, kernel_unique(), kernel_indep(), and ",
+          "kernel_dep() remain on engine = 'tmb'."
+        ),
+        call. = FALSE
+      )
+    }
+    identical(fam_str_pre, "gaussian") || stop(
+      .gllvm_julia_gate_message(
+        "GJL-GATE-STRUCTURED-TERMS",
+        "the kernel Julia bridge cell is Gaussian-only; use engine = 'tmb' ",
+        "for non-Gaussian kernel terms."
+      ),
+      call. = FALSE
+    )
+    kinds <- character(0)
   }
 
   ## --- capability guard: only the reduced-rank latent block (rr) is mapped ---
@@ -3645,7 +4183,10 @@ print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
   }
   cbind_trials <- NULL
   if (is.matrix(yraw) && ncol(yraw) == 2L) {
-    if (!any(fam_str %in% .GLLVM_JULIA_BINOMIAL_FAMILIES)) {
+    ## #1494: the TMB engine admits mixed-family cbind() fits (column 2 used
+    ## only on binomial-type rows); this bridge sums both columns into a trial
+    ## count on every row, so it admits only all-binomial two-column fits.
+    if (!all(fam_str %in% .GLLVM_JULIA_BINOMIAL_FAMILIES)) {
       stop(
         .gllvm_julia_gate_message(
           "GJL-GATE-FAMILY",
@@ -3653,7 +4194,8 @@ print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
           "responses with a binomial family; the supplied response has two ",
           "columns but the family maps to '",
           paste(fam_str, collapse = ", "),
-          "'. Use a single-column response or engine = 'tmb'."
+          "'. Every family must be binomial; for a mixed-family cbind() fit ",
+          "use engine = 'tmb'."
         ),
         call. = FALSE
       )
@@ -3773,7 +4315,7 @@ print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
     ## Pivot the long (N = p*n row) design matrix into a p x n x q array. For each
     ## long row i with (trait ft[i], unit fu[i]), Xarg[ft[i], fu[i], k] = Xfix[i, k].
     ## Gaussian keeps the full model matrix. Non-Gaussian rows drop the trait
-    ## dummy columns because GLLVM.jl's covariate fitter estimates those as beta_cov.
+    ## dummy columns because GLLVModels.jl's covariate fitter estimates those as beta_cov.
     x_cols <- if (fam_str == "gaussian") colnames(Xfix) else extra_cols
     q <- length(x_cols)
     Xarg <- array(0, dim = c(p, n, q), dimnames = list(traits, units, x_cols))
@@ -3822,6 +4364,105 @@ print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
 
   ## --- binomial trials: cbind(successes, failures) totals take precedence, then
   ## per-row n_trials (weights API), else Bernoulli (N = 1). ---
+  sources_arg <- NULL
+  if (!is.null(structured_source_term)) {
+    z <- structured_source_term
+    if (!is.null(Xarg) || !is.null(Xlv_arg) || has_missing_response ||
+        !is.null(weights) || isTRUE(REML) || ci_method != "none") {
+      stop(
+        .gllvm_julia_gate_message(
+          "GJL-GATE-STRUCTURED-TERMS",
+          "the kernel Julia bridge cell admits complete Gaussian data with ",
+          "no X, X_lv, mask, weights, REML, intervals, or offsets."
+        ),
+        call. = FALSE
+      )
+    }
+    ## parse_covstruct_call() rewrites the bare phylo_rr-compatible
+    ## kernel term as `(0 + <kernel grouping>) | trait`: the source column
+    ## therefore lives in `lhs`, while `group` is deliberately `trait`.
+    lhs <- z$lhs
+    grp_expr <- if (
+      is.call(lhs) &&
+        identical(lhs[[1L]], as.name("+")) &&
+        is.numeric(lhs[[2L]]) &&
+        identical(lhs[[2L]], 0)
+    ) {
+      lhs[[3L]]
+    } else {
+      NULL
+    }
+    grp_var <- if (is.null(grp_expr)) "" else deparse(grp_expr)
+    if (length(grp_var) != 1L || !grp_var %in% names(data)) {
+      stop(
+        .gllvm_julia_gate_message(
+          "GJL-GATE-STRUCTURED-TERMS",
+          "kernel_latent() needs a single grouping column present in `data`."
+        ),
+        call. = FALSE
+      )
+    }
+    unit_first <- match(levels(fu), as.character(fu))
+    grpf <- factor(data[[grp_var]][unit_first])
+    Kmat <- z$extra$vcv
+    if (
+      !is.matrix(Kmat) || !is.numeric(Kmat) ||
+        nrow(Kmat) != ncol(Kmat) || is.null(rownames(Kmat)) ||
+        is.null(colnames(Kmat)) ||
+        !identical(rownames(Kmat), colnames(Kmat)) ||
+        any(!is.finite(Kmat))
+    ) {
+      stop(
+        .gllvm_julia_gate_message(
+          "GJL-GATE-STRUCTURED-TERMS",
+          "kernel_latent() needs one finite, square dense K with matching ",
+          "row and column names."
+        ),
+        call. = FALSE
+      )
+    }
+    missing_lv <- setdiff(levels(grpf), rownames(Kmat))
+    if (length(missing_lv)) {
+      stop(
+        .gllvm_julia_gate_message(
+          "GJL-GATE-STRUCTURED-TERMS",
+          "kernel K is missing grouping level(s): ",
+          paste(missing_lv, collapse = ", "), "."
+        ),
+        call. = FALSE
+      )
+    }
+    Kal <- Kmat[levels(grpf), levels(grpf), drop = FALSE]
+    if (!isSymmetric(unname(Kal), tol = 0)) {
+      stop(
+        .gllvm_julia_gate_message(
+          "GJL-GATE-STRUCTURED-TERMS",
+          "kernel K must be exactly symmetric; no jitter is applied."
+        ),
+        call. = FALSE
+      )
+    }
+    if (is.null(tryCatch(chol(Kal), error = function(e) NULL))) {
+      stop(
+        .gllvm_julia_gate_message(
+          "GJL-GATE-STRUCTURED-TERMS",
+          "kernel K must be positive-definite; no jitter is applied."
+        ),
+        call. = FALSE
+      )
+    }
+    kd <- z$extra$d
+    source_spec <- list(
+      name = as.character(z$extra$.kernel_name %||% "kernel"),
+      covariance = unname(Kal),
+      groups = as.integer(grpf),
+      mode = "latent",
+      rank = as.integer(if (is.null(kd)) 1L else kd),
+      unique = structured_kernel_unique,
+      common = FALSE
+    )
+    sources_arg <- list(source_spec)
+  }
   Narg <- NULL
   if (any(fam_str %in% .GLLVM_JULIA_BINOMIAL_FAMILIES)) {
     if (!is.null(cbind_trials)) {
@@ -3842,6 +4483,7 @@ print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
     family = family,
     num.lv = K,
     N = Narg,
+    sources = sources_arg,
     X = Xarg,
     X_lv = Xlv_arg,
     coef_fixed = coef_fixed_arg,
@@ -3852,6 +4494,10 @@ print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
     ci_seed = ci_seed
   )
   fit$call <- call
+  fit$trait_col <- trait
+  ## Input long-data row -> (trait, unit) cell, so row-wise post-fit output
+  ## (simulation-rank residuals) can come back in the caller's row order.
+  fit$long_index <- cbind(trait = as.integer(ft), unit = as.integer(fu))
   fit$trait_levels <- traits
   fit$unit_levels <- units
   fit$X_fix_names <- x_cols

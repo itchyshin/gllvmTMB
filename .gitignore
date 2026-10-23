@@ -46,12 +46,15 @@ vignettes/*.pdf
 .Renviron
 
 # pkgdown site (built output goes under docs/, but we keep
-# docs/design/ and docs/dev-log/ tracked as project memory).
+# docs/design/, docs/dev-log/, and docs/paper-drafts/ tracked as
+# project memory).
 docs/*
 !docs/design/
 !docs/design/**
 !docs/dev-log/
 !docs/dev-log/**
+!docs/paper-drafts/
+!docs/paper-drafts/**
 
 # translation temp files
 po/*~
@@ -127,7 +130,26 @@ dev/va-gate3/results/campaign*.log
 # Developer-only two-source iSDM known-truth recovery artifacts (local/Totoro).
 dev/isdm-package-recovery/results/
 
+# Local interval-calibration pre-runs and campaign payloads. Tracked evidence
+# lives under docs/dev-log/artifacts; raw RDS/log payloads never enter git.
+dev/interval-calibration/results/
+dev/pvt02/results/
+
 # mature-VA arc: measurement outputs stay LOCAL (D-50)
 dev/va-speed/0[6-9]-*.rds
 dev/va-speed/0[6-9]-*log*.txt
 dev/va-speed/1[0-9]-*.rds
+
+# campaign intermediate: exactly rbind() of the two committed CSVs
+dev/isdm-intervals/e1-final-results.csv
+
+# stray commit-message scratch files (content lands in the real commit message,
+# not durable evidence; sandbox could not rm the existing one so it is ignored)
+dev/.commit-msg-tmp.txt
+
+# Local acceptance-ledger runtime (ultra-plan / unlazy); never ship or track.
+.unlazy/
+.unlazy-hook-state.json
+
+# graft's local graph cache — regenerable, not committed (run `graft build`).
+/graft/

@@ -457,3 +457,536 @@ test_that("loading_ridge is an integration-neutral alias and cannot double-speci
     class = "gllvmTMB_loading_ridge_alias_conflict"
   )
 })
+## ---- Design 118 s7.2 prerequisite: profile bracket-search --------------
+##
+## `.gllvmTMB_mspl_profile_feasibility()`/`.gllvmTMB_mspl_profile_threshold_
+## diagnostic()` are ported from codex/lane-b-mspl-interval-feasibility
+## (commit e2055c7b) with two fixes -- see the provenance comment in
+## R/mspl.R for the diagnosed defects. A mocked `.gllvmTMB_mspl_nlminb()`
+## simulates a transient optimizer non-convergence at one specific profile
+## point without touching the real optimizer everywhere else.
+
+test_that("internal MSPL profile feasibility traces the penalised objective only", {
+  fit <- .mspl_fit("logit", q = 1L)
+  checkpoint <- gllvmTMB:::.gllvmTMB_profile_tmb_checkpoint(fit$tmb_obj)
+  penalty_off <- fit$mspl$unpenalized_tmb_obj
+  penalty_off$fn <- function(...) {
+    stop("penalty-off objective must not be profiled")
+  }
+  fit$mspl$unpenalized_tmb_obj <- penalty_off
+
+  probe <- gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
+    fit, which = 1L, step = 0.5, max_steps = 6L
+  )
+
+  expect_identical(probe$objective_source, "fit$tmb_obj (penalised LA-MSPL)")
+  expect_identical(probe$target_name, "b_fix")
+  expect_true(all(probe$trace$finite))
+  expect_true(all(probe$trace$convergence == 0L))
+  expect_identical(probe$centre_status, "matched")
+  expect_identical(probe$lower_status, "crossed")
+  expect_identical(probe$upper_status, "crossed")
+  expect_true(probe$finite_stable)
+  expect_identical(
+    gllvmTMB:::.gllvmTMB_profile_tmb_checkpoint(fit$tmb_obj), checkpoint
+  )
+
+  diagnostic <- gllvmTMB:::.gllvmTMB_mspl_profile_threshold_diagnostic(probe)
+  expect_lt(diagnostic$diagnostic_lower, diagnostic$estimate)
+  expect_gt(diagnostic$diagnostic_upper, diagnostic$estimate)
+
+  truncated <- gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
+    fit, which = 1L, step = 0.5, max_steps = 1L
+  )
+  expect_identical(truncated$lower_status, "truncated")
+  expect_identical(truncated$upper_status, "truncated")
+  expect_false(truncated$finite_stable)
+})
+
+test_that("MSPL profile bracket search retries a transient nlminb failure before giving up", {
+  ## Defect (2), A1 Q6: C010's `lower=optimizer_failed`/`refinement_failed`.
+  ## A single non-converging nlminb call used to be immediately fatal to the
+  ## point it evaluated. Force the FIRST attempt at one specific grid target
+  ## to report non-convergence and confirm the retry (from the joint-MLE
+  ## nuisance start) rescues it.
+  fit <- .mspl_fit("logit", q = 1L)
+  baseline <- gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
+    fit, which = 1L, step = 0.5, max_steps = 6L
+  )
+  expect_identical(baseline$upper_status, "crossed")
+  bad_target <- baseline$trace[
+    baseline$trace$stage == "grid" & baseline$trace$side == "upper", "target"
+  ][[1L]]
+
+  seen <- new.env()
+  flaky_once <- function(start, objective, gradient, control) {
+    target <- get("target", envir = environment(objective))
+    if (isTRUE(abs(target - bad_target) < 1e-9)) {
+      key <- "hit"
+      count <- if (is.null(seen[[key]])) 0L else seen[[key]]
+      seen[[key]] <- count + 1L
+      if (count == 0L) {
+        return(list(
+          par = start, objective = 9999, convergence = 1L, iterations = 0L,
+          evaluations = c(0L, 0L), message = "forced test failure (attempt 1)"
+        ))
+      }
+    }
+    stats::nlminb(start, objective = objective, gradient = gradient,
+                   control = control)
+  }
+  testthat::local_mocked_bindings(
+    .gllvmTMB_mspl_nlminb = flaky_once, .package = "gllvmTMB"
+  )
+
+  probe <- gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
+    fit, which = 1L, step = 0.5, max_steps = 6L
+  )
+  expect_identical(probe$upper_status, "crossed")
+  expect_gte(seen[["hit"]], 1L)
+  expect_equal(probe$upper_endpoint, baseline$upper_endpoint, tolerance = 1e-3)
+})
+
+test_that("MSPL profile bracket search retains the last known-good point across a stuck grid step", {
+  ## Defect (1), A1 Q6: C003's `upper=truncated` (paired with `lower=crossed`
+  ## on the same replicate). The OLD code reset `previous_success` to NULL on
+  ## any grid-point failure, so a permanently non-converging point (both the
+  ## primary AND retry attempts fail) erased the reference needed to detect
+  ## a real crossing at the very next grid point. Force one grid target to
+  ## fail unconditionally and confirm the walk still finds the crossing,
+  ## bracketed against the last point that DID succeed (here, the centre).
+  fit <- .mspl_fit("logit", q = 1L)
+  baseline <- gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
+    fit, which = 1L, step = 0.5, max_steps = 6L
+  )
+  expect_identical(baseline$upper_status, "crossed")
+  bad_target <- baseline$trace[
+    baseline$trace$stage == "grid" & baseline$trace$side == "upper", "target"
+  ][[1L]]
+
+  flaky_always <- function(start, objective, gradient, control) {
+    ## Only the coarse GRID evaluation at bad_target is forced to fail --
+    ## bad_target is (by construction of this fixture) exactly the first
+    ## bisection midpoint too, and this test is about the grid walk's
+    ## memory, not the refinement loop (that is the other test's job).
+    target <- get("target", envir = environment(objective))
+    stage <- get("stage", envir = environment(objective))
+    if (identical(stage, "grid") && isTRUE(abs(target - bad_target) < 1e-9)) {
+      return(list(
+        par = start, objective = 9999, convergence = 1L, iterations = 0L,
+        evaluations = c(0L, 0L), message = "forced test failure (always)"
+      ))
+    }
+    stats::nlminb(start, objective = objective, gradient = gradient,
+                   control = control)
+  }
+  testthat::local_mocked_bindings(
+    .gllvmTMB_mspl_nlminb = flaky_always, .package = "gllvmTMB"
+  )
+
+  probe <- gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
+    fit, which = 1L, step = 0.5, max_steps = 6L, refinement_steps = 20L
+  )
+  expect_identical(probe$upper_status, "crossed")
+  ## The first refinement step's bisection midpoint from a [centre, point2]
+  ## bracket lands exactly on bad_target too (by construction of this
+  ## fixture) and still succeeds, because the mock only targets the "grid"
+  ## stage -- refinement is real. The walk still converges to the SAME
+  ## endpoint the unperturbed baseline found, despite starting refinement
+  ## from a wider [centre, point2] bracket instead of baseline's narrower
+  ## [point1, point2].
+  expect_lte(diff(range(probe$upper_bracket)), probe$bracket_tolerance)
+  expect_equal(probe$upper_endpoint, baseline$upper_endpoint, tolerance = 1e-4)
+})
+
+test_that("MSPL profile bracket search widens on request to reach Design 118 s3.4's outer threshold (s7.2)", {
+  ## s7.2's OTHER half -- "widen the ... stored bracket to thresholds
+  ## [0.354, 3.317]" -- was ported by 0d6de305 only as far as the two
+  ## root-finder fixes above; the walk's reach stayed fixed at
+  ## step*max_steps. This proves both halves of the opt-in fix: (1) the
+  ## DEFAULT (`max_widen_rounds = 0L`, unset by any existing caller)
+  ## reproduces the OLD "truncated" outcome exactly -- the failing case
+  ## the gate requires -- and (2) opting in with `max_widen_rounds > 0`
+  ## reaches and crosses `threshold` from the same starting budget.
+  fit <- .mspl_fit("logit", q = 1L)
+
+  ## A deliberately narrow grid budget (reach = step*max_steps = 0.6) at
+  ## level = 0.99 (threshold 3.317, Design 118 s3.4's upper bound) cannot
+  ## reach the crossing -- this is the "unfixed" behaviour, still the
+  ## default.
+  narrow <- gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
+    fit, which = 1L, step = 0.2, max_steps = 3L, level = 0.99
+  )
+  expect_identical(narrow$lower_status, "truncated")
+  expect_identical(narrow$upper_status, "truncated")
+  expect_false(narrow$finite_stable)
+
+  ## Same starting budget, opted into widening: the walk continues from
+  ## the last known-good point with a larger step until it brackets
+  ## `threshold`, then refines to `bracket_tolerance` as before.
+  widened <- gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
+    fit, which = 1L, step = 0.2, max_steps = 3L, level = 0.99,
+    max_widen_rounds = 3L, refinement_steps = 20L
+  )
+  expect_identical(widened$lower_status, "crossed")
+  expect_identical(widened$upper_status, "crossed")
+  expect_true(widened$finite_stable)
+  expect_true(is.finite(widened$lower_endpoint))
+  expect_true(is.finite(widened$upper_endpoint))
+  expect_lte(diff(range(widened$lower_bracket)), widened$bracket_tolerance)
+  expect_lte(diff(range(widened$upper_bracket)), widened$bracket_tolerance)
+  ## The walked trace now actually spans out to (and past) 3.317 -- the
+  ## s3.4 upper threshold -- not just the narrow starting reach.
+  expect_gt(max(widened$trace$objective_delta, na.rm = TRUE), widened$threshold)
+  expect_equal(widened$threshold, stats::qchisq(0.99, df = 1L) / 2, tolerance = 1e-8)
+
+  ## Existing callers that omit the new argument are byte-for-byte
+  ## unaffected (max_widen_rounds defaults to 0L): the s7.2 baseline test
+  ## above already pins this at level = 0.95; confirm it also holds at a
+  ## budget that previously truncated at level = 0.99.
+  still_truncated <- gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
+    fit, which = 1L, step = 0.2, max_steps = 3L, level = 0.99
+  )
+  expect_identical(still_truncated$lower_status, narrow$lower_status)
+  expect_identical(still_truncated$upper_status, narrow$upper_status)
+  expect_identical(still_truncated$trace, narrow$trace)
+})
+
+test_that("MSPL profile bracket search validates max_widen_rounds", {
+  fit <- .mspl_fit("logit", q = 1L)
+  expect_error(
+    gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
+      fit, which = 1L, step = 0.5, max_steps = 6L, max_widen_rounds = -1L
+    ),
+    class = "gllvmTMB_mspl_profile_grid"
+  )
+  expect_error(
+    gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
+      fit, which = 1L, step = 0.5, max_steps = 6L, max_widen_rounds = 1.5
+    ),
+    class = "gllvmTMB_mspl_profile_grid"
+  )
+})
+
+## ---- Computability is not coverage (this lane, 2026-08-17) --------------
+##
+## The probes above establish only that a finite penalised-profile bracket can
+## be COMPUTED.  Kosmidis & Firth (2021, Biometrika 108(1), s2.2 p.5) state
+## that the coverage failure under a finiteness penalty "is also true when the
+## penalized likelihood is profiled", so these markers must stay present and
+## stay negative.  See
+## docs/dev-log/research/2026-08-17-kosmidis-firth-2021-profile-caveat.md.
+
+test_that("the profile probe never claims coverage, and stays unexported", {
+  expect_false(
+    ".gllvmTMB_mspl_profile_feasibility" %in% getNamespaceExports("gllvmTMB")
+  )
+  expect_false(
+    ".gllvmTMB_mspl_profile_threshold_diagnostic" %in%
+      getNamespaceExports("gllvmTMB")
+  )
+
+  fit <- .mspl_fit("logit", q = 1L)
+  probe <- gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
+    fit, which = 1L, step = 0.5, max_steps = 6L
+  )
+
+  ## The no-coverage markers are load-bearing, not decorative.
+  expect_false(probe$calibrated)
+  expect_identical(probe$public_confint, "refused")
+  expect_identical(probe$coverage_claim, "none")
+
+  ## Endpoints must never be named like a tidy confidence interval.
+  expect_false(any(c("conf.low", "conf.high") %in% names(probe)))
+
+  diagnostic <- gllvmTMB:::.gllvmTMB_mspl_profile_threshold_diagnostic(probe)
+  expect_false(diagnostic$calibrated)
+  expect_identical(diagnostic$coverage_claim, "none")
+  expect_false(any(c("conf.low", "conf.high") %in% names(diagnostic)))
+
+  ## Availability, not correctness: each side status is a typed member of the
+  ## known set.  We assert membership, never a particular coverage rate.
+  known <- c(
+    "crossed", "truncated", "optimizer_failed", "refinement_failed",
+    "refinement_truncated", "nonfinite"
+  )
+  expect_true(probe$lower_status %in% known)
+  expect_true(probe$upper_status %in% known)
+})
+
+test_that("the profile probe refuses a non-MSPL fit with a typed condition", {
+  fit <- .mspl_fit("logit", q = 1L)
+  class(fit) <- setdiff(class(fit), "gllvmTMB_mspl")
+  fit$mspl <- NULL
+  fit$estimator <- "ML"
+  expect_error(
+    gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(fit, which = 1L),
+    class = "gllvmTMB_mspl_profile_input"
+  )
+})
+
+test_that("the profile probe is fenced to binomial, with a typed refusal", {
+  gaussian_fit <- .mspl_fit("logit", q = 1L)
+  ## Re-label the family so only the fence, not the fit, decides. The probe must
+  ## refuse on family before it touches any tape.
+  gaussian_fit$family <- stats::gaussian()
+  expect_error(
+    gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(gaussian_fit, which = 1L),
+    class = "gllvmTMB_mspl_profile_family"
+  )
+})
+
+## ---- Design 125 fork B (G0 SIGNED 2026-08-18) --------------------------
+##
+## `objective = "unpenalized"` walks fit$mspl$unpenalized_tmb_obj with the
+## nuisance coordinates pinned at the MSPL estimate. `tape = "Q_0"` is the
+## synonym used by the parallel L0/L1 callers. Fork A ("penalised" / "Q_P",
+## the default) is retained as the ablation arm and must be untouched.
+
+test_that("fork B walks the unpenalized tape with the nuisance held fixed", {
+  fit <- .mspl_fit("logit", q = 1L)
+  penalised_checkpoint <- gllvmTMB:::.gllvmTMB_profile_tmb_checkpoint(
+    fit$tmb_obj
+  )
+  q0_fn <- fit$mspl$unpenalized_tmb_obj$fn
+  checkpoint_q0 <- gllvmTMB:::.gllvmTMB_profile_tmb_checkpoint(
+    fit$mspl$unpenalized_tmb_obj
+  )
+
+  penalised <- fit$tmb_obj
+  penalised$fn <- function(...) {
+    stop("penalised objective must not be profiled on fork B")
+  }
+  fit$tmb_obj <- penalised
+  testthat::local_mocked_bindings(
+    .gllvmTMB_mspl_nlminb = function(...) {
+      stop("nlminb must not run on fork B")
+    },
+    .package = "gllvmTMB"
+  )
+
+  probe <- gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
+    fit, which = 1L, step = 0.5, max_steps = 6L, objective = "unpenalized"
+  )
+
+  expect_identical(
+    probe$objective_source,
+    "fit$mspl$unpenalized_tmb_obj (unpenalized Laplace at fixed MSPL nuisance)"
+  )
+  expect_identical(probe$objective, "unpenalized")
+  expect_identical(probe$tape, "Q_0")
+  expect_identical(probe$design_125_fork, "B")
+  expect_identical(probe$nuisance_treatment, "fixed_at_mspl")
+  expect_false(probe$reference_is_maximum)
+
+  ## Fixed nuisance means no inner optimisation anywhere in the trace. If a
+  ## future edit reintroduces re-optimisation under fork B this fails.
+  expect_true(all(!probe$trace$nuisance_reoptimized))
+
+  ## The centre is the unpenalized objective at the MSPL estimate, which is a
+  ## DIFFERENT number from fit$opt$objective (that one carries the penalty).
+  ## Using the penalised value would put the centre off its own curve.
+  expect_equal(
+    probe$mle_objective, fit$mspl$unpenalized_nll_at_estimate,
+    tolerance = 1e-8
+  )
+  expect_gt(fit$mspl$unpenalized_nll_at_estimate, fit$opt$objective)
+  expect_identical(probe$centre_status, "matched")
+  expect_true(any(probe$trace$finite))
+
+  ## Fork B must leave both tapes' restored state alone.
+  expect_identical(
+    gllvmTMB:::.gllvmTMB_profile_tmb_checkpoint(fit$tmb_obj),
+    penalised_checkpoint
+  )
+  expect_identical(
+    gllvmTMB:::.gllvmTMB_profile_tmb_checkpoint(fit$mspl$unpenalized_tmb_obj),
+    checkpoint_q0
+  )
+
+  finite_row <- probe$trace[probe$trace$finite, , drop = FALSE][1L, ]
+  par <- as.numeric(fit$opt$par)
+  par[as.integer(probe$target_index)] <- finite_row$target[[1L]]
+  expect_equal(
+    finite_row$objective[[1L]],
+    as.numeric(q0_fn(par)),
+    tolerance = 1e-8
+  )
+
+  ## Fences survive the new arm.
+  expect_false(probe$calibrated)
+  expect_identical(probe$public_confint, "refused")
+  expect_identical(probe$coverage_claim, "none")
+  expect_false(any(c("conf.low", "conf.high") %in% names(probe)))
+
+  diagnostic <- gllvmTMB:::.gllvmTMB_mspl_profile_threshold_diagnostic(probe)
+  expect_identical(diagnostic$design_125_fork, "B")
+  expect_identical(diagnostic$objective, "unpenalized")
+  expect_identical(diagnostic$tape, "Q_0")
+  expect_identical(diagnostic$objective_source, probe$objective_source)
+  expect_false(diagnostic$reference_is_maximum)
+  expect_false(diagnostic$calibrated)
+  expect_identical(diagnostic$coverage_claim, "none")
+  expect_error(confint(fit), class = "gllvmTMB_mspl_inference_unsupported")
+})
+
+test_that("tape = Q_0 is the synonym for objective = unpenalized", {
+  fit <- .mspl_fit("logit", q = 1L)
+  by_objective <- gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
+    fit, which = 1L, step = 0.5, max_steps = 6L, objective = "unpenalized"
+  )
+  by_tape <- gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
+    fit, which = 1L, step = 0.5, max_steps = 6L, tape = "Q_0"
+  )
+  expect_identical(by_objective$trace, by_tape$trace)
+  expect_identical(by_objective$lower_endpoint, by_tape$lower_endpoint)
+  expect_identical(by_objective$upper_endpoint, by_tape$upper_endpoint)
+  expect_identical(by_objective$objective, "unpenalized")
+  expect_identical(by_tape$tape, "Q_0")
+  expect_identical(by_objective$design_125_fork, by_tape$design_125_fork)
+})
+
+test_that("fork B is a different measurement from fork A, not a relabelling", {
+  fit <- .mspl_fit("logit", q = 1L)
+  fork_a <- gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
+    fit, which = 1L, step = 0.5, max_steps = 6L
+  )
+  fork_b <- gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
+    fit, which = 1L, step = 0.5, max_steps = 6L, objective = "unpenalized"
+  )
+
+  expect_identical(fork_a$design_125_fork, "A")
+  expect_identical(fork_b$design_125_fork, "B")
+  expect_identical(fork_a$mle, fork_b$mle)
+  expect_identical(fork_a$threshold, fork_b$threshold)
+  expect_identical(fork_a$target_index, fork_b$target_index)
+
+  expect_false(isTRUE(all.equal(
+    fork_a$upper_endpoint, fork_b$upper_endpoint, tolerance = 1e-6
+  )))
+  expect_false(isTRUE(all.equal(
+    fork_a$lower_endpoint, fork_b$lower_endpoint, tolerance = 1e-6
+  )))
+
+  expect_equal(fork_a$mle_objective, as.numeric(fit$opt$objective),
+               tolerance = 1e-10)
+  expect_equal(fork_b$mle_objective,
+               as.numeric(fit$mspl$unpenalized_nll_at_estimate),
+               tolerance = 1e-8)
+  expect_false(isTRUE(all.equal(fork_a$mle_objective, fork_b$mle_objective)))
+})
+
+test_that("fork A stays the default and is unchanged by the fork B selector", {
+  fit <- .mspl_fit("logit", q = 1L)
+
+  implicit <- gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
+    fit, which = 1L, step = 0.5, max_steps = 6L
+  )
+  explicit <- gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
+    fit, which = 1L, step = 0.5, max_steps = 6L, objective = "penalised"
+  )
+  by_tape <- gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
+    fit, which = 1L, step = 0.5, max_steps = 6L, tape = "Q_P"
+  )
+
+  expect_identical(implicit$design_125_fork, "A")
+  expect_identical(implicit$objective, "penalised")
+  expect_identical(implicit$tape, "Q_P")
+  expect_identical(implicit$nuisance_treatment, "reoptimized")
+  expect_true(implicit$reference_is_maximum)
+  expect_identical(implicit$objective_source, "fit$tmb_obj (penalised LA-MSPL)")
+  expect_identical(implicit$trace, explicit$trace)
+  expect_identical(implicit$trace, by_tape$trace)
+  expect_identical(implicit$lower_endpoint, explicit$lower_endpoint)
+  expect_identical(implicit$upper_endpoint, explicit$upper_endpoint)
+})
+
+test_that("fork B refuses a missing or mislabelled unpenalized tape", {
+  fit <- .mspl_fit("logit", q = 1L)
+  fit$mspl$unpenalized_tmb_obj <- NULL
+
+  expect_error(
+    gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
+      fit, which = 1L, objective = "unpenalized"
+    ),
+    class = "gllvmTMB_mspl_profile_objective"
+  )
+  expect_error(
+    gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
+      fit, which = 1L, tape = "Q_0"
+    ),
+    class = "gllvmTMB_mspl_profile_objective"
+  )
+
+  ## Fork A does not need that tape and must still run on the same fit.
+  expect_identical(
+    gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
+      fit, which = 1L, step = 0.5, max_steps = 6L
+    )$design_125_fork,
+    "A"
+  )
+
+  fit <- .mspl_fit("logit", q = 1L)
+  fit$mspl$unpenalized_tmb_obj <- list(
+    fn = function(...) 0, gr = function(...) 0,
+    env = list(data = list(estimator_id = 1L))
+  )
+  expect_error(
+    gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
+      fit, which = 1L, objective = "unpenalized"
+    ),
+    class = "gllvmTMB_mspl_profile_objective"
+  )
+})
+
+test_that("the fork selector admits only the two registered arms", {
+  fit <- .mspl_fit("logit", q = 1L)
+  expect_error(
+    gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
+      fit, which = 1L, objective = "hybrid"
+    ),
+    class = "gllvmTMB_mspl_profile_objective"
+  )
+  expect_error(
+    gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
+      fit, which = 1L, tape = "Q_C"
+    ),
+    class = "gllvmTMB_mspl_profile_tape"
+  )
+  expect_error(
+    gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
+      fit, which = 1L, tape = 1L
+    ),
+    class = "gllvmTMB_mspl_profile_tape"
+  )
+  expect_error(
+    gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
+      fit, which = 1L, objective = "unpenalized", tape = "Q_P"
+    ),
+    class = "gllvmTMB_mspl_profile_objective"
+  )
+})
+
+test_that("the threshold diagnostic accepts two sources, not anything", {
+  fit <- .mspl_fit("logit", q = 1L)
+  probe <- gllvmTMB:::.gllvmTMB_mspl_profile_feasibility(
+    fit, which = 1L, step = 0.5, max_steps = 6L, objective = "unpenalized"
+  )
+  expect_no_error(
+    gllvmTMB:::.gllvmTMB_mspl_profile_threshold_diagnostic(probe)
+  )
+
+  foreign <- probe
+  foreign$objective_source <- "some other likelihood"
+  expect_error(
+    gllvmTMB:::.gllvmTMB_mspl_profile_threshold_diagnostic(foreign),
+    class = "gllvmTMB_mspl_profile_threshold_input"
+  )
+
+  incomplete <- probe
+  incomplete$tape <- NULL
+  expect_error(
+    gllvmTMB:::.gllvmTMB_mspl_profile_threshold_diagnostic(incomplete),
+    class = "gllvmTMB_mspl_profile_threshold_input"
+  )
+})

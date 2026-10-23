@@ -11,7 +11,8 @@ phylo_latent(
   vcv = NULL,
   A = NULL,
   Ainv = NULL,
-  unique = FALSE
+  unique = FALSE,
+  rho = 1
 )
 }
 \arguments{
@@ -40,6 +41,16 @@ companion into a single term (\eqn{\boldsymbol\Sigma_{phy} = \boldsymbol\Lambda
 \boldsymbol\Lambda^\top \otimes \mathbf{A} + \boldsymbol\Psi_{phy} \otimes
 \mathbf{A}}). The default \code{FALSE} preserves the loadings-only /
 rotation-invariant subset.}
+
+\item{rho}{Source strength: a number in \verb{[0,1]} fixes
+\code{rho * K + (1-rho) * diag(diag(K))} on the legacy-resolved source scale.
+Omitted or explicit \code{1} preserves the existing model. \code{NULL} estimates
+strength for one Gaussian structured trait-intercept block with complete
+replicated multivariate observations and no competing ordinary covariance.
+Estimated latent terms require rank one and at least four traits. The same
+strength applies to the entire latent-plus-Psi covariance. This parameter
+is not a variance-share summary. Fixed attenuation and the admitted
+Gaussian estimator have implementation checks; recovery is regime-specific.}
 }
 \value{
 A formula marker; never evaluated.
@@ -94,23 +105,28 @@ for the benchmark.
 }
 }
 \examples{
-\dontrun{
-  tree <- ape::rcoal(20); tree$tip.label <- paste0("sp", seq_len(20))
+if (requireNamespace("ape", quietly = TRUE)) {
+  set.seed(1)
+  tree <- ape::rcoal(60); tree$tip.label <- paste0("sp", seq_len(60))
   sim <- simulate_site_trait(
-    n_sites = 1, n_species = 20, n_traits = 4,
-    mean_species_per_site = 20,
+    n_sites = 1, n_species = 60, n_traits = 3,
+    mean_species_per_site = 60,
     Cphy = ape::vcv(tree, corr = TRUE),
-    sigma2_phy = rep(0.3, 4), seed = 1
+    sigma2_phy = rep(1, 3), sigma2_eps = 0.2, seed = 1
   )
-  sim$data$species <- factor(sim$data$species, levels = tree$tip.label)
+  sim$data$species <- factor(
+    tree$tip.label[as.integer(sim$data$species)],
+    levels = tree$tip.label
+  )
+  \donttest{
   fit <- gllvmTMB(
-    value ~ 0 + trait + phylo_latent(species, d = 2),
-    data       = sim$data,
-    trait      = "trait",
-    unit       = "species",
-    cluster    = "species",
-    phylo_tree = tree
+    value ~ 0 + trait + phylo_latent(species, d = 2, tree = tree),
+    data    = sim$data,
+    trait   = "trait",
+    unit    = "species",
+    cluster = "species"
   )
+  }
 }
 }
 \references{

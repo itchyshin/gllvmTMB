@@ -3,7 +3,7 @@
 \name{ordiplot}
 \alias{ordiplot}
 \alias{ordiplot.gllvmTMB_multi}
-\title{Draw a two-axis ordination plot for a fitted multivariate model}
+\title{Draw a one- or two-axis ordination plot for a fitted multivariate model}
 \usage{
 ordiplot(fit, ...)
 
@@ -13,6 +13,8 @@ ordiplot(fit, ...)
   axes = c(1, 2),
   biplot = TRUE,
   rotate = c("none", "varimax", "promax"),
+  ellipse = FALSE,
+  ellipse_level = 0.95,
   ...
 )
 }
@@ -24,14 +26,26 @@ ordiplot(fit, ...)
 \item{level}{\code{"unit"} (between-unit) or \code{"unit_obs"} (within-unit).
 Deprecated aliases \code{"B"} and \code{"W"} are still accepted with a warning.}
 
-\item{axes}{Length-2 integer vector picking which two latent axes
-to plot. Default \code{c(1, 2)}.}
+\item{axes}{Integer vector selecting one or two distinct latent axes.
+When omitted, uses axis 1 for a one-axis fit and \code{c(1, 2)} otherwise.
+A one-axis plot places scores and loading arrows along a horizontal
+baseline; its vertical position has no latent-variable meaning.}
 
 \item{biplot}{Logical; if \code{TRUE}, overlay scaled trait loadings as
 arrows (default \code{TRUE}).}
 
 \item{rotate}{Rotation after fitting: \code{"none"} (default), \code{"varimax"}, or
 \code{"promax"}.}
+
+\item{ellipse}{Logical; if \code{TRUE}, draw an asymptotic-normal score
+-uncertainty ellipse around every site, from \code{\link[=ordination_uncertainty]{ordination_uncertainty()}}.
+Only supported for two-axis plots with \code{rotate = "none"} (the default) -- see
+\code{\link[=ordination_uncertainty]{ordination_uncertainty()}}'s Rotation section for why. The ellipse
+level is unmeasured for coverage; it is a standard Wald construction,
+not a certified interval.}
+
+\item{ellipse_level}{Nominal confidence level for the \code{ellipse} outline
+(default \code{0.95}). Only used when \code{ellipse = TRUE}.}
 }
 \value{
 Invisibly, a list with the plotted \code{scores} matrix and the
@@ -52,6 +66,7 @@ methods registered, either generic correctly routes a multi-response
 fit through the gllvmTMB ordination method.
 }
 \seealso{
-\code{\link[=plot.gllvmTMB_multi]{plot.gllvmTMB_multi()}} for the available \code{type} choices.
+\code{\link[=plot.gllvmTMB_multi]{plot.gllvmTMB_multi()}} for the available \code{type} choices;
+\code{\link[=ordination_uncertainty]{ordination_uncertainty()}} for the covariance \code{ellipse = TRUE} draws.
 }
 \keyword{internal}

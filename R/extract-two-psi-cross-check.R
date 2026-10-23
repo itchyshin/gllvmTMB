@@ -109,8 +109,9 @@
 #' @keywords internal
 #' @noRd
 .refit_inputs <- function(fit_two_psi) {
+  .structured_rho_refit_assert(fit_two_psi, "two-Psi comparison")
   if (!inherits(fit_two_psi, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+    .gllvmTMB_abort_not_multi_fit(fit_two_psi)
   }
   if (!.is_two_psi_fit(fit_two_psi)) {
     cli::cli_abort(c(
@@ -467,24 +468,66 @@
 #'
 #' @export
 #' @examples
-#' \dontrun{
-#' library(ape)
-#' tree <- ape::rcoal(200)
-#' tree$tip.label <- paste0("sp", seq_len(200))
-#' Cphy <- ape::vcv(tree, corr = TRUE)
-#' fit  <- gllvmTMB(
-#'   value ~ 0 + trait + phylo_latent(species, d = 1, unique = TRUE) +
-#'           indep(0 + trait | species),
-#'   data      = df,
-#'   trait     = "trait",
-#'   unit      = "species",
-#'   cluster   = "species",
-#'   phylo_vcv = Cphy
-#' )
-#' diag <- compare_dep_vs_two_psi(fit)
-#' diag$flag
-#' diag$agreement
+#' set.seed(18)
+#' ## A balanced phylogeny of 64 species, built in base R: six rounds of
+#' ## evenly spaced splits. Two species' phylogenetic correlation is the
+#' ## share of the tree's depth they spent as one lineage (5/6 for sister
+#' ## species, 0 for species on opposite sides of the root).
+#' n_sp <- 64
+#' Cphy <- matrix(0, n_sp, n_sp)
+#' for (level in 1:6) {
+#'   clade <- (seq_len(n_sp) - 1) %/% 2^(6 - level)
+#'   Cphy <- Cphy + outer(clade, clade, "==") / 6
 #' }
+#' sp <- paste0("sp", seq_len(n_sp))
+#' dimnames(Cphy) <- list(sp, sp)
+#'
+#' ## Three traits. A species' value for each trait is the sum of a shared
+#' ## phylogenetic factor (with a trait-specific loading), a trait-specific
+#' ## phylogenetic effect and a non-phylogenetic species effect. Three
+#' ## individuals are measured per species, so these species effects can be
+#' ## told apart from measurement noise.
+#' L <- t(chol(Cphy))  # turns independent draws into tree-correlated ones
+#' phy <- outer(drop(L %*% rnorm(n_sp)), c(0.8, 0.6, -0.5)) +
+#'   L %*% matrix(rnorm(n_sp * 3, sd = 0.6), n_sp, 3)
+#' non <- matrix(rnorm(n_sp * 3, sd = 0.5), n_sp, 3)
+#' df <- expand.grid(trait = c("t1", "t2", "t3"), individual = 1:3,
+#'                   species = sp)
+#' idx <- cbind(match(df$species, sp), as.integer(df$trait))
+#' df$value <- phy[idx] + non[idx] + rnorm(nrow(df), sd = 0.5)
+#'
+#' ## The paired ("two-psi") fit: the phylogenetic covariance is one shared
+#' ## factor plus trait-specific phylogenetic variances; the
+#' ## non-phylogenetic species variances are independent across traits.
+#' fit <- gllvmTMB(
+#'   value ~ 0 + trait +
+#'     phylo_latent(species, d = 1, unique = TRUE, vcv = Cphy) +
+#'     indep(0 + trait | species),
+#'   data = df, trait = "trait", unit = "species", cluster = "species"
+#' )
+#'
+#' ## Refit with unrestricted phylogenetic and non-phylogenetic covariances
+#' ## (phylo_dep + dep) and compare the two fits' covariance matrices.
+#' ## The refit currently also warns about an unused `unit_obs` argument;
+#' ## the warning comes from the internal refit, not from your model, and
+#' ## does not change the result (a known bug, issue #1568).
+#' check <- compare_dep_vs_two_psi(fit)
+#' check$alt_fit$opt$convergence  # 0 means the refit converged
+#' ## rel_disagreement is the gap between the two fits relative to the size
+#' ## of the unrestricted estimate; flag marks gaps above `threshold`
+#' ## (0.10 by default).
+#' check$agreement
+#' check$flag
+#' ## Both components are flagged here, even though the data were simulated
+#' ## from the paired model itself. The unrestricted refit gains little
+#' ## log-likelihood for its three extra parameters, yet it splits the trait
+#' ## covariance differently between the phylogenetic and non-phylogenetic
+#' ## parts: with 64 species the data only loosely determine that split.
+#' ## So a flag means the two fits disagree; on its own it does not show
+#' ## that the paired model is wrong.
+#' c(two_psi = logLik(fit), unrestricted = logLik(check$alt_fit))
+#' check$joint$Sigma_phy  # paired fit
+#' check$dep$Sigma_phy    # unrestricted refit
 compare_dep_vs_two_psi <- function(
   fit_two_psi,
   threshold = 0.10,
@@ -608,11 +651,68 @@ compare_dep_vs_two_psi <- function(
 #'
 #' @export
 #' @examples
-#' \dontrun{
-#' diag <- compare_indep_vs_two_psi(fit)
-#' diag$flag
-#' diag$agreement
+#' set.seed(18)
+#' ## A balanced phylogeny of 64 species, built in base R: six rounds of
+#' ## evenly spaced splits. Two species' phylogenetic correlation is the
+#' ## share of the tree's depth they spent as one lineage (5/6 for sister
+#' ## species, 0 for species on opposite sides of the root).
+#' n_sp <- 64
+#' Cphy <- matrix(0, n_sp, n_sp)
+#' for (level in 1:6) {
+#'   clade <- (seq_len(n_sp) - 1) %/% 2^(6 - level)
+#'   Cphy <- Cphy + outer(clade, clade, "==") / 6
 #' }
+#' sp <- paste0("sp", seq_len(n_sp))
+#' dimnames(Cphy) <- list(sp, sp)
+#'
+#' ## Three traits. A species' value for each trait is the sum of a shared
+#' ## phylogenetic factor (with a trait-specific loading), a trait-specific
+#' ## phylogenetic effect and a non-phylogenetic species effect. Three
+#' ## individuals are measured per species, so these species effects can be
+#' ## told apart from measurement noise.
+#' L <- t(chol(Cphy))  # turns independent draws into tree-correlated ones
+#' phy <- outer(drop(L %*% rnorm(n_sp)), c(0.8, 0.6, -0.5)) +
+#'   L %*% matrix(rnorm(n_sp * 3, sd = 0.6), n_sp, 3)
+#' non <- matrix(rnorm(n_sp * 3, sd = 0.5), n_sp, 3)
+#' df <- expand.grid(trait = c("t1", "t2", "t3"), individual = 1:3,
+#'                   species = sp)
+#' idx <- cbind(match(df$species, sp), as.integer(df$trait))
+#' df$value <- phy[idx] + non[idx] + rnorm(nrow(df), sd = 0.5)
+#'
+#' ## The paired ("two-psi") fit: the phylogenetic covariance is one shared
+#' ## factor plus trait-specific phylogenetic variances; the
+#' ## non-phylogenetic species variances are independent across traits.
+#' fit <- gllvmTMB(
+#'   value ~ 0 + trait +
+#'     phylo_latent(species, d = 1, unique = TRUE, vcv = Cphy) +
+#'     indep(0 + trait | species),
+#'   data = df, trait = "trait", unit = "species", cluster = "species"
+#' )
+#'
+#' ## Refit with per-trait variances only (phylo_indep + indep) and compare
+#' ## the two fits' per-trait phylogenetic and non-phylogenetic variances.
+#' ## This cheap check is meant for fits with many traits, where the
+#' ## unrestricted refit of compare_dep_vs_two_psi() is too slow; three
+#' ## traits keep the example fast. The refit currently also warns about an
+#' ## unused `unit_obs` argument; the warning comes from the internal refit,
+#' ## not from your model, and does not change the result (a known bug,
+#' ## issue #1568).
+#' check <- compare_indep_vs_two_psi(fit)
+#' check$alt_fit$opt$convergence  # 0 means the refit converged
+#' ## rel_disagreement is the gap between the two fits relative to the size
+#' ## of the per-trait estimates; flag marks gaps above `threshold`
+#' ## (0.10 by default).
+#' check$agreement
+#' check$flag
+#' ## Both components are flagged here, even though the data were simulated
+#' ## from the paired model itself: with 64 species each trait's
+#' ## phylogenetic and non-phylogenetic variances are only loosely
+#' ## determined, and the paired fit (which also uses the covariances among
+#' ## traits) and this per-trait refit land some way apart. A flag means the
+#' ## two fits disagree; on its own it does not show that the paired model
+#' ## is wrong. The phylogenetic variances of the two fits:
+#' rbind(two_psi = check$joint$Sigma_phy_diag,
+#'       per_trait = check$indep$Sigma_phy_diag)
 compare_indep_vs_two_psi <- function(
   fit_two_psi,
   threshold = 0.10,

@@ -91,6 +91,8 @@
                                   conf_level = 0.95,
                                   nsim       = 999L,
                                   seed       = NULL) {
+  .temporal_assert_no_iid_inference(fit, ".loading_ci_bootstrap")
+  .structured_rho_refit_assert(fit, ".loading_ci_bootstrap")
 
   if (!inherits(fit, "gllvmTMB_multi"))
     cli::cli_abort("{.code fit} must be a multi-trait {.fun gllvmTMB} fit.")
@@ -143,7 +145,7 @@
   pinned <- as.logical(!is.na(M_user))
 
   ## ---- Simulate response vectors (reuse the parametric simulator) ----
-  if (!is.null(seed)) set.seed(seed)
+  .gllvmTMB_local_seed(seed)
   Y_sim <- simulate(fit, nsim = nsim)
   if (!is.matrix(Y_sim) || ncol(Y_sim) != nsim)
     cli::cli_abort(
@@ -151,23 +153,19 @@
     )
 
   ## ---- Refit machinery: same approach as bootstrap_Sigma() ----
-  formula <- .reconstruct_multi_formula(fit)
+  response <- .bootstrap_response_setup(fit)
+  formula <- response$formula
   trait   <- fit$trait_col
   site    <- fit$unit_col
   species <- fit$species_col
   family  <- if (!is.null(fit$family_input)) fit$family_input else fit$family
-  data    <- fit$data
-  resp    <- all.vars(fit$formula)[1]
-
-  if (!resp %in% names(data))
-    cli::cli_abort(
-      "Response column {.var {resp}} not found in {.code fit$data}."
-    )
 
   ## Auxiliary args to forward: phylo_vcv, mesh, lambda_constraint (the
   ## last is essential -- otherwise the confirmatory pins are dropped
   ## and Lambda would be identified only up to rotation).
   aux <- list(
+    weights = response$weights,
+    missing = response$missing,
     phylo_vcv         = fit$phylo_vcv,
     phylo_tree        = fit$phylo_tree,
     mesh              = fit$mesh,
@@ -191,8 +189,7 @@
   scale_guard <- .loading_bootstrap_scale_guard(Lambda)
 
   for (b in seq_len(nsim)) {
-    dat <- data
-    dat[[resp]] <- Y_sim[, b]
+    dat <- .bootstrap_response_data(response, Y_sim[, b])
     call_args <- c(
       list(
         formula = formula, data = dat,

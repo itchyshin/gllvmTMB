@@ -44,7 +44,7 @@
   level
 ) {
   if (!inherits(fit, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+    .gllvmTMB_abort_not_multi_fit(fit)
   }
   if (!is.numeric(level) || length(level) != 1L || level <= 0 || level >= 1) {
     cli::cli_abort("{.arg level} must be a scalar in (0, 1); got {.val {level}}.")
@@ -243,7 +243,7 @@
 #'   families).
 #'
 #' @keywords internal
-#' @export
+#' @noRd
 .proportions_wald_ci <- function(
   fit,
   components = NULL,
@@ -419,7 +419,7 @@
 #'   rows, `"(unavailable)"` for link-residual rows.
 #'
 #' @keywords internal
-#' @export
+#' @noRd
 .proportions_bootstrap_ci <- function(
   fit,
   components = NULL,
@@ -428,6 +428,7 @@
   nsim       = 500L,
   seed       = NULL
 ) {
+  .temporal_assert_no_iid_inference(fit, ".proportions_bootstrap_ci")
   .gllvmTMB_mspl_assert_inference(fit, ".proportions_bootstrap_ci")
   .gllvmTMB_require_unweighted_inference(fit, ".proportions_bootstrap_ci")
   v <- .proportions_validate_inputs(fit, components, trait_idx, level)
@@ -447,21 +448,17 @@
   link_resid_fixed <- .proportions_link_resid_fixed(fit)
 
   ## --- Set up the refit closure (parallels bootstrap_Sigma()) ---------
-  formula <- .reconstruct_multi_formula(fit)
+  response <- .bootstrap_response_setup(fit)
+  formula <- response$formula
   trait <- fit$trait_col
   unit <- fit$unit_col
   unit_obs <- fit$unit_obs_col
   cluster <- fit$cluster_col %||% fit$species_col
   cluster2 <- fit$cluster2_col
   family <- if (!is.null(fit$family_input)) fit$family_input else fit$family
-  data <- fit$data
-  resp <- all.vars(fit$formula)[1]
-  if (!resp %in% names(data)) {
-    cli::cli_abort(
-      "Response column {.var {resp}} not found in {.code fit$data}."
-    )
-  }
   aux <- list(
+    weights = response$weights,
+    missing = response$missing,
     phylo_vcv = fit$phylo_vcv,
     phylo_tree = fit$phylo_tree,
     mesh = fit$mesh,
@@ -469,9 +466,7 @@
   )
   aux <- aux[!vapply(aux, is.null, logical(1))]
 
-  if (!is.null(seed)) {
-    set.seed(seed)
-  }
+  .gllvmTMB_local_seed(seed)
   Y_sim <- simulate(fit, nsim = nsim)
   if (!is.matrix(Y_sim) || ncol(Y_sim) != nsim) {
     cli::cli_abort(
@@ -480,8 +475,7 @@
   }
 
   refit_one <- function(b) {
-    dat <- data
-    dat[[resp]] <- Y_sim[, b]
+    dat <- .bootstrap_response_data(response, Y_sim[, b])
     call_args <- c(
       list(
         formula = formula,

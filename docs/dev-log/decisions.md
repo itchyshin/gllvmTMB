@@ -2,6 +2,183 @@
 
 Date-stamped one-paragraph design decisions. Append-only.
 
+## 2026-08-18  G0 SIGNED: Design 125 G4c — MSPL profile fork **B** (unpenalized Laplace at fixed MSPL nuisance); fork A is ablation only
+
+Decision (Shinichi, chat, 2026-08-18 — explicit paste against the deferred G4c
+gate, not blanket lane approval): the Design 125 profile fork is **B**. The
+signature profile path for LA-MSPL intervals inverts a likelihood ratio built on
+the **unpenalized** Laplace-approximated marginal likelihood, evaluated at
+nuisance parameters **fixed at their MSPL values**. Fork **A** (profiling the
+penalised MSPL tape) is retained as an **ablation arm only** — measurable,
+reportable as a comparator, never the claim path. Fork **C** (hybrid) is **not
+picked** and is out of the v1 claim set.
+
+This **discharges G4c `FORK-DEFER`**, which had been `SIGNED` on 2026-08-17 as
+*"no live profile impl / smoke until fork G0"* and was the single gate blocking
+G3 smoke. `docs/design/125-mspl-profile-led-intervals.md`,
+`docs/dev-log/research/2026-08-17-mspl-profile-led-prereg-ademp.md` and
+`LOOP/decision-queue.md` are updated to read **FORK-B** rather than
+**FORK-DEFER**.
+
+**Why B and not A** — the reason is measured, not stylistic. Kosmidis & Firth
+(2021, *Biometrika* 108(1):71–82, §2.2 p. 5), read directly and verified
+2026-08-17 (`docs/dev-log/research/2026-08-17-kosmidis-firth-2021-profile-caveat.md`),
+state that the coverage failure under a finiteness penalty *"is also true when
+the penalized likelihood is profiled for the construction of confidence
+intervals"*. The mechanism rules out the obvious workaround: this is **not** a
+quadratic-approximation artefact — the one failure mode profiling repairs — but
+a consequence of their Corollary 1, that with binomial responses the penalised
+estimator takes only finitely many values with finite components while the true
+parameter is unbounded. Profiling changes the interval's shape, not the
+boundedness of what it is built from. **Fork A therefore profiles exactly the
+object the penalty's own authors say cannot be made to cover**, so a fork-A
+coverage programme would be pre-refuted; fork B profiles the unpenalized
+objective and is not reached by that argument. The transfer of the caveat from a
+fixed-design binomial GLM to a latent-variable GLLVM remains **AGENT-INFERRED,
+not established** — which is a reason to prefer B, not a licence to claim B
+covers.
+
+**What B still does not have.** No evidence that fork B's intervals cover: B is
+now the *named construction to be tested* under the SIGNED ADEMP pre-registration,
+not a validated one. `MSPL-04` stays **`blocked`**. Hard stops unchanged and
+explicitly **not** waived here: no public `se = TRUE` / `vcov()` / `confint()`;
+#1077 stays **draft** (undraft needs its own explicit ask); no Totoro/DRAC
+(D-50/D-139); no Design 118 or B1 reopen (D-157); no NEWS/article `covered`
+language; `codex/lane-b-mspl-interval-feasibility` stays **PROTECTED**. The
+docs sitting left `R/` untouched; L0 authorising code is the next entry
+(#1130), which lifts G3 `WAIT` for L0/L1 local compute only.
+
+**Ledger-citation correction shipped with this entry.** Vault decisions
+renumbered the MSPL-interval decision from `D-148` to
+[`D-159`](../../../shinichi-brain/memory/DECISIONS.md) on 2026-08-18, because
+`D-148` had been reused hours later by the *never-ask-a-bare-question* rule and
+a Markdown anchor resolves to the first matching heading. Every gllvmTMB
+citation that meant *MSPL-interval withhold / calibrated route / jackknife
+rejected* now reads **D-159**; the two citations that genuinely meant
+*paste-ready draft answer* (`2026-08-17-mspl-b1-aftermath-G0.md`) still read
+**D-148**, correctly. **D-149** (SE pins ≠ public intervals; Lane B ownership) is
+unchanged throughout.
+
+**Poisson \(W\) PARK → REPLACE sync (same sitting, not a new G0).** Design 125
+and the ADEMP pre-reg still presented `G1 PARK SE doors` / "tape unchanged"
+as current. That freeze was superseded on 2026-08-17 and landed on `main`
+as #1111 (`3053fce3`). Those two files now say **SIGNED REPLACE**. SE-series
+family doors and public `se` stay closed.
+
+## 2026-08-18  Authorising code: `objective=` selector for Design 125 fork B (L0; supersedes #1126)
+
+Decision (Shinichi, this sitting, given once and then reaffirmed twice
+explicitly when the lane paused to confirm):
+
+> G0 Design 125 fork: B — profile the unpenalized Laplace objective at fixed
+> MSPL nuisance coordinates. Fork A retained as ablation only. This unlocks L0
+> plumbing + L1 local smoke (local compute only). Still NOT: Totoro, T\*
+> thresholds, undraft #1077, public `se=TRUE`/`vcov`/`confint`, MSPL-04 off
+> blocked.
+
+This closes **G4c FORK-DEFER**, the gate that had blocked every downstream item
+in `docs/design/125-mspl-profile-led-intervals.md` and its ADEMP pre-registration
+(`docs/dev-log/research/2026-08-17-mspl-profile-led-prereg-ademp.md`). G3 **WAIT**
+is lifted **for local compute only**: gates **L0** (plumbing) and **L1** (small
+local coverage smoke) in the pre-reg's §P5 are now runnable. **L2 onward, and
+every Totoro/DRAC gate, stay blocked.**
+
+What fork B *is*, stated so no later reader over-reads it: the walked objective
+is `fit$mspl$unpenalized_tmb_obj` (the ordinary Laplace tape, `estimator_id = 2`)
+and the nuisance coordinates are **held fixed** at the MSPL point estimate
+\(\tilde\theta\). It is therefore a fixed-nuisance one-dimensional slice, **not**
+a nuisance-maximised profile, and a threshold crossing on it is a computability
+observable. Fork **A** (walk the penalised tape, re-optimising nuisance) stays in
+the code as the **ablation** arm so the two can be measured on the same fit; it
+is not the construction.
+
+Why B rather than A: the Kosmidis & Firth (2021, *Biometrika* 108(1) §2.2)
+caveat verified under [#1090](https://github.com/itchyshin/gllvmTMB/pull/1090)
+bites fork A directly — regions built from the finiteness-penalised objective
+fail to cover *including when the penalised likelihood is profiled*. Fork B
+walks an objective that carries no finiteness penalty, so the KF2021 mechanism
+does not apply to the curve itself. That is a reason to prefer B as the
+construction to *measure*; it is **not** a coverage claim, and none is made here.
+
+Consequences recorded in the same sitting: the `#1090` probe
+(`.gllvmTMB_mspl_profile_feasibility()`) previously **hard-refused** the
+penalty-off tape and so structurally could not run fork B. That refusal is
+replaced by an explicit `objective = c("penalised", "unpenalized")` selector,
+default `"penalised"` (fork A, byte-identical to prior behaviour). `tape =
+c("Q_P", "Q_0")` is accepted as the existing curvature-pin synonym so the
+parallel L0 (#1126) and L1 (#1128) callers keep working; disagreeing
+`objective`/`tape` pairs are a typed refusal. Both arms keep
+`calibrated = FALSE`, `public_confint = "refused"`, `coverage_claim = "none"`,
+stay unexported, and stay binomial logit/probit/cloglog fenced.
+
+This sitting ships the signed G0 **and** the authorising code together. The
+parallel L0 PR #1126 implemented the same estimand under `tape = "Q_0"` only
+and recorded a weaker "computability unlock, not a fork pick" G0; that API is
+retained as the synonym, and that PR is superseded rather than dual-merged.
+
+Unchanged hard stops: **`MSPL-04` stays `blocked`**; no public `se = TRUE` /
+`vcov()` / `confint()`; [#1077](https://github.com/itchyshin/gllvmTMB/pull/1077)
+stays **draft**; no Totoro/DRAC campaign; **T\* thresholds are not frozen** (that
+needs its own G0); no NEWS/README/article `covered` claim; Design 118 / B1 stay
+parked under D-157.
+
+## 2026-08-17  G0 SIGNED: Poisson MSPL \(W\) — REPLACE with working \(W_*\) (supersedes PARK)
+
+Decision (Shinichi, chat — *"as you recommended"* after Cursor’s REPLACE
+recommendation; explicit three-way paste against the G0 card, not blanket
+lane approval): Poisson MSPL live weight moves from GLM-outer
+\(W=\operatorname{diag}(\mu)\) / `return eta` to working logistic \(W_*\) on
+the same \(X_*\), following the Tweedie precedent.
+
+Card: `docs/dev-log/research/2026-08-17-mspl-poisson-W-G0.md` Status
+**SIGNED — REPLACE**. The earlier **SIGNED — PARK SE doors** reading from
+*"approve all things in this lane"* / `G1 PARK SE doors` is **superseded**
+(#1096 provenance flag answered). Signed paste requires `src/` change with
+`tmb-likelihood-review` + Gauss/Noether + `03-likelihoods.md` + simulation
+recovery, and rewrite of #1064 W2/W7 oracles (they pin `return eta` by design).
+
+**This sitting signs the G0 only.** Implementation is **not** started here;
+Codex owns the tape PR. REPLACE unlocks the *programme* to change the tape;
+SE-series family doors **stay closed** until twin rematch + recovery are green.
+Hard stops unchanged: no public `se`; `MSPL-04` `blocked`; no Design 118;
+Lane B PROTECTED; no rebuild #1090.
+
+## 2026-08-17  G0 RECORDED: land the binomial profile-computability probe from the Claude lane
+
+Decision (Shinichi, this sitting, repeated and explicit — *"a pin — build it
+now"* in direct answer to the pin-vs-parked-construction question; *"you can go
+ahead — you choose the best one"*; and a `/goal` naming the two functions
+`landed on current main`): the internal, unexported, uncalibrated binomial
+profile-COMPUTABILITY probe lands on `main` from
+`claude/mspl-interval-computable-pin`.
+
+Recorded here because the authority was given in chat and the repo is the message
+bus. Three **written** fences would otherwise forbid it, and an adversarial
+review correctly refused to open them on a lane's own say-so:
+
+- **D-149** — *"Codex Lane B remains the binomial SE owner. Do not rebuild,
+  reassign, or absorb it."*
+- `docs/dev-log/handover/2026-07-25-active-lane-split.md` — the source branch
+  `codex/lane-b-mspl-interval-feasibility` is **PROTECTED**, *"No
+  absorb/rebase/merge"*.
+- **Design 125 G4c (SIGNED)** — *"no live profile impl / smoke until fork G0."*
+
+**Waived for this artefact ONLY.** Explicitly NOT waived: no public `confint()` /
+`vcov()` / `se = TRUE`; `MSPL-04` stays `blocked`; no coverage claim of any kind;
+no admission gate (softness ratio / N2′-curvature / separation stays with the
+parked construction, D-157); no `src/` change; PR #981 stays open for its own
+`src/` work; #1077 stays draft. Codex Lane B keeps binomial SE ownership — this
+probe is a computability instrument, not an SE route, and does not reassign that.
+
+Two facts the next reader needs. (1) The probe profiles the **penalised tape
+only** (hard-refused otherwise), so it implements Design 125's **fork A** and
+structurally cannot run fork B (`unpenalized_tmb_obj`) or C; landing it must not
+be read as picking that fork. (2) Kosmidis & Firth (2021, Biometrika 108(1),
+§2.2 p. 5), verified this sitting, state the coverage failure under a finiteness
+penalty *"is also true when the penalized likelihood is profiled"* — so a finite
+bracket from this probe is evidence of computability and nothing else. See
+`docs/dev-log/research/2026-08-17-kosmidis-firth-2021-profile-caveat.md`.
+
 ## 2026-05-10  Bootstrap fresh repo from gllvmTMB-native subset
 
 Decision: rebuild gllvmTMB from a clean GitHub repository
@@ -2725,3 +2902,88 @@ teaching load:
 
 The register row `ISDM-01` stays `partial` for the same reason: the spatial
 arm's evidence is campaign experience, not a cleared recovery gate.
+
+## 2026-08-17 -- MSPL interval triad Confirm SIGNED under D-157 (no new D-)
+
+Shinichi authorized paste Confirm (via chat: *"paste Confirm for me"*; recorded by cursor/Shinichi-via-chat, 2026-08-17).
+
+> **Confirm MSPL interval triad for the new construction:** Profile = signature / primary claim path; Wald (\(Q_0\)) = quickest baseline / availability check (not the brand; not Design 118 reopen); Bootstrap = asymmetry / non-symmetric sampling. SE pins stay D-149. No Totoro. No public `se=TRUE` without separate G0.
+
+This is **not** a new decision id. Brain **D-157** already requires later intervals = new construction + new pre-registration; **D-12** already makes profile the featured/hero CI. The paste locks the **roles** of the triad for that construction. Card: `docs/dev-log/research/2026-08-17-mspl-ci-wald-plus-profile.md` (**SIGNED**). Hard stops unchanged: no Design 118 reopen, no B1/Totoro, no public `se=TRUE`, #1077 stays draft until a later Design+pre-reg sitting. Poisson \(W\) G0 (`2026-08-17-mspl-poisson-W-G0.md`) stays **UNSIGNED**.
+
+
+## 2026-08-17 -- Design 125 + ADEMP pre-reg SIGNED; Poisson W PARK SE doors (no new D-)
+
+Shinichi authorized *"approve all things in this lane"* for `mspl-profile-led-ci`
+(via chat / interrupt paste; recorded by cursor/Shinichi-via-chat, 2026-08-17).
+
+> **SIGNED block:** G1 PARK SE doors · G2 OPEN-READY-PR · G3 WAIT · G4a BINARY-FIRST ·
+> G4b E1-E2-ONLY · G4c FORK-DEFER · G4d THRESHOLDS-SIGN-NOW · G4e BOOT-PARAMETRIC.
+> Still NOT: undraft #1077 · Totoro · public `se=TRUE` · Design 118 reopen.
+
+This is **not** a new decision id. Brain **D-157** already requires later intervals =
+new construction + new pre-registration; **D-12** already makes profile the featured CI.
+Design **125** is the approved programme stub for that construction; the ADEMP pre-reg
+(`docs/dev-log/research/2026-08-17-mspl-profile-led-prereg-ademp.md`) is signed with the
+Ada/Ranga defaults above (binary-first; L* thresholds frozen; fork deferred; parametric
+bootstrap). Poisson \(W\) card
+(`docs/dev-log/research/2026-08-17-mspl-poisson-W-G0.md`) is **SIGNED PARK SE doors** —
+freezes new SE-series doors; tape unchanged; KEEP/REPLACE remain future choices only.
+Hard stops unchanged: #1077 stays draft; MSPL-04 blocked; no public `se=TRUE`; no Totoro
+from this sign.
+
+
+## 2026-08-18 -- iSDM: campaign approved+run, flagship taxon PICKED, #1125 merge authorized
+
+Shinichi (chat, 2026-08-18): *"1 approve 2 do it and 3 merge"* against the three
+🔴 asks in PR #1125.
+
+1. **Interval-campaign proposal APPROVED as scoped** (§5 of
+   `docs/dev-log/research/2026-08-17-isdm-interval-campaign-proposal.md`):
+   smoke ran (12/12 conv, all PD reps pass), estimate came in far under the
+   30-minute line, and the 16-cell x 100-rep feasibility grid ran on Totoro
+   same-day (1,600 fits, 56.5 s wall, 100 cores). Results:
+   `dev/isdm-intervals/2026-08-18-feasibility-results.md` — E1 near-nominal
+   (full pre-registered campaign justified), E4 `se.fit` measured NON-viable
+   as an eta interval (0.23-0.82 coverage), E2 amplitude interval = new
+   construction, E3 not computable. No register row moves; no public claim.
+2. **Flagship taxon: Canada Warbler (Cardellina canadensis), ABMI + GBIF**,
+   adopting Jason's pick from
+   `docs/dev-log/research/2026-08-17-isdm-flagship-candidates.md`
+   (runner-up Wood Thrush/BBS). Candidates remain UNVERIFIED until data are
+   actually pulled; verification is the flagship arc's first slice.
+3. **PR #1125 merge authorized** (probe + tests + Design 126 + ISDM-03), and
+   with it the Design 126 §5 issue filings (A: three predict-newdata defects;
+   B: prediction-map API).
+
+## 2026-09-02 — Zero-inflated families approved; gap-closure PRs merged in order (Shinichi; vault D-207, D-204)
+
+Verbatim: *"approve all four points, merge #1239 then #1240."* The four ARC D1 points approved as built:
+(1) `zi_poisson()` / `zi_nbinom2()` / `zi_binomial()` carry a per-trait, intercept-only zero-inflation
+probability on the logit scale; latent variables and the covariance grid act on the count linear
+predictor only (Design 62 Decision 2); (2) `zi_binomial()` requires trials ≥ 2 and names `binomial()`
+otherwise; (3) AGHQ declines these families to Laplace with a reason-specific warning, VA and MSPL
+refuse; (4) FAM-22 stays `partial` with the measured 2/6-trait dispersion caveat. Standing rule
+behind it (D-204): twin parity is both ways for user-facing capabilities; the bridge stays R → Julia.
+Owed before any FAM-21..23 row leaves `partial`: Totoro pre-run then DRAC job-array multi-seed recovery
+against GLLVM.jl's ADEMP campaign.
+
+
+## 2026-10-18 Retain the unpenalised ordinary-Laplace loading default
+
+Shinichi explicitly approved retaining the effective loading_ridge = Inf
+default after the completed 24,000-fit native-engine comparison. The formal
+loading_ridge = NULL default remains unchanged, as do the separate AGHQ
+controls. At 6,000 attempts per scale, non-positive-definite Hessian counts
+were Inf 64, 1 56, 2 66 and 4 62. Ridge 2 gave modest recovery gains but no
+overall Hessian-availability or consistent coverage gain. It restored
+intervals on 16 datasets relative to Inf and lost them on 18. Document 2 as
+an explicit sensitivity choice for extreme or unstable ordinary between-unit
+loadings, with prior-scale, MAP and interval-coverage qualifications. Do not
+choose or promote it solely to obtain a positive-definite Hessian. The
+fixed-truth rank-two comparison covers only its named families, sample sizes
+and loading scales; broader calibration remains partial. Record, aggregate
+outputs, exact source and retention receipts:
+`docs/dev-log/research/2026-10-18-loading-ridge-comparison/`.
+Validation mapping: EXT-31 and MSPL-05 retain their existing scope/statuses;
+this comparison does not compare ridge with MSPL or promote a new estimator.

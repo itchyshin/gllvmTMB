@@ -2,7 +2,7 @@
 % Please edit documentation in R/extractors.R
 \name{extract_Sigma_W}
 \alias{extract_Sigma_W}
-\title{Within-site covariance matrix Sigma_W (backward-compat wrapper)}
+\title{Within-site covariance matrix Sigma_W (soft-deprecated compatibility wrapper)}
 \usage{
 extract_Sigma_W(fit)
 }
@@ -17,6 +17,13 @@ Returns \eqn{\Sigma_W = \Lambda_W \Lambda_W^\top + \boldsymbol\Psi_W} and the
 correlation. Thin wrapper around \code{\link[=extract_Sigma]{extract_Sigma()}} with
 \code{level = "unit_obs"}. Prefer the unified interface for new code.
 }
+\section{Lifecycle}{
+
+Soft-deprecated in 0.7.0. Existing calls continue to return the historical
+\code{Sigma_W} / \code{R_W} names, but new code should use
+\code{extract_Sigma(fit, level = "unit_obs")}.
+}
+
 \seealso{
 \code{\link[=extract_Sigma]{extract_Sigma()}} — the canonical unified API; pass
 \code{level = "unit_obs"} for the same matrix.

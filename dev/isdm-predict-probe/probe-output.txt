@@ -1,0 +1,20 @@
+PROBE[A0] fitA class=gllvmTMB_multi,gllvmTMB conv=0
+PROBE[A1] in-sample cols: [cell_id,species,trait,est]; nrow=120 (data 120); est==report$eta: TRUE
+PROBE[A1b] arm attribution in output: has isdm_source col? FALSE
+PROBE[A2] count arm: response==exp(link)? TRUE; pa arm: response==1-exp(-exp(link))? TRUE
+PROBE[A2b] pa-arm response in [0,1]: TRUE; count-arm response >0: TRUE
+PROBE[A3] newdata==in-sample (link): max|diff|=0; cor(diff, log_support)=NA
+PROBE[A2c] newdata response == in-sample response? FALSE; max|diff|=1.42
+PROBE[A2c2] pa-arm newdata 'probabilities': range [0.253, 2.32]; equals exp(link) (WRONG arm)? TRUE
+PROBE[A4] re_form=~0: sd(RE contribution)=0.2921 (should be >0 if latent active)
+PROBE[A5] re_form=NA ran; equals ~0 (documented)? FALSE; equals ~. ? TRUE
+PROBE[A6] se.fit in-sample: col present TRUE; range [0.147, 0.372]; all finite TRUE
+PROBE[A6b] CONDITION: gllvmTMB_predict_se_newdata_unsupported :: `se.fit = TRUE` is not yet supported together with `newdata`.
+PROBE[A7] unseen unit ran; equals fixed-only (documented fallback)? TRUE
+PROBE[B0] fitB conv=0; fitted spatial field sd(g_spde)=0.0796
+PROBE[B1] in-sample ran; est==report$eta: TRUE
+PROBE[B2] newdata-vs-in-sample max|diff|=0.966 sd=0.381 (sd eta=0.949) -> SPATIAL FIELD DROPPED on newdata path
+PROBE[B2b] dropped piece IS the field: cor(-diff, u_true)=0.82
+PROBE[B4] newdata re_form=~. equals re_form=~0? TRUE (TRUE = nothing re-added, message misleads)
+PROBE[B3] new-locations ran; equals fixed-only? TRUE (i.e. no A_proj kriging)
+PROBE[END] probe complete

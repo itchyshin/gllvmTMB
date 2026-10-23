@@ -64,20 +64,42 @@ TMB \code{sdreport()} call, on the same converged parameter vector, to the bit.
 Deferring the calculation does not change it, and does not change any
 honesty caveat that already applies to Wald standard errors from this
 package.
+
+With finite loading ridge, the calculation includes the Gaussian loading
+prior precision at the fitted MAP point. These are local approximate
+posterior standard deviations conditional on the chosen ridge scale,
+model, and latent-axis orientation, not calibrated sampling standard errors.
 }
 
 \examples{
-\dontrun{
+## Simulate 40 sites, each visited twice. Four traits share one latent
+## site axis, and each trait also has its own site-level variation.
+## The repeat visits let the model separate that trait-specific site
+## variation from visit-to-visit noise.
+set.seed(2)
+n_site <- 40
+dat <- data.frame(site = factor(rep(seq_len(n_site), each = 2)))
+z <- rnorm(n_site)                # latent site scores
+lambda <- c(0.9, 0.7, 0.6, -0.5)  # loadings on that axis
+for (j in 1:4) {
+  site_eff <- lambda[j] * z + rnorm(n_site, sd = 0.6)
+  dat[[paste0("y", j)]] <- site_eff[dat$site] +
+    rnorm(nrow(dat), sd = 0.5)
+}
+
 ## Fit fast, decide later whether standard errors are needed.
 fit <- gllvmTMB(
-  traits(y1, y2) ~ 1 + latent(1 | site, d = 1),
-  data = dat, family = gaussian(),
+  traits(y1, y2, y3, y4) ~ 1 + latent(1 | site, d = 1, unique = TRUE),
+  data = dat, family = gaussian(), unit = "site",
   control = gllvmTMBcontrol(se = FALSE)
 )
 
+## Assign the result: standard_errors() returns an updated copy of the
+## fit rather than changing `fit` in place.
 fit <- standard_errors(fit)
+## The Std.Err column of the fixed effects is now filled in (it was NA
+## before standard_errors() ran).
 summary(fit)
-}
 }
 \seealso{
 \code{\link[=gllvmTMBcontrol]{gllvmTMBcontrol()}} for the \code{se} argument that defers the

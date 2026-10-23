@@ -33,6 +33,35 @@
   overflow-wrap: anywhere;
 }
 
+/* Technical reference tables must remain readable on every page template, not
+   only on the home page. Small screens scroll a table rather than crushing its
+   headings or pushing the page horizontally. */
+main table {
+  max-width: 100%;
+}
+
+#TOC a {
+  overflow-wrap: anywhere;
+}
+
+.sourceCode span.co,
+pre .co {
+  color: #666666;
+}
+
+.slope-chooser {
+  margin: 1.5rem 0;
+  padding: 1rem 1.1rem;
+  border: 1px solid #9fc7d8;
+  border-left: 0.35rem solid var(--gllvmtmb-logo-blue-2);
+  border-radius: 0.25rem;
+  background: #f1f8fb;
+}
+
+.slope-chooser > :last-child {
+  margin-bottom: 0;
+}
+
 .bg-primary {
   background-color: var(--gllvmtmb-logo-blue) !important;
 }
@@ -136,6 +165,18 @@ img.logo {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
   }
+
+  main table {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  #TOC {
+    width: auto;
+    max-width: 100%;
+  }
 }
 
 /* Selected matrix and multi-panel figures retain a readable drawing width on
@@ -173,14 +214,34 @@ img.logo {
   top: 0;
 }
 
+/* Tables in articles must remain readable when their content is wider than a
+   phone or a narrow documentation column. The wrapper is also used by the
+   standalone html_vignette output, so its behaviour cannot rely on Bootstrap. */
+.table-responsive {
+  display: block;
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.slope-chooser .table {
+  width: 100%;
+  min-width: 30rem;
+}
+
+.slope-chooser .table th:first-child,
+.slope-chooser .table td:first-child {
+  width: 45%;
+}
+
 html {
   scroll-padding-top: 7rem;
 }
 
 /* The full desktop navigation needs more horizontal room than Bootstrap's
-   default `lg` breakpoint allows. Collapse it below 1280px so search and the
+   default `lg` breakpoint allows. Collapse it below 1440px so search and the
    menu toggle remain reachable on tablets, small laptops, and phones. */
-@media (max-width: 1279.98px) {
+@media (max-width: 1439.98px) {
   .navbar.navbar-expand-lg {
     flex-wrap: wrap;
   }

@@ -1,5 +1,20 @@
 # Extractors Contract
 
+## Temporal source provider
+
+`extract_temporal(fit)` returns public `series`--`time` labels, the selected
+mode and structure, either `phi` or the OU rate, temporal loadings where
+present, `temporal_indep_variance` for `indep`, and
+`temporal_Psi_variance` for `latent(unique = TRUE)`.
+It does not relabel ordinary unit/unit-observation components as temporal
+states. For an unreplicated Gaussian `temporal_indep()` source by itself,
+`forecast_temporal()`, `profile_temporal()`, `bootstrap_temporal()`, and
+`compare_temporal()` have separate bounded contracts. The forecast conditions
+on fitted parameter values for future occasions of existing series; its
+`se.fit` is not a calibrated prediction interval. Generic new-data prediction,
+generic intervals and profiles, automatic selection, source-pair versions, and
+other temporal modes remain explicit unsupported routes.
+
 **Maintained by:** Emmy (R package architecture / S3 surface)
 and Fisher (statistical inference semantics).
 **Reviewers:** Curie (test fixtures cross-check), Boole
@@ -63,6 +78,7 @@ verification pending), `r` reserved (planned for M1/M2),
 | `extract_phylo_signal(fit)` | c | cl | cl | cl | phylogenetic $H^2$ |
 | `extract_residual_split(fit)` | c | cl | cl | cl | OLRE $\sigma^2_d / \sigma^2_e / \sigma^2_{\text{total}}$ |
 | `extract_ordination(fit, level)` | c | cl | cl | cl | factor scores (rotation-invariant up to orthogonal transform) |
+| `extract_latent_scores(x, level)` | c | cl | cl | cl | latent random-effect scores (`n × K` matrix); fitted modes or simulation truth |
 | `extract_proportions(fit)` | r | r | r | r | delta-family conditional probability — reserved (post-CRAN; depends on delta-family support) |
 | `extract_cutpoints(fit)` | r | r | cl | r | ordinal-probit thresholds, including mixed-family fits with ordinal traits |
 | `extract_ICC_site(fit)` | c | cl | cl | cl | legacy ICC; superseded by `extract_repeatability()` |
@@ -100,7 +116,52 @@ link-residual / OLRE caveats.
 
 ### 1. Covariance family
 
-#### `extract_Sigma(fit, level = c("unit", "unit_slope", "unit_obs", "cluster", "cluster2", "phy", "phy_slope", "spatial", "spde_slope"), part = c("total", "shared", "unique"))`
+#### `extract_Sigma(fit, level = c("unit", "unit_slope", "unit_obs", "cluster", "cluster2", "phy", "phy_slope", "column_slope", "spatial", "spde_slope"), part = c("total", "shared", "unique"))`
+
+**Structured source strength (STR-RHO-WORKFLOW, partial):** New rho-enabled
+trait-intercept fits append `source_strength` to the existing list at `level =
+"phy"` or the named single-kernel alias, or `level = "spatial"`. Fields are `term`, `source`, `grouping`,
+`mode`, `folded_psi`, `common`, `labels`, `resolved_scale`, `source_diagonal`,
+`representation`, `value`, and `status`; estimated fits add descriptive boundary
+and weak-signal diagnostics. Existing `Sigma`, `R`, `s`, `level`, `part`, and
+`note` contracts remain unchanged. Omitted rho and explicit one add no field.
+`Sigma` describes trait covariance, not source correlation. Reconstructing a
+particular source covariance requires the same legacy-resolved K and
+K_rho = rho K + (1-rho) diag(diag K); extraction never densifies an augmented
+precision. Common indep uses its retained scalar trait variance on the diagonal.
+
+For spatial attenuation, `kappa` remains a separate inverse-range parameter.
+`source_diagonal` is diag(A_g Q(kappa)^(-1) A_g') at the fitted kappa; no new
+normalization is applied. `Sigma` stays on the legacy SPDE parameter scale,
+so a location's marginal trait covariance is its source diagonal times Sigma.
+The fitted geometry diagnostic is descriptive and bounded to at most 64
+deterministically selected locations, with their indices reported. Fixed zero
+retains range and warns that diagonal scaling can confound it with trait scale.
+The new-rho independent spatial extractor reports diagonal 1/tau^2; legacy
+endpoint extractor behavior is unchanged. No dense source matrix is constructed
+by printing or extraction. New-rho spatial predictions require known location
+identifiers and unchanged coordinates; simulation redraws both spatial fields
+and their location-level IID companions before observation replication.
+
+`extract_phylo_signal`, direct `profile_ci_phylo_signal`, `extract_proportions`, and `VP` give typed limitations
+for new attenuation. Automatic bootstrap and two-Psi comparison refits also
+fail before fitting because their older formula reconstruction omits rho.
+Covariance and communality point summaries remain distinct from source strength.
+No rho intervals or new spatial variance shares are defined. Raw
+`tmbprofile_wrapper()` requests for `eta_structured_rho`, its index, or a
+linear combination involving it fail with a typed limitation before profiling.
+Estimated metadata includes `nll_score_logit` and `nll_score_rho`, derivatives
+of the negative log likelihood. The physical score divides the logit score
+by rho(1-rho), using stable complementary weights; it is NA if the divisor
+is unrepresentable. This distinguishes a near-boundary logit plateau from
+an interior stationary point; these scores do not establish global optimality.
+
+Estimated rank-one plus Psi diagnostics flag fewer than three absolute
+standardized loadings above .05 as weak separation, not proof of nonidentification.
+This rule does not apply to loadings-only covariance. Total-source and shared
+component weakness use a maximum Gaussian variance share below 1e-4, separately;
+positive Psi can preserve total source strength when the shared component is weak.
+These predeclared heuristics do not remove terms or change rank.
 
 **Return**: ordinary covariance levels return a `T x T` symmetric
 positive-semidefinite matrix with row and column names equal to trait labels.
@@ -112,6 +173,11 @@ Augmented random-regression levels are explicit shape exceptions:
 | legacy/shared `phylo_unique(1 + x \| species)` | shared `2 x 2` intercept-slope block | `level = "phy_unique_slope"` |
 | current `phylo_indep(1 + x \| species)` | interleaved `2T x 2T`, `T` independent within-trait blocks | `level = "phy_indep_slope"`, `part = "indep"` |
 | `phylo_dep(1 + x1 + ... + xs \| species)` | full interleaved `(1+s)T x (1+s)T` | `level = "phy_dep"`, `part = "dep"` |
+| Gaussian `slope(x1 + ... + xP \|\| trait)` / `slope(x1 + ... + xP \| trait)` | named diagonal / full `P x P` `Sigma_predictor`; `K_column = I` | `level = "column_slope"`; `source$type = "ordinary"`; return `Sigma`, `R`, `part`, `predictors`, and `column_labels` |
+| Gaussian `phylo_slope(x1 + ... + xP \|\| trait)` / single-bar form | matching diagonal / full `P x P` `Sigma_predictor`; tree / labelled matrix supplies `K_column` | same level; `source$type = "phylo"`, with grouping and aligned response-column labels |
+| Gaussian `animal_slope(x1 + ... + xP \|\| trait)` / single-bar form | matching diagonal / full `P x P` `Sigma_predictor`; pedigree, `A`, or `Ainv` supplies `K_column` | same level; `source$type = "animal"`, with grouping and aligned response-column labels |
+| Gaussian `kernel_slope(x1 + ... + xP \|\| trait, K = K, name = name)` / single-bar form | matching diagonal / full `P x P` `Sigma_predictor`; labelled dense `K` supplies `K_column` | same level; `source$type = "kernel"`, aligned labels, source name, and matrix-scale provenance |
+| Designed `spatial_slope(x1 + ... + xP \|\| trait, mesh = column_mesh)` / single-bar form | matching diagonal / full `P x P` `Sigma_predictor`; unit-diagonal projected-SPDE `K_column` at one unique coordinate pair per response column | same level after implementation; `source$type = "spatial"`, aligned labels, coordinate units, range, and normalization metadata; currently no shipped extractor route |
 | legacy/shared `spatial_unique(1 + x \| coords)` | shared `2 x 2` SPDE field block | `level = "spde_base_slope"` |
 | current `spatial_indep(1 + x \| coords)` | interleaved `2T x 2T`, `T` independent within-trait field blocks | `level = "spde_indep_slope"`, `part = "indep"` |
 | `spatial_dep(1 + x \| coords)` | full interleaved `2T x 2T` field covariance | `level = "spde_dep"`, `part = "dep"` |
@@ -119,6 +185,9 @@ Augmented random-regression levels are explicit shape exceptions:
 The SPDE augmented matrices are on the fitted field-covariance scale; the
 returned note gives the marginal-scale conversion. Current Design 79/80
 `*_indep` must not be relabelled as the legacy shared `2 x 2` channel.
+Response-column `spatial_slope()` is a separate Design 130 contract: its
+projected `K_column` has unit diagonal and `Sigma_predictor` owns marginal
+coefficient variance.
 
 The `level` argument accepts two conceptually distinct
 classes of value. The engine treats both uniformly as
@@ -288,11 +357,29 @@ function-first roadmap is the validation gate.
 
 ### 2. Decomposition family
 
-#### `extract_correlations(fit, method = c("fisher-z", "wald", "profile", "bootstrap"), link_residual = c("auto", "none"), level)`
+#### `extract_correlations(fit, method = c("none", "fisher-z", "profile", "wald", "bootstrap"), link_residual = c("auto", "none"), level, entries = c("unique", "all", "offdiag"))`
 
 **Return**: a tidy data frame with one row per requested
-upper-triangular trait pair and columns `tier`, `trait_i`,
+upper-triangular trait pair by default and columns `tier`, `trait_i`,
 `trait_j`, `correlation`, `lower`, `upper`, and `method`.
+
+Each unordered pair occurs once in fitted trait order, without its reverse
+or the diagonal. Unequal sets in `trait_i` and `trait_j` are expected; their
+union contains all traits when at least two traits are present. This applies
+to ordinal and continuous responses alike. For a symmetric display use
+`plot_correlations(..., style = "heatmap")`; for a full matrix use
+`extract_Sigma(... )$R`, or request all cells with
+`extract_Sigma_table(..., measure = "correlation", entries = "all")`.
+Keep `link_residual` identical across these routes.
+
+`entries = "all"` now returns both directions and diagonal rows in the
+same correlation schema; `entries = "offdiag"` returns both directions
+without the diagonal. The default `entries = "unique"` preserves existing
+output exactly. Mirrored uncertainty payloads are copied, not recalculated.
+Fixed diagonals have correlation 1, NA interval bounds, method `"fixed"`,
+and interval status `"none"`. Non-unique layouts reject an explicit `pair`.
+Each requested tier is expanded separately. The point-only Julia bridge
+uses the same layouts without enabling interval inference.
 
 The `link_residual = "auto"` default invokes the per-family
 link-residual computation (`R/extract-sigma.R`
@@ -352,10 +439,9 @@ a general correlation extractor for multiple nominal traits, structured
 phylogenetic or spatial tiers, or models without the shared ordinary latent
 structure. Any level that does not normalize to the ordinary `B` / `unit` tier
 fails with `gllvmTMB_cross_level_unsupported`. With
-`link_residual = "auto"`, ordinal-probit partners fail with
-`gllvmTMB_cross_auto_ordinal_unsupported`: their threshold model already fixes
-the latent residual at one, so the current automatic addition would count it
-twice. Latent-scale pairwise covariance remains available through
+`link_residual = "auto"`, ordinal (probit or logit) partners fail with
+`gllvmTMB_cross_auto_ordinal_unsupported`. This is a scope limit, not a double
+count: `"auto"` adds the ordinal liability residual exactly once. Latent-scale pairwise covariance remains available through
 `extract_Sigma(..., part = "shared", link_residual = "none")`; the one-number
 nominal summary should be reported from an admitted non-ordinal partner set.
 
@@ -475,6 +561,25 @@ unit-tier Gaussian plus pure binomial logit/probit/cloglog on the TMB
 path, plus a narrow complete-response Gaussian and binomial
 logit/probit/cloglog Julia bridge point route. Other Julia bridge rows
 still accept only `component = "total"`.
+
+#### `extract_latent_scores(x, level = c("unit", "unit_obs"))`
+
+**Return**: an `n × K` numeric matrix of latent random-effect scores
+(innovation / `z_B` or `z_W` modes at `rotate = "none"`), with unit row
+names and `"LV1"`, `"LV2"`, … column names. `NULL` when no reduced-rank
+term exists at the requested level.
+
+**Dispatch**:
+
+- `gllvmTMB_multi` / `gllvmTMB_va` / `gllvmTMB_julia`: posterior modes;
+  identical to `extract_ordination(..., component = "innovation")$scores`,
+  `getLV(..., rotate = "none")`, and `ordination_uncertainty()$scores`
+  when uncertainty succeeds.
+- `gllvmTMB_site_trait_sim` (return value of `simulate_site_trait()`):
+  generating draws from `truth$z_B` / `truth$z_W`.
+
+**Not included**: `se`, `cov`, rotation, or sign alignment — use
+`ordination_uncertainty()` / `getLV(se = TRUE)` and harness-side logic.
 
 #### `extract_lv_effects(fit, level = "unit", type = "axis_effect")`
 

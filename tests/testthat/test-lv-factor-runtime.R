@@ -1,5 +1,5 @@
 make_lv_factor_runtime_data <- function(
-  counts = rep(60L, 3L),
+  counts = rep(120L, 3L),
   seed = 202606284L
 ) {
   set.seed(seed)
@@ -9,11 +9,12 @@ make_lv_factor_runtime_data <- function(
   n_units <- length(habitat_unit)
   units <- paste0("u", seq_len(n_units))
 
-  X_lv <- stats::model.matrix(~ 0 + habitat_unit)
+  X_lv <- stats::model.matrix(~ habitat_unit)[, -1L, drop = FALSE]
   colnames(X_lv) <- sub("^habitat_unit", "habitat", colnames(X_lv))
-  alpha <- matrix(c(-0.65, 0.05, 0.72), nrow = length(habitat_levels))
+  group_alpha <- c(-0.65, 0.05, 0.72)
+  alpha <- matrix(group_alpha[-1L] - group_alpha[1L], ncol = 1L)
   Lambda <- matrix(c(0.75, -0.55, 0.60), ncol = 1L)
-  beta <- c(0.10, -0.05, 0.03)
+  beta <- c(0.10, -0.05, 0.03) + Lambda[, 1L] * group_alpha[1L]
   psi <- c(0.15, 0.13, 0.14)
 
   innovation <- matrix(stats::rnorm(n_units), ncol = 1L)
@@ -61,7 +62,14 @@ fit_lv_factor_runtime <- function(data = make_lv_factor_runtime_data()) {
     data = data,
     unit = "unit",
     trait = "trait",
-    control = gllvmTMBcontrol(se = FALSE)
+    # The runtime recovery gate checks the gradient as well as the objective.
+    # Use explicit BFGS with tighter objective stopping for this recovery test.
+    # Tighter nlminb stopping reported false convergence on the rare-level fit.
+    # The 3e-3 gradient bound and all recovery thresholds remain unchanged.
+    control = gllvmTMBcontrol(
+      se = FALSE, optimizer = "optim",
+      optArgs = list(method = "BFGS", control = list(reltol = 1e-12, maxit = 2000L))
+    )
   ))
 }
 
@@ -69,13 +77,13 @@ expect_lv_factor_runtime_reports <- function(fit, truth) {
   expect_true(isTRUE(fit$use$rr_B))
   expect_true(isTRUE(fit$use$diag_B))
   expect_true(isTRUE(fit$use$lv_B))
-  expect_equal(dim(fit$tmb_data$X_lv_B), c(fit$n_sites, 3L))
+  expect_equal(dim(fit$tmb_data$X_lv_B), c(fit$n_sites, 2L))
   expect_equal(colnames(fit$lv$X_lv_B), truth$X_lv_colnames)
-  expect_equal(dim(fit$tmb_params$alpha_lv_B), c(3L, fit$d_B))
-  expect_equal(dim(fit$report$alpha_lv_B), c(3L, fit$d_B))
+  expect_equal(dim(fit$tmb_params$alpha_lv_B), c(2L, fit$d_B))
+  expect_equal(dim(fit$report$alpha_lv_B), c(2L, fit$d_B))
   expect_equal(dim(fit$report$U_lv_mean_B), c(fit$n_sites, fit$d_B))
   expect_equal(dim(fit$report$U_B_total), c(fit$n_sites, fit$d_B))
-  expect_equal(dim(fit$report$B_lv_unit), c(fit$n_traits, 3L))
+  expect_equal(dim(fit$report$B_lv_unit), c(fit$n_traits, 2L))
   expect_true(all(is.finite(fit$report$alpha_lv_B)))
   expect_true(all(is.finite(fit$report$U_lv_mean_B)))
   expect_true(all(is.finite(fit$report$U_B_total)))
@@ -113,13 +121,16 @@ expect_lv_factor_runtime_recovery <- function(fit, truth, b_tol) {
 test_that("latent lv factor predictors fit and recover B_lv", {
   ## Symbol <-> implementation alignment for this LV-04 factor-runtime slice:
   ##   z_i = X_lv,i alpha + e_i, e_i ~ N(0, 1)
-  ##   X_lv,i = one-hot habitat indicators from lv = ~habitat
+  ##   X_lv,i = treatment contrasts relative to forest from lv = ~habitat
   ##   eta_it = beta_t + lambda_t z_i + q_it, q_it ~ N(0, psi_t^2)
   ##   y_it ~ Gaussian(eta_it, residual scale)
   ##   Formula: value ~ 0 + trait +
   ##     latent(0 + trait | unit, d = 1, lv = ~habitat)
-  ##   Recovery target: trait-by-level B_lv = Lambda alpha^T, reported
+  ##   Recovery target: trait-by-contrast B_lv = Lambda alpha^T, reported
   ##     by extract_lv_effects(type = "trait_effect").
+  # Contrasts estimate differences of two group means. Use 120 units per
+  # group to retain the existing 0.18 recovery bound for this identified target.
+  # The former 60/group fixture gives max contrast error 0.239 on this seed.
   data <- make_lv_factor_runtime_data()
   truth <- attr(data, "truth")
 

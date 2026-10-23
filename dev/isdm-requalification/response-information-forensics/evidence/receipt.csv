@@ -1,0 +1,5 @@
+schema,isdm-response-information-forensics-v1
+focal_hashes,4cd131568f075234f429fe2558c9737080cd0d4f51b9853207ef7fc3159d0572;11e4e0421906211072d5667ed46e71d31e257e138c89fc13de488f366e008d88
+mechanism,SUPPORTED_NARROW_GRADIENT_TAIL
+decision,NO_FRESH_CAMPAIGN_YET
+reason,The focal rep3 fits are the cell's two largest rep3 gradients; while baseline gradients also approach the frozen threshold. The retained receipt lacks component-level gradients and optimizer trace; so the tail is supported but its numerical cause is unresolved.

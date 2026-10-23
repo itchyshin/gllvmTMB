@@ -4,7 +4,7 @@
 \alias{spatial_indep}
 \title{Per-trait spatial marginal field: \code{spatial_indep(0 + trait | coords)}}
 \usage{
-spatial_indep(formula, coords = NULL, mesh = NULL, common = FALSE)
+spatial_indep(formula, coords = NULL, mesh = NULL, common = FALSE, rho = 1)
 }
 \arguments{
 \item{formula}{\code{0 + trait | coords} style formula (LHS is the trait
@@ -25,6 +25,22 @@ trait; \code{TRUE} ties all traits to one shared spatial variance
 (intercept-only). \code{spatial_indep(0 + trait | coords, common = TRUE)} is the
 canonical one-shared-variance spelling and fits the same model as the
 soft-deprecated \code{spatial_scalar()}.}
+
+\item{rho}{Source-strength attenuation between 0 and 1, or \code{NULL} to estimate it
+in a complete replicated multivariate Gaussian model without competing
+covariance. Omitted or explicit \code{1} preserves the existing model. Range
+remains a separate estimated parameter. Attenuation preserves the projected
+marginal variance at each modeled location and applies to the whole trait
+covariance, including Psi. The grouping column must identify locations
+consistently across replicates. With \code{rho = NULL} or any value other
+than 1, the name after \code{|} is that grouping column and must be a real
+column of \code{data}, for example \code{0 + trait | location}. The placeholder
+\verb{| coords} fails when \code{data} has no location-ID column named \code{coords}.
+At the default \code{rho = 1} the name is ignored, and \verb{| coords} is the usual
+spelling. Estimated latent models require rank one
+and at least four traits. The frozen spatial study found no passing recovery
+cell (14 partial and 2 blocked); rho intervals remain unvalidated.
+new-location prediction is not supported for attenuated models.}
 }
 \value{
 A formula marker; never evaluated.
@@ -60,19 +76,20 @@ and the parser raises a \code{cli::cli_abort()}.
 }
 
 \examples{
-\dontrun{
-  sim <- simulate_site_trait(
-    n_sites = 20, n_species = 4, mean_species_per_site = 4,
-    spatial_range = 0.4, sigma2_spa = rep(0.3, 4), seed = 1
-  )
-  mesh <- make_mesh(sim$data, c("lon", "lat"), cutoff = 0.1)
-  fit <- gllvmTMB(
-    value ~ 0 + trait +
-            spatial_indep(0 + trait | site, mesh = mesh),
-    data  = sim$data,
-    trait = "trait",
-    unit  = "site"
-  )
+sim <- simulate_site_trait(
+  n_sites = 30, n_species = 6, n_traits = 3, mean_species_per_site = 5,
+  spatial_range = 0.4, sigma2_spa = rep(0.5, 3), seed = 1
+)
+mesh <- make_mesh(sim$data, c("lon", "lat"), cutoff = 0.1)
+# env_1 and env_2 are the simulated site covariates.
+\donttest{
+fit <- gllvmTMB(
+  value ~ 0 + trait + (0 + trait):(env_1 + env_2) +
+          spatial_indep(0 + trait | coords, mesh = mesh),
+  data  = sim$data,
+  trait = "trait",
+  unit  = "site"
+)
 }
 }
 \seealso{

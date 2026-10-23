@@ -84,8 +84,8 @@ version of this example to show alongside it.
 # Simulate a small two-source data set
 
 One hundred and eight cells, three species, one portal record stream, three
-survey visits. The fields here are simple smooth surfaces -- enough to give
-the model something to find without pretending to be a validation campaign.
+survey visits. The fields here are simple smooth surfaces that let you see
+how the model works; this one simulated dataset cannot establish recovery accuracy.
 
 ```{r simulate}
 n_lon <- 12; n_lat <- 9
@@ -164,7 +164,7 @@ dat <- rows
 dat$trait   <- factor(dat$trait)
 dat$cell_id <- factor(dat$cell_id)
 
-## 1. the source gate: 1 on portal rows, 0 on survey rows. Every portal-only
+## 1. the portal-row indicator: 1 on portal rows, 0 on survey rows. Every portal-only
 ##    term is written as an interaction with this, so it is structurally
 ##    absent from the survey likelihood rather than merely small.
 dat$isdm_gbif <- as.integer(dat$source == "gbif")
@@ -340,8 +340,8 @@ that the method singles that species out.
 
 The shared-state loadings and the portal-only field's covariance are
 reported on the link scale (both are sign-invariant as outer products).
-Rather than the raw internal report fields, use the public accessor, which
-attaches trait names and validates that the fit actually carries this term:
+Use `extract_Sigma()` to attach trait names and check that the fit contains
+this covariance term:
 
 ```{r sigma}
 sigma_slope <- extract_Sigma(fit, level = "spde_slope")
@@ -366,8 +366,8 @@ quantity that caution says to treat as a nuisance adjustment.
 Three honest cautions, each with a package-level reason.
 
 1. **Design size governs identifiability.** Source-specific spatial
-   structure is only weakly identified on small grids: internal known-truth
-   campaigns place reliable recovery of a portal-only *field* far beyond a
+   structure is only weakly identified on small grids: simulations with known
+   parameter values place reliable recovery of a portal-only *field* far beyond a
    design of this size, with identifiability bought by adding cells (at
    maintained per-cell records), not by piling records into the same cells.
    Treat the portal-only field here as a nuisance adjustment, not an
@@ -392,11 +392,11 @@ detection/non-detection survey — sharing one ecological linear predictor,
 with a portal-only bias term and known per-row support, fitted through
 `gllvmTMB()`.
 
-**Works but not certified:** the estimates themselves. The route is
-contract-tested and the model fits, but recovery accuracy at this or any
-particular design size is not established, and the portal-only *spatial*
-field in particular rests on development experience rather than a completed
-recovery study. Read the numbers above as illustration, not validation.
+**Accuracy remains uncertain:** the model fits this example, but recovery
+accuracy at this or any particular design size is not established. In
+particular, no completed recovery study establishes the accuracy of the
+portal-only *spatial* field. Read the numbers above as an illustration of the
+workflow, not evidence of reliable parameter recovery.
 
 **Not available:** more than two sources *through this article's manual
 two-source contract* — for any number of named sources, use the

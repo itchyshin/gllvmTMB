@@ -1,0 +1,7 @@
+packet,n_cells,n_sim,rep_start,rep_end,seed_base,seed_formula,min_seed,max_seed,target_sharing,status,collision_status
+PVT-02,1,5000,50001,55000,800000000,seed = 800000000 + replicate_id,800050001,800055000,both trait targets share one simulated dataset,reserved; not executed,legacy collision rejected; zero current tracked collisions
+CI09,6,5000,1,5000,90000000,seed = 90000000 + cell_id * 10000 + local_rep,90010001,90065000,all rho targets in a cell share one simulated dataset,reserved; not executed,zero tracked historical collisions
+CI10,18,5000,1,5000,20260718,.xfc_rep_seed(20260718; cell_id; local_rep),1060722,18065772,multiple_r and contrast_r share each outer replicate,reserved; not executed,one reviewed historical exception at cell 18 rep 4381; never pooled
+CI13,4,5000,1,5000,130000000,seed = 130000000 + cell_id * 10000 + local_rep,130010001,130045000,all structurally free loading targets share one simulated dataset,reserved; not executed,zero tracked historical collisions
+CI14,2,5000,1,5000,140000000,seed = 140000000 + cell_id * 10000 + local_rep,140010001,140025000,unique and total targets share one simulated dataset,reserved; not executed,zero tracked historical collisions
+CI15,4,5000,1,5000,150000000,seed = 150000000 + cell_id * 10000 + local_rep,150010001,150045000,all free targets in each route cell share one simulated dataset,reserved; not executed,zero tracked historical collisions

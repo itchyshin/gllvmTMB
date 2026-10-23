@@ -1,0 +1,23 @@
+{
+  "source_commit": "161abe09a417cad88b51c018a09a930d964ee3de",
+  "binary_sha256": "e50615e1f168c55cc47fc287d7367a0f921985d0b09670f750138c61885bbcc4",
+  "source_tar_sha256": "48495e7335d3115ae8264bed2e33d1c8b22b536811ba6503ce04b86a7d66f1ab",
+  "target": "Totoro",
+  "workers": 32,
+  "blas_threads_per_worker": 1,
+  "R": "4.6.1",
+  "TMB": "1.9.25",
+  "raw_root": "/home/snakagaw/gllvmtmb_ridge_full_20261018_161abe",
+  "local_raw_csv_bundle": "/Users/z3437171/Dropbox/Github Local/gllvmTMB/dev/ridge-current-full-20261018/all-attempt-csvs.tar.gz",
+  "local_evidence_root": "/Users/z3437171/Dropbox/Github Local/gllvmTMB/dev/ridge-current-full-20261018",
+  "fit_stage_elapsed_seconds": 860.6110572991893,
+  "summed_arm_fit_extraction_elapsed_seconds": 18898.993,
+  "raw_inventory_bytes": 27417045096,
+  "raw_fixture_n": 6000,
+  "raw_fit_n": 24000,
+  "raw_result_n": 24000,
+  "arm_csv_n": 24000,
+  "effect_csv_n": 24000,
+  "default_decision": "Retain unpenalised ordinary Laplace default, effective tau Inf; loading_ridge formal NULL and AGHQ defaults unchanged",
+  "decision_authority": "User instruction in this chat, 2026-10-18"
+}

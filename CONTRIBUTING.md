@@ -121,6 +121,17 @@ code, or article examples, also render the affected articles:
 pkgdown::build_articles(lazy = FALSE)
 ```
 
+For a complete local site build, use the same staged build and public-surface
+check as CI:
+
+```sh
+Rscript tools/build-pkgdown.R
+Rscript tools/check-pkgdown-public-surface.R
+```
+
+The staged build keeps repository-only root files out of pkgdown without
+moving or editing their source copies.
+
 Long simulation studies should live outside CRAN-time tests, gated
 by `Sys.getenv("RUN_SLOW_TESTS")` or moved to `data-raw/`.
 

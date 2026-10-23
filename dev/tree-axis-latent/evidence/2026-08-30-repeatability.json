@@ -1,0 +1,276 @@
+{
+  "status": "Fixed-point diagnostic completed; production correction unresolved",
+  "points": {
+    "1": {
+      "id": 1,
+      "state": "fresh",
+      "step": 0,
+      "value": 5039.69128100686,
+      "oracle_value": 5039.69128101363,
+      "value_difference": -6.77027855999768e-09,
+      "max_gradient_difference": 8.03684058057119e-09,
+      "max_inner_score_after_fn": 1.09697193551028e-08,
+      "max_inner_score_after_gr": 1.07836308771425e-08,
+      "joint_after_fn": -41533.7519544948,
+      "half_logdet": 53833.0576478186,
+      "warnings": [],
+      "error": {}
+    },
+    "2": {
+      "id": 2,
+      "state": "fresh",
+      "step": 0,
+      "value": 5039.69128100686,
+      "oracle_value": 5039.69128101363,
+      "value_difference": -6.77027855999768e-09,
+      "max_gradient_difference": 8.03684058057119e-09,
+      "max_inner_score_after_fn": 1.09697193551028e-08,
+      "max_inner_score_after_gr": 1.07836308771425e-08,
+      "joint_after_fn": -41533.7519544948,
+      "half_logdet": 53833.0576478186,
+      "warnings": [],
+      "error": {}
+    },
+    "3": {
+      "id": 3,
+      "state": "fresh",
+      "step": 0.0001,
+      "value": 5039.69128616945,
+      "oracle_value": 5039.69128614918,
+      "value_difference": 2.02744558919221e-08,
+      "max_gradient_difference": 7.50296616112631e-09,
+      "max_inner_score_after_fn": 1.36095179570361e-08,
+      "max_inner_score_after_gr": 1.14008162910295e-08,
+      "joint_after_fn": -41533.7517680453,
+      "half_logdet": 53833.0574665316,
+      "warnings": [],
+      "error": {}
+    },
+    "4": {
+      "id": 4,
+      "state": "fresh",
+      "step": -0.0001,
+      "value": 5039.69128476694,
+      "oracle_value": 5039.69128474916,
+      "value_difference": 1.77806214196607e-08,
+      "max_gradient_difference": 8.89648426845649e-09,
+      "max_inner_score_after_fn": 8.43345215884028e-09,
+      "max_inner_score_after_gr": 8.43345215884028e-09,
+      "joint_after_fn": -41533.7521324527,
+      "half_logdet": 53833.0578295366,
+      "warnings": [],
+      "error": {}
+    },
+    "5": {
+      "id": 5,
+      "state": "fresh",
+      "step": 1e-06,
+      "value": 5039.69128103722,
+      "oracle_value": 5039.69128102107,
+      "value_difference": 1.61571733769961e-08,
+      "max_gradient_difference": 1.07863814068456e-08,
+      "max_inner_score_after_fn": 7.65114727130367e-09,
+      "max_inner_score_after_gr": 7.65114727130367e-09,
+      "joint_after_fn": -41533.7519526724,
+      "half_logdet": 53833.0576460265,
+      "warnings": [],
+      "error": {}
+    },
+    "6": {
+      "id": 6,
+      "state": "fresh",
+      "step": -1e-06,
+      "value": 5039.69128100714,
+      "oracle_value": 5039.69128100706,
+      "value_difference": 8.00355337560177e-11,
+      "max_gradient_difference": 1.54856663959807e-08,
+      "max_inner_score_after_fn": 1.03726421896155e-08,
+      "max_inner_score_after_gr": 1.10683924248178e-08,
+      "joint_after_fn": -41533.7519563165,
+      "half_logdet": 53833.0576496405,
+      "warnings": [],
+      "error": {}
+    },
+    "7": {
+      "id": 7,
+      "state": "reused",
+      "step": 0,
+      "value": 5039.69128100686,
+      "oracle_value": 5039.69128101363,
+      "value_difference": -6.77027855999768e-09,
+      "max_gradient_difference": 8.03684058057119e-09,
+      "max_inner_score_after_fn": 1.09697193551028e-08,
+      "max_inner_score_after_gr": 1.07836308771425e-08,
+      "joint_after_fn": -41533.7519544948,
+      "half_logdet": 53833.0576478186,
+      "warnings": [],
+      "error": {}
+    },
+    "8": {
+      "id": 8,
+      "state": "reused",
+      "step": 0.0001,
+      "value": 5039.69128616945,
+      "oracle_value": 5039.69128614918,
+      "value_difference": 2.02744558919221e-08,
+      "max_gradient_difference": 7.50295224821035e-09,
+      "max_inner_score_after_fn": 1.45734935230735e-08,
+      "max_inner_score_after_gr": 1.45734935230735e-08,
+      "joint_after_fn": -41533.7517680453,
+      "half_logdet": 53833.0574665316,
+      "warnings": [],
+      "error": {}
+    },
+    "9": {
+      "id": 9,
+      "state": "reused",
+      "step": -0.0001,
+      "value": 5039.69128476694,
+      "oracle_value": 5039.69128474916,
+      "value_difference": 1.77806214196607e-08,
+      "max_gradient_difference": 8.8964764292411e-09,
+      "max_inner_score_after_fn": 8.76541061956004e-09,
+      "max_inner_score_after_gr": 8.76541061956004e-09,
+      "joint_after_fn": -41533.7521324527,
+      "half_logdet": 53833.0578295366,
+      "warnings": [],
+      "error": {}
+    },
+    "10": {
+      "id": 10,
+      "state": "reused",
+      "step": 1e-06,
+      "value": 5039.69128103723,
+      "oracle_value": 5039.69128102107,
+      "value_difference": 1.61644493346103e-08,
+      "max_gradient_difference": 1.07863738949508e-08,
+      "max_inner_score_after_fn": 8.88536710874632e-09,
+      "max_inner_score_after_gr": 8.88536710874632e-09,
+      "joint_after_fn": -41533.7519526724,
+      "half_logdet": 53833.0576460265,
+      "warnings": [],
+      "error": {}
+    },
+    "11": {
+      "id": 11,
+      "state": "reused",
+      "step": -1e-06,
+      "value": 5039.69128100714,
+      "oracle_value": 5039.69128100706,
+      "value_difference": 8.00355337560177e-11,
+      "max_gradient_difference": 1.54856651361649e-08,
+      "max_inner_score_after_fn": 1.31427198013512e-08,
+      "max_inner_score_after_gr": 1.31427198013512e-08,
+      "joint_after_fn": -41533.7519563165,
+      "half_logdet": 53833.0576496405,
+      "warnings": [],
+      "error": {}
+    },
+    "12": {
+      "id": 12,
+      "state": "reused",
+      "step": 0,
+      "value": 5039.69128100686,
+      "oracle_value": 5039.69128101363,
+      "value_difference": -6.77027855999768e-09,
+      "max_gradient_difference": 8.03684058057119e-09,
+      "max_inner_score_after_fn": 1.07836308771425e-08,
+      "max_inner_score_after_gr": 1.07836308771425e-08,
+      "joint_after_fn": -41533.7519544948,
+      "half_logdet": 53833.0576478186,
+      "warnings": [],
+      "error": {}
+    }
+  },
+  "state_comparisons": [
+    {
+      "ids": [1, 2],
+      "value_difference": 0,
+      "max_gradient_difference": 0,
+      "joint_difference": 0,
+      "half_logdet_difference": 0
+    },
+    {
+      "ids": [1, 7],
+      "value_difference": 0,
+      "max_gradient_difference": 0,
+      "joint_difference": 0,
+      "half_logdet_difference": 0
+    },
+    {
+      "ids": [1, 12],
+      "value_difference": 0,
+      "max_gradient_difference": 0,
+      "joint_difference": 0,
+      "half_logdet_difference": 0
+    },
+    {
+      "ids": [3, 8],
+      "value_difference": 0,
+      "max_gradient_difference": 9.56142717084552e-14,
+      "joint_difference": 0,
+      "half_logdet_difference": 0
+    },
+    {
+      "ids": [4, 9],
+      "value_difference": 0,
+      "max_gradient_difference": 1.41989583068644e-13,
+      "joint_difference": 0,
+      "half_logdet_difference": 0
+    },
+    {
+      "ids": [5, 10],
+      "value_difference": 7.27595761418343e-12,
+      "max_gradient_difference": 9.56431250387704e-14,
+      "joint_difference": 7.27595761418343e-12,
+      "half_logdet_difference": 0
+    },
+    {
+      "ids": [6, 11],
+      "value_difference": 0,
+      "max_gradient_difference": 9.54123729351476e-14,
+      "joint_difference": 0,
+      "half_logdet_difference": 0
+    }
+  ],
+  "directional_comparisons": [
+    {
+      "state": "fresh",
+      "h": 0.0001,
+      "analytic_at_base": 0.00699969128199607,
+      "tmb_central_difference": 0.00701253156876191,
+      "oracle_central_difference": 0.00700006239640061
+    },
+    {
+      "state": "fresh",
+      "h": 1e-06,
+      "analytic_at_base": 0.00699969128199607,
+      "tmb_central_difference": 0.0150394043885171,
+      "oracle_central_difference": 0.00700083546689712
+    },
+    {
+      "state": "reused",
+      "h": 0.0001,
+      "analytic_at_base": 0.00699969128199607,
+      "tmb_central_difference": 0.00701253156876191,
+      "oracle_central_difference": 0.00700006239640061
+    },
+    {
+      "state": "reused",
+      "h": 1e-06,
+      "analytic_at_base": 0.00699969128199607,
+      "tmb_central_difference": 0.0150430423673242,
+      "oracle_central_difference": 0.00700083546689712
+    }
+  ],
+  "point_count": 12,
+  "outer_optimizer_calls": 0,
+  "cumulative_attempts": 21,
+  "ceiling": 23,
+  "process_seconds": 5.234,
+  "cap_seconds": 60,
+  "runner_sha256": "c0ed574aeca02c352619d9ab6be69ef97d9d3d1f91f829a9531c47e1c501c5a7",
+  "receipt_sha256": "aebd67b66f2065977261bb7429d977852daf9276966d292685e6498e20edff23",
+  "evidence_directory": "/private/tmp/gllvm-tree-axis-latent-20260830/repaired-nlminb-7c88/repeatability-N2-start1",
+  "interpretation": "No material state-reuse sensitivity in the declared local matrix. Parameter-dependent objective-value rounding affects tiny-step directional differences, while analytic gradients agree. No production expression or remedy identified; no gate waiver."
+}

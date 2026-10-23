@@ -185,6 +185,25 @@ test_that("simulate_site_trait(): no spatial term means no coords/lon/lat", {
   expect_false("lon" %in% names(s$data))
 })
 
+test_that("simulate_site_trait(): spatial_range alone errors and names sigma2_spa (#1419)", {
+  sim_args <- list(n_sites = 20, n_species = 5, n_traits = 3,
+                   mean_species_per_site = 3, seed = 4)
+  baseline <- do.call(simulate_site_trait, sim_args)
+  err <- expect_error(
+    do.call(simulate_site_trait, c(sim_args, list(spatial_range = 0.3))),
+    class = "rlang_error"
+  )
+  expect_match(conditionMessage(err), "sigma2_spa")
+  err2 <- expect_error(
+    do.call(simulate_site_trait, c(sim_args, list(sigma2_spa = 2))),
+    class = "rlang_error"
+  )
+  expect_match(conditionMessage(err2), "spatial_range")
+  with_spatial <- do.call(simulate_site_trait,
+                          c(sim_args, list(spatial_range = 0.3, sigma2_spa = 2)))
+  expect_false(isTRUE(all.equal(baseline$data, with_spatial$data)))
+})
+
 # ---- seed reproducibility ------------------------------------------------
 
 test_that("simulate_site_trait(): same seed produces identical $data", {
@@ -212,7 +231,8 @@ test_that("simulate_site_trait(): truth list contains all expected names", {
   expect_named(
     s$truth,
     c("alpha", "beta", "sigma2_eps", "Lambda_B", "Lambda_W",
-      "psi_B", "psi_W", "sigma2_phy", "sigma2_sp", "sigma2_spa", "spatial_range")
+      "psi_B", "psi_W", "sigma2_phy", "sigma2_sp", "sigma2_spa", "spatial_range",
+      "z_B", "z_W")
   )
 })
 

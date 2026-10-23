@@ -8,8 +8,11 @@
 ## All-zero traits contribute 0 (Jeffreys-on-beta owns that path).
 ## Not Bernoulli V_loading. Not Hirose.
 ##
-## Jeffreys: (1/2) log det(X^T diag(mu) X), GLM-outer W = diag(mu).
-## Do not export. Do not flip planned -> admitted from these helpers.
+## Jeffreys twin: (1/2) log det(X^T W_* X) with working logistic
+## W_* = mu_*(1-mu_*), mu_* = plogis(eta). Matches live C++ tape
+## gll_mspl_log_weight(eta, 0) after G0 SIGNED REPLACE (#1102).
+## True Poisson W=diag(mu) remains the historical contrast only.
+## Do not export. Do not flip admit_packet -> covered from these helpers.
 
 .gllvmTMB_mspl_poisson_event_count <- function(y) {
   s <- sum(as.numeric(y))
@@ -38,9 +41,10 @@
   sum(sqrt(1 + rowSums(Lambda * Lambda) * ybar) - 1)
 }
 
-.gllvmTMB_mspl_poisson_jeffreys <- function(X, mu) {
+.gllvmTMB_mspl_poisson_jeffreys <- function(X, eta) {
   X <- as.matrix(X)
-  w <- as.numeric(mu)
+  mu_star <- stats::plogis(as.numeric(eta))
+  w <- mu_star * (1 - mu_star)
   I <- crossprod(X, X * w)
   0.5 * as.numeric(determinant(I, logarithm = TRUE)$modulus)
 }

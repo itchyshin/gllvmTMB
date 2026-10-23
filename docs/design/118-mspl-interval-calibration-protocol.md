@@ -100,10 +100,14 @@ The verdict is INTRINSIC, so:
 ### 0.3 🔴 Decisions required from Shinichi before any compute
 
 **RESOLVED — signed 2026-08-15** (Shinichi: *"D1 signed, D2 reduced - go with your
-recommendations for the rest"*). Recorded as vault decision **D-148** (shinichi-brain
-`memory/DECISIONS.md`, commit `e6537f3`), which also promotes the jackknife rejection
-into the ledger — closing the "owed at close" item the 2026-08-15 plan-actual
-reconciliation (`8c61a169`) recorded as outstanding at its write time.
+recommendations for the rest"*). Recorded as vault decision **D-159** (shinichi-brain
+`memory/DECISIONS.md`; originally committed as D-148 on 2026-08-15, commit
+`e6537f3`; **renumbered D-159 on 2026-08-18** so vault D-148 stays the
+never-ask-bare draft-reply rule). That entry also promotes the jackknife
+rejection into the ledger — closing the "owed at close" item the 2026-08-15
+plan-actual reconciliation (`8c61a169`) recorded as outstanding at its write
+time. This paragraph is a **numbering note only** — not a Design 118
+recalibration (D-157).
 
 | # | Decision | Recommendation | **Outcome (2026-08-15)** |
 |---|---|---|---|

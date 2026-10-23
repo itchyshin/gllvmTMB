@@ -43,8 +43,10 @@ bootstrap_ci_lv_effects <- function(fit,
                                     n_cores = 1,
                                     progress = FALSE) {
   if (!inherits(fit, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+    .gllvmTMB_abort_not_multi_fit(fit)
   }
+  .temporal_assert_no_iid_inference(fit, "bootstrap_ci_lv_effects")
+  .gllvmTMB_mspl_assert_inference(fit, "bootstrap_ci_lv_effects")
   B_hat <- fit$report[["B_lv_unit"]]
   if (is.null(B_hat)) {
     cli::cli_abort(c(
@@ -52,11 +54,15 @@ bootstrap_ci_lv_effects <- function(fit,
       "i" = "Fit with {.code latent(0 + trait | unit, d = K, lv = ~ x)}."
     ))
   }
-  if (!is.numeric(conf) || conf <= 0 || conf >= 1) {
-    cli::cli_abort("{.arg conf} must be in (0, 1); got {conf}.")
+  if (!is.numeric(conf) || length(conf) != 1L || is.na(conf) ||
+      !is.finite(conf) || conf <= 0 || conf >= 1) {
+    cli::cli_abort(c(
+      "{.arg conf} must be a single finite number between 0 and 1.",
+      ">" = "Choose a confidence level strictly inside (0, 1)."
+    ))
   }
-  n_boot <- as.integer(n_boot)
-  n_cores <- as.integer(n_cores)
+  n_boot <- .bootstrap_validate_count(n_boot, "n_boot")
+  n_cores <- .bootstrap_validate_count(n_cores, "n_cores")
   B_hat <- as.matrix(B_hat)
   n_tr <- nrow(B_hat)
   n_pr <- ncol(B_hat)
@@ -65,18 +71,19 @@ bootstrap_ci_lv_effects <- function(fit,
 
   ## Refit arguments (mirror bootstrap_Sigma); preserve REML (detected as the
   ## mean fixed effects living in the Laplace-integrated block).
-  formula <- .reconstruct_multi_formula(fit)
+  response <- .bootstrap_response_setup(fit)
+  formula <- response$formula
   trait <- fit$trait_col
   site <- fit$unit_col
   species <- fit$species_col
   family <- if (!is.null(fit$family_input)) fit$family_input else fit$family
-  data <- fit$data
-  resp <- all.vars(fit$formula)[1]
-  reml <- tryCatch(
+  reml <- if (!is.null(fit$REML)) isTRUE(fit$REML) else tryCatch(
     "b_fix" %in% names(fit$tmb_obj$env$par[fit$tmb_obj$env$random]),
     error = function(e) FALSE
   )
   aux <- list(
+    weights = response$weights,
+    missing = response$missing,
     phylo_vcv = fit$phylo_vcv,
     phylo_tree = fit$phylo_tree,
     mesh = fit$mesh,
@@ -84,9 +91,7 @@ bootstrap_ci_lv_effects <- function(fit,
   )
   aux <- aux[!vapply(aux, is.null, logical(1))]
 
-  if (!is.null(seed)) {
-    set.seed(seed)
-  }
+  .gllvmTMB_local_seed(seed)
   Y_sim <- simulate(fit, nsim = n_boot)
   if (!is.matrix(Y_sim) || ncol(Y_sim) != n_boot) {
     cli::cli_abort("Internal: {.fn simulate} did not return an n x n_boot matrix.")
@@ -94,8 +99,7 @@ bootstrap_ci_lv_effects <- function(fit,
 
   na_mat <- matrix(NA_real_, n_tr, n_pr)
   refit_one <- function(b) {
-    dat <- data
-    dat[[resp]] <- Y_sim[, b]
+    dat <- .bootstrap_response_data(response, Y_sim[, b])
     call_args <- c(
       list(
         formula = formula, data = dat, trait = trait, site = site,
@@ -116,7 +120,7 @@ bootstrap_ci_lv_effects <- function(fit,
         ## `stats::confint(refit, ...)` on every replicate and therefore genuinely
         ## NEEDS its per-replicate SEs; it was checked and deliberately left
         ## alone. Each refit path must be checked on its own evidence.
-        control = gllvmTMBcontrol(se = FALSE)
+        control = .bootstrap_refit_control(fit)
       ),
       aux
     )

@@ -111,7 +111,7 @@ check_identifiability <- function(
 ) {
   ## ---- validation -----------------------------------------------------
   if (!inherits(fit, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+    .gllvmTMB_abort_not_multi_fit(fit)
   }
   .gllvmTMB_mspl_assert_inference(fit, "check_identifiability")
   sim_reps <- as.integer(sim_reps)
@@ -142,9 +142,7 @@ check_identifiability <- function(
     )
   }
 
-  if (!is.null(seed)) {
-    set.seed(seed)
-  }
+  .gllvmTMB_local_seed(seed)
 
   ## ---- extract truth --------------------------------------------------
   truth <- .ci_extract_truth(fit, tier = tier)
@@ -309,12 +307,13 @@ check_identifiability <- function(
 ## up `latent()` / `unique()` / `phylo_*()` / `spatial_*()` keywords. This
 ## is the same recipe `bootstrap_Sigma()` uses.
 .ci_refit_one <- function(fit, sim_y_i, truth) {
-  full_formula <- .reconstruct_multi_formula(fit)
-  response_name <- all.vars(fit$formula[[2L]])[1L]
-  df_i <- fit$data
-  df_i[[response_name]] <- as.numeric(sim_y_i)
+  response <- .bootstrap_response_setup(fit)
+  full_formula <- response$formula
+  df_i <- .bootstrap_response_data(response, sim_y_i)
   t0 <- Sys.time()
   aux <- list(
+    weights = response$weights,
+    missing = response$missing,
     phylo_vcv = fit$phylo_vcv,
     phylo_tree = fit$phylo_tree,
     mesh = fit$mesh,
@@ -325,7 +324,7 @@ check_identifiability <- function(
     list(
       formula = full_formula,
       data = df_i,
-      family = fit$family,
+      family = fit$family_input %||% fit$family,
       trait = fit$trait_col,
       unit = fit$unit_col,
       unit_obs = fit$unit_obs_col,

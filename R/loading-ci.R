@@ -44,11 +44,25 @@
 #' [extract_Sigma()] for rotation-invariant summaries.
 #'
 #' @section Interval calibration:
-#' The point estimates are the supported claim. The interval methods here are
-#' provided for exploration: their empirical coverage is not certified for this
-#' estimand (the worked example below is a binomial-probit fit), so treat the
-#' intervals as exploratory rather than coverage-calibrated. See `NEWS.md` for
-#' the current coverage status.
+#' Standardized symmetric joint-delta Wald intervals have an exact empirical
+#' certificate only for the structurally free strict-lower targets in native
+#' Laplace, pinned, unrotated, lower-triangular ordinary Gaussian unit-tier
+#' three-trait cells `(n_units=150,d=2)`, `(n_units=400,d=1)`, and
+#' `(n_units=400,d=2)`, at `conf_level = 0.95`. The `(n_units=150,d=1)` cell
+#' failed its lower-band gate. This is one frozen DGP: trait intercepts
+#' `(-0.20, 0.10, 0.25)`, unique standard deviations
+#' `(0.70, 0.80, 0.90)`, and loading vector `(0.80, 0.45, -0.35)` for `d=1`,
+#' with the second column `(0, 0.70, 0.40)` added for `d=2`. Coverage is
+#' conditional on eligible fits (optimizer convergence, converged fit health,
+#' an available `sdreport()`, and a positive-definite Hessian); availability
+#' was 98.82%, 93.38%, and 96.18% in the three certified cells, respectively.
+#' The certificate does not extend to another loading, unique-variance, or
+#' intercept regime. Pinned diagnostic rows, Fisher-z Wald
+#' (`method = "wald_asym"`), arbitrary confirmatory constraints, raw-loading
+#' intervals, profiles, bootstraps, other rotations, and every neighbouring
+#' family, tier, rank, sample size, or confidence level remain exploratory.
+#' The worked example below is binomial-probit and is outside the certified
+#' cells. See `NEWS.md` for the current coverage status.
 #'
 #' @param fit A multivariate `gllvmTMB()` fit object.
 #' @param level Which loading matrix to summarise: `"unit"` (default)
@@ -90,27 +104,57 @@
 #'   [extract_communality()] for rotation-invariant alternatives.
 #'
 #' @examples
-#' \dontrun{
-#' # Build a confirmatory fit
-#' M <- confirmatory_lambda(
-#'   species  = species_names,
-#'   group    = species_group,
-#'   d        = 2L,
-#'   loads_on = list(A = 1L, B = 2L)
-#' )
-#' fit <- gllvmTMB(
-#'   value ~ 0 + trait + latent(0 + trait | site, d = 2L),
-#'   data              = df_long,
-#'   family            = binomial(link = "probit"),
-#'   lambda_constraint = list(unit = M)
-#' )
-#' loading_ci(fit, level = "unit")
-#' loading_ci(fit, level = "unit", loading_scale = "standardized")
-#' }
+#' set.seed(1)
+#' # Presence (1) or absence (0) of eight species at 200 sites. Odd-numbered
+#' # species respond to one latent environmental gradient and even-numbered
+#' # species to another; sp7 responds only weakly.
+#' n_sites <- 200
+#' Lambda <- cbind(c(1.0, 0, 0.8, 0, 0.7, 0, 0.2, 0),
+#'                 c(0, 1.0, 0, 0.9, 0, 0.7, 0, 0.6))
+#' scores <- matrix(rnorm(2 * n_sites), n_sites, 2)
+#' dat <- expand.grid(site = factor(seq_len(n_sites)),
+#'                    trait = factor(paste0("sp", 1:8)))
+#' liability <- rowSums(scores[dat$site, ] * Lambda[dat$trait, ])
+#' dat$present <- rbinom(nrow(dat), 1, pnorm(liability))
+#'
+#' # Confirmatory hypothesis: group A (odd species) loads only on axis 1 and
+#' # group B (even species) only on axis 2. These fixed zeros pin down the
+#' # axes (up to sign); anchors = NA leaves all other loadings free.
+#' M <- confirmatory_lambda(species = levels(dat$trait),
+#'                          group = rep(c("A", "B"), times = 4), d = 2,
+#'                          loads_on = list(A = 1, B = 2),
+#'                          anchors = c(NA, NA))
+#' M
+#' # One 0/1 record per species and site cannot separate extra
+#' # species-specific variation from coin-flip noise, so the latent term
+#' # carries loadings only (unique = FALSE).
+#' fit <- gllvmTMB(present ~ 0 + trait +
+#'                   latent(0 + trait | site, d = 2, unique = FALSE),
+#'                 data = dat, family = binomial(link = "probit"),
+#'                 trait = "trait", unit = "site",
+#'                 lambda_constraint = list(unit = M))
+#'
+#' # 95% Wald intervals for every loading, on the probit (liability) scale.
+#' # Fixed entries (pinned = TRUE) have zero width; the interval for sp7's
+#' # weak loading is wide relative to its size.
+#' ci <- loading_ci(fit)
+#' ci[, c("trait", "axis", "estimate", "se", "lower", "upper", "pinned")]
+#'
+#' # Standardized loadings divide each loading by the species' total
+#' # latent-scale standard deviation (shared part plus the probit residual
+#' # of 1), so they read as the correlation between the species' liability
+#' # and the axis.
+#' ci_std <- loading_ci(fit, loading_scale = "standardized")
+#' ci_std[!ci_std$pinned, c("trait", "axis", "estimate", "lower", "upper")]
+#'
+#' # Symmetric intervals can spill past +/-1 on this scale; "wald_asym"
+#' # builds them on Fisher's z scale, so they stay inside (-1, 1).
+#' ci_asym <- loading_ci(fit, method = "wald_asym")
+#' ci_asym[!ci_asym$pinned, c("trait", "axis", "estimate", "lower", "upper")]
 #'
 #' @export
 loading_ci <- function(fit,
-                       level      = c("unit", "unit_obs"),
+                       level      = "unit",
                        method     = c("wald", "wald_asym", "profile"),
                        conf_level = 0.95,
                        sigma_d2   = 1,
@@ -118,6 +162,7 @@ loading_ci <- function(fit,
 
   if (!inherits(fit, "gllvmTMB_multi"))
     cli::cli_abort("{.code fit} must be a multi-trait {.fun gllvmTMB} fit.")
+  .temporal_assert_no_iid_inference(fit, "loading_ci")
   .gllvmTMB_mspl_assert_inference(fit, "loading_ci")
   .gllvmTMB_require_unweighted_inference(fit, "loading_ci")
 
@@ -135,7 +180,7 @@ loading_ci <- function(fit,
     )
   }
 
-  level  <- match.arg(level)
+  level  <- match.arg(level, c("unit", "unit_obs", "B", "W"))
   method <- match.arg(method)
   if (is.null(loading_scale)) {
     loading_scale <- if (identical(method, "wald_asym")) {
@@ -345,24 +390,44 @@ loading_ci <- function(fit,
 #' @seealso [loading_ci()].
 #'
 #' @examples
-#' \dontrun{
-#' ## Grounded in tests/testthat/test-loading-ci.R. flag_unreliable_loadings()
-#' ## accepts either a fit or a loading_ci() data frame directly.
-#' fit <- gllvmTMB(
-#'   value ~ 0 + trait + latent(0 + trait | site, d = 2L),
-#'   data = df, family = stats::binomial(link = "probit")
-#' )
-#' ## From a fit (computes per-entry Lambda CIs internally):
-#' flag_unreliable_loadings(fit, null_region = c(-0.1, 0.1))
-#' ## Or pass a precomputed loading_ci() data frame:
-#' ci <- loading_ci(fit, level = "unit")
-#' flag_unreliable_loadings(ci, null_region = c(-0.1, 0.1))
-#' }
+#' set.seed(1)
+#' # Eight traits measured twice on each of 100 units (e.g. sites).
+#' # Odd-numbered traits respond to one latent gradient and even-numbered
+#' # traits to another; trait_7 responds only weakly.
+#' Lambda <- cbind(c(0.9, 0, 0.7, 0, 0.6, 0, 0.15, 0),
+#'                 c(0, 0.9, 0, 0.8, 0, 0.6, 0, 0.5))
+#' sim <- simulate_unit_trait(n_units = 100, n_obs_per_unit = 2,
+#'                            n_traits = 8, Lambda_B = Lambda,
+#'                            psi_B = 0.5, sigma2_eps = 0.3)
+#' # Confirmatory fit: odd traits load only on axis 1, even traits only on
+#' # axis 2 (see ?loading_ci).
+#' M <- confirmatory_lambda(species = levels(sim$data$trait),
+#'                          group = rep(c("A", "B"), times = 4), d = 2,
+#'                          loads_on = list(A = 1, B = 2),
+#'                          anchors = c(NA, NA))
+#' fit <- gllvmTMB(value ~ 0 + trait +
+#'                   latent(0 + trait | unit, d = 2, unique = TRUE),
+#'                 data = sim$data, trait = "trait", unit = "unit",
+#'                 lambda_constraint = list(unit = M))
+#'
+#' # A loading is flagged unreliable when its 95% interval reaches into
+#' # the band of negligible values, here -0.1 to 0.1. Fixed (pinned)
+#' # entries get NA because nothing is inferred about them.
+#' fl <- flag_unreliable_loadings(fit, level = "unit",
+#'                                null_region = c(-0.1, 0.1))
+#' fl[, c("trait", "axis", "estimate", "lower", "upper", "unreliable")]
+#'
+#' # The same check on a table from loading_ci(), here on the standardized
+#' # (correlation) scale, treating values between -0.2 and 0.2 as
+#' # negligible.
+#' ci_std <- loading_ci(fit, loading_scale = "standardized")
+#' fl_std <- flag_unreliable_loadings(ci_std, null_region = c(-0.2, 0.2))
+#' fl_std[!fl_std$pinned, c("trait", "axis", "estimate", "unreliable")]
 #'
 #' @export
 flag_unreliable_loadings <- function(fit,
                                      null_region = c(-0.1, 0.1),
-                                     level       = c("unit", "unit_obs"),
+                                     level       = "unit",
                                      method      = "wald",
                                      conf_level  = 0.95,
                                      loading_scale = NULL) {

@@ -21,8 +21,9 @@ predict_missing(
 \item{object}{A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}.}
 
 \item{type}{One of \code{"link"} (default; the linear predictor) or
-\code{"response"} (the inverse-link conditional mean; for \code{\link[=ordinal_probit]{ordinal_probit()}}
-traits, the expected category instead -- see Details).}
+\code{"response"} (the inverse-link conditional mean; for
+\code{\link[=ordinal_probit]{ordinal_probit()}} / \code{\link[=ordinal_logit]{ordinal_logit()}} traits, the expected category
+instead -- see Details).}
 
 \item{se}{EXPERIMENTAL, internal-only. If \code{TRUE}, appends \code{se_confidence}
 (delta-method SE of the reconstructed mean) and \code{se_prediction}
@@ -94,28 +95,19 @@ The point predictions here are the fitted linear predictor (\code{type = "link"}
 or its inverse-link response (\code{type = "response"}). Reconstruction standard
 errors and prediction intervals are not currently returned by default.
 
-For \code{\link[=ordinal_probit]{ordinal_probit()}} traits, \code{type = "response"} is the \strong{expected
-category} \eqn{E[k] = \sum_k k \cdot P(\mathrm{category}\ k \mid \eta,
-\tau)}, computed from the fitted cutpoints (Hadfield 2015 convention:
-\eqn{\tau_1 = 0} fixed, \eqn{\tau_2, \ldots, \tau_{K-1}} estimated; see
-\code{\link[=extract_cutpoints]{extract_cutpoints()}}) -- not a probability. It is not an elementwise
-\code{pnorm(eta)}, which is not a category quantity once \eqn{K > 2}.
-\code{type = "link"} is unchanged: the probit-scale linear predictor.
-
-\code{se = TRUE} is \strong{EXPERIMENTAL and INTERNAL-ONLY} (Design 119 Slice 1):
-register status \code{heuristic_unvalidated} -- no repeated-sampling coverage
-evidence exists for \code{se_confidence} or \code{se_prediction}, and neither is an
-interval claim of any kind. It is currently implemented for gaussian
+\code{se = TRUE} is \strong{experimental}: no repeated-sampling coverage evidence
+exists for \code{se_confidence} or \code{se_prediction}, and neither is an interval
+claim of any kind. It is currently implemented for gaussian
 fits only (other families abort). Five routes exist (\code{se_route}):
 \code{"quad"} (default) omits the b_fix/latent-score cross-covariance and any
 \code{diag_B} ("unique"/Psi) or within-unit (\code{rr_W}) random-effect
-contribution (sec.3 R1-quad) and OVER-covers \code{se_confidence};
+contribution and OVER-covers \code{se_confidence};
 \code{"joint"} computes the exact joint-precision variance for the b_fix and
-latent-score blocks (sec.3 R1-joint) but omits the loading-uncertainty
+latent-score blocks but omits the loading-uncertainty
 block entirely and UNDER-covers; \code{"joint"} and \code{"quad"} BRACKET nominal
-coverage. \code{"joint_load"} (sec.7b, R1-joint+loadings) adds that third
-block; it is the best-calibrated delta-method route measured and still
-fails the gate by ~1.2 points at 95\% (sec.7c). \code{"sim"} (sec.3 R2) is a
+coverage. \code{"joint_load"} adds that third block; it is the best-calibrated
+delta-method route measured and still falls short of nominal coverage.
+\code{"sim"} is a
 Monte Carlo route: it draws the same gradient-relevant parameter
 subvector \code{"joint_load"} uses from its exact joint-precision marginal
 normal, forms \code{n_sim} EXACT (non-linearised) draws of
@@ -127,9 +119,8 @@ returns empirical-quantile columns (\code{q_lo_conf}/\code{q_hi_conf},
 \code{q_lo_pred}/\code{q_hi_pred} at nominal 95\%, and their \verb{*90} companions at
 nominal 90\%) that a normal-quantile route cannot produce. It still holds
 every parameter at its estimate (a plug-in simulation), so it does not
-address hyperparameter uncertainty -- see
-\code{docs/design/119-predict-missing-uncertainty.md} sec.3/sec.7c/sec.7d.
-\code{"boot"} (sec.3 R3, sec.7d) is a parametric bootstrap: it simulates a
+address hyperparameter uncertainty.
+\code{"boot"} is a parametric bootstrap: it simulates a
 complete dataset at the fitted parameters (fresh latent scores AND a
 fresh family draw for every cell), masks the same cells, and REFITS the
 model \code{n_boot} times. Because every replicate is a full refit, it is the
@@ -144,9 +135,9 @@ refits survive, \code{se_confidence}/\code{se_prediction}/the quantile columns a
 \code{NA} for that fit (with a warning) rather than reporting an interval
 built from a thin sample.
 
-\code{boot_dgp} (sec.7e, following the wave-3 coverage diagnosis that \code{"boot"}
-with \code{boot_dgp = "ml"} under-covers at the same level as \code{"joint_load"})
-controls what parameters generate the \code{n_boot} complete-data worlds.
+\code{boot_dgp} controls what parameters generate the \code{n_boot} complete-data
+worlds. A bootstrap with \code{boot_dgp = "ml"} can under-cover at the same
+level as \code{"joint_load"}.
 \code{"ml"} (default, byte-identical to the pre-sec.7e route) simulates from
 the SAME ML fit being intervalised -- so at small n its known downward
 variance/loading bias is "re-imported" into the bootstrap world, making
@@ -159,8 +150,18 @@ centred on, and every inner refit) stays ML either way; only the
 generative world changes. Ignored unless \code{se_route = "boot"}.
 
 Do not surface \code{se_confidence} / \code{se_prediction} / the quantile columns
-as calibrated uncertainty in any user-facing output until the Design 119
-sec.4 coverage campaign clears a route and family for export.
+as calibrated uncertainty in any user-facing output until a route and family
+have direct coverage evidence.
+
+For \code{\link[=ordinal_probit]{ordinal_probit()}} / \code{\link[=ordinal_logit]{ordinal_logit()}} traits, \code{type = "response"}
+is the \strong{expected category} \eqn{E[k] = \sum_k k \cdot
+P(\mathrm{category}\ k \mid \eta, \tau)}, computed from the fitted
+cutpoints (Hadfield 2015 convention: \eqn{\tau_1 = 0} fixed,
+\eqn{\tau_2, \ldots, \tau_{K-1}} estimated; see \code{\link[=extract_cutpoints]{extract_cutpoints()}})
+-- not a probability. It is not an elementwise \code{pnorm(eta)} /
+\code{plogis(eta)}, which is not a category quantity once \eqn{K > 2}.
+\code{type = "link"} is unchanged: the probit- or logit-scale linear
+predictor (per the trait's own family).
 }
 \seealso{
 \code{\link[=gllvmTMB]{gllvmTMB()}}, \code{\link[=miss_control]{miss_control()}}, \code{\link[=predict.gllvmTMB_multi]{predict.gllvmTMB_multi()}}.

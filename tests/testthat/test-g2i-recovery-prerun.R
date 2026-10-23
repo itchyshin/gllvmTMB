@@ -5,8 +5,8 @@ test_that("G2i recovery pre-run validates its frozen fixture without fitting", {
   output <- tempfile("g2i-prerun-validate-")
   result <- system2(
     file.path(R.home("bin"), "Rscript"),
-    c("--vanilla", script, "--mode=validate", paste0("--output=", output),
-      paste0("--pkg=", pkg)), stdout = TRUE, stderr = TRUE
+    shQuote(c("--vanilla", script, "--mode=validate", paste0("--output=", output),
+      paste0("--pkg=", pkg))), stdout = TRUE, stderr = TRUE
   )
   expect_true(is.null(attr(result, "status")) || identical(attr(result, "status"), 0L))
   expect_true(any(grepl("G2I recovery pre-run validation PASS", result, fixed = TRUE)))

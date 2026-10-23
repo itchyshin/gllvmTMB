@@ -58,6 +58,644 @@
   invisible(x)
 }
 
+## Thin, mockable wrapper around stats::nlminb() -- exists so tests can
+## simulate a transient optimizer failure at one specific profile point
+## without touching the stats namespace (repo convention: mock private
+## gllvmTMB helpers, see e.g. test-confint-lambda.R).
+.gllvmTMB_mspl_nlminb <- function(start, objective, gradient, control) {
+  stats::nlminb(start, objective = objective, gradient = gradient,
+                control = control)
+}
+
+## ---------------------------------------------------------------------------
+## Internal LA-MSPL profile COMPUTABILITY probe (availability only).
+##
+## Private feasibility instrument only.  This is intentionally separate from the
+## public profile/confint dispatch: a finite trace establishes neither
+## calibrated standard errors nor confidence-interval coverage.
+##
+## Scope, stated once: this instrument answers "can a finite penalised-profile
+## bracket be computed at this fit?" and nothing else.  It is NOT a confidence
+## interval, NOT calibrated, and NOT a public route -- `vcov()`, `confint()` and
+## `se = TRUE` remain fail-closed via `.gllvmTMB_mspl_assert_inference()`, and
+## `MSPL-04` stays `blocked`.  Endpoints are named `*_endpoint` /
+## `diagnostic_*`, never `conf.low` / `conf.high`, so no tidier can lift them as
+## an interval.  Non-crossing / non-finite / optimiser failures stay typed; no
+## repair, no clipping, no widening beyond the caller's explicit request.
+##
+## `level` selects the chi-square_1 LR threshold used to bracket; it confers NO
+## coverage at that or any level.  See the Kosmidis & Firth note below.
+##
+## Family fence (computability probe only; not admission): binomial +
+## logit/probit/cloglog.  The public MSPL door admits six families, but the only
+## evidence here -- and the only authority cited below -- is binomial.
+##
+## Admission gate: DELIBERATELY NOT IMPLEMENTED.  The softness-ratio /
+## N2'-curvature / separation admission conditions belong to the parked
+## calibrated construction (D-157; Design 125), not to this probe.  Their
+## absence is a scope decision, not an omission.
+##
+## Why the fence is not merely conventional: Kosmidis & Firth (2021, Biometrika
+## 108(1), s2.2 p.5) state that under a finiteness penalty Wald intervals "or
+## confidence regions in general, will fail to cover regardless of the nominal
+## level alpha", and that this "is also true when the penalized likelihood is
+## profiled".  So a finite bracket here is evidence of computability only.  That
+## paper is binomial-response only, which is the second reason for the family
+## fence above.
+##
+## Provenance AND its constraint: ported from `claude/mspl-b0-prereqs` (PR #981,
+## still open), which itself ported it from
+## `codex/lane-b-mspl-interval-feasibility` (commit e2055c7b) -- a branch marked
+## PROTECTED ("No absorb/rebase/merge") in
+## docs/dev-log/handover/2026-07-25-active-lane-split.md, and D-149 names Codex
+## Lane B the binomial SE owner ("Do not rebuild, reassign, or absorb it").
+## Landing this therefore requires an explicit maintainer G0; do not re-port it
+## further without one.  R-side only -- deliberately WITHOUT that branch's
+## `src/` `mspl_c_n_multiplier` hook, which these functions do not use (they
+## read only `obj$env$data$estimator_id`).
+##
+## Relation to Design 125 (UPDATED 2026-08-18, fork G0 SIGNED): `objective`
+## selects the tape.  `tape` is the existing Q_P / Q_0 synonym so the
+## parallel L0 / L1 callers keep working.
+##
+##   "penalised"   / tape "Q_P" -- fork **A**: walk `fit$tmb_obj` (the
+##                    penalised LA-MSPL objective), re-optimising the nuisance
+##                    coordinates at each target.  Default; retained as the
+##                    **ablation** arm.
+##   "unpenalized" / tape "Q_0" -- fork **B**: walk
+##                    `fit$mspl$unpenalized_tmb_obj` (the ordinary Laplace
+##                    objective, `estimator_id = 2`) with the nuisance
+##                    coordinates HELD FIXED at the MSPL point estimate
+##                    \tilde\theta.  This is the arm Design 125's G4c picked.
+##
+## Fork B is the signed construction; fork A stays available so the two can be
+## measured against each other on the same fit.  Neither is calibrated: the
+## Kosmidis & Firth caveat above bites fork A directly, and fork B's slice is a
+## *fixed-nuisance* one-dimensional curve, not a profile in the nuisance-maximised
+## sense -- so its threshold crossing is a computability observable, not a
+## coverage statement.  Both arms keep `calibrated = FALSE`,
+## `public_confint = "refused"`, `coverage_claim = "none"`; both are internal and
+## unexported; `MSPL-04` stays `blocked`.
+##
+## Three honest asymmetries of fork B, each surfaced as a returned field:
+##   1. `reference_is_maximum = FALSE` -- the MSPL point maximises Q_P, not Q_0,
+##      so `objective_delta` is not an LR statistic.
+##   2. `nuisance_treatment = "fixed_at_mspl"` -- `nlminb` is never called.
+##   3. `centre_status = "matched"` is true by construction on this tape.
+## ---------------------------------------------------------------------------
+.gllvmTMB_mspl_resolve_profile_selector <- function(
+  objective,
+  tape,
+  objective_supplied = FALSE
+) {
+  map_objective <- function(value) {
+    if (identical(value, "unpenalized")) "Q_0" else "Q_P"
+  }
+  map_tape <- function(value) {
+    if (identical(value, "Q_0")) "unpenalized" else "penalised"
+  }
+  if (!is.null(tape)) {
+    if (!is.character(tape) || !length(tape)) {
+      .gllvmTMB_mspl_abort(
+        "The internal MSPL profile probe requires {.arg tape} to be {.val Q_P} or {.val Q_0}.",
+        class = "gllvmTMB_mspl_profile_tape"
+      )
+    }
+    tape <- tape[[1L]]
+    if (!(tape %in% c("Q_P", "Q_0"))) {
+      .gllvmTMB_mspl_abort(
+        "The internal MSPL profile probe requires {.arg tape} to be {.val Q_P} or {.val Q_0}.",
+        "x" = "Received {.val {tape}}.",
+        "i" = "{.val Q_P} is the penalised profile (Design 125 fork A); {.val Q_0} is the unpenalized Laplace tape at fixed MSPL nuisance (fork B). Fork C is not implemented.",
+        class = "gllvmTMB_mspl_profile_tape"
+      )
+    }
+    mapped <- map_tape(tape)
+    if (isTRUE(objective_supplied)) {
+      if (!is.character(objective) || !length(objective)) {
+        .gllvmTMB_mspl_abort(
+          "The internal MSPL profile probe requires {.arg objective} to be {.val penalised} or {.val unpenalized}.",
+          class = "gllvmTMB_mspl_profile_objective"
+        )
+      }
+      explicit <- objective[[1L]]
+      if (explicit %in% c("penalised", "unpenalized") &&
+          !identical(explicit, mapped)) {
+        .gllvmTMB_mspl_abort(
+          "The internal MSPL profile probe received disagreeing {.arg objective} and {.arg tape} selectors.",
+          "x" = "{.arg objective} = {.val {explicit}}; {.arg tape} = {.val {tape}}.",
+          class = "gllvmTMB_mspl_profile_objective"
+        )
+      }
+    }
+    return(list(objective = mapped, tape = tape))
+  }
+  if (!is.character(objective) || !length(objective)) {
+    .gllvmTMB_mspl_abort(
+      "The internal MSPL profile probe requires {.arg objective} to be {.val penalised} or {.val unpenalized}.",
+      class = "gllvmTMB_mspl_profile_objective"
+    )
+  }
+  objective <- objective[[1L]]
+  if (!(objective %in% c("penalised", "unpenalized"))) {
+    .gllvmTMB_mspl_abort(
+      "The internal MSPL profile probe requires {.arg objective} to be {.val penalised} or {.val unpenalized}.",
+      "x" = "Received {.val {objective}}.",
+      "i" = "{.val penalised} is Design 125 fork A; {.val unpenalized} is fork B. The {.arg tape} synonyms are {.val Q_P} and {.val Q_0}.",
+      class = "gllvmTMB_mspl_profile_objective"
+    )
+  }
+  list(objective = objective, tape = map_objective(objective))
+}
+
+.gllvmTMB_mspl_profile_feasibility <- function(
+  fit,
+  which = 1L,
+  step = 0.5,
+  max_steps = 6L,
+  level = 0.95,
+  control = list(eval.max = 100L, iter.max = 100L),
+  refinement_steps = 12L,
+  bracket_tolerance = 1.25e-4,
+  max_widen_rounds = 0L,
+  objective = c("penalised", "unpenalized"),
+  tape = NULL
+) {
+  objective_supplied <- !missing(objective)
+  if (!.gllvmTMB_is_mspl(fit)) {
+    .gllvmTMB_mspl_abort(
+      "The internal MSPL profile probe requires an {.code estimator = \"mspl\"} fit.",
+      class = "gllvmTMB_mspl_profile_input"
+    )
+  }
+  resolved <- .gllvmTMB_mspl_resolve_profile_selector(
+    objective, tape, objective_supplied = objective_supplied
+  )
+  objective <- resolved$objective
+  tape <- resolved$tape
+  nuisance_fixed <- identical(objective, "unpenalized")
+  ## Family fence, enforced not merely documented -- mirrors
+  ## `.gllvmTMB_mspl_curvature_pin()`.  Binomial only: it is the only family with
+  ## evidence here, and the Kosmidis & Firth authority cited in the header is
+  ## binomial-response only, so on a gaussian or Poisson fit the returned
+  ## `coverage_claim = "none"` would rest on a citation that does not apply.
+  fl <- .gllvmTMB_mspl_pin_family_link(fit)
+  if (!(identical(fl$family, "binomial") &&
+        fl$link %in% c("logit", "probit", "cloglog"))) {
+    .gllvmTMB_mspl_abort(
+      "The internal MSPL profile computability probe is fenced to binomial logit, probit, or cloglog fits.",
+      "x" = "Resolved family {.val {fl$family}}, link {.val {fl$link}}.",
+      "i" = "This is a computability probe, not an admission gate and not an interval route.",
+      class = "gllvmTMB_mspl_profile_family"
+    )
+  }
+  if (
+    !is.numeric(which) ||
+      length(which) != 1L ||
+      which %% 1 != 0 ||
+      which < 1L ||
+      which > length(fit$opt$par) ||
+      names(fit$opt$par)[which] != "b_fix"
+  ) {
+    .gllvmTMB_mspl_abort(
+      "The internal MSPL profile probe requires one resolved {.field b_fix} coordinate.",
+      class = "gllvmTMB_mspl_profile_target"
+    )
+  }
+  if (
+    !is.numeric(step) ||
+      length(step) != 1L ||
+      !is.finite(step) ||
+      step <= 0 ||
+      !is.numeric(max_steps) ||
+      length(max_steps) != 1L ||
+      max_steps < 1L ||
+      max_steps %% 1 != 0 ||
+      !is.numeric(level) ||
+      length(level) != 1L ||
+      !is.finite(level) ||
+      level <= 0 ||
+      level >= 1 ||
+      !is.numeric(refinement_steps) ||
+      length(refinement_steps) != 1L ||
+      refinement_steps < 0L ||
+      refinement_steps %% 1 != 0 ||
+      !is.numeric(bracket_tolerance) ||
+      length(bracket_tolerance) != 1L ||
+      !is.finite(bracket_tolerance) ||
+      bracket_tolerance <= 0 ||
+      !is.numeric(max_widen_rounds) ||
+      length(max_widen_rounds) != 1L ||
+      max_widen_rounds < 0L ||
+      max_widen_rounds %% 1 != 0
+  ) {
+    .gllvmTMB_mspl_abort(
+      "The internal MSPL profile grid requires positive finite grid and refinement controls, with {.arg level} in (0, 1).",
+      class = "gllvmTMB_mspl_profile_grid"
+    )
+  }
+
+  penalised <- fit$tmb_obj
+  penalty_off <- fit$mspl$unpenalized_tmb_obj
+  ## The penalised tape is verified in BOTH forks: fork B's centre value and
+  ## its fixed nuisance coordinates are read off the MSPL fit, so a fit whose
+  ## penalised tape cannot be identified is not a usable fork-B origin either.
+  if (
+    is.null(penalised) ||
+      identical(penalised, penalty_off) ||
+      !identical(as.integer(penalised$env$data$estimator_id), 1L)
+  ) {
+    .gllvmTMB_mspl_abort(
+      "The internal MSPL profile probe could not verify the active penalised TMB objective.",
+      class = "gllvmTMB_mspl_profile_objective"
+    )
+  }
+  if (nuisance_fixed && (
+    is.null(penalty_off) ||
+      !identical(as.integer(penalty_off$env$data$estimator_id), 2L)
+  )) {
+    .gllvmTMB_mspl_abort(
+      "The internal MSPL profile probe could not verify the unpenalized Laplace TMB objective.",
+      "i" = "{.code objective = \"unpenalized\"} (Design 125 fork B) needs {.field fit$mspl$unpenalized_tmb_obj} with {.code estimator_id = 2}.",
+      class = "gllvmTMB_mspl_profile_objective"
+    )
+  }
+  obj <- if (nuisance_fixed) penalty_off else penalised
+  checkpoint <- .gllvmTMB_profile_tmb_checkpoint(obj)
+  on.exit(.gllvmTMB_restore_profile_tmb_checkpoint(obj, checkpoint), add = TRUE)
+
+  mle_par <- as.numeric(fit$opt$par)
+  ## Fork A compares against the penalised optimum already recorded by the
+  ## fitter.  Fork B must compare against the UNPENALIZED objective evaluated at
+  ## the same \tilde\theta -- `fit$opt$objective` is the penalised value and
+  ## would put the centre off its own curve by the whole penalty.
+  mle_objective <- if (nuisance_fixed) {
+    centre_value <- tryCatch(as.numeric(obj$fn(mle_par)), error = identity)
+    if (inherits(centre_value, "error") || !is.finite(centre_value)) {
+      .gllvmTMB_mspl_abort(
+        "The internal MSPL profile probe could not evaluate the unpenalized objective at the MSPL estimate.",
+        class = "gllvmTMB_mspl_profile_objective"
+      )
+    }
+    centre_value
+  } else {
+    as.numeric(fit$opt$objective)
+  }
+  nuisance_index <- setdiff(seq_along(mle_par), as.integer(which))
+  threshold <- stats::qchisq(level, df = 1L) / 2
+
+  ## Fork B (`objective = "unpenalized"`): the nuisance coordinates stay pinned
+  ## at \tilde\theta, so there is no inner optimisation -- the walk is a plain
+  ## evaluation of the unpenalized objective along one coordinate.  Recorded as
+  ## `nuisance_reoptimized = FALSE`, which is what distinguishes this slice from
+  ## a nuisance-maximised profile in any stored trace.
+  evaluate_fixed <- function(target, start, side, stage) {
+    par <- mle_par
+    par[as.integer(which)] <- target
+    value <- tryCatch(as.numeric(obj$fn(par)), error = identity)
+    if (inherits(value, "error")) {
+      return(list(
+        row = data.frame(
+          target = target, objective = NA_real_, objective_delta = NA_real_,
+          convergence = NA_integer_, message = conditionMessage(value),
+          finite = FALSE, nuisance_reoptimized = FALSE, side = side,
+          stage = stage, stringsAsFactors = FALSE
+        ),
+        nuisance = start
+      ))
+    }
+    finite <- length(value) == 1L && is.finite(value)
+    list(
+      row = data.frame(
+        target = target,
+        objective = if (finite) value else NA_real_,
+        objective_delta = if (finite) value - mle_objective else NA_real_,
+        convergence = if (finite) 0L else NA_integer_,
+        message = "", finite = finite,
+        nuisance_reoptimized = FALSE, side = side, stage = stage,
+        stringsAsFactors = FALSE
+      ),
+      nuisance = start
+    )
+  }
+
+  evaluate_reoptimized <- function(target, start, side, stage) {
+    objective <- function(nuisance) {
+      par <- mle_par
+      par[nuisance_index] <- nuisance
+      par[which] <- target
+      obj$fn(par)
+    }
+    gradient <- function(nuisance) {
+      par <- mle_par
+      par[nuisance_index] <- nuisance
+      par[which] <- target
+      obj$gr(par)[nuisance_index]
+    }
+    run_nlminb <- function(start_par) {
+      tryCatch(
+        .gllvmTMB_mspl_nlminb(start_par, objective = objective,
+                               gradient = gradient, control = control),
+        error = identity
+      )
+    }
+    converged <- function(ans) {
+      !inherits(ans, "error") && is.finite(ans$objective) &&
+        identical(as.integer(ans$convergence), 0L)
+    }
+    ans <- run_nlminb(start)
+    ## Fix (2): a single nlminb non-convergence is not fatal -- retry once
+    ## from the joint-MLE nuisance start, a point already known to be a
+    ## well-converged optimum, before recording this point as a failure.
+    if (!converged(ans)) {
+      retry <- run_nlminb(mle_par[nuisance_index])
+      if (converged(retry)) ans <- retry
+    }
+    if (inherits(ans, "error")) {
+      return(list(
+        row = data.frame(
+          target = target, objective = NA_real_, objective_delta = NA_real_,
+          convergence = NA_integer_, message = conditionMessage(ans),
+          finite = FALSE, nuisance_reoptimized = FALSE, side = side,
+          stage = stage, stringsAsFactors = FALSE
+        ),
+        nuisance = start
+      ))
+    }
+    finite <- is.finite(ans$objective)
+    list(
+      row = data.frame(
+        target = target,
+        objective = if (finite) as.numeric(ans$objective) else NA_real_,
+        objective_delta = if (finite) as.numeric(ans$objective) - mle_objective else NA_real_,
+        convergence = as.integer(ans$convergence),
+        message = ans$message %||% "", finite = finite,
+        nuisance_reoptimized = identical(as.integer(ans$convergence), 0L),
+        side = side, stage = stage, stringsAsFactors = FALSE
+      ),
+      nuisance = as.numeric(ans$par)
+    )
+  }
+
+  evaluate_point <- if (nuisance_fixed) evaluate_fixed else evaluate_reoptimized
+
+  successful <- function(point) {
+    is.list(point) && is.data.frame(point$row) &&
+      isTRUE(point$row$finite[[1L]]) &&
+      identical(point$row$convergence[[1L]], 0L) &&
+      is.finite(point$row$objective_delta[[1L]])
+  }
+
+  centre_point <- evaluate_point(
+    mle_par[which], mle_par[nuisance_index], "centre", "centre"
+  )
+  centre <- centre_point$row
+  centre_tolerance <- 1e-7 * (1 + abs(mle_objective))
+  centre_status <- if (!centre$finite) {
+    "nonfinite"
+  } else if (centre$convergence != 0L) {
+    "optimizer_failed"
+  } else if (abs(centre$objective_delta) > centre_tolerance) {
+    "centre_mismatch"
+  } else {
+    "matched"
+  }
+
+  walk_side <- function(direction) {
+    points <- list()
+    previous_success <- centre_point
+    start <- centre_point$nuisance
+    bracket <- NULL
+    origin <- mle_par[which]
+    current_step <- step
+    widen_round <- 0L
+    repeat {
+      values <- origin + direction * current_step * seq_len(as.integer(max_steps))
+      round_points <- list()
+      for (target in values) {
+        point <- evaluate_point(
+          target, start, if (direction < 0) "lower" else "upper", "grid"
+        )
+        points[[length(points) + 1L]] <- point
+        round_points[[length(round_points) + 1L]] <- point
+        if (successful(point)) {
+          start <- point$nuisance
+          if (successful(previous_success) &&
+              previous_success$row$objective_delta[[1L]] < threshold &&
+              point$row$objective_delta[[1L]] >= threshold) {
+            bracket <- list(inside = previous_success, outside = point)
+            break
+          }
+          previous_success <- point
+        }
+        ## Fix (1): do NOT discard `previous_success` on a failed grid point.
+        ## The old code set it to NULL here, so a single transient
+        ## non-convergence permanently erased the last known sub-threshold
+        ## reference -- if the very next point already crossed the threshold,
+        ## the bracket was silently missed and the walk ran out its budget
+        ## reporting "truncated"/"optimizer_failed" instead of "crossed".
+        ## Leaving `previous_success` unchanged means a later successful
+        ## point is still correctly bracketed against it (over a wider, but
+        ## still valid, interval).
+      }
+      if (!is.null(bracket)) break
+
+      ## Design 118 s7.2, second half ("widen the ... bracket to thresholds
+      ## [0.354, 3.317]"): 0d6de305 ported the two root-finder fixes above
+      ## but left the walk's reach fixed at step*max_steps, which the
+      ## default (0.5, 6) does not always cover for the wider registered
+      ## threshold range (level up to 0.99, i.e. threshold 3.317). When a
+      ## round finishes CLEANLY (no nonfinite/optimizer_failed point) but
+      ## simply never reaches `threshold`, and the caller opted in via
+      ## `max_widen_rounds > 0`, continue the walk from the last known-good
+      ## point with a 4x larger step instead of reporting "truncated".
+      ## `max_widen_rounds = 0L` (the default) makes this loop run exactly
+      ## once, reproducing the pre-existing trace byte-for-byte for every
+      ## caller that does not pass the new argument -- see
+      ## test-mspl-api.R's `max_steps = 1L` truncation test, unchanged.
+      round_rows <- do.call(rbind, lapply(round_points, `[[`, "row"))
+      clean_round <- !any(!round_rows$finite) && !any(round_rows$convergence != 0L)
+      if (!clean_round || widen_round >= as.integer(max_widen_rounds) ||
+          !successful(previous_success)) {
+        break
+      }
+      widen_round <- widen_round + 1L
+      origin <- previous_success$row$target[[1L]]
+      current_step <- current_step * 4
+    }
+
+    if (is.null(bracket)) {
+      rows <- do.call(rbind, lapply(points, `[[`, "row"))
+      status <- if (any(!rows$finite)) {
+        "nonfinite"
+      } else if (any(rows$convergence != 0L)) {
+        "optimizer_failed"
+      } else {
+        "truncated"
+      }
+      return(list(
+        status = status, points = points, endpoint = NA_real_,
+        bracket = c(NA_real_, NA_real_), refinement_iterations = 0L
+      ))
+    }
+
+    iterations <- 0L
+    while (abs(bracket$outside$row$target - bracket$inside$row$target) >
+           bracket_tolerance && iterations < as.integer(refinement_steps)) {
+      iterations <- iterations + 1L
+      target <- mean(c(
+        bracket$inside$row$target[[1L]], bracket$outside$row$target[[1L]]
+      ))
+      point <- evaluate_point(
+        target, bracket$inside$nuisance,
+        if (direction < 0) "lower" else "upper", "refinement"
+      )
+      points[[length(points) + 1L]] <- point
+      if (!successful(point)) {
+        return(list(
+          status = "refinement_failed", points = points, endpoint = NA_real_,
+          bracket = c(
+            bracket$inside$row$target[[1L]], bracket$outside$row$target[[1L]]
+          ), refinement_iterations = iterations
+        ))
+      }
+      if (point$row$objective_delta[[1L]] >= threshold) {
+        bracket$outside <- point
+      } else {
+        bracket$inside <- point
+      }
+    }
+
+    width <- abs(bracket$outside$row$target - bracket$inside$row$target)
+    if (width > bracket_tolerance) {
+      return(list(
+        status = "refinement_truncated", points = points, endpoint = NA_real_,
+        bracket = c(
+          bracket$inside$row$target[[1L]], bracket$outside$row$target[[1L]]
+        ), refinement_iterations = iterations
+      ))
+    }
+    endpoint <- mean(c(
+      bracket$inside$row$target[[1L]], bracket$outside$row$target[[1L]]
+    ))
+    list(
+      status = "crossed", points = points, endpoint = endpoint,
+      bracket = c(
+        bracket$inside$row$target[[1L]], bracket$outside$row$target[[1L]]
+      ), refinement_iterations = iterations
+    )
+  }
+
+  lower <- walk_side(-1)
+  upper <- walk_side(1)
+  trace <- rbind(
+    do.call(rbind, lapply(lower$points, `[[`, "row")),
+    centre,
+    do.call(rbind, lapply(upper$points, `[[`, "row"))
+  )
+
+  list(
+    trace = trace,
+    target_index = as.integer(which),
+    target_name = names(fit$opt$par)[which],
+    mle = mle_par[which],
+    mle_objective = mle_objective,
+    threshold = threshold,
+    centre_status = centre_status,
+    lower_status = lower$status,
+    upper_status = upper$status,
+    lower_endpoint = lower$endpoint,
+    upper_endpoint = upper$endpoint,
+    lower_bracket = lower$bracket,
+    upper_bracket = upper$bracket,
+    lower_refinement_iterations = lower$refinement_iterations,
+    upper_refinement_iterations = upper$refinement_iterations,
+    bracket_tolerance = bracket_tolerance,
+    finite_stable = identical(centre_status, "matched") &&
+      identical(lower$status, "crossed") &&
+      identical(upper$status, "crossed"),
+    objective_source = if (nuisance_fixed) {
+      "fit$mspl$unpenalized_tmb_obj (unpenalized Laplace at fixed MSPL nuisance)"
+    } else {
+      "fit$tmb_obj (penalised LA-MSPL)"
+    },
+    objective = objective,
+    tape = tape,
+    design_125_fork = if (nuisance_fixed) "B" else "A",
+    nuisance_treatment = if (nuisance_fixed) "fixed_at_mspl" else "reoptimized",
+    reference_is_maximum = !nuisance_fixed,
+    ## Computability != coverage.  These fields exist so that no caller, and no
+    ## future reader of a stored probe, can mistake a finite bracket for a
+    ## calibrated interval.  Kosmidis & Firth (2021, Biometrika 108(1), s2.2
+    ## p.5) state that the coverage failure of Wald intervals under a
+    ## finiteness penalty "is also true when the penalized likelihood is
+    ## profiled for the construction of confidence intervals": the mechanism is
+    ## that the penalised estimator takes finitely many finite values while the
+    ## parameter is unbounded, so profiling changes the interval's shape and not
+    ## the boundedness of what it is built from.  See
+    ## docs/dev-log/research/2026-08-17-kosmidis-firth-2021-profile-caveat.md.
+    calibrated = FALSE,
+    public_confint = "refused",
+    coverage_claim = "none"
+  )
+}
+
+## Private profile candidate only. The feasibility helper supplies endpoints
+## from a bounded bisection of a finite, converged bracket -- on the penalised
+## objective (fork A) or on the unpenalized Laplace objective at fixed MSPL
+## nuisance (fork B). These are not confidence-interval endpoints under either
+## fork.
+.gllvmTMB_mspl_profile_sources <- c(
+  "fit$tmb_obj (penalised LA-MSPL)",
+  "fit$mspl$unpenalized_tmb_obj (unpenalized Laplace at fixed MSPL nuisance)"
+)
+
+.gllvmTMB_mspl_profile_threshold_diagnostic <- function(probe) {
+  if (!is.list(probe) ||
+      !isTRUE(probe$objective_source %in% .gllvmTMB_mspl_profile_sources)) {
+    .gllvmTMB_mspl_abort(
+      "The internal MSPL profile-threshold diagnostic requires an MSPL profile probe.",
+      "i" = "Admitted objective sources are the penalised tape (fork A) and the unpenalized Laplace tape at fixed MSPL nuisance (fork B).",
+      class = "gllvmTMB_mspl_profile_threshold_input"
+    )
+  }
+  required <- c(
+    "trace", "mle", "threshold", "centre_status", "lower_status",
+    "upper_status", "lower_endpoint", "upper_endpoint", "lower_bracket",
+    "upper_bracket", "objective", "tape", "nuisance_treatment",
+    "reference_is_maximum"
+  )
+  if (!all(required %in% names(probe)) || !is.data.frame(probe$trace)) {
+    .gllvmTMB_mspl_abort(
+      "The internal MSPL profile-threshold diagnostic received an incomplete probe.",
+      class = "gllvmTMB_mspl_profile_threshold_input"
+    )
+  }
+
+  list(
+    target_index = probe$target_index,
+    target_name = probe$target_name,
+    estimate = probe$mle,
+    threshold = probe$threshold,
+    centre_status = probe$centre_status,
+    lower_status = probe$lower_status,
+    upper_status = probe$upper_status,
+    diagnostic_lower = probe$lower_endpoint,
+    diagnostic_upper = probe$upper_endpoint,
+    lower_bracket = probe$lower_bracket,
+    upper_bracket = probe$upper_bracket,
+    objective_source = probe$objective_source,
+    objective = probe$objective,
+    tape = probe$tape,
+    design_125_fork = probe$design_125_fork,
+    nuisance_treatment = probe$nuisance_treatment,
+    reference_is_maximum = probe$reference_is_maximum,
+    calibrated = FALSE,
+    public_confint = "refused",
+    coverage_claim = "none"
+  )
+}
+
 ## Resolve b_fix = b_fixed + K gamma and return X_* = X_fix K.  TMB maps use
 ## factor levels to represent shared free parameters and NA to represent pinned
 ## coordinates.  The present public Xcoef_fixed surface only pins zeros, but

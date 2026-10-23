@@ -1,5 +1,6 @@
 ^\.agents$
 ^\.codex$
+^\.unlazy$
 ^results$
 ^\.github$
 ^\.git$
@@ -37,3 +38,8 @@
 ^.*/\.DS_Store$
 ^pkgdown-site$
 ^lanes$
+^\.cursor$
+^\.mcp\.json$
+^\.ignore$
+^graft$
+^\.claude$

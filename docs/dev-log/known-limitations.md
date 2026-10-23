@@ -6,8 +6,19 @@ support. The `after-task-audit` skill greps this file for terms like
 this file in the same PR that changes the supported surface, so the
 durable record never lags the code.
 
-Last refreshed 2026-08-09 (exact-aa production reconciliation; package remains
-0.6.0).
+Last refreshed 2026-08-24 (0.7.1 trust-release boundary review; this is a
+status fence, not a new validation claim).
+
+## Temporal AR1 latent-score boundary
+
+`temporal_latent()` is an experimental Gaussian identity-link, rank-one,
+regular-time provider for three or more traits. It supports ordinary and
+replicated complete panels, but no forecasts/new-data prediction, profile,
+bootstrap, score interval, rank-selection, higher-rank, slope, irregular-time,
+non-Gaussian, or combined-provider route. Its dense likelihood and lifecycle
+contracts have local tests, and one named 12-series recovery fixture passes a
+fixture-local engineering gate. That retained fixture is not general recovery,
+precision, calibration, or interval-coverage evidence.
 
 ## Exact-aa production boundary
 
@@ -81,8 +92,11 @@ structured tiers are not admitted.
 - Direct or target-specific profile machinery remains available for fixed
   effects, direct scale parameters, `Lambda` entries, the supported
   phylogenetic-signal cases, and `profile_ci_total_variance()`. The last route
-  has a narrow unpenalised native-Laplace Gaussian `certified-0.94` regime; it
-  is not a package-wide interval certificate.
+  is a penalty-profile approximation and every returned interval is
+  `route-only`. Historical `n_units = 150`, `d` in `{1, 2}` and new
+  `n_units = 400`, `d = 2` numerical coverage gates passed, but the retained
+  endpoints do not prove constrained-refit convergence and exact target
+  attainment. The former exact-cell certificate is therefore withdrawn.
 - The former nonlinear profile routes for canonical repeatability,
   communality, correlations, and variance proportions are withdrawn. Explicit
   requests stop with a typed explanation rather than returning bounds.
@@ -94,8 +108,27 @@ structured tiers are not admitted.
   `Lambda` supports Wald, profile, and bootstrap routes; standardized
   `rho[t,k] = Lambda[t,k] / sqrt(Sigma_total[t,t])` supports joint-delta
   Wald and Fisher-z Wald routes. Standardized profile intervals are not
-  implemented, and empirical coverage of standardized-loading intervals is
-  not certified.
+  implemented. Symmetric joint-delta Wald intervals are certified only for the
+  structurally free strict-lower targets in native pinned unrotated ordinary
+  Gaussian three-trait cells `(n_units=150,d=2)`, `(n_units=400,d=1)`, and
+  `(n_units=400,d=2)`. This is one frozen DGP, conditional on eligible fits:
+  intercepts `(-0.20, 0.10, 0.25)`, unique SDs `(0.70, 0.80, 0.90)`, and
+  loading vector `(0.80, 0.45, -0.35)` for `d=1`, with second column
+  `(0, 0.70, 0.40)` for `d=2`. The `n_units=150,d=1` cell failed. No other
+  truth-parameter regime inherits the result. Pinned diagnostic
+  rows, Fisher-z Wald, arbitrary constraints, other rotations, and every
+  neighbouring cell remain uncalibrated.
+
+### Variational approximation
+
+Variational approximation (VA) is an opt-in experimental integration route;
+native Laplace remains the default. Its present evidence is limited to the
+named routes and regimes recorded in the validation register and the Current
+limitations and boundaries article. It is not a general estimator or an
+inference/calibration claim: VA standard errors, confidence intervals, and
+posterior standard deviations are not frequentist calibration certificates.
+No MSPL work, low-prevalence expansion, or broad variance-approximation claim
+is part of the 0.7.1 trust-release candidate.
 
 ### Data shapes
 
@@ -173,11 +206,13 @@ These are intentional design boundaries of the sugar layer, not bugs:
 - **Random slopes outside the structured keyword contract.** One structured
   slope (`s = 1`) is implemented for the named RE-02 routes and core-family
   cells; lognormal, Student-t, and betabinomial additions remain C1-partial
-  under RE-14. For `s = 2`, only Gaussian
-  `phylo_dep(1 + x1 + x2 | species)` has recovery evidence. Non-Gaussian
-  `s >= 2` is rejected, and `s >= 3` is mechanically available on the same
-  dimension-general path but has no gating test. Bare `(1 + x | g)` does not
-  provide a first-class trait-stacked slope API.
+  under RE-14. Gaussian long-format, slope-only response-column effects now
+  support two predictors through `phylo_indep(0 + x1 + x2 | trait)`
+  (diagonal) or `phylo_dep(...)` (full), with `phylo_slope()` /
+  `animal_slope()` helpers. This does not admit non-Gaussian multi-predictor
+  slopes, wide column-predictor grammar, or spatial/kernel/latent slope-only
+  variants. Bare `(1 + x | g)` does not provide a first-class trait-stacked
+  slope API.
 - **Zero-inflated families** (ZINB / ZIP). Cut from the 0.2.0 family
   list; planned for a later phase.
 - **SPDE barrier path** (`add_barrier_mesh`) for coastal data. A future barrier

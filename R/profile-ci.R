@@ -307,6 +307,8 @@
 #' under a constraint in pure R.
 #'
 #' This wrapper profiles direct TMB parameters and fixed linear combinations.
+#' Structured-term source-strength intervals are not supported: requests for
+#' its raw logit parameter, by name, index, or linear combination, are rejected.
 #' Nonlinear targets such as communality, full-covariance repeatability, and
 #' correlations are not routed through this function. The phylogenetic-signal
 #' extractor documents its narrower two-component profile route; other
@@ -337,8 +339,13 @@
 #'   constrain via e.g. `c(-15, Inf)` so the profile does not chase
 #'   variance to zero.
 #' @return A length-3 named numeric vector (`estimate`, `lower`, `upper`).
-#'   `lower` or `upper` may be `NA` when the profile is one-sided
-#'   (variance pinned at boundary).
+#'   When the profile crosses the threshold on both sides, bounds are finite
+#'   interior values after `transform`. When the likelihood is one-sided at a
+#'   natural boundary (deviance asymptotes), the affected bound is the
+#'   transformed limit (e.g. `lower = 0` with `transform = exp`; see
+#'   **Boundary behaviour**). `NA` marks a bound that could not be located
+#'   (truncated profile search or `tmbprofile()` failure), not a one-sided
+#'   asymptote at the parameter boundary.
 #'
 #' @section Boundary behaviour:
 #' When a variance component is near zero, the profile likelihood becomes
@@ -379,8 +386,9 @@ tmbprofile_wrapper <- function(
   parm.range = c(-Inf, Inf)
 ) {
   if (!inherits(fit, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+    .gllvmTMB_abort_not_multi_fit(fit)
   }
+  .structured_rho_interval_assert(fit,name,which,lincomb)
   .gllvmTMB_mspl_assert_inference(fit, "tmbprofile_wrapper")
   .gllvmTMB_require_unweighted_inference(fit, "tmbprofile_wrapper")
   profile_checkpoint <- .gllvmTMB_profile_tmb_checkpoint(fit$tmb_obj)

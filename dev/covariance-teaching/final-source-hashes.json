@@ -1,0 +1,7 @@
+{
+  "R/extract-correlations.R": "dc8a7c5af9beef033eaefb5344877eaeb8d169f56a1264f676829ec0c739fb6c",
+  "man/extract_cross_correlations.Rd": "fe0f11cb26d6e1b4a9098ef779be96bc973d44b8d97146aa4b3fce3d73501795",
+  "vignettes/articles/covariance-correlation.Rmd": "5643206fe61929dae1c7c0806fed95503102df17a91e67dc96eeda5f7652460a",
+  "vignettes/articles/cross-family-correlations.Rmd": "1cd8a737b1e0be2fcbeb51dc8fa73e9a42faa4133f62bb4caf935591cf9a4a2d",
+  "vignettes/articles/spatial-models.Rmd": "78e0d73919991b5aa2569861415722e57cae7c7c9131195b62077d22eb3c6778"
+}

@@ -127,6 +127,14 @@ test_that("ordinary-only corrected campaign scope is explicit and resumable", {
   expect_equal(nrow(lane_b_seed_registry_all(ordinary, permutation, empty_spatial)),
                76800L)
 
+  source_root <- normalizePath(
+    file.path(testthat::test_path(), "..", ".."),
+    mustWork = FALSE
+  )
+  skip_if_not(
+    file.exists(file.path(source_root, ".git")),
+    "requires a source checkout for git-bound campaign receipts"
+  )
   root <- tempfile("lane-b-ordinary-only-")
   on.exit(unlink(root, recursive = TRUE, force = TRUE), add = TRUE)
   receipt <- lane_b_prepare(lane_b_parse_cli(c(

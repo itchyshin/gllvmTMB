@@ -8,9 +8,9 @@ isdm_sources(...)
 }
 \arguments{
 \item{...}{Two or more named arguments; each name is a source label and each
-value its observation law (\code{poisson()} or \code{binomial("cloglog")}). At least
-one source must be a count stream: the detection arm's offset is admitted
-only alongside a count arm sharing the same intensity, so an
+value is a bare admitted observation law or an \code{\link[=isdm_source]{isdm_source()}} declaration.
+At least one source must be a count stream: the detection arm's offset is
+admitted only alongside a count arm sharing the same intensity, so an
 all-detection declaration is refused here rather than failing later.}
 }
 \value{
@@ -29,7 +29,8 @@ stream, digitised literature records, checklists, a structured survey --
 share one ecological linear predictor while each source keeps its own
 observation law.
 
-Each argument is named for a source and gives its observation law. Two laws
+Each argument is named for a source and gives either a bare observation law
+or \code{\link[=isdm_source]{isdm_source()}} with its source-specific observation formula. Two laws
 are admitted, because both express the observation as a thinning of one
 shared intensity: \code{poisson()} (a count stream; the offset is log effort) and
 \code{binomial("cloglog")} (detection/non-detection; the offset is log support,
@@ -47,18 +48,38 @@ This interface is experimental and may change.
 }
 \examples{
 fam <- isdm_sources(
-  gbif       = poisson(),
-  literature = poisson(),
-  survey     = binomial("cloglog")
+  gbif = isdm_source(poisson(), observation = ~ access + popdens),
+  survey = isdm_source(poisson(), observation = ~ observer + method)
 )
 names(fam)
-\dontrun{
 ## `dat` is long, one row per (cell, species, source), with an isdm_source
 ## column naming each row's source and log_support its known effort/area.
+## Each source's observation covariates only enter that source's rows.
+set.seed(1)
+dat <- expand.grid(
+  cell_id = factor(paste0("c", 1:60)),
+  trait = factor(c("sp1", "sp2")),
+  isdm_source = factor(c("gbif", "survey"))
+)
+env <- rnorm(60)  # one value per cell
+u <- rnorm(60)    # unmeasured cell effect shared by both species
+dat$env <- env[as.integer(dat$cell_id)]
+is_gbif <- dat$isdm_source == "gbif"
+dat$log_support <- ifelse(is_gbif, log(2), 0)
+dat$access <- ifelse(is_gbif, rnorm(nrow(dat)), NA)
+dat$popdens <- ifelse(is_gbif, rnorm(nrow(dat)), NA)
+dat$observer <- factor(ifelse(is_gbif, NA, sample(c("o1", "o2"), nrow(dat), TRUE)))
+dat$method <- factor(ifelse(is_gbif, NA, sample(c("walk", "point"), nrow(dat), TRUE)))
+eta <- c(0.2, -0.1)[dat$trait] + c(0.5, -0.4)[dat$trait] * dat$env +
+  c(0.6, 0.4)[dat$trait] * u[as.integer(dat$cell_id)] +
+  dat$log_support +
+  ifelse(is_gbif, -0.3 + 0.4 * dat$access + 0.2 * dat$popdens,
+         0.3 * (dat$observer == "o2") - 0.2 * (dat$method == "point"))
+dat$value <- rpois(nrow(dat), exp(eta))
 fit <- gllvmTMB(
-  value ~ 0 + trait + trait:env + trait:isdm_source +
-    offset(log_support) + latent(0 + trait | cell_id, d = 1),
+  value ~ 0 + trait + trait:env +
+    offset(log_support) + latent(0 + trait | cell_id, d = 1, unique = FALSE),
   data = dat, trait = "trait", unit = "cell_id", family = fam
 )
-}
+fit
 }

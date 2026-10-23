@@ -1,7 +1,6 @@
 ---
 title: "Rare items and runaway estimates in Paper × Items evidence synthesis"
 description: "Ordinate a papers-by-items evidence table with a probit GLLVM, then meet the two ways such fits break — runaway loadings and separated rare items — and the matched remedy for each: an opt-in loading ridge for one, the opt-in MSPL estimator for the other, never both in one fit."
-tier: 1
 output:
   rmarkdown::html_vignette:
     toc: true
@@ -21,6 +20,12 @@ knitr::opts_chunk$set(
   cache = FALSE
 )
 ```
+
+> **Advanced evidence-synthesis case study.** This is not the beginner route
+> through gllvmTMB. It deliberately studies difficult binary-data failures and
+> uses opt-in remedies, including the experimental MSPL estimator. Start with
+> [Get started](gllvmTMB.html) and [Choose a response
+> family](response-families.html) for ordinary modelling workflows.
 
 Evidence synthesis teams increasingly work with a **papers-by-items table**: each
 row a published study, each column a binary indicator — did the paper report an
@@ -248,11 +253,64 @@ of a silently deleted item or an unusable coefficient in the hundreds.
 |---|---|---|
 | `convergence = 0` but loadings at absurd link-scale magnitudes | Flat likelihood direction in the latent structure | `gllvmTMBcontrol(loading_ridge = 2)` — opt-in shrinkage, probit-grid track record |
 | `screen_gllvmTMB()` flags an item `complete` / `quasi_complete` | Fixed-design separation; the ML slope is infinite | `estimator = "mspl"` — opt-in, experimental penalised point estimate with explicit fences |
-| Both at once | Two diseases | Still one fit, one outer penalty: MSPL treats only the separated term(s), and the ridge+MSPL combination is refused, so a co-occurring loading runaway has no packaged remedy — simplify the latent structure or collect more information |
+| Both symptoms in the same fit | Two diseases at once — but still one fit | Still one outer penalty: treat the separation with `estimator = "mspl"`. The ridge+MSPL combination is refused, so a co-occurring loading runaway has no packaged remedy — simplify the latent structure or collect more information |
 
 Report, in either case: the certificate table, which route was fitted and why,
 the penalty scale (`summary(fit)$estimation` stores `c_n` for MSPL), and the
 convergence and gradient diagnostics — not just the finite number.
+
+## What each remedy actually penalises
+
+Neither remedy is a general-purpose fix for a rare or unusual binary trait, but
+the difference between them is not "loadings versus separation" — MSPL is a
+*family* of soft penalty atoms, and more than one of them can be active at once.
+For an ordinary-structure fit it adds:
+
+| Atom | Acts on | The pathology it addresses |
+|---|---|---|
+| Jeffreys | fixed effects, including intercepts | separation (a covariate slope, or a completely separated intercept-only item) |
+| `V_loading` (radial) | the loadings `Lambda` | runaway latent loadings — **the same target as the loading ridge** |
+| Hirose, `sum_j S_jj / psi_j` | the unique variances | a variance collapsing to the boundary (a Heywood case) |
+| `V_covariance` | spatial range and scale | range or amplitude drifting to an unidentified extreme |
+
+Two practical consequences follow. First, **the loading ridge and MSPL overlap**:
+both act on `Lambda`, so they are alternatives rather than complements, and the
+package refuses to stack them. Second, an intercept-only model is *not* outside
+MSPL's reach — its loading atom applies with or without a covariate, and a
+completely separated item gives the Jeffreys atom a target through the intercept.
+
+The remaining difference is how the penalty is scaled, and it decides which tool
+answers which question. MSPL's scale is fixed by the data — `c_n` is on the order
+of `sqrt(p / N)` and **vanishes as the sample grows**, which makes it a
+finite-sample correction that steps out of the way asymptotically. The ridge's
+`tau` is a number you choose, and it never stops acting.
+
+So the ridge is the weaker estimator and the better *instrument*: because you can
+weaken it deliberately, you can watch what an estimate does as the penalty
+recedes (see `ridge_path()`). MSPL has no such knob, so it cannot produce that
+evidence. Conversely, if a loading is not identified by the data at all — it
+keeps moving toward the boundary as the penalty weakens — then a penalty designed
+to vanish with information will not rescue it; it will return a finite,
+reasonable-looking number for a quantity the data cannot support. Diagnose first,
+and treat a rare or skewed intercept-only item as a marginal-support question
+([Screen binary traits before fitting](pre-fit-response-screening.html):
+prevalence, minority count) before reaching for either penalty.
+
+In this package MSPL remains **experimental and opt-in, and its interval
+inference is not calibrated** — that, not any absence of a target, is the reason
+not to reach for it in an applied analysis today.
+
+Neither remedy, in turn, makes an *exactly deterministic* response block a
+valid set of traits. If several binary columns sum to exactly 1 on every
+row — a review-type, geographic-scope, or temporal-scope dummy set is a
+common source — that is one categorical variable recorded across several
+columns, not several independent binary traits. Loading shrinkage does not
+change that structure, and neither does a finite MSPL slope: the fix is to
+recode the block as [`multinomial()`](multinomial.html) or to fix a
+deliberate reference level, not to penalise the fit around it.
+`screen_gllvmTMB()`'s response-dependency check (see
+[Screen binary traits before fitting](pre-fit-response-screening.html))
+flags this before either remedy is reached.
 
 # See also
 

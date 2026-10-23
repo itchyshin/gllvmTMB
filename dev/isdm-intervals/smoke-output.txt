@@ -1,0 +1,22 @@
+ℹ Returning `NA` standard errors -- Wald inference is unavailable for this fit. 
+4: In sqrt(diag(object$cov.fixed)) : NaNs produced
+5: Fit's Hessian is not positive-definite at the optimum.
+ℹ Returning `NA` standard errors -- Wald inference is unavailable for this fit. 
+ seed secs_fit secs_total conv    pd   c2   c3    c4   c5 cover_env note
+  201     3.60       4.36    0  TRUE TRUE TRUE  TRUE TRUE 1.0000000     
+  202     7.68       8.32    0  TRUE TRUE TRUE  TRUE TRUE 1.0000000     
+  203     2.54       3.09    0  TRUE TRUE TRUE  TRUE TRUE 1.0000000     
+  204     2.44       2.96    0  TRUE TRUE TRUE  TRUE TRUE 1.0000000     
+  205     2.57       3.08    0  TRUE TRUE TRUE  TRUE TRUE 1.0000000     
+  206     2.21       2.70    0 FALSE TRUE TRUE FALSE TRUE 1.0000000     
+  207     2.63       3.22    0  TRUE TRUE TRUE  TRUE TRUE 1.0000000     
+  208     3.05       3.66    0  TRUE TRUE TRUE  TRUE TRUE 0.6666667     
+  209     2.74       3.32    0  TRUE TRUE TRUE  TRUE TRUE 1.0000000     
+  210     2.67       3.22    0  TRUE TRUE TRUE  TRUE TRUE 1.0000000     
+  211     2.78       3.35    0  TRUE TRUE TRUE  TRUE TRUE 1.0000000     
+  212     2.59       3.16    0 FALSE TRUE TRUE FALSE TRUE 1.0000000     
+
+SMOKE SUMMARY: reps = 12  conv0 = 12  pd_rate = 10 / 12  all-checks-pass among PD = 10 / 10  (K1 harness read: fires if any PD rep fails a check)
+per-fit secs: median fit = 2.65  median total (fit+sdreport+predict) = 3.22 
+FULL-GRID ESTIMATE: 16 cells x 100 reps = 1600 fits; core-seconds = 5152 ; wall at 100 cores ~ 0.9 min (single-thread fits, embarrassingly parallel)
+NOTE: the 810-cell and 10x-effort and 3-source cells cost more per fit than this baseline cell; apply a conservative x4-x6 multiplier before judging the 30-min line.

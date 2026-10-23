@@ -4,16 +4,47 @@
 **Reviewers:** Noether (math-vs-implementation alignment) and Rose
 (public-consistency audit).
 
-The formula grammar is the heart of `gllvmTMB`. The 5 x 3
+The formula grammar is the heart of `gllvmTMB`. The 6 x 3
 source-by-mode covariance keyword grid is the core public-API
 contract; the generic `kernel_*()` tier added by Design 65 is its
-fifth source row, and `scalar` / `unique` are modifiers rather than
+fifth source row and the ordered temporal tier is its sixth, while `scalar` / `unique` are modifiers rather than
 modes. The older "4 x 5" framing, which listed those two as separate
 mode columns and placed `kernel_*()` outside the grid, is superseded.
 The kernel row serves user-supplied dense relatedness/covariance matrices.
 Everything in the engine serves those surfaces. Per **AGENTS.md Design
 Rule #3**, no change to this grammar ships without updating this
 document first.
+
+## Temporal source row
+
+Temporal is the sixth source row: `temporal_indep()`, `temporal_dep()`, and
+`temporal_latent()`. A provider owns a private `(series, time)` state index;
+it never rewrites public `unit` or `unit_obs`. `temporal_latent(unique = TRUE)`
+means \(K_{time}\otimes(\Lambda\Lambda^T+\Psi_T)\): Psi is correlated through
+time, not IID occasion noise. The old
+\(K\otimes\Lambda\Lambda^T+I\otimes\Psi\) prototype is retained only as a
+named migration fixture.
+
+`structure = "ar1"` accepts ordered integer occasions with gaps and uses
+\(K(t,s)=\phi^{|t-s|}\),
+\(\phi=(1-10^{-6})\tanh(\theta)\). `structure = "ou"` accepts numeric elapsed
+time and uses \(K(t,s)=\exp\{-\exp(\xi)|t-s|\}\), with no automatic rescaling.
+Both long and `traits(...)` wide forms use the same temporal specification.
+Ordinary unit and unit-observation covariance terms are admitted when the
+series and unit partitions agree and `unit_obs` is unit-nested. Meta providers
+remain refused. Four source-pair exceptions are
+replicated AR1 `temporal_indep()` with exactly one labelled `kernel_indep()`
+term, or with exactly one fixed labelled `phylo_indep()` term whose `tree =`
+or `vcv =` is supplied inside the keyword, or with exactly one fixed labelled
+`animal_indep()` term whose `pedigree =`, `A =`, or `Ainv =` is supplied inside
+the keyword, or with exactly one fixed-mesh `spatial_indep()` term. These use
+an additive static-source plus temporal-process covariance, not a source-by-time
+product; global `phylo_tree`/`phylo_vcv`, OU and the remaining
+temporal/source-mode combinations remain refused. In the spatial cell, the
+source coordinate factor and mesh are supplied inside `spatial_indep()` and
+trajectory geometries whose spatial and temporal bases are proportional are
+refused. In the animal cell, `A` is a labelled dense relatedness matrix and a
+sparse relationship precision belongs in `Ainv`.
 
 The package should learn from `glmmTMB`, `gllvm`, and `galamm` without
 copying their grammars wholesale. The public grammar is built around
@@ -79,10 +110,13 @@ support from end-to-end verification:
 | --- | --- | --- |
 | `gllvmTMB(value ~ ..., data = df_long)` | **covered** | Canonical long-format entry point. One row per `(unit, trait)`. Test evidence: `tests/testthat/test-canonical-keywords.R`, `test-keyword-grid.R` (validation-debt register FG-02; Phase 0B promotion 2026-05-16). |
 | `gllvmTMB(traits(t1, t2, ...) ~ ..., data = df_wide)` | **covered** | Wide-format entry point. The `traits(...)` LHS marker triggers internal pivot to long; long+wide `logLik` agreement is part of the contract. Test evidence: `test-traits-keyword.R`, `test-wide-weights-matrix.R` (validation-debt register FG-01, FG-03; Phase 0B promotion 2026-05-16). |
+| `gllvmTMB(..., column_data = metadata)` | **claimed / fixed-metadata foundation** | Exact-keyed response-column metadata are admitted for fixed effects only. Long data key on the resolved `trait` column; wide `traits(...)` data key on a literal `trait` column and reject a non-default `trait =`. Metadata cannot enter grouping, covariance, offset, or coefficient-helper terms. Public coefficient routes accept row-data coefficient bases only; metadata-by-coefficient interactions remain blocked (validation-debt register FG-20; Design 131). |
+| `shared(expr)` inside wide `traits(...)` formulas | **claimed / internal parser foundation** | A top-level additive fixed-effect marker that keeps row-data terms common instead of expanding them by response column. It is not exported or advertised; a user-defined `shared()` in the formula environment retains its ordinary meaning (validation-debt register FG-20; Design 131). |
+| `column_coef()` / `phylo_coef()` / `animal_coef()` / `kernel_coef()` / `spatial_coef()` | **partial / public Gaussian point models** | All five helpers are exported through `gllvmTMB()` for long and `traits(...)` wide data. `column_coef()` uses IID; `phylo_coef()` uses a labelled tree/covariance/precision with fixed or estimated `rho`; `animal_coef()` accepts one pedigree, `A`, or `Ainv` with fixed `rho`; `kernel_coef()` accepts one labelled dense covariance with fixed or estimated `rho`; and `spatial_coef()` accepts one response-column-labelled mesh with fixed `rho = 1`. `extract_Sigma(level = "column_coef")` reports the ordered coefficient covariance and source metadata. Intervals, non-Gaussian regimes, metadata-by-coefficient interactions, simultaneous coefficient sources, spatial IID mixtures, and broad calibration remain unclaimed (validation-debt register FG-20; Designs 131--133; coefficient test files). Existing `*_slope()` helpers remain current, warning-free, and non-deprecated. |
 | `gllvmTMB_wide(Y, ...)` | **partial / soft-deprecated in 0.2.0** | Legacy matrix-in wrapper. It remains exported for migration and matrix-first workflows, but new examples use `gllvmTMB(traits(...) ~ ..., data = df_wide)` instead. |
 | `0 + trait` and `(0 + trait):x` | **covered** | Long-form trait-stacked fixed-effect grammar. Test evidence: `test-stage1-stacked-fixed-effects.R`, `test-canonical-keywords.R` (via validation-debt register FG-02; Phase 0B promotion 2026-05-16). |
 | `latent(0 + trait \| g, d = K)` | **covered / ordinary Psi folded** | Reduced-rank loadings plus the default diagonal $\boldsymbol\Psi$ companion for $T$ traits across grouping factor `g`, rank $K \le T$. Use `unique = FALSE` for the old no-residual subset; use `common = TRUE` for one shared ordinary $\psi$ across traits. Test evidence: `test-stage2-rr-diag.R`, `test-keyword-grid.R`, `test-canonical-keywords.R`, `test-unique-family-deprecation.R` (validation-debt register FG-04 / FG-06; Phase 0B promotion 2026-05-16; ordinary latent-Psi fold and common-Psi re-home slices 2026-06-18). |
-| `latent(..., lv = ~ x)` | **partial / C1** | Predictor-informed latent-score means. Design 73 now admits ordinary unit-tier `latent()` fits for Gaussian and pure binomial logit/probit/cloglog responses with unit-level `X_lv_B`, TMB `alpha_lv_B`, the zero-mean innovation retained, and point-estimate `B_lv_unit = Lambda alpha^T` extractor support. This is smoke/algebra evidence plus focused native Gaussian recovery and small standard-link binary `B_lv` recovery gates, not interval calibration or broad recovery. Random terms, offsets, `mi()`, smooths, response/trait columns, exact fixed-RHS overlap, nonconstant within-unit predictors, rank-deficient designs, `REML = TRUE`, unsupported non-Gaussian families, unsupported tiers, augmented random-regression combinations, and source-specific / kernel forms still reject until their validation rows move (validation-debt register FG-18 / RE-13 / EXT-31 / LV-01..LV-07). |
+| `latent(..., lv = ~ x)` | **partial / compositional native route** | Predictor-informed latent-score means. Design 73 admits registered native family/link rows in one complete-response ordinary unit-tier `latent()` block. The loadings-only `unique = FALSE` form admits ranks through the number of logical responses. Automatic `Psi` additionally requires that its physical loading, latent-predictor, and engine-free diagonal parameters pass a necessary joint mean-covariance dimension screen. All routes use unit-level `X_lv_B`, TMB `alpha_lv_B`, the zero-mean innovation, and point-estimate `B_lv_unit = Lambda alpha^T` extraction. Bounded rank-2/rank-3 canaries exercise every registered family, including repeated-family traits; those fits establish route health, not general recovery or interval calibration. Retained point and Wald evidence remains limited to the previously named cells, including separate HOLDs for pure Beta and ordinal-probit. Random terms, offsets, `mi()`, smooths, response/trait columns, exact fixed-RHS overlap, nonconstant within-unit predictors, rank-deficient designs, `REML = TRUE`, non-canonical links, ranks that fail the necessary automatic-`Psi` screen, ranks above the number of logical responses, response masks, unsupported tiers, augmented random-regression combinations, and source-specific / kernel forms still reject until their validation rows move (validation-debt register FG-18 / RE-13 / EXT-31 / LV-01..LV-07). |
 | `latent(1 + x \| unit, d = K)` / long-form equivalents | **partial / Gaussian covered** | Ordinary individual-level Gaussian random-regression decomposition over the augmented `(intercept, slope) x trait` coefficient vector. The Gaussian engine reports `Lambda_aug Lambda_aug^T`, the default augmented diagonal `Psi_B,aug`, and their total through `extract_Sigma(level = "unit_slope", part = "shared" / "unique" / "total")`. Explicit `+ unique(1 + x \| unit)` remains accepted as compatibility syntax, and standalone augmented `unique()` remains the diagonal-only compatibility mode. Test evidence: `test-ordinary-latent-random-regression.R` (parser, long fit, `traits(...)` wide fit, Gaussian default composition and recovery, explicit compatibility composition, explicit compatibility diagonal fit, Poisson latent-only smoke, rank / unit_obs / mismatched-slope / Gaussian-only guards). Non-Gaussian augmented `unique()` remains guarded, and non-Gaussian augmented `latent()` stays low-rank-only. |
 | `unique(0 + trait \| g)` | **covered / soft-deprecated compatibility** | Trait-diagonal $\boldsymbol\Psi$ on grouping factor `g`. New standalone diagonal code should use `indep(0 + trait \| g)`, with `common = TRUE` when one shared marginal variance is intended. Test evidence: `test-stage2-rr-diag.R`, `test-cross-sectional-unique.R`, `test-unique-family-deprecation.R` (validation-debt register FG-05; Phase 0B promotion 2026-05-16; lifecycle warning slice 2026-06-18). |
 | `latent + unique` paired | **covered / soft-deprecated compatibility** | The explicit-Psi spelling remains accepted, but ordinary `latent()` now auto-emits $\boldsymbol\Psi$ by default. This compatibility pair should be migrated to `latent()` alone; paired legacy `unique(..., common = TRUE)` should migrate to ordinary intercept-only `latent(..., common = TRUE)`. Test evidence: `test-stage2-rr-diag.R`, `test-mixed-response-sigma.R`, `test-canonical-keywords.R`, `test-unique-family-deprecation.R` (validation-debt register FG-06; Phase 0B promotion 2026-05-16; lifecycle warning, ordinary fold, and common-Psi re-home slices 2026-06-18). |
@@ -100,13 +134,19 @@ support from end-to-end verification:
 | `kernel_indep(unit, K = A)` / `kernel_dep(unit, K = A)` | **covered** | Generic dense-kernel marginal-only and full-rank companion modes. C1 fit equivalence is covered in `test-kernel-equivalence.R` against `phylo_indep(..., vcv = A)` and `phylo_dep(..., vcv = A)`; the engine route is the same phylo-equivalent dense `vcv` slot used by `kernel_latent()` / `kernel_unique()` (validation-debt register KER-02; Design 65 C1). |
 | `meta_V(V = V)` | **partial** | Known sampling covariance, desugars to `equalto(0 + obs \| grp_V, V)`. Pass `known_V = V` to `gllvmTMB()` alongside. Test evidence: `test-formula-grammar-smoke.R` (single-V additive form and V-only parser compatibility), `test-traits-keyword.R` (wide `traits(...)` preservation), and `test-block-V.R` (block-V helper) (validation-debt register MET-01, MET-02). The legacy `meta_known_V(V = V)` is retained as a deprecated alias; both names desugar identically in the parser. Single-V inference validation remains partial under MET-01. |
 | `block_V(study, sampling_var, rho_within)` helper | **covered** | Builds the standard compound-symmetric block-diagonal `V` for within-study correlation. Test evidence: `test-block-V.R` (validation-debt register MET-02; Phase 0B promotion 2026-05-16). |
-| `(1 \| group)` ordinary random intercept | **covered** | Pass-through to `glmmTMB`-style random intercept; orthogonal to the 5 × 3 keyword grid. Test evidence: `test-multi-random-intercepts.R` (validation-debt register RE-01; Phase 0B promotion 2026-05-16). |
+| `(1 \| group)` ordinary random intercept | **covered** | Pass-through to `glmmTMB`-style random intercept; orthogonal to the 6 × 3 keyword grid. Test evidence: `test-multi-random-intercepts.R` (validation-debt register RE-01; Phase 0B promotion 2026-05-16). |
 | `(1 + x \| g)` ordinary random slope outside a structural keyword | **reserved** | Bare-bar random slopes remain rejected by `parse_re_int_call()`. Ordinary random regression is keyworded through `latent(1 + x \| unit, d = K)`; structured sources keep their own `phylo_*()` / `spatial_*()` forms. |
 | `(1 \| g1/g2)` slash-form nested random effects | **rejected** | Not parsed. Use globally unique level names instead (see "Crossed-vs-nested" below). |
 | `latent(0 + trait \| g) + lambda_constraint = list(B = M)` | **covered (Gaussian and binary IRT)** | Confirmatory factor analysis on the latent loadings; pins specific entries of $\boldsymbol\Lambda$. Test evidence: `test-lambda-constraint.R` asserts pinned-entry values within `1e-8` tolerance for diagonal-pin, off-diagonal-pin-to-zero, off-diagonal-pin-to-non-zero, W-level, and simultaneous B+W pin cases (validation-debt register LAM-01, LAM-02; Phase 0B.3 promotion 2026-05-16). `test-m2-3-lambda-constraint-binary.R` plus mirt and galamm cross-checks cover binary IRT fits (LAM-03). |
 | `suggest_lambda_constraint(fit)` / `suggest_lambda_constraints(fit)` | **covered (Gaussian and binary IRT)** | Helper that recommends constraint matrices, plus a plural comparison wrapper for threshold / Wald / profile conventions. Test evidence: `test-suggest-lambda-constraint.R` asserts well-typed `T x d` matrices with correct upper-triangle pinning, dimension, row/column names, and `usage_hint` for `lower_triangular` and `pin_top_one` conventions across `K = 1, 2, 3`; `test-m2-4-suggest-lambda-constraint-binary.R` covers the binary suggester→fit recovery cycle at $n_\text{items} \in \{10, 20, 50\}$, $d \in \{1, 2, 3\}$ (validation-debt register LAM-04). |
 | `meta_V(V = V, type = "proportional")` | **planned (post-CRAN)** | Unification of known-additive and proportional sampling-variance forms per Nakagawa 2022 EcoLetters. See vision doc "Planned extensions". |
 | `weights = w` argument | **planned (post-CRAN)** | glmmTMB-style row-weights, separate from `meta_V()`. See vision doc "Planned extensions". |
+
+For a long-format trait column named by `trait = "response_column"`, the
+ordinary predictor-informed loading block accepts both
+`latent(0 + response_column | unit, lv = ~ x)` and the placeholder
+`latent(0 + trait | unit, lv = ~ x)`. They identify the same loading basis;
+the alias does not admit augmented random-regression combinations.
 
 **Source-specific `lv` guard (2026-07-01; widened 2026-07-01):** `lv = ~ env`
 is predictor-informed ordinary-latent syntax only. It is not active for
@@ -181,6 +221,8 @@ The compact RHS shorthand is:
 | `latent(1 + env \| g, d = K)` | `latent(0 + trait + (0 + trait):env \| g, d = K)` |
 | `indep(1 \| g)` | `indep(0 + trait \| g)` |
 | `dep(1 \| g)` | `dep(0 + trait \| g)` |
+| `shared(1 + env)` | `1 + env` (common fixed effects, with no trait expansion) |
+| a fixed term containing a `column_data` field | Preserved as written; the keyed metadata value varies across response columns after stacking. |
 | `phylo_*` and `spatial_*` keywords | Pass through unchanged. |
 | `(1 \| group)` ordinary RE | Pass through unchanged. |
 
@@ -190,6 +232,17 @@ trait names supplied to `traits(...)` become the factor levels of
 the new `trait` column. Per the persona-active discipline, the
 parser test suite is owned by Curie; the parser implementation is
 owned by Boole.
+
+When `column_data` is supplied, it must contain exactly one row for every
+response column and no missing, duplicate, or extra keys. In long form its key
+column has the resolved `trait` name. In wide form the synthetic stacked key is
+always named `trait`; supplying another `trait =` name is rejected rather than
+silently misaligning metadata. Non-key metadata names cannot collide with row
+data, grouping names, or reserved internal carrier names. Metadata remain a
+fixed-effect surface in this foundation: covariance, grouping, offset, and
+coefficient-helper uses fail validation. The public `column_coef()`,
+`phylo_coef()`, `animal_coef()`, `kernel_coef()`, and `spatial_coef()` engines
+therefore accept row-data coefficient bases only.
 
 User-facing examples in README, vignettes, and Tier-1 articles
 should pair the long and wide forms side-by-side with a `logLik`
@@ -209,9 +262,9 @@ Removal is a later API-change decision and must not be claimed while
 the export remains live (validation-debt register rows FG-16 and
 MIS-03).
 
-## The 5 x 3 covariance keyword grid
+## The 6 x 3 covariance keyword grid
 
-The grid is the user-facing public-API contract. Rows are the five
+The grid is the user-facing public-API contract. Rows are the six
 correlation **sources** across grouping levels; columns are the three
 fundamental trait-covariance **modes**. Every cell is a live keyword.
 The reader-facing presentation of this same contract is
@@ -225,14 +278,21 @@ the two must not drift.
 | **phylo** | `phylo_indep()` | `phylo_dep()` | `phylo_latent()` |
 | **spatial** | `spatial_indep()` | `spatial_dep()` | `spatial_latent()` |
 | **kernel** | `kernel_indep(unit, K = A)` | `kernel_dep(unit, K = A)` | `kernel_latent(unit, K = A, d = q)` |
+| **temporal** | `temporal_indep(0 + trait | series, time = occasion)` | `temporal_dep(0 + trait | series, time = occasion)` | `temporal_latent(0 + trait | series, time = occasion, d = 1)` |
 
 The source rows go from finest-grained (individual pedigree) to
 broadest (geographic distance), with the Design 65 generic dense kernel
-as the fifth row. Plus the random-slope keywords
-`phylo_slope(x | species)` and `animal_slope(x | id)` for per-group
-random regression slopes — see
-[`14-known-relatedness-keywords.md`](14-known-relatedness-keywords.md)
-for the team-ratified convention.
+as the fifth row; temporal is the sixth, ordered and gap-aware row. The paired response-column slope helpers sit outside the
+grid: `slope()`, `phylo_slope()`, `animal_slope()`, `kernel_slope()`, and the
+designed-but-not-yet-implemented `spatial_slope()`. With the declared trait
+column on the right, `||` is public sugar for the matching
+`source_indep(0 + predictors | trait)` cell and `|` is sugar for
+`source_dep(0 + predictors | trait)`. They add no random intercept, and the
+two bars are identical when there is one predictor. See
+[`130-response-column-slope-family.md`](130-response-column-slope-family.md).
+Historical `phylo_slope()` / `animal_slope()` calls whose RHS is not the
+declared trait column remain compatibility behaviour rather than the new
+teaching model.
 
 ### `scalar` and `unique` are modifiers, not modes
 
@@ -361,11 +421,11 @@ remains accepted as compatibility syntax. The duplicate pair
 double-counting the same diagonal $\boldsymbol\Psi$. Multi-kernel fits
 with two or more named `kernel_latent()` tiers remain the existing
 latent-only first wave; explicit multi-kernel `kernel_unique()` Psi
-remains deferred. The spatial source is the remaining exception: the
-total-covariance decomposition `spatial_latent + spatial_unique` still
-relies on the **explicit paired spelling** because the SPDE diagonal
-companion engine slot is blocked, and its total-covariance fold stays
-`partial` under SPA-02 (see the keyword table above).
+remains deferred. For spatial terms,
+`spatial_latent(..., unique = TRUE)` is the canonical total-covariance
+spelling; the explicit `spatial_latent(..., unique = FALSE) +
+spatial_unique()` pair remains compatibility syntax. Its broader recovery
+evidence remains partial (see the keyword table above).
 
 ## Predictor-informed latent-score means (`lv = ~ ...`)
 
@@ -391,14 +451,30 @@ $B_\text{lv} = \Lambda\alpha^\top$. The outer `latent()` term still
 supplies the latent-score innovation `e_i`; `lv` does not replace the
 innovation with a mean-only reduced-rank model.
 
-The current runtime supports the ordinary unit-tier C1 surface:
-it stores the formula as `extra$lv_formula` on the reduced-rank term,
-keeps the auto-added diagonal `Psi` companion free of `lv` metadata,
-builds unit-level `X_lv_B`, estimates `alpha_lv_B`, preserves the
-zero-mean innovation, and reports the trait-scale `B_lv_unit` point
-estimate. Focused native TMB Gaussian recovery now exists for `B_lv`
-and `Sigma`, but interval calibration and broad family recovery remain
-gated. The following stay rejected or planned:
+The current runtime supports registered native family/link rows compositionally
+in one complete-response ordinary unit-tier block. The original Gaussian and
+pure-binomial cells retain their existing rank, `Psi`, mask, and interval
+evidence. Other compositions require canonical links. The loadings-only
+`unique = FALSE` form admits ranks through the number of logical responses.
+Automatic `Psi` is admitted only when its physical loading,
+latent-predictor, and engine-free diagonal parameters pass a necessary joint
+mean-covariance dimension screen. Passing the screen is not a local/global
+identifiability, recovery, or calibration certificate. Repeated-family traits
+are admitted. A verified
+multinomial expansion counts its $K-1$ contrast rows as one logical categorical
+response; raw or malformed duplicate family-16 traits and noncontiguous or
+incomplete contrast groups do not receive that collapse. Pre-drop missingness
+is still missingness for this complete-response route. All routes
+store the formula as `extra$lv_formula` on the reduced-rank term, build
+unit-level `X_lv_B`, estimate `alpha_lv_B`, preserve the zero-mean innovation,
+and report the trait-scale `B_lv_unit` point estimate. Bounded rank-2/rank-3
+canaries exercise every registered family and establish route health only.
+Retained r200 point evidence covers all 19 previously named mixed/sentinel
+cells and 17/19 pure cells. Pure Beta and ordinal-probit retain their frozen
+HOLDs. All eight selected mixed Gaussian-anchor archetypes pass target-wise
+`B_lv` Wald calibration; this is not simultaneous all-target or
+arbitrary-composition evidence.
+The following stay rejected or planned:
 
 - random terms, offsets, `mi()`, smooth terms, response columns, or
   trait columns inside `lv`;
@@ -406,8 +482,9 @@ gated. The following stay rejected or planned:
   `latent()` term;
 - exact overlap between fixed-effect RHS predictors and `lv`
   predictors;
-- `REML = TRUE`, unsupported non-Gaussian families, augmented random-regression
-  combinations, `unit_obs`, `cluster`, `cluster2`, `phylo_*`,
+- `REML = TRUE`, non-canonical family/link combinations, ranks above the
+  number of logical responses, response masks, augmented random-regression combinations,
+  `unit_obs`, `cluster`, `cluster2`, `phylo_*`,
   `animal_*`, `spatial_*`, and `kernel_*` forms.
 
 See `docs/design/73-predictor-informed-latent-scores.md` for the
@@ -769,7 +846,7 @@ also still unsupported; that surface has its own design decision to make.
 
 Currently:
 
-- **Random intercepts** `(1 | group)`: covered alongside the 5 × 3
+- **Random intercepts** `(1 | group)`: covered alongside the 6 × 3
   keywords as the default random-intercept on the grouping
   factor.
 - **Bare-bar random slopes** `(0 + x | g)` or `(1 + x | g)`: **reserved**.
@@ -778,7 +855,7 @@ Currently:
   `Lambda_aug Lambda_aug^T + Psi_B,aug` by default. Explicit
   `+ unique(1 + x | unit)` remains compatibility syntax. Non-Gaussian
   augmented `unique()` remains guarded, non-Gaussian augmented `latent()`
-  stays low-rank-only, and other 5 × 3 cells keep their own source-specific
+  stays low-rank-only, and other 6 × 3 cells keep their own source-specific
   random-slope validation boundaries.
 
 Random-slope design and parser details will live in
@@ -796,8 +873,10 @@ target shape.
 - `weights = w` argument on `gllvmTMB()` — glmmTMB-style row-
   weights; post-CRAN. Must coexist cleanly with `meta_V(type =
   "exact")` per the drmTMB Phase 2b discipline.
-- `phylo_slope(...)` / `spatial_slope(...)` — phylogenetic and
-  spatial random slopes; post-M1.
+- `spatial_slope()` implementation — its public response-column grammar,
+  trait-level coordinate alignment, projected-SPDE normalization, and
+  permutation tests are locked by Design 130, but the dedicated engine and
+  evidence slice has not landed.
 - `latent_interact(0 + trait | unit, d = K, by = x)` — galamm-style
   loadings that vary as a function of a covariate; post-CRAN
   (see vision doc).
@@ -845,3 +924,30 @@ not enter later releases:
   matrix.
 - AGENTS.md Design Rule #3 — no formula-grammar change without
   updating this document first.
+
+## Structured rho execution arc (2026-08-31)
+
+Canonical phylo/animal/kernel/spatial indep, dep and latent helpers gain a trailing
+`rho = 1`. Omitted/explicit one preserves all legacy endpoints, including
+multi-kernel models. Numeric values in [0,1] request fixed attenuation of the
+resolved source covariance; `rho = NULL` is reserved for the admitted Gaussian
+estimated-source-strength route implemented in this arc. Core likelihood,
+gradient, workflow and family-equivalence gates pass. The frozen spatial
+study completed 1,600 retained attempts: 14 cells are `partial`, 2 are
+`blocked`, and none passes the predeclared range--rho recovery criteria.
+This supports the implemented estimator only at that limited evidence scope.
+The worked example is `vignettes/articles/structured-source-strength.Rmd`.
+Spatial helpers use the same attenuation weight, separately from estimated
+range; see `dev/structured-rho/spatial-recovery/PLAN.md`. Deprecated
+scalar/unique aliases accept old calls but require canonical replacement for
+new attenuation.
+
+Capture strength and term identity before desugaring (which can otherwise drop
+literal NULL). A folded latent(unique=TRUE) is one covariance block; separate
+structured terms cannot be combined with new attenuation. Preserve the complete
+Psi covariance and common=TRUE. Reject new attenuation before unsupported
+Julia/VA/MSPL/AGHQ or augmented-slope routes. Estimated rho uses the resolved
+`unit_obs` observation-vector key, requires at least two traits (four for rank-one
+latent estimation), and requires all modeled source levels to be observed; unused levels cannot supply identifying source contrast. See
+`dev/structured-rho/spatial-recovery/PLAN.md` for the approved spatial scope,
+budgets and gates.

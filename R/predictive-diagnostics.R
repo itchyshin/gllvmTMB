@@ -18,11 +18,15 @@
 #'
 #' Scope: fitted-model predictive plots and residual Q-Q/rootogram helpers
 #' for `gllvmTMB_multi` fits, with exact randomized-quantile residuals for
-#' Gaussian, Poisson, and NB2 rows and a simulation-rank fallback. These
-#' are diagnostic displays, not formal uniformity, dispersion,
+#' Gaussian, binomial, Poisson, lognormal, Gamma, NB2, Beta, betabinomial,
+#' Student-t, zero-truncated Poisson, zero-truncated NB2, NB1, and
+#' ordinal-probit rows, plus a simulation-rank fallback. These are
+#' diagnostic displays, not formal uniformity, dispersion,
 #' interval-calibration, or Bayesian posterior-predictive tests. Exact
-#' residual support for delta, hurdle, truncated, ordinal, and mixture
-#' families is not yet implemented.
+#' residual support for tweedie, the delta/hurdle families, and multinomial
+#' is not implemented (see [residuals.gllvmTMB_multi()] for why); the
+#' simulation-rank fallback's own family coverage is separately limited and
+#' is not audited here.
 #'
 #' @param object A `gllvmTMB_multi` fit.
 #' @param type Diagnostic plot type. `"rq_qq"` plots exact randomized-
@@ -154,19 +158,30 @@ predictive_check <- function(
 #'
 #' Returns row-wise residual diagnostics for a fitted `gllvmTMB_multi`
 #' model. `type = "randomized_quantile"` uses exact family CDFs for
-#' Gaussian, Poisson, and NB2 rows. `type = "simulation_rank"` uses
-#' fitted-model simulations and is available as a fallback for checking
-#' the same row contract when exact family-CDF plumbing is not yet
-#' implemented.
+#' Gaussian, binomial, Poisson, lognormal, Gamma, NB2, Beta, betabinomial,
+#' Student-t, zero-truncated Poisson, zero-truncated NB2, NB1, and
+#' ordinal-probit rows. `type = "simulation_rank"` uses fitted-model
+#' simulations and is available as a fallback for checking the same row
+#' contract when exact family-CDF plumbing is not implemented for a family;
+#' its own family coverage (what [simulate.gllvmTMB_multi()] can draw from)
+#' is tracked separately and is not extended here.
 #'
 #' Rows are retained even when a residual cannot be computed. Inspect the
 #' `status` column before treating residuals as complete.
 #'
 #' Scope: exact family-CDF randomized-quantile residuals for Gaussian,
-#' Poisson, and NB2 rows plus simulation-rank residuals from fitted-model
-#' draws. Unsupported families are retained with row status rather than
-#' promoted to exact residual claims. Broader family coverage and formal
-#' residual tests remain later validation work.
+#' binomial, Poisson, lognormal, Gamma, NB2, Beta, betabinomial, Student-t,
+#' zero-truncated Poisson, zero-truncated NB2, NB1, and ordinal-probit rows,
+#' plus simulation-rank residuals from fitted-model draws. Tweedie, the
+#' delta/hurdle families (`delta_lognormal`, `delta_gamma`), and
+#' multinomial are deliberately not implemented: tweedie has no closed-form
+#' CDF without a new dependency, the delta/hurdle families mix a point mass
+#' at zero with a continuous part and need an explicit design decision for
+#' splitting the point mass, and multinomial's categories are unordered so a
+#' randomized-quantile residual is undefined without inventing an ordering.
+#' Unsupported families are retained with row status rather than promoted
+#' to exact residual claims. Formal residual calibration beyond the
+#' current family-specific recovery checks remains later validation work.
 #'
 #' The returned data frame also carries `attr(x, "gllvmTMB_diagnostic")`
 #' with [check_gllvmTMB()] output and the fitted object's `fit_health`
@@ -343,6 +358,8 @@ residuals.gllvmTMB_multi <- function(
   eta <- eta[keep]
   observed_mask <- observed_mask[keep]
   row_meta <- row_meta[keep, , drop = FALSE]
+  n_trials <- as.numeric(object$tmb_data$n_trials)[keep]
+  cens_limit <- as.numeric(object$tmb_data$cens_limit %||% rep(0, length(keep)))[keep]
   n <- length(observed)
 
   lower <- rep(NA_real_, n)
@@ -351,35 +368,100 @@ residuals.gllvmTMB_multi <- function(
   residual <- rep(NA_real_, n)
   status <- rep("ok", n)
 
-  sigma_eps <- .gllvmTMB_sigma_eps(object)
+  sigma_eps_gaussian <- .gllvmTMB_sigma_eps_for_family(object, 0L)
+  sigma_eps_lognormal <- .gllvmTMB_sigma_eps_for_family(object, 3L)
   phi_nbinom2 <- object$report$phi_nbinom2
   phi_nbinom1 <- object$report$phi_nbinom1
+  phi_gamma <- object$report$phi_gamma
+  phi_beta <- object$report$phi_beta
+  phi_betabinom <- object$report$phi_betabinom
+  sigma_student <- object$report$sigma_student
+  df_student <- object$report$df_student
+  phi_truncnb2 <- object$report$phi_truncnb2
+  zi <- object$report$zi # length n_traits (fid 17/18/19)
 
-  ## A Gaussian diagonal random effect indexed at the same resolution as the
-  ## observed trait-cell can absorb the observation residual, with sigma_eps
-  ## mapped to a tiny fixed value. Conditional exact-CDF residuals then collapse
-  ## near zero and are not a goodness-of-fit check. Warn and direct users to the
-  ## marginal simulation-rank route rather than displaying an automatically
-  ## perfect Q-Q plot.
+  ## ordinal_probit (fid 14): the report carries only the K-2 free cutpoints
+  ## tau_2 .. tau_{K-1} per trait, flattened and split by
+  ## n_ordinal_cuts_per_trait / ordinal_offset_per_trait -- the SAME fields
+  ## extract_cutpoints() reads. tau_1 = 0 is fixed (Hadfield 2015) and
+  ## prepended here so each list element is the full tau_1 .. tau_{K-1}
+  ## vector used below.
+  n_ordinal_cuts_per_trait <- as.integer(
+    object$tmb_data$n_ordinal_cuts_per_trait %||% integer(0)
+  )
+  ordinal_offset_per_trait <- as.integer(
+    object$tmb_data$ordinal_offset_per_trait %||% integer(0)
+  )
+  ordinal_cutpoints_flat <- as.numeric(object$report$ordinal_cutpoints %||% numeric(0))
+  ordinal_full_cuts <- if (length(n_ordinal_cuts_per_trait) > 0L) {
+    lapply(seq_along(n_ordinal_cuts_per_trait), function(t) {
+      k_minus_2 <- n_ordinal_cuts_per_trait[t]
+      if (is.na(k_minus_2) || k_minus_2 < 0L) {
+        return(NULL)
+      }
+      base <- ordinal_offset_per_trait[t]
+      extra <- if (k_minus_2 > 0L) {
+        ordinal_cutpoints_flat[(base + 1L):(base + k_minus_2)]
+      } else {
+        numeric(0)
+      }
+      c(0, extra)
+    })
+  } else {
+    list()
+  }
+
+  ## A diagonal random effect indexed at the same resolution as the observed
+  ## trait-cell can absorb the observation residual, driving the family's
+  ## dispersion/scale parameter toward a degenerate confound (sigma_eps -> 0
+  ## for gaussian/lognormal, shape -> Inf for Gamma, precision -> Inf for
+  ## Beta, sigma -> 0 for student). Conditional exact-CDF residuals then
+  ## collapse near zero and are not a goodness-of-fit check. Warn and direct
+  ## users to the marginal simulation-rank route rather than displaying an
+  ## automatically perfect Q-Q plot.
   trait_col <- object$trait_col
   per_row_diag <- function(flag, group_col) {
     isTRUE(flag) && !is.null(group_col) && group_col %in% names(object$data) &&
       nrow(unique(object$data[c(trait_col, group_col)])) == nrow(object$data)
   }
-  gaussian_per_row_diag <- any(row_meta$family_id == 0L) &&
+  ## Families included: gaussian (0), lognormal (3), Gamma (4), Beta (7),
+  ## student (9) -- exactly the families whose residual CDF is computed
+  ## EXACT (lower == upper) rather than randomized-quantile above, i.e. those
+  ## with a genuinely continuous density that can diverge to +Inf as its
+  ## scale/dispersion parameter degenerates (a Gaussian/lognormal/Gamma/
+  ## Beta/student density -> Inf as sigma -> 0 / shape,precision -> Inf; a
+  ## discrete pmf is bounded by 1 and cannot do this, which is why Poisson,
+  ## binomial, NB1/NB2, tweedie, and beta-binomial are excluded here).
+  ## gaussian (0) and lognormal (3) additionally get an auto-suppressed
+  ## sigma_eps at fit time (`any_sigma_eps` at R/fit-multi.R:5177); Gamma/
+  ## Beta/student have no analogous fit-time fix, only this residuals-time
+  ## warning -- see #1083. Confirmed empirically (15-seed sweep, n_ind = 36):
+  ## Gamma's phi_gamma ran away to > 1e6 (true 6) in 9/15 seeds, student's
+  ## sigma_student collapsed below 0.1 (true 0.4) in 6/15 seeds, and Beta's
+  ## phi_beta ran away to > 1e8 (true 20) in 2/15 seeds -- all under the
+  ## identical per-row-diagonal structure. A matched Poisson sweep (8 seeds)
+  ## showed no such collapse (sd(residual) ~ 1 throughout), consistent with
+  ## Poisson having no continuous dispersion to degenerate.
+  saturating_family <- any(row_meta$family_id %in% c(0L, 3L, 4L, 7L, 9L)) &&
     (
       per_row_diag(object$use$diag_B, object$unit_col) ||
         per_row_diag(object$use$diag_W, object$unit_obs_col)
     )
-  if (gaussian_per_row_diag) {
+  if (saturating_family) {
     cli::cli_warn(
       c(
-        "Exact conditional Gaussian residuals are not informative when a diagonal random effect is indexed at the observed trait-cell resolution.",
+        "Exact conditional residuals are not informative when a diagonal random effect is indexed at the observed trait-cell resolution.",
         "i" = "Use {.code type = \"simulation_rank\"} with {.code condition_on_RE = FALSE} to inspect marginal fitted-model draws."
       ),
       class = "gllvmTMB_conditional_residual_saturated"
     )
   }
+
+  ## Cache of 0:N support vectors for the beta-binomial CDF (fid 8), keyed
+  ## by trial count N. N is typically constant within a trait, so this
+  ## avoids rebuilding 0:N on every row; only the row-specific a/b terms
+  ## are recomputed per row.
+  bb_k_cache <- list()
 
   for (i in seq_len(n)) {
     y_i <- observed[i]
@@ -397,9 +479,36 @@ residuals.gllvmTMB_multi <- function(
     }
 
     if (fid == 0L) {
-      lower[i] <- stats::pnorm(y_i, mean = eta[i], sd = sigma_eps)
+      lower[i] <- stats::pnorm(
+        y_i, mean = eta[i], sd = sigma_eps_gaussian
+      )
       upper[i] <- lower[i]
       u[i] <- lower[i]
+    } else if (fid == 1L) {
+      Nt <- n_trials[i]
+      if (!is.finite(Nt) || Nt <= 0 || Nt != floor(Nt)) {
+        status[i] <- "missing_trials"
+        next
+      }
+      if (y_i < 0 || y_i > Nt || y_i != floor(y_i)) {
+        status[i] <- "invalid_observed"
+        next
+      }
+      ## Bernoulli / binomial(k-of-n), dispatched on link_id_vec exactly as
+      ## src/gllvmTMB.cpp fid == 1 does: 0 = logit, 1 = probit, 2 = cloglog.
+      ## An NA or unrecognised link_id gets its own explicit status rather
+      ## than silently falling back to logit -- a wrong link on a real fit
+      ## would otherwise return a plausible-looking but wrong residual.
+      lid_i <- row_meta$link_id[i]
+      if (is.na(lid_i) || !(lid_i %in% c(0L, 1L, 2L))) {
+        status[i] <- "unknown_link"
+        next
+      }
+      p_i <- .gllvmTMB_binom_prob(eta[i], lid_i)
+      p_i <- .gllvmTMB_clip_unit_interval(p_i)
+      lower[i] <- if (y_i <= 0) 0 else stats::pbinom(y_i - 1, size = Nt, prob = p_i)
+      upper[i] <- stats::pbinom(y_i, size = Nt, prob = p_i)
+      u[i] <- stats::runif(1L, min = lower[i], max = upper[i])
     } else if (fid == 2L) {
       if (y_i < 0 || y_i != floor(y_i)) {
         status[i] <- "invalid_observed"
@@ -409,23 +518,244 @@ residuals.gllvmTMB_multi <- function(
       lower[i] <- if (y_i <= 0) 0 else stats::ppois(y_i - 1, lambda = lambda)
       upper[i] <- stats::ppois(y_i, lambda = lambda)
       u[i] <- stats::runif(1L, min = lower[i], max = upper[i])
+    } else if (fid == 3L) {
+      ## Lognormal, log(y) ~ Normal(eta, sigma_eps). eta is the mean of
+      ## log(y) directly (src/gllvmTMB.cpp fid == 3). Joint Gaussian-
+      ## lognormal fits use a distinct log-scale slot, shared within family.
+      if (y_i <= 0) {
+        status[i] <- "invalid_observed"
+        next
+      }
+      lower[i] <- stats::plnorm(
+        y_i, meanlog = eta[i], sdlog = sigma_eps_lognormal
+      )
+      upper[i] <- lower[i]
+      u[i] <- lower[i]
+    } else if (fid == 4L) {
+      ## Gamma, mean-shape parametrisation (src/gllvmTMB.cpp fid == 4):
+      ## mu = exp(eta), scale = mu / shape. `scale_g` is deliberately named
+      ## away from the outer `scale` argument (normal vs uniform residual
+      ## output), which it must not clobber.
+      if (y_i <= 0) {
+        status[i] <- "invalid_observed"
+        next
+      }
+      shape_g <- phi_gamma[tid]
+      if (!is.finite(shape_g) || shape_g <= 0) {
+        status[i] <- "missing_phi"
+        next
+      }
+      mu_g <- exp(eta[i])
+      scale_g <- mu_g / shape_g
+      lower[i] <- stats::pgamma(y_i, shape = shape_g, scale = scale_g)
+      upper[i] <- lower[i]
+      u[i] <- lower[i]
     } else if (fid == 5L) {
       if (y_i < 0 || y_i != floor(y_i)) {
         status[i] <- "invalid_observed"
         next
       }
       size <- phi_nbinom2[tid]
-      if (!is.finite(size) || size <= 0) {
+      ## `size = Inf` is the Poisson limit, as in the engine's NB2 kernel
+      ## (#1491); only NaN / NA / non-positive dispersions are missing.
+      if (is.na(size) || size <= 0) {
         status[i] <- "missing_phi"
         next
       }
       mu <- exp(eta[i])
-      lower[i] <- if (y_i <= 0) {
+      if (is.infinite(size)) {
+        lower[i] <- if (y_i <= 0) 0 else stats::ppois(y_i - 1, lambda = mu)
+        upper[i] <- stats::ppois(y_i, lambda = mu)
+      } else {
+        lower[i] <- if (y_i <= 0) {
+          0
+        } else {
+          stats::pnbinom(y_i - 1, size = size, mu = mu)
+        }
+        upper[i] <- stats::pnbinom(y_i, size = size, mu = mu)
+      }
+      u[i] <- stats::runif(1L, min = lower[i], max = upper[i])
+    } else if (fid == 7L) {
+      ## Beta, mean-precision parametrisation (src/gllvmTMB.cpp fid == 7):
+      ## mu = invlogit(eta), shape1 = mu*phi, shape2 = (1 - mu)*phi. The
+      ## engine's Beta log-density hardcodes invlogit with no link_id
+      ## dispatch, and R/fit-multi.R aborts at fit time on any link other
+      ## than logit for this family -- so plogis(eta) always matches what
+      ## was actually fit, regardless of what a link_id row carries.
+      if (y_i <= 0 || y_i >= 1) {
+        status[i] <- "invalid_observed"
+        next
+      }
+      phi_b <- phi_beta[tid]
+      if (!is.finite(phi_b) || phi_b <= 0) {
+        status[i] <- "missing_phi"
+        next
+      }
+      mu_b <- stats::plogis(eta[i])
+      shape1_b <- mu_b * phi_b
+      shape2_b <- (1 - mu_b) * phi_b
+      lower[i] <- stats::pbeta(y_i, shape1 = shape1_b, shape2 = shape2_b)
+      upper[i] <- lower[i]
+      u[i] <- lower[i]
+    } else if (fid == 8L) {
+      ## Beta-binomial (src/gllvmTMB.cpp fid == 8; Hilbe 2014, Bolker 2008):
+      ## mu = invlogit(eta) (same hardcoded-logit note as fid == 7; also
+      ## enforced at fit time -- R/fit-multi.R aborts on any other link),
+      ## a = mu*phi, b = (1 - mu)*phi. No base-R CDF exists, so the pmf is
+      ## hand-rolled from the same stable decomposition as the engine's
+      ## log-density and cumulatively summed.
+      Nt <- n_trials[i]
+      if (!is.finite(Nt) || Nt <= 0 || Nt != floor(Nt)) {
+        status[i] <- "missing_trials"
+        next
+      }
+      if (y_i < 0 || y_i > Nt || y_i != floor(y_i)) {
+        status[i] <- "invalid_observed"
+        next
+      }
+      phi_bb <- phi_betabinom[tid]
+      if (!is.finite(phi_bb) || phi_bb <= 0) {
+        status[i] <- "missing_phi"
+        next
+      }
+      ## Shapes from plogis(eta) and plogis(-eta): `1 - plogis(eta)` is
+      ## exactly 0 for eta >= 37 and would zero `b` (#1490).
+      a_bb <- stats::plogis(eta[i]) * phi_bb
+      b_bb <- stats::plogis(-eta[i]) * phi_bb
+      if (!is.finite(a_bb) || !is.finite(b_bb) || a_bb <= 0 || b_bb <= 0) {
+        status[i] <- "nonfinite_residual"
+        next
+      }
+      Nt_key <- as.character(Nt)
+      k_bb <- bb_k_cache[[Nt_key]]
+      if (is.null(k_bb)) {
+        k_bb <- 0:Nt
+        bb_k_cache[[Nt_key]] <- k_bb
+      }
+      cdf_bb <- .gllvmTMB_betabinom_cdf(Nt, a_bb, b_bb, k = k_bb)
+      lower[i] <- if (y_i <= 0) 0 else cdf_bb[y_i]
+      upper[i] <- cdf_bb[y_i + 1L]
+      u[i] <- stats::runif(1L, min = lower[i], max = upper[i])
+    } else if (fid == 9L) {
+      ## Student-t, identity link (src/gllvmTMB.cpp fid == 9): eta IS the
+      ## location mu directly, regardless of the family's declared link
+      ## (the engine never applies log/inverse to eta here).
+      sigma_t <- sigma_student[tid]
+      df_t <- df_student[tid]
+      ## `df = Inf` is the normal limit, as in the engine's Student kernel
+      ## (#1491); stats::pt(df = Inf) is already pnorm.
+      if (
+        !is.finite(sigma_t) || sigma_t <= 0 ||
+          is.na(df_t) || df_t <= 1
+      ) {
+        status[i] <- "missing_phi"
+        next
+      }
+      z_t <- (y_i - eta[i]) / sigma_t
+      lower[i] <- stats::pt(z_t, df = df_t)
+      upper[i] <- lower[i]
+      u[i] <- lower[i]
+    } else if (fid == 10L) {
+      ## Zero-truncated Poisson (src/gllvmTMB.cpp fid == 10): support starts
+      ## at y = 1; renormalise the ordinary Poisson CDF by (1 - P(Y = 0)).
+      if (y_i < 1 || y_i != floor(y_i)) {
+        status[i] <- "invalid_observed"
+        next
+      }
+      lambda_t <- exp(eta[i])
+      p0_t <- exp(-lambda_t)
+      denom_t <- 1 - p0_t
+      if (!is.finite(denom_t) || denom_t <= 0) {
+        status[i] <- "nonfinite_residual"
+        next
+      }
+      lower[i] <- if (y_i <= 1) {
         0
       } else {
-        stats::pnbinom(y_i - 1, size = size, mu = mu)
+        (stats::ppois(y_i - 1, lambda = lambda_t) - p0_t) / denom_t
       }
-      upper[i] <- stats::pnbinom(y_i, size = size, mu = mu)
+      upper[i] <- (stats::ppois(y_i, lambda = lambda_t) - p0_t) / denom_t
+      u[i] <- stats::runif(1L, min = lower[i], max = upper[i])
+    } else if (fid == 11L) {
+      ## Zero-truncated NB2 (src/gllvmTMB.cpp fid == 11): support starts at
+      ## y = 1, renormalised the same way as truncated Poisson above. NOTE:
+      ## the truncated-NB2 dispersion is a SEPARATE per-trait parameter
+      ## (phi_truncnb2), not phi_nbinom2 -- the engine fits it as its own
+      ## log_phi_truncnb2 PARAMETER_VECTOR (src/gllvmTMB.cpp fid == 11).
+      if (y_i < 1 || y_i != floor(y_i)) {
+        status[i] <- "invalid_observed"
+        next
+      }
+      size_t <- phi_truncnb2[tid]
+      ## `size = Inf` is the zero-truncated Poisson limit (#1491).
+      if (is.na(size_t) || size_t <= 0) {
+        status[i] <- "missing_phi"
+        next
+      }
+      mu_t <- exp(eta[i])
+      cdf_t <- if (is.infinite(size_t)) {
+        function(q) stats::ppois(q, lambda = mu_t)
+      } else {
+        function(q) stats::pnbinom(q, size = size_t, mu = mu_t)
+      }
+      p0_t <- cdf_t(0)
+      denom_t <- 1 - p0_t
+      if (!is.finite(denom_t) || denom_t <= 0) {
+        status[i] <- "nonfinite_residual"
+        next
+      }
+      lower[i] <- if (y_i <= 1) {
+        0
+      } else {
+        (cdf_t(y_i - 1) - p0_t) / denom_t
+      }
+      upper[i] <- (cdf_t(y_i) - p0_t) / denom_t
+      u[i] <- stats::runif(1L, min = lower[i], max = upper[i])
+    } else if (fid == 14L) {
+      ## ordinal_probit (Wright/Falconer/Hadfield threshold model; Hadfield
+      ## 2015 eqn 9): tau_1 = 0 fixed, tau_2 .. tau_{K-1} estimated per
+      ## trait (K - 2 free cutpoints); tau_0 = -Inf, tau_K = +Inf.
+      ## F(k) = Phi(tau_k - eta) for k = 1..K-1, F(0) = 0, F(K) = 1.
+      cuts_t <- if (tid >= 1L && tid <= length(ordinal_full_cuts)) {
+        ordinal_full_cuts[[tid]]
+      } else {
+        NULL
+      }
+      if (is.null(cuts_t)) {
+        status[i] <- "missing_cutpoints"
+        next
+      }
+      K_t <- length(cuts_t) + 1L
+      if (y_i < 1 || y_i > K_t || y_i != floor(y_i)) {
+        status[i] <- "invalid_observed"
+        next
+      }
+      yk <- as.integer(y_i)
+      lower[i] <- if (yk <= 1L) 0 else stats::pnorm(cuts_t[yk - 1L] - eta[i])
+      upper[i] <- if (yk >= K_t) 1 else stats::pnorm(cuts_t[yk] - eta[i])
+      u[i] <- stats::runif(1L, min = lower[i], max = upper[i])
+    } else if (fid == 20L) {
+      ## ordinal_logit: identical structure to fid 14 above, with the
+      ## standard logistic CDF (stats::plogis) in place of pnorm. Same
+      ## cutpoint reconstruction (ordinal_full_cuts is shared across both
+      ## ordinal families; see its construction above).
+      cuts_t <- if (tid >= 1L && tid <= length(ordinal_full_cuts)) {
+        ordinal_full_cuts[[tid]]
+      } else {
+        NULL
+      }
+      if (is.null(cuts_t)) {
+        status[i] <- "missing_cutpoints"
+        next
+      }
+      K_t <- length(cuts_t) + 1L
+      if (y_i < 1 || y_i > K_t || y_i != floor(y_i)) {
+        status[i] <- "invalid_observed"
+        next
+      }
+      yk <- as.integer(y_i)
+      lower[i] <- if (yk <= 1L) 0 else stats::plogis(cuts_t[yk - 1L] - eta[i])
+      upper[i] <- if (yk >= K_t) 1 else stats::plogis(cuts_t[yk] - eta[i])
       u[i] <- stats::runif(1L, min = lower[i], max = upper[i])
     } else if (fid == 15L) {
       if (y_i < 0 || y_i != floor(y_i)) {
@@ -449,7 +779,89 @@ residuals.gllvmTMB_multi <- function(
       }
       upper[i] <- stats::pnbinom(y_i, size = size, mu = mu)
       u[i] <- stats::runif(1L, min = lower[i], max = upper[i])
+    } else if (fid %in% c(17L, 18L, 19L)) {
+      ## Zero-inflated families (Arc D / Design 62): TRUE mixture, so the
+      ## mixture CDF has the closed form F_mix(y) = zi + (1-zi)*F_count(y)
+      ## for y >= 0 (derived in dev/gapclose/arcD/alignment-zi.md) -- the
+      ## same shape for all three count kernels, so one branch covers them.
+      if (y_i < 0 || y_i != floor(y_i)) {
+        status[i] <- "invalid_observed"
+        next
+      }
+      zi_t <- zi[tid]
+      if (!is.finite(zi_t) || zi_t < 0 || zi_t > 1) {
+        status[i] <- "missing_phi"
+        next
+      }
+      Fc <- if (fid == 17L) {
+        mu <- exp(eta[i])
+        function(k) stats::ppois(k, lambda = mu)
+      } else if (fid == 18L) {
+        phi <- phi_nbinom2[tid]
+        if (!is.finite(phi) || phi <= 0) {
+          status[i] <- "missing_phi"
+          next
+        }
+        mu <- exp(eta[i])
+        function(k) stats::pnbinom(k, size = phi, mu = mu)
+      } else {
+        Nt <- n_trials[i]
+        if (!is.finite(Nt) || Nt <= 0 || Nt != floor(Nt)) {
+          status[i] <- "missing_trials"
+          next
+        }
+        if (y_i > Nt) {
+          status[i] <- "invalid_observed"
+          next
+        }
+        p_i <- stats::plogis(eta[i])
+        function(k) stats::pbinom(k, size = Nt, prob = p_i)
+      }
+      lower[i] <- if (y_i <= 0) 0 else zi_t + (1 - zi_t) * Fc(y_i - 1)
+      upper[i] <- zi_t + (1 - zi_t) * Fc(y_i)
+      u[i] <- stats::runif(1L, min = lower[i], max = upper[i])
+    } else if (fid == 21L) {
+      ## censored_poisson (Arc E, #1244; renumbered 2026-09-03 from 20 --
+      ## ordinal_logit, PR #1250, holds 20). Uncensored rows (cens_limit == 0)
+      ## are exactly plain Poisson (fid 2's branch, restated here since the
+      ## dispatch is on cens_limit, not a separate row type). Right-censored
+      ## rows (cens_limit == C >= 1) only tell us Y >= C -- the CDF value
+      ## itself is known to lie in [F(C-1), 1), so the randomized quantile
+      ## residual draws uniformly from that interval, the same "known CDF
+      ## interval" idiom every other interval-typed branch in this function
+      ## already uses (ordinal_probit above; the zi mixture above).
+      C_i <- cens_limit[i]
+      mu <- exp(eta[i])
+      if (C_i >= 1) {
+        lower[i] <- stats::ppois(C_i - 1, lambda = mu)
+        upper[i] <- 1
+      } else {
+        if (y_i < 0 || y_i != floor(y_i)) {
+          status[i] <- "invalid_observed"
+          next
+        }
+        lower[i] <- if (y_i <= 0) 0 else stats::ppois(y_i - 1, lambda = mu)
+        upper[i] <- stats::ppois(y_i, lambda = mu)
+      }
+      u[i] <- stats::runif(1L, min = lower[i], max = upper[i])
     } else {
+      ## Deliberately NOT implemented (fall through to "unsupported_family"):
+      ##   * tweedie (fid 6): the compound Poisson-Gamma cdf has no closed
+      ##     form without a new package dependency (e.g. `tweedie::ptweedie`,
+      ##     which numerically inverts the characteristic function). Adding
+      ##     that dependency is out of scope for this slice.
+      ##   * delta_lognormal / delta_gamma (fid 12, 13): a two-part hurdle
+      ##     mixture with a point mass at y = 0 plus a continuous positive
+      ##     part. A randomized-quantile residual needs an explicit design
+      ##     decision for how the point mass is split into the [0, p0]
+      ##     interval (as glmmTMB/DHARMa do for hurdle models) -- that
+      ##     decision has not been made for this package and should not be
+      ##     invented silently here.
+      ##   * multinomial (fid 16): unordered categories. A randomized-
+      ##     quantile residual presumes an ordering of the support (as
+      ##     ordinal_probit has); an unordered baseline-category-logit
+      ##     response has none, so "the" residual is undefined without
+      ##     inventing an arbitrary category order.
       status[i] <- "unsupported_family"
       next
     }
@@ -786,7 +1198,7 @@ residuals.gllvmTMB_multi <- function(
   dat <- .gllvmTMB_rootogram_data(draws, max_count = max_count)
   if (nrow(dat) == 0L) {
     cli::cli_abort(c(
-      "{.arg type = \"rootogram\"} requires Poisson, NB1, or NB2 rows.",
+      "{.arg type = \"rootogram\"} requires Poisson, NB1, NB2, zi_poisson, or zi_nbinom2 rows.",
       "i" = "Use {.arg type = \"rq_qq\"} for exact residual Q-Q checks on other families."
     ))
   }
@@ -809,8 +1221,14 @@ residuals.gllvmTMB_multi <- function(
 }
 
 .gllvmTMB_rootogram_data <- function(draws, max_count = NULL) {
+  ## fid 17/18 (zi_poisson/zi_nbinom2) added (2026-09-02 review R1): the
+  ## rootogram is entirely draws-based (compares OBSERVED vs SIMULATED
+  ## counts, both already family-aware -- simulate() draws the mixture
+  ## correctly for these two fids), so no other change is needed here.
+  ## zi_binomial (fid 19) is deliberately excluded, matching binomial
+  ## (fid 1) staying excluded from the plain-count rootogram already.
   count_rows <- draws$row_data$family_id %in%
-    c(2L, 5L, 15L) &
+    c(2L, 5L, 15L, 17L, 18L) &
     is.finite(draws$observed) &
     draws$observed >= 0 &
     draws$observed == floor(draws$observed)
@@ -1109,22 +1527,83 @@ residuals.gllvmTMB_multi <- function(
   as.integer(out)
 }
 
+.gllvmTMB_sigma_eps_vector <- function(object) {
+  sigma_eps <- as.numeric(object$report$sigma_eps %||% numeric(0L))
+  if (!length(sigma_eps) || any(!is.finite(sigma_eps))) {
+    par <- object$opt$par %||% numeric(0L)
+    idx <- which(names(par) == "log_sigma_eps")
+    sigma_eps <- if (length(idx)) exp(unname(par[idx])) else numeric(0L)
+  }
+  if (!length(sigma_eps)) sigma_eps <- 1
+  sigma_eps[!is.finite(sigma_eps) | sigma_eps <= 0] <- 1
+  sigma_eps
+}
+
+.gllvmTMB_sigma_eps_for_family <- function(object, family_id) {
+  family_id <- as.integer(family_id)
+  sigma_eps <- .gllvmTMB_sigma_eps_vector(object)
+  fitted_families <- unique(as.integer(
+    object$tmb_data$family_id_vec %||% integer(0L)
+  ))
+  has_split <-
+    length(sigma_eps) >= 2L && all(c(0L, 3L) %in% fitted_families)
+  slot <- if (has_split && identical(family_id, 3L)) 2L else 1L
+  sigma_eps[[slot]]
+}
+
 .gllvmTMB_sigma_eps <- function(object) {
-  sigma_eps <- as.numeric(object$report$sigma_eps)
-  if (
-    is.null(sigma_eps) || length(sigma_eps) == 0L || !is.finite(sigma_eps[1])
-  ) {
-    sigma_eps <- exp(unname(object$opt$par["log_sigma_eps"]))
-  }
-  if (is.na(sigma_eps[1]) || sigma_eps[1] <= 0) {
-    sigma_eps <- 1
-  }
-  sigma_eps[1L]
+  .gllvmTMB_sigma_eps_for_family(object, 0L)
 }
 
 .gllvmTMB_clip_unit_interval <- function(u) {
   eps <- .Machine$double.eps
   pmin(pmax(u, eps), 1 - eps)
+}
+
+## eta -> probability for a binomial (fid 1) row, dispatched on link_id
+## EXACTLY as src/gllvmTMB.cpp fid == 1 does: 0 = logit, 1 = probit,
+## 2 = cloglog. The caller (the fid == 1 branch above) is responsible for
+## checking link_id %in% c(0L, 1L, 2L) BEFORE calling this and setting
+## status = "unknown_link" otherwise -- this helper assumes a valid
+## link_id and does not itself guard against NA / unrecognised values.
+.gllvmTMB_binom_prob <- function(eta, link_id) {
+  if (link_id == 0L) {
+    stats::plogis(eta)
+  } else if (link_id == 1L) {
+    stats::pnorm(eta)
+  } else {
+    -expm1(-exp(eta))
+  }
+}
+
+## Beta-binomial CDF at k = 0 .. N, given Beta-mixing shape parameters a, b
+## (mu = a / (a + b), phi = a + b). No base-R or already-imported CDF exists
+## for this distribution, so the pmf is hand-rolled from the same
+## decomposition as the engine's log-density (src/gllvmTMB.cpp fid == 8) and
+## cumulatively summed. Returns a length-(N + 1) vector; element k + 1 is P(Y <= k). `k`
+## may be passed in precomputed (the caller caches 0:N by trial count N,
+## since N is typically constant within a trait across many rows).
+##
+## The lbeta() difference is NOT used: like the engine's old nine-lgamma sum
+## it cancels at large phi (the log pmf is off by 1e-3 at phi = 1e13 and the
+## "CDF" exceeds 1 at phi = 1e300; #1364). The same rewrite as the engine's
+## gll_lgamma_shift form is used instead:
+##   log pmf(k) = lchoose(N, k) + k log(mu) + (N - k) log(1 - mu)
+##              + S_a(k) + S_b(N - k) - S_phi(N),
+##   S_x(m) = sum_{i < m} log1p(i / x),
+## which is exact for every a, b > 0 and tends to the binomial pmf as phi
+## grows.
+.gllvmTMB_betabinom_cdf <- function(N, a, b, k = 0:N) {
+  phi <- a + b
+  log_mu <- log(a) - log(phi)
+  log_1m_mu <- log(b) - log(phi)
+  i <- seq_len(N) - 1
+  S_a <- c(0, cumsum(log1p(i / a)))
+  S_b <- c(0, cumsum(log1p(i / b)))
+  S_phi <- sum(log1p(i / phi))
+  log_pmf <- lchoose(N, k) + k * log_mu + (N - k) * log_1m_mu +
+    S_a[k + 1L] + S_b[N - k + 1L] - S_phi
+  cumsum(exp(log_pmf))
 }
 
 .gllvmTMB_family_label_from_id <- function(family_id) {
@@ -1144,7 +1623,12 @@ residuals.gllvmTMB_multi <- function(
     "12" = "delta_lognormal",
     "13" = "delta_gamma",
     "14" = "ordinal_probit",
-    "15" = "nbinom1"
+    "15" = "nbinom1",
+    "17" = "zi_poisson",
+    "18" = "zi_nbinom2",
+    "19" = "zi_binomial",
+    "20" = "ordinal_logit",
+    "21" = "censored_poisson"
   )
   out <- unname(labels[as.character(family_id)])
   out[is.na(out)] <- paste0("family_id_", family_id[is.na(out)])

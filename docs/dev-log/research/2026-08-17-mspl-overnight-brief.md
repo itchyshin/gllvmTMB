@@ -4,6 +4,7 @@
 **Status:** **FINALIZED** (no longer a living pulse)
 **Tip read:** `origin/main` @ `4e3e2ad7` (#1069 B1 PARK sign; #1072 D-157 retarget)
 **This closeout:** `docs/mspl-overnight-brief-am`
+**Post-Confirm ultra-plan:** `docs/dev-log/research/2026-08-17-mspl-profile-led-ci-ultra-plan.md` (triad SIGNED; Poisson W still UNSIGNED; Arc 1A not reopened)
 
 This is **LA-MSPL**. Public `se=TRUE` / `vcov` / `confint` / NEWS
 `covered` stay withheld. No new `admitted` flip. Codex Lane B is

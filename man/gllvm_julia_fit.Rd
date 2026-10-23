@@ -2,7 +2,7 @@
 % Please edit documentation in R/julia-bridge.R
 \name{gllvm_julia_fit}
 \alias{gllvm_julia_fit}
-\title{Fit a GLLVM with the Julia engine (GLLVM.jl \code{bridge_fit}).}
+\title{Fit a GLLVM with the Julia engine (GLLVModels.jl \code{bridge_fit}).}
 \usage{
 gllvm_julia_fit(
   y,
@@ -13,6 +13,7 @@ gllvm_julia_fit(
   X_lv = NULL,
   coef_fixed = NULL,
   mask = NULL,
+  sources = NULL,
   units_are_rows = FALSE,
   ci_method = c("none", "wald", "profile", "bootstrap"),
   ci_level = 0.95,
@@ -60,6 +61,10 @@ ignored. Currently routed for one-part no-X non-Gaussian point fits, with
 masked no-X CI payloads for Poisson, Bernoulli binomial, NB2, NB1, Beta,
 and Gamma.}
 
+\item{sources}{Optional structured-source payload forwarded to the Julia
+bridge. This is used by the internal \code{engine = "julia"} routing layer;
+direct users should normally leave it as \code{NULL}.}
+
 \item{units_are_rows}{If \code{TRUE}, \code{y} is n x p and is transposed to p x n.}
 
 \item{ci_method}{Confidence-interval route for admitted no-X bridge rows:
@@ -89,11 +94,11 @@ A list of class \code{gllvmTMB_julia} with the bridge contract fields
 list also carries flat CI fields consumed by \code{confint()}.
 }
 \description{
-Fit a GLLVM with the Julia engine (GLLVM.jl \code{bridge_fit}).
+Fit a GLLVM with the Julia engine (GLLVModels.jl \code{bridge_fit}).
 }
 \examples{
 \dontrun{
-# Requires a local GLLVM.jl install (see [gllvm_julia_setup()]).
+# Requires a local GLLVModels.jl install (see [gllvm_julia_setup()]).
 # `y` is traits x units (p x n): two Gaussian traits, 40 units, K = 2.
 set.seed(1)
 y <- matrix(rnorm(2 * 40), nrow = 2)

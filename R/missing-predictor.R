@@ -92,12 +92,19 @@ impute_model <- function(formula, family = stats::gaussian()) {
 #'
 #' This is a predictor-model family tag consumed by `impute_model(family = )`,
 #' NOT a response family for [gllvmTMB()]. The predictor cumulative-logit link is DISTINCT from the
-#' [ordinal_probit()] RESPONSE family (a probit threshold model).
+#' [ordinal_probit()] RESPONSE family (a probit threshold model) AND from
+#' [ordinal_logit()] (the cumulative-**logit** RESPONSE family, fitted on
+#' the multivariate response via `gllvmTMB(family = ordinal_logit())`).
+#' `cumulative_logit()` and `ordinal_logit()` share no code path: one
+#' declares a missing covariate's marginal distribution inside `mi()`, the
+#' other is a `family = ` argument for the observed response.
 #'
 #' @return A `gllvmTMB_impute_family` object for the `family` argument of
 #'   [impute_model()].
 #' @seealso [impute_model()], [binomial()] for a binary missing predictor,
-#'   and [ordinal_probit()] for the ordinal RESPONSE family.
+#'   [ordinal_probit()] and [ordinal_logit()] for the ordinal RESPONSE
+#'   families (UNRELATED to this predictor-model family despite the
+#'   similar name).
 #' @export
 #' @examples
 #' impute_model(score ~ z, family = cumulative_logit())

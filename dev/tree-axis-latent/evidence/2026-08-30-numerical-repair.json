@@ -1,0 +1,91 @@
+{
+  "status": "numerical repair verified at fixed points; article still incomplete",
+  "outer_optimizer_attempts_entered": 14,
+  "additional_outer_attempts_this_investigation": 0,
+  "fixture_md5": "6c3bae640dd86491171cb20fbb56b0e4",
+  "evidence": {
+    "replay-joint.json": {
+      "retained": {
+        "joint_nll": -41533.7521344065,
+        "joint_normalizer_lower_bound": -45216.4694845444,
+        "violates_bound": false,
+        "random_parameters": 7900
+      },
+      "BFGS": {
+        "joint_nll": 2.96460258970288e+43,
+        "joint_normalizer_lower_bound": -186911.670735257,
+        "violates_bound": false,
+        "random_parameters": 7900
+      }
+    },
+    "replay-marginal.json": {
+      "retained": {
+        "marginal_nll": 5039.69128038,
+        "joint_nll": -41533.7521344065,
+        "max_inner_gradient": 9.54372120220981e-09,
+        "max_random": 2.94496509297284,
+        "warnings": []
+      },
+      "BFGS": {
+        "marginal_nll": -4.16349546355653e+27,
+        "joint_nll": -4.16349546355653e+27,
+        "max_inner_gradient": 1.93428131138341e+25,
+        "max_random": 91611263366565,
+        "warnings": []
+      }
+    },
+    "isolate-prior.json": {
+      "native_joint": -4.16349546355653e+27,
+      "observation_nll": 6.36041505619642e+17,
+      "other_prior_nll": 1.69294673306349e+26,
+      "native_coefficient_prior_by_subtraction": -4.33279013749892e+27,
+      "factor_based_coefficient_prior": 2.21824280092434e+26,
+      "stable_joint": 3.91118954034824e+26,
+      "conditioning_factor": 1.10180545185932e+24
+    },
+    "repair-fixed-points.json": {
+      "library": "/private/tmp/gllvm-tree-axis-latent-20260830/repaired-library/gllvmTMB",
+      "bad_joint": {
+        "native": 3.91118954034858e+26,
+        "oracle": 3.91118954034824e+26,
+        "coefficient_native": 2.21824280092468e+26,
+        "coefficient_oracle": 2.21824280092434e+26,
+        "relative_error": 8.62685449766563e-14
+      },
+      "M2": {
+        "nll": 5039.69128037995,
+        "previous_nll": 5039.69128038,
+        "difference": -5.0931703299284e-11,
+        "max_gradient": 0.00192138085639256
+      },
+      "M3": {
+        "nll": 5039.69128082233,
+        "previous_nll": 5039.69128082116,
+        "difference": 1.17142917588353e-09,
+        "max_gradient": 0.00228360404596606
+      }
+    },
+    "repair-bad-marginal.json": {
+      "marginal_nll": "NaN",
+      "error": {},
+      "warnings": [],
+      "joint_nll": 2.30910735832865e+26,
+      "max_inner_gradient": 3.77488760750144e+30
+    }
+  },
+  "production_build": {
+    "exit": 0,
+    "seconds": 80.627,
+    "compiler_warnings": 4
+  },
+  "compiled_regression": {
+    "first_exit": 1,
+    "first_seconds": 19.837,
+    "first_failure": "gradient matrix vs vector attributes only",
+    "rerun_exit": 0,
+    "rerun_seconds": 19.469,
+    "assertions_passed": 14,
+    "compiler_warnings": 3,
+    "cleanup_notice_external_pointers": 3
+  }
+}

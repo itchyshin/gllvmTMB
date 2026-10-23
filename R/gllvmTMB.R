@@ -632,39 +632,56 @@
 #'
 #' @export
 #' @examples
-#' \dontrun{
 #' set.seed(1)
-#' sim <- simulate_site_trait(n_sites = 50, n_species = 8, n_traits = 3,
-#'                            mean_species_per_site = 5)
-#' # Long format: one response value per site-species-trait row.
+#' # Simulate 60 individuals, each measured on two occasions for five traits.
+#' # All five traits load on one shared latent axis (trait_4 negatively),
+#' # and each also has its own between-individual variance (psi_B). Every
+#' # measurement carries residual noise as well (sigma2_eps).
+#' loadings <- matrix(c(0.9, 0.8, 0.7, -0.6, 0.5), ncol = 1)
+#' sim <- simulate_unit_trait(n_units = 60, n_obs_per_unit = 2, n_traits = 5,
+#'                            Lambda_B = loadings, psi_B = 0.2,
+#'                            sigma2_eps = 0.3)
+#' long <- sim$data[c("unit", "observation", "trait", "value")]
+#' names(long)[1] <- "individual"
+#'
+#' # Long format: one row per (individual, occasion, trait) value.
+#' head(long)
+#'
+#' # `0 + trait` gives each trait its own mean. latent() fits one shared
+#' # axis (d = 1) across individuals; unique = TRUE adds each trait's own
+#' # between-individual variance (Psi) on top of it.
 #' fit_long <- gllvmTMB(
-#'   value ~ 0 + trait + (0 + trait):env_1 + (0 + trait):env_2,
-#'   data   = sim$data,
-#'   family = gaussian(),
-#'   trait  = "trait",
-#'   unit   = "site_species"
+#'   value ~ 0 + trait + latent(0 + trait | individual, d = 1, unique = TRUE),
+#'   data = long, trait = "trait", unit = "individual"
 #' )
 #'
-#' # Wide format: one row per site-species, with the same three traits.
-#' # `traits()` expands `1 + env_1 + env_2` to the explicit long terms above.
-#' wide_values <- stats::reshape(
-#'   sim$data[c("site_species", "trait", "value")],
-#'   idvar = "site_species", timevar = "trait", direction = "wide"
-#' )
-#' wide <- merge(
-#'   unique(sim$data[c("site_species", "env_1", "env_2")]), wide_values,
-#'   by = "site_species", sort = FALSE
-#' )
+#' # Wide format: one row per (individual, occasion), one column per trait.
+#' wide <- stats::reshape(long, idvar = c("individual", "observation"),
+#'                        timevar = "trait", direction = "wide")
 #' names(wide) <- sub("^value[.]", "", names(wide))
-#' fit_wide <- gllvmTMB(
-#'   traits(trait_1, trait_2, trait_3) ~ 1 + env_1 + env_2,
-#'   data   = wide,
-#'   family = gaussian(),
-#'   unit   = "site_species"
-#' )
-#' summary(fit_long)
-#' summary(fit_wide)
+#' head(wide)
+#'
+#' # traits() names the response columns. On the right-hand side, `1` means
+#' # one intercept per trait and latent(1 | individual) means
+#' # latent(0 + trait | individual), so this is the same model.
+#' if (requireNamespace("tidyr", quietly = TRUE)) {
+#'   fit_wide <- gllvmTMB(
+#'     traits(trait_1, trait_2, trait_3, trait_4, trait_5) ~ 1 +
+#'       latent(1 | individual, d = 1, unique = TRUE),
+#'     data = wide, unit = "individual"
+#'   )
+#'   # Same model, same data: the two fits agree.
+#'   c(long = logLik(fit_long), wide = logLik(fit_wide))
 #' }
+#'
+#' # Trait means, between-individual correlations (trait_4 is negatively
+#' # correlated with the rest), and the share of each trait's
+#' # between-individual variance carried by the latent axis.
+#' summary(fit_long)
+#'
+#' # The fitted between-individual covariance: the shared-axis part
+#' # (Lambda Lambda') plus the trait-specific part (Psi).
+#' round(extract_Sigma(fit_long, level = "unit")$Sigma, 2)
 gllvmTMB <- function(
   formula,
   data,

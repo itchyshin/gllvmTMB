@@ -1,5 +1,11 @@
 # Development (unreleased)
 
+* `engine = "julia"` no longer returns a bridge fit that did not converge and has
+  a non-finite log-likelihood. Such a fit (for example the `logLik = -Inf` result
+  of a no-latent model) carries unestimated coefficients, so it now stops with
+  the classed error `gllvmTMB_julia_nonfinite_fit` instead of being returned
+  silently. Follow-up to #1562.
+
 * A per-trait family list keyed by the trait column
   (`attr(fams, "family_var") <- "trait"`) now works when one trait is
   `multinomial()`. The list is matched against your own trait levels before the
@@ -11,7 +17,27 @@
   `@exportS3Method stats::sigma`, matching the `stats::sigma` entries already in
   `NAMESPACE`, so `devtools::document()` no longer rewrites them. Behaviour is
   unchanged (#1558).
+* `plot_loadings_confidence_eye()` called on a fitted model without `level =`
+  no longer stops with "'arg' must be of length 1". Its default is now
+  `level = "unit"`, matching `loading_ci()` and `flag_unreliable_loadings()`
+  (#1583).
+* Help pages for `dep()`, `phylo_dep()` and `spatial_dep()` now write the
+  full-rank equivalent as `d = n_traits, unique = FALSE` instead of the invalid
+  `d = T`; `?gr` says `cov =` is used unless a top-level `phylo_vcv` is also
+  given; `?scalar` and `?phylo_scalar` say soft-deprecated rather than
+  "Canonical" (#1560).
+* `suggest_lambda_constraint(convention = "profile_retention")` no longer warns
+  "Unused optional grouping argument(s)" or prints `rr()` / `diag()` deprecated-alias
+  notes on its refits. The refits now pass `unit_obs` and `cluster` only when the
+  formula uses them and rebuild the formula through `latent()` / `indep()`. The
+  suggested matrix is unchanged. Naming the `unit_obs` column for the formula path
+  stays open (#1587).
 
+* `extract_Sigma()` no longer prints the "latent-only ... refit without
+  `unique = FALSE`" advisory for a full-rank loading block. `dep()` is carried
+  as a full-rank `rr` term with no diagonal, so the advisory fired on it even
+  though no residual Psi is missing and following its advice would change the
+  model. It now fires only for rank-deficient loadings (`d < n_traits`) (#1556).
 * Zero-truncated Poisson and NB2 likelihoods stay finite when the linear
   predictor is far below zero. The truncation term `log(1 - P(0))` was
   `logspace_sub(0, log P(0))`, whose derivatives grow like `1 / mu^k`: the
@@ -19,6 +45,12 @@
   -355, and below -745 the mean rounded to 0 and the term was `log(0)`. It is
   now computed from `log(-log P(0))`, by a series below -20 and by the old
   expression above it, so ordinary fits change only by rounding (#1483).
+* A `student()` trait whose degrees of freedom run past the Gaussian limit
+  (`report$df_student` is `Inf` once `log_df` exceeds about 709) is now
+  treated as normal in the link-scale variance summaries and the
+  distribution-argument accessor, instead of warning that the variance is
+  undefined and returning `NA`. Exact residuals and simulation already did
+  this. (#1487)
 
 * The experimental VA route now honors the package's existing `optimizer` and
   `optArgs` controls for its four primary starts. Omitted `optimizer` keeps the

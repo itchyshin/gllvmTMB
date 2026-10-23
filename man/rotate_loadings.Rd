@@ -71,24 +71,33 @@ promax, \code{T} is oblique and the columns of \eqn{\Lambda_{\text{rot}}}
 are no longer orthogonal.
 }
 \examples{
-\dontrun{
 set.seed(1)
-sim <- simulate_site_trait(
-  n_sites = 60, n_species = 12, n_traits = 4,
-  Lambda_B = matrix(c(1.0, 0.7, -0.3, 0.5,
-                      0.3, -0.5, 0.8, 0.2),
-                    nrow = 4, ncol = 2),
-  psi_B = c(0.3, 0.3, 0.3, 0.3),
-  seed = 1
-)
+# Simulate six traits, each measured twice on 100 units (e.g. sites).
+# Traits 2-3 share one latent axis, traits 4-6 share a second axis,
+# and trait_1 loads on both.
+Lambda <- cbind(c(0.7, 1.0, 0.9, 0.0, 0.0, 0.0),
+                c(0.7, 0.0, 0.0, 1.0, 0.9, 0.8))
+sim <- simulate_unit_trait(n_units = 100, n_obs_per_unit = 2,
+                           n_traits = 6, Lambda_B = Lambda,
+                           psi_B = 0.4, sigma2_eps = 0.3)
+# Two latent axes plus a trait-specific variance (unique = TRUE).
 fit <- gllvmTMB(value ~ 0 + trait +
-                        latent(0 + trait | site, d = 2),
-                data  = sim$data,
-                trait = "trait",
-                unit  = "site")
+                  latent(0 + trait | unit, d = 2, unique = TRUE),
+                data = sim$data, trait = "trait", unit = "unit")
+
+# Raw loadings: to pin down the axes, the fit fixes trait_1's loading
+# on axis 2 at zero, so the other traits are spread over both axes.
 raw <- extract_ordination(fit, "unit")
+round(raw$loadings, 2)
+
+# Varimax rotation: traits 4-6 now load on one axis and traits 2-3 on
+# the other, with trait_1 shared between them.
 rot <- rotate_loadings(fit, level = "unit", method = "varimax")
-# raw$loadings - lower-triangular (hard to read)
-# rot$Lambda  - varimax-rotated (typically simpler structure)
-}
+round(rot$Lambda, 2)
+
+# Rotation only turns the axes. The scores turn with them, so each
+# unit's latent contribution (scores times loadings) is unchanged.
+head(round(rot$scores, 2))
+all.equal(rot$scores \%*\% t(rot$Lambda),
+          raw$scores \%*\% t(raw$loadings))
 }

@@ -51,17 +51,62 @@
 #'   threshold-trait theory reference list.
 #'
 #' @examples
-#' \dontrun{
-#' fit <- gllvmTMB(
-#'   value ~ 0 + trait + phylo_indep(species, tree = tree),
-#'   data    = ordinal_dat,
-#'   trait   = "trait",
-#'   unit    = "individual",
-#'   cluster = "species",
-#'   family  = ordinal_probit()
-#' )
-#' extract_cutpoints(fit)
+#' ## Three ordinal traits scored on 5 plants at each of 30 sites: vigour
+#' ## (3 categories), leaf damage (4) and flowering (3). Each score comes
+#' ## from a hidden continuous "liability" -- the trait mean, plus a site
+#' ## effect, plus noise with standard deviation 1 -- cut at thresholds
+#' ## (stored in cuts, starting at tau_1 = 0): score 1 if the liability is
+#' ## below tau_1, score 2 if it lies between tau_1 and tau_2, and so on.
+#' set.seed(1)
+#' cuts <- list(vigour = c(0, 0.8), damage = c(0, 0.6, 1.4),
+#'              flower = c(0, 1))
+#' mu <- c(vigour = 0.3, damage = 0.2, flower = -0.2)
+#' n_site <- 30
+#' dat <- expand.grid(plant = 1:5, site = seq_len(n_site),
+#'                    trait = names(cuts))
+#' site_eff <- matrix(rnorm(n_site * 3, sd = 0.8), n_site, 3)
+#' liability <- mu[as.character(dat$trait)] +
+#'   site_eff[cbind(dat$site, as.integer(dat$trait))] + rnorm(nrow(dat))
+#' dat$value <- NA_integer_
+#' for (tr in names(cuts)) {
+#'   rows <- dat$trait == tr
+#'   dat$value[rows] <- findInterval(liability[rows], cuts[[tr]]) + 1L
 #' }
+#' dat$site <- factor(dat$site)
+#'
+#' ## Ordinal responses are coded 1, 2, ..., K. indep() gives each trait
+#' ## its own between-site variance; the 5 plants per site make it
+#' ## estimable.
+#' fit <- gllvmTMB(
+#'   value ~ 0 + trait + indep(0 + trait | site),
+#'   data   = dat,
+#'   trait  = "trait",
+#'   unit   = "site",
+#'   family = ordinal_probit()
+#' )
+#'
+#' ## The cutpoints are the thresholds on the liability (probit) scale.
+#' ## The first threshold is fixed at tau_1 = 0 to identify the model, so
+#' ## a trait with K categories has K - 2 estimated cutpoints: one each
+#' ## for vigour and flowering, two for damage. tau_se is a large-sample
+#' ## (Wald) standard error.
+#' cp <- extract_cutpoints(fit)
+#' ## Add the thresholds used to simulate the data, for comparison
+#' cp$tau_true <- c(cuts$vigour[2], cuts$damage[2:3], cuts$flower[2])
+#' cp
+#'
+#' ## Standard errors are optional. A fit made with se = FALSE skips them
+#' ## and gives the same cutpoints, with tau_se = NA. extract_cutpoints()
+#' ## then prints a note saying so; quiet = TRUE turns the note off.
+#' fit_no_se <- gllvmTMB(
+#'   value ~ 0 + trait + indep(0 + trait | site),
+#'   data    = dat,
+#'   trait   = "trait",
+#'   unit    = "site",
+#'   family  = ordinal_probit(),
+#'   control = gllvmTMBcontrol(se = FALSE)
+#' )
+#' extract_cutpoints(fit_no_se, quiet = TRUE)
 #'
 #' @param quiet Suppress the note emitted when `tau_se` cannot be filled in
 #'   because the fit has no `sd_report`. Internal callers that display only the

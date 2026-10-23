@@ -13,6 +13,13 @@
   the classed error `gllvmTMB_julia_nonfinite_fit` instead of being returned
   silently. Follow-up to #1562.
 
+* A per-trait family list keyed by the trait column
+  (`attr(fams, "family_var") <- "trait"`) now works when one trait is
+  `multinomial()`. The list is matched against your own trait levels before the
+  categorical response is expanded into contrast pseudo-traits, and the
+  multinomial entry is carried to each of them; a list of the wrong length
+  reports the count of your traits rather than the expanded count (#1575).
+
 * The `sigma()` refusal methods are now registered from roxygen with
   `@exportS3Method stats::sigma`, matching the `stats::sigma` entries already in
   `NAMESPACE`, so `devtools::document()` no longer rewrites them. Behaviour is
@@ -21,6 +28,12 @@
   tier name (`"unit"`, `"unit_obs"`) in the `tier` column instead of the
   deprecated internal code (`"B"`, `"W"`), and `extract_cutpoints()` no longer
   copies sdreport row names into its result (#1577).
+* `simulate_site_trait()` builds its long-format data frame from preallocated
+  columns instead of one `data.frame()` per row joined by `rbind()`, so 1.5k
+  rows take a few milliseconds rather than about 0.3 s. Values, factor
+  levels and the random-number draw order are unchanged; the old `rbind()`
+  could leave scrambled character row names on larger outputs, which are now
+  plain `1..n` (#1581).
 * Help pages for `gllvmTMB()`, `rotate_loadings()`, `compare_loadings()` and
   `ridge_path()` now match the code: every native fit has class
   `c("gllvmTMB_multi", "gllvmTMB")` (VA fits `c("gllvmTMB_va", "gllvmTMB")`);
@@ -38,6 +51,10 @@
   `d = T`; `?gr` says `cov =` is used unless a top-level `phylo_vcv` is also
   given; `?scalar` and `?phylo_scalar` say soft-deprecated rather than
   "Canonical" (#1560).
+* `compare_dep_vs_two_psi()` and `compare_indep_vs_two_psi()` no longer warn
+  "Unused optional grouping argument(s): unit_obs" on every call. The refit
+  now passes `unit_obs` only when the generated alternative formula uses that
+  column (#1568).
 * `suggest_lambda_constraint(convention = "profile_retention")` no longer warns
   "Unused optional grouping argument(s)" or prints `rr()` / `diag()` deprecated-alias
   notes on its refits. The refits now pass `unit_obs` and `cluster` only when the
@@ -50,6 +67,11 @@
   as a full-rank `rr` term with no diagonal, so the advisory fired on it even
   though no residual Psi is missing and following its advice would change the
   model. It now fires only for rank-deficient loadings (`d < n_traits`) (#1556).
+* `slope_sd_ci()`: the print method no longer calls a loadings-only total
+  "UNIQUE (Psi) ... only" (it decides from the `component` column, not an
+  attribute), and the refusal for a fit with no random slopes recommends a
+  `latent()` slope term instead of `indep()`, which refuses slopes (#1589).
+  The `scale = "variance"` behaviour of `total_sd` is unchanged here.
 * Zero-truncated Poisson and NB2 likelihoods stay finite when the linear
   predictor is far below zero. The truncation term `log(1 - P(0))` was
   `logspace_sub(0, log P(0))`, whose derivatives grow like `1 / mu^k`: the

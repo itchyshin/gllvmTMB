@@ -39,11 +39,7 @@ pages_1346c <- c(
 # warning text: the warning must still occur and must be the only one. When
 # the bug is fixed the pin fails on purpose -- then delete the entry here and
 # the note about the warning in that page's example.
-known_warnings_1346c <- list(
-  # #1568: the internal refit passes an unused unit_obs argument.
-  compare_dep_vs_two_psi = "Unused optional grouping argument",
-  compare_indep_vs_two_psi = "Unused optional grouping argument"
-)
+known_warnings_1346c <- list()
 
 rd_page_1346c <- function(page) {
   man_dir <- testthat::test_path("..", "..", "man")

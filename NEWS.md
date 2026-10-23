@@ -1,5 +1,13 @@
 # Development (unreleased)
 
+* Help pages for the extractors now match behaviour: `?extract_Sigma_table`
+  documents `validation_row`, the bootstrap intervals and that `entries` is
+  ignored for `part = "unique"`; `?extract_Sigma` names kernel tiers as valid
+  `level` values; `?extract_correlations` says point estimates only by default;
+  `?extract_latent_scores` drops the `gllvmTMB_julia` claim and the literal
+  TeX; `?extract_ordination` lists `row_id`, `row_index` and `temporal_sign`
+  (#1579).
+
 * Internal cross-validation now scores held-out binomial cells on the log
   scale from the linear predictor and link (logit, probit, cloglog). The score
   was recomputed from the response-scale probability, which rounds to exactly 1

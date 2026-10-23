@@ -210,36 +210,67 @@ as final.
 }
 
 \examples{
-\dontrun{
+## Simulate 80 units (for example, individual animals), each measured
+## three times on four traits. Between units, the traits share one latent
+## factor plus trait-specific variation, so they are correlated.
+## Lambda holds each trait's loading on the shared factor; psi holds each
+## trait's own between-unit variance.
 set.seed(1)
-s <- simulate_site_trait(
-  n_sites = 80, n_species = 6, n_traits = 4,
-  mean_species_per_site = 4,
-  Lambda_B = matrix(c(0.9, 0.4, -0.3, 0.5), 4, 1),
-  psi_B = c(0.4, 0.3, 0.5, 0.2)
+Lambda <- matrix(c(0.9, 0.4, -0.3, 0.5), ncol = 1)
+psi <- c(0.4, 0.3, 0.5, 0.2)
+sim <- simulate_unit_trait(
+  n_units = 80, n_obs_per_unit = 3, n_traits = 4,
+  Lambda_B = Lambda, psi_B = psi
 )
+## One latent factor across units plus a per-trait variance (Psi).
 fit <- gllvmTMB(
-  value ~ 0 + trait + latent(0 + trait | site, d = 1),
-  data  = s$data,
-  trait = "trait",
-  unit  = "site"
+  value ~ 0 + trait + latent(0 + trait | unit, d = 1, unique = TRUE),
+  data = sim$data, trait = "trait", unit = "unit"
 )
-## Default: point correlations only.
+
+## Default: point estimates of the between-unit correlations, one row per
+## pair of traits ("B" in the tier column means the unit level).
 cors <- extract_correlations(fit, tier = "unit")
-## A symmetric heatmap from the unique-pair table.
-plot_correlations(cors, style = "heatmap")
-## Full table using the same correlation column and interval schema.
+cors
+## The correlations used to simulate the data; the estimates above differ
+## from them by sampling error.
+round(cov2cor(tcrossprod(Lambda) + diag(psi)), 2)
+
+## A symmetric heatmap drawn from the pair table (needs ggplot2).
+if (requireNamespace("ggplot2", quietly = TRUE)) {
+  plot_correlations(cors, style = "heatmap")
+}
+
+## The same estimates as a full table (both directions plus the
+## diagonal: 4 x 4 = 16 rows), as a square matrix, or as a table of
+## matrix entries.
 full <- extract_correlations(fit, tier = "unit", entries = "all")
-## Full square matrix, or all cells with matrix-entry metadata.
+nrow(full)
 R <- extract_Sigma(fit, level = "unit")$R
+round(R, 2)
 full_sigma <- extract_Sigma_table(fit, level = "unit",
-                            measure = "correlation", entries = "all")
-## Opt-in Fisher-z sensitivity bounds with an explicitly justified n_eff.
-cors2 <- extract_correlations(fit, tier = "unit", method = "fisher-z",
+                                  measure = "correlation", entries = "all")
+
+## Fisher-z bounds are opt-in and depend on an effective sample size, n_eff.
+## By default it is the number of units (80 here). We pass a more
+## cautious 60 as an illustration, because each unit is seen only through
+## three noisy measurements; in your own analysis, choose n_eff from your
+## design and report why. These are rough bounds, not intervals
+## calibrated to give 95\% coverage in a mixed model.
+cors_z <- extract_correlations(fit, tier = "unit", method = "fisher-z",
                                n_eff = 60L)
-## Bootstrap (B = 200).
+cors_z
+
+## A parametric bootstrap simulates new data from the fitted model and
+## refits it each time. nsim = 40 keeps this example short, so expect a
+## warning (it calls nsim `n_boot`) that so few resamples give noisy
+## bounds; it stays quiet only from 999 resamples, and real analyses need
+## at least several hundred. Bootstrap bounds are not certified to reach
+## 95\% coverage either.
+\donttest{
 cors_b <- extract_correlations(fit, tier = "unit", method = "bootstrap",
-                               nsim = 200, seed = 42)
+                               nsim = 40, seed = 42)
+cors_b
 }
 }
 \seealso{

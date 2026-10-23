@@ -43,6 +43,10 @@
   `d = T`; `?gr` says `cov =` is used unless a top-level `phylo_vcv` is also
   given; `?scalar` and `?phylo_scalar` say soft-deprecated rather than
   "Canonical" (#1560).
+* `compare_dep_vs_two_psi()` and `compare_indep_vs_two_psi()` no longer warn
+  "Unused optional grouping argument(s): unit_obs" on every call. The refit
+  now passes `unit_obs` only when the generated alternative formula uses that
+  column (#1568).
 * `suggest_lambda_constraint(convention = "profile_retention")` no longer warns
   "Unused optional grouping argument(s)" or prints `rr()` / `diag()` deprecated-alias
   notes on its refits. The refits now pass `unit_obs` and `cluster` only when the

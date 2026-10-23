@@ -1,5 +1,10 @@
 # Development (unreleased)
 
+* A missing or non-finite value in a random-slope covariate (for example `x` in
+  `latent(1 + x | unit)`, `phylo_slope(x | species)`, `phylo_dep()` or the
+  spatial slope terms) now stops the fit with a message naming the covariate,
+  instead of the bare "All 1 restarts failed." (#1394, #1375).
+
 * Internal cross-validation now scores held-out binomial cells on the log
   scale from the linear predictor and link (logit, probit, cloglog). The score
   was recomputed from the response-scale probability, which rounds to exactly 1

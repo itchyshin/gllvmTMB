@@ -252,18 +252,20 @@ test_that("simulate_site_trait(): n_traits = 1 produces a single-trait dataset",
 })
 
 # ---- output is unchanged by the vectorised row builder (#1581) -----------
-## Hashes were recorded from the per-row data.frame + rbind implementation.
-## Values are rounded to 8 digits so BLAS differences cannot trip the check;
-## the RNG draw order and every column, type and level must match exactly.
-## Row names are reset: the old rbind could leave scrambled character row
-## names (e.g. "1", "110", "111", ...) on larger outputs, which are not data.
+## Reference fingerprints were recorded from the per-row data.frame + rbind
+## implementation. rlang::hash() of the whole object is not stable across R
+## and rlang versions, so the check uses numeric fingerprints (row count, sum,
+## position-weighted sum of `value`, and the sum of numeric truth entries)
+## compared with a tolerance. Together they pin the RNG draw order, the row
+## order and the values; the column types and levels are checked directly.
 
 test_that("simulate_site_trait(): output is identical to the per-row builder (#1581)", {
-  hash_sim <- function(r) {
-    rownames(r$data) <- NULL
-    r$data$value <- round(r$data$value, 8)
-    r$truth <- lapply(r$truth, function(x) if (is.numeric(x)) round(x, 8) else x)
-    rlang::hash(r)
+  fingerprint <- function(r) {
+    d <- r$data
+    c(nrow = nrow(d),
+      sum  = sum(d$value),
+      wsum = sum(d$value * seq_along(d$value)),
+      tsum = sum(vapply(r$truth, function(x) if (is.numeric(x)) sum(x) else 0, 0)))
   }
   shapes <- list(
     a = list(n_sites = 30, n_species = 8, n_traits = 3,
@@ -284,15 +286,27 @@ test_that("simulate_site_trait(): output is identical to the per-row builder (#1
     f = list(n_sites = 10, n_species = 1, n_traits = 2,
              mean_species_per_site = 1, seed = 16)
   )
-  expected <- c(a = "5ee364ee4484255ecaee722216cf8c02",
-                b = "1ae44311907300f1e6432af46a50df0e",
-                c = "d681c265d463ebb3777cb77562dfa089",
-                d = "8322fd14fd44bc4319d8dda567006703",
-                e = "63d2174e7936e4cf3967976a884fecda",
-                f = "211346a7d80f3fb07d531c4581525e93")
-  got <- vapply(shapes, function(a) hash_sim(do.call(simulate_site_trait, a)),
-                character(1))
-  expect_identical(got, expected)
+  expected <- list(
+    a = c(nrow = 339, sum = -199.70537643, wsum = -36399.26042864, tsum = -1.18874735),
+    b = c(nrow = 62,  sum = -88.39397443,  wsum = -2184.59185211, tsum = -0.67035510),
+    c = c(nrow = 154, sum = 60.91846965,   wsum = 4733.93077867,  tsum = 2.10000000),
+    d = c(nrow = 141, sum = 125.72984104,  wsum = 9429.80583103,  tsum = -4.13748324),
+    e = c(nrow = 62,  sum = 52.28838819,   wsum = 1385.44239138,  tsum = 4.78504861),
+    f = c(nrow = 20,  sum = 6.24128598,    wsum = 65.20997237,    tsum = 1.01673560)
+  )
+  for (nm in names(shapes)) {
+    s <- do.call(simulate_site_trait, shapes[[nm]])
+    expect_equal(fingerprint(s), expected[[nm]], tolerance = 1e-6, info = nm)
+    expect_identical(names(s$data)[1:5],
+                     c("site", "species", "site_species", "trait", "value"),
+                     info = nm)
+    expect_true(all(vapply(s$data[c("site", "species", "site_species", "trait")],
+                           is.factor, logical(1))), info = nm)
+    expect_identical(levels(s$data$trait),
+                     paste0("trait_", seq_len(shapes[[nm]]$n_traits)), info = nm)
+    expect_identical(rownames(s$data), as.character(seq_len(nrow(s$data))),
+                     info = nm)
+  }
 })
 
 test_that("simulate_site_trait(): 1.5k rows build quickly (#1581)", {

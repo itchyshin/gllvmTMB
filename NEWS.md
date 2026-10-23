@@ -1,5 +1,11 @@
 # Development (unreleased)
 
+* Internal cross-validation now scores held-out binomial cells on the log
+  scale from the linear predictor and link (logit, probit, cloglog). The score
+  was recomputed from the response-scale probability, which rounds to exactly 1
+  at probit `eta` of about 8.3 or logit `eta` of about 37, so a held-out miss
+  scored `-Inf` while the fitted kernel stayed finite. Ordinary cells change
+  only by rounding (#1489).
 * `gllvmTMB_diagnose()` now reports `Sigma_B`, `Sigma_W` and the trait-pair
   correlations on the same scale as its communalities and the
   `extract_Sigma()` defaults, with the per-trait link residual included on
@@ -19,6 +25,10 @@
   `@exportS3Method stats::sigma`, matching the `stats::sigma` entries already in
   `NAMESPACE`, so `devtools::document()` no longer rewrites them. Behaviour is
   unchanged (#1558).
+* `extract_communality()` and `extract_correlations()` now report the canonical
+  tier name (`"unit"`, `"unit_obs"`) in the `tier` column instead of the
+  deprecated internal code (`"B"`, `"W"`), and `extract_cutpoints()` no longer
+  copies sdreport row names into its result (#1577).
 * `plot_loadings_confidence_eye()` called on a fitted model without `level =`
   no longer stops with "'arg' must be of length 1". Its default is now
   `level = "unit"`, matching `loading_ci()` and `flag_unreliable_loadings()`

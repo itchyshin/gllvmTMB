@@ -596,6 +596,25 @@ test_that("plot_loadings_confidence_eye() returns a ggplot", {
   expect_s3_class(g, "ggplot")
 })
 
+test_that("flag_unreliable_loadings() and plot_loadings_confidence_eye() default to level = 'unit' (#1583)", {
+  skip_if_not_installed("TMB")
+  skip_if_not_installed("ggplot2")
+  set.seed(1)
+  sim <- simulate_unit_trait(n_units = 60, n_obs_per_unit = 2, n_traits = 4,
+                             Lambda_B = matrix(c(0.9, 0.7, 0.5, 0)),
+                             sigma2_eps = 0.3)
+  fit <- suppressMessages(suppressWarnings(gllvmTMB(
+    value ~ 0 + trait + latent(0 + trait | unit, d = 1, unique = FALSE),
+    data = sim$data, trait = "trait", unit = "unit",
+    lambda_constraint = list(unit = matrix(c(NA, NA, NA, 0)))
+  )))
+  fl <- flag_unreliable_loadings(fit)
+  expect_equal(fl$unreliable,
+               flag_unreliable_loadings(fit, level = "unit")$unreliable)
+  g <- plot_loadings_confidence_eye(fit)
+  expect_s3_class(g, "ggplot")
+})
+
 test_that("plot_loadings_confidence_eye() also accepts a data frame", {
   skip_if_not_heavy()
   skip_if_not_installed("TMB")

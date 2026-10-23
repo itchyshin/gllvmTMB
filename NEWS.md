@@ -12,6 +12,11 @@
   TeX; `?extract_ordination` lists `row_id`, `row_index` and `temporal_sign`
   (#1579).
 
+* `predict()` now warns when an argument is passed in `...` and ignored, and names
+  the right spelling for the near misses `re.form` (use `re_form`) and `se_fit`
+  (use `se.fit`); before, `re.form = NA` silently returned the conditional
+  predictor. Estimates are unchanged (#1414).
+
 * Internal cross-validation now scores held-out binomial cells on the log
   scale from the linear predictor and link (logit, probit, cloglog). The score
   was recomputed from the response-scale probability, which rounds to exactly 1

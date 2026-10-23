@@ -343,8 +343,10 @@ sigma_rows_B
 `part = "total"` is the default and is what you almost always want for
 reporting. `"shared"` is useful if you specifically want the latent-implied
 component (e.g. for ordination interpretation or communality). `"unique"`
-returns the diagonal of $\boldsymbol\Psi$ in its `s` component, as a named
-numeric vector (`part = "psi"` is an alias for the same thing).
+returns the diagonal of $\boldsymbol\Psi$ as table rows (`matrix = "Psi"`,
+`component = "unique"`, one row per trait); it has no `s` component and does
+not accept `part = "psi"`. For the raw named vector, use
+`extract_Sigma(fit, part = "unique")$s` (alias `part = "psi"`), shown below.
 
 The same table helper exposes the three decomposition parts without
 hand-indexing matrices:

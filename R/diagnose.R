@@ -2741,5 +2741,8 @@ gllvmTMB_diagnose <- function(
       ">" = "Refit with {.code engine = \"tmb\"} to use it."
     ), class = "gllvmTMB_julia_gate", call = call)
   }
-  cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.", call = call)
+  cli::cli_abort(c(
+    "Provide a fit returned by {.fn gllvmTMB}.",
+    ">" = "Fit the model first, e.g. {.code fit <- gllvmTMB(...)}, then pass {.code fit}."
+  ), call = call)
 }

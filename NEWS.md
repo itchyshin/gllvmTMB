@@ -1,5 +1,7 @@
 # Development (unreleased)
 
+* `sanity_multi()` no longer stops with "missing value where TRUE/FALSE needed" when the gradient is non-finite or cannot be computed. It reports the gradient row as FAIL, and `converged` is FALSE whenever any gradient entry is non-finite. `fit_health` still takes the largest finite gradient entry, so the two can differ when only some entries are non-finite (#1352).
+
 * Internal cross-validation now scores held-out binomial cells on the log
   scale from the linear predictor and link (logit, probit, cloglog). The score
   was recomputed from the response-scale probability, which rounds to exactly 1

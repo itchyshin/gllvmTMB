@@ -1,5 +1,9 @@
 # Development (unreleased)
 
+* A missing or non-finite value in a random-slope covariate (for example `x` in
+  `latent(1 + x | unit)`, `phylo_slope(x | species)`, `phylo_dep()` or the
+  spatial slope terms) now stops the fit with a message naming the covariate,
+  instead of the bare "All 1 restarts failed." (#1394, #1375).
 * Help pages for the extractors now match behaviour: `?extract_Sigma_table`
   documents `validation_row`, the bootstrap intervals and that `entries` is
   ignored for `part = "unique"`; `?extract_Sigma` names kernel tiers as valid

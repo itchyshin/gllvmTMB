@@ -2685,7 +2685,7 @@ sanity_multi <- function(object, gradient_thresh = 1e-2, se_thresh = 100) {
     b_lbl <- if (!is.null(object$unit_col)) object$unit_col else "unit"
     cat(sprintf(
       "%-44s %s (min |Lambda_B diag| = %.3g)\n",
-      sprintf("latent(%s, d=B) diag loadings non-zero:", b_lbl),
+      sprintf("latent(%s, d=%d) diag loadings non-zero:", b_lbl, object$d_B),
       if (flags$rr_B_min_loading > 1e-3) "PASS" else "WARN",
       flags$rr_B_min_loading
     ))
@@ -2704,7 +2704,7 @@ sanity_multi <- function(object, gradient_thresh = 1e-2, se_thresh = 100) {
     }
     cat(sprintf(
       "%-44s %s (min |Lambda_W diag| = %.3g)\n",
-      sprintf("latent(%s, d=W) diag loadings non-zero:", w_lbl),
+      sprintf("latent(%s, d=%d) diag loadings non-zero:", w_lbl, object$d_W),
       if (flags$rr_W_min_loading > 1e-3) "PASS" else "WARN",
       flags$rr_W_min_loading
     ))

@@ -1,5 +1,7 @@
 # Development (unreleased)
 
+* `mi()` with a discrete predictor no longer returns `NA` conditional probabilities for the missing units when the model also has a random effect such as `latent()`; if the report cannot be evaluated, a warning is raised (#1368).
+
 * Internal cross-validation now scores held-out binomial cells on the log
   scale from the linear predictor and link (logit, probit, cloglog). The score
   was recomputed from the response-scale probability, which rounds to exactly 1

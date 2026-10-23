@@ -889,9 +889,12 @@ extract_correlations <- function(
     out$interval_status <- .correlation_interval_status(out_method_label)
   }
   rownames(out) <- NULL
-  .reportable_table(.correlation_expand_entries(
-    out, entries, trait_names, present_tiers
-  ))
+  out <- .correlation_expand_entries(out, entries, trait_names, present_tiers)
+  ## Report the canonical user-facing tier name (#1577); the internal code
+  ## was needed only for the ordering above.
+  out$tier <- vapply(out$tier, .canonical_level_name, character(1L),
+                     USE.NAMES = FALSE)
+  .reportable_table(out)
 }
 
 .cross_ordinal_partner_traits <- function(fit) {

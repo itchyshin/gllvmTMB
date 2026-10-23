@@ -2943,6 +2943,20 @@ sanity_multi <- function(object, gradient_thresh = 1e-2, se_thresh = 100) {
 }
 
 
+## #1406: internal sentinels that must never reach a user-facing data frame.
+## `gllvmTMB()` fills the species/cluster column with the constant "placeholder"
+## when the user gave no such grouping, and a wide mixed-family `traits()` fit
+## gets an auto-generated family label `.family_wide_` (dot-prefixed further if
+## that name is already taken). Both helpers match only these sentinels.
+.gllvmTMB_is_placeholder_col <- function(x) {
+  !is.null(x) && length(x) > 0L && all(as.character(x) == "placeholder")
+}
+
+.gllvmTMB_is_auto_family_var <- function(x) {
+  is.character(x) && length(x) == 1L && !is.na(x) &&
+    grepl("^[.]*[.]family_wide_$", x)
+}
+
 #' Predict from a fitted gllvmTMB model
 #'
 #' Returns the linear predictor or inverse-link response at each observation
@@ -3088,6 +3102,10 @@ predict.gllvmTMB_multi <- function(
         stringsAsFactors = FALSE
       )
       names(out)[1:3] <- c(unit_lbl, species_lbl, trait_lbl)
+      ## #1406: drop the internal "placeholder" species column.
+      if (.gllvmTMB_is_placeholder_col(out[[2L]])) {
+        out <- out[, -2L, drop = FALSE]
+      }
     }
     ## Carry the arm/source label through (#1133 item 3). On a mixed-family
     ## fit -- an isdm_sources() fit above all -- `est` mixes scales: Poisson
@@ -3098,7 +3116,9 @@ predict.gllvmTMB_multi <- function(
     ## `fitted()`, which wraps it -- was the one missing the label.
     ## Single-family fits carry no `family_var` column and are unchanged.
     fam_var <- attr(object$family_input, "family_var") %||% "family"
-    if (fam_var %in% names(object$data) && !fam_var %in% names(out)) {
+    ## #1406: but not the auto-generated `.family_wide_` label.
+    if (fam_var %in% names(object$data) && !fam_var %in% names(out) &&
+        !.gllvmTMB_is_auto_family_var(fam_var)) {
       out[[fam_var]] <- object$data[[fam_var]]
       out <- out[, c(setdiff(names(out), "est"), "est"), drop = FALSE]
     }
@@ -4746,8 +4766,7 @@ predict_missing <- function(
   cluster_lbl <- object$cluster_col %||% object$species_col
   cluster_is_placeholder <- !is.null(cluster_lbl) &&
     cluster_lbl %in% names(object$data) &&
-    length(object$data[[cluster_lbl]]) > 0L &&
-    all(as.character(object$data[[cluster_lbl]]) == "placeholder")
+    .gllvmTMB_is_placeholder_col(object$data[[cluster_lbl]])
 
   base <- data.frame(
     original_row = original_row,

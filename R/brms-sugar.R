@@ -2670,6 +2670,23 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL, rho = 1) {
   ))
 }
 
+## Name the arguments of a sugar call `e` against its wrapper's formals
+## (match.call-style), so positional and named spellings read the same.
+## NULL when `e` has no symbol head, no wrapper, or does not match.
+.match_wrapper_args <- function(e) {
+  if (!is.call(e) || !is.name(e[[1L]])) {
+    return(NULL)
+  }
+  definition <- get0(as.character(e[[1L]]), mode = "function")
+  if (is.null(definition)) {
+    return(NULL)
+  }
+  tryCatch(
+    match.call(definition, e, expand.dots = FALSE),
+    error = function(err) NULL
+  )
+}
+
 ## #1163: at the default rho = 1, the RHS of `|` in a spatial_*()
 ## keyword is a placeholder (canonically spelled `coords`). The field reads
 ## locations from `mesh =` or `coords =`; the token does not select a column.
@@ -2698,9 +2715,13 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL, rho = 1) {
   ) {
     return(invisible(NULL))
   }
-  call_names <- names(e)
-  if (!is.null(call_names) && "rho" %in% call_names) {
-    rho_arg <- e[[which(call_names == "rho")[1L]]]
+  ## `rho` is read by name or by position (matched against the wrapper
+  ## formals). Only a literal numeric 1 keeps the notice: a symbol such as
+  ## `rho = r` cannot be evaluated here (no formula environment), so it is
+  ## treated as "not 1" and stays silent. Known limitation (#1493).
+  matched <- .match_wrapper_args(e)
+  if (!is.null(matched) && "rho" %in% names(matched)) {
+    rho_arg <- matched[["rho"]]
     if (!(is.numeric(rho_arg) && length(rho_arg) == 1L && isTRUE(rho_arg == 1))) {
       return(invisible(NULL))
     }
@@ -2911,7 +2932,17 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
   ## keywords must survive the rewrite to the canonical engine kinds
   ## (phylo_rr / spde / etc.). Helper extracts named args matching `keep`
   ## from the original call so the rewritten call carries them through.
-  .pass_through_extras <- function(e, keep) {
+  ## `positional = TRUE` (spatial keywords) first names positional arguments
+  ## against the wrapper's formals, so `spatial_dep(f, NULL, mesh, 0.5)`
+  ## carries `coords` and `mesh` through exactly like the named spelling (#1493).
+  .pass_through_extras <- function(e, keep, positional = FALSE) {
+    if (positional) {
+      matched <- .match_wrapper_args(e)
+      if (!is.null(matched)) {
+        args <- as.list(matched)[-1L]
+        return(args[names(args) %in% keep])
+      }
+    }
     args <- as.list(e)[-c(1L, 2L)]
     nms <- names(args)
     if (is.null(nms) || length(args) == 0L) {
@@ -4221,7 +4252,7 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
               c("wide_intercept_slope", "long_intercept_slope")
           ) {
             .gllvmTMB_warn_unique_family_deprecated(fn)
-            extras <- .pass_through_extras(e, c("coords", "mesh"))
+            extras <- .pass_through_extras(e, c("coords", "mesh"), positional = TRUE)
             new_call <- as.call(c(
               list(as.name("spde"), bar),
               list(
@@ -4677,7 +4708,7 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
       if (fn == "spatial_scalar") {
         .gllvmTMB_warn_scalar_family_deprecated(fn)
         .warn_spatial_grouping_token(fn, e)
-        extras <- .pass_through_extras(e, c("coords", "mesh"))
+        extras <- .pass_through_extras(e, c("coords", "mesh"), positional = TRUE)
         new_call <- as.call(c(
           list(as.name("spde"), e[[2L]]),
           list(.spatial_scalar = TRUE),
@@ -4705,7 +4736,7 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
             ">" = "Use {.code spatial_latent(..., unique = TRUE)} for the total spatial covariance {.code Lambda Lambda^T + Psi}, or omit it for the low-rank-only path."
           ))
         }
-        extras <- .pass_through_extras(e, c("coords", "mesh"))
+        extras <- .pass_through_extras(e, c("coords", "mesh"), positional = TRUE)
         ## Design 64 §3: augmented spatial_latent(1 + x | coords, d) random
         ## regression. `spatial_latent` normally renames to `spde` reading ONLY
         ## the coords RHS -- so an augmented intercept+slope bar would have its
@@ -4947,7 +4978,7 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
       ## over-parameterisation guard.
       if (fn == "spatial_indep") {
         .warn_spatial_grouping_token(fn, e)
-        extras <- .pass_through_extras(e, c("coords", "mesh"))
+        extras <- .pass_through_extras(e, c("coords", "mesh"), positional = TRUE)
         ## `common = TRUE` (Design 79 scalar-collapse): tie the T per-trait
         ## spatial-field variances to ONE shared variance -- byte-identical to the
         ## (soft-deprecated) `spatial_scalar()` (`spde(form, .spatial_scalar =
@@ -5158,7 +5189,7 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
             lhs_form$lhs_form %in%
               c("wide_intercept_slope", "long_intercept_slope")
           ) {
-            extras <- .pass_through_extras(e, c("coords", "mesh"))
+            extras <- .pass_through_extras(e, c("coords", "mesh"), positional = TRUE)
             new_call <- as.call(c(
               list(as.name("spde"), bar),
               list(
@@ -5175,7 +5206,7 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
         ## or richer per-trait slope forms). Intercept-only `0 + trait | coords`
         ## passes through to the spatial_latent(d = T) engine path below.
         .assert_no_augmented_lhs(fn, e, trait_col)
-        extras <- .pass_through_extras(e, c("coords", "mesh"))
+        extras <- .pass_through_extras(e, c("coords", "mesh"), positional = TRUE)
         new_call <- as.call(c(
           list(as.name("spde"), e[[2L]]),
           list(
@@ -5381,8 +5412,10 @@ desugar_brms_sugar <- function(
         bar <- call("|", call("+", 0, as.name(obs_col)), as.name(grp_V_col))
         return(call("equalto", bar, as.name("V")))
       }
+      ## `e[i] <- list(...)` so a literal NULL argument (e.g. `coords = NULL`)
+      ## stays in place instead of deleting the element (#1493).
       for (i in seq_along(e)[-1L]) {
-        e[[i]] <- walk(e[[i]])
+        e[i] <- list(walk(e[[i]]))
       }
     }
     e

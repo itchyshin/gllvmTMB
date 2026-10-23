@@ -1,5 +1,14 @@
 # Development (unreleased)
 
+* A positional `rho`, `coords` or `mesh` in a `spatial_*()` term (for example
+  `spatial_dep(0 + trait | group, NULL, mesh, 0.5)`) is now read like the named
+  spelling when the formula is desugared: `coords` and `mesh` are carried
+  through, a positional `rho` other than 1 no longer triggers the "grouping
+  token is ignored" notice, and a named `coords = NULL` no longer fails with
+  "subscript out of bounds". A symbol `rho` (`rho = r`) is still treated as
+  "not 1" there, because the desugar step has no formula environment to
+  evaluate it in (#1493).
+
 * Internal cross-validation now scores held-out binomial cells on the log
   scale from the linear predictor and link (logit, probit, cloglog). The score
   was recomputed from the response-scale probability, which rounds to exactly 1

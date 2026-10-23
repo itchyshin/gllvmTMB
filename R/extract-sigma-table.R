@@ -292,17 +292,60 @@
 #'
 #' @export
 #' @examples
-#' \dontrun{
+#' ## Simulate 4 traits recorded on a few species at each of 50 sites, with
+#' ## correlated trait variation at two tiers: between sites (the "unit"
+#' ## tier) and between species records within a site (the "unit_obs"
+#' ## tier). A zero beta matrix turns off the simulator's environmental
+#' ## effects, which this model does not include.
+#' set.seed(3)
+#' sim <- simulate_site_trait(
+#'   n_sites = 50, n_species = 10, n_traits = 4,
+#'   mean_species_per_site = 3,
+#'   beta = matrix(0, 4, 2),
+#'   Lambda_B = matrix(c(0.8, 0.6, -0.5, 0.4), 4, 1),
+#'   psi_B = rep(0.3, 4),
+#'   Lambda_W = matrix(c(0.5, -0.4, 0.4, 0.3), 4, 1),
+#'   sigma2_eps = 0.3
+#' )
+#' ## One latent factor plus trait-specific variances at each tier. Each
+#' ## species record has one value per trait, so the within-site
+#' ## trait-specific variances also absorb the measurement noise
+#' ## (gllvmTMB prints a note saying so).
 #' fit <- gllvmTMB(
 #'   value ~ 0 + trait +
-#'           latent(0 + trait | unit, d = 2),
-#'   data  = df,
-#'   trait = "trait",
-#'   unit  = "unit"
+#'     latent(0 + trait | site, d = 1, unique = TRUE) +
+#'     latent(0 + trait | site_species, d = 1, unique = TRUE),
+#'   data     = sim$data,
+#'   trait    = "trait",
+#'   unit     = "site",
+#'   unit_obs = "site_species"
 #' )
+#' ## Between-site covariance: one row per unique entry (diagonal plus
+#' ## upper triangle), point estimates only
 #' extract_Sigma_table(fit, level = "unit")
+#' ## The same entries on the correlation scale
 #' extract_Sigma_table(fit, level = "unit", measure = "correlation")
-#' extract_Sigma_table(fit, level = c("unit", "unit_obs"), entries = "all")
+#' ## Split each trait's between-site variance into the part shared
+#' ## through the latent factor and the trait-specific part; the two add
+#' ## up to the diagonal of the first table
+#' shared <- extract_Sigma_table(fit, level = "unit", part = "shared",
+#'                               entries = "diag")
+#' own <- extract_Sigma_table(fit, level = "unit", part = "unique",
+#'                            entries = "diag")
+#' data.frame(trait = shared$trait_i, shared = shared$estimate,
+#'            trait_specific = own$estimate)
+#' ## Every cell of both tiers in one long table, handy for a heatmap:
+#' ## 2 tiers x 4 x 4 traits = 32 rows
+#' all_cells <- extract_Sigma_table(fit, level = c("unit", "unit_obs"),
+#'                                  entries = "all")
+#' table(all_cells$level)
+#' \donttest{
+#' ## Bootstrap intervals: bootstrap_Sigma() refits the model to 50 data
+#' ## sets simulated from the fit, so this part takes tens of seconds.
+#' ## A small n_boot keeps the run time down and makes bootstrap_Sigma()
+#' ## warn that so few resamples give noisy bounds; real analyses need
+#' ## several hundred (the default is 999). These percentile intervals are
+#' ## not guaranteed to reach their nominal coverage.
 #' boot <- bootstrap_Sigma(fit, n_boot = 50, level = "unit",
 #'                         what = "Sigma", progress = FALSE)
 #' extract_Sigma_table(boot, level = "unit", entries = "upper")

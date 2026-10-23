@@ -80,25 +80,51 @@ pass \code{link_residual = "none"} to suppress (see \code{\link[=extract_Sigma]{
 }
 }
 \examples{
-\dontrun{
-  sim <- simulate_site_trait(
-    n_sites = 20, n_species = 6, n_traits = 4,
-    mean_species_per_site = 4, seed = 1
-  )
-  fit <- gllvmTMB(
-    value ~ 0 + trait +
-            latent(0 + trait | site, d = 2),
-    data  = sim$data,
-    trait = "trait",
-    unit  = "site"
-  )
-  ## Per-trait between-unit communality.
-  extract_communality(fit, level = "unit")
-  ## With delta-method Wald CIs.
-  extract_communality(fit, level = "unit", ci = TRUE, method = "wald")
-  boot <- bootstrap_Sigma(fit, n_boot = 50, level = "unit",
-                          what = "communality", progress = FALSE)
-  extract_communality(boot, level = "unit", ci = TRUE)
+## Simulate 6 traits recorded on a few species at each of 80 sites.
+## Between sites, the traits share one latent axis (the loadings in
+## Lambda_B) and each trait also has its own unique variance (psi_B).
+## sigma2_eps is the variance of the remaining noise in each
+## observation. beta = 0 turns off the simulator's environmental
+## effects, which this model does not include.
+set.seed(2)
+Lambda_B <- matrix(c(0.9, 0.7, 0.5, -0.6, 0.4, 0.8), ncol = 1)
+sim <- simulate_site_trait(
+  n_sites = 80, n_species = 10, n_traits = 6,
+  mean_species_per_site = 3,
+  beta = matrix(0, 6, 2),
+  Lambda_B = Lambda_B,
+  psi_B = rep(0.3, 6),
+  sigma2_eps = 0.3
+)
+## One latent axis between sites. unique = TRUE also estimates each
+## trait's unique variance; without it every communality would be 1.
+fit <- gllvmTMB(
+  value ~ 0 + trait +
+    latent(0 + trait | site, d = 1, unique = TRUE),
+  data  = sim$data,
+  trait = "trait",
+  unit  = "site"
+)
+## Communality of each trait between sites: the share of its
+## between-site variance that comes from the shared latent axis
+extract_communality(fit, level = "unit")
+## The true values used to simulate the data, for comparison
+shared <- rowSums(Lambda_B^2)
+round(shared / (shared + 0.3), 2)
+## Wald intervals, built on the logit scale so they stay between 0
+## and 1. They are approximate and are not guaranteed to reach their
+## nominal coverage, especially with few units.
+extract_communality(fit, level = "unit", ci = TRUE, method = "wald")
+\donttest{
+## Bootstrap intervals: bootstrap_Sigma() refits the model to data
+## simulated from the fit. A small n_boot keeps the run time down and
+## makes bootstrap_Sigma() warn that so few resamples give noisy
+## bounds; real analyses need several hundred (the default is 999).
+## These percentile intervals are not guaranteed to reach their
+## nominal coverage either.
+boot <- bootstrap_Sigma(fit, n_boot = 50, level = "unit",
+                        what = "communality", progress = FALSE)
+extract_communality(boot, level = "unit", ci = TRUE)
 }
 }
 \seealso{

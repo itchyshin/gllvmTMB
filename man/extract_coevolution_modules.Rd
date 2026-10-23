@@ -54,16 +54,62 @@ thresholds. Use simulation, bootstrap, and kernel-separability checks before
 treating the returned axes as scientific evidence.
 }
 \examples{
-\dontrun{
+set.seed(1)
+## A small host-partner system: 12 host and 12 partner species. Each
+## lineage has its own similarity matrix. Here similarity decays with
+## distance along a species ordering, a stand-in for a phylogenetic
+## correlation matrix such as ape::vcv(tree, corr = TRUE).
+host <- paste0("H", 1:12)
+partner <- paste0("P", 1:12)
+A_H <- 0.6^abs(outer(1:12, 1:12, "-"))
+A_P <- A_H
+dimnames(A_H) <- list(host, host)
+dimnames(A_P) <- list(partner, partner)
+## W records which hosts interact with which partners: host i interacts
+## with partners i - 1, i and i + 1.
+W <- 1 * (abs(outer(1:12, 1:12, "-")) <= 1)
+dimnames(W) <- list(host, partner)
+## One kernel over all 24 species; the fixed rho sets how strongly
+## interacting hosts and partners are linked.
+K <- make_cross_kernel(A_H, A_P, W, rho = 0.9)
+
+## Simulate one latent axis shared by all four traits. Host traits are
+## measured on hosts only and partner traits on partners only: four
+## replicate measurements per species, each with noise (SD 0.3).
+lambda <- c(h_size = 0.9, h_defence = 0.6, p_size = 0.8, p_attack = -0.5)
+z <- drop(t(chol(K)) \%*\% rnorm(24))
+names(z) <- rownames(K)
+dat <- expand.grid(rep = 1:4, trait = names(lambda),
+                   species = rownames(K), stringsAsFactors = FALSE)
+dat <- dat[startsWith(dat$species, "H") == startsWith(dat$trait, "h_"), ]
+dat$value <- lambda[dat$trait] * z[dat$species] +
+  rnorm(nrow(dat), sd = 0.3)
+dat$trait <- factor(dat$trait, levels = names(lambda))
+dat$species <- factor(dat$species, levels = rownames(K))
+## Each record (one species, one replicate) is a sampling unit
+dat$obs <- factor(paste(dat$species, dat$rep))
+
+## One latent axis whose species scores are correlated as in K. The
+## term is named "cross"; the functions below refer to it by name.
+fit <- gllvmTMB(
+  value ~ 0 + trait + kernel_latent(species, K = K, d = 1, name = "cross"),
+  data = dat, trait = "trait", unit = "obs", cluster = "species"
+)
+## Coupled host and partner trait axes (point estimates only). With
+## one latent axis (d = 1) there is a single module (n_modules = 1),
+## and its singular value is 1 by construction, so read the trait
+## loadings: hosts with larger size and defence are linked with
+## partners of larger size and lower attack. Flipping the signs of
+## both axes gives the same module.
 mods <- extract_coevolution_modules(
   fit,
-  level = "phy",
-  row_traits = c("host_size", "host_defence"),
-  col_traits = c("partner_size", "partner_attack")
+  level = "cross",
+  row_traits = c("h_size", "h_defence"),
+  col_traits = c("p_size", "p_attack"),
+  n_modules = 1
 )
 mods$modules
 mods$row_axes
 mods$col_axes
-}
 
 }

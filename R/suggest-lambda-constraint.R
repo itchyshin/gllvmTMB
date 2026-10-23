@@ -3,6 +3,54 @@
 ## covariance Lambda Lambda^T is identifiable; Lambda alone is not. Users
 ## then pass the returned matrix to `gllvmTMB(..., lambda_constraint = ...)`.
 
+## Refit formula for `profile_retention`: the stored covstructs use the
+## internal `rr` / `diag` keywords, whose re-parse emits "deprecated alias"
+## notes the user never caused (#1587). Rewrite them through the current
+## keywords without changing the model:
+##   * `rr` + the auto-added Psi (`.auto_unique`) on one grouping -> `latent(d)`;
+##   * `rr` with no `diag` on its grouping -> `latent(d, unique = FALSE)`;
+##   * a lone `diag` -> `indep()`.
+## The parser-added `lhs_form = "intercept_only"` tag is dropped on rewritten
+## terms (`latent()` / `indep()` reject it and it is re-derived on parse); a
+## term with any other `lhs_form` is left as stored. Anything else (e.g. an explicit user `rr` + `diag` pair, which `latent()`
+## cannot express) is left as stored.
+.slc_refit_formula <- function(fit) {
+  cs_all <- fit$covstructs
+  grp <- vapply(cs_all, function(cs) paste(deparse(cs$group), collapse = ""), "")
+  kind <- vapply(cs_all, function(cs) cs$kind, "")
+  auto <- vapply(cs_all, function(cs) isTRUE(cs$extra$.auto_unique), logical(1))
+  keep <- rep(TRUE, length(cs_all))
+  plain <- function(cs) {
+    is.null(cs$extra$lhs_form) || identical(cs$extra$lhs_form, "intercept_only")
+  }
+  for (i in seq_along(cs_all)) {
+    cs <- cs_all[[i]]
+    if (!plain(cs)) {
+      next
+    }
+    if (kind[i] == "rr" && !any(startsWith(names(cs$extra), "."))) {
+      partner <- which(kind == "diag" & grp == grp[i])
+      if (length(partner) == 0L) {
+        cs$extra$unique <- FALSE
+        cs$kind <- "latent"
+      } else if (all(auto[partner]) && all(vapply(cs_all[partner], plain, TRUE))) {
+        cs$kind <- "latent"
+        keep[partner] <- FALSE
+      }
+    } else if (
+      kind[i] == "diag" && !auto[i] && !any(kind == "rr" & grp == grp[i])
+    ) {
+      cs$kind <- "indep"
+    }
+    if (cs$kind %in% c("latent", "indep")) {
+      cs$extra$lhs_form <- NULL
+    }
+    cs_all[[i]] <- cs
+  }
+  fit$covstructs <- cs_all[keep]
+  .reconstruct_multi_formula(fit)
+}
+
 #' Suggest a `lambda_constraint` matrix for a reduced-rank fit
 #'
 #' Produces a default constraint matrix `M` for the reduced-rank loadings
@@ -429,7 +477,7 @@ suggest_lambda_constraint <- function(
     ## The package's own `.reconstruct_multi_formula()` is the canonical
     ## source -- it's the same helper bootstrap_Sigma() and the coverage
     ## study use for refit-from-fit.
-    full_formula <- .reconstruct_multi_formula(fit)
+    full_formula <- .slc_refit_formula(fit)
 
     ## Engine already pins the strict-upper-triangle of Lambda for the
     ## first d rows (lower-triangular convention). Skip those entries
@@ -461,9 +509,16 @@ suggest_lambda_constraint <- function(
             unit = fit$unit_col,
             ## Preserve the within-unit and cluster groupings on the test
             ## refit; omitting them silently changed the model (and voided
-            ## the LRT) for non-default groupings. NULL is a no-op.
-            unit_obs = fit$unit_obs_col,
-            cluster = fit$cluster_col,
+            ## the LRT) for non-default groupings. Only pass a grouping the
+            ## formula uses: the fit stores defaults (e.g. "site_species")
+            ## that would otherwise trigger "Unused optional grouping
+            ## argument(s)" on every refit (#1587).
+            unit_obs = if (isTRUE(fit$unit_obs_col %in% all.vars(full_formula))) {
+              fit$unit_obs_col
+            },
+            cluster = if (isTRUE(fit$cluster_col %in% all.vars(full_formula))) {
+              fit$cluster_col
+            },
             lambda_constraint = lc_test,
             silent = TRUE
           ),

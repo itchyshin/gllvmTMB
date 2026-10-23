@@ -768,6 +768,21 @@ gllvm_julia_capabilities <- function() {
   TRUE
 }
 
+# Never hand back a bridge fit that did not converge and has no finite
+# log-likelihood: it carries unestimated coefficients and no error (#1562).
+.gllvm_julia_check_fit_finite <- function(res) {
+  ll <- suppressWarnings(as.numeric(res$loglik)[1L])
+  conv <- res$converged
+  if (length(ll) == 1L && !is.na(ll) && !is.finite(ll) && !isTRUE(conv)) {
+    cli::cli_abort(c(
+      "engine = 'julia' returned a non-converged fit with a non-finite log-likelihood ({.val {ll}}).",
+      "i" = "The coefficients of such a fit are not estimated, so it is not returned.",
+      ">" = "Use {.code engine = \"tmb\"}, or check the model / starting values."
+    ), class = c("gllvmTMB_julia_nonfinite_fit", "gllvmTMB_julia_gate"))
+  }
+  invisible(FALSE)
+}
+
 .gllvm_julia_check_gamma_shape <- function(fam, p, has_x = FALSE) {
   n_gamma <- .gllvm_julia_n_gamma(fam, p)
   if (n_gamma <= 1L || isTRUE(has_x)) {
@@ -3009,6 +3024,7 @@ gllvm_julia_fit <- function(
   do.call(gllvm_julia_setup, setup_args)
   res <- do.call(JuliaCall::julia_call, args)
   res <- .gllvm_julia_normalise_result(res)
+  .gllvm_julia_check_fit_finite(res)
   if (!is.null(X)) {
     x_names <- dimnames(X)[[3L]]
     if (!is.null(res$gamma) && length(res$gamma) == length(x_names)) {

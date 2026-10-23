@@ -1,3 +1,13 @@
+## 2026-08-17 — #1077: reconcile stale profile-bounds wording post-#1090
+
+**Lane:** `cursor/mspl-profile-ci-scaffold` (draft #1077)
+**Authority:** handover OWED item 2 — bounds *can* be computed on main for binomial via #1090; this scaffold remains a gaussian/poisson toy with `not_constructed` claim path.
+
+```sh
+rg -n '1090|not_constructed|Design G0 is open' R/mspl-profile-ci-stub.R   docs/dev-log/research/2026-08-17-mspl-profile-ci-scaffold.md   docs/dev-log/after-task/2026-08-17-mspl-profile-ci-scaffold.md
+# deliberately not: undraft; wire public confint; rebuild probe
+```
+
 ## 2026-10-16: wrap #1561 example fits in `\donttest{}` (refs #1346)
 
 R review on #1561: wrap `gllvmTMB()` fits in `\donttest{}`, keep data set-up
@@ -1253,6 +1263,24 @@ rg -n 'signature|D-12|triad|Wald \(\\?Q_0\)' \
   docs/dev-log/research/2026-08-17-mspl-ci-wald-plus-profile.md \
   docs/dev-log/research/2026-08-17-mspl-profile-bootstrap-ci-next.md
 # no testthat; docs-only
+```
+
+## 2026-08-17 — MSPL profile-CI scaffold (fenced; G0 open)
+
+Internal stub only. Public `confint` still refused. Profile =
+signature (not constructed); Wald \(Q_0\) = quickest baseline;
+bootstrap = asymmetry. Coordinates with sibling triad note
+`docs/dev-log/research/2026-08-17-mspl-ci-wald-plus-profile.md`
+(#1075). No Totoro. No Design 118 reopen. No NEWS covered. No export.
+
+```sh
+rg -n 'export|TMB::sdreport|confint\\(' R/mspl-profile-ci-stub.R
+rg -n 'mspl_profile_ci_scaffold|mspl_ci_triad' R/z-confint-gllvmTMB.R
+# expect 0
+rg -n 'signature|quickest_baseline|asymmetry|D-157' \
+  R/mspl-profile-ci-stub.R \
+  docs/dev-log/research/2026-08-17-mspl-profile-ci-scaffold.md
+Rscript --vanilla -e 'testthat::test_file("tests/testthat/test-zz-mspl-profile-ci-stub.R")'
 ```
 
 ## 2026-08-17 — Poisson W=diag(mu) G0 paste card (UNSIGNED)

@@ -120,22 +120,36 @@ point; the classifier then falls back to the finite-\code{tau} elasticity
 comparison, since a failed \code{Inf} refit contributes no loading to compare.
 }
 \examples{
-\dontrun{
-n <- 40
-df <- data.frame(
-  unit = factor(seq_len(n)),
-  a = rbinom(n, 1, 0.5),
-  b = rbinom(n, 1, 0.5)
-)
+set.seed(1)
+# Simulate presence/absence of five species at 200 sites. One shared
+# latent gradient (say, habitat quality) drives all five; species 4
+# responds negatively.
+n_sites <- 200
+gradient <- rnorm(n_sites)
+loadings <- c(1.5, 1.2, 1.0, -1.0, 0.8)
+intercepts <- c(0, 0.5, -0.5, 0.3, -0.2)
+dat <- expand.grid(site = factor(seq_len(n_sites)),
+                   trait = factor(paste0("sp", 1:5)))
+eta <- intercepts[dat$trait] + loadings[dat$trait] * gradient[dat$site]
+dat$value <- rbinom(nrow(dat), size = 1, prob = plogis(eta))
+
+# Refit a one-factor model while a ridge penalty on the loadings
+# weakens: tau = 0.5 shrinks hard, tau = Inf is plain maximum
+# likelihood with no penalty. Each tau is a separate fit. With one
+# presence/absence record per species and site, the model uses
+# loadings only (unique = FALSE): extra per-species variance could not
+# be told apart from the coin-flip noise of 0/1 data.
 path <- ridge_path(
-  traits(a, b) ~ 1 + latent(1 | unit, d = 1),
-  data = df,
-  family = binomial(),
-  unit = "unit",
-  tau = c(1, 2, 4, Inf)
+  value ~ 0 + trait + latent(0 + trait | site, d = 1, unique = FALSE),
+  data = dat, family = binomial(), unit = "site", trait = "trait",
+  tau = c(0.5, 2, 8, Inf)
 )
+
+# max_loading is the size of each species' loading. It levels off as
+# tau grows, so every species is classed "interior": the data, not the
+# penalty, set its size. A loading that kept growing as the penalty
+# weakened would be flagged "penalty-determined".
 path
-}
 }
 \seealso{
 \code{\link[=screen_gllvmTMB]{screen_gllvmTMB()}} for the pre-fit response screen this

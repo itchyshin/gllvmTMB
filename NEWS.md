@@ -1,15 +1,33 @@
 # Development (unreleased)
 
+* Internal cross-validation now scores held-out binomial cells on the log
+  scale from the linear predictor and link (logit, probit, cloglog). The score
+  was recomputed from the response-scale probability, which rounds to exactly 1
+  at probit `eta` of about 8.3 or logit `eta` of about 37, so a held-out miss
+  scored `-Inf` while the fitted kernel stayed finite. Ordinary cells change
+  only by rounding (#1489).
+
 * `engine = "julia"` no longer returns a bridge fit that did not converge and has
   a non-finite log-likelihood. Such a fit (for example the `logLik = -Inf` result
   of a no-latent model) carries unestimated coefficients, so it now stops with
   the classed error `gllvmTMB_julia_nonfinite_fit` instead of being returned
   silently. Follow-up to #1562.
 
+* A per-trait family list keyed by the trait column
+  (`attr(fams, "family_var") <- "trait"`) now works when one trait is
+  `multinomial()`. The list is matched against your own trait levels before the
+  categorical response is expanded into contrast pseudo-traits, and the
+  multinomial entry is carried to each of them; a list of the wrong length
+  reports the count of your traits rather than the expanded count (#1575).
+
 * The `sigma()` refusal methods are now registered from roxygen with
   `@exportS3Method stats::sigma`, matching the `stats::sigma` entries already in
   `NAMESPACE`, so `devtools::document()` no longer rewrites them. Behaviour is
   unchanged (#1558).
+* `extract_communality()` and `extract_correlations()` now report the canonical
+  tier name (`"unit"`, `"unit_obs"`) in the `tier` column instead of the
+  deprecated internal code (`"B"`, `"W"`), and `extract_cutpoints()` no longer
+  copies sdreport row names into its result (#1577).
 * Keyword deprecation messages no longer misfire. The documented
   `phylo(1 | g)` and `spatial(1 | g)` forms no longer warn about
   `phylo_scalar()` / `spatial_scalar()`, which the user never typed; the

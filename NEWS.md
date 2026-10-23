@@ -11,6 +11,13 @@
   at probit `eta` of about 8.3 or logit `eta` of about 37, so a held-out miss
   scored `-Inf` while the fitted kernel stayed finite. Ordinary cells change
   only by rounding (#1489).
+* `print()` and `summary()` now list each covariance term once: a single
+  `indep(0 + trait | unit)` prints `Covstructs: indep_unit` (it printed
+  `indep_unit, indep_unit`), and `latent(..., unique = TRUE)` prints
+  `latent_unit` rather than its internal `latent_unit, indep_unit` split.
+  `extract_cross_correlations()` no longer repeats `extract_Sigma()`'s
+  link-residual notes on every call, matching `extract_correlations()`
+  (part of #1580).
 
 * `engine = "julia"` no longer returns a bridge fit that did not converge and has
   a non-finite log-likelihood. Such a fit (for example the `logLik = -Inf` result

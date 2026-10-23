@@ -10,6 +10,10 @@
   `@exportS3Method stats::sigma`, matching the `stats::sigma` entries already in
   `NAMESPACE`, so `devtools::document()` no longer rewrites them. Behaviour is
   unchanged (#1558).
+* `extract_communality()` and `extract_correlations()` now report the canonical
+  tier name (`"unit"`, `"unit_obs"`) in the `tier` column instead of the
+  deprecated internal code (`"B"`, `"W"`), and `extract_cutpoints()` no longer
+  copies sdreport row names into its result (#1577).
 * `plot_loadings_confidence_eye()` called on a fitted model without `level =`
   no longer stops with "'arg' must be of length 1". Its default is now
   `level = "unit"`, matching `loading_ci()` and `flag_unreliable_loadings()`

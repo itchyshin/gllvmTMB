@@ -185,3 +185,53 @@ test_that("suggest_lambda_constraints() rejects unsupported methods", {
     "unsupported"
   )
 })
+
+test_that("profile_retention refits emit no unused-argument or alias notes (#1587)", {
+  skip_on_cran()
+  set.seed(1587)
+  n_s <- 60
+  n_t <- 6
+  L <- matrix(
+    c(.9, .7, .5, .1, 0, 0, 0, .3, .6, .8, .7, .5),
+    n_t,
+    2
+  )
+  Y <- matrix(rnorm(n_s * 2), n_s, 2) %*% t(L) +
+    matrix(rnorm(n_s * n_t, sd = .5), n_s, n_t)
+  d <- data.frame(
+    site = factor(rep(seq_len(n_s), each = n_t)),
+    trait = factor(rep(paste0("t", 1:n_t), n_s), levels = paste0("t", 1:n_t)),
+    value = as.vector(t(Y))
+  )
+  fit <- suppressWarnings(suppressMessages(gllvmTMB(
+    value ~ 0 + trait + latent(0 + trait | site, d = 2),
+    data = d,
+    trait = "trait",
+    unit = "site",
+    silent = TRUE
+  )))
+  ## The one-shot alias notes would otherwise be spent by earlier tests.
+  for (k in c("rr", "diag")) {
+    suppressWarnings(rm(list = k, envir = gllvmTMB:::.gllvmTMB_deprecation_seen))
+  }
+  msgs <- character()
+  expect_no_warning(
+    res <- withCallingHandlers(
+      suggest_lambda_constraint(fit, convention = "profile_retention"),
+      message = function(m) {
+        msgs <<- c(msgs, conditionMessage(m))
+        invokeRestart("muffleMessage")
+      }
+    )
+  )
+  expect_false(any(grepl("deprecated alias", msgs)))
+  expect_equal(dim(res$constraint), c(n_t, 2L))
+  ## Equality with the result of the pre-fix route (rr() + diag() refits):
+  ## t4-t6 are pinned in f1; every other entry stays free. An all-NA matrix
+  ## means the refits errored and were skipped silently, so guard that too.
+  expected <- matrix(NA_real_, n_t, 2L, dimnames = dimnames(res$constraint))
+  expected[4:6, 1L] <- 0
+  expect_true(any(res$constraint == 0, na.rm = TRUE))
+  expect_equal(res$constraint, expected)
+  expect_match(res$note, "Tested 9 entries; 2 skipped", fixed = TRUE)
+})

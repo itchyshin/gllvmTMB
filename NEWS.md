@@ -11,6 +11,14 @@
   at probit `eta` of about 8.3 or logit `eta` of about 37, so a held-out miss
   scored `-Inf` while the fitted kernel stayed finite. Ordinary cells change
   only by rounding (#1489).
+* `gllvmTMB_diagnose()` now reports `Sigma_B`, `Sigma_W` and the trait-pair
+  correlations on the same scale as its communalities and the
+  `extract_Sigma()` defaults, with the per-trait link residual included on
+  non-Gaussian fits (a rank-1 binary fit printed +1.00 for every pair where
+  `extract_Sigma()` gives 0.34). The report says which scale it uses, prints
+  "showing 8 of N" when the pair list is truncated, labels the loadings check
+  with the real number of factors instead of `d=B`, and `verbose = FALSE` no
+  longer emits the link-residual message (#1586).
 
 * `engine = "julia"` no longer returns a bridge fit that did not converge and has
   a non-finite log-likelihood. Such a fit (for example the `logLik = -Inf` result

@@ -11,6 +11,10 @@
   `?extract_latent_scores` drops the `gllvmTMB_julia` claim and the literal
   TeX; `?extract_ordination` lists `row_id`, `row_index` and `temporal_sign`
   (#1579).
+* A rank-deficient fixed-effect design is now caught under the default ML fit as
+  well as `REML = TRUE`, with the classed error `gllvmTMB_rank_deficient_design`
+  naming the redundant columns, instead of the reason-less "All 1 restarts
+  failed." (#1388).
 
 * Internal cross-validation now scores held-out binomial cells on the log
   scale from the linear predictor and link (logit, probit, cloglog). The score

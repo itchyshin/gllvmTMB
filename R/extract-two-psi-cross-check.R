@@ -512,9 +512,6 @@
 #'
 #' ## Refit with unrestricted phylogenetic and non-phylogenetic covariances
 #' ## (phylo_dep + dep) and compare the two fits' covariance matrices.
-#' ## The refit currently also warns about an unused `unit_obs` argument;
-#' ## the warning comes from the internal refit, not from your model, and
-#' ## does not change the result (a known bug, issue #1568).
 #' check <- compare_dep_vs_two_psi(fit)
 #' check$alt_fit$opt$convergence  # 0 means the refit converged
 #' ## rel_disagreement is the gap between the two fits relative to the size
@@ -697,10 +694,7 @@ compare_dep_vs_two_psi <- function(
 #' ## the two fits' per-trait phylogenetic and non-phylogenetic variances.
 #' ## This cheap check is meant for fits with many traits, where the
 #' ## unrestricted refit of compare_dep_vs_two_psi() is too slow; three
-#' ## traits keep the example fast. The refit currently also warns about an
-#' ## unused `unit_obs` argument; the warning comes from the internal refit,
-#' ## not from your model, and does not change the result (a known bug,
-#' ## issue #1568).
+#' ## traits keep the example fast.
 #' check <- compare_indep_vs_two_psi(fit)
 #' check$alt_fit$opt$convergence  # 0 means the refit converged
 #' ## rel_disagreement is the gap between the two fits relative to the size

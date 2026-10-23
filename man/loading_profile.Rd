@@ -58,10 +58,36 @@ For binary probit at the scale of this article's fixture, expect
 minutes. Use \code{entries} to restrict to a subset when iterating.
 }
 \examples{
-\dontrun{
-pf <- loading_profile(fit, level = "unit")
-plot(pf)                              # all entries faceted
-loading_ci(fit, method = "profile")   # inverts pf internally
+set.seed(9)
+# Four traits measured twice on each of 100 units (e.g. sites).
+# Traits 1-3 respond to one latent gradient; trait_4 does not.
+sim <- simulate_unit_trait(n_units = 100, n_obs_per_unit = 2,
+                           n_traits = 4,
+                           Lambda_B = matrix(c(0.9, 0.7, 0.5, 0)),
+                           sigma2_eps = 0.3)
+# One latent axis, loadings only (unique = FALSE): in these data the
+# gradient is the only source of unit-to-unit differences. The
+# confirmatory hypothesis fixes trait_4's loading at zero.
+M <- matrix(c(NA, NA, NA, 0), ncol = 1)
+fit <- gllvmTMB(value ~ 0 + trait +
+                  latent(0 + trait | unit, d = 1, unique = FALSE),
+                data = sim$data, trait = "trait", unit = "unit",
+                lambda_constraint = list(unit = M))
+
+# Profile trait_2's loading (row 2, column 1 of the loading matrix):
+# the model is refitted with that loading held at each of 7 values.
+pf <- loading_profile(fit, level = "unit", entries = cbind(2, 1),
+                      n_grid = 7)
+pf[, c("trait", "profile_value", "delta_deviance")]
+
+# Values whose delta_deviance stays below qchisq(0.95, 1) = 3.84 form
+# the 95\% profile interval. Compare with the Wald interval:
+loading_ci(fit)[2, c("trait", "estimate", "lower", "upper")]
+
+if (requireNamespace("ggplot2", quietly = TRUE)) {
+  # The dip of the curve is the estimate; the dashed lines mark where it
+  # crosses the dotted 3.84 line, i.e. the 95\% profile interval.
+  plot(pf)
 }
 
 }

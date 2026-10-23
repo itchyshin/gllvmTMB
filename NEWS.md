@@ -1,5 +1,9 @@
 # Development (unreleased)
 
+* A missing or non-finite value in a random-slope covariate (for example `x` in
+  `latent(1 + x | unit)`, `phylo_slope(x | species)`, `phylo_dep()` or the
+  spatial slope terms) now stops the fit with a message naming the covariate,
+  instead of the bare "All 1 restarts failed." (#1394, #1375).
 * A positional `rho`, `coords` or `mesh` in a `spatial_*()` term (for example
   `spatial_dep(0 + trait | group, NULL, mesh, 0.5)`) is now read like the named
   spelling when the formula is desugared: `coords` and `mesh` are carried
@@ -15,6 +19,14 @@
   at probit `eta` of about 8.3 or logit `eta` of about 37, so a held-out miss
   scored `-Inf` while the fitted kernel stayed finite. Ordinary cells change
   only by rounding (#1489).
+* `gllvmTMB_diagnose()` now reports `Sigma_B`, `Sigma_W` and the trait-pair
+  correlations on the same scale as its communalities and the
+  `extract_Sigma()` defaults, with the per-trait link residual included on
+  non-Gaussian fits (a rank-1 binary fit printed +1.00 for every pair where
+  `extract_Sigma()` gives 0.34). The report says which scale it uses, prints
+  "showing 8 of N" when the pair list is truncated, labels the loadings check
+  with the real number of factors instead of `d=B`, and `verbose = FALSE` no
+  longer emits the link-residual message (#1586).
 
 * `engine = "julia"` no longer returns a bridge fit that did not converge and has
   a non-finite log-likelihood. Such a fit (for example the `logLik = -Inf` result
@@ -43,6 +55,13 @@
   levels and the random-number draw order are unchanged; the old `rbind()`
   could leave scrambled character row names on larger outputs, which are now
   plain `1..n` (#1581).
+* The Wald readers for communality and phylogenetic signal no longer return
+  NA or NaN intervals from a covariance that is entirely non-finite: they stop
+  with the classed `gllvmTMB_confint_nonfinite_se` error, as `confint()` and
+  `extract_repeatability()` already do. A finite covariance from a Hessian that
+  is not positive-definite (`pdHess = FALSE`) now raises the classed warning
+  `gllvmTMB_wald_nonpd_hessian`; the interval is still returned. The
+  proportions and loading-uncertainty readers are not yet changed (#1379).
 * `plot_loadings_confidence_eye()` called on a fitted model without `level =`
   no longer stops with "'arg' must be of length 1". Its default is now
   `level = "unit"`, matching `loading_ci()` and `flag_unreliable_loadings()`

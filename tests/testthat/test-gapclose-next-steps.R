@@ -90,5 +90,9 @@ test_that("the package-wide bare-abort count has not gone up", {
   ## validation a user reaches by writing a formula or calling an exported
   ## function). Brought the honest count from 999 down to 828. 828 is the
   ## correct current ceiling; it may only fall further.
-  expect_lte(length(hits), 828L)
+  ##
+  ## #1247 follow-up (2026-10-23): the live count had already drifted to
+  ## 802 (the pin had slack). Three more bare aborts fixed (two in
+  ## R/ridge-path.R, the shared fit gate in R/diagnose.R) -> 799.
+  expect_lte(length(hits), 799L)
 })

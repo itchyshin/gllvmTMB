@@ -29,13 +29,32 @@ differs, the distance reflects that mismatch rather than how well the
 loadings agree.
 }
 \examples{
-\dontrun{
-fit_g <- gllvmTMB(value ~ 0 + trait + latent(0 + trait | site, d = 2),
-                  data = df, trait = "trait", unit = "site")
-fit_t <- glmmTMB::glmmTMB(value ~ 0 + trait + rr(0 + trait | site, d = 2),
-                         data = df, REML = FALSE)
-L_g <- extract_ordination(fit_g, "unit")$loadings
-L_t <- attr(glmmTMB::ranef(fit_t)$cond$site, "loadings")
-compare_loadings(L_g, L_t)
-}
+set.seed(1)
+# Simulate six traits, each measured twice on 100 units, from known
+# loadings: traits 2-3 share one axis, traits 4-6 a second, and
+# trait_1 loads on both.
+Lambda_true <- cbind(c(0.7, 1.0, 0.9, 0.0, 0.0, 0.0),
+                     c(0.7, 0.0, 0.0, 1.0, 0.9, 0.8))
+sim <- simulate_unit_trait(n_units = 100, n_obs_per_unit = 2,
+                           n_traits = 6, Lambda_B = Lambda_true,
+                           psi_B = 0.4, sigma2_eps = 0.3)
+fit <- gllvmTMB(value ~ 0 + trait +
+                  latent(0 + trait | unit, d = 2, unique = TRUE),
+                data = sim$data, trait = "trait", unit = "unit")
+L_hat <- extract_ordination(fit, "unit")$loadings
+
+# The fitted axes may be rotated or sign-flipped relative to the true
+# ones, so compare_loadings() first rotates the fitted loadings to
+# match the truth as closely as possible, then measures the gap.
+cmp <- compare_loadings(L_hat, Lambda_true)
+# Fitted loadings after alignment; compare them with Lambda_true.
+round(cmp$Lambda_a_rot, 2)
+# Overall distance after alignment, and per-axis correlation.
+round(cmp$frobenius, 3)
+round(cmp$cor_per_factor, 3)
+
+# Raw and varimax-rotated loadings from one fit differ only by a
+# rotation, so once aligned they match exactly (distance 0).
+L_rot <- rotate_loadings(fit, level = "unit")$Lambda
+round(compare_loadings(L_rot, L_hat)$frobenius, 6)
 }

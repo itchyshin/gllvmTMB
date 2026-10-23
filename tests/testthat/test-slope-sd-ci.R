@@ -727,6 +727,28 @@ test_that("slope_sd_ci() refuses a fit with no augmented random-slope term at al
   expect_error(slope_sd_ci(fit), "no augmented random-slope structure")
 })
 
+test_that("slope_sd_ci() no-slope refusal does not recommend indep(), which refuses slope terms (#1589)", {
+  fit <- mock_slope_ci_fit(
+    slope_theta = c(-1.6, -1.55),
+    slope_se    = c(0.32, 0.31)
+  )
+  fit$use$diag_B_slope <- FALSE
+  fit$use$rr_B_slope <- FALSE
+
+  msg <- tryCatch(slope_sd_ci(fit), error = function(e) conditionMessage(e))
+  expect_match(msg, "latent", fixed = TRUE)
+  expect_no_match(msg, "(?<!phylo_)indep\\(", perl = TRUE)
+})
+
+test_that("slope_sd_ci() print does not call the loadings-only total 'Psi-only' (#1589)", {
+  fit <- mock_rr_only_slope_fit(c(0.25, 0.30), c(0.06, 0.07))
+  ci <- slope_sd_ci(fit)
+  expect_identical(ci$component, rep("total", 2L))
+  out <- paste(capture.output(print(ci)), collapse = "\n")
+  expect_no_match(out, "UNIQUE (Psi)", fixed = TRUE)
+  expect_no_match(out, "Psi", fixed = TRUE)
+})
+
 ## ---- (d) Argument validation ------------------------------------------
 
 test_that("slope_sd_ci() validates fit class and level", {

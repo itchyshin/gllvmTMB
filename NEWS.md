@@ -28,6 +28,12 @@
   tier name (`"unit"`, `"unit_obs"`) in the `tier` column instead of the
   deprecated internal code (`"B"`, `"W"`), and `extract_cutpoints()` no longer
   copies sdreport row names into its result (#1577).
+* `simulate_site_trait()` builds its long-format data frame from preallocated
+  columns instead of one `data.frame()` per row joined by `rbind()`, so 1.5k
+  rows take a few milliseconds rather than about 0.3 s. Values, factor
+  levels and the random-number draw order are unchanged; the old `rbind()`
+  could leave scrambled character row names on larger outputs, which are now
+  plain `1..n` (#1581).
 * `engine = "julia"` now refuses, instead of silently ignoring, `weights` for
   non-binomial families and non-default `gllvmTMBcontrol()` values of
   `optimizer`, `optArgs`, `init_jitter`, `start_from` and `se`. Each message
@@ -41,6 +47,10 @@
   `d = T`; `?gr` says `cov =` is used unless a top-level `phylo_vcv` is also
   given; `?scalar` and `?phylo_scalar` say soft-deprecated rather than
   "Canonical" (#1560).
+* `compare_dep_vs_two_psi()` and `compare_indep_vs_two_psi()` no longer warn
+  "Unused optional grouping argument(s): unit_obs" on every call. The refit
+  now passes `unit_obs` only when the generated alternative formula uses that
+  column (#1568).
 * `suggest_lambda_constraint(convention = "profile_retention")` no longer warns
   "Unused optional grouping argument(s)" or prints `rr()` / `diag()` deprecated-alias
   notes on its refits. The refits now pass `unit_obs` and `cluster` only when the

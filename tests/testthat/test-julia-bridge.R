@@ -1559,6 +1559,21 @@ test_that("Julia bridge predict and fitted reconstruct in-sample means", {
   )
 })
 
+test_that("predict(newdata) refusal on a Julia fit carries a catchable class", {
+  fit <- .gllvm_julia_normalise_result(fake_ci_julia_fit())
+  fit$engine <- "julia"
+  err <- expect_error(
+    predict(fit, newdata = data.frame(x = 1)),
+    class = "gllvmTMB_julia_predict_newdata"
+  )
+  expect_s3_class(err, "error")
+  expect_match(
+    conditionMessage(err),
+    "[GJL-GATE-NEWDATA-PREDICT] engine = 'julia': `newdata` prediction is not routed yet",
+    fixed = TRUE
+  )
+})
+
 test_that("S3: correct refusal gates fire with the bracketed [GJL-GATE-*] id", {
   ## S3 hardening: the GJL-GATE-PROB-CLASS-NONORDINAL and
   ## GJL-GATE-NO-CI-PAYLOAD gates are correct refusals. Assert the loud stop

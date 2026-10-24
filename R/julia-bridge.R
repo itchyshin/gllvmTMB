@@ -3471,14 +3471,17 @@ predict.gllvmTMB_julia <- function(
 ) {
   type <- match.arg(type)
   if (!is.null(newdata)) {
-    stop(
-      .gllvm_julia_gate_message(
-        "GJL-GATE-NEWDATA-PREDICT",
-        "engine = 'julia': `newdata` prediction is not routed yet; current ",
-        "`predict.gllvmTMB_julia()` returns in-sample fitted values only."
-      ),
-      call. = FALSE
-    )
+    stop(structure(
+      class = c("gllvmTMB_julia_predict_newdata", "error", "condition"),
+      list(
+        message = .gllvm_julia_gate_message(
+          "GJL-GATE-NEWDATA-PREDICT",
+          "engine = 'julia': `newdata` prediction is not routed yet; current ",
+          "`predict.gllvmTMB_julia()` returns in-sample fitted values only."
+        ),
+        call = NULL
+      )
+    ))
   }
   eta <- .gllvm_julia_link_predictor(object)
   if (type == "link") {

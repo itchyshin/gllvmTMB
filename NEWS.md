@@ -1,5 +1,13 @@
 # Development (unreleased)
 
+* `loading_profile()` and `loading_ci(method = "profile")` now refit the model
+  they profile: `unit_obs`, `REML` and `control` (including `loading_ridge`)
+  are kept, so a `unit_obs`-tier profile no longer returns an all-`NA` curve and
+  ridged and REML fits are profiled on their own objective. A valid call no
+  longer warns once per loading or prints alias notices, failed refits are
+  reported with the first error, and `level = "B"` / `"W"` are accepted as
+  documented (#1584).
+
 * A dense `vcv` / `phylo_vcv` passed to `phylo_scalar()`, `phylo_latent()` or
   `phylo_slope()` is now checked for positive semidefiniteness, and an
   indefinite matrix stops the fit with a message naming it, instead of

@@ -1,7 +1,7 @@
 #' Extract latent random-effect scores
 #'
 #' Returns unit-tier (or within-unit) latent random-effect scores as an
-#' `n \times K` matrix. For a fitted object this is the posterior mode of the
+#' n-by-K matrix. For a fitted object this is the posterior mode of the
 #' `z_B` / `z_W` innovation block in native `rotate = "none"` orientation.
 #' For output from [simulate_site_trait()], returns the generating draws stored
 #' in `truth$z_B` / `truth$z_W`.
@@ -12,12 +12,11 @@
 #' Score uncertainty (`se`, `cov`) remains [ordination_uncertainty()] /
 #' [getLV()] with `se = TRUE`.
 #'
-#' @param x A fitted `gllvmTMB_multi` / `gllvmTMB_va` / `gllvmTMB_julia`
-#'   object, or a `gllvmTMB_site_trait_sim` object from
-#'   [simulate_site_trait()].
+#' @param x A fitted `gllvmTMB_multi` / `gllvmTMB_va` object, or a
+#'   `gllvmTMB_site_trait_sim` object from [simulate_site_trait()].
 #' @param level `"unit"` (between-unit, `z_B`) or `"unit_obs"` (within-unit,
 #'   `z_W`). Deprecated aliases `"B"` and `"W"` are accepted with a warning.
-#' @return An `n \times K` numeric matrix with unit row names and `"LV1"`,
+#' @return An n-by-K numeric matrix with unit row names and `"LV1"`,
 #'   `"LV2"`, … column names; `NULL` when no reduced-rank term exists at the
 #'   requested level.
 #' @seealso [extract_ordination()], [ordination_uncertainty()], [getLV()],

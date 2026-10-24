@@ -7,21 +7,20 @@
 extract_latent_scores(x, level = c("unit", "unit_obs"))
 }
 \arguments{
-\item{x}{A fitted \code{gllvmTMB_multi} / \code{gllvmTMB_va} / \code{gllvmTMB_julia}
-object, or a \code{gllvmTMB_site_trait_sim} object from
-\code{\link[=simulate_site_trait]{simulate_site_trait()}}.}
+\item{x}{A fitted \code{gllvmTMB_multi} / \code{gllvmTMB_va} object, or a
+\code{gllvmTMB_site_trait_sim} object from \code{\link[=simulate_site_trait]{simulate_site_trait()}}.}
 
 \item{level}{\code{"unit"} (between-unit, \code{z_B}) or \code{"unit_obs"} (within-unit,
 \code{z_W}). Deprecated aliases \code{"B"} and \code{"W"} are accepted with a warning.}
 }
 \value{
-An \verb{n \\times K} numeric matrix with unit row names and \code{"LV1"},
+An n-by-K numeric matrix with unit row names and \code{"LV1"},
 \code{"LV2"}, … column names; \code{NULL} when no reduced-rank term exists at the
 requested level.
 }
 \description{
 Returns unit-tier (or within-unit) latent random-effect scores as an
-\verb{n \\times K} matrix. For a fitted object this is the posterior mode of the
+n-by-K matrix. For a fitted object this is the posterior mode of the
 \code{z_B} / \code{z_W} innovation block in native \code{rotate = "none"} orientation.
 For output from \code{\link[=simulate_site_trait]{simulate_site_trait()}}, returns the generating draws stored
 in \code{truth$z_B} / \code{truth$z_W}.

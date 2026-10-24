@@ -254,7 +254,9 @@
 #'   (`miss_control(response = "include")`) contribute nothing to the
 #'   likelihood, so the restricted likelihood is formed over the observed rows
 #'   and matches the corresponding `"drop"` fit. The default `FALSE` keeps the
-#'   historical ML fit.
+#'   historical ML fit. `engine = "julia"` does not forward `REML`, so
+#'   `REML = TRUE` there aborts (class `gllvmTMB_julia_unsupported_arg`); use
+#'   `engine = "tmb"`.
 #'
 #'   REML is validated for all-Gaussian fits only. For non-Gaussian families
 #'   an opt-in escape hatch exists
@@ -295,7 +297,8 @@
 #'   no Newick tree (e.g. comparing against `nlme::corPagel`).
 #' @param known_V Optional list of block-diagonal sampling-error matrices
 #'   `V_t`. Used by the `equalto()` two-stage workflow when sampling-error
-#'   matrices are available from a prior stage of estimation.
+#'   matrices are available from a prior stage of estimation. Not supported by
+#'   `engine = "julia"`, which aborts (class `gllvmTMB_julia_unsupported_arg`).
 #' @param lambda_constraint Optional list with elements `unit` and / or
 #'   `unit_obs` (plus `phy`, `spde` for structural levels), each an
 #'   `n_traits × d` matrix of confirmatory loading constraints
@@ -309,7 +312,8 @@
 #'   minimum statistical identification scaffold when you have no
 #'   biological hypothesis. Deprecated legacy element names `B` and `W`
 #'   are still accepted (with a one-shot soft deprecation message) and
-#'   map to `unit` and `unit_obs` respectively.
+#'   map to `unit` and `unit_obs` respectively. Not supported by
+#'   `engine = "julia"`, which aborts (class `gllvmTMB_julia_unsupported_arg`).
 #' @param Xcoef_fixed Optional named numeric vector of fixed-effect
 #'   coefficient constraints. Names must match the expanded fixed-effect
 #'   design columns (`fit$X_fix_names`); values must currently be `0`,
@@ -369,10 +373,10 @@
 #'   MSPL does not activate automatically after a separation warning and never
 #'   changes the default ML fit.
 #'
-#' @return A `gllvmTMB` object. With no covariance-structure terms in
-#'   the formula the result has class `"gllvmTMB"` (single-response
-#'   engine); with `latent()` or other covstruct sugar it has class
-#'   `c("gllvmTMB_multi", "gllvmTMB")` (multi-trait engine).
+#' @return A `gllvmTMB` object. Every native fit, with or without
+#'   covariance-structure terms in the formula, has class
+#'   `c("gllvmTMB_multi", "gllvmTMB")`. `integration = "va"` returns class
+#'   `c("gllvmTMB_va", "gllvmTMB")` instead.
 #'   S3 methods are registered on the **subclasses**, not on bare
 #'   `gllvmTMB`: for a multi-trait fit (`gllvmTMB_multi`), `tidy()`,
 #'   `predict()`, `summary()`, `confint()` and `logLik()` are available, and
@@ -1499,6 +1503,20 @@ gllvmTMB <- function(
           ">" = "Use the default {.code engine = \"tmb\"} for weighted non-binomial models."
         ), class = "gllvmTMB_julia_unsupported_weights")
     }
+    ## `REML`, `lambda_constraint` and `known_V` are not forwarded to
+    ## gllvm_julia_fit(), so each would be dropped and an ML / unconstrained /
+    ## no-known-V fit returned without a word (#1347). Refuse them instead.
+    julia_dropped_args <- c(
+      if (isTRUE(REML)) "REML",
+      if (!is.null(lambda_constraint)) "lambda_constraint",
+      if (!is.null(known_V)) "known_V"
+    )
+    if (length(julia_dropped_args) > 0L)
+      cli::cli_abort(c(
+        "{.code engine = \"julia\"} does not support {.arg {julia_dropped_args}}.",
+        "i" = "The GLLVModels.jl bridge does not receive these arguments, so the fit would silently ignore them.",
+        ">" = "Use the default {.code engine = \"tmb\"}, or omit them."
+      ), class = "gllvmTMB_julia_unsupported_arg")
     return(.gllvmTMB_julia_dispatch(
       parsed         = parsed,
       data           = data,

@@ -11,7 +11,9 @@ compare_loadings(Lambda_a, Lambda_b)
 }
 \value{
 A list with the optimal rotation \code{R}, the rotated \code{Lambda_a_rot},
-and the Frobenius distance after alignment.
+the Frobenius distance after alignment (\code{frobenius}), and the
+correlation between each column of \code{Lambda_a_rot} and the matching
+column of \code{Lambda_b} (\code{cor_per_factor}).
 }
 \description{
 When two latent-variable fits use the same traits, the loading matrices are
@@ -19,6 +21,12 @@ only identified up to rotation and sign. Procrustes alignment finds the
 orthogonal transform that brings one matrix as close as possible to the
 other, then reports the residual disagreement. This is mainly a validation
 helper for comparing \code{\link[=gllvmTMB]{gllvmTMB()}} with another implementation.
+}
+\details{
+Rows are matched by position, not by trait name: both matrices must list
+the traits in the same order, and row names are ignored. If the order
+differs, the distance reflects that mismatch rather than how well the
+loadings agree.
 }
 \examples{
 set.seed(1)

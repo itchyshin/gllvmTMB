@@ -1,5 +1,6 @@
 # Development (unreleased)
 
+* `engine = "julia"` now stops on `REML = TRUE`, a non-`NULL` `lambda_constraint` and a non-`NULL` `known_V` (class `gllvmTMB_julia_unsupported_arg`) instead of silently ignoring them (#1347).
 * `loading_profile()` and `loading_ci(method = "profile")` now refit the model
   they profile: `unit_obs`, `REML` and `control` (including `loading_ridge`)
   are kept, so a `unit_obs`-tier profile no longer returns an all-`NA` curve and
@@ -31,6 +32,7 @@
   (use `se.fit`); before, `re.form = NA` silently returned the conditional
   predictor. Estimates are unchanged (#1414).
 * A factor or character response is no longer fitted silently as its integer level codes. `gllvmTMB()` now stops with the classed error `gllvmTMB_factor_response_unsupported`, naming the response column and asking for an explicit numeric conversion. Ordinal and multinomial responses still take factors (#1396).
+* `sanity_multi()` no longer stops with "missing value where TRUE/FALSE needed" when the gradient is non-finite or cannot be computed. It reports the gradient row as FAIL, and `converged` is FALSE whenever any gradient entry is non-finite. `fit_health` still takes the largest finite gradient entry, so the two can differ when only some entries are non-finite (#1352).
 * A positional `rho`, `coords` or `mesh` in a `spatial_*()` term (for example
   `spatial_dep(0 + trait | group, NULL, mesh, 0.5)`) is now read like the named
   spelling when the formula is desugared: `coords` and `mesh` are carried
@@ -101,8 +103,11 @@
   with the classed `gllvmTMB_confint_nonfinite_se` error, as `confint()` and
   `extract_repeatability()` already do. A finite covariance from a Hessian that
   is not positive-definite (`pdHess = FALSE`) now raises the classed warning
-  `gllvmTMB_wald_nonpd_hessian`; the interval is still returned. The
-  proportions and loading-uncertainty readers are not yet changed (#1379).
+  `gllvmTMB_wald_nonpd_hessian`; the interval is still returned (#1379).
+* The Wald variance-proportion reader and the loading delta-method path
+  (`loading_ci()`, `suggest_lambda_constraint()`) now apply the same gate: an
+  all-non-finite covariance stops with `gllvmTMB_confint_nonfinite_se`, and
+  `pdHess = FALSE` warns with `gllvmTMB_wald_nonpd_hessian` (#1379).
 * Keyword deprecation messages no longer misfire. The documented
   `phylo(1 | g)` and `spatial(1 | g)` forms no longer warn about
   `phylo_scalar()` / `spatial_scalar()`, which the user never typed; the
@@ -114,6 +119,14 @@
   non-binomial families and non-default `gllvmTMBcontrol()` values of
   `optimizer`, `optArgs`, `init_jitter`, `start_from` and `se`. Each message
   names the argument and points to `engine = "tmb"` (#1347).
+* Help pages for `gllvmTMB()`, `rotate_loadings()`, `compare_loadings()` and
+  `ridge_path()` now match the code: every native fit has class
+  `c("gllvmTMB_multi", "gllvmTMB")` (VA fits `c("gllvmTMB_va", "gllvmTMB")`);
+  the implied covariance is unchanged under varimax but not promax;
+  `compare_loadings()` matches rows by position and returns `cor_per_factor`;
+  `ridge_path()` sorts only the classification, not the refits. The
+  `rotate_loadings()` "not active" error names the level the user gave, not
+  the internal code (#1590).
 * `plot_loadings_confidence_eye()` called on a fitted model without `level =`
   no longer stops with "'arg' must be of length 1". Its default is now
   `level = "unit"`, matching `loading_ci()` and `flag_unreliable_loadings()`

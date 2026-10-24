@@ -501,6 +501,81 @@ julia_bridge_x_array <- function(Y, x) {
 
 # --- family mapping ---------------------------------------------------------
 
+# --- engine = "julia" refuses arguments the bridge would silently drop (#1347) ---
+# The refusal sits in gllvmTMB() before .gllvmTMB_julia_dispatch(), so none of
+# these tests needs Julia: a missing refusal would reach the bridge and fail on
+# JuliaCall/GLLVModels.jl instead of on the expected message.
+
+test_that("engine = 'julia' refuses weights for non-binomial families (#1347)", {
+  df <- make_long()
+  expect_error(
+    gllvmTMB(
+      value ~ 0 + trait + latent(0 + trait | unit, d = 1),
+      data = df,
+      trait = "trait",
+      unit = "unit",
+      family = gaussian(),
+      weights = rep(2, nrow(df)),
+      engine = "julia"
+    ),
+    "does not support.*weights"
+  )
+  expect_error(
+    gllvmTMB(
+      value ~ 0 + trait + latent(0 + trait | unit, d = 1),
+      data = df,
+      trait = "trait",
+      unit = "unit",
+      family = gaussian(),
+      weights = rep(2, nrow(df)),
+      engine = "julia"
+    ),
+    "engine = \"tmb\""
+  )
+})
+
+test_that("engine = 'julia' does not accept wrong-length weights (#1347)", {
+  df <- make_long()
+  df$value <- as.integer(df$value > 0)
+  expect_error(
+    gllvmTMB(
+      value ~ 0 + trait + latent(0 + trait | unit, d = 1),
+      data = df,
+      trait = "trait",
+      unit = "unit",
+      family = binomial(),
+      weights = rep(5, nrow(df) - 1L),
+      engine = "julia"
+    ),
+    "weights"
+  )
+})
+
+test_that("engine = 'julia' refuses non-default gllvmTMBcontrol() fields (#1347)", {
+  df <- make_long()
+  for (ctl in list(
+    gllvmTMBcontrol(optimizer = "optim"),
+    gllvmTMBcontrol(optArgs = list(iter.max = 10)),
+    gllvmTMBcontrol(init_jitter = 0.5),
+    gllvmTMBcontrol(start_from = list()),
+    gllvmTMBcontrol(se = FALSE)
+  )) {
+    expect_error(
+      gllvmTMB(
+        value ~ 0 + trait + latent(0 + trait | unit, d = 1),
+        data = df,
+        trait = "trait",
+        unit = "unit",
+        family = gaussian(),
+        control = ctl,
+        engine = "julia"
+      ),
+      "does not support.*gllvmTMBcontrol",
+      class = "gllvmTMB_julia_unsupported_control"
+    )
+  }
+})
+
 test_that("family mapping covers every bridged family", {
   expect_equal(.gllvm_julia_family("gaussian"), "gaussian")
   expect_equal(.gllvm_julia_family("normal"), "gaussian")
@@ -2051,6 +2126,9 @@ test_that("gllvm_julia_fit keeps unsupported CI rows explicit before Julia setup
 })
 
 test_that("gllvmTMB fit-time Julia CI controls route through the bridge", {
+  ## The auto-Psi note is once-per-session (.frequency = "once"); an earlier
+  ## engine = "julia" test file in the same R session may already have used it up.
+  rlang::reset_warning_verbosity("gllvmTMB-julia-auto-psi-dropped")
   df <- make_long()
   seen <- new.env(parent = emptyenv())
 

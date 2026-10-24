@@ -89,10 +89,31 @@ catch.
 }
 
 \examples{
-\dontrun{
-getLV(fit, level = "unit")
-getLV(fit, level = "unit", se = TRUE)
-}
+set.seed(1)
+## Five traits measured three times on each of 60 units. Between units,
+## the traits share two latent axes (Lambda) plus a trait-specific
+## unique variance (psi = 0.2 for every trait).
+Lambda <- matrix(c(0.9, 0.7, 0.5, -0.3, 0.2,
+                   0.0, 0.4, -0.5, 0.6, 0.8), nrow = 5, ncol = 2)
+sim <- simulate_unit_trait(
+  n_units = 60, n_obs_per_unit = 3, n_traits = 5,
+  Lambda_B = Lambda, psi_B = rep(0.2, 5), sigma2_eps = 0.3
+)
+fit <- gllvmTMB(
+  value ~ 0 + trait + latent(0 + trait | unit, d = 2, unique = TRUE),
+  data  = sim$data,
+  trait = "trait",
+  unit  = "unit"
+)
+## Latent-variable scores: each unit's predicted position on the two
+## between-unit axes (one row per unit, one column per axis)
+lv <- getLV(fit, level = "unit")
+dim(lv)
+head(lv)
+## se = TRUE also returns the standard error of each score, from the
+## fitted model's Wald (delta-method) approximation
+lv_se <- getLV(fit, level = "unit", se = TRUE)
+str(lv_se)
 }
 \seealso{
 \code{\link[=extract_ordination]{extract_ordination()}} for scores and loadings together.

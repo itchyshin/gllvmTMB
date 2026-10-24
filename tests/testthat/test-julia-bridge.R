@@ -1559,6 +1559,21 @@ test_that("Julia bridge predict and fitted reconstruct in-sample means", {
   )
 })
 
+test_that("predict(newdata) refusal on a Julia fit carries a catchable class", {
+  fit <- .gllvm_julia_normalise_result(fake_ci_julia_fit())
+  fit$engine <- "julia"
+  err <- expect_error(
+    predict(fit, newdata = data.frame(x = 1)),
+    class = "gllvmTMB_julia_predict_newdata"
+  )
+  expect_s3_class(err, "error")
+  expect_match(
+    conditionMessage(err),
+    "[GJL-GATE-NEWDATA-PREDICT] engine = 'julia': `newdata` prediction is not routed yet",
+    fixed = TRUE
+  )
+})
+
 test_that("S3: correct refusal gates fire with the bracketed [GJL-GATE-*] id", {
   ## S3 hardening: the GJL-GATE-PROB-CLASS-NONORDINAL and
   ## GJL-GATE-NO-CI-PAYLOAD gates are correct refusals. Assert the loud stop
@@ -2126,6 +2141,9 @@ test_that("gllvm_julia_fit keeps unsupported CI rows explicit before Julia setup
 })
 
 test_that("gllvmTMB fit-time Julia CI controls route through the bridge", {
+  ## The auto-Psi note is once-per-session (.frequency = "once"); an earlier
+  ## engine = "julia" test file in the same R session may already have used it up.
+  rlang::reset_warning_verbosity("gllvmTMB-julia-auto-psi-dropped")
   df <- make_long()
   seen <- new.env(parent = emptyenv())
 
@@ -4304,4 +4322,31 @@ test_that("gllvm_julia_fit transposes a matrix N under units_are_rows = TRUE (#5
   expect_equal(dim(captured$args$y), c(2L, 3L))
   expect_equal(dim(captured$args$N), c(2L, 3L))
   expect_equal(unname(captured$args$N), unname(t(N)))
+})
+
+# --- #1562: no latent block (d = 0) is refused for families the engine cannot fit ---
+
+test_that("[GJL-GATE-NO-LATENT] d = 0 is refused for families GLLVModels.jl returns -Inf for (#1562)", {
+  for (fam in c("poisson", "binomial", "nb1", "beta", "gamma", "ordinal", "ordinal_probit")) {
+    err <- tryCatch(
+      gllvmTMB:::.gllvm_julia_check_latent_rank(0L, fam),
+      error = function(e) e
+    )
+    expect_s3_class(err, "gllvmTMB_julia_no_latent")
+    expect_s3_class(err, "gllvmTMB_julia_gate")
+    expect_match(conditionMessage(err), "GJL-GATE-NO-LATENT", fixed = TRUE)
+  }
+  # a mixed-family fit is refused when any trait family is affected
+  expect_error(
+    gllvmTMB:::.gllvm_julia_check_latent_rank(0L, c("negbinomial", "poisson")),
+    class = "gllvmTMB_julia_no_latent"
+  )
+})
+
+test_that("[GJL-GATE-NO-LATENT] NB2, Gaussian and K >= 1 are not refused (#1562)", {
+  expect_no_error(gllvmTMB:::.gllvm_julia_check_latent_rank(0L, "negbinomial"))
+  expect_no_error(gllvmTMB:::.gllvm_julia_check_latent_rank(0L, "gaussian"))
+  for (fam in c("poisson", "binomial", "nb1", "beta", "gamma", "ordinal")) {
+    expect_no_error(gllvmTMB:::.gllvm_julia_check_latent_rank(1L, fam))
+  }
 })

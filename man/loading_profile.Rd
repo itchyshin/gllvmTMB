@@ -6,7 +6,7 @@
 \usage{
 loading_profile(
   fit,
-  level = c("unit", "unit_obs"),
+  level = "unit",
   entries = NULL,
   n_grid = 11L,
   grid_extent = 6,
@@ -52,6 +52,15 @@ to invert the curve and get CIs that do NOT depend on the fit's
 Hessian being positive-definite.
 }
 \details{
+Each refit is the fitted model with one loading held fixed: it keeps the
+fit's grouping columns (\code{unit}, \code{unit_obs}, \code{cluster}), family, \code{REML}
+setting and \code{control}, so the curve is on the same objective as the fit.
+For a ridged fit (\code{gllvmTMBcontrol(loading_ridge = )}) that objective is
+the penalised one the fit optimised, with the penalty on the held loading
+added back; the curve then bottoms out at the fitted loading, but it is a
+penalised (MAP) curve and not a plain likelihood-ratio curve. A refit that
+fails is reported with a warning giving how many failed and the first error.
+
 This is \strong{expensive}: each entry requires \code{n_grid} partial refits,
 so a 20-species 2-factor fit at default \code{n_grid = 11} is ~440 fits.
 For binary probit at the scale of this article's fixture, expect

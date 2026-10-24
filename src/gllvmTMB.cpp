@@ -231,31 +231,45 @@ Type gll_clamp(Type x, Type lower, Type upper)
 // each branch is fed its own clamped input and stays finite where it is not
 // selected, and nothing is ever exp()'d past ~exp(700).
 
-// log(1 + u) for u >= 0: quartic Taylor series below 1e-4 (truncation
-// u^5 / 5 < 2e-21), direct log(1 + u) above.
+// log(1 + u) / u = sum_{j>=1} (-u)^(j-1) / j, Horner form through j = 13
+// (truncation u^13 / 14 < 5e-19 for u <= 0.05).
+template <class Type>
+Type gll_log1p_series(Type u)
+{
+  Type p = Type(1.0 / 13.0);
+  for (int j = 12; j >= 1; j--) p = Type(1.0 / double(j)) - u * p;
+  return p;
+}
+
+// log(1 + u) for u >= 0: series below 0.05, direct form above. The direct
+// form is log(w) * u / (w - 1) with w = 1 + u: u / (w - 1) cancels the
+// rounding of w, so it is accurate to a few ulp for u >= 0.05, where the plain
+// log(1 + u) lost ~1e-16 absolute right above the old 1e-4 cut (#1488). That
+// error is multiplied by ~n / u in gll_lgamma_shift, so it reached ~1e-9 per
+// row at y = 1000.
 template <class Type>
 Type gll_log1p_pos(Type u)
 {
-  Type cut = Type(1e-4);
+  Type cut = Type(0.05);
   Type us = CppAD::CondExpLt(u, cut, u, cut);
-  Type series = us * (Type(1) - us * (Type(0.5) - us * (Type(1.0 / 3.0) -
-    us * Type(0.25))));
+  Type series = us * gll_log1p_series(us);
   Type ud = CppAD::CondExpLt(u, cut, cut, u);
-  Type direct = log(Type(1) + ud);
+  Type w = Type(1) + ud;
+  Type direct = log(w) * ud / (w - Type(1));
   return CppAD::CondExpLt(u, cut, series, direct);
 }
 
-// log(1 + u) / u for u >= 0, -> 1 as u -> 0. Series below 1e-3 (truncation
-// u^5 / 6 < 2e-16), direct ratio above.
+// log(1 + u) / u for u >= 0, -> 1 as u -> 0. Same series / compensated direct
+// split at 0.05 (#1488; the old cut was 1e-3).
 template <class Type>
 Type gll_log1p_ratio(Type u)
 {
-  Type cut = Type(1e-3);
+  Type cut = Type(0.05);
   Type us = CppAD::CondExpLt(u, cut, u, cut);
-  Type series = Type(1) - us * (Type(0.5) - us * (Type(1.0 / 3.0) -
-    us * (Type(0.25) - us * Type(0.2))));
+  Type series = gll_log1p_series(us);
   Type ud = CppAD::CondExpLt(u, cut, cut, u);
-  Type direct = log(Type(1) + ud) / ud;
+  Type w = Type(1) + ud;
+  Type direct = log(w) / (w - Type(1));
   return CppAD::CondExpLt(u, cut, series, direct);
 }
 

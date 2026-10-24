@@ -4286,6 +4286,26 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ))
   }
 
+  ## Plain count families (#1356): poisson (fid 2) and nbinom2 (fid 5) need a
+  ## non-negative integer y, the same support zi_poisson/zi_nbinom2 check below.
+  ## Without this a negative y surfaced only as "All 1 restarts failed." and a
+  ## non-integer y fitted silently. binomial/beta-binomial integrality is a
+  ## separate question (proportions with weights) and is deliberately untouched.
+  count_rows <- (family_id_vec %in% c(2L, 5L)) & !masked_response
+  if (any(count_rows)) {
+    bad_fid <- unique(family_id_vec[count_rows][
+      y[count_rows] < 0 | y[count_rows] != round(y[count_rows])
+    ])
+    if (length(bad_fid) > 0L) {
+      bad_fam <- c(`2` = "poisson", `5` = "nbinom2")[as.character(bad_fid)]
+      cli::cli_abort(c(
+        "{.fn {bad_fam}} rows: {.code y} must be a non-negative integer.",
+        "i" = "Negative or non-integer values are outside the count support of {.fn {bad_fam}}.",
+        ">" = "Round or recode {.code y} to non-negative integers before fitting."
+      ))
+    }
+  }
+
   ## Zero-inflated count families (fid 17/18/19, Design 62 -- a TRUE mixture,
   ## not the fid 12/13 hurdle above). zi_poisson/zi_nbinom2: non-negative
   ## integer y, same support as their non-inflated counterparts.
@@ -10176,7 +10196,21 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     par_list <- obj$env$parList(opt$par)
     ## Phase 5a: the binary route reads the per-unit conditional probability
     ## from the engine REPORT(mi_probability); pass the report to gll_finalize_mi.
-    mi_report <- tryCatch(obj$report(opt$par), error = function(e) NULL)
+    ## `opt$par` holds the fixed effects only, so `obj$report(opt$par)` errors
+    ## ("Wrong parameter length.") whenever the model has a random effect.
+    ## Evaluate at the optimum, then read the report from the last full
+    ## parameter vector (the idiom documented at the `rep <- obj$report()` site).
+    mi_report <- tryCatch({
+      obj$fn(opt$par)
+      obj$report()
+    }, error = function(e) {
+      cli::cli_warn(c(
+        "The missing-predictor report could not be evaluated.",
+        "i" = "Conditional probabilities / scores for the missing units are {.val NA}.",
+        "x" = conditionMessage(e)
+      ))
+      NULL
+    })
     fit$missing_data <- gll_finalize_mi(
       fit$missing_data, par_list, mi_model, sdr = sd_rep, report = mi_report
     )

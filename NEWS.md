@@ -1,5 +1,6 @@
 # Development (unreleased)
 
+* `suggest_lambda_constraint()` and `suggest_lambda_constraints()` gain `unit_obs` to name the within-unit column on the formula path (default `"site_species"`, as in `gllvmTMB()`), and their no-term errors name the level as `"unit"` / `"unit_obs"` (#1587).
 * `loading_profile()` and `loading_ci(method = "profile")` now refit the model
   they profile: `unit_obs`, `REML` and `control` (including `loading_ridge`)
   are kept, so a `unit_obs`-tier profile no longer returns an all-`NA` curve and

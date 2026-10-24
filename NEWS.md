@@ -7,6 +7,7 @@
   longer warns once per loading or prints alias notices, failed refits are
   reported with the first error, and `level = "B"` / `"W"` are accepted as
   documented (#1584).
+* `predict()` and `fitted()` no longer return the internal `species = "placeholder"` column on fits without a species/cluster grouping, nor the auto-generated `.family_wide_` column on wide mixed-family fits (#1406).
 
 * `engine = "julia"` now stops on a missing fixed-effect covariate with the same message as the native engine, instead of sending the `NA` to the bridge (#1371).
 * A missing or non-finite value in a random-slope covariate (for example `x` in
@@ -29,6 +30,7 @@
   the right spelling for the near misses `re.form` (use `re_form`) and `se_fit`
   (use `se.fit`); before, `re.form = NA` silently returned the conditional
   predictor. Estimates are unchanged (#1414).
+* A factor or character response is no longer fitted silently as its integer level codes. `gllvmTMB()` now stops with the classed error `gllvmTMB_factor_response_unsupported`, naming the response column and asking for an explicit numeric conversion. Ordinal and multinomial responses still take factors (#1396).
 * `sanity_multi()` no longer stops with "missing value where TRUE/FALSE needed" when the gradient is non-finite or cannot be computed. It reports the gradient row as FAIL, and `converged` is FALSE whenever any gradient entry is non-finite. `fit_health` still takes the largest finite gradient entry, so the two can differ when only some entries are non-finite (#1352).
 
 * Internal cross-validation now scores held-out binomial cells on the log
@@ -50,6 +52,11 @@
   `unit` differs from its `cluster`. Before, the `dep` refit failed inside and
   the warning blamed an "unstable" alternative fit. `compare_indep_vs_two_psi()`
   supports this layout and is unchanged (#1572).
+* A `lambda_constraint` that pins a diagonal loading `Lambda[k, k]` at 0 no
+  longer leaves the free loadings on axis `k` stuck at exactly 0. They now
+  start at 0.5, so the optimiser can move them; before, the fit reported
+  convergence with that axis all zeros and a much lower log-likelihood. Part
+  of #1585.
 
 * `tidy(fit, "fixed")` no longer returns finite standard errors from a Hessian
   that is not positive definite (or from a missing `sdreport()`). `std.error`,
@@ -96,6 +103,10 @@
   `phylo_indep(..., common = TRUE)` rather than the soft-deprecated
   `phylo_scalar()`; and the legacy `spatial(0 + trait | coords)` warning names
   the deprecated form and is attributed to the caller, not the package (#1557).
+* `engine = "julia"` now refuses, instead of silently ignoring, `weights` for
+  non-binomial families and non-default `gllvmTMBcontrol()` values of
+  `optimizer`, `optArgs`, `init_jitter`, `start_from` and `se`. Each message
+  names the argument and points to `engine = "tmb"` (#1347).
 * `plot_loadings_confidence_eye()` called on a fitted model without `level =`
   no longer stops with "'arg' must be of length 1". Its default is now
   `level = "unit"`, matching `loading_ci()` and `flag_unreliable_loadings()`

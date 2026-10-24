@@ -10,6 +10,12 @@
 * `predict()` and `fitted()` no longer return the internal `species = "placeholder"` column on fits without a species/cluster grouping, nor the auto-generated `.family_wide_` column on wide mixed-family fits (#1406).
 
 * `engine = "julia"` now stops on a missing fixed-effect covariate with the same message as the native engine, instead of sending the `NA` to the bridge (#1371).
+* `confint(fit, parm = "b_fix[1]")` now returns one row (profile and Wald)
+  instead of profiling every fixed effect and then failing, and a fixed-effect
+  `parm` profiles only the requested terms. Wald `Sigma_unit` on a `latent()`
+  tier now says why the intervals are `NA` and names the routes that work, and
+  a Sigma tier the fit lacks is an error naming the public tier (for example
+  `unit_obs`) before any method runs (#1588).
 * A missing or non-finite value in a random-slope covariate (for example `x` in
   `latent(1 + x | unit)`, `phylo_slope(x | species)`, `phylo_dep()` or the
   spatial slope terms) now stops the fit with a message naming the covariate,

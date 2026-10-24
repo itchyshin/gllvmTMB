@@ -369,10 +369,10 @@
 #'   MSPL does not activate automatically after a separation warning and never
 #'   changes the default ML fit.
 #'
-#' @return A `gllvmTMB` object. With no covariance-structure terms in
-#'   the formula the result has class `"gllvmTMB"` (single-response
-#'   engine); with `latent()` or other covstruct sugar it has class
-#'   `c("gllvmTMB_multi", "gllvmTMB")` (multi-trait engine).
+#' @return A `gllvmTMB` object. Every native fit, with or without
+#'   covariance-structure terms in the formula, has class
+#'   `c("gllvmTMB_multi", "gllvmTMB")`. `integration = "va"` returns class
+#'   `c("gllvmTMB_va", "gllvmTMB")` instead.
 #'   S3 methods are registered on the **subclasses**, not on bare
 #'   `gllvmTMB`: for a multi-trait fit (`gllvmTMB_multi`), `tidy()`,
 #'   `predict()`, `summary()`, `confint()` and `logLik()` are available, and

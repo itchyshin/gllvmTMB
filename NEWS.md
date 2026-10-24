@@ -107,6 +107,14 @@
   non-binomial families and non-default `gllvmTMBcontrol()` values of
   `optimizer`, `optArgs`, `init_jitter`, `start_from` and `se`. Each message
   names the argument and points to `engine = "tmb"` (#1347).
+* Help pages for `gllvmTMB()`, `rotate_loadings()`, `compare_loadings()` and
+  `ridge_path()` now match the code: every native fit has class
+  `c("gllvmTMB_multi", "gllvmTMB")` (VA fits `c("gllvmTMB_va", "gllvmTMB")`);
+  the implied covariance is unchanged under varimax but not promax;
+  `compare_loadings()` matches rows by position and returns `cor_per_factor`;
+  `ridge_path()` sorts only the classification, not the refits. The
+  `rotate_loadings()` "not active" error names the level the user gave, not
+  the internal code (#1590).
 * `plot_loadings_confidence_eye()` called on a fitted model without `level =`
   no longer stops with "'arg' must be of length 1". Its default is now
   `level = "unit"`, matching `loading_ci()` and `flag_unreliable_loadings()`

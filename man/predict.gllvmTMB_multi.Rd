@@ -82,7 +82,8 @@ fits, fits without an active \code{mi()} missing-covariate model, and fits with
 unit likelihood weights. A non-unit weighted objective has no certified
 prediction-standard-error route.}
 
-\item{...}{Unused.}
+\item{...}{Unused. An argument passed here is ignored with a warning; in
+particular \code{re.form} (use \code{re_form}) and \code{se_fit} (use \code{se.fit}).}
 }
 \value{
 A data frame with the original row identifiers plus an \code{est}

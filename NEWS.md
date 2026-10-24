@@ -49,6 +49,11 @@
   `unit` differs from its `cluster`. Before, the `dep` refit failed inside and
   the warning blamed an "unstable" alternative fit. `compare_indep_vs_two_psi()`
   supports this layout and is unchanged (#1572).
+* A `lambda_constraint` that pins a diagonal loading `Lambda[k, k]` at 0 no
+  longer leaves the free loadings on axis `k` stuck at exactly 0. They now
+  start at 0.5, so the optimiser can move them; before, the fit reported
+  convergence with that axis all zeros and a much lower log-likelihood. Part
+  of #1585.
 
 * `tidy(fit, "fixed")` no longer returns finite standard errors from a Hessian
   that is not positive definite (or from a missing `sdreport()`). `std.error`,

@@ -30,6 +30,7 @@
   the right spelling for the near misses `re.form` (use `re_form`) and `se_fit`
   (use `se.fit`); before, `re.form = NA` silently returned the conditional
   predictor. Estimates are unchanged (#1414).
+* A factor or character response is no longer fitted silently as its integer level codes. `gllvmTMB()` now stops with the classed error `gllvmTMB_factor_response_unsupported`, naming the response column and asking for an explicit numeric conversion. Ordinal and multinomial responses still take factors (#1396).
 
 * Internal cross-validation now scores held-out binomial cells on the log
   scale from the linear predictor and link (logit, probit, cloglog). The score

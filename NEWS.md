@@ -1,5 +1,13 @@
 # Development (unreleased)
 
+* `loading_profile()` and `loading_ci(method = "profile")` now refit the model
+  they profile: `unit_obs`, `REML` and `control` (including `loading_ridge`)
+  are kept, so a `unit_obs`-tier profile no longer returns an all-`NA` curve and
+  ridged and REML fits are profiled on their own objective. A valid call no
+  longer warns once per loading or prints alias notices, failed refits are
+  reported with the first error, and `level = "B"` / `"W"` are accepted as
+  documented (#1584).
+
 * A trait factor with a level that has no rows now stops the fit with a message
   naming the empty level and advising `droplevels()`, instead of silently adding
   free parameters (inflated df and AIC, no standard errors) (#1387).

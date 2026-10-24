@@ -190,25 +190,51 @@ extract_ICC_site <- function(fit, link_residual = c("auto", "none")) {
 #'   [extract_correlations()]; [extract_repeatability()];
 #'   [confint.gllvmTMB_multi()].
 #' @examples
-#' \dontrun{
-#'   sim <- simulate_site_trait(
-#'     n_sites = 20, n_species = 6, n_traits = 4,
-#'     mean_species_per_site = 4, seed = 1
-#'   )
-#'   fit <- gllvmTMB(
-#'     value ~ 0 + trait +
-#'             latent(0 + trait | site, d = 2),
-#'     data  = sim$data,
-#'     trait = "trait",
-#'     unit  = "site"
-#'   )
-#'   ## Per-trait between-unit communality.
-#'   extract_communality(fit, level = "unit")
-#'   ## With delta-method Wald CIs.
-#'   extract_communality(fit, level = "unit", ci = TRUE, method = "wald")
-#'   boot <- bootstrap_Sigma(fit, n_boot = 50, level = "unit",
-#'                           what = "communality", progress = FALSE)
-#'   extract_communality(boot, level = "unit", ci = TRUE)
+#' ## Simulate 6 traits recorded on a few species at each of 80 sites.
+#' ## Between sites, the traits share one latent axis (the loadings in
+#' ## Lambda_B) and each trait also has its own unique variance (psi_B).
+#' ## sigma2_eps is the variance of the remaining noise in each
+#' ## observation. beta = 0 turns off the simulator's environmental
+#' ## effects, which this model does not include.
+#' set.seed(2)
+#' Lambda_B <- matrix(c(0.9, 0.7, 0.5, -0.6, 0.4, 0.8), ncol = 1)
+#' sim <- simulate_site_trait(
+#'   n_sites = 80, n_species = 10, n_traits = 6,
+#'   mean_species_per_site = 3,
+#'   beta = matrix(0, 6, 2),
+#'   Lambda_B = Lambda_B,
+#'   psi_B = rep(0.3, 6),
+#'   sigma2_eps = 0.3
+#' )
+#' ## One latent axis between sites. unique = TRUE also estimates each
+#' ## trait's unique variance; without it every communality would be 1.
+#' fit <- gllvmTMB(
+#'   value ~ 0 + trait +
+#'     latent(0 + trait | site, d = 1, unique = TRUE),
+#'   data  = sim$data,
+#'   trait = "trait",
+#'   unit  = "site"
+#' )
+#' ## Communality of each trait between sites: the share of its
+#' ## between-site variance that comes from the shared latent axis
+#' extract_communality(fit, level = "unit")
+#' ## The true values used to simulate the data, for comparison
+#' shared <- rowSums(Lambda_B^2)
+#' round(shared / (shared + 0.3), 2)
+#' ## Wald intervals, built on the logit scale so they stay between 0
+#' ## and 1. They are approximate and are not guaranteed to reach their
+#' ## nominal coverage, especially with few units.
+#' extract_communality(fit, level = "unit", ci = TRUE, method = "wald")
+#' \donttest{
+#' ## Bootstrap intervals: bootstrap_Sigma() refits the model to data
+#' ## simulated from the fit. A small n_boot keeps the run time down and
+#' ## makes bootstrap_Sigma() warn that so few resamples give noisy
+#' ## bounds; real analyses need several hundred (the default is 999).
+#' ## These percentile intervals are not guaranteed to reach their
+#' ## nominal coverage either.
+#' boot <- bootstrap_Sigma(fit, n_boot = 50, level = "unit",
+#'                         what = "communality", progress = FALSE)
+#' extract_communality(boot, level = "unit", ci = TRUE)
 #' }
 #' @export
 extract_communality <- function(
@@ -298,7 +324,7 @@ extract_communality <- function(
       )
       data.frame(
         trait = trait_names[t],
-        tier = level,
+        tier = .canonical_level_name(level),
         c2 = unname(ci_t["estimate"]),
         lower = unname(ci_t["lower"]),
         upper = unname(ci_t["upper"]),
@@ -326,7 +352,7 @@ extract_communality <- function(
   if (is.null(pe)) {
     return(data.frame(
       trait = trait_names,
-      tier = level,
+      tier = .canonical_level_name(level),
       c2 = out_pe,
       lower = NA_real_,
       upper = NA_real_,
@@ -336,7 +362,7 @@ extract_communality <- function(
   }
   data.frame(
     trait = trait_names,
-    tier = level,
+    tier = .canonical_level_name(level),
     c2 = as.numeric(pe),
     lower = as.numeric(lo),
     upper = as.numeric(hi),
@@ -418,7 +444,7 @@ extract_communality <- function(
   )
   tbl <- data.frame(
     trait = trait_names,
-    tier = level,
+    tier = .canonical_level_name(level),
     c2 = unname(out),
     lower = lower,
     upper = upper,
@@ -461,25 +487,52 @@ extract_communality <- function(
 #'   is non-zero only for `latent(..., lv = ~ x)` fits. Temporal ordination
 #'   supports `"total"` only; other component requests raise an error.
 #' @return A list with `scores` (units or within-unit observations in rows,
-#'   latent axes in columns) and `loadings` (traits in rows, axes in columns).
+#'   latent axes in columns), `loadings` (traits in rows, axes in columns), and
+#'   `row_id` (the row identifiers of `scores`). The temporal branch also
+#'   returns `row_index` (the pair table behind the rows of `scores`) and
+#'   `temporal_sign` (the sign convention applied to the axes).
 #'
 #' @examples
-#' \dontrun{
-#'   sim <- simulate_site_trait(
-#'     n_sites = 20, n_species = 6, n_traits = 4,
-#'     mean_species_per_site = 4, seed = 1
-#'   )
-#'   fit <- gllvmTMB(
-#'     value ~ 0 + trait +
-#'             latent(0 + trait | site, d = 2),
-#'     data  = sim$data,
-#'     trait = "trait",
-#'     unit  = "site"
-#'   )
-#'   ord <- extract_ordination(fit, level = "unit")
-#'   head(ord$scores)
-#'   ord$loadings
-#' }
+#' ## Simulate 6 traits recorded on a few species at each of 80 sites.
+#' ## Between sites, the traits vary along two latent axes (the loadings
+#' ## in Lambda_B): traits 1-2 load mainly on the first, traits 4-5 on
+#' ## the second, and traits 3 and 6 on both. Each trait also has its
+#' ## own unique variance (psi_B), and sigma2_eps is the variance of the
+#' ## remaining noise in each observation. beta = 0 turns off the
+#' ## simulator's environmental effects, which this model does not
+#' ## include.
+#' set.seed(5)
+#' Lambda_B <- cbind(c(0.9, 0.7, 0.5, 0.0, 0.0, 0.3),
+#'                   c(0.0, 0.3, 0.5, 0.9, 0.7, -0.4))
+#' sim <- simulate_site_trait(
+#'   n_sites = 80, n_species = 10, n_traits = 6,
+#'   mean_species_per_site = 3,
+#'   beta = matrix(0, 6, 2),
+#'   Lambda_B = Lambda_B,
+#'   psi_B = rep(0.3, 6),
+#'   sigma2_eps = 0.3
+#' )
+#' ## Two latent axes between sites, plus a unique variance for each
+#' ## trait (unique = TRUE)
+#' fit <- gllvmTMB(
+#'   value ~ 0 + trait +
+#'     latent(0 + trait | site, d = 2, unique = TRUE),
+#'   data  = sim$data,
+#'   trait = "trait",
+#'   unit  = "site"
+#' )
+#' ## level = "unit" asks for the between-site ordination
+#' ord <- extract_ordination(fit, level = "unit")
+#' ## Site scores: each site's predicted position on the two latent
+#' ## axes (one row per site, one column per axis)
+#' dim(ord$scores)
+#' head(ord$scores)
+#' ## Trait loadings: how strongly each trait follows each axis. A site
+#' ## with a high LV1 score tends to have high values of the traits with
+#' ## positive LV1 loadings. Rotating the axes (or flipping the sign of
+#' ## one) fits the data equally well; gllvmTMB fixes trait_1's loading
+#' ## on LV2 at zero, which settles the rotation but not the signs.
+#' ord$loadings
 #'
 #' @export
 extract_ordination <- function(

@@ -727,6 +727,104 @@ test_that("slope_sd_ci() refuses a fit with no augmented random-slope term at al
   expect_error(slope_sd_ci(fit), "no augmented random-slope structure")
 })
 
+test_that("slope_sd_ci() no-slope refusal does not recommend indep(), which refuses slope terms (#1589)", {
+  fit <- mock_slope_ci_fit(
+    slope_theta = c(-1.6, -1.55),
+    slope_se    = c(0.32, 0.31)
+  )
+  fit$use$diag_B_slope <- FALSE
+  fit$use$rr_B_slope <- FALSE
+
+  msg <- tryCatch(slope_sd_ci(fit), error = function(e) conditionMessage(e))
+  expect_match(msg, "latent", fixed = TRUE)
+  expect_no_match(msg, "(?<!phylo_)indep\\(", perl = TRUE)
+})
+
+test_that("slope_sd_ci() print does not call the loadings-only total 'Psi-only' (#1589)", {
+  fit <- mock_rr_only_slope_fit(c(0.25, 0.30), c(0.06, 0.07))
+  ci <- slope_sd_ci(fit)
+  expect_identical(ci$component, rep("total", 2L))
+  out <- paste(capture.output(print(ci)), collapse = "\n")
+  expect_no_match(out, "UNIQUE (Psi)", fixed = TRUE)
+  expect_no_match(out, "Psi", fixed = TRUE)
+})
+
+## ---- (c.4) scale = "variance": total_sd stays on the SD scale on every
+## route (#1589) -------------------------------------------------------------
+## `?slope_sd_ci` documents `total_sd` as always on the SD scale. Each route
+## below is checked against its own scale = "sd" result: `estimate` squares,
+## `total_sd` does not move.
+
+expect_total_sd_scale_free <- function(ci_sd, ci_var, same_as_estimate) {
+  expect_equal(ci_var$estimate, ci_sd$estimate^2, tolerance = 1e-10)
+  expect_equal(ci_var$total_sd, ci_sd$total_sd, tolerance = 1e-10)
+  if (same_as_estimate)
+    expect_equal(ci_var$total_sd, ci_sd$estimate, tolerance = 1e-10)
+}
+
+test_that("slope_sd_ci() scale = 'variance' keeps total_sd on the SD scale: diagonal-only route (#1589)", {
+  fit <- mock_slope_ci_fit(c(-1.6, -1.2), c(0.30, 0.28))
+  expect_total_sd_scale_free(
+    slope_sd_ci(fit), slope_sd_ci(fit, scale = "variance"),
+    same_as_estimate = TRUE
+  )
+})
+
+test_that("slope_sd_ci() scale = 'variance' keeps total_sd on the SD scale: phylo_dep route (#1589)", {
+  fit <- mock_phylo_dep_slope_fit(c(0.25, 0.30), c(0.06, 0.07))
+  expect_total_sd_scale_free(
+    slope_sd_ci(fit), slope_sd_ci(fit, scale = "variance"),
+    same_as_estimate = TRUE
+  )
+})
+
+test_that("slope_sd_ci() scale = 'variance' keeps total_sd on the SD scale: loadings-only route (#1589)", {
+  fit <- mock_rr_only_slope_fit(c(0.25, 0.30), c(0.06, 0.07))
+  expect_total_sd_scale_free(
+    slope_sd_ci(fit), slope_sd_ci(fit, scale = "variance"),
+    same_as_estimate = TRUE
+  )
+})
+
+test_that("slope_sd_ci() scale = 'variance' keeps total_sd on the SD scale: stale-fit fallback (#1589)", {
+  ## shared-plus-Psi fit with no REPORT()ed sd_B_slope_total: total_sd is
+  ## rebuilt as sqrt(shared_var + psi_sd^2) from the SD-scale Psi.
+  fit <- mock_slope_ci_fit(
+    c(-1.6, -1.2), c(0.30, 0.28),
+    rr_present = TRUE, rr_shared_var_slope = c(0.20, 0.25)
+  )
+  ci_sd  <- suppressWarnings(slope_sd_ci(fit))
+  ci_var <- suppressWarnings(slope_sd_ci(fit, scale = "variance"))
+  expect_equal(ci_sd$total_sd, sqrt(c(0.20, 0.25) + exp(c(-1.6, -1.2))^2),
+               tolerance = 1e-10)
+  expect_total_sd_scale_free(ci_sd, ci_var, same_as_estimate = FALSE)
+})
+
+test_that("slope_sd_ci() print header names the requested scale (#1589)", {
+  fit <- mock_rr_only_slope_fit(c(0.25, 0.30), c(0.06, 0.07))
+  out_sd  <- paste(capture.output(print(slope_sd_ci(fit))), collapse = "\n")
+  out_var <- paste(capture.output(print(slope_sd_ci(fit, scale = "variance"))),
+                   collapse = "\n")
+  expect_match(out_sd, "standard\ndeviations", fixed = FALSE)
+  expect_match(out_var, "variances", fixed = TRUE)
+  expect_no_match(out_var, "standard\ndeviations")
+})
+
+test_that("slope-term refusals name latent() and no longer name the deprecated unique() (#1589)", {
+  msg_sugar <- tryCatch(
+    gllvmTMB:::desugar_brms_sugar(value ~ 0 + trait + indep(1 + x | site)),
+    error = function(e) conditionMessage(e)
+  )
+  msg_bar <- tryCatch(
+    gllvmTMB:::parse_re_int_call(quote(1 + x | site)),
+    error = function(e) conditionMessage(e)
+  )
+  for (msg in list(msg_sugar, msg_bar)) {
+    expect_match(msg, "latent(1 + x | site, d = K)", fixed = TRUE)
+    expect_no_match(msg, "unique(", fixed = TRUE)
+  }
+})
+
 ## ---- (d) Argument validation ------------------------------------------
 
 test_that("slope_sd_ci() validates fit class and level", {

@@ -34,6 +34,11 @@
   "showing 8 of N" when the pair list is truncated, labels the loadings check
   with the real number of factors instead of `d=B`, and `verbose = FALSE` no
   longer emits the link-residual message (#1586).
+* `compare_dep_vs_two_psi()` now stops up front, with a classed error
+  (`gllvmTMB_two_psi_unit_cluster`) that names both columns, when the fit's
+  `unit` differs from its `cluster`. Before, the `dep` refit failed inside and
+  the warning blamed an "unstable" alternative fit. `compare_indep_vs_two_psi()`
+  supports this layout and is unchanged (#1572).
 
 * `engine = "julia"` no longer returns a bridge fit that did not converge and has
   a non-finite log-likelihood. Such a fit (for example the `logLik = -Inf` result

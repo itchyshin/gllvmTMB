@@ -54,6 +54,11 @@ test_that("ordinal_probit (K = 4) recovers cutpoints and intercept", {
   expect_equal(nrow(cuts), 3L)            # 2 (a) + 1 (b) free cutpoints
   expect_equal(cuts$cutpoint_index, c(2L, 3L, 2L))
 
+  ## #1577: with SEs present the rows must not inherit sdreport row names.
+  cuts_se <- extract_cutpoints(standard_errors(fit), quiet = TRUE)
+  expect_false(all(is.na(cuts_se$tau_se)))
+  expect_identical(rownames(cuts_se), as.character(seq_len(nrow(cuts_se))))
+
   ## Recovery within ~25%
   expect_lt(abs(cuts$tau_estimate[1] - 0.7), 0.25)   # trait a tau_2
   expect_lt(abs(cuts$tau_estimate[2] - 1.4), 0.30)   # trait a tau_3 (looser)

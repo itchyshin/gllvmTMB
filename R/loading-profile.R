@@ -30,6 +30,15 @@
 #' to invert the curve and get CIs that do NOT depend on the fit's
 #' Hessian being positive-definite.
 #'
+#' Each refit is the fitted model with one loading held fixed: it keeps the
+#' fit's grouping columns (`unit`, `unit_obs`, `cluster`), family, `REML`
+#' setting and `control`, so the curve is on the same objective as the fit.
+#' For a ridged fit (`gllvmTMBcontrol(loading_ridge = )`) that objective is
+#' the penalised one the fit optimised, with the penalty on the held loading
+#' added back; the curve then bottoms out at the fitted loading, but it is a
+#' penalised (MAP) curve and not a plain likelihood-ratio curve. A refit that
+#' fails is reported with a warning giving how many failed and the first error.
+#'
 #' This is **expensive**: each entry requires `n_grid` partial refits,
 #' so a 20-species 2-factor fit at default `n_grid = 11` is ~440 fits.
 #' For binary probit at the scale of this article's fixture, expect
@@ -61,15 +70,41 @@
 #'   [plot.profile_loadings()] for the U-shape visualisation.
 #'
 #' @examples
-#' \dontrun{
-#' pf <- loading_profile(fit, level = "unit")
-#' plot(pf)                              # all entries faceted
-#' loading_ci(fit, method = "profile")   # inverts pf internally
+#' set.seed(9)
+#' # Four traits measured twice on each of 100 units (e.g. sites).
+#' # Traits 1-3 respond to one latent gradient; trait_4 does not.
+#' sim <- simulate_unit_trait(n_units = 100, n_obs_per_unit = 2,
+#'                            n_traits = 4,
+#'                            Lambda_B = matrix(c(0.9, 0.7, 0.5, 0)),
+#'                            sigma2_eps = 0.3)
+#' # One latent axis, loadings only (unique = FALSE): in these data the
+#' # gradient is the only source of unit-to-unit differences. The
+#' # confirmatory hypothesis fixes trait_4's loading at zero.
+#' M <- matrix(c(NA, NA, NA, 0), ncol = 1)
+#' fit <- gllvmTMB(value ~ 0 + trait +
+#'                   latent(0 + trait | unit, d = 1, unique = FALSE),
+#'                 data = sim$data, trait = "trait", unit = "unit",
+#'                 lambda_constraint = list(unit = M))
+#'
+#' # Profile trait_2's loading (row 2, column 1 of the loading matrix):
+#' # the model is refitted with that loading held at each of 7 values.
+#' pf <- loading_profile(fit, level = "unit", entries = cbind(2, 1),
+#'                       n_grid = 7)
+#' pf[, c("trait", "profile_value", "delta_deviance")]
+#'
+#' # Values whose delta_deviance stays below qchisq(0.95, 1) = 3.84 form
+#' # the 95% profile interval. Compare with the Wald interval:
+#' loading_ci(fit)[2, c("trait", "estimate", "lower", "upper")]
+#'
+#' if (requireNamespace("ggplot2", quietly = TRUE)) {
+#'   # The dip of the curve is the estimate; the dashed lines mark where it
+#'   # crosses the dotted 3.84 line, i.e. the 95% profile interval.
+#'   plot(pf)
 #' }
 #'
 #' @export
 loading_profile <- function(fit,
-                            level       = c("unit", "unit_obs"),
+                            level       = "unit",
                             entries     = NULL,
                             n_grid      = 11L,
                             grid_extent = 6,
@@ -80,7 +115,7 @@ loading_profile <- function(fit,
   .temporal_assert_no_iid_inference(fit, "loading_profile")
   .gllvmTMB_mspl_assert_inference(fit, "loading_profile")
   .gllvmTMB_require_unweighted_inference(fit, "loading_profile")
-  level <- match.arg(level)
+  level <- match.arg(level, c("unit", "unit_obs", "B", "W"))
   internal_level <- .normalise_level(level, arg_name = "level")
   lam_name <- paste0("Lambda_", internal_level)
   if (is.null(fit$report[[lam_name]]))
@@ -134,20 +169,38 @@ loading_profile <- function(fit,
     se_mat <- abs(Lambda) / 2 + 0.5
   }
 
-  ll_full <- as.numeric(stats::logLik(fit))
   full_formula <- .reconstruct_multi_formula(fit)
   arg_canon <- if (internal_level == "B") "unit" else "unit_obs"
 
-  ## Forward the same auxiliary structure the bootstrap paths forward, so each
-  ## profile refit is the SAME model as the original fit (phylo correlation,
-  ## SPDE mesh, species grouping) rather than a mis-specified one (#594).
-  aux <- list(
-    phylo_vcv  = fit$phylo_vcv,
-    phylo_tree = fit$phylo_tree,
-    mesh       = fit$mesh
-  )
-  aux <- aux[!vapply(aux, is.null, logical(1))]
-  ## One worker: refit with one entry pinned at value c, return -logLik.
+  ## Every refit is the fitted model with one loading held fixed, so it takes
+  ## the same arguments bootstrap_Sigma() refits with: grouping columns
+  ## (unit_obs, cluster), family, REML, control (incl. loading_ridge), phylo
+  ## correlation and SPDE mesh (#594, #1584, #1393). Only lambda_constraint
+  ## changes per grid point.
+  refit_args <- .bootstrap_refit_args(fit, "loading_profile")
+
+  ## A ridged fit minimises the likelihood plus 0.5 * sum(theta^2) / tau^2 over
+  ## its FREE ordinary loadings. The held loading is not free in a refit, so
+  ## its share of the penalty is added back to put every grid point on the
+  ## objective the fit itself optimised.
+  ridge_tau <- fit$aghq$ridge_tau %||% Inf
+  ridged <- isTRUE(fit$aghq$penalised) ||
+    (is.numeric(ridge_tau) && length(ridge_tau) == 1L &&
+       is.finite(ridge_tau) && ridge_tau > 0)
+  ridge_on_held <- ridged && internal_level == "B" &&
+    .gllvmTMB_loading_ridge_applies(ridge_tau, names(fit$opt$par))
+
+  ## Refit failures: how many and the first reason, reset for each entry.
+  failed <- new.env(parent = emptyenv())
+  failed$n <- 0L
+  failed$first <- NULL
+  note_failure <- function(reason) {
+    failed$n <- failed$n + 1L
+    if (is.null(failed$first)) failed$first <- reason
+    NA_real_
+  }
+
+  ## One worker: refit with one entry pinned at value c, return the objective.
   obj_at <- function(i, k, c) {
     M_test <- matrix(NA_real_, n_traits, K)
     if (!is.null(M_user)) {                # preserve other user pins
@@ -165,32 +218,50 @@ loading_profile <- function(fit,
       other_canon <- if (other_internal == "B") "unit" else "unit_obs"
       lc_test[[other_canon]] <- fit$lambda_constraint[[other_internal]]
     }
-    fit_test <- try(
-      do.call(gllvmTMB, c(list(
-        formula = full_formula, data = fit$data,
-        family  = fit$family_input,
-        trait   = fit$trait_col, unit = fit$unit_col,
-        species = fit$species_col,
-        lambda_constraint = lc_test, silent = TRUE
-      ), aux)),
-      silent = TRUE
+    call_args <- c(list(formula = full_formula, data = fit$data), refit_args)
+    call_args$lambda_constraint <- lc_test
+    ## The rebuilt formula uses the rr()/diag() keywords; the notices about
+    ## them are about syntax the caller did not write.
+    fit_test <- tryCatch(
+      suppressMessages(do.call(gllvmTMB, call_args)),
+      error = function(e) e
     )
-    if (inherits(fit_test, "try-error") ||
-        isTRUE(fit_test$opt$convergence != 0L))
-      return(NA_real_)
+    if (inherits(fit_test, "error"))
+      return(note_failure(.bootstrap_failure_reason(fit_test)))
+    if (isTRUE(fit_test$opt$convergence != 0L))
+      return(note_failure(paste0("the optimiser did not converge (code ",
+                                 fit_test$opt$convergence, ")")))
+    if (ridged) {
+      nll <- fit_test$objective_components$optimization_nll
+      if (length(nll) != 1L || !is.finite(nll))
+        return(note_failure("the penalised objective was not available"))
+      if (ridge_on_held) nll <- nll + 0.5 * c^2 / ridge_tau^2
+      return(nll)
+    }
     -as.numeric(stats::logLik(fit_test))    # NEGATIVE logLik (objective)
   }
 
   ## Build curve for each entry
   out_list <- vector("list", nrow(free_idx))
   for (r in seq_len(nrow(free_idx))) {
-    i <- free_idx[r, 1L]; k <- free_idx[r, 2L]
+    ## unname(): a named scalar makes data.frame() warn about row names.
+    i <- unname(free_idx[r, 1L]); k <- unname(free_idx[r, 2L])
     est <- Lambda[i, k]
     sc  <- se_mat[i, k]
     grid_lo <- est - grid_extent / 2 * sc
     grid_hi <- est + grid_extent / 2 * sc
     pv  <- seq(grid_lo, grid_hi, length.out = n_grid)
+    failed$n <- 0L; failed$first <- NULL
     obj <- vapply(pv, function(c) obj_at(i, k, c), numeric(1))
+    if (failed$n > 0L) {
+      cli::cli_warn(c(
+        "{failed$n} of {n_grid} profile refit{?s} failed for {.val {trait_names[i]}} / {.val {axis_names[k]}}.",
+        "i" = "First failure: {failed$first}",
+        "i" = if (all(is.na(obj)))
+          "No grid point has a finite objective, so this curve is all {.code NA}."
+      ))
+    }
+    obj_min <- if (all(is.na(obj))) NA_real_ else min(obj, na.rm = TRUE)
     out_list[[r]] <- data.frame(
       trait          = trait_names[i],
       axis           = axis_names[k],
@@ -198,7 +269,7 @@ loading_profile <- function(fit,
       k              = k,
       profile_value  = pv,
       objective      = obj,
-      delta_deviance = 2 * (obj - min(obj, na.rm = TRUE)),
+      delta_deviance = 2 * (obj - obj_min),
       estimate       = est,
       conf_level     = conf_level,
       stringsAsFactors = FALSE

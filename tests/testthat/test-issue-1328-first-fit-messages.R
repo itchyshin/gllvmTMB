@@ -30,7 +30,7 @@ test_that("Get-started vignette explains hidden first-fit messages (#1328)", {
   )
   testthat::expect_match(
     text,
-    "rotation_convention.*WARN.*Lambda_B",
+    "(rotation_convention.*WARN|WARN.*rotation_convention).*Lambda_B",
     info = "Vignette should explain expected rotation WARN on d > 1"
   )
 })

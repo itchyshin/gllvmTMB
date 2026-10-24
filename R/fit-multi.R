@@ -10178,7 +10178,21 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     par_list <- obj$env$parList(opt$par)
     ## Phase 5a: the binary route reads the per-unit conditional probability
     ## from the engine REPORT(mi_probability); pass the report to gll_finalize_mi.
-    mi_report <- tryCatch(obj$report(opt$par), error = function(e) NULL)
+    ## `opt$par` holds the fixed effects only, so `obj$report(opt$par)` errors
+    ## ("Wrong parameter length.") whenever the model has a random effect.
+    ## Evaluate at the optimum, then read the report from the last full
+    ## parameter vector (the idiom documented at the `rep <- obj$report()` site).
+    mi_report <- tryCatch({
+      obj$fn(opt$par)
+      obj$report()
+    }, error = function(e) {
+      cli::cli_warn(c(
+        "The missing-predictor report could not be evaluated.",
+        "i" = "Conditional probabilities / scores for the missing units are {.val NA}.",
+        "x" = conditionMessage(e)
+      ))
+      NULL
+    })
     fit$missing_data <- gll_finalize_mi(
       fit$missing_data, par_list, mi_model, sdr = sd_rep, report = mi_report
     )

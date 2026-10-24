@@ -43,6 +43,7 @@
   "subscript out of bounds". A symbol `rho` (`rho = r`) is still treated as
   "not 1" there, because the desugar step has no formula environment to
   evaluate it in (#1493).
+* `mi()` with a discrete predictor no longer returns `NA` conditional probabilities for the missing units when the model also has a random effect such as `latent()`; if the report cannot be evaluated, a warning is raised (#1368).
 
 * Internal cross-validation now scores held-out binomial cells on the log
   scale from the linear predictor and link (logit, probit, cloglog). The score

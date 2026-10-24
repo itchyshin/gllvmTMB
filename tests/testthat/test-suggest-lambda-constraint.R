@@ -233,5 +233,7 @@ test_that("profile_retention refits emit no unused-argument or alias notes (#158
   expected[4:6, 1L] <- 0
   expect_true(any(res$constraint == 0, na.rm = TRUE))
   expect_equal(res$constraint, expected)
-  expect_match(res$note, "Tested 9 entries; 2 skipped", fixed = TRUE)
+  ## Since #1585 the free entries of the pinned-diagonal axis start off zero,
+  ## so the two refits that used to be skipped now converge: all 11 are tested.
+  expect_match(res$note, "Tested 11 entries; 0 skipped", fixed = TRUE)
 })

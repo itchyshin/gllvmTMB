@@ -4323,3 +4323,30 @@ test_that("gllvm_julia_fit transposes a matrix N under units_are_rows = TRUE (#5
   expect_equal(dim(captured$args$N), c(2L, 3L))
   expect_equal(unname(captured$args$N), unname(t(N)))
 })
+
+# --- #1562: no latent block (d = 0) is refused for families the engine cannot fit ---
+
+test_that("[GJL-GATE-NO-LATENT] d = 0 is refused for families GLLVModels.jl returns -Inf for (#1562)", {
+  for (fam in c("poisson", "binomial", "nb1", "beta", "gamma", "ordinal", "ordinal_probit")) {
+    err <- tryCatch(
+      gllvmTMB:::.gllvm_julia_check_latent_rank(0L, fam),
+      error = function(e) e
+    )
+    expect_s3_class(err, "gllvmTMB_julia_no_latent")
+    expect_s3_class(err, "gllvmTMB_julia_gate")
+    expect_match(conditionMessage(err), "GJL-GATE-NO-LATENT", fixed = TRUE)
+  }
+  # a mixed-family fit is refused when any trait family is affected
+  expect_error(
+    gllvmTMB:::.gllvm_julia_check_latent_rank(0L, c("negbinomial", "poisson")),
+    class = "gllvmTMB_julia_no_latent"
+  )
+})
+
+test_that("[GJL-GATE-NO-LATENT] NB2, Gaussian and K >= 1 are not refused (#1562)", {
+  expect_no_error(gllvmTMB:::.gllvm_julia_check_latent_rank(0L, "negbinomial"))
+  expect_no_error(gllvmTMB:::.gllvm_julia_check_latent_rank(0L, "gaussian"))
+  for (fam in c("poisson", "binomial", "nb1", "beta", "gamma", "ordinal")) {
+    expect_no_error(gllvmTMB:::.gllvm_julia_check_latent_rank(1L, fam))
+  }
+})

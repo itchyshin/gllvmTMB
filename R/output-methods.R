@@ -28,6 +28,23 @@
 #' @export
 #' @examples
 #' \dontrun{
+#' set.seed(1)
+#' sim <- simulate_site_trait(
+#'   n_sites = 40, n_species = 6, n_traits = 4, mean_species_per_site = 4,
+#'   Lambda_B = matrix(c(1, .5, -.4, .3, 0, .8, .4, -.2), 4, 2),
+#'   psi_B = c(.2, .15, .1, .25),
+#'   Lambda_W = matrix(c(.4, .2, -.1, .3), 4, 1),
+#'   psi_W = c(.1, .08, .05, .12),
+#'   beta = matrix(0, 4, 2), seed = 1
+#' )
+#' dat <- sim$data
+#' fit <- gllvmTMB(
+#'   value ~ 0 + trait +
+#'           latent(0 + trait | site, d = 2) + unique(0 + trait | site) +
+#'           latent(0 + trait | site_species, d = 1) +
+#'           unique(0 + trait | site_species),
+#'   data = dat
+#' )
 #' getLoadings(fit, level = "unit", rotate = "varimax")
 #' }
 getLoadings <- function(
@@ -82,6 +99,23 @@ getLoadings <- function(
 #' @export
 #' @examples
 #' \dontrun{
+#' set.seed(1)
+#' sim <- simulate_site_trait(
+#'   n_sites = 40, n_species = 6, n_traits = 4, mean_species_per_site = 4,
+#'   Lambda_B = matrix(c(1, .5, -.4, .3, 0, .8, .4, -.2), 4, 2),
+#'   psi_B = c(.2, .15, .1, .25),
+#'   Lambda_W = matrix(c(.4, .2, -.1, .3), 4, 1),
+#'   psi_W = c(.1, .08, .05, .12),
+#'   beta = matrix(0, 4, 2), seed = 1
+#' )
+#' dat <- sim$data
+#' fit <- gllvmTMB(
+#'   value ~ 0 + trait +
+#'           latent(0 + trait | site, d = 2) + unique(0 + trait | site) +
+#'           latent(0 + trait | site_species, d = 1) +
+#'           unique(0 + trait | site_species),
+#'   data = dat
+#' )
 #' extract_loadings(fit, level = "unit", rotate = "varimax")
 #' }
 extract_loadings <- function(
@@ -167,6 +201,23 @@ extract_loadings <- function(
 #' @export
 #' @examples
 #' \dontrun{
+#' set.seed(1)
+#' sim <- simulate_site_trait(
+#'   n_sites = 40, n_species = 6, n_traits = 4, mean_species_per_site = 4,
+#'   Lambda_B = matrix(c(1, .5, -.4, .3, 0, .8, .4, -.2), 4, 2),
+#'   psi_B = c(.2, .15, .1, .25),
+#'   Lambda_W = matrix(c(.4, .2, -.1, .3), 4, 1),
+#'   psi_W = c(.1, .08, .05, .12),
+#'   beta = matrix(0, 4, 2), seed = 1
+#' )
+#' dat <- sim$data
+#' fit <- gllvmTMB(
+#'   value ~ 0 + trait +
+#'           latent(0 + trait | site, d = 2) + unique(0 + trait | site) +
+#'           latent(0 + trait | site_species, d = 1) +
+#'           unique(0 + trait | site_species),
+#'   data = dat
+#' )
 #' getLV(fit, level = "unit")
 #' getLV(fit, level = "unit", se = TRUE)
 #' }

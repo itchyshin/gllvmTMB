@@ -70,11 +70,17 @@ Family \tab Link \tab \eqn{\sigma^2_d} \cr
 }
 \examples{
 \dontrun{
+set.seed(1)
+dat <- expand.grid(
+  site  = factor(seq_len(60)),
+  trait = factor(paste0("t", 1:3))
+)
 ## Add a site_species column (one level per row) as the obs-level grouping.
-df$site_species <- factor(seq_len(nrow(df)))
+dat$site_species <- factor(seq_len(nrow(dat)))
+dat$value <- rpois(nrow(dat), exp(1 + rnorm(nrow(dat), sd = 0.5)))
 fit <- gllvmTMB(
   value ~ 0 + trait + indep(0 + trait | site_species),
-  data     = df,
+  data     = dat,
   trait    = "trait",
   unit     = "site",
   unit_obs = "site_species",

@@ -29,7 +29,8 @@ basis covariance), \code{"column_slope"} (the predictor-basis covariance
 from \code{\link[=slope]{slope()}}, \code{\link[=phylo_slope]{phylo_slope()}}, \code{\link[=animal_slope]{animal_slope()}}, \code{\link[=kernel_slope]{kernel_slope()}},
 \code{\link[=spatial_slope]{spatial_slope()}}, or the corresponding \verb{*_indep()} / \verb{*_dep()} canonical
 form), \code{"spatial"},
-\code{"cluster"}, or \code{"cluster2"} (a
+the fitted \code{name} of a named \verb{kernel_*()} tier (for example
+\code{level = "cross"}), \code{"cluster"}, or \code{"cluster2"} (a
 second, independent diagonal grouping alongside \code{"cluster"} -- see the
 \code{cluster2} argument to \code{\link[=gllvmTMB]{gllvmTMB()}}). Legacy aliases
 \code{"B"}, \code{"W"}, and \code{"spde"} are accepted with a soft-deprecation
@@ -295,8 +296,9 @@ with a soft-deprecation message.
 \code{level = "phy"} extracts the phylogenetic implied
 \eqn{\boldsymbol\Sigma_\text{phy}} from \code{phylo_latent()}. If a future
 release adds 3+ latent tiers, \code{level = "<colname>"} will dispatch to the
-corresponding tier without API change. For now, custom strings error
-with a clear unsupported-level message.
+corresponding tier without API change. For now, a custom string that is
+not the fitted \code{name} of a kernel tier (see the \code{level} argument) errors with a
+clear unsupported-level message.
 }
 }
 \examples{

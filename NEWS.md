@@ -9,6 +9,8 @@
   documented (#1584).
 
 * `engine = "julia"` now stops on a missing fixed-effect covariate with the same message as the native engine, instead of sending the `NA` to the bridge (#1371).
+* `poisson()` and `nbinom2()` fits now stop up front when the response has a negative or non-integer value, naming the family, instead of "All 1 restarts failed." (negative) or fitting silently (non-integer) (#1356).
+
 * A missing or non-finite value in a random-slope covariate (for example `x` in
   `latent(1 + x | unit)`, `phylo_slope(x | species)`, `phylo_dep()` or the
   spatial slope terms) now stops the fit with a message naming the covariate,

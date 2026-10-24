@@ -111,7 +111,8 @@
   new_name,
   args = "...",
   guidance = NULL,
-  see = NULL
+  see = NULL,
+  new_args = args
 ) {
   if (!isTRUE(.gllvmTMB_deprecation_seen[[old]])) {
     ## Use our own env-based tracker only (no cli `.frequency = "once"`)
@@ -127,7 +128,7 @@
     }
     msg <- c(
       "!" = "Formula keyword {.fn {old}} is a deprecated alias; use {.fn {new_name}} for new code.",
-      "i" = "{.code {new_name}({args})} =/=> {.code {old}({args})}",
+      "i" = "{.code {new_name}({new_args})} =/=> {.code {old}({args})}",
       ">" = see_line
     )
     if (!is.null(guidance)) {
@@ -160,6 +161,16 @@
   invisible(NULL)
 }
 
+## TRUE while the rewrite walk re-enters `*_scalar` on the user's behalf.
+.gllvmTMB_scalar_internal <- new.env(parent = emptyenv())
+.gllvmTMB_scalar_internal$on <- FALSE
+.gllvmTMB_rewrite_scalar_internally <- function(code) {
+  old <- .gllvmTMB_scalar_internal$on
+  .gllvmTMB_scalar_internal$on <- TRUE
+  on.exit(.gllvmTMB_scalar_internal$on <- old, add = TRUE)
+  code
+}
+
 ## One-shot fire-on-use notice for the scalar() / *_scalar() soft-deprecation.
 ## Design 79's covariance grid collapses to THREE modes {indep, dep, latent}: the
 ## one-shared-variance case is now the canonical `indep(..., common = TRUE)`, which
@@ -168,6 +179,11 @@
 ## scalar-family soft-deprecation (maintainer 2026-07-12: warn-once + rewrite).
 .gllvmTMB_warn_scalar_family_deprecated <- function(fn) {
   if (isTRUE(getOption("gllvmTMB.quiet_grammar_notes", FALSE))) {
+    return(invisible(NULL))
+  }
+  ## `phylo(1 | g)` / `spatial(1 | g)` are first-class forms that the rewrite
+  ## walk routes through `*_scalar` internally; the user never typed it (#1557).
+  if (isTRUE(.gllvmTMB_scalar_internal$on)) {
     return(invisible(NULL))
   }
   key <- sprintf("scalar-family-%s", fn)
@@ -613,7 +629,22 @@ meta <- function(value, sampling_var) {
 #'
 #' @param formula `0 + trait | g` style formula (LHS is the response
 #'   factor, typically `0 + trait`; RHS is the grouping factor).
-#' @param d Integer; number of latent factors.
+#' @param d Integer; number of latent factors. The hard guard only requires
+#'   `d <= n_traits` (the number of traits), but that is not the limit of what
+#'   the data can identify. With the default `unique = TRUE`, each unit-trait
+#'   cell observed once, and \eqn{T} traits, the covariance
+#'   \eqn{\boldsymbol\Sigma = \boldsymbol\Lambda\boldsymbol\Lambda^\top + \boldsymbol\Psi}
+#'   has \eqn{T(T + 1)/2} free entries to estimate
+#'   \eqn{T d - d(d - 1)/2 + T} parameters (loadings up to rotation, plus the
+#'   diagonal \eqn{\boldsymbol\Psi}). The counting rule of thumb is
+#'   \eqn{(T - d)^2 \ge T + d}: \eqn{T = 3} and \eqn{T = 4} allow
+#'   `d <= 1`, \eqn{T = 5} allows `d <= 2`, and \eqn{T = 10} allows
+#'   `d <= 6`. Above it the split between
+#'   \eqn{\boldsymbol\Lambda\boldsymbol\Lambda^\top} and
+#'   \eqn{\boldsymbol\Psi} is not identified, and [check_gllvmTMB()] can
+#'   flag only the symptoms (boundary \eqn{\psi}, weak axes) after the fit.
+#'   The rule is a necessary count, not a recovery guarantee. Replication
+#'   within a unit, or `unique = FALSE`, changes the count.
 #' @param unique Logical; `TRUE` (default) auto-includes the diagonal
 #'   trait-specific \eqn{\boldsymbol\Psi} companion
 #'   (\eqn{\boldsymbol\Sigma = \boldsymbol\Lambda\boldsymbol\Lambda^\top + \boldsymbol\Psi}).
@@ -2658,7 +2689,7 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL, rho = 1) {
   } else if (is_spatial) {
     "There is no supported route for more than one slope covariate here; fit separate models, one covariate per {.fn {fn}} term."
   } else if (is_single_slope) {
-    "Use {.code latent(1 + x | {deparse(rhs)}, d = K)} or {.code unique(1 + x | {deparse(rhs)})} instead -- {.fn {fn}} itself does not support a slope term."
+    "Use {.code latent(1 + x | {deparse(rhs)}, d = K)} instead -- {.fn {fn}} itself does not support a slope term, and there is no diagonal-only slope spelling yet."
   } else {
     "There is no supported route for more than one slope covariate here; fit separate models, one covariate per term."
   }
@@ -3432,7 +3463,7 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
               list(as.name("spatial_scalar"), new_bar),
               extras
             ))
-            return(rewrite(new_call))
+            return(.gllvmTMB_rewrite_scalar_internally(rewrite(new_call)))
           }
 
           ## LHS = `0 + trait`: mode is mandatory; pick from
@@ -4556,7 +4587,7 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
           }
           ## Rewrite to phylo_scalar(rhs, tree = tree, vcv = vcv).
           new_call <- as.call(c(list(as.name("phylo_scalar"), rhs), extras))
-          return(rewrite(new_call)) # recurse so phylo_scalar -> engine
+          return(.gllvmTMB_rewrite_scalar_internally(rewrite(new_call))) # recurse so phylo_scalar -> engine
         }
 
         ## LHS = `0 + trait`: mode is mandatory; pick from
@@ -5218,11 +5249,11 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
 ##   rr        -> use latent()
 ##   diag      -> use indep() for standalone diagonal terms
 ##   phylo_rr  -> use phylo_latent()
-##   phylo     -> use phylo_scalar()
+##   phylo     -> use phylo_indep(..., common = TRUE)
 ##   spde      -> use spatial_indep()
 ##   spatial   -> use spatial_indep() (lifecycle::deprecate_warn at 0.1.2)
 ##   meta      -> use meta_V()
-##   gr        -> use phylo_scalar() (or propto() power-user)
+##   gr        -> use phylo_indep(..., common = TRUE) (or propto() power-user)
 ##   propto    -> internal; users should use phylo_scalar / phylo_latent
 ##   equalto   -> internal; users should use meta_V
 ##
@@ -5238,10 +5269,20 @@ scan_for_deprecated <- function(rhs) {
       guidance = "Use ordinary latent(..., d = K) for the default shared + diagonal-Psi decomposition, or indep(0 + trait | g) for a standalone diagonal."
     ),
     phylo_rr = list(new = "phylo_latent", args = "species, d = K", see = "phylo_latent"),
-    phylo = list(new = "phylo_scalar", args = "species", see = "phylo_scalar"),
+    phylo = list(
+      new = "phylo_indep",
+      args = "species",
+      new_args = "0 + trait | species, common = TRUE",
+      see = "phylo_indep"
+    ),
     spde = list(new = "spatial_indep", args = "coords | trait", see = "spatial_indep"),
     meta = list(new = "meta_V", args = "V = V", see = "meta_V"),
-    gr = list(new = "phylo_scalar", args = "species", see = "phylo_scalar")
+    gr = list(
+      new = "phylo_indep",
+      args = "species",
+      new_args = "0 + trait | species, common = TRUE",
+      see = "phylo_indep"
+    )
   )
   ## A bar as the first argument (e.g. `phylo(0 + trait | species, ...)`) marks
   ## the documented mode-dispatch calling convention, which is first-class and
@@ -5285,8 +5326,9 @@ scan_for_deprecated <- function(rhs) {
         if (fn == "spatial" && !spatial_is_firstclass(e)) {
           lifecycle::deprecate_warn(
             when = "0.1.2",
-            what = "spatial()",
+            what = I("The `spatial(0 + trait | coords)` form without `mode`"),
             with = "spatial_indep()",
+            user_env = globalenv(),
             details = c(
               "i" = "spatial(coords | trait) is now an alias for spatial_indep(0 + trait | coords).",
               ">" = "Update existing code to spatial_indep() to keep the rank explicit."
@@ -5302,7 +5344,9 @@ scan_for_deprecated <- function(rhs) {
           ## unconditional recursion below still walks its arguments.
         } else if (fn %in% names(deprecated_map)) {
           d <- deprecated_map[[fn]]
-          .gllvmTMB_warn_keyword_deprecated(fn, d$new, d$args, d$guidance, d$see)
+          .gllvmTMB_warn_keyword_deprecated(
+            fn, d$new, d$args, d$guidance, d$see, d$new_args %||% d$args
+          )
         }
       }
       for (i in seq_along(e)[-1L]) {

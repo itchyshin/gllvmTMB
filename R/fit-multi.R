@@ -4172,13 +4172,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ))
     }
     X_reml <- X_fix[!masked_response, , drop = FALSE]
-    if (ncol(X_reml) > 0L && qr(X_reml)$rank < ncol(X_reml)) {
-      cli::cli_abort(c(
-        "{.arg REML = TRUE} requires a full-rank fixed-effect design matrix.",
-        "x" = "The observed-row fixed-effect design has rank {qr(X_reml)$rank}, but {ncol(X_reml)} column{?s}.",
-        ">" = "Remove redundant fixed-effect columns or use {.code REML = FALSE}."
-      ))
-    }
+    .gllvmTMB_check_fixed_rank(X_reml, reml = TRUE)
     if (nrow(X_reml) <= ncol(X_reml)) {
       cli::cli_abort(c(
         "{.arg REML = TRUE} requires positive residual degrees of freedom.",
@@ -4186,6 +4180,11 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         "i" = "Use more observed rows than fixed-effect coefficients, or use {.code REML = FALSE}."
       ))
     }
+  }
+  ## #1388: the full-rank check used to run only under REML; an aliased column
+  ## under ML reached TMB and surfaced as "All 1 restarts failed.".
+  if (!isTRUE(REML)) {
+    .gllvmTMB_check_fixed_rank(X_fix[!masked_response, , drop = FALSE])
   }
   ## The family-specific response-range checks below validate the *observed*
   ## response only. Masked rows (response = "include") carry the sentinel y = 0
@@ -11713,6 +11712,29 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     if (length(li)) value <- value + 0.5 * sum(par[li]^2) / (ridge_tau^2)
   }
   value
+}
+
+## #1388: abort when the (observed-row) fixed-effect design is rank deficient,
+## naming the redundant columns (those the pivoted QR cannot place).
+.gllvmTMB_check_fixed_rank <- function(X, reml = FALSE) {
+  p <- ncol(X)
+  if (p == 0L) return(invisible(NULL))
+  qrX <- qr(X)
+  if (qrX$rank >= p) return(invisible(NULL))
+  nm <- colnames(X)
+  if (is.null(nm)) nm <- paste0("column ", seq_len(p))
+  redundant <- nm[qrX$pivot[(qrX$rank + 1L):p]]
+  head_msg <- if (isTRUE(reml)) {
+    "{.arg REML = TRUE} requires a full-rank fixed-effect design matrix."
+  } else {
+    "The fixed-effect design matrix is not full rank."
+  }
+  cli::cli_abort(c(
+    head_msg,
+    "x" = "The observed-row fixed-effect design has rank {qrX$rank}, but {p} column{?s}.",
+    "x" = "Redundant (linearly dependent) columns: {.val {redundant}}.",
+    ">" = "Remove the redundant fixed-effect column(s), for example a rescaled copy of a covariate or a dummy that duplicates a trait term."
+  ), class = "gllvmTMB_rank_deficient_design")
 }
 
 ## #1333: say why each restart failed instead of only that they all did.

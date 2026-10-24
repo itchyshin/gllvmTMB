@@ -4251,6 +4251,24 @@ print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
   trait_dummies <- paste0(trait, traits)
   extra_cols <- setdiff(colnames(Xfix), trait_dummies)
   has_only_trait_intercept <- (length(extra_cols) == 0 && ncol(Xfix) == p)
+  ## The design matrix comes from a na.pass model frame and the response mask
+  ## covers the response only, so an NA predictor would otherwise reach the
+  ## bridge inside the p x n x q array (#1371). Same rule and wording as the
+  ## native engine: rows with a missing response are dropped or masked, but a
+  ## missing predictor on an observed-response row must be removed or imputed.
+  if (anyNA(Xfix[!is.na(yv), , drop = FALSE])) {
+    cli::cli_abort(
+      c(
+        "NA in the fixed-effect design matrix.",
+        ">" = paste0(
+          "Missing response rows are allowed and dropped before fitting; ",
+          "missing predictors still need to be removed or imputed before ",
+          "fitting."
+        )
+      ),
+      class = "gllvmTMB_julia_na_fixed_effect"
+    )
+  }
   if (has_lv && !has_only_trait_intercept) {
     stop(
       .gllvm_julia_gate_message(
@@ -4433,15 +4451,30 @@ print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
       )
     }
     Kal <- Kmat[levels(grpf), levels(grpf), drop = FALSE]
-    if (!isSymmetric(unname(Kal), tol = 0)) {
+    ## A kernel symmetric to rounding (e.g. `solve(solve(K))`) is symmetrised
+    ## explicitly; no jitter is applied either way. The check is entry by
+    ## entry on the levels in the data, scaled by max(1, max|K|). It is not
+    ## isSymmetric(): that checks rows 1, 2, n - 1 and n, then the mean
+    ## relative difference over the unequal entries, so when rounding leaves
+    ## most entries unequal, one bad entry elsewhere in a large K can be
+    ## averaged away.
+    k_tol <- sqrt(.Machine$double.eps) * max(1, max(abs(Kal)))
+    k_asym <- max(abs(Kal - t(Kal)))
+    if (k_asym > k_tol) {
       stop(
         .gllvm_julia_gate_message(
           "GJL-GATE-STRUCTURED-TERMS",
-          "kernel K must be exactly symmetric; no jitter is applied."
+          "kernel K must be symmetric to rounding; no jitter is applied. ",
+          "(On the grouping levels in the data, max|K - t(K)| = ",
+          format(k_asym, digits = 3),
+          " exceeds the rounding tolerance sqrt(.Machine$double.eps) * ",
+          "max(1, max|K|) = ", format(k_tol, digits = 3), ". Pass a ",
+          "symmetric kernel, for example (K + t(K)) / 2.)"
         ),
         call. = FALSE
       )
     }
+    Kal <- (Kal + t(Kal)) / 2
     if (is.null(tryCatch(chol(Kal), error = function(e) NULL))) {
       stop(
         .gllvm_julia_gate_message(

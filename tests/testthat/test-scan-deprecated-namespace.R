@@ -124,7 +124,7 @@ test_that("phylo mode-dispatch calls do not emit legacy alias deprecation", {
   )
 })
 
-test_that("legacy phylo alias still points to phylo_scalar", {
+test_that("legacy phylo alias points to phylo_indep", {
   seen <- gllvmTMB:::.gllvmTMB_deprecation_seen
   if (exists("phylo", envir = seen, inherits = FALSE)) {
     rm("phylo", envir = seen)
@@ -132,7 +132,14 @@ test_that("legacy phylo alias still points to phylo_scalar", {
 
   expect_message(
     gllvmTMB:::scan_for_deprecated(quote(phylo(species))),
-    regexp = "phylo_scalar"
+    regexp = "phylo_indep"
+  )
+  rm("phylo", envir = seen)
+  expect_no_match(
+    testthat::capture_messages(
+      gllvmTMB:::scan_for_deprecated(quote(phylo(species)))
+    ),
+    "phylo_scalar"
   )
 })
 

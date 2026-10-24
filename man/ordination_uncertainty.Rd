@@ -96,11 +96,33 @@ a standard asymptotic-normal construction, not a certified interval.
 }
 
 \examples{
-\dontrun{
+set.seed(1)
+# Simulate six traits, each measured twice on 100 units (e.g. sites),
+# driven by two latent axes plus trait-specific variation.
+Lambda <- cbind(c(0.7, 1.0, 0.9, 0.0, 0.0, 0.0),
+                c(0.7, 0.0, 0.0, 1.0, 0.9, 0.8))
+sim <- simulate_unit_trait(n_units = 100, n_obs_per_unit = 2,
+                           n_traits = 6, Lambda_B = Lambda,
+                           psi_B = 0.4, sigma2_eps = 0.3)
+fit <- gllvmTMB(value ~ 0 + trait +
+                  latent(0 + trait | unit, d = 2, unique = TRUE),
+                data = sim$data, trait = "trait", unit = "unit")
+
+# Score uncertainty for every unit on both latent axes.
 u <- ordination_uncertainty(fit, level = "unit")
-u$se           # same numbers as getLV(fit, "unit", se = TRUE)$se
-u$cov[, , 1]   # site 1's 2x2 (or dxd) score covariance
-}
+u
+# Uncertainty (standard deviation) of each unit's score on each axis,
+# for the first six units.
+head(round(u$se, 3))
+# Unit 1's 2 x 2 score covariance: the squares of those values on the
+# diagonal; the off-diagonal term sets the tilt of its ellipse.
+round(u$cov[, , 1], 4)
+# These are the same numbers getLV(se = TRUE) gives, one axis at a time.
+all.equal(u$se, getLV(fit, "unit", se = TRUE)$se)
+# Ordination plot with an approximate 95\% ellipse around every unit.
+# Each unit is scored from only six traits, so its position is
+# uncertain: the ellipses are wide and overlap.
+ordiplot(fit, level = "unit", ellipse = TRUE)
 }
 \seealso{
 \code{\link[=getLV]{getLV()}} for the marginal per-cell standard error this

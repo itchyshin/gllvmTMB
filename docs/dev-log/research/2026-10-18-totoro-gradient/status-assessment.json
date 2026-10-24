@@ -1,0 +1,36 @@
+{
+  "assessment_performed": true,
+  "draft_sha256": "04490d38ed51cad0fcbd8458d0e6ad95b6ccbf0c02a5a49a3d458758343c5355",
+  "draft_version": "v1",
+  "requested_mode": "independent",
+  "assessor_type": "self",
+  "reviewer": "Codex primary agent",
+  "method": "Post-draft reading and claim comparison against source diff, fit receipts, full check logs and independent review",
+  "genre": "technical verification record",
+  "coverage": "whole draft",
+  "score": 2,
+  "style_status": "assessed",
+  "score_reason": "Concrete numerical comparison and explicit scope; required report structure adds some repeated framing.",
+  "confidence": "medium",
+  "confidence_reason": "Editorial self-assessment; numerical and scope claims checked separately.",
+  "examples": [
+    {
+      "location": "line 23",
+      "cue": "Concrete purpose, outcome or scope boundary",
+      "impact": "Reader can check what changed and what the evidence supports.",
+      "repair": "no change needed",
+      "line": 23,
+      "quote": "Completed at 19:56:18 UTC: full package check passed in 1,701.08 seconds with zero errors, zero warnings and two existing notes. The full test tally is FAIL 0, WARN 60, SKIP 1259, PASS 26641. `check-receipt.json`, `00check.log`, `package-check.log` and `full-testthat.Rout` retain the results. The original full check had one failing gradient assertion; that assertion now passes."
+    }
+  ],
+  "evidence_none_reason": null,
+  "science_gate": "pass",
+  "science_gate_reason": "Unpenalised point optimisation only; raw threshold0.01 retained; no Hessian or coverage claim for the se=FALSE repair. Separate default-nlminb diagnostic receipt supports the named neighbour check.",
+  "facts_gate": "pass",
+  "facts_gate_reason": "Compared all numerical assertions with baseline/tight/wide receipts, source-verification.json, check-receipt.json and full-testthat.Rout; disclosure of initial setup failures retained.",
+  "references_gate": "not_applicable",
+  "references_gate_reason": "No literature claim; local commands, source and retained evidence support the draft.",
+  "date": "2026-10-18",
+  "calibration_status": "No calibration controls used for this draft; protocol examples previously visible.",
+  "interpretation": "perceived_style_not_authorship"
+}

@@ -267,3 +267,71 @@ test_that("simulate_site_trait(): invalid n_predictors is rejected clearly (#155
   expect_error(simulate_site_trait(n_predictors = -1), "n_predictors")
   expect_error(simulate_site_trait(n_predictors = 1.5), "n_predictors")
 })
+
+# ---- output is unchanged by the vectorised row builder (#1581) -----------
+## Reference fingerprints were recorded from the per-row data.frame + rbind
+## implementation. rlang::hash() of the whole object is not stable across R
+## and rlang versions, so the check uses numeric fingerprints (row count, sum,
+## position-weighted sum of `value`, and the sum of numeric truth entries)
+## compared with a tolerance. Together they pin the RNG draw order, the row
+## order and the values; the column types and levels are checked directly.
+
+test_that("simulate_site_trait(): output is identical to the per-row builder (#1581)", {
+  fingerprint <- function(r) {
+    d <- r$data
+    c(nrow = nrow(d),
+      sum  = sum(d$value),
+      wsum = sum(d$value * seq_along(d$value)),
+      tsum = sum(vapply(r$truth, function(x) if (is.numeric(x)) sum(x) else 0, 0)))
+  }
+  shapes <- list(
+    a = list(n_sites = 30, n_species = 8, n_traits = 3,
+             mean_species_per_site = 4, seed = 11),
+    b = list(n_sites = 20, n_species = 6, n_traits = 1,
+             mean_species_per_site = 3, seed = 12),
+    c = list(n_sites = 25, n_species = 7, n_traits = 2,
+             mean_species_per_site = 3, alpha = c(0, 1),
+             beta = matrix(c(.3, -.2, .1, .4), 2, 2), seed = 13),
+    d = list(n_sites = 20, n_species = 6, n_traits = 3,
+             mean_species_per_site = 3,
+             Lambda_W = matrix(c(.8, .5, .2), 3, 1), psi_W = c(.2, .3, .4),
+             Lambda_B = matrix(c(.6, .4, .3), 3, 1), psi_B = .1,
+             sigma2_sp = .3, seed = 14),
+    e = list(n_sites = 15, n_species = 5, n_traits = 2,
+             mean_species_per_site = 2, spatial_range = .5, sigma2_spa = .4,
+             sigma2_phy = .5, Cphy = diag(5), seed = 15),
+    f = list(n_sites = 10, n_species = 1, n_traits = 2,
+             mean_species_per_site = 1, seed = 16)
+  )
+  expected <- list(
+    a = c(nrow = 339, sum = -199.70537643, wsum = -36399.26042864, tsum = -1.18874735),
+    b = c(nrow = 62,  sum = -88.39397443,  wsum = -2184.59185211, tsum = -0.67035510),
+    c = c(nrow = 154, sum = 60.91846965,   wsum = 4733.93077867,  tsum = 2.10000000),
+    d = c(nrow = 141, sum = 125.72984104,  wsum = 9429.80583103,  tsum = -4.13748324),
+    e = c(nrow = 62,  sum = 52.28838819,   wsum = 1385.44239138,  tsum = 4.78504861),
+    f = c(nrow = 20,  sum = 6.24128598,    wsum = 65.20997237,    tsum = 1.01673560)
+  )
+  for (nm in names(shapes)) {
+    s <- do.call(simulate_site_trait, shapes[[nm]])
+    expect_equal(fingerprint(s), expected[[nm]], tolerance = 1e-6, info = nm)
+    expect_identical(names(s$data)[1:5],
+                     c("site", "species", "site_species", "trait", "value"),
+                     info = nm)
+    expect_true(all(vapply(s$data[c("site", "species", "site_species", "trait")],
+                           is.factor, logical(1))), info = nm)
+    expect_identical(levels(s$data$trait),
+                     paste0("trait_", seq_len(shapes[[nm]]$n_traits)), info = nm)
+    expect_identical(rownames(s$data), as.character(seq_len(nrow(s$data))),
+                     info = nm)
+  }
+})
+
+test_that("simulate_site_trait(): 1.5k rows build quickly (#1581)", {
+  skip_on_cran()
+  el <- system.time(
+    s <- simulate_site_trait(n_sites = 100, n_species = 20, n_traits = 3,
+                             mean_species_per_site = 5, seed = 1)
+  )[["elapsed"]]
+  expect_gt(nrow(s$data), 1000)
+  expect_lt(el, 0.15)
+})

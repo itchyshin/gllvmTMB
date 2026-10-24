@@ -1,6 +1,40 @@
 ## Stage 2 of gllvmTMB: fit a multivariate stacked-trait model with rr() +
 ## diag() covariance structures using src/gllvmTMB.cpp.
 
+## Stop with a named message when a random-slope covariate has a non-finite
+## value. Slope covariates enter the Z design matrices (not X_fix), so the
+## X_fix NA guard never sees them; without this the objective is NaN from the
+## first evaluation and the user only gets "All 1 restarts failed." (#1394,
+## #1375).
+.gllvmTMB_check_finite_slope <- function(x, col) {
+  bad <- sum(!is.finite(x))
+  if (bad > 0L) {
+    cli::cli_abort(c(
+      "Random-slope covariate {.code {col}} has {bad} non-finite value{?s} (NA, NaN or Inf).",
+      ">" = "Missing response rows are allowed and dropped before fitting; missing predictors still need to be removed or imputed before fitting."
+    ))
+  }
+  invisible(x)
+}
+
+## Are two `phylo` trees the same tree? Tip labels are matched by name (tip
+## ORDER is storage, not identity) and the patristic distances are compared,
+## so a different topology or different branch lengths on the same tips is a
+## different tree (#1350). Without ape the tip-label set is all that can be
+## checked.
+.gllvmTMB_same_phylo_tree <- function(a, b, tol = 1e-8) {
+  if (!setequal(a$tip.label, b$tip.label) ||
+      anyDuplicated(a$tip.label) || anyDuplicated(b$tip.label)) {
+    return(FALSE)
+  }
+  if (!requireNamespace("ape", quietly = TRUE)) {
+    return(TRUE)
+  }
+  da <- ape::cophenetic.phylo(a)
+  db <- ape::cophenetic.phylo(b)[rownames(da), colnames(da), drop = FALSE]
+  isTRUE(all.equal(unname(da), unname(db), tolerance = tol))
+}
+
 .kernel_overlap_class <- function(similarity) {
   ifelse(
     similarity < 0.25, "near_orthogonal",
@@ -3544,6 +3578,19 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   )
 
   y_raw <- stats::model.response(mf)
+  ## #1396: a factor / character response was fitted as its integer level
+  ## codes (as.numeric(y_raw) below) with no message. Only the categorical
+  ## families (ordinal_probit 14, multinomial 16, ordinal_logit 20) take a
+  ## factor response; every other row needs an explicit numeric response.
+  if ((is.factor(y_raw) || is.character(y_raw)) &&
+      any(!family_id_vec %in% c(14L, 16L, 20L))) {
+    resp_name <- paste(deparse(parsed$fixed[[2L]]), collapse = " ")
+    cli::cli_abort(c(
+      "The response {.field {resp_name}} is a {if (is.factor(y_raw)) 'factor' else 'character'} column, which would be fitted as its integer level codes.",
+      "x" = "Only {.fn ordinal_probit}, {.fn ordinal_logit} and {.fn multinomial} traits take a factor response.",
+      ">" = "Convert it to numbers explicitly, e.g. {.code as.numeric(as.character({resp_name}))}, and check for stray non-numeric entries such as \"-\" or \"NA\" strings."
+    ), class = "gllvmTMB_factor_response_unsupported")
+  }
   ## censored_poisson (fid 21, renumbered 2026-09-03 from 20 --
   ## ordinal_logit, PR #1250, holds 20) rows: default every row to
   ## uncensored (cens_limit = 0), overridden below only for rows whose LHS
@@ -3849,7 +3896,11 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ## a saved object) behaves exactly as before rather than silently changing
       ## the quadrature order or the tier.
       va_H           = control$va_H %||% 7L,
-      va_eval_method = control$va_eval_method %||% "auto"
+      va_eval_method = control$va_eval_method %||% "auto",
+      optimizer      = control$optimizer %||% "nlminb",
+      optimizer_explicit = isTRUE(control$optimizer_explicit),
+      optArgs        = control$optArgs %||% list(),
+      va_polish      = control$va_polish %||% TRUE
     ))
   }
 
@@ -4029,7 +4080,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         ))
       if (is.null(phylo_tree)) {
         phylo_tree <- cov_tree
-      } else if (!identical(phylo_tree$tip.label, cov_tree$tip.label)) {
+      } else if (!.gllvmTMB_same_phylo_tree(phylo_tree, cov_tree)) {
         cli::cli_abort(c(
           "The {.fn phylo} covariate tree differs from the response phylogenetic tree.",
           ">" = "One tree per fit in this version; the covariate and response phylo terms must share a tree (multi-tree is a later phase)."
@@ -4134,13 +4185,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ))
     }
     X_reml <- X_fix[!masked_response, , drop = FALSE]
-    if (ncol(X_reml) > 0L && qr(X_reml)$rank < ncol(X_reml)) {
-      cli::cli_abort(c(
-        "{.arg REML = TRUE} requires a full-rank fixed-effect design matrix.",
-        "x" = "The observed-row fixed-effect design has rank {qr(X_reml)$rank}, but {ncol(X_reml)} column{?s}.",
-        ">" = "Remove redundant fixed-effect columns or use {.code REML = FALSE}."
-      ))
-    }
+    .gllvmTMB_check_fixed_rank(X_reml, reml = TRUE)
     if (nrow(X_reml) <= ncol(X_reml)) {
       cli::cli_abort(c(
         "{.arg REML = TRUE} requires positive residual degrees of freedom.",
@@ -4148,6 +4193,11 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         "i" = "Use more observed rows than fixed-effect coefficients, or use {.code REML = FALSE}."
       ))
     }
+  }
+  ## #1388: the full-rank check used to run only under REML; an aliased column
+  ## under ML reached TMB and surfaced as "All 1 restarts failed.".
+  if (!isTRUE(REML)) {
+    .gllvmTMB_check_fixed_rank(X_fix[!masked_response, , drop = FALSE])
   }
   ## The family-specific response-range checks below validate the *observed*
   ## response only. Masked rows (response = "include") carry the sentinel y = 0
@@ -5438,7 +5488,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ))
     }
     if (use_spde_dep_slope) {
-      x_dep <- as.numeric(data[[spde_slope_xcol]])
+      x_dep <- .gllvmTMB_check_finite_slope(
+        as.numeric(data[[spde_slope_xcol]]), spde_slope_xcol
+      )
       for (o in seq_len(n_obs)) {
         t0 <- trait_id[o]                       # 0-based trait index
         Z_spde_aug[o, 2L * t0 + 1L] <- 1.0      # intercept field col for trait t0
@@ -5446,7 +5498,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       }
     } else {
       Z_spde_aug[, 1L] <- 1.0
-      Z_spde_aug[, 2L] <- as.numeric(data[[spde_slope_xcol]])
+      Z_spde_aug[, 2L] <- .gllvmTMB_check_finite_slope(
+        as.numeric(data[[spde_slope_xcol]]), spde_slope_xcol
+      )
     }
   }
 
@@ -5472,6 +5526,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         ">" = "Add the covariate column to the data frame."
       ))
     }
+    .gllvmTMB_check_finite_slope(
+      as.numeric(data[[spde_latent_slope_xcol]]), spde_latent_slope_xcol
+    )
     Z_spde_lat <- .spde_latent_slope_design(data, spde_latent_slope_xcol)
   }
 
@@ -5510,7 +5567,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       cli::cli_abort(c(
         "{.arg phylo_slope({phylo_slope_xcol} | {species})} references column {.val {phylo_slope_xcol}}, which is not in {.arg data}.",
         ">" = "Add the covariate column to the data frame."))
-    as.numeric(data[[phylo_slope_xcol]])
+    .gllvmTMB_check_finite_slope(
+      as.numeric(data[[phylo_slope_xcol]]), phylo_slope_xcol
+    )
   } else rep(0.0, n_obs)
   ## Design 130: predictor design for slope-only response-column fields.
   ## Deliberately raw numeric columns: transforms and factor expansions are
@@ -5567,7 +5626,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
           ">" = "Add the covariate column{?s} to the data frame."))
       }
       matrix(
-        as.numeric(unlist(lapply(phylo_slope_xcols, function(col) as.numeric(data[[col]])))),
+        as.numeric(unlist(lapply(phylo_slope_xcols, function(col) {
+          .gllvmTMB_check_finite_slope(as.numeric(data[[col]]), col)
+        }))),
         nrow = n_obs, ncol = n_phy_slope
       )
     }
@@ -5663,7 +5724,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ))
     }
     Z_phy_lat[, 1L] <- 1.0
-    Z_phy_lat[, 2L] <- as.numeric(data[[phylo_latent_slope_xcol]])
+    Z_phy_lat[, 2L] <- .gllvmTMB_check_finite_slope(
+      as.numeric(data[[phylo_latent_slope_xcol]]), phylo_latent_slope_xcol
+    )
   }
 
   ## Ordinary B-tier augmented latent random regression:
@@ -5690,7 +5753,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         ">" = "Add the covariate column to the data frame."
       ))
     }
-    x_B_slope <- as.numeric(data[[rr_B_slope_xcol]])
+    x_B_slope <- .gllvmTMB_check_finite_slope(
+      as.numeric(data[[rr_B_slope_xcol]]), rr_B_slope_xcol
+    )
     stride <- 2L
     for (o in seq_len(n_obs)) {
       t0 <- trait_id[o]
@@ -5722,7 +5787,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         ">" = "Add the covariate column to the data frame."
       ))
     }
-    x_B_diag <- as.numeric(data[[diag_B_slope_xcol]])
+    x_B_diag <- .gllvmTMB_check_finite_slope(
+      as.numeric(data[[diag_B_slope_xcol]]), diag_B_slope_xcol
+    )
     stride <- 2L
     for (o in seq_len(n_obs)) {
       t0 <- trait_id[o]
@@ -11638,6 +11705,29 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     if (length(li)) value <- value + 0.5 * sum(par[li]^2) / (ridge_tau^2)
   }
   value
+}
+
+## #1388: abort when the (observed-row) fixed-effect design is rank deficient,
+## naming the redundant columns (those the pivoted QR cannot place).
+.gllvmTMB_check_fixed_rank <- function(X, reml = FALSE) {
+  p <- ncol(X)
+  if (p == 0L) return(invisible(NULL))
+  qrX <- qr(X)
+  if (qrX$rank >= p) return(invisible(NULL))
+  nm <- colnames(X)
+  if (is.null(nm)) nm <- paste0("column ", seq_len(p))
+  redundant <- nm[qrX$pivot[(qrX$rank + 1L):p]]
+  head_msg <- if (isTRUE(reml)) {
+    "{.arg REML = TRUE} requires a full-rank fixed-effect design matrix."
+  } else {
+    "The fixed-effect design matrix is not full rank."
+  }
+  cli::cli_abort(c(
+    head_msg,
+    "x" = "The observed-row fixed-effect design has rank {qrX$rank}, but {p} column{?s}.",
+    "x" = "Redundant (linearly dependent) columns: {.val {redundant}}.",
+    ">" = "Remove the redundant fixed-effect column(s), for example a rescaled copy of a covariate or a dummy that duplicates a trait term."
+  ), class = "gllvmTMB_rank_deficient_design")
 }
 
 ## #1333: say why each restart failed instead of only that they all did.

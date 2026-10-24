@@ -12,9 +12,12 @@ test_that("tidy(fixed) returns a coefficient table with SEs and a link column", 
   )
   fit <- gllvmTMB(
     value ~ 0 + trait + (0 + trait):env_1 +
-            latent(0 + trait | site, d = 2),
+            latent(0 + trait | site, d = 1),
     data = sim$data
   )
+  ## d = 2 on this data gives pdHess = FALSE; tidy() now withholds SEs there
+  ## (#1351), so this shape check needs a fit with a usable Hessian.
+  expect_true(isTRUE(fit$sd_report$pdHess))
   tf <- tidy(fit, "fixed", conf.int = TRUE)
   expect_s3_class(tf, "data.frame")
   expect_true(all(c("term", "estimate", "std.error", "link",

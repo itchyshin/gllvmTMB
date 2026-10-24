@@ -233,6 +233,10 @@
       "Fit's {.code sd_report$cov.fixed} is missing; cannot compute Wald CI."
     )
   }
+  ## #1379: all-non-finite covariance is an error; pdHess = FALSE a warning.
+  .confint_require_sdreport(fit, "wald", caller = "extract_phylo_signal",
+                            route = "bootstrap")
+  .wald_warn_nonpd_hessian(fit, "phylogenetic-signal")
   trait_names <- levels(fit$data[[fit$trait_col]])
   T <- length(trait_names)
   if (is.null(trait_idx)) {
@@ -463,9 +467,7 @@
   aux <- aux[!vapply(aux, is.null, logical(1))]
 
   ## Pre-draw simulated responses in the parent process for reproducibility.
-  if (!is.null(seed)) {
-    set.seed(seed)
-  }
+  .gllvmTMB_local_seed(seed)
   Y_sim <- stats::simulate(fit, nsim = nsim)
   if (!is.matrix(Y_sim) || ncol(Y_sim) != nsim) {
     cli::cli_abort(

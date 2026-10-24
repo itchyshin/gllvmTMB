@@ -512,3 +512,31 @@ test_that("zero-truncated Poisson and NB2 stay finite deep in the left tail of e
     }
   }
 })
+
+## ---- #1488: log1p series / direct switch --------------------------------
+
+test_that("NB2 kernel is accurate just above the old log1p cut points (#1488)", {
+  ## gll_log1p_pos switched to log(1 + u) at u = 1e-4 and gll_log1p_ratio at
+  ## u = 1e-3; just above each the direct form lost ~1e-16 absolute, which
+  ## gll_lgamma_shift multiplied by ~n / u. Pick size = y / 1.01e-4 (shift
+  ## argument u = 1.01e-4) and mu = 10 y (ratio argument mu / size = 1.01e-3).
+  df0 <- .count_fixture(1488, mu = 2)
+  for (n in c(1, 10, 100, 1000)) {
+    size <- n / 1.01e-4
+    mu <- 10 * n
+    df <- df0[1:6, ]
+    df$value <- n
+    fit_n <- .edge_fit(df, nbinom2())
+    obj_n <- fit_n$tmb_obj
+    pn <- .edge_set(.edge_par(fit_n), "b_fix", log(mu))
+    pn <- .edge_set(pn, "log_phi_nbinom2", log(size))
+    ## Exact: lgamma(n + s) - lgamma(s) = n log s + sum(log1p(k / s)).
+    shift_ref <- n * log(size) + sum(log1p((0:(n - 1)) / size))
+    lp_ref <- shift_ref - lgamma(n + 1) - size * log1p(mu / size) +
+      n * (log(mu) - log(size + mu))
+    ## Per-row error; the reference itself carries ~eps * n log(size) of
+    ## rounding, so the bound grows mildly with n (old code: ~9e-13 * n).
+    err <- abs(as.numeric(obj_n$fn(pn)) / nrow(df) + lp_ref)
+    expect_lt(err, 1e-12 * max(1, n / 10))
+  }
+})

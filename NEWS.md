@@ -7,6 +7,7 @@
   longer warns once per loading or prints alias notices, failed refits are
   reported with the first error, and `level = "B"` / `"W"` are accepted as
   documented (#1584).
+* `predict()` and `fitted()` no longer return the internal `species = "placeholder"` column on fits without a species/cluster grouping, nor the auto-generated `.family_wide_` column on wide mixed-family fits (#1406).
 
 * `engine = "julia"` now stops on a missing fixed-effect covariate with the same message as the native engine, instead of sending the `NA` to the bridge (#1371).
 * A missing or non-finite value in a random-slope covariate (for example `x` in

@@ -133,3 +133,115 @@ test_that("Wald phylo signal is silent when the Hessian is positive-definite", {
   fit$sd_report$pdHess <- TRUE
   expect_no_warning(gllvmTMB:::.phylo_signal_wald_ci(fit))
 })
+
+## ---- loading-uncertainty delta method ----------------------------------
+
+## Deterministic fixture (no fit needed): the delta method only reads
+## `report`, `tmb_obj` and `sd_report`.
+loading_delta_fit_1379 <- function(cov_fixed, pdHess = TRUE) {
+  theta <- c(1, 0.5, 2)
+  report_fun <- function(par) {
+    list(
+      Lambda_B = matrix(par[1:2], nrow = 1L),
+      total_variance = sum(par[1:2]^2) + par[3L]
+    )
+  }
+  list(
+    report = report_fun(theta),
+    sd_report = structure(
+      list(cov.fixed = cov_fixed, pdHess = pdHess),
+      class = "sdreport"
+    ),
+    tmb_obj = list(
+      env = list(last.par.best = theta, random = integer(0)),
+      report = report_fun
+    )
+  )
+}
+
+test_that("loading delta method errors when the covariance is all non-finite", {
+  fit <- loading_delta_fit_1379(matrix(NaN, 3L, 3L))
+  expect_error(
+    gllvmTMB:::.loading_delta_at_mle(fit, "B"),
+    class = "gllvmTMB_confint_nonfinite_se"
+  )
+  expect_error(
+    gllvmTMB:::.lambda_se_at_mle(fit, "B"),
+    class = "gllvmTMB_confint_nonfinite_se"
+  )
+})
+
+test_that("loading delta method warns, naming pdHess, on a finite non-PD Hessian", {
+  fit <- loading_delta_fit_1379(diag(1e-3, 3L), pdHess = FALSE)
+  expect_warning(
+    out <- gllvmTMB:::.loading_delta_at_mle(fit, "B"),
+    class = "gllvmTMB_wald_nonpd_hessian"
+  )
+  expect_warning(gllvmTMB:::.loading_delta_at_mle(fit, "B"), "pdHess")
+  expect_true(all(is.finite(out$se)))
+})
+
+test_that("loading delta method is silent when the Hessian is positive-definite", {
+  fit <- loading_delta_fit_1379(diag(1e-3, 3L), pdHess = TRUE)
+  expect_no_warning(gllvmTMB:::.loading_delta_at_mle(fit, "B"))
+})
+
+test_that("loading_ci() Wald on pdHess = FALSE warns with the shared class", {
+  fit <- structure(
+    list(
+      report = list(
+        Lambda_B = matrix(c(1, 1), nrow = 1L,
+                          dimnames = list("trait_1", c("LV1", "LV2")))
+      ),
+      lambda_constraint = list(B = matrix(c(1, NA_real_), nrow = 1L)),
+      sd_report = structure(
+        list(cov.fixed = matrix(NaN, 3L, 3L), pdHess = FALSE),
+        class = "sdreport"
+      )
+    ),
+    class = "gllvmTMB_multi"
+  )
+  expect_warning(
+    out <- loading_ci(fit, method = "wald"),
+    class = "gllvmTMB_wald_nonpd_hessian"
+  )
+  expect_true(all(is.na(out$lower)))
+})
+
+## ---- variance proportions ---------------------------------------------
+
+test_that("Wald proportions error when the covariance is all non-finite", {
+  skip_on_cran()
+  fit <- communality_fit_1379()
+  fit$sd_report$cov.fixed[] <- NaN
+  expect_error(
+    gllvmTMB:::.proportions_wald_ci(fit, components = "shared_unit"),
+    class = "gllvmTMB_confint_nonfinite_se"
+  )
+})
+
+test_that("Wald proportions warn, naming pdHess, on a finite non-PD Hessian", {
+  skip_on_cran()
+  fit <- communality_fit_1379()
+  fit$sd_report$cov.fixed <- finite_cov(fit)
+  fit$sd_report$pdHess <- FALSE
+  expect_warning(
+    tbl <- gllvmTMB:::.proportions_wald_ci(fit, components = "shared_unit"),
+    class = "gllvmTMB_wald_nonpd_hessian"
+  )
+  expect_warning(
+    gllvmTMB:::.proportions_wald_ci(fit, components = "shared_unit"),
+    "pdHess"
+  )
+  expect_true(all(c("lower", "upper") %in% names(tbl)))
+})
+
+test_that("Wald proportions are silent when the Hessian is positive-definite", {
+  skip_on_cran()
+  fit <- communality_fit_1379()
+  fit$sd_report$cov.fixed <- finite_cov(fit)
+  fit$sd_report$pdHess <- TRUE
+  expect_no_warning(
+    gllvmTMB:::.proportions_wald_ci(fit, components = "shared_unit")
+  )
+})

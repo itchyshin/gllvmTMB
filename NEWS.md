@@ -94,8 +94,11 @@
   with the classed `gllvmTMB_confint_nonfinite_se` error, as `confint()` and
   `extract_repeatability()` already do. A finite covariance from a Hessian that
   is not positive-definite (`pdHess = FALSE`) now raises the classed warning
-  `gllvmTMB_wald_nonpd_hessian`; the interval is still returned. The
-  proportions and loading-uncertainty readers are not yet changed (#1379).
+  `gllvmTMB_wald_nonpd_hessian`; the interval is still returned (#1379).
+* The Wald variance-proportion reader and the loading delta-method path
+  (`loading_ci()`, `suggest_lambda_constraint()`) now apply the same gate: an
+  all-non-finite covariance stops with `gllvmTMB_confint_nonfinite_se`, and
+  `pdHess = FALSE` warns with `gllvmTMB_wald_nonpd_hessian` (#1379).
 * Keyword deprecation messages no longer misfire. The documented
   `phylo(1 | g)` and `spatial(1 | g)` forms no longer warn about
   `phylo_scalar()` / `spatial_scalar()`, which the user never typed; the

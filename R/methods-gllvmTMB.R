@@ -990,6 +990,14 @@ print.gllvmTMB_multi <- function(x, ...) {
       print(cuts_show, row.names = FALSE)
     }
   }
+  conv <- x$opt$convergence
+  if (length(conv) == 1L && !is.na(conv) && conv != 0L) {
+    cat(
+      "  The optimiser did not converge cleanly: gllvmTMB_diagnose(fit) ",
+      "shows which checks failed and why.\n",
+      sep = ""
+    )
+  }
   cat(
     "  Run gllvmTMB_diagnose(fit) for a full health check, or summary(fit) for parameter estimates.\n"
   )

@@ -1,5 +1,11 @@
 # Development (unreleased)
 
+* `gllvmTMB_check_consistency()` now stops with a "simulation not available"
+  error when the template cannot simulate new responses (it currently cannot),
+  instead of returning `"information_matrix_singular"`, and stops with an error
+  naming the parameter count when `n_sim` is not larger than it. Its help page
+  now describes `$marginal_bias`, `$joint_p_value` and `estimate` as TMB
+  defines them (#1582).
 * `loading_profile()` and `loading_ci(method = "profile")` now refit the model
   they profile: `unit_obs`, `REML` and `control` (including `loading_ridge`)
   are kept, so a `unit_obs`-tier profile no longer returns an all-`NA` curve and

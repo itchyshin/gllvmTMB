@@ -1,5 +1,6 @@
 # Development (unreleased)
 
+* `?compare_dep_vs_two_psi` and `?compare_indep_vs_two_psi` now say a flag means the two fits disagree, not that the paired model failed, and that the default `threshold = 0.10` is not calibrated (#1571).
 * `loading_profile()` and `loading_ci(method = "profile")` now refit the model
   they profile: `unit_obs`, `REML` and `control` (including `loading_ridge`)
   are kept, so a `unit_obs`-tier profile no longer returns an all-`NA` curve and

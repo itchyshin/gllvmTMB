@@ -816,9 +816,13 @@ sigma.gllvmTMB_va <- sigma.gllvmTMB_multi
   engine_flags <- setdiff(names(use), sub_flags)
   active <- vapply(engine_flags, function(nm) isTRUE(use[[nm]]), logical(1L))
   used <- engine_flags[active]
+  ## A latent() term carries its diagonal Psi in the same tier's diag slot, so
+  ## the diagonal flag is not a second user-written term (#1580).
+  if ("rr_B" %in% used) used <- setdiff(used, "diag_B")
+  if ("rr_W" %in% used) used <- setdiff(used, "diag_W")
   ## Translate each engine flag to its label, swapping in the canonical
   ## sub-flavour name when it applies.
-  vapply(
+  labs <- vapply(
     used,
     function(nm) {
       if (identical(nm, "phylo_rr") && isTRUE(use$phylo_unique)) {
@@ -834,6 +838,9 @@ sigma.gllvmTMB_va <- sigma.gllvmTMB_multi
     },
     character(1L)
   )
+  ## Several engine flags can map to one printed keyword (diag_B and
+  ## indep_B are both `indep_unit`): print each label once.
+  labs[!duplicated(labs)]
 }
 
 #' Methods on a fitted gllvmTMB model

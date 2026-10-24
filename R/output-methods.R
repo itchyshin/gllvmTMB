@@ -27,9 +27,30 @@
 #' @keywords internal
 #' @export
 #' @examples
-#' \dontrun{
+#' set.seed(1)
+#' ## Five traits measured three times on each of 60 units. Between units,
+#' ## the traits share two latent axes (Lambda) plus a trait-specific
+#' ## unique variance (psi = 0.2 for every trait).
+#' Lambda <- matrix(c(0.9, 0.7, 0.5, -0.3, 0.2,
+#'                    0.0, 0.4, -0.5, 0.6, 0.8), nrow = 5, ncol = 2)
+#' sim <- simulate_unit_trait(
+#'   n_units = 60, n_obs_per_unit = 3, n_traits = 5,
+#'   Lambda_B = Lambda, psi_B = rep(0.2, 5), sigma2_eps = 0.3
+#' )
+#' fit <- gllvmTMB(
+#'   value ~ 0 + trait + latent(0 + trait | unit, d = 2, unique = TRUE),
+#'   data  = sim$data,
+#'   trait = "trait",
+#'   unit  = "unit"
+#' )
+#' ## Trait loadings on the two between-unit axes (one row per trait).
+#' ## The raw matrix is identified only up to rotation; gllvmTMB fixes
+#' ## trait_1's loading on axis 2 at zero.
+#' getLoadings(fit, level = "unit")
+#' ## A varimax rotation spreads each trait onto fewer axes, which is
+#' ## often easier to read. It is a rotation of the same fit, so the
+#' ## fit itself does not change.
 #' getLoadings(fit, level = "unit", rotate = "varimax")
-#' }
 getLoadings <- function(
   fit,
   level = "unit",
@@ -81,9 +102,29 @@ getLoadings <- function(
 #'   [getLoadings()] for the `gllvm`-style spelling.
 #' @export
 #' @examples
-#' \dontrun{
+#' set.seed(1)
+#' ## Five traits measured three times on each of 60 units. Between units,
+#' ## the traits share two latent axes (Lambda) plus a trait-specific
+#' ## unique variance (psi = 0.2 for every trait).
+#' Lambda <- matrix(c(0.9, 0.7, 0.5, -0.3, 0.2,
+#'                    0.0, 0.4, -0.5, 0.6, 0.8), nrow = 5, ncol = 2)
+#' sim <- simulate_unit_trait(
+#'   n_units = 60, n_obs_per_unit = 3, n_traits = 5,
+#'   Lambda_B = Lambda, psi_B = rep(0.2, 5), sigma2_eps = 0.3
+#' )
+#' fit <- gllvmTMB(
+#'   value ~ 0 + trait + latent(0 + trait | unit, d = 2, unique = TRUE),
+#'   data  = sim$data,
+#'   trait = "trait",
+#'   unit  = "unit"
+#' )
+#' ## extract_loadings() is the snake_case spelling of getLoadings();
+#' ## both return the same matrix
+#' L <- extract_loadings(fit, level = "unit")
+#' L
+#' identical(L, getLoadings(fit, level = "unit"))
+#' ## Rotated after fitting, e.g. with varimax
 #' extract_loadings(fit, level = "unit", rotate = "varimax")
-#' }
 extract_loadings <- function(
   fit,
   level = "unit",
@@ -166,10 +207,31 @@ extract_loadings <- function(
 #' @keywords internal
 #' @export
 #' @examples
-#' \dontrun{
-#' getLV(fit, level = "unit")
-#' getLV(fit, level = "unit", se = TRUE)
-#' }
+#' set.seed(1)
+#' ## Five traits measured three times on each of 60 units. Between units,
+#' ## the traits share two latent axes (Lambda) plus a trait-specific
+#' ## unique variance (psi = 0.2 for every trait).
+#' Lambda <- matrix(c(0.9, 0.7, 0.5, -0.3, 0.2,
+#'                    0.0, 0.4, -0.5, 0.6, 0.8), nrow = 5, ncol = 2)
+#' sim <- simulate_unit_trait(
+#'   n_units = 60, n_obs_per_unit = 3, n_traits = 5,
+#'   Lambda_B = Lambda, psi_B = rep(0.2, 5), sigma2_eps = 0.3
+#' )
+#' fit <- gllvmTMB(
+#'   value ~ 0 + trait + latent(0 + trait | unit, d = 2, unique = TRUE),
+#'   data  = sim$data,
+#'   trait = "trait",
+#'   unit  = "unit"
+#' )
+#' ## Latent-variable scores: each unit's predicted position on the two
+#' ## between-unit axes (one row per unit, one column per axis)
+#' lv <- getLV(fit, level = "unit")
+#' dim(lv)
+#' head(lv)
+#' ## se = TRUE also returns the standard error of each score, from the
+#' ## fitted model's Wald (delta-method) approximation
+#' lv_se <- getLV(fit, level = "unit", se = TRUE)
+#' str(lv_se)
 getLV <- function(
   fit,
   level = "unit",

@@ -543,6 +543,21 @@ compare_dep_vs_two_psi <- function(
     inputs$phylo_tree <- phylo_tree
   }
 
+  ## The `dep(0 + trait | cluster)` refit registers at the unit tier, so it
+  ## needs `unit == cluster` (#1572). Refuse the layout up front instead of
+  ## reporting the structural refusal as an unstable fit.
+  if (!identical(inputs$unit, inputs$cluster)) {
+    cli::cli_abort(
+      c(
+        "{.fn compare_dep_vs_two_psi} needs {.code unit} and {.code cluster} to be the same column.",
+        "x" = "This fit has {.code unit = {.val {inputs$unit}}} and {.code cluster = {.val {inputs$cluster}}}.",
+        "i" = "The full unstructured {.fn dep} refit cannot be placed at the {.val {inputs$cluster}} level when the unit is a different column.",
+        ">" = "Use {.fn compare_indep_vs_two_psi}, which supports this layout, or refit with {.code unit = {.val {inputs$cluster}}}."
+      ),
+      class = "gllvmTMB_two_psi_unit_cluster"
+    )
+  }
+
   joint <- .joint_two_psi_sigmas(fit_two_psi)
   fit_alt <- .refit_alt(fit_two_psi, kind = "dep", inputs = inputs)
   alt <- .alt_sigmas(fit_alt)

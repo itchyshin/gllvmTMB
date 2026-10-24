@@ -8,6 +8,7 @@
   reported with the first error, and `level = "B"` / `"W"` are accepted as
   documented (#1584).
 
+* `engine = "julia"` now stops on a missing fixed-effect covariate with the same message as the native engine, instead of sending the `NA` to the bridge (#1371).
 * A missing or non-finite value in a random-slope covariate (for example `x` in
   `latent(1 + x | unit)`, `phylo_slope(x | species)`, `phylo_dep()` or the
   spatial slope terms) now stops the fit with a message naming the covariate,
@@ -19,6 +20,15 @@
   `?extract_latent_scores` drops the `gllvmTMB_julia` claim and the literal
   TeX; `?extract_ordination` lists `row_id`, `row_index` and `temporal_sign`
   (#1579).
+* A rank-deficient fixed-effect design is now caught under the default ML fit as
+  well as `REML = TRUE`, with the classed error `gllvmTMB_rank_deficient_design`
+  naming the redundant columns, instead of the reason-less "All 1 restarts
+  failed." (#1388).
+
+* `predict()` now warns when an argument is passed in `...` and ignored, and names
+  the right spelling for the near misses `re.form` (use `re_form`) and `se_fit`
+  (use `se.fit`); before, `re.form = NA` silently returned the conditional
+  predictor. Estimates are unchanged (#1414).
 * `mi()` with a discrete predictor no longer returns `NA` conditional probabilities for the missing units when the model also has a random effect such as `latent()`; if the report cannot be evaluated, a warning is raised (#1368).
 
 * Internal cross-validation now scores held-out binomial cells on the log
@@ -35,7 +45,17 @@
   "showing 8 of N" when the pair list is truncated, labels the loadings check
   with the real number of factors instead of `d=B`, and `verbose = FALSE` no
   longer emits the link-residual message (#1586).
+* `compare_dep_vs_two_psi()` now stops up front, with a classed error
+  (`gllvmTMB_two_psi_unit_cluster`) that names both columns, when the fit's
+  `unit` differs from its `cluster`. Before, the `dep` refit failed inside and
+  the warning blamed an "unstable" alternative fit. `compare_indep_vs_two_psi()`
+  supports this layout and is unchanged (#1572).
 
+* `tidy(fit, "fixed")` no longer returns finite standard errors from a Hessian
+  that is not positive definite (or from a missing `sdreport()`). `std.error`,
+  `conf.low` and `conf.high` are `NA` and an `inference_status` column says
+  why, as it already does for a weighted objective. Fits with a positive
+  definite Hessian are unchanged. Part of #1351.
 * `engine = "julia"` no longer returns a bridge fit that did not converge and has
   a non-finite log-likelihood. Such a fit (for example the `logLik = -Inf` result
   of a no-latent model) carries unestimated coefficients, so it now stops with
@@ -48,7 +68,6 @@
   categorical response is expanded into contrast pseudo-traits, and the
   multinomial entry is carried to each of them; a list of the wrong length
   reports the count of your traits rather than the expanded count (#1575).
-
 * The `sigma()` refusal methods are now registered from roxygen with
   `@exportS3Method stats::sigma`, matching the `stats::sigma` entries already in
   `NAMESPACE`, so `devtools::document()` no longer rewrites them. Behaviour is
@@ -70,6 +89,13 @@
   is not positive-definite (`pdHess = FALSE`) now raises the classed warning
   `gllvmTMB_wald_nonpd_hessian`; the interval is still returned. The
   proportions and loading-uncertainty readers are not yet changed (#1379).
+* Keyword deprecation messages no longer misfire. The documented
+  `phylo(1 | g)` and `spatial(1 | g)` forms no longer warn about
+  `phylo_scalar()` / `spatial_scalar()`, which the user never typed; the
+  `gr()` and legacy `phylo(species)` alias messages recommend
+  `phylo_indep(..., common = TRUE)` rather than the soft-deprecated
+  `phylo_scalar()`; and the legacy `spatial(0 + trait | coords)` warning names
+  the deprecated form and is attributed to the caller, not the package (#1557).
 * `plot_loadings_confidence_eye()` called on a fitted model without `level =`
   no longer stops with "'arg' must be of length 1". Its default is now
   `level = "unit"`, matching `loading_ci()` and `flag_unreliable_loadings()`
@@ -99,7 +125,12 @@
   "UNIQUE (Psi) ... only" (it decides from the `component` column, not an
   attribute), and the refusal for a fit with no random slopes recommends a
   `latent()` slope term instead of `indep()`, which refuses slopes (#1589).
-  The `scale = "variance"` behaviour of `total_sd` is unchanged here.
+* `slope_sd_ci(scale = "variance")` now keeps `total_sd` on the SD scale on
+  every route, as `?slope_sd_ci` documents (it came back as a variance on the
+  diagonal, phylo and loadings-only routes, and in the stale-fit fallback). The
+  print header says "variances" under that scale. The refusals for a slope term
+  in `indep()` and in a bare `(1 + x | g)` bar no longer recommend the
+  soft-deprecated `unique(1 + x | g)` (#1589).
 * Zero-truncated Poisson and NB2 likelihoods stay finite when the linear
   predictor is far below zero. The truncation term `log(1 - P(0))` was
   `logspace_sub(0, log P(0))`, whose derivatives grow like `1 / mu^k`: the

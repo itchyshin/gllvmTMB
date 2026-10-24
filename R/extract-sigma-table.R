@@ -276,6 +276,8 @@
 #'   (default) returns the diagonal plus upper triangle, one row per unique
 #'   estimand. `"all"` returns every cell, useful for heatmaps. `"upper"`,
 #'   `"lower"`, `"offdiag"`, and `"diag"` return the corresponding subsets.
+#'   Ignored when `part = "unique"`: that part always returns the `T`
+#'   diagonal `Psi` rows, whatever `entries` is.
 #' @param link_residual Passed to [extract_Sigma()]. `"auto"` (default) adds
 #'   family/link implicit residual variances to non-Gaussian trait diagonals;
 #'   `"none"` returns only the fitted model-implied covariance.
@@ -283,9 +285,12 @@
 #' @return A data frame with one row per requested entry and stable columns:
 #'   `estimand`, `trait_i`, `trait_j`, integer indices `i` and `j`, `level`,
 #'   `component`, `matrix`, `estimate`, `lower`, `upper`, `interval_method`,
-#'   `interval_status`, `scale`, `diagonal`, and
-#'   `triangle`. Interval columns are `NA` with `interval_method = "none"`
-#'   because this helper is point-estimate only.
+#'   `interval_status`, `scale`, `diagonal`,
+#'   `triangle`, and `validation_row` (a short label for the validation scope of
+#'   the extractor behind the table). For a fit, the interval columns `lower`
+#'   and `upper` are `NA` with `interval_method = "none"` because this helper
+#'   is point-estimate only. For a [bootstrap_Sigma()] input they are filled,
+#'   with `interval_method = "bootstrap"` and `interval_status = "provided"`.
 #' @seealso [extract_Sigma()] for the underlying matrix extractor;
 #'   [extract_correlations()] for pairwise correlation intervals;
 #'   [bootstrap_Sigma()] for bootstrap uncertainty.

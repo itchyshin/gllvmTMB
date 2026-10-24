@@ -209,7 +209,7 @@
     lower           = rows$lower,
     upper           = rows$upper,
     component       = "total",
-    total_sd        = rows$estimate,
+    total_sd        = exp(log_se$theta), # SD scale whatever `scale` is
     total_lower     = rows$lower,
     total_upper     = rows$upper,
     total_status    = rows$status,
@@ -277,7 +277,7 @@
     lower           = rows$lower,
     upper           = rows$upper,
     component       = "total",
-    total_sd        = rows$estimate,
+    total_sd        = exp(log_se$theta), # SD scale whatever `scale` is
     total_lower     = rows$lower,
     total_upper     = rows$upper,
     total_status    = rows$status,
@@ -380,7 +380,7 @@
 #'       is the total marginal slope SD.}
 #'     \item{`total_sd`}{Point estimate of the TOTAL marginal slope SD, on
 #'       the SD scale regardless of `scale`. Equal to `estimate` when
-#'       `component == "total"`.}
+#'       `component == "total"` and `scale = "sd"`.}
 #'     \item{`total_lower`, `total_upper`}{Interval on `total_sd`, on the
 #'       requested `scale`. `NA` whenever `total_status != "ok"` or the
 #'       supporting ADREPORT is unavailable.}
@@ -568,7 +568,8 @@ slope_sd_ci <- function(fit, level = 0.95, scale = c("sd", "variance")) {
   ## an interval wherever the C++ ADREPORT of the combined expression
   ## supports it (sd_B_slope_total, additive over this slice). ----------
   rr_present <- isTRUE(fit$use$rr_B_slope)
-  total_sd <- rows$estimate
+  psi_sd <- exp(theta) # SD scale whatever `scale` is; `rows$estimate` follows it
+  total_sd <- psi_sd
   total_lower <- rows$lower
   total_upper <- rows$upper
   total_status <- rows$status
@@ -590,7 +591,7 @@ slope_sd_ci <- function(fit, level = 0.95, scale = c("sd", "variance")) {
       } else {
         shared_var_slope <- as.numeric(diag(as.matrix(Sigma_B_slope)))[slope_pos]
       }
-      total_sd <- sqrt(shared_var_slope + rows$estimate^2)
+      total_sd <- sqrt(shared_var_slope + psi_sd^2)
       total_lower <- rep(NA_real_, n_traits)
       total_upper <- rep(NA_real_, n_traits)
       total_status <- rep("unavailable", n_traits)
@@ -659,9 +660,17 @@ slope_sd_ci <- function(fit, level = 0.95, scale = c("sd", "variance")) {
 
 #' @export
 print.gllvmTMB_slope_ci <- function(x, ...) {
+  on_variance <- identical(unique(x$scale), "variance")
   cat(
-    "Wald (log-SD-scale) intervals on augmented random-slope standard",
-    "deviations. These are recovery-only, UNCALIBRATED intervals --",
+    if (on_variance) {
+      paste("Wald (log-scale) intervals on augmented random-slope",
+            "variances (`total_sd` stays on the SD scale). These are",
+            "recovery-only, UNCALIBRATED intervals --", sep = "\n")
+    } else {
+      paste("Wald (log-SD-scale) intervals on augmented random-slope standard",
+            "deviations. These are recovery-only, UNCALIBRATED intervals --",
+            sep = "\n")
+    },
     "repeated-sampling coverage has not been measured for this estimand,",
     "for any family. Consult the package's current limitations for",
     "the applicable validation boundary.",

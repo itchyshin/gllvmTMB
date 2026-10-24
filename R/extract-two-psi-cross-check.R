@@ -293,11 +293,15 @@
     data = inputs$data,
     trait = inputs$trait,
     unit = inputs$unit,
-    unit_obs = inputs$unit_obs %||% "site_species",
     cluster = inputs$cluster,
     family = inputs$family,
     silent = silent
   )
+  ## The generated alt formulas group by the cluster column only, so pass
+  ## unit_obs just when the formula actually uses that column (#1568).
+  if (!is.null(inputs$unit_obs) && inputs$unit_obs %in% all.vars(alt_form)) {
+    call_args$unit_obs <- inputs$unit_obs
+  }
   if (!is.null(inputs$phylo_vcv)) {
     call_args$phylo_vcv <- inputs$phylo_vcv
   }
@@ -508,9 +512,6 @@
 #'
 #' ## Refit with unrestricted phylogenetic and non-phylogenetic covariances
 #' ## (phylo_dep + dep) and compare the two fits' covariance matrices.
-#' ## The refit currently also warns about an unused `unit_obs` argument;
-#' ## the warning comes from the internal refit, not from your model, and
-#' ## does not change the result (a known bug, issue #1568).
 #' check <- compare_dep_vs_two_psi(fit)
 #' check$alt_fit$opt$convergence  # 0 means the refit converged
 #' ## rel_disagreement is the gap between the two fits relative to the size
@@ -540,6 +541,21 @@ compare_dep_vs_two_psi <- function(
   }
   if (!is.null(phylo_tree)) {
     inputs$phylo_tree <- phylo_tree
+  }
+
+  ## The `dep(0 + trait | cluster)` refit registers at the unit tier, so it
+  ## needs `unit == cluster` (#1572). Refuse the layout up front instead of
+  ## reporting the structural refusal as an unstable fit.
+  if (!identical(inputs$unit, inputs$cluster)) {
+    cli::cli_abort(
+      c(
+        "{.fn compare_dep_vs_two_psi} needs {.code unit} and {.code cluster} to be the same column.",
+        "x" = "This fit has {.code unit = {.val {inputs$unit}}} and {.code cluster = {.val {inputs$cluster}}}.",
+        "i" = "The full unstructured {.fn dep} refit cannot be placed at the {.val {inputs$cluster}} level when the unit is a different column.",
+        ">" = "Use {.fn compare_indep_vs_two_psi}, which supports this layout, or refit with {.code unit = {.val {inputs$cluster}}}."
+      ),
+      class = "gllvmTMB_two_psi_unit_cluster"
+    )
   }
 
   joint <- .joint_two_psi_sigmas(fit_two_psi)
@@ -693,10 +709,7 @@ compare_dep_vs_two_psi <- function(
 #' ## the two fits' per-trait phylogenetic and non-phylogenetic variances.
 #' ## This cheap check is meant for fits with many traits, where the
 #' ## unrestricted refit of compare_dep_vs_two_psi() is too slow; three
-#' ## traits keep the example fast. The refit currently also warns about an
-#' ## unused `unit_obs` argument; the warning comes from the internal refit,
-#' ## not from your model, and does not change the result (a known bug,
-#' ## issue #1568).
+#' ## traits keep the example fast.
 #' check <- compare_indep_vs_two_psi(fit)
 #' check$alt_fit$opt$convergence  # 0 means the refit converged
 #' ## rel_disagreement is the gap between the two fits relative to the size

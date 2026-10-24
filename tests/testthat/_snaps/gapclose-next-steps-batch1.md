@@ -153,3 +153,31 @@
       ! `K` for `kernel_slope()` must be a square numeric matrix.
       > Source "kernel" is indexed by 1 response-column level; pass a 1 x 1 numeric matrix.
 
+# ridge_path(tau = <non-positive>) names the fix
+
+    Code
+      gllvmTMB::ridge_path(value ~ 0 + trait, data = data.frame(), tau = c(-1, 2))
+    Condition
+      Error in `gllvmTMB::ridge_path()`:
+      ! `tau` must be one or more positive numbers (`Inf` is allowed).
+      > Pass a numeric vector such as `tau = c(0.5, 2, 8, Inf)`.
+
+# ridge_path(<data with no traits>) names the fix
+
+    Code
+      gllvmTMB::ridge_path(value ~ 0 + trait, data = d, unit = "site", trait = "trait",
+      tau = 1)
+    Condition
+      Error in `gllvmTMB::ridge_path()`:
+      ! No traits were found for `formula`/`data`.
+      > Check that `trait` names a column of `data` with at least one level, and that `data` has rows.
+
+# a non-fit passed to a fit-only function names the fix
+
+    Code
+      gllvmTMB::check_gllvmTMB(list())
+    Condition
+      Error in `gllvmTMB::check_gllvmTMB()`:
+      ! Provide a fit returned by `gllvmTMB()`.
+      > Fit the model first, e.g. `fit <- gllvmTMB(...)`, then pass `fit`.
+

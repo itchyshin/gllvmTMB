@@ -125,8 +125,8 @@ Returns the implied cross-trait correlations from a fit returned by
 \code{\link[=gllvmTMB]{gllvmTMB()}} at one or more covariance levels. Use the canonical input
 names \code{"unit"}, \code{"unit_obs"}, \code{"phy"}, and
 \code{"spatial"}; legacy aliases \code{"B"}, \code{"W"}, and
-\code{"spde"} still work. The helper returns 95\% (or other-level)
-point estimates by default. Fisher-z and bootstrap intervals can be
+\code{"spde"} still work. The helper returns point estimates only by
+default, with no confidence level. Fisher-z and bootstrap intervals can be
 requested explicitly with the \code{method} argument; the former profile
 token is retained only to return a clear withdrawal error:
 }

@@ -2716,6 +2716,34 @@ sanity_multi <- function(object, gradient_thresh = 1e-2, se_thresh = 100) {
 
 ## ---- predict(newdata=) support helpers (#1132) ------------------------------
 
+#' Warn about arguments that `predict()` received in `...` and ignored
+#'
+#' `predict.gllvmTMB_multi()` uses no argument from `...`, so anything there is
+#' dropped. The near-miss spellings `re.form` (lme4 / glmmTMB) and `se_fit` are
+#' the easy ones to hit and silently return a different quantity (#1414), so
+#' the warning names the argument to use instead.
+#' @noRd
+.gllvmTMB_predict_warn_unused <- function(dots) {
+  if (length(dots) == 0L) return(invisible(NULL))
+  nm <- names(dots)
+  if (is.null(nm)) nm <- rep("", length(dots))
+  hint <- c(re.form = "re_form", se_fit = "se.fit")
+  items <- ifelse(nzchar(nm), nm, "<unnamed>")
+  bullets <- vapply(seq_along(items), function(i) {
+    if (items[i] %in% names(hint)) {
+      sprintf("`%s` is not an argument of predict(); use `%s`.",
+              items[i], hint[[items[i]]])
+    } else {
+      sprintf("`%s` is not an argument of predict() and was ignored.", items[i])
+    }
+  }, character(1))
+  cli::cli_warn(c(
+    "{.fn predict} ignored {length(items)} unused argument{?s} passed in {.arg ...}.",
+    stats::setNames(gsub("([{}])", "\\1\\1", bullets), rep("!", length(bullets)))
+  ), class = "gllvmTMB_predict_unused_arg")
+  invisible(NULL)
+}
+
 #' Is `re_form` a request to drop the random effects?
 #'
 #' The roxygen for [predict.gllvmTMB_multi()] promises that `~ 0` *or* `NA`
@@ -3009,7 +3037,8 @@ sanity_multi <- function(object, gradient_thresh = 1e-2, se_thresh = 100) {
 #'   fits, fits without an active `mi()` missing-covariate model, and fits with
 #'   unit likelihood weights. A non-unit weighted objective has no certified
 #'   prediction-standard-error route.
-#' @param ... Unused.
+#' @param ... Unused. An argument passed here is ignored with a warning; in
+#'   particular `re.form` (use `re_form`) and `se_fit` (use `se.fit`).
 #'
 #' @return A data frame with the original row identifiers plus an `est`
 #'   column on the requested link or response scale, and (if
@@ -3025,6 +3054,7 @@ predict.gllvmTMB_multi <- function(
   ...
 ) {
   type <- match.arg(type)
+  .gllvmTMB_predict_warn_unused(list(...))
   if (isTRUE(object$temporal$active) && !is.null(newdata)) {
     cli::cli_abort(c(
       "{.fn predict} with {.arg newdata} is not yet available for {.fn temporal_latent} fits.",

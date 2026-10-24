@@ -60,6 +60,9 @@
   `unit` differs from its `cluster`. Before, the `dep` refit failed inside and
   the warning blamed an "unstable" alternative fit. `compare_indep_vs_two_psi()`
   supports this layout and is unchanged (#1572).
+* The warning for a failed alternative refit in the two-psi cross-checks now
+  reports a refit failure with the original error and no longer calls it an
+  "unstable" fit, since the cause can be a layout or data restriction (#1572).
 * A `lambda_constraint` that pins a diagonal loading `Lambda[k, k]` at 0 no
   longer leaves the free loadings on axis `k` stuck at exactly 0. They now
   start at 0.5, so the optimiser can move them; before, the fit reported

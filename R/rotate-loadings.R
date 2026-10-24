@@ -19,8 +19,9 @@
 #' from a fit returned by [gllvmTMB()]. Use `level = "unit"` for the
 #' between-unit reduced-rank component and `level = "unit_obs"` for the
 #' within-unit component. The latent scores are rotated by the complementary
-#' transform so the linear predictor, fitted log-likelihood, and implied
-#' covariance are unchanged.
+#' transform so the linear predictor and fitted log-likelihood are unchanged.
+#' The implied covariance \eqn{\Lambda \Lambda^\top} is also unchanged for
+#' `method = "varimax"`, but not for `"promax"` (see Details).
 #'
 #' Rotation is for interpretation of the loading columns, especially figures.
 #' It does not make the axes uniquely "right"; it chooses a readable
@@ -63,7 +64,12 @@
 #' is unchanged. For varimax, `T` is orthogonal so the rotation
 #' preserves the implied covariance \eqn{\Lambda \Lambda^\top}; for
 #' promax, `T` is oblique and the columns of \eqn{\Lambda_{\text{rot}}}
-#' are no longer orthogonal.
+#' are no longer orthogonal, so
+#' \eqn{\Lambda_{\text{rot}} \Lambda_{\text{rot}}^\top \ne \Lambda \Lambda^\top}.
+#' The covariance is recovered from the rotated loadings and the axis
+#' correlation: with `Ti <- solve(T)`, `Lambda_rot %*% Ti %*% t(Ti) %*%
+#' t(Lambda_rot)` equals \eqn{\Lambda \Lambda^\top}. The function does not
+#' return that axis correlation.
 #'
 #' @export
 #' @examples
@@ -114,8 +120,9 @@ rotate_loadings <- function(
 
   ord <- extract_ordination(fit, level = .canonical_level_name(level))
   if (is.null(ord)) {
+    level_label <- .canonical_level_name(level)
     cli::cli_abort(
-      "latent() not active at level {.val {level}}; nothing to rotate."
+      "latent() not active at level {.val {level_label}}; nothing to rotate."
     )
   }
   Lambda <- ord$loadings
@@ -427,9 +434,16 @@ extract_rotated_loadings_table <- function(
 #' other, then reports the residual disagreement. This is mainly a validation
 #' helper for comparing [gllvmTMB()] with another implementation.
 #'
+#' Rows are matched by position, not by trait name: both matrices must list
+#' the traits in the same order, and row names are ignored. If the order
+#' differs, the distance reflects that mismatch rather than how well the
+#' loadings agree.
+#'
 #' @param Lambda_a,Lambda_b Two `n_traits × d` loading matrices.
 #' @return A list with the optimal rotation `R`, the rotated `Lambda_a_rot`,
-#'   and the Frobenius distance after alignment.
+#'   the Frobenius distance after alignment (`frobenius`), and the
+#'   correlation between each column of `Lambda_a_rot` and the matching
+#'   column of `Lambda_b` (`cor_per_factor`).
 #' @export
 #' @examples
 #' set.seed(1)

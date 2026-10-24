@@ -53,6 +53,52 @@ test_that("rotate_loadings(): errors when level not in fit", {
   )
 })
 
+test_that("rotate_loadings(): level-not-active error names the user's level, not the internal code (#1590)", {
+  fit <- make_rrB_fit(seed = 1, d = 2)
+  expect_error(
+    rotate_loadings(fit, "unit_obs", "varimax"),
+    regexp = 'not active at level "unit_obs"',
+    fixed = TRUE
+  )
+  suppressWarnings(expect_error(
+    rotate_loadings(fit, "W", "varimax"),
+    regexp = 'not active at level "unit_obs"',
+    fixed = TRUE
+  ))
+})
+
+## Help-text pins (#1590). The Rd files ship under man/; skip when the
+## test runs somewhere they are not available.
+read_rd <- function(name) {
+  f <- testthat::test_path("..", "..", "man", paste0(name, ".Rd"))
+  testthat::skip_if_not(file.exists(f), "man/ not available")
+  paste(readLines(f, warn = FALSE), collapse = "\n")
+}
+
+test_that("?gllvmTMB @return names the classes every fit actually has (#1590)", {
+  rd <- read_rd("gllvmTMB")
+  expect_false(grepl("single-response", rd, fixed = TRUE))
+  expect_match(rd, "gllvmTMB_va", fixed = TRUE)
+  expect_match(rd, "every native fit", ignore.case = TRUE)
+})
+
+test_that("?rotate_loadings limits the covariance claim to varimax (#1590)", {
+  rd <- read_rd("rotate_loadings")
+  expect_false(grepl("and implied\\s+covariance are unchanged", rd))
+  expect_match(rd, "solve(T)", fixed = TRUE)
+})
+
+test_that("?compare_loadings documents cor_per_factor and positional matching (#1590)", {
+  rd <- read_rd("compare_loadings")
+  expect_match(rd, "cor_per_factor", fixed = TRUE)
+  expect_match(rd, "position", fixed = TRUE)
+})
+
+test_that("?ridge_path does not claim tau is sorted for refitting (#1590)", {
+  rd <- read_rd("ridge_path")
+  expect_false(grepl("both for refitting", rd, fixed = TRUE))
+})
+
 test_that("rotate_loadings(method='none'): identity rotation", {
   fit <- make_rrB_fit(seed = 1, d = 2)
   rt <- rotate_loadings(fit, "unit", "none")

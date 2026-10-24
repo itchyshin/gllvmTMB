@@ -79,7 +79,11 @@
 
   ## Build a (trait x component) matrix of point-estimate proportions
   ## from the long-format extractor (matches profile_ci_proportions()).
-  pt <- suppressMessages(extract_proportions(fit, format = "long"))
+  ## The omitted-component warning was already raised by the call above.
+  pt <- suppressWarnings(
+    suppressMessages(extract_proportions(fit, format = "long")),
+    classes = "gllvmTMB_variance_component_omitted"
+  )
   pt_mat <- matrix(
     NA_real_,
     nrow = T,
@@ -190,6 +194,12 @@
       unique_cluster2 = pull_diag_var("sd_c2"),
       shared_phy      = pull_LLt_diag("Lambda_phy"),
       unique_phy      = pull_diag_var("sd_phy_diag"),
+      ## sigma_eps^2 of Gaussian/lognormal traits: a function of
+      ## log_sigma_eps, so it enters the Jacobian like any tier (#1399).
+      residual        = unname(.variance_share_residual_per_trait(
+        fit,
+        sigma_eps = rep$sigma_eps
+      )),
       link_residual   = rep(0, T),  ## handled separately below
       rep(0, T)
     )
@@ -354,10 +364,26 @@
 
   zcrit <- stats::qnorm(0.5 + level / 2)
 
+  ## The residual numerator is constant in theta for a trait that does not
+  ## use sigma_eps (structurally 0) and for a sigma_eps the engine fixed (a
+  ## per-row diagonal term is present). Report those rows like the
+  ## fixed-scale link residual: the estimate, method "(unavailable)".
+  resid_constant <- .variance_share_residual_slots(fit) == 0L |
+    .gllvmTMB_sigma_eps_mapped_off(fit)
+
   out_rows <- list()
   for (comp in components) {
     for (t in trait_idx) {
       p_hat <- pt_mat[t, comp]
+
+      if (identical(comp, "residual") && isTRUE(resid_constant[t])) {
+        out_rows[[length(out_rows) + 1L]] <- .proportions_row(
+          trait_names[t], comp, p_hat,
+          lower = p_hat, upper = p_hat,
+          method = "(unavailable)"
+        )
+        next
+      }
 
       if (identical(comp, "link_residual")) {
         if (link_resid_fixed) {
@@ -508,7 +534,10 @@
     ## (a refit may drop a near-singular term); align replicates to the
     ## original `comps_present` ordering, NA for absent.
     pt_b <- tryCatch(
-      suppressMessages(extract_proportions(out, format = "long")),
+      suppressWarnings(
+        suppressMessages(extract_proportions(out, format = "long")),
+        classes = "gllvmTMB_variance_component_omitted"
+      ),
       error = function(e) NULL
     )
     if (is.null(pt_b)) {

@@ -2673,7 +2673,7 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL, rho = 1) {
   } else if (is_spatial) {
     "There is no supported route for more than one slope covariate here; fit separate models, one covariate per {.fn {fn}} term."
   } else if (is_single_slope) {
-    "Use {.code latent(1 + x | {deparse(rhs)}, d = K)} or {.code unique(1 + x | {deparse(rhs)})} instead -- {.fn {fn}} itself does not support a slope term."
+    "Use {.code latent(1 + x | {deparse(rhs)}, d = K)} instead -- {.fn {fn}} itself does not support a slope term, and there is no diagonal-only slope spelling yet."
   } else {
     "There is no supported route for more than one slope covariate here; fit separate models, one covariate per term."
   }

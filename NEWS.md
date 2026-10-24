@@ -90,7 +90,12 @@
   "UNIQUE (Psi) ... only" (it decides from the `component` column, not an
   attribute), and the refusal for a fit with no random slopes recommends a
   `latent()` slope term instead of `indep()`, which refuses slopes (#1589).
-  The `scale = "variance"` behaviour of `total_sd` is unchanged here.
+* `slope_sd_ci(scale = "variance")` now keeps `total_sd` on the SD scale on
+  every route, as `?slope_sd_ci` documents (it came back as a variance on the
+  diagonal, phylo and loadings-only routes, and in the stale-fit fallback). The
+  print header says "variances" under that scale. The refusals for a slope term
+  in `indep()` and in a bare `(1 + x | g)` bar no longer recommend the
+  soft-deprecated `unique(1 + x | g)` (#1589).
 * Zero-truncated Poisson and NB2 likelihoods stay finite when the linear
   predictor is far below zero. The truncation term `log(1 - P(0))` was
   `logspace_sub(0, log P(0))`, whose derivatives grow like `1 / mu^k`: the

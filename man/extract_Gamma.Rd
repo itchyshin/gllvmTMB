@@ -36,7 +36,9 @@ fixed-rho scale: when the fitted kernel tier was built from \code{\link[=make_cr
 fixed \code{rho} recorded on that kernel. Uncertainty for \code{Gamma} is not yet
 reported by this helper; use bootstrap workflows when interval estimates
 are required. Use \code{\link[=profile_cross_rho]{profile_cross_rho()}} to compare a fixed \code{rho}
-grid; in-engine \code{rho} estimation and profile intervals remain planned work.
+grid; in-engine estimation of this kernel \code{rho} and profile intervals remain
+planned work. (This is a different quantity from the source-strength
+\code{rho} that \code{kernel_latent(..., rho = NULL)} estimates.)
 }
 \details{
 \code{rho} is part of the supplied \code{K} matrix, not a fitted parameter in the
@@ -45,8 +47,8 @@ current engine. To profile it, use \code{\link[=profile_cross_rho]{profile_cross
 \code{logLik()} values. \code{scale = "effect"} is therefore a fixed-kernel
 transformation, not an estimate of \code{rho}.
 Treat \code{Gamma} from a single association matrix \code{W} as data-condition
-sensitive: the C2 recovery test includes a sparse-versus-dense \code{W} check,
-and sparse or poorly replicated host-partner links should be reported as
+sensitive: the package's recovery tests include a sparse-versus-dense \code{W}
+check, and sparse or poorly replicated host-partner links should be reported as
 weaker evidence rather than as a precise coevolution estimate.
 
 For fixed multi-kernel fits, \code{extract_Gamma()} also inspects the fitted

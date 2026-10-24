@@ -49,6 +49,11 @@
   the warning blamed an "unstable" alternative fit. `compare_indep_vs_two_psi()`
   supports this layout and is unchanged (#1572).
 
+* `tidy(fit, "fixed")` no longer returns finite standard errors from a Hessian
+  that is not positive definite (or from a missing `sdreport()`). `std.error`,
+  `conf.low` and `conf.high` are `NA` and an `inference_status` column says
+  why, as it already does for a weighted objective. Fits with a positive
+  definite Hessian are unchanged. Part of #1351.
 * `engine = "julia"` no longer returns a bridge fit that did not converge and has
   a non-finite log-likelihood. Such a fit (for example the `logLik = -Inf` result
   of a no-latent model) carries unestimated coefficients, so it now stops with
@@ -61,7 +66,6 @@
   categorical response is expanded into contrast pseudo-traits, and the
   multinomial entry is carried to each of them; a list of the wrong length
   reports the count of your traits rather than the expanded count (#1575).
-
 * The `sigma()` refusal methods are now registered from roxygen with
   `@exportS3Method stats::sigma`, matching the `stats::sigma` entries already in
   `NAMESPACE`, so `devtools::document()` no longer rewrites them. Behaviour is

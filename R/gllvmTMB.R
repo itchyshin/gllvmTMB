@@ -72,19 +72,29 @@
 #'   [animal_coef()], [kernel_coef()], [spatial_coef()], and
 #'   [meta_V()]).
 #'
-#'   An `offset()` term is supported for **count responses only** — `poisson()`,
+#'   An `offset()` term is supported for **count responses**: `poisson()`,
 #'   `nbinom1()`, `nbinom2()`, `truncated_poisson()`, and
-#'   `truncated_nbinom2()` — where it is the usual exposure or effort
+#'   `truncated_nbinom2()`, where it is the usual exposure or effort
 #'   adjustment. Supply it already on the link scale, e.g.
 #'   `offset(log(trap_nights))`. It must be its own additive term; it is not
 #'   interacted with `trait`.
+#'
+#'   There is one exception. In an integrated multi-source model declared with
+#'   [isdm_sources()], a nonzero offset is also accepted on the
+#'   `binomial(link = "cloglog")` detection arm. There it is a change of
+#'   support, not a shift: `cloglog(p) = log(E) + eta` with `E` the known
+#'   sampled area or effort, so the detection arm observes the same intensity
+#'   as the Poisson arms. A standalone `binomial(link = "cloglog")` fit, and
+#'   `binomial(link = "logit")`, `binomial(link = "probit")` and
+#'   `gaussian()`, keep the refusal, because there an offset would be a fixed
+#'   shift in log-odds, probit or mean.
 #'
 #'   In long format the offset column carries one value per `(unit, trait)`
 #'   row, so it can differ by trait. In wide format, `offset(w)` names one
 #'   unit-level column and applies it to every trait, while
 #'   `offset(e1, e2, ...)` names one column per trait, in [traits()] order.
 #'
-#'   A **nonzero** offset on a non-count trait is an error naming that trait.
+#'   A **nonzero** offset on any other trait is an error naming that trait.
 #'   Zero is always allowed and does nothing (on the log scale it is a
 #'   multiplier of one), which is how a mixed-family model gives an offset to
 #'   its count traits and not the rest.

@@ -1,5 +1,6 @@
 # Development (unreleased)
 
+* The `gllvmTMB()` offset documentation and Design 01 now state that a nonzero offset is also accepted on the `binomial(cloglog)` arm inside an integrated `isdm_sources()` model (a change of support); no behaviour change (#946).
 * `loading_profile()` and `loading_ci(method = "profile")` now refit the model
   they profile: `unit_obs`, `REML` and `control` (including `loading_ridge`)
   are kept, so a `unit_obs`-tier profile no longer returns an all-`NA` curve and

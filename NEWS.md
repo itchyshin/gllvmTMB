@@ -74,6 +74,13 @@
   is not positive-definite (`pdHess = FALSE`) now raises the classed warning
   `gllvmTMB_wald_nonpd_hessian`; the interval is still returned. The
   proportions and loading-uncertainty readers are not yet changed (#1379).
+* Keyword deprecation messages no longer misfire. The documented
+  `phylo(1 | g)` and `spatial(1 | g)` forms no longer warn about
+  `phylo_scalar()` / `spatial_scalar()`, which the user never typed; the
+  `gr()` and legacy `phylo(species)` alias messages recommend
+  `phylo_indep(..., common = TRUE)` rather than the soft-deprecated
+  `phylo_scalar()`; and the legacy `spatial(0 + trait | coords)` warning names
+  the deprecated form and is attributed to the caller, not the package (#1557).
 * `plot_loadings_confidence_eye()` called on a fitted model without `level =`
   no longer stops with "'arg' must be of length 1". Its default is now
   `level = "unit"`, matching `loading_ci()` and `flag_unreliable_loadings()`

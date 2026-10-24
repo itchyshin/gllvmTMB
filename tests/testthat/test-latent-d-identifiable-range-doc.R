@@ -39,3 +39,23 @@ test_that("the stated bound matches the moment count it is derived from (#1349)"
   maxd <- function(T) max(Filter(function(d) (T - d)^2 >= T + d, 1:T))
   expect_identical(vapply(c(3, 4, 5, 10), maxd, numeric(1)), c(1, 1, 2, 6))
 })
+
+test_that("the three teaching vignettes state the identifiable range of d (#1349)", {
+  vigs <- c(
+    "gllvmTMB.Rmd",
+    file.path("articles", "covariance-correlation.Rmd"),
+    file.path("articles", "model-selection-latent-rank.Rmd")
+  )
+  for (v in vigs) {
+    p <- testthat::test_path("..", "..", "vignettes", v)
+    testthat::skip_if_not(file.exists(p), "not a source checkout")
+    txt <- gsub("\\s+", " ", paste(readLines(p, warn = FALSE), collapse = " "))
+    expect_match(txt, "(T - d)^2 \\ge T + d", fixed = TRUE, info = v)
+    expect_match(txt, "d <= n_traits", fixed = TRUE, info = v)
+  }
+  ## The rank article must say d = 3 with T = 5 is not identified, not only overfit.
+  rk <- testthat::test_path("..", "..", "vignettes", "articles", "model-selection-latent-rank.Rmd")
+  txt <- gsub("\\s+", " ", paste(readLines(rk, warn = FALSE), collapse = " "))
+  expect_match(txt, "not only overfit", fixed = TRUE)
+  expect_match(txt, "is not identified", fixed = TRUE)
+})

@@ -46,8 +46,9 @@ Applies a varimax or promax rotation to the loading matrix \eqn{\Lambda}
 from a fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}. Use \code{level = "unit"} for the
 between-unit reduced-rank component and \code{level = "unit_obs"} for the
 within-unit component. The latent scores are rotated by the complementary
-transform so the linear predictor, fitted log-likelihood, and implied
-covariance are unchanged.
+transform so the linear predictor and fitted log-likelihood are unchanged.
+The implied covariance \eqn{\Lambda \Lambda^\top} is also unchanged for
+\code{method = "varimax"}, but not for \code{"promax"} (see Details).
 }
 \details{
 Rotation is for interpretation of the loading columns, especially figures.
@@ -68,7 +69,11 @@ latent scores on the \emph{right} using the inverse transform, so
 is unchanged. For varimax, \code{T} is orthogonal so the rotation
 preserves the implied covariance \eqn{\Lambda \Lambda^\top}; for
 promax, \code{T} is oblique and the columns of \eqn{\Lambda_{\text{rot}}}
-are no longer orthogonal.
+are no longer orthogonal, so
+\eqn{\Lambda_{\text{rot}} \Lambda_{\text{rot}}^\top \ne \Lambda \Lambda^\top}.
+The covariance is recovered from the rotated loadings and the axis
+correlation: with \code{Ti <- solve(T)}, \code{Lambda_rot \%*\% Ti \%*\% t(Ti) \%*\% t(Lambda_rot)} equals \eqn{\Lambda \Lambda^\top}. The function does not
+return that axis correlation.
 }
 \examples{
 set.seed(1)

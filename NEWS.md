@@ -35,6 +35,14 @@
   predictor. Estimates are unchanged (#1414).
 * A factor or character response is no longer fitted silently as its integer level codes. `gllvmTMB()` now stops with the classed error `gllvmTMB_factor_response_unsupported`, naming the response column and asking for an explicit numeric conversion. Ordinal and multinomial responses still take factors (#1396).
 * `sanity_multi()` no longer stops with "missing value where TRUE/FALSE needed" when the gradient is non-finite or cannot be computed. It reports the gradient row as FAIL, and `converged` is FALSE whenever any gradient entry is non-finite. `fit_health` still takes the largest finite gradient entry, so the two can differ when only some entries are non-finite (#1352).
+* A positional `rho`, `coords` or `mesh` in a `spatial_*()` term (for example
+  `spatial_dep(0 + trait | group, NULL, mesh, 0.5)`) is now read like the named
+  spelling when the formula is desugared: `coords` and `mesh` are carried
+  through, a positional `rho` other than 1 no longer triggers the "grouping
+  token is ignored" notice, and a named `coords = NULL` no longer fails with
+  "subscript out of bounds". A symbol `rho` (`rho = r`) is still treated as
+  "not 1" there, because the desugar step has no formula environment to
+  evaluate it in (#1493).
 
 * Internal cross-validation now scores held-out binomial cells on the log
   scale from the linear predictor and link (logit, probit, cloglog). The score

@@ -2126,6 +2126,9 @@ test_that("gllvm_julia_fit keeps unsupported CI rows explicit before Julia setup
 })
 
 test_that("gllvmTMB fit-time Julia CI controls route through the bridge", {
+  ## The auto-Psi note is once-per-session (.frequency = "once"); an earlier
+  ## engine = "julia" test file in the same R session may already have used it up.
+  rlang::reset_warning_verbosity("gllvmTMB-julia-auto-psi-dropped")
   df <- make_long()
   seen <- new.env(parent = emptyenv())
 

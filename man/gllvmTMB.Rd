@@ -238,7 +238,9 @@ missing-response policy may be used: masked cells
 (\code{miss_control(response = "include")}) contribute nothing to the
 likelihood, so the restricted likelihood is formed over the observed rows
 and matches the corresponding \code{"drop"} fit. The default \code{FALSE} keeps the
-historical ML fit.
+historical ML fit. \code{engine = "julia"} does not forward \code{REML}, so
+\code{REML = TRUE} there aborts (class \code{gllvmTMB_julia_unsupported_arg}); use
+\code{engine = "tmb"}.
 
 REML is validated for all-Gaussian fits only. For non-Gaussian families
 an opt-in escape hatch exists
@@ -281,7 +283,8 @@ the recommended path} at any \code{n_species}; the speedup grows to ~24× at
 
 \item{known_V}{Optional list of block-diagonal sampling-error matrices
 \code{V_t}. Used by the \code{equalto()} two-stage workflow when sampling-error
-matrices are available from a prior stage of estimation.}
+matrices are available from a prior stage of estimation. Not supported by
+\code{engine = "julia"}, which aborts (class \code{gllvmTMB_julia_unsupported_arg}).}
 
 \item{lambda_constraint}{Optional list with elements \code{unit} and / or
 \code{unit_obs} (plus \code{phy}, \code{spde} for structural levels), each an
@@ -296,7 +299,8 @@ functional-group membership, or \code{\link[=suggest_lambda_constraint]{suggest_
 minimum statistical identification scaffold when you have no
 biological hypothesis. Deprecated legacy element names \code{B} and \code{W}
 are still accepted (with a one-shot soft deprecation message) and
-map to \code{unit} and \code{unit_obs} respectively.}
+map to \code{unit} and \code{unit_obs} respectively. Not supported by
+\code{engine = "julia"}, which aborts (class \code{gllvmTMB_julia_unsupported_arg}).}
 
 \item{Xcoef_fixed}{Optional named numeric vector of fixed-effect
 coefficient constraints. Names must match the expanded fixed-effect
@@ -380,10 +384,10 @@ bases, grouping columns, or covariance sources. In wide input, key this
 table by the synthetic column name \code{trait} and omit the \code{trait} argument.}
 }
 \value{
-A \code{gllvmTMB} object. With no covariance-structure terms in
-the formula the result has class \code{"gllvmTMB"} (single-response
-engine); with \code{latent()} or other covstruct sugar it has class
-\code{c("gllvmTMB_multi", "gllvmTMB")} (multi-trait engine).
+A \code{gllvmTMB} object. Every native fit, with or without
+covariance-structure terms in the formula, has class
+\code{c("gllvmTMB_multi", "gllvmTMB")}. \code{integration = "va"} returns class
+\code{c("gllvmTMB_va", "gllvmTMB")} instead.
 S3 methods are registered on the \strong{subclasses}, not on bare
 \code{gllvmTMB}: for a multi-trait fit (\code{gllvmTMB_multi}), \code{tidy()},
 \code{predict()}, \code{summary()}, \code{confint()} and \code{logLik()} are available, and

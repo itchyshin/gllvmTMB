@@ -11,6 +11,8 @@
 * `predict()` and `fitted()` no longer return the internal `species = "placeholder"` column on fits without a species/cluster grouping, nor the auto-generated `.family_wide_` column on wide mixed-family fits (#1406).
 
 * `engine = "julia"` now stops on a missing fixed-effect covariate with the same message as the native engine, instead of sending the `NA` to the bridge (#1371).
+* `poisson()` and `nbinom2()` fits now stop up front when the response has a negative or non-integer value, naming the family, instead of "All 1 restarts failed." (negative) or fitting silently (non-integer) (#1356).
+
 * A missing or non-finite value in a random-slope covariate (for example `x` in
   `latent(1 + x | unit)`, `phylo_slope(x | species)`, `phylo_dep()` or the
   spatial slope terms) now stops the fit with a message naming the covariate,
@@ -33,6 +35,14 @@
   predictor. Estimates are unchanged (#1414).
 * A factor or character response is no longer fitted silently as its integer level codes. `gllvmTMB()` now stops with the classed error `gllvmTMB_factor_response_unsupported`, naming the response column and asking for an explicit numeric conversion. Ordinal and multinomial responses still take factors (#1396).
 * `sanity_multi()` no longer stops with "missing value where TRUE/FALSE needed" when the gradient is non-finite or cannot be computed. It reports the gradient row as FAIL, and `converged` is FALSE whenever any gradient entry is non-finite. `fit_health` still takes the largest finite gradient entry, so the two can differ when only some entries are non-finite (#1352).
+* A positional `rho`, `coords` or `mesh` in a `spatial_*()` term (for example
+  `spatial_dep(0 + trait | group, NULL, mesh, 0.5)`) is now read like the named
+  spelling when the formula is desugared: `coords` and `mesh` are carried
+  through, a positional `rho` other than 1 no longer triggers the "grouping
+  token is ignored" notice, and a named `coords = NULL` no longer fails with
+  "subscript out of bounds". A symbol `rho` (`rho = r`) is still treated as
+  "not 1" there, because the desugar step has no formula environment to
+  evaluate it in (#1493).
 * `mi()` with a discrete predictor no longer returns `NA` conditional probabilities for the missing units when the model also has a random effect such as `latent()`; if the report cannot be evaluated, a warning is raised (#1368).
 
 * Internal cross-validation now scores held-out binomial cells on the log
@@ -91,6 +101,13 @@
   `@exportS3Method stats::sigma`, matching the `stats::sigma` entries already in
   `NAMESPACE`, so `devtools::document()` no longer rewrites them. Behaviour is
   unchanged (#1558).
+* `engine = "julia"` with no `latent()` term now stops with
+  `[GJL-GATE-NO-LATENT]` for every non-Gaussian family except NB2. GLLVModels.jl
+  returned `logLik = -Inf` and `converged = FALSE` for Poisson, binomial, nb1,
+  beta, Gamma and ordinal fits at latent rank 0, and R passed the object back
+  with no error. NB2 matches `engine = "tmb"` there and is unchanged; Gaussian
+  already refused inside Julia. Add a `latent()` term or use `engine = "tmb"`
+  (#1562).
 * `extract_communality()` and `extract_correlations()` now report the canonical
   tier name (`"unit"`, `"unit_obs"`) in the `tier` column instead of the
   deprecated internal code (`"B"`, `"W"`), and `extract_cutpoints()` no longer

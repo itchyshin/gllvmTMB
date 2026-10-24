@@ -95,6 +95,10 @@
   `phylo_indep(..., common = TRUE)` rather than the soft-deprecated
   `phylo_scalar()`; and the legacy `spatial(0 + trait | coords)` warning names
   the deprecated form and is attributed to the caller, not the package (#1557).
+* `engine = "julia"` now refuses, instead of silently ignoring, `weights` for
+  non-binomial families and non-default `gllvmTMBcontrol()` values of
+  `optimizer`, `optArgs`, `init_jitter`, `start_from` and `se`. Each message
+  names the argument and points to `engine = "tmb"` (#1347).
 * `plot_loadings_confidence_eye()` called on a fitted model without `level =`
   no longer stops with "'arg' must be of length 1". Its default is now
   `level = "unit"`, matching `loading_ci()` and `flag_unreliable_loadings()`

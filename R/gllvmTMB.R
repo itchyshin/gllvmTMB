@@ -773,6 +773,23 @@ gllvmTMB <- function(
       ">" = "Omit {.arg svd_start}, or fit with {.code engine = \"tmb\"}."
     ), class = "gllvmTMB_julia_unsupported_control")
   }
+  ## The remaining optimiser-shaped control fields are also never read by the
+  ## Julia dispatch (#1347). A value that differs from the gllvmTMBcontrol()
+  ## default is an explicit request that would be silently dropped, so refuse it.
+  if (identical(engine, "julia")) {
+    control_defaults <- gllvmTMBcontrol()
+    ignored_control <- Filter(
+      function(f) !identical(control[[f]], control_defaults[[f]]),
+      c("optimizer", "optArgs", "init_jitter", "start_from", "se")
+    )
+    if (length(ignored_control) > 0L) {
+      cli::cli_abort(c(
+        "{.code engine = \"julia\"} does not support non-default {.fn gllvmTMBcontrol} settings: {.arg {ignored_control}}.",
+        "i" = "The Julia dispatch has its own optimizer and standard errors, so a non-default value would be silently ignored.",
+        ">" = "Omit them, or use {.code engine = \"tmb\"}."
+      ), class = "gllvmTMB_julia_unsupported_control")
+    }
+  }
   structured_rho_capture <- .parse_structured_rho_formula(formula, trait_col = trait, strip = FALSE)
   .structured_rho_dispatch_fence(structured_rho_capture$spec, engine = engine,
     integration = control$integration %||% "laplace", estimator = estimator,
@@ -1471,6 +1488,17 @@ gllvmTMB <- function(
         "i" = "The GLLVModels.jl bridge has no offset in its linear predictor, so the term would be dropped from the fit rather than applied.",
         ">" = "Use the default {.code engine = \"tmb\"} for a model with an offset."
       ))
+    ## The bridge reads `weights` only as binomial trial counts (N). For any
+    ## other family it would be dropped without a word (#1347), so refuse.
+    if (!is.null(weights)) {
+      julia_fam <- .gllvm_julia_family(family)
+      if (!all(julia_fam %in% .GLLVM_JULIA_BINOMIAL_FAMILIES))
+        cli::cli_abort(c(
+          "{.code engine = \"julia\"} does not support {.arg weights} for non-binomial families.",
+          "i" = "The GLLVModels.jl bridge uses {.arg weights} only as binomial trial counts, so they would be dropped from the fit rather than applied.",
+          ">" = "Use the default {.code engine = \"tmb\"} for weighted non-binomial models."
+        ), class = "gllvmTMB_julia_unsupported_weights")
+    }
     return(.gllvmTMB_julia_dispatch(
       parsed         = parsed,
       data           = data,

@@ -487,7 +487,10 @@ extract_communality <- function(
 #'   is non-zero only for `latent(..., lv = ~ x)` fits. Temporal ordination
 #'   supports `"total"` only; other component requests raise an error.
 #' @return A list with `scores` (units or within-unit observations in rows,
-#'   latent axes in columns) and `loadings` (traits in rows, axes in columns).
+#'   latent axes in columns), `loadings` (traits in rows, axes in columns), and
+#'   `row_id` (the row identifiers of `scores`). The temporal branch also
+#'   returns `row_index` (the pair table behind the rows of `scores`) and
+#'   `temporal_sign` (the sign convention applied to the axes).
 #'
 #' @examples
 #' ## Simulate 6 traits recorded on a few species at each of 80 sites.

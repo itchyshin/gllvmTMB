@@ -1,9 +1,24 @@
 # Development (unreleased)
 
+* `loading_profile()` and `loading_ci(method = "profile")` now refit the model
+  they profile: `unit_obs`, `REML` and `control` (including `loading_ridge`)
+  are kept, so a `unit_obs`-tier profile no longer returns an all-`NA` curve and
+  ridged and REML fits are profiled on their own objective. A valid call no
+  longer warns once per loading or prints alias notices, failed refits are
+  reported with the first error, and `level = "B"` / `"W"` are accepted as
+  documented (#1584).
+
 * A missing or non-finite value in a random-slope covariate (for example `x` in
   `latent(1 + x | unit)`, `phylo_slope(x | species)`, `phylo_dep()` or the
   spatial slope terms) now stops the fit with a message naming the covariate,
   instead of the bare "All 1 restarts failed." (#1394, #1375).
+* Help pages for the extractors now match behaviour: `?extract_Sigma_table`
+  documents `validation_row`, the bootstrap intervals and that `entries` is
+  ignored for `part = "unique"`; `?extract_Sigma` names kernel tiers as valid
+  `level` values; `?extract_correlations` says point estimates only by default;
+  `?extract_latent_scores` drops the `gllvmTMB_julia` claim and the literal
+  TeX; `?extract_ordination` lists `row_id`, `row_index` and `temporal_sign`
+  (#1579).
 * `mi()` with a discrete predictor no longer returns `NA` conditional probabilities for the missing units when the model also has a random effect such as `latent()`; if the report cannot be evaluated, a warning is raised (#1368).
 
 * Internal cross-validation now scores held-out binomial cells on the log

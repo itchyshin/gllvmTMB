@@ -33,7 +33,10 @@ supports \code{"total"} only; other component requests raise an error.}
 }
 \value{
 A list with \code{scores} (units or within-unit observations in rows,
-latent axes in columns) and \code{loadings} (traits in rows, axes in columns).
+latent axes in columns), \code{loadings} (traits in rows, axes in columns), and
+\code{row_id} (the row identifiers of \code{scores}). The temporal branch also
+returns \code{row_index} (the pair table behind the rows of \code{scores}) and
+\code{temporal_sign} (the sign convention applied to the axes).
 }
 \description{
 Extract ordination scores and loadings from a fitted multivariate model

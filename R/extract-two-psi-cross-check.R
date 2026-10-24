@@ -311,7 +311,7 @@
   tryCatch(do.call(gllvmTMB, call_args), error = function(e) {
     cli::cli_warn(c(
       "Refit under {.code {kind}} covstruct failed: {.val {conditionMessage(e)}}.",
-      "i" = "The cross-check returns {.code NULL} for this side; treat this as evidence the alt fit is itself unstable on this dataset, not as a clean disagreement."
+      "i" = "The cross-check returns {.code NULL} for this side. The refit may have failed because of a layout or data restriction as well as numerical trouble, so read the message above before drawing a conclusion; this is not a clean disagreement."
     ))
     NULL
   })

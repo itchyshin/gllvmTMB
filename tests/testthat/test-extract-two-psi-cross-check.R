@@ -42,3 +42,26 @@ test_that("compare_indep_vs_two_psi() refits without an unused-unit_obs warning 
   )
   expect_false(is.null(res))
 })
+
+test_that("a failed alt refit is reported as a refit failure, not as instability (#1572)", {
+  x <- .two_psi_cc_fit()
+  testthat::local_mocked_bindings(
+    gllvmTMB = function(...) stop("forced structural refusal"),
+    .package = "gllvmTMB"
+  )
+  for (cmp in list(compare_dep_vs_two_psi, compare_indep_vs_two_psi)) {
+    msg <- NULL
+    res <- withCallingHandlers(
+      suppressMessages(cmp(x$fit)),
+      warning = function(w) {
+        msg <<- c(msg, conditionMessage(w))
+        invokeRestart("muffleWarning")
+      }
+    )
+    expect_length(msg, 1L)
+    expect_match(msg, "forced structural refusal", fixed = TRUE)
+    expect_match(msg, "Refit under", fixed = TRUE)
+    expect_no_match(msg, "unstable", ignore.case = TRUE)
+    expect_null(res$alt_fit)
+  }
+})

@@ -1,5 +1,6 @@
 # Development (unreleased)
 
+* `predict(newdata = <wide data frame>)` on a `traits()` fit now stops with a message saying `newdata` must be long with a `trait` column (the help page says so too), instead of "object 'trait' not found" (#1412).
 * A missing or non-finite value in a random-slope covariate (for example `x` in
   `latent(1 + x | unit)`, `phylo_slope(x | species)`, `phylo_dep()` or the
   spatial slope terms) now stops the fit with a message naming the covariate,

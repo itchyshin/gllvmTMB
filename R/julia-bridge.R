@@ -4251,6 +4251,24 @@ print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
   trait_dummies <- paste0(trait, traits)
   extra_cols <- setdiff(colnames(Xfix), trait_dummies)
   has_only_trait_intercept <- (length(extra_cols) == 0 && ncol(Xfix) == p)
+  ## The design matrix comes from a na.pass model frame and the response mask
+  ## covers the response only, so an NA predictor would otherwise reach the
+  ## bridge inside the p x n x q array (#1371). Same rule and wording as the
+  ## native engine: rows with a missing response are dropped or masked, but a
+  ## missing predictor on an observed-response row must be removed or imputed.
+  if (anyNA(Xfix[!is.na(yv), , drop = FALSE])) {
+    cli::cli_abort(
+      c(
+        "NA in the fixed-effect design matrix.",
+        ">" = paste0(
+          "Missing response rows are allowed and dropped before fitting; ",
+          "missing predictors still need to be removed or imputed before ",
+          "fitting."
+        )
+      ),
+      class = "gllvmTMB_julia_na_fixed_effect"
+    )
+  }
   if (has_lv && !has_only_trait_intercept) {
     stop(
       .gllvm_julia_gate_message(

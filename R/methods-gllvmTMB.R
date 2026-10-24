@@ -429,6 +429,20 @@ sigma.gllvmTMB_va <- sigma.gllvmTMB_multi
   rep(NA_real_, n)
 }
 
+## Why Wald standard errors from `fit$sd_report` cannot be trusted, or NULL when
+## they can. Used by tidy(): a non-positive-definite Hessian still yields finite
+## numbers from `sdreport()`, but they are not standard errors.
+.gllvmTMB_wald_unusable_reason <- function(fit) {
+  sdr <- fit$sd_report
+  if (is.null(sdr)) {
+    return("sdreport_unavailable")
+  }
+  if (!isTRUE(sdr$pdHess)) {
+    return("non_positive_definite_hessian")
+  }
+  NULL
+}
+
 .gllvmTMB_b_fix_table <- function(fit) {
   n <- length(fit$X_fix_names %||% character(0))
   if (n == 0L) {
@@ -1469,7 +1483,9 @@ nobs.gllvmTMB_multi <- function(object, ...) {
 #'   ordinal-probit thresholds. For a non-unit weighted objective, fixed-effect
 #'   point estimates remain available but `std.error` is `NA`, an
 #'   `inference_status` column explains the boundary, and `conf.int = TRUE`
-#'   fails because no sandwich interval is certified.
+#'   fails because no sandwich interval is certified. When the Hessian is not
+#'   positive definite (or the `sdreport()` is missing), `std.error` is `NA`,
+#'   `conf.low` / `conf.high` are `NA`, and `inference_status` says why.
 #' @export
 tidy.gllvmTMB_multi <- function(
   x,
@@ -1498,6 +1514,9 @@ tidy.gllvmTMB_multi <- function(
     )
     if (weighted) {
       out$inference_status <- "point_estimate_only_weighted_objective"
+    } else if (!is.null(reason <- .gllvmTMB_wald_unusable_reason(x))) {
+      out$std.error <- rep(NA_real_, nrow(out))
+      out$inference_status <- reason
     }
     ## Per-trait link column. For single-family fits this is a single
     ## value repeated; for mixed-family fits each row carries the link
@@ -2731,6 +2750,34 @@ sanity_multi <- function(object, gradient_thresh = 1e-2, se_thresh = 100) {
 
 ## ---- predict(newdata=) support helpers (#1132) ------------------------------
 
+#' Warn about arguments that `predict()` received in `...` and ignored
+#'
+#' `predict.gllvmTMB_multi()` uses no argument from `...`, so anything there is
+#' dropped. The near-miss spellings `re.form` (lme4 / glmmTMB) and `se_fit` are
+#' the easy ones to hit and silently return a different quantity (#1414), so
+#' the warning names the argument to use instead.
+#' @noRd
+.gllvmTMB_predict_warn_unused <- function(dots) {
+  if (length(dots) == 0L) return(invisible(NULL))
+  nm <- names(dots)
+  if (is.null(nm)) nm <- rep("", length(dots))
+  hint <- c(re.form = "re_form", se_fit = "se.fit")
+  items <- ifelse(nzchar(nm), nm, "<unnamed>")
+  bullets <- vapply(seq_along(items), function(i) {
+    if (items[i] %in% names(hint)) {
+      sprintf("`%s` is not an argument of predict(); use `%s`.",
+              items[i], hint[[items[i]]])
+    } else {
+      sprintf("`%s` is not an argument of predict() and was ignored.", items[i])
+    }
+  }, character(1))
+  cli::cli_warn(c(
+    "{.fn predict} ignored {length(items)} unused argument{?s} passed in {.arg ...}.",
+    stats::setNames(gsub("([{}])", "\\1\\1", bullets), rep("!", length(bullets)))
+  ), class = "gllvmTMB_predict_unused_arg")
+  invisible(NULL)
+}
+
 #' Is `re_form` a request to drop the random effects?
 #'
 #' The roxygen for [predict.gllvmTMB_multi()] promises that `~ 0` *or* `NA`
@@ -3024,7 +3071,8 @@ sanity_multi <- function(object, gradient_thresh = 1e-2, se_thresh = 100) {
 #'   fits, fits without an active `mi()` missing-covariate model, and fits with
 #'   unit likelihood weights. A non-unit weighted objective has no certified
 #'   prediction-standard-error route.
-#' @param ... Unused.
+#' @param ... Unused. An argument passed here is ignored with a warning; in
+#'   particular `re.form` (use `re_form`) and `se_fit` (use `se.fit`).
 #'
 #' @return A data frame with the original row identifiers plus an `est`
 #'   column on the requested link or response scale, and (if
@@ -3040,6 +3088,7 @@ predict.gllvmTMB_multi <- function(
   ...
 ) {
   type <- match.arg(type)
+  .gllvmTMB_predict_warn_unused(list(...))
   if (isTRUE(object$temporal$active) && !is.null(newdata)) {
     cli::cli_abort(c(
       "{.fn predict} with {.arg newdata} is not yet available for {.fn temporal_latent} fits.",

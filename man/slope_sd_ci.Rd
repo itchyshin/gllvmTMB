@@ -33,7 +33,7 @@ marginal slope SD; \code{"total"} otherwise, meaning \code{estimate} already
 is the total marginal slope SD.}
 \item{\code{total_sd}}{Point estimate of the TOTAL marginal slope SD, on
 the SD scale regardless of \code{scale}. Equal to \code{estimate} when
-\code{component == "total"}.}
+\code{component == "total"} and \code{scale = "sd"}.}
 \item{\code{total_lower}, \code{total_upper}}{Interval on \code{total_sd}, on the
 requested \code{scale}. \code{NA} whenever \code{total_status != "ok"} or the
 supporting ADREPORT is unavailable.}

@@ -1,5 +1,6 @@
 # Development (unreleased)
 
+* `engine = "julia"` now stops on `REML = TRUE`, a non-`NULL` `lambda_constraint` and a non-`NULL` `known_V` (class `gllvmTMB_julia_unsupported_arg`) instead of silently ignoring them (#1347).
 * `loading_profile()` and `loading_ci(method = "profile")` now refit the model
   they profile: `unit_obs`, `REML` and `control` (including `loading_ridge`)
   are kept, so a `unit_obs`-tier profile no longer returns an all-`NA` curve and

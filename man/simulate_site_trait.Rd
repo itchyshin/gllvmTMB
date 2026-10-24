@@ -71,7 +71,7 @@ and \code{coords} is \code{NULL}, sites are placed uniformly in \verb{[0, 1]^2}.
 \item{coords}{Optional \code{n_sites} x 2 matrix of site coordinates (used when
 \code{spatial_range} is supplied).}
 
-\item{seed}{Optional RNG seed.}
+\item{seed}{Optional RNG seed. The caller's random-number state is restored on exit.}
 }
 \value{
 A list with components:

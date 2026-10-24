@@ -10,6 +10,10 @@
 * `predict()` and `fitted()` no longer return the internal `species = "placeholder"` column on fits without a species/cluster grouping, nor the auto-generated `.family_wide_` column on wide mixed-family fits (#1406).
 
 * `engine = "julia"` now stops on a missing fixed-effect covariate with the same message as the native engine, instead of sending the `NA` to the bridge (#1371).
+* A dense `vcv` / `phylo_vcv` passed to `phylo_scalar()`, `phylo_latent()` or
+  `phylo_slope()` is now checked for positive semidefiniteness, and an
+  indefinite matrix stops the fit with a message naming it, instead of
+  returning a finite but meaningless log-likelihood (#1373).
 * A missing or non-finite value in a random-slope covariate (for example `x` in
   `latent(1 + x | unit)`, `phylo_slope(x | species)`, `phylo_dep()` or the
   spatial slope terms) now stops the fit with a message naming the covariate,

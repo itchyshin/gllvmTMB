@@ -816,9 +816,13 @@ sigma.gllvmTMB_va <- sigma.gllvmTMB_multi
   engine_flags <- setdiff(names(use), sub_flags)
   active <- vapply(engine_flags, function(nm) isTRUE(use[[nm]]), logical(1L))
   used <- engine_flags[active]
+  ## A latent() term carries its diagonal Psi in the same tier's diag slot, so
+  ## the diagonal flag is not a second user-written term (#1580).
+  if ("rr_B" %in% used) used <- setdiff(used, "diag_B")
+  if ("rr_W" %in% used) used <- setdiff(used, "diag_W")
   ## Translate each engine flag to its label, swapping in the canonical
   ## sub-flavour name when it applies.
-  vapply(
+  labs <- vapply(
     used,
     function(nm) {
       if (identical(nm, "phylo_rr") && isTRUE(use$phylo_unique)) {
@@ -834,6 +838,9 @@ sigma.gllvmTMB_va <- sigma.gllvmTMB_multi
     },
     character(1L)
   )
+  ## Several engine flags can map to one printed keyword (diag_B and
+  ## indep_B are both `indep_unit`): print each label once.
+  labs[!duplicated(labs)]
 }
 
 #' Methods on a fitted gllvmTMB model
@@ -2620,28 +2627,43 @@ sanity_multi <- function(object, gradient_thresh = 1e-2, se_thresh = 100) {
   is_mspl <- .gllvmTMB_is_mspl(object)
   flags <- list()
 
-  ## 1. nlminb convergence
-  flags$converged <- (object$opt$convergence == 0L)
+  ## 1-2. Convergence and max gradient. #1092: on a ridged fit the raw
+  ## `tmb_obj$gr()` reports the UNPENALISED gradient at the PENALISED optimum
+  ## (|lambda|/tau^2, not ~0), so the gradient check must judge the objective
+  ## the fit actually optimised. #1352: a gradient that errors or is not finite
+  ## is reported (max |gr| = NA), never passed to `if()`, and `converged` comes
+  ## from the same builder as `fit_health` so the two reports agree.
+  g <- tryCatch(
+    .gllvmTMB_penalised_gradient(
+      object$tmb_obj, object$opt$par, object$aghq$ridge_tau %||% Inf
+    ),
+    error = function(e) NA_real_
+  )
+  grad_finite <- length(g) > 0L && all(is.finite(g))
+  flags$max_gradient <- if (grad_finite) max(abs(g)) else NA_real_
+  flags$converged <- isTRUE(
+    .gllvmTMB_build_fit_health(object)$converged && grad_finite
+  )
   cat(sprintf(
     "%-44s %s\n",
-    "Optimiser convergence (== 0):",
+    "Converged (optimiser, objective, gradient):",
     if (flags$converged) "PASS" else "FAIL"
   ))
-
-  ## 2. Max gradient. #1092: on a ridged fit the raw `tmb_obj$gr()` reports
-  ## the UNPENALISED gradient at the PENALISED optimum (|lambda|/tau^2, not
-  ## ~0), so this check must judge the objective the fit actually optimised.
-  g <- .gllvmTMB_penalised_gradient(
-    object$tmb_obj, object$opt$par, object$aghq$ridge_tau %||% Inf
-  )
-  flags$max_gradient <- max(abs(g))
-  cat(sprintf(
-    "%-44s %s (max |gr| = %.3g%s)\n",
-    sprintf("Max |gradient| < %.1e:", gradient_thresh),
-    if (flags$max_gradient < gradient_thresh) "PASS" else "WARN",
-    flags$max_gradient,
-    if (isTRUE(object$aghq$penalised)) ", penalised objective" else ""
-  ))
+  if (grad_finite) {
+    cat(sprintf(
+      "%-44s %s (max |gr| = %.3g%s)\n",
+      sprintf("Max |gradient| < %.1e:", gradient_thresh),
+      if (flags$max_gradient < gradient_thresh) "PASS" else "WARN",
+      flags$max_gradient,
+      if (isTRUE(object$aghq$penalised)) ", penalised objective" else ""
+    ))
+  } else {
+    cat(sprintf(
+      "%-44s %s\n",
+      sprintf("Max |gradient| < %.1e:", gradient_thresh),
+      "FAIL (gradient not finite)"
+    ))
+  }
 
   ## 3. Hessian PD-ness
   sdreport_ok <- !is.null(object$sd_report)

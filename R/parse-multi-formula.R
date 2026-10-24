@@ -347,7 +347,7 @@ parse_re_int_call <- function(bar, trait_col = "trait") {
     next_step <- if (rhs_is_trait) {
       "Use the response-column slope grammar instead: {.fn slope}, {.fn phylo_slope}, or {.fn animal_slope}, e.g. {.code phylo_slope(x | trait, tree = tree)}."
     } else if (is_single_slope) {
-      "Use {.code latent(1 + x | {deparse(cov_group)}, d = K)} or {.code unique(1 + x | {deparse(cov_group)})} instead."
+      "Use {.code latent(1 + x | {deparse(cov_group)}, d = K)} instead."
     } else {
       "There is no supported route for a bare slope-only term; fit separate models, one covariate per group."
     }

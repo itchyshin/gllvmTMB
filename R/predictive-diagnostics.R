@@ -89,7 +89,10 @@ predictive_check <- function(
   max_count = NULL
 ) {
   if (!requireNamespace("ggplot2", quietly = TRUE)) {
-    cli::cli_abort("Install ggplot2 to use {.fn predictive_check}.")
+    cli::cli_abort(c(
+      "Install ggplot2 to use {.fn predictive_check}.",
+      ">" = "Run {.code install.packages(\"ggplot2\")}, then call {.fn predictive_check} again."
+    ))
   }
   .gllvmTMB_validate_diagnostic_fit(object)
   type <- match.arg(type)
@@ -305,9 +308,10 @@ residuals.gllvmTMB_multi <- function(
     simulations <- t(simulations)
   }
   if (nrow(simulations) != length(observed)) {
-    cli::cli_abort(
-      "{.fn simulate} returned a matrix that does not align with the observed response."
-    )
+    cli::cli_abort(c(
+      "{.fn simulate} returned a matrix that does not align with the observed response.",
+      ">" = "Check that {.fn simulate} returns one row per observed response and one column per draw; a custom {.fn simulate} method must follow that shape."
+    ))
   }
 
   row_meta <- .gllvmTMB_diagnostic_row_metadata(object)
@@ -1115,9 +1119,10 @@ residuals.gllvmTMB_multi <- function(
   stat <- match.arg(stat)
   group <- if (is.null(group)) "trait" else group
   if (!group %in% names(draws$row_data)) {
-    cli::cli_abort(
-      "{.arg group} must name a column in the diagnostic row metadata."
-    )
+    cli::cli_abort(c(
+      "{.arg group} must name a column in the diagnostic row metadata.",
+      ">" = "Pass {.arg group} as one of {.val {names(draws$row_data)}}, or leave it NULL to group by trait."
+    ))
   }
   group_value <- draws$row_data[[group]]
   stat_fun <- switch(
@@ -1243,7 +1248,10 @@ residuals.gllvmTMB_multi <- function(
     max_count <- .gllvmTMB_auto_rootogram_max_count(observed, simulations)
   }
   if (!is.finite(max_count) || max_count < 0 || max_count != floor(max_count)) {
-    cli::cli_abort("{.arg max_count} must be a non-negative integer or NULL.")
+    cli::cli_abort(c(
+      "{.arg max_count} must be a non-negative integer or NULL.",
+      ">" = "Pass a whole number such as {.code max_count = 10}, or leave it NULL to pick the largest observed count."
+    ))
   }
   max_count <- as.integer(max_count)
   count_levels <- c(
@@ -1481,14 +1489,18 @@ residuals.gllvmTMB_multi <- function(
 
 .gllvmTMB_validate_diagnostic_fit <- function(object) {
   if (!inherits(object, "gllvmTMB_multi")) {
-    cli::cli_abort("{.arg object} must be a {.cls gllvmTMB_multi} fit.")
+    cli::cli_abort(c(
+      "{.arg object} must be a {.cls gllvmTMB_multi} fit.",
+      ">" = "Fit the model with {.fn gllvmTMB} first and pass the object it returns."
+    ))
   }
   required <- c("y", "family_id_vec", "link_id_vec", "trait_id")
   missing <- setdiff(required, names(object$tmb_data))
   if (length(missing) > 0L) {
-    cli::cli_abort(
-      "{.arg object$tmb_data} is missing required field(s): {.val {missing}}."
-    )
+    cli::cli_abort(c(
+      "{.arg object$tmb_data} is missing required field(s): {.val {missing}}.",
+      ">" = "Refit with the current {.fn gllvmTMB} instead of passing a hand-edited or older saved fit."
+    ))
   }
   invisible(TRUE)
 }
@@ -1498,7 +1510,10 @@ residuals.gllvmTMB_multi <- function(
   if (!is.null(trait)) {
     keep <- row_meta$trait %in% as.character(trait)
     if (!any(keep)) {
-      cli::cli_abort("No rows matched the requested {.arg trait} filter.")
+      cli::cli_abort(c(
+        "No rows matched the requested {.arg trait} filter.",
+        ">" = "Pass trait names from {.val {unique(as.character(row_meta$trait))}}."
+      ))
     }
   }
   keep
@@ -1510,9 +1525,10 @@ residuals.gllvmTMB_multi <- function(
       !is.null(ndraws) &&
       !identical(as.integer(nsim), as.integer(ndraws))
   ) {
-    cli::cli_abort(
-      "Specify only one of {.arg nsim} or {.arg ndraws}, or give them the same value."
-    )
+    cli::cli_abort(c(
+      "Specify only one of {.arg nsim} or {.arg ndraws}, or give them the same value.",
+      ">" = "Drop one of them; {.arg ndraws} is an alias for {.arg nsim}."
+    ))
   }
   out <- if (!is.null(nsim)) {
     nsim
@@ -1522,7 +1538,10 @@ residuals.gllvmTMB_multi <- function(
     50L
   }
   if (length(out) != 1L || is.na(out) || out < 2L || out != as.integer(out)) {
-    cli::cli_abort("{.arg nsim} / {.arg ndraws} must be a single integer >= 2.")
+    cli::cli_abort(c(
+      "{.arg nsim} / {.arg ndraws} must be a single integer >= 2.",
+      ">" = "Pass a whole number of at least 2, for example {.code nsim = 50}."
+    ))
   }
   as.integer(out)
 }

@@ -2549,8 +2549,14 @@ print.gllvmTMB_Sigma_phy_slope <- function(x, digits = 3, ...) {
 #' `extract_coevolution_modules()` standardizes a component-specific
 #' cross-lineage covariance block and decomposes it into coupled trait axes.
 #' For a named coevolution kernel tier, the helper computes
-#' `R = Sigma_row^{-1/2} Gamma Sigma_col^{-1/2}` from the shared covariance
-#' returned by [extract_Sigma()], then applies a singular-value decomposition.
+#' `R = Sigma_row^{-1/2} Gamma Sigma_col^{-1/2}` from the covariance returned
+#' by [extract_Sigma()], then applies a singular-value decomposition. `Gamma`
+#' is the cross-lineage block of the shared covariance. `Sigma_row` and
+#' `Sigma_col` are the within-lineage blocks of the TOTAL covariance
+#' (`part = "total"`: shared `Lambda Lambda^T` plus the per-trait `Psi`
+#' diagonal when the tier carries one). Standardising by the shared blocks
+#' alone would give singular values of exactly 1 whenever `d` is at most the
+#' number of traits per lineage, so they would carry no information.
 #'
 #' This is a point-estimate derived-output helper, covered by the package's
 #' validation tests, for fitted
@@ -2570,12 +2576,18 @@ print.gllvmTMB_Sigma_phy_slope <- function(x, digits = 3, ...) {
 #' @param n_modules Optional positive integer limiting the number of returned
 #'   singular axes. By default all axes are returned.
 #' @param tol Numerical tolerance for the generalized inverse square roots of
-#'   the within-lineage shared covariance blocks.
+#'   the within-lineage total covariance blocks.
 #'
 #' @return A list with `R`, `modules`, `row_axes`, and `col_axes`. `R` is the
 #'   standardized cross-lineage correlation-like block. `modules` has one row
-#'   per singular axis with its singular value and squared-value share.
-#'   `row_axes` and `col_axes` contain trait loadings for each coupled axis.
+#'   per singular axis with its singular value and squared-value share. The
+#'   singular values lie in `[0, 1]` and are informative only when the
+#'   within-lineage total covariance is larger than the shared part, that is,
+#'   when the tier has a `Psi` component estimated above zero (for example
+#'   `kernel_latent(..., unique = TRUE)`). For a latent-only tier with `d` at
+#'   most the traits per lineage they are 1 by construction, and the trait
+#'   loadings are the informative output. `row_axes` and `col_axes` contain
+#'   trait loadings for each coupled axis.
 #'
 #' @examples
 #' set.seed(1)
@@ -2620,11 +2632,14 @@ print.gllvmTMB_Sigma_phy_slope <- function(x, digits = 3, ...) {
 #'   data = dat, trait = "trait", unit = "obs", cluster = "species"
 #' )
 #' ## Coupled host and partner trait axes (point estimates only). With
-#' ## one latent axis (d = 1) there is a single module (n_modules = 1),
-#' ## and its singular value is 1 by construction, so read the trait
-#' ## loadings: hosts with larger size and defence are linked with
+#' ## one latent axis (d = 1) there is a single module (n_modules = 1).
+#' ## This fit has no Psi, so the total covariance equals the shared part
+#' ## and the singular value is 1 by construction: read the trait
+#' ## loadings. Hosts with larger size and defence are linked with
 #' ## partners of larger size and lower attack. Flipping the signs of
-#' ## both axes gives the same module.
+#' ## both axes gives the same module. A tier fitted with
+#' ## kernel_latent(..., unique = TRUE) has a Psi component; when Psi is
+#' ## estimated above zero the singular values fall below 1.
 #' mods <- extract_coevolution_modules(
 #'   fit,
 #'   level = "cross",
@@ -2676,13 +2691,16 @@ extract_coevolution_modules <- function(
     cli::cli_abort("{.arg tol} must be one positive number.")
   }
 
-  shared <- suppressMessages(extract_Sigma(
+  ## Total covariance (shared + Psi): the within-lineage blocks are
+  ## standardised by it so the singular values are informative (#1570).
+  ## Psi is diagonal, so the cross-lineage block is the shared Gamma.
+  total <- suppressMessages(extract_Sigma(
     fit,
     level = level,
-    part = "shared",
+    part = "total",
     link_residual = "none"
   ))
-  Sigma <- shared$Sigma
+  Sigma <- total$Sigma
   if (!is.matrix(Sigma)) {
     cli::cli_abort(c(
       "The requested level has no shared covariance matrix.",

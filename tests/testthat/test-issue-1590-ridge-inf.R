@@ -20,6 +20,34 @@ test_that("unconverged Inf falls back to the elasticity comparison", {
   omitted <- gllvmTMB:::.ridge_path_verdict(tau, loading)
   expect_identical(omitted$mode, "boundary")
   expect_false(omitted$inf_unconverged)
+
+  one_finite <- gllvmTMB:::.ridge_path_verdict(
+    c(1, Inf), c(1, 10), convergence = c(0L, 1L)
+  )
+  expect_identical(one_finite$verdict, "insufficient")
+  expect_true(one_finite$inf_unconverged)
+})
+
+test_that("an errored Inf row does not add the unconverged sentence", {
+  tau <- c(1, 2, Inf)
+  loading <- c(1, 1, NA_real_)
+  v <- gllvmTMB:::.ridge_path_verdict(
+    tau, loading, convergence = c(0L, 0L, NA_integer_)
+  )
+  expect_identical(v$mode, "elasticity")
+  expect_false(v$inf_unconverged)
+
+  x <- data.frame(
+    tau = tau,
+    trait = "sp1",
+    max_loading = loading,
+    convergence = c(0L, 0L, NA_integer_),
+    stringsAsFactors = FALSE
+  )
+  class(x) <- c("gllvmTMB_ridge_path", "data.frame")
+  out <- paste(capture.output(print(x)), collapse = "\n")
+  expect_false(grepl("did not converge", out, fixed = TRUE))
+  expect_match(out, "log-log elasticity", fixed = TRUE)
 })
 
 test_that("print says when the Inf refit did not converge", {

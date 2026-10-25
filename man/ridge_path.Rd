@@ -112,12 +112,14 @@ arguments to adjust either threshold.
 
 \code{tau = Inf} requests a plain maximum-likelihood refit with no ridge.
 The boundary comparison uses that refit only when its convergence code
-is 0. If the Inf refit errors, or returns a point that did not converge,
-the classifier falls back to the finite-tau elasticity comparison and
-the printed line says that the Inf refit did not converge. A converged
-Inf loading, including an extreme one, stays the boundary comparison.
-\code{fit_error} records the message when a grid point's refit errors
-outright, and the row's other columns are \code{NA} for that point.
+is 0. An Inf row that returns a loading whose convergence code is not 0
+is not the boundary anchor, and the printed line says that the Inf refit
+did not converge. The elasticity comparison is then used only when at
+least two finite-tau rows remain. An outright error leaves that loading
+missing, so it is not the boundary anchor and does not add the sentence.
+A converged Inf loading, including an extreme one, stays the boundary
+comparison. \code{fit_error} records the message when a grid point's refit
+errors outright, and the row's other columns are \code{NA} for that point.
 }
 \examples{
 set.seed(1)

@@ -438,8 +438,9 @@
 #'     Bayesian posterior distribution for variance components.
 #'   \item **Intervals are too narrow when the simulator cannot redraw a
 #'     tier.** Redraw is not implemented for every random-effect tier —
-#'     notably the SPDE spatial tier and the diagonal phylogenetic tier.
-#'     For a fit using one of those, [simulate.gllvmTMB_multi()] falls back
+#'     notably the slope-augmented SPDE spatial blocks. The phylogenetic,
+#'     diagonal phylogenetic and plain SPDE spatial tiers are redrawn.
+#'     For a fit using an unhandled tier, [simulate.gllvmTMB_multi()] falls back
 #'     to reusing the fitted random-effect modes and emits a one-shot
 #'     warning. That fallback understates between-unit variability, so the
 #'     intervals returned here are **not calibrated** for such fits. Treat

@@ -1892,7 +1892,7 @@ confint.gllvmTMB_multi <- function(
   if (is.null(Sigma_pt)) {
     cli::cli_abort(c(
       "This fit has no {.val {info$level}} tier; {.code {parm}} needs a {.fn latent}, {.fn unique} or {.fn indep} term on the {.val {info$level}} grouping.",
-      "i" = "Check which tiers the fit has with {.code extract_Sigma(fit, level = ...)}."
+      ">" = "Check which tiers the fit has with {.code extract_Sigma(fit, level = ...)}."
     ))
   }
   invisible(NULL)

@@ -35,6 +35,22 @@
   isTRUE(all.equal(unname(da), unname(db), tolerance = tol))
 }
 
+## #1372: compare the numeric entries of two VCV / Ainv inputs. Dimnames are
+## ignored so a renamed-but-equal matrix is not treated as a conflict.
+.gllvmTMB_same_phylo_vcv <- function(a, b, tol = 1e-10) {
+  if (!identical(dim(a), dim(b))) {
+    return(FALSE)
+  }
+  a_m <- if (inherits(a, "sparseMatrix")) as.matrix(a) else a
+  b_m <- if (inherits(b, "sparseMatrix")) as.matrix(b) else b
+  isTRUE(all.equal(
+    unname(as.matrix(a_m)),
+    unname(as.matrix(b_m)),
+    tolerance = tol,
+    check.attributes = FALSE
+  ))
+}
+
 .kernel_overlap_class <- function(similarity) {
   ifelse(
     similarity < 0.25, "near_orthogonal",
@@ -4617,9 +4633,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ##   `phylo_latent(species, d = K, tree = my_tree)` or
   ##   `phylo_unique(species, vcv = Cphy)`
   ## as an alternative to passing `phylo_tree =` / `phylo_vcv =` globally
-  ## to `gllvmTMB()`. Per-term wins; if both global and per-term are set
-  ## they must agree (per-term takes precedence with a soft inform).
-  ## Multiple phylo terms must agree on the tree / vcv.
+  ## to `gllvmTMB()`. If both global and per-term `vcv` are set they must
+  ## agree numerically; a mismatch is refused rather than dropping one
+  ## silently (#1372). Multiple phylo terms must agree on the tree / vcv.
   for (i in seq_along(parsed$covstructs)) {
     cs <- parsed$covstructs[[i]]
     is_multi_kernel_term <- use_kernel_multi &&
@@ -4651,11 +4667,12 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
           if (has_kernel_term && !use_kernel_multi) {
             kernel_single_rho <- .cross_kernel_rho(vcv_inkey)
           }
-        } else if (!identical(dim(phylo_vcv), dim(vcv_inkey))) {
-          cli::cli_warn(c(
+        } else if (!.gllvmTMB_same_phylo_vcv(phylo_vcv, vcv_inkey)) {
+          cli::cli_abort(c(
             "{.code vcv =} inside a phylo keyword disagrees with the global {.arg phylo_vcv}.",
-            "i" = "Using the global {.arg phylo_vcv}; remove one to silence this warning."
-          ))
+            "x" = "The two matrices are not the same, so the fit cannot choose one silently.",
+            ">" = "Drop the global {.arg phylo_vcv} to use the in-keyword {.code vcv =}, or drop the in-keyword {.code vcv =} to use the global matrix."
+          ), class = "gllvmTMB_phylo_vcv_conflict")
         }
       }
     }

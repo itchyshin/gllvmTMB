@@ -772,9 +772,15 @@
   }
   ## `route` is the Hessian-free method the error offers. It must be one the
   ## CALLER accepts: extract_repeatability() has withdrawn "profile", so it
-  ## passes "bootstrap". Pasted into the template (not interpolated as a value)
-  ## so the {.code} markup is rendered.
-  route_md <- paste0("{.code method = \"", route, "\"}")
+  ## passes "bootstrap". `vcov()` has no method argument (#1580), so it
+  ## passes NULL and the hint is omitted. Pasted into the template (not
+  ## interpolated as a value) so the {.code} markup is rendered.
+  offer_route <- !is.null(route) && nzchar(route)
+  route_md <- if (offer_route) {
+    paste0("{.code method = \"", route, "\"}")
+  } else {
+    NULL
+  }
 
   ## Second way to have no usable standard errors: sd_report EXISTS but its
   ## fixed-effect covariance is entirely non-finite -- the signature of a
@@ -786,13 +792,18 @@
   if (!is.null(object$sd_report)) {
     cv <- tryCatch(object$sd_report$cov.fixed, error = function(e) NULL)
     if (!is.null(cv) && length(cv) > 0L && !any(is.finite(diag(as.matrix(cv))))) {
+      next_step <- if (offer_route) {
+        paste0("Diagnose it with {.run gllvmTMB_diagnose(fit)}, or use ",
+               route_md, ", which does not use the Hessian.")
+      } else {
+        "Diagnose it with {.run gllvmTMB_diagnose(fit)}."
+      }
       cli::cli_abort(c(
         "{.fn {caller}} cannot proceed: the standard errors are all non-finite.",
         "x" = "This usually means the Hessian is not positive-definite.",
         "i" = "This is a property of the fit -- {.fn standard_errors} will not
                help, because the numbers were already computed.",
-        ">" = paste0("Diagnose it with {.run gllvmTMB_diagnose(fit)}, or use ",
-                     route_md, ", which does not use the Hessian.")
+        ">" = next_step
       ), class = "gllvmTMB_confint_nonfinite_se")
     }
     return(invisible(NULL))
@@ -802,12 +813,18 @@
   ## braces would print literally.
   reason <- object$sdreport_error %||%
     "no standard errors were computed for this fit"
-  cli::cli_abort(c(
+  no_se_msg <- c(
     "{.fn {caller}} needs standard errors, and this fit has none.",
     "x" = "This fit has no {.field sd_report}: {reason}",
-    ">" = "Compute them without refitting: {.code fit <- standard_errors(fit)}",
-    "i" = paste0("Or use ", route_md, ", which does not need them.")
-  ), class = "gllvmTMB_confint_no_sdreport")
+    ">" = "Compute them without refitting: {.code fit <- standard_errors(fit)}"
+  )
+  if (offer_route) {
+    no_se_msg <- c(
+      no_se_msg,
+      "i" = paste0("Or use ", route_md, ", which does not need them.")
+    )
+  }
+  cli::cli_abort(no_se_msg, class = "gllvmTMB_confint_no_sdreport")
 }
 
 ## #1379: a finite covariance from a Hessian that is not positive-definite is
@@ -1139,6 +1156,7 @@
     "unique_cluster2",
     "shared_phy",
     "unique_phy",
+    "residual",
     "link_residual"
   )
 }
@@ -1530,7 +1548,8 @@
 #'       \code{"unique_unit"}, \code{"shared_unit_obs"},
 #'       \code{"unique_unit_obs"}, \code{"unique_cluster"},
 #'       \code{"unique_cluster2"}, \code{"shared_phy"},
-#'       \code{"unique_phy"}, \code{"link_residual"}). Defaults to Wald;
+#'       \code{"unique_phy"}, \code{"residual"}, \code{"link_residual"}).
+#'       Defaults to Wald;
 #'       bootstrap is available explicitly. The nonlinear profile prototype is
 #'       withheld.
 #'     \item An integer index vector or character vector of fixed-effect

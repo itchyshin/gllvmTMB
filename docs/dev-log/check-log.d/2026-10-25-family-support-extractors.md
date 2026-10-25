@@ -31,3 +31,20 @@
 **Not run:** article rebuilds (`pkgdown::build_articles`). No formula-parser change.
 
 **Claim boundary:** these checks show the named families abort on unsupported `y` and that the listed help pages no longer contradict behaviour. They do not promote a validation-debt row or claim coverage for every family.
+
+## Follow-up (R review on PR #1689)
+
+**Goal:** tolerance on binomial/betabinomial integrality, classed `gllvmTMB_response_support` errors, and a NEWS breaking-change line for proportion plus `weights = n`.
+
+**Commands (follow-up):**
+
+    NOT_CRAN=true Rscript --vanilla -e '
+      Sys.setenv(NOT_CRAN = "true")
+      testthat::test_file("tests/testthat/test-family-support-checks.R")
+    '
+    R CMD check --no-manual --as-cran gllvmTMB_0.8.0.9000.tar.gz
+
+**Results (follow-up):**
+
+- Focused `test-family-support-checks.R` after `devtools::load_all()`: `[ FAIL 0 | WARN 0 | SKIP 0 | PASS 19 ]`. The new near-integer cell (`3 - 4e-10`) is accepted; invalid rows stay classed `gllvmTMB_response_support`.
+- `R CMD check --no-manual --as-cran` on `gllvmTMB_0.8.0.9000.tar.gz`: **Status: 4 NOTEs, 0 WARNINGs, 0 ERRORs**. Tests: `[ FAIL 0 | WARN 54 | SKIP 2069 | PASS 22638 ]`. Examples and `\donttest` examples OK. The four notes are unchanged (incoming-feasibility 0.8.0.9000, two snapshot path lengths, `TMB:::EvalADFunObject`, `-mno-omit-leaf-frame-pointer`). The extra SKIP is the new `skip_on_cran()` near-integer cell.

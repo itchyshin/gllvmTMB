@@ -10,7 +10,7 @@ Close the remaining #1356 support-check gap (binomial integrality, plus the sibl
 
 ## 2. Implemented
 
-Plain `poisson()` and `nbinom2()` already aborted on a negative or non-integer `y` (PR #1658). This slice adds the same early abort for `binomial()` and the sibling gaps: `betabinomial()` (integer successes in `0..n_trials`), `nbinom1()` (non-negative integer), and `tweedie()` (`y >= 0`). A proportion plus `weights` is refused. The abort is a `cli` message that names the family, not "All 1 restarts failed.".
+Plain `poisson()` and `nbinom2()` already aborted on a negative or non-integer `y` (PR #1658). This slice adds the same early abort for `binomial()` and the sibling gaps: `betabinomial()` (integer successes in `0..n_trials`), `nbinom1()` (non-negative integer), and `tweedie()` (`y >= 0`). A proportion plus `weights` is refused. The abort is classed `gllvmTMB_response_support`. Binomial and betabinomial integrality uses `abs(y - round(y)) > sqrt(.Machine$double.eps)`, so a near-integer such as `3 - 4e-10` is accepted.
 
 Extractor help from PR #1653 already covered the #1579 checklist except two leftovers: `?extract_Sigma_table` still said the helper was "point-estimate only" in `@return` (the existing test forbids that phrase), and `?make_cross_kernel` still said "C0 coevolution prototype" and routed users only through `phylo_latent(..., vcv = K_star)`. Both are now aligned with behaviour. `devtools::document()` regenerated the matching `man/*.Rd` files.
 
@@ -31,15 +31,17 @@ Extractor help from PR #1653 already covered the #1579 checklist except two left
 
 Decision: refuse a binomial/betabinomial proportion plus `weights`, rather than convert it. Rationale: the issue comment measured that path as a silent wrong model (intercepts near `log(p/N)`). Rejected: a warning that still fits. Confidence: high; the existing `weights = n_trials` tests already pass the success count, not a proportion.
 
+Follow-up (R review on PR #1689): binomial and betabinomial integrality now uses `abs(x - round(x)) > sqrt(.Machine$double.eps)` for both `y` and `n_trials`. The new support aborts are classed `gllvmTMB_response_support`. NEWS now leads with the breaking change that a proportion plus `weights = n` is refused.
+
 Decision: name both `kernel_*()` and `phylo_latent(..., vcv = )` as consumers of `make_cross_kernel()`. Rationale: the leftover #1579 item was an exclusive route, not a missing helper. Rejected: picking one recommended engine without a new maintainer ruling.
 
 ## 4. Checks Run
 
 See `docs/dev-log/check-log.d/2026-10-25-family-support-extractors.md`.
 
-Focused: `test-family-support-checks.R` FAIL 0 / WARN 0 / SKIP 0 / PASS 20; `test-issue-1579-extractor-help-text.R` FAIL 0 / WARN 0 / SKIP 0 / PASS 23.
+Focused: `test-family-support-checks.R` FAIL 0 / WARN 0 / SKIP 0 / PASS 19 after the R-review follow-up (classed errors, near-integer tolerance test); `test-issue-1579-extractor-help-text.R` FAIL 0 / WARN 0 / SKIP 0 / PASS 23.
 
-`R CMD check --no-manual --as-cran`: Status 4 NOTEs, 0 WARNINGs, 0 ERRORs. Package tests `[ FAIL 0 | WARN 54 | SKIP 2068 | PASS 22640 ]`. Details in `docs/dev-log/check-log.d/2026-10-25-family-support-extractors.md`.
+`R CMD check --no-manual --as-cran` after the R-review follow-up: Status 4 NOTEs, 0 WARNINGs, 0 ERRORs. Package tests `[ FAIL 0 | WARN 54 | SKIP 2069 | PASS 22638 ]`. Details in `docs/dev-log/check-log.d/2026-10-25-family-support-extractors.md`.
 
 ## 5. Tests of the Tests
 

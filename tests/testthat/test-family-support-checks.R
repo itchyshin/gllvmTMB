@@ -4,6 +4,8 @@
 ## censored and truncated families already reject both. Sibling gaps closed
 ## here: nbinom1 (same count support), betabinomial (same integrality as
 ## binomial), tweedie (y >= 0; continuous, so non-integers stay valid).
+## New support aborts are classed `gllvmTMB_response_support`. Binomial and
+## betabinomial integrality uses a sqrt(.Machine$double.eps) tolerance.
 
 sim_1356 <- function(n = 40L, p = 4L, seed = 1L) {
   set.seed(seed)
@@ -41,21 +43,40 @@ fit_1356 <- function(dat, family, weights = NULL) {
 test_that("#1356 poisson() and nbinom2() abort on a negative response", {
   dat <- sim_1356()
   dat$value[1] <- -1
-  expect_error(fit_1356(dat, poisson()), "poisson.*non-negative integer")
-  expect_error(fit_1356(dat, nbinom2()), "nbinom2.*non-negative integer")
+  expect_error(
+    fit_1356(dat, poisson()),
+    "poisson.*non-negative integer",
+    class = "gllvmTMB_response_support"
+  )
+  expect_error(
+    fit_1356(dat, nbinom2()),
+    "nbinom2.*non-negative integer",
+    class = "gllvmTMB_response_support"
+  )
 })
 
 test_that("#1356 poisson() and nbinom2() abort on a non-integer response", {
   dat <- sim_1356()
   dat$value <- dat$value + 0.5
-  expect_error(fit_1356(dat, poisson()), "poisson.*non-negative integer")
-  expect_error(fit_1356(dat, nbinom2()), "nbinom2.*non-negative integer")
+  expect_error(
+    fit_1356(dat, poisson()),
+    "poisson.*non-negative integer",
+    class = "gllvmTMB_response_support"
+  )
+  expect_error(
+    fit_1356(dat, nbinom2()),
+    "nbinom2.*non-negative integer",
+    class = "gllvmTMB_response_support"
+  )
 })
 
 test_that("#1356 the abort is the support check, not a failed-restart message", {
   dat <- sim_1356()
   dat$value[1] <- -1
-  err <- tryCatch(fit_1356(dat, poisson()), error = function(e) e)
+  err <- expect_error(
+    fit_1356(dat, poisson()),
+    class = "gllvmTMB_response_support"
+  )
   expect_false(inherits(err, "gllvmTMB_all_restarts_failed"))
   expect_match(conditionMessage(err), "Round or recode")
 })
@@ -72,20 +93,29 @@ test_that("#1356 valid counts still fit with poisson() and nbinom2()", {
 test_that("#1356 binomial() aborts on a negative or non-integer response", {
   dat <- sim_1356_bin()
   dat$value[1] <- -1
-  expect_error(fit_1356(dat, binomial()), "Binomial rows.*non-negative integer")
+  expect_error(
+    fit_1356(dat, binomial()),
+    "Binomial rows.*non-negative integer",
+    class = "gllvmTMB_response_support"
+  )
   dat <- sim_1356_bin()
   dat$value[1:5] <- 0.5
-  expect_error(fit_1356(dat, binomial()), "Binomial rows.*non-negative integer")
+  expect_error(
+    fit_1356(dat, binomial()),
+    "Binomial rows.*non-negative integer",
+    class = "gllvmTMB_response_support"
+  )
 })
 
 test_that("#1356 binomial() refuses a proportion plus weights", {
   dat <- sim_1356_bin()
   dat$n <- 10L
   dat$value <- dat$value / dat$n
-  err <- tryCatch(fit_1356(dat, binomial(), weights = dat$n), error = function(e) e)
-  expect_false(inherits(err, "gllvmTMB_all_restarts_failed"))
-  expect_match(conditionMessage(err), "non-negative integer")
-  expect_match(conditionMessage(err), "proportion")
+  expect_error(
+    fit_1356(dat, binomial(), weights = dat$n),
+    "proportion",
+    class = "gllvmTMB_response_support"
+  )
 })
 
 test_that("#1356 binomial() still fits integer successes", {
@@ -95,29 +125,57 @@ test_that("#1356 binomial() still fits integer successes", {
   expect_equal(fb$opt$convergence, 0L)
 })
 
+test_that("#1356 binomial() accepts a near-integer success count", {
+  skip_on_cran()
+  dat <- sim_1356_bin()
+  dat$n <- 5L
+  dat$value <- pmin(as.numeric(dat$value) * 3, 4)
+  dat$value[1] <- 3 - 4e-10
+  fb <- fit_1356(dat, binomial(), weights = dat$n)
+  expect_equal(fb$opt$convergence, 0L)
+})
+
 test_that("#1356 nbinom1() has the same count support as poisson()/nbinom2()", {
   dat <- sim_1356()
   dat$value[1] <- -1
-  expect_error(fit_1356(dat, nbinom1()), "nbinom1.*non-negative integer")
+  expect_error(
+    fit_1356(dat, nbinom1()),
+    "nbinom1.*non-negative integer",
+    class = "gllvmTMB_response_support"
+  )
   dat <- sim_1356()
   dat$value <- dat$value + 0.5
-  expect_error(fit_1356(dat, nbinom1()), "nbinom1.*non-negative integer")
+  expect_error(
+    fit_1356(dat, nbinom1()),
+    "nbinom1.*non-negative integer",
+    class = "gllvmTMB_response_support"
+  )
 })
 
 test_that("#1356 betabinomial() aborts on a non-integer response", {
   dat <- sim_1356_bin()
   dat$value[1:5] <- 0.5
-  expect_error(fit_1356(dat, betabinomial()), "Beta-binomial rows.*non-negative integer")
+  expect_error(
+    fit_1356(dat, betabinomial()),
+    "Beta-binomial rows.*non-negative integer",
+    class = "gllvmTMB_response_support"
+  )
   dat <- sim_1356_bin()
   dat$value[1] <- -1
-  expect_error(fit_1356(dat, betabinomial()), "Beta-binomial rows.*non-negative integer")
+  expect_error(
+    fit_1356(dat, betabinomial()),
+    "Beta-binomial rows.*non-negative integer",
+    class = "gllvmTMB_response_support"
+  )
 })
 
 test_that("#1356 tweedie() aborts on a negative response", {
   dat <- sim_1356()
   dat$value <- pmax(dat$value + 0.25, 0.25)
   dat$value[1] <- -1
-  err <- tryCatch(fit_1356(dat, tweedie()), error = function(e) e)
-  expect_false(inherits(err, "gllvmTMB_all_restarts_failed"))
-  expect_match(conditionMessage(err), "tweedie.*non-negative")
+  expect_error(
+    fit_1356(dat, tweedie()),
+    "tweedie.*non-negative",
+    class = "gllvmTMB_response_support"
+  )
 })

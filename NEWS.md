@@ -19,7 +19,8 @@
 
 * `engine = "julia"` now stops on a missing fixed-effect covariate with the same message as the native engine, instead of sending the `NA` to the bridge (#1371).
 * `poisson()` and `nbinom2()` fits now stop up front when the response has a negative or non-integer value, naming the family, instead of "All 1 restarts failed." (negative) or fitting silently (non-integer) (#1356).
-* `binomial()` and `betabinomial()` now require an integer success count in `0..n_trials`. A proportion plus `weights` is refused. `nbinom1()` gets the same non-negative-integer check as `poisson()` / `nbinom2()`. `tweedie()` stops on a negative response (#1356).
+* `binomial()` and `betabinomial()` now require an integer success count in `0..n_trials`. `nbinom1()` gets the same non-negative-integer check as `poisson()` / `nbinom2()`. `tweedie()` stops on a negative response (#1356).
+* Breaking change: a binomial or betabinomial proportion with `weights = n` is now refused. Pass the integer success count as `y`, or use `cbind(successes, failures)`. The old path fitted the wrong model (#1356).
 
 * The `\dontrun{}` examples of `extract_Omega()`, `extract_phylo_signal()`, `extract_proportions()`, `extract_loadings()`, `getLoadings()`, `getLV()` and `extract_residual_split()` now simulate their own data and build their own `fit` instead of using undefined objects (#1360).
 * A missing or non-finite value in a random-slope covariate (for example `x` in

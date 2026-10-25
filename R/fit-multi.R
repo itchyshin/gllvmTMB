@@ -4203,17 +4203,22 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## response only. Masked rows (response = "include") carry the sentinel y = 0
   ## which is gated out of the likelihood; it must not trip a range check.
   ## When nothing is masked this is identical to checking every row.
+  ## Binomial / betabinomial integrality uses a tolerance so a near-integer
+  ## count such as 3 - 4e-10 is accepted (#1356 follow-up).
+  .not_whole <- function(x) {
+    abs(x - round(x)) > sqrt(.Machine$double.eps)
+  }
   bin_rows <- (family_id_vec == 1L) & !masked_response
   if (any(bin_rows)) {
     if (any(y[bin_rows] < 0) ||
         any(y[bin_rows] > n_trials[bin_rows]) ||
-        any(y[bin_rows] != round(y[bin_rows])) ||
-        any(n_trials[bin_rows] != round(n_trials[bin_rows])))
+        any(.not_whole(y[bin_rows])) ||
+        any(.not_whole(n_trials[bin_rows])))
       cli::cli_abort(c(
         "Binomial rows: {.code y} (successes) must be a non-negative integer satisfying 0 <= y <= n_trials.",
         "i" = "A proportion response (for example {.code y = successes / n_trials}) is not accepted, even with {.arg weights}.",
         ">" = "Pass the success count as {.code y}, or use {.code cbind(succ, fail)}. Both columns must be non-negative integers."
-      ))
+      ), class = "gllvmTMB_response_support")
   }
   ## Beta rows: y must be in the open unit interval (0, 1). The likelihood
   ## clips y away from the boundaries internally for numerical safety, but
@@ -4244,13 +4249,13 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   if (any(bb_rows)) {
     if (any(y[bb_rows] < 0) ||
         any(y[bb_rows] > n_trials[bb_rows]) ||
-        any(y[bb_rows] != round(y[bb_rows])) ||
-        any(n_trials[bb_rows] != round(n_trials[bb_rows])))
+        any(.not_whole(y[bb_rows])) ||
+        any(.not_whole(n_trials[bb_rows])))
       cli::cli_abort(c(
         "Beta-binomial rows: {.code y} (successes) must be a non-negative integer satisfying 0 <= y <= n_trials.",
         "i" = "A proportion response (for example {.code y = successes / n_trials}) is not accepted, even with {.arg weights}.",
         ">" = "Pass the success count as {.code y}, or use {.code cbind(succ, fail)}. Both columns must be non-negative integers."
-      ))
+      ), class = "gllvmTMB_response_support")
   }
   ## Sanity check: y >= 1 for zero-truncated count families.
   trunc_rows <- which((family_id_vec %in% c(10L, 11L)) & !masked_response)
@@ -4296,7 +4301,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         "{.fn {bad_fam}} rows: {.code y} must be a non-negative integer.",
         "i" = "Negative or non-integer values are outside the count support of {.fn {bad_fam}}.",
         ">" = "Round or recode {.code y} to non-negative integers before fitting."
-      ))
+      ), class = "gllvmTMB_response_support")
     }
   }
 
@@ -4309,7 +4314,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         "{.fn tweedie} rows: {.code y} must be non-negative.",
         "i" = "The Tweedie density is not defined for a negative response.",
         ">" = "Check the response column for negative values before fitting."
-      ))
+      ), class = "gllvmTMB_response_support")
   }
 
   ## Zero-inflated count families (fid 17/18/19, Design 62 -- a TRUE mixture,

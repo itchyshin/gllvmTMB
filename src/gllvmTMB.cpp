@@ -435,6 +435,27 @@ Type gll_log_pnorm_atomic(Type x)
   return atomic::gll_logpnorm1(tx)[0];
 }
 
+// Tweedie power logit, clamped to [-GLL_TWEEDIE_LOGIT_P_MAX, GLL_TWEEDIE_LOGIT_P_MAX]
+// (#1365). The power is p = 1 + invlogit(x). Beyond |x| ~ 36.7 the double sum
+// 1 + invlogit(x) rounds onto exactly 1 or 2 and TMB's dtweedie returns NaN, and
+// from |x| ~ 20 on 2 - p has lost digits. The bound is tighter than either,
+// because dtweedie itself degrades first: measured on gamma-like, mixed and
+// Poisson-like data, the AD gradient of dtweedie departs from central
+// differences by < 1e-6 (relative) for |x| <= 5, ~5e-6 at |x| = 7, ~1e-4 at
+// |x| = 8, and at x = 15 the VALUE itself jumps (784.51 -> 788.66 on the
+// gamma-like fit). 5 corresponds to p in [1.0067, 1.9933].
+// The clamp is the identity (value AND gradient) for |x| <= the bound, so no fit
+// that stays inside the bound changes; outside it the likelihood is flat in x,
+// which the Hessian reports as a non-PD boundary rather than as a NaN objective.
+#define GLL_TWEEDIE_LOGIT_P_MAX 5.0
+template <class Type>
+Type gll_tweedie_logit_p_clamped(Type x)
+{
+  Type hi = Type(GLL_TWEEDIE_LOGIT_P_MAX);
+  return CppAD::CondExpGt(x, hi, hi,
+           CppAD::CondExpLt(x, -hi, -hi, x));
+}
+
 template <class Type>
 Type gll_log_pnorm(Type x)
 {
@@ -3637,7 +3658,7 @@ Type objective_function<Type>::operator()()
       int t = trait_id(o);
       Type mu_t  = exp(eta_o);
       Type phi_t = exp(log_phi_tweedie(t));
-      Type p_t   = Type(1.0) + invlogit(logit_p_tweedie(t));
+      Type p_t   = Type(1.0) + invlogit(gll_tweedie_logit_p_clamped(logit_p_tweedie(t)));
       ll += dtweedie(y(o), mu_t, phi_t, p_t, true);
     } else if (fid == 7) {
       // Beta family, logit link, mean-precision parameterisation.
@@ -4666,7 +4687,7 @@ Type objective_function<Type>::operator()()
   vector<Type> phi_tweedie = exp(log_phi_tweedie);
   vector<Type> p_tweedie(logit_p_tweedie.size());
   for (int i = 0; i < logit_p_tweedie.size(); i++) {
-    p_tweedie(i) = Type(1.0) + invlogit(logit_p_tweedie(i));
+    p_tweedie(i) = Type(1.0) + invlogit(gll_tweedie_logit_p_clamped(logit_p_tweedie(i)));
   }
   vector<Type> phi_beta = exp(log_phi_beta);
   vector<Type> phi_betabinom = exp(log_phi_betabinom);

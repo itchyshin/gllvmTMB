@@ -272,6 +272,40 @@
   out
 }
 
+#' Put the stored phylogeny inside the generated phylo_*() term (#1568).
+#'
+#' A global `phylo_vcv` / `phylo_tree` argument still fits, but it prints
+#' the once-per-session deprecation on every fresh session. The matrices
+#' live in a child of the formula environment so the parser can evaluate
+#' `vcv =` / `tree =` without splicing a large matrix into the call.
+#'
+#' @keywords internal
+#' @noRd
+.attach_refit_phylo <- function(formula, phylo_tree, phylo_vcv) {
+  if (is.null(phylo_tree) && is.null(phylo_vcv)) {
+    return(formula)
+  }
+  parent <- environment(formula)
+  if (is.null(parent)) parent <- globalenv()
+  env <- new.env(parent = parent)
+  if (!is.null(phylo_tree)) env$.refit_phylo_tree <- phylo_tree
+  if (!is.null(phylo_vcv)) env$.refit_phylo_vcv <- phylo_vcv
+  inject <- function(e) {
+    if (!is.call(e)) return(e)
+    fn <- if (is.name(e[[1L]])) as.character(e[[1L]]) else ""
+    if (fn %in% c("phylo_dep", "phylo_indep")) {
+      if (!is.null(phylo_tree)) e$tree <- as.name(".refit_phylo_tree")
+      if (!is.null(phylo_vcv)) e$vcv <- as.name(".refit_phylo_vcv")
+      return(e)
+    }
+    for (i in seq_along(e)[-1L]) e[[i]] <- inject(e[[i]])
+    e
+  }
+  formula[[length(formula)]] <- inject(formula[[length(formula)]])
+  environment(formula) <- env
+  formula
+}
+
 #' Refit `fit_two_psi`'s data under the alt covstruct
 #'
 #' Wraps [gllvmTMB()] with the same family, units, and phylogeny as the
@@ -287,7 +321,11 @@
   silent = TRUE
 ) {
   kind <- match.arg(kind)
-  alt_form <- .alt_formula(fit_two_psi, kind, inputs)
+  alt_form <- .attach_refit_phylo(
+    .alt_formula(fit_two_psi, kind, inputs),
+    inputs$phylo_tree,
+    inputs$phylo_vcv
+  )
   call_args <- list(
     formula = alt_form,
     data = inputs$data,
@@ -301,12 +339,6 @@
   ## unit_obs just when the formula actually uses that column (#1568).
   if (!is.null(inputs$unit_obs) && inputs$unit_obs %in% all.vars(alt_form)) {
     call_args$unit_obs <- inputs$unit_obs
-  }
-  if (!is.null(inputs$phylo_vcv)) {
-    call_args$phylo_vcv <- inputs$phylo_vcv
-  }
-  if (!is.null(inputs$phylo_tree)) {
-    call_args$phylo_tree <- inputs$phylo_tree
   }
   tryCatch(do.call(gllvmTMB, call_args), error = function(e) {
     cli::cli_warn(c(

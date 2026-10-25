@@ -799,6 +799,24 @@ gllvm_julia_capabilities <- function() {
   .gllvm_julia_warn_gamma_shared_shape(fam, p)
 }
 
+# #1562: with no latent block (d = 0) GLLVModels.jl returns loglik = -Inf and
+# converged = FALSE for every non-Gaussian family except NB2. Gaussian already
+# refuses loudly inside Julia, so only the silent cases are gated here.
+.gllvm_julia_check_latent_rank <- function(K, fam_str) {
+  if (K >= 1L) {
+    return(invisible(FALSE))
+  }
+  bad <- setdiff(unique(fam_str), c("gaussian", "negbinomial"))
+  if (length(bad)) {
+    cli::cli_abort(c(
+      "[GJL-GATE-NO-LATENT] engine = 'julia' cannot fit a model with no {.code latent()} term for family {.val {bad}}.",
+      "i" = "GLLVModels.jl returns a log-likelihood of -Inf for these families when the latent rank is 0, and the fit is not estimated.",
+      ">" = "Add a {.code latent()} term, or use {.code engine = \"tmb\"}."
+    ), class = c("gllvmTMB_julia_no_latent", "gllvmTMB_julia_gate"))
+  }
+  invisible(FALSE)
+}
+
 # Link name the GLLVModels.jl bridge actually uses for a bridge key, in R's
 # spelling ("log", "logit", ...), derived from `.gllvm_julia_default_link()`.
 .gllvm_julia_engine_link <- function(key) {
@@ -3471,14 +3489,17 @@ predict.gllvmTMB_julia <- function(
 ) {
   type <- match.arg(type)
   if (!is.null(newdata)) {
-    stop(
-      .gllvm_julia_gate_message(
-        "GJL-GATE-NEWDATA-PREDICT",
-        "engine = 'julia': `newdata` prediction is not routed yet; current ",
-        "`predict.gllvmTMB_julia()` returns in-sample fitted values only."
-      ),
-      call. = FALSE
-    )
+    stop(structure(
+      class = c("gllvmTMB_julia_predict_newdata", "error", "condition"),
+      list(
+        message = .gllvm_julia_gate_message(
+          "GJL-GATE-NEWDATA-PREDICT",
+          "engine = 'julia': `newdata` prediction is not routed yet; current ",
+          "`predict.gllvmTMB_julia()` returns in-sample fitted values only."
+        ),
+        call = NULL
+      )
+    ))
   }
   eta <- .gllvm_julia_link_predictor(object)
   if (type == "link") {
@@ -4155,6 +4176,7 @@ print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
   )
   yraw <- stats::model.response(mf)
   fam_str <- .gllvm_julia_family(family)
+  .gllvm_julia_check_latent_rank(K, fam_str)
   if (
     has_lv &&
       (length(fam_str) != 1L || !(fam_str %in% .GLLVM_JULIA_XLV_FAMILIES))
@@ -4251,6 +4273,24 @@ print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
   trait_dummies <- paste0(trait, traits)
   extra_cols <- setdiff(colnames(Xfix), trait_dummies)
   has_only_trait_intercept <- (length(extra_cols) == 0 && ncol(Xfix) == p)
+  ## The design matrix comes from a na.pass model frame and the response mask
+  ## covers the response only, so an NA predictor would otherwise reach the
+  ## bridge inside the p x n x q array (#1371). Same rule and wording as the
+  ## native engine: rows with a missing response are dropped or masked, but a
+  ## missing predictor on an observed-response row must be removed or imputed.
+  if (anyNA(Xfix[!is.na(yv), , drop = FALSE])) {
+    cli::cli_abort(
+      c(
+        "NA in the fixed-effect design matrix.",
+        ">" = paste0(
+          "Missing response rows are allowed and dropped before fitting; ",
+          "missing predictors still need to be removed or imputed before ",
+          "fitting."
+        )
+      ),
+      class = "gllvmTMB_julia_na_fixed_effect"
+    )
+  }
   if (has_lv && !has_only_trait_intercept) {
     stop(
       .gllvm_julia_gate_message(

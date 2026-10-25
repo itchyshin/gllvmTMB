@@ -108,7 +108,11 @@ the compact shorthand for the same trait-specific columns used in the
 long form.
 
 Fit the model with two latent axes (`d = 2`) using ordinary `latent()`
-at the individual level. That term estimates the shared structure the
+at the individual level. Two axes are within the identifiable range here:
+with `T` traits, one observation per individual-trait cell and the default
+`Psi`, the number of axes must satisfy $(T - d)^2 \ge T + d$, and
+`T = 5` allows `d <= 2`. The code guard `d <= n_traits` is much weaker, so
+do not read it as the limit (see `?latent`). That term estimates the shared structure the
 axes carry plus the trait-specific variance, which ordinary `latent()`
 includes by default. In an interactive session (this page hides messages
 when knitted), the first ordinary `latent()` fit prints a one-time warning

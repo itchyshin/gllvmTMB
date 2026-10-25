@@ -69,25 +69,37 @@ Family \tab Link \tab \eqn{\sigma^2_d} \cr
 }
 }
 \examples{
-\dontrun{
-set.seed(1)
-dat <- expand.grid(
-  site  = factor(seq_len(60)),
-  trait = factor(paste0("t", 1:3))
+set.seed(2)
+## Counts for 4 traits recorded on a few species at each of 50 sites.
+## The simulator gives each record a Gaussian value for every trait;
+## here it is turned into a Poisson count. A zero beta matrix turns off
+## the simulator's environmental effects, which this model does not
+## include.
+sim <- simulate_site_trait(
+  n_sites = 50, n_species = 10, n_traits = 4,
+  mean_species_per_site = 3,
+  beta = matrix(0, 4, 2),
+  Lambda_B = matrix(c(0.8, 0.6, -0.5, 0.4), 4, 1),
+  psi_B = rep(0.3, 4),
+  sigma2_eps = 0.3
 )
-## Add a site_species column (one level per row) as the obs-level grouping.
-dat$site_species <- factor(seq_len(nrow(dat)))
-dat$value <- rpois(nrow(dat), exp(1 + rnorm(nrow(dat), sd = 0.5)))
+dat <- sim$data
+dat$count <- rpois(nrow(dat), exp(1 + 0.5 * dat$value))
+## Each species record (site_species) has one count per trait, so a
+## trait-specific indep() term at that level is an observation-level
+## random effect (OLRE): extra-Poisson variation for each record.
 fit <- gllvmTMB(
-  value ~ 0 + trait + indep(0 + trait | site_species),
+  count ~ 0 + trait + indep(0 + trait | site_species),
   data     = dat,
   trait    = "trait",
   unit     = "site",
   unit_obs = "site_species",
   family   = poisson()
 )
+## Per trait: sigma2_d is the variance the Poisson distribution itself
+## implies on the latent scale (from the link), sigma2_e is the
+## estimated OLRE variance, and sigma2_total is their sum
 extract_residual_split(fit)
-}
 }
 \references{
 Nakagawa, S. & Schielzeth, H. (2010) Repeatability for Gaussian and

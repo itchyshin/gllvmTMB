@@ -233,5 +233,48 @@ test_that("profile_retention refits emit no unused-argument or alias notes (#158
   expected[4:6, 1L] <- 0
   expect_true(any(res$constraint == 0, na.rm = TRUE))
   expect_equal(res$constraint, expected)
-  expect_match(res$note, "Tested 9 entries; 2 skipped", fixed = TRUE)
+  ## Since #1585 the free entries of the pinned-diagonal axis start off zero,
+  ## so the two refits that used to be skipped now converge: all 11 are tested.
+  expect_match(res$note, "Tested 11 entries; 0 skipped", fixed = TRUE)
+})
+
+test_that("formula path names the within-unit column via unit_obs and the level as written (#1587)", {
+  set.seed(1)
+  sim <- simulate_unit_trait(
+    n_units = 100, n_obs_per_unit = 2, n_traits = 6,
+    Lambda_B = cbind(c(.9, .8, .7, 0, 0, 0), c(0, 0, 0, .8, .7, .6)),
+    psi_B = .3, sigma2_eps = .3
+  )
+  form2 <- value ~ 0 + trait +
+    latent(0 + trait | unit, d = 1, unique = FALSE) +
+    latent(0 + trait | unit_observation, d = 2, unique = FALSE)
+
+  res <- suggest_lambda_constraint(
+    form2, data = sim$data, unit = "unit",
+    unit_obs = "unit_observation", level = "unit_obs"
+  )
+  expect_equal(dim(res$constraint), c(6L, 2L))
+  expect_equal(res$d, 2L)
+
+  ## The wrapper forwards unit_obs too.
+  cmp <- suggest_lambda_constraints(
+    form2, data = sim$data, unit = "unit",
+    unit_obs = "unit_observation", level = "unit_obs",
+    methods = "lower_triangular"
+  )
+  expect_equal(cmp$suggestions$lower_triangular$constraint, res$constraint)
+
+  ## No-term errors name the level as the user wrote it, not "W" / "B".
+  expect_error(
+    suggest_lambda_constraint(form2, data = sim$data, unit = "unit",
+                              level = "unit_obs"),
+    'nothing to constrain at level "unit_obs"'
+  )
+  expect_error(
+    suggest_lambda_constraint(
+      value ~ 0 + trait + latent(0 + trait | unit_observation, d = 2),
+      data = sim$data, unit = "unit", level = "unit"
+    ),
+    'nothing to constrain at level "unit"'
+  )
 })

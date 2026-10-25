@@ -61,27 +61,41 @@ allocation summary does not account for attenuation. Use \code{extract_Sigma()}
 and its \code{source_strength} metadata.
 }
 \examples{
-\dontrun{
-set.seed(1)
+set.seed(3)
+## Simulate 4 traits recorded on a few species at each of 50 sites, with
+## trait variation at two tiers: between sites (the "unit" tier) and
+## between species records within a site (the "unit_obs" tier). A zero
+## beta matrix turns off the simulator's environmental effects, which
+## this model does not include.
 sim <- simulate_site_trait(
-  n_sites = 40, n_species = 6, n_traits = 4, mean_species_per_site = 4,
-  Lambda_B = matrix(c(1, .5, -.4, .3, 0, .8, .4, -.2), 4, 2),
-  psi_B = c(.2, .15, .1, .25),
-  Lambda_W = matrix(c(.4, .2, -.1, .3), 4, 1),
-  psi_W = c(.1, .08, .05, .12),
-  beta = matrix(0, 4, 2), seed = 1
+  n_sites = 50, n_species = 10, n_traits = 4,
+  mean_species_per_site = 3,
+  beta = matrix(0, 4, 2),
+  Lambda_B = matrix(c(0.8, 0.6, -0.5, 0.4), 4, 1),
+  psi_B = rep(0.3, 4),
+  Lambda_W = matrix(c(0.5, -0.4, 0.4, 0.3), 4, 1),
+  sigma2_eps = 0.3
 )
-dat <- sim$data
+## One latent factor plus trait-specific variances at each tier. Each
+## species record has one value per trait, so the within-site
+## trait-specific variances also absorb the measurement noise
+## (gllvmTMB prints a note saying so).
 fit <- gllvmTMB(
   value ~ 0 + trait +
-          latent(0 + trait | site, d = 2) + unique(0 + trait | site) +
-          latent(0 + trait | site_species, d = 1) +
-          unique(0 + trait | site_species),
-  data = dat
+    latent(0 + trait | site, d = 1, unique = TRUE) +
+    latent(0 + trait | site_species, d = 1, unique = TRUE),
+  data     = sim$data,
+  trait    = "trait",
+  unit     = "site",
+  unit_obs = "site_species"
 )
-extract_proportions(fit)                           # long format
-extract_proportions(fit, format = "wide")          # one row per trait
-}
+## Each trait's variance split into components (shared and
+## trait-specific, at each tier): one row per trait and component,
+## with the variance and its share of the trait's total
+extract_proportions(fit)
+## The same shares with one row per trait and one column per component;
+## each row of proportions sums to 1
+extract_proportions(fit, format = "wide")
 }
 \seealso{
 \code{\link[=extract_phylo_signal]{extract_phylo_signal()}} — the PGLLVM-specific shortcut;

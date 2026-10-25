@@ -28,26 +28,30 @@ familiar with \code{gllvm::getLoadings()}. The canonical snake_case spelling in
 this package is \code{\link[=extract_loadings]{extract_loadings()}}, which forwards here.
 }
 \examples{
-\dontrun{
 set.seed(1)
-sim <- simulate_site_trait(
-  n_sites = 40, n_species = 6, n_traits = 4, mean_species_per_site = 4,
-  Lambda_B = matrix(c(1, .5, -.4, .3, 0, .8, .4, -.2), 4, 2),
-  psi_B = c(.2, .15, .1, .25),
-  Lambda_W = matrix(c(.4, .2, -.1, .3), 4, 1),
-  psi_W = c(.1, .08, .05, .12),
-  beta = matrix(0, 4, 2), seed = 1
+## Five traits measured three times on each of 60 units. Between units,
+## the traits share two latent axes (Lambda) plus a trait-specific
+## unique variance (psi = 0.2 for every trait).
+Lambda <- matrix(c(0.9, 0.7, 0.5, -0.3, 0.2,
+                   0.0, 0.4, -0.5, 0.6, 0.8), nrow = 5, ncol = 2)
+sim <- simulate_unit_trait(
+  n_units = 60, n_obs_per_unit = 3, n_traits = 5,
+  Lambda_B = Lambda, psi_B = rep(0.2, 5), sigma2_eps = 0.3
 )
-dat <- sim$data
 fit <- gllvmTMB(
-  value ~ 0 + trait +
-          latent(0 + trait | site, d = 2) + unique(0 + trait | site) +
-          latent(0 + trait | site_species, d = 1) +
-          unique(0 + trait | site_species),
-  data = dat
+  value ~ 0 + trait + latent(0 + trait | unit, d = 2, unique = TRUE),
+  data  = sim$data,
+  trait = "trait",
+  unit  = "unit"
 )
+## Trait loadings on the two between-unit axes (one row per trait).
+## The raw matrix is identified only up to rotation; gllvmTMB fixes
+## trait_1's loading on axis 2 at zero.
+getLoadings(fit, level = "unit")
+## A varimax rotation spreads each trait onto fewer axes, which is
+## often easier to read. It is a rotation of the same fit, so the
+## fit itself does not change.
 getLoadings(fit, level = "unit", rotate = "varimax")
-}
 }
 \seealso{
 \code{\link[=extract_ordination]{extract_ordination()}} for the row-and-column interface that

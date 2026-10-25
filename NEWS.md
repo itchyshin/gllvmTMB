@@ -1,5 +1,6 @@
 # Development (unreleased)
 
+* `gllvmTMB()` now warns at fit time when the Laplace logLik is more than 2 units above the marginal likelihood it approximates, as on a probit two-factor fit that was 67 units too high with every other check passing. It runs the `laplace_accuracy` audit of `check_gllvmTMB()` (same scope: Laplace fits with a between-unit latent block of `d` 1 to 3, same work cap) at the end of the fit. The threshold is `gllvmTMBcontrol(laplace_warn_thresh = 2)`; `FALSE` or `warn_runaway = FALSE` turns it off (#1389).
 * `vcov()` on a fit with no standard errors no longer suggests `method = "profile"`, which it does not accept. `extract_Sigma(part = "shared")` and `part = "unique"` no longer print that a link residual was added when that residual is only applied to `part = "total"` (#1580).
 * An explicit `indep()` or `diag()` on single-observation ordinal traits is mapped off, with a warning, under the same identifiability gate as the default between-unit Psi. One observation per (trait, unit) cannot separate that diagonal from the fixed threshold scale (#1574).
 * Bootstrap wrappers keep `nsim = 500`. That default no longer warns that it is too small. The warning names `nsim`, and the `profile_ci_total_variance()` hint is shown only when the bootstrap asks for Sigma diagonals. `bootstrap_Sigma()` still warns when `n_boot` is below 999 (#1576).

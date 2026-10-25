@@ -335,7 +335,8 @@ gllvmTMB_check_consistency <- function(
     c(
       "The consistency check cannot run: simulation not available for this template.",
       "x" = "{.fn TMB::checkConsistency} needs the template to simulate new responses, but the {.pkg gllvmTMB} template has no {.code SIMULATE} block: every replicate would re-score the observed data and the score covariance is exactly zero.",
-      "i" = "This is a limitation of the tool, not a property of your data (#1582)."
+      "i" = "This is a limitation of the tool, not a property of your data (#1582).",
+      ">" = "Use {.fn gllvmTMB_diagnose} to check convergence and the gradient of this fit instead."
     ),
     class = "gllvmTMB_check_consistency_simulation_unavailable",
     call = call

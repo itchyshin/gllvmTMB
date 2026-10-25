@@ -26,6 +26,12 @@
 * `engine = "julia"` now stops on a missing fixed-effect covariate with the same message as the native engine, instead of sending the `NA` to the bridge (#1371).
 * `poisson()` and `nbinom2()` fits now stop up front when the response has a negative or non-integer value, naming the family, instead of "All 1 restarts failed." (negative) or fitting silently (non-integer) (#1356).
 
+* `confint(fit, parm = "b_fix[1]")` now returns one row (profile and Wald)
+  instead of profiling every fixed effect and then failing, and a fixed-effect
+  `parm` profiles only the requested terms. Wald `Sigma_unit` on a `latent()`
+  tier now says why the intervals are `NA` and names the routes that work, and
+  a Sigma tier the fit lacks is an error naming the public tier (for example
+  `unit_obs`) before any method runs (#1588).
 * The `\dontrun{}` examples of `extract_Omega()`, `extract_phylo_signal()`, `extract_proportions()`, `extract_loadings()`, `getLoadings()`, `getLV()` and `extract_residual_split()` now simulate their own data and build their own `fit` instead of using undefined objects (#1360).
 * A missing or non-finite value in a random-slope covariate (for example `x` in
   `latent(1 + x | unit)`, `phylo_slope(x | species)`, `phylo_dep()` or the
@@ -115,6 +121,12 @@
   `@exportS3Method stats::sigma`, matching the `stats::sigma` entries already in
   `NAMESPACE`, so `devtools::document()` no longer rewrites them. Behaviour is
   unchanged (#1558).
+* `poisson()`, `zi_poisson()` and the uncensored rows of `censored_poisson()`
+  stay finite when the linear predictor is far below zero. The row was
+  `dpois(y, exp(eta))`, which forms `y * log(exp(eta))` and is `-Inf` once
+  `exp(eta)` underflows (`eta` below about -745, with digits lost from -709).
+  It is now written on the `eta` scale as `y * eta - exp(eta) - lgamma(y + 1)`,
+  so ordinary fits change only by rounding (#1603).
 * `engine = "julia"` with no `latent()` term now stops with
   `[GJL-GATE-NO-LATENT]` for every non-Gaussian family except NB2. GLLVModels.jl
   returned `logLik = -Inf` and `converged = FALSE` for Poisson, binomial, nb1,

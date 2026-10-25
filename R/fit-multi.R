@@ -4290,6 +4290,18 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     }
   }
 
+  ## Tweedie (fid 6) is defined for y >= 0. Gamma/lognormal already refuse
+  ## y <= 0; without this check a negative tweedie y fitted and reported
+  ## convergence 0 (#1356 second comment).
+  tweedie_rows <- (family_id_vec == 6L) & !masked_response
+  if (any(tweedie_rows) && any(y[tweedie_rows] < 0)) {
+    cli::cli_abort(c(
+      "{.fn tweedie} rows: {.code y} must be non-negative.",
+      "i" = "The Tweedie density is not defined for a negative response.",
+      ">" = "Remove or recode negative values before fitting."
+    ), class = "gllvmTMB_tweedie_negative_y")
+  }
+
   ## Zero-inflated count families (fid 17/18/19, Design 62 -- a TRUE mixture,
   ## not the fid 12/13 hurdle above). zi_poisson/zi_nbinom2: non-negative
   ## integer y, same support as their non-inflated counterparts.

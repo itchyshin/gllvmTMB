@@ -1,5 +1,6 @@
 # Development (unreleased)
 
+* `tweedie()` now stops up front when any observed response is negative, with class `gllvmTMB_tweedie_negative_y`, instead of fitting a density that is not defined for y < 0 (#1356).
 * An explicit `indep()` or `diag()` on single-observation ordinal traits is mapped off, with a warning, under the same identifiability gate as the default between-unit Psi. One observation per (trait, unit) cannot separate that diagonal from the fixed threshold scale (#1574).
 
 * Bootstrap wrappers keep `nsim = 500`. That default no longer warns that it is too small. The warning names `nsim`, and the `profile_ci_total_variance()` hint is shown only when the bootstrap asks for Sigma diagonals. `bootstrap_Sigma()` still warns when `n_boot` is below 999 (#1576).

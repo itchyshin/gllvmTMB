@@ -28,17 +28,16 @@ downstream extractors, including the fixed \code{rho} used to build the
 host-partner bridge.
 }
 \description{
-\code{make_cross_kernel()} builds the block relatedness matrix for the C0
-coevolution prototype. It builds a correlation-scale
-positive-semidefinite matrix
+\code{make_cross_kernel()} builds a correlation-scale
+positive-semidefinite block relatedness matrix
 \code{K_star = rbind(cbind(A_H, C_HP), cbind(t(C_HP), A_P))}, where \code{A_H}
 and \code{A_P} are within-lineage relatedness matrices and \code{C_HP} is the
-cross-lineage bridge induced by the association matrix \code{W}. The intended
-route is a prototype: pass \code{K_star} through the
-existing \code{phylo_latent(..., vcv = K_star, unique = TRUE)} engine. The
-generic \verb{kernel_*()} surface and the
-\code{extract_Gamma()} coevolution gate are documented
-separately; this helper only builds the input kernel.
+cross-lineage bridge induced by the association matrix \code{W}. Pass
+\code{K_star} to a \verb{kernel_*()} term (for example
+\code{kernel_latent(..., K = K_star)}) or to
+\code{phylo_latent(..., vcv = K_star, unique = TRUE)}. This helper only
+builds the input kernel; \code{\link[=extract_Gamma]{extract_Gamma()}} reads the fitted
+cross-lineage block.
 }
 \examples{
 A_H <- matrix(c(

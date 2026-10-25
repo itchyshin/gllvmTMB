@@ -754,7 +754,7 @@ argument when using the additive form. For block-diagonal
 within-study correlation, build `V` via
 `block_V(study_id, sampling_var, rho_within)`.
 
-## Offsets (count families only)
+## Offsets (count families, plus one contract-gated exception)
 
 An `offset()` term adds a **known** quantity to the linear predictor,
 carrying no coefficient: `eta = offset + X b`. On a log link that is the
@@ -769,9 +769,38 @@ engine row, so it is not a candidate.
 The gate is on **family, not link**. A link gate would admit Gamma,
 lognormal and Tweedie on log links, each needing its own semantics decision;
 the family set is small, enumerable, and matches the use case. Under
-`gaussian` an offset would be an unexplained mean shift and under `binomial`
-a fixed shift in log-odds — neither is what a user asking for an offset
-wants.
+`gaussian` an offset would be an unexplained mean shift and under
+`binomial(logit)` or `binomial(probit)` a fixed shift in log-odds or probit
+units, neither of which is what a user asking for an offset wants. That reasoning
+holds for those links and is unchanged.
+
+### One exception: `binomial(cloglog)` inside the integrated contract
+
+The restriction is correct for logit and probit but wrong for the
+presence-absence arm of an integrated multi-source model (Design 120), where
+the Bernoulli arm uses a complementary log-log link. There the offset is not
+a nuisance shift; it is a **change of support**:
+
+```
+cloglog(p_i) = log(-log(1 - p_i)) = log(E_i) + eta_i
+```
+
+with `E_i` the known sampled area (or visit effort) and `eta_i` the log of the
+shared intensity. Equivalently `p_i = 1 - exp(-E_i * exp(eta_i))`. The
+`log(E_i)` term is what makes the Bernoulli arm observe the *same* intensity
+as the Poisson arm, so without it the two sources are unrelated regressions,
+not one integrated model.
+
+The gate therefore admits a **nonzero** offset on a row with family 1
+(binomial) and link 2 (cloglog) **only when the exact integrated two-source
+contract has matched** (`.gllvmTMB_integrated_sources_contract()`: sources
+declared with `isdm_sources()`, Poisson-log count arms and Bernoulli-cloglog
+detection arms). Outside that contract a standalone `binomial(link =
+"cloglog")` fit still refuses a nonzero offset, with the same error as any
+other non-count trait. Widening the gate to standalone cloglog is an owner
+decision and is not made here. Logit, probit, gaussian and Beta rows stay
+refused inside the contract too; the exception is keyed to family 1 and link 2
+specifically (`tests/testthat/test-isdm-public-door.R`).
 
 Because `family_id_vec` is already per-row, the gate is per-row too, and the
 error names the offending trait:

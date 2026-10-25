@@ -3223,7 +3223,7 @@ predict.gllvmTMB_multi <- function(
       cli::cli_abort(c(
         "{.arg newdata} must be in long format with a {.field {trait_lbl_nd}} column.",
         "x" = "This fit was made with {.fn traits} (wide data), but {.arg newdata} has no {.field {trait_lbl_nd}} column.",
-        "i" = "Stack {.arg newdata}: one row per unit and trait, with {.field {trait_lbl_nd}} a factor carrying the training levels.",
+        ">" = "Stack {.arg newdata}: one row per unit and trait, with {.field {trait_lbl_nd}} a factor carrying the training levels.",
         "i" = "For example: {.code data.frame(id = rep(ids, each = 4), trait = factor(rep(trait_names, length(ids)), levels = trait_names))}."
       ), class = "gllvmTMB_predict_wide_newdata")
     }

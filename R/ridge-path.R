@@ -296,7 +296,10 @@ ridge_path <- function(
   inf_unconverged <- FALSE
   if (!is.null(convergence)) {
     if (length(convergence) != length(tau)) {
-      cli::cli_abort("{.arg convergence} must have one value per {.arg tau}.")
+      cli::cli_abort(c(
+        "{.arg convergence} must have one value per {.arg tau}.",
+        ">" = "Pass one convergence code for every tau, in the same order."
+      ))
     }
     ## #1590: a tau = Inf row is the boundary comparison only when that
     ## refit converged (code 0). An unconverged Inf loading is not evidence.

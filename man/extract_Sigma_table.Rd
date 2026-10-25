@@ -50,9 +50,9 @@ A data frame with one row per requested entry and stable columns:
 \code{interval_status}, \code{scale}, \code{diagonal},
 \code{triangle}, and \code{validation_row} (a short label for the validation scope of
 the extractor behind the table). For a fit, the interval columns \code{lower}
-and \code{upper} are \code{NA} with \code{interval_method = "none"} because this helper
-is point-estimate only. For a \code{\link[=bootstrap_Sigma]{bootstrap_Sigma()}} input they are filled,
-with \code{interval_method = "bootstrap"} and \code{interval_status = "provided"}.
+and \code{upper} are \code{NA} with \code{interval_method = "none"}. For a
+\code{\link[=bootstrap_Sigma]{bootstrap_Sigma()}} input they are filled, with
+\code{interval_method = "bootstrap"} and \code{interval_status = "provided"}.
 }
 \description{
 \code{extract_Sigma()} returns matrices because that is the most convenient

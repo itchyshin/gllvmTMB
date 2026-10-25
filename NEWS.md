@@ -1,10 +1,11 @@
 # Development (unreleased)
 
+* `vcov()` on a fit with no standard errors no longer suggests `method = "profile"`, which it does not accept. `extract_Sigma(part = "shared")` and `part = "unique"` no longer print that a link residual was added when that residual is only applied to `part = "total"` (#1580).
 * An explicit `indep()` or `diag()` on single-observation ordinal traits is mapped off, with a warning, under the same identifiability gate as the default between-unit Psi. One observation per (trait, unit) cannot separate that diagonal from the fixed threshold scale (#1574).
-
 * Bootstrap wrappers keep `nsim = 500`. That default no longer warns that it is too small. The warning names `nsim`, and the `profile_ci_total_variance()` hint is shown only when the bootstrap asks for Sigma diagonals. `bootstrap_Sigma()` still warns when `n_boot` is below 999 (#1576).
 * `compare_dep_vs_two_psi()` and `compare_indep_vs_two_psi()` pass the stored phylogeny inside the generated `phylo_*()` keyword. The refit no longer prints the global `phylo_vcv` / `phylo_tree` deprecation (#1568).
 * `engine = "julia"` now stops on `REML = TRUE`, a non-`NULL` `lambda_constraint` and a non-`NULL` `known_V` (class `gllvmTMB_julia_unsupported_arg`) instead of silently ignoring them (#1347).
+* The `gllvmTMB()` offset documentation now states that a nonzero offset is also accepted on the `binomial(cloglog)` arm inside an integrated `isdm_sources()` model (a change of support); no behaviour change (#946).
 * `suggest_lambda_constraint()` and `suggest_lambda_constraints()` gain `unit_obs` to name the within-unit column on the formula path (default `"site_species"`, as in `gllvmTMB()`), and their no-term errors name the level as `"unit"` / `"unit_obs"` (#1587).
 * `check_gllvmTMB()` no longer reports `boundary_flags` as `PASS` "none" while a `boundary_phi_*` dispersion-ceiling row is `WARN`: the summary row now turns `WARN` and names those rows. `print(fit)` also points to `gllvmTMB_diagnose(fit)` when the optimiser did not converge cleanly (#1351).
 * `?compare_dep_vs_two_psi` and `?compare_indep_vs_two_psi` now say a flag means the two fits disagree, not that the paired model failed, and that the default `threshold = 0.10` is not calibrated (#1571).
@@ -19,7 +20,13 @@
 
 * `engine = "julia"` now stops on a missing fixed-effect covariate with the same message as the native engine, instead of sending the `NA` to the bridge (#1371).
 * `poisson()` and `nbinom2()` fits now stop up front when the response has a negative or non-integer value, naming the family, instead of "All 1 restarts failed." (negative) or fitting silently (non-integer) (#1356).
+* `binomial()` and `betabinomial()` now require an integer success count in `0..n_trials`. `nbinom1()` gets the same non-negative-integer check as `poisson()` / `nbinom2()`. `tweedie()` stops on a negative response (#1356).
+* Breaking change: a binomial or betabinomial proportion with `weights = n` is now refused. Pass the integer success count as `y`, or use `cbind(successes, failures)`. The old path fitted the wrong model (#1356).
 
+* A dense `vcv` / `phylo_vcv` passed to `phylo_scalar()`, `phylo_latent()` or
+  `phylo_slope()` is now checked for positive semidefiniteness, and an
+  indefinite matrix stops the fit with a message naming it, instead of
+  returning a finite but meaningless log-likelihood (#1373).
 * A trait factor with a level that has no rows now stops the fit with a message
   naming the empty level and advising `droplevels()`, instead of silently adding
   free parameters (inflated df and AIC, no standard errors) (#1387).
@@ -41,6 +48,10 @@
   `?extract_latent_scores` drops the `gllvmTMB_julia` claim and the literal
   TeX; `?extract_ordination` lists `row_id`, `row_index` and `temporal_sign`
   (#1579).
+* `?make_cross_kernel` no longer calls the helper a "C0 coevolution prototype"
+  or routes users only through `phylo_latent(..., vcv = K_star)`. The page now
+  says the matrix can be passed to a `kernel_*()` term or to
+  `phylo_latent(..., vcv = )` (#1579).
 * A rank-deficient fixed-effect design is now caught under the default ML fit as
   well as `REML = TRUE`, with the classed error `gllvmTMB_rank_deficient_design`
   naming the redundant columns, instead of the reason-less "All 1 restarts

@@ -112,8 +112,10 @@ vcov.gllvmTMB_multi <- function(object, ...) {
     return(matrix(numeric(0), 0L, 0L))
   }
 
-  ## Same gate, same condition classes, same remedies as confint()'s Wald path.
-  .confint_require_sdreport(object, method = "wald", caller = "vcov")
+  ## Same gate and condition classes as confint()'s Wald path. vcov() has
+  ## no method argument, so do not offer method = "profile" (#1580).
+  .confint_require_sdreport(object, method = "wald", caller = "vcov",
+                            route = NULL)
 
   cv <- object$sd_report$cov.fixed
   out <- matrix(NA_real_, length(nm), length(nm), dimnames = list(nm, nm))

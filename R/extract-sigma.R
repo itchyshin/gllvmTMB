@@ -1824,7 +1824,9 @@ extract_Sigma <- function(
   if (link_residual == "auto") {
     link_resid_per_trait <- link_residual_per_trait(fit)
     nonzero <- link_resid_per_trait != 0
-    if (any(nonzero, na.rm = TRUE)) {
+    ## Only part = "total" adds this residual. part = "shared" / "unique"
+    ## used to print the note anyway (#1580).
+    if (identical(part, "total") && any(nonzero, na.rm = TRUE)) {
       ## Map family_id back to a label for the report.
       fam_lookup <- function(fid) {
         switch(

@@ -1,5 +1,6 @@
 # Development (unreleased)
 
+* `compare_loadings()` now matches rows by trait name when both matrices have row names (reordering `Lambda_a` to `Lambda_b`) and stops when the two row-name sets differ; unnamed input is still matched by position. `ridge_path()` sorts `tau` before refitting, so its rows and printed table run from the strongest penalty to the weakest, and no longer repeats the `extract_communality()` note once per `tau` (#1590).
 * `vcov()` on a fit with no standard errors no longer suggests `method = "profile"`, which it does not accept. `extract_Sigma(part = "shared")` and `part = "unique"` no longer print that a link residual was added when that residual is only applied to `part = "total"` (#1580).
 * An explicit `indep()` or `diag()` on single-observation ordinal traits is mapped off, with a warning, under the same identifiability gate as the default between-unit Psi. One observation per (trait, unit) cannot separate that diagonal from the fixed threshold scale (#1574).
 * Bootstrap wrappers keep `nsim = 500`. That default no longer warns that it is too small. The warning names `nsim`, and the `profile_ci_total_variance()` hint is shown only when the bootstrap asks for Sigma diagonals. `bootstrap_Sigma()` still warns when `n_boot` is below 999 (#1576).

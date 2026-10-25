@@ -67,3 +67,10 @@ test_that("extract_Gamma help carries no internal test code", {
   rd <- .rd_1579("extract_Gamma")
   expect_false(grepl("C2 recovery", rd, fixed = TRUE))
 })
+
+test_that("make_cross_kernel help does not exclusive-route through phylo_latent", {
+  rd <- .rd_1579("make_cross_kernel")
+  expect_false(grepl("C0 coevolution prototype", rd, fixed = TRUE))
+  expect_match(rd, "kernel_", fixed = TRUE)
+  expect_match(rd, "phylo_latent", fixed = TRUE)
+})

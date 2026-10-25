@@ -19,6 +19,8 @@
 
 * `engine = "julia"` now stops on a missing fixed-effect covariate with the same message as the native engine, instead of sending the `NA` to the bridge (#1371).
 * `poisson()` and `nbinom2()` fits now stop up front when the response has a negative or non-integer value, naming the family, instead of "All 1 restarts failed." (negative) or fitting silently (non-integer) (#1356).
+* `binomial()` and `betabinomial()` now require an integer success count in `0..n_trials`. `nbinom1()` gets the same non-negative-integer check as `poisson()` / `nbinom2()`. `tweedie()` stops on a negative response (#1356).
+* Breaking change: a binomial or betabinomial proportion with `weights = n` is now refused. Pass the integer success count as `y`, or use `cbind(successes, failures)`. The old path fitted the wrong model (#1356).
 
 * `confint(fit, parm = "b_fix[1]")` now returns one row (profile and Wald)
   instead of profiling every fixed effect and then failing, and a fixed-effect
@@ -38,6 +40,10 @@
   `?extract_latent_scores` drops the `gllvmTMB_julia` claim and the literal
   TeX; `?extract_ordination` lists `row_id`, `row_index` and `temporal_sign`
   (#1579).
+* `?make_cross_kernel` no longer calls the helper a "C0 coevolution prototype"
+  or routes users only through `phylo_latent(..., vcv = K_star)`. The page now
+  says the matrix can be passed to a `kernel_*()` term or to
+  `phylo_latent(..., vcv = )` (#1579).
 * A rank-deficient fixed-effect design is now caught under the default ML fit as
   well as `REML = TRUE`, with the classed error `gllvmTMB_rank_deficient_design`
   naming the redundant columns, instead of the reason-less "All 1 restarts

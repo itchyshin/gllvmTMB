@@ -1,5 +1,6 @@
 # Development (unreleased)
 
+* The once-per-session note for a species-level phylogenetic term plus `indep(0 + trait | species)` at `unit != species` no longer names `phylo_indep(species)` when you wrote `phylo_latent(..., unique = TRUE)`, no longer recommends `indep()` to a call that already uses it, and no longer prints internal slot names (`q_sp`, `p_it + q_it`). With the `unit != cluster` refusal (#1645) and the alt-refit warning rewording (#1679), this completes #1572.
 * `vcov()` on a fit with no standard errors no longer suggests `method = "profile"`, which it does not accept. `extract_Sigma(part = "shared")` and `part = "unique"` no longer print that a link residual was added when that residual is only applied to `part = "total"` (#1580).
 * An explicit `indep()` or `diag()` on single-observation ordinal traits is mapped off, with a warning, under the same identifiability gate as the default between-unit Psi. One observation per (trait, unit) cannot separate that diagonal from the fixed threshold scale (#1574).
 * Bootstrap wrappers keep `nsim = 500`. That default no longer warns that it is too small. The warning names `nsim`, and the `profile_ci_total_variance()` hint is shown only when the bootstrap asks for Sigma diagonals. `bootstrap_Sigma()` still warns when `n_boot` is below 999 (#1576).

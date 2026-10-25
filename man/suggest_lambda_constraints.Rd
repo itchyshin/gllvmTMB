@@ -11,6 +11,7 @@ suggest_lambda_constraints(
   methods = c("varimax_threshold", "wald_retention"),
   trait = "trait",
   unit = NULL,
+  unit_obs = NULL,
   threshold = 0.3,
   retention_prob = 0.9,
   sigma_d2 = 1,
@@ -34,6 +35,12 @@ the same as the \code{convention} argument of \code{\link[=suggest_lambda_constr
 \item{trait, unit}{Name of the trait and unit (site) columns. Forwarded when
 \code{fit_or_formula} is a formula and the data does not already use
 defaults.}
+
+\item{unit_obs}{Name of the within-unit column. Used only when
+\code{fit_or_formula} is a formula and \code{level = "unit_obs"}: it names the
+column in the formula's \code{latent(... | unit_obs)} term, as in
+\code{\link[=gllvmTMB]{gllvmTMB()}}. \code{NULL} (default) means \code{"site_species"}, the same default
+as \code{\link[=gllvmTMB]{gllvmTMB()}}. Ignored for a fit.}
 
 \item{threshold}{Salience threshold on the standardised loading
 \eqn{\rho_{tk} = \Lambda_{tk} / \sqrt{\Sigma_{total,tt}}}. Used by

@@ -4270,6 +4270,26 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ))
   }
 
+  ## Plain count families (#1356): poisson (fid 2) and nbinom2 (fid 5) need a
+  ## non-negative integer y, the same support zi_poisson/zi_nbinom2 check below.
+  ## Without this a negative y surfaced only as "All 1 restarts failed." and a
+  ## non-integer y fitted silently. binomial/beta-binomial integrality is a
+  ## separate question (proportions with weights) and is deliberately untouched.
+  count_rows <- (family_id_vec %in% c(2L, 5L)) & !masked_response
+  if (any(count_rows)) {
+    bad_fid <- unique(family_id_vec[count_rows][
+      y[count_rows] < 0 | y[count_rows] != round(y[count_rows])
+    ])
+    if (length(bad_fid) > 0L) {
+      bad_fam <- c(`2` = "poisson", `5` = "nbinom2")[as.character(bad_fid)]
+      cli::cli_abort(c(
+        "{.fn {bad_fam}} rows: {.code y} must be a non-negative integer.",
+        "i" = "Negative or non-integer values are outside the count support of {.fn {bad_fam}}.",
+        ">" = "Round or recode {.code y} to non-negative integers before fitting."
+      ))
+    }
+  }
+
   ## Zero-inflated count families (fid 17/18/19, Design 62 -- a TRUE mixture,
   ## not the fid 12/13 hurdle above). zi_poisson/zi_nbinom2: non-negative
   ## integer y, same support as their non-inflated counterparts.
@@ -7455,11 +7475,15 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## the W-tier OLRE skip per trait: map off `theta_diag_B[t]` and the `s_B`
   ## row for single-trial binary traits, keeping the auto-Psi for the
   ## identified families (Gaussian/Poisson/NB/Beta/Gamma given replication).
-  ## EXPLICIT `unique()`/`indep()` diagonals are untouched -- this only gates
-  ## the DEFAULT auto-Psi (`auto_psi_B`). A pure-binary fit ends with every
-  ## B-tier trait skipped, which is the per-trait equivalent of dropping the
+  ## EXPLICIT `unique()`/`indep()` diagonals stay estimated for single-trial
+  ## binary traits: that term is a deliberate model choice. Single-observation
+  ## ordinal traits are the exception (#1574). An explicit between-unit
+  ## diagonal is the same unidentified scale as the default Psi, so it is
+  ## mapped off and the fit warns. Multinomial explicit diagonals stay on
+  ## their own fence. A pure-binary default-Psi fit ends with every B-tier
+  ## trait skipped, which is the per-trait equivalent of dropping the
   ## auto-Psi entirely.
-  if (use_diag_B && auto_psi_B && !use_diag_B_slope) {
+  if (use_diag_B && !use_diag_B_slope) {
     skip_psi_b_t <- vapply(seq_len(n_traits), function(t) {
       rows_t <- which(trait_id == (t - 1L))
       if (length(rows_t) == 0L) return(FALSE)
@@ -7479,10 +7503,14 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ## invariant along that ridge and climbs it (psi 435-649, cutpoints
       ## 6-29, logLik 400-520 above the exact marginal on real data). Gate it
       ## exactly as single-trial binary; replicated cells keep their Psi.
+      ## #1574: the ordinal arm also applies to an explicit indep()/diag().
+      ## The binary and multinomial arms stay on the default auto-Psi only.
+      ordinal_single <- isTRUE(all(family_id_vec[rows_t] %in% c(14L, 20L)) &&
+                                 !anyDuplicated(site_id[rows_t]))
+      if (!isTRUE(auto_psi_B)) return(ordinal_single)
       isTRUE(all(family_id_vec[rows_t] == 1L) && all(n_trials[rows_t] == 1)) ||
         isTRUE(all(family_id_vec[rows_t] == 16L)) ||
-        isTRUE(all(family_id_vec[rows_t] %in% c(14L, 20L)) &&
-                 !anyDuplicated(site_id[rows_t]))
+        ordinal_single
     }, logical(1))
     if (any(skip_psi_b_t)) {
       ## Tell the C++ objective which traits were pinned. Without this the
@@ -7527,16 +7555,25 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       binomial_labs <- skipped_labs[!skipped_is_multinomial & !skipped_is_ordinal]
       multinomial_labs <- skipped_labs[skipped_is_multinomial]
       ordinal_labs <- skipped_labs[skipped_is_ordinal]
-      cli::cli_inform(.auto_psi_skip_message(
-        binomial_labs = binomial_labs,
-        multinomial_labs = multinomial_labs,
-        ordinal_labs = ordinal_labs
-      ), .frequency = "once",
-         .frequency_id = .auto_psi_skip_frequency_id(
-           binomial_labs = binomial_labs,
-           multinomial_labs = multinomial_labs,
-           ordinal_labs = ordinal_labs
-         ))
+      if (!isTRUE(auto_psi_B)) {
+        cli::cli_warn(c(
+          "An explicit between-unit diagonal ({.fn indep} or {.fn diag}) is not identified for single-observation ordinal traits.",
+          "i" = "Trait{?s} affected: {.val {ordinal_labs}}.",
+          "i" = "One observation per (trait, unit) cannot separate that diagonal from the fixed threshold scale (1 for {.fn ordinal_probit}, pi^2/3 for {.fn ordinal_logit}).",
+          "*" = "Mapped {.code theta_diag_B[t]} and the corresponding {.code s_B} row off. Repeated observations of the same trait in a unit identify the term."
+        ))
+      } else {
+        cli::cli_inform(.auto_psi_skip_message(
+          binomial_labs = binomial_labs,
+          multinomial_labs = multinomial_labs,
+          ordinal_labs = ordinal_labs
+        ), .frequency = "once",
+           .frequency_id = .auto_psi_skip_frequency_id(
+             binomial_labs = binomial_labs,
+             multinomial_labs = multinomial_labs,
+             ordinal_labs = ordinal_labs
+           ))
+      }
     }
   }
 
@@ -10158,7 +10195,21 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     par_list <- obj$env$parList(opt$par)
     ## Phase 5a: the binary route reads the per-unit conditional probability
     ## from the engine REPORT(mi_probability); pass the report to gll_finalize_mi.
-    mi_report <- tryCatch(obj$report(opt$par), error = function(e) NULL)
+    ## `opt$par` holds the fixed effects only, so `obj$report(opt$par)` errors
+    ## ("Wrong parameter length.") whenever the model has a random effect.
+    ## Evaluate at the optimum, then read the report from the last full
+    ## parameter vector (the idiom documented at the `rep <- obj$report()` site).
+    mi_report <- tryCatch({
+      obj$fn(opt$par)
+      obj$report()
+    }, error = function(e) {
+      cli::cli_warn(c(
+        "The missing-predictor report could not be evaluated.",
+        "i" = "Conditional probabilities / scores for the missing units are {.val NA}.",
+        "x" = conditionMessage(e)
+      ))
+      NULL
+    })
     fit$missing_data <- gll_finalize_mi(
       fit$missing_data, par_list, mi_model, sdr = sd_rep, report = mi_report
     )

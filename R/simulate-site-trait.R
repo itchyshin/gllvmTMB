@@ -23,6 +23,7 @@
 #' @param mean_species_per_site Average number of species observed per site
 #'   (Poisson with this mean, truncated at \eqn{n_{species}}). Default 5.
 #' @param n_predictors Integer; number of site-level predictors. Default 2.
+#'   Use `0` for a dataset with no `env_*` covariates.
 #' @param alpha Optional length-`n_traits` vector of trait intercepts; random
 #'   if `NULL`.
 #' @param beta Optional `n_traits` x `n_predictors` matrix of trait-specific
@@ -95,6 +96,16 @@ simulate_site_trait <- function(n_sites = 50,
                                 seed = NULL) {
   if (!is.null(seed)) set.seed(seed)
 
+  if (!is.numeric(n_predictors) || length(n_predictors) != 1L ||
+      is.na(n_predictors) || n_predictors < 0 ||
+      n_predictors != round(n_predictors)) {
+    cli::cli_abort(c(
+      "{.arg n_predictors} must be a single non-negative whole number.",
+      "x" = "Got {.val {n_predictors}}.",
+      ">" = "Use {.code n_predictors = 0} for a covariate-free dataset."
+    ))
+  }
+
   ## ---- Truth defaults ------------------------------------------------------
   if (is.null(alpha)) alpha <- stats::rnorm(n_traits, mean = 0, sd = 1)
   if (is.null(beta))  beta  <- matrix(stats::rnorm(n_traits * n_predictors, sd = 0.5),
@@ -104,7 +115,7 @@ simulate_site_trait <- function(n_sites = 50,
 
   ## ---- Site-level predictors ----------------------------------------------
   X <- matrix(stats::rnorm(n_sites * n_predictors), nrow = n_sites, ncol = n_predictors,
-              dimnames = list(NULL, paste0("env_", seq_len(n_predictors))))
+              dimnames = list(NULL, if (n_predictors > 0) paste0("env_", seq_len(n_predictors))))
 
   ## ---- Spatial r_{st} (optional) ------------------------------------------
   ## Both spatial_range and sigma2_spa are required to draw r_st; otherwise no

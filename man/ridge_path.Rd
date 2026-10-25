@@ -24,8 +24,8 @@ directly. \code{unit} has no default -- it must name the sampling-unit
 column, matching \code{\link[=gllvmTMB]{gllvmTMB()}}'s own required argument.}
 
 \item{tau}{Numeric vector of ridge scales to sweep. Order does not
-matter: the function sorts internally, both for refitting and for the
-printed classification. Every entry must be a positive number; \code{Inf}
+matter for the classification, which sorts internally. The refits and
+the returned rows follow the order given. Every entry must be a positive number; \code{Inf}
 is allowed and requests plain ML. Default \code{c(0.5, 1, 2, 4, 8, Inf)}.}
 
 \item{control}{A \code{\link[=gllvmTMBcontrol]{gllvmTMBcontrol()}} object providing every OTHER setting
@@ -110,14 +110,16 @@ exactly at any two grid points) and is compared against
 Both are heuristics, not formal tests; see \code{print.gllvmTMB_ridge_path}'s
 arguments to adjust either threshold.
 
-\code{tau = Inf} requests a plain maximum-likelihood refit with no ridge at
-all. That refit can legitimately fail to converge, or converge to an
-extreme loading, for exactly the traits this function exists to flag --
-that failure or extremity is itself part of the diagnostic evidence, not
-a bug to work around. \code{fit_error} records the message when a grid point's
-refit errors outright, and the row's other columns are \code{NA} for that
-point; the classifier then falls back to the finite-\code{tau} elasticity
-comparison, since a failed \code{Inf} refit contributes no loading to compare.
+\code{tau = Inf} requests a plain maximum-likelihood refit with no ridge.
+The boundary comparison uses that refit only when its convergence code
+is 0. An Inf row that returns a loading whose convergence code is not 0
+is not the boundary anchor, and the printed line says that the Inf refit
+did not converge. The elasticity comparison is then used only when at
+least two finite-tau rows remain. An outright error leaves that loading
+missing, so it is not the boundary anchor and does not add the sentence.
+A converged Inf loading, including an extreme one, stays the boundary
+comparison. \code{fit_error} records the message when a grid point's refit
+errors outright, and the row's other columns are \code{NA} for that point.
 }
 \examples{
 set.seed(1)

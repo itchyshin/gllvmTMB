@@ -301,7 +301,7 @@ loading_ci <- function(fit,
       "Fit's Hessian is not positive-definite at the optimum.",
       i = "Returning estimates only; {.code se} / {.code lower} / {.code upper} are NA -- Wald inference is unavailable for this fit.",
       i = "Consider refitting with a less aggressive {.code lambda_constraint} (e.g. fewer pins) or using {.code loading_ci(method = \"profile\")}."
-    ))
+    ), class = "gllvmTMB_wald_nonpd_hessian")
     return(data.frame(
       trait      = factor(rep(trait_names, times = d), levels = trait_names),
       axis       = factor(rep(axis_names,  each = n_traits), levels = axis_names),

@@ -272,6 +272,40 @@
   out
 }
 
+#' Put the stored phylogeny inside the generated phylo_*() term (#1568).
+#'
+#' A global `phylo_vcv` / `phylo_tree` argument still fits, but it prints
+#' the once-per-session deprecation on every fresh session. The matrices
+#' live in a child of the formula environment so the parser can evaluate
+#' `vcv =` / `tree =` without splicing a large matrix into the call.
+#'
+#' @keywords internal
+#' @noRd
+.attach_refit_phylo <- function(formula, phylo_tree, phylo_vcv) {
+  if (is.null(phylo_tree) && is.null(phylo_vcv)) {
+    return(formula)
+  }
+  parent <- environment(formula)
+  if (is.null(parent)) parent <- globalenv()
+  env <- new.env(parent = parent)
+  if (!is.null(phylo_tree)) env$.refit_phylo_tree <- phylo_tree
+  if (!is.null(phylo_vcv)) env$.refit_phylo_vcv <- phylo_vcv
+  inject <- function(e) {
+    if (!is.call(e)) return(e)
+    fn <- if (is.name(e[[1L]])) as.character(e[[1L]]) else ""
+    if (fn %in% c("phylo_dep", "phylo_indep")) {
+      if (!is.null(phylo_tree)) e$tree <- as.name(".refit_phylo_tree")
+      if (!is.null(phylo_vcv)) e$vcv <- as.name(".refit_phylo_vcv")
+      return(e)
+    }
+    for (i in seq_along(e)[-1L]) e[[i]] <- inject(e[[i]])
+    e
+  }
+  formula[[length(formula)]] <- inject(formula[[length(formula)]])
+  environment(formula) <- env
+  formula
+}
+
 #' Refit `fit_two_psi`'s data under the alt covstruct
 #'
 #' Wraps [gllvmTMB()] with the same family, units, and phylogeny as the
@@ -287,7 +321,11 @@
   silent = TRUE
 ) {
   kind <- match.arg(kind)
-  alt_form <- .alt_formula(fit_two_psi, kind, inputs)
+  alt_form <- .attach_refit_phylo(
+    .alt_formula(fit_two_psi, kind, inputs),
+    inputs$phylo_tree,
+    inputs$phylo_vcv
+  )
   call_args <- list(
     formula = alt_form,
     data = inputs$data,
@@ -302,16 +340,10 @@
   if (!is.null(inputs$unit_obs) && inputs$unit_obs %in% all.vars(alt_form)) {
     call_args$unit_obs <- inputs$unit_obs
   }
-  if (!is.null(inputs$phylo_vcv)) {
-    call_args$phylo_vcv <- inputs$phylo_vcv
-  }
-  if (!is.null(inputs$phylo_tree)) {
-    call_args$phylo_tree <- inputs$phylo_tree
-  }
   tryCatch(do.call(gllvmTMB, call_args), error = function(e) {
     cli::cli_warn(c(
       "Refit under {.code {kind}} covstruct failed: {.val {conditionMessage(e)}}.",
-      "i" = "The cross-check returns {.code NULL} for this side; treat this as evidence the alt fit is itself unstable on this dataset, not as a clean disagreement."
+      "i" = "The cross-check returns {.code NULL} for this side. The refit may have failed because of a layout or data restriction as well as numerical trouble, so read the message above before drawing a conclusion; this is not a clean disagreement."
     ))
     NULL
   })
@@ -377,16 +409,25 @@
 #' \eqn{\boldsymbol\Sigma_{\mathrm{phy}} = \boldsymbol\Lambda_{\mathrm{phy}}\boldsymbol\Lambda_{\mathrm{phy}}^\top + \boldsymbol\Psi_{\mathrm{phy}}}
 #' (and the analogous \eqn{\boldsymbol\Sigma_{\mathrm{non}}}) against
 #' the unstructured baseline. Per-component RMSE plus a `flag` field
-#' (`TRUE` when any component disagrees beyond `threshold`) identifies
-#' two-psi identifiability failures.
+#' (`TRUE` when any component disagrees beyond `threshold`). A flag means
+#' the two fits disagree; it does not show that the paired two-psi model
+#' is wrong or not identified.
 #'
 #' Conceptual basis: Williams et al. (2025) bioRxiv 2025.12.20.695312
 #' Eq. 3, generalised across traits. The unstructured fit has
 #' \eqn{T(T+1)/2} free parameters per tier and is the strongest available
-#' benchmark for the implied total covariance. When the joint two-psi fit
-#' is well-identified, its implied total Sigma matches the unstructured
-#' baseline; when it isn't, the diagnostic flags the disagreement and
-#' the user knows to relax the rank or revisit identifiability.
+#' benchmark for the implied total covariance. Agreement between the two
+#' fits is reassuring. Disagreement is a prompt to look further, not a
+#' verdict: the more flexible baseline estimates many more parameters
+#' (for example non-phylogenetic off-diagonals whose true value may be 0)
+#' and carries its own sampling noise at realistic species counts. In
+#' simulations from the paired model itself (T = 3, d = 1; see issue 1571),
+#' the default threshold flagged nearly every dataset: 24/24 seeds at 64
+#' species, 4/4 at 128 and 3/4 at 256, with the paired fit usually closer
+#' to the true non-phylogenetic Sigma than the baseline. The `0.10`
+#' default of `threshold` is therefore **not calibrated**; treat a flag as
+#' a comparison to inspect, for example by checking the boundary and
+#' convergence diagnostics of both fits.
 #'
 #' The cross-check separates three questions:
 #'
@@ -395,7 +436,7 @@
 #'   \item{Level 2: total Sigma_phy and Sigma_non agree?}{This diagnostic
 #'     answers Level 2 directly. The two estimators target the SAME
 #'     total covariance with different parameterisations, so agreement
-#'     is the identifiability check.}
+#'     is what is compared (see the caveat above).}
 #'   \item{Level 3: split into Lambda Lambda^T + Psi?}{Diagnostic
 #'     does not test Level 3 directly; Level 2 agreement is the
 #'     pre-requisite for Level 3 to be meaningful.}
@@ -411,7 +452,10 @@
 #'   `phylo_dep + dep` and compares.
 #' @param threshold Numeric (default `0.10`): relative-disagreement
 #'   threshold (Frobenius RMSE / Frobenius magnitude of the unstructured
-#'   estimate) above which a component is flagged.
+#'   estimate) above which a component is flagged. The default is not
+#'   calibrated: it flags most datasets simulated from the paired model
+#'   itself at realistic species counts, so a flag marks disagreement
+#'   only.
 #' @param phylo_vcv,phylo_tree Optional. The phylogenetic correlation
 #'   matrix or `ape::phylo` tree, only needed if `fit_two_psi` was
 #'   produced by an older package version that did not store the
@@ -635,9 +679,12 @@ compare_dep_vs_two_psi <- function(
 #' Otherwise prefer [compare_dep_vs_two_psi()] (gold standard).
 #'
 #' Cross-check intent: the per-trait diagonals are the simplest summary
-#' the joint two-psi fit and the marginal baseline both target. If the
-#' diagonals already disagree beyond the threshold, no inspection of
-#' the cross-trait off-diagonals is warranted.
+#' the joint two-psi fit and the marginal baseline both target. A flag
+#' means the two fits disagree beyond `threshold`; it does not show that
+#' the paired model is wrong. The baseline carries its own sampling noise
+#' and the `0.10` default is not calibrated (on the issue 1571
+#' simulations from the paired model, this check also flagged, with
+#' `rel_disagreement` of 0.24 and 0.16 for the two components at seed 18).
 #'
 #' @inheritParams compare_dep_vs_two_psi
 #'

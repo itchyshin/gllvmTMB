@@ -27,18 +27,60 @@
   list(fit = fit, Cphy = Cphy)
 }
 
+.two_psi_cc_run <- function(fn, fit) {
+  notes <- character()
+  warns <- character()
+  res <- withCallingHandlers(
+    fn(fit),
+    message = function(m) {
+      notes <<- c(notes, conditionMessage(m))
+      invokeRestart("muffleMessage")
+    },
+    warning = function(w) {
+      warns <<- c(warns, conditionMessage(w))
+      invokeRestart("muffleWarning")
+    }
+  )
+  list(res = res, notes = notes, warns = warns)
+}
+
 test_that("compare_dep_vs_two_psi() refits without an unused-unit_obs warning (#1568)", {
   x <- .two_psi_cc_fit()
-  expect_no_warning(
-    res <- suppressMessages(compare_dep_vs_two_psi(x$fit))
-  )
-  expect_false(is.null(res))
+  out <- .two_psi_cc_run(compare_dep_vs_two_psi, x$fit)
+  expect_length(out$warns, 0L)
+  expect_false(any(grepl("phylo_vcv|phylo_tree", out$notes)))
+  expect_false(any(grepl("unit_obs", out$warns)))
+  expect_false(is.null(out$res$alt_fit))
 })
 
 test_that("compare_indep_vs_two_psi() refits without an unused-unit_obs warning (#1568)", {
   x <- .two_psi_cc_fit()
-  expect_no_warning(
-    res <- suppressMessages(compare_indep_vs_two_psi(x$fit))
+  out <- .two_psi_cc_run(compare_indep_vs_two_psi, x$fit)
+  expect_length(out$warns, 0L)
+  expect_false(any(grepl("phylo_vcv|phylo_tree", out$notes)))
+  expect_false(any(grepl("unit_obs", out$warns)))
+  expect_false(is.null(out$res$alt_fit))
+})
+
+test_that("a failed alt refit is reported as a refit failure, not as instability (#1572)", {
+  x <- .two_psi_cc_fit()
+  testthat::local_mocked_bindings(
+    gllvmTMB = function(...) stop("forced structural refusal"),
+    .package = "gllvmTMB"
   )
-  expect_false(is.null(res))
+  for (cmp in list(compare_dep_vs_two_psi, compare_indep_vs_two_psi)) {
+    msg <- NULL
+    res <- withCallingHandlers(
+      suppressMessages(cmp(x$fit)),
+      warning = function(w) {
+        msg <<- c(msg, conditionMessage(w))
+        invokeRestart("muffleWarning")
+      }
+    )
+    expect_length(msg, 1L)
+    expect_match(msg, "forced structural refusal", fixed = TRUE)
+    expect_match(msg, "Refit under", fixed = TRUE)
+    expect_no_match(msg, "unstable", ignore.case = TRUE)
+    expect_null(res$alt_fit)
+  }
 })

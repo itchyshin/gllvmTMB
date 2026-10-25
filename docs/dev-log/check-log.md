@@ -1,3 +1,5 @@
+> New entries go in `docs/dev-log/check-log.d/`, one file per slice (`YYYY-MM-DD-<slice>.md`); see `check-log.d/README.md`.
+
 ## 2026-08-17 — #1077: reconcile stale profile-bounds wording post-#1090
 
 **Lane:** `cursor/mspl-profile-ci-scaffold` (draft #1077)

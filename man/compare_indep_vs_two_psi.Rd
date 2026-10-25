@@ -19,7 +19,10 @@ The cross-check refits the same data and family with
 
 \item{threshold}{Numeric (default \code{0.10}): relative-disagreement
 threshold (Frobenius RMSE / Frobenius magnitude of the unstructured
-estimate) above which a component is flagged.}
+estimate) above which a component is flagged. The default is not
+calibrated: it flags most datasets simulated from the paired model
+itself at realistic species counts, so a flag marks disagreement
+only.}
 
 \item{phylo_vcv, phylo_tree}{Optional. The phylogenetic correlation
 matrix or \code{ape::phylo} tree, only needed if \code{fit_two_psi} was
@@ -58,9 +61,12 @@ unstructured fit needed by \code{\link[=compare_dep_vs_two_psi]{compare_dep_vs_t
 Otherwise prefer \code{\link[=compare_dep_vs_two_psi]{compare_dep_vs_two_psi()}} (gold standard).
 
 Cross-check intent: the per-trait diagonals are the simplest summary
-the joint two-psi fit and the marginal baseline both target. If the
-diagonals already disagree beyond the threshold, no inspection of
-the cross-trait off-diagonals is warranted.
+the joint two-psi fit and the marginal baseline both target. A flag
+means the two fits disagree beyond \code{threshold}; it does not show that
+the paired model is wrong. The baseline carries its own sampling noise
+and the \code{0.10} default is not calibrated (on the issue 1571
+simulations from the paired model, this check also flagged, with
+\code{rel_disagreement} of 0.24 and 0.16 for the two components at seed 18).
 }
 \examples{
 set.seed(18)

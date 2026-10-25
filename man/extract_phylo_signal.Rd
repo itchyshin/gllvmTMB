@@ -158,15 +158,24 @@ metadata.
 
 \examples{
 \dontrun{
+set.seed(1)
+tree <- ape::rcoal(20)
+tree$tip.label <- paste0("sp", seq_len(20))
+sim <- simulate_site_trait(
+  n_sites = 25, n_species = 20, n_traits = 3,
+  mean_species_per_site = 20, sigma2_eps = 0.4,
+  Lambda_B = matrix(0.6, 3, 1), psi_B = rep(0.2, 3),
+  Cphy = ape::vcv(tree, corr = TRUE), sigma2_phy = rep(0.4, 3),
+  seed = 1
+)
+dat <- sim$data
+levels(dat$species) <- tree$tip.label
 fit <- gllvmTMB(
-  value ~ 0 + trait + phylo_latent(species, d = 2) +
-                      latent(0 + trait | species, d = 2) +
-                      indep(0 + trait | species),
-  data       = df,
-  trait      = "trait",
-  unit       = "species",
-  cluster    = "species",
-  phylo_tree = tree
+  value ~ 0 + trait + phylo_latent(species, d = 1, tree = tree) +
+                      latent(0 + trait | site, d = 1) +
+                      unique(0 + trait | site),
+  data    = dat,
+  cluster = "species"
 )
 extract_phylo_signal(fit)
 }

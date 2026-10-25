@@ -1,6 +1,13 @@
 # Development (unreleased)
 
+* An explicit `indep()` or `diag()` on single-observation ordinal traits is mapped off, with a warning, under the same identifiability gate as the default between-unit Psi. One observation per (trait, unit) cannot separate that diagonal from the fixed threshold scale (#1574).
+
+* Bootstrap wrappers keep `nsim = 500`. That default no longer warns that it is too small. The warning names `nsim`, and the `profile_ci_total_variance()` hint is shown only when the bootstrap asks for Sigma diagonals. `bootstrap_Sigma()` still warns when `n_boot` is below 999 (#1576).
+* `compare_dep_vs_two_psi()` and `compare_indep_vs_two_psi()` pass the stored phylogeny inside the generated `phylo_*()` keyword. The refit no longer prints the global `phylo_vcv` / `phylo_tree` deprecation (#1568).
 * `engine = "julia"` now stops on `REML = TRUE`, a non-`NULL` `lambda_constraint` and a non-`NULL` `known_V` (class `gllvmTMB_julia_unsupported_arg`) instead of silently ignoring them (#1347).
+* `suggest_lambda_constraint()` and `suggest_lambda_constraints()` gain `unit_obs` to name the within-unit column on the formula path (default `"site_species"`, as in `gllvmTMB()`), and their no-term errors name the level as `"unit"` / `"unit_obs"` (#1587).
+* `check_gllvmTMB()` no longer reports `boundary_flags` as `PASS` "none" while a `boundary_phi_*` dispersion-ceiling row is `WARN`: the summary row now turns `WARN` and names those rows. `print(fit)` also points to `gllvmTMB_diagnose(fit)` when the optimiser did not converge cleanly (#1351).
+* `?compare_dep_vs_two_psi` and `?compare_indep_vs_two_psi` now say a flag means the two fits disagree, not that the paired model failed, and that the default `threshold = 0.10` is not calibrated (#1571).
 * `loading_profile()` and `loading_ci(method = "profile")` now refit the model
   they profile: `unit_obs`, `REML` and `control` (including `loading_ridge`)
   are kept, so a `unit_obs`-tier profile no longer returns an all-`NA` curve and
@@ -16,6 +23,7 @@
 * A trait factor with a level that has no rows now stops the fit with a message
   naming the empty level and advising `droplevels()`, instead of silently adding
   free parameters (inflated df and AIC, no standard errors) (#1387).
+* The `\dontrun{}` examples of `extract_Omega()`, `extract_phylo_signal()`, `extract_proportions()`, `extract_loadings()`, `getLoadings()`, `getLV()` and `extract_residual_split()` now simulate their own data and build their own `fit` instead of using undefined objects (#1360).
 * A missing or non-finite value in a random-slope covariate (for example `x` in
   `latent(1 + x | unit)`, `phylo_slope(x | species)`, `phylo_dep()` or the
   spatial slope terms) now stops the fit with a message naming the covariate,

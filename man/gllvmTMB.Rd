@@ -45,19 +45,29 @@ supported (plus \code{\link[=slope]{slope()}}, \code{\link[=phylo_slope]{phylo_s
 \code{\link[=animal_coef]{animal_coef()}}, \code{\link[=kernel_coef]{kernel_coef()}}, \code{\link[=spatial_coef]{spatial_coef()}}, and
 \code{\link[=meta_V]{meta_V()}}).
 
-An \code{offset()} term is supported for \strong{count responses only} — \code{poisson()},
+An \code{offset()} term is supported for \strong{count responses}: \code{poisson()},
 \code{nbinom1()}, \code{nbinom2()}, \code{truncated_poisson()}, and
-\code{truncated_nbinom2()} — where it is the usual exposure or effort
+\code{truncated_nbinom2()}, where it is the usual exposure or effort
 adjustment. Supply it already on the link scale, e.g.
 \code{offset(log(trap_nights))}. It must be its own additive term; it is not
 interacted with \code{trait}.
+
+There is one exception. In an integrated multi-source model declared with
+\code{\link[=isdm_sources]{isdm_sources()}}, a nonzero offset is also accepted on the
+\code{binomial(link = "cloglog")} detection arm. There it is a change of
+support, not a shift: \code{cloglog(p) = log(E) + eta} with \code{E} the known
+sampled area or effort, so the detection arm observes the same intensity
+as the Poisson arms. A standalone \code{binomial(link = "cloglog")} fit, and
+\code{binomial(link = "logit")}, \code{binomial(link = "probit")} and
+\code{gaussian()}, keep the refusal, because there an offset would be a fixed
+shift in log-odds, probit or mean.
 
 In long format the offset column carries one value per \verb{(unit, trait)}
 row, so it can differ by trait. In wide format, \code{offset(w)} names one
 unit-level column and applies it to every trait, while
 \code{offset(e1, e2, ...)} names one column per trait, in \code{\link[=traits]{traits()}} order.
 
-A \strong{nonzero} offset on a non-count trait is an error naming that trait.
+A \strong{nonzero} offset on any other trait is an error naming that trait.
 Zero is always allowed and does nothing (on the log scale it is a
 multiplier of one), which is how a mixed-family model gives an offset to
 its count traits and not the rest.}

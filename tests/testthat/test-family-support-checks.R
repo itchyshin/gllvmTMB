@@ -55,3 +55,12 @@ test_that("#1356 valid counts still fit with poisson() and nbinom2()", {
   fn <- fit_1356(dat, nbinom2())
   expect_true(is.finite(as.numeric(logLik(fn))))
 })
+
+test_that("#1356 tweedie() aborts on a negative response", {
+  dat <- sim_1356()
+  dat$value[1] <- -1
+  expect_error(
+    fit_1356(dat, tweedie()),
+    class = "gllvmTMB_tweedie_negative_y"
+  )
+})

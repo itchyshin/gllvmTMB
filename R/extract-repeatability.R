@@ -14,10 +14,15 @@
 #' where
 #' \deqn{v_{B,t} = [\Lambda_B\Lambda_B^\top]_{tt} + \sigma^2_{B,t}}
 #' and
-#' \deqn{v_{W,t} = [\Lambda_W\Lambda_W^\top]_{tt} + \sigma^2_{W,t} + \sigma^2_{d,t}.}
+#' \deqn{v_{W,t} = [\Lambda_W\Lambda_W^\top]_{tt} + \sigma^2_{W,t} + \sigma^2_{d,t} + \sigma^2_{\varepsilon,t}.}
 #' The first two terms include the shared latent and diagonal companion variance
 #' at the unit and observation tiers; \eqn{\sigma^2_{d,t}} is the
-#' family-specific link residual used for non-Gaussian traits. The function is
+#' family-specific link residual used for non-Gaussian traits, and
+#' \eqn{\sigma^2_{\varepsilon,t}} is the Gaussian (or lognormal) observation
+#' residual. The observation residual is added only when the fit estimates it,
+#' which happens when a `unit_obs` record has replicate rows; with one row per
+#' record the engine fixes it near zero and nothing is added. The Wald,
+#' bootstrap and stored-bootstrap paths all use this definition. The function is
 #' intended for a fit returned by [gllvmTMB()] with the relevant ordinary unit
 #' and observation-level components.
 #' Also known as the intraclass correlation coefficient (ICC) at the unit
@@ -156,6 +161,7 @@ extract_repeatability <- function(
     ## Wald CI for FULL-Sigma R = vB[t] / (vB[t] + vW[t]), where
     ##   vB[t] = (Lambda_B Lambda_B^T)[t,t] + sd_B[t]^2
     ##   vW[t] = (Lambda_W Lambda_W^T)[t,t] + sd_W[t]^2 + sigma2_d[t]
+    ##           + sigma_eps[t]^2 (estimated Gaussian/lognormal residual only)
     ## (Bell 2009; Nakagawa & Schielzeth 2010 latent-scale formula).
     ## sigma2_d[t] is the per-trait distribution-specific / observation-
     ## level latent-scale residual (0 for Gaussian, pi^2/3 for
@@ -210,6 +216,9 @@ extract_repeatability <- function(
     ## where sigma2_d depends on fitted mu / phi. Improving Jacobian
     ## accuracy on those families is M3 inference-completeness work.
     sigma2_d <- unname(link_residual_per_trait(fit))
+    ## #1569: the estimated Gaussian/lognormal observation residual also
+    ## belongs in vW. It depends on theta_fix through report(par)$sigma_eps,
+    ## so it is rebuilt inside log_v_function() for the delta-method Jacobian.
 
     log_v_function <- function(theta_fix) {
       par_full <- par_full_at_mle
@@ -220,7 +229,8 @@ extract_repeatability <- function(
       sd_B <- if (is.null(rep$sd_B)) rep(0, T) else rep$sd_B
       sd_W <- if (is.null(rep$sd_W)) rep(0, T) else rep$sd_W
       vB <- diag(Lambda_B %*% t(Lambda_B)) + sd_B^2
-      vW <- diag(Lambda_W %*% t(Lambda_W)) + sd_W^2 + sigma2_d
+      vW <- diag(Lambda_W %*% t(Lambda_W)) + sd_W^2 + sigma2_d +
+        unname(.icc_observation_residual(fit, sigma_eps = rep$sigma_eps))
       if (any(vB <= 0) || any(vW <= 0)) {
         cli::cli_abort(
           "Wald repeatability needs vB > 0 and vW > 0; refit with ordinary {.fn latent} or standalone {.fn indep} at each tier."

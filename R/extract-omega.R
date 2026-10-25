@@ -199,10 +199,46 @@ extract_residual_split <- function(fit) {
 #' @examples
 #' \dontrun{
 #' # PGLLVM three-piece total
+#' set.seed(1)
+#' tree <- ape::rcoal(20)
+#' tree$tip.label <- paste0("sp", seq_len(20))
+#' sim <- simulate_site_trait(
+#'   n_sites = 25, n_species = 20, n_traits = 3,
+#'   mean_species_per_site = 20, sigma2_eps = 0.4,
+#'   Lambda_B = matrix(0.6, 3, 1), psi_B = rep(0.2, 3),
+#'   Cphy = ape::vcv(tree, corr = TRUE), sigma2_phy = rep(0.4, 3),
+#'   seed = 1
+#' )
+#' dat <- sim$data
+#' levels(dat$species) <- tree$tip.label
+#' fit <- gllvmTMB(
+#'   value ~ 0 + trait + phylo_latent(species, d = 1, tree = tree) +
+#'                       latent(0 + trait | site, d = 1) +
+#'                       unique(0 + trait | site),
+#'   data    = dat,
+#'   cluster = "species"
+#' )
 #' om <- extract_Omega(fit, tiers = c("phy", "B"))
 #' round(om$R_Omega, 2)
 #'
 #' # Phenotypic covariance from a two-level behavioural-syndromes fit
+#' set.seed(1)
+#' sim <- simulate_site_trait(
+#'   n_sites = 40, n_species = 6, n_traits = 4, mean_species_per_site = 4,
+#'   Lambda_B = matrix(c(1, .5, -.4, .3, 0, .8, .4, -.2), 4, 2),
+#'   psi_B = c(.2, .15, .1, .25),
+#'   Lambda_W = matrix(c(.4, .2, -.1, .3), 4, 1),
+#'   psi_W = c(.1, .08, .05, .12),
+#'   beta = matrix(0, 4, 2), seed = 1
+#' )
+#' dat <- sim$data
+#' fit <- gllvmTMB(
+#'   value ~ 0 + trait +
+#'           latent(0 + trait | site, d = 2) + unique(0 + trait | site) +
+#'           latent(0 + trait | site_species, d = 1) +
+#'           unique(0 + trait | site_species),
+#'   data = dat
+#' )
 #' om2 <- extract_Omega(fit, tiers = c("B", "W"))
 #' }
 extract_Omega <- function(
@@ -472,15 +508,24 @@ extract_Omega <- function(
 #' @export
 #' @examples
 #' \dontrun{
+#' set.seed(1)
+#' tree <- ape::rcoal(20)
+#' tree$tip.label <- paste0("sp", seq_len(20))
+#' sim <- simulate_site_trait(
+#'   n_sites = 25, n_species = 20, n_traits = 3,
+#'   mean_species_per_site = 20, sigma2_eps = 0.4,
+#'   Lambda_B = matrix(0.6, 3, 1), psi_B = rep(0.2, 3),
+#'   Cphy = ape::vcv(tree, corr = TRUE), sigma2_phy = rep(0.4, 3),
+#'   seed = 1
+#' )
+#' dat <- sim$data
+#' levels(dat$species) <- tree$tip.label
 #' fit <- gllvmTMB(
-#'   value ~ 0 + trait + phylo_latent(species, d = 2) +
-#'                       latent(0 + trait | species, d = 2) +
-#'                       indep(0 + trait | species),
-#'   data       = df,
-#'   trait      = "trait",
-#'   unit       = "species",
-#'   cluster    = "species",
-#'   phylo_tree = tree
+#'   value ~ 0 + trait + phylo_latent(species, d = 1, tree = tree) +
+#'                       latent(0 + trait | site, d = 1) +
+#'                       unique(0 + trait | site),
+#'   data    = dat,
+#'   cluster = "species"
 #' )
 #' extract_phylo_signal(fit)
 #' }

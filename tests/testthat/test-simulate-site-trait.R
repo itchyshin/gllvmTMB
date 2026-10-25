@@ -251,6 +251,23 @@ test_that("simulate_site_trait(): n_traits = 1 produces a single-trait dataset",
   expect_equal(nlevels(s$data$trait), 1L)
 })
 
+test_that("simulate_site_trait(): n_predictors = 0 gives a covariate-free dataset (#1559)", {
+  s <- simulate_site_trait(n_sites = 10, n_species = 3, n_traits = 2,
+                           n_predictors = 0, seed = 1)
+  expect_gt(nrow(s$data), 0)
+  expect_false(any(grepl("^env_", names(s$data))))
+  expect_equal(dim(s$truth$beta), c(2L, 0L))
+  ## Same data-generating process as an explicit all-zero slope matrix.
+  s0 <- simulate_site_trait(n_sites = 10, n_species = 3, n_traits = 2,
+                            n_predictors = 0, beta = matrix(0, 2, 0), seed = 1)
+  expect_equal(s$data, s0$data)
+})
+
+test_that("simulate_site_trait(): invalid n_predictors is rejected clearly (#1559)", {
+  expect_error(simulate_site_trait(n_predictors = -1), "n_predictors")
+  expect_error(simulate_site_trait(n_predictors = 1.5), "n_predictors")
+})
+
 # ---- output is unchanged by the vectorised row builder (#1581) -----------
 ## Reference fingerprints were recorded from the per-row data.frame + rbind
 ## implementation. rlang::hash() of the whole object is not stable across R

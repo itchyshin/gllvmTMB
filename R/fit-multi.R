@@ -7475,11 +7475,15 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## the W-tier OLRE skip per trait: map off `theta_diag_B[t]` and the `s_B`
   ## row for single-trial binary traits, keeping the auto-Psi for the
   ## identified families (Gaussian/Poisson/NB/Beta/Gamma given replication).
-  ## EXPLICIT `unique()`/`indep()` diagonals are untouched -- this only gates
-  ## the DEFAULT auto-Psi (`auto_psi_B`). A pure-binary fit ends with every
-  ## B-tier trait skipped, which is the per-trait equivalent of dropping the
+  ## EXPLICIT `unique()`/`indep()` diagonals stay estimated for single-trial
+  ## binary traits: that term is a deliberate model choice. Single-observation
+  ## ordinal traits are the exception (#1574). An explicit between-unit
+  ## diagonal is the same unidentified scale as the default Psi, so it is
+  ## mapped off and the fit warns. Multinomial explicit diagonals stay on
+  ## their own fence. A pure-binary default-Psi fit ends with every B-tier
+  ## trait skipped, which is the per-trait equivalent of dropping the
   ## auto-Psi entirely.
-  if (use_diag_B && auto_psi_B && !use_diag_B_slope) {
+  if (use_diag_B && !use_diag_B_slope) {
     skip_psi_b_t <- vapply(seq_len(n_traits), function(t) {
       rows_t <- which(trait_id == (t - 1L))
       if (length(rows_t) == 0L) return(FALSE)
@@ -7499,10 +7503,14 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ## invariant along that ridge and climbs it (psi 435-649, cutpoints
       ## 6-29, logLik 400-520 above the exact marginal on real data). Gate it
       ## exactly as single-trial binary; replicated cells keep their Psi.
+      ## #1574: the ordinal arm also applies to an explicit indep()/diag().
+      ## The binary and multinomial arms stay on the default auto-Psi only.
+      ordinal_single <- isTRUE(all(family_id_vec[rows_t] %in% c(14L, 20L)) &&
+                                 !anyDuplicated(site_id[rows_t]))
+      if (!isTRUE(auto_psi_B)) return(ordinal_single)
       isTRUE(all(family_id_vec[rows_t] == 1L) && all(n_trials[rows_t] == 1)) ||
         isTRUE(all(family_id_vec[rows_t] == 16L)) ||
-        isTRUE(all(family_id_vec[rows_t] %in% c(14L, 20L)) &&
-                 !anyDuplicated(site_id[rows_t]))
+        ordinal_single
     }, logical(1))
     if (any(skip_psi_b_t)) {
       ## Tell the C++ objective which traits were pinned. Without this the
@@ -7547,16 +7555,25 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       binomial_labs <- skipped_labs[!skipped_is_multinomial & !skipped_is_ordinal]
       multinomial_labs <- skipped_labs[skipped_is_multinomial]
       ordinal_labs <- skipped_labs[skipped_is_ordinal]
-      cli::cli_inform(.auto_psi_skip_message(
-        binomial_labs = binomial_labs,
-        multinomial_labs = multinomial_labs,
-        ordinal_labs = ordinal_labs
-      ), .frequency = "once",
-         .frequency_id = .auto_psi_skip_frequency_id(
-           binomial_labs = binomial_labs,
-           multinomial_labs = multinomial_labs,
-           ordinal_labs = ordinal_labs
-         ))
+      if (!isTRUE(auto_psi_B)) {
+        cli::cli_warn(c(
+          "An explicit between-unit diagonal ({.fn indep} or {.fn diag}) is not identified for single-observation ordinal traits.",
+          "i" = "Trait{?s} affected: {.val {ordinal_labs}}.",
+          "i" = "One observation per (trait, unit) cannot separate that diagonal from the fixed threshold scale (1 for {.fn ordinal_probit}, pi^2/3 for {.fn ordinal_logit}).",
+          "*" = "Mapped {.code theta_diag_B[t]} and the corresponding {.code s_B} row off. Repeated observations of the same trait in a unit identify the term."
+        ))
+      } else {
+        cli::cli_inform(.auto_psi_skip_message(
+          binomial_labs = binomial_labs,
+          multinomial_labs = multinomial_labs,
+          ordinal_labs = ordinal_labs
+        ), .frequency = "once",
+           .frequency_id = .auto_psi_skip_frequency_id(
+             binomial_labs = binomial_labs,
+             multinomial_labs = multinomial_labs,
+             ordinal_labs = ordinal_labs
+           ))
+      }
     }
   }
 

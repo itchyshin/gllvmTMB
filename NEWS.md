@@ -1,6 +1,7 @@
 # Development (unreleased)
 
 * `engine = "julia"` now stops on `REML = TRUE`, a non-`NULL` `lambda_constraint` and a non-`NULL` `known_V` (class `gllvmTMB_julia_unsupported_arg`) instead of silently ignoring them (#1347).
+* `suggest_lambda_constraint()` and `suggest_lambda_constraints()` gain `unit_obs` to name the within-unit column on the formula path (default `"site_species"`, as in `gllvmTMB()`), and their no-term errors name the level as `"unit"` / `"unit_obs"` (#1587).
 * `loading_profile()` and `loading_ci(method = "profile")` now refit the model
   they profile: `unit_obs`, `REML` and `control` (including `loading_ridge`)
   are kept, so a `unit_obs`-tier profile no longer returns an all-`NA` curve and

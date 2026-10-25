@@ -84,6 +84,11 @@
 #' @param trait,unit Name of the trait and unit (site) columns. Forwarded when
 #'   `fit_or_formula` is a formula and the data does not already use
 #'   defaults.
+#' @param unit_obs Name of the within-unit column. Used only when
+#'   `fit_or_formula` is a formula and `level = "unit_obs"`: it names the
+#'   column in the formula's `latent(... | unit_obs)` term, as in
+#'   [gllvmTMB()]. `NULL` (default) means `"site_species"`, the same default
+#'   as [gllvmTMB()]. Ignored for a fit.
 #' @param threshold Salience threshold on the standardised loading
 #'   \eqn{\rho_{tk} = \Lambda_{tk} / \sqrt{\Sigma_{total,tt}}}. Used by
 #'   `"varimax_threshold"` and `"wald_retention"`. Comrey-Lee 1992
@@ -162,6 +167,7 @@ suggest_lambda_constraint <- function(
   ),
   trait = "trait",
   unit = NULL,
+  unit_obs = NULL,
   threshold = 0.30, # Comrey-Lee convention on standardised loading
   retention_prob = 0.90, # Unified across `wald_retention` and `profile_retention`:
   #   * wald_retention: pin if Pr(|rho| > threshold) < retention_prob
@@ -254,16 +260,18 @@ suggest_lambda_constraint <- function(
     )
     ## #1196 (2026-09-02 full-suite follow-up): `unit` has no default, so
     ## resolve it via the same staged rule as gllvmTMB() itself -- only
-    ## needed when level == "B" (the between-unit tier), since the
-    ## within-unit tier always targets the fixed "site_species" group.
+    ## needed when level == "B" (the between-unit tier); the within-unit
+    ## tier targets `unit_obs`, which defaults to "site_species" as in
+    ## gllvmTMB().
     if (level == "B") {
       unit <- .gllvmTMB_resolve_unit_staged(unit, data)
     }
-    target_group <- if (level == "B") unit else "site_species"
+    target_group <- if (level == "B") unit else (unit_obs %||% "site_species")
     idx <- which(kinds == "rr" & groups == target_group)
     if (length(idx) == 0L) {
+      level_name <- .canonical_level_name(level)
       cli::cli_abort(
-        "Formula has no {.code latent(... | {target_group}, ...)} term -- nothing to constrain at level {.val {level}}."
+        "Formula has no {.code latent(... | {target_group}, ...)} term -- nothing to constrain at level {.val {level_name}}."
       )
     }
     cs <- parsed$covstructs[[idx[1]]]
@@ -659,6 +667,7 @@ suggest_lambda_constraints <- function(
   methods = c("varimax_threshold", "wald_retention"),
   trait = "trait",
   unit = NULL,
+  unit_obs = NULL,
   threshold = 0.30,
   retention_prob = 0.90,
   sigma_d2 = 1,
@@ -707,6 +716,7 @@ suggest_lambda_constraints <- function(
       convention = method,
       trait = trait,
       unit = unit,
+      unit_obs = unit_obs,
       threshold = threshold,
       retention_prob = retention_prob,
       site = site

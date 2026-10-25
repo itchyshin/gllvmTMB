@@ -1,5 +1,7 @@
 # Development (unreleased)
 
+* Bootstrap wrappers keep `nsim = 500`. That default no longer warns that it is too small. The warning names `nsim`, and the `profile_ci_total_variance()` hint is shown only when the bootstrap asks for Sigma diagonals. `bootstrap_Sigma()` still warns when `n_boot` is below 999 (#1576).
+
 * `engine = "julia"` now stops on `REML = TRUE`, a non-`NULL` `lambda_constraint` and a non-`NULL` `known_V` (class `gllvmTMB_julia_unsupported_arg`) instead of silently ignoring them (#1347).
 * `suggest_lambda_constraint()` and `suggest_lambda_constraints()` gain `unit_obs` to name the within-unit column on the formula path (default `"site_species"`, as in `gllvmTMB()`), and their no-term errors name the level as `"unit"` / `"unit_obs"` (#1587).
 * `check_gllvmTMB()` no longer reports `boundary_flags` as `PASS` "none" while a `boundary_phi_*` dispersion-ceiling row is `WARN`: the summary row now turns `WARN` and names those rows. `print(fit)` also points to `gllvmTMB_diagnose(fit)` when the optimiser did not converge cleanly (#1351).

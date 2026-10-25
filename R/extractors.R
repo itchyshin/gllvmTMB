@@ -335,7 +335,7 @@ extract_communality <- function(
     return(do.call(rbind, rows))
   }
   ## bootstrap
-  boot <- suppressMessages(bootstrap_Sigma(
+  boot <- .with_bootstrap_count_arg("nsim", suppressMessages(bootstrap_Sigma(
     fit,
     n_boot = as.integer(nsim),
     level = .canonical_level_name(level),
@@ -344,7 +344,7 @@ extract_communality <- function(
     link_residual = link_residual,
     seed = seed,
     progress = FALSE
-  ))
+  )))
   key <- paste0("communality_", level)
   pe <- boot$point_est[[key]]
   lo <- boot$ci_lower[[key]]

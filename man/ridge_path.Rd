@@ -110,14 +110,16 @@ exactly at any two grid points) and is compared against
 Both are heuristics, not formal tests; see \code{print.gllvmTMB_ridge_path}'s
 arguments to adjust either threshold.
 
-\code{tau = Inf} requests a plain maximum-likelihood refit with no ridge at
-all. That refit can legitimately fail to converge, or converge to an
-extreme loading, for exactly the traits this function exists to flag --
-that failure or extremity is itself part of the diagnostic evidence, not
-a bug to work around. \code{fit_error} records the message when a grid point's
-refit errors outright, and the row's other columns are \code{NA} for that
-point; the classifier then falls back to the finite-\code{tau} elasticity
-comparison, since a failed \code{Inf} refit contributes no loading to compare.
+\code{tau = Inf} requests a plain maximum-likelihood refit with no ridge.
+The boundary comparison uses that refit only when its convergence code
+is 0. An Inf row that returns a loading whose convergence code is not 0
+is not the boundary anchor, and the printed line says that the Inf refit
+did not converge. The elasticity comparison is then used only when at
+least two finite-tau rows remain. An outright error leaves that loading
+missing, so it is not the boundary anchor and does not add the sentence.
+A converged Inf loading, including an extreme one, stays the boundary
+comparison. \code{fit_error} records the message when a grid point's refit
+errors outright, and the row's other columns are \code{NA} for that point.
 }
 \examples{
 set.seed(1)

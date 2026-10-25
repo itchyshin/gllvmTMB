@@ -33,6 +33,9 @@
   `phylo_slope()` is now checked for positive semidefiniteness, and an
   indefinite matrix stops the fit with a message naming it, instead of
   returning a finite but meaningless log-likelihood (#1373).
+* A trait factor with a level that has no rows now stops the fit with a message
+  naming the empty level and advising `droplevels()`, instead of silently adding
+  free parameters (inflated df and AIC, no standard errors) (#1387).
 * `confint(fit, parm = "b_fix[1]")` now returns one row (profile and Wald)
   instead of profiling every fixed effect and then failing, and a fixed-effect
   `parm` profiles only the requested terms. Wald `Sigma_unit` on a `latent()`

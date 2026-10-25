@@ -1346,6 +1346,24 @@
   )
 }
 
+## Issue #1387: a trait factor with a declared level that has no rows is
+## counted by nlevels(), which adds an extra fixed effect, loading and Psi term
+## that no data inform (df/AIC inflated, sd_report NULL). Abort and name the
+## empty level(s) rather than silently dropping them.
+.abort_empty_trait_levels <- function(data, trait) {
+  x <- data[[trait]]
+  if (!is.factor(x)) return(invisible(NULL))
+  empty <- setdiff(levels(x), as.character(unique(x[!is.na(x)])))
+  if (length(empty)) {
+    cli::cli_abort(c(
+      "Trait column {.field {trait}} has {length(empty)} level{?s} with no rows in {.arg data}: {.val {empty}}.",
+      "i" = "Every declared level counts as a trait, so an empty level adds free parameters that no data inform.",
+      ">" = "Call {.code droplevels()} on the {.field {trait}} column before fitting, so its levels match the traits actually observed."
+    ), class = "gllvmTMB_empty_trait_level")
+  }
+  invisible(NULL)
+}
+
 #' Fit a long-format multivariate stacked-trait model (Stage 2 internal)
 #'
 #' Called by [gllvmTMB()] when the formula contains `latent()` or `indep()`
@@ -1998,6 +2016,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## `data`. Resolve it now using the trait factor in `data`. We mirror the
   ## phylo_unique d = n_traits resolution below (which used to be the only
   ## consumer of trait-count-aware rank values).
+  .abort_empty_trait_levels(data, trait)
   .n_traits_for_dep <- nlevels(if (is.factor(data[[trait]])) data[[trait]]
                                else factor(data[[trait]]))
   for (i in seq_along(parsed$covstructs)) {
@@ -3419,6 +3438,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     data[[ss_name]] <- factor(paste(data[[site]], data[[species]], sep = "_"))
   if (!is.factor(data[[ss_name]])) data[[ss_name]] <- factor(data[[ss_name]])
 
+  .abort_empty_trait_levels(data, trait)
   n_traits        <- nlevels(data[[trait]])
   n_sites         <- nlevels(data[[site]])
   n_site_species  <- nlevels(data[[ss_name]])

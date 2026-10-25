@@ -739,7 +739,7 @@ extract_correlations <- function(
   if (method == "bootstrap") {
     boot_levels <- unique(intersect(tier, c("B", "W", "phy")))
     if (length(boot_levels) > 0L) {
-      boot_R <- suppressMessages(bootstrap_Sigma(
+      boot_R <- .with_bootstrap_count_arg("nsim", suppressMessages(bootstrap_Sigma(
         fit,
         n_boot = nsim,
         level = vapply(
@@ -753,7 +753,7 @@ extract_correlations <- function(
         link_residual = link_residual,
         seed = seed,
         progress = FALSE
-      ))
+      )))
     }
   }
 
@@ -1098,7 +1098,7 @@ extract_cross_correlations <- function(fit, level = "unit", contrasts = FALSE,
   ## ---- method = "bootstrap": one bootstrap_Sigma call for multiple_r --------
   boot_lo <- boot_hi <- NULL
   if (method == "bootstrap") {
-    boot <- suppressMessages(bootstrap_Sigma(
+    boot <- .with_bootstrap_count_arg("nsim", suppressMessages(bootstrap_Sigma(
       fit,
       n_boot = nsim,
       level = level,
@@ -1107,7 +1107,7 @@ extract_cross_correlations <- function(fit, level = "unit", contrasts = FALSE,
       link_residual = link_residual,
       seed = seed,
       progress = FALSE
-    ))
+    )))
     key_nm <- paste0("multiple_r_", lvl_internal)
     boot_lo <- boot$ci_lower[[key_nm]]
     boot_hi <- boot$ci_upper[[key_nm]]

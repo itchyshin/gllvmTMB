@@ -66,6 +66,72 @@
   as.integer(x)
 }
 
+# Wrappers keep nsim = 500 on purpose (NEWS, #1422). They must not grow a
+# new formal on bootstrap_Sigma(): that would change the help-page usage
+# and force a rebuild of src/gllvmTMB.cpp. The name lives here for the
+# duration of the call, then goes back.
+.bootstrap_count_arg_stack <- new.env(parent = emptyenv())
+.bootstrap_count_arg_stack$value <- "n_boot"
+
+.bootstrap_active_count_arg <- function() {
+  if (identical(.bootstrap_count_arg_stack$value, "nsim")) "nsim" else "n_boot"
+}
+
+.with_bootstrap_count_arg <- function(arg, expr) {
+  old <- .bootstrap_count_arg_stack$value
+  .bootstrap_count_arg_stack$value <- arg
+  on.exit(.bootstrap_count_arg_stack$value <- old, add = TRUE)
+  expr
+}
+
+.bootstrap_emit_count_warning <- function(
+    n_boot, conf, what, coverage_ceiling, min_boot, count_arg) {
+  own_default <- if (identical(count_arg, "nsim")) 500L else 999L
+  if (n_boot >= own_default) return(invisible(NULL))
+  if (n_boot < min_boot) {
+    msg <- c(
+      "{.arg {count_arg}} = {n_boot} cannot deliver a {conf * 100}% percentile interval.",
+      "x" = paste0(
+        "The widest interval {n_boot} draws can produce is [min, max], whose ",
+        "coverage is at most {round(coverage_ceiling, 3)} -- below the requested ",
+        "{conf}. This is arithmetic, not a property of your data."
+      ),
+      "i" = "Use {.arg {count_arg}} >= {min_boot} for {conf * 100}% intervals; {own_default} is the default."
+    )
+    if (identical(count_arg, "n_boot")) {
+      msg <- c(
+        msg,
+        "i" = "{.arg n_cores} >= 2 parallelises the refits via {.pkg future}.",
+        "i" = "The ceiling is returned as {.code $coverage_ceiling} so a script can check it."
+      )
+    }
+    cli::cli_warn(msg)
+    return(invisible(NULL))
+  }
+  msg <- c(
+    "{.arg {count_arg}} = {n_boot} gives noisy percentile bounds.",
+    "i" = paste0(
+      "Percentile CIs are first-order accurate, so more draws buy precision, ",
+      "not correctness -- but below ~", own_default, " the Monte Carlo error in the ",
+      "endpoints is itself material."
+    )
+  )
+  if (identical(count_arg, "n_boot")) {
+    msg <- c(
+      msg,
+      "i" = "{.arg n_cores} >= 2 parallelises the refits; the cost here is wall-clock, not accuracy."
+    )
+  }
+  if (isTRUE("Sigma" %in% what)) {
+    msg <- c(
+      msg,
+      "i" = "For {.field Sigma} diagonals, {.fn profile_ci_total_variance} needs no resampling at all."
+    )
+  }
+  cli::cli_warn(msg)
+  invisible(NULL)
+}
+
 # Retain the fitted estimator and optimisation settings for response refits.
 # Older fits lack the full control record; recover their retained integration
 # and ridge metadata instead of silently removing the loading penalty.
@@ -441,7 +507,8 @@ bootstrap_Sigma <- function(
       ">" = "Choose a confidence level strictly inside (0, 1)."
     ))
   }
-  n_boot <- .bootstrap_validate_count(n_boot, "n_boot")
+  count_arg <- .bootstrap_active_count_arg()
+  n_boot <- .bootstrap_validate_count(n_boot, count_arg)
   n_cores <- .bootstrap_validate_count(n_cores, "n_cores")
 
   ## Arithmetic floor on n_boot (2026-08-02).
@@ -464,30 +531,9 @@ bootstrap_Sigma <- function(
   ## returned object as `coverage_ceiling`, where a campaign can assert on it.
   min_boot <- as.integer(ceiling(2 / (1 - conf)) - 1)
   coverage_ceiling <- (n_boot - 1) / (n_boot + 1)
-  if (n_boot < min_boot) {
-    cli::cli_warn(c(
-      "{.arg n_boot} = {n_boot} cannot deliver a {conf * 100}% percentile interval.",
-      "x" = paste0(
-        "The widest interval {n_boot} draws can produce is [min, max], whose ",
-        "coverage is at most {round(coverage_ceiling, 3)} -- below the requested ",
-        "{conf}. This is arithmetic, not a property of your data."
-      ),
-      "i" = "Use {.arg n_boot} >= {min_boot} for {conf * 100}% intervals; 999 is the default.",
-      "i" = "{.arg n_cores} >= 2 parallelises the refits via {.pkg future}.",
-      "i" = "The ceiling is returned as {.code $coverage_ceiling} so a script can check it."
-    ))
-  } else if (n_boot < 999L) {
-    cli::cli_warn(c(
-      "{.arg n_boot} = {n_boot} gives noisy percentile bounds.",
-      "i" = paste0(
-        "Percentile CIs are first-order accurate, so more draws buy precision, ",
-        "not correctness -- but below ~999 the Monte Carlo error in the ",
-        "endpoints is itself material."
-      ),
-      "i" = "{.arg n_cores} >= 2 parallelises the refits; the cost here is wall-clock, not accuracy.",
-      "i" = "For {.field Sigma} diagonals, {.fn profile_ci_total_variance} needs no resampling at all."
-    ))
-  }
+  .bootstrap_emit_count_warning(
+    n_boot, conf, what, coverage_ceiling, min_boot, count_arg
+  )
 
   ## Drop levels not present in the fit
   level_avail <- c(

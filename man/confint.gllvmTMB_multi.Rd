@@ -253,8 +253,9 @@ confint(fit2, parm = "Sigma_unit")
 
 # With latent(), each Sigma_unit entry combines several parameters, so
 # confint(fit, parm = "Sigma_unit") switches to a parametric bootstrap
-# that refits the model `nsim` times. Use nsim = 999 or more (smaller
-# values give a warning); that takes minutes, so it is not run here.
+# that refits the model `nsim` times. Use nsim = 999 or more. The default
+# of 500 does not warn; a smaller nsim does. That takes minutes, so it
+# is not run here.
 
 }
 \seealso{

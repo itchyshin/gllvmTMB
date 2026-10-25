@@ -139,3 +139,37 @@ test_that("engine = 'julia' refuses non-default control fields it never reads", 
     class = "gllvmTMB_julia_unsupported_control"
   )
 })
+
+## ---- cases already refused upstream of the Julia block (#1347) ----
+## Pinned here so a later refactor cannot reopen them: both abort in R before
+## the dispatch is reached.
+
+test_that("engine = julia refuses wrong-length binomial weights before calling Julia", {
+  local_mocked_bindings(.gllvmTMB_julia_dispatch = function(...) {
+    stop("Julia dispatch must not be reached")
+  })
+  df <- make_long_1347()
+  df$value <- rbinom(nrow(df), 1L, 0.5)
+  expect_error(
+    gllvmTMB(
+      value ~ 0 + trait + latent(0 + trait | unit, d = 1),
+      data = df,
+      trait = "trait",
+      unit = "unit",
+      family = binomial(),
+      engine = "julia",
+      weights = rep(1, 3L)
+    ),
+    "length-"
+  )
+})
+
+test_that("engine = julia refuses impute without a modelled missing predictor before calling Julia", {
+  local_mocked_bindings(.gllvmTMB_julia_dispatch = function(...) {
+    stop("Julia dispatch must not be reached")
+  })
+  expect_error(
+    fit_julia_1347(impute = list(x ~ 1)),
+    "impute"
+  )
+})

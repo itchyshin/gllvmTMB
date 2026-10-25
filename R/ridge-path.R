@@ -62,14 +62,14 @@
 #' Both are heuristics, not formal tests; see `print.gllvmTMB_ridge_path`'s
 #' arguments to adjust either threshold.
 #'
-#' `tau = Inf` requests a plain maximum-likelihood refit with no ridge at
-#' all. That refit can legitimately fail to converge, or converge to an
-#' extreme loading, for exactly the traits this function exists to flag --
-#' that failure or extremity is itself part of the diagnostic evidence, not
-#' a bug to work around. `fit_error` records the message when a grid point's
-#' refit errors outright, and the row's other columns are `NA` for that
-#' point; the classifier then falls back to the finite-`tau` elasticity
-#' comparison, since a failed `Inf` refit contributes no loading to compare.
+#' `tau = Inf` requests a plain maximum-likelihood refit with no ridge.
+#' The boundary comparison uses that refit only when its convergence code
+#' is 0. If the Inf refit errors, or returns a point that did not converge,
+#' the classifier falls back to the finite-tau elasticity comparison and
+#' the printed line says that the Inf refit did not converge. A converged
+#' Inf loading, including an extreme one, stays the boundary comparison.
+#' `fit_error` records the message when a grid point's refit errors
+#' outright, and the row's other columns are `NA` for that point.
 #'
 #' @param formula,data,family,unit,trait,weights,missing Passed to
 #'   [gllvmTMB()] at every grid point, exactly as you would call it
@@ -287,14 +287,32 @@ ridge_path <- function(
 .ridge_path_verdict <- function(
   tau,
   max_loading,
+  convergence = NULL,
   elasticity_thresh = 0.10,
   boundary_rel_thresh = 0.10
 ) {
-  keep <- !is.na(max_loading) & !is.na(tau)
+  inf_unconverged <- FALSE
+  if (!is.null(convergence)) {
+    if (length(convergence) != length(tau)) {
+      cli::cli_abort("{.arg convergence} must have one value per {.arg tau}.")
+    }
+    ## #1590: a tau = Inf row is the boundary comparison only when that
+    ## refit converged (code 0). An unconverged Inf loading is not evidence.
+    bad_inf <- is.infinite(tau) &
+      !is.na(max_loading) &
+      (is.na(convergence) | convergence != 0)
+    inf_unconverged <- any(bad_inf)
+  } else {
+    bad_inf <- rep(FALSE, length(tau))
+  }
+  keep <- !is.na(max_loading) & !is.na(tau) & !bad_inf
   tau <- tau[keep]
   max_loading <- max_loading[keep]
   if (length(tau) == 0L) {
-    return(list(verdict = "insufficient", mode = "none"))
+    return(list(
+      verdict = "insufficient", mode = "none",
+      inf_unconverged = inf_unconverged
+    ))
   }
   ord <- order(tau)
   tau <- tau[ord]
@@ -320,12 +338,16 @@ ridge_path <- function(
     }
     return(list(
       verdict = verdict, mode = "boundary",
-      tau1 = tau1, tau2 = tau2, v1 = v1, v2 = v2, statistic = rel
+      tau1 = tau1, tau2 = tau2, v1 = v1, v2 = v2, statistic = rel,
+      inf_unconverged = inf_unconverged
     ))
   }
 
   if (length(finite_idx) < 2L) {
-    return(list(verdict = "insufficient", mode = "none"))
+    return(list(
+      verdict = "insufficient", mode = "none",
+      inf_unconverged = inf_unconverged
+    ))
   }
   n <- length(finite_idx)
   i1 <- finite_idx[n - 1L]
@@ -336,7 +358,10 @@ ridge_path <- function(
   v2 <- max_loading[i2]
   log_tau_ratio <- log(tau2) - log(tau1)
   if (!is.finite(log_tau_ratio) || log_tau_ratio <= 0) {
-    return(list(verdict = "insufficient", mode = "none"))
+    return(list(
+      verdict = "insufficient", mode = "none",
+      inf_unconverged = inf_unconverged
+    ))
   }
   elasticity <- (
     log(max(v2, .Machine$double.eps)) - log(max(v1, .Machine$double.eps))
@@ -348,7 +373,8 @@ ridge_path <- function(
   }
   list(
     verdict = verdict, mode = "elasticity",
-    tau1 = tau1, tau2 = tau2, v1 = v1, v2 = v2, statistic = elasticity
+    tau1 = tau1, tau2 = tau2, v1 = v1, v2 = v2, statistic = elasticity,
+    inf_unconverged = inf_unconverged
   )
 }
 
@@ -364,13 +390,23 @@ print.gllvmTMB_ridge_path <- function(
   cat("\nPer-trait classification (see ?ridge_path for the boundary/elasticity rule):\n")
   for (tr in unique(x$trait)) {
     sub <- x[x$trait == tr, , drop = FALSE]
+    conv <- if ("convergence" %in% names(sub)) sub$convergence else NULL
     v <- .ridge_path_verdict(
       sub$tau, sub$max_loading,
+      convergence = conv,
       elasticity_thresh = elasticity_thresh,
       boundary_rel_thresh = boundary_rel_thresh
     )
+    inf_note <- if (isTRUE(v$inf_unconverged)) {
+      " The tau = Inf refit did not converge."
+    } else {
+      ""
+    }
     if (identical(v$verdict, "insufficient")) {
-      cat(sprintf("  %s: insufficient finite-tau evidence to classify\n", tr))
+      cat(sprintf(
+        "  %s: insufficient finite-tau evidence to classify.%s\n",
+        tr, inf_note
+      ))
       next
     }
     label <- if (identical(v$verdict, "penalty-determined")) {
@@ -384,8 +420,9 @@ print.gllvmTMB_ridge_path <- function(
       sprintf("log-log elasticity %.3f", v$statistic)
     }
     cat(sprintf(
-      "  %s: %s [tau %s -> %s: max|loading| %.3f -> %.3f, %s]\n",
-      tr, label, format(v$tau1), format(v$tau2), v$v1, v$v2, stat_label
+      "  %s: %s [tau %s -> %s: max|loading| %.3f -> %.3f, %s]%s\n",
+      tr, label, format(v$tau1), format(v$tau2), v$v1, v$v2, stat_label,
+      inf_note
     ))
   }
   invisible(x)

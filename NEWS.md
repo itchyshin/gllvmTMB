@@ -1,5 +1,6 @@
 # Development (unreleased)
 
+* The refusal for a slope-only term over a grouping column (`indep(0 + x | species)`, `latent(0 + x | species)`, a bare `(0 + x | species)`) no longer says to fit one covariate per term. It now names the route that fits, `animal_slope(x | species, A = A)` or `phylo_slope(x | species, tree = tree)` on a copy of the trait column, and the keyword-grid article documents that idiom (#1161). Phylogeny on the trait covariance `Sigma` is a separate, still open piece.
 * `vcov()` on a fit with no standard errors no longer suggests `method = "profile"`, which it does not accept. `extract_Sigma(part = "shared")` and `part = "unique"` no longer print that a link residual was added when that residual is only applied to `part = "total"` (#1580).
 * An explicit `indep()` or `diag()` on single-observation ordinal traits is mapped off, with a warning, under the same identifiability gate as the default between-unit Psi. One observation per (trait, unit) cannot separate that diagonal from the fixed threshold scale (#1574).
 * Bootstrap wrappers keep `nsim = 500`. That default no longer warns that it is too small. The warning names `nsim`, and the `profile_ci_total_variance()` hint is shown only when the bootstrap asks for Sigma diagonals. `bootstrap_Sigma()` still warns when `n_boot` is below 999 (#1576).

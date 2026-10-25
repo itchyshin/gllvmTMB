@@ -1639,8 +1639,9 @@
 #'
 #' # With latent(), each Sigma_unit entry combines several parameters, so
 #' # confint(fit, parm = "Sigma_unit") switches to a parametric bootstrap
-#' # that refits the model `nsim` times. Use nsim = 999 or more (smaller
-#' # values give a warning); that takes minutes, so it is not run here.
+#' # that refits the model `nsim` times. Use nsim = 999 or more. The default
+#' # of 500 does not warn; a smaller nsim does. That takes minutes, so it
+#' # is not run here.
 #'
 #' @export
 #' @method confint gllvmTMB_multi
@@ -1864,7 +1865,7 @@ confint.gllvmTMB_multi <- function(
     ))
   }
 
-  boot <- bootstrap_Sigma(
+  boot <- .with_bootstrap_count_arg("nsim", bootstrap_Sigma(
     fit = object,
     n_boot = as.integer(nsim),
     level = info$level,
@@ -1872,7 +1873,7 @@ confint.gllvmTMB_multi <- function(
     conf = level,
     seed = seed,
     progress = FALSE
-  )
+  ))
 
   key_pt <- info$key
   pe <- boot$point_est[[key_pt]]

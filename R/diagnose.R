@@ -2342,6 +2342,36 @@ check_gllvmTMB <- function(
     }
   }
 
+  ## boundary_flags summary (#1351): the row above reads the cached fit-time
+  ## flags, which do not include the per-trait dispersion ceilings judged at
+  ## the caller's thresholds. When it still says PASS "none" but a
+  ## boundary_phi_* row WARNs, the table contradicts itself; derive the summary
+  ## from those rows. Check layer only: fit_health and restart acceptance are
+  ## untouched.
+  phi_idx <- which(vapply(
+    rows,
+    function(r) startsWith(r$component[[1L]], "boundary_phi_") &&
+      identical(r$status[[1L]], "WARN"),
+    logical(1L)
+  ))
+  bf_idx <- which(vapply(
+    rows,
+    function(r) identical(r$component[[1L]], "boundary_flags") &&
+      identical(r$status[[1L]], "PASS"),
+    logical(1L)
+  ))
+  if (length(phi_idx) > 0L && length(bf_idx) > 0L) {
+    rows[[bf_idx[[1L]]]] <- .gllvmTMB_check_row(
+      "boundary_flags",
+      "WARN",
+      paste(vapply(rows[phi_idx], function(r) r$component[[1L]], character(1L)),
+            collapse = ", "),
+      "none",
+      "a dispersion parameter has run to its numerical ceiling (see the boundary_phi_* rows)",
+      "see the boundary_phi_* rows for the per-trait action; the dispersion is not identified for those traits at this sample size"
+    )
+  }
+
   ## Laplace accuracy (#1389): the fitted logLik is a Laplace approximation;
   ## evaluate the marginal likelihood by adaptive Gauss-Hermite quadrature at
   ## the SAME parameters and warn when Laplace is optimistic.

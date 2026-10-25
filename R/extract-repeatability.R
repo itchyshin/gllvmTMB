@@ -259,7 +259,7 @@ extract_repeatability <- function(
   }
 
   ## bootstrap
-  boot <- suppressMessages(bootstrap_Sigma(
+  boot <- .with_bootstrap_count_arg("nsim", suppressMessages(bootstrap_Sigma(
     fit,
     n_boot = as.integer(nsim),
     level = c("unit", "unit_obs"),
@@ -267,7 +267,7 @@ extract_repeatability <- function(
     conf = level,
     seed = seed,
     progress = FALSE
-  ))
+  )))
   pe <- boot$point_est$ICC_site
   lo <- boot$ci_lower$ICC_site
   hi <- boot$ci_upper$ICC_site

@@ -23,6 +23,10 @@
 * `binomial()` and `betabinomial()` now require an integer success count in `0..n_trials`. `nbinom1()` gets the same non-negative-integer check as `poisson()` / `nbinom2()`. `tweedie()` stops on a negative response (#1356).
 * Breaking change: a binomial or betabinomial proportion with `weights = n` is now refused. Pass the integer success count as `y`, or use `cbind(successes, failures)`. The old path fitted the wrong model (#1356).
 
+* A dense `vcv` / `phylo_vcv` passed to `phylo_scalar()`, `phylo_latent()` or
+  `phylo_slope()` is now checked for positive semidefiniteness, and an
+  indefinite matrix stops the fit with a message naming it, instead of
+  returning a finite but meaningless log-likelihood (#1373).
 * `confint(fit, parm = "b_fix[1]")` now returns one row (profile and Wald)
   instead of profiling every fixed effect and then failing, and a fixed-effect
   `parm` profiles only the requested terms. Wald `Sigma_unit` on a `latent()`

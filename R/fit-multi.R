@@ -881,6 +881,22 @@
   )
 }
 
+## Positive-semidefinite guard for a dense user-supplied covariance (#1373).
+## `determinant(logarithm = TRUE)$modulus` is log|det|, so an indefinite matrix
+## gives a finite number that is not a log-determinant. Same tolerance and
+## wording as the kernel_latent() guard.
+.assert_dense_psd <- function(M, arg, fn) {
+  evals <- eigen((M + t(M)) / 2, symmetric = TRUE, only.values = TRUE)$values
+  if (min(evals) < -1e-8) {
+    cli::cli_abort(c(
+      "{.arg {arg}} for {.fn {fn}} must be positive semidefinite.",
+      "i" = "Minimum eigenvalue: {format(min(evals), digits = 4)}.",
+      ">" = "Pass a covariance matrix with no negative eigenvalues, for example one built from a tree with {.fn ape::vcv}."
+    ))
+  }
+  invisible(M)
+}
+
 .resolve_sparse_phylo_precision <- function(Ainv, levs, species_id) {
   if (nrow(Ainv) != ncol(Ainv)) {
     cli::cli_abort(c(
@@ -1005,6 +1021,7 @@
     "{.arg vcv} rownames for {.fn phylo_slope}"
   )
   Aphy <- phylo_vcv[levs, levs, drop = FALSE]
+  .assert_dense_psd(as.matrix(Aphy), "vcv", "phylo_slope")
   Aphy <- Aphy + diag(1e-8, nrow(Aphy))
   list(
     Ainv = Matrix::Matrix(solve(Aphy), sparse = TRUE),
@@ -5077,6 +5094,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         levs, rownames(phylo_vcv), data, species, "{.arg phylo_vcv} rownames"
       )
       Aphy <- phylo_vcv[levs, levs, drop = FALSE]
+      .assert_dense_psd(as.matrix(Aphy), "vcv", "phylo_latent")
       Aphy <- Aphy + diag(1e-8, nrow = nrow(Aphy))
       if (!is.null(structured_rho)) {
         structured_rho_diagonal <- diag(Aphy)
@@ -5292,6 +5310,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         log_det_Cphy <- sparse_propto$log_det_Cphy
       } else {
         Cphy <- phylo_vcv[levs, levs, drop = FALSE]
+        .assert_dense_psd(as.matrix(Cphy), "vcv", "phylo_scalar")
         Cphy <- Cphy + diag(1e-8, nrow = nrow(Cphy)) ## numerical jitter
         Cphy_inv     <- solve(Cphy)
         log_det_Cphy <- as.numeric(determinant(Cphy, logarithm = TRUE)$modulus)

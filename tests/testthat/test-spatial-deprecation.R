@@ -132,3 +132,15 @@ test_that("printed covstruct label is spatial_indep (not spatial)", {
   expect_false(grepl("\\bspatial\\b(?! [_a-z])", cov_line, perl = TRUE),
                info = "Print should NOT show the bare 'spatial' label.")
 })
+
+test_that("legacy spatial(0 + trait | coords) warning does not blame the package (#1557)", {
+  withr::local_options(lifecycle_verbosity = "warning")
+  local_reset_lifecycle_cache()
+  w <- testthat::capture_warnings(
+    gllvmTMB:::scan_for_deprecated(quote(spatial(0 + trait | coords)))
+  )
+  expect_length(w, 1L)
+  expect_no_match(w, "likely used in the gllvmTMB package")
+  expect_no_match(w, "report the issue")
+  expect_match(w, "without `mode`", fixed = TRUE)
+})

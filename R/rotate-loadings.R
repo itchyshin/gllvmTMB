@@ -19,8 +19,9 @@
 #' from a fit returned by [gllvmTMB()]. Use `level = "unit"` for the
 #' between-unit reduced-rank component and `level = "unit_obs"` for the
 #' within-unit component. The latent scores are rotated by the complementary
-#' transform so the linear predictor, fitted log-likelihood, and implied
-#' covariance are unchanged.
+#' transform so the linear predictor and fitted log-likelihood are unchanged.
+#' The implied covariance \eqn{\Lambda \Lambda^\top} is also unchanged for
+#' `method = "varimax"`, but not for `"promax"` (see Details).
 #'
 #' Rotation is for interpretation of the loading columns, especially figures.
 #' It does not make the axes uniquely "right"; it chooses a readable
@@ -63,30 +64,44 @@
 #' is unchanged. For varimax, `T` is orthogonal so the rotation
 #' preserves the implied covariance \eqn{\Lambda \Lambda^\top}; for
 #' promax, `T` is oblique and the columns of \eqn{\Lambda_{\text{rot}}}
-#' are no longer orthogonal.
+#' are no longer orthogonal, so
+#' \eqn{\Lambda_{\text{rot}} \Lambda_{\text{rot}}^\top \ne \Lambda \Lambda^\top}.
+#' The covariance is recovered from the rotated loadings and the axis
+#' correlation: with `Ti <- solve(T)`, `Lambda_rot %*% Ti %*% t(Ti) %*%
+#' t(Lambda_rot)` equals \eqn{\Lambda \Lambda^\top}. The function does not
+#' return that axis correlation.
 #'
 #' @export
 #' @examples
-#' \dontrun{
 #' set.seed(1)
-#' sim <- simulate_site_trait(
-#'   n_sites = 60, n_species = 12, n_traits = 4,
-#'   Lambda_B = matrix(c(1.0, 0.7, -0.3, 0.5,
-#'                       0.3, -0.5, 0.8, 0.2),
-#'                     nrow = 4, ncol = 2),
-#'   psi_B = c(0.3, 0.3, 0.3, 0.3),
-#'   seed = 1
-#' )
+#' # Simulate six traits, each measured twice on 100 units (e.g. sites).
+#' # Traits 2-3 share one latent axis, traits 4-6 share a second axis,
+#' # and trait_1 loads on both.
+#' Lambda <- cbind(c(0.7, 1.0, 0.9, 0.0, 0.0, 0.0),
+#'                 c(0.7, 0.0, 0.0, 1.0, 0.9, 0.8))
+#' sim <- simulate_unit_trait(n_units = 100, n_obs_per_unit = 2,
+#'                            n_traits = 6, Lambda_B = Lambda,
+#'                            psi_B = 0.4, sigma2_eps = 0.3)
+#' # Two latent axes plus a trait-specific variance (unique = TRUE).
 #' fit <- gllvmTMB(value ~ 0 + trait +
-#'                         latent(0 + trait | site, d = 2),
-#'                 data  = sim$data,
-#'                 trait = "trait",
-#'                 unit  = "site")
+#'                   latent(0 + trait | unit, d = 2, unique = TRUE),
+#'                 data = sim$data, trait = "trait", unit = "unit")
+#'
+#' # Raw loadings: to pin down the axes, the fit fixes trait_1's loading
+#' # on axis 2 at zero, so the other traits are spread over both axes.
 #' raw <- extract_ordination(fit, "unit")
+#' round(raw$loadings, 2)
+#'
+#' # Varimax rotation: traits 4-6 now load on one axis and traits 2-3 on
+#' # the other, with trait_1 shared between them.
 #' rot <- rotate_loadings(fit, level = "unit", method = "varimax")
-#' # raw$loadings - lower-triangular (hard to read)
-#' # rot$Lambda  - varimax-rotated (typically simpler structure)
-#' }
+#' round(rot$Lambda, 2)
+#'
+#' # Rotation only turns the axes. The scores turn with them, so each
+#' # unit's latent contribution (scores times loadings) is unchanged.
+#' head(round(rot$scores, 2))
+#' all.equal(rot$scores %*% t(rot$Lambda),
+#'           raw$scores %*% t(raw$loadings))
 rotate_loadings <- function(
   fit,
   level = "unit",
@@ -105,8 +120,9 @@ rotate_loadings <- function(
 
   ord <- extract_ordination(fit, level = .canonical_level_name(level))
   if (is.null(ord)) {
+    level_label <- .canonical_level_name(level)
     cli::cli_abort(
-      "latent() not active at level {.val {level}}; nothing to rotate."
+      "latent() not active at level {.val {level_label}}; nothing to rotate."
     )
   }
   Lambda <- ord$loadings
@@ -257,27 +273,34 @@ rotate_loadings <- function(
 #'   [plot.gllvmTMB_multi()].
 #' @export
 #' @examples
-#' \dontrun{
-#' sim <- simulate_site_trait(
-#'   n_sites = 60, n_species = 12, n_traits = 4,
-#'   Lambda_B = matrix(c(1.0, 0.7, -0.3, 0.5,
-#'                       0.3, -0.5, 0.8, 0.2),
-#'                     nrow = 4, ncol = 2),
-#'   psi_B = c(0.3, 0.3, 0.3, 0.3),
-#'   seed = 1
-#' )
+#' set.seed(1)
+#' # Simulate six traits, each measured twice on 100 units (e.g. sites).
+#' # Traits 2-3 share one latent axis, traits 4-6 share a second axis,
+#' # and trait_1 loads on both.
+#' Lambda <- cbind(c(0.7, 1.0, 0.9, 0.0, 0.0, 0.0),
+#'                 c(0.7, 0.0, 0.0, 1.0, 0.9, 0.8))
+#' sim <- simulate_unit_trait(n_units = 100, n_obs_per_unit = 2,
+#'                            n_traits = 6, Lambda_B = Lambda,
+#'                            psi_B = 0.4, sigma2_eps = 0.3)
 #' fit <- gllvmTMB(value ~ 0 + trait +
-#'                         latent(0 + trait | site, d = 2),
-#'                 data  = sim$data,
-#'                 trait = "trait",
-#'                 unit  = "site")
-#' extract_rotated_loadings_table(
-#'   fit,
-#'   level = "unit",
-#'   method = "varimax",
-#'   loading_scale = "standardized"
-#' )
-#' }
+#'                   latent(0 + trait | unit, d = 2, unique = TRUE),
+#'                 data = sim$data, trait = "trait", unit = "unit")
+#'
+#' # One row per trait and axis after varimax rotation. axis_share is the
+#' # share of the shared (latent) variance carried by each axis.
+#' tab <- extract_rotated_loadings_table(fit, level = "unit")
+#' print(tab[, c("trait", "axis", "loading", "axis_share", "anchor_trait")],
+#'       digits = 2)
+#'
+#' # Standardized loadings divide by each trait's total between-unit
+#' # standard deviation, so traits on different scales are comparable.
+#' std <- extract_rotated_loadings_table(fit, level = "unit",
+#'                                       loading_scale = "standardized")
+#' # The tidy layout makes filtering easy: the strong loadings per axis.
+#' print(std[std$abs_loading > 0.5, c("axis", "trait", "loading")],
+#'       digits = 2)
+#' # Or reshape it back to a trait-by-axis grid.
+#' round(xtabs(loading ~ trait + axis, data = std), 2)
 extract_rotated_loadings_table <- function(
   fit,
   level = "unit",
@@ -411,20 +434,46 @@ extract_rotated_loadings_table <- function(
 #' other, then reports the residual disagreement. This is mainly a validation
 #' helper for comparing [gllvmTMB()] with another implementation.
 #'
+#' Rows are matched by position, not by trait name: both matrices must list
+#' the traits in the same order, and row names are ignored. If the order
+#' differs, the distance reflects that mismatch rather than how well the
+#' loadings agree.
+#'
 #' @param Lambda_a,Lambda_b Two `n_traits × d` loading matrices.
 #' @return A list with the optimal rotation `R`, the rotated `Lambda_a_rot`,
-#'   and the Frobenius distance after alignment.
+#'   the Frobenius distance after alignment (`frobenius`), and the
+#'   correlation between each column of `Lambda_a_rot` and the matching
+#'   column of `Lambda_b` (`cor_per_factor`).
 #' @export
 #' @examples
-#' \dontrun{
-#' fit_g <- gllvmTMB(value ~ 0 + trait + latent(0 + trait | site, d = 2),
-#'                   data = df, trait = "trait", unit = "site")
-#' fit_t <- glmmTMB::glmmTMB(value ~ 0 + trait + rr(0 + trait | site, d = 2),
-#'                          data = df, REML = FALSE)
-#' L_g <- extract_ordination(fit_g, "unit")$loadings
-#' L_t <- attr(glmmTMB::ranef(fit_t)$cond$site, "loadings")
-#' compare_loadings(L_g, L_t)
-#' }
+#' set.seed(1)
+#' # Simulate six traits, each measured twice on 100 units, from known
+#' # loadings: traits 2-3 share one axis, traits 4-6 a second, and
+#' # trait_1 loads on both.
+#' Lambda_true <- cbind(c(0.7, 1.0, 0.9, 0.0, 0.0, 0.0),
+#'                      c(0.7, 0.0, 0.0, 1.0, 0.9, 0.8))
+#' sim <- simulate_unit_trait(n_units = 100, n_obs_per_unit = 2,
+#'                            n_traits = 6, Lambda_B = Lambda_true,
+#'                            psi_B = 0.4, sigma2_eps = 0.3)
+#' fit <- gllvmTMB(value ~ 0 + trait +
+#'                   latent(0 + trait | unit, d = 2, unique = TRUE),
+#'                 data = sim$data, trait = "trait", unit = "unit")
+#' L_hat <- extract_ordination(fit, "unit")$loadings
+#'
+#' # The fitted axes may be rotated or sign-flipped relative to the true
+#' # ones, so compare_loadings() first rotates the fitted loadings to
+#' # match the truth as closely as possible, then measures the gap.
+#' cmp <- compare_loadings(L_hat, Lambda_true)
+#' # Fitted loadings after alignment; compare them with Lambda_true.
+#' round(cmp$Lambda_a_rot, 2)
+#' # Overall distance after alignment, and per-axis correlation.
+#' round(cmp$frobenius, 3)
+#' round(cmp$cor_per_factor, 3)
+#'
+#' # Raw and varimax-rotated loadings from one fit differ only by a
+#' # rotation, so once aligned they match exactly (distance 0).
+#' L_rot <- rotate_loadings(fit, level = "unit")$Lambda
+#' round(compare_loadings(L_rot, L_hat)$frobenius, 6)
 compare_loadings <- function(Lambda_a, Lambda_b) {
   if (!is.matrix(Lambda_a) || !is.matrix(Lambda_b)) {
     cli::cli_abort("Lambda_a and Lambda_b must be matrices.")

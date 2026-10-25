@@ -58,7 +58,14 @@ correlation targets; interpret shared components and communality as a chosen
 decomposition.
 
 In ordinary `latent()` fits, gllvmTMB estimates both the shared
-loading part and the diagonal Psi part by default. Use
+loading part and the diagonal Psi part by default. For that default
+$\boldsymbol\Sigma = \boldsymbol\Lambda\boldsymbol\Lambda^{\!\top} +
+\boldsymbol\Psi$ fit with each individual-trait cell observed once and `T`
+traits, the number of latent axes `d` must satisfy
+$(T - d)^2 \ge T + d$ (for example `T = 5` allows `d <= 2`); the code guard
+`d <= n_traits` is much weaker, and above this range the split between shared
+and diagonal variance is not identified. Replication within a unit, or
+`unique = FALSE`, changes the count (see `?latent`). Use
 `latent(..., unique = FALSE)` only when you deliberately want the
 older loadings-only subset for a sensitivity check or compatibility
 comparison.
@@ -343,8 +350,10 @@ sigma_rows_B
 `part = "total"` is the default and is what you almost always want for
 reporting. `"shared"` is useful if you specifically want the latent-implied
 component (e.g. for ordination interpretation or communality). `"unique"`
-returns the diagonal of $\boldsymbol\Psi$ in its `s` component, as a named
-numeric vector (`part = "psi"` is an alias for the same thing).
+returns the diagonal of $\boldsymbol\Psi$ as table rows (`matrix = "Psi"`,
+`component = "unique"`, one row per trait); it has no `s` component and does
+not accept `part = "psi"`. For the raw named vector, use
+`extract_Sigma(fit, part = "unique")$s` (alias `part = "psi"`), shown below.
 
 The same table helper exposes the three decomposition parts without
 hand-indexing matrices:

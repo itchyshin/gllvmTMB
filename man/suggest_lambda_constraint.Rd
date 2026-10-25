@@ -12,6 +12,7 @@ suggest_lambda_constraint(
     "wald_retention", "profile_retention"),
   trait = "trait",
   unit = NULL,
+  unit_obs = NULL,
   threshold = 0.3,
   retention_prob = 0.9,
   sigma_d2 = 1,
@@ -44,6 +45,12 @@ rotate the fitted loadings after fitting instead.}
 \item{trait, unit}{Name of the trait and unit (site) columns. Forwarded when
 \code{fit_or_formula} is a formula and the data does not already use
 defaults.}
+
+\item{unit_obs}{Name of the within-unit column. Used only when
+\code{fit_or_formula} is a formula and \code{level = "unit_obs"}: it names the
+column in the formula's \code{latent(... | unit_obs)} term, as in
+\code{\link[=gllvmTMB]{gllvmTMB()}}. \code{NULL} (default) means \code{"site_species"}, the same default
+as \code{\link[=gllvmTMB]{gllvmTMB()}}. Ignored for a fit.}
 
 \item{threshold}{Salience threshold on the standardised loading
 \eqn{\rho_{tk} = \Lambda_{tk} / \sqrt{\Sigma_{total,tt}}}. Used by
@@ -97,17 +104,30 @@ constraint choice or a result to interpret, not by itself grounds to
 exclude a trait.
 }
 \examples{
-\dontrun{
-sug <- suggest_lambda_constraint(
-  value ~ 0 + trait + latent(0 + trait | site, d = 2),
-  data = my_data
-)
-fit <- gllvmTMB(
-  value ~ 0 + trait + latent(0 + trait | site, d = 2),
-  data              = my_data,
-  trait             = "trait",
-  unit              = "site",
-  lambda_constraint = list(unit = sug$constraint)
-)
-}
+set.seed(1)
+# Simulate six traits measured twice on each of 100 units, with two
+# latent axes: traits 1-3 load on the first, traits 4-6 on the second.
+Lambda <- cbind(c(0.9, 0.8, 0.7, 0.0, 0.0, 0.0),
+                c(0.0, 0.0, 0.0, 0.8, 0.7, 0.6))
+sim <- simulate_unit_trait(n_units = 100, n_obs_per_unit = 2,
+                           n_traits = 6, Lambda_B = Lambda,
+                           psi_B = 0.3, sigma2_eps = 0.3)
+form <- value ~ 0 + trait +
+  latent(0 + trait | unit, d = 2, unique = TRUE)
+
+# Before fitting: suggest a constraint matrix for the 6 x 2 loadings
+# (NA = estimated, 0 = pinned). With two axes, one zero is enough to
+# stop the axes from rotating freely.
+sug <- suggest_lambda_constraint(form, data = sim$data, unit = "unit")
+sug$constraint
+sug$note
+
+# Fit with the matrix: trait_1's loading on axis 2 is held at zero and
+# the other loadings are estimated. gllvmTMB uses this same orientation
+# when no matrix is given, so the estimates do not change; passing the
+# matrix states the choice explicitly. The orientation is only a
+# convention; rotate_loadings() gives a more interpretable one.
+fit <- gllvmTMB(form, data = sim$data, trait = "trait", unit = "unit",
+                lambda_constraint = list(unit = sug$constraint))
+round(extract_loadings(fit, level = "unit"), 2)
 }

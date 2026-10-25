@@ -1655,11 +1655,31 @@
 #'   routes where a check does not apply to the fitted estimator).
 #' @export
 #' @examples
-#' \dontrun{
-#' fit <- gllvmTMB(value ~ 0 + trait + latent(0 + trait | site, d = 2),
-#'                 data = dat, trait = "trait", unit = "site")
-#' check_gllvmTMB(fit)
-#' }
+#' set.seed(1)
+#' # Eight traits on 100 units, each unit measured twice. Odd-numbered
+#' # traits share one latent axis, even-numbered traits share the other.
+#' # Repeat measurements let the model separate each trait's own
+#' # unit-level variance (Psi) from measurement noise.
+#' Lambda <- cbind(c(0.9, 0, 0.8, 0, 0.7, 0, 0.6, 0),
+#'                 c(0, 0.9, 0, 0.8, 0, 0.7, 0, 0.6))
+#' sim <- simulate_unit_trait(n_units = 100, n_obs_per_unit = 2,
+#'                            n_traits = 8, Lambda_B = Lambda,
+#'                            psi_B = 0.3, sigma2_eps = 0.3)
+#' fit <- gllvmTMB(
+#'   value ~ 0 + trait + latent(0 + trait | unit, d = 2, unique = TRUE),
+#'   data = sim$data, trait = "trait", unit = "unit"
+#' )
+#'
+#' # One row per check. The status column is PASS, WARN, FAIL or INFO.
+#' chk <- check_gllvmTMB(fit)
+#' chk[, c("component", "status", "value")]
+#' table(chk$status)
+#'
+#' # Read the rows that did not pass, with the suggested action. With two
+#' # latent axes the loadings are defined only up to a rotation, so a WARN
+#' # on rotation_convention is expected here: interpret Sigma and the trait
+#' # correlations, or rotate the loadings before comparing axes.
+#' chk[chk$status != "PASS", c("component", "status", "message", "action")]
 check_gllvmTMB <- function(
   object,
   gradient_thresh = 1e-2,
@@ -2322,6 +2342,36 @@ check_gllvmTMB <- function(
     }
   }
 
+  ## boundary_flags summary (#1351): the row above reads the cached fit-time
+  ## flags, which do not include the per-trait dispersion ceilings judged at
+  ## the caller's thresholds. When it still says PASS "none" but a
+  ## boundary_phi_* row WARNs, the table contradicts itself; derive the summary
+  ## from those rows. Check layer only: fit_health and restart acceptance are
+  ## untouched.
+  phi_idx <- which(vapply(
+    rows,
+    function(r) startsWith(r$component[[1L]], "boundary_phi_") &&
+      identical(r$status[[1L]], "WARN"),
+    logical(1L)
+  ))
+  bf_idx <- which(vapply(
+    rows,
+    function(r) identical(r$component[[1L]], "boundary_flags") &&
+      identical(r$status[[1L]], "PASS"),
+    logical(1L)
+  ))
+  if (length(phi_idx) > 0L && length(bf_idx) > 0L) {
+    rows[[bf_idx[[1L]]]] <- .gllvmTMB_check_row(
+      "boundary_flags",
+      "WARN",
+      paste(vapply(rows[phi_idx], function(r) r$component[[1L]], character(1L)),
+            collapse = ", "),
+      "none",
+      "a dispersion parameter has run to its numerical ceiling (see the boundary_phi_* rows)",
+      "see the boundary_phi_* rows for the per-trait action; the dispersion is not identified for those traits at this sample size"
+    )
+  }
+
   ## Laplace accuracy (#1389): the fitted logLik is a Laplace approximation;
   ## evaluate the marginal likelihood by adaptive Gauss-Hermite quadrature at
   ## the SAME parameters and warn when Laplace is optimistic.
@@ -2359,6 +2409,12 @@ check_gllvmTMB <- function(
   out
 }
 
+## TRUE when extract_Sigma()'s default adds a non-zero per-trait link residual.
+.gllvmTMB_diag_has_link_residual <- function(object) {
+  lr <- tryCatch(link_residual_per_trait(object), error = function(e) NULL)
+  any(lr != 0, na.rm = TRUE)
+}
+
 #' Diagnose a fitted model and suggest next actions
 #'
 #' This is the human-readable diagnostic to call right after
@@ -2393,11 +2449,34 @@ check_gllvmTMB <- function(
 #'   [compare_dep_vs_two_psi()] / [compare_indep_vs_two_psi()] for
 #'   identifiability cross-checks on the paired phylogenetic fit.
 #' @examples
-#' \dontrun{
-#' fit <- gllvmTMB(value ~ 0 + trait + latent(0 + trait | site, d = 2),
-#'                 data = dat, trait = "trait", unit = "site")
-#' gllvmTMB_diagnose(fit)
-#' }
+#' set.seed(1)
+#' # Eight traits on 100 units, each unit measured twice. Odd-numbered
+#' # traits share one latent axis, even-numbered traits share the other.
+#' Lambda <- cbind(c(0.9, 0, 0.8, 0, 0.7, 0, 0.6, 0),
+#'                 c(0, 0.9, 0, 0.8, 0, 0.7, 0, 0.6))
+#' sim <- simulate_unit_trait(n_units = 100, n_obs_per_unit = 2,
+#'                            n_traits = 8, Lambda_B = Lambda,
+#'                            psi_B = 0.3, sigma2_eps = 0.3)
+#' fit <- gllvmTMB(
+#'   value ~ 0 + trait + latent(0 + trait | unit, d = 2, unique = TRUE),
+#'   data = sim$data, trait = "trait", unit = "unit"
+#' )
+#'
+#' # The printed report has four parts: optimiser checks, rotation,
+#' # biological summaries (variances, strong trait correlations and
+#' # communalities) and suggested next steps.
+#' dx <- gllvmTMB_diagnose(fit)
+#'
+#' # The same results come back invisibly as a list, for use in scripts.
+#' names(dx)
+#' dx$hints
+#' round(dx$Sigma_B$R_B, 2)
+#' dx$communality_B
+#'
+#' # verbose = FALSE skips the printed report; the numbers behind the
+#' # optimiser checks are in $sanity.
+#' quiet <- gllvmTMB_diagnose(fit, verbose = FALSE)
+#' str(quiet$sanity)
 gllvmTMB_diagnose <- function(
   object,
   gradient_thresh = 1e-2,
@@ -2454,39 +2533,65 @@ gllvmTMB_diagnose <- function(
   }
 
   ## ---- Pillar 3: biological summaries ------------------------------
-  out_Sigma_B <- tryCatch(
-    .extract_Sigma_legacy_payload(object, level = "unit"),
+  ## Same scale as the communalities and the extract_Sigma() defaults: the
+  ## per-trait link residual is included on non-Gaussian fits (#1586). The
+  ## advisory message that says so is only shown in the verbose report.
+  quiet <- function(expr) {
+    if (verbose) expr else suppressMessages(expr)
+  }
+  legacy_payload <- function(level) {
+    out <- quiet(extract_Sigma(object, level = level))
+    if (is.null(out)) {
+      return(NULL)
+    }
+    suffix <- if (identical(level, "unit")) "B" else "W"
+    stats::setNames(
+      list(out$Sigma, out$R),
+      c(paste0("Sigma_", suffix), paste0("R_", suffix))
+    )
+  }
+  out_Sigma_B <- tryCatch(legacy_payload("unit"), error = function(e) NULL)
+  out_Sigma_W <- tryCatch(legacy_payload("unit_obs"), error = function(e) NULL)
+  ICC_site <- tryCatch(
+    quiet(extract_ICC_site(object)),
     error = function(e) NULL
   )
-  out_Sigma_W <- tryCatch(
-    .extract_Sigma_legacy_payload(object, level = "unit_obs"),
+  comm_B <- tryCatch(
+    quiet(extract_communality(object, "unit")),
     error = function(e) NULL
   )
-  ICC_site <- tryCatch(extract_ICC_site(object), error = function(e) NULL)
-  comm_B <- tryCatch(extract_communality(object, "unit"), error = function(e) {
-    NULL
-  })
   comm_W <- tryCatch(
-    extract_communality(object, "unit_obs"),
+    quiet(extract_communality(object, "unit_obs")),
     error = function(e) NULL
   )
 
   if (verbose) {
     cli::cli_h2("3. Biological summaries")
     if (!is.null(out_Sigma_B)) {
-      cat("\n  Sigma_B (between-unit covariance) diagonal:\n  ")
+      cat("\n  Sigma_B (between-unit covariance) diagonal and correlations")
+      cat(if (.gllvmTMB_diag_has_link_residual(object)) {
+        " (link residual included, as in extract_Sigma()):\n  "
+      } else {
+        ":\n  "
+      })
       cat(paste(round(diag(out_Sigma_B$Sigma_B), 3), collapse = "  "), "\n")
       ## Surface large correlations
       R <- out_Sigma_B$R_B
       big <- which(abs(R) > big_corr_thresh & lower.tri(R), arr.ind = TRUE)
       if (nrow(big) > 0) {
         nm <- rownames(R) %||% paste0("trait", seq_len(nrow(R)))
+        n_show <- min(nrow(big), 8L)
         cat(sprintf(
-          "  %d trait pair(s) with |corr| > %.2f:\n",
+          "  %d trait pair(s) with |corr| > %.2f%s:\n",
           nrow(big),
-          big_corr_thresh
+          big_corr_thresh,
+          if (n_show < nrow(big)) {
+            sprintf(" (showing %d of %d)", n_show, nrow(big))
+          } else {
+            ""
+          }
         ))
-        for (i in seq_len(min(nrow(big), 8L))) {
+        for (i in seq_len(n_show)) {
           cat(sprintf(
             "    %s ~ %s : %+.2f\n",
             nm[big[i, 1]],
@@ -2666,5 +2771,8 @@ gllvmTMB_diagnose <- function(
       ">" = "Refit with {.code engine = \"tmb\"} to use it."
     ), class = "gllvmTMB_julia_gate", call = call)
   }
-  cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.", call = call)
+  cli::cli_abort(c(
+    "Provide a fit returned by {.fn gllvmTMB}.",
+    ">" = "Fit the model first, e.g. {.code fit <- gllvmTMB(...)}, then pass {.code fit}."
+  ), call = call)
 }

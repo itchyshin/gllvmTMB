@@ -231,31 +231,45 @@ Type gll_clamp(Type x, Type lower, Type upper)
 // each branch is fed its own clamped input and stays finite where it is not
 // selected, and nothing is ever exp()'d past ~exp(700).
 
-// log(1 + u) for u >= 0: quartic Taylor series below 1e-4 (truncation
-// u^5 / 5 < 2e-21), direct log(1 + u) above.
+// log(1 + u) / u = sum_{j>=1} (-u)^(j-1) / j, Horner form through j = 13
+// (truncation u^13 / 14 < 5e-19 for u <= 0.05).
+template <class Type>
+Type gll_log1p_series(Type u)
+{
+  Type p = Type(1.0 / 13.0);
+  for (int j = 12; j >= 1; j--) p = Type(1.0 / double(j)) - u * p;
+  return p;
+}
+
+// log(1 + u) for u >= 0: series below 0.05, direct form above. The direct
+// form is log(w) * u / (w - 1) with w = 1 + u: u / (w - 1) cancels the
+// rounding of w, so it is accurate to a few ulp for u >= 0.05, where the plain
+// log(1 + u) lost ~1e-16 absolute right above the old 1e-4 cut (#1488). That
+// error is multiplied by ~n / u in gll_lgamma_shift, so it reached ~1e-9 per
+// row at y = 1000.
 template <class Type>
 Type gll_log1p_pos(Type u)
 {
-  Type cut = Type(1e-4);
+  Type cut = Type(0.05);
   Type us = CppAD::CondExpLt(u, cut, u, cut);
-  Type series = us * (Type(1) - us * (Type(0.5) - us * (Type(1.0 / 3.0) -
-    us * Type(0.25))));
+  Type series = us * gll_log1p_series(us);
   Type ud = CppAD::CondExpLt(u, cut, cut, u);
-  Type direct = log(Type(1) + ud);
+  Type w = Type(1) + ud;
+  Type direct = log(w) * ud / (w - Type(1));
   return CppAD::CondExpLt(u, cut, series, direct);
 }
 
-// log(1 + u) / u for u >= 0, -> 1 as u -> 0. Series below 1e-3 (truncation
-// u^5 / 6 < 2e-16), direct ratio above.
+// log(1 + u) / u for u >= 0, -> 1 as u -> 0. Same series / compensated direct
+// split at 0.05 (#1488; the old cut was 1e-3).
 template <class Type>
 Type gll_log1p_ratio(Type u)
 {
-  Type cut = Type(1e-3);
+  Type cut = Type(0.05);
   Type us = CppAD::CondExpLt(u, cut, u, cut);
-  Type series = Type(1) - us * (Type(0.5) - us * (Type(1.0 / 3.0) -
-    us * (Type(0.25) - us * Type(0.2))));
+  Type series = gll_log1p_series(us);
   Type ud = CppAD::CondExpLt(u, cut, cut, u);
-  Type direct = log(Type(1) + ud) / ud;
+  Type w = Type(1) + ud;
+  Type direct = log(w) / (w - Type(1));
   return CppAD::CondExpLt(u, cut, series, direct);
 }
 
@@ -326,6 +340,42 @@ Type gll_nbinom_log_p0(Type log_mu, Type log_size)
   Type d = log_mu - log_size;
   Type dc = CppAD::CondExpGt(d, Type(700), Type(700), d);
   return -exp(log_mu) * gll_log1p_ratio(exp(dc));
+}
+
+// log(-log P(Y = 0)) for the same negative binomial: log_mu + log(log1p(x) / x),
+// the log of the quantity gll_nbinom_log_p0 negates. It never multiplies by
+// exp(log_mu), so it stays finite when mu underflows (#1483).
+template <class Type>
+Type gll_nbinom_log_neg_log_p0(Type log_mu, Type log_size)
+{
+  Type d = log_mu - log_size;
+  Type dc = CppAD::CondExpGt(d, Type(700), Type(700), d);
+  return log_mu + log(gll_log1p_ratio(exp(dc)));
+}
+
+// log P(Y >= 1) = log(1 - exp(-a)) for a count with P(Y = 0) = exp(-a), taken
+// from log_a = log(a) (#1483): a = mu for the zero-truncated Poisson, a = size
+// log1p(mu / size) for the zero-truncated NB2. logspace_sub(0, -a) is exact
+// while a is a normal double, but its k-th derivative in log_a carries 1 / a^k,
+// which overflows once a is tiny (the Laplace gradient was NaN from eta ~ -237,
+// the objective from ~ -355), and a = exp(eta) itself rounds to 0 below
+// eta ~ -745, where logspace_sub(0, 0) is log(0). Below log_a = -20 the series
+//   log(1 - exp(-a)) = log_a - a / 2 + a^2 / 24 + O(a^4)
+// is exact to double precision (a^4 / 2880 < 1e-37) and never forms 1 / a;
+// above it logspace_sub is unchanged. The series branch sees log_a <= -20 and
+// the logspace_sub branch log_a in [-20, 700], so neither is non-finite where
+// it is not selected.
+template <class Type>
+Type gll_log1mexp_neg_exp(Type log_a)
+{
+  Type cut = Type(-20);
+  Type ls = CppAD::CondExpLt(log_a, cut, log_a, cut);
+  Type as = exp(ls);
+  Type series = ls - as / Type(2) + as * as / Type(24);
+  Type ld = CppAD::CondExpLt(log_a, cut, cut, log_a);
+  ld = CppAD::CondExpGt(ld, Type(700), Type(700), ld);
+  Type direct = logspace_sub(Type(0), -exp(ld));
+  return CppAD::CondExpLt(log_a, cut, series, direct);
 }
 
 // Bounded correlation for the 2x2 intercept-slope priors (#1386):
@@ -3653,22 +3703,26 @@ Type objective_function<Type>::operator()()
               gll_log1p_ratio(z2_t * inv_nu)
             - log_sigma_student(t);
     } else if (fid == 10) {
-      // Zero-truncated Poisson, log link.
+      // Zero-truncated Poisson, log link, on the eta scale (#1483):
+      // dpois(y, exp(eta)) forms y log(exp(eta)), which is y log(0) = -Inf
+      // once exp(eta) underflows, although the truncated pmf there is a
+      // finite ~ exp((y - 1) eta) / y!.
       Type lambda_t = exp(eta_o);
-      ll += dpois(y(o), lambda_t, true)
-             - logspace_sub(Type(0.0), -lambda_t);
+      ll += y(o) * eta_o - lambda_t - lgamma(y(o) + Type(1.0))
+             - gll_log1mexp_neg_exp(eta_o);
     } else if (fid == 11) {
       // Zero-truncated NB2, log link.
-      // log P(0) = -phi log1p(mu / phi) via gll_nbinom_log_p0 (#1363): the
-      // old phi * (log phi - log(mu + phi)) cancelled at large phi and was
-      // exactly 0 at phi = 1e14, mu = 0.1, so log(1 - p0) = -Inf and the row
-      // log-likelihood +Inf. Both pieces now tend to the zero-truncated
-      // Poisson (fid 10) as phi -> Inf.
+      // log P(0) = -phi log1p(mu / phi), from the ratio log1p(x) / x (#1363):
+      // the old phi * (log phi - log(mu + phi)) cancelled at large phi and
+      // was exactly 0 at phi = 1e14, mu = 0.1, so log(1 - p0) = -Inf and the
+      // row log-likelihood +Inf. Both pieces now tend to the zero-truncated
+      // Poisson (fid 10) as phi -> Inf. log(1 - p0) is formed from
+      // log(-log p0), not from log p0, so it survives mu -> 0 (#1483).
       int t = trait_id(o);
       Type log_mu = eta_o;
-      Type log_p0 = gll_nbinom_log_p0(log_mu, log_phi_truncnb2(t));
+      Type log_a = gll_nbinom_log_neg_log_p0(log_mu, log_phi_truncnb2(t));
       ll += gll_dnbinom_mu_size(y(o), log_mu, log_phi_truncnb2(t))
-             - logspace_sub(Type(0.0), log_p0);
+             - gll_log1mexp_neg_exp(log_a);
     } else if (fid == 12) {
       // delta_lognormal (hurdle): one shared eta drives both components.
       //   Presence: I{y>0} ~ Bernoulli(invlogit(eta))   via dbinom_robust

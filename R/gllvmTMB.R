@@ -254,7 +254,9 @@
 #'   (`miss_control(response = "include")`) contribute nothing to the
 #'   likelihood, so the restricted likelihood is formed over the observed rows
 #'   and matches the corresponding `"drop"` fit. The default `FALSE` keeps the
-#'   historical ML fit.
+#'   historical ML fit. `engine = "julia"` does not forward `REML`, so
+#'   `REML = TRUE` there aborts (class `gllvmTMB_julia_unsupported_arg`); use
+#'   `engine = "tmb"`.
 #'
 #'   REML is validated for all-Gaussian fits only. For non-Gaussian families
 #'   an opt-in escape hatch exists
@@ -295,7 +297,8 @@
 #'   no Newick tree (e.g. comparing against `nlme::corPagel`).
 #' @param known_V Optional list of block-diagonal sampling-error matrices
 #'   `V_t`. Used by the `equalto()` two-stage workflow when sampling-error
-#'   matrices are available from a prior stage of estimation.
+#'   matrices are available from a prior stage of estimation. Not supported by
+#'   `engine = "julia"`, which aborts (class `gllvmTMB_julia_unsupported_arg`).
 #' @param lambda_constraint Optional list with elements `unit` and / or
 #'   `unit_obs` (plus `phy`, `spde` for structural levels), each an
 #'   `n_traits × d` matrix of confirmatory loading constraints
@@ -309,7 +312,8 @@
 #'   minimum statistical identification scaffold when you have no
 #'   biological hypothesis. Deprecated legacy element names `B` and `W`
 #'   are still accepted (with a one-shot soft deprecation message) and
-#'   map to `unit` and `unit_obs` respectively.
+#'   map to `unit` and `unit_obs` respectively. Not supported by
+#'   `engine = "julia"`, which aborts (class `gllvmTMB_julia_unsupported_arg`).
 #' @param Xcoef_fixed Optional named numeric vector of fixed-effect
 #'   coefficient constraints. Names must match the expanded fixed-effect
 #'   design columns (`fit$X_fix_names`); values must currently be `0`,
@@ -369,10 +373,10 @@
 #'   MSPL does not activate automatically after a separation warning and never
 #'   changes the default ML fit.
 #'
-#' @return A `gllvmTMB` object. With no covariance-structure terms in
-#'   the formula the result has class `"gllvmTMB"` (single-response
-#'   engine); with `latent()` or other covstruct sugar it has class
-#'   `c("gllvmTMB_multi", "gllvmTMB")` (multi-trait engine).
+#' @return A `gllvmTMB` object. Every native fit, with or without
+#'   covariance-structure terms in the formula, has class
+#'   `c("gllvmTMB_multi", "gllvmTMB")`. `integration = "va"` returns class
+#'   `c("gllvmTMB_va", "gllvmTMB")` instead.
 #'   S3 methods are registered on the **subclasses**, not on bare
 #'   `gllvmTMB`: for a multi-trait fit (`gllvmTMB_multi`), `tidy()`,
 #'   `predict()`, `summary()`, `confint()` and `logLik()` are available, and
@@ -632,39 +636,56 @@
 #'
 #' @export
 #' @examples
-#' \dontrun{
 #' set.seed(1)
-#' sim <- simulate_site_trait(n_sites = 50, n_species = 8, n_traits = 3,
-#'                            mean_species_per_site = 5)
-#' # Long format: one response value per site-species-trait row.
+#' # Simulate 60 individuals, each measured on two occasions for five traits.
+#' # All five traits load on one shared latent axis (trait_4 negatively),
+#' # and each also has its own between-individual variance (psi_B). Every
+#' # measurement carries residual noise as well (sigma2_eps).
+#' loadings <- matrix(c(0.9, 0.8, 0.7, -0.6, 0.5), ncol = 1)
+#' sim <- simulate_unit_trait(n_units = 60, n_obs_per_unit = 2, n_traits = 5,
+#'                            Lambda_B = loadings, psi_B = 0.2,
+#'                            sigma2_eps = 0.3)
+#' long <- sim$data[c("unit", "observation", "trait", "value")]
+#' names(long)[1] <- "individual"
+#'
+#' # Long format: one row per (individual, occasion, trait) value.
+#' head(long)
+#'
+#' # `0 + trait` gives each trait its own mean. latent() fits one shared
+#' # axis (d = 1) across individuals; unique = TRUE adds each trait's own
+#' # between-individual variance (Psi) on top of it.
 #' fit_long <- gllvmTMB(
-#'   value ~ 0 + trait + (0 + trait):env_1 + (0 + trait):env_2,
-#'   data   = sim$data,
-#'   family = gaussian(),
-#'   trait  = "trait",
-#'   unit   = "site_species"
+#'   value ~ 0 + trait + latent(0 + trait | individual, d = 1, unique = TRUE),
+#'   data = long, trait = "trait", unit = "individual"
 #' )
 #'
-#' # Wide format: one row per site-species, with the same three traits.
-#' # `traits()` expands `1 + env_1 + env_2` to the explicit long terms above.
-#' wide_values <- stats::reshape(
-#'   sim$data[c("site_species", "trait", "value")],
-#'   idvar = "site_species", timevar = "trait", direction = "wide"
-#' )
-#' wide <- merge(
-#'   unique(sim$data[c("site_species", "env_1", "env_2")]), wide_values,
-#'   by = "site_species", sort = FALSE
-#' )
+#' # Wide format: one row per (individual, occasion), one column per trait.
+#' wide <- stats::reshape(long, idvar = c("individual", "observation"),
+#'                        timevar = "trait", direction = "wide")
 #' names(wide) <- sub("^value[.]", "", names(wide))
-#' fit_wide <- gllvmTMB(
-#'   traits(trait_1, trait_2, trait_3) ~ 1 + env_1 + env_2,
-#'   data   = wide,
-#'   family = gaussian(),
-#'   unit   = "site_species"
-#' )
-#' summary(fit_long)
-#' summary(fit_wide)
+#' head(wide)
+#'
+#' # traits() names the response columns. On the right-hand side, `1` means
+#' # one intercept per trait and latent(1 | individual) means
+#' # latent(0 + trait | individual), so this is the same model.
+#' if (requireNamespace("tidyr", quietly = TRUE)) {
+#'   fit_wide <- gllvmTMB(
+#'     traits(trait_1, trait_2, trait_3, trait_4, trait_5) ~ 1 +
+#'       latent(1 | individual, d = 1, unique = TRUE),
+#'     data = wide, unit = "individual"
+#'   )
+#'   # Same model, same data: the two fits agree.
+#'   c(long = logLik(fit_long), wide = logLik(fit_wide))
 #' }
+#'
+#' # Trait means, between-individual correlations (trait_4 is negatively
+#' # correlated with the rest), and the share of each trait's
+#' # between-individual variance carried by the latent axis.
+#' summary(fit_long)
+#'
+#' # The fitted between-individual covariance: the shared-axis part
+#' # (Lambda Lambda') plus the trait-specific part (Psi).
+#' round(extract_Sigma(fit_long, level = "unit")$Sigma, 2)
 gllvmTMB <- function(
   formula,
   data,
@@ -755,6 +776,23 @@ gllvmTMB <- function(
       "i" = "The Julia dispatch has its own optimizer and does not consume gllvmTMB start settings.",
       ">" = "Omit {.arg svd_start}, or fit with {.code engine = \"tmb\"}."
     ), class = "gllvmTMB_julia_unsupported_control")
+  }
+  ## The remaining optimiser-shaped control fields are also never read by the
+  ## Julia dispatch (#1347). A value that differs from the gllvmTMBcontrol()
+  ## default is an explicit request that would be silently dropped, so refuse it.
+  if (identical(engine, "julia")) {
+    control_defaults <- gllvmTMBcontrol()
+    ignored_control <- Filter(
+      function(f) !identical(control[[f]], control_defaults[[f]]),
+      c("optimizer", "optArgs", "init_jitter", "start_from", "se")
+    )
+    if (length(ignored_control) > 0L) {
+      cli::cli_abort(c(
+        "{.code engine = \"julia\"} does not support non-default {.fn gllvmTMBcontrol} settings: {.arg {ignored_control}}.",
+        "i" = "The Julia dispatch has its own optimizer and standard errors, so a non-default value would be silently ignored.",
+        ">" = "Omit them, or use {.code engine = \"tmb\"}."
+      ), class = "gllvmTMB_julia_unsupported_control")
+    }
   }
   structured_rho_capture <- .parse_structured_rho_formula(formula, trait_col = trait, strip = FALSE)
   .structured_rho_dispatch_fence(structured_rho_capture$spec, engine = engine,
@@ -1454,6 +1492,31 @@ gllvmTMB <- function(
         "i" = "The GLLVModels.jl bridge has no offset in its linear predictor, so the term would be dropped from the fit rather than applied.",
         ">" = "Use the default {.code engine = \"tmb\"} for a model with an offset."
       ))
+    ## The bridge reads `weights` only as binomial trial counts (N). For any
+    ## other family it would be dropped without a word (#1347), so refuse.
+    if (!is.null(weights)) {
+      julia_fam <- .gllvm_julia_family(family)
+      if (!all(julia_fam %in% .GLLVM_JULIA_BINOMIAL_FAMILIES))
+        cli::cli_abort(c(
+          "{.code engine = \"julia\"} does not support {.arg weights} for non-binomial families.",
+          "i" = "The GLLVModels.jl bridge uses {.arg weights} only as binomial trial counts, so they would be dropped from the fit rather than applied.",
+          ">" = "Use the default {.code engine = \"tmb\"} for weighted non-binomial models."
+        ), class = "gllvmTMB_julia_unsupported_weights")
+    }
+    ## `REML`, `lambda_constraint` and `known_V` are not forwarded to
+    ## gllvm_julia_fit(), so each would be dropped and an ML / unconstrained /
+    ## no-known-V fit returned without a word (#1347). Refuse them instead.
+    julia_dropped_args <- c(
+      if (isTRUE(REML)) "REML",
+      if (!is.null(lambda_constraint)) "lambda_constraint",
+      if (!is.null(known_V)) "known_V"
+    )
+    if (length(julia_dropped_args) > 0L)
+      cli::cli_abort(c(
+        "{.code engine = \"julia\"} does not support {.arg {julia_dropped_args}}.",
+        "i" = "The GLLVModels.jl bridge does not receive these arguments, so the fit would silently ignore them.",
+        ">" = "Use the default {.code engine = \"tmb\"}, or omit them."
+      ), class = "gllvmTMB_julia_unsupported_arg")
     return(.gllvmTMB_julia_dispatch(
       parsed         = parsed,
       data           = data,
@@ -1762,6 +1825,16 @@ expand_multinomial_response <- function(formula, data, family, trait_col) {
     if (is.null(fam_names)) {
       .gllvmTMB_resolve_unnamed_family_list(fams, fam_levels, fam_var)
     }
+    ## When the family list is keyed by the trait column itself, the expansion
+    ## below rewrites that column into contrast pseudo-traits, so the list is
+    ## checked here, against the user's own trait levels (issue #1575).
+    if (identical(fam_var, trait_col) && length(fam_levels) != length(fams)) {
+      cli::cli_abort(c(
+        "length(family) must match the number of distinct levels in {.var {fam_var}}.",
+        "x" = "Got {length(fams)} famil{?y/ies} for {length(fam_levels)} level{?s}.",
+        ">" = "Supply one family per level of {.var {fam_var}}, e.g. {.code list(<level> = <family>(), ...)}."
+      ))
+    }
     mn_level   <- if (!is.null(fam_names) && all(nzchar(fam_names))) fam_names[mn_pos] else fam_levels[mn_pos]
     mn_rows    <- which(as.character(fam_col) == as.character(mn_level))
     if (length(mn_rows) == 0L) {
@@ -1826,6 +1899,24 @@ expand_multinomial_response <- function(formula, data, family, trait_col) {
     combined[[trait_col]] <- factor(as.character(combined[[trait_col]]),
                                     levels = c(other_lvls, ps_levels))
     rownames(combined) <- NULL
+    ## Family list keyed by the trait column: carry the multinomial entry
+    ## through to each of its K-1 contrast pseudo-traits so the list matches
+    ## the expanded trait levels one-to-one.
+    if (identical(fam_var, trait_col)) {
+      fam_key  <- if (!is.null(fam_names) && all(nzchar(fam_names))) fam_names
+                  else fam_levels
+      new_fam  <- list()
+      for (i in seq_along(fams)) {
+        if (i == mn_pos) {
+          for (lv in ps_levels) new_fam[[lv]] <- fams[[i]]
+        } else {
+          new_fam[[fam_key[i]]] <- fams[[i]]
+        }
+      }
+      new_fam <- new_fam[levels(combined[[trait_col]])]
+      attr(new_fam, "family_var") <- trait_col
+      family <- new_fam
+    }
     return(list(data = combined,
                 family = family, expanded = TRUE,
                 K = K, categories = cats, baseline = cats[1L]))

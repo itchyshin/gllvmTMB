@@ -11,6 +11,10 @@
 ##         df / phi ~ 1e10 and above the Gaussian / binomial limit beyond.
 ##   #1386 phylo / SPDE intercept-slope prior: 1 - tanh(eta)^2 cancelled and
 ##         was exactly 0 (Inf precisions) from |atanh_cor| ~ 19.5.
+##   #1483 zero-truncated Poisson / NB2: logspace_sub(0, log P(0)) was
+##         log(0) once exp(eta) underflowed (eta < -745), and its 1 / mu^k
+##         derivatives overflowed long before that (Laplace gradient NaN
+##         from eta ~ -237).
 ##
 ## Each test drives the engine to the edge value through obj$fn / obj$gr on
 ## a small fit. With the loadings set to ~0 the Laplace marginal reduces to
@@ -434,5 +438,105 @@ test_that("R's beta-binomial CDF (residuals) agrees with the exact pmf at large 
     if (phi >= 1e10) {
       expect_equal(got, stats::pbinom(0:N, N, mu), tolerance = 1e-8)
     }
+  }
+})
+
+## ---- #1483: zero-truncated counts when exp(eta) underflows -----------------
+
+## log(1 - exp(-a)) from log(a). Below log a = -20 the series
+## log a - a / 2 + a^2 / 24 is exact to double precision, and it keeps the
+## value when a itself underflows to 0 (eta < -745), where log(-expm1(-a))
+## is log(0). The derivatives of logspace_sub(0, -a) grow like 1 / a^k, so
+## the old row failed long before a underflowed: the Laplace gradient was
+## non-finite from eta ~ -237, the objective from ~ -355 (measured).
+.log1mexp_neg_exp_ref <- function(log_a) {
+  a <- exp(log_a)
+  ifelse(log_a < -20, log_a - a / 2 + a^2 / 24, log(-expm1(-a)))
+}
+
+test_that("zero-truncated Poisson and NB2 stay finite deep in the left tail of eta (#1483)", {
+  skip_on_cran()
+  df <- .count_fixture(1483, truncated = TRUE)
+  y <- df$value
+  tr <- as.integer(df$trait)
+  size <- 5
+  for (fam in c("poisson", "nbinom2")) {
+    fit <- .edge_fit(df, if (fam == "poisson") truncated_poisson() else truncated_nbinom2())
+    obj <- fit$tmb_obj
+    p <- .edge_par(fit)
+    if (fam == "nbinom2") p <- .edge_set(p, "log_phi_truncnb2", log(size))
+    i_b <- which(names(p) == "b_fix")
+    for (eta in c(-5, -30, -300, -400, -700, -745.2, -760, -800, -2000)) {
+      p1 <- .edge_set(p, "b_fix", eta)
+      mu <- exp(eta)
+      if (fam == "poisson") {
+        ref_row <- y * eta - mu - lgamma(y + 1) - .log1mexp_neg_exp_ref(eta)
+      } else {
+        ## a = -log P(0) = size log1p(mu / size) = mu log1p(x) / x, x = mu / size.
+        x <- mu / size
+        log_a <- eta + log(ifelse(x < 1e-8, 1 - x / 2, log1p(x) / x))
+        ref_row <- lgamma(y + size) - lgamma(size) - lgamma(y + 1) +
+          y * (eta - log(size + mu)) - size * log1p(x) -
+          .log1mexp_neg_exp_ref(log_a)
+      }
+      got <- as.numeric(obj$fn(p1))
+      expect_true(is.finite(got))
+      expect_equal(got, -sum(ref_row), tolerance = 1e-10)
+      g <- as.numeric(obj$gr(p1))
+      expect_true(all(is.finite(g)))
+      ## Once mu underflows, P(y | y >= 1) ~ mu^(y - 1): d nll / d b_t is
+      ## -sum(y - 1) over trait t. The old logspace_sub(0, log_p0) gave a
+      ## NaN objective and gradient here.
+      if (mu == 0) {
+        expect_equal(g[i_b], -as.numeric(tapply(y - 1, tr, sum)),
+                     tolerance = 1e-10)
+      }
+    }
+    invisible(obj$fn(fit$opt$par))
+
+    ## The row kernel's own Hessian, without the Laplace step: random
+    ## effects held at 0 and only b_fix free. An unselected CondExp branch
+    ## that is non-finite leaves fn() and gr() finite but he() NaN.
+    pl <- fit$tmb_params
+    for (nm in unique(names(obj$env$par)[obj$env$random])) pl[[nm]][] <- 0
+    if (fam == "nbinom2") pl$log_phi_truncnb2[] <- log(size)
+    map <- lapply(pl, function(v) factor(rep(NA_integer_, length(v))))
+    map$b_fix <- NULL
+    obj_k <- TMB::MakeADFun(data = fit$tmb_data, parameters = pl, map = map,
+                            DLL = "gllvmTMB", silent = TRUE)
+    for (eta in c(-5, -30, -400, -720, -800)) {
+      b <- rep(eta, length(pl$b_fix))
+      expect_true(is.finite(obj_k$fn(b)))
+      expect_true(all(is.finite(obj_k$gr(b))))
+      expect_true(all(is.finite(obj_k$he(b))))
+    }
+  }
+})
+
+## ---- #1488: log1p series / direct switch --------------------------------
+
+test_that("NB2 kernel is accurate just above the old log1p cut points (#1488)", {
+  ## gll_log1p_pos switched to log(1 + u) at u = 1e-4 and gll_log1p_ratio at
+  ## u = 1e-3; just above each the direct form lost ~1e-16 absolute, which
+  ## gll_lgamma_shift multiplied by ~n / u. Pick size = y / 1.01e-4 (shift
+  ## argument u = 1.01e-4) and mu = 10 y (ratio argument mu / size = 1.01e-3).
+  df0 <- .count_fixture(1488, mu = 2)
+  for (n in c(1, 10, 100, 1000)) {
+    size <- n / 1.01e-4
+    mu <- 10 * n
+    df <- df0[1:6, ]
+    df$value <- n
+    fit_n <- .edge_fit(df, nbinom2())
+    obj_n <- fit_n$tmb_obj
+    pn <- .edge_set(.edge_par(fit_n), "b_fix", log(mu))
+    pn <- .edge_set(pn, "log_phi_nbinom2", log(size))
+    ## Exact: lgamma(n + s) - lgamma(s) = n log s + sum(log1p(k / s)).
+    shift_ref <- n * log(size) + sum(log1p((0:(n - 1)) / size))
+    lp_ref <- shift_ref - lgamma(n + 1) - size * log1p(mu / size) +
+      n * (log(mu) - log(size + mu))
+    ## Per-row error; the reference itself carries ~eps * n log(size) of
+    ## rounding, so the bound grows mildly with n (old code: ~9e-13 * n).
+    err <- abs(as.numeric(obj_n$fn(pn)) / nrow(df) + lp_ref)
+    expect_lt(err, 1e-12 * max(1, n / 10))
   }
 })

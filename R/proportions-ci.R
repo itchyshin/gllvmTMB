@@ -295,6 +295,10 @@
     ))
   }
 
+  ## #1379: all-non-finite covariance is an error; pdHess = FALSE a warning.
+  .confint_require_sdreport(fit, "wald", caller = "confint", route = "bootstrap")
+  .wald_warn_nonpd_hessian(fit, "proportion")
+
   cov_fix <- fit$sd_report$cov.fixed
   obj <- fit$tmb_obj
   par_full_at_mle <- obj$env$last.par.best
@@ -466,9 +470,7 @@
   )
   aux <- aux[!vapply(aux, is.null, logical(1))]
 
-  if (!is.null(seed)) {
-    set.seed(seed)
-  }
+  .gllvmTMB_local_seed(seed)
   Y_sim <- simulate(fit, nsim = nsim)
   if (!is.matrix(Y_sim) || ncol(Y_sim) != nsim) {
     cli::cli_abort(

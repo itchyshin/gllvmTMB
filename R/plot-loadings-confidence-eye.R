@@ -57,14 +57,43 @@
 #' @seealso [loading_ci()], [flag_unreliable_loadings()].
 #'
 #' @examples
-#' \dontrun{
-#' plot_loadings_confidence_eye(fit, level = "unit",
-#'                              null_region = c(-0.1, 0.1))
+#' set.seed(1)
+#' # Eight traits measured twice on each of 100 units (e.g. sites).
+#' # Odd-numbered traits respond to one latent gradient and even-numbered
+#' # traits to another; trait_7 responds only weakly.
+#' Lambda <- cbind(c(0.9, 0, 0.7, 0, 0.6, 0, 0.15, 0),
+#'                 c(0, 0.9, 0, 0.8, 0, 0.6, 0, 0.5))
+#' sim <- simulate_unit_trait(n_units = 100, n_obs_per_unit = 2,
+#'                            n_traits = 8, Lambda_B = Lambda,
+#'                            psi_B = 0.5, sigma2_eps = 0.3)
+#' # Confirmatory fit: odd traits load only on axis 1, even traits only on
+#' # axis 2 (see ?loading_ci).
+#' M <- confirmatory_lambda(species = levels(sim$data$trait),
+#'                          group = rep(c("A", "B"), times = 4), d = 2,
+#'                          loads_on = list(A = 1, B = 2),
+#'                          anchors = c(NA, NA))
+#' fit <- gllvmTMB(value ~ 0 + trait +
+#'                   latent(0 + trait | unit, d = 2, unique = TRUE),
+#'                 data = sim$data, trait = "trait", unit = "unit",
+#'                 lambda_constraint = list(unit = M))
+#'
+#' if (requireNamespace("ggplot2", quietly = TRUE)) {
+#'   # One panel per latent axis. Each hollow point is an estimated loading
+#'   # and the shaded "eye" around it is its 95% interval; grey points are
+#'   # loadings fixed at zero. The grey band marks negligible loadings
+#'   # (-0.1 to 0.1): red eyes reach into it, green eyes stay clear of it.
+#'   print(plot_loadings_confidence_eye(fit, level = "unit",
+#'                                      null_region = c(-0.1, 0.1)))
+#'
+#'   # The plot also takes a loading_ci() table: here the standardized
+#'   # loadings, with traits ordered by their largest loading.
+#'   ci_std <- loading_ci(fit, loading_scale = "standardized")
+#'   print(plot_loadings_confidence_eye(ci_std, sort_by = "magnitude"))
 #' }
 #'
 #' @export
 plot_loadings_confidence_eye <- function(fit,
-                                         level       = c("unit", "unit_obs"),
+                                         level       = "unit",
                                          method      = "wald",
                                          conf_level  = 0.95,
                                          null_region = NULL,

@@ -19,7 +19,10 @@ The cross-check refits the same data and family with
 
 \item{threshold}{Numeric (default \code{0.10}): relative-disagreement
 threshold (Frobenius RMSE / Frobenius magnitude of the unstructured
-estimate) above which a component is flagged.}
+estimate) above which a component is flagged. The default is not
+calibrated: it flags most datasets simulated from the paired model
+itself at realistic species counts, so a flag marks disagreement
+only.}
 
 \item{phylo_vcv, phylo_tree}{Optional. The phylogenetic correlation
 matrix or \code{ape::phylo} tree, only needed if \code{fit_two_psi} was
@@ -58,17 +61,26 @@ two-psi fit. Compares the joint two-psi fit's implied
 \eqn{\boldsymbol\Sigma_{\mathrm{phy}} = \boldsymbol\Lambda_{\mathrm{phy}}\boldsymbol\Lambda_{\mathrm{phy}}^\top + \boldsymbol\Psi_{\mathrm{phy}}}
 (and the analogous \eqn{\boldsymbol\Sigma_{\mathrm{non}}}) against
 the unstructured baseline. Per-component RMSE plus a \code{flag} field
-(\code{TRUE} when any component disagrees beyond \code{threshold}) identifies
-two-psi identifiability failures.
+(\code{TRUE} when any component disagrees beyond \code{threshold}). A flag means
+the two fits disagree; it does not show that the paired two-psi model
+is wrong or not identified.
 }
 \details{
 Conceptual basis: Williams et al. (2025) bioRxiv 2025.12.20.695312
 Eq. 3, generalised across traits. The unstructured fit has
 \eqn{T(T+1)/2} free parameters per tier and is the strongest available
-benchmark for the implied total covariance. When the joint two-psi fit
-is well-identified, its implied total Sigma matches the unstructured
-baseline; when it isn't, the diagnostic flags the disagreement and
-the user knows to relax the rank or revisit identifiability.
+benchmark for the implied total covariance. Agreement between the two
+fits is reassuring. Disagreement is a prompt to look further, not a
+verdict: the more flexible baseline estimates many more parameters
+(for example non-phylogenetic off-diagonals whose true value may be 0)
+and carries its own sampling noise at realistic species counts. In
+simulations from the paired model itself (T = 3, d = 1; see issue 1571),
+the default threshold flagged nearly every dataset: 24/24 seeds at 64
+species, 4/4 at 128 and 3/4 at 256, with the paired fit usually closer
+to the true non-phylogenetic Sigma than the baseline. The \code{0.10}
+default of \code{threshold} is therefore \strong{not calibrated}; treat a flag as
+a comparison to inspect, for example by checking the boundary and
+convergence diagnostics of both fits.
 
 The cross-check separates three questions:
 
@@ -77,7 +89,7 @@ The cross-check separates three questions:
 \item{Level 2: total Sigma_phy and Sigma_non agree?}{This diagnostic
 answers Level 2 directly. The two estimators target the SAME
 total covariance with different parameterisations, so agreement
-is the identifiability check.}
+is what is compared (see the caveat above).}
 \item{Level 3: split into Lambda Lambda^T + Psi?}{Diagnostic
 does not test Level 3 directly; Level 2 agreement is the
 pre-requisite for Level 3 to be meaningful.}
@@ -87,24 +99,63 @@ Computational scope: tractable for T <= ~30. For larger T, prefer
 \code{\link[=compare_indep_vs_two_psi]{compare_indep_vs_two_psi()}}.
 }
 \examples{
-\dontrun{
-library(ape)
-tree <- ape::rcoal(200)
-tree$tip.label <- paste0("sp", seq_len(200))
-Cphy <- ape::vcv(tree, corr = TRUE)
-fit  <- gllvmTMB(
-  value ~ 0 + trait + phylo_latent(species, d = 1, unique = TRUE) +
-          indep(0 + trait | species),
-  data      = df,
-  trait     = "trait",
-  unit      = "species",
-  cluster   = "species",
-  phylo_vcv = Cphy
-)
-diag <- compare_dep_vs_two_psi(fit)
-diag$flag
-diag$agreement
+set.seed(18)
+## A balanced phylogeny of 64 species, built in base R: six rounds of
+## evenly spaced splits. Two species' phylogenetic correlation is the
+## share of the tree's depth they spent as one lineage (5/6 for sister
+## species, 0 for species on opposite sides of the root).
+n_sp <- 64
+Cphy <- matrix(0, n_sp, n_sp)
+for (level in 1:6) {
+  clade <- (seq_len(n_sp) - 1) \%/\% 2^(6 - level)
+  Cphy <- Cphy + outer(clade, clade, "==") / 6
 }
+sp <- paste0("sp", seq_len(n_sp))
+dimnames(Cphy) <- list(sp, sp)
+
+## Three traits. A species' value for each trait is the sum of a shared
+## phylogenetic factor (with a trait-specific loading), a trait-specific
+## phylogenetic effect and a non-phylogenetic species effect. Three
+## individuals are measured per species, so these species effects can be
+## told apart from measurement noise.
+L <- t(chol(Cphy))  # turns independent draws into tree-correlated ones
+phy <- outer(drop(L \%*\% rnorm(n_sp)), c(0.8, 0.6, -0.5)) +
+  L \%*\% matrix(rnorm(n_sp * 3, sd = 0.6), n_sp, 3)
+non <- matrix(rnorm(n_sp * 3, sd = 0.5), n_sp, 3)
+df <- expand.grid(trait = c("t1", "t2", "t3"), individual = 1:3,
+                  species = sp)
+idx <- cbind(match(df$species, sp), as.integer(df$trait))
+df$value <- phy[idx] + non[idx] + rnorm(nrow(df), sd = 0.5)
+
+## The paired ("two-psi") fit: the phylogenetic covariance is one shared
+## factor plus trait-specific phylogenetic variances; the
+## non-phylogenetic species variances are independent across traits.
+fit <- gllvmTMB(
+  value ~ 0 + trait +
+    phylo_latent(species, d = 1, unique = TRUE, vcv = Cphy) +
+    indep(0 + trait | species),
+  data = df, trait = "trait", unit = "species", cluster = "species"
+)
+
+## Refit with unrestricted phylogenetic and non-phylogenetic covariances
+## (phylo_dep + dep) and compare the two fits' covariance matrices.
+check <- compare_dep_vs_two_psi(fit)
+check$alt_fit$opt$convergence  # 0 means the refit converged
+## rel_disagreement is the gap between the two fits relative to the size
+## of the unrestricted estimate; flag marks gaps above `threshold`
+## (0.10 by default).
+check$agreement
+check$flag
+## Both components are flagged here, even though the data were simulated
+## from the paired model itself. The unrestricted refit gains little
+## log-likelihood for its three extra parameters, yet it splits the trait
+## covariance differently between the phylogenetic and non-phylogenetic
+## parts: with 64 species the data only loosely determine that split.
+## So a flag means the two fits disagree; on its own it does not show
+## that the paired model is wrong.
+c(two_psi = logLik(fit), unrestricted = logLik(check$alt_fit))
+check$joint$Sigma_phy  # paired fit
+check$dep$Sigma_phy    # unrestricted refit
 }
 \references{
 Williams, M. J., McGillycuddy, M., Drobniak, S. M., Bolker, B. M.,

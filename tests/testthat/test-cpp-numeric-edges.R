@@ -513,6 +513,45 @@ test_that("zero-truncated Poisson and NB2 stay finite deep in the left tail of e
   }
 })
 
+## ---- #1603: Poisson-kernel rows when exp(eta) underflows -------------------
+
+## dpois(y, exp(eta), log = TRUE) forms y * log(exp(eta)), which is
+## y * log(0) = -Inf once exp(eta) underflows (eta < -745) and loses digits
+## from eta ~ -709, although the row is a finite y * eta - exp(eta) -
+## lgamma(y + 1). poisson(), zi_poisson() and the uncensored rows of
+## censored_poisson() share it (the zero-truncated rows were fixed in #1483).
+test_that("poisson, zi_poisson and censored_poisson stay finite deep in the left tail of eta (#1603)", {
+  skip_on_cran()
+  df <- .count_fixture(1603)
+  y <- df$value
+  tr <- as.integer(df$trait)
+  etas <- c(-5, -300, -700, -709, -745.2, -760, -800, -2000)
+  for (fam in c("poisson", "zi_poisson", "censored_poisson")) {
+    fam_obj <- switch(fam, poisson = poisson(), zi_poisson = zi_poisson(),
+                      censored_poisson = censored_poisson())
+    fit <- .edge_fit(df, fam_obj)
+    obj <- fit$tmb_obj
+    p <- .edge_par(fit)
+    if (fam == "zi_poisson") {
+      zi <- stats::plogis(p[names(p) == "logit_zi"])[tr]
+    }
+    for (eta in etas) {
+      p1 <- .edge_set(p, "b_fix", eta)
+      mu <- exp(eta)
+      ref_row <- y * eta - mu - lgamma(y + 1)
+      if (fam == "zi_poisson") {
+        ref_row <- ifelse(y == 0, log(zi + (1 - zi) * exp(-mu)),
+                          log1p(-zi) + ref_row)
+      }
+      got <- as.numeric(obj$fn(p1))
+      expect_true(is.finite(got), info = paste(fam, eta))
+      expect_equal(got, -sum(ref_row), tolerance = 1e-10, info = paste(fam, eta))
+      expect_true(all(is.finite(as.numeric(obj$gr(p1)))), info = paste(fam, eta))
+    }
+    invisible(obj$fn(fit$opt$par))
+  }
+})
+
 ## ---- #1488: log1p series / direct switch --------------------------------
 
 test_that("NB2 kernel is accurate just above the old log1p cut points (#1488)", {

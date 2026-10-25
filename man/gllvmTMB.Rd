@@ -481,17 +481,19 @@ with structured \verb{indep(0 + trait | …)} terms. \code{gllvmTMB()} enforces
 this internally.
 
 \strong{Multi-trial binomial}. The TMB engine evaluates \code{dbinom(y, n_trials, p)}
-so binomial fits are not restricted to Bernoulli (size = 1). To pass a
-per-row trial count, use either:
+so binomial fits are not restricted to Bernoulli (size = 1). \code{y} must be
+the integer success count, not a proportion. To pass a per-row trial
+count, use either:
 \itemize{
 \item \code{cbind(successes, failures) ~ ...} on the LHS of the formula
 (canonical R / \code{glmmTMB} convention; recommended), or
-\item a flat response \code{y} with \code{weights = n_trials} (the alternative
-glmmTMB API).
+\item a flat success-count response \code{y} with \code{weights = n_trials} (the
+alternative glmmTMB API).
 }
 The second \code{cbind()} column is the number of \strong{failures}, not trials; for
 a trials column write \code{cbind(s, trials - s)}. Both interfaces produce
-identical fits.
+identical fits when \code{y} is the success count. A proportion plus
+\code{weights = n_trials} is refused.
 
 \emph{Mixing with other families.} Binomial counts can share one model with
 Gaussian, count or other traits. In a mixed fit the second \code{cbind()} column

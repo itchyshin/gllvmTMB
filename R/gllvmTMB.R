@@ -446,17 +446,19 @@
 #' this internally.
 #'
 #' **Multi-trial binomial**. The TMB engine evaluates `dbinom(y, n_trials, p)`
-#' so binomial fits are not restricted to Bernoulli (size = 1). To pass a
-#' per-row trial count, use either:
+#' so binomial fits are not restricted to Bernoulli (size = 1). `y` must be
+#' the integer success count, not a proportion. To pass a per-row trial
+#' count, use either:
 #' \itemize{
 #'   \item `cbind(successes, failures) ~ ...` on the LHS of the formula
 #'         (canonical R / `glmmTMB` convention; recommended), or
-#'   \item a flat response `y` with `weights = n_trials` (the alternative
-#'         glmmTMB API).
+#'   \item a flat success-count response `y` with `weights = n_trials` (the
+#'         alternative glmmTMB API).
 #' }
 #' The second `cbind()` column is the number of **failures**, not trials; for
 #' a trials column write `cbind(s, trials - s)`. Both interfaces produce
-#' identical fits.
+#' identical fits when `y` is the success count. A proportion plus
+#' `weights = n_trials` is refused.
 #'
 #' *Mixing with other families.* Binomial counts can share one model with
 #' Gaussian, count or other traits. In a mixed fit the second `cbind()` column

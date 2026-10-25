@@ -288,9 +288,9 @@
 #'   `interval_status`, `scale`, `diagonal`,
 #'   `triangle`, and `validation_row` (a short label for the validation scope of
 #'   the extractor behind the table). For a fit, the interval columns `lower`
-#'   and `upper` are `NA` with `interval_method = "none"` because this helper
-#'   is point-estimate only. For a [bootstrap_Sigma()] input they are filled,
-#'   with `interval_method = "bootstrap"` and `interval_status = "provided"`.
+#'   and `upper` are `NA` with `interval_method = "none"`. For a
+#'   [bootstrap_Sigma()] input they are filled, with
+#'   `interval_method = "bootstrap"` and `interval_status = "provided"`.
 #' @seealso [extract_Sigma()] for the underlying matrix extractor;
 #'   [extract_correlations()] for pairwise correlation intervals;
 #'   [bootstrap_Sigma()] for bootstrap uncertainty.

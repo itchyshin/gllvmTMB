@@ -399,10 +399,14 @@ test_that("vcov() raises the SAME typed errors as confint()", {
   no_se <- .se_fit(.se_test_data(), se = FALSE)
   expect_error(vcov(no_se), class = "gllvmTMB_confint_no_sdreport")
   expect_error(vcov(no_se), regexp = "standard_errors")
+  err <- tryCatch(vcov(no_se), error = function(e) e)
+  expect_false(grepl("method = \"profile\"", conditionMessage(err), fixed = TRUE))
 
   bad <- .se_fit(.se_test_data(), se = TRUE)
   bad$sd_report$cov.fixed[] <- NaN
   expect_error(vcov(bad), class = "gllvmTMB_confint_nonfinite_se")
+  err_bad <- tryCatch(vcov(bad), error = function(e) e)
+  expect_false(grepl("method = \"profile\"", conditionMessage(err_bad), fixed = TRUE))
 })
 
 test_that("vcov() gives NA rows for a coefficient held fixed", {

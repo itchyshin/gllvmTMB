@@ -84,7 +84,9 @@ components). Components are by name (\code{"shared_unit"},
 bootstrap is available explicitly. The nonlinear profile prototype is
 withheld.
 \item An integer index vector or character vector of fixed-effect
-term names (same as the standard \code{confint()} interface).
+term names (same as the standard \code{confint()} interface), or
+\code{b_fix[k]} labels from \code{\link[=profile_targets]{profile_targets()}}; only the requested
+fixed effects are profiled.
 \item Missing (default) -- all fixed-effect parameters.
 }}
 
@@ -116,6 +118,12 @@ value (e.g. \code{50}) during development or testing.}
 zero by a diagonal-only tier). The parameter prefix follows the
 requested \code{parm}, so legacy calls still return legacy
 \code{"Sigma_B[...]"} or \code{"Sigma_W[...]"} labels.
+With \code{method = "wald"} on a tier that has a \code{latent()} term,
+\code{lower} and \code{upper} are \code{NA} and a message says so: the
+only available standard error covers the unique-variance part, not the
+total. Use \code{method = "bootstrap"}, or
+\code{\link[=profile_ci_total_variance]{profile_ci_total_variance()}} for the diagonal. Asking for a Sigma tier
+the fit does not have is an error that names the public tier.
 \item \strong{Lambda path} -- a \code{data.frame} with columns
 \code{parameter} (e.g. \code{"Lambda[trait_1,LV1]"} for raw rows or
 \code{"rho[trait_1,LV1]"} for standardised rows),

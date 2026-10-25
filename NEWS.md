@@ -1,6 +1,7 @@
 # Development (unreleased)
 
 * `vcov()` on a fit with no standard errors no longer suggests `method = "profile"`, which it does not accept. `extract_Sigma(part = "shared")` and `part = "unique"` no longer print that a link residual was added when that residual is only applied to `part = "total"` (#1580).
+* An explicit `indep()` or `diag()` on single-observation ordinal traits is mapped off, with a warning, under the same identifiability gate as the default between-unit Psi. One observation per (trait, unit) cannot separate that diagonal from the fixed threshold scale (#1574).
 * Bootstrap wrappers keep `nsim = 500`. That default no longer warns that it is too small. The warning names `nsim`, and the `profile_ci_total_variance()` hint is shown only when the bootstrap asks for Sigma diagonals. `bootstrap_Sigma()` still warns when `n_boot` is below 999 (#1576).
 * `compare_dep_vs_two_psi()` and `compare_indep_vs_two_psi()` pass the stored phylogeny inside the generated `phylo_*()` keyword. The refit no longer prints the global `phylo_vcv` / `phylo_tree` deprecation (#1568).
 * `engine = "julia"` now stops on `REML = TRUE`, a non-`NULL` `lambda_constraint` and a non-`NULL` `known_V` (class `gllvmTMB_julia_unsupported_arg`) instead of silently ignoring them (#1347).
@@ -19,6 +20,12 @@
 * `engine = "julia"` now stops on a missing fixed-effect covariate with the same message as the native engine, instead of sending the `NA` to the bridge (#1371).
 * `poisson()` and `nbinom2()` fits now stop up front when the response has a negative or non-integer value, naming the family, instead of "All 1 restarts failed." (negative) or fitting silently (non-integer) (#1356).
 
+* `confint(fit, parm = "b_fix[1]")` now returns one row (profile and Wald)
+  instead of profiling every fixed effect and then failing, and a fixed-effect
+  `parm` profiles only the requested terms. Wald `Sigma_unit` on a `latent()`
+  tier now says why the intervals are `NA` and names the routes that work, and
+  a Sigma tier the fit lacks is an error naming the public tier (for example
+  `unit_obs`) before any method runs (#1588).
 * The `\dontrun{}` examples of `extract_Omega()`, `extract_phylo_signal()`, `extract_proportions()`, `extract_loadings()`, `getLoadings()`, `getLV()` and `extract_residual_split()` now simulate their own data and build their own `fit` instead of using undefined objects (#1360).
 * A missing or non-finite value in a random-slope covariate (for example `x` in
   `latent(1 + x | unit)`, `phylo_slope(x | species)`, `phylo_dep()` or the
@@ -108,6 +115,12 @@
   `@exportS3Method stats::sigma`, matching the `stats::sigma` entries already in
   `NAMESPACE`, so `devtools::document()` no longer rewrites them. Behaviour is
   unchanged (#1558).
+* `poisson()`, `zi_poisson()` and the uncensored rows of `censored_poisson()`
+  stay finite when the linear predictor is far below zero. The row was
+  `dpois(y, exp(eta))`, which forms `y * log(exp(eta))` and is `-Inf` once
+  `exp(eta)` underflows (`eta` below about -745, with digits lost from -709).
+  It is now written on the `eta` scale as `y * eta - exp(eta) - lgamma(y + 1)`,
+  so ordinary fits change only by rounding (#1603).
 * `engine = "julia"` with no `latent()` term now stops with
   `[GJL-GATE-NO-LATENT]` for every non-Gaussian family except NB2. GLLVModels.jl
   returned `logLik = -Inf` and `converged = FALSE` for Poisson, binomial, nb1,

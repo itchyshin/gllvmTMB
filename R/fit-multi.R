@@ -890,7 +890,8 @@
   if (min(evals) < -1e-8) {
     cli::cli_abort(c(
       "{.arg {arg}} for {.fn {fn}} must be positive semidefinite.",
-      "i" = "Minimum eigenvalue: {format(min(evals), digits = 4)}."
+      "i" = "Minimum eigenvalue: {format(min(evals), digits = 4)}.",
+      ">" = "Pass a covariance matrix with no negative eigenvalues, for example one built from a tree with {.fn ape::vcv}."
     ))
   }
   invisible(M)

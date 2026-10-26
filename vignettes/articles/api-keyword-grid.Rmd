@@ -371,6 +371,60 @@ traits or species treated as responses) and use `phylo_slope(x | species)`
 when the slope of `x` should vary **across the sampled grouping units**
 (e.g. across individuals or sites) that the tree relates.
 
+### Slope variation by species
+
+A fourth-corner model, such as `group:lat` for a species-level attribute
+crossed with a site-level covariate, fixes the interaction at the group mean.
+It asserts that group membership explains all between-species variation in the
+response to `lat`. A random species-specific slope relaxes that assumption, and
+`animal_slope()` and `phylo_slope()` already fit it. The slope-only spellings
+that a user would try first do not fit:
+
+```r
+indep(0 + lat | species)            # refused
+latent(0 + lat | species, d = 1)    # refused
+(0 + lat | species)                 # refused
+```
+
+The route that fits copies the trait column (the species labels of the
+response columns) into a grouping column, and puts the relatedness on that
+column:
+
+```{r species-slope-syntax, eval = FALSE}
+dat$species <- dat$trait   # duplicate the species labels
+
+# No supplied relatedness: an identity A gives partial pooling,
+# beta_s ~ N(0, sigma^2 I).
+A <- diag(n_species)
+dimnames(A) <- list(species_names, species_names)
+
+value ~ 0 + trait + group:lat +
+  animal_slope(lat | species, A = A) +
+  latent(0 + trait | cell_id, d = 2)
+
+# A phylogenetic tree over the same species labels:
+value ~ 0 + trait + group:lat +
+  phylo_slope(lat | species, tree = tree) +
+  latent(0 + trait | cell_id, d = 2)
+```
+
+Three conditions matter. The levels of `species` must be the levels of
+`trait`. Those levels must match the row and column names of `A` or the tip
+labels of `tree`. The grouping column must be a copy of `trait`, not a
+different factor. With a tree, a variance estimate near zero means the
+simulated or observed slopes carry no phylogenetic signal; it is not a fit
+failure.
+
+What this section does not establish. Trait covariance `Sigma` still has no
+phylogenetic structure along the response dimension; the gap is specific to
+`Sigma`, not to slopes. One simulated Poisson fixture (40 species, 2 groups,
+120 cells) recovered the between-species slope standard deviation (0.267
+estimated against 0.25 true), and gave a similar standard error for the group
+contrast under the pooled and the fixed-interaction models. A single fit
+cannot show whether the fixed interaction understates uncertainty, so this
+repository has not verified that claim; a multi-seed coverage study against
+known truth would be needed.
+
 ### Intercepts and slopes by response column
 
 `column_coef()`, `phylo_coef()`, `animal_coef()`, `kernel_coef()`, and

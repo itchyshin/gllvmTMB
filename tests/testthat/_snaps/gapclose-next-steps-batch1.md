@@ -24,7 +24,7 @@
       Error in `gllvmTMB:::parse_re_int_call()`:
       ! Bar-syntax `(x | site)` is not yet implemented.
       i Currently only random intercepts `(1 | group)` are supported.
-      > There is no supported route for a bare slope-only term; fit separate models, one covariate per group.
+      > To let the slope of `x` vary across species, copy the trait column into a grouping column (e.g. `dat$species <- dat$trait`) and use `animal_slope(x | species, A = A)` or `phylo_slope(x | species, tree = tree)`. The levels of that column must match the labels of `A` or the tree tips; an identity `A` gives plain partial pooling. See the keyword grid article, section Slope variation by species.
 
 # offset() with more than one expression names the fix
 

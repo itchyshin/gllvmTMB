@@ -88,10 +88,19 @@ extract_Sigma_W <- function(fit) {
 #' (see [extract_Sigma()]); set
 #' `link_residual = "none"` for the latent/Psi-implied scale only.
 #'
+#' For Gaussian (and lognormal) traits the observation residual
+#' \eqn{\sigma^2_\varepsilon} is added to the within-unit variance whenever the
+#' fit estimates it, which happens when a `unit_obs` record has replicate rows.
+#' This holds for either `link_residual` value, because
+#' \eqn{\sigma^2_\varepsilon} is a fitted variance, not a link residual. When
+#' the engine fixes \eqn{\sigma_\varepsilon} (one row per record), nothing is
+#' added.
+#'
 #' @inheritParams extract_Sigma_B
 #' @param link_residual For non-Gaussian fits: `"auto"` (default) adds each
 #'   trait's family/link implicit residual to \eqn{(\boldsymbol\Sigma_W)_{tt}};
-#'   `"none"` omits those additions.
+#'   `"none"` omits those additions. The estimated Gaussian observation
+#'   residual is added under both values.
 #' @return Numeric vector indexed by trait, or `NULL` if either Sigma_B or
 #'   Sigma_W is unavailable.
 #' @seealso [extract_proportions()] for the canonical per-trait variance
@@ -119,10 +128,24 @@ extract_ICC_site <- function(fit, link_residual = c("auto", "none")) {
     return(NULL)
   }
   vB <- diag(B$Sigma)
-  vW <- diag(W$Sigma)
+  vW <- diag(W$Sigma) + .icc_observation_residual(fit)
   icc <- .safe_icc_ratio(vB, vW)
   names(icc) <- levels(fit$data[[fit$trait_col]])
   icc
+}
+
+## Observation residual sigma_eps^2 of Gaussian / lognormal traits for the
+## within-unit variance of the ICC and repeatability (#1569). It is added only
+## when the fit estimates sigma_eps (replicate rows inside a unit_obs record).
+## When the engine fixes sigma_eps near zero (one row per record) nothing is
+## added. `sigma_eps` overrides the fitted value (the Wald path passes
+## `report(par)$sigma_eps`). Zero for non-Gaussian traits.
+.icc_observation_residual <- function(fit, sigma_eps = NULL) {
+  trait_names <- levels(fit$data[[fit$trait_col]])
+  if (.gllvmTMB_sigma_eps_mapped_off(fit)) {
+    return(stats::setNames(numeric(length(trait_names)), trait_names))
+  }
+  .variance_share_residual_per_trait(fit, sigma_eps = sigma_eps)
 }
 
 .safe_icc_ratio <- function(vB, vW) {

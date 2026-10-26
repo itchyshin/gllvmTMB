@@ -983,6 +983,12 @@ gllvmTMB <- function(
       rewrite$data_long,
       ".gllvmTMB_traits_n_dropped_response"
     ) <- rewrite$n_dropped
+    ## Wide row of each stacked cell, so a response-support error can name
+    ## the rows of the supplied wide data (#1485).
+    attr(
+      rewrite$data_long,
+      ".gllvmTMB_traits_source_row"
+    ) <- rewrite$source_row
     recurse_args <- list(
       formula = rewrite$formula_long,
       data = rewrite$data_long,
@@ -1481,6 +1487,8 @@ gllvmTMB <- function(
     exact = TRUE
   ) %||% 0L
   attr(data, ".gllvmTMB_traits_n_dropped_response") <- NULL
+  traits_source_row <- attr(data, ".gllvmTMB_traits_source_row", exact = TRUE)
+  attr(data, ".gllvmTMB_traits_source_row") <- NULL
   data_original <- data
   observed_response <- drop_missing_response_rows(
     fixed_formula = parsed$fixed,
@@ -1590,7 +1598,8 @@ gllvmTMB <- function(
       original_row = observed_response$original_row,
       n_missing_response = observed_response$n_missing_response +
         as.integer(traits_n_dropped_response),
-      data_original = data_original
+      data_original = data_original,
+      source_row = traits_source_row
     ),
     temporal = temporal_spec,
     estimator = estimator,

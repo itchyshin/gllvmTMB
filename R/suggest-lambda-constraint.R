@@ -76,8 +76,11 @@
 #'       entry to 0, i.e. `M[i, j] = 0` for `j > i`. Removes the
 #'       rotational ambiguity completely. Pins `K(K-1)/2` entries.}
 #'     \item{`"pin_top_one"`}{Single-anchor convention: `M[1, 1] = 1`,
-#'       rest `NA`. Sets the scale of factor 1; does NOT remove rotational
-#'       ambiguity.}
+#'       rest `NA`. Opt-in only, and not a scale choice: the latent axes
+#'       already have unit variance, so the `+1` is an extra restriction
+#'       that removes a free parameter and can bias the other loadings and
+#'       unique variances (a worse log-likelihood that no check flags,
+#'       #1585). It also does NOT remove rotational ambiguity.}
 #'     \item{`"none"`}{All-`NA` matrix -- no pins. Useful if you plan to
 #'       rotate the fitted loadings after fitting instead.}
 #'   }
@@ -350,9 +353,11 @@ suggest_lambda_constraint <- function(
     M[1L, 1L] <- 1
     n_pins <- 1L
     note <- paste0(
-      "Pinned M[1, 1] = 1 (single-anchor convention). Sets the scale of ",
-      "factor 1 but does NOT remove the rotational ambiguity; consider ",
-      "rotation after fitting (e.g. varimax) for interpretation."
+      "Pinned M[1, 1] = 1 (single-anchor convention). The latent axes ",
+      "already have unit variance, so this +1 is an extra restriction, not ",
+      "a scale choice, and can bias the other loadings. It does NOT remove ",
+      "the rotational ambiguity; consider rotation after fitting (e.g. ",
+      "varimax) for interpretation."
     )
   } else if (convention == "varimax_threshold") {
     ## α: data-driven hard-threshold retention on the varimax-rotated

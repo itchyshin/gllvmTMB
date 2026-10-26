@@ -48,6 +48,20 @@ failed so the component could not be tested).}
 if all tested components agreed, \code{NA} if nothing could be tested
 (distinguishes agreement from a failed refit).}
 \item{\code{threshold}}{The threshold used.}
+\item{\code{lrt}}{One-row data frame: the likelihood-ratio test of the
+paired fit against the unstructured refit, which contains it.
+Columns \code{loglik_joint}, \code{loglik_alt}, \code{chi2} (twice the
+log-likelihood gain of the refit), \code{df} (the refit's extra free
+parameters) and \code{p_value} (upper tail of a chi-square with \code{df}
+degrees of freedom). All \code{NA} when the refit failed, when
+\code{fit_two_psi} has no non-phylogenetic term (the refit always adds
+one, so the fits are not nested) or when a log-likelihood is
+unavailable. The chi-square reference is approximate because the
+paired model sits on a reduced-rank and variance boundary of the
+unstructured one; use \code{p_value} as a guide, after checking
+\code{alt_fit$opt$convergence}. \code{rel_disagreement} and \code{flag} stay as
+descriptive summaries; the likelihood ratio is the comparison that
+accounts for the refit's extra flexibility.}
 \item{\code{alt_fit}}{The refit \code{gllvmTMB_multi} object (or \code{NULL} on
 failure), retained so users can inspect convergence and pull
 other extractor outputs.}
@@ -81,6 +95,12 @@ to the true non-phylogenetic Sigma than the baseline. The \code{0.10}
 default of \code{threshold} is therefore \strong{not calibrated}; treat a flag as
 a comparison to inspect, for example by checking the boundary and
 convergence diagnostics of both fits.
+
+The \code{lrt} component is the likelihood-based comparison: because the paired
+fit is nested in the unstructured refit, it reports their
+likelihood-ratio test, which accounts for the refit's many extra
+parameters. \code{rel_disagreement} and \code{flag} are kept as descriptive
+summaries only.
 
 The cross-check separates three questions:
 
@@ -154,6 +174,9 @@ check$flag
 ## So a flag means the two fits disagree; on its own it does not show
 ## that the paired model is wrong.
 c(two_psi = logLik(fit), unrestricted = logLik(check$alt_fit))
+## The likelihood-ratio test of the two fits (the unrestricted refit
+## contains the paired fit); this accounts for its extra parameters.
+check$lrt
 check$joint$Sigma_phy  # paired fit
 check$dep$Sigma_phy    # unrestricted refit
 }

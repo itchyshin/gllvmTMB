@@ -579,3 +579,64 @@ test_that("the fit-time Laplace warning stays quiet when Laplace is pessimistic,
   expect_lt(gllvmTMB:::.gllvmTMB_laplace_accuracy(fit2)$optimism, -5)
   expect_no_warning(gllvmTMB:::.gllvmTMB_warn_laplace_optimism(fit2, 2))
 })
+
+## ---- #1591: replicated single-trial binary keeps its Psi --------------------
+
+replicated_binary_fixture <- function(reps, n = 150L, seed = 1591L) {
+  set.seed(seed)
+  lam <- c(0.9, 0.7, -0.6, 0.5)
+  psi <- c(0.8, 0.3, 1.0, 0.5)
+  eta <- outer(stats::rnorm(n), lam) +
+    sapply(psi, function(p) stats::rnorm(n, sd = sqrt(p)))
+  d <- expand.grid(rep = seq_len(reps), unit = seq_len(n), trait = 1:4)
+  d$y <- stats::rbinom(nrow(d), 1, stats::plogis(eta[cbind(d$unit, d$trait)]))
+  d$unit <- factor(d$unit)
+  d$trait <- factor(paste0("t", d$trait))
+  d
+}
+
+test_that("a single-trial binary trait with replicated cells keeps its Psi (#1591)", {
+  df <- replicated_binary_fixture(reps = 4L)
+  msgs <- character()
+  fit <- withCallingHandlers(
+    suppressWarnings(gllvmTMB(
+      y ~ 0 + trait + latent(0 + trait | unit, d = 1, unique = TRUE),
+      data = df, trait = "trait", unit = "unit", family = binomial(),
+      control = gllvmTMBcontrol(se = FALSE)
+    )),
+    message = function(m) {
+      msgs <<- c(msgs, conditionMessage(m))
+      invokeRestart("muffleMessage")
+    }
+  )
+  skip <- fit$tmb_data$diag_B_skip
+  expect_true(is.null(skip) || all(as.integer(skip) == 0L))
+  expect_false(any(grepl("Skipping the default between-unit", msgs)))
+  expect_equal(fit$opt$convergence, 0L)
+})
+
+test_that("a single-trial binary trait with one row per cell is still gated (#1591)", {
+  df <- replicated_binary_fixture(reps = 1L)
+  withr::local_options(rlib_message_verbosity = "verbose")
+  msgs <- character()
+  fit <- withCallingHandlers(
+    suppressWarnings(gllvmTMB(
+      y ~ 0 + trait + latent(0 + trait | unit, d = 1, unique = TRUE),
+      data = df, trait = "trait", unit = "unit", family = binomial(),
+      control = gllvmTMBcontrol(se = FALSE)
+    )),
+    message = function(m) {
+      msgs <<- c(msgs, conditionMessage(m))
+      invokeRestart("muffleMessage")
+    }
+  )
+  expect_identical(as.integer(fit$tmb_data$diag_B_skip), rep(1L, 4L))
+})
+
+test_that("the binary Psi skip note states the condition it tests (#1591)", {
+  msg <- gllvmTMB:::.auto_psi_skip_message(binomial_labs = c("t1", "t2"))
+  txt <- paste(msg, collapse = " ")
+  expect_match(txt, "one 0/1 row per (trait, unit) cell", fixed = TRUE)
+  expect_match(txt, "replicated 0/1 rows", fixed = TRUE)
+  expect_false(grepl("indep", txt, fixed = TRUE))
+})

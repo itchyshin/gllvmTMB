@@ -107,7 +107,7 @@
   if (length(binomial_labs) > 0L) {
     msg <- c(msg,
       "i" = sprintf(
-        "Single-trial binomial traits %s have one 0/1 trial per (trait, unit) cell. Multi-trial data ({.code cbind(successes, failures)} or {.code weights = n_trials}) can identify the diagonal; an explicit {.fn indep} term is a separate deliberate model choice.",
+        "Single-trial binomial traits %s have one 0/1 row per (trait, unit) cell, so a between-unit Psi is not identified. Multi-trial data ({.code cbind(successes, failures)} or {.code weights = n_trials}) or replicated 0/1 rows per (trait, unit) cell identify it, and the default {.code latent(unique = TRUE)} then keeps it.",
         paste(binomial_labs, collapse = ", ")
       )
     )
@@ -1346,6 +1346,24 @@
   )
 }
 
+## Issue #1387: a trait factor with a declared level that has no rows is
+## counted by nlevels(), which adds an extra fixed effect, loading and Psi term
+## that no data inform (df/AIC inflated, sd_report NULL). Abort and name the
+## empty level(s) rather than silently dropping them.
+.abort_empty_trait_levels <- function(data, trait) {
+  x <- data[[trait]]
+  if (!is.factor(x)) return(invisible(NULL))
+  empty <- setdiff(levels(x), as.character(unique(x[!is.na(x)])))
+  if (length(empty)) {
+    cli::cli_abort(c(
+      "Trait column {.field {trait}} has {length(empty)} level{?s} with no rows in {.arg data}: {.val {empty}}.",
+      "i" = "Every declared level counts as a trait, so an empty level adds free parameters that no data inform.",
+      ">" = "Call {.code droplevels()} on the {.field {trait}} column before fitting, so its levels match the traits actually observed."
+    ), class = "gllvmTMB_empty_trait_level")
+  }
+  invisible(NULL)
+}
+
 #' Fit a long-format multivariate stacked-trait model (Stage 2 internal)
 #'
 #' Called by [gllvmTMB()] when the formula contains `latent()` or `indep()`
@@ -1998,6 +2016,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## `data`. Resolve it now using the trait factor in `data`. We mirror the
   ## phylo_unique d = n_traits resolution below (which used to be the only
   ## consumer of trait-count-aware rank values).
+  .abort_empty_trait_levels(data, trait)
   .n_traits_for_dep <- nlevels(if (is.factor(data[[trait]])) data[[trait]]
                                else factor(data[[trait]]))
   for (i in seq_along(parsed$covstructs)) {
@@ -3419,6 +3438,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     data[[ss_name]] <- factor(paste(data[[site]], data[[species]], sep = "_"))
   if (!is.factor(data[[ss_name]])) data[[ss_name]] <- factor(data[[ss_name]])
 
+  .abort_empty_trait_levels(data, trait)
   n_traits        <- nlevels(data[[trait]])
   n_sites         <- nlevels(data[[site]])
   n_site_species  <- nlevels(data[[ss_name]])
@@ -7548,8 +7568,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     skip_psi_b_t <- vapply(seq_len(n_traits), function(t) {
       rows_t <- which(trait_id == (t - 1L))
       if (length(rows_t) == 0L) return(FALSE)
-      ## Single-trial Bernoulli: no within-cell information for a between-unit
-      ## Psi. Multinomial (fid 16): one categorical draw per unit has the same
+      ## Single-trial Bernoulli with one row per (trait, unit) cell: no
+      ## within-cell information for a between-unit Psi. Multinomial (fid 16): one categorical draw per unit has the same
       ## problem, while replication could identify a contrast-specific diagonal
       ## in principle. The current engine deliberately keeps the narrower 0.6
       ## contract and maps that diagonal off for every multinomial contrast;
@@ -7569,7 +7589,14 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ordinal_single <- isTRUE(all(family_id_vec[rows_t] %in% c(14L, 20L)) &&
                                  !anyDuplicated(site_id[rows_t]))
       if (!isTRUE(auto_psi_B)) return(ordinal_single)
-      isTRUE(all(family_id_vec[rows_t] == 1L) && all(n_trials[rows_t] == 1)) ||
+      ## #1591: single-trial binary is gated cell-wise, like the ordinal arm:
+      ## a trait keeps its Psi as soon as some (trait, unit) cell has more
+      ## than one 0/1 row, because replicated Bernoulli rows identify a
+      ## per-unit variance.
+      binary_single <- isTRUE(all(family_id_vec[rows_t] == 1L) &&
+                                all(n_trials[rows_t] == 1) &&
+                                !anyDuplicated(site_id[rows_t]))
+      binary_single ||
         isTRUE(all(family_id_vec[rows_t] == 16L)) ||
         ordinal_single
     }, logical(1))

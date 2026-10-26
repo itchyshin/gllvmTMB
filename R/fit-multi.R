@@ -4273,17 +4273,34 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         ">" = "Pass the success count as {.code y}, or use {.code cbind(succ, fail)}. Both columns must be non-negative integers."
       ), class = "gllvmTMB_response_support")
   }
-  ## Beta rows: y must be in the open unit interval (0, 1). The likelihood
-  ## clips y away from the boundaries internally for numerical safety, but
-  ## a y of exactly 0 or 1 is a hint that the user wants a zero/one-inflated
-  ## Beta or a different family (Smithson & Verkuilen 2006).
-  beta_rows <- (family_id_vec == 7L) & !masked_response
-  if (any(beta_rows)) {
-    if (any(y[beta_rows] <= 0) || any(y[beta_rows] >= 1))
+  ## Beta rows: y must be in the open unit interval (0, 1). A y of exactly
+  ## 0 or 1 is a hint that the user wants a zero/one-inflated Beta or a
+  ## different family (Smithson & Verkuilen 2006). The likelihood clamps y
+  ## to [1e-12, 1 - 1e-12] before log(y) and log(1 - y), so a y inside 1e-12
+  ## of an edge would be silently rewritten: refuse those rows too, and name
+  ## them (#1485).
+  beta_idx <- which((family_id_vec == 7L) & !masked_response)
+  if (length(beta_idx) > 0L) {
+    beta_tiny <- 1e-12
+    bad <- beta_idx[y[beta_idx] < beta_tiny | y[beta_idx] > 1 - beta_tiny]
+    if (length(bad) > 0L) {
+      ## Name rows of the data the user supplied: under response = "drop"
+      ## the model rows are a subset, mapped back through original_row; a
+      ## traits() wide fit maps each stacked cell back to its wide row.
+      orig_row <- missing_meta$original_row
+      if (length(orig_row) == length(y)) bad <- orig_row[bad]
+      src_row <- missing_meta$source_row
+      if (!is.null(src_row) && length(src_row) == nrow(missing_meta$data_original))
+        bad <- src_row[bad]
+      bad <- unique(bad)
+      shown    <- utils::head(bad, 10)
+      ellipsis <- if (length(bad) > 10) ", ..." else ""
       cli::cli_abort(c(
-        "Beta rows: {.code y} must satisfy 0 < y < 1.",
+        "Beta rows: {.code y} must satisfy 0 < y < 1, at least 1e-12 from either edge.",
+        "i" = paste0("Offending row indices: ", paste(shown, collapse = ", "), ellipsis, "."),
         ">" = "Rescale exact 0s/1s away from the boundary, or switch to a family that admits them."
-      ))
+      ), class = "gllvmTMB_response_support")
+    }
   }
   ## Lognormal and Gamma rows require strictly positive observed responses.
   ## Masked rows may carry the internal sentinel y = 0 under

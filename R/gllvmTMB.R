@@ -1689,6 +1689,7 @@ gllvmTMB <- function(
   ## Scoped to binomial because that is the family the 12,000 fits measured.
   if (!identical(control$warn_runaway, FALSE)) {
     .gllvmTMB_warn_runaway_loading(.fit)
+    .gllvmTMB_warn_laplace_optimism(.fit, control$laplace_warn_thresh %||% 2)
 
     ## Multinomial contrast degeneracy (fid 16), same control, same
     ## once-per-session discipline, but its OWN frequency id so one family's
@@ -1776,6 +1777,38 @@ gllvmTMB <- function(
     ">" = "{as.character(rw$action)}",
     ">" = "Full check: {.run gllvmTMB_diagnose(fit)}. Silence this with \\
            {.code gllvmTMBcontrol(warn_runaway = FALSE)}."
+  ), .frequency = "once", .frequency_id = id)
+  invisible(TRUE)
+}
+
+## Fit-time Laplace-optimism warning (#1389, owner decision 25 Oct 2026).
+##
+## `check_gllvmTMB()` already re-evaluates the marginal logLik at the fitted
+## parameters by adaptive Gauss-Hermite quadrature (`laplace_accuracy` row). A
+## converged Laplace fit can still report a logLik far above that integral
+## (67 units on psychTools::ability, probit d = 2; 167 and 171 on birthwt and
+## sai), with every convergence and Hessian check passing, so the gap passed
+## silently unless the user ran the check. This calls the SAME evaluator, with
+## the SAME work cap, at the end of `gllvmTMB()` and warns in one line when the
+## optimism exceeds `laplace_warn_thresh`. It warns and does not refit.
+##
+## Same switch and same once-per-fit-signature discipline as the runaway
+## warning (`warn_runaway`), so a re-fit of one problem stays quiet. A problem
+## above the work cap, or outside the evaluator's scope, is skipped silently
+## here; `check_gllvmTMB()` reports it as an INFO row.
+.gllvmTMB_warn_laplace_optimism <- function(fit, thresh = 2) {
+  if (isFALSE(thresh)) return(invisible(FALSE))
+  la <- tryCatch(.gllvmTMB_laplace_accuracy(fit), error = function(e) NULL)
+  if (!is.list(la) || !isTRUE(la$evaluated) || !is.finite(la$optimism) ||
+      !(la$optimism > thresh)) {
+    return(invisible(FALSE))
+  }
+  id <- paste0("gllvmTMB-laplace-optimism:", .gllvmTMB_runaway_signature(fit))
+  assign(id, TRUE, envir = .gllvmTMB_runaway_ids)
+  opt <- sprintf("%.1f", la$optimism)
+  cli::cli_warn(c(
+    "Laplace logLik is {opt} units above the marginal likelihood (threshold {thresh}); logLik, AIC and LRT for this fit are unreliable.",
+    ">" = "Refit with {.code gllvmTMBcontrol(aghq = 9)}, or see {.run gllvmTMB_diagnose(fit)}. Silence this with {.code gllvmTMBcontrol(warn_runaway = FALSE)}."
   ), .frequency = "once", .frequency_id = id)
   invisible(TRUE)
 }
@@ -2394,6 +2427,15 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #'   uses its own once-per-session slot so neither family's warning can
 #'   suppress the other's. Ordinal fits emit no fit-time warning: the
 #'   `ordinal_probit()` loading screen reports through [check_gllvmTMB()] only.
+#'   The same switch governs the Laplace-optimism warning (`laplace_warn_thresh`).
+#' @param laplace_warn_thresh Numeric scalar, default `2`. At the end of a fit,
+#'   the marginal logLik is re-evaluated at the fitted parameters by adaptive
+#'   Gauss-Hermite quadrature (the audit behind the `laplace_accuracy` row of
+#'   [check_gllvmTMB()], with the same work cap) and a one-line warning is given
+#'   when the Laplace logLik exceeds it by more than this many units. It applies
+#'   to Laplace fits whose only random block is the between-unit latent block with
+#'   `d` from 1 to 3; other fits, and problems above the work cap, are skipped.
+#'   `FALSE` turns the audit off. `warn_runaway = FALSE` also turns it off.
 #' @param aghq_continuation If `TRUE` (default), the adaptation loop may raise
 #'   `aghq_iter_cap` across passes. `FALSE` pins the cap and disables escalation.
 #' @param aghq_shift_tol,aghq_grad_tol,aghq_f_tol Convergence tolerances for the
@@ -2625,6 +2667,7 @@ gllvmTMBcontrol <- function(
   ## common (98-99% of fits at large loadings) and otherwise SILENT. Set FALSE to
   ## suppress; the check itself is always available via `gllvmTMB_diagnose()`.
   warn_runaway = TRUE,
+  laplace_warn_thresh = 2,
   allow_nongaussian_reml = FALSE,
   loading_ridge = NULL,
   optimizer_passes = 1L,
@@ -2699,6 +2742,14 @@ gllvmTMBcontrol <- function(
   aghq_continuation <- .gllvmTMB_as_flag(aghq_continuation, "aghq_continuation")
   aghq_multistart <- .gllvmTMB_as_flag(aghq_multistart, "aghq_multistart")
   warn_runaway <- .gllvmTMB_as_flag(warn_runaway, "warn_runaway")
+  if (!isFALSE(laplace_warn_thresh) &&
+      (!is.numeric(laplace_warn_thresh) || length(laplace_warn_thresh) != 1L ||
+       is.na(laplace_warn_thresh) || laplace_warn_thresh < 0)) {
+    cli::cli_abort(c(
+      "{.arg laplace_warn_thresh} must be one non-negative number, or {.code FALSE}.",
+      ">" = "Use {.code laplace_warn_thresh = 2} (the default), or {.code FALSE} to skip the fit-time audit."
+    ))
+  }
   allow_nongaussian_reml <- .gllvmTMB_as_flag(
     allow_nongaussian_reml, "allow_nongaussian_reml"
   )
@@ -2847,6 +2898,7 @@ gllvmTMBcontrol <- function(
     aghq_escalate_patience = aghq_escalate_patience,
     aghq_rho_min = aghq_rho_min,
     warn_runaway = warn_runaway,
+    laplace_warn_thresh = laplace_warn_thresh,
     allow_nongaussian_reml = allow_nongaussian_reml
   )
 }

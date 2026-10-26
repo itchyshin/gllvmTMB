@@ -398,6 +398,50 @@
   list(Sigma_phy = Sigma_phy, Sigma_non = Sigma_non)
 }
 
+## ---- Likelihood-ratio comparison (#1571) -----------------------------
+
+#' Likelihood-ratio comparison of the paired fit and its refit
+#'
+#' The `dep` refit contains the paired fit (rank-d + diagonal inside an
+#' unstructured covariance), so the paired fit is the reduced model. The
+#' `indep` refit is the reverse: it is the paired fit with the shared
+#' loadings set to zero, so the paired fit is the full model. Returns one
+#' row; the statistics are `NA` when the refit failed, when the two fits
+#' are not nested (a phylo-only paired fit lacks the non-phylogenetic term
+#' the refit always adds), when a log-likelihood is unavailable, or when
+#' the full model has no more parameters than the reduced one.
+#'
+#' @keywords internal
+#' @noRd
+.two_psi_lrt <- function(fit_joint, fit_alt, joint_sigma_non, alt_is_full) {
+  out <- data.frame(
+    loglik_joint = NA_real_,
+    loglik_alt = NA_real_,
+    chi2 = NA_real_,
+    df = NA_real_,
+    p_value = NA_real_
+  )
+  if (is.null(fit_alt) || is.null(joint_sigma_non)) {
+    return(out)
+  }
+  ll_joint <- tryCatch(stats::logLik(fit_joint), error = function(e) NULL)
+  ll_alt <- tryCatch(stats::logLik(fit_alt), error = function(e) NULL)
+  if (is.null(ll_joint) || is.null(ll_alt)) {
+    return(out)
+  }
+  out$loglik_joint <- as.numeric(ll_joint)
+  out$loglik_alt <- as.numeric(ll_alt)
+  full <- if (alt_is_full) ll_alt else ll_joint
+  reduced <- if (alt_is_full) ll_joint else ll_alt
+  out$chi2 <- 2 * (as.numeric(full) - as.numeric(reduced))
+  out$df <- attr(full, "df") - attr(reduced, "df")
+  if (is.finite(out$chi2) && is.finite(out$df) && out$df > 0) {
+    ## A negative statistic is optimiser noise: use 0 for the p-value.
+    out$p_value <- stats::pchisq(max(out$chi2, 0), df = out$df, lower.tail = FALSE)
+  }
+  out
+}
+
 ## ---- compare_dep_vs_two_psi (canonical) -------------------------------
 
 #' Canonical likelihood-based cross-check for the paired phylogenetic decomposition
@@ -428,6 +472,12 @@
 #' default of `threshold` is therefore **not calibrated**; treat a flag as
 #' a comparison to inspect, for example by checking the boundary and
 #' convergence diagnostics of both fits.
+#'
+#' The `lrt` component is the likelihood-based comparison: because the paired
+#' fit is nested in the unstructured refit, it reports their
+#' likelihood-ratio test, which accounts for the refit's many extra
+#' parameters. `rel_disagreement` and `flag` are kept as descriptive
+#' summaries only.
 #'
 #' The cross-check separates three questions:
 #'
@@ -479,6 +529,20 @@
 #'     if all tested components agreed, `NA` if nothing could be tested
 #'     (distinguishes agreement from a failed refit).}
 #'   \item{`threshold`}{The threshold used.}
+#'   \item{`lrt`}{One-row data frame: the likelihood-ratio test of the
+#'     paired fit against the unstructured refit, which contains it.
+#'     Columns `loglik_joint`, `loglik_alt`, `chi2` (twice the
+#'     log-likelihood gain of the refit), `df` (the refit's extra free
+#'     parameters) and `p_value` (upper tail of a chi-square with `df`
+#'     degrees of freedom). All `NA` when the refit failed, when
+#'     `fit_two_psi` has no non-phylogenetic term (the refit always adds
+#'     one, so the fits are not nested) or when a log-likelihood is
+#'     unavailable. The chi-square reference is approximate because the
+#'     paired model sits on a reduced-rank and variance boundary of the
+#'     unstructured one; use `p_value` as a guide, after checking
+#'     `alt_fit$opt$convergence`. `rel_disagreement` and `flag` stay as
+#'     descriptive summaries; the likelihood ratio is the comparison that
+#'     accounts for the refit's extra flexibility.}
 #'   \item{`alt_fit`}{The refit `gllvmTMB_multi` object (or `NULL` on
 #'     failure), retained so users can inspect convergence and pull
 #'     other extractor outputs.}
@@ -571,6 +635,9 @@
 #' ## So a flag means the two fits disagree; on its own it does not show
 #' ## that the paired model is wrong.
 #' c(two_psi = logLik(fit), unrestricted = logLik(check$alt_fit))
+#' ## The likelihood-ratio test of the two fits (the unrestricted refit
+#' ## contains the paired fit); this accounts for its extra parameters.
+#' check$lrt
 #' check$joint$Sigma_phy  # paired fit
 #' check$dep$Sigma_phy    # unrestricted refit
 compare_dep_vs_two_psi <- function(
@@ -657,6 +724,9 @@ compare_dep_vs_two_psi <- function(
       any(agreement$flag, na.rm = TRUE)
     },
     threshold = threshold,
+    lrt = .two_psi_lrt(
+      fit_two_psi, fit_alt, joint$Sigma_non, alt_is_full = TRUE
+    ),
     alt_fit = fit_alt
   )
 }
@@ -700,6 +770,15 @@ compare_dep_vs_two_psi <- function(
 #'     `rel_disagreement`, and `flag`.}
 #'   \item{`flag`, `threshold`, `alt_fit`}{As in
 #'     [compare_dep_vs_two_psi()].}
+#'   \item{`lrt`}{One-row data frame with the same columns as in
+#'     [compare_dep_vs_two_psi()], but the direction is reversed: the
+#'     `phylo_indep + indep` refit is the paired fit with its shared
+#'     loadings set to zero, so the paired fit is the larger model. `chi2`
+#'     is twice the log-likelihood gain of the paired fit over the refit
+#'     and `df` its extra free parameters. A small `p_value` means the
+#'     shared loadings improve the fit. The chi-square reference is
+#'     approximate, because the loadings are not identified under the
+#'     refit.}
 #' }
 #'
 #' @references
@@ -773,6 +852,9 @@ compare_dep_vs_two_psi <- function(
 #' ## is wrong. The phylogenetic variances of the two fits:
 #' rbind(two_psi = check$joint$Sigma_phy_diag,
 #'       per_trait = check$indep$Sigma_phy_diag)
+#' ## Likelihood-ratio test: does the paired fit's shared factor improve on
+#' ## the per-trait refit?
+#' check$lrt
 compare_indep_vs_two_psi <- function(
   fit_two_psi,
   threshold = 0.10,
@@ -860,6 +942,9 @@ compare_indep_vs_two_psi <- function(
       any(agreement$flag, na.rm = TRUE)
     },
     threshold = threshold,
+    lrt = .two_psi_lrt(
+      fit_two_psi, fit_alt, joint_full$Sigma_non, alt_is_full = FALSE
+    ),
     alt_fit = fit_alt
   )
 }

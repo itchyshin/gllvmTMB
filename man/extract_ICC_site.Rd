@@ -11,7 +11,8 @@ extract_ICC_site(fit, link_residual = c("auto", "none"))
 
 \item{link_residual}{For non-Gaussian fits: \code{"auto"} (default) adds each
 trait's family/link implicit residual to \eqn{(\boldsymbol\Sigma_W)_{tt}};
-\code{"none"} omits those additions.}
+\code{"none"} omits those additions. The estimated Gaussian observation
+residual is added under both values.}
 }
 \value{
 Numeric vector indexed by trait, or \code{NULL} if either Sigma_B or
@@ -32,6 +33,14 @@ For non-Gaussian fits the per-trait link-implicit residual is included
 in the within-unit variance by default when \code{link_residual = "auto"}
 (see \code{\link[=extract_Sigma]{extract_Sigma()}}); set
 \code{link_residual = "none"} for the latent/Psi-implied scale only.
+
+For Gaussian (and lognormal) traits the observation residual
+\eqn{\sigma^2_\varepsilon} is added to the within-unit variance whenever the
+fit estimates it, which happens when a \code{unit_obs} record has replicate rows.
+This holds for either \code{link_residual} value, because
+\eqn{\sigma^2_\varepsilon} is a fitted variance, not a link residual. When
+the engine fixes \eqn{\sigma_\varepsilon} (one row per record), nothing is
+added.
 }
 \seealso{
 \code{\link[=extract_proportions]{extract_proportions()}} for the canonical per-trait variance

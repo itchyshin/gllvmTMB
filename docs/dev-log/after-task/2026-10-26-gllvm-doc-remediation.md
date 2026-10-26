@@ -54,6 +54,7 @@ The first full R article build loaded a stale installed namespace and failed at 
 
 - The full 42-article R build remains incomplete; all five affected pages and `pkgdown::check_pkgdown()` passed.
 - D010 remains pending owner approval.
+- The local change is committed as `c467da980` on `codex/gllvm-doc-remediation`. No PR exists because the push was rejected by automatic review pending an explicit maintainer instruction.
 - No deployment or public claim was made.
 
 ## 11. Team Learning

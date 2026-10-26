@@ -13,3 +13,5 @@
 - `git diff --check` passed in both worktrees. Style checks on all changed prose returned zero findings; the pitfalls checklist has an explicit style waiver. MathJax deprecation warnings were non-fatal; the first stale-library run also reported a denied write to the shared sass cache.
 
 **Scope:** Documentation and examples only. No engine changes, deployment, parity claim, or interval calibration claim.
+
+**Repository state:** Local commit `c467da980` is on `codex/gllvm-doc-remediation`. Push was rejected by the automatic approval review because the repo requires explicit maintainer push authorization. No remote branch or PR was created.

@@ -33,7 +33,13 @@
 #'
 #' It simulates `n_sim` datasets from the fitted model under the joint
 #' parameter vector at the MLE, then tests whether the approximate
-#' marginal score function is centred at zero across the simulations. A
+#' marginal score function is centred at zero across the simulations.
+#' This needs the TMB template to simulate new responses (a `SIMULATE`
+#' block). The `gllvmTMB` template does not have one yet (#1582), so
+#' every "simulated" dataset would be the observed data and every score
+#' vector identical. The function detects this and stops with a
+#' "simulation not available" error rather than report a verdict it
+#' cannot compute. A
 #' non-centred score is a sign that the Laplace approximation is
 #' **unreliable** for this fit -- typically because the random-effects
 #' posterior is far from Gaussian (saturated binomial / Beta, sparse
@@ -54,8 +60,8 @@
 #'
 #' A large marginal-score p-value is an absence of evidence against
 #' centring in this finite simulation; it is not a certificate that the
-#' Laplace approximation is accurate. If the result is small (`p_value <= 0.05`) or
-#' large flagged-parameter list), consider:
+#' Laplace approximation is accurate. If the result is small
+#' (`p_value <= 0.05`) or the flagged-parameter list is large, consider:
 #'
 #' * Refitting with a richer random-effects structure (so the
 #'   conditional posterior is more Gaussian).
@@ -66,15 +72,20 @@
 #'
 #' @param fit A fit returned by [gllvmTMB()].
 #' @param n_sim Integer number of simulate-evaluate replicates.
-#'   Default `100L`. Cost is roughly `n_sim` joint likelihood
-#'   evaluations; budget 5-30 seconds on a Tier-1 fixture
-#'   and proportionally longer for larger fits.
+#'   Default `100L`. Must be larger than the number of fixed parameters
+#'   of the fit (`length(fit$tmb_obj$par)`): the covariance of the
+#'   score vector from `n_sim` replicates has rank at most `n_sim - 1`,
+#'   so a smaller `n_sim` cannot be inverted. The function stops with an
+#'   error naming the parameter count otherwise. Cost is roughly
+#'   `n_sim` joint likelihood evaluations; budget 5-30 seconds on a
+#'   Tier-1 fixture and proportionally longer for larger fits.
 #' @param seed Optional integer seed for the simulation RNG. NULL
 #'   (default) draws a random seed.
 #' @param estimate Logical. When `TRUE`, also refits the model on
-#'   each simulated dataset and reports the joint-score `p_value` +
-#'   `bias`. Default `FALSE` (much faster; marginal-score check
-#'   only).
+#'   each simulated dataset (passed to `TMB::checkConsistency()`). The
+#'   refits are kept in `$raw`; TMB's deviance test of them is
+#'   `summary(cc$raw)$estimate$deviance.p.value`. The wrapper does not
+#'   report it separately. Default `FALSE` (much faster).
 #'
 #' @return An object of class `gllvmTMB_check_consistency` with
 #'   components:
@@ -83,12 +94,17 @@
 #'       all marginal-score components. `NA` if TMB's information
 #'       matrix could not be inverted (often the case on tiny
 #'       fixtures).}
-#'     \item{`$marginal_bias`}{Named numeric vector: per-parameter
-#'       bias (mean of the simulated score, normalised by its SE).
-#'       Large absolute values flag specific parameters where the
-#'       Laplace approximation is biased.}
-#'     \item{`$joint_p_value`}{Joint-score p-value. `NA` unless
-#'       `estimate = TRUE`. Slower because each replicate refits.}
+#'     \item{`$marginal_bias`}{Named numeric vector: estimated bias of
+#'       each parameter, from TMB's
+#'       `-solve(var(score)) %*% mean(score)`. It is in each
+#'       parameter's own units, not a z-score, so the fixed
+#'       `|bias| > 0.5` flag threshold is a heuristic that depends on
+#'       the parameter's scale.}
+#'     \item{`$joint_p_value`}{p-value of TMB's joint-score test. This
+#'       test checks that the simulation itself is correct; it uses the
+#'       joint gradient and so needs simulated random effects as well as
+#'       simulated data. `NA` when the template does not simulate the
+#'       random effects. It does not depend on `estimate`.}
 #'     \item{`$flagged_parameters`}{Character names of parameters
 #'       whose marginal bias exceeds `|bias| > 0.5` (a heuristic;
 #'       finite-`n_sim` noise can produce small spurious biases,
@@ -102,8 +118,8 @@
 #'       `"joint_score_non_centred"`,
 #'       `"information_matrix_singular"` (TMB couldn't invert it;
 #'       interpret with caution), `"marginal_p_value_unavailable"`
-#'       (TMB returned NA without a captured warning; usually
-#'       happens on tiny / weakly-identified fixtures).}
+#'       (TMB returned NA without a captured warning; any other error
+#'       from TMB's `summary()` is listed in `$warnings`).}
 #'     \item{`$raw`}{The full `TMB::checkConsistency()` return value
 #'       in case the user wants the per-replicate gradient matrix.}
 #'     \item{`$call`}{`match.call()` of the invocation.}
@@ -131,18 +147,22 @@
 #'   data = dat, family = poisson(), trait = "trait", unit = "site"
 #' )
 #'
-#' # Run the check with 50 replicates. n_sim must be larger than the
-#' # number of fitted parameters (8 here); more replicates give a
-#' # steadier test.
-#' cc <- gllvmTMB_check_consistency(fit, n_sim = 50, seed = 1)
-#' cc
+#' # n_sim must be larger than the number of fitted parameters (8 here);
+#' # a smaller value stops with an error that names the count.
+#' tryCatch(
+#'   gllvmTMB_check_consistency(fit, n_sim = 5, seed = 1),
+#'   error = function(e) cat(conditionMessage(e), "\n")
+#' )
 #'
-#' # The overall verdict and any parameters whose estimated bias exceeds
-#' # the threshold. "no_centring_warning" means no sign of trouble was
-#' # found (not a guarantee); "information_matrix_singular" means the
-#' # check could not reach a verdict either way.
-#' cc$diagnostics
-#' cc$flagged_parameters
+#' # The template cannot yet simulate new responses (#1582), so with a
+#' # valid n_sim the check stops with a "simulation not available" error.
+#' # Once simulation is available, `cc$diagnostics` gives the overall
+#' # verdict and `cc$flagged_parameters` the parameters whose estimated
+#' # bias exceeds the threshold.
+#' tryCatch(
+#'   gllvmTMB_check_consistency(fit, n_sim = 50, seed = 1),
+#'   error = function(e) cat(conditionMessage(e), "\n")
+#' )
 #'
 #' @export
 gllvmTMB_check_consistency <- function(
@@ -159,7 +179,26 @@ gllvmTMB_check_consistency <- function(
   if (length(n_sim) != 1L || is.na(n_sim) || n_sim < 2L) {
     cli::cli_abort("{.arg n_sim} must be an integer >= 2.")
   }
+  ## The score covariance from n_sim replicates has rank at most
+  ## n_sim - 1, so it can only be inverted when n_sim exceeds the number of
+  ## fixed parameters (TMB's own check, `nsim < npar`, is one short).
+  n_par <- length(fit$tmb_obj$par)
+  if (n_sim <= n_par) {
+    cli::cli_abort(
+      c(
+        "{.arg n_sim} = {n_sim} is too small for this fit, which has {n_par} fixed parameters.",
+        "i" = "Use {.arg n_sim} of at least {n_par + 1L}; more replicates give a steadier test."
+      ),
+      class = "gllvmTMB_check_consistency_n_sim_too_small"
+    )
+  }
   .gllvmTMB_local_seed(seed)
+
+  ## A template without a SIMULATE block returns the observed data from
+  ## simulate(), so every replicate would re-score the same y (#1582).
+  if (!.gllvmTMB_cc_simulation_available(fit)) {
+    .gllvmTMB_cc_abort_no_simulation()
+  }
 
   ## TMB::checkConsistency emits a `Failed to invert information
   ## matrix` warning on tiny fixtures (small n, weakly identified
@@ -170,22 +209,39 @@ gllvmTMB_check_consistency <- function(
   cap <- character(0)
   withCallingHandlers(
     {
-      raw <- TMB::checkConsistency(
-        fit$tmb_obj,
-        n = n_sim,
-        estimate = isTRUE(estimate)
-      )
+      raw <- .gllvmTMB_cc_raw(fit$tmb_obj, n_sim, isTRUE(estimate))
       ## summary() is where TMB actually computes the p-values and the
       ## per-parameter bias (and where the information-matrix inversion
       ## runs); the raw object does not carry them. Capture the summary
       ## rather than only triggering it for its warning channel.
-      smry <- tryCatch(summary(raw), error = function(e) NULL)
+      ## A summary() error is reported in $warnings, not hidden: it is not
+      ## a singular matrix.
+      smry <- tryCatch(
+        summary(raw),
+        error = function(e) {
+          cap <<- c(cap, paste0("summary() failed: ", conditionMessage(e)))
+          NULL
+        }
+      )
     },
     warning = function(w) {
       cap <<- c(cap, conditionMessage(w))
       invokeRestart("muffleWarning")
     }
   )
+
+  ## Identical score vectors across replicates (zero SD) mean the replicates
+  ## were not simulated; the covariance is exactly singular for that reason.
+  score <- tryCatch(
+    do.call(cbind, lapply(raw, function(r) as.vector(r$gradient))),
+    error = function(e) NULL
+  )
+  if (is.matrix(score) && ncol(score) > 1L) {
+    score_sd <- apply(score, 1L, stats::sd)
+    if (all(is.finite(score_sd)) && max(score_sd) == 0) {
+      .gllvmTMB_cc_abort_no_simulation()
+    }
+  }
 
   ## Extract the marginal-score check result. Defensive against NULL
   ## or zero-length p-value entries (TMB returns NA when the
@@ -199,7 +255,7 @@ gllvmTMB_check_consistency <- function(
   if (is.null(marginal_b)) {
     marginal_b <- numeric(0L)
   }
-  joint_p <- if (isTRUE(estimate)) smry$joint$p.value else NA_real_
+  joint_p <- smry$joint$p.value
   if (is.null(joint_p) || length(joint_p) == 0L) {
     joint_p <- NA_real_
   }
@@ -221,7 +277,7 @@ gllvmTMB_check_consistency <- function(
   if (!is.na(marginal_p) && marginal_p <= 0.05) {
     flags <- c(flags, "marginal_score_non_centred")
   }
-  if (isTRUE(estimate) && !is.na(joint_p) && joint_p <= 0.05) {
+  if (!is.na(joint_p) && joint_p <= 0.05) {
     flags <- c(flags, "joint_score_non_centred")
   }
   if (length(flagged) > 0L && !"marginal_score_non_centred" %in% flags) {
@@ -254,14 +310,47 @@ gllvmTMB_check_consistency <- function(
   out
 }
 
+## The TMB::checkConsistency() call, isolated so tests can supply synthetic
+## replicates (the template has no SIMULATE block, #1582).
+.gllvmTMB_cc_raw <- function(obj, n, estimate) {
+  TMB::checkConsistency(obj, n = n, estimate = estimate)
+}
+
+## TRUE when the fitted template's simulate() returns new responses; FALSE
+## when it hands back the observed data (no SIMULATE block) or cannot run.
+.gllvmTMB_cc_simulation_available <- function(fit) {
+  td <- fit$tmb_data
+  sim <- tryCatch(
+    fit$tmb_obj$simulate(complete = TRUE),
+    error = function(e) NULL
+  )
+  if (is.null(sim) || is.null(td) || is.null(td$y) || is.null(sim$y)) {
+    return(FALSE)
+  }
+  !identical(sim$y, td$y)
+}
+
+.gllvmTMB_cc_abort_no_simulation <- function(call = rlang::caller_env()) {
+  cli::cli_abort(
+    c(
+      "The consistency check cannot run: simulation not available for this template.",
+      "x" = "{.fn TMB::checkConsistency} needs the template to simulate new responses, but the {.pkg gllvmTMB} template has no {.code SIMULATE} block: every replicate would re-score the observed data and the score covariance is exactly zero.",
+      "i" = "This is a limitation of the tool, not a property of your data (#1582).",
+      ">" = "Use {.fn gllvmTMB_diagnose} to check convergence and the gradient of this fit instead."
+    ),
+    class = "gllvmTMB_check_consistency_simulation_unavailable",
+    call = call
+  )
+}
+
 #' @export
 #' @keywords internal
 print.gllvmTMB_check_consistency <- function(x, ...) {
   cli::cli_h1("gllvmTMB Laplace-consistency check")
   cli::cli_bullets(c(
     "*" = "n_sim: {x$n_sim}",
-    "*" = "Marginal-score p-value: {if (is.na(x$marginal_p_value)) 'NA (information matrix singular)' else signif(x$marginal_p_value, 3)}",
-    "*" = "Joint-score p-value:    {if (is.na(x$joint_p_value)) 'NA (estimate = FALSE; pass estimate = TRUE to compute)' else signif(x$joint_p_value, 3)}"
+    "*" = "Marginal-score p-value: {if (!is.na(x$marginal_p_value)) signif(x$marginal_p_value, 3) else if ('information_matrix_singular' %in% x$diagnostics) 'NA (information matrix singular)' else 'NA (unavailable; see $warnings)'}",
+    "*" = "Joint-score p-value:    {if (is.na(x$joint_p_value)) 'NA (needs simulated random effects)' else signif(x$joint_p_value, 3)}"
   ))
   if (identical(x$diagnostics, "no_centring_warning")) {
     cli::cli_alert_info(

@@ -72,19 +72,29 @@
 #'   [animal_coef()], [kernel_coef()], [spatial_coef()], and
 #'   [meta_V()]).
 #'
-#'   An `offset()` term is supported for **count responses only** — `poisson()`,
+#'   An `offset()` term is supported for **count responses**: `poisson()`,
 #'   `nbinom1()`, `nbinom2()`, `truncated_poisson()`, and
-#'   `truncated_nbinom2()` — where it is the usual exposure or effort
+#'   `truncated_nbinom2()`, where it is the usual exposure or effort
 #'   adjustment. Supply it already on the link scale, e.g.
 #'   `offset(log(trap_nights))`. It must be its own additive term; it is not
 #'   interacted with `trait`.
+#'
+#'   There is one exception. In an integrated multi-source model declared with
+#'   [isdm_sources()], a nonzero offset is also accepted on the
+#'   `binomial(link = "cloglog")` detection arm. There it is a change of
+#'   support, not a shift: `cloglog(p) = log(E) + eta` with `E` the known
+#'   sampled area or effort, so the detection arm observes the same intensity
+#'   as the Poisson arms. A standalone `binomial(link = "cloglog")` fit, and
+#'   `binomial(link = "logit")`, `binomial(link = "probit")` and
+#'   `gaussian()`, keep the refusal, because there an offset would be a fixed
+#'   shift in log-odds, probit or mean.
 #'
 #'   In long format the offset column carries one value per `(unit, trait)`
 #'   row, so it can differ by trait. In wide format, `offset(w)` names one
 #'   unit-level column and applies it to every trait, while
 #'   `offset(e1, e2, ...)` names one column per trait, in [traits()] order.
 #'
-#'   A **nonzero** offset on a non-count trait is an error naming that trait.
+#'   A **nonzero** offset on any other trait is an error naming that trait.
 #'   Zero is always allowed and does nothing (on the log scale it is a
 #'   multiplier of one), which is how a mixed-family model gives an offset to
 #'   its count traits and not the rest.
@@ -446,17 +456,19 @@
 #' this internally.
 #'
 #' **Multi-trial binomial**. The TMB engine evaluates `dbinom(y, n_trials, p)`
-#' so binomial fits are not restricted to Bernoulli (size = 1). To pass a
-#' per-row trial count, use either:
+#' so binomial fits are not restricted to Bernoulli (size = 1). `y` must be
+#' the integer success count, not a proportion. To pass a per-row trial
+#' count, use either:
 #' \itemize{
 #'   \item `cbind(successes, failures) ~ ...` on the LHS of the formula
 #'         (canonical R / `glmmTMB` convention; recommended), or
-#'   \item a flat response `y` with `weights = n_trials` (the alternative
-#'         glmmTMB API).
+#'   \item a flat success-count response `y` with `weights = n_trials` (the
+#'         alternative glmmTMB API).
 #' }
 #' The second `cbind()` column is the number of **failures**, not trials; for
 #' a trials column write `cbind(s, trials - s)`. Both interfaces produce
-#' identical fits.
+#' identical fits when `y` is the success count. A proportion plus
+#' `weights = n_trials` is refused.
 #'
 #' *Mixing with other families.* Binomial counts can share one model with
 #' Gaussian, count or other traits. In a mixed fit the second `cbind()` column

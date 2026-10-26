@@ -55,7 +55,11 @@ test_that("#1413 seeded simulate/bootstrap/check_consistency keep the global RNG
   fit <- .rng_fit_1413()
   expect_true(rng_kept(simulate(fit, nsim = 1, seed = 5)))
   expect_true(rng_kept(bootstrap_Sigma(fit, n_boot = 2, seed = 3, progress = FALSE)))
-  expect_true(rng_kept(gllvmTMB_check_consistency(fit, n_sim = 2, seed = 4)))
+  ## The template cannot simulate (#1582), so the check errors after seeding;
+  ## the RNG must be restored on that error path too.
+  expect_true(rng_kept(try(
+    gllvmTMB_check_consistency(fit, n_sim = 100, seed = 4), silent = TRUE
+  )))
   ## Seeded results stay reproducible.
   expect_equal(simulate(fit, nsim = 1, seed = 5), simulate(fit, nsim = 1, seed = 5))
 })

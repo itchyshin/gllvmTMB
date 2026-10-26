@@ -512,6 +512,74 @@ test_that("laplace_accuracy is size-capped and leaves the fit's inner state alon
   expect_identical(chk$status[chk$component == "laplace_accuracy"], "INFO")
 })
 
+## ---- fit-time warning (#1389, owner decision 25 Oct 2026) ---------------------
+
+lw_fit <- function(...) {
+  fx <- probit_fixture()
+  gllvmTMB(
+    value ~ 0 + trait + latent(0 + trait | unit, d = 1, unique = FALSE),
+    data = fx$df, trait = "trait", unit = "unit",
+    family = binomial(link = "probit"), ...
+  )
+}
+
+fake_la <- function(optimism) {
+  function(object, k = NULL) {
+    list(evaluated = TRUE, k = 9L, d = 1L, loglik_laplace = -12443.45,
+         loglik_quadrature = -12443.45 - optimism, optimism = optimism)
+  }
+}
+
+test_that("laplace_warn_thresh is a control argument, default 2, FALSE allowed (#1389)", {
+  expect_identical(gllvmTMBcontrol()$laplace_warn_thresh, 2)
+  expect_identical(gllvmTMBcontrol(laplace_warn_thresh = FALSE)$laplace_warn_thresh, FALSE)
+  expect_identical(gllvmTMBcontrol(laplace_warn_thresh = 5)$laplace_warn_thresh, 5)
+  expect_error(gllvmTMBcontrol(laplace_warn_thresh = -1), "laplace_warn_thresh")
+  expect_error(gllvmTMBcontrol(laplace_warn_thresh = "a"), "laplace_warn_thresh")
+  expect_error(gllvmTMBcontrol(laplace_warn_thresh = c(1, 2)), "laplace_warn_thresh")
+})
+
+test_that("gllvmTMB() warns at fit time when Laplace is optimistic by more than the threshold (#1389)", {
+  gllvmTMB:::.gllvmTMB_reset_runaway_warnings()
+  local_mocked_bindings(.gllvmTMB_laplace_accuracy = fake_la(67.52))
+  expect_warning(
+    suppressMessages(lw_fit(control = gllvmTMBcontrol(se = FALSE))),
+    "Laplace logLik is 67.5 units above the marginal likelihood"
+  )
+})
+
+test_that("the fit-time Laplace warning is quiet below threshold, when switched off, and for a refit (#1389)", {
+  gllvmTMB:::.gllvmTMB_reset_runaway_warnings()
+  local_mocked_bindings(.gllvmTMB_laplace_accuracy = fake_la(1.5))
+  expect_no_warning(suppressMessages(lw_fit(control = gllvmTMBcontrol(se = FALSE))))
+  local_mocked_bindings(.gllvmTMB_laplace_accuracy = fake_la(67.52))
+  expect_no_warning(suppressMessages(lw_fit(
+    control = gllvmTMBcontrol(se = FALSE, laplace_warn_thresh = FALSE))))
+  expect_no_warning(suppressMessages(lw_fit(
+    control = gllvmTMBcontrol(se = FALSE, warn_runaway = FALSE))))
+  expect_no_warning(suppressMessages(lw_fit(
+    control = gllvmTMBcontrol(se = FALSE, laplace_warn_thresh = 100))))
+  ## once per fit signature: the first call warns, a refit of the same problem does not
+  expect_warning(suppressMessages(lw_fit(control = gllvmTMBcontrol(se = FALSE))),
+                 "Laplace logLik is 67.5 units above")
+  expect_no_warning(suppressMessages(lw_fit(control = gllvmTMBcontrol(se = FALSE))))
+})
+
+test_that("the fit-time Laplace warning stays quiet when Laplace is pessimistic, however large the gap (#1389)", {
+  gllvmTMB:::.gllvmTMB_reset_runaway_warnings()
+  ## healthy probit d = 1: Laplace is below the integral, so no warning
+  expect_no_warning(fit <- suppressMessages(lw_fit(control = gllvmTMBcontrol(se = FALSE))))
+  ## a spike loading puts Laplace ~12 units BELOW the integral at d = 1: that is
+  ## not the optimism this warning is about, so it must not fire (the real
+  ## optimistic cases are d = 2 fits; the mocked tests above cover firing).
+  fit2 <- fit
+  p2 <- fit$opt$par
+  p2[which(names(p2) == "theta_rr_B")[1L]] <- 15
+  fit2$opt$par <- p2
+  expect_lt(gllvmTMB:::.gllvmTMB_laplace_accuracy(fit2)$optimism, -5)
+  expect_no_warning(gllvmTMB:::.gllvmTMB_warn_laplace_optimism(fit2, 2))
+})
+
 ## ---- #1591: replicated single-trial binary keeps its Psi --------------------
 
 replicated_binary_fixture <- function(reps, n = 150L, seed = 1591L) {

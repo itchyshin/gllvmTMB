@@ -3392,6 +3392,32 @@ predict.gllvmTMB_multi <- function(
         added <- c(added, "diag_species")
       }
 
+      ## diag_cluster2: per-(trait, cluster2-level) random intercept.
+      ## src/gllvmTMB.cpp:1500 declares r_c2 as n_traits x n_cluster2 and
+      ## :3409 adds eta(o) += r_c2(t, cluster2_id(o)) -- a renamed copy of
+      ## diag_species, so the same (trait, group) index order. The levels are
+      ## rebuilt the way the fit built them: factor() on the training column
+      ## (R/fit-multi.R:4743-4747). A new row whose cluster2 level is unseen
+      ## gets no contribution, as for the species tier.
+      c2_col <- object$cluster2_col
+      if (isTRUE(object$use$diag_cluster2) && !is.null(c2_col) &&
+            c2_col %in% names(nd) && c2_col %in% names(object$data)) {
+        lv_c2 <- levels(factor(object$data[[c2_col]]))
+        c2_id <- as.integer(factor(as.character(nd[[c2_col]]),
+                                   levels = lv_c2)) - 1L
+        r_c2 <- matrix(
+          par[names(par) == "r_c2"],
+          nrow = object$n_traits,
+          ncol = length(lv_c2)
+        )
+        ok_c2 <- !is.na(c2_id) & c2_id >= 0L & c2_id < length(lv_c2) &
+          !is.na(tr_id)
+        if (any(ok_c2)) {
+          eta[ok_c2] <- eta[ok_c2] + r_c2[cbind(tr_id[ok_c2] + 1L, c2_id[ok_c2] + 1L)]
+          added <- c(added, "diag_cluster2")
+        }
+      }
+
       ## Site-species (W) tiers. These are indexed by the unit-observation
       ## column, which `newdata` need not carry at all -- so they are added
       ## only when it is present and its levels resolve against training.

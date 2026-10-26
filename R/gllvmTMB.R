@@ -359,6 +359,12 @@
 #'   For unstructured Gaussian models (`gaussian()` with ordinary `latent()` and
 #'   no phylo/spatial structure), `engine = "julia"` uses the GLLVModels.jl
 #'   closed-form profile path instead of the native Laplace engine.
+#'   Arguments the bridge does not forward abort rather than being ignored
+#'   (class `gllvmTMB_julia_unsupported_arg`): `REML`, `lambda_constraint`,
+#'   `known_V`, `cluster2`, `phylo_vcv`, `phylo_tree`, `mesh`, and a modelled
+#'   missing predictor (`miss_control(predictor = "model")`). Optimiser and
+#'   integration fields of [gllvmTMBcontrol()] that it never reads abort with
+#'   class `gllvmTMB_julia_unsupported_control`.
 #' @param ci_method Confidence-interval route requested at fit time for
 #'   admitted `engine = "julia"` no-X rows. One of `"none"` (default),
 #'   `"wald"`, `"profile"`, or `"bootstrap"`. Native `engine = "tmb"` fits use
@@ -796,7 +802,8 @@ gllvmTMB <- function(
     control_defaults <- gllvmTMBcontrol()
     ignored_control <- Filter(
       function(f) !identical(control[[f]], control_defaults[[f]]),
-      c("optimizer", "optArgs", "init_jitter", "start_from", "se")
+      c("optimizer", "optArgs", "init_jitter", "start_from", "se",
+        "d_B", "d_W", "init_strategy", "start_method", "aghq", "aghq_ridge")
     )
     if (length(ignored_control) > 0L) {
       cli::cli_abort(c(
@@ -1518,10 +1525,19 @@ gllvmTMB <- function(
     ## `REML`, `lambda_constraint` and `known_V` are not forwarded to
     ## gllvm_julia_fit(), so each would be dropped and an ML / unconstrained /
     ## no-known-V fit returned without a word (#1347). Refuse them instead.
+    ## `cluster2`, `phylo_vcv`, `phylo_tree`, `mesh` and a modelled missing
+    ## predictor are likewise never forwarded; a structured term that would use
+    ## them is already gated in the dispatch, but supplied alone they were
+    ## accepted and dropped (#1347).
     julia_dropped_args <- c(
       if (isTRUE(REML)) "REML",
       if (!is.null(lambda_constraint)) "lambda_constraint",
-      if (!is.null(known_V)) "known_V"
+      if (!is.null(known_V)) "known_V",
+      if (!is.null(cluster2)) "cluster2",
+      if (!is.null(phylo_vcv)) "phylo_vcv",
+      if (!is.null(phylo_tree)) "phylo_tree",
+      if (!is.null(mesh)) "mesh",
+      if (identical(missing$predictor, "model")) "missing = miss_control(predictor = \"model\")"
     )
     if (length(julia_dropped_args) > 0L)
       cli::cli_abort(c(

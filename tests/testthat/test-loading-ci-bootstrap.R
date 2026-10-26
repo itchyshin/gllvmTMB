@@ -36,7 +36,8 @@ build_bootstrap_fit <- function(n_sites = 80L, seed = 20260528L) {
   )
   M <- confirmatory_lambda(
     species = species_names, group = group, d = 2L,
-    loads_on = list(A = 1L, B = 2L)
+    loads_on = list(A = 1L, B = 2L),
+    anchors = NULL
   )
   fit <- gllvmTMB(
     value ~ 0 + trait + latent(0 + trait | site, d = 2L),

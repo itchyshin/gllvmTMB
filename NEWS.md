@@ -1,5 +1,6 @@
 # Development (unreleased)
 
+* The default between-unit Psi of `latent(unique = TRUE)` is now kept for a single-trial binary trait whenever some (trait, unit) cell has more than one 0/1 row, as it already was for replicated ordinal traits. Replicated Bernoulli rows identify a per-unit variance. Psi is still skipped when every cell has one row. The skip note now states that condition and no longer points to `indep()`, which cannot be combined with `latent()` (#1591).
 * `vcov()` on a fit with no standard errors no longer suggests `method = "profile"`, which it does not accept. `extract_Sigma(part = "shared")` and `part = "unique"` no longer print that a link residual was added when that residual is only applied to `part = "total"` (#1580).
 * An explicit `indep()` or `diag()` on single-observation ordinal traits is mapped off, with a warning, under the same identifiability gate as the default between-unit Psi. One observation per (trait, unit) cannot separate that diagonal from the fixed threshold scale (#1574).
 * Bootstrap wrappers keep `nsim = 500`. That default no longer warns that it is too small. The warning names `nsim`, and the `profile_ci_total_variance()` hint is shown only when the bootstrap asks for Sigma diagonals. `bootstrap_Sigma()` still warns when `n_boot` is below 999 (#1576).

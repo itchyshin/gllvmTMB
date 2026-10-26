@@ -107,7 +107,7 @@
   if (length(binomial_labs) > 0L) {
     msg <- c(msg,
       "i" = sprintf(
-        "Single-trial binomial traits %s have one 0/1 trial per (trait, unit) cell. Multi-trial data ({.code cbind(successes, failures)} or {.code weights = n_trials}) can identify the diagonal; an explicit {.fn indep} term is a separate deliberate model choice.",
+        "Single-trial binomial traits %s have one 0/1 row per (trait, unit) cell, so a between-unit Psi is not identified. Multi-trial data ({.code cbind(successes, failures)} or {.code weights = n_trials}) or replicated 0/1 rows per (trait, unit) cell identify it, and the default {.code latent(unique = TRUE)} then keeps it.",
         paste(binomial_labs, collapse = ", ")
       )
     )
@@ -7568,8 +7568,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     skip_psi_b_t <- vapply(seq_len(n_traits), function(t) {
       rows_t <- which(trait_id == (t - 1L))
       if (length(rows_t) == 0L) return(FALSE)
-      ## Single-trial Bernoulli: no within-cell information for a between-unit
-      ## Psi. Multinomial (fid 16): one categorical draw per unit has the same
+      ## Single-trial Bernoulli with one row per (trait, unit) cell: no
+      ## within-cell information for a between-unit Psi. Multinomial (fid 16): one categorical draw per unit has the same
       ## problem, while replication could identify a contrast-specific diagonal
       ## in principle. The current engine deliberately keeps the narrower 0.6
       ## contract and maps that diagonal off for every multinomial contrast;
@@ -7589,7 +7589,14 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ordinal_single <- isTRUE(all(family_id_vec[rows_t] %in% c(14L, 20L)) &&
                                  !anyDuplicated(site_id[rows_t]))
       if (!isTRUE(auto_psi_B)) return(ordinal_single)
-      isTRUE(all(family_id_vec[rows_t] == 1L) && all(n_trials[rows_t] == 1)) ||
+      ## #1591: single-trial binary is gated cell-wise, like the ordinal arm:
+      ## a trait keeps its Psi as soon as some (trait, unit) cell has more
+      ## than one 0/1 row, because replicated Bernoulli rows identify a
+      ## per-unit variance.
+      binary_single <- isTRUE(all(family_id_vec[rows_t] == 1L) &&
+                                all(n_trials[rows_t] == 1) &&
+                                !anyDuplicated(site_id[rows_t]))
+      binary_single ||
         isTRUE(all(family_id_vec[rows_t] == 16L)) ||
         ordinal_single
     }, logical(1))

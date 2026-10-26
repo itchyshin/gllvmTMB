@@ -2605,6 +2605,53 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL, rho = 1) {
   cols
 }
 
+## #1161: a slope-ONLY LHS (`0 + x`, or a bare `x`) over a non-trait, non-spatial
+## grouping is the species-axis random slope a fourth-corner model needs
+## (`beta_s ~ N(0, sigma^2 A)`). It is refused by `indep()`/`latent()`/bare
+## bars, but `animal_slope()` / `phylo_slope()` fit it once the trait column
+## is copied into the grouping column. Returns the covariate name for exactly
+## one slope covariate and no intercept term, else NULL.
+.slope_only_covariate <- function(lhs, trait_col = "trait") {
+  lhs <- .strip_lhs_parens(lhs)
+  terms <- list()
+  collect <- function(e) {
+    e <- .strip_lhs_parens(e)
+    if (is.call(e) && identical(e[[1L]], as.name("+")) && length(e) == 3L) {
+      collect(e[[2L]])
+      collect(e[[3L]])
+    } else {
+      terms[[length(terms) + 1L]] <<- e
+    }
+  }
+  collect(lhs)
+  is_zero <- vapply(terms, function(t) is.numeric(t) && length(t) == 1L && t == 0, logical(1))
+  is_one <- vapply(terms, function(t) is.numeric(t) && length(t) == 1L && t == 1, logical(1))
+  is_sym <- vapply(terms, is.symbol, logical(1))
+  if (any(is_one) || !all(is_zero | is_sym)) {
+    return(NULL)
+  }
+  covs <- vapply(terms[is_sym], as.character, character(1))
+  covs <- setdiff(covs, c(trait_col, "trait"))
+  if (length(covs) != 1L || sum(is_sym) != 1L) {
+    return(NULL)
+  }
+  covs
+}
+
+## The signpost shared by `.assert_no_augmented_lhs()` and
+## `parse_re_int_call()` for a slope-only LHS (#1161).
+.slope_only_next_step <- function(covariate) {
+  paste0(
+    "To let the slope of {.code ", covariate, "} vary across species, copy the trait column ",
+    "into a grouping column (e.g. {.code dat$species <- dat$trait}) and use ",
+    "{.code animal_slope(", covariate, " | species, A = A)} or ",
+    "{.code phylo_slope(", covariate, " | species, tree = tree)}. ",
+    "The levels of that column must match the labels of {.code A} or the tree tips; ",
+    "an identity {.code A} gives plain partial pooling. ",
+    "See the keyword grid article, section {.emph Slope variation by species}."
+  )
+}
+
 ## Design 07 Stage 2.5 (May 2026): fail-loud guard against augmented LHS
 ## in the BARE covstruct keywords (`latent`, `unique`, `indep`, `dep`,
 ## `spatial_dep`). The `phylo()` and `spatial()` mode-dispatch wrappers
@@ -2690,6 +2737,8 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL, rho = 1) {
     "There is no supported route for more than one slope covariate here; fit separate models, one covariate per {.fn {fn}} term."
   } else if (is_single_slope) {
     "Use {.code latent(1 + x | {deparse(rhs)}, d = K)} instead -- {.fn {fn}} itself does not support a slope term, and there is no diagonal-only slope spelling yet."
+  } else if (!is.null(slope_only_cov <- .slope_only_covariate(lhs, trait_col))) {
+    .slope_only_next_step(slope_only_cov)
   } else {
     "There is no supported route for more than one slope covariate here; fit separate models, one covariate per term."
   }

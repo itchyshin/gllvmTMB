@@ -28,7 +28,8 @@ build_fit <- function(n_sites = 60L, seed = 20260527L) {
   )
   M <- confirmatory_lambda(
     species = species_names, group = group, d = 2L,
-    loads_on = list(A = 1L, B = 2L)
+    loads_on = list(A = 1L, B = 2L),
+    anchors = NULL
   )
   fit <- gllvmTMB(
     value ~ 0 + trait + latent(0 + trait | site, d = 2L),
@@ -906,7 +907,8 @@ test_that("Wald CIs cover the true Lambda at approximately nominal rate", {
   species_names <- c(paste0("A_", 1:3), paste0("B_", 1:3), paste0("C_", 1:4))
   group <- c(rep("A", 3), rep("B", 3), rep("C", 4))
   M <- confirmatory_lambda(species = species_names, group = group,
-                            d = 2L, loads_on = list(A = 1L, B = 2L))
+                            d = 2L, loads_on = list(A = 1L, B = 2L),
+                            anchors = NULL)
 
   ## Fix the truth across replicates (so we know what to cover);
   ## vary only the binary data noise.

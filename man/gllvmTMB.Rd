@@ -341,7 +341,13 @@ the unconstrained-ordination core (a single \code{latent()} block + per-trait
 intercepts) and errors on structures it does not yet support.
 For unstructured Gaussian models (\code{gaussian()} with ordinary \code{latent()} and
 no phylo/spatial structure), \code{engine = "julia"} uses the GLLVModels.jl
-closed-form profile path instead of the native Laplace engine.}
+closed-form profile path instead of the native Laplace engine.
+Arguments the bridge does not forward abort rather than being ignored
+(class \code{gllvmTMB_julia_unsupported_arg}): \code{REML}, \code{lambda_constraint},
+\code{known_V}, \code{cluster2}, \code{phylo_vcv}, \code{phylo_tree}, \code{mesh}, and a modelled
+missing predictor (\code{miss_control(predictor = "model")}). Optimiser and
+integration fields of \code{\link[=gllvmTMBcontrol]{gllvmTMBcontrol()}} that it never reads abort with
+class \code{gllvmTMB_julia_unsupported_control}.}
 
 \item{ci_method}{Confidence-interval route requested at fit time for
 admitted \code{engine = "julia"} no-X rows. One of \code{"none"} (default),

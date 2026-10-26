@@ -17,7 +17,11 @@
 \item{object}{A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}.}
 
 \item{newdata}{Optional new data frame. If \code{NULL}, predictions are
-produced for the training rows. A missing covariate stays \code{NA} in
+produced for the training rows. For a fit made with the wide
+\code{traits(...)} syntax, \code{newdata} must be in long form with a \code{trait}
+factor column (one row per unit and trait, with the training levels);
+wide \code{newdata} is refused with an error. For example,
+\code{data.frame(id = rep(ids, each = 4), trait = factor(rep(trait_names, length(ids)), levels = trait_names))}. A missing covariate stays \code{NA} in
 that row; the other rows keep their own predictions. Data-dependent
 transforms in the fixed formula (\code{scale()}, \code{poly()}, \code{ns()}) reuse
 the training centre, scale, and basis, so a row's value does not

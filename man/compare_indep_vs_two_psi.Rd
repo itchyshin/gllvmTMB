@@ -43,6 +43,15 @@ failed).}
 \code{rel_disagreement}, and \code{flag}.}
 \item{\code{flag}, \code{threshold}, \code{alt_fit}}{As in
 \code{\link[=compare_dep_vs_two_psi]{compare_dep_vs_two_psi()}}.}
+\item{\code{lrt}}{One-row data frame with the same columns as in
+\code{\link[=compare_dep_vs_two_psi]{compare_dep_vs_two_psi()}}, but the direction is reversed: the
+\code{phylo_indep + indep} refit is the paired fit with its shared
+loadings set to zero, so the paired fit is the larger model. \code{chi2}
+is twice the log-likelihood gain of the paired fit over the refit
+and \code{df} its extra free parameters. A small \code{p_value} means the
+shared loadings improve the fit. The chi-square reference is
+approximate, because the loadings are not identified under the
+refit.}
 }
 }
 \description{
@@ -128,6 +137,9 @@ check$flag
 ## is wrong. The phylogenetic variances of the two fits:
 rbind(two_psi = check$joint$Sigma_phy_diag,
       per_trait = check$indep$Sigma_phy_diag)
+## Likelihood-ratio test: does the paired fit's shared factor improve on
+## the per-trait refit?
+check$lrt
 }
 \references{
 Williams, M. J., McGillycuddy, M., Drobniak, S. M., Bolker, B. M.,

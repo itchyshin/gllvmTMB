@@ -1,5 +1,6 @@
 # Development (unreleased)
 
+* The default between-unit Psi of `latent(unique = TRUE)` is now kept for a single-trial binary trait whenever some (trait, unit) cell has more than one 0/1 row, as it already was for replicated ordinal traits. Replicated Bernoulli rows identify a per-unit variance. Psi is still skipped when every cell has one row. The skip note now states that condition and no longer points to `indep()`, which cannot be combined with `latent()` (#1591).
 * `compare_loadings()` now matches rows by trait name when both matrices have row names (reordering `Lambda_a` to `Lambda_b`) and stops when the two row-name sets differ; unnamed input is still matched by position. `ridge_path()` sorts `tau` before refitting, so its rows and printed table run from the strongest penalty to the weakest, and no longer repeats the `extract_communality()` note once per `tau` (#1590).
 * `vcov()` on a fit with no standard errors no longer suggests `method = "profile"`, which it does not accept. `extract_Sigma(part = "shared")` and `part = "unique"` no longer print that a link residual was added when that residual is only applied to `part = "total"` (#1580).
 * An explicit `indep()` or `diag()` on single-observation ordinal traits is mapped off, with a warning, under the same identifiability gate as the default between-unit Psi. One observation per (trait, unit) cannot separate that diagonal from the fixed threshold scale (#1574).
@@ -7,9 +8,16 @@
 * `compare_dep_vs_two_psi()` and `compare_indep_vs_two_psi()` pass the stored phylogeny inside the generated `phylo_*()` keyword. The refit no longer prints the global `phylo_vcv` / `phylo_tree` deprecation (#1568).
 * `engine = "julia"` now stops on `REML = TRUE`, a non-`NULL` `lambda_constraint` and a non-`NULL` `known_V` (class `gllvmTMB_julia_unsupported_arg`) instead of silently ignoring them (#1347).
 * The `gllvmTMB()` offset documentation now states that a nonzero offset is also accepted on the `binomial(cloglog)` arm inside an integrated `isdm_sources()` model (a change of support); no behaviour change (#946).
+* `gllvmTMB_check_consistency()` now stops with a "simulation not available"
+  error when the template cannot simulate new responses (it currently cannot),
+  instead of returning `"information_matrix_singular"`, and stops with an error
+  naming the parameter count when `n_sim` is not larger than it. Its help page
+  now describes `$marginal_bias`, `$joint_p_value` and `estimate` as TMB
+  defines them (#1582).
 * `suggest_lambda_constraint()` and `suggest_lambda_constraints()` gain `unit_obs` to name the within-unit column on the formula path (default `"site_species"`, as in `gllvmTMB()`), and their no-term errors name the level as `"unit"` / `"unit_obs"` (#1587).
 * `check_gllvmTMB()` no longer reports `boundary_flags` as `PASS` "none" while a `boundary_phi_*` dispersion-ceiling row is `WARN`: the summary row now turns `WARN` and names those rows. `print(fit)` also points to `gllvmTMB_diagnose(fit)` when the optimiser did not converge cleanly (#1351).
 * `?compare_dep_vs_two_psi` and `?compare_indep_vs_two_psi` now say a flag means the two fits disagree, not that the paired model failed, and that the default `threshold = 0.10` is not calibrated (#1571).
+* `compare_dep_vs_two_psi()` and `compare_indep_vs_two_psi()` now return `lrt`, a one-row likelihood-ratio test of the paired fit against the refit (`chi2`, `df`, `p_value`, plus both log-likelihoods). The refit contains the paired fit for `dep`; for `indep` the paired fit is the larger model. `rel_disagreement` and `flag` are unchanged and remain descriptive. The chi-square reference is approximate at the boundary; the boundary and `pdHess` check stays open (#1571).
 * `loading_profile()` and `loading_ci(method = "profile")` now refit the model
   they profile: `unit_obs`, `REML` and `control` (including `loading_ridge`)
   are kept, so a `unit_obs`-tier profile no longer returns an all-`NA` curve and
@@ -28,12 +36,16 @@
   `phylo_slope()` is now checked for positive semidefiniteness, and an
   indefinite matrix stops the fit with a message naming it, instead of
   returning a finite but meaningless log-likelihood (#1373).
+* A trait factor with a level that has no rows now stops the fit with a message
+  naming the empty level and advising `droplevels()`, instead of silently adding
+  free parameters (inflated df and AIC, no standard errors) (#1387).
 * `confint(fit, parm = "b_fix[1]")` now returns one row (profile and Wald)
   instead of profiling every fixed effect and then failing, and a fixed-effect
   `parm` profiles only the requested terms. Wald `Sigma_unit` on a `latent()`
   tier now says why the intervals are `NA` and names the routes that work, and
   a Sigma tier the fit lacks is an error naming the public tier (for example
   `unit_obs`) before any method runs (#1588).
+* `predict(newdata = <wide data frame>)` on a `traits()` fit now stops with a message saying `newdata` must be long with a `trait` column (the help page says so too), instead of "object 'trait' not found" (#1412).
 * The `\dontrun{}` examples of `extract_Omega()`, `extract_phylo_signal()`, `extract_proportions()`, `extract_loadings()`, `getLoadings()`, `getLV()` and `extract_residual_split()` now simulate their own data and build their own `fit` instead of using undefined objects (#1360).
 * A missing or non-finite value in a random-slope covariate (for example `x` in
   `latent(1 + x | unit)`, `phylo_slope(x | species)`, `phylo_dep()` or the

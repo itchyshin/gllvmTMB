@@ -40,10 +40,15 @@ Returns the per-trait repeatability
 where
 \deqn{v_{B,t} = [\Lambda_B\Lambda_B^\top]_{tt} + \sigma^2_{B,t}}
 and
-\deqn{v_{W,t} = [\Lambda_W\Lambda_W^\top]_{tt} + \sigma^2_{W,t} + \sigma^2_{d,t}.}
+\deqn{v_{W,t} = [\Lambda_W\Lambda_W^\top]_{tt} + \sigma^2_{W,t} + \sigma^2_{d,t} + \sigma^2_{\varepsilon,t}.}
 The first two terms include the shared latent and diagonal companion variance
 at the unit and observation tiers; \eqn{\sigma^2_{d,t}} is the
-family-specific link residual used for non-Gaussian traits. The function is
+family-specific link residual used for non-Gaussian traits, and
+\eqn{\sigma^2_{\varepsilon,t}} is the Gaussian (or lognormal) observation
+residual. The observation residual is added only when the fit estimates it,
+which happens when a \code{unit_obs} record has replicate rows; with one row per
+record the engine fixes it near zero and nothing is added. The Wald,
+bootstrap and stored-bootstrap paths all use this definition. The function is
 intended for a fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}} with the relevant ordinary unit
 and observation-level components.
 Also known as the intraclass correlation coefficient (ICC) at the unit

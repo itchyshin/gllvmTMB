@@ -3043,7 +3043,12 @@ sanity_multi <- function(object, gradient_thresh = 1e-2, se_thresh = 100) {
 #'
 #' @param object A fit returned by [gllvmTMB()].
 #' @param newdata Optional new data frame. If `NULL`, predictions are
-#'   produced for the training rows. A missing covariate stays `NA` in
+#'   produced for the training rows. For a fit made with the wide
+#'   `traits(...)` syntax, `newdata` must be in long form with a `trait`
+#'   factor column (one row per unit and trait, with the training levels);
+#'   wide `newdata` is refused with an error. For example,
+#'   `data.frame(id = rep(ids, each = 4), trait = factor(rep(trait_names,
+#'   length(ids)), levels = trait_names))`. A missing covariate stays `NA` in
 #'   that row; the other rows keep their own predictions. Data-dependent
 #'   transforms in the fixed formula (`scale()`, `poly()`, `ns()`) reuse
 #'   the training centre, scale, and basis, so a row's value does not
@@ -3211,6 +3216,17 @@ predict.gllvmTMB_multi <- function(
     isdm_family_var <- isdm_family_attr %||% "isdm_source"
     is_integrated_source <- identical(isdm_family_attr, "isdm_source")
     observation_data <- as.data.frame(newdata)
+    ## A traits() fit is stored in stacked long form, so newdata must be
+    ## long too; wide newdata used to fail inside model.matrix() (#1412).
+    trait_lbl_nd <- object$trait_col %||% "trait"
+    if (!is.null(object$traits_meta) && !trait_lbl_nd %in% names(observation_data)) {
+      cli::cli_abort(c(
+        "{.arg newdata} must be in long format with a {.field {trait_lbl_nd}} column.",
+        "x" = "This fit was made with {.fn traits} (wide data), but {.arg newdata} has no {.field {trait_lbl_nd}} column.",
+        ">" = "Stack {.arg newdata}: one row per unit and trait, with {.field {trait_lbl_nd}} a factor carrying the training levels.",
+        "i" = "For example: {.code data.frame(id = rep(ids, each = 4), trait = factor(rep(trait_names, length(ids)), levels = trait_names))}."
+      ), class = "gllvmTMB_predict_wide_newdata")
+    }
     if (is_integrated_source) {
       if (!isdm_family_var %in% names(newdata)) {
         cli::cli_abort(c(

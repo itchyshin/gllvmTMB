@@ -7,6 +7,7 @@
 * Bootstrap wrappers keep `nsim = 500`. That default no longer warns that it is too small. The warning names `nsim`, and the `profile_ci_total_variance()` hint is shown only when the bootstrap asks for Sigma diagonals. `bootstrap_Sigma()` still warns when `n_boot` is below 999 (#1576).
 * `compare_dep_vs_two_psi()` and `compare_indep_vs_two_psi()` pass the stored phylogeny inside the generated `phylo_*()` keyword. The refit no longer prints the global `phylo_vcv` / `phylo_tree` deprecation (#1568).
 * `engine = "julia"` now stops on `REML = TRUE`, a non-`NULL` `lambda_constraint` and a non-`NULL` `known_V` (class `gllvmTMB_julia_unsupported_arg`) instead of silently ignoring them (#1347).
+* `engine = "julia"` now also stops on `cluster2`, `phylo_vcv`, `phylo_tree`, `mesh` and `missing = miss_control(predictor = "model")` (class `gllvmTMB_julia_unsupported_arg`), and on non-default `d_B`, `d_W`, `init_strategy`, `start_method`, `aghq` and `aghq_ridge` in `gllvmTMBcontrol()` (class `gllvmTMB_julia_unsupported_control`). These were accepted and never reached GLLVModels.jl (#1347).
 * The `gllvmTMB()` offset documentation now states that a nonzero offset is also accepted on the `binomial(cloglog)` arm inside an integrated `isdm_sources()` model (a change of support); no behaviour change (#946).
 * `gllvmTMB_check_consistency()` now stops with a "simulation not available"
   error when the template cannot simulate new responses (it currently cannot),

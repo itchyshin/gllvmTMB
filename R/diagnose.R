@@ -210,6 +210,18 @@
   val
 }
 
+.gllvmTMB_pinned_diag <- function(object, level, k) {
+  ## TRUE where Lambda[i, i] was fixed by `lambda_constraint`: a pinned entry
+  ## is the user's choice, not a boundary estimate (#1585).
+  M <- object$lambda_constraint[[level]]
+  out <- rep(FALSE, k)
+  if (is.matrix(M)) {
+    idx <- seq_len(min(k, nrow(M), ncol(M)))
+    out[idx] <- !is.na(diag(M[idx, idx, drop = FALSE]))
+  }
+  out
+}
+
 .gllvmTMB_boundary_flags <- function(
   object,
   loading_thresh = 1e-3,
@@ -225,7 +237,8 @@
       seq_len(object$d_B),
       drop = FALSE
     ])
-    if (any(abs(diag_B) < loading_thresh)) {
+    free_B <- !.gllvmTMB_pinned_diag(object, "B", length(diag_B))
+    if (any(abs(diag_B)[free_B] < loading_thresh)) {
       flags <- c(flags, "near_zero_B_loading")
     }
   }
@@ -235,7 +248,8 @@
       seq_len(object$d_W),
       drop = FALSE
     ])
-    if (any(abs(diag_W) < loading_thresh)) {
+    free_W <- !.gllvmTMB_pinned_diag(object, "W", length(diag_W))
+    if (any(abs(diag_W)[free_W] < loading_thresh)) {
       flags <- c(flags, "near_zero_W_loading")
     }
   }

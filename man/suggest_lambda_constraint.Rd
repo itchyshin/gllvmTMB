@@ -36,8 +36,11 @@ default) or \code{"unit_obs"} (within-unit). Deprecated aliases \code{"B"} and
 entry to 0, i.e. \code{M[i, j] = 0} for \code{j > i}. Removes the
 rotational ambiguity completely. Pins \code{K(K-1)/2} entries.}
 \item{\code{"pin_top_one"}}{Single-anchor convention: \code{M[1, 1] = 1},
-rest \code{NA}. Sets the scale of factor 1; does NOT remove rotational
-ambiguity.}
+rest \code{NA}. Opt-in only, and not a scale choice: the latent axes
+already have unit variance, so the \code{+1} is an extra restriction
+that removes a free parameter and can bias the other loadings and
+unique variances (a worse log-likelihood that no check flags,
+#1585). It also does NOT remove rotational ambiguity.}
 \item{\code{"none"}}{All-\code{NA} matrix -- no pins. Useful if you plan to
 rotate the fitted loadings after fitting instead.}
 }}

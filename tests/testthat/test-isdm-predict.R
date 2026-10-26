@@ -367,7 +367,7 @@ test_that("#1132: coordinates outside the mesh hull warn instead of returning a 
 ##
 ## Deliberately still NOT re-added, and still warned about: `equalto` (indexed
 ## by observation, so it has no meaning for arbitrary new rows),
-## `diag_cluster2`, and the `*_slope` and phylo-diagonal blocks (no
+## and the `*_slope` and phylo-diagonal blocks (no
 ## established reshape convention -- see getREsd()'s roxygen). See #1138.
 ## ---------------------------------------------------------------------------
 
@@ -397,6 +397,44 @@ test_that("#1138: diag_species is re-added on newdata, exactly", {
     suppressMessages(predict(fit))$est
   )
   expect_no_warning(suppressMessages(predict(fit, newdata = df)))
+})
+
+test_that("#1138: diag_cluster2 is re-added on newdata, exactly", {
+  skip_on_cran()
+  skip_if_not_installed("TMB")
+  ## r_c2 is a (trait x cluster2-level) matrix (src/gllvmTMB.cpp:1500,
+  ## eta(o) += r_c2(t, cluster2_id(o)) at :3409). Give the year effect a
+  ## different size per trait so a swapped index cannot hide.
+  set.seed(7)
+  n_years <- 6L
+  df <- expand.grid(
+    site = factor(seq_len(24)), trait = factor(letters[1:3])
+  )
+  df$year <- factor(((as.integer(df$site) - 1L) %% n_years) + 1L)
+  yr_eff <- outer(c(0.2, 0.8, 1.5), rnorm(n_years))
+  df$value <- yr_eff[cbind(as.integer(df$trait), as.integer(df$year))] +
+    rnorm(nrow(df), sd = 0.5)
+  fit <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+    value ~ 0 + trait + unique(0 + trait | year),
+    data = df, cluster2 = "year", silent = TRUE
+  )))
+  expect_true(isTRUE(as.integer(fit$tmb_data$use_diag_cluster2) == 1L))
+  expect_gt(max(abs(fit$report$eta - suppressMessages(
+    predict(fit, newdata = df, re_form = ~0))$est)), 0)
+
+  expect_equal(
+    suppressMessages(predict(fit, newdata = df))$est,
+    suppressMessages(predict(fit))$est
+  )
+  expect_no_warning(suppressMessages(predict(fit, newdata = df)))
+
+  ## A subset in a shuffled row order must still pick up the right cell.
+  nd <- df[sample(nrow(df), 40), ]
+  rows <- as.integer(rownames(nd))
+  expect_equal(
+    suppressMessages(predict(fit, newdata = nd))$est,
+    suppressMessages(predict(fit))$est[rows]
+  )
 })
 
 test_that("#1138: the site-species tiers (rr_W, diag_W) are re-added exactly", {

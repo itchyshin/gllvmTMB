@@ -58,40 +58,18 @@ We use a reproducible simulated example shipped with the package: 60
 individuals, five sessions per individual, and three Gaussian response traits.
 The generating code remains available in the source repository.
 
-```{r example-data, eval = FALSE}
-rr <- readRDS(system.file(
-  "extdata", "examples", "behavioural-reaction-norm-example.rds",
-  package = "gllvmTMB"
-))
-df <- rr$data_long
-df_wide <- rr$data_wide
-truth <- rr$truth
-```
-
-```{r example-data-load, include = FALSE}
+```{r example-data}
 example_path <- c(
-  file.path(
-    "inst", "extdata", "examples",
-    "behavioural-reaction-norm-example.rds"
-  ),
-  file.path(
-    "..", "inst", "extdata", "examples",
-    "behavioural-reaction-norm-example.rds"
-  ),
-  file.path(
-    "..", "..", "inst", "extdata", "examples",
-    "behavioural-reaction-norm-example.rds"
-  ),
+  file.path("inst", "extdata", "examples", "behavioural-reaction-norm-example.rds"),
+  file.path("..", "inst", "extdata", "examples", "behavioural-reaction-norm-example.rds"),
+  file.path("..", "..", "inst", "extdata", "examples", "behavioural-reaction-norm-example.rds"),
   system.file(
-    "extdata",
-    "examples",
-    "behavioural-reaction-norm-example.rds",
+    "extdata", "examples", "behavioural-reaction-norm-example.rds",
     package = "gllvmTMB"
   )
 )
 example_path <- example_path[nzchar(example_path) & file.exists(example_path)][1]
 stopifnot(!is.na(example_path))
-
 rr <- readRDS(example_path)
 df <- rr$data_long
 df_wide <- rr$data_wide

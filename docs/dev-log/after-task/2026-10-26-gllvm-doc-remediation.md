@@ -40,9 +40,10 @@ Regression tests cover NaN endpoints, preserving an engine note, and replacing a
 
 - Fixed: D001, D008, D010, D011, D012, D036, D039.
 - Full R article build and `pkgdown::check_pkgdown()` complete.
-- At 2026-10-27 01:44 UTC, gllvmTMB PR #1704 was on head `f16c4d0151e340d57c9da8daebd1b36c7cd326e5`; R-CMD-check run `40432203529` had shards 1–3 in progress and shard 4 successful. A small missing-note diagnostic guard passed locally and awaits this run's completion before push, following the repo's CI pacing rule.
+- At 2026-10-27 01:44 UTC, gllvmTMB PR #1704 was on head `f16c4d0151e340d57c9da8daebd1b36c7cd326e5`; R-CMD-check run `40432203529` had shards 1–3 in progress and shard 4 successful. A missing-note diagnostic guard had passed locally and was waiting for that run to finish before push.
 - GLLVModels.jl PR #1017 was on head `c0440d9bc3f19feff7141602cffb505f6d3f812b`; at 01:44 UTC its Julia shards, twin tests, and Documenter were in progress, while the guard had passed and the frozen-R advisory was skipped. An earlier head's separate Documenter deploy job was cancelled; no deployment was attempted.
 - Archiving the superseded audit worktree was rejected by the app because it is protected by a pinned task or workspace. Its clean checkpoint and audit evidence remain preserved. The earlier planning conversation is already archived.
+- At 03:08 UTC, PR #1704 head `cb852bf7b9d34bcf08b59e87c75558c9a4e84153` had passed all four R-CMD-check shards. PR #1017 head `c0440d9bc3f19feff7141602cffb505f6d3f812b` had passed all four Julia shards, both twin tests, Documenter, and its latest PR wording guard. CI published a Julia PR preview; no production site was deployed.
 
 ## 8. Consistency Audit
 
@@ -54,19 +55,19 @@ Reviewed the bridge normalizer, public `gllvm_julia_fit()` help, test cases, reg
 
 ## 10. Known Residuals
 
-- The complete local package test suite and `R CMD check` were not run; focused bridge tests and the full docs build passed. R-CMD-check is still running remotely on the already-pushed head; the follow-up missing-note guard is still local while that run finishes.
+- The complete local package test suite and `R CMD check` were not run; focused bridge tests and the full docs build passed. Remote R-CMD-check passed on the head recorded above.
 - The audit checkpoint's raw finding report remains unchanged and preserved; this after-task report records D010's resolution and links the evidence to PR #1704.
 - The active true-parity lane was not touched.
-- No deployment, merge, parity claim, or interval calibration claim was made.
+- No production deployment, merge, parity claim, or interval calibration claim was made.
 
 ## 11. Team Learning
 
 Install the exact source into an isolated temporary library before trusting a package-wide vignette build. For Wald intervals, a non-empty payload is insufficient evidence of availability: validate every bound for finiteness and retain explanatory diagnostics.
 
-Rose audit: PASS WITH NOTES on the changed R status conversion, help example, and matching regression tests. Full package check and independent reviewer signoff remain outstanding. Memory receipt: consulted the repository operating contract and relevant GLLVM twin-audit memory; the route manifest reported no manifest. Golden Set: not checked.
+Rose audit: PASS WITH NOTES on the changed R status conversion, help example, and matching regression tests. Remote R-CMD-check passed on the recorded head; independent reviewer signoff remains outstanding. Memory receipt: consulted the repository operating contract and relevant GLLVM twin-audit memory; the route manifest reported no manifest. Golden Set: not checked.
 
 ## 12. Cross-Product Coverage
 
 Covers: first-wave R README/articles and Julia references, R Julia-bridge CI status semantics, the `gllvm_julia_fit()` help example, focused regression tests, and full pkgdown article rendering.
 
-Does NOT cover: Julia/R numerical parity, interval calibration/coverage, complete package checks, live CI on updated remote heads, deployment, or merge.
+Does NOT cover: Julia/R numerical parity, interval calibration/coverage, a full local package check, production deployment, or merge. CI evidence above is limited to the recorded heads.

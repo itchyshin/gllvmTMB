@@ -953,6 +953,12 @@ test_that("CI normalisation enforces matching lengths and gates status", {
   normalised <- .gllvm_julia_normalise_ci(nonfinite)
   expect_equal(normalised$ci_status, "unavailable")
   expect_equal(normalised$ci_note, "Hessian was not positive definite")
+
+  # Missing engine notes fall back to the non-finite endpoint diagnostic.
+  nonfinite$ci_note <- NA_character_
+  normalised <- .gllvm_julia_normalise_ci(nonfinite)
+  expect_equal(normalised$ci_status, "unavailable")
+  expect_match(normalised$ci_note, "non-finite")
 })
 
 test_that("response-mask placeholder admits routed families and gates the rest", {

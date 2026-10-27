@@ -14,6 +14,7 @@ Complete the approved twin documentation remediation, including D010's bridge st
 - Kept separate gllvmTMB and GLLVM.jl branches and PRs.
 - No engine estimator or likelihood changes, no interval coverage claim, no deployment, and no merge.
 - A preflight found other remote branches touching `R/julia-bridge.R`; the changed hunk is confined to CI payload normalization and the help example. This was recorded as a scope risk for final review.
+- Shinichi, the package maintainer and bridge owner, authorized completion of all remaining remediation, including D010. The focused change and evidence below close that owner gate.
 
 ## 4. Files Touched
 
@@ -25,6 +26,7 @@ Complete the approved twin documentation remediation, including D010's bridge st
 - `devtools::test(filter = "julia-bridge")`: passed with no failures; expected skips and two existing deprecation warnings.
 - `devtools::document()`: completed. Unrelated generated drift in `man/tidy.gllvmTMB_multi.Rd` was restored.
 - Exact-source `R CMD INSTALL` into an isolated temporary library: passed.
+- End-to-end Julia bridge reproduction: the original two-trait/two-LV example returned `ci_status = "unavailable"`, the generic non-finite-endpoint note, and non-finite bounds; the revised six-trait/one-LV example returned `ci_status = "available"` with 14/14 finite bounds.
 - `pkgdown::build_articles(lazy = FALSE)`: completed across the full article set. Pandoc emitted repeated `--mathml` / `--mathjax` deprecation warnings.
 - `pkgdown::check_pkgdown()`: passed, “No problems found.”
 - `git diff --check`: passed after final edits.
@@ -32,13 +34,15 @@ Complete the approved twin documentation remediation, including D010's bridge st
 
 ## 6. Tests of the Tests
 
-Added a regression case for NaN interval endpoints and preservation of an existing engine note. It failed before the normalizer change with `ci_status = "available"`, then passed in the focused bridge suite after the change.
+Regression tests cover NaN endpoints, preserving an engine note, and replacing a missing note. The missing-note test failed before its guard because the diagnostic remained `NA`; all focused bridge tests passed after the fix.
 
 ## 7a. Issue Ledger
 
 - Fixed: D001, D008, D010, D011, D012, D036, D039.
 - Full R article build and `pkgdown::check_pkgdown()` complete.
-- Live GitHub check status could not be refreshed because the GitHub API was unreachable during this turn.
+- At 2026-10-27 01:44 UTC, gllvmTMB PR #1704 was on head `f16c4d0151e340d57c9da8daebd1b36c7cd326e5`; R-CMD-check run `40432203529` had shards 1–3 in progress and shard 4 successful. A small missing-note diagnostic guard passed locally and awaits this run's completion before push, following the repo's CI pacing rule.
+- GLLVModels.jl PR #1017 was on head `c0440d9bc3f19feff7141602cffb505f6d3f812b`; at 01:44 UTC its Julia shards, twin tests, and Documenter were in progress, while the guard had passed and the frozen-R advisory was skipped. An earlier head's separate Documenter deploy job was cancelled; no deployment was attempted.
+- Archiving the superseded audit worktree was rejected by the app because it is protected by a pinned task or workspace. Its clean checkpoint and audit evidence remain preserved. The earlier planning conversation is already archived.
 
 ## 8. Consistency Audit
 
@@ -46,12 +50,12 @@ Reviewed the bridge normalizer, public `gllvm_julia_fit()` help, test cases, reg
 
 ## 9. What Did Not Go Smoothly
 
-`devtools::install()` hit package metadata and lock errors, so exact source was installed with `R CMD INSTALL` into a temporary library. Full article rendering took longer than 15 minutes but completed uninterrupted. Pandoc repeated deprecation warnings. The task API could not query GitHub because the API connection failed.
+`devtools::install()` hit package metadata and lock errors, so exact source was installed with `R CMD INSTALL` into a temporary library. Full article rendering took longer than 15 minutes but completed uninterrupted. Pandoc repeated deprecation warnings. The first GitHub API call failed in the sandbox; an authorized `gh` read later retrieved exact PR checks.
 
 ## 10. Known Residuals
 
-- The complete package test suite and `R CMD check` were not run in this closeout slice; the focused bridge tests and full docs build passed.
-- The R and Julia PR heads were clean before this closeout, but live PR status is unverified. The current local R changes still need commit/push and remote check refresh.
+- The complete local package test suite and `R CMD check` were not run; focused bridge tests and the full docs build passed. R-CMD-check is still running remotely on the already-pushed head; the follow-up missing-note guard is still local while that run finishes.
+- The audit checkpoint's raw finding report remains unchanged and preserved; this after-task report records D010's resolution and links the evidence to PR #1704.
 - The active true-parity lane was not touched.
 - No deployment, merge, parity claim, or interval calibration claim was made.
 
@@ -59,7 +63,7 @@ Reviewed the bridge normalizer, public `gllvm_julia_fit()` help, test cases, reg
 
 Install the exact source into an isolated temporary library before trusting a package-wide vignette build. For Wald intervals, a non-empty payload is insufficient evidence of availability: validate every bound for finiteness and retain explanatory diagnostics.
 
-Rose audit: PASS WITH NOTES on the changed R status conversion and example; full package check and independent reviewer signoff remain outstanding. Memory receipt: consulted the repository operating contract and relevant GLLVM twin-audit memory; the route manifest reported no manifest. Golden Set: not checked.
+Rose audit: PASS WITH NOTES on the changed R status conversion, help example, and matching regression tests. Full package check and independent reviewer signoff remain outstanding. Memory receipt: consulted the repository operating contract and relevant GLLVM twin-audit memory; the route manifest reported no manifest. Golden Set: not checked.
 
 ## 12. Cross-Product Coverage
 

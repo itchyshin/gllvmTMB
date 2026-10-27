@@ -1284,6 +1284,7 @@ gllvm_julia_capabilities <- function() {
   res$ci_lower <- .gllvm_julia_as_vector(res$ci_lower %||% numeric(), "numeric")
   res$ci_upper <- .gllvm_julia_as_vector(res$ci_upper %||% numeric(), "numeric")
   res$ci_note <- .gllvm_julia_as_vector(res$ci_note %||% "", "character")[1L]
+  if (is.na(res$ci_note)) res$ci_note <- ""
 
   n <- length(res$ci_param_names)
   if (
@@ -2735,7 +2736,11 @@ gllvm_julia_capabilities <- function() {
 #' @return A list of class `gllvmTMB_julia` with the bridge contract fields
 #'   (`loadings`, `Sigma`, `correlation`, `loglik`, `aic`, `bic`,
 #'   `converged`, ...). If `ci_method != "none"` and the row is admitted, the
-#'   list also carries flat CI fields consumed by `confint()`.
+#'   list also carries flat CI fields consumed by `confint()`. For a nonempty
+#'   CI payload, `ci_status` is `"available"` only when every lower and upper
+#'   endpoint is finite; otherwise it is `"unavailable"` with a diagnostic in
+#'   `ci_note`. Availability does not establish interval calibration or
+#'   coverage.
 #' @examples
 #' \dontrun{
 #' # Requires a local GLLVModels.jl install (see [gllvm_julia_setup()]).

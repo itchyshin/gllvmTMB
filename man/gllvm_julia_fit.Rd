@@ -91,7 +91,11 @@ fixed-effect X remain loud gates.}
 A list of class \code{gllvmTMB_julia} with the bridge contract fields
 (\code{loadings}, \code{Sigma}, \code{correlation}, \code{loglik}, \code{aic}, \code{bic},
 \code{converged}, ...). If \code{ci_method != "none"} and the row is admitted, the
-list also carries flat CI fields consumed by \code{confint()}.
+list also carries flat CI fields consumed by \code{confint()}. For a nonempty
+CI payload, \code{ci_status} is \code{"available"} only when every lower and upper
+endpoint is finite; otherwise it is \code{"unavailable"} with a diagnostic in
+\code{ci_note}. Availability does not establish interval calibration or
+coverage.
 }
 \description{
 Fit a GLLVM with the Julia engine (GLLVModels.jl \code{bridge_fit}).

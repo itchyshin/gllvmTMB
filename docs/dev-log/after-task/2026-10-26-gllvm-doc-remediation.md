@@ -1,70 +1,68 @@
 ## 1. Goal
 
-Implement the approved first-wave documentation fixes from the twin audit: D001, D008, D011, D012, D036, and D039, using one coordinated lane and separate package changes. Resolve D010 only after its bridge/inference owner approves its example and diagnostic scope.
+Complete the approved twin documentation remediation, including D010's bridge status and teaching example, and finish the full R article build. Deployment and merge remain outside this task.
 
 ## 2. Implemented
 
-- R D001: made the data-loading and setup chunks visible and executable in the affected articles.
-- R D008: corrected the README interval-default summary by target and directed readers to the returned method and target help.
-- R D039: described the integrated example's optimizer convergence as PASS and Hessian positive-definiteness as WARN, with the warning scoped to curvature.
-- Julia D011/D012: clarified that score uncertainty conditions on fitted fixed parameters and stated the precision/Hessian sign convention; documented TMB's default parameter-uncertainty propagation and the conditional comparison option.
-- Julia D036: added the missing direct `Poisson` import to the documented cross-validation example.
+- R D001, D008, and D039: repaired affected article setup visibility, interval-default wording, and convergence/curvature status descriptions.
+- Julia D011/D012: clarified conditional score uncertainty and the precision/Hessian sign convention.
+- Julia D036: added the missing direct `Poisson` import to the documented CV example.
+- R D010: non-finite confidence interval endpoints now produce `ci_status = "unavailable"` and a diagnostic note; an engine-provided note is preserved. The Wald help example now uses a tested six-trait, one-LV fixture and asserts finite bounds. It makes no coverage claim.
 
 ## 3a. Decisions and Rejected Alternatives
 
-- D010 remains deferred because no owner approval for the bridge/inference example and diagnostic scope was received.
-- Deployment remains deferred. No parity, calibration, or general interval-coverage claim was added.
-- Assumption: the two package changes can share a remediation goal while using separate branches and PRs, as approved.
+- Kept separate gllvmTMB and GLLVM.jl branches and PRs.
+- No engine estimator or likelihood changes, no interval coverage claim, no deployment, and no merge.
+- A preflight found other remote branches touching `R/julia-bridge.R`; the changed hunk is confined to CI payload normalization and the help example. This was recorded as a scope risk for final review.
 
 ## 4. Files Touched
 
-- R: `README.md`; `vignettes/articles/morphometrics.Rmd`; `vignettes/articles/covariance-correlation.Rmd`; `vignettes/articles/random-regression-reaction-norms.Rmd`; `vignettes/articles/pitfalls.Rmd`; `vignettes/articles/integrated-multi-source-example.Rmd`.
-- Julia: `docs/src/se-profile-machinery.md`; `src/cv.jl`.
-- R and Julia: dated check-log and after-task records.
+- R: `R/julia-bridge.R`, `tests/testthat/test-julia-bridge.R`, `man/gllvm_julia_fit.Rd`, check-log entry, and this report.
+- Earlier first-wave work remains in the R and Julia branches and is documented in the original report history.
 
 ## 5. Checks Run
 
-- All five affected R articles rendered after final edits: all exited 0. The exact source package was installed in a temporary library; three articles were built individually after the full run reached covariance and integrated multi-source pages.
-- `pkgdown::check_pkgdown()`: passed.
-- The first full `pkgdown::build_articles()` attempt loaded a stale installed package, whose `extract_correlations()` signature rejected `entries = "all"`. After installing the exact checkout in a temporary library, the full build passed covariance and integrated multi-source pages but was stopped after exceeding its 15-minute estimate. The full 42-article build is incomplete.
-- `pkgdown::build_article()` passed for morphometrics, random-regression, and pitfalls using that temporary library. All five affected HTML outputs were generated and checked under ignored `pkgdown-site/articles/`.
-- Julia Documenter/VitePress build with deployment disabled: exited 0.
-- Exact Julia Poisson CV examples for random-cell and site-block splits: both executed and returned finite metrics.
-- `git diff --check` passed in both worktrees; prose style checks had no findings other than the documented checklist waiver.
+- `devtools::test(filter = "julia-bridge")`: passed with no failures; expected skips and two existing deprecation warnings.
+- `devtools::document()`: completed. Unrelated generated drift in `man/tidy.gllvmTMB_multi.Rd` was restored.
+- Exact-source `R CMD INSTALL` into an isolated temporary library: passed.
+- `pkgdown::build_articles(lazy = FALSE)`: completed across the full article set. Pandoc emitted repeated `--mathml` / `--mathjax` deprecation warnings.
+- `pkgdown::check_pkgdown()`: passed, “No problems found.”
+- `git diff --check`: passed after final edits.
+- Earlier in this remediation, the Julia Documenter/VitePress build and exact Poisson CV examples passed. No new Julia engine code changed in this closeout slice.
 
 ## 6. Tests of the Tests
 
-No test files or implementation behavior changed, so no test was added. The exact Julia example was executed; the R example chunks were rendered and evaluated. No negative-control corruption test was relevant to these documentation-only corrections.
+Added a regression case for NaN interval endpoints and preservation of an existing engine note. It failed before the normalizer change with `ci_status = "available"`, then passed in the focused bridge suite after the change.
 
 ## 7a. Issue Ledger
 
-- Fixed: D001, D008, D011, D012, D036, D039.
-- Deferred: D010 pending bridge/inference owner approval.
-- Follow-up: full 42-article build remains incomplete. The first run used a stale installed library; the exact-source retry passed the affected covariance and integrated pages before its time limit. Preserve the initial shared sass cache permission warning as an environment issue.
+- Fixed: D001, D008, D010, D011, D012, D036, D039.
+- Full R article build and `pkgdown::check_pkgdown()` complete.
+- Live GitHub check status could not be refreshed because the GitHub API was unreachable during this turn.
 
 ## 8. Consistency Audit
 
-Reviewed the six R public surfaces and both Julia surfaces in the approved first wave. All five affected R HTML pages were generated, and the Julia site build verified cross references and doctests. The full 42-article R build remains incomplete.
+Reviewed the bridge normalizer, public `gllvm_julia_fit()` help, test cases, regenerated Rd, and changed status semantics together. The docs distinguish finite-bound availability from interval calibration. The full article set rendered; earlier Julia cross references and doctests passed.
 
 ## 9. What Did Not Go Smoothly
 
-The first full R article build loaded a stale installed namespace and failed at `covariance-correlation.Rmd:438-447` with `unused argument (entries = "all")`. Installing the checkout fixed that issue. The 42-article run then exceeded its 15-minute estimate and was stopped after the affected covariance and integrated pages rendered. The closeout helper also resolves its output root to the brain repository rather than either package worktree, so records had to be created directly.
+`devtools::install()` hit package metadata and lock errors, so exact source was installed with `R CMD INSTALL` into a temporary library. Full article rendering took longer than 15 minutes but completed uninterrupted. Pandoc repeated deprecation warnings. The task API could not query GitHub because the API connection failed.
 
 ## 10. Known Residuals
 
-- The full 42-article R build remains incomplete; all five affected pages and `pkgdown::check_pkgdown()` passed.
-- D010 remains pending owner approval.
-- The local change is committed as `c467da980` on `codex/gllvm-doc-remediation`. No PR exists because the push was rejected by automatic review pending an explicit maintainer instruction.
-- No deployment or public claim was made.
+- The complete package test suite and `R CMD check` were not run in this closeout slice; the focused bridge tests and full docs build passed.
+- The R and Julia PR heads were clean before this closeout, but live PR status is unverified. The current local R changes still need commit/push and remote check refresh.
+- The active true-parity lane was not touched.
+- No deployment, merge, parity claim, or interval calibration claim was made.
 
 ## 11. Team Learning
 
-When a full article build fails but the edited articles render individually, report both levels of evidence and retain the exact failing chunk. A package build can load a different function surface than a direct article render; compare the loaded namespace and source before treating the failure as unrelated.
+Install the exact source into an isolated temporary library before trusting a package-wide vignette build. For Wald intervals, a non-empty payload is insufficient evidence of availability: validate every bound for finiteness and retain explanatory diagnostics.
 
-Memory receipt: used the repo instructions and routed GLLVM/gllvmTMB dossier notes; the route manifest reported no manifest. Their ownership and public-claim boundaries shaped the scope. Golden Set: not checked because this slice changed documentation only and no known-mistake engine class was in scope.
+Rose audit: PASS WITH NOTES on the changed R status conversion and example; full package check and independent reviewer signoff remain outstanding. Memory receipt: consulted the repository operating contract and relevant GLLVM twin-audit memory; the route manifest reported no manifest. Golden Set: not checked.
 
 ## 12. Cross-Product Coverage
 
-Covers: the named public README/article and Julia reference/example surfaces.
+Covers: first-wave R README/articles and Julia references, R Julia-bridge CI status semantics, the `gllvm_julia_fit()` help example, focused regression tests, and full pkgdown article rendering.
 
-Does NOT cover: D010, any engine behavior, full R article-suite success, deployment, parity, or interval calibration.
+Does NOT cover: Julia/R numerical parity, interval calibration/coverage, complete package checks, live CI on updated remote heads, deployment, or merge.

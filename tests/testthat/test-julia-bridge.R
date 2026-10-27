@@ -940,6 +940,19 @@ test_that("CI normalisation enforces matching lengths and gates status", {
     .gllvm_julia_normalise_ci(empty)$ci_status,
     "empty"
   )
+
+  # A non-empty payload is not available if any interval endpoint is nonfinite.
+  nonfinite <- fake_ci_julia_fit()
+  nonfinite$ci_lower[[1L]] <- NaN
+  normalised <- .gllvm_julia_normalise_ci(nonfinite)
+  expect_equal(normalised$ci_status, "unavailable")
+  expect_match(normalised$ci_note, "non-finite")
+
+  # Preserve an engine explanation when endpoints are also nonfinite.
+  nonfinite$ci_note <- "Hessian was not positive definite"
+  normalised <- .gllvm_julia_normalise_ci(nonfinite)
+  expect_equal(normalised$ci_status, "unavailable")
+  expect_equal(normalised$ci_note, "Hessian was not positive definite")
 })
 
 test_that("response-mask placeholder admits routed families and gates the rest", {

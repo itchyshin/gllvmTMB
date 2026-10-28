@@ -25,18 +25,18 @@ concurrency:
 jobs:
   R-CMD-check:
     runs-on: ${{ matrix.config.os }}
-    # The full test suite has outgrown the previous 45-minute ceiling: the
-    # Phase B "matrix completion" wave added ~30 test-matrix-*.R files (~180
-    # real TMB fits), pushing Windows from ~26 min at #309 to >45 min, where
-    # it was being killed by this timeout (runs 26656376351, 26682886014).
-    # 75 minutes restores headroom on the slowest runner (Windows). This does
-    # not raise per-run billing — Actions bills actual minutes used, so a job
-    # that finishes early costs the same regardless of the ceiling; the
-    # ceiling only prevents a premature kill of a run that is still healthy.
+    # Main run 40489901964 hit the 75-minute limit twice on shard 1. On its
+    # retry, Ubuntu system-package installation took 46 minutes and the job
+    # reached R CMD check only eight minutes before timeout. The same shard's
+    # complete check took 23 minutes in run 40443072779. Allow 120 minutes so
+    # slow dependency mirrors do not routinely cancel a healthy full check.
+    # This is a ceiling, not a reduction in the checks or test coverage.
+    # Earlier Windows runs 26656376351 and 26682886014 also exceeded the old
+    # 45-minute ceiling after the Phase B test-matrix expansion.
     # Ignored-source/process PRs still skip the expensive dependency/check
     # steps below while preserving this OS-named check for branch-protection
     # compatibility.
-    timeout-minutes: 75
+    timeout-minutes: 120
 
     name: ${{ matrix.config.os }} (${{ matrix.config.r }})${{ matrix.shard != 0 && format(' shard {0}/4', matrix.shard) || '' }}
 

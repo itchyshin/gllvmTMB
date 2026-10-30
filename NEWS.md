@@ -217,6 +217,10 @@
   formula uses them and rebuild the formula through `latent()` / `indep()`. The
   suggested matrix is unchanged. Naming the `unit_obs` column for the formula path
   stays open (#1587).
+* `predict_cross_covariance()` now accepts `level = "phy"` on a fit with one
+  `kernel_*()` tier, as `extract_Gamma()` and `extract_Sigma()` already did, and
+  returns the same result as the tier's own name (for example `"cross"`).
+  Previously it errored, naming only the tier name (#1578).
 
 * `extract_Sigma()` no longer prints the "latent-only ... refit without
   `unique = FALSE`" advisory for a full-rank loading block. `dep()` is carried

@@ -386,7 +386,9 @@ test_that("extract_coevolution_modules returns standardized SVD modules", {
   )
   rownames(Lambda) <- c("h_size", "h_defence", "p_size", "p_attack")
   fit <- .c2_fake_gamma_fit(Lambda)
-  Sigma <- Lambda %*% t(Lambda)
+  ## The fake fit carries a per-trait Psi (sd 0.1); the within-lineage blocks
+  ## are standardised by the TOTAL covariance, Lambda Lambda^T + Psi (#1570).
+  Sigma <- Lambda %*% t(Lambda) + diag(0.1^2, nrow(Lambda))
   row_traits <- rownames(Lambda)[1:2]
   col_traits <- rownames(Lambda)[3:4]
   inv_sqrt <- function(x) {
@@ -410,6 +412,10 @@ test_that("extract_coevolution_modules returns standardized SVD modules", {
   expect_s3_class(mods, "gllvmTMB_coevolution_modules")
   expect_equal(mods$R, R_expected, tolerance = 1e-12)
   expect_equal(mods$modules$singular_value, sv$d, tolerance = 1e-12)
+  ## d = 2 equals the traits per lineage: standardising by the shared blocks
+  ## alone would give singular values of exactly 1 (#1570). With Psi in the
+  ## standardisation they carry information.
+  expect_true(all(mods$modules$singular_value < 1 - 1e-6))
   expect_equal(sum(mods$modules$squared_share), 1, tolerance = 1e-12)
   expect_equal(mods$row_axes$trait, rep(row_traits, times = 2L))
   expect_equal(mods$col_axes$trait, rep(col_traits, times = 2L))

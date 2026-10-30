@@ -111,7 +111,8 @@
   new_name,
   args = "...",
   guidance = NULL,
-  see = NULL
+  see = NULL,
+  new_args = args
 ) {
   if (!isTRUE(.gllvmTMB_deprecation_seen[[old]])) {
     ## Use our own env-based tracker only (no cli `.frequency = "once"`)
@@ -127,7 +128,7 @@
     }
     msg <- c(
       "!" = "Formula keyword {.fn {old}} is a deprecated alias; use {.fn {new_name}} for new code.",
-      "i" = "{.code {new_name}({args})} =/=> {.code {old}({args})}",
+      "i" = "{.code {new_name}({new_args})} =/=> {.code {old}({args})}",
       ">" = see_line
     )
     if (!is.null(guidance)) {
@@ -160,6 +161,16 @@
   invisible(NULL)
 }
 
+## TRUE while the rewrite walk re-enters `*_scalar` on the user's behalf.
+.gllvmTMB_scalar_internal <- new.env(parent = emptyenv())
+.gllvmTMB_scalar_internal$on <- FALSE
+.gllvmTMB_rewrite_scalar_internally <- function(code) {
+  old <- .gllvmTMB_scalar_internal$on
+  .gllvmTMB_scalar_internal$on <- TRUE
+  on.exit(.gllvmTMB_scalar_internal$on <- old, add = TRUE)
+  code
+}
+
 ## One-shot fire-on-use notice for the scalar() / *_scalar() soft-deprecation.
 ## Design 79's covariance grid collapses to THREE modes {indep, dep, latent}: the
 ## one-shared-variance case is now the canonical `indep(..., common = TRUE)`, which
@@ -168,6 +179,11 @@
 ## scalar-family soft-deprecation (maintainer 2026-07-12: warn-once + rewrite).
 .gllvmTMB_warn_scalar_family_deprecated <- function(fn) {
   if (isTRUE(getOption("gllvmTMB.quiet_grammar_notes", FALSE))) {
+    return(invisible(NULL))
+  }
+  ## `phylo(1 | g)` / `spatial(1 | g)` are first-class forms that the rewrite
+  ## walk routes through `*_scalar` internally; the user never typed it (#1557).
+  if (isTRUE(.gllvmTMB_scalar_internal$on)) {
     return(invisible(NULL))
   }
   key <- sprintf("scalar-family-%s", fn)
@@ -613,7 +629,22 @@ meta <- function(value, sampling_var) {
 #'
 #' @param formula `0 + trait | g` style formula (LHS is the response
 #'   factor, typically `0 + trait`; RHS is the grouping factor).
-#' @param d Integer; number of latent factors.
+#' @param d Integer; number of latent factors. The hard guard only requires
+#'   `d <= n_traits` (the number of traits), but that is not the limit of what
+#'   the data can identify. With the default `unique = TRUE`, each unit-trait
+#'   cell observed once, and \eqn{T} traits, the covariance
+#'   \eqn{\boldsymbol\Sigma = \boldsymbol\Lambda\boldsymbol\Lambda^\top + \boldsymbol\Psi}
+#'   has \eqn{T(T + 1)/2} free entries to estimate
+#'   \eqn{T d - d(d - 1)/2 + T} parameters (loadings up to rotation, plus the
+#'   diagonal \eqn{\boldsymbol\Psi}). The counting rule of thumb is
+#'   \eqn{(T - d)^2 \ge T + d}: \eqn{T = 3} and \eqn{T = 4} allow
+#'   `d <= 1`, \eqn{T = 5} allows `d <= 2`, and \eqn{T = 10} allows
+#'   `d <= 6`. Above it the split between
+#'   \eqn{\boldsymbol\Lambda\boldsymbol\Lambda^\top} and
+#'   \eqn{\boldsymbol\Psi} is not identified, and [check_gllvmTMB()] can
+#'   flag only the symptoms (boundary \eqn{\psi}, weak axes) after the fit.
+#'   The rule is a necessary count, not a recovery guarantee. Replication
+#'   within a unit, or `unique = FALSE`, changes the count.
 #' @param unique Logical; `TRUE` (default) auto-includes the diagonal
 #'   trait-specific \eqn{\boldsymbol\Psi} companion
 #'   (\eqn{\boldsymbol\Sigma = \boldsymbol\Lambda\boldsymbol\Lambda^\top + \boldsymbol\Psi}).
@@ -2574,6 +2605,53 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL, rho = 1) {
   cols
 }
 
+## #1161: a slope-ONLY LHS (`0 + x`, or a bare `x`) over a non-trait, non-spatial
+## grouping is the species-axis random slope a fourth-corner model needs
+## (`beta_s ~ N(0, sigma^2 A)`). It is refused by `indep()`/`latent()`/bare
+## bars, but `animal_slope()` / `phylo_slope()` fit it once the trait column
+## is copied into the grouping column. Returns the covariate name for exactly
+## one slope covariate and no intercept term, else NULL.
+.slope_only_covariate <- function(lhs, trait_col = "trait") {
+  lhs <- .strip_lhs_parens(lhs)
+  terms <- list()
+  collect <- function(e) {
+    e <- .strip_lhs_parens(e)
+    if (is.call(e) && identical(e[[1L]], as.name("+")) && length(e) == 3L) {
+      collect(e[[2L]])
+      collect(e[[3L]])
+    } else {
+      terms[[length(terms) + 1L]] <<- e
+    }
+  }
+  collect(lhs)
+  is_zero <- vapply(terms, function(t) is.numeric(t) && length(t) == 1L && t == 0, logical(1))
+  is_one <- vapply(terms, function(t) is.numeric(t) && length(t) == 1L && t == 1, logical(1))
+  is_sym <- vapply(terms, is.symbol, logical(1))
+  if (any(is_one) || !all(is_zero | is_sym)) {
+    return(NULL)
+  }
+  covs <- vapply(terms[is_sym], as.character, character(1))
+  covs <- setdiff(covs, c(trait_col, "trait"))
+  if (length(covs) != 1L || sum(is_sym) != 1L) {
+    return(NULL)
+  }
+  covs
+}
+
+## The signpost shared by `.assert_no_augmented_lhs()` and
+## `parse_re_int_call()` for a slope-only LHS (#1161).
+.slope_only_next_step <- function(covariate) {
+  paste0(
+    "To let the slope of {.code ", covariate, "} vary across species, copy the trait column ",
+    "into a grouping column (e.g. {.code dat$species <- dat$trait}) and use ",
+    "{.code animal_slope(", covariate, " | species, A = A)} or ",
+    "{.code phylo_slope(", covariate, " | species, tree = tree)}. ",
+    "The levels of that column must match the labels of {.code A} or the tree tips; ",
+    "an identity {.code A} gives plain partial pooling. ",
+    "See the keyword grid article, section {.emph Slope variation by species}."
+  )
+}
+
 ## Design 07 Stage 2.5 (May 2026): fail-loud guard against augmented LHS
 ## in the BARE covstruct keywords (`latent`, `unique`, `indep`, `dep`,
 ## `spatial_dep`). The `phylo()` and `spatial()` mode-dispatch wrappers
@@ -2658,7 +2736,9 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL, rho = 1) {
   } else if (is_spatial) {
     "There is no supported route for more than one slope covariate here; fit separate models, one covariate per {.fn {fn}} term."
   } else if (is_single_slope) {
-    "Use {.code latent(1 + x | {deparse(rhs)}, d = K)} or {.code unique(1 + x | {deparse(rhs)})} instead -- {.fn {fn}} itself does not support a slope term."
+    "Use {.code latent(1 + x | {deparse(rhs)}, d = K)} instead -- {.fn {fn}} itself does not support a slope term, and there is no diagonal-only slope spelling yet."
+  } else if (!is.null(slope_only_cov <- .slope_only_covariate(lhs, trait_col))) {
+    .slope_only_next_step(slope_only_cov)
   } else {
     "There is no supported route for more than one slope covariate here; fit separate models, one covariate per term."
   }
@@ -2668,6 +2748,23 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL, rho = 1) {
     "x" = "This wrapper accepts only intercept-only {.code 0 + {trait_col} | g} or {.code 1 | g} forms.",
     ">" = next_step
   ))
+}
+
+## Name the arguments of a sugar call `e` against its wrapper's formals
+## (match.call-style), so positional and named spellings read the same.
+## NULL when `e` has no symbol head, no wrapper, or does not match.
+.match_wrapper_args <- function(e) {
+  if (!is.call(e) || !is.name(e[[1L]])) {
+    return(NULL)
+  }
+  definition <- get0(as.character(e[[1L]]), mode = "function")
+  if (is.null(definition)) {
+    return(NULL)
+  }
+  tryCatch(
+    match.call(definition, e, expand.dots = FALSE),
+    error = function(err) NULL
+  )
 }
 
 ## #1163: at the default rho = 1, the RHS of `|` in a spatial_*()
@@ -2698,9 +2795,13 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL, rho = 1) {
   ) {
     return(invisible(NULL))
   }
-  call_names <- names(e)
-  if (!is.null(call_names) && "rho" %in% call_names) {
-    rho_arg <- e[[which(call_names == "rho")[1L]]]
+  ## `rho` is read by name or by position (matched against the wrapper
+  ## formals). Only a literal numeric 1 keeps the notice: a symbol such as
+  ## `rho = r` cannot be evaluated here (no formula environment), so it is
+  ## treated as "not 1" and stays silent. Known limitation (#1493).
+  matched <- .match_wrapper_args(e)
+  if (!is.null(matched) && "rho" %in% names(matched)) {
+    rho_arg <- matched[["rho"]]
     if (!(is.numeric(rho_arg) && length(rho_arg) == 1L && isTRUE(rho_arg == 1))) {
       return(invisible(NULL))
     }
@@ -2911,7 +3012,17 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
   ## keywords must survive the rewrite to the canonical engine kinds
   ## (phylo_rr / spde / etc.). Helper extracts named args matching `keep`
   ## from the original call so the rewritten call carries them through.
-  .pass_through_extras <- function(e, keep) {
+  ## `positional = TRUE` (spatial keywords) first names positional arguments
+  ## against the wrapper's formals, so `spatial_dep(f, NULL, mesh, 0.5)`
+  ## carries `coords` and `mesh` through exactly like the named spelling (#1493).
+  .pass_through_extras <- function(e, keep, positional = FALSE) {
+    if (positional) {
+      matched <- .match_wrapper_args(e)
+      if (!is.null(matched)) {
+        args <- as.list(matched)[-1L]
+        return(args[names(args) %in% keep])
+      }
+    }
     args <- as.list(e)[-c(1L, 2L)]
     nms <- names(args)
     if (is.null(nms) || length(args) == 0L) {
@@ -3432,7 +3543,7 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
               list(as.name("spatial_scalar"), new_bar),
               extras
             ))
-            return(rewrite(new_call))
+            return(.gllvmTMB_rewrite_scalar_internally(rewrite(new_call)))
           }
 
           ## LHS = `0 + trait`: mode is mandatory; pick from
@@ -4221,7 +4332,7 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
               c("wide_intercept_slope", "long_intercept_slope")
           ) {
             .gllvmTMB_warn_unique_family_deprecated(fn)
-            extras <- .pass_through_extras(e, c("coords", "mesh"))
+            extras <- .pass_through_extras(e, c("coords", "mesh"), positional = TRUE)
             new_call <- as.call(c(
               list(as.name("spde"), bar),
               list(
@@ -4556,7 +4667,7 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
           }
           ## Rewrite to phylo_scalar(rhs, tree = tree, vcv = vcv).
           new_call <- as.call(c(list(as.name("phylo_scalar"), rhs), extras))
-          return(rewrite(new_call)) # recurse so phylo_scalar -> engine
+          return(.gllvmTMB_rewrite_scalar_internally(rewrite(new_call))) # recurse so phylo_scalar -> engine
         }
 
         ## LHS = `0 + trait`: mode is mandatory; pick from
@@ -4677,7 +4788,7 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
       if (fn == "spatial_scalar") {
         .gllvmTMB_warn_scalar_family_deprecated(fn)
         .warn_spatial_grouping_token(fn, e)
-        extras <- .pass_through_extras(e, c("coords", "mesh"))
+        extras <- .pass_through_extras(e, c("coords", "mesh"), positional = TRUE)
         new_call <- as.call(c(
           list(as.name("spde"), e[[2L]]),
           list(.spatial_scalar = TRUE),
@@ -4705,7 +4816,7 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
             ">" = "Use {.code spatial_latent(..., unique = TRUE)} for the total spatial covariance {.code Lambda Lambda^T + Psi}, or omit it for the low-rank-only path."
           ))
         }
-        extras <- .pass_through_extras(e, c("coords", "mesh"))
+        extras <- .pass_through_extras(e, c("coords", "mesh"), positional = TRUE)
         ## Design 64 §3: augmented spatial_latent(1 + x | coords, d) random
         ## regression. `spatial_latent` normally renames to `spde` reading ONLY
         ## the coords RHS -- so an augmented intercept+slope bar would have its
@@ -4947,7 +5058,7 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
       ## over-parameterisation guard.
       if (fn == "spatial_indep") {
         .warn_spatial_grouping_token(fn, e)
-        extras <- .pass_through_extras(e, c("coords", "mesh"))
+        extras <- .pass_through_extras(e, c("coords", "mesh"), positional = TRUE)
         ## `common = TRUE` (Design 79 scalar-collapse): tie the T per-trait
         ## spatial-field variances to ONE shared variance -- byte-identical to the
         ## (soft-deprecated) `spatial_scalar()` (`spde(form, .spatial_scalar =
@@ -5158,7 +5269,7 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
             lhs_form$lhs_form %in%
               c("wide_intercept_slope", "long_intercept_slope")
           ) {
-            extras <- .pass_through_extras(e, c("coords", "mesh"))
+            extras <- .pass_through_extras(e, c("coords", "mesh"), positional = TRUE)
             new_call <- as.call(c(
               list(as.name("spde"), bar),
               list(
@@ -5175,7 +5286,7 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
         ## or richer per-trait slope forms). Intercept-only `0 + trait | coords`
         ## passes through to the spatial_latent(d = T) engine path below.
         .assert_no_augmented_lhs(fn, e, trait_col)
-        extras <- .pass_through_extras(e, c("coords", "mesh"))
+        extras <- .pass_through_extras(e, c("coords", "mesh"), positional = TRUE)
         new_call <- as.call(c(
           list(as.name("spde"), e[[2L]]),
           list(
@@ -5218,11 +5329,11 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
 ##   rr        -> use latent()
 ##   diag      -> use indep() for standalone diagonal terms
 ##   phylo_rr  -> use phylo_latent()
-##   phylo     -> use phylo_scalar()
+##   phylo     -> use phylo_indep(..., common = TRUE)
 ##   spde      -> use spatial_indep()
 ##   spatial   -> use spatial_indep() (lifecycle::deprecate_warn at 0.1.2)
 ##   meta      -> use meta_V()
-##   gr        -> use phylo_scalar() (or propto() power-user)
+##   gr        -> use phylo_indep(..., common = TRUE) (or propto() power-user)
 ##   propto    -> internal; users should use phylo_scalar / phylo_latent
 ##   equalto   -> internal; users should use meta_V
 ##
@@ -5238,10 +5349,20 @@ scan_for_deprecated <- function(rhs) {
       guidance = "Use ordinary latent(..., d = K) for the default shared + diagonal-Psi decomposition, or indep(0 + trait | g) for a standalone diagonal."
     ),
     phylo_rr = list(new = "phylo_latent", args = "species, d = K", see = "phylo_latent"),
-    phylo = list(new = "phylo_scalar", args = "species", see = "phylo_scalar"),
+    phylo = list(
+      new = "phylo_indep",
+      args = "species",
+      new_args = "0 + trait | species, common = TRUE",
+      see = "phylo_indep"
+    ),
     spde = list(new = "spatial_indep", args = "coords | trait", see = "spatial_indep"),
     meta = list(new = "meta_V", args = "V = V", see = "meta_V"),
-    gr = list(new = "phylo_scalar", args = "species", see = "phylo_scalar")
+    gr = list(
+      new = "phylo_indep",
+      args = "species",
+      new_args = "0 + trait | species, common = TRUE",
+      see = "phylo_indep"
+    )
   )
   ## A bar as the first argument (e.g. `phylo(0 + trait | species, ...)`) marks
   ## the documented mode-dispatch calling convention, which is first-class and
@@ -5285,8 +5406,9 @@ scan_for_deprecated <- function(rhs) {
         if (fn == "spatial" && !spatial_is_firstclass(e)) {
           lifecycle::deprecate_warn(
             when = "0.1.2",
-            what = "spatial()",
+            what = I("The `spatial(0 + trait | coords)` form without `mode`"),
             with = "spatial_indep()",
+            user_env = globalenv(),
             details = c(
               "i" = "spatial(coords | trait) is now an alias for spatial_indep(0 + trait | coords).",
               ">" = "Update existing code to spatial_indep() to keep the rank explicit."
@@ -5302,7 +5424,9 @@ scan_for_deprecated <- function(rhs) {
           ## unconditional recursion below still walks its arguments.
         } else if (fn %in% names(deprecated_map)) {
           d <- deprecated_map[[fn]]
-          .gllvmTMB_warn_keyword_deprecated(fn, d$new, d$args, d$guidance, d$see)
+          .gllvmTMB_warn_keyword_deprecated(
+            fn, d$new, d$args, d$guidance, d$see, d$new_args %||% d$args
+          )
         }
       }
       for (i in seq_along(e)[-1L]) {
@@ -5381,8 +5505,10 @@ desugar_brms_sugar <- function(
         bar <- call("|", call("+", 0, as.name(obs_col)), as.name(grp_V_col))
         return(call("equalto", bar, as.name("V")))
       }
+      ## `e[i] <- list(...)` so a literal NULL argument (e.g. `coords = NULL`)
+      ## stays in place instead of deleting the element (#1493).
       for (i in seq_along(e)[-1L]) {
-        e[[i]] <- walk(e[[i]])
+        e[i] <- list(walk(e[[i]]))
       }
     }
     e

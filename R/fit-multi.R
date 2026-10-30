@@ -1,6 +1,22 @@
 ## Stage 2 of gllvmTMB: fit a multivariate stacked-trait model with rr() +
 ## diag() covariance structures using src/gllvmTMB.cpp.
 
+## Stop with a named message when a random-slope covariate has a non-finite
+## value. Slope covariates enter the Z design matrices (not X_fix), so the
+## X_fix NA guard never sees them; without this the objective is NaN from the
+## first evaluation and the user only gets "All 1 restarts failed." (#1394,
+## #1375).
+.gllvmTMB_check_finite_slope <- function(x, col) {
+  bad <- sum(!is.finite(x))
+  if (bad > 0L) {
+    cli::cli_abort(c(
+      "Random-slope covariate {.code {col}} has {bad} non-finite value{?s} (NA, NaN or Inf).",
+      ">" = "Missing response rows are allowed and dropped before fitting; missing predictors still need to be removed or imputed before fitting."
+    ))
+  }
+  invisible(x)
+}
+
 ## Are two `phylo` trees the same tree? Tip labels are matched by name (tip
 ## ORDER is storage, not identity) and the patristic distances are compared,
 ## so a different topology or different branch lengths on the same tips is a
@@ -17,6 +33,22 @@
   da <- ape::cophenetic.phylo(a)
   db <- ape::cophenetic.phylo(b)[rownames(da), colnames(da), drop = FALSE]
   isTRUE(all.equal(unname(da), unname(db), tolerance = tol))
+}
+
+## #1372: compare the numeric entries of two VCV / Ainv inputs. Dimnames are
+## ignored so a renamed-but-equal matrix is not treated as a conflict.
+.gllvmTMB_same_phylo_vcv <- function(a, b, tol = 1e-10) {
+  if (!identical(dim(a), dim(b))) {
+    return(FALSE)
+  }
+  a_m <- if (inherits(a, "sparseMatrix")) as.matrix(a) else a
+  b_m <- if (inherits(b, "sparseMatrix")) as.matrix(b) else b
+  isTRUE(all.equal(
+    unname(as.matrix(a_m)),
+    unname(as.matrix(b_m)),
+    tolerance = tol,
+    check.attributes = FALSE
+  ))
 }
 
 .kernel_overlap_class <- function(similarity) {
@@ -91,7 +123,7 @@
   if (length(binomial_labs) > 0L) {
     msg <- c(msg,
       "i" = sprintf(
-        "Single-trial binomial traits %s have one 0/1 trial per (trait, unit) cell. Multi-trial data ({.code cbind(successes, failures)} or {.code weights = n_trials}) can identify the diagonal; an explicit {.fn indep} term is a separate deliberate model choice.",
+        "Single-trial binomial traits %s have one 0/1 row per (trait, unit) cell, so a between-unit Psi is not identified. Multi-trial data ({.code cbind(successes, failures)} or {.code weights = n_trials}) or replicated 0/1 rows per (trait, unit) cell identify it, and the default {.code latent(unique = TRUE)} then keeps it.",
         paste(binomial_labs, collapse = ", ")
       )
     )
@@ -865,6 +897,22 @@
   )
 }
 
+## Positive-semidefinite guard for a dense user-supplied covariance (#1373).
+## `determinant(logarithm = TRUE)$modulus` is log|det|, so an indefinite matrix
+## gives a finite number that is not a log-determinant. Same tolerance and
+## wording as the kernel_latent() guard.
+.assert_dense_psd <- function(M, arg, fn) {
+  evals <- eigen((M + t(M)) / 2, symmetric = TRUE, only.values = TRUE)$values
+  if (min(evals) < -1e-8) {
+    cli::cli_abort(c(
+      "{.arg {arg}} for {.fn {fn}} must be positive semidefinite.",
+      "i" = "Minimum eigenvalue: {format(min(evals), digits = 4)}.",
+      ">" = "Pass a covariance matrix with no negative eigenvalues, for example one built from a tree with {.fn ape::vcv}."
+    ))
+  }
+  invisible(M)
+}
+
 .resolve_sparse_phylo_precision <- function(Ainv, levs, species_id) {
   if (nrow(Ainv) != ncol(Ainv)) {
     cli::cli_abort(c(
@@ -989,6 +1037,7 @@
     "{.arg vcv} rownames for {.fn phylo_slope}"
   )
   Aphy <- phylo_vcv[levs, levs, drop = FALSE]
+  .assert_dense_psd(as.matrix(Aphy), "vcv", "phylo_slope")
   Aphy <- Aphy + diag(1e-8, nrow(Aphy))
   list(
     Ainv = Matrix::Matrix(solve(Aphy), sparse = TRUE),
@@ -1311,6 +1360,24 @@
     Ainv = Matrix::Diagonal(nrow(K), x = 1), log_det = 0,
     n_aug = nrow(K), aug_id = raw$aug_id
   )
+}
+
+## Issue #1387: a trait factor with a declared level that has no rows is
+## counted by nlevels(), which adds an extra fixed effect, loading and Psi term
+## that no data inform (df/AIC inflated, sd_report NULL). Abort and name the
+## empty level(s) rather than silently dropping them.
+.abort_empty_trait_levels <- function(data, trait) {
+  x <- data[[trait]]
+  if (!is.factor(x)) return(invisible(NULL))
+  empty <- setdiff(levels(x), as.character(unique(x[!is.na(x)])))
+  if (length(empty)) {
+    cli::cli_abort(c(
+      "Trait column {.field {trait}} has {length(empty)} level{?s} with no rows in {.arg data}: {.val {empty}}.",
+      "i" = "Every declared level counts as a trait, so an empty level adds free parameters that no data inform.",
+      ">" = "Call {.code droplevels()} on the {.field {trait}} column before fitting, so its levels match the traits actually observed."
+    ), class = "gllvmTMB_empty_trait_level")
+  }
+  invisible(NULL)
 }
 
 #' Fit a long-format multivariate stacked-trait model (Stage 2 internal)
@@ -1965,6 +2032,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## `data`. Resolve it now using the trait factor in `data`. We mirror the
   ## phylo_unique d = n_traits resolution below (which used to be the only
   ## consumer of trait-count-aware rank values).
+  .abort_empty_trait_levels(data, trait)
   .n_traits_for_dep <- nlevels(if (is.factor(data[[trait]])) data[[trait]]
                                else factor(data[[trait]]))
   for (i in seq_along(parsed$covstructs)) {
@@ -3386,6 +3454,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     data[[ss_name]] <- factor(paste(data[[site]], data[[species]], sep = "_"))
   if (!is.factor(data[[ss_name]])) data[[ss_name]] <- factor(data[[ss_name]])
 
+  .abort_empty_trait_levels(data, trait)
   n_traits        <- nlevels(data[[trait]])
   n_sites         <- nlevels(data[[site]])
   n_site_species  <- nlevels(data[[ss_name]])
@@ -3562,6 +3631,19 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   )
 
   y_raw <- stats::model.response(mf)
+  ## #1396: a factor / character response was fitted as its integer level
+  ## codes (as.numeric(y_raw) below) with no message. Only the categorical
+  ## families (ordinal_probit 14, multinomial 16, ordinal_logit 20) take a
+  ## factor response; every other row needs an explicit numeric response.
+  if ((is.factor(y_raw) || is.character(y_raw)) &&
+      any(!family_id_vec %in% c(14L, 16L, 20L))) {
+    resp_name <- paste(deparse(parsed$fixed[[2L]]), collapse = " ")
+    cli::cli_abort(c(
+      "The response {.field {resp_name}} is a {if (is.factor(y_raw)) 'factor' else 'character'} column, which would be fitted as its integer level codes.",
+      "x" = "Only {.fn ordinal_probit}, {.fn ordinal_logit} and {.fn multinomial} traits take a factor response.",
+      ">" = "Convert it to numbers explicitly, e.g. {.code as.numeric(as.character({resp_name}))}, and check for stray non-numeric entries such as \"-\" or \"NA\" strings."
+    ), class = "gllvmTMB_factor_response_unsupported")
+  }
   ## censored_poisson (fid 21, renumbered 2026-09-03 from 20 --
   ## ordinal_logit, PR #1250, holds 20) rows: default every row to
   ## uncensored (cens_limit = 0), overridden below only for rows whose LHS
@@ -4156,13 +4238,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ))
     }
     X_reml <- X_fix[!masked_response, , drop = FALSE]
-    if (ncol(X_reml) > 0L && qr(X_reml)$rank < ncol(X_reml)) {
-      cli::cli_abort(c(
-        "{.arg REML = TRUE} requires a full-rank fixed-effect design matrix.",
-        "x" = "The observed-row fixed-effect design has rank {qr(X_reml)$rank}, but {ncol(X_reml)} column{?s}.",
-        ">" = "Remove redundant fixed-effect columns or use {.code REML = FALSE}."
-      ))
-    }
+    .gllvmTMB_check_fixed_rank(X_reml, reml = TRUE)
     if (nrow(X_reml) <= ncol(X_reml)) {
       cli::cli_abort(c(
         "{.arg REML = TRUE} requires positive residual degrees of freedom.",
@@ -4171,29 +4247,60 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ))
     }
   }
+  ## #1388: the full-rank check used to run only under REML; an aliased column
+  ## under ML reached TMB and surfaced as "All 1 restarts failed.".
+  if (!isTRUE(REML)) {
+    .gllvmTMB_check_fixed_rank(X_fix[!masked_response, , drop = FALSE])
+  }
   ## The family-specific response-range checks below validate the *observed*
   ## response only. Masked rows (response = "include") carry the sentinel y = 0
   ## which is gated out of the likelihood; it must not trip a range check.
   ## When nothing is masked this is identical to checking every row.
+  ## Binomial / betabinomial integrality uses a tolerance so a near-integer
+  ## count such as 3 - 4e-10 is accepted (#1356 follow-up).
+  .not_whole <- function(x) {
+    abs(x - round(x)) > sqrt(.Machine$double.eps)
+  }
   bin_rows <- (family_id_vec == 1L) & !masked_response
   if (any(bin_rows)) {
-    if (any(y[bin_rows] < 0) || any(y[bin_rows] > n_trials[bin_rows]))
+    if (any(y[bin_rows] < 0) ||
+        any(y[bin_rows] > n_trials[bin_rows]) ||
+        any(.not_whole(y[bin_rows])) ||
+        any(.not_whole(n_trials[bin_rows])))
       cli::cli_abort(c(
-        "Binomial rows: `y` (successes) must satisfy 0 <= y <= n_trials.",
-        ">" = "If you used {.code cbind(succ, fail)}, both columns must be non-negative integers."
-      ))
+        "Binomial rows: {.code y} (successes) must be a non-negative integer satisfying 0 <= y <= n_trials.",
+        "i" = "A proportion response (for example {.code y = successes / n_trials}) is not accepted, even with {.arg weights}.",
+        ">" = "Pass the success count as {.code y}, or use {.code cbind(succ, fail)}. Both columns must be non-negative integers."
+      ), class = "gllvmTMB_response_support")
   }
-  ## Beta rows: y must be in the open unit interval (0, 1). The likelihood
-  ## clips y away from the boundaries internally for numerical safety, but
-  ## a y of exactly 0 or 1 is a hint that the user wants a zero/one-inflated
-  ## Beta or a different family (Smithson & Verkuilen 2006).
-  beta_rows <- (family_id_vec == 7L) & !masked_response
-  if (any(beta_rows)) {
-    if (any(y[beta_rows] <= 0) || any(y[beta_rows] >= 1))
+  ## Beta rows: y must be in the open unit interval (0, 1). A y of exactly
+  ## 0 or 1 is a hint that the user wants a zero/one-inflated Beta or a
+  ## different family (Smithson & Verkuilen 2006). The likelihood clamps y
+  ## to [1e-12, 1 - 1e-12] before log(y) and log(1 - y), so a y inside 1e-12
+  ## of an edge would be silently rewritten: refuse those rows too, and name
+  ## them (#1485).
+  beta_idx <- which((family_id_vec == 7L) & !masked_response)
+  if (length(beta_idx) > 0L) {
+    beta_tiny <- 1e-12
+    bad <- beta_idx[y[beta_idx] < beta_tiny | y[beta_idx] > 1 - beta_tiny]
+    if (length(bad) > 0L) {
+      ## Name rows of the data the user supplied: under response = "drop"
+      ## the model rows are a subset, mapped back through original_row; a
+      ## traits() wide fit maps each stacked cell back to its wide row.
+      orig_row <- missing_meta$original_row
+      if (length(orig_row) == length(y)) bad <- orig_row[bad]
+      src_row <- missing_meta$source_row
+      if (!is.null(src_row) && length(src_row) == nrow(missing_meta$data_original))
+        bad <- src_row[bad]
+      bad <- unique(bad)
+      shown    <- utils::head(bad, 10)
+      ellipsis <- if (length(bad) > 10) ", ..." else ""
       cli::cli_abort(c(
-        "Beta rows: {.code y} must satisfy 0 < y < 1.",
+        "Beta rows: {.code y} must satisfy 0 < y < 1, at least 1e-12 from either edge.",
+        "i" = paste0("Offending row indices: ", paste(shown, collapse = ", "), ellipsis, "."),
         ">" = "Rescale exact 0s/1s away from the boundary, or switch to a family that admits them."
-      ))
+      ), class = "gllvmTMB_response_support")
+    }
   }
   ## Lognormal and Gamma rows require strictly positive observed responses.
   ## Masked rows may carry the internal sentinel y = 0 under
@@ -4206,14 +4313,19 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         ">" = "Exact zeros need {.fn delta_lognormal}/{.fn delta_gamma}, a zero-inflated family, or a count family."
       ))
   }
-  ## Beta-binomial rows: y must be in [0, n_trials], same as binomial.
+  ## Beta-binomial rows: y must be a non-negative integer in [0, n_trials],
+  ## same support as binomial() (#1356 sibling of the binomial integrality gap).
   bb_rows <- (family_id_vec == 8L) & !masked_response
   if (any(bb_rows)) {
-    if (any(y[bb_rows] < 0) || any(y[bb_rows] > n_trials[bb_rows]))
+    if (any(y[bb_rows] < 0) ||
+        any(y[bb_rows] > n_trials[bb_rows]) ||
+        any(.not_whole(y[bb_rows])) ||
+        any(.not_whole(n_trials[bb_rows])))
       cli::cli_abort(c(
-        "Beta-binomial rows: `y` (successes) must satisfy 0 <= y <= n_trials.",
-        ">" = "If you used {.code cbind(succ, fail)}, both columns must be non-negative integers."
-      ))
+        "Beta-binomial rows: {.code y} (successes) must be a non-negative integer satisfying 0 <= y <= n_trials.",
+        "i" = "A proportion response (for example {.code y = successes / n_trials}) is not accepted, even with {.arg weights}.",
+        ">" = "Pass the success count as {.code y}, or use {.code cbind(succ, fail)}. Both columns must be non-negative integers."
+      ), class = "gllvmTMB_response_support")
   }
   ## Sanity check: y >= 1 for zero-truncated count families.
   trunc_rows <- which((family_id_vec %in% c(10L, 11L)) & !masked_response)
@@ -4240,6 +4352,39 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         "i" = "{.fn delta_lognormal}/{.fn delta_gamma} are hurdle models with an exact zero point mass + continuous positive part.",
         ">" = "Check the response column for negative values before fitting."
       ))
+  }
+
+  ## Count families (#1356): poisson (fid 2), nbinom2 (fid 5) and nbinom1
+  ## (fid 15) need a non-negative integer y, the same support
+  ## zi_poisson/zi_nbinom2 check below. Without this a negative y surfaced
+  ## only as "All 1 restarts failed." and a non-integer y fitted silently.
+  count_rows <- (family_id_vec %in% c(2L, 5L, 15L)) & !masked_response
+  if (any(count_rows)) {
+    bad_fid <- unique(family_id_vec[count_rows][
+      y[count_rows] < 0 | y[count_rows] != round(y[count_rows])
+    ])
+    if (length(bad_fid) > 0L) {
+      bad_fam <- c(
+        `2` = "poisson", `5` = "nbinom2", `15` = "nbinom1"
+      )[as.character(bad_fid)]
+      cli::cli_abort(c(
+        "{.fn {bad_fam}} rows: {.code y} must be a non-negative integer.",
+        "i" = "Negative or non-integer values are outside the count support of {.fn {bad_fam}}.",
+        ">" = "Round or recode {.code y} to non-negative integers before fitting."
+      ), class = "gllvmTMB_response_support")
+    }
+  }
+
+  ## Tweedie (fid 6): continuous but defined only for y >= 0. A negative y
+  ## used to fit with a PD Hessian and no message (#1356 comment).
+  tweedie_rows <- (family_id_vec == 6L) & !masked_response
+  if (any(tweedie_rows)) {
+    if (any(y[tweedie_rows] < 0))
+      cli::cli_abort(c(
+        "{.fn tweedie} rows: {.code y} must be non-negative.",
+        "i" = "The Tweedie density is not defined for a negative response.",
+        ">" = "Check the response column for negative values before fitting."
+      ), class = "gllvmTMB_response_support")
   }
 
   ## Zero-inflated count families (fid 17/18/19, Design 62 -- a TRUE mixture,
@@ -4406,6 +4551,21 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
           "{fam_label_t}: trait {t} response exceeds inferred K = {Kt}.",
           ">" = "All observed categories must lie in 1..K; check for missing intermediate levels."
         ))
+      ## An intermediate category with no observed rows leaves its cutpoint
+      ## unidentified: the optimiser drives that log-increment to the boundary
+      ## (about -21, SE in the thousands) while convergence and pdHess still
+      ## report success, so the fit looks healthy. Warn at fit time, naming
+      ## the empty codes (refs #1397). Masked rows carry a sentinel y and do
+      ## not count as observed. An unobserved TOP category is not detectable
+      ## from integer codes (K is the largest observed code).
+      obs_t <- as.integer(y[rows_t][!masked_response[rows_t]])
+      empty_cats <- setdiff(seq_len(Kt), obs_t)
+      if (length(empty_cats) > 0L)
+        cli::cli_warn(c(
+          "{fam_label_t}: trait {t} has no observations in {cli::qty(length(empty_cats))}categor{?y/ies} {empty_cats} of 1..{Kt}.",
+          "x" = "The cutpoint(s) around an empty category are not identified; the fit can report a boundary cutpoint (log-increment near -21, huge SE) and still pass convergence checks.",
+          ">" = "Merge the empty category into a neighbour and recode to consecutive integers, e.g. {.code as.integer(factor(y))}."
+        ))
       ordinal_K_per_trait[t]      <- Kt
       n_ordinal_cuts_per_trait[t] <- Kt - 2L
       ordinal_offset_per_trait[t] <- cum_offset
@@ -4569,9 +4729,13 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ##   `phylo_latent(species, d = K, tree = my_tree)` or
   ##   `phylo_unique(species, vcv = Cphy)`
   ## as an alternative to passing `phylo_tree =` / `phylo_vcv =` globally
-  ## to `gllvmTMB()`. Per-term wins; if both global and per-term are set
-  ## they must agree (per-term takes precedence with a soft inform).
-  ## Multiple phylo terms must agree on the tree / vcv.
+  ## to `gllvmTMB()`. If both global and per-term `vcv` are set they must
+  ## agree numerically; a mismatch is refused rather than dropping one
+  ## silently (#1372). Multiple phylo terms must agree on the tree / vcv.
+  ## `phylo_vcv_from_term` marks a matrix harvested from an earlier keyword, so
+  ## the strict refusal applies only to the user-supplied global `phylo_vcv`;
+  ## term-versus-term mismatches keep the earlier dimension warning.
+  phylo_vcv_from_term <- FALSE
   for (i in seq_along(parsed$covstructs)) {
     cs <- parsed$covstructs[[i]]
     is_multi_kernel_term <- use_kernel_multi &&
@@ -4600,14 +4764,23 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         ## detects sparse input and uses it directly as Ainv_phy_rr.
         if (is.null(phylo_vcv)) {
           phylo_vcv <- vcv_inkey
+          phylo_vcv_from_term <- TRUE
           if (has_kernel_term && !use_kernel_multi) {
             kernel_single_rho <- .cross_kernel_rho(vcv_inkey)
           }
-        } else if (!identical(dim(phylo_vcv), dim(vcv_inkey))) {
-          cli::cli_warn(c(
+        } else if (phylo_vcv_from_term) {
+          if (!identical(dim(phylo_vcv), dim(vcv_inkey))) {
+            cli::cli_warn(c(
+              "{.code vcv =} inside a phylo keyword disagrees with an earlier phylo keyword.",
+              "i" = "Using the first {.code vcv =}; remove one to silence this warning."
+            ))
+          }
+        } else if (!.gllvmTMB_same_phylo_vcv(phylo_vcv, vcv_inkey)) {
+          cli::cli_abort(c(
             "{.code vcv =} inside a phylo keyword disagrees with the global {.arg phylo_vcv}.",
-            "i" = "Using the global {.arg phylo_vcv}; remove one to silence this warning."
-          ))
+            "x" = "The two matrices are not the same, so the fit cannot choose one silently.",
+            ">" = "Drop the global {.arg phylo_vcv} to use the in-keyword {.code vcv =}, or drop the in-keyword {.code vcv =} to use the global matrix."
+          ), class = "gllvmTMB_phylo_vcv_conflict")
         }
       }
     }
@@ -4987,6 +5160,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         levs, rownames(phylo_vcv), data, species, "{.arg phylo_vcv} rownames"
       )
       Aphy <- phylo_vcv[levs, levs, drop = FALSE]
+      .assert_dense_psd(as.matrix(Aphy), "vcv", "phylo_latent")
       Aphy <- Aphy + diag(1e-8, nrow = nrow(Aphy))
       if (!is.null(structured_rho)) {
         structured_rho_diagonal <- diag(Aphy)
@@ -5202,6 +5376,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         log_det_Cphy <- sparse_propto$log_det_Cphy
       } else {
         Cphy <- phylo_vcv[levs, levs, drop = FALSE]
+        .assert_dense_psd(as.matrix(Cphy), "vcv", "phylo_scalar")
         Cphy <- Cphy + diag(1e-8, nrow = nrow(Cphy)) ## numerical jitter
         Cphy_inv     <- solve(Cphy)
         log_det_Cphy <- as.numeric(determinant(Cphy, logarithm = TRUE)$modulus)
@@ -5460,7 +5635,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ))
     }
     if (use_spde_dep_slope) {
-      x_dep <- as.numeric(data[[spde_slope_xcol]])
+      x_dep <- .gllvmTMB_check_finite_slope(
+        as.numeric(data[[spde_slope_xcol]]), spde_slope_xcol
+      )
       for (o in seq_len(n_obs)) {
         t0 <- trait_id[o]                       # 0-based trait index
         Z_spde_aug[o, 2L * t0 + 1L] <- 1.0      # intercept field col for trait t0
@@ -5468,7 +5645,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       }
     } else {
       Z_spde_aug[, 1L] <- 1.0
-      Z_spde_aug[, 2L] <- as.numeric(data[[spde_slope_xcol]])
+      Z_spde_aug[, 2L] <- .gllvmTMB_check_finite_slope(
+        as.numeric(data[[spde_slope_xcol]]), spde_slope_xcol
+      )
     }
   }
 
@@ -5494,6 +5673,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         ">" = "Add the covariate column to the data frame."
       ))
     }
+    .gllvmTMB_check_finite_slope(
+      as.numeric(data[[spde_latent_slope_xcol]]), spde_latent_slope_xcol
+    )
     Z_spde_lat <- .spde_latent_slope_design(data, spde_latent_slope_xcol)
   }
 
@@ -5532,7 +5714,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       cli::cli_abort(c(
         "{.arg phylo_slope({phylo_slope_xcol} | {species})} references column {.val {phylo_slope_xcol}}, which is not in {.arg data}.",
         ">" = "Add the covariate column to the data frame."))
-    as.numeric(data[[phylo_slope_xcol]])
+    .gllvmTMB_check_finite_slope(
+      as.numeric(data[[phylo_slope_xcol]]), phylo_slope_xcol
+    )
   } else rep(0.0, n_obs)
   ## Design 130: predictor design for slope-only response-column fields.
   ## Deliberately raw numeric columns: transforms and factor expansions are
@@ -5589,7 +5773,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
           ">" = "Add the covariate column{?s} to the data frame."))
       }
       matrix(
-        as.numeric(unlist(lapply(phylo_slope_xcols, function(col) as.numeric(data[[col]])))),
+        as.numeric(unlist(lapply(phylo_slope_xcols, function(col) {
+          .gllvmTMB_check_finite_slope(as.numeric(data[[col]]), col)
+        }))),
         nrow = n_obs, ncol = n_phy_slope
       )
     }
@@ -5685,7 +5871,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ))
     }
     Z_phy_lat[, 1L] <- 1.0
-    Z_phy_lat[, 2L] <- as.numeric(data[[phylo_latent_slope_xcol]])
+    Z_phy_lat[, 2L] <- .gllvmTMB_check_finite_slope(
+      as.numeric(data[[phylo_latent_slope_xcol]]), phylo_latent_slope_xcol
+    )
   }
 
   ## Ordinary B-tier augmented latent random regression:
@@ -5712,7 +5900,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         ">" = "Add the covariate column to the data frame."
       ))
     }
-    x_B_slope <- as.numeric(data[[rr_B_slope_xcol]])
+    x_B_slope <- .gllvmTMB_check_finite_slope(
+      as.numeric(data[[rr_B_slope_xcol]]), rr_B_slope_xcol
+    )
     stride <- 2L
     for (o in seq_len(n_obs)) {
       t0 <- trait_id[o]
@@ -5744,7 +5934,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         ">" = "Add the covariate column to the data frame."
       ))
     }
-    x_B_diag <- as.numeric(data[[diag_B_slope_xcol]])
+    x_B_diag <- .gllvmTMB_check_finite_slope(
+      as.numeric(data[[diag_B_slope_xcol]]), diag_B_slope_xcol
+    )
     stride <- 2L
     for (o in seq_len(n_obs)) {
       t0 <- trait_id[o]
@@ -7410,16 +7602,20 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## the W-tier OLRE skip per trait: map off `theta_diag_B[t]` and the `s_B`
   ## row for single-trial binary traits, keeping the auto-Psi for the
   ## identified families (Gaussian/Poisson/NB/Beta/Gamma given replication).
-  ## EXPLICIT `unique()`/`indep()` diagonals are untouched -- this only gates
-  ## the DEFAULT auto-Psi (`auto_psi_B`). A pure-binary fit ends with every
-  ## B-tier trait skipped, which is the per-trait equivalent of dropping the
+  ## EXPLICIT `unique()`/`indep()` diagonals stay estimated for single-trial
+  ## binary traits: that term is a deliberate model choice. Single-observation
+  ## ordinal traits are the exception (#1574). An explicit between-unit
+  ## diagonal is the same unidentified scale as the default Psi, so it is
+  ## mapped off and the fit warns. Multinomial explicit diagonals stay on
+  ## their own fence. A pure-binary default-Psi fit ends with every B-tier
+  ## trait skipped, which is the per-trait equivalent of dropping the
   ## auto-Psi entirely.
-  if (use_diag_B && auto_psi_B && !use_diag_B_slope) {
+  if (use_diag_B && !use_diag_B_slope) {
     skip_psi_b_t <- vapply(seq_len(n_traits), function(t) {
       rows_t <- which(trait_id == (t - 1L))
       if (length(rows_t) == 0L) return(FALSE)
-      ## Single-trial Bernoulli: no within-cell information for a between-unit
-      ## Psi. Multinomial (fid 16): one categorical draw per unit has the same
+      ## Single-trial Bernoulli with one row per (trait, unit) cell: no
+      ## within-cell information for a between-unit Psi. Multinomial (fid 16): one categorical draw per unit has the same
       ## problem, while replication could identify a contrast-specific diagonal
       ## in principle. The current engine deliberately keeps the narrower 0.6
       ## contract and maps that diagonal off for every multinomial contrast;
@@ -7434,10 +7630,21 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ## invariant along that ridge and climbs it (psi 435-649, cutpoints
       ## 6-29, logLik 400-520 above the exact marginal on real data). Gate it
       ## exactly as single-trial binary; replicated cells keep their Psi.
-      isTRUE(all(family_id_vec[rows_t] == 1L) && all(n_trials[rows_t] == 1)) ||
+      ## #1574: the ordinal arm also applies to an explicit indep()/diag().
+      ## The binary and multinomial arms stay on the default auto-Psi only.
+      ordinal_single <- isTRUE(all(family_id_vec[rows_t] %in% c(14L, 20L)) &&
+                                 !anyDuplicated(site_id[rows_t]))
+      if (!isTRUE(auto_psi_B)) return(ordinal_single)
+      ## #1591: single-trial binary is gated cell-wise, like the ordinal arm:
+      ## a trait keeps its Psi as soon as some (trait, unit) cell has more
+      ## than one 0/1 row, because replicated Bernoulli rows identify a
+      ## per-unit variance.
+      binary_single <- isTRUE(all(family_id_vec[rows_t] == 1L) &&
+                                all(n_trials[rows_t] == 1) &&
+                                !anyDuplicated(site_id[rows_t]))
+      binary_single ||
         isTRUE(all(family_id_vec[rows_t] == 16L)) ||
-        isTRUE(all(family_id_vec[rows_t] %in% c(14L, 20L)) &&
-                 !anyDuplicated(site_id[rows_t]))
+        ordinal_single
     }, logical(1))
     if (any(skip_psi_b_t)) {
       ## Tell the C++ objective which traits were pinned. Without this the
@@ -7482,16 +7689,25 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       binomial_labs <- skipped_labs[!skipped_is_multinomial & !skipped_is_ordinal]
       multinomial_labs <- skipped_labs[skipped_is_multinomial]
       ordinal_labs <- skipped_labs[skipped_is_ordinal]
-      cli::cli_inform(.auto_psi_skip_message(
-        binomial_labs = binomial_labs,
-        multinomial_labs = multinomial_labs,
-        ordinal_labs = ordinal_labs
-      ), .frequency = "once",
-         .frequency_id = .auto_psi_skip_frequency_id(
-           binomial_labs = binomial_labs,
-           multinomial_labs = multinomial_labs,
-           ordinal_labs = ordinal_labs
-         ))
+      if (!isTRUE(auto_psi_B)) {
+        cli::cli_warn(c(
+          "An explicit between-unit diagonal ({.fn indep} or {.fn diag}) is not identified for single-observation ordinal traits.",
+          "i" = "Trait{?s} affected: {.val {ordinal_labs}}.",
+          "i" = "One observation per (trait, unit) cannot separate that diagonal from the fixed threshold scale (1 for {.fn ordinal_probit}, pi^2/3 for {.fn ordinal_logit}).",
+          "*" = "Mapped {.code theta_diag_B[t]} and the corresponding {.code s_B} row off. Repeated observations of the same trait in a unit identify the term."
+        ))
+      } else {
+        cli::cli_inform(.auto_psi_skip_message(
+          binomial_labs = binomial_labs,
+          multinomial_labs = multinomial_labs,
+          ordinal_labs = ordinal_labs
+        ), .frequency = "once",
+           .frequency_id = .auto_psi_skip_frequency_id(
+             binomial_labs = binomial_labs,
+             multinomial_labs = multinomial_labs,
+             ordinal_labs = ordinal_labs
+           ))
+      }
     }
   }
 
@@ -10113,7 +10329,21 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     par_list <- obj$env$parList(opt$par)
     ## Phase 5a: the binary route reads the per-unit conditional probability
     ## from the engine REPORT(mi_probability); pass the report to gll_finalize_mi.
-    mi_report <- tryCatch(obj$report(opt$par), error = function(e) NULL)
+    ## `opt$par` holds the fixed effects only, so `obj$report(opt$par)` errors
+    ## ("Wrong parameter length.") whenever the model has a random effect.
+    ## Evaluate at the optimum, then read the report from the last full
+    ## parameter vector (the idiom documented at the `rep <- obj$report()` site).
+    mi_report <- tryCatch({
+      obj$fn(opt$par)
+      obj$report()
+    }, error = function(e) {
+      cli::cli_warn(c(
+        "The missing-predictor report could not be evaluated.",
+        "i" = "Conditional probabilities / scores for the missing units are {.val NA}.",
+        "x" = conditionMessage(e)
+      ))
+      NULL
+    })
     fit$missing_data <- gll_finalize_mi(
       fit$missing_data, par_list, mi_model, sdr = sd_rep, report = mi_report
     )
@@ -11660,6 +11890,29 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     if (length(li)) value <- value + 0.5 * sum(par[li]^2) / (ridge_tau^2)
   }
   value
+}
+
+## #1388: abort when the (observed-row) fixed-effect design is rank deficient,
+## naming the redundant columns (those the pivoted QR cannot place).
+.gllvmTMB_check_fixed_rank <- function(X, reml = FALSE) {
+  p <- ncol(X)
+  if (p == 0L) return(invisible(NULL))
+  qrX <- qr(X)
+  if (qrX$rank >= p) return(invisible(NULL))
+  nm <- colnames(X)
+  if (is.null(nm)) nm <- paste0("column ", seq_len(p))
+  redundant <- nm[qrX$pivot[(qrX$rank + 1L):p]]
+  head_msg <- if (isTRUE(reml)) {
+    "{.arg REML = TRUE} requires a full-rank fixed-effect design matrix."
+  } else {
+    "The fixed-effect design matrix is not full rank."
+  }
+  cli::cli_abort(c(
+    head_msg,
+    "x" = "The observed-row fixed-effect design has rank {qrX$rank}, but {p} column{?s}.",
+    "x" = "Redundant (linearly dependent) columns: {.val {redundant}}.",
+    ">" = "Remove the redundant fixed-effect column(s), for example a rescaled copy of a covariate or a dummy that duplicates a trait term."
+  ), class = "gllvmTMB_rank_deficient_design")
 }
 
 ## #1333: say why each restart failed instead of only that they all did.

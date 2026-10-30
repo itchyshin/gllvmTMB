@@ -65,6 +65,101 @@ test_that("multinomial() with a multi-column response names the fix", {
   )
 })
 
+## ---- #1247 follow-up (2026-10-23): predictive-diagnostics.R and plot.R ---
+## Each rewritten abort keeps its first line (so older tests that match it
+## still pass) and adds a ">" bullet saying what to try. The matches below
+## are on the bullet text, which does not exist on the old messages.
+
+abort_msg <- function(expr) {
+  conditionMessage(tryCatch(expr, error = function(e) e))
+}
+
+test_that("predictive diagnostic aborts name a next step (#1247)", {
+  expect_match(
+    abort_msg(gllvmTMB:::.gllvmTMB_resolve_nsim(nsim = 4L, ndraws = 5L)),
+    "Drop one of them", fixed = TRUE
+  )
+  expect_match(
+    abort_msg(gllvmTMB:::.gllvmTMB_resolve_nsim(nsim = 1L)),
+    "whole number of at least 2", fixed = TRUE
+  )
+  expect_match(
+    abort_msg(gllvmTMB:::.gllvmTMB_validate_diagnostic_fit(list())),
+    "Fit the model with", fixed = TRUE
+  )
+  expect_match(
+    abort_msg(gllvmTMB:::.gllvmTMB_validate_diagnostic_fit(
+      structure(list(tmb_data = list()), class = c("gllvmTMB_multi", "gllvmTMB"))
+    )),
+    "Refit with the current", fixed = TRUE
+  )
+  expect_match(
+    abort_msg(gllvmTMB:::.gllvmTMB_trait_keep(data.frame(trait = c("a", "b")), "zz")),
+    "Pass trait names from", fixed = TRUE
+  )
+  expect_match(
+    abort_msg(gllvmTMB:::.gllvmTMB_plot_stat_grouped(
+      list(row_data = data.frame(trait = "a")), group = "zz"
+    )),
+    "or leave it NULL to group by trait", fixed = TRUE
+  )
+  draws <- list(
+    row_data = data.frame(family_id = 2L, trait = "a", family = "poisson"),
+    observed = 1,
+    simulations = matrix(1, 1L, 2L)
+  )
+  expect_match(
+    abort_msg(gllvmTMB:::.gllvmTMB_rootogram_data(draws, max_count = -1)),
+    "whole number such as", fixed = TRUE
+  )
+})
+
+test_that("plot_anisotropy()/plot_anisotropy2() aborts name a next step (#1247)", {
+  fit <- function(...) {
+    structure(
+      list(report = list(kappa = 2), family = gaussian(),
+           use = list(spde = TRUE), mesh = list(xy_cols = c("x", "y"))),
+      class = c("gllvmTMB_multi", "gllvmTMB")
+    )
+  }
+  expect_match(
+    abort_msg(gllvmTMB::plot_anisotropy(fit(), return_data = "yes")),
+    "return_data = TRUE", fixed = TRUE
+  )
+  expect_match(
+    abort_msg(gllvmTMB::plot_anisotropy2(fit(), model = 2)),
+    "Leave `model` out", fixed = TRUE
+  )
+  expect_match(
+    abort_msg(gllvmTMB::plot_anisotropy(list())),
+    "Fit a model with a spatial term", fixed = TRUE
+  )
+  st <- fit()
+  st$use$spatiotemporal <- TRUE
+  expect_match(
+    abort_msg(gllvmTMB::plot_anisotropy(st)),
+    "purely spatial field", fixed = TRUE
+  )
+  dl <- fit()
+  dl$family <- structure(list(delta = TRUE), class = "family")
+  expect_match(
+    abort_msg(gllvmTMB::plot_anisotropy(dl)),
+    "non-delta family", fixed = TRUE
+  )
+  ns <- fit()
+  ns$use <- list(spde = FALSE)
+  expect_match(
+    abort_msg(gllvmTMB::plot_anisotropy(ns)),
+    "Refit with a spatial term", fixed = TRUE
+  )
+  bad <- fit()
+  bad$report$kappa <- -1
+  expect_match(
+    abort_msg(gllvmTMB::plot_anisotropy(bad)),
+    "gllvmTMB_diagnose", fixed = TRUE
+  )
+})
+
 ## ---- Ratchet: everything NOT fixed in this slice ------------------------
 
 test_that("the package-wide bare-abort count has not gone up", {
@@ -90,5 +185,14 @@ test_that("the package-wide bare-abort count has not gone up", {
   ## validation a user reaches by writing a formula or calling an exported
   ## function). Brought the honest count from 999 down to 828. 828 is the
   ## correct current ceiling; it may only fall further.
-  expect_lte(length(hits), 828L)
+  ##
+  ## #1247 follow-up (2026-10-23): the live count had already drifted to
+  ## 802 (the pin had slack). Three more bare aborts fixed (two in
+  ## R/ridge-path.R, the shared fit gate in R/diagnose.R) -> 799.
+  ##
+  ## #1247 follow-up 2 (2026-10-23): 17 more fixed, 9 in
+  ## R/predictive-diagnostics.R (argument and fit validation for
+  ## predictive_check()) and 8 in R/plot.R (plot_anisotropy() and
+  ## plot_anisotropy2()), each with a ">" next-step bullet -> 782.
+  expect_lte(length(hits), 782L)
 })

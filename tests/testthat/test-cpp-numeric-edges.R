@@ -512,3 +512,70 @@ test_that("zero-truncated Poisson and NB2 stay finite deep in the left tail of e
     }
   }
 })
+
+## ---- #1603: Poisson-kernel rows when exp(eta) underflows -------------------
+
+## dpois(y, exp(eta), log = TRUE) forms y * log(exp(eta)), which is
+## y * log(0) = -Inf once exp(eta) underflows (eta < -745) and loses digits
+## from eta ~ -709, although the row is a finite y * eta - exp(eta) -
+## lgamma(y + 1). poisson(), zi_poisson() and the uncensored rows of
+## censored_poisson() share it (the zero-truncated rows were fixed in #1483).
+test_that("poisson, zi_poisson and censored_poisson stay finite deep in the left tail of eta (#1603)", {
+  skip_on_cran()
+  df <- .count_fixture(1603)
+  y <- df$value
+  tr <- as.integer(df$trait)
+  etas <- c(-5, -300, -700, -709, -745.2, -760, -800, -2000)
+  for (fam in c("poisson", "zi_poisson", "censored_poisson")) {
+    fam_obj <- switch(fam, poisson = poisson(), zi_poisson = zi_poisson(),
+                      censored_poisson = censored_poisson())
+    fit <- .edge_fit(df, fam_obj)
+    obj <- fit$tmb_obj
+    p <- .edge_par(fit)
+    if (fam == "zi_poisson") {
+      zi <- stats::plogis(p[names(p) == "logit_zi"])[tr]
+    }
+    for (eta in etas) {
+      p1 <- .edge_set(p, "b_fix", eta)
+      mu <- exp(eta)
+      ref_row <- y * eta - mu - lgamma(y + 1)
+      if (fam == "zi_poisson") {
+        ref_row <- ifelse(y == 0, log(zi + (1 - zi) * exp(-mu)),
+                          log1p(-zi) + ref_row)
+      }
+      got <- as.numeric(obj$fn(p1))
+      expect_true(is.finite(got), info = paste(fam, eta))
+      expect_equal(got, -sum(ref_row), tolerance = 1e-10, info = paste(fam, eta))
+      expect_true(all(is.finite(as.numeric(obj$gr(p1)))), info = paste(fam, eta))
+    }
+    invisible(obj$fn(fit$opt$par))
+  }
+})
+
+## ---- #1488: log1p series / direct switch --------------------------------
+
+test_that("NB2 kernel is accurate just above the old log1p cut points (#1488)", {
+  ## gll_log1p_pos switched to log(1 + u) at u = 1e-4 and gll_log1p_ratio at
+  ## u = 1e-3; just above each the direct form lost ~1e-16 absolute, which
+  ## gll_lgamma_shift multiplied by ~n / u. Pick size = y / 1.01e-4 (shift
+  ## argument u = 1.01e-4) and mu = 10 y (ratio argument mu / size = 1.01e-3).
+  df0 <- .count_fixture(1488, mu = 2)
+  for (n in c(1, 10, 100, 1000)) {
+    size <- n / 1.01e-4
+    mu <- 10 * n
+    df <- df0[1:6, ]
+    df$value <- n
+    fit_n <- .edge_fit(df, nbinom2())
+    obj_n <- fit_n$tmb_obj
+    pn <- .edge_set(.edge_par(fit_n), "b_fix", log(mu))
+    pn <- .edge_set(pn, "log_phi_nbinom2", log(size))
+    ## Exact: lgamma(n + s) - lgamma(s) = n log s + sum(log1p(k / s)).
+    shift_ref <- n * log(size) + sum(log1p((0:(n - 1)) / size))
+    lp_ref <- shift_ref - lgamma(n + 1) - size * log1p(mu / size) +
+      n * (log(mu) - log(size + mu))
+    ## Per-row error; the reference itself carries ~eps * n log(size) of
+    ## rounding, so the bound grows mildly with n (old code: ~9e-13 * n).
+    err <- abs(as.numeric(obj_n$fn(pn)) / nrow(df) + lp_ref)
+    expect_lt(err, 1e-12 * max(1, n / 10))
+  }
+})

@@ -12,6 +12,7 @@ suggest_lambda_constraint(
     "wald_retention", "profile_retention"),
   trait = "trait",
   unit = NULL,
+  unit_obs = NULL,
   threshold = 0.3,
   retention_prob = 0.9,
   sigma_d2 = 1,
@@ -35,8 +36,11 @@ default) or \code{"unit_obs"} (within-unit). Deprecated aliases \code{"B"} and
 entry to 0, i.e. \code{M[i, j] = 0} for \code{j > i}. Removes the
 rotational ambiguity completely. Pins \code{K(K-1)/2} entries.}
 \item{\code{"pin_top_one"}}{Single-anchor convention: \code{M[1, 1] = 1},
-rest \code{NA}. Sets the scale of factor 1; does NOT remove rotational
-ambiguity.}
+rest \code{NA}. Opt-in only, and not a scale choice: the latent axes
+already have unit variance, so the \code{+1} is an extra restriction
+that removes a free parameter and can bias the other loadings and
+unique variances (a worse log-likelihood that no check flags,
+#1585). It also does NOT remove rotational ambiguity.}
 \item{\code{"none"}}{All-\code{NA} matrix -- no pins. Useful if you plan to
 rotate the fitted loadings after fitting instead.}
 }}
@@ -44,6 +48,12 @@ rotate the fitted loadings after fitting instead.}
 \item{trait, unit}{Name of the trait and unit (site) columns. Forwarded when
 \code{fit_or_formula} is a formula and the data does not already use
 defaults.}
+
+\item{unit_obs}{Name of the within-unit column. Used only when
+\code{fit_or_formula} is a formula and \code{level = "unit_obs"}: it names the
+column in the formula's \code{latent(... | unit_obs)} term, as in
+\code{\link[=gllvmTMB]{gllvmTMB()}}. \code{NULL} (default) means \code{"site_species"}, the same default
+as \code{\link[=gllvmTMB]{gllvmTMB()}}. Ignored for a fit.}
 
 \item{threshold}{Salience threshold on the standardised loading
 \eqn{\rho_{tk} = \Lambda_{tk} / \sqrt{\Sigma_{total,tt}}}. Used by

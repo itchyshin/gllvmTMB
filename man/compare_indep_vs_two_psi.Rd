@@ -19,7 +19,10 @@ The cross-check refits the same data and family with
 
 \item{threshold}{Numeric (default \code{0.10}): relative-disagreement
 threshold (Frobenius RMSE / Frobenius magnitude of the unstructured
-estimate) above which a component is flagged.}
+estimate) above which a component is flagged. The default is not
+calibrated: it flags most datasets simulated from the paired model
+itself at realistic species counts, so a flag marks disagreement
+only.}
 
 \item{phylo_vcv, phylo_tree}{Optional. The phylogenetic correlation
 matrix or \code{ape::phylo} tree, only needed if \code{fit_two_psi} was
@@ -40,6 +43,15 @@ failed).}
 \code{rel_disagreement}, and \code{flag}.}
 \item{\code{flag}, \code{threshold}, \code{alt_fit}}{As in
 \code{\link[=compare_dep_vs_two_psi]{compare_dep_vs_two_psi()}}.}
+\item{\code{lrt}}{One-row data frame with the same columns as in
+\code{\link[=compare_dep_vs_two_psi]{compare_dep_vs_two_psi()}}, but the direction is reversed: the
+\code{phylo_indep + indep} refit is the paired fit with its shared
+loadings set to zero, so the paired fit is the larger model. \code{chi2}
+is twice the log-likelihood gain of the paired fit over the refit
+and \code{df} its extra free parameters. A small \code{p_value} means the
+shared loadings improve the fit. The chi-square reference is
+approximate, because the loadings are not identified under the
+refit.}
 }
 }
 \description{
@@ -58,9 +70,12 @@ unstructured fit needed by \code{\link[=compare_dep_vs_two_psi]{compare_dep_vs_t
 Otherwise prefer \code{\link[=compare_dep_vs_two_psi]{compare_dep_vs_two_psi()}} (gold standard).
 
 Cross-check intent: the per-trait diagonals are the simplest summary
-the joint two-psi fit and the marginal baseline both target. If the
-diagonals already disagree beyond the threshold, no inspection of
-the cross-trait off-diagonals is warranted.
+the joint two-psi fit and the marginal baseline both target. A flag
+means the two fits disagree beyond \code{threshold}; it does not show that
+the paired model is wrong. The baseline carries its own sampling noise
+and the \code{0.10} default is not calibrated (on the issue 1571
+simulations from the paired model, this check also flagged, with
+\code{rel_disagreement} of 0.24 and 0.16 for the two components at seed 18).
 }
 \examples{
 set.seed(18)
@@ -105,10 +120,7 @@ fit <- gllvmTMB(
 ## the two fits' per-trait phylogenetic and non-phylogenetic variances.
 ## This cheap check is meant for fits with many traits, where the
 ## unrestricted refit of compare_dep_vs_two_psi() is too slow; three
-## traits keep the example fast. The refit currently also warns about an
-## unused `unit_obs` argument; the warning comes from the internal refit,
-## not from your model, and does not change the result (a known bug,
-## issue #1568).
+## traits keep the example fast.
 check <- compare_indep_vs_two_psi(fit)
 check$alt_fit$opt$convergence  # 0 means the refit converged
 ## rel_disagreement is the gap between the two fits relative to the size
@@ -125,6 +137,9 @@ check$flag
 ## is wrong. The phylogenetic variances of the two fits:
 rbind(two_psi = check$joint$Sigma_phy_diag,
       per_trait = check$indep$Sigma_phy_diag)
+## Likelihood-ratio test: does the paired fit's shared factor improve on
+## the per-trait refit?
+check$lrt
 }
 \references{
 Williams, M. J., McGillycuddy, M., Drobniak, S. M., Bolker, B. M.,

@@ -275,7 +275,11 @@ link_residual_per_trait <- function(fit) {
       df_vec <- as.numeric(fit$report$df_student %||% rep(Inf, Tn))
       sigma_t <- if (length(sigma_vec) >= t) sigma_vec[t] else sigma_vec[1]
       df_t <- if (length(df_vec) >= t) df_vec[t] else df_vec[1]
-      if (is.finite(df_t) && df_t > 2) {
+      if (isTRUE(df_t == Inf)) {
+        ## df = Inf is the Gaussian limit (report$df_student overflows to
+        ## Inf past log_df ~ 709): the variance is sigma^2 (#1487).
+        out[t] <- sigma_t^2
+      } else if (is.finite(df_t) && df_t > 2) {
         out[t] <- sigma_t^2 * df_t / (df_t - 2)
       } else {
         warning(
@@ -628,8 +632,9 @@ link_residual_per_trait <- function(fit) {
 #' `level = "phy"` extracts the phylogenetic implied
 #' \eqn{\boldsymbol\Sigma_\text{phy}} from `phylo_latent()`. If a future
 #' release adds 3+ latent tiers, `level = "<colname>"` will dispatch to the
-#' corresponding tier without API change. For now, custom strings error
-#' with a clear unsupported-level message.
+#' corresponding tier without API change. For now, a custom string that is
+#' not the fitted `name` of a kernel tier (see the `level` argument) errors with a
+#' clear unsupported-level message.
 #'
 #' @param fit A fit returned by [gllvmTMB()]. Admitted `engine = "julia"`
 #'   bridge fits expose the ordinary unit tier only: `link_residual = "none"`
@@ -644,7 +649,8 @@ link_residual_per_trait <- function(fit) {
 #'   from [slope()], [phylo_slope()], [animal_slope()], [kernel_slope()],
 #'   [spatial_slope()], or the corresponding `*_indep()` / `*_dep()` canonical
 #'   form), `"spatial"`,
-#'   `"cluster"`, or `"cluster2"` (a
+#'   the fitted `name` of a named `kernel_*()` tier (for example
+#'   `level = "cross"`), `"cluster"`, or `"cluster2"` (a
 #'   second, independent diagonal grouping alongside `"cluster"` -- see the
 #'   `cluster2` argument to [gllvmTMB()]). Legacy aliases
 #'   `"B"`, `"W"`, and `"spde"` are accepted with a soft-deprecation
@@ -1818,7 +1824,9 @@ extract_Sigma <- function(
   if (link_residual == "auto") {
     link_resid_per_trait <- link_residual_per_trait(fit)
     nonzero <- link_resid_per_trait != 0
-    if (any(nonzero, na.rm = TRUE)) {
+    ## Only part = "total" adds this residual. part = "shared" / "unique"
+    ## used to print the note anyway (#1580).
+    if (identical(part, "total") && any(nonzero, na.rm = TRUE)) {
       ## Map family_id back to a label for the report.
       fam_lookup <- function(fid) {
         switch(
@@ -1965,7 +1973,9 @@ extract_Sigma <- function(
 #' fixed `rho` recorded on that kernel. Uncertainty for `Gamma` is not yet
 #' reported by this helper; use bootstrap workflows when interval estimates
 #' are required. Use [profile_cross_rho()] to compare a fixed `rho`
-#' grid; in-engine `rho` estimation and profile intervals remain planned work.
+#' grid; in-engine estimation of this kernel `rho` and profile intervals remain
+#' planned work. (This is a different quantity from the source-strength
+#' `rho` that `kernel_latent(..., rho = NULL)` estimates.)
 #'
 #' @details
 #' `rho` is part of the supplied `K` matrix, not a fitted parameter in the
@@ -1974,8 +1984,8 @@ extract_Sigma <- function(
 #' `logLik()` values. `scale = "effect"` is therefore a fixed-kernel
 #' transformation, not an estimate of `rho`.
 #' Treat `Gamma` from a single association matrix `W` as data-condition
-#' sensitive: the C2 recovery test includes a sparse-versus-dense `W` check,
-#' and sparse or poorly replicated host-partner links should be reported as
+#' sensitive: the package's recovery tests include a sparse-versus-dense `W`
+#' check, and sparse or poorly replicated host-partner links should be reported as
 #' weaker evidence rather than as a precise coevolution estimate.
 #'
 #' For fixed multi-kernel fits, `extract_Gamma()` also inspects the fitted

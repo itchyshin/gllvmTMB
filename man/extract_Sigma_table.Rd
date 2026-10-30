@@ -35,7 +35,9 @@ report-ready correlation target is based on the full
 \item{entries}{Which symmetric matrix entries to return. \code{"unique"}
 (default) returns the diagonal plus upper triangle, one row per unique
 estimand. \code{"all"} returns every cell, useful for heatmaps. \code{"upper"},
-\code{"lower"}, \code{"offdiag"}, and \code{"diag"} return the corresponding subsets.}
+\code{"lower"}, \code{"offdiag"}, and \code{"diag"} return the corresponding subsets.
+Ignored when \code{part = "unique"}: that part always returns the \code{T}
+diagonal \code{Psi} rows, whatever \code{entries} is.}
 
 \item{link_residual}{Passed to \code{\link[=extract_Sigma]{extract_Sigma()}}. \code{"auto"} (default) adds
 family/link implicit residual variances to non-Gaussian trait diagonals;
@@ -45,9 +47,12 @@ family/link implicit residual variances to non-Gaussian trait diagonals;
 A data frame with one row per requested entry and stable columns:
 \code{estimand}, \code{trait_i}, \code{trait_j}, integer indices \code{i} and \code{j}, \code{level},
 \code{component}, \code{matrix}, \code{estimate}, \code{lower}, \code{upper}, \code{interval_method},
-\code{interval_status}, \code{scale}, \code{diagonal}, and
-\code{triangle}. Interval columns are \code{NA} with \code{interval_method = "none"}
-because this helper is point-estimate only.
+\code{interval_status}, \code{scale}, \code{diagonal},
+\code{triangle}, and \code{validation_row} (a short label for the validation scope of
+the extractor behind the table). For a fit, the interval columns \code{lower}
+and \code{upper} are \code{NA} with \code{interval_method = "none"}. For a
+\code{\link[=bootstrap_Sigma]{bootstrap_Sigma()}} input they are filled, with
+\code{interval_method = "bootstrap"} and \code{interval_status = "provided"}.
 }
 \description{
 \code{extract_Sigma()} returns matrices because that is the most convenient

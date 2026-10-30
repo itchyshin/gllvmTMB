@@ -19,7 +19,10 @@ The cross-check refits the same data and family with
 
 \item{threshold}{Numeric (default \code{0.10}): relative-disagreement
 threshold (Frobenius RMSE / Frobenius magnitude of the unstructured
-estimate) above which a component is flagged.}
+estimate) above which a component is flagged. The default is not
+calibrated: it flags most datasets simulated from the paired model
+itself at realistic species counts, so a flag marks disagreement
+only.}
 
 \item{phylo_vcv, phylo_tree}{Optional. The phylogenetic correlation
 matrix or \code{ape::phylo} tree, only needed if \code{fit_two_psi} was
@@ -45,6 +48,20 @@ failed so the component could not be tested).}
 if all tested components agreed, \code{NA} if nothing could be tested
 (distinguishes agreement from a failed refit).}
 \item{\code{threshold}}{The threshold used.}
+\item{\code{lrt}}{One-row data frame: the likelihood-ratio test of the
+paired fit against the unstructured refit, which contains it.
+Columns \code{loglik_joint}, \code{loglik_alt}, \code{chi2} (twice the
+log-likelihood gain of the refit), \code{df} (the refit's extra free
+parameters) and \code{p_value} (upper tail of a chi-square with \code{df}
+degrees of freedom). All \code{NA} when the refit failed, when
+\code{fit_two_psi} has no non-phylogenetic term (the refit always adds
+one, so the fits are not nested) or when a log-likelihood is
+unavailable. The chi-square reference is approximate because the
+paired model sits on a reduced-rank and variance boundary of the
+unstructured one; use \code{p_value} as a guide, after checking
+\code{alt_fit$opt$convergence}. \code{rel_disagreement} and \code{flag} stay as
+descriptive summaries; the likelihood ratio is the comparison that
+accounts for the refit's extra flexibility.}
 \item{\code{alt_fit}}{The refit \code{gllvmTMB_multi} object (or \code{NULL} on
 failure), retained so users can inspect convergence and pull
 other extractor outputs.}
@@ -58,17 +75,32 @@ two-psi fit. Compares the joint two-psi fit's implied
 \eqn{\boldsymbol\Sigma_{\mathrm{phy}} = \boldsymbol\Lambda_{\mathrm{phy}}\boldsymbol\Lambda_{\mathrm{phy}}^\top + \boldsymbol\Psi_{\mathrm{phy}}}
 (and the analogous \eqn{\boldsymbol\Sigma_{\mathrm{non}}}) against
 the unstructured baseline. Per-component RMSE plus a \code{flag} field
-(\code{TRUE} when any component disagrees beyond \code{threshold}) identifies
-two-psi identifiability failures.
+(\code{TRUE} when any component disagrees beyond \code{threshold}). A flag means
+the two fits disagree; it does not show that the paired two-psi model
+is wrong or not identified.
 }
 \details{
 Conceptual basis: Williams et al. (2025) bioRxiv 2025.12.20.695312
 Eq. 3, generalised across traits. The unstructured fit has
 \eqn{T(T+1)/2} free parameters per tier and is the strongest available
-benchmark for the implied total covariance. When the joint two-psi fit
-is well-identified, its implied total Sigma matches the unstructured
-baseline; when it isn't, the diagnostic flags the disagreement and
-the user knows to relax the rank or revisit identifiability.
+benchmark for the implied total covariance. Agreement between the two
+fits is reassuring. Disagreement is a prompt to look further, not a
+verdict: the more flexible baseline estimates many more parameters
+(for example non-phylogenetic off-diagonals whose true value may be 0)
+and carries its own sampling noise at realistic species counts. In
+simulations from the paired model itself (T = 3, d = 1; see issue 1571),
+the default threshold flagged nearly every dataset: 24/24 seeds at 64
+species, 4/4 at 128 and 3/4 at 256, with the paired fit usually closer
+to the true non-phylogenetic Sigma than the baseline. The \code{0.10}
+default of \code{threshold} is therefore \strong{not calibrated}; treat a flag as
+a comparison to inspect, for example by checking the boundary and
+convergence diagnostics of both fits.
+
+The \code{lrt} component is the likelihood-based comparison: because the paired
+fit is nested in the unstructured refit, it reports their
+likelihood-ratio test, which accounts for the refit's many extra
+parameters. \code{rel_disagreement} and \code{flag} are kept as descriptive
+summaries only.
 
 The cross-check separates three questions:
 
@@ -77,7 +109,7 @@ The cross-check separates three questions:
 \item{Level 2: total Sigma_phy and Sigma_non agree?}{This diagnostic
 answers Level 2 directly. The two estimators target the SAME
 total covariance with different parameterisations, so agreement
-is the identifiability check.}
+is what is compared (see the caveat above).}
 \item{Level 3: split into Lambda Lambda^T + Psi?}{Diagnostic
 does not test Level 3 directly; Level 2 agreement is the
 pre-requisite for Level 3 to be meaningful.}
@@ -127,9 +159,6 @@ fit <- gllvmTMB(
 
 ## Refit with unrestricted phylogenetic and non-phylogenetic covariances
 ## (phylo_dep + dep) and compare the two fits' covariance matrices.
-## The refit currently also warns about an unused `unit_obs` argument;
-## the warning comes from the internal refit, not from your model, and
-## does not change the result (a known bug, issue #1568).
 check <- compare_dep_vs_two_psi(fit)
 check$alt_fit$opt$convergence  # 0 means the refit converged
 ## rel_disagreement is the gap between the two fits relative to the size
@@ -145,6 +174,9 @@ check$flag
 ## So a flag means the two fits disagree; on its own it does not show
 ## that the paired model is wrong.
 c(two_psi = logLik(fit), unrestricted = logLik(check$alt_fit))
+## The likelihood-ratio test of the two fits (the unrestricted refit
+## contains the paired fit); this accounts for its extra parameters.
+check$lrt
 check$joint$Sigma_phy  # paired fit
 check$dep$Sigma_phy    # unrestricted refit
 }

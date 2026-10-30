@@ -88,10 +88,19 @@ extract_Sigma_W <- function(fit) {
 #' (see [extract_Sigma()]); set
 #' `link_residual = "none"` for the latent/Psi-implied scale only.
 #'
+#' For Gaussian (and lognormal) traits the observation residual
+#' \eqn{\sigma^2_\varepsilon} is added to the within-unit variance whenever the
+#' fit estimates it, which happens when a `unit_obs` record has replicate rows.
+#' This holds for either `link_residual` value, because
+#' \eqn{\sigma^2_\varepsilon} is a fitted variance, not a link residual. When
+#' the engine fixes \eqn{\sigma_\varepsilon} (one row per record), nothing is
+#' added.
+#'
 #' @inheritParams extract_Sigma_B
 #' @param link_residual For non-Gaussian fits: `"auto"` (default) adds each
 #'   trait's family/link implicit residual to \eqn{(\boldsymbol\Sigma_W)_{tt}};
-#'   `"none"` omits those additions.
+#'   `"none"` omits those additions. The estimated Gaussian observation
+#'   residual is added under both values.
 #' @return Numeric vector indexed by trait, or `NULL` if either Sigma_B or
 #'   Sigma_W is unavailable.
 #' @seealso [extract_proportions()] for the canonical per-trait variance
@@ -119,10 +128,24 @@ extract_ICC_site <- function(fit, link_residual = c("auto", "none")) {
     return(NULL)
   }
   vB <- diag(B$Sigma)
-  vW <- diag(W$Sigma)
+  vW <- diag(W$Sigma) + .icc_observation_residual(fit)
   icc <- .safe_icc_ratio(vB, vW)
   names(icc) <- levels(fit$data[[fit$trait_col]])
   icc
+}
+
+## Observation residual sigma_eps^2 of Gaussian / lognormal traits for the
+## within-unit variance of the ICC and repeatability (#1569). It is added only
+## when the fit estimates sigma_eps (replicate rows inside a unit_obs record).
+## When the engine fixes sigma_eps near zero (one row per record) nothing is
+## added. `sigma_eps` overrides the fitted value (the Wald path passes
+## `report(par)$sigma_eps`). Zero for non-Gaussian traits.
+.icc_observation_residual <- function(fit, sigma_eps = NULL) {
+  trait_names <- levels(fit$data[[fit$trait_col]])
+  if (.gllvmTMB_sigma_eps_mapped_off(fit)) {
+    return(stats::setNames(numeric(length(trait_names)), trait_names))
+  }
+  .variance_share_residual_per_trait(fit, sigma_eps = sigma_eps)
 }
 
 .safe_icc_ratio <- function(vB, vW) {
@@ -324,7 +347,7 @@ extract_communality <- function(
       )
       data.frame(
         trait = trait_names[t],
-        tier = level,
+        tier = .canonical_level_name(level),
         c2 = unname(ci_t["estimate"]),
         lower = unname(ci_t["lower"]),
         upper = unname(ci_t["upper"]),
@@ -335,7 +358,7 @@ extract_communality <- function(
     return(do.call(rbind, rows))
   }
   ## bootstrap
-  boot <- suppressMessages(bootstrap_Sigma(
+  boot <- .with_bootstrap_count_arg("nsim", suppressMessages(bootstrap_Sigma(
     fit,
     n_boot = as.integer(nsim),
     level = .canonical_level_name(level),
@@ -344,7 +367,7 @@ extract_communality <- function(
     link_residual = link_residual,
     seed = seed,
     progress = FALSE
-  ))
+  )))
   key <- paste0("communality_", level)
   pe <- boot$point_est[[key]]
   lo <- boot$ci_lower[[key]]
@@ -352,7 +375,7 @@ extract_communality <- function(
   if (is.null(pe)) {
     return(data.frame(
       trait = trait_names,
-      tier = level,
+      tier = .canonical_level_name(level),
       c2 = out_pe,
       lower = NA_real_,
       upper = NA_real_,
@@ -362,7 +385,7 @@ extract_communality <- function(
   }
   data.frame(
     trait = trait_names,
-    tier = level,
+    tier = .canonical_level_name(level),
     c2 = as.numeric(pe),
     lower = as.numeric(lo),
     upper = as.numeric(hi),
@@ -444,7 +467,7 @@ extract_communality <- function(
   )
   tbl <- data.frame(
     trait = trait_names,
-    tier = level,
+    tier = .canonical_level_name(level),
     c2 = unname(out),
     lower = lower,
     upper = upper,
@@ -487,7 +510,10 @@ extract_communality <- function(
 #'   is non-zero only for `latent(..., lv = ~ x)` fits. Temporal ordination
 #'   supports `"total"` only; other component requests raise an error.
 #' @return A list with `scores` (units or within-unit observations in rows,
-#'   latent axes in columns) and `loadings` (traits in rows, axes in columns).
+#'   latent axes in columns), `loadings` (traits in rows, axes in columns), and
+#'   `row_id` (the row identifiers of `scores`). The temporal branch also
+#'   returns `row_index` (the pair table behind the rows of `scores`) and
+#'   `temporal_sign` (the sign convention applied to the axes).
 #'
 #' @examples
 #' ## Simulate 6 traits recorded on a few species at each of 80 sites.

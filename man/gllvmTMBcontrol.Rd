@@ -33,6 +33,7 @@ gllvmTMBcontrol(
   aghq_escalate_patience = 3L,
   aghq_rho_min = 1/64,
   warn_runaway = TRUE,
+  laplace_warn_thresh = 2,
   allow_nongaussian_reml = FALSE,
   loading_ridge = NULL,
   optimizer_passes = 1L,
@@ -325,7 +326,17 @@ fit-time warning; the diagnostic remains available through
 variance, rail-correlated contrasts, or a collapsed spatial range), which
 uses its own once-per-session slot so neither family's warning can
 suppress the other's. Ordinal fits emit no fit-time warning: the
-\code{ordinal_probit()} loading screen reports through \code{\link[=check_gllvmTMB]{check_gllvmTMB()}} only.}
+\code{ordinal_probit()} loading screen reports through \code{\link[=check_gllvmTMB]{check_gllvmTMB()}} only.
+The same switch governs the Laplace-optimism warning (\code{laplace_warn_thresh}).}
+
+\item{laplace_warn_thresh}{Numeric scalar, default \code{2}. At the end of a fit,
+the marginal logLik is re-evaluated at the fitted parameters by adaptive
+Gauss-Hermite quadrature (the audit behind the \code{laplace_accuracy} row of
+\code{\link[=check_gllvmTMB]{check_gllvmTMB()}}, with the same work cap) and a one-line warning is given
+when the Laplace logLik exceeds it by more than this many units. It applies
+to Laplace fits whose only random block is the between-unit latent block with
+\code{d} from 1 to 3; other fits, and problems above the work cap, are skipped.
+\code{FALSE} turns the audit off. \code{warn_runaway = FALSE} also turns it off.}
 
 \item{allow_nongaussian_reml}{Permit \code{REML = TRUE} for non-Gaussian families.
 Default \code{FALSE}; the restricted likelihood is defined by a Gaussian

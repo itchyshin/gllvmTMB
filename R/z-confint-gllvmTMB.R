@@ -772,9 +772,15 @@
   }
   ## `route` is the Hessian-free method the error offers. It must be one the
   ## CALLER accepts: extract_repeatability() has withdrawn "profile", so it
-  ## passes "bootstrap". Pasted into the template (not interpolated as a value)
-  ## so the {.code} markup is rendered.
-  route_md <- paste0("{.code method = \"", route, "\"}")
+  ## passes "bootstrap". `vcov()` has no method argument (#1580), so it
+  ## passes NULL and the hint is omitted. Pasted into the template (not
+  ## interpolated as a value) so the {.code} markup is rendered.
+  offer_route <- !is.null(route) && nzchar(route)
+  route_md <- if (offer_route) {
+    paste0("{.code method = \"", route, "\"}")
+  } else {
+    NULL
+  }
 
   ## Second way to have no usable standard errors: sd_report EXISTS but its
   ## fixed-effect covariance is entirely non-finite -- the signature of a
@@ -786,13 +792,18 @@
   if (!is.null(object$sd_report)) {
     cv <- tryCatch(object$sd_report$cov.fixed, error = function(e) NULL)
     if (!is.null(cv) && length(cv) > 0L && !any(is.finite(diag(as.matrix(cv))))) {
+      next_step <- if (offer_route) {
+        paste0("Diagnose it with {.run gllvmTMB_diagnose(fit)}, or use ",
+               route_md, ", which does not use the Hessian.")
+      } else {
+        "Diagnose it with {.run gllvmTMB_diagnose(fit)}."
+      }
       cli::cli_abort(c(
         "{.fn {caller}} cannot proceed: the standard errors are all non-finite.",
         "x" = "This usually means the Hessian is not positive-definite.",
         "i" = "This is a property of the fit -- {.fn standard_errors} will not
                help, because the numbers were already computed.",
-        ">" = paste0("Diagnose it with {.run gllvmTMB_diagnose(fit)}, or use ",
-                     route_md, ", which does not use the Hessian.")
+        ">" = next_step
       ), class = "gllvmTMB_confint_nonfinite_se")
     }
     return(invisible(NULL))
@@ -802,12 +813,36 @@
   ## braces would print literally.
   reason <- object$sdreport_error %||%
     "no standard errors were computed for this fit"
-  cli::cli_abort(c(
+  no_se_msg <- c(
     "{.fn {caller}} needs standard errors, and this fit has none.",
     "x" = "This fit has no {.field sd_report}: {reason}",
-    ">" = "Compute them without refitting: {.code fit <- standard_errors(fit)}",
-    "i" = paste0("Or use ", route_md, ", which does not need them.")
-  ), class = "gllvmTMB_confint_no_sdreport")
+    ">" = "Compute them without refitting: {.code fit <- standard_errors(fit)}"
+  )
+  if (offer_route) {
+    no_se_msg <- c(
+      no_se_msg,
+      "i" = paste0("Or use ", route_md, ", which does not need them.")
+    )
+  }
+  cli::cli_abort(no_se_msg, class = "gllvmTMB_confint_no_sdreport")
+}
+
+## #1379: a finite covariance from a Hessian that is not positive-definite is
+## not a trustworthy curvature estimate. `.confint_require_sdreport()` catches
+## the all-non-finite case as an error; this is the warning for the finite
+## case, shared by the Wald readers other than extract_repeatability() (which
+## keeps its own classed warning). The interval is still returned.
+.wald_warn_nonpd_hessian <- function(object, what) {
+  if (isFALSE(object$sd_report$pdHess)) {
+    cli::cli_warn(
+      c(
+        "The Hessian is not positive-definite ({.code pdHess = FALSE}); the Wald {what} intervals are not reliable.",
+        "i" = "Diagnose with {.run gllvmTMB_diagnose(fit)}, or use a bootstrap interval ({.code method = \"bootstrap\"})."
+      ),
+      class = "gllvmTMB_wald_nonpd_hessian"
+    )
+  }
+  invisible(NULL)
 }
 
 .confint_colnames <- function(level) {
@@ -1121,6 +1156,7 @@
     "unique_cluster2",
     "shared_phy",
     "unique_phy",
+    "residual",
     "link_residual"
   )
 }
@@ -1245,8 +1281,8 @@
 ## the `profile_targets()` inventory (e.g. "sigma_eps", "sd_B[1]",
 ## "phi_nbinom2[2]", "Lambda_B_packed[3]"). These are variance,
 ## dispersion, scaling, loading-packed, or threshold-class targets;
-## the fixed-effect path below already handles b_fix elements via
-## tidy(). Returns TRUE when parm is character, length >= 1, and
+## b_fix elements are routed here too when `parm` is made only of
+## `b_fix[k]` labels. Returns TRUE when parm is character, length >= 1, and
 ## every entry matches a profile-target label in
 ## profile_targets(object).
 .is_profile_target_parm <- function(object, parm) {
@@ -1512,11 +1548,14 @@
 #'       \code{"unique_unit"}, \code{"shared_unit_obs"},
 #'       \code{"unique_unit_obs"}, \code{"unique_cluster"},
 #'       \code{"unique_cluster2"}, \code{"shared_phy"},
-#'       \code{"unique_phy"}, \code{"link_residual"}). Defaults to Wald;
+#'       \code{"unique_phy"}, \code{"residual"}, \code{"link_residual"}).
+#'       Defaults to Wald;
 #'       bootstrap is available explicitly. The nonlinear profile prototype is
 #'       withheld.
 #'     \item An integer index vector or character vector of fixed-effect
-#'       term names (same as the standard \code{confint()} interface).
+#'       term names (same as the standard \code{confint()} interface), or
+#'       \code{b_fix[k]} labels from [profile_targets()]; only the requested
+#'       fixed effects are profiled.
 #'     \item Missing (default) -- all fixed-effect parameters.
 #'   }
 #' @param level Confidence level in \code{(0, 1)}. Default \code{0.95}.
@@ -1543,6 +1582,12 @@
 #'     zero by a diagonal-only tier). The parameter prefix follows the
 #'     requested \code{parm}, so legacy calls still return legacy
 #'     \code{"Sigma_B[...]"} or \code{"Sigma_W[...]"} labels.
+#'     With \code{method = "wald"} on a tier that has a \code{latent()} term,
+#'     \code{lower} and \code{upper} are \code{NA} and a message says so: the
+#'     only available standard error covers the unique-variance part, not the
+#'     total. Use \code{method = "bootstrap"}, or
+#'     [profile_ci_total_variance()] for the diagonal. Asking for a Sigma tier
+#'     the fit does not have is an error that names the public tier.
 #'   \item \strong{Lambda path} -- a \code{data.frame} with columns
 #'     \code{parameter} (e.g. \code{"Lambda[trait_1,LV1]"} for raw rows or
 #'     \code{"rho[trait_1,LV1]"} for standardised rows),
@@ -1621,8 +1666,9 @@
 #'
 #' # With latent(), each Sigma_unit entry combines several parameters, so
 #' # confint(fit, parm = "Sigma_unit") switches to a parametric bootstrap
-#' # that refits the model `nsim` times. Use nsim = 999 or more (smaller
-#' # values give a warning); that takes minutes, so it is not run here.
+#' # that refits the model `nsim` times. Use nsim = 999 or more. The default
+#' # of 500 does not warn; a smaller nsim does. That takes minutes, so it
+#' # is not run here.
 #'
 #' @export
 #' @method confint gllvmTMB_multi
@@ -1754,8 +1800,8 @@ confint.gllvmTMB_multi <- function(
   ## When `parm` matches a `profile_targets()` user-facing label
   ## (e.g. "sigma_eps", "sd_B[1]", "phi_nbinom2[2]"), route through
   ## the right helper instead of the fixed-effects path. b_fix
-  ## elements continue through the fixed-effects path so existing
-  ## callers don't break.
+  ## labels (and b_fix-only `parm`) go through the same helpers, so one
+  ## label gives one row.
   if (.is_profile_target_parm(object, parm)) {
     tgt_filt <- profile_targets(object, ready_only = FALSE)
     is_b_fix <- as.character(parm) %in%
@@ -1763,6 +1809,22 @@ confint.gllvmTMB_multi <- function(
         tgt_filt$tmb_parameter == "b_fix" &
           !is.na(tgt_filt$tmb_parameter)
       ]
+    if (all(is_b_fix) && method %in% c("profile", "wald")) {
+      ## `parm` is made only of `b_fix[k]` labels: send it through the
+      ## profile-target helpers so one label gives one row, and only the
+      ## requested fixed effects are profiled (#1588).
+      .confint_require_sdreport(object, method)
+      if (method == "profile") {
+        .confint_assert_ml_fixef_profile(object)
+        return(.confint_profile_targets(
+          object,
+          parm = parm,
+          level = level,
+          ...
+        ))
+      }
+      return(.confint_wald_targets(object, parm = parm, level = level, ...))
+    }
     if (!all(is_b_fix)) {
       if (method == "profile") {
         return(.confint_profile_targets(
@@ -1796,7 +1858,14 @@ confint.gllvmTMB_multi <- function(
   if (method == "wald") {
     td <- tidy(object, "fixed", conf.int = TRUE, conf.level = level)
   } else if (method == "profile") {
-    td <- .confint_fixef_profile(object, level = level)
+    ## Resolve `parm` first so only the requested rows are profiled.
+    rows <- if (!missing(parm)) {
+      .confint_resolve_parm(
+        parm,
+        tidy(object, "fixed", conf.int = FALSE)$term
+      )
+    }
+    td <- .confint_fixef_profile(object, level = level, rows = rows)
   } else {
     ## bootstrap on fixed effects: not currently supported (existing bootstrap
     ## machinery only covers Sigma matrices). Fall back to Wald with a note.
@@ -1820,9 +1889,38 @@ confint.gllvmTMB_multi <- function(
 
 ## ---- Sigma path: dispatch on method ---------------------------------------
 
+## Internal helper: stop once, before any method runs, when the fit has no
+## covariance tier for a Sigma parm, naming the public tier and the term that
+## creates it (#1588).
+#' @keywords internal
+#' @noRd
+.confint_assert_sigma_tier <- function(object, parm) {
+  info <- .sigma_parm_info(parm)
+  if (is.null(info) || isTRUE(info$phy)) {
+    return(invisible(NULL))
+  }
+  Sigma_pt <- tryCatch(
+    suppressMessages(extract_Sigma(
+      object,
+      level = info$level,
+      part = "total",
+      link_residual = "none"
+    )),
+    error = function(e) NULL
+  )
+  if (is.null(Sigma_pt)) {
+    cli::cli_abort(c(
+      "This fit has no {.val {info$level}} tier; {.code {parm}} needs a {.fn latent}, {.fn unique} or {.fn indep} term on the {.val {info$level}} grouping.",
+      ">" = "Check which tiers the fit has with {.code extract_Sigma(fit, level = ...)}."
+    ))
+  }
+  invisible(NULL)
+}
+
 #' @keywords internal
 #' @noRd
 .confint_sigma <- function(object, parm, level, method, nsim, seed) {
+  .confint_assert_sigma_tier(object, parm)
   if (method == "bootstrap") {
     return(.confint_sigma_bootstrap(object, parm, level, nsim, seed))
   }
@@ -1846,7 +1944,7 @@ confint.gllvmTMB_multi <- function(
     ))
   }
 
-  boot <- bootstrap_Sigma(
+  boot <- .with_bootstrap_count_arg("nsim", bootstrap_Sigma(
     fit = object,
     n_boot = as.integer(nsim),
     level = info$level,
@@ -1854,7 +1952,7 @@ confint.gllvmTMB_multi <- function(
     conf = level,
     seed = seed,
     progress = FALSE
-  )
+  ))
 
   key_pt <- info$key
   pe <- boot$point_est[[key_pt]]
@@ -1980,6 +2078,13 @@ confint.gllvmTMB_multi <- function(
   rr_used <- .sigma_info_rr_used(object, info)
   diag_used <- .sigma_info_diag_used(object, info)
   if (rr_used || !diag_used) {
+    if (rr_used) {
+      cli::cli_inform(c(
+        "Wald intervals are not available for {.val {info$display}} on a {.fn latent} tier; {.field lower} and {.field upper} are {.code NA}.",
+        "i" = "The only standard error available covers the unique-variance part, not the total.",
+        ">" = "Use {.code method = \"bootstrap\"}, or for the diagonal {.code profile_ci_total_variance(fit, tier = {.val {info$level}})}."
+      ))
+    }
     return(out)
   }
   ## On the log-SD scale of diag_<tier>, get the SE; transform back to var
@@ -2117,15 +2222,22 @@ confint.gllvmTMB_multi <- function(
 
 #' @keywords internal
 #' @noRd
-.confint_fixef_profile <- function(object, level) {
+.confint_assert_ml_fixef_profile <- function(object) {
   if (isTRUE(object$REML)) {
     cli::cli_abort(c(
       "Profile confidence intervals for fixed effects are not available for REML fits.",
       "i" = "Use {.code method = \"wald\"} for REML fixed effects, or refit with {.code REML = FALSE} for ML profiling."
     ))
   }
+}
+
+#' @keywords internal
+#' @noRd
+.confint_fixef_profile <- function(object, level, rows = NULL) {
+  .confint_assert_ml_fixef_profile(object)
   ## Loop over b_fix entries via tmbprofile, label as the fixed-effect
-  ## term names from $X_fix_names.
+  ## term names from $X_fix_names. `rows` (row positions of the tidy fixed
+  ## table) limits profiling to the requested terms; other rows get NA.
   ix <- which(names(object$opt$par) == "b_fix")
   bfix <- .gllvmTMB_b_fix_table(object)
   free <- if ("status" %in% names(bfix)) {
@@ -2133,41 +2245,34 @@ confint.gllvmTMB_multi <- function(
   } else {
     rep(TRUE, nrow(bfix))
   }
+  td <- tidy(object, "fixed", conf.int = TRUE, conf.level = level)
   if (length(ix) == 0L) {
     ## No fixed effects -- return empty
-    td <- tidy(object, "fixed", conf.int = TRUE, conf.level = level)
     td$conf.low <- NA_real_
     td$conf.high <- NA_real_
     return(td)
   }
-  term_names <- object$X_fix_names %||% paste0("b_fix[", seq_along(ix), "]")
-  out <- vector("list", length(ix))
-  for (k in seq_along(ix)) {
-    out[[k]] <- tmbprofile_wrapper(
+  ## k_of_row: which b_fix entry each tidy row corresponds to (NA = none)
+  if (nrow(td) == length(free) && sum(free) == length(ix)) {
+    k_of_row <- ifelse(free, cumsum(free), NA_integer_)
+  } else if (nrow(td) == length(ix)) {
+    k_of_row <- seq_len(nrow(td))
+  } else {
+    return(td)
+  }
+  want <- if (is.null(rows)) seq_len(nrow(td)) else unique(rows)
+  want <- want[!is.na(k_of_row[want])]
+  td$conf.low <- NA_real_
+  td$conf.high <- NA_real_
+  for (r in want) {
+    res <- tmbprofile_wrapper(
       object,
       name = "b_fix",
-      which = k,
+      which = k_of_row[[r]],
       level = level
     )
-  }
-  ## Wald estimates and SEs from existing tidy
-  td <- tidy(object, "fixed", conf.int = TRUE, conf.level = level)
-  ## Override conf.low / conf.high with profile bounds
-  ## (only for rows that match b_fix entries)
-  ## Match terms
-  est <- vapply(out, `[`, numeric(1), "estimate")
-  lo <- vapply(out, `[`, numeric(1), "lower")
-  hi <- vapply(out, `[`, numeric(1), "upper")
-  if (nrow(td) == length(free) && sum(free) == length(ix)) {
-    td$conf.low <- NA_real_
-    td$conf.high <- NA_real_
-    td$conf.low[free] <- lo
-    td$conf.high[free] <- hi
-    return(td)
-  }
-  if (nrow(td) == length(ix)) {
-    td$conf.low <- lo
-    td$conf.high <- hi
+    td$conf.low[r] <- unname(res["lower"])
+    td$conf.high[r] <- unname(res["upper"])
   }
   td
 }

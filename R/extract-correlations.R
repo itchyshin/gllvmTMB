@@ -253,8 +253,8 @@
 #' [gllvmTMB()] at one or more covariance levels. Use the canonical input
 #' names \code{"unit"}, \code{"unit_obs"}, \code{"phy"}, and
 #' \code{"spatial"}; legacy aliases \code{"B"}, \code{"W"}, and
-#' \code{"spde"} still work. The helper returns 95% (or other-level)
-#' point estimates by default. Fisher-z and bootstrap intervals can be
+#' \code{"spde"} still work. The helper returns point estimates only by
+#' default, with no confidence level. Fisher-z and bootstrap intervals can be
 #' requested explicitly with the \code{method} argument; the former profile
 #' token is retained only to return a clear withdrawal error:
 #'
@@ -739,7 +739,7 @@ extract_correlations <- function(
   if (method == "bootstrap") {
     boot_levels <- unique(intersect(tier, c("B", "W", "phy")))
     if (length(boot_levels) > 0L) {
-      boot_R <- suppressMessages(bootstrap_Sigma(
+      boot_R <- .with_bootstrap_count_arg("nsim", suppressMessages(bootstrap_Sigma(
         fit,
         n_boot = nsim,
         level = vapply(
@@ -753,7 +753,7 @@ extract_correlations <- function(
         link_residual = link_residual,
         seed = seed,
         progress = FALSE
-      ))
+      )))
     }
   }
 
@@ -889,9 +889,12 @@ extract_correlations <- function(
     out$interval_status <- .correlation_interval_status(out_method_label)
   }
   rownames(out) <- NULL
-  .reportable_table(.correlation_expand_entries(
-    out, entries, trait_names, present_tiers
-  ))
+  out <- .correlation_expand_entries(out, entries, trait_names, present_tiers)
+  ## Report the canonical user-facing tier name (#1577); the internal code
+  ## was needed only for the ordering above.
+  out$tier <- vapply(out$tier, .canonical_level_name, character(1L),
+                     USE.NAMES = FALSE)
+  .reportable_table(out)
 }
 
 .cross_ordinal_partner_traits <- function(fit) {
@@ -1075,7 +1078,9 @@ extract_cross_correlations <- function(fit, level = "unit", contrasts = FALSE,
     }
   }
 
-  S <- extract_Sigma(fit, level = level, part = "total", link_residual = link_residual)
+  S <- suppressMessages(extract_Sigma(
+    fit, level = level, part = "total", link_residual = link_residual
+  ))
   Sigma <- if (is.list(S) && !is.null(S$Sigma)) S$Sigma else S
   tn <- rownames(Sigma)
   mnK <- fit$tmb_data$multinom_K_per_trait
@@ -1093,7 +1098,7 @@ extract_cross_correlations <- function(fit, level = "unit", contrasts = FALSE,
   ## ---- method = "bootstrap": one bootstrap_Sigma call for multiple_r --------
   boot_lo <- boot_hi <- NULL
   if (method == "bootstrap") {
-    boot <- suppressMessages(bootstrap_Sigma(
+    boot <- .with_bootstrap_count_arg("nsim", suppressMessages(bootstrap_Sigma(
       fit,
       n_boot = nsim,
       level = level,
@@ -1102,7 +1107,7 @@ extract_cross_correlations <- function(fit, level = "unit", contrasts = FALSE,
       link_residual = link_residual,
       seed = seed,
       progress = FALSE
-    ))
+    )))
     key_nm <- paste0("multiple_r_", lvl_internal)
     boot_lo <- boot$ci_lower[[key_nm]]
     boot_hi <- boot$ci_upper[[key_nm]]

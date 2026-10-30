@@ -1284,6 +1284,7 @@ gllvm_julia_capabilities <- function() {
   res$ci_lower <- .gllvm_julia_as_vector(res$ci_lower %||% numeric(), "numeric")
   res$ci_upper <- .gllvm_julia_as_vector(res$ci_upper %||% numeric(), "numeric")
   res$ci_note <- .gllvm_julia_as_vector(res$ci_note %||% "", "character")[1L]
+  if (is.na(res$ci_note)) res$ci_note <- ""
 
   n <- length(res$ci_param_names)
   if (
@@ -1301,9 +1302,13 @@ gllvm_julia_capabilities <- function() {
     names(res$ci_lower) <- res$ci_param_names
     names(res$ci_upper) <- res$ci_param_names
   }
-  res$ci_status <- if (n > 0L) {
+  finite_endpoints <- all(is.finite(res$ci_lower)) && all(is.finite(res$ci_upper))
+  if (n > 0L && !finite_endpoints && !nzchar(res$ci_note)) {
+    res$ci_note <- "CI endpoints contain non-finite values"
+  }
+  res$ci_status <- if (n > 0L && finite_endpoints) {
     "available"
-  } else if (nzchar(res$ci_note)) {
+  } else if (n > 0L || nzchar(res$ci_note)) {
     "unavailable"
   } else {
     "empty"
@@ -2731,7 +2736,11 @@ gllvm_julia_capabilities <- function() {
 #' @return A list of class `gllvmTMB_julia` with the bridge contract fields
 #'   (`loadings`, `Sigma`, `correlation`, `loglik`, `aic`, `bic`,
 #'   `converged`, ...). If `ci_method != "none"` and the row is admitted, the
-#'   list also carries flat CI fields consumed by `confint()`.
+#'   list also carries flat CI fields consumed by `confint()`. For a nonempty
+#'   CI payload, `ci_status` is `"available"` only when every lower and upper
+#'   endpoint is finite; otherwise it is `"unavailable"` with a diagnostic in
+#'   `ci_note`. Availability does not establish interval calibration or
+#'   coverage.
 #' @examples
 #' \dontrun{
 #' # Requires a local GLLVModels.jl install (see [gllvm_julia_setup()]).
@@ -2754,10 +2763,18 @@ gllvm_julia_capabilities <- function() {
 #' )
 #' extract_lv_effects(fit_lv)
 #'
-#' # Wald confidence intervals for an admitted no-X row:
+#' # Wald confidence intervals need an identifiable fit. This six-trait,
+#' # one-LV example has finite bounds in the tested Julia environment.
+#' set.seed(3801)
+#' latent <- rnorm(60)
+#' loading <- c(0.9, 0.7, -0.8, 0.55, -0.65, 0.75)
+#' y_ci <- outer(loading, latent) + matrix(rnorm(6 * 60, sd = 0.45), 6, 60)
 #' fit_ci <- gllvm_julia_fit(
-#'   y, family = "gaussian", num.lv = 2, ci_method = "wald"
+#'   y_ci, family = "gaussian", num.lv = 1, ci_method = "wald"
 #' )
+#' ci <- confint(fit_ci)
+#' stopifnot(fit_ci$ci_status == "available", all(is.finite(ci)))
+#' # Available reports finite bounds; it does not certify interval coverage.
 #' }
 #' @export
 gllvm_julia_fit <- function(

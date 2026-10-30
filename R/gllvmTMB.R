@@ -72,19 +72,29 @@
 #'   [animal_coef()], [kernel_coef()], [spatial_coef()], and
 #'   [meta_V()]).
 #'
-#'   An `offset()` term is supported for **count responses only** — `poisson()`,
+#'   An `offset()` term is supported for **count responses**: `poisson()`,
 #'   `nbinom1()`, `nbinom2()`, `truncated_poisson()`, and
-#'   `truncated_nbinom2()` — where it is the usual exposure or effort
+#'   `truncated_nbinom2()`, where it is the usual exposure or effort
 #'   adjustment. Supply it already on the link scale, e.g.
 #'   `offset(log(trap_nights))`. It must be its own additive term; it is not
 #'   interacted with `trait`.
+#'
+#'   There is one exception. In an integrated multi-source model declared with
+#'   [isdm_sources()], a nonzero offset is also accepted on the
+#'   `binomial(link = "cloglog")` detection arm. There it is a change of
+#'   support, not a shift: `cloglog(p) = log(E) + eta` with `E` the known
+#'   sampled area or effort, so the detection arm observes the same intensity
+#'   as the Poisson arms. A standalone `binomial(link = "cloglog")` fit, and
+#'   `binomial(link = "logit")`, `binomial(link = "probit")` and
+#'   `gaussian()`, keep the refusal, because there an offset would be a fixed
+#'   shift in log-odds, probit or mean.
 #'
 #'   In long format the offset column carries one value per `(unit, trait)`
 #'   row, so it can differ by trait. In wide format, `offset(w)` names one
 #'   unit-level column and applies it to every trait, while
 #'   `offset(e1, e2, ...)` names one column per trait, in [traits()] order.
 #'
-#'   A **nonzero** offset on a non-count trait is an error naming that trait.
+#'   A **nonzero** offset on any other trait is an error naming that trait.
 #'   Zero is always allowed and does nothing (on the log scale it is a
 #'   multiplier of one), which is how a mixed-family model gives an offset to
 #'   its count traits and not the rest.
@@ -254,7 +264,9 @@
 #'   (`miss_control(response = "include")`) contribute nothing to the
 #'   likelihood, so the restricted likelihood is formed over the observed rows
 #'   and matches the corresponding `"drop"` fit. The default `FALSE` keeps the
-#'   historical ML fit.
+#'   historical ML fit. `engine = "julia"` does not forward `REML`, so
+#'   `REML = TRUE` there aborts (class `gllvmTMB_julia_unsupported_arg`); use
+#'   `engine = "tmb"`.
 #'
 #'   REML is validated for all-Gaussian fits only. For non-Gaussian families
 #'   an opt-in escape hatch exists
@@ -295,7 +307,8 @@
 #'   no Newick tree (e.g. comparing against `nlme::corPagel`).
 #' @param known_V Optional list of block-diagonal sampling-error matrices
 #'   `V_t`. Used by the `equalto()` two-stage workflow when sampling-error
-#'   matrices are available from a prior stage of estimation.
+#'   matrices are available from a prior stage of estimation. Not supported by
+#'   `engine = "julia"`, which aborts (class `gllvmTMB_julia_unsupported_arg`).
 #' @param lambda_constraint Optional list with elements `unit` and / or
 #'   `unit_obs` (plus `phy`, `spde` for structural levels), each an
 #'   `n_traits × d` matrix of confirmatory loading constraints
@@ -309,7 +322,8 @@
 #'   minimum statistical identification scaffold when you have no
 #'   biological hypothesis. Deprecated legacy element names `B` and `W`
 #'   are still accepted (with a one-shot soft deprecation message) and
-#'   map to `unit` and `unit_obs` respectively.
+#'   map to `unit` and `unit_obs` respectively. Not supported by
+#'   `engine = "julia"`, which aborts (class `gllvmTMB_julia_unsupported_arg`).
 #' @param Xcoef_fixed Optional named numeric vector of fixed-effect
 #'   coefficient constraints. Names must match the expanded fixed-effect
 #'   design columns (`fit$X_fix_names`); values must currently be `0`,
@@ -345,6 +359,12 @@
 #'   For unstructured Gaussian models (`gaussian()` with ordinary `latent()` and
 #'   no phylo/spatial structure), `engine = "julia"` uses the GLLVModels.jl
 #'   closed-form profile path instead of the native Laplace engine.
+#'   Arguments the bridge does not forward abort rather than being ignored
+#'   (class `gllvmTMB_julia_unsupported_arg`): `REML`, `lambda_constraint`,
+#'   `known_V`, `cluster2`, `phylo_vcv`, `phylo_tree`, `mesh`, and a modelled
+#'   missing predictor (`miss_control(predictor = "model")`). Optimiser and
+#'   integration fields of [gllvmTMBcontrol()] that it never reads abort with
+#'   class `gllvmTMB_julia_unsupported_control`.
 #' @param ci_method Confidence-interval route requested at fit time for
 #'   admitted `engine = "julia"` no-X rows. One of `"none"` (default),
 #'   `"wald"`, `"profile"`, or `"bootstrap"`. Native `engine = "tmb"` fits use
@@ -369,10 +389,10 @@
 #'   MSPL does not activate automatically after a separation warning and never
 #'   changes the default ML fit.
 #'
-#' @return A `gllvmTMB` object. With no covariance-structure terms in
-#'   the formula the result has class `"gllvmTMB"` (single-response
-#'   engine); with `latent()` or other covstruct sugar it has class
-#'   `c("gllvmTMB_multi", "gllvmTMB")` (multi-trait engine).
+#' @return A `gllvmTMB` object. Every native fit, with or without
+#'   covariance-structure terms in the formula, has class
+#'   `c("gllvmTMB_multi", "gllvmTMB")`. `integration = "va"` returns class
+#'   `c("gllvmTMB_va", "gllvmTMB")` instead.
 #'   S3 methods are registered on the **subclasses**, not on bare
 #'   `gllvmTMB`: for a multi-trait fit (`gllvmTMB_multi`), `tidy()`,
 #'   `predict()`, `summary()`, `confint()` and `logLik()` are available, and
@@ -442,17 +462,19 @@
 #' this internally.
 #'
 #' **Multi-trial binomial**. The TMB engine evaluates `dbinom(y, n_trials, p)`
-#' so binomial fits are not restricted to Bernoulli (size = 1). To pass a
-#' per-row trial count, use either:
+#' so binomial fits are not restricted to Bernoulli (size = 1). `y` must be
+#' the integer success count, not a proportion. To pass a per-row trial
+#' count, use either:
 #' \itemize{
 #'   \item `cbind(successes, failures) ~ ...` on the LHS of the formula
 #'         (canonical R / `glmmTMB` convention; recommended), or
-#'   \item a flat response `y` with `weights = n_trials` (the alternative
-#'         glmmTMB API).
+#'   \item a flat success-count response `y` with `weights = n_trials` (the
+#'         alternative glmmTMB API).
 #' }
 #' The second `cbind()` column is the number of **failures**, not trials; for
 #' a trials column write `cbind(s, trials - s)`. Both interfaces produce
-#' identical fits.
+#' identical fits when `y` is the success count. A proportion plus
+#' `weights = n_trials` is refused.
 #'
 #' *Mixing with other families.* Binomial counts can share one model with
 #' Gaussian, count or other traits. In a mixed fit the second `cbind()` column
@@ -632,39 +654,56 @@
 #'
 #' @export
 #' @examples
-#' \dontrun{
 #' set.seed(1)
-#' sim <- simulate_site_trait(n_sites = 50, n_species = 8, n_traits = 3,
-#'                            mean_species_per_site = 5)
-#' # Long format: one response value per site-species-trait row.
+#' # Simulate 60 individuals, each measured on two occasions for five traits.
+#' # All five traits load on one shared latent axis (trait_4 negatively),
+#' # and each also has its own between-individual variance (psi_B). Every
+#' # measurement carries residual noise as well (sigma2_eps).
+#' loadings <- matrix(c(0.9, 0.8, 0.7, -0.6, 0.5), ncol = 1)
+#' sim <- simulate_unit_trait(n_units = 60, n_obs_per_unit = 2, n_traits = 5,
+#'                            Lambda_B = loadings, psi_B = 0.2,
+#'                            sigma2_eps = 0.3)
+#' long <- sim$data[c("unit", "observation", "trait", "value")]
+#' names(long)[1] <- "individual"
+#'
+#' # Long format: one row per (individual, occasion, trait) value.
+#' head(long)
+#'
+#' # `0 + trait` gives each trait its own mean. latent() fits one shared
+#' # axis (d = 1) across individuals; unique = TRUE adds each trait's own
+#' # between-individual variance (Psi) on top of it.
 #' fit_long <- gllvmTMB(
-#'   value ~ 0 + trait + (0 + trait):env_1 + (0 + trait):env_2,
-#'   data   = sim$data,
-#'   family = gaussian(),
-#'   trait  = "trait",
-#'   unit   = "site_species"
+#'   value ~ 0 + trait + latent(0 + trait | individual, d = 1, unique = TRUE),
+#'   data = long, trait = "trait", unit = "individual"
 #' )
 #'
-#' # Wide format: one row per site-species, with the same three traits.
-#' # `traits()` expands `1 + env_1 + env_2` to the explicit long terms above.
-#' wide_values <- stats::reshape(
-#'   sim$data[c("site_species", "trait", "value")],
-#'   idvar = "site_species", timevar = "trait", direction = "wide"
-#' )
-#' wide <- merge(
-#'   unique(sim$data[c("site_species", "env_1", "env_2")]), wide_values,
-#'   by = "site_species", sort = FALSE
-#' )
+#' # Wide format: one row per (individual, occasion), one column per trait.
+#' wide <- stats::reshape(long, idvar = c("individual", "observation"),
+#'                        timevar = "trait", direction = "wide")
 #' names(wide) <- sub("^value[.]", "", names(wide))
-#' fit_wide <- gllvmTMB(
-#'   traits(trait_1, trait_2, trait_3) ~ 1 + env_1 + env_2,
-#'   data   = wide,
-#'   family = gaussian(),
-#'   unit   = "site_species"
-#' )
-#' summary(fit_long)
-#' summary(fit_wide)
+#' head(wide)
+#'
+#' # traits() names the response columns. On the right-hand side, `1` means
+#' # one intercept per trait and latent(1 | individual) means
+#' # latent(0 + trait | individual), so this is the same model.
+#' if (requireNamespace("tidyr", quietly = TRUE)) {
+#'   fit_wide <- gllvmTMB(
+#'     traits(trait_1, trait_2, trait_3, trait_4, trait_5) ~ 1 +
+#'       latent(1 | individual, d = 1, unique = TRUE),
+#'     data = wide, unit = "individual"
+#'   )
+#'   # Same model, same data: the two fits agree.
+#'   c(long = logLik(fit_long), wide = logLik(fit_wide))
 #' }
+#'
+#' # Trait means, between-individual correlations (trait_4 is negatively
+#' # correlated with the rest), and the share of each trait's
+#' # between-individual variance carried by the latent axis.
+#' summary(fit_long)
+#'
+#' # The fitted between-individual covariance: the shared-axis part
+#' # (Lambda Lambda') plus the trait-specific part (Psi).
+#' round(extract_Sigma(fit_long, level = "unit")$Sigma, 2)
 gllvmTMB <- function(
   formula,
   data,
@@ -755,6 +794,24 @@ gllvmTMB <- function(
       "i" = "The Julia dispatch has its own optimizer and does not consume gllvmTMB start settings.",
       ">" = "Omit {.arg svd_start}, or fit with {.code engine = \"tmb\"}."
     ), class = "gllvmTMB_julia_unsupported_control")
+  }
+  ## The remaining optimiser-shaped control fields are also never read by the
+  ## Julia dispatch (#1347). A value that differs from the gllvmTMBcontrol()
+  ## default is an explicit request that would be silently dropped, so refuse it.
+  if (identical(engine, "julia")) {
+    control_defaults <- gllvmTMBcontrol()
+    ignored_control <- Filter(
+      function(f) !identical(control[[f]], control_defaults[[f]]),
+      c("optimizer", "optArgs", "init_jitter", "start_from", "se",
+        "d_B", "d_W", "init_strategy", "start_method", "aghq", "aghq_ridge")
+    )
+    if (length(ignored_control) > 0L) {
+      cli::cli_abort(c(
+        "{.code engine = \"julia\"} does not support non-default {.fn gllvmTMBcontrol} settings: {.arg {ignored_control}}.",
+        "i" = "The Julia dispatch has its own optimizer and standard errors, so a non-default value would be silently ignored.",
+        ">" = "Omit them, or use {.code engine = \"tmb\"}."
+      ), class = "gllvmTMB_julia_unsupported_control")
+    }
   }
   structured_rho_capture <- .parse_structured_rho_formula(formula, trait_col = trait, strip = FALSE)
   .structured_rho_dispatch_fence(structured_rho_capture$spec, engine = engine,
@@ -926,6 +983,12 @@ gllvmTMB <- function(
       rewrite$data_long,
       ".gllvmTMB_traits_n_dropped_response"
     ) <- rewrite$n_dropped
+    ## Wide row of each stacked cell, so a response-support error can name
+    ## the rows of the supplied wide data (#1485).
+    attr(
+      rewrite$data_long,
+      ".gllvmTMB_traits_source_row"
+    ) <- rewrite$source_row
     recurse_args <- list(
       formula = rewrite$formula_long,
       data = rewrite$data_long,
@@ -1424,6 +1487,8 @@ gllvmTMB <- function(
     exact = TRUE
   ) %||% 0L
   attr(data, ".gllvmTMB_traits_n_dropped_response") <- NULL
+  traits_source_row <- attr(data, ".gllvmTMB_traits_source_row", exact = TRUE)
+  attr(data, ".gllvmTMB_traits_source_row") <- NULL
   data_original <- data
   observed_response <- drop_missing_response_rows(
     fixed_formula = parsed$fixed,
@@ -1454,6 +1519,40 @@ gllvmTMB <- function(
         "i" = "The GLLVModels.jl bridge has no offset in its linear predictor, so the term would be dropped from the fit rather than applied.",
         ">" = "Use the default {.code engine = \"tmb\"} for a model with an offset."
       ))
+    ## The bridge reads `weights` only as binomial trial counts (N). For any
+    ## other family it would be dropped without a word (#1347), so refuse.
+    if (!is.null(weights)) {
+      julia_fam <- .gllvm_julia_family(family)
+      if (!all(julia_fam %in% .GLLVM_JULIA_BINOMIAL_FAMILIES))
+        cli::cli_abort(c(
+          "{.code engine = \"julia\"} does not support {.arg weights} for non-binomial families.",
+          "i" = "The GLLVModels.jl bridge uses {.arg weights} only as binomial trial counts, so they would be dropped from the fit rather than applied.",
+          ">" = "Use the default {.code engine = \"tmb\"} for weighted non-binomial models."
+        ), class = "gllvmTMB_julia_unsupported_weights")
+    }
+    ## `REML`, `lambda_constraint` and `known_V` are not forwarded to
+    ## gllvm_julia_fit(), so each would be dropped and an ML / unconstrained /
+    ## no-known-V fit returned without a word (#1347). Refuse them instead.
+    ## `cluster2`, `phylo_vcv`, `phylo_tree`, `mesh` and a modelled missing
+    ## predictor are likewise never forwarded; a structured term that would use
+    ## them is already gated in the dispatch, but supplied alone they were
+    ## accepted and dropped (#1347).
+    julia_dropped_args <- c(
+      if (isTRUE(REML)) "REML",
+      if (!is.null(lambda_constraint)) "lambda_constraint",
+      if (!is.null(known_V)) "known_V",
+      if (!is.null(cluster2)) "cluster2",
+      if (!is.null(phylo_vcv)) "phylo_vcv",
+      if (!is.null(phylo_tree)) "phylo_tree",
+      if (!is.null(mesh)) "mesh",
+      if (identical(missing$predictor, "model")) "missing = miss_control(predictor = \"model\")"
+    )
+    if (length(julia_dropped_args) > 0L)
+      cli::cli_abort(c(
+        "{.code engine = \"julia\"} does not support {.arg {julia_dropped_args}}.",
+        "i" = "The GLLVModels.jl bridge does not receive these arguments, so the fit would silently ignore them.",
+        ">" = "Use the default {.code engine = \"tmb\"}, or omit them."
+      ), class = "gllvmTMB_julia_unsupported_arg")
     return(.gllvmTMB_julia_dispatch(
       parsed         = parsed,
       data           = data,
@@ -1499,7 +1598,8 @@ gllvmTMB <- function(
       original_row = observed_response$original_row,
       n_missing_response = observed_response$n_missing_response +
         as.integer(traits_n_dropped_response),
-      data_original = data_original
+      data_original = data_original,
+      source_row = traits_source_row
     ),
     temporal = temporal_spec,
     estimator = estimator,
@@ -1598,6 +1698,7 @@ gllvmTMB <- function(
   ## Scoped to binomial because that is the family the 12,000 fits measured.
   if (!identical(control$warn_runaway, FALSE)) {
     .gllvmTMB_warn_runaway_loading(.fit)
+    .gllvmTMB_warn_laplace_optimism(.fit, control$laplace_warn_thresh %||% 2)
 
     ## Multinomial contrast degeneracy (fid 16), same control, same
     ## once-per-session discipline, but its OWN frequency id so one family's
@@ -1689,6 +1790,38 @@ gllvmTMB <- function(
   invisible(TRUE)
 }
 
+## Fit-time Laplace-optimism warning (#1389, owner decision 25 Oct 2026).
+##
+## `check_gllvmTMB()` already re-evaluates the marginal logLik at the fitted
+## parameters by adaptive Gauss-Hermite quadrature (`laplace_accuracy` row). A
+## converged Laplace fit can still report a logLik far above that integral
+## (67 units on psychTools::ability, probit d = 2; 167 and 171 on birthwt and
+## sai), with every convergence and Hessian check passing, so the gap passed
+## silently unless the user ran the check. This calls the SAME evaluator, with
+## the SAME work cap, at the end of `gllvmTMB()` and warns in one line when the
+## optimism exceeds `laplace_warn_thresh`. It warns and does not refit.
+##
+## Same switch and same once-per-fit-signature discipline as the runaway
+## warning (`warn_runaway`), so a re-fit of one problem stays quiet. A problem
+## above the work cap, or outside the evaluator's scope, is skipped silently
+## here; `check_gllvmTMB()` reports it as an INFO row.
+.gllvmTMB_warn_laplace_optimism <- function(fit, thresh = 2) {
+  if (isFALSE(thresh)) return(invisible(FALSE))
+  la <- tryCatch(.gllvmTMB_laplace_accuracy(fit), error = function(e) NULL)
+  if (!is.list(la) || !isTRUE(la$evaluated) || !is.finite(la$optimism) ||
+      !(la$optimism > thresh)) {
+    return(invisible(FALSE))
+  }
+  id <- paste0("gllvmTMB-laplace-optimism:", .gllvmTMB_runaway_signature(fit))
+  assign(id, TRUE, envir = .gllvmTMB_runaway_ids)
+  opt <- sprintf("%.1f", la$optimism)
+  cli::cli_warn(c(
+    "Laplace logLik is {opt} units above the marginal likelihood (threshold {thresh}); logLik, AIC and LRT for this fit are unreliable.",
+    ">" = "Refit with {.code gllvmTMBcontrol(aghq = 9)}, or see {.run gllvmTMB_diagnose(fit)}. Silence this with {.code gllvmTMBcontrol(warn_runaway = FALSE)}."
+  ), .frequency = "once", .frequency_id = id)
+  invisible(TRUE)
+}
+
 ## Multinomial (baseline-category logit) response expansion (Design 83).
 ## A multinomial() response over K unordered categories is expanded, BEFORE
 ## desugar/parse, into K-1 contiguous "category-contrast" pseudo-trait rows per
@@ -1762,6 +1895,16 @@ expand_multinomial_response <- function(formula, data, family, trait_col) {
     if (is.null(fam_names)) {
       .gllvmTMB_resolve_unnamed_family_list(fams, fam_levels, fam_var)
     }
+    ## When the family list is keyed by the trait column itself, the expansion
+    ## below rewrites that column into contrast pseudo-traits, so the list is
+    ## checked here, against the user's own trait levels (issue #1575).
+    if (identical(fam_var, trait_col) && length(fam_levels) != length(fams)) {
+      cli::cli_abort(c(
+        "length(family) must match the number of distinct levels in {.var {fam_var}}.",
+        "x" = "Got {length(fams)} famil{?y/ies} for {length(fam_levels)} level{?s}.",
+        ">" = "Supply one family per level of {.var {fam_var}}, e.g. {.code list(<level> = <family>(), ...)}."
+      ))
+    }
     mn_level   <- if (!is.null(fam_names) && all(nzchar(fam_names))) fam_names[mn_pos] else fam_levels[mn_pos]
     mn_rows    <- which(as.character(fam_col) == as.character(mn_level))
     if (length(mn_rows) == 0L) {
@@ -1826,6 +1969,24 @@ expand_multinomial_response <- function(formula, data, family, trait_col) {
     combined[[trait_col]] <- factor(as.character(combined[[trait_col]]),
                                     levels = c(other_lvls, ps_levels))
     rownames(combined) <- NULL
+    ## Family list keyed by the trait column: carry the multinomial entry
+    ## through to each of its K-1 contrast pseudo-traits so the list matches
+    ## the expanded trait levels one-to-one.
+    if (identical(fam_var, trait_col)) {
+      fam_key  <- if (!is.null(fam_names) && all(nzchar(fam_names))) fam_names
+                  else fam_levels
+      new_fam  <- list()
+      for (i in seq_along(fams)) {
+        if (i == mn_pos) {
+          for (lv in ps_levels) new_fam[[lv]] <- fams[[i]]
+        } else {
+          new_fam[[fam_key[i]]] <- fams[[i]]
+        }
+      }
+      new_fam <- new_fam[levels(combined[[trait_col]])]
+      attr(new_fam, "family_var") <- trait_col
+      family <- new_fam
+    }
     return(list(data = combined,
                 family = family, expanded = TRUE,
                 K = K, categories = cats, baseline = cats[1L]))
@@ -2275,6 +2436,15 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #'   uses its own once-per-session slot so neither family's warning can
 #'   suppress the other's. Ordinal fits emit no fit-time warning: the
 #'   `ordinal_probit()` loading screen reports through [check_gllvmTMB()] only.
+#'   The same switch governs the Laplace-optimism warning (`laplace_warn_thresh`).
+#' @param laplace_warn_thresh Numeric scalar, default `2`. At the end of a fit,
+#'   the marginal logLik is re-evaluated at the fitted parameters by adaptive
+#'   Gauss-Hermite quadrature (the audit behind the `laplace_accuracy` row of
+#'   [check_gllvmTMB()], with the same work cap) and a one-line warning is given
+#'   when the Laplace logLik exceeds it by more than this many units. It applies
+#'   to Laplace fits whose only random block is the between-unit latent block with
+#'   `d` from 1 to 3; other fits, and problems above the work cap, are skipped.
+#'   `FALSE` turns the audit off. `warn_runaway = FALSE` also turns it off.
 #' @param aghq_continuation If `TRUE` (default), the adaptation loop may raise
 #'   `aghq_iter_cap` across passes. `FALSE` pins the cap and disables escalation.
 #' @param aghq_shift_tol,aghq_grad_tol,aghq_f_tol Convergence tolerances for the
@@ -2506,6 +2676,7 @@ gllvmTMBcontrol <- function(
   ## common (98-99% of fits at large loadings) and otherwise SILENT. Set FALSE to
   ## suppress; the check itself is always available via `gllvmTMB_diagnose()`.
   warn_runaway = TRUE,
+  laplace_warn_thresh = 2,
   allow_nongaussian_reml = FALSE,
   loading_ridge = NULL,
   optimizer_passes = 1L,
@@ -2580,6 +2751,14 @@ gllvmTMBcontrol <- function(
   aghq_continuation <- .gllvmTMB_as_flag(aghq_continuation, "aghq_continuation")
   aghq_multistart <- .gllvmTMB_as_flag(aghq_multistart, "aghq_multistart")
   warn_runaway <- .gllvmTMB_as_flag(warn_runaway, "warn_runaway")
+  if (!isFALSE(laplace_warn_thresh) &&
+      (!is.numeric(laplace_warn_thresh) || length(laplace_warn_thresh) != 1L ||
+       is.na(laplace_warn_thresh) || laplace_warn_thresh < 0)) {
+    cli::cli_abort(c(
+      "{.arg laplace_warn_thresh} must be one non-negative number, or {.code FALSE}.",
+      ">" = "Use {.code laplace_warn_thresh = 2} (the default), or {.code FALSE} to skip the fit-time audit."
+    ))
+  }
   allow_nongaussian_reml <- .gllvmTMB_as_flag(
     allow_nongaussian_reml, "allow_nongaussian_reml"
   )
@@ -2728,6 +2907,7 @@ gllvmTMBcontrol <- function(
     aghq_escalate_patience = aghq_escalate_patience,
     aghq_rho_min = aghq_rho_min,
     warn_runaway = warn_runaway,
+    laplace_warn_thresh = laplace_warn_thresh,
     allow_nongaussian_reml = allow_nongaussian_reml
   )
 }

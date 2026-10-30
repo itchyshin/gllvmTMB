@@ -1,3 +1,25 @@
+> New entries go in `docs/dev-log/check-log.d/`, one file per slice (`YYYY-MM-DD-<slice>.md`); see `check-log.d/README.md`.
+
+## 2026-08-17 — #1077: reconcile stale profile-bounds wording post-#1090
+
+**Lane:** `cursor/mspl-profile-ci-scaffold` (draft #1077)
+**Authority:** handover OWED item 2 — bounds *can* be computed on main for binomial via #1090; this scaffold remains a gaussian/poisson toy with `not_constructed` claim path.
+
+```sh
+rg -n '1090|not_constructed|Design G0 is open' R/mspl-profile-ci-stub.R   docs/dev-log/research/2026-08-17-mspl-profile-ci-scaffold.md   docs/dev-log/after-task/2026-08-17-mspl-profile-ci-scaffold.md
+# deliberately not: undraft; wire public confint; rebuild probe
+```
+
+## 2026-10-16: wrap #1561 example fits in `\donttest{}` (refs #1346)
+
+R review on #1561: wrap `gllvmTMB()` fits in `\donttest{}`, keep data set-up
+bare. 24 `@examples` blocks in `R/brms-sugar.R`; `devtools::document(roclets =
+"rd")` with roxygen2 8.0.0 regenerated the matching 24 `man/*.Rd` files;
+`NAMESPACE` left untouched (#1558). `devtools::test(filter =
+"examples-run-1346a")`: 48 blocks, failed=0, skipped=0, error=0, warning=0.
+`rg -n '\\\\donttest\\{' R/brms-sugar.R` → 24. `rg -n '\\\\dontrun' ` on those
+24 Rd files → 0. Report:
+`docs/dev-log/after-task/2026-10-16-donttest-example-fits-1346a.md`.
 ## 2026-10-11: predict(newdata) follow-up classes, #1424 subset, forecast_temporal (#1480)
 
 Unseen-level aborts now carry `gllvmTMB_predict_unseen_level` for every
@@ -1243,6 +1265,24 @@ rg -n 'signature|D-12|triad|Wald \(\\?Q_0\)' \
   docs/dev-log/research/2026-08-17-mspl-ci-wald-plus-profile.md \
   docs/dev-log/research/2026-08-17-mspl-profile-bootstrap-ci-next.md
 # no testthat; docs-only
+```
+
+## 2026-08-17 — MSPL profile-CI scaffold (fenced; G0 open)
+
+Internal stub only. Public `confint` still refused. Profile =
+signature (not constructed); Wald \(Q_0\) = quickest baseline;
+bootstrap = asymmetry. Coordinates with sibling triad note
+`docs/dev-log/research/2026-08-17-mspl-ci-wald-plus-profile.md`
+(#1075). No Totoro. No Design 118 reopen. No NEWS covered. No export.
+
+```sh
+rg -n 'export|TMB::sdreport|confint\\(' R/mspl-profile-ci-stub.R
+rg -n 'mspl_profile_ci_scaffold|mspl_ci_triad' R/z-confint-gllvmTMB.R
+# expect 0
+rg -n 'signature|quickest_baseline|asymmetry|D-157' \
+  R/mspl-profile-ci-stub.R \
+  docs/dev-log/research/2026-08-17-mspl-profile-ci-scaffold.md
+Rscript --vanilla -e 'testthat::test_file("tests/testthat/test-zz-mspl-profile-ci-stub.R")'
 ```
 
 ## 2026-08-17 — Poisson W=diag(mu) G0 paste card (UNSIGNED)
@@ -58084,6 +58124,37 @@ Deliberately not run: Totoro 9×500 grid dispatch; full `devtools::test()`.
   'rmarkdown::render("vignettes/articles/temporal-ar1.Rmd", output_dir =
   "/private/tmp/gllvmTMB-temporal-final-verify", quiet = TRUE)'`,
   `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`, and `git diff --check`.
+
+## 2026-09-21 — Get started first route is runnable
+
+- Reordered `vignettes/gllvmTMB.Rmd` so the first visible code is a complete
+  route: `library(gllvmTMB)`, `readRDS(system.file(...))` evaluated in front of
+  the reader, the wide fit, `as.numeric(logLik(fit))`, and one sentence reading
+  that number. The mathematics section now follows the `Sigma` table. The hidden
+  `example-data-load` chunk is removed (every render path installs the package
+  first; installed and source RDS are byte-identical). No model, formula,
+  fixture, default, API, or evidence claim changed.
+- New `tests/testthat/test-get-started-reader-route.R`: source-order invariant
+  (visible library and readRDS before the first runnable fit; no `eval = FALSE`
+  chunk before it; limits link before the next-guide section). Shown to FAIL on
+  the committed page (2 of 7) and PASS on the repaired page (7 of 7). Needs
+  `NOT_CRAN=true` under `Rscript --vanilla`; skips under `R CMD check` like the
+  precedent reader test.
+- Checks passed: `git diff --check`; `bash tools/check-reader-surface.sh`;
+  `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`;
+  `Rscript --vanilla -e "pkgdown::build_article('gllvmTMB', lazy = FALSE,
+  override = list(destination = '<scratch>/site'))"` (17 to 20 s; the handover's
+  `build_articles(articles = ...)` form is not accepted by pkgdown 2.2.0);
+  purled first route run in a clean `Rscript --vanilla` session
+  (`[1] -739.6107`, about 3 s). Independent Pat/Rose review (Fable) applied:
+  log-likelihood sentence no longer claims convergence, `Psi`/`Sigma` glossed
+  before the equations, fixture described correctly (150 individuals measured
+  once), the `rotation_convention_unit` WARN explained, `Sigma` table printed
+  as four readable columns.
+- Deliberately not run: `devtools::test()` / `load_all()` (no compiled object in
+  the clean clone), full site build, `R CMD check`. Prose-order evidence only;
+  no fit, coverage, or release claim. Report:
+  `docs/dev-log/after-task/2026-09-21-get-started-first-route.md`.
 
 ## 2026-09-28 — development and CRAN reader boundary
 

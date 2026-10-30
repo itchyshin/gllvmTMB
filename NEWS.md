@@ -1,10 +1,238 @@
 # Development (unreleased)
 
+* `gllvmTMB()` now warns at fit time when the Laplace logLik is more than 2 units above the marginal likelihood it approximates, as on a probit two-factor fit that was 67 units too high with every other check passing. It runs the `laplace_accuracy` audit of `check_gllvmTMB()` (same scope: Laplace fits with a between-unit latent block of `d` 1 to 3, same work cap) at the end of the fit. The threshold is `gllvmTMBcontrol(laplace_warn_thresh = 2)`; `FALSE` or `warn_runaway = FALSE` turns it off (#1389).
+* `Beta()` fits now stop when an observed response lies within 1e-12 of 0 or 1 (for example `y = 1e-16`), not only at exactly 0 or 1, and the error names the offending rows of `data` (class `gllvmTMB_response_support`). Such values were silently clamped to `[1e-12, 1 - 1e-12]` inside the likelihood. Part of #1485: the clamp itself in the TMB template remains.
+* A phylo keyword `vcv =` that disagrees with the global `phylo_vcv =` now stops with class `gllvmTMB_phylo_vcv_conflict` instead of dropping the in-keyword matrix when the dimensions match (#1372).
+* The default between-unit Psi of `latent(unique = TRUE)` is now kept for a single-trial binary trait whenever some (trait, unit) cell has more than one 0/1 row, as it already was for replicated ordinal traits. Replicated Bernoulli rows identify a per-unit variance. Psi is still skipped when every cell has one row. The skip note now states that condition and no longer points to `indep()`, which cannot be combined with `latent()` (#1591).
+* `confirmatory_lambda()` no longer applies `+1` anchors by default (`anchors = NA`, zeros only). A `+1` anchor is an extra restriction on unit-variance latent axes, not a scale choice; anchors, including `anchors = NULL` auto-picking, are now an explicit opt-in. The `pin_top_one` convention of `suggest_lambda_constraint()` is documented the same way. `check_gllvmTMB()` no longer reports `near_zero_B_loading` / `near_zero_W_loading` for a diagonal loading fixed by `lambda_constraint`. Part of #1585: varimax-frame pins from `suggest_lambda_constraint()` and the svd restart under a mapped `theta_rr_B` remain open.
+* `predict(newdata = )` now re-adds the `cluster2` diagonal tier (`diag_cluster2`), so `predict(fit, newdata = <training rows>)` equals `predict(fit)` exactly on a fit carrying it, instead of omitting it with a warning. The tiers still omitted (`equalto`, the `*_slope` blocks, the phylogenetic and SPDE slope blocks, kernel) are still named in the warning (part of #1138).
+* `extract_repeatability()` (Wald and bootstrap), `bootstrap_Sigma(what = "ICC")` and `extract_ICC_site()` now add the estimated Gaussian (or lognormal) observation residual `sigma_eps^2` to the within-unit variance. With replicate rows inside a `unit_obs` record the reported repeatability was `v_B / (v_B + v_W)` and left measurement error out of the denominator, which inflated it (0.54 / 0.62 / 0.75 against a true 0.3 on the issue's data). Fits with one row per record fix `sigma_eps` near zero and are unchanged (#1569).
+* The refusal for a slope-only term over a grouping column (`indep(0 + x | species)`, `latent(0 + x | species)`, a bare `(0 + x | species)`) no longer says to fit one covariate per term. It now names the route that fits, `animal_slope(x | species, A = A)` or `phylo_slope(x | species, tree = tree)` on a copy of the trait column, and the keyword-grid article documents that idiom (#1161). Phylogeny on the trait covariance `Sigma` is a separate, still open piece.
+* `vcov()` on a fit with no standard errors no longer suggests `method = "profile"`, which it does not accept. `extract_Sigma(part = "shared")` and `part = "unique"` no longer print that a link residual was added when that residual is only applied to `part = "total"` (#1580).
+* An explicit `indep()` or `diag()` on single-observation ordinal traits is mapped off, with a warning, under the same identifiability gate as the default between-unit Psi. One observation per (trait, unit) cannot separate that diagonal from the fixed threshold scale (#1574).
+* Bootstrap wrappers keep `nsim = 500`. That default no longer warns that it is too small. The warning names `nsim`, and the `profile_ci_total_variance()` hint is shown only when the bootstrap asks for Sigma diagonals. `bootstrap_Sigma()` still warns when `n_boot` is below 999 (#1576).
+* `compare_dep_vs_two_psi()` and `compare_indep_vs_two_psi()` pass the stored phylogeny inside the generated `phylo_*()` keyword. The refit no longer prints the global `phylo_vcv` / `phylo_tree` deprecation (#1568).
+* `engine = "julia"` now stops on `REML = TRUE`, a non-`NULL` `lambda_constraint` and a non-`NULL` `known_V` (class `gllvmTMB_julia_unsupported_arg`) instead of silently ignoring them (#1347).
+* `engine = "julia"` now also stops on `cluster2`, `phylo_vcv`, `phylo_tree`, `mesh` and `missing = miss_control(predictor = "model")` (class `gllvmTMB_julia_unsupported_arg`), and on non-default `d_B`, `d_W`, `init_strategy`, `start_method`, `aghq` and `aghq_ridge` in `gllvmTMBcontrol()` (class `gllvmTMB_julia_unsupported_control`). These were accepted and never reached GLLVModels.jl (#1347).
+* The `gllvmTMB()` offset documentation now states that a nonzero offset is also accepted on the `binomial(cloglog)` arm inside an integrated `isdm_sources()` model (a change of support); no behaviour change (#946).
+* `gllvmTMB_check_consistency()` now stops with a "simulation not available"
+  error when the template cannot simulate new responses (it currently cannot),
+  instead of returning `"information_matrix_singular"`, and stops with an error
+  naming the parameter count when `n_sim` is not larger than it. Its help page
+  now describes `$marginal_bias`, `$joint_p_value` and `estimate` as TMB
+  defines them (#1582).
+* `suggest_lambda_constraint()` and `suggest_lambda_constraints()` gain `unit_obs` to name the within-unit column on the formula path (default `"site_species"`, as in `gllvmTMB()`), and their no-term errors name the level as `"unit"` / `"unit_obs"` (#1587).
+* `check_gllvmTMB()` no longer reports `boundary_flags` as `PASS` "none" while a `boundary_phi_*` dispersion-ceiling row is `WARN`: the summary row now turns `WARN` and names those rows. `print(fit)` also points to `gllvmTMB_diagnose(fit)` when the optimiser did not converge cleanly (#1351).
+* `?compare_dep_vs_two_psi` and `?compare_indep_vs_two_psi` now say a flag means the two fits disagree, not that the paired model failed, and that the default `threshold = 0.10` is not calibrated (#1571).
+* `compare_dep_vs_two_psi()` and `compare_indep_vs_two_psi()` now return `lrt`, a one-row likelihood-ratio test of the paired fit against the refit (`chi2`, `df`, `p_value`, plus both log-likelihoods). The refit contains the paired fit for `dep`; for `indep` the paired fit is the larger model. `rel_disagreement` and `flag` are unchanged and remain descriptive. The chi-square reference is approximate at the boundary; the boundary and `pdHess` check stays open (#1571).
+* `loading_profile()` and `loading_ci(method = "profile")` now refit the model
+  they profile: `unit_obs`, `REML` and `control` (including `loading_ridge`)
+  are kept, so a `unit_obs`-tier profile no longer returns an all-`NA` curve and
+  ridged and REML fits are profiled on their own objective. A valid call no
+  longer warns once per loading or prints alias notices, failed refits are
+  reported with the first error, and `level = "B"` / `"W"` are accepted as
+  documented (#1584).
+* `predict()` and `fitted()` no longer return the internal `species = "placeholder"` column on fits without a species/cluster grouping, nor the auto-generated `.family_wide_` column on wide mixed-family fits (#1406).
+
+* `engine = "julia"` now stops on a missing fixed-effect covariate with the same message as the native engine, instead of sending the `NA` to the bridge (#1371).
+* `poisson()` and `nbinom2()` fits now stop up front when the response has a negative or non-integer value, naming the family, instead of "All 1 restarts failed." (negative) or fitting silently (non-integer) (#1356).
+* `binomial()` and `betabinomial()` now require an integer success count in `0..n_trials`. `nbinom1()` gets the same non-negative-integer check as `poisson()` / `nbinom2()`. `tweedie()` stops on a negative response (#1356).
+* Breaking change: a binomial or betabinomial proportion with `weights = n` is now refused. Pass the integer success count as `y`, or use `cbind(successes, failures)`. The old path fitted the wrong model (#1356).
+
+* A dense `vcv` / `phylo_vcv` passed to `phylo_scalar()`, `phylo_latent()` or
+  `phylo_slope()` is now checked for positive semidefiniteness, and an
+  indefinite matrix stops the fit with a message naming it, instead of
+  returning a finite but meaningless log-likelihood (#1373).
+* A trait factor with a level that has no rows now stops the fit with a message
+  naming the empty level and advising `droplevels()`, instead of silently adding
+  free parameters (inflated df and AIC, no standard errors) (#1387).
+* `confint(fit, parm = "b_fix[1]")` now returns one row (profile and Wald)
+  instead of profiling every fixed effect and then failing, and a fixed-effect
+  `parm` profiles only the requested terms. Wald `Sigma_unit` on a `latent()`
+  tier now says why the intervals are `NA` and names the routes that work, and
+  a Sigma tier the fit lacks is an error naming the public tier (for example
+  `unit_obs`) before any method runs (#1588).
+* `predict(newdata = <wide data frame>)` on a `traits()` fit now stops with a message saying `newdata` must be long with a `trait` column (the help page says so too), instead of "object 'trait' not found" (#1412).
+* The `\dontrun{}` examples of `extract_Omega()`, `extract_phylo_signal()`, `extract_proportions()`, `extract_loadings()`, `getLoadings()`, `getLV()` and `extract_residual_split()` now simulate their own data and build their own `fit` instead of using undefined objects (#1360).
+* A missing or non-finite value in a random-slope covariate (for example `x` in
+  `latent(1 + x | unit)`, `phylo_slope(x | species)`, `phylo_dep()` or the
+  spatial slope terms) now stops the fit with a message naming the covariate,
+  instead of the bare "All 1 restarts failed." (#1394, #1375).
+* Help pages for the extractors now match behaviour: `?extract_Sigma_table`
+  documents `validation_row`, the bootstrap intervals and that `entries` is
+  ignored for `part = "unique"`; `?extract_Sigma` names kernel tiers as valid
+  `level` values; `?extract_correlations` says point estimates only by default;
+  `?extract_latent_scores` drops the `gllvmTMB_julia` claim and the literal
+  TeX; `?extract_ordination` lists `row_id`, `row_index` and `temporal_sign`
+  (#1579).
+* `?make_cross_kernel` no longer calls the helper a "C0 coevolution prototype"
+  or routes users only through `phylo_latent(..., vcv = K_star)`. The page now
+  says the matrix can be passed to a `kernel_*()` term or to
+  `phylo_latent(..., vcv = )` (#1579).
+* A rank-deficient fixed-effect design is now caught under the default ML fit as
+  well as `REML = TRUE`, with the classed error `gllvmTMB_rank_deficient_design`
+  naming the redundant columns, instead of the reason-less "All 1 restarts
+  failed." (#1388).
+
+* `predict()` now warns when an argument is passed in `...` and ignored, and names
+  the right spelling for the near misses `re.form` (use `re_form`) and `se_fit`
+  (use `se.fit`); before, `re.form = NA` silently returned the conditional
+  predictor. Estimates are unchanged (#1414).
+* A factor or character response is no longer fitted silently as its integer level codes. `gllvmTMB()` now stops with the classed error `gllvmTMB_factor_response_unsupported`, naming the response column and asking for an explicit numeric conversion. Ordinal and multinomial responses still take factors (#1396).
+* `sanity_multi()` no longer stops with "missing value where TRUE/FALSE needed" when the gradient is non-finite or cannot be computed. It reports the gradient row as FAIL, and `converged` is FALSE whenever any gradient entry is non-finite. `fit_health` still takes the largest finite gradient entry, so the two can differ when only some entries are non-finite (#1352).
+* A positional `rho`, `coords` or `mesh` in a `spatial_*()` term (for example
+  `spatial_dep(0 + trait | group, NULL, mesh, 0.5)`) is now read like the named
+  spelling when the formula is desugared: `coords` and `mesh` are carried
+  through, a positional `rho` other than 1 no longer triggers the "grouping
+  token is ignored" notice, and a named `coords = NULL` no longer fails with
+  "subscript out of bounds". A symbol `rho` (`rho = r`) is still treated as
+  "not 1" there, because the desugar step has no formula environment to
+  evaluate it in (#1493).
+* `mi()` with a discrete predictor no longer returns `NA` conditional probabilities for the missing units when the model also has a random effect such as `latent()`; if the report cannot be evaluated, a warning is raised (#1368).
+
+* Internal cross-validation now scores held-out binomial cells on the log
+  scale from the linear predictor and link (logit, probit, cloglog). The score
+  was recomputed from the response-scale probability, which rounds to exactly 1
+  at probit `eta` of about 8.3 or logit `eta` of about 37, so a held-out miss
+  scored `-Inf` while the fitted kernel stayed finite. Ordinary cells change
+  only by rounding (#1489).
+* `print()` and `summary()` now list each covariance term once: a single
+  `indep(0 + trait | unit)` prints `Covstructs: indep_unit` (it printed
+  `indep_unit, indep_unit`), and `latent(..., unique = TRUE)` prints
+  `latent_unit` rather than its internal `latent_unit, indep_unit` split.
+  `extract_cross_correlations()` no longer repeats `extract_Sigma()`'s
+  link-residual notes on every call, matching `extract_correlations()`
+  (part of #1580).
+* `gllvmTMB_diagnose()` now reports `Sigma_B`, `Sigma_W` and the trait-pair
+  correlations on the same scale as its communalities and the
+  `extract_Sigma()` defaults, with the per-trait link residual included on
+  non-Gaussian fits (a rank-1 binary fit printed +1.00 for every pair where
+  `extract_Sigma()` gives 0.34). The report says which scale it uses, prints
+  "showing 8 of N" when the pair list is truncated, labels the loadings check
+  with the real number of factors instead of `d=B`, and `verbose = FALSE` no
+  longer emits the link-residual message (#1586).
+* `compare_dep_vs_two_psi()` now stops up front, with a classed error
+  (`gllvmTMB_two_psi_unit_cluster`) that names both columns, when the fit's
+  `unit` differs from its `cluster`. Before, the `dep` refit failed inside and
+  the warning blamed an "unstable" alternative fit. `compare_indep_vs_two_psi()`
+  supports this layout and is unchanged (#1572).
+* The warning for a failed alternative refit in the two-psi cross-checks now
+  reports a refit failure with the original error and no longer calls it an
+  "unstable" fit, since the cause can be a layout or data restriction (#1572).
+* A `lambda_constraint` that pins a diagonal loading `Lambda[k, k]` at 0 no
+  longer leaves the free loadings on axis `k` stuck at exactly 0. They now
+  start at 0.5, so the optimiser can move them; before, the fit reported
+  convergence with that axis all zeros and a much lower log-likelihood. Part
+  of #1585.
+
+* `tidy(fit, "fixed")` no longer returns finite standard errors from a Hessian
+  that is not positive definite (or from a missing `sdreport()`). `std.error`,
+  `conf.low` and `conf.high` are `NA` and an `inference_status` column says
+  why, as it already does for a weighted objective. Fits with a positive
+  definite Hessian are unchanged. Part of #1351.
+* `engine = "julia"` no longer returns a bridge fit that did not converge and has
+  a non-finite log-likelihood. Such a fit (for example the `logLik = -Inf` result
+  of a no-latent model) carries unestimated coefficients, so it now stops with
+  the classed error `gllvmTMB_julia_nonfinite_fit` instead of being returned
+  silently. Follow-up to #1562.
+
+* A per-trait family list keyed by the trait column
+  (`attr(fams, "family_var") <- "trait"`) now works when one trait is
+  `multinomial()`. The list is matched against your own trait levels before the
+  categorical response is expanded into contrast pseudo-traits, and the
+  multinomial entry is carried to each of them; a list of the wrong length
+  reports the count of your traits rather than the expanded count (#1575).
 * The `sigma()` refusal methods are now registered from roxygen with
   `@exportS3Method stats::sigma`, matching the `stats::sigma` entries already in
   `NAMESPACE`, so `devtools::document()` no longer rewrites them. Behaviour is
   unchanged (#1558).
+* `poisson()`, `zi_poisson()` and the uncensored rows of `censored_poisson()`
+  stay finite when the linear predictor is far below zero. The row was
+  `dpois(y, exp(eta))`, which forms `y * log(exp(eta))` and is `-Inf` once
+  `exp(eta)` underflows (`eta` below about -745, with digits lost from -709).
+  It is now written on the `eta` scale as `y * eta - exp(eta) - lgamma(y + 1)`,
+  so ordinary fits change only by rounding (#1603).
+* `engine = "julia"` with no `latent()` term now stops with
+  `[GJL-GATE-NO-LATENT]` for every non-Gaussian family except NB2. GLLVModels.jl
+  returned `logLik = -Inf` and `converged = FALSE` for Poisson, binomial, nb1,
+  beta, Gamma and ordinal fits at latent rank 0, and R passed the object back
+  with no error. NB2 matches `engine = "tmb"` there and is unchanged; Gaussian
+  already refused inside Julia. Add a `latent()` term or use `engine = "tmb"`
+  (#1562).
+* `extract_communality()` and `extract_correlations()` now report the canonical
+  tier name (`"unit"`, `"unit_obs"`) in the `tier` column instead of the
+  deprecated internal code (`"B"`, `"W"`), and `extract_cutpoints()` no longer
+  copies sdreport row names into its result (#1577).
+* `simulate_site_trait()` builds its long-format data frame from preallocated
+  columns instead of one `data.frame()` per row joined by `rbind()`, so 1.5k
+  rows take a few milliseconds rather than about 0.3 s. Values, factor
+  levels and the random-number draw order are unchanged; the old `rbind()`
+  could leave scrambled character row names on larger outputs, which are now
+  plain `1..n` (#1581).
+* The Wald readers for communality and phylogenetic signal no longer return
+  NA or NaN intervals from a covariance that is entirely non-finite: they stop
+  with the classed `gllvmTMB_confint_nonfinite_se` error, as `confint()` and
+  `extract_repeatability()` already do. A finite covariance from a Hessian that
+  is not positive-definite (`pdHess = FALSE`) now raises the classed warning
+  `gllvmTMB_wald_nonpd_hessian`; the interval is still returned (#1379).
+* The Wald variance-proportion reader and the loading delta-method path
+  (`loading_ci()`, `suggest_lambda_constraint()`) now apply the same gate: an
+  all-non-finite covariance stops with `gllvmTMB_confint_nonfinite_se`, and
+  `pdHess = FALSE` warns with `gllvmTMB_wald_nonpd_hessian` (#1379).
+* Keyword deprecation messages no longer misfire. The documented
+  `phylo(1 | g)` and `spatial(1 | g)` forms no longer warn about
+  `phylo_scalar()` / `spatial_scalar()`, which the user never typed; the
+  `gr()` and legacy `phylo(species)` alias messages recommend
+  `phylo_indep(..., common = TRUE)` rather than the soft-deprecated
+  `phylo_scalar()`; and the legacy `spatial(0 + trait | coords)` warning names
+  the deprecated form and is attributed to the caller, not the package (#1557).
+* `engine = "julia"` now refuses, instead of silently ignoring, `weights` for
+  non-binomial families and non-default `gllvmTMBcontrol()` values of
+  `optimizer`, `optArgs`, `init_jitter`, `start_from` and `se`. Each message
+  names the argument and points to `engine = "tmb"` (#1347).
+* Help pages for `gllvmTMB()`, `rotate_loadings()`, `compare_loadings()` and
+  `ridge_path()` now match the code: every native fit has class
+  `c("gllvmTMB_multi", "gllvmTMB")` (VA fits `c("gllvmTMB_va", "gllvmTMB")`);
+  the implied covariance is unchanged under varimax but not promax;
+  `compare_loadings()` matches rows by position and returns `cor_per_factor`;
+  `ridge_path()` sorts only the classification, not the refits. The
+  `rotate_loadings()` "not active" error names the level the user gave, not
+  the internal code (#1590).
+* `plot_loadings_confidence_eye()` called on a fitted model without `level =`
+  no longer stops with "'arg' must be of length 1". Its default is now
+  `level = "unit"`, matching `loading_ci()` and `flag_unreliable_loadings()`
+  (#1583).
+* Help pages for `dep()`, `phylo_dep()` and `spatial_dep()` now write the
+  full-rank equivalent as `d = n_traits, unique = FALSE` instead of the invalid
+  `d = T`; `?gr` says `cov =` is used unless a top-level `phylo_vcv` is also
+  given; `?scalar` and `?phylo_scalar` say soft-deprecated rather than
+  "Canonical" (#1560).
+* `compare_dep_vs_two_psi()` and `compare_indep_vs_two_psi()` no longer warn
+  "Unused optional grouping argument(s): unit_obs" on every call. The refit
+  now passes `unit_obs` only when the generated alternative formula uses that
+  column (#1568).
+* `suggest_lambda_constraint(convention = "profile_retention")` no longer warns
+  "Unused optional grouping argument(s)" or prints `rr()` / `diag()` deprecated-alias
+  notes on its refits. The refits now pass `unit_obs` and `cluster` only when the
+  formula uses them and rebuild the formula through `latent()` / `indep()`. The
+  suggested matrix is unchanged. Naming the `unit_obs` column for the formula path
+  stays open (#1587).
 
+* `extract_Sigma()` no longer prints the "latent-only ... refit without
+  `unique = FALSE`" advisory for a full-rank loading block. `dep()` is carried
+  as a full-rank `rr` term with no diagonal, so the advisory fired on it even
+  though no residual Psi is missing and following its advice would change the
+  model. It now fires only for rank-deficient loadings (`d < n_traits`) (#1556).
+* `slope_sd_ci()`: the print method no longer calls a loadings-only total
+  "UNIQUE (Psi) ... only" (it decides from the `component` column, not an
+  attribute), and the refusal for a fit with no random slopes recommends a
+  `latent()` slope term instead of `indep()`, which refuses slopes (#1589).
+* `slope_sd_ci(scale = "variance")` now keeps `total_sd` on the SD scale on
+  every route, as `?slope_sd_ci` documents (it came back as a variance on the
+  diagonal, phylo and loadings-only routes, and in the stale-fit fallback). The
+  print header says "variances" under that scale. The refusals for a slope term
+  in `indep()` and in a bare `(1 + x | g)` bar no longer recommend the
+  soft-deprecated `unique(1 + x | g)` (#1589).
 * Zero-truncated Poisson and NB2 likelihoods stay finite when the linear
   predictor is far below zero. The truncation term `log(1 - P(0))` was
   `logspace_sub(0, log P(0))`, whose derivatives grow like `1 / mu^k`: the
@@ -12,6 +240,12 @@
   -355, and below -745 the mean rounded to 0 and the term was `log(0)`. It is
   now computed from `log(-log P(0))`, by a series below -20 and by the old
   expression above it, so ordinary fits change only by rounding (#1483).
+* A `student()` trait whose degrees of freedom run past the Gaussian limit
+  (`report$df_student` is `Inf` once `log_df` exceeds about 709) is now
+  treated as normal in the link-scale variance summaries and the
+  distribution-argument accessor, instead of warning that the variance is
+  undefined and returning `NA`. Exact residuals and simulation already did
+  this. (#1487)
 
 * The experimental VA route now honors the package's existing `optimizer` and
   `optArgs` controls for its four primary starts. Omitted `optimizer` keeps the

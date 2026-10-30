@@ -3,6 +3,54 @@
 ## covariance Lambda Lambda^T is identifiable; Lambda alone is not. Users
 ## then pass the returned matrix to `gllvmTMB(..., lambda_constraint = ...)`.
 
+## Refit formula for `profile_retention`: the stored covstructs use the
+## internal `rr` / `diag` keywords, whose re-parse emits "deprecated alias"
+## notes the user never caused (#1587). Rewrite them through the current
+## keywords without changing the model:
+##   * `rr` + the auto-added Psi (`.auto_unique`) on one grouping -> `latent(d)`;
+##   * `rr` with no `diag` on its grouping -> `latent(d, unique = FALSE)`;
+##   * a lone `diag` -> `indep()`.
+## The parser-added `lhs_form = "intercept_only"` tag is dropped on rewritten
+## terms (`latent()` / `indep()` reject it and it is re-derived on parse); a
+## term with any other `lhs_form` is left as stored. Anything else (e.g. an explicit user `rr` + `diag` pair, which `latent()`
+## cannot express) is left as stored.
+.slc_refit_formula <- function(fit) {
+  cs_all <- fit$covstructs
+  grp <- vapply(cs_all, function(cs) paste(deparse(cs$group), collapse = ""), "")
+  kind <- vapply(cs_all, function(cs) cs$kind, "")
+  auto <- vapply(cs_all, function(cs) isTRUE(cs$extra$.auto_unique), logical(1))
+  keep <- rep(TRUE, length(cs_all))
+  plain <- function(cs) {
+    is.null(cs$extra$lhs_form) || identical(cs$extra$lhs_form, "intercept_only")
+  }
+  for (i in seq_along(cs_all)) {
+    cs <- cs_all[[i]]
+    if (!plain(cs)) {
+      next
+    }
+    if (kind[i] == "rr" && !any(startsWith(names(cs$extra), "."))) {
+      partner <- which(kind == "diag" & grp == grp[i])
+      if (length(partner) == 0L) {
+        cs$extra$unique <- FALSE
+        cs$kind <- "latent"
+      } else if (all(auto[partner]) && all(vapply(cs_all[partner], plain, TRUE))) {
+        cs$kind <- "latent"
+        keep[partner] <- FALSE
+      }
+    } else if (
+      kind[i] == "diag" && !auto[i] && !any(kind == "rr" & grp == grp[i])
+    ) {
+      cs$kind <- "indep"
+    }
+    if (cs$kind %in% c("latent", "indep")) {
+      cs$extra$lhs_form <- NULL
+    }
+    cs_all[[i]] <- cs
+  }
+  fit$covstructs <- cs_all[keep]
+  .reconstruct_multi_formula(fit)
+}
+
 #' Suggest a `lambda_constraint` matrix for a reduced-rank fit
 #'
 #' Produces a default constraint matrix `M` for the reduced-rank loadings
@@ -28,14 +76,22 @@
 #'       entry to 0, i.e. `M[i, j] = 0` for `j > i`. Removes the
 #'       rotational ambiguity completely. Pins `K(K-1)/2` entries.}
 #'     \item{`"pin_top_one"`}{Single-anchor convention: `M[1, 1] = 1`,
-#'       rest `NA`. Sets the scale of factor 1; does NOT remove rotational
-#'       ambiguity.}
+#'       rest `NA`. Opt-in only, and not a scale choice: the latent axes
+#'       already have unit variance, so the `+1` is an extra restriction
+#'       that removes a free parameter and can bias the other loadings and
+#'       unique variances (a worse log-likelihood that no check flags,
+#'       #1585). It also does NOT remove rotational ambiguity.}
 #'     \item{`"none"`}{All-`NA` matrix -- no pins. Useful if you plan to
 #'       rotate the fitted loadings after fitting instead.}
 #'   }
 #' @param trait,unit Name of the trait and unit (site) columns. Forwarded when
 #'   `fit_or_formula` is a formula and the data does not already use
 #'   defaults.
+#' @param unit_obs Name of the within-unit column. Used only when
+#'   `fit_or_formula` is a formula and `level = "unit_obs"`: it names the
+#'   column in the formula's `latent(... | unit_obs)` term, as in
+#'   [gllvmTMB()]. `NULL` (default) means `"site_species"`, the same default
+#'   as [gllvmTMB()]. Ignored for a fit.
 #' @param threshold Salience threshold on the standardised loading
 #'   \eqn{\rho_{tk} = \Lambda_{tk} / \sqrt{\Sigma_{total,tt}}}. Used by
 #'   `"varimax_threshold"` and `"wald_retention"`. Comrey-Lee 1992
@@ -73,19 +129,32 @@
 #'   }
 #'
 #' @examples
-#' \dontrun{
-#' sug <- suggest_lambda_constraint(
-#'   value ~ 0 + trait + latent(0 + trait | site, d = 2),
-#'   data = my_data
-#' )
-#' fit <- gllvmTMB(
-#'   value ~ 0 + trait + latent(0 + trait | site, d = 2),
-#'   data              = my_data,
-#'   trait             = "trait",
-#'   unit              = "site",
-#'   lambda_constraint = list(unit = sug$constraint)
-#' )
-#' }
+#' set.seed(1)
+#' # Simulate six traits measured twice on each of 100 units, with two
+#' # latent axes: traits 1-3 load on the first, traits 4-6 on the second.
+#' Lambda <- cbind(c(0.9, 0.8, 0.7, 0.0, 0.0, 0.0),
+#'                 c(0.0, 0.0, 0.0, 0.8, 0.7, 0.6))
+#' sim <- simulate_unit_trait(n_units = 100, n_obs_per_unit = 2,
+#'                            n_traits = 6, Lambda_B = Lambda,
+#'                            psi_B = 0.3, sigma2_eps = 0.3)
+#' form <- value ~ 0 + trait +
+#'   latent(0 + trait | unit, d = 2, unique = TRUE)
+#'
+#' # Before fitting: suggest a constraint matrix for the 6 x 2 loadings
+#' # (NA = estimated, 0 = pinned). With two axes, one zero is enough to
+#' # stop the axes from rotating freely.
+#' sug <- suggest_lambda_constraint(form, data = sim$data, unit = "unit")
+#' sug$constraint
+#' sug$note
+#'
+#' # Fit with the matrix: trait_1's loading on axis 2 is held at zero and
+#' # the other loadings are estimated. gllvmTMB uses this same orientation
+#' # when no matrix is given, so the estimates do not change; passing the
+#' # matrix states the choice explicitly. The orientation is only a
+#' # convention; rotate_loadings() gives a more interpretable one.
+#' fit <- gllvmTMB(form, data = sim$data, trait = "trait", unit = "unit",
+#'                 lambda_constraint = list(unit = sug$constraint))
+#' round(extract_loadings(fit, level = "unit"), 2)
 #' @export
 suggest_lambda_constraint <- function(
   fit_or_formula,
@@ -101,6 +170,7 @@ suggest_lambda_constraint <- function(
   ),
   trait = "trait",
   unit = NULL,
+  unit_obs = NULL,
   threshold = 0.30, # Comrey-Lee convention on standardised loading
   retention_prob = 0.90, # Unified across `wald_retention` and `profile_retention`:
   #   * wald_retention: pin if Pr(|rho| > threshold) < retention_prob
@@ -193,16 +263,18 @@ suggest_lambda_constraint <- function(
     )
     ## #1196 (2026-09-02 full-suite follow-up): `unit` has no default, so
     ## resolve it via the same staged rule as gllvmTMB() itself -- only
-    ## needed when level == "B" (the between-unit tier), since the
-    ## within-unit tier always targets the fixed "site_species" group.
+    ## needed when level == "B" (the between-unit tier); the within-unit
+    ## tier targets `unit_obs`, which defaults to "site_species" as in
+    ## gllvmTMB().
     if (level == "B") {
       unit <- .gllvmTMB_resolve_unit_staged(unit, data)
     }
-    target_group <- if (level == "B") unit else "site_species"
+    target_group <- if (level == "B") unit else (unit_obs %||% "site_species")
     idx <- which(kinds == "rr" & groups == target_group)
     if (length(idx) == 0L) {
+      level_name <- .canonical_level_name(level)
       cli::cli_abort(
-        "Formula has no {.code latent(... | {target_group}, ...)} term -- nothing to constrain at level {.val {level}}."
+        "Formula has no {.code latent(... | {target_group}, ...)} term -- nothing to constrain at level {.val {level_name}}."
       )
     }
     cs <- parsed$covstructs[[idx[1]]]
@@ -281,9 +353,11 @@ suggest_lambda_constraint <- function(
     M[1L, 1L] <- 1
     n_pins <- 1L
     note <- paste0(
-      "Pinned M[1, 1] = 1 (single-anchor convention). Sets the scale of ",
-      "factor 1 but does NOT remove the rotational ambiguity; consider ",
-      "rotation after fitting (e.g. varimax) for interpretation."
+      "Pinned M[1, 1] = 1 (single-anchor convention). The latent axes ",
+      "already have unit variance, so this +1 is an extra restriction, not ",
+      "a scale choice, and can bias the other loadings. It does NOT remove ",
+      "the rotational ambiguity; consider rotation after fitting (e.g. ",
+      "varimax) for interpretation."
     )
   } else if (convention == "varimax_threshold") {
     ## α: data-driven hard-threshold retention on the varimax-rotated
@@ -416,7 +490,7 @@ suggest_lambda_constraint <- function(
     ## The package's own `.reconstruct_multi_formula()` is the canonical
     ## source -- it's the same helper bootstrap_Sigma() and the coverage
     ## study use for refit-from-fit.
-    full_formula <- .reconstruct_multi_formula(fit)
+    full_formula <- .slc_refit_formula(fit)
 
     ## Engine already pins the strict-upper-triangle of Lambda for the
     ## first d rows (lower-triangular convention). Skip those entries
@@ -448,9 +522,16 @@ suggest_lambda_constraint <- function(
             unit = fit$unit_col,
             ## Preserve the within-unit and cluster groupings on the test
             ## refit; omitting them silently changed the model (and voided
-            ## the LRT) for non-default groupings. NULL is a no-op.
-            unit_obs = fit$unit_obs_col,
-            cluster = fit$cluster_col,
+            ## the LRT) for non-default groupings. Only pass a grouping the
+            ## formula uses: the fit stores defaults (e.g. "site_species")
+            ## that would otherwise trigger "Unused optional grouping
+            ## argument(s)" on every refit (#1587).
+            unit_obs = if (isTRUE(fit$unit_obs_col %in% all.vars(full_formula))) {
+              fit$unit_obs_col
+            },
+            cluster = if (isTRUE(fit$cluster_col %in% all.vars(full_formula))) {
+              fit$cluster_col
+            },
             lambda_constraint = lc_test,
             silent = TRUE
           ),
@@ -542,27 +623,47 @@ suggest_lambda_constraint <- function(
 #'   }
 #'
 #' @examples
-#' \dontrun{
+#' set.seed(1)
+#' # Simulate six traits measured twice on each of 100 units. Traits 1, 3
+#' # and 5 share one latent axis; traits 2, 4 and 6 share a second one.
+#' Lambda <- cbind(c(1.0, 0.0, 0.9, 0.0, 0.8, 0.0),
+#'                 c(0.0, 0.7, 0.0, 0.7, 0.0, 0.6))
+#' sim <- simulate_unit_trait(n_units = 100, n_obs_per_unit = 2,
+#'                            n_traits = 6, Lambda_B = Lambda,
+#'                            psi_B = 0.3, sigma2_eps = 0.3)
+#' form <- value ~ 0 + trait +
+#'   latent(0 + trait | unit, d = 2, unique = TRUE)
+#'
+#' # Exploratory fit: all loadings are estimated, apart from the single
+#' # zero the model always uses to fix the orientation of the two axes.
+#' fit <- gllvmTMB(form, data = sim$data, trait = "trait", unit = "unit")
+#'
+#' # Two quick suggestions, neither of which refits the model: a hard
+#' # cut-off on the rotated, standardised loadings, and a version that
+#' # also accounts for their uncertainty.
 #' cmp <- suggest_lambda_constraints(
 #'   fit,
 #'   methods = c("varimax_threshold", "wald_retention"),
 #'   threshold = 0.30,
 #'   retention_prob = 0.90
 #' )
-#' cmp$summary
-#' fit_con <- gllvmTMB(
-#'   value ~ 0 + trait + latent(0 + trait | site, d = 2),
-#'   data = df,
-#'   family = binomial(),
-#'   lambda_constraint = list(unit = cmp$recommended$constraint)
-#' )
+#' cmp$summary[, c("method", "cost", "n_pins", "n_free")]
 #'
-#' # Expensive: one likelihood-ratio refit per testable loading.
-#' cmp_profile <- suggest_lambda_constraints(
-#'   fit,
-#'   methods = "profile_retention"
-#' )
-#' }
+#' # The recommended matrix: 0 = pinned to zero, NA = estimated.
+#' cmp$recommended_method
+#' cmp$recommended$constraint
+#'
+#' # Refit with those zeros pinned. The pins were chosen from these same
+#' # data, so read the AIC comparison as a sanity check, not as
+#' # independent evidence that the pattern is right.
+#' fit_con <- gllvmTMB(form, data = sim$data, trait = "trait", unit = "unit",
+#'                     lambda_constraint = list(
+#'                       unit = cmp$recommended$constraint))
+#' round(extract_loadings(fit_con, level = "unit"), 2)
+#' AIC(fit, fit_con)
+#'
+#' # A likelihood-ratio version, methods = "profile_retention", is also
+#' # available. It is expensive: one refit per testable loading.
 #' @export
 suggest_lambda_constraints <- function(
   fit_or_formula,
@@ -571,6 +672,7 @@ suggest_lambda_constraints <- function(
   methods = c("varimax_threshold", "wald_retention"),
   trait = "trait",
   unit = NULL,
+  unit_obs = NULL,
   threshold = 0.30,
   retention_prob = 0.90,
   sigma_d2 = 1,
@@ -619,6 +721,7 @@ suggest_lambda_constraints <- function(
       convention = method,
       trait = trait,
       unit = unit,
+      unit_obs = unit_obs,
       threshold = threshold,
       retention_prob = retention_prob,
       site = site

@@ -123,11 +123,13 @@ test_that("profile_ci_proportions() default has the right shape and column names
     c("trait", "component", "proportion", "lower", "upper", "method")
   )
   ## One row per component present (the fixture has shared_unit,
-  ## unique_unit, unique_unit_obs).
+  ## unique_unit, unique_unit_obs, and the residual: the per-row
+  ## site_species term makes the engine fix sigma_eps, which still counts,
+  ## #1399).
   comps_present <- unique(as.character(tbl$component))
   expect_setequal(
     comps_present,
-    c("shared_unit", "unique_unit", "unique_unit_obs")
+    c("shared_unit", "unique_unit", "unique_unit_obs", "residual")
   )
   expect_equal(nrow(tbl), length(comps_present))
 })

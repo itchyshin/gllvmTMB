@@ -48,10 +48,48 @@
 #'   [confint()] for intervals; [summary()] for a coefficient table.
 #' @name gllvmTMB_multi-vcov
 #' @examples
-#' \dontrun{
-#' coef(fit)
-#' vcov(fit)
+#' ## Simulate 40 sites, each visited twice. Four traits share one latent
+#' ## site axis, each trait also has its own site-level variation, and
+#' ## three of them respond to temperature.
+#' set.seed(2)
+#' n_site <- 40
+#' dat <- data.frame(
+#'   site = factor(rep(seq_len(n_site), each = 2)),
+#'   temp = rnorm(2 * n_site)
+#' )
+#' z <- rnorm(n_site)                # latent site scores
+#' lambda <- c(0.9, 0.7, 0.6, -0.5)  # loadings on that axis
+#' slope <- c(0.5, 0, -0.3, 0.2)     # true temperature effects
+#' for (j in 1:4) {
+#'   site_eff <- lambda[j] * z + rnorm(n_site, sd = 0.6)
+#'   dat[[paste0("y", j)]] <- slope[j] * dat$temp +
+#'     site_eff[dat$site] + rnorm(nrow(dat), sd = 0.5)
 #' }
+#'
+#' fit <- gllvmTMB(
+#'   traits(y1, y2, y3, y4) ~ 1 + temp +
+#'     latent(1 | site, d = 1, unique = TRUE),
+#'   data = dat, family = gaussian(), unit = "site"
+#' )
+#'
+#' ## coef(): the fixed effects only -- an intercept and a temperature
+#' ## slope for each trait. Loadings and variances are not included.
+#' coef(fit)
+#'
+#' ## vcov(): the covariance of those estimates. It is read from the
+#' ## standard-error step (TMB's sdreport()) that gllvmTMB() runs by
+#' ## default. A fit made with gllvmTMBcontrol(se = FALSE) skips that
+#' ## step: coef() still works there, but vcov() stops until you run
+#' ## fit <- standard_errors(fit).
+#' V <- vcov(fit)
+#' ## The intercepts of different traits covary, because the traits share
+#' ## site effects; the temperature slopes barely covary.
+#' round(V, 3)
+#'
+#' ## The square roots of the diagonal are the Wald standard errors shown
+#' ## by summary(fit). Intervals built from them are approximate; their
+#' ## coverage is not certified.
+#' sqrt(diag(V))
 NULL
 
 #' @rdname gllvmTMB_multi-vcov
@@ -74,8 +112,10 @@ vcov.gllvmTMB_multi <- function(object, ...) {
     return(matrix(numeric(0), 0L, 0L))
   }
 
-  ## Same gate, same condition classes, same remedies as confint()'s Wald path.
-  .confint_require_sdreport(object, method = "wald", caller = "vcov")
+  ## Same gate and condition classes as confint()'s Wald path. vcov() has
+  ## no method argument, so do not offer method = "profile" (#1580).
+  .confint_require_sdreport(object, method = "wald", caller = "vcov",
+                            route = NULL)
 
   cv <- object$sd_report$cov.fixed
   out <- matrix(NA_real_, length(nm), length(nm), dimnames = list(nm, nm))

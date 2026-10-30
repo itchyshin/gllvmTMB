@@ -64,3 +64,81 @@ test_that("no user-facing message recommends a numeric aghq_ridge over loading_r
   }
   expect_equal(offenders, character())
 })
+
+## #1557: keyword deprecation messages must not misfire.
+reset_keyword_deprecation_cache <- function() {
+  seen <- gllvmTMB:::.gllvmTMB_deprecation_seen
+  rm(list = ls(seen, all.names = TRUE), envir = seen)
+}
+
+test_that("documented phylo(1 | g) / spatial(1 | g) forms do not warn about *_scalar() (#1557)", {
+  withr::local_options(gllvmTMB.quiet_grammar_notes = FALSE)
+  reset_keyword_deprecation_cache()
+  expect_no_warning(gllvmTMB:::rewrite_canonical_aliases(
+    value ~ 0 + trait + phylo(1 | species, tree = tree)
+  ))
+  expect_no_warning(gllvmTMB:::rewrite_canonical_aliases(
+    value ~ 0 + trait + spatial(1 | site, mesh = mesh)
+  ))
+  ## The typed soft-deprecated keywords still warn.
+  reset_keyword_deprecation_cache()
+  expect_warning(
+    gllvmTMB:::rewrite_canonical_aliases(value ~ 0 + trait + phylo_scalar(species)),
+    "phylo_scalar"
+  )
+  reset_keyword_deprecation_cache()
+  expect_warning(
+    gllvmTMB:::rewrite_canonical_aliases(
+      value ~ 0 + trait + spatial_scalar(0 + trait | coords, mesh = mesh)
+    ),
+    "spatial_scalar"
+  )
+})
+
+test_that("gr() / legacy phylo() alias messages recommend phylo_indep(common = TRUE) (#1557)", {
+  for (kw in c("gr(species)", "phylo(species)")) {
+    reset_keyword_deprecation_cache()
+    msg <- testthat::capture_messages(
+      gllvmTMB:::scan_for_deprecated(str2lang(kw))
+    )
+    msg <- paste(msg, collapse = "\n")
+    expect_match(msg, "phylo_indep", info = kw)
+    expect_no_match(msg, "phylo_scalar", info = kw)
+  }
+})
+
+## Keyword help pages are a reader surface too (#1560): the description lines
+## must not teach the `d = T` shorthand, say `gr(cov =)` is unused, or call the
+## soft-deprecated scalar keywords "Canonical".
+test_that("keyword help pages carry no stale recommendations (#1560)", {
+  man_dir <- testthat::test_path("..", "..", "man")
+  testthat::skip_if_not(dir.exists(man_dir), "man/ not present")
+  rd_text <- function(topic) {
+    path <- file.path(man_dir, paste0(topic, ".Rd"))
+    testthat::skip_if_not(file.exists(path), paste(topic, "Rd not present"))
+    txt <- paste(readLines(path, warn = FALSE), collapse = "\n")
+    ## Description lines only: @examples are owned by the #1346 example lane.
+    sub("[\\\\]examples[{].*", "", txt)
+  }
+
+  ## `d = T` is not a valid argument value; say what it means.
+  for (topic in c("dep", "phylo_dep", "spatial_dep")) {
+    expect_false(grepl("d = T\\b", rd_text(topic)), info = topic)
+  }
+  expect_match(rd_text("dep"), "d = n_traits, unique = FALSE", fixed = TRUE)
+
+  ## gr(cov =) is consumed when no top-level phylo_vcv is supplied.
+  gr_rd <- rd_text("gr")
+  expect_false(grepl("not\\} used by the engine|\\bignored by the engine",
+                     gr_rd))
+  expect_match(gr_rd, "phylo_vcv", fixed = TRUE)
+  expect_match(gr_rd, "ignored", fixed = TRUE)
+
+  ## Soft-deprecated scalar keywords are not "Canonical".
+  for (topic in c("scalar", "phylo_scalar")) {
+    txt <- rd_text(topic)
+    expect_false(grepl("Canonical (no-prefix )?name", txt), info = topic)
+    expect_match(txt, "soft-deprecated", ignore.case = TRUE, info = topic)
+    expect_match(txt, "common = TRUE", fixed = TRUE, info = topic)
+  }
+})

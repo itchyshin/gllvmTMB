@@ -24,7 +24,7 @@
       Error in `gllvmTMB:::parse_re_int_call()`:
       ! Bar-syntax `(x | site)` is not yet implemented.
       i Currently only random intercepts `(1 | group)` are supported.
-      > There is no supported route for a bare slope-only term; fit separate models, one covariate per group.
+      > To let the slope of `x` vary across species, copy the trait column into a grouping column (e.g. `dat$species <- dat$trait`) and use `animal_slope(x | species, A = A)` or `phylo_slope(x | species, tree = tree)`. The levels of that column must match the labels of `A` or the tree tips; an identity `A` gives plain partial pooling. See the keyword grid article, section Slope variation by species.
 
 # offset() with more than one expression names the fix
 
@@ -152,4 +152,32 @@
       Error in `gllvmTMB:::.resolve_fixed_column_slope_precision()`:
       ! `K` for `kernel_slope()` must be a square numeric matrix.
       > Source "kernel" is indexed by 1 response-column level; pass a 1 x 1 numeric matrix.
+
+# ridge_path(tau = <non-positive>) names the fix
+
+    Code
+      gllvmTMB::ridge_path(value ~ 0 + trait, data = data.frame(), tau = c(-1, 2))
+    Condition
+      Error in `gllvmTMB::ridge_path()`:
+      ! `tau` must be one or more positive numbers (`Inf` is allowed).
+      > Pass a numeric vector such as `tau = c(0.5, 2, 8, Inf)`.
+
+# ridge_path(<data with no traits>) names the fix
+
+    Code
+      gllvmTMB::ridge_path(value ~ 0 + trait, data = d, unit = "site", trait = "trait",
+      tau = 1)
+    Condition
+      Error in `gllvmTMB::ridge_path()`:
+      ! No traits were found for `formula`/`data`.
+      > Check that `trait` names a column of `data` with at least one level, and that `data` has rows.
+
+# a non-fit passed to a fit-only function names the fix
+
+    Code
+      gllvmTMB::check_gllvmTMB(list())
+    Condition
+      Error in `gllvmTMB::check_gllvmTMB()`:
+      ! Provide a fit returned by `gllvmTMB()`.
+      > Fit the model first, e.g. `fit <- gllvmTMB(...)`, then pass `fit`.
 

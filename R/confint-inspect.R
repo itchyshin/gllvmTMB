@@ -112,16 +112,34 @@
 #'   [profile-likelihood article](https://itchyshin.github.io/gllvmTMB/articles/profile-likelihood-ci.html).
 #'
 #' @examples
-#' \dontrun{
+#' set.seed(1)
+#' # Four traits measured twice on each of 80 units (e.g. individuals),
+#' # sharing one latent axis.
+#' sim <- simulate_unit_trait(n_units = 80, n_obs_per_unit = 2,
+#'                            n_traits = 4,
+#'                            Lambda_B = matrix(c(0.9, 0.8, -0.7, 0.5)),
+#'                            psi_B = 0.3, sigma2_eps = 0.3)
 #' fit <- gllvmTMB(value ~ 0 + trait +
-#'                 latent(0 + trait | site, d = 1),
-#'                 data  = sim$data,
-#'                 trait = "trait",
-#'                 unit  = "site")
-#' inspect <- confint_inspect(fit, parm = "sigma_eps")
-#' inspect$bounds       # the CI + Wald comparison
-#' inspect$diagnostics  # any shape flags
-#' inspect$plot         # ggplot of the profile curve
+#'                   latent(0 + trait | unit, d = 1, unique = TRUE),
+#'                 data = sim$data, trait = "trait", unit = "unit")
+#'
+#' # Profile the residual standard deviation (true value sqrt(0.3) = 0.55).
+#' # The profile tracks how much worse the fit gets as sigma_eps moves
+#' # away from its estimate; the interval is the range where that loss
+#' # stays below the chi-squared threshold.
+#' insp <- confint_inspect(fit, parm = "sigma_eps")
+#'
+#' # Printing shows the profile and Wald bounds side by side, followed by
+#' # any shape warnings.
+#' insp
+#'
+#' # A few points of the profile curve.
+#' head(insp$curve[, c("parm_value_natural", "deviance_drop", "in_ci")])
+#'
+#' # Plot the curve with the threshold, the estimate and both intervals
+#' # (needs the ggplot2 package).
+#' if (requireNamespace("ggplot2", quietly = TRUE)) {
+#'   plot(insp$plot)
 #' }
 #'
 #' @export

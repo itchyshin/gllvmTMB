@@ -14,10 +14,15 @@
 #' where
 #' \deqn{v_{B,t} = [\Lambda_B\Lambda_B^\top]_{tt} + \sigma^2_{B,t}}
 #' and
-#' \deqn{v_{W,t} = [\Lambda_W\Lambda_W^\top]_{tt} + \sigma^2_{W,t} + \sigma^2_{d,t}.}
+#' \deqn{v_{W,t} = [\Lambda_W\Lambda_W^\top]_{tt} + \sigma^2_{W,t} + \sigma^2_{d,t} + \sigma^2_{\varepsilon,t}.}
 #' The first two terms include the shared latent and diagonal companion variance
 #' at the unit and observation tiers; \eqn{\sigma^2_{d,t}} is the
-#' family-specific link residual used for non-Gaussian traits. The function is
+#' family-specific link residual used for non-Gaussian traits, and
+#' \eqn{\sigma^2_{\varepsilon,t}} is the Gaussian (or lognormal) observation
+#' residual. The observation residual is added only when the fit estimates it,
+#' which happens when a `unit_obs` record has replicate rows; with one row per
+#' record the engine fixes it near zero and nothing is added. The Wald,
+#' bootstrap and stored-bootstrap paths all use this definition. The function is
 #' intended for a fit returned by [gllvmTMB()] with the relevant ordinary unit
 #' and observation-level components.
 #' Also known as the intraclass correlation coefficient (ICC) at the unit
@@ -65,19 +70,59 @@
 #'
 #' @export
 #' @examples
-#' \dontrun{
+#' ## Simulate 4 traits recorded on a few species at each of 50 sites.
+#' ## Every trait varies between sites (the "unit" tier) and between the
+#' ## species records within a site (the "unit_obs" tier). A zero beta
+#' ## matrix turns off the simulator's environmental effects, which this
+#' ## model does not include.
+#' set.seed(3)
+#' sim <- simulate_site_trait(
+#'   n_sites = 50, n_species = 10, n_traits = 4,
+#'   mean_species_per_site = 3,
+#'   beta = matrix(0, 4, 2),
+#'   Lambda_B = matrix(c(0.8, 0.6, -0.5, 0.4), 4, 1),
+#'   psi_B = rep(0.3, 4),
+#'   Lambda_W = matrix(c(0.5, -0.4, 0.4, 0.3), 4, 1),
+#'   sigma2_eps = 0.3
+#' )
+#' ## One latent factor plus trait-specific variances at each tier. Each
+#' ## species record has one value per trait, so the within-site
+#' ## trait-specific variances also absorb the measurement noise
+#' ## (gllvmTMB prints a note saying so).
 #' fit <- gllvmTMB(
 #'   value ~ 0 + trait +
-#'           latent(0 + trait | site, d = 1) +
-#'           latent(0 + trait | site_species, d = 1),
-#'   data     = df,
+#'     latent(0 + trait | site, d = 1, unique = TRUE) +
+#'     latent(0 + trait | site_species, d = 1, unique = TRUE),
+#'   data     = sim$data,
 #'   trait    = "trait",
 #'   unit     = "site",
 #'   unit_obs = "site_species"
 #' )
+#' ## Repeatability of each trait: the share of its variance that lies
+#' ## between sites, R = between-site / (between-site + within-site),
+#' ## where each variance adds up the shared (latent) and trait-specific
+#' ## parts of its tier. The Wald interval is built on the log ratio of
+#' ## the two variances, so it stays between 0 and 1; it is not
+#' ## guaranteed to cover the true value 95% of the time.
 #' extract_repeatability(fit)
+#' ## The repeatabilities used to simulate the data, for comparison.
+#' ## With only 50 sites the estimates above are noisy.
+#' tr <- sim$truth
+#' v_between <- tr$Lambda_B[, 1]^2 + tr$psi_B
+#' v_within <- tr$Lambda_W[, 1]^2 + tr$sigma2_eps
+#' round(v_between / (v_between + v_within), 2)
+#' \donttest{
+#' ## Bootstrap intervals: bootstrap_Sigma() refits the model to 50 data
+#' ## sets simulated from the fit, so this part takes tens of seconds.
+#' ## A small n_boot keeps the run time down and makes bootstrap_Sigma()
+#' ## warn that so few resamples give noisy bounds; real analyses need
+#' ## several hundred (the default is 999). These percentile intervals
+#' ## are not guaranteed to reach their nominal coverage either.
 #' boot <- bootstrap_Sigma(fit, n_boot = 50, level = c("unit", "unit_obs"),
 #'                         what = "ICC", progress = FALSE)
+#' ## Read the stored bootstrap intervals (no refitting). To do both steps
+#' ## in one call, use method = "bootstrap" with nsim and seed instead:
+#' ## extract_repeatability(fit, method = "bootstrap", nsim = 50, seed = 1)
 #' extract_repeatability(boot)
 #' }
 extract_repeatability <- function(
@@ -116,6 +161,7 @@ extract_repeatability <- function(
     ## Wald CI for FULL-Sigma R = vB[t] / (vB[t] + vW[t]), where
     ##   vB[t] = (Lambda_B Lambda_B^T)[t,t] + sd_B[t]^2
     ##   vW[t] = (Lambda_W Lambda_W^T)[t,t] + sd_W[t]^2 + sigma2_d[t]
+    ##           + sigma_eps[t]^2 (estimated Gaussian/lognormal residual only)
     ## (Bell 2009; Nakagawa & Schielzeth 2010 latent-scale formula).
     ## sigma2_d[t] is the per-trait distribution-specific / observation-
     ## level latent-scale residual (0 for Gaussian, pi^2/3 for
@@ -170,6 +216,9 @@ extract_repeatability <- function(
     ## where sigma2_d depends on fitted mu / phi. Improving Jacobian
     ## accuracy on those families is M3 inference-completeness work.
     sigma2_d <- unname(link_residual_per_trait(fit))
+    ## #1569: the estimated Gaussian/lognormal observation residual also
+    ## belongs in vW. It depends on theta_fix through report(par)$sigma_eps,
+    ## so it is rebuilt inside log_v_function() for the delta-method Jacobian.
 
     log_v_function <- function(theta_fix) {
       par_full <- par_full_at_mle
@@ -180,7 +229,8 @@ extract_repeatability <- function(
       sd_B <- if (is.null(rep$sd_B)) rep(0, T) else rep$sd_B
       sd_W <- if (is.null(rep$sd_W)) rep(0, T) else rep$sd_W
       vB <- diag(Lambda_B %*% t(Lambda_B)) + sd_B^2
-      vW <- diag(Lambda_W %*% t(Lambda_W)) + sd_W^2 + sigma2_d
+      vW <- diag(Lambda_W %*% t(Lambda_W)) + sd_W^2 + sigma2_d +
+        unname(.icc_observation_residual(fit, sigma_eps = rep$sigma_eps))
       if (any(vB <= 0) || any(vW <= 0)) {
         cli::cli_abort(
           "Wald repeatability needs vB > 0 and vW > 0; refit with ordinary {.fn latent} or standalone {.fn indep} at each tier."
@@ -219,7 +269,7 @@ extract_repeatability <- function(
   }
 
   ## bootstrap
-  boot <- suppressMessages(bootstrap_Sigma(
+  boot <- .with_bootstrap_count_arg("nsim", suppressMessages(bootstrap_Sigma(
     fit,
     n_boot = as.integer(nsim),
     level = c("unit", "unit_obs"),
@@ -227,7 +277,7 @@ extract_repeatability <- function(
     conf = level,
     seed = seed,
     progress = FALSE
-  ))
+  )))
   pe <- boot$point_est$ICC_site
   lo <- boot$ci_lower$ICC_site
   hi <- boot$ci_upper$ICC_site

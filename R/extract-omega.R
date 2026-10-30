@@ -80,19 +80,37 @@
 #' @keywords internal
 #' @export
 #' @examples
-#' \dontrun{
-#' ## Add a site_species column (one level per row) as the obs-level grouping.
-#' df$site_species <- factor(seq_len(nrow(df)))
+#' set.seed(2)
+#' ## Counts for 4 traits recorded on a few species at each of 50 sites.
+#' ## The simulator gives each record a Gaussian value for every trait;
+#' ## here it is turned into a Poisson count. A zero beta matrix turns off
+#' ## the simulator's environmental effects, which this model does not
+#' ## include.
+#' sim <- simulate_site_trait(
+#'   n_sites = 50, n_species = 10, n_traits = 4,
+#'   mean_species_per_site = 3,
+#'   beta = matrix(0, 4, 2),
+#'   Lambda_B = matrix(c(0.8, 0.6, -0.5, 0.4), 4, 1),
+#'   psi_B = rep(0.3, 4),
+#'   sigma2_eps = 0.3
+#' )
+#' dat <- sim$data
+#' dat$count <- rpois(nrow(dat), exp(1 + 0.5 * dat$value))
+#' ## Each species record (site_species) has one count per trait, so a
+#' ## trait-specific indep() term at that level is an observation-level
+#' ## random effect (OLRE): extra-Poisson variation for each record.
 #' fit <- gllvmTMB(
-#'   value ~ 0 + trait + indep(0 + trait | site_species),
-#'   data     = df,
+#'   count ~ 0 + trait + indep(0 + trait | site_species),
+#'   data     = dat,
 #'   trait    = "trait",
 #'   unit     = "site",
 #'   unit_obs = "site_species",
 #'   family   = poisson()
 #' )
+#' ## Per trait: sigma2_d is the variance the Poisson distribution itself
+#' ## implies on the latent scale (from the link), sigma2_e is the
+#' ## estimated OLRE variance, and sigma2_total is their sum
 #' extract_residual_split(fit)
-#' }
 extract_residual_split <- function(fit) {
   if (!inherits(fit, "gllvmTMB_multi")) {
     .gllvmTMB_abort_not_multi_fit(fit)
@@ -181,10 +199,46 @@ extract_residual_split <- function(fit) {
 #' @examples
 #' \dontrun{
 #' # PGLLVM three-piece total
+#' set.seed(1)
+#' tree <- ape::rcoal(20)
+#' tree$tip.label <- paste0("sp", seq_len(20))
+#' sim <- simulate_site_trait(
+#'   n_sites = 25, n_species = 20, n_traits = 3,
+#'   mean_species_per_site = 20, sigma2_eps = 0.4,
+#'   Lambda_B = matrix(0.6, 3, 1), psi_B = rep(0.2, 3),
+#'   Cphy = ape::vcv(tree, corr = TRUE), sigma2_phy = rep(0.4, 3),
+#'   seed = 1
+#' )
+#' dat <- sim$data
+#' levels(dat$species) <- tree$tip.label
+#' fit <- gllvmTMB(
+#'   value ~ 0 + trait + phylo_latent(species, d = 1, tree = tree) +
+#'                       latent(0 + trait | site, d = 1) +
+#'                       unique(0 + trait | site),
+#'   data    = dat,
+#'   cluster = "species"
+#' )
 #' om <- extract_Omega(fit, tiers = c("phy", "B"))
 #' round(om$R_Omega, 2)
 #'
 #' # Phenotypic covariance from a two-level behavioural-syndromes fit
+#' set.seed(1)
+#' sim <- simulate_site_trait(
+#'   n_sites = 40, n_species = 6, n_traits = 4, mean_species_per_site = 4,
+#'   Lambda_B = matrix(c(1, .5, -.4, .3, 0, .8, .4, -.2), 4, 2),
+#'   psi_B = c(.2, .15, .1, .25),
+#'   Lambda_W = matrix(c(.4, .2, -.1, .3), 4, 1),
+#'   psi_W = c(.1, .08, .05, .12),
+#'   beta = matrix(0, 4, 2), seed = 1
+#' )
+#' dat <- sim$data
+#' fit <- gllvmTMB(
+#'   value ~ 0 + trait +
+#'           latent(0 + trait | site, d = 2) + unique(0 + trait | site) +
+#'           latent(0 + trait | site_species, d = 1) +
+#'           unique(0 + trait | site_species),
+#'   data = dat
+#' )
 #' om2 <- extract_Omega(fit, tiers = c("B", "W"))
 #' }
 extract_Omega <- function(
@@ -454,15 +508,24 @@ extract_Omega <- function(
 #' @export
 #' @examples
 #' \dontrun{
+#' set.seed(1)
+#' tree <- ape::rcoal(20)
+#' tree$tip.label <- paste0("sp", seq_len(20))
+#' sim <- simulate_site_trait(
+#'   n_sites = 25, n_species = 20, n_traits = 3,
+#'   mean_species_per_site = 20, sigma2_eps = 0.4,
+#'   Lambda_B = matrix(0.6, 3, 1), psi_B = rep(0.2, 3),
+#'   Cphy = ape::vcv(tree, corr = TRUE), sigma2_phy = rep(0.4, 3),
+#'   seed = 1
+#' )
+#' dat <- sim$data
+#' levels(dat$species) <- tree$tip.label
 #' fit <- gllvmTMB(
-#'   value ~ 0 + trait + phylo_latent(species, d = 2) +
-#'                       latent(0 + trait | species, d = 2) +
-#'                       indep(0 + trait | species),
-#'   data       = df,
-#'   trait      = "trait",
-#'   unit       = "species",
-#'   cluster    = "species",
-#'   phylo_tree = tree
+#'   value ~ 0 + trait + phylo_latent(species, d = 1, tree = tree) +
+#'                       latent(0 + trait | site, d = 1) +
+#'                       unique(0 + trait | site),
+#'   data    = dat,
+#'   cluster = "species"
 #' )
 #' extract_phylo_signal(fit)
 #' }
@@ -688,8 +751,23 @@ extract_phylo_signal <- function(
 #' For each trait, returns the proportion of total latent variance
 #' attributable to each component present in the model:
 #' shared (rr) and unique (diag) at each tier (unit, unit_obs, phy), diagonal
-#' cluster / cluster2 components when present, plus optionally the binomial
-#' link's implicit residual.
+#' cluster / cluster2 components when present, the observation residual
+#' \eqn{\sigma^2_\varepsilon} of Gaussian and lognormal traits (`residual`),
+#' plus optionally the link's implicit residual of non-Gaussian traits.
+#'
+#' Some active components are not partitioned here: `(1 | group)` random
+#' intercepts, common-variance phylogenetic terms such as
+#' `phylo_indep(common = TRUE)`, terms of a fit with several named
+#' `kernel_*()` terms, spatial fields, random-slope terms (intercepts
+#' included), response-column slopes and coefficients, temporal states, and
+#' the known sampling variance of `meta_V()`. `extract_proportions()` leaves
+#' each of them out, names them in a warning of class
+#' `gllvmTMB_proportions_component_omitted`, and records them in the
+#' `"omitted_components"` attribute of the result. The proportions are then
+#' shares of the included components only, and `total_variance` is their sum,
+#' not the trait's total variance. [VP()] does count the `(1 | group)`
+#' intercepts, the common-variance phylogenetic terms and the multi-kernel
+#' terms.
 #'
 #' This is the most general proportion-decomposition function in the
 #' package. [extract_phylo_signal()] is the focused PGLLVM
@@ -711,33 +789,74 @@ extract_phylo_signal <- function(
 #'   Poisson log; see "Family-aware link residuals" in [extract_Sigma()]
 #'   for the full per-family table). Mixed-family fits get the residual
 #'   implied by each trait's family/link. `"none"` omits the link-implicit
-#'   component.
+#'   component. The Gaussian and lognormal `residual` is a model variance,
+#'   not a link-implied constant, so it is kept under either value.
 #' @param format `"long"` (default) returns a tibble-like data frame
 #'   with one row per (trait, component); `"wide"` returns one row per
 #'   trait with one column per component.
 #' @return Long format: data frame with columns `trait`, `component`
 #'   (e.g. `"shared_unit"`, `"unique_unit"`, `"shared_unit_obs"`,
 #'   `"unique_unit_obs"`, `"unique_phy"`, `"shared_phy"`, `"unique_cluster"`,
-#'   `"unique_cluster2"`, `"link_residual"`),
+#'   `"unique_cluster2"`, `"residual"`, `"link_residual"`),
 #'   `variance` (the absolute variance), `proportion` (the share of
 #'   the total). Wide format: data frame with one column per component
 #'   plus a `total_variance` column; the per-trait proportions sum to 1.
+#'   When a component was left out, the `"omitted_components"` attribute
+#'   names it.
 #'
 #'   **OLRE interpretation:** for fits with a genuine observation-level
 #'   diagonal term, usually written as per-row `indep()` in new code (see
 #'   [extract_residual_split()]), the `unique_unit_obs` component is
 #'   \eqn{\sigma^2_e} (the estimated OLRE variance) and the `link_residual`
 #'   component is \eqn{\sigma^2_d} (the distribution-specific latent residual).
+#'   For a Gaussian or lognormal trait with such a per-row term (including the
+#'   default `latent()` Psi when each unit has one observation per trait), the
+#'   package does not estimate \eqn{\sigma_\varepsilon}: it fixes it at 1/1000
+#'   of the standard deviation of all responses pooled on the raw scale. That
+#'   fixed value is still part of the fitted variance and appears as
+#'   `residual`. It is negligible when the traits share a scale, but not when
+#'   trait scales differ widely or when lognormal responses are large.
 #' @seealso [extract_phylo_signal()] — the PGLLVM-specific shortcut;
 #'   [extract_communality()]; [extract_ICC_site()];
 #'   [extract_residual_split()] — explicit \eqn{\sigma^2_d / \sigma^2_e}
 #'   decomposition for OLRE fits.
 #' @export
 #' @examples
-#' \dontrun{
-#' extract_proportions(fit)                           # long format
-#' extract_proportions(fit, format = "wide")          # one row per trait
-#' }
+#' set.seed(3)
+#' ## Simulate 4 traits recorded on a few species at each of 50 sites, with
+#' ## trait variation at two tiers: between sites (the "unit" tier) and
+#' ## between species records within a site (the "unit_obs" tier). A zero
+#' ## beta matrix turns off the simulator's environmental effects, which
+#' ## this model does not include.
+#' sim <- simulate_site_trait(
+#'   n_sites = 50, n_species = 10, n_traits = 4,
+#'   mean_species_per_site = 3,
+#'   beta = matrix(0, 4, 2),
+#'   Lambda_B = matrix(c(0.8, 0.6, -0.5, 0.4), 4, 1),
+#'   psi_B = rep(0.3, 4),
+#'   Lambda_W = matrix(c(0.5, -0.4, 0.4, 0.3), 4, 1),
+#'   sigma2_eps = 0.3
+#' )
+#' ## One latent factor plus trait-specific variances at each tier. Each
+#' ## species record has one value per trait, so the within-site
+#' ## trait-specific variances also absorb the measurement noise
+#' ## (gllvmTMB prints a note saying so).
+#' fit <- gllvmTMB(
+#'   value ~ 0 + trait +
+#'     latent(0 + trait | site, d = 1, unique = TRUE) +
+#'     latent(0 + trait | site_species, d = 1, unique = TRUE),
+#'   data     = sim$data,
+#'   trait    = "trait",
+#'   unit     = "site",
+#'   unit_obs = "site_species"
+#' )
+#' ## Each trait's variance split into components (shared and
+#' ## trait-specific, at each tier): one row per trait and component,
+#' ## with the variance and its share of the trait's total
+#' extract_proportions(fit)
+#' ## The same shares with one row per trait and one column per component;
+#' ## each row of proportions sums to 1
+#' extract_proportions(fit, format = "wide")
 extract_proportions <- function(
   fit,
   link_residual = c("auto", "none"),
@@ -752,10 +871,15 @@ extract_proportions <- function(
   trait_names <- levels(fit$data[[fit$trait_col]])
   T <- length(trait_names)
 
-  ## Build a list of (component, per-trait variance vector) pairs
+  ## Build a list of (component, per-trait variance vector) pairs. An active
+  ## tier whose extracted block is not one value per trait is named in
+  ## `omitted`, not dropped silently.
   comps <- list()
+  omitted <- character(0)
   add_comp <- function(name, v) {
-    if (length(v) == T && any(v > 0)) {
+    if (length(v) != T) {
+      omitted <<- c(omitted, name)
+    } else if (anyNA(v) || any(v > 0)) {
       comps[[name]] <<- v
     }
   }
@@ -815,13 +939,30 @@ extract_proportions <- function(
     ))
     if (!is.null(out)) add_comp("unique_cluster2", out$s)
   }
+  ## Observation residual sigma_eps^2 of Gaussian and lognormal traits
+  ## (#1399). It is a model variance, not a link-implied constant, so it is
+  ## counted under either `link_residual` value, and also when the engine
+  ## fixed sigma_eps because a per-row diagonal term is present (the fixed
+  ## value still enters the likelihood). Non-Gaussian traits contribute 0.
+  add_comp("residual", .variance_share_residual_per_trait(fit))
   ## Optional per-trait link-implicit residual (family-aware: gaussian/
   ## lognormal contribute 0; binomial/poisson/Gamma each contribute their
   ## own per-trait variance).
   if (link_residual == "auto") {
     v <- link_residual_per_trait(fit)
-    if (any(v != 0)) add_comp("link_residual", v)
+    if (anyNA(v) || any(v != 0)) add_comp("link_residual", v)
   }
+
+  omitted <- c(
+    stats::setNames(omitted, rep("", length(omitted))),
+    .variance_share_active_tiers(fit)
+  )
+  .variance_share_warn_omitted(
+    omitted,
+    caller = "extract_proportions",
+    class = "gllvmTMB_proportions_component_omitted"
+  )
+  omitted <- unname(omitted)
 
   if (length(comps) == 0L) {
     cli::cli_abort("No identifiable variance components in this fit.")
@@ -851,6 +992,9 @@ extract_proportions <- function(
   }
   attr(out, "format") <- format
   attr(out, "components") <- colnames(M)
+  if (length(omitted)) {
+    attr(out, "omitted_components") <- omitted
+  }
   out
 }
 

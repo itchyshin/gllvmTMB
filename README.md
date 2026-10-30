@@ -317,12 +317,15 @@ method. In brief:
 - do not infer interval calibration from the availability of Wald, bootstrap,
   or profile bounds.
 
-Intervals cost more than the fit. `confint()` defaults to
-`method = "profile"`, which refits the model many times for every
-parameter it profiles, so on models with many traits or latent dimensions it
-can take far longer than the original fit. Start with `method = "wald"` (one
-Hessian, fast), profile only the parameters you will report through
-`parm`, and keep the profile run for the final model.
+Intervals cost more than the fit. For fixed effects and direct scalar
+parameters handled by the main `confint()` route, `method = "profile"` is the
+default where supported. Profiling refits the model many times and can take
+far longer than the original fit. Other targets have their own defaults:
+loading and communality intervals use Wald methods, correlations (`rho`) use
+Fisher-z intervals, and some covariance targets use a parametric bootstrap
+when a direct profile is not available. Check the returned `method` column and
+the target-specific help. Start with a Wald interval when its assumptions suit
+the target, then profile or bootstrap only the quantities you plan to report.
 
 `gllvmTMB` is for stacked-trait multivariate models. Use `glmmTMB` for a
 single-response GLMM, `sdmTMB` for a single-response spatial model, and

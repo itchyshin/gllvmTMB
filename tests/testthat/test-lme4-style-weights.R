@@ -223,6 +223,10 @@ test_that("Heteroscedastic Gaussian: weighted fit improves sigma recovery", {
     psi_B        = rep(0.2, 3),
     seed       = 42L
   )
+  ## Own stream for the heteroscedastic noise. After #1602,
+  ## simulate_site_trait(seed =) restores the caller's RNG, so this
+  ## test must not depend on leftover simulator draws.
+  set.seed(42L)
   df <- sim$data
   sigma_0 <- 1.0
   var_i <- runif(nrow(df), min = 0.5, max = 5)   # row-wise variance multipliers

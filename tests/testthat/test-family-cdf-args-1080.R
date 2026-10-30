@@ -175,6 +175,14 @@ test_that("student accessor returns scale + df and converts to the SD", {
   expect_equal(st2$args$scale, 0.8)
 })
 
+test_that("student accessor treats df = Inf as the normal limit (#1487)", {
+  skip_on_cran()
+  fit <- make_mixed_mock()
+  fit$report$df_student[3] <- Inf
+  st <- gllvmTMB:::.gllvmTMB_family_cdf_args(fit, 3)
+  expect_equal(st$args$sd, 0.8)
+})
+
 test_that("truncated_nbinom2 accessor reads phi_truncnb2, not phi_nbinom2", {
   skip_on_cran()
   fit <- make_mixed_mock()

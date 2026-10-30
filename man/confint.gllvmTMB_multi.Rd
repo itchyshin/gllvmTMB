@@ -80,11 +80,14 @@ components). Components are by name (\code{"shared_unit"},
 \code{"unique_unit"}, \code{"shared_unit_obs"},
 \code{"unique_unit_obs"}, \code{"unique_cluster"},
 \code{"unique_cluster2"}, \code{"shared_phy"},
-\code{"unique_phy"}, \code{"link_residual"}). Defaults to Wald;
+\code{"unique_phy"}, \code{"residual"}, \code{"link_residual"}).
+Defaults to Wald;
 bootstrap is available explicitly. The nonlinear profile prototype is
 withheld.
 \item An integer index vector or character vector of fixed-effect
-term names (same as the standard \code{confint()} interface).
+term names (same as the standard \code{confint()} interface), or
+\code{b_fix[k]} labels from \code{\link[=profile_targets]{profile_targets()}}; only the requested
+fixed effects are profiled.
 \item Missing (default) -- all fixed-effect parameters.
 }}
 
@@ -116,6 +119,12 @@ value (e.g. \code{50}) during development or testing.}
 zero by a diagonal-only tier). The parameter prefix follows the
 requested \code{parm}, so legacy calls still return legacy
 \code{"Sigma_B[...]"} or \code{"Sigma_W[...]"} labels.
+With \code{method = "wald"} on a tier that has a \code{latent()} term,
+\code{lower} and \code{upper} are \code{NA} and a message says so: the
+only available standard error covers the unique-variance part, not the
+total. Use \code{method = "bootstrap"}, or
+\code{\link[=profile_ci_total_variance]{profile_ci_total_variance()}} for the diagonal. Asking for a Sigma tier
+the fit does not have is an error that names the public tier.
 \item \strong{Lambda path} -- a \code{data.frame} with columns
 \code{parameter} (e.g. \code{"Lambda[trait_1,LV1]"} for raw rows or
 \code{"rho[trait_1,LV1]"} for standardised rows),
@@ -216,34 +225,46 @@ inspired this work, in
 }
 
 \examples{
-\dontrun{
-## Fit a tiny example
 set.seed(1)
-s <- simulate_site_trait(
-  n_sites = 30, n_species = 4, n_traits = 3,
-  mean_species_per_site = 4,
-  Lambda_B = matrix(c(0.9, 0.4, -0.3), 3, 1),
-  psi_B = c(0.20, 0.15, 0.10),
-  beta = matrix(0, 3, 2), seed = 1
-)
-fit <- gllvmTMB(
-  value ~ 0 + trait + latent(0 + trait | site, d = 1),
-  data  = s$data,
-  trait = "trait",
-  unit  = "site"
-)
+# Four traits measured twice on each of 80 units (e.g. individuals).
+# All four traits load on one shared latent axis, and each trait also
+# has its own unit-level variance.
+sim <- simulate_unit_trait(n_units = 80, n_obs_per_unit = 2,
+                           n_traits = 4,
+                           Lambda_B = matrix(c(0.9, 0.8, -0.7, 0.5)),
+                           psi_B = 0.3, sigma2_eps = 0.3)
+fit <- gllvmTMB(value ~ 0 + trait +
+                  latent(0 + trait | unit, d = 1, unique = TRUE),
+                data = sim$data, trait = "trait", unit = "unit")
 
-## Profile-likelihood CIs for the between-site covariance matrix (default)
-ci_unit <- confint(fit, parm = "Sigma_unit")
-ci_unit
+# Wald intervals for the fixed effects (here the four trait means).
+# Without `method`, confint() profiles the likelihood instead, which
+# is slower: one profile per coefficient.
+confint(fit, method = "wald")
 
-## Bootstrap route (slow; inspect failed refits and target calibration)
-ci_unit_boot <- confint(fit, parm = "Sigma_unit", method = "bootstrap",
-                        nsim = 200, seed = 42)
+# Derived summaries are requested by name: the unit-level correlation
+# between traits 1 and 3 (a Fisher-z interval), and each trait's
+# communality, the share of its unit-level variance that comes from
+# the shared axis (Wald intervals).
+confint(fit, parm = "rho:unit:1,3")
+confint(fit, parm = "communality:unit")
 
-## Wald CIs for fixed effects
-confint(fit)
-}
+# Trait covariance matrices. With indep(), each diagonal entry of
+# Sigma_unit is one variance parameter, so its profile-likelihood
+# interval is computed directly; the off-diagonal entries are zero by
+# construction.
+sim2 <- simulate_unit_trait(n_units = 50, n_obs_per_unit = 2,
+                            n_traits = 3, psi_B = c(1, 0.6, 0.4),
+                            sigma2_eps = 0.3)
+fit2 <- gllvmTMB(value ~ 0 + trait + indep(0 + trait | unit),
+                 data = sim2$data, trait = "trait", unit = "unit")
+confint(fit2, parm = "Sigma_unit")
+
+# With latent(), each Sigma_unit entry combines several parameters, so
+# confint(fit, parm = "Sigma_unit") switches to a parametric bootstrap
+# that refits the model `nsim` times. Use nsim = 999 or more. The default
+# of 500 does not warn; a smaller nsim does. That takes minutes, so it
+# is not run here.
 
 }
 \seealso{

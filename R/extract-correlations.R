@@ -253,8 +253,8 @@
 #' [gllvmTMB()] at one or more covariance levels. Use the canonical input
 #' names \code{"unit"}, \code{"unit_obs"}, \code{"phy"}, and
 #' \code{"spatial"}; legacy aliases \code{"B"}, \code{"W"}, and
-#' \code{"spde"} still work. The helper returns 95% (or other-level)
-#' point estimates by default. Fisher-z and bootstrap intervals can be
+#' \code{"spde"} still work. The helper returns point estimates only by
+#' default, with no confidence level. Fisher-z and bootstrap intervals can be
 #' requested explicitly with the \code{method} argument; the former profile
 #' token is retained only to return a clear withdrawal error:
 #'
@@ -432,36 +432,67 @@
 #'
 #' @export
 #' @examples
-#' \dontrun{
+#' ## Simulate 80 units (for example, individual animals), each measured
+#' ## three times on four traits. Between units, the traits share one latent
+#' ## factor plus trait-specific variation, so they are correlated.
+#' ## Lambda holds each trait's loading on the shared factor; psi holds each
+#' ## trait's own between-unit variance.
 #' set.seed(1)
-#' s <- simulate_site_trait(
-#'   n_sites = 80, n_species = 6, n_traits = 4,
-#'   mean_species_per_site = 4,
-#'   Lambda_B = matrix(c(0.9, 0.4, -0.3, 0.5), 4, 1),
-#'   psi_B = c(0.4, 0.3, 0.5, 0.2)
+#' Lambda <- matrix(c(0.9, 0.4, -0.3, 0.5), ncol = 1)
+#' psi <- c(0.4, 0.3, 0.5, 0.2)
+#' sim <- simulate_unit_trait(
+#'   n_units = 80, n_obs_per_unit = 3, n_traits = 4,
+#'   Lambda_B = Lambda, psi_B = psi
 #' )
+#' ## One latent factor across units plus a per-trait variance (Psi).
 #' fit <- gllvmTMB(
-#'   value ~ 0 + trait + latent(0 + trait | site, d = 1),
-#'   data  = s$data,
-#'   trait = "trait",
-#'   unit  = "site"
+#'   value ~ 0 + trait + latent(0 + trait | unit, d = 1, unique = TRUE),
+#'   data = sim$data, trait = "trait", unit = "unit"
 #' )
-#' ## Default: point correlations only.
+#'
+#' ## Default: point estimates of the between-unit correlations, one row per
+#' ## pair of traits ("B" in the tier column means the unit level).
 #' cors <- extract_correlations(fit, tier = "unit")
-#' ## A symmetric heatmap from the unique-pair table.
-#' plot_correlations(cors, style = "heatmap")
-#' ## Full table using the same correlation column and interval schema.
+#' cors
+#' ## The correlations used to simulate the data; the estimates above differ
+#' ## from them by sampling error.
+#' round(cov2cor(tcrossprod(Lambda) + diag(psi)), 2)
+#'
+#' ## A symmetric heatmap drawn from the pair table (needs ggplot2).
+#' if (requireNamespace("ggplot2", quietly = TRUE)) {
+#'   plot_correlations(cors, style = "heatmap")
+#' }
+#'
+#' ## The same estimates as a full table (both directions plus the
+#' ## diagonal: 4 x 4 = 16 rows), as a square matrix, or as a table of
+#' ## matrix entries.
 #' full <- extract_correlations(fit, tier = "unit", entries = "all")
-#' ## Full square matrix, or all cells with matrix-entry metadata.
+#' nrow(full)
 #' R <- extract_Sigma(fit, level = "unit")$R
+#' round(R, 2)
 #' full_sigma <- extract_Sigma_table(fit, level = "unit",
-#'                             measure = "correlation", entries = "all")
-#' ## Opt-in Fisher-z sensitivity bounds with an explicitly justified n_eff.
-#' cors2 <- extract_correlations(fit, tier = "unit", method = "fisher-z",
+#'                                   measure = "correlation", entries = "all")
+#'
+#' ## Fisher-z bounds are opt-in and depend on an effective sample size, n_eff.
+#' ## By default it is the number of units (80 here). We pass a more
+#' ## cautious 60 as an illustration, because each unit is seen only through
+#' ## three noisy measurements; in your own analysis, choose n_eff from your
+#' ## design and report why. These are rough bounds, not intervals
+#' ## calibrated to give 95% coverage in a mixed model.
+#' cors_z <- extract_correlations(fit, tier = "unit", method = "fisher-z",
 #'                                n_eff = 60L)
-#' ## Bootstrap (B = 200).
+#' cors_z
+#'
+#' ## A parametric bootstrap simulates new data from the fitted model and
+#' ## refits it each time. nsim = 40 keeps this example short, so expect a
+#' ## warning (it calls nsim `n_boot`) that so few resamples give noisy
+#' ## bounds; it stays quiet only from 999 resamples, and real analyses need
+#' ## at least several hundred. Bootstrap bounds are not certified to reach
+#' ## 95% coverage either.
+#' \donttest{
 #' cors_b <- extract_correlations(fit, tier = "unit", method = "bootstrap",
-#'                                nsim = 200, seed = 42)
+#'                                nsim = 40, seed = 42)
+#' cors_b
 #' }
 extract_correlations <- function(
   fit,
@@ -708,7 +739,7 @@ extract_correlations <- function(
   if (method == "bootstrap") {
     boot_levels <- unique(intersect(tier, c("B", "W", "phy")))
     if (length(boot_levels) > 0L) {
-      boot_R <- suppressMessages(bootstrap_Sigma(
+      boot_R <- .with_bootstrap_count_arg("nsim", suppressMessages(bootstrap_Sigma(
         fit,
         n_boot = nsim,
         level = vapply(
@@ -722,7 +753,7 @@ extract_correlations <- function(
         link_residual = link_residual,
         seed = seed,
         progress = FALSE
-      ))
+      )))
     }
   }
 
@@ -858,9 +889,12 @@ extract_correlations <- function(
     out$interval_status <- .correlation_interval_status(out_method_label)
   }
   rownames(out) <- NULL
-  .reportable_table(.correlation_expand_entries(
-    out, entries, trait_names, present_tiers
-  ))
+  out <- .correlation_expand_entries(out, entries, trait_names, present_tiers)
+  ## Report the canonical user-facing tier name (#1577); the internal code
+  ## was needed only for the ordering above.
+  out$tier <- vapply(out$tier, .canonical_level_name, character(1L),
+                     USE.NAMES = FALSE)
+  .reportable_table(out)
 }
 
 .cross_ordinal_partner_traits <- function(fit) {
@@ -949,35 +983,51 @@ extract_correlations <- function(
 #'   for `"bootstrap"`) -- coverage is not yet certified for any
 #'   route (recovery evidence for this route is not yet complete).
 #' @examples
-#' \dontrun{
+#' ## Simulate 120 animals, each watched on three occasions. On each occasion
+#' ## we record a body-condition score (continuous) and the behaviour seen
+#' ## (1 = resting, 2 = foraging, 3 = travelling). One shared animal-level
+#' ## score raises condition and the odds of foraging and lowers the odds of
+#' ## travelling; condition also varies between animals for other reasons.
 #' set.seed(12)
 #' n_unit <- 120L
 #' n_rep <- 3L
 #' unit_id <- rep(seq_len(n_unit), each = n_rep)
-#' score <- stats::rnorm(n_unit)
-#' score_obs <- score[unit_id]
-#' gaussian_y <- 0.8 * score_obs + stats::rnorm(length(unit_id), sd = 0.4)
-#' category_y <- vapply(seq_along(unit_id), function(i) {
-#'   eta <- c(0, 0.9 * score_obs[i], -0.6 * score_obs[i])
-#'   prob <- exp(eta - max(eta))
-#'   sample.int(3L, 1L, prob = prob / sum(prob))
+#' score <- rnorm(n_unit)[unit_id]
+#' own <- rnorm(n_unit, sd = 0.5)[unit_id]
+#' condition <- 0.8 * score + own + rnorm(length(unit_id), sd = 0.4)
+#' behaviour <- vapply(score, function(s) {
+#'   ## log-odds of each behaviour relative to resting
+#'   p <- exp(c(0, 0.9 * s, -0.6 * s))
+#'   sample.int(3L, 1L, prob = p / sum(p))
 #' }, integer(1L))
 #' dat <- data.frame(
-#'   unit = factor(c(unit_id, unit_id)),
-#'   trait = factor(rep(c("g", "cat"), each = length(unit_id)),
-#'                  levels = c("g", "cat")),
-#'   family = factor(rep(c("g", "m"), each = length(unit_id)),
-#'                   levels = c("g", "m")),
-#'   value = c(gaussian_y, category_y)
+#'   unit   = factor(rep(unit_id, 2)),
+#'   trait  = factor(rep(c("condition", "behaviour"), each = length(unit_id)),
+#'                   levels = c("condition", "behaviour")),
+#'   family = rep(c("gaussian", "multinomial"), each = length(unit_id)),
+#'   value  = c(condition, behaviour)
 #' )
-#' families <- list(g = gaussian(), m = multinomial())
-#' attr(families, "family_var") <- "family"
+#' ## The `family` column picks the response family for each row.
+#' families <- list(gaussian = gaussian(), multinomial = multinomial())
+#' ## One shared factor across animals. With unique = TRUE, condition also
+#' ## gets its own between-animal variance; the behaviour categories do not
+#' ## (the fit may print a note saying so), which matches the simulation.
 #' fit <- gllvmTMB(
 #'   value ~ 0 + trait + latent(0 + trait | unit, d = 1, unique = TRUE),
 #'   data = dat, family = families, trait = "trait", unit = "unit"
 #' )
-#' extract_cross_correlations(fit, contrasts = TRUE)
-#' }
+#' ## Both summaries are between-animal correlations on the model's latent
+#' ## scale, after adding the residual variance of the categorical
+#' ## (softmax) link, as the printed message reports; they are not
+#' ## correlations between the raw observations.
+#' ## multiple_r (0 to 1): how strongly condition goes with behaviour as a
+#' ## whole; it does not depend on which category is the baseline.
+#' ## contrast_r: the correlation of condition with the log-odds of each
+#' ## other category against the baseline (category 1, resting); here
+#' ## positive for foraging and negative for travelling, as simulated.
+#' cc <- extract_cross_correlations(fit, contrasts = TRUE)
+#' cc
+#' cc$contrast_r[[1]]
 #' @export
 extract_cross_correlations <- function(fit, level = "unit", contrasts = FALSE,
                                        link_residual = c("auto", "none"),
@@ -1028,7 +1078,9 @@ extract_cross_correlations <- function(fit, level = "unit", contrasts = FALSE,
     }
   }
 
-  S <- extract_Sigma(fit, level = level, part = "total", link_residual = link_residual)
+  S <- suppressMessages(extract_Sigma(
+    fit, level = level, part = "total", link_residual = link_residual
+  ))
   Sigma <- if (is.list(S) && !is.null(S$Sigma)) S$Sigma else S
   tn <- rownames(Sigma)
   mnK <- fit$tmb_data$multinom_K_per_trait
@@ -1046,7 +1098,7 @@ extract_cross_correlations <- function(fit, level = "unit", contrasts = FALSE,
   ## ---- method = "bootstrap": one bootstrap_Sigma call for multiple_r --------
   boot_lo <- boot_hi <- NULL
   if (method == "bootstrap") {
-    boot <- suppressMessages(bootstrap_Sigma(
+    boot <- .with_bootstrap_count_arg("nsim", suppressMessages(bootstrap_Sigma(
       fit,
       n_boot = nsim,
       level = level,
@@ -1055,7 +1107,7 @@ extract_cross_correlations <- function(fit, level = "unit", contrasts = FALSE,
       link_residual = link_residual,
       seed = seed,
       progress = FALSE
-    ))
+    )))
     key_nm <- paste0("multiple_r_", lvl_internal)
     boot_lo <- boot$ci_lower[[key_nm]]
     boot_hi <- boot$ci_upper[[key_nm]]

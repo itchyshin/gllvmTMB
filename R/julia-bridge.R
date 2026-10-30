@@ -768,6 +768,21 @@ gllvm_julia_capabilities <- function() {
   TRUE
 }
 
+# Never hand back a bridge fit that did not converge and has no finite
+# log-likelihood: it carries unestimated coefficients and no error (#1562).
+.gllvm_julia_check_fit_finite <- function(res) {
+  ll <- suppressWarnings(as.numeric(res$loglik)[1L])
+  conv <- res$converged
+  if (length(ll) == 1L && !is.na(ll) && !is.finite(ll) && !isTRUE(conv)) {
+    cli::cli_abort(c(
+      "engine = 'julia' returned a non-converged fit with a non-finite log-likelihood ({.val {ll}}).",
+      "i" = "The coefficients of such a fit are not estimated, so it is not returned.",
+      ">" = "Use {.code engine = \"tmb\"}, or check the model / starting values."
+    ), class = c("gllvmTMB_julia_nonfinite_fit", "gllvmTMB_julia_gate"))
+  }
+  invisible(FALSE)
+}
+
 .gllvm_julia_check_gamma_shape <- function(fam, p, has_x = FALSE) {
   n_gamma <- .gllvm_julia_n_gamma(fam, p)
   if (n_gamma <= 1L || isTRUE(has_x)) {
@@ -782,6 +797,24 @@ gllvm_julia_capabilities <- function() {
     ), class = c("gllvmTMB_julia_gamma_shape_refused", "gllvmTMB_julia_gate"))
   }
   .gllvm_julia_warn_gamma_shared_shape(fam, p)
+}
+
+# #1562: with no latent block (d = 0) GLLVModels.jl returns loglik = -Inf and
+# converged = FALSE for every non-Gaussian family except NB2. Gaussian already
+# refuses loudly inside Julia, so only the silent cases are gated here.
+.gllvm_julia_check_latent_rank <- function(K, fam_str) {
+  if (K >= 1L) {
+    return(invisible(FALSE))
+  }
+  bad <- setdiff(unique(fam_str), c("gaussian", "negbinomial"))
+  if (length(bad)) {
+    cli::cli_abort(c(
+      "[GJL-GATE-NO-LATENT] engine = 'julia' cannot fit a model with no {.code latent()} term for family {.val {bad}}.",
+      "i" = "GLLVModels.jl returns a log-likelihood of -Inf for these families when the latent rank is 0, and the fit is not estimated.",
+      ">" = "Add a {.code latent()} term, or use {.code engine = \"tmb\"}."
+    ), class = c("gllvmTMB_julia_no_latent", "gllvmTMB_julia_gate"))
+  }
+  invisible(FALSE)
 }
 
 # Link name the GLLVModels.jl bridge actually uses for a bridge key, in R's
@@ -1251,6 +1284,7 @@ gllvm_julia_capabilities <- function() {
   res$ci_lower <- .gllvm_julia_as_vector(res$ci_lower %||% numeric(), "numeric")
   res$ci_upper <- .gllvm_julia_as_vector(res$ci_upper %||% numeric(), "numeric")
   res$ci_note <- .gllvm_julia_as_vector(res$ci_note %||% "", "character")[1L]
+  if (is.na(res$ci_note)) res$ci_note <- ""
 
   n <- length(res$ci_param_names)
   if (
@@ -1268,9 +1302,13 @@ gllvm_julia_capabilities <- function() {
     names(res$ci_lower) <- res$ci_param_names
     names(res$ci_upper) <- res$ci_param_names
   }
-  res$ci_status <- if (n > 0L) {
+  finite_endpoints <- all(is.finite(res$ci_lower)) && all(is.finite(res$ci_upper))
+  if (n > 0L && !finite_endpoints && !nzchar(res$ci_note)) {
+    res$ci_note <- "CI endpoints contain non-finite values"
+  }
+  res$ci_status <- if (n > 0L && finite_endpoints) {
     "available"
-  } else if (nzchar(res$ci_note)) {
+  } else if (n > 0L || nzchar(res$ci_note)) {
     "unavailable"
   } else {
     "empty"
@@ -2698,7 +2736,11 @@ gllvm_julia_capabilities <- function() {
 #' @return A list of class `gllvmTMB_julia` with the bridge contract fields
 #'   (`loadings`, `Sigma`, `correlation`, `loglik`, `aic`, `bic`,
 #'   `converged`, ...). If `ci_method != "none"` and the row is admitted, the
-#'   list also carries flat CI fields consumed by `confint()`.
+#'   list also carries flat CI fields consumed by `confint()`. For a nonempty
+#'   CI payload, `ci_status` is `"available"` only when every lower and upper
+#'   endpoint is finite; otherwise it is `"unavailable"` with a diagnostic in
+#'   `ci_note`. Availability does not establish interval calibration or
+#'   coverage.
 #' @examples
 #' \dontrun{
 #' # Requires a local GLLVModels.jl install (see [gllvm_julia_setup()]).
@@ -2721,10 +2763,18 @@ gllvm_julia_capabilities <- function() {
 #' )
 #' extract_lv_effects(fit_lv)
 #'
-#' # Wald confidence intervals for an admitted no-X row:
+#' # Wald confidence intervals need an identifiable fit. This six-trait,
+#' # one-LV example has finite bounds in the tested Julia environment.
+#' set.seed(3801)
+#' latent <- rnorm(60)
+#' loading <- c(0.9, 0.7, -0.8, 0.55, -0.65, 0.75)
+#' y_ci <- outer(loading, latent) + matrix(rnorm(6 * 60, sd = 0.45), 6, 60)
 #' fit_ci <- gllvm_julia_fit(
-#'   y, family = "gaussian", num.lv = 2, ci_method = "wald"
+#'   y_ci, family = "gaussian", num.lv = 1, ci_method = "wald"
 #' )
+#' ci <- confint(fit_ci)
+#' stopifnot(fit_ci$ci_status == "available", all(is.finite(ci)))
+#' # Available reports finite bounds; it does not certify interval coverage.
 #' }
 #' @export
 gllvm_julia_fit <- function(
@@ -3009,6 +3059,7 @@ gllvm_julia_fit <- function(
   do.call(gllvm_julia_setup, setup_args)
   res <- do.call(JuliaCall::julia_call, args)
   res <- .gllvm_julia_normalise_result(res)
+  .gllvm_julia_check_fit_finite(res)
   if (!is.null(X)) {
     x_names <- dimnames(X)[[3L]]
     if (!is.null(res$gamma) && length(res$gamma) == length(x_names)) {
@@ -3455,14 +3506,17 @@ predict.gllvmTMB_julia <- function(
 ) {
   type <- match.arg(type)
   if (!is.null(newdata)) {
-    stop(
-      .gllvm_julia_gate_message(
-        "GJL-GATE-NEWDATA-PREDICT",
-        "engine = 'julia': `newdata` prediction is not routed yet; current ",
-        "`predict.gllvmTMB_julia()` returns in-sample fitted values only."
-      ),
-      call. = FALSE
-    )
+    stop(structure(
+      class = c("gllvmTMB_julia_predict_newdata", "error", "condition"),
+      list(
+        message = .gllvm_julia_gate_message(
+          "GJL-GATE-NEWDATA-PREDICT",
+          "engine = 'julia': `newdata` prediction is not routed yet; current ",
+          "`predict.gllvmTMB_julia()` returns in-sample fitted values only."
+        ),
+        call = NULL
+      )
+    ))
   }
   eta <- .gllvm_julia_link_predictor(object)
   if (type == "link") {
@@ -4139,6 +4193,7 @@ print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
   )
   yraw <- stats::model.response(mf)
   fam_str <- .gllvm_julia_family(family)
+  .gllvm_julia_check_latent_rank(K, fam_str)
   if (
     has_lv &&
       (length(fam_str) != 1L || !(fam_str %in% .GLLVM_JULIA_XLV_FAMILIES))
@@ -4235,6 +4290,24 @@ print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
   trait_dummies <- paste0(trait, traits)
   extra_cols <- setdiff(colnames(Xfix), trait_dummies)
   has_only_trait_intercept <- (length(extra_cols) == 0 && ncol(Xfix) == p)
+  ## The design matrix comes from a na.pass model frame and the response mask
+  ## covers the response only, so an NA predictor would otherwise reach the
+  ## bridge inside the p x n x q array (#1371). Same rule and wording as the
+  ## native engine: rows with a missing response are dropped or masked, but a
+  ## missing predictor on an observed-response row must be removed or imputed.
+  if (anyNA(Xfix[!is.na(yv), , drop = FALSE])) {
+    cli::cli_abort(
+      c(
+        "NA in the fixed-effect design matrix.",
+        ">" = paste0(
+          "Missing response rows are allowed and dropped before fitting; ",
+          "missing predictors still need to be removed or imputed before ",
+          "fitting."
+        )
+      ),
+      class = "gllvmTMB_julia_na_fixed_effect"
+    )
+  }
   if (has_lv && !has_only_trait_intercept) {
     stop(
       .gllvm_julia_gate_message(
@@ -4417,15 +4490,30 @@ print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
       )
     }
     Kal <- Kmat[levels(grpf), levels(grpf), drop = FALSE]
-    if (!isSymmetric(unname(Kal), tol = 0)) {
+    ## A kernel symmetric to rounding (e.g. `solve(solve(K))`) is symmetrised
+    ## explicitly; no jitter is applied either way. The check is entry by
+    ## entry on the levels in the data, scaled by max(1, max|K|). It is not
+    ## isSymmetric(): that checks rows 1, 2, n - 1 and n, then the mean
+    ## relative difference over the unequal entries, so when rounding leaves
+    ## most entries unequal, one bad entry elsewhere in a large K can be
+    ## averaged away.
+    k_tol <- sqrt(.Machine$double.eps) * max(1, max(abs(Kal)))
+    k_asym <- max(abs(Kal - t(Kal)))
+    if (k_asym > k_tol) {
       stop(
         .gllvm_julia_gate_message(
           "GJL-GATE-STRUCTURED-TERMS",
-          "kernel K must be exactly symmetric; no jitter is applied."
+          "kernel K must be symmetric to rounding; no jitter is applied. ",
+          "(On the grouping levels in the data, max|K - t(K)| = ",
+          format(k_asym, digits = 3),
+          " exceeds the rounding tolerance sqrt(.Machine$double.eps) * ",
+          "max(1, max|K|) = ", format(k_tol, digits = 3), ". Pass a ",
+          "symmetric kernel, for example (K + t(K)) / 2.)"
         ),
         call. = FALSE
       )
     }
+    Kal <- (Kal + t(Kal)) / 2
     if (is.null(tryCatch(chol(Kal), error = function(e) NULL))) {
       stop(
         .gllvm_julia_gate_message(

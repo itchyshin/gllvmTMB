@@ -45,19 +45,29 @@ supported (plus \code{\link[=slope]{slope()}}, \code{\link[=phylo_slope]{phylo_s
 \code{\link[=animal_coef]{animal_coef()}}, \code{\link[=kernel_coef]{kernel_coef()}}, \code{\link[=spatial_coef]{spatial_coef()}}, and
 \code{\link[=meta_V]{meta_V()}}).
 
-An \code{offset()} term is supported for \strong{count responses only} — \code{poisson()},
+An \code{offset()} term is supported for \strong{count responses}: \code{poisson()},
 \code{nbinom1()}, \code{nbinom2()}, \code{truncated_poisson()}, and
-\code{truncated_nbinom2()} — where it is the usual exposure or effort
+\code{truncated_nbinom2()}, where it is the usual exposure or effort
 adjustment. Supply it already on the link scale, e.g.
 \code{offset(log(trap_nights))}. It must be its own additive term; it is not
 interacted with \code{trait}.
+
+There is one exception. In an integrated multi-source model declared with
+\code{\link[=isdm_sources]{isdm_sources()}}, a nonzero offset is also accepted on the
+\code{binomial(link = "cloglog")} detection arm. There it is a change of
+support, not a shift: \code{cloglog(p) = log(E) + eta} with \code{E} the known
+sampled area or effort, so the detection arm observes the same intensity
+as the Poisson arms. A standalone \code{binomial(link = "cloglog")} fit, and
+\code{binomial(link = "logit")}, \code{binomial(link = "probit")} and
+\code{gaussian()}, keep the refusal, because there an offset would be a fixed
+shift in log-odds, probit or mean.
 
 In long format the offset column carries one value per \verb{(unit, trait)}
 row, so it can differ by trait. In wide format, \code{offset(w)} names one
 unit-level column and applies it to every trait, while
 \code{offset(e1, e2, ...)} names one column per trait, in \code{\link[=traits]{traits()}} order.
 
-A \strong{nonzero} offset on a non-count trait is an error naming that trait.
+A \strong{nonzero} offset on any other trait is an error naming that trait.
 Zero is always allowed and does nothing (on the log scale it is a
 multiplier of one), which is how a mixed-family model gives an offset to
 its count traits and not the rest.}
@@ -228,7 +238,9 @@ missing-response policy may be used: masked cells
 (\code{miss_control(response = "include")}) contribute nothing to the
 likelihood, so the restricted likelihood is formed over the observed rows
 and matches the corresponding \code{"drop"} fit. The default \code{FALSE} keeps the
-historical ML fit.
+historical ML fit. \code{engine = "julia"} does not forward \code{REML}, so
+\code{REML = TRUE} there aborts (class \code{gllvmTMB_julia_unsupported_arg}); use
+\code{engine = "tmb"}.
 
 REML is validated for all-Gaussian fits only. For non-Gaussian families
 an opt-in escape hatch exists
@@ -271,7 +283,8 @@ the recommended path} at any \code{n_species}; the speedup grows to ~24× at
 
 \item{known_V}{Optional list of block-diagonal sampling-error matrices
 \code{V_t}. Used by the \code{equalto()} two-stage workflow when sampling-error
-matrices are available from a prior stage of estimation.}
+matrices are available from a prior stage of estimation. Not supported by
+\code{engine = "julia"}, which aborts (class \code{gllvmTMB_julia_unsupported_arg}).}
 
 \item{lambda_constraint}{Optional list with elements \code{unit} and / or
 \code{unit_obs} (plus \code{phy}, \code{spde} for structural levels), each an
@@ -286,7 +299,8 @@ functional-group membership, or \code{\link[=suggest_lambda_constraint]{suggest_
 minimum statistical identification scaffold when you have no
 biological hypothesis. Deprecated legacy element names \code{B} and \code{W}
 are still accepted (with a one-shot soft deprecation message) and
-map to \code{unit} and \code{unit_obs} respectively.}
+map to \code{unit} and \code{unit_obs} respectively. Not supported by
+\code{engine = "julia"}, which aborts (class \code{gllvmTMB_julia_unsupported_arg}).}
 
 \item{Xcoef_fixed}{Optional named numeric vector of fixed-effect
 coefficient constraints. Names must match the expanded fixed-effect
@@ -327,7 +341,13 @@ the unconstrained-ordination core (a single \code{latent()} block + per-trait
 intercepts) and errors on structures it does not yet support.
 For unstructured Gaussian models (\code{gaussian()} with ordinary \code{latent()} and
 no phylo/spatial structure), \code{engine = "julia"} uses the GLLVModels.jl
-closed-form profile path instead of the native Laplace engine.}
+closed-form profile path instead of the native Laplace engine.
+Arguments the bridge does not forward abort rather than being ignored
+(class \code{gllvmTMB_julia_unsupported_arg}): \code{REML}, \code{lambda_constraint},
+\code{known_V}, \code{cluster2}, \code{phylo_vcv}, \code{phylo_tree}, \code{mesh}, and a modelled
+missing predictor (\code{miss_control(predictor = "model")}). Optimiser and
+integration fields of \code{\link[=gllvmTMBcontrol]{gllvmTMBcontrol()}} that it never reads abort with
+class \code{gllvmTMB_julia_unsupported_control}.}
 
 \item{ci_method}{Confidence-interval route requested at fit time for
 admitted \code{engine = "julia"} no-X rows. One of \code{"none"} (default),
@@ -370,10 +390,10 @@ bases, grouping columns, or covariance sources. In wide input, key this
 table by the synthetic column name \code{trait} and omit the \code{trait} argument.}
 }
 \value{
-A \code{gllvmTMB} object. With no covariance-structure terms in
-the formula the result has class \code{"gllvmTMB"} (single-response
-engine); with \code{latent()} or other covstruct sugar it has class
-\code{c("gllvmTMB_multi", "gllvmTMB")} (multi-trait engine).
+A \code{gllvmTMB} object. Every native fit, with or without
+covariance-structure terms in the formula, has class
+\code{c("gllvmTMB_multi", "gllvmTMB")}. \code{integration = "va"} returns class
+\code{c("gllvmTMB_va", "gllvmTMB")} instead.
 S3 methods are registered on the \strong{subclasses}, not on bare
 \code{gllvmTMB}: for a multi-trait fit (\code{gllvmTMB_multi}), \code{tidy()},
 \code{predict()}, \code{summary()}, \code{confint()} and \code{logLik()} are available, and
@@ -477,17 +497,19 @@ with structured \verb{indep(0 + trait | …)} terms. \code{gllvmTMB()} enforces
 this internally.
 
 \strong{Multi-trial binomial}. The TMB engine evaluates \code{dbinom(y, n_trials, p)}
-so binomial fits are not restricted to Bernoulli (size = 1). To pass a
-per-row trial count, use either:
+so binomial fits are not restricted to Bernoulli (size = 1). \code{y} must be
+the integer success count, not a proportion. To pass a per-row trial
+count, use either:
 \itemize{
 \item \code{cbind(successes, failures) ~ ...} on the LHS of the formula
 (canonical R / \code{glmmTMB} convention; recommended), or
-\item a flat response \code{y} with \code{weights = n_trials} (the alternative
-glmmTMB API).
+\item a flat success-count response \code{y} with \code{weights = n_trials} (the
+alternative glmmTMB API).
 }
 The second \code{cbind()} column is the number of \strong{failures}, not trials; for
 a trials column write \code{cbind(s, trials - s)}. Both interfaces produce
-identical fits.
+identical fits when \code{y} is the success count. A proportion plus
+\code{weights = n_trials} is refused.
 
 \emph{Mixing with other families.} Binomial counts can share one model with
 Gaussian, count or other traits. In a mixed fit the second \code{cbind()} column
@@ -681,39 +703,56 @@ conditional-joint and marginal quantities from different penalty regimes.
 }
 
 \examples{
-\dontrun{
 set.seed(1)
-sim <- simulate_site_trait(n_sites = 50, n_species = 8, n_traits = 3,
-                           mean_species_per_site = 5)
-# Long format: one response value per site-species-trait row.
+# Simulate 60 individuals, each measured on two occasions for five traits.
+# All five traits load on one shared latent axis (trait_4 negatively),
+# and each also has its own between-individual variance (psi_B). Every
+# measurement carries residual noise as well (sigma2_eps).
+loadings <- matrix(c(0.9, 0.8, 0.7, -0.6, 0.5), ncol = 1)
+sim <- simulate_unit_trait(n_units = 60, n_obs_per_unit = 2, n_traits = 5,
+                           Lambda_B = loadings, psi_B = 0.2,
+                           sigma2_eps = 0.3)
+long <- sim$data[c("unit", "observation", "trait", "value")]
+names(long)[1] <- "individual"
+
+# Long format: one row per (individual, occasion, trait) value.
+head(long)
+
+# `0 + trait` gives each trait its own mean. latent() fits one shared
+# axis (d = 1) across individuals; unique = TRUE adds each trait's own
+# between-individual variance (Psi) on top of it.
 fit_long <- gllvmTMB(
-  value ~ 0 + trait + (0 + trait):env_1 + (0 + trait):env_2,
-  data   = sim$data,
-  family = gaussian(),
-  trait  = "trait",
-  unit   = "site_species"
+  value ~ 0 + trait + latent(0 + trait | individual, d = 1, unique = TRUE),
+  data = long, trait = "trait", unit = "individual"
 )
 
-# Wide format: one row per site-species, with the same three traits.
-# `traits()` expands `1 + env_1 + env_2` to the explicit long terms above.
-wide_values <- stats::reshape(
-  sim$data[c("site_species", "trait", "value")],
-  idvar = "site_species", timevar = "trait", direction = "wide"
-)
-wide <- merge(
-  unique(sim$data[c("site_species", "env_1", "env_2")]), wide_values,
-  by = "site_species", sort = FALSE
-)
+# Wide format: one row per (individual, occasion), one column per trait.
+wide <- stats::reshape(long, idvar = c("individual", "observation"),
+                       timevar = "trait", direction = "wide")
 names(wide) <- sub("^value[.]", "", names(wide))
-fit_wide <- gllvmTMB(
-  traits(trait_1, trait_2, trait_3) ~ 1 + env_1 + env_2,
-  data   = wide,
-  family = gaussian(),
-  unit   = "site_species"
-)
-summary(fit_long)
-summary(fit_wide)
+head(wide)
+
+# traits() names the response columns. On the right-hand side, `1` means
+# one intercept per trait and latent(1 | individual) means
+# latent(0 + trait | individual), so this is the same model.
+if (requireNamespace("tidyr", quietly = TRUE)) {
+  fit_wide <- gllvmTMB(
+    traits(trait_1, trait_2, trait_3, trait_4, trait_5) ~ 1 +
+      latent(1 | individual, d = 1, unique = TRUE),
+    data = wide, unit = "individual"
+  )
+  # Same model, same data: the two fits agree.
+  c(long = logLik(fit_long), wide = logLik(fit_wide))
 }
+
+# Trait means, between-individual correlations (trait_4 is negatively
+# correlated with the rest), and the share of each trait's
+# between-individual variance carried by the latent axis.
+summary(fit_long)
+
+# The fitted between-individual covariance: the shared-axis part
+# (Lambda Lambda') plus the trait-specific part (Psi).
+round(extract_Sigma(fit_long, level = "unit")$Sigma, 2)
 }
 \references{
 Sterzinger, P. and Kosmidis, I. (2023). Maximum softly-penalized

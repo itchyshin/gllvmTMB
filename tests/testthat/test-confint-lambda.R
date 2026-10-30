@@ -56,7 +56,8 @@ build_fit_for_confint <- function(n_sites = 60L, seed = 20260527L) {
   )
   M <- confirmatory_lambda(
     species = species_names, group = group, d = 2L,
-    loads_on = list(A = 1L, B = 2L)
+    loads_on = list(A = 1L, B = 2L),
+    anchors = NULL
   )
   fit <- gllvmTMB(
     value ~ 0 + trait + latent(0 + trait | site, d = 2L),

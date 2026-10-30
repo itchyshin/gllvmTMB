@@ -91,7 +91,11 @@ fixed-effect X remain loud gates.}
 A list of class \code{gllvmTMB_julia} with the bridge contract fields
 (\code{loadings}, \code{Sigma}, \code{correlation}, \code{loglik}, \code{aic}, \code{bic},
 \code{converged}, ...). If \code{ci_method != "none"} and the row is admitted, the
-list also carries flat CI fields consumed by \code{confint()}.
+list also carries flat CI fields consumed by \code{confint()}. For a nonempty
+CI payload, \code{ci_status} is \code{"available"} only when every lower and upper
+endpoint is finite; otherwise it is \code{"unavailable"} with a diagnostic in
+\code{ci_note}. Availability does not establish interval calibration or
+coverage.
 }
 \description{
 Fit a GLLVM with the Julia engine (GLLVModels.jl \code{bridge_fit}).
@@ -118,9 +122,17 @@ fit_lv <- gllvm_julia_fit(
 )
 extract_lv_effects(fit_lv)
 
-# Wald confidence intervals for an admitted no-X row:
+# Wald confidence intervals need an identifiable fit. This six-trait,
+# one-LV example has finite bounds in the tested Julia environment.
+set.seed(3801)
+latent <- rnorm(60)
+loading <- c(0.9, 0.7, -0.8, 0.55, -0.65, 0.75)
+y_ci <- outer(loading, latent) + matrix(rnorm(6 * 60, sd = 0.45), 6, 60)
 fit_ci <- gllvm_julia_fit(
-  y, family = "gaussian", num.lv = 2, ci_method = "wald"
+  y_ci, family = "gaussian", num.lv = 1, ci_method = "wald"
 )
+ci <- confint(fit_ci)
+stopifnot(fit_ci$ci_status == "available", all(is.finite(ci)))
+# Available reports finite bounds; it does not certify interval coverage.
 }
 }

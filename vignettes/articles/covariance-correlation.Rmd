@@ -133,9 +133,9 @@ $$
 $$
 
 Both pieces matter. The diagonal of $\boldsymbol\Sigma$ is
-$(\boldsymbol\Lambda \boldsymbol\Lambda^{\!\top})_{tt} + \psi_{tt}$ — the
-sum of squared loadings plus the trait-specific diagonal variance — while
-the off-diagonals depend only on $\boldsymbol\Lambda \boldsymbol\Lambda^{\!\top}$.
+$(\boldsymbol\Lambda \boldsymbol\Lambda^{\!\top})_{tt} + \psi_{tt}$, the
+sum of squared loadings plus the trait-specific diagonal variance. The
+off-diagonals depend only on $\boldsymbol\Lambda \boldsymbol\Lambda^{\!\top}$.
 The correlation divides those off-diagonals by the diagonal scale, so
 whether $\boldsymbol\Psi$ is present in the diagonal sets the scale of every
 reported correlation.
@@ -170,17 +170,7 @@ library(gllvmTMB)
 library(ggplot2)
 ```
 
-```{r load-example, eval = FALSE}
-covex <- readRDS(system.file(
-  "extdata", "examples", "covariance-edge-cases-example.rds",
-  package = "gllvmTMB"
-))
-df <- covex$data_long
-df_wide <- covex$data_wide
-truth <- covex$truth
-```
-
-```{r load-example-data, include = FALSE}
+```{r load-example}
 covex_path <- system.file(
   "extdata", "examples", "covariance-edge-cases-example.rds",
   package = "gllvmTMB"
@@ -327,7 +317,7 @@ plot_Sigma_comparison(
 Model A's $\hat{\boldsymbol\Sigma}$ has small diagonals
 (only $\Lambda \Lambda^{\!\top}$), so when we divide by $\sqrt{D}$ the
 off-diagonals get inflated. Model B's $\hat{\boldsymbol\Sigma}$ has
-the full $\Lambda \Lambda^{\!\top} + \boldsymbol\Psi$ — diagonals at the right scale
+the full $\Lambda \Lambda^{\!\top} + \boldsymbol\Psi$, with diagonals at the right scale
 and correlations at the right magnitude.
 
 ## Report-ready Sigma rows
@@ -404,7 +394,7 @@ This is the fraction of trait $t$'s variance explained by the shared latent
 variables. It is bounded between 0 and 1 and is a proportion-of-variance
 summary, analogous in scale to $h^2$ (heritability) or $R^2$. Like the other
 $\boldsymbol\Sigma$-derived summaries it is a model-based factor-analytic
-quantity of the fitted GLLVM — computed from the fitted covariance
+quantity of the fitted GLLVM, computed from the fitted covariance
 decomposition, not a PCA or exploratory-factor-analysis eigen-decomposition of
 the raw data.
 
@@ -417,7 +407,7 @@ For a reader-facing table, the alignment is:
 | denominator | `extract_Sigma(fit, level = "unit", part = "total")` diagonal | Shared variance plus trait-specific diagonal variance. |
 
 **The catch**: with no-residual latent fits, $\psi_{tt} = 0$ for every trait by
-construction, so $c_t^2 = 1$ for every trait — the communality is
+construction, so $c_t^2 = 1$ for every trait. The communality is
 identically 1 and tells you nothing. Ordinary `latent()` gives the
 denominator a per-trait $\psi_{tt}$ slot by default, so communality need not
 be fixed at one. Its interpretation still depends on the chosen decomposition
@@ -491,10 +481,10 @@ plot_correlations(
 )
 ```
 
-Read this as a formatted table, not as a new uncertainty calculation. It
-is a display of the rows returned by `extract_correlations()`: it does not
-bootstrap, profile, or calibrate uncertainty — it only renders the
-Fisher-z interval columns already present in `corr_B`. Those bounds are
+The helper formats the rows returned by `extract_correlations()`; it does not
+compute new intervals. Bootstrap, profile, and calibration require separate
+calls. The table renders the Fisher-z interval columns already present in
+`corr_B`. Those bounds are
 themselves nominal Fisher-z (Wald-on-$z$) intervals: their empirical coverage
 has not been calibrated and they do not establish repeated-sampling coverage for
 gllvmTMB's latent covariances, so read them as an uncertainty display, not a
@@ -522,8 +512,8 @@ In gllvmTMB this is (pattern, not run in this article)
 extract_ICC_site(fit)
 ```
 
-— see the two-level example below, which uses shared structure at both levels
-because that is its scientific question.
+The two-level example below uses shared structure at both levels because that
+is its scientific question.
 
 ## Binomial responses: the link's implicit residual
 
@@ -541,7 +531,7 @@ $\mathrm{diag}(\boldsymbol\Sigma)$ for the marginal latent-scale
 interpretation:
 
 ```{r binomial-demo, eval = FALSE}
-# (illustrative — not run; needs a binary fit)
+# Illustrative only; not run because this example needs a binary fit.
 extract_Sigma(fit_binary, level = "unit", part = "total",
               link_residual = "auto")
 ```
@@ -573,9 +563,9 @@ fit_two_level <- gllvmTMB(
 
 giving, for this shared-structure illustration,
 $\boldsymbol\Sigma_{\text{unit}} = \boldsymbol\Lambda_{\text{unit}} \boldsymbol\Lambda_{\text{unit}}^{\!\top} + \boldsymbol\Psi_{\text{unit}}$
-(behavioural syndromes — between-individual covariance) and
+(behavioural syndromes, between-individual covariance) and
 $\boldsymbol\Sigma_{\text{unit\_obs}} = \boldsymbol\Lambda_{\text{unit\_obs}} \boldsymbol\Lambda_{\text{unit\_obs}}^{\!\top} + \boldsymbol\Psi_{\text{unit\_obs}}$
-(integrated plasticity — within-individual covariance).
+(integrated plasticity, within-individual covariance).
 If a participating level is intended to be diagonal, specify `indep()` there
 instead; its covariance then enters the ICC denominator without shared axes.
 
@@ -630,11 +620,11 @@ Nakagawa, Johnson & Schielzeth 2017).
 
 ## See also
 
-* [Cross-family correlations and environmental predictors](cross-family-correlations.html) — shared latent axes across different response families, environmental predictors of those axes, and a reference-invariant summary for a `multinomial()` trait
-* [Pitfalls](pitfalls.html) — common mistakes including correlation inflation
-* [`?latent`](../reference/latent.html) — the ordinary Psi-carrying latent keyword
-* [`?extract_Sigma`](../reference/extract_Sigma.html) — the unified extractor
-* [`?suggest_lambda_constraint`](../reference/suggest_lambda_constraint.html) — a helper for confirmatory loading structures
-* [Formula keyword grid](api-keyword-grid.html) — syntax map for moving from this decomposition to other covariance rows
+* [Cross-family correlations and environmental predictors](cross-family-correlations.html): shared latent axes across different response families, environmental predictors of those axes, and a reference-invariant summary for a `multinomial()` trait
+* [Pitfalls](pitfalls.html): common mistakes including correlation inflation
+* [`?latent`](../reference/latent.html): the ordinary Psi-carrying latent keyword
+* [`?extract_Sigma`](../reference/extract_Sigma.html): the unified extractor
+* [`?suggest_lambda_constraint`](../reference/suggest_lambda_constraint.html): a helper for confirmatory loading structures
+* [Formula keyword grid](api-keyword-grid.html): syntax map for moving from this decomposition to other covariance rows
 * **Nakagawa & Schielzeth (2010)** Repeatability for Gaussian and non-Gaussian data: a practical guide for biologists. *Biological Reviews* 85(4):935–956. <https://doi.org/10.1111/j.1469-185X.2010.00141.x>
 * **Westneat, Wright & Dingemanse** (2015) The biology hidden inside residual within-individual phenotypic variation. *Biological Reviews* **90**, 729–743. <https://doi.org/10.1111/brv.12131>

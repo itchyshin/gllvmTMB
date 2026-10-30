@@ -7441,13 +7441,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       tmb_map$log_sigma_eps <- factor(
         rep(NA_integer_, length(tmb_params$log_sigma_eps))
       )
-      cli::cli_inform(c(
-        "i" = paste0(
-          "Auto-suppressing {.code sigma_eps}: ",
-          "{.code indep(0 + trait | ", level_lab, ")} is at the per-row level, so it already absorbs the observation residual."
-        ),
-        "*" = "Fixed at {.val {signif(small_eps, 3)}} (~1/1000 of sd(y)) to keep the Gaussian density well-defined; the row-level residual variance is fully captured by the per-row diagonal term."
-      ))
+      .inform_sigma_eps_autosuppress(level_lab, small_eps)
     }
   }
 
@@ -12244,4 +12238,18 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   if (!is.numeric(a) || length(a) != 1L || is.na(a) || a < 1)
     stop("control$aghq must be FALSE, \"auto\", or a positive integer")
   as.integer(a)
+}
+
+## Auto-suppress note when a per-row diagonal already absorbs the
+## Gaussian / lognormal observation residual. Do not name `indep()`:
+## the same pin fires for the folded Psi of `latent(..., unique = TRUE)`
+## and for a legacy `unique()` term (#1580).
+.inform_sigma_eps_autosuppress <- function(level_lab, small_eps) {
+  cli::cli_inform(c(
+    "i" = paste0(
+      "Auto-suppressing {.code sigma_eps}: ",
+      "the per-row diagonal at {.val {level_lab}} already absorbs the observation residual."
+    ),
+    "*" = "Fixed at {.val {signif(small_eps, 3)}} (~1/1000 of sd(y)) to keep the Gaussian density well-defined; the row-level residual variance is fully captured by that diagonal (the folded Psi of {.code latent(..., unique = TRUE)}, or an explicit {.code indep()} / {.code unique()} at this grouping)."
+  ))
 }

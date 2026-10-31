@@ -310,7 +310,12 @@ nbinom2_mix <- function(link = "log", p_extreme = NULL) {
 
 #' @details
 #' NB2 has variance \eqn{\mu + \mu^2 / \phi}; its extra variance therefore grows
-#' quadratically with the mean.
+#' quadratically with the mean. As \eqn{\phi} grows the NB2 collapses to the
+#' Poisson. A fit can report convergence with a trait's \eqn{\phi} pushed out
+#' towards that Poisson boundary; the trait's overdispersion is then absorbed
+#' by the latent loadings, inflating the shared covariance
+#' \eqn{\Lambda\Lambda^\top}. Check the fitted dispersion of each trait before
+#' reading the shared covariance.
 #' @references
 #'
 #' Hilbe, J. M. 2011. Negative binomial regression. Cambridge University Press.

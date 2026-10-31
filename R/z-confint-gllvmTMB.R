@@ -1071,8 +1071,20 @@
 
 ## Internal helper: dispatch `confint(fit, parm = "rho:tier:i,j[;k,l]")`.
 ## Routes to extract_correlations() for Fisher-z / Wald / bootstrap. Explicit
-## profile requests abort.
-.confint_rho <- function(object, parm, level, method, nsim, seed, ...) {
+## profile requests abort. `link_residual` reaches here through confint()'s
+## `...` and is always passed explicitly, so confint() never triggers the
+## extractor's default-change warning (#1588).
+.confint_rho <- function(
+  object,
+  parm,
+  level,
+  method,
+  nsim,
+  seed,
+  link_residual = c("auto", "none"),
+  ...
+) {
+  link_residual <- rlang::arg_match(link_residual)
   trait_names <- levels(object$data[[object$trait_col]])
   parsed <- .parse_rho_parm(parm, trait_names)
   tier <- parsed$tier
@@ -1112,7 +1124,8 @@
         level = level,
         method = method,
         nsim = nsim,
-        seed = seed
+        seed = seed,
+        link_residual = link_residual
       ))
       if (nrow(df) != 1L) {
         cli::cli_abort(c(
@@ -1293,7 +1306,7 @@
     return(FALSE)
   }
   tgt <- tryCatch(
-    profile_targets(object, ready_only = FALSE),
+    .profile_targets_build(object, include_unlisted = TRUE),
     error = function(e) NULL
   )
   if (is.null(tgt)) {
@@ -1306,7 +1319,7 @@
 ## profile targets via tmbprofile_wrapper(). Mirrors the Sigma-path
 ## matrix shape (lower / upper, with the requested parm rownames).
 .confint_profile_targets <- function(object, parm, level, ...) {
-  targets <- profile_targets(object, ready_only = FALSE)
+  targets <- .profile_targets_build(object, include_unlisted = TRUE)
   chosen <- targets[targets$parm %in% as.character(parm), , drop = FALSE]
   ## Derived rows are no longer part of profile_targets(), but keep a defensive
   ## error for older serialized inventories.
@@ -1371,7 +1384,7 @@
 ## transformation. Mirrors `.confint_profile_targets()` but for
 ## method = "wald".
 .confint_wald_targets <- function(object, parm, level, ...) {
-  targets <- profile_targets(object, ready_only = FALSE)
+  targets <- .profile_targets_build(object, include_unlisted = TRUE)
   chosen <- targets[targets$parm %in% as.character(parm), , drop = FALSE]
   derived_rows <- chosen[chosen$target_type == "derived", , drop = FALSE]
   if (nrow(derived_rows) > 0L) {
@@ -1570,7 +1583,11 @@
 #'   value (e.g. \code{50}) during development or testing.
 #' @param seed Optional integer RNG seed forwarded to [bootstrap_Sigma()]
 #'   (only meaningful when \code{method = "bootstrap"}).
-#' @param ... Additional arguments currently unused.
+#' @param ... For \code{"rho..."} tokens, \code{link_residual}
+#'   (\code{"auto"}, the default, or \code{"none"}) is passed to
+#'   [extract_correlations()]: \code{"auto"} adds the per-family
+#'   link-residual variance to the diagonal before the correlation is
+#'   computed on non-Gaussian fits. Otherwise currently unused.
 #'
 #' @return
 #' \itemize{
@@ -1803,7 +1820,7 @@ confint.gllvmTMB_multi <- function(
   ## labels (and b_fix-only `parm`) go through the same helpers, so one
   ## label gives one row.
   if (.is_profile_target_parm(object, parm)) {
-    tgt_filt <- profile_targets(object, ready_only = FALSE)
+    tgt_filt <- .profile_targets_build(object, include_unlisted = TRUE)
     is_b_fix <- as.character(parm) %in%
       tgt_filt$parm[
         tgt_filt$tmb_parameter == "b_fix" &

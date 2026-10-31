@@ -89,6 +89,22 @@
   stats::qt((1 + level) / 2, df = df)^2 / 2
 }
 
+## ---- Quiet wrapper around TMB::tmbprofile() --------------------------------
+## When a profile walks toward a boundary (e.g. an SD whose interval reaches
+## zero), nlminb() inside tmbprofile() warns "NA/NaN function evaluation".
+## The bound itself is handled downstream, so this muffles only that warning
+## and lets every other warning through (#1588).
+.tmbprofile_quiet <- function(...) {
+  withCallingHandlers(
+    TMB::tmbprofile(...),
+    warning = function(w) {
+      if (grepl("NA/NaN function evaluation", conditionMessage(w), fixed = TRUE)) {
+        invokeRestart("muffleWarning")
+      }
+    }
+  )
+}
+
 ## ---- Identify a non-random parameter index --------------------------------
 ## tmbprofile() expects an integer index into the *non-random* parameter
 ## vector (= opt$par; what TMB calls `obj$par`), or a name (matched to
@@ -410,7 +426,7 @@ tmbprofile_wrapper <- function(
     }
     mle_par <- as.numeric(crossprod(fit$opt$par, lincomb))
     prof <- tryCatch(
-      TMB::tmbprofile(
+      .tmbprofile_quiet(
         fit$tmb_obj,
         lincomb = lincomb,
         ystep = ystep,
@@ -427,7 +443,7 @@ tmbprofile_wrapper <- function(
     idx <- .resolve_param_index(fit, name = name, which = which)
     mle_par <- as.numeric(fit$opt$par[idx])
     prof <- tryCatch(
-      TMB::tmbprofile(
+      .tmbprofile_quiet(
         fit$tmb_obj,
         name = idx,
         ystep = ystep,

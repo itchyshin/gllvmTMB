@@ -164,7 +164,7 @@ confint_inspect <- function(
   }
 
   ## ---- Resolve the target via profile_targets() ---------------------
-  targets <- profile_targets(fit, ready_only = FALSE)
+  targets <- .profile_targets_build(fit, include_unlisted = TRUE)
   row <- targets[targets$parm == parm, , drop = FALSE]
   if (nrow(row) == 0L) {
     cli::cli_abort(c(
@@ -200,7 +200,7 @@ confint_inspect <- function(
   mle_nll <- as.numeric(fit$opt$objective)
   crit <- .qchisq_threshold(level)
   prof <- tryCatch(
-    TMB::tmbprofile(
+    .tmbprofile_quiet(
       fit$tmb_obj,
       name = idx,
       ystep = ystep,

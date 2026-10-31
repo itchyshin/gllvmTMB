@@ -1011,6 +1011,22 @@ print.gllvmTMB_multi <- function(x, ...) {
   invisible(x)
 }
 
+## Evaluate `expr`, holding back its messages, then re-signal each distinct
+## message once, in first-seen order.
+.summary_unique_messages <- function(expr) {
+  held <- list()
+  withCallingHandlers(
+    expr,
+    message = function(m) {
+      held[[length(held) + 1L]] <<- m
+      invokeRestart("muffleMessage")
+    }
+  )
+  text <- vapply(held, conditionMessage, character(1))
+  for (m in held[!duplicated(text)]) message(m)
+  invisible(NULL)
+}
+
 #' @rdname gllvmTMB_multi-methods
 #' @export
 summary.gllvmTMB_multi <- function(object, ...) {
@@ -1090,11 +1106,16 @@ summary.gllvmTMB_multi <- function(object, ...) {
       )
     }
   }
-  out$Sigma_B <- .extract_Sigma_legacy_payload(object, level = "unit")
-  out$Sigma_W <- .extract_Sigma_legacy_payload(object, level = "unit_obs")
-  out$ICC_site <- extract_ICC_site(object)
-  out$communality_B <- extract_communality(object, "unit")
-  out$communality_W <- extract_communality(object, "unit_obs")
+  ## These five extractors call extract_Sigma() on the same tiers, so a
+  ## note such as "Sigma_unit is latent-only" would print once per call.
+  ## Show each distinct note once (#1580).
+  .summary_unique_messages({
+    out$Sigma_B <- .extract_Sigma_legacy_payload(object, level = "unit")
+    out$Sigma_W <- .extract_Sigma_legacy_payload(object, level = "unit_obs")
+    out$ICC_site <- extract_ICC_site(object)
+    out$communality_B <- extract_communality(object, "unit")
+    out$communality_W <- extract_communality(object, "unit_obs")
+  })
 
   ## Missing-response accounting (design 59 sec.4b). Surface the original-row +
   ## response-pattern counts from fit$missing_data, but only when there is

@@ -76,4 +76,19 @@ test_that("predict_cross_covariance() accepts level = 'phy' as an alias for the 
     ),
     "kernel"
   )
+
+  ## Two tiers sharing the internal "phy" slot: the alias is ambiguous and
+  ## must error rather than pick one.
+  fit2 <- fit
+  fit2$kernel_levels <- list(
+    name = c("cross", "cross2"),
+    internal_level = c("phy", "phy")
+  )
+  expect_error(
+    do.call(
+      gllvmTMB::predict_cross_covariance,
+      c(list(fit2, level = "phy"), args)
+    ),
+    "ambiguous"
+  )
 })

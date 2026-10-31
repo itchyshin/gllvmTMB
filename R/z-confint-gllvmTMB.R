@@ -1702,6 +1702,14 @@ confint.gllvmTMB_multi <- function(
   .temporal_assert_no_iid_inference(object, "confint")
   .gllvmTMB_mspl_assert_inference(object, "confint")
   .gllvmTMB_require_unweighted_inference(object, "confint")
+  ## `link_residual` is honoured only by the rho route (#1588). Every other
+  ## route drops it, so say so instead of ignoring it silently.
+  if ("link_residual" %in% names(list(...)) && !.is_rho_parm(parm)) {
+    cli::cli_warn(c(
+      "{.arg link_residual} is ignored by {.fn confint} for this {.arg parm}.",
+      "i" = "Only {.code parm = \"rho:...\"} uses {.arg link_residual}; call the extractor (for example {.fn extract_communality} or {.fn extract_repeatability}) directly to set it."
+    ), class = "gllvmTMB_confint_link_residual_ignored")
+  }
   ## ---- Lambda entry path (Stage 2, 2026-05-27) -----------------------------
   ## `parm = "Lambda"` (all free entries) or `"Lambda:i,j"` /
   ## `"Lambda:i,j;k,l"` (specific entries) route to Stage 1 machinery in

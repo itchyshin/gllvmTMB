@@ -78,6 +78,22 @@ test_that("confint(parm = 'rho:...') forwards link_residual and never warns abou
   )
 })
 
+test_that("confint() warns that link_residual is ignored outside the rho route (#1588 item 2)", {
+  skip_on_cran()
+  fitb <- make_binomial_fit_1588()
+  ci_plain <- suppressMessages(confint(fitb, method = "wald"))
+  expect_warning(
+    ci_lr <- suppressMessages(confint(fitb, method = "wald", link_residual = "none")),
+    class = "gllvmTMB_confint_link_residual_ignored"
+  )
+  ## The warning is the only change: the interval itself is the same.
+  expect_equal(ci_lr, ci_plain)
+  ## The rho route uses it, so it does not warn there.
+  expect_no_warning(suppressMessages(
+    confint(fitb, parm = "rho:unit:1,3", link_residual = "none")
+  ))
+})
+
 test_that("profile_targets() lists each first-cluster-tier SD once (#1588 item 4)", {
   skip_on_cran()
   fitc <- make_cluster_fit_1588()

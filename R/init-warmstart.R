@@ -569,3 +569,36 @@
   if (any(!is.finite(theta)) || any(!is.finite(Z))) return(NULL)
   list(theta = unname(theta), z = t(Z))
 }
+
+## #1713: largest per-trait loading divided by the typical per-trait loading,
+## read from a packed `theta_rr_B` (diagonal first, then the strict lower
+## triangle column by column, the layout `.gllvmTMB_svd_latent_start()`
+## writes). Same ratio and denominator as the `relative_loading` column of
+## `.gllvmTMB_max_loading_by_trait()`, so it is scale-free under
+## Lambda -> c * Lambda. NA when it cannot be formed.
+.gllvmTMB_theta_relative_loading <- function(theta, n_traits, rank) {
+  rank <- as.integer(rank)
+  n_traits <- as.integer(n_traits)
+  if (length(theta) != rank + sum(pmax(n_traits - seq_len(rank), 0L)) ||
+      any(!is.finite(theta))) {
+    return(NA_real_)
+  }
+  L <- matrix(0, n_traits, rank)
+  L[cbind(seq_len(rank), seq_len(rank))] <- theta[seq_len(rank)]
+  pos <- rank
+  for (k in seq_len(rank)) {
+    nk <- n_traits - k
+    if (nk > 0L) {
+      L[(k + 1L):n_traits, k] <- theta[pos + seq_len(nk)]
+      pos <- pos + nk
+    }
+  }
+  vals <- apply(abs(L), 1L, max)
+  vals <- vals[vals > 0]
+  if (!length(vals)) return(NA_real_)
+  denom <- c(stats::median(vals),
+             if (length(vals) > 1L) stats::mad(vals, constant = 1))
+  denom <- max(denom[is.finite(denom) & denom > 0], -Inf)
+  if (!is.finite(denom)) return(NA_real_)
+  max(vals) / denom
+}

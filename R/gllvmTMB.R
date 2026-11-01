@@ -1902,7 +1902,7 @@ gllvmTMB <- function(
   cli::cli_inform(c(
     "Laplace logLik was {opt} units above the marginal likelihood (threshold {thresh}); refitted with 9-node adaptive Gauss-Hermite quadrature ({.code aghq = 9}) and returning that fit.",
     "i" = "The refit uses the {.code aghq} default loading ridge (tau = {refit$aghq$ridge_tau}), so {.fn logLik} on it is a penalised value; pass {.code aghq_ridge = Inf} for an unpenalised one.",
-    "i" = "{.fn getLoadings} and {.fn extract_ordination} are not available on an AGHQ fit (it does not retain the latent scores); use {.code laplace_auto_refit = FALSE} if you need them.",
+    "i" = "{.fn getLoadings} and {.fn extract_ordination} work on it (the scores are conditional modes); score uncertainty ({.fn ordination_uncertainty}, {.code getLV(se = TRUE)}) needs {.code laplace_auto_refit = FALSE}.",
     "i" = "This is the default behaviour (#1389). Keep the plain Laplace fit with {.code gllvmTMBcontrol(laplace_auto_refit = FALSE)}; provenance is in {.code fit$laplace_auto_refit}."
   ), class = "gllvmTMB_laplace_auto_refit")
   refit
@@ -2543,6 +2543,14 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #'   explicitly, when `integration` is not `"laplace"`, when
 #'   `optimizer_passes > 1`, or when the AGHQ refit fails or does not converge.
 #'   `laplace_warn_thresh = FALSE` or `warn_runaway = FALSE` also turn it off.
+#'   The refit **keeps the default loading ridge** (`aghq_ridge`, tau = 2), so
+#'   `logLik()` on it is a penalised value; an explicit ridge is the way to opt
+#'   out of the refit, not a way to change it. [getLoadings()], [getLV()],
+#'   [extract_ordination()], [extract_loadings()], [rotate_loadings()] and
+#'   [ordiplot()] work on the refitted model (the scores are conditional modes,
+#'   kept in `fit$aghq$z_B_mode`); score uncertainty
+#'   ([ordination_uncertainty()], `getLV(se = TRUE)`) is not available on an
+#'   AGHQ fit, so use `laplace_auto_refit = FALSE` for it.
 #' @param aghq_continuation If `TRUE` (default), the adaptation loop may raise
 #'   `aghq_iter_cap` across passes. `FALSE` pins the cap and disables escalation.
 #' @param aghq_shift_tol,aghq_grad_tol,aghq_f_tol Convergence tolerances for the

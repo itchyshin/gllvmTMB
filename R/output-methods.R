@@ -320,6 +320,8 @@ getLV <- function(
       ">" = "Use {.code se = FALSE} for point estimates."
     ), class = "gllvmTMB_getLV_se_lv_predictor_unsupported")
   }
+  .abort_aghq_score_uncertainty(fit, "{.code getLV(se = TRUE)}",
+                                "gllvmTMB_getLV_se_aghq_unsupported")
   sd_rep <- fit$sd_report
   if (is.null(sd_rep)) {
     cli::cli_abort(c(

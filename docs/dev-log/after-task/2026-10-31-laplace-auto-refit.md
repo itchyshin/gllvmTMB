@@ -50,7 +50,7 @@ the second compares two fits that must use the same estimator).
 
 ## 7. Issue Ledger and Roadmap
 
-Refs #1389. Open for the maintainer: (a) AGHQ fits lack `getLoadings()`/`extract_ordination()`; (b) whether the auto-refit should be
+Refs #1389. (a) Resolved by #1727: `getLoadings()`/`extract_ordination()` now work on AGHQ fits (see the 2026-10-31 follow-up in decisions.md). Open for the maintainer: (b) whether the auto-refit should be
 unpenalised (`aghq_ridge = Inf`).
 Siblings not changed: `coverage-study`, `check-identifiability`, `cv-internal`
 and `extract-two-psi-cross-check` call `gllvmTMB()` at default control, so they

@@ -9241,6 +9241,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ## be adapted AT it -- report(), sdreport() and every extractor read this
       ## tape. (The pre-continuation loop returned an object adapted at the
       ## parameters BEFORE its last optimiser step.)
+      z_B_mode <- NULL
       if (!is.null(obj_try) && is.finite(F_best)) {
         fin <- tryCatch({
           adF <- .gllvmTMB_aghq_adapt(obj_lap, par_best, d_B, n_sites)
@@ -9258,11 +9259,16 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
           opt_aghq$par <- par_best
           opt_aghq$objective <- fin
           F_best <- fin
+          ## Keep the conditional modes of z_B at the final fixed parameters.
+          ## The AGHQ tape maps z_B off, so `last.par.best` carries none, and
+          ## the ordination extractors would have nothing to read (#1727).
+          z_B_mode <- t(adF$mode)
         }
       }
       aghq_trace <- do.call(rbind, aghq_trace[seq_len(max(aghq_passes, 0L))])
       aghq_runs[[.start_i]] <- list(
         obj_aghq = obj_aghq, opt_aghq = opt_aghq, F_best = F_best,
+        z_B_mode = z_B_mode,
         par_best = par_best, par_start_aghq = par_start_aghq,
         aghq_stop = aghq_stop, aghq_err = aghq_err, aghq_passes = aghq_passes,
         aghq_mode_shift = aghq_mode_shift, aghq_trace = aghq_trace,
@@ -9319,6 +9325,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       .r <- aghq_runs[[.pick]]
       obj_aghq <- .r$obj_aghq; opt_aghq <- .r$opt_aghq; F_best <- .r$F_best
       par_best <- .r$par_best; par_start_aghq <- .r$par_start_aghq
+      z_B_mode <- .r$z_B_mode
       aghq_stop <- .r$aghq_stop; aghq_err <- .r$aghq_err
       aghq_passes <- .r$aghq_passes; aghq_mode_shift <- .r$aghq_mode_shift
       aghq_trace <- .r$aghq_trace
@@ -9340,6 +9347,11 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
           used = TRUE,
           k = as.integer(aghq_k_req),
           blocks = "z_B",
+          ## Conditional modes of the unit scores z_B (d_B x n_sites, the
+          ## layout of the z_B parameter block) at the final fixed parameters.
+          ## The AGHQ tape maps z_B off, so this is where the ordination
+          ## extractors read their scores (#1727).
+          z_B_mode = z_B_mode,
           ## RECORDED SO THE REPORTING SURFACES CAN ASK. `opt$objective` is
           ## `obj_try$fn(par_best)` -- the UNPENALISED objective evaluated at the
           ## PENALISED (MAP) optimum. That makes it a genuine log-likelihood

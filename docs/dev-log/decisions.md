@@ -3014,3 +3014,18 @@ already did on any explicit `aghq = 9` fit). The users the audit flags are
 typically ordination users, so they lose those extractors by default. The
 message and NEWS say so; fixing the extractors for AGHQ fits is not part of this
 change.
+
+### 2026-10-31 follow-up (#1727): the ordination extractors now work on the auto-refitted fit
+
+Supersedes the "Second open consequence" above. The AGHQ tape maps `z_B` off, so
+the extractors had nothing to read. The final adaptation pass now stores the
+conditional modes of `z_B` in `fit$aghq$z_B_mode`, and `extract_ordination()`
+(hence `getLoadings()`, `getLV()`, `extract_loadings()`, `rotate_loadings()`,
+`ordiplot()`) reads them. They are modes at the AGHQ-estimated parameters, not
+quadrature posterior means. `ordination_uncertainty()`, `getLV(se = TRUE)` and
+`ordiplot(ellipse = TRUE)` have no joint covariance to read under AGHQ and now
+refuse with a classed error. The refit keeps the loading ridge (stated in NEWS
+and the docs). Not fixed, listed for a separate decision: `fitted()`,
+`predict()`, `residuals()` and conditional `simulate()` on an AGHQ fit omit
+`Lambda z_B` from `report$eta` (6 distinct fitted values against ~196 on Laplace
+for the fixture).

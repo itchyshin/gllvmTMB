@@ -703,6 +703,76 @@ test_that("bootstrap refits never auto-refit, so replicates keep the fit's estim
   expect_false(gllvmTMB:::.bootstrap_refit_control(fit)$laplace_auto_refit)
 })
 
+## ---- #1727: the extractors work on the auto-refitted AGHQ model ------------
+
+test_that("ordination extractors work on the auto-refitted AGHQ fit (#1727)", {
+  gllvmTMB:::.gllvmTMB_reset_runaway_warnings()
+  fit <- suppressMessages(quiet_runaway(suppressWarnings(auto_refit_fit())))
+  expect_true(fit$aghq$used)
+  expect_true(isTRUE(fit$laplace_auto_refit$triggered))
+  expect_equal(dim(fit$aghq$z_B_mode), c(2L, 80L))
+
+  ld <- getLoadings(fit)
+  expect_equal(dim(ld), c(6L, 2L))
+  expect_true(all(is.finite(ld)))
+  ord <- extract_ordination(fit, level = "unit")
+  expect_equal(dim(ord$scores), c(80L, 2L))
+  expect_true(all(is.finite(ord$scores)))
+  expect_equal(unname(as.matrix(ord$loadings)), unname(as.matrix(ld)))
+  ## the scores are the stored conditional modes, in unit order
+  expect_equal(unname(as.matrix(ord$scores)), unname(t(fit$aghq$z_B_mode)))
+  ## a real, non-degenerate ordination: each axis varies across units
+  expect_true(all(apply(ord$scores, 2L, stats::sd) > 0.3))
+
+  ## and it agrees with a Laplace fit under the same loading ridge (the same
+  ## penalised target; the plain Laplace fit of this fixture has a runaway
+  ## loading, so it is not a like-for-like reference). Axes are identified only
+  ## up to rotation, so compare the reconstructed unit-by-trait contribution.
+  lap <- suppressWarnings(quiet_runaway(auto_refit_fit(control = gllvmTMBcontrol(
+    se = FALSE, loading_ridge = 2))))
+  expect_false(isTRUE(lap$aghq$used))
+  lat_a <- as.matrix(ord$scores) %*% t(as.matrix(ord$loadings))
+  ord_l <- extract_ordination(lap, level = "unit")
+  lat_l <- as.matrix(ord_l$scores) %*% t(as.matrix(ord_l$loadings))
+  expect_gt(stats::cor(as.vector(lat_a), as.vector(lat_l)), 0.95)
+})
+
+test_that("sibling score extractors work on the auto-refitted AGHQ fit (#1727)", {
+  gllvmTMB:::.gllvmTMB_reset_runaway_warnings()
+  fit <- suppressMessages(quiet_runaway(suppressWarnings(auto_refit_fit())))
+  expect_equal(dim(getLV(fit)), c(80L, 2L))
+  expect_equal(dim(extract_loadings(fit)), c(6L, 2L))
+  expect_no_error(suppressWarnings(extract_loadings(fit, rotate = "varimax")))
+  expect_no_error(ordiplot(fit))
+})
+
+test_that("score uncertainty on an AGHQ fit is a named refusal, not a block mismatch (#1727)", {
+  gllvmTMB:::.gllvmTMB_reset_runaway_warnings()
+  fit <- suppressMessages(quiet_runaway(suppressWarnings(
+    auto_refit_fit(control = gllvmTMBcontrol(se = TRUE)))))
+  expect_true(fit$aghq$used)
+  expect_error(getLV(fit, se = TRUE), class = "gllvmTMB_getLV_se_aghq_unsupported")
+  expect_error(ordination_uncertainty(fit),
+               class = "gllvmTMB_ordination_uncertainty_aghq_unsupported")
+  expect_error(ordiplot(fit, ellipse = TRUE),
+               class = "gllvmTMB_ordination_uncertainty_aghq_unsupported")
+})
+
+test_that("the auto-refit message says the ridge is kept and the extractors work (#1727)", {
+  gllvmTMB:::.gllvmTMB_reset_runaway_warnings()
+  msgs <- character()
+  fit <- withCallingHandlers(
+    quiet_runaway(suppressWarnings(auto_refit_fit())),
+    message = function(m) {
+      msgs <<- c(msgs, conditionMessage(m))
+      invokeRestart("muffleMessage")
+    })
+  msg <- paste(msgs, collapse = "\n")
+  expect_match(msg, "default loading ridge", fixed = TRUE)
+  expect_match(msg, "work on it", fixed = TRUE)
+  expect_no_match(msg, "not available on an AGHQ fit", fixed = TRUE)
+})
+
 ## ---- #1591: replicated single-trial binary keeps its Psi --------------------
 
 replicated_binary_fixture <- function(reps, n = 150L, seed = 1591L) {

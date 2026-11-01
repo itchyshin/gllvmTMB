@@ -350,7 +350,15 @@ fit kept, when the audit does not apply (see \code{laplace_warn_thresh}), when
 \code{aghq} (including \code{aghq = FALSE}), \code{aghq_ridge} or \code{loading_ridge} is set
 explicitly, when \code{integration} is not \code{"laplace"}, when
 \code{optimizer_passes > 1}, or when the AGHQ refit fails or does not converge.
-\code{laplace_warn_thresh = FALSE} or \code{warn_runaway = FALSE} also turn it off.}
+\code{laplace_warn_thresh = FALSE} or \code{warn_runaway = FALSE} also turn it off.
+The refit \strong{keeps the default loading ridge} (\code{aghq_ridge}, tau = 2), so
+\code{logLik()} on it is a penalised value; an explicit ridge is the way to opt
+out of the refit, not a way to change it. \code{\link[=getLoadings]{getLoadings()}}, \code{\link[=getLV]{getLV()}},
+\code{\link[=extract_ordination]{extract_ordination()}}, \code{\link[=extract_loadings]{extract_loadings()}}, \code{\link[=rotate_loadings]{rotate_loadings()}} and
+\code{\link[=ordiplot]{ordiplot()}} work on the refitted model (the scores are conditional modes,
+kept in \code{fit$aghq$z_B_mode}); score uncertainty
+(\code{\link[=ordination_uncertainty]{ordination_uncertainty()}}, \code{getLV(se = TRUE)}) is not available on an
+AGHQ fit, so use \code{laplace_auto_refit = FALSE} for it.}
 
 \item{allow_nongaussian_reml}{Permit \code{REML = TRUE} for non-Gaussian families.
 Default \code{FALSE}; the restricted likelihood is defined by a Gaussian

@@ -151,6 +151,10 @@
     control <- do.call(gllvmTMBcontrol, args)
   }
   control$se <- FALSE
+  ## A replicate must use the estimator of the fit it resamples: the Laplace
+  ## audit's automatic AGHQ refit (#1389) could otherwise switch single
+  ## replicates to a different integrator.
+  control$laplace_auto_refit <- FALSE
   control
 }
 

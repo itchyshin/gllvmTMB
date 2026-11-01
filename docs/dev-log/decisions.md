@@ -2987,3 +2987,30 @@ outputs, exact source and retention receipts:
 `docs/dev-log/research/2026-10-18-loading-ridge-comparison/`.
 Validation mapping: EXT-31 and MSPL-05 retain their existing scope/statuses;
 this comparison does not compare ridge with MSPL or promote a new estimator.
+
+## 2026-10-31  Laplace-accuracy audit now triggers an automatic AGHQ refit (#1389, option A)
+
+Decision (maintainer, 31 Oct 2026, 5:19 PM MT, on #1389): when the
+`laplace_accuracy` audit fires (the fit-time warning in `gllvmTMB()` and the
+`check_gllvmTMB()` row), `gllvmTMB()` refits with `aghq = 9` and reports that
+fit. **This knowingly reverses the 2026-07-28 "AGHQ ships opt-in" decision** for
+the fits the audit flags; everything else keeps the Laplace default.
+Opt-out: `gllvmTMBcontrol(laplace_auto_refit = FALSE)`. A message is emitted
+when the refit happens. Options not taken: (B) make `logLik()` report the
+quadrature value for a Laplace fit; (C) detection only.
+Scope guards (nothing explicit is overridden): no refit under explicit `aghq`,
+`aghq_ridge`, `loading_ridge`, `optimizer_passes > 1`, `warn_runaway = FALSE`,
+`laplace_warn_thresh = FALSE`, or `integration != "laplace"`; a failed or
+non-converged AGHQ refit returns the Laplace fit with a message.
+Open consequence for the maintainer: the refit uses the `aghq = 9` defaults,
+so it carries the default loading ridge (`tau = 2`) and `logLik()` on it emits
+the existing penalised-fit warning. On the synthetic regression fixture the
+ridge moves logLik by 0.17 units (-286.58 vs -286.41 unpenalised) against a
+17-unit Laplace error. Switching the auto-refit to `aghq_ridge = Inf` is a
+separate decision (unpenalised AGHQ has its own runaway regime).
+Second open consequence: an AGHQ fit does not retain the `z_B` scores, so
+`getLoadings()` and `extract_ordination()` abort on the auto-refitted fit (they
+already did on any explicit `aghq = 9` fit). The users the audit flags are
+typically ordination users, so they lose those extractors by default. The
+message and NEWS say so; fixing the extractors for AGHQ fits is not part of this
+change.

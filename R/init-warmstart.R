@@ -570,6 +570,12 @@
   list(theta = unname(theta), z = t(Z))
 }
 
+## #1713: the svd restart's runaway cut-off is the `loading_runaway_thresh`
+## default of `check_gllvmTMB()`, read from its formals so the two cannot drift.
+.gllvmTMB_runaway_thresh_default <- function() {
+  eval(formals(check_gllvmTMB)$loading_runaway_thresh)
+}
+
 ## #1713: largest per-trait loading divided by the typical per-trait loading,
 ## read from a packed `theta_rr_B` (diagonal first, then the strict lower
 ## triangle column by column, the layout `.gllvmTMB_svd_latent_start()`
@@ -601,4 +607,16 @@
   denom <- max(denom[is.finite(denom) & denom > 0], -Inf)
   if (!is.finite(denom)) return(NA_real_)
   max(vals) / denom
+}
+
+## #1713: should the svd restart be refused because its loading ran away and
+## the earlier fit's did not? A relative loading that cannot be formed (NA,
+## e.g. a `theta_rr_B` of the wrong length) never blocks, so a mismatch leaves
+## the guard a silent no-op and the #1331 selection rule unchanged.
+.gllvmTMB_svd_runaway_blocked <- function(theta_new, theta_old, n_traits, rank,
+                                          thresh = .gllvmTMB_runaway_thresh_default()) {
+  rel_new <- .gllvmTMB_theta_relative_loading(theta_new, n_traits, rank)
+  rel_old <- .gllvmTMB_theta_relative_loading(theta_old, n_traits, rank)
+  list(blocked = isTRUE(rel_new >= thresh) && !isTRUE(rel_old >= thresh),
+       rel_new = rel_new, rel_old = rel_old)
 }

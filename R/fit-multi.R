@@ -8633,15 +8633,17 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     ## A runaway is where the Laplace objective is most optimistic (325 units
     ## above the integral on sat.act, ordinal probit, d = 2), so a lower
     ## objective there is the approximation's artefact, not a better optimum.
-    ## The threshold is the shipped `loading_runaway_thresh` default.
+    ## The threshold is the shipped `loading_runaway_thresh` default, read
+    ## from `check_gllvmTMB()` so the two cannot drift.
     runaway_blocked <- FALSE
     if (success_i && identical(start_labels[i], "svd") && !is.null(best_opt)) {
-      rel_loading <- function(o) .gllvmTMB_theta_relative_loading(
-        o$par[names(o$par) == "theta_rr_B"], n_traits, d_B
+      guard <- .gllvmTMB_svd_runaway_blocked(
+        opt_i$par[names(opt_i$par) == "theta_rr_B"],
+        best_opt$par[names(best_opt$par) == "theta_rr_B"],
+        n_traits, d_B
       )
-      rel_new <- rel_loading(opt_i)
-      rel_old <- rel_loading(best_opt)
-      runaway_blocked <- isTRUE(rel_new >= 25) && !isTRUE(rel_old >= 25)
+      runaway_blocked <- guard$blocked
+      rel_new <- guard$rel_new
       if (runaway_blocked) {
         row_msg <- restart_history[[i]]$message
         restart_history[[i]]$message <- paste(

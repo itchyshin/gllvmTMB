@@ -48,7 +48,10 @@ test_that("a runaway fit warns by default, and the warning is actionable", {
   d <- .rw_cell()
   .rw_reset()
   expect_warning(
-    fit <- gllvmTMB::gllvmTMB(d$fml, data = d$df, family = stats::binomial()),
+    fit <- gllvmTMB::gllvmTMB(
+      d$fml, data = d$df, family = stats::binomial(),
+      ## this cell is also Laplace-optimistic (#1389); keep that warning out
+      control = gllvmTMB::gllvmTMBcontrol(laplace_warn_thresh = FALSE)),
     "runaway trait loading"
   )
   ## the warning must carry the remedy AND its cost, not just an alarm

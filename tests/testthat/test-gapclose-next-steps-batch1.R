@@ -142,3 +142,31 @@ test_that("kernel_slope() with a non-square K names the fix", {
     )
   )
 })
+
+## ---- R/ridge-path.R and the shared fit gate in R/diagnose.R (#1247) -------
+
+test_that("ridge_path(tau = <non-positive>) names the fix", {
+  expect_snapshot(
+    error = TRUE,
+    gllvmTMB::ridge_path(
+      value ~ 0 + trait, data = data.frame(), tau = c(-1, 2)
+    )
+  )
+})
+
+test_that("ridge_path(<data with no traits>) names the fix", {
+  d <- data.frame(
+    value = numeric(0), trait = factor(character(0)),
+    site = factor(character(0))
+  )
+  expect_snapshot(
+    error = TRUE,
+    gllvmTMB::ridge_path(
+      value ~ 0 + trait, data = d, unit = "site", trait = "trait", tau = 1
+    )
+  )
+})
+
+test_that("a non-fit passed to a fit-only function names the fix", {
+  expect_snapshot(error = TRUE, gllvmTMB::check_gllvmTMB(list()))
+})

@@ -15,16 +15,21 @@
 #'
 #' Construct the `n_species` by `d` confirmatory loading-constraint matrix
 #' `M` from a discrete functional-group hypothesis. Each named group is
-#' pinned to load on a specific latent axis (zero on all other axes), and
-#' one anchor species per axis is pinned at `+1` to fix the scale. Groups
-#' present in `group` but absent from `loads_on` remain free on all axes.
+#' pinned to load on a specific latent axis (zero on all other axes).
+#' By default no `+1` anchors are applied. The latent axes already have unit
+#' variance and the lower-triangular form fixes the rotation, so a `+1` anchor
+#' does not set a scale: it removes a free parameter and can bias the other
+#' loadings and unique variances (#1585). Anchors are an explicit opt-in via
+#' `anchors`. Groups present in `group` but absent from `loads_on` remain free
+#' on all axes.
 #'
 #' This is the recommended starting point for confirmatory JSDMs where
 #' prior knowledge takes the form "species in group A respond to
 #' gradient 1, species in group B respond to gradient 2, ...". The
 #' engine parameterises Lambda as lower-triangular, so an axis-`j`
 #' anchor must fall on species row `i >= j`; otherwise the pin has no
-#' packed slot and would be dropped. Auto-anchors honour that rule.
+#' packed slot and would be dropped. Auto-anchors (`anchors = NULL`) honour
+#' that rule.
 #' For free-form constraint patterns (psychometric CFA, idiosyncratic
 #' species-by-species pins), build the matrix directly; for purely
 #' statistical identification scaffolding when no biology is in play,
@@ -42,20 +47,24 @@
 #'   species in group A load on axis 1 only (zero on all other axes),
 #'   species in group B load on axis 2 only. Groups present in `group`
 #'   but absent from `loads_on` remain free on all axes.
-#' @param anchors Optional length-`d` character vector; one anchor
-#'   species per axis (pinned at `+1`). If `NULL` (the default), anchors
-#'   are auto-picked as the first species of the group that loads on
-#'   each axis whose row index is on or below the diagonal (row >=
-#'   axis). That placement is required because the engine can pin only
-#'   the lower triangle of Lambda. An explicit or auto-picked anchor
-#'   in the strict upper triangle is an error. Use `NA` to skip the
-#'   anchor on a specific axis.
+#' @param anchors Opt-in `+1` anchors. The default, `NA`, applies no anchor
+#'   on any axis (a zeros-only pattern). **A `+1` anchor is a restriction,
+#'   not a scale choice**: the latent axes have unit variance, so pinning a
+#'   loading at 1 removes one parameter and can bias the other loadings and
+#'   unique variances, with no diagnostic flagging the loss. Supply a
+#'   length-`d` character vector (one anchor species per axis, pinned at
+#'   `+1`; `NA` skips an axis) only when you want that restriction. Use
+#'   `NULL` to auto-pick anchors as the first species of the group that loads
+#'   on each axis whose row index is on or below the diagonal (row >= axis).
+#'   That placement is required because the engine can pin only the lower
+#'   triangle of Lambda. An explicit or auto-picked anchor in the strict
+#'   upper triangle is an error.
 #' @param axis_labels Optional length-`d` character vector for the
 #'   matrix column names. Defaults to `c("LV1", "LV2", ...)`.
 #'
 #' @return An `length(species)` by `d` numeric matrix with `NA` entries
 #'   (estimated), `0` entries (pinned to zero), and `1` entries (pinned
-#'   at the anchor), ready to pass to `gllvmTMB()` as
+#'   at an opt-in anchor), ready to pass to `gllvmTMB()` as
 #'   `lambda_constraint = list(unit = M)`.
 #'
 #' @seealso [suggest_lambda_constraint()] for the lower-level statistical
@@ -80,7 +89,7 @@ confirmatory_lambda <- function(species,
                                 group,
                                 d,
                                 loads_on,
-                                anchors     = NULL,
+                                anchors     = NA,
                                 axis_labels = NULL) {
 
   ## ---- Validation ----
@@ -140,8 +149,11 @@ confirmatory_lambda <- function(species,
   }
 
   ## ---- Anchors ----
-  if (is.null(anchors)) {
-    ## Auto-pick: for each axis with at least one loaded group, anchor
+  if (length(anchors) == 1L && is.na(anchors)) {
+    ## Default: zeros-only, no +1 anchors (#1585).
+    anchors <- rep(NA_character_, d)
+  } else if (is.null(anchors)) {
+    ## Opt-in auto-pick: for each axis with at least one loaded group, anchor
     ## on the first species of the first loaded group whose row index
     ## is on or below the diagonal. The engine has no packed slot for
     ## Lambda[i, j] when j > i (#1418).

@@ -54,7 +54,9 @@ side-by-side long and wide calls.
 library(gllvmTMB)
 ```
 
-```{r load-example-data, include = FALSE}
+<!-- slop-ok: repeated Symptom, Diagnosis and Rule of thumb labels make each troubleshooting entry easy to scan -->
+
+```{r load-example-data}
 covex_path <- system.file(
   "extdata", "examples", "covariance-edge-cases-example.rds",
   package = "gllvmTMB"
@@ -273,13 +275,13 @@ plain-language definitions.*
 
 ## See also
 
-* [Pre-fit response screening](pre-fit-response-screening.html) — check
+* [Pre-fit response screening](pre-fit-response-screening.html): check
   response support and duplicated Bernoulli patterns before fitting.
 * [Fit diagnostics](fit-diagnostics.html) and
-  [Convergence and start values](convergence-start-values.html) — decide
+  [Convergence and start values](convergence-start-values.html): decide
   whether a point fit and its Wald inference are usable.
-* [Morphometrics](morphometrics.html) — an individual × trait worked example.
-* [Formula keyword grid](api-keyword-grid.html) — the covariance syntax map.
-* [Response families](response-families.html) — the family and link lookup.
+* [Morphometrics](morphometrics.html): an individual × trait worked example.
+* [Formula keyword grid](api-keyword-grid.html): the covariance syntax map.
+* [Response families](response-families.html): the family and link lookup.
 * `?suggest_lambda_constraint`, `?extract_Sigma`, and
-  `?simulate_site_trait` — function-level help.
+  `?simulate_site_trait`: function-level help.

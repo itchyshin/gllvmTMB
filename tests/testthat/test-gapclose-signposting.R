@@ -311,3 +311,71 @@ test_that("animal_scalar()/propto()'s synthetic trait-literal group does not fal
   )))
   expect_equal(fit$opt$convergence, 0L)
 })
+
+## ---- (d) #1161: slope-ONLY LHS names the species-axis route ----------
+##
+## `0 + x | g` (a fourth-corner species-specific slope) is refused by
+## indep()/latent()/bare bars. The message used to claim "more than one
+## slope covariate"; it now names the working route: copy the trait column
+## into a grouping column and use animal_slope()/phylo_slope() on it.
+
+test_that("indep(0 + x | species) names animal_slope()/phylo_slope() on a copied trait column (#1161)", {
+  err <- expect_error(
+    gllvmTMB:::desugar_brms_sugar(value ~ 0 + trait + indep(0 + lat | species)),
+    "augmented LHS"
+  )
+  msg <- cli::ansi_strip(conditionMessage(err))
+  expect_match(msg, "animal_slope(lat | species, A = A)", fixed = TRUE)
+  expect_match(msg, "phylo_slope(lat | species, tree = tree)", fixed = TRUE)
+  expect_match(msg, "dat$species <- dat$trait", fixed = TRUE)
+  expect_no_match(msg, "more than one slope covariate")
+})
+
+test_that("latent(0 + x | species) and bare (0 + x | species) name the same route (#1161)", {
+  err_latent <- expect_error(
+    gllvmTMB:::desugar_brms_sugar(
+      value ~ 0 + trait + latent(0 + lat | species, d = 1)
+    ),
+    "augmented LHS"
+  )
+  expect_match(
+    cli::ansi_strip(conditionMessage(err_latent)),
+    "animal_slope(lat | species, A = A)", fixed = TRUE
+  )
+  err_bar <- expect_error(
+    gllvmTMB:::parse_re_int_call(quote(0 + lat | species)),
+    "not yet implemented"
+  )
+  expect_match(
+    cli::ansi_strip(conditionMessage(err_bar)),
+    "phylo_slope(lat | species, tree = tree)", fixed = TRUE
+  )
+})
+
+test_that("a two-covariate slope-only LHS still has no single-term route (#1161)", {
+  err <- expect_error(
+    gllvmTMB:::desugar_brms_sugar(value ~ 0 + trait + indep(0 + a + b | species)),
+    "augmented LHS"
+  )
+  msg <- cli::ansi_strip(conditionMessage(err))
+  expect_match(msg, "more than one slope covariate")
+  expect_no_match(msg, "animal_slope")
+})
+
+test_that("animal_slope(x | species) on a copied trait column -- the named route -- fits (#1161)", {
+  testthat::skip_on_cran()
+  set.seed(1161)
+  sp <- paste0("sp", 1:8)
+  dat <- expand.grid(trait = factor(sp, levels = sp), cell_id = factor(1:6))
+  dat$lat <- stats::rnorm(nrow(dat))
+  dat$value <- stats::rpois(nrow(dat), 2)
+  dat$species <- dat$trait
+  A <- diag(length(sp))
+  dimnames(A) <- list(sp, sp)
+  fit <- suppressWarnings(suppressMessages(gllvmTMB::gllvmTMB(
+    value ~ 0 + trait + animal_slope(lat | species, A = A) +
+      latent(0 + trait | cell_id, d = 1),
+    data = dat, family = stats::poisson(), unit = "cell_id"
+  )))
+  expect_equal(fit$opt$convergence, 0L)
+})

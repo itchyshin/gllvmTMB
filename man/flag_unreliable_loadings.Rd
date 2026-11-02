@@ -45,19 +45,39 @@ Pinned entries (set explicitly by \code{lambda_constraint}) are reported
 with \code{unreliable = NA} because no inference is being made about them.
 }
 \examples{
-\dontrun{
-## flag_unreliable_loadings() accepts either a fit or a loading_ci()
-## data frame directly.
-fit <- gllvmTMB(
-  value ~ 0 + trait + latent(0 + trait | site, d = 2L),
-  data = df, family = stats::binomial(link = "probit")
-)
-## From a fit (computes per-entry Lambda CIs internally):
-flag_unreliable_loadings(fit, null_region = c(-0.1, 0.1))
-## Or pass a precomputed loading_ci() data frame:
-ci <- loading_ci(fit, level = "unit")
-flag_unreliable_loadings(ci, null_region = c(-0.1, 0.1))
-}
+set.seed(1)
+# Eight traits measured twice on each of 100 units (e.g. sites).
+# Odd-numbered traits respond to one latent gradient and even-numbered
+# traits to another; trait_7 responds only weakly.
+Lambda <- cbind(c(0.9, 0, 0.7, 0, 0.6, 0, 0.15, 0),
+                c(0, 0.9, 0, 0.8, 0, 0.6, 0, 0.5))
+sim <- simulate_unit_trait(n_units = 100, n_obs_per_unit = 2,
+                           n_traits = 8, Lambda_B = Lambda,
+                           psi_B = 0.5, sigma2_eps = 0.3)
+# Confirmatory fit: odd traits load only on axis 1, even traits only on
+# axis 2 (see ?loading_ci).
+M <- confirmatory_lambda(species = levels(sim$data$trait),
+                         group = rep(c("A", "B"), times = 4), d = 2,
+                         loads_on = list(A = 1, B = 2),
+                         anchors = c(NA, NA))
+fit <- gllvmTMB(value ~ 0 + trait +
+                  latent(0 + trait | unit, d = 2, unique = TRUE),
+                data = sim$data, trait = "trait", unit = "unit",
+                lambda_constraint = list(unit = M))
+
+# A loading is flagged unreliable when its 95\% interval reaches into
+# the band of negligible values, here -0.1 to 0.1. Fixed (pinned)
+# entries get NA because nothing is inferred about them.
+fl <- flag_unreliable_loadings(fit, level = "unit",
+                               null_region = c(-0.1, 0.1))
+fl[, c("trait", "axis", "estimate", "lower", "upper", "unreliable")]
+
+# The same check on a table from loading_ci(), here on the standardized
+# (correlation) scale, treating values between -0.2 and 0.2 as
+# negligible.
+ci_std <- loading_ci(fit, loading_scale = "standardized")
+fl_std <- flag_unreliable_loadings(ci_std, null_region = c(-0.2, 0.2))
+fl_std[!fl_std$pinned, c("trait", "axis", "estimate", "unreliable")]
 
 }
 \seealso{

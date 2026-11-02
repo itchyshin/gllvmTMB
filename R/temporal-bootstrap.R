@@ -51,7 +51,7 @@ bootstrap_temporal <- function(object, n_boot = 100L, seed = NULL) {
       rm(".Random.seed", envir = .GlobalEnv)
     }
   }, add = TRUE)
-  if (!is.null(seed)) set.seed(as.integer(seed))
+  .gllvmTMB_local_seed(as.integer(seed))
   draw_seeds <- sample.int(.Machine$integer.max, size = as.integer(n_boot))
   response <- all.vars(object$formula[[2L]])
   if (length(response) != 1L) .temporal_abort("The temporal fit lacks one recoverable response column.")

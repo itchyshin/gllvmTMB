@@ -9,7 +9,8 @@ test_that("auto-anchors stay on or below the diagonal when group B is listed fir
     species  = species,
     group    = c("B", "A", "A", "B"),
     d        = 2L,
-    loads_on = list(A = 1L, B = 2L)
+    loads_on = list(A = 1L, B = 2L),
+    anchors = NULL
   )
 
   ## Axis-2 +1 is no longer row 1 / column 2 (the silent-drop cell).

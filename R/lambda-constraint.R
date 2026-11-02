@@ -140,6 +140,19 @@ lambda_packed_map <- function(constraint, n_traits, rank, theta_init) {
       }
     }
   }
+  ## A diagonal pinned at 0 would leave every free loading below it on that
+  ## axis at its start of exactly 0, a stationary point (the likelihood sees
+  ## column j only through products of its entries), so the axis never moves.
+  ## Start those free entries away from 0 (#1585).
+  for (j in seq_len(min(rank, n_traits))) {
+    d <- constraint[j, j]
+    if (is.na(d) || !isTRUE(all.equal(as.numeric(d), 0))) next
+    for (i in seq_len(n_traits)) {
+      if (i <= j || !is.na(constraint[i, j])) next
+      idx <- lambda_packed_index(i - 1L, j - 1L, n_traits, rank)
+      if (!is.na(idx) && init[idx] == 0) init[idx] <- 0.5
+    }
+  }
   if (length(unsupported_i) > 0L) {
     rn <- rownames(constraint)
     row_lab <- if (!is.null(rn) && nzchar(rn[unsupported_i[1]])) {

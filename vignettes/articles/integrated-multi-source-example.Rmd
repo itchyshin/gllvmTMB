@@ -1,6 +1,6 @@
 ---
 title: "Integrating three data sources at once: portal, atlas, and survey"
-description: "Declare several named observation sources with isdm_sources() — portal counts, digitised atlas records, a small detection survey — and fit one shared ecological process across all of them through the ordinary gllvmTMB() call."
+description: "Declare named observation sources with isdm_sources(), then fit one shared ecological process through the ordinary gllvmTMB() call. Examples use portal counts, digitised atlas records, and a small detection survey."
 output:
   rmarkdown::html_vignette:
     toc: true
@@ -28,8 +28,8 @@ set.seed(20260816)
 > **Experimental.** The multi-source route shown here is fitted through the
 > ordinary `gllvmTMB()` entry point with sources declared by `isdm_sources()`.
 > It is experimental: the interface may change without deprecation, and no
-> released capability claim is made. If you have exactly two sources — one
-> portal stream and one survey — start with the companion
+> released capability claim is made. For exactly two sources, one portal
+> stream and one survey, start with the companion
 > [two-source worked example](integrated-two-source-example.html) instead.
 
 # The question
@@ -131,7 +131,7 @@ dat$method      <- factor(dat$method)
 table(dat$isdm_source, dat$value > 0)
 ```
 
-Each source shows a different mix of zero and non-zero rows — the atlas is
+Each source shows a different mix of zero and non-zero rows. The atlas is
 the sparsest, matching its lower simulated support and negative recording
 effects.
 
@@ -186,11 +186,11 @@ health[health$component %in% c("optimizer_convergence", "pd_hessian"),
        c("component", "status")]
 ```
 
-Both pass on this fit (`pd_hessian` checks whether the curvature at the
-optimum is trustworthy enough to license standard errors). On the small
-spatial design of the two-source article the same check warns — read that
-article's discussion of what a `WARN` there means and why it is shown rather
-than hidden.
+The optimizer converged; the warning concerns curvature alone. The Hessian
+check does not support Hessian-based standard errors for this fit. Treat Wald
+uncertainty as unsupported for this small spatial design.
+The warning is specific to this example and should remain visible when you
+interpret its results.
 
 # What the integration bought
 
@@ -223,7 +223,7 @@ apply only to the balanced, fully crossed setting described here:
 Both results come from data in which every source observed every cell. They do
 not show that adding sources has the same effect with partial coverage, spatial
 structure, or a different model. Those situations need their own assessment;
-the spatial version of this model also has stricter design requirements — see
+the spatial version of this model also has stricter design requirements. See
 [How big does an integrated survey design need to be?](integrated-survey-design.html).
 
 # What this route does and does not cover
@@ -238,20 +238,20 @@ design size. Read fitted numbers from this example as an illustration, not as
 evidence that estimates or uncertainty will behave the same way for your own
 design. Use the design article's guidance before relying on them.
 
-**Not available:** an all-detection declaration (refused when you build it —
+**Not available:** an all-detection declaration (refused when you build it;
 the detection arm's offset is only admitted alongside a count arm); weighting
 one source against another; calibrated
-confidence intervals for this route; and anything absolute — abundance,
-occupancy, detectability — from any number of presence-only sources.
+confidence intervals for this route; and absolute abundance, occupancy, or
+detectability from presence-only sources.
 
 # See also
 
 - [Integrating opportunistic records with a designed survey](integrated-two-source-example.html)
-  — the two-source worked example, including the spatial variant and an
+  : the two-source worked example, including the spatial variant and an
   honest treatment of a non-positive-definite fit.
 - [How big does an integrated survey design need to be?](integrated-survey-design.html)
-  — the design question and the evidence currently available for it.
-- [Response families](response-families.html) — the admitted families and
+  : the design question and the evidence currently available for it.
+- [Response families](response-families.html): the admitted families and
   links in general.
 
 # References

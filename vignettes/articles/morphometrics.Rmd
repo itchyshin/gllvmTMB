@@ -24,13 +24,11 @@ knitr::opts_chunk$set(
 )
 ```
 
-This is the simplest case the package handles, and it is the
-foundation for everything else on the
-[homepage guide](../index.html#start-here). One
-observational level (individuals), several continuous traits per
-individual, and shared low-rank covariance between traits. No
-phylogeny, no spatial structure, no nesting. This article walks
-through that model end-to-end.
+This article builds a Gaussian GLLVM for several continuous traits measured
+once per individual. The model has one observational level and shared
+low-rank covariance between traits. It does not include phylogeny, spatial
+structure, or nesting. See the [homepage guide](../index.html#start-here)
+for the broader package map.
 
 The recovery numbers and intervals below describe this teaching example; they
 do not establish calibrated coverage across other sample sizes or model
@@ -56,18 +54,7 @@ generating code remains available in the source repository for reproducibility,
 but the article starts where a user starts: with data, truth, formulas, and one
 biological question.
 
-```{r example-data, eval = FALSE}
-morph <- readRDS(system.file(
-  "extdata", "examples", "morphometrics-example.rds",
-  package = "gllvmTMB"
-))
-df <- morph$data_long
-df_wide <- morph$data_wide
-truth <- morph$truth
-estimands <- morph$estimands
-```
-
-```{r example-data-load, include = FALSE}
+```{r example-data}
 example_path <- system.file(
   "extdata", "examples", "morphometrics-example.rds",
   package = "gllvmTMB"
@@ -81,6 +68,10 @@ example_path <- c(
 example_path <- example_path[nzchar(example_path) & file.exists(example_path)][1]
 stopifnot(!is.na(example_path))
 morph <- readRDS(example_path)
+df <- morph$data_long
+df_wide <- morph$data_wide
+truth <- morph$truth
+estimands <- morph$estimands
 
 boot_r_path <- system.file(
   "extdata", "examples", "morphometrics-bootstrap-r.rds",
@@ -174,7 +165,7 @@ cat("Long/formula-wide logLik difference:",
 
 gllvmTMB defaults to `unit = "site"`, meaning it looks for a column
 literally named `site` in the data. This morphometric data set has no
-`site` column — the grouping factor is `individual`. Passing
+`site` column. Its grouping factor is `individual`. Passing
 `unit = "individual"` redirects the engine to the correct column;
 everything else is standard GLLVM machinery.
 
@@ -187,8 +178,8 @@ intercepts `0 + trait`, and `latent(1 | individual)` becomes
 ## What model did we fit?
 
 For each individual $i = 1, \dots, n$ we observe a vector of trait
-measurements $\mathbf{y}_i = (y_{i1}, \dots, y_{iT})^\top$ — for
-example, body length, mass, wing chord, tarsus, bill depth in a
+measurements $\mathbf{y}_i = (y_{i1}, \dots, y_{iT})^\top$. Examples include
+body length, mass, wing chord, tarsus, and bill depth in a
 sparrow study; tail length, fin span, gill area in a fish study; or
 six items on a psychometric scale in a behavioural study. The
 reduced-rank GLLVM is
@@ -234,7 +225,7 @@ first, trait-specific variation second.
 > $\boldsymbol\Psi$ term absorbs the full observation-level residual and
 > becomes the trait-specific residual variance $\psi_t$. The confounding
 > that would arise if both $\sigma_\varepsilon$ and $\psi_t$ were estimated
-> freely is therefore resolved by construction — you do not need to add
+> freely is therefore resolved by construction. You do not need to add
 > a separate diagonal term for this default latent model. With *longitudinal* data
 > (multiple sessions per individual), both terms are separately identified
 > and can be estimated without any auto-suppression; the diagonal
@@ -257,8 +248,8 @@ form is `Psi`.
 ## Recovered $\hat{\boldsymbol\Sigma}_B$ vs truth
 
 The numbers below describe this one simulated draw of `r n_ind`
-individuals — descriptive recovery on a single dataset, not repeated
-sampling (see the scope note further down).
+individuals. These numbers show descriptive recovery on this dataset; they do
+not measure repeated sampling (see the scope note further down).
 
 ```{r recover-once}
 Sigma_hat <- extract_Sigma(fit, level = "unit")$Sigma
@@ -287,8 +278,8 @@ plot_Sigma_comparison(corr_compare, measure = "correlation")
 
 > **What `extract_Sigma(level = "unit")$Sigma` returns.** The *total*
 > between-unit covariance
-> $\boldsymbol\Sigma_B = \boldsymbol\Lambda \boldsymbol\Lambda^{\!\top} + \boldsymbol\Psi$
-> — the sum of the reduced-rank shared component and the diagonal
+> $\boldsymbol\Sigma_B = \boldsymbol\Lambda \boldsymbol\Lambda^{\!\top} + \boldsymbol\Psi$.
+> It is the sum of the reduced-rank shared component and the diagonal
 > unique component. If you request `latent(..., unique = FALSE)`,
 > $\boldsymbol\Psi = 0$ and you get only
 > $\boldsymbol\Lambda \boldsymbol\Lambda^{\!\top}$, which understates the
@@ -331,11 +322,10 @@ final inference should use a bootstrap size chosen for the study rather
 than the article's small teaching example.
 
 The same cached intervals can be shown as a matrix-style ellipse plot.
-Here the shape and fill show the sign and strength of each correlation;
-black borders and stars mark pairs whose supplied bootstrap interval does
-not cross zero. The stars are a display convention on the cached example's
-percentile intervals, not a calibrated significance test — choose a
-bootstrap size for the study before drawing inferential conclusions.
+Here the shape and fill show the sign and strength of each correlation.
+Black borders and stars flag pairs whose supplied bootstrap intervals do not
+cross zero. These intervals have not been calibrated as significance tests.
+Choose a bootstrap size for the study before drawing inferential conclusions.
 
 ```{r ci-correlation-ellipse, fig.width = 6.6, fig.height = 5.2, fig.cap = "Ellipse view of the same cached between-individual correlation intervals. Ellipse tilt and colour show the fitted correlation; black borders and stars mark bootstrap percentile intervals that do not cross zero."}
 plot(fit, type = "correlation_ellipse", level = "unit", boot = morph_boot_R)
@@ -360,10 +350,10 @@ values, with every failed fit included in the accounting.
 
 The morphometric workflow uses ordinary `latent(d = K)` to
 estimate $\boldsymbol\Sigma_B = \boldsymbol\Lambda\boldsymbol\Lambda^\top + \boldsymbol{\Psi}$.
-Two alternative covstruct modes — `dep` (full unstructured $\boldsymbol\Sigma_B$
+Two other covstruct modes are available: `dep` (full unstructured $\boldsymbol\Sigma_B$
 with $T(T+1)/2$ free entries) and `indep` (diagonal-only
 $\boldsymbol\Sigma_B = \mathrm{diag}(\sigma^2_1, \dots, \sigma^2_T)$, no
-cross-trait modelling) — are also valid keywords. Refit the same data
+cross-trait modelling). Refit the same data
 under each to see what the user actually loses or gains.
 These are ordinary unit-tier keywords; source-specific forms such as
 `phylo_dep()` and `spatial_dep()` affect phylogenetic or spatial
@@ -442,20 +432,19 @@ data.frame(
 What this shows:
 
 - **`dep` and `latent(d = T)` both recover the saturated covariance
-  surface** — the comparison is a useful check that the dense fit and the
+  surface.** The comparison checks that the dense fit and the
   full-rank latent parameterisation agree on the covariance pattern.
-  `dep` and `latent(d = T)` give the same saturated fit here — numerically
+  `dep` and `latent(d = T)` give the same saturated fit here: numerically
   equal logL and $\boldsymbol\Sigma_B$ on this simulated example.
 - **Reduced-rank `latent(d = 2)` with default $\boldsymbol\Psi$ matches the saturated fit
   within 0.1 nats of logL.** With $T = 5$ traits and a
   rank-2 truth, the rank constraint loses essentially no information
   and gives the same off-diagonal correlation pattern as the saturated
   fit ($r$ vs truth ≈ 0.95 for both).
-- **`indep` recovers the diagonals fine** — Gaussian gives per-trait
-  identifiability for the marginal variance even with no cross-trait
-  modelling — but **loses every off-diagonal**. The off-diagonal
-  correlation with truth is `NA` because the fitted off-diagonals are
-  exactly zero by construction. logL is materially worse.
+- **`indep` recovers the diagonal variances.** The Gaussian fit identifies
+  each marginal variance without cross-trait modelling. It sets every
+  off-diagonal covariance to zero, so the off-diagonal correlation with truth
+  is `NA` by construction. Its logL is materially worse.
 
 For this simulated rank-2 Gaussian truth, default `latent(d = 2)` and the
 saturated `dep` fit recover nearly the same covariance pattern, while
@@ -533,7 +522,7 @@ $\mathbf{u}_i$), not observed coordinates.
 
 The biplot shows the trait loadings on the two latent axes. In a
 real morphometric study, the first axis usually picks up *overall
-size*, with all traits loading positively — the famous "general
+size*, with all traits loading positively, the familiar "general
 factor" of body size. The second axis picks up shape contrasts. The
 sign anchor is a reporting convention: here positive LV1 is anchored to
 `mass` and positive LV2 to `wing`; changing signs would not change the
@@ -541,15 +530,14 @@ fitted covariance.
 
 ## What this article does *not* cover
 
-This is the simplest case on the complexity ladder. Richer models —
-binary / [joint species distribution](joint-sdm.html) responses,
-phylogenetic and spatial dependence between rows, and two-level
-between/within designs — build on this same `latent()` foundation and are
-covered in their own guides as they become public.
+This morphometric example is the starting point for more complex models.
+Other guides cover binary and [joint species distribution](joint-sdm.html)
+responses, phylogenetic and spatial dependence between rows, and two-level
+between/within designs that use the same `latent()` foundation.
 
 ## See also
 
-* [Covariance and correlation](covariance-correlation.html) — why
+* [Covariance and correlation](covariance-correlation.html): why
   diagonal $\boldsymbol\Psi$ matters for interpreting trait correlations.
-* [Formula keyword grid](api-keyword-grid.html) — the syntax map for
+* [Formula keyword grid](api-keyword-grid.html): the syntax map for
   moving from this example to other covariance rows and modes.

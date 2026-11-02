@@ -18,7 +18,7 @@
       ! `indep()` augmented LHS is not yet supported.
       i You wrote `indep(1 + x | site)`.
       x This wrapper accepts only intercept-only `0 + trait | g` or `1 | g` forms.
-      > Use `latent(1 + x | site, d = K)` or `unique(1 + x | site)` instead -- `indep()` itself does not support a slope term.
+      > Use `latent(1 + x | site, d = K)` instead -- `indep()` itself does not support a slope term, and there is no diagonal-only slope spelling yet.
 
 # phylo_indep(0 + trait + trait:x | trait) redirects to the response-column slope grammar
 

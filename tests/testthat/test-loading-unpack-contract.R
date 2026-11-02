@@ -217,7 +217,7 @@ test_that("the Laplace, VA, and EVA loading routes use cursor-based unpacking", 
   constraint_source <- sources$constraint_source
   phylo_slope_test <- sources$phylo_slope_test
   calls <- grep("gll_unpack_rr_loadings\\(", engine, value = TRUE)
-  expect_length(calls, 9L) # one definition plus eight engine routes
+  expect_length(calls, 10L) # one definition plus nine engine routes
   expect_false(any(grepl("lam_lower\\(", engine, fixed = FALSE)))
   expect_false(any(grepl("lam_lower\\(", va_engine, fixed = FALSE)))
   expect_false(any(grepl("lam_lower\\(", eva_engine, fixed = FALSE)))

@@ -241,6 +241,6 @@ test_that("extract_correlations bootstrap is shared across requested tiers", {
   expect_equal(calls[[1L]]$level, c("unit", "unit_obs"))
   expect_equal(calls[[1L]]$what, "R")
   expect_equal(calls[[1L]]$seed, 123L)
-  expect_setequal(unique(cors$tier), c("B", "W"))
+  expect_setequal(unique(cors$tier), c("unit", "unit_obs"))
   expect_true(all(cors$method == "bootstrap"))
 })

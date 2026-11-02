@@ -5,7 +5,10 @@
 ## idiom (a multiplicative rate adjustment), which is why the feature is gated
 ## to count families rather than offered everywhere. On an identity link it
 ## would be an unexplained mean shift and on a logit link a fixed shift in
-## log-odds -- neither is what a user asking for an offset wants.
+## log-odds -- neither is what a user asking for an offset wants. The one
+## exception is a Bernoulli-cloglog row inside the integrated two-source
+## contract, where the offset is a change of support: cloglog(p) = log(E) + eta
+## (issue #946; see Design 01, Offsets).
 ##
 ## Gating on family rather than link keeps the admitted set small and
 ## enumerable, and sweeps in nothing awkward: a link gate would admit Gamma,

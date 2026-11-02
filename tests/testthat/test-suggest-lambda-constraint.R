@@ -185,3 +185,96 @@ test_that("suggest_lambda_constraints() rejects unsupported methods", {
     "unsupported"
   )
 })
+
+test_that("profile_retention refits emit no unused-argument or alias notes (#1587)", {
+  skip_on_cran()
+  set.seed(1587)
+  n_s <- 60
+  n_t <- 6
+  L <- matrix(
+    c(.9, .7, .5, .1, 0, 0, 0, .3, .6, .8, .7, .5),
+    n_t,
+    2
+  )
+  Y <- matrix(rnorm(n_s * 2), n_s, 2) %*% t(L) +
+    matrix(rnorm(n_s * n_t, sd = .5), n_s, n_t)
+  d <- data.frame(
+    site = factor(rep(seq_len(n_s), each = n_t)),
+    trait = factor(rep(paste0("t", 1:n_t), n_s), levels = paste0("t", 1:n_t)),
+    value = as.vector(t(Y))
+  )
+  fit <- suppressWarnings(suppressMessages(gllvmTMB(
+    value ~ 0 + trait + latent(0 + trait | site, d = 2),
+    data = d,
+    trait = "trait",
+    unit = "site",
+    silent = TRUE
+  )))
+  ## The one-shot alias notes would otherwise be spent by earlier tests.
+  for (k in c("rr", "diag")) {
+    suppressWarnings(rm(list = k, envir = gllvmTMB:::.gllvmTMB_deprecation_seen))
+  }
+  msgs <- character()
+  expect_no_warning(
+    res <- withCallingHandlers(
+      suggest_lambda_constraint(fit, convention = "profile_retention"),
+      message = function(m) {
+        msgs <<- c(msgs, conditionMessage(m))
+        invokeRestart("muffleMessage")
+      }
+    )
+  )
+  expect_false(any(grepl("deprecated alias", msgs)))
+  expect_equal(dim(res$constraint), c(n_t, 2L))
+  ## Equality with the result of the pre-fix route (rr() + diag() refits):
+  ## t4-t6 are pinned in f1; every other entry stays free. An all-NA matrix
+  ## means the refits errored and were skipped silently, so guard that too.
+  expected <- matrix(NA_real_, n_t, 2L, dimnames = dimnames(res$constraint))
+  expected[4:6, 1L] <- 0
+  expect_true(any(res$constraint == 0, na.rm = TRUE))
+  expect_equal(res$constraint, expected)
+  ## Since #1585 the free entries of the pinned-diagonal axis start off zero,
+  ## so the two refits that used to be skipped now converge: all 11 are tested.
+  expect_match(res$note, "Tested 11 entries; 0 skipped", fixed = TRUE)
+})
+
+test_that("formula path names the within-unit column via unit_obs and the level as written (#1587)", {
+  set.seed(1)
+  sim <- simulate_unit_trait(
+    n_units = 100, n_obs_per_unit = 2, n_traits = 6,
+    Lambda_B = cbind(c(.9, .8, .7, 0, 0, 0), c(0, 0, 0, .8, .7, .6)),
+    psi_B = .3, sigma2_eps = .3
+  )
+  form2 <- value ~ 0 + trait +
+    latent(0 + trait | unit, d = 1, unique = FALSE) +
+    latent(0 + trait | unit_observation, d = 2, unique = FALSE)
+
+  res <- suggest_lambda_constraint(
+    form2, data = sim$data, unit = "unit",
+    unit_obs = "unit_observation", level = "unit_obs"
+  )
+  expect_equal(dim(res$constraint), c(6L, 2L))
+  expect_equal(res$d, 2L)
+
+  ## The wrapper forwards unit_obs too.
+  cmp <- suggest_lambda_constraints(
+    form2, data = sim$data, unit = "unit",
+    unit_obs = "unit_observation", level = "unit_obs",
+    methods = "lower_triangular"
+  )
+  expect_equal(cmp$suggestions$lower_triangular$constraint, res$constraint)
+
+  ## No-term errors name the level as the user wrote it, not "W" / "B".
+  expect_error(
+    suggest_lambda_constraint(form2, data = sim$data, unit = "unit",
+                              level = "unit_obs"),
+    'nothing to constrain at level "unit_obs"'
+  )
+  expect_error(
+    suggest_lambda_constraint(
+      value ~ 0 + trait + latent(0 + trait | unit_observation, d = 2),
+      data = sim$data, unit = "unit", level = "unit"
+    ),
+    'nothing to constrain at level "unit"'
+  )
+})

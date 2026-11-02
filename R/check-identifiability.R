@@ -142,9 +142,7 @@ check_identifiability <- function(
     )
   }
 
-  if (!is.null(seed)) {
-    set.seed(seed)
-  }
+  .gllvmTMB_local_seed(seed)
 
   ## ---- extract truth --------------------------------------------------
   truth <- .ci_extract_truth(fit, tier = tier)

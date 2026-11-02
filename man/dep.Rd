@@ -18,7 +18,7 @@ Canonical name for the \strong{always-alone full-unstructured} trait
 covariance term. Fits a full \eqn{T \times T} \eqn{\boldsymbol\Sigma}
 with \eqn{T(T+1)/2} free parameters via a Cholesky parameterisation
 \eqn{\boldsymbol\Sigma = \mathbf{L}\mathbf{L}^\top}. Mathematically
-identical to \code{latent(0 + trait | g, d = T)} standalone (where \eqn{T}
+identical to \code{latent(0 + trait | g, d = n_traits, unique = FALSE)} standalone (where \eqn{T}
 is the number of traits) -- the engine's existing packed-triangular
 \eqn{\boldsymbol\Lambda} at full rank IS the Cholesky factor of an
 unstructured \eqn{\boldsymbol\Sigma}. The keyword choice is
@@ -57,20 +57,35 @@ raises \code{cli::cli_abort()} in any of these cases.
 }
 }
 \examples{
-\dontrun{
-# Full unstructured trait covariance fit:
-fit <- gllvmTMB(value ~ 0 + trait + dep(0 + trait | site),
-                data = df, trait = "trait", unit = "site")
+# Three traits on 40 units (3 replicate observations per unit); the
+# between-unit trait covariance is rank one plus a diagonal.
+sim <- simulate_unit_trait(
+  n_units = 40, n_obs_per_unit = 3, n_traits = 3,
+  Lambda_B = matrix(c(0.9, 0.5, -0.4), ncol = 1),
+  psi_B = c(0.2, 0.2, 0.2), seed = 1
+)
+df <- sim$data
+n_traits <- nlevels(df$trait)
 
-# The mathematically-equivalent decomposition form (full rank):
-fit <- gllvmTMB(value ~ 0 + trait + latent(0 + trait | site, d = T),
-                data = df, trait = "trait", unit = "site")
+\donttest{
+# Full unstructured trait covariance fit:
+fit <- gllvmTMB(value ~ 0 + trait + dep(0 + trait | unit),
+                data = df, trait = "trait", unit = "unit")
+
+# The mathematically equivalent decomposition: a full-rank,
+# loadings-only latent term reaches the same log-likelihood.
+fit_lat <- gllvmTMB(
+  value ~ 0 + trait + latent(0 + trait | unit, d = n_traits, unique = FALSE),
+  data = df, trait = "trait", unit = "unit"
+)
+c(dep = logLik(fit), latent = logLik(fit_lat))
+}
 
 # ERROR: dep + latent on the same grouping is over-parameterised.
 # gllvmTMB(value ~ 0 + trait +
-#           dep(0 + trait | site) +
-#           latent(0 + trait | site, d = 2), data = df)
-}
+#           dep(0 + trait | unit) +
+#           latent(0 + trait | unit, d = 2),
+#           data = df, trait = "trait", unit = "unit")
 }
 \seealso{
 \code{\link[=latent]{latent()}}, \code{\link[=indep]{indep()}}, \code{\link[=phylo_dep]{phylo_dep()}},

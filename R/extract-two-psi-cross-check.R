@@ -272,6 +272,40 @@
   out
 }
 
+#' Put the stored phylogeny inside the generated phylo_*() term (#1568).
+#'
+#' A global `phylo_vcv` / `phylo_tree` argument still fits, but it prints
+#' the once-per-session deprecation on every fresh session. The matrices
+#' live in a child of the formula environment so the parser can evaluate
+#' `vcv =` / `tree =` without splicing a large matrix into the call.
+#'
+#' @keywords internal
+#' @noRd
+.attach_refit_phylo <- function(formula, phylo_tree, phylo_vcv) {
+  if (is.null(phylo_tree) && is.null(phylo_vcv)) {
+    return(formula)
+  }
+  parent <- environment(formula)
+  if (is.null(parent)) parent <- globalenv()
+  env <- new.env(parent = parent)
+  if (!is.null(phylo_tree)) env$.refit_phylo_tree <- phylo_tree
+  if (!is.null(phylo_vcv)) env$.refit_phylo_vcv <- phylo_vcv
+  inject <- function(e) {
+    if (!is.call(e)) return(e)
+    fn <- if (is.name(e[[1L]])) as.character(e[[1L]]) else ""
+    if (fn %in% c("phylo_dep", "phylo_indep")) {
+      if (!is.null(phylo_tree)) e$tree <- as.name(".refit_phylo_tree")
+      if (!is.null(phylo_vcv)) e$vcv <- as.name(".refit_phylo_vcv")
+      return(e)
+    }
+    for (i in seq_along(e)[-1L]) e[[i]] <- inject(e[[i]])
+    e
+  }
+  formula[[length(formula)]] <- inject(formula[[length(formula)]])
+  environment(formula) <- env
+  formula
+}
+
 #' Refit `fit_two_psi`'s data under the alt covstruct
 #'
 #' Wraps [gllvmTMB()] with the same family, units, and phylogeny as the
@@ -287,27 +321,29 @@
   silent = TRUE
 ) {
   kind <- match.arg(kind)
-  alt_form <- .alt_formula(fit_two_psi, kind, inputs)
+  alt_form <- .attach_refit_phylo(
+    .alt_formula(fit_two_psi, kind, inputs),
+    inputs$phylo_tree,
+    inputs$phylo_vcv
+  )
   call_args <- list(
     formula = alt_form,
     data = inputs$data,
     trait = inputs$trait,
     unit = inputs$unit,
-    unit_obs = inputs$unit_obs %||% "site_species",
     cluster = inputs$cluster,
     family = inputs$family,
     silent = silent
   )
-  if (!is.null(inputs$phylo_vcv)) {
-    call_args$phylo_vcv <- inputs$phylo_vcv
-  }
-  if (!is.null(inputs$phylo_tree)) {
-    call_args$phylo_tree <- inputs$phylo_tree
+  ## The generated alt formulas group by the cluster column only, so pass
+  ## unit_obs just when the formula actually uses that column (#1568).
+  if (!is.null(inputs$unit_obs) && inputs$unit_obs %in% all.vars(alt_form)) {
+    call_args$unit_obs <- inputs$unit_obs
   }
   tryCatch(do.call(gllvmTMB, call_args), error = function(e) {
     cli::cli_warn(c(
       "Refit under {.code {kind}} covstruct failed: {.val {conditionMessage(e)}}.",
-      "i" = "The cross-check returns {.code NULL} for this side; treat this as evidence the alt fit is itself unstable on this dataset, not as a clean disagreement."
+      "i" = "The cross-check returns {.code NULL} for this side. The refit may have failed because of a layout or data restriction as well as numerical trouble, so read the message above before drawing a conclusion; this is not a clean disagreement."
     ))
     NULL
   })
@@ -362,6 +398,50 @@
   list(Sigma_phy = Sigma_phy, Sigma_non = Sigma_non)
 }
 
+## ---- Likelihood-ratio comparison (#1571) -----------------------------
+
+#' Likelihood-ratio comparison of the paired fit and its refit
+#'
+#' The `dep` refit contains the paired fit (rank-d + diagonal inside an
+#' unstructured covariance), so the paired fit is the reduced model. The
+#' `indep` refit is the reverse: it is the paired fit with the shared
+#' loadings set to zero, so the paired fit is the full model. Returns one
+#' row; the statistics are `NA` when the refit failed, when the two fits
+#' are not nested (a phylo-only paired fit lacks the non-phylogenetic term
+#' the refit always adds), when a log-likelihood is unavailable, or when
+#' the full model has no more parameters than the reduced one.
+#'
+#' @keywords internal
+#' @noRd
+.two_psi_lrt <- function(fit_joint, fit_alt, joint_sigma_non, alt_is_full) {
+  out <- data.frame(
+    loglik_joint = NA_real_,
+    loglik_alt = NA_real_,
+    chi2 = NA_real_,
+    df = NA_real_,
+    p_value = NA_real_
+  )
+  if (is.null(fit_alt) || is.null(joint_sigma_non)) {
+    return(out)
+  }
+  ll_joint <- tryCatch(stats::logLik(fit_joint), error = function(e) NULL)
+  ll_alt <- tryCatch(stats::logLik(fit_alt), error = function(e) NULL)
+  if (is.null(ll_joint) || is.null(ll_alt)) {
+    return(out)
+  }
+  out$loglik_joint <- as.numeric(ll_joint)
+  out$loglik_alt <- as.numeric(ll_alt)
+  full <- if (alt_is_full) ll_alt else ll_joint
+  reduced <- if (alt_is_full) ll_joint else ll_alt
+  out$chi2 <- 2 * (as.numeric(full) - as.numeric(reduced))
+  out$df <- attr(full, "df") - attr(reduced, "df")
+  if (is.finite(out$chi2) && is.finite(out$df) && out$df > 0) {
+    ## A negative statistic is optimiser noise: use 0 for the p-value.
+    out$p_value <- stats::pchisq(max(out$chi2, 0), df = out$df, lower.tail = FALSE)
+  }
+  out
+}
+
 ## ---- compare_dep_vs_two_psi (canonical) -------------------------------
 
 #' Canonical likelihood-based cross-check for the paired phylogenetic decomposition
@@ -373,16 +453,31 @@
 #' \eqn{\boldsymbol\Sigma_{\mathrm{phy}} = \boldsymbol\Lambda_{\mathrm{phy}}\boldsymbol\Lambda_{\mathrm{phy}}^\top + \boldsymbol\Psi_{\mathrm{phy}}}
 #' (and the analogous \eqn{\boldsymbol\Sigma_{\mathrm{non}}}) against
 #' the unstructured baseline. Per-component RMSE plus a `flag` field
-#' (`TRUE` when any component disagrees beyond `threshold`) identifies
-#' two-psi identifiability failures.
+#' (`TRUE` when any component disagrees beyond `threshold`). A flag means
+#' the two fits disagree; it does not show that the paired two-psi model
+#' is wrong or not identified.
 #'
 #' Conceptual basis: Williams et al. (2025) bioRxiv 2025.12.20.695312
 #' Eq. 3, generalised across traits. The unstructured fit has
 #' \eqn{T(T+1)/2} free parameters per tier and is the strongest available
-#' benchmark for the implied total covariance. When the joint two-psi fit
-#' is well-identified, its implied total Sigma matches the unstructured
-#' baseline; when it isn't, the diagnostic flags the disagreement and
-#' the user knows to relax the rank or revisit identifiability.
+#' benchmark for the implied total covariance. Agreement between the two
+#' fits is reassuring. Disagreement is a prompt to look further, not a
+#' verdict: the more flexible baseline estimates many more parameters
+#' (for example non-phylogenetic off-diagonals whose true value may be 0)
+#' and carries its own sampling noise at realistic species counts. In
+#' simulations from the paired model itself (T = 3, d = 1; see issue 1571),
+#' the default threshold flagged nearly every dataset: 24/24 seeds at 64
+#' species, 4/4 at 128 and 3/4 at 256, with the paired fit usually closer
+#' to the true non-phylogenetic Sigma than the baseline. The `0.10`
+#' default of `threshold` is therefore **not calibrated**; treat a flag as
+#' a comparison to inspect, for example by checking the boundary and
+#' convergence diagnostics of both fits.
+#'
+#' The `lrt` component is the likelihood-based comparison: because the paired
+#' fit is nested in the unstructured refit, it reports their
+#' likelihood-ratio test, which accounts for the refit's many extra
+#' parameters. `rel_disagreement` and `flag` are kept as descriptive
+#' summaries only.
 #'
 #' The cross-check separates three questions:
 #'
@@ -391,7 +486,7 @@
 #'   \item{Level 2: total Sigma_phy and Sigma_non agree?}{This diagnostic
 #'     answers Level 2 directly. The two estimators target the SAME
 #'     total covariance with different parameterisations, so agreement
-#'     is the identifiability check.}
+#'     is what is compared (see the caveat above).}
 #'   \item{Level 3: split into Lambda Lambda^T + Psi?}{Diagnostic
 #'     does not test Level 3 directly; Level 2 agreement is the
 #'     pre-requisite for Level 3 to be meaningful.}
@@ -407,7 +502,10 @@
 #'   `phylo_dep + dep` and compares.
 #' @param threshold Numeric (default `0.10`): relative-disagreement
 #'   threshold (Frobenius RMSE / Frobenius magnitude of the unstructured
-#'   estimate) above which a component is flagged.
+#'   estimate) above which a component is flagged. The default is not
+#'   calibrated: it flags most datasets simulated from the paired model
+#'   itself at realistic species counts, so a flag marks disagreement
+#'   only.
 #' @param phylo_vcv,phylo_tree Optional. The phylogenetic correlation
 #'   matrix or `ape::phylo` tree, only needed if `fit_two_psi` was
 #'   produced by an older package version that did not store the
@@ -431,6 +529,20 @@
 #'     if all tested components agreed, `NA` if nothing could be tested
 #'     (distinguishes agreement from a failed refit).}
 #'   \item{`threshold`}{The threshold used.}
+#'   \item{`lrt`}{One-row data frame: the likelihood-ratio test of the
+#'     paired fit against the unstructured refit, which contains it.
+#'     Columns `loglik_joint`, `loglik_alt`, `chi2` (twice the
+#'     log-likelihood gain of the refit), `df` (the refit's extra free
+#'     parameters) and `p_value` (upper tail of a chi-square with `df`
+#'     degrees of freedom). All `NA` when the refit failed, when
+#'     `fit_two_psi` has no non-phylogenetic term (the refit always adds
+#'     one, so the fits are not nested) or when a log-likelihood is
+#'     unavailable. The chi-square reference is approximate because the
+#'     paired model sits on a reduced-rank and variance boundary of the
+#'     unstructured one; use `p_value` as a guide, after checking
+#'     `alt_fit$opt$convergence`. `rel_disagreement` and `flag` stay as
+#'     descriptive summaries; the likelihood ratio is the comparison that
+#'     accounts for the refit's extra flexibility.}
 #'   \item{`alt_fit`}{The refit `gllvmTMB_multi` object (or `NULL` on
 #'     failure), retained so users can inspect convergence and pull
 #'     other extractor outputs.}
@@ -468,24 +580,66 @@
 #'
 #' @export
 #' @examples
-#' \dontrun{
-#' library(ape)
-#' tree <- ape::rcoal(200)
-#' tree$tip.label <- paste0("sp", seq_len(200))
-#' Cphy <- ape::vcv(tree, corr = TRUE)
-#' fit  <- gllvmTMB(
-#'   value ~ 0 + trait + phylo_latent(species, d = 1, unique = TRUE) +
-#'           indep(0 + trait | species),
-#'   data      = df,
-#'   trait     = "trait",
-#'   unit      = "species",
-#'   cluster   = "species",
-#'   phylo_vcv = Cphy
-#' )
-#' diag <- compare_dep_vs_two_psi(fit)
-#' diag$flag
-#' diag$agreement
+#' set.seed(18)
+#' ## A balanced phylogeny of 64 species, built in base R: six rounds of
+#' ## evenly spaced splits. Two species' phylogenetic correlation is the
+#' ## share of the tree's depth they spent as one lineage (5/6 for sister
+#' ## species, 0 for species on opposite sides of the root).
+#' n_sp <- 64
+#' Cphy <- matrix(0, n_sp, n_sp)
+#' for (level in 1:6) {
+#'   clade <- (seq_len(n_sp) - 1) %/% 2^(6 - level)
+#'   Cphy <- Cphy + outer(clade, clade, "==") / 6
 #' }
+#' sp <- paste0("sp", seq_len(n_sp))
+#' dimnames(Cphy) <- list(sp, sp)
+#'
+#' ## Three traits. A species' value for each trait is the sum of a shared
+#' ## phylogenetic factor (with a trait-specific loading), a trait-specific
+#' ## phylogenetic effect and a non-phylogenetic species effect. Three
+#' ## individuals are measured per species, so these species effects can be
+#' ## told apart from measurement noise.
+#' L <- t(chol(Cphy))  # turns independent draws into tree-correlated ones
+#' phy <- outer(drop(L %*% rnorm(n_sp)), c(0.8, 0.6, -0.5)) +
+#'   L %*% matrix(rnorm(n_sp * 3, sd = 0.6), n_sp, 3)
+#' non <- matrix(rnorm(n_sp * 3, sd = 0.5), n_sp, 3)
+#' df <- expand.grid(trait = c("t1", "t2", "t3"), individual = 1:3,
+#'                   species = sp)
+#' idx <- cbind(match(df$species, sp), as.integer(df$trait))
+#' df$value <- phy[idx] + non[idx] + rnorm(nrow(df), sd = 0.5)
+#'
+#' ## The paired ("two-psi") fit: the phylogenetic covariance is one shared
+#' ## factor plus trait-specific phylogenetic variances; the
+#' ## non-phylogenetic species variances are independent across traits.
+#' fit <- gllvmTMB(
+#'   value ~ 0 + trait +
+#'     phylo_latent(species, d = 1, unique = TRUE, vcv = Cphy) +
+#'     indep(0 + trait | species),
+#'   data = df, trait = "trait", unit = "species", cluster = "species"
+#' )
+#'
+#' ## Refit with unrestricted phylogenetic and non-phylogenetic covariances
+#' ## (phylo_dep + dep) and compare the two fits' covariance matrices.
+#' check <- compare_dep_vs_two_psi(fit)
+#' check$alt_fit$opt$convergence  # 0 means the refit converged
+#' ## rel_disagreement is the gap between the two fits relative to the size
+#' ## of the unrestricted estimate; flag marks gaps above `threshold`
+#' ## (0.10 by default).
+#' check$agreement
+#' check$flag
+#' ## Both components are flagged here, even though the data were simulated
+#' ## from the paired model itself. The unrestricted refit gains little
+#' ## log-likelihood for its three extra parameters, yet it splits the trait
+#' ## covariance differently between the phylogenetic and non-phylogenetic
+#' ## parts: with 64 species the data only loosely determine that split.
+#' ## So a flag means the two fits disagree; on its own it does not show
+#' ## that the paired model is wrong.
+#' c(two_psi = logLik(fit), unrestricted = logLik(check$alt_fit))
+#' ## The likelihood-ratio test of the two fits (the unrestricted refit
+#' ## contains the paired fit); this accounts for its extra parameters.
+#' check$lrt
+#' check$joint$Sigma_phy  # paired fit
+#' check$dep$Sigma_phy    # unrestricted refit
 compare_dep_vs_two_psi <- function(
   fit_two_psi,
   threshold = 0.10,
@@ -498,6 +652,21 @@ compare_dep_vs_two_psi <- function(
   }
   if (!is.null(phylo_tree)) {
     inputs$phylo_tree <- phylo_tree
+  }
+
+  ## The `dep(0 + trait | cluster)` refit registers at the unit tier, so it
+  ## needs `unit == cluster` (#1572). Refuse the layout up front instead of
+  ## reporting the structural refusal as an unstable fit.
+  if (!identical(inputs$unit, inputs$cluster)) {
+    cli::cli_abort(
+      c(
+        "{.fn compare_dep_vs_two_psi} needs {.code unit} and {.code cluster} to be the same column.",
+        "x" = "This fit has {.code unit = {.val {inputs$unit}}} and {.code cluster = {.val {inputs$cluster}}}.",
+        "i" = "The full unstructured {.fn dep} refit cannot be placed at the {.val {inputs$cluster}} level when the unit is a different column.",
+        ">" = "Use {.fn compare_indep_vs_two_psi}, which supports this layout, or refit with {.code unit = {.val {inputs$cluster}}}."
+      ),
+      class = "gllvmTMB_two_psi_unit_cluster"
+    )
   }
 
   joint <- .joint_two_psi_sigmas(fit_two_psi)
@@ -555,6 +724,9 @@ compare_dep_vs_two_psi <- function(
       any(agreement$flag, na.rm = TRUE)
     },
     threshold = threshold,
+    lrt = .two_psi_lrt(
+      fit_two_psi, fit_alt, joint$Sigma_non, alt_is_full = TRUE
+    ),
     alt_fit = fit_alt
   )
 }
@@ -577,9 +749,12 @@ compare_dep_vs_two_psi <- function(
 #' Otherwise prefer [compare_dep_vs_two_psi()] (gold standard).
 #'
 #' Cross-check intent: the per-trait diagonals are the simplest summary
-#' the joint two-psi fit and the marginal baseline both target. If the
-#' diagonals already disagree beyond the threshold, no inspection of
-#' the cross-trait off-diagonals is warranted.
+#' the joint two-psi fit and the marginal baseline both target. A flag
+#' means the two fits disagree beyond `threshold`; it does not show that
+#' the paired model is wrong. The baseline carries its own sampling noise
+#' and the `0.10` default is not calibrated (on the issue 1571
+#' simulations from the paired model, this check also flagged, with
+#' `rel_disagreement` of 0.24 and 0.16 for the two components at seed 18).
 #'
 #' @inheritParams compare_dep_vs_two_psi
 #'
@@ -595,6 +770,15 @@ compare_dep_vs_two_psi <- function(
 #'     `rel_disagreement`, and `flag`.}
 #'   \item{`flag`, `threshold`, `alt_fit`}{As in
 #'     [compare_dep_vs_two_psi()].}
+#'   \item{`lrt`}{One-row data frame with the same columns as in
+#'     [compare_dep_vs_two_psi()], but the direction is reversed: the
+#'     `phylo_indep + indep` refit is the paired fit with its shared
+#'     loadings set to zero, so the paired fit is the larger model. `chi2`
+#'     is twice the log-likelihood gain of the paired fit over the refit
+#'     and `df` its extra free parameters. A small `p_value` means the
+#'     shared loadings improve the fit. The chi-square reference is
+#'     approximate, because the loadings are not identified under the
+#'     refit.}
 #' }
 #'
 #' @references
@@ -609,11 +793,68 @@ compare_dep_vs_two_psi <- function(
 #'
 #' @export
 #' @examples
-#' \dontrun{
-#' diag <- compare_indep_vs_two_psi(fit)
-#' diag$flag
-#' diag$agreement
+#' set.seed(18)
+#' ## A balanced phylogeny of 64 species, built in base R: six rounds of
+#' ## evenly spaced splits. Two species' phylogenetic correlation is the
+#' ## share of the tree's depth they spent as one lineage (5/6 for sister
+#' ## species, 0 for species on opposite sides of the root).
+#' n_sp <- 64
+#' Cphy <- matrix(0, n_sp, n_sp)
+#' for (level in 1:6) {
+#'   clade <- (seq_len(n_sp) - 1) %/% 2^(6 - level)
+#'   Cphy <- Cphy + outer(clade, clade, "==") / 6
 #' }
+#' sp <- paste0("sp", seq_len(n_sp))
+#' dimnames(Cphy) <- list(sp, sp)
+#'
+#' ## Three traits. A species' value for each trait is the sum of a shared
+#' ## phylogenetic factor (with a trait-specific loading), a trait-specific
+#' ## phylogenetic effect and a non-phylogenetic species effect. Three
+#' ## individuals are measured per species, so these species effects can be
+#' ## told apart from measurement noise.
+#' L <- t(chol(Cphy))  # turns independent draws into tree-correlated ones
+#' phy <- outer(drop(L %*% rnorm(n_sp)), c(0.8, 0.6, -0.5)) +
+#'   L %*% matrix(rnorm(n_sp * 3, sd = 0.6), n_sp, 3)
+#' non <- matrix(rnorm(n_sp * 3, sd = 0.5), n_sp, 3)
+#' df <- expand.grid(trait = c("t1", "t2", "t3"), individual = 1:3,
+#'                   species = sp)
+#' idx <- cbind(match(df$species, sp), as.integer(df$trait))
+#' df$value <- phy[idx] + non[idx] + rnorm(nrow(df), sd = 0.5)
+#'
+#' ## The paired ("two-psi") fit: the phylogenetic covariance is one shared
+#' ## factor plus trait-specific phylogenetic variances; the
+#' ## non-phylogenetic species variances are independent across traits.
+#' fit <- gllvmTMB(
+#'   value ~ 0 + trait +
+#'     phylo_latent(species, d = 1, unique = TRUE, vcv = Cphy) +
+#'     indep(0 + trait | species),
+#'   data = df, trait = "trait", unit = "species", cluster = "species"
+#' )
+#'
+#' ## Refit with per-trait variances only (phylo_indep + indep) and compare
+#' ## the two fits' per-trait phylogenetic and non-phylogenetic variances.
+#' ## This cheap check is meant for fits with many traits, where the
+#' ## unrestricted refit of compare_dep_vs_two_psi() is too slow; three
+#' ## traits keep the example fast.
+#' check <- compare_indep_vs_two_psi(fit)
+#' check$alt_fit$opt$convergence  # 0 means the refit converged
+#' ## rel_disagreement is the gap between the two fits relative to the size
+#' ## of the per-trait estimates; flag marks gaps above `threshold`
+#' ## (0.10 by default).
+#' check$agreement
+#' check$flag
+#' ## Both components are flagged here, even though the data were simulated
+#' ## from the paired model itself: with 64 species each trait's
+#' ## phylogenetic and non-phylogenetic variances are only loosely
+#' ## determined, and the paired fit (which also uses the covariances among
+#' ## traits) and this per-trait refit land some way apart. A flag means the
+#' ## two fits disagree; on its own it does not show that the paired model
+#' ## is wrong. The phylogenetic variances of the two fits:
+#' rbind(two_psi = check$joint$Sigma_phy_diag,
+#'       per_trait = check$indep$Sigma_phy_diag)
+#' ## Likelihood-ratio test: does the paired fit's shared factor improve on
+#' ## the per-trait refit?
+#' check$lrt
 compare_indep_vs_two_psi <- function(
   fit_two_psi,
   threshold = 0.10,
@@ -701,6 +942,9 @@ compare_indep_vs_two_psi <- function(
       any(agreement$flag, na.rm = TRUE)
     },
     threshold = threshold,
+    lrt = .two_psi_lrt(
+      fit_two_psi, fit_alt, joint_full$Sigma_non, alt_is_full = FALSE
+    ),
     alt_fit = fit_alt
   )
 }

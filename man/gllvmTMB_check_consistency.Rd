@@ -10,17 +10,22 @@ gllvmTMB_check_consistency(fit, n_sim = 100L, seed = NULL, estimate = FALSE)
 \item{fit}{A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}.}
 
 \item{n_sim}{Integer number of simulate-evaluate replicates.
-Default \code{100L}. Cost is roughly \code{n_sim} joint likelihood
-evaluations; budget 5-30 seconds on a Tier-1 fixture
-and proportionally longer for larger fits.}
+Default \code{100L}. Must be larger than the number of fixed parameters
+of the fit (\code{length(fit$tmb_obj$par)}): the covariance of the
+score vector from \code{n_sim} replicates has rank at most \code{n_sim - 1},
+so a smaller \code{n_sim} cannot be inverted. The function stops with an
+error naming the parameter count otherwise. Cost is roughly
+\code{n_sim} joint likelihood evaluations; budget 5-30 seconds on a
+Tier-1 fixture and proportionally longer for larger fits.}
 
 \item{seed}{Optional integer seed for the simulation RNG. NULL
 (default) draws a random seed.}
 
 \item{estimate}{Logical. When \code{TRUE}, also refits the model on
-each simulated dataset and reports the joint-score \code{p_value} +
-\code{bias}. Default \code{FALSE} (much faster; marginal-score check
-only).}
+each simulated dataset (passed to \code{TMB::checkConsistency()}). The
+refits are kept in \verb{$raw}; TMB's deviance test of them is
+\code{summary(cc$raw)$estimate$deviance.p.value}. The wrapper does not
+report it separately. Default \code{FALSE} (much faster).}
 }
 \value{
 An object of class \code{gllvmTMB_check_consistency} with
@@ -30,12 +35,17 @@ components:
 all marginal-score components. \code{NA} if TMB's information
 matrix could not be inverted (often the case on tiny
 fixtures).}
-\item{\verb{$marginal_bias}}{Named numeric vector: per-parameter
-bias (mean of the simulated score, normalised by its SE).
-Large absolute values flag specific parameters where the
-Laplace approximation is biased.}
-\item{\verb{$joint_p_value}}{Joint-score p-value. \code{NA} unless
-\code{estimate = TRUE}. Slower because each replicate refits.}
+\item{\verb{$marginal_bias}}{Named numeric vector: estimated bias of
+each parameter, from TMB's
+\code{-solve(var(score)) \%*\% mean(score)}. It is in each
+parameter's own units, not a z-score, so the fixed
+\verb{|bias| > 0.5} flag threshold is a heuristic that depends on
+the parameter's scale.}
+\item{\verb{$joint_p_value}}{p-value of TMB's joint-score test. This
+test checks that the simulation itself is correct; it uses the
+joint gradient and so needs simulated random effects as well as
+simulated data. \code{NA} when the template does not simulate the
+random effects. It does not depend on \code{estimate}.}
 \item{\verb{$flagged_parameters}}{Character names of parameters
 whose marginal bias exceeds \verb{|bias| > 0.5} (a heuristic;
 finite-\code{n_sim} noise can produce small spurious biases,
@@ -49,8 +59,8 @@ non-centring; this is not an accuracy certificate),
 \code{"joint_score_non_centred"},
 \code{"information_matrix_singular"} (TMB couldn't invert it;
 interpret with caution), \code{"marginal_p_value_unavailable"}
-(TMB returned NA without a captured warning; usually
-happens on tiny / weakly-identified fixtures).}
+(TMB returned NA without a captured warning; any other error
+from TMB's \code{summary()} is listed in \verb{$warnings}).}
 \item{\verb{$raw}}{The full \code{TMB::checkConsistency()} return value
 in case the user wants the per-replicate gradient matrix.}
 \item{\verb{$call}}{\code{match.call()} of the invocation.}
@@ -66,7 +76,13 @@ whether the approximate marginal score is centred.
 \details{
 It simulates \code{n_sim} datasets from the fitted model under the joint
 parameter vector at the MLE, then tests whether the approximate
-marginal score function is centred at zero across the simulations. A
+marginal score function is centred at zero across the simulations.
+This needs the TMB template to simulate new responses (a \code{SIMULATE}
+block). The \code{gllvmTMB} template does not have one yet (#1582), so
+every "simulated" dataset would be the observed data and every score
+vector identical. The function detects this and stops with a
+"simulation not available" error rather than report a verdict it
+cannot compute. A
 non-centred score is a sign that the Laplace approximation is
 \strong{unreliable} for this fit -- typically because the random-effects
 posterior is far from Gaussian (saturated binomial / Beta, sparse
@@ -87,8 +103,8 @@ the optimisation outcome or the parameter identification.
 
 A large marginal-score p-value is an absence of evidence against
 centring in this finite simulation; it is not a certificate that the
-Laplace approximation is accurate. If the result is small (\code{p_value <= 0.05}) or
-large flagged-parameter list), consider:
+Laplace approximation is accurate. If the result is small
+(\code{p_value <= 0.05}) or the flagged-parameter list is large, consider:
 \itemize{
 \item Refitting with a richer random-effects structure (so the
 conditional posterior is more Gaussian).
@@ -99,17 +115,38 @@ audit's recommended Bayesian-comparison path).
 }
 }
 \examples{
-\dontrun{
-fit <- gllvmTMB(value ~ 0 + trait +
-                latent(0 + trait | site, d = 1),
-                data  = sim$data,
-                trait = "trait",
-                unit  = "site")
-res <- gllvmTMB_check_consistency(fit, n_sim = 50L, seed = 1)
-res
-res$marginal_bias
-res$flagged_parameters
-}
+set.seed(1)
+# Counts of four species at 100 sites, driven by one shared latent axis.
+# The check matters most for non-Gaussian responses like these, where
+# the Laplace approximation is not exact.
+n_sites <- 100
+z <- rnorm(n_sites)
+loadings <- c(0.8, 0.6, 0.5, 0.3)
+dat <- expand.grid(site = factor(seq_len(n_sites)),
+                   trait = factor(paste0("sp", 1:4)))
+mu <- exp(0.5 + loadings[as.integer(dat$trait)] * z[as.integer(dat$site)])
+dat$count <- rpois(nrow(dat), mu)
+fit <- gllvmTMB(
+  count ~ 0 + trait + latent(0 + trait | site, d = 1, unique = FALSE),
+  data = dat, family = poisson(), trait = "trait", unit = "site"
+)
+
+# n_sim must be larger than the number of fitted parameters (8 here);
+# a smaller value stops with an error that names the count.
+tryCatch(
+  gllvmTMB_check_consistency(fit, n_sim = 5, seed = 1),
+  error = function(e) cat(conditionMessage(e), "\n")
+)
+
+# The template cannot yet simulate new responses (#1582), so with a
+# valid n_sim the check stops with a "simulation not available" error.
+# Once simulation is available, `cc$diagnostics` gives the overall
+# verdict and `cc$flagged_parameters` the parameters whose estimated
+# bias exceeds the threshold.
+tryCatch(
+  gllvmTMB_check_consistency(fit, n_sim = 50, seed = 1),
+  error = function(e) cat(conditionMessage(e), "\n")
+)
 
 }
 \seealso{

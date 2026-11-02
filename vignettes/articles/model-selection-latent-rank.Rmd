@@ -123,6 +123,24 @@ rank_ex$formula_wide
 
 ## Fit Candidate Ranks
 
+Before choosing candidates, check how large `d` can be. The code only
+guards `d <= n_traits`, but that is not the identifiable range. With
+each individual-trait cell observed once and the default
+`unique = TRUE`, the covariance $\Lambda \Lambda^\top + \Psi$ for `T`
+traits has $T(T + 1)/2$ free entries and $Td - d(d - 1)/2 + T$
+parameters (loadings up to rotation, plus the diagonal `Psi`). The
+counting rule of thumb is
+
+$$
+(T - d)^2 \ge T + d.
+$$
+
+For `T = 3` or `T = 4` this allows `d <= 1`, for `T = 5` it allows
+`d <= 2`, and for `T = 10` it allows `d <= 6`. Above that range the
+split between $\Lambda \Lambda^\top$ and `Psi` is not identified.
+This is a necessary count, not a recovery guarantee. Replication within
+a unit, or `unique = FALSE`, changes the count (see `?latent`).
+
 The diagonal baseline has no shared latent variable, so it uses `indep()`.
 The `d >= 1` candidates use the same fixed effects and ordinary
 `latent()` decomposition, changing only the rank of the shared
@@ -216,6 +234,11 @@ model gains a tiny amount of log-likelihood, but it pays for extra
 parameters and its fit-health rows warn about a weak latent axis. That
 is the common rank-selection pattern: a richer model can fit slightly
 better while adding an axis that is not stable enough to interpret.
+There is a second reason to distrust it here. With `T = 5` traits and
+one observation per cell, `d = 3` fails $(T - d)^2 \ge T + d$
+($4 \ge 8$ is false), so the `d = 3` candidate is not only overfit: its
+`Lambda Lambda^T` plus `Psi` split is not identified, which is why the
+weak-axis warning should not be read as a fixable tuning problem.
 
 ## Check The Wide Formula Too
 

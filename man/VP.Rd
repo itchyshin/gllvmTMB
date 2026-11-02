@@ -10,19 +10,56 @@ VP(fit)
 \item{fit}{A fitted multivariate model returned by \code{\link[=gllvmTMB]{gllvmTMB()}}.}
 }
 \value{
-An \verb{n_traits × n_components} matrix of variance shares (rows
-sum to 1). Columns are only those active in \code{fit$use}.
+An \verb{n_traits × n_components} matrix of variance shares; each row
+sums to 1 over the included components (a row whose total is not positive
+is \code{NA}). Columns are only the components active in the fit. When a
+component was left out, the \code{"omitted_components"} attribute names it.
 }
 \description{
-Decomposes the marginal trait variance into contributions from each
-active component of the model. Column names follow the fitted report
-blocks: \code{rr_B}, \code{diag_B}, \code{rr_W}, \code{diag_W}, \code{diag_species}, \code{phylo_rr},
-\code{phylo_diag}, \code{propto}, and \code{residual} (Gaussian/lognormal observation
-variance where present). Non-Gaussian link-implicit residual shares are
-handled by \code{\link[=extract_proportions]{extract_proportions()}}, not by \code{VP()}.
+Decomposes each trait's variance on the linear-predictor scale into
+contributions from the active random-effect components of the model and
+the Gaussian or lognormal observation residual. Column names follow the
+fitted report blocks: \code{rr_B}, \code{diag_B}, \code{rr_W}, \code{diag_W}, \code{diag_species},
+\code{diag_cluster2}, \code{phylo_rr}, \code{phylo_diag}, \code{propto}, one \verb{kernel_<name>}
+column per term of a fit with several named \verb{kernel_*()} terms, one
+\verb{re_int_<group>} column per \code{(1 | group)} random intercept, and \code{residual}.
 }
 \details{
-Mirrors \code{gllvm::VP()} / \code{gllvm::plotVP()}.
+A \code{(1 | group)} intercept is a single draw per group level added to every
+trait, so its column carries the same variance in every row. A \verb{tree =}
+input is rescaled to unit root-to-tip height, so phylogenetic columns are
+variances per species. A \verb{vcv =}, \verb{A =}, pedigree or kernel \verb{K =} matrix
+is used as supplied: when its diagonal is not 1, the column holds the
+loading variance rather than the per-level variance, and the shares
+change with the matrix's scale (rescale it to a unit diagonal first, for
+example with \code{ape::vcv(tree, corr = TRUE)}).
+
+\code{residual} is the observation variance \eqn{\sigma^2_\varepsilon} of
+Gaussian and lognormal traits (on the log scale for lognormal). When a
+diagonal term has one row per observation (an \code{indep()} term at the
+observation level, or the default \code{latent()} Psi when each unit has one
+observation per trait), the package does not estimate
+\eqn{\sigma_\varepsilon}: it fixes it at 1/1000 of the standard deviation
+of all responses pooled on the raw scale. That fixed value is still part
+of the fitted variance, so it is counted. It is negligible when the traits
+share a scale, but not when trait scales differ widely or when lognormal
+responses are large. Non-Gaussian link-implicit residual shares are
+handled by \code{\link[=extract_proportions]{extract_proportions()}}, not by \code{VP()}.
+
+Some active components are not partitioned: random-slope terms (their
+variance, intercept included, changes with the covariate value),
+response-column slopes and coefficients (likewise), the known sampling
+variance of \code{meta_V()} (it differs by observation), spatial fields (their
+variance is on the SPDE parameter scale) and temporal states
+(\code{\link[=extract_temporal]{extract_temporal()}} reports their per-trait variances). \code{VP()} leaves
+each of them out, names them in a warning of class
+\code{gllvmTMB_vp_component_omitted}, and records them in the
+\code{"omitted_components"} attribute of the result. The shares are then
+proportions of the included components only.
+
+\code{VP()} serves the same purpose as \code{gllvm::VP()} / \code{gllvm::plotVP()}, but
+partitions random-effect and residual variance. Fixed effects, including
+the predictor part of \code{latent(..., lv = ~ x)}, are not partitioned.
 
 Structured trait-intercept rho fits are excluded; use \code{extract_Sigma()} and
 its \code{source_strength} metadata.

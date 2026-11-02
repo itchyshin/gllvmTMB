@@ -88,6 +88,9 @@
       "Fit does not carry a TMB {.code sdreport}.",
       i = "Refit so {.code fit$sd_report} is populated."
     ))
+  ## #1379: all-non-finite covariance is an error; pdHess = FALSE a warning.
+  .confint_require_sdreport(fit, "wald", caller = "loading_ci")
+  .wald_warn_nonpd_hessian(fit, "loading")
 
   lam_name <- paste0("Lambda_", internal_level)
   if (is.null(fit$report[[lam_name]]))

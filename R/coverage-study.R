@@ -177,9 +177,7 @@ coverage_study <- function(
   names(truth) <- parm
 
   ## ---- Simulate response paths once -------------------------------
-  if (!is.null(seed)) {
-    set.seed(seed)
-  }
+  .gllvmTMB_local_seed(seed)
   if (isTRUE(progress)) {
     cli::cli_inform("Simulating {n_reps} response datasets ...")
   }

@@ -1409,6 +1409,7 @@ plot.gllvmTMB_multi <- function(
     unique_unit = "Unique between-unit",
     shared_unit_obs = "Shared within-unit",
     unique_unit_obs = "Unique within-unit",
+    residual = "Residual",
     link_residual = "Link residual"
   )
   dat$component_label <- unname(component_labels[as.character(dat$component)])
@@ -1435,6 +1436,7 @@ plot.gllvmTMB_multi <- function(
     "Unique between-unit" = .gtmb_plot_palette[["sky"]],
     "Shared within-unit" = .gtmb_plot_palette[["vermillion"]],
     "Unique within-unit" = .gtmb_plot_palette[["orange"]],
+    "Residual" = .gtmb_plot_palette[["grey"]],
     "Link residual" = "#BDBDBD"
   )
   ## Drop entries the data does not contain (so the legend is tight)

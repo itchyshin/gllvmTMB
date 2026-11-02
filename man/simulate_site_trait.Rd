@@ -36,7 +36,8 @@ simulate_site_trait(
 \item{mean_species_per_site}{Average number of species observed per site
 (Poisson with this mean, truncated at \eqn{n_{species}}). Default 5.}
 
-\item{n_predictors}{Integer; number of site-level predictors. Default 2.}
+\item{n_predictors}{Integer; number of site-level predictors. Default 2.
+Use \code{0} for a dataset with no \verb{env_*} covariates.}
 
 \item{alpha}{Optional length-\code{n_traits} vector of trait intercepts; random
 if \code{NULL}.}

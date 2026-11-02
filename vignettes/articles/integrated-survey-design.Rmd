@@ -301,7 +301,7 @@ repeat the simulation study; a single fit at the largest design point took
 about 107 s.
 
 ```{r curve-data}
-## per-cell effort level E = 2 (the higher of the campaign's two settings)
+## per-cell effort level E = 2 (the higher of the study's two settings)
 design_curve <- data.frame(
   n_cell  = c(  360,   810,  1440,  2250),
   med_rel = c(0.993, 0.985, 0.981, 0.633),  # lower is better
@@ -320,12 +320,12 @@ design_curve
 What the four columns are:
 
 - **`med_rel`** — the median relative error in the recovered amplitude of the
-  spatial field. This is the campaign's headline accuracy axis, and its target
-  was **0.25 or below**. Lower is better.
+  spatial field. This is the study's main accuracy measure, and the
+  prespecified threshold was **0.25 or below**. Lower is better.
 - **`conv`** — the proportion of fits that converged.
 - **`pd_rate`** — the proportion of fits reaching an admissible solution, in
   the positive-definite sense the package checks on every fit.
-- **`cos95`** — the campaign's agreement score between the recovered and the
+- **`cos95`** — the study's agreement score between the recovered and the
   true gradient direction. Higher is better.
 
 Every one of the four moves monotonically in the right direction as cells are
@@ -339,7 +339,7 @@ so the trend is real, but it is the axis furthest from solved and its
 destination lies outside the measured span. Adding cells at fixed per-cell
 support *improves* admissibility; on this evidence it does not yet deliver it.
 
-```{r fig-curve, fig.alt = "Two-panel line chart against cell count on a log axis: left, amplitude error falling as cells grow, with a shaded extrapolation region and a target reference line; right, three admissibility and agreement proportions rising with cells.", fig.cap = "What extra cells buy, at fixed spatial range and fixed cell size. Left: median relative amplitude error falls, but does not reach the campaign's 0.25 target within the measured span; the shaded region is beyond any measurement, and the grey open points are the lower effort level (endpoints only). Right: the three higher-is-better axes, all monotone. The horizontal axis is on a log scale in both panels.", fig.width = 7.5, fig.height = 4}
+```{r fig-curve, fig.alt = "Two-panel line chart against cell count on a log axis: left, amplitude error falling as cells grow, with a shaded extrapolation region and a 0.25 threshold reference line; right, three admissibility and agreement proportions rising with cells.", fig.cap = "What extra cells buy, at fixed spatial range and fixed cell size. Left: median relative amplitude error falls, but does not reach the prespecified 0.25 threshold within the measured span; the shaded region is beyond any measurement, and the grey open points are the lower effort level (endpoints only). Right: the three higher-is-better axes, all monotone. The horizontal axis is on a log scale in both panels.", fig.width = 7.5, fig.height = 4}
 op <- par(mfrow = c(1, 2), mar = c(4.4, 4.4, 2.6, 1.0), cex = 0.9)
 
 ## --- amplitude ---
@@ -351,7 +351,7 @@ rect(2600, -0.1, 30000, 1.2, col = grey(0.92), border = NA)
 text(7600, 0.86, "beyond the\nmeasured span", cex = 0.8, col = grey(0.35))
 box()
 abline(h = 0.25, lty = 3)
-text(430, 0.30, "campaign target 0.25", cex = 0.75, adj = 0)
+text(430, 0.30, "accuracy threshold 0.25", cex = 0.75, adj = 0)
 lines(e1_endpoints$n_cell, e1_endpoints$med_rel, type = "b",
       pch = 1, lty = 2, col = grey(0.45))
 lines(design_curve$n_cell, design_curve$med_rel, type = "b", pch = 19, lwd = 2)
@@ -380,7 +380,7 @@ par(op)
 
 A monotone improvement on its own is weak evidence: almost any axis improves
 when you add data. What makes this a statement about *cells* is a second arm
-of the same programme, in which the spatial **range was shrunk** instead —
+of the same simulation study, in which the spatial **range was shrunk** instead —
 which also raises the number of patches the field spans, but does so by making
 each patch smaller relative to the sampling. That arm moved in the **opposite
 direction on every one of the four axes**.
@@ -402,17 +402,17 @@ describe it.
 This is the more important half of the page, and it is deliberately longer
 than the claim.
 
-**The target was not reached.** At the campaign's own accuracy target
+**The accuracy threshold was not reached.** At the study's prespecified threshold
 (`med_rel` at or below 0.25), 2,250 cells is **not enough**. The last doubling
 moved the amplitude error from 0.98 to 0.63 — real progress, and still nowhere
-near the target. Any figure for how many cells *would* be enough is an
-extrapolation past the last measured point; the campaign's own reading is
-roughly two to three further doublings, on the order of 10,000 to 20,000
-cells, and it labels that as extrapolation rather than measurement. So do we.
+near the threshold. Any figure for how many cells *would* be enough is an
+extrapolation past the last measured point. Extrapolating the observed decline
+suggests roughly two to three further doublings, on the order of 10,000 to
+20,000 cells; this is an extrapolation rather than a measurement.
 
 **Cost grows with cells.** Fit time rose roughly linearly with cell count —
-about 9.6 s at 360 cells and 107 s at 2,250. The next doubling is a designed
-compute campaign, not something you run while you wait.
+about 9.6 s at 360 cells and 107 s at 2,250. The next doubling requires a
+planned, resource-intensive simulation, not something you run while you wait.
 
 **The regime is narrow.** These numbers were measured at a fixed spatial
 range, a fixed cell size, two per-cell effort levels, and one synthetic
@@ -424,7 +424,8 @@ Specifically, you **cannot** conclude from this page that:
 1. some particular number of cells is right for your study — the curve fixes
    range and cell size, and your field's range relative to your cell size is
    the quantity that actually drives the result;
-2. 2,250 cells is sufficient — on the campaign's own target it is not;
+2. 2,250 cells is sufficient — under the study's prespecified threshold it is
+   not;
 3. 10,000 to 20,000 cells is sufficient — that is an extrapolation beyond
    every measured point, and it may be optimistic or pessimistic;
 4. adding cells helps in *your* design — if adding cells thins your per-cell
@@ -438,7 +439,7 @@ Specifically, you **cannot** conclude from this page that:
    the positive-definiteness check. Growing the domain moves that number in
    the right direction and does not finish the job;
 8. the bias coefficients are identified regardless of your covariates — the
-   campaign simulated its accessibility covariate independently of habitat,
+   simulation generated its accessibility covariate independently of habitat,
    and that independence is a design requirement of your data, not a property
    the model supplies.
 
@@ -467,7 +468,7 @@ fixed-range, fixed-cell-size regime described above. (More than two sources
 is available through the
 `isdm_sources()` declaration shown in
 [More than two sources](integrated-multi-source-example.html) — but this
-campaign measured the two-source design only.)
+simulation study evaluated the two-source design only.)
 
 ## See also
 

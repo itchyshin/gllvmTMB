@@ -24,8 +24,8 @@ directly. \code{unit} has no default -- it must name the sampling-unit
 column, matching \code{\link[=gllvmTMB]{gllvmTMB()}}'s own required argument.}
 
 \item{tau}{Numeric vector of ridge scales to sweep. Order does not
-matter: the function sorts internally, both for refitting and for the
-printed classification. Every entry must be a positive number; \code{Inf}
+matter for the classification, which sorts internally. The refits and
+the returned rows follow the order given. Every entry must be a positive number; \code{Inf}
 is allowed and requests plain ML. Default \code{c(0.5, 1, 2, 4, 8, Inf)}.}
 
 \item{control}{A \code{\link[=gllvmTMBcontrol]{gllvmTMBcontrol()}} object providing every OTHER setting
@@ -110,32 +110,48 @@ exactly at any two grid points) and is compared against
 Both are heuristics, not formal tests; see \code{print.gllvmTMB_ridge_path}'s
 arguments to adjust either threshold.
 
-\code{tau = Inf} requests a plain maximum-likelihood refit with no ridge at
-all. That refit can legitimately fail to converge, or converge to an
-extreme loading, for exactly the traits this function exists to flag --
-that failure or extremity is itself part of the diagnostic evidence, not
-a bug to work around. \code{fit_error} records the message when a grid point's
-refit errors outright, and the row's other columns are \code{NA} for that
-point; the classifier then falls back to the finite-\code{tau} elasticity
-comparison, since a failed \code{Inf} refit contributes no loading to compare.
+\code{tau = Inf} requests a plain maximum-likelihood refit with no ridge.
+The boundary comparison uses that refit only when its convergence code
+is 0. An Inf row that returns a loading whose convergence code is not 0
+is not the boundary anchor, and the printed line says that the Inf refit
+did not converge. The elasticity comparison is then used only when at
+least two finite-tau rows remain. An outright error leaves that loading
+missing, so it is not the boundary anchor and does not add the sentence.
+A converged Inf loading, including an extreme one, stays the boundary
+comparison. \code{fit_error} records the message when a grid point's refit
+errors outright, and the row's other columns are \code{NA} for that point.
 }
 \examples{
-\dontrun{
-n <- 40
-df <- data.frame(
-  unit = factor(seq_len(n)),
-  a = rbinom(n, 1, 0.5),
-  b = rbinom(n, 1, 0.5)
-)
+set.seed(1)
+# Simulate presence/absence of five species at 200 sites. One shared
+# latent gradient (say, habitat quality) drives all five; species 4
+# responds negatively.
+n_sites <- 200
+gradient <- rnorm(n_sites)
+loadings <- c(1.5, 1.2, 1.0, -1.0, 0.8)
+intercepts <- c(0, 0.5, -0.5, 0.3, -0.2)
+dat <- expand.grid(site = factor(seq_len(n_sites)),
+                   trait = factor(paste0("sp", 1:5)))
+eta <- intercepts[dat$trait] + loadings[dat$trait] * gradient[dat$site]
+dat$value <- rbinom(nrow(dat), size = 1, prob = plogis(eta))
+
+# Refit a one-factor model while a ridge penalty on the loadings
+# weakens: tau = 0.5 shrinks hard, tau = Inf is plain maximum
+# likelihood with no penalty. Each tau is a separate fit. With one
+# presence/absence record per species and site, the model uses
+# loadings only (unique = FALSE): extra per-species variance could not
+# be told apart from the coin-flip noise of 0/1 data.
 path <- ridge_path(
-  traits(a, b) ~ 1 + latent(1 | unit, d = 1),
-  data = df,
-  family = binomial(),
-  unit = "unit",
-  tau = c(1, 2, 4, Inf)
+  value ~ 0 + trait + latent(0 + trait | site, d = 1, unique = FALSE),
+  data = dat, family = binomial(), unit = "site", trait = "trait",
+  tau = c(0.5, 2, 8, Inf)
 )
+
+# max_loading is the size of each species' loading. It levels off as
+# tau grows, so every species is classed "interior": the data, not the
+# penalty, set its size. A loading that kept growing as the penalty
+# weakened would be flagged "penalty-determined".
 path
-}
 }
 \seealso{
 \code{\link[=screen_gllvmTMB]{screen_gllvmTMB()}} for the pre-fit response screen this

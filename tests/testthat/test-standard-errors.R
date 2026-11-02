@@ -399,10 +399,14 @@ test_that("vcov() raises the SAME typed errors as confint()", {
   no_se <- .se_fit(.se_test_data(), se = FALSE)
   expect_error(vcov(no_se), class = "gllvmTMB_confint_no_sdreport")
   expect_error(vcov(no_se), regexp = "standard_errors")
+  err <- tryCatch(vcov(no_se), error = function(e) e)
+  expect_false(grepl("method = \"profile\"", conditionMessage(err), fixed = TRUE))
 
   bad <- .se_fit(.se_test_data(), se = TRUE)
   bad$sd_report$cov.fixed[] <- NaN
   expect_error(vcov(bad), class = "gllvmTMB_confint_nonfinite_se")
+  err_bad <- tryCatch(vcov(bad), error = function(e) e)
+  expect_false(grepl("method = \"profile\"", conditionMessage(err_bad), fixed = TRUE))
 })
 
 test_that("vcov() gives NA rows for a coefficient held fixed", {
@@ -454,4 +458,31 @@ test_that("lazy ridge uncertainty uses the same penalised MAP curvature as eager
   expect_identical(lazy$loading_ridge_curvature$parameter_vector, lazy$opt$par)
   expect_identical(lazy$loading_ridge_curvature$interpretation,
     "local_approximate_posterior_curvature_at_map")
+})
+
+## #1573: the cached fit$fit_health was built at fit time with se = FALSE and
+## never refreshed, so check_gllvmTMB() kept reporting "standard-error
+## calculation skipped" after standard_errors() had added the sdreport.
+test_that("standard_errors() refreshes fit_health so check_gllvmTMB() sees the Hessian (#1573)", {
+  skip_on_cran()
+  dat <- .se_test_data()
+  lazy <- .se_fit(dat, se = FALSE)
+
+  before <- check_gllvmTMB(lazy)
+  expect_equal(before$status[before$component == "sdreport"], "WARN")
+
+  lazy <- standard_errors(lazy)
+  expect_true(isTRUE(lazy$sd_report$pdHess))
+  expect_true(lazy$fit_health$sdreport_ok)
+  expect_true(isTRUE(lazy$fit_health$pd_hessian))
+  expect_true(is.finite(lazy$fit_health$max_fixed_se))
+
+  after <- check_gllvmTMB(lazy)
+  for (comp in c("sdreport", "pd_hessian", "max_fixed_se")) {
+    expect_equal(after$status[after$component == comp], "PASS", info = comp)
+  }
+
+  ## Matches the eager path.
+  eager <- check_gllvmTMB(.se_fit(dat, se = TRUE))
+  expect_equal(after$status, eager$status)
 })

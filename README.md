@@ -53,6 +53,7 @@ Julia is not required to install or use the default R workflow.
 | model presence or absence of many species | [Joint species distribution models](https://itchyshin.github.io/gllvmTMB/articles/joint-sdm.html) |
 | model traits measured repeatedly through time | [Temporal covariance](https://itchyshin.github.io/gllvmTMB/articles/temporal-ar1.html) |
 | check whether a fitted model is interpretable | [Can I trust this fit?](https://itchyshin.github.io/gllvmTMB/articles/fit-diagnostics.html) |
+| compare primary optimisers for a variational approximation (VA) fit | [Compare VA optimisers](#compare-va-optimisers) |
 | choose another guide | [Browse all articles](https://itchyshin.github.io/gllvmTMB/articles/) |
 
 The first tutorials focus on continuous responses and explain how to interpret
@@ -65,6 +66,37 @@ The comparison with PCA or NMDS, the likelihood, and technical terms such as
 loadings and communality are explained after the first example. They are useful
 for interpreting a fitted model, not prerequisites for deciding whether this is
 the right question for your data.
+
+## Compare VA optimisers
+
+For an experimental variational approximation (VA) fit, set the primary
+optimiser in `gllvmTMBcontrol()` and pass that control object to your usual
+`gllvmTMB()` call. These controls compare `nlminb` with BFGS while turning off
+the secondary polishing sequence:
+
+```r
+library(gllvmTMB)
+
+ctrl_nlminb <- gllvmTMBcontrol(
+  integration = "va", optimizer = "nlminb",
+  optArgs = list(control = list(iter.max = 2000L, eval.max = 4000L)),
+  va_polish = FALSE
+)
+ctrl_bfgs <- gllvmTMBcontrol(
+  integration = "va", optimizer = "optim",
+  optArgs = list(method = "BFGS", control = list(maxit = 2000L)),
+  va_polish = FALSE
+)
+```
+
+Pass each control object to the same model call and reset `set.seed()` before
+each fit to use the same four seeded starts. The iteration limits above are
+native to each optimiser, so they do not represent equal computational effort.
+BFGS uses a dense inverse-Hessian approximation and is best reserved for
+modest models. See [`gllvmTMBcontrol()`](https://itchyshin.github.io/gllvmTMB/reference/gllvmTMBcontrol.html)
+for a complete comparison example and the returned start-level diagnostics.
+VA remains experimental; these settings do not establish that either optimiser
+will converge or recover the best solution for a particular model.
 
 ## What the model does
 
@@ -285,12 +317,15 @@ method. In brief:
 - do not infer interval calibration from the availability of Wald, bootstrap,
   or profile bounds.
 
-Intervals cost more than the fit. `confint()` defaults to
-`method = "profile"`, which refits the model many times for every
-parameter it profiles, so on models with many traits or latent dimensions it
-can take far longer than the original fit. Start with `method = "wald"` (one
-Hessian, fast), profile only the parameters you will report through
-`parm`, and keep the profile run for the final model.
+Intervals cost more than the fit. For fixed effects and direct scalar
+parameters handled by the main `confint()` route, `method = "profile"` is the
+default where supported. Profiling refits the model many times and can take
+far longer than the original fit. Other targets have their own defaults:
+loading and communality intervals use Wald methods, correlations (`rho`) use
+Fisher-z intervals, and some covariance targets use a parametric bootstrap
+when a direct profile is not available. Check the returned `method` column and
+the target-specific help. Start with a Wald interval when its assumptions suit
+the target, then profile or bootstrap only the quantities you plan to report.
 
 `gllvmTMB` is for stacked-trait multivariate models. Use `glmmTMB` for a
 single-response GLMM, `sdmTMB` for a single-response spatial model, and

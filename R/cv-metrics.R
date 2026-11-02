@@ -114,6 +114,8 @@
     y_true = numeric(0),
     n_trials = numeric(0),
     disp = numeric(0),
+    eta = numeric(0),
+    link_id = integer(0),
     stringsAsFactors = FALSE
   )
   if (nrow(pm_out) == 0L) {
@@ -210,6 +212,23 @@
     if (length(idx15) > 0L) disp[idx15] <- phi_nbinom1[merged$trait_id[idx15]]
   }
 
+  ## Linear predictor and link id for binomial rows, so `.cv_logscore()` can
+  ## score on the log scale: the response-scale `est` rounds to exactly 1 at
+  ## large |eta| and turns a finite miss probability into -Inf (#1489).
+  eta <- rep(NA_real_, nrow(merged))
+  link_id <- rep(NA_integer_, nrow(merged))
+  idx1 <- which(fid == 1L)
+  if (length(idx1) > 0L) {
+    eta_all <- predict(fit, type = "link")$est
+    lid_all <- fit$tmb_data$link_id_vec
+    if (length(eta_all) >= max(merged$model_row[idx1])) {
+      eta[idx1] <- eta_all[merged$model_row[idx1]]
+    }
+    if (length(lid_all) >= max(merged$model_row[idx1])) {
+      link_id[idx1] <- as.integer(lid_all[merged$model_row[idx1]])
+    }
+  }
+
   out <- data.frame(
     original_row = merged$original_row,
     model_row = merged$model_row,
@@ -220,6 +239,8 @@
     y_true = merged$y_true,
     n_trials = n_trials,
     disp = disp,
+    eta = eta,
+    link_id = link_id,
     stringsAsFactors = FALSE
   )
   rownames(out) <- NULL
@@ -285,6 +306,28 @@
     return(NA_real_)
   }
   mean(p[y == 1]) - mean(p[y == 0])
+}
+
+## Binomial log density from the linear predictor, using the log-scale
+## tails of the inverse link (mirrors the C++ kernels from #1479): log p and
+## log(1 - p) never pass through a rounded-to-1 probability. link_id as in
+## `.gllvmTMB_binom_prob()`: 0 logit, 1 probit, 2 cloglog.
+.cv_binom_logdens <- function(y, size, eta, link_id) {
+  if (link_id == 0L) {
+    log_p <- stats::plogis(eta, log.p = TRUE)
+    log_1mp <- stats::plogis(eta, lower.tail = FALSE, log.p = TRUE)
+  } else if (link_id == 1L) {
+    log_p <- stats::pnorm(eta, log.p = TRUE)
+    log_1mp <- stats::pnorm(eta, lower.tail = FALSE, log.p = TRUE)
+  } else {
+    e <- exp(eta)
+    log_1mp <- -e
+    log_p <- if (e < log(2)) log(-expm1(-e)) else log1p(-exp(-e))
+  }
+  ## 0 * -Inf is 0, not NaN.
+  succ <- if (y == 0) 0 else y * log_p
+  fail <- if (size - y == 0) 0 else (size - y) * log_1mp
+  lchoose(size, y) + succ + fail
 }
 
 ## Rectangular NA-default template shared by by-trait and pooled rows, so
@@ -498,7 +541,11 @@
 #' `phi_nbinom2` (as the `disp` column attached by `.cv_join_truth()`) for
 #' nbinom2. Binomial is not covered by that residual helper, so its
 #' Bernoulli/binomial density is evaluated directly from `est` (`p`) and
-#' `n_trials`. Any other `family_id` returns `NA_real_`.
+#' `n_trials`. When `joined` carries the linear predictor (`eta`) and
+#' `link_id` (0 logit, 1 probit, 2 cloglog; both set by `.cv_join_truth()`),
+#' the binomial log density is evaluated on the log scale, so a far-tail miss
+#' stays finite exactly as in the fitted kernel; rows without them fall back
+#' to `est`. Any other `family_id` returns `NA_real_`.
 #'
 #' @param joined A data frame as returned by `.cv_join_truth()` (columns
 #'   `family_id`, `est`, `y_true`, `n_trials`, `disp`).
@@ -530,10 +577,10 @@
   fid <- joined$family_id
   mu <- joined$est
   y <- joined$y_true
-  sigma_eps <- .gllvmTMB_sigma_eps(fit)
 
   idx0 <- which(fid == 0L)
   if (length(idx0) > 0L) {
+    sigma_eps <- .gllvmTMB_sigma_eps(fit)
     out[idx0] <- stats::dnorm(
       y[idx0],
       mean = mu[idx0],
@@ -551,6 +598,19 @@
       prob = p,
       log = TRUE
     )
+    if (all(c("eta", "link_id") %in% names(joined))) {
+      tail_ok <- idx1[
+        is.finite(joined$eta[idx1]) & joined$link_id[idx1] %in% 0:2
+      ]
+      for (i in tail_ok) {
+        out[i] <- .cv_binom_logdens(
+          y[i],
+          joined$n_trials[i],
+          joined$eta[i],
+          joined$link_id[i]
+        )
+      }
+    }
   }
 
   idx2 <- which(fid == 2L)

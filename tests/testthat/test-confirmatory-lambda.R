@@ -9,7 +9,8 @@ test_that("confirmatory_lambda() returns the expected pin pattern", {
     species  = species,
     group    = group,
     d        = 2L,
-    loads_on = list(A = 1L, B = 2L)
+    loads_on = list(A = 1L, B = 2L),
+    anchors = NULL
   )
 
   ## Shape + names
@@ -67,7 +68,8 @@ test_that("confirmatory_lambda() respects custom axis_labels", {
     group       = c("A", "B"),
     d           = 2L,
     loads_on    = list(A = 1L, B = 2L),
-    axis_labels = c("shade", "drought")
+    axis_labels = c("shade", "drought"),
+    anchors = NULL
   )
   expect_equal(colnames(M), c("shade", "drought"))
 })
@@ -166,7 +168,8 @@ test_that("confirmatory_lambda() output is consumable by gllvmTMB()", {
     species  = species_names,
     group    = group,
     d        = 2L,
-    loads_on = list(A = 1L, B = 2L)
+    loads_on = list(A = 1L, B = 2L),
+    anchors = NULL
   )
 
   fit <- gllvmTMB(
@@ -212,7 +215,8 @@ test_that("legacy lambda_constraint = list(B = ...) still works with deprecation
     species  = species_names,
     group    = c(rep("A", 3), rep("B", 3)),
     d        = 2L,
-    loads_on = list(A = 1L, B = 2L)
+    loads_on = list(A = 1L, B = 2L),
+    anchors = NULL
   )
 
   ## Legacy name `B` should warn but still fit successfully.

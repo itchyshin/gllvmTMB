@@ -1,17 +1,16 @@
 #' Build a cross-lineage relatedness kernel
 #'
 #' @description
-#' `make_cross_kernel()` builds the block relatedness matrix for the C0
-#' coevolution prototype. It builds a correlation-scale
-#' positive-semidefinite matrix
+#' `make_cross_kernel()` builds a correlation-scale
+#' positive-semidefinite block relatedness matrix
 #' `K_star = rbind(cbind(A_H, C_HP), cbind(t(C_HP), A_P))`, where `A_H`
 #' and `A_P` are within-lineage relatedness matrices and `C_HP` is the
-#' cross-lineage bridge induced by the association matrix `W`. The intended
-#' route is a prototype: pass `K_star` through the
-#' existing `phylo_latent(..., vcv = K_star, unique = TRUE)` engine. The
-#' generic `kernel_*()` surface and the
-#' `extract_Gamma()` coevolution gate are documented
-#' separately; this helper only builds the input kernel.
+#' cross-lineage bridge induced by the association matrix `W`. Pass
+#' `K_star` to a `kernel_*()` term (for example
+#' `kernel_latent(..., K = K_star)`) or to
+#' `phylo_latent(..., vcv = K_star, unique = TRUE)`. This helper only
+#' builds the input kernel; [extract_Gamma()] reads the fitted
+#' cross-lineage block.
 #'
 #' @param A_H,A_P Numeric square correlation matrices for the host and
 #'   partner lineages. Both must be symmetric, positive semidefinite, and

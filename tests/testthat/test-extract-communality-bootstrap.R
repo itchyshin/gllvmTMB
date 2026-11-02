@@ -35,7 +35,7 @@ test_that("extract_communality accepts bootstrap_Sigma interval rows", {
   expect_s3_class(tbl, "data.frame")
   expect_named(tbl, c("trait", "tier", "c2", "lower", "upper", "method"))
   expect_equal(tbl$trait, c("length", "mass", "wing"))
-  expect_equal(unique(tbl$tier), "B")
+  expect_equal(unique(tbl$tier), "unit")
   expect_equal(unique(tbl$method), "bootstrap")
   expect_equal(tbl$c2, as.numeric(boot$point_est$communality_B))
   expect_equal(tbl$lower, as.numeric(boot$ci_lower$communality_B))

@@ -10,7 +10,22 @@ latent(formula, d = 1, unique = TRUE, common = FALSE, lv = NULL)
 \item{formula}{\code{0 + trait | g} style formula (LHS is the response
 factor, typically \code{0 + trait}; RHS is the grouping factor).}
 
-\item{d}{Integer; number of latent factors.}
+\item{d}{Integer; number of latent factors. The hard guard only requires
+\code{d <= n_traits} (the number of traits), but that is not the limit of what
+the data can identify. With the default \code{unique = TRUE}, each unit-trait
+cell observed once, and \eqn{T} traits, the covariance
+\eqn{\boldsymbol\Sigma = \boldsymbol\Lambda\boldsymbol\Lambda^\top + \boldsymbol\Psi}
+has \eqn{T(T + 1)/2} free entries to estimate
+\eqn{T d - d(d - 1)/2 + T} parameters (loadings up to rotation, plus the
+diagonal \eqn{\boldsymbol\Psi}). The counting rule of thumb is
+\eqn{(T - d)^2 \ge T + d}: \eqn{T = 3} and \eqn{T = 4} allow
+\code{d <= 1}, \eqn{T = 5} allows \code{d <= 2}, and \eqn{T = 10} allows
+\code{d <= 6}. Above it the split between
+\eqn{\boldsymbol\Lambda\boldsymbol\Lambda^\top} and
+\eqn{\boldsymbol\Psi} is not identified, and \code{\link[=check_gllvmTMB]{check_gllvmTMB()}} can
+flag only the symptoms (boundary \eqn{\psi}, weak axes) after the fit.
+The rule is a necessary count, not a recovery guarantee. Replication
+within a unit, or \code{unique = FALSE}, changes the count.}
 
 \item{unique}{Logical; \code{TRUE} (default) auto-includes the diagonal
 trait-specific \eqn{\boldsymbol\Psi} companion
@@ -79,17 +94,20 @@ use \code{common = TRUE}; this replaces the older two-term spelling for
 ordinary intercept-only latent terms.
 }
 \examples{
-\dontrun{
-# Long-format stacked traits: a 2-factor latent random effect at `site`.
-# Ordinary latent() carries its diagonal Psi by default
-# (Sigma = Lambda Lambda^T + diag(psi)).
-df <- simulate_site_trait(
-  n_sites = 30, n_species = 4, n_traits = 4,
-  mean_species_per_site = 4, seed = 42
-)$data
+# Six traits on 60 units (3 replicate observations per unit): the
+# between-unit trait covariance is rank two plus a trait-specific diagonal.
+Lambda <- matrix(c(0.9, 0.7, 0.5, -0.4, 0.3, 0,
+                   0, 0.2, -0.3, 0.6, 0.7, 0.8), ncol = 2)
+sim <- simulate_unit_trait(
+  n_units = 60, n_obs_per_unit = 3, n_traits = 6,
+  Lambda_B = Lambda, psi_B = rep(0.2, 6), seed = 1
+)
+# A 2-factor latent random effect at `unit`. Ordinary latent() carries its
+# diagonal Psi by default (Sigma = Lambda Lambda^T + diag(psi)).
+\donttest{
 fit <- gllvmTMB(
-  value ~ 0 + trait + latent(0 + trait | site, d = 2),
-  data = df, unit = "site"
+  value ~ 0 + trait + latent(0 + trait | unit, d = 2),
+  data = sim$data, trait = "trait", unit = "unit"
 )
 extract_Sigma(fit)
 }

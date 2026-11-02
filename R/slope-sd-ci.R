@@ -209,7 +209,7 @@
     lower           = rows$lower,
     upper           = rows$upper,
     component       = "total",
-    total_sd        = rows$estimate,
+    total_sd        = exp(log_se$theta), # SD scale whatever `scale` is
     total_lower     = rows$lower,
     total_upper     = rows$upper,
     total_status    = rows$status,
@@ -277,7 +277,7 @@
     lower           = rows$lower,
     upper           = rows$upper,
     component       = "total",
-    total_sd        = rows$estimate,
+    total_sd        = exp(log_se$theta), # SD scale whatever `scale` is
     total_lower     = rows$lower,
     total_upper     = rows$upper,
     total_status    = rows$status,
@@ -380,7 +380,7 @@
 #'       is the total marginal slope SD.}
 #'     \item{`total_sd`}{Point estimate of the TOTAL marginal slope SD, on
 #'       the SD scale regardless of `scale`. Equal to `estimate` when
-#'       `component == "total"`.}
+#'       `component == "total"` and `scale = "sd"`.}
 #'     \item{`total_lower`, `total_upper`}{Interval on `total_sd`, on the
 #'       requested `scale`. `NA` whenever `total_status != "ok"` or the
 #'       supporting ADREPORT is unavailable.}
@@ -436,44 +436,45 @@
 #'   the full augmented covariance (point estimates only).
 #'
 #' @examples
-#' \dontrun{
 #' set.seed(1)
-#' n_ind <- 30L
-#' n_traits <- 2L
-#' trait_levels <- paste0("t", seq_len(n_traits))
-#' individuals <- paste0("id", seq_len(n_ind))
-#' df <- expand.grid(
-#'   individual = factor(individuals, levels = individuals),
-#'   rep = 1:5,
-#'   trait = factor(trait_levels, levels = trait_levels)
-#' )
-#' df$x <- stats::rnorm(nrow(df))
-#' alpha <- c(0.2, -0.1)
-#' beta <- c(0.3, -0.2)
-#' psi_noise <- matrix(stats::rnorm(4L * n_ind, sd = 0.25), nrow = 4L)
-#' eta <- numeric(nrow(df))
-#' for (o in seq_len(nrow(df))) {
-#'   tt <- as.integer(df$trait[o])
-#'   ii <- as.integer(df$individual[o])
-#'   base <- 2L * (tt - 1L)
-#'   eta[o] <- alpha[tt] + beta[tt] * df$x[o] +
-#'     psi_noise[base + 1L, ii] + psi_noise[base + 2L, ii] * df$x[o]
-#' }
-#' df$value <- eta + stats::rnorm(nrow(df), sd = 0.3)
+#' # Two traits (t1, t2) measured on five occasions for each of 60
+#' # individuals. An environmental covariate x is recorded once per
+#' # occasion and applies to both traits.
+#' n_ind <- 60
+#' dat <- expand.grid(occasion = 1:5, individual = factor(1:n_ind),
+#'                    trait = factor(c("t1", "t2")))
+#' dat$x <- rep(rnorm(5 * n_ind), times = 2)
 #'
-#' options(gllvmTMB.quiet_grammar_notes = TRUE)
+#' # Each individual has its own intercept and its own slope on x for each
+#' # trait, in the order (t1 intercept, t1 slope, t2 intercept, t2 slope).
+#' # Two latent axes generate them: the first shifts both intercepts, the
+#' # second shifts both slopes. The true slope SDs are 0.5 and 0.4.
+#' Lambda <- cbind(c(0.8, 0, 0.6, 0), c(0, 0.5, 0, 0.4))
+#' coefs <- matrix(rnorm(2 * n_ind), n_ind) %*% t(Lambda)
+#' ind <- as.integer(dat$individual)
+#' tr <- as.integer(dat$trait)
+#' dat$value <- c(0.2, -0.1)[tr] + c(0.3, -0.2)[tr] * dat$x +
+#'   coefs[cbind(ind, 2 * tr - 1)] + coefs[cbind(ind, 2 * tr)] * dat$x +
+#'   rnorm(nrow(dat), sd = 0.3)
+#'
+#' # Random intercepts and slopes for both traits. Their covariance is
+#' # built from two latent axes; unique = FALSE adds no extra per-trait
+#' # variance on top of the axes.
 #' fit <- gllvmTMB(
 #'   value ~ 0 + trait + (0 + trait):x +
-#'     unique(0 + trait + (0 + trait):x | individual),
-#'   data = df,
-#'   trait = "trait",
-#'   unit  = "individual",
-#'   control = gllvmTMBcontrol(se = TRUE, optimizer = "optim",
-#'                              optArgs = list(method = "BFGS"))
+#'     latent(0 + trait + (0 + trait):x | individual, d = 2,
+#'            unique = FALSE),
+#'   data = dat, trait = "trait", unit = "individual"
 #' )
-#' slope_sd_ci(fit)
-#' slope_sd_ci(fit, level = 0.90, scale = "variance")
-#' }
+#'
+#' # 95% Wald intervals for how much individuals differ in their slopes,
+#' # one row per trait, on the standard-deviation scale.
+#' ci <- slope_sd_ci(fit)
+#' ci[, c("trait", "term", "estimate", "lower", "upper")]
+#'
+#' # The same quantity as 90% intervals on the variance scale.
+#' ci_var <- slope_sd_ci(fit, level = 0.90, scale = "variance")
+#' ci_var[, c("trait", "term", "estimate", "lower", "upper")]
 #'
 #' @export
 slope_sd_ci <- function(fit, level = 0.95, scale = c("sd", "variance")) {
@@ -514,7 +515,7 @@ slope_sd_ci <- function(fit, level = 0.95, scale = c("sd", "variance")) {
       return(.slope_sd_ci_loadings_only(fit, level, scale, pd_ok))
     cli::cli_abort(c(
       "Fit has no augmented random-slope structure ({.code theta_diag_B_slope}, {.code theta_rr_B_slope}, or {.code theta_dep_chol}) to summarise.",
-      "i" = "Refit with a {.fn latent} or {.fn indep} term of the form {.code (0 + trait + (0 + trait):x | unit, d = K)}, or a {.fn phylo_dep} / {.fn phylo_indep} random-regression term."
+      "i" = "Refit with a {.fn latent} term of the form {.code (0 + trait + (0 + trait):x | unit, d = K)}, or a {.fn phylo_dep} / {.fn phylo_indep} random-regression term."
     ))
   }
 
@@ -567,7 +568,8 @@ slope_sd_ci <- function(fit, level = 0.95, scale = c("sd", "variance")) {
   ## an interval wherever the C++ ADREPORT of the combined expression
   ## supports it (sd_B_slope_total, additive over this slice). ----------
   rr_present <- isTRUE(fit$use$rr_B_slope)
-  total_sd <- rows$estimate
+  psi_sd <- exp(theta) # SD scale whatever `scale` is; `rows$estimate` follows it
+  total_sd <- psi_sd
   total_lower <- rows$lower
   total_upper <- rows$upper
   total_status <- rows$status
@@ -589,7 +591,7 @@ slope_sd_ci <- function(fit, level = 0.95, scale = c("sd", "variance")) {
       } else {
         shared_var_slope <- as.numeric(diag(as.matrix(Sigma_B_slope)))[slope_pos]
       }
-      total_sd <- sqrt(shared_var_slope + rows$estimate^2)
+      total_sd <- sqrt(shared_var_slope + psi_sd^2)
       total_lower <- rep(NA_real_, n_traits)
       total_upper <- rep(NA_real_, n_traits)
       total_status <- rep("unavailable", n_traits)
@@ -658,15 +660,23 @@ slope_sd_ci <- function(fit, level = 0.95, scale = c("sd", "variance")) {
 
 #' @export
 print.gllvmTMB_slope_ci <- function(x, ...) {
+  on_variance <- identical(unique(x$scale), "variance")
   cat(
-    "Wald (log-SD-scale) intervals on augmented random-slope standard",
-    "deviations. These are recovery-only, UNCALIBRATED intervals --",
+    if (on_variance) {
+      paste("Wald (log-scale) intervals on augmented random-slope",
+            "variances (`total_sd` stays on the SD scale). These are",
+            "recovery-only, UNCALIBRATED intervals --", sep = "\n")
+    } else {
+      paste("Wald (log-SD-scale) intervals on augmented random-slope standard",
+            "deviations. These are recovery-only, UNCALIBRATED intervals --",
+            sep = "\n")
+    },
     "repeated-sampling coverage has not been measured for this estimand,",
     "for any family. Consult the package's current limitations for",
     "the applicable validation boundary.",
     sep = "\n"
   )
-  if (isTRUE(attr(x, "rr_B_slope_present"))) {
+  if (any(x$component == "unique_psi")) {
     cat(
       "This fit also has a shared random-slope loadings component",
       "(theta_rr_B_slope); `estimate` is the per-trait UNIQUE (Psi)",

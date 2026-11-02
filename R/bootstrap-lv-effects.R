@@ -91,9 +91,7 @@ bootstrap_ci_lv_effects <- function(fit,
   )
   aux <- aux[!vapply(aux, is.null, logical(1))]
 
-  if (!is.null(seed)) {
-    set.seed(seed)
-  }
+  .gllvmTMB_local_seed(seed)
   Y_sim <- simulate(fit, nsim = n_boot)
   if (!is.matrix(Y_sim) || ncol(Y_sim) != n_boot) {
     cli::cli_abort("Internal: {.fn simulate} did not return an n x n_boot matrix.")

@@ -9,7 +9,7 @@ confirmatory_lambda(
   group,
   d,
   loads_on,
-  anchors = NULL,
+  anchors = NA,
   axis_labels = NULL
 )
 }
@@ -30,14 +30,18 @@ species in group A load on axis 1 only (zero on all other axes),
 species in group B load on axis 2 only. Groups present in \code{group}
 but absent from \code{loads_on} remain free on all axes.}
 
-\item{anchors}{Optional length-\code{d} character vector; one anchor
-species per axis (pinned at \code{+1}). If \code{NULL} (the default), anchors
-are auto-picked as the first species of the group that loads on
-each axis whose row index is on or below the diagonal (row >=
-axis). That placement is required because the engine can pin only
-the lower triangle of Lambda. An explicit or auto-picked anchor
-in the strict upper triangle is an error. Use \code{NA} to skip the
-anchor on a specific axis.}
+\item{anchors}{Opt-in \code{+1} anchors. The default, \code{NA}, applies no anchor
+on any axis (a zeros-only pattern). \strong{A \code{+1} anchor is a restriction,
+not a scale choice}: the latent axes have unit variance, so pinning a
+loading at 1 removes one parameter and can bias the other loadings and
+unique variances, with no diagnostic flagging the loss. Supply a
+length-\code{d} character vector (one anchor species per axis, pinned at
+\code{+1}; \code{NA} skips an axis) only when you want that restriction. Use
+\code{NULL} to auto-pick anchors as the first species of the group that loads
+on each axis whose row index is on or below the diagonal (row >= axis).
+That placement is required because the engine can pin only the lower
+triangle of Lambda. An explicit or auto-picked anchor in the strict
+upper triangle is an error.}
 
 \item{axis_labels}{Optional length-\code{d} character vector for the
 matrix column names. Defaults to \code{c("LV1", "LV2", ...)}.}
@@ -45,15 +49,19 @@ matrix column names. Defaults to \code{c("LV1", "LV2", ...)}.}
 \value{
 An \code{length(species)} by \code{d} numeric matrix with \code{NA} entries
 (estimated), \code{0} entries (pinned to zero), and \code{1} entries (pinned
-at the anchor), ready to pass to \code{gllvmTMB()} as
+at an opt-in anchor), ready to pass to \code{gllvmTMB()} as
 \code{lambda_constraint = list(unit = M)}.
 }
 \description{
 Construct the \code{n_species} by \code{d} confirmatory loading-constraint matrix
 \code{M} from a discrete functional-group hypothesis. Each named group is
-pinned to load on a specific latent axis (zero on all other axes), and
-one anchor species per axis is pinned at \code{+1} to fix the scale. Groups
-present in \code{group} but absent from \code{loads_on} remain free on all axes.
+pinned to load on a specific latent axis (zero on all other axes).
+By default no \code{+1} anchors are applied. The latent axes already have unit
+variance and the lower-triangular form fixes the rotation, so a \code{+1} anchor
+does not set a scale: it removes a free parameter and can bias the other
+loadings and unique variances (#1585). Anchors are an explicit opt-in via
+\code{anchors}. Groups present in \code{group} but absent from \code{loads_on} remain free
+on all axes.
 }
 \details{
 This is the recommended starting point for confirmatory JSDMs where
@@ -61,7 +69,8 @@ prior knowledge takes the form "species in group A respond to
 gradient 1, species in group B respond to gradient 2, ...". The
 engine parameterises Lambda as lower-triangular, so an axis-\code{j}
 anchor must fall on species row \code{i >= j}; otherwise the pin has no
-packed slot and would be dropped. Auto-anchors honour that rule.
+packed slot and would be dropped. Auto-anchors (\code{anchors = NULL}) honour
+that rule.
 For free-form constraint patterns (psychometric CFA, idiosyncratic
 species-by-species pins), build the matrix directly; for purely
 statistical identification scaffolding when no biology is in play,

@@ -1,0 +1,36 @@
+{
+  "assessment_performed": true,
+  "draft_sha256": "93a4ebad70ca7cf93ccc0b70415f18d6693694ed60b9252726029168d04a100b",
+  "draft_version": "v1",
+  "requested_mode": "independent",
+  "assessor_type": "self",
+  "reviewer": "Codex primary agent",
+  "method": "Post-draft reading and claim comparison against source diff, fit receipts, full check logs and independent review",
+  "genre": "after-task report",
+  "coverage": "whole draft",
+  "score": 2,
+  "style_status": "assessed",
+  "score_reason": "Concrete numerical comparison and explicit scope; required report structure adds some repeated framing.",
+  "confidence": "medium",
+  "confidence_reason": "Editorial self-assessment; numerical and scope claims checked separately.",
+  "examples": [
+    {
+      "location": "line 17",
+      "cue": "Concrete purpose, outcome or scope boundary",
+      "impact": "Reader can check what changed and what the evidence supports.",
+      "repair": "no change needed",
+      "line": 17,
+      "quote": "Tighten the fixture's objective stopping tolerance because the original BFGS settings stop before the existing gradient criterion is met. R's installed `?optim` documentation confirms that `reltol` controls relative objective reduction. At `1e-12`, the objective agrees with the selected `1e-10` run within 4.03e-10. The tighter fit changes the unit-slope covariance by about 0.573% relative to the early-stopped fit and passes the existing truth-recovery assertions."
+    }
+  ],
+  "evidence_none_reason": null,
+  "science_gate": "pass",
+  "science_gate_reason": "Unpenalised point optimisation only; raw threshold0.01 retained; no Hessian or coverage claim for the se=FALSE repair. Separate default-nlminb diagnostic receipt supports the named neighbour check.",
+  "facts_gate": "pass",
+  "facts_gate_reason": "Compared all numerical assertions with baseline/tight/wide receipts, source-verification.json, check-receipt.json and full-testthat.Rout; disclosure of initial setup failures retained.",
+  "references_gate": "not_applicable",
+  "references_gate_reason": "No literature claim; local commands, source and retained evidence support the draft.",
+  "date": "2026-10-18",
+  "calibration_status": "No calibration controls used for this draft; protocol examples previously visible.",
+  "interpretation": "perceived_style_not_authorship"
+}

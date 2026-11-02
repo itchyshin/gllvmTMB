@@ -34,7 +34,6 @@ block-diagonal within-study correlation, build \code{V} via \code{\link[=block_V
 rather than silently treated as exact.
 }
 \examples{
-\dontrun{
 # Two-stage meta-regression with a known per-row sampling-variance V.
 set.seed(131)
 df <- expand.grid(
@@ -44,6 +43,7 @@ df <- expand.grid(
 df$value <- rnorm(nrow(df), sd = 0.5)
 df$sampling_var <- runif(nrow(df), min = 0.02, max = 0.08)
 V <- diag(df$sampling_var)
+\donttest{
 fit <- gllvmTMB(
   value ~ 0 + trait + latent(0 + trait | site, d = 1) +
     meta_V(V = V, type = "exact"),

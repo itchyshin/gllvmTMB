@@ -132,3 +132,45 @@ test_that("a plain Poisson-family fit gets none of the new ceiling rows (#1486)"
     "^boundary_(phi_truncnb2|phi_nbinom1|df_student|phi_betabinom)_",
     chk$component)))
 })
+
+test_that("boundary_flags is not PASS while a boundary_phi_* row WARNs (#1351)", {
+  skip_on_cran()
+  ## (fixture kind, family used for the fit, report slot, row prefix). The NB2
+  ## case fits the nbinom1 data with nbinom2(): only the family id matters.
+  cases <- list(
+    list(kind = "nbinom1", family = nbinom2(), report = "phi_nbinom2",
+         prefix = "boundary_phi_nbinom2_"),
+    list(kind = "truncnb2", family = NULL, report = "phi_truncnb2",
+         prefix = "boundary_phi_truncnb2_"),
+    list(kind = "nbinom1", family = NULL, report = "phi_nbinom1",
+         prefix = "boundary_phi_nbinom1_"),
+    list(kind = "betabinom", family = NULL, report = "phi_betabinom",
+         prefix = "boundary_phi_betabinom_")
+  )
+  for (cs in cases) {
+    fx <- dispersion_fixture(cs$kind)
+    fit <- suppressMessages(suppressWarnings(gllvmTMB(
+      fx$formula, data = fx$data, unit = "unit",
+      family = cs$family %||% fx$family,
+      control = gllvmTMBcontrol(se = FALSE)
+    )))
+    ## Interior estimate: no phi row WARNs, so boundary_flags names no phi row.
+    fit$fit_health$boundary_flags <- character(0)
+    fit$report[[cs$report]][] <- 5
+    chk <- check_gllvmTMB(fit, laplace_accuracy = FALSE)
+    expect_false(any(startsWith(chk$component, "boundary_phi_") &
+                       chk$status == "WARN"), info = cs$prefix)
+    expect_identical(chk$status[chk$component == "boundary_flags"], "PASS",
+                     info = cs$prefix)
+
+    ## One trait on the ceiling: its row WARNs, so boundary_flags must too.
+    fit$report[[cs$report]][2L] <- 1e9
+    chk2 <- check_gllvmTMB(fit, laplace_accuracy = FALSE)
+    expect_identical(chk2$status[chk2$component == paste0(cs$prefix, "b")],
+                     "WARN", info = cs$prefix)
+    bf <- chk2[chk2$component == "boundary_flags", ]
+    expect_true(nrow(bf) >= 1L && all(bf$status == "WARN"), info = cs$prefix)
+    expect_match(paste(bf$value, collapse = " "), paste0(cs$prefix, "b"),
+                 fixed = TRUE, info = cs$prefix)
+  }
+})

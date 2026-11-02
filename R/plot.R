@@ -31,7 +31,10 @@ plot_anisotropy <- function(object, return_data = FALSE) {
   if (
     !is.logical(return_data) || length(return_data) != 1L || is.na(return_data)
   ) {
-    cli::cli_abort("{.arg return_data} must be one non-missing logical value.")
+    cli::cli_abort(c(
+      "{.arg return_data} must be one non-missing logical value.",
+      ">" = "Pass {.code return_data = TRUE} for the range geometry as a data frame, or {.code FALSE} to draw the plot."
+    ))
   }
 
   range_data <- .gllvm_spatial_range_geometry(object)
@@ -39,7 +42,10 @@ plot_anisotropy <- function(object, return_data = FALSE) {
     return(range_data)
   }
   if (!requireNamespace("ggplot2", quietly = TRUE)) {
-    cli::cli_abort("Install {.pkg ggplot2} to use {.fn plot_anisotropy}.")
+    cli::cli_abort(c(
+      "Install {.pkg ggplot2} to use {.fn plot_anisotropy}.",
+      ">" = "Run {.code install.packages(\"ggplot2\")}, or use {.fn plot_anisotropy2} (base graphics) or {.code return_data = TRUE}."
+    ))
   }
 
   ggplot2::ggplot(range_data, ggplot2::aes(x = .data$x, y = .data$y)) +
@@ -64,9 +70,10 @@ plot_anisotropy <- function(object, return_data = FALSE) {
 #' @export
 plot_anisotropy2 <- function(object, model = 1L) {
   if (!is.numeric(model) || length(model) != 1L || is.na(model) || model != 1) {
-    cli::cli_abort(
-      "{.arg model} must be 1; gllvmTMB fits one shared spatial range parameter."
-    )
+    cli::cli_abort(c(
+      "{.arg model} must be 1; gllvmTMB fits one shared spatial range parameter.",
+      ">" = "Leave {.arg model} out or pass {.code model = 1}."
+    ))
   }
   range_data <- .gllvm_spatial_range_geometry(object)
   graphics::plot(
@@ -90,19 +97,22 @@ plot_anisotropy2 <- function(object, model = 1L) {
 
 .gllvm_spatial_range_geometry <- function(object) {
   if (!inherits(object, "gllvmTMB_multi")) {
-    cli::cli_abort(
-      "{.arg object} must be a fitted {.cls gllvmTMB_multi} model."
-    )
+    cli::cli_abort(c(
+      "{.arg object} must be a fitted {.cls gllvmTMB_multi} model.",
+      ">" = "Fit a model with a spatial term using {.fn gllvmTMB} and pass the object it returns."
+    ))
   }
   if (.gllvm_fit_uses_delta(object)) {
-    cli::cli_abort(
-      "Isotropic-range plotting is not supported for delta spatial models."
-    )
+    cli::cli_abort(c(
+      "Isotropic-range plotting is not supported for delta spatial models.",
+      ">" = "Refit the spatial model with a non-delta family to plot its range."
+    ))
   }
   if (isTRUE(object$use$spatiotemporal)) {
-    cli::cli_abort(
-      "Isotropic-range plotting is not supported for spatiotemporal models."
-    )
+    cli::cli_abort(c(
+      "Isotropic-range plotting is not supported for spatiotemporal models.",
+      ">" = "Refit with a purely spatial field (no spatiotemporal term) to plot its range."
+    ))
   }
 
   spatial_flags <- c(
@@ -111,18 +121,20 @@ plot_anisotropy2 <- function(object, model = 1L) {
     isTRUE(object$use$spde_latent_slope)
   )
   if (!any(spatial_flags)) {
-    cli::cli_abort(
-      "{.arg object} does not contain a fitted gllvmTMB spatial field."
-    )
+    cli::cli_abort(c(
+      "{.arg object} does not contain a fitted gllvmTMB spatial field.",
+      ">" = "Refit with a spatial term in the {.fn gllvmTMB} formula, such as {.fn spatial_unique}."
+    ))
   }
 
   kappa <- .gllvm_spatial_kappa(object)
   if (
     !is.numeric(kappa) || length(kappa) != 1L || !is.finite(kappa) || kappa <= 0
   ) {
-    cli::cli_abort(
-      "The fitted model does not contain one finite positive spatial kappa estimate."
-    )
+    cli::cli_abort(c(
+      "The fitted model does not contain one finite positive spatial kappa estimate.",
+      ">" = "Check that the fit converged with {.fn gllvmTMB_diagnose}, and refit if it did not."
+    ))
   }
 
   range <- sqrt(8) / as.numeric(kappa)

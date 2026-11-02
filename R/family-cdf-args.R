@@ -199,7 +199,10 @@
     out$dist <- "t"
     out$report <- list(sigma_student = sigma, df_student = df)
     out$args <- list(df = df, scale = sigma)
-    out$args$sd <- if (is.finite(df) && df > 2) {
+    out$args$sd <- if (isTRUE(df == Inf)) {
+      ## df = Inf is the normal limit: SD = scale (#1487).
+      sigma
+    } else if (is.finite(df) && df > 2) {
       sigma * sqrt(df / (df - 2))
     } else {
       NA_real_

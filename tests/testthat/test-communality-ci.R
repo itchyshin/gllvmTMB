@@ -88,7 +88,7 @@ test_that("extract_communality(method = 'wald') uses Wald rather than bootstrap 
   )
   expect_s3_class(tbl, "data.frame")
   expect_equal(unique(tbl$method), "wald")
-  expect_equal(unique(tbl$tier), "B")
+  expect_equal(unique(tbl$tier), "unit")
   expect_equal(nrow(tbl), obj$T)
 
   helper <- gllvmTMB:::.communality_wald_ci(

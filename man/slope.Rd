@@ -36,9 +36,15 @@ term are not supported in this release.
 }
 }
 \examples{
-\dontrun{
-set.seed(1); dat <- expand.grid(unit = factor(1:12), trait = factor(paste0("sp", 1:4)))
-dat$lat <- rnorm(nrow(dat)); dat$temp <- rnorm(nrow(dat)); dat$value <- rnorm(nrow(dat))
+set.seed(1)
+dat <- expand.grid(unit = factor(1:20), trait = factor(paste0("sp", 1:8)))
+dat$lat <- rnorm(nrow(dat)); dat$temp <- rnorm(nrow(dat))
+# Each response column has its own slopes on lat and temp.
+b_lat <- rnorm(8, sd = 0.5); b_temp <- rnorm(8, sd = 0.3)
+k <- as.integer(dat$trait)
+dat$value <- 0.2 * k + b_lat[k] * dat$lat + b_temp[k] * dat$temp +
+  rnorm(nrow(dat), sd = 0.3)
+\donttest{
 fit <- gllvmTMB(value ~ 0 + trait + slope(lat + temp | trait), data = dat,
   trait = "trait", unit = "unit", family = gaussian())
 extract_Sigma(fit, level = "column_slope")

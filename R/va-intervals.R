@@ -837,7 +837,7 @@
   Lambda_hat <- .va_r3_unpack_theta_rr(theta_rr_hat, T_n, q)
   Sigma_hat <- Lambda_hat %*% t(Lambda_hat)
 
-  if (!is.null(seed)) set.seed(seed)
+  .gllvmTMB_local_seed(seed)
 
   beta_draws <- matrix(NA_real_, n_boot, length(beta_hat))
   Sigma_draws <- array(NA_real_, dim = c(n_boot, T_n, T_n))

@@ -550,7 +550,10 @@ gll_prepare_lv_predictor_setup <- function(
       rows <- which(trait_values == trait_level)
       family_rows <- family_id_vec[rows]
       if (all(family_rows == 16L)) return(FALSE)
-      if (all(family_rows == 1L) && all(n_trials[rows] == 1L)) return(FALSE)
+      if (all(family_rows == 1L) && all(n_trials[rows] == 1L) &&
+          !anyDuplicated(unit_id[rows])) {
+        return(FALSE)
+      }
       TRUE
     }, logical(1L))
     if (all(family_id_vec %in% c(12L, 13L, 14L, 20L))) {

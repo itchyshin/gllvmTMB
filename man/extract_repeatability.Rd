@@ -40,10 +40,15 @@ Returns the per-trait repeatability
 where
 \deqn{v_{B,t} = [\Lambda_B\Lambda_B^\top]_{tt} + \sigma^2_{B,t}}
 and
-\deqn{v_{W,t} = [\Lambda_W\Lambda_W^\top]_{tt} + \sigma^2_{W,t} + \sigma^2_{d,t}.}
+\deqn{v_{W,t} = [\Lambda_W\Lambda_W^\top]_{tt} + \sigma^2_{W,t} + \sigma^2_{d,t} + \sigma^2_{\varepsilon,t}.}
 The first two terms include the shared latent and diagonal companion variance
 at the unit and observation tiers; \eqn{\sigma^2_{d,t}} is the
-family-specific link residual used for non-Gaussian traits. The function is
+family-specific link residual used for non-Gaussian traits, and
+\eqn{\sigma^2_{\varepsilon,t}} is the Gaussian (or lognormal) observation
+residual. The observation residual is added only when the fit estimates it,
+which happens when a \code{unit_obs} record has replicate rows; with one row per
+record the engine fixes it near zero and nothing is added. The Wald,
+bootstrap and stored-bootstrap paths all use this definition. The function is
 intended for a fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}} with the relevant ordinary unit
 and observation-level components.
 Also known as the intraclass correlation coefficient (ICC) at the unit
@@ -76,19 +81,59 @@ Reviews} \strong{85}, 935-956. \doi{10.1111/j.1469-185X.2010.00141.x}
 }
 
 \examples{
-\dontrun{
+## Simulate 4 traits recorded on a few species at each of 50 sites.
+## Every trait varies between sites (the "unit" tier) and between the
+## species records within a site (the "unit_obs" tier). A zero beta
+## matrix turns off the simulator's environmental effects, which this
+## model does not include.
+set.seed(3)
+sim <- simulate_site_trait(
+  n_sites = 50, n_species = 10, n_traits = 4,
+  mean_species_per_site = 3,
+  beta = matrix(0, 4, 2),
+  Lambda_B = matrix(c(0.8, 0.6, -0.5, 0.4), 4, 1),
+  psi_B = rep(0.3, 4),
+  Lambda_W = matrix(c(0.5, -0.4, 0.4, 0.3), 4, 1),
+  sigma2_eps = 0.3
+)
+## One latent factor plus trait-specific variances at each tier. Each
+## species record has one value per trait, so the within-site
+## trait-specific variances also absorb the measurement noise
+## (gllvmTMB prints a note saying so).
 fit <- gllvmTMB(
   value ~ 0 + trait +
-          latent(0 + trait | site, d = 1) +
-          latent(0 + trait | site_species, d = 1),
-  data     = df,
+    latent(0 + trait | site, d = 1, unique = TRUE) +
+    latent(0 + trait | site_species, d = 1, unique = TRUE),
+  data     = sim$data,
   trait    = "trait",
   unit     = "site",
   unit_obs = "site_species"
 )
+## Repeatability of each trait: the share of its variance that lies
+## between sites, R = between-site / (between-site + within-site),
+## where each variance adds up the shared (latent) and trait-specific
+## parts of its tier. The Wald interval is built on the log ratio of
+## the two variances, so it stays between 0 and 1; it is not
+## guaranteed to cover the true value 95\% of the time.
 extract_repeatability(fit)
+## The repeatabilities used to simulate the data, for comparison.
+## With only 50 sites the estimates above are noisy.
+tr <- sim$truth
+v_between <- tr$Lambda_B[, 1]^2 + tr$psi_B
+v_within <- tr$Lambda_W[, 1]^2 + tr$sigma2_eps
+round(v_between / (v_between + v_within), 2)
+\donttest{
+## Bootstrap intervals: bootstrap_Sigma() refits the model to 50 data
+## sets simulated from the fit, so this part takes tens of seconds.
+## A small n_boot keeps the run time down and makes bootstrap_Sigma()
+## warn that so few resamples give noisy bounds; real analyses need
+## several hundred (the default is 999). These percentile intervals
+## are not guaranteed to reach their nominal coverage either.
 boot <- bootstrap_Sigma(fit, n_boot = 50, level = c("unit", "unit_obs"),
                         what = "ICC", progress = FALSE)
+## Read the stored bootstrap intervals (no refitting). To do both steps
+## in one call, use method = "bootstrap" with nsim and seed instead:
+## extract_repeatability(fit, method = "bootstrap", nsim = 50, seed = 1)
 extract_repeatability(boot)
 }
 }

@@ -442,6 +442,26 @@
   out
 }
 
+## Boundary flags of the two fits (#1732). A variance estimated at zero can
+## still come with pdHess = TRUE, so the LR test's chi-square reference is
+## unreliable; list the flags and say so once.
+.two_psi_boundary <- function(fit_joint, fit_alt) {
+  flags_of <- function(f) {
+    if (is.null(f)) {
+      return(character(0))
+    }
+    tryCatch(.gllvmTMB_boundary_flags(f), error = function(e) character(0))
+  }
+  out <- list(joint = flags_of(fit_joint), alt = flags_of(fit_alt))
+  if (length(out$joint) > 0L || length(out$alt) > 0L) {
+    cli::cli_inform(c(
+      "i" = "A fit sits on a boundary, so the likelihood-ratio {.field p_value} is unreliable even when {.code pdHess} is {.code TRUE}.",
+      "i" = "Boundary flags: {.field joint} {.val {out$joint}}; {.field refit} {.val {out$alt}}. See {.field boundary}."
+    ))
+  }
+  out
+}
+
 ## ---- compare_dep_vs_two_psi (canonical) -------------------------------
 
 #' Canonical likelihood-based cross-check for the paired phylogenetic decomposition
@@ -543,6 +563,14 @@
 #'     `alt_fit$opt$convergence`. `rel_disagreement` and `flag` stay as
 #'     descriptive summaries; the likelihood ratio is the comparison that
 #'     accounts for the refit's extra flexibility.}
+#'   \item{`boundary`}{List with character vectors `joint` and `alt`: the
+#'     boundary flags of the paired fit and of the refit (from
+#'     [gllvmTMB_diagnose()], for example `"near_zero_sd_B"`). A variance
+#'     estimated at zero can still report `pdHess = TRUE`. When either
+#'     vector is non-empty the chi-square reference of the `lrt` is
+#'     unreliable, because the null value lies on the edge of the
+#'     parameter space; read `p_value` as a rough guide only. The
+#'     function also prints a one-line note in that case.}
 #'   \item{`alt_fit`}{The refit `gllvmTMB_multi` object (or `NULL` on
 #'     failure), retained so users can inspect convergence and pull
 #'     other extractor outputs.}
@@ -727,6 +755,7 @@ compare_dep_vs_two_psi <- function(
     lrt = .two_psi_lrt(
       fit_two_psi, fit_alt, joint$Sigma_non, alt_is_full = TRUE
     ),
+    boundary = .two_psi_boundary(fit_two_psi, fit_alt),
     alt_fit = fit_alt
   )
 }
@@ -779,6 +808,7 @@ compare_dep_vs_two_psi <- function(
 #'     shared loadings improve the fit. The chi-square reference is
 #'     approximate, because the loadings are not identified under the
 #'     refit.}
+#'   \item{`boundary`}{As in [compare_dep_vs_two_psi()].}
 #' }
 #'
 #' @references
@@ -945,6 +975,7 @@ compare_indep_vs_two_psi <- function(
     lrt = .two_psi_lrt(
       fit_two_psi, fit_alt, joint_full$Sigma_non, alt_is_full = FALSE
     ),
+    boundary = .two_psi_boundary(fit_two_psi, fit_alt),
     alt_fit = fit_alt
   )
 }

@@ -8,7 +8,7 @@ gllvmTMBcontrol(
   d_B = NULL,
   d_W = NULL,
   spde_mode = c("per_trait", "shared"),
-  n_init = 1L,
+  n_init = 3L,
   optimizer = c("nlminb", "optim"),
   optArgs = list(),
   init_jitter = 0.3,
@@ -57,7 +57,8 @@ are often multimodal because the latent-factor likelihood has many
 equivalent local maxima; running several restarts with different
 starting values and keeping the fit with the lowest \code{-logLik}
 reduces the risk of settling on a suboptimal solution. Default
-1 (the default start, plus the \code{svd_start} restart when that applies).
+3 (the default start and two jittered restarts, plus the \code{svd_start}
+restart when that applies); \code{n_init = 1L} restores a single start.
 Increase to 5–10 for two-level rr models, and to check any fit whose
 log-likelihood will be compared: a single start can stop at a lower
 local optimum while reporting \code{convergence = 0}, a positive-definite

@@ -777,7 +777,7 @@ gllvmTMB <- function(
   }
   ## The Julia dispatch passes no start or restart settings to GLLVModels.jl,
   ## so an explicit request for either would be silently ignored. The
-  ## defaults (`svd_start = TRUE`, `n_init = 1`) describe the native engine
+  ## defaults (`svd_start = TRUE`, `n_init = 3`) describe the native engine
   ## and are not refused; only an explicit non-default request is.
   if (identical(engine, "julia") &&
       isTRUE(control$n_init_explicit) && (control$n_init %||% 1L) > 1L) {
@@ -2174,7 +2174,8 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #'   equivalent local maxima; running several restarts with different
 #'   starting values and keeping the fit with the lowest `-logLik`
 #'   reduces the risk of settling on a suboptimal solution. Default
-#'   1 (the default start, plus the `svd_start` restart when that applies).
+#'   3 (the default start and two jittered restarts, plus the `svd_start`
+#'   restart when that applies); `n_init = 1L` restores a single start.
 #'   Increase to 5–10 for two-level rr models, and to check any fit whose
 #'   log-likelihood will be compared: a single start can stop at a lower
 #'   local optimum while reporting `convergence = 0`, a positive-definite
@@ -2590,7 +2591,7 @@ gllvmTMBcontrol <- function(
   d_B = NULL,
   d_W = NULL,
   spde_mode = c("per_trait", "shared"),
-  n_init = 1L,
+  n_init = 3L,
   optimizer = c("nlminb", "optim"),
   optArgs = list(),
   init_jitter = 0.3,

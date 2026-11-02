@@ -65,3 +65,83 @@ for (page in pages_1360) {
     })
   })
 }
+
+# Repo-wide static guard (#1360). The issue listed 42 pages; the check above
+# runs only seven of them. This one reads EVERY help page's examples, with
+# \dontrun{} and \donttest{} un-commented, and lists each symbol the example
+# uses as a value without assigning it. A symbol passes only if the package
+# namespace (and so base R) can find it; `df` and `data` always fail, because
+# they resolve to stats::df / utils::data and turn a missing data set into
+# "data is not a data frame". Arguments of with()/within()/subset()/
+# transform() are skipped: they name data columns, not objects. At commit
+# 8010cfd this flags all 42 pages the issue lists.
+
+strip_nse_1360 <- function(e) {
+  if (!is.call(e)) return(e)
+  if (is.name(e[[1]]) &&
+      as.character(e[[1]]) %in% c("with", "within", "subset", "transform") &&
+      length(e) > 2L) {
+    e <- e[1:2]
+  }
+  for (i in seq_along(e)[-1L]) {
+    if (!is.null(e[[i]]) && !identical(e[[i]], quote(expr = ))) {
+      e[[i]] <- strip_nse_1360(e[[i]])
+    }
+  }
+  e
+}
+
+undefined_example_objects_1360 <- function(rd) {
+  ex_file <- tempfile(fileext = ".R")
+  on.exit(unlink(ex_file))
+  tools::Rd2ex(rd, out = ex_file, commentDontrun = FALSE,
+               commentDonttest = FALSE)
+  if (!file.exists(ex_file)) return(character())
+  exprs <- lapply(parse(file = ex_file, keep.source = FALSE), strip_nse_1360)
+  body_fun <- eval(call("function", NULL,
+                        as.call(c(as.name("{"), exprs))))
+  ns <- asNamespace("gllvmTMB")
+  environment(body_fun) <- ns
+  vars <- codetools::findGlobals(body_fun, merge = FALSE)$variables
+  vars[vars %in% c("df", "data") |
+         !vapply(vars, exists, logical(1), envir = ns)]
+}
+
+all_rd_pages_1360 <- function() {
+  man_dir <- testthat::test_path("..", "..", "man")
+  if (dir.exists(man_dir)) {
+    files <- list.files(man_dir, pattern = "\\.Rd$", full.names = TRUE)
+    return(stats::setNames(lapply(files, tools::parse_Rd), basename(files)))
+  }
+  tools::Rd_db("gllvmTMB")
+}
+
+test_that("the undefined-object check flags fit, dat and the df trap (#1360)", {
+  skip_if_not_installed("codetools")
+  rd_file <- tempfile(fileext = ".Rd")
+  withr::defer(unlink(rd_file))
+  writeLines(c(
+    "\\name{x}", "\\alias{x}", "\\title{x}", "\\description{x}",
+    "\\examples{", "\\dontrun{",
+    "ok <- simulate_site_trait(n_sites = 5, n_species = 2, n_traits = 2)",
+    "m <- gllvmTMB(value ~ 0 + trait, data = df, trait = \"trait\")",
+    "summary(fit); nrow(dat); nrow(ok$data); pi",
+    "with(ok$data, mean(value))",
+    "}", "}"
+  ), rd_file)
+  expect_setequal(undefined_example_objects_1360(tools::parse_Rd(rd_file)),
+                  c("df", "fit", "dat"))
+})
+
+test_that("no help-page example uses an object it never defines (#1360)", {
+  skip_if_not_installed("codetools")
+  pages <- all_rd_pages_1360()
+  expect_gt(length(pages), 100L)
+  undefined <- Filter(length, lapply(pages, undefined_example_objects_1360))
+  report <- vapply(names(undefined), function(p) {
+    paste0(p, ": ", paste(undefined[[p]], collapse = ", "))
+  }, character(1))
+  expect(length(undefined) == 0L,
+         paste(c("Help-page examples use objects they never define:",
+                 report), collapse = "\n"))
+})

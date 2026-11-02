@@ -2179,8 +2179,10 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #'   Increase to 5–10 for two-level rr models, and to check any fit whose
 #'   log-likelihood will be compared: a single start can stop at a lower
 #'   local optimum while reporting `convergence = 0`, a positive-definite
-#'   Hessian and a small gradient. The jittered restarts use R's random
-#'   number generator, so call [set.seed()] first for a reproducible fit.
+#'   Hessian and a small gradient. The jittered restarts
+#'   are drawn under a fixed internal seed, so the same data and model
+#'   give the same restarts, and the fit does not change or depend on the
+#'   session random-number stream (`.Random.seed`).
 #' @param svd_start Logical. If `TRUE` (default), a fit with an ordinary
 #'   `latent()` block is also optimised from a second, data-informed start
 #'   whose loadings and latent scores come from one singular value

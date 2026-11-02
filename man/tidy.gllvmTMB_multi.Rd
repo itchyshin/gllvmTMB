@@ -35,7 +35,9 @@ reporting each trait's link function (\code{"identity"}, \code{"probit"},
 ordinal-probit thresholds. For a non-unit weighted objective, fixed-effect
 point estimates remain available but \code{std.error} is \code{NA}, an
 \code{inference_status} column explains the boundary, and \code{conf.int = TRUE}
-fails because no sandwich interval is certified.
+fails because no sandwich interval is certified. When the Hessian is not
+positive definite (or the \code{sdreport()} is missing), \code{std.error} is \code{NA},
+\code{conf.low} / \code{conf.high} are \code{NA}, and \code{inference_status} says why.
 }
 \description{
 Returns a tibble (or data.frame) of either the fixed-effect coefficient

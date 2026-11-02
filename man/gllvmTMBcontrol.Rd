@@ -62,8 +62,10 @@ restart when that applies); \code{n_init = 1L} restores a single start.
 Increase to 5–10 for two-level rr models, and to check any fit whose
 log-likelihood will be compared: a single start can stop at a lower
 local optimum while reporting \code{convergence = 0}, a positive-definite
-Hessian and a small gradient. The jittered restarts use R's random
-number generator, so call \code{\link[=set.seed]{set.seed()}} first for a reproducible fit.}
+Hessian and a small gradient. The jittered restarts
+are drawn under a fixed internal seed, so the same data and model
+give the same restarts, and the fit does not change or depend on the
+session random-number stream (\code{.Random.seed}).}
 
 \item{optimizer}{Optimiser for the native Laplace and AGHQ routes. For the
 experimental VA route, omission keeps the family registry's automatic

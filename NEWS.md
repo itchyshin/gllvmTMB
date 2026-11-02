@@ -1,5 +1,6 @@
 # Development (unreleased)
 
+* The `sigma_eps` auto-suppress note no longer names `indep(0 + trait | ...)` when the per-row diagonal is the folded Psi of `latent(..., unique = TRUE)` or a legacy `unique()` term. It now names the grouping and those two forms generically (part of #1580).
 * `gllvmTMB()` now warns at fit time when the Laplace logLik is more than 2 units above the marginal likelihood it approximates, as on a probit two-factor fit that was 67 units too high with every other check passing. It runs the `laplace_accuracy` audit of `check_gllvmTMB()` (same scope: Laplace fits with a between-unit latent block of `d` 1 to 3, same work cap) at the end of the fit. The threshold is `gllvmTMBcontrol(laplace_warn_thresh = 2)`; `FALSE` or `warn_runaway = FALSE` turns it off (#1389).
 * `Beta()` fits now stop when an observed response lies within 1e-12 of 0 or 1 (for example `y = 1e-16`), not only at exactly 0 or 1, and the error names the offending rows of `data` (class `gllvmTMB_response_support`). Such values were silently clamped to `[1e-12, 1 - 1e-12]` inside the likelihood. Part of #1485: the clamp itself in the TMB template remains.
 * A phylo keyword `vcv =` that disagrees with the global `phylo_vcv =` now stops with class `gllvmTMB_phylo_vcv_conflict` instead of dropping the in-keyword matrix when the dimensions match (#1372).

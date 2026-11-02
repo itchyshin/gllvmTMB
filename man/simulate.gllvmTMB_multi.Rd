@@ -31,15 +31,15 @@ any random-effect grouping that was active.}
 covariance — the unconditional simulation appropriate for
 parametric bootstrap. Redraw is currently implemented for the
 \code{rr_B}, \code{diag_B}, \code{rr_W}, \code{diag_W}, \code{propto}, \code{lv_B}, \code{phylo_rr},
-\code{diag_species}, and the native temporal tier. A temporal fit redraws its
+\code{phylo_diag}, \code{diag_species}, the SPDE spatial fields of
+\code{spatial_indep()}, \code{spatial_scalar()} and \code{spatial_latent()}, and the
+native temporal tier. A temporal fit redraws its
 recursive temporal state together with every supported ordinary/source
 tier; it does not retain fitted ordinary modes in an unconditional draw.
 
-\strong{Not every tier is covered.} The admitted replicated-AR1
-\code{temporal_indep() + spatial_indep()} cell redraws its independent SPDE
-field. Other SPDE spatial forms and the diagonal phylogenetic tier
-(\code{phylo_diag}) fall back to conditional
-simulation and emits a one-shot warning naming the unhandled
+\strong{Not every tier is covered.} The slope-augmented SPDE spatial forms
+(for example \code{spatial_indep(1 + x | coords)}) fall back to conditional
+simulation and emit a one-shot warning naming the unhandled
 tiers. Because conditional simulation reuses the fitted random-
 effect modes rather than redrawing them, it understates
 between-unit variability: intervals derived from it (for example

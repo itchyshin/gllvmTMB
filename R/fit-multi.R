@@ -4275,10 +4275,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   }
   ## Beta rows: y must be in the open unit interval (0, 1). A y of exactly
   ## 0 or 1 is a hint that the user wants a zero/one-inflated Beta or a
-  ## different family (Smithson & Verkuilen 2006). The likelihood clamps y
-  ## to [1e-12, 1 - 1e-12] before log(y) and log(1 - y), so a y inside 1e-12
-  ## of an edge would be silently rewritten: refuse those rows too, and name
-  ## them (#1485).
+  ## different family (Smithson & Verkuilen 2006). The likelihood takes
+  ## log(y) and log(1 - y) with no clamp, so refuse any y inside 1e-12 of an
+  ## edge too, and name the rows (#1485).
   beta_idx <- which((family_id_vec == 7L) & !masked_response)
   if (length(beta_idx) > 0L) {
     beta_tiny <- 1e-12
@@ -7441,13 +7440,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       tmb_map$log_sigma_eps <- factor(
         rep(NA_integer_, length(tmb_params$log_sigma_eps))
       )
-      cli::cli_inform(c(
-        "i" = paste0(
-          "Auto-suppressing {.code sigma_eps}: ",
-          "{.code indep(0 + trait | ", level_lab, ")} is at the per-row level, so it already absorbs the observation residual."
-        ),
-        "*" = "Fixed at {.val {signif(small_eps, 3)}} (~1/1000 of sd(y)) to keep the Gaussian density well-defined; the row-level residual variance is fully captured by the per-row diagonal term."
-      ))
+      .inform_sigma_eps_autosuppress(level_lab, small_eps)
     }
   }
 
@@ -12244,4 +12237,18 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   if (!is.numeric(a) || length(a) != 1L || is.na(a) || a < 1)
     stop("control$aghq must be FALSE, \"auto\", or a positive integer")
   as.integer(a)
+}
+
+## Auto-suppress note when a per-row diagonal already absorbs the
+## Gaussian / lognormal observation residual. Do not name `indep()`:
+## the same pin fires for the folded Psi of `latent(..., unique = TRUE)`
+## and for a legacy `unique()` term (#1580).
+.inform_sigma_eps_autosuppress <- function(level_lab, small_eps) {
+  cli::cli_inform(c(
+    "i" = paste0(
+      "Auto-suppressing {.code sigma_eps}: ",
+      "the per-row diagonal at {.val {level_lab}} already absorbs the observation residual."
+    ),
+    "*" = "Fixed at {.val {signif(small_eps, 3)}} (~1/1000 of sd(y)) to keep the Gaussian density well-defined; the row-level residual variance is fully captured by that diagonal (the folded Psi of {.code latent(..., unique = TRUE)}, or an explicit {.code indep()} / {.code unique()} at this grouping)."
+  ))
 }

@@ -1731,15 +1731,15 @@ tidy.gllvmTMB_multi <- function(
 #'   covariance — the unconditional simulation appropriate for
 #'   parametric bootstrap. Redraw is currently implemented for the
 #'   `rr_B`, `diag_B`, `rr_W`, `diag_W`, `propto`, `lv_B`, `phylo_rr`,
-#'   `diag_species`, and the native temporal tier. A temporal fit redraws its
+#'   `phylo_diag`, `diag_species`, the SPDE spatial fields of
+#'   `spatial_indep()`, `spatial_scalar()` and `spatial_latent()`, and the
+#'   native temporal tier. A temporal fit redraws its
 #'   recursive temporal state together with every supported ordinary/source
 #'   tier; it does not retain fitted ordinary modes in an unconditional draw.
 #'
-#'   **Not every tier is covered.** The admitted replicated-AR1
-#'   `temporal_indep() + spatial_indep()` cell redraws its independent SPDE
-#'   field. Other SPDE spatial forms and the diagonal phylogenetic tier
-#'   (`phylo_diag`) fall back to conditional
-#'   simulation and emits a one-shot warning naming the unhandled
+#'   **Not every tier is covered.** The slope-augmented SPDE spatial forms
+#'   (for example `spatial_indep(1 + x | coords)`) fall back to conditional
+#'   simulation and emit a one-shot warning naming the unhandled
 #'   tiers. Because conditional simulation reuses the fitted random-
 #'   effect modes rather than redrawing them, it understates
 #'   between-unit variability: intervals derived from it (for example
@@ -1866,9 +1866,10 @@ simulate.gllvmTMB_multi <- function(
   ## parametric simulate-refit uncertainty.
   ##
   ## Currently handles: rr_B, diag_B, rr_W, diag_W, propto, lv_B, phylo_rr,
-  ## diag_species -- see .check_simulate_unconditional(), which is the single
-  ## source of truth for this list. Other tiers (notably spde and phylo_diag)
-  ## fall back to conditional with a one-shot warning.
+  ## phylo_diag, diag_species and the plain SPDE field tiers -- see
+  ## .check_simulate_unconditional(), which is the single source of truth for
+  ## this list. Other tiers (notably the slope-augmented spde blocks) fall back
+  ## to conditional with a one-shot warning.
   ok <- .check_simulate_unconditional(object)
   if (!ok$can_redraw) {
     if (!is.null(object$source_strength)) cli::cli_abort(c(
@@ -2370,38 +2371,49 @@ simulate.gllvmTMB_multi <- function(
   y
 }
 
+#' Is the fit's SPDE spatial tier one that `simulate()` can redraw?
+#'
+#' Redrawable: the per-trait field (`spatial_indep()`, `spatial_scalar()`), and
+#' the low-rank `spatial_latent()` fields with or without the per-trait unique
+#' companion. Not redrawable here: the slope-augmented SPDE blocks and the
+#' column-slope block (each adds a further field with its own covariance), and
+#' rho-enabled spatial fits, which carry their own redraw route.
+#'
 #' @keywords internal
 #' @noRd
-.temporal_spatial_indep_redrawable <- function(fit) {
+.spde_redrawable <- function(fit) {
   td <- fit$tmb_data
-  isTRUE(fit$temporal$active) &&
-    isTRUE(fit$use$spde) &&
-    isTRUE(fit$use$spatial_indep) &&
-    is.null(fit$source_strength) &&
-    identical(as.integer(td$spde_lv_k %||% 0L), 0L) &&
-    identical(as.integer(td$spde_lv_unique %||% 0L), 0L)
+  if (!isTRUE(fit$use$spde) || !is.null(fit$source_strength) || !is.list(td)) {
+    return(FALSE)
+  }
+  slope_flags <- c("use_spde_slope", "use_spde_dep_slope",
+                   "use_spde_latent_slope", "use_spatial_column_slope")
+  !any(vapply(slope_flags, function(n) {
+    v <- td[[n]]
+    length(v) == 1L && !is.na(v) && as.integer(v) == 1L
+  }, logical(1)))
 }
 
-#' Draw the per-trait SPDE field for the admitted temporal--spatial cell
+#' Draw the SPDE spatial contribution to the linear predictor
 #'
-#' The narrow temporal--spatial contract admits only `spatial_indep()`:
-#' each trait's mesh field has covariance `(tau_t^2 Q)^{-1}`, where
-#' `Q = kappa^4 M0 + 2 kappa^2 M1 + M2`.  Redrawing the field here keeps
-#' an unconditional temporal simulation unconditional for both sources.
+#' With `Q = kappa^4 M0 + 2 kappa^2 M1 + M2`, the per-trait path draws
+#' `omega_t ~ N(0, (tau_t^2 Q)^-1)`; the `spatial_latent()` path draws `K`
+#' shared fields `~ N(0, Q^-1)` (tau is absorbed into `Lambda_spde`) and maps
+#' them through `Lambda_spde`, adding the per-trait field when
+#' `spde_lv_unique == 1`. Mirrors the template's eta construction.
 #'
 #' @keywords internal
 #' @noRd
-.simulate_temporal_spatial_indep <- function(fit) {
-  if (!.temporal_spatial_indep_redrawable(fit)) {
-    stop("Internal SPDE redraw was requested outside the admitted temporal-spatial indep cell.",
+.simulate_spde_field <- function(fit) {
+  if (!.spde_redrawable(fit)) {
+    stop("Internal SPDE redraw was requested for a fit it cannot redraw.",
       call. = FALSE)
   }
   td <- fit$tmb_data
   par <- fit$tmb_obj$env$parList(fit$opt$par)
   kappa <- exp(as.numeric(par$log_kappa_spde[[1L]]))
-  tau <- exp(as.numeric(par$log_tau_spde))
   n_mesh <- ncol(td$A_proj)
-  if (length(tau) != td$n_traits || n_mesh < 1L) {
+  if (n_mesh < 1L) {
     stop("Internal SPDE parameter dimensions do not match the fitted mesh.",
       call. = FALSE)
   }
@@ -2412,12 +2424,30 @@ simulate.gllvmTMB_multi <- function(
     stop("The fitted SPDE precision matrix could not be factorized for unconditional simulation.",
       call. = FALSE)
   }
-  omega <- matrix(0, nrow = n_mesh, ncol = td$n_traits)
-  for (trait in seq_len(td$n_traits)) {
-    omega[, trait] <- backsolve(U, stats::rnorm(n_mesh)) / tau[[trait]]
+  trait <- td$trait_id + 1L
+  n_lv <- as.integer(td$spde_lv_k %||% 0L)
+  out <- numeric(length(trait))
+  if (n_lv == 0L || identical(as.integer(td$spde_lv_unique %||% 0L), 1L)) {
+    tau <- exp(as.numeric(par$log_tau_spde))
+    if (length(tau) != td$n_traits) {
+      stop("Internal SPDE parameter dimensions do not match the fitted mesh.",
+        call. = FALSE)
+    }
+    omega <- matrix(0, nrow = n_mesh, ncol = td$n_traits)
+    for (t in seq_len(td$n_traits)) {
+      omega[, t] <- backsolve(U, stats::rnorm(n_mesh)) / tau[[t]]
+    }
+    projected <- as.matrix(td$A_proj %*% omega)
+    out <- out + projected[cbind(seq_along(trait), trait)]
   }
-  projected <- as.matrix(td$A_proj %*% omega)
-  projected[cbind(seq_len(nrow(projected)), td$trait_id + 1L)]
+  if (n_lv > 0L) {
+    Lambda <- as.matrix(fit$report$Lambda_spde)
+    for (k in seq_len(n_lv)) {
+      field <- as.numeric(td$A_proj %*% backsolve(U, stats::rnorm(n_mesh)))
+      out <- out + Lambda[cbind(trait, k)] * field
+    }
+  }
+  out
 }
 
 #' @keywords internal
@@ -2432,7 +2462,7 @@ simulate.gllvmTMB_multi <- function(
     "temporal"
   )
   if (identical(fit$source_strength$source, "spatial") ||
-      .temporal_spatial_indep_redrawable(fit)) {
+      .spde_redrawable(fit)) {
     handled <- c(handled, "spde")
   }
   if (is.list(fit$tmb_data)) {
@@ -2569,11 +2599,11 @@ simulate.gllvmTMB_multi <- function(
     eta <- eta + scores[cbind(fit$tmb_data$species_id+1L,trait_id)]*fit$report$sd_phy_diag[trait_id]
   }
 
-  ## The only composed spatial route admitted with temporal covariance is
-  ## `temporal_indep(...) + spatial_indep(...)`.  It has one independent
-  ## per-trait GMRF field, so redraw it from the exact fitted Q precision.
-  if (.temporal_spatial_indep_redrawable(fit)) {
-    eta <- eta + .simulate_temporal_spatial_indep(fit)
+  ## SPDE spatial tier (per-trait or low-rank fields), redrawn from the exact
+  ## fitted Q precision. This also serves the one composed spatial route
+  ## admitted with temporal covariance, `temporal_indep() + spatial_indep()`.
+  if (.spde_redrawable(fit)) {
+    eta <- eta + .simulate_spde_field(fit)
   }
 
   if (isTRUE(fit$use$re_int)) {

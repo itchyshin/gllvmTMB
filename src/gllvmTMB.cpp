@@ -3650,12 +3650,11 @@ Type objective_function<Type>::operator()()
       Type phi_b = exp(log_phi_beta(t));
       Type a_b   = mu_b * phi_b;
       Type b_b   = (Type(1.0) - mu_b) * phi_b;
-      Type tiny_y = Type(1e-12);
-      Type y_safe = y(o);
-      y_safe = gll_clamp(y_safe, tiny_y, Type(1.0) - tiny_y);
+      // No clamp on y: the R-side support check refuses observed y within
+      // 1e-12 of 0 or 1, and masked rows never reach this density (#1485).
       Type ld = lgamma(phi_b) - lgamma(a_b) - lgamma(b_b)
-              + (a_b - Type(1.0)) * log(y_safe)
-              + (b_b - Type(1.0)) * log(Type(1.0) - y_safe);
+              + (a_b - Type(1.0)) * log(y(o))
+              + (b_b - Type(1.0)) * log(Type(1.0) - y(o));
       ll += ld;
     } else if (fid == 8) {
       // Beta-binomial family (Hilbe 2014; Bolker 2008).

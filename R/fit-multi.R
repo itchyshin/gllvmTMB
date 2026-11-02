@@ -4275,10 +4275,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   }
   ## Beta rows: y must be in the open unit interval (0, 1). A y of exactly
   ## 0 or 1 is a hint that the user wants a zero/one-inflated Beta or a
-  ## different family (Smithson & Verkuilen 2006). The likelihood clamps y
-  ## to [1e-12, 1 - 1e-12] before log(y) and log(1 - y), so a y inside 1e-12
-  ## of an edge would be silently rewritten: refuse those rows too, and name
-  ## them (#1485).
+  ## different family (Smithson & Verkuilen 2006). The likelihood takes
+  ## log(y) and log(1 - y) with no clamp, so refuse any y inside 1e-12 of an
+  ## edge too, and name the rows (#1485).
   beta_idx <- which((family_id_vec == 7L) & !masked_response)
   if (length(beta_idx) > 0L) {
     beta_tiny <- 1e-12

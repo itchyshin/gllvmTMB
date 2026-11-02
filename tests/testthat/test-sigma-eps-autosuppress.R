@@ -81,6 +81,22 @@ test_that("Q7: per-row diag at site_species level also auto-suppresses sigma_eps
   )
 })
 
+test_that("Q7: autosuppress note does not name indep() for a latent Psi (#1580)", {
+  msgs <- character()
+  withCallingHandlers(
+    gllvmTMB:::.inform_sigma_eps_autosuppress("site", 0.01),
+    message = function(m) {
+      msgs <<- c(msgs, conditionMessage(m))
+      invokeRestart("muffleMessage")
+    }
+  )
+  note <- paste(msgs, collapse = "\n")
+  expect_match(note, "Auto-suppressing")
+  expect_match(note, "per-row diagonal")
+  expect_false(grepl("indep(0 + trait", note, fixed = TRUE))
+  expect_match(note, "latent(..., unique = TRUE)", fixed = TRUE)
+})
+
 test_that("Q7: binary fits never trigger the Q7 message (no continuous family)", {
   df <- make_per_row_data()
   df$value <- as.integer(df$value > 0)

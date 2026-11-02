@@ -780,6 +780,10 @@ delta_beta <- function(link1 = "logit", link2 = "logit") {
 #' across engines at machine tolerance; the `engine = "julia"` bridge
 #' maps probit to probit and does not route a logit ordinal response.
 #'
+#' @details
+#' The per-cell log-probability is floored at `log(1e-300)` only to avoid
+#' `-Inf` from underflow; this does not change fits in the ordinary range.
+#'
 #' @param link Always `"probit"`; provided for API symmetry with the
 #'   other family constructors.
 #'
@@ -872,6 +876,10 @@ ordinal_probit <- function(link = "probit") {
 #' comparable to it on the link scale (unlike `ordinal_probit()`, which
 #' differs by a factor of roughly \eqn{\pi / \sqrt{3}}; see the
 #' cross-engine note on [ordinal_probit()]).
+#'
+#' @details
+#' The per-cell log-probability is floored at `log(1e-300)` only to avoid
+#' `-Inf` from underflow; this does not change fits in the ordinary range.
 #'
 #' @param link Always `"logit"`; provided for API symmetry with the
 #'   other family constructors.

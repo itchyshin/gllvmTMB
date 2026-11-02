@@ -3793,6 +3793,7 @@ Type objective_function<Type>::operator()()
         logp_k = gll_log_pnorm_diff(cuts(yk - 1) - eta_o,
                                     cuts(yk - 2) - eta_o);
       }
+      // Intentional underflow guard (#1484): floors only where a double would underflow anyway; do not remove.
       Type log_tiny_ord = Type(-690.7755278982137);   // log(1e-300)
       logp_k = CppAD::CondExpLt(logp_k, log_tiny_ord, log_tiny_ord, logp_k);
       ll += logp_k;
@@ -3854,6 +3855,7 @@ Type objective_function<Type>::operator()()
         logp_k = gll_log_inv_logit_diff(cuts(yk - 1) - eta_o,
                                         cuts(yk - 2) - eta_o);
       }
+      // Intentional underflow guard (#1484): floors only where a double would underflow anyway; do not remove.
       Type log_tiny_ord = Type(-690.7755278982137);   // log(1e-300)
       logp_k = CppAD::CondExpLt(logp_k, log_tiny_ord, log_tiny_ord, logp_k);
       ll += logp_k;

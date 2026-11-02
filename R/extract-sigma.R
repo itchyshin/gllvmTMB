@@ -2155,6 +2155,8 @@ extract_Gamma <- function(
 #'
 #' @param fit A fitted `gllvmTMB_multi` object.
 #' @param level Character scalar naming the fitted `kernel_*()` tier.
+#'   `level = "phy"` is accepted as an alias when exactly one fitted kernel
+#'   tier uses the internal `"phy"` level, matching [extract_Gamma()].
 #' @param row_levels,col_levels Character vectors naming row and column levels
 #'   in the fitted kernel matrix. If both are omitted for a kernel built by
 #'   [make_cross_kernel()], host and partner levels from the kernel metadata are
@@ -2246,6 +2248,7 @@ predict_cross_covariance <- function(
     cli::cli_abort("{.arg level} must be one non-empty character string.")
   }
 
+  level <- .kernel_level_resolve_alias(fit, level)
   K <- .kernel_level_matrix(fit, level)
   meta <- .cross_kernel_metadata(K)
   if (is.null(row_levels)) {
@@ -2349,12 +2352,43 @@ predict_cross_covariance <- function(
   )]
 }
 
+## extract_Sigma() / extract_Gamma() read level = "phy" as the internal level
+## of a kernel tier. Map that alias to the tier name when exactly one fitted
+## kernel tier uses the internal "phy" slot, so predict_cross_covariance()
+## accepts the same names (#1578). Anything else is returned unchanged.
+.kernel_level_resolve_alias <- function(fit, level) {
+  if (!is.null(.kernel_level_alias(fit, level)) || !identical(level, "phy")) {
+    return(level)
+  }
+  kernel_levels <- fit$kernel_levels
+  name <- kernel_levels$name
+  if (!is.character(name) || !length(name)) {
+    return(level)
+  }
+  internal <- kernel_levels$internal_level %||% rep("phy", length(name))
+  idx <- which(internal == "phy")
+  if (length(idx) == 1L) name[[idx]] else level
+}
+
+## TRUE when level = "phy" cannot be resolved because several kernel tiers
+## share the internal "phy" slot (message text only; #1578).
+.kernel_level_phy_ambiguous <- function(fit, level) {
+  if (!identical(level, "phy")) return(FALSE)
+  name <- fit$kernel_levels$name
+  if (!is.character(name) || !length(name)) return(FALSE)
+  internal <- fit$kernel_levels$internal_level %||% rep("phy", length(name))
+  sum(internal == "phy") > 1L
+}
+
 .kernel_level_matrix <- function(fit, level) {
   alias <- .kernel_level_alias(fit, level)
   if (is.null(alias)) {
     cli::cli_abort(c(
       "{.arg level} must name a fitted {.fn kernel_*} tier.",
-      "i" = "Available kernel tiers are: {.val {fit$kernel_levels$name %||% character(0)}}."
+      "i" = "Available kernel tiers are: {.val {fit$kernel_levels$name %||% character(0)}}.",
+      if (.kernel_level_phy_ambiguous(fit, level)) {
+        c("i" = "{.code level = \"phy\"} is ambiguous: more than one kernel tier uses the internal {.val phy} level; name the tier instead.")
+      }
     ))
   }
 

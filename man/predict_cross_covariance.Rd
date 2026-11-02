@@ -16,7 +16,9 @@ predict_cross_covariance(
 \arguments{
 \item{fit}{A fitted \code{gllvmTMB_multi} object.}
 
-\item{level}{Character scalar naming the fitted \verb{kernel_*()} tier.}
+\item{level}{Character scalar naming the fitted \verb{kernel_*()} tier.
+\code{level = "phy"} is accepted as an alias when exactly one fitted kernel
+tier uses the internal \code{"phy"} level, matching \code{\link[=extract_Gamma]{extract_Gamma()}}.}
 
 \item{row_levels, col_levels}{Character vectors naming row and column levels
 in the fitted kernel matrix. If both are omitted for a kernel built by

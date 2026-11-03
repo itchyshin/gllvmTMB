@@ -319,7 +319,10 @@ test_that("the named mixed first cell constructs and reports its invariants", {
     silent = TRUE,
     control = gllvmTMBcontrol(se = FALSE)
   )))
-  par_list <- fit$tmb_obj$env$parList(fit$opt$par)
+  par_list <- fit$tmb_obj$env$parList(
+    fit$opt$par,
+    fit$tmb_obj$env$last.par.best
+  )
 
   expect_identical(fit$opt$convergence, 0L)
   expect_equal(sort(unique(fit$tmb_data$family_id_vec)), c(0L, 1L))

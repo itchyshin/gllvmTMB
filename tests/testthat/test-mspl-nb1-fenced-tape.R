@@ -126,3 +126,54 @@ test_that("exact NB1 I_eta is not the quasi weight and not Poisson mu", {
   expect_false(isTRUE(all.equal(w_exact, mu, tolerance = 1e-6)))
   expect_true(all(w_exact > w_quasi))
 })
+
+## #1376: the compiled PMF sum must not be cut at y = 80 for large mu.
+## Full-sum reference in base R (support to mu + 40 sd, far past the tail).
+.nb1_log_I_full <- function(mu, phi) {
+  size <- mu / phi
+  prob <- 1 / (1 + phi)
+  y <- 0:ceiling(mu + 40 * sqrt(mu * (1 + phi)))
+  score <- size * (digamma(y + size) - digamma(size) + log(prob))
+  log(sum(stats::dnbinom(y, size = size, prob = prob) * score^2) + 1e-12)
+}
+
+## Compiled GLM-outer log weight at a common mu and phi, read through the
+## planned MSPL tape: with a trait-indicator X_mspl and equal weights,
+## mspl_logdet_information = logdet(X'X) + p * log w.
+.nb1_tape_log_weight <- function(fit, mu, phi) {
+  obj <- fit$tmb_obj
+  p <- obj$env$last.par.best
+  p[names(p) == "b_fix"] <- log(mu)
+  p[names(p) == "log_phi_nbinom1"] <- log(phi)
+  X <- fit$tmb_data$X_mspl
+  ld <- as.numeric(obj$report(p)$mspl_logdet_information)
+  (ld - as.numeric(determinant(crossprod(X), logarithm = TRUE)$modulus)) /
+    ncol(X)
+}
+
+test_that("compiled NB1 weight uses the full PMF sum for large mu (#1376)", {
+  skip_on_cran()
+  dat <- .mspl_nb1_fence_dat()
+  fit <- tryCatch(
+    suppressWarnings(suppressMessages(gllvmTMB(
+      y ~ 0 + trait + latent(0 + trait | site, d = 1, unique = FALSE),
+      data = dat,
+      family = nbinom1(),
+      estimator = "mspl",
+      unit = "site",
+      control = gllvmTMBcontrol(
+        n_init = 1L, init_jitter = 0, se = FALSE, warn_runaway = FALSE
+      )
+    ))),
+    error = function(e) NULL
+  )
+  skip_if(is.null(fit), "NB1 MSPL tape did not build in this context.")
+  phi <- 0.5
+  mu <- c(60, 100, 200)
+  ref <- vapply(mu, .nb1_log_I_full, numeric(1L), phi = phi)
+  expect_equal(round(ref, 3), c(3.690, 4.201, 4.893))
+  got <- vapply(mu, function(m) .nb1_tape_log_weight(fit, m, phi), numeric(1L))
+  expect_equal(got[2:3], ref[2:3], tolerance = 1e-6)
+  expect_equal(got[1], ref[1], tolerance = 1e-6)
+  expect_true(all(diff(got) > 0))
+})

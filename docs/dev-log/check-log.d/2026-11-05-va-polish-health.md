@@ -1,0 +1,13 @@
+# VA polish and integrated binary-route checks, 2026-11-05
+
+The fixed-prior and AGHQ integration candidate includes the exact heads of PRs #1727 and #1734. The contributing branches were not edited. The candidate preserves a previously eligible variational start when a nearly tied polish attempt fails the existing gradient health rule.
+
+- `testthat::test_file("tests/testthat/test-va-r3-polish-health.R")`: 23 assertions passed. Both polish paths, rejection records and state restoration were exercised.
+- `testthat::test_file("tests/testthat/test-va-r3-prototype.R")`: 645 assertions passed, including the unchanged truncated-NB2 seed-12 regression.
+- The optimizer-selection, fixed-prior, AGHQ prediction and summary, restart-selection, loading-constraint, control-surface and degenerate-Laplace tests passed on the integrated candidate.
+- `testthat::test_file("tests/testthat/test-joint-sdm-binary-long-wide.R")`: 21 assertions passed after splitting the original strict Laplace comparison from a matched-parameter, matched-quadrature AGHQ comparison. The automatic AGHQ fits both used a loading ridge and converged; the common objective and gradient agreed.
+- The first integrated `R CMD check --no-manual --ignore-vignettes` returned 29,801 passes, four failures, 71 warnings and 1,279 skips. Two failures were the Laplace-specific long/wide assertions when automatic AGHQ intervened; the corrected test now passes. Two were developer-local fitted-figure snapshots that are skipped in CI. Their generated images were inspected: one showed a new residual legend for a tiny component, and the ellipse was visually unchanged. Snapshots were not regenerated.
+- `pkgdown::check_pkgdown()` passed, the binary-priors article rendered, and regenerated help and NAMESPACE files matched the candidate. A second, CI-style `R CMD check --no-manual --ignore-vignettes` on corrected candidate `d85cb2a70ab05cf9b0952c3389038790152027d3` passed with 29,809 assertions, 67 test warnings and 1,285 skips. It had two existing notes, for long snapshot filenames and an unexported TMB call. The checked archive SHA-256 was `24dbdb36d1d77caacc91068b65fbf38e6be86a0ab66f4bc666da93fc67a79aae`.
+- Stale wording scan: `rg -n -i 'aghq.{0,100}(fixed.only|not support|unsupported|not available|unavailable|only.*fixed)|(?:loadings|ordination).{0,100}aghq' NEWS.md R vignettes/articles/binary-priors.Rmd man`. Conditional AGHQ predictions use latent modes; AGHQ latent-score uncertainty remains unavailable.
+
+No three-platform CI or merge has been completed. This evidence does not establish uncertainty calibration or broad VA recovery.

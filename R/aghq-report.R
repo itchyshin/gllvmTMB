@@ -91,17 +91,17 @@
   }
   pen <- vapply(objs[is_fit], function(f) {
     tau <- f$aghq$ridge_tau
-    isTRUE(f$aghq$penalised) ||
+    !is.null(f$fixed_effect_priors) || isTRUE(f$aghq$penalised) ||
       (is.numeric(tau) && length(tau) == 1L && is.finite(tau) && tau > 0)
   }, logical(1L))
   if (!any(pen)) {
     return(invisible(NULL))
   }
   cli::cli_warn(c(
-    "{fn_label}() on a fit with a loading ridge ({.arg aghq_ridge}): this is not {fn_label}.",
+    "{fn_label}() on a fit with a loading ridge and/or fixed-effect normal priors: this is not {fn_label}.",
     "i" = "The ridge makes the reported estimate a penalised (MAP) point, while {.fn logLik} is the unpenalised log-likelihood AT that point -- not at its maximum.",
     "i" = "The parameter count also overstates a penalised fit's effective flexibility, so both halves of {fn_label} = -2*logLik + k*df are violated.",
-    ">" = "For likelihood-based model comparison set {.code aghq_ridge = Inf} and refit every model being compared."
+    ">" = "For likelihood-based comparison refit every model with loading_ridge = Inf and fixed_effect_priors = NULL."
   ))
   invisible(NULL)
 }
@@ -134,14 +134,12 @@
 ## was length 0 for the AGHQ fit vs. 12 real values for Laplace; and
 ## `getLV()` on the AGHQ fit silently returned all-NA rather than erroring.
 ##
-## Any consumer reading `report$eta` for a training-row value, or z_B via
+## Historical gap: any consumer reading `report$eta` for a training-row value, or z_B via
 ## `last.par.best` / `sd_report$par.random`, therefore silently DROPS the
 ## between-unit latent contribution under AGHQ rather than merely computing
 ## it on a different scale -- unlike the Wald-SE / bootstrap-variance
 ## differences elsewhere in this file, which are expected and correct.
-## `predict()` and the conditional branch of `simulate()` are the two call
-## sites of this in the hooked file; both call this warner. The
-## UNCONDITIONAL `simulate()` path (the default) is NOT affected -- it
+## The unconditional `simulate()` path (the default) is not affected: it
 ## rebuilds eta from `X_fix %*% b_fix` and freshly redrawn z ~ N(0, I) via
 ## `.simulate_eta_unconditional()`, never reading `report$eta` or z_B, so it
 ## is deliberately not warned here.
@@ -150,10 +148,47 @@
 ## ever TRUE for the single-block `rr_B`-only fits this gap applies to, so
 ## no further structural check is needed.
 ##
-## UNVERIFIED / not attempted here: an actual repair (re-adding the
-## adapted-mode contribution to `eta`/z_B for reporting purposes) touches
-## the template's eta assembly and/or the post-fit state-forcing block in
-## R/fit-multi.R, both outside this slice's file ownership.
+## `predict()` and conditional `simulate()` now reconstruct their own
+## predictors from the final stored modes. Other consumers of `report$eta`
+## must still account for this gap. The legacy warning helper remains below
+## for existing internal callers and its characterization tests.
+# Recover the conditional modes at the final AGHQ parameter estimate.  The
+# final quadrature tape stores them as units by axes; some newer fit objects
+# also carry the transposed form explicitly for ordination extractors.
+.aghq_conditional_modes <- function(object) {
+  mode <- object$tmb_obj$env$data$aghq_mode
+  if (is.null(mode) && !is.null(object$aghq$z_B_mode)) {
+    mode <- t(object$aghq$z_B_mode)
+  }
+  valid <- is.matrix(mode) && identical(dim(mode), c(object$n_sites, object$d_B)) &&
+    is.numeric(mode) && all(is.finite(mode))
+  if (!valid) {
+    cli::cli_abort(c(
+      "Conditional predictions are unavailable because this AGHQ fit does not retain valid latent modes.",
+      ">" = "Refit the model, or use {.code re_form = ~0} for fixed-effects-only predictions."
+    ), class = "gllvmTMB_aghq_modes_unavailable")
+  }
+  mode
+}
+
+.aghq_conditional_training_eta <- function(object) {
+  eta <- as.numeric(object$report$eta)
+  if (!isTRUE(object$aghq$used)) return(eta)
+  mode <- .aghq_conditional_modes(object)
+  site <- object$tmb_data$site_id + 1L
+  trait <- object$tmb_data$trait_id + 1L
+  loadings <- object$report$Lambda_B
+  if (length(site) != length(eta) || length(trait) != length(eta) ||
+      !is.matrix(loadings) || ncol(loadings) != ncol(mode) ||
+      anyNA(site) || anyNA(trait) || any(site < 1L | site > nrow(mode)) ||
+      any(trait < 1L | trait > nrow(loadings))) {
+    cli::cli_abort(c("AGHQ conditional predictions have incompatible row or loading dimensions.",
+                     ">" = "Refit the model, or use {.code re_form = ~0} for fixed-effects-only predictions."),
+                   class = "gllvmTMB_aghq_modes_unavailable")
+  }
+  eta + rowSums(loadings[trait, , drop = FALSE] * mode[site, , drop = FALSE])
+}
+
 .aghq_warn_re_gap <- function(object, fn_label) {
   if (!isTRUE(object$aghq$used)) {
     return(invisible(NULL))

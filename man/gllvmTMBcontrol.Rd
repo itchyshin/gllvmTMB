@@ -8,7 +8,7 @@ gllvmTMBcontrol(
   d_B = NULL,
   d_W = NULL,
   spde_mode = c("per_trait", "shared"),
-  n_init = 1L,
+  n_init = 3L,
   optimizer = c("nlminb", "optim"),
   optArgs = list(),
   init_jitter = 0.3,
@@ -34,8 +34,10 @@ gllvmTMBcontrol(
   aghq_rho_min = 1/64,
   warn_runaway = TRUE,
   laplace_warn_thresh = 2,
+  laplace_auto_refit = TRUE,
   allow_nongaussian_reml = FALSE,
   loading_ridge = NULL,
+  fixed_effect_priors = NULL,
   optimizer_passes = 1L,
   svd_start = TRUE,
   va_polish = TRUE,
@@ -57,12 +59,15 @@ are often multimodal because the latent-factor likelihood has many
 equivalent local maxima; running several restarts with different
 starting values and keeping the fit with the lowest \code{-logLik}
 reduces the risk of settling on a suboptimal solution. Default
-1 (the default start, plus the \code{svd_start} restart when that applies).
+3 (the default start and two jittered restarts, plus the \code{svd_start}
+restart when that applies); \code{n_init = 1L} restores a single start.
 Increase to 5–10 for two-level rr models, and to check any fit whose
 log-likelihood will be compared: a single start can stop at a lower
 local optimum while reporting \code{convergence = 0}, a positive-definite
-Hessian and a small gradient. The jittered restarts use R's random
-number generator, so call \code{\link[=set.seed]{set.seed()}} first for a reproducible fit.}
+Hessian and a small gradient. The jittered restarts
+are drawn under a fixed internal seed, so the same data and model
+give the same restarts, and the fit does not change or depend on the
+session random-number stream (\code{.Random.seed}).}
 
 \item{optimizer}{Optimiser for the native Laplace and AGHQ routes. For the
 experimental VA route, omission keeps the family registry's automatic
@@ -257,7 +262,9 @@ requests that many quadrature nodes. \code{"auto"} lets the package decide, and
 it declines to Laplace whenever the model is ineligible or the expected
 gain does not justify the cost. \strong{Opt-in and experimental}: no capability
 claim is made for quadrature-fitted models, and eligibility is narrow — the
-random part must be a single ordinary \code{latent()} block on the unit tier.}
+random part must be a single ordinary \code{latent()} block on the unit tier.
+Check \code{fit$aghq$used} and \code{fit$aghq$converged}; a non-converged AGHQ fit
+warns that its estimates may be unreliable.}
 
 \item{aghq_iter_cap}{Optimiser iteration budget for the first adaptation
 pass. Default \code{1L}. Later passes escalate when continuation is enabled.}
@@ -338,6 +345,27 @@ to Laplace fits whose only random block is the between-unit latent block with
 \code{d} from 1 to 3; other fits, and problems above the work cap, are skipped.
 \code{FALSE} turns the audit off. \code{warn_runaway = FALSE} also turns it off.}
 
+\item{laplace_auto_refit}{If \code{TRUE} (default), a Laplace fit that the audit
+above flags (Laplace logLik more than \code{laplace_warn_thresh} units above the
+quadrature value) is refitted with 9-node adaptive Gauss-Hermite quadrature
+(\code{aghq = 9}), a message says so, and the AGHQ fit is returned; the
+provenance is in \code{fit$laplace_auto_refit}. \strong{This is a default change:}
+AGHQ used to be opt-in only. Set \code{FALSE} to keep the plain Laplace fit (the
+audit warning is then given instead). The refit is skipped, and the Laplace
+fit kept, when the audit does not apply (see \code{laplace_warn_thresh}), when
+\code{aghq} (including \code{aghq = FALSE}), \code{aghq_ridge} or \code{loading_ridge} is set
+explicitly, when \code{integration} is not \code{"laplace"}, when
+\code{optimizer_passes > 1}, or when the AGHQ refit fails or does not converge.
+\code{laplace_warn_thresh = FALSE} or \code{warn_runaway = FALSE} also turn it off.
+The refit \strong{keeps the default loading ridge} (\code{aghq_ridge}, tau = 2), so
+\code{logLik()} on it is a penalised value; an explicit ridge is the way to opt
+out of the refit, not a way to change it. \code{\link[=getLoadings]{getLoadings()}}, \code{\link[=getLV]{getLV()}},
+\code{\link[=extract_ordination]{extract_ordination()}}, \code{\link[=extract_loadings]{extract_loadings()}}, \code{\link[=rotate_loadings]{rotate_loadings()}} and
+\code{\link[=ordiplot]{ordiplot()}} work on the refitted model (the scores are conditional modes,
+kept in \code{fit$aghq$z_B_mode}); score uncertainty
+(\code{\link[=ordination_uncertainty]{ordination_uncertainty()}}, \code{getLV(se = TRUE)}) is not available on an
+AGHQ fit, so use \code{laplace_auto_refit = FALSE} for it.}
+
 \item{allow_nongaussian_reml}{Permit \code{REML = TRUE} for non-Gaussian families.
 Default \code{FALSE}; the restricted likelihood is defined by a Gaussian
 marginalisation, so this is an escape hatch, not an endorsement.}
@@ -358,6 +386,24 @@ are penalised MAP points. Retained penalised-Hessian LV uncertainty is a
 local posterior approximation conditional on \code{tau}, with delta-method
 propagation for trait effects, not calibrated repeated-sampling coverage.
 Older fits without the required metadata withhold LV uncertainty.}
+
+\item{fixed_effect_priors}{Optional data frame with \code{coefficient}, \code{mean}
+and \code{sd} columns naming exact fixed-effects model-matrix columns. For
+\code{~ 0 + trait + trait:x}, item intercepts are named \code{traita}, not
+\code{(Intercept)}, and slopes include \code{traita:x}. Use \code{\link[=fixed_effect_priors]{fixed_effect_priors()}}
+for explicit link-aware reference scales on standardized predictors.
+Default \code{NULL} adds no fixed-effect prior. Finite positive SDs define
+independent normal densities including their constants; \code{Inf} disables
+a row. Loading priors remain separately controlled by \code{loading_ridge}.
+Currently supported for ordinary unit-tier latent/indep Gaussian or binomial logit/probit
+native Laplace models, without constrained coefficients, structured sources,
+missing responses or non-unit weights. Eligible ordinary latent models may
+also request AGHQ; check both \code{fit$aghq$used} and \code{fit$aghq$converged}.
+Ineligible requests fall back to Laplace with a warning; a non-converged
+AGHQ fit also warns. Initial AGHQ validation is limited to a
+rank-one probit example. \code{dep()}, Julia, MSPL, REML and VA are rejected. Estimates are MAP points; inverse penalized curvature is local
+approximate posterior covariance, not calibrated sampling uncertainty.
+Profile intervals, bootstrap intervals and prediction SEs are withheld.}
 
 \item{optimizer_passes}{Number of exact-gradient optimisation passes from
 the preceding estimate. The default \code{1} retains the historical single

@@ -119,7 +119,17 @@ link_residual_per_trait <- function(fit) {
   lids <- fit$tmb_data$link_id_vec
   ## trait_id stored on tmb_data is 0-based.
   tids_obs <- fit$tmb_data$trait_id + 1L
+  ## Only reconstruct modes for a family whose variance actually uses eta.
+  ## Constant-variance families and mixed-family traits do not need them.
   eta <- fit$report$eta
+  eta_ready <- !isTRUE(fit$aghq$used)
+  conditional_eta <- function() {
+    if (!eta_ready) {
+      eta <<- .aghq_conditional_training_eta(fit)
+      eta_ready <<- TRUE
+    }
+    eta
+  }
   sigma_eps <- as.numeric(fit$report$sigma_eps %||% 1)
   phi_gamma <- as.numeric(fit$report$phi_gamma %||% rep(1, Tn))
   out <- numeric(Tn)
@@ -175,6 +185,7 @@ link_residual_per_trait <- function(fit) {
       ## Lognormal-Poisson approximation: sigma2_d = log(1 + 1 / mu_t).
       ## Use exp(eta) averaged across the trait's rows as the per-trait
       ## fitted mean. (Nakagawa & Schielzeth 2010, Table 2.)
+      eta <- conditional_eta()
       if (is.null(eta) || length(eta) < max(rows_t)) {
         out[t] <- NA_real_
       } else {
@@ -209,6 +220,7 @@ link_residual_per_trait <- function(fit) {
       p_vec <- as.numeric(fit$report$p_tweedie %||% rep(1.5, Tn))
       phi_t <- if (length(phi_vec) >= t) phi_vec[t] else phi_vec[1]
       p_t <- if (length(p_vec) >= t) p_vec[t] else p_vec[1]
+      eta <- conditional_eta()
       if (is.null(eta) || length(eta) < max(rows_t)) {
         out[t] <- NA_real_
       } else {
@@ -226,6 +238,7 @@ link_residual_per_trait <- function(fit) {
       ## trigamma(a) + trigamma(b). Smithson & Verkuilen 2006 Eq. 9.
       phi_vec <- as.numeric(fit$report$phi_beta %||% rep(1, Tn))
       phi_t <- if (length(phi_vec) >= t) phi_vec[t] else phi_vec[1]
+      eta <- conditional_eta()
       if (is.null(eta) || length(eta) < max(rows_t)) {
         out[t] <- NA_real_
       } else {
@@ -251,6 +264,7 @@ link_residual_per_trait <- function(fit) {
       ## (Smithson & Verkuilen 2006). Sum gives the total logit-residual.
       phi_vec <- as.numeric(fit$report$phi_betabinom %||% rep(1, Tn))
       phi_t <- if (length(phi_vec) >= t) phi_vec[t] else phi_vec[1]
+      eta <- conditional_eta()
       if (is.null(eta) || length(eta) < max(rows_t)) {
         out[t] <- NA_real_
       } else {
@@ -297,6 +311,7 @@ link_residual_per_trait <- function(fit) {
       ## Untruncated lognormal-Poisson approximation: sigma2_d = log(1 + 1/mu_t).
       ## The truncation correction is small in regimes with mu_t >= 1
       ## (Cameron & Trivedi 2013, Regression Analysis of Count Data, ch. 4).
+      eta <- conditional_eta()
       if (is.null(eta) || length(eta) < max(rows_t)) {
         out[t] <- NA_real_
       } else {
@@ -356,6 +371,7 @@ link_residual_per_trait <- function(fit) {
       ## (Nakagawa & Schielzeth 2010 delta method; Hilbe 2011 NB1 variance.)
       phi_vec <- as.numeric(fit$report$phi_nbinom1 %||% rep(1, Tn))
       phi_t <- if (length(phi_vec) >= t) phi_vec[t] else phi_vec[1]
+      eta <- conditional_eta()
       if (is.null(eta) || length(eta) < max(rows_t)) {
         out[t] <- NA_real_
       } else {
@@ -390,6 +406,7 @@ link_residual_per_trait <- function(fit) {
       ## itself contributes (Var(Y) = (1-zi)*mu*(1 + zi*mu), fitted_response
       ## _rule / variance_rule in alignment-zi.md) -- documented as a scope
       ## boundary, not silently narrowed.
+      eta <- conditional_eta()
       if (is.null(eta) || length(eta) < max(rows_t)) {
         out[t] <- NA_real_
       } else {
@@ -428,6 +445,7 @@ link_residual_per_trait <- function(fit) {
       ## count-process residual, not one that also incorporates the extra
       ## variance right-censoring itself contributes. Stated scope boundary,
       ## see dev/gapclose/arcE/alignment-censored-poisson.md.
+      eta <- conditional_eta()
       if (is.null(eta) || length(eta) < max(rows_t)) {
         out[t] <- NA_real_
       } else {

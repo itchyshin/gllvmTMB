@@ -69,6 +69,10 @@ With finite loading ridge, the calculation includes the Gaussian loading
 prior precision at the fitted MAP point. These are local approximate
 posterior standard deviations conditional on the chosen ridge scale,
 model, and latent-axis orientation, not calibrated sampling standard errors.
+The same interpretation applies to \code{fixed_effect_priors}: its normal
+precision is included, independently of the loading penalty. For these fits
+use \code{vcov()} or \code{sd_report} to inspect local covariance; ordinary interval
+helpers remain unavailable until their sampling behavior is assessed.
 }
 
 \examples{

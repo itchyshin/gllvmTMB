@@ -38,16 +38,17 @@ doubs_student_long <- function() {
   long
 }
 
-test_that("#1335 default n_init = 1 fit is unchanged (parity pin)", {
-  ## Pinned on origin/main (0cf373d55) before the #1335 fix. The default
-  ## single-start path must not move: a Julia true-parity lane compares
+test_that("#1335 explicit n_init = 1 fit is unchanged (parity pin)", {
+  ## Pinned on origin/main (0cf373d55) before the #1335 fix. The explicit
+  ## n_init = 1 single-start path must not move (the default is now 3, #1331): a Julia true-parity lane compares
   ## against it. Before and after the fix the macOS value was byte-identical;
   ## the 1e-6 tolerance only absorbs cross-platform BLAS differences.
   sim <- sim_restart_fit_data()
   fit <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
     value ~ 0 + trait + latent(0 + trait | site, d = 2) +
       unique(0 + trait | site),
-    data = sim$data
+    data = sim$data,
+    control = gllvmTMBcontrol(n_init = 1L)
   )))
   expect_equal(fit$opt$objective, 665.09608921189783, tolerance = 1e-6)
   expect_equal(as.numeric(logLik(fit)), -665.09608921189783,
@@ -56,6 +57,32 @@ test_that("#1335 default n_init = 1 fit is unchanged (parity pin)", {
   ## reaches the same optimum, so the default start's fit is kept unchanged.
   expect_identical(fit$restart_history$start_label, c("initial", "svd"))
   expect_identical(fit$restart_history$selected, c(TRUE, FALSE))
+})
+
+test_that("#1331 default fit leaves the session RNG alone and is reproducible", {
+  skip_on_cran()
+  sim <- sim_restart_fit_data()
+  fit_default <- function() suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+    value ~ 0 + trait + latent(0 + trait | site, d = 2) +
+      unique(0 + trait | site),
+    data = sim$data
+  )))
+  set.seed(1)
+  s <- .Random.seed
+  f1 <- fit_default()
+  expect_identical(s, .Random.seed)
+  f2 <- fit_default()
+  expect_identical(s, .Random.seed)
+  expect_true(sum(f1$restart_history$start_label == "jitter") == 2L)
+  rh_cmp <- function(f) f$restart_history[setdiff(names(f$restart_history), "elapsed_s")]
+  expect_identical(rh_cmp(f1), rh_cmp(f2))
+  expect_identical(as.numeric(logLik(f1)), as.numeric(logLik(f2)))
+  ## No .Random.seed before the fit -> none after.
+  rm(".Random.seed", envir = globalenv())
+  f3 <- fit_default()
+  expect_false(exists(".Random.seed", envir = globalenv(), inherits = FALSE))
+  expect_identical(rh_cmp(f1), rh_cmp(f3))
+  set.seed(1)
 })
 
 test_that("#1335 the selected restart is the fit that is returned", {
@@ -67,7 +94,7 @@ test_that("#1335 the selected restart is the fit that is returned", {
     gllvmTMB::gllvmTMB(f, data = long, trait = "trait", unit = "unit",
                        family = student(df = 4), engine = "tmb", ...)
   ))
-  single <- fit_once()
+  single <- fit_once(control = gllvmTMBcontrol(n_init = 1L))
   set.seed(2)
   multi <- fit_once(control = gllvmTMBcontrol(n_init = 2))
 
@@ -80,7 +107,9 @@ test_that("#1335 the selected restart is the fit that is returned", {
   ## ... and the best of the starts is never below the default start.
   expect_gte(as.numeric(logLik(multi)), as.numeric(logLik(single)) - 1e-6)
   ## Restart 1 is the default start, so it reproduces the single-start fit.
-  expect_equal(rh$objective[1L], single$opt$objective, tolerance = 1e-8)
+  ## (Compare restart 1 of each: the single-start fit may keep its svd start.)
+  expect_equal(rh$objective[1L], single$restart_history$objective[1L],
+               tolerance = 1e-8)
 })
 
 test_that("#1333 all-restarts-failed abort reports each restart's reason", {

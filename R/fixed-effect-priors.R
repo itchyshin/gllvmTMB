@@ -47,24 +47,29 @@ fixed_effect_priors <- function(link, intercepts = character(), slopes = charact
                                 slope_scale = 1, additional_variance = 0) {
   if (!is.character(link) || length(link) != 1L || is.na(link) ||
       !link %in% c("logit", "probit")) {
-    cli::cli_abort("{.arg link} must be 'logit' or 'probit'.")
+    cli::cli_abort(c("{.arg link} must be 'logit' or 'probit'.",
+                   ">" = "Choose {.code link = 'logit'} or {.code link = 'probit'}."))
   }
   if (!isTRUE(standardized)) {
-    cli::cli_abort("Confirm already standardized predictors with standardized = TRUE; no data rescaling is performed.")
+    cli::cli_abort(c("Confirm already standardized predictors with standardized = TRUE; no data rescaling is performed.",
+                   ">" = "Standardize continuous predictors first, then set {.code standardized = TRUE}; this helper does not rescale data."))
   }
   coefficients <- c(intercepts, slopes)
   if (!is.character(intercepts) || !is.character(slopes) || !length(coefficients) ||
       anyNA(coefficients) || any(!nzchar(coefficients)) || anyDuplicated(coefficients)) {
-    cli::cli_abort("{.arg intercepts} and {.arg slopes} must contain distinct, nonempty coefficient names.")
+    cli::cli_abort(c("{.arg intercepts} and {.arg slopes} must contain distinct, nonempty coefficient names.",
+                   ">" = "Supply distinct, nonempty coefficient names matching the fixed-effects model matrix."))
   }
   positive_scalar <- function(x) is.numeric(x) && length(x) == 1L &&
     is.finite(x) && x > 0
   if (!positive_scalar(intercept_scale) || !positive_scalar(slope_scale)) {
-    cli::cli_abort("Intercept and slope scales must be finite positive scalars.")
+    cli::cli_abort(c("Intercept and slope scales must be finite positive scalars.",
+                   ">" = "Choose one finite positive number for each scale."))
   }
   if (!is.numeric(additional_variance) || length(additional_variance) != 1L ||
       !is.finite(additional_variance) || additional_variance < 0) {
-    cli::cli_abort("Additional variance must be a finite nonnegative scalar.")
+    cli::cli_abort(c("Additional variance must be a finite nonnegative scalar.",
+                   ">" = "Choose one finite nonnegative number for {.arg additional_variance}."))
   }
   residual <- if (link == "logit") pi^2 / 3 else 1
   multiplier <- c(rep(intercept_scale, length(intercepts)),
@@ -72,7 +77,8 @@ fixed_effect_priors <- function(link, intercepts = character(), slopes = charact
   out <- data.frame(coefficient = coefficients, mean = 0,
                     sd = multiplier * sqrt(residual + additional_variance))
   if (any(!is.finite(out$sd))) {
-    cli::cli_abort("The chosen scales overflow the generated SD; use smaller finite scales.")
+    cli::cli_abort(c("The chosen scales overflow the generated SD; use smaller finite scales.",
+                   ">" = "Use smaller finite scales or a smaller additional variance."))
   }
   .gllvmTMB_resolve_fixed_priors(out, coefficients)
   attr(out, "calibration") <- list(
@@ -115,22 +121,27 @@ fixed_effect_priors <- function(link, intercepts = character(), slopes = charact
   if (is.null(priors)) return(NULL)
   if (!is.data.frame(priors) ||
       !identical(sort(names(priors)), sort(c("coefficient", "mean", "sd")))) {
-    cli::cli_abort("{.arg fixed_effect_priors} must be a data.frame with coefficient, mean, and sd columns.")
+    cli::cli_abort(c("{.arg fixed_effect_priors} must be a data.frame with coefficient, mean, and sd columns.",
+                   ">" = "Supply a data frame with exactly these three columns."))
   }
   if (!is.character(priors$coefficient) || anyNA(priors$coefficient) ||
       anyDuplicated(priors$coefficient) ||
       any(!priors$coefficient %in% coefficient_names)) {
-    cli::cli_abort("Each prior coefficient must name one distinct column of the fixed-effects model matrix.")
+    cli::cli_abort(c("Each prior coefficient must name one distinct column of the fixed-effects model matrix.",
+                   ">" = "Check the model-matrix column names and supply each coefficient at most once."))
   }
   if (!is.numeric(priors$mean) || any(!is.finite(priors$mean))) {
-    cli::cli_abort("Prior mean values must be finite numbers.")
+    cli::cli_abort(c("Prior mean values must be finite numbers.",
+                   ">" = "Supply a finite numeric mean for each coefficient."))
   }
   if (!is.numeric(priors$sd) || anyNA(priors$sd) || any(priors$sd <= 0)) {
-    cli::cli_abort("Prior sd values must be positive numbers; Inf disables a prior.")
+    cli::cli_abort(c("Prior sd values must be positive numbers; Inf disables a prior.",
+                   ">" = "Supply positive numeric standard deviations, or {.code Inf} to disable a prior."))
   }
   precision <- 1 / priors$sd[is.finite(priors$sd)]^2
   if (any(!is.finite(precision) | precision <= 0)) {
-    cli::cli_abort("Finite prior SDs must yield finite positive precision on this machine.")
+    cli::cli_abort(c("Finite prior SDs must yield finite positive precision on this machine.",
+                   ">" = "Choose finite standard deviations that are neither extremely small nor extremely large."))
   }
   priors$index <- match(priors$coefficient, coefficient_names)
   attr(priors, "n_coefficients") <- length(coefficient_names)
@@ -166,13 +177,15 @@ fixed_effect_priors <- function(link, intercepts = character(), slopes = charact
   active <- if (is.null(priors)) logical() else is.finite(priors$sd)
   if (!any(active)) return(obj)
   if (!is.null(obj$fixed_effect_priors)) {
-    cli::cli_abort("This objective already has fixed-effect priors attached.")
+    cli::cli_abort(c("This objective already has fixed-effect priors attached.",
+                   ">" = "Refit from a fresh objective instead of attaching the priors twice."))
   }
   n_coefficients <- attr(priors, "n_coefficients")
   priors <- priors[active, , drop = FALSE]
   beta <- which(names(obj$par) == "b_fix")
   if (!identical(length(beta), n_coefficients) || length(beta) < max(priors$index)) {
-    cli::cli_abort("Fixed-effect priors require an unmapped outer b_fix parameter vector.")
+    cli::cli_abort(c("Fixed-effect priors require an unmapped outer b_fix parameter vector.",
+                   ">" = "Refit with supported fixed coefficients; if the error persists, report a reproducible example."))
   }
   idx <- beta[priors$index]
   mu <- priors$mean

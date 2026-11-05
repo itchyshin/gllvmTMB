@@ -182,7 +182,8 @@
       !is.matrix(loadings) || ncol(loadings) != ncol(mode) ||
       anyNA(site) || anyNA(trait) || any(site < 1L | site > nrow(mode)) ||
       any(trait < 1L | trait > nrow(loadings))) {
-    cli::cli_abort("AGHQ conditional predictions have incompatible row or loading dimensions.",
+    cli::cli_abort(c("AGHQ conditional predictions have incompatible row or loading dimensions.",
+                     ">" = "Refit the model, or use {.code re_form = ~0} for fixed-effects-only predictions."),
                    class = "gllvmTMB_aghq_modes_unavailable")
   }
   eta + rowSums(loadings[trait, , drop = FALSE] * mode[site, , drop = FALSE])

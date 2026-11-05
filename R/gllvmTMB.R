@@ -822,7 +822,8 @@ gllvmTMB <- function(
   }
   structured_rho_capture <- .parse_structured_rho_formula(formula, trait_col = trait, strip = FALSE)
   if (!is.null(control$fixed_effect_priors) && !is.null(structured_rho_capture$spec)) {
-    cli::cli_abort("Fixed-effect priors do not yet support structured source attenuation.",
+    cli::cli_abort(c("Fixed-effect priors do not yet support structured source attenuation.",
+      ">" = "Remove the structured source attenuation or omit the fixed-effect priors."),
       class = "gllvmTMB_fixed_prior_unsupported")
   }
   .structured_rho_dispatch_fence(structured_rho_capture$spec, engine = engine,

@@ -11,3 +11,5 @@ The fixed-prior and AGHQ integration candidate includes the exact heads of PRs #
 - Stale wording scan: `rg -n -i 'aghq.{0,100}(fixed.only|not support|unsupported|not available|unavailable|only.*fixed)|(?:loadings|ordination).{0,100}aghq' NEWS.md R vignettes/articles/binary-priors.Rmd man`. Conditional AGHQ predictions use latent modes; AGHQ latent-score uncertainty remains unavailable.
 
 No three-platform CI or merge has been completed. This evidence does not establish uncertainty calibration or broad VA recovery.
+
+The after-task structure check passed. Its repository-wide acceptance-ledger check returned three unrelated pre-existing UNMET ledgers (`ijsdm-response-information-forensics`, `ijsdm-response-information`, and `temporal-ar1`); this slice does not change those ledgers or claim them complete.

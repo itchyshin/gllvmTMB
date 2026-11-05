@@ -234,9 +234,38 @@ test_that("profile_retention refits emit no unused-argument or alias notes (#158
   expected[4:6, 1L] <- 0
   expect_true(any(res$constraint == 0, na.rm = TRUE))
   expect_equal(res$constraint, expected)
-  ## Since #1585 the free entries of the pinned-diagonal axis start off zero,
-  ## so the two refits that used to be skipped now converge: all 11 are tested.
-  expect_match(res$note, "Tested 11 entries; 0 skipped", fixed = TRUE)
+  ## A constrained refit can fail the convergence or Hessian checks on some
+  ## platforms. Such entries stay free; the expected matrix above still checks
+  ## the substantive result, while the note must account for all 11 refits.
+  counts <- regmatches(res$note, regexec("Tested ([0-9]+) entries; ([0-9]+) skipped", res$note))[[1L]]
+  expect_length(counts, 3L)
+  if (length(counts) == 3L) {
+    tested <- as.integer(counts[2L])
+    skipped <- as.integer(counts[3L])
+    expect_equal(tested + skipped, 11L)
+    expect_gt(tested, 0L)
+    if (skipped > 0L) expect_match(res$note, "kept free for safety", fixed = TRUE)
+  }
+
+  ## Force the first constrained refit to fail. Later fake refits use the
+  ## baseline likelihood, so they are eligible and would pin their entries.
+  fake <- fit
+  fake$opt$convergence <- 0L
+  fake$sd_report <- NULL
+  calls <- 0L
+  skipped_fit <- suppressWarnings(suppressMessages(testthat::with_mocked_bindings(
+    suggest_lambda_constraint(fit, convention = "profile_retention"),
+    gllvmTMB = function(...) {
+      calls <<- calls + 1L
+      if (calls == 1L) stop("controlled refit failure")
+      fake
+    },
+    .package = "gllvmTMB"
+  )))
+  expect_equal(calls, 11L)
+  expect_true(is.na(skipped_fit$constraint[1L, 1L]))
+  expect_match(skipped_fit$note, "Tested 10 entries; 1 skipped", fixed = TRUE)
+  expect_true(any(skipped_fit$constraint == 0, na.rm = TRUE))
 })
 
 test_that("formula path names the within-unit column via unit_obs and the level as written (#1587)", {

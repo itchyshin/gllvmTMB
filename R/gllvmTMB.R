@@ -1621,6 +1621,19 @@ gllvmTMB <- function(
   } else {
     fit_once(control)
   }
+  ## #1389 (owner decision 31 Oct 2026): a Laplace fit the accuracy audit flags
+  ## is refitted with 9-node AGHQ and THAT fit is returned. Default on; opt out
+  ## with `gllvmTMBcontrol(laplace_auto_refit = FALSE)`.
+  .la_audit <- NULL
+  if (.gllvmTMB_laplace_auto_refit_eligible(control, .fit)) {
+    .la_audit <- tryCatch(.gllvmTMB_laplace_accuracy(.fit),
+                          error = function(e) NULL)
+    .refit <- .gllvmTMB_laplace_auto_refit(.fit, .la_audit, fit_once, control)
+    if (!identical(.refit, .fit)) {
+      .fit <- .refit
+      .la_audit <- NULL
+    }
+  }
   ## Public coefficient provenance is attached after fitting. In particular,
   ## no-intercept phylo_coef(..., rho = 1) deliberately hard-dispatches through
   ## the released phylo_slope() TMB bytes; post-fit metadata preserves that
@@ -1726,7 +1739,8 @@ gllvmTMB <- function(
   ## Scoped to binomial because that is the family the 12,000 fits measured.
   if (!identical(control$warn_runaway, FALSE)) {
     .gllvmTMB_warn_runaway_loading(.fit)
-    .gllvmTMB_warn_laplace_optimism(.fit, control$laplace_warn_thresh %||% 2)
+    .gllvmTMB_warn_laplace_optimism(.fit, control$laplace_warn_thresh %||% 2,
+                                    la = .la_audit)
 
     ## Multinomial contrast degeneracy (fid 16), same control, same
     ## once-per-session discipline, but its OWN frequency id so one family's
@@ -1833,9 +1847,11 @@ gllvmTMB <- function(
 ## warning (`warn_runaway`), so a re-fit of one problem stays quiet. A problem
 ## above the work cap, or outside the evaluator's scope, is skipped silently
 ## here; `check_gllvmTMB()` reports it as an INFO row.
-.gllvmTMB_warn_laplace_optimism <- function(fit, thresh = 2) {
+.gllvmTMB_warn_laplace_optimism <- function(fit, thresh = 2, la = NULL) {
   if (isFALSE(thresh)) return(invisible(FALSE))
-  la <- tryCatch(.gllvmTMB_laplace_accuracy(fit), error = function(e) NULL)
+  if (is.null(la)) {
+    la <- tryCatch(.gllvmTMB_laplace_accuracy(fit), error = function(e) NULL)
+  }
   if (!is.list(la) || !isTRUE(la$evaluated) || !is.finite(la$optimism) ||
       !(la$optimism > thresh)) {
     return(invisible(FALSE))
@@ -1848,6 +1864,76 @@ gllvmTMB <- function(
     ">" = "Refit with {.code gllvmTMBcontrol(aghq = 9)}, or see {.run gllvmTMB_diagnose(fit)}. Silence this with {.code gllvmTMBcontrol(warn_runaway = FALSE)}."
   ), .frequency = "once", .frequency_id = id)
   invisible(TRUE)
+}
+
+## Laplace auto-refit (#1389, owner decision 31 Oct 2026).
+##
+## DEFAULT CHANGE. The 2026-07-28 decision shipped AGHQ opt-in; the owner has
+## now chosen (option A on #1389) to act on the Laplace-accuracy audit instead
+## of only warning about it: when the audit above finds the Laplace logLik more
+## than `laplace_warn_thresh` units above the quadrature value, gllvmTMB()
+## refits with `aghq = 9` and returns THAT fit, with a message. Opt out with
+## `gllvmTMBcontrol(laplace_auto_refit = FALSE)`.
+##
+## Eligibility is deliberately narrow, so that nothing the user asked for
+## explicitly is overridden: a plain Laplace route (`integration = "laplace"`),
+## no explicit `aghq = ` (including `aghq = FALSE`), no explicit loading ridge
+## (`loading_ridge` is folded into `aghq_ridge_explicit`; Laplace + ridge is the documented control for claims about the quadrature),
+## and `optimizer_passes = 1` (more passes need `aghq = FALSE`). The audit runs
+## only when `warn_runaway` and `laplace_warn_thresh` leave it on, so both
+## switches also turn the refit off. Anything the audit cannot evaluate (scope,
+## work cap) is never refitted.
+.gllvmTMB_laplace_auto_refit_eligible <- function(control, fit) {
+  isTRUE(control$laplace_auto_refit %||% TRUE) &&
+    !identical(control$warn_runaway, FALSE) &&
+    !isFALSE(control$laplace_warn_thresh %||% 2) &&
+    identical(control$integration %||% "laplace", "laplace") &&
+    isFALSE(control$aghq) &&
+    !isTRUE(control$aghq_explicit) &&
+    !isTRUE(control$aghq_ridge_explicit) &&
+    identical(as.integer(control$optimizer_passes %||% 1L), 1L) &&
+    !isTRUE(fit$aghq$used)
+}
+
+## Returns `fit` unchanged unless the audit fires AND the AGHQ refit converges;
+## a refit that errors or does not converge leaves the Laplace fit (which then
+## gets the ordinary fit-time warning) and says so.
+.gllvmTMB_laplace_auto_refit <- function(fit, la, fit_once, control) {
+  thresh <- control$laplace_warn_thresh %||% 2
+  if (!is.list(la) || !isTRUE(la$evaluated) || !is.finite(la$optimism) ||
+      !(la$optimism > thresh)) {
+    return(fit)
+  }
+  opt <- sprintf("%.1f", la$optimism)
+  refit_control <- control
+  refit_control$aghq <- 9L
+  refit <- tryCatch(fit_once(refit_control), error = function(e) e)
+  problem <- if (inherits(refit, "error")) {
+    conditionMessage(refit)
+  } else if (!isTRUE(refit$aghq$used)) {
+    "the refit did not use AGHQ"
+  } else if (!isTRUE(refit$aghq$converged)) {
+    "the AGHQ refit did not converge"
+  }
+  if (!is.null(problem)) {
+    cli::cli_inform(c(
+      "Laplace logLik is {opt} units above the marginal likelihood, but the automatic AGHQ refit failed; returning the Laplace fit.",
+      "x" = "{problem}"
+    ), class = "gllvmTMB_laplace_auto_refit_failed")
+    return(fit)
+  }
+  refit$laplace_auto_refit <- list(
+    triggered = TRUE, thresh = thresh, k = 9L, optimism = la$optimism,
+    loglik_laplace = la$loglik_laplace,
+    loglik_quadrature = la$loglik_quadrature
+  )
+  cli::cli_inform(c(
+    "Laplace logLik was {opt} units above the marginal likelihood (threshold {thresh}); refitted with 9-node adaptive Gauss-Hermite quadrature ({.code aghq = 9}) and returning that fit.",
+    "i" = "The refit uses the {.code aghq} default loading ridge (tau = {refit$aghq$ridge_tau}), so {.fn logLik} on it is a penalised value; pass {.code aghq_ridge = Inf} for an unpenalised one.",
+    "i" = "{.fn getLoadings} and {.fn extract_ordination} work on it (the scores are conditional modes); score uncertainty ({.fn ordination_uncertainty}, {.code getLV(se = TRUE)}) needs {.code laplace_auto_refit = FALSE}.",
+    "i" = "This is the default behaviour (#1389). Keep the plain Laplace fit with {.code gllvmTMBcontrol(laplace_auto_refit = FALSE)}; provenance is in {.code fit$laplace_auto_refit}."
+  ), class = "gllvmTMB_laplace_auto_refit")
+  refit
 }
 
 ## Multinomial (baseline-category logit) response expansion (Design 83).
@@ -2492,6 +2578,26 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #'   to Laplace fits whose only random block is the between-unit latent block with
 #'   `d` from 1 to 3; other fits, and problems above the work cap, are skipped.
 #'   `FALSE` turns the audit off. `warn_runaway = FALSE` also turns it off.
+#' @param laplace_auto_refit If `TRUE` (default), a Laplace fit that the audit
+#'   above flags (Laplace logLik more than `laplace_warn_thresh` units above the
+#'   quadrature value) is refitted with 9-node adaptive Gauss-Hermite quadrature
+#'   (`aghq = 9`), a message says so, and the AGHQ fit is returned; the
+#'   provenance is in `fit$laplace_auto_refit`. **This is a default change:**
+#'   AGHQ used to be opt-in only. Set `FALSE` to keep the plain Laplace fit (the
+#'   audit warning is then given instead). The refit is skipped, and the Laplace
+#'   fit kept, when the audit does not apply (see `laplace_warn_thresh`), when
+#'   `aghq` (including `aghq = FALSE`), `aghq_ridge` or `loading_ridge` is set
+#'   explicitly, when `integration` is not `"laplace"`, when
+#'   `optimizer_passes > 1`, or when the AGHQ refit fails or does not converge.
+#'   `laplace_warn_thresh = FALSE` or `warn_runaway = FALSE` also turn it off.
+#'   The refit **keeps the default loading ridge** (`aghq_ridge`, tau = 2), so
+#'   `logLik()` on it is a penalised value; an explicit ridge is the way to opt
+#'   out of the refit, not a way to change it. [getLoadings()], [getLV()],
+#'   [extract_ordination()], [extract_loadings()], [rotate_loadings()] and
+#'   [ordiplot()] work on the refitted model (the scores are conditional modes,
+#'   kept in `fit$aghq$z_B_mode`); score uncertainty
+#'   ([ordination_uncertainty()], `getLV(se = TRUE)`) is not available on an
+#'   AGHQ fit, so use `laplace_auto_refit = FALSE` for it.
 #' @param aghq_continuation If `TRUE` (default), the adaptation loop may raise
 #'   `aghq_iter_cap` across passes. `FALSE` pins the cap and disables escalation.
 #' @param aghq_shift_tol,aghq_grad_tol,aghq_f_tol Convergence tolerances for the
@@ -2724,6 +2830,7 @@ gllvmTMBcontrol <- function(
   ## suppress; the check itself is always available via `gllvmTMB_diagnose()`.
   warn_runaway = TRUE,
   laplace_warn_thresh = 2,
+  laplace_auto_refit = TRUE,
   allow_nongaussian_reml = FALSE,
   loading_ridge = NULL,
   fixed_effect_priors = NULL,
@@ -2799,6 +2906,7 @@ gllvmTMBcontrol <- function(
   aghq_continuation <- .gllvmTMB_as_flag(aghq_continuation, "aghq_continuation")
   aghq_multistart <- .gllvmTMB_as_flag(aghq_multistart, "aghq_multistart")
   warn_runaway <- .gllvmTMB_as_flag(warn_runaway, "warn_runaway")
+  laplace_auto_refit <- .gllvmTMB_as_flag(laplace_auto_refit, "laplace_auto_refit")
   if (!isFALSE(laplace_warn_thresh) &&
       (!is.numeric(laplace_warn_thresh) || length(laplace_warn_thresh) != 1L ||
        is.na(laplace_warn_thresh) || laplace_warn_thresh < 0)) {
@@ -2940,6 +3048,7 @@ gllvmTMBcontrol <- function(
     se = se,
     verbose = verbose,
     aghq = aghq,
+    aghq_explicit = aghq_explicit,
     aghq_iter_cap = aghq_iter_cap,
     aghq_n_adapt = aghq_n_adapt,
     aghq_ridge = aghq_ridge,
@@ -2957,6 +3066,7 @@ gllvmTMBcontrol <- function(
     aghq_rho_min = aghq_rho_min,
     warn_runaway = warn_runaway,
     laplace_warn_thresh = laplace_warn_thresh,
+    laplace_auto_refit = laplace_auto_refit,
     allow_nongaussian_reml = allow_nongaussian_reml
   )
 }

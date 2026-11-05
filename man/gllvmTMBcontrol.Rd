@@ -34,6 +34,7 @@ gllvmTMBcontrol(
   aghq_rho_min = 1/64,
   warn_runaway = TRUE,
   laplace_warn_thresh = 2,
+  laplace_auto_refit = TRUE,
   allow_nongaussian_reml = FALSE,
   loading_ridge = NULL,
   fixed_effect_priors = NULL,
@@ -340,6 +341,27 @@ when the Laplace logLik exceeds it by more than this many units. It applies
 to Laplace fits whose only random block is the between-unit latent block with
 \code{d} from 1 to 3; other fits, and problems above the work cap, are skipped.
 \code{FALSE} turns the audit off. \code{warn_runaway = FALSE} also turns it off.}
+
+\item{laplace_auto_refit}{If \code{TRUE} (default), a Laplace fit that the audit
+above flags (Laplace logLik more than \code{laplace_warn_thresh} units above the
+quadrature value) is refitted with 9-node adaptive Gauss-Hermite quadrature
+(\code{aghq = 9}), a message says so, and the AGHQ fit is returned; the
+provenance is in \code{fit$laplace_auto_refit}. \strong{This is a default change:}
+AGHQ used to be opt-in only. Set \code{FALSE} to keep the plain Laplace fit (the
+audit warning is then given instead). The refit is skipped, and the Laplace
+fit kept, when the audit does not apply (see \code{laplace_warn_thresh}), when
+\code{aghq} (including \code{aghq = FALSE}), \code{aghq_ridge} or \code{loading_ridge} is set
+explicitly, when \code{integration} is not \code{"laplace"}, when
+\code{optimizer_passes > 1}, or when the AGHQ refit fails or does not converge.
+\code{laplace_warn_thresh = FALSE} or \code{warn_runaway = FALSE} also turn it off.
+The refit \strong{keeps the default loading ridge} (\code{aghq_ridge}, tau = 2), so
+\code{logLik()} on it is a penalised value; an explicit ridge is the way to opt
+out of the refit, not a way to change it. \code{\link[=getLoadings]{getLoadings()}}, \code{\link[=getLV]{getLV()}},
+\code{\link[=extract_ordination]{extract_ordination()}}, \code{\link[=extract_loadings]{extract_loadings()}}, \code{\link[=rotate_loadings]{rotate_loadings()}} and
+\code{\link[=ordiplot]{ordiplot()}} work on the refitted model (the scores are conditional modes,
+kept in \code{fit$aghq$z_B_mode}); score uncertainty
+(\code{\link[=ordination_uncertainty]{ordination_uncertainty()}}, \code{getLV(se = TRUE)}) is not available on an
+AGHQ fit, so use \code{laplace_auto_refit = FALSE} for it.}
 
 \item{allow_nongaussian_reml}{Permit \code{REML = TRUE} for non-Gaussian families.
 Default \code{FALSE}; the restricted likelihood is defined by a Gaussian

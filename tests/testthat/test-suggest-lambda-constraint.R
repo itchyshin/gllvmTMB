@@ -208,6 +208,7 @@ test_that("profile_retention refits emit no unused-argument or alias notes (#158
     data = d,
     trait = "trait",
     unit = "site",
+    control = gllvmTMBcontrol(n_init = 1L),
     silent = TRUE
   )))
   ## The one-shot alias notes would otherwise be spent by earlier tests.

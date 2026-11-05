@@ -28,9 +28,9 @@ coefficients, `dep()`, missing responses, non-unit likelihood weights, REML, MSP
 variational integration and the Julia bridge are outside this initial
 support. Eligible ordinary latent models can also request AGHQ; validation of
 the combined priors is currently limited to a rank-one probit example. On an
-AGHQ fit, loading and ordination extractors can fail because latent scores are
-not retained. Use a Laplace fit when those extractors are needed. Ordinary
-profile, bootstrap and prediction-SE intervals are withheld.
+AGHQ fits retain conditional latent modes for loading and ordination point
+summaries. Latent-score uncertainty is unavailable, and ordinary profile,
+bootstrap and prediction-SE intervals are withheld.
 Convergence and the examples below do not establish interval coverage.
 
 # What each prior changes

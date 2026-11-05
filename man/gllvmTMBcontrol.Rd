@@ -8,7 +8,7 @@ gllvmTMBcontrol(
   d_B = NULL,
   d_W = NULL,
   spde_mode = c("per_trait", "shared"),
-  n_init = 1L,
+  n_init = 3L,
   optimizer = c("nlminb", "optim"),
   optArgs = list(),
   init_jitter = 0.3,
@@ -59,12 +59,15 @@ are often multimodal because the latent-factor likelihood has many
 equivalent local maxima; running several restarts with different
 starting values and keeping the fit with the lowest \code{-logLik}
 reduces the risk of settling on a suboptimal solution. Default
-1 (the default start, plus the \code{svd_start} restart when that applies).
+3 (the default start and two jittered restarts, plus the \code{svd_start}
+restart when that applies); \code{n_init = 1L} restores a single start.
 Increase to 5–10 for two-level rr models, and to check any fit whose
 log-likelihood will be compared: a single start can stop at a lower
 local optimum while reporting \code{convergence = 0}, a positive-definite
-Hessian and a small gradient. The jittered restarts use R's random
-number generator, so call \code{\link[=set.seed]{set.seed()}} first for a reproducible fit.}
+Hessian and a small gradient. The jittered restarts
+are drawn under a fixed internal seed, so the same data and model
+give the same restarts, and the fit does not change or depend on the
+session random-number stream (\code{.Random.seed}).}
 
 \item{optimizer}{Optimiser for the native Laplace and AGHQ routes. For the
 experimental VA route, omission keeps the family registry's automatic

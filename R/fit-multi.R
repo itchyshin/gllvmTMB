@@ -8550,6 +8550,12 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                     rep("jitter", n_jitter))
   n_restarts <- length(start_labels)
   restart_history <- vector("list", n_restarts)
+  ## Jitter offsets are drawn up front under a fixed internal seed so the
+  ## restart sequence is reproducible and the session RNG is untouched.
+  jitter_offsets <- .gllvmTMB_jitter_offsets(
+    n_jitter, length(obj$par), control$init_jitter
+  )
+  jitter_i <- 0L
   for (i in seq_len(n_restarts)) {
     par0 <- switch(
       start_labels[i],
@@ -8565,9 +8571,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         obj$env$value.best <- Inf
         svd_restart$par
       },
-      jitter = .gllvmTMB_reclamp_start_par(
-        obj$par + stats::rnorm(length(obj$par), sd = control$init_jitter)
-      )
+      jitter = {
+        jitter_i <- jitter_i + 1L
+        .gllvmTMB_reclamp_start_par(obj$par + jitter_offsets[[jitter_i]])
+      }
     )
     elapsed_start <- proc.time()[["elapsed"]]
     opt_i <- tryCatch(run_passes(par0, .ridge_tau = laplace_ridge_tau),

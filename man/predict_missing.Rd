@@ -28,7 +28,8 @@ instead -- see Details).}
 \item{se}{EXPERIMENTAL, internal-only. If \code{TRUE}, appends \code{se_confidence}
 (delta-method SE of the reconstructed mean) and \code{se_prediction}
 (\code{se_confidence} combined with the family noise variance) columns.
-Gaussian fits only in this slice; see Details. Default \code{FALSE}.}
+Gaussian fits only in this slice; unavailable for AGHQ fits. See Details.
+Default \code{FALSE}.}
 
 \item{se_route}{EXPERIMENTAL, internal-only. One of \code{"quad"} (default;
 R1-quad), \code{"joint"} (R1-joint), \code{"joint_load"} (R1-joint+loadings),

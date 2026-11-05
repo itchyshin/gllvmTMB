@@ -627,15 +627,21 @@
 #' penalties applied *inside* the C++ template -- the LA-MSPL penalties
 #' documented above -- and never see anything computed at the R level.
 #'
-#' `fit$objective_components` is the **marginal** surface: the value TMB's
-#' Laplace approximation integrates the random effects out of, decomposed
-#' into `likelihood_nll` (the unpenalised marginal negative log-likelihood),
+#' For ordinary ML and fixed-prior MAP fits, `fit$objective_components`
+#' describes the **marginal** objective under the integration method used for
+#' the fit. It is decomposed into
+#' `likelihood_nll` (the unpenalised marginal negative log-likelihood),
 #' `ridge_penalty` (the R-level loading ridge from `aghq_ridge`, added
 #' *outside* the TMB objective -- see `.gllvmTMB_penalised_gradient()`),
-#' `optimization_nll` (their sum, the objective the optimiser actually
-#' minimised), and `optimizer_reported` (the value `nlminb()` / `optim()`
-#' returned). This is the **only** place the R-level loading ridge appears;
+#' `fixed_effect_prior_nll` (the fixed-effect normal-prior contribution), and
+#' `optimization_nll` (their sum, the criterion used for optimisation).
+#' `optimizer_reported` records `fit$opt$objective`, whose contents depend on
+#' the fitting route: for AGHQ it includes any fixed-effect priors but excludes the
+#' separately computed loading ridge. Use `optimization_nll` to inspect the
+#' full criterion. This separately itemises the R-level loading ridge;
 #' `report$joint_nll_*` cannot see it because it never reaches the TMB tape.
+#' For MSPL fits, `likelihood_nll` still includes the TMB-side MSPL penalty;
+#' the separate unpenalised value is `fit$mspl$unpenalized_nll_at_estimate`.
 #'
 #' The two surfaces are **not expected to match**, on a ridged fit or
 #' otherwise, and a difference between them is not itself an error: they are
@@ -767,6 +773,7 @@ gllvmTMB <- function(
   ## engine = "julia" routes through the experimental GLLVModels.jl bridge fitting
   ## path via JuliaCall; "tmb" (default) keeps the native TMB engine below.
   engine <- match.arg(engine)
+  .gllvmTMB_fixed_prior_route(control$fixed_effect_priors, engine, estimator, REML, control)
   if (identical(engine, "julia") &&
       (control$optimizer_passes %||% 1L) > 1L) {
     cli::cli_abort(c(
@@ -814,6 +821,10 @@ gllvmTMB <- function(
     }
   }
   structured_rho_capture <- .parse_structured_rho_formula(formula, trait_col = trait, strip = FALSE)
+  if (!is.null(control$fixed_effect_priors) && !is.null(structured_rho_capture$spec)) {
+    cli::cli_abort("Fixed-effect priors do not yet support structured source attenuation.",
+      class = "gllvmTMB_fixed_prior_unsupported")
+  }
   .structured_rho_dispatch_fence(structured_rho_capture$spec, engine = engine,
     integration = control$integration %||% "laplace", estimator = estimator,
     aghq = control$aghq %||% FALSE)
@@ -1651,6 +1662,23 @@ gllvmTMB <- function(
     estimator = estimator,
     reml = REML
   )
+  if (!is.null(.fit$fixed_effect_priors)) {
+    .fit$estimator <- "MAP"
+    .fit$estimator_provenance$criterion_id <- if (isTRUE(.fit$aghq$used)) {
+      "aghq_plus_normal_priors"
+    } else {
+      "laplace_plus_normal_priors"
+    }
+    ## The fixed-effect prior is applied in R; penalty_eval_id describes the
+    ## TMB tape and must not be confused with the MSPL penalty-on tape.
+    .fit$estimator_provenance$fixed_effect_prior_applied <- TRUE
+    .fit$estimator_provenance$public_estimator <- "MAP"
+    .fit$estimator_provenance$notes <- sub(
+      "public label ML is coarse: this fit uses AGHQ, not Laplace",
+      "MAP fit uses AGHQ; integration is recorded separately",
+      .fit$estimator_provenance$notes, fixed = TRUE
+    )
+  }
   ## WARN ON AN IMPLAUSIBLE LOADING SCALE -- because the failure is COMMON and SILENT.
   ##
   ## Measured, 12,000 fits, binomial p=6 q=2 (docs/dev-log/audits/
@@ -2386,6 +2414,8 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #'   gain does not justify the cost. **Opt-in and experimental**: no capability
 #'   claim is made for quadrature-fitted models, and eligibility is narrow — the
 #'   random part must be a single ordinary `latent()` block on the unit tier.
+#'   Check `fit$aghq$used` and `fit$aghq$converged`; a non-converged AGHQ fit
+#'   warns that its estimates may be unreliable.
 #' @param aghq_iter_cap Optimiser iteration budget for the first adaptation
 #'   pass. Default `1L`. Later passes escalate when continuation is enabled.
 #' @param aghq_n_adapt Maximum number of adaptation passes. Default `400L`.
@@ -2408,6 +2438,23 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #'   `"auto"` route always uses 9-node multi-start AGHQ for both pilot and final
 #'   fits; a conflicting node/start control is replaced with a warning, while an
 #'   explicit `aghq = FALSE` is incompatible.
+#' @param fixed_effect_priors Optional data frame with `coefficient`, `mean`
+#'   and `sd` columns naming exact fixed-effects model-matrix columns. For
+#'   `~ 0 + trait + trait:x`, item intercepts are named `traita`, not
+#'   `(Intercept)`, and slopes include `traita:x`. Use [fixed_effect_priors()]
+#'   for explicit link-aware reference scales on standardized predictors.
+#'   Default `NULL` adds no fixed-effect prior. Finite positive SDs define
+#'   independent normal densities including their constants; `Inf` disables
+#'   a row. Loading priors remain separately controlled by `loading_ridge`.
+#'   Currently supported for ordinary unit-tier latent/indep Gaussian or binomial logit/probit
+#'   native Laplace models, without constrained coefficients, structured sources,
+#'   missing responses or non-unit weights. Eligible ordinary latent models may
+#'   also request AGHQ; check both `fit$aghq$used` and `fit$aghq$converged`.
+#'   Ineligible requests fall back to Laplace with a warning; a non-converged
+#'   AGHQ fit also warns. Initial AGHQ validation is limited to a
+#'   rank-one probit example. `dep()`, Julia, MSPL, REML and VA are rejected. Estimates are MAP points; inverse penalized curvature is local
+#'   approximate posterior covariance, not calibrated sampling uncertainty.
+#'   Profile intervals, bootstrap intervals and prediction SEs are withheld.
 #' @param loading_ridge Integration-neutral alias for `aghq_ridge`. Use this
 #'   spelling to request the same loading MAP penalty on a Laplace fit without
 #'   suggesting that the penalty belongs to AGHQ. The default `NULL` preserves
@@ -2679,6 +2726,7 @@ gllvmTMBcontrol <- function(
   laplace_warn_thresh = 2,
   allow_nongaussian_reml = FALSE,
   loading_ridge = NULL,
+  fixed_effect_priors = NULL,
   optimizer_passes = 1L,
   svd_start = TRUE,
   va_polish = TRUE,
@@ -2898,6 +2946,7 @@ gllvmTMBcontrol <- function(
     aghq_ridge_explicit = aghq_ridge_explicit,
     loading_ridge = if (isTRUE(loading_ridge_explicit)) aghq_ridge else NULL,
     loading_ridge_explicit = loading_ridge_explicit,
+    fixed_effect_priors = fixed_effect_priors,
     aghq_continuation = aghq_continuation,
     aghq_shift_tol = aghq_shift_tol,
     aghq_grad_tol = aghq_grad_tol,

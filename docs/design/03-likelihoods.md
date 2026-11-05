@@ -12,6 +12,44 @@ density looks like on the link scale, what the numerical scales
 are, what boundary cases are tested, and what comparator alignment
 holds.
 
+## Optional fixed-effect normal priors
+
+`gllvmTMBcontrol(fixed_effect_priors = table)` adds independent normal
+densities on exact fixed-design columns outside the native TMB tape. For
+selected beta_j with mean m_j and SD s_j, the outer criterion is
+
+    F = -log L_Laplace + sum_j [(beta_j-m_j)^2/(2*s_j^2) + log(s_j*sqrt(2*pi))]
+        + sum_free_ordinary_loadings lambda^2/(2*tau^2).
+
+Finite fixed-effect SDs include their normal constants. `Inf` disables a row
+including its constant; it is a sentinel rather than a proper limiting density.
+The existing loading ridge omits its density constants. The two controls remain
+independent. Priors do not change the conditional random-effect solve at a fixed
+outer parameter vector. No likelihood-family parameterization or C++ template
+changes in this slice.
+
+The decorated objective supplies analytic prior gradients and exact precision
+increments. Diagnostics and restart ranking use that same objective. Marginal
+outer Hessians follow the TMB convention of finite differences of gradients,
+including both priors; `sdreport()` receives that Hessian explicitly. Inverse
+curvature is local approximate posterior covariance at the MAP point, conditional
+on the chosen priors and axis orientation. It is not certified sampling covariance.
+The unpenalized likelihood remains separately available at the MAP point.
+
+First support is native Laplace ML dispatch for ordinary unit-tier latent/indep
+Gaussian or binomial logit/probit models. `dep()`, structured sources, extra
+grouping tiers, constrained coefficients/loadings, missing responses, non-unit
+likelihood weights, REML, MSPL, VA and Julia are rejected. AGHQ may be requested for eligible ordinary latent models; each quadrature tape receives the fixed prior and the covariance holds adaptation nodes fixed. The combined route has a rank-one probit direct-integration check, not a coverage qualification. Ordinary profiles,
+bootstrap intervals, CV and prediction SEs are withheld for these fits. Direct
+refits preserve the coefficient table through `control`; the internal parametric
+refit argument builder is tested, without advertising a public bootstrap interval.
+
+`fixed_effect_priors()` uses an explicit latent-reference variance convention on
+already standardized predictors; it does not transform the design or infer the
+additional variance from fitted loadings. Test evidence and remaining uncertainty
+debt are recorded in FE-PRIOR-01, `tests/testthat/test-fixed-effect-priors.R` and
+`dev/fixed-effect-priors/aghq-fixed-prior-reference.R` and its result transcript. The worked public page is `articles/binary-priors`.
+
 ## Temporal Gaussian source
 
 For temporal state covariance \(K\), the native Gaussian temporal tier uses

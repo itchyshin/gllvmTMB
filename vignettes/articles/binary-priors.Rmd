@@ -1,0 +1,281 @@
+---
+title: "Two normal priors for binary latent models"
+description: "Use separate priors for predictor effects and latent loadings, with worked logit and probit examples."
+output:
+  rmarkdown::html_vignette:
+    toc: true
+vignette: >
+  %\VignetteIndexEntry{Two normal priors for binary latent models}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", message = FALSE, warning = FALSE)
+library(gllvmTMB)
+```
+
+A species recorded only at one end of an environmental gradient can produce an
+extreme fitted slope. A latent loading can also become large when the responses
+provide little information about shared variation. The two coefficients play
+different roles, so they have separate prior controls. This page shows how to
+choose them explicitly and inspect the resulting estimates.
+
+These examples use native TMB Laplace fits with ordinary unit-level latent
+effects and complete binary observations. Ordinary `indep()` and Gaussian models also accept the
+fixed-effect control. Structured sources, extra grouping tiers, constrained
+coefficients, `dep()`, missing responses, non-unit likelihood weights, REML, MSPL,
+variational integration and the Julia bridge are outside this initial
+support. Eligible ordinary latent models can also request AGHQ; validation of
+the combined priors is currently limited to a rank-one probit example. On an
+AGHQ fit, loading and ordination extractors can fail because latent scores are
+not retained. Use a Laplace fit when those extractors are needed. Ordinary
+profile, bootstrap and prediction-SE intervals are withheld.
+Convergence and the examples below do not establish interval coverage.
+
+# What each prior changes
+
+For response \(j\) at site \(i\), the model is
+
+\[
+ y_{ij}\sim\mathrm{Bernoulli}(p_{ij}),\qquad
+ g(p_{ij})=\alpha_j+\beta_j x_i+\lambda_j z_i,
+ \qquad z_i\sim N(0,1).
+\]
+
+Here \(g\) is the logit or probit link. The intercept \(\alpha_j\) describes
+response \(j\) at the centered predictor value. The slope \(\beta_j\) describes
+its association with the measured predictor. The loading \(\lambda_j\)
+describes its association with an unmeasured shared site axis. The model
+distribution \(z_i\sim N(0,1)\) sets that axis's scale and is present even
+when no optional priors are selected.
+
+| Optional control | Coefficients affected | What is pulled toward the prior mean |
+|---|---|---|
+| `loading_ridge = tau` | Free ordinary between-unit loadings | Shared latent response variation, with mean zero and SD `tau` |
+| `fixed_effect_priors` | Named intercepts and slopes | Baseline response levels and measured predictor associations, with a mean and SD for each selected coefficient |
+
+A zero-mean normal prior contributes a quadratic penalty, often called a ridge
+penalty. `loading_ridge` adds \(\sum\lambda^2/(2\tau^2)\); the fixed-effect
+control adds \(\sum(\beta-m)^2/(2s^2)\), including intercepts when named.
+The fixed-effect density also includes its normalizing constant. The loading
+penalty omits that constant, so raw objective values from different packages
+need this adjustment before comparison.
+
+A loading prior does not directly penalize a separated fixed-effect slope.
+The [glmmTMB priors vignette](https://glmmtmb.github.io/glmmTMB/articles/priors.html)
+illustrates fixed-effect normal priors for separation. Priors on random-effect
+standard deviations, also discussed there, are a further choice; this page's
+loading penalty acts directly on the free loading coordinates.
+
+The fitted result is a maximum a posteriori (MAP) point: the mode of the
+likelihood times the chosen prior densities. It does not supply posterior
+samples. A smaller prior SD increases shrinkage. Choosing an SD is a scientific
+assumption to examine through sensitivity fits.
+Do not treat the penalized objective, or the likelihood evaluated at its MAP
+point, as a maximized likelihood for ordinary AIC or likelihood-ratio tests.
+
+# Choose link-aware scales before fitting
+
+`fixed_effect_priors()` constructs a table from explicit coefficient roles.
+It uses the latent-reference normal SD
+
+\[
+ s = c\sqrt{v_g+v_{\mathrm{additional}}},\quad
+ v_{\mathrm{logit}}=\pi^2/3,\quad v_{\mathrm{probit}}=1.
+\]
+
+The multiplier \(c\) can differ for intercepts and slopes. The caller chooses
+any additional reference variance before fitting. It is zero by default and
+is never estimated from the fitted loadings. In a GLLVM the additional variance
+for an item depends on its loadings and other random effects; it is not
+automatically one or the number of axes.
+
+This is a scale convention, with no claim of equivalent priors across links or
+flat prior probabilities in every model. The helper requires continuous
+predictors already centered and scaled to SD 0.5. It does not change the data.
+For a binary predictor, declare its zero/one coding and interpret its slope for
+that contrast.
+
+[MCMCglmm's source](https://github.com/jarrodhadfield/MCMCglmm/blob/master/R/gelman.prior.R)
+and [prior documentation](https://jarrodhadfield.github.io/MCMCglmm/course-notes/glm.html#gelman-prior-sec)
+describe related latent-variance references and a transformation back from a
+standardized design. That transformation can create correlated intercept and
+slope priors. This helper returns independent normals for the supplied
+standardized design. It also differs from Gelman's original scaled Cauchy
+recommendation. Do not interpret the returned SDs as Cauchy scales.
+
+# Simulate a community on a measured gradient
+
+Three responses share one latent site axis. The continuous predictor has SD
+0.5, so the helper's stated convention holds in the actual fitted data.
+
+```{r data}
+set.seed(846)
+n <- 90
+x <- as.numeric(scale(seq(-2, 2, length.out = n))) / 2
+z <- rnorm(n)
+long <- expand.grid(trait = factor(c("a", "b", "c")), unit = factor(seq_len(n)))
+long$x <- rep(x, each = 3)
+eta <- rep(c(-0.3, 0.1, 0.4), n) +
+  rep(c(0.6, -0.4, 0.3), n) * long$x +
+  rep(c(0.5, -0.3, 0.4), n) * rep(z, each = 3)
+long$logit_value <- rbinom(nrow(long), 1, plogis(eta))
+long$probit_value <- rbinom(nrow(long), 1, pnorm(eta))
+sd(x)
+```
+
+The logit and probit outcomes are separate simulated datasets. Comparing their
+coefficients would mix differences in the link, chosen priors and random draws.
+
+# Worked logit example
+
+The long formula uses `0 + trait`, so its intercept names are `traita`, `traitb`
+and `traitc`. They have no conventional `(Intercept)` name. Name the slopes
+separately and inspect the actual prior SDs.
+
+`0 + trait` gives each response its own intercept, and `trait:x` gives each its
+own slope. The wide formula `traits(a, b, c) ~ 1 + x` expands to these same
+response-specific terms. In both calls, `d = 1` selects one shared site axis;
+`unique = FALSE` omits an additional independent per-trait site effect, matching
+the equation above.
+
+```{r logit-priors}
+logit_prior <- fixed_effect_priors(
+  "logit", intercepts = paste0("trait", c("a", "b", "c")),
+  slopes = paste0("trait", c("a", "b", "c"), ":x"),
+  standardized = TRUE, intercept_scale = 2, slope_scale = 1
+)
+logit_prior
+```
+
+These choices give intercept SD about 3.63 and slope SD about 1.81. They are
+illustrative reference scales, not tuned values or general recommendations.
+Fit the long and wide representations through the same entry point:
+
+```{r logit-fit}
+long$value <- long$logit_value
+wide <- data.frame(unit = factor(seq_len(n)), x = x,
+                   a = long$value[long$trait == "a"],
+                   b = long$value[long$trait == "b"],
+                   c = long$value[long$trait == "c"])
+ctrl <- gllvmTMBcontrol(fixed_effect_priors = logit_prior, loading_ridge = 0.75,
+                        svd_start = FALSE, n_init = 1L)
+logit_long <- gllvmTMB(
+  value ~ 0 + trait + trait:x + latent(0 + trait | unit, d = 1, unique = FALSE),
+  data = long, trait = "trait", unit = "unit", family = binomial("logit"), control = ctrl
+)
+logit_wide <- gllvmTMB(
+  traits(a, b, c) ~ 1 + x + latent(1 | unit, d = 1, unique = FALSE),
+  data = wide, unit = "unit", family = binomial("logit"), control = ctrl
+)
+coef(logit_long)
+logit_long$objective_components
+```
+
+To see what the priors change, fit a baseline with both optional penalties off,
+then fit loading shrinkage alone on exactly the same data.
+
+```{r logit-baseline}
+f <- value ~ 0 + trait + trait:x + latent(0 + trait | unit, d = 1, unique = FALSE)
+logit_none <- gllvmTMB(f, long, trait = "trait", unit = "unit", family = binomial("logit"),
+  control = gllvmTMBcontrol(loading_ridge = Inf, fixed_effect_priors = NULL,
+                            svd_start = FALSE, n_init = 1L))
+logit_loading <- gllvmTMB(f, long, trait = "trait", unit = "unit", family = binomial("logit"),
+  control = gllvmTMBcontrol(loading_ridge = 0.75, svd_start = FALSE, n_init = 1L))
+cbind(no_optional_priors = coef(logit_none), loading_only = coef(logit_loading),
+      loading_and_fixed = coef(logit_long))
+data.frame(response = c("a", "b", "c"),
+  no_optional_priors = abs(as.numeric(logit_none$report$Lambda_B)),
+  loading_only = abs(as.numeric(logit_loading$report$Lambda_B)),
+  loading_and_fixed = abs(as.numeric(logit_long$report$Lambda_B)))
+```
+
+In this seeded example, response b's slope changes from about -1.00 without
+the optional priors to -0.99 with the loading prior and -0.93 with both priors.
+The absolute-loading table shows the corresponding changes in shared variation;
+the sign of a latent axis is arbitrary. Effects
+need not all move toward zero: the coefficients are estimated jointly, and a
+prior on one component can change another component's estimate.
+
+Ordinary Laplace fitting has no fixed-effect prior by default. Explicitly
+selecting `loading_ridge = Inf` also makes the loading choice clear in this
+baseline. A loading-only comparison isolates the added fixed-effect prior.
+
+# Worked probit example
+
+Keep the same predictor convention and coefficient roles, but construct new
+reference scales for the probit link. Here the intercept SD is 2 and slope SD
+is 1. No automatic rescaling of the predictor or the logit estimates occurs.
+
+```{r probit-fit}
+probit_prior <- fixed_effect_priors(
+  "probit", intercepts = paste0("trait", c("a", "b", "c")),
+  slopes = paste0("trait", c("a", "b", "c"), ":x"),
+  standardized = TRUE, intercept_scale = 2, slope_scale = 1
+)
+probit_prior
+long$value <- long$probit_value
+wide$a <- long$value[long$trait == "a"]
+wide$b <- long$value[long$trait == "b"]
+wide$c <- long$value[long$trait == "c"]
+ctrl <- gllvmTMBcontrol(fixed_effect_priors = probit_prior, loading_ridge = 0.75,
+                        svd_start = FALSE, n_init = 1L)
+probit_long <- gllvmTMB(f, long, trait = "trait", unit = "unit",
+                       family = binomial("probit"), control = ctrl)
+probit_wide <- gllvmTMB(traits(a, b, c) ~ 1 + x + latent(1 | unit, d = 1, unique = FALSE),
+                       wide, unit = "unit", family = binomial("probit"), control = ctrl)
+probit_none <- gllvmTMB(f, long, trait = "trait", unit = "unit", family = binomial("probit"),
+  control = gllvmTMBcontrol(loading_ridge = Inf, svd_start = FALSE, n_init = 1L))
+cbind(no_optional_priors = coef(probit_none), loading_and_fixed = coef(probit_long))
+```
+
+AGHQ is optional for eligible latent models. Check that it ran and converged; an
+ineligible request can fall back to Laplace, and a non-converged AGHQ fit
+warns that its estimates may be unreliable.
+
+```{r probit-aghq-priors}
+aghq_ctrl <- gllvmTMBcontrol(fixed_effect_priors = probit_prior,
+  loading_ridge = 0.75, aghq = 5L, aghq_multistart = FALSE,
+  svd_start = FALSE, n_init = 1L)
+probit_aghq <- gllvmTMB(f, long, trait = "trait", unit = "unit",
+  family = binomial("probit"), control = aghq_ctrl)
+c(used = probit_aghq$aghq$used, converged = probit_aghq$aghq$converged)
+```
+
+The AGHQ local covariance holds the adaptation nodes fixed; its interval
+coverage has not been established for these priors.
+
+
+# Inspect uncertainty and sensitivity
+
+`vcov()` and `sd_report` include the prior precision. They describe local
+approximate posterior curvature around the MAP point, conditional on the chosen
+scales and model. They do not establish repeated-sampling coverage. Ordinary
+interval and prediction-SE helpers refuse these fits while that inference remains
+unvalidated. Point predictions remain available.
+
+```{r inspect}
+sqrt(diag(vcov(probit_long)))
+head(predict(probit_long, type = "response"))
+probit_long$fixed_effect_priors
+```
+
+Repeat the analysis with scientifically plausible wider and narrower fixed-effect
+SDs and loading SDs separately. A direct table can use any finite prior means
+and positive SDs for selected coefficients; unnamed coefficients receive no
+fixed-effect prior. For an explicitly matched benchmark, SD 10 on all intercepts
+and slopes can be paired with loading SD 0.75. That benchmark is not a default
+or general advice. Matching two packages also requires matching the data, design,
+link, loading constraints, integration and density constants.
+
+```{r direct-table}
+benchmark <- data.frame(coefficient = colnames(model.matrix(~ 0 + trait + trait:x, long)),
+                         mean = 0, sd = 10)
+benchmark
+```
+
+For diagnosing separation before fitting, see
+[screen binary responses](pre-fit-response-screening.html). The
+[rare-species example](rare-species-jsdm.html) covers the separate experimental
+MSPL estimator; it cannot be combined with these normal priors.

@@ -55,6 +55,16 @@
   if (all(fid == 0L)) {
     return(skip("all-Gaussian fit: the Laplace marginal is exact"))
   }
+  ## Fixed-effect priors wrap obj$fn, but the quadrature tape rebuilt below
+  ## contains the likelihood only. Compare like with like: the prior changes
+  ## the fitted point, not the likelihood approximation being audited.
+  laplace_likelihood_fn <- obj$fn
+  if (!is.null(obj$fixed_effect_priors) || !is.null(object$fixed_effect_priors)) {
+    laplace_likelihood_fn <- obj$fixed_effect_priors$likelihood_fn
+    if (!is.function(laplace_likelihood_fn)) {
+      return(skip("unpenalised likelihood unavailable for fixed-effect-prior fit"))
+    }
+  }
   if (isTRUE(as.integer(data$use_lv_B %||% 0L) == 1L) ||
       isTRUE(as.integer(data$has_mi %||% 0L) == 1L) ||
       is.null(data$use_aghq)) {
@@ -86,7 +96,7 @@
 
   res <- tryCatch({
     ad <- .gllvmTMB_aghq_adapt(obj, par, d_B, n_sites)
-    nll_laplace <- as.numeric(obj$fn(par))
+    nll_laplace <- as.numeric(laplace_likelihood_fn(par))
     grid <- .gllvmTMB_aghq_grid(d_B, k)
     data_q <- data
     data_q$use_aghq    <- 1L

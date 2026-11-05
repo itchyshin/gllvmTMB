@@ -560,12 +560,34 @@
 
 .gllvmTMB_sdreport_loading_ridge <- function(obj, par, ridge_tau, ...) {
   H <- .gllvmTMB_loading_ridge_hessian(obj, par, ridge_tau)
+  has_fixed_prior <- !is.null(obj$fixed_effect_priors)
+  if (has_fixed_prior && is.null(H)) {
+    H <- if (length(obj$env$random) == 0L && is.function(obj$he)) {
+      obj$he(par)
+    } else stats::optimHess(par, obj$fn, obj$gr)
+  }
   ans <- TMB::sdreport(obj, par.fixed = par, hessian.fixed = H, ...)
+  if (is.matrix(ans$cov.fixed) && is.null(rownames(ans$cov.fixed)) &&
+      nrow(ans$cov.fixed) == length(par) && !is.null(names(par))) {
+    dimnames(ans$cov.fixed) <- list(names(par), names(par))
+  }
   if (!is.null(H)) {
-    ans$gradient.fixed.unpenalised <- ans$gradient.fixed
+    ans$gradient.fixed.unpenalised <- if (has_fixed_prior) {
+      obj$fixed_effect_priors$likelihood_gr(par)
+    } else ans$gradient.fixed
     ans$gradient.fixed <- .gllvmTMB_penalised_gradient(obj, par, ridge_tau)
-    attr(ans, "loading_ridge_curvature") <-
-      .gllvmTMB_loading_ridge_curvature_provenance(obj, par, ridge_tau)
+    if (.gllvmTMB_loading_ridge_applies(ridge_tau, names(obj$par))) {
+      attr(ans, "loading_ridge_curvature") <-
+        .gllvmTMB_loading_ridge_curvature_provenance(obj, par, ridge_tau)
+    }
+  }
+  if (has_fixed_prior) {
+    attr(ans, "fixed_effect_prior_curvature") <- list(
+      interpretation = "local_approximate_posterior_curvature_at_map",
+      calibrated_sampling_covariance = FALSE,
+      specification = obj$fixed_effect_priors$specification,
+      parameter_vector = par
+    )
   }
   ans
 }
@@ -662,8 +684,10 @@
 }
 
 .gllvmTMB_objective_components <- function(obj, opt, aghq) {
+  fixed_prior_nll <- if (is.null(obj$fixed_effect_priors)) 0 else
+    obj$fixed_effect_priors$penalty(opt$par)
   likelihood_nll <- tryCatch(
-    as.numeric(obj$fn(opt$par)),
+    as.numeric(obj$fn(opt$par)) - fixed_prior_nll,
     error = function(e) NA_real_
   )
   if (length(likelihood_nll) != 1L || !is.finite(likelihood_nll)) {
@@ -693,12 +717,14 @@
   list(
     likelihood_nll = likelihood_nll,
     ridge_penalty = ridge_penalty,
-    optimization_nll = likelihood_nll + ridge_penalty,
+    fixed_effect_prior_nll = fixed_prior_nll,
+    optimization_nll = likelihood_nll + ridge_penalty + fixed_prior_nll,
     optimizer_reported = as.numeric(opt$objective %||% NA_real_)
   )
 }
 
-.gllvmTMB_require_unweighted_inference <- function(object, caller) {
+.gllvmTMB_require_unweighted_inference <- function(object, caller, prior_curvature = FALSE) {
+  .gllvmTMB_fixed_prior_inference(object, caller, prior_curvature)
   if (!isTRUE(object$likelihood_weights$active)) return(invisible(TRUE))
   cli::cli_abort(c(
     "{.fn {caller}} is not available for a non-unit weighted objective.",
@@ -1416,6 +1442,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     ))
   }
   estimator <- match.arg(estimator, c("ml", "mspl"))
+  .gllvmTMB_fixed_prior_route(control$fixed_effect_priors, engine, estimator, REML, control)
   structured_rho <- parsed$structured_rho
   .structured_rho_dispatch_fence(structured_rho, engine,
     control$integration %||% "laplace", estimator, control$aghq %||% FALSE)
@@ -3601,6 +3628,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## We use the full data env so that 0 + trait + (0+trait):env etc. parses.
   mf <- stats::model.frame(parsed$fixed, data = data, na.action = stats::na.pass)
   X_fix <- stats::model.matrix(parsed$fixed, mf)
+  fixed_prior_spec <- .gllvmTMB_resolve_fixed_priors(control$fixed_effect_priors, colnames(X_fix))
   isdm_observation_basis <- NULL
   if (!is.null(attr(family_input, "isdm_observation", exact = TRUE))) {
     X_fix <- .gll_isdm_observation_design(
@@ -7911,6 +7939,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     for (nm in names(warm)) tmb_params[[nm]] <- warm[[nm]]
   }
 
+  .gllvmTMB_fixed_prior_surface(fixed_prior_spec, tmb_data, family_id_vec,
+    link_id_vec, Xcoef_fixed, known_V, lambda_constraint, is_dep_B,
+    missing_meta$n_missing_response %||% 0L)
   obj <- TMB::MakeADFun(
     data       = tmb_data,
     parameters = tmb_params,
@@ -7919,6 +7950,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     DLL        = "gllvmTMB",
     silent     = silent
   )
+  obj <- .gllvmTMB_attach_fixed_priors(obj, fixed_prior_spec)
   if (identical(estimator, "mspl")) {
     outer_blocks <- unique(names(obj$par))
     expected_outer <- mspl_info$expected_outer
@@ -8165,6 +8197,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     if (inherits(fresh, "error")) {
       return(unavailable(conditionMessage(fresh)))
     }
+    fresh <- .gllvmTMB_attach_fixed_priors(fresh, fixed_prior_spec)
     labels <- optimizer_coordinate_labels(par)
     if (!identical(optimizer_coordinate_labels(fresh$par), labels)) {
       return(unavailable("fresh outer-coordinate order differs"))
@@ -8285,6 +8318,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ),
       error = function(e) e
     )
+    if (!inherits(diagnostic_obj, "error")) {
+      diagnostic_obj <- .gllvmTMB_attach_fixed_priors(diagnostic_obj, fixed_prior_spec)
+    }
     gradient <- if (inherits(diagnostic_obj, "error")) {
       rep(NA_real_, length(endpoint))
     } else {
@@ -8879,6 +8915,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ## THE MERIT FUNCTION. The quantity this loop actually minimises is
       ##
       ##     F(theta) = the AGHQ objective at theta with the nodes adapted AT theta,
+      ##                including fixed-effect and loading penalties,
       ##
       ## which is what the standalone R reference (dev/aghq-r-reference.R)
       ## evaluates by re-solving the conditional mode on every call, and it is why
@@ -8886,7 +8923,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ## adaptation points are DATA_), so a pass minimises the SURROGATE
       ## F(theta; theta_k) with the nodes pinned at theta_k. F is recovered for
       ## free at the TOP of the next pass: after re-adapting at the new theta,
-      ## `obj_try$fn(theta)` IS F(theta). Two things follow, and both are new:
+      ## `obj_try$fn(theta)` plus the loading penalty is F(theta). Two things follow:
       ##
       ##  1. CONVERGENCE IS TESTED ON F, NOT ON THE SURROGATE. The old rule
       ##     compared surrogate values across passes -- values computed on
@@ -9026,6 +9063,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
             error = function(e) e
           )
           if (inherits(obj_try, "error")) { aghq_err <- conditionMessage(obj_try); obj_try <- NULL; break }
+          obj_try <- .gllvmTMB_attach_fixed_priors(obj_try, fixed_prior_spec)
           if (!identical(names(obj_try$par), names(par_cur))) {
             aghq_err <- "AGHQ parameter vector does not align with the Laplace fit"
             obj_try <- NULL
@@ -9063,8 +9101,16 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
           aghq_err <- "AGHQ objective is not finite"
           break
         }
+        ## Compare steps on the same criterion run_one() minimizes. The fixed
+        ## prior is already attached to obj_try; the loading ridge is outside
+        ## that tape and must be added before accepting or rejecting a step.
+        if (.gllvmTMB_loading_ridge_applies(aghq_ridge_tau, names(obj_try$par))) {
+          li_merit <- .gllvmTMB_ridge_block_index(names(obj_try$par))
+          F_cur <- F_cur + 0.5 * sum(par_cur[li_merit]^2) / aghq_ridge_tau^2
+        }
         ## THE GRADIENT MUST MATCH THE OBJECTIVE THE OPTIMISER IS ACTUALLY
-        ## MINIMISING. `obj_try$gr` is the UNPENALISED gradient, but with the
+        ## MINIMISING. `obj_try$gr` excludes the loading penalty (and includes any
+        ## attached fixed-effect prior), but with the
         ## ridge on, `run_one()` minimises F + 0.5*||lambda||^2/tau^2. At that
         ## optimum the unpenalised gradient does not vanish -- it equals
         ## lambda/tau^2 per loading, about 0.25 for lambda ~ 1 at tau = 2, which
@@ -9334,8 +9380,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
           k = as.integer(aghq_k_req),
           blocks = "z_B",
           ## RECORDED SO THE REPORTING SURFACES CAN ASK. `opt$objective` is
-          ## `obj_try$fn(par_best)` -- the UNPENALISED objective evaluated at the
-          ## PENALISED (MAP) optimum. That makes it a genuine log-likelihood
+          ## `obj_try$fn(par_best)` -- the objective without the loading penalty at the
+          ## PENALISED (MAP) optimum; it includes any attached fixed prior. Without that
+          ## prior it is a genuine log-likelihood
           ## sitting OFF ITS OWN MAXIMUM. Nothing downstream could previously
           ## detect that, so logLik()/AIC() reported an ML quantity at a MAP point
           ## with no disclosure. `ridge_tau` is what logLik() and .aghq_*() read
@@ -9379,6 +9426,13 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
           mode_shift = aghq_mode_shift[seq_len(aghq_passes)],
           trace = aghq_trace
         )
+        if (!isTRUE(aghq_info$converged)) {
+          cli::cli_warn(c(
+            "AGHQ did not converge; estimates may be unreliable.",
+            "i" = "{aghq_info$stop_reason}",
+            ">" = "Inspect {.code fit$aghq$converged} and {.code fit$aghq$stop_reason}; review the model and starting values before interpreting estimates."
+          ), class = "gllvmTMB_aghq_not_converged")
+        }
         ## A SILENT NO-OP IS A RESULT THE USER MUST BE TOLD ABOUT.
         ##
         ## The adaptation loop can stall straight back onto its Laplace warm start
@@ -9678,6 +9732,11 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         NULL
       },
       formula      = parsed$fixed,
+      fixed_effect_priors = if (is.null(obj$fixed_effect_priors)) NULL else list(
+        specification = obj$fixed_effect_priors$specification,
+        interpretation = "local_approximate_posterior_curvature_at_map",
+        calibrated_sampling_covariance = FALSE
+      ),
       covstructs   = parsed$covstructs,
       family       = family,
       ## M1.8 (2026-05-17): preserve the original `family` argument
@@ -10349,6 +10408,13 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   fit$objective_components <- .gllvmTMB_objective_components(
     fit$tmb_obj, fit$opt, fit$aghq
   )
+  if (!is.null(fit$fixed_effect_priors)) {
+    cli::cli_warn(c(
+      "Fixed-effect normal priors produce penalized MAP estimates.",
+      "i" = "The reported covariance uses local approximate posterior curvature conditional on the chosen priors, not calibrated sampling uncertainty.",
+      ">" = "Inspect prior sensitivity; ordinary profile, bootstrap and prediction-SE intervals are withheld."
+    ), class = "gllvmTMB_fixed_prior_map")
+  }
   fit$fit_health <- .gllvmTMB_build_fit_health(fit)
   if (any(family_id_vec %in% c(17L, 18L, 19L))) {
     fit$fit_health$min_random_curvature <-

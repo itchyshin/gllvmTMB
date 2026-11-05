@@ -36,6 +36,7 @@ gllvmTMBcontrol(
   laplace_warn_thresh = 2,
   allow_nongaussian_reml = FALSE,
   loading_ridge = NULL,
+  fixed_effect_priors = NULL,
   optimizer_passes = 1L,
   svd_start = TRUE,
   va_polish = TRUE,
@@ -257,7 +258,9 @@ requests that many quadrature nodes. \code{"auto"} lets the package decide, and
 it declines to Laplace whenever the model is ineligible or the expected
 gain does not justify the cost. \strong{Opt-in and experimental}: no capability
 claim is made for quadrature-fitted models, and eligibility is narrow — the
-random part must be a single ordinary \code{latent()} block on the unit tier.}
+random part must be a single ordinary \code{latent()} block on the unit tier.
+Check \code{fit$aghq$used} and \code{fit$aghq$converged}; a non-converged AGHQ fit
+warns that its estimates may be unreliable.}
 
 \item{aghq_iter_cap}{Optimiser iteration budget for the first adaptation
 pass. Default \code{1L}. Later passes escalate when continuation is enabled.}
@@ -358,6 +361,24 @@ are penalised MAP points. Retained penalised-Hessian LV uncertainty is a
 local posterior approximation conditional on \code{tau}, with delta-method
 propagation for trait effects, not calibrated repeated-sampling coverage.
 Older fits without the required metadata withhold LV uncertainty.}
+
+\item{fixed_effect_priors}{Optional data frame with \code{coefficient}, \code{mean}
+and \code{sd} columns naming exact fixed-effects model-matrix columns. For
+\code{~ 0 + trait + trait:x}, item intercepts are named \code{traita}, not
+\code{(Intercept)}, and slopes include \code{traita:x}. Use \code{\link[=fixed_effect_priors]{fixed_effect_priors()}}
+for explicit link-aware reference scales on standardized predictors.
+Default \code{NULL} adds no fixed-effect prior. Finite positive SDs define
+independent normal densities including their constants; \code{Inf} disables
+a row. Loading priors remain separately controlled by \code{loading_ridge}.
+Currently supported for ordinary unit-tier latent/indep Gaussian or binomial logit/probit
+native Laplace models, without constrained coefficients, structured sources,
+missing responses or non-unit weights. Eligible ordinary latent models may
+also request AGHQ; check both \code{fit$aghq$used} and \code{fit$aghq$converged}.
+Ineligible requests fall back to Laplace with a warning; a non-converged
+AGHQ fit also warns. Initial AGHQ validation is limited to a
+rank-one probit example. \code{dep()}, Julia, MSPL, REML and VA are rejected. Estimates are MAP points; inverse penalized curvature is local
+approximate posterior covariance, not calibrated sampling uncertainty.
+Profile intervals, bootstrap intervals and prediction SEs are withheld.}
 
 \item{optimizer_passes}{Number of exact-gradient optimisation passes from
 the preceding estimate. The default \code{1} retains the historical single

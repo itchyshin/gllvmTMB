@@ -1,0 +1,1 @@
+The direct-quadrature transcript is a synthetic-data receipt. Trailing whitespace was removed for portability; the source transcript SHA-256 before whitespace normalization was `47b806802f8c4352412fa9d85be2117dedadf2d3039a2cf81a79b456d56983d7`. Numeric values and lines are unchanged.

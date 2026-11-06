@@ -232,6 +232,8 @@ ordination_uncertainty <- function(fit, level = "unit") {
     ), class = "gllvmTMB_ordination_uncertainty_lv_predictor_unsupported")
   }
 
+  .abort_aghq_score_uncertainty(fit, "{.fn ordination_uncertainty}",
+                                "gllvmTMB_ordination_uncertainty_aghq_unsupported")
   sd_rep <- fit$sd_report
   if (is.null(sd_rep)) {
     cli::cli_abort(c(

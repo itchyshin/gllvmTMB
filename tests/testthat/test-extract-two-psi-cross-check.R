@@ -160,3 +160,44 @@ test_that(".two_psi_lrt() is NA for a non-nested phylo-only pair and non-positiv
   expect_equal(r$df, 0)
   expect_true(is.na(r$p_value))
 })
+
+test_that(".two_psi_boundary() reports boundary flags and notes the LR caveat (#1732)", {
+  testthat::local_mocked_bindings(
+    .gllvmTMB_boundary_flags = function(object, ...) {
+      if (identical(object, "joint_fit")) character(0) else "near_zero_sd_B"
+    },
+    .package = "gllvmTMB"
+  )
+  expect_message(
+    b <- .two_psi_boundary("joint_fit", "alt_fit"),
+    "boundary"
+  )
+  expect_identical(b$joint, character(0))
+  expect_identical(b$alt, "near_zero_sd_B")
+  ## No flags: silent, and a NULL refit is tolerated.
+  expect_silent(b0 <- .two_psi_boundary("joint_fit", NULL))
+  expect_identical(b0, list(joint = character(0), alt = character(0)))
+})
+
+test_that("both compare functions return a boundary component (#1732)", {
+  x <- .two_psi_cc_fit()
+  for (cmp in list(compare_dep_vs_two_psi, compare_indep_vs_two_psi)) {
+    res <- suppressWarnings(suppressMessages(cmp(x$fit)))
+    expect_named(res$boundary, c("joint", "alt"))
+    expect_type(res$boundary$joint, "character")
+  }
+})
+
+test_that("compare_dep_vs_two_psi() flags a boundary fit with pdHess TRUE and notes the LR caveat (#1732)", {
+  ## Pure-noise data: the phylogenetic component is truly zero, so the paired
+  ## fit sits on a boundary (near_zero_sd_phy_diag) while pdHess stays TRUE.
+  x <- .two_psi_cc_fit()
+  expect_true(isTRUE(x$fit$sd_report$pdHess))
+  for (cmp in list(compare_dep_vs_two_psi, compare_indep_vs_two_psi)) {
+    out <- .two_psi_cc_run(cmp, x$fit)
+    expect_gt(length(out$res$boundary$joint), 0L)
+    expect_true("near_zero_sd_phy_diag" %in% out$res$boundary$joint)
+    expect_true(any(grepl("unreliable", out$notes)))
+    expect_true(is.finite(out$res$lrt$p_value))
+  }
+})

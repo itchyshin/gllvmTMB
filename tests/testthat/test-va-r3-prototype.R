@@ -112,6 +112,19 @@ test_that("R3 campaign truncated-NB2 seed 12 survives false convergence labels",
     q = q, family = "truncated_nbinom2", link = "log", H = 7L
   )
 
+  ## Retain the strict regression, but report solver provenance if a platform
+  ## cannot satisfy it. A failed health gate must not be presented as a fit.
+  if (!identical(fit$status, "healthy") ||
+      !is.finite(fit$health$best_three_objective_range) ||
+      fit$health$best_three_objective_range > 1e-6) {
+    cat("\nVA seed-12 health diagnostics:\n")
+    dput(fit$health)
+    dput(lapply(fit$starts, function(x) x[c(
+      "start", "convergence", "objective", "max_abs_gradient",
+      "finite_parameters", "agreement_eligible", "strictly_converged",
+      "message", "optimizer_attempts"
+    )]))
+  }
   expect_identical(fit$status, "healthy")
   expect_identical(fit$health$healthy_starts, 4L)
   expect_gte(fit$health$strictly_converged_starts, 1L)

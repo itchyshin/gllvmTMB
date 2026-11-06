@@ -27,3 +27,17 @@
   set.seed(seed)
   invisible(NULL)
 }
+
+## Jitter offsets for the extra multi-start restarts (#1331).
+##
+## Drawn under a fixed internal seed (`.gllvmTMB_local_seed()` restores the
+## caller's `.Random.seed`, or removes it if it did not exist), so a default
+## `n_init = 3` fit neither consumes nor depends on the user's random stream,
+## and the same data and model always get the same restart sequence.
+.gllvmTMB_jitter_offsets <- function(n, len, sd, seed = 1331L) {
+  if (n < 1L) {
+    return(list())
+  }
+  .gllvmTMB_local_seed(seed)
+  lapply(seq_len(n), function(i) stats::rnorm(len, sd = sd))
+}

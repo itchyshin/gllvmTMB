@@ -35,6 +35,28 @@
     max_abs_gradient < .VA_R3_HEALTH_GRADIENT_TOL
 }
 
+## Do not replace an eligible start by an ineligible near-tie during polish.
+## An absolute 1e-6 is a conservative objective equivalence bound; it does
+## not imply equal parameters or validated uncertainty. Materially lower
+## candidates remain recorded; final adjudication considers eligible starts.
+.va_r3_accept_polish <- function(current, candidate, current_gradient,
+                                 candidate_gradient, tie_tolerance = 1e-6) {
+  if (is.null(candidate) || length(candidate$objective) != 1L ||
+      !is.finite(candidate$objective) ||
+      candidate$objective > current$objective + 1e-8) return(FALSE)
+  eligible <- function(point, gradient) {
+    .va_r3_start_agreement_eligible(
+      point$convergence, point$objective,
+      length(point$par) > 0L && all(is.finite(point$par)), gradient
+    )
+  }
+  old_ok <- eligible(current, current_gradient)
+  new_ok <- eligible(candidate, candidate_gradient)
+  if (old_ok && !new_ok &&
+      current$objective - candidate$objective <= tie_tolerance) return(FALSE)
+  TRUE
+}
+
 .va_r3_adjudicate_starts <- function(fits, agreement_tolerance = 1e-6) {
   ## A code-one start may contribute numerical evidence, but an all-code-one
   ## consensus cannot admit a fit: one of the three lowest starts must carry
@@ -2690,6 +2712,7 @@
       iterations = opt$iterations %||% NA_integer_
     ))
     polish_passes <- 0L
+    restore_polish_state <- FALSE
     ## `optArgs$lower` and `$upper` constrain the whole fit, including polish.
     ## The primary method's control list is not portable across native solvers:
     ## in particular, `optim`'s `maxit`/`fnscale` must not be passed to nlminb.
@@ -2733,8 +2756,17 @@
              iterations = candidate$iterations %||% NA_integer_)
       }
       if (inherits(candidate, "va_r3_optimizer_error")) break
-      if (is.null(candidate) || !is.finite(candidate$objective) ||
-          candidate$objective > opt$objective + 1e-8) break
+      candidate_gradient <- tryCatch(obj$gr(candidate$par), error = function(e) NA_real_)
+      max_gradient <- function(g) if (length(g) && all(is.finite(g))) max(abs(g)) else Inf
+      old_grad <- max_gradient(current_gradient)
+      new_grad <- max_gradient(candidate_gradient)
+      optimizer_attempts[[length(optimizer_attempts)]]$max_abs_gradient <- new_grad
+      if (!.va_r3_accept_polish(opt, candidate, old_grad, new_grad)) {
+        optimizer_attempts[[length(optimizer_attempts)]]$rejection_reason <-
+          "non-improving objective or ineligible near-tie"
+        restore_polish_state <- TRUE
+        break
+      }
       optimizer_attempts[[length(optimizer_attempts)]]$accepted <- TRUE
       opt <- candidate
       final_optimizer <- "nlminb"
@@ -2769,13 +2801,24 @@
              gradient_evaluations = .va_r3_attempt_count(lbfgsb, "gradient"),
              iterations = lbfgsb$iterations %||% NA_integer_)
       }
-      if (!inherits(lbfgsb, "va_r3_optimizer_error") && identical(lbfgsb$convergence, 0L) &&
-          is.finite(lbfgsb$objective) && lbfgsb$objective <= opt$objective + 1e-8) {
-        optimizer_attempts[[length(optimizer_attempts)]]$accepted <- TRUE
-        opt <- lbfgsb
-        final_optimizer <- "L-BFGS-B"
+      if (!inherits(lbfgsb, "va_r3_optimizer_error") && identical(lbfgsb$convergence, 0L)) {
+        lbfgsb_gradient <- tryCatch(obj$gr(lbfgsb$par), error = function(e) NA_real_)
+        max_gradient <- function(g) if (length(g) && all(is.finite(g))) max(abs(g)) else Inf
+        old_grad <- max_gradient(post_nlminb_gradient)
+        new_grad <- max_gradient(lbfgsb_gradient)
+        optimizer_attempts[[length(optimizer_attempts)]]$max_abs_gradient <- new_grad
+        if (.va_r3_accept_polish(opt, lbfgsb, old_grad, new_grad)) {
+          optimizer_attempts[[length(optimizer_attempts)]]$accepted <- TRUE
+          opt <- lbfgsb
+          final_optimizer <- "L-BFGS-B"
+        } else {
+          optimizer_attempts[[length(optimizer_attempts)]]$rejection_reason <-
+            "non-improving objective or ineligible near-tie"
+          restore_polish_state <- TRUE
+        }
       }
     }
+    if (restore_polish_state) obj$fn(opt$par)
     gradient <- tryCatch(obj$gr(opt$par), error = function(e) rep(NA_real_, length(opt$par)))
     finite_parameters <- all(is.finite(opt$par))
     max_abs_gradient <- if (length(gradient) && all(is.finite(gradient))) {

@@ -176,7 +176,11 @@ test_that("confirmatory_lambda() output is consumable by gllvmTMB()", {
     value ~ 0 + trait + latent(0 + trait | site, d = 2L),
     data              = df_long,
     family            = stats::binomial(link = "probit"),
-    lambda_constraint = list(unit = M)
+    lambda_constraint = list(unit = M),
+    ## getLoadings() needs the retained z_B scores, which an AGHQ fit does not
+    ## keep, so keep the Laplace fit rather than the audit's automatic AGHQ
+    ## refit (#1389).
+    control           = gllvmTMBcontrol(laplace_auto_refit = FALSE)
   )
 
   expect_equal(fit$opt$convergence, 0L)

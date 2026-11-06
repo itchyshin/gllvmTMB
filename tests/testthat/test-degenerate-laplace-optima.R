@@ -543,7 +543,7 @@ test_that("gllvmTMB() warns at fit time when Laplace is optimistic by more than 
   gllvmTMB:::.gllvmTMB_reset_runaway_warnings()
   local_mocked_bindings(.gllvmTMB_laplace_accuracy = fake_la(67.52))
   expect_warning(
-    suppressMessages(lw_fit(control = gllvmTMBcontrol(se = FALSE))),
+    suppressMessages(lw_fit(control = gllvmTMBcontrol(se = FALSE, laplace_auto_refit = FALSE))),
     "Laplace logLik is 67.5 units above the marginal likelihood"
   )
 })
@@ -551,18 +551,18 @@ test_that("gllvmTMB() warns at fit time when Laplace is optimistic by more than 
 test_that("the fit-time Laplace warning is quiet below threshold, when switched off, and for a refit (#1389)", {
   gllvmTMB:::.gllvmTMB_reset_runaway_warnings()
   local_mocked_bindings(.gllvmTMB_laplace_accuracy = fake_la(1.5))
-  expect_no_warning(suppressMessages(lw_fit(control = gllvmTMBcontrol(se = FALSE))))
+  expect_no_warning(suppressMessages(lw_fit(control = gllvmTMBcontrol(se = FALSE, laplace_auto_refit = FALSE))))
   local_mocked_bindings(.gllvmTMB_laplace_accuracy = fake_la(67.52))
   expect_no_warning(suppressMessages(lw_fit(
-    control = gllvmTMBcontrol(se = FALSE, laplace_warn_thresh = FALSE))))
+    control = gllvmTMBcontrol(se = FALSE, laplace_warn_thresh = FALSE, laplace_auto_refit = FALSE))))
   expect_no_warning(suppressMessages(lw_fit(
     control = gllvmTMBcontrol(se = FALSE, warn_runaway = FALSE))))
   expect_no_warning(suppressMessages(lw_fit(
     control = gllvmTMBcontrol(se = FALSE, laplace_warn_thresh = 100))))
   ## once per fit signature: the first call warns, a refit of the same problem does not
-  expect_warning(suppressMessages(lw_fit(control = gllvmTMBcontrol(se = FALSE))),
+  expect_warning(suppressMessages(lw_fit(control = gllvmTMBcontrol(se = FALSE, laplace_auto_refit = FALSE))),
                  "Laplace logLik is 67.5 units above")
-  expect_no_warning(suppressMessages(lw_fit(control = gllvmTMBcontrol(se = FALSE))))
+  expect_no_warning(suppressMessages(lw_fit(control = gllvmTMBcontrol(se = FALSE, laplace_auto_refit = FALSE))))
 })
 
 test_that("the fit-time Laplace warning stays quiet when Laplace is pessimistic, however large the gap (#1389)", {
@@ -578,6 +578,199 @@ test_that("the fit-time Laplace warning stays quiet when Laplace is pessimistic,
   fit2$opt$par <- p2
   expect_lt(gllvmTMB:::.gllvmTMB_laplace_accuracy(fit2)$optimism, -5)
   expect_no_warning(gllvmTMB:::.gllvmTMB_warn_laplace_optimism(fit2, 2))
+})
+
+## ---- #1389 option A: auto-refit with AGHQ when the audit fires --------------
+
+## Synthetic probit, d = 2, n = 80: a REAL (not mocked) case where the Laplace
+## logLik sits ~17 units above the 15-node-adapted quadrature value.
+auto_refit_fixture <- function() {
+  set.seed(5)
+  n <- 80
+  L <- cbind(c(1.2, .8, .6, .9, .5, .7), c(0, .7, -.5, .4, .8, -.6))
+  z <- matrix(stats::rnorm(n * 2), n, 2)
+  eta <- z %*% t(L) + matrix(c(0, .3, -.2, .5, -.5, 0), n, 6, byrow = TRUE)
+  y <- matrix(stats::rbinom(n * 6, 1, stats::pnorm(eta)), n, 6)
+  data.frame(
+    unit = factor(rep(seq_len(n), each = 6L)),
+    trait = factor(rep(paste0("t", 1:6), n)),
+    value = as.vector(t(y))
+  )
+}
+
+## The fixture's Laplace fit also has a runaway loading; that warning is not
+## what these tests are about.
+quiet_runaway <- function(expr) {
+  withCallingHandlers(expr, warning = function(w) {
+    if (grepl("runaway trait loading", conditionMessage(w), fixed = TRUE)) {
+      invokeRestart("muffleWarning")
+    }
+  })
+}
+
+auto_refit_fit <- function(..., control = gllvmTMBcontrol(se = FALSE)) {
+  gllvmTMB(
+    value ~ 0 + trait + latent(0 + trait | unit, d = 2, unique = FALSE),
+    data = auto_refit_fixture(), trait = "trait", unit = "unit",
+    family = binomial(link = "probit"), control = control, ...
+  )
+}
+
+test_that("laplace_auto_refit is a control argument, default TRUE (#1389)", {
+  expect_true(gllvmTMBcontrol()$laplace_auto_refit)
+  expect_false(gllvmTMBcontrol(laplace_auto_refit = FALSE)$laplace_auto_refit)
+  expect_error(gllvmTMBcontrol(laplace_auto_refit = "yes"), "laplace_auto_refit")
+  expect_false(gllvmTMBcontrol()$aghq_explicit)
+  expect_true(gllvmTMBcontrol(aghq = FALSE)$aghq_explicit)
+})
+
+test_that("an optimistic Laplace fit is refitted with AGHQ, with a message (#1389)", {
+  gllvmTMB:::.gllvmTMB_reset_runaway_warnings()
+  expect_message(
+    fit <- quiet_runaway(suppressWarnings(auto_refit_fit())),
+    class = "gllvmTMB_laplace_auto_refit"
+  )
+  expect_true(fit$aghq$used)
+  ## the refit is `aghq = 9` at its defaults, i.e. with the default loading ridge
+  expect_identical(as.numeric(fit$aghq$ridge_tau), 2)
+  expect_identical(as.integer(fit$aghq$k), 9L)
+  expect_true(isTRUE(fit$laplace_auto_refit$triggered))
+  expect_gt(fit$laplace_auto_refit$optimism, 2)
+  ## the returned fit is the accurate one: no optimism left to audit, and its
+  ## logLik is below the Laplace value that was reported.
+  expect_false(gllvmTMB:::.gllvmTMB_laplace_accuracy(fit)$evaluated)
+  expect_lt(as.numeric(suppressWarnings(stats::logLik(fit))),
+            fit$laplace_auto_refit$loglik_laplace)
+  ## no residual Laplace-optimism warning on the returned fit
+  gllvmTMB:::.gllvmTMB_reset_runaway_warnings()
+  expect_no_warning(
+    suppressMessages(quiet_runaway(auto_refit_fit())),
+    message = "Laplace logLik is")
+})
+
+test_that("laplace_auto_refit = FALSE keeps the Laplace fit and warns instead (#1389)", {
+  gllvmTMB:::.gllvmTMB_reset_runaway_warnings()
+  expect_no_message(
+    expect_warning(
+      fit <- quiet_runaway(auto_refit_fit(control = gllvmTMBcontrol(
+        se = FALSE, laplace_auto_refit = FALSE))),
+      "Laplace logLik is [0-9.]+ units above"),
+    message = "refitted")
+  expect_false(isTRUE(fit$aghq$used))
+  expect_null(fit$laplace_auto_refit)
+})
+
+test_that("explicit aghq, ridge, or an off audit prevent the auto-refit (#1389)", {
+  gllvmTMB:::.gllvmTMB_reset_runaway_warnings()
+  fit_off <- suppressWarnings(auto_refit_fit(control = gllvmTMBcontrol(
+    se = FALSE, aghq = FALSE)))
+  expect_false(isTRUE(fit_off$aghq$used))
+  fit_ridge <- suppressWarnings(auto_refit_fit(control = gllvmTMBcontrol(
+    se = FALSE, loading_ridge = 2)))
+  expect_false(isTRUE(fit_ridge$aghq$used))
+  fit_thr <- auto_refit_fit(control = gllvmTMBcontrol(
+    se = FALSE, laplace_warn_thresh = FALSE))
+  expect_false(isTRUE(fit_thr$aghq$used))
+  fit_rw <- auto_refit_fit(control = gllvmTMBcontrol(
+    se = FALSE, warn_runaway = FALSE))
+  expect_false(isTRUE(fit_rw$aghq$used))
+  ## optimizer_passes > 1 requires aghq = FALSE, so it must not be overridden
+  ok <- gllvmTMB:::.gllvmTMB_laplace_auto_refit_eligible(
+    gllvmTMBcontrol(optimizer_passes = 2L), list())
+  expect_false(ok)
+  expect_true(gllvmTMB:::.gllvmTMB_laplace_auto_refit_eligible(
+    gllvmTMBcontrol(), list()))
+})
+
+test_that("a failed AGHQ refit keeps the Laplace fit and says so (#1389)", {
+  gllvmTMB:::.gllvmTMB_reset_runaway_warnings()
+  fit <- suppressWarnings(auto_refit_fit(
+    control = gllvmTMBcontrol(se = FALSE, laplace_auto_refit = FALSE)))
+  la <- gllvmTMB:::.gllvmTMB_laplace_accuracy(fit)
+  expect_message(
+    out <- gllvmTMB:::.gllvmTMB_laplace_auto_refit(
+      fit, la, function(.control) stop("boom"), gllvmTMBcontrol()),
+    class = "gllvmTMB_laplace_auto_refit_failed"
+  )
+  expect_identical(out, fit)
+})
+
+test_that("bootstrap refits never auto-refit, so replicates keep the fit's estimator (#1389)", {
+  fit <- suppressWarnings(quiet_runaway(auto_refit_fit(
+    control = gllvmTMBcontrol(se = FALSE, laplace_auto_refit = FALSE))))
+  expect_false(gllvmTMB:::.bootstrap_refit_control(fit)$laplace_auto_refit)
+  fit$control <- NULL
+  expect_false(gllvmTMB:::.bootstrap_refit_control(fit)$laplace_auto_refit)
+})
+
+## ---- #1727: the extractors work on the auto-refitted AGHQ model ------------
+
+test_that("ordination extractors work on the auto-refitted AGHQ fit (#1727)", {
+  gllvmTMB:::.gllvmTMB_reset_runaway_warnings()
+  fit <- suppressMessages(quiet_runaway(suppressWarnings(auto_refit_fit())))
+  expect_true(fit$aghq$used)
+  expect_true(isTRUE(fit$laplace_auto_refit$triggered))
+  expect_equal(dim(fit$aghq$z_B_mode), c(2L, 80L))
+
+  ld <- getLoadings(fit)
+  expect_equal(dim(ld), c(6L, 2L))
+  expect_true(all(is.finite(ld)))
+  ord <- extract_ordination(fit, level = "unit")
+  expect_equal(dim(ord$scores), c(80L, 2L))
+  expect_true(all(is.finite(ord$scores)))
+  expect_equal(unname(as.matrix(ord$loadings)), unname(as.matrix(ld)))
+  ## the scores are the stored conditional modes, in unit order
+  expect_equal(unname(as.matrix(ord$scores)), unname(t(fit$aghq$z_B_mode)))
+  ## a real, non-degenerate ordination: each axis varies across units
+  expect_true(all(apply(ord$scores, 2L, stats::sd) > 0.3))
+
+  ## and it agrees with a Laplace fit under the same loading ridge (the same
+  ## penalised target; the plain Laplace fit of this fixture has a runaway
+  ## loading, so it is not a like-for-like reference). Axes are identified only
+  ## up to rotation, so compare the reconstructed unit-by-trait contribution.
+  lap <- suppressWarnings(quiet_runaway(auto_refit_fit(control = gllvmTMBcontrol(
+    se = FALSE, loading_ridge = 2))))
+  expect_false(isTRUE(lap$aghq$used))
+  lat_a <- as.matrix(ord$scores) %*% t(as.matrix(ord$loadings))
+  ord_l <- extract_ordination(lap, level = "unit")
+  lat_l <- as.matrix(ord_l$scores) %*% t(as.matrix(ord_l$loadings))
+  expect_gt(stats::cor(as.vector(lat_a), as.vector(lat_l)), 0.95)
+})
+
+test_that("sibling score extractors work on the auto-refitted AGHQ fit (#1727)", {
+  gllvmTMB:::.gllvmTMB_reset_runaway_warnings()
+  fit <- suppressMessages(quiet_runaway(suppressWarnings(auto_refit_fit())))
+  expect_equal(dim(getLV(fit)), c(80L, 2L))
+  expect_equal(dim(extract_loadings(fit)), c(6L, 2L))
+  expect_no_error(suppressWarnings(extract_loadings(fit, rotate = "varimax")))
+  expect_no_error(ordiplot(fit))
+})
+
+test_that("score uncertainty on an AGHQ fit is a named refusal, not a block mismatch (#1727)", {
+  gllvmTMB:::.gllvmTMB_reset_runaway_warnings()
+  fit <- suppressMessages(quiet_runaway(suppressWarnings(
+    auto_refit_fit(control = gllvmTMBcontrol(se = TRUE)))))
+  expect_true(fit$aghq$used)
+  expect_error(getLV(fit, se = TRUE), class = "gllvmTMB_getLV_se_aghq_unsupported")
+  expect_error(ordination_uncertainty(fit),
+               class = "gllvmTMB_ordination_uncertainty_aghq_unsupported")
+  expect_error(ordiplot(fit, ellipse = TRUE),
+               class = "gllvmTMB_ordination_uncertainty_aghq_unsupported")
+})
+
+test_that("the auto-refit message says the ridge is kept and the extractors work (#1727)", {
+  gllvmTMB:::.gllvmTMB_reset_runaway_warnings()
+  msgs <- character()
+  fit <- withCallingHandlers(
+    quiet_runaway(suppressWarnings(auto_refit_fit())),
+    message = function(m) {
+      msgs <<- c(msgs, conditionMessage(m))
+      invokeRestart("muffleMessage")
+    })
+  msg <- paste(msgs, collapse = "\n")
+  expect_match(msg, "default loading ridge", fixed = TRUE)
+  expect_match(msg, "work on it", fixed = TRUE)
+  expect_no_match(msg, "not available on an AGHQ fit", fixed = TRUE)
 })
 
 ## ---- #1591: replicated single-trial binary keeps its Psi --------------------

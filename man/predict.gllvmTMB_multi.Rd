@@ -55,6 +55,10 @@ with sites/species not present in the training data the random
 effects cannot be drawn, so those rows are fixed-effects-only
 regardless of \code{re_form}.
 
+For AGHQ fits, conditional predictions use the latent modes at the
+fitted parameters. They are not averages over latent-score uncertainty.
+If those modes are unavailable, request \code{re_form = ~0} or refit.
+
 On \code{newdata}, \code{predict()} rebuilds the linear predictor in R and can
 re-add only some of the model's random-effect tiers (the unit-level
 \code{rr}/\code{diag} terms, \code{propto}, and the spatial SPDE field). Structured
@@ -72,7 +76,9 @@ predicted (conditional-mode) values -- their own uncertainty is
 \strong{not} propagated, only the fixed-effect coefficients' \code{sdreport()}
 covariance is. This is a smaller quantity than a full marginal SE
 would be; it is also not a claim about coverage, which has not been
-measured for this quantity. \code{type = "link"} returns the SE of the
+measured for this quantity. For AGHQ fits, the local fixed-node
+covariance has not been validated for interval coverage.
+\code{type = "link"} returns the SE of the
 linear predictor directly; \code{type = "response"} multiplies it by the
 local derivative of the per-row inverse link (the standard
 delta-method transform), so it approximates the SE of the

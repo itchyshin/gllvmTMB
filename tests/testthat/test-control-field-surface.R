@@ -30,6 +30,7 @@ test_that("gllvmTMBcontrol consumers use declared or intentional fields", {
   ## so a new undeclared public-control read fails this test.
   internal <- c(
     ".internal_continuation",
+    "aghq_explicit",
     "aghq_ridge_explicit",
     "n_init_explicit",
     ## set by gllvmTMB() from missing(optimizer); consumed by va-routing.R

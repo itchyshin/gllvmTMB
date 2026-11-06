@@ -53,6 +53,9 @@ and loadings therefore live on different link scales (differing by a
 factor of roughly \eqn{\pi / \sqrt{3}}) and must not be compared
 across engines at machine tolerance; the \code{engine = "julia"} bridge
 maps probit to probit and does not route a logit ordinal response.
+
+The per-cell log-probability is floored at \code{log(1e-300)} only to avoid
+\code{-Inf} from underflow; this does not change fits in the ordinary range.
 }
 \examples{
 ordinal_probit()

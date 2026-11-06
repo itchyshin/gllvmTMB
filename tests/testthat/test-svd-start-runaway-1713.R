@@ -96,7 +96,8 @@ test_that("#1713 the svd start does not displace a fit with a runaway loading", 
   set.seed(20261003)
   fit <- suppressMessages(suppressWarnings(gllvmTMB(
     value ~ 0 + trait + latent(0 + trait | unit, d = 2, unique = FALSE),
-    data = long, trait = "trait", unit = "unit", family = fam
+    data = long, trait = "trait", unit = "unit", family = fam,
+    control = gllvmTMBcontrol(n_init = 1L)
   )))
 
   rh <- fit$restart_history

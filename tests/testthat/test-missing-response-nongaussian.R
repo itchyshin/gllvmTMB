@@ -28,13 +28,18 @@ run_include_drop_equiv <- function(family, famfun, seed = 5L) {
   data_na$value[masked] <- NA
   data_cc <- df[-masked, , drop = FALSE]
   form <- value ~ 0 + trait + latent(0 + trait | unit, d = 1, unique = FALSE)
+  ## Compare the SAME estimator on both sides. The Laplace audit's automatic
+  ## AGHQ refit (#1389) can fire for one dataset and not the other.
+  ctl <- gllvmTMBcontrol(laplace_auto_refit = FALSE)
   fit_inc <- suppressMessages(gllvmTMB(
     form, data = data_na, trait = "trait", unit = "unit",
-    family = famfun, missing = miss_control(response = "include"), silent = TRUE
+    family = famfun, missing = miss_control(response = "include"), silent = TRUE,
+    control = ctl
   ))
   fit_cc <- suppressMessages(gllvmTMB(
     form, data = data_cc, trait = "trait", unit = "unit",
-    family = famfun, missing = miss_control(response = "drop"), silent = TRUE
+    family = famfun, missing = miss_control(response = "drop"), silent = TRUE,
+    control = ctl
   ))
   list(inc = fit_inc, cc = fit_cc, n_masked = length(masked))
 }

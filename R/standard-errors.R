@@ -81,6 +81,10 @@
 #' prior precision at the fitted MAP point. These are local approximate
 #' posterior standard deviations conditional on the chosen ridge scale,
 #' model, and latent-axis orientation, not calibrated sampling standard errors.
+#' The same interpretation applies to `fixed_effect_priors`: its normal
+#' precision is included, independently of the loading penalty. For these fits
+#' use `vcov()` or `sd_report` to inspect local covariance; ordinary interval
+#' helpers remain unavailable until their sampling behavior is assessed.
 #'
 #' @seealso [gllvmTMBcontrol()] for the `se` argument that defers the
 #'   calculation; [getREsd()] and [getLV()] for accessors that read the
@@ -124,7 +128,7 @@ standard_errors <- function(fit) {
   }
   .gllvmTMB_mspl_assert_inference(fit, "standard_errors")
 
-  .gllvmTMB_require_unweighted_inference(fit, "standard_errors()")
+  .gllvmTMB_require_unweighted_inference(fit, "standard_errors()", prior_curvature = TRUE)
 
   ## Already computed at fitting time (or by an earlier call) -- nothing to do.
   if (!is.null(fit$sd_report)) {

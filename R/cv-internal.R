@@ -26,6 +26,7 @@
 #' @keywords internal
 #' @noRd
 .cv_check_cv_supported <- function(fit) {
+  .gllvmTMB_fixed_prior_inference(fit, "cross-validation")
   use_diag_B <- isTRUE(as.logical(fit$tmb_data$use_diag_B))
   use_diag_W <- isTRUE(as.logical(fit$tmb_data$use_diag_W))
   if (!use_diag_B && !use_diag_W) {
@@ -330,6 +331,7 @@
 ## rows in the model, gated out of the likelihood, so `predict_missing()`
 ## has something to predict.
 .cv_do_refit <- function(fit, formula, data, use_covstructs = TRUE) {
+  .gllvmTMB_fixed_prior_inference(fit, "cross-validation refit")
   aux <- if (isTRUE(use_covstructs)) {
     a <- list(
       phylo_vcv = fit$phylo_vcv,

@@ -48,7 +48,7 @@
 #'   and `coords` is `NULL`, sites are placed uniformly in `[0, 1]^2`.
 #' @param coords Optional `n_sites` x 2 matrix of site coordinates (used when
 #'   `spatial_range` is supplied).
-#' @param seed Optional RNG seed.
+#' @param seed Optional RNG seed. The caller's random-number state is restored on exit.
 #'
 #' @return A list with components:
 #' \describe{
@@ -94,7 +94,7 @@ simulate_site_trait <- function(n_sites = 50,
                                 sigma2_spa = NULL,
                                 coords = NULL,
                                 seed = NULL) {
-  if (!is.null(seed)) set.seed(seed)
+  .gllvmTMB_local_seed(seed)
 
   if (!is.numeric(n_predictors) || length(n_predictors) != 1L ||
       is.na(n_predictors) || n_predictors < 0 ||

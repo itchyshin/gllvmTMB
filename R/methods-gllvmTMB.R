@@ -954,18 +954,18 @@ print.gllvmTMB_multi <- function(x, ...) {
       cat("  Inference: point estimates only; repeated-sampling uncertainty is not yet calibrated.\n")
     } else {
       weighted <- isTRUE(x$likelihood_weights$active)
-      penalised <- isTRUE(x$aghq$penalised)
+      penalised <- !is.null(x$fixed_effect_priors) || isTRUE(x$aghq$penalised)
       objective_label <- if (weighted) {
         "Weighted objective (-value)"
       } else if (penalised) {
-        paste(estimator, "log L at MAP point")
+        "Unpenalised log L at MAP point"
       } else {
         paste(estimator, "log L")
       }
       cat(sprintf(
         "  %s = %.3f   convergence = %d   engine = %s\n",
         objective_label,
-        -x$opt$objective,
+        if (penalised) -(x$objective_components$likelihood_nll %||% NA_real_) else -x$opt$objective,
         x$opt$convergence,
         .aghq_engine_label(x)
       ))
@@ -973,6 +973,7 @@ print.gllvmTMB_multi <- function(x, ...) {
         cat("  Note: ordinary Wald and likelihood-based inference is not validated for non-unit likelihood weights.\n")
       } else if (penalised) {
         cat("  Note: parameters are a penalised MAP point; ordinary AIC, BIC, and likelihood-ratio interpretations do not apply.\n")
+        if (!is.null(x$fixed_effect_priors)) cat("  Covariance: local approximate posterior curvature, not calibrated sampling uncertainty.\n")
       }
     }
   }
@@ -1034,7 +1035,7 @@ summary.gllvmTMB_multi <- function(object, ...) {
     estimator = object$estimator %||% if (isTRUE(object$REML)) "REML" else "ML",
     logLik = if (.gllvmTMB_is_mspl(object)) {
       object$mspl$unpenalized_loglik_at_estimate
-    } else if (isTRUE(object$aghq$penalised) &&
+    } else if ((!is.null(object$fixed_effect_priors) || isTRUE(object$aghq$penalised)) &&
                !isTRUE(object$likelihood_weights$active)) {
       tryCatch(
         as.numeric(suppressWarnings(stats::logLik(object))),
@@ -1045,14 +1046,14 @@ summary.gllvmTMB_multi <- function(object, ...) {
     },
     objective_label = if (isTRUE(object$likelihood_weights$active)) {
       "Weighted objective (-value)"
-    } else if (isTRUE(object$aghq$penalised)) {
-      paste(object$estimator %||% if (isTRUE(object$REML)) "REML" else "ML",
-            "log L at MAP point")
+    } else if (!is.null(object$fixed_effect_priors) || isTRUE(object$aghq$penalised)) {
+      "Unpenalised log L at MAP point"
     } else {
       paste(object$estimator %||% if (isTRUE(object$REML)) "REML" else "ML", "log L")
     },
     weighted_objective = isTRUE(object$likelihood_weights$active),
-    penalised = isTRUE(object$aghq$penalised),
+    penalised = !is.null(object$fixed_effect_priors) || isTRUE(object$aghq$penalised),
+    fixed_effect_prior = !is.null(object$fixed_effect_priors),
     convergence = object$opt$convergence,
     engine = .aghq_engine_label(object),
     mspl = .gllvmTMB_is_mspl(object),
@@ -1215,6 +1216,7 @@ print.summary.gllvmTMB_multi <- function(x, digits = 3, ...) {
         if (!is.finite(logLik)) {
           cat("  Log L is unavailable: this stored fit has no retained unpenalised likelihood or usable TMB objective. Refit to obtain it.\n")
         }
+        if (isTRUE(x$header$fixed_effect_prior)) cat("  Covariance: local approximate posterior curvature, not calibrated sampling uncertainty.\n")
       }
     }
   })
@@ -1372,14 +1374,15 @@ logLik.gllvmTMB_multi <- function(object, ...) {
     ), class = "gllvmTMB_weighted_objective_no_logLik")
   }
   ridge_tau <- object$aghq$ridge_tau %||% Inf
-  pen <- isTRUE(object$aghq$penalised) ||
+  pen <- !is.null(object$fixed_effect_priors) || isTRUE(object$aghq$penalised) ||
     (is.numeric(ridge_tau) && length(ridge_tau) == 1L &&
        is.finite(ridge_tau) && ridge_tau > 0)
   likelihood_nll <- object$objective_components$likelihood_nll %||% NA_real_
   if (length(likelihood_nll) != 1L || !is.finite(likelihood_nll)) {
     if (pen) {
       likelihood_nll <- tryCatch(
-        as.numeric(object$tmb_obj$fn(object$opt$par)),
+        as.numeric((object$tmb_obj$fixed_effect_priors$likelihood_fn %||%
+          object$tmb_obj$fn)(object$opt$par)),
         error = function(e) NA_real_
       )
       if (length(likelihood_nll) != 1L || !is.finite(likelihood_nll)) {
@@ -1427,15 +1430,17 @@ logLik.gllvmTMB_multi <- function(object, ...) {
   attr(ll, "penalised") <- pen
   attr(ll, "ridge_tau") <- ridge_tau
   if (pen) {
+    attr(ll, "at_maximum") <- FALSE
     attr(ll, "penalised_note") <- paste0(
-      "evaluated at a penalised (MAP) optimum, ridge tau = ",
+      "evaluated at a penalised (MAP) optimum, ",
+      if (!is.null(object$fixed_effect_priors)) "fixed-effect normal priors; loading ridge tau = " else "ridge tau = ",
       format(ridge_tau, digits = 4),
       "; this is the unpenalised log-likelihood AT that point, not its maximum"
     )
     cli::cli_warn(c(
       "{.fn logLik} is the unpenalised likelihood evaluated at a penalised MAP point, not at its maximum.",
-      "i" = "The loading ridge used {.arg tau} = {format(ridge_tau, digits = 4)}.",
-      ">" = "Do not use this value for ordinary AIC, BIC, or likelihood-ratio inference; refit with {.code aghq_ridge = Inf} for likelihood-based comparison."
+      "i" = "The fit includes loading and/or fixed-effect normal priors.",
+      ">" = "For ordinary likelihood-based comparison, refit with loading_ridge = Inf and fixed_effect_priors = NULL."
     ))
   }
   ## nobs = likelihood-contributing rows. Under the default response="drop"
@@ -1508,6 +1513,10 @@ nobs.gllvmTMB_multi <- function(object, ...) {
 #'   fails because no sandwich interval is certified. When the Hessian is not
 #'   positive definite (or the `sdreport()` is missing), `std.error` is `NA`,
 #'   `conf.low` / `conf.high` are `NA`, and `inference_status` says why.
+#'   With fixed-effect normal priors, `std.error` describes local approximate
+#'   posterior curvature and `inference_status` identifies that interpretation.
+#'   `conf.int = TRUE` is refused for those fits because ordinary sampling
+#'   interval calibration has not been established.
 #' @export
 tidy.gllvmTMB_multi <- function(
   x,
@@ -1520,6 +1529,7 @@ tidy.gllvmTMB_multi <- function(
   if (isTRUE(conf.int)) {
     conf.level <- .gtmb_validate_interval_level(conf.level, arg = "conf.level")
     .gllvmTMB_mspl_assert_inference(x, "tidy(conf.int = TRUE)")
+    .gllvmTMB_fixed_prior_inference(x, "tidy(conf.int = TRUE)")
   }
   if (effects == "fixed") {
     weighted <- isTRUE(x$likelihood_weights$active)
@@ -1539,6 +1549,8 @@ tidy.gllvmTMB_multi <- function(
     } else if (!is.null(reason <- .gllvmTMB_wald_unusable_reason(x))) {
       out$std.error <- rep(NA_real_, nrow(out))
       out$inference_status <- reason
+    } else if (!is.null(x$fixed_effect_priors)) {
+      out$inference_status <- "local_approximate_posterior_curvature"
     }
     ## Per-trait link column. For single-family fits this is a single
     ## value repeated; for mixed-family fits each row carries the link
@@ -1738,15 +1750,15 @@ tidy.gllvmTMB_multi <- function(
 #'   covariance — the unconditional simulation appropriate for
 #'   parametric bootstrap. Redraw is currently implemented for the
 #'   `rr_B`, `diag_B`, `rr_W`, `diag_W`, `propto`, `lv_B`, `phylo_rr`,
-#'   `diag_species`, and the native temporal tier. A temporal fit redraws its
+#'   `phylo_diag`, `diag_species`, the SPDE spatial fields of
+#'   `spatial_indep()`, `spatial_scalar()` and `spatial_latent()`, and the
+#'   native temporal tier. A temporal fit redraws its
 #'   recursive temporal state together with every supported ordinary/source
 #'   tier; it does not retain fitted ordinary modes in an unconditional draw.
 #'
-#'   **Not every tier is covered.** The admitted replicated-AR1
-#'   `temporal_indep() + spatial_indep()` cell redraws its independent SPDE
-#'   field. Other SPDE spatial forms and the diagonal phylogenetic tier
-#'   (`phylo_diag`) fall back to conditional
-#'   simulation and emits a one-shot warning naming the unhandled
+#'   **Not every tier is covered.** The slope-augmented SPDE spatial forms
+#'   (for example `spatial_indep(1 + x | coords)`) fall back to conditional
+#'   simulation and emit a one-shot warning naming the unhandled
 #'   tiers. Because conditional simulation reuses the fitted random-
 #'   effect modes rather than redrawing them, it understates
 #'   between-unit variability: intervals derived from it (for example
@@ -1756,7 +1768,8 @@ tidy.gllvmTMB_multi <- function(
 #'
 #'   When `TRUE`, the existing fitted RE modes
 #'   are reused (the older glmmTMB-style conditional simulation that
-#'   only adds Gaussian noise on top of `fit$report$eta`). Forced to
+#'   uses the fitted conditional predictor). For AGHQ, the predictor uses
+#'   the stored latent modes at the fitted parameters. Forced to
 #'   `TRUE` when `newdata` is supplied (RE modes for unseen levels
 #'   cannot be redrawn).
 #' @param ... Currently unused.
@@ -1833,10 +1846,9 @@ simulate.gllvmTMB_multi <- function(
   ## old conditional behaviour). Newdata always uses fitted eta because
   ## we cannot redraw RE tiers for unseen levels.
   if (!is.null(newdata) || isTRUE(condition_on_RE)) {
-    .aghq_warn_re_gap(object, "simulate()")
     if (is.null(newdata)) {
       ## eta length matches family_id_vec length — family-aware OK.
-      eta <- as.numeric(object$report$eta)
+      eta <- .aghq_conditional_training_eta(object)
       out <- replicate(nsim, .draw_y_per_family(object, eta))
     } else {
       ## newdata supplied — eta length doesn't necessarily match the
@@ -1873,9 +1885,10 @@ simulate.gllvmTMB_multi <- function(
   ## parametric simulate-refit uncertainty.
   ##
   ## Currently handles: rr_B, diag_B, rr_W, diag_W, propto, lv_B, phylo_rr,
-  ## diag_species -- see .check_simulate_unconditional(), which is the single
-  ## source of truth for this list. Other tiers (notably spde and phylo_diag)
-  ## fall back to conditional with a one-shot warning.
+  ## phylo_diag, diag_species and the plain SPDE field tiers -- see
+  ## .check_simulate_unconditional(), which is the single source of truth for
+  ## this list. Other tiers (notably the slope-augmented spde blocks) fall back
+  ## to conditional with a one-shot warning.
   ok <- .check_simulate_unconditional(object)
   if (!ok$can_redraw) {
     if (!is.null(object$source_strength)) cli::cli_abort(c(
@@ -2377,38 +2390,49 @@ simulate.gllvmTMB_multi <- function(
   y
 }
 
+#' Is the fit's SPDE spatial tier one that `simulate()` can redraw?
+#'
+#' Redrawable: the per-trait field (`spatial_indep()`, `spatial_scalar()`), and
+#' the low-rank `spatial_latent()` fields with or without the per-trait unique
+#' companion. Not redrawable here: the slope-augmented SPDE blocks and the
+#' column-slope block (each adds a further field with its own covariance), and
+#' rho-enabled spatial fits, which carry their own redraw route.
+#'
 #' @keywords internal
 #' @noRd
-.temporal_spatial_indep_redrawable <- function(fit) {
+.spde_redrawable <- function(fit) {
   td <- fit$tmb_data
-  isTRUE(fit$temporal$active) &&
-    isTRUE(fit$use$spde) &&
-    isTRUE(fit$use$spatial_indep) &&
-    is.null(fit$source_strength) &&
-    identical(as.integer(td$spde_lv_k %||% 0L), 0L) &&
-    identical(as.integer(td$spde_lv_unique %||% 0L), 0L)
+  if (!isTRUE(fit$use$spde) || !is.null(fit$source_strength) || !is.list(td)) {
+    return(FALSE)
+  }
+  slope_flags <- c("use_spde_slope", "use_spde_dep_slope",
+                   "use_spde_latent_slope", "use_spatial_column_slope")
+  !any(vapply(slope_flags, function(n) {
+    v <- td[[n]]
+    length(v) == 1L && !is.na(v) && as.integer(v) == 1L
+  }, logical(1)))
 }
 
-#' Draw the per-trait SPDE field for the admitted temporal--spatial cell
+#' Draw the SPDE spatial contribution to the linear predictor
 #'
-#' The narrow temporal--spatial contract admits only `spatial_indep()`:
-#' each trait's mesh field has covariance `(tau_t^2 Q)^{-1}`, where
-#' `Q = kappa^4 M0 + 2 kappa^2 M1 + M2`.  Redrawing the field here keeps
-#' an unconditional temporal simulation unconditional for both sources.
+#' With `Q = kappa^4 M0 + 2 kappa^2 M1 + M2`, the per-trait path draws
+#' `omega_t ~ N(0, (tau_t^2 Q)^-1)`; the `spatial_latent()` path draws `K`
+#' shared fields `~ N(0, Q^-1)` (tau is absorbed into `Lambda_spde`) and maps
+#' them through `Lambda_spde`, adding the per-trait field when
+#' `spde_lv_unique == 1`. Mirrors the template's eta construction.
 #'
 #' @keywords internal
 #' @noRd
-.simulate_temporal_spatial_indep <- function(fit) {
-  if (!.temporal_spatial_indep_redrawable(fit)) {
-    stop("Internal SPDE redraw was requested outside the admitted temporal-spatial indep cell.",
+.simulate_spde_field <- function(fit) {
+  if (!.spde_redrawable(fit)) {
+    stop("Internal SPDE redraw was requested for a fit it cannot redraw.",
       call. = FALSE)
   }
   td <- fit$tmb_data
   par <- fit$tmb_obj$env$parList(fit$opt$par)
   kappa <- exp(as.numeric(par$log_kappa_spde[[1L]]))
-  tau <- exp(as.numeric(par$log_tau_spde))
   n_mesh <- ncol(td$A_proj)
-  if (length(tau) != td$n_traits || n_mesh < 1L) {
+  if (n_mesh < 1L) {
     stop("Internal SPDE parameter dimensions do not match the fitted mesh.",
       call. = FALSE)
   }
@@ -2419,12 +2443,30 @@ simulate.gllvmTMB_multi <- function(
     stop("The fitted SPDE precision matrix could not be factorized for unconditional simulation.",
       call. = FALSE)
   }
-  omega <- matrix(0, nrow = n_mesh, ncol = td$n_traits)
-  for (trait in seq_len(td$n_traits)) {
-    omega[, trait] <- backsolve(U, stats::rnorm(n_mesh)) / tau[[trait]]
+  trait <- td$trait_id + 1L
+  n_lv <- as.integer(td$spde_lv_k %||% 0L)
+  out <- numeric(length(trait))
+  if (n_lv == 0L || identical(as.integer(td$spde_lv_unique %||% 0L), 1L)) {
+    tau <- exp(as.numeric(par$log_tau_spde))
+    if (length(tau) != td$n_traits) {
+      stop("Internal SPDE parameter dimensions do not match the fitted mesh.",
+        call. = FALSE)
+    }
+    omega <- matrix(0, nrow = n_mesh, ncol = td$n_traits)
+    for (t in seq_len(td$n_traits)) {
+      omega[, t] <- backsolve(U, stats::rnorm(n_mesh)) / tau[[t]]
+    }
+    projected <- as.matrix(td$A_proj %*% omega)
+    out <- out + projected[cbind(seq_along(trait), trait)]
   }
-  projected <- as.matrix(td$A_proj %*% omega)
-  projected[cbind(seq_len(nrow(projected)), td$trait_id + 1L)]
+  if (n_lv > 0L) {
+    Lambda <- as.matrix(fit$report$Lambda_spde)
+    for (k in seq_len(n_lv)) {
+      field <- as.numeric(td$A_proj %*% backsolve(U, stats::rnorm(n_mesh)))
+      out <- out + Lambda[cbind(trait, k)] * field
+    }
+  }
+  out
 }
 
 #' @keywords internal
@@ -2439,7 +2481,7 @@ simulate.gllvmTMB_multi <- function(
     "temporal"
   )
   if (identical(fit$source_strength$source, "spatial") ||
-      .temporal_spatial_indep_redrawable(fit)) {
+      .spde_redrawable(fit)) {
     handled <- c(handled, "spde")
   }
   if (is.list(fit$tmb_data)) {
@@ -2576,11 +2618,11 @@ simulate.gllvmTMB_multi <- function(
     eta <- eta + scores[cbind(fit$tmb_data$species_id+1L,trait_id)]*fit$report$sd_phy_diag[trait_id]
   }
 
-  ## The only composed spatial route admitted with temporal covariance is
-  ## `temporal_indep(...) + spatial_indep(...)`.  It has one independent
-  ## per-trait GMRF field, so redraw it from the exact fitted Q precision.
-  if (.temporal_spatial_indep_redrawable(fit)) {
-    eta <- eta + .simulate_temporal_spatial_indep(fit)
+  ## SPDE spatial tier (per-trait or low-rank fields), redrawn from the exact
+  ## fitted Q precision. This also serves the one composed spatial route
+  ## admitted with temporal covariance, `temporal_indep() + spatial_indep()`.
+  if (.spde_redrawable(fit)) {
+    eta <- eta + .simulate_spde_field(fit)
   }
 
   if (isTRUE(fit$use$re_int)) {
@@ -3087,6 +3129,10 @@ sanity_multi <- function(object, gradient_thresh = 1e-2, se_thresh = 100) {
 #'   effects cannot be drawn, so those rows are fixed-effects-only
 #'   regardless of `re_form`.
 #'
+#'   For AGHQ fits, conditional predictions use the latent modes at the
+#'   fitted parameters. They are not averages over latent-score uncertainty.
+#'   If those modes are unavailable, request `re_form = ~0` or refit.
+#'
 #'   On `newdata`, `predict()` rebuilds the linear predictor in R and can
 #'   re-add only some of the model's random-effect tiers (the unit-level
 #'   `rr`/`diag` terms, `propto`, and the spatial SPDE field). Structured
@@ -3103,7 +3149,9 @@ sanity_multi <- function(object, gradient_thresh = 1e-2, se_thresh = 100) {
 #'   **not** propagated, only the fixed-effect coefficients' `sdreport()`
 #'   covariance is. This is a smaller quantity than a full marginal SE
 #'   would be; it is also not a claim about coverage, which has not been
-#'   measured for this quantity. `type = "link"` returns the SE of the
+#'   measured for this quantity. For AGHQ fits, the local fixed-node
+#'   covariance has not been validated for interval coverage.
+#'   `type = "link"` returns the SE of the
 #'   linear predictor directly; `type = "response"` multiplies it by the
 #'   local derivative of the per-row inverse link (the standard
 #'   delta-method transform), so it approximates the SE of the
@@ -3137,7 +3185,6 @@ predict.gllvmTMB_multi <- function(
       ">" = "Use {.code predict(fit)} for the training rows or {.code re_form = ~0} for fixed-effects-only training predictions."
     ), class = "gllvmTMB_temporal_predict_newdata")
   }
-  .aghq_warn_re_gap(object, "predict()")
   if (isTRUE(se.fit)) {
     .gllvmTMB_predict_se_guard(object, newdata)
   }
@@ -3167,7 +3214,7 @@ predict.gllvmTMB_multi <- function(
       .gllvmTMB_predict_fixed_eta(object, .gllvmTMB_training_X_fix(object)) +
         .gllvmTMB_offset_vec(object)
     } else {
-      as.numeric(object$report$eta)
+      .aghq_conditional_training_eta(object)
     }
     ## Use the user's actual column names (not hard-coded sdmTMB ecology labels).
     ## A temporal fit internally uses a private pair factor, which must never
@@ -3319,6 +3366,8 @@ predict.gllvmTMB_multi <- function(
             nrow = object$n_sites,
             ncol = object$d_B
           ))
+        } else if (isTRUE(object$aghq$used)) {
+          t(.aghq_conditional_modes(object))
         } else {
           matrix(
             par[names(par) == "z_B"],
@@ -4774,7 +4823,8 @@ deviance.gllvmTMB_multi <- function(object, ...) {
 #' @param se EXPERIMENTAL, internal-only. If `TRUE`, appends `se_confidence`
 #'   (delta-method SE of the reconstructed mean) and `se_prediction`
 #'   (`se_confidence` combined with the family noise variance) columns.
-#'   Gaussian fits only in this slice; see Details. Default `FALSE`.
+#'   Gaussian fits only in this slice; unavailable for AGHQ fits. See Details.
+#'   Default `FALSE`.
 #' @param se_route EXPERIMENTAL, internal-only. One of `"quad"` (default;
 #'   R1-quad), `"joint"` (R1-joint), `"joint_load"` (R1-joint+loadings),
 #'   `"sim"` (R2, simulation-based), or `"boot"` (R3, parametric
@@ -4837,6 +4887,13 @@ predict_missing <- function(
   type <- match.arg(type)
   se_route <- match.arg(se_route)
   boot_dgp <- match.arg(boot_dgp)
+  if (isTRUE(se) && isTRUE(object$aghq$used)) {
+    cli::cli_abort(c(
+      "Missing-response uncertainty is not available for AGHQ fits.",
+      "i" = "The available uncertainty routes have not been validated for AGHQ fits.",
+      ">" = "Use {.code se = FALSE} for point predictions, or refit with Laplace."
+    ), class = "gllvmTMB_aghq_missing_se_unsupported")
+  }
 
   md <- object$missing_data
   iyo <- object$tmb_data$is_y_observed
@@ -4981,7 +5038,7 @@ predict_missing <- function(
   off_pt <- as.integer(object$tmb_data$ordinal_offset_per_trait)
   trait_lab <- levels(object$data[[trait_lbl]])
   taus <- as.numeric(object$report$ordinal_cutpoints %||% numeric(0))
-  eta <- as.numeric(object$report$eta)
+  eta <- .aghq_conditional_training_eta(object)
   traits_out <- as.character(out[[trait_lbl]])
   for (i in ord_idx) {
     t <- match(traits_out[i], trait_lab)

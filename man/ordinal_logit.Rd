@@ -58,6 +58,9 @@ model, so \code{ordinal_logit()} is the gllvmTMB family that is directly
 comparable to it on the link scale (unlike \code{ordinal_probit()}, which
 differs by a factor of roughly \eqn{\pi / \sqrt{3}}; see the
 cross-engine note on \code{\link[=ordinal_probit]{ordinal_probit()}}).
+
+The per-cell log-probability is floored at \code{log(1e-300)} only to avoid
+\code{-Inf} from underflow; this does not change fits in the ordinary range.
 }
 \examples{
 ordinal_logit()

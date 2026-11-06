@@ -687,15 +687,21 @@ before and after TMB-side MSPL penalty terms are added). They see only
 penalties applied \emph{inside} the C++ template -- the LA-MSPL penalties
 documented above -- and never see anything computed at the R level.
 
-\code{fit$objective_components} is the \strong{marginal} surface: the value TMB's
-Laplace approximation integrates the random effects out of, decomposed
-into \code{likelihood_nll} (the unpenalised marginal negative log-likelihood),
+For ordinary ML and fixed-prior MAP fits, \code{fit$objective_components}
+describes the \strong{marginal} objective under the integration method used for
+the fit. It is decomposed into
+\code{likelihood_nll} (the unpenalised marginal negative log-likelihood),
 \code{ridge_penalty} (the R-level loading ridge from \code{aghq_ridge}, added
 \emph{outside} the TMB objective -- see \code{.gllvmTMB_penalised_gradient()}),
-\code{optimization_nll} (their sum, the objective the optimiser actually
-minimised), and \code{optimizer_reported} (the value \code{nlminb()} / \code{optim()}
-returned). This is the \strong{only} place the R-level loading ridge appears;
+\code{fixed_effect_prior_nll} (the fixed-effect normal-prior contribution), and
+\code{optimization_nll} (their sum, the criterion used for optimisation).
+\code{optimizer_reported} records \code{fit$opt$objective}, whose contents depend on
+the fitting route: for AGHQ it includes any fixed-effect priors but excludes the
+separately computed loading ridge. Use \code{optimization_nll} to inspect the
+full criterion. This separately itemises the R-level loading ridge;
 \verb{report$joint_nll_*} cannot see it because it never reaches the TMB tape.
+For MSPL fits, \code{likelihood_nll} still includes the TMB-side MSPL penalty;
+the separate unpenalised value is \code{fit$mspl$unpenalized_nll_at_estimate}.
 
 The two surfaces are \strong{not expected to match}, on a ridged fit or
 otherwise, and a difference between them is not itself an error: they are

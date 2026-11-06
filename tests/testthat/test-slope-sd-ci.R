@@ -175,7 +175,12 @@ test_that("slope_sd_ci() recovers a known-truth slope SD with a finite interval"
   ## Independently cross-checked total marginal slope SD on this exact
   ## fixture/seed (adversarial review pass, computed directly from
   ## fit$report$Sigma_B_slope without going through slope_sd_ci()).
-  expect_equal(ci$total_sd, c(0.3878717, 0.2924811, 0.3294379), tolerance = 1e-5)
+  ## Reference values re-pinned (#1331/#1734) under the n_init = 3 default:
+  ## the best-of-3 fit has logLik -566.1886 vs -566.1887 for the former
+  ## single start (a marginally better optimum on a flat ridge), which moves
+  ## total_sd in the 4th-5th digit (old: 0.3878717, 0.2924811, 0.3294379).
+  ## Mac (arm64) and the Linux CI both give these digits.
+  expect_equal(ci$total_sd, c(0.3878418, 0.2925535, 0.3295305), tolerance = 1e-5)
 
   ## The headline Slice-2 capability on THIS route: total_sd now carries a
   ## genuine interval via the combined sd_B_slope_total ADREPORT (which

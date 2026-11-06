@@ -52,6 +52,7 @@ and \code{df} its extra free parameters. A small \code{p_value} means the
 shared loadings improve the fit. The chi-square reference is
 approximate, because the loadings are not identified under the
 refit.}
+\item{\code{boundary}}{As in \code{\link[=compare_dep_vs_two_psi]{compare_dep_vs_two_psi()}}.}
 }
 }
 \description{

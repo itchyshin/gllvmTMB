@@ -947,18 +947,18 @@ print.gllvmTMB_multi <- function(x, ...) {
       cat("  Inference: point estimates only; repeated-sampling uncertainty is not yet calibrated.\n")
     } else {
       weighted <- isTRUE(x$likelihood_weights$active)
-      penalised <- isTRUE(x$aghq$penalised)
+      penalised <- !is.null(x$fixed_effect_priors) || isTRUE(x$aghq$penalised)
       objective_label <- if (weighted) {
         "Weighted objective (-value)"
       } else if (penalised) {
-        paste(estimator, "log L at MAP point")
+        "Unpenalised log L at MAP point"
       } else {
         paste(estimator, "log L")
       }
       cat(sprintf(
         "  %s = %.3f   convergence = %d   engine = %s\n",
         objective_label,
-        -x$opt$objective,
+        if (penalised) -(x$objective_components$likelihood_nll %||% NA_real_) else -x$opt$objective,
         x$opt$convergence,
         .aghq_engine_label(x)
       ))
@@ -966,6 +966,7 @@ print.gllvmTMB_multi <- function(x, ...) {
         cat("  Note: ordinary Wald and likelihood-based inference is not validated for non-unit likelihood weights.\n")
       } else if (penalised) {
         cat("  Note: parameters are a penalised MAP point; ordinary AIC, BIC, and likelihood-ratio interpretations do not apply.\n")
+        if (!is.null(x$fixed_effect_priors)) cat("  Covariance: local approximate posterior curvature, not calibrated sampling uncertainty.\n")
       }
     }
   }
@@ -1027,7 +1028,7 @@ summary.gllvmTMB_multi <- function(object, ...) {
     estimator = object$estimator %||% if (isTRUE(object$REML)) "REML" else "ML",
     logLik = if (.gllvmTMB_is_mspl(object)) {
       object$mspl$unpenalized_loglik_at_estimate
-    } else if (isTRUE(object$aghq$penalised) &&
+    } else if ((!is.null(object$fixed_effect_priors) || isTRUE(object$aghq$penalised)) &&
                !isTRUE(object$likelihood_weights$active)) {
       tryCatch(
         as.numeric(suppressWarnings(stats::logLik(object))),
@@ -1038,14 +1039,14 @@ summary.gllvmTMB_multi <- function(object, ...) {
     },
     objective_label = if (isTRUE(object$likelihood_weights$active)) {
       "Weighted objective (-value)"
-    } else if (isTRUE(object$aghq$penalised)) {
-      paste(object$estimator %||% if (isTRUE(object$REML)) "REML" else "ML",
-            "log L at MAP point")
+    } else if (!is.null(object$fixed_effect_priors) || isTRUE(object$aghq$penalised)) {
+      "Unpenalised log L at MAP point"
     } else {
       paste(object$estimator %||% if (isTRUE(object$REML)) "REML" else "ML", "log L")
     },
     weighted_objective = isTRUE(object$likelihood_weights$active),
-    penalised = isTRUE(object$aghq$penalised),
+    penalised = !is.null(object$fixed_effect_priors) || isTRUE(object$aghq$penalised),
+    fixed_effect_prior = !is.null(object$fixed_effect_priors),
     convergence = object$opt$convergence,
     engine = .aghq_engine_label(object),
     mspl = .gllvmTMB_is_mspl(object),
@@ -1208,6 +1209,7 @@ print.summary.gllvmTMB_multi <- function(x, digits = 3, ...) {
         if (!is.finite(logLik)) {
           cat("  Log L is unavailable: this stored fit has no retained unpenalised likelihood or usable TMB objective. Refit to obtain it.\n")
         }
+        if (isTRUE(x$header$fixed_effect_prior)) cat("  Covariance: local approximate posterior curvature, not calibrated sampling uncertainty.\n")
       }
     }
   })
@@ -1365,14 +1367,15 @@ logLik.gllvmTMB_multi <- function(object, ...) {
     ), class = "gllvmTMB_weighted_objective_no_logLik")
   }
   ridge_tau <- object$aghq$ridge_tau %||% Inf
-  pen <- isTRUE(object$aghq$penalised) ||
+  pen <- !is.null(object$fixed_effect_priors) || isTRUE(object$aghq$penalised) ||
     (is.numeric(ridge_tau) && length(ridge_tau) == 1L &&
        is.finite(ridge_tau) && ridge_tau > 0)
   likelihood_nll <- object$objective_components$likelihood_nll %||% NA_real_
   if (length(likelihood_nll) != 1L || !is.finite(likelihood_nll)) {
     if (pen) {
       likelihood_nll <- tryCatch(
-        as.numeric(object$tmb_obj$fn(object$opt$par)),
+        as.numeric((object$tmb_obj$fixed_effect_priors$likelihood_fn %||%
+          object$tmb_obj$fn)(object$opt$par)),
         error = function(e) NA_real_
       )
       if (length(likelihood_nll) != 1L || !is.finite(likelihood_nll)) {
@@ -1420,15 +1423,17 @@ logLik.gllvmTMB_multi <- function(object, ...) {
   attr(ll, "penalised") <- pen
   attr(ll, "ridge_tau") <- ridge_tau
   if (pen) {
+    attr(ll, "at_maximum") <- FALSE
     attr(ll, "penalised_note") <- paste0(
-      "evaluated at a penalised (MAP) optimum, ridge tau = ",
+      "evaluated at a penalised (MAP) optimum, ",
+      if (!is.null(object$fixed_effect_priors)) "fixed-effect normal priors; loading ridge tau = " else "ridge tau = ",
       format(ridge_tau, digits = 4),
       "; this is the unpenalised log-likelihood AT that point, not its maximum"
     )
     cli::cli_warn(c(
       "{.fn logLik} is the unpenalised likelihood evaluated at a penalised MAP point, not at its maximum.",
-      "i" = "The loading ridge used {.arg tau} = {format(ridge_tau, digits = 4)}.",
-      ">" = "Do not use this value for ordinary AIC, BIC, or likelihood-ratio inference; refit with {.code aghq_ridge = Inf} for likelihood-based comparison."
+      "i" = "The fit includes loading and/or fixed-effect normal priors.",
+      ">" = "For ordinary likelihood-based comparison, refit with loading_ridge = Inf and fixed_effect_priors = NULL."
     ))
   }
   ## nobs = likelihood-contributing rows. Under the default response="drop"
@@ -1501,6 +1506,10 @@ nobs.gllvmTMB_multi <- function(object, ...) {
 #'   fails because no sandwich interval is certified. When the Hessian is not
 #'   positive definite (or the `sdreport()` is missing), `std.error` is `NA`,
 #'   `conf.low` / `conf.high` are `NA`, and `inference_status` says why.
+#'   With fixed-effect normal priors, `std.error` describes local approximate
+#'   posterior curvature and `inference_status` identifies that interpretation.
+#'   `conf.int = TRUE` is refused for those fits because ordinary sampling
+#'   interval calibration has not been established.
 #' @export
 tidy.gllvmTMB_multi <- function(
   x,
@@ -1513,6 +1522,7 @@ tidy.gllvmTMB_multi <- function(
   if (isTRUE(conf.int)) {
     conf.level <- .gtmb_validate_interval_level(conf.level, arg = "conf.level")
     .gllvmTMB_mspl_assert_inference(x, "tidy(conf.int = TRUE)")
+    .gllvmTMB_fixed_prior_inference(x, "tidy(conf.int = TRUE)")
   }
   if (effects == "fixed") {
     weighted <- isTRUE(x$likelihood_weights$active)
@@ -1532,6 +1542,8 @@ tidy.gllvmTMB_multi <- function(
     } else if (!is.null(reason <- .gllvmTMB_wald_unusable_reason(x))) {
       out$std.error <- rep(NA_real_, nrow(out))
       out$inference_status <- reason
+    } else if (!is.null(x$fixed_effect_priors)) {
+      out$inference_status <- "local_approximate_posterior_curvature"
     }
     ## Per-trait link column. For single-family fits this is a single
     ## value repeated; for mixed-family fits each row carries the link
@@ -1749,7 +1761,8 @@ tidy.gllvmTMB_multi <- function(
 #'
 #'   When `TRUE`, the existing fitted RE modes
 #'   are reused (the older glmmTMB-style conditional simulation that
-#'   only adds Gaussian noise on top of `fit$report$eta`). Forced to
+#'   uses the fitted conditional predictor). For AGHQ, the predictor uses
+#'   the stored latent modes at the fitted parameters. Forced to
 #'   `TRUE` when `newdata` is supplied (RE modes for unseen levels
 #'   cannot be redrawn).
 #' @param ... Currently unused.
@@ -1826,10 +1839,9 @@ simulate.gllvmTMB_multi <- function(
   ## old conditional behaviour). Newdata always uses fitted eta because
   ## we cannot redraw RE tiers for unseen levels.
   if (!is.null(newdata) || isTRUE(condition_on_RE)) {
-    .aghq_warn_re_gap(object, "simulate()")
     if (is.null(newdata)) {
       ## eta length matches family_id_vec length — family-aware OK.
-      eta <- as.numeric(object$report$eta)
+      eta <- .aghq_conditional_training_eta(object)
       out <- replicate(nsim, .draw_y_per_family(object, eta))
     } else {
       ## newdata supplied — eta length doesn't necessarily match the
@@ -3110,6 +3122,10 @@ sanity_multi <- function(object, gradient_thresh = 1e-2, se_thresh = 100) {
 #'   effects cannot be drawn, so those rows are fixed-effects-only
 #'   regardless of `re_form`.
 #'
+#'   For AGHQ fits, conditional predictions use the latent modes at the
+#'   fitted parameters. They are not averages over latent-score uncertainty.
+#'   If those modes are unavailable, request `re_form = ~0` or refit.
+#'
 #'   On `newdata`, `predict()` rebuilds the linear predictor in R and can
 #'   re-add only some of the model's random-effect tiers (the unit-level
 #'   `rr`/`diag` terms, `propto`, and the spatial SPDE field). Structured
@@ -3126,7 +3142,9 @@ sanity_multi <- function(object, gradient_thresh = 1e-2, se_thresh = 100) {
 #'   **not** propagated, only the fixed-effect coefficients' `sdreport()`
 #'   covariance is. This is a smaller quantity than a full marginal SE
 #'   would be; it is also not a claim about coverage, which has not been
-#'   measured for this quantity. `type = "link"` returns the SE of the
+#'   measured for this quantity. For AGHQ fits, the local fixed-node
+#'   covariance has not been validated for interval coverage.
+#'   `type = "link"` returns the SE of the
 #'   linear predictor directly; `type = "response"` multiplies it by the
 #'   local derivative of the per-row inverse link (the standard
 #'   delta-method transform), so it approximates the SE of the
@@ -3160,7 +3178,6 @@ predict.gllvmTMB_multi <- function(
       ">" = "Use {.code predict(fit)} for the training rows or {.code re_form = ~0} for fixed-effects-only training predictions."
     ), class = "gllvmTMB_temporal_predict_newdata")
   }
-  .aghq_warn_re_gap(object, "predict()")
   if (isTRUE(se.fit)) {
     .gllvmTMB_predict_se_guard(object, newdata)
   }
@@ -3190,7 +3207,7 @@ predict.gllvmTMB_multi <- function(
       .gllvmTMB_predict_fixed_eta(object, .gllvmTMB_training_X_fix(object)) +
         .gllvmTMB_offset_vec(object)
     } else {
-      as.numeric(object$report$eta)
+      .aghq_conditional_training_eta(object)
     }
     ## Use the user's actual column names (not hard-coded sdmTMB ecology labels).
     ## A temporal fit internally uses a private pair factor, which must never
@@ -3342,6 +3359,8 @@ predict.gllvmTMB_multi <- function(
             nrow = object$n_sites,
             ncol = object$d_B
           ))
+        } else if (isTRUE(object$aghq$used)) {
+          t(.aghq_conditional_modes(object))
         } else {
           matrix(
             par[names(par) == "z_B"],
@@ -4797,7 +4816,8 @@ deviance.gllvmTMB_multi <- function(object, ...) {
 #' @param se EXPERIMENTAL, internal-only. If `TRUE`, appends `se_confidence`
 #'   (delta-method SE of the reconstructed mean) and `se_prediction`
 #'   (`se_confidence` combined with the family noise variance) columns.
-#'   Gaussian fits only in this slice; see Details. Default `FALSE`.
+#'   Gaussian fits only in this slice; unavailable for AGHQ fits. See Details.
+#'   Default `FALSE`.
 #' @param se_route EXPERIMENTAL, internal-only. One of `"quad"` (default;
 #'   R1-quad), `"joint"` (R1-joint), `"joint_load"` (R1-joint+loadings),
 #'   `"sim"` (R2, simulation-based), or `"boot"` (R3, parametric
@@ -4860,6 +4880,13 @@ predict_missing <- function(
   type <- match.arg(type)
   se_route <- match.arg(se_route)
   boot_dgp <- match.arg(boot_dgp)
+  if (isTRUE(se) && isTRUE(object$aghq$used)) {
+    cli::cli_abort(c(
+      "Missing-response uncertainty is not available for AGHQ fits.",
+      "i" = "The available uncertainty routes have not been validated for AGHQ fits.",
+      ">" = "Use {.code se = FALSE} for point predictions, or refit with Laplace."
+    ), class = "gllvmTMB_aghq_missing_se_unsupported")
+  }
 
   md <- object$missing_data
   iyo <- object$tmb_data$is_y_observed
@@ -5004,7 +5031,7 @@ predict_missing <- function(
   off_pt <- as.integer(object$tmb_data$ordinal_offset_per_trait)
   trait_lab <- levels(object$data[[trait_lbl]])
   taus <- as.numeric(object$report$ordinal_cutpoints %||% numeric(0))
-  eta <- as.numeric(object$report$eta)
+  eta <- .aghq_conditional_training_eta(object)
   traits_out <- as.character(out[[trait_lbl]])
   for (i in ord_idx) {
     t <- match(traits_out[i], trait_lab)

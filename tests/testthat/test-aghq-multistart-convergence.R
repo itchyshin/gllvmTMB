@@ -193,8 +193,14 @@ test_that("#843: multi-start never prefers a NON-converged fit over a converged 
                                    f$report$Lambda_B))
   }
   ## multi-start must not be WORSE against the independent oracle than single-start
-  expect_lt(err(many), 1e-6)
-  expect_lt(err(many), 10 * err(one))
+  one_error <- err(one)
+  many_error <- err(many)
+  expect_lt(many_error, 1e-6)
+  if (identical(one_error, 0)) {
+    expect_identical(many_error, 0)
+  } else {
+    expect_lt(many_error, 10 * one_error)
+  }
   ## and the fit it selected must be the converged one
   expect_true(isTRUE(many$aghq$converged))
 })

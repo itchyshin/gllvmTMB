@@ -58,7 +58,7 @@ test_that("binary JSDM long and traits() wide calls are likelihood-equivalent", 
   skip_if_not_installed("tidyr")
 
   fixture <- make_complete_binary_jsdm()
-  ctl <- gllvmTMB::gllvmTMBcontrol(se = FALSE)
+  ctl <- gllvmTMB::gllvmTMBcontrol(se = FALSE, laplace_auto_refit = FALSE)
 
   fit_long <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
     value ~ 0 + trait + (0 + trait):env_1 +
@@ -96,4 +96,51 @@ test_that("binary JSDM long and traits() wide calls are likelihood-equivalent", 
   expect_equal(fit_wide$tmb_data$family_id_vec, fit_long$tmb_data$family_id_vec)
   expect_equal(fit_wide$tmb_data$link_id_vec, fit_long$tmb_data$link_id_vec)
   expect_s3_class(fit_wide$call_long_format, "formula")
+})
+
+test_that("binary long and wide automatic AGHQ share the same objective", {
+  skip_if_not_installed("tidyr")
+
+  fixture <- make_complete_binary_jsdm()
+  ctl <- gllvmTMB::gllvmTMBcontrol(se = FALSE)
+  fit_long <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+    value ~ 0 + trait + (0 + trait):env_1 +
+      latent(0 + trait | site, d = 1, unique = FALSE),
+    data = fixture$long, trait = "trait", unit = "site",
+    family = binomial(), control = ctl
+  )))
+  fit_wide <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+    traits(trait_1, trait_2, trait_3, trait_4) ~
+      1 + env_1 + latent(1 | site, d = 1, unique = FALSE),
+    data = fixture$wide, unit = "site", family = binomial(), control = ctl
+  )))
+
+  expect_true(fit_long$aghq$used && fit_wide$aghq$used)
+  expect_true(fit_long$aghq$converged && fit_wide$aghq$converged)
+  expect_equal(fit_long$aghq$k, fit_wide$aghq$k)
+  expect_equal(fit_long$aghq$ridge_tau, fit_wide$aghq$ridge_tau)
+  expect_true(fit_long$aghq$penalised && fit_wide$aghq$penalised)
+  expect_identical(names(fit_long$opt$par), names(fit_wide$opt$par))
+
+  ## Rebuild separate tapes with the same frozen quadrature adaptation. This
+  ## compares the grammars at one parameter vector, independent of where each
+  ## penalised optimization stopped. Neither fitted object is modified.
+  canonical_data <- fit_long$tmb_obj$env$data
+  make_common_tape <- function(fit) {
+    data <- fit$tmb_obj$env$data
+    for (nm in c("aghq_mode", "aghq_Lt", "aghq_logdet", "aghq_nodes", "aghq_logw")) {
+      data[[nm]] <- canonical_data[[nm]]
+    }
+    map <- fit$tmb_map
+    map$z_B <- factor(rep(NA_integer_, length(fit$tmb_params$z_B)))
+    TMB::MakeADFun(data = data, parameters = fit$tmb_params, map = map,
+                   random = NULL, DLL = "gllvmTMB", silent = TRUE)
+  }
+  long_obj <- make_common_tape(fit_long)
+  wide_obj <- make_common_tape(fit_wide)
+  theta <- fit_long$opt$par
+  expect_identical(names(long_obj$par), names(theta))
+  expect_identical(names(wide_obj$par), names(theta))
+  expect_equal(long_obj$fn(theta), wide_obj$fn(theta), tolerance = 1e-10)
+  expect_equal(long_obj$gr(theta), wide_obj$gr(theta), tolerance = 1e-10)
 })

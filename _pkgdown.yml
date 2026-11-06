@@ -129,6 +129,8 @@ navbar:
         href: articles/fixed-effect-zero-constraints.html
       - text: Screen binary traits before fitting
         href: articles/pre-fit-response-screening.html
+      - text: Two normal priors for binary models
+        href: articles/binary-priors.html
       - text: Can I trust this fit?
         href: articles/fit-diagnostics.html
       - text: Convergence and start values
@@ -183,6 +185,7 @@ articles:
     - articles/gbif-joint-intensity
     - articles/joint-sdm
     - articles/rare-species-jsdm
+    - articles/binary-priors
     - articles/integrated-two-source-example
     - articles/integrated-repeated-visits
     - articles/integrated-multi-source-example
@@ -234,6 +237,7 @@ reference:
     - gllvmTMB
     - traits
     - gllvmTMBcontrol
+    - fixed_effect_priors
     - miss_control
     - impute_model
 

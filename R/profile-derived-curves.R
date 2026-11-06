@@ -167,7 +167,7 @@
     add = TRUE
   )
   prof <- tryCatch(
-    TMB::tmbprofile(
+    .tmbprofile_quiet(
       fit$tmb_obj,
       lincomb = lincomb,
       ystep = ystep,

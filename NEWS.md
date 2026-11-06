@@ -65,6 +65,17 @@
   tier now says why the intervals are `NA` and names the routes that work, and
   a Sigma tier the fit lacks is an error naming the public tier (for example
   `unit_obs`) before any method runs (#1588).
+* `confint(fit, parm = "rho:...")` now passes `link_residual` (`"auto"` by
+  default, or `"none"`) to `extract_correlations()`. Before, the argument was
+  dropped, `"none"` returned the `"auto"` interval, and the first call on a
+  non-Gaussian fit warned about the `link_residual` default. Any other `parm`
+  now warns (class `gllvmTMB_confint_link_residual_ignored`) that
+  `link_residual` is ignored, instead of dropping it silently. Profiling an SD whose interval reaches zero no longer prints nlminb's
+  `NA/NaN function evaluation` warning (#1588).
+* `profile_targets()` lists each first cluster-tier SD once, as
+  `sd_cluster[t]`. The legacy `sd_phy_unique[t]` label for the same parameter
+  is no longer listed, but `confint()` and `confint_inspect()` still accept it
+  (#1588).
 * `predict(newdata = <wide data frame>)` on a `traits()` fit now stops with a message saying `newdata` must be long with a `trait` column (the help page says so too), instead of "object 'trait' not found" (#1412).
 * The `\dontrun{}` examples of `extract_Omega()`, `extract_phylo_signal()`, `extract_proportions()`, `extract_loadings()`, `getLoadings()`, `getLV()` and `extract_residual_split()` now simulate their own data and build their own `fit` instead of using undefined objects (#1360).
 * A missing or non-finite value in a random-slope covariate (for example `x` in

@@ -68,11 +68,16 @@
     target_class = "variance",
     transformation = "exp"
   ),
+  ## Legacy label for the first cluster tier. It is not listed by
+  ## profile_targets() (the block is not phylogenetic, and listing it made
+  ## each SD appear twice, #1588); confint() and confint_inspect() still
+  ## accept it so old scripts keep working.
   list(
     tmb_parameter = "theta_diag_species",
     label_prefix = "sd_phy_unique",
     target_class = "variance",
-    transformation = "exp"
+    transformation = "exp",
+    listed = FALSE
   ),
   list(
     tmb_parameter = "theta_diag_species",
@@ -279,10 +284,14 @@
 }
 
 ## Find all registry entries by TMB name. Some TMB blocks have a legacy
-## label plus a clearer tier label; keep both as direct profile aliases.
-.profile_target_lookup_all <- function(tmb_name) {
+## label plus a clearer tier label; the legacy entry carries
+## `listed = FALSE` and is returned only when `include_unlisted = TRUE`.
+.profile_target_lookup_all <- function(tmb_name, include_unlisted = FALSE) {
   hits <- list()
   for (entry in .profile_target_registry) {
+    if (!include_unlisted && identical(entry$listed, FALSE)) {
+      next
+    }
     if (entry$tmb_parameter == tmb_name) {
       hits[[length(hits) + 1L]] <- entry
     }
@@ -477,6 +486,17 @@
 #'
 #' @export
 profile_targets <- function(object, ready_only = FALSE) {
+  .profile_targets_build(object, ready_only = ready_only)
+}
+
+## Internal builder behind profile_targets(). `include_unlisted = TRUE` adds
+## the rows for legacy labels (e.g. `sd_phy_unique[t]`) so confint() and
+## confint_inspect() can resolve them; profile_targets() never lists them.
+.profile_targets_build <- function(
+  object,
+  ready_only = FALSE,
+  include_unlisted = FALSE
+) {
   if (!inherits(object, "gllvmTMB_multi")) {
     .gllvmTMB_abort_not_multi_fit(object)
   }
@@ -492,7 +512,10 @@ profile_targets <- function(object, ready_only = FALSE) {
   ## per parameter block).
   rows <- list()
   for (tmb_name in unique(par_names)) {
-    entries <- .profile_target_lookup_all(tmb_name)
+    entries <- .profile_target_lookup_all(
+      tmb_name,
+      include_unlisted = include_unlisted
+    )
     if (length(entries) == 0L) {
       next
     } # not in registry; skip silently

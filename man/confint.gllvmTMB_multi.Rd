@@ -107,7 +107,11 @@ value (e.g. \code{50}) during development or testing.}
 \item{seed}{Optional integer RNG seed forwarded to \code{\link[=bootstrap_Sigma]{bootstrap_Sigma()}}
 (only meaningful when \code{method = "bootstrap"}).}
 
-\item{...}{Additional arguments currently unused.}
+\item{...}{For \code{"rho..."} tokens, \code{link_residual}
+(\code{"auto"}, the default, or \code{"none"}) is passed to
+\code{\link[=extract_correlations]{extract_correlations()}}: \code{"auto"} adds the per-family
+link-residual variance to the diagonal before the correlation is
+computed on non-Gaussian fits. Otherwise currently unused.}
 }
 \value{
 \itemize{

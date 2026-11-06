@@ -1,5 +1,7 @@
 # Development (unreleased)
 
+* `simulate_site_trait(seed =)` and `simulate_unit_trait(seed =)` restore the caller's random-number state on exit, including on error. A given seed still gives the same simulated data. Tests that draw from the global RNG after a seeded call must set their own seed (#1602).
+
 * VA optimizer polishing retains an already qualified start when a nearly tied candidate fails the existing gradient health rule; the rejected candidate remains in the optimizer record. This does not change the health threshold or establish uncertainty calibration.
 
 * Optional `gllvmTMBcontrol(fixed_effect_priors = ...)` adds normal priors to named fixed intercepts and slopes independently of `loading_ridge`. `fixed_effect_priors()` constructs explicit logit/probit latent-reference scales for already standardized predictors. No prior is added by default. Initial support is ordinary unit-tier `latent()`/`indep()` Gaussian or binomial logit/probit native Laplace models with complete observations. Eligible latent models can request AGHQ; the combined route has a rank-one probit reference check and its interval coverage is unvalidated. Ineligible AGHQ requests can fall back to Laplace with a warning; inspect `fit$aghq$used` and `fit$aghq$converged`. A non-converged AGHQ fit warns. `dep()`, structured sources and other estimators are rejected. Estimates are MAP points with local approximate posterior curvature; profile, bootstrap and prediction-SE intervals remain unavailable. See the worked binary-priors article.

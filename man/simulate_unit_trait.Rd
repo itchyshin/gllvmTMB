@@ -48,7 +48,7 @@ within-unit (observation-level) variances --
 
 \item{sigma2_eps}{Row-level residual variance. Default 0.5.}
 
-\item{seed}{Optional RNG seed.}
+\item{seed}{Optional RNG seed. The caller's random-number state is restored on exit.}
 
 \item{...}{Reserved for future extensions; currently ignored.}
 }

@@ -391,7 +391,8 @@ response columns) into a grouping column, and puts the relatedness on that
 column:
 
 ```{r species-slope-syntax, eval = FALSE}
-dat$species <- dat$trait   # duplicate the species labels
+# In the long-format data, add a `species` column that copies the `trait`
+# labels (one species label per response column).
 
 # No supplied relatedness: an identity A gives partial pooling,
 # beta_s ~ N(0, sigma^2 I).

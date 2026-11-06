@@ -255,7 +255,11 @@ test_that("the retained B-tier AR1 code matches the no-Psi common submodel", {
   active <- suppressWarnings(gllvmTMB(
     value ~ 0 + trait + temporal_latent(0 + trait | series, time = occasion,
       d = 1, unique = FALSE),
-    data = dat, unit = "series", family = gaussian(), silent = TRUE
+    data = dat, unit = "series", family = gaussian(), silent = TRUE,
+    ## One start: the oracle compares this fit's scores with a hand-built
+    ## single-start legacy model, and the n_init = 3 default (#1331) can select
+    ## a different restart's scores.
+    control = gllvmTMBcontrol(n_init = 1L)
   ))
   legacy_fixture <- .temporal_sixth_legacy_common_fixture(active)
   legacy <- legacy_fixture$object

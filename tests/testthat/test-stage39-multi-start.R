@@ -53,9 +53,9 @@ test_that("Stage 39: optimizer = 'optim' with BFGS is dispatched", {
   expect_true(is.finite(-fit$opt$objective))
 })
 
-test_that("Stage 39: gllvmTMBcontrol() defaults preserve old behaviour", {
+test_that("Stage 39: gllvmTMBcontrol() defaults: n_init = 3 (#1331)", {
   ctl <- gllvmTMBcontrol()
-  expect_equal(ctl$n_init, 1L)
+  expect_equal(ctl$n_init, 3L)
   expect_equal(ctl$optimizer, "nlminb")
   expect_equal(ctl$optArgs, list())
   expect_equal(ctl$init_jitter, 0.3)

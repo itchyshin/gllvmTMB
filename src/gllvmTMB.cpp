@@ -604,10 +604,15 @@ Type gll_mspl_log_weight_glm(Type eta, int family_id, int link_id,
     Type r = mu / phi;
     Type log_p = -logspace_add(Type(0.0), log_phi);
     Type sd = sqrt(mu * (Type(1.0) + phi));
+    // #1376: bound the support at mu + 12 sd for every mu (floor 8), not
+    // at a flat 80, so the sum stays complete for mean counts above ~60.
+    // The loop bound is fixed at tape construction (value at the
+    // construction-time eta); that is a design question, not handled here.
+    // Non-finite or huge cap falls back to 80 / is clipped at 20000.
     int ymax = 80;
     double cap = asDouble(mu + Type(12.0) * sd);
-    if (R_FINITE(cap) && cap < 80.0)
-      ymax = (cap < 8.0) ? 8 : (int)cap;
+    if (R_FINITE(cap))
+      ymax = (cap < 8.0) ? 8 : (cap > 20000.0 ? 20000 : (int)cap);
     Type I = Type(0.0);
     for (int y = 0; y <= ymax; ++y) {
       Type yy = Type(y);
@@ -3650,12 +3655,11 @@ Type objective_function<Type>::operator()()
       Type phi_b = exp(log_phi_beta(t));
       Type a_b   = mu_b * phi_b;
       Type b_b   = (Type(1.0) - mu_b) * phi_b;
-      Type tiny_y = Type(1e-12);
-      Type y_safe = y(o);
-      y_safe = gll_clamp(y_safe, tiny_y, Type(1.0) - tiny_y);
+      // No clamp on y: the R-side support check refuses observed y within
+      // 1e-12 of 0 or 1, and masked rows never reach this density (#1485).
       Type ld = lgamma(phi_b) - lgamma(a_b) - lgamma(b_b)
-              + (a_b - Type(1.0)) * log(y_safe)
-              + (b_b - Type(1.0)) * log(Type(1.0) - y_safe);
+              + (a_b - Type(1.0)) * log(y(o))
+              + (b_b - Type(1.0)) * log(Type(1.0) - y(o));
       ll += ld;
     } else if (fid == 8) {
       // Beta-binomial family (Hilbe 2014; Bolker 2008).
@@ -3794,6 +3798,7 @@ Type objective_function<Type>::operator()()
         logp_k = gll_log_pnorm_diff(cuts(yk - 1) - eta_o,
                                     cuts(yk - 2) - eta_o);
       }
+      // Intentional underflow guard (#1484): floors only where a double would underflow anyway; do not remove.
       Type log_tiny_ord = Type(-690.7755278982137);   // log(1e-300)
       logp_k = CppAD::CondExpLt(logp_k, log_tiny_ord, log_tiny_ord, logp_k);
       ll += logp_k;
@@ -3855,6 +3860,7 @@ Type objective_function<Type>::operator()()
         logp_k = gll_log_inv_logit_diff(cuts(yk - 1) - eta_o,
                                         cuts(yk - 2) - eta_o);
       }
+      // Intentional underflow guard (#1484): floors only where a double would underflow anyway; do not remove.
       Type log_tiny_ord = Type(-690.7755278982137);   // log(1e-300)
       logp_k = CppAD::CondExpLt(logp_k, log_tiny_ord, log_tiny_ord, logp_k);
       ll += logp_k;

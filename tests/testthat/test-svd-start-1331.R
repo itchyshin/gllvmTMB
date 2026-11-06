@@ -83,8 +83,8 @@ test_that("#1331 the default fit reaches the optimum the single start missed", {
   fit_once <- function(...) suppressMessages(suppressWarnings(
     gllvmTMB(f, data = dat, family = poisson(), unit = "site", ...)
   ))
-  old <- fit_once(control = gllvmTMBcontrol(svd_start = FALSE))
-  new <- fit_once()
+  old <- fit_once(control = gllvmTMBcontrol(svd_start = FALSE, n_init = 1L))
+  new <- fit_once(control = gllvmTMBcontrol(n_init = 1L))
 
   ## Values reported on the issue: n_init = 1 gave -359.5170, n_init = 10 and
   ## the Julia twin gave -359.1976.

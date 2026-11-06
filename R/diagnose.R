@@ -670,7 +670,16 @@
     return(NULL)
   }
 
-  eta <- as.numeric(object$report$eta %||% rep(NA_real_, n))
+  modes_unavailable <- FALSE
+  eta <- if (isTRUE(object$aghq$used)) {
+    tryCatch(.aghq_conditional_training_eta(object), error = function(e) {
+      if (!inherits(e, "gllvmTMB_aghq_modes_unavailable")) stop(e)
+      modes_unavailable <<- TRUE
+      rep(NA_real_, n)
+    })
+  } else {
+    as.numeric(object$report$eta %||% rep(NA_real_, n))
+  }
   fitted_prob <- rep(NA_real_, n)
   if (length(eta) == n) {
     fitted_prob <- .apply_linkinv_per_row(eta, family_id, link_id)
@@ -744,7 +753,7 @@
     ifelse(tab$dominant_loading, 2, 0) +
     ifelse(tab$saturated_fit, 1, 0)
   best <- tab[which.max(score), , drop = FALSE]
-  status <- if (any(tab$flag)) "WARN" else "PASS"
+  status <- if (any(tab$flag)) "WARN" else if (modes_unavailable) "INFO" else "PASS"
   ## The wording follows the trait actually being reported. A near-constant
   ## trait is usually the CAUSE of the separation, so where prevalence explains
   ## the loading the near-constant advice is the more actionable one; the
@@ -752,12 +761,18 @@
   runaway_hit <- (isTRUE(best$runaway_loading) ||
     isTRUE(best$extreme_magnitude)) &&
     !isTRUE(best$extreme_prevalence)
-  msg <- if (!identical(status, "WARN")) {
+  msg <- if (modes_unavailable && !identical(status, "WARN")) {
+    "saturation not evaluated: AGHQ latent modes are unavailable"
+  } else if (!identical(status, "WARN")) {
     "binomial trait prevalence/loading/saturation screen"
   } else if (runaway_hit) {
     "trait loading has run away from the rest (an improper solution, or Heywood case); quasi-complete separation produces this at ordinary prevalence"
   } else {
     "near-constant binomial trait with dominant loading or saturated fitted probabilities"
+  }
+
+  if (modes_unavailable && identical(status, "WARN")) {
+    msg <- paste0(msg, "; saturation not evaluated: AGHQ latent modes are unavailable")
   }
 
   out <- .gllvmTMB_check_row(
@@ -792,7 +807,9 @@
       " on the link scale"
     ),
     msg,
-    if (!identical(status, "WARN")) {
+    if (identical(status, "INFO")) {
+      "refit the model to evaluate fitted-probability saturation"
+    } else if (!identical(status, "WARN")) {
       "none"
     } else if (runaway_hit) {
       "treat the fit as unusable rather than interpreting it: this is quasi-complete separation, which lowering the rank does not resolve; for ordinary between-unit latent loadings, try gllvmTMBcontrol(loading_ridge = 0.25) (0.25 to 0.5; larger tau shrinks less) to shrink runaway loadings, or gllvmTMBcontrol(integration = 'va') for latent(..., unique = FALSE) fits with at least 100 units and d <= 2 -- either makes the result a penalised (MAP) or variational estimate, so logLik(), AIC() and BIC() no longer apply to it"
@@ -2636,7 +2653,7 @@ gllvmTMB_diagnose <- function(
   ## ---- Pillar 4: actionable hints ----------------------------------
   hints <- character(0)
   binomial_screen <- .gllvmTMB_binomial_prevalence_loading_row(object)
-  if (!is.null(binomial_screen) && identical(binomial_screen$status[[1L]], "WARN")) {
+  if (!is.null(binomial_screen) && binomial_screen$status[[1L]] %in% c("WARN", "INFO")) {
     hints <- c(hints, paste(binomial_screen$message[[1L]],
                            binomial_screen$action[[1L]]))
   }

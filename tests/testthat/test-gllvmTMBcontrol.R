@@ -3,9 +3,11 @@
 
 # ---- defaults -------------------------------------------------------------
 
-test_that("gllvmTMBcontrol(): defaults set n_init = 1, optimizer = nlminb", {
+test_that("gllvmTMBcontrol(): defaults set n_init = 3, optimizer = nlminb", {
   ctl <- gllvmTMBcontrol()
-  expect_equal(ctl$n_init, 1L)
+  expect_identical(ctl$n_init, 3L)
+  expect_false(ctl$n_init_explicit)
+  expect_identical(gllvmTMBcontrol(n_init = 1L)$n_init, 1L)
   expect_equal(ctl$optimizer, "nlminb")
   expect_equal(ctl$init_jitter, 0.3)
   expect_equal(ctl$start_method, list(method = NULL, jitter.sd = 0))
@@ -182,4 +184,11 @@ test_that("#1426: invalid AGHQ counts and tolerances name the argument", {
   expect_error(gllvmTMBcontrol(aghq_escalate_patience = 0), "aghq_escalate_patience")
   expect_error(gllvmTMBcontrol(aghq_rho_min = 5), "aghq_rho_min")
   expect_error(gllvmTMBcontrol(aghq_shift_tol = -1), "aghq_shift_tol")
+})
+
+test_that("gllvmTMBcontrol(): default n_init is 3 and n_init = 1L is explicit (#1331)", {
+  expect_identical(gllvmTMBcontrol()$n_init, 3L)
+  expect_false(gllvmTMBcontrol()$n_init_explicit)
+  expect_identical(gllvmTMBcontrol(n_init = 1L)$n_init, 1L)
+  expect_true(gllvmTMBcontrol(n_init = 1L)$n_init_explicit)
 })

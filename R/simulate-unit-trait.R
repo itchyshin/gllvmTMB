@@ -44,7 +44,7 @@
 #'   within-unit (observation-level) variances --
 #'   `\boldsymbol\Psi_W = diag(psi_W)`.
 #' @param sigma2_eps Row-level residual variance. Default 0.5.
-#' @param seed Optional RNG seed.
+#' @param seed Optional RNG seed. The caller's random-number state is restored on exit.
 #' @param ... Reserved for future extensions; currently ignored.
 #'
 #' @return A list with components:
@@ -86,7 +86,7 @@ simulate_unit_trait <- function(n_units        = 50L,
                                 sigma2_eps     = 0.5,
                                 seed           = NULL,
                                 ...) {
-  if (!is.null(seed)) set.seed(seed)
+  .gllvmTMB_local_seed(seed)
 
   n_units        <- as.integer(n_units)
   n_obs_per_unit <- as.integer(n_obs_per_unit)

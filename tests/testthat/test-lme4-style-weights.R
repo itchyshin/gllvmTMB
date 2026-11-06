@@ -205,12 +205,14 @@ test_that("Doubling weights shrinks b_fix SEs", {
 })
 
 # ----------------------------------------------------------------------
-# Test 4: heteroscedastic recovery — weights move sigma in the right
-# direction. We simulate Var(y) = sigma_0^2 / w; the optimal weights
-# w_i = 1/var_i restore homoscedasticity. Fit with and without those
-# weights and confirm the weighted fit's sigma estimate is closer to
-# sigma_0 than the unweighted fit's.
-test_that("Heteroscedastic Gaussian: weighted fit improves sigma recovery", {
+# Test 4: heteroscedastic weights are consumed. We simulate
+# Var(y) = sigma_0^2 * var_i and pass w_i = 1/var_i. Do not assert that
+# the weighted sigma_eps is closer to sigma_0 than the unweighted one:
+# Totoro (seeds 1-20, same recipe) recovered that comparison in 10/20
+# at 30 sites and plateaued at 18/20 at 1000 sites next to
+# latent(..., d = 1). Receipt is the comment on #1644. This check only
+# proves weights move sigma_eps (silent-ignore would leave it identical).
+test_that("Heteroscedastic Gaussian: weights move sigma_eps", {
   skip_on_cran()
   set.seed(42L)
   ## 30 sites x 3 traits, all Gaussian, but with row-wise variance
@@ -223,6 +225,10 @@ test_that("Heteroscedastic Gaussian: weighted fit improves sigma recovery", {
     psi_B        = rep(0.2, 3),
     seed       = 42L
   )
+  ## Own stream for the heteroscedastic noise. After #1602,
+  ## simulate_site_trait(seed =) restores the caller's RNG, so this
+  ## test must not depend on leftover simulator draws.
+  set.seed(42L)
   df <- sim$data
   sigma_0 <- 1.0
   var_i <- runif(nrow(df), min = 0.5, max = 5)   # row-wise variance multipliers
@@ -240,10 +246,14 @@ test_that("Heteroscedastic Gaussian: weighted fit improves sigma recovery", {
     weights = w_i,
     silent  = TRUE
   )))
+  expect_equal(fit_unw$opt$convergence, 0L)
+  expect_equal(fit_w$opt$convergence, 0L)
   ## Both fits expose log_sigma_eps via report().
   rep_unw <- fit_unw$tmb_obj$report()
   rep_w   <- fit_w$tmb_obj$report()
-  expect_lt(abs(rep_w$sigma_eps - sigma_0), abs(rep_unw$sigma_eps - sigma_0))
+  expect_true(is.finite(rep_unw$sigma_eps))
+  expect_true(is.finite(rep_w$sigma_eps))
+  expect_false(isTRUE(all.equal(rep_w$sigma_eps, rep_unw$sigma_eps)))
 })
 
 # ----------------------------------------------------------------------

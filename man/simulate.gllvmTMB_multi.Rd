@@ -49,7 +49,8 @@ uncertainty is not trustworthy for that fit.
 
 When \code{TRUE}, the existing fitted RE modes
 are reused (the older glmmTMB-style conditional simulation that
-only adds Gaussian noise on top of \code{fit$report$eta}). Forced to
+uses the fitted conditional predictor). For AGHQ, the predictor uses
+the stored latent modes at the fitted parameters. Forced to
 \code{TRUE} when \code{newdata} is supplied (RE modes for unseen levels
 cannot be redrawn).}
 

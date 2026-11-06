@@ -43,3 +43,6 @@ inst/extdata/** -text
 # set a repository-wide `* text=auto` policy: that would renormalise line endings
 # across the entire history-tracked tree, which is a much larger change than the
 # defect it would fix here.
+
+# Preserve the exact bytes used by the temporal qualification checksum.
+dev/temporal-program/results/failed/phylo-recovery-160-fir-59096255-20260910/phylo-recovery-160-summary-20260909.csv -text

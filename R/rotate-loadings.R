@@ -434,13 +434,16 @@ extract_rotated_loadings_table <- function(
 #' other, then reports the residual disagreement. This is mainly a validation
 #' helper for comparing [gllvmTMB()] with another implementation.
 #'
-#' Rows are matched by position, not by trait name: both matrices must list
-#' the traits in the same order, and row names are ignored. If the order
-#' differs, the distance reflects that mismatch rather than how well the
-#' loadings agree.
+#' When both matrices have row names, rows are matched by trait name:
+#' `Lambda_a` is reordered to the row order of `Lambda_b`, and the function
+#' stops if the two row-name sets differ (or a name is repeated). If either
+#' matrix has no row names, rows are matched by position, so both must list
+#' the traits in the same order; a different order then shows up as a larger
+#' distance rather than as better or worse agreement of the loadings.
 #'
 #' @param Lambda_a,Lambda_b Two `n_traits × d` loading matrices.
-#' @return A list with the optimal rotation `R`, the rotated `Lambda_a_rot`,
+#' @return A list with the optimal rotation `R`, the rotated `Lambda_a_rot`
+#'   (rows in the order of `Lambda_b` when rows were matched by name),
 #'   the Frobenius distance after alignment (`frobenius`), and the
 #'   correlation between each column of `Lambda_a_rot` and the matching
 #'   column of `Lambda_b` (`cor_per_factor`).
@@ -480,6 +483,18 @@ compare_loadings <- function(Lambda_a, Lambda_b) {
   }
   if (!all(dim(Lambda_a) == dim(Lambda_b))) {
     cli::cli_abort("Lambda_a and Lambda_b must have the same dimensions.")
+  }
+  rn_a <- rownames(Lambda_a)
+  rn_b <- rownames(Lambda_b)
+  if (!is.null(rn_a) && !is.null(rn_b)) {
+    if (anyDuplicated(rn_a) || anyDuplicated(rn_b) || !setequal(rn_a, rn_b)) {
+      cli::cli_abort(c(
+        "{.arg Lambda_a} and {.arg Lambda_b} have row names for different traits.",
+        "x" = "Row names must be unique and name the same set of traits in both matrices.",
+        ">" = "Drop the row names to match rows by position instead."
+      ))
+    }
+    Lambda_a <- Lambda_a[match(rn_b, rn_a), , drop = FALSE]
   }
   M <- crossprod(Lambda_b, Lambda_a)
   sv <- svd(M)

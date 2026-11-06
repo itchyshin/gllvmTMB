@@ -47,6 +47,11 @@ from this package carries. It is not a resampled or profiled quantity, and
 no interval built from it has certified coverage. \code{vcov()} refuses a fit
 with non-unit likelihood weights: that fit targets a weighted estimating
 objective and has no certified sandwich covariance.
+With a finite loading ridge or fixed-effect normal priors, this is local
+approximate posterior covariance at the MAP point, conditional on the chosen
+priors. Fixed-effect prior fits record that interpretation in the
+\code{inference_status} attribute. Sampling coverage is not certified; ordinary
+interval helpers refuse fits with fixed-effect priors.
 }
 
 \examples{

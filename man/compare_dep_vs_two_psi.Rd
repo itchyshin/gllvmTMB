@@ -62,6 +62,14 @@ unstructured one; use \code{p_value} as a guide, after checking
 \code{alt_fit$opt$convergence}. \code{rel_disagreement} and \code{flag} stay as
 descriptive summaries; the likelihood ratio is the comparison that
 accounts for the refit's extra flexibility.}
+\item{\code{boundary}}{List with character vectors \code{joint} and \code{alt}: the
+boundary flags of the paired fit and of the refit (from
+\code{\link[=gllvmTMB_diagnose]{gllvmTMB_diagnose()}}, for example \code{"near_zero_sd_B"}). A variance
+estimated at zero can still report \code{pdHess = TRUE}. When either
+vector is non-empty the chi-square reference of the \code{lrt} is
+unreliable, because the null value lies on the edge of the
+parameter space; read \code{p_value} as a rough guide only. The
+function also prints a one-line note in that case.}
 \item{\code{alt_fit}}{The refit \code{gllvmTMB_multi} object (or \code{NULL} on
 failure), retained so users can inspect convergence and pull
 other extractor outputs.}

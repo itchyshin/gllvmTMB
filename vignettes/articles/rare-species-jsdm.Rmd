@@ -41,6 +41,12 @@ loadings, and its different remedy).
 
 # A butterfly guild with one heat specialist
 
+An alternative is to choose normal priors explicitly for the item intercepts
+and slopes. The [binary-priors worked examples](binary-priors.html) show this
+separate native Laplace MAP route for logit and probit models, alongside a
+loading prior. These normal priors cannot be combined with MSPL; their local
+posterior curvature has no general interval-coverage guarantee.
+
 Ninety sites along a temperature gradient, six butterflies. Five are
 ordinary; the sixth is present only at the very warmest sites — the
 threshold pattern real specialists actually show.

@@ -349,7 +349,7 @@ residuals.gllvmTMB_multi <- function(
   }
 
   observed <- as.numeric(object$tmb_data$y)
-  eta <- as.numeric(object$report$eta)
+  eta <- .aghq_conditional_training_eta(object)
   row_meta <- .gllvmTMB_diagnostic_row_metadata(object)
   keep <- .gllvmTMB_trait_keep(row_meta, trait)
 

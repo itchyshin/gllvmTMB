@@ -1,9 +1,7 @@
-## Issue #1485: the Beta likelihood clamps y to [1e-12, 1 - 1e-12] before
-## log(y) and log(1 - y). The R-side support check already refused exact 0s
-## and 1s, but did not name the rows, and a y inside 1e-12 of an edge (for
-## example 1e-16) passed the check and was then silently rewritten by the
-## clamp. The check now refuses every observed Beta y the clamp would edit
-## and names the offending row indices.
+## Issue #1485: the Beta likelihood used to clamp y to [1e-12, 1 - 1e-12]
+## before log(y) and log(1 - y), silently rewriting a y inside 1e-12 of an
+## edge. The R-side support check now refuses every such observed y and names
+## the offending row indices, and the clamp is gone from the C++ density.
 
 sim_1485 <- function(n = 30L, p = 3L, seed = 1L) {
   set.seed(seed)
@@ -56,7 +54,7 @@ test_that("#1485 the Beta row list is truncated after ten rows", {
   )
 })
 
-test_that("#1485 Beta() still fits y at the clamp edge and inside (0, 1)", {
+test_that("#1485 Beta() still fits y at the 1e-12 edge and inside (0, 1)", {
   skip_on_cran()
   dat <- sim_1485()
   dat$value[5] <- 1e-12
@@ -93,4 +91,18 @@ test_that("#1485 Beta row indices refer to the wide data under traits()", {
     class = "gllvmTMB_response_support"
   )
   expect_match(conditionMessage(err), "Offending row indices: 4, 7\\.")
+})
+
+test_that("#1485 the C++ Beta density uses the recorded y, with no clamp", {
+  src <- testthat::test_path("..", "..", "src", "gllvmTMB.cpp")
+  skip_if_not(file.exists(src))
+  lines <- readLines(src)
+  start <- grep("} else if (fid == 7) {", lines, fixed = TRUE)
+  stop <- grep("} else if (fid == 8) {", lines, fixed = TRUE)
+  expect_length(start, 1L)
+  expect_length(stop, 1L)
+  beta_branch <- lines[start:stop]
+  expect_false(any(grepl("gll_clamp", beta_branch, fixed = TRUE)))
+  expect_true(any(grepl("log(y(o))", beta_branch, fixed = TRUE)))
+  expect_true(any(grepl("log(Type(1.0) - y(o))", beta_branch, fixed = TRUE)))
 })

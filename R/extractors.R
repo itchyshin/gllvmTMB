@@ -625,7 +625,8 @@ extract_ordination <- function(
     if (!fit$use$rr_B) {
       return(NULL)
     }
-    z_B <- .ordination_score_matrix(par, "z_B", fit$d_B, fit$n_sites)
+    z_B <- .ordination_score_matrix(par, "z_B", fit$d_B, fit$n_sites,
+                                    fallback = fit$aghq$z_B_mode)
     Lambda <- fit$report$Lambda_B
     rownames(Lambda) <- trait_names
     colnames(Lambda) <- paste0("LV", seq_len(ncol(Lambda)))
@@ -683,8 +684,26 @@ extract_ordination <- function(
   }
 }
 
-.ordination_score_matrix <- function(par, block, d, n) {
+## Score uncertainty reads the covariance of the random score block, and an
+## AGHQ fit has none (quadrature integrates it out). Point scores still work.
+.abort_aghq_score_uncertainty <- function(fit, what, class) {
+  if (!isTRUE(fit$aghq$used)) {
+    return(invisible(NULL))
+  }
+  cli::cli_abort(c(
+    paste0(what, " is not available on an AGHQ fit."),
+    "i" = "Quadrature integrates the unit scores out, so the fit has no joint covariance for them. The point scores from {.fn getLV} and {.fn extract_ordination} are conditional modes.",
+    ">" = "Refit with {.code gllvmTMBcontrol(aghq = FALSE)} (or {.code laplace_auto_refit = FALSE}) for score uncertainty."
+  ), class = class)
+}
+
+## `fallback` is the AGHQ route's stored conditional modes (d x n): that tape
+## maps the score block off, so `par` carries none of it.
+.ordination_score_matrix <- function(par, block, d, n, fallback = NULL) {
   values <- par[which(names(par) == block)]
+  if (!length(values) && is.numeric(fallback) && length(fallback) == d * n) {
+    values <- as.numeric(fallback)
+  }
   if (!is.numeric(par) || length(values) != d * n) {
     cli::cli_abort(c(
       "The retained {.field {block}} score block does not match the fitted ordination dimensions.",

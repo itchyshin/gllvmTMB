@@ -1528,7 +1528,7 @@ extract_Sigma <- function(
         )
       } else {
         sprintf(
-          "Kernel tier '%s' uses the dense phylo-equivalent engine path.",
+          "Kernel tier '%s' is fitted with its dense kernel matrix.",
           kernel_level$name
         )
       }
@@ -1629,6 +1629,14 @@ extract_Sigma <- function(
             "loadings-only (Lambda_phy Lambda_phy^T).",
             "Use `link_residual = \"auto\"` for the fixed softmax residual;",
             "a free phylogenetic Psi (`unique = TRUE`) is not admitted for this route."
+          )
+        } else if (!is.null(kernel_level)) {
+          ## A single kernel_latent() tier is fitted on the phylo slot, but
+          ## the advice must name the keyword the user wrote (#1580).
+          paste0(
+            "Kernel tier '", kernel_level$name, "' is currently latent-only ",
+            "(Lambda Lambda^T). To add a diagonal Psi component, refit with ",
+            "`kernel_latent(..., unique = TRUE)`."
           )
         } else {
           paste(
@@ -1826,7 +1834,8 @@ extract_Sigma <- function(
           " is latent-only (Lambda Lambda^T): this fit used `latent(..., unique = FALSE)`, ",
           "so trait-specific residual variance Psi is not modelled and correlations from ",
           "this matrix overstate cross-trait coupling. For the full decomposition ",
-          "Sigma = Lambda Lambda^T + Psi, refit without `unique = FALSE` (the default)."
+          "Sigma = Lambda Lambda^T + Psi, refit with `unique = TRUE`, the default ",
+          "for `latent()`."
         )
       )
     }

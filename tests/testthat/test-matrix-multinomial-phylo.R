@@ -47,7 +47,7 @@ make_mn_phylo_admission_fixture <- function(seed, n_sp = 40L, K = 3L) {
 
 ## extract_Sigma() returns either a bare matrix or a list carrying $Sigma
 ## plus $level/$part/$note -- the note text legitimately differs between
-## kernel_latent() (which adds a "dense phylo-equivalent engine path" note)
+## kernel_latent() (which adds a "dense kernel matrix" note)
 ## and phylo_latent()/animal_latent(), so equivalence checks must compare
 ## $Sigma only, not the whole return value.
 .mn_sigma_only <- function(S) if (is.matrix(S)) S else S$Sigma

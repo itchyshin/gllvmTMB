@@ -1,6 +1,7 @@
 # Development (unreleased)
 
 * The extra `"svd"` start of a default `latent()` fit (#1331) no longer replaces the default start's fit when its lower objective comes with a runaway loading (largest per-trait loading at least 25 times the typical one) that the default fit does not have. On `psych::sat.act` (Gaussian, probit and ordinal-probit traits, `d = 2`) that restart reached an ordinal loading of 25.4 and a Laplace logLik 325 units above the quadrature value, so the returned fit had a logLik of -3831 instead of -4130. The restart history says why the restart was not selected (#1713).
+* `extract_Sigma()` on a `kernel_latent()` tier without `unique = TRUE` now says the kernel tier is latent-only and suggests `kernel_latent(..., unique = TRUE)`; it used to suggest a `phylo_latent()` refit and mention a "phylo-equivalent engine path". `summary()` on a `latent(..., unique = FALSE)` fit prints its latent-only note once per call instead of three times, and the note no longer reads as if `unique = FALSE` were the default (#1580).
 
 * `simulate_site_trait(seed =)` and `simulate_unit_trait(seed =)` restore the caller's random-number state on exit, including on error. A given seed still gives the same simulated data. Tests that draw from the global RNG after a seeded call must set their own seed (#1602).
 

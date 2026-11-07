@@ -77,9 +77,10 @@
 #'   [gllvmTMB()] at every grid point, exactly as you would call it
 #'   directly. `unit` has no default -- it must name the sampling-unit
 #'   column, matching [gllvmTMB()]'s own required argument.
-#' @param tau Numeric vector of ridge scales to sweep. Order does not
-#'   matter for the classification, which sorts internally. The refits and
-#'   the returned rows follow the order given. Every entry must be a positive number; `Inf`
+#' @param tau Numeric vector of ridge scales to sweep. `tau` is sorted into
+#'   increasing order before refitting, so the returned rows and the printed
+#'   table run from the strongest penalty to the weakest whatever order you
+#'   give. Every entry must be a positive number; `Inf`
 #'   is allowed and requests plain ML. Default `c(0.5, 1, 2, 4, 8, Inf)`.
 #' @param control A [gllvmTMBcontrol()] object providing every OTHER setting
 #'   (`n_init`, `se`, `warn_runaway`, ...). Its own `loading_ridge` /
@@ -184,6 +185,8 @@ ridge_path <- function(
     ))
   }
 
+  tau <- sort(tau)
+
   rows <- lapply(tau, function(tau_i) {
     control_i <- control
     control_i$aghq_ridge <- tau_i
@@ -222,7 +225,7 @@ ridge_path <- function(
 
     loading_tab <- .gllvmTMB_max_loading_by_trait(fit)
     comm <- tryCatch(
-      extract_communality(fit, level = "unit"),
+      suppressMessages(extract_communality(fit, level = "unit")),
       error = function(e) NULL
     )
     ll <- tryCatch(

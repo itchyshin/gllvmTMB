@@ -131,3 +131,38 @@ test_that("print.gllvmTMB_ridge_path() pins interior/penalty-determined verdicts
   expect_false(grepl("penalty-determined", a_line))
   expect_false(grepl("penalty-determined", b_line))
 })
+
+test_that("ridge_path() sorts tau before refitting and the rows follow that order (#1590)", {
+  skip_on_cran()
+  df <- .ridge_path_fixture()
+  path <- ridge_path(
+    traits(a, b) ~ 1 + latent(1 | unit, d = 1),
+    data = df,
+    family = binomial(),
+    unit = "unit",
+    tau = c(Inf, 2),
+    control = gllvmTMBcontrol(n_init = 1, se = FALSE, warn_runaway = FALSE)
+  )
+  expect_equal(unique(path$tau), c(2, Inf))
+})
+
+test_that("ridge_path() does not repeat the extract_communality() note per tau (#1590)", {
+  skip_on_cran()
+  df <- .ridge_path_fixture()
+  msgs <- character()
+  suppressWarnings(withCallingHandlers(
+    ridge_path(
+      traits(a, b) ~ 1 + latent(1 | unit, d = 1),
+      data = df,
+      family = binomial(),
+      unit = "unit",
+      tau = c(2, 4),
+      control = gllvmTMBcontrol(n_init = 1, se = FALSE, warn_runaway = FALSE)
+    ),
+    message = function(m) {
+      msgs <<- c(msgs, conditionMessage(m))
+      invokeRestart("muffleMessage")
+    }
+  ))
+  expect_false(any(grepl("link-implicit residual variance", msgs, fixed = TRUE)))
+})

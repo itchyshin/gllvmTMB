@@ -8659,7 +8659,32 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     converged_blocked <- !is.null(best_opt) &&
       identical(as.integer(best_opt$convergence %||% NA_integer_), 0L) &&
       !identical(as.integer(opt_i$convergence %||% NA_integer_), 0L)
-    if (success_i && !converged_blocked && objective_i < best_obj - improve_tol) {
+    ## #1713: the svd start also never displaces a fit with a loading that
+    ## has run away relative to the other traits when the earlier fit has not.
+    ## A runaway is where the Laplace objective is most optimistic (325 units
+    ## above the integral on sat.act, ordinal probit, d = 2), so a lower
+    ## objective there is the approximation's artefact, not a better optimum.
+    ## The threshold is the shipped `loading_runaway_thresh` default, read
+    ## from `check_gllvmTMB()` so the two cannot drift.
+    runaway_blocked <- FALSE
+    if (success_i && identical(start_labels[i], "svd") && !is.null(best_opt)) {
+      guard <- .gllvmTMB_svd_runaway_blocked(
+        opt_i$par[names(opt_i$par) == "theta_rr_B"],
+        best_opt$par[names(best_opt$par) == "theta_rr_B"],
+        n_traits, d_B
+      )
+      runaway_blocked <- guard$blocked
+      rel_new <- guard$rel_new
+      if (runaway_blocked) {
+        row_msg <- restart_history[[i]]$message
+        restart_history[[i]]$message <- paste(
+          c(if (nzchar(row_msg)) row_msg,
+            sprintf("not selected: a loading ran away (%.1fx the typical loading), where the Laplace objective is unreliable", rel_new)),
+          collapse = "; ")
+      }
+    }
+    if (success_i && !converged_blocked && !runaway_blocked &&
+        objective_i < best_obj - improve_tol) {
       best_obj <- objective_i
       best_opt <- opt_i
       best_state <- state_i

@@ -246,7 +246,7 @@
   obj$fn(best_par)
 
   prof <- tryCatch(
-    TMB::tmbprofile(
+    .tmbprofile_quiet(
       obj,
       name = idx,
       ystep = ystep,

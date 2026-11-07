@@ -274,6 +274,13 @@ contributing to the likelihood. Compare AIC/BIC only among fits with
 the same response cells, family/link target, weights, and likelihood
 approximation.
 
+Sharing the Laplace approximation does not make AIC differences across
+latent rank `d`, group count `K` or families safe on its own. For
+non-Gaussian and mixed-family fits the Laplace error can be tens to
+hundreds of log-likelihood units, and it changes with `d`, `K` and the
+family. Before choosing between candidates on AIC/BIC, check the leading
+ones with an AGHQ / Laplace-accuracy audit.
+
 ```{r ic-plot, fig.cap = "AIC and BIC differences for candidate latent ranks. Both criteria support the planted d = 2 model in this deterministic Gaussian fixture; the overfit d = 3 candidate improves log-likelihood only slightly and is penalised."}
 ic_plot_data <- rbind(
   data.frame(d = rank_table$d, criterion = "AIC", delta = rank_table$delta_AIC),

@@ -870,6 +870,13 @@ sigma.gllvmTMB_va <- sigma.gllvmTMB_multi
 #'   objective; a loading ridge is penalised MAP; and non-unit likelihood
 #'   weights define an estimating objective. Ordinary likelihood comparison is
 #'   unavailable on each of those restricted surfaces.
+#' * For non-Gaussian and mixed-family fits, the native-Laplace `logLik()` is
+#'   a Laplace *approximation* to the marginal log-likelihood, not the exact
+#'   value. Its error can be tens to hundreds of log-likelihood units, and it
+#'   changes with the latent rank `d`, the number of groups `K` and the
+#'   family. AIC/BIC differences across `d`, `K` or families can therefore
+#'   reflect approximation error rather than fit; check the leading candidates
+#'   with an AGHQ / Laplace-accuracy audit before choosing between them.
 #' * For `estimator = "mspl"`, `print()` and `summary()` identify the
 #'   experimental softly penalised Laplace point estimator and show the
 #'   unpenalised Laplace value at that point only as provenance. `logLik()`,

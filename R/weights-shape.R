@@ -26,7 +26,8 @@ normalise_weights <- function(
   if (!is.numeric(weights)) {
     cli::cli_abort(c(
       "{.arg weights} must be numeric.",
-      "i" = "Got class {.cls {class(weights)[1]}}."
+      "i" = "Got class {.cls {class(weights)[1]}}.",
+      ">" = "Pass a numeric vector, for example {.code weights = as.numeric(w)}."
     ))
   }
 
@@ -58,13 +59,15 @@ normalise_weights <- function(
     cli::cli_abort(c(
       "{.arg weights} must be a length-{n_obs} numeric vector in the long-format API.",
       "i" = "Got {.code dim(weights)} = c({paste(w_dim, collapse = ', ')}).",
-      "i" = "For per-cell weights aligned with a wide response matrix, use {.fn gllvmTMB_wide}."
+      "i" = "For per-cell weights aligned with a wide response matrix, use {.fn gllvmTMB_wide}.",
+      ">" = "In long format, pass one weight per row of {.arg data}, for example a column of {.arg data}."
     ))
   }
   if (length(weights) != n_obs) {
     cli::cli_abort(c(
       "{.arg weights} must be a length-{n_obs} numeric vector in the long-format API.",
-      "i" = "Got length {length(weights)}."
+      "i" = "Got length {length(weights)}.",
+      ">" = "Pass one weight per row of {.arg data}, for example a column of {.arg data}."
     ))
   }
   .validate_observed_weights(as.numeric(weights))
@@ -97,7 +100,8 @@ normalise_weights <- function(
       cli::cli_abort(c(
         "{.arg weights} length does not match {.arg Y} shape.",
         "i" = "Vector {.arg weights} must have length {.code nrow(Y)} ({n_units}); got length {length(weights)}.",
-        "i" = "For per-cell weights pass a matrix of {.code dim(Y)}; for a single broadcast value pass a scalar."
+        "i" = "For per-cell weights pass a matrix of {.code dim(Y)}; for a single broadcast value pass a scalar.",
+        ">" = "Pass a length-{n_units} vector (one weight per row of {.arg Y}), a {n_units} x {n_traits} matrix, or a single number."
       ))
     }
   } else if (length(w_dim) == 2L) {
@@ -105,14 +109,16 @@ normalise_weights <- function(
     if (!identical(as.integer(w_dim), c(n_units, n_traits))) {
       cli::cli_abort(c(
         "{.arg weights} matrix shape must equal {.code dim(Y)}.",
-        "i" = "Got {.code dim(weights)} = c({w_dim[1]}, {w_dim[2]}); expected c({n_units}, {n_traits})."
+        "i" = "Got {.code dim(weights)} = c({w_dim[1]}, {w_dim[2]}); expected c({n_units}, {n_traits}).",
+        ">" = "Pass a matrix with one row per row of {.arg Y} and one column per trait, in the same order as {.arg Y}."
       ))
     }
     w_mat <- weights
   } else {
     cli::cli_abort(c(
       "{.arg weights} must be a vector, matrix, or scalar.",
-      "i" = "Got an array with {length(w_dim)} dimensions."
+      "i" = "Got an array with {length(w_dim)} dimensions.",
+      ">" = "Pass a vector, a matrix of {.code dim(Y)}, or a single number."
     ))
   }
 
@@ -121,13 +127,15 @@ normalise_weights <- function(
     if (any(na_w & !mask)) {
       cli::cli_abort(c(
         "{.arg weights} has NA where {.arg Y} is observed.",
-        "i" = "Each NA in {.arg weights} must align with an NA cell in {.arg Y}."
+        "i" = "Each NA in {.arg weights} must align with an NA cell in {.arg Y}.",
+        ">" = "Give those cells a numeric weight, or set the matching cells of {.arg Y} to NA."
       ))
     }
     if (any(mask & !na_w)) {
       cli::cli_abort(c(
         "{.arg weights} has a value where {.arg Y} is NA.",
-        "i" = "Each NA cell in {.arg Y} must also be NA in {.arg weights}."
+        "i" = "Each NA cell in {.arg Y} must also be NA in {.arg weights}.",
+        ">" = "Set those weights to NA, for example {.code weights[is.na(Y)] <- NA}."
       ))
     }
   }
@@ -168,14 +176,16 @@ normalise_weights <- function(
   if (!is.null(w_dim)) {
     cli::cli_abort(c(
       "{.arg weights} must be NULL or a length-{n_units} numeric vector when using {.fn traits} on the formula LHS.",
-      "i" = "For per-cell weight matrices use {.fn gllvmTMB_wide}; the matrix-in entry point is the only place per-cell weights are supported."
+      "i" = "For per-cell weight matrices use {.fn gllvmTMB_wide}; the matrix-in entry point is the only place per-cell weights are supported.",
+      ">" = "Pass one weight per row of the wide data frame ({n_units} values)."
     ))
   }
   if (length(weights) != n_units) {
     cli::cli_abort(c(
       "{.arg weights} must be NULL or a length-{n_units} numeric vector when using {.fn traits} on the formula LHS.",
       "i" = "Got length {length(weights)}.",
-      "i" = "For per-cell weight matrices use {.fn gllvmTMB_wide}."
+      "i" = "For per-cell weight matrices use {.fn gllvmTMB_wide}.",
+      ">" = "Pass one weight per row of the wide data frame ({n_units} values)."
     ))
   }
 
@@ -199,10 +209,16 @@ normalise_weights <- function(
 .validate_observed_weights <- function(weights) {
   if (length(weights) > 0L) {
     if (any(!is.finite(weights))) {
-      cli::cli_abort("{.arg weights} must be finite at observed cells.")
+      cli::cli_abort(c(
+        "{.arg weights} must be finite at observed cells.",
+        ">" = "Replace {.code NA}, {.code NaN} or {.code Inf} weights on rows with an observed response, or drop those rows."
+      ))
     }
     if (any(weights < 0)) {
-      cli::cli_abort("{.arg weights} must be non-negative.")
+      cli::cli_abort(c(
+        "{.arg weights} must be non-negative.",
+        ">" = "Use 0 to give an observation no weight; negative weights are not defined."
+      ))
     }
   }
   as.numeric(weights)

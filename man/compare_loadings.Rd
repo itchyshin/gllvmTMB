@@ -10,7 +10,8 @@ compare_loadings(Lambda_a, Lambda_b)
 \item{Lambda_a, Lambda_b}{Two \verb{n_traits × d} loading matrices.}
 }
 \value{
-A list with the optimal rotation \code{R}, the rotated \code{Lambda_a_rot},
+A list with the optimal rotation \code{R}, the rotated \code{Lambda_a_rot}
+(rows in the order of \code{Lambda_b} when rows were matched by name),
 the Frobenius distance after alignment (\code{frobenius}), and the
 correlation between each column of \code{Lambda_a_rot} and the matching
 column of \code{Lambda_b} (\code{cor_per_factor}).
@@ -23,10 +24,12 @@ other, then reports the residual disagreement. This is mainly a validation
 helper for comparing \code{\link[=gllvmTMB]{gllvmTMB()}} with another implementation.
 }
 \details{
-Rows are matched by position, not by trait name: both matrices must list
-the traits in the same order, and row names are ignored. If the order
-differs, the distance reflects that mismatch rather than how well the
-loadings agree.
+When both matrices have row names, rows are matched by trait name:
+\code{Lambda_a} is reordered to the row order of \code{Lambda_b}, and the function
+stops if the two row-name sets differ (or a name is repeated). If either
+matrix has no row names, rows are matched by position, so both must list
+the traits in the same order; a different order then shows up as a larger
+distance rather than as better or worse agreement of the loadings.
 }
 \examples{
 set.seed(1)

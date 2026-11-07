@@ -23,9 +23,10 @@ ridge_path(
 directly. \code{unit} has no default -- it must name the sampling-unit
 column, matching \code{\link[=gllvmTMB]{gllvmTMB()}}'s own required argument.}
 
-\item{tau}{Numeric vector of ridge scales to sweep. Order does not
-matter for the classification, which sorts internally. The refits and
-the returned rows follow the order given. Every entry must be a positive number; \code{Inf}
+\item{tau}{Numeric vector of ridge scales to sweep. \code{tau} is sorted into
+increasing order before refitting, so the returned rows and the printed
+table run from the strongest penalty to the weakest whatever order you
+give. Every entry must be a positive number; \code{Inf}
 is allowed and requests plain ML. Default \code{c(0.5, 1, 2, 4, 8, Inf)}.}
 
 \item{control}{A \code{\link[=gllvmTMBcontrol]{gllvmTMBcontrol()}} object providing every OTHER setting

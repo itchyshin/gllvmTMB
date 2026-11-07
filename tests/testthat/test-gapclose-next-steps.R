@@ -160,6 +160,42 @@ test_that("plot_anisotropy()/plot_anisotropy2() aborts name a next step (#1247)"
   )
 })
 
+## ---- #1247 follow-up 3 (2026-10-31): R/weights-shape.R ------------------
+## Same pattern: first lines unchanged, the match is on the new ">" bullet.
+
+test_that("weights = shape and value aborts name a next step (#1247)", {
+  nw <- function(...) abort_msg(gllvmTMB:::normalise_weights(...))
+  expect_match(nw("a", "long", n_obs = 1), "as.numeric(w)", fixed = TRUE)
+  expect_match(nw(matrix(1, 2, 2), "long", n_obs = 4),
+               "In long format, pass one weight per row", fixed = TRUE)
+  expect_match(nw(c(1, 2), "long", n_obs = 3),
+               "Pass one weight per row of", fixed = TRUE)
+  expect_match(nw(c(1, NA), "long", n_obs = 2),
+               "or drop those rows", fixed = TRUE)
+  expect_match(nw(c(1, -1), "long", n_obs = 2),
+               "Use 0 to give an observation no weight", fixed = TRUE)
+  wm <- function(w, na_mask = NULL) {
+    nw(w, "wide_matrix", n_obs = 4, n_units = 2, n_traits = 2,
+       na_mask = na_mask)
+  }
+  expect_match(wm(c(1, 2, 3)), "a 2 x 2 matrix, or a single number",
+               fixed = TRUE)
+  expect_match(wm(matrix(1, 3, 2)), "one column per trait", fixed = TRUE)
+  expect_match(wm(array(1, c(2, 2, 2))), "a matrix of", fixed = TRUE)
+  mask <- matrix(c(TRUE, FALSE, FALSE, FALSE), 2, 2)
+  expect_match(wm(matrix(c(1, NA, 1, 1), 2, 2), na_mask = mask),
+               "set the matching cells of", fixed = TRUE)
+  expect_match(wm(matrix(1, 2, 2), na_mask = mask),
+               "weights[is.na(Y)] <- NA", fixed = TRUE)
+  wd <- function(w) {
+    nw(w, "wide_df", n_obs = 4, n_units = 2, n_traits = 2)
+  }
+  expect_match(wd(matrix(1, 2, 2)), "one weight per row of the wide data frame",
+               fixed = TRUE)
+  expect_match(wd(c(1, 2, 3)), "one weight per row of the wide data frame",
+               fixed = TRUE)
+})
+
 ## ---- Ratchet: everything NOT fixed in this slice ------------------------
 
 test_that("the package-wide bare-abort count has not gone up", {
@@ -194,5 +230,10 @@ test_that("the package-wide bare-abort count has not gone up", {
   ## R/predictive-diagnostics.R (argument and fit validation for
   ## predictive_check()) and 8 in R/plot.R (plot_anisotropy() and
   ## plot_anisotropy2()), each with a ">" next-step bullet -> 782.
-  expect_lte(length(hits), 782L)
+  ##
+  ## #1247 follow-up 3 (2026-10-31): the 12 user-reachable aborts in
+  ## R/weights-shape.R (the shared `weights =` checks behind gllvmTMB(),
+  ## gllvmTMB_wide() and traits()) gain a ">" bullet -> 770. The six
+  ## "Internal error" aborts there are left as they are.
+  expect_lte(length(hits), 770L)
 })

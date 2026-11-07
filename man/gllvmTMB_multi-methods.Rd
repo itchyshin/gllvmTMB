@@ -62,6 +62,13 @@ likelihood-contributing response cells. AGHQ has a distinct integration
 objective; a loading ridge is penalised MAP; and non-unit likelihood
 weights define an estimating objective. Ordinary likelihood comparison is
 unavailable on each of those restricted surfaces.
+\item For non-Gaussian and mixed-family fits, the native-Laplace \code{logLik()} is
+a Laplace \emph{approximation} to the marginal log-likelihood, not the exact
+value. Its error can be tens to hundreds of log-likelihood units, and it
+changes with the latent rank \code{d}, the number of groups \code{K} and the
+family. AIC/BIC differences across \code{d}, \code{K} or families can therefore
+reflect approximation error rather than fit; check the leading candidates
+with an AGHQ / Laplace-accuracy audit before choosing between them.
 \item For \code{estimator = "mspl"}, \code{print()} and \code{summary()} identify the
 experimental softly penalised Laplace point estimator and show the
 unpenalised Laplace value at that point only as provenance. \code{logLik()},

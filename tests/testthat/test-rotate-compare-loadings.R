@@ -525,3 +525,32 @@ test_that("compare_loadings(): cor_per_factor in [-1, 1]", {
       out$cor_per_factor <= 1 + 1e-8
   ))
 })
+
+test_that("compare_loadings(): matches rows by name when both have row names (#1590)", {
+  L <- matrix(c(1, 0.5, -0.4, 0.3, 0, 0.8, 0.4, -0.2), 4, 2,
+              dimnames = list(c("t1", "t2", "t3", "t4"), NULL))
+  L_rev <- L[4:1, , drop = FALSE]
+  out <- compare_loadings(L_rev, L)
+  expect_equal(out$frobenius, 0, tolerance = 1e-10)
+  expect_equal(rownames(out$Lambda_a_rot), rownames(L))
+  expect_equal(out$cor_per_factor, c(1, 1), tolerance = 1e-10)
+})
+
+test_that("compare_loadings(): aborts when the two row-name sets differ (#1590)", {
+  L <- matrix(c(1, 0.5, -0.4, 0.3, 0, 0.8, 0.4, -0.2), 4, 2,
+              dimnames = list(c("t1", "t2", "t3", "t4"), NULL))
+  Lb <- L
+  rownames(Lb) <- c("t1", "t2", "t3", "other")
+  expect_error(compare_loadings(L, Lb), regexp = "different traits")
+  Ld <- L
+  rownames(Ld) <- c("t1", "t1", "t3", "t4")
+  expect_error(compare_loadings(Ld, L), regexp = "different traits")
+})
+
+test_that("compare_loadings(): keeps positional matching unless both have row names (#1590)", {
+  L <- matrix(c(1, 0.5, -0.4, 0.3, 0, 0.8, 0.4, -0.2), 4, 2)
+  Ln <- L
+  rownames(Ln) <- c("t4", "t3", "t2", "t1")
+  expect_equal(compare_loadings(Ln, L)$frobenius, 0, tolerance = 1e-10)
+  expect_equal(compare_loadings(L, Ln)$frobenius, 0, tolerance = 1e-10)
+})

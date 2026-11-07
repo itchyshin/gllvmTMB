@@ -61,6 +61,26 @@ test_that("julia kernel_latent() symmetrises a kernel symmetric to rounding befo
   expect_equal(cov_sent, (unname(fx$K) + t(unname(fx$K))) / 2, tolerance = 0)
 })
 
+test_that("julia kernel_latent() passes a kernel with 1e-12 asymmetry to the bridge, symmetrised", {
+  ## No skip: gllvm_julia_fit is mocked, so the gate is exercised without Julia.
+  fx <- .kernel_1348_fixture(asym = 1e-12)
+  expect_false(isSymmetric(unname(fx$K), tol = 0))
+  withr::local_envvar(GLLVMODELS_JL_PATH = tempdir())
+  sent <- NULL
+  testthat::local_mocked_bindings(
+    gllvm_julia_fit = function(y, ...) {
+      sent <<- list(...)
+      stop("STUB: reached gllvm_julia_fit")
+    }
+  )
+  err <- tryCatch(.kernel_1348_fit(fx$df, fx$K), error = function(e) e)
+  expect_match(conditionMessage(err), "STUB: reached gllvm_julia_fit", fixed = TRUE)
+  expect_false(grepl("GJL-GATE", conditionMessage(err)))
+  cov_sent <- sent$sources[[1L]]$covariance
+  expect_true(isSymmetric(cov_sent, tol = 0))
+  expect_equal(cov_sent, (unname(fx$K) + t(unname(fx$K))) / 2, tolerance = 0)
+})
+
 test_that("julia kernel_latent() still stops on a clearly asymmetric kernel (1e-3)", {
   fx <- .kernel_1348_fixture(asym = 1e-3)
   expect_false(isSymmetric(unname(fx$K), tol = sqrt(.Machine$double.eps)))
@@ -72,6 +92,55 @@ test_that("julia kernel_latent() still stops on a clearly asymmetric kernel (1e-
     .kernel_1348_fit(fx$df, fx$K),
     "GJL-GATE-STRUCTURED-TERMS.*kernel K must be symmetric to rounding.*max\\|K - t\\(K\\)\\| = 0\\.001"
   )
+})
+
+## The gate's edge: thr = sqrt(eps) * max(1, max|K|), about 1.5e-8 times the
+## kernel scale. Asymmetry at half of it passes and is symmetrised; at twice
+## it stops.
+.kernel_1348_thr <- function() {
+  K0 <- .kernel_1348_fixture()$K
+  sqrt(.Machine$double.eps) * max(1, max(abs(K0)))
+}
+
+test_that("julia kernel_latent() passes a kernel at 0.5x the symmetry threshold, symmetrised", {
+  thr <- .kernel_1348_thr()
+  fx <- .kernel_1348_fixture(asym = 0.5 * thr)
+  ## Premise: below the gate's own threshold for this K, but not bit-symmetric.
+  expect_lt(max(abs(fx$K - t(fx$K))), sqrt(.Machine$double.eps) * max(1, max(abs(fx$K))))
+  expect_false(isSymmetric(unname(fx$K), tol = 0))
+  withr::local_envvar(GLLVMODELS_JL_PATH = tempdir())
+  sent <- NULL
+  testthat::local_mocked_bindings(
+    gllvm_julia_fit = function(y, ...) {
+      sent <<- list(...)
+      stop("STUB: reached gllvm_julia_fit")
+    }
+  )
+  err <- tryCatch(.kernel_1348_fit(fx$df, fx$K), error = function(e) e)
+  expect_match(conditionMessage(err), "STUB: reached gllvm_julia_fit", fixed = TRUE)
+  expect_false(grepl("GJL-GATE", conditionMessage(err)))
+  cov_sent <- sent$sources[[1L]]$covariance
+  expect_true(isSymmetric(cov_sent, tol = 0))
+  expect_equal(cov_sent, (unname(fx$K) + t(unname(fx$K))) / 2, tolerance = 0)
+})
+
+test_that("julia kernel_latent() stops on a kernel at 2x the symmetry threshold", {
+  thr <- .kernel_1348_thr()
+  fx <- .kernel_1348_fixture(asym = 2 * thr)
+  expect_gt(max(abs(fx$K - t(fx$K))), sqrt(.Machine$double.eps) * max(1, max(abs(fx$K))))
+  withr::local_envvar(GLLVMODELS_JL_PATH = tempdir())
+  reached <- FALSE
+  testthat::local_mocked_bindings(
+    gllvm_julia_fit = function(y, ...) {
+      reached <<- TRUE
+      stop("STUB: reached gllvm_julia_fit")
+    }
+  )
+  expect_error(
+    .kernel_1348_fit(fx$df, fx$K),
+    "GJL-GATE-STRUCTURED-TERMS.*kernel K must be symmetric to rounding"
+  )
+  expect_false(reached)
 })
 
 ## A 200 x 200 kernel that defeats the averaged gate this one replaced,

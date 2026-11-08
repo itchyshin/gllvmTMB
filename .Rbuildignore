@@ -15,6 +15,7 @@
 ^README\.html$
 ^cran-comments\.md$
 ^codecov\.yml$
+^tools/tests$
 ^air\.toml$
 ^docs$
 ^pkgdown$

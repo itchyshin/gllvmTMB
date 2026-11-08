@@ -4,12 +4,14 @@
 generalised linear latent variable models (GLLVMs) using Template
 Model Builder.
 
-> **⚠ Compute & CI — D-50 (2026-07-12).** Simulation / recovery / power / coverage campaigns run on
+> **⚠ Compute & CI — D-50 (2026-07-12).** Simulation / recovery / power / interval-coverage campaigns run on
 > **Totoro or DRAC**, **never GitHub Actions**, and their outputs are **never stored as GitHub
 > artifacts** (Actions storage is a hard 2 GB/month cap that this repo's ~15 recovery/power-sweep
 > workflows had nearly filled — 9,534 artifacts). Campaign results stay **local** + in the repo dev-log.
-> GitHub Actions here is for **package checks + docs only**, with **short artifact retention**. (Hub
-> `AGENTS.md` Compute section · shinichi-brain `DECISIONS.md` D-50.)
+> GitHub Actions here is for **package checks + docs only**, with **short artifact retention**.
+> Line coverage of the package test suite (`test-coverage` via covr; main-only
+> `codecov-upload` via GitHub OIDC) is a package-check, not a campaign.
+> (Hub `AGENTS.md` Compute section · shinichi-brain `DECISIONS.md` D-50.)
 
 > **Rehydrate (2026-09-25).** This is a **multi-lane** repo. Ownership map:
 > `docs/dev-log/handover/2026-07-25-active-lane-split.md` (read **every** lane row)
@@ -493,6 +495,14 @@ Do not rely on CI to catch what `check_pkgdown()` would catch
 locally in 30 seconds. See the `ci-pacing-discipline` global skill
 and the after-task-audit skill's "Anti-patterns from 2026-05-10"
 section.
+
+Line coverage is a separate `test-coverage` workflow. It reuses
+`GLLVMTMB_TEST_SHARD="k/4"` on Ubuntu / R-release only so each test
+file is counted once, and it does not replace or instrument the
+existing `R-CMD-check` shards. Codecov upload is a main-only
+`workflow_run` OIDC job (`codecov-upload`); pull requests never
+receive upload credentials. Do not add a coverage badge until a
+main-branch Codecov report exists for a tested commit.
 
 <!-- shinichi-hub -->
 > Read first — personal operating contract & second brain (house rules, memory, agents): /Users/z3437171/Dropbox/Github Local/Shinichi/AGENTS.md  (repo rules override the hub where they differ)

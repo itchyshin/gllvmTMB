@@ -33,6 +33,7 @@ on:
       - ".github/workflows/test-coverage.yaml"
       - ".github/workflows/codecov-upload.yaml"
       - "codecov.yml"
+      - "tools/run-covr-coverage.R"
   pull_request:
     branches: [main, master]
     paths:
@@ -44,6 +45,7 @@ on:
       - ".github/workflows/test-coverage.yaml"
       - ".github/workflows/codecov-upload.yaml"
       - "codecov.yml"
+      - "tools/run-covr-coverage.R"
   workflow_dispatch:
 
 name: test-coverage
@@ -99,40 +101,11 @@ jobs:
           } | tee coverage-identity.txt
 
       - name: Test coverage
-        run: |
-          shard <- Sys.getenv("GLLVMTMB_TEST_SHARD")
-          if (!nzchar(shard)) {
-            stop("GLLVMTMB_TEST_SHARD must be set so coverage shards partition tests")
-          }
-          cat(sprintf("coverage_commit=%s\n", system("git rev-parse HEAD", intern = TRUE)))
-          cat(sprintf("GLLVMTMB_TEST_SHARD=%s\n", shard))
-          cov <- covr::package_coverage(
-            quiet = FALSE,
-            clean = FALSE,
-            type = "tests",
-            install_path = file.path(
-              normalizePath(Sys.getenv("RUNNER_TEMP"), winslash = "/"),
-              "package"
-            )
-          )
-          print(cov)
-          pct <- covr::percent_coverage(cov)
-          cat(sprintf(
-            paste0(
-              "shard_percent_coverage=%.4f (shard %s only; Codecov merges ",
-              "complementary shards after a trusted main upload)\n"
-            ),
-            pct, shard
-          ))
-          writeLines(
-            sprintf("shard_percent_coverage=%.4f", pct),
-            "coverage-percent.txt"
-          )
-          covr::to_cobertura(cov, filename = "cobertura.xml")
-        shell: Rscript {0}
+        run: Rscript tools/run-covr-coverage.R
+        shell: bash
 
       - name: Save pull-request coverage report
-        if: github.event_name == 'pull_request'
+        if: always() && github.event_name == 'pull_request'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: pr-coverage-shard-${{ matrix.shard }}
@@ -144,7 +117,7 @@ jobs:
           retention-days: 7
 
       - name: Save coverage report for trusted upload
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: main-coverage-shard-${{ matrix.shard }}
@@ -157,11 +130,3 @@ jobs:
         run: |
           find '${{ runner.temp }}/package' -name 'testthat.Rout*' -exec cat '{}' \; || true
         shell: bash
-
-      - name: Upload test results
-        if: failure()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: coverage-test-failures-shard-${{ matrix.shard }}
-          path: ${{ runner.temp }}/package
-          retention-days: 7

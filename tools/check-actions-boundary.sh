@@ -84,6 +84,21 @@ if grep -Eq 'GLLVMTMB_HEAVY_TESTS' <<<"$producer_active"; then
     'D-50 violation: test-coverage.yaml must not enable heavy tests; it measures the fast suite only.' >&2
   exit 1
 fi
+if grep -Eq 'coverage-test-failures-shard' <<<"$producer_active"; then
+  printf '%s\n' \
+    'D-50 violation: test-coverage.yaml must not upload the instrumented package tree.' >&2
+  exit 1
+fi
+covr_runner="$repo_root/tools/run-covr-coverage.R"
+if [[ ! -f "$covr_runner" ]]; then
+  printf '%s\n' 'D-50 violation: tools/run-covr-coverage.R is missing.' >&2
+  exit 1
+fi
+if ! grep -Eq '00_pkg_src' "$covr_runner"; then
+  printf '%s\n' \
+    'D-50 violation: tools/run-covr-coverage.R must plant 00_pkg_src for help/source scanners.' >&2
+  exit 1
+fi
 
 uploader="$workflow_dir/codecov-upload.yaml"
 uploader_active=$(active_text "$uploader")

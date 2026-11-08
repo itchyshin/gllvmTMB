@@ -40,6 +40,15 @@ curl -sS -L 'https://codecov.io/api/v2/github/itchyshin/repos?active=true'
 (no R on this image). Live Codecov upload (main-only after merge). Full
 GitHub Actions on this branch (left running; not polled).
 
+First producer run on `0ab5309f` (Actions 42525479166): R-CMD-check 4/4 green;
+coverage shard 1 wrote `shard_percent_coverage=53.0183` and a PR coberturas
+artifact; shards 2–4 failed because covr's install tree has no `00_pkg_src` /
+`man` (help/source scanners) and shard 3's runaway-warning cell emitted an
+AGHQ stall under tracing. Tests were not changed. Follow-up plants that
+layout in `tools/run-covr-coverage.R` and stops uploading the 63 MB
+instrumented tree.
+
 **Claim boundary:** local guards and yaml validity do not show an accepted
 Codecov commit report, dashboard coverage on main, C++ line coverage, or
-CI completion of the instrumented shards.
+CI completion of the instrumented shards. Shard 1's 53.0183% is one
+partition only, not merged package coverage.

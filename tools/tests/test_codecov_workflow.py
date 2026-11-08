@@ -18,6 +18,7 @@ UPLOADER = ROOT / ".github" / "workflows" / "codecov-upload.yaml"
 R_CMD_CHECK = ROOT / ".github" / "workflows" / "R-CMD-check.yaml"
 FULL_CHECK = ROOT / ".github" / "workflows" / "full-check.yaml"
 BOUNDARY = ROOT / "tools" / "check-actions-boundary.sh"
+COVR_RUNNER = ROOT / "tools" / "run-covr-coverage.R"
 
 CODECOV_ACTION = (
     "codecov/codecov-action@0fb7174895f61a3b6b78fc075e0cd60383518dac"
@@ -54,11 +55,13 @@ class CodecovWorkflowTest(unittest.TestCase):
     def setUp(self) -> None:
         self.assertTrue(PRODUCER.is_file(), f"missing {PRODUCER}")
         self.assertTrue(UPLOADER.is_file(), f"missing {UPLOADER}")
+        self.assertTrue(COVR_RUNNER.is_file(), f"missing {COVR_RUNNER}")
         self.producer = _noncomment_text(PRODUCER)
         self.uploader = _noncomment_text(UPLOADER)
         self.r_cmd_check = _noncomment_text(R_CMD_CHECK)
         self.full_check = _noncomment_text(FULL_CHECK)
         self.boundary = _noncomment_text(BOUNDARY)
+        self.covr_runner = _noncomment_text(COVR_RUNNER)
 
     def test_producer_has_no_oidc_or_codecov_token(self) -> None:
         self.assertNotIn("id-token", self.producer)
@@ -74,19 +77,25 @@ class CodecovWorkflowTest(unittest.TestCase):
             self.producer,
         )
         self.assertIn('NOT_CRAN: "true"', self.producer)
-        self.assertIn('type = "tests"', self.producer)
-        self.assertIn("covr::package_coverage(", self.producer)
+        self.assertIn("Rscript tools/run-covr-coverage.R", self.producer)
+        self.assertIn('type = "none"', self.covr_runner)
+        self.assertIn("00_pkg_src", self.covr_runner)
+        self.assertIn("stop_on_failure = FALSE", self.covr_runner)
+        self.assertIn("gllvm_shard_filter", self.covr_runner)
+        self.assertIn("covr::package_coverage(", self.covr_runner)
         self.assertIn(
             'covr::to_cobertura(cov, filename = "cobertura.xml")',
-            self.producer,
+            self.covr_runner,
         )
         self.assertNotIn("macos", self.producer.lower())
         self.assertNotIn("windows", self.producer.lower())
         self.assertNotIn("GLLVMTMB_HEAVY_TESTS", self.producer)
+        self.assertNotIn("GLLVMTMB_HEAVY_TESTS", self.covr_runner)
+        self.assertNotIn("coverage-test-failures-shard", self.producer)
 
     def test_trusted_artifact_is_main_push_only(self) -> None:
         self.assertIn(
-            "if: github.event_name == 'push' && github.ref == 'refs/heads/main'",
+            "if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'",
             self.producer,
         )
         self.assertIn(
@@ -97,7 +106,7 @@ class CodecovWorkflowTest(unittest.TestCase):
         self.assertIn(UPLOAD_ARTIFACT, self.producer)
         self.assertIn("retention-days: 7", self.producer)
         self.assertIn(
-            "if: github.event_name == 'pull_request'",
+            "if: always() && github.event_name == 'pull_request'",
             self.producer,
         )
         self.assertIn(

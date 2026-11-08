@@ -16,6 +16,9 @@ Coverage is measured with covr on a dedicated GitHub Actions workflow that
 reuses `GLLVMTMB_TEST_SHARD="k/4"` so the four jobs partition the suite once,
 on Ubuntu and R-release only, against the fast suite
 (`GLLVMTMB_HEAVY_TESTS` unset). Existing `R-CMD-check` shards are unchanged.
+`tools/run-covr-coverage.R` plants the `00_pkg_src` / `man` / `R/*.R` layout
+that help/source scanners expect, because covr tests from the instrumented
+library rather than an R CMD check tree. Tests themselves were not changed.
 Upload uses GitHub OIDC from a separate main-only `workflow_run` job: the
 producer never holds `id-token: write`; the uploader downloads the four
 `cobertura.xml` artifacts after a successful same-repo main push. Pull-request
@@ -29,6 +32,7 @@ on coverage coberturas.
 ## 3. Files Changed
 
 - `.github/workflows/test-coverage.yaml` (new producer)
+- `tools/run-covr-coverage.R` (covr runner: `00_pkg_src` layout, no test edits)
 - `.github/workflows/codecov-upload.yaml` (new main-only OIDC uploader)
 - `.github/workflows/R-CMD-check.yaml` (wire the Python guard; shards unchanged)
 - `codecov.yml`

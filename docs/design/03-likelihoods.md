@@ -830,6 +830,16 @@ verification runs):
   `p` (logitp; $1 < p < 2$).
 - Density: compound Poisson-Gamma with $\Pr(y = 0) > 0$ and
   continuous-positive for $y > 0$.
+- Numerical (#1365): the density and `REPORT(p_tweedie)` both use
+  $p = 1 + \mathrm{invlogit}(x)$ with $x = \mathrm{clamp}(\mathrm{logit\_p}, -5, 5)$
+  (`gll_tweedie_logit_p_clamped` in `src/gllvmTMB.cpp`). Unclamped,
+  $|x| \gtrsim 36.7$ rounds $p$ onto 1 or 2 and `dtweedie` returns NaN.
+  The bound keeps $p$ in about $[1.0067, 1.9933]$. It is the identity
+  inside that interval. A user-pinned `tweedie(p = ...)` outside it is
+  stored at the nearer endpoint and `R/families.R` warns with the
+  requested power and the power used (`.tweedie_logit_p_max()` is the
+  same 5). A pinned power inside the interval is unchanged. The MSPL
+  penalty still sees the raw logit; that path does not form $p$.
 
 ### Zero-inflated families (zi_poisson / zi_nbinom2 / zi_binomial)
 

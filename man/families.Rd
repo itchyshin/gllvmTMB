@@ -104,7 +104,11 @@ number strictly between zero and one to fix it.}
 number greater than one to fix it.}
 
 \item{p}{\code{NULL} to estimate the Tweedie power, or one finite number strictly
-between one and two to fix it.}
+between one and two to fix it. A fixed power outside about 1.0067 to
+1.9933 is still accepted. The fit then uses the nearer endpoint and
+warns with the requested power and the power actually used. A fixed
+power inside that range is used unchanged, and an estimated power is
+kept in the same range.}
 
 \item{link1}{Link for the occurrence component of a delta model.}
 

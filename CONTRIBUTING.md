@@ -135,6 +135,17 @@ moving or editing their source copies.
 Long simulation studies should live outside CRAN-time tests, gated
 by `Sys.getenv("RUN_SLOW_TESTS")` or moved to `data-raw/`.
 
+## Test coverage
+
+Line coverage is measured with covr on GitHub Actions (`test-coverage`),
+using the same `GLLVMTMB_TEST_SHARD="k/4"` partition as repository CI so
+each test file is counted once, on Ubuntu and R-release only, against the
+fast suite (`GLLVMTMB_HEAVY_TESTS` unset). This is not interval-coverage
+simulation evidence. Codecov upload uses GitHub OIDC from a separate
+main-only workflow (`codecov-upload`). Pull requests generate coverage
+reports but do not receive upload credentials. Do not add a coverage
+badge until a main-branch Codecov report exists for a tested commit.
+
 ### Tiered CI policy
 
 Use the smallest check that can catch the class of failure introduced

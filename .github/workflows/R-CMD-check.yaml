@@ -90,6 +90,14 @@ jobs:
         shell: bash
         run: bash tools/check-actions-boundary.sh
 
+      # test_codecov_workflow.py is wired in the same change that added
+      # test-coverage.yaml / codecov-upload.yaml. It reads those files and
+      # fails if the producer gains OIDC or a Codecov token, or if the
+      # uploader is no longer a main-only workflow_run OIDC job.
+      - name: Guard Codecov producer/uploader split
+        shell: bash
+        run: python3 -m unittest tools/tests/test_codecov_workflow.py
+
       - name: Classify R CMD check scope
         id: scope
         shell: bash

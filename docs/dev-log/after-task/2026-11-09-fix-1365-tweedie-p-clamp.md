@@ -1,4 +1,4 @@
-# After Task: Clamp Tweedie p and warn when a pinned p hits the bound
+# After Task: Warn when a pinned Tweedie p hits the bound
 
 **Branch**: `cursor/fix-1365-tweedie-p-clamp-fae3`
 **Date**: 2026-11-09
@@ -8,22 +8,24 @@
 
 Issue #1365: `p = 1 + invlogit(logit_p_tweedie)` rounds onto 1 or 2 once
 `|logit_p|` is above about 36.7, and `dtweedie` then returns NaN. Draft
-#1506 clamps the logit to [-5, 5] and would silently change a user-pinned
-power such as 1.001. Shinichi's decision on 9 Nov 2026 is to keep that
-clamp and warn when a pinned power falls outside it, naming the requested
-power and the power actually used.
+#1506 clamps the logit in the template. That also bounds a free power, and
+a pinned power such as 1.001 would change with no warning. The review on
+#1747 blocked a template clamp for the same reason: free-p fits were not
+part of the decision.
+
+Option (a), this revision: keep the bound on the pinned path only. When a
+user pins `p`, store `logit_p` inside [-5, 5] (so `p` stays in
+[1.006693, 1.993307]), warn once with the requested power and the power
+used, and pass that fixed value through the existing map. Free `p` is
+unchanged, and `src/` matches main.
 
 ## 2. Implemented
 
-The density and `REPORT(p_tweedie)` both use
-
-`p = 1 + invlogit(clamp(logit_p, -5, 5))`.
-
-Inside the bound the map is unchanged. Outside it the likelihood is flat
-in `logit_p` and `p` stays at about 1.006693 or 1.993307. `tweedie(p = ...)`
-still accepts any single finite power strictly between 1 and 2. When the
-pinned power's logit is outside [-5, 5], the stored pin is the bound and
-the fit warns, for example:
+`tweedie(p = ...)` still accepts any single finite power strictly between
+1 and 2. The constructors do not warn. At fit time,
+`.tweedie_pinned_logits()` maps a pin whose logit is outside [-5, 5] onto
+that endpoint and emits one `gllvmTMB_tweedie_p_clamp` warning per distinct
+requested power. For `p = 1.001` the warning is:
 
 ```
 Requested Tweedie power `p = 1.001000` is outside [1.006693, 1.993307].
@@ -31,63 +33,61 @@ Requested Tweedie power `p = 1.001000` is outside [1.006693, 1.993307].
 ℹ Pass a power inside that range, or omit `p` to estimate it.
 ```
 
-A pinned power inside the range does not warn, and the reported power
-equals the requested power. The warning class is `gllvmTMB_tweedie_p_clamp`.
+Laplace and MSPL store that logit on `logit_p_tweedie` and map it off in
+`R/fit-multi.R`. VA does the same in `.va_r3_make_objective()`, so a
+multi-start fit warns on the first start only. A pin inside the interval
+is `qlogis(p - 1)`, with no warning. Omitting `p` does not call the helper.
+
+The first commit on this branch clamped inside `src/gllvmTMB.cpp`. That
+change is reverted. The density and `REPORT(p_tweedie)` are main's
+`p = 1 + invlogit(logit_p)`.
 
 ## 3. Files Changed
 
-- `src/gllvmTMB.cpp` — clamp helper; density and report use it.
-- `R/families.R` — same bound, warning text, `tweedie()` `@param p`.
-- `R/fit-multi.R` — pinned logit is stored at the bound when it would
-  otherwise lie outside [-5, 5].
+- `R/families.R` — pin helper, warning, `tweedie()` `@param p`.
+- `R/fit-multi.R` — Laplace and MSPL store the pinned logit.
+- `R/va-r3-proto.R` — VA stores the same pinned logit.
 - `man/families.Rd` — `@param p` text kept in step with the roxygen.
-- `tests/testthat/test-fix-1365.R` — new regression file.
+- `tests/testthat/test-fix-1365.R` — pinned-power tests, plus a free
+  interior power compared with the unclamped objective and `p`.
 - `NEWS.md` — Development bullet.
 - `docs/design/03-likelihoods.md` — Tweedie numerical note.
 - `docs/dev-log/check-log.d/2026-11-09-fix-1365-tweedie-p-clamp.md`
 - this report.
 
-No example file, vignette, README, or formula-grammar file was edited.
-`tweedie()`'s arguments and the accepted interval (1, 2) are unchanged, so
-the convention-change cascade does not apply. `src` near the
-`censored_poisson` branch was not edited.
+`src/` is unchanged against main. No example file, vignette, README, or
+formula-grammar file was edited. `tweedie()`'s arguments and the accepted
+interval (1, 2) are unchanged, so the convention-change cascade does not
+apply.
 
 ## 3a. Decisions and Rejected Alternatives
 
-Decision: keep #1506's bound of 5, and warn only for a user-pinned power
-that hits it. Rationale: Shinichi, 9 Nov 2026. The template clamp still
-covers a free `logit_p` that the optimiser drives past the bound; that
-case does not warn, because the user did not pin a power. Rejected: silent
-clamping of a pinned power (#1506), and rejecting `p` outside [1.0067,
-1.9933] at `tweedie()` construction. Confidence: high. The variational
-prototype template was left unclamped on purpose; it is not the #1365 path.
+Decision: option (a), R pin only. Rationale: review of #1747 at
+`1748f9c9`; a template clamp changes free-p fits, which was not decided.
+Rejected: the template clamp in the first commit on this branch, and the
+silent template clamp in #1506. Confidence: high. Bounding a free power
+stays open.
 
 ## 4. Checks Run
 
 See `docs/dev-log/check-log.d/2026-11-09-fix-1365-tweedie-p-clamp.md`.
-Targeted Tweedie and family-constructor tests passed. A full `test_check()`
-was started and stopped after a segfault inside `lme4::glmer` on this
-image's mixed lme4/Matrix install. That is recorded as not a valid suite
-result.
+`git diff origin/main -- src/` is empty.
 
 ## 5. Tests of the Tests
 
-`test-fix-1365.R` fails if the clamp is removed: at `logit_p = 1000` the
-unclamped power is exactly 2, and the test requires it to equal
-`1 + plogis(5)` and to stay strictly inside (1, 2). The interior case
-fails if `tweedie(p = 1.5)` warns or if the reported power is not 1.5.
-The exterior case fails if 1.001 or 1.999 is silent, if the message omits
-either the requested power or the power used, or if the reported power is
-not the bound. The unclamped template was not recompiled in this session
-to watch that first failure; the assertion is the one the issue's
-arithmetic breaks.
+`test-fix-1365.R` fails if a pinned `p = 1.001` or `1.999` is silent, if
+the message omits either power, or if the reported power is not the
+endpoint. It fails if `tweedie(p = 1.5)` warns or the reported power is
+not 1.5. The free-p test fails if the fitted power is not interior, if
+the reported power is not `1 + plogis(logit_p)` within 1e-10, or if the
+stored objective is not the template objective within 1e-10. It does not
+assert that an estimated power is bounded.
 
 ## 6. Consistency Audit
 
-Patterns and verdicts are in the check-log entry. New reader-facing prose
-states the in-range behaviour, the warning at the bound, and that powers
-of 1 or below and of 2 or above are not admitted. No register codes on
-NEWS or the help page. FAM-13 is unchanged.
+New reader-facing prose states the pin, the warning, and that estimation
+is unchanged. No register codes on NEWS or the help page. FAM-13 is
+unchanged. The likelihood note no longer says the template clamps.
 
 ## 7. Roadmap Tick
 
@@ -95,35 +95,33 @@ N/A. No roadmap row.
 
 ## 7a. GitHub Issue Ledger
 
-Inspected #1365 and draft #1506. This PR supersedes the approach in #1506.
-#1506 and its branch were not edited, pushed, or closed. #1365 was not closed.
+Inspected #1365 and draft #1506. This PR supersedes the approach in #1506
+and then narrows it to the pinned path. #1506 and its branch were not
+edited, pushed, or closed. #1365 was not closed.
 
 ## 8. What Did Not Go Smoothly
 
-The image had no R. After installing R and Suggests from apt, a full
-`test_check()` segfaulted in `lme4`, so the package-wide suite was not
-completed here. CI is the run that covers the fast suite on a consistent
-library.
+The first commit clamped the template. The review blocked that because it
+changes free-p fits. This revision reverts `src/`. A full `test_check()`
+on this image still is not a valid suite result: an earlier attempt
+segfaulted inside `lme4::glmer`.
 
 ## 9. Team Learning
 
-- Gauss: the bound is inside the region where `dtweedie` gradients were
-  measured to degrade, which is why 5 is tighter than the double-rounding
-  limit near 36.7.
-- Noether: reported `p_tweedie`, the density, and a pinned parameter use
-  the same clamped logit. The MSPL penalty still sees the raw logit and
-  does not form `p`.
+- Gauss: the endpoint is the same ±5 bound as #1506, applied only to a
+  stored pin. The free parameter can still reach the `dtweedie` NaN.
+- Noether: Laplace, MSPL and VA read one fixed logit. The template formula
+  is unchanged.
 - Pat: the warning names both powers and says to pass an interior power
   or omit `p`.
-- Rose: help, NEWS, and the likelihood note describe the same bound.
-  Older NEWS entries that mention deprecated aliases were not rewritten.
-- Curie: the new file is the regression. Existing Tweedie tests were not
-  loosened.
+- Rose: help, NEWS, and the likelihood note describe the pin and leave
+  estimation unchanged.
+- Curie: the extreme-logit assertion was removed. The free-p check is an
+  interior comparison with main's unclamped formula.
 
 ## 10. Known Limitations And Next Actions
 
-A free power that the optimiser drives onto the bound does not warn; the
-likelihood is flat there and the Hessian can be non-positive-definite, as
-in #1506. `inst/tmb/gllvmTMB_va_r3.cpp` still forms an unclamped power.
-Powers of 1 or below, and of 2 or above, remain refused. Do not merge this
-draft over #1506 without choosing one branch.
+A free power is not bounded. `|logit_p|` past about 36.7 can still make
+`p` exactly 1 or 2 and the density non-finite. Whether to bound an
+estimated power is an open decision. Powers of 1 or below, and of 2 or
+above, remain refused.

@@ -2182,7 +2182,8 @@
                                   inner_control = NULL,
                                   ac2_threshold = 1.0,
                                   fixed_tweedie_power = NULL,
-                                  fixed_student_df = NULL) {
+                                  fixed_student_df = NULL,
+                                  warn_tweedie_pin = TRUE) {
   if (validated$q == 0L) {
     stop("q = 0 is not applicable and must not construct an R3 objective.",
          call. = FALSE)
@@ -2239,8 +2240,11 @@
   fixed_student_df <- .va_r3_fixed_family_parameter(
     fixed_student_df, validated$T, "fixed_student_df", 1
   )
-  parameters$logit_p_tweedie[!is.na(fixed_tweedie_power)] <-
-    stats::qlogis(fixed_tweedie_power[!is.na(fixed_tweedie_power)] - 1)
+  if (any(!is.na(fixed_tweedie_power))) {
+    logit_pin <- .tweedie_pinned_logits(fixed_tweedie_power, warn = warn_tweedie_pin)
+    parameters$logit_p_tweedie[!is.na(fixed_tweedie_power)] <-
+      logit_pin[!is.na(fixed_tweedie_power)]
+  }
   parameters$log_df_student[!is.na(fixed_student_df)] <-
     log(fixed_student_df[!is.na(fixed_student_df)] - 1)
   ## Stage 6 turned the three variational PARAMETER_MATRIXes into flat
@@ -2671,7 +2675,8 @@
       inner_control = inner_control,
       ac2_threshold = ac2_threshold,
       fixed_tweedie_power = fixed_tweedie_power,
-      fixed_student_df = fixed_student_df
+      fixed_student_df = fixed_student_df,
+      warn_tweedie_pin = k == 1L
     )
     objects[[k]] <- obj
     opt <- tryCatch(

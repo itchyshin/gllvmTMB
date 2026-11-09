@@ -16,9 +16,14 @@ Coverage is measured with covr on a dedicated GitHub Actions workflow that
 reuses `GLLVMTMB_TEST_SHARD="k/4"` so the four jobs partition the suite once,
 on Ubuntu and R-release only, against the fast suite
 (`GLLVMTMB_HEAVY_TESTS` unset). Existing `R-CMD-check` shards are unchanged.
-`tools/run-covr-coverage.R` plants the `00_pkg_src` / `man` / `R/*.R` layout
-that help/source scanners expect, because covr tests from the instrumented
-library rather than an R CMD check tree. Tests themselves were not changed.
+`tools/run-covr-coverage.R` builds the tarball as `check-r-package@v2` does,
+instruments it with covr, and runs `R CMD check --as-cran --install=skip`
+against the instrumented library from `<workspace>/check`, so the suite runs
+through the unchanged `tests/testthat.R` in the same layout and environment
+as `R-CMD-check.yaml`. A test failure fails the shard; `cobertura.xml` is
+written only after the runner reads back `FAIL 0`, `PASS > 0` and traced
+lines in `R/gllvmTMB.R`, and upload steps run only on `success()`. Tests
+themselves were not changed.
 Upload uses GitHub OIDC from a separate main-only `workflow_run` job: the
 producer never holds `id-token: write`; the uploader downloads the four
 `cobertura.xml` artifacts after a successful same-repo main push. Pull-request
@@ -32,7 +37,7 @@ on coverage coberturas.
 ## 3. Files Changed
 
 - `.github/workflows/test-coverage.yaml` (new producer)
-- `tools/run-covr-coverage.R` (covr runner: `00_pkg_src` layout, no test edits)
+- `tools/run-covr-coverage.R` (covr runner: R CMD check test step on the instrumented library, fail-closed read-back, no test edits)
 - `.github/workflows/codecov-upload.yaml` (new main-only OIDC uploader)
 - `.github/workflows/R-CMD-check.yaml` (wire the Python guard; shards unchanged)
 - `codecov.yml`
@@ -78,7 +83,13 @@ uploader that was no longer a main-push `workflow_run` OIDC job; missing
 shard files in the upload list; or covr leaking onto `R-CMD-check` /
 `full-check`. `tools/check-actions-boundary.sh` would catch a sixth workflow,
 package-check `upload-artifact`, missing 7-day retention, or heavy tests on
-the producer. No scientific test was added or weakened.
+the producer. Both now also fail if the runner masks failures
+(`stop_on_failure`, `allow_failures`, `try`), if the test-result read-back
+does not precede the first coverage output, or if an upload step runs under
+`always()`. The runner itself was exercised locally in both directions: a
+clean 1/200 shard wrote coverage, and the same shard with an injected
+`expect_true(FALSE)` exited 1 without writing any coverage file. No
+scientific test was added or weakened.
 
 ## 6. Consistency Audit
 
@@ -98,8 +109,12 @@ issue created. Open PRs inspected for collision (`#1700`, `#1506`, `#1283`,
 
 ## 8. What Did Not Go Smoothly
 
-This cloud image has no R, so covr was not run locally. GitHub Actions on the
-PR is the coverage runner. Live Codecov publish is main-only by design and
+The first two runner designs failed on CI: the original covr `type = "tests"`
+run lacked the check-tree layout, and the hand-rolled `test_check()` runner
+found no test files and would have masked failures. The 2026-11-09 follow-up
+installed R on the cloud image and ran the runner locally, which also exposed
+a silent coverage loss under `--as-cran` library isolation (covr unreachable
+inside the tests; see the check-log fragment). Live Codecov publish is main-only by design and
 cannot execute until this workflow file exists on the default branch.
 
 ## 9. Team Learning (per AGENTS.md Standing Review Roles)
@@ -123,5 +138,8 @@ Status is `NOT_VERIFIED` for a live Codecov commit report. Design requires a
 default-branch workflow (owner merge of this PR, then a successful main
 `test-coverage` push) before `codecov-upload` can run. No merge is authorized
 here. Next slice after merge: confirm the uploader run and a Codecov commit
-document with non-null totals for that SHA. C++/TMB `gcov` is not specially
-enabled. `skip_on_covr()` tests remain skipped during measurement.
+document with non-null totals for that SHA. C++/TMB lines are measured through
+covr's default `gcov` pass (`src/gllvmTMB.cpp` appears in the report); nothing
+beyond covr's defaults is configured for it. `skip_on_covr()` tests remain
+skipped during measurement. Other inherent
+differences from `R-CMD-check.yaml` are listed in the check-log fragment.

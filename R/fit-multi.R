@@ -4176,11 +4176,47 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ">" = "Public {.fn gllvmTMB} drops (response = \"drop\") or masks (response = \"include\") missing response rows before fitting; please report this internal preprocessing failure at https://github.com/itchyshin/gllvmTMB/issues."
     ))
   }
+  y_obs <- y[!masked_response]
+  if (length(y_obs) > 0L && any(is.infinite(y_obs))) {
+    resp_name <- paste(deparse(parsed$fixed[[2L]]), collapse = " ")
+    cli::cli_abort(c(
+      "The observed response must be finite.",
+      "x" = "Non-finite values in {.field {resp_name}} on rows with an observed response.",
+      ">" = "Replace {.code Inf} or {.code -Inf} in the response, or drop those rows before fitting."
+    ))
+  }
   if (any(is.na(X_fix))) {
     cli::cli_abort(c(
       "NA in the fixed-effect design matrix.",
       ">" = "Missing response rows are allowed and dropped before fitting; missing predictors still need to be removed or imputed before fitting (or declared with {.code mi()} under {.code missing = miss_control(predictor = \"model\")})."
     ))
+  }
+  if (ncol(X_fix) > 0L) {
+    X_obs <- X_fix[!masked_response, , drop = FALSE]
+    if (nrow(X_obs) > 0L) {
+      inf_cols <- which(vapply(
+        seq_len(ncol(X_fix)),
+        function(j) any(is.infinite(X_obs[, j])),
+        logical(1L)
+      ))
+      if (length(inf_cols) > 0L) {
+        bad_cols <- colnames(X_fix)[inf_cols]
+        shown <- utils::head(bad_cols, 10L)
+        ellipsis <- if (length(bad_cols) > 10L) ", ..." else ""
+        cli::cli_abort(c(
+          "Non-finite values in the fixed-effect design matrix.",
+          "x" = paste0(
+            "Offending design column",
+            if (length(bad_cols) > 1L) "s" else "",
+            ": ",
+            paste(shown, collapse = ", "),
+            ellipsis,
+            "."
+          ),
+          ">" = "Missing response rows are allowed and dropped before fitting; replace {.code Inf} or {.code -Inf} in predictors on observed-response rows before fitting."
+        ))
+      }
+    }
   }
   if (isTRUE(REML)) {
     ## NON-GAUSSIAN REML IS THE COX-REID ADJUSTED PROFILE LIKELIHOOD.

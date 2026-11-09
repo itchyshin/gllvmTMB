@@ -694,5 +694,24 @@
   fit$calibrated <- FALSE
   fit$package_version <- utils::packageVersion("gllvmTMB")
   class(fit) <- c("gllvmTMB_va", "gllvmTMB")
+  ## Same free-power boundary warning as the Laplace return. A pinned
+  ## power is not free. The VA object has no TMB map; the fixed-power
+  ## vector is the pin.
+  p_tw <- if (is.list(fit$report)) fit$report$p_tweedie else NULL
+  if (!is.null(p_tw)) {
+    pin <- fit$fixed_family_parameters$tweedie_power
+    map <- if (is.null(pin)) {
+      NULL
+    } else {
+      factor(ifelse(is.na(as.numeric(pin)), seq_along(as.numeric(pin)), NA_integer_))
+    }
+    .gllvmTMB_warn_tweedie_p_boundary(list(
+      report = list(
+        p_tweedie = p_tw,
+        phi_tweedie = if (is.list(fit$report)) fit$report$phi_tweedie else NULL
+      ),
+      tmb_map = list(logit_p_tweedie = map)
+    ))
+  }
   fit
 }

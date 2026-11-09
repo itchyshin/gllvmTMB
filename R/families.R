@@ -81,11 +81,17 @@
 #' @param df `NULL` to estimate Student-t degrees of freedom, or one finite
 #'   number greater than one to fix it.
 #' @param p `NULL` to estimate the Tweedie power, or one finite number strictly
-#'   between one and two to fix it. A fixed power below 1.006693 or above
-#'   1.993307 is still accepted. The fit then uses the nearer endpoint and
-#'   warns with the requested power and the power actually used. A fixed
-#'   power inside that range is used unchanged. Omitting `p` leaves
-#'   estimation unchanged.
+#'   between one and two to fix it. An estimated power stays inside about
+#'   1.000006 and 1.999994. A free fit that ends within 1e-5 of either end
+#'   warns (class `gllvmTMB_tweedie_p_boundary`) and names the estimate and
+#'   that end. If the fitted dispersion is below 0.1, that warning also says
+#'   TMB's Tweedie density accuracy degrades there. A fixed power inside that
+#'   interval is stored on the same map and comes back unchanged. A fixed
+#'   power outside it, and still strictly between 1 and 2, is kept at the
+#'   nearer end and warns (class `gllvmTMB_tweedie_p_clamp`) with the
+#'   requested power and the power used. Powers of 1 or below, or of 2 or
+#'   above, are refused. The stored parameter is not a logit: a value saved
+#'   before this map is reinterpreted.
 #' @param link1 Link for the occurrence component of a delta model.
 #' @param link2 Link for the positive component of a delta model.
 #' @param type Delta construction: `"standard"` uses a binary occurrence
@@ -432,31 +438,82 @@ tweedie <- function(link = "log", p = NULL) {
                 list(p = p))
 }
 
-# Pinned Tweedie power only (#1365). logit_p = qlogis(p - 1) is stored
-# inside [-5, 5], so the fixed p stays in [1.006693, 1.993307]. The
-# template does not clamp, and a free logit_p is left alone.
-.tweedie_logit_p_max <- function() 5
+## Smooth bound on an estimated Tweedie power (#1365).
+##
+## p = p_lo + (p_hi - p_lo) * s(theta),
+## s(theta) = 1/2 * (1 + t),
+## t = theta / sqrt(1 + theta^2).
+## t is computed as (theta/m) / sqrt((1/m)^2 + (theta/m)^2) with
+## m = max(1, |theta|). The unscaled product theta^2 overflows once
+## |theta| exceeds about 1e154, and theta/Inf is then 0, which sends p
+## to the middle of the interval.
+## p_lo = 1 + plogis(-12), p_hi = 1 + plogis(12).
+##
+## The same expression is gll_tweedie_p in src/gllvmTMB.cpp and
+## va_r3_tweedie_p in inst/tmb/gllvmTMB_va_r3.cpp. s(theta) is in (0, 1)
+## for every finite theta and its derivative does not reach 0 in exact
+## arithmetic, so there is no flat region. Logit 12 is the largest
+## symmetric limit at which TMB's dtweedie stayed within relative error
+## 1e-6 of tweedie::dtweedie on the declared grid (phi >= 0.1, mu up to
+## 50, y up to 100).
+.gllvmTMB_tweedie_p_logit_limit <- function() 12
 
-.tweedie_clamp_pinned_logit <- function(p) {
-  hi <- .tweedie_logit_p_max()
-  logit <- stats::qlogis(p - 1)
-  if (!is.finite(logit) || (logit >= -hi && logit <= hi)) {
-    return(list(logit = logit, clamped = FALSE, p_used = p))
+.gllvmTMB_tweedie_p_bounds <- function() {
+  L <- .gllvmTMB_tweedie_p_logit_limit()
+  c(lo = 1 + stats::plogis(-L), hi = 1 + stats::plogis(L))
+}
+
+.gllvmTMB_tweedie_p_boundary_distance <- function() 1e-5
+
+## Finite stand-in for a pin that sits on an endpoint. The forward map
+## reaches the endpoint only as |theta| goes to infinity. 1e8 lands
+## within 1e-16 of the endpoint, inside the 1e-8 comparison used for a
+## clamped pin.
+.gllvmTMB_tweedie_bound_theta <- function(upper) {
+  if (isTRUE(upper)) 1e8 else -1e8
+}
+
+.gllvmTMB_tweedie_p_frac <- function(theta) {
+  u <- as.numeric(theta)
+  a <- abs(u)
+  m <- ifelse(a > 1, a, 1)
+  uu <- u / m
+  v <- 1 / m
+  uu / sqrt(v * v + uu * uu)
+}
+
+.gllvmTMB_tweedie_p <- function(theta) {
+  b <- .gllvmTMB_tweedie_p_bounds()
+  t <- .gllvmTMB_tweedie_p_frac(theta)
+  b[["lo"]] + (b[["hi"]] - b[["lo"]]) * 0.5 * (1 + t)
+}
+
+## Inverse of .gllvmTMB_tweedie_p on the open interval (p_lo, p_hi).
+## There is no clip. A power outside that interval is not representable
+## and this returns a non-finite value. A user pin is clamped, and
+## warned, before this is called.
+.gllvmTMB_tweedie_theta <- function(p) {
+  b <- .gllvmTMB_tweedie_p_bounds()
+  width <- b[["hi"]] - b[["lo"]]
+  s <- (as.numeric(p) - b[["lo"]]) / width
+  out <- rep(NA_real_, length(s))
+  ok <- is.finite(s) & s > 0 & s < 1
+  if (any(ok)) {
+    out[ok] <- (2 * s[ok] - 1) / (2 * sqrt(s[ok] * (1 - s[ok])))
   }
-  logit_used <- min(hi, max(-hi, logit))
-  list(
-    logit = logit_used,
-    clamped = TRUE,
-    p_used = 1 + stats::plogis(logit_used)
-  )
+  ## The endpoints are not a finite theta. Outside the interval is NA,
+  ## not a clipped interior value.
+  out[is.finite(s) & s == 0] <- -Inf
+  out[is.finite(s) & s == 1] <- Inf
+  out
 }
 
 .tweedie_warn_p_clamped <- function(p_requested, p_used) {
-  bounds <- 1 + stats::plogis(c(-1, 1) * .tweedie_logit_p_max())
+  b <- .gllvmTMB_tweedie_p_bounds()
   p_req <- sprintf("%.6f", p_requested)
   p_got <- sprintf("%.6f", p_used)
-  p_lo <- sprintf("%.6f", bounds[[1L]])
-  p_hi <- sprintf("%.6f", bounds[[2L]])
+  p_lo <- sprintf("%.6f", b[["lo"]])
+  p_hi <- sprintf("%.6f", b[["hi"]])
   cli::cli_warn(
     c(
       "Requested Tweedie power {.code p = {p_req}} is outside [{p_lo}, {p_hi}].",
@@ -468,25 +525,93 @@ tweedie <- function(link = "log", p = NULL) {
   invisible(p_used)
 }
 
-# `p` may contain NA for traits that are not pinned. One warning per
-# distinct requested power. The returned logits are what the fixed-parameter
-# map stores, so Laplace, MSPL and VA share one value.
-.tweedie_pinned_logits <- function(p, warn = TRUE) {
-  logit <- p
+## `p` may contain NA for traits that are not pinned. One warning per
+## distinct requested power. The accepted fixed range is the same pair
+## .gllvmTMB_tweedie_p_bounds() uses for an estimated power. An in-range
+## power is stored with .gllvmTMB_tweedie_theta, so the reported power
+## equals the request. qlogis(p - 1) is not the storage: under this map
+## that value turns a fixed 1.7 into about 1.823. A power outside the
+## interval is stored at the nearer end. There is no silent clip.
+## Laplace, MSPL and VA read this same vector.
+.tweedie_pinned_theta <- function(p, warn = TRUE) {
+  theta <- p
   warned_p <- character()
+  b <- .gllvmTMB_tweedie_p_bounds()
   for (t in which(!is.na(p))) {
-    clamped <- .tweedie_clamp_pinned_logit(p[[t]])
-    logit[[t]] <- clamped$logit
-    if (isTRUE(warn) && isTRUE(clamped$clamped)) {
-      key <- sprintf("%.10f", p[[t]])
-      if (!key %in% warned_p) {
-        .tweedie_warn_p_clamped(p[[t]], clamped$p_used)
-        warned_p <- c(warned_p, key)
+    p_t <- p[[t]]
+    outside <- is.finite(p_t) && (p_t < b[["lo"]] || p_t > b[["hi"]])
+    if (outside) {
+      upper <- p_t > b[["hi"]]
+      p_used <- if (upper) unname(b[["hi"]]) else unname(b[["lo"]])
+      theta[[t]] <- .gllvmTMB_tweedie_bound_theta(upper)
+      if (isTRUE(warn)) {
+        key <- sprintf("%.10f", p_t)
+        if (!key %in% warned_p) {
+          .tweedie_warn_p_clamped(p_t, p_used)
+          warned_p <- c(warned_p, key)
+        }
       }
+    } else {
+      th <- .gllvmTMB_tweedie_theta(p_t)
+      if (!is.finite(th)) th <- .gllvmTMB_tweedie_bound_theta(p_t > 1.5)
+      theta[[t]] <- th
     }
   }
-  logit
+  theta
 }
+
+## Warn when a free Tweedie power ends within 1e-5 of either smooth bound.
+## A mapped-off entry (factor NA), including a user-pinned p, is not free.
+## A missing map means every entry is free.
+.gllvmTMB_warn_tweedie_p_boundary <- function(fit) {
+  p <- fit$report$p_tweedie
+  if (is.null(p)) return(invisible(integer(0)))
+  p <- as.numeric(p)
+  map <- fit$tmb_map$logit_p_tweedie
+  free <- if (is.null(map)) {
+    rep(TRUE, length(p))
+  } else {
+    !is.na(suppressWarnings(as.integer(map)))
+  }
+  if (length(free) != length(p)) free <- rep(TRUE, length(p))
+  b <- .gllvmTMB_tweedie_p_bounds()
+  dist <- .gllvmTMB_tweedie_p_boundary_distance()
+  hit <- which(free & is.finite(p) & (p <= b[["lo"]] + dist | p >= b[["hi"]] - dist))
+  if (length(hit) == 0L) return(invisible(integer(0)))
+  lines <- vapply(hit, function(i) {
+    upper <- p[[i]] >= b[["hi"]] - dist
+    sprintf(
+      "trait %d: estimated Tweedie power p = %.12f is within 1e-05 of the %s bound %.12f",
+      i, p[[i]], if (upper) "upper" else "lower",
+      if (upper) b[["hi"]] else b[["lo"]]
+    )
+  }, character(1))
+  phi <- fit$report$phi_tweedie
+  low_phi <- FALSE
+  if (!is.null(phi)) {
+    phi <- suppressWarnings(as.numeric(phi))
+    checked <- if (length(phi) == 1L) phi else phi[hit]
+    low_phi <- any(is.finite(checked) & checked < 0.1)
+  }
+  msg <- c(
+    "An estimated Tweedie power ended at the smooth bound.",
+    stats::setNames(lines, rep("i", length(lines))),
+    "i" = "TMB's density is not reliable closer to 1 or 2. The estimate is the bound the fit reached, not a power of 1 or 2."
+  )
+  if (isTRUE(low_phi)) {
+    msg <- c(
+      msg,
+      "i" = "Fitted dispersion is below 0.1. TMB's Tweedie density accuracy degrades there."
+    )
+  }
+  msg <- c(
+    msg,
+    ">" = "Fix {.code p} with {.code tweedie(p = ...)} when a power in the interior is known, or treat this fit as a boundary fit."
+  )
+  cli::cli_warn(msg, class = "gllvmTMB_tweedie_p_boundary")
+  invisible(hit)
+}
+
 
 #' @details
 #' \code{censored_poisson()} is a right-censored Poisson family (log link

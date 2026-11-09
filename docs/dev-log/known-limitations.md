@@ -65,6 +65,18 @@ Beta, student, truncated_poisson, truncated_nbinom2, delta_lognormal,
 delta_gamma, ordinal_probit, and nbinom1. Mixed-family fits are accepted
 via `family = list(...)` keyed by trait.
 
+An estimated or fixed Tweedie power stays inside about 1.000006 and
+1.999994. TMB's density does not match the tweedie package, and then
+becomes non-finite, closer to 1 or 2. A free fit that ends within 1e-5
+of either end warns once. If the fitted dispersion is below 0.1, that
+warning says TMB's Tweedie density accuracy degrades there. A fixed
+power inside the interval is used as given. A fixed power outside that
+interval, and still strictly between 1 and 2, is kept at the nearer end
+and warns with the requested power and the power used. `logit_p_tweedie`
+is not a logit, so a value saved under the old map is reinterpreted.
+Dispersion below 0.1 can still disagree inside the interval, because
+TMB truncates the series at 20000 terms.
+
 The live map also includes baseline-category-logit `multinomial()` for an
 unordered response with three or more categories. Its fixed-effect route is
 covered. One multinomial trait may use the separately evidenced

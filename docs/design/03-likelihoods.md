@@ -827,18 +827,97 @@ verification runs):
 
 - Status: `claimed`.
 - Parameters: `mu` (log), `sigma` (log; dispersion $\phi$),
-  `p` (logitp; $1 < p < 2$).
+  `p` (smooth bound; $p_{\mathrm{lo}} < p < p_{\mathrm{hi}}$).
 - Density: compound Poisson-Gamma with $\Pr(y = 0) > 0$ and
   continuous-positive for $y > 0$.
-- Numerical (#1365): the template is still
-  $p = 1 + \mathrm{invlogit}(\mathrm{logit\_p})$, with no clamp.
-  $|logit_p| \gtrsim 36.7$ can round $p$ onto 1 or 2 and `dtweedie`
-  returns NaN. Bounding a free power is open and is not done here.
-  A user-pinned `tweedie(p = ...)` whose logit lies outside $[-5, 5]$
-  ($p$ below 1.006693 or above 1.993307) is stored at that endpoint in
-  R and mapped off. Laplace, MSPL and VA read that same fixed value.
-  The fit warns with the requested power and the power used. A pin
-  inside the interval is stored as `qlogis(p - 1)`.
+- Numerical (#1365): an estimated power is the smooth map below, not
+  $1 + \mathrm{invlogit}(\theta)$. A user-pinned `tweedie(p = ...)`
+  inside $[p_{\mathrm{lo}}, p_{\mathrm{hi}}]$ is stored with the exact
+  inverse `.gllvmTMB_tweedie_theta`. Storing `qlogis(p - 1)` is wrong
+  on this map: a fixed 1.7 would be reported as about 1.823. A pin
+  outside that interval and still strictly between 1 and 2 is stored
+  at the nearer end. The fit warns with class
+  `gllvmTMB_tweedie_p_clamp`, naming the requested power and the power
+  used. Laplace, MSPL and VA read that same fixed value.
+
+An estimated power is not $1 + \mathrm{invlogit}(\theta)$. That map reaches
+1 and 2 closely enough that TMB's `dtweedie` is already wrong, and then
+NaN, while the parameter is still finite. The stored parameter $\theta$
+(`logit_p_tweedie`) is mapped by
+
+$$
+p = p_{\mathrm{lo}} + (p_{\mathrm{hi}} - p_{\mathrm{lo}})\,
+    \tfrac12\left(1 + \frac{\theta}{\sqrt{1+\theta^2}}\right),
+$$
+
+with $p_{\mathrm{lo}} = 1 + \mathrm{invlogit}(-12)$ and
+$p_{\mathrm{hi}} = 1 + \mathrm{invlogit}(12)$, about 1.000006144 and
+1.999993856. The same expression is `gll_tweedie_p` in
+`src/gllvmTMB.cpp`, `va_r3_tweedie_p` in
+`inst/tmb/gllvmTMB_va_r3.cpp`, and `.gllvmTMB_tweedie_p` in
+`R/families.R`. Its derivative in $\theta$ is positive for every finite
+$\theta$, so the power has no flat region. A hard clamp was rejected
+for that reason: outside the clamp the objective is constant, the
+gradient is 0, and the Hessian is singular.
+
+`p_tweedie` stays a `REPORT`. Wald and profile intervals use
+`.gllvmTMB_tweedie_p` on the stored $\theta$. The name `logit_p_tweedie`
+is unchanged, but the value is no longer a logit: a saved $\theta$, a
+profile or Wald interval, or a `start_from` fit from the old map is
+reinterpreted. A power fixed with `tweedie(p = ...)` inside
+$(p_{\mathrm{lo}}, p_{\mathrm{hi}})$ is stored as the exact inverse, so
+the reported power is the requested power. The fraction
+$\theta / \sqrt{1+\theta^2}$ is evaluated as
+$(\theta/m) / \sqrt{(1/m)^2 + (\theta/m)^2}$ with $m = \max(1, |\theta|)$,
+because $\theta^2$ overflows near $10^{154}$ and the unscaled quotient
+then collapses to 0.
+The Laplace density, the MSPL family-6 weight, and the variational
+quadrature all form $p$ with this map. The MSPL weight value is still
+the working logistic weight; the power enters only so that path cannot
+use a different $p$.
+
+The endpoints are the largest symmetric logit limits at which TMB
+1.9.25 `dtweedie` stayed within relative error $10^{-6}$ of
+`tweedie::dtweedie` on the declared grid: $\phi \in \{0.1, 0.25, 0.5, 1, 2, 5, 10\}$,
+$\mu \in \{0.1, 0.5, 1, 2, 5, 10, 20, 50\}$,
+$y \in \{0, 0.01, 0.1, 0.5, 1, 2, 5, 10, 20, 50, 100\}$.
+Relative error is $| \ell_{\mathrm{TMB}} - \ell_{\mathrm{R}} | / \max(|\ell_{\mathrm{R}}|, 1)$
+and $| d_{\mathrm{TMB}} - d_{\mathrm{R}} | / \max(d_{\mathrm{R}}, 10^{-300})$.
+A cell counts only when both densities are finite and positive.
+
+| logit | max rel. loglik | max rel. density | cells over $10^{-6}$ |
+|---:|---:|---:|---:|
+| $-20$ | $8.33\times 10^{-5}$ | $1.95\times 10^{-3}$ | 130 / 404 |
+| $-18$ | $1.90\times 10^{-5}$ | $2.45\times 10^{-4}$ | 159 / 404 |
+| $-16$ | $9.88\times 10^{-7}$ | $3.03\times 10^{-5}$ | 33 / 404 |
+| $-14$ | $1.55\times 10^{-6}$ | $1.93\times 10^{-6}$ | 3 / 404 |
+| $-12$ | $2.36\times 10^{-7}$ | $2.40\times 10^{-7}$ | 0 / 404 |
+| $-10$ | $2.97\times 10^{-8}$ | $5.95\times 10^{-8}$ | 0 / 404 |
+| $10$ | $3.12\times 10^{-10}$ | $3.44\times 10^{-10}$ | 0 / 546 |
+| $11$ | $3.55\times 10^{-10}$ | $7.16\times 10^{-10}$ | 0 / 546 |
+| $12$ | $1.28\times 10^{-9}$ | $1.93\times 10^{-9}$ | 0 / 546 |
+| $12.2$ | $1.17\times 10^{-8}$ | $1.23\times 10^{-8}$ | 0 / 546 |
+| $12.3$ | $4.94\times 10^{-7}$ | $4.95\times 10^{-7}$ | 0 / 546 |
+| $12.4$ | $1.14\times 10^{-5}$ | $1.14\times 10^{-5}$ | 73 / 546 |
+
+Logit $12.3$ still passes and is about twice under the tolerance, so the
+bound is the integer 12. No open interval inside $(1, 2)$ meets
+$10^{-6}$ for every $\phi > 0$. TMB caps the series at 20000 terms, and
+the term count grows like $1/(\phi(2-p))$. On a harsher grid that
+includes $\phi = 0.02$, logit 11 already exceeds $10^{-6}$ (worst cell
+$y = 1$, $\mu = 1$, $\phi = 0.02$, relative loglik error
+$1.48\times 10^{-3}$) and logit 12 is badly wrong there. A free fit
+that ends within $10^{-5}$ of either end warns once, with class
+`gllvmTMB_tweedie_p_boundary`. The message names the estimate and the
+bound. When the fitted dispersion on a trait that hit the bound is
+below 0.1, the same warning adds one line: TMB's Tweedie density
+accuracy degrades there. The warning is attached to the fit the caller
+receives. The independent pre-fit, the automatic AGHQ pilot, and the
+Laplace auto-refit do not emit it. A fixed power uses this same
+interval. Inside it, the stored value is the exact inverse. Outside it,
+and still strictly between 1 and 2, the fit keeps the nearer end and
+warns with class `gllvmTMB_tweedie_p_clamp`, quoting the requested
+power and both ends.
 
 ### Zero-inflated families (zi_poisson / zi_nbinom2 / zi_binomial)
 

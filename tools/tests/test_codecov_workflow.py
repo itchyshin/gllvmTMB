@@ -78,24 +78,58 @@ class CodecovWorkflowTest(unittest.TestCase):
         )
         self.assertIn('NOT_CRAN: "true"', self.producer)
         self.assertIn("Rscript tools/run-covr-coverage.R", self.producer)
-        self.assertIn('type = "none"', self.covr_runner)
-        self.assertIn("00_pkg_src", self.covr_runner)
-        self.assertIn("stop_on_failure = FALSE", self.covr_runner)
-        self.assertIn("gllvm_shard_filter", self.covr_runner)
         self.assertIn("covr::package_coverage(", self.covr_runner)
-        self.assertIn(
-            'covr::to_cobertura(cov, filename = "cobertura.xml")',
-            self.covr_runner,
-        )
+        self.assertIn("covr::to_cobertura(", self.covr_runner)
         self.assertNotIn("macos", self.producer.lower())
         self.assertNotIn("windows", self.producer.lower())
         self.assertNotIn("GLLVMTMB_HEAVY_TESTS", self.producer)
         self.assertNotIn("GLLVMTMB_HEAVY_TESTS", self.covr_runner)
         self.assertNotIn("coverage-test-failures-shard", self.producer)
 
+    def test_runner_uses_the_r_cmd_check_test_step(self) -> None:
+        # The suite must run through R CMD check's own test step (same layout,
+        # tests/testthat.R, --as-cran environment) against the instrumented
+        # library -- not through a hand-rolled test_check() call.
+        self.assertIn('type = "none"', self.covr_runner)
+        self.assertIn('"CMD", "check"', self.covr_runner)
+        self.assertIn('"--install=skip"', self.covr_runner)
+        self.assertIn('"--as-cran"', self.covr_runner)
+        self.assertIn('file.path(workspace, "check")', self.covr_runner)
+        self.assertNotIn("test_check(", self.covr_runner)
+        self.assertNotIn("test_dir(", self.covr_runner)
+        self.assertNotIn("gllvm_shard_filter", self.covr_runner)
+
+    def test_runner_cannot_mask_test_failures(self) -> None:
+        self.assertNotIn("stop_on_failure", self.covr_runner)
+        self.assertNotIn("allow_failures", self.covr_runner)
+        self.assertNotIn("try(", self.covr_runner)
+        self.assertNotIn("tryCatch(", self.covr_runner)
+        self.assertIn('counts[["FAIL"]] != 0L', self.covr_runner)
+        self.assertIn('counts[["PASS"]] == 0L', self.covr_runner)
+        # The test-result read-back must precede the first coverage output.
+        readback = self.covr_runner.index('counts[["FAIL"]] != 0L')
+        first_output = min(
+            self.covr_runner.index("covr::to_cobertura("),
+            self.covr_runner.index('"coverage-percent.txt"'),
+        )
+        self.assertLess(readback, first_output)
+
+    def test_coverage_artifacts_only_from_passing_shards(self) -> None:
+        self.assertNotRegex(self.producer, r"if: always\(\) && github\.event_name")
+        upload_conditions = [
+            line.strip()
+            for line in _active_lines(PRODUCER)
+            if line.strip().startswith("if:") and "github.event_name" in line
+        ]
+        self.assertEqual(len(upload_conditions), 2, upload_conditions)
+        for condition in upload_conditions:
+            self.assertTrue(
+                condition.startswith("if: success() && "), condition
+            )
+
     def test_trusted_artifact_is_main_push_only(self) -> None:
         self.assertIn(
-            "if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'",
+            "if: success() && github.event_name == 'push' && github.ref == 'refs/heads/main'",
             self.producer,
         )
         self.assertIn(
@@ -106,7 +140,7 @@ class CodecovWorkflowTest(unittest.TestCase):
         self.assertIn(UPLOAD_ARTIFACT, self.producer)
         self.assertIn("retention-days: 7", self.producer)
         self.assertIn(
-            "if: always() && github.event_name == 'pull_request'",
+            "if: success() && github.event_name == 'pull_request'",
             self.producer,
         )
         self.assertIn(

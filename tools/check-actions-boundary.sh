@@ -94,9 +94,20 @@ if [[ ! -f "$covr_runner" ]]; then
   printf '%s\n' 'D-50 violation: tools/run-covr-coverage.R is missing.' >&2
   exit 1
 fi
-if ! grep -Eq '00_pkg_src' "$covr_runner"; then
+covr_runner_active=$(active_text "$covr_runner")
+if ! grep -Fq '"--install=skip"' <<<"$covr_runner_active"; then
   printf '%s\n' \
-    'D-50 violation: tools/run-covr-coverage.R must plant 00_pkg_src for help/source scanners.' >&2
+    'D-50 violation: tools/run-covr-coverage.R must run the R CMD check test step against the instrumented library.' >&2
+  exit 1
+fi
+if grep -Eq 'stop_on_failure|allow_failures' <<<"$covr_runner_active"; then
+  printf '%s\n' \
+    'D-50 violation: tools/run-covr-coverage.R must not mask test failures.' >&2
+  exit 1
+fi
+if grep -Eq 'if:[[:space:]]*always\(\)[[:space:]]*&&[[:space:]]*github\.event_name' <<<"$producer_active"; then
+  printf '%s\n' \
+    'D-50 violation: test-coverage.yaml must not upload coverage from a failed shard.' >&2
   exit 1
 fi
 

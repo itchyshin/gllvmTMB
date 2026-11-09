@@ -361,14 +361,14 @@ test_that("remote launchers enforce frozen sources, sequential-wave limits, and 
     "git",
     c(
       "-C", clean_root, "checkout", "--quiet",
-      "822024b1bd31a90a9dbe211ad09e1b26b2030ac8"
+      "1a4c6ea6aa2480dcb65e0d8bb692e0e1a641f3ca"
     ),
     stdout = FALSE,
     stderr = FALSE
   )
   expect_identical(checkout_status, 0L)
   expect_silent(interval_assert_frozen_source(
-    "822024b1bd31a90a9dbe211ad09e1b26b2030ac8",
+    "1a4c6ea6aa2480dcb65e0d8bb692e0e1a641f3ca",
     c(
       "R",
       "dev/interval-calibration/ci09/ci09-kernels.R",

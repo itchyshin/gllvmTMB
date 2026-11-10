@@ -156,7 +156,12 @@
 #'   meta-analysis). Default `NULL`, which resolves to `"species"`. For
 #'   datasets with no third grouping the column may be absent from `data`
 #'   entirely (with or without passing `cluster`); the engine will
-#'   synthesise a placeholder. If supplied but no covariance keyword uses
+#'   synthesise a placeholder. When `cluster` is omitted and one
+#'   `kernel_indep()`, `kernel_dep()`, `kernel_latent()`, `kernel_unique()`,
+#'   or `kernel_scalar()` term names a bare grouping column, that column is
+#'   used so `K` is checked against it. An explicit `cluster` is unchanged,
+#'   including the replicated kernel example that passes `cluster = "site"`.
+#'   If supplied but no covariance keyword uses
 #'   that column, [gllvmTMB()] warns; omit the argument or use the column in
 #'   the intended covariance keyword.
 #'
@@ -758,6 +763,10 @@ gllvmTMB <- function(
   ## not an argument the caller supplied.
   unit_obs_supplied <- !missing(unit_obs) && !is.null(unit_obs)
   cluster_supplied <- !missing(cluster) && !is.null(cluster)
+  ## Capture the deprecated `species` alias before it is overwritten with
+  ## the resolved cluster name below. An explicit alias is a supplied
+  ## cluster; `species = NULL` is the same as omitting it.
+  species_alias_supplied <- !missing(species) && !is.null(species)
   unit_obs <- unit_obs %||% "site_species"
   cluster <- cluster %||% "species"
 
@@ -1129,6 +1138,36 @@ gllvmTMB <- function(
   ## in the parser / TMB template / extractors. User-facing argument is
   ## `cluster`.
   species <- cluster
+
+  ## #1752: a documented one-grouping kernel call names its own grouping
+  ## (`kernel_indep(unit, K = K)`) and does not pass `cluster`. The dense
+  ## kernel reuses the cluster slot, so an omitted cluster must be that
+  ## grouping. Otherwise the default `"species"` column is a placeholder
+  ## and `K` is checked as if it were a phylogenetic VCV. An explicit
+  ## `cluster` (the replicated `?kernel_latent` example) is left alone.
+  ## Phylogenetic keywords do not enter this block.
+  if (!cluster_supplied && !species_alias_supplied && is.data.frame(data)) {
+    kernel_groups <- .gllvmTMB_kernel_bare_groups(formula)
+    if (nrow(kernel_groups) > 0L) {
+      groups <- unique(kernel_groups$group)
+      if (length(groups) > 1L) {
+        cli::cli_abort(c(
+          "The {.fn kernel_*} terms name more than one grouping column ({.val {groups}}), and {.arg cluster} was not given.",
+          "i" = "{.arg K} is aligned to one grouping column.",
+          ">" = "Pass {.arg cluster} equal to the column whose levels match {.code rownames(K)}. Different kernel groupings in one fit are not supported."
+        ), class = "gllvmTMB_kernel_grouping")
+      }
+      group <- groups[[1L]]
+      if (!group %in% names(data)) {
+        cli::cli_abort(c(
+          "{.fn {kernel_groups$fn[[1L]]}} groups by {.field {group}}, which is not a column in {.arg data}.",
+          ">" = "Name the column whose levels match {.code rownames(K)}, or pass that column as {.arg cluster}."
+        ), class = "gllvmTMB_kernel_grouping")
+      }
+      cluster <- group
+      species <- group
+    }
+  }
 
   ## ---- Phase L Stage 2 (2026-05-08): soft-deprecate global phylo args ---
   ## The canonical syntax (Phase L Stage 1) is to pass `tree = ...` /

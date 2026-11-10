@@ -13,7 +13,9 @@ kernel_indep(unit, K, name = "kernel", common = FALSE, rho = 1)
 kernel_dep(unit, K, name = "kernel", rho = 1)
 }
 \arguments{
-\item{unit}{Unquoted grouping column whose levels align with \code{rownames(K)}.}
+\item{unit}{Unquoted grouping column whose levels align with \code{rownames(K)}.
+When \code{cluster} is omitted, \code{\link[=gllvmTMB]{gllvmTMB()}} uses this column, so \code{K} is
+checked against it. An explicit \code{cluster} is unchanged.}
 
 \item{K}{Numeric dense positive-semidefinite covariance or correlation
 matrix aligned to the grouping levels.}

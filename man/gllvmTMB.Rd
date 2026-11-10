@@ -127,7 +127,12 @@ personality data, \code{cluster = "study"} for multi-study
 meta-analysis). Default \code{NULL}, which resolves to \code{"species"}. For
 datasets with no third grouping the column may be absent from \code{data}
 entirely (with or without passing \code{cluster}); the engine will
-synthesise a placeholder. If supplied but no covariance keyword uses
+synthesise a placeholder. When \code{cluster} is omitted and one
+\code{kernel_indep()}, \code{kernel_dep()}, \code{kernel_latent()}, \code{kernel_unique()},
+or \code{kernel_scalar()} term names a bare grouping column, that column is
+used so \code{K} is checked against it. An explicit \code{cluster} is unchanged,
+including the replicated kernel example that passes \code{cluster = "site"}.
+If supplied but no covariance keyword uses
 that column, \code{\link[=gllvmTMB]{gllvmTMB()}} warns; omit the argument or use the column in
 the intended covariance keyword.
 

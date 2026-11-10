@@ -833,7 +833,9 @@
 ## levels with zero observations. Distinguish that case (actionable:
 ## droplevels()) from a genuine coverage gap in a species that IS observed
 ## (not fixable by droplevels -- the tree/vcv itself is incomplete).
-.gllvm_abort_uncovered_species_levels <- function(levs, covered, data, species, what) {
+.gllvm_abort_uncovered_species_levels <- function(levs, covered, data, species, what,
+                                                  level_word = "species",
+                                                  mismatch_tail = NULL) {
   missing_levs <- setdiff(levs, covered)
   if (!length(missing_levs)) {
     return(invisible(NULL))
@@ -841,7 +843,7 @@
   observed <- unique(as.character(data[[species]]))
   unused_missing   <- intersect(missing_levs, setdiff(levs, observed))
   observed_missing <- intersect(missing_levs, observed)
-  bullets <- c(sprintf("%s do not cover all species levels.", what))
+  bullets <- c(sprintf("%s do not cover all %s levels.", what, level_word))
   if (length(unused_missing)) {
     bullets <- c(
       bullets,
@@ -861,16 +863,25 @@
     )
   }
   if (length(observed_missing)) {
-    bullets <- c(
-      bullets,
-      "i" = sprintf(
+    observed_line <- if (is.null(mismatch_tail)) {
+      sprintf(
         "%d observed species level%s of `%s` not covered: %s. This is a genuine mismatch and is NOT fixed by droplevels() -- supply a tree/vcv that covers these species.",
         length(observed_missing),
         if (length(observed_missing) > 1L) "s" else "",
         species,
         paste(observed_missing, collapse = ", ")
       )
-    )
+    } else {
+      sprintf(
+        "%d observed level%s of `%s` not covered: %s. %s",
+        length(observed_missing),
+        if (length(observed_missing) > 1L) "s" else "",
+        species,
+        paste(observed_missing, collapse = ", "),
+        mismatch_tail
+      )
+    }
+    bullets <- c(bullets, "i" = observed_line)
   }
   cli::cli_abort(bullets)
 }
@@ -5172,22 +5183,62 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       species_aug_id   <- sparse_phy$species_aug_id
     } else {
       ## --- Legacy dense path: invert tip-only Cphy and store sparse-format
-      if (is.null(phylo_vcv))
+      ## A single named kernel reuses this path. Its matrix is `K`, and the
+      ## grouping is the cluster slot (the kernel column when `cluster` was
+      ## omitted). Say `K` and that column; the phylogenetic wording stays
+      ## on the phylo-only branch below.
+      kernel_dense <- isTRUE(has_kernel_term) && !isTRUE(use_kernel_multi)
+      kfn <- if (kernel_dense) {
+        .gllvmTMB_kernel_fn_from_modes(phy_kernel_mode)
+      } else {
+        NULL
+      }
+      if (is.null(phylo_vcv)) {
+        if (kernel_dense) {
+          cli::cli_abort(c(
+            "{.fn {kfn}} needs a {.arg K} matrix.",
+            ">" = "Pass {.code K = ...} inside {.fn {kfn}}."
+          ), class = "gllvmTMB_kernel_K_levels")
+        }
         cli::cli_abort(c(
           "phylo_latent() / phylo_slope() found in formula but {.arg phylo_vcv} (or {.arg phylo_tree}) is NULL.",
           ">" = "Pass {.code tree = ...} or {.code vcv = ...} inside the keyword, or supply {.arg phylo_tree}/{.arg phylo_vcv} to {.fn gllvmTMB}."
         ))
-      if (is.null(rownames(phylo_vcv)))
+      }
+      if (is.null(rownames(phylo_vcv))) {
+        if (kernel_dense) {
+          cli::cli_abort(c(
+            "{.arg K} for {.fn {kfn}} must have rownames matching levels of {.field {species}}.",
+            ">" = "Set {.code rownames(K)} to the levels of {.field {species}}."
+          ), class = "gllvmTMB_kernel_K_levels")
+        }
         cli::cli_abort(c(
           "phylo_vcv must have rownames matching levels of {.var {species}}.",
           ">" = "Set {.code rownames(phylo_vcv) <- levels(data${species})}."
         ))
+      }
       levs <- levels(data[[species]])
-      .gllvm_abort_uncovered_species_levels(
-        levs, rownames(phylo_vcv), data, species, "{.arg phylo_vcv} rownames"
-      )
+      if (kernel_dense) {
+        .gllvm_abort_uncovered_species_levels(
+          levs, rownames(phylo_vcv), data, species,
+          "{.arg K} rownames",
+          level_word = "grouping",
+          mismatch_tail = sprintf(
+            "This is a mismatch between `K` and `%s` in `%s()` and is NOT fixed by droplevels().",
+            species, kfn
+          )
+        )
+      } else {
+        .gllvm_abort_uncovered_species_levels(
+          levs, rownames(phylo_vcv), data, species, "{.arg phylo_vcv} rownames"
+        )
+      }
       Aphy <- phylo_vcv[levs, levs, drop = FALSE]
-      .assert_dense_psd(as.matrix(Aphy), "vcv", "phylo_latent")
+      if (kernel_dense) {
+        .assert_dense_psd(as.matrix(Aphy), "K", kfn)
+      } else {
+        .assert_dense_psd(as.matrix(Aphy), "vcv", "phylo_latent")
+      }
       Aphy <- Aphy + diag(1e-8, nrow = nrow(Aphy))
       if (!is.null(structured_rho)) {
         structured_rho_diagonal <- diag(Aphy)

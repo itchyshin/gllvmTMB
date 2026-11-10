@@ -18,6 +18,8 @@
 #' provide calibrated intervals or establish a causal evolutionary process.
 #'
 #' @param unit Unquoted grouping column whose levels align with `rownames(K)`.
+#'   When `cluster` is omitted, [gllvmTMB()] uses this column, so `K` is
+#'   checked against it. An explicit `cluster` is unchanged.
 #' @param K Numeric dense positive-semidefinite covariance or correlation
 #'   matrix aligned to the grouping levels.
 #' @param name Character scalar used as the extractor level, e.g.
@@ -147,4 +149,59 @@ kernel_dep <- function(unit, K, name = "kernel", rho = 1) {
 #' @export
 kernel_scalar <- function(unit, K, name = "kernel") {
   invisible(NULL)
+}
+
+## Bare grouping columns named by kernel_*() intercept terms.
+## `kernel_indep(unit, K = K)` stores `unit` as the first argument.
+## A bar (`1 + x | g`) is a slope and keeps its own group; it is not
+## collected here. Returns a zero-row data.frame when no bare kernel
+## grouping is present.
+.gllvmTMB_kernel_bare_groups <- function(formula) {
+  kernels <- c(
+    "kernel_latent", "kernel_unique", "kernel_indep",
+    "kernel_dep", "kernel_scalar"
+  )
+  found <- list()
+  walk <- function(e) {
+    if (!is.call(e)) return(invisible(NULL))
+    fn <- as.character(e[[1L]])[1L]
+    if (!is.na(fn) && fn %in% kernels && length(e) >= 2L) {
+      arg <- e[[2L]]
+      group <- if (is.symbol(arg)) {
+        as.character(arg)
+      } else if (is.character(arg) && length(arg) == 1L && !is.na(arg)) {
+        arg
+      } else {
+        NA_character_
+      }
+      if (!is.na(group) && nzchar(group)) {
+        found[[length(found) + 1L]] <<- list(fn = fn, group = group)
+      }
+    }
+    for (i in seq_along(e)[-1L]) walk(e[[i]])
+    invisible(NULL)
+  }
+  if (is.call(formula)) walk(formula)
+  if (!length(found)) {
+    return(data.frame(
+      fn = character(), group = character(), stringsAsFactors = FALSE
+    ))
+  }
+  data.frame(
+    fn = vapply(found, `[[`, character(1L), "fn"),
+    group = vapply(found, `[[`, character(1L), "group"),
+    stringsAsFactors = FALSE
+  )
+}
+
+## Public keyword behind a harvested kernel mode. A folded
+## `kernel_latent(..., unique = TRUE)` carries both "latent" and "unique".
+.gllvmTMB_kernel_fn_from_modes <- function(modes) {
+  modes <- unique(as.character(modes[!is.na(modes)]))
+  if ("latent" %in% modes) return("kernel_latent")
+  if ("dep" %in% modes) return("kernel_dep")
+  if ("scalar" %in% modes) return("kernel_scalar")
+  if ("indep" %in% modes) return("kernel_indep")
+  if ("unique" %in% modes) return("kernel_unique")
+  "kernel_indep"
 }

@@ -20,25 +20,7 @@
 .mspl_nb2_form <- y ~ 0 + trait + latent(0 + trait | site, d = 1, unique = FALSE)
 
 .mspl_nb2_cpp_text <- function() {
-  candidates <- c(
-    testthat::test_path("..", "..", "src", "gllvmTMB.cpp"),
-    testthat::test_path(
-      "..", "..", "..", "00_pkg_src", "gllvmTMB", "src", "gllvmTMB.cpp"
-    ),
-    file.path("src", "gllvmTMB.cpp"),
-    file.path("..", "src", "gllvmTMB.cpp"),
-    file.path("..", "..", "src", "gllvmTMB.cpp")
-  )
-  installed <- system.file("..", "src", "gllvmTMB.cpp", package = "gllvmTMB")
-  if (nzchar(installed)) {
-    candidates <- c(candidates, installed)
-  }
-  cpp_path <- candidates[file.exists(candidates)][1L]
-  testthat::skip_if(
-    is.na(cpp_path),
-    "gllvmTMB.cpp source file is not available in this test context."
-  )
-  paste(readLines(cpp_path, warn = FALSE), collapse = "\n")
+  gllvmTMB_cpp_source_text()
 }
 
 .mspl_nb2_registry_cell <- function() {

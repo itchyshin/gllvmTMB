@@ -1,12 +1,11 @@
 ## #1349: ?latent must state the identifiable range of d for the default
 ## Sigma = Lambda Lambda^T + Psi fit. The code only guards d <= n_traits,
 ## which reads like the full rule; the help page has to say it is not.
-## Reads the roxygen source (R/brms-sugar.R) and, when present, the generated
-## Rd, so the check works from a source checkout and fails if either is stale.
+## Reads the roxygen source (R/brms-sugar.R), the generated Rd, and the
+## teaching vignettes. A missing file is an error, including under R CMD check.
 
 test_that("?latent argument d states the (T - d)^2 >= T + d identifiable range (#1349)", {
-  src <- testthat::test_path("..", "..", "R", "brms-sugar.R")
-  testthat::skip_if_not(file.exists(src), "not a source checkout")
+  src <- gllvmTMB_pkg_file("R", "brms-sugar.R")
   lines <- readLines(src, warn = FALSE)
   start <- grep("^#' @param d Integer; number of latent factors\\. ", lines)
   expect_length(start, 1L)
@@ -21,8 +20,7 @@ test_that("?latent argument d states the (T - d)^2 >= T + d identifiable range (
 })
 
 test_that("man/latent.Rd carries the same identifiable-range statement (#1349)", {
-  rd <- testthat::test_path("..", "..", "man", "latent.Rd")
-  testthat::skip_if_not(file.exists(rd), "not a source checkout")
+  rd <- gllvmTMB_pkg_file("man", "latent.Rd")
   txt <- gsub("\\s+", " ", paste(readLines(rd, warn = FALSE), collapse = " "))
   expect_match(txt, "(T - d)^2 \\ge T + d", fixed = TRUE)
   expect_match(txt, "not identified", fixed = TRUE)
@@ -47,14 +45,15 @@ test_that("the three teaching vignettes state the identifiable range of d (#1349
     file.path("articles", "model-selection-latent-rank.Rmd")
   )
   for (v in vigs) {
-    p <- testthat::test_path("..", "..", "vignettes", v)
-    testthat::skip_if_not(file.exists(p), "not a source checkout")
+    p <- gllvmTMB_pkg_file("vignettes", v)
     txt <- gsub("\\s+", " ", paste(readLines(p, warn = FALSE), collapse = " "))
     expect_match(txt, "(T - d)^2 \\ge T + d", fixed = TRUE, info = v)
     expect_match(txt, "d <= n_traits", fixed = TRUE, info = v)
   }
   ## The rank article must say d = 3 with T = 5 is not identified, not only overfit.
-  rk <- testthat::test_path("..", "..", "vignettes", "articles", "model-selection-latent-rank.Rmd")
+  rk <- gllvmTMB_pkg_file(
+    "vignettes", "articles", "model-selection-latent-rank.Rmd"
+  )
   txt <- gsub("\\s+", " ", paste(readLines(rk, warn = FALSE), collapse = " "))
   expect_match(txt, "not only overfit", fixed = TRUE)
   expect_match(txt, "is not identified", fixed = TRUE)

@@ -1,5 +1,7 @@
 # Development (unreleased)
 
+* Source scans of `src/`, `R/`, `man/`, and the shipped vignette now find those files when `R CMD check` runs the tests from `*.Rcheck/tests/testthat`, and they stop if a file is missing instead of skipping. No fitted model, likelihood, or reported number changes. Pkgdown articles under `vignettes/articles` stay out of the built package, so a scan that requires one of those articles fails in `R CMD check` rather than being skipped (#1770).
+
 * A pinned Tweedie power `tweedie(p = ...)` below 1.006693 or above 1.993307 is kept at the nearer endpoint (#1365). The fit warns once, with the requested power and the power used, and that fixed value is what Laplace, MSPL and the variational engine use. A pinned power inside that range is unchanged. Estimating `p` (omit the argument) is unchanged. A power of 1 or below, or of 2 or above, is still refused. Bounding an estimated power is not part of this change.
 * `latent(..., d = )` now refuses logical values, negative ranks, missing values, vector ranks, and rank symbols or expressions that evaluate to those values, using the same parser message as fractional literals (`d = 0`, `d = 2.9`). Valid whole-number ranks, including variables such as `k <- 2` in the formula environment, are unchanged (#1750).
 

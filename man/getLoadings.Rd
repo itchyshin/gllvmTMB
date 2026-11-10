@@ -27,6 +27,14 @@ is a small compatibility wrapper around \code{\link[=extract_ordination]{extract
 familiar with \code{gllvm::getLoadings()}. The canonical snake_case spelling in
 this package is \code{\link[=extract_loadings]{extract_loadings()}}, which forwards here.
 }
+\details{
+Attaching \code{gllvm} puts its S3 generic in front of this function.
+gllvmTMB registers a method for a gllvmTMB fit on that generic, so
+\code{getLoadings(fit)} still returns this package's loading matrix. Pass the
+fit as the first argument. A fit produced by \code{gllvm} stays with \code{gllvm}.
+\code{gllvmTMB::getLoadings()} keeps these arguments and this matrix whether
+or not \code{gllvm} is attached.
+}
 \examples{
 set.seed(1)
 ## Five traits measured three times on each of 60 units. Between units,

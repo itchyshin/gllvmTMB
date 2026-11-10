@@ -28,6 +28,13 @@ returns the corresponding correlation matrix. The canonical snake_case
 spellings in this package are \code{\link[=extract_residual_cov]{extract_residual_cov()}} and
 \code{\link[=extract_residual_cor]{extract_residual_cor()}}, which forward here.
 }
+\details{
+Attaching \code{gllvm} masks both names with S3 generics. gllvmTMB registers
+methods for a gllvmTMB fit, so \code{getResidualCov(fit)} and
+\code{getResidualCor(fit)} still return these matrices. A fit produced by
+\code{gllvm} stays with \code{gllvm}. On a \code{gllvm} fit that package's residual
+covariance is a list, not this matrix.
+}
 \seealso{
 \code{\link[=extract_Sigma]{extract_Sigma()}} — the canonical unified API for
 between-/within-/phylogenetic Sigma at any tier.

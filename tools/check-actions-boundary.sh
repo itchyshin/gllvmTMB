@@ -10,7 +10,8 @@ expected=$(printf '%s\n' \
   codecov-upload.yaml \
   full-check.yaml \
   pkgdown.yaml \
-  test-coverage.yaml | LC_ALL=C sort)
+  test-coverage.yaml \
+  test-heavy-coverage.yaml | LC_ALL=C sort)
 actual=$(find "$workflow_dir" -maxdepth 1 -type f \
   \( -name '*.yaml' -o -name '*.yml' \) \
   -exec basename {} \; | LC_ALL=C sort)
@@ -84,6 +85,47 @@ if grep -Eq 'GLLVMTMB_HEAVY_TESTS' <<<"$producer_active"; then
     'D-50 violation: test-coverage.yaml must not enable heavy tests; it measures the fast suite only.' >&2
   exit 1
 fi
+
+heavy_producer="$workflow_dir/test-heavy-coverage.yaml"
+if [[ ! -f "$heavy_producer" ]]; then
+  printf '%s\n' 'D-50 violation: test-heavy-coverage.yaml is missing.' >&2
+  exit 1
+fi
+heavy_active=$(active_text "$heavy_producer")
+if ! grep -Eq 'GLLVMTMB_HEAVY_TESTS' <<<"$heavy_active"; then
+  printf '%s\n' \
+    'D-50 violation: test-heavy-coverage.yaml must set GLLVMTMB_HEAVY_TESTS=1.' >&2
+  exit 1
+fi
+if ! grep -Eq 'GLLVMTMB_TEST_SHARD' <<<"$heavy_active"; then
+  printf '%s\n' \
+    'D-50 violation: test-heavy-coverage.yaml must partition with GLLVMTMB_TEST_SHARD.' >&2
+  exit 1
+fi
+if ! grep -Eq 'shard: \[1, 2, 3, 4, 5, 6, 7, 8\]' <<<"$heavy_active"; then
+  printf '%s\n' \
+    'D-50 violation: test-heavy-coverage.yaml must use eight coverage shards.' >&2
+  exit 1
+fi
+if grep -Eq 'CODECOV_TOKEN|pull_request_target' <<<"$heavy_active"; then
+  printf '%s\n' \
+    'D-50 violation: test-heavy-coverage.yaml must not use CODECOV_TOKEN or pull_request_target.' >&2
+  exit 1
+fi
+if ! grep -Eq 'retention-days:[[:space:]]*7' <<<"$heavy_active"; then
+  printf '%s\n' 'D-50 violation: test-heavy-coverage.yaml artifacts must use 7-day retention.' >&2
+  exit 1
+fi
+if grep -Eq 'if:[[:space:]]*always\(\)[[:space:]]*&&[[:space:]]*github\.event_name' <<<"$heavy_active"; then
+  printf '%s\n' \
+    'D-50 violation: test-heavy-coverage.yaml must not upload coverage from a failed shard.' >&2
+  exit 1
+fi
+if ! grep -Fq 'flags: heavy' <<<"$heavy_active"; then
+  printf '%s\n' \
+    'D-50 violation: test-heavy-coverage.yaml must upload to Codecov with flag heavy.' >&2
+  exit 1
+fi
 if grep -Eq 'coverage-test-failures-shard' <<<"$producer_active"; then
   printf '%s\n' \
     'D-50 violation: test-coverage.yaml must not upload the instrumented package tree.' >&2
@@ -132,4 +174,4 @@ if grep -Eq 'CODECOV_TOKEN|pull_request_target|secrets.CODECOV_TOKEN' <<<"$uploa
 fi
 
 printf '%s\n' \
-  'GitHub Actions boundary PASS: R-CMD-check, full-check, pkgdown, test-coverage, and codecov-upload; package-check artifacts remain forbidden; coverage coberturas are 7-day only.'
+  'GitHub Actions boundary PASS: R-CMD-check, full-check, pkgdown, test-coverage, test-heavy-coverage, and codecov-upload; package-check artifacts remain forbidden; coverage coberturas are 7-day only.'

@@ -7346,7 +7346,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     ## If the user supplied a numeric `p` on the tweedie() family object
     ## (e.g. tweedie(p = 1.5)), pin logit_p_tweedie per trait that uses it.
     ## Parameterisation: p = 1 + plogis(logit_p_tweedie), so the pin value is
-    ## qlogis(p - 1). Mirrors the student(df = ...) per-trait pin below.
+    ## qlogis(p - 1). A requested p whose logit lies outside [-5, 5] is
+    ## stored at that bound and warned (#1365). The template is not clamped;
+    ## a free logit_p is unchanged. The same stored logit is what MSPL reads.
+    ## Mirrors the student(df = ...) per-trait pin below.
     ## Combined with the family mask via `dispersion_trait_map()`'s
     ## `user_pin_mask` so a mixed fit's non-tweedie traits AND a tweedie
     ## trait's user-fixed p are pinned by the same map.
@@ -7361,8 +7364,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       if (all(!is.na(p_vals)) && length(unique(p_vals)) == 1L) p_pin[t] <- p_vals[1]
     }
     if (any(!is.na(p_pin))) {
-      tmb_params$logit_p_tweedie[!is.na(p_pin)] <-
-        stats::qlogis(p_pin[!is.na(p_pin)] - 1)
+      logit_pin <- .tweedie_pinned_logits(p_pin)
+      tmb_params$logit_p_tweedie[!is.na(p_pin)] <- logit_pin[!is.na(p_pin)]
       tmb_map$logit_p_tweedie <- dispersion_trait_map(mask_tweedie, !is.na(p_pin))
     } else {
       ## No trait has a user-supplied `p` -- still pin non-tweedie traits'

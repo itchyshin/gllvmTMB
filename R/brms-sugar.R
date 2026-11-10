@@ -3697,6 +3697,10 @@ rewrite_canonical_aliases <- function(
             "animal_slope"
           )
       ) {
+        if (fn == "animal_latent") {
+          d_pre <- .named_or_positional_arg(e, "d", 3L, default = 1L)
+          .gllvmTMB_validate_latent_d(d_pre, envir = envir)
+        }
         vcv_expr <- .animal_resolve_vcv_call(e, fn)
         nm <- names(e)
         ## animal_scalar(id, ...) -> phylo(id, vcv = A)   (then desugar to propto)
@@ -3774,7 +3778,6 @@ rewrite_canonical_aliases <- function(
         ## (use_phylo_latent_slope). No new C++; the vcv = A is forwarded.
         if (fn == "animal_latent") {
           d_val <- .named_or_positional_arg(e, "d", 3L, default = 1L)
-          .gllvmTMB_validate_latent_d(d_val, envir = envir)
           ## Detect augmented bar.
           arg <- e[[2L]]
           arg_is_bar <- is.call(arg) &&
@@ -4031,6 +4034,10 @@ rewrite_canonical_aliases <- function(
           c("kernel_latent", "kernel_unique", "kernel_indep", "kernel_dep",
             "kernel_scalar")
       ) {
+        if (fn == "kernel_latent") {
+          d_pre <- .named_or_positional_arg(e, "d", 4L, default = 1L)
+          .gllvmTMB_validate_latent_d(d_pre, envir = envir)
+        }
         nm <- names(e)
         if (is.null(nm) || !"K" %in% nm) {
           cli::cli_abort(c(
@@ -4086,7 +4093,6 @@ rewrite_canonical_aliases <- function(
         )
         if (fn == "kernel_latent") {
           d_val <- .named_or_positional_arg(e, "d", 4L, default = 1L)
-          .gllvmTMB_validate_latent_d(d_val, envir = envir)
           unique_arg <- if ("unique" %in% nm) {
             e[[which(nm == "unique")]]
           } else {

@@ -1,6 +1,8 @@
 test_that("source *_latent() rejects invalid d during desugar (#1762)", {
   latent_d_re <- "d.*latent.*whole number >= 1"
   K <- diag(2)
+  rownames(K) <- colnames(K) <- paste0("s", seq_len(2))
+  A <- diag(2)
 
   expect_latent_d_abort <- function(f, envir = parent.frame()) {
     f <- stats::as.formula(f, env = envir)
@@ -30,9 +32,10 @@ test_that("source *_latent() rejects invalid d during desugar (#1762)", {
     )
     expect_latent_d_abort(
       substitute(
-        value ~ 0 + trait + animal_latent(species, d = DRHS),
+        value ~ 0 + trait + animal_latent(species, A = A, d = DRHS),
         list(DRHS = d_rhs)
-      )
+      ),
+      envir = environment()
     )
     expect_latent_d_abort(
       substitute(
@@ -55,7 +58,7 @@ test_that("source *_latent() rejects invalid d during desugar (#1762)", {
     envir = environment()
   )
   expect_latent_d_abort(
-    value ~ 0 + trait + animal_latent(species, d = k_bad),
+    value ~ 0 + trait + animal_latent(species, A = A, d = k_bad),
     envir = environment()
   )
   expect_latent_d_abort(
@@ -75,6 +78,8 @@ test_that("source *_latent() rejects invalid d during desugar (#1762)", {
 
 test_that("source *_latent() keeps valid d spellings during desugar (#1762)", {
   K <- diag(2)
+  rownames(K) <- colnames(K) <- paste0("s", seq_len(2))
+  A <- diag(2)
   k_ok <- 2L
 
   expect_no_error(
@@ -101,12 +106,13 @@ test_that("source *_latent() keeps valid d spellings during desugar (#1762)", {
 
   expect_no_error(
     gllvmTMB:::desugar_brms_sugar(
-      value ~ 0 + trait + animal_latent(species, d = 2)
+      value ~ 0 + trait + animal_latent(species, A = A, d = 2),
+      envir = environment()
     )
   )
   expect_no_error(
     gllvmTMB:::desugar_brms_sugar(
-      value ~ 0 + trait + animal_latent(species, d = k_ok),
+      value ~ 0 + trait + animal_latent(species, A = A, d = k_ok),
       envir = environment()
     )
   )

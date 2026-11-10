@@ -460,16 +460,36 @@ make_mesh <- function(
       ">" = "Build the mesh with {.fn make_mesh} instead of assembling a {.cls gllvmTMBmesh} object by hand."
     ))
   }
-  if (
-    !inherits(mesh$A_st, "sparseMatrix") ||
-      nrow(mesh$A_st) != nrow(mesh$loc_xy) ||
-      !all(is.finite(mesh$A_st@x)) ||
-      any(abs(Matrix::rowSums(mesh$A_st) - 1) >= 1e-8)
-  ) {
+  hand_mesh_hint <- c(
+    ">" = "Build the mesh with {.fn make_mesh} instead of assembling a {.cls gllvmTMBmesh} object by hand."
+  )
+  if (!inherits(mesh$A_st, "sparseMatrix")) {
     cli::cli_abort(c(
-      "Mesh {.field A_st} must be a sparse projection with one row per coordinate row.",
-      ">" = "Build the mesh with {.fn make_mesh} instead of assembling a {.cls gllvmTMBmesh} object by hand."
-    ))
+      "Mesh {.field A_st} must be a sparse {.cls Matrix} projection matrix.",
+      hand_mesh_hint
+    ), class = "gllvmTMB_mesh_a_st_not_sparse")
+  }
+  if (nrow(mesh$A_st) != nrow(mesh$loc_xy)) {
+    cli::cli_abort(c(
+      "Mesh {.field A_st} must have one row per coordinate row in {.field loc_xy}.",
+      hand_mesh_hint
+    ), class = "gllvmTMB_mesh_a_st_row_mismatch")
+  }
+  if (!all(is.finite(mesh$A_st@x))) {
+    cli::cli_abort(c(
+      "Mesh {.field A_st} must contain only finite values.",
+      hand_mesh_hint
+    ), class = "gllvmTMB_mesh_a_st_nonfinite")
+  }
+  row_mass <- Matrix::rowSums(mesh$A_st)
+  outside <- !is.finite(row_mass) | abs(row_mass - 1) >= 1e-8
+  n_outside <- sum(outside)
+  if (n_outside > 0L) {
+    cli::cli_abort(c(
+      "{n_outside} location{?s} fall outside the mesh triangulation, so the barycentric projection {.field A_st} does not sum to 1.",
+      "i" = "A {.arg cutoff} that is too large for the point pattern is the usual cause.",
+      ">" = "Try a smaller {.arg cutoff}, or extend the mesh boundary so it covers all locations."
+    ), class = "gllvmTMB_mesh_locations_outside")
   }
   matrices <- mesh$spde[c("c0", "g1", "g2")]
   if (

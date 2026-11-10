@@ -3774,6 +3774,7 @@ rewrite_canonical_aliases <- function(
         ## (use_phylo_latent_slope). No new C++; the vcv = A is forwarded.
         if (fn == "animal_latent") {
           d_val <- .named_or_positional_arg(e, "d", 3L, default = 1L)
+          .gllvmTMB_validate_latent_d(d_val, envir = envir)
           ## Detect augmented bar.
           arg <- e[[2L]]
           arg_is_bar <- is.call(arg) &&
@@ -4085,6 +4086,7 @@ rewrite_canonical_aliases <- function(
         )
         if (fn == "kernel_latent") {
           d_val <- .named_or_positional_arg(e, "d", 4L, default = 1L)
+          .gllvmTMB_validate_latent_d(d_val, envir = envir)
           unique_arg <- if ("unique" %in% nm) {
             e[[which(nm == "unique")]]
           } else {
@@ -4310,6 +4312,7 @@ rewrite_canonical_aliases <- function(
               ))
             }
             d_arg <- .named_or_positional_arg(e, "d", 3L, default = 1L)
+            .gllvmTMB_validate_latent_d(d_arg, envir = envir)
             ## User-supplied tree / vcv / A / Ainv, shared by both folded pieces.
             src_extras <- list()
             for (a in c("tree", "vcv", "A", "Ainv")) {
@@ -4399,6 +4402,7 @@ rewrite_canonical_aliases <- function(
           ## not `phylo_rr` -- so a positional `d` here would be silently
           ## dropped. Normalise it to a named `d =` before the rename.
           d_val <- .named_or_positional_arg(e, "d", 3L, default = 1L)
+          .gllvmTMB_validate_latent_d(d_val, envir = envir)
           new_call <- as.call(c(
             list(as.name(target), e[[2L]]),
             list(d = d_val),
@@ -4813,6 +4817,7 @@ rewrite_canonical_aliases <- function(
       if (fn == "spatial_latent") {
         .warn_spatial_grouping_token(fn, e)
         d_val <- .named_or_positional_arg(e, "d", 3L, default = 1L)
+        .gllvmTMB_validate_latent_d(d_val, envir = envir)
         unique_arg <- .named_or_positional_arg(
           e, "unique", 4L, default = FALSE
         )

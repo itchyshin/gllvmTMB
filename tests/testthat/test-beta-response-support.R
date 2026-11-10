@@ -94,8 +94,7 @@ test_that("#1485 Beta row indices refer to the wide data under traits()", {
 })
 
 test_that("#1485 the C++ Beta density uses the recorded y, with no clamp", {
-  src <- testthat::test_path("..", "..", "src", "gllvmTMB.cpp")
-  skip_if_not(file.exists(src))
+  src <- gllvmTMB_pkg_file("src", "gllvmTMB.cpp")
   lines <- readLines(src)
   start <- grep("} else if (fid == 7) {", lines, fixed = TRUE)
   stop <- grep("} else if (fid == 8) {", lines, fixed = TRUE)

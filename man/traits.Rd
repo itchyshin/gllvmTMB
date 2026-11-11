@@ -38,8 +38,11 @@ Both taught shapes reach the same stacked-trait model after internal
 stacking; the user picks whichever shape matches their data on disk.
 
 Because the LHS already names the response traits, the RHS can use a
-compact wide shorthand. \code{1} expands to the trait-specific intercepts
-\code{0 + trait}; ordinary predictors such as \code{env_temp} expand to
+compact wide shorthand follows the usual R formula intercept rule:
+predictors alone (\code{traits(...) ~ env}) imply per-trait intercepts
+(expanded to \code{0 + trait} on the long side); write \code{0}, \code{-1}, or \code{+0}
+on the RHS to remove them. An explicit \code{1} is the same as that
+default. Ordinary predictors such as \code{env_temp} expand to
 \code{(0 + trait):env_temp}; and \code{latent(1 | individual)} expands to
 the long covariance syntax \code{latent(0 + trait | individual)}.
 Ordinary \code{latent()} includes its \eqn{\boldsymbol\Psi} companion by

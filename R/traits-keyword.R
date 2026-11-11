@@ -34,7 +34,7 @@
 #'
 #' @details
 #' Because the LHS already names the response traits, the RHS can use a
-#' compact wide shorthand follows the usual R formula intercept rule:
+#' compact wide shorthand, which follows the usual R formula intercept rule:
 #' predictors alone (`traits(...) ~ env`) imply per-trait intercepts
 #' (expanded to `0 + trait` on the long side); write `0`, `-1`, or `+0`
 #' on the RHS to remove them. An explicit `1` is the same as that
@@ -174,23 +174,6 @@ is_traits_lhs <- function(formula) {
   }
   if (identical(fn, "-") && length(expr) == 3L) {
     return(.traits_additive_has_trait_intercept(expr[[2L]]))
-  }
-  FALSE
-}
-
-.traits_rhs_contains_shared <- function(expr) {
-  if (is.call(expr) && identical(.traits_call_name(expr), "shared")) {
-    return(TRUE)
-  }
-  if (is.call(expr)) {
-    fn <- .traits_call_name(expr)
-    if (!is.null(fn) && fn %in% c("+", "-") && length(expr) >= 2L) {
-      return(any(vapply(
-        as.list(expr)[-1L],
-        .traits_rhs_contains_shared,
-        logical(1L)
-      )))
-    }
   }
   FALSE
 }
@@ -837,7 +820,6 @@ rewrite_traits_lhs <- function(
   )
   if (
     .traits_compact_formula_has_intercept(offset_rw$rhs, eval_env) &&
-      !.traits_rhs_contains_shared(offset_rw$rhs) &&
       !.traits_additive_has_trait_intercept(rhs)
   ) {
     rhs <- call("+", .traits_trait_term(), rhs)

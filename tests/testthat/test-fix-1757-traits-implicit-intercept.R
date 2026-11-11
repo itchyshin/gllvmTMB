@@ -6,7 +6,8 @@ test_that("traits() wide RHS adds per-trait intercepts under the R implicit-inte
     trait_1 = rnorm(8),
     trait_2 = rnorm(8),
     trait_3 = rnorm(8),
-    x = seq_len(8)
+    x = seq_len(8),
+    z = seq_len(8) / 8
   )
 
   implicit <- gllvmTMB:::rewrite_traits_lhs(
@@ -34,25 +35,64 @@ test_that("traits() wide RHS adds per-trait intercepts under the R implicit-inte
       latent(1 | unit, d = 1, unique = TRUE),
     data = wide
   )
+  minus_one <- gllvmTMB:::rewrite_traits_lhs(
+    traits(trait_1, trait_2, trait_3) ~ -1 + x +
+      latent(1 | unit, d = 1, unique = TRUE),
+    data = wide
+  )
+  x_minus_one <- gllvmTMB:::rewrite_traits_lhs(
+    traits(trait_1, trait_2, trait_3) ~ x - 1 +
+      latent(1 | unit, d = 1, unique = TRUE),
+    data = wide
+  )
+  plus_zero <- gllvmTMB:::rewrite_traits_lhs(
+    traits(trait_1, trait_2, trait_3) ~ +0 + x +
+      latent(1 | unit, d = 1, unique = TRUE),
+    data = wide
+  )
+  shared_imp <- gllvmTMB:::rewrite_traits_lhs(
+    traits(trait_1, trait_2, trait_3) ~ shared(x),
+    data = wide
+  )
+  shared_plus <- gllvmTMB:::rewrite_traits_lhs(
+    traits(trait_1, trait_2, trait_3) ~ z + shared(x),
+    data = wide
+  )
 
-  imp_rhs <- paste(deparse(implicit$formula_long[[3L]]), collapse = " ")
-  exp_rhs <- paste(deparse(explicit$formula_long[[3L]]), collapse = " ")
-  no_rhs <- paste(deparse(no_int$formula_long[[3L]]), collapse = " ")
-  lat_rhs <- paste(deparse(latent_only$formula_long[[3L]]), collapse = " ")
-  lat1_rhs <- paste(deparse(latent_one$formula_long[[3L]]), collapse = " ")
+  rhs_text <- function(rewrite) {
+    paste(deparse(rewrite$formula_long[[3L]]), collapse = " ")
+  }
+  imp_rhs <- rhs_text(implicit)
+  exp_rhs <- rhs_text(explicit)
+  no_rhs <- rhs_text(no_int)
+  lat_rhs <- rhs_text(latent_only)
+  lat1_rhs <- rhs_text(latent_one)
+  minus_rhs <- rhs_text(minus_one)
+  x_minus_rhs <- rhs_text(x_minus_one)
+  plus_zero_rhs <- rhs_text(plus_zero)
+  shared_imp_rhs <- rhs_text(shared_imp)
+  shared_plus_rhs <- rhs_text(shared_plus)
 
-  expect_match(imp_rhs, "0 \\+ trait")
-  expect_match(exp_rhs, "0 \\+ trait")
+  ## Anchor at the start of the expanded RHS so "(0 + trait):x" on main
+  ## cannot satisfy the intercept assertion.
+  expect_match(imp_rhs, "^0 \\+ trait")
+  expect_match(exp_rhs, "^0 \\+ trait")
   expect_match(imp_rhs, "\\(0 \\+ trait\\):x")
   expect_match(exp_rhs, "\\(0 \\+ trait\\):x")
-  expect_match(imp_rhs, "\\(0 \\+ trait\\):x")
   expect_no_match(no_rhs, "^0 \\+ trait")
   expect_match(lat_rhs, "^0 \\+ trait")
   expect_equal(lat_rhs, lat1_rhs)
+  expect_no_match(minus_rhs, "^0 \\+ trait")
+  expect_no_match(x_minus_rhs, "^0 \\+ trait")
+  expect_no_match(plus_zero_rhs, "^0 \\+ trait")
+  expect_match(shared_imp_rhs, "^0 \\+ trait \\+ x")
+  expect_no_match(shared_imp_rhs, "\\(0 \\+ trait\\):x")
+  expect_match(shared_plus_rhs, "^0 \\+ trait \\+ \\(0 \\+ trait\\):z \\+ x")
 })
 
 test_that("traits() ~ x matches ~ 1 + x and differs from ~ 0 + x in coef count (#1757)", {
   skip_if_not_installed("tidyr")
+  set.seed(1)
 
   sim <- simulate_unit_trait(
     n_units = 30,

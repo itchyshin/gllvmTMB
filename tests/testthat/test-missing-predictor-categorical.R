@@ -519,7 +519,7 @@ test_that("multivariate: one unordered mi(habitat) feeds both traits via the per
   wide$habitat[d$missing] <- NA
 
   fit <- suppressMessages(suppressWarnings(gllvmTMB(
-    traits(t1, t2) ~ z + mi(habitat),
+    traits(t1, t2) ~ 1 + z + mi(habitat),
     data    = wide,
     unit    = "site",
     family  = gaussian(),

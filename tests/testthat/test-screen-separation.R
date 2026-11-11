@@ -377,7 +377,7 @@ test_that("long and wide fixed designs produce the same certificates", {
     y = c(wide$a, wide$b)
   )
   wide_scr <- screen_gllvmTMB(
-    traits(a, b) ~ x,
+    traits(a, b) ~ 0 + x,
     wide,
     unit = "unit",
     family = binomial(),

@@ -38,7 +38,7 @@ Both taught shapes reach the same stacked-trait model after internal
 stacking; the user picks whichever shape matches their data on disk.
 
 Because the LHS already names the response traits, the RHS can use a
-compact wide shorthand follows the usual R formula intercept rule:
+compact wide shorthand, which follows the usual R formula intercept rule:
 predictors alone (\code{traits(...) ~ env}) imply per-trait intercepts
 (expanded to \code{0 + trait} on the long side); write \code{0}, \code{-1}, or \code{+0}
 on the RHS to remove them. An explicit \code{1} is the same as that

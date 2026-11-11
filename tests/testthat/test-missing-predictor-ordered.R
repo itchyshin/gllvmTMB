@@ -496,7 +496,7 @@ test_that("multivariate: one ordered mi(score) feeds both traits via the per-uni
   wide$score[d$missing] <- NA
 
   fit <- suppressMessages(suppressWarnings(gllvmTMB(
-    traits(t1, t2) ~ z + mi(score),
+    traits(t1, t2) ~ 1 + z + mi(score),
     data    = wide,
     unit    = "site",
     family  = gaussian(),

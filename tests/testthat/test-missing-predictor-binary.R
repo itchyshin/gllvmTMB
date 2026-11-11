@@ -364,7 +364,7 @@ test_that("multivariate: one binary mi(x) feeds both traits via the per-unit pro
   wide$x[d$missing] <- NA_real_
 
   fit <- suppressMessages(suppressWarnings(gllvmTMB(
-    traits(t1, t2) ~ z + mi(x),
+    traits(t1, t2) ~ 1 + z + mi(x),
     data    = wide,
     unit    = "site",
     family  = gaussian(),

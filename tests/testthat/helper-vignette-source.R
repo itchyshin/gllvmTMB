@@ -1,6 +1,8 @@
 ## Resolve vignette sources under a dev tree or R CMD check (00_pkg_src).
 ## pkgdown articles live in vignettes/articles/, which .Rbuildignore excludes
 ## from the built tarball, so those files are often absent under check (#1770).
+## The skip gate covers only the article block; gllvmTMB.Rmd is in the tarball
+## and the main-vignette scan must hard-fail if that file is missing.
 ##
 ## Live lookups use testthat::test_path(). Planted *.Rcheck trees use the
 ## matching `_from` helpers with an explicit testthat directory, because
@@ -67,12 +69,15 @@ gllvmTMB_skip_if_latent_d_teaching_vignettes_absent <- function(testthat_dir = t
     file.path("articles", "model-selection-latent-rank.Rmd")
   )
   paths <- gllvmTMB_latent_d_teaching_vignette_paths_from(testthat_dir, vigs)
-  if (any(is.na(paths))) {
+  ## Skip only the pkgdown-article block. gllvmTMB.Rmd is in the built
+  ## tarball and must be scanned even when vignettes/articles/ is absent.
+  article_rel <- vigs[-1L]
+  if (any(is.na(paths[article_rel]))) {
     testthat::skip(
       paste(
         "pkgdown article vignettes (vignettes/articles/) are absent from this",
         "test context (.Rbuildignore excludes them from the built tarball);",
-        "the full teaching-vignette scan runs only when those sources are present"
+        "the article identifiable-range scan runs only when those sources are present"
       )
     )
   }

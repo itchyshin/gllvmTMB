@@ -40,9 +40,21 @@ test_that("the stated bound matches the moment count it is derived from (#1349)"
   expect_identical(vapply(c(3, 4, 5, 10), maxd, numeric(1)), c(1, 1, 2, 6))
 })
 
-test_that("the three teaching vignettes state the identifiable range of d (#1349)", {
+test_that("the main teaching vignette states the identifiable range of d (#1349)", {
+  v <- "gllvmTMB.Rmd"
+  p <- gllvmTMB_vignette_source_path(v)
+  if (is.na(p)) {
+    stop(
+      "vignettes/gllvmTMB.Rmd is required for the identifiable-range scan and is missing from this test context"
+    )
+  }
+  txt <- gsub("\\s+", " ", paste(readLines(p, warn = FALSE), collapse = " "))
+  expect_match(txt, "(T - d)^2 \\ge T + d", fixed = TRUE, info = v)
+  expect_match(txt, "d <= n_traits", fixed = TRUE, info = v)
+})
+
+test_that("the teaching articles state the identifiable range of d (#1349)", {
   vigs <- c(
-    "gllvmTMB.Rmd",
     file.path("articles", "covariance-correlation.Rmd"),
     file.path("articles", "model-selection-latent-rank.Rmd")
   )

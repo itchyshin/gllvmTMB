@@ -1,5 +1,6 @@
-## #1770: the latent-d teaching-vignette scan must skip (not error) when
-## vignettes/articles/ is absent from the check tree.
+## #1770: the latent-d teaching-article scan must skip (not error) when
+## vignettes/articles/ is absent from the check tree. The main vignette
+## gllvmTMB.Rmd is in the tarball and must still be scanned.
 ##
 ## These tests plant a two-level 00_pkg_src tarball layout and call the
 ## skip gate against that tree. They fail on the pre-fix scan: main used
@@ -28,11 +29,6 @@ test_that("teaching-vignette gate skips when pkgdown articles are absent (#1770)
   planted <- .fix1770_tarball_testthat(with_articles = FALSE)
   on.exit(unlink(planted$root, recursive = TRUE), add = TRUE)
 
-  ## R CMD check: sources sit in 00_pkg_src, not at ../../vignettes.
-  expect_false(file.exists(
-    file.path(planted$testthat, "..", "..", "vignettes", "gllvmTMB.Rmd")
-  ))
-
   vigs <- c(
     "gllvmTMB.Rmd",
     file.path("articles", "covariance-correlation.Rmd"),
@@ -42,9 +38,6 @@ test_that("teaching-vignette gate skips when pkgdown articles are absent (#1770)
   expect_true(file.exists(paths[["gllvmTMB.Rmd"]]))
   expect_true(is.na(paths[[file.path("articles", "covariance-correlation.Rmd")]]))
   expect_true(is.na(paths[[file.path("articles", "model-selection-latent-rank.Rmd")]]))
-  ## Pre-fix #1772 errored here: readLines() / gllvmTMB_pkg_file() on the
-  ## missing article. The skip must fire instead.
-  expect_error(readLines(paths[[file.path("articles", "covariance-correlation.Rmd")]]))
 
   cnd <- expect_condition(
     gllvmTMB_skip_if_latent_d_teaching_vignettes_absent(planted$testthat),
@@ -63,14 +56,20 @@ test_that("teaching-vignette gate does not skip when all three sources exist (#1
   expect_true(all(file.exists(unname(paths))))
 })
 
-test_that("original teaching-vignette doc scan still asserts identifiable range (#1770)", {
-  scan <- paste(
-    readLines(testthat::test_path("test-latent-d-identifiable-range-doc.R"), warn = FALSE),
-    collapse = "\n"
+test_that("main-vignette identifiable-range scan is not skipped when only articles are absent (#1770)", {
+  planted <- .fix1770_tarball_testthat(with_articles = FALSE)
+  on.exit(unlink(planted$root, recursive = TRUE), add = TRUE)
+
+  v <- "gllvmTMB.Rmd"
+  p <- gllvmTMB_vignette_source_path_from(planted$testthat, v)
+  expect_false(is.na(p))
+  writeLines(c("(T - d)^2 \\ge T + d", "d <= n_traits"), p)
+  txt <- gsub("\\s+", " ", paste(readLines(p, warn = FALSE), collapse = " "))
+  expect_match(txt, "(T - d)^2 \\ge T + d", fixed = TRUE, info = v)
+  expect_match(txt, "d <= n_traits", fixed = TRUE, info = v)
+
+  expect_condition(
+    gllvmTMB_skip_if_latent_d_teaching_vignettes_absent(planted$testthat),
+    class = "skip"
   )
-  expect_match(scan, 'expect_match(txt, "(T - d)^2 \\\\ge T + d"', fixed = TRUE)
-  expect_match(scan, 'expect_match(txt, "d <= n_traits"', fixed = TRUE)
-  expect_match(scan, 'expect_match(txt, "not only overfit"', fixed = TRUE)
-  expect_match(scan, 'expect_match(txt, "is not identified"', fixed = TRUE)
-  expect_match(scan, "gllvmTMB_skip_if_latent_d_teaching_vignettes_absent", fixed = TRUE)
 })

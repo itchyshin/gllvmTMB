@@ -7,7 +7,9 @@ test_that("traits() wide RHS adds per-trait intercepts under the R implicit-inte
     trait_2 = rnorm(8),
     trait_3 = rnorm(8),
     x = seq_len(8),
-    z = seq_len(8) / 8
+    ## Not a scalar multiple of x (z = x/8 would put the shared x column
+    ## in the span of (0 + trait):z and make the 7-column design rank-deficient).
+    z = c(0.4, 1.7, -0.2, 0.9, 1.3, 0.1, 1.8, -0.5)
   )
 
   implicit <- gllvmTMB:::rewrite_traits_lhs(
@@ -87,7 +89,14 @@ test_that("traits() wide RHS adds per-trait intercepts under the R implicit-inte
   expect_no_match(plus_zero_rhs, "^0 \\+ trait")
   expect_match(shared_imp_rhs, "^0 \\+ trait \\+ x")
   expect_no_match(shared_imp_rhs, "\\(0 \\+ trait\\):x")
-  expect_match(shared_plus_rhs, "^0 \\+ trait \\+ \\(0 \\+ trait\\):z \\+ x")
+  expect_identical(shared_plus_rhs, "0 + trait + ((0 + trait):z + x)")
+
+  X_shared_plus <- stats::model.matrix(
+    stats::delete.response(stats::terms(shared_plus$formula_long)),
+    shared_plus$data_long
+  )
+  expect_equal(ncol(X_shared_plus), 7L)
+  expect_equal(qr(X_shared_plus)$rank, 7L)
 })
 
 test_that("traits() ~ x matches ~ 1 + x and differs from ~ 0 + x in coef count (#1757)", {

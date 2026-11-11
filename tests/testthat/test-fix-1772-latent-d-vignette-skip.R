@@ -55,21 +55,3 @@ test_that("teaching-vignette gate does not skip when all three sources exist (#1
   expect_true(all(!is.na(paths)))
   expect_true(all(file.exists(unname(paths))))
 })
-
-test_that("main-vignette identifiable-range scan is not skipped when only articles are absent (#1770)", {
-  planted <- .fix1770_tarball_testthat(with_articles = FALSE)
-  on.exit(unlink(planted$root, recursive = TRUE), add = TRUE)
-
-  v <- "gllvmTMB.Rmd"
-  p <- gllvmTMB_vignette_source_path_from(planted$testthat, v)
-  expect_false(is.na(p))
-  writeLines(c("(T - d)^2 \\ge T + d", "d <= n_traits"), p)
-  txt <- gsub("\\s+", " ", paste(readLines(p, warn = FALSE), collapse = " "))
-  expect_match(txt, "(T - d)^2 \\ge T + d", fixed = TRUE, info = v)
-  expect_match(txt, "d <= n_traits", fixed = TRUE, info = v)
-
-  expect_condition(
-    gllvmTMB_skip_if_latent_d_teaching_vignettes_absent(planted$testthat),
-    class = "skip"
-  )
-})

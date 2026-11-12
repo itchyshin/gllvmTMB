@@ -70,5 +70,5 @@ test_that("#1783 two-level 0 + trait still fits", {
     silent = TRUE
   )))
   expect_s3_class(fit, "gllvmTMB_multi")
-  expect_gte(nlevels(fit$data[[fit$trait_col]]), 2L)
+  expect_setequal(fit$X_fix_names, c("traitt1", "traitt2"))
 })

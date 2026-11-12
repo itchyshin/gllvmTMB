@@ -1,5 +1,7 @@
 # Development (unreleased)
 
+* `predict(newdata = )` now stops when the fitted unit column is absent and unit-level random effects would be re-added. It used to return the fixed-effects-only prediction while reporting that those random effects had been re-added. `re_form = ~0` still returns that fixed-effects prediction, and an unseen level of a unit column that is present is unchanged (#1782).
+
 * The get-started regression scans for issues #1327 and #1328 now read `README.md` and `vignettes/gllvmTMB.Rmd` through the shared package-source resolver, so they run under `R CMD check` instead of skipping when those files are only in `00_pkg_src`. No fitted model, likelihood, or reported number changes (#1778).
 
 * Source scans of `src/`, `R/`, `man/`, and the shipped vignette now find those files when `R CMD check` runs the tests from `*.Rcheck/tests/testthat`, and they stop if a file is missing instead of skipping. No fitted model, likelihood, or reported number changes (#1770).

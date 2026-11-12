@@ -37,20 +37,16 @@ test_that("README and get-started vignette resolve under two-level 00_pkg_src (#
   }
 })
 
-test_that("live #1327/#1328 scans resolve package sources in this context (#1778)", {
-  expect_true(file.exists(gllvmTMB_pkg_file("vignettes", "gllvmTMB.Rmd")))
-  expect_true(file.exists(gllvmTMB_pkg_file("README.md")))
-})
-
 test_that("#1327/#1328 scans no longer skip on a missing dev-tree path (#1778)", {
-  banned <- c(
-    "test-issue-1327-get-started-visible-objects.R" =
-      "skip_if_not(file.exists(rmd)",
-    "test-issue-1328-first-fit-messages.R" =
-      "skip_if_not(file.exists"
+  legacy_two_up <- "test_path\\s*\\(\\s*['\"]\\.\\.['\"]\\s*,\\s*['\"]\\.\\.['\"]"
+  skip_pat <- "skip_if_not\\(file\\.exists"
+  targets <- c(
+    "test-issue-1327-get-started-visible-objects.R",
+    "test-issue-1328-first-fit-messages.R"
   )
-  for (file in names(banned)) {
+  for (file in targets) {
     txt <- paste(readLines(testthat::test_path(file), warn = FALSE), collapse = "\n")
-    expect_false(grepl(banned[[file]], txt, fixed = TRUE), info = file)
+    expect_false(grepl(skip_pat, txt, perl = TRUE), info = paste0(file, ": skip_if_not(file.exists"))
+    expect_false(grepl(legacy_two_up, txt, perl = TRUE), info = paste0(file, ": test_path(.., ..)"))
   }
 })

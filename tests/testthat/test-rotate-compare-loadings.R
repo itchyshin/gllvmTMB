@@ -67,11 +67,10 @@ test_that("rotate_loadings(): level-not-active error names the user's level, not
   ))
 })
 
-## Help-text pins (#1590). The Rd files ship under man/; skip when the
-## test runs somewhere they are not available.
+## Help-text pins (#1590). The Rd files ship under man/. A missing page
+## is an error under R CMD check, not a skip.
 read_rd <- function(name) {
-  f <- testthat::test_path("..", "..", "man", paste0(name, ".Rd"))
-  testthat::skip_if_not(file.exists(f), "man/ not available")
+  f <- gllvmTMB_pkg_file("man", paste0(name, ".Rd"))
   paste(readLines(f, warn = FALSE), collapse = "\n")
 }
 

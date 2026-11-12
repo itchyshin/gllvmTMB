@@ -74,7 +74,7 @@ byte-identical `gllvmTMB.so` files (verified with `cmp`).
 | Runaway cell, -O0 --coverage | identical to -O2 (start 2 stalls, start 1 converges) | identical to -O2 |
 | New test `#1746` (in `test-aghq-multistart-convergence.R`) | FAIL 4 at -O2 and at -O0 (exact CI stall message) | PASS 7 at -O2 and -O0 |
 | Six named files, -O2 | FAIL 0 / PASS 368, 6.4 min | FAIL 0 / PASS 368 (+7 new), 10.1 min |
-| Six named files, -O0 --coverage | FAIL 0 / PASS 368, 40.1 min | see PR body for the final run |
+| Six named files, -O0 --coverage | FAIL 0 / PASS 368, 40.1 min | FAIL 0 / PASS 375 (+7 new), 60.2 min; see note below |
 | 20-file AGHQ sweep, -O2 | FAIL 0, 8.1 min | FAIL 0, 12.0 min |
 
 Time moves only in files whose fits end on the stall branch. At -O2,
@@ -82,6 +82,12 @@ Time moves only in files whose fits end on the stall branch. At -O2,
 the new test) and `runaway-warning` from 20 s to 41 s. At -O0,
 `aghq-multistart-convergence` goes from 443 s to 1671 s. That file runs in
 coverage shard 2, which took 44 min on main run 42938549464.
+
+In the first six-file -O0 fix run, two `ordiplot()` expectations in
+`degenerate-laplace-optima` (lines 746 and 757) failed with
+`cannot open file 'Rplots.pdf'`. A concurrent -O2 run was sharing the same test
+directory and writing the same file. Rerunning that file alone at -O0 in its
+own directory gave FAIL 0 / PASS 154 in 29.6 min, against 29.6 min on main.
 
 Not run: the full suite, `R CMD check`, covr itself, and macOS or Windows.
 Locally the `-O0 --coverage` build does NOT reproduce CI's warm-start miss

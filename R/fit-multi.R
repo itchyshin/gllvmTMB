@@ -1406,6 +1406,32 @@
   invisible(NULL)
 }
 
+.abort_one_level_fixed_factors <- function(mf) {
+  tt <- stats::terms(mf)
+  resp_idx <- attr(tt, "response")
+  resp_nm <- if (is.numeric(resp_idx) && length(resp_idx) == 1L && resp_idx > 0L) {
+    colnames(mf)[resp_idx]
+  } else {
+    character(0)
+  }
+  preds <- setdiff(colnames(mf), resp_nm)
+  bad <- preds[vapply(preds, function(nm) {
+    col <- mf[[nm]]
+    is.factor(col) && nlevels(col) < 2L
+  }, logical(1))]
+  if (!length(bad)) return(invisible(NULL))
+  shown <- vapply(bad, function(nm) {
+    lv <- levels(mf[[nm]])
+    if (length(lv) == 0L) paste0(nm, " (no levels)") else paste0(nm, " = ", lv[[1L]])
+  }, character(1))
+  cli::cli_abort(c(
+    "A fixed-effect factor has fewer than two levels, so contrasts cannot be built.",
+    "x" = "Found {.val {shown}}.",
+    "i" = "Use an intercept-only fixed formula ({.code ~ 1}) when every row shares one trait, or give the factor at least two levels.",
+    "i" = "A single-response model with no trait structure belongs in {.pkg glmmTMB}."
+  ), class = "gllvmTMB_one_level_factor")
+}
+
 #' Fit a long-format multivariate stacked-trait model (Stage 2 internal)
 #'
 #' Called by [gllvmTMB()] when the formula contains `latent()` or `indep()`
@@ -3627,6 +3653,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## ---- Build fixed-effects design matrix --------------------------------
   ## We use the full data env so that 0 + trait + (0+trait):env etc. parses.
   mf <- stats::model.frame(parsed$fixed, data = data, na.action = stats::na.pass)
+  ## A one-level factor dies inside model.matrix() with a bare contrasts
+  ## error. Name the factor and point at the intercept-only formula (#1783).
+  .abort_one_level_fixed_factors(mf)
   X_fix <- stats::model.matrix(parsed$fixed, mf)
   fixed_prior_spec <- .gllvmTMB_resolve_fixed_priors(control$fixed_effect_priors, colnames(X_fix))
   isdm_observation_basis <- NULL

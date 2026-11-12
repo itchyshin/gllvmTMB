@@ -1,5 +1,7 @@
 # Development (unreleased)
 
+* An uncalled family constructor (`family = gaussian`, the function) is now called and fitted. It used to stop in the multinomial-expansion scan with `cannot coerce type 'closure' to vector of type 'character'`. `family = gaussian()` and `family = "gaussian"` are unchanged. An uncalled `multinomial` is still expanded before the fit. A constructor that cannot be called with its defaults stops with a message asking for `gaussian()` or a character name (#1781).
+
 * The get-started regression scans for issues #1327 and #1328 now read `README.md` and `vignettes/gllvmTMB.Rmd` through the shared package-source resolver, so they run under `R CMD check` instead of skipping when those files are only in `00_pkg_src`. No fitted model, likelihood, or reported number changes (#1778).
 
 * Source scans of `src/`, `R/`, `man/`, and the shipped vignette now find those files when `R CMD check` runs the tests from `*.Rcheck/tests/testthat`, and they stop if a file is missing instead of skipping. No fitted model, likelihood, or reported number changes (#1770).

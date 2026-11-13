@@ -391,21 +391,7 @@ test_that("Phase-4 oracles never invoke a live Poisson MSPL fit", {
 })
 
 .mspl_r_source <- function(rel) {
-  candidates <- c(
-    testthat::test_path("..", "..", "R", rel),
-    testthat::test_path("..", "..", "..", "00_pkg_src", "gllvmTMB", "R", rel),
-    file.path("R", rel)
-  )
-  installed <- system.file("..", "R", rel, package = "gllvmTMB")
-  if (nzchar(installed)) {
-    candidates <- c(installed, candidates)
-  }
-  path <- candidates[file.exists(candidates)][1L]
-  testthat::skip_if(
-    is.na(path),
-    paste0("R/", rel, " is not available in this installed-package test context.")
-  )
-  paste(readLines(path, warn = FALSE), collapse = "\n")
+  paste(readLines(gllvmTMB_pkg_file("R", rel), warn = FALSE), collapse = "\n")
 }
 
 test_that("prepare public door lists admitted/planned prepare IDs (source pin)", {

@@ -24,12 +24,7 @@ test_that("#1787 predict() stops when newdata omits the species column", {
 
   expect_error(
     predict(fit, newdata = nd_miss),
-    "species column",
-    class = "gllvmTMB_predict_newdata_species_missing"
-  )
-  expect_error(
-    predict(fit, newdata = nd_miss),
-    "re_form",
+    regexp = "species column[[:print:][:space:]]*re_form",
     class = "gllvmTMB_predict_newdata_species_missing"
   )
 
@@ -45,7 +40,7 @@ test_that("#1787 an unseen species level is not the missing-column error", {
   fit <- .fit_1787()
   nd_unseen <- fit$data[1, , drop = FALSE]
   nd_unseen$group <- "g9"
+  nd_unseen$obs <- paste0("newobs_", nd_unseen$obs)
   p_unseen <- suppressMessages(predict(fit, newdata = nd_unseen))
-  expect_s3_class(p_unseen, "data.frame")
-  expect_equal(nrow(p_unseen), 1L)
+  expect_equal(p_unseen$est, predict(fit, newdata = nd_unseen, re_form = ~0)$est)
 })

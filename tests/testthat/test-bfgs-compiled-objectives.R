@@ -4,8 +4,7 @@ test_that("compiled fixed-effect BFGS uses the exact cloglog gradient", {
   dir.create(scratch)
   on.exit(unlink(scratch, recursive = TRUE), add = TRUE)
   fixture_dir <- test_path("fixtures")
-  header <- test_path("..", "..", "src", "gllvmTMB_cloglog.h")
-  skip_if_not(file.exists(header), "production cloglog header unavailable")
+  header <- gllvmTMB_pkg_file("src", "gllvmTMB_cloglog.h")
   expect_true(all(file.copy(c(
     file.path(fixture_dir, "gllvmTMB_cloglog_tail.cpp"), header
   ), scratch)))

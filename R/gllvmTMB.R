@@ -1406,7 +1406,11 @@ gllvmTMB <- function(
       .column_coef_rewrite_estimated_phylo(formula[[3L]], column_coef_spec)
     }
   }
-  formula <- desugar_brms_sugar(formula, trait_col = trait)
+  formula <- desugar_brms_sugar(
+    formula,
+    trait_col = trait,
+    envir = environment(formula)
+  )
 
   ## ---- Detect covariance-structure terms (Stages 2-4) --------------------
   has_covstruct <- detect_covstruct_terms(formula)

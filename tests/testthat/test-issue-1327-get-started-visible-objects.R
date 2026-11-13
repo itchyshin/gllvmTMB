@@ -1,8 +1,7 @@
 ## Issue #1327: copy-pasteable get-started chunks must define objects they use later.
 
 test_that("gllvmTMB.Rmd defines n_traits and Lambda_true outside hidden chunks", {
-  rmd <- testthat::test_path("..", "..", "vignettes", "gllvmTMB.Rmd")
-  testthat::skip_if_not(file.exists(rmd), "get-started vignette missing")
+  rmd <- gllvmTMB_pkg_file("vignettes", "gllvmTMB.Rmd")
 
   lines <- readLines(rmd, warn = FALSE)
   chunk_starts <- grep("^```\\{r", lines)

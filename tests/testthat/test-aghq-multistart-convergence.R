@@ -48,9 +48,9 @@ test_that("#874: aghq_grad_tol_rel is reachable and defaults to a positive value
   }, error = function(e) FALSE))
 }
 
-.ms_cell <- function(seed = 2003L, n = 100L, p = 6L, q = 2L) {
+.ms_cell <- function(seed = 2003L, n = 100L, p = 6L, q = 2L, lam = 1) {
   set.seed(seed)
-  Lt  <- matrix(stats::rnorm(p * q, 0, 1), p, q)
+  Lt  <- matrix(stats::rnorm(p * q, 0, lam), p, q)
   u   <- matrix(stats::rnorm(n * q), n, q)
   b   <- stats::rnorm(p, 0.3, 0.4)
   eta <- sweep(u %*% t(Lt), 2, b, "+")
@@ -143,6 +143,65 @@ test_that("#874: every AGHQ stop reports its gradient, including the stalled bra
   expect_match(f$aghq$stop_reason, "max \\|grad\\|")
   ## and the machine-readable verdict must agree with the prose
   expect_identical(f$aghq$converged, grepl("^converged", f$aghq$stop_reason))
+})
+
+test_that("#1746: a cap-1 stall is recovered on the honest objective, not reported as non-convergence", {
+  skip_on_cran()
+  skip_if_not(.ms_aghq_ok(), "AGHQ kernel not available in this build -- skipped, not failed")
+  ## The runaway cell of test-runaway-warning.R (sigma_lambda = 3), whose
+  ## default Laplace auto-refit runs AGHQ k = 9 from two starts. From the
+  ## empirical-logit start the adaptation loop reaches a point where every step
+  ## of the frozen-node surrogate RAISES the honest objective F: the
+  ## surrogate's gradient omits how the adaptation point moves with the
+  ## parameters, and here F's own max |grad| is ~0.017 while the surrogate's is
+  ## 0.0019. Before #1746 that start always stopped as "stalled (no honest
+  ## descent at cap 1 after backtracking); max |grad| = 0.00188" -- at -O2,
+  ## at -O0, and on covr's CI build -- and whether the warm start converged
+  ## instead was decided by round-off, so the auto-refit failed under covr.
+  ##
+  ## The start is rebuilt exactly as the engine builds it and run alone, so
+  ## the stall is reproduced deterministically without relying on which way
+  ## round-off breaks for the warm start.
+  d <- .ms_cell(lam = 3)
+  lap <- suppressWarnings(gllvmTMB::gllvmTMB(
+    d$fml, data = d$df, family = stats::binomial(),
+    control = gllvmTMB::gllvmTMBcontrol(laplace_auto_refit = FALSE)))
+  alt <- lap$opt$par
+  prev <- as.numeric(tapply(lap$tmb_data$y, lap$tmb_data$trait_id, mean))
+  eps <- 1 / (4 * lap$tmb_data$n_sites)
+  alt[names(alt) == "theta_rr_B"] <- 0.3
+  alt[names(alt) == "b_fix"] <- stats::qlogis(pmin(pmax(prev, eps), 1 - eps))
+
+  run <- function(start = NULL) {
+    ctl <- gllvmTMB::gllvmTMBcontrol(aghq = 9, aghq_multistart = FALSE)
+    if (!is.null(start)) ctl$aghq_start_par <- start
+    n_nc <- 0L
+    f <- withCallingHandlers(
+      gllvmTMB::gllvmTMB(d$fml, data = d$df, family = stats::binomial(),
+                         control = ctl),
+      gllvmTMB_aghq_not_converged = function(w) n_nc <<- n_nc + 1L,
+      warning = function(w) invokeRestart("muffleWarning"))
+    list(fit = f, n_nc = n_nc)
+  }
+  rec <- run(alt)
+  f <- rec$fit
+  expect_identical(rec$n_nc, 0L)
+  expect_true(isTRUE(f$aghq$converged))
+  expect_match(f$aghq$stop_reason, "^converged \\(cap-1 stall recovered")
+  ## the verdict is the honest gradient against the UNCHANGED tolerances
+  expect_identical(f$aghq$grad_tol, 1e-4)
+  expect_identical(f$aghq$grad_tol_rel, 1e-6)
+  expect_true(f$aghq$grad_max < f$aghq$grad_tol ||
+                f$aghq$grad_rel < f$aghq$grad_tol_rel)
+
+  ## Recovery must reach a point at least as good as the surrogate fixed point
+  ## the warm start converges to -- on the penalised objective both minimise.
+  pen <- function(x) {
+    li <- names(x$opt$par) == "theta_rr_B"
+    unname(x$opt$objective) + 0.5 * sum(x$opt$par[li]^2) / x$aghq$ridge_tau^2
+  }
+  warm <- run()$fit
+  expect_lte(pen(f), pen(warm) + 1e-8)
 })
 
 test_that("#874: opt$convergence is NOT the AGHQ convergence field", {

@@ -40,7 +40,18 @@ test_that("#1787 an unseen species level is not the missing-column error", {
   fit <- .fit_1787()
   nd_unseen <- fit$data[1, , drop = FALSE]
   nd_unseen$group <- "g9"
+  # If obs stays seen, predict() correctly re-adds per-tier diag_B obs effects; only all-unseen matches re_form = ~0.
   nd_unseen$obs <- paste0("newobs_", nd_unseen$obs)
   p_unseen <- suppressMessages(predict(fit, newdata = nd_unseen))
   expect_equal(p_unseen$est, predict(fit, newdata = nd_unseen, re_form = ~0)$est)
+})
+
+test_that("#1787 species-only-unseen still applies other random-effect tiers", {
+  fit <- .fit_1787()
+  nd_species_unseen <- fit$data[1, , drop = FALSE]
+  nd_species_unseen$group <- "g9"
+  p <- suppressMessages(predict(fit, newdata = nd_species_unseen))
+  p0 <- predict(fit, newdata = nd_species_unseen, re_form = ~0)
+  expect_true(all(is.finite(p$est)))
+  expect_false(isTRUE(all.equal(p$est, p0$est)))
 })

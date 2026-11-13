@@ -830,6 +830,15 @@ verification runs):
   `p` (logitp; $1 < p < 2$).
 - Density: compound Poisson-Gamma with $\Pr(y = 0) > 0$ and
   continuous-positive for $y > 0$.
+- Numerical (#1365): the template is still
+  $p = 1 + \mathrm{invlogit}(\mathrm{logit\_p})$, with no clamp.
+  $|logit_p| \gtrsim 36.7$ can round $p$ onto 1 or 2 and `dtweedie`
+  returns NaN. Bounding a free power is open and is not done here.
+  A user-pinned `tweedie(p = ...)` whose logit lies outside $[-5, 5]$
+  ($p$ below 1.006693 or above 1.993307) is stored at that endpoint in
+  R and mapped off. Laplace, MSPL and VA read that same fixed value.
+  The fit warns with the requested power and the power used. A pin
+  inside the interval is stored as `qlogis(p - 1)`.
 
 ### Zero-inflated families (zi_poisson / zi_nbinom2 / zi_binomial)
 

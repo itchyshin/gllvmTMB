@@ -3006,7 +3006,42 @@ normalise_spatial_orientation <- function(e) {
 ## rename. The pre-0.1.4 orientation `coords | trait` triggers a one-shot
 ## lifecycle deprecation warning per keyword per session; the engine
 ## itself reads neither side of the bar so the flip is purely cosmetic.
-rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
+.gllvmTMB_abort_latent_d <- function() {
+  cli::cli_abort(c(
+    "{.arg d} in {.fn latent} must be a whole number >= 1.",
+    ">" = "Pass a single rank, e.g. {.code latent(..., d = 2)}."
+  ))
+}
+
+.gllvmTMB_validate_latent_d <- function(d_val, envir = parent.frame()) {
+  if (is.symbol(d_val) || is.call(d_val)) {
+    d_val <- tryCatch(
+      eval(d_val, envir = envir),
+      error = function(e) .gllvmTMB_abort_latent_d()
+    )
+  }
+  if (is.logical(d_val) || !is.numeric(d_val)) {
+    .gllvmTMB_abort_latent_d()
+  }
+  if (length(d_val) != 1L) {
+    .gllvmTMB_abort_latent_d()
+  }
+  d_num <- suppressWarnings(as.numeric(d_val))
+  if (length(d_num) != 1L || is.na(d_num)) {
+    .gllvmTMB_abort_latent_d()
+  }
+  d_int <- as.integer(d_num)
+  if (d_int < 1L || !identical(d_num, as.numeric(d_int))) {
+    .gllvmTMB_abort_latent_d()
+  }
+  invisible(d_int)
+}
+
+rewrite_canonical_aliases <- function(
+  formula,
+  trait_col = "trait",
+  envir = parent.frame()
+) {
   ## Phase L (May 2026): per-term `tree = ...`, `vcv = ...`,
   ## `coords = ...`, `mesh = ...` arguments inside phylo_*() / spatial_*()
   ## keywords must survive the rewrite to the canonical engine kinds
@@ -4390,31 +4425,7 @@ rewrite_canonical_aliases <- function(formula, trait_col = "trait") {
           }
           if (.has_named_arg(e, "d") || d_positional) {
             d_val <- .named_or_positional_arg(e, "d", 3L, default = NULL)
-            ## Formula `d` can still be a symbol or call (`d = q`,
-            ## `d = n_traits + 1`). Those evaluate later; only guard
-            ## values that are already numeric.
-            if (is.numeric(d_val)) {
-              if (length(d_val) != 1L) {
-                cli::cli_abort(c(
-                  "{.arg d} in {.fn latent} must be a whole number >= 1.",
-                  ">" = "Pass a single rank, e.g. {.code latent(..., d = 2)}."
-                ))
-              }
-              d_num <- suppressWarnings(as.numeric(d_val))
-              if (length(d_num) != 1L || is.na(d_num)) {
-                cli::cli_abort(c(
-                  "{.arg d} in {.fn latent} must be a whole number >= 1.",
-                  ">" = "Pass a single rank, e.g. {.code latent(..., d = 2)}."
-                ))
-              }
-              d_int <- as.integer(d_num)
-              if (d_int < 1L || !identical(d_num, as.numeric(d_int))) {
-                cli::cli_abort(c(
-                  "{.arg d} in {.fn latent} must be a whole number >= 1.",
-                  ">" = "Pass a single rank, e.g. {.code latent(..., d = 2)}."
-                ))
-              }
-            }
+            .gllvmTMB_validate_latent_d(d_val, envir = envir)
           }
           ## `unique =` is the canonical argument (matches
           ## extract_Sigma(part = "unique")). `residual =` is a soft-deprecated
@@ -5444,7 +5455,8 @@ desugar_brms_sugar <- function(
   formula,
   trait_col = "trait",
   obs_col = "obs",
-  grp_V_col = "grp_V"
+  grp_V_col = "grp_V",
+  envir = parent.frame()
 ) {
   ## ---- Pass 0: scan the original AST for deprecated keywords and emit
   ## one-shot soft warnings. Done before any rewriting so we see what the
@@ -5455,7 +5467,11 @@ desugar_brms_sugar <- function(
   ## / phylo_scalar / spatial / meta_V / meta_known_V) to engine-internal names.
   ## Done before the legacy brms desugaring below so e.g. phylo_scalar
   ## becomes phylo() which then becomes propto().
-  formula <- rewrite_canonical_aliases(formula, trait_col = trait_col)
+  formula <- rewrite_canonical_aliases(
+    formula,
+    trait_col = trait_col,
+    envir = envir
+  )
 
   walk <- function(e) {
     if (is.call(e)) {

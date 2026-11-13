@@ -1,0 +1,13 @@
+case,family,K,route,converged,loglik
+gaussian_K1,gaussian,1,gaussian_rr,true,-603.6254168070493
+gaussian_K2,gaussian,2,gaussian_rr,true,-548.0297205740435
+poisson_K1,poisson,1,poisson_rr,true,-889.8078693808644
+poisson_K2,poisson,2,poisson_rr,true,-852.0234095610532
+nbinom2_K1,nbinom2,1,negbinomial_rr,true,-843.2394602598011
+nbinom2_K2,nbinom2,2,negbinomial_rr,true,-835.8047011863683
+binomial_K1,binomial,1,binomial_rr,true,-334.7213268769496
+binomial_K2,binomial,2,binomial_rr,false,-316.09078173831284
+zip_K1,zip,1,zip_rr,true,-815.8002494668552
+zip_K2,zip,2,zip_rr,true,-781.2110838201561
+tweedie_K1,tweedie,1,TweediePerTraitPowerFit,false,-Inf
+tweedie_K2,tweedie,2,TweediePerTraitPowerFit,true,-876.3028358447218

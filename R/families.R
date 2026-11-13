@@ -81,7 +81,11 @@
 #' @param df `NULL` to estimate Student-t degrees of freedom, or one finite
 #'   number greater than one to fix it.
 #' @param p `NULL` to estimate the Tweedie power, or one finite number strictly
-#'   between one and two to fix it.
+#'   between one and two to fix it. A fixed power below 1.006693 or above
+#'   1.993307 is still accepted. The fit then uses the nearer endpoint and
+#'   warns with the requested power and the power actually used. A fixed
+#'   power inside that range is used unchanged. Omitting `p` leaves
+#'   estimation unchanged.
 #' @param link1 Link for the occurrence component of a delta model.
 #' @param link2 Link for the positive component of a delta model.
 #' @param type Delta construction: `"standard"` uses a binary occurrence
@@ -426,6 +430,62 @@ tweedie <- function(link = "log", p = NULL) {
   }
   .gllvm_family("tweedie", substitute(link), link, c("log", "identity"),
                 list(p = p))
+}
+
+# Pinned Tweedie power only (#1365). logit_p = qlogis(p - 1) is stored
+# inside [-5, 5], so the fixed p stays in [1.006693, 1.993307]. The
+# template does not clamp, and a free logit_p is left alone.
+.tweedie_logit_p_max <- function() 5
+
+.tweedie_clamp_pinned_logit <- function(p) {
+  hi <- .tweedie_logit_p_max()
+  logit <- stats::qlogis(p - 1)
+  if (!is.finite(logit) || (logit >= -hi && logit <= hi)) {
+    return(list(logit = logit, clamped = FALSE, p_used = p))
+  }
+  logit_used <- min(hi, max(-hi, logit))
+  list(
+    logit = logit_used,
+    clamped = TRUE,
+    p_used = 1 + stats::plogis(logit_used)
+  )
+}
+
+.tweedie_warn_p_clamped <- function(p_requested, p_used) {
+  bounds <- 1 + stats::plogis(c(-1, 1) * .tweedie_logit_p_max())
+  p_req <- sprintf("%.6f", p_requested)
+  p_got <- sprintf("%.6f", p_used)
+  p_lo <- sprintf("%.6f", bounds[[1L]])
+  p_hi <- sprintf("%.6f", bounds[[2L]])
+  cli::cli_warn(
+    c(
+      "Requested Tweedie power {.code p = {p_req}} is outside [{p_lo}, {p_hi}].",
+      "i" = "The fit uses {.code p = {p_got}}.",
+      "i" = "Pass a power inside that range, or omit {.arg p} to estimate it."
+    ),
+    class = "gllvmTMB_tweedie_p_clamp"
+  )
+  invisible(p_used)
+}
+
+# `p` may contain NA for traits that are not pinned. One warning per
+# distinct requested power. The returned logits are what the fixed-parameter
+# map stores, so Laplace, MSPL and VA share one value.
+.tweedie_pinned_logits <- function(p, warn = TRUE) {
+  logit <- p
+  warned_p <- character()
+  for (t in which(!is.na(p))) {
+    clamped <- .tweedie_clamp_pinned_logit(p[[t]])
+    logit[[t]] <- clamped$logit
+    if (isTRUE(warn) && isTRUE(clamped$clamped)) {
+      key <- sprintf("%.10f", p[[t]])
+      if (!key %in% warned_p) {
+        .tweedie_warn_p_clamped(p[[t]], clamped$p_used)
+        warned_p <- c(warned_p, key)
+      }
+    }
+  }
+  logit
 }
 
 #' @details

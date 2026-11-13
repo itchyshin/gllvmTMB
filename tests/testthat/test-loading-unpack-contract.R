@@ -192,24 +192,20 @@ test_that("the compiled EVA route reports the same documented packed loading", {
 
 test_that("the Laplace, VA, and EVA loading routes use cursor-based unpacking", {
   source_paths <- c(
-    engine = testthat::test_path("..", "..", "src", "gllvmTMB.cpp"),
-    va_engine = testthat::test_path(
-      "..", "..", "inst", "tmb", "gllvmTMB_va_r3.cpp"
-    ),
-    eva_engine = testthat::test_path(
-      "..", "..", "inst", "tmb", "gllvmTMB_eva.cpp"
-    ),
-    constraint_source = testthat::test_path(
-      "..", "..", "R", "lambda-constraint.R"
-    ),
+    engine = gllvmTMB_pkg_file("src", "gllvmTMB.cpp"),
+    va_engine = gllvmTMB_pkg_file("inst", "tmb", "gllvmTMB_va_r3.cpp"),
+    eva_engine = gllvmTMB_pkg_file("inst", "tmb", "gllvmTMB_eva.cpp"),
+    constraint_source = gllvmTMB_pkg_file("R", "lambda-constraint.R"),
     phylo_slope_test = testthat::test_path(
       "test-phylo-latent-slope-gaussian.R"
     )
   )
-  skip_if_not(
-    all(file.exists(source_paths)),
-    "Repository-only source provenance scan is unavailable after installation"
-  )
+  if (!file.exists(source_paths[["phylo_slope_test"]])) {
+    stop(
+      "test-phylo-latent-slope-gaussian.R is not available in this test context.",
+      call. = FALSE
+    )
+  }
   sources <- lapply(source_paths, readLines, warn = FALSE)
   engine <- sources$engine
   va_engine <- sources$va_engine

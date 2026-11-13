@@ -1,0 +1,21 @@
+# CI line coverage of R (and compiled src when gcov is present).
+# This is not interval-coverage simulation evidence.
+# Comments stay off until a trusted main-branch upload exists.
+comment: false
+
+coverage:
+  status:
+    project:
+      default:
+        informational: true
+    patch:
+      default:
+        informational: true
+
+ignore:
+  - "tests/**/*"
+  - "vignettes/**/*"
+  - "inst/**/*"
+  - "tools/**/*"
+  - "docs/**/*"
+  - "dev/**/*"

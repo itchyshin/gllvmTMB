@@ -58368,3 +58368,13 @@ Consistency scans (exact patterns and scope):
 - rg "gllvmTMB_wide" README.md NEWS.md docs vignettes — existing matches are outside README; no README hit.
 
 Absolute-path slop check covered README, check-log, report, and PR body; no file exceeded the review threshold. No likelihood, API, formula grammar, family, generated Rd, article, or pkgdown navigation change.
+
+## 2026-11-09 — issue #1751 non-finite response / covariate fit gate
+
+Branch `cursor/fix-1751-nonfinite-inputs-cd53`. Added pre-optimizer `cli_abort` in `R/fit-multi.R` for `Inf`/`-Inf` in observed responses and fixed-effect design columns (observed-response rows), beside the existing NA design and finite-weights checks; `NaN`/`NA` response handling unchanged. Regression tests `tests/testthat/test-fix-1751-nonfinite-inputs.R`; `NEWS.md` bullet.
+
+Commands run (after local `pkgload::load_all()` with `R_LIBS_USER=/home/ubuntu/R/library`):
+- Main without fix (test file only): `testthat::test_file("tests/testthat/test-fix-1751-nonfinite-inputs.R")` — FAIL (cryptic `NA/NaN/Inf` / foreign-function messages).
+- Branch with fix: same — expect PASS.
+
+Deliberately not run: full `devtools::test()`, `devtools::check()`, pkgdown, Julia bridge parity.

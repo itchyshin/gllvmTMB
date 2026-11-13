@@ -6,8 +6,7 @@ test_that("sigma() refuses gllvmTMB fits instead of stats::sigma.default (#1407)
 })
 
 test_that("sigma methods are registered via @exportS3Method so document() keeps NAMESPACE (#1558)", {
-  src <- test_path("..", "..", "R", "methods-gllvmTMB.R")
-  skip_if_not(file.exists(src), "package source not available")
+  src <- gllvmTMB_pkg_file("R", "methods-gllvmTMB.R")
   lines <- readLines(src)
   for (cls in c("gllvmTMB_multi", "gllvmTMB_julia", "gllvmTMB_va")) {
     def <- grep(paste0("^sigma\\.", cls, " <- "), lines)

@@ -50,25 +50,7 @@
 }
 
 .wstar_cpp_src <- function() {
-  candidates <- c(
-    testthat::test_path("..", "..", "src", "gllvmTMB.cpp"),
-    testthat::test_path(
-      "..", "..", "..", "00_pkg_src", "gllvmTMB", "src", "gllvmTMB.cpp"
-    ),
-    file.path("src", "gllvmTMB.cpp"),
-    file.path("..", "src", "gllvmTMB.cpp"),
-    file.path("..", "..", "src", "gllvmTMB.cpp")
-  )
-  installed <- system.file("..", "src", "gllvmTMB.cpp", package = "gllvmTMB")
-  if (nzchar(installed)) {
-    candidates <- c(candidates, installed)
-  }
-  cpp_path <- candidates[file.exists(candidates)][1L]
-  testthat::skip_if(
-    is.na(cpp_path),
-    "gllvmTMB.cpp source file is not available in this test context."
-  )
-  readLines(cpp_path, warn = FALSE)
+  readLines(gllvmTMB_cpp_source_path(), warn = FALSE)
 }
 
 test_that("W1: Poisson W=exp(eta) vanishes at -Inf and grows at +Inf", {

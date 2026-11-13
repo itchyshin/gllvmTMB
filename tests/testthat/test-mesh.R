@@ -43,7 +43,10 @@ test_that("make_mesh validates coordinates and returns the native contract", {
   expect_error(gllvmTMB:::.gllvm_validate_mesh(malformed), "square, finite")
   malformed <- mesh
   malformed$A_st[1L, ] <- 0
-  expect_error(gllvmTMB:::.gllvm_validate_mesh(malformed), "sparse projection")
+  expect_error(
+    gllvmTMB:::.gllvm_validate_mesh(malformed),
+    class = "gllvmTMB_mesh_locations_outside"
+  )
 })
 
 test_that("kmeans mesh construction is reproducible without changing caller RNG", {

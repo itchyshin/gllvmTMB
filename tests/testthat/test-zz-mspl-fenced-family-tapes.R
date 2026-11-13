@@ -24,25 +24,7 @@
 .mspl_fence_form <- y ~ 0 + trait + latent(0 + trait | site, d = 1, unique = FALSE)
 
 .mspl_cpp_source <- function() {
-  cpp_candidates <- c(
-    testthat::test_path("..", "..", "src", "gllvmTMB.cpp"),
-    testthat::test_path(
-      "..", "..", "..", "00_pkg_src", "gllvmTMB", "src", "gllvmTMB.cpp"
-    ),
-    file.path("src", "gllvmTMB.cpp"),
-    file.path("..", "src", "gllvmTMB.cpp"),
-    file.path("..", "..", "src", "gllvmTMB.cpp")
-  )
-  installed <- system.file("..", "src", "gllvmTMB.cpp", package = "gllvmTMB")
-  if (nzchar(installed)) {
-    cpp_candidates <- c(installed, cpp_candidates)
-  }
-  cpp_path <- cpp_candidates[file.exists(cpp_candidates)][1L]
-  testthat::skip_if(
-    is.na(cpp_path),
-    "gllvmTMB.cpp source file is not available in this test context."
-  )
-  paste(readLines(cpp_path, warn = FALSE), collapse = "\n")
+  gllvmTMB_cpp_source_text()
 }
 
 ## After stripping negations ("not I_LA(beta)", "NOT Laplace-marginal I(beta)"),
@@ -144,8 +126,7 @@ test_that("MSPL BFGS rescue skips Tweedie family 6", {
   ## Residual #999 hang after working W_*: rescue restarts BFGS from
   ## par_init with maxit=5000 into dtweedie series cost. Spatial
   ## Bernoulli keeps the rescue; Tweedie must not.
-  fit_path <- testthat::test_path("..", "..", "R", "fit-multi.R")
-  testthat::skip_if(!file.exists(fit_path), "fit-multi.R not in this test context")
+  fit_path <- gllvmTMB_pkg_file("R", "fit-multi.R")
   txt <- paste(readLines(fit_path, warn = FALSE), collapse = "\n")
   expect_match(txt, "Tweedie is excluded")
   expect_match(txt, "!identical\\(as.integer\\(family_id\\), 6L\\)")

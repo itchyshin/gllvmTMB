@@ -1406,6 +1406,32 @@
   invisible(NULL)
 }
 
+.abort_one_level_fixed_factors <- function(mf) {
+  tt <- stats::terms(mf)
+  resp_idx <- attr(tt, "response")
+  resp_nm <- if (is.numeric(resp_idx) && length(resp_idx) == 1L && resp_idx > 0L) {
+    colnames(mf)[resp_idx]
+  } else {
+    character(0)
+  }
+  preds <- setdiff(colnames(mf), resp_nm)
+  bad <- preds[vapply(preds, function(nm) {
+    col <- mf[[nm]]
+    is.factor(col) && nlevels(col) < 2L
+  }, logical(1))]
+  if (!length(bad)) return(invisible(NULL))
+  shown <- vapply(bad, function(nm) {
+    lv <- levels(mf[[nm]])
+    if (length(lv) == 0L) paste0(nm, " (no levels)") else paste0(nm, " = ", lv[[1L]])
+  }, character(1))
+  cli::cli_abort(c(
+    "A fixed-effect factor has fewer than two levels, so contrasts cannot be built.",
+    "x" = "Found {.val {shown}}.",
+    "i" = "Use an intercept-only fixed formula ({.code ~ 1}) when every row shares one trait, or give the factor at least two levels.",
+    "i" = "A single-response model with no trait structure belongs in {.pkg glmmTMB}."
+  ), class = "gllvmTMB_one_level_factor")
+}
+
 #' Fit a long-format multivariate stacked-trait model (Stage 2 internal)
 #'
 #' Called by [gllvmTMB()] when the formula contains `latent()` or `indep()`
@@ -3627,6 +3653,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## ---- Build fixed-effects design matrix --------------------------------
   ## We use the full data env so that 0 + trait + (0+trait):env etc. parses.
   mf <- stats::model.frame(parsed$fixed, data = data, na.action = stats::na.pass)
+  ## A one-level factor dies inside model.matrix() with a bare contrasts
+  ## error. Name the factor and point at the intercept-only formula (#1783).
+  .abort_one_level_fixed_factors(mf)
   X_fix <- stats::model.matrix(parsed$fixed, mf)
   fixed_prior_spec <- .gllvmTMB_resolve_fixed_priors(control$fixed_effect_priors, colnames(X_fix))
   isdm_observation_basis <- NULL
@@ -8968,8 +8997,12 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ##     The rule here is stationarity of the AD-exact gradient of the
       ##     surrogate at its own adaptation point (max |grad| < aghq_grad_tol)
       ##     together with a settled adaptation point (max |mode shift| <
-      ##     aghq_shift_tol); at a fixed point of the adaptation map those two
-      ##     conditions ARE stationarity of F.
+      ##     aghq_shift_tol). At a fixed point of the adaptation map that is
+      ##     stationarity of F only up to the gradient of F through the
+      ##     adaptation point, which the surrogate omits and which does not
+      ##     vanish at finite k (#1746: 0.017 against the surrogate's 0.0019 on
+      ##     a k = 9 binomial cell). The cap-1 stall exit below is therefore
+      ##     judged on F's own gradient.
       ##
       ##  2. A STEP THAT RAISES F IS REJECTED. That single test is what makes a
       ##     larger cap safe: a runaway is precisely a step that looks good
@@ -9226,10 +9259,56 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                                                    aghq_ridge_tau))),
               error = function(e) NA_real_
             )
-            aghq_stop <- sprintf(
-              paste0("stalled (no honest descent at cap 1 after backtracking); ",
-                     "max |grad| = %.3g (relative %.3g) against tolerances of %.3g / %.3g"),
-              g_last, rel_grad(g_last, F_best), grad_tol, grad_tol_rel)
+            ## #1746: before giving up, descend the honest objective with a
+            ## first-order-corrected surrogate (see
+            ## .gllvmTMB_aghq_recover_descent()). When it runs, the gradient
+            ## reported and judged is F's own, at the returned iterate.
+            F_honest <- function(p) {
+              a <- .gllvmTMB_aghq_adapt(obj_lap, p, d_B, n_sites)
+              obj_try$env$data$aghq_mode   <- a$mode
+              obj_try$env$data$aghq_Lt     <- a$Lt
+              obj_try$env$data$aghq_logdet <- as.numeric(a$logdet)
+              obj_try$retape()
+              v <- as.numeric(obj_try$fn(p))
+              if (.gllvmTMB_loading_ridge_applies(aghq_ridge_tau, names(obj_try$par))) {
+                li_h <- .gllvmTMB_ridge_block_index(names(obj_try$par))
+                v <- v + 0.5 * sum(p[li_h]^2) / aghq_ridge_tau^2
+              }
+              v
+            }
+            rec <- .gllvmTMB_aghq_recover_descent(
+              F_honest, obj_try, par_best, F_best, aghq_ridge_tau, run_one,
+              rho_min = rho_min
+            )
+            if (!is.null(rec)) {
+              if (rec$F < F_best) {
+                par_best <- rec$par
+                F_best   <- rec$F
+                opt_best <- rec$opt %||% opt_best
+                par_cur  <- par_best
+              }
+              g_last <- max(abs(rec$grad))
+              g_cur <- g_last
+              g_rel_cur <- rel_grad(g_last, F_best)
+            }
+            g_rel_last <- rel_grad(g_last, F_best)
+            rec_ok <- !is.null(rec) &&
+              ((is.finite(g_last) && g_last < grad_tol) ||
+                 (grad_tol_rel > 0 && is.finite(g_rel_last) &&
+                    g_rel_last < grad_tol_rel))
+            aghq_stop <- if (rec_ok) {
+              sprintf(paste0("converged (cap-1 stall recovered by %d first-order-corrected ",
+                             "step%s; honest objective stationary; max |grad| = %.3g, ",
+                             "relative %.3g)"),
+                      rec$iterations, if (rec$iterations == 1L) "" else "s",
+                      g_last, g_rel_last)
+            } else {
+              sprintf(
+                paste0("stalled (no honest descent at cap 1 after backtracking%s); ",
+                       "max |grad| = %.3g (relative %.3g) against tolerances of %.3g / %.3g"),
+                if (is.null(rec)) "" else " and first-order-corrected recovery",
+                g_last, g_rel_last, grad_tol, grad_tol_rel)
+            }
             break
           }
           ## Overreached: permanently lower the working cap by one stage.
@@ -12198,6 +12277,90 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     logdet[s] <- -sum(log(diag(R)))        # log|det L^{-T}| = -0.5 log det H
   }
   list(mode = mode, Lt = Lt, logdet = logdet)
+}
+
+## Recover descent on the honest AGHQ objective after a cap-1 stall (#1746).
+##
+## The adaptation loop minimises a SURROGATE whose nodes are frozen at the
+## current iterate, and the surrogate's gradient omits the dependence of the
+## adaptation point on the parameters. At finite k that omitted term does not
+## vanish at a fixed point of the adaptation map: on the seed-2003 runaway cell
+## of test-runaway-warning.R (binomial, n = 100, p = 6, q = 2, k = 9) the honest
+## objective F has max |grad| 0.017 where the surrogate reports 0.0019. Near
+## such a point the surrogate's step can point uphill in F, every backtracked
+## step is rejected, and the loop stalls. Which side of the fixed point an
+## iterate approaches from is decided by round-off, so the same cell converged
+## at -O2 and stalled under covr's -O0 build.
+##
+## The recovery makes the surrogate first-order consistent with F at the
+## current iterate theta_0 by adding the linear tilt c'(theta - theta_0), with
+## c = grad F(theta_0) - grad S(theta_0). The tilted surrogate then has F's
+## gradient at theta_0, so its step is a descent direction for F. grad F is a
+## central finite difference of F itself (every evaluation re-adapts the
+## nodes and retapes), so each gradient costs 2 * length(par) retapes; the
+## budget of `max_iter` steps bounds the extra work at (max_iter + 1) such
+## gradients per stalled start. A step is kept only if it strictly lowers F.
+## The loop ends when no step lowers F or the budget runs out -- never on the
+## convergence tolerances, so they judge the result and cannot steer it.
+##
+## `F_eval(p)` must return F(p) exactly as the adaptation loop scores it
+## (re-adapted nodes, attached fixed priors, loading ridge), and must leave
+## `obj`'s nodes adapted at `p`. Returns NULL when the honest gradient cannot
+## be evaluated, otherwise list(par, F, grad, opt, iterations) at the best
+## point found (`par`/`F` unchanged and `opt` NULL if no step was kept).
+.gllvmTMB_aghq_recover_descent <- function(F_eval, obj, par, F0, ridge_tau,
+                                           run_one, max_iter = 3L,
+                                           rho_min = 1 / 64, iter_cap = 25L) {
+  fd_grad <- function(p) {
+    h <- 1e-5 * pmax(1, abs(p))
+    vapply(seq_along(p), function(i) {
+      e <- numeric(length(p))
+      e[i] <- h[i]
+      (F_eval(p + e) - F_eval(p - e)) / (2 * h[i])
+    }, numeric(1))
+  }
+  finite_or_null <- function(g) if (is.null(g) || any(!is.finite(g))) NULL else g
+  g <- finite_or_null(tryCatch(fd_grad(par), error = function(e) NULL))
+  if (is.null(g)) return(NULL)
+  opt <- NULL
+  n_iter <- 0L
+  for (r in seq_len(max_iter)) {
+    ok <- tryCatch({ F_eval(par); TRUE }, error = function(e) FALSE)
+    if (!ok) break
+    tilt <- g - .gllvmTMB_penalised_gradient(obj, par, ridge_tau)
+    par0 <- par
+    tilted <- list(
+      par = obj$par, env = obj$env, report = obj$report,
+      fn = function(p) as.numeric(obj$fn(p)) + sum(tilt * (p - par0)),
+      gr = function(p) as.numeric(obj$gr(p)) + tilt
+    )
+    o <- tryCatch(run_one(par, .obj = tilted, .iter_cap = iter_cap,
+                          .ridge_tau = ridge_tau),
+                  error = function(e) NULL)
+    if (is.null(o) || any(!is.finite(o$par))) break
+    step <- o$par - par
+    if (!any(step != 0)) break
+    rho <- 1
+    moved <- FALSE
+    while (rho >= rho_min) {
+      p_try <- par + rho * step
+      F_try <- tryCatch(F_eval(p_try), error = function(e) NA_real_)
+      if (is.finite(F_try) && F_try < F0) {
+        moved <- TRUE
+        break
+      }
+      rho <- rho / 2
+    }
+    if (!moved) break
+    g_try <- finite_or_null(tryCatch(fd_grad(p_try), error = function(e) NULL))
+    if (is.null(g_try)) break
+    par <- p_try
+    F0 <- F_try
+    g <- g_try
+    opt <- o
+    n_iter <- r
+  }
+  list(par = par, F = F0, grad = g, opt = opt, iterations = n_iter)
 }
 
 ## Resolve `control$aghq` into a node count. FALSE / NULL -> NULL (Laplace).

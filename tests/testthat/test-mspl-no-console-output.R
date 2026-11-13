@@ -28,8 +28,7 @@ test_that("MSPL fit with n >= 2000 rows prints nothing from compiled code", {
 })
 
 test_that("src/ has no Rprintf/Rcout/std::cout console output", {
-  src <- testthat::test_path("..", "..", "src")
-  skip_if_not(dir.exists(src), "package sources not available")
+  src <- gllvmTMB_pkg_file("src")
   files <- list.files(src, pattern = "\\.(cpp|h|hpp)$", full.names = TRUE)
   hits <- unlist(lapply(files, function(f) {
     x <- readLines(f, warn = FALSE)

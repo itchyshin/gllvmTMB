@@ -1460,7 +1460,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                                missing_meta = NULL,
                                temporal = NULL,
                                estimator = "ml",
-                               engine = "tmb") {
+                               engine = "tmb",
+                               warn_tweedie_pin = TRUE,
+                               warn_tweedie_boundary = TRUE) {
   if (!is.logical(REML) || length(REML) != 1L || is.na(REML)) {
     cli::cli_abort(c(
       "{.arg REML} must be a single {.code TRUE} or {.code FALSE} value.",
@@ -6498,7 +6500,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     log_sigma_re_int = if (use_re_int) rep(0.0, n_re_int_terms) else 0.0,
     ## NB2 / NB1 / Gamma / Tweedie per-trait dispersion. log(phi) starts at 0
     ## (phi = 1; for Gamma this is shape, so CV = 1);
-    ## logit(p) starts at 0 (p = 1.5, mid of the compound-Poisson regime).
+    ## theta starts at 0, so the smooth Tweedie power starts at 1.5
+    ## (midpoint of .gllvmTMB_tweedie_p).
     ## Design 48 phi-clamp ([0.01, 100]) applied below.
     log_phi_nbinom2  = .clamp_log_phi(rep(0.0, n_traits)),
     log_phi_nbinom1  = .clamp_log_phi(rep(0.0, n_traits)),
@@ -6733,7 +6736,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
           lambda_constraint = lambda_constraint,
           control = control_indep,
           silent = silent,
-          unit_obs = unit_obs
+          unit_obs = unit_obs,
+          warn_tweedie_pin = FALSE,
+          warn_tweedie_boundary = FALSE
         ),
         error = function(e) e
       )
@@ -7374,11 +7379,11 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     if (!is.null(m_phi_tweedie)) tmb_map$log_phi_tweedie <- m_phi_tweedie
     ## If the user supplied a numeric `p` on the tweedie() family object
     ## (e.g. tweedie(p = 1.5)), pin logit_p_tweedie per trait that uses it.
-    ## Parameterisation: p = 1 + plogis(logit_p_tweedie), so the pin value is
-    ## qlogis(p - 1). A requested p whose logit lies outside [-5, 5] is
-    ## stored at that bound and warned (#1365). The template is not clamped;
-    ## a free logit_p is unchanged. The same stored logit is what MSPL reads.
-    ## Mirrors the student(df = ...) per-trait pin below.
+    ## Parameterisation: p = .gllvmTMB_tweedie_p(logit_p_tweedie). An in-range
+    ## pin is stored with .gllvmTMB_tweedie_theta, not qlogis(p - 1): that
+    ## old storage turns a fixed 1.7 into about 1.823. A requested p outside
+    ## [p_lo, p_hi] is stored at that end and warned (#1365). The same stored
+    ## value is what MSPL reads. Mirrors the student(df = ...) per-trait pin.
     ## Combined with the family mask via `dispersion_trait_map()`'s
     ## `user_pin_mask` so a mixed fit's non-tweedie traits AND a tweedie
     ## trait's user-fixed p are pinned by the same map.
@@ -7393,8 +7398,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       if (all(!is.na(p_vals)) && length(unique(p_vals)) == 1L) p_pin[t] <- p_vals[1]
     }
     if (any(!is.na(p_pin))) {
-      logit_pin <- .tweedie_pinned_logits(p_pin)
-      tmb_params$logit_p_tweedie[!is.na(p_pin)] <- logit_pin[!is.na(p_pin)]
+      theta_pin <- .tweedie_pinned_theta(p_pin, warn = warn_tweedie_pin)
+      tmb_params$logit_p_tweedie[!is.na(p_pin)] <- theta_pin[!is.na(p_pin)]
       tmb_map$logit_p_tweedie <- dispersion_trait_map(mask_tweedie, !is.na(p_pin))
     } else {
       ## No trait has a user-supplied `p` -- still pin non-tweedie traits'
@@ -10572,6 +10577,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       fit$source_strength$diagnostics <- .structured_rho_diagnostics(fit)
     }
   }
+  if (isTRUE(warn_tweedie_boundary)) .gllvmTMB_warn_tweedie_p_boundary(fit)
   fit
 }
 

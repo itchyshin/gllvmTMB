@@ -185,7 +185,7 @@ confint_inspect <- function(
     "linear_predictor" = identity,
     "exp" = exp,
     "logit" = stats::plogis,
-    "logit_p_tweedie" = function(x) 1 + stats::plogis(x),
+    "logit_p_tweedie" = .gllvmTMB_tweedie_p,
     "lambda_packed" = identity,
     "ordinal_threshold" = exp,
     identity

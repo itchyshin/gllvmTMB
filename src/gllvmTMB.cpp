@@ -225,6 +225,56 @@ Type gll_clamp(Type x, Type lower, Type upper)
   return x;
 }
 
+// Smooth bound on the Tweedie power (#1365).
+//
+// p = p_lo + (p_hi - p_lo) * s(theta),
+// s(theta) = 1/2 * (1 + theta / sqrt(1 + theta^2)),
+// p_lo = 1 + invlogit(-12), p_hi = 1 + invlogit(12).
+//
+// s maps every finite theta into (0, 1) and its derivative
+// (1 + theta^2)^(-3/2) / 2 is positive for every finite theta, so the
+// power has no flat region. A hard clamp was rejected because the
+// objective is constant outside it, the gradient is exactly 0, and the
+// Hessian is singular.
+//
+// The endpoints are the largest symmetric logit limits at which TMB's
+// dtweedie stayed within relative error 1e-6 of tweedie::dtweedie on
+// the declared grid (phi >= 0.1, mu up to 50, y up to 100). Logit 12.4
+// and logit -14 fail that grid. No interval inside (1, 2) meets 1e-6
+// for every phi > 0: the series is capped at 20000 terms and the term
+// count grows like 1 / (phi * (2 - p)). Same map in R
+// (.gllvmTMB_tweedie_p) and in inst/tmb/gllvmTMB_va_r3.cpp
+// (va_r3_tweedie_p), including the overflow-safe fraction below.
+//
+// theta / sqrt(1 + theta^2) is algebraically sign-correct, but
+// theta * theta overflows for |theta| above about 1e154 and the
+// quotient collapses to 0. Scale by m = max(1, |theta|):
+// t = (theta/m) / sqrt((1/m)^2 + (theta/m)^2). CondExp evaluates both
+// arms, and m is at least 1, so neither arm divides by zero.
+template <class Type>
+Type gll_tweedie_p_frac(Type theta)
+{
+  Type one = Type(1.0);
+  Type zero = Type(0.0);
+  Type a = CppAD::CondExpGe(theta, zero, theta, -theta);
+  Type m = CppAD::CondExpGt(a, one, a, one);
+  Type u = theta / m;
+  Type v = one / m;
+  return u / sqrt(v * v + u * u);
+}
+
+template <class Type>
+Type gll_tweedie_p(Type theta)
+{
+  Type one = Type(1.0);
+  Type L = Type(12.0);
+  Type lo = one + one / (one + exp(L));
+  Type hi = one + one / (one + exp(-L));
+  Type t = gll_tweedie_p_frac(theta);
+  Type s = Type(0.5) * (one + t);
+  return lo + (hi - lo) * s;
+}
+
 // Large-parameter numerics for the count / Student / correlation kernels
 // (#1362, #1363, #1364, #1386). Every helper below follows the
 // gll_dgamma_mean_shape pattern: CppAD CondExp evaluates BOTH branches, so
@@ -649,9 +699,16 @@ Type gll_mspl_log_weight_glm(Type eta, int family_id, int link_id,
     // #999 8x3 live cell (>5 min) while Tweedie ML on the same
     // cell returned in ~1.3 s. Live tape uses working logistic
     // W_* = mu_*(1-mu_*) on eta (2023 P^(f)); existence device,
-    // not true-model Jeffreys. log_phi / logit_p enter Huber, not
-    // this weight. Not admitted.
-    return gll_mspl_log_weight(eta, 0);
+    // not true-model Jeffreys. log_phi and the raw theta enter
+    // Huber, not this weight. Not admitted.
+    //
+    // The power itself is the same smooth bound the Laplace density
+    // uses (#1365). Both CondExp branches return the logistic weight,
+    // so the weight and its derivative are unchanged; the comparison
+    // still forms p through gll_tweedie_p.
+    Type p_tw = gll_tweedie_p(logit_p);
+    Type log_w = gll_mspl_log_weight(eta, 0);
+    return CppAD::CondExpGt(p_tw, Type(1.0), log_w, log_w);
   }
   error("gllvmTMB_multi: MSPL GLM-outer weight: unknown family_id");
   return Type(0.0);
@@ -1606,7 +1663,7 @@ Type objective_function<Type>::operator()()
   PARAMETER_VECTOR(log_phi_nbinom1);             // length n_traits (or 1 if unused)
   PARAMETER_VECTOR(log_phi_gamma);               // length n_traits (or 1 if unused), fid 4
   PARAMETER_VECTOR(log_phi_tweedie);             // length n_traits (or 1 if unused)
-  PARAMETER_VECTOR(logit_p_tweedie);             // length n_traits (or 1 if unused); p = 1 + plogis(.)
+  PARAMETER_VECTOR(logit_p_tweedie);             // length n_traits (or 1 if unused); p = gll_tweedie_p(.)
 
   // Beta / beta-binomial precision parameters (per trait). Mapped off when
   // the corresponding family is not in family_id_vec. Both families use the
@@ -3638,11 +3695,12 @@ Type objective_function<Type>::operator()()
       // Tweedie compound Poisson-Gamma, log link.
       // y >= 0 (point mass at zero plus continuous positive part).
       // Per-trait dispersion phi = exp(log_phi_tweedie(t));
-      // power p in (1, 2), parameterised as p = 1 + plogis(logit_p_tweedie(t)).
+      // power p = gll_tweedie_p(logit_p_tweedie(t)), inside
+      // (1 + invlogit(-12), 1 + invlogit(12)) (#1365).
       int t = trait_id(o);
       Type mu_t  = exp(eta_o);
       Type phi_t = exp(log_phi_tweedie(t));
-      Type p_t   = Type(1.0) + invlogit(logit_p_tweedie(t));
+      Type p_t   = gll_tweedie_p(logit_p_tweedie(t));
       ll += dtweedie(y(o), mu_t, phi_t, p_t, true);
     } else if (fid == 7) {
       // Beta family, logit link, mean-precision parameterisation.
@@ -4545,6 +4603,8 @@ Type objective_function<Type>::operator()()
           log_phi = log_phi_beta(t);
         else if (fid == 6) {
           log_phi = log_phi_tweedie(t);
+          // gll_mspl_log_weight_glm forms p with gll_tweedie_p, the
+          // same map as the Laplace density and REPORT(p_tweedie).
           logit_p = logit_p_tweedie(t);
         }
         if (fid == 1) {
@@ -4672,7 +4732,7 @@ Type objective_function<Type>::operator()()
   vector<Type> phi_tweedie = exp(log_phi_tweedie);
   vector<Type> p_tweedie(logit_p_tweedie.size());
   for (int i = 0; i < logit_p_tweedie.size(); i++) {
-    p_tweedie(i) = Type(1.0) + invlogit(logit_p_tweedie(i));
+    p_tweedie(i) = gll_tweedie_p(logit_p_tweedie(i));
   }
   vector<Type> phi_beta = exp(log_phi_beta);
   vector<Type> phi_betabinom = exp(log_phi_betabinom);

@@ -208,7 +208,7 @@ test_that("(e) tweedie (no user p=) + gaussian mixed fit pins the gaussian trait
   p_rows <- tg[tg$tmb_parameter == "logit_p_tweedie", , drop = FALSE]
   ## Exactly one row (the real tweedie trait). Pre-repair this enumerated
   ## TWO rows -- p_tweedie[1] (real) and p_tweedie[2] (the gaussian trait's
-  ## phantom entry, estimate == 1.5 == 1 + plogis(0), the untouched init).
+  ## phantom entry, estimate == 1.5, the untouched theta = 0 start).
   expect_equal(nrow(p_rows), 1L)
   expect_false(any(grepl("\\[2\\]$", p_rows$parm)))
 

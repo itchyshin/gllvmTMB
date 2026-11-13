@@ -34,6 +34,37 @@ Type va_r3_invlogit(const Type &x)
   return CppAD::CondExpGe(x, zero, upper, lower);
 }
 
+// Same smooth Tweedie power as gll_tweedie_p in src/gllvmTMB.cpp (#1365).
+// This translation unit cannot call that helper. Keep the two in step,
+// including the overflow-safe fraction: theta*theta overflows above
+// about 1e154 and the unscaled quotient then collapses to 0.
+// p = p_lo + (p_hi - p_lo) * 1/2 * (1 + t),
+// t = (theta/m) / sqrt((1/m)^2 + (theta/m)^2), m = max(1, |theta|),
+// p_lo = 1 + invlogit(-12), p_hi = 1 + invlogit(12).
+template <class Type>
+Type va_r3_tweedie_p_frac(Type theta)
+{
+  Type one = Type(1.0);
+  Type zero = Type(0.0);
+  Type a = CppAD::CondExpGe(theta, zero, theta, -theta);
+  Type m = CppAD::CondExpGt(a, one, a, one);
+  Type u = theta / m;
+  Type v = one / m;
+  return u / sqrt(v * v + u * u);
+}
+
+template <class Type>
+Type va_r3_tweedie_p(Type theta)
+{
+  Type one = Type(1.0);
+  Type L = Type(12.0);
+  Type lo = one + one / (one + exp(L));
+  Type hi = one + one / (one + exp(-L));
+  Type t = va_r3_tweedie_p_frac(theta);
+  Type s = Type(0.5) * (one + t);
+  return lo + (hi - lo) * s;
+}
+
 // ---------------------------------------------------------------------------
 // Large-parameter numerics for the lgamma kernels (#1482).  The VA template is
 // a separate translation unit from src/gllvmTMB.cpp, so the Laplace helpers
@@ -729,7 +760,7 @@ Type objective_function<Type>::operator()()
   PARAMETER_VECTOR(log_phi_gamma);                // Gamma shape, fid 4
   PARAMETER_VECTOR(log_phi_nbinom2);              // NB2 size, fid 5
   PARAMETER_VECTOR(log_phi_tweedie);              // Tweedie dispersion, fid 6
-  PARAMETER_VECTOR(logit_p_tweedie);              // Tweedie p = 1 + invlogit(.)
+  PARAMETER_VECTOR(logit_p_tweedie);              // Tweedie p = va_r3_tweedie_p(.)
   PARAMETER_VECTOR(log_phi_beta);                 // Beta precision, fid 7
   PARAMETER_VECTOR(log_phi_betabinom);            // beta-binomial precision, fid 8
   PARAMETER_VECTOR(log_sigma_student);            // Student scale, fid 9
@@ -1307,7 +1338,7 @@ Type objective_function<Type>::operator()()
         + y(r) * mu - (y(r) + phi) * softplus_expectation;
     } else if (fam == 6) {
       Type phi = exp(log_phi_tweedie(t));
-      Type power = Type(1.0) + va_r3_invlogit(logit_p_tweedie(t));
+      Type power = va_r3_tweedie_p(logit_p_tweedie(t));
       Type safe_v = CppAD::CondExpGt(v, Type(1e-12), v, Type(1e-12));
       Type scale = sqrt(Type(2.0) * safe_v);
       for (int h = 0; h < gh_nodes.size(); ++h) {
@@ -1502,6 +1533,12 @@ Type objective_function<Type>::operator()()
   REPORT(total_kl);
   REPORT(elbo);
   REPORT(negative_elbo);
+  vector<Type> p_tweedie(logit_p_tweedie.size());
+  for (int t_p = 0; t_p < logit_p_tweedie.size(); ++t_p)
+    p_tweedie(t_p) = va_r3_tweedie_p(logit_p_tweedie(t_p));
+  vector<Type> phi_tweedie = exp(log_phi_tweedie);
+  REPORT(p_tweedie);
+  REPORT(phi_tweedie);
 
   return negative_elbo;
 }

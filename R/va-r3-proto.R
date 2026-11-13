@@ -2241,9 +2241,9 @@
     fixed_student_df, validated$T, "fixed_student_df", 1
   )
   if (any(!is.na(fixed_tweedie_power))) {
-    logit_pin <- .tweedie_pinned_logits(fixed_tweedie_power, warn = warn_tweedie_pin)
+    theta_pin <- .tweedie_pinned_theta(fixed_tweedie_power, warn = warn_tweedie_pin)
     parameters$logit_p_tweedie[!is.na(fixed_tweedie_power)] <-
-      logit_pin[!is.na(fixed_tweedie_power)]
+      theta_pin[!is.na(fixed_tweedie_power)]
   }
   parameters$log_df_student[!is.na(fixed_student_df)] <-
     log(fixed_student_df[!is.na(fixed_student_df)] - 1)

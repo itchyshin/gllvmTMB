@@ -47,23 +47,36 @@ test_that("a runaway fit warns by default, and the warning is actionable", {
   skip_on_cran()
   d <- .rw_cell()
   .rw_reset()
+  ## Record every warning, then keep going. An exiting tryCatch(warning =)
+  ## returns the first warning and abandons the fit. On this cell the default
+  ## control auto-refits with AGHQ (#1389). That refit converges at -O2 and
+  ## the ridge removes the runaway, so the old second call saw no warning and
+  ## skipped the regexps. covr builds TMB at -O0, the same refit stalls
+  ## ("no honest descent at cap 1"), and the first warning is then
+  ## gllvmTMB_aghq_not_converged -- which does not name the runaway remedy.
+  ## The phrases below belong to the runaway warning itself. This call turns
+  ## the auto-refit off (laplace_warn_thresh = FALSE), which is the fit
+  ## expect_warning() already requires, including under covr.
+  caught <- character()
   expect_warning(
-    fit <- gllvmTMB::gllvmTMB(
-      d$fml, data = d$df, family = stats::binomial(),
-      ## this cell is also Laplace-optimistic (#1389); keep that warning out
-      control = gllvmTMB::gllvmTMBcontrol(laplace_warn_thresh = FALSE)),
+    fit <- withCallingHandlers(
+      gllvmTMB::gllvmTMB(
+        d$fml, data = d$df, family = stats::binomial(),
+        ## this cell is also Laplace-optimistic (#1389); keep that warning out
+        control = gllvmTMB::gllvmTMBcontrol(laplace_warn_thresh = FALSE)),
+      warning = function(w) {
+        caught <<- c(caught, conditionMessage(w))
+      }
+    ),
     "runaway trait loading"
   )
-  ## the warning must carry the remedy AND its cost, not just an alarm
-  .rw_reset()
-  w <- tryCatch({
-    gllvmTMB::gllvmTMB(d$fml, data = d$df, family = stats::binomial()); NULL
-  }, warning = function(x) conditionMessage(x))
-  if (!is.null(w)) {
-    expect_match(w, "loading_ridge")  # 2026-09-02: message now names loading_ridge, not aghq_ridge, by design
-    expect_match(w, "MAP|penalised")     # says the remedy changes the estimand
-    expect_match(w, "warn_runaway")      # says how to silence it
-  }
+  runaway <- caught[grepl("runaway trait loading", caught, fixed = TRUE)]
+  expect_true(length(runaway) >= 1L)
+  w <- runaway[[1L]]
+  expect_match(w, "loading_ridge")  # 2026-09-02: message now names loading_ridge, not aghq_ridge, by design
+  expect_match(w, "MAP|penalised")  # says the remedy changes the estimand
+  expect_match(w, "warn_runaway")   # says how to silence it
+  expect_false(grepl("AGHQ did not converge", w, fixed = TRUE))
 })
 
 test_that("warn_runaway = FALSE silences it, and the check remains available", {

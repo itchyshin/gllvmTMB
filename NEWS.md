@@ -1,6 +1,6 @@
 # Development (unreleased)
 
-* `y ~ 0 + trait` now stops with a message naming the factor when that factor has only one level, instead of `contrasts can be applied only to factors with 2 or more levels`. The same data with `y ~ 1` still fits. A trait with two or more levels is unchanged (#1783).
+* `y ~ 0 + trait` now stops with a message naming the factor when that factor has only one level, instead of `contrasts can be applied only to factors with 2 or more levels`. The same data with `y ~ 1` still fits. A trait with two or more levels is unchanged (#1783). `screen_gllvmTMB()` records the same classed warning and flags the fixed-effect design without aborting the screen.
 
 * The get-started regression scans for issues #1327 and #1328 now read `README.md` and `vignettes/gllvmTMB.Rmd` through the shared package-source resolver, so they run under `R CMD check` instead of skipping when those files are only in `00_pkg_src`. No fitted model, likelihood, or reported number changes (#1778).
 

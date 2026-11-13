@@ -13,6 +13,13 @@
 #' familiar with `gllvm::getLoadings()`. The canonical snake_case spelling in
 #' this package is [extract_loadings()], which forwards here.
 #'
+#' Attaching `gllvm` puts its S3 generic in front of this function.
+#' gllvmTMB registers a method for a gllvmTMB fit on that generic, so
+#' `getLoadings(fit)` still returns this package's loading matrix. Pass the
+#' fit as the first argument. A fit produced by `gllvm` stays with `gllvm`.
+#' `gllvmTMB::getLoadings()` keeps these arguments and this matrix whether
+#' or not `gllvm` is attached.
+#'
 #' @param fit A fitted multivariate model returned by [gllvmTMB()]. Admitted
 #'   `engine = "julia"` bridge fits expose raw unit-tier loadings and scores;
 #'   rotated ordinations remain gated for Julia bridge fits.
@@ -139,6 +146,13 @@ extract_loadings <- function(
 #' Returns latent scores from a fit returned by [gllvmTMB()]. This is a small
 #' compatibility wrapper around [extract_ordination()] for readers familiar
 #' with `gllvm::getLV()`.
+#'
+#' Attaching `gllvm` puts its S3 generic in front of this function.
+#' gllvmTMB registers a method for a gllvmTMB fit on that generic, so
+#' `getLV(fit)` still returns these scores. Pass the fit as the first
+#' argument. A fit produced by `gllvm` stays with `gllvm`, including that
+#' package's `type` argument. `gllvmTMB::getLV()` keeps these arguments and
+#' this return value whether or not `gllvm` is attached.
 #'
 #' @inheritParams getLoadings
 #' @param se Logical; if `TRUE`, also return uncertainty for every latent score:
@@ -374,6 +388,12 @@ getLV <- function(
 #' returns the corresponding correlation matrix. The canonical snake_case
 #' spellings in this package are [extract_residual_cov()] and
 #' [extract_residual_cor()], which forward here.
+#'
+#' Attaching `gllvm` masks both names with S3 generics. gllvmTMB registers
+#' methods for a gllvmTMB fit, so `getResidualCov(fit)` and
+#' `getResidualCor(fit)` still return these matrices. A fit produced by
+#' `gllvm` stays with `gllvm`. On a `gllvm` fit that package's residual
+#' covariance is a list, not this matrix.
 #'
 #' @inheritParams getLoadings
 #' @return An `n_traits × n_traits` matrix.

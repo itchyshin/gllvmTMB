@@ -12344,6 +12344,20 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                           .ridge_tau = ridge_tau),
                   error = function(e) NULL)
     if (is.null(o) || any(!is.finite(o$par))) break
+    ## Singular convergence means PORT's quadratic model has no usable
+    ## direction (nlminb code 1, message "singular convergence (7)"). On the
+    ## q = 2 golden fixture at k = 3 that step's line search reports an
+    ## honest objective near 1.006 and a finite-difference gradient just
+    ## under the tolerance, so the stall is certified as converged. The
+    ## value is a coarse-grid artefact. A fresh adaptation from it does not
+    ## stay there on this machine, but the coverage CI build's does, and
+    ## multi-start then prefers it to the stationary Laplace start. The fit
+    ## returns nlminb code 1 at a point about 1.1 nll from the oracle. An
+    ## iteration-limit stop is still a usable short step; a singular one is not.
+    if (identical(as.integer(o$convergence), 1L) &&
+        grepl("singular convergence", o$message %||% "", fixed = TRUE)) {
+      break
+    }
     step <- o$par - par
     if (!any(step != 0)) break
     rho <- 1

@@ -58455,3 +58455,9 @@ The independent coevolution bootstrap plumbing review reports two of five planne
 ## 2026-11-15: combined-main Linux package check
 
 On Totoro, a CI-configured `devtools::check(args = "--no-manual", quiet = TRUE)` of exported combined tree `dbc6629235bd0507a8d7fc0c1f98f429627b5124` returned zero errors, zero package-check warnings and two notes in 43 minutes 9.8 seconds. Numerical-library threads were pinned to one. The notes concern `TMB:::EvalADFunObject` and Totoro R compiler flags. CI mode skipped visual snapshots and heavy tests. Pre/post build-input and selected test-file hashes matched; the bounded supervisor reported normal exit and no surviving process group. Source archive, command and receipts: `/home/snakagaw/hsq_work/two-kernel-combined-check.zdNnoR/`. Windows and three-OS CI remain unrun.
+
+## 2026-11-15: AGHQ main overlap and individual-tier probe
+
+Main advanced to `8a5be8566a3d3c10d1f634c4a881b2ba60b7dd33`. Its AGHQ recovery helper change shares `R/fit-multi.R` with this branch but occupies a distinct helper. The conflict-free prospective tree `3a8ea027b15919401e7ef978ea765d10c1447fa8` passed 67 AGHQ golden and two-kernel fixed-error checks on Totoro, with zero reported failures, errors, warnings or skips. Pre/post source and test hashes matched; receipts are in `/home/snakagaw/hsq_work/two-kernel-main-aghq.0Qcf9B/`. Full package and three-OS checks on this tree remain open.
+
+A construction-only repeated-individual synthetic probe captured both named kernel latent and unique tiers, a full-rank individual trait tier and fixed observation SD before `MakeADFun`. It is not a fitted-object or likelihood-validation result. Code and output are in `/home/snakagaw/hsq_work/two-kernel-individual-probe.qIx7ZJ/`; the coevolution chat received these limits.

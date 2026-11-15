@@ -1990,7 +1990,7 @@ test_that("near-orthogonal null diagnostic extends the overfit-tail markers acro
   expect_true(sum(null_grid[, "full_minus_intercept"] > 3) <= 2L)
 })
 
-test_that("fixed-rho sensitivity grid separates cross signal from block-null but does not estimate rho", {
+test_that("fixed-rho sensitivity grid agrees with a dense likelihood", {
   skip_if_not_heavy()
   testthat::skip_on_cran()
   testthat::skip_if_not_installed("TMB")
@@ -2006,8 +2006,8 @@ test_that("fixed-rho sensitivity grid separates cross signal from block-null but
   ##
   ## The gate is deliberately not a rho-recovery or interval claim. In finite
   ## samples the fixed kernel strength and loading magnitudes can trade off,
-  ## so the grid is admissible evidence only for sensitivity and cross-signal
-  ## detection relative to a block-null rho = 0 fit.
+  ## so the grid is evidence only for this fixture's sensitivity to fixed rho;
+  ## it does not establish general detection power or rho recovery.
   fx <- .c3_make_two_component_fixture(
     seed = 2003L,
     n_H = 24L,
@@ -2018,13 +2018,14 @@ test_that("fixed-rho sensitivity grid separates cross signal from block-null but
 
   rho_grid <- c(0, 0.25, 0.55, 0.85)
   ctl <- gllvmTMB::gllvmTMBcontrol(se = FALSE)
+  grid_fits <- list()
   prof <- gllvmTMB::profile_cross_rho(
     fx$A_H,
     fx$A_P,
     fx$W_phy,
     rho = rho_grid,
     refit = function(K, rho) {
-      suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+      fit <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
         traits(h_size, h_defence, p_size, p_attack) ~
           1 +
           kernel_latent(species, K = K, d = 1, name = "phy") +
@@ -2035,6 +2036,8 @@ test_that("fixed-rho sensitivity grid separates cross signal from block-null but
         family = stats::gaussian(),
         control = ctl
       )))
+      grid_fits[[as.character(rho)]] <<- fit
+      fit
     }
   )
   expect_equal(prof$rho, rho_grid)
@@ -2044,8 +2047,72 @@ test_that("fixed-rho sensitivity grid separates cross signal from block-null but
   best <- prof[which.max(prof$logLik), , drop = FALSE]
   null_ll <- prof$logLik[prof$rho == 0]
   planted_ll <- prof$logLik[prof$rho == 0.55]
-  expect_gt(max(prof$logLik[prof$rho > 0]) - null_ll, 100)
-  expect_gt(planted_ll - null_ll, 100)
+  # Independently construct the Gaussian observation covariance and evaluate
+  # the likelihood at each fitted parameter vector. The old >100 gain checks
+  # rewarded a poor local optimum of the null fit and were not power tests.
+  traits <- c(fx$host_traits, fx$partner_traits)
+  yy <- as.matrix(fx$data[traits])
+  obs <- which(!is.na(yy), arr.ind = TRUE)
+  y <- yy[obs]
+  species <- match(as.character(fx$data$species[obs[, 1]]), rownames(fx$K_phy))
+  trait <- obs[, 2]
+  symroot <- function(A) {
+    e <- eigen(A, symmetric = TRUE)
+    e$vectors %*% diag(sqrt(e$values)) %*% t(e$vectors)
+  }
+  cross <- symroot(fx$A_H) %*%
+    (fx$W_phy / svd(fx$W_phy, nu = 0, nv = 0)$d[1]) %*% symroot(fx$A_P)
+  dense_kernel <- function(rho) rbind(cbind(fx$A_H, rho * cross),
+                                       cbind(rho * t(cross), fx$A_P))
+  expect_equal(as.numeric(dense_kernel(0.55)), as.numeric(fx$K_phy), tolerance = 1e-10)
+  expect_equal(unname(dense_kernel(0)[seq_len(24), 24 + seq_len(24)]),
+               matrix(0, 24, 24), tolerance = 1e-12)
+  extract_dense_parameters <- function(fit) {
+    fit$tmb_obj$fn(fit$opt$par)
+    par <- fit$tmb_obj$env$parList(fit$opt$par)
+    levels <- levels(fit$data[[fit$trait_col]])
+    expect_setequal(levels, traits)
+    expect_identical(as.character(fit$kernel_levels$name), c("phy", "non"))
+    expect_false(any(fit$kernel_levels$has_psi))
+    expect_length(par$b_fix, length(traits))
+    expect_length(par$log_sigma_eps, 1L)
+    alpha <- vapply(traits, function(t) {
+      i <- which(as.character(fit$data[[fit$trait_col]]) == t)[1]
+      sum(as.numeric(fit$X_fix[i, ]) * par$b_fix)
+    }, numeric(1))
+    L <- fit$report$Lambda_kernel[match(traits, levels), , , drop = FALSE]
+    list(alpha = alpha, phy = tcrossprod(matrix(L[, 1, 1], 4, 1)),
+         non = tcrossprod(matrix(L[, 1, 2], 4, 1)),
+         noise = exp(2 * par$log_sigma_eps))
+  }
+  dense_loglik <- function(rho, p) {
+    K <- dense_kernel(rho)
+    V <- K[species, species] * p$phy[trait, trait] +
+      fx$K_non[species, species] * p$non[trait, trait]
+    diag(V) <- diag(V) + p$noise
+    R <- chol(V)
+    residual <- y - p$alpha[trait]
+    z <- forwardsolve(t(R), residual)
+    -0.5 * (length(y) * log(2 * pi) + 2 * sum(log(diag(R))) + sum(z^2))
+  }
+  params <- lapply(grid_fits, extract_dense_parameters)
+  for (rho in rho_grid) {
+    expect_lt(abs(dense_loglik(rho, params[[as.character(rho)]]) -
+                  prof$logLik[prof$rho == rho]), 1e-6)
+  }
+  # The null fit must reach a feasible null point obtained from the planted
+  # fit's nuisance values. This is a one-sided optimization check, not an
+  # assertion that the grid gives a globally optimal or calibrated test.
+  feasible_null <- dense_loglik(0, params[["0.55"]])
+  expect_gte(null_ll, feasible_null - 1e-5)
+  # Observed ordering for this seeded fixture only, not a general power or
+  # rho-recovery claim; finite-sample likelihood ratios may favor the null.
+  expect_gt(planted_ll, null_ll)
+  # Wrong-rho and dropped-cross controls are deliberate formula mutations;
+  # they must be detectable at the same fitted parameter vector.
+  planted <- params[["0.55"]]
+  expect_gt(abs(dense_loglik(0.55, planted) - dense_loglik(0.25, planted)), 1e-4)
+  expect_gt(abs(dense_loglik(0.55, planted) - dense_loglik(0, planted)), 1e-4)
   expect_true(best$rho %in% rho_grid[rho_grid > 0])
 
   if (identical(best$rho, max(rho_grid))) {

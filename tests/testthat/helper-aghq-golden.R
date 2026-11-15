@@ -94,6 +94,27 @@
 ## Not the required deliverable; kept separate and allowed to be skipped.
 ## ---------------------------------------------------------------------
 
+## Nested integrate() over (-Inf, Inf) can abort with "roundoff error is
+## detected in the extrapolation table" when R's default 500 subdivisions are
+## insufficient for a particular fitted (beta, Lambda) point. covr's
+## instrumented (-O0) fits can land on such points while shard 2/4 is green
+## under a normal optimised build. Retry with more subdivisions; same
+## rel.tol / abs.tol as before (oracle accuracy target unchanged).
+.golden_integrate_inf <- function(f, rel.tol, abs.tol,
+                                  subdivisions = c(500L, 2000L, 5000L)) {
+  for (sub in subdivisions) {
+    out <- tryCatch(
+      stats::integrate(f, -Inf, Inf, rel.tol = rel.tol, abs.tol = abs.tol,
+                       subdivisions = sub),
+      error = function(e) {
+        if (grepl("roundoff error", conditionMessage(e), fixed = TRUE)) NULL else stop(e)
+      }
+    )
+    if (!is.null(out) && is.finite(out$value)) return(out)
+  }
+  stop("stats::integrate() failed for nested AGHQ golden oracle", call. = FALSE)
+}
+
 .golden_site_log_marginal_q2 <- function(y_site, beta, Lambda) {
   Lambda <- as.matrix(Lambda)
   stopifnot(nrow(Lambda) == length(y_site), ncol(Lambda) == 2L)
@@ -105,12 +126,11 @@
           prod(dbinom(y_site, 1L, plogis(eta))) * dnorm(uu2)
         }, numeric(1))
       }
-      val <- stats::integrate(inner_fn, -Inf, Inf,
-                               rel.tol = 1e-10, abs.tol = 1e-13)$value
+      val <- .golden_integrate_inf(inner_fn, rel.tol = 1e-10, abs.tol = 1e-13)$value
       val * dnorm(uu1)
     }, numeric(1))
   }
-  val <- stats::integrate(outer_fn, -Inf, Inf, rel.tol = 1e-9, abs.tol = 1e-12)
+  val <- .golden_integrate_inf(outer_fn, rel.tol = 1e-9, abs.tol = 1e-12)
   log(val$value)
 }
 

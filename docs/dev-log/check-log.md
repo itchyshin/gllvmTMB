@@ -58409,3 +58409,9 @@ Consistency scans (exact patterns and scope):
 - rg "gllvmTMB_wide" README.md NEWS.md docs vignettes — existing matches are outside README; no README hit.
 
 Absolute-path slop check covered README, check-log, report, and PR body; no file exceeded the review threshold. No likelihood, API, formula grammar, family, generated Rd, article, or pkgdown navigation change.
+
+## 2026-11-15: two-kernel independent checks follow-up
+
+The independent Linux two-tree oracle on the frozen source passed five likelihood and 100 gradient comparisons, with maximum absolute differences `7.41e-13` and `1.65e-12`; its supported mask had 11 observed and 13 masked cells. The initially nonseparable mask was rejected. See `analysis/p2-small-tree-native-outcome-independent-20261115/REVIEW.md` in the coevolution worktree. This does not establish recovery or interval calibration.
+
+A single-thread controlled snapshot comparison produced byte-identical baseline and branch SVGs and plot data. The variance snapshot differed from its reference on both sources because a small fitted residual triggered a legend entry; the cause is unknown. The ellipse matched its reference in this run. Evidence is preserved under `/tmp/two-kernel-visual-audit-20261115/`. No snapshots were accepted. Package check and three-OS CI remain open.

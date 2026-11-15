@@ -95,22 +95,41 @@
 ## ---------------------------------------------------------------------
 
 ## Nested integrate() over (-Inf, Inf) can abort with "roundoff error is
-## detected in the extrapolation table" when R's default 500 subdivisions are
-## insufficient for a particular fitted (beta, Lambda) point. covr's
+## detected in the extrapolation table" or "maximum number of subdivisions
+## reached" when R's default subdivisions (100L; formals(stats::integrate)$subdivisions)
+## are insufficient for a particular fitted (beta, Lambda) point. covr's
 ## instrumented (-O0) fits can land on such points while shard 2/4 is green
-## under a normal optimised build. Retry with more subdivisions; same
-## rel.tol / abs.tol as before (oracle accuracy target unchanged).
+## under a normal optimised build. Retry with more subdivisions, then split at 0;
+## same rel.tol / abs.tol throughout (oracle accuracy target unchanged).
 .golden_integrate_inf <- function(f, rel.tol, abs.tol,
-                                  subdivisions = c(500L, 2000L, 5000L)) {
-  for (sub in subdivisions) {
-    out <- tryCatch(
-      stats::integrate(f, -Inf, Inf, rel.tol = rel.tol, abs.tol = abs.tol,
+                                  subdivisions = c(100L, 2000L, 5000L)) {
+  retryable <- function(e) {
+    msg <- conditionMessage(e)
+    grepl("maximum number of subdivisions reached", msg, fixed = TRUE) ||
+      grepl("roundoff error", msg, fixed = TRUE)
+  }
+  integrate_once <- function(lower, upper, sub) {
+    tryCatch(
+      stats::integrate(f, lower, upper, rel.tol = rel.tol, abs.tol = abs.tol,
                        subdivisions = sub),
       error = function(e) {
-        if (grepl("roundoff error", conditionMessage(e), fixed = TRUE)) NULL else stop(e)
+        if (retryable(e)) NULL else stop(e)
       }
     )
+  }
+  for (sub in subdivisions) {
+    out <- integrate_once(-Inf, Inf, sub)
     if (!is.null(out) && is.finite(out$value)) return(out)
+  }
+  max_sub <- max(subdivisions)
+  left <- integrate_once(-Inf, 0, max_sub)
+  right <- integrate_once(0, Inf, max_sub)
+  if (!is.null(left) && !is.null(right) &&
+      is.finite(left$value) && is.finite(right$value)) {
+    out <- left
+    out$value <- left$value + right$value
+    out$abs.error <- left$abs.error + right$abs.error
+    return(out)
   }
   stop("stats::integrate() failed for nested AGHQ golden oracle", call. = FALSE)
 }

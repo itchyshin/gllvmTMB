@@ -101,8 +101,10 @@
 ## t = 2 * pnorm(-K) = 3.55e-33. The square [-K, K]^2 therefore drops at most
 ## 2*t - t^2 = 7.11e-33 of the joint integral. That is far below the inner
 ## abs.tol of 1e-13 and the outer abs.tol of 1e-12, so the finite window does
-## not relax either tolerance. K = 12 is the same truncation used by the
-## one-dimensional VA oracle (helper-va-all-family-oracles.R).
+## not relax either absolute tolerance. That bound is not necessarily small
+## relative to a rare likelihood, so the site-level oracle checks it against
+## the returned integral and refuses an uncontrolled tail. K = 12 is the same
+## truncation used by the one-dimensional VA oracle.
 .golden_q2_prior_K <- 12
 
 ## stats::integrate() on (-Inf, Inf) rewrites the axis through a rational map
@@ -399,6 +401,13 @@
   Lambda <- as.matrix(Lambda)
   stopifnot(nrow(Lambda) == length(y_site), ncol(Lambda) == 2L,
             length(beta) == length(y_site))
+  if (!(is.numeric(y_site) || is.logical(y_site)) || is.object(y_site)) {
+    stop("q2 golden oracle: observations must be plain binary values", call. = FALSE)
+  }
+  y_site <- as.numeric(y_site)
+  if (anyNA(y_site) || !all(y_site %in% c(0, 1))) {
+    stop("q2 golden oracle: observations must be plain binary values", call. = FALSE)
+  }
   log_g <- function(u1) {
     vapply(u1, function(uu) {
       .golden_q2_inner_log(uu, y_site, beta, Lambda,
@@ -409,8 +418,17 @@
   K <- .golden_q2_prior_K
   opt <- stats::optimize(function(u) -log_g(u), interval = c(-K, K))
   sd <- .golden_q2_marginal_sd(y_site, beta, Lambda)
-  .golden_q2_log_integral(log_g, opt$minimum, sd,
-                          rel.tol = 1e-9, abs.tol = 1e-12)
+  value <- .golden_q2_log_integral(log_g, opt$minimum, sd,
+                                   rel.tol = 1e-9, abs.tol = 1e-12)
+  ## Union bound for either standard-normal coordinate leaving the square.
+  ## The absolute bound cannot certify relative error for a rare event.
+  ## This checks omitted prior tails, not quadrature error inside the square.
+  log_tail_bound <- log(4) + pnorm(-K, log.p = TRUE)
+  if (!is.finite(value) || log_tail_bound > value + log(1e-9)) {
+    stop("q2 golden oracle: prior tail bound is too large relative to the integral",
+         call. = FALSE)
+  }
+  value
 }
 
 .golden_brute_force_nll_q2 <- function(dat, beta, Lambda,

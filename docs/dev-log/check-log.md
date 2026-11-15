@@ -58433,3 +58433,9 @@ At `4321e8e4f`, the G1 focused regression passed with 21 heavy-test skips. The i
 ## 2026-11-15: Linux package check
 
 On Totoro, `CI=true OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 R_LIBS_USER=/home/snakagaw/R/lib Rscript --vanilla -e 'devtools::check(args="--no-manual", quiet=TRUE)'` on source `29025d68d` first failed while rebuilding the vignette because Pandoc was not on the path. The retained retry set `RSTUDIO_PANDOC` to the existing user-local Pandoc 3.9.0.2 directory. It reported zero errors, zero package-check warnings and two notes in 42 minutes 14.8 seconds. Tests reported 30,612 passes, zero failures, 67 test warnings and 1,267 skips. The notes covered `TMB:::EvalADFunObject` and flags also present in Totoro R's configured C/C++ flags; package Makevars were unchanged by this branch. CI mode skipped visual snapshots. The bounded supervisor reported normal exit, matching pre/post source identities and no surviving process group. Logs and receipts: `/home/snakagaw/hsq_work/two-kernel-linux-check.XEhAZc/` and `/home/snakagaw/hsq_work/two-kernel-linux-check-pandoc.BTB2TJ/`. Windows and three-OS CI remain unrun.
+
+## 2026-11-15: main refresh and larger synthetic screen
+
+Main moved from `abf3e905fb9e22f5eca9b8dd01c9ea476fde4ee2` to `6e8ff42930e0274281b79e5c893e289ff2555290` in two test-only commits. The changed paths do not overlap this branch. `git merge-tree --write-tree HEAD refs/codex/two-kernel-main-snapshot` returned tree `81fd67802cc6f684cab26548a413a44388a1431c` without conflicts; the combined tree was not tested.
+
+A coevolution screen reported 40 code-zero synthetic fits, all with boundary flags, across two fixed tree/network conditions. Its independent receipt was being sealed. See `analysis/p2-synthetic80-remainder-20261115/RESULT.md` in the coevolution worktree. These results do not establish general recovery or interval coverage.

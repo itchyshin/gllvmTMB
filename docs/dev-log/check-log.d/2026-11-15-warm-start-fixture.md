@@ -1,0 +1,7 @@
+# Check log: warm-restart fixture
+
+The warm-restart tests isolate one initial optimizer call followed by a warm candidate. The fixture disabled SVD starts but inherited the later public default of three initial starts. Its mocks therefore treated a jittered start as the warm candidate, and the selected fit did not trigger the warm restart.
+
+An independent Totoro run compared the complete heavy test file before and after setting the fixture's default control to `n_init = 1L`. Before: 145 passes and 29 failures. After: 174 passes and no failures, errors, warnings or skips. All original assertions and thresholds were retained. The modified test SHA-256 was `9cbc53c0e27d44f374088f1f2c8b4bb0cadd96093e2a9bd7a844177d7defba63`; its log SHA-256 was `07212c141733a63c1b71cf87d1e6bfccec01389ef8ee9267227f41078adde284`.
+
+The diagnostic used `Rscript --vanilla ../warm-restart-diagnostic.R unchanged` and `Rscript --vanilla ../warm-restart-diagnostic.R single` from an isolated Totoro copy, with `NOT_CRAN=true`, `GLLVMTMB_HEAVY_TESTS=1` and one numerical-library thread. The source was release candidate `2dbfb8f0742abb7066f47afd35735c7042c32e9b` with the coevolution test correction substituted. Relevant engine and unchanged test hashes matched branch `6584cde6e9cbda7b3f500f287a53683238702f4d`; DESCRIPTION differed. The two runs took 50.014 and 25.949 seconds. Full package and integrated-source checks remain outstanding.

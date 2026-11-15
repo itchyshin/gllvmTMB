@@ -1,19 +1,5 @@
 test_that("TMB likelihood probability clamps avoid AD-driven ternary branches", {
-  cpp_candidates <- c(
-    testthat::test_path("..", "..", "src", "gllvmTMB.cpp"),
-    testthat::test_path(
-      "..", "..", "..", "00_pkg_src", "gllvmTMB", "src", "gllvmTMB.cpp"
-    ),
-    file.path("src", "gllvmTMB.cpp"),
-    file.path("..", "src", "gllvmTMB.cpp"),
-    file.path("..", "..", "src", "gllvmTMB.cpp")
-  )
-  cpp_path <- cpp_candidates[file.exists(cpp_candidates)][1L]
-  testthat::skip_if(
-    is.na(cpp_path),
-    "gllvmTMB.cpp source file is not available in this installed-package test context."
-  )
-  cpp <- paste(readLines(cpp_path, warn = FALSE), collapse = "\n")
+  cpp <- gllvmTMB_cpp_source_text()
 
   expect_match(cpp, "Type gll_clamp\\(Type x, Type lower, Type upper\\)")
   ## The binomial logit/probit guard moved to the LOG scale (#1362). The old
@@ -29,9 +15,22 @@ test_that("TMB likelihood probability clamps avoid AD-driven ternary branches", 
     cpp,
     "ll \\+= log_choose \\+ y\\(o\\) \\* log_p1 \\+ \\(n_trials\\(o\\) - y\\(o\\)\\) \\* log_p0;"
   )
-  expect_match(
+  ## The Beta proportional-response guard moved off the C++ probability scale
+  ## (#1485). The old `y_safe = gll_clamp(y_safe, tiny_y, 1 - tiny_y)` rewrote
+  ## every row on the AD tape; support is now refused in R and fid == 7 evaluates
+  ## (a - 1) log y + (b - 1) log(1 - y) on the recorded y. No probability-scale
+  ## y clamp may return on that path.
+  expect_no_match(
     cpp,
     "y_safe = gll_clamp\\(y_safe, tiny_y, Type\\(1\\.0\\) - tiny_y\\);"
+  )
+  expect_match(
+    cpp,
+    "\\+ \\(a_b - Type\\(1\\.0\\)\\) \\* log\\(y\\(o\\)\\)"
+  )
+  expect_match(
+    cpp,
+    "\\+ \\(b_b - Type\\(1\\.0\\)\\) \\* log\\(Type\\(1\\.0\\) - y\\(o\\)\\)"
   )
   ## The ordinal guard moved to the LOG scale (2026-07-28, AGHQ slice E1). The old
   ## `p_k >= 1e-12` probability floor was harmless under Laplace but BOUND at

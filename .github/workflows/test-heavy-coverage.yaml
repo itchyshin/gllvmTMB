@@ -1,0 +1,188 @@
+# Weekly line coverage with the heavy-gated test suite enabled.
+#
+# test-coverage.yaml measures covr on the fast suite (GLLVMTMB_HEAVY_TESTS unset).
+# This workflow sets GLLVMTMB_HEAVY_TESTS=1 so ~806 skip_if_not_heavy() blocks in
+# the partitioned suite run under covr, then uploads merged cobertura to Codecov
+# under the separate Codecov flag `heavy` (complementary to the default fast lane).
+#
+# tools/run-covr-coverage.R uses the same R CMD check --as-cran test step as
+# test-coverage.yaml. Any failed or erroring test fails the shard before
+# cobertura.xml is written.
+#
+# Eight Ubuntu shards at 120 minutes each keep each job inside GitHub's 6-hour
+# runner cap while the full heavy+covr partition finishes in parallel wall time.
+# This is line coverage for the package test suite, not a scientific recovery
+# campaign (D-50).
+
+on:
+  schedule:
+    # Sundays 05:00 UTC — weekly, after the Monday full-check regression net.
+    - cron: "0 5 * * 0"
+  workflow_dispatch:
+    inputs:
+      test_shard:
+        description: "Optional test partition; run all eight for a full heavy coverage upload"
+        type: choice
+        default: all
+        options: [all, "1/8", "2/8", "3/8", "4/8", "5/8", "6/8", "7/8", "8/8"]
+
+name: test-heavy-coverage
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  NOT_CRAN: "true"
+  GLLVMTMB_HEAVY_TESTS: "1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: test-heavy-coverage-${{ github.ref }}${{ github.event_name == 'workflow_dispatch' && inputs.test_shard != 'all' && format('-shard-{0}', inputs.test_shard) || '' }}
+  cancel-in-progress: true
+
+jobs:
+  heavy-coverage:
+    if: >-
+      github.event_name != 'workflow_dispatch' || inputs.test_shard == 'all'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    name: ubuntu-latest (release) heavy coverage shard ${{ matrix.shard }}/8
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4, 5, 6, 7, 8]
+
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      R_KEEP_PKG_SOURCE: yes
+      GLLVMTMB_TEST_SHARD: ${{ format('{0}/8', matrix.shard) }}
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: r-lib/actions/setup-pandoc@v2
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: release
+          use-public-rspm: true
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: any::covr, any::xml2
+          needs: coverage
+
+      - name: Record tested commit
+        run: |
+          {
+            echo "git_head=$(git rev-parse HEAD)"
+            echo "github_sha=${GITHUB_SHA}"
+            echo "heavy=1"
+            echo "shard=${GLLVMTMB_TEST_SHARD}"
+            echo "event=${{ github.event_name }}"
+            echo "ref=${{ github.ref }}"
+          } | tee coverage-identity.txt
+
+      - name: Heavy test coverage
+        run: Rscript tools/run-covr-coverage.R
+        shell: bash
+
+      - name: Save heavy coverage report
+        if: success() && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: heavy-coverage-shard-${{ matrix.shard }}
+          path: |
+            cobertura.xml
+            coverage-identity.txt
+            coverage-percent.txt
+            coverage-tests.txt
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Show testthat output
+        if: always()
+        run: |
+          find "$GITHUB_WORKSPACE/check" -name 'testthat.Rout*' -exec cat '{}' \; || true
+          find "$GITHUB_WORKSPACE/check" -name '00check.log' -exec cat '{}' \; || true
+        shell: bash
+
+  heavy-coverage-partial:
+    if: >-
+      github.event_name == 'workflow_dispatch' && inputs.test_shard != 'all'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    name: ubuntu-latest (release) heavy coverage shard ${{ inputs.test_shard }}
+
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      R_KEEP_PKG_SOURCE: yes
+      GLLVMTMB_TEST_SHARD: ${{ inputs.test_shard }}
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: r-lib/actions/setup-pandoc@v2
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: release
+          use-public-rspm: true
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: any::covr, any::xml2
+          needs: coverage
+
+      - name: Heavy test coverage (partial shard)
+        run: Rscript tools/run-covr-coverage.R
+        shell: bash
+
+      - name: Show testthat output
+        if: always()
+        run: |
+          find "$GITHUB_WORKSPACE/check" -name 'testthat.Rout*' -exec cat '{}' \; || true
+          find "$GITHUB_WORKSPACE/check" -name '00check.log' -exec cat '{}' \; || true
+        shell: bash
+
+  # Trusted Codecov OIDC upload only after a full eight-shard main run succeeds.
+  upload-heavy-coverage:
+    needs: heavy-coverage
+    if: ${{ needs.heavy-coverage.result == 'success' && github.ref == 'refs/heads/main' && (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.test_shard == 'all')) }}
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      id-token: write
+    steps:
+      - name: Check out the tested commit
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Download heavy coverage artifacts
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          pattern: heavy-coverage-shard-*
+          path: ${{ runner.temp }}/heavy-coverage
+          merge-multiple: false
+          github-token: ${{ github.token }}
+
+      - name: Upload heavy coverage to Codecov
+        uses: codecov/codecov-action@0fb7174895f61a3b6b78fc075e0cd60383518dac # v5
+        with:
+          use_oidc: true
+          fail_ci_if_error: true
+          files: >-
+            ${{ runner.temp }}/heavy-coverage/heavy-coverage-shard-1/cobertura.xml,${{ runner.temp }}/heavy-coverage/heavy-coverage-shard-2/cobertura.xml,${{ runner.temp }}/heavy-coverage/heavy-coverage-shard-3/cobertura.xml,${{ runner.temp }}/heavy-coverage/heavy-coverage-shard-4/cobertura.xml,${{ runner.temp }}/heavy-coverage/heavy-coverage-shard-5/cobertura.xml,${{ runner.temp }}/heavy-coverage/heavy-coverage-shard-6/cobertura.xml,${{ runner.temp }}/heavy-coverage/heavy-coverage-shard-7/cobertura.xml,${{ runner.temp }}/heavy-coverage/heavy-coverage-shard-8/cobertura.xml
+          disable_search: true
+          plugins: noop
+          version: v11.3.2
+          flags: heavy
+          override_branch: main
+          override_commit: ${{ github.sha }}

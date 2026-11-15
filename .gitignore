@@ -81,6 +81,9 @@ inst/tmb/*.dylib
 tests/testthat/Rplots.pdf
 Rplots.pdf
 
+# vdiffr provisional snapshots (regenerated locally; never commit)
+tests/testthat/_snaps/**/*.new.svg
+
 # Local scratch renders and transient diagnostics
 tmp/
 

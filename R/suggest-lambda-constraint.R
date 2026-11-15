@@ -253,7 +253,11 @@ suggest_lambda_constraint <- function(
     ## using `latent()` / `unique()` / `phylo_latent()` etc. are
     ## recognised by parse_multi_formula() (which only knows the
     ## engine-internal names `rr`, `diag`, `phylo_rr`).
-    fit_or_formula <- desugar_brms_sugar(fit_or_formula, trait_col = trait)
+    fit_or_formula <- desugar_brms_sugar(
+      fit_or_formula,
+      trait_col = trait,
+      envir = environment(fit_or_formula)
+    )
     parsed <- parse_multi_formula(fit_or_formula)
     kinds <- vapply(parsed$covstructs, function(cs) cs$kind, character(1))
     groups <- vapply(

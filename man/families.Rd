@@ -104,7 +104,17 @@ number strictly between zero and one to fix it.}
 number greater than one to fix it.}
 
 \item{p}{\code{NULL} to estimate the Tweedie power, or one finite number strictly
-between one and two to fix it.}
+between one and two to fix it. An estimated power stays inside about
+1.000006 and 1.999994. A free fit that ends within 1e-5 of either end
+warns (class \code{gllvmTMB_tweedie_p_boundary}) and names the estimate and
+that end. If the fitted dispersion is below 0.1, that warning also says
+TMB's Tweedie density accuracy degrades there. A fixed power inside that
+interval is stored on the same map and comes back unchanged. A fixed
+power outside it, and still strictly between 1 and 2, is kept at the
+nearer end and warns (class \code{gllvmTMB_tweedie_p_clamp}) with the
+requested power and the power used. Powers of 1 or below, or of 2 or
+above, are refused. The stored parameter is not a logit: a value saved
+before this map is reinterpreted.}
 
 \item{link1}{Link for the occurrence component of a delta model.}
 

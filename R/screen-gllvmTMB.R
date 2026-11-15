@@ -275,6 +275,13 @@ screen_gllvmTMB <- function(
     unit = unit,
     missing = missing
   )
+  if (!is.null(prep$fixed_one_level_factor)) {
+    cnd <- prep$fixed_one_level_factor
+    cli::cli_warn(
+      c(cnd$message, if (length(cnd$body)) unname(cnd$body)),
+      class = "gllvmTMB_one_level_factor"
+    )
+  }
   fam <- .screen_family_info(family)
   separation <- .screen_empty_separation()
 
@@ -538,7 +545,11 @@ print.gllvmTMB_screen <- function(x, ...) {
     }
   }
 
-  formula <- desugar_brms_sugar(formula, trait_col = trait)
+  formula <- desugar_brms_sugar(
+    formula,
+    trait_col = trait,
+    envir = environment(formula)
+  )
   parsed <- parse_multi_formula(formula, trait_col = trait)
   observed_response <- drop_missing_response_rows(
     fixed_formula = parsed$fixed,
@@ -579,17 +590,27 @@ print.gllvmTMB_screen <- function(x, ...) {
   X <- NULL
   y_raw <- NULL
   fixed_error <- NULL
+  fixed_one_level_factor <- NULL
   if (inherits(mf, "error")) {
     fixed_error <- conditionMessage(mf)
   } else {
-    y_raw <- stats::model.response(mf)
-    X <- tryCatch(
-      stats::model.matrix(parsed$fixed, mf),
-      error = function(e) e
+    fixed_one_level_factor <- tryCatch(
+      .abort_one_level_fixed_factors(mf),
+      gllvmTMB_one_level_factor = function(cnd) cnd
     )
-    if (inherits(X, "error")) {
-      fixed_error <- conditionMessage(X)
-      X <- NULL
+    if (!is.null(fixed_one_level_factor)) {
+      fixed_error <- conditionMessage(fixed_one_level_factor)
+      y_raw <- stats::model.response(mf)
+    } else {
+      y_raw <- stats::model.response(mf)
+      X <- tryCatch(
+        stats::model.matrix(parsed$fixed, mf),
+        error = function(e) e
+      )
+      if (inherits(X, "error")) {
+        fixed_error <- conditionMessage(X)
+        X <- NULL
+      }
     }
   }
 
@@ -603,6 +624,7 @@ print.gllvmTMB_screen <- function(x, ...) {
     y_raw = y_raw,
     X = X,
     fixed_error = fixed_error,
+    fixed_one_level_factor = fixed_one_level_factor,
     source_shape = source_shape,
     is_y_observed = observed_response$is_y_observed,
     original_row = observed_response$original_row,
@@ -2142,7 +2164,17 @@ print.gllvmTMB_screen <- function(x, ...) {
   resolve_fixed = FALSE
 ) {
   rows <- list()
-  if (!is.null(prep$fixed_error)) {
+  if (!is.null(prep$fixed_one_level_factor)) {
+    rows[[length(rows) + 1L]] <- .screen_design_row(
+      "fixed_effect_design",
+      "FAIL",
+      "one_level_factor",
+      NA_real_,
+      2,
+      prep$fixed_error,
+      "inspect"
+    )
+  } else if (!is.null(prep$fixed_error)) {
     rows[[length(rows) + 1L]] <- .screen_design_row(
       "fixed_effect_design",
       "NOT_CHECKED",

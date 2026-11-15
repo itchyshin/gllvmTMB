@@ -91,66 +91,232 @@
 
 ## ---------------------------------------------------------------------
 ## q = 2 bonus oracle: per-site integral is 2-D, via nested integrate().
-## Not the required deliverable; kept separate and allowed to be skipped.
+## Not the required deliverable; kept separate and allowed to be skipped
+## only when the AGHQ kernel itself is unavailable (see the test).
 ## ---------------------------------------------------------------------
 
-## Nested integrate() over (-Inf, Inf) can abort with "roundoff error is
-## detected in the extrapolation table" or "maximum number of subdivisions
-## reached" when R's default subdivisions (100L; formals(stats::integrate)$subdivisions)
-## are insufficient for a particular fitted (beta, Lambda) point. covr's
-## instrumented (-O0) fits can land on such points while shard 2/4 is green
-## under a normal optimised build. Retry with more subdivisions, then split at 0;
-## same rel.tol / abs.tol throughout (oracle accuracy target unchanged).
-.golden_integrate_inf <- function(f, rel.tol, abs.tol,
-                                  subdivisions = c(100L, 2000L, 5000L)) {
-  retryable <- function(e) {
-    msg <- conditionMessage(e)
+## Prior window, in standard deviations of N(0, 1). Each nested integrand
+## is a Bernoulli likelihood (at most 1) times a standard normal density, so
+## the integral outside [-K, K] is at most the prior tail
+## t = 2 * pnorm(-K) = 3.55e-33. The square [-K, K]^2 therefore drops at most
+## 2*t - t^2 = 7.11e-33 of the joint integral. That is far below the inner
+## abs.tol of 1e-13 and the outer abs.tol of 1e-12, so the finite window does
+## not relax either tolerance. K = 12 is the same truncation used by the
+## one-dimensional VA oracle (helper-va-all-family-oracles.R).
+.golden_q2_prior_K <- 12
+
+## stats::integrate() on (-Inf, Inf) rewrites the axis through a rational map
+## and then runs Wynn extrapolation. A narrow ridge, or a nested integrand
+## whose inner integral is only smooth up to its own tolerance, makes that
+## extrapolation report "roundoff error" or exhaust its subdivisions. covr's
+## -O0 fits land on such (beta, Lambda) points often enough to fail shard 2/4.
+## Integrate the same function on a finite, mode-centred interval instead.
+## rel.tol and abs.tol are the caller's, unchanged.
+.golden_integrate_finite <- function(f, lower, upper, rel.tol, abs.tol) {
+  width <- upper - lower
+  if (!is.finite(width) || width < 0) {
+    stop("stats::integrate() failed for nested AGHQ golden oracle", call. = FALSE)
+  }
+  if (width == 0) return(0)
+  retryable <- function(msg) {
     grepl("maximum number of subdivisions reached", msg, fixed = TRUE) ||
       grepl("roundoff error", msg, fixed = TRUE)
   }
-  integrate_once <- function(lower, upper, sub) {
+  once <- function(lo, hi, sub) {
     tryCatch(
-      stats::integrate(f, lower, upper, rel.tol = rel.tol, abs.tol = abs.tol,
+      stats::integrate(f, lo, hi, rel.tol = rel.tol, abs.tol = abs.tol,
                        subdivisions = sub),
-      error = function(e) {
-        if (retryable(e)) NULL else stop(e)
-      }
+      error = function(e) if (retryable(conditionMessage(e))) NULL else stop(e)
     )
   }
-  for (sub in subdivisions) {
-    out <- integrate_once(-Inf, Inf, sub)
-    if (!is.null(out) && is.finite(out$value)) return(out)
+  ## Height of every integrand passed here is at most 1 (log-shift) or the
+  ## Laplace jacobian, which is itself at most 1. A panel narrower than
+  ## abs.tol then contributes less than abs.tol even at that height, so a
+  ## midpoint value cannot loosen the caller's absolute tolerance.
+  midpoint <- function(lo, hi) {
+    mid <- f((lo + hi) / 2)
+    ## Rescaled integrands peak at or below 1. A value above 2 means the
+    ## log-shift missed the mode and this panel is not a negligible tail.
+    if (!is.finite(mid) || mid < 0 || mid > 2) {
+      stop("stats::integrate() failed for nested AGHQ golden oracle", call. = FALSE)
+    }
+    mid * (hi - lo)
   }
-  max_sub <- max(subdivisions)
-  left <- integrate_once(-Inf, 0, max_sub)
-  right <- integrate_once(0, Inf, max_sub)
-  if (!is.null(left) && !is.null(right) &&
-      is.finite(left$value) && is.finite(right$value)) {
-    out <- left
-    out$value <- left$value + right$value
-    out$abs.error <- left$abs.error + right$abs.error
-    return(out)
+  attempt <- function(lo, hi, depth) {
+    w <- hi - lo
+    if (w == 0) return(0)
+    if (w < abs.tol) return(midpoint(lo, hi))
+    for (sub in c(100L, 2000L, 5000L)) {
+      out <- once(lo, hi, sub)
+      if (!is.null(out) && is.finite(out$value) && out$value >= 0) return(out$value)
+    }
+    if (depth <= 0) {
+      stop("stats::integrate() failed for nested AGHQ golden oracle", call. = FALSE)
+    }
+    mid_x <- (lo + hi) / 2
+    attempt(lo, mid_x, depth - 1L) + attempt(mid_x, hi, depth - 1L)
   }
-  stop("stats::integrate() failed for nested AGHQ golden oracle", call. = FALSE)
+  attempt(lower, upper, 8L)
+}
+
+## Stable log Bernoulli pmf on the logit scale. eta may be a matrix with one
+## column per quadrature node; y is recycled down each column.
+.golden_q2_log_bern <- function(y, eta) {
+  colSums(y * plogis(eta, log.p = TRUE) +
+            (1 - y) * plogis(eta, lower.tail = FALSE, log.p = TRUE))
+}
+
+## Conditional mode and Laplace sd of u2 | u1. The log posterior is concave
+## (Hessian <= -1), so there is one mode. A full Newton step can leave the
+## region where the local Hessian is valid (a large loading saturates the
+## logistic), so the step is shortened until the log posterior increases.
+## The returned sd is 1/sqrt(-Hessian) and is at most 1.
+.golden_q2_inner_mode <- function(u1, y, beta, lam1, lam2) {
+  logpost <- function(u) {
+    eta <- beta + lam1 * u1 + lam2 * u
+    sum(y * plogis(eta, log.p = TRUE) +
+          (1 - y) * plogis(eta, lower.tail = FALSE, log.p = TRUE)) +
+      dnorm(u, log = TRUE)
+  }
+  u <- 0
+  hess <- -1
+  for (iter in seq_len(40L)) {
+    eta <- beta + lam1 * u1 + lam2 * u
+    p <- plogis(eta)
+    score <- sum((y - p) * lam2) - u
+    hess <- -sum(p * (1 - p) * lam2 * lam2) - 1
+    if (!is.finite(hess) || hess >= 0) break
+    delta <- score / hess
+    if (!is.finite(delta)) break
+    if (abs(delta) < 1e-12) break
+    base <- logpost(u)
+    frac <- 1
+    u_try <- u
+    for (bt in seq_len(30L)) {
+      u_try <- u - frac * delta
+      if (is.finite(u_try) && logpost(u_try) >= base - 1e-12) break
+      frac <- frac / 2
+    }
+    if (!is.finite(u_try) || abs(u_try - u) < 1e-12) break
+    u <- u_try
+  }
+  if (!is.finite(u)) u <- 0
+  eta <- beta + lam1 * u1 + lam2 * u
+  p <- plogis(eta)
+  hess <- -sum(p * (1 - p) * lam2 * lam2) - 1
+  if (!is.finite(hess) || hess >= 0) hess <- -1
+  list(u = u, sd = 1 / sqrt(-hess))
+}
+
+## Log-integral of exp(log_f) on [-K, K]. The core is the image of
+## z in about [-K, K] under u = mode + sd * z, so a narrow conditional
+## ridge fills the quadrature panel instead of sitting between nodes.
+## Whatever part of [-K, K] that core does not cover is integrated as a
+## tail, at the same rel.tol and abs.tol. The shift is the maximum of
+## log_f on the window, so the rescaled integrand peaks at 1 and does not
+## underflow. rel.tol is invariant to that shift, and abs.tol becomes
+## stricter whenever the peak density is below 1.
+.golden_q2_log_integral <- function(log_f, mode, sd, rel.tol, abs.tol) {
+  K <- .golden_q2_prior_K
+  mode <- max(min(mode, K), -K)
+  sd <- max(min(sd, 1), 1e-12)
+  ## The shift has to be the maximum on the window. The mode is that point
+  ## when Newton has converged; the endpoints cover a monotone tail whose
+  ## unconstrained mode lies outside [-K, K].
+  probes <- c(mode, -K, K, mode + sd * c(-1, 1))
+  probes <- probes[is.finite(probes) & probes >= -K & probes <= K]
+  M <- suppressWarnings(max(log_f(probes)))
+  if (!is.finite(M)) return(-Inf)
+  scaled <- function(u) pmax(exp(log_f(u) - M), 0)
+  core_lo <- max(-K, mode - K * sd)
+  core_hi <- min(K, mode + K * sd)
+  z_lo <- (core_lo - mode) / sd
+  z_hi <- (core_hi - mode) / sd
+  core <- .golden_integrate_finite(
+    function(z) scaled(mode + sd * z) * sd,
+    z_lo, z_hi, rel.tol, abs.tol
+  )
+  left <- if (core_lo > -K) {
+    .golden_integrate_finite(scaled, -K, core_lo, rel.tol, abs.tol)
+  } else 0
+  right <- if (core_hi < K) {
+    .golden_integrate_finite(scaled, core_hi, K, rel.tol, abs.tol)
+  } else 0
+  total <- core + left + right
+  if (!is.finite(total) || total <= 0) {
+    stop("stats::integrate() failed for nested AGHQ golden oracle", call. = FALSE)
+  }
+  M + log(total)
+}
+
+.golden_q2_inner_log <- function(u1, y, beta, Lambda, rel.tol, abs.tol) {
+  lam1 <- Lambda[, 1L]
+  lam2 <- Lambda[, 2L]
+  md <- .golden_q2_inner_mode(u1, y, beta, lam1, lam2)
+  log_h <- function(u2) {
+    eta <- beta + lam1 * u1 + outer(lam2, u2)
+    .golden_q2_log_bern(y, eta) + dnorm(u2, log = TRUE)
+  }
+  .golden_q2_log_integral(log_h, md$u, md$sd, rel.tol, abs.tol)
+}
+
+## Marginal Laplace sd of u1 from the joint Hessian at the joint mode.
+## Precision is I + Lambda' W Lambda, so this sd is at most 1. It only
+## places the outer core; the tails still run out to +/- K.
+.golden_q2_marginal_sd <- function(y, beta, Lambda) {
+  logpost <- function(u) {
+    eta <- drop(beta + Lambda %*% u)
+    sum(y * plogis(eta, log.p = TRUE) +
+          (1 - y) * plogis(eta, lower.tail = FALSE, log.p = TRUE)) -
+      sum(u * u) / 2
+  }
+  u <- c(0, 0)
+  H <- diag(-1, 2L)
+  for (iter in seq_len(40L)) {
+    eta <- drop(beta + Lambda %*% u)
+    p <- plogis(eta)
+    sw <- sqrt(pmax(p * (1 - p), 0))
+    grad <- drop(crossprod(Lambda, y - p) - u)
+    H <- -crossprod(Lambda * sw, Lambda * sw) - diag(2L)
+    step <- tryCatch(solve(H, grad), error = function(e) c(NA_real_, NA_real_))
+    if (any(!is.finite(step))) break
+    if (max(abs(step)) < 1e-12) break
+    base <- logpost(u)
+    frac <- 1
+    u_try <- u
+    for (bt in seq_len(30L)) {
+      u_try <- u - frac * step
+      if (all(is.finite(u_try)) && logpost(u_try) >= base - 1e-12) break
+      frac <- frac / 2
+    }
+    if (any(!is.finite(u_try)) || max(abs(u_try - u)) < 1e-12) break
+    u <- u_try
+  }
+  eta <- drop(beta + Lambda %*% u)
+  p <- plogis(eta)
+  sw <- sqrt(pmax(p * (1 - p), 0))
+  H <- -crossprod(Lambda * sw, Lambda * sw) - diag(2L)
+  sd <- tryCatch(sqrt(solve(-H)[1L, 1L]), error = function(e) 1)
+  if (!is.finite(sd) || sd <= 0) sd <- 1
+  min(sd, 1)
 }
 
 .golden_site_log_marginal_q2 <- function(y_site, beta, Lambda) {
   Lambda <- as.matrix(Lambda)
-  stopifnot(nrow(Lambda) == length(y_site), ncol(Lambda) == 2L)
-  outer_fn <- function(u1) {
-    vapply(u1, function(uu1) {
-      inner_fn <- function(u2) {
-        vapply(u2, function(uu2) {
-          eta <- beta + Lambda[, 1L] * uu1 + Lambda[, 2L] * uu2
-          prod(dbinom(y_site, 1L, plogis(eta))) * dnorm(uu2)
-        }, numeric(1))
-      }
-      val <- .golden_integrate_inf(inner_fn, rel.tol = 1e-10, abs.tol = 1e-13)$value
-      val * dnorm(uu1)
+  stopifnot(nrow(Lambda) == length(y_site), ncol(Lambda) == 2L,
+            length(beta) == length(y_site))
+  log_g <- function(u1) {
+    vapply(u1, function(uu) {
+      .golden_q2_inner_log(uu, y_site, beta, Lambda,
+                           rel.tol = 1e-10, abs.tol = 1e-13) +
+        dnorm(uu, log = TRUE)
     }, numeric(1))
   }
-  val <- .golden_integrate_inf(outer_fn, rel.tol = 1e-9, abs.tol = 1e-12)
-  log(val$value)
+  K <- .golden_q2_prior_K
+  opt <- stats::optimize(function(u) -log_g(u), interval = c(-K, K))
+  sd <- .golden_q2_marginal_sd(y_site, beta, Lambda)
+  .golden_q2_log_integral(log_g, opt$minimum, sd,
+                          rel.tol = 1e-9, abs.tol = 1e-12)
 }
 
 .golden_brute_force_nll_q2 <- function(dat, beta, Lambda,

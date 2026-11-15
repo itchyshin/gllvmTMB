@@ -1613,7 +1613,7 @@ test_that("moderate-overlap blend grid 0.45-0.55 recovers component Gamma shapes
   expect_gt(.c3_gamma_corr(boundary_fit$Gamma_non, boundary_edge$Gamma_non), 0.95)
 })
 
-test_that("high-overlap two-component fits collapse to one higher-rank kernel", {
+test_that("identical kernels collapse and diagonal shrink retains distinct covariance", {
   skip_if_not_heavy()
   testthat::skip_on_cran()
   testthat::skip_if_not_installed("TMB")
@@ -1681,11 +1681,65 @@ test_that("high-overlap two-component fits collapse to one higher-rank kernel", 
 
     expect_equal(fit_full$opt$convergence, 0L)
     expect_equal(fit_collapsed$opt$convergence, 0L)
-    expect_lt(
-      abs(as.numeric(stats::logLik(fit_full)) -
-        as.numeric(stats::logLik(fit_collapsed))),
-      2
-    )
+    # Only identical kernels imply a rank-two collapse. The diagonal-shrink
+    # kernel adds a distinct within-species covariance; its fitted likelihood
+    # need not be within 2 of the collapsed model. The former empirical
+    # shrink-model closeness claim is intentionally no longer a gate.
+    traits <- c(fx$host_traits, fx$partner_traits)
+    yy <- as.matrix(fx$data[traits]); obs <- which(!is.na(yy), arr.ind = TRUE)
+    y <- yy[obs]
+    species <- match(as.character(fx$data$species[obs[, 1]]), rownames(fx$K_phy))
+    trait <- obs[, 2]
+    parts <- function(fit, kind) {
+      invisible(fit$tmb_obj$fn(fit$opt$par))
+      p <- fit$tmb_obj$env$parList(fit$opt$par)
+      expect_length(p$b_fix, 4L)
+      expect_length(p$log_sigma_eps, 1L)
+      alpha <- vapply(traits, function(tr) {
+        i <- which(as.character(fit$data[[fit$trait_col]]) == tr)[1]
+        sum(as.numeric(fit$X_fix[i, ]) * p$b_fix)
+      }, numeric(1))
+      shared <- function(level) {
+        S <- suppressMessages(suppressWarnings(gllvmTMB::extract_Sigma(
+          fit, level = level, part = "shared", link_residual = "none")$Sigma))
+        S[traits, traits, drop = FALSE]
+      }
+      if (kind == "full") {
+        list(alpha = alpha, noise = exp(2 * p$log_sigma_eps),
+             phy = shared("phy"), non = shared("non"))
+      } else {
+        list(alpha = alpha, noise = exp(2 * p$log_sigma_eps), cross = shared("cross"))
+      }
+    }
+    p_full <- parts(fit_full, "full")
+    p_collapsed <- parts(fit_collapsed, "collapsed")
+    V_full <- fx$K_phy[species, species] * p_full$phy[trait, trait] +
+      fx$K_non[species, species] * p_full$non[trait, trait]
+    V_collapsed <- fx$K_phy[species, species] * p_collapsed$cross[trait, trait]
+    dense_ll <- function(V, p) {
+      diag(V) <- diag(V) + p$noise
+      R <- chol(V)
+      z <- forwardsolve(t(R), y - p$alpha[trait])
+      -0.5 * (length(y) * log(2 * pi) + 2 * sum(log(diag(R))) + sum(z^2))
+    }
+    ll_full <- dense_ll(V_full, p_full)
+    ll_collapsed <- dense_ll(V_collapsed, p_collapsed)
+    expect_lt(abs(ll_full - as.numeric(stats::logLik(fit_full))), 1e-6)
+    expect_lt(abs(ll_collapsed - as.numeric(stats::logLik(fit_collapsed))), 1e-6)
+    if (case_name == "exact_duplicate") {
+      V_equal <- fx$K_phy[species, species] * (p_full$phy + p_full$non)[trait, trait]
+      expect_lt(max(abs(V_full - V_equal)), 1e-10)
+      expect_lt(abs(ll_full - dense_ll(V_equal, p_full)), 1e-9)
+      expect_lt(abs(as.numeric(stats::logLik(fit_full)) -
+                      as.numeric(stats::logLik(fit_collapsed))), 1e-4)
+    } else {
+      V_drop <- fx$K_phy[species, species] * (p_full$phy + .95 * p_full$non)[trait, trait]
+      V_decomposed <- V_drop + .05 * (outer(species, species, "==") * p_full$non[trait, trait])
+      expect_lt(max(abs(V_full - V_decomposed)), 1e-10)
+      # Synthetic wrong-formula control: omitting the I term must be detected.
+      expect_gt(max(abs(V_full - V_drop)), 1e-8)
+      expect_gt(abs(ll_full - dense_ll(V_drop, p_full)), 1e-8)
+    }
 
     expect_warning(
       Gamma_phy <- gllvmTMB::extract_Gamma(

@@ -108,10 +108,55 @@
 ## stats::integrate() on (-Inf, Inf) rewrites the axis through a rational map
 ## and then runs Wynn extrapolation. A narrow ridge, or a nested integrand
 ## whose inner integral is only smooth up to its own tolerance, makes that
-## extrapolation report "roundoff error" or exhaust its subdivisions. covr's
-## -O0 fits land on such (beta, Lambda) points often enough to fail shard 2/4.
-## Integrate the same function on a finite, mode-centred interval instead.
-## rel.tol and abs.tol are the caller's, unchanged.
+## extrapolation report "roundoff error", exhaust its subdivisions, or, on a
+## finite window, declare "the integral is probably divergent" (QUADPACK
+## ier = 5 once extrapolation has failed five times). covr's -O0 fits land on
+## such (beta, Lambda) points often enough to fail shard 2/4. Integrate the
+## same function on a finite, mode-centred interval instead. rel.tol and
+## abs.tol are the caller's, unchanged. "probably divergent", bad integrand
+## behaviour, and a non-finite sample are caught like roundoff, but they are
+## not retried with more subdivisions: that repeats the same extrapolation
+## test. The bounded window is then integrated with a fixed composite
+## Gauss-Legendre rule, which has no extrapolation table.
+.golden_gl_rule <- local({
+  cache <- new.env(parent = emptyenv())
+  function(n) {
+    key <- as.character(n)
+    if (exists(key, envir = cache, inherits = FALSE)) {
+      return(get(key, envir = cache, inherits = FALSE))
+    }
+    n <- as.integer(n)
+    J <- matrix(0, n, n)
+    k <- seq_len(n - 1L)
+    b <- k / sqrt(4 * k * k - 1)
+    J[cbind(k, k + 1L)] <- b
+    J[cbind(k + 1L, k)] <- b
+    ev <- eigen(J, symmetric = TRUE)
+    o <- order(ev$values)
+    rule <- list(x = ev$values[o], w = 2 * ev$vectors[1L, o]^2)
+    assign(key, rule, envir = cache)
+    rule
+  }
+})
+
+## Equal-panel Gauss-Legendre. Nodes and weights are fixed, so the rule has
+## no subdivision cap and no extrapolation table to declare divergence.
+## Samples that are not finite are 0: a log-shift that underflowed or a
+## saturated logit that produced NaN must not reach the sum as Inf.
+.golden_composite_gl <- function(f, lower, upper, n_panel = 24L, n_gl = 16L) {
+  if (!is.finite(lower) || !is.finite(upper) || upper < lower) return(NA_real_)
+  if (upper == lower) return(0)
+  g <- .golden_gl_rule(n_gl)
+  edges <- seq(lower, upper, length.out = n_panel + 1L)
+  half <- (upper - lower) / (2 * n_panel)
+  mids <- (edges[-length(edges)] + edges[-1L]) / 2
+  x <- rep(mids, each = n_gl) + rep(g$x * half, times = n_panel)
+  w <- rep(g$w * half, times = n_panel)
+  fx <- f(x)
+  fx[!is.finite(fx) | fx < 0] <- 0
+  sum(w * fx)
+}
+
 .golden_integrate_finite <- function(f, lower, upper, rel.tol, abs.tol) {
   width <- upper - lower
   if (!is.finite(width) || width < 0) {
@@ -120,13 +165,27 @@
   if (width == 0) return(0)
   retryable <- function(msg) {
     grepl("maximum number of subdivisions reached", msg, fixed = TRUE) ||
-      grepl("roundoff error", msg, fixed = TRUE)
+      grepl("roundoff error", msg, fixed = TRUE) ||
+      grepl("probably divergent", msg, fixed = TRUE) ||
+      grepl("extremely bad integrand behaviour", msg, fixed = TRUE) ||
+      grepl("non-finite function value", msg, fixed = TRUE)
+  }
+  ## More subdivisions repeat the same extrapolation test. A divergent,
+  ## non-finite, or "bad behaviour" report will not become a success that way.
+  hard_fail <- function(msg) {
+    grepl("probably divergent", msg, fixed = TRUE) ||
+      grepl("extremely bad integrand behaviour", msg, fixed = TRUE) ||
+      grepl("non-finite function value", msg, fixed = TRUE)
   }
   once <- function(lo, hi, sub) {
     tryCatch(
       stats::integrate(f, lo, hi, rel.tol = rel.tol, abs.tol = abs.tol,
                        subdivisions = sub),
-      error = function(e) if (retryable(conditionMessage(e))) NULL else stop(e)
+      error = function(e) {
+        msg <- conditionMessage(e)
+        if (retryable(msg)) structure(list(message = msg), class = "golden_int_fail")
+        else stop(e)
+      }
     )
   }
   ## Height of every integrand passed here is at most 1 (log-shift) or the
@@ -135,24 +194,42 @@
   ## midpoint value cannot loosen the caller's absolute tolerance.
   midpoint <- function(lo, hi) {
     mid <- f((lo + hi) / 2)
+    if (!is.finite(mid)) mid <- 0
     ## Rescaled integrands peak at or below 1. A value above 2 means the
     ## log-shift missed the mode and this panel is not a negligible tail.
-    if (!is.finite(mid) || mid < 0 || mid > 2) {
+    if (mid < 0 || mid > 2) {
       stop("stats::integrate() failed for nested AGHQ golden oracle", call. = FALSE)
     }
     mid * (hi - lo)
+  }
+  fixed_rule <- function(lo, hi) {
+    est <- .golden_composite_gl(f, lo, hi)
+    if (is.finite(est) && est >= 0) return(est)
+    stop("stats::integrate() failed for nested AGHQ golden oracle", call. = FALSE)
   }
   attempt <- function(lo, hi, depth) {
     w <- hi - lo
     if (w == 0) return(0)
     if (w < abs.tol) return(midpoint(lo, hi))
-    for (sub in c(100L, 2000L, 5000L)) {
+    out <- once(lo, hi, 100L)
+    if (!inherits(out, "golden_int_fail") && is.finite(out$value) && out$value >= 0) {
+      return(out$value)
+    }
+    ## Divergent / non-finite / bad-behaviour: more subdivisions repeat the
+    ## same extrapolation test. A fixed rule on this bounded window does not.
+    if (inherits(out, "golden_int_fail") && hard_fail(out$message)) {
+      return(fixed_rule(lo, hi))
+    }
+    for (sub in c(2000L, 5000L)) {
       out <- once(lo, hi, sub)
-      if (!is.null(out) && is.finite(out$value) && out$value >= 0) return(out$value)
+      if (!inherits(out, "golden_int_fail") && is.finite(out$value) && out$value >= 0) {
+        return(out$value)
+      }
+      if (inherits(out, "golden_int_fail") && hard_fail(out$message)) {
+        return(fixed_rule(lo, hi))
+      }
     }
-    if (depth <= 0) {
-      stop("stats::integrate() failed for nested AGHQ golden oracle", call. = FALSE)
-    }
+    if (depth <= 0) return(fixed_rule(lo, hi))
     mid_x <- (lo + hi) / 2
     attempt(lo, mid_x, depth - 1L) + attempt(mid_x, hi, depth - 1L)
   }
@@ -161,9 +238,19 @@
 
 ## Stable log Bernoulli pmf on the logit scale. eta may be a matrix with one
 ## column per quadrature node; y is recycled down each column.
+## At a saturated logit, log(p) or log(1-p) is -Inf. The term whose
+## coefficient is 0 must be 0, not 0 * (-Inf) = NaN, or the outer
+## quadrature sees a non-finite integrand and reports divergence.
 .golden_q2_log_bern <- function(y, eta) {
-  colSums(y * plogis(eta, log.p = TRUE) +
-            (1 - y) * plogis(eta, lower.tail = FALSE, log.p = TRUE))
+  eta <- as.matrix(eta)
+  lp <- plogis(eta, log.p = TRUE)
+  lq <- plogis(eta, lower.tail = FALSE, log.p = TRUE)
+  y <- as.numeric(y)
+  ly <- y * lp
+  ln <- (1 - y) * lq
+  ly[!is.finite(ly) & rep(y == 0, length.out = length(ly))] <- 0
+  ln[!is.finite(ln) & rep((1 - y) == 0, length.out = length(ln))] <- 0
+  colSums(ly + ln)
 }
 
 ## Conditional mode and Laplace sd of u2 | u1. The log posterior is concave
@@ -174,9 +261,7 @@
 .golden_q2_inner_mode <- function(u1, y, beta, lam1, lam2) {
   logpost <- function(u) {
     eta <- beta + lam1 * u1 + lam2 * u
-    sum(y * plogis(eta, log.p = TRUE) +
-          (1 - y) * plogis(eta, lower.tail = FALSE, log.p = TRUE)) +
-      dnorm(u, log = TRUE)
+    sum(.golden_q2_log_bern(y, eta)) + dnorm(u, log = TRUE)
   }
   u <- 0
   hess <- -1
@@ -223,11 +308,22 @@
   ## The shift has to be the maximum on the window. The mode is that point
   ## when Newton has converged; the endpoints cover a monotone tail whose
   ## unconstrained mode lies outside [-K, K].
-  probes <- c(mode, -K, K, mode + sd * c(-1, 1))
+  probes <- c(mode, -K, K, mode + sd * seq(-4, 4, by = 1))
   probes <- probes[is.finite(probes) & probes >= -K & probes <= K]
-  M <- suppressWarnings(max(log_f(probes)))
+  probe_lv <- log_f(probes)
+  probe_lv[!is.finite(probe_lv)] <- -Inf
+  M <- suppressWarnings(max(probe_lv))
   if (!is.finite(M)) return(-Inf)
-  scaled <- function(u) pmax(exp(log_f(u) - M), 0)
+  ## A node whose log is not finite (saturated logit, or an inner integral
+  ## that underflowed) must contribute 0, not NaN. NaN is what makes the
+  ## outer integrate() report the integral as divergent or non-finite.
+  ## Finite values are unchanged, so a log-shift that already peaked at 1
+  ## integrates exactly as before.
+  scaled <- function(u) {
+    lv <- log_f(u)
+    lv[!is.finite(lv)] <- -Inf
+    pmax(exp(lv - M), 0)
+  }
   core_lo <- max(-K, mode - K * sd)
   core_hi <- min(K, mode + K * sd)
   z_lo <- (core_lo - mode) / sd
@@ -266,9 +362,7 @@
 .golden_q2_marginal_sd <- function(y, beta, Lambda) {
   logpost <- function(u) {
     eta <- drop(beta + Lambda %*% u)
-    sum(y * plogis(eta, log.p = TRUE) +
-          (1 - y) * plogis(eta, lower.tail = FALSE, log.p = TRUE)) -
-      sum(u * u) / 2
+    sum(.golden_q2_log_bern(y, eta)) - sum(u * u) / 2
   }
   u <- c(0, 0)
   H <- diag(-1, 2L)

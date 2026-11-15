@@ -1,5 +1,5 @@
 ## #1759. gllvm exports S3 generics named getLoadings, getLV,
-## getResidualCov and getResidualCor. After library(gllvm) those generics
+## getResidualCov, getResidualCor and VP. After library(gllvm) those generics
 ## mask gllvmTMB's plain functions, and UseMethod finds no method for a
 ## gllvmTMB fit. The exported functions stay plain functions with their
 ## current formals. These wrappers exist only so a call that arrives
@@ -39,11 +39,16 @@
   .gllvm_mask_call(getResidualCor, object, ...)
 }
 
+.gllvm_mask_VP <- function(object, ...) {
+  .gllvm_mask_call(VP, object, ...)
+}
+
 .gllvm_mask_methods <- list(
   getLoadings = .gllvm_mask_getLoadings,
   getLV = .gllvm_mask_getLV,
   getResidualCov = .gllvm_mask_getResidualCov,
-  getResidualCor = .gllvm_mask_getResidualCor
+  getResidualCor = .gllvm_mask_getResidualCor,
+  VP = .gllvm_mask_VP
 )
 
 .gllvm_mask_is_generic <- function(fn) {

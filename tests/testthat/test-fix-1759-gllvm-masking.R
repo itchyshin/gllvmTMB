@@ -197,3 +197,26 @@ test_that("attaching gllvm still dispatches getLoadings() and getLV() to gllvmTM
   expect_identical(dim(masked_loadings(fit)), c(3L, 1L))
   expect_identical(dim(masked_scores(fit)), c(20L, 1L))
 })
+
+test_that("attaching gllvm still dispatches VP() to gllvmTMB", {
+  skip_if_not_installed("gllvm")
+  fit <- fix1759_fit()
+  namespaced_vp <- gllvmTMB::VP(fit)
+
+  before <- search()
+  suppressPackageStartupMessages(library(gllvm))
+  on.exit(fix1759_detach_new(before), add = TRUE)
+
+  expect_identical(find("VP")[[1L]], "package:gllvm")
+  expect_identical(environmentName(environment(search_path_fun("VP"))), "gllvm")
+  expect_true(utils::isS3stdGeneric(search_path_fun("VP")))
+  expect_false(utils::isS3stdGeneric(gllvmTMB::VP))
+  expect_identical(names(formals(gllvmTMB::VP)), "fit")
+  expect_true("VP.gllvmTMB" %in% names(asNamespace("gllvm")$.__S3MethodsTable__.))
+
+  masked_vp <- search_path_fun("VP")(fit)
+  expect_identical(masked_vp, namespaced_vp)
+  expect_identical(gllvm::VP(fit), namespaced_vp)
+  expect_true(is.matrix(masked_vp))
+  expect_identical(nrow(masked_vp), 3L)
+})

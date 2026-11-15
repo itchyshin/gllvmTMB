@@ -49,7 +49,8 @@ covariance block, not an interaction model.
 > point estimate demonstrated here; it is sensitive to the supplied kernel and
 > association matrix. **Not provided:** estimated `rho`, calibrated intervals,
 > a causal coevolution test, or a separately interpreted phylogenetic-versus-tip
-> decomposition.
+> decomposition. The final synthetic section demonstrates two kernel-specific
+> diagonals as a fitting exercise; it does not establish their recovery.
 
 > **Engine note.** Run this example with `engine = "tmb"` (the default). The
 > current `engine = "julia"` bridge deliberately does not route
@@ -402,6 +403,81 @@ ggplot(rho_ok, aes(rho, relative_logLik)) +
   ) +
   theme_article()
 ```
+
+## A two-kernel Gaussian syntax example
+
+Can a model assign trait-specific variation to each of two supplied kernels?
+The following small artificial example shows the syntax when the observation
+error SD is known. Each kernel has a shared field and a diagonal companion; the
+missing plant--bumblebee trait combinations are structural and remain missing.
+
+```{r two-kernel-data}
+set.seed(123)
+n <- 8L
+ids <- c(paste0("H", seq_len(n)), paste0("P", seq_len(n)))
+A <- 0.6 ^ abs(outer(seq_len(n), seq_len(n), "-"))
+I <- diag(n)
+K_phy <- rbind(cbind(A, 0.55 * A), cbind(0.55 * A, A))
+K_tip <- rbind(cbind(I, 0.55 * I), cbind(0.55 * I, I))
+dimnames(K_phy) <- dimnames(K_tip) <- list(ids, ids)
+
+draw_tier <- function(K, lambda, psi) {
+  m <- nrow(K)
+  L <- t(chol(K + diag(1e-8, m)))
+  outer(drop(L %*% rnorm(m)), lambda) +
+    sweep(L %*% matrix(rnorm(m * length(psi)), m), 2, sqrt(psi), "*")
+}
+y <- draw_tier(K_phy, c(0.7, 0.5, 0.6, -0.4), rep(0.3, 4)) +
+  draw_tier(K_tip, c(0.5, -0.4, 0.4, 0.6), rep(0.2, 4)) +
+  matrix(rnorm(2 * n * 4, sd = 0.12), 2 * n, 4)
+colnames(y) <- c("H1", "H2", "P1", "P2")
+y[seq_len(n), 3:4] <- NA_real_
+y[n + seq_len(n), 1:2] <- NA_real_
+wide_two <- data.frame(species = factor(ids, levels = ids),
+                       row_id = factor(ids, levels = ids), y)
+long_two <- do.call(rbind, lapply(colnames(y), function(tr) {
+  data.frame(species = wide_two$species, row_id = wide_two$row_id,
+             trait = tr, value = wide_two[[tr]])
+}))
+long_two$trait <- factor(long_two$trait, levels = colnames(y))
+```
+
+The same model can be fitted from wide or long data. The `missing` setting
+keeps the missing cells in the data but omits them from the likelihood.
+
+```{r two-kernel-fits}
+fit_two_wide <- gllvmTMB(
+  traits(H1, H2, P1, P2) ~ 1 +
+    kernel_latent(species, K = K_phy, d = 1, name = "phy", unique = TRUE) +
+    kernel_latent(species, K = K_tip, d = 1, name = "tip", unique = TRUE),
+  data = wide_two, family = gaussian(), unit = "row_id", cluster = "species",
+  known_sigma_eps = 0.12, missing = miss_control(response = "include"),
+  control = gllvmTMBcontrol(se = FALSE, n_init = 1)
+)
+fit_two_long <- gllvmTMB(
+  value ~ 0 + trait +
+    kernel_latent(species, K = K_phy, d = 1, name = "phy", unique = TRUE) +
+    kernel_latent(species, K = K_tip, d = 1, name = "tip", unique = TRUE),
+  data = long_two, trait = "trait", family = gaussian(), unit = "row_id",
+  cluster = "species", known_sigma_eps = 0.12,
+  missing = miss_control(response = "include"),
+  control = gllvmTMBcontrol(se = FALSE, n_init = 1)
+)
+c(wide_convergence = fit_two_wide$opt$convergence,
+  long_convergence = fit_two_long$opt$convergence)
+extract_Sigma(fit_two_wide, level = "phy", part = "unique")
+extract_Sigma(fit_two_wide, level = "tip", part = "unique")
+```
+
+In this draw both fits return convergence code zero, but the four estimated
+`phy` diagonal variances are close to zero despite the simulated value of 0.3.
+The tiny example therefore shows syntax rather than reliable component
+recovery. Passing the kernel-pattern separation check does not establish
+identifiability; some known-truth studies have recovered the components poorly,
+and interval calibration is unvalidated. Inspect convergence and diagnostics
+before interpreting a fit. Unconditional simulation and simulation with new
+data are unavailable for multiple named kernels; conditional prediction with
+new data is also unavailable.
 
 ## What to do with empirical data next
 

@@ -33,7 +33,8 @@ gllvmTMB(
   site = NULL,
   species = NULL,
   estimator = c("ml", "mspl"),
-  column_data = NULL
+  column_data = NULL,
+  known_sigma_eps = NULL
 )
 }
 \arguments{
@@ -389,6 +390,22 @@ must have the same name as \code{trait} and exactly match the response columns.
 Joined fields are available to fixed effects but cannot be coefficient
 bases, grouping columns, or covariance sources. In wide input, key this
 table by the synthetic column name \code{trait} and omit the \code{trait} argument.}
+
+\item{known_sigma_eps}{Optional known observation-error standard deviation.
+Supply one finite positive number when the same error standard deviation
+applies to every observation and all response traits are Gaussian. The
+supplied value is fixed during fitting; its square is the observation-error
+variance. This argument is supported only by the TMB engine. With \code{NULL}
+(the default), the usual observation-error rules apply.
+
+For two named \code{kernel_latent()} terms with \code{unique = TRUE}, supply
+\code{known_sigma_eps} and use positive observation weights. The two kernels
+must have distinct covariance patterns among the observed species for
+each trait. A failure of this check stops the fit rather than dropping a
+requested component. Passing the check does not guarantee that the two
+components can be estimated precisely; recovery and uncertainty for this
+model remain under investigation. Mixed-family models are not supported
+with this argument.}
 }
 \value{
 A \code{gllvmTMB} object. Every native fit, with or without

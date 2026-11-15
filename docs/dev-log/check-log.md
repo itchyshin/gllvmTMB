@@ -1,5 +1,46 @@
 > New entries go in `docs/dev-log/check-log.d/`, one file per slice (`YYYY-MM-DD-<slice>.md`); see `check-log.d/README.md`.
 
+## 2026-11-15 — two-kernel Gaussian uniqueness (in progress)
+
+Branch `codex/two-kernel-gaussian-20261115` starts from `abf3e905`.
+The user authorized preserving and reconciling PRs #1763, #1790, #1794 and
+#1800 in scratch. The first three scratch checks are recorded in
+`docs/dev-log/after-task/2026-11-15-two-kernel-gaussian.md`. The combined
+#1800 scratch source passed its named fixed-rho test with 36 assertions on
+Totoro; source and live DLL hashes were independently checked. This is a
+shared-only test, not full-PR or two-Psi recovery evidence. No PR or main
+branch was changed.
+
+The focused final test run passed with 21 heavy tests skipped; see
+`/tmp/gllvmtmb-two-kernel-final-focused.log`. The independent five-point
+likelihood and gradient comparison against the rebuilt current source passed;
+see `/tmp/gllvmtmb-two-kernel-final-oracle.log`. The 36-case exploratory
+Totoro pilot produced 36 extractions and 34 code-zero fits, with frequent
+near-zero uniqueness estimates. Its full denominators, source identity and
+limits are in `dev/two-kernel-gaussian/pilot/RESULTS.md`. It does not establish
+recovery or calibrated uncertainty.
+
+The final local package check returned one error from two visual snapshots,
+zero check warnings and one note about `TMB:::EvalADFunObject`. Both named
+snapshot tests also failed on clean `abf3e905`; rendered differences were not
+retained. The note's triple-colon call also exists on that baseline. The log
+is `/tmp/gllvmtmb-two-kernel-final-check.log`. The
+untruncated source suite returned 11 failures that were reproduced at the same
+named tests on clean main. No three-OS CI, push, merge or release is claimed.
+
+`R_LIBS=/tmp/gllvmtmb-two-kernel-final-lib OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 Rscript --vanilla -e 'pkgdown::build_articles(lazy=FALSE)'` exited zero after the article generator's source ridge was corrected. It wrote 43 article pages; `/tmp/gllvmtmb-two-kernel-all-articles.log` retains the Pandoc deprecation warnings. The final package check began before that article-only correction, whose paired fits and targeted render passed separately.
+
+The pilot's `cases.csv` retains the CRLF bytes used in its audited source
+manifest. Default `git diff --cached --check` flags those line endings;
+`git -c core.whitespace=cr-at-eol diff --cached --check` passes without
+rewriting the evidence.
+
+Consistency searches:
+
+- `rg -n -i 'multi.kernel.{0,120}(latent.only|loadings.only|prun|drop|defer)|two.{0,15}(psi|uniqueness).{0,100}(drop|warn|prun)' README.md NEWS.md R man vignettes docs/design` found historical first-wave text explicitly superseded in the same design section and an unrelated NEWS match. Rose's narrow recheck passed.
+- `rg -n -F -e 'multiple named kernel' -e 'multiple named-kernel' man/predict.gllvmTMB_multi.Rd man/simulate.gllvmTMB_multi.Rd man/bootstrap_Sigma.Rd R/methods-gllvmTMB.R` confirmed the new prediction and simulation boundaries are documented.
+- `rg -n 'gllvmTMB\(' R vignettes README.md NEWS.md docs/design` enumerated 992 lines in the broader cascade scan; not every historical call was manually verified. Both new example calls were run and the affected articles rendered.
+
 ## 2026-08-17 — #1077: reconcile stale profile-bounds wording post-#1090
 
 **Lane:** `cursor/mspl-profile-ci-scaffold` (draft #1077)

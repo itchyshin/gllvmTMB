@@ -24,8 +24,9 @@ matrix aligned to the grouping levels.}
 \code{extract_Sigma(fit, level = "cross")}.}
 
 \item{unique}{Logical; \code{TRUE} auto-includes the kernel-structured diagonal
-trait-specific \eqn{\boldsymbol\Psi} companion for a single dense-kernel
-tier. The default \code{FALSE} preserves the loadings-only subset.}
+trait-specific \eqn{\boldsymbol\Psi} companion. Two named tiers may each
+use it under the Gaussian fixed-error conditions described above. The
+default \code{FALSE} preserves the loadings-only subset.}
 
 \item{rho}{Source strength: a number in \verb{[0,1]} fixes
 \code{rho * K + (1-rho) * diag(diag(K))} on the legacy-resolved source scale.
@@ -50,9 +51,13 @@ between-unit covariance matrix \code{K}. For one named tier,
 \code{unique = TRUE} adds a kernel-structured diagonal
 \eqn{\boldsymbol\Psi} companion; the default \code{FALSE} is loadings-only.
 Two or more named \code{kernel_latent()} tiers may share the same grouping levels,
-each with its own \code{K}, loading matrix, and latent field. Multi-kernel fits are
-loadings-only: \code{unique = TRUE} and \code{kernel_dep()} are not available in that
-combination. Similar kernels can be
+each with its own \code{K}, loading matrix, and latent field. Two named Gaussian
+tiers can each use \code{unique = TRUE} when the observation-error SD is known
+and supplied as \code{known_sigma_eps} to \code{\link[=gllvmTMB]{gllvmTMB()}}, the weights are positive,
+and the observed same-trait kernel patterns pass a separation check.
+Passing that check does not guarantee precise component estimates: recovery
+has been poor in some known-truth settings, and intervals remain unvalidated.
+Separate \code{kernel_dep()} tiers are not supported. Similar kernels can be
 weakly separable, so use \code{\link[=diagnose_kernel_separability]{diagnose_kernel_separability()}} before assigning a
 distinct interpretation to each component.
 

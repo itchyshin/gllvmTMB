@@ -752,7 +752,7 @@ test_that("two distinct named kernel tiers fit and extract by component", {
       family = stats::gaussian(),
       control = ctl
     ))),
-    regexp = "latent-only|Psi is deferred|kernel_unique"
+    regexp = "latent-only|Psi is deferred|kernel_unique|multi-kernel uniqueness"
   )
 })
 
@@ -2413,12 +2413,8 @@ test_that("one named kernel tier exposes Sigma and Gamma by its name", {
   expect_equal(colnames(Gamma), "y2")
 })
 
-test_that("two kernel_unique tiers without replication warn and collapse to one", {
-  ## C3.2 guardrail: two uniqueness tiers + one observation per species
-  ## (no within-species replication) -> warn (the two Psi are confounded)
-  ## and default to a single uniqueness tier. Warn, not abort: the model
-  ## still fits. Two DISTINCT names ("phy" + "non") are used so the test
-  ## also confirms the guardrail runs before the single-`name` validation.
+test_that("two kernel_unique tiers are rejected rather than collapsed", {
+  ## Explicit kernel diagonals on multiple tiers cannot silently become one.
   testthat::skip_if_not_installed("TMB")
   testthat::skip_if_not_installed("tidyr")
 
@@ -2427,8 +2423,8 @@ test_that("two kernel_unique tiers without replication warn and collapse to one"
   dimnames(A_non) <- dimnames(fx$A)
 
   ctl <- gllvmTMB::gllvmTMBcontrol(se = FALSE)
-  expect_warning(
-    fit <- suppressMessages(gllvmTMB::gllvmTMB(
+  expect_error(
+    suppressMessages(gllvmTMB::gllvmTMB(
       traits(y1, y2) ~
         1 +
         kernel_unique(species, K = fx$A, name = "phy") +
@@ -2439,10 +2435,8 @@ test_that("two kernel_unique tiers without replication warn and collapse to one"
       family = stats::gaussian(),
       control = ctl
     )),
-    regexp = "not separable without replication"
+    regexp = "exactly one.*kernel_latent|multi-kernel uniqueness"
   )
-  ## The collapsed fit is the single-uniqueness-tier model and still fits.
-  expect_equal(fit$opt$convergence, 0L)
 })
 
 test_that("a single kernel_unique tier does NOT trigger the C3.2 warning", {
@@ -2465,12 +2459,9 @@ test_that("a single kernel_unique tier does NOT trigger the C3.2 warning", {
   )
 })
 
-test_that("two kernel_unique tiers WITH replication separate the two Psi", {
-  ## C3.2 the replicated side of the guardrail. With repeated observations
-  ## per species the two uniqueness variances ARE identified, so the engine
-  ## must NOT warn and the two-Psi model must fit. This is the heavy DGP
-  ## recovery side: a phylo uniqueness component (Psi_phy on `A`) plus a
-  ## tip-level uniqueness component, observed with within-species replicates.
+test_that("a replicated single kernel_unique fit has positive variance", {
+  ## This fixture generates two components but fits and checks only the phylo
+  ## component. It does not establish separate recovery of both components.
   skip_if_not_heavy()
   testthat::skip_on_cran()
   testthat::skip_if_not_installed("ape")

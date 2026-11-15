@@ -313,6 +313,7 @@ check_identifiability <- function(
   t0 <- Sys.time()
   aux <- list(
     weights = response$weights,
+    known_sigma_eps = fit$known_sigma_eps,
     missing = response$missing,
     phylo_vcv = fit$phylo_vcv,
     phylo_tree = fit$phylo_tree,

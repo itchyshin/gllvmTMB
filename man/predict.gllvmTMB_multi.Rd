@@ -27,7 +27,9 @@ transforms in the fixed formula (\code{scale()}, \code{poly()}, \code{ns()}) reu
 the training centre, scale, and basis, so a row's value does not
 depend on which other rows travel with it. Character predictors use
 the training levels, and user-set factor contrasts (for example
-\code{contr.sum}) are copied onto the restored factor.}
+\code{contr.sum}) are copied onto the restored factor.
+Conditional prediction with \code{newdata} for multiple named kernel tiers
+is not supported; use \code{re_form = ~0} for fixed-effects-only predictions.}
 
 \item{type}{One of \code{"link"} (default) or \code{"response"}.
 

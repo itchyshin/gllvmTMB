@@ -6,9 +6,13 @@
 #' `unique = TRUE` adds a kernel-structured diagonal
 #' \eqn{\boldsymbol\Psi} companion; the default `FALSE` is loadings-only.
 #' Two or more named `kernel_latent()` tiers may share the same grouping levels,
-#' each with its own `K`, loading matrix, and latent field. Multi-kernel fits are
-#' loadings-only: `unique = TRUE` and `kernel_dep()` are not available in that
-#' combination. Similar kernels can be
+#' each with its own `K`, loading matrix, and latent field. Two named Gaussian
+#' tiers can each use `unique = TRUE` when the observation-error SD is known
+#' and supplied as `known_sigma_eps` to [gllvmTMB()], the weights are positive,
+#' and the observed same-trait kernel patterns pass a separation check.
+#' Passing that check does not guarantee precise component estimates: recovery
+#' has been poor in some known-truth settings, and intervals remain unvalidated.
+#' Separate `kernel_dep()` tiers are not supported. Similar kernels can be
 #' weakly separable, so use [diagnose_kernel_separability()] before assigning a
 #' distinct interpretation to each component.
 #'
@@ -24,8 +28,9 @@
 #'   `extract_Sigma(fit, level = "cross")`.
 #' @param d Integer latent rank for `kernel_latent()`.
 #' @param unique Logical; `TRUE` auto-includes the kernel-structured diagonal
-#'   trait-specific \eqn{\boldsymbol\Psi} companion for a single dense-kernel
-#'   tier. The default `FALSE` preserves the loadings-only subset.
+#'   trait-specific \eqn{\boldsymbol\Psi} companion. Two named tiers may each
+#'   use it under the Gaussian fixed-error conditions described above. The
+#'   default `FALSE` preserves the loadings-only subset.
 #'
 #' @return A formula marker; never evaluated as a regular R function.
 #'

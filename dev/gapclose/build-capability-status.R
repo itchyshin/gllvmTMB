@@ -250,7 +250,7 @@ REGISTER_MAP <- list(
       c("KER-02", "STR-RHO-FIX", "STR-RHO-EST", "STR-RHO-WORKFLOW")),
   ROW("kernel × dep (`kernel_dep()`)", "Covariance grid source × mode", "KER-02"),
   ROW("kernel × latent (`kernel_latent()`)", "Covariance grid source × mode",
-      c("KER-02", "KER-03")),
+      c("KER-02", "KER-03", "KER-03A")),
   ROW("phylo_latent + `lv = ~ x` (Phylo Model A public intervals)", "Covariance grid source × mode",
       "LV-08"),
   ROW("Latent scores on covariates `latent(..., lv = ~ x)` ordinary", "Covariance grid source × mode",

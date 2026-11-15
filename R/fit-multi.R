@@ -1449,6 +1449,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                                REML = FALSE,
                                phylo_vcv = NULL, phylo_tree = NULL,
                                known_V = NULL,
+                               known_sigma_eps = NULL,
                                mesh = NULL,
                                lambda_constraint = NULL,
                                Xcoef_fixed = NULL,
@@ -1788,6 +1789,12 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     for (i in seq_along(family_per_row)) family_per_row[[i]] <- family
     family_input <- family    # M1.8: single-family path; family_input == family
   }
+  if (!is.null(known_sigma_eps) && any(family_id_vec != 0L)) {
+    cli::cli_abort(c(
+      "{.arg known_sigma_eps} requires Gaussian responses for every trait.",
+      ">" = "Use Gaussian responses throughout, or omit {.arg known_sigma_eps}."
+    ))
+  }
   ## The marker is not itself an admission rule. Admission comes from the exact
   ## two-source family/source contract, and ONLY from it. The unexported route
   ## sets the marker and must satisfy the contract; a public caller satisfies
@@ -1880,24 +1887,11 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   )
   use_lv_B <- isTRUE(lv_setup$enabled)
 
-  ## ---- Design 65 C3.2 two-Psi identifiability guardrail -----------------
-  ## A two-kernel model carries two uniqueness tiers (e.g. a phylo cross-
-  ## kernel `Psi_phy` plus a tip-level non-phylo `Psi_non`). The split of
-  ## per-trait uniqueness variance into `Psi_phy + Psi_non` is NOT separable
-  ## from a single observation per species/trait: with one community
-  ## realisation the two diagonal variance components are confounded
-  ## (Boettiger et al. 2012 -- a single shared association is only ONE
-  ## replicate of the signal; Design 65 sec. C3.2). Replication -- repeated
-  ## communities, or species means + SE -- is what identifies the two Psi.
-  ##
-  ## Detection is conservative: it fires ONLY when TWO OR MORE `kernel_unique`
-  ## (uniqueness) tiers are present AND there is no within-cluster replication
-  ## (every species level appears in at most one observation row). In that
-  ## case we DROP the extra uniqueness covstruct(s) from `parsed$covstructs`
-  ## (defaulting to a single, identifiable uniqueness tier) and emit a
-  ## `cli::cli_warn` -- a warn, not a hard abort, so the model still fits. We
-  ## prune here, before the per-keyword index vectors are built, so every
-  ## downstream slot (vcv harvest, phylo_diag, extract_Sigma) sees one tier.
+  ## ---- Design 65 C3.2 multi-kernel uniqueness guardrail ---------------
+  ## Do not drop requested diagonals. The bounded two-kernel Gaussian route
+  ## requires fixed observation SD, positive weights and a rank-two screen of
+  ## the observed same-trait kernel patterns. This screen is necessary for
+  ## admission, not proof of identification or recovery. Other requests error.
   is_kernel_unique <- vapply(seq_along(parsed$covstructs), function(i) {
     cs <- parsed$covstructs[[i]]
     if (!identical(cs$kind, "phylo_rr")) return(FALSE)
@@ -1906,90 +1900,95 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       !is.null(mode) &&
       as.character(mode) %in% c("unique", "indep")
   }, logical(1L))
-  is_auto_kernel_unique <- vapply(seq_along(parsed$covstructs), function(i) {
-    cs <- parsed$covstructs[[i]]
-    if (!identical(cs$kind, "phylo_rr")) return(FALSE)
-    mode <- cs$extra[[".kernel_mode"]]
-    isTRUE(cs$extra[[".phylo_unique"]]) &&
-      isTRUE(cs$extra[[".auto_unique"]]) &&
-      !is.null(cs$extra[[".kernel_name"]]) &&
-      !is.null(mode) &&
-      as.character(mode) %in% c("unique", "indep")
-  }, logical(1L))
-  kernel_latent_names_for_fold <- vapply(seq_along(parsed$covstructs), function(i) {
-    cs <- parsed$covstructs[[i]]
-    if (!identical(cs$kind, "phylo_rr")) return(NA_character_)
-    mode <- cs$extra[[".kernel_mode"]]
-    nm <- cs$extra[[".kernel_name"]]
-    if (is.null(mode) ||
-        !identical(as.character(mode), "latent") ||
-        isTRUE(cs$extra[[".phylo_unique"]]) ||
-        is.null(nm)) {
-      return(NA_character_)
+  kernel_names <- unique(vapply(Filter(function(cs) {
+    identical(cs$kind, "phylo_rr") &&
+      identical(as.character(cs$extra[[".kernel_mode"]]), "latent") &&
+      !is.null(cs$extra[[".kernel_name"]])
+  }, parsed$covstructs), function(cs) as.character(cs$extra[[".kernel_name"]]), character(1L)))
+  if (length(kernel_names) > 1L && any(is_kernel_unique)) {
+    if (!is.null(weights) && anyNA(weights)) {
+      cli::cli_abort(c(
+        "The multi-kernel uniqueness design requires non-missing weights.",
+        ">" = "Supply a positive weight for every observation."
+      ))
     }
-    as.character(nm)
-  }, character(1L))
-  kernel_latent_names_for_fold <- unique(
-    kernel_latent_names_for_fold[!is.na(kernel_latent_names_for_fold)]
-  )
-  if (length(kernel_latent_names_for_fold) > 1L && any(is_auto_kernel_unique)) {
-    ## Single dense-kernel `kernel_latent(unique = TRUE)` folds its Psi
-    ## companion. The first multi-kernel engine wave is explicitly latent-only,
-    ## so auto-generated kernel Psi companions are pruned before the C3.2
-    ## explicit-Psi guard. User-written `kernel_unique()` terms remain visible
-    ## to the guard below.
-    parsed$covstructs <- parsed$covstructs[!is_auto_kernel_unique]
-    groupings <- vapply(
-      parsed$covstructs, function(cs) deparse(cs$group), character(1)
-    )
-    kinds <- vapply(
-      parsed$covstructs, function(cs) cs$kind, character(1)
-    )
-    is_kernel_unique <- vapply(seq_along(parsed$covstructs), function(i) {
-      cs <- parsed$covstructs[[i]]
-      if (!identical(cs$kind, "phylo_rr")) return(FALSE)
-      mode <- cs$extra[[".kernel_mode"]]
-      isTRUE(cs$extra[[".phylo_unique"]]) &&
-        !is.null(mode) &&
-        as.character(mode) %in% c("unique", "indep")
-    }, logical(1L))
-  }
-  if (sum(is_kernel_unique) >= 2L) {
-    ## Replication is measured in DISTINCT observation UNITS per species, NOT
-    ## raw long-format rows. By the time the fit runs, a wide `traits(y1, y2)`
-    ## call has been pivoted to stacked-trait long format, so every species
-    ## already appears in `n_traits` rows even with one community realisation.
-    ## Counting raw rows would mistake trait-stacking for replication and skip
-    ## the guardrail (then abort at the single-`name` validation below). The
-    ## within-unit observation factor (`unit_obs`, default "site_species")
-    ## identifies the original observation row, so distinct `unit_obs` values
-    ## per species is the honest replication count. Fall back conservatively
-    ## (treat as unreplicated) when that column is absent.
-    has_replication <- FALSE
-    if (!is.null(unit_obs) && unit_obs %in% names(data) &&
-        species %in% names(data)) {
-      units_per_species <- tapply(
-        as.character(data[[unit_obs]]),
-        data[[species]],
-        function(u) length(unique(u))
-      )
-      has_replication <- length(units_per_species) > 0L &&
-        max(units_per_species, na.rm = TRUE) > 1L
+    if (!is.null(weights) && any(weights <= 0)) {
+      cli::cli_abort(c(
+        "The multi-kernel uniqueness design requires positive observation weights.",
+        ">" = "Remove zero-weight observations before fitting."
+      ))
     }
-    if (!has_replication) {
-      ## Keep the FIRST kernel uniqueness tier; drop the rest.
-      drop_idx <- which(is_kernel_unique)[-1L]
-      parsed$covstructs <- parsed$covstructs[-drop_idx]
-      groupings <- vapply(
-        parsed$covstructs, function(cs) deparse(cs$group), character(1)
-      )
-      kinds <- vapply(
-        parsed$covstructs, function(cs) cs$kind, character(1)
-      )
-      cli::cli_warn(c(
-        "Two {.fn kernel_unique} tiers are not separable without replication.",
-        "i" = "The two-{.field Psi} split ({.code Psi_phy + Psi_non}) is confounded with a single observation per species/trait: one community realisation is only one replicate of the uniqueness signal (Boettiger et al. 2012).",
-        ">" = "Defaulting to a single uniqueness tier. To estimate both {.field Psi}, supply within-species replication (repeated communities, or species means + SE)."
+    known_error_kernel_split <- FALSE
+    if (!is.null(known_sigma_eps)) {
+      latent_idx <- which(vapply(seq_along(parsed$covstructs), function(i) {
+        cs <- parsed$covstructs[[i]]
+        identical(cs$kind, "phylo_rr") &&
+          identical(as.character(cs$extra[[".kernel_mode"]]), "latent") &&
+          !is.null(cs$extra[[".kernel_name"]])
+      }, logical(1L)))
+      latent_names <- vapply(latent_idx, function(i) {
+        as.character(parsed$covstructs[[i]]$extra[[".kernel_name"]])
+      }, character(1L))
+      if (length(latent_idx) == 2L && length(unique(latent_names)) == 2L &&
+          !is.null(species) && species %in% names(data)) {
+        trait_col <- if (is.character(trait) && length(trait) == 1L &&
+                         trait %in% names(data)) trait else "trait"
+        if (trait_col %in% names(data)) {
+          trait_values <- as.character(data[[trait_col]])
+          species_values <- as.character(data[[species]])
+          if (!is.null(is_y_observed) && length(is_y_observed) != nrow(data)) {
+            cli::cli_abort(c(
+              "The observed-response mask does not match the data rows.",
+              ">" = "Check the response rows and missing-data settings, then refit the model."
+            ))
+          }
+          ## The caller drops missing responses or supplies an explicit mask.
+          observed <- if (is.null(is_y_observed)) rep(TRUE, nrow(data)) else {
+            as.logical(is_y_observed)
+          }
+          observed[is.na(observed)] <- FALSE
+          eligible <- observed & !is.na(trait_values) & !is.na(species_values)
+          observed_traits <- unique(trait_values[eligible])
+          kernel_matrices <- lapply(latent_idx, function(i) {
+            parsed$covstructs[[i]]$extra$vcv
+          })
+          if (length(observed_traits) > 0L &&
+              all(vapply(kernel_matrices, function(K) {
+                is.matrix(K) && !is.null(rownames(K)) &&
+                  !is.null(colnames(K))
+              }, logical(1L)))) {
+            psi_pattern_ranks <- vapply(observed_traits, function(trait_value) {
+              ids <- which(eligible & trait_values == trait_value)
+              species_rows <- species_values[ids]
+              if (length(species_rows) < 2L) return(1L)
+              kernel_columns <- lapply(kernel_matrices, function(K) {
+                if (!all(species_rows %in% rownames(K)) ||
+                    !all(species_rows %in% colnames(K))) return(NULL)
+                as.numeric(K[species_rows, species_rows, drop = FALSE])
+              })
+              if (!all(vapply(kernel_columns, length, integer(1L)) > 0L)) {
+                return(1L)
+              }
+              kernel_basis <- do.call(cbind, kernel_columns)
+              kernel_norm <- sqrt(colSums(kernel_basis^2))
+              if (!all(is.finite(kernel_norm) & kernel_norm > 0)) return(1L)
+              kernel_basis <- sweep(kernel_basis, 2L, kernel_norm, "/")
+              as.integer(qr(kernel_basis, tol = 1e-8)$rank)
+            }, integer(1L))
+            ## Psi is diagonal in trait space. Cross-trait covariance entries,
+            ## including cross-lineage K_HP blocks, cannot separate its two
+            ## kernel-specific variances. Require independent K patterns on
+            ## the observed same-trait blocks for every observed trait.
+            known_error_kernel_split <- all(psi_pattern_ranks == 2L)
+          }
+        }
+      }
+    }
+    if (!known_error_kernel_split || sum(is_kernel_unique) != 2L) {
+      cli::cli_abort(c(
+        "The requested multi-kernel uniqueness terms cannot be fitted under this design.",
+        "i" = "Two named Gaussian kernel tiers require a fixed observation SD and distinct same-trait kernel patterns for each observed trait.",
+        ">" = "Supply {.arg known_sigma_eps} and separable kernels, or set {.code unique = FALSE} explicitly."
       ))
     }
   }
@@ -4938,16 +4937,20 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       diag_idx <- term_idx[modes_r %in% c("unique", "indep")]
       if (length(latent_idx) != 1L) {
         cli::cli_abort(c(
-          "Each named multi-kernel tier needs exactly one {.fn kernel_latent} term in the first engine wave.",
+          "Each named multi-kernel tier needs exactly one {.fn kernel_latent} term.",
           "i" = "Tier {.val {nm}} has {length(latent_idx)} latent terms.",
-          ">" = "The Paper 2 multi-kernel path is latent-only in this first wave; explicit {.field Psi} is deferred."
+          ">" = "Use one {.fn kernel_latent} term for each named tier."
         ))
       }
-      if (length(diag_idx) > 0L) {
+      auto_diag <- vapply(diag_idx, function(i) {
+        isTRUE(parsed$covstructs[[i]]$extra$.auto_unique)
+      }, logical(1L))
+      folded_psi <- length(diag_idx) == 1L && isTRUE(auto_diag[[1L]])
+      if (length(diag_idx) > 0L && !folded_psi) {
         cli::cli_abort(c(
-          "The first multi-kernel engine wave is latent-only.",
-          "i" = "Tier {.val {nm}} includes a kernel-level {.field Psi} diagonal, but explicit kernel-level {.field Psi} is deferred for Paper 2.",
-          ">" = "Use separate named {.fn kernel_latent} tiers for component-specific shared structure; handle non-Gaussian and cross-family residual scale outside this kernel-Psi grammar for now."
+          "This multi-kernel fit cannot take an explicit kernel-level {.field Psi} term.",
+          "i" = "Tier {.val {nm}} includes a separate {.fn kernel_unique} or {.fn kernel_indep} diagonal.",
+          ">" = "Ask for the trait-specific diagonal with {.code kernel_latent(..., unique = TRUE)} on each named kernel. A separate {.fn kernel_unique} term is not accepted on this path."
         ))
       }
 
@@ -5022,7 +5025,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
 
       kernel_rank[r] <- rank_r
       kernel_has_latent[r] <- 1L
-      kernel_has_diag[r] <- 0L
+      kernel_has_diag[r] <- if (folded_psi) 1L else 0L
       kernel_g_offset[r] <- g_cursor
       g_cursor <- g_cursor + n_kernel_levels * rank_r
       if (kernel_has_diag[r] == 1L) {
@@ -5038,7 +5041,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         group = species,
         rank = rank_r,
         has_latent = TRUE,
-        has_psi = FALSE,
+        has_psi = folded_psi,
         rho = kernel_rho,
         stringsAsFactors = FALSE
       )
@@ -6732,6 +6735,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
           phylo_vcv = phylo_vcv,
           phylo_tree = phylo_tree,
           known_V = known_V,
+          known_sigma_eps = known_sigma_eps,
           mesh = mesh,
           lambda_constraint = lambda_constraint,
           control = control_indep,
@@ -7483,7 +7487,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   per_row_diag_W <- use_diag_W && length(unique(cell_W)) == n_obs
   cell_B <- paste(trait_id, site_id, sep = "_")
   per_row_diag_B <- use_diag_B && length(unique(cell_B)) == n_obs
-  if (!any_sigma_eps) {
+  if (!is.null(known_sigma_eps)) {
+    tmb_params$log_sigma_eps[] <- log(known_sigma_eps)
+    tmb_map$log_sigma_eps <- factor(rep(NA_integer_, length(tmb_params$log_sigma_eps)))
+  } else if (!any_sigma_eps) {
     tmb_map$log_sigma_eps <- factor(rep(NA_integer_, length(tmb_params$log_sigma_eps)))
     tmb_params$log_sigma_eps[] <- 0
   } else {
@@ -9876,6 +9883,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ## refit_one — can pass the correct family list back to `gllvmTMB()`.
       ## For single-family fits, `family_input == family`.
       family_input = family_input,
+      known_sigma_eps = known_sigma_eps,
       likelihood_weights = list(
         active = weighted_objective,
         interpretation = if (weighted_objective) "weighted_objective" else "likelihood"

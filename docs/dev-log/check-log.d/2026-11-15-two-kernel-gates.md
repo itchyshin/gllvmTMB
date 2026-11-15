@@ -19,3 +19,9 @@ for (e in expr) if (is.call(e) && identical(e[[1]], as.name('test_that')) && ide
 stopifnot(found)
 cat('FIXED_RHO_TARGET_COMPLETE\n')
 ```
+
+## Null-grid numerical comparison
+
+The previous null-grid check also required every phylogenetic Gamma norm to be below 0.0002. A 12-seed independent dense optimizer reproduced the better fitted result above that bound for seed 2302. With the maintainer's approval, the test now compares the package's objectives and public Gamma matrices against that independent optimizer for all 12 seeds and six deterministic starts per seed. It retains the other null and overfit gates, reports the historical bound failures, and no longer claims that every null estimate falls below 0.0002. The comparison is not a calibration, power or global-optimality guarantee.
+
+The final targeted Totoro run used base `e39e29f0527ea0a472f7a6a6881cd359e0d6a96c` with the changed test file substituted. It passed 630 expectations with no warnings or skips; all 72 starts returned code zero. The test file SHA-256 before and after was `0e84440b03730e914b270bcaec2b9d1f5cb90b7679db8d87d68473c52edb6add`; the retained log SHA-256 is `33b027c3ec856a06eeedd7c2875d81372b482d0a7002f90d7e99a585ba654194`. The high-overlap test and full integrated-source checks remain open.

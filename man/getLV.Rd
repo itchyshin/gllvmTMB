@@ -36,6 +36,14 @@ Returns latent scores from a fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}
 compatibility wrapper around \code{\link[=extract_ordination]{extract_ordination()}} for readers familiar
 with \code{gllvm::getLV()}.
 }
+\details{
+Attaching \code{gllvm} puts its S3 generic in front of this function.
+gllvmTMB registers a method for a gllvmTMB fit on that generic, so
+\code{getLV(fit)} still returns these scores. Pass the fit as the first
+argument. A fit produced by \code{gllvm} stays with \code{gllvm}, including that
+package's \code{type} argument. \code{gllvmTMB::getLV()} keeps these arguments and
+this return value whether or not \code{gllvm} is attached.
+}
 \section{Score uncertainty}{
 
 For an ordinary Laplace fit, \code{se = TRUE} reads the marginal standard error

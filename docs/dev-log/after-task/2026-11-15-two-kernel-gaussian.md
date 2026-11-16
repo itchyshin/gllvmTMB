@@ -160,6 +160,8 @@ A CI-configured Linux package check on Totoro covered base `a3a1eaefcee81a191f56
 
 The Linux check receipt did not retain the individual testthat counts. The two previously investigated visual snapshot tests skip in CI mode; this does not establish the behavior of every visual test. The supervisor did not record `GLLVMTMB_HEAVY_TESTS`, so the number of heavy tests actually run or skipped cannot be established from this receipt.
 
+A fresh Linux build of the exact latest-main scratch union also passed the independent five-point oracle: maximum NLL gap `1.14e-13`, analytical gradient gap `4.53e-14` and finite-difference gradient gap `1.62e-9`. A fitted-object retry retained both named tiers and fixed SD `0.12`, with total covariance equal to shared plus unique within `2.70e-17`; all eight estimated uniqueness variances were near zero. The first fit attempt stopped before fitting because a copied script had an obsolete library-path assertion. The corrected retry and both attempts, scripts, source and library hashes remain under `/home/snakagaw/hsq_work/two-kernel-main5e41-oracle.Y3TpsW/`. This demonstrates fixed-point and extraction agreement, not recovery.
+
 ## 11. Team Learning
 
 **Ada and Shannon:** The owner authorized the overlapping lanes, and a scratch reconciliation protected PR #1763. Integrate only after preserving its grouping behavior and resolving NEWS.

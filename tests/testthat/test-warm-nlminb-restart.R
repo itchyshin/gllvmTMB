@@ -161,7 +161,7 @@
 # warm candidate or enter single-start accounting/rollback assertions.
 .fit_warm_restart_fixture <- function(family_name, n_unit, seed,
                                       control = gllvmTMB::gllvmTMBcontrol(
-                                        svd_start = FALSE
+                                        n_init = 1L, svd_start = FALSE
                                       )) {
   fixture <- .warm_restart_fixture(family_name, n_unit, seed)
   args <- list(

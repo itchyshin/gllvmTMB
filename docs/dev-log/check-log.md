@@ -58481,3 +58481,6 @@ PR #1774 head `a897a552c1649cee3ba081741a38aa3e38c6ba8c` was applied to a scratc
 ## 2026-11-15: expanded implicit-intercept scratch tests
 
 The remaining changed PR #1774 standard test files ran on the pinned combined scratch source with heavy tests disabled. The screen-separation file passed 70 assertions in 3.62 seconds; six column-coefficient, missing-predictor and screen files passed 681 in 21.65 seconds. Both runs reported zero failures, errors, warnings and skips, with matching pre/post input hashes; suppressed warnings are not counted. Logs and receipts: `/home/snakagaw/hsq_work/two-kernel-pr1774-reconcile.U2Tij6/`. Full combined package and three-OS checks remain open.
+## 2026-11-14: provisional gllvmTMB 0.8.0 release metadata
+
+On base `abf3e905fb9e22f5eca9b8dd01c9ea476fde4ee2`, the isolated candidate updates the DESCRIPTION version to 0.8.0 and corrects the COPYRIGHTS grid description to 6 by 3. `Rscript --vanilla` read and checked the DESCRIPTION version and license, and `git diff --check` passed. The current development NEWS is unchanged because active pull requests also edit it. Full release-source tests, release notes, component rights, and independent release review remain open; this is not a release.

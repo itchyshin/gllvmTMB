@@ -28,33 +28,19 @@
 }
 
 .capture_two_lineage_known_error_tmb <- function(args) {
-  capture_name <- ".gllvmTMB_known_error_capture"
-  old <- get0(capture_name, envir = .GlobalEnv, inherits = FALSE)
-  assign(capture_name, NULL, envir = .GlobalEnv)
-  traced <- FALSE
-  on.exit({
-    if (traced) untrace("MakeADFun", where = asNamespace("TMB"))
-    if (is.null(old)) {
-      if (exists(capture_name, envir = .GlobalEnv, inherits = FALSE))
-        rm(list = capture_name, envir = .GlobalEnv)
-    } else {
-      assign(capture_name, old, envir = .GlobalEnv)
-    }
-  }, add = TRUE)
-  tracer <- substitute({
-    assign(NAME, list(data = data, parameters = parameters, map = map,
-                      random = random, DLL = DLL), envir = .GlobalEnv)
-    stop("TWO_LINEAGE_KNOWN_ERROR_CAPTURE", call. = FALSE)
-  }, list(NAME = capture_name))
-  trace("MakeADFun", where = asNamespace("TMB"), tracer = tracer,
-        print = FALSE)
-  traced <- TRUE
+  captured <- NULL
+  testthat::local_mocked_bindings(
+    MakeADFun = function(data, parameters, ...) {
+      captured <<- c(list(data = data, parameters = parameters), list(...))
+      stop("TWO_LINEAGE_KNOWN_ERROR_CAPTURE", call. = FALSE)
+    },
+    .package = "TMB"
+  )
   err <- tryCatch({
     suppressWarnings(do.call(gllvmTMB, args))
     NULL
   }, error = conditionMessage)
-  list(error = err,
-       captured = get(capture_name, envir = .GlobalEnv, inherits = FALSE))
+  list(error = err, captured = captured)
 }
 
 .two_lineage_known_error_args <- function(fixture, known_sigma_eps = NULL) {

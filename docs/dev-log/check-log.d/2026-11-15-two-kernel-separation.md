@@ -66,3 +66,16 @@ Exact added invocations: `OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 MKL_NUM_THREA
 **Not run:** No fit beyond the two deterministic article examples, no heavy regression suite, recovery campaign, interval-coverage study, mixed-family test, Julia parity run, empirical Silva fit, full package check or merge was run in this article-only pass. A fresh three-OS CI run is planned on the final pushed documentation commit.
 
 **Claim boundary:** The article describes the admitted fixed-error Gaussian route and its explicit limits. This documentation pass does not improve recovery, identifiability or uncertainty evidence.
+
+
+## 16 Nov current-main reconciliation and focused final-source tests
+
+**Source reconciliation:** `origin/main` at `dbf4bc2174a4a539cd935f23643ea6238d61d9fe` was merged in scratch. Merge commit `b8a886c5c13f2db3a0d1d73d0df077ebce534ea6` had one conflict in `docs/dev-log/check-log.md`; the resolution preserves the task test evidence and PR #1794 release metadata. The upstream commits since the merge base changed no `R/` or `src/` paths. PR #1794 and PR #1800 are merged; #1763 and #1790 remain open. Current main's old collapse expectation was not restored. The task test still requires both uniqueness components or explicit refusal and retains the dense-oracle checks.
+
+**Totoro command:** `Rscript --vanilla -e 'devtools::test(filter="coevolution-two-kernel|coevolution-known-fixed-error|coevolution-recovery|matrix-truncated|warm-nlminb-restart|aghq-golden-tail", stop_on_failure=TRUE)'`, with `CI=true`, `GLLVMTMB_HEAVY_TESTS=1`, `R_LIBS_USER=/home/snakagaw/R/lib`, `RSTUDIO_PANDOC=/home/snakagaw/.local/share/r-pandoc/3.9.0.2/pandoc-3.9.0.2/bin`, and `OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1`.
+
+**Result:** archive of exact commit `b8a886c5c13f2db3a0d1d73d0df077ebce534ea6`, SHA-256 `18b66438e42940fc9c98720c786d9ed941ec9dd2bef8e251e83de9ae6081f144`; 1,549 pass, 0 fail, 0 test warnings, 2 profile skips; per file 1,184 two-kernel, 94 fixed-error, 59 coevolution-recovery, 29 matrix-truncated, 174 warm restart, 9 AGHQ golden-tail. Test duration 515.0 s, total elapsed 556.8 s. The profile skips cite no finite bound under the documented zero-truncated setup. Preflight same-user load was 15.964 cores plus this one-thread job, below the 150-core cap. Log and source receipts: `/home/snakagaw/hsq_work/two-kernel-b8a886c-final/`; local output copy `/tmp/two-kernel-b8-final-run.log`.
+
+**Integrity harness correction:** the first supervisor pre/post comparison returned `manifest_unchanged=false` because compilation created `src/gllvmTMB.o` and `src/gllvmTMB.so`. A second comparison against the archive verified all 10,260 source files byte-for-byte, with no missing, unexpected, or changed archive files. These two build products were the only additions. Process exit was normal and the supervisor found no survivors. Preserve the initial false guard result as a harness false alarm; the archive comparison is the source integrity evidence.
+
+**Not established:** the focused test pass does not establish parameter recovery or interval coverage. G5 remains exploratory, and G6 remains unvalidated. No Silva rerun, calibration campaign, Julia parity run, or merge was performed. A fresh full-matrix package workflow is required on the pushed reconciled source before G7/G8 close.

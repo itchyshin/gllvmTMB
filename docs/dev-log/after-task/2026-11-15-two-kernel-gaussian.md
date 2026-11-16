@@ -14,23 +14,23 @@ The working-tree implementation admits a narrow fixed-error Gaussian path, recor
 
 For tier `s`, `Sigma_s = Lambda_s Lambda_s^T + diag(psi_s)`, with `psi_s = exp(2 log_sd_s)`. The observed covariance is the sum of `Sigma_s` paired with source-aligned and symmetrized `K_s + 1e-8 I`, plus `known_sigma_eps^2 I` once, restricted to observed cells. This changes admission and fixed-error mapping in the R wrapper; it does not claim calibrated inference, mixed-family support or Julia parity. The rank-two same-trait kernel screen is not a proof of identification.
 
-## 3. Files changed
-
-Implementation and refit forwarding: `R/fit-multi.R`, `R/gllvmTMB.R`, `R/bootstrap-lv-effects.R`, `R/bootstrap-sigma.R`, `R/check-identifiability.R`, `R/coverage-study.R`, `R/cv-internal.R`, `R/extract-two-psi-cross-check.R`, `R/loading-ci-bootstrap.R`, `R/methods-gllvmTMB.R`, `R/phylo-signal-ci.R`, and `R/proportions-ci.R`. `R/extract-sigma.R` and `R/kernel-keywords.R` also have guidance changes. Tests: `tests/testthat/test-coevolution-known-fixed-error.R`, `tests/testthat/test-coevolution-two-kernel.R`, `tests/testthat/test-bootstrap-unit-obs-1393.R`, and `tests/testthat/test-gapclose-parity-ledger.R`.
-
-Generated help: `man/gllvmTMB.Rd`, `man/kernel_latent.Rd`, `man/bootstrap_Sigma.Rd`, `man/predict.gllvmTMB_multi.Rd`, and `man/simulate.gllvmTMB_multi.Rd`. Status and contracts: `NEWS.md`, `docs/design/01-formula-grammar.md`, `docs/design/03-likelihoods.md`, `docs/design/35-validation-debt-register.md`, `docs/design/65-cross-lineage-coevolution-kernel.md`, `docs/design/capability-status.md`, and `dev/gapclose/build-capability-status.R`. The changed example surfaces are `vignettes/articles/api-keyword-grid.Rmd` and `vignettes/articles/plant-bumblebee-coevolution.Rmd`; the latter contains the new wide and long calls. The log and checkpoint are `docs/dev-log/check-log.md` and `docs/dev-log/recovery-checkpoints/2026-11-15-ada-two-kernel-in-progress.md`. This report is `docs/dev-log/after-task/2026-11-15-two-kernel-gaussian.md`.
-
-Evidence and runners, excluding caches, logs and fitted binaries, are `dev/two-kernel-gaussian/oracle.R`, `check-native.R`, `check-oracle.R`, `run-native.R`, `baseline/reproduce.R`, `bootstrap-probe/RESULT.md`, `bootstrap-probe/probe.R`, `bootstrap-probe/run.py`, `bootstrap-probe/output/supervisor.json`, `fitcheck/run.R`, `fitcheck/check-saved.R`, `fitcheck-final/run.R`, `fitcheck-final/check-saved.R`, and the `pilot/` files `PROTOCOL.md`, `RESULTS.md`, `TIMEOUT-PROBE.md`, `cases.csv`, `check-first.R`, `dgp.R`, `run-batch.sh`, `run-case.R`, `summarize.R`, `supervisor.py`, and `test-supervisor.py`. Logs, RDS files and Python caches in that evidence directory are preserved locally but are not included in this source inventory; select files deliberately before staging.
-
-This inventory describes the current worktree and must be rechecked at closure. The user authorized scratch reconciliation with PR #1790 and PR #1794; the scratch checks did not modify those PRs.
-
-### Decisions and alternatives
+## 3a. Decisions and Rejected Alternatives
 
 **Decision:** Preserve both requested uniqueness tiers or reject the fit. **Rationale:** public main silently omitted both, and the older development fallback could omit one. **Alternative:** warn and fit a reduced model; rejected because it changes the requested covariance. **Confidence:** high.
 
 **Decision:** Reject unsupported unconditional multi-kernel simulation and conditional new-data prediction. **Rationale:** the existing paths do not redraw or re-add the named kernel effects. **Alternative:** silently proceed; rejected. **Confidence:** high for the observed paths, with a final regression audit pending.
 
-## 4. Checks run
+## 4. Files Touched
+
+Implementation and refit forwarding: `R/fit-multi.R`, `R/gllvmTMB.R`, `R/bootstrap-lv-effects.R`, `R/bootstrap-sigma.R`, `R/check-identifiability.R`, `R/coverage-study.R`, `R/cv-internal.R`, `R/extract-two-psi-cross-check.R`, `R/loading-ci-bootstrap.R`, `R/methods-gllvmTMB.R`, `R/phylo-signal-ci.R`, and `R/proportions-ci.R`. `R/extract-sigma.R` and `R/kernel-keywords.R` also have guidance changes. Tests: `tests/testthat/test-coevolution-known-fixed-error.R`, `tests/testthat/test-coevolution-two-kernel.R`, `tests/testthat/test-bootstrap-unit-obs-1393.R`, and `tests/testthat/test-gapclose-parity-ledger.R`.
+
+Generated help: `man/gllvmTMB.Rd`, `man/kernel_latent.Rd`, `man/bootstrap_Sigma.Rd`, `man/predict.gllvmTMB_multi.Rd`, and `man/simulate.gllvmTMB_multi.Rd`. Status and contracts: `NEWS.md`, `docs/design/01-formula-grammar.md`, `docs/design/03-likelihoods.md`, `docs/design/35-validation-debt-register.md`, `docs/design/65-cross-lineage-coevolution-kernel.md`, `docs/design/capability-status.md`, and `dev/gapclose/build-capability-status.R`. The changed example surfaces are `vignettes/articles/api-keyword-grid.Rmd` and `vignettes/articles/plant-bumblebee-coevolution.Rmd`; the latter contains the new wide and long calls. The logs and checkpoint are `docs/dev-log/check-log.md`, `docs/dev-log/check-log.d/2026-11-15-two-kernel-separation.md`, and `docs/dev-log/recovery-checkpoints/2026-11-15-ada-two-kernel-in-progress.md`. This report is `docs/dev-log/after-task/2026-11-15-two-kernel-gaussian.md`.
+
+Evidence and runners, excluding caches, logs and fitted binaries, are `dev/two-kernel-gaussian/oracle.R`, `check-native.R`, `check-oracle.R`, `run-native.R`, `baseline/reproduce.R`, `bootstrap-probe/RESULT.md`, `bootstrap-probe/probe.R`, `bootstrap-probe/run.py`, `bootstrap-probe/output/supervisor.json`, `fitcheck/run.R`, `fitcheck/check-saved.R`, `fitcheck-final/run.R`, `fitcheck-final/check-saved.R`, and the `pilot/` files `PROTOCOL.md`, `RESULTS.md`, `TIMEOUT-PROBE.md`, `cases.csv`, `check-first.R`, `dgp.R`, `run-batch.sh`, `run-case.R`, `summarize.R`, `supervisor.py`, and `test-supervisor.py`. Logs, RDS files and Python caches in that evidence directory are preserved locally but are not included in this source inventory; select files deliberately before staging.
+
+This inventory describes the current worktree and must be rechecked at closure. The user authorized scratch reconciliation with PR #1790 and PR #1794; the scratch checks did not modify those PRs.
+
+## 5. Checks Run
 
 - A clean `abf3e905fb9e22f5eca9b8dd01c9ea476fde4ee2` baseline captured `kernel_has_diag = c(0, 0)` for two `unique = TRUE` requests without warning, before optimization. Script and log are in `dev/two-kernel-gaussian/baseline/`.
 - The focused test and the broader `coevolution-two-kernel|bootstrap-unit-obs-1393` regression passed with explicit test-failure exit handling; the broader run skipped 21 heavy tests. Logs are `/tmp/two-kernel-guards-tests.log` and `/tmp/gllvmtmb-two-kernel-regression-recheck.log`.
@@ -58,11 +58,15 @@ This inventory describes the current worktree and must be rechecked at closure. 
 - The final `devtools::check(args="--no-manual", quiet=TRUE, error_on="error")` exited 1 with **1 ERROR, 0 WARNING, 1 NOTE**. The testthat summary was 30,634 passes, 67 test warnings, 1,253 skips and two failures: the same named correlation-ellipse and variance-partition visual snapshots that also fail on clean `abf3e905`. Their pixel diffs were unavailable. The NOTE concerns `TMB:::EvalADFunObject`, also present on the baseline. See `/tmp/gllvmtmb-two-kernel-final-check.log`. This check began before the article ridge correction; the corrected article was rendered separately and the full article build passed. G7 remains **open**.
 - In user-authorized combined scratch work with PR #1800, the named shared-only fixed-rho test completed 36 assertions on Totoro. Independent verification checked the live DLL and matching pre/post source hashes; the supervisor recorded normal exit and no remaining process-group members. The retained `verified-*` receipts are under `/home/snakagaw/hsq_work/two-kernel-pr1800-reconcile.fLVVZF/`. This is a targeted compatibility check, not the full PR test suite or two-uniqueness recovery.
 
-## 5. Tests of the tests
+## 6. Tests of the Tests
 
 The clean-main capture demonstrates failure before the fix. The focused tests exercise structural missingness and combinations of both named kernels, fixed error and uniqueness. They also test rejected duplicate or insufficiently separated kernels, nonpositive weights, mixed families and unsupported simulation/prediction paths. The independent fixed-point oracle uses original kernel and parameter inputs, with covariance mutations for omitted uniqueness, error and source ridges. These checks do not replace fitted recovery or interval calibration. Review the final test names and paired acceptance controls after remaining source edits.
 
-## 6. Consistency audit
+## 7a. Issue Ledger
+
+PRs #1763, #1790, #1794, #1800 and #1774 were inspected and reconciled in scratch as described below. The user confirmed ownership of both lanes and authorized the named overlap reconciliations. No push, merge or release was performed. Other issue history and any comments are recorded in the check log; no new issue was opened during this closeout.
+
+## 8. Consistency Audit
 
 Rose identified stale loadings-only claims in kernel help, the keyword-grid article and extractor messages, plus missing prediction and simulation boundaries. The final Rose pre-publish audit returned PASS for its checked scope. The following searches and verdicts are recorded in `docs/dev-log/check-log.md`:
 
@@ -72,25 +76,15 @@ Rose identified stale loadings-only claims in kernel help, the keyword-grid arti
 
 `KER-03A` is `partial` and mapped by the capability generator; it retains the failed recovery evidence. Review the current exact state before claiming closure.
 
-## 7. Roadmap tick
+### Roadmap tick
 
 N/A at this draft stage. Confirm the final roadmap disposition before closing.
 
-## 8. What did not go smoothly
+## 9. What Did Not Go Smoothly
 
 The original public route silently removed requested uniqueness. The first local fitted-extraction assertion expected `$Sigma` for the unique part; the API returns the named variance vector `$s`. An initial Totoro build failed on AppleDouble metadata and the clean retry was retained. The first pilot launch failed before generation because its output directory was absent. A nested-timeout probe left child processes alive; they were cleaned up and a process-group supervisor passed dummy timeout and interruption tests. The pilot source archive has no Git metadata, so its `HEAD` field is invalid; use its reviewed build and hash manifest. The current CI workflow's routine matrix is Ubuntu-only despite the repository instructions describing three operating systems.
 
-## 9. Team learning
-
-**Ada and Shannon:** The owner authorized the overlapping lanes, and a scratch reconciliation protected PR #1763. Integrate only after preserving its grouping behavior and resolving NEWS.
-
-**Gauss and Noether:** The two-tier covariance and fixed-error mapping need an independent input-side oracle. Reviewer checks also found refit paths and weighted screening that could otherwise change or weaken the model.
-
-**Curie and Fisher:** The pilot preserves scheduled denominators and nonconvergence. A rank screen and a code-zero fit are not recovery or interval evidence.
-
-**Rose and Grace:** Documentation, register, generated help and CI claims need to match source. The package-wide suite and final cross-file audit remain open.
-
-## 10. Known limitations and next actions
+## 10. Known Residuals
 
 The exploratory Totoro pilot scheduled 12 datasets in each of three settings. All 36 yielded extractions; 34 had optimizer code zero. `near_zero_sd_kernel_diag` occurred in 11/12 baseline and 12/12 in each other setting. Baseline phy P2 uniqueness averaged 0.048 against truth 0.30. An independent audit reproduced all 468 summary rows; see `dev/two-kernel-gaussian/pilot/RESULTS.md` for identities, denominators and limitations. Twelve replicates per setting do not qualify uncertainty or broad recovery.
 
@@ -100,7 +94,7 @@ For three selected one-lineage cases, two added starts each left boundary flags 
 
 Finish the documentation cascade and package checks; independently review the final source and exact build; and reverify ledger gates. The user authorized reconciliation of the PR #1790 documentation overlap and the combined scratch test passed; actual integration has not occurred. PR #1763's NEWS entries have been reconciled in scratch; integration has not occurred. G7 remains open: the 11 untruncated suite failures reproduced on the clean baseline but the suite is not green, and three-OS CI has not run. Do not claim reliable component recovery, calibrated intervals, mixed-family support or Julia parity on present evidence. Issue/PR ledger: PR #1763 was inspected and a coordination comment posted; its owner authorized this lane. PR #1790 scratch compatibility passed. Confirm other relevant issues before closure. No push, merge or release has been performed.
 
-## 11. Independent tree oracle and snapshot investigation
+### Independent tree oracle and snapshot investigation
 
 The coevolution lane independently built the frozen source on Linux and audited a supported two-tree case with 11 observed and 13 masked cells. Five negative log likelihoods agreed within `7.41e-13` and 100 gradient coordinates within `1.65e-12`. Both uniqueness tiers, fixed observation SD and source ridges were included. An earlier mask correctly triggered the nonseparable-kernel error. The independent review is in the coevolution project at `analysis/p2-small-tree-native-outcome-independent-20261115/REVIEW.md`. This is fixed-point evidence, not recovery or interval validation. The Linux DLL SHA-256 was `994963a1c83371ade3cc4ed3497cb62b4b19a35ec548bc3990ffa80ea2e19aef`.
 
@@ -165,3 +159,18 @@ Main advanced to `5e41fd1202fc1e1963174c98e6d79d38126723c1` with source-latent r
 A CI-configured Linux package check on Totoro covered base `a3a1eaefcee81a191f568e69080e1726814380bc` plus the nine tracked guard-revision changes. It finished with zero errors, zero package-check warnings and two notes in 39 minutes 53.5 seconds of check time. The notes concern the existing `TMB:::EvalADFunObject` call and system compiler flags. Source identities matched before and after and the bounded supervisor left no process group. The exact source patch, manifest, archive and logs are under `/home/snakagaw/hsq_work/two-kernel-current-check.jN4q50/`. This checks the task source on Linux; it does not check the latest-main scratch union as a full package or establish three-OS CI. Subsequent commits only recorded check evidence.
 
 The Linux check receipt did not retain the individual testthat counts. The two previously investigated visual snapshot tests skip in CI mode; this does not establish the behavior of every visual test. The supervisor did not record `GLLVMTMB_HEAVY_TESTS`, so the number of heavy tests actually run or skipped cannot be established from this receipt.
+
+## 11. Team Learning
+
+**Ada and Shannon:** The owner authorized the overlapping lanes, and a scratch reconciliation protected PR #1763. Integrate only after preserving its grouping behavior and resolving NEWS.
+
+**Gauss and Noether:** The two-tier covariance and fixed-error mapping need an independent input-side oracle. Reviewer checks also found refit paths and weighted screening that could otherwise change or weaken the model.
+
+**Curie and Fisher:** The pilot preserves scheduled denominators and nonconvergence. A rank screen and a code-zero fit are not recovery or interval evidence.
+
+**Rose and Grace:** Documentation, register, generated help and CI claims need to match source. The package-wide suite and final cross-file audit remain open.
+
+
+## 12. Cross-Product Coverage
+
+The admitted route covers two named Gaussian kernel tiers with fixed positive observation SD and the observed-cell and separation screens documented above. The focused checks exercise long and wide data, masks, grouping compatibility and named extraction. It does NOT cover mixed families, Julia parity, calibrated intervals, broad recovery or every combination of structured random effects. Three-OS CI and a full package check of the latest-main scratch union remain open; the separately reported Linux check and targeted scratch results do not fill those gaps.

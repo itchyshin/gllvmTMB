@@ -320,7 +320,8 @@
 #'   For two named `kernel_latent()` terms with `unique = TRUE`, supply
 #'   `known_sigma_eps` and use positive observation weights. The two kernels
 #'   must have distinct covariance patterns among the observed species for
-#'   each trait. A failure of this check stops the fit rather than dropping a
+#'   each trait, and every declared trait needs at least two observed rows.
+#'   A failure of this check stops the fit rather than dropping a
 #'   requested component. Passing the check does not guarantee that the two
 #'   components can be estimated precisely; recovery and uncertainty for this
 #'   model remain under investigation. Mixed-family models are not supported

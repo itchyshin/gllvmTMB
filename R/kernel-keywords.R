@@ -9,7 +9,8 @@
 #' each with its own `K`, loading matrix, and latent field. Two named Gaussian
 #' tiers can each use `unique = TRUE` when the observation-error SD is known
 #' and supplied as `known_sigma_eps` to [gllvmTMB()], the weights are positive,
-#' and the observed same-trait kernel patterns pass a separation check.
+#' and the observed same-trait kernel patterns pass a separation check. Every
+#' declared trait needs at least two observed rows for this check.
 #' Passing that check does not guarantee precise component estimates: recovery
 #' has been poor in some known-truth settings, and intervals remain unvalidated.
 #' Separate `kernel_dep()` tiers are not supported. Similar kernels can be

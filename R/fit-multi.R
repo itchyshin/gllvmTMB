@@ -1934,8 +1934,24 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         trait_col <- if (is.character(trait) && length(trait) == 1L &&
                          trait %in% names(data)) trait else "trait"
         if (trait_col %in% names(data)) {
+          ## Preserve the existing classed error for genuinely empty levels,
+          ## while letting the kernel screen reject traits whose rows were
+          ## removed because every response was missing.
+          original_data <- missing_meta$data_original
+          empty_level_data <- if (is.data.frame(original_data) &&
+                                  trait_col %in% names(original_data)) {
+            original_data
+          } else {
+            data
+          }
+          .abort_empty_trait_levels(empty_level_data, trait_col)
           trait_values <- as.character(data[[trait_col]])
           species_values <- as.character(data[[species]])
+          species_levels <- if (is.factor(data[[species]])) {
+            levels(data[[species]])
+          } else {
+            levels(factor(data[[species]]))
+          }
           if (!is.null(is_y_observed) && length(is_y_observed) != nrow(data)) {
             cli::cli_abort(c(
               "The observed-response mask does not match the data rows.",
@@ -1948,23 +1964,33 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
           }
           observed[is.na(observed)] <- FALSE
           eligible <- observed & !is.na(trait_values) & !is.na(species_values)
-          observed_traits <- unique(trait_values[eligible])
+          declared_traits <- if (is.factor(data[[trait_col]])) {
+            levels(data[[trait_col]])
+          } else {
+            unique(trait_values[!is.na(trait_values)])
+          }
           kernel_matrices <- lapply(latent_idx, function(i) {
             parsed$covstructs[[i]]$extra$vcv
           })
-          if (length(observed_traits) > 0L &&
+          if (length(declared_traits) > 0L &&
               all(vapply(kernel_matrices, function(K) {
                 is.matrix(K) && !is.null(rownames(K)) &&
                   !is.null(colnames(K))
               }, logical(1L)))) {
-            psi_pattern_ranks <- vapply(observed_traits, function(trait_value) {
+            psi_pattern_ranks <- vapply(declared_traits, function(trait_value) {
               ids <- which(eligible & trait_values == trait_value)
               species_rows <- species_values[ids]
               if (length(species_rows) < 2L) return(1L)
               kernel_columns <- lapply(kernel_matrices, function(K) {
-                if (!all(species_rows %in% rownames(K)) ||
-                    !all(species_rows %in% colnames(K))) return(NULL)
-                as.numeric(K[species_rows, species_rows, drop = FALSE])
+                if (!all(species_levels %in% rownames(K)) ||
+                    !all(species_levels %in% colnames(K))) return(NULL)
+                ## Match the species-level covariance used by the engine.
+                ## Ridge before indexing so repeated rows from one species
+                ## share its ridge contribution as well.
+                K_ordered <- K[species_levels, species_levels, drop = FALSE]
+                K_used <- (K_ordered + t(K_ordered)) / 2
+                diag(K_used) <- diag(K_used) + 1e-8
+                as.numeric(K_used[species_rows, species_rows, drop = FALSE])
               })
               if (!all(vapply(kernel_columns, length, integer(1L)) > 0L)) {
                 return(1L)
@@ -1978,7 +2004,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
             ## Psi is diagonal in trait space. Cross-trait covariance entries,
             ## including cross-lineage K_HP blocks, cannot separate its two
             ## kernel-specific variances. Require independent K patterns on
-            ## the observed same-trait blocks for every observed trait.
+            ## the observed same-trait blocks for every declared trait.
             known_error_kernel_split <- all(psi_pattern_ranks == 2L)
           }
         }
@@ -1987,8 +2013,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     if (!known_error_kernel_split || sum(is_kernel_unique) != 2L) {
       cli::cli_abort(c(
         "The requested multi-kernel uniqueness terms cannot be fitted under this design.",
-        "i" = "Two named Gaussian kernel tiers require a fixed observation SD and distinct same-trait kernel patterns for each observed trait.",
-        ">" = "Supply {.arg known_sigma_eps} and separable kernels, or set {.code unique = FALSE} explicitly."
+        "i" = "Two named Gaussian kernel tiers require a fixed observation SD and distinct same-trait kernel patterns for every declared trait.",
+        ">" = "Supply observed data for every trait, {.arg known_sigma_eps}, and separable kernels, or set {.code unique = FALSE} explicitly."
       ))
     }
   }

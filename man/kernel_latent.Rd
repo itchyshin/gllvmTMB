@@ -54,7 +54,8 @@ Two or more named \code{kernel_latent()} tiers may share the same grouping level
 each with its own \code{K}, loading matrix, and latent field. Two named Gaussian
 tiers can each use \code{unique = TRUE} when the observation-error SD is known
 and supplied as \code{known_sigma_eps} to \code{\link[=gllvmTMB]{gllvmTMB()}}, the weights are positive,
-and the observed same-trait kernel patterns pass a separation check.
+and the observed same-trait kernel patterns pass a separation check. Every
+declared trait needs at least two observed rows for this check.
 Passing that check does not guarantee precise component estimates: recovery
 has been poor in some known-truth settings, and intervals remain unvalidated.
 Separate \code{kernel_dep()} tiers are not supported. Similar kernels can be

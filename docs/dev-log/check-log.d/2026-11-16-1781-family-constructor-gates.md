@@ -15,4 +15,4 @@ rg -n "Fixes |Closes |Resolves " NEWS.md tests/testthat/test-1781-family-constru
 
 **Not run:** `devtools::check()`, `pkgdown::check_pkgdown()`, the full suite, and neighbour temporal / column-coef files. No likelihood, formula grammar, or default changed.
 
-**Claim boundary:** This shows an uncalled constructor is called before the wide/traits rewrite and before the `column_coef` and `temporal_latent` gates on the tiny Gaussian examples. It does not change a validation-debt row. Character `family = "gaussian"` is unchanged and is not claimed here.
+**Claim boundary:** This shows an uncalled constructor is called before the wide/traits rewrite and before the `column_coef` and `temporal_latent` gates on the tiny Gaussian examples. It does not change a validation-debt row. Character `family = "gaussian"` is unchanged and is not claimed here; that remaining gate is #1804.

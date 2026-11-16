@@ -49,7 +49,7 @@ N/A.
 
 ## 7a. GitHub Issue Ledger
 
-Inspected #1781 (this slice) and closed #1353 (a different character-family bug: `could not find function "f"` in `family_to_id()`). Searched open issues for character `family = "gaussian"` on the `temporal_latent()` `$family` gate: none. A new issue is filed after this head lands; it does not close #1781.
+Inspected #1781 (this slice) and closed #1353 (a different character-family bug: `could not find function "f"` in `family_to_id()`). Searched open issues for character `family = "gaussian"` on the `temporal_latent()` `$family` gate: none at search time. The maintainer filed [#1804](https://github.com/itchyshin/gllvmTMB/issues/1804). This slice does not close #1781 or #1804.
 
 ## 8. What Did Not Go Smoothly
 
@@ -67,4 +67,4 @@ Rose: NEWS names the earlier gates and does not claim that a character family is
 
 ## 10. Known Limitations And Next Actions
 
-Character `family = "gaussian"` still breaks the `temporal_latent()` gate (`$` on an atomic). That is a separate issue, refs #1781, not fixed here. Constructors that need arguments still have to be called by the user (`binomial(link = "probit")`). No validation-debt row changes. Full `R CMD check` was not run.
+Character `family = "gaussian"` still breaks the `temporal_latent()` gate (`$` on an atomic). That is [#1804](https://github.com/itchyshin/gllvmTMB/issues/1804) (refs #1781), not fixed here. Constructors that need arguments still have to be called by the user (`binomial(link = "probit")`). No validation-debt row changes. Full `R CMD check` was not run.

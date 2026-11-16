@@ -1,6 +1,6 @@
 # After Task: Two-kernel Gaussian covariance
 
-**IN PROGRESS, 15 November 2026.** This report is a draft and does not certify completion or release. The source remains local and unintegrated; the full local test suite failed. Final source, checks, ownership reconciliation and reviewer sign-off remain open.
+**IN PROGRESS, 15 November 2026.** This report is a draft and does not certify completion or release. The source remains local and unintegrated. An earlier non-CI local suite failed; later CI-configured Linux checks passed with the qualifications recorded below. Integration and three-OS verification remain open.
 
 ## 1. Goal
 
@@ -162,6 +162,8 @@ The Linux check receipt did not retain the individual testthat counts. The two p
 
 A fresh Linux build of the exact latest-main scratch union also passed the independent five-point oracle: maximum NLL gap `1.14e-13`, analytical gradient gap `4.53e-14` and finite-difference gradient gap `1.62e-9`. A fitted-object retry retained both named tiers and fixed SD `0.12`, with total covariance equal to shared plus unique within `2.70e-17`; all eight estimated uniqueness variances were near zero. The first fit attempt stopped before fitting because a copied script had an obsolete library-path assertion. The corrected retry and both attempts, scripts, source and library hashes remain under `/home/snakagaw/hsq_work/two-kernel-main5e41-oracle.Y3TpsW/`. This demonstrates fixed-point and extraction agreement, not recovery.
 
+The exact latest-main scratch union received a full CI-configured Linux package check in `/home/snakagaw/hsq_work/two-kernel-union-linux-check.gFdTQR/`. `R CMD check` returned zero errors, zero package warnings and two notes; the retained testthat report recorded 30,787 passes, zero failures, 67 test warnings and 1,267 skips. `GLLVMTMB_HEAVY_TESTS` was explicitly empty; 845 skips cite the heavy-test gate, while 11 visual snapshot skips cite missing `vdiffr`. The two notes concern `TMB:::EvalADFunObject` and compiler flags. The process exited normally after 42 minutes 15 seconds, with unchanged source hashes and no surviving process group. Its source manifest, test output and both check results are retained; this Linux scratch check does not constitute integration or three-OS CI.
+
 ## 11. Team Learning
 
 **Ada and Shannon:** The owner authorized the overlapping lanes, and a scratch reconciliation protected PR #1763. Integrate only after preserving its grouping behavior and resolving NEWS.
@@ -175,4 +177,4 @@ A fresh Linux build of the exact latest-main scratch union also passed the indep
 
 ## 12. Cross-Product Coverage
 
-The admitted route covers two named Gaussian kernel tiers with fixed positive observation SD and the observed-cell and separation screens documented above. The focused checks exercise long and wide data, masks, grouping compatibility and named extraction. It does NOT cover mixed families, Julia parity, calibrated intervals, broad recovery or every combination of structured random effects. Three-OS CI and a full package check of the latest-main scratch union remain open; the separately reported Linux check and targeted scratch results do not fill those gaps.
+The admitted route covers two named Gaussian kernel tiers with fixed positive observation SD and the observed-cell and separation screens documented above. The focused checks exercise long and wide data, masks, grouping compatibility and named extraction. It does NOT cover mixed families, Julia parity, calibrated intervals, broad recovery or every combination of structured random effects. Three-OS CI remains open. The latest-main scratch union passed the separately reported CI-configured Linux check with heavy tests disabled; that check does not fill the cross-platform or scientific gaps.

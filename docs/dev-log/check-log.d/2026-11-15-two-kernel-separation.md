@@ -9,3 +9,9 @@ Commands and output are retained in `/tmp/gllvmtmb-separation-repin.7675k0/`. Th
 The full Linux package check and the multi-PR scratch tests are running. Windows, three-OS CI, interval calibration and final-source recovery were not run. The existing optimizer restart accounting defect is recorded in the after-task report and was reported to the coevolution chat.
 
 The targeted scratch-union tests finished with 1,410 passes, no reported failures, errors, warnings or skips, and matching pre/post source identities. Full command and receipts: `/home/snakagaw/hsq_work/two-kernel-separation-union.SRGM95/`. This is a scratch compatibility result, not a full package check or evidence of recovery.
+
+Exact installed-guard invocation from the staged source directory:
+
+```sh
+TASK_LIB=/tmp/gllvmtmb-separation-repin.7675k0/lib OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 NOT_CRAN=true Rscript --vanilla -e 'lib <- Sys.getenv("TASK_LIB"); library(gllvmTMB, lib.loc=lib); stopifnot(normalizePath(find.package("gllvmTMB")) == normalizePath(file.path(lib,"gllvmTMB"))); z <- testthat::test_file("tests/testthat/test-coevolution-known-fixed-error.R", env=new.env(parent=asNamespace("gllvmTMB")), reporter="summary"); a <- as.data.frame(z); print(colSums(a[c("passed","failed","error","warning","skipped")])); if(any(a$failed>0|a$error|a$warning>0|a$skipped>0)) quit(status=1); cat("INSTALLED_GUARD_PASS\n")'
+```

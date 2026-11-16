@@ -3,7 +3,8 @@
 ## Scope: admission plumbing + sentinel-invariance + thin routed recovery.
 ## Does NOT certify VA missing-data for public claims; mi() on VA stays refused.
 ##
-## Rebuild of the parked VA DLL is required once per session (skip_on_cran).
+## The loader compiles a source-hash DLL when absent. Reuse it across tests so
+## live TMB objective pointers are not invalidated by a forced rebuild.
 
 .va_mask_binom_fixture <- function(n = 120L, p = 6L, q = 2L, seed = 20260801L) {
   set.seed(seed)
@@ -71,7 +72,7 @@ test_that("VA ELBO is sentinel-invariant under response masks", {
   parameters <- .va_r3_default_parameters(validated0, 1L)
   obj0 <- .va_r3_make_objective(
     validated0, H = 15L, parameters = parameters,
-    eval_method = "jj", rebuild = TRUE
+    eval_method = "jj", rebuild = FALSE
   )
 
   validated1 <- validated0
@@ -285,8 +286,6 @@ test_that("VA sentinel-invariance and include-mask fits hold across every scalar
   total_started <- proc.time()[[3L]]
   refused <- character(0L)
   marginal_health <- character(0L)
-  first_build <- TRUE
-
   for (i in seq_len(nrow(.va_missing_fam_registry))) {
     cell <- .va_missing_fam_registry$cell[[i]]
     fid <- .va_missing_fam_registry$family_id[[i]]
@@ -316,9 +315,8 @@ test_that("VA sentinel-invariance and include-mask fits hold across every scalar
     parameters <- .va_r3_default_parameters(validated0, 1L)
     obj0 <- .va_r3_make_objective(
       validated0, H = 7L, parameters = parameters,
-      eval_method = "gh", rebuild = first_build, silent = TRUE
+      eval_method = "gh", rebuild = FALSE, silent = TRUE
     )
-    first_build <- FALSE
 
     validated1 <- validated0
     validated1$y[validated0$is_y_observed == 0L] <- 1e6

@@ -3391,12 +3391,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ))
     }
     if (species_diag && !identical(site, species)) {
-      cli::cli_inform(c(
-        "i" = "{.code phylo_indep({species}) + indep(0 + trait | {species})} at {.code unit = {.val {site}}} fits the {.val {species}}-level non-phylogenetic variance via the {.code diag | {species}} ({.code q_sp}) engine slot.",
-        "*" = "This is the {.code p_it + q_it} decomposition of the Nakagawa et al. functional-biogeography model. Joint identifiability is empirically reasonable at {.code n_species >= 100} with strong phylogenetic signal: {.code sigma2_Q} recovers within ~10% relative error; {.code sigma2_P} within ~50% (per-trait estimates can be noisy). Compare the fit without the standalone species-level diagonal term to the fit with it to confirm both terms contribute on your data.",
-        ">" = "Use {.fn indep} for standalone non-phylogenetic diagonal terms."
-      ), .frequency = "once",
-         .frequency_id = "gllvmTMB-phylo-q-decomposition-inform")
+      .inform_phylo_species_diag(site, species)
     }
   }
   ## cluster2 foot-gun guard: the engine has no reduced-rank (rr / latent)
@@ -12344,6 +12339,20 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                           .ridge_tau = ridge_tau),
                   error = function(e) NULL)
     if (is.null(o) || any(!is.finite(o$par))) break
+    ## Singular convergence means PORT's quadratic model has no usable
+    ## direction (nlminb code 1, message "singular convergence (7)"). On the
+    ## q = 2 golden fixture at k = 3 that step's line search reports an
+    ## honest objective near 1.006 and a finite-difference gradient just
+    ## under the tolerance, so the stall is certified as converged. The
+    ## value is a coarse-grid artefact. A fresh adaptation from it does not
+    ## stay there on this machine, but the coverage CI build's does, and
+    ## multi-start then prefers it to the stationary Laplace start. The fit
+    ## returns nlminb code 1 at a point about 1.1 nll from the oracle. An
+    ## iteration-limit stop is still a usable short step; a singular one is not.
+    if (identical(as.integer(o$convergence), 1L) &&
+        grepl("singular convergence", o$message %||% "", fixed = TRUE)) {
+      break
+    }
     step <- o$par - par
     if (!any(step != 0)) break
     rho <- 1
@@ -12519,6 +12528,18 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   if (!is.numeric(a) || length(a) != 1L || is.na(a) || a < 1)
     stop("control$aghq must be FALSE, \"auto\", or a positive integer")
   as.integer(a)
+}
+
+## Once-per-session note for a species-level phylogenetic term plus
+## `indep(0 + trait | species)` at `unit != species`. Worded for any phylo
+## keyword (`phylo_latent(..., unique = TRUE)`, `phylo_indep()`): it names
+## neither a keyword the user did not write nor internal engine slots (#1572).
+.inform_phylo_species_diag <- function(site, species) {
+  cli::cli_inform(c(
+    "i" = "A species-level phylogenetic term together with {.code indep(0 + trait | {species})} at {.code unit = {.val {site}}} fits a phylogenetic and a non-phylogenetic variance per trait at the {.val {species}} level.",
+    "*" = "The two are separable only with enough species and a strong phylogenetic signal. In simulations, about 100 or more species recovered the non-phylogenetic variance within ~10% relative error and the phylogenetic variance within ~50% (per-trait estimates can be noisy). Fit the model without the {.code indep(0 + trait | {species})} term and compare, to check that both terms contribute on your data."
+  ), .frequency = "once",
+     .frequency_id = "gllvmTMB-phylo-q-decomposition-inform")
 }
 
 ## Auto-suppress note when a per-row diagonal already absorbs the

@@ -9,7 +9,7 @@
 ## | psi_t | kernel_unique(species, K = K_star, name = "cross") | U_t ~ N(0, psi_t K_star) | extract_Sigma(level = "cross", part = "unique") | psi |
 ## | e_rt | residual Gaussian error | rnorm(sd = resid_sd) | sigma_eps | resid_sd |
 ## | Gamma_HP | host-partner shared covariance | Lambda_H Lambda_P^T | extract_Gamma(level = "cross") | Gamma_true |
-## | Gamma_0 | null host-partner covariance | blockdiag(A_H, A_P) | extract_Gamma(level = "cross") | 0 |
+## | Cov_0 | null host-partner covariance | blockdiag(A_H, A_P) | predict_cross_covariance() | 0 |
 
 .c2_tree_corr <- function(n, prefix) {
   tree <- ape::rcoal(n)
@@ -451,7 +451,30 @@ test_that("extract_coevolution_modules returns standardized SVD modules", {
   )
 })
 
-test_that("C2 kernel path recovers Gamma and beats the zero-Gamma null", {
+test_that("a zero cross-kernel does not require a zero loading product", {
+  A_H <- diag(2)
+  A_P <- diag(2)
+  dimnames(A_H) <- list(c("H1", "H2"), c("H1", "H2"))
+  dimnames(A_P) <- list(c("P1", "P2"), c("P1", "P2"))
+  Lambda <- rbind(c(1, 0), c(.45, .85), c(.75, .25), c(-.25, .90))
+  rownames(Lambda) <- c("h_size", "h_defence", "p_size", "p_attack")
+  fit <- .c2_fake_gamma_fit(Lambda)
+  fit$kernel_matrices <- list(cross = .c2_block_diag(A_H, A_P))
+  shape <- gllvmTMB::extract_Gamma(
+    fit, level = "cross", row_traits = c("h_size", "h_defence"),
+    col_traits = c("p_size", "p_attack")
+  )
+  pred <- gllvmTMB::predict_cross_covariance(
+    fit, level = "cross", row_levels = c("H1", "H2"),
+    col_levels = c("P1", "P2"), row_traits = c("h_size", "h_defence"),
+    col_traits = c("p_size", "p_attack")
+  )
+  expect_gt(max(abs(shape)), .5)
+  expect_equal(max(abs(pred$kernel_value)), 0)
+  expect_equal(max(abs(pred$covariance)), 0)
+})
+
+test_that("C2 kernel path recovers Gamma and beats the zero cross-covariance null", {
   skip_if_not_heavy()
   testthat::skip_on_cran()
   testthat::skip_if_not_installed("ape")
@@ -491,7 +514,36 @@ test_that("C2 kernel path recovers Gamma and beats the zero-Gamma null", {
 
   expect_gt(.c2_gamma_corr(Gamma_hat, fx$Gamma_true), 0.9)
   expect_equal(as.numeric(Gamma_effect), as.numeric(0.65 * Gamma_hat))
-  expect_lt(max(abs(Gamma_null)), 1e-8)
+  # A block-diagonal kernel makes cross-lineage covariance zero, but it does
+  # not constrain the loading product Gamma_shape to zero.
+  K_null_fit <- fit_null$kernel_matrices$cross
+  expect_equal(unname(K_null_fit), unname(fx$K_null), tolerance = 1e-12)
+  expect_equal(max(abs(K_null_fit[rownames(fx$A_H), rownames(fx$A_P)])), 0)
+  L_null <- fit_null$report$Lambda_phy
+  shape_null <- tcrossprod(L_null)[
+    match(fx$host_traits, fx$trait_names),
+    match(fx$partner_traits, fx$trait_names), drop = FALSE
+  ]
+  expect_equal(unname(Gamma_null), unname(shape_null), tolerance = 1e-12)
+  null_pred <- gllvmTMB::predict_cross_covariance(
+    fit_null, level = "cross",
+    row_levels = rownames(fx$A_H), col_levels = rownames(fx$A_P),
+    row_traits = fx$host_traits, col_traits = fx$partner_traits
+  )
+  null_expected <- K_null_fit[cbind(null_pred$row_level, null_pred$col_level)] *
+    Gamma_null[cbind(null_pred$row_trait, null_pred$col_trait)]
+  expect_equal(null_pred$covariance, unname(null_expected), tolerance = 1e-12)
+  expect_equal(max(abs(null_pred$covariance)), 0)
+  cross_pred <- gllvmTMB::predict_cross_covariance(
+    fit_cross, level = "cross",
+    row_levels = rownames(fx$A_H), col_levels = rownames(fx$A_P),
+    row_traits = fx$host_traits, col_traits = fx$partner_traits
+  )
+  K_cross_fit <- fit_cross$kernel_matrices$cross
+  cross_expected <- K_cross_fit[cbind(cross_pred$row_level, cross_pred$col_level)] *
+    Gamma_hat[cbind(cross_pred$row_trait, cross_pred$col_trait)]
+  expect_equal(cross_pred$covariance, unname(cross_expected), tolerance = 1e-12)
+  expect_gt(max(abs(cross_pred$covariance)), 1e-8)
   expect_gt(
     as.numeric(stats::logLik(fit_cross)) -
       as.numeric(stats::logLik(fit_null)),

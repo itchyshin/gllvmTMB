@@ -1,6 +1,6 @@
 ---
 title: "Cross-lineage covariance in a plant--bumblebee example"
-description: "Build one fixed cross-lineage kernel and read its plant-by-bumblebee trait covariance block, with an explicit point-estimate boundary."
+description: "Build a fixed cross-lineage kernel, read its plant-by-bumblebee trait covariance block, and demonstrate a narrow two-kernel Gaussian syntax route."
 tier: 1
 output:
   rmarkdown::html_vignette:
@@ -44,13 +44,15 @@ covariance block, not an interaction model.
 > evidence that traits causally coevolved. Sparse association data, a different
 > defensible `rho`, or a different interaction matrix can change the result.
 
-> **Scope boundary.** **In:** one named, dense `kernel_latent()` tier and its
-> shared plant-by-bumblebee covariance block. **Partial:** the fixed-`rho`
-> point estimate demonstrated here; it is sensitive to the supplied kernel and
-> association matrix. **Not provided:** estimated `rho`, calibrated intervals,
-> a causal coevolution test, or a separately interpreted phylogenetic-versus-tip
-> decomposition. The final synthetic section demonstrates two kernel-specific
-> diagonals as a fitting exercise; it does not establish their recovery.
+> **Scope boundary.** **In:** one dense named `kernel_latent()` tier for the
+> fixed-`rho` example, plus a narrow two-tier Gaussian route with a known
+> observation-error SD and structural missing cells. **Partial:** the supplied
+> `rho` and kernels determine the point estimates; the synthetic two-tier fit
+> demonstrates syntax and extraction, not reliable recovery of both
+> components. **Not provided:** calibrated intervals, established separation
+> or recovery of the phylogenetic and tip components, estimated `rho`, or a
+> causal coevolution test. **Planned:** mixed-family two-tier fitting and
+> Julia parity are outside this route and are not demonstrated here.
 
 > **Engine note.** Run this example with `engine = "tmb"` (the default). The
 > current `engine = "julia"` bridge deliberately does not route
@@ -408,8 +410,12 @@ ggplot(rho_ok, aes(rho, relative_logLik)) +
 
 Can a model assign trait-specific variation to each of two supplied kernels?
 The following small artificial example shows the syntax when the observation
-error SD is known. Each kernel has a shared field and a diagonal companion; the
-missing plant--bumblebee trait combinations are structural and remain missing.
+error SD is known. For each named kernel tier $s$, the trait covariance is
+\(\Sigma_s = \Lambda_s \Lambda_s^{\mathsf T} + \operatorname{diag}(\psi_s)\),
+where \(\psi_s\) is that tier's vector of trait-specific variances. The known
+observation-error variance, \(0.12^2\), is added once to the observation
+covariance, separately from both tier-specific diagonals. Missing
+plant--bumblebee trait combinations are structural and remain missing.
 
 ```{r two-kernel-data}
 set.seed(123)
@@ -442,6 +448,23 @@ long_two <- do.call(rbind, lapply(colnames(y), function(tr) {
 long_two$trait <- factor(long_two$trait, levels = colnames(y))
 ```
 
+Here `K_phy` supplies within-lineage covariance from `A` and cross-lineage
+similarity scaled by 0.55. `K_tip` is a second supplied teaching kernel: it uses
+an identity matrix within each lineage and pairs corresponding `H` and `P`
+indices across lineages at 0.55. The name `tip` labels this constructed kernel;
+it is not an additional estimated tip effect.
+
+<!--
+Model-to-DGP alignment audit (the table is kept in source, not shown to readers):
+| Symbol | Formula term | DGP draw | Extractor or check | Truth |
+|---|---|---|---|---|
+| Lambda_phy | kernel_latent(..., name = "phy", unique = TRUE) | outer(K_phy^(1/2) z_phy, lambda_phy) | extract_Sigma(..., level = "phy", part = "shared") | c(0.7, 0.5, 0.6, -0.4) |
+| Psi_phy | same term | K_phy^(1/2) E_phy diag(sqrt(0.3)) | extract_Sigma(..., level = "phy", part = "unique") | diag(0.3, 4) |
+| Lambda_tip | kernel_latent(..., name = "tip", unique = TRUE) | outer(K_tip^(1/2) z_tip, lambda_tip) | extract_Sigma(..., level = "tip", part = "shared") | c(0.5, -0.4, 0.4, 0.6) |
+| Psi_tip | same term | K_tip^(1/2) E_tip diag(sqrt(0.2)) | extract_Sigma(..., level = "tip", part = "unique") | diag(0.2, 4) |
+| Observation error | known_sigma_eps = 0.12 | independent N(0, 0.12^2) observation noise | fixed SD map; separate from extract_Sigma tier output | 0.12^2 per observed cell |
+-->
+
 The same model can be fitted from wide or long data. The `missing` setting
 keeps the missing cells in the data but omits them from the likelihood.
 
@@ -465,19 +488,31 @@ fit_two_long <- gllvmTMB(
 )
 c(wide_convergence = fit_two_wide$opt$convergence,
   long_convergence = fit_two_long$opt$convergence)
-extract_Sigma(fit_two_wide, level = "phy", part = "unique")
-extract_Sigma(fit_two_wide, level = "tip", part = "unique")
+sigma_parts <- lapply(c("phy", "tip"), function(level) {
+  list(
+    shared = extract_Sigma(fit_two_wide, level = level, part = "shared")$Sigma,
+    unique = extract_Sigma(fit_two_wide, level = level, part = "unique")$s,
+    total = extract_Sigma(fit_two_wide, level = level, part = "total")$Sigma
+  )
+})
+names(sigma_parts) <- c("phy", "tip")
+identity_gaps <- vapply(sigma_parts, function(parts) {
+  max(abs(parts$total - parts$shared - diag(parts$unique)))
+}, numeric(1))
+identity_gaps
 ```
 
 In this draw both fits return convergence code zero, but the four estimated
 `phy` diagonal variances are close to zero despite the simulated value of 0.3.
-The tiny example therefore shows syntax rather than reliable component
+The printed `identity_gaps` verify that, for each named tier, extracted total
+covariance equals shared covariance plus the diagonal unique variances. The
+tiny example therefore shows syntax and extraction, not reliable component
 recovery. Passing the kernel-pattern separation check does not establish
-identifiability; some known-truth studies have recovered the components poorly,
-and interval calibration is unvalidated. Inspect convergence and diagnostics
-before interpreting a fit. Unconditional simulation and simulation with new
-data are unavailable for multiple named kernels; conditional prediction with
-new data is also unavailable.
+identifiability; known-truth fits have often put positive unique variances near
+zero, and interval calibration is unvalidated. Inspect convergence and
+diagnostics before interpreting a fit. Unconditional simulation and simulation
+with new data are unavailable for multiple named kernels; conditional
+prediction with new data is also unavailable.
 
 ## What to do with empirical data next
 

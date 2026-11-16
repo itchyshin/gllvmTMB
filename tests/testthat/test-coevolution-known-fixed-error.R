@@ -136,6 +136,11 @@ test_that("fixed known error retains both kernel Psi and the fixed intercept", {
                info = paste("objective", value, "dense", dense_nll,
                             "sigma", sigma, "beta", paste(beta, collapse = ","),
                             "dimensions", paste(dim(V), collapse = "x")))
+
+  ## This objective owns TMB external pointers. Release it before the next
+  ## test file recompiles and loads a separate TMB fixture DLL.
+  rm(obj)
+  invisible(gc())
 })
 
 test_that("two requested uniqueness terms are rejected for inseparable kernels", {

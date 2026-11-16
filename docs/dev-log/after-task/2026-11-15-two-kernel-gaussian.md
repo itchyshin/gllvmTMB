@@ -164,6 +164,8 @@ A fresh Linux build of the exact latest-main scratch union also passed the indep
 
 The exact latest-main scratch union received a full CI-configured Linux package check in `/home/snakagaw/hsq_work/two-kernel-union-linux-check.gFdTQR/`. `R CMD check` returned zero errors, zero package warnings and two notes; the retained testthat report recorded 30,787 passes, zero failures, 67 test warnings and 1,267 skips. `GLLVMTMB_HEAVY_TESTS` was explicitly empty; 845 skips cite the heavy-test gate, while 11 visual snapshot skips cite missing `vdiffr`. The two notes concern `TMB:::EvalADFunObject` and compiler flags. The process exited normally after 42 minutes 15 seconds, with unchanged source hashes and no surviving process group. Its source manifest, test output and both check results are retained; this Linux scratch check does not constitute integration or three-OS CI.
 
+The 67 recorded test warnings include 23 unused grouping-argument warnings, 20 deprecated-extractor warnings, six penalized-likelihood caveats, and warnings about runaway loadings, Laplace diagnostics, optimizer arguments, zero responses, identifiability and numerical evaluation. They remain in the retained test output; the passing check does not establish that each warning is harmless.
+
 ## 11. Team Learning
 
 **Ada and Shannon:** The owner authorized the overlapping lanes, and a scratch reconciliation protected PR #1763. Integrate only after preserving its grouping behavior and resolving NEWS.

@@ -17,3 +17,5 @@ TASK_LIB=/tmp/gllvmtmb-separation-repin.7675k0/lib OPENBLAS_NUM_THREADS=1 OMP_NU
 ```
 
 The current-main scratch union at `5e41fd1202fc1e1963174c98e6d79d38126723c1` passed 1,464 targeted checks, with no reported failures, errors, warnings or skips. Source manifests matched before and after; full command and receipts are under `/home/snakagaw/hsq_work/two-kernel-main5e41-union.iShdx6/`. The final installed build also passed seven empty-trait-level checks; see `/tmp/gllvmtmb-separation-repin.7675k0/empty-level.log`.
+
+The CI-configured Totoro Linux package check on the guard revision finished with zero errors, zero package-check warnings and two notes in 39 minutes 53.5 seconds. Pre/post source identities matched and no process group remained. Exact source archive, command, manifest and output: `/home/snakagaw/hsq_work/two-kernel-current-check.jN4q50/`. This is a Linux check of the task source, not a three-OS check or a full check of the latest-main scratch union.

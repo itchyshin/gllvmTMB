@@ -39,7 +39,7 @@ skip_on_cran()
   if (cell$family_id == 5L) parameters$log_phi_nbinom2[] <- log(p$phi)
   if (cell$family_id == 6L) {
     parameters$log_phi_tweedie[] <- log(p$phi)
-    parameters$logit_p_tweedie[] <- qlogis(p$power - 1)
+    parameters$logit_p_tweedie[] <- .gllvmTMB_tweedie_theta(p$power)
   }
   if (cell$family_id == 7L) parameters$log_phi_beta[] <- log(p$phi)
   if (cell$family_id == 8L) parameters$log_phi_betabinom[] <- log(p$phi)
@@ -183,7 +183,7 @@ test_that("fixed Tweedie power and Student df are pinned in the R3 map", {
   expect_false("logit_p_tweedie" %in% names(tweedie_fixed$par))
   expect_true("logit_p_tweedie" %in% names(tweedie_free$par))
   tweedie_par <- tweedie_fixed$env$parList(tweedie_fixed$par)
-  expect_equal(1 + plogis(tweedie_par$logit_p_tweedie), 1.7,
+  expect_equal(.gllvmTMB_tweedie_p(tweedie_par$logit_p_tweedie), 1.7,
                tolerance = 1e-12)
   tweedie_cell <- modifyList(
     .va_oracle_cells$tweedie_log,

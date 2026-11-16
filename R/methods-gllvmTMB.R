@@ -3151,7 +3151,10 @@ sanity_multi <- function(object, gradient_thresh = 1e-2, se_thresh = 100) {
 #'   regardless of `re_form`. A missing unit column is not an unseen
 #'   level: if `newdata` omits the fitted unit column while unit-level
 #'   random effects are being re-added, `predict()` stops and asks for
-#'   that column or for `re_form = ~0`.
+#'   that column or for `re_form = ~0`. A missing species column is not
+#'   an unseen level: if `newdata` omits the fitted species column while
+#'   phylogenetic random effects are being re-added, `predict()` stops and
+#'   asks for that column or for `re_form = ~0`.
 #'
 #'   For AGHQ fits, conditional predictions use the latent modes at the
 #'   fitted parameters. They are not averages over latent-score uncertainty.
@@ -3385,6 +3388,24 @@ predict.gllvmTMB_multi <- function(
           "x" = "Unit-level random effects ({.val {unit_tiers}}) cannot be re-added without it.",
           "i" = "Add {.field {unit_show}} to {.arg newdata}, or pass {.code re_form = ~0} for the fixed-effects-only prediction."
         ), class = "gllvmTMB_predict_newdata_unit_missing")
+      }
+      ## A missing species *column* used to leave every sp_id NA, skip the
+      ## contributions, and still report phylo_rr / phylo_diag as re-added (#1787).
+      ## An unseen level of a column that is present stays fixed-effects-only.
+      species_lbl <- object$species_col
+      phylo_tiers <- c(
+        if (isTRUE(object$use$phylo_rr)) "phylo_rr",
+        if (isTRUE(object$use$phylo_diag)) "phylo_diag"
+      )
+      if (length(phylo_tiers) &&
+            (is.null(species_lbl) || !nzchar(species_lbl) ||
+              !species_lbl %in% names(nd))) {
+        species_show <- species_lbl %||% "species"
+        cli::cli_abort(c(
+          "{.arg newdata} is missing the species column {.field {species_show}}.",
+          "x" = "Phylogenetic random effects ({.val {phylo_tiers}}) cannot be re-added without it.",
+          "i" = "Add {.field {species_show}} to {.arg newdata}, or pass {.code re_form = ~0} for the fixed-effects-only prediction."
+        ), class = "gllvmTMB_predict_newdata_species_missing")
       }
       ## Build per-row indices on the training factor scales
       tr_id <- as.integer(nd[[object$trait_col]]) - 1L

@@ -188,7 +188,8 @@ API (see Details). The negative-binomial families fit one
 log-dispersion parameter per trait: \code{nbinom1()} uses
 Var = mu * (1 + phi), while \code{nbinom2()} uses
 Var = mu + mu^2 / phi. The \code{tweedie()} family
-fits one log-phi and one logit-(p-1) per trait, with p in (1, 2).
+fits one log-dispersion and one power per trait. The power stays
+inside about 1.000006 and 1.999994.
 The \code{Beta()} and \code{betabinomial()} families each fit one
 log-precision per trait (a = mu*phi, b = (1-mu)*phi; Smithson &
 Verkuilen 2006). The \code{student()} family fits one log-sigma and one

@@ -56,7 +56,10 @@ effects cannot be drawn, so those rows are fixed-effects-only
 regardless of \code{re_form}. A missing unit column is not an unseen
 level: if \code{newdata} omits the fitted unit column while unit-level
 random effects are being re-added, \code{predict()} stops and asks for
-that column or for \code{re_form = ~0}.
+that column or for \code{re_form = ~0}. A missing species column is not
+an unseen level: if \code{newdata} omits the fitted species column while
+phylogenetic random effects are being re-added, \code{predict()} stops and
+asks for that column or for \code{re_form = ~0}.
 
 For AGHQ fits, conditional predictions use the latent modes at the
 fitted parameters. They are not averages over latent-score uncertainty.

@@ -260,7 +260,7 @@
     "linear_predictor" = link_estimate,
     "exp" = exp(link_estimate),
     "logit" = stats::plogis(link_estimate),
-    "logit_p_tweedie" = 1 + stats::plogis(link_estimate),
+    "logit_p_tweedie" = .gllvmTMB_tweedie_p(link_estimate),
     "lambda_packed" = link_estimate,
     "ordinal_threshold" = exp(link_estimate),
     NA_real_

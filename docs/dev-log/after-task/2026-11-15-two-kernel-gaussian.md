@@ -168,6 +168,8 @@ The 67 recorded test warnings include 23 unused grouping-argument warnings, 20 d
 
 A read-only comparison against `c8775dd` found identical compiled `src` files, unchanged main optimizer pass and restart selection, and the same optimizer-accounting defect. The scratch union adds stricter kernel admission, omitted-cluster grouping and wide-form intercept corrections, earlier structured-rank validation, and an AGHQ-specific singular-convergence recovery change. The retained 36-case pilot explicitly supplied `cluster = "species"` and `~ 1`; the separate Silva audit settings require their own check. No Silva rerun was performed, so this comparison proves neither improved recovery nor numerical equivalence. The coevolution chat received these qualifications.
 
+The retained combined-check warning report did not attribute any of its 67 recorded warnings to the two named two-kernel test files by warning header or displayed backtrace. This cannot rule out execution through shared fitting code or establish causation. A PR #1790 two-kernel guard test skipped in that package check because its fitted fixture was unavailable. A separate source-pinned synthetic fit on the exact scratch build passed four prediction and simulation controls, including conditional prediction with the species column absent and fixed-only prediction without that column. The fit and guard receipts are in `/home/snakagaw/hsq_work/two-kernel-main5e41-oracle.Y3TpsW/`; this is guard evidence, not recovery.
+
 ## 11. Team Learning
 
 **Ada and Shannon:** The owner authorized the overlapping lanes, and a scratch reconciliation protected PR #1763. Integrate only after preserving its grouping behavior and resolving NEWS.

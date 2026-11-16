@@ -762,6 +762,13 @@ gllvmTMB <- function(
   unit_obs <- unit_obs %||% "site_species"
   cluster <- cluster %||% "species"
 
+  ## Call uncalled family constructors (`family = gaussian`, not
+  ## `gaussian()`) before the wide/traits rewrite and before later
+  ## `$family` / `inherits(..., "family")` gates (`column_coef`,
+  ## `temporal_latent`). The scan in `expand_multinomial_response()`
+  ## stays as a no-op on an already-resolved family (#1781).
+  family <- .gllvmTMB_resolve_family_constructors(family)
+
   estimator_missing <- missing(estimator)
   estimator <- match.arg(estimator)
 
@@ -1954,8 +1961,10 @@ gllvmTMB <- function(
 }
 
 ## Call an uncalled family constructor (`family = gaussian`, not
-## `gaussian()`) the same way `family_to_id()` does. This scan runs first,
-## and `as.character()` on a function is a base-R error (#1781).
+## `gaussian()`) the same way `family_to_id()` does. `gllvmTMB()`
+## calls this at entry; `expand_multinomial_response()` calls it
+## again as a no-op so a direct scan cannot `as.character()` a
+## function (#1781).
 .gllvmTMB_resolve_family_constructors <- function(family) {
   resolve_one <- function(f) {
     if (!is.function(f) || inherits(f, "family")) return(f)

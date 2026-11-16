@@ -77,3 +77,83 @@ test_that("#1781 a constructor that cannot be called stops with a gllvmTMB error
     class = "gllvmTMB_family_constructor"
   )
 })
+
+.tiny_temporal_1781 <- function() {
+  out <- expand.grid(
+    series = paste0("s", 1:3),
+    occasion = c(1L, 3L, 7L),
+    trait = factor(c("a", "b", "c")),
+    KEEP.OUT.ATTRS = FALSE,
+    stringsAsFactors = FALSE
+  )
+  out$value <- with(out, as.numeric(trait) + occasion / 10)
+  out
+}
+
+test_that("#1781 family = gaussian fits temporal_latent the same as gaussian()", {
+  d <- .tiny_temporal_1781()
+  form <- value ~ 0 + trait +
+    temporal_latent(0 + trait | series, time = occasion, unique = TRUE)
+  fit_called <- suppressWarnings(suppressMessages(gllvmTMB(
+    form,
+    data = d, trait = "trait", unit = "series",
+    family = gaussian(),
+    control = .ctrl_1781(),
+    silent = TRUE
+  )))
+  fit_uncalled <- suppressWarnings(suppressMessages(gllvmTMB(
+    form,
+    data = d, trait = "trait", unit = "series",
+    family = gaussian,
+    control = .ctrl_1781(),
+    silent = TRUE
+  )))
+  expect_s3_class(fit_uncalled, "gllvmTMB_multi")
+  expect_identical(fit_uncalled$family$family, "gaussian")
+  expect_identical(fit_uncalled$family$family, fit_called$family$family)
+  expect_equal(fit_uncalled$tmb_data$use_temporal, 1L)
+  expect_equal(fit_uncalled$tmb_data$use_temporal, fit_called$tmb_data$use_temporal)
+  expect_equal(unname(fit_uncalled$opt$par), unname(fit_called$opt$par))
+  expect_equal(as.numeric(logLik(fit_uncalled)), as.numeric(logLik(fit_called)))
+})
+
+.tiny_column_coef_1781 <- function() {
+  set.seed(1781)
+  d <- expand.grid(
+    unit = factor(1:6),
+    trait = factor(c("a", "b", "c")),
+    KEEP.OUT.ATTRS = FALSE
+  )
+  d$x <- stats::rnorm(nrow(d))
+  d$value <- 0.2 + d$x * 0.3 + stats::rnorm(nrow(d), sd = 0.4)
+  d
+}
+
+test_that("#1781 family = gaussian fits column_coef the same as gaussian()", {
+  d <- .tiny_column_coef_1781()
+  form <- value ~ 1 + column_coef(1 + x | trait)
+  fit_called <- suppressWarnings(suppressMessages(gllvmTMB(
+    form,
+    data = d, trait = "trait", unit = "unit",
+    family = gaussian(),
+    control = .ctrl_1781(),
+    silent = TRUE
+  )))
+  fit_uncalled <- suppressWarnings(suppressMessages(gllvmTMB(
+    form,
+    data = d, trait = "trait", unit = "unit",
+    family = gaussian,
+    control = .ctrl_1781(),
+    silent = TRUE
+  )))
+  expect_s3_class(fit_uncalled, "gllvmTMB_multi")
+  expect_identical(fit_uncalled$family$family, "gaussian")
+  expect_identical(fit_uncalled$family$family, fit_called$family$family)
+  expect_true(isTRUE(fit_uncalled$use$response_column_coef))
+  expect_identical(
+    fit_uncalled$use$response_column_coef,
+    fit_called$use$response_column_coef
+  )
+  expect_equal(unname(fit_uncalled$opt$par), unname(fit_called$opt$par))
+  expect_equal(as.numeric(logLik(fit_uncalled)), as.numeric(logLik(fit_called)))
+})

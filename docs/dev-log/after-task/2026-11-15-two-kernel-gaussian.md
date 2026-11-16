@@ -166,6 +166,8 @@ The exact latest-main scratch union received a full CI-configured Linux package 
 
 The 67 recorded test warnings include 23 unused grouping-argument warnings, 20 deprecated-extractor warnings, six penalized-likelihood caveats, and warnings about runaway loadings, Laplace diagnostics, optimizer arguments, zero responses, identifiability and numerical evaluation. They remain in the retained test output; the passing check does not establish that each warning is harmless.
 
+A read-only comparison against `c8775dd` found identical compiled `src` files, unchanged main optimizer pass and restart selection, and the same optimizer-accounting defect. The scratch union adds stricter kernel admission, omitted-cluster grouping and wide-form intercept corrections, earlier structured-rank validation, and an AGHQ-specific singular-convergence recovery change. The retained 36-case pilot explicitly supplied `cluster = "species"` and `~ 1`; the separate Silva audit settings require their own check. No Silva rerun was performed, so this comparison proves neither improved recovery nor numerical equivalence. The coevolution chat received these qualifications.
+
 ## 11. Team Learning
 
 **Ada and Shannon:** The owner authorized the overlapping lanes, and a scratch reconciliation protected PR #1763. Integrate only after preserving its grouping behavior and resolving NEWS.

@@ -1,6 +1,5 @@
 test_that("README explains first-fit console messages (#1328)", {
-  readme <- testthat::test_path("..", "..", "README.md")
-  testthat::skip_if_not(file.exists(readme), "README missing")
+  readme <- gllvmTMB_pkg_file("README.md")
   text <- paste(readLines(readme, warn = FALSE), collapse = "\n")
   testthat::expect_match(
     text,
@@ -20,8 +19,7 @@ test_that("README explains first-fit console messages (#1328)", {
 })
 
 test_that("Get-started vignette explains hidden first-fit messages (#1328)", {
-  rmd <- testthat::test_path("..", "..", "vignettes", "gllvmTMB.Rmd")
-  testthat::skip_if_not(file.exists(rmd), "vignette missing")
+  rmd <- gllvmTMB_pkg_file("vignettes", "gllvmTMB.Rmd")
   text <- paste(readLines(rmd, warn = FALSE), collapse = "\n")
   testthat::expect_match(
     text,

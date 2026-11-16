@@ -58378,3 +58378,7 @@ Commands run (after local `pkgload::load_all()` with `R_LIBS_USER=/home/ubuntu/R
 - Branch with fix: same — expect PASS.
 
 Deliberately not run: full `devtools::test()`, `devtools::check()`, pkgdown, Julia bridge parity.
+
+## 2026-11-14: provisional gllvmTMB 0.8.0 release metadata
+
+On base `abf3e905fb9e22f5eca9b8dd01c9ea476fde4ee2`, the isolated candidate updates the DESCRIPTION version to 0.8.0 and corrects the COPYRIGHTS grid description to 6 by 3. `Rscript --vanilla` read and checked the DESCRIPTION version and license, and `git diff --check` passed. The current development NEWS is unchanged because active pull requests also edit it. Full release-source tests, release notes, component rights, and independent release review remain open; this is not a release.

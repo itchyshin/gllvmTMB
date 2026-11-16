@@ -1406,6 +1406,32 @@
   invisible(NULL)
 }
 
+.abort_one_level_fixed_factors <- function(mf) {
+  tt <- stats::terms(mf)
+  resp_idx <- attr(tt, "response")
+  resp_nm <- if (is.numeric(resp_idx) && length(resp_idx) == 1L && resp_idx > 0L) {
+    colnames(mf)[resp_idx]
+  } else {
+    character(0)
+  }
+  preds <- setdiff(colnames(mf), resp_nm)
+  bad <- preds[vapply(preds, function(nm) {
+    col <- mf[[nm]]
+    is.factor(col) && nlevels(col) < 2L
+  }, logical(1))]
+  if (!length(bad)) return(invisible(NULL))
+  shown <- vapply(bad, function(nm) {
+    lv <- levels(mf[[nm]])
+    if (length(lv) == 0L) paste0(nm, " (no levels)") else paste0(nm, " = ", lv[[1L]])
+  }, character(1))
+  cli::cli_abort(c(
+    "A fixed-effect factor has fewer than two levels, so contrasts cannot be built.",
+    "x" = "Found {.val {shown}}.",
+    "i" = "Use an intercept-only fixed formula ({.code ~ 1}) when every row shares one trait, or give the factor at least two levels.",
+    "i" = "A single-response model with no trait structure belongs in {.pkg glmmTMB}."
+  ), class = "gllvmTMB_one_level_factor")
+}
+
 #' Fit a long-format multivariate stacked-trait model (Stage 2 internal)
 #'
 #' Called by [gllvmTMB()] when the formula contains `latent()` or `indep()`
@@ -1434,7 +1460,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                                missing_meta = NULL,
                                temporal = NULL,
                                estimator = "ml",
-                               engine = "tmb") {
+                               engine = "tmb",
+                               warn_tweedie_pin = TRUE,
+                               warn_tweedie_boundary = TRUE) {
   if (!is.logical(REML) || length(REML) != 1L || is.na(REML)) {
     cli::cli_abort(c(
       "{.arg REML} must be a single {.code TRUE} or {.code FALSE} value.",
@@ -3363,12 +3391,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ))
     }
     if (species_diag && !identical(site, species)) {
-      cli::cli_inform(c(
-        "i" = "{.code phylo_indep({species}) + indep(0 + trait | {species})} at {.code unit = {.val {site}}} fits the {.val {species}}-level non-phylogenetic variance via the {.code diag | {species}} ({.code q_sp}) engine slot.",
-        "*" = "This is the {.code p_it + q_it} decomposition of the Nakagawa et al. functional-biogeography model. Joint identifiability is empirically reasonable at {.code n_species >= 100} with strong phylogenetic signal: {.code sigma2_Q} recovers within ~10% relative error; {.code sigma2_P} within ~50% (per-trait estimates can be noisy). Compare the fit without the standalone species-level diagonal term to the fit with it to confirm both terms contribute on your data.",
-        ">" = "Use {.fn indep} for standalone non-phylogenetic diagonal terms."
-      ), .frequency = "once",
-         .frequency_id = "gllvmTMB-phylo-q-decomposition-inform")
+      .inform_phylo_species_diag(site, species)
     }
   }
   ## cluster2 foot-gun guard: the engine has no reduced-rank (rr / latent)
@@ -3627,6 +3650,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## ---- Build fixed-effects design matrix --------------------------------
   ## We use the full data env so that 0 + trait + (0+trait):env etc. parses.
   mf <- stats::model.frame(parsed$fixed, data = data, na.action = stats::na.pass)
+  ## A one-level factor dies inside model.matrix() with a bare contrasts
+  ## error. Name the factor and point at the intercept-only formula (#1783).
+  .abort_one_level_fixed_factors(mf)
   X_fix <- stats::model.matrix(parsed$fixed, mf)
   fixed_prior_spec <- .gllvmTMB_resolve_fixed_priors(control$fixed_effect_priors, colnames(X_fix))
   isdm_observation_basis <- NULL
@@ -6505,7 +6531,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     log_sigma_re_int = if (use_re_int) rep(0.0, n_re_int_terms) else 0.0,
     ## NB2 / NB1 / Gamma / Tweedie per-trait dispersion. log(phi) starts at 0
     ## (phi = 1; for Gamma this is shape, so CV = 1);
-    ## logit(p) starts at 0 (p = 1.5, mid of the compound-Poisson regime).
+    ## theta starts at 0, so the smooth Tweedie power starts at 1.5
+    ## (midpoint of .gllvmTMB_tweedie_p).
     ## Design 48 phi-clamp ([0.01, 100]) applied below.
     log_phi_nbinom2  = .clamp_log_phi(rep(0.0, n_traits)),
     log_phi_nbinom1  = .clamp_log_phi(rep(0.0, n_traits)),
@@ -6740,7 +6767,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
           lambda_constraint = lambda_constraint,
           control = control_indep,
           silent = silent,
-          unit_obs = unit_obs
+          unit_obs = unit_obs,
+          warn_tweedie_pin = FALSE,
+          warn_tweedie_boundary = FALSE
         ),
         error = function(e) e
       )
@@ -7381,11 +7410,11 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     if (!is.null(m_phi_tweedie)) tmb_map$log_phi_tweedie <- m_phi_tweedie
     ## If the user supplied a numeric `p` on the tweedie() family object
     ## (e.g. tweedie(p = 1.5)), pin logit_p_tweedie per trait that uses it.
-    ## Parameterisation: p = 1 + plogis(logit_p_tweedie), so the pin value is
-    ## qlogis(p - 1). A requested p whose logit lies outside [-5, 5] is
-    ## stored at that bound and warned (#1365). The template is not clamped;
-    ## a free logit_p is unchanged. The same stored logit is what MSPL reads.
-    ## Mirrors the student(df = ...) per-trait pin below.
+    ## Parameterisation: p = .gllvmTMB_tweedie_p(logit_p_tweedie). An in-range
+    ## pin is stored with .gllvmTMB_tweedie_theta, not qlogis(p - 1): that
+    ## old storage turns a fixed 1.7 into about 1.823. A requested p outside
+    ## [p_lo, p_hi] is stored at that end and warned (#1365). The same stored
+    ## value is what MSPL reads. Mirrors the student(df = ...) per-trait pin.
     ## Combined with the family mask via `dispersion_trait_map()`'s
     ## `user_pin_mask` so a mixed fit's non-tweedie traits AND a tweedie
     ## trait's user-fixed p are pinned by the same map.
@@ -7400,8 +7429,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       if (all(!is.na(p_vals)) && length(unique(p_vals)) == 1L) p_pin[t] <- p_vals[1]
     }
     if (any(!is.na(p_pin))) {
-      logit_pin <- .tweedie_pinned_logits(p_pin)
-      tmb_params$logit_p_tweedie[!is.na(p_pin)] <- logit_pin[!is.na(p_pin)]
+      theta_pin <- .tweedie_pinned_theta(p_pin, warn = warn_tweedie_pin)
+      tmb_params$logit_p_tweedie[!is.na(p_pin)] <- theta_pin[!is.na(p_pin)]
       tmb_map$logit_p_tweedie <- dispersion_trait_map(mask_tweedie, !is.na(p_pin))
     } else {
       ## No trait has a user-supplied `p` -- still pin non-tweedie traits'
@@ -9004,8 +9033,12 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ##     The rule here is stationarity of the AD-exact gradient of the
       ##     surrogate at its own adaptation point (max |grad| < aghq_grad_tol)
       ##     together with a settled adaptation point (max |mode shift| <
-      ##     aghq_shift_tol); at a fixed point of the adaptation map those two
-      ##     conditions ARE stationarity of F.
+      ##     aghq_shift_tol). At a fixed point of the adaptation map that is
+      ##     stationarity of F only up to the gradient of F through the
+      ##     adaptation point, which the surrogate omits and which does not
+      ##     vanish at finite k (#1746: 0.017 against the surrogate's 0.0019 on
+      ##     a k = 9 binomial cell). The cap-1 stall exit below is therefore
+      ##     judged on F's own gradient.
       ##
       ##  2. A STEP THAT RAISES F IS REJECTED. That single test is what makes a
       ##     larger cap safe: a runaway is precisely a step that looks good
@@ -9262,10 +9295,56 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                                                    aghq_ridge_tau))),
               error = function(e) NA_real_
             )
-            aghq_stop <- sprintf(
-              paste0("stalled (no honest descent at cap 1 after backtracking); ",
-                     "max |grad| = %.3g (relative %.3g) against tolerances of %.3g / %.3g"),
-              g_last, rel_grad(g_last, F_best), grad_tol, grad_tol_rel)
+            ## #1746: before giving up, descend the honest objective with a
+            ## first-order-corrected surrogate (see
+            ## .gllvmTMB_aghq_recover_descent()). When it runs, the gradient
+            ## reported and judged is F's own, at the returned iterate.
+            F_honest <- function(p) {
+              a <- .gllvmTMB_aghq_adapt(obj_lap, p, d_B, n_sites)
+              obj_try$env$data$aghq_mode   <- a$mode
+              obj_try$env$data$aghq_Lt     <- a$Lt
+              obj_try$env$data$aghq_logdet <- as.numeric(a$logdet)
+              obj_try$retape()
+              v <- as.numeric(obj_try$fn(p))
+              if (.gllvmTMB_loading_ridge_applies(aghq_ridge_tau, names(obj_try$par))) {
+                li_h <- .gllvmTMB_ridge_block_index(names(obj_try$par))
+                v <- v + 0.5 * sum(p[li_h]^2) / aghq_ridge_tau^2
+              }
+              v
+            }
+            rec <- .gllvmTMB_aghq_recover_descent(
+              F_honest, obj_try, par_best, F_best, aghq_ridge_tau, run_one,
+              rho_min = rho_min
+            )
+            if (!is.null(rec)) {
+              if (rec$F < F_best) {
+                par_best <- rec$par
+                F_best   <- rec$F
+                opt_best <- rec$opt %||% opt_best
+                par_cur  <- par_best
+              }
+              g_last <- max(abs(rec$grad))
+              g_cur <- g_last
+              g_rel_cur <- rel_grad(g_last, F_best)
+            }
+            g_rel_last <- rel_grad(g_last, F_best)
+            rec_ok <- !is.null(rec) &&
+              ((is.finite(g_last) && g_last < grad_tol) ||
+                 (grad_tol_rel > 0 && is.finite(g_rel_last) &&
+                    g_rel_last < grad_tol_rel))
+            aghq_stop <- if (rec_ok) {
+              sprintf(paste0("converged (cap-1 stall recovered by %d first-order-corrected ",
+                             "step%s; honest objective stationary; max |grad| = %.3g, ",
+                             "relative %.3g)"),
+                      rec$iterations, if (rec$iterations == 1L) "" else "s",
+                      g_last, g_rel_last)
+            } else {
+              sprintf(
+                paste0("stalled (no honest descent at cap 1 after backtracking%s); ",
+                       "max |grad| = %.3g (relative %.3g) against tolerances of %.3g / %.3g"),
+                if (is.null(rec)) "" else " and first-order-corrected recovery",
+                g_last, g_rel_last, grad_tol, grad_tol_rel)
+            }
             break
           }
           ## Overreached: permanently lower the working cap by one stage.
@@ -10529,6 +10608,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       fit$source_strength$diagnostics <- .structured_rho_diagnostics(fit)
     }
   }
+  if (isTRUE(warn_tweedie_boundary)) .gllvmTMB_warn_tweedie_p_boundary(fit)
   fit
 }
 
@@ -12236,6 +12316,104 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   list(mode = mode, Lt = Lt, logdet = logdet)
 }
 
+## Recover descent on the honest AGHQ objective after a cap-1 stall (#1746).
+##
+## The adaptation loop minimises a SURROGATE whose nodes are frozen at the
+## current iterate, and the surrogate's gradient omits the dependence of the
+## adaptation point on the parameters. At finite k that omitted term does not
+## vanish at a fixed point of the adaptation map: on the seed-2003 runaway cell
+## of test-runaway-warning.R (binomial, n = 100, p = 6, q = 2, k = 9) the honest
+## objective F has max |grad| 0.017 where the surrogate reports 0.0019. Near
+## such a point the surrogate's step can point uphill in F, every backtracked
+## step is rejected, and the loop stalls. Which side of the fixed point an
+## iterate approaches from is decided by round-off, so the same cell converged
+## at -O2 and stalled under covr's -O0 build.
+##
+## The recovery makes the surrogate first-order consistent with F at the
+## current iterate theta_0 by adding the linear tilt c'(theta - theta_0), with
+## c = grad F(theta_0) - grad S(theta_0). The tilted surrogate then has F's
+## gradient at theta_0, so its step is a descent direction for F. grad F is a
+## central finite difference of F itself (every evaluation re-adapts the
+## nodes and retapes), so each gradient costs 2 * length(par) retapes; the
+## budget of `max_iter` steps bounds the extra work at (max_iter + 1) such
+## gradients per stalled start. A step is kept only if it strictly lowers F.
+## The loop ends when no step lowers F or the budget runs out -- never on the
+## convergence tolerances, so they judge the result and cannot steer it.
+##
+## `F_eval(p)` must return F(p) exactly as the adaptation loop scores it
+## (re-adapted nodes, attached fixed priors, loading ridge), and must leave
+## `obj`'s nodes adapted at `p`. Returns NULL when the honest gradient cannot
+## be evaluated, otherwise list(par, F, grad, opt, iterations) at the best
+## point found (`par`/`F` unchanged and `opt` NULL if no step was kept).
+.gllvmTMB_aghq_recover_descent <- function(F_eval, obj, par, F0, ridge_tau,
+                                           run_one, max_iter = 3L,
+                                           rho_min = 1 / 64, iter_cap = 25L) {
+  fd_grad <- function(p) {
+    h <- 1e-5 * pmax(1, abs(p))
+    vapply(seq_along(p), function(i) {
+      e <- numeric(length(p))
+      e[i] <- h[i]
+      (F_eval(p + e) - F_eval(p - e)) / (2 * h[i])
+    }, numeric(1))
+  }
+  finite_or_null <- function(g) if (is.null(g) || any(!is.finite(g))) NULL else g
+  g <- finite_or_null(tryCatch(fd_grad(par), error = function(e) NULL))
+  if (is.null(g)) return(NULL)
+  opt <- NULL
+  n_iter <- 0L
+  for (r in seq_len(max_iter)) {
+    ok <- tryCatch({ F_eval(par); TRUE }, error = function(e) FALSE)
+    if (!ok) break
+    tilt <- g - .gllvmTMB_penalised_gradient(obj, par, ridge_tau)
+    par0 <- par
+    tilted <- list(
+      par = obj$par, env = obj$env, report = obj$report,
+      fn = function(p) as.numeric(obj$fn(p)) + sum(tilt * (p - par0)),
+      gr = function(p) as.numeric(obj$gr(p)) + tilt
+    )
+    o <- tryCatch(run_one(par, .obj = tilted, .iter_cap = iter_cap,
+                          .ridge_tau = ridge_tau),
+                  error = function(e) NULL)
+    if (is.null(o) || any(!is.finite(o$par))) break
+    ## Singular convergence means PORT's quadratic model has no usable
+    ## direction (nlminb code 1, message "singular convergence (7)"). On the
+    ## q = 2 golden fixture at k = 3 that step's line search reports an
+    ## honest objective near 1.006 and a finite-difference gradient just
+    ## under the tolerance, so the stall is certified as converged. The
+    ## value is a coarse-grid artefact. A fresh adaptation from it does not
+    ## stay there on this machine, but the coverage CI build's does, and
+    ## multi-start then prefers it to the stationary Laplace start. The fit
+    ## returns nlminb code 1 at a point about 1.1 nll from the oracle. An
+    ## iteration-limit stop is still a usable short step; a singular one is not.
+    if (identical(as.integer(o$convergence), 1L) &&
+        grepl("singular convergence", o$message %||% "", fixed = TRUE)) {
+      break
+    }
+    step <- o$par - par
+    if (!any(step != 0)) break
+    rho <- 1
+    moved <- FALSE
+    while (rho >= rho_min) {
+      p_try <- par + rho * step
+      F_try <- tryCatch(F_eval(p_try), error = function(e) NA_real_)
+      if (is.finite(F_try) && F_try < F0) {
+        moved <- TRUE
+        break
+      }
+      rho <- rho / 2
+    }
+    if (!moved) break
+    g_try <- finite_or_null(tryCatch(fd_grad(p_try), error = function(e) NULL))
+    if (is.null(g_try)) break
+    par <- p_try
+    F0 <- F_try
+    g <- g_try
+    opt <- o
+    n_iter <- r
+  }
+  list(par = par, F = F0, grad = g, opt = opt, iterations = n_iter)
+}
+
 ## Resolve `control$aghq` into a node count. FALSE / NULL -> NULL (Laplace).
 ## "auto" -> the ladder start from `.aghq_resolve()`, else 9.
 ##
@@ -12386,6 +12564,18 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   if (!is.numeric(a) || length(a) != 1L || is.na(a) || a < 1)
     stop("control$aghq must be FALSE, \"auto\", or a positive integer")
   as.integer(a)
+}
+
+## Once-per-session note for a species-level phylogenetic term plus
+## `indep(0 + trait | species)` at `unit != species`. Worded for any phylo
+## keyword (`phylo_latent(..., unique = TRUE)`, `phylo_indep()`): it names
+## neither a keyword the user did not write nor internal engine slots (#1572).
+.inform_phylo_species_diag <- function(site, species) {
+  cli::cli_inform(c(
+    "i" = "A species-level phylogenetic term together with {.code indep(0 + trait | {species})} at {.code unit = {.val {site}}} fits a phylogenetic and a non-phylogenetic variance per trait at the {.val {species}} level.",
+    "*" = "The two are separable only with enough species and a strong phylogenetic signal. In simulations, about 100 or more species recovered the non-phylogenetic variance within ~10% relative error and the phylogenetic variance within ~50% (per-trait estimates can be noisy). Fit the model without the {.code indep(0 + trait | {species})} term and compare, to check that both terms contribute on your data."
+  ), .frequency = "once",
+     .frequency_id = "gllvmTMB-phylo-q-decomposition-inform")
 }
 
 ## Auto-suppress note when a per-row diagonal already absorbs the

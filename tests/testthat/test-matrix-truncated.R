@@ -6,7 +6,7 @@
 ## truncated_nbinom2(), a glmmTMB logLik cross-check, plus the y >= 1 input
 ## guard). This file DEEPENS that coverage by walking the three unit-tier
 ## structural cells the matrix campaign asks for on ONE truncated count family:
-##   latent(0 + trait | unit, d = 1) / unique(0 + trait | unit) / latent+unique.
+##   latent(0 + trait | unit, d = 1, unique = FALSE) / unique(0 + trait | unit) / latent+unique.
 ##
 ## Family choice: truncated_poisson() (family-id 10, log link). The matrix task
 ## names this family explicitly for the latent/unique structural smoke, and the
@@ -30,7 +30,7 @@
 ## CRITICAL: each structural cell is fitted to the DGP whose variance it can
 ## actually identify, otherwise the cell collapses to the boundary and an honest
 ## smoke is impossible:
-##   * `latent(d = 1)` (reduced rank) <- a single shared unit factor f_u with
+##   * `latent(d = 1, unique = FALSE)` <- a single shared unit factor f_u with
 ##     all-positive per-trait loadings lambda_t (rank-1 cross-trait structure).
 ##   * `unique(0 + trait | unit)` (per-trait diagonal) <- INDEPENDENT per-trait
 ##     unit effects g_{u,t} ~ N(0, sd_diag^2). The earlier shared-only fixture
@@ -213,19 +213,20 @@ expect_rho_unit_ci_smoke <- function(fit, n_traits) {
 }
 
 ## ---------------------------------------------------------------
-## latent(0 + trait | unit, d = 1) -- reduced-rank, one shared factor
+## latent(0 + trait | unit, d = 1, unique = FALSE) -- one shared factor
 ## ---------------------------------------------------------------
-test_that("truncated_poisson x latent(0 + trait | unit, d = 1): converges, PD Hessian, recovers intercepts, Lambda_B 3x1", {
+test_that("truncated_poisson x shared-only latent: converges, PD Hessian, recovers intercepts, Lambda_B 3x1", {
   skip_if_not_heavy()
   skip_if_not_truncpois_unit_deps()
   fx  <- make_ztpois_unit_fixture("shared")
   fit <- fit_ztpois_unit(
-    value ~ 0 + trait + latent(0 + trait | unit, d = 1), fx
+    value ~ 0 + trait + latent(0 + trait | unit, d = 1, unique = FALSE), fx
   )
   skip_unless_healthy_ztpois(fit, "latent(d=1)")
 
   expect_ztpois_unit_health(fit)
   expect_true(isTRUE(fit$use$rr_B))
+  expect_false(isTRUE(fit$use$diag_B))
   expect_equal(dim(fit$report$Lambda_B), c(fx$n_traits, 1L))
   expect_ztpois_intercepts_recover(fit, fx)
 })
@@ -238,7 +239,7 @@ test_that("truncated_poisson x latent(d = 1): rho:unit profile-CI smoke (honest 
   skip_if_not_truncpois_unit_deps()
   fx  <- make_ztpois_unit_fixture("shared")
   fit <- fit_ztpois_unit(
-    value ~ 0 + trait + latent(0 + trait | unit, d = 1), fx
+    value ~ 0 + trait + latent(0 + trait | unit, d = 1, unique = FALSE), fx
   )
   skip_unless_healthy_ztpois(fit, "latent(d=1) rho:unit")
   expect_rho_unit_ci_smoke(fit, fx$n_traits)

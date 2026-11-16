@@ -218,7 +218,8 @@
 #'   log-dispersion parameter per trait: `nbinom1()` uses
 #'   Var = mu * (1 + phi), while `nbinom2()` uses
 #'   Var = mu + mu^2 / phi. The `tweedie()` family
-#'   fits one log-phi and one logit-(p-1) per trait, with p in (1, 2).
+#'   fits one log-dispersion and one power per trait. The power stays
+#'   inside about 1.000006 and 1.999994.
 #'   The `Beta()` and `betabinomial()` families each fit one
 #'   log-precision per trait (a = mu*phi, b = (1-mu)*phi; Smithson &
 #'   Verkuilen 2006). The `student()` family fits one log-sigma and one
@@ -1619,7 +1620,12 @@ gllvmTMB <- function(
     ),
     temporal = temporal_spec,
     estimator = estimator,
-    engine = engine
+    engine = engine,
+    ## The boundary warning is issued once, below, on the fit that is
+    ## returned. The AGHQ pilot and the Laplace auto-refit also call
+    ## fit_once, and the indep pre-fit calls gllvmTMB_multi_fit itself;
+    ## none of those should warn about a fit the caller does not receive.
+    warn_tweedie_boundary = FALSE
   )
   .fit <- if (.gllvmTMB_aghq_auto_requested(control)) {
     .gllvmTMB_fit_aghq_auto_ridge(fit_once, control)
@@ -1638,6 +1644,12 @@ gllvmTMB <- function(
       .fit <- .refit
       .la_audit <- NULL
     }
+  }
+  ## One free-power warning, on the fit the caller receives. The
+  ## variational route already warned when it built the object; a second
+  ## call here would treat a missing TMB map as "every power is free".
+  if (!inherits(.fit, "gllvmTMB_va")) {
+    .gllvmTMB_warn_tweedie_p_boundary(.fit)
   }
   ## Public coefficient provenance is attached after fitting. In particular,
   ## no-intercept phylo_coef(..., rho = 1) deliberately hard-dispatches through

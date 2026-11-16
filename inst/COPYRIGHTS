@@ -4,7 +4,7 @@
 ## stacked-trait, long-format multivariate generalised linear latent
 ## variable models (GLLVMs). Except for the components and source lineages
 ## recorded below, the gllvmTMB-specific code -- including the multi-trait
-## engine, formula parser, 5 x 3 covariance keyword grid, response-family
+## engine, formula parser, 6 x 3 covariance keyword grid, response-family
 ## extensions, diagnostics, and extractors -- is licensed GPL-3 by Shinichi
 ## Nakagawa.
 ##

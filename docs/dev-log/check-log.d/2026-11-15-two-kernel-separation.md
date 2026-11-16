@@ -15,3 +15,5 @@ Exact installed-guard invocation from the staged source directory:
 ```sh
 TASK_LIB=/tmp/gllvmtmb-separation-repin.7675k0/lib OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 NOT_CRAN=true Rscript --vanilla -e 'lib <- Sys.getenv("TASK_LIB"); library(gllvmTMB, lib.loc=lib); stopifnot(normalizePath(find.package("gllvmTMB")) == normalizePath(file.path(lib,"gllvmTMB"))); z <- testthat::test_file("tests/testthat/test-coevolution-known-fixed-error.R", env=new.env(parent=asNamespace("gllvmTMB")), reporter="summary"); a <- as.data.frame(z); print(colSums(a[c("passed","failed","error","warning","skipped")])); if(any(a$failed>0|a$error|a$warning>0|a$skipped>0)) quit(status=1); cat("INSTALLED_GUARD_PASS\n")'
 ```
+
+The current-main scratch union at `5e41fd1202fc1e1963174c98e6d79d38126723c1` passed 1,464 targeted checks, with no reported failures, errors, warnings or skips. Source manifests matched before and after; full command and receipts are under `/home/snakagaw/hsq_work/two-kernel-main5e41-union.iShdx6/`. The final installed build also passed seven empty-trait-level checks; see `/tmp/gllvmtmb-separation-repin.7675k0/empty-level.log`.

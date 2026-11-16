@@ -343,7 +343,7 @@ test_that("mean se under 'joint' is smaller than under 'quad' (the double-count 
   expect_lt(mean(pm_joint$se_confidence), mean(pm_quad$se_confidence))
 })
 
-test_that("route = 'quad' is unchanged by the joint-route addition (regression guard)", {
+test_that("quad and joint SE routes agree with a dense same-fit oracle", {
   skip_if_not_heavy()
   dat <- .pm_se_data()
   miss_idx <- c(3L, 15L, 47L, 68L)
@@ -351,48 +351,77 @@ test_that("route = 'quad' is unchanged by the joint-route addition (regression g
   dat_na$value[miss_idx] <- NA_real_
 
   fit <- .pm_se_fit(dat_na, missing = miss_control(response = "include"))
+  # Historical single-start reference at 70c14922a, reproduced on Totoro.
+  # This ceiling permits 1e-8 relative objective variation and does not relax
+  # the 1e-9 route-math comparisons below.
+  expect_lte(fit$opt$objective, 114.66424227170404 + 1e-8 * 114.66424227170404)
 
   pm_default <- predict_missing(fit, se = TRUE)
   pm_quad    <- predict_missing(fit, se = TRUE, se_route = "quad")
+  pm_joint   <- predict_missing(fit, se = TRUE, se_route = "joint")
   expect_identical(pm_default, pm_quad)
-
-  # Pinned values (computed once, on this seeded fixture, from the R1-quad
-  # implementation the joint-route addition left untouched). A future change
-  # to the quad math should show up here, not just as "still finite".
-  expect_equal(
-    pm_quad$se_confidence,
-    c(0.317298536777259, 0.223280793541261, 0.251703705707742, 0.207706175508292),
-    tolerance = 1e-9
-  )
-  expect_equal(
-    pm_quad$se_prediction,
-    c(0.775704356618387, 0.742221799868591, 0.75126136790252, 0.737686073326613),
-    tolerance = 1e-9
-  )
-})
-
-test_that("route = 'joint' is unchanged by the joint_load-route addition (regression guard)", {
-  skip_if_not_heavy()
-  dat <- .pm_se_data()
-  miss_idx <- c(3L, 15L, 47L, 68L)
-  dat_na <- dat
-  dat_na$value[miss_idx] <- NA_real_
-
-  fit <- .pm_se_fit(dat_na, missing = miss_control(response = "include"))
-  pm_joint <- predict_missing(fit, se = TRUE, se_route = "joint")
-
-  # Pinned values (computed once, before the joint_load addition, from the
-  # unchanged include_loadings = FALSE code path).
-  expect_equal(
-    pm_joint$se_confidence,
-    c(0.291638707869492, 0.210630175000246, 0.235318507601033, 0.19680670907974),
-    tolerance = 1e-9
-  )
-  expect_equal(
-    pm_joint$se_prediction,
-    c(0.765566472204434, 0.738514697251443, 0.745931422756364, 0.734691614335262),
-    tolerance = 1e-9
-  )
+  # A source-pinned same-fit oracle replaces the old seeded-refit numerical
+  # pins: those pins also captured optimizer/platform drift. This checks route
+  # arithmetic, not the old fitted values or interval coverage.
+  masked <- which(fit$tmb_data$is_y_observed == 0L)
+  expect_length(masked, 4L)
+  expect_identical(pm_quad$model_row, masked)
+  expect_identical(pm_joint$model_row, masked)
+  expect_identical(pm_quad$original_row, miss_idx)
+  expect_identical(pm_joint$original_row, miss_idx)
+  sdr <- TMB::sdreport(fit$tmb_obj, par.fixed = fit$opt$par, getJointPrecision = TRUE)
+  Q <- as.matrix(sdr$jointPrecision)
+  expect_true(isTRUE(sdr$pdHess))
+  expect_true(all(is.finite(Q)))
+  V <- solve(Q)
+  nms <- rownames(Q)
+  fixed_pos <- which(nms == "b_fix")
+  z_pos <- which(nms == "z_B")
+  fixed_free <- gllvmTMB:::.gllvmTMB_xcoef_status(fit) != "fixed"
+  X <- fit$X_fix[, fixed_free, drop = FALSE]
+  expect_length(fixed_pos, ncol(X))
+  expect_length(z_pos, fit$d_B * fit$n_sites)
+  z_map <- matrix(z_pos, nrow = fit$d_B, ncol = fit$n_sites)
+  fixed_sdr <- which(names(sdr$par.fixed) == "b_fix")
+  random_sdr <- which(names(sdr$par.random) == "z_B")
+  expect_length(fixed_sdr, length(fixed_pos))
+  expect_length(random_sdr, length(z_pos))
+  expect_equal(V[fixed_pos, fixed_pos, drop = FALSE],
+               unname(sdr$cov.fixed[fixed_sdr, fixed_sdr, drop = FALSE]),
+               tolerance = 1e-9, ignore_attr = TRUE)
+  expect_equal(unname(diag(V)[z_pos]), unname(sdr$diag.cov.random[random_sdr]), tolerance = 1e-9)
+  trait <- as.integer(fit$data[[fit$trait_col]])
+  unit <- as.integer(fit$data[[fit$unit_col]])
+  lambda <- fit$report$Lambda_B
+  components <- lapply(masked, function(i) {
+    wb <- wz <- numeric(nrow(V))
+    wb[fixed_pos] <- X[i, ]
+    wz[z_map[, unit[i]]] <- lambda[trait[i], ]
+    fb <- as.numeric(crossprod(wb, V %*% wb))
+    latent <- sum(wz^2 * diag(V))
+    list(fixed = fb, latent = latent,
+         joint = as.numeric(crossprod(wb + wz, V %*% (wb + wz))))
+  })
+  fixed_var <- vapply(components, `[[`, numeric(1), "fixed")
+  latent_var <- vapply(components, `[[`, numeric(1), "latent")
+  quad_var <- fixed_var + latent_var
+  joint_var <- vapply(components, `[[`, numeric(1), "joint")
+  sigma_index <- which(names(fit$opt$par) == "log_sigma_eps")
+  expect_length(sigma_index, 1L)
+  noise_var <- exp(2 * unname(fit$opt$par[sigma_index]))
+  expect_true(all(is.finite(c(quad_var, joint_var, noise_var))))
+  expect_equal(pm_quad$se_confidence^2, quad_var, tolerance = 1e-9)
+  expect_equal(pm_quad$se_prediction^2, quad_var + noise_var, tolerance = 1e-9)
+  expect_equal(pm_joint$se_confidence^2, joint_var, tolerance = 1e-9)
+  expect_equal(pm_joint$se_prediction^2, joint_var + noise_var, tolerance = 1e-9)
+  # Synthetic wrong-formula controls: each must be detectable on this fixture.
+  detected <- function(x, reference) max(abs(x - reference)) > 20e-9
+  expect_true(detected(fixed_var, quad_var))              # omitted latent
+  expect_true(detected(fixed_var + 2 * latent_var, quad_var))
+  expect_true(detected(rev(quad_var), quad_var))          # wrong row
+  expect_true(detected(fixed_var + latent_var, joint_var)) # omitted cross term
+  expect_true(detected(joint_var, joint_var + noise_var)) # omitted noise
+  expect_true(detected(joint_var + 2 * noise_var, joint_var + noise_var))
 })
 
 # ---- R1-joint+loadings route (Design 119 sec.7b wave-1b route change) -----

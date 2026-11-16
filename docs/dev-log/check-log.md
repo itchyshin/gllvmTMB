@@ -58368,3 +58368,7 @@ Consistency scans (exact patterns and scope):
 - rg "gllvmTMB_wide" README.md NEWS.md docs vignettes — existing matches are outside README; no README hit.
 
 Absolute-path slop check covered README, check-log, report, and PR body; no file exceeded the review threshold. No likelihood, API, formula grammar, family, generated Rd, article, or pkgdown navigation change.
+
+## 2026-11-14: provisional gllvmTMB 0.8.0 release metadata
+
+On base `abf3e905fb9e22f5eca9b8dd01c9ea476fde4ee2`, the isolated candidate updates the DESCRIPTION version to 0.8.0 and corrects the COPYRIGHTS grid description to 6 by 3. `Rscript --vanilla` read and checked the DESCRIPTION version and license, and `git diff --check` passed. The current development NEWS is unchanged because active pull requests also edit it. Full release-source tests, release notes, component rights, and independent release review remain open; this is not a release.

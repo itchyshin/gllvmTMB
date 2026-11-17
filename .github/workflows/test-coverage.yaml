@@ -95,7 +95,9 @@ jobs:
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          extra-packages: any::covr, any::xml2
+          # covr 4.0.0 failed to read counters after tests under the isolated R CMD check path.
+          # Pin the last verified release until that trace-file failure is resolved.
+          extra-packages: any::covr@3.6.5, any::xml2
           needs: coverage
 
       - name: Record tested commit

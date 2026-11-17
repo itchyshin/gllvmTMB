@@ -4810,7 +4810,7 @@ Checks:
 
 - `Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); pkgdown::build_article("articles/phylogenetic-gllvm", pkg = ".", lazy = FALSE, new_process = FALSE, quiet = FALSE)'`
   -> passed; wrote `pkgdown-site/articles/phylogenetic-gllvm.html`.
-- `rg -n 'tier: 3|Internal article gate|Reader path and scope|PHY-02|PHY-03|PHY-05|PHY-06|PHY-07|PHY-08|EXT-05|EXT-07|EXT-18|EXT-27|DIA-08|calibrated uncertainty|gllvmTMB_wide|meta_known_V|diag\\(U\\)|diag\\(S\\)|\\\\bf S|estimated rho|calibrated intervals' vignettes/articles/phylogenetic-gllvm.Rmd`
+- `rg -n 'tier: 3|Internal article gate|Reader path and scope|PHY-02|PHY-03|PHY-05|PHY-06|PHY-07|PHY-08|EXT-05|EXT-07|EXT-18|EXT-27|DIA-08|calibrated uncertainty|gllvmTMB_wide|meta_known_V|diag\(U\)|diag\\(S\\)|\\\\bf S|estimated rho|calibrated intervals' vignettes/articles/phylogenetic-gllvm.Rmd`
   -> confirmed the new bridge/gate text and no stale forbidden terms in the
   touched article source.
 - `git diff --check`
@@ -10314,7 +10314,7 @@ Checks:
 
 Consistency audit:
 
-- `rg -n "gllvmTMB\\(|gllvmTMB_wide\\(|traits\\(" vignettes/articles/morphometrics.Rmd`
+- `rg -n "gllvmTMB\\(|gllvmTMB_wide\(|traits\\(" vignettes/articles/morphometrics.Rmd`
   shows each live fit context has a long and wide formula pair;
 - `rg -n "getLoadings\\(|ordiplot\\(|extract_ICC_site\\(|extract_residual_split\\(" vignettes/articles/morphometrics.Rmd`
   returns no live legacy-helper hits;
@@ -10851,7 +10851,7 @@ Checks run:
   `../logo.png` pkgdown image warning appeared.
 - `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::check_pkgdown()'`
   passed with "No problems found."
-- `rg -n 'Sigma_B|S_B|"B"|\\+ U|diag\\(U\\)|U_phy|U_non|no associated|three-piece|3-piece' vignettes/articles/covariance-correlation.Rmd pkgdown-site/articles/covariance-correlation.html`
+- `rg -n 'Sigma_B|S_B|"B"|\\+ U|diag\(U\)|U_phy|U_non|no associated|three-piece|3-piece' vignettes/articles/covariance-correlation.Rmd pkgdown-site/articles/covariance-correlation.html`
   returned no hits after the final article render.
 - Focused Rose scan found only intentional legacy-alias documentation
   in `R/extract-sigma.R` / `man/extract_Sigma.Rd` and the active
@@ -11494,7 +11494,7 @@ Evidence:
   the `devtools::test()` rerun is the meaningful check.
 - `git diff --check` completed cleanly.
 - Stale-wording scan used verbatim:
-  `rg -n '3 x 5|3 × 5|removed in 0\\.2\\.0|REMOVED in 0\\.2\\.0|compound-symmetric \`indep|Compound-symmetric \`indep|indep.*compound-symmetric|off-diagonals equal|single trait-by-trait correlation|meta_known_V\\(V|reserved for \`meta_known_V|gllvmTMB_wide\\(Y, \\.\\.\\.\\) was removed' AGENTS.md CLAUDE.md CONTRIBUTING.md DESCRIPTION README.md NEWS.md _pkgdown.yml docs/design docs/dev-log/known-limitations.md .agents/skills R man`
+  `rg -n '3 x 5|3 × 5|removed in 0\\.2\\.0|REMOVED in 0\\.2\\.0|compound-symmetric \`indep|Compound-symmetric \`indep|indep.*compound-symmetric|off-diagonals equal|single trait-by-trait correlation|meta_known_V\\(V|reserved for \`meta_known_V|gllvmTMB_wide\(Y, \\.\\.\\.\\) was removed' AGENTS.md CLAUDE.md CONTRIBUTING.md DESCRIPTION README.md NEWS.md _pkgdown.yml docs/design docs/dev-log/known-limitations.md .agents/skills R man`
   Remaining hits were expected: NEWS's historical "3 x 5 to 4 x 5"
   wording and a `R/gllvmTMB.R` no-covstruct fallback comment, not the
   legacy matrix wrapper.
@@ -14146,7 +14146,7 @@ Stale-link and wording scans:
 
 - `rg -n "articles/(joint-sdm|profile-likelihood-ci|behavioural-syndromes|mixed-family-extractors|animal-model|phylogenetic-gllvm|psychometrics-irt|lambda-constraint|simulation-recovery-validated|cross-package-validation|functional-biogeography|choose-your-model)\\.html|\\]\\((joint-sdm|profile-likelihood-ci|behavioural-syndromes|mixed-family-extractors|animal-model|phylogenetic-gllvm|psychometrics-irt|lambda-constraint|simulation-recovery-validated|cross-package-validation|functional-biogeography|choose-your-model)\\.html\\)" README.md vignettes/gllvmTMB.Rmd vignettes/articles/{morphometrics,covariance-correlation,api-keyword-grid,response-families,convergence-start-values,pitfalls}.Rmd ROADMAP.md pkgdown-site/index.html pkgdown-site/articles/{index,gllvmTMB,roadmap,morphometrics,covariance-correlation,api-keyword-grid,response-families,convergence-start-values,pitfalls}.html`
   -> no public clickable links to hidden article pages.
-- `rg -n "publication-ready|any of 15|choose-your-model|meta_known_V|profile-likelihood default|diag\\(U\\)|U_phy|U_non|S_B|S_W|\\\\bf S|trio" README.md vignettes/gllvmTMB.Rmd vignettes/articles/{morphometrics,covariance-correlation,api-keyword-grid,response-families,convergence-start-values,pitfalls}.Rmd ROADMAP.md _pkgdown.yml`
+- `rg -n "publication-ready|any of 15|choose-your-model|meta_known_V|profile-likelihood default|diag\(U\)|U_phy|U_non|S_B|S_W|\\\\bf S|trio" README.md vignettes/gllvmTMB.Rmd vignettes/articles/{morphometrics,covariance-correlation,api-keyword-grid,response-families,convergence-start-values,pitfalls}.Rmd ROADMAP.md _pkgdown.yml`
   -> acceptable hits only: roadmap says visible is not publication-ready;
   `_pkgdown.yml` lists `choose-your-model` under `title: internal`; reference
   index keeps deprecated `meta_known_V` as a documented alias.
@@ -14494,7 +14494,7 @@ Evidence:
 
 Rose / stale-wording scans:
 
-- `rg -n "Long data are canonical|long data are canonical|Data shapes: long or wide|gllvmTMB_wide\\(Y, \\.\\.\\.\\) was removed|removed in 0\\.2\\.0|diag\\(S\\)|diag\\(s\\)|diag\\(U\\)|\\\\bf S|S_B|S_W|profile-likelihood default|profile default" README.md NEWS.md R/extract-sigma-table.R man/extract_Sigma_table.Rd vignettes/articles/morphometrics.Rmd docs/design/06-extractors-contract.md docs/design/35-validation-debt-register.md docs/design/53-report-ready-extractor-plot-contract.md pkgdown-site/index.html`
+- `rg -n "Long data are canonical|long data are canonical|Data shapes: long or wide|gllvmTMB_wide\(Y, \\.\\.\\.\\) was removed|removed in 0\\.2\\.0|diag\\(S\\)|diag\\(s\\)|diag\(U\)|\\\\bf S|S_B|S_W|profile-likelihood default|profile default" README.md NEWS.md R/extract-sigma-table.R man/extract_Sigma_table.Rd vignettes/articles/morphometrics.Rmd docs/design/06-extractors-contract.md docs/design/35-validation-debt-register.md docs/design/53-report-ready-extractor-plot-contract.md pkgdown-site/index.html`
   -> no matches.
 - `rg -n "gllvmTMB\\(" README.md R/extract-sigma-table.R man/extract_Sigma_table.Rd vignettes/articles/morphometrics.Rmd NEWS.md docs/design/06-extractors-contract.md`
   -> every touched long-format call uses `trait = "..."`; wide calls use
@@ -14570,7 +14570,7 @@ rg -n 'NA in response or design matrix|remove NA rows before fitting|Missing res
 Verdict: old combined NA wording is gone; new MIS-21 documentation appears in
 roxygen, Rd, NEWS, and the validation register.
 
-- `rg -n 'trio|profile-likelihood default|gllvmTMB_wide\\(Y, \\.\\.\\.\\) was removed|removed in 0\\.2\\.0|meta_known_V\\(|diag\\(S\\)|diag\\(s\\)|diag\\(U\\)|\\\\bf S|\\bS_B\\b|\\bS_W\\b|unsupported .* implemented|all-missing traits' NEWS.md R/gllvmTMB.R man/gllvmTMB.Rd README.md vignettes/articles/morphometrics.Rmd docs/design/35-validation-debt-register.md docs/design/06-extractors-contract.md docs/design/53-report-ready-extractor-plot-contract.md`
+- `rg -n 'trio|profile-likelihood default|gllvmTMB_wide\(Y, \\.\\.\\.\\) was removed|removed in 0\\.2\\.0|meta_known_V\\(|diag\\(S\\)|diag\\(s\\)|diag\(U\)|\\\\bf S|\\bS_B\\b|\\bS_W\\b|unsupported .* implemented|all-missing traits' NEWS.md R/gllvmTMB.R man/gllvmTMB.Rd README.md vignettes/articles/morphometrics.Rmd docs/design/35-validation-debt-register.md docs/design/06-extractors-contract.md docs/design/53-report-ready-extractor-plot-contract.md`
   -> only intentional existing mentions were found: `meta_known_V()` as a
   deprecated alias, an internal source comment about the removed sdmTMB
   fallback, and the new NEWS limitation that all-missing traits still need
@@ -15200,7 +15200,7 @@ Rose / stale-wording scans:
 - `rg -n "MIS-22|EXT-24|morphometrics-bootstrap-r|cached bootstrap|failed refits|interval-calibration|plot_correlations\\(morph_boot_R|bootstrap_Sigma\\(\\.\\.\\., what = \\\"R\\\"\\)" NEWS.md vignettes/articles/morphometrics.Rmd tests/testthat/test-example-morphometrics.R data-raw/examples/make-morphometrics-bootstrap-correlation.R docs/design/35-validation-debt-register.md docs/design/53-report-ready-extractor-plot-contract.md pkgdown-site/articles/morphometrics.html`
   -> fixture, public prose, rendered HTML, tests, NEWS, and register rows tell
   the same story.
-- `rg -n "gllvmTMB_wide\\(|meta_known_V|profile-likelihood default|trio|diag\\(U\\)|U_phy|U_non|\\\\bf S|S_B|S_W" vignettes/articles/morphometrics.Rmd NEWS.md docs/design/53-report-ready-extractor-plot-contract.md`
+- `rg -n "gllvmTMB_wide\(|meta_known_V|profile-likelihood default|trio|diag\(U\)|U_phy|U_non|\\\\bf S|S_B|S_W" vignettes/articles/morphometrics.Rmd NEWS.md docs/design/53-report-ready-extractor-plot-contract.md`
   -> no stale terminology in the touched article or plot contract. Older NEWS
   hits were pre-existing compatibility/deprecation text.
 
@@ -15304,7 +15304,7 @@ Evidence:
   -> `No problems found.`
 - `git diff --check`
   -> clean before this check-log entry.
-- `rg -n "gllvmTMB_wide\\(|meta_known_V|profile-likelihood default|trio|diag\\(U\\)|U_phy|U_non|\\\\bf S|S_B|S_W" README.md vignettes/gllvmTMB.Rmd`
+- `rg -n "gllvmTMB_wide\(|meta_known_V|profile-likelihood default|trio|diag\(U\)|U_phy|U_non|\\\\bf S|S_B|S_W" README.md vignettes/gllvmTMB.Rmd`
   -> only the intentional README soft-deprecation note for
   `gllvmTMB_wide(Y, ...)`.
 - `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never")'`
@@ -15533,7 +15533,7 @@ Evidence:
 - `rg -n 'corr-heatmap|make_corr_long|df_corr|geom_tile\\(|geom_text\\(|scale_fill_gradient2\\(|compare_Sigma_table\\(|plot_Sigma_comparison\\(' vignettes/articles/morphometrics.Rmd`
   -> only `compare_Sigma_table()` and `plot_Sigma_comparison()` remain in the
   changed section; the article-local heatmap scaffolding is gone.
-- `rg -n "gllvmTMB_wide\\(|meta_known_V|diag\\(U\\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|plotting geometry remains|estimate-vs-truth article figures remain future" vignettes/articles/morphometrics.Rmd`
+- `rg -n "gllvmTMB_wide\(|meta_known_V|diag\(U\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|plotting geometry remains|estimate-vs-truth article figures remain future" vignettes/articles/morphometrics.Rmd`
   -> no hits.
 - `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never")'`
   -> 0 errors, 1 install warning, 3 notes. Notes were the existing `air.toml`,
@@ -15671,7 +15671,7 @@ Evidence:
   -> the changed recovery section now uses comparison helpers; remaining
   `Sigma_fit` / `Sigma_truth` wording is the intentional trait-factor-order
   failure-mode explanation.
-- `rg -n "gllvmTMB_wide\\(|meta_known_V|diag\\(U\\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|estimate-vs-truth article figures remain future|plotting geometry remains" vignettes/articles/simulation-verification.Rmd`
+- `rg -n "gllvmTMB_wide\(|meta_known_V|diag\(U\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|estimate-vs-truth article figures remain future|plotting geometry remains" vignettes/articles/simulation-verification.Rmd`
   -> no hits.
 - `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never")'`
   -> 0 errors, 1 install warning, 3 notes. Notes were the existing `air.toml`,
@@ -16028,7 +16028,7 @@ Evidence:
   -> clean before the after-task report/check-log entry.
 - `rg -n 'First-model trait correlations|Between-individual syndrome correlations|Within-individual lability correlations|Between-site trait correlations|Within-site trait correlations|Shared and total latent-liability Sigma|title = ' vignettes/gllvmTMB.Rmd vignettes/articles/behavioural-syndromes.Rmd vignettes/articles/functional-biogeography.Rmd vignettes/articles/joint-sdm.Rmd pkgdown-site/articles/gllvmTMB.html pkgdown-site/articles/behavioural-syndromes.html pkgdown-site/articles/functional-biogeography.html pkgdown-site/articles/joint-sdm.html`
   -> edited labels are present in source and rendered HTML.
-- `rg -n 'gllvmTMB_wide\\(|meta_known_V|diag\\(U\\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|plotting geometry remains' vignettes/gllvmTMB.Rmd vignettes/articles/behavioural-syndromes.Rmd vignettes/articles/functional-biogeography.Rmd vignettes/articles/joint-sdm.Rmd`
+- `rg -n 'gllvmTMB_wide\(|meta_known_V|diag\(U\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|plotting geometry remains' vignettes/gllvmTMB.Rmd vignettes/articles/behavioural-syndromes.Rmd vignettes/articles/functional-biogeography.Rmd vignettes/articles/joint-sdm.Rmd`
   -> one existing `two-U-phylogeny` article-link slug hit in
   `functional-biogeography.Rmd`; no stale notation was introduced.
 - `Rscript --vanilla -e 'chk <- devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never"); print(chk)'`
@@ -16073,7 +16073,7 @@ Evidence:
 - `rg -n 'Report-ready Sigma rows|sigma_part_rows_B|sigma-matrix-backend|extract_Sigma_table\\(fit, level = "unit", part = "shared"\\)|extract_Sigma_table\\(fit_B|extract_Sigma\\(fit_B, level = "unit", part = "shared"\\)\\$Sigma' vignettes/articles/covariance-correlation.Rmd pkgdown-site/articles/covariance-correlation.html`
   -> row-first heading, decomposition-row chunk, matrix-backend chunk, and
   rendered HTML are present.
-- `rg -n 'gllvmTMB_wide\\(|meta_known_V|diag\\(U\\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|plotting geometry remains|What `extract_Sigma\\(\\)` gives you' vignettes/articles/covariance-correlation.Rmd`
+- `rg -n 'gllvmTMB_wide\(|meta_known_V|diag\(U\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|plotting geometry remains|What `extract_Sigma\\(\\)` gives you' vignettes/articles/covariance-correlation.Rmd`
   -> no hits.
 - `Rscript --vanilla -e 'chk <- devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never"); print(chk)'`
   -> 0 errors, 1 install warning, 4 notes. Notes were inability to verify
@@ -16120,7 +16120,7 @@ Evidence:
   -> clean before the after-task report/check-log entry.
 - `rg -n 'extract_Sigma_table\\(fit, level = "unit"\\)|sigma_rows <- extract_Sigma_table|Sigma rows|report-ready row per entry' README.md pkgdown-site/index.html`
   -> README source and rendered home page contain the row-first Sigma wording.
-- `rg -n 'gllvmTMB_wide\\(|meta_known_V|diag\\(U\\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|extract_Sigma\\(fit, level = "unit"\\) \\| The total covariance' README.md`
+- `rg -n 'gllvmTMB_wide\(|meta_known_V|diag\(U\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|extract_Sigma\\(fit, level = "unit"\\) \\| The total covariance' README.md`
   -> one intentional `gllvmTMB_wide()` hit remains in the soft-deprecation
   paragraph; the old matrix-first Sigma row is gone.
 - `Rscript --vanilla -e 'chk <- devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never"); print(chk)'`
@@ -16162,7 +16162,7 @@ Evidence:
   -> clean before the after-task report/check-log entry.
 - `rg -n 'extract_Sigma_table\\(fit, level = "unit"\\)|extract_correlations\\(fit, tier = "unit"\\)|extract_correlations\\(fit, tier = "unit_obs"\\)|extract_Sigma\\(fit, level = "unit"\\)\\$R|extract_Sigma\\(fit, level = "unit"\\)' vignettes/articles/choose-your-model.Rmd vignettes/articles/stacked-trait-gllvm.Rmd pkgdown-site/articles/choose-your-model.html pkgdown-site/articles/stacked-trait-gllvm.html`
   -> new row extractor calls are present; old `$R` examples are gone.
-- `rg -n 'gllvmTMB_wide\\(|meta_known_V|diag\\(U\\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|plotting geometry remains' vignettes/articles/choose-your-model.Rmd vignettes/articles/stacked-trait-gllvm.Rmd`
+- `rg -n 'gllvmTMB_wide\(|meta_known_V|diag\(U\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|plotting geometry remains' vignettes/articles/choose-your-model.Rmd vignettes/articles/stacked-trait-gllvm.Rmd`
   -> no hits.
 - `Rscript --vanilla -e 'chk <- devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never"); print(chk)'`
   -> 0 errors, 1 install warning, 4 notes. Notes were inability to verify
@@ -16202,7 +16202,7 @@ Evidence:
 - `rg -n 'extract_Sigma_table\\(fit, level = "unit", part = "total"\\)|extract_Sigma_table\\(boot, level = "unit", entries = "upper"\\)|boot\\$ci_lower\\$Sigma_B|boot\\$ci_upper\\$Sigma_B|extract_Sigma\\(fit, level = "unit", part = "total"\\)\\$Sigma' vignettes/articles/convergence-start-values.Rmd pkgdown-site/articles/convergence-start-values.html`
   -> row-first fitted and bootstrap Sigma examples are present; old direct
   bootstrap matrix-bound examples are gone.
-- `rg -n 'gllvmTMB_wide\\(|meta_known_V|diag\\(U\\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|plotting geometry remains' vignettes/articles/convergence-start-values.Rmd`
+- `rg -n 'gllvmTMB_wide\(|meta_known_V|diag\(U\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|plotting geometry remains' vignettes/articles/convergence-start-values.Rmd`
   -> no hits.
 - `Rscript --vanilla -e 'chk <- devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never"); print(chk)'`
   -> 0 errors, 1 install warning, 4 notes. Notes were inability to verify
@@ -16241,7 +16241,7 @@ Evidence:
 - `rg -n 'extract_Sigma_table\\(boot, level = "unit", entries = "upper"\\)|boot\\$point_est\\$Sigma_unit|boot\\$ci_lower\\$Sigma_unit|boot\\$ci_upper\\$Sigma_unit' vignettes/articles/mixed-family-extractors.Rmd pkgdown-site/articles/mixed-family-extractors.html`
   -> row-first bootstrap Sigma display is present; old raw matrix prints are
   gone from source.
-- `rg -n 'gllvmTMB_wide\\(|meta_known_V|diag\\(U\\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|plotting geometry remains' vignettes/articles/mixed-family-extractors.Rmd`
+- `rg -n 'gllvmTMB_wide\(|meta_known_V|diag\(U\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|plotting geometry remains' vignettes/articles/mixed-family-extractors.Rmd`
   -> no hits.
 - `Rscript --vanilla -e 'chk <- devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never"); print(chk)'`
   -> 0 errors, 1 install warning, 4 notes. Notes were inability to verify
@@ -16279,7 +16279,7 @@ Evidence:
 - `rg -n 'extract_Sigma_table\\(fit, level = "unit"\\)|extract_Sigma\\(level = "unit"\\)|extract_Sigma\\(fit, level = "unit"\\)' vignettes/articles/lambda-constraint.Rmd pkgdown-site/articles/lambda-constraint.html`
   -> new row-table helper call is present in source and rendered HTML; the old
   missing-`fit` snippet is gone.
-- `rg -n 'gllvmTMB_wide\\(|meta_known_V|diag\\(U\\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|plotting geometry remains' vignettes/articles/lambda-constraint.Rmd`
+- `rg -n 'gllvmTMB_wide\(|meta_known_V|diag\(U\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|plotting geometry remains' vignettes/articles/lambda-constraint.Rmd`
   -> no hits.
 - `Rscript --vanilla -e 'chk <- devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never"); print(chk)'`
   -> 0 errors, 1 install warning, 4 notes. Notes were inability to verify
@@ -16319,7 +16319,7 @@ Evidence:
 - `rg -n 'extract_Sigma_table\\(fit, level = \\.\\.\\.\\)|extract_Sigma\\(fit, level = \\.\\.\\.\\)|\\\\rm|Report-ready|tidy rows|mathrm\\{unit\\}|mathrm\\{phy\\}|mathrm\\{non\\}' vignettes/articles/gllvm-vocabulary.Rmd pkgdown-site/articles/gllvm-vocabulary.html`
   -> source and rendered HTML contain the row-table wording and `\mathrm{}`
   atoms; no `\rm` remains.
-- `rg -n 'gllvmTMB_wide\\(|meta_known_V|diag\\(U\\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|plotting geometry remains' vignettes/articles/gllvm-vocabulary.Rmd`
+- `rg -n 'gllvmTMB_wide\(|meta_known_V|diag\(U\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|plotting geometry remains' vignettes/articles/gllvm-vocabulary.Rmd`
   -> no hits.
 - `Rscript --vanilla -e 'chk <- devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never"); print(chk)'`
   -> 0 errors, 1 install warning, 4 notes. Notes were inability to verify
@@ -16371,7 +16371,7 @@ Evidence:
 - `rg -n 'title = "Mixed-family trait correlations"|title = "Exploratory item correlations"|title = "Genetic trait correlations"|title = "Phylogenetic and non-phylogenetic correlations"|title = NULL|subtitle = NULL|caption = NULL|title,subtitle,caption' R/plot-covariance-tables.R man/plot_Sigma_heatmap.Rd tests/testthat/test-plot-covariance-tables.R vignettes/articles/mixed-family-extractors.Rmd vignettes/articles/psychometrics-irt.Rmd vignettes/articles/animal-model.Rmd vignettes/articles/phylogenetic-gllvm.Rmd pkgdown-site/articles/mixed-family-extractors.html pkgdown-site/articles/psychometrics-irt.html pkgdown-site/articles/animal-model.html pkgdown-site/articles/phylogenetic-gllvm.html`
   -> helper signature, Rd usage, roxygen parameter, tests, and four article
   calls are present.
-- `rg -n 'gllvmTMB_wide\\(|meta_known_V|diag\\(U\\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|plotting geometry remains' R/plot-covariance-tables.R tests/testthat/test-plot-covariance-tables.R vignettes/articles/mixed-family-extractors.Rmd vignettes/articles/psychometrics-irt.Rmd vignettes/articles/animal-model.Rmd vignettes/articles/phylogenetic-gllvm.Rmd`
+- `rg -n 'gllvmTMB_wide\(|meta_known_V|diag\(U\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|plotting geometry remains' R/plot-covariance-tables.R tests/testthat/test-plot-covariance-tables.R vignettes/articles/mixed-family-extractors.Rmd vignettes/articles/psychometrics-irt.Rmd vignettes/articles/animal-model.Rmd vignettes/articles/phylogenetic-gllvm.Rmd`
   -> no hits.
 - `Rscript --vanilla -e 'chk <- devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never"); print(chk)'`
   -> 0 errors, 1 install warning, 4 notes. Notes were inability to verify
@@ -16463,7 +16463,7 @@ Evidence:
 - `rg -n 'Sigma\\$Sigma|round\\(Sigma\\$R|extract_Sigma_table\\(|plot_Sigma_heatmap\\(|fig.width = 5.8|trait\\s*=\\s*"trait"' vignettes/articles/mixed-family-extractors.Rmd pkgdown-site/articles/mixed-family-extractors.html`
   -> old printed matrix calls are gone; helper-backed source and rendered HTML
   are present.
-- `rg -n "gllvmTMB_wide\\(|meta_known_V|diag\\(U\\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|plotting geometry remains" vignettes/articles/mixed-family-extractors.Rmd`
+- `rg -n "gllvmTMB_wide\(|meta_known_V|diag\(U\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|plotting geometry remains" vignettes/articles/mixed-family-extractors.Rmd`
   -> no hits.
 - `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never")'`
   -> 0 errors, 1 install warning, 4 notes. Notes were an inability to verify
@@ -16504,7 +16504,7 @@ Evidence:
 - `rg -n 'Sigma_B_M1|Sigma_W_M1|round\\(Sigma_B_M1|round\\(Sigma_W_M1|Sigma_M1_rows|extract_Sigma_table\\(' vignettes/articles/functional-biogeography.Rmd pkgdown-site/articles/functional-biogeography.html`
   -> old matrix printout is gone; helper-backed source and rendered HTML are
   present.
-- `rg -n "gllvmTMB_wide\\(|meta_known_V|diag\\(U\\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|plotting geometry remains" vignettes/articles/functional-biogeography.Rmd`
+- `rg -n "gllvmTMB_wide\(|meta_known_V|diag\(U\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|plotting geometry remains" vignettes/articles/functional-biogeography.Rmd`
   -> only the pre-existing `two-U-phylogeny` link slug was found; no new stale
   notation was introduced.
 - `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never")'`
@@ -16549,7 +16549,7 @@ Evidence:
 - `rg -n 'wide individual-by-trait|morph\\$formula_wide|fit_long <- gllvmTMB|fit_wide|Same model, long data|trait = morph\\$fit_args\\$trait|Wide trait tables do not need' vignettes/gllvmTMB.Rmd pkgdown-site/articles/gllvmTMB.html`
   -> wide-first source/rendered HTML is present; the old `fit_wide` secondary
   object is gone.
-- `rg -n "gllvmTMB_wide\\(|meta_known_V|diag\\(U\\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|long data and wide data|fits the same model from long" vignettes/gllvmTMB.Rmd`
+- `rg -n "gllvmTMB_wide\(|meta_known_V|diag\(U\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|long data and wide data|fits the same model from long" vignettes/gllvmTMB.Rmd`
   -> no hits.
 - `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never")'`
   -> 0 errors, 1 install warning, 4 notes. Notes were an inability to verify
@@ -16588,7 +16588,7 @@ Evidence:
 - `rg -n '\\\\rm|\\\\mathrm\\{phy\\}|\\\\mathrm\\{non\\}|H\\^2' vignettes/articles/profile-likelihood-ci.Rmd pkgdown-site/articles/profile-likelihood-ci.html`
   -> no `\rm` remains; `\mathrm{phy}` and `\mathrm{non}` are present in source
   and rendered HTML.
-- `rg -n "gllvmTMB_wide\\(|meta_known_V|diag\\(U\\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U" vignettes/articles/profile-likelihood-ci.Rmd`
+- `rg -n "gllvmTMB_wide\(|meta_known_V|diag\(U\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U" vignettes/articles/profile-likelihood-ci.Rmd`
   -> no hits.
 - `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never")'`
   -> 0 errors, 1 install warning, 4 notes. Notes were an inability to verify
@@ -16634,7 +16634,7 @@ Evidence:
 - `rg -n 'Sigma_phy_shared|Sigma_phy_unique|Sigma_phy_total|Sigma_non_shared|Sigma_non_unique|Sigma_non_total|round\\(Sigma_phy|round\\(Sigma_non|extract_Sigma_table\\(|plot_Sigma_heatmap\\(|extract-total-correlations|phy_shared_diag' vignettes/articles/phylogenetic-gllvm.Rmd pkgdown-site/articles/phylogenetic-gllvm.html`
   -> removed matrix objects are gone; helper-backed source/rendered HTML and
   the table-backed communality ratio are present.
-- `rg -n "gllvmTMB_wide\\(|meta_known_V|diag\\(U\\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|plotting geometry remains" vignettes/articles/phylogenetic-gllvm.Rmd`
+- `rg -n "gllvmTMB_wide\(|meta_known_V|diag\(U\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|plotting geometry remains" vignettes/articles/phylogenetic-gllvm.Rmd`
   -> no hits.
 - `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never")'`
   -> 0 errors, 1 install warning, 3 notes. Notes were existing `air.toml`,
@@ -16676,7 +16676,7 @@ Evidence:
 - `rg -n 'phy <-|phy3 <-|phy\\$Sigma|phy\\$R|phy3\\$Sigma|phy3\\$R|round\\(phy|round\\(phy3|compare_Sigma_table\\(|plot_Sigma_heatmap\\(|G3-correlation|dimnames\\(G_true\\)' vignettes/articles/animal-model.Rmd pkgdown-site/articles/animal-model.html`
   -> old raw Sigma/R objects are gone; helper-backed source and rendered HTML
   are present.
-- `rg -n "gllvmTMB_wide\\(|meta_known_V|diag\\(U\\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|plotting geometry remains" vignettes/articles/animal-model.Rmd`
+- `rg -n "gllvmTMB_wide\(|meta_known_V|diag\(U\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|plotting geometry remains" vignettes/articles/animal-model.Rmd`
   -> no hits.
 - `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never")'`
   -> 0 errors, 1 install warning, 3 notes. Notes were existing `air.toml`,
@@ -16719,7 +16719,7 @@ Evidence:
 - `rg -n 'SB_exp <-|SB_exp\\$Sigma|SB_exp\\$R|round\\(SB_exp|extract_Sigma_table\\(|plot_Sigma_heatmap\\(|sigma-exp-corr' vignettes/articles/psychometrics-irt.Rmd pkgdown-site/articles/psychometrics-irt.html`
   -> old printed matrix calls are gone; helper-backed source and rendered HTML
   are present.
-- `rg -n "gllvmTMB_wide\\(|meta_known_V|diag\\(U\\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|plotting geometry remains" vignettes/articles/psychometrics-irt.Rmd`
+- `rg -n "gllvmTMB_wide\(|meta_known_V|diag\(U\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|plotting geometry remains" vignettes/articles/psychometrics-irt.Rmd`
   -> no hits.
 - `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never")'`
   -> 0 errors, 1 install warning, 4 notes. Notes were an inability to verify
@@ -16783,7 +16783,7 @@ Evidence:
 - `rg -n "gllvmTMB\\(" vignettes/articles/functional-biogeography.Rmd`
   -> all runnable/static long-format calls now include `trait = "trait"`; the
   wide `traits(...)` inline example intentionally does not take `trait =`.
-- `rg -n "gllvmTMB_wide\\(|meta_known_V|diag\\(U\\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|estimate-vs-truth article figures remain future|plotting geometry remains" R/plot-covariance-tables.R tests/testthat/test-plot-covariance-tables.R vignettes/articles/functional-biogeography.Rmd NEWS.md docs/design/06-extractors-contract.md docs/design/35-validation-debt-register.md man/plot_Sigma_heatmap.Rd _pkgdown.yml`
+- `rg -n "gllvmTMB_wide\(|meta_known_V|diag\(U\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|estimate-vs-truth article figures remain future|plotting geometry remains" R/plot-covariance-tables.R tests/testthat/test-plot-covariance-tables.R vignettes/articles/functional-biogeography.Rmd NEWS.md docs/design/06-extractors-contract.md docs/design/35-validation-debt-register.md man/plot_Sigma_heatmap.Rd _pkgdown.yml`
   -> hits only in existing NEWS / validation-register compatibility rows, not
   in the new helper or touched article code.
 - `rg -n "in prep|in preparation|\\bphylo\\(|\\bgr\\(|\\bmeta\\(|block_V\\(|phylo_rr\\(" vignettes/articles/functional-biogeography.Rmd R/plot-covariance-tables.R man/plot_Sigma_heatmap.Rd NEWS.md docs/design/06-extractors-contract.md`
@@ -16828,7 +16828,7 @@ Evidence:
 - `rg -n 'cov2cor\\(|round\\(cov2cor|extract_Sigma\\(fit, level = "unit"\\)\\$Sigma|plot_Sigma_heatmap\\(|sigma_corr_rows|cor-matrix' vignettes/gllvmTMB.Rmd pkgdown-site/articles/gllvmTMB.html`
   -> the old `cov2cor(extract_Sigma(...))` print is gone; helper-backed source
   and rendered HTML are present.
-- `rg -n "gllvmTMB_wide\\(|meta_known_V|diag\\(U\\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|estimate-vs-truth article figures remain future|plotting geometry remains" vignettes/gllvmTMB.Rmd`
+- `rg -n "gllvmTMB_wide\(|meta_known_V|diag\(U\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|estimate-vs-truth article figures remain future|plotting geometry remains" vignettes/gllvmTMB.Rmd`
   -> no hits.
 - `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never")'`
   -> 0 errors, 1 install warning, 3 notes. Notes were the existing `air.toml`,
@@ -16872,7 +16872,7 @@ Evidence:
 - `rg -n 'R_B_hat|R_W_hat|round\\(R_B_hat|round\\(R_W_hat|Estimated between-individual trait correlation matrix|Estimated within-individual trait correlation matrix|plot_Sigma_heatmap\\(|R_B_rows|R_W_rows' vignettes/articles/behavioural-syndromes.Rmd pkgdown-site/articles/behavioural-syndromes.html`
   -> the old printed matrices are gone; helper-backed source and rendered HTML
   are present.
-- `rg -n "gllvmTMB_wide\\(|meta_known_V|diag\\(U\\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|estimate-vs-truth article figures remain future|plotting geometry remains" vignettes/articles/behavioural-syndromes.Rmd`
+- `rg -n "gllvmTMB_wide\(|meta_known_V|diag\(U\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|estimate-vs-truth article figures remain future|plotting geometry remains" vignettes/articles/behavioural-syndromes.Rmd`
   -> no hits.
 - `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never")'`
   -> 0 errors, 1 install warning, 3 notes. Notes were the existing `air.toml`,
@@ -16914,7 +16914,7 @@ Evidence:
   "trait"`, while wide `traits(...)` calls intentionally do not.
 - `rg -n "trait\\s*=\\s*\\\"trait\\\"" vignettes/articles/stacked-trait-gllvm.Rmd vignettes/articles/animal-model.Rmd vignettes/articles/phylogenetic-gllvm.Rmd vignettes/articles/ordinal-probit.Rmd vignettes/articles/psychometrics-irt.Rmd`
   -> explicit trait arguments are present at the edited long-format call sites.
-- `rg -n "gllvmTMB_wide\\(|meta_known_V|diag\\(U\\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|estimate-vs-truth article figures remain future|plotting geometry remains" vignettes/articles/stacked-trait-gllvm.Rmd vignettes/articles/animal-model.Rmd vignettes/articles/phylogenetic-gllvm.Rmd vignettes/articles/ordinal-probit.Rmd vignettes/articles/psychometrics-irt.Rmd`
+- `rg -n "gllvmTMB_wide\(|meta_known_V|diag\(U\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|estimate-vs-truth article figures remain future|plotting geometry remains" vignettes/articles/stacked-trait-gllvm.Rmd vignettes/articles/animal-model.Rmd vignettes/articles/phylogenetic-gllvm.Rmd vignettes/articles/ordinal-probit.Rmd vignettes/articles/psychometrics-irt.Rmd`
   -> no hits.
 - `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never")'`
   -> 0 errors, 1 install warning, 3 notes. Notes were the existing `air.toml`,
@@ -16957,7 +16957,7 @@ Evidence:
 - `rg -n 'Sigma_shared <-|Sigma_total\\s*<-|round\\(Sigma_shared|round\\(Sigma_total|list\\(Sigma_shared|plot_Sigma_heatmap\\(|Sigma_shared_rows|Sigma_total_rows|trait\\s*=\\s*"trait"' vignettes/articles/joint-sdm.Rmd pkgdown-site/articles/joint-sdm.html`
   -> printed matrices are gone; helper-backed source/rendered HTML and explicit
   `trait = "trait"` are present.
-- `rg -n "gllvmTMB_wide\\(|meta_known_V|diag\\(U\\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|estimate-vs-truth article figures remain future|plotting geometry remains" vignettes/articles/joint-sdm.Rmd`
+- `rg -n "gllvmTMB_wide\(|meta_known_V|diag\(U\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|estimate-vs-truth article figures remain future|plotting geometry remains" vignettes/articles/joint-sdm.Rmd`
   -> no hits.
 - `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never")'`
   -> 0 errors, 1 install warning, 3 notes. Notes were the existing `air.toml`,
@@ -17004,7 +17004,7 @@ Evidence:
   -> no hits.
 - `rg -n 'compare_Sigma_table\\(|plot_Sigma_comparison\\(|Correlation estimates vs truth|Segments are errors, not CIs|fig.width = 7.2' vignettes/articles/behavioural-syndromes.Rmd R/plot-covariance-tables.R tests/testthat/test-plot-covariance-tables.R`
   -> helper calls and label expectations are present.
-- `rg -n "gllvmTMB_wide\\(|meta_known_V|diag\\(U\\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|estimate-vs-truth article figures remain future|plotting geometry remains" vignettes/articles/behavioural-syndromes.Rmd R/plot-covariance-tables.R tests/testthat/test-plot-covariance-tables.R`
+- `rg -n "gllvmTMB_wide\(|meta_known_V|diag\(U\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|estimate-vs-truth article figures remain future|plotting geometry remains" vignettes/articles/behavioural-syndromes.Rmd R/plot-covariance-tables.R tests/testthat/test-plot-covariance-tables.R`
   -> no hits.
 - `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never")'`
   -> 0 errors, 1 install warning, 3 notes. Notes were the existing `air.toml`,
@@ -17197,7 +17197,7 @@ Evidence:
 - Rose stale-terminology scan:
 
   ```sh
-  rg -n '\\bS_B\\b|\\bS_W\\b|\\\\bf S|diag\\(U\\)|diag\\(S\\)|diag\\(s\\)|U_phy|U_non|meta_known_V|gllvmTMB_wide|full.*posterior|profile-likelihood default|trio' R/confint-inspect.R R/profile-targets.R R/bootstrap-sigma.R R/diagnose.R R/methods-gllvmTMB.R R/check-identifiability.R R/coverage-study.R R/check-consistency.R man/confint_inspect.Rd man/profile_targets.Rd man/bootstrap_Sigma.Rd man/check_gllvmTMB.Rd man/gllvmTMB_diagnose.Rd man/sanity_multi.Rd man/check_identifiability.Rd man/coverage_study.Rd man/gllvmTMB_check_consistency.Rd
+  rg -n '\\bS_B\\b|\\bS_W\\b|\\\\bf S|diag\(U\)|diag\\(S\\)|diag\\(s\\)|U_phy|U_non|meta_known_V|gllvmTMB_wide|full.*posterior|profile-likelihood default|trio' R/confint-inspect.R R/profile-targets.R R/bootstrap-sigma.R R/diagnose.R R/methods-gllvmTMB.R R/check-identifiability.R R/coverage-study.R R/check-consistency.R man/confint_inspect.Rd man/profile_targets.Rd man/bootstrap_Sigma.Rd man/check_gllvmTMB.Rd man/gllvmTMB_diagnose.Rd man/sanity_multi.Rd man/check_identifiability.Rd man/coverage_study.Rd man/gllvmTMB_check_consistency.Rd
   ```
 
   -> no hits.
@@ -18590,7 +18590,7 @@ Evidence:
 - Stale wording scan:
 
   ```sh
-  rg -n "Confidence-I|confidence-I|randrop|Phase 1c-viz at 0/7|quartimax|profile-likelihood default|diag\\(U\\)|U_phy|U_non|\\\\bf S|\\bS_B\\b|\\bS_W\\b|removed in 0\\.2\\.0|meta_known_V as primary" NEWS.md R/plot-gllvmTMB.R man/plot.gllvmTMB_multi.Rd vignettes/articles/morphometrics.Rmd docs/design/35-validation-debt-register.md docs/design/46-visualization-grammar.md tests/testthat/test-plot-gllvmTMB.R
+  rg -n "Confidence-I|confidence-I|randrop|Phase 1c-viz at 0/7|quartimax|profile-likelihood default|diag\(U\)|U_phy|U_non|\\\\bf S|\\bS_B\\b|\\bS_W\\b|removed in 0\\.2\\.0|meta_known_V as primary" NEWS.md R/plot-gllvmTMB.R man/plot.gllvmTMB_multi.Rd vignettes/articles/morphometrics.Rmd docs/design/35-validation-debt-register.md docs/design/46-visualization-grammar.md tests/testthat/test-plot-gllvmTMB.R
   ```
 
   -> no hits.
@@ -18812,8 +18812,8 @@ Evidence:
 
   ```sh
   rg -n "loading-standardisation|standardisation|PARTIAL,|PLANNED," R/rotate-loadings.R man/extract_rotated_loadings_table.Rd NEWS.md docs/design/06-extractors-contract.md vignettes/articles/morphometrics.Rmd
-  rg -n "diag\\(U\\)|U_phy|U_non|\\\\bf S|\\bS_B\\b|\\bS_W\\b" R/rotate-loadings.R man/extract_rotated_loadings_table.Rd NEWS.md docs/design/06-extractors-contract.md vignettes/articles/morphometrics.Rmd
-  rg -n "gllvmTMB_wide\\(Y|already removed|primary new-user API|meta_known_V|profile-likelihood default|\\bphylo\\(|\\bgr\\(|\\bmeta\\(|phylo_rr\\(" NEWS.md vignettes/articles/morphometrics.Rmd R/rotate-loadings.R man/extract_rotated_loadings_table.Rd _pkgdown.yml docs/design/06-extractors-contract.md docs/design/35-validation-debt-register.md
+  rg -n "diag\(U\)|U_phy|U_non|\\\\bf S|\\bS_B\\b|\\bS_W\\b" R/rotate-loadings.R man/extract_rotated_loadings_table.Rd NEWS.md docs/design/06-extractors-contract.md vignettes/articles/morphometrics.Rmd
+  rg -n "gllvmTMB_wide\(Y|already removed|primary new-user API|meta_known_V|profile-likelihood default|\\bphylo\\(|\\bgr\\(|\\bmeta\\(|phylo_rr\\(" NEWS.md vignettes/articles/morphometrics.Rmd R/rotate-loadings.R man/extract_rotated_loadings_table.Rd _pkgdown.yml docs/design/06-extractors-contract.md docs/design/35-validation-debt-register.md
   ```
 
   -> first two scans had no hits; the third found only pre-existing
@@ -18898,7 +18898,7 @@ Evidence:
 - `git diff --check`
   -> clean.
 - Stale wording / Rose scan:
-  `rg -n "Confidence-I|confidence-I|randrop|loading-standardisation|standardisation|diag\\(U\\)|U_phy|U_non|\\\\bf S|\\bS_B\\b|\\bS_W\\b|removed in 0\\.2\\.0|profile-likelihood default|meta_known_V as primary" R/plot-rotated-loadings.R tests/testthat/test-rotate-compare-loadings.R man/plot_rotated_loadings.Rd NEWS.md _pkgdown.yml docs/design/35-validation-debt-register.md docs/design/46-visualization-grammar.md`
+  `rg -n "Confidence-I|confidence-I|randrop|loading-standardisation|standardisation|diag\(U\)|U_phy|U_non|\\\\bf S|\\bS_B\\b|\\bS_W\\b|removed in 0\\.2\\.0|profile-likelihood default|meta_known_V as primary" R/plot-rotated-loadings.R tests/testthat/test-rotate-compare-loadings.R man/plot_rotated_loadings.Rd NEWS.md _pkgdown.yml docs/design/35-validation-debt-register.md docs/design/46-visualization-grammar.md`
   -> no hits.
 - Local package check:
   `Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
@@ -18986,7 +18986,7 @@ Evidence:
   -> found #230, "Article surface reset and user-first tooling gate"; this
   slice advances the plotting-helper/tooling gate but does not close the issue.
 - Stale wording / Rose scan:
-  `rg -n "Confidence-I|confidence-I|randrop|diag\\(U\\)|U_phy|U_non|\\\\bf S|\\bS_B\\b|\\bS_W\\b|removed in 0\\.2\\.0|profile-likelihood default|meta_known_V as primary" R/plot-covariance-tables.R tests/testthat/test-plot-covariance-tables.R man/plot_correlations.Rd NEWS.md docs/design/35-validation-debt-register.md docs/design/46-visualization-grammar.md`
+  `rg -n "Confidence-I|confidence-I|randrop|diag\(U\)|U_phy|U_non|\\\\bf S|\\bS_B\\b|\\bS_W\\b|removed in 0\\.2\\.0|profile-likelihood default|meta_known_V as primary" R/plot-covariance-tables.R tests/testthat/test-plot-covariance-tables.R man/plot_correlations.Rd NEWS.md docs/design/35-validation-debt-register.md docs/design/46-visualization-grammar.md`
   -> no hits.
 - Full local package check:
   `Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
@@ -19158,7 +19158,7 @@ Evidence:
   `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); f <- formals(plot_correlations); stopifnot(identical(eval(f$style), c("interval", "eye", "raindrop", "heatmap", "ellipse", "oval"))); stopifnot(identical(eval(f$label_type), c("auto", "estimate", "ci", "estimate_ci", "none"))); stopifnot(identical(eval(f$matrix_layout), c("by_level", "estimate_ci", "levels"))); writeLines("plot_correlations formals ok")'`
   -> `plot_correlations formals ok`.
 - Rose stale-wording scan:
-  `rg -n "Confidence-I|confidence-I|randrop|diag\\(U\\)|U_phy|U_non|\\\\bf S|\\bS_B\\b|\\bS_W\\b|removed in 0\\.2\\.0|profile-likelihood default|meta_known_V as primary|gllvmTMB_wide\\(Y|already removed|primary new-user API|\\bphylo\\(|\\bgr\\(|\\bmeta\\(|phylo_rr\\(" NEWS.md R/plot-covariance-tables.R man/plot_correlations.Rd _pkgdown.yml docs/design/35-validation-debt-register.md docs/design/46-visualization-grammar.md tests/testthat/test-plot-covariance-tables.R tests/testthat/test-plot-visual-snapshots.R`
+  `rg -n "Confidence-I|confidence-I|randrop|diag\(U\)|U_phy|U_non|\\\\bf S|\\bS_B\\b|\\bS_W\\b|removed in 0\\.2\\.0|profile-likelihood default|meta_known_V as primary|gllvmTMB_wide\(Y|already removed|primary new-user API|\\bphylo\\(|\\bgr\\(|\\bmeta\\(|phylo_rr\\(" NEWS.md R/plot-covariance-tables.R man/plot_correlations.Rd _pkgdown.yml docs/design/35-validation-debt-register.md docs/design/46-visualization-grammar.md tests/testthat/test-plot-covariance-tables.R tests/testthat/test-plot-visual-snapshots.R`
   -> only historical compatibility/deprecation mentions of `gllvmTMB_wide()` in
   the validation register and older NEWS; no new primary-API or stale-notation
   hits in the touched helper/Rd/EXT-30 wording.
@@ -19227,7 +19227,7 @@ Evidence:
   -> claims in the touched vignette align with source formals, generated Rd,
   and EXT-30 / EXT-04 register rows.
 - Rose stale-wording scan:
-  `rg -n "Confidence-I|confidence-I|randrop|diag\\(U\\)|U_phy|U_non|\\\\bf S|\\bS_B\\b|\\bS_W\\b|removed in 0\\.2\\.0|profile-likelihood default|meta_known_V as primary|gllvmTMB_wide\\(Y|already removed|primary new-user API|\\bphylo\\(|\\bgr\\(|\\bmeta\\(|phylo_rr\\(" vignettes/gllvmTMB.Rmd`
+  `rg -n "Confidence-I|confidence-I|randrop|diag\(U\)|U_phy|U_non|\\\\bf S|\\bS_B\\b|\\bS_W\\b|removed in 0\\.2\\.0|profile-likelihood default|meta_known_V as primary|gllvmTMB_wide\(Y|already removed|primary new-user API|\\bphylo\\(|\\bgr\\(|\\bmeta\\(|phylo_rr\\(" vignettes/gllvmTMB.Rmd`
   -> no matches.
 - GitHub issue ledger scan:
   `gh issue list --repo itchyshin/gllvmTMB --state open --search "Get Started correlation matrix OR plot_correlations matrix OR EXT-30 OR Article surface reset" --json number,title,url,labels,updatedAt --limit 20`
@@ -19308,7 +19308,7 @@ Evidence:
   -> source and rendered HTML contain the EXT-30 boundary, `estimate_ci`
   layout, title, and upper/lower triangle wording.
 - Rose stale-wording scan:
-  `rg -n "Confidence-I|confidence-I|randrop|diag\\(U\\)|U_phy|U_non|\\\\bf S|\\bS_B\\b|\\bS_W\\b|removed in 0\\.2\\.0|profile-likelihood default|meta_known_V as primary|gllvmTMB_wide\\(Y|already removed|primary new-user API|\\bphylo\\(|\\bgr\\(|\\bmeta\\(|phylo_rr\\(" vignettes/articles/covariance-correlation.Rmd`
+  `rg -n "Confidence-I|confidence-I|randrop|diag\(U\)|U_phy|U_non|\\\\bf S|\\bS_B\\b|\\bS_W\\b|removed in 0\\.2\\.0|profile-likelihood default|meta_known_V as primary|gllvmTMB_wide\(Y|already removed|primary new-user API|\\bphylo\\(|\\bgr\\(|\\bmeta\\(|phylo_rr\\(" vignettes/articles/covariance-correlation.Rmd`
   -> no matches.
 - GitHub issue ledger scan:
   `gh issue list --repo itchyshin/gllvmTMB --state open --search "covariance correlation matrix OR plot_correlations matrix OR EXT-30 OR Article surface reset" --json number,title,url,labels,updatedAt --limit 20`
@@ -19383,7 +19383,7 @@ Evidence:
   supported list in `R/fit-multi.R` and cite register rows for the exposed
   boundary.
 - Rose stale-wording scan:
-  `rg -n "Confidence-I|confidence-I|randrop|diag\\(U\\)|U_phy|U_non|\\\\bf S|\\bS_B\\b|\\bS_W\\b|removed in 0\\.2\\.0|profile-likelihood default|meta_known_V as primary|gllvmTMB_wide\\(Y|already removed|primary new-user API|\\bphylo\\(|\\bgr\\(|\\bmeta\\(|phylo_rr\\(" vignettes/articles/response-families.Rmd`
+  `rg -n "Confidence-I|confidence-I|randrop|diag\(U\)|U_phy|U_non|\\\\bf S|\\bS_B\\b|\\bS_W\\b|removed in 0\\.2\\.0|profile-likelihood default|meta_known_V as primary|gllvmTMB_wide\(Y|already removed|primary new-user API|\\bphylo\\(|\\bgr\\(|\\bmeta\\(|phylo_rr\\(" vignettes/articles/response-families.Rmd`
   -> no matches.
 - Whitespace:
   `git diff --check`
@@ -19458,7 +19458,7 @@ Evidence:
   -> the long-format example passes `trait =`; the wide example uses
   `traits(...)` and no `trait =`.
 - Rose stale-wording scan:
-  `rg -n "Confidence-I|confidence-I|randrop|diag\\(U\\)|U_phy|U_non|\\\\bf S|\\bS_B\\b|\\bS_W\\b|removed in 0\\.2\\.0|profile-likelihood default|meta_known_V as primary|gllvmTMB_wide\\(Y|already removed|primary new-user API|\\bphylo\\(|\\bgr\\(|\\bmeta\\(|phylo_rr\\(|\\bscalar\\(" vignettes/articles/api-keyword-grid.Rmd`
+  `rg -n "Confidence-I|confidence-I|randrop|diag\(U\)|U_phy|U_non|\\\\bf S|\\bS_B\\b|\\bS_W\\b|removed in 0\\.2\\.0|profile-likelihood default|meta_known_V as primary|gllvmTMB_wide\(Y|already removed|primary new-user API|\\bphylo\\(|\\bgr\\(|\\bmeta\\(|phylo_rr\\(|\\bscalar\\(" vignettes/articles/api-keyword-grid.Rmd`
   -> no matches.
 - Rendered-browser tooling check:
   `node_repl: await import("playwright")`
@@ -19524,7 +19524,7 @@ Evidence:
   -> long-format examples pass `trait =`; the article references the wide
   `traits(...)` path but does not add a wide example.
 - Rose stale-wording scan:
-  `rg -n "Confidence-I|confidence-I|randrop|diag\\(U\\)|U_phy|U_non|\\\\bf S|\\bS_B\\b|\\bS_W\\b|removed in 0\\.2\\.0|profile-likelihood default|meta_known_V as primary|gllvmTMB_wide\\(Y|already removed|primary new-user API|\\bphylo\\(|\\bgr\\(|\\bmeta\\(|phylo_rr\\(|\\bscalar\\(" vignettes/articles/pitfalls.Rmd`
+  `rg -n "Confidence-I|confidence-I|randrop|diag\(U\)|U_phy|U_non|\\\\bf S|\\bS_B\\b|\\bS_W\\b|removed in 0\\.2\\.0|profile-likelihood default|meta_known_V as primary|gllvmTMB_wide\(Y|already removed|primary new-user API|\\bphylo\\(|\\bgr\\(|\\bmeta\\(|phylo_rr\\(|\\bscalar\\(" vignettes/articles/pitfalls.Rmd`
   -> no matches.
 - Register row cross-check:
   `rg -n "FG-02|FG-03|FG-04|FG-05|FG-06|FAM-01|EXT-01|EXT-14|EXT-15|LAM-04|PHY-02|PHY-03|PHY-04|PHY-07|ANI-01|ANI-07|ANI-08|MET-01|MET-03" docs/design/35-validation-debt-register.md`
@@ -19600,7 +19600,7 @@ Evidence:
   `rg -n "Scope boundary|FG-02|FG-03|FAM-01|EXT-01|EXT-14|EXT-15|LAM-04|PHY-02|PHY-03|PHY-04|PHY-07|ANI-01|ANI-07|ANI-08|MET-01|MET-03" vignettes/articles/pitfalls.Rmd pkgdown-site/articles/pitfalls.html`
   -> source and rendered HTML retain the scope boundary and row IDs.
 - Rose stale-wording scan:
-  `rg -n "Confidence-I|confidence-I|randrop|diag\\(U\\)|U_phy|U_non|\\\\bf S|\\bS_B\\b|\\bS_W\\b|removed in 0\\.2\\.0|profile-likelihood default|meta_known_V as primary|gllvmTMB_wide\\(Y|already removed|primary new-user API|\\bphylo\\(|\\bgr\\(|\\bmeta\\(|phylo_rr\\(|\\bscalar\\(" vignettes/articles/pitfalls.Rmd`
+  `rg -n "Confidence-I|confidence-I|randrop|diag\(U\)|U_phy|U_non|\\\\bf S|\\bS_B\\b|\\bS_W\\b|removed in 0\\.2\\.0|profile-likelihood default|meta_known_V as primary|gllvmTMB_wide\(Y|already removed|primary new-user API|\\bphylo\\(|\\bgr\\(|\\bmeta\\(|phylo_rr\\(|\\bscalar\\(" vignettes/articles/pitfalls.Rmd`
   -> no matches.
 - Register row cross-check:
   `rg -n "FG-02|FG-03|FG-04|FG-05|FG-06|FAM-01|EXT-01|EXT-14|EXT-15|LAM-04|PHY-02|PHY-03|PHY-04|PHY-07|ANI-01|ANI-07|ANI-08|MET-01|MET-03" docs/design/35-validation-debt-register.md`
@@ -19886,7 +19886,7 @@ Evidence:
   this wave. `interval-calibration` and `not calibration evidence`
   hits are caveats, not overclaims.
 - Stale terminology scan:
-  `rg -n "Confidence-I|confidence-I|randrop|diag\\(U\\)|U_phy|U_non|\\\\bf S|\\bS_B\\b|\\bS_W\\b|removed in 0\\.2\\.0|profile-likelihood default|meta_known_V as primary|gllvmTMB_wide\\(Y|already removed|primary new-user API|posterior densit|calibration evidence" vignettes/articles/morphometrics.Rmd docs/dev-log/audits/2026-05-24-morphometrics-final-figure-prose-review.md ROADMAP.md docs/dev-log/audits/2026-05-20-article-gate-matrix.md`
+  `rg -n "Confidence-I|confidence-I|randrop|diag\(U\)|U_phy|U_non|\\\\bf S|\\bS_B\\b|\\bS_W\\b|removed in 0\\.2\\.0|profile-likelihood default|meta_known_V as primary|gllvmTMB_wide\(Y|already removed|primary new-user API|posterior densit|calibration evidence" vignettes/articles/morphometrics.Rmd docs/dev-log/audits/2026-05-24-morphometrics-final-figure-prose-review.md ROADMAP.md docs/dev-log/audits/2026-05-20-article-gate-matrix.md`
   -> only acceptable caveat hits: "not posterior density", "not
   calibration evidence", and existing interval-calibration caution
   language.
@@ -19980,7 +19980,7 @@ Evidence:
   wording are present; the remaining calibration-evidence language is
   in caveats, not overclaims.
 - Stale terminology scan:
-  `rg -n "Confidence-I|confidence-I|randrop|diag\\(U\\)|U_phy|U_non|\\\\bf S|\\bS_B\\b|\\bS_W\\b|removed in 0\\.2\\.0|profile-likelihood default|meta_known_V as primary|gllvmTMB_wide\\(Y|already removed|primary new-user API|posterior densit|calibration evidence|interval calibration" vignettes/articles/covariance-correlation.Rmd docs/dev-log/audits/2026-05-24-covariance-correlation-final-figure-prose-review.md ROADMAP.md docs/dev-log/audits/2026-05-20-article-gate-matrix.md`
+  `rg -n "Confidence-I|confidence-I|randrop|diag\(U\)|U_phy|U_non|\\\\bf S|\\bS_B\\b|\\bS_W\\b|removed in 0\\.2\\.0|profile-likelihood default|meta_known_V as primary|gllvmTMB_wide\(Y|already removed|primary new-user API|posterior densit|calibration evidence|interval calibration" vignettes/articles/covariance-correlation.Rmd docs/dev-log/audits/2026-05-24-covariance-correlation-final-figure-prose-review.md ROADMAP.md docs/dev-log/audits/2026-05-20-article-gate-matrix.md`
   -> only acceptable hit is the existing Morphometrics caveat that a
   cached bootstrap fixture is not calibration evidence.
 - GitHub issue ledger scan:
@@ -20102,7 +20102,7 @@ Evidence:
   -> all cited row IDs exist with expected covered, partial, or
   blocked status.
 - Stale wording scan:
-  `rg -n "real harness bug|only the formulae matter here|not a special rule|functional-biogeography|n_species around 100|nonsense|WRONG|RIGHT|Confidence-I|confidence-I|randrop|diag\\(U\\)|U_phy|U_non|\\\\bf S|\\bS_B\\b|\\bS_W\\b|removed in 0\\.2\\.0|profile-likelihood default|meta_known_V as primary|gllvmTMB_wide\\(Y|already removed|primary new-user API|\\bphylo\\(|\\bgr\\(|\\bmeta\\(|phylo_rr\\(|\\bscalar\\(" vignettes/articles/pitfalls.Rmd ROADMAP.md docs/dev-log/audits/2026-05-20-article-gate-matrix.md docs/dev-log/audits/2026-05-24-pitfalls-final-prose-review.md`
+  `rg -n "real harness bug|only the formulae matter here|not a special rule|functional-biogeography|n_species around 100|nonsense|WRONG|RIGHT|Confidence-I|confidence-I|randrop|diag\(U\)|U_phy|U_non|\\\\bf S|\\bS_B\\b|\\bS_W\\b|removed in 0\\.2\\.0|profile-likelihood default|meta_known_V as primary|gllvmTMB_wide\(Y|already removed|primary new-user API|\\bphylo\\(|\\bgr\\(|\\bmeta\\(|phylo_rr\\(|\\bscalar\\(" vignettes/articles/pitfalls.Rmd ROADMAP.md docs/dev-log/audits/2026-05-20-article-gate-matrix.md docs/dev-log/audits/2026-05-24-pitfalls-final-prose-review.md`
   -> acceptable hits only: hidden-row references to
   `functional-biogeography` in roadmap/gate-matrix rows and the code
   comment "only the formulae matter here"; stale terminology did not
@@ -20214,7 +20214,7 @@ Evidence so far:
   DIA-10 and keep heuristic diagnostics separate from calibration or rank
   selection.
 - Rose stale-wording scan:
-  `rg -n "profile-likelihood default|trio|diag\\(U\\)|U_phy|U_non|\\\\bf S|\\bS_B\\b|\\bS_W\\b|meta_known_V as primary|gllvmTMB_wide\\(Y|already removed|primary new-user API|\\bphylo\\(|\\bgr\\(|\\bmeta\\(|block_V\\(|phylo_rr\\(" NEWS.md R/diagnose.R man/check_gllvmTMB.Rd ROADMAP.md docs/design/35-validation-debt-register.md docs/dev-log/after-task/2026-05-24-identifiability-diagnostics-248.md`
+  `rg -n "profile-likelihood default|trio|diag\(U\)|U_phy|U_non|\\\\bf S|\\bS_B\\b|\\bS_W\\b|meta_known_V as primary|gllvmTMB_wide\(Y|already removed|primary new-user API|\\bphylo\\(|\\bgr\\(|\\bmeta\\(|block_V\\(|phylo_rr\\(" NEWS.md R/diagnose.R man/check_gllvmTMB.Rd ROADMAP.md docs/design/35-validation-debt-register.md docs/dev-log/after-task/2026-05-24-identifiability-diagnostics-248.md`
   -> expected false positives only: existing soft-deprecation wording for
   `gllvmTMB_wide()` and source-code use of `gr(` inside a TMB gradient call.
 - Whitespace:
@@ -20381,7 +20381,7 @@ Evidence:
   `rg -n 'Scope boundary|DIA-08|DIA-09|DIA-10|EXT-13|EXT-18|CI-02|CI-03|M3\\.3a|M3\\.4' vignettes/articles/convergence-start-values.Rmd pkgdown-site/articles/convergence-start-values.html docs/dev-log/audits/2026-05-24-convergence-final-wording-review.md docs/design/35-validation-debt-register.md`
   -> scope boundary and validation row IDs remain present.
 - Stale wording scan:
-  `rg -n 'pdHess = FALSE means model failure|point estimates.*useless|bootstrap.*guarantee|profile.*default|profile-likelihood default|wald.*safe|Confidence-I|confidence-I|randrop|diag\\(U\\)|U_phy|U_non|\\\\bf S|\\bS_B\\b|\\bS_W\\b|meta_known_V|gllvmTMB_wide\\(Y|already removed|primary new-user API|\\bphylo\\(|\\bgr\\(|\\bmeta\\(|phylo_rr\\(' vignettes/articles/convergence-start-values.Rmd ROADMAP.md docs/dev-log/audits/2026-05-20-article-gate-matrix.md docs/dev-log/audits/2026-05-24-convergence-final-wording-review.md`
+  `rg -n 'pdHess = FALSE means model failure|point estimates.*useless|bootstrap.*guarantee|profile.*default|profile-likelihood default|wald.*safe|Confidence-I|confidence-I|randrop|diag\(U\)|U_phy|U_non|\\\\bf S|\\bS_B\\b|\\bS_W\\b|meta_known_V|gllvmTMB_wide\(Y|already removed|primary new-user API|\\bphylo\\(|\\bgr\\(|\\bmeta\\(|phylo_rr\\(' vignettes/articles/convergence-start-values.Rmd ROADMAP.md docs/dev-log/audits/2026-05-20-article-gate-matrix.md docs/dev-log/audits/2026-05-24-convergence-final-wording-review.md`
   -> no output.
 - Hidden-article link scan:
   `rg -n 'articles/(animal-model|behavioural-syndromes|joint-sdm|phylogenetic-gllvm|functional-biogeography|psychometrics-irt|simulation-recovery-validated|cross-package-validation|choose-your-model|data-shape-flowchart|lambda-constraint|profile-likelihood-ci|mixed-family-extractors|ordinal-probit|troubleshooting-profile|stacked-trait-gllvm|gllvm-vocabulary)\\.html|\\]\\((animal-model|behavioural-syndromes|joint-sdm|phylogenetic-gllvm|functional-biogeography|psychometrics-irt|simulation-recovery-validated|cross-package-validation|choose-your-model|data-shape-flowchart|lambda-constraint|profile-likelihood-ci|mixed-family-extractors|ordinal-probit|troubleshooting-profile|stacked-trait-gllvm|gllvm-vocabulary)\\.html\\)' vignettes/articles/convergence-start-values.Rmd pkgdown-site/articles/convergence-start-values.html ROADMAP.md pkgdown-site/articles/roadmap.html`
@@ -20494,7 +20494,7 @@ Evidence:
   -> row IDs, exports, metadata, pkgdown placement, tests, and generated Rd
   are visible.
 - Stale terminology scan:
-  `rg -n 'Confidence-I|confidence-I|randrop|diag\\(U\\)|U_phy|U_non|\\\\bf S|\\bS_B\\b|\\bS_W\\b|meta_known_V|gllvmTMB_wide\\(Y|already removed|primary new-user API|\\bphylo\\(|\\bgr\\(|\\bmeta\\(|phylo_rr\\(' NEWS.md ROADMAP.md docs/design/51-posterior-predictive-diagnostics.md docs/design/35-validation-debt-register.md R/predictive-diagnostics.R man/predictive_check.Rd man/residuals.gllvmTMB_multi.Rd tests/testthat/test-predictive-diagnostics.R`
+  `rg -n 'Confidence-I|confidence-I|randrop|diag\(U\)|U_phy|U_non|\\\\bf S|\\bS_B\\b|\\bS_W\\b|meta_known_V|gllvmTMB_wide\(Y|already removed|primary new-user API|\\bphylo\\(|\\bgr\\(|\\bmeta\\(|phylo_rr\\(' NEWS.md ROADMAP.md docs/design/51-posterior-predictive-diagnostics.md docs/design/35-validation-debt-register.md R/predictive-diagnostics.R man/predictive_check.Rd man/residuals.gllvmTMB_multi.Rd tests/testthat/test-predictive-diagnostics.R`
   -> expected existing `meta_known_V()` compatibility and
   `gllvmTMB_wide(Y, ...)` soft-deprecation hits only; no new #228 drift.
 - Generated vignette scratch check:
@@ -20588,7 +20588,7 @@ Evidence so far:
   -> long-format calls retain `trait =`; wide calls use `traits(...)`.
   `rg -n "DIA-08|DIA-10|DIA-11|DIA-12|EXT-13|CI-02|CI-03|IN:|PARTIAL|PLANNED|covered|partial|blocked" README.md vignettes/gllvmTMB.Rmd vignettes/articles/convergence-start-values.Rmd ROADMAP.md docs/dev-log/after-task/2026-05-25-diagnostic-teaching-reset.md`
   -> new claims cite the relevant validation rows and scope labels.
-  `rg -n "posterior predictive|posterior-predictive|posterior draws|Bayesian posterior|pp_check|gllvmTMB_wide\\(Y|already removed|primary new-user API|meta_known_V|\\bphylo\\(|\\bgr\\(|\\bmeta\\(|phylo_rr\\(|diag\\(U\\)|U_phy|U_non|\\\\bf S|\\bS_B\\b|\\bS_W\\b|trio" README.md vignettes/gllvmTMB.Rmd vignettes/articles/convergence-start-values.Rmd ROADMAP.md docs/dev-log/after-task/2026-05-25-diagnostic-teaching-reset.md`
+  `rg -n "posterior predictive|posterior-predictive|posterior draws|Bayesian posterior|pp_check|gllvmTMB_wide\(Y|already removed|primary new-user API|meta_known_V|\\bphylo\\(|\\bgr\\(|\\bmeta\\(|phylo_rr\\(|diag\(U\)|U_phy|U_non|\\\\bf S|\\bS_B\\b|\\bS_W\\b|trio" README.md vignettes/gllvmTMB.Rmd vignettes/articles/convergence-start-values.Rmd ROADMAP.md docs/dev-log/after-task/2026-05-25-diagnostic-teaching-reset.md`
   -> intentional negative posterior-predictive wording and existing
   `gllvmTMB_wide(Y, ...)` soft-deprecation text only.
 - Generated scratch cleanup:
@@ -22157,7 +22157,7 @@ Update after #370 merged:
   deprecation boundary. Other hits are existing meta / wide API text in
   Design 01 and NEWS.
 - Rose scan:
-  `rg -n "\\bS_B\\b|\\bS_W\\b|\\\\bf S|diag\\(S\\)|diag\\(U\\)|diag\\(s\\)" R/kernel-keywords.R man/kernel_latent.Rd NEWS.md docs/design/01-formula-grammar.md docs/dev-log/spikes/2026-05-31-coevolution-article-plan.md tests/testthat/test-kernel-equivalence.R`
+  `rg -n "\\bS_B\\b|\\bS_W\\b|\\\\bf S|diag\\(S\\)|diag\(U\)|diag\\(s\\)" R/kernel-keywords.R man/kernel_latent.Rd NEWS.md docs/design/01-formula-grammar.md docs/dev-log/spikes/2026-05-31-coevolution-article-plan.md tests/testthat/test-kernel-equivalence.R`
   -> no matches.
 - Rose scan:
   `rg -n "gllvmTMB\\(" R/kernel-keywords.R man/kernel_latent.Rd tests/testthat/test-kernel-equivalence.R NEWS.md docs/design/01-formula-grammar.md docs/dev-log/spikes/2026-05-31-coevolution-article-plan.md`
@@ -22275,7 +22275,7 @@ Update after team-state sweep and rebases through #398:
   -> expected legacy/migration references only; C1 does not ship relmat
   deprecation.
 - Rose / notation scan:
-  `rg -n "\\bS_B\\b|\\bS_W\\b|\\\\bf S|diag\\(S\\)|diag\\(U\\)|diag\\(s\\)" R/kernel-keywords.R man/kernel_latent.Rd NEWS.md docs/design/01-formula-grammar.md docs/design/35-validation-debt-register.md docs/dev-log/spikes/2026-05-31-coevolution-article-plan.md tests/testthat/test-kernel-equivalence.R`
+  `rg -n "\\bS_B\\b|\\bS_W\\b|\\\\bf S|diag\\(S\\)|diag\(U\)|diag\\(s\\)" R/kernel-keywords.R man/kernel_latent.Rd NEWS.md docs/design/01-formula-grammar.md docs/design/35-validation-debt-register.md docs/dev-log/spikes/2026-05-31-coevolution-article-plan.md tests/testthat/test-kernel-equivalence.R`
   -> no matches.
 - Rose / validation rows:
   `rg -n "^\\| (KER-02|COE-02)" docs/design/35-validation-debt-register.md`
@@ -22413,7 +22413,7 @@ Consistency scans:
 - `rg -n "PLANNED scope|future generic|validated.*planned|remain planned|does not yet add|extract_Gamma\\(\\).*remain planned|COE-02.*blocked|KER-02.*blocked" R/kernel-helpers.R R/kernel-keywords.R R/extract-sigma.R man/make_cross_kernel.Rd man/kernel_latent.Rd man/extract_Gamma.Rd NEWS.md docs/design/35-validation-debt-register.md docs/design/01-formula-grammar.md`
   -> only the expected C3+ "two-kernel/rho remains planned" NEWS hit;
   no stale C2-blocked wording remains.
-- `rg -n "\\bS_B\\b|\\bS_W\\b|\\\\bf S|diag\\(S\\)|diag\\(U\\)|diag\\(s\\)" NEWS.md R/extract-sigma.R R/kernel-keywords.R R/missing-predictor.R man/extract_Gamma.Rd man/kernel_latent.Rd man/impute_model.Rd man/categorical.Rd man/cumulative_logit.Rd docs/design/35-validation-debt-register.md docs/design/01-formula-grammar.md tests/testthat/test-coevolution-recovery.R`
+- `rg -n "\\bS_B\\b|\\bS_W\\b|\\\\bf S|diag\\(S\\)|diag\(U\)|diag\\(s\\)" NEWS.md R/extract-sigma.R R/kernel-keywords.R R/missing-predictor.R man/extract_Gamma.Rd man/kernel_latent.Rd man/impute_model.Rd man/categorical.Rd man/cumulative_logit.Rd docs/design/35-validation-debt-register.md docs/design/01-formula-grammar.md tests/testthat/test-coevolution-recovery.R`
   -> no matches.
 - `rg -n "gllvmTMB_wide|relmat.*deprecat|deprecat.*relmat|meta_known_V|\\bphylo\\(|\\bgr\\(|\\bmeta\\(|block_V\\(|phylo_rr\\(" NEWS.md R/extract-sigma.R R/kernel-keywords.R R/missing-predictor.R man/extract_Gamma.Rd man/kernel_latent.Rd man/impute_model.Rd man/categorical.Rd man/cumulative_logit.Rd docs/design/35-validation-debt-register.md docs/design/01-formula-grammar.md tests/testthat/test-coevolution-recovery.R`
   -> expected existing Design 01, Design 35, NEWS, and missing-predictor
@@ -22540,7 +22540,7 @@ Commands and outcomes:
 
 Stale-wording / pre-publish scans:
 
-- `rg -n "gllvmTMB_wide|meta_known_V|diag\\(U\\)|diag\\(S\\)|\\bS_B\\b|\\bS_W\\b|PLANNED.*article|no public coevolution article|rho.*estimated|estimated.*rho|calibrated intervals" NEWS.md docs/design/35-validation-debt-register.md docs/design/65-cross-lineage-coevolution-kernel.md vignettes/articles/cross-lineage-coevolution.Rmd vignettes/articles/phylogenetic-gllvm.Rmd tests/testthat/test-example-coevolution-kernel.R data-raw/examples/make-coevolution-kernel-example.R`
+- `rg -n "gllvmTMB_wide|meta_known_V|diag\(U\)|diag\\(S\\)|\\bS_B\\b|\\bS_W\\b|PLANNED.*article|no public coevolution article|rho.*estimated|estimated.*rho|calibrated intervals" NEWS.md docs/design/35-validation-debt-register.md docs/design/65-cross-lineage-coevolution-kernel.md vignettes/articles/cross-lineage-coevolution.Rmd vignettes/articles/phylogenetic-gllvm.Rmd tests/testthat/test-example-coevolution-kernel.R data-raw/examples/make-coevolution-kernel-example.R`
   -> expected C2.3 "rho not estimated yet" boundary, the updated NEWS
   point-estimate boundary, and existing `gllvmTMB_wide` / `meta_known_V`
   registry or older NEWS mentions only; no new stale primary syntax or
@@ -23511,7 +23511,7 @@ Commands run:
   -> `profile-likelihood-ci` appears in the public Methods article group and
   navbar; `troubleshooting-profile` remains internal; `tmbprofile_wrapper`
   appears in the Reference index and in article prose.
-- `rg -n "profile-likelihood default|extract_correlations\\([^\\n]*method *= *\\\"profile\\\"|gllvmTMB_wide\\(Y|meta_known_V|diag\\(U\\)|U_phy|U_non|\\\\bf S|\\bS_B\\b|\\bS_W\\b|\\bphylo\\(|\\bgr\\(|\\bmeta\\(|phylo_rr\\(" vignettes/articles/profile-likelihood-ci.Rmd _pkgdown.yml`
+- `rg -n "profile-likelihood default|extract_correlations\\([^\\n]*method *= *\\\"profile\\\"|gllvmTMB_wide\(Y|meta_known_V|diag\(U\)|U_phy|U_non|\\\\bf S|\\bS_B\\b|\\bS_W\\b|\\bphylo\\(|\\bgr\\(|\\bmeta\\(|phylo_rr\\(" vignettes/articles/profile-likelihood-ci.Rmd _pkgdown.yml`
   -> no hits; no stale public syntax / notation or correlation-default drift
   in the promoted article/config slice.
 - `rg -n "CI-0[1-9]|CI-10|EXT-13|M3|covered|partial|Preview" vignettes/articles/profile-likelihood-ci.Rmd docs/design/35-validation-debt-register.md`
@@ -23586,7 +23586,7 @@ Commands run:
   -> `yaml-ok`.
 - `git diff --check`
   -> clean.
-- `rg -n "profile-likelihood default|extract_correlations\\([^\\n]*method *= *\\\"profile\\\"|gllvmTMB_wide\\(Y|meta_known_V|diag\\(U\\)|U_phy|U_non|\\\\bf S|\\bS_B\\b|\\bS_W\\b|\\bphylo\\(|\\bgr\\(|\\bmeta\\(|phylo_rr\\(" vignettes/articles/troubleshooting-profile.Rmd _pkgdown.yml`
+- `rg -n "profile-likelihood default|extract_correlations\\([^\\n]*method *= *\\\"profile\\\"|gllvmTMB_wide\(Y|meta_known_V|diag\(U\)|U_phy|U_non|\\\\bf S|\\bS_B\\b|\\bS_W\\b|\\bphylo\\(|\\bgr\\(|\\bmeta\\(|phylo_rr\\(" vignettes/articles/troubleshooting-profile.Rmd _pkgdown.yml`
   -> no hits; no stale public syntax / notation, deprecated API, or
   correlation-default drift in the touched slice.
 - `rg -n "^CI-0?2|^CI-0?3|^CI-08|^CI-10|^EXT-13|^DIA-01|^DIA-03|^DIA-05|CI-02|CI-03|CI-08|CI-10|EXT-13|DIA-01|DIA-03|DIA-05" docs/design/35-validation-debt-register.md vignettes/articles/troubleshooting-profile.Rmd`
@@ -25110,7 +25110,7 @@ Evidence:
   `rg -n "gllvmTMB\\(|trait = \"trait\"|REML|AIC|BIC|DIA-08|DIA-10|MIS-33|FG-04|FG-06" vignettes/articles/model-selection-latent-rank.Rmd vignettes/articles/fit-diagnostics.Rmd docs/design/35-validation-debt-register.md`
   -> long-format calls retain `trait = "trait"`; REML and diagnostic claims
   point to covered rows FG-04, FG-06, DIA-08, DIA-10, and MIS-33.
-  `rg -n "gllvmTMB_wide|meta_known_V|diag\\(U\\)|U_phy|U_non|\\\\bf S|\\bS_B\\b|\\bS_W\\b|REML.*non-Gaussian|non-Gaussian.*REML" vignettes/articles/model-selection-latent-rank.Rmd vignettes/articles/fit-diagnostics.Rmd || true`
+  `rg -n "gllvmTMB_wide|meta_known_V|diag\(U\)|U_phy|U_non|\\\\bf S|\\bS_B\\b|\\bS_W\\b|REML.*non-Gaussian|non-Gaussian.*REML" vignettes/articles/model-selection-latent-rank.Rmd vignettes/articles/fit-diagnostics.Rmd || true`
   -> only hit was the intentional negative boundary: the article does not
   advertise REML for non-Gaussian fits.
 - Issue ledger:
@@ -25200,7 +25200,7 @@ Evidence:
   `CI overlaps null`, and `CI excludes null`. Figure-quality verdict: PASS for
   a vignette diagnostic figure.
 - Rose / stale wording checks:
-  `rg -n "Internal direct-link|tier: 3|Joint species distribution model \\(binary GLLVM\\)|gllvmTMB_wide|meta_known_V|diag\\(U\\)|U_phy|U_non|\\\\bf S|\\bS_B\\b|\\bS_W\\b|REML.*non-Gaussian|non-Gaussian.*REML" vignettes/articles/joint-sdm.Rmd _pkgdown.yml pkgdown-site/articles/joint-sdm.html || true`
+  `rg -n "Internal direct-link|tier: 3|Joint species distribution model \\(binary GLLVM\\)|gllvmTMB_wide|meta_known_V|diag\(U\)|U_phy|U_non|\\\\bf S|\\bS_B\\b|\\bS_W\\b|REML.*non-Gaussian|non-Gaussian.*REML" vignettes/articles/joint-sdm.Rmd _pkgdown.yml pkgdown-site/articles/joint-sdm.html || true`
   -> no hits.
   `rg -n "joint-sdm|Joint species distribution|Internal direct-link|tier: 3|Scope boundary|CI-08|CI-10|FG-02|FG-03|FG-04|FAM-02|spatial_\\*|sdmTMB" _pkgdown.yml vignettes/articles/joint-sdm.Rmd pkgdown-site/articles/joint-sdm.html pkgdown-site/articles/index.html README.md docs/design/35-validation-debt-register.md`
   -> public claims trace to FG-02, FG-03, FG-04, FAM-02; CI caveat traces to
@@ -34425,7 +34425,7 @@ Checks:
 - `rg -n 'standalone diagonal|standalone marginal|animal_indep|phylo_indep|spatial_indep|explicit Psi|ANI-11|FG-05|FG-06|FG-07|ANI-03|observation-level unique|latent\\(\\) \\+ unique\\(\\)' vignettes/articles/response-families.Rmd vignettes/articles/animal-model.Rmd vignettes/articles/phylogenetic-gllvm.Rmd vignettes/articles/functional-biogeography.Rmd pkgdown-site/articles/response-families.html pkgdown-site/articles/animal-model.html pkgdown-site/articles/phylogenetic-gllvm.html pkgdown-site/articles/functional-biogeography.html NEWS.md`
   -> confirmed the row anchors and syntax-boundary wording in source, rendered
   HTML, and NEWS.
-- `rg -n '\\btrio\\b|phylo\\(|gr\\(|meta\\(|block_V\\(|phylo_rr\\(|profile-likelihood default|unsupported.*implemented|diag\\(U\\)|U_phy|U_non|\\\\bf S|\\bS_B\\b|\\bS_W\\b|already removed|primary new-user API|meta_known_V' NEWS.md vignettes/articles/response-families.Rmd vignettes/articles/animal-model.Rmd vignettes/articles/phylogenetic-gllvm.Rmd vignettes/articles/functional-biogeography.Rmd`
+- `rg -n '\\btrio\\b|phylo\\(|gr\\(|meta\\(|block_V\\(|phylo_rr\\(|profile-likelihood default|unsupported.*implemented|diag\(U\)|U_phy|U_non|\\\\bf S|\\bS_B\\b|\\bS_W\\b|already removed|primary new-user API|meta_known_V' NEWS.md vignettes/articles/response-families.Rmd vignettes/articles/animal-model.Rmd vignettes/articles/phylogenetic-gllvm.Rmd vignettes/articles/functional-biogeography.Rmd`
   -> no hits in the edited article files; NEWS hits were existing compatibility
   references to `block_V()` and `meta_known_V()`.
 - `python3 -m json.tool docs/dev-log/dashboard/status.json >/dev/null && python3 -m json.tool docs/dev-log/dashboard/sweep.json >/dev/null && git diff --check`
@@ -41309,7 +41309,7 @@ Validation commands and outcomes:
 - `rg -n "DIA-14|MIS-34" NEWS.md vignettes/articles/pre-fit-response-screening.Rmd vignettes/articles/fixed-effect-zero-constraints.Rmd docs/design/35-validation-debt-register.md`
   -> PASS; intended row references are present in touched articles, NEWS, and
   the register.
-- `rg -n "automatic deletion|remove species|guarantees convergence|proves identifiability|selects variables|gllvmTMB_wide|meta_known_V|trio|diag\\(U\\)|\\\\bf S|S_B|S_W" vignettes/articles/pre-fit-response-screening.Rmd vignettes/articles/fixed-effect-zero-constraints.Rmd R/screen-gllvmTMB.R man/screen_gllvmTMB.Rd docs/dev-log/spikes/2026-06-23-ayumi-jsdm-screening-draft.md _pkgdown.yml`
+- `rg -n "automatic deletion|remove species|guarantees convergence|proves identifiability|selects variables|gllvmTMB_wide|meta_known_V|trio|diag\(U\)|\\\\bf S|S_B|S_W" vignettes/articles/pre-fit-response-screening.Rmd vignettes/articles/fixed-effect-zero-constraints.Rmd R/screen-gllvmTMB.R man/screen_gllvmTMB.Rd docs/dev-log/spikes/2026-06-23-ayumi-jsdm-screening-draft.md _pkgdown.yml`
   -> PASS; no stale-overclaim hits.
 - `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
   -> PASS: `No problems found.`
@@ -41320,7 +41320,7 @@ Validation commands and outcomes:
   - `rg -n "gllvmTMB\\(|screen_gllvmTMB\\(" vignettes/articles/pre-fit-response-screening.Rmd vignettes/articles/fixed-effect-zero-constraints.Rmd R/screen-gllvmTMB.R man/screen_gllvmTMB.Rd`
     -> PASS; examples use wide `traits(...)` where appropriate and the long
     screening call passes `trait = "indicator"`.
-  - `rg -n "trio|phylo\\(|gr\\(|meta\\(|block_V\\(|phylo_rr\\(|profile-likelihood default|diag\\(U\\)|U_phy|U_non|\\\\bf S|S_B|S_W|gllvmTMB_wide|meta_known_V|automatic deletion|response deletion|selects variables|guarantees convergence|proves identifiability" vignettes/articles/pre-fit-response-screening.Rmd vignettes/articles/fixed-effect-zero-constraints.Rmd R/screen-gllvmTMB.R man/screen_gllvmTMB.Rd`
+  - `rg -n "trio|phylo\\(|gr\\(|meta\\(|block_V\\(|phylo_rr\\(|profile-likelihood default|diag\(U\)|U_phy|U_non|\\\\bf S|S_B|S_W|gllvmTMB_wide|meta_known_V|automatic deletion|response deletion|selects variables|guarantees convergence|proves identifiability" vignettes/articles/pre-fit-response-screening.Rmd vignettes/articles/fixed-effect-zero-constraints.Rmd R/screen-gllvmTMB.R man/screen_gllvmTMB.Rd`
     -> PASS with one intended negative-scope hit:
     `fixed-effect-zero-constraints.Rmd` says the feature is "not ... response
     deletion".
@@ -45356,7 +45356,7 @@ Pre-merge public-doc / pkgdown gate:
 - `rg -n "extract_lv_effects|LV-AXIS|axis_effect|trait_effect|alpha_lv_B|B_lv_unit|std.error|conf.level" _pkgdown.yml NAMESPACE man/extract_lv_effects.Rd R/extractors.R`
   -> PASS; source formals, generated Rd usage, NAMESPACE export, and
   `_pkgdown.yml` reference entry agree.
-- `rg -n "trio|profile-likelihood default|unsupported.*implemented|implemented.*unsupported|gllvmTMB_wide|meta_known_V|\\bS_B\\b|\\bS_W\\b|\\\\bf S|diag\\(U\\)|U_phy|U_non|phylo\\(|gr\\(|meta\\(|block_V\\(|phylo_rr\\(" NEWS.md R/extractors.R R/julia-bridge.R man/extract_lv_effects.Rd man/gllvmTMB_julia-methods.Rd man/gllvm_julia_fit.Rd docs/design/06-extractors-contract.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md`
+- `rg -n "trio|profile-likelihood default|unsupported.*implemented|implemented.*unsupported|gllvmTMB_wide|meta_known_V|\\bS_B\\b|\\bS_W\\b|\\\\bf S|diag\(U\)|U_phy|U_non|phylo\\(|gr\\(|meta\\(|block_V\\(|phylo_rr\\(" NEWS.md R/extractors.R R/julia-bridge.R man/extract_lv_effects.Rd man/gllvmTMB_julia-methods.Rd man/gllvm_julia_fit.Rd docs/design/06-extractors-contract.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/design/73-predictor-informed-latent-scores.md`
   -> REVIEWED; hits are older compatibility / alias wording (`gllvmTMB_wide`,
   `meta_known_V`, `block_V`) that is explicitly described as deprecated or
   blocked, not a current `extract_lv_effects()` overclaim.
@@ -58556,3 +58556,11 @@ Replaced the test-only fit with an extraction-ready `gllvmTMB_va` stub containin
 The 36-case known-truth pilot remains a single-sample-size exploratory result. It does not establish consistency or approximate normality of positive interior uniqueness variances as the number of independent units increases. A zero-boundary uniqueness variance should not be judged against a standard normal limit. G5's pilot accounting is complete, while increasing-sample-size recovery and normality remain open scientific validation; G6 interval calibration remains unvalidated.
 
 On the integrated working tree, `Rscript --vanilla -e 'pkgdown::check_pkgdown()'` completed with `No problems found`; only Pandoc's existing `--mathml` deprecation warnings were printed. The after-task structure check passed using `Rscript --vanilla /Users/z3437171/shinichi-brain/tools/check-after-task.R /Users/z3437171/.codex/worktrees/two-kernel-gaussian-20261115/gllvmTMB/docs/dev-log/after-task/2026-11-15-two-kernel-gaussian.md`. The prose check reported `FINDINGS: 0`. No `rg` stale-wording scan was run because this slice changed only a test fixture and internal evidence; no reader-facing wording was added.
+
+## 2026-11-16: final-source oracle, extraction, and Rose audit
+
+After merging `origin/main` at `fc80be9ee232692a64dfef7f8570ce7a1528b861`, the independent native oracle was rerun with `OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 Rscript --vanilla -e 'devtools::load_all(".", quiet = TRUE); source("dev/two-kernel-gaussian/check-native.R")'`. All five fixed points passed. Maximum negative-log-likelihood gap was `1.13686838e-13`, maximum named-gradient gap `3.01980663e-14`, and maximum finite-difference gradient gap `1.61524416e-9`.
+
+A reproducible fitted-object check was added at `dev/two-kernel-gaussian/check-extraction-current.R` and run with `OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 Rscript --vanilla dev/two-kernel-gaussian/check-extraction-current.R`. The 16-species fit converged with code zero at known SD 0.12. Both named tiers returned shared, unique, and total covariances with matching trait names; total identity gaps were `2.277004384337704e-17` for phy and `1.141806124322433e-17` for tip. This is extraction evidence only; it does not establish recovery.
+
+The required read-only Rose pre-publish audit reviewed the touched NEWS, roxygen/Rd, and article content. It found that the scope boundary should state the TMB-only condition and explicitly exclude mixed-family and Julia-engine requests. NEWS and `R/kernel-keywords.R` now say so, and `man/kernel_latent.Rd` was regenerated with `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`. The targeted scan was `rg -n "known_sigma_eps|Mixed-family and Julia|TMB engine|Scope boundary|Planned|Not provided|partial|diag\(U\)|S_B|S_W|gllvmTMB_wide\(|meta_known_V|trio|4 x 5|4 × 5" NEWS.md R/gllvmTMB.R R/kernel-keywords.R man/gllvmTMB.Rd man/kernel_latent.Rd man/predict.gllvmTMB_multi.Rd man/simulate.gllvmTMB_multi.Rd vignettes/articles/api-keyword-grid.Rmd vignettes/articles/plant-bumblebee-coevolution.Rmd`. Remaining matches are existing, explicitly labeled deprecated migration syntax, wording that states the old grid framing is obsolete, and existing unrelated topics. Rose result: PASS with no remaining cross-file mismatch in this scope. `Rscript --vanilla -e 'pkgdown::check_pkgdown()'` returned `No problems found`; Pandoc emitted existing `--mathml` deprecation warnings. The canceled workflow runs 43990403278 and 43990403328 used head `ca32b7fe77aebf9093ef67d626c8131f4b022acf`; the final documentation changes require fresh exact-head CI. G7 and G8 remain open.

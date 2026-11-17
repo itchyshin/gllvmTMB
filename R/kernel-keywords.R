@@ -6,14 +6,15 @@
 #' `unique = TRUE` adds a kernel-structured diagonal
 #' \eqn{\boldsymbol\Psi} companion; the default `FALSE` is loadings-only.
 #' Two or more named `kernel_latent()` tiers may share the same grouping levels,
-#' each with its own `K`, loading matrix, and latent field. Two named Gaussian
-#' tiers can each use `unique = TRUE` when the observation-error SD is known
-#' and supplied as `known_sigma_eps` to [gllvmTMB()], the weights are positive,
-#' and the observed same-trait kernel patterns pass a separation check. Every
-#' declared trait needs at least two observed rows for this check.
+#' each with its own `K`, loading matrix, and latent field. On the TMB engine,
+#' two named Gaussian tiers can each use `unique = TRUE` with a known common
+#' observation-error SD supplied through `known_sigma_eps` to [gllvmTMB()],
+#' positive weights, and observed same-trait kernel patterns that pass a
+#' separation check. Each declared trait needs at least two observed rows.
 #' Passing that check does not guarantee precise component estimates: recovery
 #' has been poor in some known-truth settings, and intervals remain unvalidated.
-#' Separate `kernel_dep()` tiers are not supported. Similar kernels can be
+#' Mixed-family and Julia-engine requests, as well as separate `kernel_dep()`
+#' tiers, are not supported. Similar kernels can be
 #' weakly separable, so use [diagnose_kernel_separability()] before assigning a
 #' distinct interpretation to each component.
 #'

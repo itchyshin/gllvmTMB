@@ -66,31 +66,26 @@ skip_on_cran()
   )
 }
 
-## Minimal VA fit, built from the engine adapter as test-va-ordination.R does.
-.urc_va_fit <- function(eval_method = "jj", N = 30L, Tn = 5L, q = 1L) {
-  set.seed(20260805L)
-  trait_names <- paste0("sp", seq_len(Tn))
-  long <- data.frame(
-    unit = factor(rep(seq_len(N), each = Tn)),
-    trait = factor(rep(trait_names, N), levels = trait_names)
+## Minimal extraction-ready VA object. This test checks getLV()'s refusal
+## before any posterior SD is read, so it should not compile or fit TMB.
+.urc_va_stub <- function(eval_method = "jj", N = 30L, Tn = 5L, q = 1L) {
+  theta_n <- .va_r3_theta_length(Tn, q)
+  par <- stats::setNames(
+    c(rep(0, Tn), rep(0, theta_n)),
+    c(rep("beta", Tn), rep("theta_rr", theta_n))
   )
-  beta_true <- seq(0.2, by = 0.15, length.out = Tn)
-  Lambda_true <- matrix(c(0.6, 0.4, -0.3, 0.5, 0.2)[seq_len(Tn * q)], Tn, q)
-  score <- matrix(stats::rnorm(N * q), N, q)
-  unit <- as.integer(long$unit)
-  trait <- as.integer(long$trait)
-  eta <- beta_true[trait] +
-    rowSums(Lambda_true[trait, , drop = FALSE] * score[unit, , drop = FALSE])
-  y <- stats::rbinom(N * Tn, 1L, stats::plogis(eta))
-  X <- stats::model.matrix(~ 0 + trait, long)
-  engine_fit <- .approximation_engine_va_r3_fit(
-    y = y, n_trials = rep(1L, N * Tn), X = X, unit_id = unit, trait_id = trait,
-    q = q, family = "binomial", link = "logit", H = 15L,
-    eval_method = eval_method
-  )
-  .va_route_build_fit(
-    engine_fit, call = quote(dummy_call()), q = q, p = Tn, n = N,
-    eval_method = eval_method, family = "binomial", link = "logit"
+  structure(
+    list(
+      eval_method = eval_method,
+      p = Tn,
+      q = q,
+      n = N,
+      engine_result = list(
+        best = list(par = par),
+        latent = list(scores = matrix(0, N, q))
+      )
+    ),
+    class = "gllvmTMB_va"
   )
 }
 
@@ -117,8 +112,7 @@ test_that("getLV(rotate != 'none') on a julia bridge fit names the working route
 ## ---- getLV(): VA eval_method gate -----------------------------------------
 
 test_that("getLV(se = TRUE) on a VA fit is refused unless eval_method is 'gh'", {
-  skip_if_not(exists(".approximation_engine_va_r3_fit", mode = "function"))
-  fit <- .urc_va_fit("jj")
+  fit <- .urc_va_stub("jj")
   expect_identical(fit$eval_method, "jj")
   err <- expect_error(
     getLV(fit, se = TRUE),

@@ -86,3 +86,35 @@ Exact added invocations: `OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 MKL_NUM_THREA
 Dispatched `gh workflow run R-CMD-check.yaml -f full_matrix=true --ref codex/two-kernel-gaussian-20261115` after pushing exact head `4bff4f35d26fb40f36439b240e3bd6575a517e92`. Workflow [43819142638](https://github.com/itchyshin/gllvmTMB/actions/runs/43819142638) completed successfully on Ubuntu, macOS, and Windows. All three package checks had 0 errors, 0 package-check warnings, and 1 NOTE for the existing `TMB:::EvalADFunObject` dependency note. Testthat: Ubuntu 31,343 pass, 0 fail, 71 warnings, 1,170 skips; macOS 31,341 pass, 0 fail, 66 warnings, 1,171 skips; Windows 31,343 pass, 0 fail, 68 warnings, 1,170 skips. Heavy tests were disabled by this workflow and passed separately on Totoro in the six-file run above. Job completion times: macOS 07:29:35Z, Ubuntu 07:42:57Z, Windows 08:27:08Z. Full logs: `/tmp/two-kernel-ci-ubuntu.log`, `/tmp/two-kernel-ci-macos.log`, `/tmp/two-kernel-ci-windows.log`.
 
 After-task report update and this check-log update are documentation only. No package code or tests changed after the CI-tested commit. The task branch remains separate from public main and unmerged. Recovery and interval calibration remain unvalidated.
+
+## 17 Nov exact-head checks and coverage-trace repair
+
+### Exact source
+
+PR #1803 head `2ab9906a8c3daa866caf6cba9155f4cd036be1c2`, integrated scratch branch `codex/two-kernel-e245-reconcile`.
+
+### Package checks
+
+R-CMD-check run [44121241599](https://github.com/itchyshin/gllvmTMB/actions/runs/44121241599), attempt 2, passed all four Ubuntu shards. The first attempt was cancelled after shard 2 remained in checkout for 62 minutes; that attempt and its three successful shard results are preserved. The replacement shard 2 passed in 22m45s.
+
+### Coverage failure
+
+Run [44121241636](https://github.com/itchyshin/gllvmTMB/actions/runs/44121241636) completed with all four test suites reporting `FAIL 0`, then failed while covr 4.0.0 attempted to read `covr_counters.rds` from the instrumented package's temporary library. The test summaries were 6,593, 5,950, 7,713 and 11,256 passes for shards 1–4, respectively. No coverage artefact was emitted by those failed runs. The older successful Linux run [43989173005](https://github.com/itchyshin/gllvmTMB/actions/runs/43989173005) used R 4.6.2 with covr 3.6.5 and passed all four shards.
+
+### Local covr 3.6.5 control
+
+Command: `env GLLVMTMB_TEST_SHARD=1/4 GITHUB_WORKSPACE="$PWD" Rscript --vanilla tools/run-covr-coverage.R`, run from the repository root with R 4.6.0 and covr 3.6.5. It exited 0 on head `2ab9906`. Its test summary was `FAIL 0 | WARN 20 | SKIP 542 | PASS 4747`; shard-only coverage was 45.6036%. The private macOS R CMD check reported two warnings and one note (missing `httr` while loading outside the test library and the instrumentation's `covr` namespace reference); it completed the test step without errors, and covr wrote Cobertura output. The local control ran on macOS; the separate successful Linux evidence is run 43989173005. Receipts, including `cobertura.xml`, `testthat.Rout` and `00check.log`, are retained at `/tmp/two-kernel-covr-365-control/`; the cobertura SHA-256 is `1045374e4acc4574f0d0ebdec8d345506899a633a6407646711d3d5298aa5603`.
+
+### Workflow change
+
+The initial workflow change requested `any::covr@3.6.5`, the last version confirmed to produce trace data in both the historical Linux run and this exact-source control. That request was later found ineffective, as recorded below. `python3 tools/tests/test_codecov_workflow.py` passed 11 tests; `git diff --check` passed. The pinned workflow has not yet run on GitHub.
+
+### Remaining gates
+
+Push the pinned workflow with the reconciled source, require a fresh exact-head coverage run and full Ubuntu/macOS/Windows R CMD-check run, finish G7 review and after-task audits, merge PR #1803, then verify the main-branch checks and reconcile PR #1813. This workflow change makes no recovery, normality or interval-calibration claim; those remain unresolved.
+
+### Follow-up: resolver correction
+
+On PR head `ef8e9f1cded9347be3a83974f860713824e94b2f`, Ubuntu R-CMD-check run [44160959975](https://github.com/itchyshin/gllvmTMB/actions/runs/44160959975) passed all four shards, and manually dispatched full-matrix run [44169444842](https://github.com/itchyshin/gllvmTMB/actions/runs/44169444842) passed Ubuntu, macOS and Windows. Coverage run [44160960021](https://github.com/itchyshin/gllvmTMB/actions/runs/44160960021) failed all four shards after their test summaries reported zero failures and 6,593, 5,950, 7,713 and 11,256 passes, respectively. The dependency lockfile and runtime log show covr 4.0.0 was installed despite the `any::covr@3.6.5` request; each failure occurred while reading a coverage trace.
+
+Local pak 0.10.0 reproduced the resolution: `pak::pkg_deps("any::covr@3.6.5", dependencies = FALSE)` returned 4.0.0, whereas `pak::pkg_deps("cran::covr@3.6.5", dependencies = FALSE)` returned 3.6.5. The latter also returned 3.6.5 with the full request `pak::pkg_deps(c("deps::.", "any::sessioninfo", "cran::covr@3.6.5", "any::xml2"), dependencies = c("Config/Needs/coverage", "all"))`. Commit `cb1300e77` changes the reference and adds an early installed-version assertion. `python3 tools/tests/test_codecov_workflow.py` passed 11 tests; `git diff --check` passed. Fresh checks on `cb1300e77` were queued when this entry was prepared. A passing local resolver is not a passing Linux coverage run.

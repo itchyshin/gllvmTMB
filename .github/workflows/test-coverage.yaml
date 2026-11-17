@@ -97,8 +97,12 @@ jobs:
         with:
           # covr 4.0.0 failed to read counters after tests under the isolated R CMD check path.
           # Pin the last verified release until that trace-file failure is resolved.
-          extra-packages: any::covr@3.6.5, any::xml2
+          extra-packages: cran::covr@3.6.5, any::xml2
           needs: coverage
+
+      - name: Verify coverage dependency version
+        run: stopifnot(as.character(packageVersion("covr")) == "3.6.5")
+        shell: Rscript {0}
 
       - name: Record tested commit
         run: |

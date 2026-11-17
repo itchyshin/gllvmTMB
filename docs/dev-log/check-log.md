@@ -1,4 +1,6 @@
 > New entries go in `docs/dev-log/check-log.d/`, one file per slice (`YYYY-MM-DD-<slice>.md`); see `check-log.d/README.md`.
+>
+> 2026-11-17, PR #1785 (refs #1782): merge of `origin/main` and the unit-column next-step bullet. Evidence: `docs/dev-log/check-log.d/2026-11-17-1782-predict-missing-unit-ci.md`.
 
 ## 2026-08-17 — #1077: reconcile stale profile-bounds wording post-#1090
 

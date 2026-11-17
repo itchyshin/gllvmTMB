@@ -3386,7 +3386,7 @@ predict.gllvmTMB_multi <- function(
         cli::cli_abort(c(
           "{.arg newdata} is missing the unit column {.field {unit_show}}.",
           "x" = "Unit-level random effects ({.val {unit_tiers}}) cannot be re-added without it.",
-          "i" = "Add {.field {unit_show}} to {.arg newdata}, or pass {.code re_form = ~0} for the fixed-effects-only prediction."
+          ">" = "Add {.field {unit_show}} to {.arg newdata}, or pass {.code re_form = ~0} for the fixed-effects-only prediction."
         ), class = "gllvmTMB_predict_newdata_unit_missing")
       }
       ## A missing species *column* used to leave every sp_id NA, skip the

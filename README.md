@@ -136,7 +136,13 @@ interface lets you supply the stacked table yourself.
 
 ## Install
 
-Install the current development version from GitHub with `pak`:
+Install the released version from CRAN (currently 0.7.1):
+
+```r
+install.packages("gllvmTMB")
+```
+
+To try development changes before a release, install from GitHub with `pak`:
 
 ```r
 install.packages("pak")
@@ -337,7 +343,7 @@ If you use gllvmTMB, please cite the package and its TMB engine.
 Run `citation("gllvmTMB")` for formatted entries:
 
 - **gllvmTMB**: Nakagawa S (2026). *gllvmTMB: Generalised Linear
-  Latent Variable Models with TMB.* R package version 0.8.0.9000.
+  Latent Variable Models with TMB.* R package version 0.8.0.
   <https://itchyshin.github.io/gllvmTMB/>
 - **TMB engine**: Kristensen K, Nielsen A, Berg CW, Skaug H,
   Bell BM (2016). *TMB: Automatic Differentiation and Laplace

@@ -314,7 +314,7 @@ temporal_latent <- function(formula, time, d = 1, structure = "ar1",
   if (length(response_cols) != 1L || !response_cols %in% names(data) ||
       anyNA(data[[response_cols]])) {
     .temporal_abort(c(
-      "{.fn temporal_latent} requires complete Gaussian response values.",
+      "{.fn {marker_name}} requires complete Gaussian response values.",
       "i" = "Temporal panels are validated before ordinary missing-response handling.",
       ">" = "Remove or impute missing responses before fitting this version."
     ))
@@ -333,11 +333,11 @@ temporal_latent <- function(formula, time, d = 1, structure = "ar1",
   structure_name <- arg("structure", "ar1")
   replicate <- arg("replicate", NULL)
   if (is.null(time) || !is.name(time)) {
-    .temporal_abort("{.fn temporal_latent}'s {.arg time} must be a bare column name.")
+    .temporal_abort("{.fn {marker_name}}'s {.arg time} must be a bare column name.")
   }
   if (identical(mode, "latent") &&
       (!is.numeric(d) || length(d) != 1L || is.na(d) || d != 1)) {
-    .temporal_abort("{.fn temporal_latent} currently supports rank one only ({.code d = 1}).")
+    .temporal_abort("{.fn {marker_name}} currently supports rank one only ({.code d = 1}).")
   }
   if (!is.character(structure_name) || length(structure_name) != 1L ||
       !structure_name %in% c("ar1", "ou")) {
@@ -348,14 +348,15 @@ temporal_latent <- function(formula, time, d = 1, structure = "ar1",
   }
   if (!is.call(bar) || !identical(bar[[1L]], as.name("|")) || length(bar) != 3L ||
       !is.name(bar[[3L]])) {
-    .temporal_abort("{.fn temporal_latent} requires {.code 0 + trait | series}.")
+    .temporal_abort("{.fn {marker_name}} requires {.code 0 + trait | series}.")
   }
   lhs_text <- gsub("[[:space:]]+", "", paste(deparse(bar[[2L]]), collapse = ""))
   if (!identical(lhs_text, paste0("0+", trait_col))) {
+    long_form <- paste0(marker_name, "(0 + trait | series, time = occasion)")
     .temporal_abort(c(
-      "{.fn temporal_latent} requires one trait-intercept block {.code 0 + {trait_col} | series}.",
+      "{.fn {marker_name}} requires one trait-intercept block {.code 0 + {trait_col} | series}.",
       "i" = "The wide {.code traits(...)} interface is expanded to this form before temporal parsing.",
-      ">" = "For long data, use {.code temporal_latent(0 + trait | series, time = occasion)}."
+      ">" = "For long data, use {.code {long_form}}."
     ))
   }
   series <- as.character(bar[[3L]])
@@ -375,7 +376,7 @@ temporal_latent <- function(formula, time, d = 1, structure = "ar1",
   }
   traits <- unique(as.character(data[[trait_col]]))
   if (length(traits) < 3L) {
-    .temporal_abort("{.fn temporal_latent} requires at least three traits.")
+    .temporal_abort("{.fn {marker_name}} requires at least three traits.")
   }
   times_by_series <- split(data[[time]], as.character(data[[series]]))
   for (x in times_by_series) {

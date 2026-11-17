@@ -1,5 +1,7 @@
 # gllvmTMB 0.8.0
 
+* `temporal_indep()` and `temporal_dep()` parser refusals now name the keyword that was used. The shared temporal parser had been hard-coded as `temporal_latent()`, so a two-trait `temporal_indep()` fit said `temporal_latent() requires at least three traits.` The three-trait rule itself is unchanged (refs #TBD).
+
 * `predict(newdata = )` now stops when the fitted species column is absent and phylogenetic random effects (`phylo_rr` / `phylo_diag`) would be re-added. It used to return the fixed-effects-only prediction while reporting that those random effects had been re-added. `re_form = ~0` still returns that fixed-effects prediction, and an unseen level of a species column that is present is unchanged (#1787).
 
 * `getLoadings()`, `getLV()`, `getResidualCov()` and `getResidualCor()` still return the gllvmTMB result after `library(gllvm)`. `gllvm` exports S3 generics of those names, so attaching it was masking gllvmTMB's functions and the call failed with "no applicable method" on a `gllvmTMB` fit (#1759). The exported functions are unchanged: same arguments, and the same matrix or score list from `gllvmTMB::getLoadings()` and `gllvmTMB::getLV()`. Pass the fit as the first argument. A fit from `gllvm` is still handled by `gllvm`. This does not translate a `gllvm` object into a gllvmTMB result, and `getResidualCov()` on a gllvmTMB fit remains the trait covariance matrix rather than `gllvm`'s residual-covariance list.

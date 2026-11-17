@@ -1110,13 +1110,34 @@
     }
   }
   dll <- TMB::dynlib(tools::file_path_sans_ext(cpp))
-  loaded <- vapply(getLoadedDLLs(), function(x) {
-    path <- x[["path"]]
-    nzchar(path) && identical(normalizePath(path, mustWork = FALSE),
-                              normalizePath(dll, mustWork = FALSE))
-  }, logical(1))
+  ## The build directory is the source checksum, so a loaded copy of this
+  ## name from this path is already the current template. dyn.unload while
+  ## an earlier ADFun still holds an external pointer frees those pointers
+  ## ("Warning: N external pointers will be removed") and the next
+  ## MakeADFun segfaults. Ubuntu R 4.6.2 did that in
+  ## test-va-all-family-compiled.R after the new coevolution test moved
+  ## that file into a shard that had already loaded this DLL (PR #1803,
+  ## R-CMD-check 44015758495 shard 2). Reuse the loaded library.
+  ## rebuild=TRUE still compiles when this DLL is not loaded. A loaded
+  ## library from a different source build cannot be swapped in: unloading
+  ## it is the crash, and two copies cannot share the DLL name.
+  loaded_info <- getLoadedDLLs()[["gllvmTMB_va_r3"]]
+  if (!is.null(loaded_info)) {
+    loaded_path <- loaded_info[["path"]]
+    same_build <- nzchar(loaded_path) && identical(
+      normalizePath(loaded_path, mustWork = FALSE),
+      normalizePath(dll, mustWork = FALSE)
+    )
+    if (!same_build) {
+      stop(
+        "gllvmTMB_va_r3 is already loaded from a different build. Restart R before rebuilding it.",
+        call. = FALSE
+      )
+    }
+    return(list(DLL = "gllvmTMB_va_r3", path = dll, source = source,
+                checksum = stamp))
+  }
   if (!file.exists(dll) || isTRUE(rebuild)) {
-    if (any(loaded)) dyn.unload(dll)
     old <- getwd()
     on.exit(setwd(old), add = TRUE)
     setwd(build_dir)
@@ -1129,9 +1150,8 @@
       stop("Compilation of the standalone R3 TMB template failed.",
            call. = FALSE)
     }
-    loaded[] <- FALSE
   }
-  if (!any(loaded)) dyn.load(dll)
+  dyn.load(dll)
   list(DLL = "gllvmTMB_va_r3", path = dll, source = source, checksum = stamp)
 }
 

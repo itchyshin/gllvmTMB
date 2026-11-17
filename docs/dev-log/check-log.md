@@ -58369,6 +58369,16 @@ Consistency scans (exact patterns and scope):
 
 Absolute-path slop check covered README, check-log, report, and PR body; no file exceeded the review threshold. No likelihood, API, formula grammar, family, generated Rd, article, or pkgdown navigation change.
 
+## 2026-11-09 — issue #1751 non-finite response / covariate fit gate
+
+Branch `cursor/fix-1751-nonfinite-inputs-cd53`. Added pre-optimizer `cli_abort` in `R/fit-multi.R` for `Inf`/`-Inf` in observed responses and fixed-effect design columns (observed-response rows), beside the existing NA design and finite-weights checks; `NaN`/`NA` response handling unchanged. Regression tests `tests/testthat/test-fix-1751-nonfinite-inputs.R`; `NEWS.md` bullet.
+
+Commands run (after local `pkgload::load_all()` with `R_LIBS_USER=/home/ubuntu/R/library`):
+- Main without fix (test file only): `testthat::test_file("tests/testthat/test-fix-1751-nonfinite-inputs.R")` — FAIL (cryptic `NA/NaN/Inf` / foreign-function messages).
+- Branch with fix: same — expect PASS.
+
+Deliberately not run: full `devtools::test()`, `devtools::check()`, pkgdown, Julia bridge parity.
+
 ## 2026-11-14: provisional gllvmTMB 0.8.0 release metadata
 
 On base `abf3e905fb9e22f5eca9b8dd01c9ea476fde4ee2`, the isolated candidate updates the DESCRIPTION version to 0.8.0 and corrects the COPYRIGHTS grid description to 6 by 3. `Rscript --vanilla` read and checked the DESCRIPTION version and license, and `git diff --check` passed. The current development NEWS is unchanged because active pull requests also edit it. Full release-source tests, release notes, component rights, and independent release review remain open; this is not a release.

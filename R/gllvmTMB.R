@@ -771,6 +771,13 @@ gllvmTMB <- function(
   unit_obs <- unit_obs %||% "site_species"
   cluster <- cluster %||% "species"
 
+  ## Call uncalled family constructors (`family = gaussian`, not
+  ## `gaussian()`) before the wide/traits rewrite and before later
+  ## `$family` / `inherits(..., "family")` gates (`column_coef`,
+  ## `temporal_latent`). The scan in `expand_multinomial_response()`
+  ## stays as a no-op on an already-resolved family (#1781).
+  family <- .gllvmTMB_resolve_family_constructors(family)
+
   estimator_missing <- missing(estimator)
   estimator <- match.arg(estimator)
 
@@ -1992,6 +1999,38 @@ gllvmTMB <- function(
   refit
 }
 
+## Call an uncalled family constructor (`family = gaussian`, not
+## `gaussian()`) the same way `family_to_id()` does. `gllvmTMB()`
+## calls this at entry; `expand_multinomial_response()` calls it
+## again as a no-op so a direct scan cannot `as.character()` a
+## function (#1781).
+.gllvmTMB_resolve_family_constructors <- function(family) {
+  resolve_one <- function(f) {
+    if (!is.function(f) || inherits(f, "family")) return(f)
+    called <- tryCatch(f(), error = function(e) e)
+    if (inherits(called, "error") || !inherits(called, "family")) {
+      detail <- if (inherits(called, "error")) {
+        conditionMessage(called)
+      } else {
+        "the constructor did not return a family object"
+      }
+      cli::cli_abort(c(
+        "Could not build a family object from the supplied constructor.",
+        "x" = detail,
+        "i" = "Pass a family object such as {.code gaussian()} or {.code multinomial()}, or a character name such as {.val gaussian}."
+      ), class = "gllvmTMB_family_constructor")
+    }
+    called
+  }
+  if (inherits(family, "family") || !is.list(family)) {
+    return(resolve_one(family))
+  }
+  attrs <- attributes(family)
+  resolved <- lapply(family, resolve_one)
+  attributes(resolved) <- attrs
+  resolved
+}
+
 ## Multinomial (baseline-category logit) response expansion (Design 83).
 ## A multinomial() response over K unordered categories is expanded, BEFORE
 ## desugar/parse, into K-1 contiguous "category-contrast" pseudo-trait rows per
@@ -2004,6 +2043,9 @@ gllvmTMB <- function(
 expand_multinomial_response <- function(formula, data, family, trait_col) {
   ## A single family object is itself a list, so test the class FIRST; only a
   ## bare list-of-families (mixed-family API) is treated as a list.
+  ## Constructors are called first so `family = multinomial` is still expanded
+  ## and `family = gaussian` is not passed to `as.character()` (#1781).
+  family <- .gllvmTMB_resolve_family_constructors(family)
   fams <- if (inherits(family, "family")) list(family)
           else if (is.list(family)) family
           else list(family)

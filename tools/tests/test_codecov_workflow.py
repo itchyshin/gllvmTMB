@@ -120,6 +120,7 @@ class CodecovWorkflowTest(unittest.TestCase):
             line.strip()
             for line in _active_lines(PRODUCER)
             if line.strip().startswith("if:") and "github.event_name" in line
+            and "draft" not in line
         ]
         self.assertEqual(len(upload_conditions), 2, upload_conditions)
         for condition in upload_conditions:

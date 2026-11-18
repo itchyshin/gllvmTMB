@@ -3,7 +3,7 @@
 ## This scans string literals only -- parse() discards comments, so an internal
 ## code comment mentioning the deprecated mechanism is correctly ignored.
 
-r_dir <- testthat::test_path("..", "..", "R")
+r_dir <- gllvmTMB_pkg_file("R")
 
 string_literals <- function(path) {
   expr <- tryCatch(parse(path), error = function(e) NULL)
@@ -30,8 +30,6 @@ string_literals <- function(path) {
 }
 
 test_that("no user-facing message recommends the soft-deprecated residual start", {
-  testthat::skip_if_not(dir.exists(r_dir), "R/ not present")
-
   offenders <- character()
   for (f in list.files(r_dir, pattern = "[.]R$", full.names = TRUE)) {
     lits <- string_literals(f)
@@ -47,8 +45,6 @@ test_that("no user-facing message recommends the soft-deprecated residual start"
 })
 
 test_that("no user-facing message recommends a numeric aghq_ridge over loading_ridge", {
-  testthat::skip_if_not(dir.exists(r_dir), "R/ not present")
-
   ## `loading_ridge` is the integration-neutral spelling for a runaway-loading
   ## fix (#gapclose task d); `aghq_ridge = <number>` recommendations should
   ## have moved to it. `aghq_ridge = "auto"` and `aghq_ridge = Inf` are left
@@ -111,11 +107,8 @@ test_that("gr() / legacy phylo() alias messages recommend phylo_indep(common = T
 ## must not teach the `d = T` shorthand, say `gr(cov =)` is unused, or call the
 ## soft-deprecated scalar keywords "Canonical".
 test_that("keyword help pages carry no stale recommendations (#1560)", {
-  man_dir <- testthat::test_path("..", "..", "man")
-  testthat::skip_if_not(dir.exists(man_dir), "man/ not present")
   rd_text <- function(topic) {
-    path <- file.path(man_dir, paste0(topic, ".Rd"))
-    testthat::skip_if_not(file.exists(path), paste(topic, "Rd not present"))
+    path <- gllvmTMB_pkg_file("man", paste0(topic, ".Rd"))
     txt <- paste(readLines(path, warn = FALSE), collapse = "\n")
     ## Description lines only: @examples are owned by the #1346 example lane.
     sub("[\\\\]examples[{].*", "", txt)

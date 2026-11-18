@@ -72,7 +72,9 @@ files_to_scan <- c(html_files, file.path(site_dir, required_indexes))
 private_target <- paste0("(?i)(?:^|[/\"'])", paste(private_pages, collapse = "|"))
 reader_tracking <- paste(
   "(?i)(?:",
-  "\\b(?:PR|issue)\\s*#\\d+|\\bArc\\s+\\d+\\b|",
+  # Public NEWS entries may cite issue numbers. Pull-request labels still
+  # expose internal implementation tracking, so continue to reject those.
+  "\\bPR\\s*#\\d+|\\bArc\\s+\\d+\\b|",
   "\\b(?:implementation|development|work|active)\\s+lane\\b|\\bworktree\\b|\\bdev-log/|",
   "\\b(?:agent|persona)\\s+(?:review|approved|approval|handoff)\\b|",
   "\\b(?:Rose|Pat)\\s+(?:reviewed|approved)\\b|",

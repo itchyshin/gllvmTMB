@@ -833,7 +833,9 @@
 ## levels with zero observations. Distinguish that case (actionable:
 ## droplevels()) from a genuine coverage gap in a species that IS observed
 ## (not fixable by droplevels -- the tree/vcv itself is incomplete).
-.gllvm_abort_uncovered_species_levels <- function(levs, covered, data, species, what) {
+.gllvm_abort_uncovered_species_levels <- function(levs, covered, data, species, what,
+                                                  level_word = "species",
+                                                  mismatch_tail = NULL) {
   missing_levs <- setdiff(levs, covered)
   if (!length(missing_levs)) {
     return(invisible(NULL))
@@ -841,7 +843,7 @@
   observed <- unique(as.character(data[[species]]))
   unused_missing   <- intersect(missing_levs, setdiff(levs, observed))
   observed_missing <- intersect(missing_levs, observed)
-  bullets <- c(sprintf("%s do not cover all species levels.", what))
+  bullets <- c(sprintf("%s do not cover all %s levels.", what, level_word))
   if (length(unused_missing)) {
     bullets <- c(
       bullets,
@@ -861,16 +863,25 @@
     )
   }
   if (length(observed_missing)) {
-    bullets <- c(
-      bullets,
-      "i" = sprintf(
+    observed_line <- if (is.null(mismatch_tail)) {
+      sprintf(
         "%d observed species level%s of `%s` not covered: %s. This is a genuine mismatch and is NOT fixed by droplevels() -- supply a tree/vcv that covers these species.",
         length(observed_missing),
         if (length(observed_missing) > 1L) "s" else "",
         species,
         paste(observed_missing, collapse = ", ")
       )
-    )
+    } else {
+      sprintf(
+        "%d observed level%s of `%s` not covered: %s. %s",
+        length(observed_missing),
+        if (length(observed_missing) > 1L) "s" else "",
+        species,
+        paste(observed_missing, collapse = ", "),
+        mismatch_tail
+      )
+    }
+    bullets <- c(bullets, "i" = observed_line)
   }
   cli::cli_abort(bullets)
 }
@@ -1406,6 +1417,32 @@
   invisible(NULL)
 }
 
+.abort_one_level_fixed_factors <- function(mf) {
+  tt <- stats::terms(mf)
+  resp_idx <- attr(tt, "response")
+  resp_nm <- if (is.numeric(resp_idx) && length(resp_idx) == 1L && resp_idx > 0L) {
+    colnames(mf)[resp_idx]
+  } else {
+    character(0)
+  }
+  preds <- setdiff(colnames(mf), resp_nm)
+  bad <- preds[vapply(preds, function(nm) {
+    col <- mf[[nm]]
+    is.factor(col) && nlevels(col) < 2L
+  }, logical(1))]
+  if (!length(bad)) return(invisible(NULL))
+  shown <- vapply(bad, function(nm) {
+    lv <- levels(mf[[nm]])
+    if (length(lv) == 0L) paste0(nm, " (no levels)") else paste0(nm, " = ", lv[[1L]])
+  }, character(1))
+  cli::cli_abort(c(
+    "A fixed-effect factor has fewer than two levels, so contrasts cannot be built.",
+    "x" = "Found {.val {shown}}.",
+    "i" = "Use an intercept-only fixed formula ({.code ~ 1}) when every row shares one trait, or give the factor at least two levels.",
+    "i" = "A single-response model with no trait structure belongs in {.pkg glmmTMB}."
+  ), class = "gllvmTMB_one_level_factor")
+}
+
 #' Fit a long-format multivariate stacked-trait model (Stage 2 internal)
 #'
 #' Called by [gllvmTMB()] when the formula contains `latent()` or `indep()`
@@ -1423,6 +1460,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                                REML = FALSE,
                                phylo_vcv = NULL, phylo_tree = NULL,
                                known_V = NULL,
+                               known_sigma_eps = NULL,
                                mesh = NULL,
                                lambda_constraint = NULL,
                                Xcoef_fixed = NULL,
@@ -1434,7 +1472,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                                missing_meta = NULL,
                                temporal = NULL,
                                estimator = "ml",
-                               engine = "tmb") {
+                               engine = "tmb",
+                               warn_tweedie_pin = TRUE,
+                               warn_tweedie_boundary = TRUE) {
   if (!is.logical(REML) || length(REML) != 1L || is.na(REML)) {
     cli::cli_abort(c(
       "{.arg REML} must be a single {.code TRUE} or {.code FALSE} value.",
@@ -1760,6 +1800,12 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     for (i in seq_along(family_per_row)) family_per_row[[i]] <- family
     family_input <- family    # M1.8: single-family path; family_input == family
   }
+  if (!is.null(known_sigma_eps) && any(family_id_vec != 0L)) {
+    cli::cli_abort(c(
+      "{.arg known_sigma_eps} requires Gaussian responses for every trait.",
+      ">" = "Use Gaussian responses throughout, or omit {.arg known_sigma_eps}."
+    ))
+  }
   ## The marker is not itself an admission rule. Admission comes from the exact
   ## two-source family/source contract, and ONLY from it. The unexported route
   ## sets the marker and must satisfy the contract; a public caller satisfies
@@ -1852,24 +1898,11 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   )
   use_lv_B <- isTRUE(lv_setup$enabled)
 
-  ## ---- Design 65 C3.2 two-Psi identifiability guardrail -----------------
-  ## A two-kernel model carries two uniqueness tiers (e.g. a phylo cross-
-  ## kernel `Psi_phy` plus a tip-level non-phylo `Psi_non`). The split of
-  ## per-trait uniqueness variance into `Psi_phy + Psi_non` is NOT separable
-  ## from a single observation per species/trait: with one community
-  ## realisation the two diagonal variance components are confounded
-  ## (Boettiger et al. 2012 -- a single shared association is only ONE
-  ## replicate of the signal; Design 65 sec. C3.2). Replication -- repeated
-  ## communities, or species means + SE -- is what identifies the two Psi.
-  ##
-  ## Detection is conservative: it fires ONLY when TWO OR MORE `kernel_unique`
-  ## (uniqueness) tiers are present AND there is no within-cluster replication
-  ## (every species level appears in at most one observation row). In that
-  ## case we DROP the extra uniqueness covstruct(s) from `parsed$covstructs`
-  ## (defaulting to a single, identifiable uniqueness tier) and emit a
-  ## `cli::cli_warn` -- a warn, not a hard abort, so the model still fits. We
-  ## prune here, before the per-keyword index vectors are built, so every
-  ## downstream slot (vcv harvest, phylo_diag, extract_Sigma) sees one tier.
+  ## ---- Design 65 C3.2 multi-kernel uniqueness guardrail ---------------
+  ## Do not drop requested diagonals. The bounded two-kernel Gaussian route
+  ## requires fixed observation SD, positive weights and a rank-two screen of
+  ## the observed same-trait kernel patterns. This screen is necessary for
+  ## admission, not proof of identification or recovery. Other requests error.
   is_kernel_unique <- vapply(seq_along(parsed$covstructs), function(i) {
     cs <- parsed$covstructs[[i]]
     if (!identical(cs$kind, "phylo_rr")) return(FALSE)
@@ -1878,90 +1911,121 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       !is.null(mode) &&
       as.character(mode) %in% c("unique", "indep")
   }, logical(1L))
-  is_auto_kernel_unique <- vapply(seq_along(parsed$covstructs), function(i) {
-    cs <- parsed$covstructs[[i]]
-    if (!identical(cs$kind, "phylo_rr")) return(FALSE)
-    mode <- cs$extra[[".kernel_mode"]]
-    isTRUE(cs$extra[[".phylo_unique"]]) &&
-      isTRUE(cs$extra[[".auto_unique"]]) &&
-      !is.null(cs$extra[[".kernel_name"]]) &&
-      !is.null(mode) &&
-      as.character(mode) %in% c("unique", "indep")
-  }, logical(1L))
-  kernel_latent_names_for_fold <- vapply(seq_along(parsed$covstructs), function(i) {
-    cs <- parsed$covstructs[[i]]
-    if (!identical(cs$kind, "phylo_rr")) return(NA_character_)
-    mode <- cs$extra[[".kernel_mode"]]
-    nm <- cs$extra[[".kernel_name"]]
-    if (is.null(mode) ||
-        !identical(as.character(mode), "latent") ||
-        isTRUE(cs$extra[[".phylo_unique"]]) ||
-        is.null(nm)) {
-      return(NA_character_)
+  kernel_names <- unique(vapply(Filter(function(cs) {
+    identical(cs$kind, "phylo_rr") &&
+      identical(as.character(cs$extra[[".kernel_mode"]]), "latent") &&
+      !is.null(cs$extra[[".kernel_name"]])
+  }, parsed$covstructs), function(cs) as.character(cs$extra[[".kernel_name"]]), character(1L)))
+  if (length(kernel_names) > 1L && any(is_kernel_unique)) {
+    if (!is.null(weights) && anyNA(weights)) {
+      cli::cli_abort(c(
+        "The multi-kernel uniqueness design requires non-missing weights.",
+        ">" = "Supply a positive weight for every observation."
+      ))
     }
-    as.character(nm)
-  }, character(1L))
-  kernel_latent_names_for_fold <- unique(
-    kernel_latent_names_for_fold[!is.na(kernel_latent_names_for_fold)]
-  )
-  if (length(kernel_latent_names_for_fold) > 1L && any(is_auto_kernel_unique)) {
-    ## Single dense-kernel `kernel_latent(unique = TRUE)` folds its Psi
-    ## companion. The first multi-kernel engine wave is explicitly latent-only,
-    ## so auto-generated kernel Psi companions are pruned before the C3.2
-    ## explicit-Psi guard. User-written `kernel_unique()` terms remain visible
-    ## to the guard below.
-    parsed$covstructs <- parsed$covstructs[!is_auto_kernel_unique]
-    groupings <- vapply(
-      parsed$covstructs, function(cs) deparse(cs$group), character(1)
-    )
-    kinds <- vapply(
-      parsed$covstructs, function(cs) cs$kind, character(1)
-    )
-    is_kernel_unique <- vapply(seq_along(parsed$covstructs), function(i) {
-      cs <- parsed$covstructs[[i]]
-      if (!identical(cs$kind, "phylo_rr")) return(FALSE)
-      mode <- cs$extra[[".kernel_mode"]]
-      isTRUE(cs$extra[[".phylo_unique"]]) &&
-        !is.null(mode) &&
-        as.character(mode) %in% c("unique", "indep")
-    }, logical(1L))
-  }
-  if (sum(is_kernel_unique) >= 2L) {
-    ## Replication is measured in DISTINCT observation UNITS per species, NOT
-    ## raw long-format rows. By the time the fit runs, a wide `traits(y1, y2)`
-    ## call has been pivoted to stacked-trait long format, so every species
-    ## already appears in `n_traits` rows even with one community realisation.
-    ## Counting raw rows would mistake trait-stacking for replication and skip
-    ## the guardrail (then abort at the single-`name` validation below). The
-    ## within-unit observation factor (`unit_obs`, default "site_species")
-    ## identifies the original observation row, so distinct `unit_obs` values
-    ## per species is the honest replication count. Fall back conservatively
-    ## (treat as unreplicated) when that column is absent.
-    has_replication <- FALSE
-    if (!is.null(unit_obs) && unit_obs %in% names(data) &&
-        species %in% names(data)) {
-      units_per_species <- tapply(
-        as.character(data[[unit_obs]]),
-        data[[species]],
-        function(u) length(unique(u))
-      )
-      has_replication <- length(units_per_species) > 0L &&
-        max(units_per_species, na.rm = TRUE) > 1L
+    if (!is.null(weights) && any(weights <= 0)) {
+      cli::cli_abort(c(
+        "The multi-kernel uniqueness design requires positive observation weights.",
+        ">" = "Remove zero-weight observations before fitting."
+      ))
     }
-    if (!has_replication) {
-      ## Keep the FIRST kernel uniqueness tier; drop the rest.
-      drop_idx <- which(is_kernel_unique)[-1L]
-      parsed$covstructs <- parsed$covstructs[-drop_idx]
-      groupings <- vapply(
-        parsed$covstructs, function(cs) deparse(cs$group), character(1)
-      )
-      kinds <- vapply(
-        parsed$covstructs, function(cs) cs$kind, character(1)
-      )
-      cli::cli_warn(c(
-        "Two {.fn kernel_unique} tiers are not separable without replication.",
-        "i" = "The two-{.field Psi} split ({.code Psi_phy + Psi_non}) is confounded with a single observation per species/trait: one community realisation is only one replicate of the uniqueness signal (Boettiger et al. 2012).",
-        ">" = "Defaulting to a single uniqueness tier. To estimate both {.field Psi}, supply within-species replication (repeated communities, or species means + SE)."
+    known_error_kernel_split <- FALSE
+    if (!is.null(known_sigma_eps)) {
+      latent_idx <- which(vapply(seq_along(parsed$covstructs), function(i) {
+        cs <- parsed$covstructs[[i]]
+        identical(cs$kind, "phylo_rr") &&
+          identical(as.character(cs$extra[[".kernel_mode"]]), "latent") &&
+          !is.null(cs$extra[[".kernel_name"]])
+      }, logical(1L)))
+      latent_names <- vapply(latent_idx, function(i) {
+        as.character(parsed$covstructs[[i]]$extra[[".kernel_name"]])
+      }, character(1L))
+      if (length(latent_idx) == 2L && length(unique(latent_names)) == 2L &&
+          !is.null(species) && species %in% names(data)) {
+        trait_col <- if (is.character(trait) && length(trait) == 1L &&
+                         trait %in% names(data)) trait else "trait"
+        if (trait_col %in% names(data)) {
+          ## Preserve the existing classed error for genuinely empty levels,
+          ## while letting the kernel screen reject traits whose rows were
+          ## removed because every response was missing.
+          original_data <- missing_meta$data_original
+          empty_level_data <- if (is.data.frame(original_data) &&
+                                  trait_col %in% names(original_data)) {
+            original_data
+          } else {
+            data
+          }
+          .abort_empty_trait_levels(empty_level_data, trait_col)
+          trait_values <- as.character(data[[trait_col]])
+          species_values <- as.character(data[[species]])
+          species_levels <- if (is.factor(data[[species]])) {
+            levels(data[[species]])
+          } else {
+            levels(factor(data[[species]]))
+          }
+          if (!is.null(is_y_observed) && length(is_y_observed) != nrow(data)) {
+            cli::cli_abort(c(
+              "The observed-response mask does not match the data rows.",
+              ">" = "Check the response rows and missing-data settings, then refit the model."
+            ))
+          }
+          ## The caller drops missing responses or supplies an explicit mask.
+          observed <- if (is.null(is_y_observed)) rep(TRUE, nrow(data)) else {
+            as.logical(is_y_observed)
+          }
+          observed[is.na(observed)] <- FALSE
+          eligible <- observed & !is.na(trait_values) & !is.na(species_values)
+          declared_traits <- if (is.factor(data[[trait_col]])) {
+            levels(data[[trait_col]])
+          } else {
+            unique(trait_values[!is.na(trait_values)])
+          }
+          kernel_matrices <- lapply(latent_idx, function(i) {
+            parsed$covstructs[[i]]$extra$vcv
+          })
+          if (length(declared_traits) > 0L &&
+              all(vapply(kernel_matrices, function(K) {
+                is.matrix(K) && !is.null(rownames(K)) &&
+                  !is.null(colnames(K))
+              }, logical(1L)))) {
+            psi_pattern_ranks <- vapply(declared_traits, function(trait_value) {
+              ids <- which(eligible & trait_values == trait_value)
+              species_rows <- species_values[ids]
+              if (length(species_rows) < 2L) return(1L)
+              kernel_columns <- lapply(kernel_matrices, function(K) {
+                if (!all(species_levels %in% rownames(K)) ||
+                    !all(species_levels %in% colnames(K))) return(NULL)
+                ## Match the species-level covariance used by the engine.
+                ## Ridge before indexing so repeated rows from one species
+                ## share its ridge contribution as well.
+                K_ordered <- K[species_levels, species_levels, drop = FALSE]
+                K_used <- (K_ordered + t(K_ordered)) / 2
+                diag(K_used) <- diag(K_used) + 1e-8
+                as.numeric(K_used[species_rows, species_rows, drop = FALSE])
+              })
+              if (!all(vapply(kernel_columns, length, integer(1L)) > 0L)) {
+                return(1L)
+              }
+              kernel_basis <- do.call(cbind, kernel_columns)
+              kernel_norm <- sqrt(colSums(kernel_basis^2))
+              if (!all(is.finite(kernel_norm) & kernel_norm > 0)) return(1L)
+              kernel_basis <- sweep(kernel_basis, 2L, kernel_norm, "/")
+              as.integer(qr(kernel_basis, tol = 1e-8)$rank)
+            }, integer(1L))
+            ## Psi is diagonal in trait space. Cross-trait covariance entries,
+            ## including cross-lineage K_HP blocks, cannot separate its two
+            ## kernel-specific variances. Require independent K patterns on
+            ## the observed same-trait blocks for every declared trait.
+            known_error_kernel_split <- all(psi_pattern_ranks == 2L)
+          }
+        }
+      }
+    }
+    if (!known_error_kernel_split || sum(is_kernel_unique) != 2L) {
+      cli::cli_abort(c(
+        "The requested multi-kernel uniqueness terms cannot be fitted under this design.",
+        "i" = "Two named Gaussian kernel tiers require a fixed observation SD and distinct same-trait kernel patterns for every declared trait.",
+        ">" = "Supply observed data for every trait, {.arg known_sigma_eps}, and separable kernels, or set {.code unique = FALSE} explicitly."
       ))
     }
   }
@@ -3363,12 +3427,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ))
     }
     if (species_diag && !identical(site, species)) {
-      cli::cli_inform(c(
-        "i" = "{.code phylo_indep({species}) + indep(0 + trait | {species})} at {.code unit = {.val {site}}} fits the {.val {species}}-level non-phylogenetic variance via the {.code diag | {species}} ({.code q_sp}) engine slot.",
-        "*" = "This is the {.code p_it + q_it} decomposition of the Nakagawa et al. functional-biogeography model. Joint identifiability is empirically reasonable at {.code n_species >= 100} with strong phylogenetic signal: {.code sigma2_Q} recovers within ~10% relative error; {.code sigma2_P} within ~50% (per-trait estimates can be noisy). Compare the fit without the standalone species-level diagonal term to the fit with it to confirm both terms contribute on your data.",
-        ">" = "Use {.fn indep} for standalone non-phylogenetic diagonal terms."
-      ), .frequency = "once",
-         .frequency_id = "gllvmTMB-phylo-q-decomposition-inform")
+      .inform_phylo_species_diag(site, species)
     }
   }
   ## cluster2 foot-gun guard: the engine has no reduced-rank (rr / latent)
@@ -3627,6 +3686,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## ---- Build fixed-effects design matrix --------------------------------
   ## We use the full data env so that 0 + trait + (0+trait):env etc. parses.
   mf <- stats::model.frame(parsed$fixed, data = data, na.action = stats::na.pass)
+  ## A one-level factor dies inside model.matrix() with a bare contrasts
+  ## error. Name the factor and point at the intercept-only formula (#1783).
+  .abort_one_level_fixed_factors(mf)
   X_fix <- stats::model.matrix(parsed$fixed, mf)
   fixed_prior_spec <- .gllvmTMB_resolve_fixed_priors(control$fixed_effect_priors, colnames(X_fix))
   isdm_observation_basis <- NULL
@@ -4176,11 +4238,47 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ">" = "Public {.fn gllvmTMB} drops (response = \"drop\") or masks (response = \"include\") missing response rows before fitting; please report this internal preprocessing failure at https://github.com/itchyshin/gllvmTMB/issues."
     ))
   }
+  y_obs <- y[!masked_response]
+  if (length(y_obs) > 0L && any(is.infinite(y_obs))) {
+    resp_name <- paste(deparse(parsed$fixed[[2L]]), collapse = " ")
+    cli::cli_abort(c(
+      "The observed response must be finite.",
+      "x" = "Non-finite values in {.field {resp_name}} on rows with an observed response.",
+      ">" = "Replace {.code Inf} or {.code -Inf} in the response, or drop those rows before fitting."
+    ))
+  }
   if (any(is.na(X_fix))) {
     cli::cli_abort(c(
       "NA in the fixed-effect design matrix.",
       ">" = "Missing response rows are allowed and dropped before fitting; missing predictors still need to be removed or imputed before fitting (or declared with {.code mi()} under {.code missing = miss_control(predictor = \"model\")})."
     ))
+  }
+  if (ncol(X_fix) > 0L) {
+    X_obs <- X_fix[!masked_response, , drop = FALSE]
+    if (nrow(X_obs) > 0L) {
+      inf_cols <- which(vapply(
+        seq_len(ncol(X_fix)),
+        function(j) any(is.infinite(X_obs[, j])),
+        logical(1L)
+      ))
+      if (length(inf_cols) > 0L) {
+        bad_cols <- colnames(X_fix)[inf_cols]
+        shown <- utils::head(bad_cols, 10L)
+        ellipsis <- if (length(bad_cols) > 10L) ", ..." else ""
+        cli::cli_abort(c(
+          "Non-finite values in the fixed-effect design matrix.",
+          "x" = paste0(
+            "Offending design column",
+            if (length(bad_cols) > 1L) "s" else "",
+            ": ",
+            paste(shown, collapse = ", "),
+            ellipsis,
+            "."
+          ),
+          ">" = "Missing response rows are allowed and dropped before fitting; replace {.code Inf} or {.code -Inf} in predictors on observed-response rows before fitting."
+        ))
+      }
+    }
   }
   if (isTRUE(REML)) {
     ## NON-GAUSSIAN REML IS THE COX-REID ADJUSTED PROFILE LIKELIHOOD.
@@ -4907,16 +5005,20 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       diag_idx <- term_idx[modes_r %in% c("unique", "indep")]
       if (length(latent_idx) != 1L) {
         cli::cli_abort(c(
-          "Each named multi-kernel tier needs exactly one {.fn kernel_latent} term in the first engine wave.",
+          "Each named multi-kernel tier needs exactly one {.fn kernel_latent} term.",
           "i" = "Tier {.val {nm}} has {length(latent_idx)} latent terms.",
-          ">" = "The Paper 2 multi-kernel path is latent-only in this first wave; explicit {.field Psi} is deferred."
+          ">" = "Use one {.fn kernel_latent} term for each named tier."
         ))
       }
-      if (length(diag_idx) > 0L) {
+      auto_diag <- vapply(diag_idx, function(i) {
+        isTRUE(parsed$covstructs[[i]]$extra$.auto_unique)
+      }, logical(1L))
+      folded_psi <- length(diag_idx) == 1L && isTRUE(auto_diag[[1L]])
+      if (length(diag_idx) > 0L && !folded_psi) {
         cli::cli_abort(c(
-          "The first multi-kernel engine wave is latent-only.",
-          "i" = "Tier {.val {nm}} includes a kernel-level {.field Psi} diagonal, but explicit kernel-level {.field Psi} is deferred for Paper 2.",
-          ">" = "Use separate named {.fn kernel_latent} tiers for component-specific shared structure; handle non-Gaussian and cross-family residual scale outside this kernel-Psi grammar for now."
+          "This multi-kernel fit cannot take an explicit kernel-level {.field Psi} term.",
+          "i" = "Tier {.val {nm}} includes a separate {.fn kernel_unique} or {.fn kernel_indep} diagonal.",
+          ">" = "Ask for the trait-specific diagonal with {.code kernel_latent(..., unique = TRUE)} on each named kernel. A separate {.fn kernel_unique} term is not accepted on this path."
         ))
       }
 
@@ -4991,7 +5093,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
 
       kernel_rank[r] <- rank_r
       kernel_has_latent[r] <- 1L
-      kernel_has_diag[r] <- 0L
+      kernel_has_diag[r] <- if (folded_psi) 1L else 0L
       kernel_g_offset[r] <- g_cursor
       g_cursor <- g_cursor + n_kernel_levels * rank_r
       if (kernel_has_diag[r] == 1L) {
@@ -5007,7 +5109,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         group = species,
         rank = rank_r,
         has_latent = TRUE,
-        has_psi = FALSE,
+        has_psi = folded_psi,
         rho = kernel_rho,
         stringsAsFactors = FALSE
       )
@@ -5172,22 +5274,62 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       species_aug_id   <- sparse_phy$species_aug_id
     } else {
       ## --- Legacy dense path: invert tip-only Cphy and store sparse-format
-      if (is.null(phylo_vcv))
+      ## A single named kernel reuses this path. Its matrix is `K`, and the
+      ## grouping is the cluster slot (the kernel column when `cluster` was
+      ## omitted). Say `K` and that column; the phylogenetic wording stays
+      ## on the phylo-only branch below.
+      kernel_dense <- isTRUE(has_kernel_term) && !isTRUE(use_kernel_multi)
+      kfn <- if (kernel_dense) {
+        .gllvmTMB_kernel_fn_from_modes(phy_kernel_mode)
+      } else {
+        NULL
+      }
+      if (is.null(phylo_vcv)) {
+        if (kernel_dense) {
+          cli::cli_abort(c(
+            "{.fn {kfn}} needs a {.arg K} matrix.",
+            ">" = "Pass {.code K = ...} inside {.fn {kfn}}."
+          ), class = "gllvmTMB_kernel_K_levels")
+        }
         cli::cli_abort(c(
           "phylo_latent() / phylo_slope() found in formula but {.arg phylo_vcv} (or {.arg phylo_tree}) is NULL.",
           ">" = "Pass {.code tree = ...} or {.code vcv = ...} inside the keyword, or supply {.arg phylo_tree}/{.arg phylo_vcv} to {.fn gllvmTMB}."
         ))
-      if (is.null(rownames(phylo_vcv)))
+      }
+      if (is.null(rownames(phylo_vcv))) {
+        if (kernel_dense) {
+          cli::cli_abort(c(
+            "{.arg K} for {.fn {kfn}} must have rownames matching levels of {.field {species}}.",
+            ">" = "Set {.code rownames(K)} to the levels of {.field {species}}."
+          ), class = "gllvmTMB_kernel_K_levels")
+        }
         cli::cli_abort(c(
           "phylo_vcv must have rownames matching levels of {.var {species}}.",
           ">" = "Set {.code rownames(phylo_vcv) <- levels(data${species})}."
         ))
+      }
       levs <- levels(data[[species]])
-      .gllvm_abort_uncovered_species_levels(
-        levs, rownames(phylo_vcv), data, species, "{.arg phylo_vcv} rownames"
-      )
+      if (kernel_dense) {
+        .gllvm_abort_uncovered_species_levels(
+          levs, rownames(phylo_vcv), data, species,
+          "{.arg K} rownames",
+          level_word = "grouping",
+          mismatch_tail = sprintf(
+            "This is a mismatch between `K` and `%s` in `%s()` and is NOT fixed by droplevels().",
+            species, kfn
+          )
+        )
+      } else {
+        .gllvm_abort_uncovered_species_levels(
+          levs, rownames(phylo_vcv), data, species, "{.arg phylo_vcv} rownames"
+        )
+      }
       Aphy <- phylo_vcv[levs, levs, drop = FALSE]
-      .assert_dense_psd(as.matrix(Aphy), "vcv", "phylo_latent")
+      if (kernel_dense) {
+        .assert_dense_psd(as.matrix(Aphy), "K", kfn)
+      } else {
+        .assert_dense_psd(as.matrix(Aphy), "vcv", "phylo_latent")
+      }
       Aphy <- Aphy + diag(1e-8, nrow = nrow(Aphy))
       if (!is.null(structured_rho)) {
         structured_rho_diagonal <- diag(Aphy)
@@ -6469,7 +6611,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     log_sigma_re_int = if (use_re_int) rep(0.0, n_re_int_terms) else 0.0,
     ## NB2 / NB1 / Gamma / Tweedie per-trait dispersion. log(phi) starts at 0
     ## (phi = 1; for Gamma this is shape, so CV = 1);
-    ## logit(p) starts at 0 (p = 1.5, mid of the compound-Poisson regime).
+    ## theta starts at 0, so the smooth Tweedie power starts at 1.5
+    ## (midpoint of .gllvmTMB_tweedie_p).
     ## Design 48 phi-clamp ([0.01, 100]) applied below.
     log_phi_nbinom2  = .clamp_log_phi(rep(0.0, n_traits)),
     log_phi_nbinom1  = .clamp_log_phi(rep(0.0, n_traits)),
@@ -6700,11 +6843,14 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
           phylo_vcv = phylo_vcv,
           phylo_tree = phylo_tree,
           known_V = known_V,
+          known_sigma_eps = known_sigma_eps,
           mesh = mesh,
           lambda_constraint = lambda_constraint,
           control = control_indep,
           silent = silent,
-          unit_obs = unit_obs
+          unit_obs = unit_obs,
+          warn_tweedie_pin = FALSE,
+          warn_tweedie_boundary = FALSE
         ),
         error = function(e) e
       )
@@ -7345,11 +7491,11 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     if (!is.null(m_phi_tweedie)) tmb_map$log_phi_tweedie <- m_phi_tweedie
     ## If the user supplied a numeric `p` on the tweedie() family object
     ## (e.g. tweedie(p = 1.5)), pin logit_p_tweedie per trait that uses it.
-    ## Parameterisation: p = 1 + plogis(logit_p_tweedie), so the pin value is
-    ## qlogis(p - 1). A requested p whose logit lies outside [-5, 5] is
-    ## stored at that bound and warned (#1365). The template is not clamped;
-    ## a free logit_p is unchanged. The same stored logit is what MSPL reads.
-    ## Mirrors the student(df = ...) per-trait pin below.
+    ## Parameterisation: p = .gllvmTMB_tweedie_p(logit_p_tweedie). An in-range
+    ## pin is stored with .gllvmTMB_tweedie_theta, not qlogis(p - 1): that
+    ## old storage turns a fixed 1.7 into about 1.823. A requested p outside
+    ## [p_lo, p_hi] is stored at that end and warned (#1365). The same stored
+    ## value is what MSPL reads. Mirrors the student(df = ...) per-trait pin.
     ## Combined with the family mask via `dispersion_trait_map()`'s
     ## `user_pin_mask` so a mixed fit's non-tweedie traits AND a tweedie
     ## trait's user-fixed p are pinned by the same map.
@@ -7364,8 +7510,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       if (all(!is.na(p_vals)) && length(unique(p_vals)) == 1L) p_pin[t] <- p_vals[1]
     }
     if (any(!is.na(p_pin))) {
-      logit_pin <- .tweedie_pinned_logits(p_pin)
-      tmb_params$logit_p_tweedie[!is.na(p_pin)] <- logit_pin[!is.na(p_pin)]
+      theta_pin <- .tweedie_pinned_theta(p_pin, warn = warn_tweedie_pin)
+      tmb_params$logit_p_tweedie[!is.na(p_pin)] <- theta_pin[!is.na(p_pin)]
       tmb_map$logit_p_tweedie <- dispersion_trait_map(mask_tweedie, !is.na(p_pin))
     } else {
       ## No trait has a user-supplied `p` -- still pin non-tweedie traits'
@@ -7449,7 +7595,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   per_row_diag_W <- use_diag_W && length(unique(cell_W)) == n_obs
   cell_B <- paste(trait_id, site_id, sep = "_")
   per_row_diag_B <- use_diag_B && length(unique(cell_B)) == n_obs
-  if (!any_sigma_eps) {
+  if (!is.null(known_sigma_eps)) {
+    tmb_params$log_sigma_eps[] <- log(known_sigma_eps)
+    tmb_map$log_sigma_eps <- factor(rep(NA_integer_, length(tmb_params$log_sigma_eps)))
+  } else if (!any_sigma_eps) {
     tmb_map$log_sigma_eps <- factor(rep(NA_integer_, length(tmb_params$log_sigma_eps)))
     tmb_params$log_sigma_eps[] <- 0
   } else {
@@ -8968,8 +9117,12 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ##     The rule here is stationarity of the AD-exact gradient of the
       ##     surrogate at its own adaptation point (max |grad| < aghq_grad_tol)
       ##     together with a settled adaptation point (max |mode shift| <
-      ##     aghq_shift_tol); at a fixed point of the adaptation map those two
-      ##     conditions ARE stationarity of F.
+      ##     aghq_shift_tol). At a fixed point of the adaptation map that is
+      ##     stationarity of F only up to the gradient of F through the
+      ##     adaptation point, which the surrogate omits and which does not
+      ##     vanish at finite k (#1746: 0.017 against the surrogate's 0.0019 on
+      ##     a k = 9 binomial cell). The cap-1 stall exit below is therefore
+      ##     judged on F's own gradient.
       ##
       ##  2. A STEP THAT RAISES F IS REJECTED. That single test is what makes a
       ##     larger cap safe: a runaway is precisely a step that looks good
@@ -9226,10 +9379,56 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                                                    aghq_ridge_tau))),
               error = function(e) NA_real_
             )
-            aghq_stop <- sprintf(
-              paste0("stalled (no honest descent at cap 1 after backtracking); ",
-                     "max |grad| = %.3g (relative %.3g) against tolerances of %.3g / %.3g"),
-              g_last, rel_grad(g_last, F_best), grad_tol, grad_tol_rel)
+            ## #1746: before giving up, descend the honest objective with a
+            ## first-order-corrected surrogate (see
+            ## .gllvmTMB_aghq_recover_descent()). When it runs, the gradient
+            ## reported and judged is F's own, at the returned iterate.
+            F_honest <- function(p) {
+              a <- .gllvmTMB_aghq_adapt(obj_lap, p, d_B, n_sites)
+              obj_try$env$data$aghq_mode   <- a$mode
+              obj_try$env$data$aghq_Lt     <- a$Lt
+              obj_try$env$data$aghq_logdet <- as.numeric(a$logdet)
+              obj_try$retape()
+              v <- as.numeric(obj_try$fn(p))
+              if (.gllvmTMB_loading_ridge_applies(aghq_ridge_tau, names(obj_try$par))) {
+                li_h <- .gllvmTMB_ridge_block_index(names(obj_try$par))
+                v <- v + 0.5 * sum(p[li_h]^2) / aghq_ridge_tau^2
+              }
+              v
+            }
+            rec <- .gllvmTMB_aghq_recover_descent(
+              F_honest, obj_try, par_best, F_best, aghq_ridge_tau, run_one,
+              rho_min = rho_min
+            )
+            if (!is.null(rec)) {
+              if (rec$F < F_best) {
+                par_best <- rec$par
+                F_best   <- rec$F
+                opt_best <- rec$opt %||% opt_best
+                par_cur  <- par_best
+              }
+              g_last <- max(abs(rec$grad))
+              g_cur <- g_last
+              g_rel_cur <- rel_grad(g_last, F_best)
+            }
+            g_rel_last <- rel_grad(g_last, F_best)
+            rec_ok <- !is.null(rec) &&
+              ((is.finite(g_last) && g_last < grad_tol) ||
+                 (grad_tol_rel > 0 && is.finite(g_rel_last) &&
+                    g_rel_last < grad_tol_rel))
+            aghq_stop <- if (rec_ok) {
+              sprintf(paste0("converged (cap-1 stall recovered by %d first-order-corrected ",
+                             "step%s; honest objective stationary; max |grad| = %.3g, ",
+                             "relative %.3g)"),
+                      rec$iterations, if (rec$iterations == 1L) "" else "s",
+                      g_last, g_rel_last)
+            } else {
+              sprintf(
+                paste0("stalled (no honest descent at cap 1 after backtracking%s); ",
+                       "max |grad| = %.3g (relative %.3g) against tolerances of %.3g / %.3g"),
+                if (is.null(rec)) "" else " and first-order-corrected recovery",
+                g_last, g_rel_last, grad_tol, grad_tol_rel)
+            }
             break
           }
           ## Overreached: permanently lower the working cap by one stage.
@@ -9792,6 +9991,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ## refit_one — can pass the correct family list back to `gllvmTMB()`.
       ## For single-family fits, `family_input == family`.
       family_input = family_input,
+      known_sigma_eps = known_sigma_eps,
       likelihood_weights = list(
         active = weighted_objective,
         interpretation = if (weighted_objective) "weighted_objective" else "likelihood"
@@ -10493,6 +10693,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       fit$source_strength$diagnostics <- .structured_rho_diagnostics(fit)
     }
   }
+  if (isTRUE(warn_tweedie_boundary)) .gllvmTMB_warn_tweedie_p_boundary(fit)
   fit
 }
 
@@ -12200,6 +12401,104 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   list(mode = mode, Lt = Lt, logdet = logdet)
 }
 
+## Recover descent on the honest AGHQ objective after a cap-1 stall (#1746).
+##
+## The adaptation loop minimises a SURROGATE whose nodes are frozen at the
+## current iterate, and the surrogate's gradient omits the dependence of the
+## adaptation point on the parameters. At finite k that omitted term does not
+## vanish at a fixed point of the adaptation map: on the seed-2003 runaway cell
+## of test-runaway-warning.R (binomial, n = 100, p = 6, q = 2, k = 9) the honest
+## objective F has max |grad| 0.017 where the surrogate reports 0.0019. Near
+## such a point the surrogate's step can point uphill in F, every backtracked
+## step is rejected, and the loop stalls. Which side of the fixed point an
+## iterate approaches from is decided by round-off, so the same cell converged
+## at -O2 and stalled under covr's -O0 build.
+##
+## The recovery makes the surrogate first-order consistent with F at the
+## current iterate theta_0 by adding the linear tilt c'(theta - theta_0), with
+## c = grad F(theta_0) - grad S(theta_0). The tilted surrogate then has F's
+## gradient at theta_0, so its step is a descent direction for F. grad F is a
+## central finite difference of F itself (every evaluation re-adapts the
+## nodes and retapes), so each gradient costs 2 * length(par) retapes; the
+## budget of `max_iter` steps bounds the extra work at (max_iter + 1) such
+## gradients per stalled start. A step is kept only if it strictly lowers F.
+## The loop ends when no step lowers F or the budget runs out -- never on the
+## convergence tolerances, so they judge the result and cannot steer it.
+##
+## `F_eval(p)` must return F(p) exactly as the adaptation loop scores it
+## (re-adapted nodes, attached fixed priors, loading ridge), and must leave
+## `obj`'s nodes adapted at `p`. Returns NULL when the honest gradient cannot
+## be evaluated, otherwise list(par, F, grad, opt, iterations) at the best
+## point found (`par`/`F` unchanged and `opt` NULL if no step was kept).
+.gllvmTMB_aghq_recover_descent <- function(F_eval, obj, par, F0, ridge_tau,
+                                           run_one, max_iter = 3L,
+                                           rho_min = 1 / 64, iter_cap = 25L) {
+  fd_grad <- function(p) {
+    h <- 1e-5 * pmax(1, abs(p))
+    vapply(seq_along(p), function(i) {
+      e <- numeric(length(p))
+      e[i] <- h[i]
+      (F_eval(p + e) - F_eval(p - e)) / (2 * h[i])
+    }, numeric(1))
+  }
+  finite_or_null <- function(g) if (is.null(g) || any(!is.finite(g))) NULL else g
+  g <- finite_or_null(tryCatch(fd_grad(par), error = function(e) NULL))
+  if (is.null(g)) return(NULL)
+  opt <- NULL
+  n_iter <- 0L
+  for (r in seq_len(max_iter)) {
+    ok <- tryCatch({ F_eval(par); TRUE }, error = function(e) FALSE)
+    if (!ok) break
+    tilt <- g - .gllvmTMB_penalised_gradient(obj, par, ridge_tau)
+    par0 <- par
+    tilted <- list(
+      par = obj$par, env = obj$env, report = obj$report,
+      fn = function(p) as.numeric(obj$fn(p)) + sum(tilt * (p - par0)),
+      gr = function(p) as.numeric(obj$gr(p)) + tilt
+    )
+    o <- tryCatch(run_one(par, .obj = tilted, .iter_cap = iter_cap,
+                          .ridge_tau = ridge_tau),
+                  error = function(e) NULL)
+    if (is.null(o) || any(!is.finite(o$par))) break
+    ## Singular convergence means PORT's quadratic model has no usable
+    ## direction (nlminb code 1, message "singular convergence (7)"). On the
+    ## q = 2 golden fixture at k = 3 that step's line search reports an
+    ## honest objective near 1.006 and a finite-difference gradient just
+    ## under the tolerance, so the stall is certified as converged. The
+    ## value is a coarse-grid artefact. A fresh adaptation from it does not
+    ## stay there on this machine, but the coverage CI build's does, and
+    ## multi-start then prefers it to the stationary Laplace start. The fit
+    ## returns nlminb code 1 at a point about 1.1 nll from the oracle. An
+    ## iteration-limit stop is still a usable short step; a singular one is not.
+    if (identical(as.integer(o$convergence), 1L) &&
+        grepl("singular convergence", o$message %||% "", fixed = TRUE)) {
+      break
+    }
+    step <- o$par - par
+    if (!any(step != 0)) break
+    rho <- 1
+    moved <- FALSE
+    while (rho >= rho_min) {
+      p_try <- par + rho * step
+      F_try <- tryCatch(F_eval(p_try), error = function(e) NA_real_)
+      if (is.finite(F_try) && F_try < F0) {
+        moved <- TRUE
+        break
+      }
+      rho <- rho / 2
+    }
+    if (!moved) break
+    g_try <- finite_or_null(tryCatch(fd_grad(p_try), error = function(e) NULL))
+    if (is.null(g_try)) break
+    par <- p_try
+    F0 <- F_try
+    g <- g_try
+    opt <- o
+    n_iter <- r
+  }
+  list(par = par, F = F0, grad = g, opt = opt, iterations = n_iter)
+}
+
 ## Resolve `control$aghq` into a node count. FALSE / NULL -> NULL (Laplace).
 ## "auto" -> the ladder start from `.aghq_resolve()`, else 9.
 ##
@@ -12350,6 +12649,18 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   if (!is.numeric(a) || length(a) != 1L || is.na(a) || a < 1)
     stop("control$aghq must be FALSE, \"auto\", or a positive integer")
   as.integer(a)
+}
+
+## Once-per-session note for a species-level phylogenetic term plus
+## `indep(0 + trait | species)` at `unit != species`. Worded for any phylo
+## keyword (`phylo_latent(..., unique = TRUE)`, `phylo_indep()`): it names
+## neither a keyword the user did not write nor internal engine slots (#1572).
+.inform_phylo_species_diag <- function(site, species) {
+  cli::cli_inform(c(
+    "i" = "A species-level phylogenetic term together with {.code indep(0 + trait | {species})} at {.code unit = {.val {site}}} fits a phylogenetic and a non-phylogenetic variance per trait at the {.val {species}} level.",
+    "*" = "The two are separable only with enough species and a strong phylogenetic signal. In simulations, about 100 or more species recovered the non-phylogenetic variance within ~10% relative error and the phylogenetic variance within ~50% (per-trait estimates can be noisy). Fit the model without the {.code indep(0 + trait | {species})} term and compare, to check that both terms contribute on your data."
+  ), .frequency = "once",
+     .frequency_id = "gllvmTMB-phylo-q-decomposition-inform")
 }
 
 ## Auto-suppress note when a per-row diagonal already absorbs the

@@ -133,6 +133,8 @@ plumbing are covered by current tests.
 Non-Gaussian bootstrap calibration is experimental: its repeated-sampling
 behaviour has not been certified, and there is no production calibration
 evidence for mixed-family intervals. Treat those intervals as indicative.
+Multiple named-kernel fits cannot use this bootstrap because unconditional
+simulation for those fits is not yet supported.
 
 Each bootstrap replicate (1) draws a new response vector from
 \code{simulate(fit, nsim = 1)}, (2) refits the model with the same formula

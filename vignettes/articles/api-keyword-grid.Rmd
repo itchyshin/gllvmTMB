@@ -312,10 +312,15 @@ kernel_latent(
 ```
 
 For a single named kernel, `unique = TRUE` adds that kernel's diagonal Psi
-companion. Multiple named-kernel fits currently use the latent-only route; do
-not assume that each component receives its own Psi. When kernels overlap
-strongly, the fitted sum may be more stable than attribution to individual
-kernel components.
+companion. Two named Gaussian kernels can each carry a diagonal when a known
+observation-error SD is supplied with `known_sigma_eps`, all observation
+weights are positive, and the observed same-trait kernel patterns pass the
+separation check. The check does not guarantee precise estimates: recovery has
+been poor in some known-truth settings, and intervals remain unvalidated. When
+kernels overlap strongly, the fitted sum may be more stable than attribution
+to individual kernel components. Multiple named-kernel unconditional
+simulation, simulation on new data, and conditional prediction on new data are
+not yet supported.
 
 Named kernels should encode a relationship fixed before fitting. The model
 does not turn an analyst-supplied association matrix into evidence of a causal

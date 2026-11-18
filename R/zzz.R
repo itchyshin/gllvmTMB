@@ -17,6 +17,23 @@
   )
 }
 
+.onLoad <- function(libname, pkgname) {
+  ## #1759. gllvm's generics mask getLoadings/getLV/getResidualCov/
+  ## getResidualCor when that package is attached. Register on gllvm's
+  ## S3 table at load, and again if gllvm is attached later in the session.
+  if (!isTRUE(.gllvm_mask_hook_installed)) {
+    setHook(
+      packageEvent("gllvm", "onLoad"),
+      .gllvm_mask_on_gllvm_load,
+      action = "append"
+    )
+    utils::assignInMyNamespace(".gllvm_mask_hook_installed", TRUE)
+  }
+  if (isNamespaceLoaded("gllvm")) {
+    .register_gllvm_masking_methods()
+  }
+}
+
 .onUnload <- function(libpath) {
   library.dynam.unload("gllvmTMB", libpath)
 }

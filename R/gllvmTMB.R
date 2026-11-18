@@ -156,7 +156,12 @@
 #'   meta-analysis). Default `NULL`, which resolves to `"species"`. For
 #'   datasets with no third grouping the column may be absent from `data`
 #'   entirely (with or without passing `cluster`); the engine will
-#'   synthesise a placeholder. If supplied but no covariance keyword uses
+#'   synthesise a placeholder. When `cluster` is omitted and one
+#'   `kernel_indep()`, `kernel_dep()`, `kernel_latent()`, `kernel_unique()`,
+#'   or `kernel_scalar()` term names a bare grouping column, that column is
+#'   used so `K` is checked against it. An explicit `cluster` is unchanged,
+#'   including the replicated kernel example that passes `cluster = "site"`.
+#'   If supplied but no covariance keyword uses
 #'   that column, [gllvmTMB()] warns; omit the argument or use the column in
 #'   the intended covariance keyword.
 #'
@@ -218,7 +223,8 @@
 #'   log-dispersion parameter per trait: `nbinom1()` uses
 #'   Var = mu * (1 + phi), while `nbinom2()` uses
 #'   Var = mu + mu^2 / phi. The `tweedie()` family
-#'   fits one log-phi and one logit-(p-1) per trait, with p in (1, 2).
+#'   fits one log-dispersion and one power per trait. The power stays
+#'   inside about 1.000006 and 1.999994.
 #'   The `Beta()` and `betabinomial()` families each fit one
 #'   log-precision per trait (a = mu*phi, b = (1-mu)*phi; Smithson &
 #'   Verkuilen 2006). The `student()` family fits one log-sigma and one
@@ -309,6 +315,22 @@
 #'   `V_t`. Used by the `equalto()` two-stage workflow when sampling-error
 #'   matrices are available from a prior stage of estimation. Not supported by
 #'   `engine = "julia"`, which aborts (class `gllvmTMB_julia_unsupported_arg`).
+#' @param known_sigma_eps Optional known observation-error standard deviation.
+#'   Supply one finite positive number when the same error standard deviation
+#'   applies to every observation and all response traits are Gaussian. The
+#'   supplied value is fixed during fitting; its square is the observation-error
+#'   variance. This argument is supported only by the TMB engine. With `NULL`
+#'   (the default), the usual observation-error rules apply.
+#'
+#'   For two named `kernel_latent()` terms with `unique = TRUE`, supply
+#'   `known_sigma_eps` and use positive observation weights. The two kernels
+#'   must have distinct covariance patterns among the observed species for
+#'   each trait, and every declared trait needs at least two observed rows.
+#'   A failure of this check stops the fit rather than dropping a
+#'   requested component. Passing the check does not guarantee that the two
+#'   components can be estimated precisely; recovery and uncertainty for this
+#'   model remain under investigation. Mixed-family models are not supported
+#'   with this argument.
 #' @param lambda_constraint Optional list with elements `unit` and / or
 #'   `unit_obs` (plus `phy`, `spde` for structural levels), each an
 #'   `n_traits × d` matrix of confirmatory loading constraints
@@ -739,7 +761,8 @@ gllvmTMB <- function(
   site = NULL, # deprecated alias for `unit`
   species = NULL,
   estimator = c("ml", "mspl"),
-  column_data = NULL
+  column_data = NULL,
+  known_sigma_eps = NULL
 ) {
   # deprecated alias for `cluster`
 
@@ -758,8 +781,19 @@ gllvmTMB <- function(
   ## not an argument the caller supplied.
   unit_obs_supplied <- !missing(unit_obs) && !is.null(unit_obs)
   cluster_supplied <- !missing(cluster) && !is.null(cluster)
+  ## Capture the deprecated `species` alias before it is overwritten with
+  ## the resolved cluster name below. An explicit alias is a supplied
+  ## cluster; `species = NULL` is the same as omitting it.
+  species_alias_supplied <- !missing(species) && !is.null(species)
   unit_obs <- unit_obs %||% "site_species"
   cluster <- cluster %||% "species"
+
+  ## Call uncalled family constructors (`family = gaussian`, not
+  ## `gaussian()`) before the wide/traits rewrite and before later
+  ## `$family` / `inherits(..., "family")` gates (`column_coef`,
+  ## `temporal_latent`). The scan in `expand_multinomial_response()`
+  ## stays as a no-op on an already-resolved family (#1781).
+  family <- .gllvmTMB_resolve_family_constructors(family)
 
   estimator_missing <- missing(estimator)
   estimator <- match.arg(estimator)
@@ -773,6 +807,20 @@ gllvmTMB <- function(
   ## engine = "julia" routes through the experimental GLLVModels.jl bridge fitting
   ## path via JuliaCall; "tmb" (default) keeps the native TMB engine below.
   engine <- match.arg(engine)
+  if (!is.null(known_sigma_eps) &&
+      (!is.numeric(known_sigma_eps) || length(known_sigma_eps) != 1L ||
+       !is.finite(known_sigma_eps) || known_sigma_eps <= 0)) {
+    cli::cli_abort(c(
+      "{.arg known_sigma_eps} must be one finite positive standard deviation.",
+      ">" = "Supply a single known SD greater than zero, or use {.code NULL} for the usual observation-error rules."
+    ))
+  }
+  if (!is.null(known_sigma_eps) && !identical(engine, "tmb")) {
+    cli::cli_abort(c(
+      "{.arg known_sigma_eps} is supported only by the TMB engine.",
+      ">" = "Set {.code engine = \"tmb\"}, or omit {.arg known_sigma_eps}."
+    ))
+  }
   .gllvmTMB_fixed_prior_route(control$fixed_effect_priors, engine, estimator, REML, control)
   if (identical(engine, "julia") &&
       (control$optimizer_passes %||% 1L) > 1L) {
@@ -1014,6 +1062,7 @@ gllvmTMB <- function(
       phylo_vcv = phylo_vcv,
       phylo_tree = phylo_tree,
       known_V = known_V,
+      known_sigma_eps = known_sigma_eps,
       lambda_constraint = lambda_constraint,
       Xcoef_fixed = Xcoef_fixed,
       control = control,
@@ -1129,6 +1178,36 @@ gllvmTMB <- function(
   ## in the parser / TMB template / extractors. User-facing argument is
   ## `cluster`.
   species <- cluster
+
+  ## #1752: a documented one-grouping kernel call names its own grouping
+  ## (`kernel_indep(unit, K = K)`) and does not pass `cluster`. The dense
+  ## kernel reuses the cluster slot, so an omitted cluster must be that
+  ## grouping. Otherwise the default `"species"` column is a placeholder
+  ## and `K` is checked as if it were a phylogenetic VCV. An explicit
+  ## `cluster` (the replicated `?kernel_latent` example) is left alone.
+  ## Phylogenetic keywords do not enter this block.
+  if (!cluster_supplied && !species_alias_supplied && is.data.frame(data)) {
+    kernel_groups <- .gllvmTMB_kernel_bare_groups(formula)
+    if (nrow(kernel_groups) > 0L) {
+      groups <- unique(kernel_groups$group)
+      if (length(groups) > 1L) {
+        cli::cli_abort(c(
+          "The {.fn kernel_*} terms name more than one grouping column ({.val {groups}}), and {.arg cluster} was not given.",
+          "i" = "{.arg K} is aligned to one grouping column.",
+          ">" = "Pass {.arg cluster} equal to the column whose levels match {.code rownames(K)}. Different kernel groupings in one fit are not supported."
+        ), class = "gllvmTMB_kernel_grouping")
+      }
+      group <- groups[[1L]]
+      if (!group %in% names(data)) {
+        cli::cli_abort(c(
+          "{.fn {kernel_groups$fn[[1L]]}} groups by {.field {group}}, which is not a column in {.arg data}.",
+          ">" = "Name the column whose levels match {.code rownames(K)}, or pass that column as {.arg cluster}."
+        ), class = "gllvmTMB_kernel_grouping")
+      }
+      cluster <- group
+      species <- group
+    }
+  }
 
   ## ---- Phase L Stage 2 (2026-05-08): soft-deprecate global phylo args ---
   ## The canonical syntax (Phase L Stage 1) is to pass `tree = ...` /
@@ -1598,6 +1677,7 @@ gllvmTMB <- function(
     phylo_vcv = phylo_vcv,
     phylo_tree = phylo_tree,
     known_V = known_V,
+    known_sigma_eps = known_sigma_eps,
     mesh = mesh,
     lambda_constraint = lambda_constraint,
     Xcoef_fixed = Xcoef_fixed,
@@ -1619,7 +1699,12 @@ gllvmTMB <- function(
     ),
     temporal = temporal_spec,
     estimator = estimator,
-    engine = engine
+    engine = engine,
+    ## The boundary warning is issued once, below, on the fit that is
+    ## returned. The AGHQ pilot and the Laplace auto-refit also call
+    ## fit_once, and the indep pre-fit calls gllvmTMB_multi_fit itself;
+    ## none of those should warn about a fit the caller does not receive.
+    warn_tweedie_boundary = FALSE
   )
   .fit <- if (.gllvmTMB_aghq_auto_requested(control)) {
     .gllvmTMB_fit_aghq_auto_ridge(fit_once, control)
@@ -1638,6 +1723,12 @@ gllvmTMB <- function(
       .fit <- .refit
       .la_audit <- NULL
     }
+  }
+  ## One free-power warning, on the fit the caller receives. The
+  ## variational route already warned when it built the object; a second
+  ## call here would treat a missing TMB map as "every power is free".
+  if (!inherits(.fit, "gllvmTMB_va")) {
+    .gllvmTMB_warn_tweedie_p_boundary(.fit)
   }
   ## Public coefficient provenance is attached after fitting. In particular,
   ## no-intercept phylo_coef(..., rho = 1) deliberately hard-dispatches through
@@ -1941,6 +2032,38 @@ gllvmTMB <- function(
   refit
 }
 
+## Call an uncalled family constructor (`family = gaussian`, not
+## `gaussian()`) the same way `family_to_id()` does. `gllvmTMB()`
+## calls this at entry; `expand_multinomial_response()` calls it
+## again as a no-op so a direct scan cannot `as.character()` a
+## function (#1781).
+.gllvmTMB_resolve_family_constructors <- function(family) {
+  resolve_one <- function(f) {
+    if (!is.function(f) || inherits(f, "family")) return(f)
+    called <- tryCatch(f(), error = function(e) e)
+    if (inherits(called, "error") || !inherits(called, "family")) {
+      detail <- if (inherits(called, "error")) {
+        conditionMessage(called)
+      } else {
+        "the constructor did not return a family object"
+      }
+      cli::cli_abort(c(
+        "Could not build a family object from the supplied constructor.",
+        "x" = detail,
+        "i" = "Pass a family object such as {.code gaussian()} or {.code multinomial()}, or a character name such as {.val gaussian}."
+      ), class = "gllvmTMB_family_constructor")
+    }
+    called
+  }
+  if (inherits(family, "family") || !is.list(family)) {
+    return(resolve_one(family))
+  }
+  attrs <- attributes(family)
+  resolved <- lapply(family, resolve_one)
+  attributes(resolved) <- attrs
+  resolved
+}
+
 ## Multinomial (baseline-category logit) response expansion (Design 83).
 ## A multinomial() response over K unordered categories is expanded, BEFORE
 ## desugar/parse, into K-1 contiguous "category-contrast" pseudo-trait rows per
@@ -1953,6 +2076,9 @@ gllvmTMB <- function(
 expand_multinomial_response <- function(formula, data, family, trait_col) {
   ## A single family object is itself a list, so test the class FIRST; only a
   ## bare list-of-families (mixed-family API) is treated as a list.
+  ## Constructors are called first so `family = multinomial` is still expanded
+  ## and `family = gaussian` is not passed to `as.character()` (#1781).
+  family <- .gllvmTMB_resolve_family_constructors(family)
   fams <- if (inherits(family, "family")) list(family)
           else if (is.list(family)) family
           else list(family)

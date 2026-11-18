@@ -13,7 +13,9 @@ kernel_indep(unit, K, name = "kernel", common = FALSE, rho = 1)
 kernel_dep(unit, K, name = "kernel", rho = 1)
 }
 \arguments{
-\item{unit}{Unquoted grouping column whose levels align with \code{rownames(K)}.}
+\item{unit}{Unquoted grouping column whose levels align with \code{rownames(K)}.
+When \code{cluster} is omitted, \code{\link[=gllvmTMB]{gllvmTMB()}} uses this column, so \code{K} is
+checked against it. An explicit \code{cluster} is unchanged.}
 
 \item{K}{Numeric dense positive-semidefinite covariance or correlation
 matrix aligned to the grouping levels.}
@@ -24,8 +26,9 @@ matrix aligned to the grouping levels.}
 \code{extract_Sigma(fit, level = "cross")}.}
 
 \item{unique}{Logical; \code{TRUE} auto-includes the kernel-structured diagonal
-trait-specific \eqn{\boldsymbol\Psi} companion for a single dense-kernel
-tier. The default \code{FALSE} preserves the loadings-only subset.}
+trait-specific \eqn{\boldsymbol\Psi} companion. Two named tiers may each
+use it under the Gaussian fixed-error conditions described above. The
+default \code{FALSE} preserves the loadings-only subset.}
 
 \item{rho}{Source strength: a number in \verb{[0,1]} fixes
 \code{rho * K + (1-rho) * diag(diag(K))} on the legacy-resolved source scale.
@@ -50,9 +53,15 @@ between-unit covariance matrix \code{K}. For one named tier,
 \code{unique = TRUE} adds a kernel-structured diagonal
 \eqn{\boldsymbol\Psi} companion; the default \code{FALSE} is loadings-only.
 Two or more named \code{kernel_latent()} tiers may share the same grouping levels,
-each with its own \code{K}, loading matrix, and latent field. Multi-kernel fits are
-loadings-only: \code{unique = TRUE} and \code{kernel_dep()} are not available in that
-combination. Similar kernels can be
+each with its own \code{K}, loading matrix, and latent field. On the TMB engine,
+two named Gaussian tiers can each use \code{unique = TRUE} with a known common
+observation-error SD supplied through \code{known_sigma_eps} to \code{\link[=gllvmTMB]{gllvmTMB()}},
+positive weights, and observed same-trait kernel patterns that pass a
+separation check. Each declared trait needs at least two observed rows.
+Passing that check does not guarantee precise component estimates: recovery
+has been poor in some known-truth settings, and intervals remain unvalidated.
+Mixed-family and Julia-engine requests, as well as separate \code{kernel_dep()}
+tiers, are not supported. Similar kernels can be
 weakly separable, so use \code{\link[=diagnose_kernel_separability]{diagnose_kernel_separability()}} before assigning a
 distinct interpretation to each component.
 

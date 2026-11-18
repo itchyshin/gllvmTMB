@@ -33,7 +33,8 @@ gllvmTMB(
   site = NULL,
   species = NULL,
   estimator = c("ml", "mspl"),
-  column_data = NULL
+  column_data = NULL,
+  known_sigma_eps = NULL
 )
 }
 \arguments{
@@ -127,7 +128,12 @@ personality data, \code{cluster = "study"} for multi-study
 meta-analysis). Default \code{NULL}, which resolves to \code{"species"}. For
 datasets with no third grouping the column may be absent from \code{data}
 entirely (with or without passing \code{cluster}); the engine will
-synthesise a placeholder. If supplied but no covariance keyword uses
+synthesise a placeholder. When \code{cluster} is omitted and one
+\code{kernel_indep()}, \code{kernel_dep()}, \code{kernel_latent()}, \code{kernel_unique()},
+or \code{kernel_scalar()} term names a bare grouping column, that column is
+used so \code{K} is checked against it. An explicit \code{cluster} is unchanged,
+including the replicated kernel example that passes \code{cluster = "site"}.
+If supplied but no covariance keyword uses
 that column, \code{\link[=gllvmTMB]{gllvmTMB()}} warns; omit the argument or use the column in
 the intended covariance keyword.
 
@@ -188,7 +194,8 @@ API (see Details). The negative-binomial families fit one
 log-dispersion parameter per trait: \code{nbinom1()} uses
 Var = mu * (1 + phi), while \code{nbinom2()} uses
 Var = mu + mu^2 / phi. The \code{tweedie()} family
-fits one log-phi and one logit-(p-1) per trait, with p in (1, 2).
+fits one log-dispersion and one power per trait. The power stays
+inside about 1.000006 and 1.999994.
 The \code{Beta()} and \code{betabinomial()} families each fit one
 log-precision per trait (a = mu*phi, b = (1-mu)*phi; Smithson &
 Verkuilen 2006). The \code{student()} family fits one log-sigma and one
@@ -388,6 +395,23 @@ must have the same name as \code{trait} and exactly match the response columns.
 Joined fields are available to fixed effects but cannot be coefficient
 bases, grouping columns, or covariance sources. In wide input, key this
 table by the synthetic column name \code{trait} and omit the \code{trait} argument.}
+
+\item{known_sigma_eps}{Optional known observation-error standard deviation.
+Supply one finite positive number when the same error standard deviation
+applies to every observation and all response traits are Gaussian. The
+supplied value is fixed during fitting; its square is the observation-error
+variance. This argument is supported only by the TMB engine. With \code{NULL}
+(the default), the usual observation-error rules apply.
+
+For two named \code{kernel_latent()} terms with \code{unique = TRUE}, supply
+\code{known_sigma_eps} and use positive observation weights. The two kernels
+must have distinct covariance patterns among the observed species for
+each trait, and every declared trait needs at least two observed rows.
+A failure of this check stops the fit rather than dropping a
+requested component. Passing the check does not guarantee that the two
+components can be estimated precisely; recovery and uncertainty for this
+model remain under investigation. Mixed-family models are not supported
+with this argument.}
 }
 \value{
 A \code{gllvmTMB} object. Every native fit, with or without

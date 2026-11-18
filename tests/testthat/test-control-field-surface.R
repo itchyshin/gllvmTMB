@@ -1,9 +1,5 @@
 test_that("gllvmTMBcontrol consumers use declared or intentional fields", {
-  r_dir <- testthat::test_path("..", "..", "R")
-  skip_if_not(
-    dir.exists(r_dir),
-    "Repository source is unavailable after package installation"
-  )
+  r_dir <- gllvmTMB_pkg_file("R")
 
   files <- list.files(r_dir, pattern = "[.]R$", full.names = TRUE)
   ## These files use separate, local control objects rather than the public

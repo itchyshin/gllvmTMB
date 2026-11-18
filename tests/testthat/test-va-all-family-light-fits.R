@@ -165,8 +165,11 @@ test_that("all 18 scalar family/link cells pass deterministic H7 light fits", {
                       "delta_lognormal_log", "delta_gamma_log")) 60L else 30L
     fixture <- .va_all_family_simulate(cell, N = N_cell)
     optimizer <- .va_all_family_light_registry$optimizer[[i]]
+    ## The source-hash DLL loader builds a missing DLL on demand. Forcing a
+    ## rebuild here can unload TMB templates while objective pointers are live
+    ## from earlier tests in the same process.
     verdicts[[i]] <- tryCatch(
-      .va_all_family_fit_one(fixture, rebuild = i == 1L, optimizer = optimizer),
+      .va_all_family_fit_one(fixture, optimizer = optimizer),
       error = function(e) list(error = conditionMessage(e), elapsed = NA_real_)
     )
     v <- verdicts[[i]]

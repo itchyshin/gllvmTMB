@@ -3,8 +3,7 @@
 ## and the family help mentions it.
 
 test_that("ordinal log_tiny_ord floors carry the intentional-guard comment", {
-  src <- testthat::test_path("..", "..", "src", "gllvmTMB.cpp")
-  skip_if_not(file.exists(src), "src/gllvmTMB.cpp not available (installed package)")
+  src <- gllvmTMB_pkg_file("src", "gllvmTMB.cpp")
   lines <- readLines(src, warn = FALSE)
   idx <- grep("Type log_tiny_ord", lines, fixed = TRUE)
   expect_gte(length(idx), 2L)

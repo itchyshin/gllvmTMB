@@ -63,6 +63,25 @@ class CodecovWorkflowTest(unittest.TestCase):
         self.boundary = _noncomment_text(BOUNDARY)
         self.covr_runner = _noncomment_text(COVR_RUNNER)
 
+    def test_producer_pr_trigger_has_no_workflow_paths(self) -> None:
+        lines = PRODUCER.read_text(encoding="utf-8").splitlines()
+        in_pr = False
+        for line in lines:
+            stripped = line.strip()
+            if stripped.startswith("pull_request:"):
+                in_pr = True
+                continue
+            if in_pr and stripped and not line.startswith((" ", "\t")):
+                in_pr = False
+            if in_pr and stripped.startswith("paths:"):
+                self.fail(
+                    "pull_request must not use workflow-level paths; use the changes job"
+                )
+
+    def test_producer_gates_coverage_with_changes_job(self) -> None:
+        self.assertIn("changes:", self.producer)
+        self.assertIn("needs.changes.outputs.coverage", self.producer)
+
     def test_producer_has_no_oidc_or_codecov_token(self) -> None:
         self.assertNotIn("id-token", self.producer)
         self.assertNotIn("codecov/", self.producer)

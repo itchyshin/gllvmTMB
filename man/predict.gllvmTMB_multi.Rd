@@ -52,10 +52,12 @@ request the fixed-effects-only / population-mean prediction. Any
 other value is not a supported form and warns rather than silently
 including the random effects. Honoured on \strong{both} the training-row
 and the \code{newdata} path (before 0.7.1 it was read only on the
-\code{newdata} path, and there only as the literal \code{~ 0}). For \code{newdata}
-with sites/species not present in the training data the random
-effects cannot be drawn, so those rows are fixed-effects-only
-regardless of \code{re_form}. A missing species column is not an unseen
+\code{newdata} path, and there only as the literal \code{~ 0}). For \code{newdata},
+each random-effect tier is added only on rows whose grouping level
+was in the fit. An unseen species drops the species and phylogenetic
+tiers on that row; a unit level that was in the fit still contributes
+its unit random effect. A row is fixed-effects-only when every
+random-effect grouping level on that row is unseen. A missing species column is not an unseen
 level: if \code{newdata} omits the fitted species column while
 phylogenetic random effects are being re-added, \code{predict()} stops and
 asks for that column or for \code{re_form = ~0}.

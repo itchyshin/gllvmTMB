@@ -1,5 +1,7 @@
 # gllvmTMB 0.8.0
 
+* A right-censored `censored_poisson()` row stays finite when the linear predictor is very negative. `log(pgamma(mean, C, 1))` underflowed once `C` times that predictor was large and negative, and the objective and its gradient became NaN. The same probability is now accumulated in log space. At ordinary means it matches `log(pgamma())`. An uncensored row is unchanged (refs #1748).
+
 * On the TMB engine, two named Gaussian `kernel_latent(..., unique = TRUE)` terms can retain separate trait-specific diagonals when a known positive observation-error SD is supplied through `known_sigma_eps`, observation weights are positive, and the observed same-trait kernel patterns pass a separation check. Mixed-family and Julia-engine requests are not admitted. Unsupported requests now stop rather than silently dropping a diagonal. This check does not guarantee precise component estimates: known-truth investigations have shown poor recovery in some settings, and interval calibration remains unvalidated. Unconditional simulation and simulation with new data are not yet supported for multiple named kernels; conditional prediction on new data is also unavailable.
 * `temporal_indep()` and `temporal_dep()` parser refusals now name the keyword that was used. The shared temporal parser had been hard-coded as `temporal_latent()`, so a two-trait `temporal_indep()` fit said `temporal_latent() requires at least three traits.` The three-trait rule itself is unchanged (refs #TBD).
 

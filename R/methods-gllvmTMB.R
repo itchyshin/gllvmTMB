@@ -3165,10 +3165,12 @@ sanity_multi <- function(object, gradient_thresh = 1e-2, se_thresh = 100) {
 #'   other value is not a supported form and warns rather than silently
 #'   including the random effects. Honoured on **both** the training-row
 #'   and the `newdata` path (before 0.7.1 it was read only on the
-#'   `newdata` path, and there only as the literal `~ 0`). For `newdata`
-#'   with sites/species not present in the training data the random
-#'   effects cannot be drawn, so those rows are fixed-effects-only
-#'   regardless of `re_form`. A missing species column is not an unseen
+#'   `newdata` path, and there only as the literal `~ 0`). For `newdata`,
+#'   each random-effect tier is added only on rows whose grouping level
+#'   was in the fit. An unseen species drops the species and phylogenetic
+#'   tiers on that row; a unit level that was in the fit still contributes
+#'   its unit random effect. A row is fixed-effects-only when every
+#'   random-effect grouping level on that row is unseen. A missing species column is not an unseen
 #'   level: if `newdata` omits the fitted species column while
 #'   phylogenetic random effects are being re-added, `predict()` stops and
 #'   asks for that column or for `re_form = ~0`.
@@ -3396,6 +3398,10 @@ predict.gllvmTMB_multi <- function(
     if (!re_zero) {
       par <- object$tmb_obj$env$last.par.best
       added <- character(0)
+      ## Tiers this path knows how to re-add. A newdata level that misses
+      ## every row stays out of `added` (the message), and stays in
+      ## `supported` so it is not reported as a tier predict() cannot re-add.
+      supported <- character(0)
       ## A missing species *column* used to leave every sp_id NA, skip the
       ## contributions, and still report phylo_rr / phylo_diag as re-added (#1787).
       ## An unseen level of a column that is present stays fixed-effects-only.
@@ -3445,14 +3451,17 @@ predict.gllvmTMB_multi <- function(
           )
         }
         L_B <- object$report$Lambda_B
+        hit_rr <- FALSE
         for (i in seq_along(eta)) {
           s <- st_id[i]
           t <- tr_id[i]
           if (!is.na(s) && s >= 0 && s < object$n_sites) {
             eta[i] <- eta[i] + sum(L_B[t + 1L, ] * z_B[, s + 1L])
+            hit_rr <- TRUE
           }
         }
-        added <- c(added, "rr_B")
+        if (hit_rr) added <- c(added, "rr_B")
+        supported <- c(supported, "rr_B")
       }
       if (object$use$diag_B) {
         s_B <- if (isTRUE(object$integrated_gaussian_diag_B)) {
@@ -3464,14 +3473,17 @@ predict.gllvmTMB_multi <- function(
         if (!identical(dim(s_B), c(object$n_traits, object$n_sites))) {
           cli::cli_abort("The fitted unit-level diagonal effects have incompatible dimensions.")
         }
+        hit_diag <- FALSE
         for (i in seq_along(eta)) {
           s <- st_id[i]
           t <- tr_id[i]
           if (!is.na(s) && s >= 0 && s < object$n_sites) {
             eta[i] <- eta[i] + s_B[t + 1L, s + 1L]
+            hit_diag <- TRUE
           }
         }
-        added <- c(added, "diag_B")
+        if (hit_diag) added <- c(added, "diag_B")
+        supported <- c(supported, "diag_B")
       }
       ## propto: per-species random effect, additive.
       ## The guard was `!is.na(sp_id[1])` -- row ONE only -- so a newdata
@@ -3484,21 +3496,30 @@ predict.gllvmTMB_multi <- function(
           nrow = object$n_species,
           ncol = object$n_traits
         )
+        hit_propto <- FALSE
         for (i in seq_along(eta)) {
           sp <- sp_id[i]
           t <- tr_id[i]
           if (!is.na(sp) && sp >= 0 && sp < object$n_species) {
             eta[i] <- eta[i] + p_phy[sp + 1L, t + 1L]
+            hit_propto <- TRUE
           }
         }
-        added <- c(added, "propto")
+        if (hit_propto) added <- c(added, "propto")
+        supported <- c(supported, "propto")
       }
       if (isTRUE(object$use$phylo_rr) || isTRUE(object$use$phylo_diag)) {
         effects <- .structured_rho_contribution(object)
         ok <- !is.na(sp_id) & sp_id >= 0 & sp_id < object$n_species & !is.na(tr_id)
-        eta[ok] <- eta[ok] + effects[cbind(sp_id[ok]+1L,tr_id[ok]+1L)]
-        added <- c(added, if (isTRUE(object$use$phylo_rr)) "phylo_rr",
-          if (isTRUE(object$use$phylo_diag)) "phylo_diag")
+        phylo_labels <- c(
+          if (isTRUE(object$use$phylo_rr)) "phylo_rr",
+          if (isTRUE(object$use$phylo_diag)) "phylo_diag"
+        )
+        if (any(ok)) {
+          eta[ok] <- eta[ok] + effects[cbind(sp_id[ok]+1L,tr_id[ok]+1L)]
+          added <- c(added, phylo_labels)
+        }
+        supported <- c(supported, phylo_labels)
       }
       ## diag_species: per-(trait, species) random intercept.
       ## src/gllvmTMB.cpp:2513 -- eta(o) += q_sp(t, species_id(o)). Note the
@@ -3513,8 +3534,11 @@ predict.gllvmTMB_multi <- function(
         )
         ok <- !is.na(sp_id) & sp_id >= 0 & sp_id < object$n_species &
           !is.na(tr_id)
-        eta[ok] <- eta[ok] + q_sp[cbind(tr_id[ok] + 1L, sp_id[ok] + 1L)]
-        added <- c(added, "diag_species")
+        if (any(ok)) {
+          eta[ok] <- eta[ok] + q_sp[cbind(tr_id[ok] + 1L, sp_id[ok] + 1L)]
+          added <- c(added, "diag_species")
+        }
+        supported <- c(supported, "diag_species")
       }
 
       ## diag_cluster2: per-(trait, cluster2-level) random intercept.
@@ -3629,7 +3653,7 @@ predict.gllvmTMB_multi <- function(
       }
       ## `lv_B` carries no eta term of its own: it is the score mean, already
       ## inside U_B_total above, so it counts as handled whenever rr_B is.
-      handled <- c(added, if (isTRUE(object$use$lv_B)) "lv_B")
+      handled <- c(added, supported, if (isTRUE(object$use$lv_B)) "lv_B")
       unhandled <- .gllvmTMB_predict_unhandled_re_tiers(object, handled)
       if (length(added)) {
         cli::cli_inform(c(

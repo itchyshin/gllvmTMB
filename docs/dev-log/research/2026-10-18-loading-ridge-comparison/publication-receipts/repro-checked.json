@@ -1,0 +1,55 @@
+{
+  "library": "/home/snakagaw/gllvmtmb_ridge_docs_check_20261018/check/gllvmTMB.Rcheck/gllvmTMB",
+  "version": "0.8.0.9000",
+  "convergence": 0,
+  "objective": 24.9422,
+  "fit_health": {
+    "optimizer": "optim",
+    "convergence": 0,
+    "message": "",
+    "objective": 24.9422,
+    "max_gradient": 0.0182,
+    "gradient_is_penalised": false,
+    "scaled_gradient": 0.0007,
+    "stationary_by_scaled_gradient": true,
+    "stationary_by_gradient": false,
+    "optimizer_converged": true,
+    "converged": false,
+    "premature_termination": false,
+    "pd_hessian": null,
+    "sdreport_ok": false,
+    "sdreport_error": "standard-error calculation skipped by gllvmTMBcontrol(se = FALSE)",
+    "max_fixed_se": "NA",
+    "boundary_flags": [],
+    "start_provenance": {
+      "init_strategy": "default",
+      "start_method": "default",
+      "start_method_jitter_sd": 0,
+      "start_from": false,
+      "start_from_source": {},
+      "start_from_copied": [],
+      "auto_indep_fit": false,
+      "selected_restart": 1
+    },
+    "selected_restart": 1
+  },
+  "diagnostic": [
+    {
+      "component": "optimizer_convergence",
+      "status": "PASS",
+      "value": "0",
+      "threshold": "0",
+      "message": "optimizer reported convergence",
+      "action": "try multiple starts, stronger starts, rescaling, or an alternative optimizer"
+    },
+    {
+      "component": "max_gradient",
+      "status": "WARN",
+      "value": "0.01817",
+      "threshold": "0.01",
+      "message": "largest absolute gradient component at the selected optimum",
+      "action": "tighten optimization, rescale predictors, or inspect weak components"
+    }
+  ],
+  "fixture_md5": "bca7fd623bc3de86edc2c7175c4c731d"
+}

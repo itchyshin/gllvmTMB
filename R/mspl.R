@@ -11,16 +11,44 @@
     identical(toupper(estimator %||% ""), "MSPL")
 }
 
-.gllvmTMB_mspl_abort <- function(message, ..., class = "gllvmTMB_mspl_unsupported") {
+.gllvmTMB_mspl_abort <- function(
+  message,
+  ...,
+  class = "gllvmTMB_mspl_unsupported"
+) {
   cli::cli_abort(c(message, ...), class = class, .envir = parent.frame())
 }
 
+## Frozen V8 Jeffreys atom: 0 = OK_DOUBLE_CERTIFIED, 1 = OK_MP_CERTIFIED.
+## Both are valid certified results. Codes >= 10 are failures.
+.gllvmTMB_mspl_jeffreys_atom_ok <- function(atom_status) {
+  status <- as.integer(atom_status)
+  length(status) == 1L && !is.na(status) && status %in% c(0L, 1L)
+}
+
+## Ferrari–Cribari-Neto logit GLM-outer weight: I(β) diagonal.
+## Matches src/gllvmTMB.cpp family_id 7 (φ² form, not FCN's inner W).
+.gllvmTMB_mspl_beta_jeffreys_weight <- function(eta, phi) {
+  eta <- as.numeric(eta)
+  phi <- as.numeric(phi)
+  if (length(phi) == 1L) {
+    phi <- rep(phi, length(eta))
+  }
+  mu <- stats::plogis(eta)
+  a <- mu * phi
+  b <- (1 - mu) * phi
+  (phi^2) * (mu * (1 - mu))^2 * (trigamma(a) + trigamma(b))
+}
+
 .gllvmTMB_mspl_inference_abort <- function(what) {
-  cli::cli_abort(c(
-    "{.fn {what}} is not available for an {.code estimator = \"mspl\"} fit.",
-    "i" = "LA-MSPL is an experimental point estimator; repeated-sampling inference is not yet calibrated.",
-    ">" = "Use {.fn coef}, {.fn predict}, or the covariance extractors for point estimates, and fit {.code estimator = \"ml\"} when likelihood-based inference is required."
-  ), class = "gllvmTMB_mspl_inference_unsupported")
+  cli::cli_abort(
+    c(
+      "{.fn {what}} is not available for an {.code estimator = \"mspl\"} fit.",
+      "i" = "LA-MSPL is an experimental point estimator; repeated-sampling inference is not yet calibrated.",
+      ">" = "Use {.fn coef}, {.fn predict}, or the covariance extractors for point estimates, and fit {.code estimator = \"ml\"} when likelihood-based inference is required."
+    ),
+    class = "gllvmTMB_mspl_inference_unsupported"
+  )
 }
 
 .gllvmTMB_mspl_assert_inference <- function(x, what) {
@@ -30,55 +58,6 @@
   invisible(x)
 }
 
-## ---- Design 118 s7.2 prerequisite: profile bracket-search --------------
-##
-## Ported from branch codex/lane-b-mspl-interval-feasibility, commit
-## e2055c7b ("feat: complete private MSPL profile and Wald feasibility"),
-## which is not on origin/main. Only the two functions Phase B0 needs are
-## ported (the profile threshold diagnostic and the bracket search it
-## wraps) -- not the sandwich/Wald/constrained-simulation instruments that
-## live alongside them on that branch. Both fixes below are NEW on this
-## branch; the source commit does not have them.
-##
-## Fixes to the ported bracket search (A1 Q6: 205/108000 profile-unavailable
-## rows in the 2026-08-14 production campaign all report centre=matched with
-## a one-sided bracket-search failure -- C003 55/55 lower=crossed/
-## upper=truncated; C010 a mix of lower=refinement_failed/optimizer_failed/
-## truncated, all upper=crossed):
-##
-## (1) A single nlminb non-convergence at ANY grid point used to reset
-##     `previous_success` to NULL, permanently discarding the last known
-##     sub-threshold reference point. If the very next grid point already
-##     crossed the deviance threshold, the crossing was silently missed
-##     (nothing to compare it against), and the walk then ran to the end of
-##     its budget reporting "truncated" -- or, if that intervening point's
-##     own non-convergence survived into the final row set, "optimizer_
-##     failed" -- even though a valid bracket existed. Fix: retain the last
-##     successful sub-threshold point across a failed grid step instead of
-##     discarding it.
-## (2) Both the grid walk and the bisection refinement call nlminb exactly
-##     once per point and treat any non-convergence as fatal to that side of
-##     the profile ("optimizer_failed" / "refinement_failed"), even though
-##     the joint MLE's own nuisance solution is a well-converged point
-##     available as an alternate start. Fix: on a failed nlminb call, retry
-##     once from the joint-MLE nuisance vector before recording the point as
-##     failed.
-##
-## s7.2's OTHER half -- "widen the ... bracket to thresholds [0.354, 3.317]"
-## -- was not part of 0d6de305 and is added here as an opt-in
-## `max_widen_rounds` argument (default 0L, byte-identical to the prior
-## behaviour for every existing caller): when a grid-walk round finishes
-## cleanly but does not reach `threshold`, and the caller asked for at
-## least one widen round, the walk continues from the last known-good point
-## with a 4x larger step instead of reporting "truncated". This is what
-## lets a single call at `level = 0.99` (threshold 3.317) actually reach
-## that far when the default (step = 0.5, max_steps = 6) reach of 3 units
-## would not, without changing anything for callers that omit the argument.
-##
-## Private feasibility instrument only. This is intentionally separate from
-## the public profile/confint dispatch: a finite trace establishes neither
-## calibrated standard errors nor confidence-interval coverage.
-
 ## Thin, mockable wrapper around stats::nlminb() -- exists so tests can
 ## simulate a transient optimizer failure at one specific profile point
 ## without touching the stats namespace (repo convention: mock private
@@ -86,6 +65,147 @@
 .gllvmTMB_mspl_nlminb <- function(start, objective, gradient, control) {
   stats::nlminb(start, objective = objective, gradient = gradient,
                 control = control)
+}
+
+## ---------------------------------------------------------------------------
+## Internal LA-MSPL profile COMPUTABILITY probe (availability only).
+##
+## Private feasibility instrument only.  This is intentionally separate from the
+## public profile/confint dispatch: a finite trace establishes neither
+## calibrated standard errors nor confidence-interval coverage.
+##
+## Scope, stated once: this instrument answers "can a finite penalised-profile
+## bracket be computed at this fit?" and nothing else.  It is NOT a confidence
+## interval, NOT calibrated, and NOT a public route -- `vcov()`, `confint()` and
+## `se = TRUE` remain fail-closed via `.gllvmTMB_mspl_assert_inference()`, and
+## `MSPL-04` stays `blocked`.  Endpoints are named `*_endpoint` /
+## `diagnostic_*`, never `conf.low` / `conf.high`, so no tidier can lift them as
+## an interval.  Non-crossing / non-finite / optimiser failures stay typed; no
+## repair, no clipping, no widening beyond the caller's explicit request.
+##
+## `level` selects the chi-square_1 LR threshold used to bracket; it confers NO
+## coverage at that or any level.  See the Kosmidis & Firth note below.
+##
+## Family fence (computability probe only; not admission): binomial +
+## logit/probit/cloglog.  The public MSPL door admits six families, but the only
+## evidence here -- and the only authority cited below -- is binomial.
+##
+## Admission gate: DELIBERATELY NOT IMPLEMENTED.  The softness-ratio /
+## N2'-curvature / separation admission conditions belong to the parked
+## calibrated construction (D-157; Design 125), not to this probe.  Their
+## absence is a scope decision, not an omission.
+##
+## Why the fence is not merely conventional: Kosmidis & Firth (2021, Biometrika
+## 108(1), s2.2 p.5) state that under a finiteness penalty Wald intervals "or
+## confidence regions in general, will fail to cover regardless of the nominal
+## level alpha", and that this "is also true when the penalized likelihood is
+## profiled".  So a finite bracket here is evidence of computability only.  That
+## paper is binomial-response only, which is the second reason for the family
+## fence above.
+##
+## Provenance AND its constraint: ported from `claude/mspl-b0-prereqs` (PR #981,
+## still open), which itself ported it from
+## `codex/lane-b-mspl-interval-feasibility` (commit e2055c7b) -- a branch marked
+## PROTECTED ("No absorb/rebase/merge") in
+## docs/dev-log/handover/2026-07-25-active-lane-split.md, and D-149 names Codex
+## Lane B the binomial SE owner ("Do not rebuild, reassign, or absorb it").
+## Landing this therefore requires an explicit maintainer G0; do not re-port it
+## further without one.  R-side only -- deliberately WITHOUT that branch's
+## `src/` `mspl_c_n_multiplier` hook, which these functions do not use (they
+## read only `obj$env$data$estimator_id`).
+##
+## Relation to Design 125 (UPDATED 2026-08-18, fork G0 SIGNED): `objective`
+## selects the tape.  `tape` is the existing Q_P / Q_0 synonym so the
+## parallel L0 / L1 callers keep working.
+##
+##   "penalised"   / tape "Q_P" -- fork **A**: walk `fit$tmb_obj` (the
+##                    penalised LA-MSPL objective), re-optimising the nuisance
+##                    coordinates at each target.  Default; retained as the
+##                    **ablation** arm.
+##   "unpenalized" / tape "Q_0" -- fork **B**: walk
+##                    `fit$mspl$unpenalized_tmb_obj` (the ordinary Laplace
+##                    objective, `estimator_id = 2`) with the nuisance
+##                    coordinates HELD FIXED at the MSPL point estimate
+##                    \tilde\theta.  This is the arm Design 125's G4c picked.
+##
+## Fork B is the signed construction; fork A stays available so the two can be
+## measured against each other on the same fit.  Neither is calibrated: the
+## Kosmidis & Firth caveat above bites fork A directly, and fork B's slice is a
+## *fixed-nuisance* one-dimensional curve, not a profile in the nuisance-maximised
+## sense -- so its threshold crossing is a computability observable, not a
+## coverage statement.  Both arms keep `calibrated = FALSE`,
+## `public_confint = "refused"`, `coverage_claim = "none"`; both are internal and
+## unexported; `MSPL-04` stays `blocked`.
+##
+## Three honest asymmetries of fork B, each surfaced as a returned field:
+##   1. `reference_is_maximum = FALSE` -- the MSPL point maximises Q_P, not Q_0,
+##      so `objective_delta` is not an LR statistic.
+##   2. `nuisance_treatment = "fixed_at_mspl"` -- `nlminb` is never called.
+##   3. `centre_status = "matched"` is true by construction on this tape.
+## ---------------------------------------------------------------------------
+.gllvmTMB_mspl_resolve_profile_selector <- function(
+  objective,
+  tape,
+  objective_supplied = FALSE
+) {
+  map_objective <- function(value) {
+    if (identical(value, "unpenalized")) "Q_0" else "Q_P"
+  }
+  map_tape <- function(value) {
+    if (identical(value, "Q_0")) "unpenalized" else "penalised"
+  }
+  if (!is.null(tape)) {
+    if (!is.character(tape) || !length(tape)) {
+      .gllvmTMB_mspl_abort(
+        "The internal MSPL profile probe requires {.arg tape} to be {.val Q_P} or {.val Q_0}.",
+        class = "gllvmTMB_mspl_profile_tape"
+      )
+    }
+    tape <- tape[[1L]]
+    if (!(tape %in% c("Q_P", "Q_0"))) {
+      .gllvmTMB_mspl_abort(
+        "The internal MSPL profile probe requires {.arg tape} to be {.val Q_P} or {.val Q_0}.",
+        "x" = "Received {.val {tape}}.",
+        "i" = "{.val Q_P} is the penalised profile (Design 125 fork A); {.val Q_0} is the unpenalized Laplace tape at fixed MSPL nuisance (fork B). Fork C is not implemented.",
+        class = "gllvmTMB_mspl_profile_tape"
+      )
+    }
+    mapped <- map_tape(tape)
+    if (isTRUE(objective_supplied)) {
+      if (!is.character(objective) || !length(objective)) {
+        .gllvmTMB_mspl_abort(
+          "The internal MSPL profile probe requires {.arg objective} to be {.val penalised} or {.val unpenalized}.",
+          class = "gllvmTMB_mspl_profile_objective"
+        )
+      }
+      explicit <- objective[[1L]]
+      if (explicit %in% c("penalised", "unpenalized") &&
+          !identical(explicit, mapped)) {
+        .gllvmTMB_mspl_abort(
+          "The internal MSPL profile probe received disagreeing {.arg objective} and {.arg tape} selectors.",
+          "x" = "{.arg objective} = {.val {explicit}}; {.arg tape} = {.val {tape}}.",
+          class = "gllvmTMB_mspl_profile_objective"
+        )
+      }
+    }
+    return(list(objective = mapped, tape = tape))
+  }
+  if (!is.character(objective) || !length(objective)) {
+    .gllvmTMB_mspl_abort(
+      "The internal MSPL profile probe requires {.arg objective} to be {.val penalised} or {.val unpenalized}.",
+      class = "gllvmTMB_mspl_profile_objective"
+    )
+  }
+  objective <- objective[[1L]]
+  if (!(objective %in% c("penalised", "unpenalized"))) {
+    .gllvmTMB_mspl_abort(
+      "The internal MSPL profile probe requires {.arg objective} to be {.val penalised} or {.val unpenalized}.",
+      "x" = "Received {.val {objective}}.",
+      "i" = "{.val penalised} is Design 125 fork A; {.val unpenalized} is fork B. The {.arg tape} synonyms are {.val Q_P} and {.val Q_0}.",
+      class = "gllvmTMB_mspl_profile_objective"
+    )
+  }
+  list(objective = objective, tape = map_objective(objective))
 }
 
 .gllvmTMB_mspl_profile_feasibility <- function(
@@ -97,12 +217,36 @@
   control = list(eval.max = 100L, iter.max = 100L),
   refinement_steps = 12L,
   bracket_tolerance = 1.25e-4,
-  max_widen_rounds = 0L
+  max_widen_rounds = 0L,
+  objective = c("penalised", "unpenalized"),
+  tape = NULL
 ) {
+  objective_supplied <- !missing(objective)
   if (!.gllvmTMB_is_mspl(fit)) {
     .gllvmTMB_mspl_abort(
       "The internal MSPL profile probe requires an {.code estimator = \"mspl\"} fit.",
       class = "gllvmTMB_mspl_profile_input"
+    )
+  }
+  resolved <- .gllvmTMB_mspl_resolve_profile_selector(
+    objective, tape, objective_supplied = objective_supplied
+  )
+  objective <- resolved$objective
+  tape <- resolved$tape
+  nuisance_fixed <- identical(objective, "unpenalized")
+  ## Family fence, enforced not merely documented -- mirrors
+  ## `.gllvmTMB_mspl_curvature_pin()`.  Binomial only: it is the only family with
+  ## evidence here, and the Kosmidis & Firth authority cited in the header is
+  ## binomial-response only, so on a gaussian or Poisson fit the returned
+  ## `coverage_claim = "none"` would rest on a citation that does not apply.
+  fl <- .gllvmTMB_mspl_pin_family_link(fit)
+  if (!(identical(fl$family, "binomial") &&
+        fl$link %in% c("logit", "probit", "cloglog"))) {
+    .gllvmTMB_mspl_abort(
+      "The internal MSPL profile computability probe is fenced to binomial logit, probit, or cloglog fits.",
+      "x" = "Resolved family {.val {fl$family}}, link {.val {fl$link}}.",
+      "i" = "This is a computability probe, not an admission gate and not an interval route.",
+      class = "gllvmTMB_mspl_profile_family"
     )
   }
   if (
@@ -151,27 +295,91 @@
     )
   }
 
-  obj <- fit$tmb_obj
+  penalised <- fit$tmb_obj
   penalty_off <- fit$mspl$unpenalized_tmb_obj
+  ## The penalised tape is verified in BOTH forks: fork B's centre value and
+  ## its fixed nuisance coordinates are read off the MSPL fit, so a fit whose
+  ## penalised tape cannot be identified is not a usable fork-B origin either.
   if (
-    is.null(obj) ||
-      identical(obj, penalty_off) ||
-      !identical(as.integer(obj$env$data$estimator_id), 1L)
+    is.null(penalised) ||
+      identical(penalised, penalty_off) ||
+      !identical(as.integer(penalised$env$data$estimator_id), 1L)
   ) {
     .gllvmTMB_mspl_abort(
       "The internal MSPL profile probe could not verify the active penalised TMB objective.",
       class = "gllvmTMB_mspl_profile_objective"
     )
   }
+  if (nuisance_fixed && (
+    is.null(penalty_off) ||
+      !identical(as.integer(penalty_off$env$data$estimator_id), 2L)
+  )) {
+    .gllvmTMB_mspl_abort(
+      "The internal MSPL profile probe could not verify the unpenalized Laplace TMB objective.",
+      "i" = "{.code objective = \"unpenalized\"} (Design 125 fork B) needs {.field fit$mspl$unpenalized_tmb_obj} with {.code estimator_id = 2}.",
+      class = "gllvmTMB_mspl_profile_objective"
+    )
+  }
+  obj <- if (nuisance_fixed) penalty_off else penalised
   checkpoint <- .gllvmTMB_profile_tmb_checkpoint(obj)
   on.exit(.gllvmTMB_restore_profile_tmb_checkpoint(obj, checkpoint), add = TRUE)
 
   mle_par <- as.numeric(fit$opt$par)
-  mle_objective <- as.numeric(fit$opt$objective)
+  ## Fork A compares against the penalised optimum already recorded by the
+  ## fitter.  Fork B must compare against the UNPENALIZED objective evaluated at
+  ## the same \tilde\theta -- `fit$opt$objective` is the penalised value and
+  ## would put the centre off its own curve by the whole penalty.
+  mle_objective <- if (nuisance_fixed) {
+    centre_value <- tryCatch(as.numeric(obj$fn(mle_par)), error = identity)
+    if (inherits(centre_value, "error") || !is.finite(centre_value)) {
+      .gllvmTMB_mspl_abort(
+        "The internal MSPL profile probe could not evaluate the unpenalized objective at the MSPL estimate.",
+        class = "gllvmTMB_mspl_profile_objective"
+      )
+    }
+    centre_value
+  } else {
+    as.numeric(fit$opt$objective)
+  }
   nuisance_index <- setdiff(seq_along(mle_par), as.integer(which))
   threshold <- stats::qchisq(level, df = 1L) / 2
 
-  evaluate_point <- function(target, start, side, stage) {
+  ## Fork B (`objective = "unpenalized"`): the nuisance coordinates stay pinned
+  ## at \tilde\theta, so there is no inner optimisation -- the walk is a plain
+  ## evaluation of the unpenalized objective along one coordinate.  Recorded as
+  ## `nuisance_reoptimized = FALSE`, which is what distinguishes this slice from
+  ## a nuisance-maximised profile in any stored trace.
+  evaluate_fixed <- function(target, start, side, stage) {
+    par <- mle_par
+    par[as.integer(which)] <- target
+    value <- tryCatch(as.numeric(obj$fn(par)), error = identity)
+    if (inherits(value, "error")) {
+      return(list(
+        row = data.frame(
+          target = target, objective = NA_real_, objective_delta = NA_real_,
+          convergence = NA_integer_, message = conditionMessage(value),
+          finite = FALSE, nuisance_reoptimized = FALSE, side = side,
+          stage = stage, stringsAsFactors = FALSE
+        ),
+        nuisance = start
+      ))
+    }
+    finite <- length(value) == 1L && is.finite(value)
+    list(
+      row = data.frame(
+        target = target,
+        objective = if (finite) value else NA_real_,
+        objective_delta = if (finite) value - mle_objective else NA_real_,
+        convergence = if (finite) 0L else NA_integer_,
+        message = "", finite = finite,
+        nuisance_reoptimized = FALSE, side = side, stage = stage,
+        stringsAsFactors = FALSE
+      ),
+      nuisance = start
+    )
+  }
+
+  evaluate_reoptimized <- function(target, start, side, stage) {
     objective <- function(nuisance) {
       par <- mle_par
       par[nuisance_index] <- nuisance
@@ -228,6 +436,8 @@
       nuisance = as.numeric(ans$par)
     )
   }
+
+  evaluate_point <- if (nuisance_fixed) evaluate_fixed else evaluate_reoptimized
 
   successful <- function(point) {
     is.list(point) && is.data.frame(point$row) &&
@@ -404,26 +614,56 @@
     finite_stable = identical(centre_status, "matched") &&
       identical(lower$status, "crossed") &&
       identical(upper$status, "crossed"),
-    objective_source = "fit$tmb_obj (penalised LA-MSPL)"
+    objective_source = if (nuisance_fixed) {
+      "fit$mspl$unpenalized_tmb_obj (unpenalized Laplace at fixed MSPL nuisance)"
+    } else {
+      "fit$tmb_obj (penalised LA-MSPL)"
+    },
+    objective = objective,
+    tape = tape,
+    design_125_fork = if (nuisance_fixed) "B" else "A",
+    nuisance_treatment = if (nuisance_fixed) "fixed_at_mspl" else "reoptimized",
+    reference_is_maximum = !nuisance_fixed,
+    ## Computability != coverage.  These fields exist so that no caller, and no
+    ## future reader of a stored probe, can mistake a finite bracket for a
+    ## calibrated interval.  Kosmidis & Firth (2021, Biometrika 108(1), s2.2
+    ## p.5) state that the coverage failure of Wald intervals under a
+    ## finiteness penalty "is also true when the penalized likelihood is
+    ## profiled for the construction of confidence intervals": the mechanism is
+    ## that the penalised estimator takes finitely many finite values while the
+    ## parameter is unbounded, so profiling changes the interval's shape and not
+    ## the boundedness of what it is built from.  See
+    ## docs/dev-log/research/2026-08-17-kosmidis-firth-2021-profile-caveat.md.
+    calibrated = FALSE,
+    public_confint = "refused",
+    coverage_claim = "none"
   )
 }
 
 ## Private profile candidate only. The feasibility helper supplies endpoints
-## from a bounded bisection of a finite, converged penalised-objective bracket.
-## These are not confidence-interval endpoints.
+## from a bounded bisection of a finite, converged bracket -- on the penalised
+## objective (fork A) or on the unpenalized Laplace objective at fixed MSPL
+## nuisance (fork B). These are not confidence-interval endpoints under either
+## fork.
+.gllvmTMB_mspl_profile_sources <- c(
+  "fit$tmb_obj (penalised LA-MSPL)",
+  "fit$mspl$unpenalized_tmb_obj (unpenalized Laplace at fixed MSPL nuisance)"
+)
+
 .gllvmTMB_mspl_profile_threshold_diagnostic <- function(probe) {
-  if (!is.list(probe) || !identical(
-    probe$objective_source, "fit$tmb_obj (penalised LA-MSPL)"
-  )) {
+  if (!is.list(probe) ||
+      !isTRUE(probe$objective_source %in% .gllvmTMB_mspl_profile_sources)) {
     .gllvmTMB_mspl_abort(
-      "The internal MSPL profile-threshold diagnostic requires a penalised profile probe.",
+      "The internal MSPL profile-threshold diagnostic requires an MSPL profile probe.",
+      "i" = "Admitted objective sources are the penalised tape (fork A) and the unpenalized Laplace tape at fixed MSPL nuisance (fork B).",
       class = "gllvmTMB_mspl_profile_threshold_input"
     )
   }
   required <- c(
     "trace", "mle", "threshold", "centre_status", "lower_status",
     "upper_status", "lower_endpoint", "upper_endpoint", "lower_bracket",
-    "upper_bracket"
+    "upper_bracket", "objective", "tape", "nuisance_treatment",
+    "reference_is_maximum"
   )
   if (!all(required %in% names(probe)) || !is.data.frame(probe$trace)) {
     .gllvmTMB_mspl_abort(
@@ -444,7 +684,15 @@
     diagnostic_upper = probe$upper_endpoint,
     lower_bracket = probe$lower_bracket,
     upper_bracket = probe$upper_bracket,
-    objective_source = "fit$tmb_obj (penalised LA-MSPL)"
+    objective_source = probe$objective_source,
+    objective = probe$objective,
+    tape = probe$tape,
+    design_125_fork = probe$design_125_fork,
+    nuisance_treatment = probe$nuisance_treatment,
+    reference_is_maximum = probe$reference_is_maximum,
+    calibrated = FALSE,
+    public_confint = "refused",
+    coverage_claim = "none"
   )
 }
 
@@ -494,11 +742,14 @@
   rank_tol <- max(dim(X_mspl)) * max(singular_values) * .Machine$double.eps
   rank_x <- sum(singular_values > rank_tol)
   if (rank_x != p_beta) {
-    .gllvmTMB_mspl_abort(c(
-      "The resolved LA-MSPL fixed-effect design is rank deficient.",
-      "x" = "Numerical rank is {rank_x}; {p_beta} free coefficient{?s} remain after maps and ties.",
-      ">" = "Remove aliased fixed effects or pin a redundant coefficient with {.arg Xcoef_fixed} before fitting."
-    ), class = "gllvmTMB_mspl_rank_deficient")
+    .gllvmTMB_mspl_abort(
+      c(
+        "The resolved LA-MSPL fixed-effect design is rank deficient.",
+        "x" = "Numerical rank is {rank_x}; {p_beta} free coefficient{?s} remain after maps and ties.",
+        ">" = "Remove aliased fixed effects or pin a redundant coefficient with {.arg Xcoef_fixed} before fitting."
+      ),
+      class = "gllvmTMB_mspl_rank_deficient"
+    )
   }
 
   list(
@@ -518,7 +769,9 @@
       class = "gllvmTMB_mspl_internal_surface"
     )
   }
-  if (is.null(tau_map)) return(as.integer(seq_len(n_tau) - 1L))
+  if (is.null(tau_map)) {
+    return(as.integer(seq_len(n_tau) - 1L))
+  }
 
   map_code <- as.integer(tau_map)
   if (length(map_code) != n_tau) {
@@ -549,8 +802,12 @@
     )
   }
   locations <- unique(as.matrix(mesh$loc_xy))
-  if (!is.numeric(locations) || ncol(locations) != 2L ||
-      nrow(locations) < 2L || any(!is.finite(locations))) {
+  if (
+    !is.numeric(locations) ||
+      ncol(locations) != 2L ||
+      nrow(locations) < 2L ||
+      any(!is.finite(locations))
+  ) {
     .gllvmTMB_mspl_abort(
       "Spatial LA-MSPL requires at least two distinct finite observed locations."
     )
@@ -569,20 +826,51 @@
 ## after maps and the random-effect vector have been resolved, so admission is
 ## based on the model TMB will actually see rather than formula spelling.
 .gllvmTMB_mspl_prepare <- function(
-  X_fix, b_map, y, n_trials, is_y_observed, family_id_vec, link_id_vec,
-  offset_vec, random, use_rr_B, use_lv_B, use_rr_B_slope, use_diag_B,
-  diag_B_all_skipped, d_B, theta_rr_B, theta_diag_B = NULL,
+  X_fix,
+  b_map,
+  y,
+  n_trials,
+  is_y_observed,
+  family_id_vec,
+  link_id_vec,
+  offset_vec,
+  random,
+  use_rr_B,
+  use_lv_B,
+  use_rr_B_slope,
+  use_diag_B,
+  diag_B_all_skipped,
+  d_B,
+  theta_rr_B,
+  theta_diag_B = NULL,
   lambda_constraint,
-  use_spde, is_spatial_indep, is_spatial_scalar, is_spatial_latent,
-  is_spatial_dep, use_spde_latent_diag, use_spde_slope,
-  use_spde_latent_slope, d_spde_lv, theta_rr_spde_lv, log_tau_spde,
-  log_tau_spde_map, mesh, use_mi_predictor, integration, engine, REML,
+  use_spde,
+  is_spatial_indep,
+  is_spatial_scalar,
+  is_spatial_latent,
+  is_spatial_dep,
+  use_spde_latent_diag,
+  use_spde_slope,
+  use_spde_latent_slope,
+  d_spde_lv,
+  theta_rr_spde_lv,
+  log_tau_spde,
+  log_tau_spde_map,
+  mesh,
+  use_mi_predictor,
+  integration,
+  engine,
+  REML,
   ridge_explicit,
-  unit_id = NULL, trait_id = NULL, sigma_eps_mapped = FALSE,
+  unit_id = NULL,
+  trait_id = NULL,
+  sigma_eps_mapped = FALSE,
   mspl_c_n_multiplier = 1
 ) {
   if (isTRUE(REML)) {
-    .gllvmTMB_mspl_abort("{.code estimator = \"mspl\"} cannot be combined with {.code REML = TRUE}.")
+    .gllvmTMB_mspl_abort(
+      "{.code estimator = \"mspl\"} cannot be combined with {.code REML = TRUE}."
+    )
   }
   ## Design 118 s7.1 prerequisite: a private, unexported probe hook on the
   ## penalty strength c_n (mspl_c_n_multiplier, default 1.0). It is read from
@@ -613,14 +901,29 @@
   }
 
   fam_ids <- unique(as.integer(family_id_vec))
-  if (length(fam_ids) != 1L || !fam_ids %in% c(0L, 1L)) {
+  ## 7 = Beta-logit planned door (#1045 atom is FCN K_bb).
+  ## Public door stays closed for Tweedie. The probe env is a
+  ## timeout-bounded hang check only — not a user-facing door and
+  ## not an admit. Keep the public `%in%` literal intact for the
+  ## Gamma / lognormal / hurdle source pins. Default unset: family 6
+  ## still aborts here.
+  probe_tweedie <- identical(Sys.getenv("GLLVMTMB_MSPL_TWEEDIE_PROBE"), "1") &&
+    identical(fam_ids, 6L)
+  if (!isTRUE(probe_tweedie) && (length(fam_ids) != 1L || !fam_ids %in% c(0L, 1L, 2L, 5L, 7L, 15L))) {
     .gllvmTMB_mspl_abort(c(
-      "LA-MSPL supports a single binomial or gaussian response family only.",
-      "i" = "Count and mixed-family MSPL remain deferred."
+      "LA-MSPL supports a single gaussian, bernoulli, Poisson, nbinom1, nbinom2, or Beta response family only.",
+      "i" = "Tweedie and mixed-family MSPL remain deferred at the public door."
     ))
   }
   is_gaussian <- identical(fam_ids, 0L)
   is_bernoulli <- identical(fam_ids, 1L)
+  is_poisson <- identical(fam_ids, 2L)
+  is_nbinom2 <- identical(fam_ids, 5L)
+  is_nbinom1 <- identical(fam_ids, 15L)
+  is_nbinom <- is_nbinom1 || is_nbinom2
+  is_tweedie <- identical(fam_ids, 6L)
+  is_beta <- identical(fam_ids, 7L)
+  is_planned_glm <- is_poisson || is_nbinom || is_tweedie || is_beta
 
   if (is_bernoulli) {
     if (length(unique(link_id_vec)) != 1L || !all(link_id_vec %in% 0:2)) {
@@ -635,7 +938,7 @@
         "i" = "Grouped and weighted binomial MSPL is deferred."
       ))
     }
-  } else {
+  } else if (is_gaussian) {
     if (length(unique(link_id_vec)) != 1L || !all(link_id_vec == 0L)) {
       .gllvmTMB_mspl_abort(c(
         "Gaussian LA-MSPL requires the identity link.",
@@ -644,6 +947,54 @@
     }
     if (any(!is.finite(y))) {
       .gllvmTMB_mspl_abort("Gaussian LA-MSPL requires finite responses.")
+    }
+  } else if (is_poisson) {
+    if (length(unique(link_id_vec)) != 1L || !all(link_id_vec == 0L)) {
+      .gllvmTMB_mspl_abort(c(
+        "Poisson LA-MSPL requires the log link.",
+        "i" = "Use {.code poisson(link = \"log\")}."
+      ))
+    }
+    if (any(!is.finite(y)) || any(y < 0)) {
+      .gllvmTMB_mspl_abort(
+        "Poisson LA-MSPL requires finite non-negative counts."
+      )
+    }
+  } else if (is_nbinom) {
+    if (length(unique(link_id_vec)) != 1L || !all(link_id_vec == 0L)) {
+      .gllvmTMB_mspl_abort(c(
+        "nbinom1/nbinom2 LA-MSPL requires the log link.",
+        "i" = "Use {.code nbinom1(link = \"log\")} or {.code nbinom2(link = \"log\")}."
+      ))
+    }
+    if (any(!is.finite(y)) || any(y < 0)) {
+      .gllvmTMB_mspl_abort(
+        "nbinom1/nbinom2 LA-MSPL requires finite non-negative counts."
+      )
+    }
+  } else if (is_tweedie) {
+    if (length(unique(link_id_vec)) != 1L || !all(link_id_vec == 0L)) {
+      .gllvmTMB_mspl_abort(c(
+        "Tweedie LA-MSPL requires the log link.",
+        "i" = "Use {.code tweedie(link = \"log\")}."
+      ))
+    }
+    if (any(!is.finite(y)) || any(y < 0)) {
+      .gllvmTMB_mspl_abort(
+        "Tweedie LA-MSPL requires finite non-negative responses."
+      )
+    }
+  } else if (is_beta) {
+    if (length(unique(link_id_vec)) != 1L || !all(link_id_vec == 0L)) {
+      .gllvmTMB_mspl_abort(c(
+        "Beta LA-MSPL requires the logit link.",
+        "i" = "Use {.code Beta(link = \"logit\")}."
+      ))
+    }
+    if (any(!is.finite(y)) || any(y <= 0) || any(y >= 1)) {
+      .gllvmTMB_mspl_abort(
+        "Beta LA-MSPL requires finite responses strictly inside (0, 1)."
+      )
     }
   }
   if (!all(is_y_observed == 1L)) {
@@ -662,16 +1013,36 @@
     ))
   }
   ordinary <- isTRUE(use_rr_B) && !isTRUE(use_spde)
-  spatial_indep <- !isTRUE(use_rr_B) && isTRUE(use_spde) &&
-    isTRUE(is_spatial_indep) && !isTRUE(is_spatial_scalar) &&
-    !isTRUE(is_spatial_latent) && !isTRUE(is_spatial_dep)
-  spatial_latent <- !isTRUE(use_rr_B) && isTRUE(use_spde) &&
-    isTRUE(is_spatial_latent) && !isTRUE(is_spatial_dep)
+  spatial_indep <- !isTRUE(use_rr_B) &&
+    isTRUE(use_spde) &&
+    isTRUE(is_spatial_indep) &&
+    !isTRUE(is_spatial_scalar) &&
+    !isTRUE(is_spatial_latent) &&
+    !isTRUE(is_spatial_dep)
+  spatial_latent <- !isTRUE(use_rr_B) &&
+    isTRUE(use_spde) &&
+    isTRUE(is_spatial_latent) &&
+    !isTRUE(is_spatial_dep)
 
   if (is_gaussian) {
     if (!isTRUE(ordinary) || isTRUE(spatial_indep) || isTRUE(spatial_latent)) {
       .gllvmTMB_mspl_abort(c(
         "Gaussian LA-MSPL admits only ordinary {.fn latent} with {.arg unique = TRUE}.",
+        "i" = "Spatial and other structures are deferred."
+      ))
+    }
+  } else if (is_planned_glm) {
+    if (!isTRUE(ordinary) || isTRUE(spatial_indep) || isTRUE(spatial_latent)) {
+      .gllvmTMB_mspl_abort(c(
+        if (is_poisson) {
+          "Poisson LA-MSPL admits only ordinary {.fn latent}."
+        } else if (is_nbinom) {
+          "nbinom1/nbinom2 LA-MSPL admits only ordinary {.fn latent}."
+        } else if (is_tweedie) {
+          "Tweedie LA-MSPL admits only ordinary {.fn latent}."
+        } else {
+          "Beta LA-MSPL admits only ordinary {.fn latent}."
+        },
         "i" = "Spatial and other structures are deferred."
       ))
     }
@@ -682,15 +1053,20 @@
     ))
   }
 
-  if (ordinary && (!d_B %in% c(1L, 2L) || isTRUE(use_lv_B) ||
-                   isTRUE(use_rr_B_slope))) {
+  if (
+    ordinary &&
+      (!d_B %in% c(1L, 2L) || isTRUE(use_lv_B) || isTRUE(use_rr_B_slope))
+  ) {
     .gllvmTMB_mspl_abort(c(
       "Ordinary LA-MSPL supports one intercept-only {.fn latent} block with {.arg d} equal to 1 or 2.",
       "i" = "Predictor-informed latent means, latent slopes, and q > 2 are deferred."
     ))
   }
-  if (spatial_latent && (!d_spde_lv %in% c(1L, 2L) ||
-                         isTRUE(use_spde_latent_diag))) {
+  if (
+    spatial_latent &&
+      (!d_spde_lv %in% c(1L, 2L) ||
+        isTRUE(use_spde_latent_diag))
+  ) {
     .gllvmTMB_mspl_abort(c(
       "Spatial-latent LA-MSPL supports {.fn spatial_latent} with {.arg d} equal to 1 or 2 and no unique companion.",
       "i" = "Free spatial Psi coordinates and q > 2 are deferred."
@@ -706,8 +1082,12 @@
       "Spatial random slopes are outside the current LA-MSPL contract."
     )
   }
-  if (is_bernoulli && ordinary && isTRUE(use_diag_B) &&
-      !isTRUE(diag_B_all_skipped)) {
+  if (
+    is_bernoulli &&
+      ordinary &&
+      isTRUE(use_diag_B) &&
+      !isTRUE(diag_B_all_skipped)
+  ) {
     .gllvmTMB_mspl_abort(c(
       "LA-MSPL does not estimate a Bernoulli Psi companion.",
       "i" = "The automatic Bernoulli Psi may remain in the parsed formula only when every coordinate is mapped off."
@@ -744,9 +1124,14 @@
     ))
   }
   if (isTRUE(use_mi_predictor)) {
-    .gllvmTMB_mspl_abort("Modelled missing predictors are outside the current LA-MSPL contract.")
+    .gllvmTMB_mspl_abort(
+      "Modelled missing predictors are outside the current LA-MSPL contract."
+    )
   }
-  if (!is.null(lambda_constraint) && length(Filter(Negate(is.null), lambda_constraint))) {
+  if (
+    !is.null(lambda_constraint) &&
+      length(Filter(Negate(is.null), lambda_constraint))
+  ) {
     .gllvmTMB_mspl_abort(c(
       "Confirmatory loading constraints are outside the current LA-MSPL contract.",
       "i" = "Fit the exploratory lower-triangular ordinary latent model without {.arg lambda_constraint}."
@@ -754,7 +1139,9 @@
   }
 
   fixed <- .gllvmTMB_mspl_fixed_design(X_fix, b_map)
-  structure <- if (ordinary) "ordinary" else if (spatial_indep) {
+  structure <- if (ordinary) {
+    "ordinary"
+  } else if (spatial_indep) {
     "spatial_indep"
   } else {
     "spatial_latent"
@@ -783,10 +1170,23 @@
       }
       mspl_S_diag <- .gllvmTMB_mspl_S_diag(y, trait_id, unit_id)
       mspl_N_units <- length(unique(as.integer(unit_id)))
+    } else if (is_nbinom2) {
+      ## Free per-trait phi is an outer block. C++ p_free still excludes it
+      ## (Jeffreys rate is unpinned c=1, same as the planned nbinom door).
+      expected_outer <- c(expected_outer, "log_phi_nbinom2")
+    } else if (is_nbinom1) {
+      expected_outer <- c(expected_outer, "log_phi_nbinom1")
+    } else if (is_tweedie) {
+      ## Free per-trait phi and power. C++ p_free still excludes them
+      ## (Jeffreys rate is unpinned c=1, same as the planned nbinom door).
+      expected_outer <- c(expected_outer, "log_phi_tweedie", "logit_p_tweedie")
+    } else if (is_beta) {
+      expected_outer <- c(expected_outer, "log_phi_beta")
     }
   } else if (spatial_indep) {
     tau_representative <- .gllvmTMB_mspl_tau_representatives(
-      log_tau_spde, log_tau_spde_map
+      log_tau_spde,
+      log_tau_spde_map
     )
     p_loading <- 0L
     p_covariance <- length(tau_representative) + 1L
@@ -808,7 +1208,21 @@
     .gllvmTMB_mspl_abort("LA-MSPL requires a positive effective sample size.")
   }
 
-  family_name <- if (is_gaussian) "gaussian" else "binomial"
+  family_name <- if (is_gaussian) {
+    "gaussian"
+  } else if (is_poisson) {
+    "poisson"
+  } else if (is_nbinom2) {
+    "nbinom2"
+  } else if (is_nbinom1) {
+    "nbinom1"
+  } else if (is_tweedie) {
+    "tweedie"
+  } else if (is_beta) {
+    "Beta"
+  } else {
+    "binomial"
+  }
   link_name <- .gllvmTMB_mspl_family_link_name(fam_ids, unique(link_id_vec))
   if (is.na(link_name)) {
     .gllvmTMB_mspl_abort("LA-MSPL could not resolve the family/link cell.")
@@ -827,28 +1241,42 @@
     q = q_cell
   )
   if (is.null(registry_row)) {
-    .gllvmTMB_mspl_abort(c(
-      "LA-MSPL resolved a surface that is not a registry cell.",
-      "x" = "family {.val {family_name}}, link {.val {link_name}}, structure {.val {structure}}, q {.val {q_cell}}."
-    ), class = "gllvmTMB_mspl_registry_miss")
+    .gllvmTMB_mspl_abort(
+      c(
+        "LA-MSPL resolved a surface that is not a registry cell.",
+        "x" = "family {.val {family_name}}, link {.val {link_name}}, structure {.val {structure}}, q {.val {q_cell}}."
+      ),
+      class = "gllvmTMB_mspl_registry_miss"
+    )
   }
   ## Bernoulli: admitted only. Gaussian ordinary: planned allowed during
   ## implement smoke; flip to admitted after se=FALSE smoke (point only —
   ## SE/intervals remain PROTECTED on codex/lane-b-mspl-interval-feasibility).
-  ok_status <- if (is_gaussian) {
+  ok_status <- if (is_gaussian || is_planned_glm) {
     registry_row$status %in% c("admitted", "planned")
   } else {
     identical(registry_row$status, "admitted")
   }
   if (!isTRUE(ok_status)) {
-    .gllvmTMB_mspl_abort(c(
-      "LA-MSPL resolved a surface that is not an admitted registry cell.",
-      "x" = "family {.val {family_name}}, link {.val {link_name}}, structure {.val {structure}}, q {.val {q_cell}}, status {.val {registry_row$status}}."
-    ), class = "gllvmTMB_mspl_registry_miss")
+    .gllvmTMB_mspl_abort(
+      c(
+        "LA-MSPL resolved a surface that is not an admitted registry cell.",
+        "x" = "family {.val {family_name}}, link {.val {link_name}}, structure {.val {structure}}, q {.val {q_cell}}, status {.val {registry_row$status}}."
+      ),
+      class = "gllvmTMB_mspl_registry_miss"
+    )
   }
 
+  ## Poisson c_P uses event count, not N_rows or N_units, and not c = 1.
   rate <- if (is_gaussian) {
     sqrt(2 / mspl_N_units)
+  } else if (is_poisson) {
+    .gllvmTMB_mspl_poisson_rate(
+      p_free,
+      .gllvmTMB_mspl_poisson_event_count(y)
+    )
+  } else if (is_nbinom || is_tweedie || is_beta) {
+    1
   } else {
     2 * sqrt(p_free / N_eff)
   }
@@ -880,13 +1308,56 @@
     scope = if (is_gaussian) {
       paste0(
         "complete gaussian identity; ordinary latent(unique=TRUE) q=",
-        d_B, "; Hirose pick C; Laplace"
+        d_B,
+        "; Hirose pick C; Laplace"
+      )
+    } else if (is_poisson) {
+      paste0(
+        "complete poisson log; ordinary latent q=",
+        d_B,
+        "; GLM-outer W=diag(mu) candidate (not I_LA(beta)); ",
+        "c_P=2*sqrt(p_free/max(sum(y),1)); event-weighted loading atom; ",
+        "planned tape, not admitted; Laplace"
+      )
+    } else if (is_nbinom2) {
+      paste0(
+        "complete nbinom2 log; ordinary latent q=",
+        d_B,
+        "; GLM-outer W=mu*phi/(phi+mu) candidate (not I_LA(beta)); ",
+        "unpinned c=1; planned tape, not admitted; Laplace"
+      )
+    } else if (is_nbinom1) {
+      paste0(
+        "complete nbinom1 log; ordinary latent q=",
+        d_B,
+        "; GLM-outer PMF-summed exact I (not quasi W=mu/(1+phi)); ",
+        "unpinned c=1; planned tape, not admitted; Laplace"
+      )
+    } else if (is_tweedie) {
+      paste0(
+        "complete tweedie log; ordinary latent q=",
+        d_B,
+        "; GLM-outer working logistic W_* (true W=mu^{2-p}/phi rewards phi->0; not I_LA(beta)); ",
+        "Huber on log_phi and logit(p-1); unpinned c=1; planned tape, not admitted; Laplace"
+      )
+    } else if (is_beta) {
+      paste0(
+        "complete Beta logit; ordinary latent q=",
+        d_B,
+        "; GLM-outer Jeffreys I_mu (not coercive at 0/1; not I_LA(beta)); ",
+        "unpinned c=1; planned tape, not admitted; Laplace"
       )
     } else {
       paste0(
-        "complete Bernoulli; ", structure,
-        if (structure == "spatial_latent") paste0("(q=", d_spde_lv, ")") else
-          if (structure == "ordinary") paste0("(q=", d_B, ")") else "",
+        "complete Bernoulli; ",
+        structure,
+        if (structure == "spatial_latent") {
+          paste0("(q=", d_spde_lv, ")")
+        } else if (structure == "ordinary") {
+          paste0("(q=", d_B, ")")
+        } else {
+          ""
+        },
         "; Laplace; one common logit/probit/cloglog link"
       )
     }

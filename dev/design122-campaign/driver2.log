@@ -1,0 +1,44 @@
+[driver] RESTART Mon Aug 17 02:02:42 PM UTC 2026
+[driver] chunk-002.csv already exists -- SKIP
+[driver] === starting chunk 3 Mon Aug 17 02:02:42 PM UTC 2026 ===
+[driver] === chunk 3 finished exit=0 Mon Aug 17 02:03:14 PM UTC 2026 ===
+[driver] === starting chunk 4 Mon Aug 17 02:03:14 PM UTC 2026 ===
+[driver] === chunk 4 finished exit=0 Mon Aug 17 02:05:20 PM UTC 2026 ===
+[driver] === starting chunk 5 Mon Aug 17 02:05:20 PM UTC 2026 ===
+[driver] === chunk 5 finished exit=0 Mon Aug 17 02:07:03 PM UTC 2026 ===
+[driver] === starting chunk 6 Mon Aug 17 02:07:03 PM UTC 2026 ===
+[driver] === chunk 6 finished exit=0 Mon Aug 17 02:08:23 PM UTC 2026 ===
+[driver] === starting chunk 7 Mon Aug 17 02:08:23 PM UTC 2026 ===
+[driver] === chunk 7 finished exit=0 Mon Aug 17 02:12:59 PM UTC 2026 ===
+[driver] === starting chunk 8 Mon Aug 17 02:12:59 PM UTC 2026 ===
+[driver] === chunk 8 finished exit=0 Mon Aug 17 02:17:24 PM UTC 2026 ===
+[driver] === starting chunk 9 Mon Aug 17 02:17:24 PM UTC 2026 ===
+[driver] === chunk 9 finished exit=0 Mon Aug 17 02:21:21 PM UTC 2026 ===
+[driver] === starting chunk 10 Mon Aug 17 02:21:21 PM UTC 2026 ===
+[driver] === chunk 10 finished exit=0 Mon Aug 17 02:37:45 PM UTC 2026 ===
+[driver] === starting chunk 11 Mon Aug 17 02:37:45 PM UTC 2026 ===
+[driver] === chunk 11 finished exit=0 Mon Aug 17 02:51:57 PM UTC 2026 ===
+[driver] === starting chunk 12 Mon Aug 17 02:51:57 PM UTC 2026 ===
+[driver] === chunk 12 finished exit=0 Mon Aug 17 03:03:38 PM UTC 2026 ===
+[driver] === starting chunk 13 Mon Aug 17 03:03:38 PM UTC 2026 ===
+[driver] === chunk 13 finished exit=0 Mon Aug 17 03:06:12 PM UTC 2026 ===
+[driver] === starting chunk 14 Mon Aug 17 03:06:12 PM UTC 2026 ===
+[driver] === chunk 14 finished exit=0 Mon Aug 17 03:08:42 PM UTC 2026 ===
+[driver] === starting chunk 15 Mon Aug 17 03:08:42 PM UTC 2026 ===
+[driver] === chunk 15 finished exit=0 Mon Aug 17 03:10:33 PM UTC 2026 ===
+[driver] === starting chunk 16 Mon Aug 17 03:10:33 PM UTC 2026 ===
+[driver] === chunk 16 finished exit=0 Mon Aug 17 03:19:55 PM UTC 2026 ===
+[driver] === starting chunk 17 Mon Aug 17 03:19:55 PM UTC 2026 ===
+[driver] === chunk 17 finished exit=0 Mon Aug 17 03:27:37 PM UTC 2026 ===
+[driver] === starting chunk 18 Mon Aug 17 03:27:37 PM UTC 2026 ===
+[driver] === chunk 18 finished exit=0 Mon Aug 17 03:33:38 PM UTC 2026 ===
+[driver] === starting chunk 19 Mon Aug 17 03:33:38 PM UTC 2026 ===
+[driver] === chunk 19 finished exit=0 Mon Aug 17 03:49:57 PM UTC 2026 ===
+[driver] === starting chunk 20 Mon Aug 17 03:49:57 PM UTC 2026 ===
+[driver] === chunk 20 finished exit=0 Mon Aug 17 04:05:10 PM UTC 2026 ===
+[driver] === starting chunk 21 Mon Aug 17 04:05:10 PM UTC 2026 ===
+[driver] === chunk 21 finished exit=0 Mon Aug 17 04:17:15 PM UTC 2026 ===
+[driver] === starting chunk 24 Mon Aug 17 04:17:15 PM UTC 2026 ===
+[driver] === chunk 24 finished exit=0 Mon Aug 17 04:55:19 PM UTC 2026 ===
+[driver] ALL DONE Mon Aug 17 04:55:19 PM UTC 2026
+[driver] final chunk count: 24 / 24

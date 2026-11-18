@@ -1,15 +1,16 @@
 test_that("gllvmTMBcontrol consumers use declared or intentional fields", {
-  r_dir <- testthat::test_path("..", "..", "R")
-  skip_if_not(
-    dir.exists(r_dir),
-    "Repository source is unavailable after package installation"
-  )
+  r_dir <- gllvmTMB_pkg_file("R")
 
   files <- list.files(r_dir, pattern = "[.]R$", full.names = TRUE)
   ## These files use separate, local control objects rather than the public
   ## gllvmTMBcontrol() contract.
   files <- files[!basename(files) %in% c(
     "screen-gllvmTMB.R",
+    ## screen-separation.R consumes the same screen_control() object as
+    ## screen-gllvmTMB.R (its `control$separation_tolerance` is a documented
+    ## screen_control() formal, not a gllvmTMBcontrol() field); the file was
+    ## split out by 0d992c61 without joining this exclusion.
+    "screen-separation.R",
     "va-r3-proto.R"
   )]
   source_text <- unlist(lapply(files, readLines, warn = FALSE))
@@ -24,7 +25,16 @@ test_that("gllvmTMBcontrol consumers use declared or intentional fields", {
   ## pipeline, not user arguments to gllvmTMBcontrol(). Keep the list explicit
   ## so a new undeclared public-control read fails this test.
   internal <- c(
+    ".internal_continuation",
+    "aghq_explicit",
     "aghq_ridge_explicit",
+    "n_init_explicit",
+    ## set by gllvmTMB() from missing(optimizer); consumed by va-routing.R
+    "optimizer_explicit",
+    ## developer-only, opt-in qualification hook (R/fit-multi.R, see the
+    ## comment above `optimizer_diagnostics`); deliberately not a formal
+    "optimizer_diagnostics",
+    "svd_start_explicit",
     "aghq_start_par",
     "vgh_warm_start",
     "vgh_warm_start_fixed",

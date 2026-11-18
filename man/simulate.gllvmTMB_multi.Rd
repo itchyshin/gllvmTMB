@@ -16,7 +16,8 @@
 \arguments{
 \item{object}{A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}.}
 
-\item{nsim}{Number of replicate response vectors to draw. Default 1.}
+\item{nsim}{Number of replicate response vectors to draw. Must be a
+single positive integer. Default 1.}
 
 \item{seed}{Optional RNG seed.}
 
@@ -30,12 +31,15 @@ any random-effect grouping that was active.}
 covariance — the unconditional simulation appropriate for
 parametric bootstrap. Redraw is currently implemented for the
 \code{rr_B}, \code{diag_B}, \code{rr_W}, \code{diag_W}, \code{propto}, \code{lv_B}, \code{phylo_rr},
-and \code{diag_species} tiers.
+\code{phylo_diag}, \code{diag_species}, the SPDE spatial fields of
+\code{spatial_indep()}, \code{spatial_scalar()} and \code{spatial_latent()}, and the
+native temporal tier. A temporal fit redraws its
+recursive temporal state together with every supported ordinary/source
+tier; it does not retain fitted ordinary modes in an unconditional draw.
 
-\strong{Not every tier is covered.} A fit using any other active tier —
-notably the SPDE spatial tier (\code{spde}) and the diagonal
-phylogenetic tier (\code{phylo_diag}) — falls back to conditional
-simulation and emits a one-shot warning naming the unhandled
+\strong{Not every tier is covered.} The slope-augmented SPDE spatial forms
+(for example \code{spatial_indep(1 + x | coords)}) fall back to conditional
+simulation and emit a one-shot warning naming the unhandled
 tiers. Because conditional simulation reuses the fitted random-
 effect modes rather than redrawing them, it understates
 between-unit variability: intervals derived from it (for example
@@ -45,7 +49,8 @@ uncertainty is not trustworthy for that fit.
 
 When \code{TRUE}, the existing fitted RE modes
 are reused (the older glmmTMB-style conditional simulation that
-only adds Gaussian noise on top of \code{fit$report$eta}). Forced to
+uses the fitted conditional predictor). For AGHQ, the predictor uses
+the stored latent modes at the fitted parameters. Forced to
 \code{TRUE} when \code{newdata} is supplied (RE modes for unseen levels
 cannot be redrawn).}
 
@@ -53,7 +58,19 @@ cannot be redrawn).}
 }
 \value{
 A matrix of dimension \verb{n_obs x nsim} (or \verb{nrow(newdata) x nsim}
-when \code{newdata} is supplied).
+when \code{newdata} is supplied). \strong{Per-row family coverage (#1079):} rows
+are drawn from their true fitted distribution for gaussian, binomial
+(at the row's actual trial count, not forced to Bernoulli), poisson,
+lognormal, Gamma, nbinom2, nbinom1, Beta, betabinomial, student-t,
+zero-truncated poisson, zero-truncated nbinom2, delta_lognormal,
+delta_gamma, ordinal_probit, and multinomial. The one exception is
+tweedie, which has no exact draw implemented; its rows (and any other
+unrecognised family) are returned as \code{NA_real_}, together with a
+warning naming the affected \code{family_id} values — never a
+Gaussian-on-link-scale substitute, and never silent. The \code{newdata}
+path (predictions on unseen data) still falls back to a
+Gaussian-on-link-scale draw for every family, with its own warning;
+family-aware \code{newdata} simulation is not yet implemented.
 }
 \description{
 Draws \code{nsim} new response vectors from a fitted model. By default
@@ -64,4 +81,15 @@ not implemented for every tier; a fit using an unhandled tier falls back to
 conditional simulation with a warning, and intervals derived from it are too
 narrow. Set \code{condition_on_RE = TRUE} for the older conditional behaviour,
 which reuses the fitted random-effect modes and only adds residual noise.
+}
+\details{
+For rho-enabled structured trait intercepts, unconditional draws
+use the attenuated source covariance for both loadings and folded Psi,
+with independent observation residuals retained. Unsupported additional
+components produce an error instead of a conditional fallback. This
+supports simulation; automatic covariance bootstrap refits are not yet
+supported for these fits.
+For multiple named kernel tiers, unconditional simulation and simulation
+with \code{newdata} are not supported. Use \code{condition_on_RE = TRUE} for a
+conditional draw on the training rows.
 }

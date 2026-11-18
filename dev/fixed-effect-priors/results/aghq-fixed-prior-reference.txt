@@ -1,0 +1,4 @@
+gllvmTMB is experimental. Use a documented tutorial, inspect fit diagnostics, and read Current limitations and boundaries before treating an estimate or interval as a scientific result. Convergence alone is not enough.
+rep 1 used TRUE converged TRUE refcode 0 objective_gap 0 quad_gap 5.542233e-13 aghq_objective_gap 1.918465e-12
+rep 2 used TRUE converged TRUE refcode 0 objective_gap 7.788401e-10 quad_gap 6.394885e-13 aghq_objective_gap -4.819981e-09
+rep 3 used TRUE converged FALSE refcode 0 objective_gap 0.001197839 quad_gap 5.968559e-13 aghq_objective_gap 2.301562e-08

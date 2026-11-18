@@ -119,7 +119,7 @@ This worked example has one categorical response column, so it uses the long
 form directly; there is no useful wide `traits(...)` twin for this isolated
 fixed-effect fit. The separate partial cross-family route uses a shared
 long-format mixed-family model and is demonstrated in
-[Cross-family trait correlations, including nominal responses](cross-family-correlations.html).
+[Cross-family correlations and environmental predictors](cross-family-correlations.html).
 
 ```{r fit}
 fit <- gllvmTMB(
@@ -246,7 +246,7 @@ deliberately **partial**, not universal categorical covariance support:
   with other response families. The nominal trait remains an explicit \(K-1\)
   baseline-contrast block; `extract_cross_correlations()` supplies the
   reference-invariant partner summary. See
-  [Cross-family trait correlations, including nominal responses](cross-family-correlations.html).
+  [Cross-family correlations and environmental predictors](cross-family-correlations.html).
 - A fixed-effect-only fit still has no latent covariance, so
   `extract_correlations()` and `extract_Sigma()` refuse it rather than fabricate
   a matrix. On that cross-family route, point extraction is the default;

@@ -1,0 +1,2142 @@
+
+R version 4.6.1 (2026-06-24) -- "Happy Hop"
+Copyright (C) 2026 The R Foundation for Statistical Computing
+Platform: x86_64-pc-linux-gnu
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> options(Matrix.warnDeprecatedCoerce = 2)
+> 
+> library(testthat)
+> library(gllvmTMB)
+gllvmTMB is experimental. Use a documented tutorial, inspect fit diagnostics, and read Current limitations and boundaries before treating an estimate or interval as a scientific result. Convergence alone is not enough.
+> 
+> # Repository CI shards the full suite across parallel jobs via
+> # GLLVMTMB_TEST_SHARD ("k/N"); unset means run everything, so a local
+> # devtools::test() is unchanged. The helper lives under testthat/ so R CMD check
+> # does not execute it as a test file in its own right, and is sourced here
+> # because the filter has to exist BEFORE test_check() is called.
+> #
+> # This is orthogonal to the GLLVMTMB_HEAVY_TESTS gate in testthat/setup.R:
+> # that decides WHICH tests run at all, this splits whatever is left across jobs.
+> source(file.path("testthat", "helper-shard-util.R"), local = TRUE)
+> gllvm_shard <- gllvm_shard_filter()
+> 
+> if (is.null(gllvm_shard)) {
++   test_check("gllvmTMB")
++ } else {
++   test_check("gllvmTMB", filter = gllvm_shard)
++ }
+   k aghq_objective oracle_nll    abs_error aghq_used par_shift
+1  3       12.20770   12.20764 5.370582e-05      TRUE         0
+2  9       12.20764   12.20764 8.633094e-13      TRUE         0
+3 25       12.20764   12.20764 1.598721e-14      TRUE         0
+  k aghq_objective brute_force_nll    abs_error convergence
+1 1       1.909543        1.909543 1.117735e-09           0
+2 3       1.909543        1.909543 2.933781e-09           0
+3 5       1.909543        1.909543 2.233915e-10           0
+4 7       1.909543        1.909543 1.708189e-11           0
+5 9       1.909543        1.909543 5.040413e-14           0
+GOLDEN 3 poisson null control: |objective diff| = 0.083169, ||Lambda diff||_F / ||Lambda||_F = 0.009325
+GOLDEN 3 par_shift = 4.762e-01  (quadrature moved the estimate)
+using C++ compiler: 'x86_64-linux-gnu-g++ (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0'
+x86_64-linux-gnu-g++ -std=gnu++20 -I"/usr/share/R/include" -DNDEBUG -I"/home/snakagaw/R/lib/TMB/include" -I"/tmp/RtmpFgMXDa/RLIBS_3fa1a53afe1c21/RcppEigen/include"  -DTMB_SAFEBOUNDS -DTMB_EIGEN_DISABLE_WARNINGS -DLIB_UNLOAD=R_unload_gllvmTMB_eva  -DTMB_LIB_INIT=R_init_gllvmTMB_eva  -DCPPAD_FRAMEWORK      -fpic  -O2  -c gllvmTMB_eva.cpp -o gllvmTMB_eva.o
+x86_64-linux-gnu-g++ -std=gnu++20 -shared -L/usr/lib/R/lib -Wl,-Bsymbolic-functions -flto=auto -ffat-lto-objects -Wl,-z,relro -o gllvmTMB_eva.so gllvmTMB_eva.o -L/usr/lib/R/lib -lR
+using C++ compiler: 'x86_64-linux-gnu-g++ (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0'
+x86_64-linux-gnu-g++ -std=gnu++20 -I"/usr/share/R/include" -DNDEBUG -I"/home/snakagaw/R/lib/TMB/include" -I"/tmp/RtmpFgMXDa/RLIBS_3fa1a53afe1c21/RcppEigen/include"  -DTMB_SAFEBOUNDS -DTMB_EIGEN_DISABLE_WARNINGS -DLIB_UNLOAD=R_unload_bfgs_gaussian_random_intercept  -DTMB_LIB_INIT=R_init_bfgs_gaussian_random_intercept  -DCPPAD_FRAMEWORK      -fpic  -g -O2 -fno-omit-frame-pointer -mno-omit-leaf-frame-pointer -ffile-prefix-map=/build/r-base-SRqRsK/r-base-4.6.1=. -fstack-protector-strong -fstack-clash-protection -Wformat -Werror=format-security -fcf-protection -fdebug-prefix-map=/build/r-base-SRqRsK/r-base-4.6.1=/usr/src/r-base-4.6.1-6.2404.0 -Wdate-time -D_FORTIFY_SOURCE=3   -c bfgs_gaussian_random_intercept.cpp -o bfgs_gaussian_random_intercept.o
+x86_64-linux-gnu-g++ -std=gnu++20 -shared -L/usr/lib/R/lib -Wl,-Bsymbolic-functions -flto=auto -ffat-lto-objects -Wl,-z,relro -o bfgs_gaussian_random_intercept.so bfgs_gaussian_random_intercept.o -L/usr/lib/R/lib -lR
+Warning: 7 external pointers will be removed
+! `phylo_vcv = ...` as a global argument to `gllvmTMB()` is deprecated.
+i Pass `vcv = ...` inside the phylo_*() keyword instead, e.g. `phylo_scalar(species, vcv = Cphy)`.
+> Prefer `tree = ...` where you have a phylo object: it triggers the sparse-A^-1 path (~24x faster at n_species = 1000).
+This message is displayed once per session.
+! Formula keyword `phylo()` is a deprecated alias; use `phylo_scalar()` for new code.
+i `phylo_scalar(species)` =/=> `phylo(species)`
+> Aliases will be dropped at the next minor release. See `?phylo_scalar`.
+! Formula keyword `gr()` is a deprecated alias; use `phylo_scalar()` for new code.
+i `phylo_scalar(species)` =/=> `gr(species)`
+> Aliases will be dropped at the next minor release. See `?phylo_scalar`.
+! Formula keyword `diag()` is a deprecated alias; use `indep()` for new code.
+i `indep(0 + trait | g)` =/=> `diag(0 + trait | g)`
+> Aliases will be dropped at the next minor release. See `?diag_re` / `latent()`.
+> Use ordinary latent(..., d = K) for the default shared + diagonal-Psi decomposition, or indep(0 + trait | g) for a standalone diagonal.
+Added per-trait link-implicit residual variance to diag(Sigma): - 1 (family_id 21): 0.299 - 2 (family_id 21): 0.186
+
+* n_sim: 10
+* Marginal-score p-value: NA (information matrix singular)
+* Joint-score p-value: NA (estimate = FALSE; pass estimate = TRUE to compute)
+! Diagnostics: "information_matrix_singular"
+The information matrix could not be inverted. This is common on tiny /
+weakly-identified fixtures; interpret the marginal p-value with caution and
+consider increasing `n_sim` or fitting on a richer dataset.
+
+-- Marginal bias per parameter --
+
+        b_fix         b_fix         b_fix log_sigma_eps    theta_rr_B 
+           NA            NA            NA            NA            NA 
+   theta_rr_B    theta_rr_B  theta_diag_B  theta_diag_B  theta_diag_B 
+           NA            NA            NA            NA            NA 
+Student-t degrees of freedom parameter will be estimated. This used to be fixed at 3 by default. To fix it, supply a value to `df` (e.g., `df = 3`).
+Cluster (third-slot) tier extracts the per-trait diagonal at the cluster level.
+cluster2 (second diagonal grouping) tier extracts the per-trait diagonal at the cluster2 level.
+Cluster (third-slot) tier extracts the per-trait diagonal at the cluster level.
+cluster2 (second diagonal grouping) tier extracts the per-trait diagonal at the cluster2 level.
+using C++ compiler: 'x86_64-linux-gnu-g++ (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0'
+x86_64-linux-gnu-g++ -std=gnu++20 -I"/usr/share/R/include" -DNDEBUG -I"/home/snakagaw/R/lib/TMB/include" -I"/tmp/RtmpFgMXDa/RLIBS_3fa1a53afe1c21/RcppEigen/include"  -DTMB_SAFEBOUNDS -DTMB_EIGEN_DISABLE_WARNINGS -DLIB_UNLOAD=R_unload_column_coef_density  -DTMB_LIB_INIT=R_init_column_coef_density  -DCPPAD_FRAMEWORK      -fpic  -g -O2 -fno-omit-frame-pointer -mno-omit-leaf-frame-pointer -ffile-prefix-map=/build/r-base-SRqRsK/r-base-4.6.1=. -fstack-protector-strong -fstack-clash-protection -Wformat -Werror=format-security -fcf-protection -fdebug-prefix-map=/build/r-base-SRqRsK/r-base-4.6.1=/usr/src/r-base-4.6.1-6.2404.0 -Wdate-time -D_FORTIFY_SOURCE=3   -c column_coef_density.cpp -o column_coef_density.o
+x86_64-linux-gnu-g++ -std=gnu++20 -shared -L/usr/lib/R/lib -Wl,-Bsymbolic-functions -flto=auto -ffat-lto-objects -Wl,-z,relro -o column_coef_density.so column_coef_density.o -L/usr/lib/R/lib -lR
+Warning: 4 external pointers will be removed
+
+gllvm fit warnings (BINARY unconstrained-ordination comparator):
+  - There are rows full of zeros in y. 
+
+
+
+-- Estimate + CI --
+
+                   parm estimate_natural lower_natural upper_natural
+log_sigma_eps sigma_eps        0.7228748     0.6359499     0.8309315
+              wald_lower_natural wald_upper_natural wald_profile_disagree_lower
+log_sigma_eps          0.6325323          0.8261206                       FALSE
+              wald_profile_disagree_upper
+log_sigma_eps                       FALSE
+-- Diagnostics --
+
+i No heuristic shape warning fired. Inspect the curve directly; this does not prove quadratic shape or calibrated coverage.
+The $plot component is a <ggplot>; call `plot(result$plot)` to render.
+
+-- gllvmTMB confint_inspect for "sigma_eps" ------------------------------------
+
+-- Estimate + CI --
+
+-- Diagnostics --
+
+i No heuristic shape warning fired. Inspect the curve directly; this does not prove quadratic shape or calibrated coverage.
+The $plot component is a <ggplot>; call `plot(result$plot)` to render.
+i tau_se is `NA`: this fit has no sd_report.
+> Compute standard errors without refitting: `fit <- standard_errors(fit)`
+i tau_se is `NA`: this fit has no sd_report.
+> Compute standard errors without refitting: `fit <- standard_errors(fit)`
+using C++ compiler: 'x86_64-linux-gnu-g++ (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0'
+x86_64-linux-gnu-g++ -std=gnu++20 -I"/usr/share/R/include" -DNDEBUG -I"/home/snakagaw/R/lib/TMB/include" -I"/tmp/RtmpFgMXDa/RLIBS_3fa1a53afe1c21/RcppEigen/include"  -DTMB_SAFEBOUNDS -DTMB_EIGEN_DISABLE_WARNINGS -DLIB_UNLOAD=R_unload_gllvmTMB_va_r3  -DTMB_LIB_INIT=R_init_gllvmTMB_va_r3  -DCPPAD_FRAMEWORK      -fpic  -O2  -c gllvmTMB_va_r3.cpp -o gllvmTMB_va_r3.o
+x86_64-linux-gnu-g++ -std=gnu++20 -shared -L/usr/lib/R/lib -Wl,-Bsymbolic-functions -flto=auto -ffat-lto-objects -Wl,-z,relro -o gllvmTMB_va_r3.so gllvmTMB_va_r3.o -L/usr/lib/R/lib -lR
+Student-t degrees of freedom parameter fixed at 5. To estimate it, set `df = NULL`.
+using C++ compiler: 'x86_64-linux-gnu-g++ (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0'
+x86_64-linux-gnu-g++ -std=gnu++20 -I"/usr/share/R/include" -DNDEBUG -I"/home/snakagaw/R/lib/TMB/include" -I"/tmp/RtmpFgMXDa/RLIBS_3fa1a53afe1c21/RcppEigen/include"  -DTMB_SAFEBOUNDS -DTMB_EIGEN_DISABLE_WARNINGS -DLIB_UNLOAD=R_unload_gllvmTMB_eva  -DTMB_LIB_INIT=R_init_gllvmTMB_eva  -DCPPAD_FRAMEWORK      -fpic  -O2  -c gllvmTMB_eva.cpp -o gllvmTMB_eva.o
+x86_64-linux-gnu-g++ -std=gnu++20 -shared -L/usr/lib/R/lib -Wl,-Bsymbolic-functions -flto=auto -ffat-lto-objects -Wl,-z,relro -o gllvmTMB_eva.so gllvmTMB_eva.o -L/usr/lib/R/lib -lR
+i Auto-suppressing `sigma_eps`: `indep(0 + trait | site_species)` is at the per-row level, so it already absorbs the observation residual.
+* Fixed at 0.00107 (~1/1000 of sd(y)) to keep the Gaussian density well-defined; the row-level residual variance is fully captured by the per-row diagonal term.
+i Auto-suppressing `sigma_eps`: `indep(0 + trait | site_species)` is at the per-row level, so it already absorbs the observation residual.
+* Fixed at 0.00172 (~1/1000 of sd(y)) to keep the Gaussian density well-defined; the row-level residual variance is fully captured by the per-row diagonal term.
+i Auto-suppressing `sigma_eps`: `indep(0 + trait | site_species)` is at the per-row level, so it already absorbs the observation residual.
+* Fixed at 0.00211 (~1/1000 of sd(y)) to keep the Gaussian density well-defined; the row-level residual variance is fully captured by the per-row diagonal term.
+Student-t degrees of freedom parameter will be estimated. This used to be fixed at 3 by default. To fix it, supply a value to `df` (e.g., `df = 3`).
+Added per-trait link-implicit residual variance to diag(Sigma): - t1 (binomial): 3.290 - t2 (binomial): 3.290 - t3 (binomial): 3.290 - t4 (binomial): 3.290
+Added per-trait link-implicit residual variance to diag(Sigma): - t1 (poisson): 0.424 - t2 (poisson): 0.438 - t3 (poisson): 0.413
+i Auto-suppressing `sigma_eps`: `indep(0 + trait | site)` is at the per-row level, so it already absorbs the observation residual.
+* Fixed at 0.000528 (~1/1000 of sd(y)) to keep the Gaussian density well-defined; the row-level residual variance is fully captured by the per-row diagonal term.
+spatial_latent tier has no unique component; part = "total" equals the shared low-rank Lambda_spde Lambda_spde^T.
+using C++ compiler: 'x86_64-linux-gnu-g++ (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0'
+x86_64-linux-gnu-g++ -std=gnu++20 -I"/usr/share/R/include" -DNDEBUG -I"/home/snakagaw/R/lib/TMB/include" -I"/tmp/RtmpFgMXDa/RLIBS_3fa1a53afe1c21/RcppEigen/include"  -DTMB_SAFEBOUNDS -DTMB_EIGEN_DISABLE_WARNINGS -DLIB_UNLOAD=R_unload_g3_gaussian_random_intercept  -DTMB_LIB_INIT=R_init_g3_gaussian_random_intercept  -DCPPAD_FRAMEWORK      -fpic  -g -O2 -fno-omit-frame-pointer -mno-omit-leaf-frame-pointer -ffile-prefix-map=/build/r-base-SRqRsK/r-base-4.6.1=. -fstack-protector-strong -fstack-clash-protection -Wformat -Werror=format-security -fcf-protection -fdebug-prefix-map=/build/r-base-SRqRsK/r-base-4.6.1=/usr/src/r-base-4.6.1-6.2404.0 -Wdate-time -D_FORTIFY_SOURCE=3   -c g3_gaussian_random_intercept.cpp -o g3_gaussian_random_intercept.o
+x86_64-linux-gnu-g++ -std=gnu++20 -shared -L/usr/lib/R/lib -Wl,-Bsymbolic-functions -flto=auto -ffat-lto-objects -Wl,-z,relro -o g3_gaussian_random_intercept.so g3_gaussian_random_intercept.o -L/usr/lib/R/lib -lR
+Warning: 10 external pointers will be removed
+Stacked-trait gllvmTMB fit
+  Traits = 3, site = 25 
+  Covstructs: latent_unit, indep_unit 
+  Fixed effects (b_fix): 3
+  ML log L = -264.571   convergence = 0   engine = Laplace
+  Run gllvmTMB_diagnose(fit) for a full health check, or summary(fit) for parameter estimates.
+Optimiser convergence (== 0):                PASS
+Max |gradient| < 1.0e-02:                    PASS (max |gr| = 0.000349)
+Hessian positive-definite:                   PASS
+Max fixed-effect SE < 100:                   PASS (max SE = 0.238)
+latent(site, d=B) diag loadings non-zero:    PASS (min |Lambda_B diag| = 1)
+
+  Sigma_B (between-unit covariance) diagonal:
+  1  2.08  1.094 
+  2 trait pair(s) with |corr| > 0.50:
+    trait_2 ~ trait_1 : +0.72
+    trait_3 ~ trait_2 : -0.69
+
+  Global communalities:
+  1  1  1 
+i Auto-suppressing `sigma_eps`: `indep(0 + trait | site)` is at the per-row level, so it already absorbs the observation residual.
+* Fixed at 0.000873 (~1/1000 of sd(y)) to keep the Gaussian density well-defined; the row-level residual variance is fully captured by the per-row diagonal term.
+i Auto-suppressing `sigma_eps`: `indep(0 + trait | site)` is at the per-row level, so it already absorbs the observation residual.
+* Fixed at 0.000904 (~1/1000 of sd(y)) to keep the Gaussian density well-defined; the row-level residual variance is fully captured by the per-row diagonal term.
+i Auto-suppressing `sigma_eps`: `indep(0 + trait | site)` is at the per-row level, so it already absorbs the observation residual.
+* Fixed at 0.000904 (~1/1000 of sd(y)) to keep the Gaussian density well-defined; the row-level residual variance is fully captured by the per-row diagonal term.
+i Auto-suppressing `sigma_eps`: `indep(0 + trait | site)` is at the per-row level, so it already absorbs the observation residual.
+* Fixed at 0.000931 (~1/1000 of sd(y)) to keep the Gaussian density well-defined; the row-level residual variance is fully captured by the per-row diagonal term.
+i Auto-suppressing `sigma_eps`: `indep(0 + trait | site)` is at the per-row level, so it already absorbs the observation residual.
+* Fixed at 0.000904 (~1/1000 of sd(y)) to keep the Gaussian density well-defined; the row-level residual variance is fully captured by the per-row diagonal term.
+i Auto-suppressing `sigma_eps`: `indep(0 + trait | site)` is at the per-row level, so it already absorbs the observation residual.
+* Fixed at 0.000904 (~1/1000 of sd(y)) to keep the Gaussian density well-defined; the row-level residual variance is fully captured by the per-row diagonal term.
+i Auto-suppressing `sigma_eps`: `indep(0 + trait | site)` is at the per-row level, so it already absorbs the observation residual.
+* Fixed at 0.00104 (~1/1000 of sd(y)) to keep the Gaussian density well-defined; the row-level residual variance is fully captured by the per-row diagonal term.
+i Auto-suppressing `sigma_eps`: `indep(0 + trait | site)` is at the per-row level, so it already absorbs the observation residual.
+* Fixed at 0.00104 (~1/1000 of sd(y)) to keep the Gaussian density well-defined; the row-level residual variance is fully captured by the per-row diagonal term.
+i Auto-suppressing `sigma_eps`: `indep(0 + trait | site)` is at the per-row level, so it already absorbs the observation residual.
+* Fixed at 0.000873 (~1/1000 of sd(y)) to keep the Gaussian density well-defined; the row-level residual variance is fully captured by the per-row diagonal term.
+i Auto-suppressing `sigma_eps`: `indep(0 + trait | site_species)` is at the per-row level, so it already absorbs the observation residual.
+* Fixed at 0.00161 (~1/1000 of sd(y)) to keep the Gaussian density well-defined; the row-level residual variance is fully captured by the per-row diagonal term.
+using C++ compiler: 'x86_64-linux-gnu-g++ (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0'
+x86_64-linux-gnu-g++ -std=gnu++20 -I"/usr/share/R/include" -DNDEBUG -I"/home/snakagaw/R/lib/TMB/include" -I"/tmp/RtmpFgMXDa/RLIBS_3fa1a53afe1c21/RcppEigen/include"  -DTMB_SAFEBOUNDS -DTMB_EIGEN_DISABLE_WARNINGS -DLIB_UNLOAD=R_unload_gllvmTMB_cloglog_tail  -DTMB_LIB_INIT=R_init_gllvmTMB_cloglog_tail  -DCPPAD_FRAMEWORK      -fpic  -g -O2 -fno-omit-frame-pointer -mno-omit-leaf-frame-pointer -ffile-prefix-map=/build/r-base-SRqRsK/r-base-4.6.1=. -fstack-protector-strong -fstack-clash-protection -Wformat -Werror=format-security -fcf-protection -fdebug-prefix-map=/build/r-base-SRqRsK/r-base-4.6.1=/usr/src/r-base-4.6.1-6.2404.0 -Wdate-time -D_FORTIFY_SOURCE=3   -c gllvmTMB_cloglog_tail.cpp -o gllvmTMB_cloglog_tail.o
+x86_64-linux-gnu-g++ -std=gnu++20 -shared -L/usr/lib/R/lib -Wl,-Bsymbolic-functions -flto=auto -ffat-lto-objects -Wl,-z,relro -o gllvmTMB_cloglog_tail.so gllvmTMB_cloglog_tail.o -L/usr/lib/R/lib -lR
+Warning: 3 external pointers will be removed
+i Dropped aliased source-observation column: "isdm_source:source2:(Intercept)".
+i The retained columns are source-specific effects relative to the ecological `0 + trait` intercepts.
+i Dropped aliased source-observation columns: "isdm_source:source2:(Intercept)" and "isdm_source:source2:bias_x".
+i The retained columns are source-specific effects relative to the ecological `0 + trait` intercepts.
+i Dropped aliased source-observation columns: "isdm_source:gbif:popdens", "isdm_source:inat:popdens", "isdm_source:survey:(Intercept)", "isdm_source:survey:observero2", and "isdm_source:survey:methodwalk".
+i The retained columns are source-specific effects relative to the ecological `0 + trait` intercepts.
+i `gllvmTMB()`: dropped 1 row with `NA` response.
+i Auto-suppressing `sigma_eps`: `indep(0 + trait | site_species)` is at the per-row level, so it already absorbs the observation residual.
+* Fixed at 0.00154 (~1/1000 of sd(y)) to keep the Gaussian density well-defined; the row-level residual variance is fully captured by the per-row diagonal term.
+i Auto-suppressing `sigma_eps`: `indep(0 + trait | site_species)` is at the per-row level, so it already absorbs the observation residual.
+* Fixed at 0.00154 (~1/1000 of sd(y)) to keep the Gaussian density well-defined; the row-level residual variance is fully captured by the per-row diagonal term.
+Added per-trait link-implicit residual variance to diag(Sigma): - a (poisson): 0.180 - b (poisson): 0.184
+Multinomial phylogenetic covariance is deliberately loadings-only (Lambda_phy Lambda_phy^T). Use `link_residual = "auto"` for the fixed softmax residual; a free phylogenetic Psi (`unique = TRUE`) is not admitted for this route.
+Added per-trait link-implicit residual variance to diag(Sigma): - morph:2 (multinomial): 3.290 - morph:3 (multinomial): 3.290
+Added the multinomial softmax off-diagonal link residual pi^2/6 ~= 1.645 within each (K-1)-contrast block (with the pi^2/3 diagonal above, the full block residual is (pi^2/6)(I + J); McFadden 1974).
+Multinomial phylogenetic covariance is deliberately loadings-only (Lambda_phy Lambda_phy^T). Use `link_residual = "auto"` for the fixed softmax residual; a free phylogenetic Psi (`unique = TRUE`) is not admitted for this route.
+Added per-trait link-implicit residual variance to diag(Sigma): - morph:2 (multinomial): 3.290 - morph:3 (multinomial): 3.290
+Multinomial phylogenetic covariance is deliberately loadings-only (Lambda_phy Lambda_phy^T). Use `link_residual = "auto"` for the fixed softmax residual; a free phylogenetic Psi (`unique = TRUE`) is not admitted for this route.
+Sigma_unit is latent-only (Lambda Lambda^T): this fit used `latent(..., unique = FALSE)`, so trait-specific residual variance Psi is not modelled and correlations from this matrix overstate cross-trait coupling. For the full decomposition Sigma = Lambda Lambda^T + Psi, refit without `unique = FALSE` (the default).
+Sigma_unit is latent-only (Lambda Lambda^T): this fit used `latent(..., unique = FALSE)`, so trait-specific residual variance Psi is not modelled and correlations from this matrix overstate cross-trait coupling. For the full decomposition Sigma = Lambda Lambda^T + Psi, refit without `unique = FALSE` (the default).
+Sigma_unit is latent-only (Lambda Lambda^T): this fit used `latent(..., unique = FALSE)`, so trait-specific residual variance Psi is not modelled and correlations from this matrix overstate cross-trait coupling. For the full decomposition Sigma = Lambda Lambda^T + Psi, refit without `unique = FALSE` (the default).
+using C++ compiler: 'x86_64-linux-gnu-g++ (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0'
+x86_64-linux-gnu-g++ -std=gnu++20 -I"/usr/share/R/include" -DNDEBUG -I"/home/snakagaw/R/lib/TMB/include" -I"/tmp/RtmpFgMXDa/RLIBS_3fa1a53afe1c21/RcppEigen/include"  -DTMB_SAFEBOUNDS -DTMB_EIGEN_DISABLE_WARNINGS -DLIB_UNLOAD=R_unload_gllvmTMB_va_r3  -DTMB_LIB_INIT=R_init_gllvmTMB_va_r3  -DCPPAD_FRAMEWORK      -fpic  -O2  -c gllvmTMB_va_r3.cpp -o gllvmTMB_va_r3.o
+x86_64-linux-gnu-g++ -std=gnu++20 -shared -L/usr/lib/R/lib -Wl,-Bsymbolic-functions -flto=auto -ffat-lto-objects -Wl,-z,relro -o gllvmTMB_va_r3.so gllvmTMB_va_r3.o -L/usr/lib/R/lib -lR
+using C++ compiler: 'x86_64-linux-gnu-g++ (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0'
+x86_64-linux-gnu-g++ -std=gnu++20 -I"/usr/share/R/include" -DNDEBUG -I"/home/snakagaw/R/lib/TMB/include" -I"/tmp/RtmpFgMXDa/RLIBS_3fa1a53afe1c21/RcppEigen/include"  -DTMB_SAFEBOUNDS -DTMB_EIGEN_DISABLE_WARNINGS -DLIB_UNLOAD=R_unload_gllvmTMB_eva  -DTMB_LIB_INIT=R_init_gllvmTMB_eva  -DCPPAD_FRAMEWORK      -fpic  -O2  -c gllvmTMB_eva.cpp -o gllvmTMB_eva.o
+x86_64-linux-gnu-g++ -std=gnu++20 -shared -L/usr/lib/R/lib -Wl,-Bsymbolic-functions -flto=auto -ffat-lto-objects -Wl,-z,relro -o gllvmTMB_eva.so gllvmTMB_eva.o -L/usr/lib/R/lib -lR
+i `gllvmTMB()`: dropped 1 row with `NA` response.
+i `traits()`: dropped 1 (trait, row) cell with `NA` response.
+i `traits()`: kept 1 (trait, row) cell with `NA` response (masked out of the likelihood; `response = "include"`).
+i Auto-suppressing `sigma_eps`: `indep(0 + trait | unit)` is at the per-row level, so it already absorbs the observation residual.
+* Fixed at 0.000443 (~1/1000 of sd(y)) to keep the Gaussian density well-defined; the row-level residual variance is fully captured by the per-row diagonal term.
+! Formula keyword `spde()` is a deprecated alias; use `spatial_indep()` for new code.
+i `spatial_indep(coords | trait)` =/=> `spde(coords | trait)`
+> Aliases will be dropped at the next minor release. See `?spatial_indep`.
+Student-t degrees of freedom parameter will be estimated. This used to be fixed at 3 by default. To fix it, supply a value to `df` (e.g., `df = 3`).
+Multinomial phylogenetic covariance is deliberately loadings-only (Lambda_phy Lambda_phy^T). Use `link_residual = "auto"` for the fixed softmax residual; a free phylogenetic Psi (`unique = TRUE`) is not admitted for this route.
+Kernel tier 'phy' uses the dense phylo-equivalent engine path.
+Multinomial phylogenetic covariance is deliberately loadings-only (Lambda_phy Lambda_phy^T). Use `link_residual = "auto"` for the fixed softmax residual; a free phylogenetic Psi (`unique = TRUE`) is not admitted for this route.
+Kernel tier 'phy' uses the dense phylo-equivalent engine path.
+Kernel tier 'phy' uses the dense phylo-equivalent engine path.
+Kernel tier 'phy' uses the dense phylo-equivalent engine path.
+spatial_latent tier has no unique component; part = "total" equals the shared low-rank Lambda_spde Lambda_spde^T.
+Added per-trait link-implicit residual variance to diag(Sigma): - cat:2 (multinomial): 3.290 - cat:3 (multinomial): 3.290
+Added the multinomial softmax off-diagonal link residual pi^2/6 ~= 1.645 within each (K-1)-contrast block (with the pi^2/3 diagonal above, the full block residual is (pi^2/6)(I + J); McFadden 1974).
+spatial_latent tier has no unique component; part = "total" equals the shared low-rank Lambda_spde Lambda_spde^T.
+Added per-trait link-implicit residual variance to diag(Sigma): - cat:2 (multinomial): 3.290 - cat:3 (multinomial): 3.290
+Added the multinomial softmax off-diagonal link residual pi^2/6 ~= 1.645 within each (K-1)-contrast block (with the pi^2/3 diagonal above, the full block residual is (pi^2/6)(I + J); McFadden 1974).
+Cluster (third-slot) tier extracts the per-trait diagonal at the cluster level.
+cluster2 (second diagonal grouping) tier extracts the per-trait diagonal at the cluster2 level.
+Added per-trait link-implicit residual variance to diag(Sigma): - t1 (poisson): 0.212 - t2 (poisson): 0.188 - t3 (poisson): 0.321
+Added per-trait link-implicit residual variance to diag(Sigma): - t1 (poisson): 0.209 - t2 (poisson): 0.187 - t3 (poisson): 0.323
+Added per-trait link-implicit residual variance to diag(Sigma): - t1 (nbinom2): 0.958 - t2 (nbinom2): 0.393 - t3 (nbinom2): 0.000
+Added per-trait link-implicit residual variance to diag(Sigma): - t1 (nbinom2): 0.958 - t2 (nbinom2): 0.393 - t3 (nbinom2): 0.000
+Added per-trait link-implicit residual variance to diag(Sigma): - t1 (binomial): 3.290 - t2 (binomial): 3.290 - t3 (binomial): 3.290
+Added per-trait link-implicit residual variance to diag(Sigma): - t1 (binomial): 3.290 - t2 (binomial): 3.290 - t3 (binomial): 3.290
+Sigma_unit is latent-only (Lambda Lambda^T): this fit used `latent(..., unique = FALSE)`, so trait-specific residual variance Psi is not modelled and correlations from this matrix overstate cross-trait coupling. For the full decomposition Sigma = Lambda Lambda^T + Psi, refit without `unique = FALSE` (the default).
+Sigma_unit is latent-only (Lambda Lambda^T): this fit used `latent(..., unique = FALSE)`, so trait-specific residual variance Psi is not modelled and correlations from this matrix overstate cross-trait coupling. For the full decomposition Sigma = Lambda Lambda^T + Psi, refit without `unique = FALSE` (the default).
+Sigma_unit is latent-only (Lambda Lambda^T): this fit used `latent(..., unique = FALSE)`, so trait-specific residual variance Psi is not modelled and correlations from this matrix overstate cross-trait coupling. For the full decomposition Sigma = Lambda Lambda^T + Psi, refit without `unique = FALSE` (the default).
+Added per-trait link-implicit residual variance to diag(Sigma): - t1 (Gamma): 0.044 - t2 (Gamma): 0.060 - t3 (Gamma): 0.090
+Sigma_unit is latent-only (Lambda Lambda^T): this fit used `latent(..., unique = FALSE)`, so trait-specific residual variance Psi is not modelled and correlations from this matrix overstate cross-trait coupling. For the full decomposition Sigma = Lambda Lambda^T + Psi, refit without `unique = FALSE` (the default).
+Added per-trait link-implicit residual variance to diag(Sigma): - t1 (Gamma): 0.044 - t2 (Gamma): 0.060 - t3 (Gamma): 0.090
+Added per-trait link-implicit residual variance to diag(Sigma): - t1 (nbinom1): 0.303 - t2 (nbinom1): 0.301 - t3 (nbinom1): 0.520
+Added per-trait link-implicit residual variance to diag(Sigma): - t1 (nbinom1): 0.304 - t2 (nbinom1): 0.306 - t3 (nbinom1): 0.517
+Added per-trait link-implicit residual variance to diag(Sigma): - t1 (tweedie): 0.744 - t2 (tweedie): 0.658 - t3 (tweedie): 0.738
+Added per-trait link-implicit residual variance to diag(Sigma): - t1 (tweedie): 0.739 - t2 (tweedie): 0.652 - t3 (tweedie): 0.748
+Added per-trait link-implicit residual variance to diag(Sigma): - t1 (Beta): 0.529 - t2 (Beta): 0.469 - t3 (Beta): 0.334
+Added per-trait link-implicit residual variance to diag(Sigma): - t1 (Beta): 0.530 - t2 (Beta): 0.468 - t3 (Beta): 0.334
+Student-t degrees of freedom parameter fixed at 5. To estimate it, set `df = NULL`.
+Added per-trait link-implicit residual variance to diag(Sigma): - t1 (student): 0.415 - t2 (student): 0.455 - t3 (student): 0.279
+Added per-trait link-implicit residual variance to diag(Sigma): - t1 (student): 0.415 - t2 (student): 0.455 - t3 (student): 0.279
+Added per-trait link-implicit residual variance to diag(Sigma): - t1 (truncated_poisson): 0.190 - t2 (truncated_poisson): 0.186 - t3 (truncated_poisson): 0.297
+Added per-trait link-implicit residual variance to diag(Sigma): - t1 (truncated_poisson): 0.189 - t2 (truncated_poisson): 0.191 - t3 (truncated_poisson): 0.299
+Added per-trait link-implicit residual variance to diag(Sigma): - t1 (truncated_nbinom2): 0.288 - t2 (truncated_nbinom2): 0.088 - t3 (truncated_nbinom2): 0.228
+Added per-trait link-implicit residual variance to diag(Sigma): - t1 (truncated_nbinom2): 0.288 - t2 (truncated_nbinom2): 0.088 - t3 (truncated_nbinom2): 0.228
+Added per-trait link-implicit residual variance to diag(Sigma): - t1 (betabinomial): 3.723 - t2 (betabinomial): 4.399 - t3 (betabinomial): 3.713
+Added per-trait link-implicit residual variance to diag(Sigma): - t1 (betabinomial): 3.721 - t2 (betabinomial): 4.408 - t3 (betabinomial): 3.713
+Student-t degrees of freedom parameter will be estimated. This used to be fixed at 3 by default. To fix it, supply a value to `df` (e.g., `df = 3`).
+Student-t degrees of freedom parameter will be estimated. This used to be fixed at 3 by default. To fix it, supply a value to `df` (e.g., `df = 3`).
+Student-t degrees of freedom parameter will be estimated. This used to be fixed at 3 by default. To fix it, supply a value to `df` (e.g., `df = 3`).
+i Skipping OLRE for single-trial Bernoulli trait: sd_W is unidentifiable when each (trait, obs) cell has one 0/1 observation.
+i Trait affected: "binom".
+* Mapped `theta_diag_W[t]` and the corresponding `s_W` column off; pass multi-trial data (`cbind(successes, failures)` or `weights = n_trials`) to recover identifiability.
+Added per-trait link-implicit residual variance to diag(Sigma): - t1 (binomial): 3.290 - t2 (binomial): 3.290 - t3 (binomial): 3.290
+Added per-trait link-implicit residual variance to diag(Sigma): - t1 (binomial): 3.290 - t2 (binomial): 3.290 - t3 (binomial): 3.290
+Added per-trait link-implicit residual variance to diag(Sigma): - t1 (binomial): 3.290 - t2 (binomial): 3.290 - t3 (binomial): 3.290
+Student-t degrees of freedom parameter fixed at 5. To estimate it, set `df = NULL`.
+Multinomial phylogenetic covariance is deliberately loadings-only (Lambda_phy Lambda_phy^T). Use `link_residual = "auto"` for the fixed softmax residual; a free phylogenetic Psi (`unique = TRUE`) is not admitted for this route.
+Added per-trait link-implicit residual variance to diag(Sigma): - morph:2 (multinomial): 3.290 - morph:3 (multinomial): 3.290
+Added the multinomial softmax off-diagonal link residual pi^2/6 ~= 1.645 within each (K-1)-contrast block (with the pi^2/3 diagonal above, the full block residual is (pi^2/6)(I + J); McFadden 1974).
+i tau_se is `NA`: this fit has no sd_report.
+> Compute standard errors without refitting: `fit <- standard_errors(fit)`
+i `Lambda_B` is identified only up to rotation (d_B = 2).
+* Use `rotate = "varimax"` for a quick rotation after fitting, or
+* see `suggest_lambda_constraint()` for a default `lambda_constraint` matrix to pass to a refit.
+* `extract_Sigma_B()` is rotation-invariant and does not need this.
+i Auto-suppressing `sigma_eps`: `indep(0 + trait | site_species)` is at the per-row level, so it already absorbs the observation residual.
+* Fixed at 0.00207 (~1/1000 of sd(y)) to keep the Gaussian density well-defined; the row-level residual variance is fully captured by the per-row diagonal term.
+i Auto-suppressing `sigma_eps`: `indep(0 + trait | site)` is at the per-row level, so it already absorbs the observation residual.
+* Fixed at 0.00114 (~1/1000 of sd(y)) to keep the Gaussian density well-defined; the row-level residual variance is fully captured by the per-row diagonal term.
+  trait estimate
+1     a      1.2
+Added per-trait link-implicit residual variance to diag(Sigma): - a (binomial): 3.290 - b (binomial): 3.290
+Added per-trait link-implicit residual variance to diag(Sigma): - a (binomial): 3.290 - b (binomial): 3.290
+i Auto-suppressing `sigma_eps`: `indep(0 + trait | site)` is at the per-row level, so it already absorbs the observation residual.
+* Fixed at 0.00142 (~1/1000 of sd(y)) to keep the Gaussian density well-defined; the row-level residual variance is fully captured by the per-row diagonal term.
+i Auto-suppressing `sigma_eps`: `indep(0 + trait | site)` is at the per-row level, so it already absorbs the observation residual.
+* Fixed at 0.00142 (~1/1000 of sd(y)) to keep the Gaussian density well-defined; the row-level residual variance is fully captured by the per-row diagonal term.
+i Auto-suppressing `sigma_eps`: `indep(0 + trait | site)` is at the per-row level, so it already absorbs the observation residual.
+* Fixed at 0.00128 (~1/1000 of sd(y)) to keep the Gaussian density well-defined; the row-level residual variance is fully captured by the per-row diagonal term.
+i Auto-suppressing `sigma_eps`: `indep(0 + trait | site)` is at the per-row level, so it already absorbs the observation residual.
+* Fixed at 0.00142 (~1/1000 of sd(y)) to keep the Gaussian density well-defined; the row-level residual variance is fully captured by the per-row diagonal term.
+i Auto-suppressing `sigma_eps`: `indep(0 + trait | site)` is at the per-row level, so it already absorbs the observation residual.
+* Fixed at 0.00142 (~1/1000 of sd(y)) to keep the Gaussian density well-defined; the row-level residual variance is fully captured by the per-row diagonal term.
+i Unnamed mixed-family `family` list has no name evidence for `family`; using list order: g -> gaussian(), b -> binomial(), p -> poisson().
+i Auto-suppressing `sigma_eps`: `indep(0 + trait | site_species)` is at the per-row level, so it already absorbs the observation residual.
+* Fixed at 0.00229 (~1/1000 of sd(y)) to keep the Gaussian density well-defined; the row-level residual variance is fully captured by the per-row diagonal term.
+Student-t degrees of freedom parameter will be estimated. This used to be fixed at 3 by default. To fix it, supply a value to `df` (e.g., `df = 3`).
+Student-t degrees of freedom parameter will be estimated. This used to be fixed at 3 by default. To fix it, supply a value to `df` (e.g., `df = 3`).
+Added per-trait link-implicit residual variance to diag(Sigma): - word1 (binomial): 1.000 - word2 (binomial): 1.000 - word3 (binomial): 1.000 - word4 (binomial): 1.000
+Added per-trait link-implicit residual variance to diag(Sigma): - word1 (binomial): 1.000 - word2 (binomial): 1.000 - word3 (binomial): 1.000 - word4 (binomial): 1.000
+Added per-trait link-implicit residual variance to diag(Sigma): - word1 (binomial): 1.000 - word2 (binomial): 1.000 - word3 (binomial): 1.000 - word4 (binomial): 1.000
+Added per-trait link-implicit residual variance to diag(Sigma): - word1 (binomial): 1.000 - word2 (binomial): 1.000 - word3 (binomial): 1.000 - word4 (binomial): 1.000
+Added per-trait link-implicit residual variance to diag(Sigma): - word1 (binomial): 1.000 - word2 (binomial): 1.000 - word3 (binomial): 1.000 - word4 (binomial): 1.000
+Added per-trait link-implicit residual variance to diag(Sigma): - word1 (binomial): 1.000 - word2 (binomial): 1.000 - word3 (binomial): 1.000 - word4 (binomial): 1.000
+Added per-trait link-implicit residual variance to diag(Sigma): - word1 (binomial): 1.000 - word2 (binomial): 1.000 - word3 (binomial): 1.000 - word4 (binomial): 1.000
+Added per-trait link-implicit residual variance to diag(Sigma): - word1 (binomial): 1.000 - word2 (binomial): 1.000 - word3 (binomial): 1.000 - word4 (binomial): 1.000
+Added per-trait link-implicit residual variance to diag(Sigma): - word1 (binomial): 1.000 - word2 (binomial): 1.000 - word3 (binomial): 1.000 - word4 (binomial): 1.000
+Added per-trait link-implicit residual variance to diag(Sigma): - word1 (binomial): 1.000 - word2 (binomial): 1.000 - word3 (binomial): 1.000 - word4 (binomial): 1.000
+Added per-trait link-implicit residual variance to diag(Sigma): - word1 (binomial): 1.000 - word2 (binomial): 1.000 - word3 (binomial): 1.000 - word4 (binomial): 1.000
+Added per-trait link-implicit residual variance to diag(Sigma): - word1 (binomial): 1.000 - word2 (binomial): 1.000 - word3 (binomial): 1.000 - word4 (binomial): 1.000
+Added per-trait link-implicit residual variance to diag(Sigma): - word1 (binomial): 1.000 - word2 (binomial): 1.000 - word3 (binomial): 1.000 - word4 (binomial): 1.000
+i Auto-suppressing `sigma_eps`: `indep(0 + trait | site)` is at the per-row level, so it already absorbs the observation residual.
+* Fixed at 0.00132 (~1/1000 of sd(y)) to keep the Gaussian density well-defined; the row-level residual variance is fully captured by the per-row diagonal term.
+i Auto-suppressing `sigma_eps`: `indep(0 + trait | site)` is at the per-row level, so it already absorbs the observation residual.
+* Fixed at 0.00132 (~1/1000 of sd(y)) to keep the Gaussian density well-defined; the row-level residual variance is fully captured by the per-row diagonal term.
+i `traits()`: dropped 2 (trait, row) cells with `NA` response.
+i Auto-suppressing `sigma_eps`: `indep(0 + trait | site)` is at the per-row level, so it already absorbs the observation residual.
+* Fixed at 0.00106 (~1/1000 of sd(y)) to keep the Gaussian density well-defined; the row-level residual variance is fully captured by the per-row diagonal term.
+i Auto-suppressing `sigma_eps`: `indep(0 + trait | site)` is at the per-row level, so it already absorbs the observation residual.
+* Fixed at 0.00106 (~1/1000 of sd(y)) to keep the Gaussian density well-defined; the row-level residual variance is fully captured by the per-row diagonal term.
+i Auto-suppressing `sigma_eps`: `indep(0 + trait | site)` is at the per-row level, so it already absorbs the observation residual.
+* Fixed at 0.00106 (~1/1000 of sd(y)) to keep the Gaussian density well-defined; the row-level residual variance is fully captured by the per-row diagonal term.
+i Auto-suppressing `sigma_eps`: `indep(0 + trait | obs)` is at the per-row level, so it already absorbs the observation residual.
+* Fixed at 0.00106 (~1/1000 of sd(y)) to keep the Gaussian density well-defined; the row-level residual variance is fully captured by the per-row diagonal term.
+i Auto-suppressing `sigma_eps`: `indep(0 + trait | site)` is at the per-row level, so it already absorbs the observation residual.
+* Fixed at 0.00106 (~1/1000 of sd(y)) to keep the Gaussian density well-defined; the row-level residual variance is fully captured by the per-row diagonal term.
+i Auto-suppressing `sigma_eps`: `indep(0 + trait | site)` is at the per-row level, so it already absorbs the observation residual.
+* Fixed at 0.00106 (~1/1000 of sd(y)) to keep the Gaussian density well-defined; the row-level residual variance is fully captured by the per-row diagonal term.
+Using UTM zone 9N (EPSG:32609).
+Using UTM zone 9N (EPSG:32609).
+Using UTM zone 9N (EPSG:32609).
+Using UTM zone 9N (EPSG:32609).
+Using UTM zone 9N (EPSG:32609).
+Using UTM zone 9N (EPSG:32609).
+Warning: 6 external pointers will be removed
+using C++ compiler: 'x86_64-linux-gnu-g++ (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0'
+x86_64-linux-gnu-g++ -std=gnu++20 -I"/usr/share/R/include" -DNDEBUG -I"/home/snakagaw/R/lib/TMB/include" -I"/tmp/RtmpFgMXDa/RLIBS_3fa1a53afe1c21/RcppEigen/include"  -DTMB_SAFEBOUNDS -DTMB_EIGEN_DISABLE_WARNINGS -DLIB_UNLOAD=R_unload_gllvmTMB_va_r3  -DTMB_LIB_INIT=R_init_gllvmTMB_va_r3  -DCPPAD_FRAMEWORK      -fpic  -O2  -c gllvmTMB_va_r3.cpp -o gllvmTMB_va_r3.o
+x86_64-linux-gnu-g++ -std=gnu++20 -shared -L/usr/lib/R/lib -Wl,-Bsymbolic-functions -flto=auto -ffat-lto-objects -Wl,-z,relro -o gllvmTMB_va_r3.so gllvmTMB_va_r3.o -L/usr/lib/R/lib -lR
+Warning: 46 external pointers will be removed
+using C++ compiler: 'x86_64-linux-gnu-g++ (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0'
+x86_64-linux-gnu-g++ -std=gnu++20 -I"/usr/share/R/include" -DNDEBUG -I"/home/snakagaw/R/lib/TMB/include" -I"/tmp/RtmpFgMXDa/RLIBS_3fa1a53afe1c21/RcppEigen/include"  -DTMB_SAFEBOUNDS -DTMB_EIGEN_DISABLE_WARNINGS -DLIB_UNLOAD=R_unload_gllvmTMB_va_r3  -DTMB_LIB_INIT=R_init_gllvmTMB_va_r3  -DCPPAD_FRAMEWORK      -fpic  -O2  -c gllvmTMB_va_r3.cpp -o gllvmTMB_va_r3.o
+x86_64-linux-gnu-g++ -std=gnu++20 -shared -L/usr/lib/R/lib -Wl,-Bsymbolic-functions -flto=auto -ffat-lto-objects -Wl,-z,relro -o gllvmTMB_va_r3.so gllvmTMB_va_r3.o -L/usr/lib/R/lib -lR
+
+VA H7 all-family light verdicts:
+                  cell  status seconds
+     gaussian_identity healthy  36.439
+        binomial_logit healthy   0.042
+       binomial_probit healthy   0.179
+      binomial_cloglog healthy   0.040
+           poisson_log healthy   0.025
+         lognormal_log healthy   0.025
+             gamma_log healthy   0.032
+           nbinom2_log healthy   0.111
+           tweedie_log healthy   0.258
+            beta_logit healthy   0.109
+    betabinomial_logit healthy   0.142
+      student_identity healthy   0.112
+ truncated_poisson_log healthy   0.037
+ truncated_nbinom2_log healthy   0.166
+   delta_lognormal_log healthy   0.099
+       delta_gamma_log healthy   0.096
+        ordinal_probit healthy   0.484
+           nbinom1_log healthy   0.080
+18-cell wall time (including first-use DLL build): 38.7 s
+Warning: 8 external pointers will be removed
+using C++ compiler: 'x86_64-linux-gnu-g++ (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0'
+x86_64-linux-gnu-g++ -std=gnu++20 -I"/usr/share/R/include" -DNDEBUG -I"/home/snakagaw/R/lib/TMB/include" -I"/tmp/RtmpFgMXDa/RLIBS_3fa1a53afe1c21/RcppEigen/include"  -DTMB_SAFEBOUNDS -DTMB_EIGEN_DISABLE_WARNINGS -DLIB_UNLOAD=R_unload_gllvmTMB_va_r3  -DTMB_LIB_INIT=R_init_gllvmTMB_va_r3  -DCPPAD_FRAMEWORK      -fpic  -O2  -c gllvmTMB_va_r3.cpp -o gllvmTMB_va_r3.o
+x86_64-linux-gnu-g++ -std=gnu++20 -shared -L/usr/lib/R/lib -Wl,-Bsymbolic-functions -flto=auto -ffat-lto-objects -Wl,-z,relro -o gllvmTMB_va_r3.so gllvmTMB_va_r3.o -L/usr/lib/R/lib -lR
+Warning: 18 external pointers will be removed
+using C++ compiler: 'x86_64-linux-gnu-g++ (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0'
+x86_64-linux-gnu-g++ -std=gnu++20 -I"/usr/share/R/include" -DNDEBUG -I"/home/snakagaw/R/lib/TMB/include" -I"/tmp/RtmpFgMXDa/RLIBS_3fa1a53afe1c21/RcppEigen/include"  -DTMB_SAFEBOUNDS -DTMB_EIGEN_DISABLE_WARNINGS -DLIB_UNLOAD=R_unload_gllvmTMB_va_r3  -DTMB_LIB_INIT=R_init_gllvmTMB_va_r3  -DCPPAD_FRAMEWORK      -fpic  -O2  -c gllvmTMB_va_r3.cpp -o gllvmTMB_va_r3.o
+x86_64-linux-gnu-g++ -std=gnu++20 -shared -L/usr/lib/R/lib -Wl,-Bsymbolic-functions -flto=auto -ffat-lto-objects -Wl,-z,relro -o gllvmTMB_va_r3.so gllvmTMB_va_r3.o -L/usr/lib/R/lib -lR
+
+VA missing-response all-family coverage: 18/18 cells returned a real fit with correct masked-cell accounting
+refused: (none)
+health-gate marginal (ran fine, accounting correct, status != healthy): betabinomial_logit, delta_gamma_log
+18-cell wall time: 38.5 s
+Warning: 60 external pointers will be removed
+using C++ compiler: 'x86_64-linux-gnu-g++ (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0'
+x86_64-linux-gnu-g++ -std=gnu++20 -I"/usr/share/R/include" -DNDEBUG -I"/home/snakagaw/R/lib/TMB/include" -I"/tmp/RtmpFgMXDa/RLIBS_3fa1a53afe1c21/RcppEigen/include"  -DTMB_SAFEBOUNDS -DTMB_EIGEN_DISABLE_WARNINGS -DLIB_UNLOAD=R_unload_gllvmTMB_va_r3  -DTMB_LIB_INIT=R_init_gllvmTMB_va_r3  -DCPPAD_FRAMEWORK      -fpic  -O2  -c gllvmTMB_va_r3.cpp -o gllvmTMB_va_r3.o
+x86_64-linux-gnu-g++ -std=gnu++20 -shared -L/usr/lib/R/lib -Wl,-Bsymbolic-functions -flto=auto -ffat-lto-objects -Wl,-z,relro -o gllvmTMB_va_r3.so gllvmTMB_va_r3.o -L/usr/lib/R/lib -lR
+
+-- Design 108 Stage 4 AD-safety, H = 15 (extreme node 6.3639 SD of eta) --
+cell                      dE/dmu AD      dE/dmu FD        rel       dE/dv AD       dE/dv FD        rel  min eta
+bulk bernoulli            0.7337576      0.7337576   4.88e-13     -0.2666131     -0.2666131   4.07e-12     -6.1
+bulk binomial n=10       -0.5251462     -0.5251462   9.22e-12      -2.790678      -2.790678   2.92e-13     -5.4
+left tail mu=-30            30.0333        30.0333   1.02e-13     -0.4994463     -0.4994463   4.61e-10    -36.4
+deep tail mu=-40           40.02498       40.02498   5.32e-13     -0.4996881     -0.4996881   1.85e-09    -46.4
+huge v=100                 4.059181       4.059181   7.95e-13     -0.2516668     -0.2516668   5.95e-13    -63.6
+right tail mu=+30          -30.0333       -30.0333   1.55e-13     -0.4994463     -0.4994463   4.61e-10     23.6
+both tails                 100.2678       100.2678   8.42e-13      -2.492238      -2.492238   2.44e-11    -51.8
+
+-- Design 108 Stage 4 AD-safety, H = 61 (extreme node 14.4985 SD of eta) --
+cell                      dE/dmu AD      dE/dmu FD        rel       dE/dv AD       dE/dv FD        rel  min eta
+bulk bernoulli            0.7337576      0.7337576   6.57e-13     -0.2666131     -0.2666131   3.41e-12    -14.2
+bulk binomial n=10       -0.5251462     -0.5251462   1.29e-11      -2.790678      -2.790678   2.32e-12    -11.7
+left tail mu=-30            30.0333        30.0333   3.18e-13     -0.4994463     -0.4994463   2.98e-10    -44.5
+deep tail mu=-40           40.02498       40.02498   5.32e-13     -0.4996881     -0.4996881   1.19e-09    -54.5
+huge v=100                 4.121156       4.121156   1.52e-12     -0.2520039     -0.2520039   1.34e-12   -145.0
+right tail mu=+30          -30.0333       -30.0333   2.66e-13     -0.4994463     -0.4994463   4.61e-10     15.5
+both tails                 100.2678       100.2678   8.46e-13      -2.492234      -2.492234   1.09e-11    -92.5
+
+-- Stage 4 toy: max|log Sigma_B ratio| vs Laplace probit 0.1696, vs Laplace logit 0.9653
+i Auto-suppressing `sigma_eps`: `indep(0 + trait | site)` is at the per-row level, so it already absorbs the observation residual.
+* Fixed at 0.000939 (~1/1000 of sd(y)) to keep the Gaussian density well-defined; the row-level residual variance is fully captured by the per-row diagonal term.
+i Auto-suppressing `sigma_eps`: `indep(0 + trait | site)` is at the per-row level, so it already absorbs the observation residual.
+* Fixed at 0.000939 (~1/1000 of sd(y)) to keep the Gaussian density well-defined; the row-level residual variance is fully captured by the per-row diagonal term.
+[ FAIL 0 | WARN 60 | SKIP 1259 | PASS 26641 ]
+
+══ Skipped tests (1259) ════════════════════════════════════════════════════════
+• {ade4} is not installed (1): 'test-restart-selection-1335.R:63:3'
+• {INLA} is not installed (3): 'test-canonical-keywords.R:717:3',
+  'test-canonical-keywords.R:743:3', 'test-canonical-keywords.R:769:3'
+• {vdiffr} is not installed (11): 'test-plot-visual-snapshots.R:115:3',
+  'test-plot-visual-snapshots.R:136:3', 'test-plot-visual-snapshots.R:161:3',
+  'test-plot-visual-snapshots.R:226:3', 'test-plot-visual-snapshots.R:250:3',
+  'test-plot-visual-snapshots.R:282:3', 'test-plot-visual-snapshots.R:295:3',
+  'test-plot-visual-snapshots.R:308:3', 'test-plot-visual-snapshots.R:321:3',
+  'test-plot-visual-snapshots.R:334:3', 'test-plot-visual-snapshots.R:347:3'
+• 0.2.0: no-covstruct fallback removed (sdmTMB() engine no longer bundled).
+  (1): 'test-gllvmTMB-args.R:53:3'
+• 0.2.0: no-covstruct fallback removed; single-response models live in glmmTMB
+  now. (1): 'test-gllvmTMB-args.R:67:3'
+• 0.2.0: no-covstruct fallback removed. (2): 'test-gllvmTMB-args.R:57:3',
+  'test-gllvmTMB-args.R:61:3'
+• 0.2.0: this test exercised the no-covstruct sdmTMB() fallback path that was
+  removed. (1): 'test-stage1-stacked-fixed-effects.R:38:3'
+• article missing (1): 'test-issue-1361-spatial-location-token.R:34:3'
+• Beta Q_P/Q_0 NLLs match on this cell; tapes are named but nll-difference is
+  not informative (1): 'test-zz-mspl-tweedie-beta-se-feasibility.R:199:3'
+• cross-family LV recovery harness unavailable in source tarball (5):
+  'test-cross-family-lv-recovery-harness.R:33:3',
+  'test-cross-family-lv-recovery-harness.R:47:3',
+  'test-cross-family-lv-recovery-harness.R:62:3',
+  'test-cross-family-lv-recovery-harness.R:74:3',
+  'test-cross-family-lv-recovery-harness.R:87:3'
+• delta_gamma MSPL family door is missing (2):
+  'test-zz-mspl-rest-families-se-feasibility.R:206:7',
+  'test-zz-mspl-rest-families-se-feasibility.R:232:7'
+• delta_lognormal MSPL family door is missing (2):
+  'test-zz-mspl-rest-families-se-feasibility.R:206:7',
+  'test-zz-mspl-rest-families-se-feasibility.R:232:7'
+• Design 123 not found (not a source checkout) (1):
+  'test-design-123-alignment-t1-status.R:25:3'
+• dev power-pilot helpers are unavailable in this source-tarball context (23):
+  'test-m3-pilot-manifest.R:116:3', 'test-m3-pilot-manifest.R:168:3',
+  'test-m3-pilot-manifest.R:207:3', 'test-m3-pilot-manifest.R:249:3',
+  'test-m3-pilot-manifest.R:324:3', 'test-m3-pilot-manifest.R:353:3',
+  'test-m3-pilot-manifest.R:408:3', 'test-m3-pilot-manifest.R:500:3',
+  'test-m3-pilot-manifest.R:525:3', 'test-m3-pilot-manifest.R:563:3',
+  'test-m3-pilot-manifest.R:585:3', 'test-m3-pilot-manifest.R:607:3',
+  'test-m3-pilot-manifest.R:627:3', 'test-m3-pilot-manifest.R:652:3',
+  'test-m3-pilot-manifest.R:678:3', 'test-m3-pilot-manifest.R:723:3',
+  'test-m3-pilot-manifest.R:777:3', 'test-m3-pilot-manifest.R:826:3',
+  'test-m3-pilot-manifest.R:859:3', 'test-m3-pilot-report.R:75:3',
+  'test-m3-pilot-report.R:121:3', 'test-m3-pilot-report.R:163:3',
+  'test-m3-pilot-report.R:187:3'
+• dev/interval-calibration and docs/ are absent from the built package (2):
+  'test-interval-calibration-claims.R:253:5',
+  'test-interval-calibration-seeds.R:121:5'
+• dev/interval-calibration is absent from the built package (4):
+  'test-interval-calibration-ci09.R:973:5',
+  'test-interval-calibration-ci10.R:510:5',
+  'test-interval-calibration-ci13.R:356:5',
+  'test-interval-calibration-ci14-ci15.R:413:5'
+• dev/isdm-package-recovery is absent from the built package (194):
+  'test-bfgs-smoke-contract.R:52:3', 'test-bfgs-smoke-contract.R:93:3',
+  'test-bfgs-smoke-contract.R:106:3', 'test-bfgs-smoke-contract.R:130:3',
+  'test-bfgs-smoke-contract.R:175:3', 'test-bfgs-smoke-contract.R:204:3',
+  'test-bfgs-smoke-contract.R:227:3', 'test-bfgs-smoke-contract.R:254:3',
+  'test-bfgs-smoke-contract.R:305:3', 'test-bfgs-smoke-contract.R:333:3',
+  'test-bfgs-smoke-contract.R:374:3', 'test-bfgs-smoke-contract.R:555:3',
+  'test-bfgs-smoke-runners.R:2:3', 'test-bfgs-smoke-runners.R:37:3',
+  'test-bfgs-smoke-runners.R:93:3', 'test-bfgs-smoke-runners.R:143:3',
+  'test-empirical-gate-a-metadata-contract.R:3:3',
+  'test-empirical-gate-a-metadata-contract.R:13:3',
+  'test-g2d-six-species-harness.R:21:3', 'test-g2d-six-species-harness.R:39:3',
+  'test-g2d-six-species-harness.R:62:3',
+  'test-g2e-information-diagnostic.R:2:3',
+  'test-g2e-information-diagnostic.R:21:3',
+  'test-g2e-information-diagnostic.R:33:3',
+  'test-g2e-information-diagnostic.R:44:3',
+  'test-g2e-information-diagnostic.R:56:3', 'test-g2f-pa-replication.R:2:3',
+  'test-g2f-pa-replication.R:17:3', 'test-g2f-pa-replication.R:30:3',
+  'test-g2f-pa-replication.R:45:3', 'test-g2f-pa-replication.R:55:3',
+  'test-g2f-pa-replication.R:66:3', 'test-g2j-psi-diagnostic.R:2:3',
+  'test-g2k-calibration.R:2:3', 'test-g2k-gradient-diagnostic.R:2:3',
+  'test-g2m-numerical-admission-protocol.R:2:3', 'test-g2n-local-prerun.R:2:3',
+  'test-g2n-local-prerun.R:16:3', 'test-g2o-postmortem.R:18:3',
+  'test-g3-full-vector-polish-contract.R:9:3',
+  'test-g3-full-vector-polish-contract.R:34:3',
+  'test-g3-full-vector-polish-contract.R:66:3',
+  'test-g3-full-vector-polish-contract.R:74:3',
+  'test-g3-paper1-smoke-runner.R:2:3', 'test-g3-paper1-smoke-runner.R:13:3',
+  'test-g3-paper1-smoke-runner.R:44:3', 'test-g3-paper2-smoke-runner.R:2:3',
+  'test-g3-paper2-smoke-runner.R:20:3', 'test-g3-paper2-smoke-runner.R:45:3',
+  'test-g3-smallest-smoke-packets.R:6:5', 'test-g3p-paper2-smoke-packet.R:2:3',
+  'test-g3p-paper2-smoke-packet.R:12:3', 'test-g3p-provenance-contract.R:21:3',
+  'test-g3p-provenance-contract.R:32:3', 'test-g3p-provenance-contract.R:45:3',
+  'test-g3p-provenance-contract.R:61:3', 'test-g3p-provenance-contract.R:73:3',
+  'test-g3p-provenance-contract.R:82:3', 'test-g3p-provenance-contract.R:99:3',
+  'test-g3p-provenance-contract.R:107:3',
+  'test-paper1-range-amplitude-orthogonal-contract.R:15:3',
+  'test-paper1-range-amplitude-orthogonal-contract.R:26:3',
+  'test-paper1-range-amplitude-orthogonal-contract.R:40:3',
+  'test-paper1-range-amplitude-orthogonal-contract.R:75:3',
+  'test-paper1-range-amplitude-orthogonal-contract.R:87:3',
+  'test-paper1-range-amplitude-orthogonal-contract.R:99:3',
+  'test-paper1-range-amplitude-orthogonal-contract.R:136:3',
+  'test-paper1-range-amplitude-orthogonal-contract.R:178:3',
+  'test-paper1-range-amplitude-orthogonal-contract.R:201:3',
+  'test-paper1-range-amplitude-orthogonal-contract.R:218:3',
+  'test-paper1-spatial-c1-topology.R:5:3',
+  'test-paper1-spatial-c1-topology.R:32:3',
+  'test-paper1-spde-slope-gauge-contract.R:16:3',
+  'test-paper1-spde-slope-gauge-contract.R:40:3',
+  'test-paper1-spde-slope-gauge-contract.R:55:3',
+  'test-paper1-spde-slope-gauge-contract.R:64:3',
+  'test-paper1-spde-slope-gauge-contract.R:75:3',
+  'test-paper1-spde-slope-gauge-contract.R:102:3',
+  'test-paper1-spde-slope-gauge-contract.R:138:3',
+  'test-paper1-spde-slope-gauge-contract.R:156:3',
+  'test-paper1-spde-slope-gauge-contract.R:211:3',
+  'test-paper1-spde-slope-gauge-contract.R:236:3',
+  'test-paper1-spde-slope-gauge-contract.R:252:3',
+  'test-paper1-spde-slope-gauge-nofit-contract.R:200:3',
+  'test-paper1-spde-slope-gauge-nofit-contract.R:219:3',
+  'test-paper1-spde-slope-gauge-nofit-contract.R:242:3',
+  'test-paper1-spde-slope-gauge-nofit-contract.R:296:3',
+  'test-paper1-spde-slope-gauge-nofit-contract.R:313:3',
+  'test-paper1-spde-slope-gauge-nofit-contract.R:334:3',
+  'test-paper1-spde-slope-gauge-nofit-contract.R:359:3',
+  'test-paper1-spde-slope-gauge-nofit-contract.R:400:3',
+  'test-paper1-spde-slope-gauge-nofit-contract.R:426:3',
+  'test-paper1-spde-slope-gauge-nofit-contract.R:454:3',
+  'test-paper1-spde-slope-gauge-nofit-contract.R:475:3',
+  'test-paper1-spde-slope-gauge-nofit-contract.R:496:3',
+  'test-paper1-spde-slope-gauge-nofit-contract.R:547:3',
+  'test-paper1-spde-slope-gauge-nofit-contract.R:768:3',
+  'test-paper1-spde-slope-gauge-nofit-contract.R:790:3',
+  'test-paper1-spde-slope-gauge-nofit-contract.R:847:3',
+  'test-paper1-spde-slope-gauge-nofit-contract.R:1076:3',
+  'test-paper1-spde-slope-gauge-nofit-contract.R:1136:3',
+  'test-paper1-spde-slope-gauge-nofit-contract.R:1225:3',
+  'test-paper1-spde-slope-gauge-nofit-contract.R:1283:3',
+  'test-paper1-spde-slope-gauge-nofit-contract.R:1336:3',
+  'test-paper1-spde-slope-gauge-nofit-contract.R:1389:3',
+  'test-paper1-spde-slope-gauge-nofit-contract.R:1667:3',
+  'test-paper1-spde-slope-gauge-nofit-contract.R:1696:3',
+  'test-paper1-spde-slope-gauge-nofit-contract.R:1741:3',
+  'test-paper1-spde-slope-gauge-nofit-contract.R:1785:3',
+  'test-paper1-spde-slope-gauge-nofit-contract.R:1832:3',
+  'test-paper1-spde-slope-gauge-nofit-contract.R:1883:3',
+  'test-paper1-spde-slope-gauge-nofit-contract.R:1948:3',
+  'test-paper1-spde-slope-gauge-nofit-materializer.R:17:3',
+  'test-paper1-spde-slope-gauge-nofit-materializer.R:35:3',
+  'test-paper1-spde-slope-gauge-nofit-materializer.R:53:3',
+  'test-paper1-spde-slope-gauge-nofit-materializer.R:87:3',
+  'test-paper1-spde-slope-gauge-nofit-materializer.R:123:3',
+  'test-paper1-spde-slope-gauge-nofit-materializer.R:163:3',
+  'test-paper1-spde-slope-gauge-nofit-runner.R:2:3',
+  'test-paper1-spde-slope-gauge-nofit-runner.R:12:3',
+  'test-paper1-spde-slope-gauge-nofit-runner.R:36:3',
+  'test-paper1-spde-slope-gauge-nofit-runner.R:81:3',
+  'test-paper1-spde-slope-gauge-nofit-runner.R:93:3',
+  'test-paper1-spde-slope-gauge-nofit-v2-materializer.R:55:3',
+  'test-paper1-spde-slope-gauge-nofit-v2-materializer.R:64:3',
+  'test-paper1-spde-slope-gauge-nofit-v2-materializer.R:115:3',
+  'test-paper1-spde-slope-gauge-nofit-v2-materializer.R:129:3',
+  'test-paper1-spde-slope-gauge-nofit-v2-materializer.R:149:3',
+  'test-paper1-spde-slope-gauge-nofit-v2-materializer.R:174:3',
+  'test-paper1-spde-slope-gauge-nofit-v2-materializer.R:254:3',
+  'test-paper1-spde-slope-gauge-nofit-v2-materializer.R:311:3',
+  'test-paper1-spde-slope-gauge-nofit-v2-runner.R:34:3',
+  'test-paper1-spde-slope-gauge-nofit-v2-runner.R:57:3',
+  'test-paper1-spde-slope-gauge-nofit-v2-runner.R:64:3',
+  'test-paper1-spde-slope-gauge-nofit-v2-runner.R:145:3',
+  'test-paper1-spde-slope-gauge-sign-contract.R:33:3',
+  'test-paper1-spde-slope-gauge-sign-contract.R:46:3',
+  'test-paper1-spde-slope-gauge-sign-contract.R:65:3',
+  'test-paper1-spde-slope-gauge-sign-contract.R:79:3',
+  'test-paper1-spde-slope-gauge-trust-region-adapter.R:28:3',
+  'test-paper1-spde-slope-gauge-trust-region-adapter.R:62:3',
+  'test-paper1-spde-slope-gauge-trust-region-adapter.R:79:3',
+  'test-paper1-spde-slope-gauge-trust-region-adapter.R:107:3',
+  'test-paper1-spde-slope-gauge-trust-region-compiled.R:19:3',
+  'test-paper1-spde-slope-gauge-trust-region-contract.R:41:3',
+  'test-paper1-spde-slope-gauge-trust-region-contract.R:63:3',
+  'test-paper1-spde-slope-gauge-trust-region-contract.R:73:3',
+  'test-paper1-spde-slope-gauge-trust-region-contract.R:90:3',
+  'test-paper1-spde-slope-gauge-trust-region-contract.R:105:3',
+  'test-paper1-spde-slope-gauge-trust-region-contract.R:128:3',
+  'test-paper1-spde-slope-gauge-trust-region-contract.R:150:3',
+  'test-paper1-spde-slope-gauge-trust-region-contract.R:167:3',
+  'test-paper1-spde-slope-gauge-trust-region-contract.R:207:3',
+  'test-paper1-spde-slope-gauge-trust-region-contract.R:227:3',
+  'test-paper1-spde-slope-gauge-trust-region-materializer.R:231:3',
+  'test-paper1-spde-slope-gauge-trust-region-materializer.R:277:3',
+  'test-paper1-spde-slope-gauge-trust-region-materializer.R:292:3',
+  'test-paper1-spde-slope-gauge-trust-region-materializer.R:317:3',
+  'test-paper1-spde-slope-gauge-trust-region-materializer.R:445:3',
+  'test-paper1-spde-slope-gauge-trust-region-materializer.R:461:3',
+  'test-paper1-spde-slope-gauge-trust-region-materializer.R:473:3',
+  'test-paper1-spde-slope-gauge-trust-region-materializer.R:493:3',
+  'test-paper1-spde-slope-gauge-trust-region-materializer.R:530:3',
+  'test-paper1-spde-slope-gauge-trust-region-materializer.R:610:3',
+  'test-paper1-spde-slope-gauge-trust-region-materializer.R:691:3',
+  'test-paper1-spde-slope-gauge-trust-region-materializer.R:785:3',
+  'test-paper1-spde-slope-gauge-trust-region-runner.R:32:3',
+  'test-paper1-spde-slope-gauge-trust-region-runner.R:63:3',
+  'test-paper1-spde-slope-gauge-trust-region-runner.R:85:3',
+  'test-paper1-spde-slope-gauge-trust-region-smoke-contract.R:212:3',
+  'test-paper1-spde-slope-gauge-trust-region-smoke-contract.R:234:3',
+  'test-paper1-spde-slope-gauge-trust-region-smoke-contract.R:252:3',
+  'test-paper1-spde-slope-gauge-trust-region-smoke-contract.R:284:3',
+  'test-paper1-spde-slope-gauge-trust-region-smoke-contract.R:298:3',
+  'test-paper1-spde-slope-gauge-trust-region-smoke-contract.R:308:3',
+  'test-paper1-spde-slope-gauge-trust-region-smoke-contract.R:333:3',
+  'test-paper1-spde-slope-gauge-trust-region-smoke-contract.R:363:3',
+  'test-paper1-spde-slope-gauge-trust-region-smoke-contract.R:419:3',
+  'test-paper1-spde-slope-gauge-trust-region-smoke-contract.R:514:3',
+  'test-paper1-spde-slope-gauge-trust-region-smoke-contract.R:544:3',
+  'test-paper2-c2-all-attempt-contract.R:4:3',
+  'test-paper2-c2-all-attempt-contract.R:16:3',
+  'test-paper2-c2-all-attempt-contract.R:34:3',
+  'test-paper2-c2-all-attempt-contract.R:52:3',
+  'test-scale-free-runaway-detector.R:9:3',
+  'test-scale-free-runaway-detector.R:20:3',
+  'test-scale-free-runaway-detector.R:28:3',
+  'test-scale-free-runaway-detector.R:36:3',
+  'test-scale-free-runaway-detector.R:42:3',
+  'test-scale-free-runaway-detector.R:49:3',
+  'test-spatial-isdm-gate-b2-receipt-contract.R:8:3',
+  'test-spatial-isdm-gate-b2-receipt-contract.R:25:3',
+  'test-spatial-isdm-gate-b2-receipt-contract.R:36:3',
+  'test-spatial-isdm-gate-b2-receipt-contract.R:55:3'
+• dev/isdm-requalification diagnostic sources are absent (1):
+  'test-isdm-diagnostic-diagnostics.R:13:5'
+• dev/isdm-requalification is absent from the built package (6):
+  'test-isdm-requalification-campaign.R:9:5',
+  'test-isdm-requalification-contract.R:6:5',
+  'test-isdm-requalification-fixture.R:6:5',
+  'test-isdm-requalification-runner.R:6:5',
+  'test-isdm-requalification-source.R:9:5',
+  'test-isdm-requalification-summary.R:6:5'
+• dev/isdm-requalification/diagnostic-rescue is absent from build (3):
+  'test-isdm-diagnostic-contract.R:8:5', 'test-isdm-diagnostic-receipts.R:5:5',
+  'test-isdm-diagnostic-runner.R:5:5'
+• dev/lv-wald-coverage.R is unavailable in this source-tarball context (5):
+  'test-lv-wald-coverage-harness.R:17:3',
+  'test-lv-wald-coverage-harness.R:35:3',
+  'test-lv-wald-coverage-harness.R:74:3',
+  'test-lv-wald-coverage-harness.R:101:3',
+  'test-lv-wald-coverage-harness.R:180:3'
+• dev/mspl-fork-b-l1-smoke.R unavailable (3):
+  'test-mspl-forkB-l1-dual-arm-smoke.R:17:3',
+  'test-mspl-forkB-l1-dual-arm-smoke.R:32:3',
+  'test-mspl-forkB-l1-dual-arm-smoke.R:65:3'
+• dev/mspl-forkB-l1-ademp.R unavailable (4):
+  'test-mspl-forkB-l1-ademp-harness.R:17:3',
+  'test-mspl-forkB-l1-ademp-harness.R:33:3',
+  'test-mspl-forkB-l1-ademp-harness.R:63:3',
+  'test-mspl-forkB-l1-ademp-harness.R:80:3'
+• dev/mspl-forkB-l1-lib.R is not available in this test context (install tree).
+  (10): 'test-zz-mspl-forkB-l1-gate.R:56:3',
+  'test-zz-mspl-forkB-l1-gate.R:69:3', 'test-zz-mspl-forkB-l1-gate.R:83:3',
+  'test-zz-mspl-forkB-l1-gate.R:96:3', 'test-zz-mspl-forkB-l1-gate.R:121:3',
+  'test-zz-mspl-forkB-l1-gate.R:132:3', 'test-zz-mspl-forkB-l1-gate.R:151:3',
+  'test-zz-mspl-forkB-l1-gate.R:165:3', 'test-zz-mspl-forkB-l1-gate.R:190:3',
+  'test-zz-mspl-forkB-l1-gate.R:213:3'
+• dev/pvt02 is absent from the built package (2):
+  'test-pvt02-contract.R:135:5', 'test-pvt02-packet.R:329:5'
+• dev/vgh/vgh-engine.R is unavailable in this source-tarball context (3):
+  'test-vgh-pooled-phi.R:48:3', 'test-vgh-pooled-phi.R:99:3',
+  'test-vgh-pooled-phi.R:141:3'
+• developer-only classifier sources are absent (1):
+  'test-isdm-response-information-classifier.R:4:3'
+• developer-only G2d recovery harness is unavailable (1):
+  'test-g2d-six-species-harness.R:4:3'
+• developer-only recovery harness is unavailable (1):
+  'test-g2c-replicated-pa-harness.R:4:3'
+• developer-only response-information forensic sources are absent (1):
+  'test-isdm-response-information-forensics.R:5:5'
+• developer-only response-information sources are absent (3):
+  'test-isdm-response-information-contract.R:8:5',
+  'test-isdm-response-information-fixture.R:8:5',
+  'test-isdm-response-information-records.R:7:5'
+• developer-only runner is absent (1):
+  'test-isdm-response-information-runner.R:4:59'
+• developer-only scorer is absent (1):
+  'test-isdm-response-information-recompute.R:5:63'
+• dual-arm runner unavailable (1): 'test-mspl-forkB-l1-dual-arm-smoke.R:83:3'
+• file.exists(test_path("..", "..", "man", "gllvmTMB_julia-methods.Rd")) is not
+  TRUE (1): 'test-julia-methods-rd-arguments.R:2:3'
+• file.exists(testthat::test_path("..", "..", "dev", "temporal-ar1",
+  "verify.R")) is not TRUE (1): 'test-temporal-ar1-verify-runner.R:17:3'
+• fit-multi.R not in this test context (1):
+  'test-zz-mspl-fenced-family-tapes.R:148:3'
+• Gamma MSPL family door is missing (2):
+  'test-zz-mspl-rest-families-se-feasibility.R:206:7',
+  'test-zz-mspl-rest-families-se-feasibility.R:232:7'
+• get-started vignette missing (1):
+  'test-issue-1327-get-started-visible-objects.R:5:3'
+• GLLVM.jl path not configured (set GLLVM_JL_PATH /
+  options(gllvmTMB.GLLVM.jl.path=)). (1):
+  'test-kernel-latent-unique-bridge.R:157:3'
+• GLLVModels.jl path not configured (set GLLVMODELS_JL_PATH /
+  options(gllvmTMB.GLLVModels.jl.path=); legacy aliases also work). (19):
+  'test-julia-bridge.R:2881:3', 'test-julia-bridge.R:2894:3',
+  'test-julia-bridge.R:3000:3', 'test-julia-bridge.R:3068:3',
+  'test-julia-bridge.R:3107:3', 'test-julia-bridge.R:3185:3',
+  'test-julia-bridge.R:3222:3', 'test-julia-bridge.R:3264:3',
+  'test-julia-bridge.R:3308:3', 'test-julia-bridge.R:3513:3',
+  'test-julia-bridge.R:3560:3', 'test-julia-bridge.R:3685:3',
+  'test-julia-bridge.R:3763:3', 'test-julia-bridge.R:3819:3',
+  'test-julia-bridge.R:3890:3', 'test-julia-bridge.R:3950:3',
+  'test-julia-bridge.R:3985:3', 'test-julia-bridge.R:4023:3',
+  'test-julia-bridge.R:4085:3'
+• GLLVModels.jl path not configured (set GLLVMODELS_JL_PATH). (4):
+  'test-julia-engine-1329-1332-1334.R:330:5',
+  'test-julia-engine-1329-1332-1334.R:546:3',
+  'test-julia-engine-1329-1332-1334.R:573:3',
+  'test-julia-engine-1329-1332-1334.R:660:3'
+• gllvmTMB.cpp source file is not available in this installed-package test
+  context. (1): 'test-tmb-ad-safe-clamps.R:12:3'
+• gllvmTMB.cpp source file is not available in this test context. (5):
+  'test-mspl-nb2-fenced-tape.R:106:3', 'test-mspl-W-onesided-oracles.R:114:3',
+  'test-mspl-W-onesided-oracles.R:154:3',
+  'test-mspl-W-onesided-oracles.R:195:3',
+  'test-zz-mspl-fenced-family-tapes.R:123:3'
+• glmmTMB reference fit returned a non-PD Hessian on the combined model, so the
+  cross-implementation logLik check did NOT run. gllvmTMB-side assertions above
+  still passed. See docs/dev-log/known-residuals-register.md (R-4). (1):
+  'test-stage3-propto-equalto.R:180:3'
+• glmmTMB reference fit returned a non-PD Hessian, so the cross-implementation
+  logLik check did NOT run. gllvmTMB-side assertions above still passed. See
+  docs/dev-log/known-residuals-register.md (R-4). (1):
+  'test-stage2-rr-diag.R:114:3'
+• heavy recovery test; set GLLVMTMB_HEAVY_TESTS=1 to run (18):
+  'test-dep-uncorrelated-slope-gaussian.R:30:3',
+  'test-dep-uncorrelated-slope-gaussian.R:67:3',
+  'test-extract-sigma-slope.R:41:3', 'test-extract-sigma-slope.R:52:3',
+  'test-family-slope-recovery.R:87:3', 'test-family-slope-recovery.R:97:3',
+  'test-family-slope-recovery.R:107:3', 'test-kernel-slope-guard.R:48:5',
+  'test-spatial-indep-slope-gaussian.R:56:3',
+  'test-spatial-indep-slope-gaussian.R:72:3',
+  'test-spatial-indep-slope-nongaussian.R:66:3',
+  'test-spatial-indep-slope-nongaussian.R:72:3',
+  'test-spatial-indep-slope-nongaussian.R:79:3',
+  'test-spatial-uncorrelated-slope.R:46:3',
+  'test-spatial-uncorrelated-slope.R:56:3',
+  'test-uncorrelated-slope-gaussian.R:72:3',
+  'test-uncorrelated-slope-gaussian.R:113:3',
+  'test-uncorrelated-slope-gaussian.R:125:3'
+• Heavy recovery/matrix test -- set GLLVMTMB_HEAVY_TESTS=1 to run (811):
+  'test-animal-dep-slope-gaussian.R:95:3',
+  'test-animal-dep-slope-gaussian.R:143:3',
+  'test-animal-dep-slope-gaussian.R:184:3',
+  'test-animal-dep-slope-gaussian.R:274:3',
+  'test-animal-indep-slope-gaussian.R:198:3',
+  'test-animal-indep-slope-gaussian.R:237:3',
+  'test-animal-indep-slope-gaussian.R:288:3', 'test-animal-keyword.R:329:3',
+  'test-animal-latent-slope-gaussian.R:99:3',
+  'test-animal-latent-slope-gaussian.R:129:3',
+  'test-animal-slope-recovery.R:82:3', 'test-animal-slope-recovery.R:109:3',
+  'test-animal-slope-recovery.R:137:3', 'test-animal-slope-recovery.R:168:3',
+  'test-animal-unique-routing.R:74:3', 'test-animal-unique-routing.R:115:3',
+  'test-animal-unique-slope-gaussian.R:102:3',
+  'test-animal-unique-slope-gaussian.R:141:3',
+  'test-animal-unique-slope-gaussian.R:182:3', 'test-beta-recovery.R:14:3',
+  'test-beta-recovery.R:62:3', 'test-beta-recovery.R:101:3',
+  'test-betabinomial-recovery.R:16:3', 'test-betabinomial-recovery.R:65:3',
+  'test-betabinomial-recovery.R:109:3', 'test-binomial-slope-recovery.R:167:3',
+  'test-binomial-slope-recovery.R:176:3',
+  'test-binomial-slope-recovery.R:211:3',
+  'test-block-conditional-recovery.R:122:3',
+  'test-block-conditional-recovery.R:168:3',
+  'test-block-conditional-recovery.R:218:3',
+  'test-bootstrap-lv-effects.R:36:3', 'test-bootstrap-lv-effects.R:59:3',
+  'test-bootstrap-Sigma.R:39:3', 'test-bootstrap-Sigma.R:97:3',
+  'test-bootstrap-Sigma.R:114:3', 'test-bootstrap-Sigma.R:144:3',
+  'test-bootstrap-Sigma.R:169:3', 'test-bootstrap-Sigma.R:196:3',
+  'test-bootstrap-Sigma.R:229:3', 'test-bootstrap-Sigma.R:281:3',
+  'test-check-identifiability.R:63:3', 'test-check-identifiability.R:71:3',
+  'test-check-identifiability.R:84:3', 'test-check-identifiability.R:101:3',
+  'test-check-identifiability.R:111:3', 'test-check-identifiability.R:127:3',
+  'test-check-identifiability.R:140:3', 'test-check-identifiability.R:152:3',
+  'test-check-identifiability.R:183:3', 'test-check-identifiability.R:217:3',
+  'test-check-identifiability.R:241:3', 'test-check-identifiability.R:267:3',
+  'test-check-identifiability.R:291:3', 'test-cluster2-families.R:81:3',
+  'test-cluster2-families.R:122:3', 'test-cluster2-families.R:163:3',
+  'test-cluster2-families.R:206:3', 'test-cluster2-families.R:258:3',
+  'test-cluster2-families.R:308:3', 'test-cluster2-families.R:355:3',
+  'test-cluster2-rename.R:150:3', 'test-coevolution-prototype.R:147:3',
+  'test-coevolution-recovery.R:449:3', 'test-coevolution-recovery.R:504:3',
+  'test-coevolution-two-kernel.R:1307:3',
+  'test-coevolution-two-kernel.R:1402:3',
+  'test-coevolution-two-kernel.R:1460:3',
+  'test-coevolution-two-kernel.R:1536:3',
+  'test-coevolution-two-kernel.R:1617:3',
+  'test-coevolution-two-kernel.R:1724:3',
+  'test-coevolution-two-kernel.R:1788:3',
+  'test-coevolution-two-kernel.R:1841:3',
+  'test-coevolution-two-kernel.R:1870:3',
+  'test-coevolution-two-kernel.R:1939:3',
+  'test-coevolution-two-kernel.R:1994:3',
+  'test-coevolution-two-kernel.R:2057:3',
+  'test-coevolution-two-kernel.R:2108:3',
+  'test-coevolution-two-kernel.R:2164:3',
+  'test-coevolution-two-kernel.R:2205:3',
+  'test-coevolution-two-kernel.R:2291:3',
+  'test-coevolution-two-kernel.R:2474:3',
+  'test-coevolution-two-kernel.R:2666:3',
+  'test-coevolution-two-kernel.R:2824:3',
+  'test-coevolution-two-kernel.R:2976:3',
+  'test-coevolution-two-kernel.R:3127:3', 'test-communality-ci.R:52:3',
+  'test-communality-ci.R:74:3', 'test-communality-ci.R:107:3',
+  'test-communality-ci.R:127:3', 'test-communality-ci.R:152:3',
+  'test-communality-ci.R:179:3', 'test-confint-bootstrap.R:31:3',
+  'test-confint-bootstrap.R:73:3', 'test-confint-bootstrap.R:95:3',
+  'test-confint-bootstrap.R:129:3', 'test-confint-bootstrap.R:148:3',
+  'test-confint-bootstrap.R:163:3', 'test-confint-bootstrap.R:178:3',
+  'test-confint-derived.R:96:3', 'test-confint-derived.R:109:3',
+  'test-confint-derived.R:120:3', 'test-confint-derived.R:130:3',
+  'test-confint-derived.R:140:3', 'test-confint-derived.R:152:3',
+  'test-confint-derived.R:163:3', 'test-confint-derived.R:174:3',
+  'test-confint-derived.R:185:3', 'test-confint-derived.R:197:3',
+  'test-confint-derived.R:218:3', 'test-confint-derived.R:230:3',
+  'test-confint-derived.R:244:3', 'test-confint-derived.R:257:3',
+  'test-confint-derived.R:274:3', 'test-confint-derived.R:286:3',
+  'test-confint-derived.R:298:3', 'test-confint-derived.R:310:3',
+  'test-confint-derived.R:321:3', 'test-confint-derived.R:335:3',
+  'test-confint-derived.R:351:3', 'test-confint-derived.R:372:3',
+  'test-confint-derived.R:383:3', 'test-confint-derived.R:404:3',
+  'test-confint-derived.R:418:3', 'test-confint-derived.R:430:3',
+  'test-confint-derived.R:441:3', 'test-confint-derived.R:452:3',
+  'test-confint-derived.R:466:3', 'test-confint-derived.R:477:3',
+  'test-confint-derived.R:490:3', 'test-confint-derived.R:505:3',
+  'test-confint-derived.R:526:3', 'test-confint-derived.R:543:3',
+  'test-confint-derived.R:555:3', 'test-confint-lambda.R:221:3',
+  'test-confint-lambda.R:242:3', 'test-confint-lambda.R:255:3',
+  'test-confint-lambda.R:269:3', 'test-confint-lambda.R:286:3',
+  'test-confint-lambda.R:303:3', 'test-confint-lambda.R:323:3',
+  'test-confint-lambda.R:333:3', 'test-confint-lambda.R:344:3',
+  'test-confint-lambda.R:356:3', 'test-confint-lambda.R:376:3',
+  'test-coverage-study.R:34:3', 'test-coverage-study.R:42:3',
+  'test-coverage-study.R:51:3', 'test-coverage-study.R:67:3',
+  'test-coverage-study.R:118:3', 'test-coverage-study.R:141:3',
+  'test-coverage-study.R:162:3', 'test-coverage-study.R:181:3',
+  'test-cv-internal.R:42:3', 'test-cv-internal.R:62:3',
+  'test-cv-internal.R:84:3', 'test-cv-internal.R:111:3',
+  'test-cv-internal.R:183:3', 'test-cv-internal.R:229:3',
+  'test-delta-gamma-recovery.R:24:3', 'test-delta-gamma-recovery.R:84:3',
+  'test-delta-gamma-recovery.R:100:3', 'test-delta-gamma-recovery.R:129:3',
+  'test-delta-lognormal-recovery.R:33:3',
+  'test-delta-lognormal-recovery.R:99:3',
+  'test-delta-lognormal-recovery.R:116:3',
+  'test-delta-lognormal-recovery.R:144:3',
+  'test-derived-phylo-ci-audit.R:57:3', 'test-derived-phylo-ci-audit.R:80:3',
+  'test-derived-phylo-ci-audit.R:122:3',
+  'test-extract-communality-bootstrap.R:21:3',
+  'test-extract-communality-bootstrap.R:31:3',
+  'test-extract-communality-bootstrap.R:47:3',
+  'test-extract-repeatability-bootstrap.R:21:3',
+  'test-extract-repeatability-bootstrap.R:36:3',
+  'test-extract-sigma-augmented-unique.R:79:3',
+  'test-extract-sigma-augmented-unique.R:133:3',
+  'test-extract-sigma-augmented-unique.R:174:3',
+  'test-extract-sigma-spde-base-slope.R:96:3',
+  'test-extract-sigma-spde-base-slope.R:153:3',
+  'test-extract-sigma-spde-base-slope.R:202:3',
+  'test-gamma-recovery-depth.R:104:3',
+  'test-isdm-spatial-control-ladder.R:47:3', 'test-latent-rank-guard.R:163:3',
+  'test-loading-ci-bootstrap.R:55:3', 'test-loading-ci-bootstrap.R:80:3',
+  'test-loading-ci-bootstrap.R:101:3', 'test-loading-ci-bootstrap.R:124:3',
+  'test-loading-ci-bootstrap.R:151:3', 'test-loading-ci.R:339:3',
+  'test-loading-ci.R:356:3', 'test-loading-ci.R:369:3',
+  'test-loading-ci.R:380:3', 'test-loading-ci.R:390:3',
+  'test-loading-ci.R:406:3', 'test-loading-ci.R:437:3',
+  'test-loading-ci.R:447:3', 'test-loading-ci.R:458:3',
+  'test-loading-ci.R:475:3', 'test-loading-ci.R:483:3',
+  'test-loading-ci.R:494:3', 'test-loading-ci.R:510:3',
+  'test-loading-ci.R:519:3', 'test-loading-ci.R:590:3',
+  'test-loading-ci.R:600:3', 'test-loading-ci.R:630:3',
+  'test-loading-ci.R:661:3', 'test-loading-ci.R:699:3',
+  'test-loading-ci.R:715:3', 'test-loading-ci.R:730:3',
+  'test-loading-ci.R:755:3', 'test-loading-ci.R:783:3',
+  'test-loading-ci.R:805:3', 'test-loading-ci.R:818:3',
+  'test-loading-ci.R:832:3', 'test-loading-ci.R:846:3',
+  'test-loading-ci.R:858:3', 'test-loading-ci.R:881:3',
+  'test-lv-gaussian-recovery.R:239:3', 'test-m1-2-mixed-family-fixture.R:21:3',
+  'test-m1-2-mixed-family-fixture.R:38:3',
+  'test-m1-2-mixed-family-fixture.R:56:3',
+  'test-m1-2-mixed-family-fixture.R:83:3',
+  'test-m1-2-mixed-family-fixture.R:92:3',
+  'test-m1-2-mixed-family-fixture.R:103:3',
+  'test-m1-3-extract-sigma-mixed-family.R:36:3',
+  'test-m1-3-extract-sigma-mixed-family.R:53:3',
+  'test-m1-3-extract-sigma-mixed-family.R:72:3',
+  'test-m1-3-extract-sigma-mixed-family.R:94:3',
+  'test-m1-3-extract-sigma-mixed-family.R:137:3',
+  'test-m1-3-extract-sigma-mixed-family.R:156:3',
+  'test-m1-4-extract-correlations-mixed-family.R:39:3',
+  'test-m1-4-extract-correlations-mixed-family.R:58:3',
+  'test-m1-4-extract-correlations-mixed-family.R:77:3',
+  'test-m1-4-extract-correlations-mixed-family.R:92:3',
+  'test-m1-4-extract-correlations-mixed-family.R:120:3',
+  'test-m1-4-extract-correlations-mixed-family.R:158:3',
+  'test-m1-4-extract-correlations-mixed-family.R:181:3',
+  'test-m1-4-extract-correlations-mixed-family.R:222:3',
+  'test-m1-4-extract-correlations-mixed-family.R:238:3',
+  'test-m1-5-extract-communality-mixed-family.R:26:3',
+  'test-m1-5-extract-communality-mixed-family.R:46:3',
+  'test-m1-5-extract-communality-mixed-family.R:86:3',
+  'test-m1-6-extract-repeatability-mixed-family.R:78:3',
+  'test-m1-6-extract-repeatability-mixed-family.R:111:3',
+  'test-m1-6-extract-repeatability-mixed-family.R:140:3',
+  'test-m1-7-extract-omega-phylo-signal-mixed-family.R:73:3',
+  'test-m1-7-extract-omega-phylo-signal-mixed-family.R:105:3',
+  'test-m1-7-extract-omega-phylo-signal-mixed-family.R:135:3',
+  'test-m1-8-bootstrap-mixed-family.R:34:3',
+  'test-m1-8-bootstrap-mixed-family.R:60:3',
+  'test-m1-8-bootstrap-mixed-family.R:89:3',
+  'test-m1-8-bootstrap-mixed-family.R:115:3',
+  'test-m1-8-bootstrap-mixed-family.R:162:3',
+  'test-m1-8-bootstrap-mixed-family.R:198:3',
+  'test-m1-8-bootstrap-mixed-family.R:226:3',
+  'test-m2-2a-binary-recovery.R:66:3', 'test-m2-2a-binary-recovery.R:101:3',
+  'test-m2-2a-binary-recovery.R:135:3', 'test-m2-2a-binary-recovery.R:167:3',
+  'test-m2-2a-binary-recovery.R:199:3',
+  'test-m2-2b-binary-cis-extractors.R:60:3',
+  'test-m2-2b-binary-cis-extractors.R:79:3',
+  'test-m2-2b-binary-cis-extractors.R:99:3',
+  'test-m2-2b-binary-cis-extractors.R:119:3',
+  'test-m2-2b-binary-cis-extractors.R:146:3',
+  'test-m2-2b-binary-cis-extractors.R:166:3',
+  'test-m2-2b-glmmTMB-cross-check.R:54:3',
+  'test-m2-2b-glmmTMB-cross-check.R:93:3',
+  'test-m2-3-galamm-cross-check.R:77:3',
+  'test-m2-3-lambda-constraint-binary.R:71:3',
+  'test-m2-3-lambda-constraint-binary.R:101:3',
+  'test-m2-3-lambda-constraint-binary.R:134:3',
+  'test-m2-3-mirt-cross-check.R:72:3',
+  'test-m2-4-suggest-lambda-constraint-binary.R:56:3',
+  'test-m2-4-suggest-lambda-constraint-binary.R:95:3',
+  'test-m2-4-suggest-lambda-constraint-binary.R:159:3',
+  'test-m2-4-suggest-lambda-constraint-binary.R:195:3',
+  'test-m3-4-warmstart-phi-clamp.R:21:3',
+  'test-m3-4-warmstart-phi-clamp.R:27:3',
+  'test-m3-4-warmstart-phi-clamp.R:33:3',
+  'test-m3-4-warmstart-phi-clamp.R:56:3',
+  'test-m3-4-warmstart-phi-clamp.R:106:3',
+  'test-m3-4-warmstart-phi-clamp.R:124:3',
+  'test-m3-4-warmstart-phi-clamp.R:151:3',
+  'test-m3-4-warmstart-phi-clamp.R:199:3',
+  'test-m3-4-warmstart-phi-clamp.R:208:3', 'test-m3-grid-summary.R:17:3',
+  'test-m3-grid-summary.R:41:3', 'test-m3-grid-summary.R:70:3',
+  'test-m3-grid-summary.R:155:3', 'test-m3-grid-summary.R:177:3',
+  'test-m3-grid-summary.R:217:3', 'test-m3-grid-summary.R:253:3',
+  'test-m3-grid-summary.R:268:3', 'test-m3-grid-summary.R:287:3',
+  'test-m3-grid-summary.R:309:3', 'test-m3-grid-summary.R:324:3',
+  'test-m3-grid-summary.R:372:3', 'test-m3-grid-summary.R:428:3',
+  'test-m3-grid-summary.R:477:3', 'test-matrix-animal-nongaussian.R:152:3',
+  'test-matrix-animal-nongaussian.R:288:3',
+  'test-matrix-animal-nongaussian.R:401:3',
+  'test-matrix-animal-nongaussian.R:532:3',
+  'test-matrix-animal-nongaussian.R:675:3',
+  'test-matrix-animal-nongaussian.R:817:3', 'test-matrix-beta-phylo.R:223:3',
+  'test-matrix-beta-phylo.R:267:3', 'test-matrix-beta-phylo.R:328:3',
+  'test-matrix-beta-phylo.R:367:3', 'test-matrix-beta-spatial.R:202:3',
+  'test-matrix-beta-spatial.R:255:3', 'test-matrix-beta-spatial.R:330:3',
+  'test-matrix-beta-spatial.R:380:3', 'test-matrix-beta-unit.R:129:3',
+  'test-matrix-beta-unit.R:153:3', 'test-matrix-beta-unit.R:176:3',
+  'test-matrix-beta-unit.R:203:3', 'test-matrix-beta-unit.R:227:3',
+  'test-matrix-beta-unit.R:252:3', 'test-matrix-betabinomial.R:165:3',
+  'test-matrix-betabinomial.R:184:3', 'test-matrix-betabinomial.R:203:3',
+  'test-matrix-binomial-logit-unit.R:165:3',
+  'test-matrix-binomial-logit-unit.R:195:3',
+  'test-matrix-binomial-logit-unit.R:242:3',
+  'test-matrix-binomial-logit-unit.R:271:3', 'test-matrix-gamma-phylo.R:156:3',
+  'test-matrix-gamma-phylo.R:195:3', 'test-matrix-gamma-phylo.R:270:3',
+  'test-matrix-gamma-phylo.R:306:3', 'test-matrix-gamma-spatial.R:209:3',
+  'test-matrix-gamma-spatial.R:262:3', 'test-matrix-gamma-spatial.R:337:3',
+  'test-matrix-gamma-spatial.R:387:3', 'test-matrix-gamma-unit.R:98:3',
+  'test-matrix-gamma-unit.R:136:3', 'test-matrix-gamma-unit.R:167:3',
+  'test-matrix-gamma-unit.R:206:3', 'test-matrix-gamma-unit.R:234:3',
+  'test-matrix-gamma-unit.R:269:3', 'test-matrix-lognormal.R:181:3',
+  'test-matrix-lognormal.R:201:3', 'test-matrix-lognormal.R:228:3',
+  'test-matrix-multinomial-phylo.R:316:19',
+  'test-matrix-multinomial-phylo.R:377:19',
+  'test-matrix-multinomial-phylo.R:457:19',
+  'test-matrix-multinomial-phylo.R:526:19',
+  'test-matrix-multinomial-spatial.R:223:19',
+  'test-matrix-multinomial-unit.R:122:31', 'test-matrix-nbinom1.R:191:3',
+  'test-matrix-nbinom1.R:210:3', 'test-matrix-nbinom1.R:229:3',
+  'test-matrix-nbinom2-phylo.R:143:3', 'test-matrix-nbinom2-phylo.R:195:3',
+  'test-matrix-nbinom2-phylo.R:249:3', 'test-matrix-nbinom2-phylo.R:301:3',
+  'test-matrix-nbinom2-spatial.R:222:3', 'test-matrix-nbinom2-spatial.R:277:3',
+  'test-matrix-nbinom2-spatial.R:353:3', 'test-matrix-nbinom2-spatial.R:405:3',
+  'test-matrix-nbinom2-unit.R:162:3', 'test-matrix-nbinom2-unit.R:181:3',
+  'test-matrix-nbinom2-unit.R:208:3', 'test-matrix-nbinom2-unit.R:230:3',
+  'test-matrix-nbinom2-unit.R:249:3', 'test-matrix-nbinom2-unit.R:269:3',
+  'test-matrix-ordinal-kernel-animal.R:170:3',
+  'test-matrix-ordinal-kernel-animal.R:217:3',
+  'test-matrix-ordinal-kernel-animal.R:261:3',
+  'test-matrix-ordinal-kernel-animal.R:305:3',
+  'test-matrix-ordinal-kernel-animal.R:349:3',
+  'test-matrix-ordinal-phylo.R:168:3', 'test-matrix-ordinal-phylo.R:212:3',
+  'test-matrix-ordinal-phylo.R:289:3', 'test-matrix-ordinal-phylo.R:325:3',
+  'test-matrix-ordinal-spatial.R:236:3', 'test-matrix-ordinal-spatial.R:291:3',
+  'test-matrix-ordinal-spatial.R:383:3', 'test-matrix-ordinal-spatial.R:434:3',
+  'test-matrix-ordinal-unit.R:163:3', 'test-matrix-ordinal-unit.R:205:3',
+  'test-matrix-ordinal-unit.R:251:3', 'test-matrix-ordinal-unit.R:299:3',
+  'test-matrix-ordinal-unit.R:342:3', 'test-matrix-ordinal-unit.R:387:3',
+  'test-matrix-poisson-phylo.R:111:3', 'test-matrix-poisson-phylo.R:230:3',
+  'test-matrix-poisson-phylo.R:352:3', 'test-matrix-poisson-phylo.R:404:3',
+  'test-matrix-poisson-spatial.R:210:3', 'test-matrix-poisson-spatial.R:263:3',
+  'test-matrix-poisson-spatial.R:338:3', 'test-matrix-poisson-spatial.R:388:3',
+  'test-matrix-poisson-unit.R:129:3', 'test-matrix-poisson-unit.R:162:3',
+  'test-matrix-poisson-unit.R:192:3', 'test-matrix-poisson-unit.R:225:3',
+  'test-matrix-poisson-unit.R:252:3', 'test-matrix-poisson-unit.R:282:3',
+  'test-matrix-slope-beta.R:195:3', 'test-matrix-slope-beta.R:241:3',
+  'test-matrix-slope-binomial-logit.R:148:3',
+  'test-matrix-slope-binomial-probit.R:138:3',
+  'test-matrix-slope-binomial-probit.R:241:3',
+  'test-matrix-slope-gamma.R:160:3', 'test-matrix-slope-gamma.R:227:3',
+  'test-matrix-slope-nbinom2.R:143:3', 'test-matrix-slope-ordinal.R:205:3',
+  'test-matrix-slope-ordinal.R:266:3', 'test-matrix-slope-phylo-dep.R:236:3',
+  'test-matrix-slope-phylo-dep.R:262:3', 'test-matrix-slope-phylo-dep.R:292:3',
+  'test-matrix-slope-phylo-dep.R:320:3', 'test-matrix-slope-phylo-dep.R:344:3',
+  'test-matrix-slope-phylo-dep.R:367:3', 'test-matrix-slope-phylo-dep.R:393:3',
+  'test-matrix-slope-phylo-dep.R:492:3', 'test-matrix-slope-phylo-dep.R:710:3',
+  'test-matrix-slope-phylo-dep.R:728:3', 'test-matrix-slope-phylo-dep.R:748:3',
+  'test-matrix-slope-phylo-dep.R:768:3', 'test-matrix-slope-phylo-dep.R:788:3',
+  'test-matrix-slope-phylo-dep.R:836:3',
+  'test-matrix-slope-phylo-indep.R:99:3',
+  'test-matrix-slope-phylo-indep.R:110:3',
+  'test-matrix-slope-phylo-indep.R:121:3',
+  'test-matrix-slope-phylo-indep.R:132:3',
+  'test-matrix-slope-phylo-indep.R:143:3',
+  'test-matrix-slope-phylo-indep.R:159:3',
+  'test-matrix-slope-phylo-latent.R:288:3',
+  'test-matrix-slope-phylo-latent.R:305:3',
+  'test-matrix-slope-phylo-latent.R:324:3',
+  'test-matrix-slope-phylo-latent.R:346:3',
+  'test-matrix-slope-phylo-latent.R:363:3',
+  'test-matrix-slope-phylo-latent.R:380:3',
+  'test-matrix-slope-phylo-latent.R:402:3',
+  'test-matrix-slope-poisson.R:171:3', 'test-matrix-slope-poisson.R:234:3',
+  'test-matrix-slope-poisson.R:253:3', 'test-matrix-slope-relmat.R:203:3',
+  'test-matrix-slope-relmat.R:232:3', 'test-matrix-slope-relmat.R:262:3',
+  'test-matrix-slope-relmat.R:296:3', 'test-matrix-slope-spatial-dep.R:291:3',
+  'test-matrix-slope-spatial-dep.R:305:3',
+  'test-matrix-slope-spatial-dep.R:320:3',
+  'test-matrix-slope-spatial-dep.R:338:3',
+  'test-matrix-slope-spatial-dep.R:352:3',
+  'test-matrix-slope-spatial-dep.R:368:3',
+  'test-matrix-slope-spatial-dep.R:384:3',
+  'test-matrix-slope-spatial-indep.R:213:3',
+  'test-matrix-slope-spatial-indep.R:227:3',
+  'test-matrix-slope-spatial-indep.R:241:3',
+  'test-matrix-slope-spatial-indep.R:255:3',
+  'test-matrix-slope-spatial-indep.R:269:3',
+  'test-matrix-slope-spatial-indep.R:283:3',
+  'test-matrix-slope-spatial-indep.R:297:3',
+  'test-matrix-slope-spatial-latent.R:276:3',
+  'test-matrix-slope-spatial-latent.R:287:3',
+  'test-matrix-slope-spatial-latent.R:299:3',
+  'test-matrix-slope-spatial-latent.R:317:3',
+  'test-matrix-slope-spatial-latent.R:328:3',
+  'test-matrix-slope-spatial-latent.R:346:3',
+  'test-matrix-slope-spatial-latent.R:362:3',
+  'test-matrix-slope-spatial-unique.R:234:3',
+  'test-matrix-slope-spatial-unique.R:247:3',
+  'test-matrix-slope-spatial-unique.R:260:3',
+  'test-matrix-slope-spatial-unique.R:277:3',
+  'test-matrix-slope-spatial-unique.R:290:3',
+  'test-matrix-slope-spatial-unique.R:307:3',
+  'test-matrix-slope-spatial-unique.R:324:3', 'test-matrix-student.R:199:3',
+  'test-matrix-student.R:219:3', 'test-matrix-student.R:238:3',
+  'test-matrix-truncated.R:219:3', 'test-matrix-truncated.R:237:3',
+  'test-matrix-truncated.R:251:3', 'test-matrix-truncated.R:280:3',
+  'test-matrix-truncated.R:300:3', 'test-matrix-tweedie.R:163:3',
+  'test-matrix-tweedie.R:182:3', 'test-matrix-tweedie.R:201:3',
+  'test-missing-data-robustfix.R:56:3', 'test-missing-data-robustfix.R:135:3',
+  'test-missing-data-robustfix.R:296:3', 'test-missing-data-robustfix.R:345:3',
+  'test-missing-data-robustfix.R:395:3',
+  'test-missing-data-robustness.R:136:3',
+  'test-missing-data-robustness.R:165:3',
+  'test-missing-data-robustness.R:193:3',
+  'test-missing-data-robustness.R:248:3',
+  'test-missing-data-robustness.R:286:3',
+  'test-missing-data-robustness.R:360:3',
+  'test-missing-predictor-binary.R:232:3',
+  'test-missing-predictor-binary.R:275:3',
+  'test-missing-predictor-binary.R:320:3',
+  'test-missing-predictor-binary.R:361:3',
+  'test-missing-predictor-binary.R:508:3',
+  'test-missing-predictor-binary.R:537:3',
+  'test-missing-predictor-binary.R:579:3',
+  'test-missing-predictor-categorical.R:318:3',
+  'test-missing-predictor-categorical.R:366:3',
+  'test-missing-predictor-categorical.R:411:3',
+  'test-missing-predictor-categorical.R:468:3',
+  'test-missing-predictor-categorical.R:516:3',
+  'test-missing-predictor-categorical.R:668:3',
+  'test-missing-predictor-categorical.R:703:3',
+  'test-missing-predictor-categorical.R:748:3',
+  'test-missing-predictor-categorical.R:785:3',
+  'test-missing-predictor-categorical.R:819:3',
+  'test-missing-predictor-gaussian.R:234:3',
+  'test-missing-predictor-gaussian.R:265:3',
+  'test-missing-predictor-gaussian.R:291:3',
+  'test-missing-predictor-gaussian.R:326:3',
+  'test-missing-predictor-gaussian.R:351:3',
+  'test-missing-predictor-gaussian.R:368:3',
+  'test-missing-predictor-gaussian.R:408:3',
+  'test-missing-predictor-gaussian.R:450:3',
+  'test-missing-predictor-gaussian.R:487:3',
+  'test-missing-predictor-gaussian.R:551:3',
+  'test-missing-predictor-gaussian.R:586:3',
+  'test-missing-predictor-gaussian.R:779:3',
+  'test-missing-predictor-gaussian.R:807:3',
+  'test-missing-predictor-gaussian.R:834:3',
+  'test-missing-predictor-gaussian.R:853:3',
+  'test-missing-predictor-gaussian.R:909:3',
+  'test-missing-predictor-gaussian.R:1128:3',
+  'test-missing-predictor-gaussian.R:1162:3',
+  'test-missing-predictor-gaussian.R:1192:3',
+  'test-missing-predictor-gaussian.R:1235:3',
+  'test-missing-predictor-gaussian.R:1294:3',
+  'test-missing-predictor-gaussian.R:1374:3',
+  'test-missing-predictor-ordered.R:341:3',
+  'test-missing-predictor-ordered.R:387:3',
+  'test-missing-predictor-ordered.R:446:3',
+  'test-missing-predictor-ordered.R:493:3',
+  'test-missing-predictor-ordered.R:646:3',
+  'test-missing-predictor-ordered.R:675:3',
+  'test-missing-predictor-ordered.R:714:3',
+  'test-missing-predictor-ordered.R:749:3',
+  'test-missing-predictor-phylo.R:235:3',
+  'test-missing-predictor-phylo.R:293:3',
+  'test-missing-predictor-phylo.R:321:3',
+  'test-missing-predictor-phylo.R:382:3',
+  'test-missing-predictor-phylo.R:434:3',
+  'test-missing-predictor-phylo.R:491:3',
+  'test-missing-predictor-phylo.R:516:3',
+  'test-missing-response-gaussian.R:42:3',
+  'test-missing-response-gaussian.R:64:3',
+  'test-missing-response-gaussian.R:107:3',
+  'test-missing-response-gaussian.R:164:3',
+  'test-missing-response-gaussian.R:184:3',
+  'test-missing-response-gaussian.R:198:3',
+  'test-missing-response-gaussian.R:214:3',
+  'test-missing-response-gaussian.R:225:3',
+  'test-missing-response-gaussian.R:254:3',
+  'test-missing-response-traits.R:85:3',
+  'test-missing-response-traits.R:127:3',
+  'test-missing-response-traits.R:161:3',
+  'test-missing-response-traits.R:210:3',
+  'test-missing-response-traits.R:251:3',
+  'test-missing-response-traits.R:264:3',
+  'test-missing-response-traits.R:284:3', 'test-nb2-recovery.R:13:3',
+  'test-nb2-recovery.R:59:3', 'test-nb2-recovery.R:101:3',
+  'test-ordinal-recovery-depth.R:107:3',
+  'test-ordinary-latent-random-regression.R:340:3',
+  'test-phylo-column-slope-indep.R:282:3',
+  'test-phylo-column-slope-indep.R:329:3',
+  'test-phylo-dep-slope-gaussian.R:99:3',
+  'test-phylo-dep-slope-gaussian.R:151:3',
+  'test-phylo-dep-slope-gaussian.R:180:3',
+  'test-phylo-dep-slope-gaussian.R:226:3',
+  'test-phylo-dep-slope-gaussian.R:342:3',
+  'test-phylo-dep-slope-gaussian.R:366:3',
+  'test-phylo-dep-slope-gaussian.R:392:3',
+  'test-phylo-dep-slope-gaussian.R:419:3',
+  'test-phylo-dep-slope-s2-gaussian.R:143:3',
+  'test-phylo-dep-slope-s2-gaussian.R:179:3',
+  'test-phylo-dep-slope-s2-gaussian.R:215:3',
+  'test-phylo-dep-slope-s2-gaussian.R:278:3',
+  'test-phylo-indep-slope-gaussian.R:183:3',
+  'test-phylo-indep-slope-gaussian.R:249:3',
+  'test-phylo-indep-slope-nongaussian.R:381:3',
+  'test-phylo-indep-slope-nongaussian.R:397:3',
+  'test-phylo-indep-slope-nongaussian.R:413:3',
+  'test-phylo-indep-slope-nongaussian.R:429:3',
+  'test-phylo-indep-slope-nongaussian.R:452:3',
+  'test-phylo-indep-slope-spike.R:132:3',
+  'test-phylo-indep-slope-spike.R:174:3',
+  'test-phylo-indep-slope-spike.R:204:3',
+  'test-phylo-latent-slope-gaussian.R:78:3',
+  'test-phylo-latent-slope-gaussian.R:115:3',
+  'test-phylo-latent-slope-gaussian.R:134:3',
+  'test-phylo-latent-slope-gaussian.R:208:3',
+  'test-phylo-q-decomposition.R:85:3', 'test-phylo-q-decomposition.R:116:3',
+  'test-phylo-q-decomposition.R:154:3', 'test-phylo-q-decomposition.R:200:3',
+  'test-phylo-q-decomposition.R:268:3',
+  'test-phylo-signal-categorical.R:198:3',
+  'test-phylo-signal-categorical.R:240:3',
+  'test-phylo-signal-categorical.R:292:3', 'test-phylo-signal-ci.R:82:3',
+  'test-phylo-signal-ci.R:113:3', 'test-phylo-signal-ci.R:148:3',
+  'test-phylo-signal-ci.R:185:3', 'test-phylo-unique-slope-gaussian.R:134:3',
+  'test-phylo-unique-slope-gaussian.R:160:3',
+  'test-phylo-unique-slope-gaussian.R:183:3',
+  'test-phylodepindep-binary.R:90:3', 'test-phylodepindep-binary.R:140:3',
+  'test-phyloscalar-binary.R:112:3', 'test-predict-missing-se.R:39:3',
+  'test-predict-missing-se.R:59:3', 'test-predict-missing-se.R:74:3',
+  'test-predict-missing-se.R:98:3', 'test-predict-missing-se.R:133:3',
+  'test-predict-missing-se.R:152:3', 'test-predict-missing-se.R:179:3',
+  'test-predict-missing-se.R:245:3', 'test-predict-missing-se.R:263:3',
+  'test-predict-missing-se.R:333:3', 'test-predict-missing-se.R:347:3',
+  'test-predict-missing-se.R:375:3', 'test-predict-missing-se.R:407:3',
+  'test-predict-missing-se.R:425:3', 'test-predict-missing-se.R:505:3',
+  'test-predict-missing-se.R:555:3', 'test-predict-missing-se.R:569:3',
+  'test-predict-missing-se.R:624:3', 'test-predict-missing-se.R:659:3',
+  'test-predict-missing-se.R:672:3', 'test-predict-missing-se.R:697:3',
+  'test-predict-missing-se.R:713:3', 'test-predict-missing-se.R:733:3',
+  'test-predict-missing-se.R:756:3', 'test-predict-missing-se.R:789:3',
+  'test-predict-missing-se.R:820:3', 'test-predict-missing-se.R:857:3',
+  'test-predict-missing-se.R:870:3', 'test-predict-missing-se.R:891:3',
+  'test-predict-missing-se.R:910:3', 'test-predict-missing-se.R:940:3',
+  'test-predict-missing-se.R:973:3', 'test-predict-missing-se.R:997:3',
+  'test-predict-missing-se.R:1023:3', 'test-predict-missing-se.R:1039:3',
+  'test-predict-missing-se.R:1059:3',
+  'test-profile-ci-total-variance-export.R:160:3', 'test-profile-ci.R:37:3',
+  'test-profile-ci.R:110:3', 'test-profile-ci.R:126:3',
+  'test-profile-ci.R:154:3', 'test-profile-ci.R:171:3',
+  'test-profile-ci.R:189:3', 'test-profile-ci.R:209:3',
+  'test-profile-ci.R:232:3', 'test-profile-ci.R:257:3',
+  'test-profile-ci.R:285:3', 'test-profile-ci.R:297:3',
+  'test-profile-ci.R:383:3', 'test-profile-ci.R:434:3',
+  'test-profile-derived-curves.R:164:3', 'test-profile-derived-curves.R:183:3',
+  'test-profile-derived-curves.R:194:3', 'test-profile-derived-curves.R:205:3',
+  'test-profile-derived-curves.R:220:3', 'test-profile-derived-curves.R:229:3',
+  'test-profile-derived-curves.R:238:3', 'test-profile-derived-curves.R:247:3',
+  'test-profile-derived-curves.R:261:3', 'test-profile-derived-curves.R:278:3',
+  'test-profile-derived-curves.R:290:3', 'test-profile-derived-curves.R:304:3',
+  'test-profile-derived-curves.R:368:3', 'test-profile-derived-curves.R:406:3',
+  'test-profile-derived-curves.R:428:3', 'test-profile-derived-curves.R:451:3',
+  'test-profile-derived-curves.R:478:3', 'test-profile-derived-curves.R:490:3',
+  'test-profile-derived-curves.R:502:3', 'test-profile-derived-curves.R:514:3',
+  'test-profile-derived-curves.R:530:3', 'test-profile-derived-curves.R:558:3',
+  'test-profile-derived-curves.R:571:3', 'test-profile-derived-curves.R:586:3',
+  'test-profile-derived-curves.R:603:3', 'test-profile-derived-curves.R:618:3',
+  'test-profile-proportions.R:116:3', 'test-profile-proportions.R:136:3',
+  'test-profile-proportions.R:160:3', 'test-profile-proportions.R:175:3',
+  'test-profile-proportions.R:185:3', 'test-profile-proportions.R:199:3',
+  'test-profile-proportions.R:216:3', 'test-profile-proportions.R:268:3',
+  'test-profile-proportions.R:288:3', 'test-profile-proportions.R:305:3',
+  'test-profile-proportions.R:320:3', 'test-profile-proportions.R:335:3',
+  'test-profile-proportions.R:352:3', 'test-profile-proportions.R:366:3',
+  'test-profile-proportions.R:380:3', 'test-profile-proportions.R:398:3',
+  'test-profile-proportions.R:413:3', 'test-profile-proportions.R:438:3',
+  'test-profile-proportions.R:451:3', 'test-profile-targets.R:33:3',
+  'test-profile-targets.R:55:3', 'test-profile-targets.R:64:3',
+  'test-profile-targets.R:76:3', 'test-profile-targets.R:86:3',
+  'test-profile-targets.R:96:3', 'test-profile-targets.R:130:3',
+  'test-profile-targets.R:140:3', 'test-profile-targets.R:158:3',
+  'test-profile-targets.R:170:3', 'test-proportions-ci.R:61:3',
+  'test-proportions-ci.R:94:3', 'test-proportions-ci.R:148:3',
+  'test-proportions-ci.R:189:3', 'test-re09-latent-unique-unit.R:74:3',
+  'test-relmat-dep-slope-gaussian.R:94:3',
+  'test-relmat-dep-slope-gaussian.R:142:3',
+  'test-relmat-dep-slope-gaussian.R:183:3',
+  'test-relmat-indep-slope-gaussian.R:135:3',
+  'test-relmat-indep-slope-gaussian.R:160:3',
+  'test-relmat-indep-slope-gaussian.R:187:3',
+  'test-relmat-latent-slope-gaussian.R:90:3',
+  'test-relmat-latent-slope-gaussian.R:118:3',
+  'test-relmat-unique-slope-gaussian.R:146:3',
+  'test-relmat-unique-slope-gaussian.R:172:3',
+  'test-relmat-unique-slope-gaussian.R:195:3',
+  'test-relmat-unique-slope-gaussian.R:261:3', 'test-select-lv-anova.R:137:3',
+  'test-select-lv-anova.R:175:3', 'test-select-lv-anova.R:205:3',
+  'test-sigma-profile-bootstrap-controls.R:29:3',
+  'test-simulate-unit-trait.R:98:3', 'test-slope-sd-ci.R:544:3',
+  'test-spatial-dep-slope-gaussian.R:63:3',
+  'test-spatial-dep-slope-gaussian.R:141:3',
+  'test-spatial-dep-slope-gaussian.R:233:3',
+  'test-spatial-dep-slope-gaussian.R:305:3',
+  'test-spatial-dep-slope-nongaussian.R:295:3',
+  'test-spatial-dep-slope-nongaussian.R:313:3',
+  'test-spatial-dep-slope-nongaussian.R:332:3',
+  'test-spatial-dep-slope-nongaussian.R:357:3',
+  'test-spatial-dep-slope-nongaussian.R:379:3',
+  'test-spatial-dep-slope-nongaussian.R:397:3',
+  'test-spatial-depindep-binary.R:77:3',
+  'test-spatial-depindep-binary.R:123:3',
+  'test-spatial-latent-recovery.R:38:3',
+  'test-spatial-latent-recovery.R:147:3',
+  'test-spatial-latent-slope-gaussian.R:65:3',
+  'test-spatial-latent-slope-gaussian.R:137:3',
+  'test-spatial-latent-slope-gaussian.R:213:3',
+  'test-spatial-pair-binary.R:120:3', 'test-spatial-scalar-binary.R:86:3',
+  'test-spatial-unique-slope-gaussian.R:110:3',
+  'test-spatial-unique-slope-gaussian.R:144:3',
+  'test-spatial-unique-slope-gaussian.R:173:3',
+  'test-spde-slope-base-engine.R:63:3', 'test-spde-slope-base-engine.R:98:3',
+  'test-spde-slope-base-engine.R:172:3', 'test-spde-slope-base-engine.R:229:3',
+  'test-spde-slope-base-engine.R:293:3', 'test-spde-slope-base-engine.R:402:3',
+  'test-student-recovery.R:23:3', 'test-student-recovery.R:71:3',
+  'test-student-recovery.R:95:3', 'test-student-recovery.R:142:3',
+  'test-tiers-beta.R:30:3', 'test-tiers-beta.R:131:3',
+  'test-tiers-gamma.R:33:3', 'test-tiers-gamma.R:141:3',
+  'test-tiers-indep-dep-nongaussian.R:98:3',
+  'test-tiers-indep-dep-nongaussian.R:137:3',
+  'test-tiers-nbinom1-canonical-twins.R:44:3',
+  'test-tiers-nbinom1-canonical-twins.R:155:3', 'test-tiers-nbinom1.R:69:3',
+  'test-tiers-nbinom1.R:145:3', 'test-tiers-nbinom1.R:272:3',
+  'test-tiers-nbinom2.R:41:3', 'test-tiers-nbinom2.R:130:3',
+  'test-tiers-ordinal.R:49:3', 'test-tiers-ordinal.R:144:3',
+  'test-tiers-poisson.R:34:3', 'test-tiers-poisson.R:120:3',
+  'test-truncated-recovery.R:33:3', 'test-truncated-recovery.R:73:3',
+  'test-truncated-recovery.R:112:3', 'test-truncated-recovery.R:153:3',
+  'test-truncated-recovery.R:186:3', 'test-truncated-recovery.R:236:3',
+  'test-truncated-recovery.R:276:3', 'test-truncated-recovery.R:318:3',
+  'test-tweedie-recovery.R:15:3', 'test-tweedie-recovery.R:67:3',
+  'test-tweedie-recovery.R:106:3', 'test-warm-nlminb-restart.R:520:3',
+  'test-warm-nlminb-restart.R:599:3', 'test-warm-nlminb-restart.R:634:3',
+  'test-warm-nlminb-restart.R:673:3', 'test-warm-nlminb-restart.R:693:3',
+  'test-warm-nlminb-restart.R:707:3', 'test-zi-recovery.R:209:3'
+• internal curvature pin is still fenced from Gamma (1):
+  'test-zz-mspl-rest-families-se-feasibility.R:186:5'
+• is.character(rmd_path) && !is.na(rmd_path) && file.exists(rmd_path) is not
+  TRUE (1): 'test-fit-diagnostics-article-prose.R:22:3'
+• Logit recovery requires fixture beyond B0 defaults; see Phase
+  B2-recalibration follow-up. Set GLLVMTMB_RUN_B2_LOGIT=1 to re-measure. (1):
+  'test-phylo-unique-slope-binomial-logit.R:253:5'
+• lognormal MSPL family door is missing (2):
+  'test-zz-mspl-rest-families-se-feasibility.R:206:7',
+  'test-zz-mspl-rest-families-se-feasibility.R:232:7'
+• LV Wald coverage fit smoke is opt-in (2):
+  'test-lv-wald-coverage-harness.R:233:3',
+  'test-lv-wald-coverage-harness.R:263:3'
+• man/profile_targets.Rd missing (run devtools::document()) (1):
+  'test-profile-targets-transformation-docs.R:3:3'
+• man/tmbprofile_wrapper.Rd missing (run devtools::document()) (1):
+  'test-tmbprofile-wrapper-return-docs.R:3:3'
+• missing convergence-start-values.Rmd (1):
+  'test-issue-1361-spatial-location-token.R:156:5'
+• mixed-LV dev harness unavailable in source tarball (21):
+  'test-mixed-lv-family-harness.R:14:3', 'test-mixed-lv-family-harness.R:27:3',
+  'test-mixed-lv-family-harness.R:42:3', 'test-mixed-lv-family-harness.R:53:3',
+  'test-mixed-lv-family-harness.R:61:3', 'test-mixed-lv-family-harness.R:81:3',
+  'test-mixed-lv-family-harness.R:129:3',
+  'test-mixed-lv-family-harness.R:145:3',
+  'test-mixed-lv-family-harness.R:163:3',
+  'test-mixed-lv-family-harness.R:189:3',
+  'test-mixed-lv-family-harness.R:198:3',
+  'test-mixed-lv-family-harness.R:205:3',
+  'test-mixed-lv-family-harness.R:219:3',
+  'test-mixed-lv-family-harness.R:237:3',
+  'test-mixed-lv-family-harness.R:251:3',
+  'test-mixed-lv-family-harness.R:274:3',
+  'test-mixed-lv-family-harness.R:288:3',
+  'test-mixed-lv-family-harness.R:306:3',
+  'test-mixed-lv-family-harness.R:329:3',
+  'test-mixed-lv-family-harness.R:357:3',
+  'test-mixed-lv-family-harness.R:382:3'
+• nadiv not installed (Suggests-only). (1): 'test-animal-keyword.R:425:5'
+• not a source checkout (5): 'test-current-limits-reader-decisions.R:6:3',
+  'test-eva-gate1-fixture.R:49:3',
+  'test-reader-facing-no-register-codes.R:42:3',
+  'test-reader-facing-no-register-codes.R:97:3',
+  'test-reader-facing-no-register-codes.R:115:3'
+• ordinal_probit MSPL family door is missing (2):
+  'test-zz-mspl-rest-families-se-feasibility.R:206:7',
+  'test-zz-mspl-rest-families-se-feasibility.R:232:7'
+• private G2i recovery pre-run runner is unavailable (1):
+  'test-g2i-recovery-prerun.R:4:3'
+• private G2o evidence roots unavailable (1): 'test-g2o-postmortem.R:6:3'
+• production cloglog header unavailable (3):
+  'test-bfgs-compiled-objectives.R:8:3',
+  'test-g2n-compiled-cloglog-unit.R:8:3',
+  'test-g3-compiled-cloglog-unit.R:19:3'
+• R/ not present (2): 'test-no-deprecated-recommendations.R:33:3',
+  'test-no-deprecated-recommendations.R:50:3'
+• R/animal-keyword.R is not in this checkout (1):
+  'test-animal-pedigree-help.R:36:3'
+• R/mspl.R is not available in this installed-package test context. (1):
+  'test-mspl-poisson-phase4-oracles.R:416:3'
+• README missing (1): 'test-issue-1328-first-fit-messages.R:3:3'
+• register file not found (not a source checkout) (1):
+  'test-register-evidence-paths.R:21:3'
+• repo files not available (installed copy) (3):
+  'test-gapclose-next-steps.R:72:3', 'test-gapclose-signposting.R:260:3',
+  'test-gapclose-signposting.R:273:3'
+• repo tools not available (installed copy) (8):
+  'test-gapclose-parity-ledger.R:62:3', 'test-gapclose-parity-ledger.R:68:3',
+  'test-gapclose-parity-ledger.R:83:3', 'test-gapclose-parity-ledger.R:95:3',
+  'test-gapclose-parity-ledger.R:106:3', 'test-gapclose-parity-ledger.R:115:3',
+  'test-gapclose-parity-ledger.R:147:3', 'test-gapclose-parity-ledger.R:200:3'
+• Repository source is unavailable after package installation (1):
+  'test-control-field-surface.R:3:3'
+• Repository-only campaign schema is excluded from the tarball (1):
+  'test-release-core-sentinels.R:294:3'
+• Repository-only source provenance scan is unavailable after installation (1):
+  'test-loading-unpack-contract.R:209:3'
+• requires a source checkout for git-bound campaign receipts (2):
+  'test-mspl-simulation-contract.R:134:3',
+  'test-mspl-simulation-contract.R:970:3'
+• Set GLLVMTMB_CRAN07_RECERTIFY=true for the release evidence run. (1):
+  'test-cran07-core-comparators.R:1477:3'
+• student MSPL family door is missing (2):
+  'test-zz-mspl-rest-families-se-feasibility.R:206:7',
+  'test-zz-mspl-rest-families-se-feasibility.R:232:7'
+• temporal programme files are unavailable in an installed check (13):
+  'test-temporal-phylo-damped-newton.R:8:3',
+  'test-temporal-phylo-damped-newton.R:24:3',
+  'test-temporal-phylo-damped-newton.R:38:3',
+  'test-temporal-phylo-damped-newton.R:58:3',
+  'test-temporal-phylo-damped-newton.R:72:3',
+  'test-temporal-phylo-damped-newton.R:92:3',
+  'test-temporal-phylo-damped-newton.R:106:3',
+  'test-temporal-phylo-damped-newton.R:116:3',
+  'test-temporal-phylo-optimizer-qualification.R:271:3',
+  'test-temporal-phylo-third-pass.R:3:3',
+  'test-temporal-phylo-third-pass.R:19:3',
+  'test-temporal-phylo-third-pass.R:40:3',
+  'test-temporal-phylo-third-pass.R:59:3'
+• The four-arm MSPL surface is now available. (1):
+  'test-mspl-simulation-contract.R:866:3'
+• The sealed EVA helper is present in this integration checkout. (1):
+  'test-approximation-engine.R:163:3'
+• tweedie MSPL family door is missing (2):
+  'test-zz-mspl-tweedie-beta-se-feasibility.R:175:3',
+  'test-zz-mspl-tweedie-beta-se-feasibility.R:181:3'
+• vignette missing (1): 'test-issue-1328-first-fit-messages.R:24:3'
+• vignettes/articles is not present (expected under R CMD check on a built
+  tarball) (3): 'test-article-prescribed-calls.R:112:3',
+  'test-article-prescribed-calls.R:134:3',
+  'test-article-prescribed-calls.R:262:3'
+
+══ Warnings ════════════════════════════════════════════════════════════════════
+── Warning ('test-aghq-missing-response.R:42:3'): AGHQ engages and the response mask composes with it (Bernoulli) ──
+`logLik()` is the unpenalised likelihood evaluated at a penalised MAP point, not at its maximum.
+i The loading ridge used `tau` = 2.
+> Do not use this value for ordinary AIC, BIC, or likelihood-ratio inference; refit with `aghq_ridge = Inf` for likelihood-based comparison.
+Backtrace:
+    ▆
+ 1. ├─testthat::expect_gt(...) at test-aghq-missing-response.R:42:3
+ 2. │ └─testthat::quasi_label(enquo(object), label)
+ 3. │   └─rlang::eval_bare(expr, quo_get_env(quo))
+ 4. ├─stats::logLik(aghq)
+ 5. └─gllvmTMB:::logLik.gllvmTMB_multi(aghq)
+ 6.   └─cli::cli_warn(...)
+── Warning ('test-aghq-missing-response.R:54:3'): AGHQ engages and the response mask composes with it (Bernoulli) ──
+`logLik()` is the unpenalised likelihood evaluated at a penalised MAP point, not at its maximum.
+i The loading ridge used `tau` = 2.
+> Do not use this value for ordinary AIC, BIC, or likelihood-ratio inference; refit with `aghq_ridge = Inf` for likelihood-based comparison.
+Backtrace:
+    ▆
+ 1. ├─testthat::expect_equal(...) at test-aghq-missing-response.R:54:3
+ 2. │ └─testthat::quasi_label(enquo(object), label)
+ 3. │   └─rlang::eval_bare(expr, quo_get_env(quo))
+ 4. ├─stats::logLik(ag_drop)
+ 5. └─gllvmTMB:::logLik.gllvmTMB_multi(ag_drop)
+ 6.   └─cli::cli_warn(...)
+── Warning ('test-aghq-missing-response.R:54:3'): AGHQ engages and the response mask composes with it (Bernoulli) ──
+`logLik()` is the unpenalised likelihood evaluated at a penalised MAP point, not at its maximum.
+i The loading ridge used `tau` = 2.
+> Do not use this value for ordinary AIC, BIC, or likelihood-ratio inference; refit with `aghq_ridge = Inf` for likelihood-based comparison.
+Backtrace:
+    ▆
+ 1. ├─testthat::expect_equal(...) at test-aghq-missing-response.R:54:3
+ 2. │ └─testthat::quasi_label(enquo(expected), expected.label)
+ 3. │   └─rlang::eval_bare(expr, quo_get_env(quo))
+ 4. ├─stats::logLik(ag_incl)
+ 5. └─gllvmTMB:::logLik.gllvmTMB_multi(ag_incl)
+ 6.   └─cli::cli_warn(...)
+── Warning ('test-aghq-missing-response.R:80:3'): the same holds for a count family (Poisson) ──
+`logLik()` is the unpenalised likelihood evaluated at a penalised MAP point, not at its maximum.
+i The loading ridge used `tau` = 2.
+> Do not use this value for ordinary AIC, BIC, or likelihood-ratio inference; refit with `aghq_ridge = Inf` for likelihood-based comparison.
+Backtrace:
+    ▆
+ 1. ├─testthat::expect_gt(...) at test-aghq-missing-response.R:80:3
+ 2. │ └─testthat::quasi_label(enquo(object), label)
+ 3. │   └─rlang::eval_bare(expr, quo_get_env(quo))
+ 4. ├─stats::logLik(aghq)
+ 5. └─gllvmTMB:::logLik.gllvmTMB_multi(aghq)
+ 6.   └─cli::cli_warn(...)
+── Warning ('test-aghq-missing-response.R:90:3'): the same holds for a count family (Poisson) ──
+`logLik()` is the unpenalised likelihood evaluated at a penalised MAP point, not at its maximum.
+i The loading ridge used `tau` = 2.
+> Do not use this value for ordinary AIC, BIC, or likelihood-ratio inference; refit with `aghq_ridge = Inf` for likelihood-based comparison.
+Backtrace:
+    ▆
+ 1. ├─testthat::expect_equal(...) at test-aghq-missing-response.R:90:3
+ 2. │ └─testthat::quasi_label(enquo(object), label)
+ 3. │   └─rlang::eval_bare(expr, quo_get_env(quo))
+ 4. ├─stats::logLik(ag_drop)
+ 5. └─gllvmTMB:::logLik.gllvmTMB_multi(ag_drop)
+ 6.   └─cli::cli_warn(...)
+── Warning ('test-aghq-missing-response.R:90:3'): the same holds for a count family (Poisson) ──
+`logLik()` is the unpenalised likelihood evaluated at a penalised MAP point, not at its maximum.
+i The loading ridge used `tau` = 2.
+> Do not use this value for ordinary AIC, BIC, or likelihood-ratio inference; refit with `aghq_ridge = Inf` for likelihood-based comparison.
+Backtrace:
+    ▆
+ 1. ├─testthat::expect_equal(...) at test-aghq-missing-response.R:90:3
+ 2. │ └─testthat::quasi_label(enquo(expected), expected.label)
+ 3. │   └─rlang::eval_bare(expr, quo_get_env(quo))
+ 4. ├─stats::logLik(ag_incl)
+ 5. └─gllvmTMB:::logLik.gllvmTMB_multi(ag_incl)
+ 6.   └─cli::cli_warn(...)
+── Warning ('test-comparator-gllvm.R:418:3'): gllvmTMB and gllvm agree on the total log-likelihood for unconstrained BINARY ordination (cross-package) ──
+There are rows full of zeros in y. 
+
+Backtrace:
+    ▆
+ 1. └─gllvm::gllvm(...) at test-comparator-gllvm.R:418:3
+── Warning ('test-comparator-gllvm.R:449:3'): gllvmTMB and gllvm agree on loading shape (Procrustes) for unconstrained BINARY ordination (cross-package) ──
+There are rows full of zeros in y. 
+
+Backtrace:
+    ▆
+ 1. └─gllvm::gllvm(...) at test-comparator-gllvm.R:449:3
+── Warning ('test-confirmatory-lambda.R:172:3'): confirmatory_lambda() output is consumable by gllvmTMB() ──
+This fit shows a runaway trait loading; treat it as unusable until checked.
+* C_4 prevalence=0.4; max_loading=69.4; relative_loading=69.4; saturated_fit=0.95
+i trait loading has run away from the rest (an improper solution, or Heywood case); quasi-complete separation produces this at ordinary prevalence
+> treat the fit as unusable rather than interpreting it: this is quasi-complete separation, which lowering the rank does not resolve; for ordinary between-unit latent loadings, try gllvmTMBcontrol(loading_ridge = 0.25) (0.25 to 0.5; larger tau shrinks less) to shrink runaway loadings, or gllvmTMBcontrol(integration = 'va') for latent(..., unique = FALSE) fits with at least 100 units and d <= 2 -- either makes the result a penalised (MAP) or variational estimate, so logLik(), AIC() and BIC() no longer apply to it
+> Full check: `gllvmTMB_diagnose(fit)`. Silence this with `gllvmTMBcontrol(warn_runaway = FALSE)`.
+This warning is displayed once per session.
+Backtrace:
+    ▆
+ 1. └─gllvmTMB::gllvmTMB(...) at test-confirmatory-lambda.R:172:3
+ 2.   └─gllvmTMB:::.gllvmTMB_warn_runaway_loading(.fit)
+ 3.     └─cli::cli_warn(...)
+── Warning ('test-extract-sigma.R:130:3'): extract_Sigma_B / extract_Sigma_W backward-compat wrappers work ──
+`extract_Sigma_B()` was deprecated in gllvmTMB 0.7.0.
+i Please use the `level` argument of `extract_Sigma()` instead.
+Backtrace:
+    ▆
+ 1. ├─base::suppressMessages(extract_Sigma_B(fit)) at test-extract-sigma.R:130:3
+ 2. │ └─base::withCallingHandlers(...)
+ 3. └─gllvmTMB::extract_Sigma_B(fit)
+── Warning ('test-extract-sigma.R:131:3'): extract_Sigma_B / extract_Sigma_W backward-compat wrappers work ──
+`extract_Sigma_W()` was deprecated in gllvmTMB 0.7.0.
+i Please use the `level` argument of `extract_Sigma()` instead.
+Backtrace:
+    ▆
+ 1. ├─base::suppressMessages(extract_Sigma_W(fit)) at test-extract-sigma.R:131:3
+ 2. │ └─base::withCallingHandlers(...)
+ 3. └─gllvmTMB::extract_Sigma_W(fit)
+── Warning ('test-extractors-extra.R:55:3'): extract_Sigma_B(): non-multi fit errors ──
+`extract_Sigma_B()` was deprecated in gllvmTMB 0.7.0.
+i Please use the `level` argument of `extract_Sigma()` instead.
+Backtrace:
+    ▆
+ 1. ├─testthat::expect_error(extract_Sigma_B("not-a-fit"), regexp = "fit returned by `gllvmTMB\\(\\)`") at test-extractors-extra.R:55:3
+ 2. │ └─testthat:::expect_condition_matching_(...)
+ 3. │   └─testthat:::quasi_capture(...)
+ 4. │     ├─testthat (local) .capture(...)
+ 5. │     │ └─base::withCallingHandlers(...)
+ 6. │     └─rlang::eval_bare(quo_get_expr(.quo), quo_get_env(.quo))
+ 7. └─gllvmTMB::extract_Sigma_B("not-a-fit")
+── Warning ('test-extractors-extra.R:59:3'): extract_Sigma_B(): non-multi fit errors ──
+`extract_Sigma_B()` was deprecated in gllvmTMB 0.7.0.
+i Please use the `level` argument of `extract_Sigma()` instead.
+Backtrace:
+    ▆
+ 1. ├─testthat::expect_error(extract_Sigma_B(42), regexp = "fit returned by `gllvmTMB\\(\\)`") at test-extractors-extra.R:59:3
+ 2. │ └─testthat:::expect_condition_matching_(...)
+ 3. │   └─testthat:::quasi_capture(...)
+ 4. │     ├─testthat (local) .capture(...)
+ 5. │     │ └─base::withCallingHandlers(...)
+ 6. │     └─rlang::eval_bare(quo_get_expr(.quo), quo_get_env(.quo))
+ 7. └─gllvmTMB::extract_Sigma_B(42)
+── Warning ('test-extractors-extra.R:63:3'): extract_Sigma_W(): non-multi fit errors ──
+`extract_Sigma_W()` was deprecated in gllvmTMB 0.7.0.
+i Please use the `level` argument of `extract_Sigma()` instead.
+Backtrace:
+    ▆
+ 1. ├─testthat::expect_error(extract_Sigma_W(list()), regexp = "fit returned by `gllvmTMB\\(\\)`") at test-extractors-extra.R:63:3
+ 2. │ └─testthat:::expect_condition_matching_(...)
+ 3. │   └─testthat:::quasi_capture(...)
+ 4. │     ├─testthat (local) .capture(...)
+ 5. │     │ └─base::withCallingHandlers(...)
+ 6. │     └─rlang::eval_bare(quo_get_expr(.quo), quo_get_env(.quo))
+ 7. └─gllvmTMB::extract_Sigma_W(list())
+── Warning ('test-extractors-extra.R:134:3'): extract_Sigma_B(): NULL when neither rr_B nor diag_B is in the fit ──
+`extract_Sigma_B()` was deprecated in gllvmTMB 0.7.0.
+i Please use the `level` argument of `extract_Sigma()` instead.
+Backtrace:
+    ▆
+ 1. ├─testthat::expect_null(extract_Sigma_B(fit)) at test-extractors-extra.R:134:3
+ 2. │ └─testthat::quasi_label(enquo(object), label)
+ 3. │   └─rlang::eval_bare(expr, quo_get_env(quo))
+ 4. └─gllvmTMB::extract_Sigma_B(fit)
+── Warning ('test-extractors-extra.R:139:3'): extract_Sigma_W(): NULL when neither rr_W nor diag_W is in the fit ──
+`extract_Sigma_W()` was deprecated in gllvmTMB 0.7.0.
+i Please use the `level` argument of `extract_Sigma()` instead.
+Backtrace:
+    ▆
+ 1. ├─testthat::expect_null(extract_Sigma_W(fit)) at test-extractors-extra.R:139:3
+ 2. │ └─testthat::quasi_label(enquo(object), label)
+ 3. │   └─rlang::eval_bare(expr, quo_get_env(quo))
+ 4. └─gllvmTMB::extract_Sigma_W(fit)
+── Warning ('test-extractors-extra.R:163:3'): extract_Sigma_B(): diag_B alone yields a diagonal Sigma_B ──
+`extract_Sigma_B()` was deprecated in gllvmTMB 0.7.0.
+i Please use the `level` argument of `extract_Sigma()` instead.
+Backtrace:
+    ▆
+ 1. └─gllvmTMB::extract_Sigma_B(fit) at test-extractors-extra.R:163:3
+── Warning ('test-extractors-extra.R:177:3'): extract_Sigma_B() is rotation-invariant (varimax leaves Sigma_B unchanged) ──
+`extract_Sigma_B()` was deprecated in gllvmTMB 0.7.0.
+i Please use the `level` argument of `extract_Sigma()` instead.
+Backtrace:
+    ▆
+ 1. └─gllvmTMB::extract_Sigma_B(fit) at test-extractors-extra.R:177:3
+── Warning ('test-extractors-extra.R:224:3'): extract_communality('unit') equals diag(LL') / diag(Sigma_B) ──
+`extract_Sigma_B()` was deprecated in gllvmTMB 0.7.0.
+i Please use the `level` argument of `extract_Sigma()` instead.
+Backtrace:
+    ▆
+ 1. └─gllvmTMB::extract_Sigma_B(fit) at test-extractors-extra.R:224:3
+── Warning ('test-extractors-extra.R:243:3'): getResidualCov(level='unit') matches extract_Sigma_B()$Sigma_B ──
+`extract_Sigma_B()` was deprecated in gllvmTMB 0.7.0.
+i Please use the `level` argument of `extract_Sigma()` instead.
+Backtrace:
+    ▆
+ 1. ├─testthat::expect_equal(getResidualCov(fit, "unit"), extract_Sigma_B(fit)$Sigma_B) at test-extractors-extra.R:243:3
+ 2. │ └─testthat::quasi_label(enquo(expected), expected.label)
+ 3. │   └─rlang::eval_bare(expr, quo_get_env(quo))
+ 4. └─gllvmTMB::extract_Sigma_B(fit)
+── Warning ('test-extractors-extra.R:248:3'): getResidualCor(level='unit') matches extract_Sigma_B()$R_B ──
+`extract_Sigma_B()` was deprecated in gllvmTMB 0.7.0.
+i Please use the `level` argument of `extract_Sigma()` instead.
+Backtrace:
+    ▆
+ 1. ├─testthat::expect_equal(getResidualCor(fit, "unit"), extract_Sigma_B(fit)$R_B) at test-extractors-extra.R:248:3
+ 2. │ └─testthat::quasi_label(enquo(expected), expected.label)
+ 3. │   └─rlang::eval_bare(expr, quo_get_env(quo))
+ 4. └─gllvmTMB::extract_Sigma_B(fit)
+── Warning ('test-extractors.R:27:3'): extract_Sigma_B / Sigma_W return correlation matrices on the diagonal ──
+`extract_Sigma_B()` was deprecated in gllvmTMB 0.7.0.
+i Please use the `level` argument of `extract_Sigma()` instead.
+Backtrace:
+    ▆
+ 1. └─gllvmTMB::extract_Sigma_B(fit) at test-extractors.R:27:3
+── Warning ('test-extractors.R:28:3'): extract_Sigma_B / Sigma_W return correlation matrices on the diagonal ──
+`extract_Sigma_W()` was deprecated in gllvmTMB 0.7.0.
+i Please use the `level` argument of `extract_Sigma()` instead.
+Backtrace:
+    ▆
+ 1. └─gllvmTMB::extract_Sigma_W(fit) at test-extractors.R:28:3
+── Warning ('test-integration-tour.R:67:3'): integration: simulate -> fit -> all extractors -> predict -> simulate ──
+`extract_Sigma_B()` was deprecated in gllvmTMB 0.7.0.
+i Please use the `level` argument of `extract_Sigma()` instead.
+Backtrace:
+    ▆
+ 1. └─gllvmTMB::extract_Sigma_B(fit) at test-integration-tour.R:67:3
+── Warning ('test-integration-tour.R:69:3'): integration: simulate -> fit -> all extractors -> predict -> simulate ──
+`extract_Sigma_W()` was deprecated in gllvmTMB 0.7.0.
+i Please use the `level` argument of `extract_Sigma()` instead.
+Backtrace:
+    ▆
+ 1. └─gllvmTMB::extract_Sigma_W(fit) at test-integration-tour.R:69:3
+── Warning ('test-issue-1409-bootstrap-sigma-default-level.R:38:3'): bootstrap_Sigma() default level does not warn about legacy B/W ──
+`n_boot` = 2 cannot deliver a 95% percentile interval.
+x The widest interval 2 draws can produce is [min, max], whose coverage is at most 0.333 -- below the requested 0.95. This is arithmetic, not a property of your data.
+i Use `n_boot` >= 39 for 95% intervals; 999 is the default.
+i `n_cores` >= 2 parallelises the refits via future.
+i The ceiling is returned as `$coverage_ceiling` so a script can check it.
+Backtrace:
+     ▆
+  1. ├─testthat::expect_warning(...) at test-issue-1409-bootstrap-sigma-default-level.R:38:3
+  2. │ └─testthat:::expect_condition_matching_(...)
+  3. │   └─testthat:::quasi_capture(...)
+  4. │     ├─testthat (local) .capture(...)
+  5. │     │ └─base::withCallingHandlers(...)
+  6. │     └─rlang::eval_bare(quo_get_expr(.quo), quo_get_env(.quo))
+  7. ├─base::suppressMessages(...)
+  8. │ └─base::withCallingHandlers(...)
+  9. └─gllvmTMB::bootstrap_Sigma(...)
+ 10.   └─cli::cli_warn(...)
+── Warning ('test-julia-bridge.R:967:3'): Julia bridge covariance and raw ordination accessors are routed narrowly ──
+`extract_Sigma_B()` was deprecated in gllvmTMB 0.7.0.
+i Please use the `level` argument of `extract_Sigma()` instead.
+Backtrace:
+    ▆
+ 1. ├─base::suppressMessages(extract_Sigma_B(fit)) at test-julia-bridge.R:967:3
+ 2. │ └─base::withCallingHandlers(...)
+ 3. └─gllvmTMB::extract_Sigma_B(fit)
+── Warning ('test-julia-bridge.R:970:3'): Julia bridge covariance and raw ordination accessors are routed narrowly ──
+`extract_Sigma_W()` was deprecated in gllvmTMB 0.7.0.
+i Please use the `level` argument of `extract_Sigma()` instead.
+Backtrace:
+    ▆
+ 1. ├─testthat::expect_null(extract_Sigma_W(fit)) at test-julia-bridge.R:970:3
+ 2. │ └─testthat::quasi_label(enquo(object), label)
+ 3. │   └─rlang::eval_bare(expr, quo_get_env(quo))
+ 4. └─gllvmTMB::extract_Sigma_W(fit)
+── Warning ('test-link-residual-multinomial.R:58:3'): extract_Sigma(link_residual='auto') adds (pi^2/6)(I+J) to a multinomial V; 'none' does not ──
+This fit shows a degenerate multinomial contrast structure; treat the among-category covariance as unusable until checked.
+* morph@phylo: d=2; min_contrast_var=0.0694; max_rail_rho=1
+i multinomial contrast degeneracy detected (arms: contrast rail)
+> a rail (|rho| near 1) between two contrasts of the same response suggests the fitted rank is not supported by these K-1 contrasts; compare a lower rank or re-check baseline-category coding
+> Full check: `gllvmTMB_diagnose(fit)`. Silence this with `gllvmTMBcontrol(warn_runaway = FALSE)`.
+This warning is displayed once per session.
+Backtrace:
+    ▆
+ 1. └─gllvmTMB::gllvmTMB(...) at test-link-residual-multinomial.R:58:3
+ 2.   └─cli::cli_warn(...)
+── Warning ('test-missing-response-nongaussian.R:51:7'): masked response == complete-case for binomial ──
+This fit shows a runaway trait loading; treat it as unusable until checked.
+* t2 prevalence=0.837; max_loading=46.5; relative_loading=2380; saturated_fit=1
+i trait loading has run away from the rest (an improper solution, or Heywood case); quasi-complete separation produces this at ordinary prevalence
+> treat the fit as unusable rather than interpreting it: this is quasi-complete separation, which lowering the rank does not resolve; for ordinary between-unit latent loadings, try gllvmTMBcontrol(loading_ridge = 0.25) (0.25 to 0.5; larger tau shrinks less) to shrink runaway loadings, or gllvmTMBcontrol(integration = 'va') for latent(..., unique = FALSE) fits with at least 100 units and d <= 2 -- either makes the result a penalised (MAP) or variational estimate, so logLik(), AIC() and BIC() no longer apply to it
+> Full check: `gllvmTMB_diagnose(fit)`. Silence this with `gllvmTMBcontrol(warn_runaway = FALSE)`.
+This warning is displayed once per session.
+Backtrace:
+    ▆
+ 1. └─gllvmTMB (local) run_include_drop_equiv(fam_name, fam_fun) at test-missing-response-nongaussian.R:51:7
+ 2.   ├─base::suppressMessages(...) at test-missing-response-nongaussian.R:31:3
+ 3.   │ └─base::withCallingHandlers(...)
+ 4.   └─gllvmTMB::gllvmTMB(...) at test-missing-response-nongaussian.R:31:3
+ 5.     └─gllvmTMB:::.gllvmTMB_warn_runaway_loading(.fit)
+ 6.       └─cli::cli_warn(...)
+── Warning ('test-missing-response-nongaussian.R:51:7'): masked response == complete-case for binomial ──
+This fit shows a runaway trait loading; treat it as unusable until checked.
+* t2 prevalence=0.837; max_loading=46.5; relative_loading=2380; saturated_fit=1
+i trait loading has run away from the rest (an improper solution, or Heywood case); quasi-complete separation produces this at ordinary prevalence
+> treat the fit as unusable rather than interpreting it: this is quasi-complete separation, which lowering the rank does not resolve; for ordinary between-unit latent loadings, try gllvmTMBcontrol(loading_ridge = 0.25) (0.25 to 0.5; larger tau shrinks less) to shrink runaway loadings, or gllvmTMBcontrol(integration = 'va') for latent(..., unique = FALSE) fits with at least 100 units and d <= 2 -- either makes the result a penalised (MAP) or variational estimate, so logLik(), AIC() and BIC() no longer apply to it
+> Full check: `gllvmTMB_diagnose(fit)`. Silence this with `gllvmTMBcontrol(warn_runaway = FALSE)`.
+This warning is displayed once per session.
+Backtrace:
+    ▆
+ 1. └─gllvmTMB (local) run_include_drop_equiv(fam_name, fam_fun) at test-missing-response-nongaussian.R:51:7
+ 2.   ├─base::suppressMessages(...) at test-missing-response-nongaussian.R:35:3
+ 3.   │ └─base::withCallingHandlers(...)
+ 4.   └─gllvmTMB::gllvmTMB(...) at test-missing-response-nongaussian.R:35:3
+ 5.     └─gllvmTMB:::.gllvmTMB_warn_runaway_loading(.fit)
+ 6.       └─cli::cli_warn(...)
+── Warning ('test-optArgs-plumbing.R:18:3'): gllvmTMB warns when nlminb optArgs uses top-level iter.max (#1354) ──
+`gllvmTMBcontrol(optArgs = ...)` ignored: iter.max.
+i Only `control`, `lower`, `upper`, and `scale` are passed to "nlminb".
+i Use `optArgs = list(control = list(iter.max = ...))` for iteration limits.
+Backtrace:
+     ▆
+  1. ├─testthat::expect_warning(...) at test-optArgs-plumbing.R:18:3
+  2. │ └─testthat:::expect_condition_matching_(...)
+  3. │   └─testthat:::quasi_capture(...)
+  4. │     ├─testthat (local) .capture(...)
+  5. │     │ └─base::withCallingHandlers(...)
+  6. │     └─rlang::eval_bare(quo_get_expr(.quo), quo_get_env(.quo))
+  7. ├─base::suppressMessages(...)
+  8. │ └─base::withCallingHandlers(...)
+  9. └─gllvmTMB::gllvmTMB(...)
+ 10.   └─gllvmTMB (local) fit_once(control)
+ 11.     └─gllvmTMB:::gllvmTMB_multi_fit(...)
+ 12.       ├─base::tryCatch(...)
+ 13.       │ └─base (local) tryCatchList(expr, classes, parentenv, handlers)
+ 14.       │   └─base (local) tryCatchOne(expr, names, parentenv, handlers[[1L]])
+ 15.       │     └─base (local) doTryCatch(return(expr), name, parentenv, handler)
+ 16.       └─gllvmTMB (local) run_passes(par0, .ridge_tau = laplace_ridge_tau)
+ 17.         └─gllvmTMB (local) optimizer_run_with_receipt(par_init, .ridge_tau = .ridge_tau)
+ 18.           └─gllvmTMB (local) run_one(start, .ridge_tau = .ridge_tau)
+ 19.             └─gllvmTMB (local) .gllvmTMB_warn_ignored_opt_args(names(nlminb_args)[!keep], "nlminb")
+ 20.               └─cli::cli_warn(...)
+── Warning ('test-ordinary-latent-random-regression.R:573:3'): ordinary latent random-regression guards unsupported slope variants ──
+Unused optional grouping argument(s): unit_obs.
+i No formula covariance keyword uses unit_obs.
+> Remove the unused optional grouping argument(s), or use its column in a covariance keyword.
+Backtrace:
+    ▆
+ 1. ├─testthat::expect_error(...) at test-ordinary-latent-random-regression.R:573:3
+ 2. │ └─testthat:::expect_condition_matching_(...)
+ 3. │   └─testthat:::quasi_capture(...)
+ 4. │     ├─testthat (local) .capture(...)
+ 5. │     │ └─base::withCallingHandlers(...)
+ 6. │     └─rlang::eval_bare(quo_get_expr(.quo), quo_get_env(.quo))
+ 7. └─gllvmTMB::gllvmTMB(...)
+ 8.   └─cli::cli_warn(...)
+── Warning ('test-ordinary-latent-random-regression.R:591:3'): ordinary latent random-regression guards unsupported slope variants ──
+Unused optional grouping argument(s): unit_obs.
+i No formula covariance keyword uses unit_obs.
+> Remove the unused optional grouping argument(s), or use its column in a covariance keyword.
+Backtrace:
+    ▆
+ 1. ├─testthat::expect_error(...) at test-ordinary-latent-random-regression.R:591:3
+ 2. │ └─testthat:::expect_condition_matching_(...)
+ 3. │   └─testthat:::quasi_capture(...)
+ 4. │     ├─testthat (local) .capture(...)
+ 5. │     │ └─base::withCallingHandlers(...)
+ 6. │     └─rlang::eval_bare(quo_get_expr(.quo), quo_get_env(.quo))
+ 7. └─gllvmTMB::gllvmTMB(...)
+ 8.   └─cli::cli_warn(...)
+── Warning ('test-ordinary-latent-random-regression.R:622:3'): ordinary latent random-regression guards unsupported slope variants ──
+Unused optional grouping argument(s): unit_obs.
+i No formula covariance keyword uses unit_obs.
+> Remove the unused optional grouping argument(s), or use its column in a covariance keyword.
+Backtrace:
+    ▆
+ 1. ├─testthat::expect_error(...) at test-ordinary-latent-random-regression.R:622:3
+ 2. │ └─testthat:::expect_condition_matching_(...)
+ 3. │   └─testthat:::quasi_capture(...)
+ 4. │     ├─testthat (local) .capture(...)
+ 5. │     │ └─base::withCallingHandlers(...)
+ 6. │     └─rlang::eval_bare(quo_get_expr(.quo), quo_get_env(.quo))
+ 7. └─gllvmTMB::gllvmTMB(...)
+ 8.   └─cli::cli_warn(...)
+── Warning ('test-ordinary-latent-random-regression.R:638:3'): ordinary latent random-regression guards unsupported slope variants ──
+Unused optional grouping argument(s): unit_obs.
+i No formula covariance keyword uses unit_obs.
+> Remove the unused optional grouping argument(s), or use its column in a covariance keyword.
+Backtrace:
+    ▆
+ 1. ├─testthat::expect_error(...) at test-ordinary-latent-random-regression.R:638:3
+ 2. │ └─testthat:::expect_condition_matching_(...)
+ 3. │   └─testthat:::quasi_capture(...)
+ 4. │     ├─testthat (local) .capture(...)
+ 5. │     │ └─base::withCallingHandlers(...)
+ 6. │     └─rlang::eval_bare(quo_get_expr(.quo), quo_get_env(.quo))
+ 7. └─gllvmTMB::gllvmTMB(...)
+ 8.   └─cli::cli_warn(...)
+── Warning ('test-ordinary-latent-random-regression.R:654:3'): ordinary latent random-regression guards unsupported slope variants ──
+Unused optional grouping argument(s): unit_obs.
+i No formula covariance keyword uses unit_obs.
+> Remove the unused optional grouping argument(s), or use its column in a covariance keyword.
+Backtrace:
+    ▆
+ 1. ├─testthat::expect_error(...) at test-ordinary-latent-random-regression.R:654:3
+ 2. │ └─testthat:::expect_condition_matching_(...)
+ 3. │   └─testthat:::quasi_capture(...)
+ 4. │     ├─testthat (local) .capture(...)
+ 5. │     │ └─base::withCallingHandlers(...)
+ 6. │     └─rlang::eval_bare(quo_get_expr(.quo), quo_get_env(.quo))
+ 7. └─gllvmTMB::gllvmTMB(...)
+ 8.   └─cli::cli_warn(...)
+── Warning ('test-ordinary-latent-random-regression.R:680:3'): ordinary augmented unique random regression is Gaussian-only for now ──
+Unused optional grouping argument(s): unit_obs.
+i No formula covariance keyword uses unit_obs.
+> Remove the unused optional grouping argument(s), or use its column in a covariance keyword.
+Backtrace:
+    ▆
+ 1. ├─testthat::expect_error(...) at test-ordinary-latent-random-regression.R:680:3
+ 2. │ └─testthat:::expect_condition_matching_(...)
+ 3. │   └─testthat:::quasi_capture(...)
+ 4. │     ├─testthat (local) .capture(...)
+ 5. │     │ └─base::withCallingHandlers(...)
+ 6. │     └─rlang::eval_bare(quo_get_expr(.quo), quo_get_env(.quo))
+ 7. └─gllvmTMB::gllvmTMB(...)
+ 8.   └─cli::cli_warn(...)
+── Warning ('test-phylo-column-slope-indep.R:96:3'): column slopes use predictor-only design and the RHS trait map ──
+Unused optional grouping argument(s): cluster.
+i No formula covariance keyword uses cluster.
+> Remove the unused optional grouping argument(s), or use its column in a covariance keyword.
+Backtrace:
+    ▆
+ 1. └─gllvmTMB (local) .fit_column_slope(fx) at test-phylo-column-slope-indep.R:96:3
+ 2.   ├─base::suppressMessages(...) at test-phylo-column-slope-indep.R:27:3
+ 3.   │ └─base::withCallingHandlers(...)
+ 4.   └─gllvmTMB::gllvmTMB(...)
+ 5.     └─cli::cli_warn(...)
+── Warning ('test-phylo-column-slope-indep.R:127:3'): full column-slope covariance and helpers preserve their contracts ──
+Unused optional grouping argument(s): cluster.
+i No formula covariance keyword uses cluster.
+> Remove the unused optional grouping argument(s), or use its column in a covariance keyword.
+Backtrace:
+    ▆
+ 1. └─gllvmTMB (local) .fit_column_slope(...) at test-phylo-column-slope-indep.R:127:3
+ 2.   ├─base::suppressMessages(...) at test-phylo-column-slope-indep.R:27:3
+ 3.   │ └─base::withCallingHandlers(...)
+ 4.   └─gllvmTMB::gllvmTMB(...)
+ 5.     └─cli::cli_warn(...)
+── Warning ('test-phylo-column-slope-indep.R:131:3'): full column-slope covariance and helpers preserve their contracts ──
+Unused optional grouping argument(s): cluster.
+i No formula covariance keyword uses cluster.
+> Remove the unused optional grouping argument(s), or use its column in a covariance keyword.
+Backtrace:
+    ▆
+ 1. └─gllvmTMB (local) .fit_column_slope(...) at test-phylo-column-slope-indep.R:131:3
+ 2.   ├─base::suppressMessages(...) at test-phylo-column-slope-indep.R:27:3
+ 3.   │ └─base::withCallingHandlers(...)
+ 4.   └─gllvmTMB::gllvmTMB(...)
+ 5.     └─cli::cli_warn(...)
+── Warning ('test-phylo-column-slope-indep.R:135:3'): full column-slope covariance and helpers preserve their contracts ──
+Unused optional grouping argument(s): cluster.
+i No formula covariance keyword uses cluster.
+> Remove the unused optional grouping argument(s), or use its column in a covariance keyword.
+Backtrace:
+    ▆
+ 1. └─gllvmTMB (local) .fit_column_slope(...) at test-phylo-column-slope-indep.R:135:3
+ 2.   ├─base::suppressMessages(...) at test-phylo-column-slope-indep.R:27:3
+ 3.   │ └─base::withCallingHandlers(...)
+ 4.   └─gllvmTMB::gllvmTMB(...)
+ 5.     └─cli::cli_warn(...)
+── Warning ('test-phylo-column-slope-indep.R:151:3'): full column-slope covariance and helpers preserve their contracts ──
+Unused optional grouping argument(s): cluster.
+i No formula covariance keyword uses cluster.
+> Remove the unused optional grouping argument(s), or use its column in a covariance keyword.
+Backtrace:
+    ▆
+ 1. └─gllvmTMB (local) .fit_column_slope(...) at test-phylo-column-slope-indep.R:151:3
+ 2.   ├─base::suppressMessages(...) at test-phylo-column-slope-indep.R:27:3
+ 3.   │ └─base::withCallingHandlers(...)
+ 4.   └─gllvmTMB::gllvmTMB(...)
+ 5.     └─cli::cli_warn(...)
+── Warning ('test-phylo-column-slope-indep.R:155:3'): full column-slope covariance and helpers preserve their contracts ──
+Unused optional grouping argument(s): cluster.
+i No formula covariance keyword uses cluster.
+> Remove the unused optional grouping argument(s), or use its column in a covariance keyword.
+Backtrace:
+    ▆
+ 1. └─gllvmTMB (local) .fit_column_slope(...) at test-phylo-column-slope-indep.R:155:3
+ 2.   ├─base::suppressMessages(...) at test-phylo-column-slope-indep.R:27:3
+ 3.   │ └─base::withCallingHandlers(...)
+ 4.   └─gllvmTMB::gllvmTMB(...)
+ 5.     └─cli::cli_warn(...)
+── Warning ('test-phylo-column-slope-indep.R:159:3'): full column-slope covariance and helpers preserve their contracts ──
+Unused optional grouping argument(s): cluster.
+i No formula covariance keyword uses cluster.
+> Remove the unused optional grouping argument(s), or use its column in a covariance keyword.
+Backtrace:
+    ▆
+ 1. └─gllvmTMB (local) .fit_column_slope(...) at test-phylo-column-slope-indep.R:159:3
+ 2.   ├─base::suppressMessages(...) at test-phylo-column-slope-indep.R:27:3
+ 3.   │ └─base::withCallingHandlers(...)
+ 4.   └─gllvmTMB::gllvmTMB(...)
+ 5.     └─cli::cli_warn(...)
+── Warning ('test-phylo-column-slope-indep.R:172:3'): full column-slope covariance and helpers preserve their contracts ──
+Unused optional grouping argument(s): cluster.
+i No formula covariance keyword uses cluster.
+> Remove the unused optional grouping argument(s), or use its column in a covariance keyword.
+Backtrace:
+    ▆
+ 1. └─gllvmTMB (local) .fit_column_slope(...) at test-phylo-column-slope-indep.R:172:3
+ 2.   ├─base::suppressMessages(...) at test-phylo-column-slope-indep.R:27:3
+ 3.   │ └─base::withCallingHandlers(...)
+ 4.   └─gllvmTMB::gllvmTMB(...)
+ 5.     └─cli::cli_warn(...)
+── Warning ('test-phylo-column-slope-indep.R:176:3'): full column-slope covariance and helpers preserve their contracts ──
+Unused optional grouping argument(s): cluster.
+i No formula covariance keyword uses cluster.
+> Remove the unused optional grouping argument(s), or use its column in a covariance keyword.
+Backtrace:
+    ▆
+ 1. └─gllvmTMB (local) .fit_column_slope(...) at test-phylo-column-slope-indep.R:176:3
+ 2.   ├─base::suppressMessages(...) at test-phylo-column-slope-indep.R:27:3
+ 3.   │ └─base::withCallingHandlers(...)
+ 4.   └─gllvmTMB::gllvmTMB(...)
+ 5.     └─cli::cli_warn(...)
+── Warning ('test-phylo-column-slope-indep.R:180:3'): full column-slope covariance and helpers preserve their contracts ──
+Unused optional grouping argument(s): cluster.
+i No formula covariance keyword uses cluster.
+> Remove the unused optional grouping argument(s), or use its column in a covariance keyword.
+Backtrace:
+    ▆
+ 1. └─gllvmTMB (local) .fit_column_slope(...) at test-phylo-column-slope-indep.R:180:3
+ 2.   ├─base::suppressMessages(...) at test-phylo-column-slope-indep.R:27:3
+ 3.   │ └─base::withCallingHandlers(...)
+ 4.   └─gllvmTMB::gllvmTMB(...)
+ 5.     └─cli::cli_warn(...)
+── Warning ('test-phylo-column-slope-indep.R:225:3'): column slope grammar rejects an intercept, trait basis, and wrong RHS ──
+Unused optional grouping argument(s): cluster.
+i No formula covariance keyword uses cluster.
+> Remove the unused optional grouping argument(s), or use its column in a covariance keyword.
+Backtrace:
+    ▆
+ 1. ├─testthat::expect_error(...) at test-phylo-column-slope-indep.R:225:3
+ 2. │ └─testthat:::expect_condition_matching_(...)
+ 3. │   └─testthat:::quasi_capture(...)
+ 4. │     ├─testthat (local) .capture(...)
+ 5. │     │ └─base::withCallingHandlers(...)
+ 6. │     └─rlang::eval_bare(quo_get_expr(.quo), quo_get_env(.quo))
+ 7. ├─base::do.call(...)
+ 8. └─gllvmTMB (local) `<fn>`(...)
+ 9.   └─cli::cli_warn(...)
+── Warning ('test-phylo-column-slope-indep.R:239:3'): column slopes are Gaussian-only ──
+Unused optional grouping argument(s): cluster.
+i No formula covariance keyword uses cluster.
+> Remove the unused optional grouping argument(s), or use its column in a covariance keyword.
+Backtrace:
+     ▆
+  1. ├─testthat::expect_error(...) at test-phylo-column-slope-indep.R:239:3
+  2. │ └─testthat:::expect_condition_matching_(...)
+  3. │   └─testthat:::quasi_capture(...)
+  4. │     ├─testthat (local) .capture(...)
+  5. │     │ └─base::withCallingHandlers(...)
+  6. │     └─rlang::eval_bare(quo_get_expr(.quo), quo_get_env(.quo))
+  7. └─gllvmTMB (local) .fit_column_slope(fx, family = stats::poisson())
+  8.   ├─base::suppressMessages(...) at test-phylo-column-slope-indep.R:27:3
+  9.   │ └─base::withCallingHandlers(...)
+ 10.   └─gllvmTMB::gllvmTMB(...)
+ 11.     └─cli::cli_warn(...)
+── Warning ('test-phylo-column-slope-indep.R:253:3'): column slopes reject transformed, factor, and non-finite predictors ──
+Unused optional grouping argument(s): cluster.
+i No formula covariance keyword uses cluster.
+> Remove the unused optional grouping argument(s), or use its column in a covariance keyword.
+Backtrace:
+    ▆
+ 1. ├─testthat::expect_error(...) at test-phylo-column-slope-indep.R:253:3
+ 2. │ └─testthat:::expect_condition_matching_(...)
+ 3. │   └─testthat:::quasi_capture(...)
+ 4. │     ├─testthat (local) .capture(...)
+ 5. │     │ └─base::withCallingHandlers(...)
+ 6. │     └─rlang::eval_bare(quo_get_expr(.quo), quo_get_env(.quo))
+ 7. └─gllvmTMB::gllvmTMB(...)
+ 8.   └─cli::cli_warn(...)
+── Warning ('test-phylo-column-slope-indep.R:259:3'): column slopes reject transformed, factor, and non-finite predictors ──
+Unused optional grouping argument(s): cluster.
+i No formula covariance keyword uses cluster.
+> Remove the unused optional grouping argument(s), or use its column in a covariance keyword.
+Backtrace:
+    ▆
+ 1. ├─testthat::expect_error(...) at test-phylo-column-slope-indep.R:259:3
+ 2. │ └─testthat:::expect_condition_matching_(...)
+ 3. │   └─testthat:::quasi_capture(...)
+ 4. │     ├─testthat (local) .capture(...)
+ 5. │     │ └─base::withCallingHandlers(...)
+ 6. │     └─rlang::eval_bare(quo_get_expr(.quo), quo_get_env(.quo))
+ 7. └─gllvmTMB::gllvmTMB(...)
+ 8.   └─cli::cli_warn(...)
+── Warning ('test-phylo-slope-rhs-routing.R:27:3'): phylo_slope() uses its RHS map, not top-level cluster ──
+Unused optional grouping argument(s): cluster.
+i No formula covariance keyword uses cluster.
+> Remove the unused optional grouping argument(s), or use its column in a covariance keyword.
+Backtrace:
+    ▆
+ 1. ├─base::suppressMessages(...) at test-phylo-slope-rhs-routing.R:27:3
+ 2. │ └─base::withCallingHandlers(...)
+ 3. └─gllvmTMB::gllvmTMB(...)
+ 4.   └─cli::cli_warn(...)
+── Warning ('test-phylo-slope-rhs-routing.R:62:3'): phylo_slope() rejects a non-column RHS ──
+Unused optional grouping argument(s): cluster.
+i No formula covariance keyword uses cluster.
+> Remove the unused optional grouping argument(s), or use its column in a covariance keyword.
+Backtrace:
+    ▆
+ 1. ├─testthat::expect_error(...) at test-phylo-slope-rhs-routing.R:62:3
+ 2. │ └─testthat:::expect_condition_matching_(...)
+ 3. │   └─testthat:::quasi_capture(...)
+ 4. │     ├─testthat (local) .capture(...)
+ 5. │     │ └─base::withCallingHandlers(...)
+ 6. │     └─rlang::eval_bare(quo_get_expr(.quo), quo_get_env(.quo))
+ 7. └─gllvmTMB::gllvmTMB(...)
+ 8.   └─cli::cli_warn(...)
+── Warning ('test-phylo-slope-rhs-routing.R:78:3'): phylo_slope() maps a tree's augmented nodes from its RHS ──
+Unused optional grouping argument(s): cluster.
+i No formula covariance keyword uses cluster.
+> Remove the unused optional grouping argument(s), or use its column in a covariance keyword.
+Backtrace:
+    ▆
+ 1. ├─base::suppressMessages(...) at test-phylo-slope-rhs-routing.R:78:3
+ 2. │ └─base::withCallingHandlers(...)
+ 3. └─gllvmTMB::gllvmTMB(...)
+ 4.   └─cli::cli_warn(...)
+── Warning ('test-scalar-family-collapse.R:86:3'): scalar-family keywords emit a warn-once soft-deprecation ──
+`spatial_scalar()`'s `| site` grouping token is ignored.
+i At the default `rho = 1`, spatial keywords read locations from `mesh` (or `coords`), rather than the token right of `|`.
+> Write `spatial_scalar(..., | coords)` for clarity, and pass `mesh = ...` (or `coords = ...`) to supply the actual locations.
+Backtrace:
+     ▆
+  1. ├─testthat::expect_warning(...) at test-scalar-family-collapse.R:86:3
+  2. │ └─testthat:::expect_condition_matching_(...)
+  3. │   └─testthat:::quasi_capture(...)
+  4. │     ├─testthat (local) .capture(...)
+  5. │     │ └─base::withCallingHandlers(...)
+  6. │     └─rlang::eval_bare(quo_get_expr(.quo), quo_get_env(.quo))
+  7. └─gllvmTMB:::rewrite_canonical_aliases(...)
+  8.   └─gllvmTMB (local) rewrite(rhs)
+  9.     └─gllvmTMB (local) rewrite(e[[i]])
+ 10.       └─gllvmTMB:::.warn_spatial_grouping_token(fn, e)
+ 11.         └─cli::cli_warn(...)
+── Warning ('test-sigma-rename.R:95:3'): extract_correlations accepts canonical and legacy tier names ──
+NaNs produced
+Backtrace:
+     ▆
+  1. ├─base::suppressMessages(...) at test-sigma-rename.R:95:3
+  2. │ └─base::withCallingHandlers(...)
+  3. └─gllvmTMB::gllvmTMB(...)
+  4.   └─gllvmTMB (local) fit_once(control)
+  5.     └─gllvmTMB:::gllvmTMB_multi_fit(...)
+  6.       ├─base::tryCatch(...)
+  7.       │ └─base (local) tryCatchList(expr, classes, parentenv, handlers)
+  8.       │   └─base (local) tryCatchOne(expr, names, parentenv, handlers[[1L]])
+  9.       │     └─base (local) doTryCatch(return(expr), name, parentenv, handler)
+ 10.       └─gllvmTMB:::.gllvmTMB_sdreport_loading_ridge(...)
+ 11.         └─TMB::sdreport(obj, par.fixed = par, hessian.fixed = H, ...)
+── Warning ('test-stage33-non-gaussian.R:18:3'): Stage 33: family = binomial() converges with default latent covariance ──
+This fit shows a runaway trait loading; treat it as unusable until checked.
+* trait_3 prevalence=0.797; max_loading=75.9; relative_loading=1.36; saturated_fit=0.947
+i trait loading has run away from the rest (an improper solution, or Heywood case); quasi-complete separation produces this at ordinary prevalence
+> treat the fit as unusable rather than interpreting it: this is quasi-complete separation, which lowering the rank does not resolve; for ordinary between-unit latent loadings, try gllvmTMBcontrol(loading_ridge = 0.25) (0.25 to 0.5; larger tau shrinks less) to shrink runaway loadings, or gllvmTMBcontrol(integration = 'va') for latent(..., unique = FALSE) fits with at least 100 units and d <= 2 -- either makes the result a penalised (MAP) or variational estimate, so logLik(), AIC() and BIC() no longer apply to it
+> Full check: `gllvmTMB_diagnose(fit)`. Silence this with `gllvmTMBcontrol(warn_runaway = FALSE)`.
+This warning is displayed once per session.
+Backtrace:
+    ▆
+ 1. └─gllvmTMB::gllvmTMB(...) at test-stage33-non-gaussian.R:18:3
+ 2.   └─gllvmTMB:::.gllvmTMB_warn_runaway_loading(.fit)
+ 3.     └─cli::cli_warn(...)
+── Warning ('test-va-probit-adsafety.R:457:5'): a Bernoulli-probit toy fit tracks the shipped Laplace probit engine ──
+`extract_Sigma_B()` was deprecated in gllvmTMB 0.7.0.
+i Please use the `level` argument of `extract_Sigma()` instead.
+Backtrace:
+    ▆
+ 1. └─gllvmTMB (local) sigma_diag(lap_probit) at test-va-probit-adsafety.R:473:3
+ 2.   └─gllvmTMB::extract_Sigma_B(m) at test-va-probit-adsafety.R:457:5
+── Warning ('test-va-probit-adsafety.R:457:5'): a Bernoulli-probit toy fit tracks the shipped Laplace probit engine ──
+`extract_Sigma_B()` was deprecated in gllvmTMB 0.7.0.
+i Please use the `level` argument of `extract_Sigma()` instead.
+Backtrace:
+    ▆
+ 1. └─gllvmTMB (local) sigma_diag(lap_logit) at test-va-probit-adsafety.R:474:3
+ 2.   └─gllvmTMB::extract_Sigma_B(m) at test-va-probit-adsafety.R:457:5
+
+[ FAIL 0 | WARN 60 | SKIP 1259 | PASS 26641 ]
+Deleting unused snapshots:
+'plot-visual-snapshots/anchored-rotated-ordination-plot.svg',
+'plot-visual-snapshots/confidence-eye-correlation-plot.svg',
+'plot-visual-snapshots/correlation-estimate-ci-matrix-plot.svg',
+'plot-visual-snapshots/correlation-two-level-ellipse-matrix-plot.svg',
+'plot-visual-snapshots/dispatcher-communality-stacked-bars-plot.svg',
+'plot-visual-snapshots/dispatcher-correlation-ellipse-plot.svg',
+'plot-visual-snapshots/dispatcher-correlation-heatmap-plot.svg',
+'plot-visual-snapshots/dispatcher-integration-dot-whisker-plot.svg',
+'plot-visual-snapshots/dispatcher-loadings-heatmap-plot.svg',
+'plot-visual-snapshots/dispatcher-variance-partition-plot.svg', and
+'plot-visual-snapshots/sigma-table-confidence-eye-plot.svg'
+> 
+> proc.time()
+    user   system  elapsed 
+1281.584   19.357 1301.574 

@@ -1,0 +1,5 @@
+"arm","n","seed","seconds","status","rel_frob","degenerate_label","o1","o2","status_row","note"
+"degenerate",100,1,5.19,"OK",2.84815940212598,FALSE,FALSE,TRUE,"WARN",""
+"healthy",100,1,10.168,"OK",0.920898159658785,FALSE,TRUE,TRUE,"PASS",""
+"transport",100,1,8.003,"OK",8.96814230549802,FALSE,TRUE,TRUE,"WARN",""
+"mixed",100,1,5.522,"OK",NA,NA,TRUE,TRUE,"PASS",""

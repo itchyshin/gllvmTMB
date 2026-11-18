@@ -1,0 +1,159 @@
+gllvmTMB is EXPERIMENTAL (lifecycle: experimental). Use at your own risk: the package is not complete, is not fully human-verified, and needs extensive further validation. Point estimates are the primary inferential output, but evidence is route- and regime-specific. Broad interval coverage is not certified. One narrow two-sided Gaussian total-variance profile regime has a documented 0.94 floor. See the Current limitations and boundaries page for scope.
+======================================================================
+ROUTE A: phylo_indep(1 + x | species, tree = tree)
+======================================================================
+n_sp = 60, n_traits = 3, n_rep = 6, n_obs = 1080
+formula: value ~ 0 + trait + phylo_indep(1 + x | species, tree = tree_A)
+family: gaussian(); control: gllvmTMBcontrol(se = TRUE)
+
+Fit time: 2.1 s | opt$convergence: 0 | pd_hessian: TRUE
+
+---- Route A (phylo_indep, tree in-keyword): sd_report$par.fixed block-name table ----
+
+         b_fix  log_sigma_eps theta_dep_chol 
+             3              1              9 
+  pdHess: TRUE
+
+Route A slope-variance parameter is theta_dep_chol (per
+tests/testthat/test-phylo-indep-slope-gaussian.R: phylo_indep desugars to
+phylo_slope's block-diagonal Cholesky engine, NOT theta_diag_B_slope /
+theta_rr_B_slope).
+
+CORRECTED PACKING (an earlier version of this script had this wrong --
+see the results file's provenance note). Per src/gllvmTMB.cpp:1909-1935
+and R/lambda-constraint.R's dep_chol_crossblock_pins(), theta_dep_chol
+packs ALL C diagonal entries FIRST (log-scale), THEN the strictly-lower
+triangle in column-major order (raw/unconstrained scale). After the
+block-diagonal cross-block pins (Design 79/80), the 3*n_traits FREE
+entries are, in order: the 2*n_traits diagonals interleaved
+(int_1, slope_1, int_2, slope_2, ...), THEN the n_traits within-block
+off-diagonal entries (L21 per trait, raw scale) -- NOT 3-entry
+(int, slope, offdiag) blocks per trait as first assumed.
+
+Consequently the within-block Cholesky factor for trait t is
+  L_t = [[L11, 0], [L21, L22]],  L11 = exp(diag_int), L22 = exp(diag_slope)
+and Sigma_t = L_t %*% t(L_t) gives:
+  Var(intercept_t) = L11^2                    -- univariate log-SD, exp() suffices
+  Var(slope_t)      = L21^2 + L22^2            -- NOT exp(diag_slope)^2 alone
+So the slope variance depends on TWO parameters (diag_slope AND the raw
+off-diagonal L21) whenever the within-trait intercept-slope correlation is
+nonzero, and needs a MULTIVARIATE delta method / numerical Jacobian using
+the (diag_slope, L21) 2x2 cov.fixed submatrix -- the same treatment
+Route B's theta_rr_B_slope needed, not the univariate exp() shortcut.
+
+[Route A] block 'theta_dep_chol' (n = 9):
+  index estimate_link_scale se_link_scale finite_se positive_se
+1     5        -0.667268214     0.1766369      TRUE        TRUE
+2     6        -0.410418431     0.1511352      TRUE        TRUE
+3     7        -0.249307416     0.1550775      TRUE        TRUE
+4     8        -0.640055673     0.1752355      TRUE        TRUE
+5     9        -0.452730723     0.1597196      TRUE        TRUE
+6    10        -0.589355956     0.1753859      TRUE        TRUE
+7    11         0.086342223     0.1557924      TRUE        TRUE
+8    12        -0.001243321     0.1211240      TRUE        TRUE
+9    13        -0.009469250     0.1341289      TRUE        TRUE
+Route A diag_slope free-positions: 2, 4, 6 | offdiag (L21) free-positions: 7, 8, 9
+
+Route A per-trait slope SD -- correctly indexed, multivariate delta method:
+  trait theta_slope  se_theta          L21    se_L21 naive_sd_hat    sd_hat
+1     1  -0.4104184 0.1511352  0.086342223 0.1557924    0.6633726 0.6689680
+2     2  -0.6400557 0.1752355 -0.001243321 0.1211240    0.5272631 0.5272645
+3     3  -0.5893560 0.1753859 -0.009469250 0.1341289    0.5546844 0.5547652
+  se_sd_hat_multivariate
+1             0.10023606
+2             0.09239570
+3             0.09733749
+
+======================================================================
+ROUTE B: latent(0 + trait + (0 + trait):temperature | individual, d = 2)
+======================================================================
+n_ind = 50, n_traits = 3, n_obs = 900
+formula: value ~ 0 + trait + (0 + trait):temperature + latent(0 + trait + (0 + trait):temperature | individual, d = 2)
+family: gaussian() (default); control: gllvmTMBcontrol(se = TRUE)
+
+Fit time: 7.5 s | opt$convergence: 0 | pd_hessian: TRUE
+use_rr_B_slope: 1, use_diag_B_slope: 1
+
+---- Route B (ordinary latent, unit tier): sd_report$par.fixed block-name table ----
+
+             b_fix      log_sigma_eps theta_diag_B_slope   theta_rr_B_slope 
+                 6                  1                  6                 11 
+  pdHess: TRUE
+
+[Route B] block 'theta_diag_B_slope' (n = 6):
+  index estimate_link_scale se_link_scale finite_se positive_se
+1    19           -1.993085     0.4751808      TRUE        TRUE
+2    20           -1.549038     0.3254795      TRUE        TRUE
+3    21           -1.729032     0.2291956      TRUE        TRUE
+4    22           -1.416405     0.1759916      TRUE        TRUE
+5    23           -1.581826     0.2088638      TRUE        TRUE
+6    24           -1.602128     0.4304197      TRUE        TRUE
+
+[Route B] block 'theta_rr_B_slope' (n = 11):
+   index estimate_link_scale se_link_scale finite_se positive_se
+1      8         0.498173602    0.05975223      TRUE        TRUE
+2      9        -0.232285565    0.07217218      TRUE        TRUE
+3     10         0.226609548    0.06062293      TRUE        TRUE
+4     11        -0.390395858    0.05262745      TRUE        TRUE
+5     12         0.074824466    0.05294930      TRUE        TRUE
+6     13         0.414712528    0.05699843      TRUE        TRUE
+7     14        -0.018549649    0.05889997      TRUE        TRUE
+8     15         0.003638297    0.05313367      TRUE        TRUE
+9     16         0.145255692    0.05881613      TRUE        TRUE
+10    17         0.020708460    0.05663089      TRUE        TRUE
+11    18        -0.259992676    0.07677147      TRUE        TRUE
+
+======================================================================
+Delta-method back-transform requirement
+======================================================================
+theta_diag_B_slope (Route B augmented Psi companion) is a log-SD:
+  sd_hat = exp(theta_hat); se(sd_hat) = exp(theta_hat) * se(theta_hat)
+  (delta method, d/dtheta exp(theta) = exp(theta)); CI = sd_hat +/- z*se(sd_hat),
+  or exponentiate a link-scale Wald interval directly for a positivity guarantee.
+  Route B's theta_diag_B_slope IS a genuine univariate log-SD, unaffected by the
+  correction below -- it does not sit inside a Cholesky block with a free
+  off-diagonal partner the way Route A's slope diagonal does.
+theta_dep_chol (Route A) diagonal Cholesky entries are log-SDs, but the SLOPE
+  diagonal is NOT a standalone log-SD of the slope variance: within each
+  trait's 2x2 Cholesky block L_t = [[L11,0],[L21,L22]] (L11=exp(diag_int),
+  L22=exp(diag_slope), L21 = the free raw-scale off-diagonal), the marginal
+  slope variance is Var(slope) = L21^2 + L22^2, NOT exp(diag_slope)^2 alone.
+  (The intercept variance L11^2 IS a clean univariate log-SD -- only the
+  slope coordinate is contaminated by the within-block correlation entry.)
+  So Route A's slope SD needs the SAME multivariate delta method /
+  numerical Jacobian treatment as theta_rr_B_slope below, using the 2x2
+  (diag_slope, L21) cov.fixed submatrix -- not a two-line exp() computation.
+theta_rr_B_slope (Route B loadings, if present) packs the loadings matrix
+  Lambda_B_slope; Sigma_B_slope = Lambda_B_slope %*% t(Lambda_B_slope) is a
+  nonlinear function of MULTIPLE theta_rr_B_slope entries at once, so any
+  natural-scale variance/SD needs the FULL relevant cov.fixed sub-block
+  propagated through that quadratic form (multivariate delta method /
+  numerical jacobian), not a single exp() per element. 
+
+======================================================================
+Worked examples
+======================================================================
+[Route A] slope SD worked example, multivariate delta method (trait 1):
+  diag_slope theta_hat = -0.410418, se = 0.151135
+  L21 (raw off-diag)   = 0.086342, se = 0.155792
+  naive sd_hat = exp(diag_slope)        = 0.663373  (WRONG shortcut, for contrast)
+  correct sd_hat = sqrt(L21^2 + L22^2)  = 0.668968
+  multivariate delta-method se(sd_hat)  = 0.100236
+  95% CI (symmetric Wald, clipped at 0) = [0.472509, 0.865427]
+[Route B theta_diag_B_slope] worked example (element 1):
+  theta_hat = -1.993085, se(theta_hat) = 0.475181
+  sd_hat = exp(theta_hat) = 0.136274
+  delta-method se(sd_hat) = 0.064755
+  95% CI (delta, symmetric on SD scale)  = [0.009357, 0.263192]
+  95% CI (exponentiated link-scale Wald) = [0.053696, 0.345851]
+
+======================================================================
+Step 4: existing extractor grep
+======================================================================
+R/profile-derived.R
+R/fit-multi.R
+
+profile_targets() grep (does the profile-target inventory list B_slope?):
+  (no match)
+
+Done.

@@ -38,6 +38,17 @@ lv_preflight_setup <- function(
   )
   f <- gllvmTMB:::desugar_brms_sugar(formula)
   p <- gllvmTMB:::parse_multi_formula(f)
+  ## These two-trait fixtures test lv-formula validation, not trait-specific
+  ## Psi. Tie the auto-added diagonal to one common variance so the helper's
+  ## covariance decomposition is identified (2 loadings + 1 Psi = 3 moments).
+  for (i in seq_along(p$covstructs)) {
+    if (
+      identical(p$covstructs[[i]]$kind, "diag") &&
+        isTRUE(p$covstructs[[i]]$extra[[".auto_unique"]])
+    ) {
+      p$covstructs[[i]]$extra[["common"]] <- TRUE
+    }
+  }
   gllvmTMB:::gll_prepare_lv_predictor_setup(
     parsed = p,
     data = data,
@@ -342,12 +353,15 @@ test_that("latent lv preflight treats factor formulas as no-intercept designs", 
   by_default <- lv_preflight_setup(
     value ~ 0 + trait + latent(0 + trait | unit, d = 1, lv = ~fac)
   )
-  explicit_zero <- lv_preflight_setup(
-    value ~ 0 + trait + latent(0 + trait | unit, d = 1, lv = ~ 0 + fac)
+  expect_error(
+    lv_preflight_setup(
+      value ~ 0 + trait + latent(0 + trait | unit, d = 1, lv = ~ 0 + fac)
+    ),
+    regexp = "spans a constant"
   )
 
-  expect_equal(by_default$X_lv_B, explicit_zero$X_lv_B)
-  expect_equal(colnames(by_default$X_lv_B), c("faca", "facb"))
+  expect_equal(as.numeric(by_default$X_lv_B), c(0, 1, 0, 1))
+  expect_equal(colnames(by_default$X_lv_B), "facb")
 })
 
 test_that("latent lv C1 engine reports score-mean quantities", {
@@ -758,8 +772,8 @@ test_that("latent lv preflight rejects unsupported model regimes", {
     ),
     regexp = "fixed-effect RHS|X \\+ X_lv|Design 73"
   )
-  ## Gaussian lv + REML is now admitted (test-lv-reml-gaussian.R); non-Gaussian
-  ## lv + REML stays rejected.
+  ## Predictor-informed lv + REML is rejected for every family, including
+  ## Gaussian; the current REML restriction does not include alpha_lv_B.
   expect_error(
     lv_preflight_setup(
       y_bin ~ 0 + trait + latent(0 + trait | unit, d = 1, lv = ~x),
@@ -784,9 +798,9 @@ test_that("latent lv preflight rejects unsupported model regimes", {
       family_id_vec = rep(1L, nrow(make_lv_preflight_data())),
       link_id_vec = rep(3L, nrow(make_lv_preflight_data()))
     ),
-    regexp = "standard links|LV-05"
+    regexp = "canonical admitted link|canonical link"
   )
-  expect_error(
+  expect_silent(
     lv_preflight_setup(
       y_bin ~ 0 + trait + latent(0 + trait | unit, d = 1, lv = ~x),
       family_id_vec = rep(
@@ -794,8 +808,7 @@ test_that("latent lv preflight rejects unsupported model regimes", {
         length.out = nrow(make_lv_preflight_data())
       ),
       link_id_vec = rep(0L, nrow(make_lv_preflight_data()))
-    ),
-    regexp = "standard links|LV-05"
+    )
   )
   expect_error(
     lv_preflight_setup(

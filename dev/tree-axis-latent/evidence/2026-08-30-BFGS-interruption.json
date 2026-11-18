@@ -1,0 +1,54 @@
+{
+  "status": "FAILED_NUMERICAL_BOUND",
+  "approval": "User approved six extra BFGS attempts after checkpoint fb99172ed",
+  "additional_attempts_started": 2,
+  "additional_attempts_completed": 1,
+  "additional_attempts_interrupted": 1,
+  "total_model_optimizer_attempts_started": 14,
+  "remaining_unstarted": [
+    "B2 start 3",
+    "B3 starts 1-3",
+    "W2",
+    "W3"
+  ],
+  "elapsed_s": 76.514,
+  "terminated_by": "SIGTERM after numerical failure, not timeout",
+  "invalid_result": {
+    "objective": -5.34842345053399e+29,
+    "convergence": 0,
+    "function_evaluations": 224,
+    "gradient_evaluations": 5,
+    "max_abs_parameter": 46.4648772772657,
+    "gaussian_nll_lower_bound": -46170.9881685632
+  },
+  "start1_identical": true,
+  "start2_identical": true,
+  "fixture_md5": "6c3bae640dd86491171cb20fbb56b0e4",
+  "runner_md5": "8bb34fd6b944e8ee33b96adb31c9db15",
+  "artifact_paths": [
+    "/private/tmp/gllvm-tree-axis-latent-20260830/results/B2-attempt-1-start.rds",
+    "/private/tmp/gllvm-tree-axis-latent-20260830/results/B2-attempt-1-result.rds",
+    "/private/tmp/gllvm-tree-axis-latent-20260830/results/B2-attempt-2-start.rds"
+  ],
+  "artifact_md5": [
+    "2cd0ed7c15470c2a6245e33e62646827",
+    "8f72b44f3899f5f16f0fb46d4053ef0f",
+    "437f9cce24e3c6970b74ad5f941cfde0"
+  ],
+  "reviewer": "Gauss/Noether: invalid numerical result; no B3/W2/W3; no biological or recovery interpretation",
+  "model_api_engine_changes": false,
+  "publication": "Not published; all delivery gates held",
+  "direct_gaussian_comparison": {
+    "M2": {
+      "direct_gaussian_nll": 5039.69128039371,
+      "reported_nll": 5039.69128038,
+      "difference": 1.37079041451216e-08
+    },
+    "M3": {
+      "direct_gaussian_nll": 5039.69128081817,
+      "reported_nll": 5039.69128082116,
+      "difference": -2.98223312711343e-09
+    }
+  },
+  "direct_gaussian_comparison_scope": "Independent no-fit algebra at retained M2/M3 estimates; does not waive convergence gates."
+}

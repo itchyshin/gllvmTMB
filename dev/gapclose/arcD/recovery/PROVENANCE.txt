@@ -1,0 +1,38 @@
+Arc O3 zero-inflated recovery campaign -- provenance
+=====================================================
+Compute: Totoro (snakagaw@totoro.biology.ualberta.ca), 384 cores, no GPU.
+Cap: mc.cores=100, OPENBLAS_NUM_THREADS=1, OMP_NUM_THREADS=1.
+
+gllvmTMB build used for the campaign:
+  Source SHA:  5855e2ad9d63a484f7e422749551695c51085e46
+    (origin/main HEAD at campaign time; merge commit for PR #1240,
+     "zero-inflated families zi_poisson(), zi_nbinom2(), zi_binomial()
+     (ARC D1; maintainer-approved D-207)")
+  Installed:   gllvmTMB 0.7.1, private library
+               /home/snakagaw/gllvmtmb-zi-recovery/priv-lib on Totoro
+  DLL SHA-256: 7d5556194d68126db4f08d0a6233568783f470f7df0fbf0ca08a515ee70602e5
+               (priv-lib/gllvmTMB/libs/gllvmTMB.so)
+
+Grid: 3 families x 3 n_site cells x 50 seeds (1:50) = 450 fits.
+  zi_poisson  : n_site in {150, 200, 400}
+  zi_nbinom2  : n_site in {200, 400, 800}
+  zi_binomial : n_site in {150, 250, 500}, N=10 trials
+DGP: lifted verbatim from tests/testthat/test-zi-recovery.R (rank-1 latent,
+  6 traits, per-trait zero probabilities 0.1/0.2/0.3/0.4/0.15/0.25),
+  gllvmTMBcontrol(se = FALSE) matching the shipped test exactly.
+
+Raw per-fit RDS files (450) remain on Totoro only, under
+~/gllvmtmb-zi-recovery/out/ (D-50: raw campaign outputs never enter git).
+An earlier run (out_v1_badgrad/, prerun_v1_badgrad/) used a wrongly-shaped
+gr() call for max_gradient/pd_hessian and was superseded -- point estimates
+and errors in that run were correct (unaffected), only the two diagnostic
+fields were wrong; the superseded run is kept on Totoro under
+~/gllvmtmb-zi-recovery/out_v1_badgrad/ for traceability, not used in
+RESULTS.md.
+
+SHA-256 of files committed to this repo:
+16c24ea726c3d73801af169def1c5f8a8622afca3c10389cdc3e7122cac23fb6  campaign.R
+8a6f93051ef798ca2777addb70a5b8628f3bd2b903970e0efe99e368bfc3df0d  run_grid.R
+26967a40d933273e3167fbaa55e7efce31d647b870602b1de7fdfa72f8f4de5d  summary/per_trait_results.csv
+2425041cdc43d50366be4bcc9c21afe0fe0d7a31865c1cb96f630348d810f4a1  summary/per_seed_summary.csv
+c010f6eeb23d9219bbf8fc12343a98716399a345a81ec671edc6fca2a849e7f2  summary/per_cell_summary.csv

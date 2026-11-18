@@ -247,6 +247,7 @@ fit_mixed_family_fixture <- function(n_families = c(3L, 5L)) {
     gllvmTMB::gllvmTMB(
       formula,
       data   = fixture$data,
+      unit   = "site",
       family = fixture$family_list
     )
   ))

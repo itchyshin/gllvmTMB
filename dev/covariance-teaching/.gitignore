@@ -1,0 +1,8 @@
+library/
+receipts/
+*.log
+*.rds
+cache/
+PR-body.md
+CHECKPOINT.md
+pre-final-review-hashes.json

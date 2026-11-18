@@ -3,9 +3,11 @@
 
 # ---- defaults -------------------------------------------------------------
 
-test_that("gllvmTMBcontrol(): defaults set n_init = 1, optimizer = nlminb", {
+test_that("gllvmTMBcontrol(): defaults set n_init = 3, optimizer = nlminb", {
   ctl <- gllvmTMBcontrol()
-  expect_equal(ctl$n_init, 1L)
+  expect_identical(ctl$n_init, 3L)
+  expect_false(ctl$n_init_explicit)
+  expect_identical(gllvmTMBcontrol(n_init = 1L)$n_init, 1L)
   expect_equal(ctl$optimizer, "nlminb")
   expect_equal(ctl$init_jitter, 0.3)
   expect_equal(ctl$start_method, list(method = NULL, jitter.sd = 0))
@@ -30,9 +32,19 @@ test_that("gllvmTMBcontrol(): n_init = 5 coerces to integer", {
   expect_identical(ctl$n_init, 5L)
 })
 
-test_that("gllvmTMBcontrol(): n_init = 5.5 coerces to 5L (rounding via as.integer)", {
-  ctl <- gllvmTMBcontrol(n_init = 5.5)
-  expect_identical(ctl$n_init, 5L)
+test_that("gllvmTMBcontrol(): fractional n_init errors (#1355)", {
+  expect_error(
+    gllvmTMBcontrol(n_init = 5.5),
+    "n_init.*integer"
+  )
+})
+
+test_that("gllvmTMBcontrol(): invalid n_init and init_jitter error clearly (#1355)", {
+  expect_error(gllvmTMBcontrol(n_init = 0), "n_init")
+  expect_error(gllvmTMBcontrol(n_init = -2), "n_init")
+  expect_error(gllvmTMBcontrol(n_init = NA_real_), "n_init")
+  expect_error(gllvmTMBcontrol(init_jitter = -0.1), "init_jitter")
+  expect_error(gllvmTMBcontrol(init_jitter = NA_real_), "init_jitter")
 })
 
 # ---- optimizer choice via match.arg --------------------------------------
@@ -150,4 +162,33 @@ test_that("gllvmTMB(): REML must be a single TRUE/FALSE", {
     gllvmTMB(value ~ 0 + trait, data.frame(), REML = c(TRUE, FALSE)),
     "must be a single", fixed = TRUE
   )
+})
+
+# ---- #1426 AGHQ switches and numeric validation --------------------------
+
+test_that("#1426: aghq_multistart = 1 means on", {
+  ctl <- gllvmTMBcontrol(aghq_multistart = 1)
+  expect_identical(ctl$aghq_multistart, TRUE)
+  expect_identical(gllvmTMBcontrol(aghq_multistart = 0)$aghq_multistart, FALSE)
+  expect_identical(gllvmTMBcontrol(aghq_continuation = 1)$aghq_continuation, TRUE)
+  expect_identical(gllvmTMBcontrol(warn_runaway = 1)$warn_runaway, TRUE)
+  expect_identical(
+    gllvmTMBcontrol(allow_nongaussian_reml = 1)$allow_nongaussian_reml,
+    TRUE
+  )
+})
+
+test_that("#1426: invalid AGHQ counts and tolerances name the argument", {
+  expect_error(gllvmTMBcontrol(aghq_n_adapt = -5L), "aghq_n_adapt")
+  expect_error(gllvmTMBcontrol(aghq_iter_cap = NA), "aghq_iter_cap")
+  expect_error(gllvmTMBcontrol(aghq_escalate_patience = 0), "aghq_escalate_patience")
+  expect_error(gllvmTMBcontrol(aghq_rho_min = 5), "aghq_rho_min")
+  expect_error(gllvmTMBcontrol(aghq_shift_tol = -1), "aghq_shift_tol")
+})
+
+test_that("gllvmTMBcontrol(): default n_init is 3 and n_init = 1L is explicit (#1331)", {
+  expect_identical(gllvmTMBcontrol()$n_init, 3L)
+  expect_false(gllvmTMBcontrol()$n_init_explicit)
+  expect_identical(gllvmTMBcontrol(n_init = 1L)$n_init, 1L)
+  expect_true(gllvmTMBcontrol(n_init = 1L)$n_init_explicit)
 })

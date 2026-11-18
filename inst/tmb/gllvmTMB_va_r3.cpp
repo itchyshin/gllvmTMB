@@ -34,6 +34,121 @@ Type va_r3_invlogit(const Type &x)
   return CppAD::CondExpGe(x, zero, upper, lower);
 }
 
+// Same smooth Tweedie power as gll_tweedie_p in src/gllvmTMB.cpp (#1365).
+// This translation unit cannot call that helper. Keep the two in step,
+// including the overflow-safe fraction: theta*theta overflows above
+// about 1e154 and the unscaled quotient then collapses to 0.
+// p = p_lo + (p_hi - p_lo) * 1/2 * (1 + t),
+// t = (theta/m) / sqrt((1/m)^2 + (theta/m)^2), m = max(1, |theta|),
+// p_lo = 1 + invlogit(-12), p_hi = 1 + invlogit(12).
+template <class Type>
+Type va_r3_tweedie_p_frac(Type theta)
+{
+  Type one = Type(1.0);
+  Type zero = Type(0.0);
+  Type a = CppAD::CondExpGe(theta, zero, theta, -theta);
+  Type m = CppAD::CondExpGt(a, one, a, one);
+  Type u = theta / m;
+  Type v = one / m;
+  return u / sqrt(v * v + u * u);
+}
+
+template <class Type>
+Type va_r3_tweedie_p(Type theta)
+{
+  Type one = Type(1.0);
+  Type L = Type(12.0);
+  Type lo = one + one / (one + exp(L));
+  Type hi = one + one / (one + exp(-L));
+  Type t = va_r3_tweedie_p_frac(theta);
+  Type s = Type(0.5) * (one + t);
+  return lo + (hi - lo) * s;
+}
+
+// ---------------------------------------------------------------------------
+// Large-parameter numerics for the lgamma kernels (#1482).  The VA template is
+// a separate translation unit from src/gllvmTMB.cpp, so the Laplace helpers
+// added by #1479 (gll_log1p_pos, gll_log1p_ratio, gll_lgamma_shift) are copied
+// here under a va_r3_ prefix; the Laplace originals and the Stirling-difference
+// derivation sit in src/gllvmTMB.cpp above gll_lgamma_shift.  Keep the two in
+// step.  CppAD CondExp evaluates BOTH branches, so each branch is fed its own
+// clamped input.
+
+// log(1 + u) for u >= 0: quartic Taylor series below 1e-4, direct above.
+template <class Type>
+Type va_r3_log1p_pos(Type u)
+{
+  Type cut = Type(1e-4);
+  Type us = CppAD::CondExpLt(u, cut, u, cut);
+  Type series = us * (Type(1) - us * (Type(0.5) - us * (Type(1.0 / 3.0) -
+    us * Type(0.25))));
+  Type ud = CppAD::CondExpLt(u, cut, cut, u);
+  Type direct = log(Type(1) + ud);
+  return CppAD::CondExpLt(u, cut, series, direct);
+}
+
+// lgamma(x + n) - lgamma(x) - n * log(x), x = exp(log_x), n >= 0 fixed.
+// Stirling series for the DIFFERENCE above x = 50 (never forms an O(x log x)
+// term, so no cancellation at x ~ 1e12); direct lgamma difference below.
+template <class Type>
+Type va_r3_lgamma_shift(Type log_x, Type n)
+{
+  Type lcut = log(Type(50));
+  Type ls = CppAD::CondExpGt(log_x, lcut, log_x, lcut);
+  ls = CppAD::CondExpGt(ls, Type(700), Type(700), ls);
+  Type xs = exp(ls);
+  Type xn = xs + n;
+  Type ix = Type(1) / xs;
+  Type ixn = Type(1) / xn;
+  Type ix2 = ix * ix;
+  Type ixn2 = ixn * ixn;
+  Type c_x = ix * (Type(1.0 / 12.0) - ix2 * (Type(1.0 / 360.0) -
+    ix2 * (Type(1.0 / 1260.0) - ix2 * Type(1.0 / 1680.0))));
+  Type c_xn = ixn * (Type(1.0 / 12.0) - ixn2 * (Type(1.0 / 360.0) -
+    ixn2 * (Type(1.0 / 1260.0) - ixn2 * Type(1.0 / 1680.0))));
+  Type stirling = (xn - Type(0.5)) * va_r3_log1p_pos(n * ix) - n + c_xn - c_x;
+  Type ld = CppAD::CondExpGt(log_x, lcut, lcut, log_x);
+  ld = CppAD::CondExpLt(ld, Type(-700), Type(-700), ld);
+  Type xd = exp(ld);
+  Type direct = lgamma(xd + n) - lgamma(xd) - n * ld;
+  return CppAD::CondExpGt(log_x, lcut, stirling, direct);
+}
+
+// lgamma(a + b) - lgamma(a) - lgamma(b) for a = phi p, b = phi (1 - p), from
+// log phi, log p and log(1 - p).  When both shapes exceed 50 the three
+// Stirling expansions are combined with a + b = phi so the O(phi log phi)
+// terms cancel analytically:
+//   (log phi) / 2 - (log 2 pi) / 2 - (a - 1/2) log p - (b - 1/2) log(1 - p)
+//     + c(phi) - c(a) - c(b),    c(z) = 1/(12z) - 1/(360z^3) + 1/(1260z^5).
+// Otherwise the direct lgamma sum is already accurate.
+template <class Type>
+Type va_r3_lgamma_beta_const(Type log_phi, Type log_p, Type log_1mp)
+{
+  Type l50 = log(Type(50));
+  Type cut_p = l50 - log_phi;
+  Type lp = CppAD::CondExpGt(log_p, cut_p, log_p, cut_p);
+  Type lq = CppAD::CondExpGt(log_1mp, cut_p, log_1mp, cut_p);
+  Type phi_s = exp(log_phi);
+  Type a_s = phi_s * exp(lp);
+  Type b_s = phi_s * exp(lq);
+  Type ip = Type(1) / phi_s, ia = Type(1) / a_s, ib = Type(1) / b_s;
+  Type ip2 = ip * ip, ia2 = ia * ia, ib2 = ib * ib;
+  Type c_p = ip * (Type(1.0 / 12.0) - ip2 * (Type(1.0 / 360.0) -
+    ip2 * Type(1.0 / 1260.0)));
+  Type c_a = ia * (Type(1.0 / 12.0) - ia2 * (Type(1.0 / 360.0) -
+    ia2 * Type(1.0 / 1260.0)));
+  Type c_b = ib * (Type(1.0 / 12.0) - ib2 * (Type(1.0 / 360.0) -
+    ib2 * Type(1.0 / 1260.0)));
+  Type stirling = Type(0.5) * log_phi - Type(0.5) * log(Type(2.0) *
+    Type(3.141592653589793238462643383279502884))
+    - (a_s - Type(0.5)) * lp - (b_s - Type(0.5)) * lq + c_p - c_a - c_b;
+  Type a = exp(log_phi + log_p);
+  Type b = exp(log_phi + log_1mp);
+  Type direct = lgamma(a + b) - lgamma(a) - lgamma(b);
+  Type inner = CppAD::CondExpGe(log_1mp, cut_p, stirling, direct);
+  return CppAD::CondExpGe(log_p, cut_p, inner, direct);
+}
+
 // E[softplus(mu + sqrt(v) Z)] by physicists' Gauss-Hermite quadrature.
 //
 // At small v, the heat-kernel expansion
@@ -645,7 +760,7 @@ Type objective_function<Type>::operator()()
   PARAMETER_VECTOR(log_phi_gamma);                // Gamma shape, fid 4
   PARAMETER_VECTOR(log_phi_nbinom2);              // NB2 size, fid 5
   PARAMETER_VECTOR(log_phi_tweedie);              // Tweedie dispersion, fid 6
-  PARAMETER_VECTOR(logit_p_tweedie);              // Tweedie p = 1 + invlogit(.)
+  PARAMETER_VECTOR(logit_p_tweedie);              // Tweedie p = va_r3_tweedie_p(.)
   PARAMETER_VECTOR(log_phi_beta);                 // Beta precision, fid 7
   PARAMETER_VECTOR(log_phi_betabinom);            // beta-binomial precision, fid 8
   PARAMETER_VECTOR(log_sigma_student);            // Student scale, fid 9
@@ -1217,12 +1332,13 @@ Type objective_function<Type>::operator()()
       Type softplus_expectation = va_r3_softplus_expectation(
         mu - log_phi_t, v, gh_nodes, gh_weights);
       softplus_expectation_by_obs(r) = softplus_expectation;
-      ell = lgamma(y(r) + phi) - lgamma(phi) - lgamma(y(r) + Type(1.0))
-        - y(r) * log_phi_t + y(r) * mu
-        - (y(r) + phi) * softplus_expectation;
+      // lgamma(y + phi) - lgamma(phi) - y log(phi) is va_r3_lgamma_shift,
+      // which stays accurate at the Poisson limit (#1482).
+      ell = va_r3_lgamma_shift(log_phi_t, y(r)) - lgamma(y(r) + Type(1.0))
+        + y(r) * mu - (y(r) + phi) * softplus_expectation;
     } else if (fam == 6) {
       Type phi = exp(log_phi_tweedie(t));
-      Type power = Type(1.0) + va_r3_invlogit(logit_p_tweedie(t));
+      Type power = va_r3_tweedie_p(logit_p_tweedie(t));
       Type safe_v = CppAD::CondExpGt(v, Type(1e-12), v, Type(1e-12));
       Type scale = sqrt(Type(2.0) * safe_v);
       for (int h = 0; h < gh_nodes.size(); ++h) {
@@ -1245,27 +1361,29 @@ Type objective_function<Type>::operator()()
         Type log_1mp = -va_r3_softplus(eta_h);
         Type a = phi * exp(log_p);
         Type b = phi * exp(log_1mp);
-        Type node = lgamma(phi) - lgamma(a) - lgamma(b)
+        Type node = va_r3_lgamma_beta_const(log_phi_beta(t), log_p, log_1mp)
           + (a - Type(1.0)) * log_y + (b - Type(1.0)) * log_1my;
         ell += gh_weights(h) * node;
       }
       ell /= sqrt_pi;
     } else if (fam == 8) {
-      Type phi = exp(log_phi_betabinom(t));
       Type n = n_trials(r);
       Type yy = y(r);
+      // lgamma(phi) - lgamma(n + phi) = -(shift(log phi, n) + n log phi) and
+      // lgamma(y + a) - lgamma(a) = shift(log a, y) + y log a, log a = log phi
+      // + log p, so the O(phi log phi) pieces cancel analytically (#1482).
+      Type log_phi_t = log_phi_betabinom(t);
       Type constant = lgamma(n + Type(1.0)) - lgamma(yy + Type(1.0))
-        - lgamma(n - yy + Type(1.0)) + lgamma(phi);
+        - lgamma(n - yy + Type(1.0)) - va_r3_lgamma_shift(log_phi_t, n);
       Type safe_v = CppAD::CondExpGt(v, Type(1e-12), v, Type(1e-12));
       Type scale = sqrt(Type(2.0) * safe_v);
       for (int h = 0; h < gh_nodes.size(); ++h) {
         Type eta_h = mu + scale * gh_nodes(h);
         Type log_p = -va_r3_softplus(-eta_h);
         Type log_1mp = -va_r3_softplus(eta_h);
-        Type a = phi * exp(log_p);
-        Type b = phi * exp(log_1mp);
-        Type node = constant + lgamma(yy + a) + lgamma(n - yy + b)
-          - lgamma(a) - lgamma(b) - lgamma(n + phi);
+        Type node = constant + yy * log_p + (n - yy) * log_1mp
+          + va_r3_lgamma_shift(log_phi_t + log_p, yy)
+          + va_r3_lgamma_shift(log_phi_t + log_1mp, n - yy);
         ell += gh_weights(h) * node;
       }
       ell /= sqrt_pi;
@@ -1415,6 +1533,12 @@ Type objective_function<Type>::operator()()
   REPORT(total_kl);
   REPORT(elbo);
   REPORT(negative_elbo);
+  vector<Type> p_tweedie(logit_p_tweedie.size());
+  for (int t_p = 0; t_p < logit_p_tweedie.size(); ++t_p)
+    p_tweedie(t_p) = va_r3_tweedie_p(logit_p_tweedie(t_p));
+  vector<Type> phi_tweedie = exp(log_phi_tweedie);
+  REPORT(p_tweedie);
+  REPORT(phi_tweedie);
 
   return negative_elbo;
 }

@@ -403,6 +403,19 @@
   if (is.null(source_params)) {
     cli::cli_abort("Could not extract TMB parameters from {.arg start_from}.")
   }
+  if (isTRUE(start_from$integrated_gaussian_diag_B)) {
+    ## Analytically integrated cell effects remain mapped placeholders on the
+    ## source tape. Their reconstructed conditional means are the estimated
+    ## effects that an independent-model warm start promises to copy.
+    source_params[["s_B"]] <-
+      start_from$report[["s_B_conditional_mean", exact = TRUE]]
+  }
+  if (isTRUE(start_from$standardized_column_coef)) {
+    ## The source tape holds U, but target starts are still physical B at this
+    ## stage. Its final covariance maps determine any later B-to-U transform.
+    source_params[["b_phy_aug"]] <-
+      start_from$report[["b_phy_aug_physical", exact = TRUE]]
+  }
 
   copied <- character(0)
   for (nm in intersect(names(tmb_params), names(source_params))) {
@@ -493,4 +506,117 @@
   out[seq_len(r_use), ] <- t(scores)
   out[!is.finite(out)] <- 0
   out
+}
+
+## #1331: an alternative, data-informed start for the B-tier loadings.
+##
+## The default start pairs SVD-seeded latent scores with a FIXED loading
+## pattern (0.5 on the diagonal, 0 elsewhere), so the scores carry the
+## residual correlation directions while the loadings do not. On the Wave 1
+## Poisson cells that single start stopped at a lower local optimum in 3 of
+## 100 replicates (logLik 0.13-0.32 below the optimum `n_init = 10` and the
+## Julia twin reach) while every health check passed. Starting instead from
+## loadings and scores taken from ONE rank-`rank` SVD of the group x trait
+## residual matrix, rotated to the package's lower-triangular loading layout,
+## reached the higher optimum in all 3. `gllvmTMB()` runs it as an extra
+## restart (label "svd"), so the default start is still tried and the better
+## objective is kept.
+##
+## Returns NULL whenever the decomposition is degenerate; otherwise
+## `list(theta = <packed loadings>, z = <rank x n_groups scores>)`. The
+## scores have unit variance, and Lambda %*% z reproduces the rank-`rank`
+## SVD approximation of the residual matrix.
+.gllvmTMB_svd_latent_start <- function(resid, trait_id, group_id,
+                                       n_traits, n_groups, rank) {
+  rank <- as.integer(rank)
+  if (rank < 1L || n_groups < 2L || n_traits < rank) return(NULL)
+  mat <- tryCatch(
+    .gllvmTMB_group_trait_residual_matrix(
+      resid = resid, trait_id = trait_id, group_id = group_id,
+      n_traits = n_traits, n_groups = n_groups
+    ),
+    error = function(e) NULL
+  )
+  if (is.null(mat)) return(NULL)
+  R <- mat$resid
+  R[!is.finite(R)] <- 0
+  if (stats::var(as.numeric(R)) <= 1e-12) return(NULL)
+  sv <- tryCatch(svd(R, nu = rank, nv = rank), error = function(e) NULL)
+  if (is.null(sv) || length(sv$d) < rank ||
+      any(sv$d[seq_len(rank)] <= sqrt(.Machine$double.eps))) {
+    return(NULL)
+  }
+  s <- sqrt(max(n_groups - 1L, 1L))
+  L <- sv$v[, seq_len(rank), drop = FALSE] %*%
+    diag(sv$d[seq_len(rank)] / s, rank)
+  Z <- sv$u[, seq_len(rank), drop = FALSE] * s
+  ## Rotate so the top rank x rank block of Lambda is lower triangular with a
+  ## positive diagonal (the packed layout of `gll_unpack_rr_loadings()`); the
+  ## scores take the same orthogonal rotation, so Lambda %*% t(Z) is unchanged.
+  Q <- qr.Q(qr(t(L[seq_len(rank), , drop = FALSE])))
+  L <- L %*% Q
+  Z <- Z %*% Q
+  sgn <- sign(diag(L[seq_len(rank), , drop = FALSE]))
+  sgn[sgn == 0] <- 1
+  L <- L %*% diag(sgn, rank)
+  Z <- Z %*% diag(sgn, rank)
+  theta <- c(
+    diag(L[seq_len(rank), , drop = FALSE]),
+    unlist(lapply(seq_len(rank), function(k) {
+      if (k < n_traits) L[(k + 1L):n_traits, k] else numeric(0)
+    }))
+  )
+  if (any(!is.finite(theta)) || any(!is.finite(Z))) return(NULL)
+  list(theta = unname(theta), z = t(Z))
+}
+
+## #1713: the svd restart's runaway cut-off is the `loading_runaway_thresh`
+## default of `check_gllvmTMB()`, read from its formals so the two cannot drift.
+.gllvmTMB_runaway_thresh_default <- function() {
+  eval(formals(check_gllvmTMB)$loading_runaway_thresh)
+}
+
+## #1713: largest per-trait loading divided by the typical per-trait loading,
+## read from a packed `theta_rr_B` (diagonal first, then the strict lower
+## triangle column by column, the layout `.gllvmTMB_svd_latent_start()`
+## writes). Same ratio and denominator as the `relative_loading` column of
+## `.gllvmTMB_max_loading_by_trait()`, so it is scale-free under
+## Lambda -> c * Lambda. NA when it cannot be formed.
+.gllvmTMB_theta_relative_loading <- function(theta, n_traits, rank) {
+  rank <- as.integer(rank)
+  n_traits <- as.integer(n_traits)
+  if (length(theta) != rank + sum(pmax(n_traits - seq_len(rank), 0L)) ||
+      any(!is.finite(theta))) {
+    return(NA_real_)
+  }
+  L <- matrix(0, n_traits, rank)
+  L[cbind(seq_len(rank), seq_len(rank))] <- theta[seq_len(rank)]
+  pos <- rank
+  for (k in seq_len(rank)) {
+    nk <- n_traits - k
+    if (nk > 0L) {
+      L[(k + 1L):n_traits, k] <- theta[pos + seq_len(nk)]
+      pos <- pos + nk
+    }
+  }
+  vals <- apply(abs(L), 1L, max)
+  vals <- vals[vals > 0]
+  if (!length(vals)) return(NA_real_)
+  denom <- c(stats::median(vals),
+             if (length(vals) > 1L) stats::mad(vals, constant = 1))
+  denom <- max(denom[is.finite(denom) & denom > 0], -Inf)
+  if (!is.finite(denom)) return(NA_real_)
+  max(vals) / denom
+}
+
+## #1713: should the svd restart be refused because its loading ran away and
+## the earlier fit's did not? A relative loading that cannot be formed (NA,
+## e.g. a `theta_rr_B` of the wrong length) never blocks, so a mismatch leaves
+## the guard a silent no-op and the #1331 selection rule unchanged.
+.gllvmTMB_svd_runaway_blocked <- function(theta_new, theta_old, n_traits, rank,
+                                          thresh = .gllvmTMB_runaway_thresh_default()) {
+  rel_new <- .gllvmTMB_theta_relative_loading(theta_new, n_traits, rank)
+  rel_old <- .gllvmTMB_theta_relative_loading(theta_old, n_traits, rank)
+  list(blocked = isTRUE(rel_new >= thresh) && !isTRUE(rel_old >= thresh),
+       rel_new = rel_new, rel_old = rel_old)
 }

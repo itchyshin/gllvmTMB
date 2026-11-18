@@ -1,0 +1,92 @@
+{
+  "candidate": "d1e2ce3fc9a4c79d620680949eca074367f15119",
+  "manual_run": 33335896752,
+  "routine_run": 33335891536,
+  "verdict": "Windows failed; macOS and Ubuntu passed; no gate waiver",
+  "windows_endpoint": {
+    "objective": 50.6965331408142,
+    "convergence": 1,
+    "max_gradient": 0.963221115056029,
+    "message": "false convergence (8)"
+  },
+  "current": {
+    "endpoint": {
+      "parameters": [0.19606999234788, 0.292570121154014, 0.291790291009749, 0.520411637157738, 0.068230748463446, -0.807474951103855, -2.72818260859478, -18.2551280354576, 0.103093194124248],
+      "parameter_names": ["b_fix", "b_fix", "b_fix", "b_fix", "b_fix", "log_sigma_eps", "theta_dep_chol", "theta_dep_chol", "theta_dep_chol"],
+      "native_value": 50.7136683702873,
+      "native_finite": true,
+      "native_gradient": [0.00809008712100974, 0.0322177453749146, -0.00114485609306341, 0.118159783792575, -0.0796837231305867, -0.0241304804802711, 0.0277760366511664, 0.0381581970623664, -1.08822111505795],
+      "inner_gradient": 0.182263849288987,
+      "exact_value": 50.7168194737616,
+      "exact_gradient": [0.00809008712103854, 0.0322177453753441, -0.0011448560930547, 0.118159783792562, -0.0796837231305676, -0.0231367652063661, 0.0212768147242151, 1.34188365960833e-14, -0.799321538703857],
+      "kappa_L": 19321559.1474558,
+      "min_eigen_V": 0.198900634673906,
+      "value_error": -0.00315110347428771
+    },
+    "trial": {
+      "parameters": [0.196069931847525, 0.292569719712437, 0.291790247657287, 0.520410381192265, 0.0682316351688025, -0.807527229701107, -2.72826837232887, -27.5954199925794, 0.105815559867905],
+      "parameter_names": ["b_fix", "b_fix", "b_fix", "b_fix", "b_fix", "log_sigma_eps", "theta_dep_chol", "theta_dep_chol", "theta_dep_chol"],
+      "native_value": null,
+      "native_finite": false,
+      "native_gradient": {},
+      "inner_gradient": {},
+      "exact_value": 50.7157382894317,
+      "exact_gradient": [1.75997905760283e-06, -8.12491816248873e-06, -3.81736697230295e-06, -1.3398893950356e-05, 1.01522943589671e-05, -1.75683403331458e-06, -1.2993017785767e-06, 1.08565282357206e-22, 9.69527640011514e-05],
+      "kappa_L": 228437467222.909,
+      "min_eigen_V": 0.198879839268733,
+      "value_error": null
+    }
+  },
+  "old": {
+    "endpoint": {
+      "parameters": [0.19606999234788, 0.292570121154014, 0.291790291009749, 0.520411637157738, 0.068230748463446, -0.807474951103855, -2.72818260859478, -18.2551280354576, 0.103093194124248],
+      "parameter_names": ["b_fix", "b_fix", "b_fix", "b_fix", "b_fix", "log_sigma_eps", "theta_dep_chol", "theta_dep_chol", "theta_dep_chol"],
+      "native_value": 50.6136124854254,
+      "native_finite": true,
+      "native_gradient": [0.00869053287236091, 0.042086647107475, -0.00162844875301674, 0.129110728587268, -0.0843352171819549, -0.0470441770698617, 54703308726.4543, 0.117581006961541, -530619981185.655],
+      "inner_gradient": 0.119939619593263,
+      "exact_value": 50.7168194737616,
+      "exact_gradient": [0.00809008712103854, 0.0322177453753441, -0.0011448560930547, 0.118159783792562, -0.0796837231305676, -0.0231367652063661, 0.0212768147242151, 1.34188365960833e-14, -0.799321538703857],
+      "kappa_L": 19321559.1474558,
+      "min_eigen_V": 0.198900634673906,
+      "value_error": -0.103206988336154
+    },
+    "trial": {
+      "parameters": [0.196069931847525, 0.292569719712437, 0.291790247657287, 0.520410381192265, 0.0682316351688025, -0.807527229701107, -2.72826837232887, -27.5954199925794, 0.105815559867905],
+      "parameter_names": ["b_fix", "b_fix", "b_fix", "b_fix", "b_fix", "log_sigma_eps", "theta_dep_chol", "theta_dep_chol", "theta_dep_chol"],
+      "native_value": null,
+      "native_finite": false,
+      "native_gradient": {},
+      "inner_gradient": {},
+      "exact_value": 50.7157382894317,
+      "exact_gradient": [1.75997905760283e-06, -8.12491816248873e-06, -3.81736697230295e-06, -1.3398893950356e-05, 1.01522943589671e-05, -1.75683403331458e-06, -1.2993017785767e-06, 1.08565282357206e-22, 9.69527640011514e-05],
+      "kappa_L": 228437467222.909,
+      "min_eigen_V": 0.198879839268733,
+      "value_error": null
+    }
+  },
+  "current_dll_sha256": "6a2ca71572672a64d0c1ba0f76173e9189488b7a43dd2f0967e10f76abb687ff",
+  "old_dll_sha256": "372a765058b1ad86a8365cf029d4c6fcb78b34aa3f36b2d0375d32a6d9ccabb0",
+  "outer_optimizer_calls": 0,
+  "native_value_calls": 4,
+  "native_gradient_calls": 2,
+  "inner_score_calls": 2,
+  "exact_value_gradient_calls": 4,
+  "elapsed_current_seconds": 1.106,
+  "elapsed_old_seconds": 1.106,
+  "pre_evaluation_failures": [
+    {
+      "seconds": 1.067,
+      "evaluations": 0,
+      "reason": "Inactive unit-index signature differs"
+    },
+    {
+      "seconds": 1.052,
+      "evaluations": 0,
+      "reason": "Difference localized to site_species_id before constructing tape"
+    }
+  ],
+  "resolution": "Actual saved data retained verbatim; fresh valid parameters and identical maps; only b_phy_aug random; all ordinary unit flags off. Invalid parameters field in earlier capture never used.",
+  "proposal": "Same-model noncentred nonspatial Gaussian column-coefficient path; not implemented; requires explicit scope and fit-budget approval",
+  "evidence_sha256": ["0e66310d16e4e15fa970f33cda4151c105ec05ab211596fdafb918ac3969dede", "03b0e6cbcaec79319eee37ade90b93e73c61d3d3a039fa758df55ec90333d428", "f191a7c4e3a91a36ece76aec1d4dbd52dd246b4c36af211a7968a7a2f267d31e", "885d70a3fd8b5e7998b8b681c4b2c00e5bbf10c56bc6c3ec2c1c28d694c3ebff", "ae26213f2fffdd7074cb317bc8f66af2945cf88dab56a6223e1dfb1c9544e804", "40f2b7eb28f2094e0ec1e220b48291e0ba2e8c77f607d76989c93870e1e505ba", "ee46f257d8c63d813db5ce81a94cbee08b67748c591165a3ebbc8b25c73a8e48", "788bfda4af39d39206eb28e93b9d67a02eee34028ef356065081a4df6f987334", "85f6d2b98d51230c0909c9f3066a13cfa6f32d508eca2b1ffadf81413f4fb25d", "4c943875b43187041037b954581037b1171f885746e9bc37b51bb17d83ca8268", "bd763affca7d823873a3b9968f59e050e4bbc70526b61a075cd9778f73577065"]
+}

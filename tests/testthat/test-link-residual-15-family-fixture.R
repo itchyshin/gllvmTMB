@@ -193,6 +193,17 @@ test_that("family_id 9 (student-t, df > 2) returns sigma^2 * df / (df - 2)", {
   expect_equal(unname(res), 2)
 })
 
+test_that("family_id 9 (student-t, df = Inf) is the normal limit: variance sigma^2 (#1487)", {
+  ## report$df_student overflows to Inf past log_df ~ 709; that is the
+  ## Gaussian limit, so the variance is sigma^2, not NA with a warning.
+  fit <- make_mock_single_family_fit(
+    family_id    = 9L,
+    report_extra = list(sigma_student = 1.5, df_student = Inf)
+  )
+  expect_no_warning(res <- gllvmTMB:::link_residual_per_trait(fit))
+  expect_equal(unname(res), 1.5^2)
+})
+
 test_that("family_id 9 (student-t, df = 2) warns and returns NA", {
   fit <- make_mock_single_family_fit(
     family_id    = 9L,

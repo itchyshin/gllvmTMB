@@ -56,7 +56,9 @@ fit_lv_missing_response <- function(data, missing = NULL) {
     data = data,
     unit = "unit",
     trait = "trait",
-    control = gllvmTMBcontrol(se = FALSE)
+    ## n_init = 1L: this test compares optimiser parameters between two
+    ## fits, and best-of-n restarts may land on sign-flipped equivalents (#1331).
+    control = gllvmTMBcontrol(se = FALSE, n_init = 1L)
   )
   if (!is.null(missing)) {
     args$missing <- missing

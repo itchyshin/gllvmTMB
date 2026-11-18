@@ -1,0 +1,470 @@
+#!/usr/bin/env Rscript
+## Run exactly one retained tree-axis fit.  Call through the parent's bounded
+## process wrapper; R cannot reliably interrupt compiled TMB optimisation.
+##
+## Example:
+##   GLLVM_TREE_AXIS_RESULTS=/private/tmp/.../results \
+##   /private/tmp/.../bounded.py 300 /private/tmp/.../fit-Q2.log \
+##   Rscript --vanilla dev/tree-axis-latent/run-fit.R --coefficient Q2
+
+args <- commandArgs(trailingOnly = TRUE)
+coefficient_mode <- length(args) == 2L && identical(args[[1L]], "--coefficient")
+if (!(length(args) == 1L || coefficient_mode))
+  stop("Usage: run-fit.R <cell-fit-id> OR run-fit.R --coefficient <Q2|Q3|QW2|QW3>")
+
+script_arg <- grep("^--file=", commandArgs(FALSE), value = TRUE)
+script_path <- normalizePath(sub("^--file=", "", script_arg[[1L]]))
+source(file.path(dirname(script_path), "fixture.R"))
+library(gllvmTMB)
+
+FIT_PLAN <- list(
+  Q2 = list(model = "community_iid", shape = "long", size = "target", starts = 3L, original = "M2"),
+  Q3 = list(model = "community_phylo", shape = "long", size = "target", starts = 3L, original = "M3"),
+  QW2 = list(model = "community_iid", shape = "wide", size = "target", start = 1L, original = "M2"),
+  QW3 = list(model = "community_phylo", shape = "wide", size = "target", start = 1L, original = "M3"),
+  G1 = list(model = "morphology", shape = "long", size = "target", starts = 3L, original = "M1"),
+  G2 = list(model = "community_iid", shape = "long", size = "target", starts = 3L, original = "M2"),
+  G3 = list(model = "community_phylo", shape = "long", size = "target", starts = 3L, original = "M3"),
+  GW1 = list(model = "morphology", shape = "wide", size = "target", start = 1L, original = "M1"),
+  GW2 = list(model = "community_iid", shape = "wide", size = "target", start = 1L, original = "M2"),
+  GW3 = list(model = "community_phylo", shape = "wide", size = "target", start = 1L, original = "M3"),
+  N2 = list(model = "community_iid", shape = "long", size = "target", starts = 3L, original = "M2"),
+  N3 = list(model = "community_phylo", shape = "long", size = "target", starts = 3L, original = "M3"),
+  NW2 = list(model = "community_iid", shape = "wide", size = "target", start = 1L, original = "M2"),
+  NW3 = list(model = "community_phylo", shape = "wide", size = "target", start = 1L, original = "M3"),
+  C1 = list(model = "morphology", shape = "long", size = "canary", start = 1L),
+  C2 = list(model = "community_phylo", shape = "long", size = "canary", start = 1L),
+  M1 = list(model = "morphology", shape = "long", size = "target", starts = 3L),
+  M2 = list(model = "community_iid", shape = "long", size = "target", starts = 3L),
+  M3 = list(model = "community_phylo", shape = "long", size = "target", starts = 3L),
+  S1 = list(alias_of = "M1", restart = 2L),
+  S2 = list(alias_of = "M1", restart = 3L),
+  S3 = list(alias_of = "M2", restart = 2L),
+  S4 = list(alias_of = "M2", restart = 3L),
+  S5 = list(alias_of = "M3", restart = 2L),
+  S6 = list(alias_of = "M3", restart = 3L),
+  W1 = list(model = "morphology", shape = "wide", size = "target", start = 1L),
+  W2 = list(model = "community_iid", shape = "wide", size = "target", start = 1L, optimizer = "optim"),
+  W3 = list(model = "community_phylo", shape = "wide", size = "target", start = 1L, optimizer = "optim"),
+  B2 = list(model = "community_iid", shape = "long", size = "target", starts = 3L, optimizer = "optim"),
+  B3 = list(model = "community_phylo", shape = "long", size = "target", starts = 3L, optimizer = "optim")
+)
+
+fit_id <- args[[if (coefficient_mode) 2L else 1L]]
+allowed_ids <- if (coefficient_mode) c("Q2", "Q3", "QW2", "QW3") else c("G1", "G2", "G3", "GW1", "GW2", "GW3")
+if (!fit_id %in% allowed_ids) {
+  stop("Fit ID is not admitted in the requested block. Historical fit IDs remain closed.")
+}
+if (!fit_id %in% names(FIT_PLAN)) {
+  stop("Unknown fit ID. Use one of: ", paste(names(FIT_PLAN), collapse = ", "))
+}
+spec <- FIT_PLAN[[fit_id]]
+start_spec <- list(seed = 202608501L, init_jitter = 0.15)
+
+.tree_axis_formula_env <- function(tree, values = list()) {
+  env <- list2env(c(list(tree = tree, all_of = tidyselect::all_of), values),
+                  parent = globalenv())
+  env
+}
+
+.tree_axis_fit_call <- function(fx, spec, start_spec) {
+  formulas <- tree_axis_formulae(fx)
+  n_starts <- if (is.null(spec$starts)) 1L else as.integer(spec$starts)
+  control <- gllvmTMBcontrol(
+    se = FALSE, n_init = n_starts,
+    optimizer = if (is.null(spec$optimizer)) "nlminb" else spec$optimizer,
+    optArgs = if (identical(spec$optimizer, "optim")) list(method = "BFGS") else list(),
+    init_jitter = if (n_starts > 1L) start_spec$init_jitter else 0,
+    start_method = list(method = NULL, jitter.sd = 0)
+  )
+  set.seed(start_spec$seed)
+  if (identical(spec$model, "morphology")) {
+    dat <- if (identical(spec$shape, "long")) fx$morphology$long else fx$morphology$wide
+    key <- paste0("morphology_", spec$shape)
+    formula <- formulas[[key]]
+    environment(formula) <- .tree_axis_formula_env(
+      fx$morphology$tree,
+      list(morph_traits = fx$morphology$traits)
+    )
+    fit_args <- list(
+      formula = formula, data = dat, unit = "species", cluster = "species",
+      family = gaussian(), control = control, silent = TRUE
+    )
+    if (identical(spec$shape, "long")) fit_args$trait <- "trait"
+    return(do.call(gllvmTMB, fit_args))
+  }
+
+  is_phylo <- identical(spec$model, "community_phylo")
+  key <- paste0("community_", if (is_phylo) "phylo" else "iid", "_", spec$shape)
+  formula <- formulas[[key]]
+  environment(formula) <- .tree_axis_formula_env(
+    fx$community$tree,
+    list(community_species = fx$community$species)
+  )
+  if (identical(spec$shape, "long")) {
+    return(gllvmTMB(
+      formula, data = fx$community$long, trait = "trait", unit = "site_id",
+      family = gaussian(), control = control, silent = TRUE
+    ))
+  }
+  gllvmTMB(
+    formula, data = fx$community$wide, column_data = fx$community$column_data,
+    unit = "site_id", family = gaussian(), control = control, silent = TRUE
+  )
+}
+
+.tree_axis_gaussian_map <- function(fit, expected_fixed_value) {
+  map <- fit$tmb_obj$env$map$log_sigma_eps
+  value <- tryCatch({
+    fit$tmb_obj$env$parList()$log_sigma_eps
+  }, error = function(e) NA_real_)
+  list(
+    mapped = !is.null(map),
+    all_na = !is.null(map) && all(is.na(map)),
+    map = if (is.null(map)) NULL else as.integer(map),
+    fixed_value = value,
+    expected_fixed_value = expected_fixed_value,
+    fixed_value_ok = is.numeric(value) && all(is.finite(value)) &&
+      max(abs(value - expected_fixed_value)) <= 1e-12
+  )
+}
+
+.tree_axis_gradient <- function(fit) {
+  tryCatch(max(abs(fit$tmb_obj$gr(fit$opt$par))), error = function(e) NA_real_)
+}
+
+.tree_axis_sigma_public <- function(fit, level) {
+  shared <- suppressMessages(extract_Sigma(
+    fit, level = level, part = "shared", link_residual = "none"
+  )$Sigma)
+  unique <- suppressMessages(extract_Sigma(
+    fit, level = level, part = "unique", link_residual = "none"
+  )$s)
+  total <- suppressMessages(extract_Sigma(
+    fit, level = level, part = "total", link_residual = "none"
+  )$Sigma)
+  list(shared = shared, unique = unique, total = total)
+}
+
+.tree_axis_public_result <- function(fit, model) {
+  fitted_out <- stats::fitted(fit)
+  if (!is.data.frame(fitted_out) || !"est" %in% names(fitted_out) || ncol(fitted_out) < 3L) {
+    stop("fitted() did not return the documented training-row data frame.")
+  }
+  ## Positions are intentional: predict.gllvmTMB_multi() constructs unit,
+  ## species, trait, est in that order.  Names can repeat when unit and species
+  ## are both called `species`, so name matching is unsafe here.
+  out <- list(
+    fitted = as.numeric(fitted_out$est),
+    fitted_keys = paste(fitted_out[[1L]], fitted_out[[3L]], sep = "::")
+  )
+  if (identical(model, "morphology")) {
+    out$phy <- .tree_axis_sigma_public(fit, "phy")
+    out$unit <- .tree_axis_sigma_public(fit, "unit")
+  } else {
+    out$unit <- .tree_axis_sigma_public(fit, "unit")
+    out$column_coef <- suppressMessages(extract_Sigma(fit, level = "column_coef"))
+  }
+  out
+}
+
+.tree_axis_physical_coefficients <- function(fit) {
+  if (!isTRUE(fit$standardized_column_coef)) return(list(pass = FALSE, standardized = FALSE))
+  par <- fit$tmb_obj$env$last.par.best
+  dims <- dim(fit$tmb_params$b_phy_aug)
+  stopifnot(length(dims) == 3L, length(par[names(par) == "b_phy_aug"]) == prod(dims))
+  U <- array(par[names(par) == "b_phy_aug"], dim = dims)
+  theta <- par[names(par) == "theta_dep_chol"]
+  C <- dims[2L]
+  stopifnot(length(theta) == C * (C + 1L) / 2L)
+  L <- diag(exp(theta[seq_len(C)]), C)
+  if (C > 1L) L[lower.tri(L)] <- theta[-seq_len(C)]
+  B <- array(0, dim = dims)
+  for (k in seq_len(dims[3L])) B[, , k] <- matrix(U[, , k], dims[1L], C) %*% t(L)
+  physical <- fit$report$b_phy_aug_physical
+  difference <- if (identical(dim(physical), dims)) max(abs(physical - B)) else Inf
+  list(pass = all(is.finite(B)) && all(is.finite(physical)) && difference <= 1e-8,
+    standardized = TRUE, physical = physical, expected = B, max_difference = difference)
+}
+
+## Private instrumentation is confined to this developer runner. It does not
+## alter the likelihood, optimizer, starts, or installed source. Capture actual
+## optimizer attempts; no restart may disappear behind the selected fit.
+.tree_axis_calls <- list()
+.tree_axis_call_entries <- 0L
+.tree_axis_attempt_limit <- if (is.null(spec$starts)) 1L else spec$starts
+.tree_axis_restart_snapshots <- function(fit, calls, model, original_public) {
+  obj <- fit$tmb_obj
+  state <- list(last.par = obj$env$last.par,
+                last.par.best = obj$env$last.par.best,
+                value.best = obj$env$value.best)
+  on.exit({
+    obj$env$last.par <- state$last.par
+    obj$env$last.par.best <- state$last.par.best
+    obj$env$value.best <- state$value.best
+  }, add = TRUE)
+  stopifnot(length(calls) == .tree_axis_attempt_limit,
+            !isTRUE(fit$warm_restart_provenance$warm_restart_attempted))
+  objectives <- vapply(calls, function(x) x$result$objective, numeric(1))
+  selected <- which.min(objectives)
+  stopifnot(isTRUE(all.equal(fit$opt$par, calls[[selected]]$result$par,
+                            tolerance = 1e-10)),
+            abs(fit$opt$objective - objectives[selected]) <= 1e-8)
+  attempts <- lapply(calls, function(call) {
+    opt <- call$result
+    obj$fn(opt$par)
+    obj$env$last.par.best <- obj$env$last.par
+    transient <- fit
+    transient$opt <- opt
+    transient$report <- obj$report()
+    ## Materialize immediately: these transient objects share mutable TMB state.
+    covariance <- list(unit = .tree_axis_sigma_public(transient, "unit"))
+    if (identical(model, "morphology")) {
+      covariance$phy <- .tree_axis_sigma_public(transient, "phy")
+    } else {
+      covariance$column_coef <- extract_Sigma(transient, level = "column_coef")
+    }
+    physical <- if (isTRUE(coefficient_mode)) .tree_axis_physical_coefficients(transient) else NULL
+    list(start = call$start, par = opt$par, objective = opt$objective,
+         convergence = opt$convergence, max_gradient = max(abs(obj$gr(opt$par))),
+         covariance = covariance, physical_coefficients = physical)
+  })
+  reference <- original_public[intersect(c("unit", "phy", "column_coef"),
+                                        names(original_public))]
+  comparison <- isTRUE(all.equal(attempts[[selected]]$covariance, reference,
+                                tolerance = 1e-8, check.attributes = TRUE))
+  ## List order is irrelevant to the source-wise identity gate.
+  comparison <- all(vapply(names(reference), function(n) {
+    isTRUE(all.equal(attempts[[selected]]$covariance[[n]], reference[[n]],
+                    tolerance = 1e-8, check.attributes = TRUE))
+  }, logical(1)))
+  starts_distinct <- length(calls) == 1L || all(vapply(calls[-1L], function(x) {
+    max(abs(x$start - calls[[1L]]$start)) > 0
+  }, logical(1)))
+  list(attempts = attempts, selected = selected,
+       selected_reconstruction_ok = comparison, starts_distinct = starts_distinct,
+       optimizer_calls = length(calls), optimizer_entries = .tree_axis_call_entries,
+       warm_restart_attempted = isTRUE(fit$warm_restart_provenance$warm_restart_attempted))
+}
+
+result_dir <- Sys.getenv(
+  "GLLVM_TREE_AXIS_RESULTS",
+  unset = file.path(tempdir(), "gllvmTMB-tree-axis-latent-results")
+)
+dir.create(result_dir, recursive = TRUE, showWarnings = FALSE)
+out <- file.path(result_dir, paste0("fit-", fit_id, ".rds"))
+if (file.exists(out)) stop("Refusing to overwrite retained receipt: ", out)
+provenance <- NULL
+if (coefficient_mode) {
+  stopifnot(identical(normalizePath(result_dir),
+    "/private/tmp/gllvm-tree-axis-latent-20260830/coefficient-standardization-7c88"),
+    identical(normalizePath(Sys.getenv("GLLVM_TREE_AXIS_ORIGINAL")),
+      "/private/tmp/gllvm-tree-axis-latent-20260830/results"))
+  provenance_path <- file.path(result_dir, "provenance.json")
+  provenance <- jsonlite::read_json(provenance_path, simplifyVector = TRUE)
+  expected_sources <- c(list.files("R", pattern = "[.]R$", full.names = TRUE),
+    "src/gllvmTMB.cpp", "inst/include/gllvmTMB/detail/column_prior.hpp", "NAMESPACE", "DESCRIPTION")
+  stopifnot(identical(provenance$fixture_md5, "6c3bae640dd86491171cb20fbb56b0e4"),
+    identical(unname(tools::md5sum(file.path(dirname(script_path), "fixture.R"))), provenance$fixture_md5),
+    identical(normalizePath(find.package("gllvmTMB")), provenance$library),
+    identical(digest::digest(file = file.path(provenance$library, "libs/gllvmTMB.so"), algo = "sha256"), provenance$dll_sha256),
+    setequal(names(provenance$source_sha256), expected_sources), !anyDuplicated(names(provenance$source_sha256)))
+  for (path in expected_sources) stopifnot(identical(digest::digest(file = path, algo = "sha256"), provenance$source_sha256[[path]]))
+  prefit <- readRDS(file.path(result_dir, "prefit-gate.rds"))
+  required <- c("windows_oracle", "physical_outputs", "physical_uncertainty", "starts_and_maps", "morphology_continuity", "review")
+  stopifnot(identical(prefit$schema, "tree-axis-coefficient-prefit-v1"), isTRUE(prefit$pass),
+    identical(prefit$provenance_md5, unname(tools::md5sum(provenance_path))),
+    setequal(names(prefit$checks), required), all(prefit$checks %in% TRUE))
+  if (startsWith(fit_id, "QW")) for (id in c("Q2", "Q3")) {
+    gate <- readRDS(file.path(result_dir, paste0("gate-", id, ".rds")))
+    stopifnot(identical(gate$schema, "tree-axis-coefficient-long-gate-v1"),
+      identical(gate$id, id), isTRUE(gate$pass),
+      identical(gate$provenance_md5, unname(tools::md5sum(provenance_path))),
+      identical(gate$receipt_md5, unname(tools::md5sum(file.path(result_dir, paste0("fit-", id, ".rds"))))))
+  }
+  already <- length(list.files(result_dir, pattern = "^Q(W)?[23]-attempt-[123]-start[.]rds$"))
+  stopifnot(33L + already + .tree_axis_attempt_limit <= 41L)
+  if (!dir.create(file.path(result_dir, paste0("admission-", fit_id)), showWarnings = FALSE))
+    stop("Coefficient fit ID already admitted: ", fit_id)
+}
+if (fit_id %in% c("G1", "G2", "G3", "GW1", "GW2", "GW3")) {
+  stopifnot(identical(normalizePath(result_dir),
+    "/private/tmp/gllvm-tree-axis-latent-20260830/cell-integration-7c88"))
+  provenance_path <- file.path(result_dir, "provenance-v2.json")
+  provenance <- jsonlite::read_json(provenance_path, simplifyVector = TRUE)
+  stopifnot(identical(unname(tools::md5sum(file.path(dirname(script_path), "fixture.R"))),
+    "6c3bae640dd86491171cb20fbb56b0e4"),
+    identical(provenance$fixture_md5, "6c3bae640dd86491171cb20fbb56b0e4"))
+  stopifnot(identical(normalizePath(find.package("gllvmTMB")), provenance$library),
+    identical(digest::digest(file = file.path(provenance$library, "libs/gllvmTMB.so"), algo = "sha256"), provenance$dll_sha256))
+  expected_sources <- c(list.files("R", pattern="[.]R$", full.names=TRUE),
+    "src/gllvmTMB.cpp", "inst/include/gllvmTMB/detail/column_prior.hpp", "NAMESPACE", "DESCRIPTION")
+stopifnot(length(provenance$source_sha256) > 0L,
+  !is.null(names(provenance$source_sha256)),
+  !anyDuplicated(names(provenance$source_sha256)),
+  setequal(names(provenance$source_sha256),expected_sources))
+for (path in names(provenance$source_sha256)) {
+    stopifnot(identical(digest::digest(file = path, algo = "sha256"), provenance$source_sha256[[path]]))
+  }
+  prefit <- readRDS(file.path(result_dir, "prefit-gate.rds"))
+  stopifnot(isTRUE(prefit$pass), identical(prefit$provenance_md5,
+    unname(tools::md5sum(provenance_path))))
+  if (fit_id %in% c("GW1", "GW2", "GW3")) {
+    needed <- if (fit_id == "GW1") "G1" else c("G2", "G3")
+    for (id in needed) {
+      gate <- readRDS(file.path(result_dir, paste0("gate-", id, ".rds")))
+      stopifnot(isTRUE(gate$pass), identical(gate$receipt_md5,
+        unname(tools::md5sum(file.path(result_dir, paste0("fit-", id, ".rds"))))))
+    }
+  }
+  already <- length(list.files(result_dir, pattern="^G(W)?[123]-attempt-[123]-start[.]rds$"))
+  stopifnot(21L + already + .tree_axis_attempt_limit <= 33L)
+  admission <- file.path(result_dir, paste0("admission-", fit_id))
+  if (!dir.create(admission, showWarnings = FALSE)) stop("Fit ID already admitted: ", fit_id)
+}
+if (!is.null(spec$alias_of)) {
+  parent_path <- file.path(result_dir, paste0("fit-", spec$alias_of, ".rds"))
+  if (!file.exists(parent_path)) {
+    stop("Alias ", fit_id, " requires retained parent receipt ", parent_path)
+  }
+  parent_receipt <- readRDS(parent_path)
+  row <- parent_receipt$restart_history
+  if (is.null(row) || nrow(row) < spec$restart) {
+    stop("Parent receipt has no retained restart row for alias ", fit_id)
+  }
+  saveRDS(list(
+    schema = "tree-axis-latent-restart-alias-v1", id = fit_id,
+    alias_of = spec$alias_of, restart = row[spec$restart, , drop = FALSE],
+    fixture_checksum = parent_receipt$fixture_checksum,
+    source_sha = parent_receipt$source_sha,
+    snapshot = parent_receipt$restart_snapshots$attempts[[spec$restart]],
+    parent_md5 = unname(tools::md5sum(parent_path)),
+    note = "Alias receipt only: it is one optimizer attempt within the parent call, not an additional gllvmTMB fit."
+  ), out)
+  message("Wrote ", out)
+  quit(status = 0L)
+}
+fixture <- make_tree_axis_fixture(spec$size)
+fixture_checksum <- unname(tools::md5sum(normalizePath(file.path(dirname(script_path), "fixture.R"))))
+response_sd <- if (identical(spec$model, "morphology")) {
+  stats::sd(fixture$morphology$long$value)
+} else {
+  stats::sd(fixture$community$long$value)
+}
+expected_log_sigma_eps <- log(max(1e-3 * response_sd, 1e-6))
+started <- Sys.time()
+warnings <- character()
+fit <- NULL
+fit_error <- NULL
+trace_name <- if (identical(spec$optimizer, "optim")) "optim" else ".gllvmTMB_run_nlminb"
+trace_where <- if (identical(spec$optimizer, "optim")) asNamespace("stats") else asNamespace("gllvmTMB")
+trace(trace_name, where = trace_where, print = FALSE,
+  tracer = quote({
+    .GlobalEnv$.tree_axis_call_entries <- .GlobalEnv$.tree_axis_call_entries + 1L
+    if (.GlobalEnv$.tree_axis_call_entries > .GlobalEnv$.tree_axis_attempt_limit)
+      stop("Optimizer-attempt budget exceeded; no additional optimization allowed")
+    .tree_axis_start_copy <- if (.GlobalEnv$trace_name == "optim") par else args$start
+    if (isTRUE(.GlobalEnv$coefficient_mode)) {
+      stopifnot(identical(args$control, list(eval.max = 2000, iter.max = 1500)),
+        identical(names(args), c("start", "objective", "gradient", "control")))
+      entered <- length(list.files(.GlobalEnv$result_dir,
+        pattern = "^Q(W)?[23]-attempt-[123]-start[.]rds$"))
+      stopifnot(33L + entered + 1L <= 41L)
+    }
+    if (!is.null(.GlobalEnv$spec$original)) {
+      original <- readRDS(file.path(Sys.getenv("GLLVM_TREE_AXIS_ORIGINAL"),
+        paste0("fit-", .GlobalEnv$spec$original, ".rds")))$optimizer_calls[[.GlobalEnv$.tree_axis_call_entries]]$start
+      stopifnot(identical(.tree_axis_start_copy, original))
+    }
+    message("OPTIMIZER_ATTEMPT_ENTER id=", .GlobalEnv$fit_id,
+            " attempt=", .GlobalEnv$.tree_axis_call_entries)
+    entry_path <- file.path(.GlobalEnv$result_dir, paste0(.GlobalEnv$fit_id,
+      "-attempt-", .GlobalEnv$.tree_axis_call_entries, "-start.rds"))
+    if (file.exists(entry_path)) stop("Refusing to overwrite optimizer start receipt")
+    saveRDS(.tree_axis_start_copy, entry_path)
+  }),
+  exit = quote({
+    raw <- returnValue()
+    normalized <- raw
+    if (.GlobalEnv$trace_name == "optim") {
+      normalized <- list(par = raw$par, objective = raw$value,
+        convergence = raw$convergence, message = if (is.null(raw$message)) "" else raw$message,
+        iterations = unname(raw$counts[["function"]]),
+        evaluations = unname(raw$counts[["gradient"]]))
+    }
+    captured <- list(start = .tree_axis_start_copy, result = normalized, raw = raw)
+    if (isTRUE(.GlobalEnv$coefficient_mode)) {
+      captured$control <- args$control
+      captured$argument_names <- names(args)
+    }
+    .GlobalEnv$.tree_axis_calls[[length(.GlobalEnv$.tree_axis_calls) + 1L]] <- captured
+    exit_path <- file.path(.GlobalEnv$result_dir, paste0(.GlobalEnv$fit_id,
+      "-attempt-", .GlobalEnv$.tree_axis_call_entries, "-result.rds"))
+    if (file.exists(exit_path)) stop("Refusing to overwrite optimizer result receipt")
+    saveRDS(captured, exit_path)
+    message("OPTIMIZER_ATTEMPT_EXIT id=", .GlobalEnv$fit_id,
+            " attempt=", .GlobalEnv$.tree_axis_call_entries,
+            " code=", normalized$convergence, " objective=", normalized$objective)
+  }))
+fit <- tryCatch(
+  withCallingHandlers(
+    .tree_axis_fit_call(fixture, spec, start_spec),
+    warning = function(w) {
+      warnings <<- c(warnings, conditionMessage(w))
+      invokeRestart("muffleWarning")
+    }
+  ),
+  error = function(e) {
+    fit_error <<- conditionMessage(e)
+    NULL
+  }
+)
+untrace(trace_name, where = trace_where)
+elapsed_s <- as.numeric(difftime(Sys.time(), started, units = "secs"))
+diagnostic <- if (is.null(fit)) NULL else tryCatch(
+  gllvmTMB_diagnose(fit, verbose = FALSE), error = function(e) list(error = conditionMessage(e))
+)
+public <- if (is.null(fit)) NULL else tryCatch(
+  .tree_axis_public_result(fit, spec$model),
+  error = function(e) list(error = conditionMessage(e))
+)
+restart_snapshots <- if (is.null(fit)) NULL else tryCatch(
+  .tree_axis_restart_snapshots(fit, .tree_axis_calls, spec$model, public),
+  error = function(e) list(error = conditionMessage(e), raw_calls = .tree_axis_calls)
+)
+receipt <- list(
+  schema = "tree-axis-latent-fit-v1",
+  validation_block = if (coefficient_mode) "coefficient-standardization-v1" else "cell-integration-v1",
+  id = fit_id,
+  spec = spec,
+  start = start_spec,
+  fixture_version = fixture$version,
+  fixture_checksum = fixture_checksum,
+  source_sha = tryCatch(system2("git", c("rev-parse", "HEAD"), stdout = TRUE), error = function(e) NA_character_),
+  R = R.version.string,
+  libpaths = .libPaths(),
+  started = started,
+  elapsed_s = elapsed_s,
+  warnings = warnings,
+  error = fit_error,
+  fit = fit,
+  objective = if (is.null(fit)) NA_real_ else fit$opt$objective,
+  convergence = if (is.null(fit)) NA_integer_ else fit$opt$convergence,
+  max_gradient = if (is.null(fit)) NA_real_ else .tree_axis_gradient(fit),
+  gaussian = if (is.null(fit)) NULL else .tree_axis_gaussian_map(fit, expected_log_sigma_eps),
+  diagnostic = diagnostic,
+  public = public,
+  restart_snapshots = restart_snapshots,
+  optimizer_calls = .tree_axis_calls,
+  optimizer_entries = .tree_axis_call_entries,
+  runner_checksum = unname(tools::md5sum(script_path)),
+  provenance = provenance,
+  integrated_gaussian_diag_B = if (is.null(fit)) FALSE else isTRUE(fit$integrated_gaussian_diag_B),
+  standardized_column_coef = if (is.null(fit)) FALSE else isTRUE(fit$standardized_column_coef),
+  physical_coefficients = if (is.null(fit) || !coefficient_mode) NULL else tryCatch(
+    .tree_axis_physical_coefficients(fit), error = function(e) list(pass = FALSE, error = conditionMessage(e))),
+  restart_history = if (is.null(fit)) NULL else fit$restart_history
+)
+saveRDS(receipt, out)
+message("Wrote ", out)
+if (!is.null(fit_error) || !is.null(public$error) || !is.null(restart_snapshots$error)) quit(status = 1L)

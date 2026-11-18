@@ -28,9 +28,29 @@ is an accepted compatibility spelling for readers coming from \code{gllvm}. Both
 return the same matrix.
 }
 \examples{
-\dontrun{
+set.seed(1)
+## Five traits measured three times on each of 60 units. Between units,
+## the traits share two latent axes (Lambda) plus a trait-specific
+## unique variance (psi = 0.2 for every trait).
+Lambda <- matrix(c(0.9, 0.7, 0.5, -0.3, 0.2,
+                   0.0, 0.4, -0.5, 0.6, 0.8), nrow = 5, ncol = 2)
+sim <- simulate_unit_trait(
+  n_units = 60, n_obs_per_unit = 3, n_traits = 5,
+  Lambda_B = Lambda, psi_B = rep(0.2, 5), sigma2_eps = 0.3
+)
+fit <- gllvmTMB(
+  value ~ 0 + trait + latent(0 + trait | unit, d = 2, unique = TRUE),
+  data  = sim$data,
+  trait = "trait",
+  unit  = "unit"
+)
+## extract_loadings() is the snake_case spelling of getLoadings();
+## both return the same matrix
+L <- extract_loadings(fit, level = "unit")
+L
+identical(L, getLoadings(fit, level = "unit"))
+## Rotated after fitting, e.g. with varimax
 extract_loadings(fit, level = "unit", rotate = "varimax")
-}
 }
 \seealso{
 \code{\link[=extract_ordination]{extract_ordination()}} for scores and loadings together;

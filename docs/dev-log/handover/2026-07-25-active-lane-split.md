@@ -1,15 +1,136 @@
+<!-- slop-ok: historical multi-lane ownership map; refresh bullets keep house START HERE form -->
 # Active-lane split — 2026-07-25
 
 This coordination note prevents a new session from treating this repository as
 a single writable lane.  It is a map, not a release/capability claim.
 
+Refresh 2026-09-25 (Cursor): Meuwissen-Luo F twin lane OPEN.
+drmTMB Destination D animal construction is closed (#1422-#1428 on drmTMB
+`b737b3bad`). This lane ports only the dense-`Finb` leftover in
+`.gllvm_pedigree_precision` (`R/pedigree-precision.R:163-165`). Owns
+`R/pedigree-precision.R`, pedigree tests, related help/COPYRIGHTS, and this
+handover. Does not own docs reader PRs, MSPL, or `engine=julia` bridge.
+Work from a clean local-scratch worktree; leave the Dropbox checkout alone.
+START HERE: `docs/dev-log/handover/2026-09-25-cursor-handover-meuwissen-twin.md`.
+Sibling lanes below remain PROTECTED.
+
+**Refresh 2026-08-26 (Codex to Codex): response-column coefficient foundation awaiting PR integration.**
+Branch `codex/response-column-coef-arc1` contains the fail-closed Arc 1 parser/data
+foundation and its reviewed closure record. `*_slope()` is still the current
+warning-free API; soft deprecation is a future migration gate only after proven
+`*_coef()` replacements preserve existing fits. The next Codex first monitors the
+open Arc 1 PR and changes only failures attributable to this lane; after human merge,
+it starts a fresh Ultra Plan for the IID `column_coef()` engine before structured
+sources. The dirty article checkout and every lane below remain **PROTECTED**.
+**START HERE:** `docs/dev-log/handover/2026-08-26-codex-handover.md`.
+
+**Refresh 2026-08-17 #5 (Codex to Claude): finish #1092 only; wider Ayumi programme deferred.**
+The implementation worktree `/private/tmp/gllvmtmb-1092-grad` is active and clean on
+`claude/fix-1092-penalised-gradient` at five pushed commits: `e51738c9`, `bb6d1bdc`,
+`a485dc01` (closure records), `a86b1734` (second penalised block found), and
+`dce409a6` (corrected after-task/plan-actual). PR
+[#1106](https://github.com/itchyshin/gllvmTMB/pull/1106) is open and replacement CI is
+in progress. **MERGE BLOCKER:** current code penalises `theta_rr_spde_lv` when an
+ordinary latent block opens the ridge gate, while the warning promises spatial terms
+are not silently penalised. Recommended: confine the ridge to `theta_rr_B`, then update
+the closure records and tests. Claude owns this resolution and CI for **#1092 only**,
+then must stop and hand back. Ayumi #25, Ayumi #23,
+Design 122 compute, and all replies to Ayumi remain deferred. All sibling lanes are
+**PROTECTED**. **START HERE:**
+`docs/dev-log/handover/2026-08-17-claude-handover-1092-finish.md`.
+
+**Refresh 2026-08-17 #4 (Codex to Claude): Ayumi #23-25 bug-fix programme assigned to Claude.**
+P0 is the confirmed loading-ridge objective/gradient mismatch, package
+[#1092](https://github.com/itchyshin/gllvmTMB/issues/1092) / Ayumi
+[#24](https://github.com/Ayumi-495/urbanisation_map/issues/24). Reuse the already-created
+clean branch `claude/fix-1092-penalised-gradient` at
+`/private/tmp/gllvmtmb-1092-grad`; do not create a duplicate implementation lane.
+Follow sequentially with Ayumi [#25](https://github.com/Ayumi-495/urbanisation_map/issues/25)
+(mapped-off Psi warning, native `fitted()`, objective provenance) and
+[#23](https://github.com/Ayumi-495/urbanisation_map/issues/23) (higher-order response
+dependencies, ridge-path teaching, low-loading selection correction). **No replies yet.**
+Other Claude/Cursor/Codex lanes below remain **PROTECTED** and are not superseded.
+**START HERE:**
+`docs/dev-log/handover/2026-08-17-claude-handover-ayumi-bugfix.md`.
+
+**Refresh 2026-08-17 #3 (Claude): the CATEGORICAL arc is CLOSED — lane retired.**
+Both PRs merged: [#1057](https://github.com/itchyshin/gllvmTMB/pull/1057)
+(`489162dc`, multinomial structured-dependency surface + fail-closed
+admission fence) and [#1088](https://github.com/itchyshin/gllvmTMB/pull/1088)
+(`c26c294c`, Mizuno-2025 paper alignment + categorical degeneracy detector).
+**Nothing is owed by this lane**; it claims no files and takes nothing from
+the lanes below. Multinomial screen calibrated, armed, fit-time warning
+wired; **ordinal screen ships DISARMED** after five pre-registered candidates
+were eliminated. 🔴 `extract_phylo_signal()` was returning H^2 = 1.0 for every
+categorical trait — fixed. Follow-ups are ISSUES, not carried state:
+[#1097](https://github.com/itchyshin/gllvmTMB/issues/1097) (ordinal
+detection research), [#1098](https://github.com/itchyshin/gllvmTMB/issues/1098)
+(binomial 25% FPR), [#1099](https://github.com/itchyshin/gllvmTMB/issues/1099)
+(paper vignette). ⚠ post-merge CI was still running at merge time — verify.
+**START HERE (this lane only):**
+`docs/dev-log/handover/2026-08-17-claude-handover-categorical-arc.md`
+(every other lane keeps its own named handover below — this entry does NOT
+supersede the Cursor LA-MSPL baton immediately following.)
+
+**Refresh 2026-08-17 #2 (Cursor): LA-MSPL overnight arc → Cursor handover.**
+D-157 B1 **SIGNED PARK** (no second campaign; `MSPL-04` blocked; no
+Totoro relaunch; later intervals = new construction). Point admits:
+binomial / gaussian / poisson (experimental). Internal SE pins live;
+public `se` withheld. CI triad docs #1075 + Poisson W G0 #1076 are
+**UNSIGNED**. Profile scaffold **DRAFT** #1077 waits triad G0.
+Optional: fix #1065 planned-only. **PROTECTED:** Codex Lane B.
+Worktree `/private/tmp/gllvmtmb-mspl-estimator-programme-roadmap`.
+**START HERE:** `docs/dev-log/handover/2026-08-17-cursor-handover.md`
+(other lanes keep their named handovers below).
+
+**Refresh 2026-08-17 (Cursor): B1 aftermath G0 brief filed — now SIGNED PARK (D-157).**
+Historical opener for the aftermath card. Official hold-out
+[#1040](https://github.com/itchyshin/gllvmTMB/pull/1040) (M0;
+G1 14/132 = 10.6%). Superseded for baton by the #2 refresh above.
+**SIGNED card:** `docs/dev-log/research/2026-08-17-mspl-b1-aftermath-G0.md`.
+
+**Refresh 2026-08-15 #9 (Cursor): Student-t + ordinal Phase-4 planned prep.**
+Lane **`cursor/mspl-phase4-student-ordinal`** · WT
+`/tmp/gllvmtmb-mspl-student-ordinal` · LOOP
+`docs/dev-log/lanes/cursor-mspl-phase4-student-ordinal/LOOP/`.
+Board **na → planned prep** for `student()` identity and
+`ordinal_probit()`. **Not admitted.** No registry row. No public
+door. **PROTECTED:** `codex/lane-b-mspl-interval-feasibility`.
+**START HERE:** `2026-08-15-cursor-handover-phase4-student-ordinal.md`.
+
+**Refresh 2026-08-15 #8 (Cursor): MSPL items 1–3 KEEP PLANNED.**
+Conductor sitting. Poisson admit **KEEP PLANNED** (smoke operational
+PASS / admit FAIL). #988 no-SE-campaign receipt **MERGED**.
+#989 SE-CI honesty and #990 Poisson point smoke opened; merge only
+if CI-green and no admit. **Do not merge #972–#976.**
+**PROTECTED:** `codex/lane-b-mspl-interval-feasibility`.
+**START HERE:** `2026-08-15-cursor-handover-mspl-1-3.md`.
+
+**Refresh 2026-08-15 #7 (Cursor): LA-MSPL SE pin MERGED.**
+Lane **`cursor/mspl-se-feasibility-pin`** · [#979](https://github.com/itchyshin/gllvmTMB/pull/979)
+squash-merged `10d6a209`. Internal both-Hessian pin on `main`.
+Public `se=TRUE` still withholds; Poisson stays `planned`. #978
+already on `main` (`78f6d6b6`). Do **not** merge #972–#976.
+**PROTECTED:** `codex/lane-b-mspl-interval-feasibility`.
+**START HERE:** `2026-08-16-cursor-handover-se-pin.md`.
+
+**Refresh 2026-08-15 #5 (Cursor): LA-MSPL Phase-4 tapes Wave 5 closeout.**
+Lane **`cursor/mspl-phase4-tapes-planned`** · WT
+`/private/tmp/gllvmtmb-mspl-estimator-programme-roadmap` · LOOP
+`docs/dev-log/lanes/cursor-mspl-phase4-tapes-planned/LOOP/` · PR
+[#978](https://github.com/itchyshin/gllvmTMB/pull/978) (open; not admitted).
+Five C++ GLM-outer tapes; public `estimator="mspl"` is gaussian +
+bernoulli + Poisson only; Poisson stays `planned`. Do **not** merge
+#972–#976 from this lane. **PROTECTED:** `codex/lane-b-mspl-interval-feasibility`
+(binary SE). **START HERE:** `2026-08-15-cursor-handover-phase4-tapes.md`.
+
 **Refresh 2026-08-15 #3 (Cursor): LA-MSPL point-continue GOAL A+B+C LANDED.**
 Lane **`cursor/mspl-point-programme-continue`** · WT
 `/private/tmp/gllvmtmb-mspl-estimator-programme-roadmap` · LOOP
 `docs/dev-log/lanes/cursor-mspl-point-continue/LOOP/` · PR
-[#971](https://github.com/itchyshin/gllvmTMB/pull/971) (awaiting human merge).
-Gaussian multi-seed point evidence + Poisson Phase-4 `planned` rows on the
-PR tip. Handover opener [#970](https://github.com/itchyshin/gllvmTMB/pull/970)
+[#971](https://github.com/itchyshin/gllvmTMB/pull/971) **MERGED** `cb126576`.
+Gaussian multi-seed point evidence + Poisson Phase-4 `planned` rows.
+Handover opener [#970](https://github.com/itchyshin/gllvmTMB/pull/970)
 already on `main`. **PROTECTED:** binary SE Codex lane.
 
 **Refresh 2026-08-15 (Cursor→Cursor): LA-MSPL catch-up + Gaussian ordinary closed on `main`.**
@@ -58,7 +179,14 @@ missing-data ledger remains open and separately owned unless reassigned.
 
 | Lane | Owner | State | Start here | Boundary |
 | --- | --- | --- | --- | --- |
-| **LA-MSPL point-continue** | Cursor | **GOAL A+B+C LANDED on [#971](https://github.com/itchyshin/gllvmTMB/pull/971)** (awaiting merge). Gaussian multi-seed point + Poisson Phase-4 planned. Catch-up/gaussian kits CLOSED. #970 on main | `2026-08-15-cursor-handover.md`; LOOP `docs/dev-log/lanes/cursor-mspl-point-continue/LOOP/` | LA-MSPL only; never root `LOOP/`; **no Gaussian SE**; Binary SE **PROTECTED**; Poisson planned only (not admitted); no NEWS covered; no campaign without G0+receipt |
+| **LA-MSPL overnight / intervals baton** | Cursor | **D-157 PARK SIGNED.** Triad #1075 + Poisson W #1076 **UNSIGNED**. #1077 draft waits triad G0. Optional #1065 planned-only fix. No public `se` / NEWS covered | `2026-08-17-cursor-handover.md`; cards `research/2026-08-17-mspl-ci-wald-plus-profile.md`, `research/2026-08-17-mspl-poisson-W-G0.md` | No B1 relaunch; no Design 118 recalibration; no real profile CI until triad G0; Codex Lane B **PROTECTED** |
+| **LA-MSPL B1 aftermath G0** | Cursor | **SIGNED PARK (D-157).** Official gate #1040 M0 14/132 = 10.6%. Historical card; baton is the overnight row above | `docs/dev-log/research/2026-08-17-mspl-b1-aftermath-G0.md` | No promote; no second campaign; no \(n\to 2000\); `MSPL-04` stays `blocked`; Design 118 already discharged (#1056) |
+| **Private two-source iSDM G2d** | Codex | **NEW PLAN-ONLY LANE (2026-08-10).** Fresh worktree `/private/tmp/gllvmtmb-isdm-g2d-six-species` · `codex/isdm-g2d-six-species`, forked locally from the closed G2c smoke branch. G2c is `G2C_SMOKE_ADMISSION_HOLD`; no campaign launched. | `2026-08-10-codex-handover-g2d.md`; then G2c after-task report and smoke decision | First task is an Ultra Plan only: six-species, nonspatial, private known-truth recovery design with the same free-Psi relative-intensity estimand. No fits, Totoro, count, spatial, source, empirical, public/API, or Issue #953 work without a new approval. |
+| **LA-MSPL Student-t + ordinal Phase-4 prep** | Cursor | **PLANNED PREP** (not admitted). Notes + oracles only; no registry row; no public door | `2026-08-15-cursor-handover-phase4-student-ordinal.md`; LOOP `docs/dev-log/lanes/cursor-mspl-phase4-student-ordinal/LOOP/` | No admit; no NEWS covered; no `estimator=mspl` on student/ordinal; Binary SE **PROTECTED** |
+| **LA-MSPL items 1–3 (smoke / SE-CI / receipts)** | Cursor | **KEEP PLANNED.** #988 MERGED. #989 + #990 open. Do not merge #972–#976. Do not admit | `2026-08-15-cursor-handover-mspl-1-3.md` | No admit; no NEWS covered; no Totoro SE campaign; Binary SE **PROTECTED** |
+| **LA-MSPL SE feasibility pin** | Cursor | **CLOSED + MERGED** [#979](https://github.com/itchyshin/gllvmTMB/pull/979) `10d6a209`. Internal \(Q_P\)+\(Q_0\) pin; public SE withheld; Poisson `planned`. Do not reopen. Do not merge #972–#976 | `2026-08-16-cursor-handover-se-pin.md`; LOOP `docs/dev-log/lanes/cursor-mspl-se-feasibility-pin/LOOP/` | Historical; no admit; no NEWS covered; no Codex absorb; no public `vcov()`; Binary SE **PROTECTED** |
+| **LA-MSPL Phase-4 tapes** | Cursor | **GOAL LANDED** [#978](https://github.com/itchyshin/gllvmTMB/pull/978) (not admitted; CI re-running after provenance/NB1 fix). Five C++ tapes; public `mspl` = gaussian + bernoulli + Poisson. Do not merge #972–#976 from this lane | `2026-08-15-cursor-handover-phase4-tapes.md`; LOOP `docs/dev-log/lanes/cursor-mspl-phase4-tapes-planned/LOOP/` | Historical successor is the SE-pin lane; Poisson planned only; no NEWS covered; no public `mspl` on NB1/NB2/beta/Tweedie |
+| **LA-MSPL point-continue** | Cursor | **CLOSED** — GOAL A+B+C MERGED [#971](https://github.com/itchyshin/gllvmTMB/pull/971) `cb126576`. Do not reopen | `2026-08-15-cursor-handover.md` (historical); LOOP `docs/dev-log/lanes/cursor-mspl-point-continue/LOOP/` | Historical; successor is Phase-4 tapes |
 | **LA-MSPL binary SE / intervals** | Codex | **PROTECTED** private branch `codex/lane-b-mspl-interval-feasibility` @ `/Users/z3437171/.codex/worktrees/8e9d/gllvmTMB` | classify-only; do not mutate from Cursor MSPL | No absorb/rebase/merge into point-evidence lane |
 | **CRAN 0.7** | Cursor → **Codex** | **Track pick LOCKED 2026-08-08.** Worktree `/private/tmp/gllvmtmb-cran-0.7-20260807` · `cursor/cran-0.7-20260807` from `origin/main` @ `d7bee2fa`. `DESCRIPTION` still `0.6.0`. First CRAN **not imminent** — more testing first | `2026-08-08-codex-handover.md`; G0 `docs/dev-log/plan-actual/2026-08-07-gllvmtmb-cran-0.7-g0.md`; LOOP `lanes/gllvmtmb-cran-0.7/LOOP/` | Leave-M5 + Rose + testing-debt inventory OWED; **no bump yet**; no upload; keep #949 fenced; Laplace default; D-112 holds; portal ≥19 Aug is not a deadline |
 | **CRAN Path A 0.6.1** | Cursor | **PARKED / superseded for upload.** Freeze `v0.6.1-rc.1` @ `6a58683c` retained as **failure archive**. S7 STOPPED (PDF ≈ ERROR + galamm 404). Do not remint as CRAN 0.6.1; do not retag as 0.7 | Path A LOOP + `docs/dev-log/plan-actual/2026-08-07-gllvmtmb-cran-path-a-s7-progress.md` | Historical only; carry hygiene into 0.7 lane |

@@ -115,7 +115,9 @@ test_that("augmented SPDE prior matches analytic Sigma_field (x) Q^-1 density (<
   kappa <- 2.5; sd_a <- 0.7; sd_b <- 1.2; rho <- -0.3
   tp$log_kappa_spde  <- log(kappa)
   tp$log_sd_spde_b   <- c(log(sd_a), log(sd_b))
-  tp$atanh_cor_spde_b <- atanh(rho)
+  ## The engine bounds rho = (1 - 1e-6) tanh(atanh_cor_spde_b) (#1386);
+  ## invert that so the engine's rho is exactly the analytic one.
+  tp$atanh_cor_spde_b <- atanh(rho / (1 - 1e-6))
 
   fn_at <- function(omega) {
     tp2 <- tp
@@ -191,7 +193,7 @@ test_that("augmented SPDE prior log-determinant tracks kappa + Sigma_field (<1e-
     tp2$log_kappa_spde   <- log(kappa)
     tp2$omega_spde_aug   <- matrix(0, n_mesh, 2L)
     tp2$log_sd_spde_b    <- c(log(sd_a), log(sd_b))
-    tp2$atanh_cor_spde_b <- atanh(rho)
+    tp2$atanh_cor_spde_b <- atanh(rho / (1 - 1e-6))   # engine cap (#1386)
     tmap <- lapply(tp2, function(v) factor(rep(NA_integer_, length(v))))
     TMB::MakeADFun(data = td, parameters = tp2, map = tmap,
                    DLL = "gllvmTMB", silent = TRUE)$fn()

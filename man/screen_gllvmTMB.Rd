@@ -13,7 +13,8 @@ screen_gllvmTMB(
   weights = NULL,
   missing = miss_control(),
   control = screen_control(),
-  Xcoef_fixed = NULL
+  Xcoef_fixed = NULL,
+  known_groups = NULL
 )
 }
 \arguments{
@@ -42,6 +43,52 @@ semantics as \code{\link[=gllvmTMB]{gllvmTMB()}} for long-format binomial fits.}
 \item{Xcoef_fixed}{Optional named structural-zero fixed-effect constraints,
 normalized against the expanded fixed-effect columns as in \code{\link[=gllvmTMB]{gllvmTMB()}}.
 This argument is used by the opt-in fixed-design separation screen.}
+
+\item{known_groups}{Optional named list of character vectors of trait
+names, each with at least two distinct names (duplicated names within
+one group are an error). Each element declares a set of traits the
+user believes forms an exact one-hot (simplex) block or one or more
+exact pairwise containment (nesting) relations -- for example the
+dummy columns of one categorical review-type or geographic-scope
+variable, or a broad-realm indicator together with one or more
+narrower nested realms. Each declared group is checked against the
+observed complete rows with an exact deterministic test: row sums for
+a one-hot block, or, for nesting, EVERY pairwise containment among the
+declared members (so it does not matter which order -- or how many
+mutually incomparable narrower members -- the group happens to be
+written in). When the relations found form a single total chain, the
+certificate reports that chain; when they form a partial order instead
+(for example one broad member containing two mutually incomparable
+narrower ones), every relation found is named and the group still
+fails as nesting. A group whose members are all constant on the
+complete rows is reported separately (not as nesting: a containment
+test is vacuously true against a constant and would not be genuine
+evidence); a member that is constant while other members of the same
+group are not is excluded from every pairwise comparison for the same
+reason. The one-hot test is not whole-group only: when the WHOLE
+declared group does not sum to 1 (for example a genuine one-hot block
+declared together with one unrelated trait), a bounded exhaustive
+search checks every subset of size 2 or more, smallest first, and
+reports each MINIMAL one-hot subset found as its own certificate --
+\code{A + B + C = 1} is reported once even inside a larger declared group,
+never also as a redundant superset. This search is attempted only
+when the declared group has at most 12 members (\code{2^12 - 13 = 4083}
+subset checks, microseconds even for many rows; declared groups are
+small by construction -- one categorical variable's dummy columns or
+one nesting relation). A group larger than that bound is never
+silently reported PASS: the whole-group one-hot and pairwise nesting
+checks still run, but an explicit \code{known_group_subset_not_attempted}
+row records that the subset search itself was skipped for size, so a
+"no subset found" result can be told apart from "not looked for". A
+subset that sums to 1 only because every one of its members is
+constant is not reported (the same guard as the whole-group case).
+Each result is its own row in the \code{response_dependencies}
+table, independent of the automatic affine-rank screen below -- except
+that a declared one-hot block, including a certified subset, also
+counts toward that screen's \code{unresolved} affine-dependency count (a
+nesting relation never does: it is an inequality, not an exact affine
+relation among the columns). Screening is Bernoulli-only, matching the
+automatic screen.}
 }
 \value{
 A \code{gllvmTMB_screen} object. Use \code{\link[=screen_table]{screen_table()}} to extract
@@ -66,6 +113,35 @@ interpretation. In systematic maps, a \code{trait} may be a content item or
 indicator. In a binary JSDM, a \code{trait} may be a species presence-absence
 response. Rare or constant species are flagged for inspection and possible
 sensitivity analysis, not automatically removed.
+
+The screen also checks the response side for exact higher-order
+dependencies that the pairwise duplicate/complement check cannot see --
+most commonly a one-hot/simplex block, where several trait columns are
+really the dummy coding of one categorical variable and sum to exactly 1
+on every complete row (a review-type, geographic-scope, or temporal-scope
+set is a typical source). It works by an affine-rank check on the
+augmented response matrix \code{M = cbind(1, Y)} over complete Bernoulli rows
+(rows where every screened trait is observed), using base R's \code{\link[=qr]{qr()}} with
+tolerance \code{sqrt(.Machine$double.eps) * max(dim(M))} (the usual
+dimension-scaled machine-precision rule, so the check tightens
+automatically on a larger response matrix rather than using one fixed
+constant regardless of size). The \verb{$design} table's
+\code{response_affine_rank} row reports the matrix's rank (\code{value}) and its
+column count (\code{threshold}, \verb{= ncol(M)}); a rank deficiency --
+\code{threshold - value} -- means at least one exact affine dependency exists
+among the traits. The \verb{$response_dependencies} table then adds, where
+cheaply recoverable from the matrix's null space, a human-readable
+certificate naming the traits and the relation (for example
+\code{"A + B + C = 1"}). This is a best-effort report, not exhaustive
+minimal-subset discovery: with more than one simultaneous exact
+dependency the automatic search can fail to decompose the null space into
+individually clean certificates, in which case the remaining deficiency
+is reported without a certificate (\code{type = "unresolved"}), never silently
+dropped. Declaring known structure via \code{known_groups} sidesteps that
+limitation with an exact, deterministic, per-group check. An exact
+one-hot block is not itself a bug to silently filter -- it is one
+categorical variable, and belongs in \code{\link[=multinomial]{multinomial()}} or a deliberate
+reference-level coding, not in several unconstrained binary traits.
 
 With \code{screen_control(separation = "fixed")}, the screen uses the optional
 \code{detectseparation} package to classify the observed fixed design. This

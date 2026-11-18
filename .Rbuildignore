@@ -1,5 +1,6 @@
 ^\.agents$
 ^\.codex$
+^\.unlazy$
 ^results$
 ^\.github$
 ^\.git$
@@ -14,6 +15,7 @@
 ^README\.html$
 ^cran-comments\.md$
 ^codecov\.yml$
+^tools/tests$
 ^air\.toml$
 ^docs$
 ^pkgdown$
@@ -37,3 +39,8 @@
 ^.*/\.DS_Store$
 ^pkgdown-site$
 ^lanes$
+^\.cursor$
+^\.mcp\.json$
+^\.ignore$
+^graft$
+^\.claude$

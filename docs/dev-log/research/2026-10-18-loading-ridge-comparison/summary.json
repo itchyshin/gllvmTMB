@@ -1,0 +1,43 @@
+{
+  "partial": false,
+  "arm_n": 24000,
+  "dataset_n": 6000,
+  "effect_n": 144000,
+  "recovery_rows": 48,
+  "effect_summary_rows": 288,
+  "paired_rows": 180,
+  "fit_errors": 0,
+  "error_status_counts": {
+    "none": 24000
+  },
+  "uncertainty_status_counts": {
+    "loading_ridge_posterior_sd_no_sampling_ci_validation": 106896,
+    "wald_sdreport_no_ci_validation": 35616,
+    "loading_ridge_non_pd_posterior_hessian_no_lv_se": 1104,
+    "sdreport_non_pd_hessian_no_lv_se": 384
+  },
+  "fit_error_messages": {},
+  "audit": [],
+  "metric_columns": [
+    "Sigma_shared_diag_RMSE",
+    "Sigma_shared_offdiag_RMSE",
+    "Sigma_shared_relative_F",
+    "Sigma_total_diag_RMSE",
+    "Sigma_total_offdiag_RMSE",
+    "Sigma_total_relative_F",
+    "fit_elapsed",
+    "loading_frobenius_ratio",
+    "max_trait_loading_sd_ratio",
+    "prediction_mean_RMSE",
+    "total_elapsed",
+    "typical_trait_shared_sd_ratio",
+    "typical_trait_total_sd_ratio"
+  ],
+  "notes": [
+    "Point estimates are not filtered by convergence.",
+    "Conditional coverage uses available finite-bound intervals, without a convergence filter; it is conditional on interval availability.",
+    "All-attempt coverage counts unavailable intervals as not covered; it is operational availability times conditional coverage.",
+    "Runtime metadata must be reported separately from per-fit elapsed values.",
+    "Paired RMSE differences use common finite pairs and a covariance-preserving delta-method MCSE."
+  ]
+}

@@ -10,20 +10,25 @@ phylo_indep(
   vcv = NULL,
   A = NULL,
   Ainv = NULL,
-  common = FALSE
+  common = FALSE,
+  rho = 1
 )
 }
 \arguments{
-\item{formula}{Intercept-only \code{0 + trait | species}, or the supported
-one-covariate intercept-and-slope form described above.}
+\item{formula}{Intercept-only \code{0 + trait | species}, the supported
+intercept-and-slope form described above, or the Gaussian long-format
+slope-only response-column form \code{0 + x1 + ... | trait}.}
 
 \item{tree}{An \code{ape::phylo} object. \strong{Canonical.}}
 
 \item{vcv}{A tip-only phylogenetic correlation matrix
-(\verb{n_species x n_species}). Legacy alias of \verb{A =}.}
+(\verb{n_species x n_species}) for the ordinary forms. For the slope-only
+response-column form it is instead \verb{n_traits x n_traits}, with row names
+matching the resolved RHS \code{trait} levels. Legacy alias of \verb{A =}.}
 
-\item{A}{Tip-level relatedness matrix (\verb{n_species x n_species})
--- alias of \verb{vcv =}, aligned with the \verb{animal_*} family's
+\item{A}{Tip-level relatedness matrix (\verb{n_species x n_species}) for the
+ordinary forms; for the slope-only response-column form, the corresponding
+trait-level matrix. Alias of \verb{vcv =}, aligned with the \verb{animal_*} family's
 argument naming.}
 
 \item{Ainv}{Sparse precision matrix (inverse of \code{A}).}
@@ -33,6 +38,16 @@ trait; \code{TRUE} ties all traits to one shared phylogenetic variance
 (intercept-only). \code{phylo_indep(0 + trait | species, common = TRUE)} is the
 canonical one-shared-variance spelling and fits the same model as the
 soft-deprecated \code{phylo_scalar(species)}.}
+
+\item{rho}{Source strength: a number in \verb{[0,1]} fixes
+\code{rho * K + (1-rho) * diag(diag(K))} on the legacy-resolved source scale.
+Omitted or explicit \code{1} preserves the existing model. \code{NULL} estimates
+strength for one Gaussian structured trait-intercept block with complete
+replicated multivariate observations and no competing ordinary covariance.
+Estimated latent terms require rank one and at least four traits. The same
+strength applies to the entire latent-plus-Psi covariance. This parameter
+is not a variance-share summary. Fixed attenuation and the admitted
+Gaussian estimator have implementation checks; recovery is regime-specific.}
 }
 \value{
 A formula marker; never evaluated.
@@ -67,7 +82,30 @@ parser raises a \code{cli::cli_abort()}.
 A single-covariate random regression uses
 \code{phylo_indep(1 + x | species)} in wide syntax or
 \code{phylo_indep(0 + trait + (0 + trait):x | species)} in explicit long syntax.
-It estimates an intercept--slope block with their correlation fixed to zero.
+It estimates independent trait-specific intercept--slope blocks. The
+intercept--slope correlation is estimated within each trait; cross-trait
+blocks are structurally zero.
+}
+
+\subsection{Slope-only response-column form}{
+
+For a long-format Gaussian model, \code{phylo_indep(0 + lat + temp | trait)}
+adds response-column deviations to the fixed slopes without adding a random
+intercept. The phylogeny is indexed by the response-column factor on the
+right of \code{|}; \code{indep} makes the covariance among \code{lat} and \code{temp} slopes
+diagonal. With slope coefficient matrix \eqn{\mathbf B} (rows are
+response columns and columns are predictors), let
+\eqn{\mathbf b=\mathrm{vec}(\mathbf B^\mathsf{T})} order coefficients by
+response column: \code{lat}, \code{temp} for column 1, then \code{lat}, \code{temp} for column
+2, and so on. Then
+\eqn{\mathrm{Cov}(\mathbf b) = \mathbf A_{\mathrm{phy}}
+\otimes \mathrm{diag}(\sigma^2_{\mathrm{lat}},
+\sigma^2_{\mathrm{temp}})}. (The native implementation stores the
+permutation-equivalent column-major vector.) Retrieve that predictor-basis covariance with
+\code{extract_Sigma(fit, level = "column_slope")}. It is not a trait-level
+\eqn{\boldsymbol\Sigma}. This V1 route requires bare finite numeric
+predictors, exactly the resolved \code{trait} column on the RHS, and Gaussian
+responses; wide-format and non-Gaussian column slopes are planned work.
 
 Pass the phylogeny via \code{tree = phylo} (canonical, sparse \eqn{\mathbf{A}^{-1}}) or
 \code{vcv = Cphy} (\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#superseded}{\figure{lifecycle-superseded.svg}{options: alt='[Superseded]'}}}{\strong{[Superseded]}}, dense). See
@@ -75,15 +113,26 @@ Pass the phylogeny via \code{tree = phylo} (canonical, sparse \eqn{\mathbf{A}^{-
 }
 }
 \examples{
-\dontrun{
-library(ape)
-tree <- rcoal(20); tree$tip.label <- paste0("sp", 1:20)
-fit <- gllvmTMB(value ~ 0 + trait +
-                  phylo_indep(0 + trait | species, tree = tree),
-                data    = df,
-                trait   = "trait",
-                unit    = "species",
-                cluster = "species")
+if (requireNamespace("ape", quietly = TRUE)) {
+  set.seed(1)
+  tree <- ape::rcoal(60); tree$tip.label <- paste0("sp", seq_len(60))
+  sim <- simulate_site_trait(
+    n_sites = 1, n_species = 60, n_traits = 3,
+    mean_species_per_site = 60,
+    Cphy = ape::vcv(tree, corr = TRUE),
+    sigma2_phy = rep(1, 3), sigma2_eps = 0.2, seed = 1
+  )
+  df <- sim$data
+  df$species <- factor(tree$tip.label[as.integer(df$species)],
+                       levels = tree$tip.label)
+  \donttest{
+  fit <- gllvmTMB(value ~ 0 + trait +
+                    phylo_indep(0 + trait | species, tree = tree),
+                  data    = df,
+                  trait   = "trait",
+                  unit    = "species",
+                  cluster = "species")
+  }
 }
 }
 \references{

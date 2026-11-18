@@ -40,20 +40,31 @@ V with \code{\link[=block_V]{block_V()}} and pass it to \code{gllvmTMB()} as \co
 }
 }
 \examples{
-\dontrun{
+# A stage-1 summary: one estimate per site and trait, each with a known
+# sampling variance.
+set.seed(131)
+stage1_summary <- expand.grid(
+  site  = factor(seq_len(50)),
+  trait = factor(paste0("t", 1:3))
+)
+n <- nrow(stage1_summary)
+stage1_summary$value <- rnorm(n, sd = 0.5)
+stage1_summary$sampling_var <- runif(n, min = 0.02, max = 0.08)
+
 # Preferred (canonical) form -- use meta_V():
 V    <- diag(stage1_summary$sampling_var)
+\donttest{
 fit2 <- gllvmTMB(value ~ 0 + trait +
-                   latent(0 + trait | site, d = 2) +
+                   latent(0 + trait | site, d = 1) +
                    meta_V(V = V),
                  data    = stage1_summary,
                  trait   = "trait",
                  unit    = "site",
                  known_V = V)
 
-# Deprecated form (still works, emits a warning):
+# Deprecated form (still works, prints a deprecation message):
 fit2 <- gllvmTMB(value ~ 0 + trait +
-                   latent(0 + trait | site, d = 2) +
+                   latent(0 + trait | site, d = 1) +
                    meta(value, sampling_var = sampling_var),
                  data    = stage1_summary,
                  trait   = "trait",

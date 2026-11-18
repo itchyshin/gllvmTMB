@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "hooks": {
+    "postToolUse": [
+      {
+        "matcher": "Read|Grep|Glob|Search|Shell",
+        "command": "node \"/Users/z3437171/local-scratch/lanes/gllvmTMB-graft-wiring/.cursor/hooks/graft-hooks.cjs\" cursor-post-tool"
+      }
+    ],
+    "afterMCPExecution": [
+      {
+        "command": "node \"/Users/z3437171/local-scratch/lanes/gllvmTMB-graft-wiring/.cursor/hooks/graft-hooks.cjs\" cursor-mcp"
+      }
+    ],
+    "sessionEnd": [
+      {
+        "command": "node \"/Users/z3437171/local-scratch/lanes/gllvmTMB-graft-wiring/.cursor/hooks/graft-hooks.cjs\" cursor-session-end"
+      }
+    ]
+  }
+}

@@ -1,7 +1,6 @@
 ---
 title: "Validation oracles: what an external package can and cannot check"
 description: "Why an independent implementation is stronger evidence than simulation recovery alone, and a source-by-mode map of which gllvmTMB covariance cells have one, which have a weaker one, and which have none."
-tier: 2
 output:
   rmarkdown::html_vignette:
     toc: true
@@ -16,12 +15,16 @@ vignette: >
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
 ```
 
-This page is about evidence, not features. It explains what a validation
-oracle is, why gllvmTMB relies on more than its own simulations, and which
-parts of the covariance grid currently have an independent check and which do
-not. Read it alongside [Fit diagnostics](fit-diagnostics.html), which asks
-whether a *particular* fit is numerically trustworthy; this page instead asks
-whether the *model class itself* has been checked against outside evidence.
+> **Advanced evidence note.** This page describes the package's validation
+> architecture; it is not a beginner modelling guide or a certificate for any
+> particular fit.
+
+It explains what a validation oracle is, why gllvmTMB relies on more than its
+own simulations, and which parts of the covariance grid currently have an
+independent check and which do not. Read it alongside [Fit
+diagnostics](fit-diagnostics.html), which asks whether a *particular* fit is
+numerically trustworthy; this page instead asks whether the *model class
+itself* has been checked against outside evidence.
 
 ## What a validation oracle is
 

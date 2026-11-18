@@ -1,0 +1,36 @@
+{
+  "assessment_performed": true,
+  "draft_sha256": "d5da8d439827ab28b16e0088b6a8a7f171dc75e26a2c273494f13bd2167bdb91",
+  "draft_version": "v1",
+  "requested_mode": "independent",
+  "assessor_type": "self",
+  "reviewer": "Codex primary agent",
+  "method": "Post-draft reading and claim comparison against source diff, fit receipts, full check logs and independent review",
+  "genre": "pull request description",
+  "coverage": "whole draft",
+  "score": 2,
+  "style_status": "assessed",
+  "score_reason": "Concrete numerical comparison and explicit scope; required report structure adds some repeated framing.",
+  "confidence": "medium",
+  "confidence_reason": "Editorial self-assessment; numerical and scope claims checked separately.",
+  "examples": [
+    {
+      "location": "line 5",
+      "cue": "Concrete purpose, outcome or scope boundary",
+      "impact": "Reader can check what changed and what the evidence supports.",
+      "repair": "no change needed",
+      "line": 5,
+      "quote": "Add direct finite, unpenalised gradient checks below 0.01 for both formats and check the wide diagnostic row. Existing recovery, likelihood agreement and diagnostic expectations remain intact. No package code, defaults or test thresholds change."
+    }
+  ],
+  "evidence_none_reason": null,
+  "science_gate": "pass",
+  "science_gate_reason": "Unpenalised point optimisation only; raw threshold0.01 retained; no Hessian or coverage claim for the se=FALSE repair. Separate default-nlminb diagnostic receipt supports the named neighbour check.",
+  "facts_gate": "pass",
+  "facts_gate_reason": "Compared all numerical assertions with baseline/tight/wide receipts, source-verification.json, check-receipt.json and full-testthat.Rout; disclosure of initial setup failures retained.",
+  "references_gate": "not_applicable",
+  "references_gate_reason": "No literature claim; local commands, source and retained evidence support the draft.",
+  "date": "2026-10-18",
+  "calibration_status": "No calibration controls used for this draft; protocol examples previously visible.",
+  "interpretation": "perceived_style_not_authorship"
+}

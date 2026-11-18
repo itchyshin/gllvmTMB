@@ -97,18 +97,15 @@ test_that("free entries adjacent to pinned ones are still optimised", {
   expect_true(all(abs(free_entries) > 1e-3))   # actually moved
 })
 
-test_that("upper-triangle pins are silently ignored (always 0 by construction)", {
-  sim <- make_sim()
+test_that("non-zero upper-triangle pins error instead of being dropped (#1418)", {
   cnst <- matrix(NA_real_, nrow = 4, ncol = 2)
   diag(cnst) <- 1
-  cnst[1, 2] <- 0.99   # upper triangle — should be ignored, no error
-  fit <- gllvmTMB(
-    value ~ 0 + trait + latent(0 + trait | site, d = 2),
-    data = sim$data,
-    lambda_constraint = list(unit = cnst)
+  cnst[1, 2] <- 0.99
+  theta <- rep(0, 7L)
+  expect_error(
+    gllvmTMB:::lambda_packed_map(cnst, n_traits = 4L, rank = 2L, theta_init = theta),
+    "upper triangle"
   )
-  L <- getLoadings(fit, level = "unit")
-  expect_equal(L[1, 2], 0, tolerance = 1e-12)   # NOT 0.99
 })
 
 test_that("dimension-mismatched constraint matrix errors with cli message", {
@@ -138,6 +135,39 @@ test_that("W-level constraint pins Lambda_W diagonals", {
   expect_equal(fit$opt$convergence, 0L)
   L_W <- getLoadings(fit, level = "unit_obs")
   expect_equal(L_W[1, 1], 1, tolerance = 1e-8)
+})
+
+test_that("lambda_constraint for an absent tier errors with a clear message (#1374)", {
+  set.seed(11)
+  n <- 60
+  nt <- 4
+  L <- matrix(c(1, 0.8, 0.5, 0.3, 0, 0.6, -0.4, 0.5), nt, 2)
+  Z <- matrix(rnorm(n * 2), n, 2)
+  Y <- Z %*% t(L) + matrix(rnorm(n * nt, sd = 0.5), n, nt)
+  d <- data.frame(
+    unit = factor(rep(seq_len(n), each = nt)),
+    trait = factor(rep(paste0("t", seq_len(nt)), n)),
+    value = as.vector(t(Y))
+  )
+  fit_args <- list(
+    formula = value ~ 0 + trait + latent(0 + trait | unit, d = 2),
+    data = d,
+    unit = "unit",
+    trait = "trait",
+    family = gaussian()
+  )
+  expect_error(
+    do.call(gllvmTMB, c(fit_args, list(
+      lambda_constraint = list(unit_obs = matrix(NA_real_, nt, 1))
+    ))),
+    "lambda_constraint\\$unit_obs"
+  )
+  expect_error(
+    do.call(gllvmTMB, c(fit_args, list(
+      lambda_constraint = list(phy = matrix(0, nt, 1))
+    ))),
+    "lambda_constraint\\$phy"
+  )
 })
 
 test_that("simultaneous B and W constraints both pin", {

@@ -23,6 +23,7 @@
 #' @param mean_species_per_site Average number of species observed per site
 #'   (Poisson with this mean, truncated at \eqn{n_{species}}). Default 5.
 #' @param n_predictors Integer; number of site-level predictors. Default 2.
+#'   Use `0` for a dataset with no `env_*` covariates.
 #' @param alpha Optional length-`n_traits` vector of trait intercepts; random
 #'   if `NULL`.
 #' @param beta Optional `n_traits` x `n_predictors` matrix of trait-specific
@@ -47,7 +48,7 @@
 #'   and `coords` is `NULL`, sites are placed uniformly in `[0, 1]^2`.
 #' @param coords Optional `n_sites` x 2 matrix of site coordinates (used when
 #'   `spatial_range` is supplied).
-#' @param seed Optional RNG seed.
+#' @param seed Optional RNG seed. The caller's random-number state is restored on exit.
 #'
 #' @return A list with components:
 #' \describe{
@@ -57,7 +58,8 @@
 #'     and `lat` if coords were generated.}
 #'   \item{`truth`}{Named list of true parameter values (alpha, beta,
 #'     Lambda_B, Lambda_W, psi_B, psi_W, sigma2_phy, sigma2_sp, sigma2_spa,
-#'     spatial_range, sigma2_eps).}
+#'     spatial_range, sigma2_eps, and when reduced-rank terms are used,
+#'     `z_B` / `z_W` latent-score draws for [extract_latent_scores()].}
 #'   \item{`Cphy`}{The phylogenetic correlation matrix used (or `NULL`).}
 #'   \item{`coords`}{Site coordinates used (or `NULL`).}
 #' }
@@ -92,7 +94,17 @@ simulate_site_trait <- function(n_sites = 50,
                                 sigma2_spa = NULL,
                                 coords = NULL,
                                 seed = NULL) {
-  if (!is.null(seed)) set.seed(seed)
+  .gllvmTMB_local_seed(seed)
+
+  if (!is.numeric(n_predictors) || length(n_predictors) != 1L ||
+      is.na(n_predictors) || n_predictors < 0 ||
+      n_predictors != round(n_predictors)) {
+    cli::cli_abort(c(
+      "{.arg n_predictors} must be a single non-negative whole number.",
+      "x" = "Got {.val {n_predictors}}.",
+      ">" = "Use {.code n_predictors = 0} for a covariate-free dataset."
+    ))
+  }
 
   ## ---- Truth defaults ------------------------------------------------------
   if (is.null(alpha)) alpha <- stats::rnorm(n_traits, mean = 0, sd = 1)
@@ -103,9 +115,26 @@ simulate_site_trait <- function(n_sites = 50,
 
   ## ---- Site-level predictors ----------------------------------------------
   X <- matrix(stats::rnorm(n_sites * n_predictors), nrow = n_sites, ncol = n_predictors,
-              dimnames = list(NULL, paste0("env_", seq_len(n_predictors))))
+              dimnames = list(NULL, if (n_predictors > 0) paste0("env_", seq_len(n_predictors))))
 
   ## ---- Spatial r_{st} (optional) ------------------------------------------
+  ## Both spatial_range and sigma2_spa are required to draw r_st; otherwise no
+  ## spatial signal is simulated yet truth would advertise variance that never
+  ## entered the DGP (#1419; same pattern as sigma2_phy / Cphy in #655).
+  if (!is.null(spatial_range) && is.null(sigma2_spa)) {
+    cli::cli_abort(c(
+      "{.arg spatial_range} was supplied but {.arg sigma2_spa} is {.code NULL}.",
+      "x" = "No spatial signal can be simulated without the per-trait spatial variance.",
+      ">" = "Pass {.arg sigma2_spa}, or omit {.arg spatial_range}."
+    ))
+  }
+  if (!is.null(sigma2_spa) && is.null(spatial_range)) {
+    cli::cli_abort(c(
+      "{.arg sigma2_spa} was supplied but {.arg spatial_range} is {.code NULL}.",
+      "x" = "No spatial signal can be simulated without the spatial range.",
+      ">" = "Pass {.arg spatial_range}, or omit {.arg sigma2_spa}."
+    ))
+  }
   r_mat <- matrix(0, nrow = n_sites, ncol = n_traits)
   if (!is.null(spatial_range) && !is.null(sigma2_spa)) {
     if (is.null(coords)) coords <- cbind(lon = stats::runif(n_sites),
@@ -121,10 +150,13 @@ simulate_site_trait <- function(n_sites = 50,
 
   ## ---- Reduced-rank between-site u_{st} -----------------------------------
   u_mat <- matrix(0, nrow = n_sites, ncol = n_traits)
+  Z_B <- NULL
   if (!is.null(Lambda_B)) {
     stopifnot(nrow(Lambda_B) == n_traits)
     Z_B <- matrix(stats::rnorm(n_sites * ncol(Lambda_B)),
                   nrow = n_sites, ncol = ncol(Lambda_B))
+    rownames(Z_B) <- as.character(seq_len(n_sites))
+    colnames(Z_B) <- paste0("LV", seq_len(ncol(Lambda_B)))
     u_mat <- u_mat + Z_B %*% t(Lambda_B)
   }
   if (!is.null(psi_B)) {
@@ -169,39 +201,55 @@ simulate_site_trait <- function(n_sites = 50,
   }
 
   ## ---- Build long-format data --------------------------------------------
-  rows <- list()
+  ## Columns are preallocated and the data frame is built once: one
+  ## data.frame() per row plus do.call(rbind, ...) took ~0.4 s for 1.5k rows
+  ## (#1581). Draw order per (site, species) pair is unchanged: z_W, psi_W
+  ## noise, then one residual draw per trait.
+  n_pairs <- sum(lengths(occur))
+  n_rows  <- n_pairs * n_traits
+  site_v  <- integer(n_rows)
+  sp_v    <- integer(n_rows)
+  trait_v <- integer(n_rows)
+  value_v <- numeric(n_rows)
+  z_W_draws <- list()
+  if (!is.null(Lambda_W)) stopifnot(nrow(Lambda_W) == n_traits)
+  if (!is.null(psi_W)) psi_W <- rep_len(psi_W, n_traits)
+  k <- 0L
   for (s in seq_len(n_sites)) {
     for (i in occur[[s]]) {
       ## Within-site reduced-rank e_{sit}
       e_sit <- numeric(n_traits)
       if (!is.null(Lambda_W)) {
-        stopifnot(nrow(Lambda_W) == n_traits)
         z_W <- stats::rnorm(ncol(Lambda_W))
+        z_W_draws[[paste(s, i, sep = "_")]] <- z_W
         e_sit <- as.numeric(Lambda_W %*% z_W)
       }
       if (!is.null(psi_W)) {
-        psi_W <- rep_len(psi_W, n_traits)
         e_sit <- e_sit + stats::rnorm(n_traits, sd = sqrt(psi_W))
       }
+      ## Gaussian response only at this stage; non-Gaussian comes later
+      noise <- stats::rnorm(n_traits, sd = sqrt(sigma2_eps))
 
       for (t in seq_len(n_traits)) {
         eta_st <- alpha[t] + sum(X[s, ] * beta[t, ])
         eta <- eta_st + r_mat[s, t] + u_mat[s, t] + e_sit[t] +
           p_mat[i, t] + q_mat[i, t]
-        ## Gaussian response only at this stage; non-Gaussian comes later
-        y <- eta + stats::rnorm(1, sd = sqrt(sigma2_eps))
-        rows[[length(rows) + 1L]] <- data.frame(
-          site         = s,
-          species      = i,
-          site_species = paste(s, i, sep = "_"),
-          trait        = paste0("trait_", t),
-          value        = y,
-          stringsAsFactors = FALSE
-        )
+        k <- k + 1L
+        site_v[k]  <- s
+        sp_v[k]    <- i
+        trait_v[k] <- t
+        value_v[k] <- eta + noise[t]
       }
     }
   }
-  dat <- do.call(rbind, rows)
+  dat <- data.frame(
+    site         = site_v,
+    species      = sp_v,
+    site_species = paste(site_v, sp_v, sep = "_"),
+    trait        = paste0("trait_", trait_v),
+    value        = value_v,
+    stringsAsFactors = FALSE
+  )
   ## Attach site predictors and (if used) coords
   for (k in seq_len(n_predictors)) dat[[paste0("env_", k)]] <- X[dat$site, k]
   if (!is.null(coords)) {
@@ -212,6 +260,23 @@ simulate_site_trait <- function(n_sites = 50,
   dat$species      <- factor(dat$species, levels = seq_len(n_species))
   dat$site_species <- factor(dat$site_species)
   dat$trait        <- factor(dat$trait, levels = paste0("trait_", seq_len(n_traits)))
+
+  Z_W <- NULL
+  if (!is.null(Lambda_W) && length(z_W_draws) > 0L) {
+    ss_levels <- levels(dat$site_species)
+    Z_W <- matrix(
+      NA_real_,
+      nrow = length(ss_levels),
+      ncol = ncol(Lambda_W),
+      dimnames = list(
+        ss_levels,
+        paste0("LV", seq_len(ncol(Lambda_W)))
+      )
+    )
+    for (nm in names(z_W_draws)) {
+      Z_W[nm, ] <- z_W_draws[[nm]]
+    }
+  }
 
   truth <- list(
     alpha          = alpha,
@@ -224,10 +289,12 @@ simulate_site_trait <- function(n_sites = 50,
     sigma2_phy     = sigma2_phy,
     sigma2_sp      = sigma2_sp,
     sigma2_spa     = sigma2_spa,
-    spatial_range  = spatial_range
+    spatial_range  = spatial_range,
+    z_B            = Z_B,
+    z_W            = Z_W
   )
-  list(data   = dat,
-       truth  = truth,
-       Cphy   = Cphy,
-       coords = coords)
+  structure(
+    list(data = dat, truth = truth, Cphy = Cphy, coords = coords),
+    class = c("gllvmTMB_site_trait_sim", "list")
+  )
 }

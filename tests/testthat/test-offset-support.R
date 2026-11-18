@@ -476,9 +476,13 @@ test_that("predict(newdata =) says so when the offset variable is absent", {
 test_that("engine = 'julia' refuses an offset rather than dropping it", {
   ## The guard fires before any dispatch, so this needs no Julia install.
   d <- .ofs_pois_long(n = 20, seed = 63)
-  msg <- .ofs_msg(.ofs_fit(value ~ 0 + trait + (0 + trait):z + offset(log_eff),
-                           data = d, trait = "trait", unit = "site",
-                           family = poisson(), engine = "julia"))
+  ## Call gllvmTMB() with the default control: .ofs_fit() passes se = FALSE,
+  ## which engine = "julia" refuses first (#1347) and would mask the offset guard.
+  msg <- .ofs_msg(suppressMessages(suppressWarnings(gllvmTMB(
+    value ~ 0 + trait + (0 + trait):z + offset(log_eff),
+    data = d, trait = "trait", unit = "site",
+    family = poisson(), engine = "julia"
+  ))))
   expect_false(is.na(msg))
   expect_match(msg, "offset", ignore.case = TRUE)
   expect_match(msg, "julia", ignore.case = TRUE)

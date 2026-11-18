@@ -1,0 +1,62 @@
+"family","T","n","arm","seed","converged","wall_time_s","norm_ratio","bias_pct","max_abs_lambda","max_abs_gradient","warning","error"
+"binomial",4,100,"A",1,TRUE,0.598262786865234,28.0651915779913,2706.51915779913,58.5688538236682,0.00156949374215412,"This fit shows a runaway trait loading; treat it as unusable until checked.
+• t4 prevalence=0.58; max_loading=58.6; relative_loading=137;
+  saturated_fit=0.96
+ℹ trait loading has run away from the rest (an improper solution, or Heywood
+  case); quasi-complete separation produces this at ordinary prevalence
+→ treat the fit as unusable rather than interpreting it: this is quasi-complete
+  separation, which lowering the rank does not resolve; refit with a loading
+  penalty via gllvmTMBcontrol(aghq_ridge = 2), which makes the result a
+  penalised (MAP) estimate, so logLik(), AIC() and BIC() no longer apply to it
+→ Full check: `gllvmTMB_diagnose(fit)`. Silence this with
+  `gllvmTMBcontrol(warn_runaway = FALSE)`.
+This warning is displayed once per session.",""
+"binomial",4,100,"B",1,TRUE,0.665515899658203,58.0172700969008,5701.72700969008,121.080274033492,0.00363564761247503,"Non-Gaussian `REML = TRUE` is EXPERIMENTAL and UNVALIDATED.
+ℹ This is the Cox-Reid adjusted profile likelihood, not an exact restricted
+  likelihood.
+ℹ Do not report it as a validated estimator. | This fit shows a runaway trait loading; treat it as unusable until checked.
+• t4 prevalence=0.58; max_loading=121; relative_loading=319; saturated_fit=1
+ℹ trait loading has run away from the rest (an improper solution, or Heywood
+  case); quasi-complete separation produces this at ordinary prevalence
+→ treat the fit as unusable rather than interpreting it: this is quasi-complete
+  separation, which lowering the rank does not resolve; refit with a loading
+  penalty via gllvmTMBcontrol(aghq_ridge = 2), which makes the result a
+  penalised (MAP) estimate, so logLik(), AIC() and BIC() no longer apply to it
+→ Full check: `gllvmTMB_diagnose(fit)`. Silence this with
+  `gllvmTMBcontrol(warn_runaway = FALSE)`.
+This warning is displayed once per session.",""
+"ordinal_probit",4,100,"A",1,TRUE,0.83548641204834,1.20851110930105,20.851110930105,1.52523855066435,0.00048228209849166,"",""
+"ordinal_probit",4,100,"B",1,TRUE,0.917843818664551,1.22722591740936,22.7225917409359,1.54745204670952,0.000181495406087438,"Non-Gaussian `REML = TRUE` is EXPERIMENTAL and UNVALIDATED.
+ℹ This is the Cox-Reid adjusted profile likelihood, not an exact restricted
+  likelihood.
+ℹ Do not report it as a validated estimator.",""
+"binomial",8,100,"A",1,TRUE,0.583674430847168,1.01310513358375,1.31051335837535,1.70242175774901,0.000122871156192639,"",""
+"binomial",8,100,"B",1,TRUE,0.611084461212158,1.04311141303159,4.3111413031593,1.7808589981107,7.19131746403368e-05,"Non-Gaussian `REML = TRUE` is EXPERIMENTAL and UNVALIDATED.
+ℹ This is the Cox-Reid adjusted profile likelihood, not an exact restricted
+  likelihood.
+ℹ Do not report it as a validated estimator.",""
+"ordinal_probit",8,100,"A",1,TRUE,1.54898428916931,1.09652731888086,9.65273188808595,2.0602143918266,0.000313624006593294,"",""
+"ordinal_probit",8,100,"B",1,TRUE,1.72988057136536,1.11459391440246,11.4593914402455,2.11281253709649,0.000550295271062984,"Non-Gaussian `REML = TRUE` is EXPERIMENTAL and UNVALIDATED.
+ℹ This is the Cox-Reid adjusted profile likelihood, not an exact restricted
+  likelihood.
+ℹ Do not report it as a validated estimator.",""
+"binomial",4,200,"A",1,TRUE,0.557305335998535,0.873796831183756,-12.6203168816244,1.16335665258975,0.000119211279274251,"",""
+"binomial",4,200,"B",1,TRUE,0.579052686691284,0.8835235265729,-11.64764734271,1.16725228597884,0.000285172499134401,"Non-Gaussian `REML = TRUE` is EXPERIMENTAL and UNVALIDATED.
+ℹ This is the Cox-Reid adjusted profile likelihood, not an exact restricted
+  likelihood.
+ℹ Do not report it as a validated estimator.",""
+"ordinal_probit",4,200,"A",1,TRUE,1.24064135551453,0.996750947369971,-0.324905263002939,1.41207965497075,0.000385770214620607,"",""
+"ordinal_probit",4,200,"B",1,TRUE,1.34776711463928,0.993015221864935,-0.698477813506548,1.372578692326,0.000890054369192789,"Non-Gaussian `REML = TRUE` is EXPERIMENTAL and UNVALIDATED.
+ℹ This is the Cox-Reid adjusted profile likelihood, not an exact restricted
+  likelihood.
+ℹ Do not report it as a validated estimator.",""
+"binomial",8,200,"A",1,TRUE,0.672830581665039,1.07630259148925,7.63025914892483,1.62795117611584,0.000440427160272705,"",""
+"binomial",8,200,"B",1,TRUE,0.675006151199341,1.08689056852231,8.6890568522308,1.6622937232178,0.000322679632629774,"Non-Gaussian `REML = TRUE` is EXPERIMENTAL and UNVALIDATED.
+ℹ This is the Cox-Reid adjusted profile likelihood, not an exact restricted
+  likelihood.
+ℹ Do not report it as a validated estimator.",""
+"ordinal_probit",8,200,"A",1,TRUE,2.41127276420593,0.908792189904878,-9.1207810095122,1.40766837824655,0.00138202558638856,"",""
+"ordinal_probit",8,200,"B",1,TRUE,2.69944930076599,0.914504793426219,-8.54952065737811,1.42028985923964,0.00125920467241936,"Non-Gaussian `REML = TRUE` is EXPERIMENTAL and UNVALIDATED.
+ℹ This is the Cox-Reid adjusted profile likelihood, not an exact restricted
+  likelihood.
+ℹ Do not report it as a validated estimator.",""

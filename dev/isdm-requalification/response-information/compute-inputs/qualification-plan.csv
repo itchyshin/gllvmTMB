@@ -1,0 +1,5 @@
+"variant","host","qualification_id","task_id","n_sources","n_cells","overlap","structure_seed","observation_seed","optimizer_seed","rep3_seed_1","rep3_seed_2"
+"baseline","totoro",1,900001,2,150,"full",209000002,209000102,209000202,NA,NA
+"rep3","totoro",2,900002,2,150,"full",209000002,209000102,209000202,209000302,209000303
+"baseline","drac",3,900003,2,150,"full",209000003,209000103,209000203,NA,NA
+"rep3","drac",4,900004,2,150,"full",209000003,209000103,209000203,209000304,209000305

@@ -1,0 +1,9 @@
+"cell_id","campaign_kind","denominator_pass","convergence_pass","point_availability_pass","B_bias_pass","B_rmse_pass","Sigma_bias_pass","intercept_bias_pass","score_identity_pass","interval_pass","point_verdict","calibration_verdict"
+"m01-gaussian__binomial-logit","calibration",TRUE,TRUE,TRUE,TRUE,TRUE,TRUE,TRUE,TRUE,TRUE,TRUE,TRUE
+"m02-gaussian__poisson","calibration",TRUE,TRUE,TRUE,TRUE,TRUE,TRUE,TRUE,TRUE,TRUE,TRUE,TRUE
+"m04-gaussian__Gamma","calibration",TRUE,TRUE,TRUE,TRUE,TRUE,TRUE,TRUE,TRUE,TRUE,TRUE,TRUE
+"m05-gaussian__nbinom2","calibration",TRUE,TRUE,TRUE,TRUE,TRUE,TRUE,TRUE,TRUE,TRUE,TRUE,TRUE
+"m07-gaussian__Beta","calibration",TRUE,TRUE,TRUE,TRUE,TRUE,TRUE,TRUE,TRUE,TRUE,TRUE,TRUE
+"m13-gaussian__delta-Gamma","calibration",TRUE,TRUE,TRUE,TRUE,TRUE,TRUE,TRUE,TRUE,TRUE,TRUE,TRUE
+"m14-gaussian__ordinal-probit","calibration",TRUE,TRUE,TRUE,TRUE,TRUE,TRUE,TRUE,TRUE,TRUE,TRUE,TRUE
+"m16-gaussian__multinomial","calibration",TRUE,TRUE,TRUE,TRUE,TRUE,TRUE,TRUE,TRUE,TRUE,TRUE,TRUE

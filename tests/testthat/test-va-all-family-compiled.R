@@ -39,7 +39,7 @@ skip_on_cran()
   if (cell$family_id == 5L) parameters$log_phi_nbinom2[] <- log(p$phi)
   if (cell$family_id == 6L) {
     parameters$log_phi_tweedie[] <- log(p$phi)
-    parameters$logit_p_tweedie[] <- qlogis(p$power - 1)
+    parameters$logit_p_tweedie[] <- .gllvmTMB_tweedie_theta(p$power)
   }
   if (cell$family_id == 7L) parameters$log_phi_beta[] <- log(p$phi)
   if (cell$family_id == 8L) parameters$log_phi_betabinom[] <- log(p$phi)
@@ -71,11 +71,13 @@ skip_on_cran()
 }
 
 test_that("all 18 scalar cells match independent arithmetic oracles through TMB", {
-  first <- TRUE
+  ## The source-hash loader compiles a missing DLL. rebuild=TRUE on the
+  ## first cell dyn.unloads that DLL when an earlier test in the same
+  ## process already holds its ADFun pointers, and MakeADFun then
+  ## segfaults. The oracle comparison below is unchanged.
   for (name in names(.va_oracle_cells)) {
     cell <- .va_oracle_cells[[name]]
-    built <- .va_compiled_fixture(cell, rebuild = first)
-    first <- FALSE
+    built <- .va_compiled_fixture(cell, rebuild = FALSE)
     report <- built$objective$report(built$objective$par)
     compiled <- unname(report$expected_loglik_by_obs[[1L]])
     expected <- if (cell$route %in% c("exact", "hybrid")) {
@@ -87,6 +89,17 @@ test_that("all 18 scalar cells match independent arithmetic oracles through TMB"
       .va_oracle_ordinary_tolerance[[name]]
     expect_equal(compiled, expected, tolerance = tolerance, info = name)
   }
+})
+
+test_that("a loaded VA DLL stays usable when a later call asks to rebuild it", {
+  skip_on_cran()
+  cell <- .va_oracle_cells[[1L]]
+  built <- .va_compiled_fixture(cell, rebuild = FALSE)
+  before <- unname(built$objective$fn(built$objective$par))
+  again <- .va_r3_load_dll(rebuild = TRUE)
+  expect_identical(again$DLL, "gllvmTMB_va_r3")
+  expect_true(is.finite(before))
+  expect_equal(unname(built$objective$fn(built$objective$par)), before)
 })
 
 test_that("all 18 scalar TMB objectives have finite, numerically aligned gradients", {
@@ -183,7 +196,7 @@ test_that("fixed Tweedie power and Student df are pinned in the R3 map", {
   expect_false("logit_p_tweedie" %in% names(tweedie_fixed$par))
   expect_true("logit_p_tweedie" %in% names(tweedie_free$par))
   tweedie_par <- tweedie_fixed$env$parList(tweedie_fixed$par)
-  expect_equal(1 + plogis(tweedie_par$logit_p_tweedie), 1.7,
+  expect_equal(.gllvmTMB_tweedie_p(tweedie_par$logit_p_tweedie), 1.7,
                tolerance = 1e-12)
   tweedie_cell <- modifyList(
     .va_oracle_cells$tweedie_log,

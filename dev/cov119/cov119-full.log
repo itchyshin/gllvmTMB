@@ -1,0 +1,53 @@
+Tasks remaining: 1600 of 1600 (mc.cores = 32)
+[19:41:52] chunk 1 done: 64/1600 fits, 0.0 min elapsed
+[19:41:54] chunk 2 done: 128/1600 fits, 0.1 min elapsed
+[19:41:56] chunk 3 done: 192/1600 fits, 0.1 min elapsed
+[19:41:58] chunk 4 done: 256/1600 fits, 0.1 min elapsed
+[19:42:00] chunk 5 done: 320/1600 fits, 0.2 min elapsed
+[19:42:02] chunk 6 done: 384/1600 fits, 0.2 min elapsed
+[19:42:04] chunk 7 done: 448/1600 fits, 0.2 min elapsed
+[19:42:06] chunk 8 done: 512/1600 fits, 0.3 min elapsed
+[19:42:08] chunk 9 done: 576/1600 fits, 0.3 min elapsed
+[19:42:10] chunk 10 done: 640/1600 fits, 0.3 min elapsed
+[19:42:12] chunk 11 done: 704/1600 fits, 0.4 min elapsed
+[19:42:14] chunk 12 done: 768/1600 fits, 0.4 min elapsed
+[19:42:16] chunk 13 done: 832/1600 fits, 0.4 min elapsed
+[19:42:18] chunk 14 done: 896/1600 fits, 0.5 min elapsed
+[19:42:20] chunk 15 done: 960/1600 fits, 0.5 min elapsed
+[19:42:22] chunk 16 done: 1024/1600 fits, 0.5 min elapsed
+[19:42:24] chunk 17 done: 1088/1600 fits, 0.6 min elapsed
+[19:42:26] chunk 18 done: 1152/1600 fits, 0.6 min elapsed
+[19:42:28] chunk 19 done: 1216/1600 fits, 0.6 min elapsed
+[19:42:29] chunk 20 done: 1280/1600 fits, 0.7 min elapsed
+[19:42:31] chunk 21 done: 1344/1600 fits, 0.7 min elapsed
+[19:42:33] chunk 22 done: 1408/1600 fits, 0.7 min elapsed
+[19:42:35] chunk 23 done: 1472/1600 fits, 0.8 min elapsed
+[19:42:37] chunk 24 done: 1536/1600 fits, 0.8 min elapsed
+[19:42:39] chunk 25 done: 1600/1600 fits, 0.8 min elapsed
+
+=== Design 119 §4 gaussian wave 1 — per-cell summary ===
+        mechanism n_attempt n_converged conv_rate cov90_conf mcse90_conf
+1          mcar05       400         400         1     0.9371    0.002089
+2          mcar20       400         400         1     0.9301    0.001543
+3 trait_clustered       400         400         1     0.9390    0.002047
+4  unit_clustered       400         400         1     0.9377    0.001847
+  cov95_conf mcse95_conf cov90_pred mcse90_pred cov95_pred mcse95_pred
+1     0.9649    0.001547     0.9160    0.001864     0.9532   0.0015119
+2     0.9602    0.001135     0.9083    0.001168     0.9483   0.0008365
+3     0.9661    0.001486     0.9107    0.002039     0.9509   0.0014608
+4     0.9659    0.001282     0.9115    0.001497     0.9511   0.0010601
+  fi_cov90_conf fi_cov95_conf fi_cov90_pred fi_cov95_pred n_se_bad
+1        0.9371        0.9649        0.9160        0.9532        0
+2        0.9301        0.9602        0.9083        0.9483        0
+3        0.9390        0.9661        0.9107        0.9509        0
+4        0.9377        0.9659        0.9115        0.9511        0
+  mean_elapsed_s
+1         0.9179
+2         0.9041
+3         0.9104
+4         0.8984
+
+Total wall time this run: 0.8 min
+Wrote: cov119-cells.csv and cov119-summary.csv 
+NOTE: the pass bands and the calibrated/heuristic decision rule live
+ in README.md — apply them there; this script only measures.

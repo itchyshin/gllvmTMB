@@ -1,5 +1,17 @@
 # B_lv profile-interval coverage campaign (orthogonal Model A, Gaussian)
 
+> **Superseding provenance note (2026-08-25).** This directory preserves a
+> historical rank-1 Gaussian orthogonal Model-A campaign. It is not evidence
+> for the current public predictor-informed `lv` interval surface. Current
+> `extract_lv_effects()` exposes experimental Wald summaries only and rejects
+> public profile/bootstrap requests; current predictor-informed `lv` rejects
+> `REML = TRUE`. The results below remain historical evidence for the
+> ordinary $B_{lv}$ estimand with a separate orthogonal
+> `phylo_latent()` term (`LV-09`), not for current ML-only ordinary C1,
+> interacting structured `lv`, non-Gaussian or rank-2 profile/bootstrap, or
+> Julia bridge calibration. The source-pinned reconciliation is
+> `docs/dev-log/artifacts/methods-superarc/lv-design73-c1-closure-receipt.md`.
+
 Production ADEMP coverage evidence for the **profile confidence interval** of the
 predictor-informed latent-score effect `B_lv = Λ_B·α^T`, under the **orthogonal
 Model A**:

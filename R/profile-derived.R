@@ -94,8 +94,9 @@
 #' @noRd
 profile_ci_repeatability <- function(fit, trait_idx = NULL, level = 0.95) {
   if (!inherits(fit, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+    .gllvmTMB_abort_not_multi_fit(fit)
   }
+  .temporal_assert_no_iid_inference(fit, "profile_ci_repeatability")
   ix_B <- .par_indices(fit, "theta_diag_B")
   ix_W <- .par_indices(fit, "theta_diag_W")
   if (length(ix_B) == 0L || length(ix_W) == 0L) {
@@ -161,6 +162,9 @@ profile_ci_repeatability <- function(fit, trait_idx = NULL, level = 0.95) {
 #' current `method = "profile"` entry point returns the existing numerical
 #' delta-method Wald bounds with a clear `method = "wald(numeric)"` label
 #' rather than returning empty bounds.
+#' New structured source attenuation is excluded: this source-allocation
+#' interval does not account for rho. Use [extract_Sigma()] for point trait
+#' covariance and source-strength metadata.
 #'
 #' @param fit A fit returned by [gllvmTMB()].
 #' @param trait_idx Integer index of the trait, or `NULL` for all.
@@ -172,8 +176,10 @@ profile_ci_repeatability <- function(fit, trait_idx = NULL, level = 0.95) {
 #' @export
 profile_ci_phylo_signal <- function(fit, trait_idx = NULL, level = 0.95) {
   if (!inherits(fit, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+    .gllvmTMB_abort_not_multi_fit(fit)
   }
+  .temporal_assert_no_iid_inference(fit, "profile_ci_phylo_signal")
+  .structured_rho_source_allocation_assert(fit, "profile_ci_phylo_signal")
   .gllvmTMB_mspl_assert_inference(fit, "profile_ci_phylo_signal")
   .gllvmTMB_require_unweighted_inference(fit, "profile_ci_phylo_signal")
   has_phy <- isTRUE(fit$use$phylo_rr) || isTRUE(fit$use$phylo_diag)
@@ -548,8 +554,9 @@ profile_ci_communality <- function(
   level = 0.95
 ) {
   if (!inherits(fit, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+    .gllvmTMB_abort_not_multi_fit(fit)
   }
+  .temporal_assert_no_iid_inference(fit, "profile_ci_communality")
   tier <- match.arg(tier)
   tier <- .normalise_level(tier, arg_name = "tier")
   rr_used <- switch(
@@ -692,12 +699,12 @@ profile_ci_communality <- function(
 }
 
 ## ---- Total unit variance: shared builder + profile + delta-Wald -----------
-## V_t = (Lambda Lambda^T)_tt + psi_t = diag(Sigma_unit)_t, the per-trait total
+## V_t = (Lambda Lambda^T)_tt + psi_t^2 = diag(Sigma_unit)_t, the per-trait total
 ## variance at a covariance tier -- the rotation-INVARIANT, bounded, right-
 ## skewed location-axis variance component whose percentile-bootstrap interval
 ## under-covers (misses are "truth above upper"). `.total_variance_spec()` is the
-## SINGLE source of truth for V_t and its exact gradient, so the profile route
-## (`.profile_ci_total_variance`, the certificate candidate) and the delta-method
+## SINGLE source of truth for V_t and its exact gradient, so the penalty-profile
+## route (`.profile_ci_total_variance`, always route-only) and the delta-method
 ## log-SD Wald (`.wald_ci_total_variance_logsd`, a diagnostic companion) target
 ## the IDENTICAL functional. psi is reconstructed through `.expand_mapped_diag`
 ## so mapped-off single-trial-binary psi (issue #717) is handled, not misindexed;
@@ -711,7 +718,7 @@ profile_ci_communality <- function(
   tier = c("unit", "unit_obs", "phy", "B", "W")
 ) {
   if (!inherits(fit, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+    .gllvmTMB_abort_not_multi_fit(fit)
   }
   tier <- match.arg(tier)
   tier <- .normalise_level(tier, arg_name = "tier")
@@ -733,17 +740,17 @@ profile_ci_communality <- function(
       "Total-variance intervals at tier {.val {tier}} need a latent and/or diagonal component in the fit."
     )
   }
-  ## V_t is CONTRACTUALLY (Lambda Lambda^T)_tt + psi_t. When the tier carries
-  ## loadings but no diagonal component there is no psi_t to add, and every psi
+  ## V_t is CONTRACTUALLY (Lambda Lambda^T)_tt + psi_t^2. When the tier carries
+  ## loadings but no diagonal component there is no psi_t^2 to add, and every psi
   ## term below silently evaluates to zero -- so both routes keep reporting, but
   ## they report Sigma_tt under the name V_t. That silent substitution produced a
   ## confidently wrong coverage curve (0.517 -> 0.300 -> 0.096) whose
-  ## point-estimate gaps tracked the planted psi_t almost exactly. Refuse the fit
+  ## point-estimate gaps tracked the planted psi_t^2 almost exactly. Refuse the fit
   ## rather than quietly change the estimand.
   if (length(ix_diag) == 0L) {
     cli::cli_abort(c(
       "Total-variance intervals at tier {.val {tier}} need the diagonal component {.val {diag_name}}, which this fit does not carry.",
-      "x" = "V_t = (Lambda Lambda^T)_tt + psi_t; without {.val {diag_name}} the psi_t term is identically zero, so V_t would silently reduce to Sigma_tt.",
+      "x" = "V_t = (Lambda Lambda^T)_tt + psi_t^2; without {.val {diag_name}} the psi_t^2 term is identically zero, so V_t would silently reduce to Sigma_tt.",
       "i" = "Fit the tier with {.code unique = TRUE} so psi_t is estimated, or target Sigma_tt directly if that is the intended estimand."
     ))
   }
@@ -865,7 +872,7 @@ profile_ci_communality <- function(
   )
 }
 
-## Route A -- CERTIFICATE CANDIDATE. Genuine per-trait profile on log(V_t).
+## Route A -- ROUTE-ONLY PENALTY-PROFILE APPROXIMATION on log(V_t).
 ## Profiled on the LOG scale (transformation-invariant, so an identical interval
 ## to profiling V_t directly) which makes the fixed `.fix_and_refit_nll`
 ## constraint tolerance act as a relative tolerance and maps V_t -> 0 to
@@ -926,69 +933,14 @@ profile_ci_communality <- function(
   do.call(rbind, out_list)
 }
 
-## Is this (fit, tier, level) inside the ONE regime the D-43 panel certified?
-##
-## The certificate (2026-07-29; docs/dev-log/2026-07-29-certificate-disposition.md)
-## covers an unpenalised native-Laplace fit simulated from a known Gaussian DGP,
-## tier "unit", the diagonal
-## V_t = (Lambda Lambda')[t,t] + psi[t], d in {1,2}, n_units >= 150, two-sided,
-## nominal-95% input, among converged fits. Everything else the signature admits
-## -- every other family, tier, rank, sample size and level -- was NOT measured.
-## Keep this predicate conservative: d = 0 (a diagonal-only unit tier) and every
-## n between 50 and 150 are unmeasured, so they are uncertified, not "close
-## enough".
-.total_variance_in_certified_regime <- function(fit, tier, level) {
-  ## Engine/estimand: the campaign fitted the ordinary unpenalised native
-  ## Laplace likelihood. AGHQ changes the integration objective, while an
-  ## explicit loading ridge targets a penalised MAP point. Neither route
-  ## inherits the certificate. Require all three machine fields so an older or
-  ## incomplete fit object fails closed to "route-only".
-  ridge_tau <- fit$aghq$ridge_tau
-  if (
-    !identical(fit$aghq$used, FALSE) ||
-      !identical(fit$aghq$penalised, FALSE) ||
-      !is.numeric(ridge_tau) || length(ridge_tau) != 1L ||
-      !is.infinite(ridge_tau) || ridge_tau < 0
-  ) {
-    return(FALSE)
-  }
-  ## Family: every observation Gaussian (family id 0).
-  if (any((fit$tmb_data$family_id_vec %||% 0L) != 0L)) {
-    return(FALSE)
-  }
-  ## Tier: the ordinary unit tier only ("unit" normalises to internal "B").
-  norm_tier <- .normalise_level(tier, arg_name = "tier", .skip_warn = TRUE)
-  if (!identical(norm_tier, "B")) {
-    return(FALSE)
-  }
-  ## Rank: a unit-tier latent of rank 1 or 2 (the two certified cells).
-  if (!isTRUE(fit$use$rr_B) || !(as.integer(fit$d_B) %in% c(1L, 2L))) {
-    return(FALSE)
-  }
-  ## Sample size: n_units >= 150.
-  if (!isTRUE(as.integer(fit$n_sites) >= 150L)) {
-    return(FALSE)
-  }
-  ## Level: the gate was measured for the nominal-95% interval and no other.
-  if (!isTRUE(all.equal(level, 0.95))) {
-    return(FALSE)
-  }
-  ## Conditional on convergence -- the certificate is among converged fits only.
-  health <- fit$fit_health %||% .gllvmTMB_build_fit_health(fit)
-  isTRUE(health$converged)
-}
-
 ## Claim-boundary marker for the rows profile_ci_total_variance() returns.
 ##
-## The failure mode this repo keeps hitting is a true-but-narrow number restated
-## more broadly, and prose does not survive restatement -- so the boundary rides
-## on the row, machine-visible, the way extract_correlations() already does it.
+## The 2026-07-29 and 2026-08-25 campaigns measured the implemented penalty
+## approximation, but neither retained enough endpoint detail to establish an
+## exact constrained-refit LR contract. Every computed row therefore remains
+## route-only until the mechanism is repaired and recalibrated.
 .total_variance_interval_status <- function(fit, tier, level, lower, upper) {
-  in_regime <- .total_variance_in_certified_regime(fit, tier = tier, level = level)
-  status <- rep(
-    if (in_regime) "certified-0.94" else "route-only",
-    length(lower)
-  )
+  status <- rep("route-only", length(lower))
   ## A row with no interval is point-only, not an uncertified interval.
   status[is.na(lower) & is.na(upper)] <- "none"
   status
@@ -996,39 +948,32 @@ profile_ci_communality <- function(
 
 #' Profile-likelihood CI for per-trait total variance
 #'
-#' Genuine chi-square_1 profile intervals (via fix-and-refit on `log V_t`) for
-#' the per-trait total variance `V_t = (Lambda Lambda')[t,t] + psi[t]`, the
+#' Penalty-based chi-square_1 profile approximations (via fix-and-refit on
+#' `log V_t`) for
+#' the per-trait total variance `V_t = (Lambda Lambda')[t,t] + psi[t]^2`, the
 #' diagonal of the requested covariance tier. This is the same functional
 #' [extract_Sigma()] returns on its diagonal, and the same one
 #' [bootstrap_Sigma()] resamples.
 #'
 #' @section What the coverage evidence does and does not cover:
-#' One regime of this function has measured frequentist coverage. Under
-#' simulation from a known Gaussian data-generating process, using an
-#' unpenalised native-Laplace fit with `n_units >= 150` and `d <= 2`, the
-#' two-sided intervals met a **pre-registered `>= 0.94` gate**
-#' (0.9467 in both cells, 20,000 replicates each, computed among converged fits
-#' only). **That gate is 0.94, not nominal 95%** -- both cells sit roughly 3.3
-#' cluster standard errors below 0.95, so do not describe these as 95%
-#' intervals. Coverage is a *marginal average* over the simulated `V_t`
-#' distribution and does **not** hold in the smallest-`V_t` ventile (0.926 at
-#' `d = 1`). The interval is not equal-tailed, so **one-sided use is invalid**.
-#' The evidence is one simulated DGP, not a claim about any real dataset.
-#'
-#' Everything else the arguments admit is an uncertified computed route: every
-#' AGHQ fit, any loading-ridge fit, every non-Gaussian family, every tier other
-#' than `"unit"`, `d > 2`, `d = 0`, `n_units < 150`, any `level` other than
-#' 0.95, and the off-diagonal and `psi` targets (the `psi` target was measured
-#' on the same run and **failed**).
-#' Rather than refuse those calls -- they are legitimately useful for
-#' exploration -- the returned `interval_status` column marks each row.
+#' The 2026-07-29 Gaussian `n_units = 150`, `d` in `{1, 2}` campaign and the
+#' 2026-08-25 `n_units = 400`, `d = 2` campaign both measured the
+#' implemented penalty-profile approximation. The numerical coverage gates
+#' passed in those cells, but the retained endpoints do not establish that
+#' every constrained refit converged and attained its requested `log(V_t)`
+#' exactly. The implementation can accept target mismatch up to its numerical
+#' tolerance and interpolate after failed interior refits. Those campaigns are
+#' therefore **measured, not exact-profile certificates**. Every computed row
+#' is labelled `"route-only"`; a row with no interval is labelled `"none"`.
+#' This route must be repaired and recalibrated before any coverage certificate
+#' is restored.
 #'
 #' @param fit A fit returned by [gllvmTMB()].
 #' @param tier Covariance tier: `"unit"`, `"unit_obs"`, `"phy"`, or the
 #'   soft-deprecated legacy aliases `"B"` / `"W"`. Default `"unit"`.
 #' @param trait_idx Integer indices of traits, or `NULL` for all.
-#' @param level Confidence level. Default 0.95. Only 0.95 carries coverage
-#'   evidence.
+#' @param level Confidence level. Default 0.95. No level currently carries an
+#'   exact-profile coverage certificate.
 #' @return A data frame with one row per trait and columns:
 #' \describe{
 #'   \item{`trait`, `tier`}{Trait name and the canonical tier name.}
@@ -1037,10 +982,8 @@ profile_ci_communality <- function(
 #'     could not be computed.}
 #'   \item{`method`}{Always `"profile"`.}
 #'   \item{`interval_status`}{Claim-boundary marker:
-#'     `"certified-0.94"` when the row falls inside the certified regime above,
-#'     `"route-only"` for a computed but uncertified interval, and `"none"`
-#'     for a point-only row with no interval. `"certified-0.94"` marks *regime
-#'     membership*; it does not certify the individual interval.}
+#'     `"route-only"` for a computed but uncertified interval and `"none"`
+#'     for a point-only row with no interval.}
 #' }
 #' @seealso [extract_Sigma()] for the point estimate, [bootstrap_Sigma()] for
 #'   the resampling route to the same estimand.
@@ -1051,6 +994,7 @@ profile_ci_total_variance <- function(
   trait_idx = NULL,
   level = 0.95
 ) {
+  .temporal_assert_no_iid_inference(fit, "profile_ci_total_variance")
   .gllvmTMB_mspl_assert_inference(fit, "profile_ci_total_variance")
   .gllvmTMB_require_unweighted_inference(fit, "profile_ci_total_variance")
   tier <- match.arg(tier)
@@ -1147,7 +1091,7 @@ profile_ci_total_variance <- function(
     ## component is barely identified (e.g. a collapsed binomial loading) and the
     ## interval spans many orders of magnitude -- uninformative, and it would
     ## spuriously "cover" everything. Emit NA rather than a garbage-wide bound;
-    ## the NA rate is itself a diagnostic. (Route B is never the certificate.)
+    ## the NA rate is itself a diagnostic. Route B is also uncalibrated.
     if (se_g > 2.5) {
       return(na_row(t, V, "wide_na"))
     }
@@ -1244,8 +1188,9 @@ profile_ci_correlation <- function(
   diag_resid = NULL
 ) {
   if (!inherits(fit, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+    .gllvmTMB_abort_not_multi_fit(fit)
   }
+  .temporal_assert_no_iid_inference(fit, "profile_ci_correlation")
   tier <- match.arg(tier)
   tier <- .normalise_level(tier, arg_name = "tier")
   if (tier %in% c("cluster", "cluster2")) {
@@ -1472,7 +1417,8 @@ profile_ci_correlation <- function(
 ## ---- Variance proportions: fix-and-refit profile -------------------------
 ## extract_proportions(fit) returns per-trait variance partitions across all
 ## components (shared_unit, unique_unit, shared_unit_obs, unique_unit_obs,
-## unique_cluster, unique_cluster2, shared_phy, unique_phy, link_residual).
+## unique_cluster, unique_cluster2, shared_phy, unique_phy, residual,
+## link_residual).
 ## profile_ci_proportions() supplies profile-likelihood CIs for each
 ## (trait, component) by Lagrange-style fix-and-refit on the proportion itself
 ## (not the raw numerator).
@@ -1495,28 +1441,61 @@ profile_ci_correlation <- function(
   par_names <- names(fit$opt$par)
   T <- fit$n_traits %||% length(levels(fit$data[[fit$trait_col]]))
 
-  ## Per-tier index blocks (NULL if tier absent).
-  ix_rr_B    <- which(par_names == "theta_rr_B")
-  ix_diag_B  <- which(par_names == "theta_diag_B")
-  ix_rr_W    <- which(par_names == "theta_rr_W")
-  ix_diag_W  <- which(par_names == "theta_diag_W")
-  ix_diag_cluster <- which(par_names == "theta_diag_species")
-  ix_diag_cluster2 <- which(par_names == "theta_diag_cluster2")
-  ix_rr_phy  <- which(par_names == "theta_rr_phy")
-  ix_diag_phy <- which(par_names == "log_sd_phy_diag")
+  ## Read each tier's parameters through the TMB map, so entries the engine
+  ## fixed (the pinned Psi of binary traits, the zero lower triangle of a
+  ## diagonal phylo_indep() loading block) or tied (indep(common = TRUE)) come
+  ## back at full length. Indexing the free vector by trait read another
+  ## trait's value whenever a block was partly fixed. Fits without a TMB
+  ## object (unit-test fakes) read the named entries of `par` directly.
+  par_list <- fit$tmb_obj$env$parList
+  blocks <- function(par) {
+    if (is.function(par_list)) {
+      return(par_list(par))
+    }
+    split(unname(par), factor(par_names, levels = unique(par_names)))
+  }
+  b_hat <- blocks(fit$opt$par)
+  has_block <- function(name, used) used && length(b_hat[[name]]) > 0L
 
   d_B   <- fit$d_B %||% 0L
   d_W   <- fit$d_W %||% 0L
   d_phy <- fit$d_phy %||% 0L
 
-  use_rr_B   <- isTRUE(fit$use$rr_B)
-  use_diag_B <- isTRUE(fit$use$diag_B)
-  use_rr_W   <- isTRUE(fit$use$rr_W)
-  use_diag_W <- isTRUE(fit$use$diag_W)
-  use_diag_cluster <- isTRUE(fit$use$diag_species)
-  use_diag_cluster2 <- isTRUE(fit$use$diag_cluster2)
-  use_rr_phy <- isTRUE(fit$use$phylo_rr)
-  use_diag_phy <- isTRUE(fit$use$phylo_diag)
+  use_rr_B   <- has_block("theta_rr_B", isTRUE(fit$use$rr_B))
+  use_diag_B <- has_block("theta_diag_B", isTRUE(fit$use$diag_B))
+  use_rr_W   <- has_block("theta_rr_W", isTRUE(fit$use$rr_W))
+  use_diag_W <- has_block("theta_diag_W", isTRUE(fit$use$diag_W))
+  use_diag_cluster <- has_block(
+    "theta_diag_species",
+    isTRUE(fit$use$diag_species)
+  )
+  use_diag_cluster2 <- has_block(
+    "theta_diag_cluster2",
+    isTRUE(fit$use$diag_cluster2)
+  )
+  use_rr_phy <- has_block("theta_rr_phy", isTRUE(fit$use$phylo_rr))
+  use_diag_phy <- has_block("log_sd_phy_diag", isTRUE(fit$use$phylo_diag))
+
+  ## Gaussian/lognormal observation residual sigma_eps^2 (#1399), one slot
+  ## per family. It always enters the denominator, including a sigma_eps the
+  ## engine fixed because a per-row diagonal term is present. Its own
+  ## proportion has a target only when sigma_eps is free and the trait uses
+  ## it; a fixed or structurally zero residual is a constant, like the link
+  ## residual.
+  resid_slots <- .variance_share_residual_slots(fit)
+  use_resid <- length(resid_slots) == T &&
+    any(resid_slots > 0L) &&
+    length(b_hat$log_sigma_eps) > 0L
+  resid_var <- function(b) {
+    v <- numeric(T)
+    on <- resid_slots > 0L
+    ls <- b$log_sigma_eps
+    v[on] <- exp(2 * ls[pmin(resid_slots[on], length(ls))])
+    v
+  }
+  resid_target <- use_resid &&
+    any(par_names == "log_sigma_eps") &&
+    all(resid_slots[trait_idx] > 0L)
 
   ## Per-trait link-residual is constant w.r.t. fitted parameters for the
   ## families this stage supports (Gaussian -> 0, binomial -> pi^2/3,
@@ -1556,47 +1535,42 @@ profile_ci_correlation <- function(
     }
     L
   }
+  loading_var <- function(theta_rr, rank) {
+    L <- build_Lambda(theta_rr, p = T, rank = rank)
+    diag(L %*% t(L))[trait_idx]
+  }
+  diag_var <- function(theta) exp(2 * theta[trait_idx])
 
-  ## Per-component numerator builder (function of par). NULL when the
-  ## component is structurally absent.
+  ## Per-component numerator builder (function of the block list). NULL when
+  ## the component is structurally absent or constant in theta.
   num_fn <- switch(
     component,
-    shared_unit = if (use_rr_B && length(ix_rr_B) > 0L) {
-      function(par) {
-        L <- build_Lambda(par[ix_rr_B], p = T, rank = d_B)
-        diag(L %*% t(L))[trait_idx]
-      }
+    shared_unit = if (use_rr_B) {
+      function(b) loading_var(b$theta_rr_B, d_B)
     } else NULL,
-    unique_unit = if (use_diag_B && length(ix_diag_B) > 0L) {
-      function(par) exp(2 * par[ix_diag_B][trait_idx])
+    unique_unit = if (use_diag_B) {
+      function(b) diag_var(b$theta_diag_B)
     } else NULL,
-    shared_unit_obs = if (use_rr_W && length(ix_rr_W) > 0L) {
-      function(par) {
-        L <- build_Lambda(par[ix_rr_W], p = T, rank = d_W)
-        diag(L %*% t(L))[trait_idx]
-      }
+    shared_unit_obs = if (use_rr_W) {
+      function(b) loading_var(b$theta_rr_W, d_W)
     } else NULL,
-    unique_unit_obs = if (use_diag_W && length(ix_diag_W) > 0L) {
-      function(par) exp(2 * par[ix_diag_W][trait_idx])
+    unique_unit_obs = if (use_diag_W) {
+      function(b) diag_var(b$theta_diag_W)
     } else NULL,
-    unique_cluster = if (
-      use_diag_cluster && length(ix_diag_cluster) > 0L
-    ) {
-      function(par) exp(2 * par[ix_diag_cluster][trait_idx])
+    unique_cluster = if (use_diag_cluster) {
+      function(b) diag_var(b$theta_diag_species)
     } else NULL,
-    unique_cluster2 = if (
-      use_diag_cluster2 && length(ix_diag_cluster2) > 0L
-    ) {
-      function(par) exp(2 * par[ix_diag_cluster2][trait_idx])
+    unique_cluster2 = if (use_diag_cluster2) {
+      function(b) diag_var(b$theta_diag_cluster2)
     } else NULL,
-    shared_phy = if (use_rr_phy && length(ix_rr_phy) > 0L) {
-      function(par) {
-        L <- build_Lambda(par[ix_rr_phy], p = T, rank = d_phy)
-        diag(L %*% t(L))[trait_idx]
-      }
+    shared_phy = if (use_rr_phy) {
+      function(b) loading_var(b$theta_rr_phy, d_phy)
     } else NULL,
-    unique_phy = if (use_diag_phy && length(ix_diag_phy) > 0L) {
-      function(par) exp(2 * par[ix_diag_phy][trait_idx])
+    unique_phy = if (use_diag_phy) {
+      function(b) diag_var(b$log_sd_phy_diag)
+    } else NULL,
+    residual = if (resid_target) {
+      function(b) resid_var(b)[trait_idx]
     } else NULL,
     link_residual = NULL,
     NULL
@@ -1607,41 +1581,24 @@ profile_ci_correlation <- function(
 
   ## Full denominator: sum of all component variances at trait t,
   ## across whatever tiers the fit uses, plus the link-residual offset.
-  total_fn <- function(par) {
+  total_fn <- function(b) {
     s <- rep(0, length(trait_idx))
-    if (use_rr_B && length(ix_rr_B) > 0L) {
-      L <- build_Lambda(par[ix_rr_B], p = T, rank = d_B)
-      s <- s + diag(L %*% t(L))[trait_idx]
-    }
-    if (use_diag_B && length(ix_diag_B) > 0L) {
-      s <- s + exp(2 * par[ix_diag_B][trait_idx])
-    }
-    if (use_rr_W && length(ix_rr_W) > 0L) {
-      L <- build_Lambda(par[ix_rr_W], p = T, rank = d_W)
-      s <- s + diag(L %*% t(L))[trait_idx]
-    }
-    if (use_diag_W && length(ix_diag_W) > 0L) {
-      s <- s + exp(2 * par[ix_diag_W][trait_idx])
-    }
-    if (use_diag_cluster && length(ix_diag_cluster) > 0L) {
-      s <- s + exp(2 * par[ix_diag_cluster][trait_idx])
-    }
-    if (use_diag_cluster2 && length(ix_diag_cluster2) > 0L) {
-      s <- s + exp(2 * par[ix_diag_cluster2][trait_idx])
-    }
-    if (use_rr_phy && length(ix_rr_phy) > 0L) {
-      L <- build_Lambda(par[ix_rr_phy], p = T, rank = d_phy)
-      s <- s + diag(L %*% t(L))[trait_idx]
-    }
-    if (use_diag_phy && length(ix_diag_phy) > 0L) {
-      s <- s + exp(2 * par[ix_diag_phy][trait_idx])
-    }
+    if (use_rr_B) s <- s + loading_var(b$theta_rr_B, d_B)
+    if (use_diag_B) s <- s + diag_var(b$theta_diag_B)
+    if (use_rr_W) s <- s + loading_var(b$theta_rr_W, d_W)
+    if (use_diag_W) s <- s + diag_var(b$theta_diag_W)
+    if (use_diag_cluster) s <- s + diag_var(b$theta_diag_species)
+    if (use_diag_cluster2) s <- s + diag_var(b$theta_diag_cluster2)
+    if (use_rr_phy) s <- s + loading_var(b$theta_rr_phy, d_phy)
+    if (use_diag_phy) s <- s + diag_var(b$log_sd_phy_diag)
+    if (use_resid) s <- s + resid_var(b)[trait_idx]
     s + link_resid_vec[trait_idx]
   }
 
   function(par, fit) {
-    num <- num_fn(par)
-    den <- total_fn(par)
+    b <- blocks(par)
+    num <- num_fn(b)
+    den <- total_fn(b)
     if (any(!is.finite(num)) || any(!is.finite(den)) || any(den <= 0)) {
       return(NA_real_)
     }
@@ -1701,8 +1658,9 @@ profile_ci_proportions <- function(
   level      = 0.95
 ) {
   if (!inherits(fit, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+    .gllvmTMB_abort_not_multi_fit(fit)
   }
+  .temporal_assert_no_iid_inference(fit, "profile_ci_proportions")
   pt <- suppressMessages(extract_proportions(fit, format = "long"))
   ## Sanity: extract_proportions() may add link_residual conditionally.
   comps_present <- as.character(unique(pt$component))
@@ -1884,6 +1842,7 @@ profile_ci_lv_effects <- function(fit,
                                   level = 0.95,
                                   reference = c("chisq", "t"),
                                   df = NULL) {
+  .temporal_assert_no_iid_inference(fit, "profile_ci_lv_effects")
   reference <- match.arg(reference)
   B_hat <- fit$report[["B_lv_unit"]]
   if (is.null(B_hat)) {

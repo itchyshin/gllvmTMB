@@ -72,11 +72,15 @@ without reverse-engineering ggplot layers.
 
 Scope: fitted-model predictive plots and residual Q-Q/rootogram helpers
 for \code{gllvmTMB_multi} fits, with exact randomized-quantile residuals for
-Gaussian, Poisson, and NB2 rows and a simulation-rank fallback. These
-are diagnostic displays, not formal uniformity, dispersion,
+Gaussian, binomial, Poisson, lognormal, Gamma, NB2, Beta, betabinomial,
+Student-t, zero-truncated Poisson, zero-truncated NB2, NB1, and
+ordinal-probit rows, plus a simulation-rank fallback. These are
+diagnostic displays, not formal uniformity, dispersion,
 interval-calibration, or Bayesian posterior-predictive tests. Exact
-residual support for delta, hurdle, truncated, ordinal, and mixture
-families is not yet implemented.
+residual support for tweedie, the delta/hurdle families, and multinomial
+is not implemented (see \code{\link[=residuals.gllvmTMB_multi]{residuals.gllvmTMB_multi()}} for why); the
+simulation-rank fallback's own family coverage is separately limited and
+is not audited here.
 }
 \examples{
 \donttest{

@@ -48,6 +48,9 @@
 #'   }
 #' @return As described per `block` above. Standard errors are always
 #'   `NA` (with a warning) when the fit's Hessian is not positive-definite.
+#'   For `block = "diag_unit"` / `"diag_unit_obs"`, a trait whose diagonal was
+#'   not estimated (single-trial binomial, multinomial contrast, or
+#'   single-observation ordinal trait) has an all-`NA` row.
 #'
 #' @section What this is, and is not:
 #' Every number returned here is a **Wald / `sdreport()` marginal standard
@@ -61,6 +64,13 @@
 #' NOT give cross-block or random-vs-fixed covariance (that needs
 #' `sdreport(getJointPrecision = TRUE)`, which this fit's single production
 #' `sdreport()` call does not request).
+#' For eligible Gaussian fits, the ordinary cell effects are integrated out
+#' analytically. Their standard errors combine the propagated uncertainty of
+#' their reconstructed conditional means with their conditional variances.
+#' This preserves the same first-order uncertainty convention.
+#' Their removed coordinates are not present in the reduced tape's raw joint
+#' precision; cross-covariances involving these cells also require conditional
+#' reconstruction, rather than only `getJointPrecision = TRUE`.
 #'
 #' Because of that fixed-effect-uncertainty propagation, a near-saturated or
 #' otherwise degenerate design (e.g. an `indep()` diagonal term at a grouping
@@ -92,10 +102,45 @@
 #' @keywords internal
 #' @export
 #' @examples
-#' \dontrun{
+#' ## Thirty sites (the "unit" column), each visited twice, with three
+#' ## traits measured at every visit. Sites differ in each trait
+#' ## independently of the other traits (psi_B holds the per-trait
+#' ## variances of these site effects).
+#' set.seed(1)
+#' sim <- simulate_unit_trait(
+#'   n_units = 30, n_obs_per_unit = 2, n_traits = 3,
+#'   psi_B = c(0.8, 0.5, 0.6), sigma2_eps = 0.2
+#' )
+#' dat <- sim$data
+#' ## Each of the 60 visits (labelled in the unit_observation column) is
+#' ## made by one of six observers, and each observer shifts all of their
+#' ## readings by the same amount.
+#' visit_observer <- sample(rep(1:6, 10))
+#' dat$observer <- factor(visit_observer[as.integer(dat$unit_observation)])
+#' observer_shift <- rnorm(6, sd = 0.7)
+#' dat$value <- dat$value + observer_shift[as.integer(dat$observer)]
+#'
+#' ## indep(0 + trait | unit): one effect per site and trait (block
+#' ## "diag_unit"); (1 | observer): one effect per observer, shared by
+#' ## all traits (block "re_int").
+#' fit <- gllvmTMB(
+#'   value ~ 0 + trait + indep(0 + trait | unit) + (1 | observer),
+#'   data = dat, trait = "trait", unit = "unit"
+#' )
+#'
+#' ## Wald (delta-method) standard errors of the estimated site and
+#' ## observer effects. Intervals built from them have not been checked
+#' ## for coverage.
+#' ## "re_int" gives a list with one vector per (1 | group) term, named
+#' ## by its grouping column: here 6 values, one per observer, in the
+#' ## order of levels(dat$observer).
 #' getREsd(fit, block = "re_int")
-#' getREsd(fit, block = "diag_unit")
-#' }
+#' ## "diag_unit" gives a traits x sites matrix (here 3 x 30); rows and
+#' ## columns follow levels(dat$trait) and levels(dat$unit).
+#' se_site <- getREsd(fit, block = "diag_unit")
+#' dim(se_site)
+#' dimnames(se_site) <- list(levels(dat$trait), levels(dat$unit))
+#' round(se_site[, 1:5], 2)
 getREsd <- function(
   fit,
   block = c(
@@ -163,9 +208,14 @@ getREsd <- function(
     ), class = "gllvmTMB_getREsd_block_absent")
   }
 
-  par_names <- names(sd_rep$par.random)
-  idx <- which(par_names == spec$par_name)
+  integrated <- identical(block, "diag_unit") &&
+    isTRUE(fit$integrated_gaussian_diag_B)
+  par_names <- if (integrated) names(sd_rep$value) else names(sd_rep$par.random)
+  idx <- which(par_names == if (integrated) "s_B_conditional_mean" else spec$par_name)
   if (length(idx) == 0L) {
+    if (integrated) {
+      cli::cli_abort("The sdreport lacks the reconstructed Gaussian cell means.")
+    }
     cli::cli_abort(c(
       "Could not locate the {.field {spec$par_name}} random-effect block in {.code sd_report$par.random}.",
       "i" = "{.field fit$use${block}} is {.code TRUE} but the parameter is absent from the fit's {.field sd_report}.",
@@ -183,7 +233,17 @@ getREsd <- function(
     ## pmax(., 0) guards against floating-point noise producing a
     ## microscopically negative variance for an entry that is truly ~0
     ## (same guard `.getLV_se()` uses, R/output-methods.R).
-    se_vec <- sqrt(pmax(sd_rep$diag.cov.random[idx], 0))
+    variance <- if (integrated) {
+      conditional <- as.numeric(fit$report$s_B_conditional_variance)
+      if (length(conditional) != length(idx) || any(!is.finite(conditional)) ||
+          any(conditional < 0)) {
+        cli::cli_abort("The reconstructed Gaussian cell variances are missing or invalid.")
+      }
+      as.numeric(sd_rep$sd[idx])^2 + conditional
+    } else {
+      sd_rep$diag.cov.random[idx]
+    }
+    se_vec <- sqrt(pmax(variance, 0))
   }
 
   if (block == "re_int") {
@@ -198,6 +258,26 @@ getREsd <- function(
   }
   if (block == "equalto") {
     return(se_vec)
+  }
+
+  ## Traits whose diagonal was deliberately not estimated (single-trial
+  ## Bernoulli, multinomial contrasts, single-observation ordinal cells) have
+  ## their `s_B` / `s_W` rows mapped off at fit time, so `par.random` holds
+  ## only the free rows. Report those traits as NA rather than mistaking the
+  ## shorter vector for a stale sd_report.
+  skip_mask <- switch(
+    block,
+    diag_unit = fit$tmb_data$diag_B_skip,
+    diag_unit_obs = fit$tmb_data$diag_W_skip,
+    NULL
+  )
+  skip_mask <- as.logical(skip_mask)
+  if (!integrated && !is.null(spec$nrow) && length(skip_mask) == spec$nrow &&
+      any(skip_mask) &&
+      length(idx) == sum(!skip_mask) * spec$ncol) {
+    out <- matrix(NA_real_, nrow = spec$nrow, ncol = spec$ncol)
+    out[!skip_mask, ] <- matrix(se_vec, nrow = sum(!skip_mask), ncol = spec$ncol)
+    return(out)
   }
 
   if (length(idx) != spec$nrow * spec$ncol) {

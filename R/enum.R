@@ -19,7 +19,12 @@
   delta_gamma       = 13L,
   ordinal_probit    = 14L,
   nbinom1           = 15L,
-  multinomial       = 16L
+  multinomial       = 16L,
+  zi_poisson        = 17L,
+  zi_nbinom2        = 18L,
+  zi_binomial       = 19L,
+  ordinal_logit     = 20L,
+  censored_poisson  = 21L
 )
 
 .valid_link <- c(

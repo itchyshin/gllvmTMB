@@ -17,18 +17,20 @@ from a successful return because \code{cli::cli_abort} halts) and
 when \code{status = "ok"}).
 }
 \description{
-Inspects the fit's per-row family vector and flags two configurations
-that make the \code{link_residual = "auto"} path incoherent: within-trait
-family mixing (errors) and ordinal-probit traits (warns; the latent
-residual is already standardised at 1, so adding 1 again over-counts).
+Inspects the fit's per-row family vector and flags the one configuration
+that makes the \code{link_residual = "auto"} path incoherent: within-trait
+family mixing, which errors. Ordinal traits do not warn: the liability
+residual (1 for \code{\link[=ordinal_probit]{ordinal_probit()}}, pi^2/3 for \code{\link[=ordinal_logit]{ordinal_logit()}}) enters
+the total covariance only through \code{"auto"}, so \code{"auto"} is the correct
+setting and \code{link_residual = "none"} would drop it and give unit-tier
+correlations of exactly +/-1.
 }
 \section{Side effects}{
 
 \itemize{
 \item \code{"err"} path: \code{cli::cli_abort} is fired and the function does
 not return.
-\item \code{"warn"} path: \code{cli::cli_warn} is fired before the function
-returns the list invisibly.
+\item \code{"warn"} path: reserved; no configuration currently reaches it.
 \item \code{"ok"} path: silent.
 }
 }

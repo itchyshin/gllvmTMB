@@ -779,15 +779,6 @@ bool basis_stats(const CppAD::vector<Type> &tx, double &value,
       }
     }
   } catch (...) { fast_certified = false; }
-  static thread_local bool reported_large = false;
-  if (n >= 2000 && !reported_large) {
-    Rprintf("V8CERT safe=%d ok=%d exchanges=%d mp_scans=%d eta=%.6Le max_width=%.6g max_gamma=%.6g candidate_max=%.17g sizeof_ld=%d sizeof_d=%d\n",
-      int(fast_safe), int(fast_certified), initial_exchanges + fast_exchanges,
-      initial_mp_scans + fast_mp_scans,
-      fast_eta, fast_max_width, fast_max_gamma, fast_candidate_max,
-      int(sizeof(long double)), int(sizeof(double)));
-    reported_large = true;
-  }
   if (fast_certified) {
     lweval = lwfast_mp;
     log_column_scale_mp = fast_column_scale_mp;

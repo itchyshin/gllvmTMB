@@ -1,0 +1,55 @@
+{
+  "library": "/home/snakagaw/gllvmtmb_ridge_docs_check_20261018/check/gllvmTMB.Rcheck/gllvmTMB",
+  "version": "0.8.0.9000",
+  "convergence": 0,
+  "objective": 24.6186,
+  "fit_health": {
+    "optimizer": "nlminb",
+    "convergence": 0,
+    "message": "relative convergence (4)",
+    "objective": 24.6186,
+    "max_gradient": 0.0008,
+    "gradient_is_penalised": false,
+    "scaled_gradient": 0,
+    "stationary_by_scaled_gradient": true,
+    "stationary_by_gradient": true,
+    "optimizer_converged": true,
+    "converged": true,
+    "premature_termination": false,
+    "pd_hessian": true,
+    "sdreport_ok": true,
+    "sdreport_error": null,
+    "max_fixed_se": 0.0747,
+    "boundary_flags": [],
+    "start_provenance": {
+      "init_strategy": "default",
+      "start_method": "default",
+      "start_method_jitter_sd": 0,
+      "start_from": false,
+      "start_from_source": {},
+      "start_from_copied": [],
+      "auto_indep_fit": false,
+      "selected_restart": 1
+    },
+    "selected_restart": 1
+  },
+  "diagnostic": [
+    {
+      "component": "optimizer_convergence",
+      "status": "PASS",
+      "value": "0",
+      "threshold": "0",
+      "message": "optimizer reported convergence",
+      "action": "try multiple starts, stronger starts, rescaling, or an alternative optimizer"
+    },
+    {
+      "component": "max_gradient",
+      "status": "PASS",
+      "value": "0.0007743",
+      "threshold": "0.01",
+      "message": "largest absolute gradient component at the selected optimum",
+      "action": "tighten optimization, rescale predictors, or inspect weak components"
+    }
+  ],
+  "fixture_md5": "bca7fd623bc3de86edc2c7175c4c731d"
+}

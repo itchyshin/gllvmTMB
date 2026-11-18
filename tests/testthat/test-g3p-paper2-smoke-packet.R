@@ -1,0 +1,20 @@
+test_that("G3P Paper 2 packet is a no-fit provenance amendment", {
+  path <- isdm_dev_path("2026-08-13-g3p-paper2-smoke-packet.md")
+  text <- paste(readLines(path, warn = FALSE), collapse = "\n")
+  expect_match(text, "G3P_P2_PROVENANCE_V1", fixed = TRUE)
+  expect_match(text, "path_only_difference", fixed = TRUE)
+  expect_match(text, "does not authorise a replacement", fixed = TRUE)
+  expect_match(text, "explicit approval", fixed = TRUE)
+  expect_false(grepl("\\.gll_isdm_fit\\(|nlminb\\(|TMB::MakeADFun\\(|profile_theta\\(|Totoro|DRAC", text))
+})
+
+test_that("G3P Paper 2 V2 packet is create-only and receipt-bound", {
+  path <- isdm_dev_path("2026-08-13-g3p-paper2-v2-smoke-packet.md")
+  text <- paste(readLines(path, warn = FALSE), collapse = "\n")
+  expect_match(text, "G3P_P2_SMOKE_V2", fixed = TRUE)
+  expect_match(text, "G3P_P2_S6_C360_R3_V2", fixed = TRUE)
+  expect_match(text, "fdcb05cd", fixed = TRUE)
+  expect_match(text, "Packet content MD5 is binding", fixed = TRUE)
+  expect_match(text, "Preflight requires a separate explicit approval", fixed = TRUE)
+  expect_false(grepl("\\.gll_isdm_fit\\(|nlminb\\(|TMB::MakeADFun\\(|profile_theta\\(|Totoro|DRAC", text))
+})

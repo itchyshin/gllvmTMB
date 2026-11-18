@@ -41,6 +41,15 @@ A data frame of class \code{gllvmTMB_cross_rho_profile} with columns
 \code{rho}, \code{logLik}, \code{relative_logLik}, \code{delta_deviance}, \code{is_best},
 \code{convergence}, \code{pd_hessian}, \code{status}, and \code{error}, plus any metric
 columns returned by \code{metrics}.
+
+The best grid point (\code{is_best}, \code{attr(, "best_rho")}) is chosen among
+refits that did not report a problem: \code{convergence} must be \code{0} and
+\code{pd_hessian} must be \code{TRUE}, where \code{NA} (not reported, as for a plain
+\code{lm()} refit) counts as acceptable. A refit that reports \code{convergence != 0}
+or \code{pd_hessian = FALSE} gets \code{status = "unhealthy_fit"} and \code{NA}
+\code{relative_logLik} / \code{delta_deviance}, so \code{\link[=profile_cross_rho_ci]{profile_cross_rho_ci()}} ignores
+it. If no refit is healthy, the best is chosen among all finite
+log-likelihoods with a warning.
 }
 \description{
 \code{profile_cross_rho()} formalises a fixed-kernel sensitivity workflow for

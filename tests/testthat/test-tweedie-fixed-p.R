@@ -1,7 +1,8 @@
 ## tweedie(p = ...) fixes the Tweedie power a priori (1 < p < 2), mirroring
 ## student(df = ...). The power, dispersion, and any random-effect variance sit
 ## on a shared ridge, so fixing p is the standard stabilisation. Implemented as a
-## per-trait pin of logit_p_tweedie = qlogis(p - 1) (mapped off).
+## per-trait pin of logit_p_tweedie = .gllvmTMB_tweedie_theta(p) (mapped off).
+## A pinned power inside the smooth interval maps back to that power.
 ##
 ## NOTE: fixing p does NOT unlock tweedie random SLOPES -- an empirical check
 ## (docs/dev-log/after-task/2026-07-12-re-surface-arc-start.md) found the ~44%

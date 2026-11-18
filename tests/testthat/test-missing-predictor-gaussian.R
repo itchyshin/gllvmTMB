@@ -296,7 +296,10 @@ test_that("imputed() reports Phase 2a missing-predictor conditional modes", {
   fit <- .fit_mi_uni(dat, se = TRUE)
 
   out <- imputed(fit)
-  modes <- fit$tmb_obj$env$parList(fit$opt$par)$x_mis
+  ## Stored best modes (last.par.best), not the inner optimiser's last point.
+  modes <- fit$tmb_obj$env$parList(
+    fit$opt$par, par = fit$tmb_obj$env$last.par.best
+  )$x_mis
 
   expect_s3_class(out, "data.frame")
   expect_named(
@@ -837,7 +840,9 @@ test_that("imputed() supports grouped Phase 2b missing-predictor fits", {
 
   fit <- .fit_mi_grouped(dat, se = TRUE)
   out <- imputed(fit, variable = "x")
-  modes <- fit$tmb_obj$env$parList(fit$opt$par)$x_mis
+  modes <- fit$tmb_obj$env$parList(
+    fit$opt$par, par = fit$tmb_obj$env$last.par.best
+  )$x_mis
 
   expect_identical(fit$missing_data$predictors$x$version, "phase2b")
   expect_identical(out$original_row, d$missing_site)

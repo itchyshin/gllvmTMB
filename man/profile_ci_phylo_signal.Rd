@@ -29,5 +29,8 @@ fix-and-refit on the multi-component constraint and remains planned. The
 current \code{method = "profile"} entry point returns the existing numerical
 delta-method Wald bounds with a clear \code{method = "wald(numeric)"} label
 rather than returning empty bounds.
+New structured source attenuation is excluded: this source-allocation
+interval does not account for rho. Use \code{\link[=extract_Sigma]{extract_Sigma()}} for point trait
+covariance and source-strength metadata.
 }
 \keyword{internal}

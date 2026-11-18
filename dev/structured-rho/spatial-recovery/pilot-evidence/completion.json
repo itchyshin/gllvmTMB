@@ -1,0 +1,20 @@
+{
+  "kind": "pilot",
+  "attempts": 32,
+  "seconds": 16.709982505068183,
+  "bundle_hash": "78e17ceb0c4589fff1c7983949a9f7cdfaa80e4e4699d0ab75870764d15d3383",
+  "fixture_manifest_sha256": "692380327512a8ede39849eab813319469948d96c477f86b190e4f85d90181c3",
+  "counts": {
+    "planned": 32,
+    "launched": 32,
+    "returned": 32,
+    "numerical_success": 31,
+    "numerical_failure": 1,
+    "fit_errors": 0,
+    "timeout": 0,
+    "optimizer_entry_violations": 0,
+    "missing_result": 0,
+    "not_launched": 0
+  },
+  "peak_rss_kib": 420728
+}

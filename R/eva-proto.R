@@ -26,16 +26,16 @@
   if (nzchar(installed) && file.exists(installed)) {
     return(normalizePath(installed, mustWork = TRUE))
   }
-  stop("Cannot find docs/design/86-eva-gate1-parameters.json.", call. = FALSE)
+  stop("Cannot find the EVA parameter fixture.", call. = FALSE)
 }
 
 .eva_read_gate1_parameters <- function(path = NULL) {
   if (!requireNamespace("jsonlite", quietly = TRUE)) {
-    stop("The Design 86 prototype requires jsonlite to read its frozen fixture.", call. = FALSE)
+    stop("The EVA prototype requires jsonlite to read its frozen fixture.", call. = FALSE)
   }
   x <- jsonlite::fromJSON(.eva_gate1_file(path), simplifyVector = FALSE)
   if (!identical(x$status, "FROZEN_GATE1_ONLY") || !identical(x$schema_version, "1.0.0")) {
-    stop("The Design 86 Gate-1 fixture has an unsupported schema or status.", call. = FALSE)
+    stop("The EVA fixture has an unsupported schema or status.", call. = FALSE)
   }
   x
 }

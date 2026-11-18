@@ -48,11 +48,14 @@ reports K - 1 cutpoints as \verb{Intercept[1..K-1]}.
 
 Cross-engine note: \code{gllvmTMB}'s \code{ordinal_probit()} is a probit
 threshold model (unit latent variance; Hadfield 2015), whereas
-\code{GLLVM.jl}'s ordinal family is a cumulative-\emph{logit} model. Cutpoints
+\code{GLLVModels.jl}'s ordinal family is a cumulative-\emph{logit} model. Cutpoints
 and loadings therefore live on different link scales (differing by a
 factor of roughly \eqn{\pi / \sqrt{3}}) and must not be compared
 across engines at machine tolerance; the \code{engine = "julia"} bridge
 maps probit to probit and does not route a logit ordinal response.
+
+The per-cell log-probability is floored at \code{log(1e-300)} only to avoid
+\code{-Inf} from underflow; this does not change fits in the ordinary range.
 }
 \examples{
 ordinal_probit()

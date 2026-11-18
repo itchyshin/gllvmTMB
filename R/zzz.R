@@ -10,14 +10,28 @@
 
 .onAttach <- function(libname, pkgname) {
   packageStartupMessage(
-    "gllvmTMB is EXPERIMENTAL (lifecycle: experimental). Use at your own risk: ",
-    "the package is not complete, is not fully human-verified, and needs ",
-    "extensive further validation. Point estimates are the primary inferential ",
-    "output, but evidence is route- and regime-specific. Broad interval ",
-    "coverage is not certified. One narrow two-sided ",
-    "Gaussian total-variance profile regime has a documented 0.94 floor. ",
-    "See the Current limitations and boundaries page for scope."
+    "gllvmTMB is experimental. Use a documented tutorial, inspect fit ",
+    "diagnostics, and read Current limitations and boundaries before treating ",
+    "an estimate or interval as a scientific result. Convergence alone is not ",
+    "enough."
   )
+}
+
+.onLoad <- function(libname, pkgname) {
+  ## #1759. gllvm's generics mask getLoadings/getLV/getResidualCov/
+  ## getResidualCor when that package is attached. Register on gllvm's
+  ## S3 table at load, and again if gllvm is attached later in the session.
+  if (!isTRUE(.gllvm_mask_hook_installed)) {
+    setHook(
+      packageEvent("gllvm", "onLoad"),
+      .gllvm_mask_on_gllvm_load,
+      action = "append"
+    )
+    utils::assignInMyNamespace(".gllvm_mask_hook_installed", TRUE)
+  }
+  if (isNamespaceLoaded("gllvm")) {
+    .register_gllvm_masking_methods()
+  }
 }
 
 .onUnload <- function(libpath) {

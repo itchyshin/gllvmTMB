@@ -119,7 +119,17 @@ link_residual_per_trait <- function(fit) {
   lids <- fit$tmb_data$link_id_vec
   ## trait_id stored on tmb_data is 0-based.
   tids_obs <- fit$tmb_data$trait_id + 1L
+  ## Only reconstruct modes for a family whose variance actually uses eta.
+  ## Constant-variance families and mixed-family traits do not need them.
   eta <- fit$report$eta
+  eta_ready <- !isTRUE(fit$aghq$used)
+  conditional_eta <- function() {
+    if (!eta_ready) {
+      eta <<- .aghq_conditional_training_eta(fit)
+      eta_ready <<- TRUE
+    }
+    eta
+  }
   sigma_eps <- as.numeric(fit$report$sigma_eps %||% 1)
   phi_gamma <- as.numeric(fit$report$phi_gamma %||% rep(1, Tn))
   out <- numeric(Tn)
@@ -175,6 +185,7 @@ link_residual_per_trait <- function(fit) {
       ## Lognormal-Poisson approximation: sigma2_d = log(1 + 1 / mu_t).
       ## Use exp(eta) averaged across the trait's rows as the per-trait
       ## fitted mean. (Nakagawa & Schielzeth 2010, Table 2.)
+      eta <- conditional_eta()
       if (is.null(eta) || length(eta) < max(rows_t)) {
         out[t] <- NA_real_
       } else {
@@ -209,6 +220,7 @@ link_residual_per_trait <- function(fit) {
       p_vec <- as.numeric(fit$report$p_tweedie %||% rep(1.5, Tn))
       phi_t <- if (length(phi_vec) >= t) phi_vec[t] else phi_vec[1]
       p_t <- if (length(p_vec) >= t) p_vec[t] else p_vec[1]
+      eta <- conditional_eta()
       if (is.null(eta) || length(eta) < max(rows_t)) {
         out[t] <- NA_real_
       } else {
@@ -226,6 +238,7 @@ link_residual_per_trait <- function(fit) {
       ## trigamma(a) + trigamma(b). Smithson & Verkuilen 2006 Eq. 9.
       phi_vec <- as.numeric(fit$report$phi_beta %||% rep(1, Tn))
       phi_t <- if (length(phi_vec) >= t) phi_vec[t] else phi_vec[1]
+      eta <- conditional_eta()
       if (is.null(eta) || length(eta) < max(rows_t)) {
         out[t] <- NA_real_
       } else {
@@ -251,6 +264,7 @@ link_residual_per_trait <- function(fit) {
       ## (Smithson & Verkuilen 2006). Sum gives the total logit-residual.
       phi_vec <- as.numeric(fit$report$phi_betabinom %||% rep(1, Tn))
       phi_t <- if (length(phi_vec) >= t) phi_vec[t] else phi_vec[1]
+      eta <- conditional_eta()
       if (is.null(eta) || length(eta) < max(rows_t)) {
         out[t] <- NA_real_
       } else {
@@ -275,7 +289,11 @@ link_residual_per_trait <- function(fit) {
       df_vec <- as.numeric(fit$report$df_student %||% rep(Inf, Tn))
       sigma_t <- if (length(sigma_vec) >= t) sigma_vec[t] else sigma_vec[1]
       df_t <- if (length(df_vec) >= t) df_vec[t] else df_vec[1]
-      if (is.finite(df_t) && df_t > 2) {
+      if (isTRUE(df_t == Inf)) {
+        ## df = Inf is the Gaussian limit (report$df_student overflows to
+        ## Inf past log_df ~ 709): the variance is sigma^2 (#1487).
+        out[t] <- sigma_t^2
+      } else if (is.finite(df_t) && df_t > 2) {
         out[t] <- sigma_t^2 * df_t / (df_t - 2)
       } else {
         warning(
@@ -293,6 +311,7 @@ link_residual_per_trait <- function(fit) {
       ## Untruncated lognormal-Poisson approximation: sigma2_d = log(1 + 1/mu_t).
       ## The truncation correction is small in regimes with mu_t >= 1
       ## (Cameron & Trivedi 2013, Regression Analysis of Count Data, ch. 4).
+      eta <- conditional_eta()
       if (is.null(eta) || length(eta) < max(rows_t)) {
         out[t] <- NA_real_
       } else {
@@ -352,6 +371,7 @@ link_residual_per_trait <- function(fit) {
       ## (Nakagawa & Schielzeth 2010 delta method; Hilbe 2011 NB1 variance.)
       phi_vec <- as.numeric(fit$report$phi_nbinom1 %||% rep(1, Tn))
       phi_t <- if (length(phi_vec) >= t) phi_vec[t] else phi_vec[1]
+      eta <- conditional_eta()
       if (is.null(eta) || length(eta) < max(rows_t)) {
         out[t] <- NA_real_
       } else {
@@ -372,6 +392,66 @@ link_residual_per_trait <- function(fit) {
       ## via .multinomial_link_residual_offdiag(); this scalar path carries the
       ## diagonal only (McFadden 1974; Nakagawa & Schielzeth 2010).
       out[t] <- pi^2 / 3
+    } else if (fid == 17L) {
+      # zi_poisson (fid 17), log link
+      ## Review R2 (2026-09-02): the 14-slot registry contract names a
+      ## link_residual_rule for every family; zi_poisson had none, so
+      ## extract_Sigma(link_residual = "auto") silently returned NA here.
+      ## Rule: the zi mixture's count-scale residual is the CONDITIONAL
+      ## count family's rule (Decision 3, dev/gapclose/arcD/alignment-zi.md)
+      ## -- i.e. exactly the fid == 2 (plain Poisson) branch above, applied
+      ## to the same mu_t = mean(exp(eta)) across the trait's rows. This is
+      ## deliberately the count-process residual, NOT a residual that also
+      ## incorporates the extra between-observation variance the mixture
+      ## itself contributes (Var(Y) = (1-zi)*mu*(1 + zi*mu), fitted_response
+      ## _rule / variance_rule in alignment-zi.md) -- documented as a scope
+      ## boundary, not silently narrowed.
+      eta <- conditional_eta()
+      if (is.null(eta) || length(eta) < max(rows_t)) {
+        out[t] <- NA_real_
+      } else {
+        mu_t <- mean(exp(eta[rows_t]))
+        out[t] <- if (is.finite(mu_t) && mu_t > 0) log1p(1 / mu_t) else NA_real_
+      }
+    } else if (fid == 18L) {
+      # zi_nbinom2 (fid 18), log link
+      ## Same "conditional count family's rule" choice as fid 17 above,
+      ## applied to fid 5's NB2 trigamma(phi) form (log_phi_nbinom2 is
+      ## REUSED for zi_nbinom2, per Decision 4 -- so the same dispersion
+      ## vector and the same rule apply unchanged).
+      phi_vec <- as.numeric(fit$report$phi_nbinom2 %||% rep(1, Tn))
+      phi_t <- if (length(phi_vec) >= t) phi_vec[t] else phi_vec[1]
+      out[t] <- trigamma(max(phi_t, 1e-12))
+    } else if (fid == 19L) {
+      # zi_binomial (fid 19), logit link only (R/families.R restricts it)
+      ## Same "conditional count family's rule" choice as fid 17/18 above,
+      ## applied to fid 1's logit-binomial constant pi^2/3 -- zi_binomial
+      ## has no probit/cloglog route, so no link_id dispatch is needed here.
+      out[t] <- pi^2 / 3
+    } else if (fid == 20L) {
+      # ordinal_logit
+      ## The cumulative-logit analogue of fid 14 (ordinal_probit): the
+      ## latent residual is standard LOGISTIC by construction (epsilon ~
+      ## Logistic(0, 1), Var = pi^2/3), so sigma_d^2 = pi^2/3 EXACTLY under
+      ## the logit-liability convention -- no trigamma / delta-method
+      ## approximation is needed, same as the probit case's sigma_d^2 = 1.
+      out[t] <- pi^2 / 3
+    } else if (fid == 21L) {
+      # censored_poisson (fid 21, Arc E #1244; renumbered 2026-09-03 from
+      # 20 -- ordinal_logit, PR #1250, holds 20), log link.
+      ## Reuses fid == 2's plain-Poisson rule unchanged, applied to the
+      ## trait's mean UNDER THE UNDERLYING PROCESS (mean(exp(eta)) across
+      ## all of the trait's rows, censored or not) -- this is the
+      ## count-process residual, not one that also incorporates the extra
+      ## variance right-censoring itself contributes. Stated scope boundary,
+      ## see dev/gapclose/arcE/alignment-censored-poisson.md.
+      eta <- conditional_eta()
+      if (is.null(eta) || length(eta) < max(rows_t)) {
+        out[t] <- NA_real_
+      } else {
+        mu_t <- mean(exp(eta[rows_t]))
+        out[t] <- if (is.finite(mu_t) && mu_t > 0) log1p(1 / mu_t) else NA_real_
+      }
     } else {
       out[t] <- NA_real_
     }
@@ -431,6 +511,13 @@ link_residual_per_trait <- function(fit) {
 #' diagonal \eqn{\boldsymbol\Psi} companion by default. This is the same
 #' decomposition the behavioural-syndromes / phenotypic-integration literature
 #' uses (Bartholomew et al. 2011).
+#'
+#' ## Legacy covariance wrappers
+#'
+#' `extract_Sigma_B()` and `extract_Sigma_W()` are soft-deprecated
+#' compatibility wrappers. They still return their historical `Sigma_B` /
+#' `R_B` and `Sigma_W` / `R_W` field names, respectively, but new code should
+#' call this function with `level = "unit"` or `level = "unit_obs"`.
 #'
 #' ## When a fit has no Psi component
 #'
@@ -563,18 +650,27 @@ link_residual_per_trait <- function(fit) {
 #' `level = "phy"` extracts the phylogenetic implied
 #' \eqn{\boldsymbol\Sigma_\text{phy}} from `phylo_latent()`. If a future
 #' release adds 3+ latent tiers, `level = "<colname>"` will dispatch to the
-#' corresponding tier without API change. For now, custom strings error
-#' with a clear unsupported-level message.
+#' corresponding tier without API change. For now, a custom string that is
+#' not the fitted `name` of a kernel tier (see the `level` argument) errors with a
+#' clear unsupported-level message.
 #'
 #' @param fit A fit returned by [gllvmTMB()]. Admitted `engine = "julia"`
 #'   bridge fits expose the ordinary unit tier only: `link_residual = "none"`
 #'   reconstructs \eqn{\Lambda\Lambda^\top} from retained loadings, while
-#'   `link_residual = "auto"` uses the retained GLLVM.jl residual-augmented
+#'   `link_residual = "auto"` uses the retained GLLVModels.jl residual-augmented
 #'   payload where available and keeps Gaussian / lognormal rows on the native
 #'   no-op convention. `unit_obs`, structured tiers, and augmented-slope tiers
 #'   remain gated for Julia bridge extractors.
 #' @param level One of `"unit"` (between-unit), `"unit_obs"` (within-unit),
-#'   `"phy"` (phylogenetic), `"spatial"`, or `"cluster"`. Legacy aliases
+#'   `"phy"` (phylogenetic), `"column_coef"` (the response-column coefficient
+#'   basis covariance), `"column_slope"` (the predictor-basis covariance
+#'   from [slope()], [phylo_slope()], [animal_slope()], [kernel_slope()],
+#'   [spatial_slope()], or the corresponding `*_indep()` / `*_dep()` canonical
+#'   form), `"spatial"`,
+#'   the fitted `name` of a named `kernel_*()` tier (for example
+#'   `level = "cross"`), `"cluster"`, or `"cluster2"` (a
+#'   second, independent diagonal grouping alongside `"cluster"` -- see the
+#'   `cluster2` argument to [gllvmTMB()]). Legacy aliases
 #'   `"B"`, `"W"`, and `"spde"` are accepted with a soft-deprecation
 #'   message.
 #' @param part One of `"total"` (default), `"shared"`, `"unique"`. `"psi"`
@@ -602,6 +698,48 @@ link_residual_per_trait <- function(fit) {
 #'
 #'   For `part = "unique"`: a list with `s` (length-T named numeric
 #'   vector of unique variances), `level`, `part`, `note`.
+#'
+#'   A structured trait-intercept fit with fixed `rho < 1` or estimated
+#'   `rho = NULL` also returns `source_strength` at `level = "phy"` (or its
+#'   named kernel alias), or `level = "spatial"` for spatial terms. It contains `term`, `source`, `grouping`, `labels`,
+#'   `resolved_scale`, `source_diagonal`, `value`, and `status` (fixed or
+#'   estimated), plus mode and diagnostic metadata. Spatial metadata also
+#'   reports `kappa`; its source diagonal is evaluated at that fitted inverse
+#'   range, without normalization. `Sigma` remains the
+#'   trait covariance; the covariance across source levels is
+#'   \eqn{K_\rho = \rho K + (1-\rho)\mathrm{diag}(\mathrm{diag}(K))}.
+#'   The source covariance is not materialized for extraction. Strength is
+#'   distinct from a variance share; source-strength intervals are unavailable.
+#'   Estimated fits report `nll_score_logit` and `nll_score_rho`, derivatives
+#'   of the negative log likelihood on the fitted logit and physical strength
+#'   scales. A small logit derivative alone is not evidence of an interior
+#'   optimum near zero or one; an unrepresentable physical score is `NA`.
+#'
+#'   For `level = "column_slope"`: a list with the named `1 x 1` or `P x P`
+#'   predictor covariance `Sigma`, its correlation matrix `R`, `level`,
+#'   `part`, `predictors`, `column_labels`, `source`, and `note`. `source`
+#'   contains `type` (`"ordinary"`, `"phylo"`, `"animal"`, `"kernel"`, or
+#'   `"spatial"`),
+#'   the response-column `grouping`, and its aligned `labels`; kernel sources
+#'   additionally report `name` and `scale = "as_supplied"`. Spatial sources
+#'   additionally report aligned coordinates, coordinate-column names and
+#'   supplied units, `kappa`, practical range, projected-normalization method,
+#'   and `K_column`. Use only `level = "column_slope"` for a
+#'   [spatial_slope()] fit; `level = "spatial"` is reserved for the separate
+#'   observation-space SPDE covariance and fails clearly for this model. The fitted
+#'   coefficient contract is
+#'   \eqn{\mathrm{Cov}(\mathrm{vec}(B^\mathsf{T})) = K_\mathrm{column}
+#'   \otimes \Sigma}. For `P = 1`, full and diagonal bars are the same model
+#'   and return the same object with canonical `part = "dep"`.
+#'
+#'   For `level = "column_coef"`: a list with coefficient-basis covariance
+#'   `Sigma`, correlation `R`, ordered `basis`, aligned response-column
+#'   `source`, `rho_status`, `rho`, and (for [phylo_coef()], [animal_coef()],
+#'   [kernel_coef()], or [spatial_coef()] fits) the effective source covariance
+#'   `K_rho`. Spatial sources additionally report the same aligned coordinates,
+#'   range, normalization, and `K_column` metadata as [spatial_slope()]. IID
+#'   [column_coef()] fits report `rho_status = "not_applicable"`, `rho = NULL`,
+#'   and `K_rho = NULL`.
 #'
 #'   For a `phylo_dep(1 + x1 + ... + xs | species)` fit with one or more
 #'   slopes, call with `level = "phy"`: the result is the single full
@@ -660,18 +798,40 @@ link_residual_per_trait <- function(fit) {
 #'
 #' @export
 #' @examples
-#' \dontrun{
+#' set.seed(1)
+#' ## Five traits measured three times on each of 60 units. Between units,
+#' ## the traits share two latent axes (Lambda) plus a trait-specific
+#' ## unique variance (psi = 0.2 for every trait). Each measurement also
+#' ## carries independent noise (variance 0.3).
+#' Lambda <- matrix(c(0.9, 0.7, 0.5, -0.3, 0.2,
+#'                    0.0, 0.4, -0.5, 0.6, 0.8), nrow = 5, ncol = 2)
+#' sim <- simulate_unit_trait(
+#'   n_units = 60, n_obs_per_unit = 3, n_traits = 5,
+#'   Lambda_B = Lambda, psi_B = rep(0.2, 5), sigma2_eps = 0.3
+#' )
+#' ## latent(unique = TRUE) fits Sigma = Lambda Lambda^T + diag(psi)
 #' fit <- gllvmTMB(
-#'   value ~ 0 + trait +
-#'           latent(0 + trait | unit, d = 2),
-#'   data  = df,
+#'   value ~ 0 + trait + latent(0 + trait | unit, d = 2, unique = TRUE),
+#'   data  = sim$data,
 #'   trait = "trait",
 #'   unit  = "unit"
 #' )
-#' extract_Sigma(fit, level = "unit", part = "total")$Sigma   # full T x T cov
-#' extract_Sigma(fit, level = "unit", part = "shared")$Sigma  # rr-only
-#' extract_Sigma(fit, level = "unit", part = "unique")$s      # diag(s_unit)
-#' }
+#' ## Total between-unit covariance, Lambda Lambda^T + diag(psi). The
+#' ## measurement noise is not part of it.
+#' tot <- extract_Sigma(fit, level = "unit", part = "total")
+#' tot$Sigma
+#' ## The same matrix as correlations
+#' tot$R
+#' ## Shared part, Lambda Lambda^T, carried by the two latent axes
+#' shared <- extract_Sigma(fit, level = "unit", part = "shared")
+#' shared$Sigma
+#' ## Unique part: one variance per trait (the diagonal of Psi)
+#' psi <- extract_Sigma(fit, level = "unit", part = "unique")$s
+#' psi
+#' ## The total is the sum of the two parts. How the total splits into
+#' ## shared and unique parts is less certain than the total itself, so
+#' ## base interpretation on the total.
+#' all.equal(tot$Sigma, shared$Sigma + diag(psi))
 extract_Sigma <- function(
   fit,
   level = c(
@@ -680,6 +840,8 @@ extract_Sigma <- function(
     "unit_obs",
     "phy",
     "phy_slope",
+    "column_coef",
+    "column_slope",
     "spatial",
     "spde_slope",
     "cluster",
@@ -709,7 +871,7 @@ extract_Sigma <- function(
     ))
   }
   if (!inherits(fit, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a fit returned by {.fun gllvmTMB}.")
+    .gllvmTMB_abort_not_multi_fit(fit)
   }
   ## Fixed-effect fence (Design 83 / FAM-20): fail loud on an unordered
   ## categorical fit with no admitted latent tier rather than returning a
@@ -728,10 +890,23 @@ extract_Sigma <- function(
   ## A multinomial trait carries a latent-scale Sigma iff it has SOME latent
   ## tier: phylo_latent (Tier-2a, level = "phy") OR a shared ordinary latent
   ## ordination (Tier-2b item 2a-ii, level = "unit") that couples the K-1
-  ## pseudo-traits with other-family traits. Only a FIXED-EFFECTS-ONLY
+  ## pseudo-traits with other-family traits, OR (Design 123 Slice 4,
+  ## 2026-08-16) the non-phylogenetic cluster/cluster2 diagonal tier
+  ## (`indep(0 + trait | g)` via `cluster =`/`cluster2 =`, level =
+  ## "cluster"/"cluster2") -- a diagonal-only Sigma (no Lambda component,
+  ## same shape as the generic cluster-tier branch below for every other
+  ## family), but still a DEFINED one. Only a FIXED-EFFECTS-ONLY
   ## multinomial has no latent Sigma; keep the clear refusal for that case.
+  ## (Design 123 Slice 3, 2026-08-16): `use$spde` is the master flag for ANY
+  ## intercept-only spatial term (spatial_latent()/spatial_indep()/
+  ## spatial_dep() all set it -- see R/fit-multi.R). Before this fix, a
+  ## multinomial fit with ONLY a spatial term (no phylo/unit/cluster tier)
+  ## incorrectly tripped the fixed-effects-only refusal below for EVERY
+  ## level, not just an unsupported one -- the gate was blind to the newly
+  ## admitted spatial mode axis.
   .mn_has_latent <- isTRUE(fit$use$phylo_rr) || isTRUE(fit$use$rr_B) ||
-    isTRUE(fit$use$lv_B)
+    isTRUE(fit$use$lv_B) || isTRUE(fit$use$diag_species) ||
+    isTRUE(fit$use$diag_cluster2) || isTRUE(fit$use$spde)
   if (!is.null(fit$tmb_data$family_id_vec) &&
       any(fit$tmb_data$family_id_vec == 16L) &&
       !.mn_has_latent) {
@@ -873,6 +1048,182 @@ extract_Sigma <- function(
     ))
   }
 
+  ## ---- public response-column coefficient basis -------------------------
+  if (isTRUE(fit$use$response_column_coef) && identical(level, "column_coef")) {
+    source_type <- fit$use$response_column_coef_source %||%
+      fit$use$phylo_column_slope_source %||% "iid"
+    Sigma <- if (identical(source_type, "spatial")) {
+      fit$report$Sigma_field
+    } else {
+      fit$report$Sigma_b_dep
+    }
+    if (is.null(Sigma)) {
+      cli::cli_abort("Coefficient fit has no reported predictor covariance matrix.")
+    }
+    Sigma <- as.matrix(Sigma)
+    basis <- fit$use$response_column_coef_basis
+    if (is.null(basis) || length(basis) != nrow(Sigma)) {
+      cli::cli_abort("Coefficient fit is missing its ordered basis metadata.")
+    }
+    rownames(Sigma) <- colnames(Sigma) <- basis
+    rho_status <- fit$use$response_column_coef_rho_status %||%
+      if (identical(source_type, "iid")) "not_applicable" else "fixed"
+    rho <- if (identical(rho_status, "estimated")) {
+      as.numeric(fit$report$column_coef_rho)
+    } else if (identical(rho_status, "fixed")) {
+      as.numeric(fit$use$response_column_coef_rho)
+    } else NULL
+    K_rho <- NULL
+    if (source_type %in% c("phylo", "animal", "kernel")) {
+      if (identical(rho_status, "estimated")) {
+        U <- fit$tmb_data$column_coef_source_U
+        lambda <- fit$tmb_data$column_coef_source_lambda
+        d <- 1 / fit$tmb_data$column_coef_source_inv_d
+        s <- (1 - rho) + rho * lambda
+        K_rho <- diag(d) %*% U %*% diag(s) %*% t(U) %*% diag(d)
+      } else {
+        K_full <- solve(as.matrix(fit$tmb_data$Ainv_phy_slope))
+        labels <- fit$use$phylo_column_slope_labels %||%
+          levels(fit$data[[fit$trait_col]])
+        trait_value <- as.character(fit$data[[fit$trait_col]])
+        row_for_label <- match(labels, trait_value)
+        source_index <- fit$tmb_data$phylo_slope_aug_id[row_for_label] + 1L
+        K_rho <- K_full[source_index, source_index, drop = FALSE]
+      }
+      labels <- fit$use$phylo_column_slope_labels %||%
+        levels(fit$data[[fit$trait_col]])
+      dimnames(K_rho) <- list(labels, labels)
+    } else if (identical(source_type, "spatial")) {
+      K_rho <- fit$report$spatial_column_K
+      labels <- fit$use$phylo_column_slope_labels %||%
+        levels(fit$data[[fit$trait_col]])
+      dimnames(K_rho) <- list(labels, labels)
+    }
+    source <- list(
+      type = source_type,
+      grouping = fit$trait_col,
+      labels = fit$use$phylo_column_slope_labels %||%
+        levels(fit$data[[fit$trait_col]])
+    )
+    if (identical(source_type, "kernel")) {
+      source$name <- fit$use$phylo_column_slope_name %||% "kernel"
+      source$scale <- "as_supplied"
+    } else if (identical(source_type, "spatial")) {
+      if (is.null(fit$mesh$row_labels) || is.null(fit$mesh$loc_xy)) {
+        cli::cli_abort("Spatial coefficient fit is missing labelled mesh metadata.")
+      }
+      coordinate_order <- match(source$labels, fit$mesh$row_labels)
+      coordinates <- fit$mesh$loc_xy[coordinate_order, , drop = FALSE]
+      rownames(coordinates) <- source$labels
+      colnames(coordinates) <- fit$mesh$xy_cols
+      kappa <- as.numeric(fit$report$kappa_s %||% fit$report$kappa)
+      source$coordinates <- coordinates
+      source$coordinate_columns <- fit$mesh$xy_cols
+      source$coordinate_units <- "as_supplied"
+      source$kappa <- kappa
+      source$practical_range <- sqrt(8) / kappa
+      source$normalization <- "exact_projected_unit_diagonal"
+      source$K_column <- fit$report$spatial_column_K
+    }
+    return(list(
+      Sigma = Sigma,
+      R = .safe_cov2cor(Sigma, basis),
+      level = "column_coef",
+      part = fit$use$phylo_column_slope_mode %||% "dep",
+      basis = basis,
+      source = source,
+      rho = rho,
+      rho_status = rho_status,
+      K_rho = K_rho,
+      note = "Response-column coefficient covariance; the response-column source supplies the other Kronecker factor."
+    ))
+  }
+  if (isTRUE(fit$use$response_column_coef) &&
+      identical(level, "column_slope")) {
+    cli::cli_abort(c(
+      "This fit contains a response-column coefficient basis, not a slope-only basis.",
+      "i" = "Use {.code extract_Sigma(fit, level = \"column_coef\")} to retain intercept and slope labels."
+    ))
+  }
+  if (!isTRUE(fit$use$response_column_coef) &&
+      identical(level, "column_coef")) {
+    cli::cli_abort(
+      "The fitted model has no {.fn column_coef}, {.fn phylo_coef}, {.fn animal_coef}, {.fn kernel_coef}, or {.fn spatial_coef} term."
+    )
+  }
+
+  ## ---- slope-only response-column coefficient basis --------------------
+  if (isTRUE(fit$use$phylo_column_slope) &&
+      !isTRUE(fit$use$response_column_coef) &&
+      identical(level, "column_slope")) {
+    source_type <- fit$use$phylo_column_slope_source %||% "phylo"
+    Sigma <- if (identical(source_type, "spatial")) {
+      fit$report$Sigma_field
+    } else {
+      fit$report$Sigma_b_dep
+    }
+    if (is.null(Sigma)) {
+      cli::cli_abort(
+        "Column-slope fit has no reported predictor covariance matrix."
+      )
+    }
+    Sigma <- as.matrix(Sigma)
+    slope_cols <- fit$use$phylo_dep_slope_cols
+    if (is.null(slope_cols) || length(slope_cols) != nrow(Sigma)) {
+      slope_cols <- paste0("slope", seq_len(nrow(Sigma)))
+    }
+    rownames(Sigma) <- colnames(Sigma) <- slope_cols
+    column_labels <- fit$use$phylo_column_slope_labels
+    if (is.null(column_labels) || !length(column_labels)) {
+      column_labels <- levels(fit$data[[fit$trait_col]])
+    }
+    source <- list(
+      type = source_type,
+      grouping = fit$trait_col,
+      labels = column_labels
+    )
+    if (identical(source_type, "kernel")) {
+      source$name <- fit$use$phylo_column_slope_name %||% "kernel"
+      source$scale <- "as_supplied"
+    } else if (identical(source_type, "spatial")) {
+      if (is.null(fit$mesh$row_labels) || is.null(fit$mesh$loc_xy)) {
+        cli::cli_abort("Spatial column-slope fit is missing labelled mesh metadata.")
+      }
+      coordinate_order <- match(column_labels, fit$mesh$row_labels)
+      coordinates <- fit$mesh$loc_xy[coordinate_order, , drop = FALSE]
+      rownames(coordinates) <- column_labels
+      colnames(coordinates) <- fit$mesh$xy_cols
+      kappa <- as.numeric(fit$report$kappa_s %||% fit$report$kappa)
+      source$coordinates <- coordinates
+      source$coordinate_columns <- fit$mesh$xy_cols
+      source$coordinate_units <- "as_supplied"
+      source$kappa <- kappa
+      source$practical_range <- sqrt(8) / kappa
+      source$normalization <- "exact_projected_unit_diagonal"
+      source$K_column <- fit$report$spatial_column_K
+    }
+    requested_mode <- fit$use$phylo_column_slope_mode %||% "indep"
+    ## In one dimension full and diagonal are the same covariance model.  Use
+    ## one canonical extractor label so `x | trait` and `x || trait` return
+    ## byte-identical public objects as well as identical objectives.
+    mode <- if (nrow(Sigma) == 1L) "dep" else requested_mode
+    return(list(
+      Sigma = Sigma,
+      R = .safe_cov2cor(Sigma, slope_cols),
+      level = "column_slope",
+      part = mode,
+      source = source,
+      predictors = slope_cols,
+      column_labels = column_labels,
+      note = paste0(
+        "Slope-only response-column coefficients from the ", source_type,
+        " source with a ", if (identical(mode, "dep")) "full" else "diagonal",
+        " predictor covariance. The response-column source covariance supplies ",
+        "the other Kronecker factor; this is not a trait-level Sigma."
+      )
+    ))
+  }
+
   ## ---- phylo dep/indep augmented-slope block ---------------------------
   ## phylo_dep(1 + x1 + ... + xs | species) fits a single FULL UNSTRUCTURED
   ## (1+s)T x (1+s)T covariance Sigma_b. Current Design 79/80
@@ -892,7 +1243,25 @@ extract_Sigma <- function(
   ## extract_Sigma_W() wrappers -- and the print()/summary() path that
   ## calls them -- correctly see NO between/within-unit term for a
   ## dep-only fit (they return NULL) rather than this phylogenetic block.
-  if (isTRUE(fit$use$phylo_dep_slope) && identical(level, "phy")) {
+  has_species_phy_sigma <- isTRUE(fit$use$phylo_rr) ||
+    isTRUE(fit$use$phylo_diag)
+  if (isTRUE(fit$use$phylo_column_slope) && identical(level, "phy") &&
+      !has_species_phy_sigma) {
+    cli::cli_abort(c(
+      "This fit has a slope-only response-column covariance, not a phylogenetic trait-level {.code Sigma}.",
+      "i" = "Use {.code extract_Sigma(fit, level = \"column_slope\")} for the covariance among predictor slopes.",
+      "i" = "Its {.code column_labels} and {.code source} fields identify the response-column source axis."
+    ))
+  }
+
+  if (isTRUE(fit$use$spatial_column_slope) && identical(level, "spde")) {
+    cli::cli_abort(c(
+      "This fit has a spatial response-column slope covariance, not an observation-space spatial covariance.",
+      "i" = "Use {.code extract_Sigma(fit, level = \"column_slope\")} for the covariance among predictor slopes."
+    ))
+  }
+  if (isTRUE(fit$use$phylo_dep_slope) && !isTRUE(fit$use$phylo_column_slope) &&
+      identical(level, "phy")) {
     is_indep_slope <- isTRUE(fit$use$phylo_indep_slope)
     Sigma <- fit$report$Sigma_b_dep
     if (is.null(Sigma)) {
@@ -1159,7 +1528,7 @@ extract_Sigma <- function(
         )
       } else {
         sprintf(
-          "Kernel tier '%s' uses the dense phylo-equivalent engine path.",
+          "Kernel tier '%s' is fitted with its dense kernel matrix.",
           kernel_level$name
         )
       }
@@ -1198,8 +1567,8 @@ extract_Sigma <- function(
     if (identical(part, "unique") && !has_unique) {
       cli::cli_abort(c(
         "Kernel tier {.val {kernel_level$name}} has no {.field Psi} component.",
-        "i" = "One named {.fn kernel_latent} tier carries {.field Psi} only when {.code unique = TRUE}; the first multi-kernel engine wave remains latent-only.",
-        ">" = "For one kernel tier, refit with {.code kernel_latent(..., unique = TRUE)} before requesting {.code part = \"unique\"}."
+        "i" = "A named {.fn kernel_latent} tier carries {.field Psi} when {.code unique = TRUE} and the requested model is supported.",
+        ">" = "Refit with {.code kernel_latent(..., unique = TRUE)} before requesting {.code part = \"unique\"}. Two named tiers additionally require Gaussian responses, a known observation SD, positive weights and separable observed kernel patterns."
       ))
     }
     if (has_shared) {
@@ -1228,11 +1597,13 @@ extract_Sigma <- function(
   } else if (identical(level, "phy")) {
     has_phy_rr <- isTRUE(fit$use$phylo_rr)
     has_phy_diag <- isTRUE(fit$use$phylo_diag)
-    if (!has_phy_rr && !has_phy_diag) {
+    has_rho_common <- !is.null(fit$source_strength) && isTRUE(fit$use$propto)
+    if (!has_phy_rr && !has_phy_diag && !has_rho_common) {
       cli::cli_abort(
         "Fit has no {.code phylo_latent()} term -- nothing to extract at level {.val phy}."
       )
     }
+    if (has_rho_common) L <- diag(sqrt(as.numeric(fit$report$lam_phy)),T)
     if (has_phy_rr) {
       L <- fit$report$Lambda_phy
     }
@@ -1247,7 +1618,7 @@ extract_Sigma <- function(
     } else {
       S <- NULL
       if (
-        !isTRUE(fit$use$phylo_unique) &&
+        !has_rho_common && !isTRUE(fit$use$phylo_unique) &&
           !isTRUE(fit$use$phylo_dep)
       ) {
         has_multinomial <- !is.null(fit$tmb_data$family_id_vec) &&
@@ -1258,6 +1629,14 @@ extract_Sigma <- function(
             "loadings-only (Lambda_phy Lambda_phy^T).",
             "Use `link_residual = \"auto\"` for the fixed softmax residual;",
             "a free phylogenetic Psi (`unique = TRUE`) is not admitted for this route."
+          )
+        } else if (!is.null(kernel_level)) {
+          ## A single kernel_latent() tier is fitted on the phylo slot, but
+          ## the advice must name the keyword the user wrote (#1580).
+          paste0(
+            "Kernel tier '", kernel_level$name, "' is currently latent-only ",
+            "(Lambda Lambda^T). To add a diagonal Psi component, refit with ",
+            "`kernel_latent(..., unique = TRUE)`."
           )
         } else {
           paste(
@@ -1353,13 +1732,20 @@ extract_Sigma <- function(
       class = "gllvmTMB_Sigma_phy_slope"
     ))
   } else if (identical(level, "spde")) {
-    if (!isTRUE(fit$use$spatial_latent)) {
+    rho_indep <- identical(fit$source_strength$source,"spatial") &&
+      isTRUE(fit$tmb_data$spde_lv_k==0L)
+    if (!isTRUE(fit$use$spatial_latent) && !rho_indep) {
       cli::cli_abort(
         "Fit has no {.code spatial_latent()} term -- nothing to extract at level {.val spde}."
       )
     }
-    L <- fit$report$Lambda_spde
-    if (isTRUE(fit$use$spatial_latent_unique) &&
+    L <- if(rho_indep) NULL else fit$report$Lambda_spde
+    if(rho_indep) {
+      pars <- fit$tmb_obj$env$parList(par=fit$tmb_obj$env$last.par.best)
+      S <- exp(-2*pars$log_tau_spde)
+      names(S) <- trait_names
+      notes <- c(notes,"Spatial trait covariance is on the legacy SPDE parameter scale; multiply its diagonal by source_strength$source_diagonal for fitted location variances.")
+    } else if (isTRUE(fit$use$spatial_latent_unique) &&
         !is.null(fit$report$sd_spde_unique)) {
       S <- as.numeric(fit$report$sd_spde_unique)^2
       names(S) <- trait_names
@@ -1435,7 +1821,11 @@ extract_Sigma <- function(
     }
     fids <- fit$tmb_data$family_id_vec
     has_continuous <- any(fids %in% c(0L, 3L, 4L)) # gaussian / lognormal / Gamma
-    if (rr_used && !diag_used && has_continuous && part == "total") {
+    ## A full-rank loading block (d == n_traits) is already an unstructured
+    ## covariance -- this is how `dep()` is carried -- so no Psi is missing.
+    rank_deficient <- is.null(L) || ncol(as.matrix(L)) < T
+    if (rr_used && !diag_used && has_continuous && rank_deficient &&
+        part == "total") {
       notes <- c(
         notes,
         paste0(
@@ -1444,7 +1834,8 @@ extract_Sigma <- function(
           " is latent-only (Lambda Lambda^T): this fit used `latent(..., unique = FALSE)`, ",
           "so trait-specific residual variance Psi is not modelled and correlations from ",
           "this matrix overstate cross-trait coupling. For the full decomposition ",
-          "Sigma = Lambda Lambda^T + Psi, refit without `unique = FALSE` (the default)."
+          "Sigma = Lambda Lambda^T + Psi, refit with `unique = TRUE`, the default ",
+          "for `latent()`."
         )
       )
     }
@@ -1460,7 +1851,9 @@ extract_Sigma <- function(
   if (link_residual == "auto") {
     link_resid_per_trait <- link_residual_per_trait(fit)
     nonzero <- link_resid_per_trait != 0
-    if (any(nonzero, na.rm = TRUE)) {
+    ## Only part = "total" adds this residual. part = "shared" / "unique"
+    ## used to print the note anyway (#1580).
+    if (identical(part, "total") && any(nonzero, na.rm = TRUE)) {
       ## Map family_id back to a label for the report.
       fam_lookup <- function(fid) {
         switch(
@@ -1482,6 +1875,7 @@ extract_Sigma <- function(
           "14" = "ordinal_probit",
           "15" = "nbinom1",
           "16" = "multinomial",
+          "20" = "ordinal_logit",
           sprintf("family_id %s", fid)
         )
       }
@@ -1579,6 +1973,10 @@ extract_Sigma <- function(
     )
   }
 
+  if (!is.null(fit$source_strength) &&
+      identical(level,if(identical(fit$source_strength$source,"spatial")) "spde" else "phy")) {
+    out$source_strength <- .structured_rho_metadata(fit)
+  }
   ## Surface notes via cli at most once
   for (msg in notes) {
     cli::cli_inform(msg)
@@ -1602,7 +2000,9 @@ extract_Sigma <- function(
 #' fixed `rho` recorded on that kernel. Uncertainty for `Gamma` is not yet
 #' reported by this helper; use bootstrap workflows when interval estimates
 #' are required. Use [profile_cross_rho()] to compare a fixed `rho`
-#' grid; in-engine `rho` estimation and profile intervals remain planned work.
+#' grid; in-engine estimation of this kernel `rho` and profile intervals remain
+#' planned work. (This is a different quantity from the source-strength
+#' `rho` that `kernel_latent(..., rho = NULL)` estimates.)
 #'
 #' @details
 #' `rho` is part of the supplied `K` matrix, not a fitted parameter in the
@@ -1611,8 +2011,8 @@ extract_Sigma <- function(
 #' `logLik()` values. `scale = "effect"` is therefore a fixed-kernel
 #' transformation, not an estimate of `rho`.
 #' Treat `Gamma` from a single association matrix `W` as data-condition
-#' sensitive: the C2 recovery test includes a sparse-versus-dense `W` check,
-#' and sparse or poorly replicated host-partner links should be reported as
+#' sensitive: the package's recovery tests include a sparse-versus-dense `W`
+#' check, and sparse or poorly replicated host-partner links should be reported as
 #' weaker evidence rather than as a precise coevolution estimate.
 #'
 #' For fixed multi-kernel fits, `extract_Gamma()` also inspects the fitted
@@ -1634,14 +2034,59 @@ extract_Sigma <- function(
 #' @return A numeric matrix with rows `row_traits` and columns `col_traits`.
 #'
 #' @examples
-#' \dontrun{
-#' Gamma_HP <- extract_Gamma(
-#'   fit,
-#'   level = "cross",
-#'   row_traits = c("host_size", "host_defence"),
-#'   col_traits = c("partner_size", "partner_attack")
+#' set.seed(1)
+#' ## A small host-partner system: 12 host and 12 partner species. Each
+#' ## lineage has its own similarity matrix. Here similarity decays with
+#' ## distance along a species ordering, a stand-in for a phylogenetic
+#' ## correlation matrix such as ape::vcv(tree, corr = TRUE).
+#' host <- paste0("H", 1:12)
+#' partner <- paste0("P", 1:12)
+#' A_H <- 0.6^abs(outer(1:12, 1:12, "-"))
+#' A_P <- A_H
+#' dimnames(A_H) <- list(host, host)
+#' dimnames(A_P) <- list(partner, partner)
+#' ## W records which hosts interact with which partners: host i interacts
+#' ## with partners i - 1, i and i + 1.
+#' W <- 1 * (abs(outer(1:12, 1:12, "-")) <= 1)
+#' dimnames(W) <- list(host, partner)
+#' ## One kernel over all 24 species; the fixed rho sets how strongly
+#' ## interacting hosts and partners are linked.
+#' K <- make_cross_kernel(A_H, A_P, W, rho = 0.9)
+#'
+#' ## Simulate one latent axis shared by all four traits. Host traits are
+#' ## measured on hosts only and partner traits on partners only: four
+#' ## replicate measurements per species, each with noise (SD 0.3).
+#' lambda <- c(h_size = 0.9, h_defence = 0.6, p_size = 0.8, p_attack = -0.5)
+#' z <- drop(t(chol(K)) %*% rnorm(24))
+#' names(z) <- rownames(K)
+#' dat <- expand.grid(rep = 1:4, trait = names(lambda),
+#'                    species = rownames(K), stringsAsFactors = FALSE)
+#' dat <- dat[startsWith(dat$species, "H") == startsWith(dat$trait, "h_"), ]
+#' dat$value <- lambda[dat$trait] * z[dat$species] +
+#'   rnorm(nrow(dat), sd = 0.3)
+#' dat$trait <- factor(dat$trait, levels = names(lambda))
+#' dat$species <- factor(dat$species, levels = rownames(K))
+#' ## Each record (one species, one replicate) is a sampling unit
+#' dat$obs <- factor(paste(dat$species, dat$rep))
+#'
+#' ## One latent axis whose species scores are correlated as in K. The
+#' ## term is named "cross"; the functions below refer to it by name.
+#' fit <- gllvmTMB(
+#'   value ~ 0 + trait + kernel_latent(species, K = K, d = 1, name = "cross"),
+#'   data = dat, trait = "trait", unit = "obs", cluster = "species"
 #' )
-#' }
+#' ## Gamma, the host-by-partner block of the fitted trait covariance: how
+#' ## each host trait covaries with each partner trait. It is a point
+#' ## estimate; this helper reports no uncertainty.
+#' extract_Gamma(fit, level = "cross",
+#'               row_traits = c("h_size", "h_defence"),
+#'               col_traits = c("p_size", "p_attack"))
+#' ## The simulated truth, for comparison
+#' outer(lambda[1:2], lambda[3:4])
+#' ## The same block multiplied by the kernel's fixed rho (0.9)
+#' extract_Gamma(fit, level = "cross",
+#'               row_traits = c("h_size", "h_defence"),
+#'               col_traits = c("p_size", "p_attack"), scale = "effect")
 #'
 #' @export
 extract_Gamma <- function(
@@ -1652,7 +2097,7 @@ extract_Gamma <- function(
   scale = c("shape", "effect")
 ) {
   if (!inherits(fit, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a fit returned by {.fun gllvmTMB}.")
+    .gllvmTMB_abort_not_multi_fit(fit)
   }
   scale <- match.arg(scale)
   if (
@@ -1737,6 +2182,8 @@ extract_Gamma <- function(
 #'
 #' @param fit A fitted `gllvmTMB_multi` object.
 #' @param level Character scalar naming the fitted `kernel_*()` tier.
+#'   `level = "phy"` is accepted as an alias when exactly one fitted kernel
+#'   tier uses the internal `"phy"` level, matching [extract_Gamma()].
 #' @param row_levels,col_levels Character vectors naming row and column levels
 #'   in the fitted kernel matrix. If both are omitted for a kernel built by
 #'   [make_cross_kernel()], host and partner levels from the kernel metadata are
@@ -1750,16 +2197,61 @@ extract_Gamma <- function(
 #'   `kernel_includes_rho`.
 #'
 #' @examples
-#' \dontrun{
+#' set.seed(1)
+#' ## A small host-partner system: 12 host and 12 partner species. Each
+#' ## lineage has its own similarity matrix. Here similarity decays with
+#' ## distance along a species ordering, a stand-in for a phylogenetic
+#' ## correlation matrix such as ape::vcv(tree, corr = TRUE).
+#' host <- paste0("H", 1:12)
+#' partner <- paste0("P", 1:12)
+#' A_H <- 0.6^abs(outer(1:12, 1:12, "-"))
+#' A_P <- A_H
+#' dimnames(A_H) <- list(host, host)
+#' dimnames(A_P) <- list(partner, partner)
+#' ## W records which hosts interact with which partners: host i interacts
+#' ## with partners i - 1, i and i + 1.
+#' W <- 1 * (abs(outer(1:12, 1:12, "-")) <= 1)
+#' dimnames(W) <- list(host, partner)
+#' ## One kernel over all 24 species; the fixed rho sets how strongly
+#' ## interacting hosts and partners are linked.
+#' K <- make_cross_kernel(A_H, A_P, W, rho = 0.9)
+#'
+#' ## Simulate one latent axis shared by all four traits. Host traits are
+#' ## measured on hosts only and partner traits on partners only: four
+#' ## replicate measurements per species, each with noise (SD 0.3).
+#' lambda <- c(h_size = 0.9, h_defence = 0.6, p_size = 0.8, p_attack = -0.5)
+#' z <- drop(t(chol(K)) %*% rnorm(24))
+#' names(z) <- rownames(K)
+#' dat <- expand.grid(rep = 1:4, trait = names(lambda),
+#'                    species = rownames(K), stringsAsFactors = FALSE)
+#' dat <- dat[startsWith(dat$species, "H") == startsWith(dat$trait, "h_"), ]
+#' dat$value <- lambda[dat$trait] * z[dat$species] +
+#'   rnorm(nrow(dat), sd = 0.3)
+#' dat$trait <- factor(dat$trait, levels = names(lambda))
+#' dat$species <- factor(dat$species, levels = rownames(K))
+#' ## Each record (one species, one replicate) is a sampling unit
+#' dat$obs <- factor(paste(dat$species, dat$rep))
+#'
+#' ## One latent axis whose species scores are correlated as in K. The
+#' ## term is named "cross"; the functions below refer to it by name.
+#' fit <- gllvmTMB(
+#'   value ~ 0 + trait + kernel_latent(species, K = K, d = 1, name = "cross"),
+#'   data = dat, trait = "trait", unit = "obs", cluster = "species"
+#' )
+#' ## Predicted covariance between host traits in hosts H1 and H2 and
+#' ## partner traits in partners P1 and P12 (point estimates only). Each
+#' ## covariance is the kernel entry for that host-partner pair times
+#' ## the Gamma entry for that trait pair (kernel_value * gamma_shape).
+#' ## Both hosts interact with P1 but not with the distant P12, so their
+#' ## predicted covariances with P12 are close to zero.
 #' predict_cross_covariance(
 #'   fit,
-#'   level = "phy",
+#'   level = "cross",
 #'   row_levels = c("H1", "H2"),
-#'   col_levels = c("P1", "P2"),
-#'   row_traits = c("host_size", "host_defence"),
-#'   col_traits = c("partner_size", "partner_attack")
+#'   col_levels = c("P1", "P12"),
+#'   row_traits = c("h_size", "h_defence"),
+#'   col_traits = c("p_size", "p_attack")
 #' )
-#' }
 #'
 #' @export
 predict_cross_covariance <- function(
@@ -1771,7 +2263,7 @@ predict_cross_covariance <- function(
   col_traits
 ) {
   if (!inherits(fit, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a fit returned by {.fun gllvmTMB}.")
+    .gllvmTMB_abort_not_multi_fit(fit)
   }
   if (
     missing(level) ||
@@ -1783,6 +2275,7 @@ predict_cross_covariance <- function(
     cli::cli_abort("{.arg level} must be one non-empty character string.")
   }
 
+  level <- .kernel_level_resolve_alias(fit, level)
   K <- .kernel_level_matrix(fit, level)
   meta <- .cross_kernel_metadata(K)
   if (is.null(row_levels)) {
@@ -1886,12 +2379,43 @@ predict_cross_covariance <- function(
   )]
 }
 
+## extract_Sigma() / extract_Gamma() read level = "phy" as the internal level
+## of a kernel tier. Map that alias to the tier name when exactly one fitted
+## kernel tier uses the internal "phy" slot, so predict_cross_covariance()
+## accepts the same names (#1578). Anything else is returned unchanged.
+.kernel_level_resolve_alias <- function(fit, level) {
+  if (!is.null(.kernel_level_alias(fit, level)) || !identical(level, "phy")) {
+    return(level)
+  }
+  kernel_levels <- fit$kernel_levels
+  name <- kernel_levels$name
+  if (!is.character(name) || !length(name)) {
+    return(level)
+  }
+  internal <- kernel_levels$internal_level %||% rep("phy", length(name))
+  idx <- which(internal == "phy")
+  if (length(idx) == 1L) name[[idx]] else level
+}
+
+## TRUE when level = "phy" cannot be resolved because several kernel tiers
+## share the internal "phy" slot (message text only; #1578).
+.kernel_level_phy_ambiguous <- function(fit, level) {
+  if (!identical(level, "phy")) return(FALSE)
+  name <- fit$kernel_levels$name
+  if (!is.character(name) || !length(name)) return(FALSE)
+  internal <- fit$kernel_levels$internal_level %||% rep("phy", length(name))
+  sum(internal == "phy") > 1L
+}
+
 .kernel_level_matrix <- function(fit, level) {
   alias <- .kernel_level_alias(fit, level)
   if (is.null(alias)) {
     cli::cli_abort(c(
       "{.arg level} must name a fitted {.fn kernel_*} tier.",
-      "i" = "Available kernel tiers are: {.val {fit$kernel_levels$name %||% character(0)}}."
+      "i" = "Available kernel tiers are: {.val {fit$kernel_levels$name %||% character(0)}}.",
+      if (.kernel_level_phy_ambiguous(fit, level)) {
+        c("i" = "{.code level = \"phy\"} is ambiguous: more than one kernel tier uses the internal {.val phy} level; name the tier instead.")
+      }
     ))
   }
 
@@ -2086,8 +2610,14 @@ print.gllvmTMB_Sigma_phy_slope <- function(x, digits = 3, ...) {
 #' `extract_coevolution_modules()` standardizes a component-specific
 #' cross-lineage covariance block and decomposes it into coupled trait axes.
 #' For a named coevolution kernel tier, the helper computes
-#' `R = Sigma_row^{-1/2} Gamma Sigma_col^{-1/2}` from the shared covariance
-#' returned by [extract_Sigma()], then applies a singular-value decomposition.
+#' `R = Sigma_row^{-1/2} Gamma Sigma_col^{-1/2}` from the covariance returned
+#' by [extract_Sigma()], then applies a singular-value decomposition. `Gamma`
+#' is the cross-lineage block of the shared covariance. `Sigma_row` and
+#' `Sigma_col` are the within-lineage blocks of the TOTAL covariance
+#' (`part = "total"`: shared `Lambda Lambda^T` plus the per-trait `Psi`
+#' diagonal when the tier carries one). Standardising by the shared blocks
+#' alone would give singular values of exactly 1 whenever `d` is at most the
+#' number of traits per lineage, so they would carry no information.
 #'
 #' This is a point-estimate derived-output helper, covered by the package's
 #' validation tests, for fitted
@@ -2107,25 +2637,80 @@ print.gllvmTMB_Sigma_phy_slope <- function(x, digits = 3, ...) {
 #' @param n_modules Optional positive integer limiting the number of returned
 #'   singular axes. By default all axes are returned.
 #' @param tol Numerical tolerance for the generalized inverse square roots of
-#'   the within-lineage shared covariance blocks.
+#'   the within-lineage total covariance blocks.
 #'
 #' @return A list with `R`, `modules`, `row_axes`, and `col_axes`. `R` is the
 #'   standardized cross-lineage correlation-like block. `modules` has one row
-#'   per singular axis with its singular value and squared-value share.
-#'   `row_axes` and `col_axes` contain trait loadings for each coupled axis.
+#'   per singular axis with its singular value and squared-value share. The
+#'   singular values lie in `[0, 1]` and are informative only when the
+#'   within-lineage total covariance is larger than the shared part, that is,
+#'   when the tier has a `Psi` component estimated above zero (for example
+#'   `kernel_latent(..., unique = TRUE)`). For a latent-only tier with `d` at
+#'   most the traits per lineage they are 1 by construction, and the trait
+#'   loadings are the informative output. `row_axes` and `col_axes` contain
+#'   trait loadings for each coupled axis.
 #'
 #' @examples
-#' \dontrun{
+#' set.seed(1)
+#' ## A small host-partner system: 12 host and 12 partner species. Each
+#' ## lineage has its own similarity matrix. Here similarity decays with
+#' ## distance along a species ordering, a stand-in for a phylogenetic
+#' ## correlation matrix such as ape::vcv(tree, corr = TRUE).
+#' host <- paste0("H", 1:12)
+#' partner <- paste0("P", 1:12)
+#' A_H <- 0.6^abs(outer(1:12, 1:12, "-"))
+#' A_P <- A_H
+#' dimnames(A_H) <- list(host, host)
+#' dimnames(A_P) <- list(partner, partner)
+#' ## W records which hosts interact with which partners: host i interacts
+#' ## with partners i - 1, i and i + 1.
+#' W <- 1 * (abs(outer(1:12, 1:12, "-")) <= 1)
+#' dimnames(W) <- list(host, partner)
+#' ## One kernel over all 24 species; the fixed rho sets how strongly
+#' ## interacting hosts and partners are linked.
+#' K <- make_cross_kernel(A_H, A_P, W, rho = 0.9)
+#'
+#' ## Simulate one latent axis shared by all four traits. Host traits are
+#' ## measured on hosts only and partner traits on partners only: four
+#' ## replicate measurements per species, each with noise (SD 0.3).
+#' lambda <- c(h_size = 0.9, h_defence = 0.6, p_size = 0.8, p_attack = -0.5)
+#' z <- drop(t(chol(K)) %*% rnorm(24))
+#' names(z) <- rownames(K)
+#' dat <- expand.grid(rep = 1:4, trait = names(lambda),
+#'                    species = rownames(K), stringsAsFactors = FALSE)
+#' dat <- dat[startsWith(dat$species, "H") == startsWith(dat$trait, "h_"), ]
+#' dat$value <- lambda[dat$trait] * z[dat$species] +
+#'   rnorm(nrow(dat), sd = 0.3)
+#' dat$trait <- factor(dat$trait, levels = names(lambda))
+#' dat$species <- factor(dat$species, levels = rownames(K))
+#' ## Each record (one species, one replicate) is a sampling unit
+#' dat$obs <- factor(paste(dat$species, dat$rep))
+#'
+#' ## One latent axis whose species scores are correlated as in K. The
+#' ## term is named "cross"; the functions below refer to it by name.
+#' fit <- gllvmTMB(
+#'   value ~ 0 + trait + kernel_latent(species, K = K, d = 1, name = "cross"),
+#'   data = dat, trait = "trait", unit = "obs", cluster = "species"
+#' )
+#' ## Coupled host and partner trait axes (point estimates only). With
+#' ## one latent axis (d = 1) there is a single module (n_modules = 1).
+#' ## This fit has no Psi, so the total covariance equals the shared part
+#' ## and the singular value is 1 by construction: read the trait
+#' ## loadings. Hosts with larger size and defence are linked with
+#' ## partners of larger size and lower attack. Flipping the signs of
+#' ## both axes gives the same module. A tier fitted with
+#' ## kernel_latent(..., unique = TRUE) has a Psi component; when Psi is
+#' ## estimated above zero the singular values fall below 1.
 #' mods <- extract_coevolution_modules(
 #'   fit,
-#'   level = "phy",
-#'   row_traits = c("host_size", "host_defence"),
-#'   col_traits = c("partner_size", "partner_attack")
+#'   level = "cross",
+#'   row_traits = c("h_size", "h_defence"),
+#'   col_traits = c("p_size", "p_attack"),
+#'   n_modules = 1
 #' )
 #' mods$modules
 #' mods$row_axes
 #' mods$col_axes
-#' }
 #'
 #' @export
 extract_coevolution_modules <- function(
@@ -2138,7 +2723,7 @@ extract_coevolution_modules <- function(
   tol = sqrt(.Machine$double.eps)
 ) {
   if (!inherits(fit, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a fit returned by {.fun gllvmTMB}.")
+    .gllvmTMB_abort_not_multi_fit(fit)
   }
   scale <- match.arg(scale)
   if (
@@ -2167,13 +2752,16 @@ extract_coevolution_modules <- function(
     cli::cli_abort("{.arg tol} must be one positive number.")
   }
 
-  shared <- suppressMessages(extract_Sigma(
+  ## Total covariance (shared + Psi): the within-lineage blocks are
+  ## standardised by it so the singular values are informative (#1570).
+  ## Psi is diagonal, so the cross-lineage block is the shared Gamma.
+  total <- suppressMessages(extract_Sigma(
     fit,
     level = level,
-    part = "shared",
+    part = "total",
     link_residual = "none"
   ))
-  Sigma <- shared$Sigma
+  Sigma <- total$Sigma
   if (!is.matrix(Sigma)) {
     cli::cli_abort(c(
       "The requested level has no shared covariance matrix.",

@@ -2,7 +2,8 @@
 ##
 ## Two pathological configurations matter for `link_residual = "auto"`:
 ##   (a) within-trait family mixing -> ERROR
-##   (b) ordinal-probit traits -> WARN
+##   (b) ordinal traits -> silent ("auto" adds the liability residual once;
+##       advising "none" gives correlations of +/-1, issue #1400)
 ##
 ## "OK" case is everything else (single family per trait, no ordinal-probit).
 ## We test all three using mock fit objects (same pattern as
@@ -95,34 +96,31 @@ test_that("check_auto_residual() error message names the offending trait(s)", {
   expect_true(grepl("bold", conditionMessage(err), fixed = TRUE))
 })
 
-## ---- WARN: ordinal-probit single-family trait ----------------------------
+## ---- OK: ordinal single-family traits (issue #1400) ---------------------
 
-test_that("check_auto_residual() warns on ordinal-probit single-family trait", {
+test_that("check_auto_residual() is silent on ordinal_probit traits", {
   fit <- make_mock_fit_for_check(
-    family_id_vec = rep(14L, 8L), # all ordinal_probit
+    family_id_vec = rep(14L, 8L),
     trait_id_vec = rep(c(0L, 1L), each = 4L),
     trait_levels = c("item_1", "item_2")
   )
-  expect_warning(
-    res <- gllvmTMB::check_auto_residual(fit),
-    class = "gllvmTMB_auto_residual_ordinal_probit_overcount"
-  )
-  expect_equal(res$status, "warn")
-  expect_true(nzchar(res$messages))
+  expect_no_warning({
+    res <- gllvmTMB::check_auto_residual(fit)
+  })
+  expect_equal(res$status, "ok")
+  expect_length(res$messages, 0L)
 })
 
-test_that("check_auto_residual() warning lists all ordinal traits", {
+test_that("check_auto_residual() is silent on ordinal_logit traits", {
   fit <- make_mock_fit_for_check(
-    family_id_vec = rep(14L, 12L),
+    family_id_vec = rep(20L, 12L),
     trait_id_vec = rep(c(0L, 1L, 2L), each = 4L),
     trait_levels = c("item_1", "item_2", "item_3")
   )
-  w <- tryCatch(
-    suppressWarnings(gllvmTMB::check_auto_residual(fit)),
-    warning = function(cnd) cnd
-  )
-  res <- suppressWarnings(gllvmTMB::check_auto_residual(fit))
-  expect_equal(res$status, "warn")
+  expect_no_warning({
+    res <- gllvmTMB::check_auto_residual(fit)
+  })
+  expect_equal(res$status, "ok")
 })
 
 ## ---- ERROR > WARN priority: mixing wins if both conditions present -------

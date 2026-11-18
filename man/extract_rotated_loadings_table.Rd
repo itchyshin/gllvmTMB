@@ -61,27 +61,34 @@ or simulation-based uncertainty is not yet implemented and remains
 possible future work for a later inference slice.
 }
 \examples{
-\dontrun{
-sim <- simulate_site_trait(
-  n_sites = 60, n_species = 12, n_traits = 4,
-  Lambda_B = matrix(c(1.0, 0.7, -0.3, 0.5,
-                      0.3, -0.5, 0.8, 0.2),
-                    nrow = 4, ncol = 2),
-  psi_B = c(0.3, 0.3, 0.3, 0.3),
-  seed = 1
-)
+set.seed(1)
+# Simulate six traits, each measured twice on 100 units (e.g. sites).
+# Traits 2-3 share one latent axis, traits 4-6 share a second axis,
+# and trait_1 loads on both.
+Lambda <- cbind(c(0.7, 1.0, 0.9, 0.0, 0.0, 0.0),
+                c(0.7, 0.0, 0.0, 1.0, 0.9, 0.8))
+sim <- simulate_unit_trait(n_units = 100, n_obs_per_unit = 2,
+                           n_traits = 6, Lambda_B = Lambda,
+                           psi_B = 0.4, sigma2_eps = 0.3)
 fit <- gllvmTMB(value ~ 0 + trait +
-                        latent(0 + trait | site, d = 2),
-                data  = sim$data,
-                trait = "trait",
-                unit  = "site")
-extract_rotated_loadings_table(
-  fit,
-  level = "unit",
-  method = "varimax",
-  loading_scale = "standardized"
-)
-}
+                  latent(0 + trait | unit, d = 2, unique = TRUE),
+                data = sim$data, trait = "trait", unit = "unit")
+
+# One row per trait and axis after varimax rotation. axis_share is the
+# share of the shared (latent) variance carried by each axis.
+tab <- extract_rotated_loadings_table(fit, level = "unit")
+print(tab[, c("trait", "axis", "loading", "axis_share", "anchor_trait")],
+      digits = 2)
+
+# Standardized loadings divide by each trait's total between-unit
+# standard deviation, so traits on different scales are comparable.
+std <- extract_rotated_loadings_table(fit, level = "unit",
+                                      loading_scale = "standardized")
+# The tidy layout makes filtering easy: the strong loadings per axis.
+print(std[std$abs_loading > 0.5, c("axis", "trait", "loading")],
+      digits = 2)
+# Or reshape it back to a trait-by-axis grid.
+round(xtabs(loading ~ trait + axis, data = std), 2)
 }
 \seealso{
 \code{\link[=rotate_loadings]{rotate_loadings()}}, \code{\link[=extract_ordination]{extract_ordination()}}, \code{\link[=extract_Sigma]{extract_Sigma()}},

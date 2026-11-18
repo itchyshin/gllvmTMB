@@ -43,7 +43,7 @@ test_that("separation = none leaves existing screen output unchanged", {
     capture.output(print(scr)),
     c(
       "gllvmTMB pre-fit response screen",
-      "  PASS 3",
+      "  NOT_CHECKED 2 | PASS 3",
       "  No pre-fit FAIL/WARN recommendations."
     )
   )

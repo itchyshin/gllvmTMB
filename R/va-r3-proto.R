@@ -35,6 +35,28 @@
     max_abs_gradient < .VA_R3_HEALTH_GRADIENT_TOL
 }
 
+## Do not replace an eligible start by an ineligible near-tie during polish.
+## An absolute 1e-6 is a conservative objective equivalence bound; it does
+## not imply equal parameters or validated uncertainty. Materially lower
+## candidates remain recorded; final adjudication considers eligible starts.
+.va_r3_accept_polish <- function(current, candidate, current_gradient,
+                                 candidate_gradient, tie_tolerance = 1e-6) {
+  if (is.null(candidate) || length(candidate$objective) != 1L ||
+      !is.finite(candidate$objective) ||
+      candidate$objective > current$objective + 1e-8) return(FALSE)
+  eligible <- function(point, gradient) {
+    .va_r3_start_agreement_eligible(
+      point$convergence, point$objective,
+      length(point$par) > 0L && all(is.finite(point$par)), gradient
+    )
+  }
+  old_ok <- eligible(current, current_gradient)
+  new_ok <- eligible(candidate, candidate_gradient)
+  if (old_ok && !new_ok &&
+      current$objective - candidate$objective <= tie_tolerance) return(FALSE)
+  TRUE
+}
+
 .va_r3_adjudicate_starts <- function(fits, agreement_tolerance = 1e-6) {
   ## A code-one start may contribute numerical evidence, but an all-code-one
   ## consensus cannot admit a fit: one of the three lowest starts must carry
@@ -53,8 +75,26 @@
     consensus_id <- eligible_id[order(objectives[eligible_id])][seq_len(3L)]
     agreement_range <- .va_r3_best_three_range(objectives[eligible_id])
   }
+  ## SCALE the agreement tolerance by the objective magnitude (issue #985).
+  ## `agreement_tolerance` was applied as an ABSOLUTE range bound, but the
+  ## VA objective's magnitude varies by family and fixture: at |objective|
+  ## ~ 1e3 an absolute 1e-6 is a ~1e-9 RELATIVE demand, which no optimiser
+  ## meets reproducibly across BLAS implementations. That made the light-fit
+  ## health gate knife-edged -- green on macOS, `failed_health_gate` on
+  ## ubuntu CI, with no difference in the fit itself. Measured on the same
+  ## families (2026-08-15, masked-response VA sweep): betabinomial_logit and
+  ## delta_gamma_log land at best-three ranges 2e-6..1e-5 with small finite
+  ## per-start gradients -- the same optimum, adjudicated as disagreement.
+  ## The tolerance is now `agreement_tolerance * max(1, |median objective|)`,
+  ## so it keeps its original meaning for O(1) objectives and becomes a
+  ## relative bound where the objective is large.
+  agreement_scale <- if (length(eligible_id) >= 3L) {
+    max(1, abs(stats::median(objectives[eligible_id])))
+  } else {
+    1
+  }
   agreement <- length(eligible_id) >= 3L &&
-    agreement_range <= agreement_tolerance
+    agreement_range <= agreement_tolerance * agreement_scale
   consensus_has_strict_convergence <- length(consensus_id) == 3L &&
     any(consensus_id %in% strictly_converged_id)
   admitted <- agreement && consensus_has_strict_convergence
@@ -289,8 +329,8 @@
   tight <- marginal_eta(200L, 1e-12)
   if (is.null(loose) || is.null(tight)) {
     stop("Binomial R3 refuses this design: the marginal logistic regression ",
-         "y ~ X - 1 has no finite fit, which indicates separation. Design 85 ",
-         "admits only non-separated fixtures.", call. = FALSE)
+         "y ~ X - 1 has no finite fit, which indicates separation. This ",
+         "route requires non-separated data.", call. = FALSE)
   }
   drift <- tight$max_abs_eta - loose$max_abs_eta
   if (drift > drift_limit || tight$max_abs_eta > eta_limit) {
@@ -301,8 +341,8 @@
          format(drift, digits = 6), ", drift limit ", drift_limit,
          ", magnitude limit ", eta_limit,
          "). A coefficient that moves with the tolerance has no finite ",
-         "maximum-likelihood value. Design 85 admits only non-separated ",
-         "fixtures; this guard reads the marginal design only and is ",
+         "maximum-likelihood value. This route requires non-separated data; ",
+         "this guard reads the marginal design only and is ",
          "deliberately conservative.", call. = FALSE)
   }
   invisible(list(max_abs_eta = tight$max_abs_eta, drift = drift,
@@ -1070,13 +1110,34 @@
     }
   }
   dll <- TMB::dynlib(tools::file_path_sans_ext(cpp))
-  loaded <- vapply(getLoadedDLLs(), function(x) {
-    path <- x[["path"]]
-    nzchar(path) && identical(normalizePath(path, mustWork = FALSE),
-                              normalizePath(dll, mustWork = FALSE))
-  }, logical(1))
+  ## The build directory is the source checksum, so a loaded copy of this
+  ## name from this path is already the current template. dyn.unload while
+  ## an earlier ADFun still holds an external pointer frees those pointers
+  ## ("Warning: N external pointers will be removed") and the next
+  ## MakeADFun segfaults. Ubuntu R 4.6.2 did that in
+  ## test-va-all-family-compiled.R after the new coevolution test moved
+  ## that file into a shard that had already loaded this DLL (PR #1803,
+  ## R-CMD-check 44015758495 shard 2). Reuse the loaded library.
+  ## rebuild=TRUE still compiles when this DLL is not loaded. A loaded
+  ## library from a different source build cannot be swapped in: unloading
+  ## it is the crash, and two copies cannot share the DLL name.
+  loaded_info <- getLoadedDLLs()[["gllvmTMB_va_r3"]]
+  if (!is.null(loaded_info)) {
+    loaded_path <- loaded_info[["path"]]
+    same_build <- nzchar(loaded_path) && identical(
+      normalizePath(loaded_path, mustWork = FALSE),
+      normalizePath(dll, mustWork = FALSE)
+    )
+    if (!same_build) {
+      stop(
+        "gllvmTMB_va_r3 is already loaded from a different build. Restart R before rebuilding it.",
+        call. = FALSE
+      )
+    }
+    return(list(DLL = "gllvmTMB_va_r3", path = dll, source = source,
+                checksum = stamp))
+  }
   if (!file.exists(dll) || isTRUE(rebuild)) {
-    if (any(loaded)) dyn.unload(dll)
     old <- getwd()
     on.exit(setwd(old), add = TRUE)
     setwd(build_dir)
@@ -1089,9 +1150,8 @@
       stop("Compilation of the standalone R3 TMB template failed.",
            call. = FALSE)
     }
-    loaded[] <- FALSE
   }
-  if (!any(loaded)) dyn.load(dll)
+  dyn.load(dll)
   list(DLL = "gllvmTMB_va_r3", path = dll, source = source, checksum = stamp)
 }
 
@@ -1660,7 +1720,7 @@
 ## evidence supports it. Unbenchmarked Design-110 cells, Poisson, and
 ## binomial-GH keep nlminb. NB2 is the exception earned by Gate E: this is an
 ## agreement repair, not a blanket speed preference.
-.va_r3_resolve_optimizer <- function(optimizer = c("auto", "nlminb", "lbfgsb"),
+.va_r3_resolve_optimizer <- function(optimizer = c("auto", "nlminb", "lbfgsb", "bfgs"),
                                      family, resolved_eval_method, link_id = NULL) {
   optimizer <- match.arg(optimizer)
   if (!identical(optimizer, "auto")) return(optimizer)
@@ -1677,19 +1737,64 @@
   if (is.null(choice)) "nlminb" else choice
 }
 
-.va_r3_run_primary <- function(optimizer, obj, start, control) {
+.va_r3_nlminb <- function(start, objective, gradient, control, opt_args = list()) {
+  do.call(stats::nlminb, c(list(start = start, objective = objective,
+                               gradient = gradient, control = control), opt_args))
+}
+
+.va_r3_optimizer_label <- function(optimizer) {
+  switch(optimizer, bfgs = "BFGS", lbfgsb = "L-BFGS-B", optimizer)
+}
+
+.va_r3_optim <- function(start, objective, gradient, method, control,
+                         opt_args = list()) {
+  do.call(stats::optim, c(list(par = start, fn = objective, gr = gradient,
+                               method = method, control = control), opt_args))
+}
+
+.va_r3_run_primary <- function(optimizer, obj, start, control,
+                               optimizer_args = list()) {
   if (identical(optimizer, "nlminb")) {
-    return(stats::nlminb(start, obj$fn, obj$gr, control = control))
+    fit <- .va_r3_nlminb(start, obj$fn, obj$gr, control,
+                         optimizer_args[c("lower", "upper", "scale")])
+    native <- fit
+    fit$optimizer <- "nlminb"
+    fit$native_result <- native
+    return(fit)
   }
-  maxit <- control$iter.max %||% control$eval.max %||% 2000L
-  fit <- stats::optim(start, obj$fn, obj$gr, method = "L-BFGS-B",
-                      control = list(maxit = maxit,
-                                     factr = .VA_R3_LBFGSB_FACTR))
-  ## Normalise onto nlminb's return shape so every downstream health gate,
-  ## polish step and diagnostic reads the same fields regardless of route.
+  method <- if (identical(optimizer, "bfgs")) "BFGS" else "L-BFGS-B"
+  native_control <- control
+  if (identical(method, "L-BFGS-B")) {
+    ## The registry's pre-existing auto path uses the nlminb-shaped outer
+    ## defaults. Translate their shared iteration cap as before, rather than
+    ## passing unknown control names to stats::optim().
+    if (is.null(native_control$maxit)) {
+      native_control$maxit <- native_control$iter.max %||%
+        native_control$eval.max %||% 2000L
+    }
+    native_control$iter.max <- NULL
+    native_control$eval.max <- NULL
+    if (is.null(native_control$factr)) {
+      native_control$factr <- .VA_R3_LBFGSB_FACTR
+    }
+  }
+  native_args <- optimizer_args[intersect(names(optimizer_args), c("lower", "upper"))]
+  fit <- .va_r3_optim(start, obj$fn, obj$gr, method, native_control, native_args)
+  ## Keep the native result so counts, status and message remain available.
+  ## optim does not report an iteration count; do not infer one from its count
+  ## vector.
   list(par = fit$par, objective = fit$value, convergence = fit$convergence,
-       message = fit$message, evaluations = fit$counts,
-       iterations = NA_integer_)
+       message = fit$message, evaluations = fit$counts, iterations = NA_integer_,
+       optimizer = method, native_result = fit)
+}
+
+.va_r3_attempt_count <- function(fit, field) {
+  counts <- fit$evaluations %||% fit$counts %||% numeric()
+  if (!is.null(names(counts)) && field %in% names(counts)) {
+    unname(counts[[field]])
+  } else {
+    NA_integer_
+  }
 }
 
 ## Positions of each unit's variational coordinates within the parameter vector.
@@ -2097,7 +2202,8 @@
                                   inner_control = NULL,
                                   ac2_threshold = 1.0,
                                   fixed_tweedie_power = NULL,
-                                  fixed_student_df = NULL) {
+                                  fixed_student_df = NULL,
+                                  warn_tweedie_pin = TRUE) {
   if (validated$q == 0L) {
     stop("q = 0 is not applicable and must not construct an R3 objective.",
          call. = FALSE)
@@ -2154,8 +2260,11 @@
   fixed_student_df <- .va_r3_fixed_family_parameter(
     fixed_student_df, validated$T, "fixed_student_df", 1
   )
-  parameters$logit_p_tweedie[!is.na(fixed_tweedie_power)] <-
-    stats::qlogis(fixed_tweedie_power[!is.na(fixed_tweedie_power)] - 1)
+  if (any(!is.na(fixed_tweedie_power))) {
+    theta_pin <- .tweedie_pinned_theta(fixed_tweedie_power, warn = warn_tweedie_pin)
+    parameters$logit_p_tweedie[!is.na(fixed_tweedie_power)] <-
+      theta_pin[!is.na(fixed_tweedie_power)]
+  }
   parameters$log_df_student[!is.na(fixed_student_df)] <-
     log(fixed_student_df[!is.na(fixed_student_df)] - 1)
   ## Stage 6 turned the three variational PARAMETER_MATRIXes into flat
@@ -2427,7 +2536,7 @@
                        match_laplace_residual_sd = FALSE,
                        collapse_variational_cov = FALSE,
                        n_starts = 4L,
-                       optimizer = c("auto", "nlminb", "lbfgsb"),
+                       optimizer = c("auto", "nlminb", "lbfgsb", "bfgs"),
                        is_y_observed = NULL,
                        family_codes = NULL,
                        link_ids = NULL,
@@ -2440,7 +2549,9 @@
                        fixed_student_df = NULL,
                        profile_variational = FALSE,
                        inner_control = NULL,
-                       ac2_threshold = 1.0) {
+                       ac2_threshold = 1.0,
+                       optimizer_args = list(), optimizer_request = NULL,
+                       va_polish = TRUE) {
   family_choices <- unique(vapply(.va_r3_family_registry, `[[`, character(1L), "family"))
   family_choices <- c(family_choices, "gaussian")
   if (is.null(family_codes)) {
@@ -2474,7 +2585,14 @@
                         length(family_codes))
   rank_source <- match.arg(rank_source)
   eval_method <- match.arg(eval_method)
+  optimizer_request <- optimizer_request %||% optimizer
   optimizer <- match.arg(optimizer)
+  if (!is.list(optimizer_args)) {
+    stop("optimizer_args must be a list.", call. = FALSE)
+  }
+  if (!is.logical(va_polish) || length(va_polish) != 1L || is.na(va_polish)) {
+    stop("va_polish must be one non-missing logical value.", call. = FALSE)
+  }
   ## Resolved below, once validated$family and the eval tier are both known.
   validated <- .va_r3_validate_data(
     y, n_trials, X, unit_id, trait_id, q, N, T, family, link,
@@ -2577,11 +2695,13 @@
       inner_control = inner_control,
       ac2_threshold = ac2_threshold,
       fixed_tweedie_power = fixed_tweedie_power,
-      fixed_student_df = fixed_student_df
+      fixed_student_df = fixed_student_df,
+      warn_tweedie_pin = k == 1L
     )
     objects[[k]] <- obj
     opt <- tryCatch(
-      .va_r3_run_primary(optimizer, obj, obj$par, control),
+      .va_r3_run_primary(optimizer, obj, obj$par, control,
+                         optimizer_args = optimizer_args),
       error = function(e) structure(list(message = conditionMessage(e)),
                                     class = "va_r3_optimizer_error")
     )
@@ -2591,48 +2711,139 @@
                         finite_parameters = FALSE,
                         strictly_converged = FALSE,
                         agreement_eligible = FALSE, healthy = FALSE,
-                        message = opt$message)
+                        message = opt$message,
+                        optimizer_request = optimizer_request,
+                        primary_optimizer = .va_r3_optimizer_label(optimizer),
+                        final_optimizer = NA_character_,
+                        optimizer_attempts = list(list(
+                          stage = "primary", method = .va_r3_optimizer_label(optimizer),
+                          error = opt$message, accepted = FALSE,
+                          convergence = NA_integer_,
+                          function_evaluations = NA_integer_,
+                          gradient_evaluations = NA_integer_, iterations = NA_integer_
+                        )))
       next
     }
+    ## Capture the selected primary method before secondary solvers can replace
+    ## `opt`; start metadata must describe the requested primary stage.
+    primary_optimizer <- opt$optimizer %||% .va_r3_optimizer_label(optimizer)
+    final_optimizer <- primary_optimizer
+    optimizer_attempts <- list(list(
+      stage = "primary", method = primary_optimizer, accepted = TRUE,
+      convergence = opt$convergence, message = opt$message,
+      objective = unname(opt$objective),
+      function_evaluations = .va_r3_attempt_count(opt, "function"),
+      gradient_evaluations = .va_r3_attempt_count(opt, "gradient"),
+      iterations = opt$iterations %||% NA_integer_
+    ))
     polish_passes <- 0L
-    for (polish in seq_len(2L)) {
+    restore_polish_state <- FALSE
+    ## `optArgs$lower` and `$upper` constrain the whole fit, including polish.
+    ## The primary method's control list is not portable across native solvers:
+    ## in particular, `optim`'s `maxit`/`fnscale` must not be passed to nlminb.
+    ## Preserve the historical auto/nlminb path exactly, and give the nlminb
+    ## polisher its ordinary budget when the selected primary is an `optim`
+    ## method.
+    polish_nlminb_control <- control
+    if (length(optimizer_request) == 1L &&
+        optimizer_request %in% c("BFGS", "L-BFGS-B")) {
+      polish_nlminb_control <- list(eval.max = 2000L, iter.max = 2000L)
+    }
+    polish_nlminb_args <- optimizer_args[
+      intersect(names(optimizer_args), c("lower", "upper", "scale"))
+    ]
+    polish_lbfgsb_args <- optimizer_args[
+      intersect(names(optimizer_args), c("lower", "upper"))
+    ]
+    polish_optimizer <- "not_attempted"
+    if (isTRUE(va_polish)) for (polish in seq_len(2L)) {
       current_gradient <- tryCatch(obj$gr(opt$par), error = function(e) NA_real_)
       if (all(is.finite(current_gradient)) &&
           max(abs(current_gradient)) < .VA_R3_POLISH_GRADIENT_TARGET) break
+      polish_optimizer <- "nlminb_attempted"
       candidate <- tryCatch(
-        stats::nlminb(opt$par, obj$fn, obj$gr, control = control),
-        error = function(e) NULL
+        .va_r3_nlminb(opt$par, obj$fn, obj$gr, polish_nlminb_control,
+                      polish_nlminb_args),
+        error = function(e) structure(list(error = conditionMessage(e)),
+                                      class = "va_r3_optimizer_error")
       )
-      if (is.null(candidate) || !is.finite(candidate$objective) ||
-          candidate$objective > opt$objective + 1e-8) break
+      optimizer_attempts[[length(optimizer_attempts) + 1L]] <- if (inherits(candidate, "va_r3_optimizer_error")) {
+        list(stage = "polish", method = "nlminb", error = candidate$error,
+             accepted = FALSE, convergence = NA_integer_,
+             function_evaluations = NA_integer_,
+             gradient_evaluations = NA_integer_, iterations = NA_integer_)
+      } else {
+        list(stage = "polish", method = "nlminb", convergence = candidate$convergence,
+             accepted = FALSE,
+             message = candidate$message, objective = unname(candidate$objective),
+             function_evaluations = .va_r3_attempt_count(candidate, "function"),
+             gradient_evaluations = .va_r3_attempt_count(candidate, "gradient"),
+             iterations = candidate$iterations %||% NA_integer_)
+      }
+      if (inherits(candidate, "va_r3_optimizer_error")) break
+      candidate_gradient <- tryCatch(obj$gr(candidate$par), error = function(e) NA_real_)
+      max_gradient <- function(g) if (length(g) && all(is.finite(g))) max(abs(g)) else Inf
+      old_grad <- max_gradient(current_gradient)
+      new_grad <- max_gradient(candidate_gradient)
+      optimizer_attempts[[length(optimizer_attempts)]]$max_abs_gradient <- new_grad
+      if (!.va_r3_accept_polish(opt, candidate, old_grad, new_grad)) {
+        optimizer_attempts[[length(optimizer_attempts)]]$rejection_reason <-
+          "non-improving objective or ineligible near-tie"
+        restore_polish_state <- TRUE
+        break
+      }
+      optimizer_attempts[[length(optimizer_attempts)]]$accepted <- TRUE
       opt <- candidate
+      final_optimizer <- "nlminb"
       polish_passes <- polish
     }
-    polish_optimizer <- "nlminb_only"
     post_nlminb_gradient <- tryCatch(obj$gr(opt$par), error = function(e) NA_real_)
-    if (!all(is.finite(post_nlminb_gradient)) ||
-        max(abs(post_nlminb_gradient)) >= .VA_R3_POLISH_GRADIENT_TARGET) {
+    if (isTRUE(va_polish) && (!all(is.finite(post_nlminb_gradient)) ||
+        max(abs(post_nlminb_gradient)) >= .VA_R3_POLISH_GRADIENT_TARGET)) {
       ## L-BFGS-B, not BFGS: BFGS carries a dense inverse-Hessian over the whole
       ## parameter vector, which here includes N*(2q + q(q-1)/2) variational
       ## coordinates, so its cost grows with n while L-BFGS-B's limited memory
       ## stays flat. factr is L-BFGS-B's relative-tolerance control and
       ## 1e-12 / .Machine$double.eps is the translation of BFGS's reltol = 1e-12.
+      polish_optimizer <- "nlminb_then_L-BFGS-B_attempted"
       lbfgsb <- tryCatch(
-        stats::optim(opt$par, obj$fn, obj$gr, method = "L-BFGS-B",
-                     control = list(maxit = 500L,
-                                    factr = 1e-12 / .Machine$double.eps)),
-        error = function(e) NULL
+        .va_r3_run_primary("lbfgsb", obj, opt$par,
+                           list(maxit = 500L, factr = 1e-12 / .Machine$double.eps),
+                           optimizer_args = polish_lbfgsb_args),
+        error = function(e) structure(list(error = conditionMessage(e)),
+                                      class = "va_r3_optimizer_error")
       )
-      if (!is.null(lbfgsb) && identical(lbfgsb$convergence, 0L) &&
-          is.finite(lbfgsb$value) && lbfgsb$value <= opt$objective + 1e-8) {
-        opt <- list(
-          par = lbfgsb$par, objective = lbfgsb$value,
-          convergence = lbfgsb$convergence, message = lbfgsb$message,
-          evaluations = lbfgsb$counts, iterations = NA_integer_
-        )
-        polish_optimizer <- "nlminb_then_lbfgsb"
+      optimizer_attempts[[length(optimizer_attempts) + 1L]] <- if (inherits(lbfgsb, "va_r3_optimizer_error")) {
+        list(stage = "polish", method = "L-BFGS-B", error = lbfgsb$error,
+             accepted = FALSE, convergence = NA_integer_,
+             function_evaluations = NA_integer_,
+             gradient_evaluations = NA_integer_, iterations = NA_integer_)
+      } else {
+        list(stage = "polish", method = "L-BFGS-B", convergence = lbfgsb$convergence,
+             accepted = FALSE,
+             message = lbfgsb$message, objective = unname(lbfgsb$objective),
+             function_evaluations = .va_r3_attempt_count(lbfgsb, "function"),
+             gradient_evaluations = .va_r3_attempt_count(lbfgsb, "gradient"),
+             iterations = lbfgsb$iterations %||% NA_integer_)
+      }
+      if (!inherits(lbfgsb, "va_r3_optimizer_error") && identical(lbfgsb$convergence, 0L)) {
+        lbfgsb_gradient <- tryCatch(obj$gr(lbfgsb$par), error = function(e) NA_real_)
+        max_gradient <- function(g) if (length(g) && all(is.finite(g))) max(abs(g)) else Inf
+        old_grad <- max_gradient(post_nlminb_gradient)
+        new_grad <- max_gradient(lbfgsb_gradient)
+        optimizer_attempts[[length(optimizer_attempts)]]$max_abs_gradient <- new_grad
+        if (.va_r3_accept_polish(opt, lbfgsb, old_grad, new_grad)) {
+          optimizer_attempts[[length(optimizer_attempts)]]$accepted <- TRUE
+          opt <- lbfgsb
+          final_optimizer <- "L-BFGS-B"
+        } else {
+          optimizer_attempts[[length(optimizer_attempts)]]$rejection_reason <-
+            "non-improving objective or ineligible near-tie"
+          restore_polish_state <- TRUE
+        }
       }
     }
+    if (restore_polish_state) obj$fn(opt$par)
     gradient <- tryCatch(obj$gr(opt$par), error = function(e) rep(NA_real_, length(opt$par)))
     finite_parameters <- all(is.finite(opt$par))
     max_abs_gradient <- if (length(gradient) && all(is.finite(gradient))) {
@@ -2675,7 +2886,11 @@
       evaluations = opt$evaluations,
       iterations = opt$iterations,
       polish_passes = polish_passes,
-      polish_optimizer = polish_optimizer
+      polish_optimizer = if (isTRUE(va_polish)) polish_optimizer else "disabled",
+      optimizer_request = optimizer_request,
+      primary_optimizer = primary_optimizer,
+      final_optimizer = final_optimizer,
+      optimizer_attempts = optimizer_attempts
     )
     if (profile_variational) fits[[k]]$outer_par <- outer_par
   }
@@ -2754,6 +2969,9 @@
     source_checksum = dll$checksum,
     fixed_global = !is.null(fixed_global),
     optimizer = optimizer,
+    optimizer_method = .va_r3_optimizer_label(optimizer),
+    requested_optimizer = optimizer_request,
+    va_polish = va_polish,
     match_laplace_residual_sd = isTRUE(match_laplace_residual_sd),
     fixed_family_parameters = list(
       tweedie_power = fixed_tweedie_power,

@@ -205,12 +205,14 @@ test_that("Doubling weights shrinks b_fix SEs", {
 })
 
 # ----------------------------------------------------------------------
-# Test 4: heteroscedastic recovery — weights move sigma in the right
-# direction. We simulate Var(y) = sigma_0^2 / w; the optimal weights
-# w_i = 1/var_i restore homoscedasticity. Fit with and without those
-# weights and confirm the weighted fit's sigma estimate is closer to
-# sigma_0 than the unweighted fit's.
-test_that("Heteroscedastic Gaussian: weighted fit improves sigma recovery", {
+# Test 4: heteroscedastic weights are consumed. We simulate
+# Var(y) = sigma_0^2 * var_i and pass w_i = 1/var_i. Do not assert that
+# the weighted sigma_eps is closer to sigma_0 than the unweighted one:
+# Totoro (seeds 1-20, same recipe) recovered that comparison in 10/20
+# at 30 sites and plateaued at 18/20 at 1000 sites next to
+# latent(..., d = 1). Receipt is the comment on #1644. This check only
+# proves weights move sigma_eps (silent-ignore would leave it identical).
+test_that("Heteroscedastic Gaussian: weights move sigma_eps", {
   skip_on_cran()
   set.seed(42L)
   ## 30 sites x 3 traits, all Gaussian, but with row-wise variance
@@ -223,6 +225,10 @@ test_that("Heteroscedastic Gaussian: weighted fit improves sigma recovery", {
     psi_B        = rep(0.2, 3),
     seed       = 42L
   )
+  ## Own stream for the heteroscedastic noise. After #1602,
+  ## simulate_site_trait(seed =) restores the caller's RNG, so this
+  ## test must not depend on leftover simulator draws.
+  set.seed(42L)
   df <- sim$data
   sigma_0 <- 1.0
   var_i <- runif(nrow(df), min = 0.5, max = 5)   # row-wise variance multipliers
@@ -240,10 +246,14 @@ test_that("Heteroscedastic Gaussian: weighted fit improves sigma recovery", {
     weights = w_i,
     silent  = TRUE
   )))
+  expect_equal(fit_unw$opt$convergence, 0L)
+  expect_equal(fit_w$opt$convergence, 0L)
   ## Both fits expose log_sigma_eps via report().
   rep_unw <- fit_unw$tmb_obj$report()
   rep_w   <- fit_w$tmb_obj$report()
-  expect_lt(abs(rep_w$sigma_eps - sigma_0), abs(rep_unw$sigma_eps - sigma_0))
+  expect_true(is.finite(rep_unw$sigma_eps))
+  expect_true(is.finite(rep_w$sigma_eps))
+  expect_false(isTRUE(all.equal(rep_w$sigma_eps, rep_unw$sigma_eps)))
 })
 
 # ----------------------------------------------------------------------
@@ -351,11 +361,22 @@ test_that("Mixed-family fit: per-row weight dispatch works", {
   p <- plogis(0.2 + 0.5 * df$x)
   df$value[!is_g] <- stats::rbinom(sum(!is_g), size = n_trials_vec[!is_g],
                                    prob = p[!is_g])
-  ## Family vector (one per trait level). The factor levels of `family`
-  ## sort alphabetically to c("binomial", "gaussian"), so `fams` must be
-  ## in that order for the multi-fit dispatcher to pair them correctly.
+  ## Family vector (one per trait level). `family` is a plain character
+  ## column with NO stored order. This test originally read:
+  ##   "The factor levels of `family` sort alphabetically to
+  ##    c('binomial', 'gaussian'), so `fams` must be in that order for the
+  ##    multi-fit dispatcher to pair them correctly."
+  ## i.e. it asserted the ALPHABETICAL-SORT PAIRING AS IF IT WERE THE
+  ## CONTRACT -- exactly the #1120 defect (`.align_mixed_family_list()`
+  ## silently matched an unnamed list's i-th entry to the i-th alphabetical
+  ## level). It happened not to swap here only because this test's list
+  ## order and "binomial" < "gaussian" alphabetical order coincide; a test
+  ## written this way could not have told the difference between "correctly
+  ## paired" and "coincidentally not swapped". Named explicitly instead, and
+  ## the pairing this fit actually produced is now pinned directly below
+  ## rather than assumed.
   df$family <- ifelse(is_g, "gaussian", "binomial")
-  fams <- list(binomial(), gaussian())
+  fams <- list(binomial = binomial(), gaussian = gaussian())
   attr(fams, "family_var") <- "family"
 
   ## Fit with weights = n_trials. For Gaussian rows, weights=1 (unit);
@@ -371,6 +392,12 @@ test_that("Mixed-family fit: per-row weight dispatch works", {
     silent  = TRUE
   )))
   expect_equal(fit_mixed$opt$convergence, 0L)
+  ## Pin the corrected pairing EXPLICITLY against ground truth (df$trait),
+  ## not against family_id_vec's own value as this test did before: trait
+  ## "b1" rows must carry family_id 1 (binomial) and "g1" rows family_id 0
+  ## (gaussian).
+  expect_true(all(fit_mixed$tmb_data$family_id_vec[df$trait == "b1"] == 1L))
+  expect_true(all(fit_mixed$tmb_data$family_id_vec[df$trait == "g1"] == 0L))
   ## tmb_data should carry weights_i = 1 for binomial rows and the
   ## user-supplied value for gaussian rows.
   expect_true("weights_i" %in% names(fit_mixed$tmb_data))

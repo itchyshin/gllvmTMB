@@ -204,19 +204,28 @@
 #' @aliases diag-keyword
 #' @keywords internal
 #' @examples
-#' \dontrun{
-#' # Behavioural-syndrome / two-level pattern:
+#' ## Behavioural-syndrome / two-level pattern: 60 individuals ("unit"), each
+#' ## measured on five traits in three sessions ("unit_observation").
+#' ## Between individuals: two shared axes plus trait-specific variances;
+#' ## within individuals: one shared axis plus trait-specific variances.
+#' sim <- simulate_unit_trait(
+#'   n_units = 60, n_obs_per_unit = 3, n_traits = 5,
+#'   Lambda_B = matrix(c(0.9, 0.7, -0.4, 0.2, 0.5,
+#'                       0.1, -0.2, 0.6, 0.8, -0.4), 5, 2),
+#'   psi_B = 0.3,
+#'   Lambda_W = matrix(c(0.5, 0.4, -0.3, 0.3, 0.2), 5, 1),
+#'   seed = 1
+#' )
 #' fit <- gllvmTMB(
 #'   value ~ 0 + trait +
-#'           latent(0 + trait | individual, d = 2) +
-#'           latent(0 + trait | obs_id,    d = 1),
-#'   data     = df,
+#'           latent(0 + trait | unit, d = 2, unique = TRUE) +
+#'           latent(0 + trait | unit_observation, d = 1, unique = TRUE),
+#'   data     = sim$data,
 #'   trait    = "trait",
-#'   unit     = "individual",
-#'   unit_obs = "obs_id"
+#'   unit     = "unit",
+#'   unit_obs = "unit_observation"
 #' )
 #' extract_Sigma(fit, level = "unit", part = "shared")$Sigma # Lambda Lambda^T
 #' extract_Sigma(fit, level = "unit", part = "unique")$s     # diag(Psi)
 #' extract_Sigma(fit, level = "unit", part = "total")$Sigma  # both, summed
-#' }
 NULL

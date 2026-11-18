@@ -1,0 +1,44 @@
+gllvmTMB is experimental. Use a documented tutorial, inspect fit diagnostics, and read Current limitations and boundaries before treating an estimate or interval as a scientific result. Convergence alone is not enough.
+gradient-test-red: .......................................12.3..4...........................
+
+══ Failed ══════════════════════════════════════════════════════════════════════
+── 1. Failure ('gradient-test-red.R:194:3'): behavioural reaction-norm long and 
+Expected `health$status[health$component == "max_gradient"]` to equal "PASS".
+Differences:
+1/1 mismatches
+x[1]: "WARN"
+y[1]: "PASS"
+
+── 2. Failure ('gradient-test-red.R:197:3'): behavioural reaction-norm long and 
+Expected `health_wide$status[health_wide$component == "max_gradient"]` to equal "PASS".
+Differences:
+1/1 mismatches
+x[1]: "WARN"
+y[1]: "PASS"
+
+── 3. Failure ('gradient-test-red.R:204:5'): behavioural reaction-norm long and 
+Expected `max(abs(gradient))` < 0.01.
+Actual comparison: 0.0182 >= 0.0100
+Difference: 0.0082 >= 0
+
+── 4. Failure ('gradient-test-red.R:204:5'): behavioural reaction-norm long and 
+Expected `max(abs(gradient))` < 0.01.
+Actual comparison: 0.0182 >= 0.0100
+Difference: 0.0082 >= 0
+
+══ DONE ════════════════════════════════════════════════════════════════════════
+$failed
+[1] 4
+
+$errors
+[1] 0
+
+$warnings
+[1] 0
+
+$skipped
+[1] 0
+
+$passed
+[1] 69
+

@@ -17,18 +17,61 @@
 \item{object}{A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}.}
 
 \item{newdata}{Optional new data frame. If \code{NULL}, predictions are
-produced for the training rows.}
+produced for the training rows. For a fit made with the wide
+\code{traits(...)} syntax, \code{newdata} must be in long form with a \code{trait}
+factor column (one row per unit and trait, with the training levels);
+wide \code{newdata} is refused with an error. For example,
+\code{data.frame(id = rep(ids, each = 4), trait = factor(rep(trait_names, length(ids)), levels = trait_names))}. A missing covariate stays \code{NA} in
+that row; the other rows keep their own predictions. Data-dependent
+transforms in the fixed formula (\code{scale()}, \code{poly()}, \code{ns()}) reuse
+the training centre, scale, and basis, so a row's value does not
+depend on which other rows travel with it. Character predictors use
+the training levels, and user-set factor contrasts (for example
+\code{contr.sum}) are copied onto the restored factor.
+Conditional prediction with \code{newdata} for multiple named kernel tiers
+is not supported; use \code{re_form = ~0} for fixed-effects-only predictions.}
 
-\item{type}{One of \code{"link"} (default) or \code{"response"}.}
+\item{type}{One of \code{"link"} (default) or \code{"response"}.
+
+\code{"response"} includes the row's \strong{offset}, so on a fit with an effort
+or support offset it returns an expected count \emph{at that effort}, or a
+detection probability \emph{at that support} -- not a relative intensity. For
+a map or any effort-free comparison, set the offset variable to zero in
+\code{newdata} (e.g. \code{newdata$log_support <- 0}) and predict from that; the
+offset is re-evaluated against \code{newdata}, so this is exact rather than
+an approximation.
+
+On a mixed-family fit the returned \code{est} column mixes scales by design
+(expected counts beside probabilities). The fit's family/source column
+is returned alongside it so each row's scale is identifiable.}
 
 \item{re_form}{Random-effect formula controlling which random
-effects are \emph{included} in the predicted linear predictor. Use
-the default \code{~ .} to include all random effects when predicting
-on training rows; pass \code{~ 0} (or \code{NA}) to predict the fixed-
-effects-only / population-mean prediction. For \code{newdata} with
-sites/species not present in the training data the random
-effects cannot be drawn, so the prediction is fixed-effects-only
-regardless of \code{re_form}.}
+effects are \emph{included} in the predicted linear predictor. The
+default \code{~ .} includes them; \code{~ 0}, \code{NA}, and numeric \code{0} all
+request the fixed-effects-only / population-mean prediction. Any
+other value is not a supported form and warns rather than silently
+including the random effects. Honoured on \strong{both} the training-row
+and the \code{newdata} path (before 0.7.1 it was read only on the
+\code{newdata} path, and there only as the literal \code{~ 0}). For \code{newdata}
+with sites/species not present in the training data the random
+effects cannot be drawn, so those rows are fixed-effects-only
+regardless of \code{re_form}. A missing species column is not an unseen
+level: if \code{newdata} omits the fitted species column while
+phylogenetic random effects are being re-added, \code{predict()} stops and
+asks for that column or for \code{re_form = ~0}.
+
+For AGHQ fits, conditional predictions use the latent modes at the
+fitted parameters. They are not averages over latent-score uncertainty.
+If those modes are unavailable, request \code{re_form = ~0} or refit.
+
+On \code{newdata}, \code{predict()} rebuilds the linear predictor in R and can
+re-add only some of the model's random-effect tiers (the unit-level
+\code{rr}/\code{diag} terms, \code{propto}, and the spatial SPDE field). Structured
+intercepts also include their shared and folded Psi effects
+at known source levels; ancestral prediction is not added. A fit
+carrying any other active tier gets a warning naming exactly what was
+omitted; \code{newdata = NULL} always returns the full conditional
+predictor.}
 
 \item{se.fit}{Logical, default \code{FALSE}. If \code{TRUE}, add an \code{se.fit}
 column: a \strong{conditional, fixed-effect-only, delta-method (Wald)}
@@ -38,7 +81,9 @@ predicted (conditional-mode) values -- their own uncertainty is
 \strong{not} propagated, only the fixed-effect coefficients' \code{sdreport()}
 covariance is. This is a smaller quantity than a full marginal SE
 would be; it is also not a claim about coverage, which has not been
-measured for this quantity. \code{type = "link"} returns the SE of the
+measured for this quantity. For AGHQ fits, the local fixed-node
+covariance has not been validated for interval coverage.
+\code{type = "link"} returns the SE of the
 linear predictor directly; \code{type = "response"} multiplies it by the
 local derivative of the per-row inverse link (the standard
 delta-method transform), so it approximates the SE of the
@@ -48,7 +93,8 @@ fits, fits without an active \code{mi()} missing-covariate model, and fits with
 unit likelihood weights. A non-unit weighted objective has no certified
 prediction-standard-error route.}
 
-\item{...}{Unused.}
+\item{...}{Unused. An argument passed here is ignored with a warning; in
+particular \code{re.form} (use \code{re_form}) and \code{se_fit} (use \code{se.fit}).}
 }
 \value{
 A data frame with the original row identifiers plus an \code{est}

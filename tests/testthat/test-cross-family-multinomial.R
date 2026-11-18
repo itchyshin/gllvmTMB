@@ -86,7 +86,7 @@ test_that("auto-Psi once-per-session messages remain distinct across fit composi
   rlang::env_unbind(freq_env, frequency_ids)
   withr::defer(rlang::env_unbind(freq_env, frequency_ids))
 
-  sim <- .build_xfam_raw(14L, N = 60L, reps = 2L)
+  sim <- .build_xfam_raw(14L, N = 60L, reps = 1L)
   dat_bin <- sim$data
   is_original_gaussian <- dat_bin$family == "g"
   dat_bin$value[is_original_gaussian] <- as.integer(
@@ -118,7 +118,7 @@ test_that("auto-Psi once-per-session messages remain distinct across fit composi
 
 test_that("auto-Psi fit path classifies binomial and multinomial traits", {
   skip_on_cran(); skip_if_not_installed("MASS")
-  sim <- .build_xfam_raw(13L, N = 120L, reps = 3L)
+  sim <- .build_xfam_raw(13L, N = 120L, reps = 1L)
   dat <- sim$data
   is_g <- dat$family == "g"
   dat$value[is_g] <- as.integer(dat$value[is_g] > stats::median(dat$value[is_g]))

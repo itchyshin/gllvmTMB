@@ -1,5 +1,73 @@
 ## S3 methods specific to gllvmTMB_multi objects.
 
+#' Refit a temporal latent model
+#'
+#' Replays the public long- or wide-format call saved for a
+#' [temporal_latent()] fit. Private pair identifiers are rebuilt from the
+#' supplied data and are never reused as public input.
+#' Ordinary (non-temporal) fits do not store a public call, so
+#' `update()` refuses them rather than forwarding to
+#' [stats::update.default()].
+#'
+#' @param object A fitted `gllvmTMB_multi` temporal model.
+#' @param ... Named arguments to replace in the saved public call.
+#' @param evaluate Whether to evaluate the reconstructed call.
+#' @return The refitted model, or the reconstructed call if `evaluate = FALSE`.
+#' @export
+update.gllvmTMB_multi <- function(object, ..., evaluate = TRUE) {
+  if (!isTRUE(object$temporal$active)) {
+    cli::cli_abort(c(
+      "{.fn update} is only supported for temporal latent fits.",
+      ">" = "Refit from the original formula and data."
+    ))
+  }
+  call <- object$call_wide %||% object$call
+  if (is.null(call) || !is.call(call)) {
+    cli::cli_abort(c("This temporal fit does not retain a public call for {.fn update}.", ">" = "Refit from the original temporal formula and data."))
+  }
+  dots <- list(...)
+  if (length(dots)) {
+    if (is.null(names(dots)) || any(!nzchar(names(dots)))) {
+      cli::cli_abort(c("Temporal {.fn update} accepts named argument overrides only.", ">" = "Use named formula, data, or fitting-argument overrides."))
+    }
+    for (nm in names(dots)) {
+      call[[nm]] <- dots[[nm]]
+    }
+  }
+  if (!isTRUE(evaluate)) {
+    return(call)
+  }
+  eval(call, envir = parent.frame())
+}
+
+#' Residual standard deviation for gllvmTMB fits
+#'
+#' @description
+#' `stats::sigma()` is not defined for multivariate `gllvmTMB()` fits: a
+#' single residual scale is not meaningful across mixed response families.
+#' Use family-specific dispersion extractors instead (for example
+#' [extract_Sigma()] on Gaussian traits).
+#'
+#' @param object A fitted `gllvmTMB` object.
+#' @param ... Not used.
+#' @return An error is always thrown.
+#' @importFrom stats sigma
+#' @keywords internal
+#' @exportS3Method stats::sigma
+sigma.gllvmTMB_multi <- function(object, ...) {
+  cli::cli_abort(c(
+    "{.fn sigma} is not defined for {.cls gllvmTMB} fits.",
+    "i" = "Multivariate fits can mix families, so there is no single residual standard deviation.",
+    ">" = "For Gaussian traits use {.fn extract_Sigma} or the per-trait dispersion columns from {.fn tidy}."
+  ))
+}
+
+#' @exportS3Method stats::sigma
+sigma.gllvmTMB_julia <- sigma.gllvmTMB_multi
+
+#' @exportS3Method stats::sigma
+sigma.gllvmTMB_va <- sigma.gllvmTMB_multi
+
 .modal_integer_id <- function(x, fallback = NA_integer_) {
   x <- as.integer(x)
   x <- x[!is.na(x)]
@@ -30,6 +98,7 @@
   out <- character(Tn)
   ## Family-id -> default link mapping when link_id is unavailable.
   ## fid 14 (ordinal_probit) carries no per-trait link; tag as "probit".
+  ## fid 20 (ordinal_logit) is the same situation, tagged "logit".
   default_link <- function(fid) {
     switch(
       as.character(fid),
@@ -49,6 +118,7 @@
       "13" = "log", # delta_gamma
       "14" = "probit", # ordinal_probit
       "15" = "log", # nbinom1
+      "20" = "logit", # ordinal_logit
       NA_character_
     )
   }
@@ -153,27 +223,47 @@
 }
 
 .gllvmTMB_restore_newdata_factor_levels <- function(newdata, training_data,
-                                                    allow_unseen = character()) {
+                                                    allow_unseen = character(),
+                                                    typed_observation = character()) {
   nd <- as.data.frame(newdata)
   common <- intersect(names(nd), names(training_data))
   for (nm in common) {
     ref <- training_data[[nm]]
-    if (!is.factor(ref)) {
+    is_chr <- is.character(ref)
+    if (!is.factor(ref) && !is_chr) {
       next
     }
     raw <- as.character(nd[[nm]])
+    ## Character training columns become factors with the same levels
+    ## `model.frame()` would have used (`sort(unique(ref))`). Otherwise a
+    ## newdata grid that omits the baseline level rebuilds a different
+    ## dummy coding and silently predicts those rows as the baseline (#1425).
+    lv <- if (is.factor(ref)) levels(ref) else levels(factor(ref))
     restored <- factor(
       raw,
-      levels = levels(ref),
+      levels = lv,
       ordered = is.ordered(ref)
     )
     unseen <- unique(raw[!is.na(raw) & is.na(restored)])
     if (length(unseen) && !nm %in% allow_unseen) {
+      err_class <- "gllvmTMB_predict_unseen_level"
+      if (nm %in% typed_observation) {
+        err_class <- c(err_class, "gllvmTMB_predict_isdm_observation_level")
+      }
       cli::cli_abort(c(
         "New data contains unseen level(s) in factor {.arg {nm}}.",
         "x" = "Unseen level(s): {.val {unseen}}.",
         "i" = "Use levels present in the training data or refit the model with the expanded factor scale."
-      ))
+      ), class = err_class)
+    }
+    ## `factor()` drops contrasts. Copy any user-set coding (contr.sum,
+    ## contr.helmert, ...) so model.matrix() does not fall back to
+    ## treatment dummies whose column names are absent from the fit (#1424).
+    if (is.factor(ref)) {
+      ctr <- attr(ref, "contrasts")
+      if (!is.null(ctr) && nlevels(restored) >= 2L) {
+        restored <- stats::`contrasts<-`(restored, value = ctr)
+      }
     }
     nd[[nm]] <- restored
   }
@@ -199,8 +289,114 @@
       "i" = "Check factor levels, contrasts, and fixed-effect terms in {.arg newdata}."
     ))
   }
+  ## Multiplying only the columns that happen to be present treats a
+  ## missing dummy as zero -- the #1425 silent misprediction when a
+  ## character predictor's baseline level is absent from newdata.
+  missing <- setdiff(train_cols, colnames(X_new))
+  if (length(missing)) {
+    shown <- missing[seq_len(min(length(missing), 8L))]
+    suffix <- if (length(missing) > 8L) " ..." else ""
+    cli::cli_abort(c(
+      "New data is missing fixed-effect column(s) present in the fitted model.",
+      "x" = "Missing column(s): {.val {shown}}{suffix}.",
+      "i" = "This usually means a character or factor predictor in {.arg newdata} does not carry the training levels."
+    ), class = "gllvmTMB_predict_missing_columns")
+  }
   names(bfix) <- train_cols
-  as.numeric(X_new %*% bfix[colnames(X_new)])
+  as.numeric(X_new[, train_cols, drop = FALSE] %*% bfix)
+}
+
+## Training-frame terms, factor levels, and contrasts for newdata designs.
+## `terms(formula)` has no predvars, so scale()/poly()/ns() would be
+## re-evaluated on newdata. Building the model frame on the training data
+## freezes those constants the way predict.lm does (#1423). The same frame
+## supplies xlevels (character predictors become factors with the training
+## levels; #1425) and the fitted contrasts (#1424).
+.gllvmTMB_predict_design_basis <- function(fit) {
+  if (is.null(fit$formula) || is.null(fit$data)) {
+    cli::cli_abort(c(
+      "Cannot rebuild the fixed-effect design for {.arg newdata}.",
+      "x" = "The fitted object stores no formula or training data."
+    ))
+  }
+  form <- stats::delete.response(stats::terms(fit$formula))
+  mf <- stats::model.frame(
+    form,
+    data = as.data.frame(fit$data),
+    na.action = stats::na.pass
+  )
+  tt <- stats::terms(mf)
+  mm <- stats::model.matrix(tt, mf)
+  list(
+    terms = tt,
+    xlevels = stats::.getXlevels(tt, mf),
+    contrasts = attr(mm, "contrasts")
+  )
+}
+
+## Put a shortened model.matrix back onto the newdata row index.
+## model.matrix() drops rows with an NA covariate unless the frame used
+## na.pass. If a row is still dropped, pad with NA rather than recycling
+## a shorter eta onto the wrong newdata rows (#1384).
+.gllvmTMB_align_design_rows <- function(X_new, nd) {
+  n_nd <- nrow(nd)
+  if (nrow(X_new) == n_nd) {
+    return(X_new)
+  }
+  out <- matrix(
+    NA_real_,
+    nrow = n_nd,
+    ncol = ncol(X_new),
+    dimnames = list(rownames(nd), colnames(X_new))
+  )
+  rn_x <- rownames(X_new)
+  rn_nd <- rownames(nd)
+  if (!is.null(rn_x) && !is.null(rn_nd)) {
+    idx <- match(rn_x, rn_nd)
+    if (!anyNA(idx)) {
+      out[idx, ] <- X_new
+      return(out)
+    }
+  }
+  cli::cli_abort(c(
+    "The fixed-effect design for {.arg newdata} has {nrow(X_new)} row{?s} but {.arg newdata} has {n_nd}.",
+    "i" = "Rows with a missing covariate should stay in place as NA predictions."
+  ), class = "gllvmTMB_predict_newdata_row_mismatch")
+}
+
+## Fixed-effect design for predict(newdata), row-aligned with newdata.
+.gllvmTMB_newdata_model_matrix <- function(fit, nd) {
+  basis <- .gllvmTMB_predict_design_basis(fit)
+  ## model.frame(xlev=) rebuilds each factor and warns "contrasts dropped"
+  ## if the column already carries a contrasts attribute. The fitted coding
+  ## is reapplied below via contrasts.arg, so strip it here.
+  nd_mf <- nd
+  for (nm in names(basis$xlevels)) {
+    if (nm %in% names(nd_mf) && is.factor(nd_mf[[nm]])) {
+      attr(nd_mf[[nm]], "contrasts") <- NULL
+    }
+  }
+  mf <- tryCatch(
+    stats::model.frame(
+      basis$terms,
+      data = nd_mf,
+      xlev = basis$xlevels,
+      na.action = stats::na.pass
+    ),
+    error = function(e) {
+      cli::cli_abort(c(
+        "Cannot build the fixed-effect design for {.arg newdata}.",
+        "x" = conditionMessage(e),
+        "i" = "Use the training factor levels and the same transforms as the fitted formula."
+      ), parent = e, class = "gllvmTMB_predict_newdata_design")
+    }
+  )
+  mm <- stats::model.matrix(
+    basis$terms,
+    mf,
+    contrasts.arg = basis$contrasts
+  )
+  .gllvmTMB_align_design_rows(mm, nd)
 }
 
 .gllvmTMB_b_fix_se <- function(fit) {
@@ -231,6 +427,20 @@
     return(sqrt(unname(as.numeric(diag_random[idx[seq_len(n)]]))))
   }
   rep(NA_real_, n)
+}
+
+## Why Wald standard errors from `fit$sd_report` cannot be trusted, or NULL when
+## they can. Used by tidy(): a non-positive-definite Hessian still yields finite
+## numbers from `sdreport()`, but they are not standard errors.
+.gllvmTMB_wald_unusable_reason <- function(fit) {
+  sdr <- fit$sd_report
+  if (is.null(sdr)) {
+    return("sdreport_unavailable")
+  }
+  if (!isTRUE(sdr$pdHess)) {
+    return("non_positive_definite_hessian")
+  }
+  NULL
 }
 
 .gllvmTMB_b_fix_table <- function(fit) {
@@ -307,15 +517,22 @@
   out
 }
 
-.apply_linkinv_per_row <- function(eta, family_id, link_id, sigma_eps = NULL) {
+.apply_linkinv_per_row <- function(eta, family_id, link_id, sigma_eps = NULL,
+                                   zi = NULL) {
   n <- length(eta)
   out <- eta
   sigma_eps <- as.numeric(sigma_eps %||% 0)
-  sigma_eps <- if (length(sigma_eps) && is.finite(sigma_eps[1L])) {
-    sigma_eps[1L]
-  } else {
-    0
-  }
+  sigma_eps[!is.finite(sigma_eps)] <- 0
+  sigma_lognormal <- if (length(sigma_eps) >= 2L) {
+    sigma_eps[[2L]]
+  } else if (length(sigma_eps)) sigma_eps[[1L]] else 0
+  ## Zero-inflated families (fid 17/18/19, Arc D): fitted_response_rule is
+  ## E[y] = (1 - zi) * mu (Decision 5). `zi` is a PER-ROW vector (already
+  ## resolved by the caller, one value per observation, mirroring `eta`) --
+  ## NULL means "caller did not supply it", in which case these rows fall
+  ## through to the naive count-only mean below (a graceful default, not
+  ## the documented rule; every in-package caller supplies `zi`).
+  zi_row <- if (is.null(zi)) rep(NA_real_, n) else as.numeric(zi)
   for (i in seq_len(n)) {
     fid <- family_id[i]
     lid <- link_id[i]
@@ -328,7 +545,7 @@
       out[i] <- if (lid == 1L) {
         stats::pnorm(e)            # probit
       } else if (lid == 2L) {
-        1 - exp(-exp(e))           # cloglog
+        -expm1(-exp(e))            # cloglog
       } else {
         stats::plogis(e)           # logit (default)
       }
@@ -336,10 +553,25 @@
       ## ordinal_probit carries no single-row response mean; keep the latent
       ## (probit) scale rather than fabricate one.
       out[i] <- stats::pnorm(e)
+    } else if (fid == 20L) {
+      ## ordinal_logit: same "no single-row response mean" situation as
+      ## fid 14, on the latent (logit) scale instead of probit.
+      out[i] <- stats::plogis(e)
     } else if (fid == 3L) {
       ## lognormal: eta is the mean on the log scale, so exp(eta) is the
       ## median; the conditional response mean includes sigma_eps^2 / 2.
-      out[i] <- exp(e + 0.5 * sigma_eps^2)
+      out[i] <- exp(e + 0.5 * sigma_lognormal^2)
+    } else if (fid %in% c(17L, 18L)) {
+      ## zi_poisson / zi_nbinom2: E[y] = (1 - zi) * exp(eta).
+      mu_c <- exp(e)
+      out[i] <- if (is.finite(zi_row[i])) (1 - zi_row[i]) * mu_c else mu_c
+    } else if (fid == 19L) {
+      ## zi_binomial: E[y] = (1 - zi) * N * plogis(eta) on the SUCCESS-COUNT
+      ## scale would need n_trials here too; this function reports the
+      ## per-trial probability scale like plain binomial() does, so
+      ## E[y/N] = (1 - zi) * plogis(eta).
+      mu_c <- stats::plogis(e)
+      out[i] <- if (is.finite(zi_row[i])) (1 - zi_row[i]) * mu_c else mu_c
     } else {
       ## log-link families (poisson, Gamma, nbinom1/2, tweedie,
       ## truncated, delta): the conditional mean is exp(eta).
@@ -356,15 +588,16 @@
 ## `.apply_linkinv_per_row()`; a family added there without an entry here
 ## would silently fall through to the log-link default, so keep the two
 ## functions' family/link dispatch in sync.
-.dlinkinv_per_row <- function(eta, family_id, link_id, sigma_eps = NULL) {
+.dlinkinv_per_row <- function(eta, family_id, link_id, sigma_eps = NULL,
+                              zi = NULL) {
   n <- length(eta)
   out <- eta
   sigma_eps <- as.numeric(sigma_eps %||% 0)
-  sigma_eps <- if (length(sigma_eps) && is.finite(sigma_eps[1L])) {
-    sigma_eps[1L]
-  } else {
-    0
-  }
+  sigma_eps[!is.finite(sigma_eps)] <- 0
+  sigma_lognormal <- if (length(sigma_eps) >= 2L) {
+    sigma_eps[[2L]]
+  } else if (length(sigma_eps)) sigma_eps[[1L]] else 0
+  zi_row <- if (is.null(zi)) rep(NA_real_, n) else as.numeric(zi)
   for (i in seq_len(n)) {
     fid <- family_id[i]
     lid <- link_id[i]
@@ -377,7 +610,7 @@
       out[i] <- if (lid == 1L) {
         stats::dnorm(e)                          # d/de pnorm(e)
       } else if (lid == 2L) {
-        exp(e) * exp(-exp(e))                    # d/de (1 - exp(-exp(e)))
+        exp(e - exp(e))                          # stable cloglog derivative
       } else {
         p <- stats::plogis(e)
         p * (1 - p)                               # d/de plogis(e)
@@ -385,10 +618,25 @@
     } else if (fid == 14L) {
       ## ordinal_probit: out was pnorm(e).
       out[i] <- stats::dnorm(e)
+    } else if (fid == 20L) {
+      ## ordinal_logit: out was plogis(e); d/de plogis(e) = plogis(e)*(1-plogis(e)).
+      p <- stats::plogis(e)
+      out[i] <- p * (1 - p)
     } else if (fid == 3L) {
       ## lognormal: out was exp(e + 0.5 * sigma_eps^2); sigma_eps does not
       ## depend on e, so the derivative keeps the same multiplier.
-      out[i] <- exp(e + 0.5 * sigma_eps^2)
+      out[i] <- exp(e + 0.5 * sigma_lognormal^2)
+    } else if (fid %in% c(17L, 18L)) {
+      ## zi_poisson / zi_nbinom2: out was (1 - zi) * exp(eta); zi does not
+      ## depend on eta (intercept-only, Decision 2), so the derivative
+      ## keeps the same (1 - zi) multiplier.
+      d <- exp(e)
+      out[i] <- if (is.finite(zi_row[i])) (1 - zi_row[i]) * d else d
+    } else if (fid == 19L) {
+      ## zi_binomial: out was (1 - zi) * plogis(eta).
+      p <- stats::plogis(e)
+      d <- p * (1 - p)
+      out[i] <- if (is.finite(zi_row[i])) (1 - zi_row[i]) * d else d
     } else {
       ## log-link families (poisson, Gamma, nbinom1/2, tweedie,
       ## truncated, delta): d/de exp(e) = exp(e).
@@ -568,9 +816,13 @@
   engine_flags <- setdiff(names(use), sub_flags)
   active <- vapply(engine_flags, function(nm) isTRUE(use[[nm]]), logical(1L))
   used <- engine_flags[active]
+  ## A latent() term carries its diagonal Psi in the same tier's diag slot, so
+  ## the diagonal flag is not a second user-written term (#1580).
+  if ("rr_B" %in% used) used <- setdiff(used, "diag_B")
+  if ("rr_W" %in% used) used <- setdiff(used, "diag_W")
   ## Translate each engine flag to its label, swapping in the canonical
   ## sub-flavour name when it applies.
-  vapply(
+  labs <- vapply(
     used,
     function(nm) {
       if (identical(nm, "phylo_rr") && isTRUE(use$phylo_unique)) {
@@ -586,6 +838,9 @@
     },
     character(1L)
   )
+  ## Several engine flags can map to one printed keyword (diag_B and
+  ## indep_B are both `indep_unit`): print each label once.
+  labs[!duplicated(labs)]
 }
 
 #' Methods on a fitted gllvmTMB model
@@ -602,12 +857,26 @@
 #' * For ML fits, `summary()` adds a fixed-effects table with SEs, the global and
 #'   local trait correlation matrices, per-trait ICCs,
 #'   and global / local communalities.
+#' * For predictor-informed `latent(..., lv = ~ x)` fits, `summary()` also
+#'   returns `lv_effects`, with `axis_effect` and `trait_effect` tables from
+#'   [extract_lv_effects()]. Printed raw-axis coefficients depend on axis
+#'   orientation; trait effects are on the response link scale. Unavailable
+#'   uncertainty is labelled, and experimental Wald output does not establish
+#'   interval coverage. MSPL and non-unit likelihood weights withhold this
+#'   block's inference with an explicit reason.
 #' * For an unpenalised native-Laplace ML fit, `logLik()` is the converged
 #'   maximum with `df = length(opt$par)` and `nobs` equal to the number of
 #'   likelihood-contributing response cells. AGHQ has a distinct integration
 #'   objective; a loading ridge is penalised MAP; and non-unit likelihood
 #'   weights define an estimating objective. Ordinary likelihood comparison is
 #'   unavailable on each of those restricted surfaces.
+#' * For non-Gaussian and mixed-family fits, the native-Laplace `logLik()` is
+#'   a Laplace *approximation* to the marginal log-likelihood, not the exact
+#'   value. Its error can be tens to hundreds of log-likelihood units, and it
+#'   changes with the latent rank `d`, the number of groups `K` and the
+#'   family. AIC/BIC differences across `d`, `K` or families can therefore
+#'   reflect approximation error rather than fit; check the leading candidates
+#'   with an AGHQ / Laplace-accuracy audit before choosing between them.
 #' * For `estimator = "mspl"`, `print()` and `summary()` identify the
 #'   experimental softly penalised Laplace point estimator and show the
 #'   unpenalised Laplace value at that point only as provenance. `logLik()`,
@@ -622,6 +891,7 @@
 #' @export
 print.gllvmTMB_multi <- function(x, ...) {
   cat("Stacked-trait gllvmTMB fit\n")
+  .structured_rho_print(x$source_strength)
   unit_label <- if (!is.null(x$unit_col)) x$unit_col else "sites"
   ## B-tier line: always show (there is always a B-tier grouping for the unit)
   dim_line <- sprintf(
@@ -684,18 +954,18 @@ print.gllvmTMB_multi <- function(x, ...) {
       cat("  Inference: point estimates only; repeated-sampling uncertainty is not yet calibrated.\n")
     } else {
       weighted <- isTRUE(x$likelihood_weights$active)
-      penalised <- isTRUE(x$aghq$penalised)
+      penalised <- !is.null(x$fixed_effect_priors) || isTRUE(x$aghq$penalised)
       objective_label <- if (weighted) {
         "Weighted objective (-value)"
       } else if (penalised) {
-        paste(estimator, "log L at MAP point")
+        "Unpenalised log L at MAP point"
       } else {
         paste(estimator, "log L")
       }
       cat(sprintf(
         "  %s = %.3f   convergence = %d   engine = %s\n",
         objective_label,
-        -x$opt$objective,
+        if (penalised) -(x$objective_components$likelihood_nll %||% NA_real_) else -x$opt$objective,
         x$opt$convergence,
         .aghq_engine_label(x)
       ))
@@ -703,6 +973,7 @@ print.gllvmTMB_multi <- function(x, ...) {
         cat("  Note: ordinary Wald and likelihood-based inference is not validated for non-unit likelihood weights.\n")
       } else if (penalised) {
         cat("  Note: parameters are a penalised MAP point; ordinary AIC, BIC, and likelihood-ratio interpretations do not apply.\n")
+        if (!is.null(x$fixed_effect_priors)) cat("  Covariance: local approximate posterior curvature, not calibrated sampling uncertainty.\n")
       }
     }
   }
@@ -716,15 +987,16 @@ print.gllvmTMB_multi <- function(x, ...) {
       paste(flagged, collapse = "/")
     ))
   }
-  ## ordinal_probit cutpoints, when at least one trait uses fid 14.
+  ## ordinal_probit / ordinal_logit cutpoints, when at least one trait uses
+  ## fid 14 or fid 20.
   fids_x <- x$tmb_data$family_id_vec
-  if (!is.null(fids_x) && any(fids_x == 14L)) {
+  if (!is.null(fids_x) && any(fids_x %in% c(14L, 20L))) {
     ## quiet = TRUE: these callers show cutpoint ESTIMATES only, with no
     ## `tau_se` column, so the missing-standard-error note would explain a
     ## column the reader is not looking at.
     cuts <- tryCatch(extract_cutpoints(x, quiet = TRUE), error = function(e) NULL)
     if (!is.null(cuts) && nrow(cuts) > 0L) {
-      cat("  Cutpoints (ordinal_probit, tau_1 = 0 fixed):\n")
+      cat("  Cutpoints (ordinal_probit/ordinal_logit, tau_1 = 0 fixed):\n")
       cuts_show <- cuts[,
         c("trait", "cutpoint_label", "tau_estimate"),
         drop = FALSE
@@ -733,10 +1005,34 @@ print.gllvmTMB_multi <- function(x, ...) {
       print(cuts_show, row.names = FALSE)
     }
   }
+  conv <- x$opt$convergence
+  if (length(conv) == 1L && !is.na(conv) && conv != 0L) {
+    cat(
+      "  The optimiser did not converge cleanly: gllvmTMB_diagnose(fit) ",
+      "shows which checks failed and why.\n",
+      sep = ""
+    )
+  }
   cat(
     "  Run gllvmTMB_diagnose(fit) for a full health check, or summary(fit) for parameter estimates.\n"
   )
   invisible(x)
+}
+
+## Evaluate `expr`, holding back its messages, then re-signal each distinct
+## message once, in first-seen order.
+.summary_unique_messages <- function(expr) {
+  held <- list()
+  withCallingHandlers(
+    expr,
+    message = function(m) {
+      held[[length(held) + 1L]] <<- m
+      invokeRestart("muffleMessage")
+    }
+  )
+  text <- vapply(held, conditionMessage, character(1))
+  for (m in held[!duplicated(text)]) message(m)
+  invisible(NULL)
 }
 
 #' @rdname gllvmTMB_multi-methods
@@ -755,19 +1051,25 @@ summary.gllvmTMB_multi <- function(object, ...) {
     estimator = object$estimator %||% if (isTRUE(object$REML)) "REML" else "ML",
     logLik = if (.gllvmTMB_is_mspl(object)) {
       object$mspl$unpenalized_loglik_at_estimate
+    } else if ((!is.null(object$fixed_effect_priors) || isTRUE(object$aghq$penalised)) &&
+               !isTRUE(object$likelihood_weights$active)) {
+      tryCatch(
+        as.numeric(suppressWarnings(stats::logLik(object))),
+        gllvmTMB_penalised_logLik_unavailable = function(e) NA_real_
+      )
     } else {
       -object$opt$objective
     },
     objective_label = if (isTRUE(object$likelihood_weights$active)) {
       "Weighted objective (-value)"
-    } else if (isTRUE(object$aghq$penalised)) {
-      paste(object$estimator %||% if (isTRUE(object$REML)) "REML" else "ML",
-            "log L at MAP point")
+    } else if (!is.null(object$fixed_effect_priors) || isTRUE(object$aghq$penalised)) {
+      "Unpenalised log L at MAP point"
     } else {
       paste(object$estimator %||% if (isTRUE(object$REML)) "REML" else "ML", "log L")
     },
     weighted_objective = isTRUE(object$likelihood_weights$active),
-    penalised = isTRUE(object$aghq$penalised),
+    penalised = !is.null(object$fixed_effect_priors) || isTRUE(object$aghq$penalised),
+    fixed_effect_prior = !is.null(object$fixed_effect_priors),
     convergence = object$opt$convergence,
     engine = .aghq_engine_label(object),
     mspl = .gllvmTMB_is_mspl(object),
@@ -796,11 +1098,32 @@ summary.gllvmTMB_multi <- function(object, ...) {
     }
     out$fixef <- df
   }
-  out$Sigma_B <- extract_Sigma_B(object)
-  out$Sigma_W <- extract_Sigma_W(object)
-  out$ICC_site <- extract_ICC_site(object)
-  out$communality_B <- extract_communality(object, "unit")
-  out$communality_W <- extract_communality(object, "unit_obs")
+  ## Predictor-informed score means are a separate coefficient block from
+  ## b_fix. Reuse the extractor's uncertainty checks, without crossing the
+  ## weighted-objective or experimental MSPL inference boundaries.
+  if (isTRUE(object$use$lv_B)) {
+    if (.gllvmTMB_is_mspl(object) || isTRUE(object$likelihood_weights$active)) {
+      out$lv_effects <- list(
+        status = "withheld_unsupported_inference",
+        reason = "LV-effect extraction is not supported for MSPL or non-unit likelihood weights"
+      )
+    } else {
+      out$lv_effects <- list(
+        axis_effect = extract_lv_effects(object, type = "axis_effect"),
+        trait_effect = extract_lv_effects(object, type = "trait_effect")
+      )
+    }
+  }
+  ## These five extractors call extract_Sigma() on the same tiers, so a
+  ## note such as "Sigma_unit is latent-only" would print once per call.
+  ## Show each distinct note once (#1580).
+  .summary_unique_messages({
+    out$Sigma_B <- .extract_Sigma_legacy_payload(object, level = "unit")
+    out$Sigma_W <- .extract_Sigma_legacy_payload(object, level = "unit_obs")
+    out$ICC_site <- extract_ICC_site(object)
+    out$communality_B <- extract_communality(object, "unit")
+    out$communality_W <- extract_communality(object, "unit_obs")
+  })
 
   ## Missing-response accounting (design 59 sec.4b). Surface the original-row +
   ## response-pattern counts from fit$missing_data, but only when there is
@@ -857,6 +1180,7 @@ summary.gllvmTMB_multi <- function(object, ...) {
     list(available = TRUE, reason = NULL)
   }
 
+  if (!is.null(object$source_strength)) out$source_strength <- .structured_rho_metadata(object)
   class(out) <- "summary.gllvmTMB_multi"
   out
 }
@@ -864,6 +1188,7 @@ summary.gllvmTMB_multi <- function(object, ...) {
 #' @rdname gllvmTMB_multi-methods
 #' @export
 print.summary.gllvmTMB_multi <- function(x, digits = 3, ...) {
+  .structured_rho_print(x$source_strength)
   ## Header block: dimensions, covstructs, optimiser convergence.
   with(x$header, {
     cat("Stacked-trait gllvmTMB summary\n")
@@ -909,6 +1234,10 @@ print.summary.gllvmTMB_multi <- function(x, digits = 3, ...) {
         cat("  Note: ordinary Wald and likelihood-based inference is not validated for non-unit likelihood weights.\n")
       } else if (penalised) {
         cat("  Note: parameters are a penalised MAP point; ordinary AIC, BIC, and likelihood-ratio interpretations do not apply.\n")
+        if (!is.finite(logLik)) {
+          cat("  Log L is unavailable: this stored fit has no retained unpenalised likelihood or usable TMB objective. Refit to obtain it.\n")
+        }
+        if (isTRUE(x$header$fixed_effect_prior)) cat("  Covariance: local approximate posterior curvature, not calibrated sampling uncertainty.\n")
       }
     }
   })
@@ -960,6 +1289,33 @@ print.summary.gllvmTMB_multi <- function(x, digits = 3, ...) {
           sep = ""
         )
       }
+    }
+  }
+
+  if (!is.null(x$lv_effects)) {
+    cat("\nPredictor-informed latent-variable effects (unit tier):\n")
+    if (!is.null(x$lv_effects$reason)) {
+      cat("  ", x$lv_effects$reason, ".\n", sep = "")
+    } else {
+      print_lv_table <- function(table, labels) {
+        tbl <- table[, c(labels, "estimate", "std.error", "uncertainty_status"),
+                     drop = FALSE]
+        tbl$estimate <- round(tbl$estimate, digits)
+        tbl$std.error <- round(tbl$std.error, digits)
+        print(tbl, row.names = FALSE)
+      }
+      cat("  Raw-axis coefficients (axis scale and rotation dependent):\n")
+      print_lv_table(x$lv_effects$axis_effect, c("axis", "predictor"))
+      cat("\n  Induced trait effects (loading times score coefficient; response link scale):\n")
+      print_lv_table(x$lv_effects$trait_effect, c("trait", "predictor"))
+      posterior <- any(grepl("loading_ridge_posterior_sd", x$lv_effects$axis_effect$uncertainty_status,
+                             fixed = TRUE))
+      if (posterior) {
+        cat("  std.error reports approximate posterior SDs conditional on the loading ridge; sampling interval coverage is not validated.\n")
+      } else {
+        cat("  Wald standard errors, when available, are experimental; interval coverage is not validated.\n")
+      }
+      cat("  NA standard errors are explained by uncertainty_status; see extract_lv_effects().\n")
     }
   }
 
@@ -1039,14 +1395,15 @@ logLik.gllvmTMB_multi <- function(object, ...) {
     ), class = "gllvmTMB_weighted_objective_no_logLik")
   }
   ridge_tau <- object$aghq$ridge_tau %||% Inf
-  pen <- isTRUE(object$aghq$penalised) ||
+  pen <- !is.null(object$fixed_effect_priors) || isTRUE(object$aghq$penalised) ||
     (is.numeric(ridge_tau) && length(ridge_tau) == 1L &&
        is.finite(ridge_tau) && ridge_tau > 0)
   likelihood_nll <- object$objective_components$likelihood_nll %||% NA_real_
   if (length(likelihood_nll) != 1L || !is.finite(likelihood_nll)) {
     if (pen) {
       likelihood_nll <- tryCatch(
-        as.numeric(object$tmb_obj$fn(object$opt$par)),
+        as.numeric((object$tmb_obj$fixed_effect_priors$likelihood_fn %||%
+          object$tmb_obj$fn)(object$opt$par)),
         error = function(e) NA_real_
       )
       if (length(likelihood_nll) != 1L || !is.finite(likelihood_nll)) {
@@ -1094,15 +1451,17 @@ logLik.gllvmTMB_multi <- function(object, ...) {
   attr(ll, "penalised") <- pen
   attr(ll, "ridge_tau") <- ridge_tau
   if (pen) {
+    attr(ll, "at_maximum") <- FALSE
     attr(ll, "penalised_note") <- paste0(
-      "evaluated at a penalised (MAP) optimum, ridge tau = ",
+      "evaluated at a penalised (MAP) optimum, ",
+      if (!is.null(object$fixed_effect_priors)) "fixed-effect normal priors; loading ridge tau = " else "ridge tau = ",
       format(ridge_tau, digits = 4),
       "; this is the unpenalised log-likelihood AT that point, not its maximum"
     )
     cli::cli_warn(c(
       "{.fn logLik} is the unpenalised likelihood evaluated at a penalised MAP point, not at its maximum.",
-      "i" = "The loading ridge used {.arg tau} = {format(ridge_tau, digits = 4)}.",
-      ">" = "Do not use this value for ordinary AIC, BIC, or likelihood-ratio inference; refit with {.code aghq_ridge = Inf} for likelihood-based comparison."
+      "i" = "The fit includes loading and/or fixed-effect normal priors.",
+      ">" = "For ordinary likelihood-based comparison, refit with loading_ridge = Inf and fixed_effect_priors = NULL."
     ))
   }
   ## nobs = likelihood-contributing rows. Under the default response="drop"
@@ -1152,27 +1511,33 @@ nobs.gllvmTMB_multi <- function(object, ...) {
 #' Returns a tibble (or data.frame) of either the fixed-effect coefficient
 #' table, the random-effects variance / covariance terms, or the ordinal
 #' threshold cutpoints. Mirrors the `tidy.sdmTMB()` API but augmented for
-#' the additional covstructs and the gllvmTMB-native `ordinal_probit()`
-#' family.
+#' the additional covstructs and the gllvmTMB-native `ordinal_probit()` /
+#' `ordinal_logit()` families.
 #'
 #' @param x A fit returned by [gllvmTMB()].
 #' @param effects One of `"fixed"` (default), `"ran_pars"`, or
-#'   `"cutpoint"`. The `"cutpoint"` class returns the ordinal-probit
+#'   `"cutpoint"`. The `"cutpoint"` class returns the ordinal
 #'   cutpoints (one row per (trait, threshold) pair); it is empty for
-#'   fits with no `ordinal_probit()` traits. (Earlier releases lumped
-#'   the cutpoints into `"ran_pars"` as a categorisation hack — see
-#'   *NEWS*.)
+#'   fits with no `ordinal_probit()` / `ordinal_logit()` traits. (Earlier
+#'   releases lumped the cutpoints into `"ran_pars"` as a categorisation
+#'   hack — see *NEWS*.)
 #' @param conf.int Whether to add `conf.low` / `conf.high` columns.
-#' @param conf.level Confidence level for the CI.
+#' @param conf.level Confidence level in (0, 1). Default 0.95.
 #' @param ... Currently unused.
 #'
-#' @return A data.frame. `effect = "fixed"` rows include a `link` column
+#' @return A data.frame. `effects = "fixed"` rows include a `link` column
 #'   reporting each trait's link function (`"identity"`, `"probit"`,
-#'   `"log"`, `"logit"`, …). `effect = "cutpoint"` rows carry the
+#'   `"log"`, `"logit"`, …). `effects = "cutpoint"` rows carry the
 #'   ordinal-probit thresholds. For a non-unit weighted objective, fixed-effect
 #'   point estimates remain available but `std.error` is `NA`, an
 #'   `inference_status` column explains the boundary, and `conf.int = TRUE`
-#'   fails because no sandwich interval is certified.
+#'   fails because no sandwich interval is certified. When the Hessian is not
+#'   positive definite (or the `sdreport()` is missing), `std.error` is `NA`,
+#'   `conf.low` / `conf.high` are `NA`, and `inference_status` says why.
+#'   With fixed-effect normal priors, `std.error` describes local approximate
+#'   posterior curvature and `inference_status` identifies that interpretation.
+#'   `conf.int = TRUE` is refused for those fits because ordinary sampling
+#'   interval calibration has not been established.
 #' @export
 tidy.gllvmTMB_multi <- function(
   x,
@@ -1183,7 +1548,9 @@ tidy.gllvmTMB_multi <- function(
 ) {
   effects <- match.arg(effects)
   if (isTRUE(conf.int)) {
+    conf.level <- .gtmb_validate_interval_level(conf.level, arg = "conf.level")
     .gllvmTMB_mspl_assert_inference(x, "tidy(conf.int = TRUE)")
+    .gllvmTMB_fixed_prior_inference(x, "tidy(conf.int = TRUE)")
   }
   if (effects == "fixed") {
     weighted <- isTRUE(x$likelihood_weights$active)
@@ -1200,6 +1567,11 @@ tidy.gllvmTMB_multi <- function(
     )
     if (weighted) {
       out$inference_status <- "point_estimate_only_weighted_objective"
+    } else if (!is.null(reason <- .gllvmTMB_wald_unusable_reason(x))) {
+      out$std.error <- rep(NA_real_, nrow(out))
+      out$inference_status <- reason
+    } else if (!is.null(x$fixed_effect_priors)) {
+      out$inference_status <- "local_approximate_posterior_curvature"
     }
     ## Per-trait link column. For single-family fits this is a single
     ## value repeated; for mixed-family fits each row carries the link
@@ -1216,12 +1588,12 @@ tidy.gllvmTMB_multi <- function(
     }
     out
   } else if (effects == "cutpoint") {
-    ## Dedicated effect class for ordinal_probit cutpoints. Earlier
-    ## releases routed these into ran_pars, which is a categorisation
-    ## hack: cutpoints are not variance components. Returns the empty
-    ## data.frame when the fit has no ordinal_probit traits.
+    ## Dedicated effect class for ordinal_probit / ordinal_logit cutpoints.
+    ## Earlier releases routed these into ran_pars, which is a
+    ## categorisation hack: cutpoints are not variance components. Returns
+    ## the empty data.frame when the fit has no ordinal traits.
     fids_x <- x$tmb_data$family_id_vec
-    if (is.null(fids_x) || !any(fids_x == 14L)) {
+    if (is.null(fids_x) || !any(fids_x %in% c(14L, 20L))) {
       return(data.frame(
         term = character(0),
         estimate = numeric(0),
@@ -1286,7 +1658,7 @@ tidy.gllvmTMB_multi <- function(
       )
     }
     if (x$use$rr_B) {
-      Sigma_B <- extract_Sigma_B(x)$Sigma_B
+      Sigma_B <- .extract_Sigma_legacy_payload(x, level = "unit")$Sigma_B
       diag_sd <- sqrt(diag(Sigma_B))
       rows[[length(rows) + 1L]] <- data.frame(
         term = paste0("sd_global[", levels(x$data[[x$trait_col]]), "]"),
@@ -1295,7 +1667,7 @@ tidy.gllvmTMB_multi <- function(
       )
     }
     if (x$use$rr_W) {
-      Sigma_W <- extract_Sigma_W(x)$Sigma_W
+      Sigma_W <- .extract_Sigma_legacy_payload(x, level = "unit_obs")$Sigma_W
       diag_sd <- sqrt(diag(Sigma_W))
       rows[[length(rows) + 1L]] <- data.frame(
         term = paste0("sd_local[", levels(x$data[[x$trait_col]]), "]"),
@@ -1381,7 +1753,17 @@ tidy.gllvmTMB_multi <- function(
 #' which reuses the fitted random-effect modes and only adds residual noise.
 #'
 #' @param object A fit returned by [gllvmTMB()].
-#' @param nsim Number of replicate response vectors to draw. Default 1.
+#' @details For rho-enabled structured trait intercepts, unconditional draws
+#'   use the attenuated source covariance for both loadings and folded Psi,
+#'   with independent observation residuals retained. Unsupported additional
+#'   components produce an error instead of a conditional fallback. This
+#'   supports simulation; automatic covariance bootstrap refits are not yet
+#'   supported for these fits.
+#'   For multiple named kernel tiers, unconditional simulation and simulation
+#'   with `newdata` are not supported. Use `condition_on_RE = TRUE` for a
+#'   conditional draw on the training rows.
+#' @param nsim Number of replicate response vectors to draw. Must be a
+#'   single positive integer. Default 1.
 #' @param seed Optional RNG seed.
 #' @param newdata Optional new data frame; if supplied, predictions are
 #'   computed at `newdata` and noise is drawn around them. The newdata
@@ -1392,12 +1774,15 @@ tidy.gllvmTMB_multi <- function(
 #'   covariance — the unconditional simulation appropriate for
 #'   parametric bootstrap. Redraw is currently implemented for the
 #'   `rr_B`, `diag_B`, `rr_W`, `diag_W`, `propto`, `lv_B`, `phylo_rr`,
-#'   and `diag_species` tiers.
+#'   `phylo_diag`, `diag_species`, the SPDE spatial fields of
+#'   `spatial_indep()`, `spatial_scalar()` and `spatial_latent()`, and the
+#'   native temporal tier. A temporal fit redraws its
+#'   recursive temporal state together with every supported ordinary/source
+#'   tier; it does not retain fitted ordinary modes in an unconditional draw.
 #'
-#'   **Not every tier is covered.** A fit using any other active tier —
-#'   notably the SPDE spatial tier (`spde`) and the diagonal
-#'   phylogenetic tier (`phylo_diag`) — falls back to conditional
-#'   simulation and emits a one-shot warning naming the unhandled
+#'   **Not every tier is covered.** The slope-augmented SPDE spatial forms
+#'   (for example `spatial_indep(1 + x | coords)`) fall back to conditional
+#'   simulation and emit a one-shot warning naming the unhandled
 #'   tiers. Because conditional simulation reuses the fitted random-
 #'   effect modes rather than redrawing them, it understates
 #'   between-unit variability: intervals derived from it (for example
@@ -1407,13 +1792,26 @@ tidy.gllvmTMB_multi <- function(
 #'
 #'   When `TRUE`, the existing fitted RE modes
 #'   are reused (the older glmmTMB-style conditional simulation that
-#'   only adds Gaussian noise on top of `fit$report$eta`). Forced to
+#'   uses the fitted conditional predictor). For AGHQ, the predictor uses
+#'   the stored latent modes at the fitted parameters. Forced to
 #'   `TRUE` when `newdata` is supplied (RE modes for unseen levels
 #'   cannot be redrawn).
 #' @param ... Currently unused.
 #'
 #' @return A matrix of dimension `n_obs x nsim` (or `nrow(newdata) x nsim`
-#'   when `newdata` is supplied).
+#'   when `newdata` is supplied). **Per-row family coverage (#1079):** rows
+#'   are drawn from their true fitted distribution for gaussian, binomial
+#'   (at the row's actual trial count, not forced to Bernoulli), poisson,
+#'   lognormal, Gamma, nbinom2, nbinom1, Beta, betabinomial, student-t,
+#'   zero-truncated poisson, zero-truncated nbinom2, delta_lognormal,
+#'   delta_gamma, ordinal_probit, and multinomial. The one exception is
+#'   tweedie, which has no exact draw implemented; its rows (and any other
+#'   unrecognised family) are returned as `NA_real_`, together with a
+#'   warning naming the affected `family_id` values — never a
+#'   Gaussian-on-link-scale substitute, and never silent. The `newdata`
+#'   path (predictions on unseen data) still falls back to a
+#'   Gaussian-on-link-scale draw for every family, with its own warning;
+#'   family-aware `newdata` simulation is not yet implemented.
 #' @importFrom stats simulate
 #' @export
 simulate.gllvmTMB_multi <- function(
@@ -1424,18 +1822,72 @@ simulate.gllvmTMB_multi <- function(
   condition_on_RE = FALSE,
   ...
 ) {
-  if (!is.null(seed)) {
-    set.seed(seed)
+  nsim_value <- suppressWarnings(as.numeric(nsim))
+  if (
+    length(nsim) != 1L ||
+      length(nsim_value) != 1L ||
+      is.na(nsim_value) ||
+      !is.finite(nsim_value) ||
+      nsim_value < 1L ||
+      nsim_value != floor(nsim_value)
+  ) {
+    cli::cli_abort("{.arg nsim} must be a single positive integer.")
+  }
+  nsim <- as.integer(nsim_value)
+
+  if (!is.null(newdata) &&
+      isTRUE((object$tmb_data$n_kernel_tiers %||% 0L) > 0L)) {
+    cli::cli_abort(c(
+      "Simulation with new data for multiple named kernel tiers is not supported.",
+      ">" = "Simulate training rows conditionally with {.code condition_on_RE = TRUE}."
+    ), class = "gllvmTMB_multi_kernel_simulation_newdata_unsupported")
+  }
+  if (is.null(newdata) && !isTRUE(condition_on_RE) &&
+      isTRUE((object$tmb_data$n_kernel_tiers %||% 0L) > 0L)) {
+    cli::cli_abort(c(
+      "Unconditional simulation for multiple named kernel tiers is not supported.",
+      "i" = "The kernel random effects cannot yet be redrawn by this simulator.",
+      ">" = "Use {.code condition_on_RE = TRUE} only for a conditional draw."
+    ), class = "gllvmTMB_multi_kernel_simulation_unsupported")
+  }
+  .gllvmTMB_local_seed(seed)
+
+  if (isTRUE(object$temporal$active) && is.null(newdata)) {
+    if (isTRUE(condition_on_RE)) {
+      out <- replicate(nsim, .draw_y_per_family(
+        object, as.numeric(object$report$eta)
+      ))
+      if (is.null(dim(out))) out <- as.matrix(out)
+      return(out)
+    }
+    ## The ordinary simulator builds a fresh predictor from every supported
+    ## non-temporal tier.  Add an independently redrawn temporal contribution
+    ## rather than subtracting only the temporal state from report$eta: that
+    ## would retain fitted B/W/source modes in an allegedly unconditional draw.
+    ok <- .check_simulate_unconditional(object)
+    if (!isTRUE(ok$can_redraw)) {
+      cli::cli_abort(c(
+        "Unconditional {.fn simulate} cannot redraw every component of this temporal fit.",
+        "i" = "Unsupported components: {.val {ok$unhandled}}.",
+        ">" = "Use {.code condition_on_RE = TRUE} for a conditional response draw, or remove the unsupported covariance tier."
+      ), class = "gllvmTMB_temporal_composed_simulation_unsupported")
+    }
+    out <- replicate(nsim, {
+      eta <- .simulate_eta_unconditional(object) +
+        .simulate_temporal_effect(object, redraw_scores = TRUE)
+      .draw_y_per_family(object, eta)
+    })
+    if (is.null(dim(out))) out <- as.matrix(out)
+    return(out)
   }
 
   ## Path 1: newdata or explicit condition_on_RE => use fitted eta (the
   ## old conditional behaviour). Newdata always uses fitted eta because
   ## we cannot redraw RE tiers for unseen levels.
   if (!is.null(newdata) || isTRUE(condition_on_RE)) {
-    .aghq_warn_re_gap(object, "simulate()")
     if (is.null(newdata)) {
       ## eta length matches family_id_vec length — family-aware OK.
-      eta <- as.numeric(object$report$eta)
+      eta <- .aghq_conditional_training_eta(object)
       out <- replicate(nsim, .draw_y_per_family(object, eta))
     } else {
       ## newdata supplied — eta length doesn't necessarily match the
@@ -1444,10 +1896,7 @@ simulate.gllvmTMB_multi <- function(
       ## is M2/M3 work (needs a per-row family extractor from newdata).
       pp <- predict(object, newdata = newdata)
       eta <- pp$est
-      sigma <- as.numeric(object$report$sigma_eps)
-      if (is.null(sigma) || length(sigma) == 0L) {
-        sigma <- exp(unname(object$opt$par["log_sigma_eps"]))
-      }
+      sigma <- .gllvmTMB_sigma_eps(object)
       cache_key <- "gllvmTMB.warned_simulate_newdata_gaussian_fallback"
       if (is.null(getOption(cache_key))) {
         cli::cli_warn(
@@ -1475,11 +1924,17 @@ simulate.gllvmTMB_multi <- function(
   ## parametric simulate-refit uncertainty.
   ##
   ## Currently handles: rr_B, diag_B, rr_W, diag_W, propto, lv_B, phylo_rr,
-  ## diag_species -- see .check_simulate_unconditional(), which is the single
-  ## source of truth for this list. Other tiers (notably spde and phylo_diag)
-  ## fall back to conditional with a one-shot warning.
+  ## phylo_diag, diag_species and the plain SPDE field tiers -- see
+  ## .check_simulate_unconditional(), which is the single source of truth for
+  ## this list. Other tiers (notably the slope-augmented spde blocks) fall back
+  ## to conditional with a one-shot warning.
   ok <- .check_simulate_unconditional(object)
   if (!ok$can_redraw) {
+    if (!is.null(object$source_strength)) cli::cli_abort(c(
+      "Unconditional simulation cannot redraw every component of this rho-enabled fit.",
+      "x" = "Unsupported components: {.val {ok$unhandled}}.",
+      "i" = "Use {.code condition_on_RE = TRUE} only when conditional simulation is intended."
+    ), class = "gllvmTMB_structured_rho_simulation_unsupported")
     cli::cli_warn(c(
       "Unconditional {.fn simulate} does not yet redraw RE tiers: {.val {ok$unhandled}}.",
       "!" = "Falling back to conditional simulation, which reuses the fitted random-effect modes. It understates between-unit variability, so simulate-based intervals for this fit (e.g. from {.fn bootstrap_Sigma}) are too narrow and are not calibrated.",
@@ -1507,15 +1962,99 @@ simulate.gllvmTMB_multi <- function(
   out
 }
 
+#' Draw one Gaussian response vector from a temporal-source fit
+#'
+#' The score prior is redrawn only for an unconditional draw.  The independent
+#' Gaussian terms are always new response variation, matching the ordinary
+#' `condition_on_RE` contract.
+#'
+#' @keywords internal
+#' @noRd
+.simulate_temporal_effect <- function(fit, redraw_scores = TRUE) {
+  if (!isTRUE(fit$temporal$active)) {
+    stop("Internal temporal simulation requires a temporal fit.", call. = FALSE)
+  }
+  td <- fit$tmb_data
+  trait_id <- td$trait_id + 1L
+  n_traits <- td$n_traits
+  par <- fit$tmb_obj$env$parList(fit$opt$par)
+  n_state <- td$n_temporal_states
+  state_id <- td$temporal_state_id + 1L
+  predecessor <- td$temporal_predecessor + 1L
+  rank <- td$temporal_rank
+  lambda <- if (rank > 0L) as.matrix(fit$report$Lambda_temporal) else NULL
+  ## TMB optimizes standard-normal innovations but reports the recursively
+  ## constructed AR1/OU states that actually enter eta.  Subtract the latter
+  ## before an unconditional redraw; subtracting innovations leaves a
+  ## persistence-dependent piece of the fitted state in every draw.
+  z <- as.matrix(fit$report$z_temporal_state)
+  q <- if (isTRUE(fit$temporal$unique)) {
+    as.matrix(fit$report$q_temporal_state)
+  } else {
+    matrix(0, nrow = n_traits, ncol = n_state)
+  }
+  effect <- function(z, q) {
+    out <- numeric(length(state_id))
+    if (rank > 0L) out <- out + rowSums(lambda[trait_id, , drop = FALSE] *
+      t(z[, state_id, drop = FALSE]))
+    if (isTRUE(fit$temporal$unique)) out <- out + q[cbind(trait_id, state_id)]
+    out
+  }
+  fitted_effect <- effect(z, q)
+  if (redraw_scores) {
+    a <- function(s) {
+      if (predecessor[s] == 0L) return(0)
+      if (identical(fit$temporal$structure, "ar1")) {
+        phi <- (1 - 1e-6) * tanh(par$theta_temporal_time)
+        phi^td$temporal_gap[s]
+      } else exp(-exp(par$theta_temporal_time) * td$temporal_elapsed[s])
+    }
+    z[] <- 0
+    q[] <- 0
+    sd_q <- exp(as.numeric(par$theta_temporal_diag))
+    for (s in seq_len(n_state)) {
+      aa <- a(s)
+      innovation <- if (identical(fit$temporal$structure, "ou")) {
+        sqrt(-expm1(-2 * exp(par$theta_temporal_time) * td$temporal_elapsed[s]))
+      } else sqrt(1 - aa^2)
+      prev <- predecessor[s]
+      if (rank > 0L) z[, s] <- if (prev == 0L) stats::rnorm(rank) else
+        aa * z[, prev] + innovation * stats::rnorm(rank)
+      if (isTRUE(fit$temporal$unique)) q[, s] <- if (prev == 0L) {
+        stats::rnorm(n_traits, sd = sd_q)
+      } else aa * q[, prev] + innovation * stats::rnorm(n_traits, sd = sd_q)
+    }
+  }
+  effect(z, q)
+}
+
+#' @keywords internal
+#' @noRd
+.simulate_temporal_response <- function(fit, redraw_scores = TRUE) {
+  temporal_new <- .simulate_temporal_effect(fit, redraw_scores = redraw_scores)
+  temporal_fitted <- .simulate_temporal_effect(fit, redraw_scores = FALSE)
+  eta <- as.numeric(fit$report$eta) - temporal_fitted + temporal_new
+  par <- fit$tmb_obj$env$parList(fit$opt$par)
+  eta + stats::rnorm(length(eta), sd = exp(as.numeric(par$log_sigma_eps[1L])))
+}
+
 #' Family-aware per-row draw from a fitted model
 #'
 #' For each row in the long-format data, look up `(family_id, link_id)`
-#' from `fit$tmb_data` and draw `y` from the appropriate distribution
-#' at the linear predictor `eta`. Supports the 5 families exercised by
-#' the M1.2 fixture (Gaussian, binomial, Poisson, Gamma, nbinom2) plus
-#' lognormal. Other families warn once per session and fall back to
-#' Gaussian-on-the-link-scale (i.e., previous behaviour); per-family draws for
-#' the remaining families are not yet implemented.
+#' from `fit$tmb_data` and draw `y` from the appropriate distribution at
+#' the linear predictor `eta`, using the SAME per-family parameterisations
+#' as `.gllvmTMB_exact_rq_residuals()` (`R/predictive-diagnostics.R`).
+#' Drawn from their true distribution: gaussian (0), binomial (1, at the
+#' row's actual `n_trials`), poisson (2), lognormal (3), Gamma (4),
+#' nbinom2 (5), Beta (7), betabinomial (8), student-t (9),
+#' zero-truncated poisson (10, by CDF inversion), zero-truncated nbinom2
+#' (11, by CDF inversion), delta_lognormal (12, presence + positive part
+#' sharing the fitted eta), delta_gamma (13, same), ordinal_probit (14,
+#' latent-threshold draw), nbinom1 (15), multinomial (16, grouped
+#' softmax pass below). Tweedie (6) has no simple exact draw without a
+#' new package dependency and is NOT implemented. Any unsupported
+#' family_id draws `NA_real_` for the affected rows (never a
+#' Gaussian-on-link-scale substitute) and warns on every call (#1079).
 #'
 #' @keywords internal
 #' @noRd
@@ -1526,39 +2065,76 @@ simulate.gllvmTMB_multi <- function(
   n <- length(eta)
   y <- numeric(n)
 
-  ## sigma_eps is scalar for Gaussian/lognormal traits. Ordinary Gamma uses
-  ## per-trait phi_gamma shape below.
-  sigma_eps <- as.numeric(fit$report$sigma_eps)
-  if (is.null(sigma_eps) || length(sigma_eps) == 0L) {
-    sigma_eps <- exp(unname(fit$opt$par["log_sigma_eps"]))
-    if (is.na(sigma_eps)) sigma_eps <- 1
-  }
-  sigma_eps <- sigma_eps[1L]
+  ## Pure fits retain one scalar. Joint Gaussian-lognormal fits carry a raw-
+  ## scale Gaussian slot and a log-scale lognormal slot.
+  sigma_eps_gaussian <- .gllvmTMB_sigma_eps_for_family(fit, 0L)
+  sigma_eps_lognormal <- .gllvmTMB_sigma_eps_for_family(fit, 3L)
   phi_gamma <- as.numeric(fit$report$phi_gamma %||% numeric(0L))
   phi_nbinom2 <- fit$report$phi_nbinom2 # length n_traits
   phi_nbinom1 <- fit$report$phi_nbinom1 # length n_traits
+  phi_beta <- fit$report$phi_beta # length n_traits
+  phi_betabinom <- fit$report$phi_betabinom # length n_traits
+  sigma_student <- fit$report$sigma_student # length n_traits, a SCALE not an sd
+  df_student <- fit$report$df_student # length n_traits
+  phi_truncnb2 <- fit$report$phi_truncnb2 # length n_traits (NOT phi_nbinom2)
+  sigma_lognormal_delta <- fit$report$sigma_lognormal_delta # length n_traits
+  phi_gamma_delta <- fit$report$phi_gamma_delta # length n_traits
+  zi <- fit$report$zi # length n_traits (fid 17/18/19, Arc D)
+  n_trials <- fit$tmb_data$n_trials # length n; default 1 (Bernoulli) when not multi-trial
+  cens_limit <- fit$tmb_data$cens_limit # length n; 0 = uncensored (fid 21, Arc E #1244; renumbered from 20)
 
-  ## Pre-flag any unsupported families with a one-shot warning so users
-  ## know fall-back-to-Gaussian-on-link-scale is in play.
+  ## ordinal_probit (fid 14) cutpoint reconstruction -- the SAME convention
+  ## .gllvmTMB_exact_rq_residuals() uses (R/predictive-diagnostics.R):
+  ## tau_1 = 0 fixed, tau_2 .. tau_{K-1} read from the flattened report
+  ## vector via n_ordinal_cuts_per_trait / ordinal_offset_per_trait.
+  n_ordinal_cuts_per_trait <- as.integer(
+    fit$tmb_data$n_ordinal_cuts_per_trait %||% integer(0)
+  )
+  ordinal_offset_per_trait <- as.integer(
+    fit$tmb_data$ordinal_offset_per_trait %||% integer(0)
+  )
+  ordinal_cutpoints_flat <- as.numeric(fit$report$ordinal_cutpoints %||% numeric(0))
+  ordinal_full_cuts <- if (length(n_ordinal_cuts_per_trait) > 0L) {
+    lapply(seq_along(n_ordinal_cuts_per_trait), function(t) {
+      k_minus_2 <- n_ordinal_cuts_per_trait[t]
+      if (is.na(k_minus_2) || k_minus_2 < 0L) {
+        return(NULL)
+      }
+      base <- ordinal_offset_per_trait[t]
+      extra <- if (k_minus_2 > 0L) {
+        ordinal_cutpoints_flat[(base + 1L):(base + k_minus_2)]
+      } else {
+        numeric(0)
+      }
+      c(0, extra)
+    })
+  } else {
+    list()
+  }
+
+  ## Pre-flag any unsupported families with a warning so users know
+  ## fall-back-to-NA is in play. Fires on EVERY call (i.e. per simulate()
+  ## draw, not once per session, #1079) -- a repeated warning is a much
+  ## smaller cost than a user missing it entirely because an earlier fit
+  ## in the same session already tripped it once.
   uniq_fids <- unique(fids)
   ## family_id 16 (multinomial, baseline-category softmax) is drawn in the
   ## grouped pass after the per-row loop (one categorical draw per observation-
   ## group, not per contrast row); the per-row loop leaves those rows at 0.
-  supported <- c(0L, 1L, 2L, 3L, 4L, 5L, 15L, 16L)
+  supported <- c(
+    0L, 1L, 2L, 3L, 4L, 5L, 7L, 8L, 9L, 10L, 11L, 12L, 13L, 14L, 15L, 16L,
+    17L, 18L, 19L, 20L, 21L
+  )
   unsupp <- setdiff(uniq_fids, supported)
   if (length(unsupp) > 0L) {
-    cache_key <- "gllvmTMB.warned_simulate_unsupported_family"
-    if (is.null(getOption(cache_key))) {
-      cli::cli_warn(
-        c(
-          "Family-aware {.fn simulate} not yet implemented for family_id values: {.val {unsupp}}.",
-          "i" = "Affected rows fall back to Gaussian-on-link-scale draws. Broader family coverage is not yet implemented.",
-          ">" = "Currently supported: gaussian (0), binomial (1), poisson (2), lognormal (3), Gamma (4), nbinom2 (5), nbinom1 (15), multinomial (16)."
-        ),
-        class = "gllvmTMB_simulate_unsupported_family"
-      )
-      options(stats::setNames(list(TRUE), cache_key))
-    }
+    cli::cli_warn(
+      c(
+        "Family-aware {.fn simulate} not yet implemented for family_id values: {.val {unsupp}}.",
+        "i" = "Affected rows are drawn as {.val NA}, not a Gaussian-on-link-scale substitute -- a wrong number is worse than a missing one.",
+        ">" = "Currently supported: gaussian (0), binomial (1), poisson (2), lognormal (3), Gamma (4), nbinom2 (5), Beta (7), betabinomial (8), student-t (9), truncated_poisson (10), truncated_nbinom2 (11), delta_lognormal (12), delta_gamma (13), ordinal_probit (14), nbinom1 (15), multinomial (16), zi_poisson (17), zi_nbinom2 (18), zi_binomial (19), ordinal_logit (20), censored_poisson (21). Tweedie (6) has no exact draw implemented."
+      ),
+      class = "gllvmTMB_simulate_unsupported_family"
+    )
   }
 
   for (i in seq_len(n)) {
@@ -1569,25 +2145,30 @@ simulate.gllvmTMB_multi <- function(
 
     if (fid == 0L) {
       ## Gaussian, identity link
-      y[i] <- eta_i + stats::rnorm(1L, sd = sigma_eps)
+      y[i] <- eta_i + stats::rnorm(1L, sd = sigma_eps_gaussian)
     } else if (fid == 1L) {
-      ## Binomial — gllvmTMB does 1-trial Bernoulli per row
+      ## Binomial, dispatched on link_id_vec exactly as src/gllvmTMB.cpp
+      ## fid == 1 does. size is the row's actual n_trials (cbind(succ, fail)
+      ## or weights = n_trials) -- previously hard-coded to 1, silently
+      ## drawing Bernoulli for every row regardless of trial count (#1079).
       p <- if (lid == 0L) {
         stats::plogis(eta_i) # logit
       } else if (lid == 1L) {
         stats::pnorm(eta_i) # probit
       } else if (lid == 2L) {
-        1 - exp(-exp(eta_i)) # cloglog
+        -expm1(-exp(eta_i))  # cloglog
       } else {
         stats::plogis(eta_i) # fallback
       }
-      y[i] <- stats::rbinom(1L, size = 1L, prob = p)
+      Nt <- if (!is.null(n_trials) && length(n_trials) >= i) n_trials[i] else 1
+      if (!is.finite(Nt) || Nt < 1) Nt <- 1
+      y[i] <- stats::rbinom(1L, size = as.integer(round(Nt)), prob = p)
     } else if (fid == 2L) {
       ## Poisson, log link
       y[i] <- stats::rpois(1L, lambda = exp(eta_i))
     } else if (fid == 3L) {
       ## Lognormal — y = exp(eta + N(0, sigma_eps))
-      y[i] <- exp(eta_i + stats::rnorm(1L, sd = sigma_eps))
+      y[i] <- exp(eta_i + stats::rnorm(1L, sd = sigma_eps_lognormal))
     } else if (fid == 4L) {
       ## Gamma, log link with per-trait shape phi_gamma.
       ## scale = mu / shape; E(y) = mu.
@@ -1600,6 +2181,163 @@ simulate.gllvmTMB_multi <- function(
       mu <- exp(eta_i)
       size <- if (is.null(phi_nbinom2)) 1 else phi_nbinom2[tid_1]
       y[i] <- stats::rnbinom(1L, mu = mu, size = size)
+    } else if (fid == 7L) {
+      ## Beta, logit link, mean-precision parametrisation (src/gllvmTMB.cpp
+      ## fid == 7): mu = plogis(eta), shape1 = mu*phi, shape2 = (1-mu)*phi.
+      ## The engine hardcodes logit for this family regardless of link_id
+      ## (R/fit-multi.R aborts at fit time on any other link).
+      mu_b <- stats::plogis(eta_i)
+      phi_b <- if (!is.null(phi_beta) && length(phi_beta) >= tid_1) {
+        phi_beta[tid_1]
+      } else {
+        1
+      }
+      if (!is.finite(phi_b) || phi_b <= 0) phi_b <- 1
+      y[i] <- stats::rbeta(1L, shape1 = mu_b * phi_b, shape2 = (1 - mu_b) * phi_b)
+    } else if (fid == 8L) {
+      ## Beta-binomial (src/gllvmTMB.cpp fid == 8; same hardcoded-logit note
+      ## as fid 7): draw p ~ Beta(a, b) with mu = plogis(eta), a = mu*phi,
+      ## b = (1-mu)*phi, then y ~ Binomial(n_trials, p).
+      mu_bb <- stats::plogis(eta_i)
+      phi_bb <- if (!is.null(phi_betabinom) && length(phi_betabinom) >= tid_1) {
+        phi_betabinom[tid_1]
+      } else {
+        1
+      }
+      if (!is.finite(phi_bb) || phi_bb <= 0) phi_bb <- 1
+      Nt <- if (!is.null(n_trials) && length(n_trials) >= i) n_trials[i] else 1
+      if (!is.finite(Nt) || Nt < 1) Nt <- 1
+      p_bb <- stats::rbeta(1L, shape1 = mu_bb * phi_bb, shape2 = (1 - mu_bb) * phi_bb)
+      y[i] <- stats::rbinom(1L, size = as.integer(round(Nt)), prob = p_bb)
+    } else if (fid == 9L) {
+      ## Student-t, identity link (src/gllvmTMB.cpp fid == 9): eta IS the
+      ## location mu directly. sigma_student is a SCALE, not an sd -- the
+      ## draw is eta + sigma_student * rt(df), matching z = (y-eta)/sigma_t
+      ## ~ t_df in the exact-residual code.
+      sigma_t <- if (!is.null(sigma_student) && length(sigma_student) >= tid_1) {
+        sigma_student[tid_1]
+      } else {
+        1
+      }
+      df_t <- if (!is.null(df_student) && length(df_student) >= tid_1) {
+        df_student[tid_1]
+      } else {
+        5
+      }
+      if (!is.finite(sigma_t) || sigma_t <= 0) sigma_t <- 1
+      if (!is.finite(df_t) || df_t <= 0) df_t <- 5
+      y[i] <- eta_i + sigma_t * stats::rt(1L, df = df_t)
+    } else if (fid == 10L) {
+      ## Zero-truncated Poisson (src/gllvmTMB.cpp fid == 10): support starts
+      ## at y = 1. Exact draw by CDF inversion: u ~ Unif(0,1), target =
+      ## u*(1-p0) + p0 lands in [p0, 1), and qpois(target, lambda) inverts
+      ## the ordinary Poisson CDF at that target -- exactly the truncated-
+      ## CDF inverse restricted above the truncation point.
+      lambda_t <- exp(eta_i)
+      p0_t <- exp(-lambda_t)
+      denom_t <- 1 - p0_t
+      if (!is.finite(denom_t) || denom_t <= 0) {
+        y[i] <- NA_real_
+      } else {
+        target <- stats::runif(1L) * denom_t + p0_t
+        y[i] <- stats::qpois(target, lambda = lambda_t)
+      }
+    } else if (fid == 11L) {
+      ## Zero-truncated NB2 (src/gllvmTMB.cpp fid == 11): same inversion as
+      ## truncated Poisson above. Dispersion is the SEPARATE per-trait
+      ## phi_truncnb2 (its own log_phi_truncnb2 PARAMETER_VECTOR), NOT
+      ## phi_nbinom2.
+      mu_t <- exp(eta_i)
+      size_t <- if (!is.null(phi_truncnb2) && length(phi_truncnb2) >= tid_1) {
+        phi_truncnb2[tid_1]
+      } else {
+        NA_real_
+      }
+      p0_t <- if (is.finite(size_t) && size_t > 0) {
+        stats::pnbinom(0, size = size_t, mu = mu_t)
+      } else {
+        NA_real_
+      }
+      denom_t <- if (is.finite(p0_t)) 1 - p0_t else NA_real_
+      if (!is.finite(denom_t) || denom_t <= 0) {
+        y[i] <- NA_real_
+      } else {
+        target <- stats::runif(1L) * denom_t + p0_t
+        y[i] <- stats::qnbinom(target, size = size_t, mu = mu_t)
+      }
+    } else if (fid == 12L) {
+      ## delta_lognormal (hurdle; src/gllvmTMB.cpp fid == 12): ONE shared
+      ## eta drives both components -- presence I{y>0} ~ Bernoulli(plogis(eta)),
+      ## and log(y) | y>0 ~ Normal(eta, sigma_lognormal_delta) at the SAME
+      ## eta (not a separate presence/positive predictor).
+      pres <- stats::rbinom(1L, size = 1L, prob = stats::plogis(eta_i))
+      if (pres == 1L) {
+        sigma_ld <- if (
+          !is.null(sigma_lognormal_delta) && length(sigma_lognormal_delta) >= tid_1
+        ) {
+          sigma_lognormal_delta[tid_1]
+        } else {
+          1
+        }
+        if (!is.finite(sigma_ld) || sigma_ld <= 0) sigma_ld <- 1
+        y[i] <- exp(eta_i + stats::rnorm(1L, sd = sigma_ld))
+      } else {
+        y[i] <- 0
+      }
+    } else if (fid == 13L) {
+      ## delta_gamma (hurdle; src/gllvmTMB.cpp fid == 13): same shared-eta
+      ## presence draw as delta_lognormal above; positive part has
+      ## shape = 1/phi^2, scale = mu*phi^2 (mu = exp(eta), CV(y) = phi).
+      pres <- stats::rbinom(1L, size = 1L, prob = stats::plogis(eta_i))
+      if (pres == 1L) {
+        phi_gd <- if (
+          !is.null(phi_gamma_delta) && length(phi_gamma_delta) >= tid_1
+        ) {
+          phi_gamma_delta[tid_1]
+        } else {
+          1
+        }
+        if (!is.finite(phi_gd) || phi_gd <= 0) phi_gd <- 1
+        mu_g <- exp(eta_i)
+        shape_g <- 1 / (phi_gd^2)
+        scale_g <- mu_g * (phi_gd^2)
+        y[i] <- stats::rgamma(1L, shape = shape_g, scale = scale_g)
+      } else {
+        y[i] <- 0
+      }
+    } else if (fid == 14L) {
+      ## ordinal_probit (Hadfield 2015 eqn 9; src/gllvmTMB.cpp fid == 14):
+      ## draw the latent y* = eta + N(0, 1) and bin it against the
+      ## reconstructed cutpoints tau_1 = 0 .. tau_{K-1} (tau_0 = -Inf,
+      ## tau_K = +Inf) -- the SAME cutpoints .gllvmTMB_exact_rq_residuals()
+      ## reconstructs. y = k iff tau_{k-1} < y* <= tau_k, so counting how
+      ## many cutpoints y* exceeds gives k - 1.
+      cuts_t <- if (tid_1 >= 1L && tid_1 <= length(ordinal_full_cuts)) {
+        ordinal_full_cuts[[tid_1]]
+      } else {
+        NULL
+      }
+      if (is.null(cuts_t)) {
+        y[i] <- NA_real_
+      } else {
+        ystar <- eta_i + stats::rnorm(1L)
+        y[i] <- 1L + sum(ystar > cuts_t)
+      }
+    } else if (fid == 20L) {
+      ## ordinal_logit (src/gllvmTMB.cpp fid == 20): identical draw
+      ## mechanics to fid 14 above, with the latent error drawn from the
+      ## standard logistic distribution (stats::rlogis) instead of N(0, 1).
+      cuts_t <- if (tid_1 >= 1L && tid_1 <= length(ordinal_full_cuts)) {
+        ordinal_full_cuts[[tid_1]]
+      } else {
+        NULL
+      }
+      if (is.null(cuts_t)) {
+        y[i] <- NA_real_
+      } else {
+        ystar <- eta_i + stats::rlogis(1L)
+        y[i] <- 1L + sum(ystar > cuts_t)
+      }
     } else if (fid == 15L) {
       ## nbinom1, log link. LINEAR mean-variance Var = mu * (1 + phi),
       ## so the dispersion enters the size as size = mu / phi (NOT size =
@@ -1617,11 +2355,50 @@ simulate.gllvmTMB_multi <- function(
       }
     } else if (fid == 16L) {
       ## Multinomial (softmax) — drawn in the grouped pass below, one categorical
-      ## draw per observation-group. Leave y[i] = 0 so the terminal Gaussian-on-
-      ## link fallback does NOT overwrite the one-hot (panel Slice-1 correctness).
+      ## draw per observation-group. Leave y[i] = 0 so it isn't left as NA by
+      ## the terminal fallback below (panel Slice-1 correctness).
+    } else if (fid == 17L || fid == 18L || fid == 19L) {
+      ## Zero-inflated families (Arc D / Design 62): draw a structural zero
+      ## with probability zi_t, else draw from the ordinary count kernel
+      ## (matches the mixture density in dev/gapclose/arcD/alignment-zi.md
+      ## by construction -- the standard ZI simulation identity).
+      zi_t <- if (!is.null(zi) && length(zi) >= tid_1) zi[tid_1] else 0
+      structural_zero <- stats::rbinom(1L, 1L, zi_t) == 1L
+      if (structural_zero) {
+        y[i] <- 0
+      } else if (fid == 17L) {
+        y[i] <- stats::rpois(1L, lambda = exp(eta_i))
+      } else if (fid == 18L) {
+        mu <- exp(eta_i)
+        size <- if (!is.null(phi_nbinom2) && length(phi_nbinom2) >= tid_1) {
+          phi_nbinom2[tid_1]
+        } else {
+          1
+        }
+        y[i] <- stats::rnbinom(1L, mu = mu, size = size)
+      } else {
+        p <- stats::plogis(eta_i)
+        Nt <- if (!is.null(n_trials) && length(n_trials) >= i) n_trials[i] else 1
+        if (!is.finite(Nt) || Nt < 1) Nt <- 1
+        y[i] <- stats::rbinom(1L, size = as.integer(round(Nt)), prob = p)
+      }
+    } else if (fid == 21L) {
+      ## censored_poisson (Arc E, #1244; renumbered 2026-09-03 from 20 --
+      ## ordinal_logit, PR #1250, holds 20): draw the LATENT (uncensored)
+      ## Poisson count, then re-apply this row's OWN censoring design --
+      ## the censoring limit is a fixed property of the observation
+      ## mechanism (e.g. a detection ceiling), not part of the random draw
+      ## itself, so a resimulated dataset keeps the same row-level limits
+      ## and only redraws whether each replicate happens to exceed them
+      ## (dev/gapclose/arcE/alignment-censored-poisson.md).
+      C_i <- if (!is.null(cens_limit) && length(cens_limit) >= i) cens_limit[i] else 0
+      y_latent <- stats::rpois(1L, lambda = exp(eta_i))
+      y[i] <- if (is.finite(C_i) && C_i >= 1 && y_latent >= C_i) C_i else y_latent
     } else {
-      ## Unsupported family — Gaussian-on-link-scale fallback (warned above)
-      y[i] <- eta_i + stats::rnorm(1L, sd = sigma_eps)
+      ## Unsupported family (currently only tweedie, fid 6, and anything
+      ## unrecognised) — NA, not a Gaussian-on-link-scale substitute
+      ## (warned above, once per call, #1079).
+      y[i] <- NA_real_
     }
   }
 
@@ -1637,7 +2414,8 @@ simulate.gllvmTMB_multi <- function(
     if (is.null(mgid)) {
       cli::cli_abort(c(
         "Internal: multinomial rows present but {.code fit$tmb_data$multinom_group_id} is missing.",
-        "i" = "Cannot group the softmax contrast rows for a categorical draw."
+        "i" = "Cannot group the softmax contrast rows for a categorical draw.",
+        ">" = "Check that {.arg fit} was returned by {.fn gllvmTMB} unmodified; if it was, file an issue at https://github.com/itchyshin/gllvmTMB/issues with a reproducible example and {.code sessionInfo()}."
       ), class = "gllvmTMB_simulate_multinomial_group_missing")
     }
     for (g in split(mn_rows, mgid[mn_rows])) {
@@ -1651,13 +2429,106 @@ simulate.gllvmTMB_multi <- function(
   y
 }
 
+#' Is the fit's SPDE spatial tier one that `simulate()` can redraw?
+#'
+#' Redrawable: the per-trait field (`spatial_indep()`, `spatial_scalar()`), and
+#' the low-rank `spatial_latent()` fields with or without the per-trait unique
+#' companion. Not redrawable here: the slope-augmented SPDE blocks and the
+#' column-slope block (each adds a further field with its own covariance), and
+#' rho-enabled spatial fits, which carry their own redraw route.
+#'
+#' @keywords internal
+#' @noRd
+.spde_redrawable <- function(fit) {
+  td <- fit$tmb_data
+  if (!isTRUE(fit$use$spde) || !is.null(fit$source_strength) || !is.list(td)) {
+    return(FALSE)
+  }
+  slope_flags <- c("use_spde_slope", "use_spde_dep_slope",
+                   "use_spde_latent_slope", "use_spatial_column_slope")
+  !any(vapply(slope_flags, function(n) {
+    v <- td[[n]]
+    length(v) == 1L && !is.na(v) && as.integer(v) == 1L
+  }, logical(1)))
+}
+
+#' Draw the SPDE spatial contribution to the linear predictor
+#'
+#' With `Q = kappa^4 M0 + 2 kappa^2 M1 + M2`, the per-trait path draws
+#' `omega_t ~ N(0, (tau_t^2 Q)^-1)`; the `spatial_latent()` path draws `K`
+#' shared fields `~ N(0, Q^-1)` (tau is absorbed into `Lambda_spde`) and maps
+#' them through `Lambda_spde`, adding the per-trait field when
+#' `spde_lv_unique == 1`. Mirrors the template's eta construction.
+#'
+#' @keywords internal
+#' @noRd
+.simulate_spde_field <- function(fit) {
+  if (!.spde_redrawable(fit)) {
+    stop("Internal SPDE redraw was requested for a fit it cannot redraw.",
+      call. = FALSE)
+  }
+  td <- fit$tmb_data
+  par <- fit$tmb_obj$env$parList(fit$opt$par)
+  kappa <- exp(as.numeric(par$log_kappa_spde[[1L]]))
+  n_mesh <- ncol(td$A_proj)
+  if (n_mesh < 1L) {
+    stop("Internal SPDE parameter dimensions do not match the fitted mesh.",
+      call. = FALSE)
+  }
+  Q <- kappa^4 * as.matrix(td$spde_M0) +
+    2 * kappa^2 * as.matrix(td$spde_M1) + as.matrix(td$spde_M2)
+  U <- tryCatch(chol(Q), error = function(e) NULL)
+  if (is.null(U)) {
+    stop("The fitted SPDE precision matrix could not be factorized for unconditional simulation.",
+      call. = FALSE)
+  }
+  trait <- td$trait_id + 1L
+  n_lv <- as.integer(td$spde_lv_k %||% 0L)
+  out <- numeric(length(trait))
+  if (n_lv == 0L || identical(as.integer(td$spde_lv_unique %||% 0L), 1L)) {
+    tau <- exp(as.numeric(par$log_tau_spde))
+    if (length(tau) != td$n_traits) {
+      stop("Internal SPDE parameter dimensions do not match the fitted mesh.",
+        call. = FALSE)
+    }
+    omega <- matrix(0, nrow = n_mesh, ncol = td$n_traits)
+    for (t in seq_len(td$n_traits)) {
+      omega[, t] <- backsolve(U, stats::rnorm(n_mesh)) / tau[[t]]
+    }
+    projected <- as.matrix(td$A_proj %*% omega)
+    out <- out + projected[cbind(seq_along(trait), trait)]
+  }
+  if (n_lv > 0L) {
+    Lambda <- as.matrix(fit$report$Lambda_spde)
+    for (k in seq_len(n_lv)) {
+      field <- as.numeric(td$A_proj %*% backsolve(U, stats::rnorm(n_mesh)))
+      out <- out + Lambda[cbind(trait, k)] * field
+    }
+  }
+  out
+}
+
 #' @keywords internal
 #' @noRd
 .check_simulate_unconditional <- function(fit) {
   handled <- c(
     "rr_B", "diag_B", "rr_W", "diag_W", "propto",
-    "lv_B", "phylo_rr", "diag_species"
+    "lv_B", "phylo_rr", "phylo_diag", "diag_species", "re_int",
+    ## The temporal tier is redrawn by the temporal branch above rather than
+    ## .simulate_eta_unconditional(); count it as covered when determining
+    ## whether the remaining tiers can be redrawn.
+    "temporal"
   )
+  if (identical(fit$source_strength$source, "spatial") ||
+      .spde_redrawable(fit)) {
+    handled <- c(handled, "spde")
+  }
+  if (is.list(fit$tmb_data)) {
+    # Mode descriptors do not add another field. Actual engine flags are the
+    # authority, so folded Psi and indep/dep cannot force a silent fallback.
+    return(list(can_redraw = !length(.gllvmTMB_predict_unhandled_re_tiers(fit,handled)),
+      unhandled = .gllvmTMB_predict_unhandled_re_tiers(fit,handled)))
+  }
   active <- names(fit$use)[vapply(fit$use, isTRUE, logical(1))]
   unhandled <- setdiff(active, handled)
   list(
@@ -1741,11 +2612,15 @@ simulate.gllvmTMB_multi <- function(
     sp_id <- fit$tmb_data$species_id + 1L
     n_species <- fit$tmb_data$n_species
     lam_phy <- as.numeric(fit$report$lam_phy)
-    P <- as.matrix(fit$tmb_data$Cphy_inv)
-    U <- chol(P)
-    p_phy_new <- matrix(0, n_species, n_traits)
-    for (t in seq_len(n_traits)) {
-      p_phy_new[, t] <- sqrt(lam_phy) * backsolve(U, stats::rnorm(n_species))
+    if (!is.null(fit$source_strength)) {
+      p_phy_new <- sqrt(lam_phy)*.structured_rho_scores(fit,n_traits,redraw=TRUE)
+    } else {
+      P <- as.matrix(fit$tmb_data$Cphy_inv)
+      U <- chol(P)
+      p_phy_new <- matrix(0, n_species, n_traits)
+      for (t in seq_len(n_traits)) {
+        p_phy_new[, t] <- sqrt(lam_phy) * backsolve(U, stats::rnorm(n_species))
+      }
     }
     eta <- eta + p_phy_new[cbind(sp_id, trait_id)]
   }
@@ -1754,7 +2629,13 @@ simulate.gllvmTMB_multi <- function(
   ## on the augmented node set (precision Ainv_phy_rr = A^{-1}); mapped to obs via
   ## species_aug_id and the phylo loadings Lambda_phy. Draw via the precision
   ## Cholesky: backsolve(chol(A^{-1}), z) has covariance (A^{-1})^{-1} = A.
-  if (isTRUE(fit$use$phylo_rr)) {
+  if (identical(fit$source_strength$source,"spatial")) {
+    effect <- .structured_rho_spatial_contribution(fit,redraw=TRUE)
+    eta <- eta + effect[cbind(fit$tmb_data$spatial_rho_group_id+1L,trait_id)]
+  } else if (!is.null(fit$source_strength)) {
+    effect <- .structured_rho_contribution(fit,redraw=TRUE)
+    eta <- eta + effect[cbind(fit$tmb_data$species_id+1L,trait_id)]
+  } else if (isTRUE(fit$use$phylo_rr)) {
     d_phy <- fit$tmb_data$d_phy
     n_aug <- fit$tmb_data$n_aug_phy
     Lambda_phy <- fit$report$Lambda_phy # (n_traits x d_phy)
@@ -1769,6 +2650,26 @@ simulate.gllvmTMB_multi <- function(
         g_phy_new[sp_aug_id, , drop = FALSE]
     )
     eta <- eta + contrib
+  }
+
+  if (is.null(fit$source_strength) && isTRUE(fit$use$phylo_diag)) {
+    scores <- .structured_rho_scores(fit,n_traits,"g_phy_diag","g_phy_diag_iid",redraw=TRUE)
+    eta <- eta + scores[cbind(fit$tmb_data$species_id+1L,trait_id)]*fit$report$sd_phy_diag[trait_id]
+  }
+
+  ## SPDE spatial tier (per-trait or low-rank fields), redrawn from the exact
+  ## fitted Q precision. This also serves the one composed spatial route
+  ## admitted with temporal covariance, `temporal_indep() + spatial_indep()`.
+  if (.spde_redrawable(fit)) {
+    eta <- eta + .simulate_spde_field(fit)
+  }
+
+  if (isTRUE(fit$use$re_int)) {
+    td <- fit$tmb_data
+    for (k in seq_len(td$n_re_int_terms)) {
+      effect <- stats::rnorm(td$re_int_n_groups[k],sd=exp(fit$report$log_sigma_re_int[k]))
+      eta <- eta + effect[td$re_int_group_id[,k]+1L]
+    }
   }
 
   ## diag_species: non-phylogenetic species random effect (Stage-3, cpp l.959):
@@ -1809,28 +2710,48 @@ simulate.gllvmTMB_multi <- function(
 #' @export
 sanity_multi <- function(object, gradient_thresh = 1e-2, se_thresh = 100) {
   if (!inherits(object, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+    .gllvmTMB_abort_not_multi_fit(object)
   }
   is_mspl <- .gllvmTMB_is_mspl(object)
   flags <- list()
 
-  ## 1. nlminb convergence
-  flags$converged <- (object$opt$convergence == 0L)
+  ## 1-2. Convergence and max gradient. #1092: on a ridged fit the raw
+  ## `tmb_obj$gr()` reports the UNPENALISED gradient at the PENALISED optimum
+  ## (|lambda|/tau^2, not ~0), so the gradient check must judge the objective
+  ## the fit actually optimised. #1352: a gradient that errors or is not finite
+  ## is reported (max |gr| = NA), never passed to `if()`, and `converged` comes
+  ## from the same builder as `fit_health` so the two reports agree.
+  g <- tryCatch(
+    .gllvmTMB_penalised_gradient(
+      object$tmb_obj, object$opt$par, object$aghq$ridge_tau %||% Inf
+    ),
+    error = function(e) NA_real_
+  )
+  grad_finite <- length(g) > 0L && all(is.finite(g))
+  flags$max_gradient <- if (grad_finite) max(abs(g)) else NA_real_
+  flags$converged <- isTRUE(
+    .gllvmTMB_build_fit_health(object)$converged && grad_finite
+  )
   cat(sprintf(
     "%-44s %s\n",
-    "Optimiser convergence (== 0):",
+    "Converged (optimiser, objective, gradient):",
     if (flags$converged) "PASS" else "FAIL"
   ))
-
-  ## 2. Max gradient
-  g <- object$tmb_obj$gr(object$opt$par)
-  flags$max_gradient <- max(abs(g))
-  cat(sprintf(
-    "%-44s %s (max |gr| = %.3g)\n",
-    sprintf("Max |gradient| < %.1e:", gradient_thresh),
-    if (flags$max_gradient < gradient_thresh) "PASS" else "WARN",
-    flags$max_gradient
-  ))
+  if (grad_finite) {
+    cat(sprintf(
+      "%-44s %s (max |gr| = %.3g%s)\n",
+      sprintf("Max |gradient| < %.1e:", gradient_thresh),
+      if (flags$max_gradient < gradient_thresh) "PASS" else "WARN",
+      flags$max_gradient,
+      if (isTRUE(object$aghq$penalised)) ", penalised objective" else ""
+    ))
+  } else {
+    cat(sprintf(
+      "%-44s %s\n",
+      sprintf("Max |gradient| < %.1e:", gradient_thresh),
+      "FAIL (gradient not finite)"
+    ))
+  }
 
   ## 3. Hessian PD-ness
   sdreport_ok <- !is.null(object$sd_report)
@@ -1901,7 +2822,7 @@ sanity_multi <- function(object, gradient_thresh = 1e-2, se_thresh = 100) {
     b_lbl <- if (!is.null(object$unit_col)) object$unit_col else "unit"
     cat(sprintf(
       "%-44s %s (min |Lambda_B diag| = %.3g)\n",
-      sprintf("latent(%s, d=B) diag loadings non-zero:", b_lbl),
+      sprintf("latent(%s, d=%d) diag loadings non-zero:", b_lbl, object$d_B),
       if (flags$rr_B_min_loading > 1e-3) "PASS" else "WARN",
       flags$rr_B_min_loading
     ))
@@ -1920,7 +2841,7 @@ sanity_multi <- function(object, gradient_thresh = 1e-2, se_thresh = 100) {
     }
     cat(sprintf(
       "%-44s %s (min |Lambda_W diag| = %.3g)\n",
-      sprintf("latent(%s, d=W) diag loadings non-zero:", w_lbl),
+      sprintf("latent(%s, d=%d) diag loadings non-zero:", w_lbl, object$d_W),
       if (flags$rr_W_min_loading > 1e-3) "PASS" else "WARN",
       flags$rr_W_min_loading
     ))
@@ -1929,6 +2850,277 @@ sanity_multi <- function(object, gradient_thresh = 1e-2, se_thresh = 100) {
   invisible(flags)
 }
 
+
+## ---- predict(newdata=) support helpers (#1132) ------------------------------
+
+#' Warn about arguments that `predict()` received in `...` and ignored
+#'
+#' `predict.gllvmTMB_multi()` uses no argument from `...`, so anything there is
+#' dropped. The near-miss spellings `re.form` (lme4 / glmmTMB) and `se_fit` are
+#' the easy ones to hit and silently return a different quantity (#1414), so
+#' the warning names the argument to use instead.
+#' @noRd
+.gllvmTMB_predict_warn_unused <- function(dots) {
+  if (length(dots) == 0L) return(invisible(NULL))
+  nm <- names(dots)
+  if (is.null(nm)) nm <- rep("", length(dots))
+  hint <- c(re.form = "re_form", se_fit = "se.fit")
+  items <- ifelse(nzchar(nm), nm, "<unnamed>")
+  bullets <- vapply(seq_along(items), function(i) {
+    if (items[i] %in% names(hint)) {
+      sprintf("`%s` is not an argument of predict(); use `%s`.",
+              items[i], hint[[items[i]]])
+    } else {
+      sprintf("`%s` is not an argument of predict() and was ignored.", items[i])
+    }
+  }, character(1))
+  cli::cli_warn(c(
+    "{.fn predict} ignored {length(items)} unused argument{?s} passed in {.arg ...}.",
+    stats::setNames(gsub("([{}])", "\\1\\1", bullets), rep("!", length(bullets)))
+  ), class = "gllvmTMB_predict_unused_arg")
+  invisible(NULL)
+}
+
+#' Is `re_form` a request to drop the random effects?
+#'
+#' The roxygen for [predict.gllvmTMB_multi()] promises that `~ 0` *or* `NA`
+#' gives the fixed-effects-only prediction. Before #1132 only the literal
+#' `~0` was recognised, so `NA` -- a documented form -- and numeric `0`
+#' silently returned the full conditional predictor. Anything else is not a
+#' supported form; warn rather than silently including the random effects,
+#' which is how `~1` used to pass unnoticed.
+#'
+#' @keywords internal
+#' @noRd
+.gllvmTMB_re_form_is_zero <- function(re_form) {
+  if (inherits(re_form, "formula")) {
+    flat <- gsub("[[:space:]]", "", paste(deparse(re_form), collapse = ""))
+    if (identical(flat, "~0")) return(TRUE)
+    if (identical(flat, "~.")) return(FALSE)
+    cli::cli_warn(c(
+      "{.arg re_form} value {.code {flat}} is not a supported form.",
+      "i" = "Supported: {.code ~.} (all random effects), {.code ~0} or {.val NA} (fixed effects only).",
+      "!" = "Including all random effects."
+    ), class = "gllvmTMB_predict_re_form_unsupported")
+    return(FALSE)
+  }
+  if (is.null(re_form)) return(FALSE)
+  if (length(re_form) == 1L && is.na(re_form)) return(TRUE)
+  if (is.numeric(re_form) && length(re_form) == 1L && isTRUE(re_form == 0)) {
+    return(TRUE)
+  }
+  cli::cli_warn(c(
+    "{.arg re_form} must be a formula or {.val NA}; got {.cls {class(re_form)}}.",
+    "i" = "Supported: {.code ~.} (all random effects), {.code ~0} or {.val NA} (fixed effects only).",
+    "!" = "Including all random effects."
+  ), class = "gllvmTMB_predict_re_form_unsupported")
+  FALSE
+}
+
+#' Per-row (family, link) ids for `newdata`
+#'
+#' `family_id_vec` / `link_id_vec` are a deterministic function of the fit's
+#' `family_var` column (see `gllvmTMB()`), never of the trait. Reducing them
+#' to a per-trait modal id -- the pre-#1132 behaviour -- cannot represent an
+#' [isdm_sources()] fit, where the family varies by *source within* trait: the
+#' detection arm silently received the count arm's inverse link.
+#'
+#' Returns `NULL` (caller falls back to the per-trait route) whenever the
+#' mapping cannot be established exactly, so single-family and by-trait fits
+#' are untouched.
+#'
+#' @keywords internal
+#' @noRd
+.gllvmTMB_newdata_family_ids <- function(object, nd) {
+  fid_vec <- object$tmb_data$family_id_vec
+  lid_vec <- object$tmb_data$link_id_vec
+  if (is.null(fid_vec) || is.null(lid_vec)) return(NULL)
+  fam_var <- attr(object$family_input, "family_var") %||% "family"
+  if (!fam_var %in% names(nd) || !fam_var %in% names(object$data)) return(NULL)
+  train_lvl <- as.character(object$data[[fam_var]])
+  if (length(train_lvl) != length(fid_vec)) return(NULL)
+  lvls <- unique(train_lvl)
+  key <- match(train_lvl, lvls)
+  fid_by <- integer(length(lvls))
+  lid_by <- integer(length(lvls))
+  for (k in seq_along(lvls)) {
+    rows <- which(key == k)
+    ## The (family, link) pair must be unique within a level, and is taken
+    ## together -- reducing family and link separately can synthesise a
+    ## combination that never occurred in the data.
+    if (length(unique(fid_vec[rows])) != 1L ||
+          length(unique(lid_vec[rows])) != 1L) {
+      return(NULL)
+    }
+    fid_by[k] <- as.integer(fid_vec[rows[1L]])
+    lid_by[k] <- as.integer(lid_vec[rows[1L]])
+  }
+  idx <- match(as.character(nd[[fam_var]]), lvls)
+  if (anyNA(idx)) return(NULL)
+  list(fid = fid_by[idx], lid = lid_by[idx])
+}
+
+#' SPDE field contribution at `newdata` rows
+#'
+#' Mirrors the template's spatial block: the projected field is
+#' `A_omega(o, t) = (A_proj %*% omega_spde)(o, t)` (src/gllvmTMB.cpp:2418-2423),
+#' entering eta per row at src/gllvmTMB.cpp:2518-2528 -- the per-trait field
+#' when `spde_lv_k == 0`, the low-rank `sum_k Lambda_spde(t, k) * A_omega_lv(o, k)`
+#' when `spde_lv_k >= 1`, and both when `spde_lv_unique == 1`.
+#'
+#' The projector is rebuilt with `fmesher::fm_basis()` on the stored mesh --
+#' the same call that built `A_st` in the first place (R/mesh.R) -- so training
+#' coordinates reproduce the fitted projection exactly, and new coordinates
+#' project off-mesh for free.
+#'
+#' Returns `NULL` when the field cannot be projected (no mesh, coordinates
+#' absent from `newdata`), leaving the caller to report the omission.
+#'
+#' @keywords internal
+#' @noRd
+.gllvmTMB_spde_newdata_contrib <- function(object, nd, tr_id) {
+  if (!isTRUE(object$use$spde)) return(NULL)
+  if(identical(object$source_strength$source,"spatial")) {
+    strength <- object$source_strength
+    ids <- match(as.character(nd[[strength$grouping]]),strength$labels)
+    if(length(ids)!=nrow(nd) || anyNA(ids)) cli::cli_abort(c(
+      "Prediction for an attenuated spatial source currently requires known location groups.",
+      "i"="Supply the fitted location identifier; prediction at new locations is not yet supported for rho-enabled spatial models."
+    ),class="gllvmTMB_structured_rho_spatial_prediction")
+    xy <- object$mesh$xy_cols
+    if(all(xy %in% names(nd))) {
+      original <- object$data[match(strength$labels,as.character(object$data[[strength$grouping]])),xy,drop=FALSE]
+      if(!isTRUE(all.equal(unname(as.matrix(nd[,xy,drop=FALSE])),
+          unname(as.matrix(original[ids,,drop=FALSE])),tolerance=1e-12)))
+        cli::cli_abort("Known spatial location identifiers must retain their fitted coordinates.",
+          class="gllvmTMB_structured_rho_spatial_prediction")
+    }
+    effect <- .structured_rho_spatial_contribution(object)
+    return(effect[cbind(ids,tr_id+1L)])
+  }
+  mesh <- object$mesh
+  if (is.null(mesh) || is.null(mesh$mesh) || is.null(mesh$xy_cols)) return(NULL)
+  if (!all(mesh$xy_cols %in% names(nd))) return(NULL)
+  loc <- tryCatch(
+    .gllvm_mesh_coordinates(nd, mesh$xy_cols),
+    error = function(e) NULL
+  )
+  if (is.null(loc)) return(NULL)
+  A <- tryCatch(
+    fmesher::fm_basis(mesh$mesh, loc = loc),
+    error = function(e) NULL
+  )
+  if (is.null(A) || nrow(A) != nrow(nd)) return(NULL)
+
+  ## fmesher returns an all-zero basis row for a location outside the mesh
+  ## hull, so the field silently becomes 0 there -- indistinguishable from a
+  ## field that is genuinely near zero, and the reader has no way to tell a
+  ## blank patch of map from a cold one. `make_mesh()` rejects such rows at
+  ## fit time, so predict() must not be quietly more permissive than the fit.
+  row_mass <- Matrix::rowSums(A)
+  n_outside <- sum(!is.finite(row_mass) | abs(row_mass) < 1e-8)
+  if (n_outside > 0L) {
+    cli::cli_warn(c(
+      "{n_outside} {.arg newdata} row{?s} fall outside the mesh hull.",
+      "x" = "The spatial field is exactly 0 there -- not estimated, and not distinguishable from a field that is genuinely near zero.",
+      "i" = "Restrict {.arg newdata} to the meshed domain, or rebuild the mesh to cover it."
+    ), class = "gllvmTMB_predict_newdata_outside_mesh")
+  }
+
+  par <- object$tmb_obj$env$last.par.best
+  n_mesh <- ncol(A)
+  n_traits <- object$n_traits
+  lv_k <- as.integer(object$tmb_data$spde_lv_k %||% 0L)
+  lv_unique <- as.integer(object$tmb_data$spde_lv_unique %||% 0L)
+
+  contrib <- numeric(nrow(nd))
+  t1 <- tr_id + 1L
+  ok <- !is.na(t1) & t1 >= 1L & t1 <= n_traits
+  if (!any(ok)) return(contrib)
+
+  if (lv_k == 0L || lv_unique == 1L) {
+    om <- par[names(par) == "omega_spde"]
+    if (length(om) != n_mesh * n_traits) return(NULL)
+    A_omega <- as.matrix(A %*% matrix(om, nrow = n_mesh, ncol = n_traits))
+    contrib[ok] <- contrib[ok] + A_omega[cbind(which(ok), t1[ok])]
+  }
+  if (lv_k > 0L) {
+    om_lv <- par[names(par) == "omega_spde_lv"]
+    lam <- object$report$Lambda_spde
+    if (length(om_lv) != n_mesh * lv_k || is.null(lam)) return(NULL)
+    lam <- matrix(as.numeric(lam), nrow = n_traits, ncol = lv_k)
+    A_lv <- as.matrix(A %*% matrix(om_lv, nrow = n_mesh, ncol = lv_k))
+    contrib[ok] <- contrib[ok] +
+      rowSums(lam[t1[ok], , drop = FALSE] * A_lv[ok, , drop = FALSE])
+  }
+  contrib
+}
+
+#' The training fixed-effect design matrix, with column names
+#'
+#' `.gllvmTMB_predict_fixed_eta()` aligns coefficients by column name, so the
+#' stored design matrix needs its `X_fix_names` restored when it carries none.
+#'
+#' @keywords internal
+#' @noRd
+.gllvmTMB_training_X_fix <- function(object) {
+  X <- object$X_fix %||% object$tmb_data$X_fix
+  if (is.null(X)) {
+    cli::cli_abort(c(
+      "Cannot build the fixed-effects-only prediction.",
+      "x" = "The fitted object stores no fixed-effect design matrix."
+    ))
+  }
+  X <- as.matrix(X)
+  if (is.null(colnames(X))) colnames(X) <- object$X_fix_names
+  X
+}
+
+#' Active random-effect tiers this predict path cannot re-add
+#'
+#' `predict(newdata=)` rebuilds eta in R and re-adds a named subset of the
+#' template's random-effect tiers. Before #1132 every other active tier was
+#' dropped in silence -- at training rows too -- while the branch reported
+#' that random effects had been added. Naming them is the honest minimum;
+#' re-adding the rest is tracked separately, because several parameter blocks
+#' have no established reshape convention (see `getREsd()`).
+#'
+#' The active set is read from the template's own `use_*` switches in
+#' `tmb_data`, NOT from `fit$use`. `fit$use` mixes engine flags with
+#' *mode descriptors* -- `spatial_scalar`, `spatial_latent`, `dep_B` and
+#' friends record which syntax produced a term, and ride alongside the engine
+#' flag that actually adds it to eta. Warning on those would raise a false
+#' alarm on a prediction that is exactly right, which is worse than useless:
+#' it teaches the reader to ignore the warning.
+#'
+#' @keywords internal
+#' @noRd
+.gllvmTMB_predict_unhandled_re_tiers <- function(object, handled) {
+  td <- object$tmb_data
+  if (!is.list(td)) return(character(0))
+  ## `use_aghq` selects the integrator, not a random-effect tier.
+  flags <- setdiff(grep("^use_", names(td), value = TRUE), "use_aghq")
+  is_on <- vapply(flags, function(n) {
+    v <- td[[n]]
+    length(v) == 1L && !is.na(v) && isTRUE(as.integer(v) == 1L)
+  }, logical(1))
+  sort(setdiff(sub("^use_", "", flags[is_on]), handled))
+}
+
+
+## #1406: internal sentinels that must never reach a user-facing data frame.
+## `gllvmTMB()` fills the species/cluster column with the constant "placeholder"
+## when the user gave no such grouping, and a wide mixed-family `traits()` fit
+## gets an auto-generated family label `.family_wide_` (dot-prefixed further if
+## that name is already taken). Both helpers match only these sentinels.
+.gllvmTMB_is_placeholder_col <- function(x) {
+  !is.null(x) && length(x) > 0L && all(as.character(x) == "placeholder")
+}
+
+.gllvmTMB_is_auto_family_var <- function(x) {
+  is.character(x) && length(x) == 1L && !is.na(x) &&
+    grepl("^[.]*[.]family_wide_$", x)
+}
 
 #' Predict from a fitted gllvmTMB model
 #'
@@ -1939,16 +3131,60 @@ sanity_multi <- function(object, gradient_thresh = 1e-2, se_thresh = 100) {
 #'
 #' @param object A fit returned by [gllvmTMB()].
 #' @param newdata Optional new data frame. If `NULL`, predictions are
-#'   produced for the training rows.
+#'   produced for the training rows. For a fit made with the wide
+#'   `traits(...)` syntax, `newdata` must be in long form with a `trait`
+#'   factor column (one row per unit and trait, with the training levels);
+#'   wide `newdata` is refused with an error. For example,
+#'   `data.frame(id = rep(ids, each = 4), trait = factor(rep(trait_names,
+#'   length(ids)), levels = trait_names))`. A missing covariate stays `NA` in
+#'   that row; the other rows keep their own predictions. Data-dependent
+#'   transforms in the fixed formula (`scale()`, `poly()`, `ns()`) reuse
+#'   the training centre, scale, and basis, so a row's value does not
+#'   depend on which other rows travel with it. Character predictors use
+#'   the training levels, and user-set factor contrasts (for example
+#'   `contr.sum`) are copied onto the restored factor.
+#'   Conditional prediction with `newdata` for multiple named kernel tiers
+#'   is not supported; use `re_form = ~0` for fixed-effects-only predictions.
 #' @param type One of `"link"` (default) or `"response"`.
+#'
+#'   `"response"` includes the row's **offset**, so on a fit with an effort
+#'   or support offset it returns an expected count *at that effort*, or a
+#'   detection probability *at that support* -- not a relative intensity. For
+#'   a map or any effort-free comparison, set the offset variable to zero in
+#'   `newdata` (e.g. `newdata$log_support <- 0`) and predict from that; the
+#'   offset is re-evaluated against `newdata`, so this is exact rather than
+#'   an approximation.
+#'
+#'   On a mixed-family fit the returned `est` column mixes scales by design
+#'   (expected counts beside probabilities). The fit's family/source column
+#'   is returned alongside it so each row's scale is identifiable.
 #' @param re_form Random-effect formula controlling which random
-#'   effects are *included* in the predicted linear predictor. Use
-#'   the default `~ .` to include all random effects when predicting
-#'   on training rows; pass `~ 0` (or `NA`) to predict the fixed-
-#'   effects-only / population-mean prediction. For `newdata` with
-#'   sites/species not present in the training data the random
-#'   effects cannot be drawn, so the prediction is fixed-effects-only
-#'   regardless of `re_form`.
+#'   effects are *included* in the predicted linear predictor. The
+#'   default `~ .` includes them; `~ 0`, `NA`, and numeric `0` all
+#'   request the fixed-effects-only / population-mean prediction. Any
+#'   other value is not a supported form and warns rather than silently
+#'   including the random effects. Honoured on **both** the training-row
+#'   and the `newdata` path (before 0.7.1 it was read only on the
+#'   `newdata` path, and there only as the literal `~ 0`). For `newdata`
+#'   with sites/species not present in the training data the random
+#'   effects cannot be drawn, so those rows are fixed-effects-only
+#'   regardless of `re_form`. A missing species column is not an unseen
+#'   level: if `newdata` omits the fitted species column while
+#'   phylogenetic random effects are being re-added, `predict()` stops and
+#'   asks for that column or for `re_form = ~0`.
+#'
+#'   For AGHQ fits, conditional predictions use the latent modes at the
+#'   fitted parameters. They are not averages over latent-score uncertainty.
+#'   If those modes are unavailable, request `re_form = ~0` or refit.
+#'
+#'   On `newdata`, `predict()` rebuilds the linear predictor in R and can
+#'   re-add only some of the model's random-effect tiers (the unit-level
+#'   `rr`/`diag` terms, `propto`, and the spatial SPDE field). Structured
+#'   intercepts also include their shared and folded Psi effects
+#'   at known source levels; ancestral prediction is not added. A fit
+#'   carrying any other active tier gets a warning naming exactly what was
+#'   omitted; `newdata = NULL` always returns the full conditional
+#'   predictor.
 #' @param se.fit Logical, default `FALSE`. If `TRUE`, add an `se.fit`
 #'   column: a **conditional, fixed-effect-only, delta-method (Wald)**
 #'   standard error of `est`. "Conditional" means the random-effect
@@ -1957,7 +3193,9 @@ sanity_multi <- function(object, gradient_thresh = 1e-2, se_thresh = 100) {
 #'   **not** propagated, only the fixed-effect coefficients' `sdreport()`
 #'   covariance is. This is a smaller quantity than a full marginal SE
 #'   would be; it is also not a claim about coverage, which has not been
-#'   measured for this quantity. `type = "link"` returns the SE of the
+#'   measured for this quantity. For AGHQ fits, the local fixed-node
+#'   covariance has not been validated for interval coverage.
+#'   `type = "link"` returns the SE of the
 #'   linear predictor directly; `type = "response"` multiplies it by the
 #'   local derivative of the per-row inverse link (the standard
 #'   delta-method transform), so it approximates the SE of the
@@ -1966,7 +3204,8 @@ sanity_multi <- function(object, gradient_thresh = 1e-2, se_thresh = 100) {
 #'   fits, fits without an active `mi()` missing-covariate model, and fits with
 #'   unit likelihood weights. A non-unit weighted objective has no certified
 #'   prediction-standard-error route.
-#' @param ... Unused.
+#' @param ... Unused. An argument passed here is ignored with a warning; in
+#'   particular `re.form` (use `re_form`) and `se_fit` (use `se.fit`).
 #'
 #' @return A data frame with the original row identifiers plus an `est`
 #'   column on the requested link or response scale, and (if
@@ -1982,7 +3221,14 @@ predict.gllvmTMB_multi <- function(
   ...
 ) {
   type <- match.arg(type)
-  .aghq_warn_re_gap(object, "predict()")
+  .gllvmTMB_predict_warn_unused(list(...))
+  if (isTRUE(object$temporal$active) && !is.null(newdata)) {
+    cli::cli_abort(c(
+      "{.fn predict} with {.arg newdata} is not yet available for {.fn temporal_latent} fits.",
+      "i" = "New rows need an explicitly reconstructed series--occasion score index.",
+      ">" = "Use {.code predict(fit)} for the training rows or {.code re_form = ~0} for fixed-effects-only training predictions."
+    ), class = "gllvmTMB_temporal_predict_newdata")
+  }
   if (isTRUE(se.fit)) {
     .gllvmTMB_predict_se_guard(object, newdata)
   }
@@ -2002,9 +3248,28 @@ predict.gllvmTMB_multi <- function(
     }
     return(.predict_multinomial(object, type))
   }
+  ## #1132: `re_form` is normalised once, for BOTH branches. It used to be
+  ## read only on the newdata path, and there only as the literal `~0`, so on
+  ## the package's DEFAULT calling convention `predict(fit, re_form = ~0)`
+  ## silently returned the full conditional predictor.
+  re_zero <- .gllvmTMB_re_form_is_zero(re_form)
+  if (!is.null(newdata) && !re_zero &&
+      isTRUE((object$tmb_data$n_kernel_tiers %||% 0L) > 0L)) {
+    cli::cli_abort(c(
+      "Conditional prediction with new data for multiple named kernel tiers is not supported.",
+      ">" = "Use {.code re_form = ~0} for fixed-effects-only predictions."
+    ), class = "gllvmTMB_multi_kernel_predict_newdata_unsupported")
+  }
   if (is.null(newdata)) {
-    eta <- as.numeric(object$report$eta)
-    ## Use the user's actual column names (not hard-coded sdmTMB ecology labels)
+    eta <- if (re_zero) {
+      .gllvmTMB_predict_fixed_eta(object, .gllvmTMB_training_X_fix(object)) +
+        .gllvmTMB_offset_vec(object)
+    } else {
+      .aghq_conditional_training_eta(object)
+    }
+    ## Use the user's actual column names (not hard-coded sdmTMB ecology labels).
+    ## A temporal fit internally uses a private pair factor, which must never
+    ## leak as the only training-data identifier.
     unit_lbl <- if (!is.null(object$unit_col)) object$unit_col else "site"
     species_lbl <- if (!is.null(object$species_col)) {
       object$species_col
@@ -2012,22 +3277,115 @@ predict.gllvmTMB_multi <- function(
       "species"
     }
     trait_lbl <- if (!is.null(object$trait_col)) object$trait_col else "trait"
-    out <- data.frame(
-      object$data[[unit_lbl]],
-      object$data[[species_lbl]],
-      object$data[[trait_lbl]],
-      est = eta,
-      stringsAsFactors = FALSE
-    )
-    names(out)[1:3] <- c(unit_lbl, species_lbl, trait_lbl)
+    if (isTRUE(object$temporal$active)) {
+      temporal_cols <- c(object$temporal$series_col, object$temporal$time_col,
+        object$temporal$replicate_col, trait_lbl)
+      temporal_cols <- unique(stats::na.omit(temporal_cols))
+      out <- data.frame(object$data[temporal_cols], est = eta, check.names = FALSE)
+    } else {
+      out <- data.frame(
+        object$data[[unit_lbl]],
+        object$data[[species_lbl]],
+        object$data[[trait_lbl]],
+        est = eta,
+        stringsAsFactors = FALSE
+      )
+      names(out)[1:3] <- c(unit_lbl, species_lbl, trait_lbl)
+      ## #1406: drop the internal "placeholder" species column.
+      if (.gllvmTMB_is_placeholder_col(out[[2L]])) {
+        out <- out[, -2L, drop = FALSE]
+      }
+    }
+    ## Carry the arm/source label through (#1133 item 3). On a mixed-family
+    ## fit -- an isdm_sources() fit above all -- `est` mixes scales: Poisson
+    ## expected counts beside cloglog detection probabilities, in one numeric
+    ## column, distinguishable only by the reader's memory of which rows were
+    ## which. The `newdata` path already returns this column (it returns all
+    ## of `newdata`); the in-sample path did not, so the DEFAULT call -- and
+    ## `fitted()`, which wraps it -- was the one missing the label.
+    ## Single-family fits carry no `family_var` column and are unchanged.
+    fam_var <- attr(object$family_input, "family_var") %||% "family"
+    ## #1406: but not the auto-generated `.family_wide_` label.
+    if (fam_var %in% names(object$data) && !fam_var %in% names(out) &&
+        !.gllvmTMB_is_auto_family_var(fam_var)) {
+      out[[fam_var]] <- object$data[[fam_var]]
+      out <- out[, c(setdiff(names(out), "est"), "est"), drop = FALSE]
+    }
   } else {
+    isdm_observation <- attr(
+      object$family_input, "isdm_observation", exact = TRUE
+    )
+    isdm_family_attr <- attr(
+      object$family_input, "family_var", exact = TRUE
+    )
+    isdm_family_var <- isdm_family_attr %||% "isdm_source"
+    is_integrated_source <- identical(isdm_family_attr, "isdm_source")
+    observation_data <- as.data.frame(newdata)
+    ## A traits() fit is stored in stacked long form, so newdata must be
+    ## long too; wide newdata used to fail inside model.matrix() (#1412).
+    trait_lbl_nd <- object$trait_col %||% "trait"
+    if (!is.null(object$traits_meta) && !trait_lbl_nd %in% names(observation_data)) {
+      cli::cli_abort(c(
+        "{.arg newdata} must be in long format with a {.field {trait_lbl_nd}} column.",
+        "x" = "This fit was made with {.fn traits} (wide data), but {.arg newdata} has no {.field {trait_lbl_nd}} column.",
+        ">" = "Stack {.arg newdata}: one row per unit and trait, with {.field {trait_lbl_nd}} a factor carrying the training levels.",
+        "i" = "For example: {.code data.frame(id = rep(ids, each = 4), trait = factor(rep(trait_names, length(ids)), levels = trait_names))}."
+      ), class = "gllvmTMB_predict_wide_newdata")
+    }
+    if (is_integrated_source) {
+      if (!isdm_family_var %in% names(newdata)) {
+        cli::cli_abort(c(
+          "Integrated-source prediction needs source column {.arg {isdm_family_var}} in {.arg newdata}.",
+          "i" = "Use a declared source name on every prediction row."
+        ), class = "gllvmTMB_predict_isdm_source_missing")
+      }
+      source_raw <- as.character(newdata[[isdm_family_var]])
+      if (anyNA(source_raw)) {
+        cli::cli_abort(
+          "Integrated-source prediction does not allow missing source labels in {.arg newdata}.",
+          class = "gllvmTMB_predict_isdm_source_missing"
+        )
+      }
+      unknown_source <- setdiff(unique(source_raw), names(object$family_input))
+      if (length(unknown_source)) {
+        cli::cli_abort(c(
+          "New data names undeclared integrated source{?s}: {.val {unknown_source}}.",
+          "i" = "Use the source names supplied to {.fn isdm_sources} when fitting."
+        ), class = "gllvmTMB_predict_isdm_source_unknown")
+      }
+    }
+    observation_vars <- unique(unlist(
+      lapply(isdm_observation %||% list(), all.vars),
+      use.names = FALSE
+    ))
+    fixed_vars <- all.vars(stats::delete.response(stats::terms(object$formula)))
+    observation_only_vars <- setdiff(observation_vars, fixed_vars)
     nd <- .gllvmTMB_restore_newdata_factor_levels(
       newdata,
       object$data,
-      allow_unseen = stats::na.omit(c(object$unit_col, object$species_col))
+      allow_unseen = stats::na.omit(c(
+        object$unit_col, object$species_col, observation_only_vars
+      )),
+      typed_observation = observation_vars
     )
 
-    X_new <- stats::model.matrix(object$formula, nd)
+    ## Build the design from the RIGHT-HAND SIDE only (#1154), using the
+    ## training model-frame terms so `predvars`, factor levels, and
+    ## contrasts stay those of the fit (#1423, #1424, #1425). `na.pass`
+    ## keeps a row with a missing covariate; the prediction is NA there
+    ## instead of recycling a shorter vector onto the wrong rows (#1384).
+    X_new <- .gllvmTMB_newdata_model_matrix(object, nd)
+    if (!is.null(isdm_observation)) {
+      X_new <- .gll_isdm_observation_prediction_design(
+        X_fix = X_new,
+        data = observation_data,
+        source = source_raw,
+        family_input = object$family_input,
+        training_data = object$data,
+        target_columns = object$X_fix_names,
+        basis = object$isdm_observation_basis
+      )
+    }
     ## `object$formula` is the offset-free fixed formula (the offset is held
     ## out of it so model.matrix cannot drop it), so the offset for the new
     ## rows is re-evaluated separately against `nd`.
@@ -2035,9 +3393,27 @@ predict.gllvmTMB_multi <- function(
       .gllvmTMB_offset_newdata(object, nd)
 
     ## Random-effect contributions for KNOWN sites / species ----------------
-    re_zero <- inherits(re_form, "formula") && identical(deparse(re_form), "~0")
     if (!re_zero) {
       par <- object$tmb_obj$env$last.par.best
+      added <- character(0)
+      ## A missing species *column* used to leave every sp_id NA, skip the
+      ## contributions, and still report phylo_rr / phylo_diag as re-added (#1787).
+      ## An unseen level of a column that is present stays fixed-effects-only.
+      species_lbl <- object$species_col
+      phylo_tiers <- c(
+        if (isTRUE(object$use$phylo_rr)) "phylo_rr",
+        if (isTRUE(object$use$phylo_diag)) "phylo_diag"
+      )
+      if (length(phylo_tiers) &&
+            (is.null(species_lbl) || !nzchar(species_lbl) ||
+              !species_lbl %in% names(nd))) {
+        species_show <- species_lbl %||% "species"
+        cli::cli_abort(c(
+          "{.arg newdata} is missing the species column {.field {species_show}}.",
+          "x" = "Phylogenetic random effects ({.val {phylo_tiers}}) cannot be re-added without it.",
+          "i" = "Add {.field {species_show}} to {.arg newdata}, or pass {.code re_form = ~0} for the fixed-effects-only prediction."
+        ), class = "gllvmTMB_predict_newdata_species_missing")
+      }
       ## Build per-row indices on the training factor scales
       tr_id <- as.integer(nd[[object$trait_col]]) - 1L
       st_id <- as.integer(nd[[object$unit_col]]) - 1L
@@ -2048,11 +3424,26 @@ predict.gllvmTMB_multi <- function(
       }
       ## Add rr_B + diag_B if active
       if (object$use$rr_B) {
-        z_B <- matrix(
-          par[names(par) == "z_B"],
-          nrow = object$d_B,
-          ncol = object$n_sites
-        )
+        ## When lv_B is active the `z_B` PARAMETER is only the zero-mean
+        ## innovation e_i; the score entering eta is
+        ## U_B_total = X_lv_B alpha_lv_B + z_B (src/gllvmTMB.cpp:1518-1543).
+        ## Using z_B alone would drop the predictor-informed score mean.
+        z_B <- if (isTRUE(object$use$lv_B) &&
+                     !is.null(object$report$U_B_total)) {
+          t(matrix(
+            as.numeric(object$report$U_B_total),
+            nrow = object$n_sites,
+            ncol = object$d_B
+          ))
+        } else if (isTRUE(object$aghq$used)) {
+          t(.aghq_conditional_modes(object))
+        } else {
+          matrix(
+            par[names(par) == "z_B"],
+            nrow = object$d_B,
+            ncol = object$n_sites
+          )
+        }
         L_B <- object$report$Lambda_B
         for (i in seq_along(eta)) {
           s <- st_id[i]
@@ -2061,13 +3452,18 @@ predict.gllvmTMB_multi <- function(
             eta[i] <- eta[i] + sum(L_B[t + 1L, ] * z_B[, s + 1L])
           }
         }
+        added <- c(added, "rr_B")
       }
       if (object$use$diag_B) {
-        s_B <- matrix(
-          par[names(par) == "s_B"],
-          nrow = object$n_traits,
-          ncol = object$n_sites
-        )
+        s_B <- if (isTRUE(object$integrated_gaussian_diag_B)) {
+          object$report$s_B_conditional_mean
+        } else {
+          matrix(par[names(par) == "s_B"],
+                 nrow = object$n_traits, ncol = object$n_sites)
+        }
+        if (!identical(dim(s_B), c(object$n_traits, object$n_sites))) {
+          cli::cli_abort("The fitted unit-level diagonal effects have incompatible dimensions.")
+        }
         for (i in seq_along(eta)) {
           s <- st_id[i]
           t <- tr_id[i]
@@ -2075,9 +3471,14 @@ predict.gllvmTMB_multi <- function(
             eta[i] <- eta[i] + s_B[t + 1L, s + 1L]
           }
         }
+        added <- c(added, "diag_B")
       }
-      ## propto: per-species random effect, additive
-      if (object$use$propto && !is.na(sp_id[1])) {
+      ## propto: per-species random effect, additive.
+      ## The guard was `!is.na(sp_id[1])` -- row ONE only -- so a newdata
+      ## frame whose first row had an unseen species silently skipped the
+      ## tier for every other row too. Each row is now guarded on its own,
+      ## inside the loop, as rr_B and diag_B already were.
+      if (isTRUE(object$use$propto) && any(!is.na(sp_id))) {
         p_phy <- matrix(
           par[names(par) == "p_phy"],
           nrow = object$n_species,
@@ -2090,10 +3491,159 @@ predict.gllvmTMB_multi <- function(
             eta[i] <- eta[i] + p_phy[sp + 1L, t + 1L]
           }
         }
+        added <- c(added, "propto")
       }
-      cli::cli_inform(c(
-        "i" = "Random effects for the rr|site / diag|site / propto|species terms have been added (when site / species levels matched the training factors)."
-      ))
+      if (isTRUE(object$use$phylo_rr) || isTRUE(object$use$phylo_diag)) {
+        effects <- .structured_rho_contribution(object)
+        ok <- !is.na(sp_id) & sp_id >= 0 & sp_id < object$n_species & !is.na(tr_id)
+        eta[ok] <- eta[ok] + effects[cbind(sp_id[ok]+1L,tr_id[ok]+1L)]
+        added <- c(added, if (isTRUE(object$use$phylo_rr)) "phylo_rr",
+          if (isTRUE(object$use$phylo_diag)) "phylo_diag")
+      }
+      ## diag_species: per-(trait, species) random intercept.
+      ## src/gllvmTMB.cpp:2513 -- eta(o) += q_sp(t, species_id(o)). Note the
+      ## index order is (trait, species), the TRANSPOSE of p_phy above; that
+      ## is why each tier gets its own exact-identity test rather than a
+      ## shared one.
+      if (isTRUE(object$use$diag_species) && any(!is.na(sp_id))) {
+        q_sp <- matrix(
+          par[names(par) == "q_sp"],
+          nrow = object$n_traits,
+          ncol = object$n_species
+        )
+        ok <- !is.na(sp_id) & sp_id >= 0 & sp_id < object$n_species &
+          !is.na(tr_id)
+        eta[ok] <- eta[ok] + q_sp[cbind(tr_id[ok] + 1L, sp_id[ok] + 1L)]
+        added <- c(added, "diag_species")
+      }
+
+      ## diag_cluster2: per-(trait, cluster2-level) random intercept.
+      ## src/gllvmTMB.cpp:1500 declares r_c2 as n_traits x n_cluster2 and
+      ## :3409 adds eta(o) += r_c2(t, cluster2_id(o)) -- a renamed copy of
+      ## diag_species, so the same (trait, group) index order. The levels are
+      ## rebuilt the way the fit built them: factor() on the training column
+      ## (R/fit-multi.R:4743-4747). A new row whose cluster2 level is unseen
+      ## gets no contribution, as for the species tier.
+      c2_col <- object$cluster2_col
+      if (isTRUE(object$use$diag_cluster2) && !is.null(c2_col) &&
+            c2_col %in% names(nd) && c2_col %in% names(object$data)) {
+        lv_c2 <- levels(factor(object$data[[c2_col]]))
+        c2_id <- as.integer(factor(as.character(nd[[c2_col]]),
+                                   levels = lv_c2)) - 1L
+        r_c2 <- matrix(
+          par[names(par) == "r_c2"],
+          nrow = object$n_traits,
+          ncol = length(lv_c2)
+        )
+        ok_c2 <- !is.na(c2_id) & c2_id >= 0L & c2_id < length(lv_c2) &
+          !is.na(tr_id)
+        if (any(ok_c2)) {
+          eta[ok_c2] <- eta[ok_c2] + r_c2[cbind(tr_id[ok_c2] + 1L, c2_id[ok_c2] + 1L)]
+          added <- c(added, "diag_cluster2")
+        }
+      }
+
+      ## Site-species (W) tiers. These are indexed by the unit-observation
+      ## column, which `newdata` need not carry at all -- so they are added
+      ## only when it is present and its levels resolve against training.
+      ss_col <- object$unit_obs_col
+      ss_id <- if (!is.null(ss_col) && ss_col %in% names(nd)) {
+        as.integer(factor(as.character(nd[[ss_col]]),
+                          levels = levels(object$data[[ss_col]]))) - 1L
+      } else {
+        NULL
+      }
+      if (!is.null(ss_id) && any(!is.na(ss_id))) {
+        ok_ss <- !is.na(ss_id) & ss_id >= 0 & ss_id < object$n_site_species &
+          !is.na(tr_id)
+        ## rr_W: src/gllvmTMB.cpp:2503-2507 --
+        ## eta(o) += sum_k Lambda_W(t, k) * z_W(k, ss).
+        if (isTRUE(object$use$rr_W)) {
+          z_W <- matrix(
+            par[names(par) == "z_W"],
+            nrow = object$d_W,
+            ncol = object$n_site_species
+          )
+          L_W <- object$report$Lambda_W
+          if (!is.null(L_W) && any(ok_ss)) {
+            eta[ok_ss] <- eta[ok_ss] + rowSums(
+              L_W[tr_id[ok_ss] + 1L, , drop = FALSE] *
+                t(z_W[, ss_id[ok_ss] + 1L, drop = FALSE])
+            )
+            added <- c(added, "rr_W")
+          }
+        }
+        ## diag_W: src/gllvmTMB.cpp:2509 -- eta(o) += s_W(t, ss).
+        if (isTRUE(object$use$diag_W) && any(ok_ss)) {
+          s_W <- matrix(
+            par[names(par) == "s_W"],
+            nrow = object$n_traits,
+            ncol = object$n_site_species
+          )
+          eta[ok_ss] <- eta[ok_ss] +
+            s_W[cbind(tr_id[ok_ss] + 1L, ss_id[ok_ss] + 1L)]
+          added <- c(added, "diag_W")
+        }
+      }
+
+      ## re_int: ordinary `(1 | group)` random intercepts.
+      ## src/gllvmTMB.cpp:2609 -- eta(o) += u_re_int(re_int_offsets(term) + gid),
+      ## where gid indexes the term's own grouping factor and the terms are
+      ## packed end-to-end into one vector via re_int_offsets.
+      ##
+      ## #1138 originally recorded this tier as unreachable, on the grounds
+      ## that its group mapping was not a top-level field on the fit. That was
+      ## wrong: `fit$re_int` carries `groups`, `n_groups` and `offsets`
+      ## (R/fit-multi.R:7217), which is exactly what is needed. Levels are
+      ## rebuilt the way the fit built them -- `factor()` on the training
+      ## column (R/fit-multi.R:2385-2387).
+      if (isTRUE(object$use$re_int) && is.list(object$re_int) &&
+            length(object$re_int$groups)) {
+        u_re <- par[names(par) == "u_re_int"]
+        grps <- as.character(object$re_int$groups)
+        offs <- as.integer(object$re_int$offsets)
+        ngr <- as.integer(object$re_int$n_groups)
+        hit <- FALSE
+        for (k in seq_along(grps)) {
+          gcol <- grps[k]
+          if (!gcol %in% names(nd) || !gcol %in% names(object$data)) next
+          lv <- levels(factor(object$data[[gcol]]))
+          gid <- as.integer(factor(as.character(nd[[gcol]]), levels = lv)) - 1L
+          okg <- !is.na(gid) & gid >= 0L & gid < ngr[k]
+          if (!any(okg)) next
+          idx <- offs[k] + gid[okg] + 1L
+          if (max(idx) > length(u_re)) next
+          eta[okg] <- eta[okg] + u_re[idx]
+          hit <- TRUE
+        }
+        if (hit) added <- c(added, "re_int")
+      }
+
+      ## Spatial (SPDE) field. Before #1132 this tier was dropped in silence
+      ## -- at training locations too -- while the branch below reported that
+      ## random effects had been added.
+      spde_contrib <- .gllvmTMB_spde_newdata_contrib(object, nd, tr_id)
+      if (!is.null(spde_contrib)) {
+        eta <- eta + spde_contrib
+        added <- c(added, "spde")
+      }
+      ## `lv_B` carries no eta term of its own: it is the score mean, already
+      ## inside U_B_total above, so it counts as handled whenever rr_B is.
+      handled <- c(added, if (isTRUE(object$use$lv_B)) "lv_B")
+      unhandled <- .gllvmTMB_predict_unhandled_re_tiers(object, handled)
+      if (length(added)) {
+        cli::cli_inform(c(
+          "i" = "Random effects re-added on {.arg newdata} for: {.val {added}} (where site / species levels matched the training factors)."
+        ))
+      }
+      if (length(unhandled)) {
+        cli::cli_warn(c(
+          "{.fn predict} cannot re-add every active random-effect tier on {.arg newdata}.",
+          "x" = "Omitted from the returned prediction: {.val {unhandled}}.",
+          "!" = "These terms are missing at training rows too, so the result is not comparable with {.code predict(object)}.",
+          "i" = "Use {.code newdata = NULL} for the full conditional predictor, or {.code re_form = ~0} for the fixed-effects-only one."
+        ), class = "gllvmTMB_predict_newdata_re_dropped")
+      }
     }
     out <- data.frame(nd, est = eta, stringsAsFactors = FALSE)
   }
@@ -2108,20 +3658,63 @@ predict.gllvmTMB_multi <- function(
       ## Training-row prediction: eta is row-aligned with family_id_vec /
       ## link_id_vec (both length n_obs).
       if (!is.null(fid_vec) && length(fid_vec) == nrow(out)) {
+        ## Per-row structural-zero probability for zi_* families (fid
+        ## 17/18/19): object$report$zi is per-TRAIT (length n_traits),
+        ## looked up here via the training rows' trait_id.
+        tids_row <- object$tmb_data$trait_id
+        zi_row <- if (!is.null(object$report$zi) && !is.null(tids_row) &&
+                     length(tids_row) == length(fid_vec)) {
+          object$report$zi[tids_row + 1L]
+        } else {
+          NULL
+        }
         out$est <- .apply_linkinv_per_row(
           out$est,
           fid_vec,
           lid_vec,
-          sigma_eps = object$report$sigma_eps
+          sigma_eps = object$report$sigma_eps,
+          zi = zi_row
         )
       } else if (!is.null(object$family$linkinv)) {
         out$est <- object$family$linkinv(out$est)
       }
     } else {
-      ## newdata rows: map each row's trait to that trait's (modal) family /
-      ## link id from the training vectors, then dispatch per row.
+      ## newdata rows. The per-row (family, link) is recovered from the fit's
+      ## `family_var` column when `newdata` carries it -- the ids are a
+      ## function of that column, never of the trait. The per-trait modal
+      ## fallback below cannot represent a family that varies WITHIN a trait,
+      ## which is exactly an isdm_sources() fit: the detection arm silently
+      ## received the count arm's inverse link (#1132).
+      per_row <- .gllvmTMB_newdata_family_ids(object, nd)
       tids_train <- object$tmb_data$trait_id
-      if (!is.null(fid_vec) && !is.null(tids_train) &&
+      if (!is.null(per_row)) {
+        ## S1 (2026-09-02 review): zi_* rows here previously got NO zi
+        ## lookup at all, so this branch silently returned the naive
+        ## count-only mean `mu` instead of `(1-zi)*mu` -- unlike the
+        ## training-row branch above. .gllvmTMB_newdata_family_ids() keys
+        ## on the family-selector column, not the trait, but object$report
+        ## $zi is indexed by TRAIT, so the lookup goes through
+        ## object$trait_col on `out` (present whenever newdata carries a
+        ## trait column, which every mixed-family predict() requires).
+        zi_row_nd <- if (!is.null(object$report$zi) &&
+                         !is.null(object$trait_col) &&
+                         object$trait_col %in% names(out)) {
+          tr_nd <- as.integer(out[[object$trait_col]])
+          out_zi <- rep(NA_real_, length(tr_nd))
+          in_range <- !is.na(tr_nd) & tr_nd >= 1L & tr_nd <= length(object$report$zi)
+          out_zi[in_range] <- object$report$zi[tr_nd[in_range]]
+          out_zi
+        } else {
+          NULL
+        }
+        out$est <- .apply_linkinv_per_row(
+          out$est,
+          per_row$fid,
+          per_row$lid,
+          sigma_eps = object$report$sigma_eps,
+          zi = zi_row_nd
+        )
+      } else if (!is.null(fid_vec) && !is.null(tids_train) &&
             object$trait_col %in% names(out)) {
         n_tr <- nlevels(object$data[[object$trait_col]])
         fid_by_trait <- integer(n_tr)
@@ -2146,11 +3739,22 @@ predict.gllvmTMB_multi <- function(
         ## Rows whose trait is unknown to the training factor fall back to the
         ## first trait's link (NA trait index).
         tr_out[is.na(tr_out)] <- 1L
+        ## Per-trait zi (fid 17/18/19), same modal-fallback shape as
+        ## fid_by_trait/lid_by_trait above: object$report$zi is already
+        ## indexed by trait, so no modal step is needed, just the same
+        ## trait-index lookup.
+        zi_by_trait <- if (!is.null(object$report$zi) &&
+                           length(object$report$zi) == n_tr) {
+          object$report$zi
+        } else {
+          rep(NA_real_, n_tr)
+        }
         out$est <- .apply_linkinv_per_row(
           out$est,
           fid_by_trait[tr_out],
           lid_by_trait[tr_out],
-          sigma_eps = object$report$sigma_eps
+          sigma_eps = object$report$sigma_eps,
+          zi = zi_by_trait[tr_out]
         )
       } else if (!is.null(object$family$linkinv)) {
         out$est <- object$family$linkinv(out$est)
@@ -2167,9 +3771,17 @@ predict.gllvmTMB_multi <- function(
       fid_vec <- object$tmb_data$family_id_vec
       lid_vec <- object$tmb_data$link_id_vec
       if (!is.null(fid_vec) && length(fid_vec) == length(eta)) {
+        tids_se <- object$tmb_data$trait_id
+        zi_row_se <- if (!is.null(object$report$zi) && !is.null(tids_se) &&
+                         length(tids_se) == length(fid_vec)) {
+          object$report$zi[tids_se + 1L]
+        } else {
+          NULL
+        }
         deriv <- .dlinkinv_per_row(
           eta, fid_vec, lid_vec,
-          sigma_eps = object$report$sigma_eps
+          sigma_eps = object$report$sigma_eps,
+          zi = zi_row_se
         )
         out$se.fit <- se_link * abs(deriv)
       } else {
@@ -2188,6 +3800,1008 @@ predict.gllvmTMB_multi <- function(
   out
 }
 
+#' Fitted values from a fitted gllvmTMB model
+#'
+#' A thin wrapper over [predict.gllvmTMB_multi()] at the training rows
+#' (`newdata = NULL`). Returns the same long data frame `predict()` returns
+#' -- one row per training observation, carrying its unit/species/trait
+#' identifiers alongside the fitted value -- rather than a bare vector, so
+#' row identity against the original data is preserved. `...` is forwarded
+#' to `predict()` unchanged, so its other arguments (`se.fit`, `re_form`)
+#' work here too.
+#'
+#' @param object A fit returned by [gllvmTMB()].
+#' @param type One of `"response"` (default, the `fitted()` convention) or
+#'   `"link"`.
+#' @param ... Forwarded to [predict.gllvmTMB_multi()] (e.g. `se.fit`,
+#'   `re_form`); see its documentation for what each accepts.
+#'
+#' @return A data frame with the original row identifiers (unit, species,
+#'   trait columns) plus an `est` column on the requested scale -- identical
+#'   in shape to `predict(object, newdata = NULL, type = type, ...)`. **For a
+#'   `multinomial()` fit** this is `.predict_multinomial()`'s output: K rows
+#'   per observation (one per category, including the baseline), not one.
+#' @export
+fitted.gllvmTMB_multi <- function(object, type = c("response", "link"), ...) {
+  type <- match.arg(type)
+  predict(object, newdata = NULL, type = type, ...)
+}
+
+#' Deviance of a fitted gllvmTMB model
+#'
+#' `-2 * logLik(object)`, delegating through [logLik.gllvmTMB_multi()]
+#' rather than recomputing anything independently. This is deliberate: on a
+#' penalised (ridged) fit -- `aghq_ridge` set to a finite value --
+#' `logLik()` already discloses, with a warning, that the returned value is
+#' the unpenalised log-likelihood evaluated AT a penalised MAP point, not at
+#' its own maximum. Because `deviance()` is defined purely in terms of
+#' `logLik()` here, that same disclosure fires exactly once and is not
+#' repeated or re-derived.
+#'
+#' @param object A fit returned by [gllvmTMB()].
+#' @param ... Currently unused.
+#'
+#' @return A single numeric value, `-2 * as.numeric(logLik(object))`. On a
+#'   ridged fit this carries the same MAP-point caveat as `logLik()`: the
+#'   value is `-2` times the unpenalised likelihood at the penalised
+#'   estimate, not at its own maximum, and the warning issued by `logLik()`
+#'   is inherited unchanged.
+#' @export
+deviance.gllvmTMB_multi <- function(object, ...) {
+  -2 * as.numeric(stats::logLik(object, ...))
+}
+
+## Internal-only reconstruction-uncertainty helper for `predict_missing(se =
+## TRUE)` (Design 119 Slice 1, the R1-quad route). GAUSSIAN FAMILIES ONLY in
+## this slice; register status `heuristic_unvalidated` -- no coverage
+## evidence exists and nothing here is exported or advertised.
+##
+## se_confidence: delta-method SE of the conditional mean mu_ut at a masked
+## cell (u, t), combining two curvature sources in quadrature (design sec.3
+## R1-quad):
+##   var(eta_ut) = var_fix(eta_ut)                  -- .gllvmTMB_predict_se_link()
+##               + lambda_t' Cov(u_hat_i) lambda_t   -- getLV(se = TRUE)'s
+##                                                       per-axis marginal
+##                                                       variance (diagonal
+##                                                       only -- cross-axis
+##                                                       and b_fix/u_hat
+##                                                       cross-covariance are
+##                                                       OMITTED, exactly the
+##                                                       approximation Design
+##                                                       119 sec.3 documents
+##                                                       for R1-quad)
+##   se_confidence = sqrt(var(eta_ut)) * |d(linkinv)/d(eta)|   (identity for
+##                                                               gaussian)
+## se_prediction: se_confidence in quadrature with the family noise variance
+## V_family (gaussian: sigma_eps^2 on the response scale; identical on the
+## link scale here because the family's link is identity).
+##
+## Only the ordinary between-site latent-variable block (rr_B / z_B, the
+## loadings tier of `latent()`) is added. A diag_B ("unique"/Psi) companion
+## or a within-site rr_W block, if present in the fit, is NOT accounted for
+## -- this mirrors the scope of predict()'s own newdata random-effect loop
+## above, which likewise only ever adds rr_B/diag_B/propto and never rr_W.
+## Whether that omission is material is exactly the open question the
+## Design 119 sec.4 coverage campaign exists to answer, not something this
+## comment can settle.
+##
+## `route = "quad"` is the R1-quad approximation above. `route = "joint"` is
+## the R1-joint route Design 119 sec.7 prescribes after wave-1 found R1-quad
+## systematically OVER-covers se_confidence (diagonal conditional latent
+## variance plus the full fixed block double-counts shared information):
+## var(eta_ut) = w' Q^{-1} w, where Q is the joint (fixed + random)
+## precision from `TMB::sdreport(obj, getJointPrecision = TRUE)` and w is
+## the exact (not approximate -- eta is linear in b_fix and z_B) gradient
+## of eta_ut with respect to the full joint parameter vector: the free
+## X_fix row entries at the b_fix positions, plus lambda_t at that unit's
+## z_B positions, zero elsewhere. This is the same b_fix/z_B block-position
+## convention `.gllvmTMB_predict_se_link()` and `extract_ordination()`
+## already rely on (verified positionally identical to
+## `names(fit$tmb_obj$env$last.par.best)` -- see
+## `test-predict-missing-se.R`'s one-cell numeric cross-check). The solve is
+## always sparse (`Matrix::solve(Q, W)`, CHOLMOD under the hood); Q is never
+## densified in production code.
+##
+## `route = "joint_load"` is R1-joint+loadings (Design 119 sec.7b), added
+## after wave-1b found route = "joint" UNDER-covers: eta_ut = x_ut'b +
+## lambda_t'u_i has a THIRD nonzero gradient block,
+## d(eta_ut)/d(lambda_{t,k}) = u_{i,k}, that route = "joint" omitted. The
+## loading lambda_{t,k} is not itself a free TMB parameter -- it is read
+## out of a packed vector `theta_rr_B` by `gll_unpack_rr_loadings()`
+## (src/gllvmTMB.cpp), one scalar copy per free (row, column) cell of the
+## loading matrix (diagonal first, then the strict lower triangle,
+## column-by-column) and a hard structural zero above the diagonal. This
+## packing is a pure position embedding, not a smooth reparameterisation
+## (no exp/Cholesky-product/normalisation), so d(lambda_{t,k})/d(theta_j)
+## is exactly 1 at the one theta position lambda_{t,k} was copied from and
+## 0 elsewhere -- no chain rule beyond that copy is needed.
+## `.gllvmTMB_rr_loading_theta_positions()` below reproduces the C++
+## cursor exactly and was checked empirically (not just read off the
+## source) on a rank-2, 4-trait fixture: every free (row, column) cell's
+## `fit$report$Lambda_B` value matched
+## `fit$tmb_obj$env$last.par.best[theta_rr_B position]` exactly, and every
+## NA (structural) cell was exactly 0 (see the "loading position mapping"
+## test in test-predict-missing-se.R). The third block's w entries are
+## therefore `u_hat_{i,k}` (the unit's own fitted `z_B` score, from
+## `last.par.best`) at each free theta position for that trait row.
+.gllvmTMB_predict_missing_se <- function(
+  fit,
+  type = c("link", "response"),
+  route = c("quad", "joint", "joint_load", "sim", "boot"),
+  n_sim = 2000L,
+  sim_seed = NULL,
+  n_boot = 200L,
+  boot_seed = NULL,
+  boot_dgp = c("ml", "reml")
+) {
+  type <- match.arg(type)
+  route <- match.arg(route)
+  boot_dgp <- match.arg(boot_dgp)
+  fid_vec <- fit$tmb_data$family_id_vec
+  if (is.null(fid_vec) || !all(fid_vec == 0L)) {
+    cli::cli_abort(c(
+      "{.code predict_missing(se = TRUE)} is only implemented for gaussian fits in this slice.",
+      "i" = "Design 119 Slice 3 will extend {.code se = TRUE} to other families once per-family coverage evidence exists.",
+      ">" = "Use {.code se = FALSE} for point-only reconstructions on this family."
+    ), class = "gllvmTMB_predict_missing_se_family_unsupported")
+  }
+  ## Reuses the same refusal set predict(se.fit = TRUE) already enforces:
+  ## mi(), REML, multinomial, no sdreport, non-pdHess. `newdata = NULL`
+  ## always holds here -- predict_missing() has no newdata argument.
+  .gllvmTMB_predict_se_guard(fit, newdata = NULL)
+
+  eta <- as.numeric(fit$report$eta)
+  n_obs <- length(eta)
+  iyo <- fit$tmb_data$is_y_observed
+  masked <- if (is.null(iyo)) integer(0L) else which(iyo == 0L)
+
+  ## `route = "sim"` (Design 119 R2) bypasses the shared quad/joint variance
+  ## + sigma_eps-in-quadrature machinery entirely -- it gets se_confidence,
+  ## se_prediction AND the empirical quantile columns directly from Monte
+  ## Carlo draws. See `.gllvmTMB_predict_missing_sim()`'s header comment.
+  if (route == "sim") {
+    return(.gllvmTMB_predict_missing_sim(
+      fit, masked, n_obs, n_sim = n_sim, sim_seed = sim_seed
+    ))
+  }
+
+  ## `route = "boot"` (Design 119 R3, sec.7d) likewise bypasses the shared
+  ## machinery entirely -- every quantity comes from full refits, not a
+  ## variance-propagation formula. See
+  ## `.gllvmTMB_predict_missing_boot()`'s header comment for the derivation.
+  if (route == "boot") {
+    return(.gllvmTMB_predict_missing_boot(
+      fit, masked, n_obs, n_boot = n_boot, boot_seed = boot_seed,
+      boot_dgp = boot_dgp
+    ))
+  }
+
+  var_eta <- if (route == "joint") {
+    .gllvmTMB_predict_missing_var_eta_joint(fit, masked, n_obs)
+  } else if (route == "joint_load") {
+    .gllvmTMB_predict_missing_var_eta_joint(
+      fit, masked, n_obs, include_loadings = TRUE
+    )
+  } else {
+    .gllvmTMB_predict_missing_var_eta_quad(fit, masked, n_obs)
+  }
+  se_eta <- sqrt(pmax(var_eta, 0))
+
+  sigma_eps <- .gllvmTMB_sigma_eps(fit)
+  deriv <- .dlinkinv_per_row(
+    eta, fid_vec, fit$tmb_data$link_id_vec, sigma_eps = sigma_eps
+  )
+  ## Gaussian is identity-link (deriv == 1 exactly), so se_confidence is the
+  ## same whether `type` is "link" or "response" -- kept type-aware anyway
+  ## so the shape of this function generalises when Slice 3 adds families
+  ## whose link is not identity.
+  se_confidence <- if (type == "response") se_eta * abs(deriv) else se_eta
+  se_prediction <- sqrt(se_confidence^2 + sigma_eps^2)
+
+  list(se_confidence = se_confidence, se_prediction = se_prediction)
+}
+
+## R1-quad: var_fix(eta) (.gllvmTMB_predict_se_link()) plus the diagonal
+## rr_B latent-score curvature, in quadrature. See the parent function's
+## header comment for the full derivation and documented omissions.
+.gllvmTMB_predict_missing_var_eta_quad <- function(fit, masked, n_obs) {
+  se_fix <- .gllvmTMB_predict_se_link(fit)
+
+  se_lat2 <- rep(0, n_obs)
+  if (isTRUE(fit$use$rr_B) && length(masked) > 0L) {
+    ord <- extract_ordination(fit, level = "unit")
+    if (!is.null(ord)) {
+      se_mat   <- .getLV_se(fit, level = "B", scores = ord$scores)
+      var_mat  <- se_mat^2
+      Lambda   <- ord$loadings
+      trait_id <- as.integer(fit$data[[fit$trait_col]])
+      unit_id  <- as.integer(fit$data[[fit$unit_col]])
+      lam_rows <- Lambda[trait_id[masked], , drop = FALSE]
+      var_rows <- var_mat[unit_id[masked], , drop = FALSE]
+      se_lat2[masked] <- rowSums(lam_rows^2 * var_rows)
+    }
+  }
+
+  se_fix^2 + se_lat2
+}
+
+## Position map for `gll_unpack_rr_loadings()` (src/gllvmTMB.cpp): for an
+## `n_rows x rank` loading matrix packed as `theta` (diagonal entries
+## first, column by column; then the strict lower triangle, column by
+## column), returns an `n_rows x rank` integer matrix whose (row, column)
+## entry is that cell's 1-indexed position within `theta`, or `NA` for a
+## structural (upper-triangle) zero that is not a free parameter at all.
+## Reproduces the C++ cursor loop exactly rather than a closed-form
+## formula, so it is trivially checkable against the source side by side.
+.gllvmTMB_rr_loading_theta_positions <- function(n_rows, rank) {
+  pos <- matrix(NA_integer_, nrow = n_rows, ncol = rank)
+  cursor <- 0L
+  for (column in seq_len(rank)) {
+    cursor <- cursor + 1L
+    pos[column, column] <- cursor
+  }
+  for (column in seq_len(rank)) {
+    if (column < n_rows) {
+      for (row in (column + 1L):n_rows) {
+        cursor <- cursor + 1L
+        pos[row, column] <- cursor
+      }
+    }
+  }
+  pos
+}
+
+## R1-joint (`include_loadings = FALSE`): var(eta_ut) = w' Q^{-1} w via the
+## joint (fixed + random) precision, w carrying the b_fix and z_B blocks.
+## R1-joint+loadings (`include_loadings = TRUE`, Design 119 sec.7b): w
+## gains a third block, the free `theta_rr_B` positions for trait row t,
+## with entries u_hat_{i,k} (that unit's own fitted z_B score at axis k).
+## See the parent function's header comment for the full derivation. The
+## sparse-solve machinery is otherwise shared between the two so
+## `route = "joint"` cannot silently drift when the third block is added.
+## Exported (`@noRd`, internal) mainly so the test suite can call it
+## directly for the one-cell numeric cross-check against a dense solve.
+.gllvmTMB_predict_missing_var_eta_joint <- function(
+  fit, masked, n_obs, include_loadings = FALSE
+) {
+  var_eta <- rep(0, n_obs)
+  if (length(masked) == 0L) {
+    return(var_eta)
+  }
+
+  sdr_joint <- .gllvmTMB_sdreport_loading_ridge(fit$tmb_obj, fit$opt$par,
+    fit$aghq$ridge_tau %||% Inf, getJointPrecision = TRUE)
+  Q <- sdr_joint$jointPrecision
+  if (is.null(Q)) {
+    cli::cli_abort(c(
+      "{.code route = \"joint\"} requires a joint precision from {.fn sdreport}.",
+      "i" = "{.fn TMB::sdreport} did not return a {.field jointPrecision} block for this fit."
+    ), class = "gllvmTMB_predict_missing_se_joint_precision_unavailable")
+  }
+  par_names <- rownames(Q)
+
+  status <- .gllvmTMB_xcoef_status(fit)
+  free <- status != "fixed"
+  Xf <- fit$X_fix[, free, drop = FALSE]
+  bfix_pos <- which(par_names == "b_fix")
+  if (length(bfix_pos) != sum(free)) {
+    cli::cli_abort(c(
+      "Could not align the {.field b_fix} block in the joint precision with the free fixed-effect columns.",
+      "i" = "Expected {sum(free)} free {.field b_fix} entries; found {length(bfix_pos)}."
+    ), class = "gllvmTMB_predict_missing_se_joint_block_mismatch")
+  }
+
+  has_rr_B <- isTRUE(fit$use$rr_B)
+  zB_pos_mat <- NULL
+  Lambda <- NULL
+  theta_pos_mat <- NULL
+  theta_idx <- NULL
+  z_B_est <- NULL
+  if (has_rr_B) {
+    zB_pos <- which(par_names == "z_B")
+    if (length(zB_pos) != fit$d_B * fit$n_sites) {
+      cli::cli_abort(c(
+        "Could not align the {.field z_B} block in the joint precision.",
+        "i" = "Expected {fit$d_B * fit$n_sites} entries; found {length(zB_pos)}."
+      ), class = "gllvmTMB_predict_missing_se_joint_block_mismatch")
+    }
+    zB_pos_mat <- matrix(zB_pos, nrow = fit$d_B, ncol = fit$n_sites)
+    Lambda <- fit$report$Lambda_B
+
+    if (isTRUE(include_loadings)) {
+      n_traits <- nrow(Lambda)
+      theta_idx <- which(par_names == "theta_rr_B")
+      ## The parenthesis is load-bearing: `%/%` binds TIGHTER than `*` in R,
+      ## so `d * (d - 1L) %/% 2L` evaluates as `d * ((d - 1L) %/% 2L)`, which
+      ## is 0 at d = 2 (and 4 at d = 4) instead of the intended triangular
+      ## count 1 (and 6). The guard then demanded p*d free entries where the
+      ## packing supplies p*d - d(d-1)/2, and every rank-2 fit aborted --
+      ## invisible at rank 1, where both spellings agree. Caught by the
+      ## wave-1c campaign (25 traits, d = 2: expected 50, found 49).
+      expected_theta <- n_traits * fit$d_B - (fit$d_B * (fit$d_B - 1L)) %/% 2L
+      if (length(theta_idx) != expected_theta) {
+        cli::cli_abort(c(
+          "Could not align the {.field theta_rr_B} block in the joint precision.",
+          "i" = "Expected {expected_theta} free loading entries; found {length(theta_idx)}."
+        ), class = "gllvmTMB_predict_missing_se_joint_block_mismatch")
+      }
+      theta_pos_mat <- .gllvmTMB_rr_loading_theta_positions(n_traits, fit$d_B)
+      par_est <- fit$tmb_obj$env$last.par.best
+      z_B_est <- matrix(
+        par_est[names(par_est) == "z_B"], nrow = fit$d_B, ncol = fit$n_sites
+      )
+    }
+  }
+
+  trait_id <- as.integer(fit$data[[fit$trait_col]])
+  unit_id  <- as.integer(fit$data[[fit$unit_col]])
+
+  n_par <- nrow(Q)
+  n_m <- length(masked)
+  i_idx <- integer(0); j_idx <- integer(0); x_val <- numeric(0)
+  for (k in seq_along(masked)) {
+    i <- masked[k]
+    xf_row <- Xf[i, ]
+    nz <- which(xf_row != 0)
+    if (length(nz)) {
+      i_idx <- c(i_idx, bfix_pos[nz])
+      j_idx <- c(j_idx, rep(k, length(nz)))
+      x_val <- c(x_val, xf_row[nz])
+    }
+    if (has_rr_B) {
+      s <- unit_id[i]
+      t <- trait_id[i]
+      pos <- zB_pos_mat[, s]
+      lam <- Lambda[t, ]
+      i_idx <- c(i_idx, pos)
+      j_idx <- c(j_idx, rep(k, length(pos)))
+      x_val <- c(x_val, lam)
+
+      if (isTRUE(include_loadings)) {
+        theta_row <- theta_pos_mat[t, ]
+        free_axes <- which(!is.na(theta_row))
+        if (length(free_axes)) {
+          pos_theta <- theta_idx[theta_row[free_axes]]
+          u_vals <- z_B_est[free_axes, s]
+          i_idx <- c(i_idx, pos_theta)
+          j_idx <- c(j_idx, rep(k, length(pos_theta)))
+          x_val <- c(x_val, u_vals)
+        }
+      }
+    }
+  }
+  W <- Matrix::sparseMatrix(
+    i = i_idx, j = j_idx, x = x_val, dims = c(n_par, n_m)
+  )
+
+  ## Sparse solve -- never a dense inverse of Q.
+  V <- Matrix::solve(Q, W)
+  var_masked <- Matrix::colSums(W * V)
+
+  var_eta[masked] <- as.numeric(var_masked)
+  var_eta
+}
+
+## Design 119 R2 (sec.3 "R2 -- Simulation-based prediction intervals";
+## sec.7c residual diagnosis). `route = "joint_load"` (the best delta-method
+## route measured) still under-covers by ~1.2 points at 95%, and sec.7c
+## names two remaining structural limits of ANY delta-method route: (a) the
+## plug-in/Laplace curvature has no allowance for the extra uncertainty a
+## fully Bayesian treatment would add for estimated hyperparameters
+## (no Kass-Steffey-style second-order term), and (b) mean +/- z*se assumes
+## the predictive distribution of eta_ut (and, for se_prediction, y_ut) is
+## NORMAL. `route = "sim"` replaces assumption (b) with Monte Carlo draws
+## and empirical quantiles -- it makes NO normality assumption -- and gets
+## V_family EXACTLY by simulating the response rather than adding a plug-in
+## sigma_eps^2 term in quadrature. It still keeps every parameter at its
+## ESTIMATE (a plug-in simulation, exactly like joint_load's w' Q^{-1} w
+## curvature), so it does NOT address (a) -- that is R3's job (sec.3
+## parametric bootstrap). If "sim" lands calibrated where "joint_load" did
+## not, the residual gap was tail shape (b); if "sim" still under-covers by
+## a similar margin, the residual is parameter/hyperparameter uncertainty
+## (a) and R3 is required. That contrast is the reason to build this route
+## at all, not a fourth delta variant.
+##
+## Mechanics: draws the SAME gradient-relevant parameter subvector that
+## `route = "joint_load"` uses -- the free `b_fix` positions actually used
+## by a masked row's design row, the `z_B` scores of every masked cell's
+## own unit, and the free `theta_rr_B` loading entries of every masked
+## cell's own trait row -- from its EXACT joint-precision-implied marginal
+## normal, N(theta_hat, Sigma_sub), where Sigma_sub is the relevant
+## submatrix of Q^{-1} (never the inverse of a submatrix of Q -- that is a
+## different, wrong, quantity). Sigma_sub is obtained the same way the
+## existing joint route gets `var_masked`: solving Q against unit-vector
+## columns (`Matrix::solve(Q, S)`), never densifying Q. One multivariate
+## draw per simulation replicate gives a joint (b_fix*, z_B*, theta_rr_B*)
+## triple; eta*_ut is then formed EXACTLY (not linearised, unlike every
+## other route in this file) as
+##   eta*_ut = eta_hat_ut + x_ut'(b_free* - b_free_hat)
+##                        + [lambda_t*' u_i* - lambda_t_hat' u_i_hat]
+## which is algebraically identical to recomputing eta* = x'b* +
+## lambda_t*'u_i* from scratch, given every OTHER term (rr_W, diag_B, ...)
+## is held at its fitted value -- the same scope every other route in this
+## file documents (see the parent dispatcher's header comment). y*_ut is
+## eta*_ut plus one gaussian family draw, `rnorm(sd = sigma_eps_hat)`.
+## `se_confidence` / `se_prediction` are the empirical sd of eta* / y*
+## across replicates; `q_lo_conf`/`q_hi_conf` and `q_lo_pred`/`q_hi_pred`
+## (nominal 95%) and their `*90` companions (nominal 90%) are the empirical
+## 2.5/97.5 and 5/95 percentiles -- the actual point of this route, since a
+## non-normal EMPIRICAL quantile is exactly what mean +/- z*se cannot
+## produce.
+.gllvmTMB_predict_missing_sim <- function(
+  fit, masked, n_obs, n_sim = 2000L, sim_seed = NULL
+) {
+  out_names <- c(
+    "se_confidence", "se_prediction",
+    "q_lo_conf", "q_hi_conf", "q_lo_pred", "q_hi_pred",
+    "q_lo_conf90", "q_hi_conf90", "q_lo_pred90", "q_hi_pred90"
+  )
+  result <- stats::setNames(
+    lapply(out_names, function(nm) rep(NA_real_, n_obs)), out_names
+  )
+  if (length(masked) == 0L) {
+    return(result)
+  }
+  stopifnot(
+    "n_sim must be a single value >= 2" =
+      is.numeric(n_sim) && length(n_sim) == 1L && n_sim >= 2L
+  )
+  n_sim <- as.integer(round(n_sim))
+
+  sdr_joint <- .gllvmTMB_sdreport_loading_ridge(fit$tmb_obj, fit$opt$par,
+    fit$aghq$ridge_tau %||% Inf, getJointPrecision = TRUE)
+  Q <- sdr_joint$jointPrecision
+  if (is.null(Q)) {
+    cli::cli_abort(c(
+      "{.code route = \"sim\"} requires a joint precision from {.fn sdreport}.",
+      "i" = "{.fn TMB::sdreport} did not return a {.field jointPrecision} block for this fit."
+    ), class = "gllvmTMB_predict_missing_se_joint_precision_unavailable")
+  }
+  par_names <- rownames(Q)
+  par_est <- fit$tmb_obj$env$last.par.best
+
+  status <- .gllvmTMB_xcoef_status(fit)
+  free <- status != "fixed"
+  Xf <- fit$X_fix[, free, drop = FALSE]
+  bfix_pos_all <- which(par_names == "b_fix")
+  if (length(bfix_pos_all) != sum(free)) {
+    cli::cli_abort(c(
+      "Could not align the {.field b_fix} block in the joint precision with the free fixed-effect columns.",
+      "i" = "Expected {sum(free)} free {.field b_fix} entries; found {length(bfix_pos_all)}."
+    ), class = "gllvmTMB_predict_missing_se_joint_block_mismatch")
+  }
+
+  trait_id <- as.integer(fit$data[[fit$trait_col]])
+  unit_id  <- as.integer(fit$data[[fit$unit_col]])
+  masked_trait <- trait_id[masked]
+  masked_unit  <- unit_id[masked]
+  n_masked <- length(masked)
+
+  xf_masked <- Xf[masked, , drop = FALSE]
+  nz_cols <- which(Matrix::colSums(abs(xf_masked) > 0) > 0)
+  bfix_needed_pos <- bfix_pos_all[nz_cols]
+  needed_pos <- bfix_needed_pos
+
+  has_rr_B <- isTRUE(fit$use$rr_B)
+  u_sites <- integer(0)
+  zB_pos_mat <- NULL
+  theta_pos_mat <- NULL
+  theta_idx <- NULL
+  Lambda_hat <- NULL
+  trait_axis_map <- list()
+  zB_needed_pos <- integer(0)
+  theta_needed_pos <- integer(0)
+
+  if (has_rr_B) {
+    zB_pos <- which(par_names == "z_B")
+    if (length(zB_pos) != fit$d_B * fit$n_sites) {
+      cli::cli_abort(c(
+        "Could not align the {.field z_B} block in the joint precision.",
+        "i" = "Expected {fit$d_B * fit$n_sites} entries; found {length(zB_pos)}."
+      ), class = "gllvmTMB_predict_missing_se_joint_block_mismatch")
+    }
+    zB_pos_mat <- matrix(zB_pos, nrow = fit$d_B, ncol = fit$n_sites)
+    u_sites <- sort(unique(masked_unit))
+    zB_needed_pos <- as.vector(zB_pos_mat[, u_sites, drop = FALSE])
+    needed_pos <- c(needed_pos, zB_needed_pos)
+
+    Lambda_hat <- fit$report$Lambda_B
+    n_traits <- nrow(Lambda_hat)
+    theta_idx <- which(par_names == "theta_rr_B")
+    ## Same parenthesisation fix as the joint_load route (sec.7c): `%/%`
+    ## binds tighter than `*`, so this parenthesis is load-bearing.
+    expected_theta <- n_traits * fit$d_B - (fit$d_B * (fit$d_B - 1L)) %/% 2L
+    if (length(theta_idx) != expected_theta) {
+      cli::cli_abort(c(
+        "Could not align the {.field theta_rr_B} block in the joint precision.",
+        "i" = "Expected {expected_theta} free loading entries; found {length(theta_idx)}."
+      ), class = "gllvmTMB_predict_missing_se_joint_block_mismatch")
+    }
+    theta_pos_mat <- .gllvmTMB_rr_loading_theta_positions(n_traits, fit$d_B)
+
+    u_traits <- sort(unique(masked_trait))
+    cursor <- 0L
+    for (t in u_traits) {
+      row <- theta_pos_mat[t, ]
+      free_axes <- which(!is.na(row))
+      n_axes <- length(free_axes)
+      pos_theta <- if (n_axes > 0L) theta_idx[row[free_axes]] else integer(0)
+      theta_needed_pos <- c(theta_needed_pos, pos_theta)
+      trait_axis_map[[as.character(t)]] <- list(
+        free_axes = free_axes,
+        rows = if (n_axes > 0L) (cursor + 1L):(cursor + n_axes) else integer(0)
+      )
+      cursor <- cursor + n_axes
+    }
+    needed_pos <- c(needed_pos, theta_needed_pos)
+  }
+
+  n_needed <- length(needed_pos)
+  n_par <- nrow(Q)
+  S <- Matrix::sparseMatrix(
+    i = needed_pos, j = seq_len(n_needed), x = 1,
+    dims = c(n_par, n_needed)
+  )
+  ## Sparse solve -- never a dense inverse of Q. Sigma_sub is the SUBMATRIX
+  ## of Q^{-1} at the needed positions (obtained via S), not the inverse of
+  ## the submatrix of Q -- those are different quantities.
+  V <- Matrix::solve(Q, S)
+  Sigma_sub <- as.matrix(V[needed_pos, , drop = FALSE])
+  Sigma_sub <- (Sigma_sub + t(Sigma_sub)) / 2
+
+  U <- tryCatch(chol(Sigma_sub), error = function(e) NULL)
+  if (is.null(U)) {
+    jitter <- 1e-8 * mean(diag(Sigma_sub))
+    U <- tryCatch(
+      chol(Sigma_sub + diag(jitter, n_needed)), error = function(e) NULL
+    )
+  }
+  if (is.null(U)) {
+    cli::cli_abort(
+      "{.code route = \"sim\"}: the involved-parameter covariance is not numerically positive definite.",
+      class = "gllvmTMB_predict_missing_se_sim_not_pd"
+    )
+  }
+
+  ## RNG discipline: never disturb the caller's global RNG state.
+  has_seed <- exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
+  old_seed <- if (has_seed) get(".Random.seed", envir = .GlobalEnv) else NULL
+  on.exit({
+    if (has_seed) {
+      assign(".Random.seed", old_seed, envir = .GlobalEnv)
+    } else if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)) {
+      rm(".Random.seed", envir = .GlobalEnv)
+    }
+  }, add = TRUE)
+  seed_use <- if (is.null(sim_seed)) {
+    .gllvmTMB_predict_missing_sim_default_seed(fit)
+  } else {
+    as.integer(sim_seed)
+  }
+  set.seed(seed_use)
+
+  Z <- matrix(stats::rnorm(n_needed * n_sim), nrow = n_needed, ncol = n_sim)
+  Devs <- t(U) %*% Z
+
+  n_bfix <- length(bfix_needed_pos)
+  bfix_dev <- Devs[seq_len(n_bfix), , drop = FALSE]
+  eta_hat_masked <- as.numeric(fit$report$eta)[masked]
+  delta_fix <- if (length(nz_cols) > 0L) {
+    as.matrix(xf_masked[, nz_cols, drop = FALSE] %*% bfix_dev)
+  } else {
+    matrix(0, n_masked, n_sim)
+  }
+  sim_eta <- delta_fix + eta_hat_masked
+
+  if (has_rr_B) {
+    n_zB <- length(zB_needed_pos)
+    zB_dev <- Devs[(n_bfix + 1L):(n_bfix + n_zB), , drop = FALSE]
+    dU_arr <- array(
+      as.matrix(zB_dev), dim = c(fit$d_B, length(u_sites), n_sim)
+    )
+    n_theta <- length(theta_needed_pos)
+    theta_dev <- if (n_theta > 0L) {
+      Devs[(n_bfix + n_zB + 1L):(n_bfix + n_zB + n_theta), , drop = FALSE]
+    } else {
+      matrix(numeric(0), 0L, n_sim)
+    }
+
+    ## The bilinear cross term (lambda_t*)'(u_i*) is recomputed EXACTLY per
+    ## masked cell -- see the header comment. Looping over masked cells
+    ## (rarely more than a few hundred at a coverage-campaign scale) with
+    ## vectorised n_sim-length arithmetic inside each iteration.
+    delta_lat <- matrix(0, n_masked, n_sim)
+    for (k in seq_len(n_masked)) {
+      t <- masked_trait[k]
+      s <- masked_unit[k]
+      s_idx <- match(s, u_sites)
+      dU_s <- dU_arr[, s_idx, ]
+      if (is.null(dim(dU_s))) dU_s <- matrix(dU_s, nrow = fit$d_B)
+      lam_hat_t <- Lambda_hat[t, ]
+      u_hat_s <- par_est[zB_pos_mat[, s]]
+
+      info <- trait_axis_map[[as.character(t)]]
+      dLam_t <- matrix(0, fit$d_B, n_sim)
+      if (length(info$rows) > 0L) {
+        dLam_t[info$free_axes, ] <- theta_dev[info$rows, , drop = FALSE]
+      }
+
+      term1 <- as.numeric(crossprod(lam_hat_t, dU_s))
+      term2 <- as.numeric(crossprod(dLam_t, u_hat_s))
+      term3 <- colSums(dLam_t * dU_s)
+      delta_lat[k, ] <- term1 + term2 + term3
+    }
+    sim_eta <- sim_eta + delta_lat
+  }
+
+  sigma_eps <- .gllvmTMB_sigma_eps(fit)
+  sim_y <- sim_eta + matrix(
+    stats::rnorm(n_masked * n_sim, sd = sigma_eps), n_masked, n_sim
+  )
+
+  se_confidence <- apply(sim_eta, 1L, stats::sd)
+  se_prediction <- apply(sim_y, 1L, stats::sd)
+  q_conf   <- t(apply(sim_eta, 1L, stats::quantile,
+                       probs = c(0.025, 0.975), names = FALSE))
+  q_pred   <- t(apply(sim_y,   1L, stats::quantile,
+                       probs = c(0.025, 0.975), names = FALSE))
+  q_conf90 <- t(apply(sim_eta, 1L, stats::quantile,
+                       probs = c(0.05, 0.95), names = FALSE))
+  q_pred90 <- t(apply(sim_y,   1L, stats::quantile,
+                       probs = c(0.05, 0.95), names = FALSE))
+
+  result$se_confidence[masked] <- se_confidence
+  result$se_prediction[masked] <- se_prediction
+  result$q_lo_conf[masked]   <- q_conf[, 1L]
+  result$q_hi_conf[masked]   <- q_conf[, 2L]
+  result$q_lo_pred[masked]   <- q_pred[, 1L]
+  result$q_hi_pred[masked]   <- q_pred[, 2L]
+  result$q_lo_conf90[masked] <- q_conf90[, 1L]
+  result$q_hi_conf90[masked] <- q_conf90[, 2L]
+  result$q_lo_pred90[masked] <- q_pred90[, 1L]
+  result$q_hi_pred90[masked] <- q_pred90[, 2L]
+  result
+}
+
+## Deterministic default seed for `route = "sim"` when the caller does not
+## supply `sim_seed`: a pure function of the fitted parameter vector, so
+## repeated calls on the SAME fit reproduce identical draws without the
+## caller needing to know or pass anything. Not a cryptographic hash --
+## just a cheap, deterministic scalar summary of `last.par.best`.
+.gllvmTMB_predict_missing_sim_default_seed <- function(fit) {
+  par <- as.numeric(fit$tmb_obj$env$last.par.best)
+  h <- sum(par * seq_along(par))
+  as.integer(abs(round(h * 1e6)) %% 2147483647L)
+}
+
+## R3 (Design 119 sec.3, sec.7d): the parametric bootstrap route.
+##
+## DERIVATION. The target is the sampling distribution of the pivot
+## `eta_hat - eta_true` at a masked cell -- what every delta-method route
+## (quad/joint/joint_load) and the plug-in simulation route ("sim")
+## approximate holding theta fixed at theta_hat. `route = "sim"` (sec.7d)
+## established that the residual 0.4-0.9-point coverage shortfall is NOT
+## the normal-quantile assumption (empirical quantiles removed that) -- it
+## is that sigma_eps and the joint precision Q are both evaluated AT
+## theta_hat (the classic plug-in of the estimator's own uncertainty),
+## which only REFITTING propagates. R3 refits:
+##
+##   for b = 1..n_boot:
+##     1. Simulate a COMPLETE dataset at theta_hat: draw fresh latent
+##        scores u_b ~ N(0, I_q) (the model's own prior, at the fitted
+##        scale), form eta_b = X b_hat + Lambda_hat u_b for EVERY cell
+##        (observed AND masked), and draw y_b = eta_b + N(0, sigma_eps_hat^2)
+##        (gaussian family draw). eta_b/y_b at the masked cells are this
+##        replicate's TRUTH.
+##     2. Mask the SAME cells in y_b and refit (same formula/spec,
+##        `miss_control(response = "include")`, silent, `se = FALSE` --
+##        no sdreport inside the loop) -> theta_hat_b.
+##     3. Predict the masked cells from the refit: eta_hat_b. Gaussian is
+##        identity-link, so the response-scale estimate IS eta_hat_b (same
+##        convention every other route here already documents).
+##     4. Record the pivot residuals d_eta_b = eta_hat_b - eta_b (the
+##        confidence estimand) and d_y_b = eta_hat_b - y_b (the prediction
+##        estimand, which folds in the family draw).
+##
+## Every b is a FULL refit, so parameter uncertainty (b_fix, loadings,
+## sigma_eps), conditional latent-score uncertainty, AND dispersion
+## uncertainty are all propagated together -- nothing here is plug-in.
+## se_confidence/se_prediction are sd(d_eta)/sd(d_y). The interval for the
+## REAL fit is `eta_hat - quantile(d_eta, c(0.975, 0.025))` for the
+## confidence estimand and `eta_hat - quantile(d_y, c(0.975, 0.025))` for
+## the prediction estimand -- note the reversed order: subtracting the
+## UPPER pivot quantile gives the LOWER endpoint, because
+## `eta_hat - eta_true =d= eta_hat_b - eta_b` is solved for `eta_true`.
+##
+## SCOPE (narrow, matching the other three routes' own rr_B-only scope, but
+## STRICT here rather than silently-omitted: a full refit needs the WHOLE
+## generative model, so an unsupported structure is an error, not a missing
+## term in a variance sum). Gaussian family only (checked by the parent
+## function, `.gllvmTMB_predict_missing_se()`). The random-effect structure
+## must be a single ordinary loadings-only `latent()` term (rr_B,
+## `unique = FALSE`) and nothing else -- no diag_B/Psi companion, no rr_W,
+## no phylo/spatial/kernel/spde term, no `Xcoef_fixed` constraint. This is
+## exactly what `.pm_se_data()`/`.pm_se_fit()` in test-predict-missing-se.R
+## and the Design 119 sec.4 campaign fixture
+## (dev/cov119/harness/cov119-dgp.R) both fit.
+##
+## REFIT MECHANICS. There is no general `update()`/stored `$call` for a
+## `gllvmTMB_multi` fit to replay with new data, so the refit formula is
+## rebuilt from already-resolved, post-desugar fields every `gllvmTMB()`
+## call already carries: `fit$formula` (the fixed-effect-only formula,
+## identical whether the original call used the long or the `traits()`
+## wide grammar) plus the single `fit$covstructs[[1]]` entry (`kind =
+## "rr"`, `lhs`/`group` language objects) reassembled into a `latent()`
+## term. Verified empirically (not just read off the source) to reproduce
+## the ORIGINAL fit's logLik to full numerical precision on both a
+## long-format fixture and the wide `traits()` campaign fixture.
+.gllvmTMB_predict_missing_boot_refit_spec <- function(fit) {
+  .structured_rho_refit_assert(fit, ".gllvmTMB_predict_missing_boot_refit_spec")
+  other_flags <- c(
+    "diag_B", "rr_W", "diag_W", "rr_B_slope", "diag_B_slope",
+    "phylo_rr", "phylo_latent_slope", "phylo_diag", "phylo_unique",
+    "spatial_scalar", "spatial_latent", "spatial_latent_unique",
+    "indep_B", "indep_W", "indep_cluster", "phylo_indep", "spatial_indep",
+    "dep_B", "dep_W", "dep_cluster", "phylo_dep", "spatial_dep",
+    "phylo_dep_slope", "phylo_indep_slope", "kernel", "spde",
+    "spde_slope", "spde_dep_slope", "spde_indep_slope", "spde_latent_slope",
+    "lv_B", "diag_species", "diag_cluster2", "equalto", "propto", "re_int"
+  )
+  ## `fit$Xcoef_fixed` is always a resolved (non-NULL) structure with a
+  ## `status` entry per fixed-effect column -- "estimated" for every column
+  ## is the ordinary, unconstrained case; anything else means one or more
+  ## coefficients are held at a user-supplied fixed value, which the refit
+  ## reconstruction below does not carry through.
+  has_constrained_xcoef <- !is.null(fit$Xcoef_fixed$status) &&
+    any(fit$Xcoef_fixed$status != "estimated")
+  unsupported <- !isTRUE(fit$use$rr_B) ||
+    any(vapply(fit$use[other_flags], isTRUE, logical(1))) ||
+    length(fit$covstructs) != 1L ||
+    !identical(fit$covstructs[[1]]$kind, "rr") ||
+    has_constrained_xcoef
+  if (unsupported) {
+    cli::cli_abort(c(
+      "{.code se_route = \"boot\"} currently supports gaussian fits with a single ordinary loadings-only {.fn latent} term only.",
+      "i" = "Refitting needs the WHOLE generative model; an unsupported random-effect structure cannot be safely simulated by this route.",
+      ">" = "Use {.code se_route = \"sim\"} or a delta-method route for other structures."
+    ), class = "gllvmTMB_predict_missing_se_boot_unsupported_structure")
+  }
+  cs <- fit$covstructs[[1]]
+  latent_call <- as.call(list(
+    quote(latent), bquote(.(cs$lhs) | .(cs$group)), d = fit$d_B, unique = FALSE
+  ))
+  formula_full <- stats::as.formula(
+    paste(deparse(fit$formula), "+", deparse(latent_call))
+  )
+  list(
+    formula   = formula_full,
+    resp_name = all.vars(fit$formula)[1],
+    unit      = fit$unit_col,
+    trait     = fit$trait_col,
+    cluster   = fit$cluster_col,
+    cluster2  = fit$cluster2_col
+  )
+}
+
+.gllvmTMB_predict_missing_boot <- function(
+  fit, masked, n_obs, n_boot = 200L, boot_seed = NULL, boot_dgp = "ml"
+) {
+  out_names <- c(
+    "se_confidence", "se_prediction",
+    "q_lo_conf", "q_hi_conf", "q_lo_pred", "q_hi_pred",
+    "q_lo_conf90", "q_hi_conf90", "q_lo_pred90", "q_hi_pred90"
+  )
+  result <- stats::setNames(
+    lapply(out_names, function(nm) rep(NA_real_, n_obs)), out_names
+  )
+  result$n_boot_ok <- rep(NA_integer_, n_obs)
+  if (length(masked) == 0L) {
+    return(result)
+  }
+  stopifnot(
+    "n_boot must be a single value >= 2" =
+      is.numeric(n_boot) && length(n_boot) == 1L && n_boot >= 2L
+  )
+  n_boot <- as.integer(round(n_boot))
+
+  spec <- .gllvmTMB_predict_missing_boot_refit_spec(fit)
+
+  ## Design 119 sec.7e (wave-3 diagnosis): the generative WORLD for the B
+  ## complete-data draws should come from the LEAST-BIASED estimate of
+  ## truth, while the quantity being pivoted (`eta_hat_masked` below, and
+  ## every inner refit) stays exactly the user's own estimator (ML).
+  ## `boot_dgp = "ml"` (default, byte-identical to the pre-sec.7e route)
+  ## generates from the same ML fit being intervalised. `boot_dgp = "reml"`
+  ## fits ONE auxiliary REML model on the SAME (masked) data/formula/spec
+  ## and reads b_fix/Lambda_B/sigma_eps from IT instead -- REML's known
+  ## direction of correction (larger variance/loading estimates at small
+  ## n, converging to ML as n grows) is exactly what wave-3 found the "ml"
+  ## world was missing (ML pivots systematically narrow because the world
+  ## they are drawn from already carries ML's own downward bias, so the
+  ## bootstrap "re-imports" it instead of correcting for it, unlike `sim`
+  ## which draws from the joint-precision NORMAL rather than resimulating
+  ## the point estimate itself).
+  ##
+  ## EXTRACTION, verified empirically (not read off the source): under
+  ## `REML = TRUE`, `b_fix` moves into TMB's `random` vector (integrated
+  ## out by Laplace) and therefore never appears in `sd_report$par.fixed`
+  ## -- but it DOES still appear, under the same name, at the SAME
+  ## `last.par.best` positions (the FULL joint parameter vector at the
+  ## optimum, "random" and "fixed" alike) that the ML path already reads.
+  ## So no extraction change was needed for `b_fix`; `Lambda_B`/`sigma_eps`
+  ## come from `report$`/`.gllvmTMB_sigma_eps()`, which are populated
+  ## identically regardless of REML/ML (TMB's REPORT() runs at
+  ## `last.par.best` either way). Checked on a large-n (300-site) fixture
+  ## where REML approx ML: max|b_fix_reml - b_fix_ml| = 8.4e-6,
+  ## sigma_eps relative difference 0.34%, max|Lambda_B_reml - Lambda_B_ml|
+  ## = 0.0042 -- REML converges to ML as expected, confirming the read is
+  ## from the right block rather than some other (silently wrong) one.
+  theta_src <- fit
+  if (identical(boot_dgp, "reml")) {
+    fit_reml_aux <- tryCatch(
+      suppressWarnings(suppressMessages(gllvmTMB(
+        formula  = spec$formula,
+        data     = fit$data,
+        unit     = spec$unit,
+        trait    = spec$trait,
+        cluster  = spec$cluster,
+        cluster2 = spec$cluster2,
+        family   = fit$family_input,
+        known_sigma_eps = fit$known_sigma_eps,
+        missing  = miss_control(response = "include"),
+        REML     = TRUE,
+        silent   = TRUE
+      ))),
+      error = function(e) NULL
+    )
+    reml_ok <- !is.null(fit_reml_aux) && tryCatch(
+      isTRUE(identical(fit_reml_aux$opt$convergence, 0L)) &&
+        is.finite(as.numeric(stats::logLik(fit_reml_aux))),
+      error = function(e) FALSE
+    )
+    if (!reml_ok) {
+      cli::cli_abort(c(
+        "{.code se_route = \"boot\", boot_dgp = \"reml\"}: the auxiliary REML fit failed or did not converge.",
+        "i" = "The REML-corrected bootstrap world could not be generated -- no silent fallback to {.code boot_dgp = \"ml\"}.",
+        ">" = "Inspect the data/model, or explicitly pass {.code boot_dgp = \"ml\"}."
+      ), class = "gllvmTMB_predict_missing_se_boot_reml_aux_failed")
+    }
+    theta_src <- fit_reml_aux
+  }
+
+  par_names <- names(theta_src$tmb_obj$env$last.par.best)
+  par_est   <- theta_src$tmb_obj$env$last.par.best
+  b_hat        <- as.numeric(par_est[par_names == "b_fix"])
+  Lambda_hat   <- theta_src$report$Lambda_B
+  sigma_eps_hat <- .gllvmTMB_sigma_eps(theta_src)
+  trait_id <- as.integer(fit$data[[fit$trait_col]])
+  unit_id  <- as.integer(fit$data[[fit$unit_col]])
+  n_masked <- length(masked)
+  ## The REAL fit's own (ML) point estimate -- the anchor the returned
+  ## interval is built around (`eta_hat - quantile(pivot, ...)`), ALWAYS
+  ## from `fit`, never from `theta_src`/a bootstrap replicate's estimate,
+  ## regardless of `boot_dgp`.
+  eta_hat_masked <- as.numeric(fit$report$eta)[masked]
+
+  Xb <- as.numeric(theta_src$X_fix %*% b_hat)
+  Lambda_row_all <- Lambda_hat[trait_id, , drop = FALSE]
+
+  ## RNG discipline, matching route = "sim": never disturb the caller's
+  ## global RNG state.
+  has_seed <- exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
+  old_seed <- if (has_seed) get(".Random.seed", envir = .GlobalEnv) else NULL
+  on.exit({
+    if (has_seed) {
+      assign(".Random.seed", old_seed, envir = .GlobalEnv)
+    } else if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)) {
+      rm(".Random.seed", envir = .GlobalEnv)
+    }
+  }, add = TRUE)
+  seed_use <- if (is.null(boot_seed)) {
+    .gllvmTMB_predict_missing_sim_default_seed(fit)
+  } else {
+    as.integer(boot_seed)
+  }
+  set.seed(seed_use)
+
+  d_eta <- matrix(NA_real_, n_masked, n_boot)
+  d_y   <- matrix(NA_real_, n_masked, n_boot)
+  n_ok  <- 0L
+
+  data_b   <- fit$data
+  iyo_ref  <- fit$tmb_data$is_y_observed
+
+  for (b in seq_len(n_boot)) {
+    u_b   <- matrix(stats::rnorm(fit$d_B * fit$n_sites), fit$d_B, fit$n_sites)
+    lat_b <- rowSums(Lambda_row_all * t(u_b)[unit_id, , drop = FALSE])
+    eta_b <- Xb + lat_b
+    y_b   <- eta_b + stats::rnorm(n_obs, sd = sigma_eps_hat)
+
+    data_b[[spec$resp_name]] <- y_b
+    data_b[[spec$resp_name]][masked] <- NA_real_
+
+    fit_b <- tryCatch(
+      suppressWarnings(suppressMessages(gllvmTMB(
+        formula  = spec$formula,
+        data     = data_b,
+        unit     = spec$unit,
+        trait    = spec$trait,
+        cluster  = spec$cluster,
+        cluster2 = spec$cluster2,
+        family   = fit$family_input,
+        known_sigma_eps = fit$known_sigma_eps,
+        missing  = miss_control(response = "include"),
+        silent   = TRUE
+      ))),
+      error = function(e) NULL
+    )
+    if (is.null(fit_b)) next
+
+    conv <- tryCatch(
+      isTRUE(identical(fit_b$opt$convergence, 0L)) &&
+        is.finite(as.numeric(stats::logLik(fit_b))) &&
+        identical(fit_b$tmb_data$is_y_observed, iyo_ref),
+      error = function(e) FALSE
+    )
+    if (!conv) next
+
+    eta_hat_b <- as.numeric(fit_b$report$eta)[masked]
+    if (!all(is.finite(eta_hat_b))) next
+
+    n_ok <- n_ok + 1L
+    d_eta[, n_ok] <- eta_hat_b - eta_b[masked]
+    d_y[, n_ok]   <- eta_hat_b - y_b[masked]
+  }
+
+  result$n_boot_ok[masked] <- n_ok
+
+  ## Failure discipline (Design 119 R3 build note): a refit that errors or
+  ## does not converge is DROPPED from the pivot sample and COUNTED, never
+  ## silently ignored. Fewer than 50% surviving refits is treated as too
+  ## thin a sample to trust -- return NA SEs/quantiles with a recorded
+  ## (warned) reason rather than reporting an interval from a handful of
+  ## draws.
+  if (n_ok < ceiling(n_boot / 2)) {
+    cli::cli_warn(c(
+      "{.code se_route = \"boot\"}: only {n_ok} of {n_boot} refits converged (< 50%).",
+      "i" = "Returning NA standard errors and quantiles for this fit rather than a silently thin bootstrap sample.",
+      ">" = "See {.field n_boot_ok} in the returned data frame."
+    ), class = "gllvmTMB_predict_missing_se_boot_too_few_ok")
+    return(result)
+  }
+
+  d_eta <- d_eta[, seq_len(n_ok), drop = FALSE]
+  d_y   <- d_y[, seq_len(n_ok), drop = FALSE]
+
+  se_confidence <- apply(d_eta, 1L, stats::sd)
+  se_prediction <- apply(d_y,   1L, stats::sd)
+
+  q_eta   <- t(apply(d_eta, 1L, stats::quantile,
+                      probs = c(0.025, 0.975), names = FALSE))
+  q_y     <- t(apply(d_y,   1L, stats::quantile,
+                      probs = c(0.025, 0.975), names = FALSE))
+  q_eta90 <- t(apply(d_eta, 1L, stats::quantile,
+                      probs = c(0.05, 0.95), names = FALSE))
+  q_y90   <- t(apply(d_y,   1L, stats::quantile,
+                      probs = c(0.05, 0.95), names = FALSE))
+
+  result$se_confidence[masked] <- se_confidence
+  result$se_prediction[masked] <- se_prediction
+  ## `eta_hat - quantile(pivot, c(0.975, 0.025))`: subtracting the UPPER
+  ## pivot quantile (column 2, the 0.975 probability) gives the LOWER
+  ## endpoint; see the header derivation.
+  result$q_lo_conf[masked]   <- eta_hat_masked - q_eta[, 2L]
+  result$q_hi_conf[masked]   <- eta_hat_masked - q_eta[, 1L]
+  result$q_lo_pred[masked]   <- eta_hat_masked - q_y[, 2L]
+  result$q_hi_pred[masked]   <- eta_hat_masked - q_y[, 1L]
+  result$q_lo_conf90[masked] <- eta_hat_masked - q_eta90[, 2L]
+  result$q_hi_conf90[masked] <- eta_hat_masked - q_eta90[, 1L]
+  result$q_lo_pred90[masked] <- eta_hat_masked - q_y90[, 2L]
+  result$q_hi_pred90[masked] <- eta_hat_masked - q_y90[, 1L]
+
+  result
+}
+
 #' Predict the masked (missing) response cells of a gllvmTMB fit
 #'
 #' For a model fitted with `missing = miss_control(response = "include")`
@@ -2202,28 +4816,155 @@ predict.gllvmTMB_multi <- function(
 #' missing **predictors** from supported `mi()` fits.
 #' The point predictions here are the fitted linear predictor (`type = "link"`)
 #' or its inverse-link response (`type = "response"`). Reconstruction standard
-#' errors and prediction intervals are not currently returned.
+#' errors and prediction intervals are not currently returned by default.
+#'
+#' `se = TRUE` is **experimental**: no repeated-sampling coverage evidence
+#' exists for `se_confidence` or `se_prediction`, and neither is an interval
+#' claim of any kind. It is currently implemented for gaussian
+#' fits only (other families abort). Five routes exist (`se_route`):
+#' `"quad"` (default) omits the b_fix/latent-score cross-covariance and any
+#' `diag_B` ("unique"/Psi) or within-unit (`rr_W`) random-effect
+#' contribution and OVER-covers `se_confidence`;
+#' `"joint"` computes the exact joint-precision variance for the b_fix and
+#' latent-score blocks but omits the loading-uncertainty
+#' block entirely and UNDER-covers; `"joint"` and `"quad"` BRACKET nominal
+#' coverage. `"joint_load"` adds that third block; it is the best-calibrated
+#' delta-method route measured and still falls short of nominal coverage.
+#' `"sim"` is a
+#' Monte Carlo route: it draws the same gradient-relevant parameter
+#' subvector `"joint_load"` uses from its exact joint-precision marginal
+#' normal, forms `n_sim` EXACT (non-linearised) draws of
+#' `eta* = x'b* + lambda_t*'u_i*`, and adds one gaussian family draw per
+#' replicate for `y*`. Unlike the delta-method routes it makes NO normality
+#' assumption about the predictive distribution -- `se_confidence` /
+#' `se_prediction` are the empirical sd of `eta*` / `y*`, and it ALSO
+#' returns empirical-quantile columns (`q_lo_conf`/`q_hi_conf`,
+#' `q_lo_pred`/`q_hi_pred` at nominal 95%, and their `*90` companions at
+#' nominal 90%) that a normal-quantile route cannot produce. It still holds
+#' every parameter at its estimate (a plug-in simulation), so it does not
+#' address hyperparameter uncertainty.
+#' `"boot"` is a parametric bootstrap: it simulates a
+#' complete dataset at the fitted parameters (fresh latent scores AND a
+#' fresh family draw for every cell), masks the same cells, and REFITS the
+#' model `n_boot` times. Because every replicate is a full refit, it is the
+#' only route that propagates parameter (and dispersion) uncertainty rather
+#' than holding it fixed at the plug-in estimate; it is also by far the
+#' most expensive route (`n_boot` model fits per call) and, in this slice,
+#' only supports gaussian fits with a single ordinary loadings-only
+#' `latent()` term (see Details in the source for the derivation and the
+#' scope guard). A refit that errors or fails to converge is dropped from
+#' the pivot sample and counted in `n_boot_ok`; if fewer than half the
+#' refits survive, `se_confidence`/`se_prediction`/the quantile columns are
+#' `NA` for that fit (with a warning) rather than reporting an interval
+#' built from a thin sample.
+#'
+#' `boot_dgp` controls what parameters generate the `n_boot` complete-data
+#' worlds. A bootstrap with `boot_dgp = "ml"` can under-cover at the same
+#' level as `"joint_load"`.
+#' `"ml"` (default, byte-identical to the pre-sec.7e route) simulates from
+#' the SAME ML fit being intervalised -- so at small n its known downward
+#' variance/loading bias is "re-imported" into the bootstrap world, making
+#' the pivots systematically narrow. `"reml"` fits ONE auxiliary REML model
+#' on the same (masked) data/formula first and simulates from ITS
+#' parameters instead -- REML's own known bias direction (larger, less
+#' biased at small n, converging to ML as n grows) targets exactly that
+#' gap. The quantity being pivoted (the point estimate the interval is
+#' centred on, and every inner refit) stays ML either way; only the
+#' generative world changes. Ignored unless `se_route = "boot"`.
+#'
+#' Do not surface `se_confidence` / `se_prediction` / the quantile columns
+#' as calibrated uncertainty in any user-facing output until a route and family
+#' have direct coverage evidence.
+#'
+#' For [ordinal_probit()] / [ordinal_logit()] traits, `type = "response"`
+#' is the **expected category** \eqn{E[k] = \sum_k k \cdot
+#' P(\mathrm{category}\ k \mid \eta, \tau)}, computed from the fitted
+#' cutpoints (Hadfield 2015 convention: \eqn{\tau_1 = 0} fixed,
+#' \eqn{\tau_2, \ldots, \tau_{K-1}} estimated; see [extract_cutpoints()])
+#' -- not a probability. It is not an elementwise `pnorm(eta)` /
+#' `plogis(eta)`, which is not a category quantity once \eqn{K > 2}.
+#' `type = "link"` is unchanged: the probit- or logit-scale linear
+#' predictor (per the trait's own family).
 #'
 #' @param object A fit returned by [gllvmTMB()].
 #' @param type One of `"link"` (default; the linear predictor) or
-#'   `"response"` (the inverse-link conditional mean).
+#'   `"response"` (the inverse-link conditional mean; for
+#'   [ordinal_probit()] / [ordinal_logit()] traits, the expected category
+#'   instead -- see Details).
+#' @param se EXPERIMENTAL, internal-only. If `TRUE`, appends `se_confidence`
+#'   (delta-method SE of the reconstructed mean) and `se_prediction`
+#'   (`se_confidence` combined with the family noise variance) columns.
+#'   Gaussian fits only in this slice; unavailable for AGHQ fits. See Details.
+#'   Default `FALSE`.
+#' @param se_route EXPERIMENTAL, internal-only. One of `"quad"` (default;
+#'   R1-quad), `"joint"` (R1-joint), `"joint_load"` (R1-joint+loadings),
+#'   `"sim"` (R2, simulation-based), or `"boot"` (R3, parametric
+#'   bootstrap -- see Details). Ignored unless `se = TRUE`.
+#' @param n_sim EXPERIMENTAL, internal-only. Number of Monte Carlo
+#'   replicates drawn per masked cell when `se_route = "sim"`. Ignored for
+#'   every other route. Default `2000`.
+#' @param sim_seed EXPERIMENTAL, internal-only. Integer RNG seed for
+#'   `se_route = "sim"`. Default `NULL`, which derives a fixed seed from
+#'   the fitted parameter vector so repeated calls on the same fit
+#'   reproduce identical draws; the caller's global RNG state is always
+#'   saved and restored, never disturbed. Ignored for every other route.
+#' @param n_boot EXPERIMENTAL, internal-only. Number of full-refit bootstrap
+#'   replicates when `se_route = "boot"`. Ignored for every other route.
+#'   Default `200`.
+#' @param boot_seed EXPERIMENTAL, internal-only. Integer RNG seed for
+#'   `se_route = "boot"`. Default `NULL`, which derives a fixed seed from
+#'   the fitted parameter vector (same convention as `sim_seed`); the
+#'   caller's global RNG state is always saved and restored. Ignored for
+#'   every other route.
+#' @param boot_dgp EXPERIMENTAL, internal-only. One of `"ml"` (default) or
+#'   `"reml"` -- see Details. Ignored unless `se_route = "boot"`.
 #' @param ... Unused.
 #'
 #' @return A data frame with one row per masked response cell, with columns:
-#'   `original_row` (the supplied long-data row or the supplied wide-data row
-#'   before `traits()` stacking),
+#'   `original_row` (the supplied long-data row, the supplied wide-data row
+#'   before `traits()` stacking, or -- for a [multinomial()] fit -- the
+#'   pre-expansion row of the user's data that the K-1 category-contrast
+#'   pseudo-row belongs to),
 #'   `model_row` (the row index into the fitted long-format data / response),
-#'   the unit / cluster / trait identifier columns, and `est` (the prediction
-#'   on the requested scale). A complete-data fit (no masked cells) returns a
-#'   zero-row data frame with the same columns.
+#'   the unit / cluster / trait identifier columns, `est` (the prediction
+#'   on the requested scale), and, when `se = TRUE`, `se_confidence` and
+#'   `se_prediction` (see Details -- EXPERIMENTAL, not a calibrated
+#'   interval). When `se = TRUE` and `se_route` is `"sim"` or `"boot"`,
+#'   also `q_lo_conf`/`q_hi_conf`, `q_lo_pred`/`q_hi_pred` (empirical
+#'   2.5%/97.5% quantiles / bootstrap interval endpoints) and
+#'   `q_lo_conf90`/`q_hi_conf90`, `q_lo_pred90`/`q_hi_pred90` (the nominal
+#'   90% companions). When `se_route = "boot"`, also `n_boot_ok` (the
+#'   number of the `n_boot` refits that converged and entered the pivot
+#'   sample). A complete-data fit (no masked cells) returns a zero-row data
+#'   frame with the same columns.
 #'
 #' @seealso [gllvmTMB()], [miss_control()], [predict.gllvmTMB_multi()].
 #' @export
-predict_missing <- function(object, type = c("link", "response"), ...) {
+predict_missing <- function(
+  object,
+  type = c("link", "response"),
+  se = FALSE,
+  se_route = c("quad", "joint", "joint_load", "sim", "boot"),
+  n_sim = 2000L,
+  sim_seed = NULL,
+  n_boot = 200L,
+  boot_seed = NULL,
+  boot_dgp = c("ml", "reml"),
+  ...
+) {
   if (!inherits(object, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+    .gllvmTMB_abort_not_multi_fit(object)
   }
   type <- match.arg(type)
+  se_route <- match.arg(se_route)
+  boot_dgp <- match.arg(boot_dgp)
+  if (isTRUE(se) && isTRUE(object$aghq$used)) {
+    cli::cli_abort(c(
+      "Missing-response uncertainty is not available for AGHQ fits.",
+      "i" = "The available uncertainty routes have not been validated for AGHQ fits.",
+      ">" = "Use {.code se = FALSE} for point predictions, or refit with Laplace."
+    ), class = "gllvmTMB_aghq_missing_se_unsupported")
+  }
 
   md <- object$missing_data
   iyo <- object$tmb_data$is_y_observed
@@ -2259,14 +5000,29 @@ predict_missing <- function(object, type = c("link", "response"), ...) {
     original_row <- as.integer(wide_source_row)
   }
 
+  ## Multinomial (fid 16) fits expand each observation into K-1
+  ## category-contrast pseudo-rows before fitting; `md$original_row` above
+  ## is computed on the ALREADY-EXPANDED data, so it degenerates to
+  ## `model_row` for these rows and does not map back to the user's
+  ## pre-expansion data row. `.multinom_group_` (0-based, set by
+  ## `expand_multinomial_response()`) is exactly that pre-expansion row
+  ## index and survives on `object$data`, so use it to override
+  ## `original_row` for the multinomial pseudo-rows (`-1` tags a
+  ## non-multinomial row in a mixed-family fit and is left untouched).
+  mn_gid <- object$data[[".multinom_group_"]]
+  if (!is.null(mn_gid) && length(mn_gid) == n_model) {
+    mn_gid <- as.integer(mn_gid)
+    is_mn_row <- !is.na(mn_gid) & mn_gid >= 0L
+    original_row[is_mn_row] <- mn_gid[is_mn_row] + 1L
+  }
+
   ## Cell identifiers: reuse the user's column names where available.
   unit_lbl <- object$unit_col %||% "site"
   trait_lbl <- object$trait_col %||% "trait"
   cluster_lbl <- object$cluster_col %||% object$species_col
   cluster_is_placeholder <- !is.null(cluster_lbl) &&
     cluster_lbl %in% names(object$data) &&
-    length(object$data[[cluster_lbl]]) > 0L &&
-    all(as.character(object$data[[cluster_lbl]]) == "placeholder")
+    .gllvmTMB_is_placeholder_col(object$data[[cluster_lbl]])
 
   base <- data.frame(
     original_row = original_row,
@@ -2286,8 +5042,92 @@ predict_missing <- function(object, type = c("link", "response"), ...) {
     base[[trait_lbl]] <- object$data[[trait_lbl]]
   }
   base$est <- est
+  if (isTRUE(se)) {
+    se_out <- .gllvmTMB_predict_missing_se(
+      object, type = type, route = se_route, n_sim = n_sim, sim_seed = sim_seed,
+      n_boot = n_boot, boot_seed = boot_seed, boot_dgp = boot_dgp
+    )
+    base$se_confidence <- se_out$se_confidence
+    base$se_prediction <- se_out$se_prediction
+    ## Additive columns, "sim"/"boot" routes only -- the campaign driver
+    ## ignores extras, so this never disturbs the other routes' interface.
+    if (se_route %in% c("sim", "boot")) {
+      base$q_lo_conf     <- se_out$q_lo_conf
+      base$q_hi_conf     <- se_out$q_hi_conf
+      base$q_lo_pred     <- se_out$q_lo_pred
+      base$q_hi_pred     <- se_out$q_hi_pred
+      base$q_lo_conf90   <- se_out$q_lo_conf90
+      base$q_hi_conf90   <- se_out$q_hi_conf90
+      base$q_lo_pred90   <- se_out$q_lo_pred90
+      base$q_hi_pred90   <- se_out$q_hi_pred90
+    }
+    if (se_route == "boot") {
+      base$n_boot_ok <- se_out$n_boot_ok
+    }
+  }
 
   out <- base[masked, , drop = FALSE]
+
+  ## ordinal_probit / ordinal_logit (fid 14 / 20) have no single-row
+  ## response mean, so `predict(object, type = "response")` (via
+  ## `.apply_linkinv_per_row()`) falls back to the latent probit/logit-scale
+  ## `pnorm(eta)`/`plogis(eta)` -- not a category quantity once K > 2.
+  ## Scoped to predict_missing()'s masked-row output only: replace those
+  ## rows' `est` with the expected category. The generic predict() path is
+  ## untouched.
+  if (identical(type, "response")) {
+    fid_vec <- object$tmb_data$family_id_vec
+    if (!is.null(fid_vec) && length(fid_vec) == n_model &&
+        any(fid_vec %in% c(14L, 20L))) {
+      out <- .predict_missing_ordinal_response(object, out, fid_vec, trait_lbl)
+    }
+  }
+
   rownames(out) <- NULL
+  out
+}
+
+## For fid == 14 (ordinal_probit) / fid == 20 (ordinal_logit) rows in
+## `predict_missing(type = "response")`'s output, replace the
+## pnorm(eta)/plogis(eta) placeholder with the EXPECTED CATEGORY
+## E[k] = sum_k k * P(category k | eta, cutpoints), following the Hadfield
+## (2015) convention also used by extract_cutpoints(): tau_1 = 0 fixed for
+## identifiability, tau_2 .. tau_{K-1} estimated. Built directly from
+## `object$tmb_data`/`object$report` (the same fields `extract_cutpoints()`
+## reads) rather than calling `extract_cutpoints()` itself, so a K = 2 trait
+## (Hadfield eqn 10 / its logit analogue: K = 2 reduces exactly to
+## binomial(), zero free cutpoints) is still handled -- `extract_cutpoints()`
+## omits such traits from its per-cutpoint data frame entirely. The CDF
+## (pnorm for fid 14, plogis for fid 20) is chosen per-row from its own
+## family; non-ordinal rows in `out` are untouched.
+.predict_missing_ordinal_response <- function(object, out, fid_vec, trait_lbl) {
+  ord_idx <- which(fid_vec[out$model_row] %in% c(14L, 20L))
+  if (length(ord_idx) == 0L || is.null(trait_lbl) || !trait_lbl %in% names(out)) {
+    return(out)
+  }
+  n_cuts_pt <- as.integer(object$tmb_data$n_ordinal_cuts_per_trait)
+  off_pt <- as.integer(object$tmb_data$ordinal_offset_per_trait)
+  trait_lab <- levels(object$data[[trait_lbl]])
+  taus <- as.numeric(object$report$ordinal_cutpoints %||% numeric(0))
+  eta <- .aghq_conditional_training_eta(object)
+  traits_out <- as.character(out[[trait_lbl]])
+  for (i in ord_idx) {
+    t <- match(traits_out[i], trait_lab)
+    if (is.na(t) || t > length(n_cuts_pt)) {
+      next
+    }
+    kt_minus_2 <- n_cuts_pt[t]
+    tau_free <- if (kt_minus_2 > 0L) {
+      base_off <- off_pt[t]
+      taus[(base_off + 1L):(base_off + kt_minus_2)]
+    } else {
+      numeric(0)
+    }
+    bnds <- c(-Inf, 0, tau_free, Inf)
+    e <- eta[out$model_row[i]]
+    cdf_fun <- if (fid_vec[out$model_row[i]] == 20L) stats::plogis else stats::pnorm
+    probs <- diff(cdf_fun(bnds - e))
+    out$est[i] <- sum(seq_along(probs) * probs)
+  }
   out
 }

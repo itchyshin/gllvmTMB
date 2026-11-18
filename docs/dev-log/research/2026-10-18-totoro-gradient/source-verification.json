@@ -1,0 +1,14 @@
+{
+  "base": "2020ef25a2854b254f681d5323863d47dddb66f9",
+  "source_tar_sha256": "ba34f02436646225b88d990d817525a5e8862702ce26ef09e0b8728f7f978ce8",
+  "test_sha256": "b4a4affb685a1605350b88b9f20676100d85565b898c51ab464c18c97ebfece4",
+  "unchanged_package_files_verified": 310,
+  "DESCRIPTION_original_fields_semantically_unchanged": true,
+  "DESCRIPTION_build_added_fields": [
+    "Author",
+    "Maintainer",
+    "NeedsCompilation",
+    "Packaged"
+  ],
+  "fixture_md5": "bca7fd623bc3de86edc2c7175c4c731d"
+}

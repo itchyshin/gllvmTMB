@@ -237,6 +237,7 @@ test_that("Gaussian REML guardrails reject unsupported pilot cases", {
   )
 
   saturated <- df[seq_len(4L), , drop = FALSE]
+  saturated$trait <- droplevels(saturated$trait)
   saturated$id <- factor(seq_len(nrow(saturated)))
   expect_error(
     gllvmTMB(value ~ 0 + id, data = saturated, unit = "study", REML = TRUE),

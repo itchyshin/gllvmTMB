@@ -36,6 +36,14 @@ Returns latent scores from a fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}
 compatibility wrapper around \code{\link[=extract_ordination]{extract_ordination()}} for readers familiar
 with \code{gllvm::getLV()}.
 }
+\details{
+Attaching \code{gllvm} puts its S3 generic in front of this function.
+gllvmTMB registers a method for a gllvmTMB fit on that generic, so
+\code{getLV(fit)} still returns these scores. Pass the fit as the first
+argument. A fit produced by \code{gllvm} stays with \code{gllvm}, including that
+package's \code{type} argument. \code{gllvmTMB::getLV()} keeps these arguments and
+this return value whether or not \code{gllvm} is attached.
+}
 \section{Score uncertainty}{
 
 For an ordinary Laplace fit, \code{se = TRUE} reads the marginal standard error
@@ -49,8 +57,7 @@ and \code{se[i, k]} always refer to the same (unit, axis) cell. This value is
 mathematically equivalent to inverting the fit's full joint precision
 matrix (\code{TMB::sdreport(getJointPrecision = TRUE)}) and reading the
 diagonal of the same block; the two routes were verified to agree to
-machine precision during development (see
-\code{dev/getlv-score-se-RESULTS.md}). Requirements:
+machine precision during development. Requirements:
 \itemize{
 \item The fit must carry a valid \code{sdreport()}
 (\code{gllvmTMBcontrol(se = TRUE)}, the default) with a positive-definite
@@ -66,10 +73,15 @@ not yet propagated) and raise an error.
 error.
 }
 
+For loading-ridge fits, score SDs require matching retained
+penalised-curvature metadata. They are local posterior approximations
+conditional on the ridge scale. Older or mismatched reports raise a warning
+and return \code{NA} SDs, while preserving the score point estimates.
+
 For a \code{gllvmTMB_va} (variational) fit, \code{se} is instead the per-unit
 \strong{variational posterior SD} read from the fit's own variational
 distribution at its optimum -- not a Wald standard error, and not
-calibrated (Design 85 s10; the returned matrix carries a
+calibrated (the returned matrix carries a
 \code{"uncertainty_basis"} and \code{"calibrated"} attribute making this explicit in
 the object itself, not only here -- though those attributes are silently
 dropped by \code{se[i, ]}, \code{head(se)} and \code{as.data.frame(se)}).
@@ -81,14 +93,35 @@ constant across units is refused outright: the array would carry one row
 per unit while containing no per-unit information. That degeneracy is
 provable under \code{"ac"} (Albert-Chib) and was \emph{measured} on a Gaussian fit
 (coefficient of variation 1.6e-15) which the tier gate alone did not
-catch. See \code{docs/design/va-latent-uncertainty.md}.
+catch.
 }
 
 \examples{
-\dontrun{
-getLV(fit, level = "unit")
-getLV(fit, level = "unit", se = TRUE)
-}
+set.seed(1)
+## Five traits measured three times on each of 60 units. Between units,
+## the traits share two latent axes (Lambda) plus a trait-specific
+## unique variance (psi = 0.2 for every trait).
+Lambda <- matrix(c(0.9, 0.7, 0.5, -0.3, 0.2,
+                   0.0, 0.4, -0.5, 0.6, 0.8), nrow = 5, ncol = 2)
+sim <- simulate_unit_trait(
+  n_units = 60, n_obs_per_unit = 3, n_traits = 5,
+  Lambda_B = Lambda, psi_B = rep(0.2, 5), sigma2_eps = 0.3
+)
+fit <- gllvmTMB(
+  value ~ 0 + trait + latent(0 + trait | unit, d = 2, unique = TRUE),
+  data  = sim$data,
+  trait = "trait",
+  unit  = "unit"
+)
+## Latent-variable scores: each unit's predicted position on the two
+## between-unit axes (one row per unit, one column per axis)
+lv <- getLV(fit, level = "unit")
+dim(lv)
+head(lv)
+## se = TRUE also returns the standard error of each score, from the
+## fitted model's Wald (delta-method) approximation
+lv_se <- getLV(fit, level = "unit", se = TRUE)
+str(lv_se)
 }
 \seealso{
 \code{\link[=extract_ordination]{extract_ordination()}} for scores and loadings together.

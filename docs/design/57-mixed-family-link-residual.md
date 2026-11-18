@@ -6,17 +6,20 @@
 **Phase**: B-mix-0 (per `~/.claude/plans/please-have-a-robust-elephant.md`, 2026-05-26 evening revision).
 **Supersedes**: nothing; companion to `docs/design/02-family-registry.md` (current `check_auto_residual()` deferral) and `docs/design/56-augmented-lhs-engine-stage3.md` (augmented-LHS engine surface).
 
-> **RESOLVED 2026-07-05 — see [Design 02 §Hurdle/delta](02-family-registry.md).**
-> The "two latent scales / correlation undefined" obstruction this memo works
-> around is lifted by constraining the latent to the **positive** submodel
-> (occurrence submodel fixed-effects-only) → a single latent scale → the
-> correlation residual is the **positive-part residual** (not the two-component
-> `σ²_positive + π²/3`, which stays for total-variance / repeatability). The
+> **SOURCE CORRECTION 2026-08-25 — see
+> [Design 02 §Hurdle/delta](02-family-registry.md).** The native standard delta
+> likelihoods use the same `eta` for occurrence and the positive part; the
+> positive-part-only resolution recorded on 2026-07-05 was never implemented.
+> The bounded predictor-informed LV programme can therefore target its shared
+> loading covariance with `link_residual = "none"`, but that does not define an
+> automatic two-component delta link residual or an unconditional correlation.
+> The
 > "`check_auto_residual()` **rejects** mixed-family delta" statements below are
 > **historical and inaccurate**: that function is a manual, opt-in diagnostic,
 > was never auto-wired into the fit/extract path, and the class
 > `gllvmTMB_auto_residual_delta_undefined` does not exist in the codebase.
-> Mixed-family delta correlation is now `partial` (route-only), not blocked. The
+> Named shared-eta delta LV cells are point-recovery candidates; automatic
+> delta link-residual correlation remains uncalibrated. The
 > body below is retained as the historical design record.
 
 ## 1. Context and the problem

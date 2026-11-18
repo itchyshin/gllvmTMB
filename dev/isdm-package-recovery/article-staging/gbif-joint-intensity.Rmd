@@ -1,0 +1,132 @@
+---
+title: "Joint ecological intensity from opportunistic occurrence records"
+output: html_document
+vignette: >
+  %\VignetteIndexEntry{Joint ecological intensity from opportunistic occurrence records}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+<!-- LOCAL-ONLY STAGING DRAFT.  This file is not a package vignette, is not
+rendered, and makes no public capability claim.  Its examples are mathematical
+sketches until a separately validated public workflow exists. -->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(eval = FALSE)
+```
+
+# Why model species jointly when the data are mostly zeros?
+
+Consider a restoration programme that wants to compare six wetland species
+across a landscape of reference and restored cells.  Opportunistic records from
+a biodiversity portal are plentiful in accessible, popular places and scarce
+elsewhere.  A separate single-species model for each taxon can describe six
+maps, but it discards a useful biological premise: species can share an
+unmeasured ecological gradient while retaining species-specific departures.
+
+This staged article introduces the first part of an integrated joint-species
+story: a *relative ecological-intensity* model for opportunistic records.  It
+does not estimate abundance, detectability, absolute occurrence probability,
+or a spatial field.  It also does not claim that a current released package
+interface implements this workflow.  The purpose is to make the estimand and
+the source-bias assumption visible before adding survey observations.
+
+# One ecological state for all observation channels
+
+Let (c=1,\ldots,C) index landscape cells and (s=1,\ldots,S) index species.
+The ecological linear predictor is
+
+\[
+  \eta_{cs}=\alpha_s+x_c^\top\beta_s+\lambda_s z_c+e_{cs}.
+\]
+
+Here (x_c) contains measured environmental covariates.  The cell-level
+factor (z_c\sim N(0,1)) is shared by all species, and the residual vector
+\(e_c=(e_{c1},\ldots,e_{cS})^\top\) has
+
+\[
+  e_c\sim N(0,\Psi), \qquad \Psi=\operatorname{diag}(\psi_1^2,\ldots,\psi_S^2).
+\]
+
+Consequently the between-cell species covariance is
+
+\[
+  \Sigma=\Lambda\Lambda^\top+\Psi,
+  \qquad \Lambda=(\lambda_1,\ldots,\lambda_S)^\top.
+\]
+
+The rank-one term captures a single unmeasured ecological gradient shared
+across species.  The free diagonal \(\Psi\) prevents that factor from being
+forced to explain every species-specific deviation.  This is a covariance
+model, not a claim that the species interact causally.
+
+# Opportunistic records are a point-process observation channel
+
+Write (N^G_{cs}) for the opportunistic-record count, (a^G_c) for a known
+quadrature support or exposure, and (b_c) for a covariate representing
+recording bias.  The observation model is
+
+\[
+  N^G_{cs}\sim\operatorname{Poisson}(\mu^G_{cs}),\qquad
+  \log\mu^G_{cs}=\log a^G_c+\eta_{cs}+b_c\gamma_s.
+\]
+
+The \(\gamma_s\) terms belong to the GBIF channel only.  They describe a
+species-specific association between records and the named bias covariate;
+they do not alter ecological intensity itself.  Identification therefore
+depends on a design assumption: the bias covariate must vary separately enough
+from the environmental predictors, and the portal channel must contain enough
+information to estimate \(\gamma_s\).  That source gate is a property of the
+study design, not a numerical convenience.
+
+An observed zero is ordinary under this likelihood.  Low intensity, limited
+quadrature support, and weak recording opportunity all make zero records
+likely.  A generic zero-inflation term is not the first response to rare
+species records because it introduces another process without supplying the
+information needed to distinguish it from low intensity.
+
+# A synthetic six-species thought experiment
+
+For a realistic synthetic restoration landscape, let `env` increase from
+reference to restored hydrology and let `bias` represent accessibility to
+observers.  The following code is intentionally a *data-generating sketch*,
+not a user-facing fit recipe.
+
+```{r generate}
+set.seed(20260811)
+C <- 360L
+S <- 6L
+env <- seq(-1, 1, length.out = C)
+bias <- as.numeric(scale(resid(lm(rnorm(C) ~ env))))
+z <- rnorm(C)
+Lambda <- c(0.50, -0.35, 0.40, -0.45, 0.30, 0.25)
+psi <- c(0.35, 0.30, 0.40, 0.32, 0.38, 0.34)
+eta <- outer(env, c(0.55, -0.35, 0.25, 0.45, -0.20, 0.15)) +
+  tcrossprod(z, Lambda) +
+  matrix(rnorm(C * S, sd = rep(psi, each = C)), C, S)
+```
+
+This simulation has a known ecological map and known covariance decomposition.
+That lets an analyst ask a stronger question than “did the optimizer converge?”:
+do the fitted environmental effects, GBIF-bias effects, ecological maps,
+\(\Lambda\Lambda^\top\), and \(\Psi\) recover the values that generated the
+data?  The private six-species campaign is designed around precisely those
+five checks.  Its present numerical-admission gate is under review, so this
+article deliberately does not report a recovery success rate.
+
+# What this first article can and cannot establish
+
+The model is useful when the scientific question concerns relative ecological
+intensity and the portal-bias mechanism can be represented by named,
+source-specific covariates.  It borrows strength across species without
+equating their environmental responses.  It is not yet an integrated
+occupancy/detection model, and it has no spatial ecological or spatial bias
+field.  The next article adds repeated survey visits specifically to separate
+observation detection from ecological occurrence.
+
+# References to verify before promotion
+
+Before this draft becomes a public article, add checked bibliography entries
+for point-process and integrated-SDM foundations, GLLVM/JSDM latent-factor
+models, and the relevant package interfaces.  It must also gain a runnable
+synthetic public workflow only after the private recovery gate passes.

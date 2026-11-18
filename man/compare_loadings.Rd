@@ -10,8 +10,11 @@ compare_loadings(Lambda_a, Lambda_b)
 \item{Lambda_a, Lambda_b}{Two \verb{n_traits × d} loading matrices.}
 }
 \value{
-A list with the optimal rotation \code{R}, the rotated \code{Lambda_a_rot},
-and the Frobenius distance after alignment.
+A list with the optimal rotation \code{R}, the rotated \code{Lambda_a_rot}
+(rows in the order of \code{Lambda_b} when rows were matched by name),
+the Frobenius distance after alignment (\code{frobenius}), and the
+correlation between each column of \code{Lambda_a_rot} and the matching
+column of \code{Lambda_b} (\code{cor_per_factor}).
 }
 \description{
 When two latent-variable fits use the same traits, the loading matrices are
@@ -20,14 +23,41 @@ orthogonal transform that brings one matrix as close as possible to the
 other, then reports the residual disagreement. This is mainly a validation
 helper for comparing \code{\link[=gllvmTMB]{gllvmTMB()}} with another implementation.
 }
-\examples{
-\dontrun{
-fit_g <- gllvmTMB(value ~ 0 + trait + latent(0 + trait | site, d = 2),
-                  data = df, trait = "trait", unit = "site")
-fit_t <- glmmTMB::glmmTMB(value ~ 0 + trait + rr(0 + trait | site, d = 2),
-                         data = df, REML = FALSE)
-L_g <- extract_ordination(fit_g, "unit")$loadings
-L_t <- attr(glmmTMB::ranef(fit_t)$cond$site, "loadings")
-compare_loadings(L_g, L_t)
+\details{
+When both matrices have row names, rows are matched by trait name:
+\code{Lambda_a} is reordered to the row order of \code{Lambda_b}, and the function
+stops if the two row-name sets differ (or a name is repeated). If either
+matrix has no row names, rows are matched by position, so both must list
+the traits in the same order; a different order then shows up as a larger
+distance rather than as better or worse agreement of the loadings.
 }
+\examples{
+set.seed(1)
+# Simulate six traits, each measured twice on 100 units, from known
+# loadings: traits 2-3 share one axis, traits 4-6 a second, and
+# trait_1 loads on both.
+Lambda_true <- cbind(c(0.7, 1.0, 0.9, 0.0, 0.0, 0.0),
+                     c(0.7, 0.0, 0.0, 1.0, 0.9, 0.8))
+sim <- simulate_unit_trait(n_units = 100, n_obs_per_unit = 2,
+                           n_traits = 6, Lambda_B = Lambda_true,
+                           psi_B = 0.4, sigma2_eps = 0.3)
+fit <- gllvmTMB(value ~ 0 + trait +
+                  latent(0 + trait | unit, d = 2, unique = TRUE),
+                data = sim$data, trait = "trait", unit = "unit")
+L_hat <- extract_ordination(fit, "unit")$loadings
+
+# The fitted axes may be rotated or sign-flipped relative to the true
+# ones, so compare_loadings() first rotates the fitted loadings to
+# match the truth as closely as possible, then measures the gap.
+cmp <- compare_loadings(L_hat, Lambda_true)
+# Fitted loadings after alignment; compare them with Lambda_true.
+round(cmp$Lambda_a_rot, 2)
+# Overall distance after alignment, and per-axis correlation.
+round(cmp$frobenius, 3)
+round(cmp$cor_per_factor, 3)
+
+# Raw and varimax-rotated loadings from one fit differ only by a
+# rotation, so once aligned they match exactly (distance 0).
+L_rot <- rotate_loadings(fit, level = "unit")$Lambda
+round(compare_loadings(L_rot, L_hat)$frobenius, 6)
 }

@@ -1,17 +1,16 @@
 #' Build a cross-lineage relatedness kernel
 #'
 #' @description
-#' `make_cross_kernel()` builds the block relatedness matrix for the C0
-#' coevolution prototype. It builds a correlation-scale
-#' positive-semidefinite matrix
+#' `make_cross_kernel()` builds a correlation-scale
+#' positive-semidefinite block relatedness matrix
 #' `K_star = rbind(cbind(A_H, C_HP), cbind(t(C_HP), A_P))`, where `A_H`
 #' and `A_P` are within-lineage relatedness matrices and `C_HP` is the
-#' cross-lineage bridge induced by the association matrix `W`. The intended
-#' route is a prototype: pass `K_star` through the
-#' existing `phylo_latent(..., vcv = K_star, unique = TRUE)` engine. The
-#' generic `kernel_*()` surface and the
-#' `extract_Gamma()` coevolution gate are documented
-#' separately; this helper only builds the input kernel.
+#' cross-lineage bridge induced by the association matrix `W`. Pass
+#' `K_star` to a `kernel_*()` term (for example
+#' `kernel_latent(..., K = K_star)`) or to
+#' `phylo_latent(..., vcv = K_star, unique = TRUE)`. This helper only
+#' builds the input kernel; [extract_Gamma()] reads the fitted
+#' cross-lineage block.
 #'
 #' @param A_H,A_P Numeric square correlation matrices for the host and
 #'   partner lineages. Both must be symmetric, positive semidefinite, and
@@ -148,6 +147,15 @@ make_cross_kernel <- function(A_H, A_P, W, rho = 0.5, eps = 1e-8) {
 #'   `convergence`, `pd_hessian`, `status`, and `error`, plus any metric
 #'   columns returned by `metrics`.
 #'
+#'   The best grid point (`is_best`, `attr(, "best_rho")`) is chosen among
+#'   refits that did not report a problem: `convergence` must be `0` and
+#'   `pd_hessian` must be `TRUE`, where `NA` (not reported, as for a plain
+#'   `lm()` refit) counts as acceptable. A refit that reports `convergence != 0`
+#'   or `pd_hessian = FALSE` gets `status = "unhealthy_fit"` and `NA`
+#'   `relative_logLik` / `delta_deviance`, so [profile_cross_rho_ci()] ignores
+#'   it. If no refit is healthy, the best is chosen among all finite
+#'   log-likelihoods with a warning.
+#'
 #' @examples
 #' A_H <- diag(2)
 #' A_P <- diag(2)
@@ -230,7 +238,25 @@ profile_cross_rho <- function(A_H, A_P, W, rho, refit, metrics = NULL,
   out$relative_logLik <- NA_real_
   out$delta_deviance <- NA_real_
   out$is_best <- FALSE
-  ok <- is.finite(out$logLik)
+  finite <- is.finite(out$logLik)
+  ## A refit that reports non-convergence or a non-PD Hessian is not a
+  ## defensible arg-max. NA means "not reported" (e.g. an lm refit) and
+  ## stays eligible.
+  unhealthy <- finite & (
+    (!is.na(out$convergence) & out$convergence != 0L) |
+      (!is.na(out$pd_hessian) & !out$pd_hessian)
+  )
+  ok <- finite & !unhealthy
+  if (!any(ok) && any(finite)) {
+    cli::cli_warn(c(
+      "No grid point has a converged refit with a positive-definite Hessian.",
+      "i" = "{.field best_rho} is chosen from the unhealthy fits; treat it as unreliable."
+    ))
+    ok <- finite
+    unhealthy[] <- FALSE
+  } else if (any(unhealthy)) {
+    out$status[unhealthy] <- "unhealthy_fit"
+  }
   best_rho <- NA_real_
   if (any(ok)) {
     max_ll <- max(out$logLik[ok])

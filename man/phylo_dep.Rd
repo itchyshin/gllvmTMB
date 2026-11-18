@@ -4,11 +4,12 @@
 \alias{phylo_dep}
 \title{Full unstructured phylogenetic trait covariance: \code{phylo_dep(0 + trait | species)}}
 \usage{
-phylo_dep(formula, tree = NULL, vcv = NULL, A = NULL, Ainv = NULL)
+phylo_dep(formula, tree = NULL, vcv = NULL, A = NULL, Ainv = NULL, rho = 1)
 }
 \arguments{
-\item{formula}{\code{0 + trait | species} style formula. The LHS must be
-\code{0 + trait} (the trait factor); the RHS is the species column.}
+\item{formula}{\code{0 + trait | species} style formula, an admitted
+intercept-and-slope form, or the Gaussian slope-only response-column form
+\code{0 + x1 + ... | trait}.}
 
 \item{tree}{An \code{ape::phylo} object. \strong{Canonical.}}
 
@@ -20,6 +21,16 @@ phylo_dep(formula, tree = NULL, vcv = NULL, A = NULL, Ainv = NULL)
 argument naming.}
 
 \item{Ainv}{Sparse precision matrix (inverse of \code{A}).}
+
+\item{rho}{Source strength: a number in \verb{[0,1]} fixes
+\code{rho * K + (1-rho) * diag(diag(K))} on the legacy-resolved source scale.
+Omitted or explicit \code{1} preserves the existing model. \code{NULL} estimates
+strength for one Gaussian structured trait-intercept block with complete
+replicated multivariate observations and no competing ordinary covariance.
+Estimated latent terms require rank one and at least four traits. The same
+strength applies to the entire latent-plus-Psi covariance. This parameter
+is not a variance-share summary. Fixed attenuation and the admitted
+Gaussian estimator have implementation checks; recovery is regime-specific.}
 }
 \value{
 A formula marker; never evaluated.
@@ -29,7 +40,7 @@ Canonical name for the \strong{full unstructured cross-trait phylogenetic
 covariance} \eqn{\boldsymbol\Sigma_{\text{phy}} \otimes \mathbf{A}},
 with \eqn{T(T+1)/2} free parameters (\eqn{\boldsymbol\Sigma_{\text{phy}}}
 parameterised via Cholesky for PSD-ness). Mathematically identical to
-\code{phylo_latent(species, d = T)} standalone; the keyword choice is
+\code{phylo_latent(species, d = n_traits, unique = FALSE)} standalone; the keyword choice is
 documentary.
 }
 \details{
@@ -41,6 +52,17 @@ cross-trait phylogenetic covariance fit. Use
 \code{phylo_latent(..., unique = TRUE)} for the rank-reduced paired
 phylogenetic decomposition. Use
 \code{phylo_indep()} for the marginal-only per-trait variance fit.
+\subsection{Slope-only response-column form}{
+
+In a Gaussian long-format model, \code{phylo_dep(0 + lat + temp | trait)} gives
+response-column slope deviations with a full positive-definite covariance
+among predictors. Fixed column intercepts remain \code{0 + trait} in the main
+formula; this term never adds a random intercept. Retrieve the predictor
+covariance with \code{extract_Sigma(fit, level = "column_slope")}. Use
+\code{phylo_indep()} for a diagonal predictor covariance. The helper
+\code{phylo_slope(lat + temp | trait)} is an alias for this full route.
+}
+
 \subsection{Mutual exclusion with \code{phylo_latent()} / \code{phylo_indep()}}{
 
 Combining \code{phylo_dep(0 + trait | species)} with \code{phylo_latent} is
@@ -55,23 +77,28 @@ Pass the phylogeny via \code{tree = phylo} (canonical, sparse \eqn{\mathbf{A}^{-
 }
 }
 \examples{
-\dontrun{
-  tree <- ape::rcoal(8); tree$tip.label <- paste0("sp", seq_len(8))
+if (requireNamespace("ape", quietly = TRUE)) {
+  set.seed(1)
+  tree <- ape::rcoal(60); tree$tip.label <- paste0("sp", seq_len(60))
   sim <- simulate_site_trait(
-    n_sites = 1, n_species = 8, n_traits = 3,
-    mean_species_per_site = 8,
+    n_sites = 1, n_species = 60, n_traits = 3,
+    mean_species_per_site = 60,
     Cphy = ape::vcv(tree, corr = TRUE),
-    sigma2_phy = rep(0.3, 3), seed = 1
+    sigma2_phy = rep(1, 3), sigma2_eps = 0.2, seed = 1
   )
-  sim$data$species <- factor(sim$data$species, levels = tree$tip.label)
+  sim$data$species <- factor(
+    tree$tip.label[as.integer(sim$data$species)],
+    levels = tree$tip.label
+  )
+  \donttest{
   fit <- gllvmTMB(
-    value ~ 0 + trait + phylo_dep(0 + trait | species),
-    data       = sim$data,
-    trait      = "trait",
-    unit       = "species",
-    cluster    = "species",
-    phylo_tree = tree
+    value ~ 0 + trait + phylo_dep(0 + trait | species, tree = tree),
+    data    = sim$data,
+    trait   = "trait",
+    unit    = "species",
+    cluster = "species"
   )
+  }
 }
 }
 \seealso{

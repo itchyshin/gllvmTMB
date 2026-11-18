@@ -1,0 +1,30 @@
+[
+  {
+    "draft": "README.md",
+    "assessment": "docs/dev-log/research/2026-10-18-loading-ridge-comparison/assessments/README.json"
+  },
+  {
+    "draft": "vignettes/articles/fit-diagnostics.Rmd",
+    "assessment": "docs/dev-log/research/2026-10-18-loading-ridge-comparison/assessments/vignettes__articles__fit-diagnostics.json"
+  },
+  {
+    "draft": "docs/dev-log/research/2026-10-18-loading-ridge-comparison/README.md",
+    "assessment": "docs/dev-log/research/2026-10-18-loading-ridge-comparison/assessments/docs__dev-log__research__2026-10-18-loading-ridge-comparison__README.json"
+  },
+  {
+    "draft": "docs/dev-log/research/2026-10-18-loading-ridge-comparison/verification.md",
+    "assessment": "docs/dev-log/research/2026-10-18-loading-ridge-comparison/assessments/docs__dev-log__research__2026-10-18-loading-ridge-comparison__verification.json"
+  },
+  {
+    "draft": "docs/dev-log/after-task/2026-10-18-loading-ridge-guidance.md",
+    "assessment": "docs/dev-log/research/2026-10-18-loading-ridge-comparison/assessments/docs__dev-log__after-task__2026-10-18-loading-ridge-guidance.json"
+  },
+  {
+    "draft": "docs/dev-log/decisions.md",
+    "assessment": "docs/dev-log/research/2026-10-18-loading-ridge-comparison/assessments/docs__dev-log__decisions.json"
+  },
+  {
+    "draft": "docs/design/35-validation-debt-register.md",
+    "assessment": "docs/dev-log/research/2026-10-18-loading-ridge-comparison/assessments/docs__design__35-validation-debt-register.json"
+  }
+]

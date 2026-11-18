@@ -8,6 +8,38 @@ The prototype remains internal, non-exported, and outside the shipped
 this decision without a genuinely new evidence source and a separately
 approved contract.
 
+> **Containment record + scope note, 2026-08-05. The NO-GO above is UNCHANGED.**
+>
+> **(a) The containment sentence was SUPERSEDED BY A LATER COMMIT, not by this note.**
+> This block used to read "The prototype remains internal, non-exported, and outside
+> the shipped `gllvmTMB()` method surface." That was true when written (2026-07-20).
+> It was broken on **2026-07-31 by `8def9781`** ("route integration=\"va\" from
+> `gllvmTMB()` to the variational engine") -- **eleven days after this NO-GO closed,
+> and without reopening this design.** The route is now reachable via
+> `gllvmTMBcontrol(integration = "va")` (dispatch `R/fit-multi.R:2270-2278`), the
+> `gllvmTMB_va` class carries registered S3 methods, and as of 2026-08-05 a
+> point-estimate ordination surface (`getLV()`/`getLoadings()`/
+> `extract_ordination()`). The sentence is retained above as the RECORD of what was
+> promised, marked superseded -- deleting it would erase the fact that a closed
+> NO-GO's stated containment was overtaken by later work.
+>
+> **(b) ⚠ Do NOT cite this design as having already admitted `q <= 2`.**
+> An earlier draft of this note claimed the NO-GO governs only `q = 4/6` while the
+> fence's `q <= 2` sits in a region "Gates 0--2 DID support". **That is false, and it
+> is corrected here before anyone relies on it.** Gate 3 (:428) is *"joint-fit
+> known-DGP recovery at `q = 1/2`"* -- **the gate that FAILED is the recovery gate in
+> exactly the regime the fence admits** (`q_max = 2L`). `q = 4/6` is **Gate 5**
+> (:456), never reached. Gates 0--2 established algebra/autodiff and
+> fixed-coordinate O3 references only: Gate 1 is *"an algebra/geometry anchor, **not
+> evidence about non-Gaussian approximation quality**"* (:405-406), and §13 (:516-537)
+> states plainly that the 25 q1 + 25 q2 seeds were not the fixed-rank Gate-3
+> experiment and that reclassifying them *"does not manufacture the missing Gate-3
+> evidence."*
+>
+> **So what ships through the fence sits inside the regime whose recovery gate is
+> still MISSING.** It is justified as **point-estimate-only with uncertainty
+> hard-refused** (`confint()`/`vcov()` still abort on `calibrated = FALSE`), **not**
+
 **Numbering note:** Designs 83 and 84 are already allocated to multinomial
 work. This is therefore Design 85; no multinomial design is superseded.
 

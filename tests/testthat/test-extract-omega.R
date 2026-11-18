@@ -217,3 +217,13 @@ test_that("extract_proportions() includes link_residual = 'auto' for binomial fi
   ## Link residual = pi^2/3 for logit ≈ 3.290 absolute, divided by total
   expect_true(all(out$link_residual > 0))
 })
+
+test_that("extract_proportions uses canonical component names not legacy unique_W (#1380)", {
+  fit <- make_BW_fit()
+  long <- extract_proportions(fit, format = "long")
+  expect_false("unique_W" %in% long$component)
+  expect_true(any(long$component == "unique_unit_obs"))
+  wide <- VP(fit)
+  expect_true(all(c("rr_B", "diag_B", "rr_W", "diag_W") %in% colnames(wide)))
+  expect_false(any(c("latent_B", "unique_W") %in% colnames(wide)))
+})

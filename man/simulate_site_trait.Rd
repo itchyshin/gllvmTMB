@@ -36,7 +36,8 @@ simulate_site_trait(
 \item{mean_species_per_site}{Average number of species observed per site
 (Poisson with this mean, truncated at \eqn{n_{species}}). Default 5.}
 
-\item{n_predictors}{Integer; number of site-level predictors. Default 2.}
+\item{n_predictors}{Integer; number of site-level predictors. Default 2.
+Use \code{0} for a dataset with no \verb{env_*} covariates.}
 
 \item{alpha}{Optional length-\code{n_traits} vector of trait intercepts; random
 if \code{NULL}.}
@@ -71,7 +72,7 @@ and \code{coords} is \code{NULL}, sites are placed uniformly in \verb{[0, 1]^2}.
 \item{coords}{Optional \code{n_sites} x 2 matrix of site coordinates (used when
 \code{spatial_range} is supplied).}
 
-\item{seed}{Optional RNG seed.}
+\item{seed}{Optional RNG seed. The caller's random-number state is restored on exit.}
 }
 \value{
 A list with components:
@@ -82,7 +83,8 @@ trait) observation: columns \code{site}, \code{species}, \code{trait}, \code{val
 and \code{lat} if coords were generated.}
 \item{\code{truth}}{Named list of true parameter values (alpha, beta,
 Lambda_B, Lambda_W, psi_B, psi_W, sigma2_phy, sigma2_sp, sigma2_spa,
-spatial_range, sigma2_eps).}
+spatial_range, sigma2_eps, and when reduced-rank terms are used,
+\code{z_B} / \code{z_W} latent-score draws for \code{\link[=extract_latent_scores]{extract_latent_scores()}}.}
 \item{\code{Cphy}}{The phylogenetic correlation matrix used (or \code{NULL}).}
 \item{\code{coords}}{Site coordinates used (or \code{NULL}).}
 }

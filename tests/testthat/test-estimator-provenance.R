@@ -184,10 +184,13 @@ test_that("accepted VA+ml is still accepted and records coarse ML", {
 
 test_that("existing MSPL and REML aborts keep their classes", {
   dat <- .prov_ml_fixture()
+  ## Poisson is admitted. nbinom/Beta are public planned doors.
+  ## Tweedie stays fenced (hang; #1047 not on main). Pin the
+  ## unsupported-family abort class on student.
   expect_error(
     gllvmTMB(
       y ~ 0 + trait + latent(0 + trait | site, d = 1, unique = FALSE),
-      dat, family = poisson(), estimator = "mspl"
+      dat, family = student(df = 5), estimator = "mspl"
     ),
     class = "gllvmTMB_mspl_unsupported"
   )

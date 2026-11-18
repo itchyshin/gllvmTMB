@@ -50,7 +50,7 @@
   link_residual = c("auto", "none")
 ) {
   if (!inherits(fit, "gllvmTMB_multi"))
-    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+    .gllvmTMB_abort_not_multi_fit(fit)
   if (!is.numeric(level) || length(level) != 1L ||
       level <= 0 || level >= 1)
     cli::cli_abort("{.arg level} must be a single number in (0, 1).")
@@ -99,6 +99,10 @@
       "Fit does not carry a TMB {.code sdreport}.",
       i = "Refit so {.code fit$sd_report} is populated."
     ))
+  ## #1379: all-non-finite covariance is an error; pdHess = FALSE a warning.
+  .confint_require_sdreport(fit, "wald", caller = "extract_communality",
+                            route = "bootstrap")
+  .wald_warn_nonpd_hessian(fit, "communality")
 
   lam_name <- switch(
     tier,
@@ -224,7 +228,7 @@
                                       level = 0.95,
                                       nsim = 999L, seed = NULL) {
   if (!inherits(fit, "gllvmTMB_multi"))
-    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+    .gllvmTMB_abort_not_multi_fit(fit)
   if (!is.numeric(level) || length(level) != 1L ||
       level <= 0 || level >= 1)
     cli::cli_abort("{.arg level} must be a single number in (0, 1).")

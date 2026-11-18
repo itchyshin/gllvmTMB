@@ -44,7 +44,7 @@
   level
 ) {
   if (!inherits(fit, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+    .gllvmTMB_abort_not_multi_fit(fit)
   }
   if (!is.numeric(level) || length(level) != 1L || level <= 0 || level >= 1) {
     cli::cli_abort("{.arg level} must be a scalar in (0, 1); got {.val {level}}.")
@@ -79,7 +79,11 @@
 
   ## Build a (trait x component) matrix of point-estimate proportions
   ## from the long-format extractor (matches profile_ci_proportions()).
-  pt <- suppressMessages(extract_proportions(fit, format = "long"))
+  ## The omitted-component warning was already raised by the call above.
+  pt <- suppressWarnings(
+    suppressMessages(extract_proportions(fit, format = "long")),
+    classes = "gllvmTMB_variance_component_omitted"
+  )
   pt_mat <- matrix(
     NA_real_,
     nrow = T,
@@ -190,6 +194,12 @@
       unique_cluster2 = pull_diag_var("sd_c2"),
       shared_phy      = pull_LLt_diag("Lambda_phy"),
       unique_phy      = pull_diag_var("sd_phy_diag"),
+      ## sigma_eps^2 of Gaussian/lognormal traits: a function of
+      ## log_sigma_eps, so it enters the Jacobian like any tier (#1399).
+      residual        = unname(.variance_share_residual_per_trait(
+        fit,
+        sigma_eps = rep$sigma_eps
+      )),
       link_residual   = rep(0, T),  ## handled separately below
       rep(0, T)
     )
@@ -243,7 +253,7 @@
 #'   families).
 #'
 #' @keywords internal
-#' @export
+#' @noRd
 .proportions_wald_ci <- function(
   fit,
   components = NULL,
@@ -294,6 +304,10 @@
       i = "Refit so {.code fit$sd_report} is populated."
     ))
   }
+
+  ## #1379: all-non-finite covariance is an error; pdHess = FALSE a warning.
+  .confint_require_sdreport(fit, "wald", caller = "confint", route = "bootstrap")
+  .wald_warn_nonpd_hessian(fit, "proportion")
 
   cov_fix <- fit$sd_report$cov.fixed
   obj <- fit$tmb_obj
@@ -354,10 +368,26 @@
 
   zcrit <- stats::qnorm(0.5 + level / 2)
 
+  ## The residual numerator is constant in theta for a trait that does not
+  ## use sigma_eps (structurally 0) and for a sigma_eps the engine fixed (a
+  ## per-row diagonal term is present). Report those rows like the
+  ## fixed-scale link residual: the estimate, method "(unavailable)".
+  resid_constant <- .variance_share_residual_slots(fit) == 0L |
+    .gllvmTMB_sigma_eps_mapped_off(fit)
+
   out_rows <- list()
   for (comp in components) {
     for (t in trait_idx) {
       p_hat <- pt_mat[t, comp]
+
+      if (identical(comp, "residual") && isTRUE(resid_constant[t])) {
+        out_rows[[length(out_rows) + 1L]] <- .proportions_row(
+          trait_names[t], comp, p_hat,
+          lower = p_hat, upper = p_hat,
+          method = "(unavailable)"
+        )
+        next
+      }
 
       if (identical(comp, "link_residual")) {
         if (link_resid_fixed) {
@@ -419,7 +449,7 @@
 #'   rows, `"(unavailable)"` for link-residual rows.
 #'
 #' @keywords internal
-#' @export
+#' @noRd
 .proportions_bootstrap_ci <- function(
   fit,
   components = NULL,
@@ -428,6 +458,7 @@
   nsim       = 500L,
   seed       = NULL
 ) {
+  .temporal_assert_no_iid_inference(fit, ".proportions_bootstrap_ci")
   .gllvmTMB_mspl_assert_inference(fit, ".proportions_bootstrap_ci")
   .gllvmTMB_require_unweighted_inference(fit, ".proportions_bootstrap_ci")
   v <- .proportions_validate_inputs(fit, components, trait_idx, level)
@@ -447,21 +478,18 @@
   link_resid_fixed <- .proportions_link_resid_fixed(fit)
 
   ## --- Set up the refit closure (parallels bootstrap_Sigma()) ---------
-  formula <- .reconstruct_multi_formula(fit)
+  response <- .bootstrap_response_setup(fit)
+  formula <- response$formula
   trait <- fit$trait_col
   unit <- fit$unit_col
   unit_obs <- fit$unit_obs_col
   cluster <- fit$cluster_col %||% fit$species_col
   cluster2 <- fit$cluster2_col
   family <- if (!is.null(fit$family_input)) fit$family_input else fit$family
-  data <- fit$data
-  resp <- all.vars(fit$formula)[1]
-  if (!resp %in% names(data)) {
-    cli::cli_abort(
-      "Response column {.var {resp}} not found in {.code fit$data}."
-    )
-  }
   aux <- list(
+    weights = response$weights,
+    known_sigma_eps = fit$known_sigma_eps,
+    missing = response$missing,
     phylo_vcv = fit$phylo_vcv,
     phylo_tree = fit$phylo_tree,
     mesh = fit$mesh,
@@ -469,9 +497,7 @@
   )
   aux <- aux[!vapply(aux, is.null, logical(1))]
 
-  if (!is.null(seed)) {
-    set.seed(seed)
-  }
+  .gllvmTMB_local_seed(seed)
   Y_sim <- simulate(fit, nsim = nsim)
   if (!is.matrix(Y_sim) || ncol(Y_sim) != nsim) {
     cli::cli_abort(
@@ -480,8 +506,7 @@
   }
 
   refit_one <- function(b) {
-    dat <- data
-    dat[[resp]] <- Y_sim[, b]
+    dat <- .bootstrap_response_data(response, Y_sim[, b])
     call_args <- c(
       list(
         formula = formula,
@@ -514,7 +539,10 @@
     ## (a refit may drop a near-singular term); align replicates to the
     ## original `comps_present` ordering, NA for absent.
     pt_b <- tryCatch(
-      suppressMessages(extract_proportions(out, format = "long")),
+      suppressWarnings(
+        suppressMessages(extract_proportions(out, format = "long")),
+        classes = "gllvmTMB_variance_component_omitted"
+      ),
       error = function(e) NULL
     )
     if (is.null(pt_b)) {

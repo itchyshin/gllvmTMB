@@ -86,7 +86,9 @@
     ordinal_log_increments_start = NULL,
     fixed_tweedie_power = NULL,
     fixed_student_df = NULL,
-    extra_tiers = NULL) {
+    extra_tiers = NULL,
+    optimizer = "auto", optimizer_args = list(),
+    optimizer_request = NULL, va_polish = TRUE) {
   eval_method <- match.arg(eval_method)
   ## Design 108 Gate A Stage 6 lifted the `unique` refusal here IN LOCKSTEP
   ## with .va_r3_validate_data() (R/va-r3-proto.R), and Stage 7 lifts the
@@ -168,7 +170,11 @@
     ordinal_log_increments_start = ordinal_log_increments_start,
     fixed_tweedie_power = fixed_tweedie_power,
     fixed_student_df = fixed_student_df,
-    extra_tiers = extra_tiers
+    extra_tiers = extra_tiers,
+    optimizer = optimizer,
+    optimizer_args = optimizer_args,
+    optimizer_request = optimizer_request,
+    va_polish = va_polish
   )
   elapsed <- proc.time()[["elapsed"]] - started
   best <- raw$best %||% list()

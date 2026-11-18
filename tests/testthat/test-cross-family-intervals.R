@@ -140,6 +140,14 @@ test_that("cross-family auto residual rejects ordinal-probit partners", {
     extract_cross_correlations(fit, link_residual = "auto"),
     class = "gllvmTMB_cross_auto_ordinal_unsupported"
   )
+  ## Issue #1400: the refusal is a scope limit, not a double count, and must
+  ## not carry the retired "over-count" class or advise a wrong remedy.
+  err <- tryCatch(
+    extract_cross_correlations(fit, link_residual = "auto"),
+    error = function(e) e
+  )
+  expect_false(inherits(err, "gllvmTMB_auto_residual_ordinal_probit_overcount"))
+  expect_false(grepl("add it again", conditionMessage(err), fixed = TRUE))
 })
 
 test_that("reconstruction self-check fires on a corrupted diagonal map (negative control)", {

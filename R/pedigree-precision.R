@@ -7,16 +7,19 @@
 ## Replaces the MCMCglmm::inverseA call in pedigree_to_Ainv_sparse (this file's
 ## sibling R/animal-keyword.R).
 ##
-## PROVENANCE: the pedigree standardisation, missing-parent normalisation,
-## topological (ancestors-before-descendants) ordering, and the dense additive
-## relationship (tabular) method used here for the inbreeding coefficients F are
-## ported from drmTMB (R/phylo-utils.R: drm_standardize_pedigree,
-## drm_normalize_pedigree_parent, drm_pedigree_topological_order,
-## drm_pedigree_additive_relationship), the univariate sister package, which
-## never depended on MCMCglmm. See inst/COPYRIGHTS. The sparse A^{-1} assembly on
-## top of F is the standard Henderson/Quaas construction (also what MCMCglmm
-## implements); gllvmTMB assembles it directly so the SPARSE engine path stays
-## genuinely sparse.
+## Fit-path inbreeding F is Meuwissen & Luo (1992): O(n * ancestors), no dense A.
+## The dense tabular A (`.gllvm_pedigree_additive_relationship`) remains the
+## oracle / export path only.
+##
+## PROVENANCE: pedigree standardisation, missing-parent normalisation,
+## topological ordering, and the dense tabular relatedness oracle were ported
+## from drmTMB (R/phylo-utils.R helpers) before #1322; both packages are GPL-3
+## by Shinichi Nakagawa. Meuwissen-Luo F follows HSquared.jl
+## `_meuwissen_luo_inbreeding` (MIT; src/pedigree.jl at
+## eee5f7aa7640abafa6b2efd2b71a66182db77459) -- reimplemented in R; Julia source
+## is not vendored; drmTMB #1424 is the twin, not a GPL source drop. Quaas
+## assembly remains the existing gllvmTMB Henderson/Quaas loop. See
+## inst/COPYRIGHTS.
 
 #' @keywords internal
 #' @noRd
@@ -105,7 +108,7 @@
 }
 
 #' Dense additive relationship matrix (tabular method), ancestors-first ordered.
-#' Only used here to extract inbreeding coefficients F = diag(A) - 1.
+#' Oracle / dense export only -- not on the fit-path for sparse A^{-1}.
 #' @keywords internal
 #' @noRd
 .gllvm_pedigree_additive_relationship <- function(ped, object = "pedigree") {
@@ -120,7 +123,8 @@
     if (length(parents) > 0L && any(parents >= i)) {
       cli::cli_abort(c(
         "{.fn animal} pedigree {.field {object}} could not be ordered from ancestors to descendants.",
-        "x" = "Individual {.val {ped$id[[i]]}} has a parent that is not available before the offspring."
+        "x" = "Individual {.val {ped$id[[i]]}} has a parent that is not available before the offspring.",
+        ">" = "Supply rows ordered ancestors-before-descendants so every parent appears before its offspring."
       ))
     }
     if (i > 1L) {
@@ -139,31 +143,136 @@
   A
 }
 
-#' Sparse pedigree precision A^{-1} (Henderson/Quaas), MCMCglmm-free.
+#' Meuwissen & Luo (1992) inbreeding for a topologically ordered pedigree.
 #'
-#' Standardises + topologically orders the pedigree, derives inbreeding
-#' coefficients F from the dense additive relationship (tabular) matrix, then
-#' assembles the sparse inverse A^{-1} directly via the Henderson/Quaas rules.
-#' Returns the same matrix as \code{MCMCglmm::inverseA(pedigree)$Ainv} using only
-#' \pkg{Matrix} (see Hadfield 2010; the algorithm is Henderson 1976 / Quaas 1976).
+#' Accumulates the T-row of A = T D T' over ancestors, youngest first via a
+#' max-heap on row indices: A_ii = sum_j L_ij^2 d_j, so F_i = A_ii - 1, with
+#' d_j = 0.5 - 0.25 (F_sire(j) + F_dam(j)) and unknown-parent F_0 = -1.
+#' One unknown parent => F_i = 0. Requires parents-before-offspring order.
 #'
-#' @param pedigree Standardised pedigree data frame (columns `id`, `dam`, `sire`;
-#'   unknown parents `NA`/`""`/`"0"`).
-#' @param object Label used in error messages.
-#' @return A symmetric sparse `dgCMatrix` `A^{-1}` with `id` dimnames.
+#' Walk follows HSquared.jl `_meuwissen_luo_inbreeding` (MIT pin in file header).
+#' Reimplemented in R; Julia source is not vendored.
+#'
 #' @keywords internal
 #' @noRd
-.gllvm_pedigree_precision <- function(pedigree, object = "pedigree") {
-  ped <- .gllvm_standardize_pedigree(pedigree, object = object)
-  ord <- .gllvm_pedigree_topological_order(ped, object = object)
-  ped <- ped[ord, , drop = FALSE]
+.gllvm_pedigree_inbreeding_meuwissen_luo <- function(ped, object = "pedigree") {
+  n <- nrow(ped)
+  ids <- ped$id
+  sire <- match(ped$sire, ids)
+  dam <- match(ped$dam, ids)
+  sire[is.na(sire)] <- 0L
+  dam[is.na(dam)] <- 0L
+  storage.mode(sire) <- "integer"
+  storage.mode(dam) <- "integer"
+
+  for (i in seq_len(n)) {
+    s <- sire[[i]]
+    d <- dam[[i]]
+    if ((s != 0L && s >= i) || (d != 0L && d >= i)) {
+      cli::cli_abort(c(
+        "{.fn animal} pedigree {.field {object}} could not be ordered from ancestors to descendants.",
+        "x" = "Individual {.val {ids[[i]]}} has a parent that is not available before the offspring.",
+        ">" = "Supply rows ordered ancestors-before-descendants so every parent appears before its offspring."
+      ))
+    }
+  }
+
+  F <- numeric(n)
+  L <- numeric(n)
+  heap <- integer(64L)
+  heap_n <- 0L
+
+  heappush <- function(x) {
+    heap_n <<- heap_n + 1L
+    if (heap_n > length(heap)) {
+      heap <<- c(heap, integer(length(heap)))
+    }
+    heap[[heap_n]] <<- x
+    hi <- heap_n
+    while (hi > 1L) {
+      p <- hi %/% 2L
+      if (heap[[p]] >= heap[[hi]]) {
+        break
+      }
+      tmp <- heap[[p]]
+      heap[[p]] <<- heap[[hi]]
+      heap[[hi]] <<- tmp
+      hi <- p
+    }
+  }
+
+  heappop_max <- function() {
+    top <- heap[[1L]]
+    last <- heap[[heap_n]]
+    heap_n <<- heap_n - 1L
+    if (heap_n >= 1L) {
+      heap[[1L]] <<- last
+      hi <- 1L
+      repeat {
+        left <- 2L * hi
+        right <- left + 1L
+        m <- hi
+        if (left <= heap_n && heap[[left]] > heap[[m]]) {
+          m <- left
+        }
+        if (right <= heap_n && heap[[right]] > heap[[m]]) {
+          m <- right
+        }
+        if (m == hi) {
+          break
+        }
+        tmp <- heap[[hi]]
+        heap[[hi]] <<- heap[[m]]
+        heap[[m]] <<- tmp
+        hi <- m
+      }
+    }
+    top
+  }
+
+  for (i in seq_len(n)) {
+    s <- sire[[i]]
+    d <- dam[[i]]
+    if (s == 0L || d == 0L) {
+      F[[i]] <- 0
+      next
+    }
+    L[[i]] <- 1
+    heappush(i)
+    fi <- 0
+    while (heap_n > 0L) {
+      j <- heappop_max()
+      lj <- L[[j]]
+      L[[j]] <- 0
+      sj <- sire[[j]]
+      fj_s <- if (sj == 0L) -1 else F[[sj]]
+      dmj <- dam[[j]]
+      fj_d <- if (dmj == 0L) -1 else F[[dmj]]
+      fi <- fi + lj * lj * (0.5 - 0.25 * (fj_s + fj_d))
+      if (sj != 0L) {
+        if (L[[sj]] == 0) {
+          heappush(sj)
+        }
+        L[[sj]] <- L[[sj]] + 0.5 * lj
+      }
+      if (dmj != 0L) {
+        if (L[[dmj]] == 0) {
+          heappush(dmj)
+        }
+        L[[dmj]] <- L[[dmj]] + 0.5 * lj
+      }
+    }
+    F[[i]] <- fi - 1
+  }
+  F
+}
+
+#' Henderson/Quaas sparse A^{-1} from a topologically ordered pedigree and F.
+#' @keywords internal
+#' @noRd
+.gllvm_pedigree_quaas_ainv <- function(ped, Finb, object = "pedigree") {
   ids <- ped$id
   n <- length(ids)
-
-  ## Inbreeding coefficients from the dense tabular A (ancestors-first).
-  A <- .gllvm_pedigree_additive_relationship(ped, object = object)
-  Finb <- diag(A) - 1
-
   sire <- match(ped$sire, ids)
   dam <- match(ped$dam, ids)
 
@@ -212,4 +321,36 @@
     dims = c(n, n), dimnames = list(ids, ids)
   )
   Matrix::drop0(Ainv)
+}
+
+#' Sparse pedigree precision A^{-1} (Henderson/Quaas), MCMCglmm-free.
+#'
+#' Standardises + topologically orders the pedigree, derives inbreeding
+#' coefficients F by Meuwissen & Luo (1992), then assembles the sparse inverse
+#' A^{-1} via the Henderson/Quaas rules. Returns the same matrix as
+#' \code{MCMCglmm::inverseA(pedigree)$Ainv} using only \pkg{Matrix}.
+#'
+#' @param pedigree Standardised pedigree data frame (columns `id`, `dam`, `sire`;
+#'   unknown parents `NA`/`""`/`"0"`).
+#' @param object Label used in error messages.
+#' @return A symmetric sparse `dgCMatrix` `A^{-1}` with `id` dimnames.
+#' @keywords internal
+#' @noRd
+.gllvm_pedigree_precision <- function(pedigree, object = "pedigree") {
+  ped <- .gllvm_standardize_pedigree(pedigree, object = object)
+  ord <- .gllvm_pedigree_topological_order(ped, object = object)
+  ped <- ped[ord, , drop = FALSE]
+  Finb <- .gllvm_pedigree_inbreeding_meuwissen_luo(ped, object = object)
+  .gllvm_pedigree_quaas_ainv(ped, Finb, object = object)
+}
+
+#' Dense-F oracle: diag(A)-1 then the same Quaas assembly (tests / identity).
+#' @keywords internal
+#' @noRd
+.gllvm_pedigree_precision_dense_F <- function(pedigree, object = "pedigree") {
+  ped <- .gllvm_standardize_pedigree(pedigree, object = object)
+  ord <- .gllvm_pedigree_topological_order(ped, object = object)
+  ped <- ped[ord, , drop = FALSE]
+  A <- .gllvm_pedigree_additive_relationship(ped, object = object)
+  .gllvm_pedigree_quaas_ainv(ped, diag(A) - 1, object = object)
 }

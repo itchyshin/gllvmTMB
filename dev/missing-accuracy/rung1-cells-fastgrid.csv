@@ -1,0 +1,181 @@
+"cell","dgp","lambda_target","mechanism","seed","arm","mse","error","wall_s","n_joined","lambda_hat"
+"DGP-a lambda=0.6 MCAR5","a",0.6,"mcar",1001,"gllvmTMB-primary",1.0689457371871,"",4.61471080780029,62,NA
+"DGP-a lambda=0.6 MCAR5","a",0.6,"mcar",1001,"gllvmTMB-lean (misspecified-lean)",1.31414980564893,"",0.489362955093384,62,NA
+"DGP-a lambda=0.6 MCAR5","a",0.6,"mcar",1001,"p3ca_reimpl",1.20790984959355,"",1.05234098434448,62,0.55
+"DGP-a lambda=0.6 MCAR5","a",0.6,"mcar",1002,"gllvmTMB-primary",1.53650674917765,"",4.92116379737854,62,NA
+"DGP-a lambda=0.6 MCAR5","a",0.6,"mcar",1002,"gllvmTMB-lean (misspecified-lean)",1.70522898004285,"",0.54565691947937,62,NA
+"DGP-a lambda=0.6 MCAR5","a",0.6,"mcar",1002,"p3ca_reimpl",1.48428436929285,"",1.23274397850037,62,0.55
+"DGP-a lambda=0.6 MCAR5","a",0.6,"mcar",1003,"gllvmTMB-primary",0.937101409521802,"",4.34988713264465,62,NA
+"DGP-a lambda=0.6 MCAR5","a",0.6,"mcar",1003,"gllvmTMB-lean (misspecified-lean)",1.53741141990661,"",0.455622911453247,62,NA
+"DGP-a lambda=0.6 MCAR5","a",0.6,"mcar",1003,"p3ca_reimpl",0.893276929465662,"",1.41435194015503,62,0.6
+"DGP-a lambda=0.6 MCAR5","a",0.6,"mcar",1004,"gllvmTMB-primary",1.71783562089826,"",4.88112998008728,62,NA
+"DGP-a lambda=0.6 MCAR5","a",0.6,"mcar",1004,"gllvmTMB-lean (misspecified-lean)",1.88285011735785,"",0.556447982788086,62,NA
+"DGP-a lambda=0.6 MCAR5","a",0.6,"mcar",1004,"p3ca_reimpl",1.90857722333105,"",1.22695016860962,62,0.55
+"DGP-a lambda=0.6 MCAR5","a",0.6,"mcar",1005,"gllvmTMB-primary",1.25963134736374,"",4.66092681884766,62,NA
+"DGP-a lambda=0.6 MCAR5","a",0.6,"mcar",1005,"gllvmTMB-lean (misspecified-lean)",1.32994783642701,"",0.565766096115112,62,NA
+"DGP-a lambda=0.6 MCAR5","a",0.6,"mcar",1005,"p3ca_reimpl",1.18034787672525,"",1.38519501686096,62,0.6
+"DGP-a lambda=0.6 MCAR5","a",0.6,"mcar",1006,"gllvmTMB-primary",1.244542072238,"",4.17216515541077,62,NA
+"DGP-a lambda=0.6 MCAR5","a",0.6,"mcar",1006,"gllvmTMB-lean (misspecified-lean)",1.67730935726952,"",0.450793981552124,62,NA
+"DGP-a lambda=0.6 MCAR5","a",0.6,"mcar",1006,"p3ca_reimpl",1.29585211259303,"",0.982261896133423,62,0.6
+"DGP-a lambda=0.6 MCAR5","a",0.6,"mcar",1007,"gllvmTMB-primary",1.43694043189614,"",3.53892302513123,62,NA
+"DGP-a lambda=0.6 MCAR5","a",0.6,"mcar",1007,"gllvmTMB-lean (misspecified-lean)",1.83368759024262,"",0.414265871047974,62,NA
+"DGP-a lambda=0.6 MCAR5","a",0.6,"mcar",1007,"p3ca_reimpl",1.59301582689995,"",0.99301290512085,62,0.6
+"DGP-a lambda=0.6 MCAR5","a",0.6,"mcar",1008,"gllvmTMB-primary",0.789157656230287,"",4.69198894500732,62,NA
+"DGP-a lambda=0.6 MCAR5","a",0.6,"mcar",1008,"gllvmTMB-lean (misspecified-lean)",1.14697876292833,"",0.554628849029541,62,NA
+"DGP-a lambda=0.6 MCAR5","a",0.6,"mcar",1008,"p3ca_reimpl",0.759949929333816,"",1.31106495857239,62,0.6
+"DGP-a lambda=0.6 MCAR5","a",0.6,"mcar",1009,"gllvmTMB-primary",1.14366496294235,"",4.1246509552002,62,NA
+"DGP-a lambda=0.6 MCAR5","a",0.6,"mcar",1009,"gllvmTMB-lean (misspecified-lean)",1.32050725814615,"",0.456037998199463,62,NA
+"DGP-a lambda=0.6 MCAR5","a",0.6,"mcar",1009,"p3ca_reimpl",1.07926377057341,"",0.881355047225952,62,0.6
+"DGP-a lambda=0.6 MCAR5","a",0.6,"mcar",1010,"gllvmTMB-primary",1.12214446616404,"",5.69852089881897,62,NA
+"DGP-a lambda=0.6 MCAR5","a",0.6,"mcar",1010,"gllvmTMB-lean (misspecified-lean)",1.38423257189354,"",0.5088951587677,62,NA
+"DGP-a lambda=0.6 MCAR5","a",0.6,"mcar",1010,"p3ca_reimpl",1.04052906258439,"",1.16133880615234,62,0.55
+"DGP-a lambda=0.6 clade","a",0.6,"clade",2001,"gllvmTMB-primary",1.75942582520404,"",3.63017392158508,125,NA
+"DGP-a lambda=0.6 clade","a",0.6,"clade",2001,"gllvmTMB-lean (misspecified-lean)",2.03438000708727,"",0.451954126358032,125,NA
+"DGP-a lambda=0.6 clade","a",0.6,"clade",2001,"p3ca_reimpl",1.69536735648358,"",1.25730800628662,125,0.6
+"DGP-a lambda=0.6 clade","a",0.6,"clade",2002,"gllvmTMB-primary",1.90119005497939,"",4.38783288002014,125,NA
+"DGP-a lambda=0.6 clade","a",0.6,"clade",2002,"gllvmTMB-lean (misspecified-lean)",2.63517102527517,"",0.464952945709229,125,NA
+"DGP-a lambda=0.6 clade","a",0.6,"clade",2002,"p3ca_reimpl",1.96322427270992,"",1.26639890670776,125,0.55
+"DGP-a lambda=0.6 clade","a",0.6,"clade",2003,"gllvmTMB-primary",1.5770465237594,"",5.10580110549927,125,NA
+"DGP-a lambda=0.6 clade","a",0.6,"clade",2003,"gllvmTMB-lean (misspecified-lean)",1.79278050358083,"",0.424612045288086,125,NA
+"DGP-a lambda=0.6 clade","a",0.6,"clade",2003,"p3ca_reimpl",1.38222495436026,"",1.20025992393494,125,0.6
+"DGP-a lambda=0.6 clade","a",0.6,"clade",2004,"gllvmTMB-primary",1.33036797406285,"",4.6122739315033,125,NA
+"DGP-a lambda=0.6 clade","a",0.6,"clade",2004,"gllvmTMB-lean (misspecified-lean)",1.8121480040448,"",0.443378925323486,125,NA
+"DGP-a lambda=0.6 clade","a",0.6,"clade",2004,"p3ca_reimpl",1.40249629157751,"",1.52770900726318,125,0.7
+"DGP-a lambda=0.6 clade","a",0.6,"clade",2005,"gllvmTMB-primary",1.68185023858229,"",4.09568285942078,125,NA
+"DGP-a lambda=0.6 clade","a",0.6,"clade",2005,"gllvmTMB-lean (misspecified-lean)",2.13445430815961,"",0.556806087493896,125,NA
+"DGP-a lambda=0.6 clade","a",0.6,"clade",2005,"p3ca_reimpl",1.67419358310792,"",1.33056616783142,125,0.6
+"DGP-a lambda=0.6 clade","a",0.6,"clade",2006,"gllvmTMB-primary",1.69294462085742,"",6.01710510253906,125,NA
+"DGP-a lambda=0.6 clade","a",0.6,"clade",2006,"gllvmTMB-lean (misspecified-lean)",2.14898608355618,"",0.492085933685303,125,NA
+"DGP-a lambda=0.6 clade","a",0.6,"clade",2006,"p3ca_reimpl",1.59211309035506,"",1.4192590713501,125,0.5
+"DGP-a lambda=0.6 clade","a",0.6,"clade",2007,"gllvmTMB-primary",1.82288869863979,"",4.30903315544128,125,NA
+"DGP-a lambda=0.6 clade","a",0.6,"clade",2007,"gllvmTMB-lean (misspecified-lean)",2.23331562653523,"",0.44019889831543,125,NA
+"DGP-a lambda=0.6 clade","a",0.6,"clade",2007,"p3ca_reimpl",1.24908200879184,"",1.30310487747192,125,0.55
+"DGP-a lambda=0.6 clade","a",0.6,"clade",2008,"gllvmTMB-primary",1.25814241376945,"",5.52692103385925,125,NA
+"DGP-a lambda=0.6 clade","a",0.6,"clade",2008,"gllvmTMB-lean (misspecified-lean)",1.38659633727486,"",0.604434967041016,125,NA
+"DGP-a lambda=0.6 clade","a",0.6,"clade",2008,"p3ca_reimpl",1.20146781831839,"",1.13360404968262,125,0.55
+"DGP-a lambda=0.6 clade","a",0.6,"clade",2009,"gllvmTMB-primary",1.18028457636644,"",4.06800985336304,125,NA
+"DGP-a lambda=0.6 clade","a",0.6,"clade",2009,"gllvmTMB-lean (misspecified-lean)",1.7957124937212,"",0.445587873458862,125,NA
+"DGP-a lambda=0.6 clade","a",0.6,"clade",2009,"p3ca_reimpl",1.13579611827247,"",1.64757394790649,125,0.65
+"DGP-a lambda=0.6 clade","a",0.6,"clade",2010,"gllvmTMB-primary",1.69872280112107,"",6.93586707115173,125,NA
+"DGP-a lambda=0.6 clade","a",0.6,"clade",2010,"gllvmTMB-lean (misspecified-lean)",2.31844770977422,"",0.450285911560059,125,NA
+"DGP-a lambda=0.6 clade","a",0.6,"clade",2010,"p3ca_reimpl",1.6439209825522,"",1.39494395256042,125,0.6
+"DGP-a lambda=0.98 MCAR5","a",0.98,"mcar",3001,"gllvmTMB-primary",0.746458500728407,"",4.00743794441223,62,NA
+"DGP-a lambda=0.98 MCAR5","a",0.98,"mcar",3001,"gllvmTMB-lean (misspecified-lean)",1.32841084660937,"",0.686395883560181,62,NA
+"DGP-a lambda=0.98 MCAR5","a",0.98,"mcar",3001,"p3ca_reimpl",0.77260085683628,"",1.28052496910095,62,0.95
+"DGP-a lambda=0.98 MCAR5","a",0.98,"mcar",3002,"gllvmTMB-primary",0.496988386699627,"",5.0508930683136,62,NA
+"DGP-a lambda=0.98 MCAR5","a",0.98,"mcar",3002,"gllvmTMB-lean (misspecified-lean)",1.26947952296565,"",0.65087103843689,62,NA
+"DGP-a lambda=0.98 MCAR5","a",0.98,"mcar",3002,"p3ca_reimpl",0.504298494209432,"",0.948287010192871,62,0.95
+"DGP-a lambda=0.98 MCAR5","a",0.98,"mcar",3003,"gllvmTMB-primary",0.391717153940139,"",3.94597506523132,62,NA
+"DGP-a lambda=0.98 MCAR5","a",0.98,"mcar",3003,"gllvmTMB-lean (misspecified-lean)",1.25510640892482,"",0.622452974319458,62,NA
+"DGP-a lambda=0.98 MCAR5","a",0.98,"mcar",3003,"p3ca_reimpl",0.392315868788973,"",1.01857686042786,62,0.95
+"DGP-a lambda=0.98 MCAR5","a",0.98,"mcar",3004,"gllvmTMB-primary",0.886763547710136,"",3.91132092475891,62,NA
+"DGP-a lambda=0.98 MCAR5","a",0.98,"mcar",3004,"gllvmTMB-lean (misspecified-lean)",2.18238695531601,"",0.607723951339722,62,NA
+"DGP-a lambda=0.98 MCAR5","a",0.98,"mcar",3004,"p3ca_reimpl",0.866111303034279,"",0.929553985595703,62,0.95
+"DGP-a lambda=0.98 MCAR5","a",0.98,"mcar",3005,"gllvmTMB-primary",0.528674920850414,"",5.41591882705688,62,NA
+"DGP-a lambda=0.98 MCAR5","a",0.98,"mcar",3005,"gllvmTMB-lean (misspecified-lean)",1.1136267152574,"",0.548881053924561,62,NA
+"DGP-a lambda=0.98 MCAR5","a",0.98,"mcar",3005,"p3ca_reimpl",0.553381813886497,"",1.06768608093262,62,0.95
+"DGP-a lambda=0.98 MCAR5","a",0.98,"mcar",3006,"gllvmTMB-primary",0.519680780465083,"",4.35715889930725,62,NA
+"DGP-a lambda=0.98 MCAR5","a",0.98,"mcar",3006,"gllvmTMB-lean (misspecified-lean)",0.859076441862405,"",0.58421802520752,62,NA
+"DGP-a lambda=0.98 MCAR5","a",0.98,"mcar",3006,"p3ca_reimpl",0.505897777436283,"",1.12873387336731,62,0.95
+"DGP-a lambda=0.98 MCAR5","a",0.98,"mcar",3007,"gllvmTMB-primary",0.552317757656307,"",4.96717500686646,62,NA
+"DGP-a lambda=0.98 MCAR5","a",0.98,"mcar",3007,"gllvmTMB-lean (misspecified-lean)",1.3849365206414,"",0.600643873214722,62,NA
+"DGP-a lambda=0.98 MCAR5","a",0.98,"mcar",3007,"p3ca_reimpl",0.501880581046697,"",1.474848985672,62,0.95
+"DGP-a lambda=0.98 MCAR5","a",0.98,"mcar",3008,"gllvmTMB-primary",0.545164549641321,"",4.02833795547485,62,NA
+"DGP-a lambda=0.98 MCAR5","a",0.98,"mcar",3008,"gllvmTMB-lean (misspecified-lean)",1.19121045561668,"",0.506464958190918,62,NA
+"DGP-a lambda=0.98 MCAR5","a",0.98,"mcar",3008,"p3ca_reimpl",0.584188190210451,"",1.23836898803711,62,1
+"DGP-a lambda=0.98 MCAR5","a",0.98,"mcar",3009,"gllvmTMB-primary",0.599639110693635,"",4.06186103820801,62,NA
+"DGP-a lambda=0.98 MCAR5","a",0.98,"mcar",3009,"gllvmTMB-lean (misspecified-lean)",1.23467841806711,"",0.83688497543335,62,NA
+"DGP-a lambda=0.98 MCAR5","a",0.98,"mcar",3009,"p3ca_reimpl",0.531730912542432,"",1.30316686630249,62,0.95
+"DGP-a lambda=0.98 MCAR5","a",0.98,"mcar",3010,"gllvmTMB-primary",0.483000376359642,"",3.82180285453796,62,NA
+"DGP-a lambda=0.98 MCAR5","a",0.98,"mcar",3010,"gllvmTMB-lean (misspecified-lean)",1.17150293576591,"",0.538221836090088,62,NA
+"DGP-a lambda=0.98 MCAR5","a",0.98,"mcar",3010,"p3ca_reimpl",0.502780209178926,"",0.848942995071411,62,0.95
+"DGP-a lambda=0.98 clade","a",0.98,"clade",4001,"gllvmTMB-primary",0.264523904095474,"",3.88439106941223,125,NA
+"DGP-a lambda=0.98 clade","a",0.98,"clade",4001,"gllvmTMB-lean (misspecified-lean)",0.749054734359079,"",0.58259916305542,125,NA
+"DGP-a lambda=0.98 clade","a",0.98,"clade",4001,"p3ca_reimpl",0.292534818551179,"",1.40076017379761,125,1
+"DGP-a lambda=0.98 clade","a",0.98,"clade",4002,"gllvmTMB-primary",0.627814875205917,"",3.8757119178772,125,NA
+"DGP-a lambda=0.98 clade","a",0.98,"clade",4002,"gllvmTMB-lean (misspecified-lean)",1.60626515209639,"",0.524652004241943,125,NA
+"DGP-a lambda=0.98 clade","a",0.98,"clade",4002,"p3ca_reimpl",0.661365970553156,"",1.27964091300964,125,1
+"DGP-a lambda=0.98 clade","a",0.98,"clade",4003,"gllvmTMB-primary",0.590110235230723,"",4.99719786643982,125,NA
+"DGP-a lambda=0.98 clade","a",0.98,"clade",4003,"gllvmTMB-lean (misspecified-lean)",1.1282172641636,"",0.617039918899536,125,NA
+"DGP-a lambda=0.98 clade","a",0.98,"clade",4003,"p3ca_reimpl",0.588207104600353,"",1.55594706535339,125,0.95
+"DGP-a lambda=0.98 clade","a",0.98,"clade",4004,"gllvmTMB-primary",0.426861939314217,"",4.87382197380066,125,NA
+"DGP-a lambda=0.98 clade","a",0.98,"clade",4004,"gllvmTMB-lean (misspecified-lean)",1.34256277259799,"",0.560505867004395,125,NA
+"DGP-a lambda=0.98 clade","a",0.98,"clade",4004,"p3ca_reimpl",0.416629002853036,"",1.29898405075073,125,0.95
+"DGP-a lambda=0.98 clade","a",0.98,"clade",4005,"gllvmTMB-primary",0.462494836459027,"",4.27915906906128,125,NA
+"DGP-a lambda=0.98 clade","a",0.98,"clade",4005,"gllvmTMB-lean (misspecified-lean)",1.40915378799637,"",0.511857986450195,125,NA
+"DGP-a lambda=0.98 clade","a",0.98,"clade",4005,"p3ca_reimpl",0.436090041157357,"",1.45031595230103,125,0.95
+"DGP-a lambda=0.98 clade","a",0.98,"clade",4006,"gllvmTMB-primary",0.55374210971394,"",3.41695880889893,125,NA
+"DGP-a lambda=0.98 clade","a",0.98,"clade",4006,"gllvmTMB-lean (misspecified-lean)",1.58007696087906,"",0.575560808181763,125,NA
+"DGP-a lambda=0.98 clade","a",0.98,"clade",4006,"p3ca_reimpl",0.540704890561344,"",1.3254451751709,125,0.95
+"DGP-a lambda=0.98 clade","a",0.98,"clade",4007,"gllvmTMB-primary",0.316687676585525,"",4.26957416534424,125,NA
+"DGP-a lambda=0.98 clade","a",0.98,"clade",4007,"gllvmTMB-lean (misspecified-lean)",0.809351454470763,"",0.563451051712036,125,NA
+"DGP-a lambda=0.98 clade","a",0.98,"clade",4007,"p3ca_reimpl",0.333863254474279,"",1.32342600822449,125,1
+"DGP-a lambda=0.98 clade","a",0.98,"clade",4008,"gllvmTMB-primary",0.580329325480997,"",5.14229798316956,125,NA
+"DGP-a lambda=0.98 clade","a",0.98,"clade",4008,"gllvmTMB-lean (misspecified-lean)",1.12880006290423,"",0.504329919815063,125,NA
+"DGP-a lambda=0.98 clade","a",0.98,"clade",4008,"p3ca_reimpl",0.555780290107096,"",0.961220026016235,125,0.95
+"DGP-a lambda=0.98 clade","a",0.98,"clade",4009,"gllvmTMB-primary",0.456746500421692,"",4.77254986763,125,NA
+"DGP-a lambda=0.98 clade","a",0.98,"clade",4009,"gllvmTMB-lean (misspecified-lean)",1.21434356021678,"",0.535863161087036,125,NA
+"DGP-a lambda=0.98 clade","a",0.98,"clade",4009,"p3ca_reimpl",0.437038727445665,"",1.5727059841156,125,0.95
+"DGP-a lambda=0.98 clade","a",0.98,"clade",4010,"gllvmTMB-primary",0.891398286501539,"",4.13246297836304,125,NA
+"DGP-a lambda=0.98 clade","a",0.98,"clade",4010,"gllvmTMB-lean (misspecified-lean)",1.66061001642359,"",0.576169013977051,125,NA
+"DGP-a lambda=0.98 clade","a",0.98,"clade",4010,"p3ca_reimpl",0.943769064033853,"",1.19903492927551,125,0.95
+"DGP-b MCAR5","b",NA,"mcar",5001,"gllvmTMB-primary",0.652511528469088,"",5.2742190361023,62,NA
+"DGP-b MCAR5","b",NA,"mcar",5001,"gllvmTMB-lean (misspecified-lean)",0.645427534292536,"",0.713138103485107,62,NA
+"DGP-b MCAR5","b",NA,"mcar",5001,"p3ca_reimpl",0.69231186023824,"",1.50064420700073,62,0.05
+"DGP-b MCAR5","b",NA,"mcar",5002,"gllvmTMB-primary",0.442662491510884,"",5.48931097984314,62,NA
+"DGP-b MCAR5","b",NA,"mcar",5002,"gllvmTMB-lean (misspecified-lean)",0.44057793942172,"",0.66093111038208,62,NA
+"DGP-b MCAR5","b",NA,"mcar",5002,"p3ca_reimpl",0.453151508053077,"",1.20105409622192,62,0.1
+"DGP-b MCAR5","b",NA,"mcar",5003,"gllvmTMB-primary",0.773384908769815,"",5.26095294952393,62,NA
+"DGP-b MCAR5","b",NA,"mcar",5003,"gllvmTMB-lean (misspecified-lean)",0.785038166507214,"",0.709836006164551,62,NA
+"DGP-b MCAR5","b",NA,"mcar",5003,"p3ca_reimpl",0.80717865856263,"",1.26283979415894,62,0
+"DGP-b MCAR5","b",NA,"mcar",5004,"gllvmTMB-primary",0.985326492825035,"",5.06852602958679,62,NA
+"DGP-b MCAR5","b",NA,"mcar",5004,"gllvmTMB-lean (misspecified-lean)",0.982226974893971,"",0.624589920043945,62,NA
+"DGP-b MCAR5","b",NA,"mcar",5004,"p3ca_reimpl",0.984622140445772,"",1.27789282798767,62,0.05
+"DGP-b MCAR5","b",NA,"mcar",5005,"gllvmTMB-primary",0.790457078610385,"",4.82534718513489,62,NA
+"DGP-b MCAR5","b",NA,"mcar",5005,"gllvmTMB-lean (misspecified-lean)",0.734303405431486,"",0.593501091003418,62,NA
+"DGP-b MCAR5","b",NA,"mcar",5005,"p3ca_reimpl",0.779050273071113,"",1.34775304794312,62,0
+"DGP-b MCAR5","b",NA,"mcar",5006,"gllvmTMB-primary",0.540979320665052,"",6.50136995315552,62,NA
+"DGP-b MCAR5","b",NA,"mcar",5006,"gllvmTMB-lean (misspecified-lean)",0.455019049372241,"",0.663055896759033,62,NA
+"DGP-b MCAR5","b",NA,"mcar",5006,"p3ca_reimpl",0.460279667634052,"",1.01568603515625,62,0
+"DGP-b MCAR5","b",NA,"mcar",5007,"gllvmTMB-primary",0.7239255060565,"",6.07118797302246,62,NA
+"DGP-b MCAR5","b",NA,"mcar",5007,"gllvmTMB-lean (misspecified-lean)",0.712926928849703,"",0.712574005126953,62,NA
+"DGP-b MCAR5","b",NA,"mcar",5007,"p3ca_reimpl",0.720358176697593,"",1.19410610198975,62,0.05
+"DGP-b MCAR5","b",NA,"mcar",5008,"gllvmTMB-primary",0.526267221877371,"",5.63484287261963,62,NA
+"DGP-b MCAR5","b",NA,"mcar",5008,"gllvmTMB-lean (misspecified-lean)",0.546653358809351,"",0.694560050964355,62,NA
+"DGP-b MCAR5","b",NA,"mcar",5008,"p3ca_reimpl",0.578090746860929,"",1.2003231048584,62,0.05
+"DGP-b MCAR5","b",NA,"mcar",5009,"gllvmTMB-primary",0.785885164931801,"",5.8442211151123,62,NA
+"DGP-b MCAR5","b",NA,"mcar",5009,"gllvmTMB-lean (misspecified-lean)",0.773675203413595,"",0.690153121948242,62,NA
+"DGP-b MCAR5","b",NA,"mcar",5009,"p3ca_reimpl",0.777857465582637,"",1.50856804847717,62,0.15
+"DGP-b MCAR5","b",NA,"mcar",5010,"gllvmTMB-primary",0.568012417387098,"",7.27696394920349,62,NA
+"DGP-b MCAR5","b",NA,"mcar",5010,"gllvmTMB-lean (misspecified-lean)",0.564084455449,"",0.691958904266357,62,NA
+"DGP-b MCAR5","b",NA,"mcar",5010,"p3ca_reimpl",0.519346275610642,"",1.29670882225037,62,0
+"DGP-b clade","b",NA,"clade",6001,"gllvmTMB-primary",0.847913673518932,"",6.68047904968262,125,NA
+"DGP-b clade","b",NA,"clade",6001,"gllvmTMB-lean (misspecified-lean)",0.835414921886182,"",0.737872123718262,125,NA
+"DGP-b clade","b",NA,"clade",6001,"p3ca_reimpl",0.857694713746032,"",1.25440311431885,125,0
+"DGP-b clade","b",NA,"clade",6002,"gllvmTMB-primary",0.934231459124733,"",5.69637584686279,125,NA
+"DGP-b clade","b",NA,"clade",6002,"gllvmTMB-lean (misspecified-lean)",0.736976673549846,"",0.661746978759766,125,NA
+"DGP-b clade","b",NA,"clade",6002,"p3ca_reimpl",0.783481794913912,"",1.29576587677002,125,0
+"DGP-b clade","b",NA,"clade",6003,"gllvmTMB-primary",0.835454950609018,"",8.28834414482117,125,NA
+"DGP-b clade","b",NA,"clade",6003,"gllvmTMB-lean (misspecified-lean)",0.787414927105811,"",0.724851846694946,125,NA
+"DGP-b clade","b",NA,"clade",6003,"p3ca_reimpl",0.836886020000108,"",1.39883208274841,125,0
+"DGP-b clade","b",NA,"clade",6004,"gllvmTMB-primary",0.770464811934696,"",6.07559204101562,125,NA
+"DGP-b clade","b",NA,"clade",6004,"gllvmTMB-lean (misspecified-lean)",0.788876941181862,"",0.578624963760376,125,NA
+"DGP-b clade","b",NA,"clade",6004,"p3ca_reimpl",0.795775206693632,"",1.39064502716064,125,0
+"DGP-b clade","b",NA,"clade",6005,"gllvmTMB-primary",0.751035290392703,"",7.29579305648804,125,NA
+"DGP-b clade","b",NA,"clade",6005,"gllvmTMB-lean (misspecified-lean)",0.711135855742222,"",0.686837911605835,125,NA
+"DGP-b clade","b",NA,"clade",6005,"p3ca_reimpl",0.731609187052129,"",1.43472003936768,125,0.2
+"DGP-b clade","b",NA,"clade",6006,"gllvmTMB-primary",0.843228789060937,"",5.53554797172546,125,NA
+"DGP-b clade","b",NA,"clade",6006,"gllvmTMB-lean (misspecified-lean)",0.784810721553213,"",0.68435001373291,125,NA
+"DGP-b clade","b",NA,"clade",6006,"p3ca_reimpl",0.788096111925281,"",1.55309915542603,125,0.1
+"DGP-b clade","b",NA,"clade",6007,"gllvmTMB-primary",0.924664515404105,"",4.87131690979004,125,NA
+"DGP-b clade","b",NA,"clade",6007,"gllvmTMB-lean (misspecified-lean)",0.93650516109538,"",0.541869163513184,125,NA
+"DGP-b clade","b",NA,"clade",6007,"p3ca_reimpl",0.946622580842701,"",1.35128998756409,125,0
+"DGP-b clade","b",NA,"clade",6008,"gllvmTMB-primary",0.848623656488398,"",6.66513109207153,125,NA
+"DGP-b clade","b",NA,"clade",6008,"gllvmTMB-lean (misspecified-lean)",0.879976807221485,"",0.62909984588623,125,NA
+"DGP-b clade","b",NA,"clade",6008,"p3ca_reimpl",0.887293530974723,"",1.42467498779297,125,0.05
+"DGP-b clade","b",NA,"clade",6009,"gllvmTMB-primary",0.590473597488373,"",7.07792806625366,125,NA
+"DGP-b clade","b",NA,"clade",6009,"gllvmTMB-lean (misspecified-lean)",0.564800011369346,"",0.719148874282837,125,NA
+"DGP-b clade","b",NA,"clade",6009,"p3ca_reimpl",0.597625963735313,"",1.396723985672,125,0.2
+"DGP-b clade","b",NA,"clade",6010,"gllvmTMB-primary",0.679015436400278,"",5.44625997543335,125,NA
+"DGP-b clade","b",NA,"clade",6010,"gllvmTMB-lean (misspecified-lean)",0.638815861570615,"",0.600414991378784,125,NA
+"DGP-b clade","b",NA,"clade",6010,"p3ca_reimpl",0.636847475284627,"",1.28182601928711,125,0

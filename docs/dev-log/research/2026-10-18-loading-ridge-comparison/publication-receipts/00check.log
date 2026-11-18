@@ -1,0 +1,112 @@
+* using log directory ‘/home/snakagaw/gllvmtmb_ridge_docs_check_20261018/check/gllvmTMB.Rcheck’
+* using R version 4.6.1 (2026-06-24)
+* using platform: x86_64-pc-linux-gnu
+* R was compiled by
+    x86_64-linux-gnu-gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0
+    GNU Fortran (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0
+* running under: Ubuntu 24.04.5 LTS
+* using session charset: UTF-8
+* current time: 2026-10-18 17:30:16 UTC
+* using options ‘--no-manual --as-cran’
+* checking for file ‘gllvmTMB/DESCRIPTION’ ... OK
+* checking extension type ... Package
+* this is package ‘gllvmTMB’ version ‘0.8.0.9000’
+* package encoding: UTF-8
+* checking package namespace information ... OK
+* checking package dependencies ... INFO
+Packages suggested but not available for checking:
+  'ade4', 'DHARMa', 'ggforce', 'galamm', 'mirt', 'nadiv', 'vegan',
+  'vdiffr'
+* checking if this is a source package ... OK
+* checking if there is a namespace ... OK
+* checking for executable files ... OK
+* checking for hidden files and directories ... OK
+* checking for portable file names ... OK
+* checking for sufficient/correct file permissions ... OK
+* checking whether package ‘gllvmTMB’ can be installed ... [119s/120s] OK
+* used C++ compiler: ‘x86_64-linux-gnu-g++ (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0’
+* checking C++ specification ... INFO
+  specified C++17
+* checking installed package size ... INFO
+  installed size is 36.3Mb
+  sub-directories of 1Mb or more:
+    help   2.2Mb
+    libs  29.5Mb
+    R      3.2Mb
+* checking package directory ... OK
+* checking for future file timestamps ... OK
+* checking ‘build’ directory ... OK
+* checking DESCRIPTION meta-information ... OK
+* checking top-level files ... OK
+* checking for left-over files ... OK
+* checking index information ... OK
+* checking package subdirectories ... OK
+* checking code files for non-ASCII characters ... OK
+* checking R files for syntax errors ... OK
+* checking whether the package can be loaded ... OK
+* checking whether the package can be loaded with stated dependencies ... OK
+* checking whether the package can be unloaded cleanly ... OK
+* checking whether the namespace can be loaded with stated dependencies ... OK
+* checking whether the namespace can be unloaded cleanly ... OK
+* checking loading without being on the library search path ... OK
+* checking whether startup messages can be suppressed ... OK
+* checking dependencies in R code ... NOTE
+Unexported object imported by a ':::' call: ‘TMB:::EvalADFunObject’
+  See the note in ?`:::` about the use of this operator.
+* checking S3 generic/method consistency ... OK
+* checking replacement functions ... OK
+* checking foreign function calls ... OK
+* checking R code for possible problems ... [33s/33s] OK
+* checking Rd files ... OK
+* checking Rd metadata ... OK
+* checking Rd line widths ... OK
+* checking Rd cross-references ... OK
+* checking for missing documentation entries ... OK
+* checking for code/documentation mismatches ... OK
+* checking Rd \usage sections ... OK
+* checking Rd contents ... OK
+* checking for unstated dependencies in examples ... OK
+* checking line endings in C/C++/Fortran sources/headers ... OK
+* checking line endings in Makefiles ... OK
+* checking compilation flags in Makevars ... OK
+* checking for GNU extensions in Makefiles ... OK
+* checking for portable use of $(BLAS_LIBS) and $(LAPACK_LIBS) ... OK
+* checking use of PKG_*FLAGS in Makefiles ... OK
+* checking use of SHLIB_OPENMP_*FLAGS in Makefiles ... OK
+* checking pragmas in C/C++ headers and code ... OK
+* checking compilation flags used ... NOTE
+Compilation used the following non-portable flag(s):
+  ‘-mno-omit-leaf-frame-pointer’ ‘-Wdate-time’
+  ‘-Werror=format-security’ ‘-Wformat’
+* checking compiled code ... OK
+* checking installed files from ‘inst/doc’ ... OK
+* checking files in ‘vignettes’ ... OK
+* checking examples ... [21s/21s] OK
+* checking examples with --run-donttest ... [24s/24s] OK
+* checking for unstated dependencies in ‘tests’ ... OK
+* checking tests ... [19m/19m] ERROR
+  Running ‘testthat.R’ [19m/19m]
+Running the tests in ‘tests/testthat.R’ failed.
+Last 13 lines of output:
+  Deleting unused snapshots:
+  'plot-visual-snapshots/anchored-rotated-ordination-plot.svg',
+  'plot-visual-snapshots/confidence-eye-correlation-plot.svg',
+  'plot-visual-snapshots/correlation-estimate-ci-matrix-plot.svg',
+  'plot-visual-snapshots/correlation-two-level-ellipse-matrix-plot.svg',
+  'plot-visual-snapshots/dispatcher-communality-stacked-bars-plot.svg',
+  'plot-visual-snapshots/dispatcher-correlation-ellipse-plot.svg',
+  'plot-visual-snapshots/dispatcher-correlation-heatmap-plot.svg',
+  'plot-visual-snapshots/dispatcher-integration-dot-whisker-plot.svg',
+  'plot-visual-snapshots/dispatcher-loadings-heatmap-plot.svg',
+  'plot-visual-snapshots/dispatcher-variance-partition-plot.svg', and
+  'plot-visual-snapshots/sigma-table-confidence-eye-plot.svg'
+  Error:
+  ! Test failures.
+  Execution halted
+* checking for unstated dependencies in vignettes ... OK
+* checking package vignettes ... OK
+* checking re-building of vignette outputs ... OK
+* checking for non-standard things in the check directory ... OK
+* checking for detritus in the temp directory ... OK
+* DONE
+Status: 1 ERROR, 2 NOTEs

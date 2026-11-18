@@ -21,13 +21,14 @@ bootstrap_Sigma(
 \item{fit}{A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}.}
 
 \item{n_boot}{Integer; number of bootstrap replicates. Default 999.
-Values below \code{2 / (1 - conf) - 1} (39 at the default \code{conf = 0.95}) are
-refused: the widest interval \code{B} draws can produce is \verb{[min, max]}, whose
+Values below \code{2 / (1 - conf) - 1} (39 at the default \code{conf = 0.95}) trigger
+a warning: the widest interval \code{B} draws can produce is \verb{[min, max]}, whose
 coverage is at most \code{(B - 1) / (B + 1)}, so a smaller \code{B} cannot reach the
-requested level whatever the data are. Values below 999 warn.
+requested level whatever the data are. The fit still runs. Values below 999
+warn for endpoint noise.
 
 Two different things bound \code{n_boot}, and they bite at different scales.
-Below the refusal threshold the \emph{arithmetic ceiling} binds: the interval
+Below the arithmetic floor the \emph{arithmetic ceiling} binds: the interval
 cannot reach the requested level however much data you have. Above it, what
 binds is Monte Carlo error in the endpoints, which is a precision question
 and shrinks with \code{B}. Conflating the two is how a replicate count comes to
@@ -132,11 +133,18 @@ plumbing are covered by current tests.
 Non-Gaussian bootstrap calibration is experimental: its repeated-sampling
 behaviour has not been certified, and there is no production calibration
 evidence for mixed-family intervals. Treat those intervals as indicative.
+Multiple named-kernel fits cannot use this bootstrap because unconditional
+simulation for those fits is not yet supported.
 
 Each bootstrap replicate (1) draws a new response vector from
 \code{simulate(fit, nsim = 1)}, (2) refits the model with the same formula
 on the simulated data, (3) extracts the requested summaries via
 \code{\link[=extract_Sigma]{extract_Sigma()}}, \code{\link[=extract_communality]{extract_communality()}}, and \code{\link[=extract_ICC_site]{extract_ICC_site()}}.
+Native Laplace/AGHQ refits retain the fitted ridge, integration, optimiser
+and REML settings;
+only the replicate standard-error calculation is disabled. Older fits
+without the full control record recover retained ridge and integration
+metadata, but their unrecorded optimiser options cannot be recovered.
 Replicates whose refit fails to converge are recorded but excluded
 from CI calculation.
 
@@ -145,6 +153,10 @@ Multicore is dispatched via \code{future} + \code{future.apply}; pass
 use \code{future.apply}'s L'Ecuyer-CMRG seed stream so the answers are
 reproducible given a fixed \code{seed}, but they are NOT bit-identical to
 an \code{n_cores = 1} run with the same seed (different RNG streams).
+
+Automatic refits of structured trait-intercept rho fits are not supported.
+Use point covariance and source-strength extraction; no rho interval is
+provided.
 }
 \section{Caveats}{
 
@@ -156,8 +168,9 @@ CIs reflect parametric simulate-refit variability, not a
 Bayesian posterior distribution for variance components.
 \item \strong{Intervals are too narrow when the simulator cannot redraw a
 tier.} Redraw is not implemented for every random-effect tier —
-notably the SPDE spatial tier and the diagonal phylogenetic tier.
-For a fit using one of those, \code{\link[=simulate.gllvmTMB_multi]{simulate.gllvmTMB_multi()}} falls back
+notably the slope-augmented SPDE spatial blocks. The phylogenetic,
+diagonal phylogenetic and plain SPDE spatial tiers are redrawn.
+For a fit using an unhandled tier, \code{\link[=simulate.gllvmTMB_multi]{simulate.gllvmTMB_multi()}} falls back
 to reusing the fitted random-effect modes and emits a one-shot
 warning. That fallback understates between-unit variability, so the
 intervals returned here are \strong{not calibrated} for such fits. Treat

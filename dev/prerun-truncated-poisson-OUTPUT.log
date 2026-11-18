@@ -1,0 +1,28 @@
+gllvmTMB is EXPERIMENTAL (lifecycle: experimental). Use at your own risk: the package is not complete, is not fully human-verified, and needs extensive further validation. Point estimates are the primary inferential output, but evidence is route- and regime-specific. Broad interval coverage is not certified. One narrow two-sided Gaussian total-variance profile regime has a documented 0.94 floor. See the Current limitations and boundaries page for scope.
+! `phylo_tree = ...` as a global argument to `gllvmTMB()` is deprecated.
+ℹ Pass `tree = ...` inside the phylo_*() keyword instead, e.g.
+  `phylo_latent(species, d = 2, tree = tree)`.
+→ The legacy global path still works; the in-keyword syntax avoids silent
+  index/order mismatch.
+This message is displayed once per session.
+Error in `gllvmTMB_multi_fit()` at gllvmtmb-randslope/R/gllvmTMB.R:987:15:
+! `phylo_indep()` LHS richer than `0 + trait` is not yet supported for
+  this family.
+ℹ Augmented structured random slopes are permitted for gaussian(), binomial()
+  (logit/probit only), poisson(), Gamma(), nbinom2(), nbinom1(), Beta(), and
+  ordinal_probit(); lognormal(), student(), and betabinomial() (logit only) are
+  permitted on more limited evidence only. Validation depth remains family- and
+  covariance-mode-specific.
+ℹ The phylo_indep route has its own evidence boundary; the admitted family/link
+  list does not make lognormal or Student-t route-specific recovery covered.
+→ Use `phylo_indep(0 + trait | species)` for the per-trait phylogenetic
+  variance fit, and do not treat an unadmitted combination as validated for
+  recovery or inference.
+Backtrace:
+    ▆
+ 1. └─gllvmTMB::gllvmTMB(...)
+ 2.   └─gllvmTMB (local) fit_once(control) at gllvmtmb-randslope/R/gllvmTMB.R:1023:5
+ 3.     └─gllvmTMB:::gllvmTMB_multi_fit(...) at gllvmtmb-randslope/R/gllvmTMB.R:987:15
+ 4.       └─cli::cli_abort(...) at gllvmtmb-randslope/R/fit-multi.R:2023:5
+ 5.         └─rlang::abort(...)
+Execution halted

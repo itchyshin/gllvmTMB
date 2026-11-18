@@ -45,7 +45,7 @@
     transformation = "linear_predictor"
   ),
 
-  ## Gaussian residual SD ----------------------------------------
+  ## Continuous-family residual SD slot(s) ----------------------
   list(
     tmb_parameter = "log_sigma_eps",
     label_prefix = "sigma_eps",
@@ -68,11 +68,16 @@
     target_class = "variance",
     transformation = "exp"
   ),
+  ## Legacy label for the first cluster tier. It is not listed by
+  ## profile_targets() (the block is not phylogenetic, and listing it made
+  ## each SD appear twice, #1588); confint() and confint_inspect() still
+  ## accept it so old scripts keep working.
   list(
     tmb_parameter = "theta_diag_species",
     label_prefix = "sd_phy_unique",
     target_class = "variance",
-    transformation = "exp"
+    transformation = "exp",
+    listed = FALSE
   ),
   list(
     tmb_parameter = "theta_diag_species",
@@ -255,7 +260,7 @@
     "linear_predictor" = link_estimate,
     "exp" = exp(link_estimate),
     "logit" = stats::plogis(link_estimate),
-    "logit_p_tweedie" = 1 + stats::plogis(link_estimate),
+    "logit_p_tweedie" = .gllvmTMB_tweedie_p(link_estimate),
     "lambda_packed" = link_estimate,
     "ordinal_threshold" = exp(link_estimate),
     NA_real_
@@ -279,10 +284,14 @@
 }
 
 ## Find all registry entries by TMB name. Some TMB blocks have a legacy
-## label plus a clearer tier label; keep both as direct profile aliases.
-.profile_target_lookup_all <- function(tmb_name) {
+## label plus a clearer tier label; the legacy entry carries
+## `listed = FALSE` and is returned only when `include_unlisted = TRUE`.
+.profile_target_lookup_all <- function(tmb_name, include_unlisted = FALSE) {
   hits <- list()
   for (entry in .profile_target_registry) {
+    if (!include_unlisted && identical(entry$listed, FALSE)) {
+      next
+    }
     if (entry$tmb_parameter == tmb_name) {
       hits[[length(hits) + 1L]] <- entry
     }
@@ -431,9 +440,9 @@
 #'       scale (the TMB internal scale).}
 #'     \item{`scale`}{Either `"natural"` (after applying the
 #'       transformation) or `"link"` (for raw packed entries).}
-#'     \item{`transformation`}{One of `linear_predictor`, `exp`,
-#'       `logit`, `logit_p_tweedie`, `lambda_packed`,
-#'       or `ordinal_threshold`.}
+#'     \item{`transformation`}{Currently emitted: `linear_predictor`, `exp`,
+#'       `logit_p_tweedie`, `lambda_packed`, or `ordinal_threshold`.
+#'       Reserved (allowed, not currently returned): `logit`.}
 #'     \item{`target_type`}{Always `"direct"` for currently returned rows.}
 #'     \item{`profile_ready`}{`TRUE` iff the target can be passed
 #'       directly to `confint(fit, parm = ..., method = "profile")`.}
@@ -448,21 +457,50 @@
 #'   that a profile interval is currently available.
 #'
 #' @examples
-#' \dontrun{
-#' fit <- gllvmTMB(value ~ 0 + trait + latent(0 + trait | site, d = 1),
-#'                 data  = sim$data,
-#'                 trait = "trait",
-#'                 unit  = "site")
+#' set.seed(1)
+#' # Four traits measured twice on each of 80 units (e.g. individuals),
+#' # sharing one latent axis.
+#' sim <- simulate_unit_trait(n_units = 80, n_obs_per_unit = 2,
+#'                            n_traits = 4,
+#'                            Lambda_B = matrix(c(0.9, 0.8, -0.7, 0.5)),
+#'                            psi_B = 0.3, sigma2_eps = 0.3)
+#' fit <- gllvmTMB(value ~ 0 + trait +
+#'                   latent(0 + trait | unit, d = 1, unique = TRUE),
+#'                 data = sim$data, trait = "trait", unit = "unit")
+#'
+#' # One row per parameter that can be profiled on its own: the trait
+#' # means (b_fix), the residual SD (sigma_eps), the loadings on the
+#' # latent axis (Lambda_B_packed) and the SD of each trait's own
+#' # unit-level variation beyond the shared axis (sd_B).
 #' targets <- profile_targets(fit)
 #' head(targets)
-#' profile_targets(fit, ready_only = TRUE)
-#' }
+#'
+#' # ready_only = TRUE drops targets that cannot be profiled, for example
+#' # when the fit no longer carries its TMB object. Here all are ready.
+#' ready <- profile_targets(fit, ready_only = TRUE)
+#' ready$parm
+#'
+#' # The residual-SD label can be passed straight to confint() for its
+#' # profile-likelihood interval.
+#' confint(fit, parm = "sigma_eps")
 #'
 #' @export
 profile_targets <- function(object, ready_only = FALSE) {
+  .profile_targets_build(object, ready_only = ready_only)
+}
+
+## Internal builder behind profile_targets(). `include_unlisted = TRUE` adds
+## the rows for legacy labels (e.g. `sd_phy_unique[t]`) so confint() and
+## confint_inspect() can resolve them; profile_targets() never lists them.
+.profile_targets_build <- function(
+  object,
+  ready_only = FALSE,
+  include_unlisted = FALSE
+) {
   if (!inherits(object, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+    .gllvmTMB_abort_not_multi_fit(object)
   }
+  .temporal_assert_no_iid_inference(object, "profile_targets")
   .gllvmTMB_mspl_assert_inference(object, "profile_targets")
 
   has_tmb_obj <- !is.null(object$tmb_obj)
@@ -474,7 +512,10 @@ profile_targets <- function(object, ready_only = FALSE) {
   ## per parameter block).
   rows <- list()
   for (tmb_name in unique(par_names)) {
-    entries <- .profile_target_lookup_all(tmb_name)
+    entries <- .profile_target_lookup_all(
+      tmb_name,
+      include_unlisted = include_unlisted
+    )
     if (length(entries) == 0L) {
       next
     } # not in registry; skip silently

@@ -16,6 +16,9 @@
 \alias{student}
 \alias{tweedie}
 \alias{censored_poisson}
+\alias{zi_poisson}
+\alias{zi_nbinom2}
+\alias{zi_binomial}
 \alias{delta_gamma}
 \alias{delta_gamma_mix}
 \alias{delta_gengamma}
@@ -57,6 +60,12 @@ tweedie(link = "log", p = NULL)
 
 censored_poisson(link = "log")
 
+zi_poisson(link = "log")
+
+zi_nbinom2(link = "log")
+
+zi_binomial(link = "logit")
+
 delta_gamma(link1, link2 = "log", type = c("standard", "poisson-link"))
 
 delta_gamma_mix(link1 = "logit", link2 = "log", p_extreme = NULL)
@@ -95,7 +104,17 @@ number strictly between zero and one to fix it.}
 number greater than one to fix it.}
 
 \item{p}{\code{NULL} to estimate the Tweedie power, or one finite number strictly
-between one and two to fix it.}
+between one and two to fix it. An estimated power stays inside about
+1.000006 and 1.999994. A free fit that ends within 1e-5 of either end
+warns (class \code{gllvmTMB_tweedie_p_boundary}) and names the estimate and
+that end. If the fitted dispersion is below 0.1, that warning also says
+TMB's Tweedie density accuracy degrades there. A fixed power inside that
+interval is stored on the same map and comes back unchanged. A fixed
+power outside it, and still strictly between 1 and 2, is kept at the
+nearer end and warns (class \code{gllvmTMB_tweedie_p_clamp}) with the
+requested power and the power used. Powers of 1 or below, or of 2 or
+above, are refused. The stored parameter is not a logit: a value saved
+before this map is reinterpreted.}
 
 \item{link1}{Link for the occurrence component of a delta model.}
 
@@ -127,8 +146,69 @@ those routes.
 
 Supply a list of descriptors when response traits use different families.
 The data column \code{family} selects an element for each row. Set
-\code{attr(families, "family_var")} to select a differently named column. Names on
-the list are matched to selector levels; an unnamed list is matched by order.
+\code{attr(families, "family_var")} to select a differently named column.
+
+\strong{Ordering contract.} Name the list to match the selector column's
+values, e.g. \code{list(gaussian = gaussian(), student = student())} --
+matching by name is unambiguous and always accepted. An \emph{unnamed} list is
+matched positionally to the selector column's levels (\code{levels()} for a
+factor, alphabetical \code{sort(unique(...))} otherwise); this is validated,
+not merely assumed, by checking that reading against each family's own
+name (e.g. a \code{"student"} level naturally means \code{student()}) agrees with
+where the list put it. When the two readings agree -- which is true
+whenever the list is already written in level order -- the fit proceeds
+silently. When they disagree, that disagreement is precisely the
+silent-swap failure mode: \code{list(student(), gaussian())} against
+\code{family = rep(c("student","gaussian"), each = n)} previously paired
+the student rows with \code{gaussian()} and vice versa, with no warning and a
+converged fit; the list is refused with an error showing both
+readings. A selector column whose values carry no name evidence at all
+(arbitrary labels such as \code{"count"}/\code{"binary"}) still uses list order,
+but the resolved pairing is reported once so it stays auditable.
+
+Ordinarily the family may vary \emph{between} traits but not \emph{within} one: all
+rows of a given trait must share one family and link, and a fit that mixes
+them stops with an error. Poisson-log with binomial-logit, for instance, is
+not a coherent common scale merely because it converges.
+}
+
+\subsection{Integrated multi-source models (experimental)}{
+
+To integrate more than two sources -- a portal stream, digitised
+literature records, checklists, a structured survey -- declare every
+source and its observation law with \code{\link[=isdm_sources]{isdm_sources()}}. The two-source
+contract below is the two-source case of the same rule and keeps working
+unchanged.
+}
+
+\subsection{Integrated two-source models (experimental)}{
+
+There is one admitted exception, for combining opportunistic
+presence-only records with a structured detection/non-detection survey of
+the same species. Here the family genuinely does vary within a trait: the
+portal rows are Poisson-log counts and the survey rows are Bernoulli with
+a complementary log-log link, which is what makes both arms consistent with
+one shared underlying intensity. Poisson and Bernoulli carry no dispersion
+parameter, so nothing per-trait becomes ambiguous.
+
+To reach it, the fit must match this contract exactly:
+\itemize{
+\item \code{family = list(gbif = poisson(), survey_pa = binomial("cloglog"))},
+with \code{attr(family, "family_var") <- "isdm_family"};
+\item a \code{source} column holding only \code{"gbif"} and \code{"survey"}, with both present;
+\item an \code{isdm_family} column equal to \code{"gbif"} on portal rows and
+\code{"survey_pa"} on survey rows.
+}
+
+Within that contract an \code{offset()} is admitted on the cloglog arm, where it
+is a known change-of-support (sampled area or visit effort) rather than an
+ordinary log-rate exposure. Anything short of the full contract keeps the
+ordinary one-family-per-trait refusal.
+
+Everything such a fit reports is \strong{relative intensity}. Presence-only data
+cannot identify absolute abundance, occupancy, or detectability, so those
+quantities are not estimated and must not be read off the output. This
+interface is experimental and may change.
 }
 
 \subsection{Delta defaults and compatibility wrappers}{
@@ -152,32 +232,112 @@ scale parameter. \code{p_extreme} is the probability assigned to the component
 with the larger mean; leave it \code{NULL} to estimate that probability.
 
 NB2 has variance \eqn{\mu + \mu^2 / \phi}; its extra variance therefore grows
-quadratically with the mean.
+quadratically with the mean. As \eqn{\phi} grows the NB2 collapses to the
+Poisson. A fit can report convergence with a trait's \eqn{\phi} pushed out
+towards that Poisson boundary; the trait's overdispersion is then absorbed
+by the latent loadings, inflating the shared covariance
+\eqn{\Lambda\Lambda^\top}. Check the fitted dispersion of each trait before
+reading the shared covariance.
 
 NB1 has variance \eqn{\mu(1 + \phi)}, so its extra variance grows linearly
 with the mean.
 
 \code{student()} estimates degrees of freedom unless \code{df} is supplied.
+
+\code{censored_poisson()} is a right-censored Poisson family (log link
+only): each row is either an ordinary observed count, or is only known
+to satisfy \code{Y >= C} for some censoring limit \code{C} (e.g. a
+detection ceiling). Supply the response as \code{cbind(y, censored) ~
+...}, where column 1 is the observed count (uncensored rows) or the
+censoring limit \code{C} (censored rows), and column 2 is a strict
+\code{\{0, 1\}} right-censoring indicator per row. A plain \code{y ~
+...} response is also accepted and treats every row as uncensored
+(identical to \code{\link{poisson}()}). Left-censoring and
+interval-censoring are \strong{not} supported -- right-censoring only.
+\code{fitted()}/\code{predict(type = "response")} report the mean of
+the underlying uncensored Poisson process (\code{exp(eta)}), not a
+censoring-adjusted expectation, matching how \code{\link{truncated_poisson}()}
+reports its untruncated mean.
+
+\code{zi_poisson()}, \code{zi_nbinom2()}, and \code{zi_binomial()} are
+TRUE zero-inflation mixtures: the count process (log-link mean, or
+logit-link probability for \code{zi_binomial()}) is active at every
+observation, including \code{y = 0}, on top of a per-trait,
+intercept-only structural-zero probability \code{zi} (logit link, no
+covariates and no random effects on the zero part). This is different
+from \code{\link{delta_lognormal}()}/\code{\link{delta_gamma}()}, which
+are hurdle models -- a strictly positive component conditional on
+presence, with no second zero-generating process (see
+\code{vignette("current-limits", package = "gllvmTMB")} for guidance on
+choosing between these models). \strong{Boundary:} the count process (its fixed
+effects, \code{\link{latent}()} structure, and every correlation gllvmTMB
+reports) is conditional on the non-structural component; \code{zi} itself
+carries no covariates, no random effects, and no reported interval.
+\code{zi_nbinom2()} reuses the ordinary \code{\link{nbinom2}()} per-trait
+dispersion convention (not a shared scalar across traits).
+\code{zi_binomial()} requires multi-trial data (\code{cbind(successes,
+failures)} or a trials column) with at least one row per trait carrying
+\code{n_trials >= 2}; single-trial (0/1) responses do not identify the
+mixture and are refused with \code{\link{binomial}()} named as the
+working alternative.
 }
 \examples{
 Beta(link = "logit")
-\dontrun{
-## Mixed-family example: per-row family chosen by a `family` column
+## Mixed-family example: per-row family chosen by a `family` column. Trait 1
+## stays Gaussian; trait 2 is recorded as presence/absence.
 sim <- simulate_site_trait(n_sites = 40, n_species = 10, n_traits = 2,
-                           mean_species_per_site = 5)
-sim$data$family <- factor(
-  ifelse(sim$data$trait == levels(sim$data$trait)[1], "gaussian", "binomial"),
-  levels = c("gaussian", "binomial")
-)
-fam <- list(gaussian(), binomial())
+                           mean_species_per_site = 5,
+                           Lambda_B = matrix(c(0.8, 0.6), 2, 1), seed = 1)
+dat <- sim$data
+is_bin <- dat$trait == levels(dat$trait)[2]
+dat$value[is_bin] <- as.integer(dat$value[is_bin] > 0)
+dat$family <- factor(ifelse(is_bin, "binomial", "gaussian"),
+                     levels = c("gaussian", "binomial"))
 fit <- gllvmTMB(
-  value ~ 0 + trait + latent(0 + trait | site, d = 1),
-  data   = sim$data,
-  family = fam,
+  value ~ 0 + trait + latent(0 + trait | site, d = 1, unique = TRUE),
+  data   = dat,
+  family = list(gaussian = gaussian(), binomial = binomial()),
   trait  = "trait",
   unit   = "site"
 )
-}
+fit
+
+## Integrated two-source model: portal counts + survey detections, one
+## shared ecological predictor. `dat` is long, one row per
+## (cell, species, source); `log_support` is log sampled area or effort,
+## `bias` a portal-only recording-effort covariate.
+set.seed(1)
+dat <- expand.grid(
+  cell_id = factor(paste0("c", 1:60)),
+  trait   = factor(c("sp1", "sp2")),
+  source  = c("gbif", "survey")
+)
+env <- rnorm(60)  # one value per cell
+u <- rnorm(60)    # unmeasured cell effect shared by both species
+dat$env <- env[as.integer(dat$cell_id)]
+dat$isdm_gbif <- as.integer(dat$source == "gbif")
+dat$bias <- ifelse(dat$source == "gbif", rnorm(nrow(dat)), 0)
+dat$log_support <- ifelse(dat$source == "gbif", log(2), log(0.5))
+eta <- c(0.2, -0.1)[dat$trait] + c(0.5, -0.4)[dat$trait] * dat$env +
+  c(0.6, 0.4)[dat$trait] * u[as.integer(dat$cell_id)] +
+  dat$log_support + dat$isdm_gbif * (-0.3 + 0.4 * dat$bias)
+dat$value <- ifelse(dat$source == "gbif",
+                    rpois(nrow(dat), exp(eta)),
+                    rbinom(nrow(dat), 1, 1 - exp(-exp(eta))))
+dat$isdm_family <- factor(
+  ifelse(dat$source == "gbif", "gbif", "survey_pa"),
+  levels = c("gbif", "survey_pa")
+)
+isdm_fam <- list(gbif = poisson(), survey_pa = binomial(link = "cloglog"))
+attr(isdm_fam, "family_var") <- "isdm_family"
+fit_isdm <- gllvmTMB(
+  value ~ 0 + trait + trait:env + trait:isdm_gbif + trait:bias +
+    offset(log_support) + latent(0 + trait | cell_id, d = 1, unique = FALSE),
+  data   = dat,
+  family = isdm_fam,
+  trait  = "trait",
+  unit   = "cell_id"
+)
 lognormal(link = "log")
 gamma_mix(link = "log")
 lognormal_mix(link = "log")
@@ -191,6 +351,54 @@ student(link = "identity") # estimate df
 student(link = "identity", df = 3) # fix df at 3
 tweedie(link = "log")
 censored_poisson(link = "log")
+## A small simulated rank-1 GLLVM fit with one right-censored trait
+## (censoring limit C = 6).
+set.seed(1)
+n_site <- 100L
+n_trait <- 3L
+u <- rnorm(n_site)
+lambda <- c(0.6, -0.5, 0.4)
+beta <- c(1.2, 0.9, 1.4)
+C <- 6
+eta <- outer(u, lambda) + matrix(beta, n_site, n_trait, byrow = TRUE)
+mu <- exp(eta)
+y_true <- matrix(rpois(n_site * n_trait, mu), n_site, n_trait)
+censored <- y_true >= C
+y_obs <- ifelse(censored, C, y_true)
+dat <- data.frame(
+  site     = factor(rep(seq_len(n_site), n_trait)),
+  trait    = factor(rep(seq_len(n_trait), each = n_site)),
+  y        = as.vector(y_obs),
+  censored = as.integer(as.vector(censored))
+)
+fit <- gllvmTMB(
+  cbind(y, censored) ~ 0 + trait + latent(0 + trait | site, d = 1, unique = FALSE),
+  data = dat, family = censored_poisson(), trait = "trait", unit = "site"
+)
+fit
+## A small simulated rank-1 GLLVM fit in which a quarter of the counts are
+## structural zeros.
+set.seed(1)
+n_site <- 100L
+n_trait <- 3L
+u <- rnorm(n_site)
+lambda <- c(0.6, -0.5, 0.4)
+beta <- c(1.2, 0.9, 1.4)
+pi_true <- 0.25
+eta <- outer(u, lambda) + matrix(beta, n_site, n_trait, byrow = TRUE)
+mu <- exp(eta)
+z <- matrix(rbinom(n_site * n_trait, 1L, 1 - pi_true), n_site, n_trait)
+y <- matrix(rpois(n_site * n_trait, mu), n_site, n_trait) * z
+dat <- data.frame(
+  site  = factor(rep(seq_len(n_site), n_trait)),
+  trait = factor(rep(seq_len(n_trait), each = n_site)),
+  y     = as.vector(y)
+)
+fit <- gllvmTMB(
+  y ~ 0 + trait + latent(0 + trait | site, d = 1, unique = FALSE),
+  data = dat, family = zi_poisson(), trait = "trait", unit = "site"
+)
+fit$report$zi  # per-trait fitted structural-zero probability
 delta_gamma()
 delta_gamma_mix()
 delta_gengamma()

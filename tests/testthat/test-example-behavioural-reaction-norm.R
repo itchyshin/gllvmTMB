@@ -11,6 +11,8 @@ load_behavioural_reaction_norm_example <- function() {
 }
 
 fit_behavioural_reaction_norm_long <- function(ex) {
+  ## BFGS's default relative objective tolerance can stop this fixture before
+  ## its raw gradient passes 0.01. Tighten the fit, not the diagnostic gate.
   suppressMessages(suppressWarnings(gllvmTMB(
     ex$formula_long,
     data = ex$data_long,
@@ -21,7 +23,8 @@ fit_behavioural_reaction_norm_long <- function(ex) {
     control = gllvmTMBcontrol(
       se = FALSE,
       optimizer = "optim",
-      optArgs = list(method = "BFGS")
+      optArgs = list(method = "BFGS", control = list(reltol = 1e-10)),
+      loading_ridge = Inf
     )
   )))
 }
@@ -36,7 +39,8 @@ fit_behavioural_reaction_norm_wide <- function(ex) {
     control = gllvmTMBcontrol(
       se = FALSE,
       optimizer = "optim",
-      optArgs = list(method = "BFGS")
+      optArgs = list(method = "BFGS", control = list(reltol = 1e-10)),
+      loading_ridge = Inf
     )
   )))
 }
@@ -192,6 +196,18 @@ test_that("behavioural reaction-norm long and wide fits agree and recover truth"
     "PASS"
   )
   expect_equal(health$status[health$component == "max_gradient"], "PASS")
+
+  health_wide <- check_gllvmTMB(fit_wide)
+  expect_equal(
+    health_wide$status[health_wide$component == "max_gradient"],
+    "PASS"
+  )
+  for (fit in list(fit_long, fit_wide)) {
+    gradient <- fit$tmb_obj$gr(fit$opt$par)
+    expect_true(all(is.finite(gradient)))
+    expect_lt(max(abs(gradient)), 0.01)
+    expect_false(fit$fit_health$gradient_is_penalised)
+  }
 
   shared <- extract_Sigma(
     fit_long,

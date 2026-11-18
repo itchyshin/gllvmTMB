@@ -36,7 +36,9 @@ fixed-rho scale: when the fitted kernel tier was built from \code{\link[=make_cr
 fixed \code{rho} recorded on that kernel. Uncertainty for \code{Gamma} is not yet
 reported by this helper; use bootstrap workflows when interval estimates
 are required. Use \code{\link[=profile_cross_rho]{profile_cross_rho()}} to compare a fixed \code{rho}
-grid; in-engine \code{rho} estimation and profile intervals remain planned work.
+grid; in-engine estimation of this kernel \code{rho} and profile intervals remain
+planned work. (This is a different quantity from the source-strength
+\code{rho} that \code{kernel_latent(..., rho = NULL)} estimates.)
 }
 \details{
 \code{rho} is part of the supplied \code{K} matrix, not a fitted parameter in the
@@ -45,8 +47,8 @@ current engine. To profile it, use \code{\link[=profile_cross_rho]{profile_cross
 \code{logLik()} values. \code{scale = "effect"} is therefore a fixed-kernel
 transformation, not an estimate of \code{rho}.
 Treat \code{Gamma} from a single association matrix \code{W} as data-condition
-sensitive: the C2 recovery test includes a sparse-versus-dense \code{W} check,
-and sparse or poorly replicated host-partner links should be reported as
+sensitive: the package's recovery tests include a sparse-versus-dense \code{W}
+check, and sparse or poorly replicated host-partner links should be reported as
 weaker evidence rather than as a precise coevolution estimate.
 
 For fixed multi-kernel fits, \code{extract_Gamma()} also inspects the fitted
@@ -56,13 +58,58 @@ warning reminds the caller that component-specific separation is weak
 evidence.
 }
 \examples{
-\dontrun{
-Gamma_HP <- extract_Gamma(
-  fit,
-  level = "cross",
-  row_traits = c("host_size", "host_defence"),
-  col_traits = c("partner_size", "partner_attack")
+set.seed(1)
+## A small host-partner system: 12 host and 12 partner species. Each
+## lineage has its own similarity matrix. Here similarity decays with
+## distance along a species ordering, a stand-in for a phylogenetic
+## correlation matrix such as ape::vcv(tree, corr = TRUE).
+host <- paste0("H", 1:12)
+partner <- paste0("P", 1:12)
+A_H <- 0.6^abs(outer(1:12, 1:12, "-"))
+A_P <- A_H
+dimnames(A_H) <- list(host, host)
+dimnames(A_P) <- list(partner, partner)
+## W records which hosts interact with which partners: host i interacts
+## with partners i - 1, i and i + 1.
+W <- 1 * (abs(outer(1:12, 1:12, "-")) <= 1)
+dimnames(W) <- list(host, partner)
+## One kernel over all 24 species; the fixed rho sets how strongly
+## interacting hosts and partners are linked.
+K <- make_cross_kernel(A_H, A_P, W, rho = 0.9)
+
+## Simulate one latent axis shared by all four traits. Host traits are
+## measured on hosts only and partner traits on partners only: four
+## replicate measurements per species, each with noise (SD 0.3).
+lambda <- c(h_size = 0.9, h_defence = 0.6, p_size = 0.8, p_attack = -0.5)
+z <- drop(t(chol(K)) \%*\% rnorm(24))
+names(z) <- rownames(K)
+dat <- expand.grid(rep = 1:4, trait = names(lambda),
+                   species = rownames(K), stringsAsFactors = FALSE)
+dat <- dat[startsWith(dat$species, "H") == startsWith(dat$trait, "h_"), ]
+dat$value <- lambda[dat$trait] * z[dat$species] +
+  rnorm(nrow(dat), sd = 0.3)
+dat$trait <- factor(dat$trait, levels = names(lambda))
+dat$species <- factor(dat$species, levels = rownames(K))
+## Each record (one species, one replicate) is a sampling unit
+dat$obs <- factor(paste(dat$species, dat$rep))
+
+## One latent axis whose species scores are correlated as in K. The
+## term is named "cross"; the functions below refer to it by name.
+fit <- gllvmTMB(
+  value ~ 0 + trait + kernel_latent(species, K = K, d = 1, name = "cross"),
+  data = dat, trait = "trait", unit = "obs", cluster = "species"
 )
-}
+## Gamma, the host-by-partner block of the fitted trait covariance: how
+## each host trait covaries with each partner trait. It is a point
+## estimate; this helper reports no uncertainty.
+extract_Gamma(fit, level = "cross",
+              row_traits = c("h_size", "h_defence"),
+              col_traits = c("p_size", "p_attack"))
+## The simulated truth, for comparison
+outer(lambda[1:2], lambda[3:4])
+## The same block multiplied by the kernel's fixed rho (0.9)
+extract_Gamma(fit, level = "cross",
+              row_traits = c("h_size", "h_defence"),
+              col_traits = c("p_size", "p_attack"), scale = "effect")
 
 }

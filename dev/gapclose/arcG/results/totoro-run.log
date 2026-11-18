@@ -1,0 +1,9 @@
+# arcG grid SUBMIT 2026-09-04T14:59:57Z
+# HEAD: fc08d83f1
+# jobs: 4500; mc.cores=150
+Syncing source...
+Installing gllvmTMB on Totoro...
+install OK
+Launching run_grid.R...
+# remote pid: 2206287
+Submitted PID 2206287

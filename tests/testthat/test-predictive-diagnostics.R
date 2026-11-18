@@ -455,7 +455,7 @@ test_that("exact residuals retain non-finite and unsupported rows", {
       type = "randomized_quantile",
       seed = 105L
     ),
-    "Exact conditional Gaussian residuals are not informative"
+    "Exact conditional residuals are not informative"
   )
 
   expect_equal(nrow(res), length(fit$tmb_data$y))
@@ -464,14 +464,17 @@ test_that("exact residuals retain non-finite and unsupported rows", {
   expect_true(all(res$status[-1] == "ok"))
 
   fit$tmb_data$y[1] <- 0
-  fit$tmb_data$family_id_vec[1] <- 7L
+  ## fid 7 (Beta) gained exact-CDF support; use fid 6 (tweedie), which
+  ## deliberately remains unsupported_family (no closed-form CDF without a
+  ## new dependency -- see R/predictive-diagnostics.R).
+  fit$tmb_data$family_id_vec[1] <- 6L
   expect_warning(
     res_unsupported <- stats::residuals(
       fit,
       type = "randomized_quantile",
       seed = 106L
     ),
-    "Exact conditional Gaussian residuals are not informative"
+    "Exact conditional residuals are not informative"
   )
   expect_equal(res_unsupported$status[1], "unsupported_family")
   expect_true(is.na(res_unsupported$residual[1]))
@@ -492,7 +495,10 @@ test_that("public predictive diagnostic argument validation is explicit", {
     "must name a column"
   )
   expect_error(
+    ## R1 (2026-09-02 review, Arc D): the message grew zi_poisson/
+    ## zi_nbinom2 when the rootogram's family filter was extended to
+    ## admit them; `fit` here is gaussian(), still correctly refused.
     predictive_check(fit, type = "rootogram", ndraws = 8L),
-    "requires Poisson, NB1, or NB2 rows"
+    "requires Poisson, NB1, NB2, zi_poisson, or zi_nbinom2 rows"
   )
 })

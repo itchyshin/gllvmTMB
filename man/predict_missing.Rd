@@ -4,24 +4,81 @@
 \alias{predict_missing}
 \title{Predict the masked (missing) response cells of a gllvmTMB fit}
 \usage{
-predict_missing(object, type = c("link", "response"), ...)
+predict_missing(
+  object,
+  type = c("link", "response"),
+  se = FALSE,
+  se_route = c("quad", "joint", "joint_load", "sim", "boot"),
+  n_sim = 2000L,
+  sim_seed = NULL,
+  n_boot = 200L,
+  boot_seed = NULL,
+  boot_dgp = c("ml", "reml"),
+  ...
+)
 }
 \arguments{
 \item{object}{A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}.}
 
 \item{type}{One of \code{"link"} (default; the linear predictor) or
-\code{"response"} (the inverse-link conditional mean).}
+\code{"response"} (the inverse-link conditional mean; for
+\code{\link[=ordinal_probit]{ordinal_probit()}} / \code{\link[=ordinal_logit]{ordinal_logit()}} traits, the expected category
+instead -- see Details).}
+
+\item{se}{EXPERIMENTAL, internal-only. If \code{TRUE}, appends \code{se_confidence}
+(delta-method SE of the reconstructed mean) and \code{se_prediction}
+(\code{se_confidence} combined with the family noise variance) columns.
+Gaussian fits only in this slice; unavailable for AGHQ fits. See Details.
+Default \code{FALSE}.}
+
+\item{se_route}{EXPERIMENTAL, internal-only. One of \code{"quad"} (default;
+R1-quad), \code{"joint"} (R1-joint), \code{"joint_load"} (R1-joint+loadings),
+\code{"sim"} (R2, simulation-based), or \code{"boot"} (R3, parametric
+bootstrap -- see Details). Ignored unless \code{se = TRUE}.}
+
+\item{n_sim}{EXPERIMENTAL, internal-only. Number of Monte Carlo
+replicates drawn per masked cell when \code{se_route = "sim"}. Ignored for
+every other route. Default \code{2000}.}
+
+\item{sim_seed}{EXPERIMENTAL, internal-only. Integer RNG seed for
+\code{se_route = "sim"}. Default \code{NULL}, which derives a fixed seed from
+the fitted parameter vector so repeated calls on the same fit
+reproduce identical draws; the caller's global RNG state is always
+saved and restored, never disturbed. Ignored for every other route.}
+
+\item{n_boot}{EXPERIMENTAL, internal-only. Number of full-refit bootstrap
+replicates when \code{se_route = "boot"}. Ignored for every other route.
+Default \code{200}.}
+
+\item{boot_seed}{EXPERIMENTAL, internal-only. Integer RNG seed for
+\code{se_route = "boot"}. Default \code{NULL}, which derives a fixed seed from
+the fitted parameter vector (same convention as \code{sim_seed}); the
+caller's global RNG state is always saved and restored. Ignored for
+every other route.}
+
+\item{boot_dgp}{EXPERIMENTAL, internal-only. One of \code{"ml"} (default) or
+\code{"reml"} -- see Details. Ignored unless \code{se_route = "boot"}.}
 
 \item{...}{Unused.}
 }
 \value{
 A data frame with one row per masked response cell, with columns:
-\code{original_row} (the supplied long-data row or the supplied wide-data row
-before \code{traits()} stacking),
+\code{original_row} (the supplied long-data row, the supplied wide-data row
+before \code{traits()} stacking, or -- for a \code{\link[=multinomial]{multinomial()}} fit -- the
+pre-expansion row of the user's data that the K-1 category-contrast
+pseudo-row belongs to),
 \code{model_row} (the row index into the fitted long-format data / response),
-the unit / cluster / trait identifier columns, and \code{est} (the prediction
-on the requested scale). A complete-data fit (no masked cells) returns a
-zero-row data frame with the same columns.
+the unit / cluster / trait identifier columns, \code{est} (the prediction
+on the requested scale), and, when \code{se = TRUE}, \code{se_confidence} and
+\code{se_prediction} (see Details -- EXPERIMENTAL, not a calibrated
+interval). When \code{se = TRUE} and \code{se_route} is \code{"sim"} or \code{"boot"},
+also \code{q_lo_conf}/\code{q_hi_conf}, \code{q_lo_pred}/\code{q_hi_pred} (empirical
+2.5\%/97.5\% quantiles / bootstrap interval endpoints) and
+\code{q_lo_conf90}/\code{q_hi_conf90}, \code{q_lo_pred90}/\code{q_hi_pred90} (the nominal
+90\% companions). When \code{se_route = "boot"}, also \code{n_boot_ok} (the
+number of the \code{n_boot} refits that converged and entered the pivot
+sample). A complete-data fit (no masked cells) returns a zero-row data
+frame with the same columns.
 }
 \description{
 For a model fitted with \code{missing = miss_control(response = "include")}
@@ -37,7 +94,75 @@ not latent covariates. The separate \code{\link[=imputed]{imputed()}} extractor 
 missing \strong{predictors} from supported \code{mi()} fits.
 The point predictions here are the fitted linear predictor (\code{type = "link"})
 or its inverse-link response (\code{type = "response"}). Reconstruction standard
-errors and prediction intervals are not currently returned.
+errors and prediction intervals are not currently returned by default.
+
+\code{se = TRUE} is \strong{experimental}: no repeated-sampling coverage evidence
+exists for \code{se_confidence} or \code{se_prediction}, and neither is an interval
+claim of any kind. It is currently implemented for gaussian
+fits only (other families abort). Five routes exist (\code{se_route}):
+\code{"quad"} (default) omits the b_fix/latent-score cross-covariance and any
+\code{diag_B} ("unique"/Psi) or within-unit (\code{rr_W}) random-effect
+contribution and OVER-covers \code{se_confidence};
+\code{"joint"} computes the exact joint-precision variance for the b_fix and
+latent-score blocks but omits the loading-uncertainty
+block entirely and UNDER-covers; \code{"joint"} and \code{"quad"} BRACKET nominal
+coverage. \code{"joint_load"} adds that third block; it is the best-calibrated
+delta-method route measured and still falls short of nominal coverage.
+\code{"sim"} is a
+Monte Carlo route: it draws the same gradient-relevant parameter
+subvector \code{"joint_load"} uses from its exact joint-precision marginal
+normal, forms \code{n_sim} EXACT (non-linearised) draws of
+\verb{eta* = x'b* + lambda_t*'u_i*}, and adds one gaussian family draw per
+replicate for \verb{y*}. Unlike the delta-method routes it makes NO normality
+assumption about the predictive distribution -- \code{se_confidence} /
+\code{se_prediction} are the empirical sd of \verb{eta*} / \verb{y*}, and it ALSO
+returns empirical-quantile columns (\code{q_lo_conf}/\code{q_hi_conf},
+\code{q_lo_pred}/\code{q_hi_pred} at nominal 95\%, and their \verb{*90} companions at
+nominal 90\%) that a normal-quantile route cannot produce. It still holds
+every parameter at its estimate (a plug-in simulation), so it does not
+address hyperparameter uncertainty.
+\code{"boot"} is a parametric bootstrap: it simulates a
+complete dataset at the fitted parameters (fresh latent scores AND a
+fresh family draw for every cell), masks the same cells, and REFITS the
+model \code{n_boot} times. Because every replicate is a full refit, it is the
+only route that propagates parameter (and dispersion) uncertainty rather
+than holding it fixed at the plug-in estimate; it is also by far the
+most expensive route (\code{n_boot} model fits per call) and, in this slice,
+only supports gaussian fits with a single ordinary loadings-only
+\code{latent()} term (see Details in the source for the derivation and the
+scope guard). A refit that errors or fails to converge is dropped from
+the pivot sample and counted in \code{n_boot_ok}; if fewer than half the
+refits survive, \code{se_confidence}/\code{se_prediction}/the quantile columns are
+\code{NA} for that fit (with a warning) rather than reporting an interval
+built from a thin sample.
+
+\code{boot_dgp} controls what parameters generate the \code{n_boot} complete-data
+worlds. A bootstrap with \code{boot_dgp = "ml"} can under-cover at the same
+level as \code{"joint_load"}.
+\code{"ml"} (default, byte-identical to the pre-sec.7e route) simulates from
+the SAME ML fit being intervalised -- so at small n its known downward
+variance/loading bias is "re-imported" into the bootstrap world, making
+the pivots systematically narrow. \code{"reml"} fits ONE auxiliary REML model
+on the same (masked) data/formula first and simulates from ITS
+parameters instead -- REML's own known bias direction (larger, less
+biased at small n, converging to ML as n grows) targets exactly that
+gap. The quantity being pivoted (the point estimate the interval is
+centred on, and every inner refit) stays ML either way; only the
+generative world changes. Ignored unless \code{se_route = "boot"}.
+
+Do not surface \code{se_confidence} / \code{se_prediction} / the quantile columns
+as calibrated uncertainty in any user-facing output until a route and family
+have direct coverage evidence.
+
+For \code{\link[=ordinal_probit]{ordinal_probit()}} / \code{\link[=ordinal_logit]{ordinal_logit()}} traits, \code{type = "response"}
+is the \strong{expected category} \eqn{E[k] = \sum_k k \cdot
+P(\mathrm{category}\ k \mid \eta, \tau)}, computed from the fitted
+cutpoints (Hadfield 2015 convention: \eqn{\tau_1 = 0} fixed,
+\eqn{\tau_2, \ldots, \tau_{K-1}} estimated; see \code{\link[=extract_cutpoints]{extract_cutpoints()}})
+-- not a probability. It is not an elementwise \code{pnorm(eta)} /
+\code{plogis(eta)}, which is not a category quantity once \eqn{K > 2}.
+\code{type = "link"} is unchanged: the probit- or logit-scale linear
+predictor (per the trait's own family).
 }
 \seealso{
 \code{\link[=gllvmTMB]{gllvmTMB()}}, \code{\link[=miss_control]{miss_control()}}, \code{\link[=predict.gllvmTMB_multi]{predict.gllvmTMB_multi()}}.

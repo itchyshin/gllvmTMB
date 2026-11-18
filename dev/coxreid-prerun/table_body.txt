@@ -1,0 +1,50 @@
+| Family | T | n | Arm | Seed | Converged | Wall time (s) | Latent-SD bias (%) | Notes |
+|---|---|---|---|---|---|---|---|---|
+| binomial | 4 | 100 | A | 1 | yes | 1.0 | -15.8 |  |
+| binomial | 4 | 100 | A | 2 | yes | 0.3 | +28.2 |  |
+| binomial | 4 | 100 | B | 1 | yes | 0.4 | -11.8 | warning |
+| binomial | 4 | 100 | B | 2 | yes | 0.4 | +32.0 | warning |
+| binomial | 4 | 100 | C | 1 | NO | 7.8 | +39.9 | not converged |
+| binomial | 4 | 100 | C | 2 | NO | 6.2 | +39.3 | not converged |
+| binomial | 4 | 200 | A | 1 | yes | 0.7 | -13.7 |  |
+| binomial | 4 | 200 | A | 2 | yes | 0.6 | -7.0 |  |
+| binomial | 4 | 200 | B | 1 | yes | 0.6 | -12.1 | warning |
+| binomial | 4 | 200 | B | 2 | yes | 0.7 | -5.6 | warning |
+| binomial | 4 | 200 | C | 1 | yes | 5.1 | +4.2 |  |
+| binomial | 4 | 200 | C | 2 | NO | 53.8 | +4.8 | not converged |
+| binomial | 8 | 100 | A | 1 | yes | 1.1 | +16.5 |  |
+| binomial | 8 | 100 | A | 2 | yes | 1.2 | +669.0 | warning |
+| binomial | 8 | 100 | B | 1 | yes | 1.0 | +20.7 | warning |
+| binomial | 8 | 100 | B | 2 | yes | 1.1 | +671.8 | warning |
+| binomial | 8 | 100 | C | 1 | yes | 4.9 | +25.6 |  |
+| binomial | 8 | 100 | C | 2 | yes | 6.4 | +96.6 |  |
+| binomial | 8 | 200 | A | 1 | yes | 1.5 | -11.5 |  |
+| binomial | 8 | 200 | A | 2 | yes | 1.7 | +11.7 |  |
+| binomial | 8 | 200 | B | 1 | yes | 1.5 | -10.4 | warning |
+| binomial | 8 | 200 | B | 2 | yes | 1.7 | +13.1 | warning |
+| binomial | 8 | 200 | C | 1 | yes | 7.3 | -7.9 |  |
+| binomial | 8 | 200 | C | 2 | yes | 18.3 | +17.4 |  |
+| ordinal_probit | 4 | 100 | A | 1 | yes | 8.9 | -32.2 |  |
+| ordinal_probit | 4 | 100 | A | 2 | yes | 4.0 | +45.4 |  |
+| ordinal_probit | 4 | 100 | B | 1 | yes | 4.4 | -30.6 | warning |
+| ordinal_probit | 4 | 100 | B | 2 | yes | 4.4 | +47.8 | warning |
+| ordinal_probit | 4 | 100 | C | 1 | yes | 15.0 | -29.1 |  |
+| ordinal_probit | 4 | 100 | C | 2 | NO | 34.6 | +51.0 | not converged |
+| ordinal_probit | 4 | 200 | A | 1 | yes | 7.9 | -2.3 |  |
+| ordinal_probit | 4 | 200 | A | 2 | yes | 6.5 | +6.6 |  |
+| ordinal_probit | 4 | 200 | B | 1 | yes | 8.7 | -0.8 | warning |
+| ordinal_probit | 4 | 200 | B | 2 | yes | 7.7 | +7.4 | warning |
+| ordinal_probit | 4 | 200 | C | 1 | NO | 82.6 | +10.2 | not converged |
+| ordinal_probit | 4 | 200 | C | 2 | yes | 301.8 | +9.6 |  |
+| ordinal_probit | 8 | 100 | A | 1 | yes | 10.4 | -15.7 |  |
+| ordinal_probit | 8 | 100 | A | 2 | yes | 9.3 | +25.4 |  |
+| ordinal_probit | 8 | 100 | B | 1 | yes | 11.1 | -14.5 | warning |
+| ordinal_probit | 8 | 100 | B | 2 | yes | 10.3 | +26.8 | warning |
+| ordinal_probit | 8 | 100 | C | 1 | yes | 42.2 | -15.0 |  |
+| ordinal_probit | 8 | 100 | C | 2 | NO | 61.6 | +26.5 | not converged |
+| ordinal_probit | 8 | 200 | A | 1 | yes | 19.3 | -7.3 |  |
+| ordinal_probit | 8 | 200 | A | 2 | yes | 19.3 | +14.3 |  |
+| ordinal_probit | 8 | 200 | B | 1 | yes | 23.3 | -6.7 | warning |
+| ordinal_probit | 8 | 200 | B | 2 | yes | 19.8 | +14.9 | warning |
+| ordinal_probit | 8 | 200 | C | 1 | yes | 345.1 | -6.8 |  |
+| ordinal_probit | 8 | 200 | C | 2 | NO | 125.6 | +15.4 | not converged |

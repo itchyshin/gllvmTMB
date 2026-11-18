@@ -1,0 +1,5 @@
+workflow,phi,seed,configuration,n_init,objective,convergence,max_gradient,phi_estimate,max_independent_relative_error,selected_restart,interpretation
+replicated,-0.4,2609083,bfgs_multistart,3,1686.4215823867,0,0.0000127,-0.389469,0.375310,2,"Diagnostic only: same per-seed maximum as retained one-start BFGS fit; this cell passes the actual per-variance median criterion."
+replicated,-0.4,2609083,nlminb_multistart,3,1686.4215823892,0,0.00140,-0.389471,0.375306,1,"Diagnostic only: same per-seed maximum; this cell passes the actual per-variance median criterion. Gradient exceeds the recovery gate limit, so this is not replacement evidence."
+replicated,0.6,2609081,bfgs_multistart,3,1748.9615769773,0,0.0000105,0.575785,0.355778,2,"Diagnostic only: same objective and threshold miss as retained one-start BFGS fit."
+replicated,0.6,2609081,nlminb_multistart,3,1748.9615769782,0,0.00104,0.575785,0.355785,2,"Diagnostic only: same objective and threshold miss; gradient exceeds the recovery gate limit, so this is not replacement evidence."

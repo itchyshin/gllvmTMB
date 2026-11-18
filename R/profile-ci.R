@@ -89,6 +89,22 @@
   stats::qt((1 + level) / 2, df = df)^2 / 2
 }
 
+## ---- Quiet wrapper around TMB::tmbprofile() --------------------------------
+## When a profile walks toward a boundary (e.g. an SD whose interval reaches
+## zero), nlminb() inside tmbprofile() warns "NA/NaN function evaluation".
+## The bound itself is handled downstream, so this muffles only that warning
+## and lets every other warning through (#1588).
+.tmbprofile_quiet <- function(...) {
+  withCallingHandlers(
+    TMB::tmbprofile(...),
+    warning = function(w) {
+      if (grepl("NA/NaN function evaluation", conditionMessage(w), fixed = TRUE)) {
+        invokeRestart("muffleWarning")
+      }
+    }
+  )
+}
+
 ## ---- Identify a non-random parameter index --------------------------------
 ## tmbprofile() expects an integer index into the *non-random* parameter
 ## vector (= opt$par; what TMB calls `obj$par`), or a name (matched to
@@ -307,6 +323,8 @@
 #' under a constraint in pure R.
 #'
 #' This wrapper profiles direct TMB parameters and fixed linear combinations.
+#' Structured-term source-strength intervals are not supported: requests for
+#' its raw logit parameter, by name, index, or linear combination, are rejected.
 #' Nonlinear targets such as communality, full-covariance repeatability, and
 #' correlations are not routed through this function. The phylogenetic-signal
 #' extractor documents its narrower two-component profile route; other
@@ -337,8 +355,13 @@
 #'   constrain via e.g. `c(-15, Inf)` so the profile does not chase
 #'   variance to zero.
 #' @return A length-3 named numeric vector (`estimate`, `lower`, `upper`).
-#'   `lower` or `upper` may be `NA` when the profile is one-sided
-#'   (variance pinned at boundary).
+#'   When the profile crosses the threshold on both sides, bounds are finite
+#'   interior values after `transform`. When the likelihood is one-sided at a
+#'   natural boundary (deviance asymptotes), the affected bound is the
+#'   transformed limit (e.g. `lower = 0` with `transform = exp`; see
+#'   **Boundary behaviour**). `NA` marks a bound that could not be located
+#'   (truncated profile search or `tmbprofile()` failure), not a one-sided
+#'   asymptote at the parameter boundary.
 #'
 #' @section Boundary behaviour:
 #' When a variance component is near zero, the profile likelihood becomes
@@ -379,8 +402,9 @@ tmbprofile_wrapper <- function(
   parm.range = c(-Inf, Inf)
 ) {
   if (!inherits(fit, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+    .gllvmTMB_abort_not_multi_fit(fit)
   }
+  .structured_rho_interval_assert(fit,name,which,lincomb)
   .gllvmTMB_mspl_assert_inference(fit, "tmbprofile_wrapper")
   .gllvmTMB_require_unweighted_inference(fit, "tmbprofile_wrapper")
   profile_checkpoint <- .gllvmTMB_profile_tmb_checkpoint(fit$tmb_obj)
@@ -402,7 +426,7 @@ tmbprofile_wrapper <- function(
     }
     mle_par <- as.numeric(crossprod(fit$opt$par, lincomb))
     prof <- tryCatch(
-      TMB::tmbprofile(
+      .tmbprofile_quiet(
         fit$tmb_obj,
         lincomb = lincomb,
         ystep = ystep,
@@ -419,7 +443,7 @@ tmbprofile_wrapper <- function(
     idx <- .resolve_param_index(fit, name = name, which = which)
     mle_par <- as.numeric(fit$opt$par[idx])
     prof <- tryCatch(
-      TMB::tmbprofile(
+      .tmbprofile_quiet(
         fit$tmb_obj,
         name = idx,
         ystep = ystep,

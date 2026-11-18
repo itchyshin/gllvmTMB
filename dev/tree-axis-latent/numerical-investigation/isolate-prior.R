@@ -1,0 +1,21 @@
+#!/usr/bin/env Rscript
+library(gllvmTMB);library(TMB)
+x<-readRDS('/private/tmp/gllvm-tree-axis-latent-20260830/results/fit-M2.rds')$fit
+r<-readRDS('/private/tmp/gllvm-tree-axis-latent-20260830/replay-BFGS.rds')
+p<-x$tmb_obj$env$parList(x=r$outer,par=r$full_par)
+obj<-TMB::MakeADFun(data=x$tmb_data,parameters=p,map=x$tmb_map,random=NULL,DLL='gllvmTMB',silent=TRUE)
+rep<-obj$report(obj$par)
+y_nll<--sum(dnorm(x$tmb_data$y,rep$eta,exp(p$log_sigma_eps),log=TRUE))
+other_prior<--sum(dnorm(p$z_B,log=TRUE))-sum(dnorm(as.vector(p$s_B),sd=rep(exp(p$theta_diag_B),ncol(p$s_B)),log=TRUE))
+L<-matrix(c(exp(p$theta_dep_chol[1]),p$theta_dep_chol[3],0,exp(p$theta_dep_chol[2])),2,2)
+B<-p$b_phy_aug[,,1];W<-t(forwardsolve(L,t(B)))
+stable_prior<-.5*(length(B)*log(2*pi)+nrow(B)*2*sum(log(diag(L)))+sum(W^2))
+joint<-obj$fn(obj$par)
+out<-list(native_joint=joint,observation_nll=y_nll,other_prior_nll=other_prior,
+ native_coefficient_prior_by_subtraction=joint-y_nll-other_prior,
+ factor_based_coefficient_prior=stable_prior,
+ stable_joint=y_nll+other_prior+stable_prior,
+ conditioning_factor=kappa(L,exact=TRUE))
+print(out)
+jsonlite::write_json(out,'/private/tmp/gllvm-tree-axis-latent-20260830/isolate-prior.json',pretty=TRUE,auto_unbox=TRUE,digits=NA)
+TMB::FreeADFun(obj)

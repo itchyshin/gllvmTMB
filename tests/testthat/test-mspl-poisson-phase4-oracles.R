@@ -3,7 +3,10 @@
 ## Research note:
 ##   docs/dev-log/research/2026-08-15-mspl-phase4-poisson-prep.md
 ## Helpers stay in this file. Do not call live MSPL on Poisson.
-## Do not edit src/. Do not widen .gllvmTMB_mspl_prepare().
+## The public door lives in test-mspl-poisson-public-door.R.
+## After G0 REPLACE (#1102) the live C++/Jeffreys twin is working W_*;
+## E1–E3 keep true W=diag(mu) algebra as the historical contrast.
+## Do not rebuild E1-E7 science. Do not flip planned -> admitted.
 
 .poisson_mu <- function(eta, exposure = 1) {
   as.numeric(exposure) * exp(as.numeric(eta))
@@ -20,6 +23,16 @@
   0.5 * as.numeric(determinant(I, logarithm = TRUE)$modulus)
 }
 
+.poisson_trW <- function(mu) {
+  sum(as.numeric(mu))
+}
+
+.poisson_logpmf_kernel <- function(y, mu) {
+  y <- as.numeric(y)
+  mu <- as.numeric(mu)
+  sum(y * log(mu) - mu)
+}
+
 .poisson_bernoulli_Wg <- function(mu) {
   mu * (1 - mu)
 }
@@ -27,6 +40,14 @@
 .poisson_bernoulli_V_loading <- function(Lambda) {
   Lambda <- as.matrix(Lambda)
   sum(sqrt(1 + rowSums(Lambda * Lambda)) - 1)
+}
+
+.poisson_bernoulli_cn <- function(p_free, n_eff) {
+  2 * sqrt(as.numeric(p_free) / as.numeric(n_eff))
+}
+
+.poisson_gaussian_cN <- function(n) {
+  sqrt(2 / as.numeric(n))
 }
 
 .poisson_hirose_atom <- function(S_diag, psi) {
@@ -47,42 +68,120 @@
     eta = eta,
     mu = .poisson_mu(eta),
     n_rows = nrow(X),
+    p_free = ncol(X),
     Lambda = matrix(c(0.8, -0.5, 0.3, 0.6), 4L, 1L)
   )
 }
 
-test_that("E1: Poisson information uses W=diag(mu); Bernoulli W_g differs", {
+.poisson_two_trait_fixture <- function() {
+  ## Trait-A / trait-B intercepts + shared covariate. Trait A can
+  ## vanish while trait B stays healthy.
+  X <- cbind(
+    traitA = c(1, 1, 0, 0),
+    traitB = c(0, 0, 1, 1),
+    x = c(-1, 1, -1, 1)
+  )
+  beta <- c(0.1, 0.4, -0.25)
+  eta <- as.numeric(X %*% beta)
+  list(
+    X = X,
+    beta = beta,
+    eta = eta,
+    mu = .poisson_mu(eta),
+    n_rows = nrow(X),
+    p_free = ncol(X)
+  )
+}
+
+test_that("E1: true Poisson I uses W=diag(mu); Bernoulli W_g differs (live tape is W_*)", {
   fx <- .poisson_fixture()
   I <- .poisson_I(fx$X, fx$mu)
   expect_equal(I, crossprod(fx$X, fx$X * fx$mu), tolerance = 1e-12)
+  expect_equal(
+    I,
+    t(fx$X) %*% diag(fx$mu, fx$n_rows) %*% fx$X,
+    tolerance = 1e-12
+  )
   expect_equal(
     .poisson_Pj(fx$X, fx$mu),
     0.5 * log(det(I)),
     tolerance = 1e-12
   )
+  expect_equal(.poisson_trW(fx$mu), sum(fx$mu), tolerance = 1e-15)
 
-  mu_clip <- pmin(pmax(fx$mu / max(fx$mu), 1e-3), 1 - 1e-3)
-  I_pois <- .poisson_I(fx$X, mu_clip)
-  I_bern <- crossprod(fx$X, fx$X * .poisson_bernoulli_Wg(mu_clip))
+  ev <- eigen(I, symmetric = TRUE, only.values = TRUE)$values
+  expect_true(all(is.finite(ev)))
+  expect_true(all(ev > 0))
+
+  ## P1 continuity: a small mean perturbation moves I continuously.
+  mu_pert <- fx$mu
+  mu_pert[1L] <- mu_pert[1L] * 1.001
+  I_pert <- .poisson_I(fx$X, mu_pert)
+  expect_lt(max(abs(I_pert - I)) / max(abs(I)), 1e-2)
+
+  ## Poisson means are not Bernoulli means: W_g can be negative when mu>1.
+  expect_true(any(fx$mu > 1))
+  expect_true(any(.poisson_bernoulli_Wg(fx$mu) < 0))
+  expect_true(all(fx$mu > 0))
+
+  ## Even on a (0,1) mean that both weights accept, the matrices differ.
+  mu01 <- c(0.2, 0.4, 0.6, 0.8)
+  I_pois <- .poisson_I(fx$X, mu01)
+  I_bern <- crossprod(fx$X, fx$X * .poisson_bernoulli_Wg(mu01))
   expect_false(isTRUE(all.equal(I_pois, I_bern, tolerance = 1e-6)))
-  expect_false(isTRUE(all.equal(
-    diag(fx$mu),
-    diag(.poisson_bernoulli_Wg(mu_clip)),
-    tolerance = 1e-6
-  )))
+  expect_false(isTRUE(all.equal(mu01, .poisson_bernoulli_Wg(mu01), tolerance = 1e-6)))
 })
 
 test_that("E2: all-zero path sends Poisson Jeffreys atom to -Inf", {
   fx <- .poisson_fixture()
   beta1_grid <- seq(0, -20, length.out = 11)
-  Pj <- vapply(beta1_grid, function(b0) {
+  path <- lapply(beta1_grid, function(b0) {
     eta <- fx$X[, 1L] * b0 + fx$X[, 2L] * fx$beta[2L]
-    .poisson_Pj(fx$X, .poisson_mu(eta))
-  }, numeric(1L))
+    mu <- .poisson_mu(eta)
+    list(
+      mu = mu,
+      trW = .poisson_trW(mu),
+      Pj = .poisson_Pj(fx$X, mu),
+      ell0 = .poisson_logpmf_kernel(rep(0, fx$n_rows), mu)
+    )
+  })
+  Pj <- vapply(path, `[[`, numeric(1L), "Pj")
+  trW <- vapply(path, `[[`, numeric(1L), "trW")
+  ell0 <- vapply(path, `[[`, numeric(1L), "ell0")
+  mu_last <- path[[length(path)]]$mu
+
   expect_true(all(is.finite(Pj)))
   expect_true(all(diff(Pj) < 0))
   expect_lt(tail(Pj, 1L), -5)
   expect_lt(tail(Pj, 1L), Pj[1L] - 10)
+  expect_true(all(diff(trW) < 0))
+  expect_lt(max(mu_last), 1e-6)
+  expect_lt(tail(trW, 1L), 1e-6)
+
+  ## P3: all-zero log-pmf kernel is -sum(mu), bounded above by 0.
+  expect_equal(ell0, -trW, tolerance = 1e-12)
+  expect_true(all(ell0 <= 0))
+  expect_gt(tail(ell0, 1L), -1e-6)
+
+  ## Trait-wise all-zero: only trait A vanishes; P_J still diverges
+  ## because trait A's intercept column stays in X_*.
+  tw <- .poisson_two_trait_fixture()
+  bA_grid <- seq(tw$beta[1L], -20, length.out = 11)
+  Pj_trait <- vapply(bA_grid, function(bA) {
+    beta <- tw$beta
+    beta[1L] <- bA
+    .poisson_Pj(tw$X, .poisson_mu(as.numeric(tw$X %*% beta)))
+  }, numeric(1L))
+  mu_trait_last <- {
+    beta <- tw$beta
+    beta[1L] <- tail(bA_grid, 1L)
+    .poisson_mu(as.numeric(tw$X %*% beta))
+  }
+  expect_true(all(is.finite(Pj_trait)))
+  expect_true(all(diff(Pj_trait) < 0))
+  expect_lt(tail(Pj_trait, 1L), Pj_trait[1L] - 5)
+  expect_lt(max(mu_trait_last[1:2]), 1e-6)
+  expect_gt(min(mu_trait_last[3:4]), 0.5)
 })
 
 test_that("E3: near-zero mean scaling deteriorates P_J monotonically", {
@@ -94,6 +193,27 @@ test_that("E3: near-zero mean scaling deteriorates P_J monotonically", {
   expect_true(all(is.finite(Pj)))
   expect_true(all(diff(Pj) < 0))
   expect_lt(tail(Pj, 1L), -10)
+
+  ## Algebraic identity: I(εμ) = ε I(μ) ⇒ P_J(εμ) = P_J(μ) + (p/2) log ε.
+  Pj0 <- .poisson_Pj(fx$X, fx$mu)
+  I0 <- .poisson_I(fx$X, fx$mu)
+  for (eps in eps_grid) {
+    expect_equal(
+      .poisson_I(fx$X, eps * fx$mu),
+      eps * I0,
+      tolerance = 1e-12
+    )
+    expect_equal(
+      .poisson_Pj(fx$X, eps * fx$mu),
+      Pj0 + 0.5 * fx$p_free * log(eps),
+      tolerance = 1e-12
+    )
+    expect_equal(
+      .poisson_trW(eps * fx$mu),
+      eps * .poisson_trW(fx$mu),
+      tolerance = 1e-12
+    )
+  }
 })
 
 test_that("E4: exposure doubling doubles information; row count fixed", {
@@ -112,6 +232,21 @@ test_that("E4: exposure doubling doubles information; row count fixed", {
     as.numeric(fx$n_rows),
     tolerance = 1e-6
   )))
+
+  ## Information size is sum(mu), not sum(E) and not the row count.
+  expect_false(isTRUE(all.equal(sum(mu1), sum(E), tolerance = 1e-6)))
+  expect_equal(sum(mu1), sum(E * exp(fx$eta)), tolerance = 1e-12)
+
+  ## Rate transplants keyed on N_rows do not see the exposure change.
+  c_bern_1 <- .poisson_bernoulli_cn(fx$p_free, fx$n_rows)
+  c_bern_2 <- .poisson_bernoulli_cn(fx$p_free, length(mu2))
+  c_gaus_1 <- .poisson_gaussian_cN(fx$n_rows)
+  c_gaus_2 <- .poisson_gaussian_cN(length(mu2))
+  expect_equal(c_bern_1, c_bern_2, tolerance = 0)
+  expect_equal(c_gaus_1, c_gaus_2, tolerance = 0)
+  expect_equal(c_bern_1, 2 * sqrt(fx$p_free / fx$n_rows), tolerance = 1e-15)
+  expect_equal(c_gaus_1, sqrt(2 / fx$n_rows), tolerance = 1e-15)
+  expect_false(isTRUE(all.equal(I1, I2, tolerance = 1e-8)))
 })
 
 test_that("E5: offset spelling vs folded log-exposure leave mu and I identical", {
@@ -132,6 +267,15 @@ test_that("E5: offset spelling vs folded log-exposure leave mu and I identical",
     .poisson_Pj(fx$X, mu_folded),
     tolerance = 1e-12
   )
+
+  ## Converse: dropping the offset without folding eta changes mu and I.
+  mu_ignored <- .poisson_mu(eta_free, exposure = 1)
+  expect_false(isTRUE(all.equal(mu_ignored, mu_offset, tolerance = 1e-8)))
+  expect_false(isTRUE(all.equal(
+    .poisson_I(fx$X, mu_ignored),
+    .poisson_I(fx$X, mu_offset),
+    tolerance = 1e-8
+  )))
 })
 
 test_that("E6: Gaussian Hirose Psi atom is refused for Poisson mean model", {
@@ -142,6 +286,9 @@ test_that("E6: Gaussian Hirose Psi atom is refused for Poisson mean model", {
     stop("Poisson ordinary cell has no free Psi for Hirose", call. = FALSE)
   }
   expect_error(refuse_hirose_poisson(), "no free Psi")
+  expect_null(fx$psi)
+  expect_false("psi" %in% names(fx))
+
   ## Even if someone plugs 1/mu, that object is not the Poisson Jeffreys atom.
   fake_psi <- 1 / fx$mu
   hirose_fake <- .poisson_hirose_atom(fx$mu, fake_psi)
@@ -151,6 +298,17 @@ test_that("E6: Gaussian Hirose Psi atom is refused for Poisson mean model", {
     tolerance = 1e-3
   )))
   expect_equal(hirose_fake, sum(fx$mu^2), tolerance = 1e-12)
+
+  ## Opposite-signed boundaries: Hirose → +Inf as psi→0; P_J → -Inf as mu→0.
+  psi_grid <- 10^seq(0, -6, length.out = 7)
+  hirose_path <- vapply(
+    psi_grid,
+    function(psi) .poisson_hirose_atom(rep(1, 4L), rep(psi, 4L)),
+    numeric(1L)
+  )
+  expect_true(all(diff(hirose_path) > 0))
+  expect_gt(tail(hirose_path, 1L), 1e6)
+  expect_lt(.poisson_Pj(fx$X, 1e-8 * fx$mu), -10)
 })
 
 test_that("E7: V_loading is mu-inert; Poisson P_J moves with mu", {
@@ -180,30 +338,43 @@ test_that("E7: V_loading is mu-inert; Poisson P_J moves with mu", {
     .poisson_bernoulli_V_loading(Lambda_up) - V0
   ) / eps
   expect_gt(abs(dV_dL), 1e-8)
+
+  ## On the all-zero intercept path, V_loading stays put while P_J falls.
+  eta_zero <- fx$X[, 1L] * (-20) + fx$X[, 2L] * fx$beta[2L]
+  expect_equal(
+    .poisson_bernoulli_V_loading(fx$Lambda),
+    V0,
+    tolerance = 0
+  )
+  expect_lt(.poisson_Pj(fx$X, .poisson_mu(eta_zero)), Pj0 - 10)
 })
 
-test_that("Poisson ordinary q1/q2 are planned phase4_prep only (not admitted)", {
+test_that("Poisson ordinary q1/q2 are experimental-point admitted (not covered)", {
   tbl <- .gllvmTMB_mspl_registry()
-  planned <- tbl[tbl$status == "planned", , drop = FALSE]
-  pois <- planned[planned$family == "poisson", , drop = FALSE]
+  admitted <- tbl[tbl$status == "admitted", , drop = FALSE]
+  pois <- admitted[admitted$family == "poisson", , drop = FALSE]
   expect_identical(nrow(pois), 2L)
   expect_true(all(pois$link == "log"))
   expect_true(all(pois$structure == "ordinary"))
   expect_identical(sort(pois$q), c(1L, 2L))
-  expect_true(all(pois$evidence == "phase4_prep"))
-  expect_false(any(pois$status == "admitted"))
+  expect_true(all(pois$evidence == "admit_packet"))
+  expect_false(any(pois$evidence == "covered"))
 
   p1 <- .gllvmTMB_mspl_registry_lookup("poisson", "log", "ordinary", 1L)
   p2 <- .gllvmTMB_mspl_registry_lookup("poisson", "log", "ordinary", 2L)
-  expect_identical(p1$status, "planned")
-  expect_identical(p2$status, "planned")
-  expect_identical(p1$evidence, "phase4_prep")
+  expect_identical(p1$status, "admitted")
+  expect_identical(p2$status, "admitted")
+  expect_identical(p1$evidence, "admit_packet")
   expect_identical(p2$cell_id, "poisson:log:ordinary:q2")
+  expect_match(p1$notes, "not a covered campaign")
+  expect_match(p1$notes, "no public SE")
+  expect_false(grepl("\\bcovered\\b", p1$evidence, ignore.case = TRUE))
 
-  ## No excluded poisson ordinary q1 collision with planned lookup.
+  ## No excluded poisson ordinary q1 collision with admitted lookup.
   excluded <- tbl[tbl$status == "excluded", , drop = FALSE]
   expect_false(any(excluded$cell_id == "poisson:log:ordinary:q1"))
   expect_false(any(grepl("^poisson:log:ordinary:q1", excluded$cell_id)))
+  expect_false(any(excluded$family == "poisson"))
 })
 
 test_that("Phase-4 oracles never invoke a live Poisson MSPL fit", {
@@ -216,4 +387,27 @@ test_that("Phase-4 oracles never invoke a live Poisson MSPL fit", {
     code
   ))
   expect_false(any(grepl("estimator\\s*=\\s*[\"']mspl[\"']", code)))
+  expect_false(grepl("gllvmTMB\\s*\\(", code))
+})
+
+.mspl_r_source <- function(rel) {
+  paste(readLines(gllvmTMB_pkg_file("R", rel), warn = FALSE), collapse = "\n")
+}
+
+test_that("prepare public door lists admitted/planned prepare IDs (source pin)", {
+  ## Read-only pin. This test must not edit R/mspl.R.
+  ## Live prepare allow-list (post phase-4 family doors): gaussian/bernoulli/
+  ## poisson plus fenced planned nbinom2/beta/nbinom1. Tweedie still probe-only.
+  ## Not admission; not public SE; REPLACE lane only refreshes the pin.
+  mspl_src <- .mspl_r_source("mspl.R")
+  expect_true(grepl(
+    "fam_ids %in% c\\(0L, 1L, 2L, 5L, 7L, 15L\\)",
+    mspl_src
+  ))
+  expect_true(grepl(
+    "Tweedie and mixed-family MSPL remain deferred at the public door",
+    mspl_src
+  ))
+  enum_src <- .mspl_r_source("enum.R")
+  expect_true(grepl("poisson\\s*=\\s*2L", enum_src))
 })

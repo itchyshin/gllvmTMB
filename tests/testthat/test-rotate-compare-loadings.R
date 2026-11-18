@@ -53,6 +53,51 @@ test_that("rotate_loadings(): errors when level not in fit", {
   )
 })
 
+test_that("rotate_loadings(): level-not-active error names the user's level, not the internal code (#1590)", {
+  fit <- make_rrB_fit(seed = 1, d = 2)
+  expect_error(
+    rotate_loadings(fit, "unit_obs", "varimax"),
+    regexp = 'not active at level "unit_obs"',
+    fixed = TRUE
+  )
+  suppressWarnings(expect_error(
+    rotate_loadings(fit, "W", "varimax"),
+    regexp = 'not active at level "unit_obs"',
+    fixed = TRUE
+  ))
+})
+
+## Help-text pins (#1590). The Rd files ship under man/. A missing page
+## is an error under R CMD check, not a skip.
+read_rd <- function(name) {
+  f <- gllvmTMB_pkg_file("man", paste0(name, ".Rd"))
+  paste(readLines(f, warn = FALSE), collapse = "\n")
+}
+
+test_that("?gllvmTMB @return names the classes every fit actually has (#1590)", {
+  rd <- read_rd("gllvmTMB")
+  expect_false(grepl("single-response", rd, fixed = TRUE))
+  expect_match(rd, "gllvmTMB_va", fixed = TRUE)
+  expect_match(rd, "every native fit", ignore.case = TRUE)
+})
+
+test_that("?rotate_loadings limits the covariance claim to varimax (#1590)", {
+  rd <- read_rd("rotate_loadings")
+  expect_false(grepl("and implied\\s+covariance are unchanged", rd))
+  expect_match(rd, "solve(T)", fixed = TRUE)
+})
+
+test_that("?compare_loadings documents cor_per_factor and positional matching (#1590)", {
+  rd <- read_rd("compare_loadings")
+  expect_match(rd, "cor_per_factor", fixed = TRUE)
+  expect_match(rd, "position", fixed = TRUE)
+})
+
+test_that("?ridge_path does not claim tau is sorted for refitting (#1590)", {
+  rd <- read_rd("ridge_path")
+  expect_false(grepl("both for refitting", rd, fixed = TRUE))
+})
+
 test_that("rotate_loadings(method='none'): identity rotation", {
   fit <- make_rrB_fit(seed = 1, d = 2)
   rt <- rotate_loadings(fit, "unit", "none")
@@ -478,4 +523,33 @@ test_that("compare_loadings(): cor_per_factor in [-1, 1]", {
     out$cor_per_factor >= -1 - 1e-8 &
       out$cor_per_factor <= 1 + 1e-8
   ))
+})
+
+test_that("compare_loadings(): matches rows by name when both have row names (#1590)", {
+  L <- matrix(c(1, 0.5, -0.4, 0.3, 0, 0.8, 0.4, -0.2), 4, 2,
+              dimnames = list(c("t1", "t2", "t3", "t4"), NULL))
+  L_rev <- L[4:1, , drop = FALSE]
+  out <- compare_loadings(L_rev, L)
+  expect_equal(out$frobenius, 0, tolerance = 1e-10)
+  expect_equal(rownames(out$Lambda_a_rot), rownames(L))
+  expect_equal(out$cor_per_factor, c(1, 1), tolerance = 1e-10)
+})
+
+test_that("compare_loadings(): aborts when the two row-name sets differ (#1590)", {
+  L <- matrix(c(1, 0.5, -0.4, 0.3, 0, 0.8, 0.4, -0.2), 4, 2,
+              dimnames = list(c("t1", "t2", "t3", "t4"), NULL))
+  Lb <- L
+  rownames(Lb) <- c("t1", "t2", "t3", "other")
+  expect_error(compare_loadings(L, Lb), regexp = "different traits")
+  Ld <- L
+  rownames(Ld) <- c("t1", "t1", "t3", "t4")
+  expect_error(compare_loadings(Ld, L), regexp = "different traits")
+})
+
+test_that("compare_loadings(): keeps positional matching unless both have row names (#1590)", {
+  L <- matrix(c(1, 0.5, -0.4, 0.3, 0, 0.8, 0.4, -0.2), 4, 2)
+  Ln <- L
+  rownames(Ln) <- c("t4", "t3", "t2", "t1")
+  expect_equal(compare_loadings(Ln, L)$frobenius, 0, tolerance = 1e-10)
+  expect_equal(compare_loadings(L, Ln)$frobenius, 0, tolerance = 1e-10)
 })

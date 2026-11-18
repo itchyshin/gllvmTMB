@@ -1,0 +1,5 @@
+"arm","n","seed","status","rel_frob","degenerate_label","dichot_status","dichot_fired","seconds"
+"degenerate",100,1001,"OK",0.532997713246305,FALSE,NA,FALSE,5.835
+"healthy",100,1001,"OK",0.656046659394625,FALSE,NA,FALSE,5.305
+"transport",100,1001,"OK",45.5227528241933,TRUE,NA,FALSE,13.314
+"mixed",100,1001,"OK",0.348024055972964,FALSE,NA,FALSE,5.965

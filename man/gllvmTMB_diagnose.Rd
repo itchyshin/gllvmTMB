@@ -47,11 +47,34 @@ decide which interval warnings can be promoted to broader
 guarantees.
 }
 \examples{
-\dontrun{
-fit <- gllvmTMB(value ~ 0 + trait + latent(0 + trait | site, d = 2),
-                data = dat, trait = "trait", unit = "site")
-gllvmTMB_diagnose(fit)
-}
+set.seed(1)
+# Eight traits on 100 units, each unit measured twice. Odd-numbered
+# traits share one latent axis, even-numbered traits share the other.
+Lambda <- cbind(c(0.9, 0, 0.8, 0, 0.7, 0, 0.6, 0),
+                c(0, 0.9, 0, 0.8, 0, 0.7, 0, 0.6))
+sim <- simulate_unit_trait(n_units = 100, n_obs_per_unit = 2,
+                           n_traits = 8, Lambda_B = Lambda,
+                           psi_B = 0.3, sigma2_eps = 0.3)
+fit <- gllvmTMB(
+  value ~ 0 + trait + latent(0 + trait | unit, d = 2, unique = TRUE),
+  data = sim$data, trait = "trait", unit = "unit"
+)
+
+# The printed report has four parts: optimiser checks, rotation,
+# biological summaries (variances, strong trait correlations and
+# communalities) and suggested next steps.
+dx <- gllvmTMB_diagnose(fit)
+
+# The same results come back invisibly as a list, for use in scripts.
+names(dx)
+dx$hints
+round(dx$Sigma_B$R_B, 2)
+dx$communality_B
+
+# verbose = FALSE skips the printed report; the numbers behind the
+# optimiser checks are in $sanity.
+quiet <- gllvmTMB_diagnose(fit, verbose = FALSE)
+str(quiet$sanity)
 }
 \seealso{
 \code{\link[=check_gllvmTMB]{check_gllvmTMB()}}, \code{\link[=sanity_multi]{sanity_multi()}},

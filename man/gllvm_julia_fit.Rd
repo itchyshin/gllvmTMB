@@ -2,7 +2,7 @@
 % Please edit documentation in R/julia-bridge.R
 \name{gllvm_julia_fit}
 \alias{gllvm_julia_fit}
-\title{Fit a GLLVM with the Julia engine (GLLVM.jl \code{bridge_fit}).}
+\title{Fit a GLLVM with the Julia engine (GLLVModels.jl \code{bridge_fit}).}
 \usage{
 gllvm_julia_fit(
   y,
@@ -13,6 +13,7 @@ gllvm_julia_fit(
   X_lv = NULL,
   coef_fixed = NULL,
   mask = NULL,
+  sources = NULL,
   units_are_rows = FALSE,
   ci_method = c("none", "wald", "profile", "bootstrap"),
   ci_level = 0.95,
@@ -60,6 +61,10 @@ ignored. Currently routed for one-part no-X non-Gaussian point fits, with
 masked no-X CI payloads for Poisson, Bernoulli binomial, NB2, NB1, Beta,
 and Gamma.}
 
+\item{sources}{Optional structured-source payload forwarded to the Julia
+bridge. This is used by the internal \code{engine = "julia"} routing layer;
+direct users should normally leave it as \code{NULL}.}
+
 \item{units_are_rows}{If \code{TRUE}, \code{y} is n x p and is transposed to p x n.}
 
 \item{ci_method}{Confidence-interval route for admitted no-X bridge rows:
@@ -86,14 +91,18 @@ fixed-effect X remain loud gates.}
 A list of class \code{gllvmTMB_julia} with the bridge contract fields
 (\code{loadings}, \code{Sigma}, \code{correlation}, \code{loglik}, \code{aic}, \code{bic},
 \code{converged}, ...). If \code{ci_method != "none"} and the row is admitted, the
-list also carries flat CI fields consumed by \code{confint()}.
+list also carries flat CI fields consumed by \code{confint()}. For a nonempty
+CI payload, \code{ci_status} is \code{"available"} only when every lower and upper
+endpoint is finite; otherwise it is \code{"unavailable"} with a diagnostic in
+\code{ci_note}. Availability does not establish interval calibration or
+coverage.
 }
 \description{
-Fit a GLLVM with the Julia engine (GLLVM.jl \code{bridge_fit}).
+Fit a GLLVM with the Julia engine (GLLVModels.jl \code{bridge_fit}).
 }
 \examples{
 \dontrun{
-# Requires a local GLLVM.jl install (see [gllvm_julia_setup()]).
+# Requires a local GLLVModels.jl install (see [gllvm_julia_setup()]).
 # `y` is traits x units (p x n): two Gaussian traits, 40 units, K = 2.
 set.seed(1)
 y <- matrix(rnorm(2 * 40), nrow = 2)
@@ -113,9 +122,17 @@ fit_lv <- gllvm_julia_fit(
 )
 extract_lv_effects(fit_lv)
 
-# Wald confidence intervals for an admitted no-X row:
+# Wald confidence intervals need an identifiable fit. This six-trait,
+# one-LV example has finite bounds in the tested Julia environment.
+set.seed(3801)
+latent <- rnorm(60)
+loading <- c(0.9, 0.7, -0.8, 0.55, -0.65, 0.75)
+y_ci <- outer(loading, latent) + matrix(rnorm(6 * 60, sd = 0.45), 6, 60)
 fit_ci <- gllvm_julia_fit(
-  y, family = "gaussian", num.lv = 2, ci_method = "wald"
+  y_ci, family = "gaussian", num.lv = 1, ci_method = "wald"
 )
+ci <- confint(fit_ci)
+stopifnot(fit_ci$ci_status == "available", all(is.finite(ci)))
+# Available reports finite bounds; it does not certify interval coverage.
 }
 }

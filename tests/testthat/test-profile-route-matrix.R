@@ -634,7 +634,7 @@ test_that("internal correlation prototype still targets augmented unit_slope par
   expect_equal(unname(ci), c(0.25, -0.2, 0.6))
 })
 
-test_that("profile_targets exposes cluster and cluster2 direct SD aliases", {
+test_that("profile_targets exposes cluster and cluster2 direct SD labels", {
   fake <- structure(
     list(
       opt = list(
@@ -660,13 +660,10 @@ test_that("profile_targets exposes cluster and cluster2 direct SD aliases", {
     ) %in%
       targets$parm
   ))
-  expect_true(all(
-    c(
-      "sd_phy_unique[1]",
-      "sd_phy_unique[2]"
-    ) %in%
-      targets$parm
-  ))
+  ## The legacy `sd_phy_unique[t]` label for the same block is accepted by
+  ## confint() but not listed, so each SD appears once (#1588).
+  expect_false(any(grepl("^sd_phy_unique", targets$parm)))
+  expect_equal(sum(targets$tmb_parameter == "theta_diag_species"), 2L)
   direct <- targets[targets$parm %in% c("sd_cluster[1]", "sd_cluster2[1]"), ]
   expect_equal(direct$profile_note, rep("tmb_object_required", 2L))
 })

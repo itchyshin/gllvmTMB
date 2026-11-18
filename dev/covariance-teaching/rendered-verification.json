@@ -1,0 +1,61 @@
+{
+  "covariance-correlation": {
+    "html_sha256": "7478a2be8d896588655dcd842fa6bec61d6397f00163215129370d663853d87e",
+    "source_sha256": "5643206fe61929dae1c7c0806fed95503102df17a91e67dc96eeda5f7652460a",
+    "alt_attributes": [
+      {
+        "chunk": "corr-comparison",
+        "alt": "Comparison plot of trait-pair correlation errors for two fitted models. Each point is a trait pair; values above zero overestimate the known correlation and values below zero underestimate it.",
+        "image": "covariance-correlation_files/figure-html/corr-comparison-1.png"
+      },
+      {
+        "chunk": "sigma-table-plot",
+        "alt": "Dot plot of upper-triangle off-diagonal unit-level covariance estimates for trait pairs. Open points denote estimates with no finite interval bounds.",
+        "image": "covariance-correlation_files/figure-html/sigma-table-plot-1.png"
+      },
+      {
+        "chunk": "communality-correlation-matrix",
+        "alt": "Square trait-by-trait correlation matrix. Upper-triangle cells show point estimates; lower-triangle cells show the Fisher-z interval columns supplied by the extractor.",
+        "image": "covariance-correlation_files/figure-html/communality-correlation-matrix-1.png"
+      }
+    ],
+    "assets_checked": 18,
+    "phrases_checked": [
+      "Shared factors are therefore not required at every level",
+      "unevaluated",
+      "structural translation",
+      "whether that decomposition is identifiable",
+      "NB/Tweedie-plus-OLRE"
+    ]
+  },
+  "cross-family-correlations": {
+    "html_sha256": "eb2735f8b05eada52bc560831baa1ae304e6ef4b20d17d1e9d22a4606c8848fb",
+    "source_sha256": "1cd8a737b1e0be2fcbeb51dc8fa73e9a42faa4133f62bb4caf935591cf9a4a2d",
+    "alt_attributes": [
+      {
+        "chunk": "recover-plot",
+        "alt": "Scatterplot of estimated versus known off-diagonal latent correlations for one seeded realization. A dashed diagonal identity line runs from minus one to one; points close to it have similar estimated and known correlations in this realization.",
+        "image": "cross-family-correlations_files/figure-html/recover-plot-1.png"
+      }
+    ],
+    "assets_checked": 16,
+    "phrases_checked": [
+      "not repeated-simulation recovery evidence",
+      "not a correlation of observed responses",
+      "does not demonstrate long/wide fit parity",
+      "sampling, estimation, and optimization"
+    ]
+  },
+  "spatial-models": {
+    "html_sha256": "7bda901a28b82a5bea28d1005db59f5d6c53dc63d5bdb76c4834a72f6022d475",
+    "source_sha256": "78e0d73919991b5aa2569861415722e57cae7c7c9131195b62077d22eb3c6778",
+    "alt_attributes": [],
+    "assets_checked": 16,
+    "phrases_checked": [
+      "Different positive diagonal Psi companions",
+      "structural decomposition ambiguity",
+      "total spatial covariance is the intended covariance target",
+      "unevaluated structural translations"
+    ]
+  }
+}

@@ -133,6 +133,11 @@ synthesise a placeholder. When \code{cluster} is omitted and one
 or \code{kernel_scalar()} term names a bare grouping column, that column is
 used so \code{K} is checked against it. An explicit \code{cluster} is unchanged,
 including the replicated kernel example that passes \code{cluster = "site"}.
+The same omitted-\code{cluster} rule adopts one bare grouping from
+\code{phylo_latent()}, \code{phylo_unique()}, \code{phylo_scalar()}, \code{phylo_indep()},
+or \code{phylo_dep()} when that column is in \code{data} and is not the default
+name \code{species}. A missing \code{species} column keeps the existing
+placeholder message.
 If supplied but no covariance keyword uses
 that column, \code{\link[=gllvmTMB]{gllvmTMB()}} warns; omit the argument or use the column in
 the intended covariance keyword.

@@ -3171,7 +3171,9 @@ sanity_multi <- function(object, gradient_thresh = 1e-2, se_thresh = 100) {
 #'   regardless of `re_form`. A missing species column is not an unseen
 #'   level: if `newdata` omits the fitted species column while
 #'   phylogenetic random effects are being re-added, `predict()` stops and
-#'   asks for that column or for `re_form = ~0`.
+#'   asks for that column or for `re_form = ~0`. The same rule applies to
+#'   the fitted `cluster2` column when `diag_cluster2` would be re-added
+#'   (#1788).
 #'
 #'   For AGHQ fits, conditional predictions use the latent modes at the
 #'   fitted parameters. They are not averages over latent-score uncertainty.
@@ -3413,6 +3415,16 @@ predict.gllvmTMB_multi <- function(
           "x" = "Phylogenetic random effects ({.val {phylo_tiers}}) cannot be re-added without it.",
           "i" = "Add {.field {species_show}} to {.arg newdata}, or pass {.code re_form = ~0} for the fixed-effects-only prediction."
         ), class = "gllvmTMB_predict_newdata_species_missing")
+      }
+      ## A missing cluster2 column used to skip diag_cluster2 in silence (#1788).
+      c2_lbl <- object$cluster2_col
+      if (isTRUE(object$use$diag_cluster2) && !is.null(c2_lbl) &&
+            nzchar(c2_lbl) && !c2_lbl %in% names(nd)) {
+        cli::cli_abort(c(
+          "{.arg newdata} is missing the cluster2 column {.field {c2_lbl}}.",
+          "x" = "The {.val diag_cluster2} random effect cannot be re-added without it.",
+          "i" = "Add {.field {c2_lbl}} to {.arg newdata}, or pass {.code re_form = ~0} for the fixed-effects-only prediction."
+        ), class = "gllvmTMB_predict_newdata_cluster2_missing")
       }
       ## Build per-row indices on the training factor scales
       tr_id <- as.integer(nd[[object$trait_col]]) - 1L

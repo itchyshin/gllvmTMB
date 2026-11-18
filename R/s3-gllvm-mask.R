@@ -1,5 +1,5 @@
-## #1759. gllvm exports S3 generics named getLoadings, getLV,
-## getResidualCov, getResidualCor and VP. After library(gllvm) those generics
+## #1759 / #1768. gllvm exports S3 generics named getLoadings, getLV,
+## getResidualCov, getResidualCor, VP, and simulate. After library(gllvm)
 ## mask gllvmTMB's plain functions, and UseMethod finds no method for a
 ## gllvmTMB fit. The exported functions stay plain functions with their
 ## current formals. These wrappers exist only so a call that arrives

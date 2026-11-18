@@ -128,6 +128,15 @@ is shared among traits of its own family; this change does not create a
 per-trait residual-variance model. The likelihood, simulation, residual-CDF,
 prediction, and variance-partition consumers select the slot by family.
 
+When `known_sigma_eps` is supplied to the native Gaussian route, the fitter
+sets `log_sigma_eps` to the logarithm of that positive scalar SD and maps it
+out of optimization. Its squared value enters the observation variance once;
+it is separate from the ridge used to prepare each kernel. The two-named-kernel
+Gaussian route permits a kernel-specific diagonal on both tiers only after its
+observed same-trait kernel-pattern rank screen. That screen is not a proof of
+identifiability or recovery. See KER-03A in the validation register for the
+bounded evidence and remaining gaps.
+
 ## Notation
 
 In mathematical prose, $\mathcal{N}(a, b)$ uses variance as the

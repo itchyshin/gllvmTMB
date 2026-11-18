@@ -61,7 +61,7 @@ Mission Control input for the R side of the gllvmTMB <-> GLLVM.jl twin board. Ev
 | spatial × latent (`spatial_latent()`) | scope-limited |  | SPA-02, SPA-09, STR-RHO-SPA |  |
 | kernel × indep (`kernel_indep()`) | scope-limited |  | KER-02, STR-RHO-FIX, STR-RHO-EST, STR-RHO-WORKFLOW |  |
 | kernel × dep (`kernel_dep()`) | implemented |  | KER-02 |  |
-| kernel × latent (`kernel_latent()`) | implemented |  | KER-02, KER-03 |  |
+| kernel × latent (`kernel_latent()`) | scope-limited |  | KER-02, KER-03, KER-03A |  |
 | phylo_latent + `lv = ~ x` (Phylo Model A public intervals) | planned |  | LV-08 |  |
 | Latent scores on covariates `latent(..., lv = ~ x)` ordinary | scope-limited |  | FG-18, RE-13, LV-01, LV-02, LV-03, LV-04, LV-05, LV-06, LV-07, LV-09, JUL-01A, EXT-31 |  |
 | Response-column slope family (`slope()`, `phylo_slope()`, `animal_slope()`, `kernel_slope()`, `spatial_slope()`) | scope-limited | Response-column slope family (`slope()`, `phylo_slope()`, `animal_slope()`, `kernel_slope()`, `spatial_slope()`; Gaussian long-format, predictor-only) | FG-19, FG-15, PHY-06, ANI-06, SPA-11, KER-04 |  |

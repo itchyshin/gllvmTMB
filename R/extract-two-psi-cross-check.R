@@ -333,6 +333,7 @@
     unit = inputs$unit,
     cluster = inputs$cluster,
     family = inputs$family,
+    known_sigma_eps = fit_two_psi$known_sigma_eps,
     silent = silent
   )
   ## The generated alt formulas group by the cluster column only, so pass

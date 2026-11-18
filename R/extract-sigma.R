@@ -1567,8 +1567,8 @@ extract_Sigma <- function(
     if (identical(part, "unique") && !has_unique) {
       cli::cli_abort(c(
         "Kernel tier {.val {kernel_level$name}} has no {.field Psi} component.",
-        "i" = "One named {.fn kernel_latent} tier carries {.field Psi} only when {.code unique = TRUE}; the first multi-kernel engine wave remains latent-only.",
-        ">" = "For one kernel tier, refit with {.code kernel_latent(..., unique = TRUE)} before requesting {.code part = \"unique\"}."
+        "i" = "A named {.fn kernel_latent} tier carries {.field Psi} when {.code unique = TRUE} and the requested model is supported.",
+        ">" = "Refit with {.code kernel_latent(..., unique = TRUE)} before requesting {.code part = \"unique\"}. Two named tiers additionally require Gaussian responses, a known observation SD, positive weights and separable observed kernel patterns."
       ))
     }
     if (has_shared) {

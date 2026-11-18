@@ -159,7 +159,9 @@
 #'   synthesise a placeholder. When `cluster` is omitted and one
 #'   `kernel_indep()`, `kernel_dep()`, `kernel_latent()`, `kernel_unique()`,
 #'   or `kernel_scalar()` term names a bare grouping column, that column is
-#'   used so `K` is checked against it. An explicit `cluster` is unchanged,
+#'   used so `K` is checked against it. A named `unit` argument is used even
+#'   when it is not written first, as in `kernel_indep(K = K, unit = g)`.
+#'   An explicit `cluster` is unchanged,
 #'   including the replicated kernel example that passes `cluster = "site"`.
 #'   If supplied but no covariance keyword uses
 #'   that column, [gllvmTMB()] warns; omit the argument or use the column in

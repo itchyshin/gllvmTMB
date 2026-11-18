@@ -160,6 +160,8 @@ kernel_scalar <- function(unit, K, name = "kernel") {
 
 ## Bare grouping columns named by kernel_*() intercept terms.
 ## `kernel_indep(unit, K = K)` stores `unit` as the first argument.
+## `kernel_indep(K = K, unit = g)` names that argument later, so match
+## `unit` by name before falling back to the first argument (#1805).
 ## A bar (`1 + x | g`) is a slope and keeps its own group; it is not
 ## collected here. Returns a zero-row data.frame when no bare kernel
 ## grouping is present.
@@ -173,7 +175,10 @@ kernel_scalar <- function(unit, K, name = "kernel") {
     if (!is.call(e)) return(invisible(NULL))
     fn <- as.character(e[[1L]])[1L]
     if (!is.na(fn) && fn %in% kernels && length(e) >= 2L) {
-      arg <- e[[2L]]
+      nms <- names(e)
+      if (is.null(nms)) nms <- rep("", length(e))
+      unit_at <- match("unit", nms)
+      arg <- if (!is.na(unit_at)) e[[unit_at]] else e[[2L]]
       group <- if (is.symbol(arg)) {
         as.character(arg)
       } else if (is.character(arg) && length(arg) == 1L && !is.na(arg)) {

@@ -455,6 +455,7 @@ temporal_latent <- function(formula, time, d = 1, structure = "ar1",
       pair_table = pair_table, series_col = series, time_col = time,
       replicate_col = if (is.null(replicate)) NULL else replicate,
       state_tier = "temporal", mode = mode, source_pair = source_pair,
+      marker = marker_name,
       d = if (identical(mode, "latent")) as.integer(d) else 0L,
       unique = if (identical(mode, "latent")) unique else identical(mode, "indep"),
       structure = structure_name

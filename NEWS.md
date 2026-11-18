@@ -1,5 +1,7 @@
 # gllvmTMB 0.8.0
 
+* The Gaussian, Laplace, and single-provider gates that run after temporal parsing now name `temporal_indep()` or `temporal_dep()` when that is the term in the formula. They had stayed hard-coded as `temporal_latent()` after the parser refusals were renamed. A `temporal_latent()` call still uses that name, and the gates themselves are unchanged (refs #1812).
+
 * On the TMB engine, two named Gaussian `kernel_latent(..., unique = TRUE)` terms can retain separate trait-specific diagonals when a known positive observation-error SD is supplied through `known_sigma_eps`, observation weights are positive, and the observed same-trait kernel patterns pass a separation check. Mixed-family and Julia-engine requests are not admitted. Unsupported requests now stop rather than silently dropping a diagonal. This check does not guarantee precise component estimates: known-truth investigations have shown poor recovery in some settings, and interval calibration remains unvalidated. Unconditional simulation and simulation with new data are not yet supported for multiple named kernels; conditional prediction on new data is also unavailable.
 * `temporal_indep()` and `temporal_dep()` parser refusals now name the keyword that was used. The shared temporal parser had been hard-coded as `temporal_latent()`, so a two-trait `temporal_indep()` fit said `temporal_latent() requires at least three traits.` The three-trait rule itself is unchanged (refs #TBD).
 

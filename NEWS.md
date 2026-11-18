@@ -1,5 +1,7 @@
 # gllvmTMB 0.8.0
 
+* `animal_latent(individual, ...)`, `animal_unique(individual)`, `animal_scalar(individual)`, `animal_indep(0 + trait | individual)`, and `animal_dep(0 + trait | individual)` now use `individual` when `cluster` is omitted and that column is in the data. They used to build a placeholder `species` column and check the relatedness matrix against it. An explicit `cluster` is unchanged (refs #1765).
+
 * On the TMB engine, two named Gaussian `kernel_latent(..., unique = TRUE)` terms can retain separate trait-specific diagonals when a known positive observation-error SD is supplied through `known_sigma_eps`, observation weights are positive, and the observed same-trait kernel patterns pass a separation check. Mixed-family and Julia-engine requests are not admitted. Unsupported requests now stop rather than silently dropping a diagonal. This check does not guarantee precise component estimates: known-truth investigations have shown poor recovery in some settings, and interval calibration remains unvalidated. Unconditional simulation and simulation with new data are not yet supported for multiple named kernels; conditional prediction on new data is also unavailable.
 * `temporal_indep()` and `temporal_dep()` parser refusals now name the keyword that was used. The shared temporal parser had been hard-coded as `temporal_latent()`, so a two-trait `temporal_indep()` fit said `temporal_latent() requires at least three traits.` The three-trait rule itself is unchanged (refs #TBD).
 

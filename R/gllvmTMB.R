@@ -161,6 +161,10 @@
 #'   or `kernel_scalar()` term names a bare grouping column, that column is
 #'   used so `K` is checked against it. An explicit `cluster` is unchanged,
 #'   including the replicated kernel example that passes `cluster = "site"`.
+#'   The same omitted-`cluster` rule adopts one bare grouping from
+#'   `animal_latent()`, `animal_unique()`, `animal_scalar()`, `animal_indep()`,
+#'   or `animal_dep()` when that column is in `data`. An explicit `cluster`
+#'   is left unchanged.
 #'   If supplied but no covariance keyword uses
 #'   that column, [gllvmTMB()] warns; omit the argument or use the column in
 #'   the intended covariance keyword.
@@ -1185,7 +1189,8 @@ gllvmTMB <- function(
   ## grouping. Otherwise the default `"species"` column is a placeholder
   ## and `K` is checked as if it were a phylogenetic VCV. An explicit
   ## `cluster` (the replicated `?kernel_latent` example) is left alone.
-  ## Phylogenetic keywords do not enter this block.
+  ## Animal-model keywords are handled in the next block.
+  cluster_adopted <- FALSE
   if (!cluster_supplied && !species_alias_supplied && is.data.frame(data)) {
     kernel_groups <- .gllvmTMB_kernel_bare_groups(formula)
     if (nrow(kernel_groups) > 0L) {
@@ -1206,6 +1211,35 @@ gllvmTMB <- function(
       }
       cluster <- group
       species <- group
+      cluster_adopted <- TRUE
+    }
+  }
+
+  ## #1765: an omitted cluster adopts the grouping named in one animal_* term
+  ## (`animal_latent(individual, ...)` or `animal_indep(0 + trait | individual)`).
+  ## The default name "species" is left alone when that column is absent.
+  ## An explicit cluster never reaches this block.
+  if (!cluster_adopted && !cluster_supplied && !species_alias_supplied &&
+      is.data.frame(data)) {
+    animal_groups <- .gllvmTMB_animal_bare_groups(formula)
+    if (nrow(animal_groups) > 0L) {
+      groups <- unique(animal_groups$group)
+      if (length(groups) > 1L) {
+        cli::cli_abort(c(
+          "The {.fn animal_*} terms name more than one grouping column ({.val {groups}}), and {.arg cluster} was not given.",
+          ">" = "Pass {.arg cluster} equal to the column whose levels match the relatedness matrix."
+        ), class = "gllvmTMB_animal_grouping")
+      }
+      group <- groups[[1L]]
+      if (group %in% names(data)) {
+        cluster <- group
+        species <- group
+      } else if (!identical(group, "species")) {
+        cli::cli_abort(c(
+          "{.fn {animal_groups$fn[[1L]]}} groups by {.field {group}}, which is not a column in {.arg data}.",
+          ">" = "Name the column whose levels match the relatedness matrix, or pass that column as {.arg cluster}."
+        ), class = "gllvmTMB_animal_grouping")
+      }
     }
   }
 

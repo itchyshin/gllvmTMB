@@ -43,12 +43,24 @@
   .gllvm_mask_call(VP, object, ...)
 }
 
+## #1768. gllvm's simulate generic masks stats::simulate after library(gllvm).
+## gllvmTMB registers simulate methods on the stats generic only, so
+## unqualified simulate(fit) must be forwarded to the package method.
+.gllvm_mask_simulate <- function(object, ...) {
+  if (inherits(object, "gllvmTMB_julia")) {
+    simulate.gllvmTMB_julia(object, ...)
+  } else {
+    simulate.gllvmTMB_multi(object, ...)
+  }
+}
+
 .gllvm_mask_methods <- list(
   getLoadings = .gllvm_mask_getLoadings,
   getLV = .gllvm_mask_getLV,
   getResidualCov = .gllvm_mask_getResidualCov,
   getResidualCor = .gllvm_mask_getResidualCor,
-  VP = .gllvm_mask_VP
+  VP = .gllvm_mask_VP,
+  simulate = .gllvm_mask_simulate
 )
 
 .gllvm_mask_is_generic <- function(fn) {

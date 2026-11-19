@@ -48,6 +48,75 @@ test_that("kernel_indep(K = K, unit = g) groups by g when cluster is omitted (#1
   )
 })
 
+test_that("kernel_indep(K = K, g, name = \"known\") groups by g when cluster is omitted (#1805)", {
+  fx <- .fix1805_layout()
+  K <- fx$K
+  ctrl <- .fix1805_control()
+  fit_omit <- gllvmTMB(
+    value ~ 0 + trait + kernel_indep(K = K, g, name = "known"),
+    data = fx$df, unit = "unit",
+    control = ctrl, silent = TRUE
+  )
+  fit_cluster <- gllvmTMB(
+    value ~ 0 + trait + kernel_indep(K = K, g, name = "known"),
+    data = fx$df, unit = "unit", cluster = "g",
+    control = ctrl, silent = TRUE
+  )
+  expect_s3_class(fit_omit, "gllvmTMB")
+  expect_equal(fit_omit$opt$convergence, 0L)
+  expect_equal(
+    as.numeric(stats::logLik(fit_omit)),
+    as.numeric(stats::logLik(fit_cluster)),
+    tolerance = 1e-8
+  )
+})
+
+test_that("kernel_indep(name = \"x\", g, K = K) groups by g when cluster is omitted (#1805)", {
+  fx <- .fix1805_layout()
+  K <- fx$K
+  ctrl <- .fix1805_control()
+  fit_omit <- gllvmTMB(
+    value ~ 0 + trait + kernel_indep(name = "x", g, K = K),
+    data = fx$df, unit = "unit",
+    control = ctrl, silent = TRUE
+  )
+  fit_cluster <- gllvmTMB(
+    value ~ 0 + trait + kernel_indep(name = "x", g, K = K),
+    data = fx$df, unit = "unit", cluster = "g",
+    control = ctrl, silent = TRUE
+  )
+  expect_s3_class(fit_omit, "gllvmTMB")
+  expect_equal(fit_omit$opt$convergence, 0L)
+  expect_equal(
+    as.numeric(stats::logLik(fit_omit)),
+    as.numeric(stats::logLik(fit_cluster)),
+    tolerance = 1e-8
+  )
+})
+
+test_that("kernel_indep(K = K, un = g, name = \"known\") groups by g when cluster is omitted (#1805)", {
+  fx <- .fix1805_layout()
+  K <- fx$K
+  ctrl <- .fix1805_control()
+  fit_omit <- gllvmTMB(
+    value ~ 0 + trait + kernel_indep(K = K, un = g, name = "known"),
+    data = fx$df, unit = "unit",
+    control = ctrl, silent = TRUE
+  )
+  fit_cluster <- gllvmTMB(
+    value ~ 0 + trait + kernel_indep(K = K, un = g, name = "known"),
+    data = fx$df, unit = "unit", cluster = "g",
+    control = ctrl, silent = TRUE
+  )
+  expect_s3_class(fit_omit, "gllvmTMB")
+  expect_equal(fit_omit$opt$convergence, 0L)
+  expect_equal(
+    as.numeric(stats::logLik(fit_omit)),
+    as.numeric(stats::logLik(fit_cluster)),
+    tolerance = 1e-8
+  )
+})
+
 test_that("a missing named kernel unit is reported as that column, not K (#1805)", {
   fx <- .fix1805_layout()
   K <- fx$K

@@ -39,6 +39,7 @@ on:
       - ".github/workflows/codecov-upload.yaml"
       - "codecov.yml"
       - "tools/run-covr-coverage.R"
+      - "tools/retarget-covr-traces.R"
   pull_request:
     branches: [main, master]
     types: [opened, synchronize, reopened, ready_for_review]
@@ -80,7 +81,7 @@ jobs:
             case "$1" in
               DESCRIPTION|NAMESPACE|codecov.yml) return 0 ;;
               .github/workflows/test-coverage.yaml|.github/workflows/codecov-upload.yaml) return 0 ;;
-              tools/run-covr-coverage.R) return 0 ;;
+              tools/run-covr-coverage.R|tools/retarget-covr-traces.R) return 0 ;;
             esac
             [[ "$1" == R/* ]] && return 0
             [[ "$1" == src/* ]] && return 0
@@ -142,14 +143,11 @@ jobs:
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          # covr 4.0.0 failed to read counters after tests under the isolated R CMD check path.
-          # Pin the last verified release until that trace-file failure is resolved.
-          extra-packages: cran::covr@3.6.5, any::xml2
+          # Current covr. The 3.6.5 pin avoided covr 4's counters path, which
+          # R CMD check deletes with its temp library. The runner retargets
+          # those traces onto the surviving install instead of skipping tests.
+          extra-packages: any::covr, any::xml2
           needs: coverage
-
-      - name: Verify coverage dependency version
-        run: stopifnot(as.character(packageVersion("covr")) == "3.6.5")
-        shell: Rscript {0}
 
       - name: Record tested commit
         run: |

@@ -3687,8 +3687,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     family_id_vec  = family_id_vec,
     link_id_vec    = link_id_vec,
     family_per_row = family_per_row,
-    trait_vec      = data[[trait]],
-    allow_isdm_cloglog = isdm_admitted
+    trait_vec      = data[[trait]]
   )
 
   y_raw <- stats::model.response(mf)

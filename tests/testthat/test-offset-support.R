@@ -487,3 +487,78 @@ test_that("engine = 'julia' refuses an offset rather than dropping it", {
   expect_match(msg, "offset", ignore.case = TRUE)
   expect_match(msg, "julia", ignore.case = TRUE)
 })
+
+## ---- (10) binomial(cloglog) change-of-support offset -- issue #946 ----
+
+.ofs_binom_cloglog_long <- function(n = 80, seed = 946, b0 = -0.9) {
+  set.seed(seed)
+  z <- stats::rnorm(n)
+  log_area <- log(20 + stats::rexp(n, rate = 0.1))
+  eta <- b0 + 0.25 * z + 0.55 * log_area
+  p <- 1 - exp(-exp(eta))
+  y1 <- stats::rbinom(n, 1L, p)
+  ## A second trait makes the long-format trait factor admissible; glm()
+  ## reference is on trait `t1` only.
+  y2 <- stats::rbinom(n, 1L, 0.45)
+  data.frame(
+    site     = factor(rep(seq_len(n), 2L)),
+    trait    = factor(rep(c("t1", "t2"), each = n)),
+    z        = rep(z, 2L),
+    log_area = rep(log_area, 2L),
+    value    = c(y1, y2)
+  )
+}
+
+test_that("binomial(cloglog) accepts a varying offset and matches glm()", {
+  d <- .ofs_binom_cloglog_long()
+  fit <- .ofs_fit(
+    value ~ 0 + trait + (0 + trait):z + offset(log_area),
+    data = d, trait = "trait", unit = "site",
+    family = stats::binomial(link = "cloglog")
+  )
+  glm_ref <- stats::glm(
+    value ~ z + offset(log_area),
+    data = d[d$trait == "t1", , drop = FALSE],
+    family = stats::binomial(link = "cloglog")
+  )
+  b_glv <- unname(stats::coef(fit))
+  names(b_glv) <- names(stats::coef(fit))
+  b_glm <- unname(stats::coef(glm_ref))
+  expect_equal(b_glv[["traitt1"]], b_glm[1], tolerance = 0.05)
+  expect_equal(b_glv[["traitt1:z"]], b_glm[2], tolerance = 0.05)
+})
+
+test_that("binomial(cloglog) offset engages the likelihood", {
+  d <- .ofs_binom_cloglog_long()
+  fit_no <- .ofs_fit(
+    value ~ 0 + trait + (0 + trait):z,
+    data = d, trait = "trait", unit = "site",
+    family = stats::binomial(link = "cloglog")
+  )
+  fit_off <- .ofs_fit(
+    value ~ 0 + trait + (0 + trait):z + offset(log_area),
+    data = d, trait = "trait", unit = "site",
+    family = stats::binomial(link = "cloglog")
+  )
+  ll_no  <- as.numeric(stats::logLik(fit_no))
+  ll_off <- as.numeric(stats::logLik(fit_off))
+  expect_gt(abs(ll_off - ll_no), 0.5,
+            label = "logLik must move when a varying cloglog offset is added")
+  expect_equal(attr(stats::logLik(fit_off), "df"),
+               attr(stats::logLik(fit_no), "df"),
+               label = "offset must not add parameters")
+})
+
+test_that("binomial(logit) and binomial(probit) still refuse a nonzero offset", {
+  d <- .ofs_binom_cloglog_long()
+  for (lnk in c("logit", "probit")) {
+    msg <- .ofs_msg(.ofs_fit(
+      value ~ 0 + trait + offset(log_area),
+      data = d, trait = "trait", unit = "site",
+      family = stats::binomial(link = lnk)
+    ))
+    expect_false(is.na(msg), info = lnk)
+    expect_match(msg, "offset", ignore.case = TRUE, info = lnk)
+    expect_match(msg, "cloglog", ignore.case = TRUE, info = lnk)
+  }
+})

@@ -5740,6 +5740,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         ">" = "Convert the predictor before fitting; factor and transformed bases are not in this V1 grammar."
       ))
     }
+    for (col in data_cols) {
+      .gllvmTMB_check_finite_slope(as.numeric(data[[col]]), col)
+    }
     Z_spde_aug <- vapply(phylo_column_slope_cols, function(col) {
       if (synthetic_intercept && identical(col, "(Intercept)")) {
         rep(1, n_obs)
@@ -5880,6 +5883,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         "i" = "Non-numeric predictor{?s}: {.val {bad_type}}.",
         ">" = "Convert the predictor before fitting; factor and transformed bases are not in this V1 grammar."
       ))
+    }
+    for (col in data_cols) {
+      .gllvmTMB_check_finite_slope(as.numeric(data[[col]]), col)
     }
     z <- vapply(phylo_column_slope_cols, function(col) {
       if (identical(col, "(Intercept)")) rep(1, n_obs) else as.numeric(data[[col]])

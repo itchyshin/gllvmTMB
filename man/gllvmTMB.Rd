@@ -131,7 +131,9 @@ entirely (with or without passing \code{cluster}); the engine will
 synthesise a placeholder. When \code{cluster} is omitted and one
 \code{kernel_indep()}, \code{kernel_dep()}, \code{kernel_latent()}, \code{kernel_unique()},
 or \code{kernel_scalar()} term names a bare grouping column, that column is
-used so \code{K} is checked against it. An explicit \code{cluster} is unchanged,
+used so \code{K} is checked against it. A named \code{unit} argument is used even
+when it is not written first, as in \code{kernel_indep(K = K, unit = g)}.
+An explicit \code{cluster} is unchanged,
 including the replicated kernel example that passes \code{cluster = "site"}.
 If supplied but no covariance keyword uses
 that column, \code{\link[=gllvmTMB]{gllvmTMB()}} warns; omit the argument or use the column in

@@ -62,10 +62,10 @@ concurrency:
 env:
   # Scheduled runs have no inputs: repo variables (Settings > Secrets and
   # variables > Actions > Variables) let you scale up without editing YAML.
-  MAX_ISSUES: ${{ inputs.max_issues || vars.CODEX_NIGHTLY_MAX_ISSUES || 6 }}
-  MAX_FIXES: ${{ inputs.max_fixes || vars.CODEX_NIGHTLY_MAX_FIXES || 1 }}
-  MODE: ${{ inputs.mode || vars.CODEX_NIGHTLY_MODE || 'check' }}
-  CHECK_MODEL: ${{ inputs.model || vars.CODEX_NIGHTLY_MODEL || 'gpt-6.1-terra' }}
+  MAX_ISSUES: ${{ inputs.max_issues || vars.CODEX_NIGHTLY_MAX_ISSUES || 20 }}
+  MAX_FIXES: ${{ inputs.max_fixes || vars.CODEX_NIGHTLY_MAX_FIXES || 3 }}
+  MODE: ${{ inputs.mode || vars.CODEX_NIGHTLY_MODE || 'check+fix' }}
+  CHECK_MODEL: ${{ inputs.model || vars.CODEX_NIGHTLY_MODEL || 'gpt-6.2-sol' }}
   CHECK_EFFORT: ${{ inputs.effort || vars.CODEX_NIGHTLY_EFFORT || 'low' }}
   FIX_MODEL: ${{ vars.CODEX_NIGHTLY_FIX_MODEL || 'gpt-6.2-sol' }}
   RUN_BUDGET_USD: ${{ inputs.run_budget_usd || vars.CODEX_NIGHTLY_RUN_BUDGET_USD || '2.00' }}

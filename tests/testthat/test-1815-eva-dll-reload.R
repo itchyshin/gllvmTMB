@@ -21,10 +21,10 @@ test_that("a loaded EVA DLL stays usable when a later call asks to rebuild it", 
     silent = TRUE
   )
   before <- unname(obj$fn(obj$par))
-  expect_warning(
-    again <- .eva_load_dll(rebuild = TRUE),
-    regexp = NA
-  )
+  out <- capture.output(suppressMessages(
+    again <- .eva_load_dll(rebuild = TRUE)
+  ))
+  expect_false(any(grepl("external pointers will be removed", out, fixed = TRUE)))
   expect_identical(again$DLL, "gllvmTMB_eva")
   expect_true(is.finite(before))
   expect_equal(unname(obj$fn(obj$par)), before)

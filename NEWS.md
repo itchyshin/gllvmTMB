@@ -1,5 +1,7 @@
 # gllvmTMB 0.8.0
 
+* `.eva_load_dll(rebuild = TRUE)` reuses an already-loaded EVA prototype DLL instead of unloading it while a live `MakeADFun` object still holds external pointers. Unloading had removed those pointers and could segfault the next evaluation (refs #1815).
+
 * `family = "gaussian"` with `temporal_latent()` now builds the same family object as `family = gaussian()`. The temporal gate read `family$family` before character names were resolved, so the call stopped with `$ operator is invalid for atomic vectors`. Other single-name character families use that same lookup. `family = gaussian()` and `family = gaussian` are unchanged (refs #1804).
 
 * On the TMB engine, two named Gaussian `kernel_latent(..., unique = TRUE)` terms can retain separate trait-specific diagonals when a known positive observation-error SD is supplied through `known_sigma_eps`, observation weights are positive, and the observed same-trait kernel patterns pass a separation check. Mixed-family and Julia-engine requests are not admitted. Unsupported requests now stop rather than silently dropping a diagonal. This check does not guarantee precise component estimates: known-truth investigations have shown poor recovery in some settings, and interval calibration remains unvalidated. Unconditional simulation and simulation with new data are not yet supported for multiple named kernels; conditional prediction on new data is also unavailable.

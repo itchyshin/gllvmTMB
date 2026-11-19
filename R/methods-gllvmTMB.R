@@ -3423,7 +3423,7 @@ predict.gllvmTMB_multi <- function(
         cli::cli_abort(c(
           "{.arg newdata} is missing the cluster2 column {.field {c2_lbl}}.",
           "x" = "The {.val diag_cluster2} random effect cannot be re-added without it.",
-          "i" = "Add {.field {c2_lbl}} to {.arg newdata}, or pass {.code re_form = ~0} for the fixed-effects-only prediction."
+          ">" = "Add {.field {c2_lbl}} to {.arg newdata}, or pass {.code re_form = ~0} for the fixed-effects-only prediction."
         ), class = "gllvmTMB_predict_newdata_cluster2_missing")
       }
       ## Build per-row indices on the training factor scales

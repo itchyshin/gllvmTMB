@@ -828,10 +828,10 @@ test_that("Julia bridge capability drift is explicit and gate-labelled", {
   expect_false("cbind_binomial" %in% drift$capability)
 
   future_julia <- julia_caps
-  future_julia$fixed_effect_X[future_julia$family == "nb1"] <- TRUE
+  future_julia$fixed_effect_X[future_julia$family == "ordinal"] <- TRUE
   future_drift <- .gllvm_julia_capability_drift(julia_caps = future_julia)
   expect_true(any(
-    future_drift$family == "nb1" &
+    future_drift$family == "ordinal" &
       future_drift$capability == "fixed_effect_X" &
       future_drift$status == "unregistered"
   ))
@@ -2944,17 +2944,6 @@ test_that("engine = 'julia' keeps unsupported fixed-effect X rows explicit", {
       data = df,
       trait = "trait",
       unit = "unit",
-      family = nbinom1(),
-      engine = "julia"
-    ),
-    "GJL-GATE-X-FAMILY"
-  )
-  expect_error(
-    gllvmTMB(
-      value ~ 0 + trait + x + latent(0 + trait | unit, d = 1),
-      data = df,
-      trait = "trait",
-      unit = "unit",
       family = ordinal_probit(),
       engine = "julia"
     ),
@@ -2971,6 +2960,14 @@ test_that("engine = 'julia' keeps unsupported fixed-effect X rows explicit", {
     ),
     "GJL-GATE-X-DESIGN"
   )
+})
+
+test_that("fixed-effect X is admitted for nb1 while ordinal stays gated (#488 step 2)", {
+  expect_true("nb1" %in% .GLLVM_JULIA_X_FAMILIES)
+  caps <- gllvm_julia_capabilities()
+  expect_true(caps$fixed_effect_X[caps$family == "nb1"])
+  expect_false(caps$ci_x_wald[caps$family == "nb1"])
+  expect_false(caps$fixed_effect_X[caps$family == "ordinal"])
 })
 
 test_that("engine argument is validated by match.arg", {

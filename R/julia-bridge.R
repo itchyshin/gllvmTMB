@@ -65,6 +65,7 @@
 .GLLVM_JULIA_SIMULATE_FAMILIES <- .GLLVM_JULIA_SCORE_POSTFIT_FAMILIES
 .GLLVM_JULIA_ORDINATION_FAMILIES <- .GLLVM_JULIA_BRIDGE_FAMILIES
 .GLLVM_JULIA_MASK_FAMILIES <- c(
+  "gaussian",
   "poisson",
   .GLLVM_JULIA_BINOMIAL_FAMILIES,
   "negbinomial",
@@ -99,9 +100,11 @@
   .GLLVM_JULIA_BRIDGE_FAMILIES,
   .GLLVM_JULIA_PERTRAIT_ORDINAL_FAMILIES
 )
+# Masked Gaussian is a no-X point fit only: the engine refuses CIs on a masked
+# Gaussian fit, so "gaussian" stays out of the masked-CI set (gllvmTMB#488).
 .GLLVM_JULIA_MASK_CI_FAMILIES <- setdiff(
   .GLLVM_JULIA_MASK_FAMILIES,
-  .GLLVM_JULIA_PERTRAIT_ORDINAL_FAMILIES
+  c("gaussian", .GLLVM_JULIA_PERTRAIT_ORDINAL_FAMILIES)
 )
 .GLLVM_JULIA_X_CI_FAMILIES <- .GLLVM_JULIA_X_FAMILIES
 .GLLVM_JULIA_CAPABILITY_LOGICAL_COLUMNS <- c(
@@ -567,7 +570,11 @@ gllvm_julia_capabilities <- function() {
       "are routed; "
     )
   } else if (family %in% .GLLVM_JULIA_MASK_FAMILIES) {
-    "response masks are routed for no-X point fits; ordinal masked CIs remain gated; "
+    paste0(
+      "response masks are routed for no-X point fits; ",
+      if (identical(family, "gaussian")) "Gaussian" else "ordinal",
+      " masked CIs remain gated; "
+    )
   } else {
     "response masks remain gated; "
   }
@@ -1319,6 +1326,7 @@ gllvm_julia_capabilities <- function() {
 .gllvm_julia_mask_placeholder <- function(family) {
   switch(
     family,
+    gaussian = 0,
     poisson = 0,
     binomial = 0,
     binomial_probit = 0,

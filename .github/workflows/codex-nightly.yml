@@ -1,0 +1,339 @@
+# Codex nightly lane: already-fixed checks (and optional small draft fixes).
+#
+# Does nothing useful until the OPENAI_API_KEY repo secret exists and this
+# file is on main. It never comments on, labels or closes issues; it uploads a
+# report artifact. The optional fix mode opens DRAFT PRs on codex/fix-<N>.
+#
+# Why not openai/codex-action: this OpenAI organisation is on the "monthly API
+# Credits benefit with ChatGPT subscriptions", and the API refuses Codex CLI
+# traffic for it (error codex_byok_restricted_by_api_credit_promo, seen
+# 19 Nov 2026). Plain Responses API calls are billed to the credit normally, so
+# .github/codex-nightly/nightly.py calls the API directly with strict JSON
+# output and a per-run dollar cap.
+#
+# Security: steps that run issue-derived code (job `run`, `fix-verify`) get no
+# API key and only a read token; steps with the key never execute repo or issue
+# code. Only issues by OWNER/MEMBER/COLLABORATOR are picked.
+name: codex-nightly
+
+on:
+  schedule:
+    - cron: "7 7 * * *" # 07:07 UTC = 11:07 PM PT (12:07 AM during PDT)
+  workflow_dispatch:
+    inputs:
+      issues:
+        description: "Issue numbers to check, e.g. '12 15 40'. Empty = auto-pick."
+        type: string
+        default: ""
+      mode:
+        description: "check = report only; check+fix = also open draft PRs for small one-file fixes"
+        type: choice
+        options: [check, check+fix]
+        default: check
+      max_issues:
+        description: "Issues to check this run (raise to spend more credit)"
+        type: number
+        default: 6
+      max_fixes:
+        description: "Draft fix PRs at most (check+fix mode)"
+        type: number
+        default: 1
+      model:
+        description: "Model for check jobs (cheap default)"
+        type: choice
+        options: [gpt-6.1-terra, gpt-6.2-sol, gpt-6-luna]
+        default: gpt-6.1-terra
+      effort:
+        description: "Reasoning effort for check jobs"
+        type: choice
+        options: [low, medium, high]
+        default: low
+      run_budget_usd:
+        description: "Hard cap on estimated API spend for this run (USD)"
+        type: string
+        default: "2.00"
+
+permissions: {}
+
+concurrency:
+  group: codex-nightly-${{ github.repository }}
+  cancel-in-progress: false
+
+env:
+  # Scheduled runs have no inputs: repo variables (Settings > Secrets and
+  # variables > Actions > Variables) let you scale up without editing YAML.
+  MAX_ISSUES: ${{ inputs.max_issues || vars.CODEX_NIGHTLY_MAX_ISSUES || 6 }}
+  MAX_FIXES: ${{ inputs.max_fixes || vars.CODEX_NIGHTLY_MAX_FIXES || 1 }}
+  MODE: ${{ inputs.mode || vars.CODEX_NIGHTLY_MODE || 'check' }}
+  CHECK_MODEL: ${{ inputs.model || vars.CODEX_NIGHTLY_MODEL || 'gpt-6.1-terra' }}
+  CHECK_EFFORT: ${{ inputs.effort || vars.CODEX_NIGHTLY_EFFORT || 'low' }}
+  FIX_MODEL: ${{ vars.CODEX_NIGHTLY_FIX_MODEL || 'gpt-6.2-sol' }}
+  RUN_BUDGET_USD: ${{ inputs.run_budget_usd || vars.CODEX_NIGHTLY_RUN_BUDGET_USD || '2.00' }}
+  LANG_KIND: r
+  SCRIPT: .github/codex-nightly/nightly.py
+
+jobs:
+  plan:
+    if: github.repository_owner == 'itchyshin'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: read
+    outputs:
+      issues: ${{ steps.plan.outputs.issues }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: Restore checked-issue state
+        uses: actions/cache/restore@v4
+        with:
+          path: state
+          key: codex-nightly-state-${{ github.run_id }}
+          restore-keys: codex-nightly-state-
+      - name: Pick issues and extract repros
+        id: plan
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GH_TOKEN: ${{ github.token }}
+          ISSUES: ${{ inputs.issues }}
+        run: |
+          if [ -z "${OPENAI_API_KEY}" ]; then
+            echo "OPENAI_API_KEY secret is not set; nothing to do." >> "$GITHUB_STEP_SUMMARY"
+            echo 'issues=[]' >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          mkdir -p state extract
+          python3 "$SCRIPT" plan --lang "$LANG_KIND" --issues "$ISSUES" \
+            --max-issues "$MAX_ISSUES" --model "$CHECK_MODEL" --effort "$CHECK_EFFORT" \
+            --max-out 4000 --run-budget "$RUN_BUDGET_USD" --budget-file extract/budget.json \
+            --state state/checked.json --out extract
+      - uses: actions/upload-artifact@v4
+        with:
+          name: extract
+          path: extract
+          retention-days: 30
+
+  run:
+    needs: plan
+    if: needs.plan.outputs.issues != '' && needs.plan.outputs.issues != '[]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        issue: ${{ fromJSON(needs.plan.outputs.issues) }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: any::testthat
+          needs: check
+      - name: Install package from this commit
+        run: R CMD INSTALL --no-docs --no-multiarch .
+      - uses: actions/download-artifact@v4
+        with:
+          name: extract
+          path: extract
+      - name: Run repro against main (no secrets in this job)
+        run: python3 "$SCRIPT" run --lang "$LANG_KIND" --issue ${{ matrix.issue }} --timeout 900 --inp extract --out runs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: run-${{ matrix.issue }}
+          path: runs
+          retention-days: 30
+
+  classify:
+    needs: [plan, run]
+    if: always() && needs.plan.outputs.issues != '' && needs.plan.outputs.issues != '[]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      issues: read
+    outputs:
+      fixes: ${{ steps.classify.outputs.fixes }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/cache/restore@v4
+        with:
+          path: state
+          key: codex-nightly-state-${{ github.run_id }}
+          restore-keys: codex-nightly-state-
+      - uses: actions/download-artifact@v4
+        with:
+          name: extract
+          path: extract
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: run-*
+          path: runs
+          merge-multiple: true
+      - name: Classify fixed / still broken / unclear
+        id: classify
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p state report
+          cp extract/budget.json report/budget.json 2>/dev/null || true
+          python3 "$SCRIPT" classify --lang "$LANG_KIND" --model "$CHECK_MODEL" --effort "$CHECK_EFFORT" \
+            --max-out 3000 --run-budget "$RUN_BUDGET_USD" --budget-file report/budget.json \
+            --max-fixes "$( [[ "$MODE" == *fix* ]] && echo "$MAX_FIXES" || echo 0 )" \
+            --state state/checked.json --extract extract --runs runs --out report
+          cat report/report.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: codex-nightly-report
+          path: report
+          retention-days: 90
+      - name: Save checked-issue state
+        uses: actions/cache/save@v4
+        with:
+          path: state
+          key: codex-nightly-state-${{ github.run_id }}
+
+  fix-propose:
+    needs: classify
+    if: contains(needs.classify.outputs.fixes, '[') && needs.classify.outputs.fixes != '[]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      issues: read
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        issue: ${{ fromJSON(needs.classify.outputs.fixes) }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: codex-nightly-report
+          path: report
+      - uses: actions/download-artifact@v4
+        with:
+          name: run-${{ matrix.issue }}
+          path: runs
+      - name: Propose a one-file fix (no code execution here)
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 "$SCRIPT" fix-propose --lang "$LANG_KIND" --issue ${{ matrix.issue }} \
+            --model "$FIX_MODEL" --effort medium --max-out 12000 \
+            --run-budget "$(python3 -c "print(float('$RUN_BUDGET_USD') + 1.0)")" --budget-file report/budget.json \
+            --candidates report/fix-candidates.json --runs runs --out fix
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fix-${{ matrix.issue }}
+          path: fix
+          retention-days: 30
+
+  fix-verify:
+    needs: [classify, fix-propose]
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        issue: ${{ fromJSON(needs.classify.outputs.fixes || '[]') }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: any::testthat
+          needs: check
+      - name: Install package from this commit
+        run: R CMD INSTALL --no-docs --no-multiarch .
+      - uses: actions/download-artifact@v4
+        with:
+          name: fix-${{ matrix.issue }}
+          path: fix
+      - name: Apply edit, rerun repro and named tests (no secrets in this job)
+        run: python3 "$SCRIPT" fix-apply --lang "$LANG_KIND" --issue ${{ matrix.issue }} --timeout 1200 --inp fix --out verify
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: verify-${{ matrix.issue }}
+          path: verify
+          retention-days: 30
+
+  fix-pr:
+    needs: [classify, fix-verify]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        issue: ${{ fromJSON(needs.classify.outputs.fixes || '[]') }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v4
+        with:
+          name: fix-${{ matrix.issue }}
+          path: fix
+      - uses: actions/download-artifact@v4
+        with:
+          name: verify-${{ matrix.issue }}
+          path: verify
+      - name: Open draft PR (re-applies the guarded edit; executes no repo code)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          N: ${{ matrix.issue }}
+        run: |
+          ok=$(python3 -c "import json;print(json.load(open('verify/verify-$N.json')).get('ok'))")
+          if [ "$ok" != "True" ]; then echo "No usable fix for #$N; no PR." >> "$GITHUB_STEP_SUMMARY"; exit 0; fi
+          branch="codex/fix-$N"
+          if git ls-remote --exit-code --heads origin "$branch" >/dev/null; then
+            echo "Branch $branch already exists; leaving it alone." >> "$GITHUB_STEP_SUMMARY"; exit 0
+          fi
+          python3 "$SCRIPT" fix-edit --issue "$N" --inp fix
+          git config user.name "codex-nightly[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$branch"
+          git commit -am "codex: candidate fix for #$N (refs #$N)"
+          git push origin "$branch"
+          python3 - "$N" > body.md <<'PY'
+          import json, sys
+          n = sys.argv[1]
+          f = json.load(open(f"fix/fix-{n}.json")); v = json.load(open(f"verify/verify-{n}.json"))
+          u = f.get("usage") or {}
+          print(f"refs #{n}\n\nDraft candidate fix from the codex-nightly lane. Not reviewed by a human yet.\n")
+          print(f"**What changed:** {f['summary']}\n\n**File:** `{f['file']}` (one file; tests, tolerances, expectations, ledger values, estimands and defaults untouched by rule and by guard)\n")
+          print(f"**API usage:** {u.get('input_tokens',0)} in / {u.get('output_tokens',0)} out tokens, about ${u.get('cost_usd',0):.3f}\n")
+          print("Note: PRs opened by GITHUB_TOKEN do not trigger CI. Push a commit or close/reopen to run checks.\n")
+          print("<details><summary>Local verification log (repro + named tests)</summary>\n\n```\n" + v.get("log","")[-50000:].replace("```","ʼʼʼ") + "\n```\n</details>")
+          PY
+          if ! gh pr create --draft --base "${{ github.event.repository.default_branch }}" --head "$branch" \
+               --title "codex: candidate fix for #$N (draft)" --body-file body.md; then
+            echo "Could not open the PR (Actions may not be allowed to create PRs in this repo). Branch pushed: $branch" >> "$GITHUB_STEP_SUMMARY"
+            echo "Compare: ${{ github.server_url }}/${{ github.repository }}/compare/$branch?expand=1" >> "$GITHUB_STEP_SUMMARY"
+          fi

@@ -828,10 +828,10 @@ test_that("Julia bridge capability drift is explicit and gate-labelled", {
   expect_false("cbind_binomial" %in% drift$capability)
 
   future_julia <- julia_caps
-  future_julia$fixed_effect_X[future_julia$family == "ordinal"] <- TRUE
+  future_julia$fixed_effect_X[future_julia$family == "binomial_probit"] <- TRUE
   future_drift <- .gllvm_julia_capability_drift(julia_caps = future_julia)
   expect_true(any(
-    future_drift$family == "ordinal" &
+    future_drift$family == "binomial_probit" &
       future_drift$capability == "fixed_effect_X" &
       future_drift$status == "unregistered"
   ))
@@ -2944,7 +2944,7 @@ test_that("engine = 'julia' keeps unsupported fixed-effect X rows explicit", {
       data = df,
       trait = "trait",
       unit = "unit",
-      family = ordinal_probit(),
+      family = binomial(link = "probit"),
       engine = "julia"
     ),
     "GJL-GATE-X-FAMILY"
@@ -2962,12 +2962,53 @@ test_that("engine = 'julia' keeps unsupported fixed-effect X rows explicit", {
   )
 })
 
-test_that("fixed-effect X is admitted for nb1 while ordinal stays gated (#488 step 2)", {
+test_that("fixed-effect X is admitted for nb1 and ordinal; probit/cloglog binomial stay gated (#488 steps 2-3)", {
   expect_true("nb1" %in% .GLLVM_JULIA_X_FAMILIES)
+  expect_true(all(c("ordinal", "ordinal_probit") %in% .GLLVM_JULIA_X_FAMILIES))
   caps <- gllvm_julia_capabilities()
   expect_true(caps$fixed_effect_X[caps$family == "nb1"])
   expect_false(caps$ci_x_wald[caps$family == "nb1"])
-  expect_false(caps$fixed_effect_X[caps$family == "ordinal"])
+  expect_true(all(caps$fixed_effect_X[caps$family %in% c("ordinal", "ordinal_probit")]))
+  expect_false(any(caps$ci_x_wald[caps$family %in% c("ordinal", "ordinal_probit")]))
+  expect_false(caps$fixed_effect_X[caps$family == "binomial_probit"])
+  expect_false(caps$fixed_effect_X[caps$family == "binomial_cloglog"])
+})
+
+test_that("engine = 'julia' ordinal_probit with fixed-effect X matches native TMB (#488 step 3)", {
+  skip_if_no_julia()
+  p <- 5L
+  n <- 200L
+  set.seed(11)
+  z <- stats::rnorm(n)
+  x <- stats::rnorm(n)
+  lam <- c(0.8, -0.6, 0.5, 0.9, -0.4)
+  b <- c(0.4, -0.3, 0.2, 0.5, 0)
+  eta <- outer(x, b) + outer(z, lam) * 0.7 +
+    matrix(c(0, 0.3, -0.2, 0.1, 0), n, p, byrow = TRUE)
+  lat <- eta + matrix(stats::rnorm(n * p), n, p)
+  y <- 1L + (lat > -0.5) + (lat > 0.5)
+  df <- data.frame(
+    unit = factor(rep(seq_len(n), p)),
+    trait = factor(rep(paste0("t", seq_len(p)), each = n)),
+    x = rep(x, p),
+    value = as.vector(y)
+  )
+  f <- value ~ 0 + trait + x + latent(0 + trait | unit, d = 1, unique = FALSE)
+  args <- list(data = df, trait = "trait", unit = "unit", family = ordinal_probit())
+  fit_jl <- suppressMessages(do.call(gllvmTMB, c(list(f), args, engine = "julia")))
+  fit_tmb <- suppressMessages(do.call(gllvmTMB, c(list(f), args, engine = "tmb")))
+  ## Twin evidence (seed 11): logLik -1045.794 vs -1045.794, slope 0.13740 vs
+  ## 0.13740, Sigma max abs diff 1.7e-5.
+  expect_equal(as.numeric(logLik(fit_jl)), as.numeric(logLik(fit_tmb)), tolerance = 0.5, scale = 1)
+  expect_equal(
+    unname(stats::coef(fit_jl)$gamma),
+    unname(stats::coef(fit_tmb)["x"]),
+    tolerance = 0.01,
+    scale = 1
+  )
+  S_jl <- suppressMessages(extract_Sigma(fit_jl, level = "unit", part = "shared"))$Sigma
+  S_tmb <- suppressMessages(extract_Sigma(fit_tmb, level = "unit", part = "shared"))$Sigma
+  expect_equal(unname(S_jl), unname(S_tmb), tolerance = 0.02, scale = 1)
 })
 
 test_that("engine argument is validated by match.arg", {

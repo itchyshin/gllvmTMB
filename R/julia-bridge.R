@@ -80,7 +80,8 @@
   "negbinomial",
   "nb1",
   "beta",
-  "gamma"
+  "gamma",
+  .GLLVM_JULIA_PERTRAIT_ORDINAL_FAMILIES
 )
 .GLLVM_JULIA_XLV_FAMILIES <- c(
   "gaussian",
@@ -104,9 +105,12 @@
   .GLLVM_JULIA_MASK_FAMILIES,
   .GLLVM_JULIA_PERTRAIT_ORDINAL_FAMILIES
 )
-## nb1 X point fits are routed (#488 step 2); nb1 CI under X stays gated until
-## it has its own parity evidence.
-.GLLVM_JULIA_X_CI_FAMILIES <- setdiff(.GLLVM_JULIA_X_FAMILIES, "nb1")
+## nb1 X point fits are routed (#488 step 2) and ordinal X point fits (#488
+## step 3); their CI under X stays gated until each has its own parity evidence.
+.GLLVM_JULIA_X_CI_FAMILIES <- setdiff(
+  .GLLVM_JULIA_X_FAMILIES,
+  c("nb1", .GLLVM_JULIA_PERTRAIT_ORDINAL_FAMILIES)
+)
 .GLLVM_JULIA_CAPABILITY_LOGICAL_COLUMNS <- c(
   "fit_no_x",
   "fixed_effect_X",

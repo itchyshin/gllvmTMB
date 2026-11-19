@@ -954,7 +954,8 @@ print.gllvmTMB_multi <- function(x, ...) {
       cat("  Inference: point estimates only; repeated-sampling uncertainty is not yet calibrated.\n")
     } else {
       weighted <- isTRUE(x$likelihood_weights$active)
-      penalised <- !is.null(x$fixed_effect_priors) || isTRUE(x$aghq$penalised)
+      penalised <- !is.null(x$fixed_effect_priors) ||
+        !is.null(x$kernel_psi_sd_prior) || isTRUE(x$aghq$penalised)
       objective_label <- if (weighted) {
         "Weighted objective (-value)"
       } else if (penalised) {
@@ -973,7 +974,7 @@ print.gllvmTMB_multi <- function(x, ...) {
         cat("  Note: ordinary Wald and likelihood-based inference is not validated for non-unit likelihood weights.\n")
       } else if (penalised) {
         cat("  Note: parameters are a penalised MAP point; ordinary AIC, BIC, and likelihood-ratio interpretations do not apply.\n")
-        if (!is.null(x$fixed_effect_priors)) cat("  Covariance: local approximate posterior curvature, not calibrated sampling uncertainty.\n")
+        if (!is.null(x$fixed_effect_priors) || !is.null(x$kernel_psi_sd_prior)) cat("  Covariance: local approximate posterior curvature, not calibrated sampling uncertainty.\n")
       }
     }
   }
@@ -1051,7 +1052,9 @@ summary.gllvmTMB_multi <- function(object, ...) {
     estimator = object$estimator %||% if (isTRUE(object$REML)) "REML" else "ML",
     logLik = if (.gllvmTMB_is_mspl(object)) {
       object$mspl$unpenalized_loglik_at_estimate
-    } else if ((!is.null(object$fixed_effect_priors) || isTRUE(object$aghq$penalised)) &&
+    } else if ((!is.null(object$fixed_effect_priors) ||
+                !is.null(object$kernel_psi_sd_prior) ||
+                isTRUE(object$aghq$penalised)) &&
                !isTRUE(object$likelihood_weights$active)) {
       tryCatch(
         as.numeric(suppressWarnings(stats::logLik(object))),
@@ -1062,14 +1065,18 @@ summary.gllvmTMB_multi <- function(object, ...) {
     },
     objective_label = if (isTRUE(object$likelihood_weights$active)) {
       "Weighted objective (-value)"
-    } else if (!is.null(object$fixed_effect_priors) || isTRUE(object$aghq$penalised)) {
+    } else if (!is.null(object$fixed_effect_priors) ||
+               !is.null(object$kernel_psi_sd_prior) ||
+               isTRUE(object$aghq$penalised)) {
       "Unpenalised log L at MAP point"
     } else {
       paste(object$estimator %||% if (isTRUE(object$REML)) "REML" else "ML", "log L")
     },
     weighted_objective = isTRUE(object$likelihood_weights$active),
-    penalised = !is.null(object$fixed_effect_priors) || isTRUE(object$aghq$penalised),
+    penalised = !is.null(object$fixed_effect_priors) ||
+      !is.null(object$kernel_psi_sd_prior) || isTRUE(object$aghq$penalised),
     fixed_effect_prior = !is.null(object$fixed_effect_priors),
+    kernel_psi_sd_prior = !is.null(object$kernel_psi_sd_prior),
     convergence = object$opt$convergence,
     engine = .aghq_engine_label(object),
     mspl = .gllvmTMB_is_mspl(object),
@@ -1395,7 +1402,8 @@ logLik.gllvmTMB_multi <- function(object, ...) {
     ), class = "gllvmTMB_weighted_objective_no_logLik")
   }
   ridge_tau <- object$aghq$ridge_tau %||% Inf
-  pen <- !is.null(object$fixed_effect_priors) || isTRUE(object$aghq$penalised) ||
+  pen <- !is.null(object$fixed_effect_priors) ||
+    !is.null(object$kernel_psi_sd_prior) || isTRUE(object$aghq$penalised) ||
     (is.numeric(ridge_tau) && length(ridge_tau) == 1L &&
        is.finite(ridge_tau) && ridge_tau > 0)
   likelihood_nll <- object$objective_components$likelihood_nll %||% NA_real_
@@ -1403,6 +1411,7 @@ logLik.gllvmTMB_multi <- function(object, ...) {
     if (pen) {
       likelihood_nll <- tryCatch(
         as.numeric((object$tmb_obj$fixed_effect_priors$likelihood_fn %||%
+          object$tmb_obj$kernel_psi_sd_prior$likelihood_fn %||%
           object$tmb_obj$fn)(object$opt$par)),
         error = function(e) NA_real_
       )
@@ -1454,14 +1463,20 @@ logLik.gllvmTMB_multi <- function(object, ...) {
     attr(ll, "at_maximum") <- FALSE
     attr(ll, "penalised_note") <- paste0(
       "evaluated at a penalised (MAP) optimum, ",
-      if (!is.null(object$fixed_effect_priors)) "fixed-effect normal priors; loading ridge tau = " else "ridge tau = ",
-      format(ridge_tau, digits = 4),
+      if (!is.null(object$kernel_psi_sd_prior)) {
+        "kernel Psi half-normal prior"
+      } else if (!is.null(object$fixed_effect_priors)) {
+        paste0("fixed-effect normal priors; loading ridge tau = ",
+               format(ridge_tau, digits = 4))
+      } else {
+        paste0("loading ridge tau = ", format(ridge_tau, digits = 4))
+      },
       "; this is the unpenalised log-likelihood AT that point, not its maximum"
     )
     cli::cli_warn(c(
       "{.fn logLik} is the unpenalised likelihood evaluated at a penalised MAP point, not at its maximum.",
-      "i" = "The fit includes loading and/or fixed-effect normal priors.",
-      ">" = "For ordinary likelihood-based comparison, refit with loading_ridge = Inf and fixed_effect_priors = NULL."
+      "i" = "The fit includes a loading ridge and/or coefficient or kernel Psi prior.",
+      ">" = "For ordinary likelihood-based comparison, refit with loading_ridge = Inf, fixed_effect_priors = NULL, and kernel_psi_sd_prior = NULL."
     ))
   }
   ## nobs = likelihood-contributing rows. Under the default response="drop"
@@ -1534,10 +1549,11 @@ nobs.gllvmTMB_multi <- function(object, ...) {
 #'   fails because no sandwich interval is certified. When the Hessian is not
 #'   positive definite (or the `sdreport()` is missing), `std.error` is `NA`,
 #'   `conf.low` / `conf.high` are `NA`, and `inference_status` says why.
-#'   With fixed-effect normal priors, `std.error` describes local approximate
-#'   posterior curvature and `inference_status` identifies that interpretation.
-#'   `conf.int = TRUE` is refused for those fits because ordinary sampling
-#'   interval calibration has not been established.
+#'   With fixed-effect normal priors or a named-kernel Psi SD prior,
+#'   `std.error` describes local approximate posterior curvature and
+#'   `inference_status` identifies that interpretation. `conf.int = TRUE` is
+#'   refused for those fits because ordinary sampling interval calibration has
+#'   not been established.
 #' @export
 tidy.gllvmTMB_multi <- function(
   x,
@@ -1570,7 +1586,8 @@ tidy.gllvmTMB_multi <- function(
     } else if (!is.null(reason <- .gllvmTMB_wald_unusable_reason(x))) {
       out$std.error <- rep(NA_real_, nrow(out))
       out$inference_status <- reason
-    } else if (!is.null(x$fixed_effect_priors)) {
+    } else if (!is.null(x$fixed_effect_priors) ||
+               !is.null(x$kernel_psi_sd_prior)) {
       out$inference_status <- "local_approximate_posterior_curvature"
     }
     ## Per-trait link column. For single-family fits this is a single

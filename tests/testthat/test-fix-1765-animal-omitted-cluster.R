@@ -90,3 +90,14 @@ test_that("an explicit cluster is not replaced by the animal term (#1765)", {
   expect_s3_class(err, "error")
   expect_false(inherits(err, "gllvmTMB_animal_grouping"))
 })
+
+test_that("animal_latent ignores id_label partial-name trap (#1765)", {
+  groups <- gllvmTMB:::.gllvmTMB_animal_bare_groups(
+    quote(value ~ animal_latent(d = 1, id_label = taxon, A = A))
+  )
+  expect_equal(nrow(groups), 0L)
+  groups_named <- gllvmTMB:::.gllvmTMB_animal_bare_groups(
+    quote(value ~ animal_latent(id = taxon, d = 1, A = A))
+  )
+  expect_equal(groups_named$group, "taxon")
+})

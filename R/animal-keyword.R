@@ -237,59 +237,16 @@ animal_indep <- function(formula, pedigree = NULL, A = NULL, Ainv = NULL,
 }
 
 ## Grouping column named by an animal_* term when `cluster` is omitted (#1765).
-## Bare helpers take that column as `id`. Bar helpers take it on the right
-## of `|`.
+## `animal_slope()` is not included: its response-column form does not use
+## `cluster`.
+## @keywords internal
+## @noRd
 .gllvmTMB_animal_bare_groups <- function(formula) {
-  bare <- c("animal_latent", "animal_unique", "animal_scalar")
-  barred <- c("animal_indep", "animal_dep")
-  found <- list()
-  group_from <- function(arg) {
-    if (is.symbol(arg)) return(as.character(arg))
-    if (is.character(arg) && length(arg) == 1L && !is.na(arg) && nzchar(arg)) {
-      return(arg)
-    }
-    if (is.call(arg) && length(arg) >= 3L) {
-      op <- as.character(arg[[1L]])[1L]
-      if (op %in% c("|", "||") && is.symbol(arg[[3L]])) {
-        return(as.character(arg[[3L]]))
-      }
-    }
-    NA_character_
-  }
-  pick_arg <- function(e, preferred) {
-    nms <- names(e)
-    if (is.null(nms)) nms <- rep("", length(e))
-    hit <- match(preferred, nms)
-    if (!is.na(hit)) return(e[[hit]])
-    for (i in seq_along(e)[-1L]) {
-      if (!nzchar(nms[[i]])) return(e[[i]])
-    }
-    NULL
-  }
-  walk <- function(e) {
-    if (!is.call(e)) return(invisible(NULL))
-    fn <- as.character(e[[1L]])[1L]
-    if (!is.na(fn) && fn %in% c(bare, barred) && length(e) >= 2L) {
-      preferred <- if (fn %in% barred) "formula" else "id"
-      arg <- pick_arg(e, preferred)
-      group <- if (is.null(arg)) NA_character_ else group_from(arg)
-      if (!is.na(group) && nzchar(group)) {
-        found[[length(found) + 1L]] <<- list(fn = fn, group = group)
-      }
-    }
-    for (i in seq_along(e)[-1L]) walk(e[[i]])
-    invisible(NULL)
-  }
-  if (is.call(formula)) walk(formula)
-  if (!length(found)) {
-    return(data.frame(
-      fn = character(), group = character(), stringsAsFactors = FALSE
-    ))
-  }
-  data.frame(
-    fn = vapply(found, `[[`, character(1L), "fn"),
-    group = vapply(found, `[[`, character(1L), "group"),
-    stringsAsFactors = FALSE
+  .gllvmTMB_keyword_bare_groups(
+    formula,
+    c("animal_latent", "animal_unique", "animal_scalar"),
+    "id",
+    c("animal_indep", "animal_dep")
   )
 }
 

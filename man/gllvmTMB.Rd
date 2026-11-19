@@ -134,9 +134,12 @@ or \code{kernel_scalar()} term names a bare grouping column, that column is
 used so \code{K} is checked against it. An explicit \code{cluster} is unchanged,
 including the replicated kernel example that passes \code{cluster = "site"}.
 The same omitted-\code{cluster} rule adopts one bare grouping from
-\code{animal_latent()}, \code{animal_unique()}, \code{animal_scalar()}, \code{animal_indep()},
-or \code{animal_dep()} when that column is in \code{data}. An explicit \code{cluster}
-is left unchanged.
+\code{phylo_latent()}, \code{phylo_unique()}, \code{phylo_scalar()}, \code{phylo_indep()},
+\code{phylo_dep()}, \code{animal_latent()}, \code{animal_unique()}, \code{animal_scalar()},
+\code{animal_indep()}, or \code{animal_dep()} when that column is in \code{data} and is
+not the default name \code{species}. A missing \code{species} column keeps the
+existing placeholder message. Kernel, phylo, and animal keywords must
+name the same column when \code{cluster} is omitted.
 If supplied but no covariance keyword uses
 that column, \code{\link[=gllvmTMB]{gllvmTMB()}} warns; omit the argument or use the column in
 the intended covariance keyword.

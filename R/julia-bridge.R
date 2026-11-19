@@ -3214,8 +3214,29 @@ gllvm_julia_fit <- function(
   if (!is.null(mask)) {
     res$response_mask <- mask
   }
+  res$convergence_status <- .gllvm_julia_convergence_status(res)
   class(res) <- c("gllvmTMB_julia", "list")
   res
+}
+
+# Convergence status for a Julia bridge fit (SHINICHI-1434-1119): the same
+# vocabulary as `fit_health$convergence_status` on the TMB engine. A status the
+# Julia engine reports itself is kept. Otherwise the bridge can only see the
+# optimiser flag and the log-likelihood, so it says "not_converged" when either
+# fails and "converged" when both pass; boundary / degenerate need the Julia
+# engine's own diagnostics and are not guessed here.
+.gllvm_julia_convergence_status <- function(res) {
+  allowed <- c("converged", "not_converged", "boundary", "degenerate")
+  reported <- res$convergence_status
+  if (is.character(reported) && length(reported) == 1L &&
+      reported %in% allowed) {
+    return(reported)
+  }
+  ll <- suppressWarnings(as.numeric(res$loglik)[1L])
+  if (!isTRUE(res$converged) || !is.finite(ll)) {
+    return("not_converged")
+  }
+  "converged"
 }
 
 #' Methods for Julia bridge fits
@@ -3958,6 +3979,9 @@ summary.gllvmTMB_julia <- function(object, ...) {
       AIC = object$aic %||% NA_real_,
       BIC = object$bic %||% NA_real_,
       converged = object$converged %||% NA,
+      convergence_status = object$convergence_status %||%
+        .gllvm_julia_convergence_status(object),
+      boundary_params = object$boundary_params %||% NULL,
       message = object$message %||% NA_character_,
       missing_response = isTRUE(object$missing_response)
     ),
@@ -4002,8 +4026,9 @@ print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
     h$BIC
   ))
   cat(sprintf(
-    "  converged = %s | missing response mask = %s\n",
+    "  converged = %s | status = %s | missing response mask = %s\n",
     h$converged,
+    h$convergence_status,
     h$missing_response
   ))
 

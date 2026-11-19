@@ -10834,6 +10834,14 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   fit$sdreport_error <- checkpoint$sdreport_error
   fit$fit_health <- checkpoint$fit_health
   fit$restart_history <- checkpoint$restart_history
+  ## A checkpoint taken without a status must not restore an NA status
+  ## (SHINICHI-1434-1119): rebuild health from the restored optimum.
+  if (is.null(fit$fit_health$convergence_status)) {
+    fit$fit_health <- tryCatch(
+      .gllvmTMB_build_fit_health(fit),
+      error = function(e) fit$fit_health
+    )
+  }
   obj$env$last.par <- checkpoint$last_par
   obj$env$last.par.best <- checkpoint$last_par_best
   obj$env$value.best <- checkpoint$value_best

@@ -109,9 +109,21 @@ Type gll_log_pois_survival(Type log_mu, int C)
   Type log_cdf_comp = CppAD::CondExpLt(log_cdf, cut, log_cdf, cut);
   Type log_sf_comp = log(Type(1.0) - exp(log_cdf_comp));
   Type log_sf = Type(C) * log_mu - mu - lgamma(Type(C + 1));
-  for (int j = 1; j < 40; ++j) {
-    log_sf = logspace_add(log_sf,
-      Type(C + j) * log_mu - mu - lgamma(Type(C + j + 1)));
+  // Upper-tail path must stay accurate when mu is near C (both CondExp
+  // branches are evaluated on the CppAD tape). A fixed 40-term cap truncates
+  // too early at large C (#1748 review).
+  const int hard_cap = 50000;
+  const Type rel_tol = Type(1e-14);
+  double mu_d = asDouble(mu);
+  int j_max = 40 + static_cast<int>(std::ceil(10.0 * std::sqrt(std::max(1.0, mu_d))));
+  if (j_max > hard_cap) j_max = hard_cap;
+  if (j_max < 40) j_max = 40;
+  for (int j = 1; j < j_max; ++j) {
+    Type log_term = Type(C + j) * log_mu - mu - lgamma(Type(C + j + 1));
+    Type log_sf_next = logspace_add(log_sf, log_term);
+    // Fixed loop length; negligible terms are skipped on the tape via CondExp.
+    Type thresh = log_sf + log(rel_tol);
+    log_sf = CppAD::CondExpGt(log_term, thresh, log_sf_next, log_sf);
   }
   return CppAD::CondExpLt(log_cdf, cut, log_sf_comp, log_sf);
 }

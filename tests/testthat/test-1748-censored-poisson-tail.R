@@ -44,3 +44,43 @@ test_that("#1748 a right-censored row stays finite for a very negative predictor
     )
   }
 })
+
+test_that("#1748 large C right-censored tail matches ppois survival (eta > 0)", {
+  skip_on_cran()
+  C <- 1000L
+  n_site <- 4L
+  n_trait <- 2L
+  dat <- data.frame(
+    site = factor(rep(seq_len(n_site), n_trait)),
+    trait = factor(rep(seq_len(n_trait), each = n_site)),
+    y = C,
+    censored = 1L
+  )
+  fit <- suppressWarnings(suppressMessages(gllvmTMB(
+    cbind(y, censored) ~ 0 + trait,
+    data = dat, family = censored_poisson(), unit = "site",
+    control = gllvmTMBcontrol(se = FALSE, n_init = 1L, laplace_auto_refit = FALSE),
+    silent = TRUE
+  )))
+  obj <- fit$tmb_obj
+  n <- length(fit$tmb_data$y)
+  for (mu in c(880, 1000)) {
+    eta <- log(mu)
+    p <- obj$par
+    p[names(p) == "b_fix"] <- eta
+    fn <- as.numeric(obj$fn(p))
+    gr <- as.numeric(obj$gr(p))
+    expect_true(is.finite(fn))
+    expect_true(all(is.finite(gr)))
+    ref <- stats::ppois(C - 1L, mu, lower.tail = FALSE, log.p = TRUE)
+    expect_equal(fn, -n * ref, tolerance = 1e-10)
+  }
+  for (eta in c(0.5, 2, 5)) {
+    mu <- exp(eta)
+    p <- obj$par
+    p[names(p) == "b_fix"] <- eta
+    fn <- as.numeric(obj$fn(p))
+    ref <- stats::ppois(C - 1L, mu, lower.tail = FALSE, log.p = TRUE)
+    expect_equal(fn, -n * ref, tolerance = 1e-10)
+  }
+})

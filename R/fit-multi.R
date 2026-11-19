@@ -1518,40 +1518,11 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     ## Allow "delta_lognormal" / "delta_gamma" as character shortcuts to
     ## the constructors in R/families.R. Other single character strings
     ## name a package-defined constructor or one of four stats:: families.
+    ## The lookup itself lives in `.gllvmTMB_family_from_character()` so
+    ## `gllvmTMB()` can resolve `family = "gaussian"` before any `$family`
+    ## gate (#1804). This branch remains for direct engine calls.
     if (is.character(f) && length(f) == 1L) {
-      f <- switch(
-        f,
-        delta_lognormal = delta_lognormal(),
-        delta_gamma     = delta_gamma(),
-        {
-          nm <- f
-          pkg_env <- asNamespace("gllvmTMB")
-          stats_families <- c("gaussian", "binomial", "Gamma", "poisson")
-          fn <- NULL
-          if (exists(nm, envir = pkg_env, mode = "function", inherits = FALSE)) {
-            fn <- get(nm, envir = pkg_env, mode = "function", inherits = FALSE)
-          } else if (nm %in% stats_families) {
-            stats_env <- asNamespace("stats")
-            if (exists(nm, envir = stats_env, mode = "function", inherits = FALSE)) {
-              fn <- get(nm, envir = stats_env, mode = "function", inherits = FALSE)
-            }
-          }
-          if (is.null(fn)) {
-            cli::cli_abort(c(
-              "Unsupported family: {.val {nm}}.",
-              ">" = "Use a family object like {.code gaussian()} or a character name that matches a family constructor."
-            ))
-          }
-          f <- fn()
-          if (!inherits(f, "family")) {
-            cli::cli_abort(c(
-              "Unsupported family: {.val {nm}}.",
-              ">" = "Use a family object like {.code gaussian()} or a character name that matches a family constructor."
-            ))
-          }
-          f
-        }
-      )
+      f <- .gllvmTMB_family_from_character(f)
     } else if (is.function(f) && !inherits(f, "family")) {
       f <- f()
     } else if (!inherits(f, "family")) {

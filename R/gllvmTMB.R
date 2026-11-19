@@ -2034,13 +2034,58 @@ gllvmTMB <- function(
   refit
 }
 
+## Turn one character family name into a family object. This is the
+## same lookup `family_to_id()` used to inline. Doing it at `gllvmTMB()`
+## entry means `family = "gaussian"` is a family object before the
+## `temporal_latent()` gate reads `$family` (#1804). Unknown names abort
+## with the same message as before.
+.gllvmTMB_family_from_character <- function(f) {
+  switch(
+    f,
+    delta_lognormal = delta_lognormal(),
+    delta_gamma     = delta_gamma(),
+    {
+      nm <- f
+      pkg_env <- asNamespace("gllvmTMB")
+      stats_families <- c("gaussian", "binomial", "Gamma", "poisson")
+      fn <- NULL
+      if (exists(nm, envir = pkg_env, mode = "function", inherits = FALSE)) {
+        fn <- get(nm, envir = pkg_env, mode = "function", inherits = FALSE)
+      } else if (nm %in% stats_families) {
+        stats_env <- asNamespace("stats")
+        if (exists(nm, envir = stats_env, mode = "function", inherits = FALSE)) {
+          fn <- get(nm, envir = stats_env, mode = "function", inherits = FALSE)
+        }
+      }
+      if (is.null(fn)) {
+        cli::cli_abort(c(
+          "Unsupported family: {.val {nm}}.",
+          ">" = "Use a family object like {.code gaussian()} or a character name that matches a family constructor."
+        ))
+      }
+      called <- fn()
+      if (!inherits(called, "family")) {
+        cli::cli_abort(c(
+          "Unsupported family: {.val {nm}}.",
+          ">" = "Use a family object like {.code gaussian()} or a character name that matches a family constructor."
+        ))
+      }
+      called
+    }
+  )
+}
+
 ## Call an uncalled family constructor (`family = gaussian`, not
 ## `gaussian()`) the same way `family_to_id()` does. `gllvmTMB()`
 ## calls this at entry; `expand_multinomial_response()` calls it
 ## again as a no-op so a direct scan cannot `as.character()` a
-## function (#1781).
+## function (#1781). A length-1 character name is resolved here too
+## (#1804).
 .gllvmTMB_resolve_family_constructors <- function(family) {
   resolve_one <- function(f) {
+    if (is.character(f) && length(f) == 1L && !anyNA(f) && nzchar(f)) {
+      f <- .gllvmTMB_family_from_character(f)
+    }
     if (!is.function(f) || inherits(f, "family")) return(f)
     called <- tryCatch(f(), error = function(e) e)
     if (inherits(called, "error") || !inherits(called, "family")) {

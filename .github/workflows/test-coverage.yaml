@@ -39,6 +39,7 @@ on:
       - ".github/workflows/codecov-upload.yaml"
       - "codecov.yml"
       - "tools/run-covr-coverage.R"
+      - "tools/retarget-covr-traces.R"
   pull_request:
     branches: [main, master]
     paths:
@@ -51,6 +52,7 @@ on:
       - ".github/workflows/codecov-upload.yaml"
       - "codecov.yml"
       - "tools/run-covr-coverage.R"
+      - "tools/retarget-covr-traces.R"
   workflow_dispatch:
 
 name: test-coverage
@@ -95,6 +97,9 @@ jobs:
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
+          # Current covr. The 3.6.5 pin avoided covr 4's counters path, which
+          # R CMD check deletes with its temp library. The runner retargets
+          # those traces onto the surviving install instead of skipping tests.
           extra-packages: any::covr, any::xml2
           needs: coverage
 

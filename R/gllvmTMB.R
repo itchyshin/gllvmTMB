@@ -315,6 +315,22 @@
 #'   `V_t`. Used by the `equalto()` two-stage workflow when sampling-error
 #'   matrices are available from a prior stage of estimation. Not supported by
 #'   `engine = "julia"`, which aborts (class `gllvmTMB_julia_unsupported_arg`).
+#' @param known_sigma_eps Optional known observation-error standard deviation.
+#'   Supply one finite positive number when the same error standard deviation
+#'   applies to every observation and all response traits are Gaussian. The
+#'   supplied value is fixed during fitting; its square is the observation-error
+#'   variance. This argument is supported only by the TMB engine. With `NULL`
+#'   (the default), the usual observation-error rules apply.
+#'
+#'   For two named `kernel_latent()` terms with `unique = TRUE`, supply
+#'   `known_sigma_eps` and use positive observation weights. The two kernels
+#'   must have distinct covariance patterns among the observed species for
+#'   each trait, and every declared trait needs at least two observed rows.
+#'   A failure of this check stops the fit rather than dropping a
+#'   requested component. Passing the check does not guarantee that the two
+#'   components can be estimated precisely; recovery and uncertainty for this
+#'   model remain under investigation. Mixed-family models are not supported
+#'   with this argument.
 #' @param lambda_constraint Optional list with elements `unit` and / or
 #'   `unit_obs` (plus `phy`, `spde` for structural levels), each an
 #'   `n_traits × d` matrix of confirmatory loading constraints
@@ -745,7 +761,8 @@ gllvmTMB <- function(
   site = NULL, # deprecated alias for `unit`
   species = NULL,
   estimator = c("ml", "mspl"),
-  column_data = NULL
+  column_data = NULL,
+  known_sigma_eps = NULL
 ) {
   # deprecated alias for `cluster`
 
@@ -790,6 +807,20 @@ gllvmTMB <- function(
   ## engine = "julia" routes through the experimental GLLVModels.jl bridge fitting
   ## path via JuliaCall; "tmb" (default) keeps the native TMB engine below.
   engine <- match.arg(engine)
+  if (!is.null(known_sigma_eps) &&
+      (!is.numeric(known_sigma_eps) || length(known_sigma_eps) != 1L ||
+       !is.finite(known_sigma_eps) || known_sigma_eps <= 0)) {
+    cli::cli_abort(c(
+      "{.arg known_sigma_eps} must be one finite positive standard deviation.",
+      ">" = "Supply a single known SD greater than zero, or use {.code NULL} for the usual observation-error rules."
+    ))
+  }
+  if (!is.null(known_sigma_eps) && !identical(engine, "tmb")) {
+    cli::cli_abort(c(
+      "{.arg known_sigma_eps} is supported only by the TMB engine.",
+      ">" = "Set {.code engine = \"tmb\"}, or omit {.arg known_sigma_eps}."
+    ))
+  }
   .gllvmTMB_fixed_prior_route(control$fixed_effect_priors, engine, estimator, REML, control)
   if (identical(engine, "julia") &&
       (control$optimizer_passes %||% 1L) > 1L) {
@@ -1031,6 +1062,7 @@ gllvmTMB <- function(
       phylo_vcv = phylo_vcv,
       phylo_tree = phylo_tree,
       known_V = known_V,
+      known_sigma_eps = known_sigma_eps,
       lambda_constraint = lambda_constraint,
       Xcoef_fixed = Xcoef_fixed,
       control = control,
@@ -1645,6 +1677,7 @@ gllvmTMB <- function(
     phylo_vcv = phylo_vcv,
     phylo_tree = phylo_tree,
     known_V = known_V,
+    known_sigma_eps = known_sigma_eps,
     mesh = mesh,
     lambda_constraint = lambda_constraint,
     Xcoef_fixed = Xcoef_fixed,
@@ -1999,13 +2032,58 @@ gllvmTMB <- function(
   refit
 }
 
+## Turn one character family name into a family object. This is the
+## same lookup `family_to_id()` used to inline. Doing it at `gllvmTMB()`
+## entry means `family = "gaussian"` is a family object before the
+## `temporal_latent()` gate reads `$family` (#1804). Unknown names abort
+## with the same message as before.
+.gllvmTMB_family_from_character <- function(f) {
+  switch(
+    f,
+    delta_lognormal = delta_lognormal(),
+    delta_gamma     = delta_gamma(),
+    {
+      nm <- f
+      pkg_env <- asNamespace("gllvmTMB")
+      stats_families <- c("gaussian", "binomial", "Gamma", "poisson")
+      fn <- NULL
+      if (exists(nm, envir = pkg_env, mode = "function", inherits = FALSE)) {
+        fn <- get(nm, envir = pkg_env, mode = "function", inherits = FALSE)
+      } else if (nm %in% stats_families) {
+        stats_env <- asNamespace("stats")
+        if (exists(nm, envir = stats_env, mode = "function", inherits = FALSE)) {
+          fn <- get(nm, envir = stats_env, mode = "function", inherits = FALSE)
+        }
+      }
+      if (is.null(fn)) {
+        cli::cli_abort(c(
+          "Unsupported family: {.val {nm}}.",
+          ">" = "Use a family object like {.code gaussian()} or a character name that matches a family constructor."
+        ))
+      }
+      called <- fn()
+      if (!inherits(called, "family")) {
+        cli::cli_abort(c(
+          "Unsupported family: {.val {nm}}.",
+          ">" = "Use a family object like {.code gaussian()} or a character name that matches a family constructor."
+        ))
+      }
+      called
+    }
+  )
+}
+
 ## Call an uncalled family constructor (`family = gaussian`, not
 ## `gaussian()`) the same way `family_to_id()` does. `gllvmTMB()`
 ## calls this at entry; `expand_multinomial_response()` calls it
 ## again as a no-op so a direct scan cannot `as.character()` a
-## function (#1781).
+## function (#1781). A length-1 character name is resolved here too
+## (#1804).
 .gllvmTMB_resolve_family_constructors <- function(family) {
   resolve_one <- function(f) {
+    if (is.character(f) && length(f) == 1L && !anyNA(f) && nzchar(f)) {
+      f <- .gllvmTMB_family_from_character(f)
+    }
     if (!is.function(f) || inherits(f, "family")) return(f)
     called <- tryCatch(f(), error = function(e) e)
     if (inherits(called, "error") || !inherits(called, "family")) {

@@ -12,27 +12,14 @@
 ##   guard                   PR green != bridge complete != release ready !=
 ##                           scientific coverage passed
 ##
-## The old C0-C2 core still routes one named kernel tier through the
-## phylo-equivalent slot for KER-02 equivalence. Two distinct names now activate
-## the fixed dense multi-kernel block: each tier has its own K_r, Lambda_r, and
-## latent field. Explicit Psi_r is deferred out of the Paper 2 first wave.
-##
-## C3.2 -- identifiability guardrail. Two `kernel_unique` tiers are not
-## separable without within-species replication; the engine defaults to a
-## single uniqueness tier and emits a `cli::cli_warn`. Replication is counted
-## in DISTINCT observation units per species (the `unit_obs` factor), NOT raw
-## long-format rows -- a wide `traits(...)` call stacks each species into
-## `n_traits` rows, so a raw-row count would mistake trait-stacking for
-## replication and skip the collapse (then abort at the single-`name` guard).
-##
-## NOTE on the heavy "two Psi WITH replication" cell below: the new C3.1 engine
-## can host fixed named latent tiers, but Paper 2 multi-kernel fits are
-## deliberately latent-only in this first wave. The heavy recovery/calibration
-## side of explicit Psi remains a later grammar/design cell, likely after the
-## post-arc `*_unique()` deprecation plan. The existing heavy test asserts the
-## older single identifiable phylo uniqueness tier recovered as a positive
-## diagonal under within-species replication; the non-phylo residual is absorbed
-## by the replicate error term.
+## Two distinct names activate the fixed dense multi-kernel block. In the
+## admitted Gaussian route with fixed positive observation SD, each named
+## tier may carry its own trait-specific Psi. The wrapper retains both requested
+## diagonals or stops with an error: every declared trait must have observed
+## rows and its same-trait kernel patterns must pass the necessary separation
+## screen. Passing this screen does not establish reliable recovery or interval
+## calibration. Unsupported bare or inseparable requests do not collapse to a
+## reduced model.
 
 .c3_tree_corr <- function(n, prefix) {
   tree <- ape::rcoal(n)
@@ -752,7 +739,7 @@ test_that("two distinct named kernel tiers fit and extract by component", {
       family = stats::gaussian(),
       control = ctl
     ))),
-    regexp = "latent-only|Psi is deferred|kernel_unique"
+    regexp = "requested multi-kernel uniqueness terms cannot be fitted|fixed observation SD"
   )
 })
 
@@ -2646,12 +2633,10 @@ test_that("one named kernel tier exposes Sigma and Gamma by its name", {
   expect_equal(colnames(Gamma), "y2")
 })
 
-test_that("two kernel_unique tiers without replication warn and collapse to one", {
-  ## C3.2 guardrail: two uniqueness tiers + one observation per species
-  ## (no within-species replication) -> warn (the two Psi are confounded)
-  ## and default to a single uniqueness tier. Warn, not abort: the model
-  ## still fits. Two DISTINCT names ("phy" + "non") are used so the test
-  ## also confirms the guardrail runs before the single-`name` validation.
+test_that("two kernel_unique tiers without replication are rejected", {
+  ## The admitted Gaussian two-tier Psi route requires latent companions,
+  ## fixed observation error, and a separating observed-cell design. These
+  ## bare kernel_unique terms cannot silently collapse to a reduced model.
   testthat::skip_if_not_installed("TMB")
   testthat::skip_if_not_installed("tidyr")
 
@@ -2660,8 +2645,8 @@ test_that("two kernel_unique tiers without replication warn and collapse to one"
   dimnames(A_non) <- dimnames(fx$A)
 
   ctl <- gllvmTMB::gllvmTMBcontrol(se = FALSE)
-  expect_warning(
-    fit <- suppressMessages(gllvmTMB::gllvmTMB(
+  expect_error(
+    suppressMessages(gllvmTMB::gllvmTMB(
       traits(y1, y2) ~
         1 +
         kernel_unique(species, K = fx$A, name = "phy") +
@@ -2672,10 +2657,8 @@ test_that("two kernel_unique tiers without replication warn and collapse to one"
       family = stats::gaussian(),
       control = ctl
     )),
-    regexp = "not separable without replication"
+    regexp = "requested multi-kernel uniqueness terms cannot be fitted|kernel_latent"
   )
-  ## The collapsed fit is the single-uniqueness-tier model and still fits.
-  expect_equal(fit$opt$convergence, 0L)
 })
 
 test_that("a single kernel_unique tier does NOT trigger the C3.2 warning", {

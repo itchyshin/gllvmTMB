@@ -1759,6 +1759,9 @@ tidy.gllvmTMB_multi <- function(
 #'   components produce an error instead of a conditional fallback. This
 #'   supports simulation; automatic covariance bootstrap refits are not yet
 #'   supported for these fits.
+#'   For multiple named kernel tiers, unconditional simulation and simulation
+#'   with `newdata` are not supported. Use `condition_on_RE = TRUE` for a
+#'   conditional draw on the training rows.
 #' @param nsim Number of replicate response vectors to draw. Must be a
 #'   single positive integer. Default 1.
 #' @param seed Optional RNG seed.
@@ -1832,6 +1835,21 @@ simulate.gllvmTMB_multi <- function(
   }
   nsim <- as.integer(nsim_value)
 
+  if (!is.null(newdata) &&
+      isTRUE((object$tmb_data$n_kernel_tiers %||% 0L) > 0L)) {
+    cli::cli_abort(c(
+      "Simulation with new data for multiple named kernel tiers is not supported.",
+      ">" = "Simulate training rows conditionally with {.code condition_on_RE = TRUE}."
+    ), class = "gllvmTMB_multi_kernel_simulation_newdata_unsupported")
+  }
+  if (is.null(newdata) && !isTRUE(condition_on_RE) &&
+      isTRUE((object$tmb_data$n_kernel_tiers %||% 0L) > 0L)) {
+    cli::cli_abort(c(
+      "Unconditional simulation for multiple named kernel tiers is not supported.",
+      "i" = "The kernel random effects cannot yet be redrawn by this simulator.",
+      ">" = "Use {.code condition_on_RE = TRUE} only for a conditional draw."
+    ), class = "gllvmTMB_multi_kernel_simulation_unsupported")
+  }
   .gllvmTMB_local_seed(seed)
 
   if (isTRUE(object$temporal$active) && is.null(newdata)) {
@@ -3125,6 +3143,8 @@ sanity_multi <- function(object, gradient_thresh = 1e-2, se_thresh = 100) {
 #'   depend on which other rows travel with it. Character predictors use
 #'   the training levels, and user-set factor contrasts (for example
 #'   `contr.sum`) are copied onto the restored factor.
+#'   Conditional prediction with `newdata` for multiple named kernel tiers
+#'   is not supported; use `re_form = ~0` for fixed-effects-only predictions.
 #' @param type One of `"link"` (default) or `"response"`.
 #'
 #'   `"response"` includes the row's **offset**, so on a fit with an effort
@@ -3236,6 +3256,13 @@ predict.gllvmTMB_multi <- function(
   ## the package's DEFAULT calling convention `predict(fit, re_form = ~0)`
   ## silently returned the full conditional predictor.
   re_zero <- .gllvmTMB_re_form_is_zero(re_form)
+  if (!is.null(newdata) && !re_zero &&
+      isTRUE((object$tmb_data$n_kernel_tiers %||% 0L) > 0L)) {
+    cli::cli_abort(c(
+      "Conditional prediction with new data for multiple named kernel tiers is not supported.",
+      ">" = "Use {.code re_form = ~0} for fixed-effects-only predictions."
+    ), class = "gllvmTMB_multi_kernel_predict_newdata_unsupported")
+  }
   if (is.null(newdata)) {
     eta <- if (re_zero) {
       .gllvmTMB_predict_fixed_eta(object, .gllvmTMB_training_X_fix(object)) +
@@ -4640,6 +4667,7 @@ deviance.gllvmTMB_multi <- function(object, ...) {
         cluster  = spec$cluster,
         cluster2 = spec$cluster2,
         family   = fit$family_input,
+        known_sigma_eps = fit$known_sigma_eps,
         missing  = miss_control(response = "include"),
         REML     = TRUE,
         silent   = TRUE
@@ -4721,6 +4749,7 @@ deviance.gllvmTMB_multi <- function(object, ...) {
         cluster  = spec$cluster,
         cluster2 = spec$cluster2,
         family   = fit$family_input,
+        known_sigma_eps = fit$known_sigma_eps,
         missing  = miss_control(response = "include"),
         silent   = TRUE
       ))),

@@ -174,7 +174,10 @@ test_that("(6) the tool's printed R status equals the R ledger's own Status colu
   }
   expect_gt(length(ledger_status), 0)
 
-  res <- run_rscript(parity_script, c("--julia", shQuote(scratchpad_julia)))
+  # Compare with the same working-tree ledger parsed independently above;
+  # the tool's default deliberately reads the pinned origin/main ledger.
+  res <- run_rscript(parity_script, c("--julia", shQuote(scratchpad_julia),
+                                     "--r-ref", "working-tree"))
   expect_identical(res$status, 0L, info = res$output)
   matched_lines <- grep("^  \\[(AGREE|R-NARROWER|J-NARROWER|DIFFER)\\s*\\]", res$lines, value = TRUE)
   expect_gt(length(matched_lines), 0)

@@ -172,7 +172,10 @@ test_that("the compiled VA route reports the same documented packed loading", {
 test_that("the compiled EVA route reports the same documented packed loading", {
   skip_on_cran()
   skip_if_not_installed("jsonlite")
-  obj <- .eva_make_objective("bernoulli_q2", rebuild = TRUE)
+  ## The Gate-1 tests may still hold live external pointers to this shared
+  ## EVA DLL. The loader compiles it when absent; forcing a rebuild here
+  ## would unload that library underneath those objects on Linux.
+  obj <- .eva_make_objective("bernoulli_q2")
   par <- obj$par
   rr_at <- which(names(par) == "theta_rr")
   theta <- seq_along(rr_at) / 10 - 0.4

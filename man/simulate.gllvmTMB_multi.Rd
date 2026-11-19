@@ -89,4 +89,7 @@ with independent observation residuals retained. Unsupported additional
 components produce an error instead of a conditional fallback. This
 supports simulation; automatic covariance bootstrap refits are not yet
 supported for these fits.
+For multiple named kernel tiers, unconditional simulation and simulation
+with \code{newdata} are not supported. Use \code{condition_on_RE = TRUE} for a
+conditional draw on the training rows.
 }

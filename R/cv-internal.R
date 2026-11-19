@@ -353,6 +353,7 @@
       cluster = fit$cluster_col,
       cluster2 = fit$cluster2_col,
       family = fit$family_input %||% fit$family,
+      known_sigma_eps = fit$known_sigma_eps,
       weights = .bootstrap_response_setup(fit)$weights,
       missing = miss_control(response = "include"),
       silent = TRUE

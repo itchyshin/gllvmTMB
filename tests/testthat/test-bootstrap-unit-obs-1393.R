@@ -296,12 +296,20 @@ test_that("bootstrap refits reproduce a two-kernel fit (#1393)", {
     seed = 126
   )$data
   levels(df$species) <- paste0("sp", seq_len(n_sp))
-  expect_refit_reproduces_1393(suppressMessages(suppressWarnings(gllvmTMB(
+  fit <- suppressMessages(suppressWarnings(gllvmTMB(
     value ~ 0 + trait + latent(0 + trait | site, d = 1) +
       kernel_latent(species, K = K, d = 1, name = "phy") +
       kernel_latent(species, K = K2, d = 1, name = "non"),
     data = df, unit = "site", cluster = "species"
-  ))))
+  )))
+  expect_error(stats::simulate(fit),
+               class = "gllvmTMB_multi_kernel_simulation_unsupported")
+  ## Isolate refit reconstruction from the unsupported unconditional draw.
+  testthat::local_mocked_bindings(
+    simulate = function(object, nsim, ...) matrix(object$data$value, ncol = nsim),
+    .package = "gllvmTMB"
+  )
+  expect_refit_reproduces_1393(fit)
 })
 
 ## Call bootstrap_Sigma() with simulate() and the refit both trapped, so a

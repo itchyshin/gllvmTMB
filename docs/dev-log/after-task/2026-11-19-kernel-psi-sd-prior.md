@@ -1,12 +1,12 @@
 # After Task: Named-kernel Psi SD prior, isolated implementation phase
 
-**Branch**: integration branch `codex/psi-sd-prior-integration-20261119` at current-main base `902c069c8daaf131a0e0031edf990e36d29bbd41`; original worktree `codex/psi-sd-prior-20261119` is preserved
+**Branch**: integration branch `codex/psi-sd-prior-integration-20261119` at current-main base `aa3f3566c9ce996dd7b4c7da8f6d57f56dcce561`; original worktree `codex/psi-sd-prior-20261119` is preserved
 **Date**: 2026-11-19
 **Roles (engaged)**: Fisher, Curie, Pat, Rose, Gauss, Noether
 
 ## 1. Goal
 
-Implement an opt-in prior for selected trait-specific Psi entries in named kernel covariance tiers. The target class is `unique_variance`, and the prior measure is `natural_sd`, meaning density on `sqrt(Psi[t,t])`. The log-SD optimizer evaluates that density without a Jacobian. The objective oracle and derivative checks are included. A PR and three-OS CI remain open gates; merging or releasing requires separate authorization.
+Implement an opt-in prior for selected trait-specific Psi entries in named kernel covariance tiers. The target class is `unique_variance`, and the prior measure is `natural_sd`, meaning density on `sqrt(Psi[t,t])`. The log-SD optimizer evaluates that density without a Jacobian. The objective oracle and derivative checks are included. PR #1841 is open. Its initial three-platform checks failed on two integration issues; local fixes now pass the targeted tests, but the corrected commit still needs full CI before merge.
 
 ## 2. Implemented
 
@@ -103,7 +103,7 @@ The temporary-worktree route helper returned no LOAD-FIRST manifest. Repository 
 
 ## 10. Known Residuals
 
-1. **Implementation on main and three-OS CI:** not met. The code is now integrated locally on a branch based on current `main`, but remains uncommitted; no PR or CI run exists.
+1. **Implementation on main and three-OS CI:** not met. PR #1841 is open. Initial CI on its first head failed; the follow-up fixes pass locally and await push and exact-head CI. The code is not merged on `main`.
 2. **Simulation recovery:** not met. The deterministic interior and zero-boundary smoke tests do not constitute a parameter-recovery campaign.
 3. **Documentation:** Roxygen and generated help include long and wide examples and scope limits. No separate article or release note was added; preflight found 55 refs with `_pkgdown.yml` changes absent from this worktree, so navigation ownership remains unresolved.
 4. **Runnable user example:** present in the `gllvmTMBcontrol()` help examples.
@@ -112,7 +112,7 @@ The temporary-worktree route helper returned no LOAD-FIRST manifest. Repository 
 
 ### Limitations and carry-forward
 
-The feature is opt-in and limited to native TMB Gaussian identity-link ML Laplace fits with named-kernel Psi. It does not support non-Gaussian models, Julia, REML, MSPL, AGHQ, VA, structured source attenuation, profile or bootstrap inference, or combinations with fixed-effect priors and loading penalties. Local approximate curvature is not a calibrated interval. The HalfNormal prior does not push estimates away from zero. No broad simulation recovery, interval coverage, Julia parity, PR, merge, release, or three-OS CI is established.
+The feature is opt-in and limited to native TMB Gaussian identity-link ML Laplace fits with named-kernel Psi. It does not support non-Gaussian models, Julia, REML, MSPL, AGHQ, VA, structured source attenuation, profile or bootstrap inference, or combinations with fixed-effect priors and loading penalties. Local approximate curvature is not a calibrated interval. The HalfNormal prior does not push estimates away from zero. No broad simulation recovery, interval coverage, Julia parity, merge, release, or passing three-OS CI is established. PR #1841 is open with local follow-up fixes awaiting exact-head validation.
 
 The final focused prior, fixed-effect-prior, and loading-ridge disclosure tests passed. `pkgdown::check_pkgdown()` passed. The full package check completed in 42m 30.6s with 30,990 passes, 1,252 skips, 70 test warnings, and two visual snapshot failures at `test-plot-visual-snapshots.R:301` and `:353`; both failures reproduce on clean base `0d065c398510dcdd0df3079eff0de36d78402202`. Code, documentation, compilation, and examples passed. The check also reported one NOTE for `TMB:::EvalADFunObject`. The closeout compiler found three unrelated unmet `.unlazy` acceptance ledgers and blocked overall closeout; these belong to other work and were left untouched.
 
@@ -126,10 +126,12 @@ The follow-up full package check after adding public `target_class` and `measure
 
 **Does NOT cover:** Julia, non-Gaussian families, REML, MSPL, AGHQ, variational approximation, other covariance sources or grouping levels, integration into the generalized cross-package prior table, fixed-effect/loading penalty combinations, profile or bootstrap inference, calibrated intervals, or broad recovery/coverage. These routes remain unsupported or unverified and are not advertised as part of this slice.
 
-## 13. Current-main integration and validation: 2026-11-19
+## 13. PR #1841 integration and CI follow-up: 2026-11-19
 
-Shinichi assigned this lane responsibility for integrating the Psi-prior changes in the three shared source files. A new integration worktree was created from current `origin/main` commit `902c069c8daaf131a0e0031edf990e36d29bbd41`. The prior dirty worktree remains untouched. The complete implementation patch applied without conflicts. A line-range comparison found no direct hunk overlap with the nine open PRs, and each owner was notified. Their PR branches were not changed.
+The implementation is on branch `codex/psi-sd-prior-integration-20261119`, with PR #1841 at initial head `e2f468f260b9b0af368f88ca12cfe5ad643b1019`. The first full three-platform run and the four Ubuntu PR shards exposed two causes: the two new internal Psi-prior errors raised the bare-abort count from 770 to 772, and the capability-status generator had no mapping for KER-03B.
 
-On the integration branch, `devtools::document(quiet = TRUE)`, the focused prior/fixed-effect/loading-ridge tests, `pkgdown::check_pkgdown()`, and `git diff --check` passed. The full `devtools::check(args = "--no-manual", quiet = TRUE)` took 44m 0.7s and reported 30,998 passes, 1,252 skips, 70 test warnings, and two visual snapshot failures at `test-plot-visual-snapshots.R:301` and `:353`. It ended with one error from those snapshot failures, zero check warnings, and one NOTE for `TMB:::EvalADFunObject`. The same two snapshot failures were reproduced by running the snapshot tests on a clean worktree at the exact current-main commit, so they are baseline failures rather than regressions from this feature.
+I added next-step advice to both internal errors, returning the count to 770. I added KER-03B to the generator as an R-only, scope-limited MAP sensitivity, then regenerated `docs/design/capability-status.md`: 82 rows, 255 mapped register rows, 37 unmapped by design, and zero unexpected unmapped rows. The generator check passed.
 
-The feature remains uncommitted. No pull request, three-OS CI, merge, or release has been completed. The integration branch passed the project Rose and after-task gates and is ready for local commit and draft-PR review. KER-03B remains `partial`; no Julia parity, broad recovery, or calibrated-uncertainty claim is supported.
+`Rscript --vanilla -e 'devtools::test(filter = "psi-sd-priors|gapclose-parity-ledger|gapclose-next-steps", reporter = "summary")'` passed with zero failures. The expected penalised-MAP `logLik()` warning appeared. The previous CI runs remain failures on the initial head and do not validate these follow-up changes. The corrected files are local and uncommitted; full package checks and three-platform CI must pass on the new PR head before merge.
+
+KER-03B remains `partial`. The mapping note explicitly says Julia parity, broad recovery, and calibrated uncertainty are not established. No change was made to the feature's scope or default-fit behavior.

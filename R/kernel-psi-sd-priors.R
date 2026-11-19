@@ -35,7 +35,10 @@
   }
   if (length(kernel_names) != length(kernel_has_psi) ||
       anyDuplicated(kernel_names)) {
-    cli::cli_abort("Internal kernel Psi prior registry is inconsistent.",
+    cli::cli_abort(c(
+      "Internal kernel Psi prior registry is inconsistent.",
+      ">" = "Please report this error with the formula and prior table you supplied."
+    ),
                    class = "gllvmTMB_kernel_psi_prior_internal")
   }
   kernel_index <- match(priors$kernel, kernel_names)
@@ -103,7 +106,10 @@
   if (is.null(priors)) return(obj)
   block_name <- unique(priors$parameter_name)
   if (length(block_name) != 1L) {
-    cli::cli_abort("Kernel Psi prior targets do not share one parameter block.",
+    cli::cli_abort(c(
+      "Kernel Psi prior targets do not share one parameter block.",
+      ">" = "Please report this error with the formula and prior table you supplied."
+    ),
                    class = "gllvmTMB_kernel_psi_prior_internal")
   }
   block <- which(names(obj$par) == block_name)

@@ -123,3 +123,22 @@ Rose pre-publish verdict: PASS after correcting one stale sentence in `docs/dev-
 - `git diff --check`: passed after the report and known-limitations edits.
 
 The after-task report now includes the explicit mathematical contract and the current-main validation results. No formula grammar, likelihood, family, or function signature other than the additive `gllvmTMBcontrol()` argument changed. No standalone article was added because the control help already has runnable long- and wide-format examples and the feature adds no new exported topic. No README, NEWS, ROADMAP, or `_pkgdown.yml` edit is required for this local review branch.
+
+## PR #1841 merge-gate follow-up: 2026-11-19
+
+**Source under test:** PR head `e2f468f260b9b0af368f88ca12cfe5ad643b1019` before the follow-up commit.
+
+**Commands and results:**
+
+- `Rscript dev/gapclose/build-capability-status.R` passed and wrote 82 rows, mapping 255 register rows, with 37 unmapped-by-design rows and zero unexpected unmapped rows.
+- `Rscript dev/gapclose/build-capability-status.R --check` passed: 82 rows, zero unmapped register rows.
+- `Rscript --vanilla -e 'devtools::test(filter = "psi-sd-priors|gapclose-parity-ledger|gapclose-next-steps", reporter = "summary")'` passed with zero failures. The expected penalised-MAP `logLik()` warning appeared.
+- `Rscript --vanilla -e 'source("dev/gapclose/count-bare-aborts.R"); hits <- count_bare_aborts("R"); cat(length(hits), "bare aborts found\\n")'` returned 770 after adding next-step advice to two internal Psi-prior errors.
+- `rg -n 'KER-03B|Named-kernel Psi SD priors|Julia parity, broad recovery' dev/gapclose/build-capability-status.R docs/design/capability-status.md docs/design/35-validation-debt-register.md` found the matching KER-03B mapping, scope note, and `partial` register row.
+- `git diff --check` passed.
+
+**Pre-fix CI evidence:** PR run `44585940971` completed on the source under test. Ubuntu shards 1 and 2 passed; shard 3 failed only the 770 bare-abort guard; shard 4 failed the three assertions caused by KER-03B being unmapped. The manual three-platform run `44586781505` failed on Windows, macOS, and Ubuntu with the same two causes. The exact failures were `772 > 770` and the generator reporting `KER-03B` as its sole unmapped register row. These runs predate the follow-up changes and do not validate them.
+
+**Not run after the follow-up changes:** Full package check, three-platform CI, coverage workflow, Julia parity, or merge. Push the corrected commit and wait for the exact-head checks before merge.
+
+**Claim boundary:** The local mapping and targeted tests pass. They do not establish that the corrected commit passes package checks or three-platform CI.

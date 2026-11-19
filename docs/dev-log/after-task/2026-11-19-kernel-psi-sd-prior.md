@@ -26,8 +26,8 @@ For each selected named kernel `k` and trait `t`, the target is `sigma[k,t] = sq
 - Tests: `tests/testthat/test-psi-sd-priors.R`, `tests/testthat/test-loading-ridge-disclosure.R` (warning assertion updated to match the emitted MAP/AIC disclosure).
 - Validation and limitation records: `docs/design/35-validation-debt-register.md`, `docs/dev-log/known-limitations.md`.
 - Help: `man/gllvmTMBcontrol.Rd`, `man/standard_errors.Rd`, `man/gllvmTMB_multi-vcov.Rd`, `man/tidy.gllvmTMB_multi.Rd`.
-- Task records: `docs/dev-log/check-log.d/2026-11-19-kernel-psi-sd-prior.md`, `docs/dev-log/after-task/2026-11-19-kernel-psi-sd-prior.md`.
-- Recovery records: `docs/dev-log/recovery-checkpoints/2026-11-19-codex-psi-prior-checkpoint.md`, `docs/dev-log/recovery-checkpoints/2026-11-19-164509-codex-integration-checkpoint.md`, `docs/dev-log/recovery-checkpoints/2026-11-19-165443-codex-integration-checkpoint.md`.
+- Task records: `docs/dev-log/check-log.md`, `docs/dev-log/check-log.d/2026-11-19-kernel-psi-sd-prior.md`, `docs/dev-log/after-task/2026-11-19-kernel-psi-sd-prior.md`.
+- Recovery records: `docs/dev-log/recovery-checkpoints/2026-11-19-codex-psi-prior-checkpoint.md`, `docs/dev-log/recovery-checkpoints/2026-11-19-164509-codex-integration-checkpoint.md`, `docs/dev-log/recovery-checkpoints/2026-11-19-165443-codex-integration-checkpoint.md`, `docs/dev-log/recovery-checkpoints/2026-11-19-230032-codex-checkpoint.md`.
 
 Example files touched: the `gllvmTMBcontrol()` roxygen examples in `R/gllvmTMB.R` and the regenerated `man/gllvmTMBcontrol.Rd`. The examples contain both long-format and wide `traits(...)` calls. `man/standard_errors.Rd` was regenerated with the help update. No README, other roxygen examples, vignette, article, NEWS, ROADMAP, or formula grammar file changed. No standalone article was warranted because the control help already contains runnable long- and wide-format examples and no new exported topic or navigation entry was added. The public help states the supported route and limits; the design row is KER-03B.
 

@@ -12,6 +12,68 @@
 ## inference diagnostic rather than part of this point-stationarity flag.
 .gllvmTMB_converged_gtol <- 1e-2
 
+## Relative (unit-free) gradient tolerance behind `fit_health$convergence_status`
+## (adopted converged rule, 18 Nov 2026). The test is
+##   max_i |g_i| * max(|par_i|, 1) / max(|objective|, 1) < tol,
+## so it is unchanged by rescaling a parameter (g_i * par_i is invariant) and is
+## relative to the size of the objective, unlike the absolute 1e-2 gate above
+## (kept only for the warm-restart bookkeeping in R/fit-multi.R). A loading that
+## has run to 500 with a raw gradient of 0.004 scores about 3e-2, far above it.
+.gllvmTMB_converged_rel_gtol <- 1e-4
+
+## Relative gradient described above; NA when it cannot be computed.
+.gllvmTMB_relative_gradient <- function(grad, par, obj_val) {
+  grad <- as.numeric(grad)
+  par <- as.numeric(par)
+  if (length(grad) == 0L || length(grad) != length(par) ||
+      !is.finite(obj_val) || any(!is.finite(grad))) {
+    return(NA_real_)
+  }
+  max(abs(grad) * pmax(abs(par), 1)) / max(abs(obj_val), 1)
+}
+
+## One row per boundary parameter: `name` (the component) and `kind`
+## (sd, loading, runaway_loading, dispersion or other). The existing
+## `boundary_flags` strings are folded in, so a Heywood case (a unique SD
+## collapsed to zero, a Gamma shape at its ceiling, a loading run away) is a kind
+## of boundary and not a separate status. A flag from another source (for
+## example #1397's ordinal-cutpoint flag) lands under kind "other".
+.gllvmTMB_boundary_params <- function(flags, extra = NULL) {
+  flags <- as.character(flags %||% character(0))
+  kind <- rep("other", length(flags))
+  name <- sub("^(near_zero_|boundary_)", "", flags)
+  kind[grepl("^near_zero_(sd|psi)", flags)] <- "sd"
+  kind[grepl("^near_zero_.*_loading$", flags)] <- "loading"
+  kind[grepl("^boundary_(phi|df|sigma)", flags)] <- "dispersion"
+  out <- data.frame(name = name, kind = kind, stringsAsFactors = FALSE)
+  if (!is.null(extra) && nrow(extra) > 0L) {
+    out <- rbind(out, extra)
+  }
+  out[!duplicated(out), , drop = FALSE]
+}
+
+## First match wins: not_converged > boundary > degenerate > converged. Boundary
+## is tested before the Hessian so a boundary fit never reads `degenerate`.
+## `se_nonfinite` is TRUE when standard errors exist but some are NA/NaN/Inf;
+## no standard errors at all (`se = FALSE`) is not a failure.
+.gllvmTMB_convergence_status <- function(
+  optimizer_converged, obj_val, premature_termination, relative_gradient,
+  n_boundary, pd_hessian, se_nonfinite
+) {
+  gradient_ok <- isTRUE(relative_gradient < .gllvmTMB_converged_rel_gtol)
+  if (!isTRUE(optimizer_converged) || !is.finite(obj_val) ||
+      isTRUE(premature_termination) || !gradient_ok) {
+    return("not_converged")
+  }
+  if (n_boundary > 0L) {
+    return("boundary")
+  }
+  if (isFALSE(pd_hessian) || isTRUE(se_nonfinite)) {
+    return("degenerate")
+  }
+  "converged"
+}
+
 .gllvmTMB_build_fit_health <- function(object) {
   if (!inherits(object, "gllvmTMB_multi")) {
     .gllvmTMB_abort_not_multi_fit(object)
@@ -80,10 +142,37 @@
   n_iter <- suppressWarnings(as.numeric(object$opt$iterations %||% NA_real_))
   premature_termination <- length(n_iter) == 1L && is.finite(n_iter) &&
     n_iter <= 2 && (!is.finite(obj_val) || abs(obj_val) > 1e12)
-  converged <- isTRUE(
-    optimizer_converged && is.finite(obj_val) && stationary_by_gradient &&
-      !premature_termination
+  ## Converged rule (18 Nov 2026): `converged` is TRUE only for an interior
+  ## optimum with usable standard errors; see `convergence_status` below.
+  relative_gradient <- .gllvmTMB_relative_gradient(
+    grad, object$opt$par, obj_val
   )
+  boundary_flags <- .gllvmTMB_boundary_flags(object)
+  runaway <- tryCatch(
+    .gllvmTMB_binomial_prevalence_loading_row(object),
+    error = function(e) NULL
+  )
+  extra <- if (!is.null(runaway) &&
+               identical(as.character(runaway$status), "WARN")) {
+    data.frame(name = "loading", kind = "runaway_loading",
+               stringsAsFactors = FALSE)
+  } else {
+    NULL
+  }
+  boundary_params <- .gllvmTMB_boundary_params(boundary_flags, extra)
+  pd_hessian <- if (
+    !is.null(object$sd_report) && !is.null(object$sd_report$pdHess)
+  ) {
+    isTRUE(object$sd_report$pdHess)
+  } else {
+    NA
+  }
+  convergence_status <- .gllvmTMB_convergence_status(
+    optimizer_converged, obj_val, premature_termination, relative_gradient,
+    nrow(boundary_params), pd_hessian,
+    !is.null(object$sd_report) && length(se) > 0L && any(!is.finite(se))
+  )
+  converged <- identical(convergence_status, "converged")
 
   list(
     optimizer = if (nrow(restart_history) > 0L) {
@@ -102,20 +191,16 @@
     stationary_by_scaled_gradient = stationary_by_scaled_gradient,
     stationary_by_gradient = stationary_by_gradient,
     optimizer_converged = optimizer_converged,
+    relative_gradient = relative_gradient,
     converged = converged,
+    convergence_status = convergence_status,
+    boundary_params = boundary_params,
     premature_termination = premature_termination,
-    pd_hessian = if (
-      !is.null(object$sd_report) &&
-        !is.null(object$sd_report$pdHess)
-    ) {
-      isTRUE(object$sd_report$pdHess)
-    } else {
-      NA
-    },
+    pd_hessian = pd_hessian,
     sdreport_ok = !is.null(object$sd_report),
     sdreport_error = object$sdreport_error %||% NA_character_,
     max_fixed_se = max_se,
-    boundary_flags = .gllvmTMB_boundary_flags(object),
+    boundary_flags = boundary_flags,
     start_provenance = object$start_provenance %||% list(),
     selected_restart = selected_restart
   )
@@ -1781,6 +1866,14 @@ check_gllvmTMB <- function(
         health$message %||% "optimizer did not report clean convergence"
       },
       "try multiple starts, stronger starts, rescaling, or an alternative optimizer"
+    ),
+    .gllvmTMB_check_row(
+      "convergence_status",
+      if (identical(health$convergence_status, "converged")) "PASS" else "WARN",
+      health$convergence_status %||% NA_character_,
+      "converged",
+      "first match of not_converged, boundary, degenerate; a warning, not an error",
+      "see fit$fit_health$boundary_params and the gradient, Hessian and boundary rows"
     ),
     .gllvmTMB_check_row(
       "max_gradient",

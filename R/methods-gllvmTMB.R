@@ -3399,6 +3399,8 @@ predict.gllvmTMB_multi <- function(
     if (!re_zero) {
       par <- object$tmb_obj$env$last.par.best
       added <- character(0)
+      ## Tiers evaluated on the newdata path (whether or not any row matched).
+      handled_on_newdata <- character(0)
       ## A missing unit *column* used to leave every st_id NA, skip the
       ## contributions, and still report rr_B / diag_B as re-added (#1782).
       ## An unseen level of a column that is present stays fixed-effects-only.
@@ -3465,14 +3467,17 @@ predict.gllvmTMB_multi <- function(
           )
         }
         L_B <- object$report$Lambda_B
+        hit_rr <- FALSE
         for (i in seq_along(eta)) {
           s <- st_id[i]
           t <- tr_id[i]
           if (!is.na(s) && s >= 0 && s < object$n_sites) {
             eta[i] <- eta[i] + sum(L_B[t + 1L, ] * z_B[, s + 1L])
+            hit_rr <- TRUE
           }
         }
-        added <- c(added, "rr_B")
+        handled_on_newdata <- c(handled_on_newdata, "rr_B")
+        if (hit_rr) added <- c(added, "rr_B")
       }
       if (object$use$diag_B) {
         s_B <- if (isTRUE(object$integrated_gaussian_diag_B)) {
@@ -3484,48 +3489,60 @@ predict.gllvmTMB_multi <- function(
         if (!identical(dim(s_B), c(object$n_traits, object$n_sites))) {
           cli::cli_abort("The fitted unit-level diagonal effects have incompatible dimensions.")
         }
+        hit_diag <- FALSE
         for (i in seq_along(eta)) {
           s <- st_id[i]
           t <- tr_id[i]
           if (!is.na(s) && s >= 0 && s < object$n_sites) {
             eta[i] <- eta[i] + s_B[t + 1L, s + 1L]
+            hit_diag <- TRUE
           }
         }
-        added <- c(added, "diag_B")
+        handled_on_newdata <- c(handled_on_newdata, "diag_B")
+        if (hit_diag) added <- c(added, "diag_B")
       }
       ## propto: per-species random effect, additive.
       ## The guard was `!is.na(sp_id[1])` -- row ONE only -- so a newdata
       ## frame whose first row had an unseen species silently skipped the
       ## tier for every other row too. Each row is now guarded on its own,
       ## inside the loop, as rr_B and diag_B already were.
-      if (isTRUE(object$use$propto) && any(!is.na(sp_id))) {
+      if (isTRUE(object$use$propto)) {
         p_phy <- matrix(
           par[names(par) == "p_phy"],
           nrow = object$n_species,
           ncol = object$n_traits
         )
+        hit_propto <- FALSE
         for (i in seq_along(eta)) {
           sp <- sp_id[i]
           t <- tr_id[i]
           if (!is.na(sp) && sp >= 0 && sp < object$n_species) {
             eta[i] <- eta[i] + p_phy[sp + 1L, t + 1L]
+            hit_propto <- TRUE
           }
         }
-        added <- c(added, "propto")
+        handled_on_newdata <- c(handled_on_newdata, "propto")
+        if (hit_propto) added <- c(added, "propto")
       }
       if (isTRUE(object$use$phylo_rr) || isTRUE(object$use$phylo_diag)) {
+        phylo_handled <- c(
+          if (isTRUE(object$use$phylo_rr)) "phylo_rr",
+          if (isTRUE(object$use$phylo_diag)) "phylo_diag"
+        )
+        handled_on_newdata <- c(handled_on_newdata, phylo_handled)
         effects <- .structured_rho_contribution(object)
         ok <- !is.na(sp_id) & sp_id >= 0 & sp_id < object$n_species & !is.na(tr_id)
-        eta[ok] <- eta[ok] + effects[cbind(sp_id[ok]+1L,tr_id[ok]+1L)]
-        added <- c(added, if (isTRUE(object$use$phylo_rr)) "phylo_rr",
-          if (isTRUE(object$use$phylo_diag)) "phylo_diag")
+        if (any(ok)) {
+          eta[ok] <- eta[ok] + effects[cbind(sp_id[ok]+1L, tr_id[ok]+1L)]
+          added <- c(added, phylo_handled)
+        }
       }
       ## diag_species: per-(trait, species) random intercept.
       ## src/gllvmTMB.cpp:2513 -- eta(o) += q_sp(t, species_id(o)). Note the
       ## index order is (trait, species), the TRANSPOSE of p_phy above; that
       ## is why each tier gets its own exact-identity test rather than a
       ## shared one.
-      if (isTRUE(object$use$diag_species) && any(!is.na(sp_id))) {
+      if (isTRUE(object$use$diag_species)) {
         q_sp <- matrix(
           par[names(par) == "q_sp"],
           nrow = object$n_traits,
@@ -3533,8 +3550,11 @@ predict.gllvmTMB_multi <- function(
         )
         ok <- !is.na(sp_id) & sp_id >= 0 & sp_id < object$n_species &
           !is.na(tr_id)
-        eta[ok] <- eta[ok] + q_sp[cbind(tr_id[ok] + 1L, sp_id[ok] + 1L)]
-        added <- c(added, "diag_species")
+        handled_on_newdata <- c(handled_on_newdata, "diag_species")
+        if (any(ok)) {
+          eta[ok] <- eta[ok] + q_sp[cbind(tr_id[ok] + 1L, sp_id[ok] + 1L)]
+          added <- c(added, "diag_species")
+        }
       }
 
       ## diag_cluster2: per-(trait, cluster2-level) random intercept.
@@ -3557,6 +3577,7 @@ predict.gllvmTMB_multi <- function(
         )
         ok_c2 <- !is.na(c2_id) & c2_id >= 0L & c2_id < length(lv_c2) &
           !is.na(tr_id)
+        handled_on_newdata <- c(handled_on_newdata, "diag_cluster2")
         if (any(ok_c2)) {
           eta[ok_c2] <- eta[ok_c2] + r_c2[cbind(tr_id[ok_c2] + 1L, c2_id[ok_c2] + 1L)]
           added <- c(added, "diag_cluster2")
@@ -3579,6 +3600,7 @@ predict.gllvmTMB_multi <- function(
         ## rr_W: src/gllvmTMB.cpp:2503-2507 --
         ## eta(o) += sum_k Lambda_W(t, k) * z_W(k, ss).
         if (isTRUE(object$use$rr_W)) {
+          handled_on_newdata <- c(handled_on_newdata, "rr_W")
           z_W <- matrix(
             par[names(par) == "z_W"],
             nrow = object$d_W,
@@ -3594,15 +3616,18 @@ predict.gllvmTMB_multi <- function(
           }
         }
         ## diag_W: src/gllvmTMB.cpp:2509 -- eta(o) += s_W(t, ss).
-        if (isTRUE(object$use$diag_W) && any(ok_ss)) {
-          s_W <- matrix(
-            par[names(par) == "s_W"],
-            nrow = object$n_traits,
-            ncol = object$n_site_species
-          )
-          eta[ok_ss] <- eta[ok_ss] +
-            s_W[cbind(tr_id[ok_ss] + 1L, ss_id[ok_ss] + 1L)]
-          added <- c(added, "diag_W")
+        if (isTRUE(object$use$diag_W)) {
+          handled_on_newdata <- c(handled_on_newdata, "diag_W")
+          if (any(ok_ss)) {
+            s_W <- matrix(
+              par[names(par) == "s_W"],
+              nrow = object$n_traits,
+              ncol = object$n_site_species
+            )
+            eta[ok_ss] <- eta[ok_ss] +
+              s_W[cbind(tr_id[ok_ss] + 1L, ss_id[ok_ss] + 1L)]
+            added <- c(added, "diag_W")
+          }
         }
       }
 
@@ -3636,6 +3661,7 @@ predict.gllvmTMB_multi <- function(
           eta[okg] <- eta[okg] + u_re[idx]
           hit <- TRUE
         }
+        handled_on_newdata <- c(handled_on_newdata, "re_int")
         if (hit) added <- c(added, "re_int")
       }
 
@@ -3649,7 +3675,7 @@ predict.gllvmTMB_multi <- function(
       }
       ## `lv_B` carries no eta term of its own: it is the score mean, already
       ## inside U_B_total above, so it counts as handled whenever rr_B is.
-      handled <- c(added, if (isTRUE(object$use$lv_B)) "lv_B")
+      handled <- c(handled_on_newdata, if (isTRUE(object$use$lv_B)) "lv_B")
       unhandled <- .gllvmTMB_predict_unhandled_re_tiers(object, handled)
       if (length(added)) {
         cli::cli_inform(c(

@@ -71,7 +71,7 @@ test_that("a missing animal grouping names that column (#1765)", {
     error = function(e) e
   )
   expect_s3_class(err, "gllvmTMB_animal_grouping")
-  expect_match(conditionMessage(err), "groups by .individual.")
+  expect_match(conditionMessage(err), "groups by [^a-z]*individual")
   expect_no_match(conditionMessage(err), "placeholder")
 })
 

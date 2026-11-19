@@ -70,7 +70,7 @@ test_that("a missing non-species phylo grouping names that column (#1766)", {
     error = function(e) e
   )
   expect_s3_class(err, "gllvmTMB_phylo_grouping")
-  expect_match(conditionMessage(err), "groups by .taxon.")
+  expect_match(conditionMessage(err), "groups by [^a-z]*taxon")
   expect_no_match(conditionMessage(err), "placeholder")
 })
 
@@ -98,4 +98,33 @@ test_that("phylo_latent(species) with a bad vcv still names phylo_vcv (#1766)", 
   msg <- conditionMessage(err)
   expect_match(msg, "phylo_vcv")
   expect_match(msg, "sp4")
+})
+
+test_that("traits(t1, t2) ~ phylo_latent(1 | ind) fits without cluster (#1766)", {
+  set.seed(1766)
+  inds <- paste0("i", 1:6)
+  K <- diag(6L)
+  dimnames(K) <- list(inds, inds)
+  wide <- data.frame(
+    ind = factor(rep(inds, each = 3L)),
+    site = factor(rep(1:3, 6L)),
+    t1 = stats::rnorm(18L),
+    t2 = stats::rnorm(18L)
+  )
+  ctrl <- .fix1766_control()
+  fit_bar <- gllvmTMB(
+    traits(t1, t2) ~ phylo_latent(1 | ind, d = 1, vcv = K),
+    data = wide, unit = "site", control = ctrl, silent = TRUE
+  )
+  fit_bare <- gllvmTMB(
+    traits(t1, t2) ~ phylo_latent(ind, d = 1, vcv = K),
+    data = wide, unit = "site", control = ctrl, silent = TRUE
+  )
+  expect_s3_class(fit_bar, "gllvmTMB")
+  expect_equal(fit_bar$opt$convergence, 0L)
+  expect_equal(
+    as.numeric(stats::logLik(fit_bar)),
+    as.numeric(stats::logLik(fit_bare)),
+    tolerance = 1e-8
+  )
 })

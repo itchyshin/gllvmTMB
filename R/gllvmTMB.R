@@ -163,9 +163,11 @@
 #'   including the replicated kernel example that passes `cluster = "site"`.
 #'   The same omitted-`cluster` rule adopts one bare grouping from
 #'   `phylo_latent()`, `phylo_unique()`, `phylo_scalar()`, `phylo_indep()`,
-#'   or `phylo_dep()` when that column is in `data` and is not the default
-#'   name `species`. A missing `species` column keeps the existing
-#'   placeholder message.
+#'   `phylo_dep()`, `animal_latent()`, `animal_unique()`, `animal_scalar()`,
+#'   `animal_indep()`, or `animal_dep()` when that column is in `data` and is
+#'   not the default name `species`. A missing `species` column keeps the
+#'   existing placeholder message. Kernel, phylo, and animal keywords must
+#'   name the same column when `cluster` is omitted.
 #'   If supplied but no covariance keyword uses
 #'   that column, [gllvmTMB()] warns; omit the argument or use the column in
 #'   the intended covariance keyword.
@@ -1184,66 +1186,15 @@ gllvmTMB <- function(
   ## `cluster`.
   species <- cluster
 
-  ## #1752: a documented one-grouping kernel call names its own grouping
-  ## (`kernel_indep(unit, K = K)`) and does not pass `cluster`. The dense
-  ## kernel reuses the cluster slot, so an omitted cluster must be that
-  ## grouping. Otherwise the default `"species"` column is a placeholder
-  ## and `K` is checked as if it were a phylogenetic VCV. An explicit
-  ## `cluster` (the replicated `?kernel_latent` example) is left alone.
-  ## Phylogenetic keywords are handled in the next block.
-  cluster_adopted <- FALSE
+  ## #1752 / #1765 / #1766: when `cluster` is omitted, one shared bare
+  ## grouping from kernel_*, phylo_*, or animal_* is adopted. An explicit
+  ## `cluster` never enters this block. Mixed keyword families must agree.
   if (!cluster_supplied && !species_alias_supplied && is.data.frame(data)) {
-    kernel_groups <- .gllvmTMB_kernel_bare_groups(formula)
-    if (nrow(kernel_groups) > 0L) {
-      groups <- unique(kernel_groups$group)
-      if (length(groups) > 1L) {
-        cli::cli_abort(c(
-          "The {.fn kernel_*} terms name more than one grouping column ({.val {groups}}), and {.arg cluster} was not given.",
-          "i" = "{.arg K} is aligned to one grouping column.",
-          ">" = "Pass {.arg cluster} equal to the column whose levels match {.code rownames(K)}. Different kernel groupings in one fit are not supported."
-        ), class = "gllvmTMB_kernel_grouping")
-      }
-      group <- groups[[1L]]
-      if (!group %in% names(data)) {
-        cli::cli_abort(c(
-          "{.fn {kernel_groups$fn[[1L]]}} groups by {.field {group}}, which is not a column in {.arg data}.",
-          ">" = "Name the column whose levels match {.code rownames(K)}, or pass that column as {.arg cluster}."
-        ), class = "gllvmTMB_kernel_grouping")
-      }
-      cluster <- group
-      species <- group
-      cluster_adopted <- TRUE
-    }
-  }
-
-  ## #1766: an omitted cluster adopts the grouping named in one phylo_* term
-  ## (`phylo_latent(taxon, ...)` or `phylo_indep(0 + trait | taxon, ...)`).
-  ## The default name "species" is left alone when that column is absent, so
-  ## the existing placeholder / phylo_vcv message stays. An explicit cluster
-  ## never reaches this block. A kernel term that already adopted a grouping
-  ## is not overwritten.
-  if (!cluster_adopted && !cluster_supplied && !species_alias_supplied &&
-      is.data.frame(data)) {
-    phylo_groups <- .gllvmTMB_phylo_bare_groups(formula)
-    if (nrow(phylo_groups) > 0L) {
-      groups <- unique(phylo_groups$group)
-      if (length(groups) > 1L) {
-        cli::cli_abort(c(
-          "The {.fn phylo_*} terms name more than one grouping column ({.val {groups}}), and {.arg cluster} was not given.",
-          ">" = "Pass {.arg cluster} equal to the column whose levels match the phylogenetic matrix."
-        ), class = "gllvmTMB_phylo_grouping")
-      }
-      group <- groups[[1L]]
-      if (group %in% names(data)) {
-        cluster <- group
-        species <- group
-      } else if (!identical(group, "species")) {
-        cli::cli_abort(c(
-          "{.fn {phylo_groups$fn[[1L]]}} groups by {.field {group}}, which is not a column in {.arg data}.",
-          ">" = "Name the column whose levels match the phylogenetic matrix, or pass that column as {.arg cluster}."
-        ), class = "gllvmTMB_phylo_grouping")
-      }
-    }
+    resolved <- .gllvmTMB_resolve_omitted_cluster_grouping(
+      formula, data, cluster, species
+    )
+    cluster <- resolved$cluster
+    species <- resolved$species
   }
 
   ## ---- Phase L Stage 2 (2026-05-08): soft-deprecate global phylo args ---

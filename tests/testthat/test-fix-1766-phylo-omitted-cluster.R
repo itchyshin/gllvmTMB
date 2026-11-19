@@ -100,6 +100,43 @@ test_that("phylo_latent(species) with a bad vcv still names phylo_vcv (#1766)", 
   expect_match(msg, "sp4")
 })
 
+test_that("phylo_latent ignores species_label partial-name trap (#1766)", {
+  groups <- gllvmTMB:::.gllvmTMB_phylo_bare_groups(
+    quote(value ~ phylo_latent(d = 1, species_label = taxon, vcv = K))
+  )
+  expect_equal(nrow(groups), 0L)
+  groups_named <- gllvmTMB:::.gllvmTMB_phylo_bare_groups(
+    quote(value ~ phylo_latent(species = taxon, d = 1, vcv = K))
+  )
+  expect_equal(groups_named$group, "taxon")
+})
+
+test_that("kernel_indep(K = K, unit = g) resolves unit by name (#1766)", {
+  groups <- gllvmTMB:::.gllvmTMB_kernel_bare_groups(
+    quote(value ~ kernel_indep(K = K, unit = g))
+  )
+  expect_equal(groups$group, "g")
+})
+
+test_that("disagreeing keyword groupings abort when cluster is omitted (#1766)", {
+  fx <- .fix1766_layout()
+  K <- fx$K
+  err <- tryCatch(
+    gllvmTMB(
+      value ~ 0 + trait + phylo_latent(taxon, d = 1, vcv = K) +
+        kernel_indep(plot, K = K),
+      data = fx$df, unit = "plot", trait = "trait",
+      control = .fix1766_control(), silent = TRUE
+    ),
+    error = function(e) e
+  )
+  expect_s3_class(err, "gllvmTMB_cluster_grouping")
+  expect_match(conditionMessage(err), "phylo_latent")
+  expect_match(conditionMessage(err), "kernel_indep")
+  expect_match(conditionMessage(err), "taxon")
+  expect_match(conditionMessage(err), "plot")
+})
+
 test_that("traits(t1, t2) ~ phylo_latent(1 | ind) fits without cluster (#1766)", {
   set.seed(1766)
   inds <- paste0("i", 1:6)

@@ -1,6 +1,6 @@
 # gllvmTMB 0.8.0
 
-* `phylo_latent(taxon, ...)`, `phylo_unique(taxon)`, `phylo_scalar(taxon)`, `phylo_indep(0 + trait | taxon)`, and `phylo_dep(0 + trait | taxon)` now use `taxon` when `cluster` is omitted and that column is in the data. They used to build a placeholder `species` column and check the phylogenetic matrix against it. The default name `species`, including a missing `species` column, keeps the existing message. An explicit `cluster` is unchanged (refs #1766).
+* `phylo_latent(taxon, ...)`, `phylo_unique(taxon)`, `phylo_scalar(taxon)`, `phylo_indep(0 + trait | taxon)`, and `phylo_dep(0 + trait | taxon)` now use `taxon` when `cluster` is omitted and that column is in the data. They used to build a placeholder `species` column and check the phylogenetic matrix against it. The default name `species`, including a missing `species` column, keeps the existing message. An explicit `cluster` is unchanged. The same rule applies to `animal_latent()`, `animal_unique()`, `animal_scalar()`, `animal_indep()`, and `animal_dep()`. Kernel, phylo, and animal keywords must name the same column when `cluster` is omitted (refs #1766, refs #1765).
 
 * `family = "gaussian"` with `temporal_latent()` now builds the same family object as `family = gaussian()`. The temporal gate read `family$family` before character names were resolved, so the call stopped with `$ operator is invalid for atomic vectors`. Other single-name character families use that same lookup. `family = gaussian()` and `family = gaussian` are unchanged (refs #1804).
 

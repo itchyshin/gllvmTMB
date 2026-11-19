@@ -21,6 +21,13 @@
 # --with-keep.source and wrapped in trace counters, R_COVR=true (so the suite's
 # own skip_on_covr() calls skip), and vignette outputs are not built (no test
 # reads them).
+#
+# covr 4 records each trace's counters file as the library the test process
+# loaded. Under --as-cran that library is a symlink in the check session's
+# temp directory, and the check deletes it on the way out. The counters
+# themselves stay in the persistent install. tools/retarget-covr-traces.R
+# points those traces at the surviving file before covr merges them. covr
+# 3.6.5 does not store that path, so the same step leaves its traces alone.
 
 fail <- function(...) stop(sprintf(...), call. = FALSE)
 
@@ -134,8 +141,19 @@ code <- c(
   "if (!nzchar(Sys.getenv(\"_R_CHECK_FORCE_SUGGESTS_\"))) Sys.setenv(`_R_CHECK_FORCE_SUGGESTS_` = \"false\")",
   "if (!nzchar(Sys.getenv(\"_R_CHECK_CRAN_INCOMING_\"))) Sys.setenv(`_R_CHECK_CRAN_INCOMING_` = \"false\")",
   sprintf("status <- system2(%s, %s)", deparse(r_bin), paste(deparse(check_args), collapse = "")),
-  "if (!identical(as.integer(status), 0L)) stop(\"R CMD check against the instrumented library failed with status \", status)"
+  "if (!identical(as.integer(status), 0L)) stop(\"R CMD check against the instrumented library failed with status \", status)",
+  # Runs in the commands process after the check has deleted its temp
+  # library. The parent merges traces only after this process exits, so the
+  # rewritten counters paths are the ones covr reads.
+  sprintf("source(%s)", deparse(file.path(workspace, "tools", "retarget-covr-traces.R"))),
+  sprintf(
+    "retarget_missing_covr_counters(%s, %s)",
+    deparse(covr_lib),
+    deparse(file.path(covr_lib, pkg, "R", "covr_counters.rds"))
+  )
 )
+
+cat(sprintf("covr_version=%s\n", as.character(packageVersion("covr"))))
 
 cov <- covr::package_coverage(
   path = covr_src,

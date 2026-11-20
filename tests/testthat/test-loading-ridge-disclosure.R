@@ -28,8 +28,14 @@ test_that("penalised likelihood surfaces disclose MAP semantics every time", {
   expect_equal(as.numeric(ll), -11.5)
   expect_true(isTRUE(attr(ll, "penalised")))
   expect_warning(logLik(fit), "MAP point")
-  expect_warning(.aghq_check_penalised(list(fit), "AIC"), "not AIC")
-  expect_warning(.aghq_check_penalised(list(fit), "AIC"), "not AIC")
+  expect_warning(
+    .aghq_check_penalised(list(fit), "AIC"),
+    "ordinary likelihood-based interpretation is unsupported"
+  )
+  expect_warning(
+    .aghq_check_penalised(list(fit), "AIC"),
+    "ordinary likelihood-based interpretation is unsupported"
+  )
 })
 
 test_that("Laplace ridge stores likelihood and optimisation objectives separately", {

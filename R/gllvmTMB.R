@@ -1206,9 +1206,9 @@ gllvmTMB <- function(
   ## `cluster` (the replicated `?kernel_latent` example) is left alone.
   ## Phylogenetic keywords do not enter this block.
   if (!cluster_supplied && !species_alias_supplied && is.data.frame(data)) {
-    kernel_groups <- .gllvmTMB_kernel_bare_groups(formula)
-    if (nrow(kernel_groups) > 0L) {
-      groups <- unique(kernel_groups$group)
+    cluster_groups <- .gllvmTMB_cluster_keyword_groups(formula)
+    if (nrow(cluster_groups) > 0L) {
+      groups <- unique(cluster_groups$group)
       if (length(groups) > 1L) {
         cli::cli_abort(c(
           "The {.fn kernel_*} terms name more than one grouping column ({.val {groups}}), and {.arg cluster} was not given.",
@@ -1219,7 +1219,7 @@ gllvmTMB <- function(
       group <- groups[[1L]]
       if (!group %in% names(data)) {
         cli::cli_abort(c(
-          "{.fn {kernel_groups$fn[[1L]]}} groups by {.field {group}}, which is not a column in {.arg data}.",
+          "{.fn {cluster_groups$fn[[1L]]}} groups by {.field {group}}, which is not a column in {.arg data}.",
           ">" = "Name the column whose levels match {.code rownames(K)}, or pass that column as {.arg cluster}."
         ), class = "gllvmTMB_kernel_grouping")
       }

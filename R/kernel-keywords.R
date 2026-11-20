@@ -211,6 +211,90 @@ kernel_scalar <- function(unit, K, name = "kernel") {
   )
 }
 
+## Bare or bar-syntax grouping columns for kernel_*, phylo_* and animal_*()
+## intercept terms when `cluster` was omitted (#1752, #1765, #1766).
+.gllvmTMB_cluster_keyword_groups <- function(formula) {
+  keyword_groups <- list(
+    kernel = list(
+      fns = c(
+        "kernel_latent", "kernel_unique", "kernel_indep",
+        "kernel_dep", "kernel_scalar"
+      ),
+      cluster_arg = "unit"
+    ),
+    phylo_bare = list(
+      fns = c("phylo_latent", "phylo_unique", "phylo_scalar", "phylo_rr"),
+      cluster_arg = "species"
+    ),
+    animal_bare = list(
+      fns = c("animal_latent", "animal_unique", "animal_scalar"),
+      cluster_arg = "id"
+    ),
+    bar = list(
+      fns = c(
+        "phylo_indep", "phylo_dep", "phylo_slope",
+        "animal_indep", "animal_dep", "animal_slope"
+      ),
+      cluster_arg = NULL
+    )
+  )
+  found <- list()
+  walk <- function(e) {
+    if (!is.call(e)) return(invisible(NULL))
+    fn <- as.character(e[[1L]])[1L]
+    if (is.na(fn)) return(invisible(NULL))
+    for (spec in keyword_groups) {
+      if (!fn %in% spec$fns || length(e) < 2L) next
+      group <- NA_character_
+      if (identical(spec, keyword_groups$bar)) {
+        bar <- e[[2L]]
+        if (is.call(bar) && identical(bar[[1L]], as.name("|"))) {
+          g <- bar[[3L]]
+          group <- if (is.symbol(g)) {
+            as.character(g)
+          } else if (is.character(g) && length(g) == 1L && !is.na(g)) {
+            g
+          } else {
+            NA_character_
+          }
+        }
+      } else {
+        matched <- tryCatch(match.call(get(fn), e), error = function(err) NULL)
+        arg <- if (!is.null(matched) && !is.null(spec$cluster_arg) &&
+                     !is.null(matched[[spec$cluster_arg]])) {
+          matched[[spec$cluster_arg]]
+        } else {
+          e[[2L]]
+        }
+        group <- if (is.symbol(arg)) {
+          as.character(arg)
+        } else if (is.character(arg) && length(arg) == 1L && !is.na(arg)) {
+          arg
+        } else {
+          NA_character_
+        }
+      }
+      if (!is.na(group) && nzchar(group)) {
+        found[[length(found) + 1L]] <<- list(fn = fn, group = group)
+      }
+      break
+    }
+    for (i in seq_along(e)[-1L]) walk(e[[i]])
+    invisible(NULL)
+  }
+  if (is.call(formula)) walk(formula)
+  if (!length(found)) {
+    return(data.frame(
+      fn = character(), group = character(), stringsAsFactors = FALSE
+    ))
+  }
+  data.frame(
+    fn = vapply(found, `[[`, character(1L), "fn"),
+    group = vapply(found, `[[`, character(1L), "group"),
+    stringsAsFactors = FALSE
+  )
+}
+
 ## Public keyword behind a harvested kernel mode. A folded
 ## `kernel_latent(..., unique = TRUE)` carries both "latent" and "unique".
 .gllvmTMB_kernel_fn_from_modes <- function(modes) {

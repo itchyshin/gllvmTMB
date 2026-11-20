@@ -34,8 +34,11 @@
 #'
 #' @details
 #' Because the LHS already names the response traits, the RHS can use a
-#' compact wide shorthand. `1` expands to the trait-specific intercepts
-#' `0 + trait`; ordinary predictors such as `env_temp` expand to
+#' compact wide shorthand, which follows the usual R formula intercept rule:
+#' predictors alone (`traits(...) ~ env`) imply per-trait intercepts
+#' (expanded to `0 + trait` on the long side); write `0`, `-1`, or `+0`
+#' on the RHS to remove them. An explicit `1` is the same as that
+#' default. Ordinary predictors such as `env_temp` expand to
 #' `(0 + trait):env_temp`; and `latent(1 | individual)` expands to
 #' the long covariance syntax `latent(0 + trait | individual)`.
 #' Ordinary `latent()` includes its \eqn{\boldsymbol\Psi} companion by
@@ -144,6 +147,40 @@ is_traits_lhs <- function(formula) {
 
 .traits_trait_term <- function() {
   call("+", 0, as.name("trait"))
+}
+
+.traits_is_trait_intercept_term <- function(expr) {
+  is.call(expr) &&
+    identical(expr[[1L]], as.name("+")) &&
+    length(expr) == 3L &&
+    .traits_is_zero(expr[[2L]]) &&
+    is.symbol(expr[[3L]]) &&
+    identical(as.character(expr[[3L]]), "trait")
+}
+
+.traits_additive_has_trait_intercept <- function(expr) {
+  if (.traits_is_trait_intercept_term(expr) || .traits_is_one(expr)) {
+    return(TRUE)
+  }
+  if (!is.call(expr)) {
+    return(FALSE)
+  }
+  fn <- .traits_call_name(expr)
+  if (identical(fn, "+") && length(expr) == 3L) {
+    return(
+      .traits_additive_has_trait_intercept(expr[[2L]]) ||
+        .traits_additive_has_trait_intercept(expr[[3L]])
+    )
+  }
+  if (identical(fn, "-") && length(expr) == 3L) {
+    return(.traits_additive_has_trait_intercept(expr[[2L]]))
+  }
+  FALSE
+}
+
+.traits_compact_formula_has_intercept <- function(rhs, eval_env) {
+  rhs_formula <- stats::as.formula(call("~", rhs), env = eval_env)
+  base::attr(stats::terms(rhs_formula), "intercept") == 1L
 }
 
 .traits_is_one <- function(expr) {
@@ -781,6 +818,12 @@ rewrite_traits_lhs <- function(
   rhs <- .traits_expand_rhs(
     shared_rhs, column_vars = column_vars, shared_marker = shared_marker
   )
+  if (
+    .traits_compact_formula_has_intercept(offset_rw$rhs, eval_env) &&
+      !.traits_additive_has_trait_intercept(rhs)
+  ) {
+    rhs <- call("+", .traits_trait_term(), rhs)
+  }
   lhs_long <- if (cbind_mode) {
     quote(cbind(.succ_wide_, .fail_wide_))
   } else {

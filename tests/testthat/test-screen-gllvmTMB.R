@@ -279,7 +279,7 @@ test_that("screen_gllvmTMB() keeps long and wide trait summaries aligned", {
     b = rep(c(1, 0), 6)
   )
   wide_scr <- suppressWarnings(screen_gllvmTMB(
-    traits(a, b) ~ x + latent(1 | unit, d = 1),
+    traits(a, b) ~ 1 + x + latent(1 | unit, d = 1),
     data = wide,
     unit = "unit",
     family = binomial()
@@ -292,7 +292,7 @@ test_that("screen_gllvmTMB() keeps long and wide trait summaries aligned", {
     y = c(wide$a, wide$b)
   )
   long_scr <- suppressWarnings(screen_gllvmTMB(
-    y ~ x + latent(1 | unit, d = 1),
+    y ~ 0 + trait + trait:x + latent(1 | unit, d = 1),
     data = long,
     unit = "unit",
     trait = "trait",

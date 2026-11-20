@@ -145,16 +145,33 @@
   if (!dir.exists(build_dir)) dir.create(build_dir, recursive = TRUE)
   if (!file.exists(cpp) || isTRUE(rebuild)) file.copy(source, cpp, overwrite = TRUE)
   dll <- TMB::dynlib(tools::file_path_sans_ext(cpp))
-  loaded <- vapply(getLoadedDLLs(), function(x) identical(normalizePath(x[["path"]], mustWork = FALSE),
-                                                           normalizePath(dll, mustWork = FALSE)), logical(1))
-  if (!file.exists(dll) || isTRUE(rebuild)) {
-    if (any(loaded)) dyn.unload(dll)
-    old <- getwd(); on.exit(setwd(old), add = TRUE); setwd(build_dir)
-    status <- TMB::compile(basename(cpp), flags = compile_flags)
-    if (!identical(status, 0L) || !file.exists(dll)) stop("EVA prototype compilation failed.", call. = FALSE)
-    loaded[] <- FALSE
+  loaded_info <- getLoadedDLLs()[["gllvmTMB_eva"]]
+  if (!is.null(loaded_info)) {
+    loaded_path <- loaded_info[["path"]]
+    same_build <- nzchar(loaded_path) && identical(
+      normalizePath(loaded_path, mustWork = FALSE),
+      normalizePath(dll, mustWork = FALSE)
+    )
+    if (!same_build) {
+      stop(
+        "gllvmTMB_eva is already loaded from a different build. Restart R before rebuilding it.",
+        call. = FALSE
+      )
+    }
+    return(list(DLL = "gllvmTMB_eva", source = source, checksum = stamp))
   }
-  if (!any(loaded)) dyn.load(dll)
+  if (!file.exists(dll) || isTRUE(rebuild)) {
+    old <- getwd()
+    on.exit(setwd(old), add = TRUE)
+    setwd(build_dir)
+    status <- TMB::compile(basename(cpp), flags = compile_flags)
+    if (!identical(status, 0L) || !file.exists(dll)) {
+      stop("EVA prototype compilation failed.", call. = FALSE)
+    }
+  }
+  if (is.null(getLoadedDLLs()[["gllvmTMB_eva"]])) {
+    dyn.load(dll)
+  }
   list(DLL = "gllvmTMB_eva", source = source, checksum = stamp)
 }
 

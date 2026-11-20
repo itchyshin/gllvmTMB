@@ -235,5 +235,11 @@ test_that("the package-wide bare-abort count has not gone up", {
   ## R/weights-shape.R (the shared `weights =` checks behind gllvmTMB(),
   ## gllvmTMB_wide() and traits()) gain a ">" bullet -> 770. The six
   ## "Internal error" aborts there are left as they are.
-  expect_lte(length(hits), 770L)
+  ##
+  ## #1247 follow-up 4 (2026-11-20): 12 argument and stored-K checks in
+  ## R/extract-sigma.R (the `level`, `row_traits`/`col_traits`,
+  ## `n_modules`, `tol` and kernel-K validation behind extract_Gamma(),
+  ## predict_cross_covariance() and extract_coevolution_modules()) gain a
+  ## ">" bullet -> 758.
+  expect_lte(length(hits), 758L)
 })

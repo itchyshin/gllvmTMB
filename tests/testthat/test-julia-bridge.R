@@ -741,10 +741,6 @@ test_that("Julia bridge capability ledger marks admitted CI rows explicitly", {
   expect_true(any(grepl("per-trait ordinal cutpoints", caps$notes)))
   expect_true(all(caps$status == "partial"))
   expect_equal(caps$family[caps$missing_response], .GLLVM_JULIA_MASK_FAMILIES)
-  ## Masked Gaussian is a no-X point fit: routed for masks, no masked CIs.
-  expect_true(caps$missing_response[caps$family == "gaussian"])
-  expect_false(caps$ci_mask_wald[caps$family == "gaussian"])
-  expect_false("gaussian" %in% .GLLVM_JULIA_MASK_CI_FAMILIES)
   expect_true(any(grepl(
     "response masks and masked no-X Wald/profile/bootstrap CI payloads",
     caps$notes
@@ -977,7 +973,10 @@ test_that("response-mask placeholder admits routed families and gates the rest",
   expect_equal(.gllvm_julia_mask_placeholder("ordinal"), 1)
   expect_equal(.gllvm_julia_mask_placeholder("ordinal_probit"), 1)
 
-  expect_equal(.gllvm_julia_mask_placeholder("gaussian"), 0)
+  expect_error(
+    .gllvm_julia_mask_placeholder("gaussian"),
+    "are not routed for family"
+  )
   expect_error(
     .gllvm_julia_mask_placeholder("lognormal"),
     "are not routed for family"
@@ -2909,15 +2908,16 @@ test_that("engine = 'julia' rejects two-column responses for non-binomial famili
 test_that("engine = 'julia' keeps unsupported response-mask rows explicit", {
   df <- make_long()
   df <- df[-1L, , drop = FALSE] # drop one (trait, unit) cell -> unbalanced
-  ## Gaussian response masks are now routed (no-X point fit); mixed-family
-  ## mask vectors remain gated.
   expect_error(
-    .gllvm_julia_fill_masked_response(
-      matrix(c(1, NA, 3, 4), 2L),
-      c("gaussian", "poisson"),
-      matrix(c(TRUE, FALSE, TRUE, TRUE), 2L)
+    gllvmTMB(
+      value ~ 0 + trait + latent(0 + trait | unit, d = 2),
+      data = df,
+      trait = "trait",
+      unit = "unit",
+      family = gaussian(),
+      engine = "julia"
     ),
-    "does not yet route response masks for mixed-family"
+    "response masks.*gaussian"
   )
 
   df$x <- stats::rnorm(nrow(df))
@@ -2931,76 +2931,6 @@ test_that("engine = 'julia' keeps unsupported response-mask rows explicit", {
       engine = "julia"
     ),
     "GJL-GATE-MASK-X"
-  )
-  ## Masked Gaussian + fixed-effect X stays refused with the same gate.
-  expect_error(
-    gllvmTMB(
-      value ~ 0 + trait + x + latent(0 + trait | unit, d = 2),
-      data = df,
-      trait = "trait",
-      unit = "unit",
-      family = gaussian(),
-      engine = "julia"
-    ),
-    "GJL-GATE-MASK-X"
-  )
-})
-
-test_that("engine = 'julia' masked Gaussian matches native TMB (#488 step 1)", {
-  skip_if_no_julia()
-  set.seed(11)
-  n_unit <- 60L
-  z <- stats::rnorm(n_unit)
-  load <- c(1, 0.8, -0.6, 0.5)
-  Y <- sapply(1:4, function(j) {
-    c(0.5, -0.2, 1, 0)[j] + load[j] * z + stats::rnorm(n_unit, sd = 0.6)
-  })
-  df <- data.frame(
-    unit = factor(rep(seq_len(n_unit), each = 4L)),
-    trait = factor(rep(paste0("t", 1:4), n_unit)),
-    value = as.vector(t(Y))
-  )
-  set.seed(12)
-  df$value[sample(nrow(df), 24L)] <- NA_real_
-  ## unique = FALSE: the Julia row carries one shared residual sigma and no
-  ## Psi, which is the same model as native TMB with unique = FALSE.
-  f <- value ~ 0 + trait + latent(0 + trait | unit, d = 1, unique = FALSE)
-  args <- list(data = df, trait = "trait", unit = "unit", family = gaussian())
-  fit_jl <- suppressMessages(do.call(gllvmTMB, c(list(f), args, engine = "julia")))
-  fit_tmb <- suppressMessages(do.call(gllvmTMB, c(list(f), args, engine = "tmb")))
-
-  expect_s3_class(fit_jl, "gllvmTMB_julia")
-  expect_equal(nobs(fit_jl), sum(!is.na(df$value)))
-  ## Julia centres each trait at its observed-cell mean, so under masking it
-  ## is a close but not identical optimum: the observed gap is ~0.14 log-lik
-  ## units, ~0.04 on the intercepts and ~0.004 on Lambda Lambda'. Tolerances
-  ## below bound that gap; complete data agree to ~1e-5.
-  expect_equal(
-    as.numeric(logLik(fit_jl)),
-    as.numeric(logLik(fit_tmb)),
-    tolerance = 0.5,
-    scale = 1
-  )
-  expect_lte(as.numeric(logLik(fit_jl)), as.numeric(logLik(fit_tmb)) + 1e-6)
-  alpha_tmb <- stats::coef(fit_tmb)[paste0("trait", paste0("t", 1:4))]
-  expect_equal(
-    unname(stats::coef(fit_jl)$alpha),
-    unname(alpha_tmb),
-    tolerance = 0.1,
-    scale = 1
-  )
-  ## Loadings up to sign/rotation: compare the shared covariance Lambda Lambda'.
-  S_jl <- suppressMessages(extract_Sigma(fit_jl, level = "unit", part = "shared"))$Sigma
-  S_tmb <- suppressMessages(extract_Sigma(fit_tmb, level = "unit", part = "shared"))$Sigma
-  expect_equal(unname(S_jl), unname(S_tmb), tolerance = 0.02, scale = 1)
-
-  ## Masked Gaussian CIs and mask + X stay refused with a clear message.
-  expect_error(
-    suppressMessages(do.call(
-      gllvmTMB,
-      c(list(f), args, engine = "julia", ci_method = "wald")
-    )),
-    "not wired for masked Gaussian"
   )
 })
 

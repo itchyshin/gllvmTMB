@@ -267,7 +267,7 @@ test_that("a random-intercept marginal objective exposes sdreport curvature", {
   expect_equal(.compile_tmb_fixture(cpp), 0L)
   dll <- TMB::dynlib(file.path(scratch, "g3_gaussian_random_intercept"))
   dyn.load(dll)
-  on.exit(dyn.unload(dll), add = TRUE)
+  on.exit(.unload_tmb_fixture(dll, environment()), add = TRUE)
 
   obj <- TMB::MakeADFun(
     data = list(

@@ -521,11 +521,18 @@ test_that("binomial(cloglog) accepts a varying offset and matches glm()", {
     data = d[d$trait == "t1", , drop = FALSE],
     family = stats::binomial(link = "cloglog")
   )
+  glm_full <- stats::glm(
+    value ~ 0 + trait + trait:z + offset(log_area),
+    data = d,
+    family = stats::binomial(link = "cloglog")
+  )
   b_glv <- unname(stats::coef(fit))
   names(b_glv) <- names(stats::coef(fit))
   b_glm <- unname(stats::coef(glm_ref))
-  expect_equal(b_glv[["traitt1"]], b_glm[1], tolerance = 0.05)
-  expect_equal(b_glv[["traitt1:z"]], b_glm[2], tolerance = 0.05)
+  expect_equal(b_glv[["traitt1"]], b_glm[1], tolerance = 1e-4)
+  expect_equal(b_glv[["traitt1:z"]], b_glm[2], tolerance = 1e-4)
+  expect_equal(as.numeric(stats::logLik(fit)), as.numeric(stats::logLik(glm_full)),
+               tolerance = 1e-4)
 })
 
 test_that("binomial(cloglog) offset engages the likelihood", {

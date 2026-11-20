@@ -1200,6 +1200,13 @@ Type objective_function<Type>::operator()()
   // unit count N for c_N = sqrt(2/N). Bernoulli / ML supply length-1 stubs.
   DATA_VECTOR(mspl_S_diag);
   DATA_INTEGER(mspl_N_units);
+  // Design 118 s7.1 prerequisite: multiplicative probe hook on the penalty
+  // strength c_n, default 1.0. Internal-only -- perturbing it is how the
+  // Phase-B penalty-sensitivity fence (s1.2) measures how much a fitted
+  // coordinate moves when c_n is halved/doubled, without touching N_eff or
+  // p_free. ML supplies the same default; the multiplier is applied at both
+  // points where mspl_c_n is computed below.
+  DATA_SCALAR(mspl_c_n_multiplier);
 
   // ordinal_probit (fid 14): per-trait cutpoint metadata.
   // n_ordinal_cuts_per_trait(t)  = K_t - 2, the number of FREE cutpoints
@@ -4568,7 +4575,7 @@ Type objective_function<Type>::operator()()
       for (int t = 0; t < n_traits; ++t)
         psi(t) = exp(Type(2.0) * theta_diag_B(t));
       mspl_V_hirose = gll_mspl_hirose_atom(mspl_S_diag, psi);
-      mspl_c_n = sqrt(Type(2.0) / Type(mspl_N_units));
+      mspl_c_n = sqrt(Type(2.0) / Type(mspl_N_units)) * mspl_c_n_multiplier;
       mspl_hirose_nll = mspl_c_n * mspl_V_hirose;
       mspl_atom_status = Type(0.0);
       nll += mspl_hirose_nll;
@@ -4576,17 +4583,19 @@ Type objective_function<Type>::operator()()
       // Bernoulli keeps the validated rate. Poisson uses event-count
       // c_P = 2 * sqrt(p_free / max(sum(y), 1)). Fenced GLM-outer
       // families stay at unpinned c=1 (not admitted here).
+      // mspl_c_n_multiplier defaults to 1, so these rates are unchanged
+      // unless the private probe hook sets another positive value.
       if (mspl_family_mode == 1)
-        mspl_c_n = Type(2.0) * sqrt(Type(p_free) / Type(N_eff));
+        mspl_c_n = Type(2.0) * sqrt(Type(p_free) / Type(N_eff)) * mspl_c_n_multiplier;
       else if (mspl_family_mode == 3) {
         Type event_count = Type(0.0);
         for (int o = 0; o < y.size(); ++o)
           event_count += y(o);
         event_count = CppAD::CondExpLt(event_count, Type(1.0),
                                        Type(1.0), event_count);
-        mspl_c_n = Type(2.0) * sqrt(Type(p_free) / event_count);
+        mspl_c_n = Type(2.0) * sqrt(Type(p_free) / event_count) * mspl_c_n_multiplier;
       } else
-        mspl_c_n = Type(1.0);
+        mspl_c_n = Type(1.0) * mspl_c_n_multiplier;
       vector<Type> mspl_logw(N_eff);
       int link_id = link_id_vec(0);
       int fid = family_id_vec(0);

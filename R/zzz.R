@@ -18,8 +18,8 @@
 }
 
 .onLoad <- function(libname, pkgname) {
-  ## #1759. gllvm's generics mask getLoadings/getLV/getResidualCov/
-  ## getResidualCor when that package is attached. Register on gllvm's
+  ## #1759 / #1768. gllvm's generics mask getLoadings/getLV/getResidualCov/
+  ## getResidualCor / simulate when that package is attached. Register on gllvm's
   ## S3 table at load, and again if gllvm is attached later in the session.
   if (!isTRUE(.gllvm_mask_hook_installed)) {
     setHook(

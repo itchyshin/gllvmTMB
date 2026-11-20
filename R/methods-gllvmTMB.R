@@ -3701,6 +3701,7 @@ predict.gllvmTMB_multi <- function(
       if (!is.null(spde_contrib)) {
         eta <- eta + spde_contrib
         added <- c(added, "spde")
+        handled_on_newdata <- c(handled_on_newdata, "spde")
       }
       ## `lv_B` carries no eta term of its own: it is the score mean, already
       ## inside U_B_total above, so it counts as handled whenever rr_B is.

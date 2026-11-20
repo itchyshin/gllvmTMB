@@ -2107,7 +2107,10 @@ extract_Gamma <- function(
       !nzchar(level) ||
       is.na(level)
   ) {
-    cli::cli_abort("{.arg level} must be one non-empty character string.")
+    cli::cli_abort(c(
+      "{.arg level} must be one non-empty character string.",
+      ">" = "Pass the name of one fitted {.fn kernel_*} tier, for example {.code level = \"cross\"}."
+    ))
   }
   row_traits <- .gamma_trait_arg(row_traits, "row_traits")
   col_traits <- .gamma_trait_arg(col_traits, "col_traits")
@@ -2272,7 +2275,10 @@ predict_cross_covariance <- function(
       !nzchar(level) ||
       is.na(level)
   ) {
-    cli::cli_abort("{.arg level} must be one non-empty character string.")
+    cli::cli_abort(c(
+      "{.arg level} must be one non-empty character string.",
+      ">" = "Pass the name of one fitted {.fn kernel_*} tier, for example {.code level = \"cross\"}."
+    ))
   }
 
   level <- .kernel_level_resolve_alias(fit, level)
@@ -2445,14 +2451,16 @@ predict_cross_covariance <- function(
     K <- as.matrix(K)
   }
   if (!is.matrix(K) || !is.numeric(K)) {
-    cli::cli_abort(
-      "The stored {.arg K} for level {.val {level}} is not a numeric matrix."
-    )
+    cli::cli_abort(c(
+      "The stored {.arg K} for level {.val {level}} is not a numeric matrix.",
+      ">" = "Refit with {.arg K} supplied to {.fn kernel_*} as a numeric matrix."
+    ))
   }
   if (is.null(rownames(K)) || is.null(colnames(K))) {
-    cli::cli_abort(
-      "The stored {.arg K} for level {.val {level}} must have row and column names."
-    )
+    cli::cli_abort(c(
+      "The stored {.arg K} for level {.val {level}} must have row and column names.",
+      ">" = "Refit with {.arg K} supplied to {.fn kernel_*} with {.code rownames(K)} and {.code colnames(K)} set to the group levels."
+    ))
   }
   K
 }
@@ -2462,10 +2470,16 @@ predict_cross_covariance <- function(
     x <- as.character(x)
   }
   if (!is.character(x) || length(x) == 0L || anyNA(x) || any(!nzchar(x))) {
-    cli::cli_abort("{.arg {arg}} must be a non-empty character vector.")
+    cli::cli_abort(c(
+      "{.arg {arg}} must be a non-empty character vector.",
+      ">" = "Pass the level names as a character vector, for example {.code c(\"a\", \"b\")}."
+    ))
   }
   if (anyDuplicated(x)) {
-    cli::cli_abort("{.arg {arg}} must not contain duplicate names.")
+    cli::cli_abort(c(
+      "{.arg {arg}} must not contain duplicate names.",
+      ">" = "Pass each level name once, for example with {.fn unique}."
+    ))
   }
   x
 }
@@ -2525,16 +2539,25 @@ predict_cross_covariance <- function(
 
 .gamma_trait_arg <- function(x, arg) {
   if (missing(x) || is.null(x)) {
-    cli::cli_abort("{.arg {arg}} must be a non-empty character vector.")
+    cli::cli_abort(c(
+      "{.arg {arg}} must be a non-empty character vector.",
+      ">" = "Pass the trait names as a character vector, for example {.code levels(fit$data$trait)[1:2]}."
+    ))
   }
   if (is.factor(x)) {
     x <- as.character(x)
   }
   if (!is.character(x) || length(x) == 0L || anyNA(x) || any(!nzchar(x))) {
-    cli::cli_abort("{.arg {arg}} must be a non-empty character vector.")
+    cli::cli_abort(c(
+      "{.arg {arg}} must be a non-empty character vector.",
+      ">" = "Pass the trait names as a character vector, for example {.code levels(fit$data$trait)[1:2]}."
+    ))
   }
   if (anyDuplicated(x)) {
-    cli::cli_abort("{.arg {arg}} must not contain duplicate trait names.")
+    cli::cli_abort(c(
+      "{.arg {arg}} must not contain duplicate trait names.",
+      ">" = "Pass each trait name once, for example with {.fn unique}."
+    ))
   }
   x
 }
@@ -2733,7 +2756,10 @@ extract_coevolution_modules <- function(
       !nzchar(level) ||
       is.na(level)
   ) {
-    cli::cli_abort("{.arg level} must be one non-empty character string.")
+    cli::cli_abort(c(
+      "{.arg level} must be one non-empty character string.",
+      ">" = "Pass the name of one fitted {.fn kernel_*} tier, for example {.code level = \"cross\"}."
+    ))
   }
   row_traits <- .gamma_trait_arg(row_traits, "row_traits")
   col_traits <- .gamma_trait_arg(col_traits, "col_traits")
@@ -2744,12 +2770,18 @@ extract_coevolution_modules <- function(
         n_modules < 1 ||
         n_modules != as.integer(n_modules)
     ) {
-      cli::cli_abort("{.arg n_modules} must be a positive integer.")
+      cli::cli_abort(c(
+        "{.arg n_modules} must be a positive integer.",
+        ">" = "Pass a whole number of at least 1, for example {.code n_modules = 2}, or leave it {.code NULL}."
+      ))
     }
     n_modules <- as.integer(n_modules)
   }
   if (!is.numeric(tol) || length(tol) != 1L || is.na(tol) || tol <= 0) {
-    cli::cli_abort("{.arg tol} must be one positive number.")
+    cli::cli_abort(c(
+      "{.arg tol} must be one positive number.",
+      ">" = "Pass a single small positive value, for example {.code tol = 1e-8}."
+    ))
   }
 
   ## Total covariance (shared + Psi): the within-lineage blocks are

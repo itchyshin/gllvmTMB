@@ -43,12 +43,17 @@
   .gllvm_mask_call(VP, object, ...)
 }
 
+.gllvm_mask_simulate <- function(object, ...) {
+  stats::simulate(object, ...)
+}
+
 .gllvm_mask_methods <- list(
   getLoadings = .gllvm_mask_getLoadings,
   getLV = .gllvm_mask_getLV,
   getResidualCov = .gllvm_mask_getResidualCov,
   getResidualCor = .gllvm_mask_getResidualCor,
-  VP = .gllvm_mask_VP
+  VP = .gllvm_mask_VP,
+  simulate = .gllvm_mask_simulate
 )
 
 .gllvm_mask_is_generic <- function(fn) {

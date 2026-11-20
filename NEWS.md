@@ -1,5 +1,7 @@
 # gllvmTMB 0.8.0
 
+* A right-censored `censored_poisson()` row stays finite when the linear predictor is very negative. `log(pgamma(mean, C, 1))` underflowed once `C` times that predictor was large and negative, and the objective and its gradient became NaN. The same probability is now accumulated in log space. At ordinary means it matches `log(pgamma())`. An uncensored row is unchanged (refs #1748).
+
 * `kernel_indep(K = K, unit = g)` (and the same named-`unit` order for `kernel_dep()`, `kernel_latent()`, `kernel_unique()`, and `kernel_scalar()`) now groups by `g` when `cluster` is omitted. The grouping used to be taken from the first argument by position, so this call treated `K` as the grouping column and stopped with a message about `K` rather than `g`. `kernel_indep(unit, K = K)` is unchanged, and an explicit `cluster` is unchanged (refs #1805).
 * `family = "gaussian"` with `temporal_latent()` now builds the same family object as `family = gaussian()`. The temporal gate read `family$family` before character names were resolved, so the call stopped with `$ operator is invalid for atomic vectors`. Other single-name character families use that same lookup. `family = gaussian()` and `family = gaussian` are unchanged (refs #1804).
 

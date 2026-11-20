@@ -43,11 +43,12 @@
 #' no interval built from it has certified coverage. `vcov()` refuses a fit
 #' with non-unit likelihood weights: that fit targets a weighted estimating
 #' objective and has no certified sandwich covariance.
-#' With a finite loading ridge or fixed-effect normal priors, this is local
-#' approximate posterior covariance at the MAP point, conditional on the chosen
-#' priors. Fixed-effect prior fits record that interpretation in the
-#' `inference_status` attribute. Sampling coverage is not certified; ordinary
-#' interval helpers refuse fits with fixed-effect priors.
+#' With a finite loading ridge, fixed-effect normal priors, or a named-kernel
+#' Psi SD prior, this is local approximate posterior covariance at the MAP
+#' point, conditional on the chosen penalty or prior. Prior-penalized fits
+#' record that interpretation in the `inference_status` attribute. Sampling
+#' coverage is not certified; ordinary interval helpers refuse prior-penalized
+#' fits.
 #'
 #' @seealso [standard_errors()] to compute the `sdreport()` after fitting;
 #'   [confint()] for intervals; [summary()] for a coefficient table.
@@ -124,7 +125,8 @@ vcov.gllvmTMB_multi <- function(object, ...) {
 
   cv <- object$sd_report$cov.fixed
   out <- matrix(NA_real_, length(nm), length(nm), dimnames = list(nm, nm))
-  if (!is.null(object$fixed_effect_priors)) {
+  if (!is.null(object$fixed_effect_priors) ||
+      !is.null(object$kernel_psi_sd_prior)) {
     attr(out,"inference_status") <- "local_approximate_posterior_curvature"
   }
   if (is.null(cv) || length(cv) == 0L) {

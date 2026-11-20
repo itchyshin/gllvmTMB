@@ -1,5 +1,7 @@
 # gllvmTMB 0.8.0
 
+* `.eva_load_dll(rebuild = TRUE)` reuses an already-loaded EVA prototype DLL instead of unloading it while a live `MakeADFun` object still holds external pointers. Unloading had removed those pointers and could segfault the next evaluation (refs #1815).
+
 * `kernel_indep(K = K, unit = g)` (and the same named-`unit` order for `kernel_dep()`, `kernel_latent()`, `kernel_unique()`, and `kernel_scalar()`) now groups by `g` when `cluster` is omitted. The grouping used to be taken from the first argument by position, so this call treated `K` as the grouping column and stopped with a message about `K` rather than `g`. `kernel_indep(unit, K = K)` is unchanged, and an explicit `cluster` is unchanged (refs #1805).
 * `family = "gaussian"` with `temporal_latent()` now builds the same family object as `family = gaussian()`. The temporal gate read `family$family` before character names were resolved, so the call stopped with `$ operator is invalid for atomic vectors`. Other single-name character families use that same lookup. `family = gaussian()` and `family = gaussian` are unchanged (refs #1804).
 

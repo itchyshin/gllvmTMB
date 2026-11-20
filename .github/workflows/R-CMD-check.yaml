@@ -4,6 +4,8 @@ on:
     tags: ["v*"]
   pull_request:
     branches: [main, master]
+    # Plan A (2026-11-18): ready_for_review re-runs full CI when a draft becomes ready.
+    types: [opened, synchronize, reopened, ready_for_review]
   workflow_dispatch:
     inputs:
       full_matrix:
@@ -67,7 +69,8 @@ jobs:
         # check log for run 33701375238 puts `checking tests` at 31m37s
         # (01:04:39 -> 01:36:16) against 186s to install and 49s of examples.
         # The heavy-test gate is working; the fast suite simply grew.
-        shard: ${{ fromJSON((github.event_name == 'workflow_dispatch' && inputs.full_matrix) && '[0]' || '[1,2,3,4]') }}
+        # Draft PRs: one ubuntu shard (smoke). Ready PRs / main / tags: full partition.
+        shard: ${{ fromJSON((github.event_name == 'workflow_dispatch' && inputs.full_matrix) && '[0]' || (github.event_name == 'pull_request' && github.event.pull_request.draft) && '[1]' || '[1,2,3,4]') }}
 
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}

@@ -954,7 +954,8 @@ print.gllvmTMB_multi <- function(x, ...) {
       cat("  Inference: point estimates only; repeated-sampling uncertainty is not yet calibrated.\n")
     } else {
       weighted <- isTRUE(x$likelihood_weights$active)
-      penalised <- !is.null(x$fixed_effect_priors) || isTRUE(x$aghq$penalised)
+      penalised <- !is.null(x$fixed_effect_priors) ||
+        !is.null(x$kernel_psi_sd_prior) || isTRUE(x$aghq$penalised)
       objective_label <- if (weighted) {
         "Weighted objective (-value)"
       } else if (penalised) {
@@ -973,7 +974,7 @@ print.gllvmTMB_multi <- function(x, ...) {
         cat("  Note: ordinary Wald and likelihood-based inference is not validated for non-unit likelihood weights.\n")
       } else if (penalised) {
         cat("  Note: parameters are a penalised MAP point; ordinary AIC, BIC, and likelihood-ratio interpretations do not apply.\n")
-        if (!is.null(x$fixed_effect_priors)) cat("  Covariance: local approximate posterior curvature, not calibrated sampling uncertainty.\n")
+        if (!is.null(x$fixed_effect_priors) || !is.null(x$kernel_psi_sd_prior)) cat("  Covariance: local approximate posterior curvature, not calibrated sampling uncertainty.\n")
       }
     }
   }
@@ -1051,7 +1052,9 @@ summary.gllvmTMB_multi <- function(object, ...) {
     estimator = object$estimator %||% if (isTRUE(object$REML)) "REML" else "ML",
     logLik = if (.gllvmTMB_is_mspl(object)) {
       object$mspl$unpenalized_loglik_at_estimate
-    } else if ((!is.null(object$fixed_effect_priors) || isTRUE(object$aghq$penalised)) &&
+    } else if ((!is.null(object$fixed_effect_priors) ||
+                !is.null(object$kernel_psi_sd_prior) ||
+                isTRUE(object$aghq$penalised)) &&
                !isTRUE(object$likelihood_weights$active)) {
       tryCatch(
         as.numeric(suppressWarnings(stats::logLik(object))),
@@ -1062,14 +1065,18 @@ summary.gllvmTMB_multi <- function(object, ...) {
     },
     objective_label = if (isTRUE(object$likelihood_weights$active)) {
       "Weighted objective (-value)"
-    } else if (!is.null(object$fixed_effect_priors) || isTRUE(object$aghq$penalised)) {
+    } else if (!is.null(object$fixed_effect_priors) ||
+               !is.null(object$kernel_psi_sd_prior) ||
+               isTRUE(object$aghq$penalised)) {
       "Unpenalised log L at MAP point"
     } else {
       paste(object$estimator %||% if (isTRUE(object$REML)) "REML" else "ML", "log L")
     },
     weighted_objective = isTRUE(object$likelihood_weights$active),
-    penalised = !is.null(object$fixed_effect_priors) || isTRUE(object$aghq$penalised),
+    penalised = !is.null(object$fixed_effect_priors) ||
+      !is.null(object$kernel_psi_sd_prior) || isTRUE(object$aghq$penalised),
     fixed_effect_prior = !is.null(object$fixed_effect_priors),
+    kernel_psi_sd_prior = !is.null(object$kernel_psi_sd_prior),
     convergence = object$opt$convergence,
     engine = .aghq_engine_label(object),
     mspl = .gllvmTMB_is_mspl(object),
@@ -1395,7 +1402,8 @@ logLik.gllvmTMB_multi <- function(object, ...) {
     ), class = "gllvmTMB_weighted_objective_no_logLik")
   }
   ridge_tau <- object$aghq$ridge_tau %||% Inf
-  pen <- !is.null(object$fixed_effect_priors) || isTRUE(object$aghq$penalised) ||
+  pen <- !is.null(object$fixed_effect_priors) ||
+    !is.null(object$kernel_psi_sd_prior) || isTRUE(object$aghq$penalised) ||
     (is.numeric(ridge_tau) && length(ridge_tau) == 1L &&
        is.finite(ridge_tau) && ridge_tau > 0)
   likelihood_nll <- object$objective_components$likelihood_nll %||% NA_real_
@@ -1403,6 +1411,7 @@ logLik.gllvmTMB_multi <- function(object, ...) {
     if (pen) {
       likelihood_nll <- tryCatch(
         as.numeric((object$tmb_obj$fixed_effect_priors$likelihood_fn %||%
+          object$tmb_obj$kernel_psi_sd_prior$likelihood_fn %||%
           object$tmb_obj$fn)(object$opt$par)),
         error = function(e) NA_real_
       )
@@ -1454,14 +1463,20 @@ logLik.gllvmTMB_multi <- function(object, ...) {
     attr(ll, "at_maximum") <- FALSE
     attr(ll, "penalised_note") <- paste0(
       "evaluated at a penalised (MAP) optimum, ",
-      if (!is.null(object$fixed_effect_priors)) "fixed-effect normal priors; loading ridge tau = " else "ridge tau = ",
-      format(ridge_tau, digits = 4),
+      if (!is.null(object$kernel_psi_sd_prior)) {
+        "kernel Psi half-normal prior"
+      } else if (!is.null(object$fixed_effect_priors)) {
+        paste0("fixed-effect normal priors; loading ridge tau = ",
+               format(ridge_tau, digits = 4))
+      } else {
+        paste0("loading ridge tau = ", format(ridge_tau, digits = 4))
+      },
       "; this is the unpenalised log-likelihood AT that point, not its maximum"
     )
     cli::cli_warn(c(
       "{.fn logLik} is the unpenalised likelihood evaluated at a penalised MAP point, not at its maximum.",
-      "i" = "The fit includes loading and/or fixed-effect normal priors.",
-      ">" = "For ordinary likelihood-based comparison, refit with loading_ridge = Inf and fixed_effect_priors = NULL."
+      "i" = "The fit includes a loading ridge and/or coefficient or kernel Psi prior.",
+      ">" = "For ordinary likelihood-based comparison, refit with loading_ridge = Inf, fixed_effect_priors = NULL, and kernel_psi_sd_prior = NULL."
     ))
   }
   ## nobs = likelihood-contributing rows. Under the default response="drop"
@@ -1534,10 +1549,11 @@ nobs.gllvmTMB_multi <- function(object, ...) {
 #'   fails because no sandwich interval is certified. When the Hessian is not
 #'   positive definite (or the `sdreport()` is missing), `std.error` is `NA`,
 #'   `conf.low` / `conf.high` are `NA`, and `inference_status` says why.
-#'   With fixed-effect normal priors, `std.error` describes local approximate
-#'   posterior curvature and `inference_status` identifies that interpretation.
-#'   `conf.int = TRUE` is refused for those fits because ordinary sampling
-#'   interval calibration has not been established.
+#'   With fixed-effect normal priors or a named-kernel Psi SD prior,
+#'   `std.error` describes local approximate posterior curvature and
+#'   `inference_status` identifies that interpretation. `conf.int = TRUE` is
+#'   refused for those fits because ordinary sampling interval calibration has
+#'   not been established.
 #' @export
 tidy.gllvmTMB_multi <- function(
   x,
@@ -1570,7 +1586,8 @@ tidy.gllvmTMB_multi <- function(
     } else if (!is.null(reason <- .gllvmTMB_wald_unusable_reason(x))) {
       out$std.error <- rep(NA_real_, nrow(out))
       out$inference_status <- reason
-    } else if (!is.null(x$fixed_effect_priors)) {
+    } else if (!is.null(x$fixed_effect_priors) ||
+               !is.null(x$kernel_psi_sd_prior)) {
       out$inference_status <- "local_approximate_posterior_curvature"
     }
     ## Per-trait link column. For single-family fits this is a single
@@ -3168,10 +3185,15 @@ sanity_multi <- function(object, gradient_thresh = 1e-2, se_thresh = 100) {
 #'   `newdata` path, and there only as the literal `~ 0`). For `newdata`
 #'   with sites/species not present in the training data the random
 #'   effects cannot be drawn, so those rows are fixed-effects-only
-#'   regardless of `re_form`. A missing species column is not an unseen
-#'   level: if `newdata` omits the fitted species column while
+#'   regardless of `re_form`. A missing unit column is not an unseen
+#'   level: if `newdata` omits the fitted unit column while unit-level
+#'   random effects are being re-added, `predict()` stops and asks for
+#'   that column or for `re_form = ~0`. A missing species column is not
+#'   an unseen level: if `newdata` omits the fitted species column while
 #'   phylogenetic random effects are being re-added, `predict()` stops and
-#'   asks for that column or for `re_form = ~0`.
+#'   asks for that column or for `re_form = ~0`. The same rule applies to
+#'   the fitted `cluster2` column when `diag_cluster2` would be re-added
+#'   (#1788).
 #'
 #'   For AGHQ fits, conditional predictions use the latent modes at the
 #'   fitted parameters. They are not averages over latent-score uncertainty.
@@ -3396,6 +3418,23 @@ predict.gllvmTMB_multi <- function(
     if (!re_zero) {
       par <- object$tmb_obj$env$last.par.best
       added <- character(0)
+      ## A missing unit *column* used to leave every st_id NA, skip the
+      ## contributions, and still report rr_B / diag_B as re-added (#1782).
+      ## An unseen level of a column that is present stays fixed-effects-only.
+      unit_lbl <- object$unit_col
+      unit_tiers <- c(
+        if (isTRUE(object$use$rr_B)) "rr_B",
+        if (isTRUE(object$use$diag_B)) "diag_B"
+      )
+      if (length(unit_tiers) && (is.null(unit_lbl) || !nzchar(unit_lbl) ||
+            !unit_lbl %in% names(nd))) {
+        unit_show <- unit_lbl %||% "unit"
+        cli::cli_abort(c(
+          "{.arg newdata} is missing the unit column {.field {unit_show}}.",
+          "x" = "Unit-level random effects ({.val {unit_tiers}}) cannot be re-added without it.",
+          ">" = "Add {.field {unit_show}} to {.arg newdata}, or pass {.code re_form = ~0} for the fixed-effects-only prediction."
+        ), class = "gllvmTMB_predict_newdata_unit_missing")
+      }
       ## A missing species *column* used to leave every sp_id NA, skip the
       ## contributions, and still report phylo_rr / phylo_diag as re-added (#1787).
       ## An unseen level of a column that is present stays fixed-effects-only.
@@ -3413,6 +3452,16 @@ predict.gllvmTMB_multi <- function(
           "x" = "Phylogenetic random effects ({.val {phylo_tiers}}) cannot be re-added without it.",
           "i" = "Add {.field {species_show}} to {.arg newdata}, or pass {.code re_form = ~0} for the fixed-effects-only prediction."
         ), class = "gllvmTMB_predict_newdata_species_missing")
+      }
+      ## A missing cluster2 column used to skip diag_cluster2 in silence (#1788).
+      c2_lbl <- object$cluster2_col
+      if (isTRUE(object$use$diag_cluster2) && !is.null(c2_lbl) &&
+            nzchar(c2_lbl) && !c2_lbl %in% names(nd)) {
+        cli::cli_abort(c(
+          "{.arg newdata} is missing the cluster2 column {.field {c2_lbl}}.",
+          "x" = "The {.val diag_cluster2} random effect cannot be re-added without it.",
+          ">" = "Add {.field {c2_lbl}} to {.arg newdata}, or pass {.code re_form = ~0} for the fixed-effects-only prediction."
+        ), class = "gllvmTMB_predict_newdata_cluster2_missing")
       }
       ## Build per-row indices on the training factor scales
       tr_id <- as.integer(nd[[object$trait_col]]) - 1L

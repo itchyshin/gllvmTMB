@@ -38,6 +38,7 @@ gllvmTMBcontrol(
   allow_nongaussian_reml = FALSE,
   loading_ridge = NULL,
   fixed_effect_priors = NULL,
+  kernel_psi_sd_prior = NULL,
   optimizer_passes = 1L,
   svd_start = TRUE,
   va_polish = TRUE,
@@ -405,6 +406,24 @@ rank-one probit example. \code{dep()}, Julia, MSPL, REML and VA are rejected. Es
 approximate posterior covariance, not calibrated sampling uncertainty.
 Profile intervals, bootstrap intervals and prediction SEs are withheld.}
 
+\item{kernel_psi_sd_prior}{Optional data frame with \code{kernel}, \code{trait},
+and \code{scale} columns. Each row applies an independent half-normal prior
+with density on the natural standard deviation \code{sqrt(Psi[t,t])} for the
+named kernel and trait. The positive \code{scale} is expressed in response
+units. The density is evaluated with respect to the natural SD, so the
+objective uses \code{sigma = exp(log_sigma)} without an additional log-SD
+Jacobian. This prior is opt-in and cannot be combined with
+\code{fixed_effect_priors} or a loading penalty (\code{loading_ridge} or a finite
+\code{aghq_ridge}). It changes neither the default fit nor the loading penalty.
+Omitted kernel and trait pairs remain unpenalized. The half-normal density
+has its mode at zero and does not prevent near-zero estimates; treat it as
+a scale sensitivity, not a boundary-avoidance method. It is currently
+supported for native-TMB ML Laplace Gaussian fits with a fitted kernel Psi
+(\code{kernel_latent(..., unique = TRUE)}). MAP estimates and, when requested,
+local approximate posterior curvature are returned; calibrated intervals,
+profile intervals, bootstrap intervals, Julia, REML, MSPL, and VA are not
+supported for this prior.}
+
 \item{optimizer_passes}{Number of exact-gradient optimisation passes from
 the preceding estimate. The default \code{1} retains the historical single
 pass. A later pass is retained only when it converges and does not increase
@@ -541,6 +560,55 @@ lapply(va_fits, function(fit) {
 gllvmTMBcontrol(aghq_ridge = "auto")
 # The same fixed loading MAP penalty, named independently of integration.
 gllvmTMBcontrol(loading_ridge = 2)
+
+# A half-normal prior on selected named-kernel Psi SDs. The scale is in
+# response units; each row selects one kernel and trait.
+psi_prior <- data.frame(kernel = "tip", trait = "leaf", scale = 0.5)
+gllvmTMBcontrol(kernel_psi_sd_prior = psi_prior)
+
+# Fit the sensitivity model from either long or wide data. The repeated
+# kernel names select distinct covariance components, and unique = TRUE
+# includes each component's trait-specific Psi diagonal.
+set.seed(42)
+n <- 8L
+species <- c(paste0("H", seq_len(n)), paste0("P", seq_len(n)))
+A <- 0.6^abs(outer(seq_len(n), seq_len(n), "-"))
+I <- diag(n)
+K_phy <- rbind(cbind(A, 0.55 * A), cbind(0.55 * A, A))
+K_tip <- rbind(cbind(I, 0.55 * I), cbind(0.55 * I, I))
+dimnames(K_phy) <- dimnames(K_tip) <- list(species, species)
+Y <- cbind(
+  leaf = c(sin(seq_len(n)), rep(NA_real_, n)),
+  stem = c(cos(seq_len(n)), rep(NA_real_, n)),
+  jaw = c(rep(NA_real_, n), sin(seq_len(n) + 0.3)),
+  limb = c(rep(NA_real_, n), cos(seq_len(n)))
+)
+wide <- data.frame(species = factor(species), Y, check.names = FALSE)
+long <- data.frame(
+  species = factor(rep(species, each = ncol(Y))),
+  trait = factor(rep(colnames(Y), times = length(species))),
+  value = as.vector(t(Y))
+)
+psi_prior <- data.frame(kernel = "tip", trait = "leaf", scale = 0.5)
+wide_map <- gllvmTMB(
+  traits(leaf, stem, jaw, limb) ~ 1 +
+    kernel_latent(species, K = K_phy, d = 1, name = "phy", unique = TRUE) +
+    kernel_latent(species, K = K_tip, d = 1, name = "tip", unique = TRUE),
+  data = wide, unit = "species", cluster = "species", family = gaussian(),
+  missing = miss_control(response = "include"), known_sigma_eps = 0.12,
+  control = gllvmTMBcontrol(se = FALSE, kernel_psi_sd_prior = psi_prior)
+)
+long_map <- gllvmTMB(
+  value ~ 0 + trait +
+    kernel_latent(species, K = K_phy, d = 1, name = "phy", unique = TRUE) +
+    kernel_latent(species, K = K_tip, d = 1, name = "tip", unique = TRUE),
+  data = long, unit = "species", trait = "trait", cluster = "species",
+  family = gaussian(), missing = miss_control(response = "include"),
+  known_sigma_eps = 0.12,
+  control = gllvmTMBcontrol(se = FALSE, kernel_psi_sd_prior = psi_prior)
+)
+wide_map$objective_components
+long_map$objective_components
 
 # Experimental scalar variational route: public auto uses GH with H = 7.
 gllvmTMBcontrol(integration = "va")

@@ -289,6 +289,9 @@ REGISTER_MAP <- list(
       c("MSPL-01", "MSPL-02", "MSPL-03", "MSPL-04", "MSPL-05"),
       note = "R-only estimator; GLLVM.jl's ledger has no MSPL row (expected to appear R-only in the parity report)."),
 
+  ROW("Named-kernel Psi SD priors (native TMB MAP sensitivity)", "Estimators", "KER-03B",
+      note = "R-only opt-in sensitivity fit; Julia parity, broad recovery, and calibrated uncertainty are not established."),
+
   # --- Intervals -----------------------------------------------------------
   ROW("Point extraction (coef / loadings / Σ_y / correlations)", "Intervals",
       c("EXT-01", "EXT-02", "EXT-03", "EXT-14", "EXT-16", "EXT-17", "EXT-18")),

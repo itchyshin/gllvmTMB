@@ -159,7 +159,9 @@
 #'   synthesise a placeholder. When `cluster` is omitted and one
 #'   `kernel_indep()`, `kernel_dep()`, `kernel_latent()`, `kernel_unique()`,
 #'   or `kernel_scalar()` term names a bare grouping column, that column is
-#'   used so `K` is checked against it. An explicit `cluster` is unchanged,
+#'   used so `K` is checked against it. A named `unit` argument is used even
+#'   when it is not written first, as in `kernel_indep(K = K, unit = g)`.
+#'   An explicit `cluster` is unchanged,
 #'   including the replicated kernel example that passes `cluster = "site"`.
 #'   The same omitted-`cluster` rule adopts one bare grouping from
 #'   `phylo_latent()`, `phylo_unique()`, `phylo_scalar()`, `phylo_indep()`,
@@ -829,6 +831,9 @@ gllvmTMB <- function(
     ))
   }
   .gllvmTMB_fixed_prior_route(control$fixed_effect_priors, engine, estimator, REML, control)
+  .gllvmTMB_kernel_psi_sd_prior_route(
+    control$kernel_psi_sd_prior, engine, estimator, REML, control
+  )
   if (identical(engine, "julia") &&
       (control$optimizer_passes %||% 1L) > 1L) {
     cli::cli_abort(c(
@@ -880,6 +885,13 @@ gllvmTMB <- function(
     cli::cli_abort(c("Fixed-effect priors do not yet support structured source attenuation.",
       ">" = "Remove the structured source attenuation or omit the fixed-effect priors."),
       class = "gllvmTMB_fixed_prior_unsupported")
+  }
+  if (!is.null(control$kernel_psi_sd_prior) &&
+      !is.null(structured_rho_capture$spec)) {
+    cli::cli_abort(c(
+      "{.arg kernel_psi_sd_prior} does not yet support structured source attenuation.",
+      ">" = "Remove the structured attenuation term or omit the kernel Psi prior."
+    ), class = "gllvmTMB_kernel_psi_prior_unsupported")
   }
   .structured_rho_dispatch_fence(structured_rho_capture$spec, engine = engine,
     integration = control$integration %||% "laplace", estimator = estimator,
@@ -958,6 +970,13 @@ gllvmTMB <- function(
     ## variational fit or aborts, and never builds the Laplace objective.
   }
   ci_method <- match.arg(ci_method)
+  if (!is.null(control$kernel_psi_sd_prior) && !identical(ci_method, "none")) {
+    cli::cli_abort(c(
+      "{.arg ci_method} is not validated for kernel Psi prior fits.",
+      "i" = "The fit reports a MAP estimate and local approximate posterior curvature only.",
+      ">" = "Use {.code ci_method = 'none'} and inspect prior sensitivity."
+    ), class = "gllvmTMB_kernel_psi_prior_inference_unsupported")
+  }
   ci_defaults <- identical(ci_method, "none") &&
     is.numeric(ci_level) &&
     length(ci_level) == 1L &&
@@ -1759,16 +1778,23 @@ gllvmTMB <- function(
     estimator = estimator,
     reml = REML
   )
-  if (!is.null(.fit$fixed_effect_priors)) {
+  if (!is.null(.fit$fixed_effect_priors) ||
+      !is.null(.fit$kernel_psi_sd_prior)) {
     .fit$estimator <- "MAP"
-    .fit$estimator_provenance$criterion_id <- if (isTRUE(.fit$aghq$used)) {
+    .fit$estimator_provenance$criterion_id <- if (!is.null(.fit$kernel_psi_sd_prior)) {
+      "laplace_plus_kernel_psi_sd_prior"
+    } else if (isTRUE(.fit$aghq$used)) {
       "aghq_plus_normal_priors"
     } else {
       "laplace_plus_normal_priors"
     }
     ## The fixed-effect prior is applied in R; penalty_eval_id describes the
-    ## TMB tape and must not be confused with the MSPL penalty-on tape.
-    .fit$estimator_provenance$fixed_effect_prior_applied <- TRUE
+    ## TMB tape and must not be confused with the MSPL penalty-on tape. Keep the
+    ## source-specific provenance flags accurate when another prior is active.
+    .fit$estimator_provenance$fixed_effect_prior_applied <-
+      !is.null(.fit$fixed_effect_priors)
+    .fit$estimator_provenance$kernel_psi_sd_prior_applied <-
+      !is.null(.fit$kernel_psi_sd_prior)
     .fit$estimator_provenance$public_estimator <- "MAP"
     .fit$estimator_provenance$notes <- sub(
       "public label ML is coarse: this fit uses AGHQ, not Laplace",
@@ -2708,6 +2734,23 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #'   rank-one probit example. `dep()`, Julia, MSPL, REML and VA are rejected. Estimates are MAP points; inverse penalized curvature is local
 #'   approximate posterior covariance, not calibrated sampling uncertainty.
 #'   Profile intervals, bootstrap intervals and prediction SEs are withheld.
+#' @param kernel_psi_sd_prior Optional data frame with `kernel`, `trait`,
+#'   and `scale` columns. Each row applies an independent half-normal prior
+#'   with density on the natural standard deviation `sqrt(Psi[t,t])` for the
+#'   named kernel and trait. The positive `scale` is expressed in response
+#'   units. The density is evaluated with respect to the natural SD, so the
+#'   objective uses `sigma = exp(log_sigma)` without an additional log-SD
+#'   Jacobian. This prior is opt-in and cannot be combined with
+#'   `fixed_effect_priors` or a loading penalty (`loading_ridge` or a finite
+#'   `aghq_ridge`). It changes neither the default fit nor the loading penalty.
+#'   Omitted kernel and trait pairs remain unpenalized. The half-normal density
+#'   has its mode at zero and does not prevent near-zero estimates; treat it as
+#'   a scale sensitivity, not a boundary-avoidance method. It is currently
+#'   supported for native-TMB ML Laplace Gaussian fits with a fitted kernel Psi
+#'   (`kernel_latent(..., unique = TRUE)`). MAP estimates and, when requested,
+#'   local approximate posterior curvature are returned; calibrated intervals,
+#'   profile intervals, bootstrap intervals, Julia, REML, MSPL, and VA are not
+#'   supported for this prior.
 #' @param loading_ridge Integration-neutral alias for `aghq_ridge`. Use this
 #'   spelling to request the same loading MAP penalty on a Laplace fit without
 #'   suggesting that the penalty belongs to AGHQ. The default `NULL` preserves
@@ -2900,6 +2943,55 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #' # The same fixed loading MAP penalty, named independently of integration.
 #' gllvmTMBcontrol(loading_ridge = 2)
 #'
+#' # A half-normal prior on selected named-kernel Psi SDs. The scale is in
+#' # response units; each row selects one kernel and trait.
+#' psi_prior <- data.frame(kernel = "tip", trait = "leaf", scale = 0.5)
+#' gllvmTMBcontrol(kernel_psi_sd_prior = psi_prior)
+#'
+#' # Fit the sensitivity model from either long or wide data. The repeated
+#' # kernel names select distinct covariance components, and unique = TRUE
+#' # includes each component's trait-specific Psi diagonal.
+#' set.seed(42)
+#' n <- 8L
+#' species <- c(paste0("H", seq_len(n)), paste0("P", seq_len(n)))
+#' A <- 0.6^abs(outer(seq_len(n), seq_len(n), "-"))
+#' I <- diag(n)
+#' K_phy <- rbind(cbind(A, 0.55 * A), cbind(0.55 * A, A))
+#' K_tip <- rbind(cbind(I, 0.55 * I), cbind(0.55 * I, I))
+#' dimnames(K_phy) <- dimnames(K_tip) <- list(species, species)
+#' Y <- cbind(
+#'   leaf = c(sin(seq_len(n)), rep(NA_real_, n)),
+#'   stem = c(cos(seq_len(n)), rep(NA_real_, n)),
+#'   jaw = c(rep(NA_real_, n), sin(seq_len(n) + 0.3)),
+#'   limb = c(rep(NA_real_, n), cos(seq_len(n)))
+#' )
+#' wide <- data.frame(species = factor(species), Y, check.names = FALSE)
+#' long <- data.frame(
+#'   species = factor(rep(species, each = ncol(Y))),
+#'   trait = factor(rep(colnames(Y), times = length(species))),
+#'   value = as.vector(t(Y))
+#' )
+#' psi_prior <- data.frame(kernel = "tip", trait = "leaf", scale = 0.5)
+#' wide_map <- gllvmTMB(
+#'   traits(leaf, stem, jaw, limb) ~ 1 +
+#'     kernel_latent(species, K = K_phy, d = 1, name = "phy", unique = TRUE) +
+#'     kernel_latent(species, K = K_tip, d = 1, name = "tip", unique = TRUE),
+#'   data = wide, unit = "species", cluster = "species", family = gaussian(),
+#'   missing = miss_control(response = "include"), known_sigma_eps = 0.12,
+#'   control = gllvmTMBcontrol(se = FALSE, kernel_psi_sd_prior = psi_prior)
+#' )
+#' long_map <- gllvmTMB(
+#'   value ~ 0 + trait +
+#'     kernel_latent(species, K = K_phy, d = 1, name = "phy", unique = TRUE) +
+#'     kernel_latent(species, K = K_tip, d = 1, name = "tip", unique = TRUE),
+#'   data = long, unit = "species", trait = "trait", cluster = "species",
+#'   family = gaussian(), missing = miss_control(response = "include"),
+#'   known_sigma_eps = 0.12,
+#'   control = gllvmTMBcontrol(se = FALSE, kernel_psi_sd_prior = psi_prior)
+#' )
+#' wide_map$objective_components
+#' long_map$objective_components
+#'
 #' # Experimental scalar variational route: public auto uses GH with H = 7.
 #' gllvmTMBcontrol(integration = "va")
 #' # H = 61 remains a diagnostic; JJ is explicit binomial-logit only.
@@ -3001,6 +3093,7 @@ gllvmTMBcontrol <- function(
   allow_nongaussian_reml = FALSE,
   loading_ridge = NULL,
   fixed_effect_priors = NULL,
+  kernel_psi_sd_prior = NULL,
   optimizer_passes = 1L,
   svd_start = TRUE,
   va_polish = TRUE,
@@ -3223,6 +3316,7 @@ gllvmTMBcontrol <- function(
     loading_ridge = if (isTRUE(loading_ridge_explicit)) aghq_ridge else NULL,
     loading_ridge_explicit = loading_ridge_explicit,
     fixed_effect_priors = fixed_effect_priors,
+    kernel_psi_sd_prior = kernel_psi_sd_prior,
     aghq_continuation = aghq_continuation,
     aghq_shift_tol = aghq_shift_tol,
     aghq_grad_tol = aghq_grad_tol,

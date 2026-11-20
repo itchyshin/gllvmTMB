@@ -131,7 +131,9 @@ entirely (with or without passing \code{cluster}); the engine will
 synthesise a placeholder. When \code{cluster} is omitted and one
 \code{kernel_indep()}, \code{kernel_dep()}, \code{kernel_latent()}, \code{kernel_unique()},
 or \code{kernel_scalar()} term names a bare grouping column, that column is
-used so \code{K} is checked against it. An explicit \code{cluster} is unchanged,
+used so \code{K} is checked against it. A named \code{unit} argument is used even
+when it is not written first, as in \code{kernel_indep(K = K, unit = g)}.
+An explicit \code{cluster} is unchanged,
 including the replicated kernel example that passes \code{cluster = "site"}.
 The same omitted-\code{cluster} rule adopts one bare grouping from
 \code{phylo_latent()}, \code{phylo_unique()}, \code{phylo_scalar()}, \code{phylo_indep()},

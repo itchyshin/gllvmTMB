@@ -55,8 +55,11 @@ and the \code{newdata} path (before 0.7.1 it was read only on the
 \code{newdata} path, and there only as the literal \code{~ 0}). For \code{newdata}
 with sites/species not present in the training data the random
 effects cannot be drawn, so those rows are fixed-effects-only
-regardless of \code{re_form}. A missing species column is not an unseen
-level: if \code{newdata} omits the fitted species column while
+regardless of \code{re_form}. A missing unit column is not an unseen
+level: if \code{newdata} omits the fitted unit column while unit-level
+random effects are being re-added, \code{predict()} stops and asks for
+that column or for \code{re_form = ~0}. A missing species column is not
+an unseen level: if \code{newdata} omits the fitted species column while
 phylogenetic random effects are being re-added, \code{predict()} stops and
 asks for that column or for \code{re_form = ~0}.
 

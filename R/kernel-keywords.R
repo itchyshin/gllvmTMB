@@ -159,6 +159,11 @@ kernel_scalar <- function(unit, K, name = "kernel") {
 }
 
 ## Bare grouping columns named by kernel_*() intercept terms (#1752, #1805).
+## `kernel_indep(unit, K = K)` stores `unit` as the first argument.
+## `kernel_indep(K = K, unit = g)` names that argument later; grouping is
+## resolved via [.gllvmTMB_keyword_bare_groups()] (`match.call()` on the
+## keyword, then fall back to the second subexpression). A bar (`1 + x | g`)
+## is a slope and keeps its own group; it is not collected here.
 ## @keywords internal
 ## @noRd
 .gllvmTMB_kernel_bare_groups <- function(formula) {

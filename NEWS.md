@@ -12,6 +12,8 @@
 
 * `predict(newdata = )` now stops when the fitted species column is absent and phylogenetic random effects (`phylo_rr` / `phylo_diag`) would be re-added. It used to return the fixed-effects-only prediction while reporting that those random effects had been re-added. `re_form = ~0` still returns that fixed-effects prediction, and an unseen level of a species column that is present is unchanged (#1787).
 
+* `simulate()` on a gllvmTMB fit still runs gllvmTMB's method after `library(gllvm)`. `gllvm` masks `stats::simulate`, which was leaving unqualified `simulate(fit)` without an applicable method (#1768).
+
 * `getLoadings()`, `getLV()`, `getResidualCov()` and `getResidualCor()` still return the gllvmTMB result after `library(gllvm)`. `gllvm` exports S3 generics of those names, so attaching it was masking gllvmTMB's functions and the call failed with "no applicable method" on a `gllvmTMB` fit (#1759). The exported functions are unchanged: same arguments, and the same matrix or score list from `gllvmTMB::getLoadings()` and `gllvmTMB::getLV()`. Pass the fit as the first argument. A fit from `gllvm` is still handled by `gllvm`. This does not translate a `gllvm` object into a gllvmTMB result, and `getResidualCov()` on a gllvmTMB fit remains the trait covariance matrix rather than `gllvm`'s residual-covariance list.
 * `y ~ 0 + trait` now stops with a message naming the factor when that factor has only one level, instead of `contrasts can be applied only to factors with 2 or more levels`. The same data with `y ~ 1` still fits. A trait with two or more levels is unchanged (#1783). `screen_gllvmTMB()` records the same classed warning and flags the fixed-effect design without aborting the screen.
 

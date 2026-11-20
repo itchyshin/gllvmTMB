@@ -122,6 +122,7 @@
     consensus_id = consensus_id,
     agreement = agreement,
     agreement_range = agreement_range,
+    agreement_scale = agreement_scale,
     consensus_has_strict_convergence = consensus_has_strict_convergence,
     best_id = best_id
   )
@@ -2996,6 +2997,8 @@
       best_three_objective_range = agreement_range,
       gradient_tolerance = .VA_R3_HEALTH_GRADIENT_TOL,
       agreement_tolerance = 1e-6,
+      agreement_objective_scale = start_gate$agreement_scale,
+      agreement_tolerance_effective = 1e-6 * start_gate$agreement_scale,
       max_projected_variance = max_projected_variance,
       projected_variance_limit = 4,
       variance_domain_ok = variance_domain_ok

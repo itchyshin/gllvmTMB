@@ -12,7 +12,7 @@ test_that("compiled fixed-effect BFGS uses the exact cloglog gradient", {
   expect_equal(.compile_tmb_fixture(cpp), 0L)
   dll <- TMB::dynlib(file.path(scratch, "gllvmTMB_cloglog_tail"))
   dyn.load(dll)
-  on.exit(dyn.unload(dll), add = TRUE)
+  on.exit(.unload_tmb_fixture(dll, environment()), add = TRUE)
 
   tmb_obj <- TMB::MakeADFun(
     data = list(y = c(1, 2, 2), n_trials = rep(3, 3)),
@@ -74,7 +74,7 @@ test_that("random-effect BFGS reaches candidate-specific sdreport curvature", {
   expect_equal(.compile_tmb_fixture(cpp), 0L)
   dll <- TMB::dynlib(file.path(scratch, "bfgs_gaussian_random_intercept"))
   dyn.load(dll)
-  on.exit(dyn.unload(dll), add = TRUE)
+  on.exit(.unload_tmb_fixture(dll, environment()), add = TRUE)
 
   obj <- TMB::MakeADFun(
     data = list(

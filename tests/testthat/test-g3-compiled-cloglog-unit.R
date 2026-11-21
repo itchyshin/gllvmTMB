@@ -21,7 +21,7 @@ test_that("G3 compiled unit evaluates a sealed Newton grid without optimisation"
   expect_equal(.compile_tmb_fixture(cpp), 0L)
   dll <- TMB::dynlib(file.path(scratch, "gllvmTMB_cloglog_tail"))
   dyn.load(dll)
-  on.exit(dyn.unload(dll), add = TRUE)
+  on.exit(.unload_tmb_fixture(dll, environment()), add = TRUE)
 
   obj <- TMB::MakeADFun(
     data = list(y = c(1, 2, 2), n_trials = rep(3, 3)),

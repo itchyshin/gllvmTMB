@@ -1,7 +1,8 @@
 ## Test-of-the-test for the `fit_health$converged` verdict (R/diagnose.R).
 ##
-## `converged` is a conservative point-stationarity conjunction: optimiser success,
-## finite objective, and a small raw maximum gradient. The objective-scaled gradient
+## `converged` is TRUE only when `convergence_status` is "converged" (optimiser
+## success, finite objective, small relative gradient, no boundary, PD Hessian).
+## [moved by the 18 Nov 2026 converged rule] The objective-scaled gradient
 ## remains separately available as a descriptive recovery-fixture diagnostic.
 ##
 ## A verdict that cannot fail proves nothing, so this battery must REJECT genuine
@@ -16,11 +17,18 @@ test_that("verdict accepts a clean, well-identified fit (PD)", {
   n <- 40L; T_ <- 4L
   df <- expand.grid(unit = factor(paste0("u", seq_len(n))),
                     trait = factor(paste0("t", seq_len(T_))))
-  df$value <- stats::rnorm(nrow(df)) + as.numeric(df$trait) * 0.3
+  ## Converged rule (18 Nov 2026): pure-noise data put the unique variance on its
+  ## boundary (`boundary`, so `converged` is FALSE); a real one-factor signal
+  ## gives an interior optimum.
+  z <- stats::rnorm(n)
+  df$value <- 0.8 * z[as.integer(df$unit)] *
+    c(1, 0.7, 0.5, 0.9)[as.integer(df$trait)] +
+    stats::rnorm(nrow(df)) + as.numeric(df$trait) * 0.3
   fit <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
     value ~ 0 + trait + latent(0 + trait | unit, d = 1),
     data = df, unit = "unit", trait = "trait", family = gaussian()
   )))
+  expect_identical(fit$fit_health$convergence_status, "converged")
   expect_true(isTRUE(fit$fit_health$converged))
   expect_true(isTRUE(fit$fit_health$optimizer_converged))
   expect_lt(fit$fit_health$max_gradient, 1e-3)
@@ -41,12 +49,15 @@ test_that("Hessian health remains separate from point convergence", {
     value ~ 0 + trait + latent(0 + trait | unit, d = 4),
     data = df, unit = "unit", trait = "trait", family = gaussian()
   )))
+  ## Converged rule (18 Nov 2026): `converged` now includes the Hessian and
+  ## boundary conditions, so it is TRUE only when the status is "converged".
   expect_identical(
     fit$fit_health$converged,
-    isTRUE(fit$fit_health$optimizer_converged) &&
-      is.finite(fit$fit_health$objective) &&
-      isTRUE(fit$fit_health$stationary_by_gradient)
+    identical(fit$fit_health$convergence_status, "converged")
   )
+  if (isFALSE(fit$fit_health$pd_hessian)) {
+    expect_false(fit$fit_health$converged)
+  }
   ## pd_hessian on a near-zero rotation ridge is FD/BLAS noise: it reads FALSE on
   ## some platforms (the case it "gets wrong") and PD on others (seen on ubuntu CI).
   ## Only demonstrate the "pd_hessian disagrees" branch when the platform actually

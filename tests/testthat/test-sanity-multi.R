@@ -18,7 +18,12 @@ test_that("sanity_multi() reports the expected fields", {
     data = sim$data
   )
   flags <- capture.output(out <- sanity_multi(fit))
-  expect_true(out$converged)
+  ## Converged rule (18 Nov 2026): this d = 2 fit has a non-PD Hessian
+  ## (degenerate), so `converged` is FALSE; it must agree with the status.
+  expect_identical(
+    out$converged,
+    identical(fit$fit_health$convergence_status, "converged")
+  )
   expect_true(is.finite(out$max_gradient))
   expect_true(is.logical(out$pd_hessian))
   expect_true("rr_B_min_loading" %in% names(out))
@@ -740,7 +745,12 @@ test_that("sanity_multi() survives a non-finite gradient and agrees with fit_hea
   ## Healthy fit: unchanged, and agrees with fit_health.
   ok <- NULL
   capture.output(ok <- sanity_multi(fit))
-  expect_true(ok$converged)
+  ## Converged rule (18 Nov 2026): this fit has its unique SD on the boundary,
+  ## so `converged` is FALSE; it must agree with fit_health.
+  expect_identical(
+    ok$converged,
+    identical(fit$fit_health$convergence_status, "converged")
+  )
   expect_identical(ok$converged, gllvmTMB:::.gllvmTMB_build_fit_health(fit)$converged)
   expect_true(is.finite(ok$max_gradient))
 

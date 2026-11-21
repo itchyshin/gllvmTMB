@@ -249,7 +249,7 @@ def run_script(lang, code, workdir, timeout_s):
         proj = "test" if os.path.exists("test/Project.toml") else "."
         cmd = ["julia", f"--project={proj}", path]
     open(path, "w").write(code)
-    env = {k: v for k, v in os.environ.items() if not re.search(r"KEY|TOKEN|SECRET|PAT", k)}
+    env = {k: v for k, v in os.environ.items() if not re.search(r"KEY|TOKEN|SECRET|(^|_)PAT($|_)", k)}
     try:
         p = subprocess.run(["timeout", str(timeout_s)] + cmd, capture_output=True, text=True, env=env)
         out, rc = (p.stdout + "\n--- stderr ---\n" + p.stderr), p.returncode
@@ -444,7 +444,7 @@ def cmd_fix_apply(a):
         else:
             proj = "test" if os.path.exists("test/Project.toml") else "."
             c2 = ["julia", f"--project={proj}", "-e", f"using Test; include(\"{t}\")"]
-        env = {k: v for k, v in os.environ.items() if not re.search(r"KEY|TOKEN|SECRET|PAT", k)}
+        env = {k: v for k, v in os.environ.items() if not re.search(r"KEY|TOKEN|SECRET|(^|_)PAT($|_)", k)}
         p = subprocess.run(["timeout", str(a.timeout)] + c2, capture_output=True, text=True, env=env)
         logs.append(f"$ test {t} -> exit {p.returncode}\n{(p.stdout + p.stderr)[-6000:]}")
     ok = bool(patch.strip())

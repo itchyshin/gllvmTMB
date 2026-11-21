@@ -3533,21 +3533,27 @@ predict.gllvmTMB_multi <- function(
           nrow = object$n_species,
           ncol = object$n_traits
         )
+        propto_ok <- rep(FALSE, length(eta))
         for (i in seq_along(eta)) {
           sp <- sp_id[i]
           t <- tr_id[i]
           if (!is.na(sp) && sp >= 0 && sp < object$n_species) {
             eta[i] <- eta[i] + p_phy[sp + 1L, t + 1L]
+            propto_ok[i] <- TRUE
           }
         }
-        added <- c(added, "propto")
+        if (any(propto_ok)) {
+          added <- c(added, "propto")
+        }
       }
       if (isTRUE(object$use$phylo_rr) || isTRUE(object$use$phylo_diag)) {
         effects <- .structured_rho_contribution(object)
         ok <- !is.na(sp_id) & sp_id >= 0 & sp_id < object$n_species & !is.na(tr_id)
-        eta[ok] <- eta[ok] + effects[cbind(sp_id[ok]+1L,tr_id[ok]+1L)]
-        added <- c(added, if (isTRUE(object$use$phylo_rr)) "phylo_rr",
-          if (isTRUE(object$use$phylo_diag)) "phylo_diag")
+        if (any(ok)) {
+          eta[ok] <- eta[ok] + effects[cbind(sp_id[ok]+1L, tr_id[ok]+1L)]
+          added <- c(added, if (isTRUE(object$use$phylo_rr)) "phylo_rr",
+            if (isTRUE(object$use$phylo_diag)) "phylo_diag")
+        }
       }
       ## diag_species: per-(trait, species) random intercept.
       ## src/gllvmTMB.cpp:2513 -- eta(o) += q_sp(t, species_id(o)). Note the
@@ -3562,8 +3568,10 @@ predict.gllvmTMB_multi <- function(
         )
         ok <- !is.na(sp_id) & sp_id >= 0 & sp_id < object$n_species &
           !is.na(tr_id)
-        eta[ok] <- eta[ok] + q_sp[cbind(tr_id[ok] + 1L, sp_id[ok] + 1L)]
-        added <- c(added, "diag_species")
+        if (any(ok)) {
+          eta[ok] <- eta[ok] + q_sp[cbind(tr_id[ok] + 1L, sp_id[ok] + 1L)]
+          added <- c(added, "diag_species")
+        }
       }
 
       ## diag_cluster2: per-(trait, cluster2-level) random intercept.

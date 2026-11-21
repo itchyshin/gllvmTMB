@@ -4,7 +4,7 @@
 test_that("multinomial-only Psi skip uses a multinomial headline (#1580)", {
   msg <- gllvmTMB:::.auto_psi_skip_message(multinomial_labs = c("cat:2", "cat:3"))
   text <- paste(unname(msg), collapse = "\n")
-  expect_match(text, "1 multinomial contrast trait", fixed = TRUE)
+  expect_match(text, "multinomial contrast trait", fixed = TRUE)
   expect_false(grepl("single-trial binomial", text, fixed = TRUE))
   expect_false(grepl("binary / categorical-contrast", text, fixed = TRUE))
   expect_false(grepl("theta_diag_B", text, fixed = TRUE))

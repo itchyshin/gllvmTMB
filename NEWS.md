@@ -1,5 +1,7 @@
 # gllvmTMB 0.8.0
 
+* `check_gllvmTMB()` and `fit$fit_health` now flag an ordinal fit whose cutpoint log-increment has collapsed below -15 (an unobserved intermediate category, two coinciding cutpoints) as `boundary_ordinal_cutpoint`. The `boundary_flags` row shows WARN. These fits used to pass every row, with an increment SE near 9500. The fit-time empty-category warning and the cutpoint estimates are unchanged. The -15 cut-off is a fixed internal value, not yet user-settable (#1397).
+
 * `.eva_load_dll(rebuild = TRUE)` reuses an already-loaded EVA prototype DLL instead of unloading it while a live `MakeADFun` object still holds external pointers. Unloading had removed those pointers and could segfault the next evaluation (refs #1815).
 
 * `kernel_indep(K = K, unit = g)` (and the same named-`unit` order for `kernel_dep()`, `kernel_latent()`, `kernel_unique()`, and `kernel_scalar()`) now groups by `g` when `cluster` is omitted. The grouping used to be taken from the first argument by position, so this call treated `K` as the grouping column and stopped with a message about `K` rather than `g`. `kernel_indep(unit, K = K)` is unchanged, and an explicit `cluster` is unchanged (refs #1805).

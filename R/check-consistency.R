@@ -177,7 +177,10 @@ gllvmTMB_check_consistency <- function(
   .gllvmTMB_mspl_assert_inference(fit, "gllvmTMB_check_consistency")
   n_sim <- as.integer(n_sim)
   if (length(n_sim) != 1L || is.na(n_sim) || n_sim < 2L) {
-    cli::cli_abort("{.arg n_sim} must be an integer >= 2.")
+    cli::cli_abort(c(
+      "{.arg n_sim} must be an integer >= 2.",
+      ">" = "Pass an integer replicate count of at least 2, for example {.code n_sim = 100L}."
+    ))
   }
   ## The score covariance from n_sim replicates has rank at most
   ## n_sim - 1, so it can only be inverted when n_sim exceeds the number of

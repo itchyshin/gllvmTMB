@@ -7905,7 +7905,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
           "An explicit between-unit diagonal ({.fn indep} or {.fn diag}) is not identified for single-observation ordinal traits.",
           "i" = "Trait{?s} affected: {.val {ordinal_labs}}.",
           "i" = "One observation per (trait, unit) cannot separate that diagonal from the fixed threshold scale (1 for {.fn ordinal_probit}, pi^2/3 for {.fn ordinal_logit}).",
-          "*" = "The between-unit trait variance for the affected trait{?s} is not estimated. Repeated observations of the same trait in a unit identify the term."
+          "*" = "The between-unit trait variance for the affected {cli::qty(length(ordinal_labs))}trait{?s} is not estimated. Repeated observations of the same trait in a unit identify the term."
         ))
       } else {
         cli::cli_inform(.auto_psi_skip_message(

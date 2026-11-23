@@ -117,7 +117,7 @@ testthat::test_that("pkgdown navigation names specialist routes for readers", {
 
   testthat::expect_match(text, "Specialist methods and evidence", fixed = TRUE)
   testthat::expect_match(text, "Rare binary items and runaway estimates (experimental)", fixed = TRUE)
-  testthat::expect_match(text, "How gllvmTMB is checked — and what those checks miss", fixed = TRUE)
-  testthat::expect_match(text, "Structured random slopes for non-Gaussian traits — current evidence and limits", fixed = TRUE)
+  testthat::expect_match(text, "How gllvmTMB is checked and what those checks miss", fixed = TRUE)
+  testthat::expect_match(text, "Structured random slopes for non-Gaussian traits: current evidence and limits", fixed = TRUE)
   testthat::expect_false(grepl("Developer note:", text, fixed = TRUE))
 })

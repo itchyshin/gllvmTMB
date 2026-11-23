@@ -1,5 +1,7 @@
 # gllvmTMB 0.8.0
 
+* `link_residual_per_trait()` now stops with a named error when a trait uses an unsupported binomial link or a Poisson/Beta family off the log/logit links that define link-residual variance. Supported pairs are unchanged numerically; only the former `NA` or silent logit/log fallback now errors (refs #1864).
+
 * `.eva_load_dll(rebuild = TRUE)` reuses an already-loaded EVA prototype DLL instead of unloading it while a live `MakeADFun` object still holds external pointers. Unloading had removed those pointers and could segfault the next evaluation (refs #1815).
 
 * `kernel_indep(K = K, unit = g)` (and the same named-`unit` order for `kernel_dep()`, `kernel_latent()`, `kernel_unique()`, and `kernel_scalar()`) now groups by `g` when `cluster` is omitted. The grouping used to be taken from the first argument by position, so this call treated `K` as the grouping column and stopped with a message about `K` rather than `g`. `kernel_indep(unit, K = K)` is unchanged, and an explicit `cluster` is unchanged (refs #1805).

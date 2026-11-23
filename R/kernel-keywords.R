@@ -247,6 +247,16 @@ kernel_scalar <- function(unit, K, name = "kernel") {
   .gllvmTMB_keyword_bare_groups(formula, kernels, character())
 }
 
+.gllvmTMB_animal_bare_groups <- function(formula) {
+  keywords <- c(
+    "animal_latent", "animal_unique", "animal_indep",
+    "animal_dep", "animal_scalar"
+  )
+  .gllvmTMB_keyword_bare_groups(
+    formula, keywords, c("animal_indep", "animal_dep")
+  )
+}
+
 .gllvmTMB_phylo_bare_groups <- function(formula) {
   keywords <- c(
     "phylo_latent", "phylo_unique", "phylo_indep",

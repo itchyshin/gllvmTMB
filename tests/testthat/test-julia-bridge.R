@@ -3600,8 +3600,15 @@ test_that("engine = 'julia' main dispatch routes grouped-dispersion rows and kee
           unname(fit_tmb$opt$par[names(fit_tmb$opt$par) == "b_fix"]),
           tolerance = 1e-3
         )
+        ## LV loading columns are identified only up to sign. Align each
+        ## Julia column to the TMB reference (inner-product sign) before
+        ## the equality; the 1e-3 tolerance is unchanged. Refs #1477.
+        jl_loadings_aligned <- .procrustes_align_lambda(
+          as.matrix(fit_jl$loadings),
+          as.matrix(fit_tmb$report$Lambda_B)
+        )
         expect_equal(
-          unname(as.numeric(fit_jl$loadings)),
+          unname(as.numeric(jl_loadings_aligned)),
           unname(as.numeric(fit_tmb$report$Lambda_B)),
           tolerance = 1e-3
         )

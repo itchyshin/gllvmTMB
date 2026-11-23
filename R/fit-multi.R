@@ -3673,6 +3673,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   }
 
   ## ---- Build fixed-effects design matrix --------------------------------
+  if (temporal_active) {
+    .temporal_check_covariate_na(parsed$fixed, data, temporal, trait)
+  }
   ## We use the full data env so that 0 + trait + (0+trait):env etc. parses.
   mf <- stats::model.frame(parsed$fixed, data = data, na.action = stats::na.pass)
   ## A one-level factor dies inside model.matrix() with a bare contrasts

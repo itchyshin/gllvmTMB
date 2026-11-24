@@ -536,6 +536,20 @@ profile_targets <- function(object, ready_only = FALSE) {
           "natural"
         }
         profile_note <- if (has_tmb_obj) "ready" else "tmb_object_required"
+        profile_ready <- has_tmb_obj
+        if (
+          identical(entry$transformation, "lambda_packed") &&
+          has_tmb_obj
+        ) {
+          rr_slot <- sub("^theta_rr_", "", tmb_name)
+          if (!is.null(rr_slot) && nzchar(rr_slot)) {
+            lc <- object$lambda_constraint[[rr_slot]]
+            if (is.null(lc)) {
+              profile_note <- "latent_rotation_ambiguous"
+              profile_ready <- FALSE
+            }
+          }
+        }
         rows[[length(rows) + 1L]] <- data.frame(
           parm = parm_label,
           target_class = entry$target_class,
@@ -546,7 +560,7 @@ profile_targets <- function(object, ready_only = FALSE) {
           scale = scale_str,
           transformation = entry$transformation,
           target_type = "direct",
-          profile_ready = has_tmb_obj,
+          profile_ready = profile_ready,
           profile_note = profile_note,
           stringsAsFactors = FALSE
         )

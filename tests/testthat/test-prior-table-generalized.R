@@ -5,6 +5,15 @@ test_that("default controls do not acquire prior-table metadata", {
   expect_false("prior_table_resolved" %in% names(control))
   expect_identical(.gllvmTMB_adapt_prior_table(control), control)
 
+  empty_table <- data.frame(prior = character(), class = character())
+  empty_control <- .gllvmTMB_adapt_prior_table(
+    gllvmTMBcontrol(priors = empty_table)
+  )
+  expect_identical(.gllvmTMB_parse_prior_table(empty_table), list())
+  expect_identical(empty_control, control)
+  expect_false(.gllvmTMB_has_penalty(list(prior_table_resolved = list())))
+  expect_silent(.gllvmTMB_guard_exact_zero_priors(empty_control, 0))
+
   table <- data.frame(prior = "normal(0,2)", class = "fixef", coef = "beta")
   with_table <- gllvmTMBcontrol(priors = table)
   expect_identical(with_table$prior_table, table)

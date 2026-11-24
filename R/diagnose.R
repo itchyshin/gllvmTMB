@@ -82,7 +82,7 @@
   !is.null(object$fixed_effect_priors) ||
     !is.null(object$kernel_psi_sd_prior) ||
     !is.null(object$residual_sd_prior) ||
-    !is.null(object$prior_table_resolved) ||
+    length(object$prior_table_resolved %||% list()) > 0L ||
     isTRUE(object$aghq$penalised) ||
     (is.numeric(ridge_tau) && length(ridge_tau) == 1L &&
        is.finite(ridge_tau) && ridge_tau > 0)

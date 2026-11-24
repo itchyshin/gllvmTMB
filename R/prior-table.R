@@ -8,9 +8,10 @@
   if (!all(required %in% names(x)) || any(!names(x) %in% c(required, optional))) {
     cli::cli_abort("invalid prior table columns")
   }
-  if (!nrow(x) || any(!vapply(x, is.character, logical(1))) || anyNA(x)) {
+  if (any(!vapply(x, is.character, logical(1))) || anyNA(x)) {
     cli::cli_abort("prior table requires nonmissing character rows")
   }
+  if (!nrow(x)) return(list())
   number <- "[+-]?(?:(?:[0-9]+(?:\\.[0-9]*)?)|(?:\\.[0-9]+))(?:[eE][+-]?[0-9]+)?"
   pattern <- paste0("^\\s*(normal|student_t|ridge|gamma)\\s*\\(\\s*",
     "(", number, ")\\s*(?:,\\s*(", number, ")\\s*)?",
@@ -138,6 +139,12 @@
     cli::cli_abort("prior table changed after its controls were resolved")
   }
   rows <- .gllvmTMB_parse_prior_table(table)
+  if (!length(rows)) {
+    control$prior_table <- NULL
+    control$prior_table_resolved <- NULL
+    control$prior_table_adapted_from <- NULL
+    return(control)
+  }
   fixed <- Filter(function(row) row$class == "fixef", rows)
   loading <- Filter(function(row) row$class == "loading", rows)
   residual_sd <- Filter(function(row) row$class == "residual_sd", rows)
@@ -211,7 +218,7 @@
     (isTRUE(control$aghq_ridge_explicit) &&
        is.numeric(control$aghq_ridge) && length(control$aghq_ridge) == 1L &&
        is.finite(control$aghq_ridge))
-  active <- !is.null(control$prior_table) ||
+  active <- (is.data.frame(control$prior_table) && nrow(control$prior_table) > 0L) ||
     length(control$prior_table_resolved %||% list()) > 0L ||
     !is.null(control$fixed_effect_priors) ||
     !is.null(control$kernel_psi_sd_prior) ||

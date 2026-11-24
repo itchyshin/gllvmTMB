@@ -1,5 +1,7 @@
 # gllvmTMB 0.8.0
 
+* `suggest_lambda_constraint(convention = "varimax_threshold")` and `"wald_retention"` (the default recommendation of `suggest_lambda_constraints()`) now warn when the suggested matrix leaves a trait with no estimated loading. Those conventions pin in the varimax frame, while `gllvmTMB()` holds loadings above the diagonal at 0, so a trait pinned at 0 on its own axis and left free only on a later axis got no shared loading at all, and the fit still reported `convergence = 0`. The warning names a column order that keeps every loading estimable when one exists. The returned matrix is unchanged. `confirmatory_lambda()` warns in the same case. The data-informed svd restart now also runs when `lambda_constraint` fixes some unit-level loadings: it fills only the free loadings, and pinned values are unchanged (refs #1585).
+
 * `.eva_load_dll(rebuild = TRUE)` reuses an already-loaded EVA prototype DLL instead of unloading it while a live `MakeADFun` object still holds external pointers. Unloading had removed those pointers and could segfault the next evaluation (refs #1815).
 
 * `kernel_indep(K = K, unit = g)` (and the same named-`unit` order for `kernel_dep()`, `kernel_latent()`, `kernel_unique()`, and `kernel_scalar()`) now groups by `g` when `cluster` is omitted. The grouping used to be taken from the first argument by position, so this call treated `K` as the grouping column and stopped with a message about `K` rather than `g`. `kernel_indep(unit, K = K)` is unchanged, and an explicit `cluster` is unchanged (refs #1805).

@@ -86,7 +86,11 @@ A list with components:
 \describe{
 \item{\code{constraint}}{A \verb{T x K} matrix with \code{NA} in free entries and
 0 (or 1, for \code{"pin_top_one"}) in pinned entries. Has trait names
-as rownames and \verb{"f1", ..., "fK"} as colnames.}
+as rownames and \verb{"f1", ..., "fK"} as colnames. For
+\code{"varimax_threshold"} and \code{"wald_retention"} the columns keep the
+varimax axis order. \code{\link[=gllvmTMB]{gllvmTMB()}} holds entries above the diagonal at
+0, so a warning names any trait left with no estimable loading and,
+when one exists, a column order that keeps every loading estimable.}
 \item{\code{convention}}{The chosen convention.}
 \item{\code{d}}{The number of factors \code{K}.}
 \item{\code{n_pins}}{Number of pinned entries.}

@@ -199,5 +199,14 @@ confirmatory_lambda <- function(species,
     M[sp, j] <- 1
   }
 
+  lost <- .lambda_unestimable_rows(M)
+  if (length(lost) > 0L) {
+    cli::cli_warn(c(
+      "{.val {species[lost]}} will have no estimated loading in {.fn gllvmTMB}.",
+      "x" = "{cli::qty(length(lost))}{?Its/Their} group loads only on axes above {?its/their} row, where the lower-triangular loadings are fixed at 0.",
+      ">" = "Renumber the axes in {.code loads_on} (give the first species' group axis 1), or reorder {.code species}."
+    ))
+  }
+
   M
 }

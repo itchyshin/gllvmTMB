@@ -3503,6 +3503,40 @@ predict.gllvmTMB_multi <- function(
         }
         added <- c(added, "rr_B")
       }
+      ## rr_B_slope: augmented unit-level random regression.
+      ## src/gllvmTMB.cpp:1526-1531 -- z_B_slope is d_B_slope x n_sites and
+      ## Lambda_B_slope has 2T rows interleaved by trait (intercept.t1,
+      ## slope.t1, intercept.t2, ...); :3440-3448 adds
+      ## eta(o) += sum_j Z_B_lat(o, j) * sum_k Lambda_B_slope(j, k) z_B_slope(k, s),
+      ## where row o of Z_B_lat is 1 at 2t and x(o) at 2t + 1
+      ## (R/fit-multi.R:6086-6093). It is added here, between rr_B and
+      ## diag_B, in the same order as the template so training rows agree
+      ## exactly. Rows whose slope covariate is missing get no contribution.
+      xs_col <- object$use$rr_B_slope_col
+      if (isTRUE(object$use$rr_B_slope) && !is.null(xs_col) &&
+            xs_col %in% names(nd) && !is.null(object$report$Lambda_B_slope)) {
+        L_Bs <- object$report$Lambda_B_slope
+        z_Bs <- matrix(
+          par[names(par) == "z_B_slope"],
+          nrow = ncol(L_Bs),
+          ncol = object$n_sites
+        )
+        x_s <- as.numeric(nd[[xs_col]])
+        ok_s <- !is.na(st_id) & st_id >= 0 & st_id < object$n_sites &
+          !is.na(tr_id) & is.finite(x_s)
+        for (i in which(ok_s)) {
+          s <- st_id[i] + 1L
+          r <- 2L * tr_id[i] + 1L
+          coef_int <- 0
+          coef_slp <- 0
+          for (k in seq_len(ncol(L_Bs))) {
+            coef_int <- coef_int + L_Bs[r, k] * z_Bs[k, s]
+            coef_slp <- coef_slp + L_Bs[r + 1L, k] * z_Bs[k, s]
+          }
+          eta[i] <- eta[i] + (coef_int + x_s[i] * coef_slp)
+        }
+        if (any(ok_s)) added <- c(added, "rr_B_slope")
+      }
       if (object$use$diag_B) {
         s_B <- if (isTRUE(object$integrated_gaussian_diag_B)) {
           object$report$s_B_conditional_mean

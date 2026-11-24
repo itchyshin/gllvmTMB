@@ -35,7 +35,7 @@ test_that("temporal fits refuse a missing bare covariate with context (#1866)", 
     class = "gllvmTMB_temporal_missing_covariate"
   )
   msg <- rlang::cnd_message(err)
-  expect_match(msg, "`x`", fixed = TRUE)
+  expect_match(msg, "Covariate x", fixed = TRUE)
   expect_match(msg, series, fixed = TRUE)
   expect_match(msg, as.character(occasion), fixed = TRUE)
 })

@@ -370,6 +370,7 @@ names(REGISTER_MAP) <- vapply(REGISTER_MAP, `[[`, character(1), "name")
 UNMAPPED_BY_DESIGN <- c(
   "SPA-01" = "R-side SPDE mesh construction (make_mesh()); pre-fit geospatial prep, no Julia twin capability (cf. drmTMB's identical make_mesh precedent)",
   "KER-01" = "R-only cross-lineage coevolution kernel builder (make_cross_kernel()); GLLVM.jl's ledger tracks no coevolution row to compare against",
+  "KER-03C" = "R-only exact-zero observation-error Gaussian marginal likelihood for two named kernel tiers; no Julia twin capability is currently registered",
   "COE-01" = "R-only cross-lineage coevolution capability; no Julia twin row",
   "COE-02" = "R-only cross-lineage coevolution capability; no Julia twin row",
   "COE-03" = "R-only cross-lineage coevolution capability; no Julia twin row",

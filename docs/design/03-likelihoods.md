@@ -137,6 +137,41 @@ observed same-trait kernel-pattern rank screen. That screen is not a proof of
 identifiability or recovery. See KER-03A in the validation register for the
 bounded evidence and remaining gaps.
 
+### Exact paired-kernel marginal Gaussian route at zero observation error
+
+For exactly two named dense kernel tiers with `unique = TRUE`, the admitted
+zero-error target is
+
+\[
+y_O \sim \mathcal{N}\!\left(X_O\beta,
+  \left[K_1\otimes\Sigma_1 + K_2\otimes\Sigma_2 + V_{known}\right]_{O,O}\right),
+\qquad
+\Sigma_r=\Lambda_r\Lambda_r^T+\mathrm{diag}(\psi_r),
+\]
+
+where `O` indexes the observed unit-trait cells. With no `meta_V()` term,
+`known_sigma_eps = 0` omits the observation covariance exactly; a declared
+`meta_V()` contributes only its separate, known covariance. The route uses
+raw aligned kernels, direct nonnegative Psi variances, and a dense exact
+marginal Gaussian tape. The optional Woodbury/eigenmode accelerator is used
+only when a kernel is exactly identity on every observed within-trait block;
+near-identity kernels stay on the raw dense likelihood. A Woodbury tape is
+used only away from the joint-zero Psi boundary. Boundary and near-boundary objective, gradient, curvature,
+report, standard-error, and direct-parameter profile calls retain value-based
+backend routing. The near-boundary routing threshold is numerical dispatch only;
+it is not added to the covariance.
+
+The route is limited to native TMB, Gaussian identity-link unpenalized ML,
+Laplace settings, unit observation weights, trait-specific intercepts, no
+offsets or competing covariance terms apart from a declared `meta_V()`, and at
+most one observed record per unit-trait cell. Both kernels must be dense, positive semidefinite matrices on
+the same grouping levels, and the observed same-trait patterns must pass the
+existing separation checks. Julia, one-kernel zero-error fits, predictors,
+non-unit weights, REML, priors, penalties, and broad recovery or interval
+claims are outside this route. See KER-03C: the likelihood/oracle and extraction
+identities pass, but initial known-truth recovery remains weak and broader
+recovery and interval calibration are unvalidated.
+
 ## Notation
 
 In mathematical prose, $\mathcal{N}(a, b)$ uses variance as the

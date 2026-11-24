@@ -1,23 +1,26 @@
 ## S3 methods specific to gllvmTMB_multi objects.
 
-#' Refit a temporal latent model
+#' Refit a temporal latent model or prior-table fit
 #'
 #' Replays the public long- or wide-format call saved for a
 #' [temporal_latent()] fit. Private pair identifiers are rebuilt from the
 #' supplied data and are never reused as public input.
-#' Ordinary (non-temporal) fits do not store a public call, so
+#' Ordinary fits without a prior table do not store a public call, so
 #' `update()` refuses them rather than forwarding to
-#' [stats::update.default()].
+#' [stats::update.default()]. A prior-table fit retains its original control
+#' object and replays the exact prior rows when updated.
 #'
-#' @param object A fitted `gllvmTMB_multi` temporal model.
+#' @param object A fitted `gllvmTMB_multi` temporal model or a prior-table fit.
 #' @param ... Named arguments to replace in the saved public call.
 #' @param evaluate Whether to evaluate the reconstructed call.
 #' @return The refitted model, or the reconstructed call if `evaluate = FALSE`.
 #' @export
 update.gllvmTMB_multi <- function(object, ..., evaluate = TRUE) {
-  if (!isTRUE(object$temporal$active)) {
+  is_temporal <- isTRUE(object$temporal$active)
+  is_prior_table <- !is.null(object$prior_table)
+  if (!is_temporal && !is_prior_table) {
     cli::cli_abort(c(
-      "{.fn update} is only supported for temporal latent fits.",
+      "{.fn update} is supported for temporal latent and prior-table fits.",
       ">" = "Refit from the original formula and data."
     ))
   }
@@ -33,6 +36,38 @@ update.gllvmTMB_multi <- function(object, ..., evaluate = TRUE) {
     for (nm in names(dots)) {
       call[[nm]] <- dots[[nm]]
     }
+  }
+  if (is_prior_table) {
+    replay_control <- if ("control" %in% names(dots)) {
+      dots$control
+    } else {
+      object$prior_table_replay_control
+    }
+    if (!is.list(replay_control)) {
+      cli::cli_abort(c(
+        "This prior-table fit does not retain the original fitting controls.",
+        ">" = "Refit the model once with the current version before using {.fn update}."
+      ))
+    }
+    replay_control$prior_table <- object$prior_table
+    classes <- vapply(object$prior_table_resolved %||% list(),
+      `[[`, character(1), "class")
+    if ("fixef" %in% classes) replay_control$fixed_effect_priors <- NULL
+    if ("loading" %in% classes) {
+      replay_control$loading_ridge <- NULL
+      replay_control$loading_ridge_explicit <- FALSE
+      replay_control$aghq_ridge <- 2
+      replay_control$aghq_ridge_explicit <- FALSE
+    }
+    if ("unique_variance" %in% classes) {
+      replay_control$kernel_psi_sd_prior <- NULL
+    }
+    if ("residual_sd" %in% classes) replay_control$residual_sd_prior <- NULL
+    replay_control$prior_table_resolved <- NULL
+    replay_control$prior_table_adapted_from <- NULL
+    ## Store the control list as a call constant. This also keeps calls
+    ## returned by evaluate = FALSE executable after this method returns.
+    call$control <- replay_control
   }
   if (!isTRUE(evaluate)) {
     return(call)
@@ -955,7 +990,8 @@ print.gllvmTMB_multi <- function(x, ...) {
     } else {
       weighted <- isTRUE(x$likelihood_weights$active)
       penalised <- !is.null(x$fixed_effect_priors) ||
-        !is.null(x$kernel_psi_sd_prior) || isTRUE(x$aghq$penalised)
+        !is.null(x$kernel_psi_sd_prior) ||
+        !is.null(x$residual_sd_prior) || isTRUE(x$aghq$penalised)
       objective_label <- if (weighted) {
         "Weighted objective (-value)"
       } else if (penalised) {
@@ -974,7 +1010,8 @@ print.gllvmTMB_multi <- function(x, ...) {
         cat("  Note: ordinary Wald and likelihood-based inference is not validated for non-unit likelihood weights.\n")
       } else if (penalised) {
         cat("  Note: parameters are a penalised MAP point; ordinary AIC, BIC, and likelihood-ratio interpretations do not apply.\n")
-        if (!is.null(x$fixed_effect_priors) || !is.null(x$kernel_psi_sd_prior)) cat("  Covariance: local approximate posterior curvature, not calibrated sampling uncertainty.\n")
+        if (!is.null(x$fixed_effect_priors) || !is.null(x$kernel_psi_sd_prior) ||
+            !is.null(x$residual_sd_prior)) cat("  Covariance: local approximate posterior curvature, not calibrated sampling uncertainty.\n")
       }
     }
   }
@@ -1054,6 +1091,7 @@ summary.gllvmTMB_multi <- function(object, ...) {
       object$mspl$unpenalized_loglik_at_estimate
     } else if ((!is.null(object$fixed_effect_priors) ||
                 !is.null(object$kernel_psi_sd_prior) ||
+                !is.null(object$residual_sd_prior) ||
                 isTRUE(object$aghq$penalised)) &&
                !isTRUE(object$likelihood_weights$active)) {
       tryCatch(
@@ -1067,6 +1105,7 @@ summary.gllvmTMB_multi <- function(object, ...) {
       "Weighted objective (-value)"
     } else if (!is.null(object$fixed_effect_priors) ||
                !is.null(object$kernel_psi_sd_prior) ||
+               !is.null(object$residual_sd_prior) ||
                isTRUE(object$aghq$penalised)) {
       "Unpenalised log L at MAP point"
     } else {
@@ -1074,7 +1113,8 @@ summary.gllvmTMB_multi <- function(object, ...) {
     },
     weighted_objective = isTRUE(object$likelihood_weights$active),
     penalised = !is.null(object$fixed_effect_priors) ||
-      !is.null(object$kernel_psi_sd_prior) || isTRUE(object$aghq$penalised),
+      !is.null(object$kernel_psi_sd_prior) ||
+      !is.null(object$residual_sd_prior) || isTRUE(object$aghq$penalised),
     fixed_effect_prior = !is.null(object$fixed_effect_priors),
     kernel_psi_sd_prior = !is.null(object$kernel_psi_sd_prior),
     convergence = object$opt$convergence,
@@ -1082,6 +1122,9 @@ summary.gllvmTMB_multi <- function(object, ...) {
     mspl = .gllvmTMB_is_mspl(object),
     objective = if (.gllvmTMB_is_mspl(object)) object$mspl$objective else "likelihood"
   )
+  if (!is.null(object$residual_sd_prior)) {
+    out$header$residual_sd_prior <- TRUE
+  }
   if (.gllvmTMB_is_mspl(object)) {
     out$estimation <- object$mspl[c(
       "objective", "penalized_nll", "unpenalized_nll_at_estimate",
@@ -1403,7 +1446,8 @@ logLik.gllvmTMB_multi <- function(object, ...) {
   }
   ridge_tau <- object$aghq$ridge_tau %||% Inf
   pen <- !is.null(object$fixed_effect_priors) ||
-    !is.null(object$kernel_psi_sd_prior) || isTRUE(object$aghq$penalised) ||
+    !is.null(object$kernel_psi_sd_prior) ||
+    !is.null(object$residual_sd_prior) || isTRUE(object$aghq$penalised) ||
     (is.numeric(ridge_tau) && length(ridge_tau) == 1L &&
        is.finite(ridge_tau) && ridge_tau > 0)
   likelihood_nll <- object$objective_components$likelihood_nll %||% NA_real_
@@ -1412,6 +1456,7 @@ logLik.gllvmTMB_multi <- function(object, ...) {
       likelihood_nll <- tryCatch(
         as.numeric((object$tmb_obj$fixed_effect_priors$likelihood_fn %||%
           object$tmb_obj$kernel_psi_sd_prior$likelihood_fn %||%
+          object$tmb_obj$residual_sd_prior$likelihood_fn %||%
           object$tmb_obj$fn)(object$opt$par)),
         error = function(e) NA_real_
       )
@@ -1465,8 +1510,10 @@ logLik.gllvmTMB_multi <- function(object, ...) {
       "evaluated at a penalised (MAP) optimum, ",
       if (!is.null(object$kernel_psi_sd_prior)) {
         "kernel Psi half-normal prior"
+      } else if (!is.null(object$residual_sd_prior)) {
+        "Gamma prior on natural residual SD"
       } else if (!is.null(object$fixed_effect_priors)) {
-        paste0("fixed-effect normal priors; loading ridge tau = ",
+        paste0("fixed-effect priors; loading ridge tau = ",
                format(ridge_tau, digits = 4))
       } else {
         paste0("loading ridge tau = ", format(ridge_tau, digits = 4))
@@ -1475,8 +1522,8 @@ logLik.gllvmTMB_multi <- function(object, ...) {
     )
     cli::cli_warn(c(
       "{.fn logLik} is the unpenalised likelihood evaluated at a penalised MAP point, not at its maximum.",
-      "i" = "The fit includes a loading ridge and/or coefficient or kernel Psi prior.",
-      ">" = "For ordinary likelihood-based comparison, refit with loading_ridge = Inf, fixed_effect_priors = NULL, and kernel_psi_sd_prior = NULL."
+      "i" = "The fit includes a loading ridge and/or coefficient, residual-SD, or kernel Psi prior.",
+      ">" = "For ordinary likelihood-based comparison, refit without loading ridge or priors."
     ))
   }
   ## nobs = likelihood-contributing rows. Under the default response="drop"
@@ -1587,7 +1634,8 @@ tidy.gllvmTMB_multi <- function(
       out$std.error <- rep(NA_real_, nrow(out))
       out$inference_status <- reason
     } else if (!is.null(x$fixed_effect_priors) ||
-               !is.null(x$kernel_psi_sd_prior)) {
+               !is.null(x$kernel_psi_sd_prior) ||
+               !is.null(x$residual_sd_prior)) {
       out$inference_status <- "local_approximate_posterior_curvature"
     }
     ## Per-trait link column. For single-family fits this is a single

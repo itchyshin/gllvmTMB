@@ -108,7 +108,8 @@ fixed_effect_priors <- function(link, intercepts = character(), slopes = charact
 
 .gllvmTMB_fixed_prior_inference <- function(object, caller, prior_curvature = FALSE) {
   has_prior <- !is.null(object$fixed_effect_priors) ||
-    !is.null(object$kernel_psi_sd_prior)
+    !is.null(object$kernel_psi_sd_prior) ||
+    !is.null(object$residual_sd_prior)
   if (has_prior && !isTRUE(prior_curvature)) {
     cli::cli_abort(c(
       "{.fn {caller}} is not validated for prior-penalized fits.",
@@ -121,10 +122,13 @@ fixed_effect_priors <- function(link, intercepts = character(), slopes = charact
 
 .gllvmTMB_resolve_fixed_priors <- function(priors, coefficient_names) {
   if (is.null(priors)) return(NULL)
+  base_columns <- c("coefficient", "mean", "sd")
+  table_columns <- c(base_columns, "distribution", "df")
   if (!is.data.frame(priors) ||
-      !identical(sort(names(priors)), sort(c("coefficient", "mean", "sd")))) {
+      !any(vapply(list(base_columns, table_columns), function(columns)
+        identical(sort(names(priors)), sort(columns)), logical(1)))) {
     cli::cli_abort(c("{.arg fixed_effect_priors} must be a data.frame with coefficient, mean, and sd columns.",
-                   ">" = "Supply a data frame with exactly these three columns."))
+                   ">" = "Supply the legacy three columns or add distribution and df for the generalized table."))
   }
   if (!is.character(priors$coefficient) || anyNA(priors$coefficient) ||
       anyDuplicated(priors$coefficient) ||
@@ -145,6 +149,20 @@ fixed_effect_priors <- function(link, intercepts = character(), slopes = charact
     cli::cli_abort(c("Finite prior SDs must yield finite positive precision on this machine.",
                    ">" = "Choose finite standard deviations that are neither extremely small nor extremely large."))
   }
+  if ("distribution" %in% names(priors)) {
+    if (!is.character(priors$distribution) || anyNA(priors$distribution) ||
+        any(!priors$distribution %in% c("normal", "student_t", "ridge"))) {
+      cli::cli_abort("Coefficient prior distribution must be normal, student_t, or ridge.")
+    }
+    if (!is.numeric(priors$df) || length(priors$df) != nrow(priors) ||
+        any(priors$distribution == "student_t" & (!is.finite(priors$df) | priors$df <= 0)) ||
+        any(priors$distribution != "student_t" & !is.na(priors$df))) {
+      cli::cli_abort("Student-t rows require positive finite df; other coefficient priors require missing df.")
+    }
+    if (any(priors$distribution == "ridge" & priors$mean != 0)) {
+      cli::cli_abort("Coefficient ridge rows are zero-centered penalties.")
+    }
+  }
   priors$index <- match(priors$coefficient, coefficient_names)
   attr(priors, "n_coefficients") <- length(coefficient_names)
   priors
@@ -152,16 +170,22 @@ fixed_effect_priors <- function(link, intercepts = character(), slopes = charact
 
 .gllvmTMB_fixed_prior_surface <- function(priors, data, family_id, link_id,
                                           Xcoef_fixed, known_V, lambda_constraint,
-                                          is_dep_B = FALSE, n_missing_response = 0L) {
+                                          is_dep_B = FALSE, n_missing_response = 0L,
+                                          allow_kernel_psi = FALSE) {
   if (is.null(priors) || !any(is.finite(priors$sd))) return(invisible(NULL))
   flags <- c("use_temporal", "use_lv_B", "use_rr_W", "use_diag_W",
     "use_rr_B_slope", "use_diag_B_slope", "use_propto", "use_diag_species",
     "use_diag_cluster2", "use_equalto", "use_spde", "use_spatial_column_slope",
     "use_spde_slope", "use_spde_dep_slope", "use_spde_latent_slope",
     "use_phylo_rr", "use_phylo_diag", "use_phylo_slope", "use_phylo_column_slope",
-    "use_phylo_latent_slope", "use_phylo_dep_slope", "n_kernel_tiers",
+    "use_phylo_latent_slope", "use_phylo_dep_slope",
     "use_re_int", "has_mi", "use_aghq")
-  unsupported <- any(vapply(flags, function(nm) any(data[[nm]] %||% 0 != 0), logical(1)))
+  kernel_flags <- c("use_phylo_rr", "use_phylo_diag")
+  unsupported_flags <- setdiff(flags, kernel_flags)
+  unsupported <- any(vapply(unsupported_flags,
+    function(nm) any(data[[nm]] %||% 0 != 0), logical(1))) ||
+    (!isTRUE(allow_kernel_psi) && any(vapply(kernel_flags,
+      function(nm) any(data[[nm]] %||% 0 != 0), logical(1))))
   pure_family <- all(family_id == 0L) || all(family_id == 1L & link_id %in% c(0L, 1L))
   if (!pure_family || unsupported || isTRUE(is_dep_B) || n_missing_response > 0L ||
       !is.null(Xcoef_fixed) || !is.null(known_V) ||
@@ -192,25 +216,55 @@ fixed_effect_priors <- function(link, intercepts = character(), slopes = charact
   idx <- beta[priors$index]
   mu <- priors$mean
   precision <- 1 / priors$sd^2
+  distribution <- if ("distribution" %in% names(priors)) priors$distribution else
+    rep("normal", nrow(priors))
+  df <- if ("df" %in% names(priors)) priors$df else rep(NA_real_, nrow(priors))
   base_fn <- obj$fn
   base_gr <- obj$gr
   base_he <- obj$he
-  penalty <- function(p) -sum(stats::dnorm(p[idx], mu, priors$sd, log = TRUE))
+  penalty <- function(p) {
+    beta <- p[idx]
+    value <- numeric(length(beta))
+    is_normal <- distribution == "normal"
+    is_student_t <- distribution == "student_t"
+    is_ridge <- distribution == "ridge"
+    value[is_normal] <- -stats::dnorm(beta[is_normal], mu[is_normal],
+      priors$sd[is_normal], log = TRUE)
+    z <- (beta[is_student_t] - mu[is_student_t]) / priors$sd[is_student_t]
+    value[is_student_t] <- -stats::dt(z, df = df[is_student_t], log = TRUE) +
+      log(priors$sd[is_student_t])
+    value[is_ridge] <- 0.5 * precision[is_ridge] * beta[is_ridge]^2
+    sum(value)
+  }
   obj$fn <- function(p = obj$par, ...) base_fn(p, ...) + penalty(p)
   obj$gr <- function(p = obj$par, ...) {
     g <- base_gr(p, ...)
-    g[idx] <- g[idx] + (p[idx] - mu) * precision
+    beta <- p[idx]
+    prior_gradient <- (beta - mu) * precision
+    is_student_t <- distribution == "student_t"
+    z <- (beta[is_student_t] - mu[is_student_t]) / priors$sd[is_student_t]
+    prior_gradient[is_student_t] <- (df[is_student_t] + 1) * z /
+      (df[is_student_t] + z^2) / priors$sd[is_student_t]
+    g[idx] <- g[idx] + prior_gradient
     g
   }
   if (is.function(base_he)) obj$he <- function(p = obj$par, ...) {
     H <- base_he(p, ...)
-    H[cbind(idx, idx)] <- H[cbind(idx, idx)] + precision
+    beta <- p[idx]
+    prior_hessian <- precision
+    is_student_t <- distribution == "student_t"
+    z <- (beta[is_student_t] - mu[is_student_t]) / priors$sd[is_student_t]
+    prior_hessian[is_student_t] <- (df[is_student_t] + 1) *
+      (df[is_student_t] - z^2) /
+      (priors$sd[is_student_t]^2 * (df[is_student_t] + z^2)^2)
+    H[cbind(idx, idx)] <- H[cbind(idx, idx)] + prior_hessian
     H
   }
   obj$fixed_effect_priors <- list(
     specification = priors, indices = idx, penalty = penalty,
     likelihood_fn = base_fn,
     likelihood_gr = base_gr,
+    likelihood_he = base_he,
     interpretation = "local_approximate_posterior_curvature_at_map",
     calibrated_sampling_covariance = FALSE
   )

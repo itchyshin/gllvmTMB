@@ -14,9 +14,8 @@
   }
   if (!nrow(priors) || !is.character(priors$kernel) ||
       !is.character(priors$trait) || anyNA(priors$kernel) ||
-      anyNA(priors$trait) || any(!nzchar(priors$kernel)) ||
-      any(!nzchar(priors$trait)) ||
-      anyDuplicated(paste(priors$kernel, priors$trait, sep = "\r"))) {
+      anyNA(priors$trait) || anyNA(priors$kernel) ||
+      any(!nzchar(priors$trait))) {
     cli::cli_abort(c(
       "Kernel Psi prior targets must be distinct, non-empty kernel and trait names.",
       ">" = "Supply each named-kernel and trait pair at most once."
@@ -53,6 +52,20 @@
       ">" = "Please report this error with the formula and prior table you supplied."
     ),
                    class = "gllvmTMB_kernel_psi_prior_internal")
+  }
+  missing_kernel <- !nzchar(priors$kernel)
+  if (any(missing_kernel)) {
+    if (length(kernel_names) != 1L) {
+      cli::cli_abort(c(
+        "A unique-variance prior row omits `kernel`, but the model has multiple named kernels.",
+        ">" = "Name the target kernel explicitly."
+      ), class = "gllvmTMB_kernel_psi_prior_target_unknown")
+    }
+    priors$kernel[missing_kernel] <- kernel_names[[1L]]
+  }
+  if (anyDuplicated(paste(priors$kernel, priors$trait, sep = "\r"))) {
+    cli::cli_abort("Kernel Psi prior targets must be distinct, non-empty kernel and trait names.",
+                   class = "gllvmTMB_kernel_psi_prior_invalid")
   }
   kernel_index <- match(priors$kernel, kernel_names)
   trait_index <- match(priors$trait, trait_names)
@@ -102,14 +115,13 @@
       ">" = "Use engine = 'tmb', estimator = 'ml', REML = FALSE, and integration = 'laplace'."
     ), class = "gllvmTMB_kernel_psi_prior_unsupported")
   }
-  if (!is.null(control$fixed_effect_priors) ||
-      !is.null(control$loading_ridge) ||
+  if (!is.null(control$loading_ridge) ||
       (isTRUE(control$aghq_ridge_explicit) &&
        is.numeric(control$aghq_ridge) && any(is.finite(control$aghq_ridge)))) {
     cli::cli_abort(c(
-      "{.arg kernel_psi_sd_prior} is currently a separate sensitivity fit.",
-      "i" = "It cannot be combined with fixed-effect priors or a loading ridge.",
-      ">" = "Fit the kernel Psi prior separately from coefficient and loading penalties."
+      "{.arg kernel_psi_sd_prior} cannot be combined with a loading ridge.",
+      "i" = "Fixed-effect priors may be combined; loading-ridge composition remains unsupported.",
+      ">" = "Disable the loading ridge or fit it as a separate sensitivity analysis."
     ), class = "gllvmTMB_kernel_psi_prior_penalty_conflict")
   }
   invisible(NULL)

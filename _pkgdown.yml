@@ -211,6 +211,7 @@ articles:
     - articles/unit-of-analysis
     - articles/gllvm-vocabulary
     - articles/covariance-correlation
+    - articles/generalized-prior-table
     - articles/api-keyword-grid
     - articles/fixed-effect-zero-constraints
     - articles/pre-fit-response-screening

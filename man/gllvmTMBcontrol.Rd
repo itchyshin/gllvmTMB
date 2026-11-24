@@ -42,6 +42,7 @@ gllvmTMBcontrol(
   optimizer_passes = 1L,
   svd_start = TRUE,
   va_polish = TRUE,
+  priors = NULL,
   ...
 )
 }
@@ -412,8 +413,8 @@ with density on the natural standard deviation \code{sqrt(Psi[t,t])} for the
 named kernel and trait. The positive \code{scale} is expressed in response
 units. The density is evaluated with respect to the natural SD, so the
 objective uses \code{sigma = exp(log_sigma)} without an additional log-SD
-Jacobian. This prior is opt-in and cannot be combined with
-\code{fixed_effect_priors} or a loading penalty (\code{loading_ridge} or a finite
+Jacobian. This prior is opt-in and may be combined with fixed-effect
+priors, but not a loading penalty (\code{loading_ridge} or a finite
 \code{aghq_ridge}). It changes neither the default fit nor the loading penalty.
 Omitted kernel and trait pairs remain unpenalized. The half-normal density
 has its mode at zero and does not prevent near-zero estimates; treat it as
@@ -448,6 +449,35 @@ controlled optimizer comparisons. The four primary starts and their
 existing agreement rule are unchanged. BFGS uses a dense inverse-Hessian
 approximation, so its memory use grows quadratically with the parameter
 count; use it as an opt-in method for modest models.}
+
+\item{priors}{Optional unified prior table with \code{prior}, \code{class}, and \code{coef}
+character columns. \code{class = "fixef"} targets one exact response fixed-effect
+coefficient (\code{dpar = "mu"}, \code{scale = "link"}) and supports
+\code{normal(mean, sd)}, \code{student_t(location, scale, df)}, or the compatibility
+penalty \code{ridge(lambda)}. A single \code{class = "loading"} row supports only the
+existing blanket loading ridge, expressed as \code{ridge(lambda)}, \code{coef = "all"}, and \code{scale = "loading_coef"}; it does not select named loading
+coefficients. \code{class = "residual_sd"} admits one row
+\code{gamma(mean, shape)} targeting \code{dpar = "sigma"},
+\code{coef = "(Intercept)"}, and \code{scale = "natural_sd"}. It is currently
+limited to complete, unit-weight Gaussian fits with one estimated
+intercept-only residual SD under native TMB ML Laplace. The normalized
+Gamma density is on natural sigma and adds no log-sigma Jacobian; shape
+must exceed one. \code{class = "unique_variance"} also admits
+\code{gamma(mean, shape)} on a named kernel's trait-specific Psi SD, selected by
+\code{trait}, \code{kernel}, and \code{scale = "natural_sd"}; it requires a fitted
+\code{kernel_latent(..., unique = TRUE)} component. Its normalized density is
+on \code{sqrt(Psi[t,t])}, with no log-SD Jacobian. Fixed-effect, residual-SD,
+and unique-variance rows can be combined when their model-specific route
+constraints are met. Other group, block, response, latent-score,
+random-effect SD, correlation, and non-mean distributional targets are
+unsupported. The table cannot be combined with \code{fixed_effect_priors} for
+the same fixed targets or with a legacy loading-ridge control for the
+loading target. The original and resolved rows are retained in
+\code{fit$prior_table} and \code{fit$prior_table_resolved}. \code{update()} is supported
+for prior-table fits and replays the stored rows exactly. Other ordinary
+fits must be refit from their formula and data. Normal, Student-t and Gamma
+densities retain their normalizing constants; ridge rows reproduce the
+existing unnormalized quadratic penalty.}
 
 \item{...}{Reserved for future use. Currently ignored with a warning.}
 }

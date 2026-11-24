@@ -2,12 +2,12 @@
 % Please edit documentation in R/methods-gllvmTMB.R
 \name{update.gllvmTMB_multi}
 \alias{update.gllvmTMB_multi}
-\title{Refit a temporal latent model}
+\title{Refit a temporal latent model or prior-table fit}
 \usage{
 \method{update}{gllvmTMB_multi}(object, ..., evaluate = TRUE)
 }
 \arguments{
-\item{object}{A fitted \code{gllvmTMB_multi} temporal model.}
+\item{object}{A fitted \code{gllvmTMB_multi} temporal model or a prior-table fit.}
 
 \item{...}{Named arguments to replace in the saved public call.}
 
@@ -20,7 +20,8 @@ The refitted model, or the reconstructed call if \code{evaluate = FALSE}.
 Replays the public long- or wide-format call saved for a
 \code{\link[=temporal_latent]{temporal_latent()}} fit. Private pair identifiers are rebuilt from the
 supplied data and are never reused as public input.
-Ordinary (non-temporal) fits do not store a public call, so
+Ordinary fits without a prior table do not store a public call, so
 \code{update()} refuses them rather than forwarding to
-\code{\link[stats:update.default]{stats::update.default()}}.
+\code{\link[stats:update.default]{stats::update.default()}}. A prior-table fit retains its original control
+object and replays the exact prior rows when updated.
 }

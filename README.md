@@ -53,6 +53,7 @@ Julia is not required to install or use the default R workflow.
 | model presence or absence of many species | [Joint species distribution models](https://itchyshin.github.io/gllvmTMB/articles/joint-sdm.html) |
 | model traits measured repeatedly through time | [Temporal covariance](https://itchyshin.github.io/gllvmTMB/articles/temporal-ar1.html) |
 | check whether a fitted model is interpretable | [Can I trust this fit?](https://itchyshin.github.io/gllvmTMB/articles/fit-diagnostics.html) |
+| apply priors to selected coefficients, loadings, the Gaussian residual SD, or a named kernel's unique SD | [Prior table](https://itchyshin.github.io/gllvmTMB/articles/generalized-prior-table.html) |
 | compare primary optimisers for a variational approximation (VA) fit | [Compare VA optimisers](#compare-va-optimisers) |
 | choose another guide | [Browse all articles](https://itchyshin.github.io/gllvmTMB/articles/) |
 

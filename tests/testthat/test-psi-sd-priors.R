@@ -163,6 +163,12 @@ test_that("kernel Psi priors are opt-in and restricted to the documented route",
     prior, "tmb", "ml", FALSE,
     gllvmTMBcontrol(loading_ridge = 1)
   ), class = "gllvmTMB_kernel_psi_prior_penalty_conflict")
+  expect_invisible(.gllvmTMB_kernel_psi_sd_prior_route(
+    prior, "tmb", "ml", FALSE,
+    gllvmTMBcontrol(fixed_effect_priors = data.frame(
+      coefficient = "x", mean = 0, sd = 1
+    ))
+  ))
 })
 
 test_that("two-kernel prior fit reports the separate MAP objective", {
@@ -218,7 +224,13 @@ test_that("two-kernel prior fit reports the separate MAP objective", {
     as.numeric(fit$objective_components$optimization_nll),
     tolerance = 1e-7
   )
-  expect_warning(AIC(fit), "penalised fit")
+  ## AIC warns before delegating to base, and logLik warns when AIC evaluates
+  ## the unpenalised likelihood at this penalised MAP point. Capture both
+  ## distinct warnings so the test documents the reader-facing behavior.
+  expect_warning(
+    expect_warning(AIC(fit), "ordinary likelihood-based interpretation is unsupported"),
+    "unpenalised likelihood evaluated at a penalised MAP point"
+  )
   expect_error(confint(fit), class = "gllvmTMB_fixed_prior_inference_unsupported")
 })
 

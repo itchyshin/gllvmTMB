@@ -34,6 +34,18 @@ test_that("gllvmTMBcontrol consumers use declared or intentional fields", {
     ## developer-only, opt-in qualification hook (R/fit-multi.R, see the
     ## comment above `optimizer_diagnostics`); deliberately not a formal
     "optimizer_diagnostics",
+    ## Parsed from the public `priors` table and carried internally to the
+    ## Gaussian residual-scale objective; not a separate control argument.
+    "residual_sd_prior",
+    ## Set by gllvmTMBcontrol() while adapting the public `priors` argument;
+    ## these are pipeline metadata, not separate user-facing control formals.
+    "prior_table",
+    "prior_table_resolved",
+    ## Prevents a resolved table from being adapted a second time in one fit.
+    "prior_table_adapted_from",
+    ## Distinguishes an explicitly supplied loading_ridge alias from the
+    ## historical aghq_ridge default during route admission.
+    "loading_ridge_explicit",
     "svd_start_explicit",
     "aghq_start_par",
     "vgh_warm_start",

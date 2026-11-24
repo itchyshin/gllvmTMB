@@ -90,10 +90,7 @@
     ), class = "gllvmTMB_mspl_model_comparison_unsupported")
   }
   pen <- vapply(objs[is_fit], function(f) {
-    tau <- f$aghq$ridge_tau
-    !is.null(f$fixed_effect_priors) || !is.null(f$kernel_psi_sd_prior) ||
-      isTRUE(f$aghq$penalised) ||
-      (is.numeric(tau) && length(tau) == 1L && is.finite(tau) && tau > 0)
+    .gllvmTMB_has_penalty(f)
   }, logical(1L))
   if (!any(pen)) {
     return(invisible(NULL))
@@ -401,15 +398,13 @@ BIC.gllvmTMB_multi <- function(object, ...) {
   }
 
   pen <- vapply(objs, function(f) {
-    tau <- f$aghq$ridge_tau %||% Inf
-    isTRUE(f$aghq$penalised) ||
-      (is.numeric(tau) && length(tau) == 1L && is.finite(tau) && tau > 0)
+    .gllvmTMB_has_penalty(f)
   }, logical(1L))
   if (any(pen)) {
     cli::cli_abort(c(
-      "{.fn anova} is not defined when any compared fit used a loading ridge ({.arg aghq_ridge}).",
-      "i" = "A ridge makes the reported likelihood a value at a penalised (MAP) point, not at its own maximum -- see {.fn logLik}'s penalised-fit warning.",
-      ">" = "Refit with {.code aghq_ridge = Inf} for every model before a likelihood-ratio comparison."
+      "{.fn anova} is not defined when any compared fit used a prior or penalty.",
+      "i" = "The reported unpenalised log-likelihood is evaluated at a penalised (MAP) point, not at its own maximum.",
+      ">" = "Refit every model without loading ridges or priors before a likelihood-ratio comparison."
     ), class = "gllvmTMB_anova_not_comparable")
   }
 

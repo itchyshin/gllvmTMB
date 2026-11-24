@@ -125,7 +125,9 @@ test_that("Laplace normal priors propagate to criterion, diagnostics, curvature 
     expect_equal(coef(wide_fit),coef(fit),tolerance=1e-6)
     expect_equal(wide_fit$objective_components$optimization_nll,
       fit$objective_components$optimization_nll,tolerance=1e-6)
-    expect_identical(fit$estimator_provenance$criterion_id, "laplace_plus_normal_priors")
+    expect_identical(fit$estimator_provenance$criterion_id,
+                     "laplace_plus_normal_priors_and_loading_ridge")
+    expect_true(fit$estimator_provenance$loading_ridge_applied)
     expect_identical(fit$estimator_provenance$public_estimator, "MAP")
     expect_identical(fit$estimator_provenance$penalty_eval_id, "off")
     expect_true(fit$estimator_provenance$fixed_effect_prior_applied)
@@ -201,6 +203,9 @@ test_that("Gaussian diagonal integration and partial nonzero-mean priors retain 
     d[d$visit == 1, ], trait = "trait", unit = "unit", control = gllvmTMBcontrol(
       loading_ridge = Inf, fixed_effect_priors = tab)))
   expect_true(single$integrated_gaussian_diag_B)
+  expect_identical(fit$estimator_provenance$criterion_id,
+                   "laplace_plus_normal_priors")
+  expect_false(isTRUE(fit$estimator_provenance$loading_ridge_applied))
   expect_equal(single$objective_components$optimization_nll, single$opt$objective,
                tolerance = 1e-7)
   expect_identical(fit$estimator, "MAP")
@@ -240,7 +245,9 @@ test_that("AGHQ retains the normal prior in its objective", {
       fixed_effect_priors=pri, loading_ridge=.75, aghq=5L,
       aghq_n_adapt=20L, aghq_multistart=FALSE, svd_start=FALSE, n_init=1L)))
   expect_true(fit$aghq$used)
-  expect_identical(fit$estimator_provenance$criterion_id, "aghq_plus_normal_priors")
+  expect_identical(fit$estimator_provenance$criterion_id,
+                   "aghq_plus_normal_priors_and_loading_ridge")
+  expect_true(fit$estimator_provenance$loading_ridge_applied)
   expect_identical(fit$estimator_provenance$public_estimator, "MAP")
   expect_identical(fit$estimator_provenance$penalty_eval_id, "off")
   expect_true(fit$estimator_provenance$fixed_effect_prior_applied)

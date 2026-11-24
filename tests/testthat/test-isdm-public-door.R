@@ -2,9 +2,9 @@
 ## must keep shut, and that it reaches the same likelihood as the developer
 ## route it replaces for users.
 
-test_that("the cloglog offset opens only inside the two-source contract", {
-  ## Inside the contract: a nonzero offset on the Bernoulli-cloglog arm is a
-  ## change-of-support term and is admitted.
+test_that("the cloglog offset is admitted on binomial(cloglog) rows (#946)", {
+  ## A nonzero offset on Bernoulli-cloglog is a change-of-support term and is
+  ## admitted standalone or inside the integrated two-source contract.
   fids <- c(2L, 1L)
   lids <- c(0L, 2L)
   expect_silent(
@@ -16,32 +16,13 @@ test_that("the cloglog offset opens only inside the two-source contract", {
       link_id_vec = lids,
       family_per_row = list(stats::poisson(),
                             stats::binomial(link = "cloglog")),
-      trait_vec = factor(c("sp1", "sp1")),
-      allow_isdm_cloglog = TRUE
+      trait_vec = factor(c("sp1", "sp1"))
     )
-  )
-
-  ## Same rows, contract NOT matched (so the caller passes FALSE): the cloglog
-  ## row is an ordinary binomial row again and the count-family gate fires.
-  expect_error(
-    gll_prepare_offset(
-      offset_expr = quote(eff),
-      data = data.frame(eff = c(1.5, 2.5)),
-      formula_env = environment(),
-      family_id_vec = fids,
-      link_id_vec = lids,
-      family_per_row = list(stats::poisson(),
-                            stats::binomial(link = "cloglog")),
-      trait_vec = factor(c("sp1", "sp1")),
-      allow_isdm_cloglog = FALSE
-    ),
-    "count families"
   )
 })
 
-test_that("admitting the contract never opens the offset for other families", {
-  ## gaussian, binomial-logit, binomial-probit and Beta must still be refused
-  ## even with the flag on -- the flag is keyed to cloglog specifically.
+test_that("the offset gate never opens for non-cloglog non-count families", {
+  ## gaussian, binomial-logit, binomial-probit and Beta must still be refused.
   cases <- list(
     gaussian     = list(fid = 0L, lid = 0L, fam = stats::gaussian()),
     binom_logit  = list(fid = 1L, lid = 0L, fam = stats::binomial()),
@@ -59,8 +40,7 @@ test_that("admitting the contract never opens the offset for other families", {
         family_id_vec = cs$fid,
         link_id_vec = cs$lid,
         family_per_row = list(cs$fam),
-        trait_vec = factor("sp1"),
-        allow_isdm_cloglog = TRUE
+        trait_vec = factor("sp1")
       ),
       "count families",
       info = nm

@@ -1,4 +1,6 @@
 > New entries go in `docs/dev-log/check-log.d/`, one file per slice (`YYYY-MM-DD-<slice>.md`); see `check-log.d/README.md`.
+>
+> 2026-11-17, PR #1785 (refs #1782): merge of `origin/main` and the unit-column next-step bullet. Evidence: `docs/dev-log/check-log.d/2026-11-17-1782-predict-missing-unit-ci.md`.
 
 ## 2026-11-15 — two-kernel Gaussian uniqueness (in progress)
 
@@ -58606,3 +58608,7 @@ The developer-local run above set no CI environment variable, so it ran two fit-
 The main-site privacy guard rejected the reader-facing NEWS phrase “issue #1469” after pkgdown flattened it into `search.json`. Issue identifiers are public citations; explicit `PR #...` labels and the other internal-process patterns remain checked. The regression test accepts the issue citation and retains rejection of a PR label and a milestone label.
 
 Checks run: `Rscript --vanilla tools/test-check-pkgdown-public-surface.R` first exited 1 on the new issue-citation acceptance case before the guard was changed, then exited 0 with `PKGDOWN PUBLIC SURFACE TEST PASS`; `Rscript --vanilla -e 'pkgdown::check_pkgdown()'` exited 0 with “No problems found” (pkgdown emitted its existing `--mathml` deprecation warnings); `Rscript --vanilla tools/build-pkgdown.R > /tmp/gllvmTMB-pkgdown-issue-citation.log 2>&1 && Rscript --vanilla tools/check-pkgdown-public-surface.R pkgdown-site` exited 0 with `PKGDOWN PUBLIC SURFACE PASS`; `rg -n -o 'issue #[0-9]+' pkgdown-site --glob '*.html' --glob 'search.json' | sort -u | head -30` found only `pkgdown-site/search.json:1:issue #1469`; `git diff --check` passed. The full GitHub checks and post-merge deployment are still required before this fix is considered complete.
+
+## 2026-11-19: named-kernel Psi SD prior
+
+The implementation adds an opt-in HalfNormal prior on selected named-kernel trait-specific Psi standard deviations, with density measured on natural SD. It is scoped to native TMB Gaussian identity-link ML Laplace fits; KER-03B remains `partial`, and the change does not establish calibrated uncertainty or Julia parity. Full details, exact test commands, stale-wording scans, and after-task evidence are in `docs/dev-log/check-log.d/2026-11-19-kernel-psi-sd-prior.md` and `docs/dev-log/after-task/2026-11-19-kernel-psi-sd-prior.md`. On PR head `9e95563fb1211ad0bea835259b4c49860298f63f`, all four R-CMD-check shards, the separate three-OS run, and coverage shards 2/4 through 4/4 passed; coverage shard 1/4 was still running when this entry was added. Local `devtools::check()` retains the two visual snapshot failures reproduced on clean `origin/main`; no clean full local package check is claimed.

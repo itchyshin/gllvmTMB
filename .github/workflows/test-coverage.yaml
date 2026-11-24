@@ -39,18 +39,12 @@ on:
       - ".github/workflows/codecov-upload.yaml"
       - "codecov.yml"
       - "tools/run-covr-coverage.R"
+      - "tools/retarget-covr-traces.R"
   pull_request:
     branches: [main, master]
-    paths:
-      - "R/**"
-      - "src/**"
-      - "tests/**"
-      - "DESCRIPTION"
-      - "NAMESPACE"
-      - ".github/workflows/test-coverage.yaml"
-      - ".github/workflows/codecov-upload.yaml"
-      - "codecov.yml"
-      - "tools/run-covr-coverage.R"
+    types: [opened, synchronize, reopened, ready_for_review]
+    # No workflow-level paths here — they leave coverage checks missing on doc-only
+    # ready PRs. Path gating is job-level via the changes job below.
   workflow_dispatch:
 
 name: test-coverage
@@ -66,7 +60,61 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    name: coverage path filter
+    outputs:
+      coverage: ${{ steps.detect.outputs.coverage }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Detect coverage-relevant changes
+        id: detect
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          is_coverage_path() {
+            case "$1" in
+              DESCRIPTION|NAMESPACE|codecov.yml) return 0 ;;
+              .github/workflows/test-coverage.yaml|.github/workflows/codecov-upload.yaml) return 0 ;;
+              tools/run-covr-coverage.R|tools/retarget-covr-traces.R) return 0 ;;
+            esac
+            [[ "$1" == R/* ]] && return 0
+            [[ "$1" == src/* ]] && return 0
+            [[ "$1" == tests/* ]] && return 0
+            return 1
+          }
+
+          if [[ "${{ github.event_name }}" != "pull_request" ]]; then
+            echo "coverage=true" >> "$GITHUB_OUTPUT"
+            echo "Non-PR event; coverage producer may run (push paths still gate workflow_dispatch)."
+            exit 0
+          fi
+
+          git fetch --no-tags origin "+refs/heads/${{ github.base_ref }}:refs/remotes/origin/${{ github.base_ref }}"
+          base_ref="origin/${{ github.base_ref }}"
+          hit=false
+          while IFS= read -r path; do
+            [[ -z "$path" ]] && continue
+            if is_coverage_path "$path"; then
+              hit=true
+              echo "Coverage path touched: $path"
+              break
+            fi
+          done < <(git diff --name-only "${base_ref}...HEAD")
+
+          echo "coverage=${hit}" >> "$GITHUB_OUTPUT"
+
   test-coverage:
+    needs: changes
+    if: >-
+      always() && !cancelled() && needs.changes.result == 'success' &&
+      (github.event_name != 'pull_request' || github.event.pull_request.draft == false) &&
+      (github.event_name != 'pull_request' || needs.changes.outputs.coverage == 'true')
     runs-on: ubuntu-latest
     timeout-minutes: 120
     name: ubuntu-latest (release) coverage shard ${{ matrix.shard }}/4
@@ -95,14 +143,11 @@ jobs:
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          # covr 4.0.0 failed to read counters after tests under the isolated R CMD check path.
-          # Pin the last verified release until that trace-file failure is resolved.
-          extra-packages: cran::covr@3.6.5, any::xml2
+          # Current covr. The 3.6.5 pin avoided covr 4's counters path, which
+          # R CMD check deletes with its temp library. The runner retargets
+          # those traces onto the surviving install instead of skipping tests.
+          extra-packages: any::covr, any::xml2
           needs: coverage
-
-      - name: Verify coverage dependency version
-        run: stopifnot(as.character(packageVersion("covr")) == "3.6.5")
-        shell: Rscript {0}
 
       - name: Record tested commit
         run: |

@@ -63,6 +63,25 @@ class CodecovWorkflowTest(unittest.TestCase):
         self.boundary = _noncomment_text(BOUNDARY)
         self.covr_runner = _noncomment_text(COVR_RUNNER)
 
+    def test_producer_pr_trigger_has_no_workflow_paths(self) -> None:
+        lines = PRODUCER.read_text(encoding="utf-8").splitlines()
+        in_pr = False
+        for line in lines:
+            stripped = line.strip()
+            if stripped.startswith("pull_request:"):
+                in_pr = True
+                continue
+            if in_pr and stripped and not line.startswith((" ", "\t")):
+                in_pr = False
+            if in_pr and stripped.startswith("paths:"):
+                self.fail(
+                    "pull_request must not use workflow-level paths; use the changes job"
+                )
+
+    def test_producer_gates_coverage_with_changes_job(self) -> None:
+        self.assertIn("changes:", self.producer)
+        self.assertIn("needs.changes.outputs.coverage", self.producer)
+
     def test_producer_has_no_oidc_or_codecov_token(self) -> None:
         self.assertNotIn("id-token", self.producer)
         self.assertNotIn("codecov/", self.producer)
@@ -80,6 +99,11 @@ class CodecovWorkflowTest(unittest.TestCase):
         self.assertIn("Rscript tools/run-covr-coverage.R", self.producer)
         self.assertIn("covr::package_coverage(", self.covr_runner)
         self.assertIn("covr::to_cobertura(", self.covr_runner)
+        self.assertIn("retarget_missing_covr_counters(", self.covr_runner)
+        self.assertIn("retarget-covr-traces.R", self.covr_runner)
+        self.assertIn("any::covr", self.producer)
+        self.assertNotIn("covr@3.6.5", self.producer)
+        self.assertNotIn('packageVersion("covr")) == "3.6.5"', self.producer)
         self.assertNotIn("macos", self.producer.lower())
         self.assertNotIn("windows", self.producer.lower())
         self.assertNotIn("GLLVMTMB_HEAVY_TESTS", self.producer)
@@ -120,6 +144,7 @@ class CodecovWorkflowTest(unittest.TestCase):
             line.strip()
             for line in _active_lines(PRODUCER)
             if line.strip().startswith("if:") and "github.event_name" in line
+            and "draft" not in line
         ]
         self.assertEqual(len(upload_conditions), 2, upload_conditions)
         for condition in upload_conditions:

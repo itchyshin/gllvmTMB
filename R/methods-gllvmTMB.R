@@ -3641,6 +3641,59 @@ predict.gllvmTMB_multi <- function(
         }
       }
 
+      ## phylo_slope: the slope-only phylogenetic / pedigree random regression,
+      ## `phylo_slope(x | group)` or `animal_slope(x | group)` grouped on a
+      ## column other than the trait column. src/gllvmTMB.cpp documents the
+      ## block beside its DATA declarations and adds it as
+      ##   PARAMETER_VECTOR(b_phy_slope)   -- length n_aug_phy_slope
+      ##   eta(o) += b_phy_slope(phylo_slope_aug_id(o)) * x_phy_slope(o)
+      ## in the `else` arm of use_phylo_slope_correlated, so it is rebuilt only
+      ## when that flag is off. The intercept-plus-slope and response-column
+      ## routes raise use_phylo_slope too, but they live in b_phy_aug /
+      ## Z_phy_aug, are not rebuilt here, and stay in the warning below.
+      ##
+      ## The node of a group level is read off the training rows:
+      ## phylo_slope_aug_id is one node per level (R/fit-multi.R,
+      ## .resolve_phylo_slope_precision()), and extract_Sigma() resolves labels
+      ## the same way. That covers a tree with unobserved tips and internal
+      ## nodes without a second lookup. A level the fit never saw gets no
+      ## contribution, like the other group-indexed tiers. If `newdata` lacks
+      ## the grouping or the covariate column the tier is not re-added and the
+      ## warning below still names it.
+      td_ps <- object$tmb_data
+      if (isTRUE(as.integer(td_ps$use_phylo_slope) == 1L) &&
+            !isTRUE(as.integer(td_ps$use_phylo_slope_correlated) == 1L)) {
+        cs_ps <- Filter(
+          function(cs) identical(cs$kind, "phylo_slope"),
+          object$covstructs
+        )
+        b_ps <- par[names(par) == "b_phy_slope"]
+        node_train <- as.integer(td_ps$phylo_slope_aug_id)
+        if (length(cs_ps) == 1L && is.name(cs_ps[[1L]]$group) &&
+              length(b_ps) == td_ps$n_aug_phy_slope &&
+              length(node_train) == NROW(object$data)) {
+          g_col <- as.character(cs_ps[[1L]]$group)
+          x_col <- deparse(cs_ps[[1L]]$lhs)
+          if (all(c(g_col, x_col) %in% names(nd)) &&
+                g_col %in% names(object$data)) {
+            g_train <- as.character(object$data[[g_col]])
+            lv_ps <- unique(g_train)
+            node_lv <- node_train[match(lv_ps, g_train)]
+            ## Refuse to guess if the stored rows and nodes do not line up as
+            ## one node per level.
+            if (identical(node_lv[match(g_train, lv_ps)], node_train)) {
+              node <- node_lv[match(as.character(nd[[g_col]]), lv_ps)]
+              ok_ps <- !is.na(node)
+              if (any(ok_ps)) {
+                eta[ok_ps] <- eta[ok_ps] +
+                  b_ps[node[ok_ps] + 1L] * as.numeric(nd[[x_col]])[ok_ps]
+                added <- c(added, "phylo_slope")
+              }
+            }
+          }
+        }
+      }
+
       ## re_int: ordinary `(1 | group)` random intercepts.
       ## src/gllvmTMB.cpp:2609 -- eta(o) += u_re_int(re_int_offsets(term) + gid),
       ## where gid indexes the term's own grouping factor and the terms are

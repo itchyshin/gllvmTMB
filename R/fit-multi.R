@@ -8364,12 +8364,18 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       if (!exact_pair_marginal) return(opt_args)
       psi_idx <- grep("^psi_kernel_variance", names(par_init))
       if (length(psi_idx) != n_traits * n_kernel_tiers) {
-        cli::cli_abort("Internal exact-Gaussian Psi parameter block is missing.")
+        cli::cli_abort(c(
+          "Internal exact-Gaussian Psi parameter block is missing.",
+          ">" = "Please report this gllvmTMB error with the model formula and fit controls."
+        ))
       }
       lower <- opt_args$lower %||% rep(-Inf, length(par_init))
       if (length(lower) == 1L) lower <- rep(lower, length(par_init))
       if (length(lower) != length(par_init)) {
-        cli::cli_abort("Optimizer lower bounds must match the parameter vector length.")
+        cli::cli_abort(c(
+          "Internal optimizer lower bounds do not match the parameter vector.",
+          ">" = "Please report this gllvmTMB error with the model formula and optimizer settings."
+        ))
       }
       lower[psi_idx] <- pmax(lower[psi_idx], 0)
       opt_args$lower <- lower

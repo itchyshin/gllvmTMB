@@ -3527,7 +3527,9 @@ predict.gllvmTMB_multi <- function(
       ## frame whose first row had an unseen species silently skipped the
       ## tier for every other row too. Each row is now guarded on its own,
       ## inside the loop, as rr_B and diag_B already were.
-      if (isTRUE(object$use$propto) && any(!is.na(sp_id))) {
+      propto_ok <- !is.na(sp_id) & sp_id >= 0 & sp_id < object$n_species &
+        !is.na(tr_id)
+      if (isTRUE(object$use$propto) && any(propto_ok)) {
         p_phy <- matrix(
           par[names(par) == "p_phy"],
           nrow = object$n_species,
@@ -3545,16 +3547,18 @@ predict.gllvmTMB_multi <- function(
       if (isTRUE(object$use$phylo_rr) || isTRUE(object$use$phylo_diag)) {
         effects <- .structured_rho_contribution(object)
         ok <- !is.na(sp_id) & sp_id >= 0 & sp_id < object$n_species & !is.na(tr_id)
-        eta[ok] <- eta[ok] + effects[cbind(sp_id[ok]+1L,tr_id[ok]+1L)]
-        added <- c(added, if (isTRUE(object$use$phylo_rr)) "phylo_rr",
-          if (isTRUE(object$use$phylo_diag)) "phylo_diag")
+        if (any(ok)) {
+          eta[ok] <- eta[ok] + effects[cbind(sp_id[ok]+1L,tr_id[ok]+1L)]
+          added <- c(added, if (isTRUE(object$use$phylo_rr)) "phylo_rr",
+            if (isTRUE(object$use$phylo_diag)) "phylo_diag")
+        }
       }
       ## diag_species: per-(trait, species) random intercept.
       ## src/gllvmTMB.cpp:2513 -- eta(o) += q_sp(t, species_id(o)). Note the
       ## index order is (trait, species), the TRANSPOSE of p_phy above; that
       ## is why each tier gets its own exact-identity test rather than a
       ## shared one.
-      if (isTRUE(object$use$diag_species) && any(!is.na(sp_id))) {
+      if (isTRUE(object$use$diag_species)) {
         q_sp <- matrix(
           par[names(par) == "q_sp"],
           nrow = object$n_traits,
@@ -3562,8 +3566,10 @@ predict.gllvmTMB_multi <- function(
         )
         ok <- !is.na(sp_id) & sp_id >= 0 & sp_id < object$n_species &
           !is.na(tr_id)
-        eta[ok] <- eta[ok] + q_sp[cbind(tr_id[ok] + 1L, sp_id[ok] + 1L)]
-        added <- c(added, "diag_species")
+        if (any(ok)) {
+          eta[ok] <- eta[ok] + q_sp[cbind(tr_id[ok] + 1L, sp_id[ok] + 1L)]
+          added <- c(added, "diag_species")
+        }
       }
 
       ## diag_cluster2: per-(trait, cluster2-level) random intercept.

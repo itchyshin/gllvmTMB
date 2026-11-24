@@ -55,6 +55,15 @@ alternative integration engines. Exact receipts and cell verdicts are in
   `latent()` includes this companion by default. Source-specific and kernel
   latent terms are loadings-only by default; request `unique = TRUE` for the
   decomposition. `dep()` estimates a full unstructured Sigma.
+- `kernel_psi_sd_prior` is a narrow opt-in MAP sensitivity for named-kernel
+  Psi SDs. It applies a normalized half-normal density to selected natural
+  SDs `sqrt(Psi[t,t])` for native-TMB Gaussian ML Laplace fits only. It cannot
+  be combined with fixed-effect priors or loading penalties. Defaults remain
+  unpenalized. Because the half-normal mode is zero, it does not prevent
+  near-zero estimates. Calibrated, profile, and bootstrap intervals and Julia
+  parity and cross-package prior-schema integration are not established; the
+  local target class is `unique_variance` with explicit measure `natural_sd`.
+  The route remains `partial` in KER-03B.
 
 ### Response families
 

@@ -81,10 +81,11 @@
 #' prior precision at the fitted MAP point. These are local approximate
 #' posterior standard deviations conditional on the chosen ridge scale,
 #' model, and latent-axis orientation, not calibrated sampling standard errors.
-#' The same interpretation applies to `fixed_effect_priors`: its normal
-#' precision is included, independently of the loading penalty. For these fits
-#' use `vcov()` or `sd_report` to inspect local covariance; ordinary interval
-#' helpers remain unavailable until their sampling behavior is assessed.
+#' The same interpretation applies to `fixed_effect_priors` and
+#' `kernel_psi_sd_prior`: their prior curvature is included independently of
+#' the loading penalty. For these fits use `vcov()` or `sd_report` to inspect
+#' local covariance; ordinary interval helpers remain unavailable until their
+#' sampling behavior is assessed.
 #'
 #' @seealso [gllvmTMBcontrol()] for the `se` argument that defers the
 #'   calculation; [getREsd()] and [getLV()] for accessors that read the

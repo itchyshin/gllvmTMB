@@ -762,25 +762,25 @@ carrying no coefficient: `eta = offset + X b`. On a log link that is the
 exposure / effort idiom — sampling effort, trap-nights, area surveyed — and
 it is the reason the term exists.
 
-**The term is gated to count families**: `poisson`, `nbinom1`, `nbinom2`,
-`truncated_poisson`, `truncated_nbinom2` (family ids 2, 15, 5, 10, 11).
-These are every count family the engine supports; `truncated_nbinom1` has no
-engine row, so it is not a candidate.
+**The term is gated to count families** plus **`binomial(cloglog)`** (family
+id 1, link id 2): `poisson`, `nbinom1`, `nbinom2`, `truncated_poisson`,
+`truncated_nbinom2` (family ids 2, 15, 5, 10, 11). These are every count
+family the engine supports; `truncated_nbinom1` has no engine row, so it is not
+a candidate.
 
-The gate is on **family, not link**. A link gate would admit Gamma,
-lognormal and Tweedie on log links, each needing its own semantics decision;
-the family set is small, enumerable, and matches the use case. Under
-`gaussian` an offset would be an unexplained mean shift and under
-`binomial(logit)` or `binomial(probit)` a fixed shift in log-odds or probit
-units, neither of which is what a user asking for an offset wants. That reasoning
-holds for those links and is unchanged.
+The gate is on **family for counts and family × link for binomial**. A blanket
+link gate would admit Gamma, lognormal and Tweedie on log links, each needing
+its own semantics decision. Under `gaussian` an offset would be an unexplained
+mean shift and under `binomial(logit)` or `binomial(probit)` a fixed shift in
+log-odds or probit units, neither of which is what a user asking for an offset
+wants. That reasoning holds for those links and is unchanged.
 
-### One exception: `binomial(cloglog)` inside the integrated contract
+### Why `binomial(cloglog)` is admitted
 
-The restriction is correct for logit and probit but wrong for the
-presence-absence arm of an integrated multi-source model (Design 120), where
-the Bernoulli arm uses a complementary log-log link. There the offset is not
-a nuisance shift; it is a **change of support**:
+The restriction is correct for logit and probit but wrong for Bernoulli rows
+on the complementary log-log link, including the presence–absence arm of an
+integrated multi-source model (Design 120). There the offset is not a nuisance
+shift; it is a **change of support**:
 
 ```
 cloglog(p_i) = log(-log(1 - p_i)) = log(E_i) + eta_i
@@ -792,23 +792,19 @@ shared intensity. Equivalently `p_i = 1 - exp(-E_i * exp(eta_i))`. The
 as the Poisson arm, so without it the two sources are unrelated regressions,
 not one integrated model.
 
-The gate therefore admits a **nonzero** offset on a row with family 1
-(binomial) and link 2 (cloglog) **only when the exact integrated two-source
-contract has matched** (`.gllvmTMB_integrated_sources_contract()`: sources
-declared with `isdm_sources()`, Poisson-log count arms and Bernoulli-cloglog
-detection arms). Outside that contract a standalone `binomial(link =
-"cloglog")` fit still refuses a nonzero offset, with the same error as any
-other non-count trait. Widening the gate to standalone cloglog is an owner
-decision and is not made here. Logit, probit, gaussian and Beta rows stay
-refused inside the contract too; the exception is keyed to family 1 and link 2
-specifically (`tests/testthat/test-isdm-public-door.R`).
+The gate therefore admits a **nonzero** offset on any row with family 1
+(binomial) and link 2 (cloglog), standalone or inside the integrated
+two-source contract (`.gllvmTMB_integrated_sources_contract()`; issue #946).
+Logit, probit, gaussian and Beta rows stay refused; the exception is keyed to
+family 1 and link 2 specifically (`tests/testthat/test-offset-support.R`,
+`tests/testthat/test-isdm-public-door.R`).
 
 Because `family_id_vec` is already per-row, the gate is per-row too, and the
 error names the offending trait:
 
 ```
-offsets are supported for count families (poisson, nbinom) only;
-trait `t2` uses `gaussian`.
+offsets are supported for count families (poisson, nbinom) and
+binomial(link = "cloglog") only; trait `t2` uses `gaussian`.
 ```
 
 This is a capability the single-family comparators cannot offer cleanly.

@@ -56,6 +56,8 @@ test_that("AGHQ binomial saturation screen uses conditional probabilities", {
   expect_true(any(grepl("Link-scale residual variance is unavailable", seen, fixed = TRUE)))
   expect_true(is.na(mixed[1L]))
   expect_equal(as.numeric(mixed[-1L]), c(1, 1))
-  fit$tmb_data$family_id_vec[as.integer(fit$data$trait) == 1L] <- 2L
+  rows_a <- which(as.integer(fit$data$trait) == 1L)
+  fit$tmb_data$family_id_vec[rows_a] <- 2L
+  fit$tmb_data$link_id_vec[rows_a] <- 0L
   expect_error(link_residual_per_trait(fit), class = "gllvmTMB_aghq_modes_unavailable")
 })

@@ -15,15 +15,13 @@ test_that("sanity_multi() reports the expected fields", {
     value ~ 0 +
       trait +
       latent(0 + trait | site, d = 2),
-    data = sim$data
+    data = sim$data,
+    unit = "site"
   )
   flags <- capture.output(out <- sanity_multi(fit))
-  ## Converged rule (18 Nov 2026): this d = 2 fit has a non-PD Hessian
-  ## (degenerate), so `converged` is FALSE; it must agree with the status.
-  expect_identical(
-    out$converged,
-    identical(fit$fit_health$convergence_status, "converged")
-  )
+  expect_identical(fit$fit_health$convergence_status, "degenerate")
+  expect_false(out$converged)
+  expect_identical(out$converged, fit$fit_health$converged)
   expect_true(is.finite(out$max_gradient))
   expect_true(is.logical(out$pd_hessian))
   expect_true("rr_B_min_loading" %in% names(out))
@@ -726,6 +724,78 @@ test_that("predict() with re_form ~ . differs from re_form ~ 0", {
 ## #1352: a non-finite (or failing) gradient must be reported, not crash
 ## sanity_multi(), and its `converged` verdict must agree with `fit_health`.
 test_that("sanity_multi() survives a non-finite gradient and agrees with fit_health (#1352)", {
+  ## Interior Gaussian fit with a real latent signal (#1352 healthy branch).
+  set.seed(42)
+  n <- 40L
+  p <- 3L
+  df2 <- expand.grid(
+    unit = factor(paste0("u", seq_len(n))),
+    trait = factor(paste0("t", seq_len(p))),
+    KEEP.OUT.ATTRS = FALSE
+  )
+  z <- stats::rnorm(n)
+  df2$value <- 0.85 * z[as.integer(df2$unit)] *
+    c(1, 0.7, -0.5)[as.integer(df2$trait)] +
+    stats::rnorm(nrow(df2))
+  fit2 <- suppressMessages(suppressWarnings(gllvmTMB(
+    value ~ 0 + trait + latent(0 + trait | unit, d = 1),
+    data = df2, unit = "unit", trait = "trait", family = gaussian()
+  )))
+  ok <- NULL
+  capture.output(ok <- sanity_multi(fit2))
+  expect_identical(fit2$fit_health$convergence_status, "converged")
+  expect_true(ok$converged)
+  expect_identical(ok$converged, gllvmTMB:::.gllvmTMB_build_fit_health(fit2)$converged)
+  expect_true(is.finite(ok$max_gradient))
+
+  n_par <- length(fit2$opt$par)
+  for (bad_gr in list(
+    function(...) rep(NaN, n_par),
+    function(...) stop("gradient unavailable")
+  )) {
+    bad <- fit2
+    bad$tmb_obj$gr <- bad_gr
+    h <- gllvmTMB:::.gllvmTMB_build_fit_health(bad)
+    out <- NULL
+    txt <- capture.output(out <- sanity_multi(bad))
+    expect_false(out$converged)
+    expect_identical(out$converged, h$converged)
+    expect_true(is.na(out$max_gradient))
+    expect_true(any(grepl("gradient not finite", txt, fixed = TRUE)))
+  }
+
+  ## One non-finite component among finite ones is also not a PASS.
+  part <- fit2
+  part$tmb_obj$gr <- function(...) c(rep(0, n_par - 1L), NaN)
+  txt <- capture.output(out <- sanity_multi(part))
+  expect_false(out$converged)
+  expect_true(is.na(out$max_gradient))
+  expect_true(any(grepl("gradient not finite", txt, fixed = TRUE)))
+})
+
+test_that("sanity_multi() agrees on a converged interior Gaussian fit", {
+  set.seed(11)
+  n <- 50L
+  p <- 3L
+  df <- expand.grid(
+    unit = factor(paste0("u", seq_len(n))),
+    trait = factor(paste0("t", seq_len(p))),
+    KEEP.OUT.ATTRS = FALSE
+  )
+  z <- stats::rnorm(n)
+  df$value <- z[as.integer(df$unit)] * c(0.9, 0.55, -0.35)[as.integer(df$trait)] +
+    stats::rnorm(nrow(df), sd = 0.5)
+  fit <- suppressMessages(suppressWarnings(gllvmTMB(
+    value ~ 0 + trait + latent(0 + trait | unit, d = 1),
+    data = df, unit = "unit", trait = "trait", family = gaussian()
+  )))
+  out <- NULL
+  capture.output(out <- sanity_multi(fit))
+  expect_identical(fit$fit_health$convergence_status, "converged")
+  expect_true(out$converged)
+})
+
+test_that("sanity_multi() flags a boundary d = 1 fit", {
   set.seed(1)
   n <- 30L
   p <- 3L
@@ -739,42 +809,10 @@ test_that("sanity_multi() survives a non-finite gradient and agrees with fit_hea
     stats::rnorm(nrow(df))
   fit <- suppressMessages(suppressWarnings(gllvmTMB(
     value ~ 0 + trait + latent(0 + trait | unit, d = 1),
-    data = df, unit = "unit", trait = "trait"
+    data = df, unit = "unit", trait = "trait", family = gaussian()
   )))
-
-  ## Healthy fit: unchanged, and agrees with fit_health.
-  ok <- NULL
-  capture.output(ok <- sanity_multi(fit))
-  ## Converged rule (18 Nov 2026): this fit has its unique SD on the boundary,
-  ## so `converged` is FALSE; it must agree with fit_health.
-  expect_identical(
-    ok$converged,
-    identical(fit$fit_health$convergence_status, "converged")
-  )
-  expect_identical(ok$converged, gllvmTMB:::.gllvmTMB_build_fit_health(fit)$converged)
-  expect_true(is.finite(ok$max_gradient))
-
-  n_par <- length(fit$opt$par)
-  for (bad_gr in list(
-    function(...) rep(NaN, n_par),
-    function(...) stop("gradient unavailable")
-  )) {
-    bad <- fit
-    bad$tmb_obj$gr <- bad_gr
-    h <- gllvmTMB:::.gllvmTMB_build_fit_health(bad)
-    out <- NULL
-    txt <- capture.output(out <- sanity_multi(bad))
-    expect_false(out$converged)
-    expect_identical(out$converged, h$converged)
-    expect_true(is.na(out$max_gradient))
-    expect_true(any(grepl("gradient not finite", txt, fixed = TRUE)))
-  }
-
-  ## One non-finite component among finite ones is also not a PASS.
-  part <- fit
-  part$tmb_obj$gr <- function(...) c(rep(0, n_par - 1L), NaN)
-  txt <- capture.output(out <- sanity_multi(part))
+  out <- NULL
+  capture.output(out <- sanity_multi(fit))
+  expect_identical(fit$fit_health$convergence_status, "boundary")
   expect_false(out$converged)
-  expect_true(is.na(out$max_gradient))
-  expect_true(any(grepl("gradient not finite", txt, fixed = TRUE)))
 })

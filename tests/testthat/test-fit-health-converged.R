@@ -1,8 +1,8 @@
 ## Test-of-the-test for the `fit_health$converged` verdict (R/diagnose.R).
 ##
 ## `converged` is TRUE only when `convergence_status` is "converged" (optimiser
-## success, finite objective, small relative gradient, no boundary, PD Hessian).
-## [moved by the 18 Nov 2026 converged rule] The objective-scaled gradient
+## success, finite objective, small Newton step in SE units, no boundary,
+## PD Hessian with finite standard errors). The objective-scaled `relative_gradient`
 ## remains separately available as a descriptive recovery-fixture diagnostic.
 ##
 ## A verdict that cannot fail proves nothing, so this battery must REJECT genuine
@@ -35,7 +35,7 @@ test_that("verdict accepts a clean, well-identified fit (PD)", {
   expect_lt(fit$fit_health$scaled_gradient, 1e-3)
 })
 
-test_that("Hessian health remains separate from point convergence", {
+test_that("non-PD rotation ridge is degenerate, not converged", {
   skip_on_cran()
   withr::local_options(gllvmTMB.quiet_grammar_notes = TRUE, lifecycle_verbosity = "quiet")
   set.seed(1)
@@ -43,30 +43,37 @@ test_that("Hessian health remains separate from point convergence", {
   df <- expand.grid(unit = factor(paste0("u", seq_len(n))),
                     trait = factor(paste0("t", seq_len(T_))))
   df$value <- stats::rnorm(nrow(df)) + as.numeric(df$trait) * 0.3
-  ## d = n_traits: the loadings are identified only up to rotation -> a flat ridge,
-  ## so pd_hessian is FALSE while the fit is at a genuine optimum (Sigma recovers).
+  ## d = n_traits: identified only up to rotation -> non-PD Hessian at the optimum.
   fit <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
     value ~ 0 + trait + latent(0 + trait | unit, d = 4),
     data = df, unit = "unit", trait = "trait", family = gaussian()
   )))
-  ## Converged rule (18 Nov 2026): `converged` now includes the Hessian and
-  ## boundary conditions, so it is TRUE only when the status is "converged".
-  expect_identical(
-    fit$fit_health$converged,
-    identical(fit$fit_health$convergence_status, "converged")
-  )
-  if (isFALSE(fit$fit_health$pd_hessian)) {
-    expect_false(fit$fit_health$converged)
-  }
-  ## pd_hessian on a near-zero rotation ridge is FD/BLAS noise: it reads FALSE on
-  ## some platforms (the case it "gets wrong") and PD on others (seen on ubuntu CI).
-  ## Only demonstrate the "pd_hessian disagrees" branch when the platform actually
-  ## produced the non-PD read; otherwise it is N/A -- converged is asserted above,
-  ## and asserting the noisy sign here would make the test depend on the very
-  ## platform noise the verdict exists to ignore.
   skip_if(isTRUE(fit$fit_health$pd_hessian),
           "Hessian read as PD on this platform; non-PD-ridge demonstration N/A.")
-  expect_false(isTRUE(fit$fit_health$pd_hessian))
+  expect_identical(fit$fit_health$convergence_status, "degenerate")
+  expect_false(isTRUE(fit$fit_health$converged))
+})
+
+test_that("weak-signal Gaussian fit with collapsed sd is boundary", {
+  skip_on_cran()
+  withr::local_options(gllvmTMB.quiet_grammar_notes = TRUE, lifecycle_verbosity = "quiet")
+  set.seed(1)
+  n <- 30L
+  p <- 3L
+  df <- expand.grid(
+    unit = factor(seq_len(n)),
+    trait = factor(paste0("t", seq_len(p))),
+    KEEP.OUT.ATTRS = FALSE
+  )
+  z <- stats::rnorm(n)
+  df$value <- c(1, .7, -.5)[as.integer(df$trait)] * z[as.integer(df$unit)] +
+    stats::rnorm(nrow(df))
+  fit <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+    value ~ 0 + trait + latent(0 + trait | unit, d = 1),
+    data = df, unit = "unit", trait = "trait", family = gaussian()
+  )))
+  expect_identical(fit$fit_health$convergence_status, "boundary")
+  expect_false(isTRUE(fit$fit_health$converged))
 })
 
 test_that("verdict REJECTS genuine non-convergence (iteration-capped)", {

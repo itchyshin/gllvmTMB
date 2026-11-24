@@ -42,9 +42,11 @@ not established defaults or universal convergence recommendations.
 
 The most important distinction is simple. `fit$fit_health$converged` is `TRUE`
 only when `fit$fit_health$convergence_status` is `"converged"`: the optimiser
-finished, the objective is finite, the gradient is near zero by a relative
-(unit-free) test, no parameter sits at a boundary, and the Hessian is positive
-definite with finite standard errors. The other three statuses are warnings, not
+finished, the objective is finite, the largest Newton step in standard-error
+units is at most `0.001`, no parameter sits at a boundary, and the Hessian is
+positive definite with finite standard errors. With `gllvmTMBcontrol(se = FALSE)`,
+the Hessian and standard errors are not checked; an interior fit can still read
+`"converged"`. The other three statuses are warnings, not
 errors. They are checked in this order, and the first match wins:
 
 - `"not_converged"`: the optimiser did not finish, or the gradient is not near

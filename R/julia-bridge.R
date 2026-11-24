@@ -3214,6 +3214,8 @@ gllvm_julia_fit <- function(
   if (!is.null(mask)) {
     res$response_mask <- mask
   }
+  res$fit_health <- .gllvmTMB_julia_fit_health(res)
+  res$convergence_status <- res$fit_health$convergence_status
   class(res) <- c("gllvmTMB_julia", "list")
   res
 }
@@ -3958,6 +3960,15 @@ summary.gllvmTMB_julia <- function(object, ...) {
       AIC = object$aic %||% NA_real_,
       BIC = object$bic %||% NA_real_,
       converged = object$converged %||% NA,
+      convergence_status = (
+        object$fit_health$convergence_status %||%
+          object$convergence_status %||%
+          if (isTRUE(object$converged)) "converged" else if (isFALSE(object$converged)) {
+            "not_converged"
+          } else {
+            NA_character_
+          }
+      ),
       message = object$message %||% NA_character_,
       missing_response = isTRUE(object$missing_response)
     ),
@@ -4053,6 +4064,21 @@ print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
 # block + per-trait intercepts, every family) and reject anything else loudly with
 # a pointer to engine = "tmb" -- never a silent approximation.
 # ---------------------------------------------------------------------------
+## Minimal `fit_health` for Julia-bridge fits (no TMB Hessian / Newton test).
+.gllvmTMB_julia_fit_health <- function(object) {
+  optimizer_converged <- isTRUE(object$converged)
+  status <- if (optimizer_converged) "converged" else "not_converged"
+  list(
+    converged = identical(status, "converged"),
+    convergence_status = status,
+    convergence = if (optimizer_converged) 0L else 1L,
+    message = object$message %||% "",
+    optimizer_converged = optimizer_converged,
+    pd_hessian = NA,
+    se_skipped = NA
+  )
+}
+
 .gllvmTMB_julia_dispatch <- function(
   parsed,
   data,

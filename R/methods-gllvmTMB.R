@@ -2977,6 +2977,52 @@ sanity_multi <- function(object, gradient_thresh = 1e-2, se_thresh = 100) {
   list(fid = fid_by[idx], lid = lid_by[idx])
 }
 
+#' SPDE mesh projector at `newdata` rows
+#'
+#' Rebuilds the row-to-mesh projector with `fmesher::fm_basis()` on the stored
+#' mesh -- the same call that built `A_st` in the first place (R/mesh.R) -- so
+#' training coordinates reproduce the fitted `A_proj` exactly, and new
+#' coordinates project off-mesh for free. Every SPDE tier re-added on the
+#' `newdata` path projects through this one function, so they share one
+#' projector and one outside-hull warning.
+#'
+#' Returns `NULL` when the rows cannot be projected (no mesh, coordinates
+#' absent from `newdata`), leaving the caller to report the omission.
+#'
+#' @keywords internal
+#' @noRd
+.gllvmTMB_spde_newdata_projector <- function(object, nd) {
+  mesh <- object$mesh
+  if (is.null(mesh) || is.null(mesh$mesh) || is.null(mesh$xy_cols)) return(NULL)
+  if (!all(mesh$xy_cols %in% names(nd))) return(NULL)
+  loc <- tryCatch(
+    .gllvm_mesh_coordinates(nd, mesh$xy_cols),
+    error = function(e) NULL
+  )
+  if (is.null(loc)) return(NULL)
+  A <- tryCatch(
+    fmesher::fm_basis(mesh$mesh, loc = loc),
+    error = function(e) NULL
+  )
+  if (is.null(A) || nrow(A) != nrow(nd)) return(NULL)
+
+  ## fmesher returns an all-zero basis row for a location outside the mesh
+  ## hull, so the field silently becomes 0 there -- indistinguishable from a
+  ## field that is genuinely near zero, and the reader has no way to tell a
+  ## blank patch of map from a cold one. `make_mesh()` rejects such rows at
+  ## fit time, so predict() must not be quietly more permissive than the fit.
+  row_mass <- Matrix::rowSums(A)
+  n_outside <- sum(!is.finite(row_mass) | abs(row_mass) < 1e-8)
+  if (n_outside > 0L) {
+    cli::cli_warn(c(
+      "{n_outside} {.arg newdata} row{?s} fall outside the mesh hull.",
+      "x" = "The spatial field is exactly 0 there -- not estimated, and not distinguishable from a field that is genuinely near zero.",
+      "i" = "Restrict {.arg newdata} to the meshed domain, or rebuild the mesh to cover it."
+    ), class = "gllvmTMB_predict_newdata_outside_mesh")
+  }
+  A
+}
+
 #' SPDE field contribution at `newdata` rows
 #'
 #' Mirrors the template's spatial block: the projected field is
@@ -3015,34 +3061,8 @@ sanity_multi <- function(object, gradient_thresh = 1e-2, se_thresh = 100) {
     effect <- .structured_rho_spatial_contribution(object)
     return(effect[cbind(ids,tr_id+1L)])
   }
-  mesh <- object$mesh
-  if (is.null(mesh) || is.null(mesh$mesh) || is.null(mesh$xy_cols)) return(NULL)
-  if (!all(mesh$xy_cols %in% names(nd))) return(NULL)
-  loc <- tryCatch(
-    .gllvm_mesh_coordinates(nd, mesh$xy_cols),
-    error = function(e) NULL
-  )
-  if (is.null(loc)) return(NULL)
-  A <- tryCatch(
-    fmesher::fm_basis(mesh$mesh, loc = loc),
-    error = function(e) NULL
-  )
-  if (is.null(A) || nrow(A) != nrow(nd)) return(NULL)
-
-  ## fmesher returns an all-zero basis row for a location outside the mesh
-  ## hull, so the field silently becomes 0 there -- indistinguishable from a
-  ## field that is genuinely near zero, and the reader has no way to tell a
-  ## blank patch of map from a cold one. `make_mesh()` rejects such rows at
-  ## fit time, so predict() must not be quietly more permissive than the fit.
-  row_mass <- Matrix::rowSums(A)
-  n_outside <- sum(!is.finite(row_mass) | abs(row_mass) < 1e-8)
-  if (n_outside > 0L) {
-    cli::cli_warn(c(
-      "{n_outside} {.arg newdata} row{?s} fall outside the mesh hull.",
-      "x" = "The spatial field is exactly 0 there -- not estimated, and not distinguishable from a field that is genuinely near zero.",
-      "i" = "Restrict {.arg newdata} to the meshed domain, or rebuild the mesh to cover it."
-    ), class = "gllvmTMB_predict_newdata_outside_mesh")
-  }
+  A <- .gllvmTMB_spde_newdata_projector(object, nd)
+  if (is.null(A)) return(NULL)
 
   par <- object$tmb_obj$env$last.par.best
   n_mesh <- ncol(A)
@@ -3091,6 +3111,88 @@ sanity_multi <- function(object, gradient_thresh = 1e-2, se_thresh = 100) {
   X <- as.matrix(X)
   if (is.null(colnames(X))) colnames(X) <- object$X_fix_names
   X
+}
+
+#' Reduced-rank SPDE slope contribution at `newdata` rows
+#'
+#' The `spde_latent_slope` tier of `spatial_latent(1 + x | coords, d = K)`:
+#' `K` shared spatial fields for the intercept and `K` for the slope on `x`,
+#' each set with its own trait loadings. The template states the layout of
+#' every block:
+#'
+#' * `g_spde_slope` is `n_mesh x d_spde_slope x n_lhs_cols_spde_lat`
+#'   (src/gllvmTMB.cpp:1604);
+#' * `Lambda_spde_slope` is reported as
+#'   `n_traits x d_spde_slope x n_lhs_cols_spde_lat` (src/gllvmTMB.cpp:3250);
+#' * `Z_spde_lat` is `n_obs x n_lhs_cols_spde_lat`, column 0 ones and column 1
+#'   the covariate (src/gllvmTMB.cpp:1116, built by
+#'   `.spde_latent_slope_design()`);
+#' * each field is projected once,
+#'   `A_g(o, f, k) = (A_proj %*% g_spde_slope[, f, k])(o)`
+#'   (src/gllvmTMB.cpp:3393-3408), and eta gets
+#'   `sum_k Z_spde_lat(o, k) * sum_f Lambda_spde_slope(t(o), f, k) * A_g(o, f, k)`
+#'   (src/gllvmTMB.cpp:3495-3507).
+#'
+#' The two sums below run in the template's order: over factors `f` inside,
+#' over design columns `k` outside.
+#'
+#' Returns `NULL` when the tier is not active or cannot be rebuilt (`newdata`
+#' without the covariate or the coordinates, or parameter blocks whose sizes do
+#' not match the layout above), leaving the caller to name the tier as omitted.
+#' A row whose covariate is `NA` gets an `NA` prediction.
+#'
+#' @keywords internal
+#' @noRd
+.gllvmTMB_spde_latent_slope_newdata_contrib <- function(object, nd, tr_id) {
+  td <- object$tmb_data
+  if (!is.list(td)) return(NULL)
+  flag <- td$use_spde_latent_slope
+  if (length(flag) != 1L || is.na(flag) || as.integer(flag) != 1L) return(NULL)
+  d <- as.integer(td$d_spde_slope %||% 0L)
+  n_lhs <- as.integer(td$n_lhs_cols_spde_lat %||% 0L)
+  n_traits <- as.integer(object$n_traits)
+  if (length(d) != 1L || is.na(d) || d < 1L || !identical(n_lhs, 2L)) {
+    return(NULL)
+  }
+
+  ## The slope covariate is the one the fit read: `extra$slope_col` on the
+  ## augmented spatial_latent term (R/fit-multi.R:2369-2445).
+  is_aug <- vapply(object$covstructs %||% list(), function(cs) {
+    identical(cs$kind, "spde") &&
+      isTRUE(cs$extra[[".spatial_latent_augmented"]])
+  }, logical(1))
+  if (sum(is_aug) != 1L) return(NULL)
+  x_col <- object$covstructs[[which(is_aug)]]$extra$slope_col
+  if (!is.character(x_col) || length(x_col) != 1L || is.na(x_col) ||
+        !x_col %in% names(nd)) {
+    return(NULL)
+  }
+
+  par <- object$tmb_obj$env$last.par.best
+  g <- par[names(par) == "g_spde_slope"]
+  lam <- object$report$Lambda_spde_slope
+  if (is.null(lam) || length(lam) != n_traits * d * n_lhs) return(NULL)
+  A <- .gllvmTMB_spde_newdata_projector(object, nd)
+  if (is.null(A) || length(g) != ncol(A) * d * n_lhs) return(NULL)
+
+  g <- array(g, dim = c(ncol(A), d, n_lhs))
+  lam <- array(as.numeric(lam), dim = c(n_traits, d, n_lhs))
+  Z <- cbind(rep(1, nrow(nd)), as.numeric(nd[[x_col]]))
+
+  contrib <- numeric(nrow(nd))
+  t1 <- tr_id + 1L
+  ok <- !is.na(t1) & t1 >= 1L & t1 <= n_traits
+  if (!any(ok)) return(contrib)
+  rows <- which(ok)
+  for (k in seq_len(n_lhs)) {
+    u <- numeric(length(rows))
+    for (f in seq_len(d)) {
+      A_g <- as.numeric(A %*% g[, f, k])
+      u <- u + lam[t1[rows], f, k] * A_g[rows]
+    }
+    contrib[rows] <- contrib[rows] + Z[rows, k] * u
+  }
+  contrib
 }
 
 #' Active random-effect tiers this predict path cannot re-add
@@ -3684,6 +3786,17 @@ predict.gllvmTMB_multi <- function(
       }
       ## `lv_B` carries no eta term of its own: it is the score mean, already
       ## inside U_B_total above, so it counts as handled whenever rr_B is.
+      ##
+      ## spde_latent_slope: the reduced-rank intercept and slope fields of
+      ## `spatial_latent(1 + x | coords, d = K)` (#1138). It is the last
+      ## spatial term the template adds (src/gllvmTMB.cpp:3495-3507), so it
+      ## stays the last one added here.
+      spde_latent_slope_contrib <-
+        .gllvmTMB_spde_latent_slope_newdata_contrib(object, nd, tr_id)
+      if (!is.null(spde_latent_slope_contrib)) {
+        eta <- eta + spde_latent_slope_contrib
+        added <- c(added, "spde_latent_slope")
+      }
       handled <- c(added, if (isTRUE(object$use$lv_B)) "lv_B")
       unhandled <- .gllvmTMB_predict_unhandled_re_tiers(object, handled)
       if (length(added)) {

@@ -166,30 +166,58 @@ kernel_scalar <- function(unit, K, name = "kernel") {
 ## A bar (`1 + x | g`) is a slope and keeps its own group; it is not
 ## collected here. Returns a zero-row data.frame when no bare kernel
 ## grouping is present.
-.gllvmTMB_kernel_bare_groups <- function(formula) {
-  kernels <- c(
-    "kernel_latent", "kernel_unique", "kernel_indep",
-    "kernel_dep", "kernel_scalar"
-  )
+.gllvmTMB_lme4_bar_rhs <- function(expr) {
+  if (!is.call(expr) || !identical(expr[[1L]], as.symbol("|"))) {
+    return(NA_character_)
+  }
+  rhs <- expr[[3L]]
+  if (is.symbol(rhs)) {
+    return(as.character(rhs))
+  }
+  if (is.character(rhs) && length(rhs) == 1L && !is.na(rhs)) {
+    return(rhs)
+  }
+  NA_character_
+}
+
+.gllvmTMB_keyword_bare_groups <- function(formula, keywords, bar_keywords) {
   found <- list()
   walk <- function(e) {
     if (!is.call(e)) return(invisible(NULL))
     fn <- as.character(e[[1L]])[1L]
-    if (!is.na(fn) && fn %in% kernels && length(e) >= 2L) {
+    if (!is.na(fn) && fn %in% keywords && length(e) >= 2L) {
       matched <- tryCatch(match.call(get(fn), e), error = function(err) NULL)
-      arg <- if (!is.null(matched) && !is.null(matched$unit)) {
-        matched$unit
-      } else if (length(e) >= 2L) {
-        e[[2L]]
+      group <- NA_character_
+      if (fn %in% bar_keywords) {
+        formula_expr <- if (!is.null(matched) && !is.null(matched$formula)) {
+          matched$formula
+        } else if (length(e) >= 2L) {
+          e[[2L]]
+        } else {
+          NULL
+        }
+        if (is.call(formula_expr)) {
+          group <- .gllvmTMB_lme4_bar_rhs(formula_expr)
+        }
       } else {
-        NULL
-      }
-      group <- if (is.symbol(arg)) {
-        as.character(arg)
-      } else if (is.character(arg) && length(arg) == 1L && !is.na(arg)) {
-        arg
-      } else {
-        NA_character_
+        arg <- if (!is.null(matched) && !is.null(matched$unit)) {
+          matched$unit
+        } else if (!is.null(matched) && !is.null(matched$species)) {
+          matched$species
+        } else if (!is.null(matched) && !is.null(matched$id)) {
+          matched$id
+        } else if (length(e) >= 2L) {
+          e[[2L]]
+        } else {
+          NULL
+        }
+        group <- if (is.symbol(arg)) {
+          as.character(arg)
+        } else if (is.character(arg) && length(arg) == 1L && !is.na(arg)) {
+          arg
+        } else {
+          NA_character_
+        }
       }
       if (!is.na(group) && nzchar(group)) {
         found[[length(found) + 1L]] <<- list(fn = fn, group = group)
@@ -208,6 +236,24 @@ kernel_scalar <- function(unit, K, name = "kernel") {
     fn = vapply(found, `[[`, character(1L), "fn"),
     group = vapply(found, `[[`, character(1L), "group"),
     stringsAsFactors = FALSE
+  )
+}
+
+.gllvmTMB_kernel_bare_groups <- function(formula) {
+  kernels <- c(
+    "kernel_latent", "kernel_unique", "kernel_indep",
+    "kernel_dep", "kernel_scalar"
+  )
+  .gllvmTMB_keyword_bare_groups(formula, kernels, character())
+}
+
+.gllvmTMB_animal_bare_groups <- function(formula) {
+  keywords <- c(
+    "animal_latent", "animal_unique", "animal_indep",
+    "animal_dep", "animal_scalar"
+  )
+  .gllvmTMB_keyword_bare_groups(
+    formula, keywords, c("animal_indep", "animal_dep")
   )
 }
 

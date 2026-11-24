@@ -143,18 +143,46 @@
   build_dir <- file.path(tempdir(), paste0("gllvmTMB-eva-", stamp))
   cpp <- file.path(build_dir, "gllvmTMB_eva.cpp")
   if (!dir.exists(build_dir)) dir.create(build_dir, recursive = TRUE)
-  if (!file.exists(cpp) || isTRUE(rebuild)) file.copy(source, cpp, overwrite = TRUE)
-  dll <- TMB::dynlib(tools::file_path_sans_ext(cpp))
-  loaded <- vapply(getLoadedDLLs(), function(x) identical(normalizePath(x[["path"]], mustWork = FALSE),
-                                                           normalizePath(dll, mustWork = FALSE)), logical(1))
-  if (!file.exists(dll) || isTRUE(rebuild)) {
-    if (any(loaded)) dyn.unload(dll)
-    old <- getwd(); on.exit(setwd(old), add = TRUE); setwd(build_dir)
-    status <- TMB::compile(basename(cpp), flags = compile_flags)
-    if (!identical(status, 0L) || !file.exists(dll)) stop("EVA prototype compilation failed.", call. = FALSE)
-    loaded[] <- FALSE
+  if (!file.exists(cpp) || isTRUE(rebuild)) {
+    if (!file.copy(source, cpp, overwrite = TRUE)) {
+      stop("Failed to copy the EVA TMB source into its temporary build directory.",
+           call. = FALSE)
+    }
   }
-  if (!any(loaded)) dyn.load(dll)
+  dll <- TMB::dynlib(tools::file_path_sans_ext(cpp))
+  ## The build directory is the source checksum, so a loaded copy from
+  ## this path is already the current template. dyn.unload while an
+  ## earlier ADFun still holds an external pointer frees those pointers
+  ## and the next MakeADFun segfaults (the #1803 / #1813 failure, on this
+  ## loader: #1815). rebuild=TRUE still compiles when this DLL is not
+  ## loaded. A loaded library from a different source build cannot be
+  ## swapped in: unloading it is the crash, and two copies cannot share
+  ## the DLL name.
+  loaded_info <- getLoadedDLLs()[["gllvmTMB_eva"]]
+  if (!is.null(loaded_info)) {
+    loaded_path <- loaded_info[["path"]]
+    same_build <- nzchar(loaded_path) && identical(
+      normalizePath(loaded_path, mustWork = FALSE),
+      normalizePath(dll, mustWork = FALSE)
+    )
+    if (!same_build) {
+      stop(
+        "gllvmTMB_eva is already loaded from a different build. Restart R before rebuilding it.",
+        call. = FALSE
+      )
+    }
+    return(list(DLL = "gllvmTMB_eva", source = source, checksum = stamp))
+  }
+  if (!file.exists(dll) || isTRUE(rebuild)) {
+    old <- getwd()
+    on.exit(setwd(old), add = TRUE)
+    setwd(build_dir)
+    status <- TMB::compile(basename(cpp), flags = compile_flags)
+    if (!identical(status, 0L) || !file.exists(dll)) {
+      stop("EVA prototype compilation failed.", call. = FALSE)
+    }
+  }
+  dyn.load(dll)
   list(DLL = "gllvmTMB_eva", source = source, checksum = stamp)
 }
 

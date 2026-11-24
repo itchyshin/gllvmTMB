@@ -33,7 +33,14 @@ show that one trait, species, or treatment causes another to change.
 > model, and read [Current limitations and
 > boundaries](https://itchyshin.github.io/gllvmTMB/articles/current-limits.html)
 > before reporting a result. A model that converges is not, by itself, evidence
-> that every extension is reliable.
+> that every estimate or interval is reliable. Broad package-wide interval
+> coverage is not yet confirmed. A handful of interval calculations for
+> standardized factor loadings have been checked and shown accurate, but only
+> for one Gaussian model, in a few fixed sample-size and rank combinations,
+> fitted to one fixed simulated dataset with known true values, and only for fits that converge cleanly; this does not carry over to any other sample
+> size, rank, or dataset. Total-variance penalty profiles are still only an
+> approximate calculation: even in previously checked cases, we have not
+> confirmed they match the exact answer.
 
 `gllvmTMB` uses **Template Model Builder (TMB)** to fit models by default.
 `GLLVModels.jl` is an optional Julia companion. The experimental

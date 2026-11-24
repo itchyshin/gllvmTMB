@@ -38,6 +38,11 @@ make_rr_B_slope_1138_data <- function(seed = 11381L, n_ind = 16L, n_rep = 3L) {
   df
 }
 
+## The fixed part is trait intercepts only, so each design row has a single
+## nonzero entry. With a fixed slope as well, R's `X %*% b` and the template's
+## Eigen product can round a + b * x differently (an FMA-capable BLAS such as
+## OpenBLAS fuses it), which would break an exact identity for reasons
+## unrelated to the random-effect tier.
 fit_rr_B_slope_1138 <- function(df, formula) {
   suppressMessages(suppressWarnings(gllvmTMB(
     formula,
@@ -56,7 +61,7 @@ test_that("#1138: rr_B_slope is re-added on training newdata with zero differenc
   df <- make_rr_B_slope_1138_data()
   fit <- fit_rr_B_slope_1138(
     df,
-    value ~ 0 + trait + (0 + trait):temperature +
+    value ~ 0 + trait +
       latent(1 + temperature | individual, d = 2, unique = FALSE)
   )
   expect_identical(as.integer(fit$tmb_data$use_rr_B_slope), 1L)
@@ -83,7 +88,7 @@ test_that("#1138: rr_B_slope long-form LHS is re-added with zero difference", {
   df <- make_rr_B_slope_1138_data(seed = 11382L)
   fit <- fit_rr_B_slope_1138(
     df,
-    value ~ 0 + trait + (0 + trait):temperature +
+    value ~ 0 + trait +
       latent(0 + trait + (0 + trait):temperature | individual,
              d = 2, unique = FALSE)
   )

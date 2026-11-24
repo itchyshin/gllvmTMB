@@ -14,8 +14,7 @@
   }
   if (!nrow(priors) || !is.character(priors$kernel) ||
       !is.character(priors$trait) || anyNA(priors$kernel) ||
-      anyNA(priors$trait) || anyNA(priors$kernel) ||
-      any(!nzchar(priors$trait))) {
+      anyNA(priors$trait) || any(!nzchar(priors$trait))) {
     cli::cli_abort(c(
       "Kernel Psi prior targets must be distinct, non-empty kernel and trait names.",
       ">" = "Supply each named-kernel and trait pair at most once."
@@ -64,7 +63,7 @@
     priors$kernel[missing_kernel] <- kernel_names[[1L]]
   }
   if (anyDuplicated(paste(priors$kernel, priors$trait, sep = "\r"))) {
-    cli::cli_abort("Kernel Psi prior targets must be distinct, non-empty kernel and trait names.",
+    cli::cli_abort("Kernel Psi prior targets must be distinct after resolving omitted single-kernel selectors.",
                    class = "gllvmTMB_kernel_psi_prior_invalid")
   }
   kernel_index <- match(priors$kernel, kernel_names)

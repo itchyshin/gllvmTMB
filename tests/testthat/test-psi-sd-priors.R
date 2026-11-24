@@ -45,6 +45,42 @@ test_that("Gamma kernel Psi SD priors use normalized natural-SD densities", {
   )
   expect_identical(single$parameter_name, "log_sd_phy_diag")
   expect_equal(single$parameter_index, 1L)
+
+  omitted <- transform(prior[1L, ], kernel = "")
+  inferred <- .gllvmTMB_resolve_kernel_psi_sd_prior(
+    omitted, "oak", 1L, c("t1", "t2", "t3"), FALSE
+  )
+  expect_identical(inferred$kernel, "oak")
+  expect_equal(inferred$parameter_index, 1L)
+  expect_error(.gllvmTMB_resolve_kernel_psi_sd_prior(
+    omitted, c("oak", "pine"), c(1L, 0L),
+    c("t1", "t2", "t3"), TRUE
+  ), class = "gllvmTMB_kernel_psi_prior_target_unknown")
+  inferred_duplicate <- rbind(omitted, prior[1L, ])
+  expect_error(.gllvmTMB_resolve_kernel_psi_sd_prior(
+    inferred_duplicate, "oak", 1L, c("t1", "t2", "t3"), FALSE
+  ), class = "gllvmTMB_kernel_psi_prior_invalid")
+})
+
+test_that("shared prior tables can combine fixed-effect and Psi targets", {
+  prior <- data.frame(kernel = "oak", trait = "t1", shape = 2.7, rate = 3.1)
+  control <- list(
+    integration = "laplace", aghq = FALSE,
+    fixed_effect_priors = data.frame(coefficient = "beta", mean = 0, sd = 1),
+    loading_ridge = NULL, aghq_ridge_explicit = FALSE, aghq_ridge = Inf,
+    prior_table = data.frame(
+      prior = c("normal(0,1)", "gamma(2,3.6)"),
+      class = c("fixef", "unique_variance"), stringsAsFactors = FALSE
+    )
+  )
+  expect_invisible(.gllvmTMB_kernel_psi_sd_prior_route(
+    prior, engine = "tmb", estimator = "ml", REML = FALSE, control = control
+  ))
+  control$fixed_effect_priors <- NULL
+  control$loading_ridge <- 1
+  expect_error(.gllvmTMB_kernel_psi_sd_prior_route(
+    prior, engine = "tmb", estimator = "ml", REML = FALSE, control = control
+  ), class = "gllvmTMB_kernel_psi_prior_penalty_conflict")
 })
 
 test_that("Gamma kernel Psi prior schema rejects ambiguous and invalid inputs", {

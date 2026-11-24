@@ -227,7 +227,8 @@
   loading_thresh = 1e-3,
   sd_thresh = 1e-4,
   sd_rel_thresh = 1e-3,
-  phi_gamma_ceiling_thresh = 1e8
+  phi_gamma_ceiling_thresh = 1e8,
+  ordinal_log_increment_floor = -15
 ) {
   flags <- character(0)
   rep <- object$report
@@ -292,6 +293,16 @@
   ## just like a collapsed variance component, and was previously unflagged.
   if (.gllvmTMB_gamma_shape_at_ceiling(object, phi_gamma_ceiling_thresh)) {
     flags <- c(flags, "boundary_phi_gamma")
+  }
+  ## Collapsed ordinal cutpoint increment (#1397): a log-increment this far
+  ## below zero means two adjacent cutpoints coincide (an unobserved
+  ## intermediate category), which the Hessian still reports as PD with a
+  ## huge SE. It is a boundary fit, not a clean one.
+  par_nm <- names(object$opt$par)
+  ord_inc <- as.numeric(object$opt$par[par_nm == "ordinal_log_increments"])
+  if (length(ord_inc) > 0L &&
+      any(is.finite(ord_inc) & ord_inc < ordinal_log_increment_floor)) {
+    flags <- c(flags, "boundary_ordinal_cutpoint")
   }
   unique(flags)
 }

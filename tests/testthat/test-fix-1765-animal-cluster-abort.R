@@ -40,7 +40,7 @@ test_that("missing animal grouping column stops with gllvmTMB_animal_grouping (#
   )
   expect_s3_class(err, "gllvmTMB_animal_grouping")
   msg <- conditionMessage(err)
-  expect_match(msg, "groups by .individual., which is not a column")
+  expect_match(msg, "groups by individual, which is not a column")
   expect_no_match(msg, "placeholder")
   expect_no_match(msg, "phylo_vcv")
 })

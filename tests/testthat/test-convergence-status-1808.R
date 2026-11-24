@@ -104,13 +104,14 @@ test_that("#1808: binomial BFGS fit on vegan::dune is not 'converged'", {
     data = long, family = binomial(), trait = "trait", unit = "site",
     silent = TRUE,
     control = gllvmTMB::gllvmTMBcontrol(
-      n_init = 1L, se = FALSE, svd_start = TRUE,
+      n_init = 1L, se = TRUE, svd_start = TRUE,
       optimizer = "optim", optArgs = list(method = "BFGS")
     )
   )))
   h <- fit$fit_health
   expect_identical(h$convergence, 0L)
-  expect_identical(h$convergence_status, "boundary")
+  ## Optimizer reports success but Newton-in-SE gradient fails before boundary.
+  expect_identical(h$convergence_status, "not_converged")
   expect_false(isTRUE(h$converged))
   expect_gt(nrow(h$boundary_params), 0L)
 })

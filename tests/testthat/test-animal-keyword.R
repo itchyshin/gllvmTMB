@@ -151,7 +151,7 @@ test_that("pedigree_to_A() duplicate IDs abort names a next step (#1247)", {
   ped <- data.frame(id = c("a", "a"), sire = c(NA, NA), dam = c(NA, NA))
   expect_match(
     abort_msg(gllvmTMB::pedigree_to_A(ped)),
-    "unique",
+    "collapse duplicates before calling",
     fixed = TRUE
   )
 })

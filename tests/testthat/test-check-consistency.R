@@ -84,7 +84,7 @@ test_that("gllvmTMB_check_consistency() n_sim guard names a next step (#1247)", 
     gllvmTMB::gllvmTMB_check_consistency(fit, n_sim = 1L),
     error = function(e) e
   ))
-  expect_match(msg, "n_sim = 100", fixed = TRUE)
+  expect_match(msg, "replicate count of at least 2", fixed = TRUE)
 })
 
 ## ---- returns the documented structure -----------------------------------

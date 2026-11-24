@@ -3522,6 +3522,33 @@ predict.gllvmTMB_multi <- function(
         }
         added <- c(added, "diag_B")
       }
+      ## diag_B_slope: augmented unit-level diagonal random regression.
+      ## src/gllvmTMB.cpp:1536-1539 -- s_B_slope is 2T x n_sites with rows
+      ## interleaved by trait (intercept.t1, slope.t1, intercept.t2, ...);
+      ## :3452-3457 adds eta(o) += sum_j Z_B_diag(o, j) * s_B_slope(j, s),
+      ## where row o of Z_B_diag is 1 at 2t and x(o) at 2t + 1
+      ## (R/fit-multi.R:6120-6127). It is added after diag_B, in the same
+      ## order as the template, so training rows agree exactly. Rows whose
+      ## slope covariate is missing get no contribution.
+      xd_col <- object$use$diag_B_slope_col
+      if (isTRUE(object$use$diag_B_slope) && !is.null(xd_col) &&
+            xd_col %in% names(nd)) {
+        s_Bs <- matrix(
+          par[names(par) == "s_B_slope"],
+          nrow = as.integer(object$tmb_data$n_lhs_cols_B_diag),
+          ncol = object$n_sites
+        )
+        x_d <- as.numeric(nd[[xd_col]])
+        ok_d <- !is.na(st_id) & st_id >= 0 & st_id < object$n_sites &
+          !is.na(tr_id) & 2L * tr_id + 2L <= nrow(s_Bs) & is.finite(x_d)
+        if (any(ok_d)) {
+          r <- 2L * tr_id[ok_d] + 1L
+          s <- st_id[ok_d] + 1L
+          eta[ok_d] <- eta[ok_d] +
+            (s_Bs[cbind(r, s)] + x_d[ok_d] * s_Bs[cbind(r + 1L, s)])
+          added <- c(added, "diag_B_slope")
+        }
+      }
       ## propto: per-species random effect, additive.
       ## The guard was `!is.na(sp_id[1])` -- row ONE only -- so a newdata
       ## frame whose first row had an unseen species silently skipped the

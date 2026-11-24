@@ -1254,7 +1254,6 @@ gllvmTMB <- function(
   ## grouping. Otherwise the default `"species"` column is a placeholder
   ## and `K` is checked as if it were a phylogenetic VCV. An explicit
   ## `cluster` (the replicated `?kernel_latent` example) is left alone.
-  ## Phylogenetic keywords do not enter this block.
   if (!cluster_supplied && !species_alias_supplied && is.data.frame(data)) {
     kernel_groups <- .gllvmTMB_kernel_bare_groups(formula)
     if (nrow(kernel_groups) > 0L) {
@@ -1272,6 +1271,32 @@ gllvmTMB <- function(
           "{.fn {kernel_groups$fn[[1L]]}} groups by {.field {group}}, which is not a column in {.arg data}.",
           ">" = "Name the column whose levels match {.code rownames(K)}, or pass that column as {.arg cluster}."
         ), class = "gllvmTMB_kernel_grouping")
+      }
+      cluster <- group
+      species <- group
+    }
+  }
+
+  ## #1765: omitted `cluster` on animal_* adopts the grouping named in the
+  ## keyword (sibling of #1752 for kernel_*). Phylo and kernel blocks above
+  ## are unchanged; phylogenetic keywords stay on their own path.
+  if (!cluster_supplied && !species_alias_supplied && is.data.frame(data)) {
+    animal_groups <- .gllvmTMB_animal_bare_groups(formula)
+    if (nrow(animal_groups) > 0L) {
+      groups <- unique(animal_groups$group)
+      if (length(groups) > 1L) {
+        cli::cli_abort(c(
+          "The {.fn animal_*} terms name more than one grouping column ({.val {groups}}), and {.arg cluster} was not given.",
+          "i" = "Relatedness inputs are aligned to one grouping column.",
+          ">" = "Pass {.arg cluster} equal to the column whose levels match {.code rownames(A)} / the pedigree {.code id} column."
+        ), class = "gllvmTMB_animal_grouping")
+      }
+      group <- groups[[1L]]
+      if (!group %in% names(data)) {
+        cli::cli_abort(c(
+          "{.fn {animal_groups$fn[[1L]]}} groups by {.field {group}}, which is not a column in {.arg data}.",
+          ">" = "Rename the column or pass it as {.arg cluster}."
+        ), class = "gllvmTMB_animal_grouping")
       }
       cluster <- group
       species <- group

@@ -51,6 +51,45 @@ things:
 | `opt-in` | Works but only with a non-default argument; user must opt in explicitly | E.g. `link_residual = "auto"` until PR #101 made it default |
 | `blocked` | Advertised but currently broken, undefined, or requires removal from public surface | E.g. delta-family mixed-family latent-scale correlation |
 
+## Standard-Tier Covered-Flip Gate
+
+This gate is binding for any pull request that flips a **Standard-tier**
+validation-debt row from `partial`, `opt-in`, or `blocked` to `covered`.
+Standard-tier rows are primary advertised capabilities whose promotion would
+change what readers may treat as fully evidenced — typically formula-grammar,
+family, extractor, and estimator rows that surface in `README.md`, articles,
+roxygen, or `NEWS.md`. When tier is ambiguous, treat the flip as Standard-tier
+until Rose records otherwise. The gate supplements the overpromise-preventer
+rule below; it does not replace it. **All four items must land in the same PR
+as the status flip.**
+
+1. **Component vs derived estimands.** Primitive variance/covariance
+   **components** and other directly modelled estimands require external
+   same-estimand comparator evidence, or an explicitly named in-package oracle
+   where the project already admits one. **Derived** quantities — cross-trait
+   correlations, communalities, variance shares, latent-scale composites, and
+   similar function-of-components estimands — require a within-package identity
+   test (the derived quantity equals its defining function of the covered
+   components) and a pinned citation for that identity. A row may not flip to
+   `covered` on component comparator evidence alone when the advertised claim
+   is derived.
+2. **Textbook-anchor sub-gate.** The same PR names a pinned textbook or
+   canonical example anchor (source, edition, example or equation number,
+   reproduced value) **or** carries an explicit **no-anchor disclosure** on
+   every public surface that would otherwise imply one.
+3. **Biology sign-off (Darwin).** The after-task report or pull request records
+   which quantity the recovery study actually recovers and confirms it is the
+   **biologically meaningful estimand** — for correlated or multivariate
+   models, the joint structure (correlation or covariance between effects), not
+   a per-trait margin read in isolation.
+4. **User-facing argument-name freeze (Boole).** **User-facing argument names**,
+   keyword spellings, and auto-routing grammar for the flipped capability are
+   frozen **before** the flip lands, not in a follow-up pull request.
+
+Rose records the claim-vs-evidence audit in the same pull request; Shannon
+cross-checks at phase boundary. Sister precedent: hsquared
+`docs/dev-log/decisions.md` (2026-07-09: Standard-Tier Covered-Flip Gate).
+
 ## Exact-aa ordinary production addendum (2026-08-09)
 
 These rows are route-and-regime evidence. They do not replace broader grammar

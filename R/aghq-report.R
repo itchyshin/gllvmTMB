@@ -91,17 +91,18 @@
   }
   pen <- vapply(objs[is_fit], function(f) {
     tau <- f$aghq$ridge_tau
-    !is.null(f$fixed_effect_priors) || isTRUE(f$aghq$penalised) ||
+    !is.null(f$fixed_effect_priors) || !is.null(f$kernel_psi_sd_prior) ||
+      isTRUE(f$aghq$penalised) ||
       (is.numeric(tau) && length(tau) == 1L && is.finite(tau) && tau > 0)
   }, logical(1L))
   if (!any(pen)) {
     return(invisible(NULL))
   }
   cli::cli_warn(c(
-    "{fn_label}() on a fit with a loading ridge and/or fixed-effect normal priors: this is not {fn_label}.",
-    "i" = "The ridge makes the reported estimate a penalised (MAP) point, while {.fn logLik} is the unpenalised log-likelihood AT that point -- not at its maximum.",
+    "{fn_label}() on a penalised fit: ordinary likelihood-based interpretation is unsupported.",
+    "i" = "A loading ridge or prior changes the optimization criterion, so reported estimates are penalised (MAP) points. {.fn logLik} remains the unpenalised log-likelihood at that point, not at its maximum.",
     "i" = "The parameter count also overstates a penalised fit's effective flexibility, so both halves of {fn_label} = -2*logLik + k*df are violated.",
-    ">" = "For likelihood-based comparison refit every model with loading_ridge = Inf and fixed_effect_priors = NULL."
+    ">" = "For likelihood-based comparison refit every model with loading_ridge = Inf, fixed_effect_priors = NULL, and kernel_psi_sd_prior = NULL."
   ))
   invisible(NULL)
 }

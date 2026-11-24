@@ -107,10 +107,12 @@ fixed_effect_priors <- function(link, intercepts = character(), slopes = charact
 }
 
 .gllvmTMB_fixed_prior_inference <- function(object, caller, prior_curvature = FALSE) {
-  if (!is.null(object$fixed_effect_priors) && !isTRUE(prior_curvature)) {
+  has_prior <- !is.null(object$fixed_effect_priors) ||
+    !is.null(object$kernel_psi_sd_prior)
+  if (has_prior && !isTRUE(prior_curvature)) {
     cli::cli_abort(c(
-      "{.fn {caller}} is not validated for fixed-effect prior fits.",
-      "i" = "Only point predictions and local approximate posterior covariance via vcov() or sd_report are currently supported.",
+      "{.fn {caller}} is not validated for prior-penalized fits.",
+      "i" = "Only point estimates and local approximate posterior covariance via vcov() or sd_report are currently supported.",
       ">" = "Inspect the MAP estimates and prior sensitivity; do not interpret inverse penalized curvature as calibrated sampling intervals."
     ), class = "gllvmTMB_fixed_prior_inference_unsupported")
   }

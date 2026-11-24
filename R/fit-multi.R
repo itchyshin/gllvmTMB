@@ -561,7 +561,8 @@
 .gllvmTMB_sdreport_loading_ridge <- function(obj, par, ridge_tau, ...) {
   H <- .gllvmTMB_loading_ridge_hessian(obj, par, ridge_tau)
   has_fixed_prior <- !is.null(obj$fixed_effect_priors)
-  if (has_fixed_prior && is.null(H)) {
+  has_kernel_psi_prior <- !is.null(obj$kernel_psi_sd_prior)
+  if ((has_fixed_prior || has_kernel_psi_prior) && is.null(H)) {
     H <- if (length(obj$env$random) == 0L && is.function(obj$he)) {
       obj$he(par)
     } else stats::optimHess(par, obj$fn, obj$gr)
@@ -574,6 +575,8 @@
   if (!is.null(H)) {
     ans$gradient.fixed.unpenalised <- if (has_fixed_prior) {
       obj$fixed_effect_priors$likelihood_gr(par)
+    } else if (has_kernel_psi_prior) {
+      obj$kernel_psi_sd_prior$likelihood_gr(par)
     } else ans$gradient.fixed
     ans$gradient.fixed <- .gllvmTMB_penalised_gradient(obj, par, ridge_tau)
     if (.gllvmTMB_loading_ridge_applies(ridge_tau, names(obj$par))) {
@@ -586,6 +589,14 @@
       interpretation = "local_approximate_posterior_curvature_at_map",
       calibrated_sampling_covariance = FALSE,
       specification = obj$fixed_effect_priors$specification,
+      parameter_vector = par
+    )
+  }
+  if (has_kernel_psi_prior) {
+    attr(ans, "kernel_psi_sd_prior_curvature") <- list(
+      interpretation = "local_approximate_posterior_curvature_at_map",
+      calibrated_sampling_covariance = FALSE,
+      specification = obj$kernel_psi_sd_prior$specification,
       parameter_vector = par
     )
   }
@@ -686,8 +697,10 @@
 .gllvmTMB_objective_components <- function(obj, opt, aghq) {
   fixed_prior_nll <- if (is.null(obj$fixed_effect_priors)) 0 else
     obj$fixed_effect_priors$penalty(opt$par)
+  kernel_psi_prior_nll <- if (is.null(obj$kernel_psi_sd_prior)) 0 else
+    obj$kernel_psi_sd_prior$penalty(opt$par)
   likelihood_nll <- tryCatch(
-    as.numeric(obj$fn(opt$par)) - fixed_prior_nll,
+    as.numeric(obj$fn(opt$par)) - fixed_prior_nll - kernel_psi_prior_nll,
     error = function(e) NA_real_
   )
   if (length(likelihood_nll) != 1L || !is.finite(likelihood_nll)) {
@@ -718,7 +731,9 @@
     likelihood_nll = likelihood_nll,
     ridge_penalty = ridge_penalty,
     fixed_effect_prior_nll = fixed_prior_nll,
-    optimization_nll = likelihood_nll + ridge_penalty + fixed_prior_nll,
+    kernel_psi_sd_prior_nll = kernel_psi_prior_nll,
+    optimization_nll = likelihood_nll + ridge_penalty + fixed_prior_nll +
+      kernel_psi_prior_nll,
     optimizer_reported = as.numeric(opt$objective %||% NA_real_)
   )
 }
@@ -1483,6 +1498,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   }
   estimator <- match.arg(estimator, c("ml", "mspl"))
   .gllvmTMB_fixed_prior_route(control$fixed_effect_priors, engine, estimator, REML, control)
+  .gllvmTMB_kernel_psi_sd_prior_route(
+    control$kernel_psi_sd_prior, engine, estimator, REML, control
+  )
   structured_rho <- parsed$structured_rho
   .structured_rho_dispatch_fence(structured_rho, engine,
     control$integration %||% "laplace", estimator, control$aghq %||% FALSE)
@@ -3687,8 +3705,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     family_id_vec  = family_id_vec,
     link_id_vec    = link_id_vec,
     family_per_row = family_per_row,
-    trait_vec      = data[[trait]],
-    allow_isdm_cloglog = isdm_admitted
+    trait_vec      = data[[trait]]
   )
 
   y_raw <- stats::model.response(mf)
@@ -5109,6 +5126,24 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ))
     }
   }
+  kernel_psi_sd_prior_spec <- .gllvmTMB_resolve_kernel_psi_sd_prior(
+    control$kernel_psi_sd_prior,
+    kernel_names = unique_kernel_names,
+    kernel_has_psi = if (use_kernel_multi) {
+      kernel_has_diag
+    } else {
+      rep(as.integer(isTRUE(use_phylo_diag)), length(unique_kernel_names))
+    },
+    trait_names = levels(data[[trait]]),
+    multi_kernel = use_kernel_multi
+  )
+  if (!is.null(kernel_psi_sd_prior_spec) && any(family_id_vec != 0L)) {
+    cli::cli_abort(c(
+      "{.arg kernel_psi_sd_prior} currently requires Gaussian identity responses.",
+      "i" = "Its scale is defined in the response units of the Gaussian model.",
+      ">" = "Fit the Gaussian sensitivity model or omit the kernel Psi prior."
+    ), class = "gllvmTMB_kernel_psi_prior_unsupported")
+  }
   ## Build the sparse A^-1 machinery whenever any phylogenetic term
   ## (phylo_latent, phylo_unique, phylo_slope, or the augmented latent-slope)
   ## is requested. They share Ainv_phy_rr, n_aug_phy, log_det_A_phy_rr, and
@@ -5740,6 +5775,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         ">" = "Convert the predictor before fitting; factor and transformed bases are not in this V1 grammar."
       ))
     }
+    for (col in data_cols) {
+      .gllvmTMB_check_finite_slope(as.numeric(data[[col]]), col)
+    }
     Z_spde_aug <- vapply(phylo_column_slope_cols, function(col) {
       if (synthetic_intercept && identical(col, "(Intercept)")) {
         rep(1, n_obs)
@@ -5880,6 +5918,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         "i" = "Non-numeric predictor{?s}: {.val {bad_type}}.",
         ">" = "Convert the predictor before fitting; factor and transformed bases are not in this V1 grammar."
       ))
+    }
+    for (col in data_cols) {
+      .gllvmTMB_check_finite_slope(as.numeric(data[[col]]), col)
     }
     z <- vapply(phylo_column_slope_cols, function(col) {
       if (identical(col, "(Intercept)")) rep(1, n_obs) else as.numeric(data[[col]])
@@ -8074,6 +8115,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     silent     = silent
   )
   obj <- .gllvmTMB_attach_fixed_priors(obj, fixed_prior_spec)
+  obj <- .gllvmTMB_attach_kernel_psi_sd_prior(obj, kernel_psi_sd_prior_spec)
   if (identical(estimator, "mspl")) {
     outer_blocks <- unique(names(obj$par))
     expected_outer <- mspl_info$expected_outer
@@ -8321,6 +8363,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       return(unavailable(conditionMessage(fresh)))
     }
     fresh <- .gllvmTMB_attach_fixed_priors(fresh, fixed_prior_spec)
+    fresh <- .gllvmTMB_attach_kernel_psi_sd_prior(fresh, kernel_psi_sd_prior_spec)
     labels <- optimizer_coordinate_labels(par)
     if (!identical(optimizer_coordinate_labels(fresh$par), labels)) {
       return(unavailable("fresh outer-coordinate order differs"))
@@ -8443,6 +8486,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     )
     if (!inherits(diagnostic_obj, "error")) {
       diagnostic_obj <- .gllvmTMB_attach_fixed_priors(diagnostic_obj, fixed_prior_spec)
+      diagnostic_obj <- .gllvmTMB_attach_kernel_psi_sd_prior(
+        diagnostic_obj, kernel_psi_sd_prior_spec
+      )
     }
     gradient <- if (inherits(diagnostic_obj, "error")) {
       rep(NA_real_, length(endpoint))
@@ -9223,6 +9269,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
           )
           if (inherits(obj_try, "error")) { aghq_err <- conditionMessage(obj_try); obj_try <- NULL; break }
           obj_try <- .gllvmTMB_attach_fixed_priors(obj_try, fixed_prior_spec)
+          obj_try <- .gllvmTMB_attach_kernel_psi_sd_prior(
+            obj_try, kernel_psi_sd_prior_spec
+          )
           if (!identical(names(obj_try$par), names(par_cur))) {
             aghq_err <- "AGHQ parameter vector does not align with the Laplace fit"
             obj_try <- NULL
@@ -9954,6 +10003,14 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         interpretation = "local_approximate_posterior_curvature_at_map",
         calibrated_sampling_covariance = FALSE
       ),
+      kernel_psi_sd_prior = if (is.null(obj$kernel_psi_sd_prior)) NULL else list(
+        specification = obj$kernel_psi_sd_prior$specification,
+        target_class = obj$kernel_psi_sd_prior$target_class,
+        measure = obj$kernel_psi_sd_prior$measure,
+        interpretation = "local_approximate_posterior_curvature_at_map",
+        calibrated_sampling_covariance = FALSE,
+        density_scale = "natural_standard_deviation"
+      ),
       covstructs   = parsed$covstructs,
       family       = family,
       ## M1.8 (2026-05-17): preserve the original `family` argument
@@ -10632,6 +10689,13 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       "i" = "The reported covariance uses local approximate posterior curvature conditional on the chosen priors, not calibrated sampling uncertainty.",
       ">" = "Inspect prior sensitivity; ordinary profile, bootstrap and prediction-SE intervals are withheld."
     ), class = "gllvmTMB_fixed_prior_map")
+  }
+  if (!is.null(fit$kernel_psi_sd_prior)) {
+    cli::cli_warn(c(
+      "Kernel Psi half-normal priors produce penalized MAP estimates.",
+      "i" = "The prior density is defined on the natural Psi standard deviations; reported covariance is local approximate posterior curvature, not calibrated sampling uncertainty.",
+      ">" = "Inspect prior sensitivity; profile, bootstrap, and calibrated interval routes are withheld."
+    ), class = "gllvmTMB_kernel_psi_prior_map")
   }
   fit$fit_health <- .gllvmTMB_build_fit_health(fit)
   if (any(family_id_vec %in% c(17L, 18L, 19L))) {

@@ -78,6 +78,15 @@ test_that("gllvmTMB_check_consistency() rejects n_sim < 2", {
   )
 })
 
+test_that("gllvmTMB_check_consistency() n_sim guard names a next step (#1247)", {
+  fit <- structure(list(tmb_obj = NULL), class = "gllvmTMB_multi")
+  msg <- conditionMessage(tryCatch(
+    gllvmTMB::gllvmTMB_check_consistency(fit, n_sim = 1L),
+    error = function(e) e
+  ))
+  expect_match(msg, "n_sim = 100", fixed = TRUE)
+})
+
 ## ---- returns the documented structure -----------------------------------
 
 test_that("gllvmTMB_check_consistency() returns the documented structure", {

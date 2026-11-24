@@ -120,12 +120,38 @@ test_that("pedigree_to_A() rejects a frame with fewer than 3 columns", {
   )
 })
 
+abort_msg <- function(expr) {
+  conditionMessage(tryCatch(expr, error = function(e) e))
+}
+
+test_that("pedigree helpers name a next step when the frame is invalid (#1247)", {
+  expect_match(
+    abort_msg(gllvmTMB::pedigree_to_A(data.frame(id = 1:3, sire = NA))),
+    "three-column data frame",
+    fixed = TRUE
+  )
+  expect_match(
+    abort_msg(gllvmTMB::pedigree_to_Ainv_sparse(data.frame(id = 1:3))),
+    "three-column data frame",
+    fixed = TRUE
+  )
+})
+
 test_that("pedigree_to_A() rejects duplicate individual IDs", {
   ## T12
   ped <- data.frame(id = c("a", "a"), sire = c(NA, NA), dam = c(NA, NA))
   expect_error(
     gllvmTMB::pedigree_to_A(ped),
     "duplicate IDs",
+    fixed = TRUE
+  )
+})
+
+test_that("pedigree_to_A() duplicate IDs abort names a next step (#1247)", {
+  ped <- data.frame(id = c("a", "a"), sire = c(NA, NA), dam = c(NA, NA))
+  expect_match(
+    abort_msg(gllvmTMB::pedigree_to_A(ped)),
+    "unique",
     fixed = TRUE
   )
 })

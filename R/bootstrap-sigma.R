@@ -407,10 +407,12 @@
 #' @param link_residual How to treat family-specific link-implicit
 #'   residual variance when extracting `Sigma`, `R`, `communality`, and
 #'   `ICC`.
-#'   `"auto"` (default) matches [extract_Sigma()] and adds the
-#'   family/link residual to non-Gaussian trait diagonals; `"none"`
-#'   returns the fitted model covariance without link residuals. Use `"none"`
-#'   when validating against a DGP target defined as
+#'   `"auto"` (default) matches [extract_Sigma()] and adds
+#'   \eqn{\sigma^2_d} to non-Gaussian trait diagonals for the marginal
+#'   **liability-scale** summary (de Villemereuil et al. 2016, Eq. 24);
+#'   `"none"` returns the fitted **latent-scale** covariance without link
+#'   residuals (\eqn{\Lambda\Lambda^\top + \Psi}; Eq. 4). Use `"none"` when
+#'   validating against a DGP target defined as
 #'   \eqn{\Lambda\Lambda^\top + \Psi}.
 #'
 #' @return A list with components:

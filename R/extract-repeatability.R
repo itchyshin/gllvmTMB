@@ -28,6 +28,14 @@
 #' Also known as the intraclass correlation coefficient (ICC) at the unit
 #' level.
 #'
+#' @section Latent versus liability scale:
+#' The denominator \eqn{v_{W,t}} includes \eqn{\sigma^2_{d,t}} from the
+#' family/link, so for non-Gaussian traits the repeatability matches the
+#' **liability scale** of de Villemereuil, Schielzeth, Nakagawa and Morrissey
+#' (2016, Eq. 24). The **latent scale** (their Eq. 4) excludes that
+#' link-implicit variance; for trait covariances on that scale use
+#' [extract_Sigma()] with `link_residual = "none"`.
+#'
 #' @section Interval calibration:
 #' The point estimates are the supported claim. The Wald and bootstrap interval
 #' methods here are provided for exploration: their empirical coverage is not

@@ -41,14 +41,16 @@ is an alias for \code{"unique"} (the per-trait residual Psi diagonal, now
 folded into \code{latent()} by default).}
 
 \item{link_residual}{For non-Gaussian fits. \code{"auto"} (default) adds a
-per-trait link-specific implicit residual variance to the diagonal of
-\code{Sigma}, giving the marginal latent-scale interpretation; in mixed-
-family fits each unambiguous trait gets the residual implied by its family/link
-(see "Family-aware link residuals" below for the full table).
-\code{"none"} returns the fitted model covariance without link-residual additions
-(\eqn{\boldsymbol\Lambda \boldsymbol\Lambda^\top + \boldsymbol\Psi} where a
-latent decomposition is present). For Gaussian or lognormal-only fits this
-argument is effectively a no-op (their implied \eqn{\sigma^2_d = 0}).}
+per-trait link-specific implicit residual variance \eqn{\sigma^2_d} to the
+diagonal of \code{Sigma}, giving the marginal \strong{liability-scale}
+interpretation (de Villemereuil et al. 2016, Eq. 24); in mixed-family fits
+each unambiguous trait gets the residual implied by its family/link (see
+"Family-aware link residuals" below for the full table). \code{"none"} returns
+the fitted model covariance on the \strong{latent scale} without
+link-residual additions (\eqn{\boldsymbol\Lambda \boldsymbol\Lambda^\top +
+\boldsymbol\Psi} where a latent decomposition is present; Eq. 4). For
+Gaussian or lognormal-only fits this argument is effectively a no-op (their
+implied \eqn{\sigma^2_d = 0}).}
 
 \item{.skip_warn}{Internal flag (default \code{FALSE}). When \code{TRUE},
 suppresses the once-per-session deprecation message that the
@@ -168,19 +170,23 @@ If the formula deliberately uses
 \eqn{\boldsymbol\Lambda \boldsymbol\Lambda^\top} component. Calling
 \code{extract_Sigma(fit, level, part = "total")} then returns just the shared
 component. This is useful for an intentionally loadings-only target. It should
-not be described as a full latent-liability covariance unless the relevant
-family/link residual is also included. Whether the diagonal is incomplete
-depends on the estimand and response family.
+not be described as a full liability-scale covariance unless the relevant
+family/link residual is also included (\code{link_residual = "auto"}). Without
+that addition, \code{part = "total"} is the \strong{latent-scale} fitted covariance
+(\eqn{\boldsymbol\Lambda\boldsymbol\Lambda^\top + \boldsymbol\Psi} only).
+Whether the diagonal is incomplete depends on the estimand and response
+family.
 
 For Gaussian / lognormal / Gamma fits this function emits an advisory note
 when a reduced-rank tier has no Psi component. Use the ordinary
 \code{latent(..., unique = TRUE)} default for
 \eqn{\boldsymbol\Lambda\boldsymbol\Lambda^\top + \boldsymbol\Psi}.
 
-For non-Gaussian families (binomial, Poisson, Gamma) the latent-scale
-residual variance has a closed-form approximation that should be added
-to the diagonal of \eqn{\boldsymbol\Sigma} -- see the \code{link_residual}
-argument below.
+For non-Gaussian families (binomial, Poisson, Gamma) a family/link-implicit
+residual variance has a closed-form approximation that \code{link_residual =
+"auto"} adds to the diagonal of \eqn{\boldsymbol\Sigma}, giving the
+\strong{liability-scale} interpretation of de Villemereuil, Schielzeth, Nakagawa
+and Morrissey (2016, Eq. 24); see the \code{link_residual} argument below.
 }
 
 \subsection{The \code{part} argument}{
@@ -227,11 +233,15 @@ the variance-decomposition consistency checks in
 
 \subsection{Family-aware link residuals}{
 
-For non-Gaussian responses each row carries an implicit observation-level
-residual on the latent (link) scale. Adding it to the per-trait diagonal
-of \eqn{\boldsymbol\Sigma} defines one family-specific latent-scale convention.
-It can make the denominator explicit, but it does not make different response
-families directly commensurate without additional scientific assumptions.
+For non-Gaussian responses each trait carries a fixed link-implicit variance
+\eqn{\sigma^2_d} on the \strong{liability scale} (de Villemereuil et al. 2016).
+Adding it to the per-trait diagonal of \eqn{\boldsymbol\Sigma} when
+\code{link_residual = "auto"} defines the marginal \strong{liability-scale}
+covariance; \code{"none"} leaves the fitted \strong{latent-scale} covariance
+(\eqn{\boldsymbol\Lambda\boldsymbol\Lambda^\top + \boldsymbol\Psi} without
+\eqn{\sigma^2_d}; their Eq. 4). It can make the denominator explicit, but it
+does not make different response families directly commensurate without
+additional scientific assumptions.
 
 Per-family formulas (Nakagawa & Schielzeth 2010; Nakagawa, Johnson &
 Schielzeth 2017):
@@ -266,7 +276,9 @@ overdispersion correction, neither of which a direct softmax fit needs.)
 \eqn{(\pi^2/6)(\mathbf{I}+\mathbf{J})} block is added to the multinomial
 trait's \eqn{(K-1)}-contrast block of \eqn{\boldsymbol\Sigma} (the diagonal
 \eqn{\pi^2/3} entry-by-entry with the other families, the \eqn{\pi^2/6}
-off-diagonal as a block); \code{"none"} returns the latent-scale V unchanged. The
+off-diagonal as a block); \code{"none"} returns the latent-scale covariance
+(\eqn{\boldsymbol\Lambda\boldsymbol\Lambda^\top + \boldsymbol\Psi}) without
+link-implicit \eqn{\sigma^2_d}. The
 addition is tier-agnostic -- it applies to whichever tier \eqn{\boldsymbol\Sigma}
 is requested (\code{level = "phy"}, a spatial or kernel tier, or an ordinary latent
 term) -- and it makes the categorical block commensurable with any single-scale

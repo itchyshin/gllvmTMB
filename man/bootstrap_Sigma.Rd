@@ -78,10 +78,12 @@ matrices of bootstrap draws are returned as \verb{$draws}. Default
 \item{link_residual}{How to treat family-specific link-implicit
 residual variance when extracting \code{Sigma}, \code{R}, \code{communality}, and
 \code{ICC}.
-\code{"auto"} (default) matches \code{\link[=extract_Sigma]{extract_Sigma()}} and adds the
-family/link residual to non-Gaussian trait diagonals; \code{"none"}
-returns the fitted model covariance without link residuals. Use \code{"none"}
-when validating against a DGP target defined as
+\code{"auto"} (default) matches \code{\link[=extract_Sigma]{extract_Sigma()}} and adds
+\eqn{\sigma^2_d} to non-Gaussian trait diagonals for the marginal
+\strong{liability-scale} summary (de Villemereuil et al. 2016, Eq. 24);
+\code{"none"} returns the fitted \strong{latent-scale} covariance without link
+residuals (\eqn{\Lambda\Lambda^\top + \Psi}; Eq. 4). Use \code{"none"} when
+validating against a DGP target defined as
 \eqn{\Lambda\Lambda^\top + \Psi}.}
 }
 \value{

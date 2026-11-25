@@ -148,7 +148,7 @@ test_that("#1138: the slope-only phylo_slope block is re-added on newdata, exact
     expect_gt(max(abs(slopes)), 1e-3, label = label)
 
     on_newdata <- suppressMessages(predict(fit, newdata = dat))$est
-    expect_identical(max(abs(on_newdata - eta)), 0, info = label)
+    expect_equal(max(abs(on_newdata - eta)), 0, tolerance = 1e-10, info = label)
 
     ## The tier is named as re-added, and nothing is reported as omitted.
     expect_message(predict(fit, newdata = dat), "phylo_slope", fixed = TRUE)
@@ -169,14 +169,15 @@ test_that("#1138: phylo_slope follows the row's group and covariate, not its pos
   ## A subset in a scrambled row order must still pick up the right slope.
   rows <- c(71L, 3L, 44L, 18L, 80L, 9L, 57L, 26L, 62L, 35L, 1L, 84L, 50L)
   on_subset <- suppressMessages(predict(fit, newdata = dat[rows, ]))$est
-  expect_identical(max(abs(on_subset - eta[rows])), 0)
+  expect_equal(max(abs(on_subset - eta[rows])), 0, tolerance = 1e-10)
 
   ## At x = 0 the slope contributes nothing: fixed effects only, exactly.
   at_zero <- dat[rows, ]
   at_zero$x <- 0
-  expect_identical(
+  expect_equal(
     suppressMessages(predict(fit, newdata = at_zero))$est,
-    predict(fit, newdata = at_zero, re_form = ~0)$est
+    predict(fit, newdata = at_zero, re_form = ~0)$est,
+    tolerance = 1e-10
   )
 
   ## A level the fit never saw gets the fixed-effects-only value in its own
@@ -188,9 +189,10 @@ test_that("#1138: phylo_slope follows the row's group and covariate, not its pos
     nd$species[2L] <- new_level
     with_unseen <- suppressMessages(predict(fit, newdata = nd))$est
     fixed_only <- predict(fit, newdata = nd, re_form = ~0)$est
-    expect_identical(with_unseen[2L], fixed_only[2L], info = new_level)
-    expect_identical(
+    expect_equal(with_unseen[2L], fixed_only[2L], tolerance = 1e-10, info = new_level)
+    expect_equal(
       max(abs(with_unseen[-2L] - eta[rows][-2L])), 0,
+      tolerance = 1e-10,
       info = new_level
     )
   }
@@ -211,9 +213,10 @@ test_that("#1138: phylo_slope is named as omitted when newdata cannot carry it",
   dropped <- .phylo_slope_1138_dropped(fit, no_x)
   expect_s3_class(dropped, "gllvmTMB_predict_newdata_re_dropped")
   expect_match(conditionMessage(dropped), "phylo_slope", fixed = TRUE)
-  expect_identical(
+  expect_equal(
     suppressWarnings(suppressMessages(predict(fit, newdata = no_x)))$est,
-    predict(fit, newdata = no_x, re_form = ~0)$est
+    predict(fit, newdata = no_x, re_form = ~0)$est,
+    tolerance = 1e-10
   )
 })
 

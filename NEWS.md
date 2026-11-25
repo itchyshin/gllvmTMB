@@ -82,6 +82,11 @@
   naming the parameter count when `n_sim` is not larger than it. Its help page
   now describes `$marginal_bias`, `$joint_p_value` and `estimate` as TMB
   defines them (#1582).
+* `pedigree_to_A()` and `pedigree_to_Ainv_sparse()` now name how to build a
+  valid three-column pedigree when the input is too narrow, and duplicate-ID
+  refusals from `pedigree_to_A()` name how to fix the table. Invalid
+  `gllvmTMB_check_consistency(n_sim = )` values now name a usable integer
+  replicate count (refs #1247).
 * `suggest_lambda_constraint()` and `suggest_lambda_constraints()` gain `unit_obs` to name the within-unit column on the formula path (default `"site_species"`, as in `gllvmTMB()`), and their no-term errors name the level as `"unit"` / `"unit_obs"` (#1587).
 * `check_gllvmTMB()` no longer reports `boundary_flags` as `PASS` "none" while a `boundary_phi_*` dispersion-ceiling row is `WARN`: the summary row now turns `WARN` and names those rows. `print(fit)` also points to `gllvmTMB_diagnose(fit)` when the optimiser did not converge cleanly (#1351).
 * `?compare_dep_vs_two_psi` and `?compare_indep_vs_two_psi` now say a flag means the two fits disagree, not that the paired model failed, and that the default `threshold = 0.10` is not calibrated (#1571).

@@ -38,7 +38,7 @@ test_that("gllvmTMB_check_consistency() aborts when simulation is unavailable", 
   )
 })
 
-test_that("print.gllvmTMB_check_consistency() prints headline fields", {
+test_that("print.gllvmTMB_check_consistency() returns its input", {
   x <- structure(
     list(
       n_sim = 5L,
@@ -50,14 +50,12 @@ test_that("print.gllvmTMB_check_consistency() prints headline fields", {
     ),
     class = "gllvmTMB_check_consistency"
   )
-  txt <- paste(utils::capture.output(print(x)), collapse = "\n")
-  expect_true(grepl("Laplace-consistency", txt, fixed = TRUE))
-  expect_true(grepl("n_sim", txt, fixed = TRUE))
-  expect_true(grepl("Marginal-score", txt, fixed = TRUE))
-  expect_true(grepl("non-centring", txt, fixed = TRUE))
+  expect_identical(print(x), x)
+  expect_equal(x$n_sim, 5L)
+  expect_equal(x$diagnostics, "no_centring_warning")
 })
 
-test_that("print.gllvmTMB_check_consistency() shows diagnostic warnings", {
+test_that("print.gllvmTMB_check_consistency() preserves flagged parameters", {
   x <- structure(
     list(
       n_sim = 3L,
@@ -69,9 +67,9 @@ test_that("print.gllvmTMB_check_consistency() shows diagnostic warnings", {
     ),
     class = "gllvmTMB_check_consistency"
   )
-  txt <- paste(utils::capture.output(print(x)), collapse = "\n")
-  expect_true(grepl("information_matrix_singular", txt, fixed = TRUE))
-  expect_true(grepl("b_fix", txt, fixed = TRUE))
+  expect_identical(print(x), x)
+  expect_equal(x$flagged_parameters, "b_fix[1]")
+  expect_true("information_matrix_singular" %in% x$diagnostics)
 })
 
 test_that("confint_inspect() refuses non-multi fits", {

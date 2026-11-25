@@ -561,7 +561,8 @@
 .gllvmTMB_sdreport_loading_ridge <- function(obj, par, ridge_tau, ...) {
   H <- .gllvmTMB_loading_ridge_hessian(obj, par, ridge_tau)
   has_fixed_prior <- !is.null(obj$fixed_effect_priors)
-  if (has_fixed_prior && is.null(H)) {
+  has_kernel_psi_prior <- !is.null(obj$kernel_psi_sd_prior)
+  if ((has_fixed_prior || has_kernel_psi_prior) && is.null(H)) {
     H <- if (length(obj$env$random) == 0L && is.function(obj$he)) {
       obj$he(par)
     } else stats::optimHess(par, obj$fn, obj$gr)
@@ -574,6 +575,8 @@
   if (!is.null(H)) {
     ans$gradient.fixed.unpenalised <- if (has_fixed_prior) {
       obj$fixed_effect_priors$likelihood_gr(par)
+    } else if (has_kernel_psi_prior) {
+      obj$kernel_psi_sd_prior$likelihood_gr(par)
     } else ans$gradient.fixed
     ans$gradient.fixed <- .gllvmTMB_penalised_gradient(obj, par, ridge_tau)
     if (.gllvmTMB_loading_ridge_applies(ridge_tau, names(obj$par))) {
@@ -586,6 +589,14 @@
       interpretation = "local_approximate_posterior_curvature_at_map",
       calibrated_sampling_covariance = FALSE,
       specification = obj$fixed_effect_priors$specification,
+      parameter_vector = par
+    )
+  }
+  if (has_kernel_psi_prior) {
+    attr(ans, "kernel_psi_sd_prior_curvature") <- list(
+      interpretation = "local_approximate_posterior_curvature_at_map",
+      calibrated_sampling_covariance = FALSE,
+      specification = obj$kernel_psi_sd_prior$specification,
       parameter_vector = par
     )
   }
@@ -686,8 +697,10 @@
 .gllvmTMB_objective_components <- function(obj, opt, aghq) {
   fixed_prior_nll <- if (is.null(obj$fixed_effect_priors)) 0 else
     obj$fixed_effect_priors$penalty(opt$par)
+  kernel_psi_prior_nll <- if (is.null(obj$kernel_psi_sd_prior)) 0 else
+    obj$kernel_psi_sd_prior$penalty(opt$par)
   likelihood_nll <- tryCatch(
-    as.numeric(obj$fn(opt$par)) - fixed_prior_nll,
+    as.numeric(obj$fn(opt$par)) - fixed_prior_nll - kernel_psi_prior_nll,
     error = function(e) NA_real_
   )
   if (length(likelihood_nll) != 1L || !is.finite(likelihood_nll)) {
@@ -718,7 +731,9 @@
     likelihood_nll = likelihood_nll,
     ridge_penalty = ridge_penalty,
     fixed_effect_prior_nll = fixed_prior_nll,
-    optimization_nll = likelihood_nll + ridge_penalty + fixed_prior_nll,
+    kernel_psi_sd_prior_nll = kernel_psi_prior_nll,
+    optimization_nll = likelihood_nll + ridge_penalty + fixed_prior_nll +
+      kernel_psi_prior_nll,
     optimizer_reported = as.numeric(opt$objective %||% NA_real_)
   )
 }
@@ -1483,6 +1498,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   }
   estimator <- match.arg(estimator, c("ml", "mspl"))
   .gllvmTMB_fixed_prior_route(control$fixed_effect_priors, engine, estimator, REML, control)
+  .gllvmTMB_kernel_psi_sd_prior_route(
+    control$kernel_psi_sd_prior, engine, estimator, REML, control
+  )
   structured_rho <- parsed$structured_rho
   .structured_rho_dispatch_fence(structured_rho, engine,
     control$integration %||% "laplace", estimator, control$aghq %||% FALSE)
@@ -1518,40 +1536,11 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     ## Allow "delta_lognormal" / "delta_gamma" as character shortcuts to
     ## the constructors in R/families.R. Other single character strings
     ## name a package-defined constructor or one of four stats:: families.
+    ## The lookup itself lives in `.gllvmTMB_family_from_character()` so
+    ## `gllvmTMB()` can resolve `family = "gaussian"` before any `$family`
+    ## gate (#1804). This branch remains for direct engine calls.
     if (is.character(f) && length(f) == 1L) {
-      f <- switch(
-        f,
-        delta_lognormal = delta_lognormal(),
-        delta_gamma     = delta_gamma(),
-        {
-          nm <- f
-          pkg_env <- asNamespace("gllvmTMB")
-          stats_families <- c("gaussian", "binomial", "Gamma", "poisson")
-          fn <- NULL
-          if (exists(nm, envir = pkg_env, mode = "function", inherits = FALSE)) {
-            fn <- get(nm, envir = pkg_env, mode = "function", inherits = FALSE)
-          } else if (nm %in% stats_families) {
-            stats_env <- asNamespace("stats")
-            if (exists(nm, envir = stats_env, mode = "function", inherits = FALSE)) {
-              fn <- get(nm, envir = stats_env, mode = "function", inherits = FALSE)
-            }
-          }
-          if (is.null(fn)) {
-            cli::cli_abort(c(
-              "Unsupported family: {.val {nm}}.",
-              ">" = "Use a family object like {.code gaussian()} or a character name that matches a family constructor."
-            ))
-          }
-          f <- fn()
-          if (!inherits(f, "family")) {
-            cli::cli_abort(c(
-              "Unsupported family: {.val {nm}}.",
-              ">" = "Use a family object like {.code gaussian()} or a character name that matches a family constructor."
-            ))
-          }
-          f
-        }
-      )
+      f <- .gllvmTMB_family_from_character(f)
     } else if (is.function(f) && !inherits(f, "family")) {
       f <- f()
     } else if (!inherits(f, "family")) {
@@ -1916,6 +1905,31 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       identical(as.character(cs$extra[[".kernel_mode"]]), "latent") &&
       !is.null(cs$extra[[".kernel_name"]])
   }, parsed$covstructs), function(cs) as.character(cs$extra[[".kernel_name"]]), character(1L)))
+  exact_pair_marginal <- !is.null(known_sigma_eps) &&
+    isTRUE(as.numeric(known_sigma_eps) == 0)
+  if (exact_pair_marginal &&
+      (length(kernel_names) != 2L || sum(is_kernel_unique) != 2L)) {
+    cli::cli_abort(c(
+      "A zero known observation SD is supported only for the exact two-kernel Gaussian route.",
+      "i" = "The route requires exactly two named {.fn kernel_latent} tiers, each with {.code unique = TRUE}.",
+      ">" = "Use two named Gaussian kernel tiers with their Psi companions, or supply a positive {.arg known_sigma_eps}."
+    ), class = "gllvmTMB_exact_gaussian_unsupported")
+  }
+  if (exact_pair_marginal &&
+      (isTRUE(REML) || !identical(estimator, "ml") ||
+       !identical(engine, "tmb") ||
+       !is.null(control$loading_ridge) ||
+       !is.null(control$fixed_effect_priors) ||
+       !is.null(control$kernel_psi_sd_prior) ||
+       !identical(control$integration, "laplace") ||
+       (identical(control$optimizer, "optim") &&
+          !identical(control$optArgs$method %||% "BFGS", "L-BFGS-B")) ||
+       (!is.null(weights) && any(weights != 1)))) {
+    cli::cli_abort(c(
+      "The exact two-kernel Gaussian route requires unpenalized ML, unit weights, and Laplace settings.",
+      ">" = "Remove priors, penalties, non-unit weights, and REML, or use a positive {.arg known_sigma_eps}."
+    ), class = "gllvmTMB_exact_gaussian_unsupported")
+  }
   if (length(kernel_names) > 1L && any(is_kernel_unique)) {
     if (!is.null(weights) && anyNA(weights)) {
       cli::cli_abort(c(
@@ -2000,7 +2014,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                 ## share its ridge contribution as well.
                 K_ordered <- K[species_levels, species_levels, drop = FALSE]
                 K_used <- (K_ordered + t(K_ordered)) / 2
-                diag(K_used) <- diag(K_used) + 1e-8
+                if (!exact_pair_marginal) {
+                  diag(K_used) <- diag(K_used) + 1e-8
+                }
                 as.numeric(K_used[species_rows, species_rows, drop = FALSE])
               })
               if (!all(vapply(kernel_columns, length, integer(1L)) > 0L)) {
@@ -2284,6 +2300,20 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   use_propto <- any(kinds == "propto")
   use_equalto <- any(kinds == "equalto")
   use_spde   <- any(kinds == "spde")
+  if (exact_pair_marginal) {
+    exact_covstruct_ok <- vapply(parsed$covstructs, function(cs) {
+      named_kernel <- identical(cs$kind, "phylo_rr") &&
+        !is.null(cs$extra[[".kernel_name"]])
+      named_kernel || identical(cs$kind, "equalto")
+    }, logical(1L))
+    if (any(!exact_covstruct_ok) || (!is.null(known_V) && !use_equalto)) {
+      cli::cli_abort(c(
+        "The exact two-kernel Gaussian route cannot be combined with other covariance terms.",
+        "i" = "Only the two named kernel tiers and an optional {.fn meta_V} term with declared {.arg known_V} are admitted.",
+        ">" = "Remove the additional covariance term, or fit with positive observation error."
+      ), class = "gllvmTMB_exact_gaussian_unsupported")
+    }
+  }
   ## ---- Augmented SPDE random-slope detection ----------------------------
   ## `spatial_unique(1 + x | coords)` retains the Design 60 shared 2x2
   ## cross-field channel (`.spatial_unique_augmented`; the older
@@ -3716,9 +3746,19 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     family_id_vec  = family_id_vec,
     link_id_vec    = link_id_vec,
     family_per_row = family_per_row,
-    trait_vec      = data[[trait]],
-    allow_isdm_cloglog = isdm_admitted
+    trait_vec      = data[[trait]]
   )
+  if (exact_pair_marginal) {
+    intercept_only <- ncol(X_fix) %in% c(1L, n_traits) &&
+      all(rowSums(abs(X_fix) > 1e-12) == 1L) &&
+      all(abs(rowSums(X_fix) - 1) < 1e-12)
+    if (!intercept_only || any(offset_vec != 0)) {
+      cli::cli_abort(c(
+        "The exact two-kernel Gaussian route requires trait-specific intercepts only.",
+        ">" = "Remove additional predictors and offsets, or use positive observation error."
+      ), class = "gllvmTMB_exact_gaussian_unsupported")
+    }
+  }
 
   y_raw <- stats::model.response(mf)
   ## #1396: a factor / character response was fitted as its integer level
@@ -4944,6 +4984,13 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## ---- Phylogenetic VCV preparation (propto + phylo_latent) -----------------
   n_species <- nlevels(data[[species]])
   species_id <- as.integer(data[[species]]) - 1L
+  if (exact_pair_marginal) {
+    observed_rows <- which(is_y_observed == 1L)
+    .gllvmTMB_check_unique_marginal_cells(
+      unit_id = species_id[observed_rows],
+      trait_id = trait_id[observed_rows]
+    )
+  }
   Cphy_inv      <- matrix(0, n_species, n_species)
   log_det_Cphy  <- 0
   Ainv_phy_rr      <- Matrix::Matrix(0, n_species, n_species, sparse = TRUE)
@@ -4966,6 +5013,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   kernel_logsd_offset <- -1L
   kernel_diag_offset <- -1L
   Ainv_kernel <- array(0.0, dim = c(1L, 1L, 1L))
+  K_kernel_raw <- array(0.0, dim = c(1L, 1L, 1L))
   log_det_A_kernel <- 0.0
   kernel_multi_registry <- NULL
   kernel_diagnostics <- NULL
@@ -4981,6 +5029,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     kernel_logsd_offset <- rep(-1L, n_kernel_tiers)
     kernel_diag_offset <- rep(-1L, n_kernel_tiers)
     Ainv_kernel <- array(
+      0.0,
+      dim = c(n_kernel_tiers, n_kernel_levels, n_kernel_levels)
+    )
+    K_kernel_raw <- array(
       0.0,
       dim = c(n_kernel_tiers, n_kernel_levels, n_kernel_levels)
     )
@@ -5085,11 +5137,18 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       if (!is.null(kernel_meta)) {
         attr(K_stored, "gllvmTMB_cross_kernel") <- kernel_meta
       }
-      K_jit <- K_stored + diag(1e-8, n_kernel_levels)
+      K_jit <- if (exact_pair_marginal) K_stored else {
+        K_stored + diag(1e-8, n_kernel_levels)
+      }
       K_kernel[r, , ] <- K_stored
+      K_kernel_raw[r, , ] <- K_stored
       kernel_matrix_list[[r]] <- K_stored
-      Ainv_kernel[r, , ] <- solve(K_jit)
-      log_det_A_kernel[r] <- as.numeric(determinant(K_jit, logarithm = TRUE)$modulus)
+      if (!exact_pair_marginal) {
+        Ainv_kernel[r, , ] <- solve(K_jit)
+        log_det_A_kernel[r] <- as.numeric(
+          determinant(K_jit, logarithm = TRUE)$modulus
+        )
+      }
 
       kernel_rank[r] <- rank_r
       kernel_has_latent[r] <- 1L
@@ -5137,6 +5196,24 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         ">" = "Treat {.fn extract_Gamma}(level = ...) as descriptive for those components; use lower-overlap kernels, null/sensitivity checks, or collapse the tiers before making separation claims."
       ))
     }
+  }
+  kernel_psi_sd_prior_spec <- .gllvmTMB_resolve_kernel_psi_sd_prior(
+    control$kernel_psi_sd_prior,
+    kernel_names = unique_kernel_names,
+    kernel_has_psi = if (use_kernel_multi) {
+      kernel_has_diag
+    } else {
+      rep(as.integer(isTRUE(use_phylo_diag)), length(unique_kernel_names))
+    },
+    trait_names = levels(data[[trait]]),
+    multi_kernel = use_kernel_multi
+  )
+  if (!is.null(kernel_psi_sd_prior_spec) && any(family_id_vec != 0L)) {
+    cli::cli_abort(c(
+      "{.arg kernel_psi_sd_prior} currently requires Gaussian identity responses.",
+      "i" = "Its scale is defined in the response units of the Gaussian model.",
+      ">" = "Fit the Gaussian sensitivity model or omit the kernel Psi prior."
+    ), class = "gllvmTMB_kernel_psi_prior_unsupported")
   }
   ## Build the sparse A^-1 machinery whenever any phylogenetic term
   ## (phylo_latent, phylo_unique, phylo_slope, or the augmented latent-slope)
@@ -5769,6 +5846,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         ">" = "Convert the predictor before fitting; factor and transformed bases are not in this V1 grammar."
       ))
     }
+    for (col in data_cols) {
+      .gllvmTMB_check_finite_slope(as.numeric(data[[col]]), col)
+    }
     Z_spde_aug <- vapply(phylo_column_slope_cols, function(col) {
       if (synthetic_intercept && identical(col, "(Intercept)")) {
         rep(1, n_obs)
@@ -5851,6 +5931,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## ---- equalto (known V) preparation ------------------------------------
   V_inv     <- matrix(0, nrow = 1, ncol = 1)
   log_det_V <- 0
+  V_known_marginal <- matrix(0.0, nrow = 1L, ncol = 1L)
   if (use_equalto) {
     if (is.null(known_V))
       cli::cli_abort(c(
@@ -5863,10 +5944,49 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         "known_V must be n_obs x n_obs (got {nrow(V)} x {ncol(V)}).",
         ">" = "Pass a square {.arg known_V} matrix with one row/column per observation."
       ))
+    if (exact_pair_marginal) {
+      if (any(!is.finite(V)) ||
+          !isTRUE(isSymmetric(V, tol = 1e-10))) {
+        cli::cli_abort(c(
+          "{.arg known_V} must be finite and symmetric for the exact Gaussian route.",
+          ">" = "Supply a finite symmetric sampling-error covariance matrix."
+        ), class = "gllvmTMB_exact_gaussian_invalid_known_V")
+      }
+      min_eigenvalue <- min(eigen((V + t(V)) / 2, symmetric = TRUE,
+                                  only.values = TRUE)$values)
+      psd_tolerance <- 1e-10 * max(1, max(abs(diag(V))))
+      if (min_eigenvalue < -psd_tolerance) {
+        cli::cli_abort(c(
+          "{.arg known_V} must be positive semidefinite for the exact Gaussian route.",
+          ">" = "Remove negative covariance directions or omit {.arg known_V}."
+        ), class = "gllvmTMB_exact_gaussian_invalid_known_V")
+      }
+    }
     V <- V + diag(1e-8, nrow = nrow(V))
     V_inv     <- solve(V)
     log_det_V <- as.numeric(determinant(V, logarithm = TRUE)$modulus)
+    if (exact_pair_marginal) {
+      exact_rows <- which(is_y_observed == 1L)
+      V_known_marginal <- as.matrix(known_V)[exact_rows, exact_rows, drop = FALSE]
+    }
   }
+  exact_rows <- if (exact_pair_marginal) which(is_y_observed == 1L) else integer(0L)
+  if (exact_pair_marginal && !use_equalto) {
+    V_known_marginal <- matrix(0.0, nrow = length(exact_rows),
+                               ncol = length(exact_rows))
+  }
+  exact_unit_id <- if (exact_pair_marginal) as.integer(species_id[exact_rows]) else 0L
+  exact_trait_id <- if (exact_pair_marginal) as.integer(trait_id[exact_rows]) else 0L
+  exact_y <- if (exact_pair_marginal) as.numeric(y[exact_rows]) else 0.0
+  exact_eta_index <- if (exact_pair_marginal) as.integer(exact_rows - 1L) else 0L
+  exact_woodbury_data <- .gllvmTMB_exact_pair_woodbury_data(
+    kernel_matrices = kernel_matrix_list %||% list(),
+    unit_id = exact_unit_id,
+    trait_id = exact_trait_id,
+    n_traits = n_traits,
+    known_V = if (exact_pair_marginal && use_equalto) V_known_marginal else NULL,
+    loading_ranks = if (exact_pair_marginal) kernel_rank else 1L
+  )
 
   ## ---- TMB inputs -------------------------------------------------------
   ## Pack re_int term metadata into flat vectors. When use_re_int == 0 the
@@ -5909,6 +6029,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         "i" = "Non-numeric predictor{?s}: {.val {bad_type}}.",
         ">" = "Convert the predictor before fitting; factor and transformed bases are not in this V1 grammar."
       ))
+    }
+    for (col in data_cols) {
+      .gllvmTMB_check_finite_slope(as.numeric(data[[col]]), col)
     }
     z <- vapply(phylo_column_slope_cols, function(col) {
       if (identical(col, "(Intercept)")) rep(1, n_obs) else as.numeric(data[[col]])
@@ -6217,7 +6340,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     cluster2_id       = cluster2_id,
     n_cluster2        = as.integer(n_cluster2),
     use_diag_cluster2 = as.integer(use_diag_cluster2),
-    use_equalto      = as.integer(use_equalto),
+    use_equalto      = as.integer(use_equalto && !exact_pair_marginal),
     V_inv            = V_inv,
     log_det_V        = log_det_V,
     use_spde         = as.integer(use_spde),
@@ -6292,7 +6415,30 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     kernel_logsd_offset = as.integer(kernel_logsd_offset),
     kernel_diag_offset = as.integer(kernel_diag_offset),
     Ainv_kernel      = Ainv_kernel,
+    K_kernel_raw     = K_kernel_raw,
     log_det_A_kernel = as.numeric(log_det_A_kernel),
+    use_exact_pair_marginal = as.integer(exact_pair_marginal),
+    exact_unit_id    = exact_unit_id,
+    exact_trait_id   = exact_trait_id,
+    exact_y          = exact_y,
+    exact_eta_index  = exact_eta_index,
+    exact_sigma_eps  = if (exact_pair_marginal) as.numeric(known_sigma_eps) else 0.0,
+    V_known_marginal = V_known_marginal,
+    exact_has_known_V = as.integer(exact_pair_marginal && use_equalto),
+    exact_use_woodbury = as.integer(
+      exact_pair_marginal && exact_woodbury_data$enabled == 1L &&
+        exact_woodbury_data$eigenmode == 0L
+    ),
+    exact_use_eigenmodes = as.integer(
+      exact_pair_marginal && exact_woodbury_data$eigenmode == 1L
+    ),
+    exact_woodbury_rotated_factor = exact_woodbury_data$rotated_kernel_factor,
+    exact_woodbury_trait_count = exact_woodbury_data$trait_count,
+    exact_woodbury_trait_rows = exact_woodbury_data$trait_rows,
+    exact_woodbury_eigenvalues = exact_woodbury_data$trait_eigenvalues,
+    exact_woodbury_eigenvectors = exact_woodbury_data$trait_eigenvectors,
+    exact_woodbury_base_tier = exact_woodbury_data$base_tier,
+    exact_woodbury_identity_tier = exact_woodbury_data$identity_tier,
     ## Paired phylogenetic PGLLVM: per-trait phylogenetic random intercepts
     ## (psi_phy diag)
     use_phylo_diag   = as.integer(use_phylo_diag),
@@ -6574,6 +6720,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                         rep(0.0, sum(kernel_has_diag == 1L) *
                               n_kernel_levels * n_traits)
                       } else numeric(0L),
+    psi_kernel_variance = if (exact_pair_marginal) {
+      rep(0.1, n_kernel_tiers * n_traits)
+    } else 0.0,
     ## Q6: phylo_slope params
     b_phy_slope     = rep(0.0, n_aug_phy_slope),
     log_sigma_slope = 0.0,
@@ -7219,7 +7368,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     tmb_map$theta_diag_cluster2 <- factor(rep(NA_integer_, n_traits))
     tmb_map$r_c2                <- factor(rep(NA_integer_, length(tmb_params$r_c2)))
   }
-  if (!use_equalto) {
+  if (!use_equalto || exact_pair_marginal) {
     tmb_map$e_eq <- factor(rep(NA_integer_, length(tmb_params$e_eq)))
   }
   if (!use_spde) {
@@ -7272,9 +7421,19 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     tmb_map$g_kernel        <- factor(rep(NA_integer_, length(tmb_params$g_kernel)))
     tmb_map$log_sd_kernel_diag <- factor(rep(NA_integer_, length(tmb_params$log_sd_kernel_diag)))
     tmb_map$g_kernel_diag   <- factor(rep(NA_integer_, length(tmb_params$g_kernel_diag)))
+    tmb_map$psi_kernel_variance <- factor(rep(NA_integer_, length(tmb_params$psi_kernel_variance)))
+  } else if (exact_pair_marginal) {
+    tmb_map$g_kernel <- factor(rep(NA_integer_, length(tmb_params$g_kernel)))
+    tmb_map$log_sd_kernel_diag <- factor(rep(NA_integer_, length(tmb_params$log_sd_kernel_diag)))
+    tmb_map$g_kernel_diag <- factor(rep(NA_integer_, length(tmb_params$g_kernel_diag)))
   } else if (!any(kernel_has_diag == 1L)) {
     tmb_map$log_sd_kernel_diag <- factor(rep(NA_integer_, length(tmb_params$log_sd_kernel_diag)))
     tmb_map$g_kernel_diag   <- factor(rep(NA_integer_, length(tmb_params$g_kernel_diag)))
+  }
+  if (!exact_pair_marginal) {
+    tmb_map$psi_kernel_variance <- factor(
+      rep(NA_integer_, length(tmb_params$psi_kernel_variance))
+    )
   }
   if (!use_phylo_slope || use_phylo_slope_correlated || use_phylo_column_slope) {
     tmb_map$b_phy_slope     <- factor(rep(NA_integer_, length(tmb_params$b_phy_slope)))
@@ -7596,7 +7755,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   cell_B <- paste(trait_id, site_id, sep = "_")
   per_row_diag_B <- use_diag_B && length(unique(cell_B)) == n_obs
   if (!is.null(known_sigma_eps)) {
-    tmb_params$log_sigma_eps[] <- log(known_sigma_eps)
+    tmb_params$log_sigma_eps[] <- if (exact_pair_marginal) 0 else log(known_sigma_eps)
     tmb_map$log_sigma_eps <- factor(rep(NA_integer_, length(tmb_params$log_sigma_eps)))
   } else if (!any_sigma_eps) {
     tmb_map$log_sigma_eps <- factor(rep(NA_integer_, length(tmb_params$log_sigma_eps)))
@@ -7959,7 +8118,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   if (use_propto) random <- c(random, "p_phy")
   if (use_diag_species) random <- c(random, "q_sp")
   if (use_diag_cluster2) random <- c(random, "r_c2")
-  if (use_equalto) random <- c(random, "e_eq")
+  if (use_equalto && !exact_pair_marginal) random <- c(random, "e_eq")
   if (use_spde && spatial_rho_field_active && (!is_spatial_latent || use_spde_latent_diag)) {
     random <- c(random, "omega_spde")
   }
@@ -7972,8 +8131,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   if (use_phylo_diag && structured_rho_field_active) random <- c(random, "g_phy_diag")
   if (use_phylo_rr && structured_rho_sparse) random <- c(random, "g_phy_iid")
   if (use_phylo_diag && structured_rho_sparse) random <- c(random, "g_phy_diag_iid")
-  if (use_kernel_multi) random <- c(random, "g_kernel")
-  if (use_kernel_multi && any(kernel_has_diag == 1L)) {
+  if (use_kernel_multi && !exact_pair_marginal) random <- c(random, "g_kernel")
+  if (use_kernel_multi && any(kernel_has_diag == 1L) && !exact_pair_marginal) {
     random <- c(random, "g_kernel_diag")
   }
   if (use_phylo_slope_correlated) {
@@ -8094,15 +8253,32 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   .gllvmTMB_fixed_prior_surface(fixed_prior_spec, tmb_data, family_id_vec,
     link_id_vec, Xcoef_fixed, known_V, lambda_constraint, is_dep_B,
     missing_meta$n_missing_response %||% 0L)
-  obj <- TMB::MakeADFun(
-    data       = tmb_data,
-    parameters = tmb_params,
-    map        = tmb_map,
-    random     = random,
-    DLL        = "gllvmTMB",
-    silent     = silent
-  )
-  obj <- .gllvmTMB_attach_fixed_priors(obj, fixed_prior_spec)
+  make_exact_tmb_object <- function(object_data) {
+    object <- TMB::MakeADFun(
+      data       = object_data,
+      parameters = tmb_params,
+      map        = tmb_map,
+      random     = random,
+      DLL        = "gllvmTMB",
+      silent     = silent
+    )
+    object <- .gllvmTMB_attach_fixed_priors(object, fixed_prior_spec)
+    .gllvmTMB_attach_kernel_psi_sd_prior(object, kernel_psi_sd_prior_spec)
+  }
+  obj <- make_exact_tmb_object(tmb_data)
+  if (exact_pair_marginal && (identical(tmb_data$exact_use_woodbury, 1L) ||
+                              identical(tmb_data$exact_use_eigenmodes, 1L))) {
+    dense_data <- tmb_data
+    dense_data$exact_use_woodbury <- 0L
+    dense_data$exact_use_eigenmodes <- 0L
+    obj <- .gllvmTMB_route_exact_pair_objective(
+      fast_obj = obj,
+      make_dense_obj = function() make_exact_tmb_object(dense_data),
+      n_traits = n_traits,
+      n_tiers = n_kernel_tiers,
+      boundary_safe = identical(tmb_data$exact_use_eigenmodes, 1L)
+    )
+  }
   if (identical(estimator, "mspl")) {
     outer_blocks <- unique(names(obj$par))
     expected_outer <- mspl_info$expected_outer
@@ -8184,6 +8360,27 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## the rotational non-identifiability of the loadings.
   run_one <- function(par_init, .obj = obj, .iter_cap = NULL, .ridge_tau = NULL) {
     obj <- .obj
+    bound_exact_psi <- function(opt_args) {
+      if (!exact_pair_marginal) return(opt_args)
+      psi_idx <- grep("^psi_kernel_variance", names(par_init))
+      if (length(psi_idx) != n_traits * n_kernel_tiers) {
+        cli::cli_abort(c(
+          "Internal exact-Gaussian Psi parameter block is missing.",
+          ">" = "Please report this gllvmTMB error with the model formula and fit controls."
+        ))
+      }
+      lower <- opt_args$lower %||% rep(-Inf, length(par_init))
+      if (length(lower) == 1L) lower <- rep(lower, length(par_init))
+      if (length(lower) != length(par_init)) {
+        cli::cli_abort(c(
+          "Internal optimizer lower bounds do not match the parameter vector.",
+          ">" = "Please report this gllvmTMB error with the model formula and optimizer settings."
+        ))
+      }
+      lower[psi_idx] <- pmax(lower[psi_idx], 0)
+      opt_args$lower <- lower
+      opt_args
+    }
     if (!is.null(.ridge_tau) && is.finite(.ridge_tau) && .ridge_tau > 0) {
       lam_idx <- .gllvmTMB_ridge_block_index(names(obj$par))
       if (length(lam_idx)) {
@@ -8203,6 +8400,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       opt_args <- opt_args[keep_optim]
       method <- opt_args$method %||% "BFGS"
       opt_args$method <- method
+      opt_args <- bound_exact_psi(opt_args)
       opt_args$control <- utils::modifyList(
         list(maxit = if (is.null(.iter_cap)) 2000 else as.integer(.iter_cap)),
         opt_args$control %||% list()
@@ -8229,6 +8427,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         opt_args = nlminb_args[keep],
         iter_cap = .iter_cap
       )
+      nlminb_args <- bound_exact_psi(nlminb_args)
       raw <- .gllvmTMB_run_nlminb(nlminb_args)
       raw$optimizer_used <- raw$optimizer_used %||% "nlminb"
 
@@ -8350,6 +8549,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       return(unavailable(conditionMessage(fresh)))
     }
     fresh <- .gllvmTMB_attach_fixed_priors(fresh, fixed_prior_spec)
+    fresh <- .gllvmTMB_attach_kernel_psi_sd_prior(fresh, kernel_psi_sd_prior_spec)
     labels <- optimizer_coordinate_labels(par)
     if (!identical(optimizer_coordinate_labels(fresh$par), labels)) {
       return(unavailable("fresh outer-coordinate order differs"))
@@ -8472,6 +8672,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     )
     if (!inherits(diagnostic_obj, "error")) {
       diagnostic_obj <- .gllvmTMB_attach_fixed_priors(diagnostic_obj, fixed_prior_spec)
+      diagnostic_obj <- .gllvmTMB_attach_kernel_psi_sd_prior(
+        diagnostic_obj, kernel_psi_sd_prior_spec
+      )
     }
     gradient <- if (inherits(diagnostic_obj, "error")) {
       rep(NA_real_, length(endpoint))
@@ -9252,6 +9455,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
           )
           if (inherits(obj_try, "error")) { aghq_err <- conditionMessage(obj_try); obj_try <- NULL; break }
           obj_try <- .gllvmTMB_attach_fixed_priors(obj_try, fixed_prior_spec)
+          obj_try <- .gllvmTMB_attach_kernel_psi_sd_prior(
+            obj_try, kernel_psi_sd_prior_spec
+          )
           if (!identical(names(obj_try$par), names(par_cur))) {
             aghq_err <- "AGHQ parameter vector does not align with the Laplace fit"
             obj_try <- NULL
@@ -9735,6 +9941,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ##
   ## See docs/dev-log/audits/2026-05-15-external-audit-response.md
   ## for the bug history.
+  obj <- .gllvmTMB_exact_pair_backend(obj, opt$par)
   selected_objective <- as.numeric(obj$fn(opt$par))
   if (identical(estimator, "mspl")) {
     ## `nlminb()` may retain the last objective value returned before TMB's
@@ -9982,6 +10189,14 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         specification = obj$fixed_effect_priors$specification,
         interpretation = "local_approximate_posterior_curvature_at_map",
         calibrated_sampling_covariance = FALSE
+      ),
+      kernel_psi_sd_prior = if (is.null(obj$kernel_psi_sd_prior)) NULL else list(
+        specification = obj$kernel_psi_sd_prior$specification,
+        target_class = obj$kernel_psi_sd_prior$target_class,
+        measure = obj$kernel_psi_sd_prior$measure,
+        interpretation = "local_approximate_posterior_curvature_at_map",
+        calibrated_sampling_covariance = FALSE,
+        density_scale = "natural_standard_deviation"
       ),
       covstructs   = parsed$covstructs,
       family       = family,
@@ -10661,6 +10876,13 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       "i" = "The reported covariance uses local approximate posterior curvature conditional on the chosen priors, not calibrated sampling uncertainty.",
       ">" = "Inspect prior sensitivity; ordinary profile, bootstrap and prediction-SE intervals are withheld."
     ), class = "gllvmTMB_fixed_prior_map")
+  }
+  if (!is.null(fit$kernel_psi_sd_prior)) {
+    cli::cli_warn(c(
+      "Kernel Psi half-normal priors produce penalized MAP estimates.",
+      "i" = "The prior density is defined on the natural Psi standard deviations; reported covariance is local approximate posterior curvature, not calibrated sampling uncertainty.",
+      ">" = "Inspect prior sensitivity; profile, bootstrap, and calibrated interval routes are withheld."
+    ), class = "gllvmTMB_kernel_psi_prior_map")
   }
   fit$fit_health <- .gllvmTMB_build_fit_health(fit)
   if (any(family_id_vec %in% c(17L, 18L, 19L))) {

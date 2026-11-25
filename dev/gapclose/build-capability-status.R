@@ -289,6 +289,9 @@ REGISTER_MAP <- list(
       c("MSPL-01", "MSPL-02", "MSPL-03", "MSPL-04", "MSPL-05"),
       note = "R-only estimator; GLLVM.jl's ledger has no MSPL row (expected to appear R-only in the parity report)."),
 
+  ROW("Named-kernel Psi SD priors (native TMB MAP sensitivity)", "Estimators", "KER-03B",
+      note = "R-only opt-in sensitivity fit; Julia parity, broad recovery, and calibrated uncertainty are not established."),
+
   # --- Intervals -----------------------------------------------------------
   ROW("Point extraction (coef / loadings / Σ_y / correlations)", "Intervals",
       c("EXT-01", "EXT-02", "EXT-03", "EXT-14", "EXT-16", "EXT-17", "EXT-18")),
@@ -367,6 +370,7 @@ names(REGISTER_MAP) <- vapply(REGISTER_MAP, `[[`, character(1), "name")
 UNMAPPED_BY_DESIGN <- c(
   "SPA-01" = "R-side SPDE mesh construction (make_mesh()); pre-fit geospatial prep, no Julia twin capability (cf. drmTMB's identical make_mesh precedent)",
   "KER-01" = "R-only cross-lineage coevolution kernel builder (make_cross_kernel()); GLLVM.jl's ledger tracks no coevolution row to compare against",
+  "KER-03C" = "R-only exact-zero observation-error Gaussian marginal likelihood for two named kernel tiers; no Julia twin capability is currently registered",
   "COE-01" = "R-only cross-lineage coevolution capability; no Julia twin row",
   "COE-02" = "R-only cross-lineage coevolution capability; no Julia twin row",
   "COE-03" = "R-only cross-lineage coevolution capability; no Julia twin row",

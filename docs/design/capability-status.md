@@ -88,6 +88,7 @@ Mission Control input for the R side of the gllvmTMB <-> GLLVM.jl twin board. Ev
 | Fixed-effect normal priors (native MAP) | scope-limited |  | FE-PRIOR-01 | Partial native R support for ordinary Gaussian and binomial latent/indep models; AGHQ and uncertainty are limited as described in the register. No Julia parity is claimed. |
 | VA / ELBO alternative (selected families; not R-default) | scope-limited |  | VA-01, VA-02, VA-03, VA-04, VA-05, VA-06, VA-07, VA-08, VA-09, VA-10, VA-11, VA-12, VA-13 | Withdrawn: `integration = "eva"` is not an admitted value -- "the EVA engine and template remain research-only", a considered refusal, not a pending gap. |
 | MSPL point/interval estimator (`estimator = "mspl"`) | scope-limited |  | MSPL-01, MSPL-02, MSPL-03, MSPL-04, MSPL-05 | R-only estimator; GLLVM.jl's ledger has no MSPL row (expected to appear R-only in the parity report). |
+| Named-kernel Psi SD priors (native TMB MAP sensitivity) | scope-limited |  | KER-03B | R-only opt-in sensitivity fit; Julia parity, broad recovery, and calibrated uncertainty are not established. |
 
 ## Intervals
 
@@ -163,6 +164,7 @@ Register rows deliberately NOT translated into a ledger capability row above, wi
 | FG-16 | R-only legacy `gllvmTMB_wide()` matrix constructor, soft-deprecated; no Julia twin |
 | FG-17 | Deliberately rejected parser grammar (slash-form nesting `(1 | g1/g2)`); no Julia grammar-rejection concept to compare against |
 | KER-01 | R-only cross-lineage coevolution kernel builder (make_cross_kernel()); GLLVM.jl's ledger tracks no coevolution row to compare against |
+| KER-03C | R-only exact-zero observation-error Gaussian marginal likelihood for two named kernel tiers; no Julia twin capability is currently registered |
 | MET-01 | R-only meta-analytic known-sampling-covariance keyword family (meta_V/block_V); no Julia twin |
 | MET-02 | R-only meta-analytic known-sampling-covariance keyword family (meta_V/block_V); no Julia twin |
 | MET-03 | R-only meta-analytic known-sampling-covariance keyword family (meta_V/block_V); no Julia twin |

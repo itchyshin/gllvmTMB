@@ -14,6 +14,11 @@
   out
 }
 
+## cli {.fn} lines render as `name()`; optional `i`/`>` bullets may follow.
+.fix1812_fn_pat <- function(fn) {
+  paste0("`?", fn, "\\(\\)`?")
+}
+
 .fix1812_fit <- function(marker, ..., family = gaussian(), control = NULL) {
   if (is.null(control)) {
     control <- gllvmTMBcontrol(n_init = 1L, se = FALSE, laplace_auto_refit = FALSE)
@@ -48,15 +53,15 @@ test_that("#1812 family gate names temporal_indep and temporal_dep", {
   expect_s3_class(latent, "error")
   expect_match(
     conditionMessage(indep),
-    "temporal_indep\\(\\) currently requires the native Gaussian identity-link ML route"
+    paste0(.fix1812_fn_pat("temporal_indep"), " currently requires the native Gaussian identity-link ML route")
   )
   expect_match(
     conditionMessage(dep),
-    "temporal_dep\\(\\) currently requires the native Gaussian identity-link ML route"
+    paste0(.fix1812_fn_pat("temporal_dep"), " currently requires the native Gaussian identity-link ML route")
   )
   expect_match(
     conditionMessage(latent),
-    "temporal_latent\\(\\) currently requires the native Gaussian identity-link ML route"
+    paste0(.fix1812_fn_pat("temporal_latent"), " currently requires the native Gaussian identity-link ML route")
   )
   expect_no_match(conditionMessage(indep), "temporal_latent")
   expect_no_match(conditionMessage(dep), "temporal_latent")
@@ -69,7 +74,10 @@ test_that("#1812 Laplace gate names temporal_indep", {
   )
   expect_s3_class(err, "error")
   msg <- conditionMessage(err)
-  expect_match(msg, "temporal_indep\\(\\) currently requires native TMB Laplace integration")
+  expect_match(
+    msg,
+    paste0(.fix1812_fn_pat("temporal_indep"), " currently requires native TMB Laplace integration")
+  )
   expect_no_match(msg, "temporal_latent")
 })
 
@@ -79,7 +87,10 @@ test_that("#1812 other-provider gate names temporal_dep", {
   msg <- conditionMessage(err)
   expect_match(
     msg,
-    "temporal_dep\\(\\) cannot be combined with another covariance provider in this version"
+    paste0(
+      .fix1812_fn_pat("temporal_dep"),
+      " cannot be combined with another covariance provider in this version"
+    )
   )
   expect_no_match(msg, "temporal_latent")
 })

@@ -1,5 +1,7 @@
 # gllvmTMB 0.8.0
 
+* `phylo_latent(taxon, ...)`, `phylo_unique(taxon, ...)`, and `phylo_scalar(taxon, ...)` now group by the column named in the keyword when `cluster` is omitted, matching an explicit `cluster = "taxon"`. The bare-group helper that already covered `phylo_indep()` / `phylo_dep()` now also binds a later `species =` argument when the keyword is otherwise all-named. A misaligned `vcv` stops with the phylogenetic mismatch message instead of the placeholder `species` factor (refs #1766).
+
 * `known_sigma_eps = 0` is now admitted for a narrowly defined native TMB Gaussian model with exactly two named `kernel_latent(..., unique = TRUE)` tiers, one observation per unit-trait cell, trait-specific intercepts, unit weights, and unpenalized ML with Laplace integration. The likelihood uses the supplied kernels without a diagonal floor and omits the observation-error covariance exactly. One-kernel, Julia, non-Gaussian, predictor, offset, prior, penalty, and non-unit-weight variants remain unsupported. Initial fixed-seed fits show substantial component-recovery error, so this route is experimental; interval calibration and broad recovery are not established.
 
 * `.eva_load_dll(rebuild = TRUE)` reuses an already-loaded EVA prototype DLL instead of unloading it while a live `MakeADFun` object still holds external pointers. Unloading had removed those pointers and could segfault the next evaluation (refs #1815).

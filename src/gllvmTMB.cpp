@@ -1281,6 +1281,24 @@ Type objective_function<Type>::operator()()
   DATA_IVECTOR(kernel_diag_offset);   // flat offset into g_kernel_diag
   DATA_ARRAY(Ainv_kernel);            // n_tier x n_level x n_level
   DATA_VECTOR(log_det_A_kernel);      // length n_tier
+  DATA_ARRAY(K_kernel_raw);            // raw K_r for exact paired Gaussian marginalization
+  DATA_INTEGER(use_exact_pair_marginal);
+  DATA_INTEGER(exact_use_woodbury);
+  DATA_INTEGER(exact_use_eigenmodes);
+  DATA_ARRAY(exact_woodbury_rotated_factor); // fixed Q_t' L_r[U_t, ] factors
+  DATA_IVECTOR(exact_woodbury_trait_count);
+  DATA_IMATRIX(exact_woodbury_trait_rows);   // trait x padded observed-row indices
+  DATA_MATRIX(exact_woodbury_eigenvalues);   // trait x padded eigenvalues of K_base[U_t,U_t]
+  DATA_ARRAY(exact_woodbury_eigenvectors);   // trait x padded Q_t
+  DATA_INTEGER(exact_woodbury_base_tier);
+  DATA_INTEGER(exact_woodbury_identity_tier);
+  DATA_IVECTOR(exact_unit_id);         // observed-record unit IDs, zero-based
+  DATA_IVECTOR(exact_trait_id);        // observed-record trait IDs, zero-based
+  DATA_VECTOR(exact_y);                // response values for observed records
+  DATA_IVECTOR(exact_eta_index);       // row indices into eta, zero-based
+  DATA_SCALAR(exact_sigma_eps);        // known observation SD, zero in this route
+  DATA_MATRIX(V_known_marginal);       // optional declared known covariance, observed-record scale
+  DATA_INTEGER(exact_has_known_V);
 
   // Two-U PGLLVM: phylo_diag (per-trait phylogenetic random intercept).
   // When phylo_latent(species, d=K) and phylo_unique(species) co-fit, the
@@ -1623,6 +1641,7 @@ Type objective_function<Type>::operator()()
   PARAMETER_VECTOR(g_kernel);                    // flat kernel factor scores
   PARAMETER_VECTOR(log_sd_kernel_diag);          // optional Psi log-SDs
   PARAMETER_VECTOR(g_kernel_diag);               // optional Psi fields
+  PARAMETER_VECTOR(psi_kernel_variance);          // direct Psi variances for exact marginal route
   // phylo_slope params (Q6)
   PARAMETER_VECTOR(b_phy_slope);                 // length n_aug_phy_slope; per-group slopes
   PARAMETER(log_sigma_slope);                    // scalar; log slope sd
@@ -2567,6 +2586,15 @@ Type objective_function<Type>::operator()()
         Ainv_kernel.dim[1] != n_kernel_levels ||
         Ainv_kernel.dim[2] != n_kernel_levels)
       error("gllvmTMB_multi: Ainv_kernel dimensions do not match kernel metadata");
+    if (use_exact_pair_marginal == 1 &&
+        (K_kernel_raw.dim.size() != 3 ||
+         K_kernel_raw.dim[0] != n_kernel_tiers ||
+         K_kernel_raw.dim[1] != n_kernel_levels ||
+         K_kernel_raw.dim[2] != n_kernel_levels))
+      error("gllvmTMB_multi: raw kernel dimensions do not match exact marginal metadata");
+    if (use_exact_pair_marginal == 1 &&
+        psi_kernel_variance.size() != n_kernel_tiers * n_traits)
+      error("gllvmTMB_multi: exact marginal Psi variance vector has wrong length");
 
     int theta_pos = 0;
     int expected_g = 0;
@@ -2579,14 +2607,15 @@ Type objective_function<Type>::operator()()
       int len_theta = n_traits * rank - rank * (rank - 1) / 2;
       if (kernel_has_latent(r) != 1)
         error("gllvmTMB_multi: multi-kernel first wave requires latent tiers");
-      if (kernel_g_offset(r) != expected_g)
+      if (use_exact_pair_marginal != 1 && kernel_g_offset(r) != expected_g)
         error("gllvmTMB_multi: kernel_g_offset mismatch");
       if (theta_pos + len_theta > theta_rr_kernel.size())
         error("gllvmTMB_multi: theta_rr_kernel has wrong length");
 
       vector<Type> theta_r = theta_rr_kernel.segment(theta_pos, len_theta);
       theta_pos += len_theta;
-      expected_g += n_kernel_levels * rank;
+      if (use_exact_pair_marginal != 1)
+        expected_g += n_kernel_levels * rank;
       matrix<Type> loading_r =
         gll_unpack_rr_loadings(theta_r, n_traits, rank);
       for (int j = 0; j < rank; j++) {
@@ -2603,47 +2632,60 @@ Type objective_function<Type>::operator()()
         }
       }
 
-      int goff = kernel_g_offset(r);
-      for (int k = 0; k < rank; k++) {
-        Type quad = 0;
-        for (int i = 0; i < n_kernel_levels; i++) {
-          Type gi = g_kernel(goff + i * rank + k);
-          for (int j = 0; j < n_kernel_levels; j++) {
-            Type gj = g_kernel(goff + j * rank + k);
-            quad += gi * Ainv_kernel(r, i, j) * gj;
-          }
-        }
-        nll += Type(0.5) * (Type(n_kernel_levels) * log(2.0 * M_PI)
-                            + log_det_A_kernel(r) + quad);
-      }
-
-      if (kernel_has_diag(r) == 1) {
-        if (kernel_logsd_offset(r) != expected_logsd ||
-            kernel_diag_offset(r) != expected_diag)
-          error("gllvmTMB_multi: kernel Psi offset mismatch");
-        int lsoff = kernel_logsd_offset(r);
-        int doff = kernel_diag_offset(r);
-        for (int t = 0; t < n_traits; t++) {
-          sd_kernel_diag(t, r) = exp(log_sd_kernel_diag(lsoff + t));
+      if (use_exact_pair_marginal != 1) {
+        int goff = kernel_g_offset(r);
+        for (int k = 0; k < rank; k++) {
           Type quad = 0;
           for (int i = 0; i < n_kernel_levels; i++) {
-            Type gi = g_kernel_diag(doff + i * n_traits + t);
+            Type gi = g_kernel(goff + i * rank + k);
             for (int j = 0; j < n_kernel_levels; j++) {
-              Type gj = g_kernel_diag(doff + j * n_traits + t);
+              Type gj = g_kernel(goff + j * rank + k);
               quad += gi * Ainv_kernel(r, i, j) * gj;
             }
           }
           nll += Type(0.5) * (Type(n_kernel_levels) * log(2.0 * M_PI)
                               + log_det_A_kernel(r) + quad);
         }
-        expected_logsd += n_traits;
-        expected_diag += n_kernel_levels * n_traits;
+      }
+
+      if (kernel_has_diag(r) == 1) {
+        if (use_exact_pair_marginal == 1) {
+          for (int t = 0; t < n_traits; t++) {
+            Type psi = psi_kernel_variance(r * n_traits + t);
+            if (asDouble(psi) < 0.0 || !std::isfinite(asDouble(psi)))
+              error("gllvmTMB_multi: exact marginal Psi variances must be finite and nonnegative");
+            sd_kernel_diag(t, r) = sqrt(psi);
+            Sigma_kernel(t, t, r) += psi;
+          }
+        } else {
+          if (kernel_logsd_offset(r) != expected_logsd ||
+              kernel_diag_offset(r) != expected_diag)
+            error("gllvmTMB_multi: kernel Psi offset mismatch");
+          int lsoff = kernel_logsd_offset(r);
+          int doff = kernel_diag_offset(r);
+          for (int t = 0; t < n_traits; t++) {
+            sd_kernel_diag(t, r) = exp(log_sd_kernel_diag(lsoff + t));
+            Type quad = 0;
+            for (int i = 0; i < n_kernel_levels; i++) {
+              Type gi = g_kernel_diag(doff + i * n_traits + t);
+              for (int j = 0; j < n_kernel_levels; j++) {
+                Type gj = g_kernel_diag(doff + j * n_traits + t);
+                quad += gi * Ainv_kernel(r, i, j) * gj;
+              }
+            }
+            nll += Type(0.5) * (Type(n_kernel_levels) * log(2.0 * M_PI)
+                                + log_det_A_kernel(r) + quad);
+          }
+          expected_logsd += n_traits;
+          expected_diag += n_kernel_levels * n_traits;
+        }
       }
     }
     if (theta_pos != theta_rr_kernel.size() ||
-        expected_g != g_kernel.size() ||
-        expected_logsd != log_sd_kernel_diag.size() ||
-        expected_diag != g_kernel_diag.size())
+        (use_exact_pair_marginal != 1 &&
+         (expected_g != g_kernel.size() ||
+          expected_logsd != log_sd_kernel_diag.size() ||
+          expected_diag != g_kernel_diag.size())))
       error("gllvmTMB_multi: flat multi-kernel parameter lengths mismatch");
     REPORT(Lambda_kernel);
     REPORT(Sigma_kernel);
@@ -3524,7 +3566,7 @@ Type objective_function<Type>::operator()()
           sqrt(structured_rho_diagonal(species_id(o))) * g_phy_diag_iid(species_id(o), t);
       eta(o) += exp(log_sd_phy_diag(t)) * score;
     }
-    if (n_kernel_tiers > 0) {
+    if (n_kernel_tiers > 0 && use_exact_pair_marginal != 1) {
       int kid = kernel_group_id(o);
       if (kid < 0 || kid >= n_kernel_levels)
         error("gllvmTMB_multi: kernel_group_id out of range");
@@ -3593,6 +3635,8 @@ Type objective_function<Type>::operator()()
   vector<Type> sigma_eps(log_sigma_eps.size());
   for (int j = 0; j < log_sigma_eps.size(); j++)
     sigma_eps(j) = exp(log_sigma_eps(j));
+  if (use_exact_pair_marginal == 1)
+    sigma_eps(0) = exact_sigma_eps;
   Type sigma_eps_gaussian = sigma_eps(0);
   Type sigma_eps_lognormal =
     log_sigma_eps.size() == 2 ? sigma_eps(1) : sigma_eps(0);
@@ -4226,6 +4270,188 @@ Type objective_function<Type>::operator()()
     }
   }
 
+  if (use_exact_pair_marginal == 1) {
+    int n_exact = exact_y.size();
+    if (n_exact < 1 || exact_unit_id.size() != n_exact ||
+        exact_trait_id.size() != n_exact || exact_eta_index.size() != n_exact ||
+        V_known_marginal.rows() != n_exact ||
+        V_known_marginal.cols() != n_exact || n_kernel_tiers != 2 ||
+        asDouble(exact_sigma_eps) != 0.0)
+      error("gllvmTMB_multi: malformed exact paired-kernel marginal inputs");
+    if (family_id_vec.size() != y.size() || weights_i.size() != y.size())
+      error("gllvmTMB_multi: malformed exact paired-kernel response metadata");
+    vector<Type> residual_exact(n_exact);
+    for (int i = 0; i < n_exact; i++) {
+      int unit_i = exact_unit_id(i);
+      int trait_i = exact_trait_id(i);
+      int eta_i = exact_eta_index(i);
+      if (unit_i < 0 || unit_i >= n_kernel_levels ||
+          trait_i < 0 || trait_i >= n_traits || eta_i < 0 || eta_i >= y.size())
+        error("gllvmTMB_multi: exact marginal observed-record index out of range");
+      if (is_y_observed(eta_i) != 1 || family_id_vec(eta_i) != 0 ||
+          asDouble(weights_i(eta_i)) != 1.0)
+        error("gllvmTMB_multi: exact marginal route requires observed, unit-weight Gaussian records");
+      residual_exact(i) = exact_y(i) - eta(eta_i);
+    }
+    REPORT(residual_exact);
+    if (exact_use_eigenmodes == 1) {
+      if (exact_has_known_V == 1 || exact_woodbury_trait_count.size() != n_traits ||
+          exact_woodbury_trait_rows.rows() != n_traits ||
+          exact_woodbury_eigenvalues.rows() != n_traits ||
+          exact_woodbury_eigenvectors.dim.size() != 3 ||
+          exact_woodbury_eigenvectors.dim[0] != n_traits ||
+          exact_woodbury_base_tier < 0 || exact_woodbury_base_tier >= n_kernel_tiers ||
+          exact_woodbury_identity_tier < 0 || exact_woodbury_identity_tier >= n_kernel_tiers ||
+          exact_woodbury_base_tier == exact_woodbury_identity_tier)
+        error("gllvmTMB_multi: malformed exact paired-kernel eigenmode inputs");
+      int n_mode = exact_woodbury_trait_count(0);
+      for (int t = 0; t < n_traits; t++) {
+        if (exact_woodbury_trait_count(t) != n_mode ||
+            n_mode > exact_woodbury_trait_rows.cols() ||
+            n_mode > exact_woodbury_eigenvalues.cols() ||
+            n_mode > exact_woodbury_eigenvectors.dim[1] ||
+            n_mode > exact_woodbury_eigenvectors.dim[2])
+          error("gllvmTMB_multi: exact paired-kernel eigenmode route requires a shared complete trait mask");
+      }
+      for (int j = 0; j < n_mode; j++) {
+        vector<Type> residual_mode(n_traits);
+        matrix<Type> covariance_mode(n_traits, n_traits);
+        covariance_mode.setZero();
+        for (int t = 0; t < n_traits; t++) {
+          Type rotated = Type(0.0);
+          for (int a = 0; a < n_mode; a++) {
+            int row = exact_woodbury_trait_rows(t, a);
+            rotated += exact_woodbury_eigenvectors(t, a, j) * residual_exact(row);
+          }
+          residual_mode(t) = rotated;
+          for (int u = 0; u < n_traits; u++) {
+            for (int r = 0; r < n_kernel_tiers; r++) {
+              Type kernel_eigenvalue = r == exact_woodbury_base_tier
+                ? exact_woodbury_eigenvalues(t, j) : Type(1.0);
+              covariance_mode(t, u) +=
+                Sigma_kernel(t, u, r) * kernel_eigenvalue;
+            }
+          }
+        }
+        density::MVNORM_t<Type> mode_density(covariance_mode);
+        nll += mode_density(residual_mode);
+      }
+    } else if (exact_use_woodbury == 1) {
+      if (exact_has_known_V == 1 || exact_woodbury_trait_count.size() != n_traits ||
+          exact_woodbury_trait_rows.rows() != n_traits ||
+          exact_woodbury_eigenvalues.rows() != n_traits ||
+          exact_woodbury_eigenvectors.dim.size() != 3 ||
+          exact_woodbury_eigenvectors.dim[0] != n_traits ||
+          exact_woodbury_base_tier < 0 || exact_woodbury_base_tier >= n_kernel_tiers ||
+          exact_woodbury_identity_tier < 0 || exact_woodbury_identity_tier >= n_kernel_tiers ||
+          exact_woodbury_base_tier == exact_woodbury_identity_tier)
+        error("gllvmTMB_multi: malformed exact paired-kernel Woodbury inputs");
+
+      int woodbury_rank = 0;
+      for (int r = 0; r < n_kernel_tiers; r++)
+        woodbury_rank += n_kernel_levels * kernel_rank(r);
+      if (exact_woodbury_rotated_factor.dim.size() != 4 ||
+          exact_woodbury_rotated_factor.dim[0] != n_kernel_tiers ||
+          exact_woodbury_rotated_factor.dim[1] != n_traits ||
+          exact_woodbury_rotated_factor.dim[3] != n_kernel_levels ||
+          woodbury_rank < 1 || woodbury_rank > n_exact)
+        error("gllvmTMB_multi: exact paired-kernel Woodbury factor dimensions are invalid");
+
+      matrix<Type> core(woodbury_rank, woodbury_rank);
+      core.setIdentity();
+      vector<Type> core_score(woodbury_rank);
+      core_score.setZero();
+      Type logdet_D = Type(0.0);
+      Type quadratic_D = Type(0.0);
+      for (int t = 0; t < n_traits; t++) {
+        int n_t = exact_woodbury_trait_count(t);
+        if (n_t < 1 || n_t > exact_woodbury_trait_rows.cols() ||
+            n_t > exact_woodbury_eigenvalues.cols() ||
+            n_t > exact_woodbury_eigenvectors.dim[1] ||
+            n_t > exact_woodbury_eigenvectors.dim[2])
+          error("gllvmTMB_multi: invalid exact paired-kernel trait block size");
+        matrix<Type> G(n_t, woodbury_rank);
+        vector<Type> z(n_t);
+        G.setZero();
+        z.setZero();
+        for (int j = 0; j < n_t; j++) {
+          Type delta = psi_kernel_variance(
+            exact_woodbury_base_tier * n_traits + t) *
+              exact_woodbury_eigenvalues(t, j) +
+            psi_kernel_variance(exact_woodbury_identity_tier * n_traits + t);
+          // ADFun tape setup may evaluate the template once at zero-valued
+          // placeholders before MakeADFun supplies its parameter start. Keep
+          // that setup finite with a conditional safe denominator. The R-side
+          // router sends actual joint-zero Psi trial points to the dense tape,
+          // so this selected value is used only for tape construction there.
+          Type delta_safe = CppAD::CondExpGt(delta, Type(0.0), delta, Type(1.0));
+          Type inv_sqrt_delta = Type(1.0) / sqrt(delta_safe);
+          int col_offset_trait = 0;
+          for (int r = 0; r < n_kernel_tiers; r++) {
+            int rank = kernel_rank(r);
+            for (int a = 0; a < n_kernel_levels; a++) {
+              Type rotated_factor = exact_woodbury_rotated_factor(r, t, j, a);
+              for (int k = 0; k < rank; k++) {
+                G(j, col_offset_trait + a * rank + k) =
+                  rotated_factor * Lambda_kernel(t, k, r) * inv_sqrt_delta;
+              }
+            }
+            col_offset_trait += n_kernel_levels * rank;
+          }
+          Type value_z = Type(0.0);
+          for (int a = 0; a < n_t; a++) {
+            int row = exact_woodbury_trait_rows(t, a);
+            value_z += exact_woodbury_eigenvectors(t, a, j) * residual_exact(row);
+          }
+          z(j) = value_z * inv_sqrt_delta;
+          logdet_D += log(delta_safe);
+          quadratic_D += z(j) * z(j);
+        }
+        matrix<Type> Gt = G.transpose();
+        matrix<Type> z_matrix(n_t, 1);
+        for (int j = 0; j < n_t; j++) z_matrix(j, 0) = z(j);
+        core += atomic::matmul(Gt, G);
+        matrix<Type> score_matrix = atomic::matmul(Gt, z_matrix);
+        for (int a = 0; a < woodbury_rank; a++)
+          core_score(a) += score_matrix(a, 0);
+      }
+      Type logdet_core = Type(0.0);
+      matrix<Type> core_inverse = atomic::matinvpd(core, logdet_core);
+      vector<Type> core_solution = core_inverse * core_score;
+      Type core_adjustment = Type(0.0);
+      for (int a = 0; a < woodbury_rank; a++)
+        core_adjustment += core_score(a) * core_solution(a);
+      Type quadratic = quadratic_D - core_adjustment;
+      nll += Type(0.5) * (Type(n_exact) * log(Type(2.0 * M_PI)) +
+                            logdet_D + logdet_core + quadratic);
+      REPORT(logdet_D);
+      REPORT(logdet_core);
+      REPORT(quadratic);
+    } else {
+      matrix<Type> covariance_exact(n_exact, n_exact);
+      for (int i = 0; i < n_exact; i++) {
+        int unit_i = exact_unit_id(i);
+        int trait_i = exact_trait_id(i);
+        for (int j = 0; j < n_exact; j++) {
+          int unit_j = exact_unit_id(j);
+          int trait_j = exact_trait_id(j);
+          Type covariance_ij = exact_has_known_V == 1
+            ? V_known_marginal(i, j) : Type(0.0);
+          for (int r = 0; r < n_kernel_tiers; r++) {
+            covariance_ij += Sigma_kernel(trait_i, trait_j, r) *
+              K_kernel_raw(r, unit_i, unit_j);
+          }
+          if (i == j)
+            covariance_ij += exact_sigma_eps * exact_sigma_eps;
+          covariance_exact(i, j) = covariance_ij;
+        }
+      }
+      density::MVNORM_t<Type> exact_marginal_density(covariance_exact);
+      nll += exact_marginal_density(residual_exact);
+      REPORT(covariance_exact);
+    }
+  }
+
   for (int o = 0; o < y.size(); o++) {
     // Capture the running NLL so we can scale this row's contribution by
     // its weight after the family-dispatch block. Mirrors the
@@ -4286,7 +4512,8 @@ Type objective_function<Type>::operator()()
       // normalized block per (occasion, trait), after integrating the
       // occasion-shared diagonal effect.  A row-wise density here would lose
       // the within-occasion covariance.
-    } else if (family_id_vec(o) != 16 && is_y_observed(o) && !mi_missing_row) {
+    } else if (family_id_vec(o) != 16 && is_y_observed(o) && !mi_missing_row &&
+               use_exact_pair_marginal != 1) {
       // Ordinary path: observed-y row whose predictor value is NOT a missing
       // discrete x (observed-x units take this path with the true x in eta(o)).
       // fid-16 rows are handled by the multinomial group branch above and skip

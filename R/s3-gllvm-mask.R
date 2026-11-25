@@ -56,6 +56,33 @@
   simulate = .gllvm_mask_simulate
 )
 
+.gllvm_mask_body_calls_usemethod <- function(fn) {
+  b <- body(fn)
+  if (!is.language(b)) {
+    return(FALSE)
+  }
+  found <- FALSE
+  walk <- function(e) {
+    if (found) {
+      return(invisible(NULL))
+    }
+    if (is.call(e) && identical(e[[1L]], quote(UseMethod))) {
+      found <<- TRUE
+      return(invisible(NULL))
+    }
+    if (is.pairlist(e) || is.call(e) || is.expression(e)) {
+      for (arg in as.list(e)) {
+        if (!is.null(arg)) {
+          walk(arg)
+        }
+      }
+    }
+    invisible(NULL)
+  }
+  walk(b)
+  found
+}
+
 .gllvm_mask_is_generic <- function(fn) {
   if (!is.function(fn)) {
     return(FALSE)
@@ -63,7 +90,7 @@
   if (isTRUE(utils::isS3stdGeneric(fn))) {
     return(TRUE)
   }
-  any(grepl("UseMethod", deparse(body(fn)), fixed = TRUE))
+  .gllvm_mask_body_calls_usemethod(fn)
 }
 
 .register_gllvm_masking_methods <- function() {

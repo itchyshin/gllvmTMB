@@ -174,6 +174,16 @@ kernel_scalar <- function(unit, K, name = "kernel") {
   )
 }
 
+.gllvmTMB_phylo_bare_groups <- function(formula) {
+  keywords <- c(
+    "phylo_latent", "phylo_unique", "phylo_indep",
+    "phylo_dep", "phylo_scalar"
+  )
+  .gllvmTMB_keyword_bare_groups(
+    formula, keywords, c("phylo_indep", "phylo_dep")
+  )
+}
+
 ## Public keyword behind a harvested kernel mode. A folded
 ## `kernel_latent(..., unique = TRUE)` carries both "latent" and "unique".
 .gllvmTMB_kernel_fn_from_modes <- function(modes) {

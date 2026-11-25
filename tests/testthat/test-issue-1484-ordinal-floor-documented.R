@@ -13,9 +13,12 @@ test_that("ordinal log_tiny_ord floors carry the intentional-guard comment", {
 })
 
 test_that("?ordinal_logit and ?ordinal_probit mention the underflow floor", {
+  root <- testthat::test_path("..", "..")
   for (topic in c("ordinal_logit", "ordinal_probit")) {
+    path <- file.path(root, "man", paste0(topic, ".Rd"))
+    expect_true(file.exists(path), info = topic)
     txt <- paste(capture.output(tools::Rd2txt(
-      utils:::.getHelpFile(help(topic, package = "gllvmTMB")),
+      tools::parse_Rd(path, encoding = "UTF-8"),
       options = list(underline_titles = FALSE))), collapse = " ")
     expect_match(txt, "underflow", info = topic)
   }

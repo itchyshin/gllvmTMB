@@ -1,15 +1,20 @@
+.gllvmTMB_abort_prior_table <- function(message, ..., next_step =
+    "Check the prior-table documentation, correct this row, and refit.") {
+  cli::cli_abort(c(message, ">" = next_step), ...)
+}
+
 .gllvmTMB_parse_prior_table <- function(x) {
   if (!is.data.frame(x) || anyDuplicated(names(x))) {
-    cli::cli_abort("prior table must be a data frame with unique columns")
+    .gllvmTMB_abort_prior_table("prior table must be a data frame with unique columns")
   }
   required <- c("prior", "class")
   optional <- c("coef", "dpar", "scale", "group", "block", "resp",
                 "trait", "kernel")
   if (!all(required %in% names(x)) || any(!names(x) %in% c(required, optional))) {
-    cli::cli_abort("invalid prior table columns")
+    .gllvmTMB_abort_prior_table("invalid prior table columns")
   }
   if (any(!vapply(x, is.character, logical(1))) || anyNA(x)) {
-    cli::cli_abort("prior table requires nonmissing character rows")
+    .gllvmTMB_abort_prior_table("prior table requires nonmissing character rows")
   }
   if (!nrow(x)) return(list())
   number <- "[+-]?(?:(?:[0-9]+(?:\\.[0-9]*)?)|(?:\\.[0-9]+))(?:[eE][+-]?[0-9]+)?"
@@ -31,15 +36,15 @@
     scale <- if ("scale" %in% names(x)) x$scale[[i]] else ""
     selectors <- intersect(c("group", "block", "resp"), names(x))
     if (any(vapply(selectors, function(nm) nzchar(x[[nm]][[i]]), logical(1)))) {
-      cli::cli_abort("GLLVM prior tables do not support group, block, or resp selectors")
+      .gllvmTMB_abort_prior_table("GLLVM prior tables do not support group, block, or resp selectors")
     }
     match <- regmatches(x$prior[[i]], regexec(pattern, x$prior[[i]], perl = TRUE))[[1L]]
     if (!length(match)) {
       if (grepl("^\\s*[A-Za-z][A-Za-z0-9_]*\\s*\\(", x$prior[[i]]) &&
           !grepl("^\\s*(normal|student_t|ridge|gamma)\\s*\\(", x$prior[[i]])) {
-        cli::cli_abort("unsupported prior distribution")
+        .gllvmTMB_abort_prior_table("unsupported prior distribution")
       }
-      cli::cli_abort("invalid prior syntax")
+      .gllvmTMB_abort_prior_table("invalid prior syntax")
     }
     kind <- match[[2L]]
     args_text <- match[3:5]
@@ -48,63 +53,63 @@
     arity <- switch(kind, normal = 2L, student_t = 3L, ridge = 1L,
                     gamma = 2L)
     if (length(args) != arity || any(!is.finite(args))) {
-      cli::cli_abort("invalid prior parameters or arity")
+      .gllvmTMB_abort_prior_table("invalid prior parameters or arity")
     }
     if (cls == "fixef") {
-      if (!dpar %in% "mu") cli::cli_abort("GLLVM fixed-effect prior table supports dpar=mu only")
-      if (!nzchar(coef) || coef == "all") cli::cli_abort("fixef rows require an exact coefficient name")
+      if (!dpar %in% "mu") .gllvmTMB_abort_prior_table("GLLVM fixed-effect prior table supports dpar=mu only")
+      if (!nzchar(coef) || coef == "all") .gllvmTMB_abort_prior_table("fixef rows require an exact coefficient name")
       if (!nzchar(scale)) scale <- "link"
-      if (scale != "link") cli::cli_abort("fixef rows require scale=link")
-      if (!kind %in% c("normal", "student_t", "ridge")) cli::cli_abort("unsupported fixef prior")
-      if (kind == "normal" && args[[2L]] <= 0) cli::cli_abort("normal prior scale must be positive")
+      if (scale != "link") .gllvmTMB_abort_prior_table("fixef rows require scale=link")
+      if (!kind %in% c("normal", "student_t", "ridge")) .gllvmTMB_abort_prior_table("unsupported fixef prior")
+      if (kind == "normal" && args[[2L]] <= 0) .gllvmTMB_abort_prior_table("normal prior scale must be positive")
       if (kind == "student_t" && (args[[2L]] <= 0 || args[[3L]] <= 0)) {
-        cli::cli_abort("Student-t scale and df must be positive")
+        .gllvmTMB_abort_prior_table("Student-t scale and df must be positive")
       }
-      if (kind == "ridge" && args[[1L]] < 0) cli::cli_abort("ridge lambda must be nonnegative")
+      if (kind == "ridge" && args[[1L]] < 0) .gllvmTMB_abort_prior_table("ridge lambda must be nonnegative")
     } else if (cls == "loading") {
-      if (!dpar %in% "mu") cli::cli_abort("GLLVM loading prior table supports dpar=mu only")
+      if (!dpar %in% "mu") .gllvmTMB_abort_prior_table("GLLVM loading prior table supports dpar=mu only")
       if (kind != "ridge" || coef != "all") {
-        cli::cli_abort("loading rows require ridge(lambda) and coef=all")
+        .gllvmTMB_abort_prior_table("loading rows require ridge(lambda) and coef=all")
       }
-      if (scale != "loading_coef") cli::cli_abort("loading rows require scale=loading_coef")
-      if (args[[1L]] < 0) cli::cli_abort("ridge lambda must be nonnegative")
+      if (scale != "loading_coef") .gllvmTMB_abort_prior_table("loading rows require scale=loading_coef")
+      if (args[[1L]] < 0) .gllvmTMB_abort_prior_table("ridge lambda must be nonnegative")
     } else if (cls == "residual_sd") {
-      if (kind != "gamma") cli::cli_abort("residual_sd rows require gamma(mean, shape)")
-      if (dpar != "sigma") cli::cli_abort("residual_sd rows require dpar=sigma")
-      if (coef != "(Intercept)") cli::cli_abort("residual_sd rows require coef=(Intercept)")
-      if (scale != "natural_sd") cli::cli_abort("residual_sd rows require scale=natural_sd")
+      if (kind != "gamma") .gllvmTMB_abort_prior_table("residual_sd rows require gamma(mean, shape)")
+      if (dpar != "sigma") .gllvmTMB_abort_prior_table("residual_sd rows require dpar=sigma")
+      if (coef != "(Intercept)") .gllvmTMB_abort_prior_table("residual_sd rows require coef=(Intercept)")
+      if (scale != "natural_sd") .gllvmTMB_abort_prior_table("residual_sd rows require scale=natural_sd")
       if (args[[1L]] <= 0 || args[[2L]] <= 1) {
-        cli::cli_abort("Gamma residual-SD mean must be positive and shape must exceed one")
+        .gllvmTMB_abort_prior_table("Gamma residual-SD mean must be positive and shape must exceed one")
       }
       rate <- args[[2L]] / args[[1L]]
       if (!is.finite(rate) || rate <= 0) {
-        cli::cli_abort("Gamma residual-SD parameters must imply a finite positive rate")
+        .gllvmTMB_abort_prior_table("Gamma residual-SD parameters must imply a finite positive rate")
       }
       if (nzchar(trait) || nzchar(kernel)) {
-        cli::cli_abort("trait and kernel selectors are only supported for unique_variance rows")
+        .gllvmTMB_abort_prior_table("trait and kernel selectors are only supported for unique_variance rows")
       }
     } else if (cls == "unique_variance") {
       if (kind != "gamma") {
-        cli::cli_abort("unique_variance rows require a Gamma prior on the natural SD")
+        .gllvmTMB_abort_prior_table("unique_variance rows require a Gamma prior on the natural SD")
       }
       if (nzchar(dpar) || nzchar(coef)) {
-        cli::cli_abort("unique_variance rows do not use dpar or coef selectors")
+        .gllvmTMB_abort_prior_table("unique_variance rows do not use dpar or coef selectors")
       }
       if (!nzchar(trait)) {
-        cli::cli_abort("unique_variance rows require a nonempty trait selector")
+        .gllvmTMB_abort_prior_table("unique_variance rows require a nonempty trait selector")
       }
       if (scale != "natural_sd") {
-        cli::cli_abort("unique_variance rows require scale=natural_sd")
+        .gllvmTMB_abort_prior_table("unique_variance rows require scale=natural_sd")
       }
       if (args[[1L]] <= 0 || args[[2L]] <= 1) {
-        cli::cli_abort("unique-variance Gamma mean must be positive and shape must exceed one")
+        .gllvmTMB_abort_prior_table("unique-variance Gamma mean must be positive and shape must exceed one")
       }
       rate <- args[[2L]] / args[[1L]]
       if (!is.finite(rate) || rate <= 0) {
-        cli::cli_abort("unique-variance Gamma parameters must imply a finite positive rate")
+        .gllvmTMB_abort_prior_table("unique-variance Gamma parameters must imply a finite positive rate")
       }
     } else {
-      cli::cli_abort("unsupported prior class")
+      .gllvmTMB_abort_prior_table("unsupported prior class")
     }
     list(prior = x$prior[[i]], class = cls, kind = kind, coef = coef,
          dpar = dpar, scale = scale, args = args, trait = trait,
@@ -113,12 +118,12 @@
   })
   fixed <- Filter(function(row) row$class == "fixef", rows)
   if (anyDuplicated(vapply(fixed, `[[`, character(1), "coef"))) {
-    cli::cli_abort("duplicate fixed-effect prior target")
+    .gllvmTMB_abort_prior_table("duplicate fixed-effect prior target")
   }
   loading <- Filter(function(row) row$class == "loading", rows)
-  if (length(loading) > 1L) cli::cli_abort("duplicate loading prior target")
+  if (length(loading) > 1L) .gllvmTMB_abort_prior_table("duplicate loading prior target")
   residual_sd <- Filter(function(row) row$class == "residual_sd", rows)
-  if (length(residual_sd) > 1L) cli::cli_abort("duplicate residual-SD prior target")
+  if (length(residual_sd) > 1L) .gllvmTMB_abort_prior_table("duplicate residual-SD prior target")
   unique_variance <- Filter(function(row) row$class == "unique_variance", rows)
   unique_keys <- vapply(unique_variance, function(row) {
     paste(row$kernel, row$trait, sep = "\r")
@@ -126,7 +131,7 @@
   if (anyDuplicated(unique_keys) ||
       (any(!nzchar(vapply(unique_variance, `[[`, character(1), "kernel"))) &&
        anyDuplicated(vapply(unique_variance, `[[`, character(1), "trait")))) {
-    cli::cli_abort("duplicate unique-variance prior target")
+    .gllvmTMB_abort_prior_table("duplicate unique-variance prior target")
   }
   rows
 }
@@ -136,7 +141,7 @@
   if (is.null(table)) return(control)
   if (!is.null(control$prior_table_resolved)) {
     if (identical(control$prior_table_adapted_from, table)) return(control)
-    cli::cli_abort("prior table changed after its controls were resolved")
+    .gllvmTMB_abort_prior_table("prior table changed after its controls were resolved")
   }
   rows <- .gllvmTMB_parse_prior_table(table)
   if (!length(rows)) {
@@ -150,11 +155,11 @@
   residual_sd <- Filter(function(row) row$class == "residual_sd", rows)
   unique_variance <- Filter(function(row) row$class == "unique_variance", rows)
   if (length(fixed) && !is.null(control$fixed_effect_priors)) {
-    cli::cli_abort("prior table and fixed_effect_priors cannot both supply fixed-effect targets")
+    .gllvmTMB_abort_prior_table("prior table and fixed_effect_priors cannot both supply fixed-effect targets")
   }
   if (length(loading) && (isTRUE(control$loading_ridge_explicit) ||
                           isTRUE(control$aghq_ridge_explicit))) {
-    cli::cli_abort("prior table and legacy loading ridge cannot both supply loading targets")
+    .gllvmTMB_abort_prior_table("prior table and legacy loading ridge cannot both supply loading targets")
   }
   if (length(fixed)) {
     control$fixed_effect_priors <- data.frame(
@@ -192,7 +197,7 @@
   }
   if (length(unique_variance)) {
     if (!is.null(control$kernel_psi_sd_prior)) {
-      cli::cli_abort("prior table and kernel_psi_sd_prior cannot both supply unique-variance targets")
+      .gllvmTMB_abort_prior_table("prior table and kernel_psi_sd_prior cannot both supply unique-variance targets")
     }
     control$kernel_psi_sd_prior <- data.frame(
       kernel = vapply(unique_variance, `[[`, character(1), "kernel"),
@@ -256,13 +261,13 @@
   if (is.null(prior)) return(obj)
   idx <- which(names(obj$par) == "log_sigma_eps")
   if (length(idx) != 1L) {
-    cli::cli_abort(
+    .gllvmTMB_abort_prior_table(
       "The prior-table residual-SD target requires exactly one free intercept-only Gaussian sigma parameter.",
       class = "gllvmTMB_prior_table_residual_sd_route_unsupported"
     )
   }
   if (!is.null(obj$residual_sd_prior)) {
-    cli::cli_abort("This objective already has a residual-SD prior attached.")
+    .gllvmTMB_abort_prior_table("This objective already has a residual-SD prior attached.")
   }
   shape <- prior$shape
   rate <- prior$rate

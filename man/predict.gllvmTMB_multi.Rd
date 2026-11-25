@@ -61,7 +61,9 @@ random effects are being re-added, \code{predict()} stops and asks for
 that column or for \code{re_form = ~0}. A missing species column is not
 an unseen level: if \code{newdata} omits the fitted species column while
 phylogenetic random effects are being re-added, \code{predict()} stops and
-asks for that column or for \code{re_form = ~0}.
+asks for that column or for \code{re_form = ~0}. The same rule applies to
+the fitted \code{cluster2} column when \code{diag_cluster2} would be re-added
+(#1788).
 
 For AGHQ fits, conditional predictions use the latent modes at the
 fitted parameters. They are not averages over latent-score uncertainty.

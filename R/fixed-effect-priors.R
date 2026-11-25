@@ -152,15 +152,24 @@ fixed_effect_priors <- function(link, intercepts = character(), slopes = charact
   if ("distribution" %in% names(priors)) {
     if (!is.character(priors$distribution) || anyNA(priors$distribution) ||
         any(!priors$distribution %in% c("normal", "student_t", "ridge"))) {
-      cli::cli_abort("Coefficient prior distribution must be normal, student_t, or ridge.")
+      cli::cli_abort(c(
+        "Coefficient prior distribution must be normal, student_t, or ridge.",
+        ">" = "Use one of {.code normal}, {.code student_t}, or {.code ridge} for each coefficient."
+      ))
     }
     if (!is.numeric(priors$df) || length(priors$df) != nrow(priors) ||
         any(priors$distribution == "student_t" & (!is.finite(priors$df) | priors$df <= 0)) ||
         any(priors$distribution != "student_t" & !is.na(priors$df))) {
-      cli::cli_abort("Student-t rows require positive finite df; other coefficient priors require missing df.")
+      cli::cli_abort(c(
+        "Student-t rows require positive finite df; other coefficient priors require missing df.",
+        ">" = "Set {.field df} to a positive finite number for {.code student_t}, and leave it missing otherwise."
+      ))
     }
     if (any(priors$distribution == "ridge" & priors$mean != 0)) {
-      cli::cli_abort("Coefficient ridge rows are zero-centered penalties.")
+      cli::cli_abort(c(
+        "Coefficient ridge rows are zero-centered penalties.",
+        ">" = "Use {.code normal} or {.code student_t} when a nonzero prior mean is required."
+      ))
     }
   }
   priors$index <- match(priors$coefficient, coefficient_names)

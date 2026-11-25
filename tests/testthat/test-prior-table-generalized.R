@@ -54,6 +54,8 @@ test_that("GLLVM prior table rejects unsupported and overlapping requests", {
                "unsupported")
   expect_error(.gllvmTMB_parse_prior_table(transform(base, dpar = "sigma")),
                "dpar")
+  expect_error(.gllvmTMB_parse_prior_table(transform(base, dpar = "sigma")),
+               "Check the prior-table documentation")
   expect_error(.gllvmTMB_parse_prior_table(transform(base, group = "unit")),
                "group, block, or resp")
   expect_error(.gllvmTMB_parse_prior_table(transform(base, prior = "normal(0,0)")),

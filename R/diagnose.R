@@ -257,8 +257,14 @@
   ## genuine fit takes <= 2 iterations to an absurd or non-finite objective,
   ## so flag it and refuse to call it converged. Healthy fits are untouched.
   n_iter <- suppressWarnings(as.numeric(object$opt$iterations %||% NA_real_))
+  optimizer_objective <- object$opt$objective %||% obj_val
   premature_termination <- length(n_iter) == 1L && is.finite(n_iter) &&
-    n_iter <= 2 && (!is.finite(obj_val) || abs(obj_val) > 1e12)
+    n_iter <= 2 && (
+      length(optimizer_objective) != 1L ||
+        !is.numeric(optimizer_objective) ||
+        !is.finite(optimizer_objective) ||
+        abs(optimizer_objective) > 1e12
+    )
   ## Converged rule (18 Nov 2026): `converged` is TRUE only for an interior
   ## optimum with usable standard errors; see `convergence_status` below.
   relative_gradient <- .gllvmTMB_relative_gradient(

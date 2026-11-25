@@ -63,8 +63,10 @@
     priors$kernel[missing_kernel] <- kernel_names[[1L]]
   }
   if (anyDuplicated(paste(priors$kernel, priors$trait, sep = "\r"))) {
-    cli::cli_abort("Kernel Psi prior targets must be distinct after resolving omitted single-kernel selectors.",
-                   class = "gllvmTMB_kernel_psi_prior_invalid")
+    cli::cli_abort(c(
+      "Kernel Psi prior targets must be distinct after resolving omitted single-kernel selectors.",
+      ">" = "Remove duplicate kernel/trait rows or change the target names."
+    ), class = "gllvmTMB_kernel_psi_prior_invalid")
   }
   kernel_index <- match(priors$kernel, kernel_names)
   trait_index <- match(priors$trait, trait_names)

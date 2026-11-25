@@ -2080,6 +2080,14 @@ simulate.gllvmTMB_multi <- function(
   lids <- fit$tmb_data$link_id_vec
   tids <- fit$tmb_data$trait_id # 0-indexed in TMB
   n <- length(eta)
+  n_trials <- fit$tmb_data$n_trials # checked for length before draw (#1865)
+  if (!is.null(n_trials) && length(n_trials) != n) {
+    cli::cli_abort(c(
+      "The stored per-row trial-count vector length does not match the model rows.",
+      "i" = "Expected length {.val {n}}; got {.val {length(n_trials)}}.",
+      ">" = "Re-fit with a trial count for every row before calling {.fn simulate}."
+    ), class = "gllvmTMB_simulate_n_trials_length")
+  }
   y <- numeric(n)
 
   ## Pure fits retain one scalar. Joint Gaussian-lognormal fits carry a raw-
@@ -2097,7 +2105,6 @@ simulate.gllvmTMB_multi <- function(
   sigma_lognormal_delta <- fit$report$sigma_lognormal_delta # length n_traits
   phi_gamma_delta <- fit$report$phi_gamma_delta # length n_traits
   zi <- fit$report$zi # length n_traits (fid 17/18/19, Arc D)
-  n_trials <- fit$tmb_data$n_trials # length n; default 1 (Bernoulli) when not multi-trial
   cens_limit <- fit$tmb_data$cens_limit # length n; 0 = uncensored (fid 21, Arc E #1244; renumbered from 20)
 
   ## ordinal_probit (fid 14) cutpoint reconstruction -- the SAME convention

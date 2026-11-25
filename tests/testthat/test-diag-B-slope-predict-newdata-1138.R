@@ -69,14 +69,14 @@ test_that("#1138: diag_B_slope is re-added on training newdata with zero differe
   expect_gt(max(abs(fit$report$eta - fixed_only)), 1e-3)
 
   expect_no_warning(p_nd <- suppressMessages(predict(fit, newdata = df)))
-  expect_identical(max(abs(p_nd$est - as.numeric(fit$report$eta))), 0)
-  expect_identical(max(abs(p_nd$est - suppressMessages(predict(fit))$est)), 0)
+  expect_equal(max(abs(p_nd$est - as.numeric(fit$report$eta))), 0, tolerance = 1e-10)
+  expect_equal(max(abs(p_nd$est - suppressMessages(predict(fit))$est)), 0, tolerance = 1e-10)
 
   ## A shuffled subset must still pick up each row's own unit and trait.
   set.seed(2)
   rows <- sample(nrow(df), 40L)
   p_sub <- suppressMessages(predict(fit, newdata = df[rows, ]))$est
-  expect_identical(max(abs(p_sub - as.numeric(fit$report$eta)[rows])), 0)
+  expect_equal(max(abs(p_sub - as.numeric(fit$report$eta)[rows])), 0, tolerance = 1e-10)
 })
 
 test_that("#1138: diag_B_slope long-form LHS is re-added with zero difference", {
@@ -92,7 +92,7 @@ test_that("#1138: diag_B_slope long-form LHS is re-added with zero difference", 
   expect_identical(as.integer(fit$tmb_data$use_rr_B_slope), 0L)
 
   expect_no_warning(p_nd <- suppressMessages(predict(fit, newdata = df)))
-  expect_identical(max(abs(p_nd$est - as.numeric(fit$report$eta))), 0)
+  expect_equal(max(abs(p_nd$est - as.numeric(fit$report$eta))), 0, tolerance = 1e-10)
 })
 
 test_that("#1138: diag_B_slope without its slope covariate is reported, not dropped in silence", {

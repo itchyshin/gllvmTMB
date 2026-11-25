@@ -310,7 +310,17 @@
   ans <- matrix(0,td$n_species,td$n_traits)
   if (isTRUE(fit$use$phylo_rr) && "phylo_rr" %in% tiers) {
     scores <- .structured_rho_scores(fit,td$d_phy,redraw=redraw)
-    ans <- ans + scores %*% t(fit$report$Lambda_phy)
+    # One factor at a time, in the template's order
+    # (src/gllvmTMB.cpp: contrib += Lambda_phy(t, k) * score). A BLAS matrix
+    # product may fuse or reorder the sum over factors, which moves the last
+    # bit for d_phy > 1 and breaks predict(newdata = training rows) ==
+    # report$eta (#1138).
+    Lambda <- fit$report$Lambda_phy
+    shared <- matrix(0,nrow(scores),nrow(Lambda))
+    for (k in seq_len(ncol(Lambda))) {
+      shared <- shared + scores[,k] * rep(Lambda[,k],each=nrow(scores))
+    }
+    ans <- ans + shared
   }
   if (isTRUE(fit$use$phylo_diag) && "phylo_diag" %in% tiers) {
     scores <- .structured_rho_scores(fit,td$n_traits,"g_phy_diag","g_phy_diag_iid",redraw)

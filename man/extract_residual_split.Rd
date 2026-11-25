@@ -28,7 +28,8 @@ observation-level diagonal term, else 0.}
 For an additive overdispersion (OLRE) model
 \deqn{\eta_{it} = \mathbf{X}\boldsymbol\beta + \ldots + e_{it},
        \quad e_{it} \sim N(0, \sigma^2_e),}
-the total latent-scale residual variance for trait \eqn{t} is
+the total residual variance for trait \eqn{t} on the \strong{liability scale}
+(when \eqn{\sigma^2_d > 0}) is
 \deqn{\sigma^2_{d,t} + \sigma^2_{e,t},}
 where \eqn{\sigma^2_d} is the \strong{distribution-specific (theoretical)}
 component that depends only on the family/link, and \eqn{\sigma^2_e}
@@ -45,7 +46,8 @@ When every (trait, obs) cell has one row per observation level per trait,
 Nakagawa & Schielzeth (2010) use \eqn{\sigma^2_d} for both components.
 Nakagawa, Johnson & Schielzeth (2017) §7 refine the terminology:
 \eqn{\sigma^2_d} (distribution-specific) applies only to binomial-type
-families whose link function introduces a fixed latent-scale variance;
+families whose link function introduces a fixed \strong{liability-scale} link
+variance (e.g. \eqn{\pi^2/3} for logit, 1 for probit);
 \eqn{\sigma^2_\varepsilon} (observation-level) applies to
 overdispersed Poisson / NB / Gamma and is estimated from the data.
 \strong{gllvmTMB} keeps the colloquial \code{sigma2_d} column name for

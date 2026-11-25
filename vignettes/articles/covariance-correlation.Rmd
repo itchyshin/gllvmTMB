@@ -518,7 +518,7 @@ is its scientific question.
 ## Binomial responses: the link's implicit residual
 
 Binary outcomes (`family = binomial()`) are a special case. The
-link function fixes a latent-scale residual variance: $\pi^2/3$
+link function fixes a **liability-scale** link variance: $\pi^2/3$
 for `logit`, $1$ for `probit`, $\pi^2/6$ for `cloglog`. This fixed family/link
 residual is distinct from an estimated between-unit $\boldsymbol\Psi$ or an
 observation-level random effect. Whether an additional diagonal component is
@@ -527,8 +527,9 @@ evidence; this article does not establish that question.
 
 `extract_Sigma()` has a `link_residual = "auto"` option that adds
 the link-specific implicit residual to
-$\mathrm{diag}(\boldsymbol\Sigma)$ for the marginal latent-scale
-interpretation:
+$\mathrm{diag}(\boldsymbol\Sigma)$ for the marginal **liability-scale**
+interpretation (de Villemereuil et al. 2016, Eq. 24); `link_residual = "none"`
+returns the fitted **latent-scale** covariance without that addition (Eq. 4):
 
 ```{r binomial-demo, eval = FALSE}
 # Illustrative only; not run because this example needs a binary fit.
@@ -612,7 +613,7 @@ Nakagawa, Johnson & Schielzeth 2017).
 | You want… | You need | Notes |
 |---|---|---|
 | Cross-trait correlations on a Gaussian / lognormal / Gamma fit | `latent()` at levels where shared cross-trait structure is intended; `indep()` for diagonal levels | `latent(..., unique = FALSE)` omits Psi and can inflate correlations. |
-| Correlations on a binary fit | Choose `latent()` for shared cross-trait structure or `indep()` for a diagonal tier; use `link_residual = "auto"` for the marginal latent scale | Implicit residual depends on link (π²/3, 1, π²/6); additional variance components need an estimand and evidence. |
+| Correlations on a binary fit | Choose `latent()` for shared cross-trait structure or `indep()` for a diagonal tier; use `link_residual = "auto"` for the marginal liability scale, or `"none"` for the latent scale | Implicit residual depends on link (π²/3, 1, π²/6); additional variance components need an estimand and evidence. |
 | Phylogenetic decomposition | folded `phylo_latent(..., unique = TRUE)` for the phylogenetic tier; ordinary `latent()` for the non-phylogenetic species tier | $\Omega = \Sigma_\text{phy} + \Sigma_\text{non}$, with each $\Sigma$ using shared + `Psi` pieces. |
 | Communality | `extract_communality(fit)` + the right Psi-aware pattern | Communality formula uses Σ; needs full Σ to be meaningful. |
 | `Lambda Lambda^T` only | `extract_Sigma(fit, part = "shared")` | Useful for ordination. |

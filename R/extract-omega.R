@@ -11,7 +11,8 @@
 #' For an additive overdispersion (OLRE) model
 #' \deqn{\eta_{it} = \mathbf{X}\boldsymbol\beta + \ldots + e_{it},
 #'        \quad e_{it} \sim N(0, \sigma^2_e),}
-#' the total latent-scale residual variance for trait \eqn{t} is
+#' the total residual variance for trait \eqn{t} on the **liability scale**
+#' (when \eqn{\sigma^2_d > 0}) is
 #' \deqn{\sigma^2_{d,t} + \sigma^2_{e,t},}
 #' where \eqn{\sigma^2_d} is the **distribution-specific (theoretical)**
 #' component that depends only on the family/link, and \eqn{\sigma^2_e}
@@ -28,7 +29,8 @@
 #' Nakagawa & Schielzeth (2010) use \eqn{\sigma^2_d} for both components.
 #' Nakagawa, Johnson & Schielzeth (2017) §7 refine the terminology:
 #' \eqn{\sigma^2_d} (distribution-specific) applies only to binomial-type
-#' families whose link function introduces a fixed latent-scale variance;
+#' families whose link function introduces a fixed **liability-scale** link
+#' variance (e.g. \eqn{\pi^2/3} for logit, 1 for probit);
 #' \eqn{\sigma^2_\varepsilon} (observation-level) applies to
 #' overdispersed Poisson / NB / Gamma and is estimated from the data.
 #' **gllvmTMB** keeps the colloquial `sigma2_d` column name for
@@ -107,9 +109,9 @@
 #'   unit_obs = "site_species",
 #'   family   = poisson()
 #' )
-#' ## Per trait: sigma2_d is the variance the Poisson distribution itself
-#' ## implies on the latent scale (from the link), sigma2_e is the
-#' ## estimated OLRE variance, and sigma2_total is their sum
+#' ## Per trait: sigma2_d is the link-implicit variance added on the
+#' ## liability scale for non-Gaussian families, sigma2_e is the estimated
+#' ## OLRE variance, and sigma2_total is their sum
 #' extract_residual_split(fit)
 extract_residual_split <- function(fit) {
   if (!inherits(fit, "gllvmTMB_multi")) {

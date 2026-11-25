@@ -8,7 +8,10 @@ This audit captures the design rationale for the **per-trait
 link-residual variance** as implemented in
 `link_residual_per_trait()` (`R/extract-sigma.R:99`). The
 function returns the per-trait scalar added to the diagonal of
-the latent-scale Σ when `link_residual = "auto"`. Current values:
+Σ on the **liability scale** (de Villemereuil, Schielzeth, Nakagawa
+& Morrissey 2016, Eq. 24) when `link_residual = "auto"`; the
+fitted covariance without that addition is the **latent scale**
+(Eq. 4). Current values:
 
 | Family | Link residual $\sigma^2_d$ |
 |---|---|
@@ -35,8 +38,10 @@ recommendation.
 
 ## §1 — Background: two candidate residual variances for binomial
 
-The 2017 paper distinguishes two latent-scale residual
-variances for binomial-logit GLMMs:
+The 2017 paper distinguishes two residual variances on the
+logit link scale for binomial-logit GLMMs (gllvmTMB's **liability-scale**
+$\sigma^2_d$ follows the distribution-specific constant below, not the
+observation-level plug-in):
 
 1. **Distribution-specific** $\sigma^2_d = \pi^2/3$ — the
    variance of the logistic distribution underlying the logit
@@ -169,9 +174,9 @@ as the binomial default in `link_residual_per_trait()`.
 - **M1.6 `extract_repeatability` formula fix** (this PR): the
   fix is `vW = sd_W^2 + link_residual_per_trait(fit)`. For
   binomial traits this adds $\pi^2/3$ to the W-tier variance,
-  which is the **correct latent-scale repeatability denominator**
-  per Nakagawa & Schielzeth (2010) and consistent with the design
-  in §2. **The fix does not rely on $1/(np(1-p))$ at any point**
+  which is the **correct liability-scale repeatability denominator**
+  (de Villemereuil et al. 2016, Eq. 24) and consistent with the
+  design in §2. **The fix does not rely on $1/(np(1-p))$ at any point**
   — Roberto's Jensen-bias finding does not affect us.
 - **M1.3 / M1.4 extractor validations** (PR #153, merged): same
   argument. Both extractors use `link_residual_per_trait()` for

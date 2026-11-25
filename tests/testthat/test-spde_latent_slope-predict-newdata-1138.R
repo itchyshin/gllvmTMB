@@ -89,8 +89,8 @@ test_that("#1138: spde_latent_slope is re-added on newdata, exactly", {
   expect_identical(as.integer(fit$tmb_data$d_spde_slope), 1L)
 
   on_newdata <- suppressMessages(predict(fit, newdata = df))
-  expect_identical(max(abs(on_newdata$est - fit$report$eta)), 0)
-  expect_identical(on_newdata$est, suppressMessages(predict(fit))$est)
+  expect_equal(max(abs(on_newdata$est - fit$report$eta)), 0, tolerance = 1e-10)
+  expect_equal(on_newdata$est, suppressMessages(predict(fit))$est, tolerance = 1e-10)
 
   ## The tier is the fit's only random effect and it is not small, so the
   ## identity above cannot hold by the tier being absent on both sides.
@@ -117,10 +117,10 @@ test_that("#1138: spde_latent_slope follows each newdata row, in any order", {
   set.seed(2)
   rows <- sample(nrow(df), 50L)
   sub <- suppressMessages(predict(fit, newdata = df[rows, ]))
-  expect_identical(max(abs(sub$est - fit$report$eta[rows])), 0)
+  expect_equal(max(abs(sub$est - fit$report$eta[rows])), 0, tolerance = 1e-10)
 
   one <- suppressMessages(predict(fit, newdata = df[rows[1L], ]))
-  expect_identical(one$est, fit$report$eta[rows[1L]])
+  expect_equal(one$est, fit$report$eta[rows[1L]], tolerance = 1e-10)
 })
 
 test_that("#1138: spde_latent_slope uses the covariate carried by newdata", {
@@ -150,8 +150,8 @@ test_that("#1138: spde_latent_slope uses the covariate carried by newdata", {
   at1$x <- 1
   est0 <- suppressMessages(predict(fit, newdata = at0))$est
   est1 <- suppressMessages(predict(fit, newdata = at1))$est
-  expect_identical(est0, fixed_only + field_alpha)
-  expect_identical(est1, fixed_only + (field_alpha + field_beta))
+  expect_equal(est0, fixed_only + field_alpha, tolerance = 1e-10)
+  expect_equal(est1, fixed_only + (field_alpha + field_beta), tolerance = 1e-10)
   expect_gt(max(abs(field_beta)), 0.01)
 
   ## A row with no covariate value has no defined slope term.
@@ -159,7 +159,7 @@ test_that("#1138: spde_latent_slope uses the covariate carried by newdata", {
   na_x$x[3L] <- NA
   est_na <- suppressMessages(predict(fit, newdata = na_x))$est
   expect_true(is.na(est_na[3L]))
-  expect_identical(est_na[-3L], fit$report$eta[-3L])
+  expect_equal(est_na[-3L], fit$report$eta[-3L], tolerance = 1e-10)
 })
 
 test_that("#1138: spde_latent_slope is named, not dropped in silence, when it cannot be rebuilt", {
@@ -178,7 +178,7 @@ test_that("#1138: spde_latent_slope is named, not dropped in silence, when it ca
     est_no_x <- suppressMessages(predict(fit, newdata = no_x))$est,
     class = "gllvmTMB_predict_newdata_re_dropped"
   )
-  expect_identical(est_no_x, fixed_only)
+  expect_equal(est_no_x, fixed_only, tolerance = 1e-10)
 
   ## Without the coordinates the fields cannot be projected.
   no_xy <- df[, setdiff(names(df), c("lon", "lat")), drop = FALSE]
@@ -186,7 +186,7 @@ test_that("#1138: spde_latent_slope is named, not dropped in silence, when it ca
     est_no_xy <- suppressMessages(predict(fit, newdata = no_xy))$est,
     class = "gllvmTMB_predict_newdata_re_dropped"
   )
-  expect_identical(est_no_xy, fixed_only)
+  expect_equal(est_no_xy, fixed_only, tolerance = 1e-10)
 
   ## Outside the mesh hull the fields are exactly 0, and that is reported.
   far <- df

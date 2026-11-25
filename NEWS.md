@@ -1,5 +1,7 @@
 # gllvmTMB 0.8.0
 
+* `known_sigma_eps = 0` is now admitted for a narrowly defined native TMB Gaussian model with exactly two named `kernel_latent(..., unique = TRUE)` tiers, one observation per unit-trait cell, trait-specific intercepts, unit weights, and unpenalized ML with Laplace integration. The likelihood uses the supplied kernels without a diagonal floor and omits the observation-error covariance exactly. One-kernel, Julia, non-Gaussian, predictor, offset, prior, penalty, and non-unit-weight variants remain unsupported. Initial fixed-seed fits show substantial component-recovery error, so this route is experimental; interval calibration and broad recovery are not established.
+
 * `.eva_load_dll(rebuild = TRUE)` reuses an already-loaded EVA prototype DLL instead of unloading it while a live `MakeADFun` object still holds external pointers. Unloading had removed those pointers and could segfault the next evaluation (refs #1815).
 
 * `kernel_indep(K = K, unit = g)` (and the same named-`unit` order for `kernel_dep()`, `kernel_latent()`, `kernel_unique()`, and `kernel_scalar()`) now groups by `g` when `cluster` is omitted. The grouping used to be taken from the first argument by position, so this call treated `K` as the grouping column and stopped with a message about `K` rather than `g`. `kernel_indep(unit, K = K)` is unchanged, and an explicit `cluster` is unchanged (refs #1805).

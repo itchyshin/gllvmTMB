@@ -1,8 +1,7 @@
 ## #1138: `predict(newdata = )` re-adds the per-trait phylogenetic tier
 ## (`phylo_diag`, the folded Psi of `phylo_latent(..., unique = TRUE)`). The
 ## acceptance criterion is the issue's own: on the training rows the rebuilt
-## linear predictor matches `report$eta` within floating-point noise
-## (max|diff| below 1e-10).
+## linear predictor equals `report$eta` with max|diff| == 0.
 ##
 ## Conventions pinned here (src/gllvmTMB.cpp):
 ##   PARAMETER_MATRIX(g_phy_diag)  -- n_aug_phy x n_traits
@@ -101,7 +100,7 @@
   )))
 }
 
-test_that("#1138: phylo_diag is re-added on newdata, exactly", {
+test_that("#1138: training rows match report$eta exactly (no tiers= API)", {
   fx <- .phylo_diag_1138_fixture()
   dat <- fx$data
   tree <- fx$tree
@@ -122,20 +121,31 @@ test_that("#1138: phylo_diag is re-added on newdata, exactly", {
     expect_identical(as.integer(fit$tmb_data$use_phylo_rr), 1L, info = label)
 
     eta <- as.numeric(fit$report$eta)
-    ## The per-trait tier has to be doing something, or the identity below
-    ## says nothing about it: the block on its own is far from zero.
-    per_trait <- gllvmTMB:::.structured_rho_contribution(fit, tiers = "phylo_diag")
-    expect_identical(dim(per_trait), c(7L, 4L), info = label)
-    expect_gt(max(abs(per_trait)), 1e-3, label = label)
+    fixed_only <- predict(fit, newdata = dat, re_form = ~0)$est
+    ## Phylogenetic tiers have to be doing something, or the identity below
+    ## is vacuous.
+    expect_gt(max(abs(eta - fixed_only)), 1e-3, label = label)
 
     on_newdata <- suppressMessages(predict(fit, newdata = dat))$est
-    expect_equal(max(abs(on_newdata - eta)), 0, tolerance = 1e-10, info = label)
+    expect_identical(max(abs(on_newdata - eta)), 0, info = label)
 
     ## Both phylogenetic tiers are named as re-added, and nothing is reported
     ## as omitted.
     expect_message(predict(fit, newdata = dat), "phylo_diag", fixed = TRUE)
     expect_no_warning(suppressMessages(predict(fit, newdata = dat)))
   }
+})
+
+test_that("#1138: phylo_diag contribution block is nontrivial", {
+  fx <- .phylo_diag_1138_fixture()
+  tree <- fx$tree
+  fit <- .phylo_diag_1138_fit(
+    value ~ 0 + trait + phylo_latent(species, d = 1, tree = tree, unique = TRUE),
+    fx$data
+  )
+  per_trait <- gllvmTMB:::.structured_rho_contribution(fit, tiers = "phylo_diag")
+  expect_identical(dim(per_trait), c(7L, 4L))
+  expect_gt(max(abs(per_trait)), 1e-3)
 })
 
 test_that("#1138: phylo_diag follows the row's species and trait, not its position", {
@@ -151,7 +161,7 @@ test_that("#1138: phylo_diag follows the row's species and trait, not its positi
   ## A subset in a scrambled row order must still pick up the right cell.
   rows <- c(71L, 3L, 44L, 18L, 80L, 9L, 57L, 26L, 62L, 35L, 1L, 84L, 50L)
   on_subset <- suppressMessages(predict(fit, newdata = dat[rows, ]))$est
-  expect_equal(max(abs(on_subset - eta[rows])), 0, tolerance = 1e-10)
+  expect_identical(max(abs(on_subset - eta[rows])), 0)
 
   ## A species the fit never saw gets the fixed-effects-only value in its own
   ## row, and leaves every other row exactly as it was.
@@ -160,8 +170,8 @@ test_that("#1138: phylo_diag follows the row's species and trait, not its positi
   nd$species[2L] <- "sp_unseen"
   with_unseen <- suppressMessages(predict(fit, newdata = nd))$est
   fixed_only <- predict(fit, newdata = nd, re_form = ~0)$est
-  expect_equal(with_unseen[2L], fixed_only[2L], tolerance = 1e-10)
-  expect_equal(max(abs(with_unseen[-2L] - eta[rows][-2L])), 0, tolerance = 1e-10)
+  expect_identical(with_unseen[2L], fixed_only[2L])
+  expect_identical(max(abs(with_unseen[-2L] - eta[rows][-2L])), 0)
 })
 
 test_that("#1138: the two phylogenetic blocks still sum to the combined contribution", {
@@ -176,5 +186,5 @@ test_that("#1138: the two phylogenetic blocks still sum to the combined contribu
   both <- gllvmTMB:::.structured_rho_contribution(fit)
   shared <- gllvmTMB:::.structured_rho_contribution(fit, tiers = "phylo_rr")
   per_trait <- gllvmTMB:::.structured_rho_contribution(fit, tiers = "phylo_diag")
-  expect_equal(both, shared + per_trait, tolerance = 1e-10)
+  expect_identical(both, shared + per_trait)
 })

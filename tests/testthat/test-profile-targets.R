@@ -124,6 +124,17 @@ test_that("profile_targets() controlled vocabularies are respected (no internal 
   expect_equal(anyDuplicated(pt$parm), 0L)
 })
 
+test_that("packed loadings are not profile-ready without lambda_constraint (#1588)", {
+  skip_if_not_heavy()
+  skip_on_cran()
+  fit <- make_tiny_fit_for_pt()
+  pt <- gllvmTMB::profile_targets(fit)
+  lam <- pt[grepl("^Lambda_B_packed", pt$parm), , drop = FALSE]
+  expect_gt(nrow(lam), 0L)
+  expect_false(any(lam$profile_ready))
+  expect_identical(unique(lam$profile_note), "latent_rotation_ambiguous")
+})
+
 ## ---- input validation ----------------------------------------------------
 
 test_that("profile_targets() errors on non-fit input", {

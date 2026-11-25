@@ -318,21 +318,28 @@
 #'   matrices are available from a prior stage of estimation. Not supported by
 #'   `engine = "julia"`, which aborts (class `gllvmTMB_julia_unsupported_arg`).
 #' @param known_sigma_eps Optional known observation-error standard deviation.
-#'   Supply one finite positive number when the same error standard deviation
+#'   Supply one finite nonnegative number when the same error standard deviation
 #'   applies to every observation and all response traits are Gaussian. The
 #'   supplied value is fixed during fitting; its square is the observation-error
-#'   variance. This argument is supported only by the TMB engine. With `NULL`
-#'   (the default), the usual observation-error rules apply.
+#'   variance. Zero is admitted only for the exact marginal route with exactly
+#'   two named Gaussian `kernel_latent(..., unique = TRUE)` terms under
+#'   unpenalized ML, Laplace, unit weights, and trait-specific intercepts only.
+#'   Offsets and other covariance terms are excluded, apart from a separately
+#'   declared `meta_V()` sampling covariance. That route uses raw kernels and
+#'   requires at most one observed row per unit-trait cell. Other fits require
+#'   a positive value. This argument is supported only by the TMB engine. With
+#'   `NULL` (the default), the usual observation-error rules apply.
 #'
-#'   For two named `kernel_latent()` terms with `unique = TRUE`, supply
-#'   `known_sigma_eps` and use positive observation weights. The two kernels
+#'   For the exact route, supply `known_sigma_eps = 0` and use unit
+#'   observation weights (all equal to one). The two kernels
 #'   must have distinct covariance patterns among the observed species for
 #'   each trait, and every declared trait needs at least two observed rows.
 #'   A failure of this check stops the fit rather than dropping a
 #'   requested component. Passing the check does not guarantee that the two
-#'   components can be estimated precisely; recovery and uncertainty for this
-#'   model remain under investigation. Mixed-family models are not supported
-#'   with this argument.
+#'   components can be estimated precisely; initial known-truth fits show
+#'   substantial component error. Recovery remains incomplete and intervals
+#'   have not been calibrated. Mixed-family models are not supported with this
+#'   argument.
 #' @param lambda_constraint Optional list with elements `unit` and / or
 #'   `unit_obs` (plus `phy`, `spde` for structural levels), each an
 #'   `n_traits × d` matrix of confirmatory loading constraints
@@ -726,6 +733,49 @@
 #'   c(long = logLik(fit_long), wide = logLik(fit_wide))
 #' }
 #'
+#' # Exact zero observation error with two named dense kernels.
+#' # Here the simulated covariance is entirely represented by the two kernel
+#' # tiers, each with a shared loading and trait-specific Psi variances.
+#' set.seed(19)
+#' n_kernel <- 12L
+#' unit_id <- paste0("u", seq_len(n_kernel))
+#' K_phy <- 0.65 ^ abs(outer(seq_len(n_kernel), seq_len(n_kernel), "-"))
+#' K_tip <- diag(n_kernel)
+#' dimnames(K_phy) <- dimnames(K_tip) <- list(unit_id, unit_id)
+#' Sigma_phy <- tcrossprod(c(0.65, 0.35)) + diag(c(0.3, 0.25))
+#' Sigma_tip <- tcrossprod(c(0.4, -0.5)) + diag(c(0.2, 0.35))
+#' V <- kronecker(K_phy, Sigma_phy) + kronecker(K_tip, Sigma_tip)
+#' y_kernel <- matrix(drop(t(chol(V)) %*% rnorm(n_kernel * 2L)),
+#'                    nrow = n_kernel, ncol = 2L)
+#' colnames(y_kernel) <- c("trait_a", "trait_b")
+#' long_kernel <- data.frame(
+#'   unit = factor(rep(unit_id, each = 2L), levels = unit_id),
+#'   trait = rep(colnames(y_kernel), times = n_kernel),
+#'   value = as.vector(t(y_kernel))
+#' )
+#' wide_kernel <- data.frame(
+#'   unit = factor(unit_id, levels = unit_id), y_kernel, check.names = FALSE
+#' )
+#'
+#' fit_kernel_long <- gllvmTMB(
+#'   value ~ 0 + trait +
+#'     kernel_latent(unit, K = K_phy, d = 1, name = "phy", unique = TRUE) +
+#'     kernel_latent(unit, K = K_tip, d = 1, name = "tip", unique = TRUE),
+#'   data = long_kernel, trait = "trait", unit = "unit", cluster = "unit",
+#'   known_sigma_eps = 0,
+#'   control = gllvmTMBcontrol(n_init = 1, se = FALSE)
+#' )
+#' fit_kernel_wide <- gllvmTMB(
+#'   traits(trait_a, trait_b) ~ 1 +
+#'     kernel_latent(unit, K = K_phy, d = 1, name = "phy", unique = TRUE) +
+#'     kernel_latent(unit, K = K_tip, d = 1, name = "tip", unique = TRUE),
+#'   data = wide_kernel, unit = "unit", cluster = "unit",
+#'   known_sigma_eps = 0,
+#'   control = gllvmTMBcontrol(n_init = 1, se = FALSE)
+#' )
+#' c(long = logLik(fit_kernel_long), wide = logLik(fit_kernel_wide))
+#' # An exact-zero fit includes no additional observation-error covariance.
+#'
 #' # Trait means, between-individual correlations (trait_4 is negatively
 #' # correlated with the rest), and the share of each trait's
 #' # between-individual variance carried by the latent axis.
@@ -811,10 +861,10 @@ gllvmTMB <- function(
   engine <- match.arg(engine)
   if (!is.null(known_sigma_eps) &&
       (!is.numeric(known_sigma_eps) || length(known_sigma_eps) != 1L ||
-       !is.finite(known_sigma_eps) || known_sigma_eps <= 0)) {
+       !is.finite(known_sigma_eps) || known_sigma_eps < 0)) {
     cli::cli_abort(c(
-      "{.arg known_sigma_eps} must be one finite positive standard deviation.",
-      ">" = "Supply a single known SD greater than zero, or use {.code NULL} for the usual observation-error rules."
+      "{.arg known_sigma_eps} must be one finite nonnegative standard deviation.",
+      ">" = "Supply a known SD greater than zero, use zero only for the exact two-kernel Gaussian route, or use {.code NULL} for the usual observation-error rules."
     ))
   }
   if (!is.null(known_sigma_eps) && !identical(engine, "tmb")) {
@@ -1247,6 +1297,31 @@ gllvmTMB <- function(
           "{.fn {animal_groups$fn[[1L]]}} groups by {.field {group}}, which is not a column in {.arg data}.",
           ">" = "Rename the column or pass it as {.arg cluster}."
         ), class = "gllvmTMB_animal_grouping")
+      }
+      cluster <- group
+      species <- group
+    }
+  }
+
+  ## #1766: omitted `cluster` on phylo_* adopts the species column named in the
+  ## keyword (sibling of #1752 / #1765). Kernel and animal resolution run first.
+  if (!cluster_supplied && !species_alias_supplied && is.data.frame(data)) {
+    phylo_groups <- .gllvmTMB_phylo_bare_groups(formula)
+    if (nrow(phylo_groups) > 0L) {
+      groups <- unique(phylo_groups$group)
+      if (length(groups) > 1L) {
+        cli::cli_abort(c(
+          "The {.fn phylo_*} terms name more than one grouping column ({.val {groups}}), and {.arg cluster} was not given.",
+          "i" = "Tree / VCV rownames must align to one grouping column.",
+          ">" = "Pass {.arg cluster} equal to the column whose levels match the phylogeny tips."
+        ), class = "gllvmTMB_phylo_grouping")
+      }
+      group <- groups[[1L]]
+      if (!group %in% names(data)) {
+        cli::cli_abort(c(
+          "{.fn {phylo_groups$fn[[1L]]}} groups by {.field {group}}, which is not a column in {.arg data}.",
+          ">" = "Rename the column or pass it as {.arg cluster}."
+        ), class = "gllvmTMB_phylo_grouping")
       }
       cluster <- group
       species <- group

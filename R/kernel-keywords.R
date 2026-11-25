@@ -158,20 +158,138 @@ kernel_scalar <- function(unit, K, name = "kernel") {
   invisible(NULL)
 }
 
-## Bare grouping columns named by kernel_*() intercept terms (#1752, #1805).
+## Bare grouping columns named by kernel_*() intercept terms.
 ## `kernel_indep(unit, K = K)` stores `unit` as the first argument.
-## `kernel_indep(K = K, unit = g)` names that argument later; grouping is
-## resolved via [.gllvmTMB_keyword_bare_groups()] (`match.call()` on the
-## keyword, then fall back to the second subexpression). A bar (`1 + x | g`)
-## is a slope and keeps its own group; it is not collected here.
-## @keywords internal
-## @noRd
-.gllvmTMB_kernel_bare_groups <- function(formula) {
-  .gllvmTMB_keyword_bare_groups(
-    formula,
-    c("kernel_latent", "kernel_unique", "kernel_indep", "kernel_dep", "kernel_scalar"),
-    "unit"
+## `kernel_indep(K = K, unit = g)` names that argument later, and
+## positional or partially matched `unit` must bind too; use match.call()
+## on the keyword, then fall back to the second subexpression (#1805).
+## A bar (`1 + x | g`) is a slope and keeps its own group; it is not
+## collected here. Returns a zero-row data.frame when no bare kernel
+## grouping is present.
+.gllvmTMB_lme4_bar_rhs <- function(expr) {
+  if (!is.call(expr) || !identical(expr[[1L]], as.symbol("|"))) {
+    return(NA_character_)
+  }
+  rhs <- expr[[3L]]
+  if (is.symbol(rhs)) {
+    return(as.character(rhs))
+  }
+  if (is.character(rhs) && length(rhs) == 1L && !is.na(rhs)) {
+    return(rhs)
+  }
+  NA_character_
+}
+
+.gllvmTMB_keyword_base_name <- function(fn) {
+  fn <- as.character(fn)[1L]
+  if (is.na(fn) || !nzchar(fn)) {
+    return(NA_character_)
+  }
+  sub("^[^:]*:+", "", fn)
+}
+
+.gllvmTMB_keyword_bare_symbol <- function(arg) {
+  if (is.symbol(arg)) {
+    return(as.character(arg))
+  }
+  if (is.character(arg) && length(arg) == 1L && !is.na(arg)) {
+    return(arg)
+  }
+  NA_character_
+}
+
+.gllvmTMB_keyword_match_call <- function(fn, e) {
+  fn <- .gllvmTMB_keyword_base_name(fn)
+  if (is.na(fn)) {
+    return(NULL)
+  }
+  tryCatch(
+    match.call(get(fn, envir = asNamespace("gllvmTMB")), e),
+    error = function(err) NULL
   )
+}
+
+.gllvmTMB_keyword_group_arg <- function(matched, e,
+                                        group_fields = c("unit", "species", "id")) {
+  if (!is.null(matched)) {
+    for (fld in group_fields) {
+      if (!is.null(matched[[fld]])) {
+        sym <- .gllvmTMB_keyword_bare_symbol(matched[[fld]])
+        if (!is.na(sym)) {
+          return(sym)
+        }
+      }
+    }
+  }
+  nms <- names(e)
+  if (!is.null(nms)) {
+    for (fld in group_fields) {
+      idx <- match(fld, nms)
+      if (!is.na(idx)) {
+        sym <- .gllvmTMB_keyword_bare_symbol(e[[idx]])
+        if (!is.na(sym)) {
+          return(sym)
+        }
+      }
+    }
+  }
+  if (length(e) >= 2L) {
+    return(.gllvmTMB_keyword_bare_symbol(e[[2L]]))
+  }
+  NA_character_
+}
+
+.gllvmTMB_keyword_bare_groups <- function(formula, keywords, bar_keywords) {
+  found <- list()
+  walk <- function(e) {
+    if (!is.call(e)) return(invisible(NULL))
+    fn <- .gllvmTMB_keyword_base_name(e[[1L]])
+    if (!is.na(fn) && fn %in% keywords && length(e) >= 2L) {
+      matched <- .gllvmTMB_keyword_match_call(fn, e)
+      group <- NA_character_
+      if (fn %in% bar_keywords) {
+        formula_expr <- if (!is.null(matched) && !is.null(matched$formula)) {
+          matched$formula
+        } else if (length(e) >= 2L) {
+          e[[2L]]
+        } else {
+          NULL
+        }
+        if (is.call(formula_expr)) {
+          group <- .gllvmTMB_lme4_bar_rhs(formula_expr)
+        }
+      } else {
+        group <- .gllvmTMB_keyword_group_arg(matched, e)
+        if (is.na(group) && length(e) >= 2L && is.call(e[[2L]])) {
+          group <- .gllvmTMB_lme4_bar_rhs(e[[2L]])
+        }
+      }
+      if (!is.na(group) && nzchar(group)) {
+        found[[length(found) + 1L]] <<- list(fn = fn, group = group)
+      }
+    }
+    for (i in seq_along(e)[-1L]) walk(e[[i]])
+    invisible(NULL)
+  }
+  if (is.call(formula)) walk(formula)
+  if (!length(found)) {
+    return(data.frame(
+      fn = character(), group = character(), stringsAsFactors = FALSE
+    ))
+  }
+  data.frame(
+    fn = vapply(found, `[[`, character(1L), "fn"),
+    group = vapply(found, `[[`, character(1L), "group"),
+    stringsAsFactors = FALSE
+  )
+}
+
+.gllvmTMB_kernel_bare_groups <- function(formula) {
+  kernels <- c(
+    "kernel_latent", "kernel_unique", "kernel_indep",
+    "kernel_dep", "kernel_scalar"
+  )
+  .gllvmTMB_keyword_bare_groups(formula, kernels, character())
 }
 
 .gllvmTMB_phylo_bare_groups <- function(formula) {

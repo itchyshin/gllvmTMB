@@ -242,11 +242,12 @@ animal_indep <- function(formula, pedigree = NULL, A = NULL, Ainv = NULL,
 ## @keywords internal
 ## @noRd
 .gllvmTMB_animal_bare_groups <- function(formula) {
+  keywords <- c(
+    "animal_latent", "animal_unique", "animal_indep",
+    "animal_dep", "animal_scalar"
+  )
   .gllvmTMB_keyword_bare_groups(
-    formula,
-    c("animal_latent", "animal_unique", "animal_scalar"),
-    "id",
-    c("animal_indep", "animal_dep")
+    formula, keywords, c("animal_indep", "animal_dep")
   )
 }
 

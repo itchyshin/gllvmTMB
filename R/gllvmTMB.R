@@ -1266,31 +1266,6 @@ gllvmTMB <- function(
     species <- resolved$species
   }
 
-  ## #1766: omitted `cluster` on phylo_* adopts the species column named in the
-  ## keyword (sibling of #1752 / #1765). Kernel and animal resolution run first.
-  if (!cluster_supplied && !species_alias_supplied && is.data.frame(data)) {
-    phylo_groups <- .gllvmTMB_phylo_bare_groups(formula)
-    if (nrow(phylo_groups) > 0L) {
-      groups <- unique(phylo_groups$group)
-      if (length(groups) > 1L) {
-        cli::cli_abort(c(
-          "The {.fn phylo_*} terms name more than one grouping column ({.val {groups}}), and {.arg cluster} was not given.",
-          "i" = "Tree / VCV rownames must align to one grouping column.",
-          ">" = "Pass {.arg cluster} equal to the column whose levels match the phylogeny tips."
-        ), class = "gllvmTMB_phylo_grouping")
-      }
-      group <- groups[[1L]]
-      if (!group %in% names(data)) {
-        cli::cli_abort(c(
-          "{.fn {phylo_groups$fn[[1L]]}} groups by {.field {group}}, which is not a column in {.arg data}.",
-          ">" = "Rename the column or pass it as {.arg cluster}."
-        ), class = "gllvmTMB_phylo_grouping")
-      }
-      cluster <- group
-      species <- group
-    }
-  }
-
   ## ---- Phase L Stage 2 (2026-05-08): soft-deprecate global phylo args ---
   ## The canonical syntax (Phase L Stage 1) is to pass `tree = ...` /
   ## `vcv = ...` *inside* each phylo_*() keyword in the formula, e.g.

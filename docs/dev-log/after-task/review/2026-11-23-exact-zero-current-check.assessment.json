@@ -1,0 +1,44 @@
+{
+  "assessment_performed": true,
+  "draft_sha256": "0e232e825a87cc971ad695e22d9d470caa35f6537e7dedb23fd07cf68aeee0a2",
+  "draft_version": "v2-example-addendum",
+  "requested_mode": "independent",
+  "assessor_type": "self",
+  "reviewer": "Codex",
+  "method": "Read the complete after-task report and compare exact-zero example claims against the generated Rd and successful targeted example run; compare check claims against the detailed receipt and reviewer findings.",
+  "genre": "Technical after-task report",
+  "coverage": "Whole report, including the reader-facing example addendum and cross-product coverage.",
+  "score": 4,
+  "style_status": "scored",
+  "score_reason": "The report is specific and evidence-dense, with repeated status boundaries and a few long inventory sentences that make it read mechanically in places.",
+  "confidence": "medium",
+  "confidence_reason": "The full report and cited local evidence were available, but this is a self-assessment and the separate paper lane owns some cross-lane receipts.",
+  "examples": [
+    {
+      "location": "Section 12, paragraph 1",
+      "cue": "Covers: TMB ML/Laplace Gaussian objective, gradient, Hessian, profile and SE routing...",
+      "impact": "The scope inventory is precise for auditors but dense for a reader scanning the conclusion.",
+      "repair": "No change needed in this internal evidence report; the scope list prevents overclaiming.",
+      "line": 118,
+      "quote": "Covers: TMB ML/Laplace Gaussian objective, gradient, Hessian, profile and SE routing for two named dense kernels under exact zero observation covariance; positive-error control; structural masks; one observation per unit-trait cell; named shared/unique/total Sigma identities; Rose A plus I route preparation; low-level fixed-size-slope mean objective and gradient oracle; five source-matched optimizer-route cases spanning n=50, 200, and 400."
+    },
+    {
+      "location": "Section 12, reader-facing example addendum",
+      "cue": "The primary gllvmTMB() help example now includes an executable exact-zero example...",
+      "impact": "This directly states what changed and gives the reproducible evidence, though several outcomes are packed into one paragraph.",
+      "repair": "No change needed; the single paragraph ties the example to its source and limits.",
+      "line": 124,
+      "quote": "The primary `gllvmTMB()` help example now includes an executable exact-zero example in both long and wide format."
+    }
+  ],
+  "evidence_none_reason": null,
+  "science_gate": "pass",
+  "science_gate_reason": "The equation and route are bounded to the reviewed two-kernel Gaussian regime; the report explicitly keeps recovery, interval calibration, Julia, and three-OS CI incomplete.",
+  "facts_gate": "pass",
+  "facts_gate_reason": "The exact-zero example returned matching long/wide log likelihoods, pkgdown check passed, and the full check/source identities match the recorded receipt; independent reviewers passed the likelihood and consistency review.",
+  "references_gate": "not_applicable",
+  "references_gate_reason": "The report contains no literature or external citation claims.",
+  "date": "2026-11-23",
+  "calibration_status": "Not calibrated; informal editorial judgment only.",
+  "interpretation": "perceived_style_not_authorship"
+}

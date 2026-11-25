@@ -11078,6 +11078,13 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   fit$sd_report <- checkpoint$sd_report
   fit$sdreport_error <- checkpoint$sdreport_error
   fit$fit_health <- checkpoint$fit_health
+  if (
+    inherits(fit, "gllvmTMB_multi") &&
+      (is.null(fit$fit_health$convergence_status) ||
+        is.na(fit$fit_health$convergence_status))
+  ) {
+    fit$fit_health <- .gllvmTMB_build_fit_health(fit)
+  }
   fit$restart_history <- checkpoint$restart_history
   obj$env$last.par <- checkpoint$last_par
   obj$env$last.par.best <- checkpoint$last_par_best

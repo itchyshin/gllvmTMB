@@ -40,13 +40,28 @@ depend on successful refits, and profile intervals apply only to supported
 targets with stable profiles. The start strategies below are options to try,
 not established defaults or universal convergence recommendations.
 
-The most important distinction is simple. `fit$fit_health$converged` is the
-package's conservative point-stationarity conjunction: optimiser success, a
-finite objective, and a small raw maximum gradient. By contrast, `pd_hessian`
-reports TMB's curvature result. `FALSE` means ordinary Wald uncertainty is not
-supported; `NA` after `se = FALSE` means the Hessian was not computed. Keep the
-point-fit and inference checks separate, and do not use objective scaling to
-override a failed optimiser code.
+The most important distinction is simple. `fit$fit_health$converged` is `TRUE`
+only when `fit$fit_health$convergence_status` is `"converged"`: the optimiser
+finished, the objective is finite, the largest Newton step in standard-error
+units is at most `0.001`, no parameter sits at a boundary, and the Hessian is
+positive definite with finite standard errors. With `gllvmTMBcontrol(se = FALSE)`,
+the Hessian and standard errors are not checked; an interior fit can still read
+`"converged"`. The other three statuses are warnings, not
+errors. They are checked in this order, and the first match wins:
+
+- `"not_converged"`: the optimiser did not finish, or the gradient is not near
+  zero.
+- `"boundary"`: a variance, loading or dispersion is at its limit, or a loading
+  has run away (a Heywood-type case). `fit$fit_health$boundary_params` lists the
+  `name` and `kind` of each. Boundary fits can be valid estimates, so filter on
+  the status instead of dropping every `converged = FALSE` fit.
+- `"degenerate"`: the Hessian is not positive definite, or a standard error is
+  not finite.
+
+`pd_hessian` still reports TMB's curvature result on its own. `FALSE` means
+ordinary Wald uncertainty is not supported; `NA` after `se = FALSE` means the
+Hessian was not computed (this alone does not make a fit degenerate). Do not use
+objective scaling to override a failed optimiser code.
 
 ```{r setup}
 library(gllvmTMB)

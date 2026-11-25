@@ -12,6 +12,110 @@
 ## inference diagnostic rather than part of this point-stationarity flag.
 .gllvmTMB_converged_gtol <- 1e-2
 
+## Newton-in-SE-units gradient tolerance behind `fit_health$convergence_status`
+## (adopted converged rule, SHINICHI-1434-1119). The test is
+##   max_i |(H^-1 g)_i| / SE_i <= tol,
+## using the fixed-effect covariance from `sdreport()` as H^-1 and SE_i =
+## sqrt(diag(H^-1)). When H is not positive definite or standard errors are not
+## finite, the gradient test cannot pass. The objective-scaled relative gradient
+## below remains a descriptive diagnostic only (warm-restart bookkeeping in
+## R/fit-multi.R still uses the raw 1e-2 gate).
+.gllvmTMB_converged_newton_gtol <- 1e-3
+
+## Descriptive objective-scaled gradient; not used for `convergence_status`.
+.gllvmTMB_relative_gradient <- function(grad, par, obj_val) {
+  grad <- as.numeric(grad)
+  par <- as.numeric(par)
+  if (length(grad) == 0L || length(grad) != length(par) ||
+      !is.finite(obj_val) || any(!is.finite(grad))) {
+    return(NA_real_)
+  }
+  max(abs(grad) * pmax(abs(par), 1)) / max(abs(obj_val), 1)
+}
+
+## Largest Newton step in SE units; NA when it cannot be computed.
+.gllvmTMB_newton_se_gradient <- function(grad, sd_report) {
+  grad <- as.numeric(grad)
+  if (length(grad) == 0L || any(!is.finite(grad))) {
+    return(NA_real_)
+  }
+  if (is.null(sd_report)) {
+    return(NA_real_)
+  }
+  if (!isTRUE(sd_report$pdHess)) {
+    return(NA_real_)
+  }
+  cov_fixed <- tryCatch(sd_report$cov.fixed, error = function(e) NULL)
+  if (is.null(cov_fixed) || length(cov_fixed) == 0L) {
+    return(NA_real_)
+  }
+  cov_fixed <- as.matrix(cov_fixed)
+  if (nrow(cov_fixed) != length(grad) || ncol(cov_fixed) != length(grad)) {
+    return(NA_real_)
+  }
+  if (!all(is.finite(cov_fixed))) {
+    return(NA_real_)
+  }
+  se <- sqrt(diag(cov_fixed))
+  if (length(se) != length(grad) || any(!is.finite(se)) || any(se <= 0)) {
+    return(NA_real_)
+  }
+  step <- tryCatch(as.numeric(cov_fixed %*% grad), error = function(e) NULL)
+  if (is.null(step) || length(step) != length(grad) || any(!is.finite(step))) {
+    return(NA_real_)
+  }
+  max(abs(step) / se, na.rm = TRUE)
+}
+
+## One row per boundary parameter: `name` (the component) and `kind`
+## (sd, loading, runaway_loading, dispersion or other). The existing
+## `boundary_flags` strings are folded in, so a Heywood case (a unique SD
+## collapsed to zero, a Gamma shape at its ceiling, a loading run away) is a kind
+## of boundary and not a separate status. A flag from another source (for
+## example #1397's ordinal-cutpoint flag) lands under kind "other".
+.gllvmTMB_boundary_params <- function(flags, extra = NULL) {
+  flags <- as.character(flags %||% character(0))
+  kind <- rep("other", length(flags))
+  name <- sub("^(near_zero_|boundary_)", "", flags)
+  kind[grepl("^near_zero_(sd|psi)", flags)] <- "sd"
+  kind[grepl("^near_zero_.*_loading$", flags)] <- "loading"
+  kind[grepl("^boundary_(phi|df|sigma)", flags)] <- "dispersion"
+  out <- data.frame(name = name, kind = kind, stringsAsFactors = FALSE)
+  if (!is.null(extra) && nrow(extra) > 0L) {
+    out <- rbind(out, extra)
+  }
+  out[!duplicated(out), , drop = FALSE]
+}
+
+## First match wins: not_converged > boundary > degenerate > converged. Boundary
+## is tested before the Hessian so a boundary fit never reads `degenerate`.
+## `se_nonfinite` is TRUE when standard errors exist but some are NA/NaN/Inf;
+## no standard errors at all (`se = FALSE`) is not a failure.
+.gllvmTMB_convergence_status <- function(
+  optimizer_converged, obj_val, premature_termination, newton_se_gradient,
+  n_boundary, pd_hessian, se_nonfinite, se_skipped = FALSE
+) {
+  gradient_ok <- if (isTRUE(se_skipped) || isFALSE(pd_hessian)) {
+    ## Point-only fits skip the Newton test; a non-PD Hessian cannot supply it
+    ## either — defer to the degenerate step below.
+    TRUE
+  } else {
+    isTRUE(is.finite(newton_se_gradient) &&
+             newton_se_gradient <= .gllvmTMB_converged_newton_gtol)
+  }
+  if (!isTRUE(optimizer_converged) || !is.finite(obj_val) ||
+      isTRUE(premature_termination) || !gradient_ok) {
+    return("not_converged")
+  }
+  if (n_boundary > 0L) {
+    return("boundary")
+  }
+  if (!isTRUE(se_skipped) && (isFALSE(pd_hessian) || isTRUE(se_nonfinite))) {
+    return("degenerate")
+  }
+  "converged"
+}
+
 .gllvmTMB_build_fit_health <- function(object) {
   if (!inherits(object, "gllvmTMB_multi")) {
     .gllvmTMB_abort_not_multi_fit(object)
@@ -80,10 +184,50 @@
   n_iter <- suppressWarnings(as.numeric(object$opt$iterations %||% NA_real_))
   premature_termination <- length(n_iter) == 1L && is.finite(n_iter) &&
     n_iter <= 2 && (!is.finite(obj_val) || abs(obj_val) > 1e12)
-  converged <- isTRUE(
-    optimizer_converged && is.finite(obj_val) && stationary_by_gradient &&
-      !premature_termination
+  ## Converged rule (18 Nov 2026): `converged` is TRUE only for an interior
+  ## optimum with usable standard errors; see `convergence_status` below.
+  relative_gradient <- .gllvmTMB_relative_gradient(
+    grad, object$opt$par, obj_val
   )
+  se_skipped <- grepl(
+    "skipped",
+    object$sdreport_error %||% "",
+    fixed = TRUE
+  )
+  newton_se_gradient <- if (isTRUE(se_skipped)) {
+    NA_real_
+  } else {
+    .gllvmTMB_newton_se_gradient(grad, object$sd_report)
+  }
+  boundary_flags <- .gllvmTMB_boundary_flags(object)
+  runaway <- tryCatch(
+    .gllvmTMB_binomial_prevalence_loading_row(object),
+    error = function(e) NULL
+  )
+  extra <- if (!is.null(runaway) &&
+               identical(as.character(runaway$status), "WARN")) {
+    data.frame(name = "loading", kind = "runaway_loading",
+               stringsAsFactors = FALSE)
+  } else {
+    NULL
+  }
+  boundary_params <- .gllvmTMB_boundary_params(boundary_flags, extra)
+  pd_hessian <- if (isTRUE(se_skipped)) {
+    NA
+  } else if (
+    !is.null(object$sd_report) && !is.null(object$sd_report$pdHess)
+  ) {
+    isTRUE(object$sd_report$pdHess)
+  } else {
+    NA
+  }
+  convergence_status <- .gllvmTMB_convergence_status(
+    optimizer_converged, obj_val, premature_termination, newton_se_gradient,
+    nrow(boundary_params), pd_hessian,
+    !is.null(object$sd_report) && length(se) > 0L && any(!is.finite(se)),
+    se_skipped = se_skipped
+  )
+  converged <- identical(convergence_status, "converged")
 
   list(
     optimizer = if (nrow(restart_history) > 0L) {
@@ -102,20 +246,18 @@
     stationary_by_scaled_gradient = stationary_by_scaled_gradient,
     stationary_by_gradient = stationary_by_gradient,
     optimizer_converged = optimizer_converged,
+    relative_gradient = relative_gradient,
+    newton_se_gradient = newton_se_gradient,
+    se_skipped = se_skipped,
     converged = converged,
+    convergence_status = convergence_status,
+    boundary_params = boundary_params,
     premature_termination = premature_termination,
-    pd_hessian = if (
-      !is.null(object$sd_report) &&
-        !is.null(object$sd_report$pdHess)
-    ) {
-      isTRUE(object$sd_report$pdHess)
-    } else {
-      NA
-    },
+    pd_hessian = pd_hessian,
     sdreport_ok = !is.null(object$sd_report),
     sdreport_error = object$sdreport_error %||% NA_character_,
     max_fixed_se = max_se,
-    boundary_flags = .gllvmTMB_boundary_flags(object),
+    boundary_flags = boundary_flags,
     start_provenance = object$start_provenance %||% list(),
     selected_restart = selected_restart
   )
@@ -1783,6 +1925,14 @@ check_gllvmTMB <- function(
       "try multiple starts, stronger starts, rescaling, or an alternative optimizer"
     ),
     .gllvmTMB_check_row(
+      "convergence_status",
+      if (identical(health$convergence_status, "converged")) "PASS" else "WARN",
+      health$convergence_status %||% NA_character_,
+      "converged",
+      "first match of not_converged, boundary, degenerate; a warning, not an error",
+      "see fit$fit_health$boundary_params and the gradient, Hessian and boundary rows"
+    ),
+    .gllvmTMB_check_row(
       "max_gradient",
       if (
         is.finite(health$max_gradient) &&
@@ -1817,16 +1967,28 @@ check_gllvmTMB <- function(
     ),
     .gllvmTMB_check_row(
       "pd_hessian",
-      if (is_mspl) "INFO" else if (isTRUE(health$pd_hessian)) "PASS" else "WARN",
+      if (is_mspl) {
+        "INFO"
+      } else if (isTRUE(health$se_skipped)) {
+        "NOTE"
+      } else if (isTRUE(health$pd_hessian)) {
+        "PASS"
+      } else {
+        "WARN"
+      },
       if (is_mspl) "withheld" else health$pd_hessian,
-      if (is_mspl) "not applicable" else TRUE,
+      if (is_mspl) "not applicable" else if (isTRUE(health$se_skipped)) NA_character_ else TRUE,
       if (is_mspl) {
         "curvature-based inference is outside the MSPL point-estimation contract"
+      } else if (isTRUE(health$se_skipped)) {
+        "Hessian not evaluated (gllvmTMBcontrol(se = FALSE))"
       } else {
         "positive-definite Hessian for curvature-based inference"
       },
       if (is_mspl) {
         "check gradients, boundary behaviour, latent rank, and starts; MSPL curvature inference is withheld"
+      } else if (isTRUE(health$se_skipped)) {
+        "request standard errors before curvature-based inference"
       } else {
         "check gradients, boundary variances, rank, starts, and profile/bootstrap targets"
       }
@@ -1883,6 +2045,17 @@ check_gllvmTMB <- function(
       }
     )
   )
+
+  if (isTRUE(health$se_skipped)) {
+    rows <- c(rows, list(.gllvmTMB_check_row(
+      "hessian_se_skipped",
+      "NOTE",
+      health$convergence_status %||% NA_character_,
+      "converged (when other checks pass)",
+      "the Hessian and standard errors were not checked (gllvmTMBcontrol(se = FALSE))",
+      "request standard errors with gllvmTMBcontrol(se = TRUE) before Wald inference"
+    )))
+  }
 
   if (isTRUE(health$premature_termination)) {
     rows <- c(rows, list(.gllvmTMB_check_row(

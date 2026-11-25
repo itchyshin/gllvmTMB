@@ -1,10 +1,7 @@
 # gllvmTMB 0.8.0
 
-<<<<<<< HEAD
 * A right-censored `censored_poisson()` row stays finite when the linear predictor is very negative. `log(pgamma(mean, C, 1))` underflowed once `C` times that predictor was large and negative, and the objective and its gradient became NaN. The same probability is now accumulated in log space. At ordinary means it matches `log(pgamma())`. An uncensored row is unchanged (refs #1748).
-=======
 * `known_sigma_eps = 0` is now admitted for a narrowly defined native TMB Gaussian model with exactly two named `kernel_latent(..., unique = TRUE)` tiers, one observation per unit-trait cell, trait-specific intercepts, unit weights, and unpenalized ML with Laplace integration. The likelihood uses the supplied kernels without a diagonal floor and omits the observation-error covariance exactly. One-kernel, Julia, non-Gaussian, predictor, offset, prior, penalty, and non-unit-weight variants remain unsupported. Initial fixed-seed fits show substantial component-recovery error, so this route is experimental; interval calibration and broad recovery are not established.
->>>>>>> origin/main
 
 * `.eva_load_dll(rebuild = TRUE)` reuses an already-loaded EVA prototype DLL instead of unloading it while a live `MakeADFun` object still holds external pointers. Unloading had removed those pointers and could segfault the next evaluation (refs #1815).
 

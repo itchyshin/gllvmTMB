@@ -164,6 +164,7 @@ Register rows deliberately NOT translated into a ledger capability row above, wi
 | FG-16 | R-only legacy `gllvmTMB_wide()` matrix constructor, soft-deprecated; no Julia twin |
 | FG-17 | Deliberately rejected parser grammar (slash-form nesting `(1 | g1/g2)`); no Julia grammar-rejection concept to compare against |
 | KER-01 | R-only cross-lineage coevolution kernel builder (make_cross_kernel()); GLLVM.jl's ledger tracks no coevolution row to compare against |
+| KER-03C | R-only exact-zero observation-error Gaussian marginal likelihood for two named kernel tiers; no Julia twin capability is currently registered |
 | MET-01 | R-only meta-analytic known-sampling-covariance keyword family (meta_V/block_V); no Julia twin |
 | MET-02 | R-only meta-analytic known-sampling-covariance keyword family (meta_V/block_V); no Julia twin |
 | MET-03 | R-only meta-analytic known-sampling-covariance keyword family (meta_V/block_V); no Julia twin |

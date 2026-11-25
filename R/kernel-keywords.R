@@ -6,9 +6,15 @@
 #' `unique = TRUE` adds a kernel-structured diagonal
 #' \eqn{\boldsymbol\Psi} companion; the default `FALSE` is loadings-only.
 #' Two or more named `kernel_latent()` tiers may share the same grouping levels,
-#' each with its own `K`, loading matrix, and latent field. Multi-kernel fits are
-#' loadings-only: `unique = TRUE` and `kernel_dep()` are not available in that
-#' combination. Similar kernels can be
+#' each with its own `K`, loading matrix, and latent field. On the TMB engine,
+#' two named Gaussian tiers can each use `unique = TRUE` with a known common
+#' observation-error SD supplied through `known_sigma_eps` to [gllvmTMB()],
+#' positive weights, and observed same-trait kernel patterns that pass a
+#' separation check. Each declared trait needs at least two observed rows.
+#' Passing that check does not guarantee precise component estimates: recovery
+#' has been poor in some known-truth settings, and intervals remain unvalidated.
+#' Mixed-family and Julia-engine requests, as well as separate `kernel_dep()`
+#' tiers, are not supported. Similar kernels can be
 #' weakly separable, so use [diagnose_kernel_separability()] before assigning a
 #' distinct interpretation to each component.
 #'
@@ -18,14 +24,17 @@
 #' provide calibrated intervals or establish a causal evolutionary process.
 #'
 #' @param unit Unquoted grouping column whose levels align with `rownames(K)`.
+#'   When `cluster` is omitted, [gllvmTMB()] uses this column, so `K` is
+#'   checked against it. An explicit `cluster` is unchanged.
 #' @param K Numeric dense positive-semidefinite covariance or correlation
 #'   matrix aligned to the grouping levels.
 #' @param name Character scalar used as the extractor level, e.g.
 #'   `extract_Sigma(fit, level = "cross")`.
 #' @param d Integer latent rank for `kernel_latent()`.
 #' @param unique Logical; `TRUE` auto-includes the kernel-structured diagonal
-#'   trait-specific \eqn{\boldsymbol\Psi} companion for a single dense-kernel
-#'   tier. The default `FALSE` preserves the loadings-only subset.
+#'   trait-specific \eqn{\boldsymbol\Psi} companion. Two named tiers may each
+#'   use it under the Gaussian fixed-error conditions described above. The
+#'   default `FALSE` preserves the loadings-only subset.
 #'
 #' @return A formula marker; never evaluated as a regular R function.
 #'
@@ -147,4 +156,125 @@ kernel_dep <- function(unit, K, name = "kernel", rho = 1) {
 #' @export
 kernel_scalar <- function(unit, K, name = "kernel") {
   invisible(NULL)
+}
+
+## Bare grouping columns named by kernel_*() intercept terms.
+## `kernel_indep(unit, K = K)` stores `unit` as the first argument.
+## `kernel_indep(K = K, unit = g)` names that argument later, and
+## positional or partially matched `unit` must bind too; use match.call()
+## on the keyword, then fall back to the second subexpression (#1805).
+## A bar (`1 + x | g`) is a slope and keeps its own group; it is not
+## collected here. Returns a zero-row data.frame when no bare kernel
+## grouping is present.
+.gllvmTMB_lme4_bar_rhs <- function(expr) {
+  if (!is.call(expr) || !identical(expr[[1L]], as.symbol("|"))) {
+    return(NA_character_)
+  }
+  rhs <- expr[[3L]]
+  if (is.symbol(rhs)) {
+    return(as.character(rhs))
+  }
+  if (is.character(rhs) && length(rhs) == 1L && !is.na(rhs)) {
+    return(rhs)
+  }
+  NA_character_
+}
+
+.gllvmTMB_keyword_bare_groups <- function(formula, keywords, bar_keywords) {
+  found <- list()
+  walk <- function(e) {
+    if (!is.call(e)) return(invisible(NULL))
+    fn <- as.character(e[[1L]])[1L]
+    if (!is.na(fn) && fn %in% keywords && length(e) >= 2L) {
+      matched <- tryCatch(match.call(get(fn), e), error = function(err) NULL)
+      group <- NA_character_
+      if (fn %in% bar_keywords) {
+        formula_expr <- if (!is.null(matched) && !is.null(matched$formula)) {
+          matched$formula
+        } else if (length(e) >= 2L) {
+          e[[2L]]
+        } else {
+          NULL
+        }
+        if (is.call(formula_expr)) {
+          group <- .gllvmTMB_lme4_bar_rhs(formula_expr)
+        }
+      } else {
+        arg <- if (!is.null(matched) && !is.null(matched$unit)) {
+          matched$unit
+        } else if (!is.null(matched) && !is.null(matched$species)) {
+          matched$species
+        } else if (!is.null(matched) && !is.null(matched$id)) {
+          matched$id
+        } else if (length(e) >= 2L) {
+          e[[2L]]
+        } else {
+          NULL
+        }
+        group <- if (is.symbol(arg)) {
+          as.character(arg)
+        } else if (is.character(arg) && length(arg) == 1L && !is.na(arg)) {
+          arg
+        } else {
+          NA_character_
+        }
+      }
+      if (!is.na(group) && nzchar(group)) {
+        found[[length(found) + 1L]] <<- list(fn = fn, group = group)
+      }
+    }
+    for (i in seq_along(e)[-1L]) walk(e[[i]])
+    invisible(NULL)
+  }
+  if (is.call(formula)) walk(formula)
+  if (!length(found)) {
+    return(data.frame(
+      fn = character(), group = character(), stringsAsFactors = FALSE
+    ))
+  }
+  data.frame(
+    fn = vapply(found, `[[`, character(1L), "fn"),
+    group = vapply(found, `[[`, character(1L), "group"),
+    stringsAsFactors = FALSE
+  )
+}
+
+.gllvmTMB_kernel_bare_groups <- function(formula) {
+  kernels <- c(
+    "kernel_latent", "kernel_unique", "kernel_indep",
+    "kernel_dep", "kernel_scalar"
+  )
+  .gllvmTMB_keyword_bare_groups(formula, kernels, character())
+}
+
+.gllvmTMB_animal_bare_groups <- function(formula) {
+  keywords <- c(
+    "animal_latent", "animal_unique", "animal_indep",
+    "animal_dep", "animal_scalar"
+  )
+  .gllvmTMB_keyword_bare_groups(
+    formula, keywords, c("animal_indep", "animal_dep")
+  )
+}
+
+.gllvmTMB_phylo_bare_groups <- function(formula) {
+  keywords <- c(
+    "phylo_latent", "phylo_unique", "phylo_indep",
+    "phylo_dep", "phylo_scalar"
+  )
+  .gllvmTMB_keyword_bare_groups(
+    formula, keywords, c("phylo_indep", "phylo_dep")
+  )
+}
+
+## Public keyword behind a harvested kernel mode. A folded
+## `kernel_latent(..., unique = TRUE)` carries both "latent" and "unique".
+.gllvmTMB_kernel_fn_from_modes <- function(modes) {
+  modes <- unique(as.character(modes[!is.na(modes)]))
+  if ("latent" %in% modes) return("kernel_latent")
+  if ("dep" %in% modes) return("kernel_dep")
+  if ("scalar" %in% modes) return("kernel_scalar")
+  if ("indep" %in% modes) return("kernel_indep")
+  if ("unique" %in% modes) return("kernel_unique")
+  "kernel_indep"
 }

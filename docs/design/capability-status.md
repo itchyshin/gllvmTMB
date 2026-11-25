@@ -61,7 +61,7 @@ Mission Control input for the R side of the gllvmTMB <-> GLLVM.jl twin board. Ev
 | spatial × latent (`spatial_latent()`) | scope-limited |  | SPA-02, SPA-09, STR-RHO-SPA |  |
 | kernel × indep (`kernel_indep()`) | scope-limited |  | KER-02, STR-RHO-FIX, STR-RHO-EST, STR-RHO-WORKFLOW |  |
 | kernel × dep (`kernel_dep()`) | implemented |  | KER-02 |  |
-| kernel × latent (`kernel_latent()`) | implemented |  | KER-02, KER-03 |  |
+| kernel × latent (`kernel_latent()`) | scope-limited |  | KER-02, KER-03, KER-03A |  |
 | phylo_latent + `lv = ~ x` (Phylo Model A public intervals) | planned |  | LV-08 |  |
 | Latent scores on covariates `latent(..., lv = ~ x)` ordinary | scope-limited |  | FG-18, RE-13, LV-01, LV-02, LV-03, LV-04, LV-05, LV-06, LV-07, LV-09, JUL-01A, EXT-31 |  |
 | Response-column slope family (`slope()`, `phylo_slope()`, `animal_slope()`, `kernel_slope()`, `spatial_slope()`) | scope-limited | Response-column slope family (`slope()`, `phylo_slope()`, `animal_slope()`, `kernel_slope()`, `spatial_slope()`; Gaussian long-format, predictor-only) | FG-19, FG-15, PHY-06, ANI-06, SPA-11, KER-04 |  |
@@ -88,6 +88,7 @@ Mission Control input for the R side of the gllvmTMB <-> GLLVM.jl twin board. Ev
 | Fixed-effect normal priors (native MAP) | scope-limited |  | FE-PRIOR-01 | Partial native R support for ordinary Gaussian and binomial latent/indep models; AGHQ and uncertainty are limited as described in the register. No Julia parity is claimed. |
 | VA / ELBO alternative (selected families; not R-default) | scope-limited |  | VA-01, VA-02, VA-03, VA-04, VA-05, VA-06, VA-07, VA-08, VA-09, VA-10, VA-11, VA-12, VA-13 | Withdrawn: `integration = "eva"` is not an admitted value -- "the EVA engine and template remain research-only", a considered refusal, not a pending gap. |
 | MSPL point/interval estimator (`estimator = "mspl"`) | scope-limited |  | MSPL-01, MSPL-02, MSPL-03, MSPL-04, MSPL-05 | R-only estimator; GLLVM.jl's ledger has no MSPL row (expected to appear R-only in the parity report). |
+| Named-kernel Psi SD priors (native TMB MAP sensitivity) | scope-limited |  | KER-03B | R-only opt-in sensitivity fit; Julia parity, broad recovery, and calibrated uncertainty are not established. |
 
 ## Intervals
 
@@ -163,6 +164,7 @@ Register rows deliberately NOT translated into a ledger capability row above, wi
 | FG-16 | R-only legacy `gllvmTMB_wide()` matrix constructor, soft-deprecated; no Julia twin |
 | FG-17 | Deliberately rejected parser grammar (slash-form nesting `(1 | g1/g2)`); no Julia grammar-rejection concept to compare against |
 | KER-01 | R-only cross-lineage coevolution kernel builder (make_cross_kernel()); GLLVM.jl's ledger tracks no coevolution row to compare against |
+| KER-03C | R-only exact-zero observation-error Gaussian marginal likelihood for two named kernel tiers; no Julia twin capability is currently registered |
 | MET-01 | R-only meta-analytic known-sampling-covariance keyword family (meta_V/block_V); no Julia twin |
 | MET-02 | R-only meta-analytic known-sampling-covariance keyword family (meta_V/block_V); no Julia twin |
 | MET-03 | R-only meta-analytic known-sampling-covariance keyword family (meta_V/block_V); no Julia twin |

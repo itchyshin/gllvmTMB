@@ -32,6 +32,15 @@ on.exit(unlink(site, recursive = TRUE, force = TRUE), add = TRUE)
 status <- attr(run_checker(site), "status")
 stopifnot(is.null(status) || status == 0L)
 
+# Public NEWS entries may cite an issue number; the citation alone does not
+# expose internal process information.
+writeLines(
+  '{"path":"https://example.test/news/index.html","text":"Help and examples explain the layouts (issue #1469)."}',
+  file.path(site, "search.json")
+)
+status <- attr(run_checker(site), "status")
+stopifnot(is.null(status) || status == 0L)
+
 # The safety notice must follow the explanation on the rendered landing page.
 home <- readLines(file.path(site, "index.html"), warn = FALSE)
 writeLines(paste0(

@@ -33,7 +33,8 @@ gllvmTMB(
   site = NULL,
   species = NULL,
   estimator = c("ml", "mspl"),
-  column_data = NULL
+  column_data = NULL,
+  known_sigma_eps = NULL
 )
 }
 \arguments{
@@ -127,7 +128,14 @@ personality data, \code{cluster = "study"} for multi-study
 meta-analysis). Default \code{NULL}, which resolves to \code{"species"}. For
 datasets with no third grouping the column may be absent from \code{data}
 entirely (with or without passing \code{cluster}); the engine will
-synthesise a placeholder. If supplied but no covariance keyword uses
+synthesise a placeholder. When \code{cluster} is omitted and one
+\code{kernel_indep()}, \code{kernel_dep()}, \code{kernel_latent()}, \code{kernel_unique()},
+or \code{kernel_scalar()} term names a bare grouping column, that column is
+used so \code{K} is checked against it. A named \code{unit} argument is used even
+when it is not written first, as in \code{kernel_indep(K = K, unit = g)}.
+An explicit \code{cluster} is unchanged,
+including the replicated kernel example that passes \code{cluster = "site"}.
+If supplied but no covariance keyword uses
 that column, \code{\link[=gllvmTMB]{gllvmTMB()}} warns; omit the argument or use the column in
 the intended covariance keyword.
 
@@ -389,6 +397,30 @@ must have the same name as \code{trait} and exactly match the response columns.
 Joined fields are available to fixed effects but cannot be coefficient
 bases, grouping columns, or covariance sources. In wide input, key this
 table by the synthetic column name \code{trait} and omit the \code{trait} argument.}
+
+\item{known_sigma_eps}{Optional known observation-error standard deviation.
+Supply one finite nonnegative number when the same error standard deviation
+applies to every observation and all response traits are Gaussian. The
+supplied value is fixed during fitting; its square is the observation-error
+variance. Zero is admitted only for the exact marginal route with exactly
+two named Gaussian \code{kernel_latent(..., unique = TRUE)} terms under
+unpenalized ML, Laplace, unit weights, and trait-specific intercepts only.
+Offsets and other covariance terms are excluded, apart from a separately
+declared \code{meta_V()} sampling covariance. That route uses raw kernels and
+requires at most one observed row per unit-trait cell. Other fits require
+a positive value. This argument is supported only by the TMB engine. With
+\code{NULL} (the default), the usual observation-error rules apply.
+
+For the exact route, supply \code{known_sigma_eps = 0} and use unit
+observation weights (all equal to one). The two kernels
+must have distinct covariance patterns among the observed species for
+each trait, and every declared trait needs at least two observed rows.
+A failure of this check stops the fit rather than dropping a
+requested component. Passing the check does not guarantee that the two
+components can be estimated precisely; initial known-truth fits show
+substantial component error. Recovery remains incomplete and intervals
+have not been calibrated. Mixed-family models are not supported with this
+argument.}
 }
 \value{
 A \code{gllvmTMB} object. Every native fit, with or without
@@ -751,6 +783,49 @@ if (requireNamespace("tidyr", quietly = TRUE)) {
   # Same model, same data: the two fits agree.
   c(long = logLik(fit_long), wide = logLik(fit_wide))
 }
+
+# Exact zero observation error with two named dense kernels.
+# Here the simulated covariance is entirely represented by the two kernel
+# tiers, each with a shared loading and trait-specific Psi variances.
+set.seed(19)
+n_kernel <- 12L
+unit_id <- paste0("u", seq_len(n_kernel))
+K_phy <- 0.65 ^ abs(outer(seq_len(n_kernel), seq_len(n_kernel), "-"))
+K_tip <- diag(n_kernel)
+dimnames(K_phy) <- dimnames(K_tip) <- list(unit_id, unit_id)
+Sigma_phy <- tcrossprod(c(0.65, 0.35)) + diag(c(0.3, 0.25))
+Sigma_tip <- tcrossprod(c(0.4, -0.5)) + diag(c(0.2, 0.35))
+V <- kronecker(K_phy, Sigma_phy) + kronecker(K_tip, Sigma_tip)
+y_kernel <- matrix(drop(t(chol(V)) \%*\% rnorm(n_kernel * 2L)),
+                   nrow = n_kernel, ncol = 2L)
+colnames(y_kernel) <- c("trait_a", "trait_b")
+long_kernel <- data.frame(
+  unit = factor(rep(unit_id, each = 2L), levels = unit_id),
+  trait = rep(colnames(y_kernel), times = n_kernel),
+  value = as.vector(t(y_kernel))
+)
+wide_kernel <- data.frame(
+  unit = factor(unit_id, levels = unit_id), y_kernel, check.names = FALSE
+)
+
+fit_kernel_long <- gllvmTMB(
+  value ~ 0 + trait +
+    kernel_latent(unit, K = K_phy, d = 1, name = "phy", unique = TRUE) +
+    kernel_latent(unit, K = K_tip, d = 1, name = "tip", unique = TRUE),
+  data = long_kernel, trait = "trait", unit = "unit", cluster = "unit",
+  known_sigma_eps = 0,
+  control = gllvmTMBcontrol(n_init = 1, se = FALSE)
+)
+fit_kernel_wide <- gllvmTMB(
+  traits(trait_a, trait_b) ~ 1 +
+    kernel_latent(unit, K = K_phy, d = 1, name = "phy", unique = TRUE) +
+    kernel_latent(unit, K = K_tip, d = 1, name = "tip", unique = TRUE),
+  data = wide_kernel, unit = "unit", cluster = "unit",
+  known_sigma_eps = 0,
+  control = gllvmTMBcontrol(n_init = 1, se = FALSE)
+)
+c(long = logLik(fit_kernel_long), wide = logLik(fit_kernel_wide))
+# An exact-zero fit includes no additional observation-error covariance.
 
 # Trait means, between-individual correlations (trait_4 is negatively
 # correlated with the rest), and the share of each trait's

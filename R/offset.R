@@ -10,9 +10,10 @@
 ## contract, where the offset is a change of support: cloglog(p) = log(E) + eta
 ## (issue #946; see Design 01, Offsets).
 ##
-## Gating on family rather than link keeps the admitted set small and
-## enumerable, and sweeps in nothing awkward: a link gate would admit Gamma,
-## lognormal and Tweedie on log links, each needing its own semantics call.
+## The gate keys on family for counts and on family × link for binomial:
+## cloglog alone is admitted (change of support); logit and probit are not.
+## A blanket link gate would admit Gamma, lognormal and Tweedie on log links,
+## each needing its own semantics call.
 ##
 ## The parser holds the offset expression out of the fixed-effect formula
 ## (R/parse-multi-formula.R); `model.matrix()` drops offset terms, and a
@@ -110,8 +111,7 @@
 #' @noRd
 gll_prepare_offset <- function(offset_expr, data, formula_env,
                                family_id_vec, link_id_vec,
-                               family_per_row, trait_vec,
-                               allow_isdm_cloglog = FALSE) {
+                               family_per_row, trait_vec) {
   n_obs <- nrow(data)
   if (is.null(offset_expr)) return(rep(0.0, n_obs))
 
@@ -148,18 +148,12 @@ gll_prepare_offset <- function(offset_expr, data, formula_env,
       "i" = "A non-finite offset would enter the linear predictor and return a {.code NaN} objective. Note {.code log(0)} is {.code -Inf}; an exposure of zero needs the row dropped, not offset."
     ))
 
-  ## ---- The count-family gate ------------------------------------------
+  ## ---- Count families and binomial(cloglog) ----------------------------
   ## Only NONZERO offsets are gated. See the note above on why zero passes.
-  ## A Bernoulli-cloglog offset is a change-of-support term (known sampled area
-  ## or visit effort), not an ordinary log-rate exposure, which is why it is
-  ## admitted here and nowhere else outside the count families. The caller
-  ## passes allow_isdm_cloglog only once the exact integrated two-source
-  ## contract has matched -- see .gllvmTMB_integrated_two_source_contract() --
-  ## so this reaches the unexported developer route AND a public caller who
-  ## meets that same contract, and nothing else.
-  is_isdm_cloglog <- isTRUE(allow_isdm_cloglog) &
-    family_id_vec == 1L & link_id_vec == 2L
-  offending <- off != 0 & !(family_id_vec %in% .gll_offset_count_family_ids | is_isdm_cloglog)
+  ## Bernoulli-cloglog: the offset is a change-of-support term (known sampled
+  ## area or visit effort), not an ordinary log-rate exposure -- issue #946.
+  is_binom_cloglog <- family_id_vec == 1L & link_id_vec == 2L
+  offending <- off != 0 & !(family_id_vec %in% .gll_offset_count_family_ids | is_binom_cloglog)
   if (any(offending)) {
     fam_name <- function(i) {
       f <- family_per_row[[i]]
@@ -188,9 +182,9 @@ gll_prepare_offset <- function(offset_expr, data, formula_env,
       sprintf("trait `%s` uses `%s`", pairs$trait, pairs$family)
     }
     cli::cli_abort(c(
-      "offsets are supported for count families (poisson, nbinom) only; {detail}.",
-      "i" = "An offset is a multiplicative rate adjustment on the log link. Under {.fn gaussian} it would be an unexplained mean shift, and under {.fn binomial} a fixed shift in log-odds.",
-      ">" = "Set the offset to {.code 0} on the rows of a non-count trait; an offset of zero is a multiplier of one, so those traits are left unchanged."
+      "offsets are supported for count families (poisson, nbinom) and {.fn binomial}(link = \"cloglog\") only; {detail}.",
+      "i" = "On count families an offset is a multiplicative rate adjustment on the log link. On {.fn binomial}(link = \"cloglog\") it is a change-of-support term (e.g. {.code log(area)}). Under {.fn gaussian} it would be an unexplained mean shift; under {.fn binomial}(logit/probit) a fixed shift in log-odds or probit units.",
+      ">" = "Set the offset to {.code 0} on rows that are not count or cloglog-binomial; an offset of zero is a multiplier of one, so those traits are left unchanged."
     ))
   }
 

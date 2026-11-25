@@ -156,7 +156,14 @@
 #'   meta-analysis). Default `NULL`, which resolves to `"species"`. For
 #'   datasets with no third grouping the column may be absent from `data`
 #'   entirely (with or without passing `cluster`); the engine will
-#'   synthesise a placeholder. If supplied but no covariance keyword uses
+#'   synthesise a placeholder. When `cluster` is omitted and one
+#'   `kernel_indep()`, `kernel_dep()`, `kernel_latent()`, `kernel_unique()`,
+#'   or `kernel_scalar()` term names a bare grouping column, that column is
+#'   used so `K` is checked against it. A named `unit` argument is used even
+#'   when it is not written first, as in `kernel_indep(K = K, unit = g)`.
+#'   An explicit `cluster` is unchanged,
+#'   including the replicated kernel example that passes `cluster = "site"`.
+#'   If supplied but no covariance keyword uses
 #'   that column, [gllvmTMB()] warns; omit the argument or use the column in
 #'   the intended covariance keyword.
 #'
@@ -310,6 +317,29 @@
 #'   `V_t`. Used by the `equalto()` two-stage workflow when sampling-error
 #'   matrices are available from a prior stage of estimation. Not supported by
 #'   `engine = "julia"`, which aborts (class `gllvmTMB_julia_unsupported_arg`).
+#' @param known_sigma_eps Optional known observation-error standard deviation.
+#'   Supply one finite nonnegative number when the same error standard deviation
+#'   applies to every observation and all response traits are Gaussian. The
+#'   supplied value is fixed during fitting; its square is the observation-error
+#'   variance. Zero is admitted only for the exact marginal route with exactly
+#'   two named Gaussian `kernel_latent(..., unique = TRUE)` terms under
+#'   unpenalized ML, Laplace, unit weights, and trait-specific intercepts only.
+#'   Offsets and other covariance terms are excluded, apart from a separately
+#'   declared `meta_V()` sampling covariance. That route uses raw kernels and
+#'   requires at most one observed row per unit-trait cell. Other fits require
+#'   a positive value. This argument is supported only by the TMB engine. With
+#'   `NULL` (the default), the usual observation-error rules apply.
+#'
+#'   For the exact route, supply `known_sigma_eps = 0` and use unit
+#'   observation weights (all equal to one). The two kernels
+#'   must have distinct covariance patterns among the observed species for
+#'   each trait, and every declared trait needs at least two observed rows.
+#'   A failure of this check stops the fit rather than dropping a
+#'   requested component. Passing the check does not guarantee that the two
+#'   components can be estimated precisely; initial known-truth fits show
+#'   substantial component error. Recovery remains incomplete and intervals
+#'   have not been calibrated. Mixed-family models are not supported with this
+#'   argument.
 #' @param lambda_constraint Optional list with elements `unit` and / or
 #'   `unit_obs` (plus `phy`, `spde` for structural levels), each an
 #'   `n_traits × d` matrix of confirmatory loading constraints
@@ -703,6 +733,49 @@
 #'   c(long = logLik(fit_long), wide = logLik(fit_wide))
 #' }
 #'
+#' # Exact zero observation error with two named dense kernels.
+#' # Here the simulated covariance is entirely represented by the two kernel
+#' # tiers, each with a shared loading and trait-specific Psi variances.
+#' set.seed(19)
+#' n_kernel <- 12L
+#' unit_id <- paste0("u", seq_len(n_kernel))
+#' K_phy <- 0.65 ^ abs(outer(seq_len(n_kernel), seq_len(n_kernel), "-"))
+#' K_tip <- diag(n_kernel)
+#' dimnames(K_phy) <- dimnames(K_tip) <- list(unit_id, unit_id)
+#' Sigma_phy <- tcrossprod(c(0.65, 0.35)) + diag(c(0.3, 0.25))
+#' Sigma_tip <- tcrossprod(c(0.4, -0.5)) + diag(c(0.2, 0.35))
+#' V <- kronecker(K_phy, Sigma_phy) + kronecker(K_tip, Sigma_tip)
+#' y_kernel <- matrix(drop(t(chol(V)) %*% rnorm(n_kernel * 2L)),
+#'                    nrow = n_kernel, ncol = 2L)
+#' colnames(y_kernel) <- c("trait_a", "trait_b")
+#' long_kernel <- data.frame(
+#'   unit = factor(rep(unit_id, each = 2L), levels = unit_id),
+#'   trait = rep(colnames(y_kernel), times = n_kernel),
+#'   value = as.vector(t(y_kernel))
+#' )
+#' wide_kernel <- data.frame(
+#'   unit = factor(unit_id, levels = unit_id), y_kernel, check.names = FALSE
+#' )
+#'
+#' fit_kernel_long <- gllvmTMB(
+#'   value ~ 0 + trait +
+#'     kernel_latent(unit, K = K_phy, d = 1, name = "phy", unique = TRUE) +
+#'     kernel_latent(unit, K = K_tip, d = 1, name = "tip", unique = TRUE),
+#'   data = long_kernel, trait = "trait", unit = "unit", cluster = "unit",
+#'   known_sigma_eps = 0,
+#'   control = gllvmTMBcontrol(n_init = 1, se = FALSE)
+#' )
+#' fit_kernel_wide <- gllvmTMB(
+#'   traits(trait_a, trait_b) ~ 1 +
+#'     kernel_latent(unit, K = K_phy, d = 1, name = "phy", unique = TRUE) +
+#'     kernel_latent(unit, K = K_tip, d = 1, name = "tip", unique = TRUE),
+#'   data = wide_kernel, unit = "unit", cluster = "unit",
+#'   known_sigma_eps = 0,
+#'   control = gllvmTMBcontrol(n_init = 1, se = FALSE)
+#' )
+#' c(long = logLik(fit_kernel_long), wide = logLik(fit_kernel_wide))
+#' # An exact-zero fit includes no additional observation-error covariance.
+#'
 #' # Trait means, between-individual correlations (trait_4 is negatively
 #' # correlated with the rest), and the share of each trait's
 #' # between-individual variance carried by the latent axis.
@@ -740,7 +813,8 @@ gllvmTMB <- function(
   site = NULL, # deprecated alias for `unit`
   species = NULL,
   estimator = c("ml", "mspl"),
-  column_data = NULL
+  column_data = NULL,
+  known_sigma_eps = NULL
 ) {
   # deprecated alias for `cluster`
 
@@ -759,8 +833,19 @@ gllvmTMB <- function(
   ## not an argument the caller supplied.
   unit_obs_supplied <- !missing(unit_obs) && !is.null(unit_obs)
   cluster_supplied <- !missing(cluster) && !is.null(cluster)
+  ## Capture the deprecated `species` alias before it is overwritten with
+  ## the resolved cluster name below. An explicit alias is a supplied
+  ## cluster; `species = NULL` is the same as omitting it.
+  species_alias_supplied <- !missing(species) && !is.null(species)
   unit_obs <- unit_obs %||% "site_species"
   cluster <- cluster %||% "species"
+
+  ## Call uncalled family constructors (`family = gaussian`, not
+  ## `gaussian()`) before the wide/traits rewrite and before later
+  ## `$family` / `inherits(..., "family")` gates (`column_coef`,
+  ## `temporal_latent`). The scan in `expand_multinomial_response()`
+  ## stays as a no-op on an already-resolved family (#1781).
+  family <- .gllvmTMB_resolve_family_constructors(family)
 
   estimator_missing <- missing(estimator)
   estimator <- match.arg(estimator)
@@ -774,7 +859,24 @@ gllvmTMB <- function(
   ## engine = "julia" routes through the experimental GLLVModels.jl bridge fitting
   ## path via JuliaCall; "tmb" (default) keeps the native TMB engine below.
   engine <- match.arg(engine)
+  if (!is.null(known_sigma_eps) &&
+      (!is.numeric(known_sigma_eps) || length(known_sigma_eps) != 1L ||
+       !is.finite(known_sigma_eps) || known_sigma_eps < 0)) {
+    cli::cli_abort(c(
+      "{.arg known_sigma_eps} must be one finite nonnegative standard deviation.",
+      ">" = "Supply a known SD greater than zero, use zero only for the exact two-kernel Gaussian route, or use {.code NULL} for the usual observation-error rules."
+    ))
+  }
+  if (!is.null(known_sigma_eps) && !identical(engine, "tmb")) {
+    cli::cli_abort(c(
+      "{.arg known_sigma_eps} is supported only by the TMB engine.",
+      ">" = "Set {.code engine = \"tmb\"}, or omit {.arg known_sigma_eps}."
+    ))
+  }
   .gllvmTMB_fixed_prior_route(control$fixed_effect_priors, engine, estimator, REML, control)
+  .gllvmTMB_kernel_psi_sd_prior_route(
+    control$kernel_psi_sd_prior, engine, estimator, REML, control
+  )
   if (identical(engine, "julia") &&
       (control$optimizer_passes %||% 1L) > 1L) {
     cli::cli_abort(c(
@@ -826,6 +928,13 @@ gllvmTMB <- function(
     cli::cli_abort(c("Fixed-effect priors do not yet support structured source attenuation.",
       ">" = "Remove the structured source attenuation or omit the fixed-effect priors."),
       class = "gllvmTMB_fixed_prior_unsupported")
+  }
+  if (!is.null(control$kernel_psi_sd_prior) &&
+      !is.null(structured_rho_capture$spec)) {
+    cli::cli_abort(c(
+      "{.arg kernel_psi_sd_prior} does not yet support structured source attenuation.",
+      ">" = "Remove the structured attenuation term or omit the kernel Psi prior."
+    ), class = "gllvmTMB_kernel_psi_prior_unsupported")
   }
   .structured_rho_dispatch_fence(structured_rho_capture$spec, engine = engine,
     integration = control$integration %||% "laplace", estimator = estimator,
@@ -904,6 +1013,13 @@ gllvmTMB <- function(
     ## variational fit or aborts, and never builds the Laplace objective.
   }
   ci_method <- match.arg(ci_method)
+  if (!is.null(control$kernel_psi_sd_prior) && !identical(ci_method, "none")) {
+    cli::cli_abort(c(
+      "{.arg ci_method} is not validated for kernel Psi prior fits.",
+      "i" = "The fit reports a MAP estimate and local approximate posterior curvature only.",
+      ">" = "Use {.code ci_method = 'none'} and inspect prior sensitivity."
+    ), class = "gllvmTMB_kernel_psi_prior_inference_unsupported")
+  }
   ci_defaults <- identical(ci_method, "none") &&
     is.numeric(ci_level) &&
     length(ci_level) == 1L &&
@@ -1015,6 +1131,7 @@ gllvmTMB <- function(
       phylo_vcv = phylo_vcv,
       phylo_tree = phylo_tree,
       known_V = known_V,
+      known_sigma_eps = known_sigma_eps,
       lambda_constraint = lambda_constraint,
       Xcoef_fixed = Xcoef_fixed,
       control = control,
@@ -1130,6 +1247,86 @@ gllvmTMB <- function(
   ## in the parser / TMB template / extractors. User-facing argument is
   ## `cluster`.
   species <- cluster
+
+  ## #1752: a documented one-grouping kernel call names its own grouping
+  ## (`kernel_indep(unit, K = K)`) and does not pass `cluster`. The dense
+  ## kernel reuses the cluster slot, so an omitted cluster must be that
+  ## grouping. Otherwise the default `"species"` column is a placeholder
+  ## and `K` is checked as if it were a phylogenetic VCV. An explicit
+  ## `cluster` (the replicated `?kernel_latent` example) is left alone.
+  if (!cluster_supplied && !species_alias_supplied && is.data.frame(data)) {
+    kernel_groups <- .gllvmTMB_kernel_bare_groups(formula)
+    if (nrow(kernel_groups) > 0L) {
+      groups <- unique(kernel_groups$group)
+      if (length(groups) > 1L) {
+        cli::cli_abort(c(
+          "The {.fn kernel_*} terms name more than one grouping column ({.val {groups}}), and {.arg cluster} was not given.",
+          "i" = "{.arg K} is aligned to one grouping column.",
+          ">" = "Pass {.arg cluster} equal to the column whose levels match {.code rownames(K)}. Different kernel groupings in one fit are not supported."
+        ), class = "gllvmTMB_kernel_grouping")
+      }
+      group <- groups[[1L]]
+      if (!group %in% names(data)) {
+        cli::cli_abort(c(
+          "{.fn {kernel_groups$fn[[1L]]}} groups by {.field {group}}, which is not a column in {.arg data}.",
+          ">" = "Name the column whose levels match {.code rownames(K)}, or pass that column as {.arg cluster}."
+        ), class = "gllvmTMB_kernel_grouping")
+      }
+      cluster <- group
+      species <- group
+    }
+  }
+
+  ## #1765: omitted `cluster` on animal_* adopts the grouping named in the
+  ## keyword (sibling of #1752 for kernel_*). Phylo and kernel blocks above
+  ## are unchanged; phylogenetic keywords stay on their own path.
+  if (!cluster_supplied && !species_alias_supplied && is.data.frame(data)) {
+    animal_groups <- .gllvmTMB_animal_bare_groups(formula)
+    if (nrow(animal_groups) > 0L) {
+      groups <- unique(animal_groups$group)
+      if (length(groups) > 1L) {
+        cli::cli_abort(c(
+          "The {.fn animal_*} terms name more than one grouping column ({.val {groups}}), and {.arg cluster} was not given.",
+          "i" = "Relatedness inputs are aligned to one grouping column.",
+          ">" = "Pass {.arg cluster} equal to the column whose levels match {.code rownames(A)} / the pedigree {.code id} column."
+        ), class = "gllvmTMB_animal_grouping")
+      }
+      group <- groups[[1L]]
+      if (!group %in% names(data)) {
+        cli::cli_abort(c(
+          "{.fn {animal_groups$fn[[1L]]}} groups by {.field {group}}, which is not a column in {.arg data}.",
+          ">" = "Rename the column or pass it as {.arg cluster}."
+        ), class = "gllvmTMB_animal_grouping")
+      }
+      cluster <- group
+      species <- group
+    }
+  }
+
+  ## #1766: omitted `cluster` on phylo_* adopts the species column named in the
+  ## keyword (sibling of #1752 / #1765). Kernel and animal resolution run first.
+  if (!cluster_supplied && !species_alias_supplied && is.data.frame(data)) {
+    phylo_groups <- .gllvmTMB_phylo_bare_groups(formula)
+    if (nrow(phylo_groups) > 0L) {
+      groups <- unique(phylo_groups$group)
+      if (length(groups) > 1L) {
+        cli::cli_abort(c(
+          "The {.fn phylo_*} terms name more than one grouping column ({.val {groups}}), and {.arg cluster} was not given.",
+          "i" = "Tree / VCV rownames must align to one grouping column.",
+          ">" = "Pass {.arg cluster} equal to the column whose levels match the phylogeny tips."
+        ), class = "gllvmTMB_phylo_grouping")
+      }
+      group <- groups[[1L]]
+      if (!group %in% names(data)) {
+        cli::cli_abort(c(
+          "{.fn {phylo_groups$fn[[1L]]}} groups by {.field {group}}, which is not a column in {.arg data}.",
+          ">" = "Rename the column or pass it as {.arg cluster}."
+        ), class = "gllvmTMB_phylo_grouping")
+      }
+      cluster <- group
+      species <- group
+    }
+  }
 
   ## ---- Phase L Stage 2 (2026-05-08): soft-deprecate global phylo args ---
   ## The canonical syntax (Phase L Stage 1) is to pass `tree = ...` /
@@ -1599,6 +1796,7 @@ gllvmTMB <- function(
     phylo_vcv = phylo_vcv,
     phylo_tree = phylo_tree,
     known_V = known_V,
+    known_sigma_eps = known_sigma_eps,
     mesh = mesh,
     lambda_constraint = lambda_constraint,
     Xcoef_fixed = Xcoef_fixed,
@@ -1692,16 +1890,23 @@ gllvmTMB <- function(
     estimator = estimator,
     reml = REML
   )
-  if (!is.null(.fit$fixed_effect_priors)) {
+  if (!is.null(.fit$fixed_effect_priors) ||
+      !is.null(.fit$kernel_psi_sd_prior)) {
     .fit$estimator <- "MAP"
-    .fit$estimator_provenance$criterion_id <- if (isTRUE(.fit$aghq$used)) {
+    .fit$estimator_provenance$criterion_id <- if (!is.null(.fit$kernel_psi_sd_prior)) {
+      "laplace_plus_kernel_psi_sd_prior"
+    } else if (isTRUE(.fit$aghq$used)) {
       "aghq_plus_normal_priors"
     } else {
       "laplace_plus_normal_priors"
     }
     ## The fixed-effect prior is applied in R; penalty_eval_id describes the
-    ## TMB tape and must not be confused with the MSPL penalty-on tape.
-    .fit$estimator_provenance$fixed_effect_prior_applied <- TRUE
+    ## TMB tape and must not be confused with the MSPL penalty-on tape. Keep the
+    ## source-specific provenance flags accurate when another prior is active.
+    .fit$estimator_provenance$fixed_effect_prior_applied <-
+      !is.null(.fit$fixed_effect_priors)
+    .fit$estimator_provenance$kernel_psi_sd_prior_applied <-
+      !is.null(.fit$kernel_psi_sd_prior)
     .fit$estimator_provenance$public_estimator <- "MAP"
     .fit$estimator_provenance$notes <- sub(
       "public label ML is coarse: this fit uses AGHQ, not Laplace",
@@ -1953,6 +2158,83 @@ gllvmTMB <- function(
   refit
 }
 
+## Turn one character family name into a family object. This is the
+## same lookup `family_to_id()` used to inline. Doing it at `gllvmTMB()`
+## entry means `family = "gaussian"` is a family object before the
+## `temporal_latent()` gate reads `$family` (#1804). Unknown names abort
+## with the same message as before.
+.gllvmTMB_family_from_character <- function(f) {
+  switch(
+    f,
+    delta_lognormal = delta_lognormal(),
+    delta_gamma     = delta_gamma(),
+    {
+      nm <- f
+      pkg_env <- asNamespace("gllvmTMB")
+      stats_families <- c("gaussian", "binomial", "Gamma", "poisson")
+      fn <- NULL
+      if (exists(nm, envir = pkg_env, mode = "function", inherits = FALSE)) {
+        fn <- get(nm, envir = pkg_env, mode = "function", inherits = FALSE)
+      } else if (nm %in% stats_families) {
+        stats_env <- asNamespace("stats")
+        if (exists(nm, envir = stats_env, mode = "function", inherits = FALSE)) {
+          fn <- get(nm, envir = stats_env, mode = "function", inherits = FALSE)
+        }
+      }
+      if (is.null(fn)) {
+        cli::cli_abort(c(
+          "Unsupported family: {.val {nm}}.",
+          ">" = "Use a family object like {.code gaussian()} or a character name that matches a family constructor."
+        ))
+      }
+      called <- fn()
+      if (!inherits(called, "family")) {
+        cli::cli_abort(c(
+          "Unsupported family: {.val {nm}}.",
+          ">" = "Use a family object like {.code gaussian()} or a character name that matches a family constructor."
+        ))
+      }
+      called
+    }
+  )
+}
+
+## Call an uncalled family constructor (`family = gaussian`, not
+## `gaussian()`) the same way `family_to_id()` does. `gllvmTMB()`
+## calls this at entry; `expand_multinomial_response()` calls it
+## again as a no-op so a direct scan cannot `as.character()` a
+## function (#1781). A length-1 character name is resolved here too
+## (#1804).
+.gllvmTMB_resolve_family_constructors <- function(family) {
+  resolve_one <- function(f) {
+    if (is.character(f) && length(f) == 1L && !anyNA(f) && nzchar(f)) {
+      f <- .gllvmTMB_family_from_character(f)
+    }
+    if (!is.function(f) || inherits(f, "family")) return(f)
+    called <- tryCatch(f(), error = function(e) e)
+    if (inherits(called, "error") || !inherits(called, "family")) {
+      detail <- if (inherits(called, "error")) {
+        conditionMessage(called)
+      } else {
+        "the constructor did not return a family object"
+      }
+      cli::cli_abort(c(
+        "Could not build a family object from the supplied constructor.",
+        "x" = detail,
+        "i" = "Pass a family object such as {.code gaussian()} or {.code multinomial()}, or a character name such as {.val gaussian}."
+      ), class = "gllvmTMB_family_constructor")
+    }
+    called
+  }
+  if (inherits(family, "family") || !is.list(family)) {
+    return(resolve_one(family))
+  }
+  attrs <- attributes(family)
+  resolved <- lapply(family, resolve_one)
+  attributes(resolved) <- attrs
+  resolved
+}
+
 ## Multinomial (baseline-category logit) response expansion (Design 83).
 ## A multinomial() response over K unordered categories is expanded, BEFORE
 ## desugar/parse, into K-1 contiguous "category-contrast" pseudo-trait rows per
@@ -1965,6 +2247,9 @@ gllvmTMB <- function(
 expand_multinomial_response <- function(formula, data, family, trait_col) {
   ## A single family object is itself a list, so test the class FIRST; only a
   ## bare list-of-families (mixed-family API) is treated as a list.
+  ## Constructors are called first so `family = multinomial` is still expanded
+  ## and `family = gaussian` is not passed to `as.character()` (#1781).
+  family <- .gllvmTMB_resolve_family_constructors(family)
   fams <- if (inherits(family, "family")) list(family)
           else if (is.list(family)) family
           else list(family)
@@ -2561,6 +2846,23 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #'   rank-one probit example. `dep()`, Julia, MSPL, REML and VA are rejected. Estimates are MAP points; inverse penalized curvature is local
 #'   approximate posterior covariance, not calibrated sampling uncertainty.
 #'   Profile intervals, bootstrap intervals and prediction SEs are withheld.
+#' @param kernel_psi_sd_prior Optional data frame with `kernel`, `trait`,
+#'   and `scale` columns. Each row applies an independent half-normal prior
+#'   with density on the natural standard deviation `sqrt(Psi[t,t])` for the
+#'   named kernel and trait. The positive `scale` is expressed in response
+#'   units. The density is evaluated with respect to the natural SD, so the
+#'   objective uses `sigma = exp(log_sigma)` without an additional log-SD
+#'   Jacobian. This prior is opt-in and cannot be combined with
+#'   `fixed_effect_priors` or a loading penalty (`loading_ridge` or a finite
+#'   `aghq_ridge`). It changes neither the default fit nor the loading penalty.
+#'   Omitted kernel and trait pairs remain unpenalized. The half-normal density
+#'   has its mode at zero and does not prevent near-zero estimates; treat it as
+#'   a scale sensitivity, not a boundary-avoidance method. It is currently
+#'   supported for native-TMB ML Laplace Gaussian fits with a fitted kernel Psi
+#'   (`kernel_latent(..., unique = TRUE)`). MAP estimates and, when requested,
+#'   local approximate posterior curvature are returned; calibrated intervals,
+#'   profile intervals, bootstrap intervals, Julia, REML, MSPL, and VA are not
+#'   supported for this prior.
 #' @param loading_ridge Integration-neutral alias for `aghq_ridge`. Use this
 #'   spelling to request the same loading MAP penalty on a Laplace fit without
 #'   suggesting that the penalty belongs to AGHQ. The default `NULL` preserves
@@ -2753,6 +3055,55 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #' # The same fixed loading MAP penalty, named independently of integration.
 #' gllvmTMBcontrol(loading_ridge = 2)
 #'
+#' # A half-normal prior on selected named-kernel Psi SDs. The scale is in
+#' # response units; each row selects one kernel and trait.
+#' psi_prior <- data.frame(kernel = "tip", trait = "leaf", scale = 0.5)
+#' gllvmTMBcontrol(kernel_psi_sd_prior = psi_prior)
+#'
+#' # Fit the sensitivity model from either long or wide data. The repeated
+#' # kernel names select distinct covariance components, and unique = TRUE
+#' # includes each component's trait-specific Psi diagonal.
+#' set.seed(42)
+#' n <- 8L
+#' species <- c(paste0("H", seq_len(n)), paste0("P", seq_len(n)))
+#' A <- 0.6^abs(outer(seq_len(n), seq_len(n), "-"))
+#' I <- diag(n)
+#' K_phy <- rbind(cbind(A, 0.55 * A), cbind(0.55 * A, A))
+#' K_tip <- rbind(cbind(I, 0.55 * I), cbind(0.55 * I, I))
+#' dimnames(K_phy) <- dimnames(K_tip) <- list(species, species)
+#' Y <- cbind(
+#'   leaf = c(sin(seq_len(n)), rep(NA_real_, n)),
+#'   stem = c(cos(seq_len(n)), rep(NA_real_, n)),
+#'   jaw = c(rep(NA_real_, n), sin(seq_len(n) + 0.3)),
+#'   limb = c(rep(NA_real_, n), cos(seq_len(n)))
+#' )
+#' wide <- data.frame(species = factor(species), Y, check.names = FALSE)
+#' long <- data.frame(
+#'   species = factor(rep(species, each = ncol(Y))),
+#'   trait = factor(rep(colnames(Y), times = length(species))),
+#'   value = as.vector(t(Y))
+#' )
+#' psi_prior <- data.frame(kernel = "tip", trait = "leaf", scale = 0.5)
+#' wide_map <- gllvmTMB(
+#'   traits(leaf, stem, jaw, limb) ~ 1 +
+#'     kernel_latent(species, K = K_phy, d = 1, name = "phy", unique = TRUE) +
+#'     kernel_latent(species, K = K_tip, d = 1, name = "tip", unique = TRUE),
+#'   data = wide, unit = "species", cluster = "species", family = gaussian(),
+#'   missing = miss_control(response = "include"), known_sigma_eps = 0.12,
+#'   control = gllvmTMBcontrol(se = FALSE, kernel_psi_sd_prior = psi_prior)
+#' )
+#' long_map <- gllvmTMB(
+#'   value ~ 0 + trait +
+#'     kernel_latent(species, K = K_phy, d = 1, name = "phy", unique = TRUE) +
+#'     kernel_latent(species, K = K_tip, d = 1, name = "tip", unique = TRUE),
+#'   data = long, unit = "species", trait = "trait", cluster = "species",
+#'   family = gaussian(), missing = miss_control(response = "include"),
+#'   known_sigma_eps = 0.12,
+#'   control = gllvmTMBcontrol(se = FALSE, kernel_psi_sd_prior = psi_prior)
+#' )
+#' wide_map$objective_components
+#' long_map$objective_components
+#'
 #' # Experimental scalar variational route: public auto uses GH with H = 7.
 #' gllvmTMBcontrol(integration = "va")
 #' # H = 61 remains a diagnostic; JJ is explicit binomial-logit only.
@@ -2854,6 +3205,7 @@ gllvmTMBcontrol <- function(
   allow_nongaussian_reml = FALSE,
   loading_ridge = NULL,
   fixed_effect_priors = NULL,
+  kernel_psi_sd_prior = NULL,
   optimizer_passes = 1L,
   svd_start = TRUE,
   va_polish = TRUE,
@@ -3076,6 +3428,7 @@ gllvmTMBcontrol <- function(
     loading_ridge = if (isTRUE(loading_ridge_explicit)) aghq_ridge else NULL,
     loading_ridge_explicit = loading_ridge_explicit,
     fixed_effect_priors = fixed_effect_priors,
+    kernel_psi_sd_prior = kernel_psi_sd_prior,
     aghq_continuation = aghq_continuation,
     aghq_shift_tol = aghq_shift_tol,
     aghq_grad_tol = aghq_grad_tol,

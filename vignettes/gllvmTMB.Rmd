@@ -49,6 +49,10 @@ generating values used later to check what the fit recovered.
 `gllvmTMB` is experimental: the formula grammar, defaults, and reported
 summaries and intervals may still change as the API matures.
 
+To install the CRAN release or the GitHub development version, see the
+[Install](https://itchyshin.github.io/gllvmTMB/#install) section of the
+package README.
+
 Use this example to learn how to fit a model and read its covariance summaries.
 Successful fitting does not establish that the estimates are accurate for your
 data or that an interval has its stated coverage. The Gaussian latent model

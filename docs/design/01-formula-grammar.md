@@ -130,7 +130,7 @@ support from end-to-end verification:
 | `phylo_indep` / `phylo_dep` | **covered** | Marginal-only phylogenetic trait covariance (`phylo_indep`, equivalent to `phylo_unique`) and full-rank phylogenetic latent covariance (`phylo_dep`, equivalent to `phylo_latent(..., d = n_traits)`). Test evidence: `test-canonical-keywords.R`, `test-stage35-phylo-rr.R` + `test-formula-grammar-smoke.R` (both forms) (validation-debt register PHY-05; Phase 0B.2 promotion 2026-05-16). |
 | `animal_latent(id, d = K, pedigree = ped)` / `animal_latent(..., unique = TRUE)` | **covered / explicit animal Psi fold** | Bare `animal_latent()` is reduced-rank additive-genetic loadings on the same relatedness matrix $A$; `unique = TRUE` adds the diagonal $\boldsymbol\Psi_\text{animal}$ companion. The explicit `animal_latent(..., unique = FALSE) + animal_unique()` pair remains accepted compatibility syntax; duplicate `unique = TRUE + animal_unique()` errors. Test evidence: `test-animal-keyword.R`, `test-matrix-animal-nongaussian.R`, `test-animal-latent-unique-fold.R` (validation-debt register ANI-05; animal latent-Psi fold 2026-06-21; explicit source-Psi contract 2026-07-03). |
 | `spatial_latent(0 + trait \| sites, d = K, unique = TRUE, mesh = mesh)` and siblings | **partial / Gaussian total-covariance fold covered** | Spatial analogues of the phylo keywords. Grouping factor is `sites`; spatial geometry is supplied by a precomputed `mesh = make_mesh(...)` built from coordinate rows aligned with the fitted stacked data. `coords =` identifies coordinate columns but does not build a mesh. `spatial_latent(..., unique = FALSE)` is the old low-rank-only path, while `unique = TRUE` estimates the total spatial covariance $\Sigma_\text{spde} = \Lambda_\text{spde}\Lambda_\text{spde}^\top + \Psi_\text{spde}$ by keeping both shared and per-trait SPDE fields active. Legacy `spatial_latent(...) + spatial_unique(...)` remains accepted as compatibility syntax for the same unique fold. See "Spatial axis convention" below. Test evidence: `test-keyword-grid.R` (parser marker, both random blocks, total extractor, rank-1 total correlations not forced to `+/-1`), `test-spatial-latent-recovery.R` (low-rank path), `test-stage4-spde.R` (spatial_unique), `test-formula-grammar-smoke.R` (spatial_indep, spatial_dep, spatial_scalar) (validation-debt register SPA-03, SPA-04; Phase 0B.2 promotion 2026-05-16). Validation-debt register SPA-02 remains `partial` because source/family recovery depth is narrow. Nonlinear spatial communality/correlation/proportion profiles are separately withdrawn and blocked; they are not awaiting only a heavier smoke test. |
-| `kernel_latent(unit, K = A, d = q, name = "known")` / `kernel_latent(..., unique = TRUE)` | **covered / explicit kernel Psi fold** | Bare `kernel_latent()` is generic dense-kernel reduced-rank loadings for one named user-supplied matrix `K`; `unique = TRUE` adds the kernel-structured diagonal $\boldsymbol\Psi_\text{kernel}$ companion. The explicit `kernel_latent(..., unique = FALSE) + kernel_unique()` pair remains accepted compatibility syntax, and `kernel_unique()` alone warns as compatibility syntax; duplicate `unique = TRUE + kernel_unique()` errors; the Paper 2 multi-kernel path remains latent-only and keeps explicit kernel-level Psi deferred. C1 routes through the phylo-equivalent dense `vcv` path and exposes the tier via `extract_Sigma(level = "known")`. Test evidence: `test-kernel-latent-unique-fold.R` and `test-kernel-equivalence.R` check parser emission, malformed-`unique` rejection, explicit-vs-pair equivalence, and dense `phylo_latent(..., vcv = A)` equivalence to less than `1e-6`; `test-unique-family-deprecation.R` covers the lifecycle warning (validation-debt register KER-02; Design 65 C1; kernel latent-Psi fold 2026-06-21; explicit source-Psi contract 2026-07-03). |
+| `kernel_latent(unit, K = A, d = q, name = "known")` / `kernel_latent(..., unique = TRUE)` | **covered single-tier / partial two-tier** | Bare `kernel_latent()` is generic dense-kernel reduced-rank loadings for one named user-supplied matrix `K`; `unique = TRUE` adds the kernel-structured diagonal $\boldsymbol\Psi_\text{kernel}$ companion. The explicit `kernel_latent(..., unique = FALSE) + kernel_unique()` pair remains accepted compatibility syntax, and `kernel_unique()` alone warns as compatibility syntax; duplicate `unique = TRUE + kernel_unique()` errors; two named Gaussian kernel tiers can each use `unique = TRUE` with a fixed positive `known_sigma_eps`, positive weights, and a rank-two observed same-trait kernel-pattern screen; separate explicit kernel-level Psi remains unsupported. Recovery and interval calibration remain partial (KER-03A). C1 routes through the phylo-equivalent dense `vcv` path and exposes the tier via `extract_Sigma(level = "known")`. Test evidence: `test-kernel-latent-unique-fold.R` and `test-kernel-equivalence.R` check parser emission, malformed-`unique` rejection, explicit-vs-pair equivalence, and dense `phylo_latent(..., vcv = A)` equivalence to less than `1e-6`; `test-unique-family-deprecation.R` covers the lifecycle warning (validation-debt register KER-02; Design 65 C1; kernel latent-Psi fold 2026-06-21; explicit source-Psi contract 2026-07-03). |
 | `kernel_indep(unit, K = A)` / `kernel_dep(unit, K = A)` | **covered** | Generic dense-kernel marginal-only and full-rank companion modes. C1 fit equivalence is covered in `test-kernel-equivalence.R` against `phylo_indep(..., vcv = A)` and `phylo_dep(..., vcv = A)`; the engine route is the same phylo-equivalent dense `vcv` slot used by `kernel_latent()` / `kernel_unique()` (validation-debt register KER-02; Design 65 C1). |
 | `meta_V(V = V)` | **partial** | Known sampling covariance, desugars to `equalto(0 + obs \| grp_V, V)`. Pass `known_V = V` to `gllvmTMB()` alongside. Test evidence: `test-formula-grammar-smoke.R` (single-V additive form and V-only parser compatibility), `test-traits-keyword.R` (wide `traits(...)` preservation), and `test-block-V.R` (block-V helper) (validation-debt register MET-01, MET-02). The legacy `meta_known_V(V = V)` is retained as a deprecated alias; both names desugar identically in the parser. Single-V inference validation remains partial under MET-01. |
 | `block_V(study, sampling_var, rho_within)` helper | **covered** | Builds the standard compound-symmetric block-diagonal `V` for within-study correlation. Test evidence: `test-block-V.R` (validation-debt register MET-02; Phase 0B promotion 2026-05-16). |
@@ -418,10 +418,11 @@ $\boldsymbol\Sigma =
 The explicit pair `*_latent(..., unique = FALSE) + *_unique()`
 remains accepted as compatibility syntax. The duplicate pair
 `*_latent(..., unique = TRUE) + *_unique()` is rejected as
-double-counting the same diagonal $\boldsymbol\Psi$. Multi-kernel fits
-with two or more named `kernel_latent()` tiers remain the existing
-latent-only first wave; explicit multi-kernel `kernel_unique()` Psi
-remains deferred. For spatial terms,
+double-counting the same diagonal $\boldsymbol\Psi$. For two named Gaussian `kernel_latent()` tiers, `unique = TRUE` on both
+terms is admitted with a fixed positive `known_sigma_eps`, positive weights,
+and a rank-two observed same-trait kernel-pattern screen. The screen does not
+prove identification or recovery; separate multi-kernel `kernel_unique()`
+terms remain unsupported (KER-03A). For spatial terms,
 `spatial_latent(..., unique = TRUE)` is the canonical total-covariance
 spelling; the explicit `spatial_latent(..., unique = FALSE) +
 spatial_unique()` pair remains compatibility syntax. Its broader recovery
@@ -761,25 +762,25 @@ carrying no coefficient: `eta = offset + X b`. On a log link that is the
 exposure / effort idiom — sampling effort, trap-nights, area surveyed — and
 it is the reason the term exists.
 
-**The term is gated to count families**: `poisson`, `nbinom1`, `nbinom2`,
-`truncated_poisson`, `truncated_nbinom2` (family ids 2, 15, 5, 10, 11).
-These are every count family the engine supports; `truncated_nbinom1` has no
-engine row, so it is not a candidate.
+**The term is gated to count families** plus **`binomial(cloglog)`** (family
+id 1, link id 2): `poisson`, `nbinom1`, `nbinom2`, `truncated_poisson`,
+`truncated_nbinom2` (family ids 2, 15, 5, 10, 11). These are every count
+family the engine supports; `truncated_nbinom1` has no engine row, so it is not
+a candidate.
 
-The gate is on **family, not link**. A link gate would admit Gamma,
-lognormal and Tweedie on log links, each needing its own semantics decision;
-the family set is small, enumerable, and matches the use case. Under
-`gaussian` an offset would be an unexplained mean shift and under
-`binomial(logit)` or `binomial(probit)` a fixed shift in log-odds or probit
-units, neither of which is what a user asking for an offset wants. That reasoning
-holds for those links and is unchanged.
+The gate is on **family for counts and family × link for binomial**. A blanket
+link gate would admit Gamma, lognormal and Tweedie on log links, each needing
+its own semantics decision. Under `gaussian` an offset would be an unexplained
+mean shift and under `binomial(logit)` or `binomial(probit)` a fixed shift in
+log-odds or probit units, neither of which is what a user asking for an offset
+wants. That reasoning holds for those links and is unchanged.
 
-### One exception: `binomial(cloglog)` inside the integrated contract
+### Why `binomial(cloglog)` is admitted
 
-The restriction is correct for logit and probit but wrong for the
-presence-absence arm of an integrated multi-source model (Design 120), where
-the Bernoulli arm uses a complementary log-log link. There the offset is not
-a nuisance shift; it is a **change of support**:
+The restriction is correct for logit and probit but wrong for Bernoulli rows
+on the complementary log-log link, including the presence–absence arm of an
+integrated multi-source model (Design 120). There the offset is not a nuisance
+shift; it is a **change of support**:
 
 ```
 cloglog(p_i) = log(-log(1 - p_i)) = log(E_i) + eta_i
@@ -791,23 +792,19 @@ shared intensity. Equivalently `p_i = 1 - exp(-E_i * exp(eta_i))`. The
 as the Poisson arm, so without it the two sources are unrelated regressions,
 not one integrated model.
 
-The gate therefore admits a **nonzero** offset on a row with family 1
-(binomial) and link 2 (cloglog) **only when the exact integrated two-source
-contract has matched** (`.gllvmTMB_integrated_sources_contract()`: sources
-declared with `isdm_sources()`, Poisson-log count arms and Bernoulli-cloglog
-detection arms). Outside that contract a standalone `binomial(link =
-"cloglog")` fit still refuses a nonzero offset, with the same error as any
-other non-count trait. Widening the gate to standalone cloglog is an owner
-decision and is not made here. Logit, probit, gaussian and Beta rows stay
-refused inside the contract too; the exception is keyed to family 1 and link 2
-specifically (`tests/testthat/test-isdm-public-door.R`).
+The gate therefore admits a **nonzero** offset on any row with family 1
+(binomial) and link 2 (cloglog), standalone or inside the integrated
+two-source contract (`.gllvmTMB_integrated_sources_contract()`; issue #946).
+Logit, probit, gaussian and Beta rows stay refused; the exception is keyed to
+family 1 and link 2 specifically (`tests/testthat/test-offset-support.R`,
+`tests/testthat/test-isdm-public-door.R`).
 
 Because `family_id_vec` is already per-row, the gate is per-row too, and the
 error names the offending trait:
 
 ```
-offsets are supported for count families (poisson, nbinom) only;
-trait `t2` uses `gaussian`.
+offsets are supported for count families (poisson, nbinom) and
+binomial(link = "cloglog") only; trait `t2` uses `gaussian`.
 ```
 
 This is a capability the single-family comparators cannot offer cleanly.

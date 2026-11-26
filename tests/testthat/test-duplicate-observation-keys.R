@@ -32,6 +32,31 @@ test_that("#1907 duplicate unit-trait-unit_obs rows abort by default", {
   expect_equal(nobs(fit), nrow(d_dup))
 })
 
+test_that("#1907 custom unit_obs keeps species in duplicate key (site x species)", {
+  skip_on_cran()
+  suppressPackageStartupMessages(library(gllvmTMB))
+  d <- expand.grid(
+    unit = factor(1:2),
+    species = factor(c("sp1", "sp2")),
+    trait = factor("y1"),
+    stringsAsFactors = FALSE
+  )
+  d$value <- stats::rnorm(nrow(d))
+  d$unit_obs <- factor(paste0("u", d$unit))
+  expect_error(
+    suppressMessages(suppressWarnings(gllvmTMB(
+      value ~ 0 + trait + latent(0 + trait | unit, d = 1),
+      data = d,
+      unit = "unit",
+      species = "species",
+      trait = "trait",
+      unit_obs = "unit_obs",
+      silent = TRUE
+    ))),
+    NA
+  )
+})
+
 test_that("#1907 distinct unit_obs allows multiple rows per unit and trait", {
   skip_on_cran()
   suppressPackageStartupMessages(library(gllvmTMB))

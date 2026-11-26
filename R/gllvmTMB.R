@@ -1429,7 +1429,8 @@ gllvmTMB <- function(
   if (!is.factor(data[[site]])) {
     data[[site]] <- factor(data[[site]])
   }
-  if (species %in% names(data)) {
+  species_was_real <- species %in% names(data)
+  if (species_was_real) {
     if (!is.factor(data[[species]])) data[[species]] <- factor(data[[species]])
   } else {
     ## site-level data (e.g. Stage 6 stage-2): synthesise a species column
@@ -1461,6 +1462,8 @@ gllvmTMB <- function(
     unit = site,
     trait = trait,
     unit_obs = unit_obs,
+    species = species,
+    species_was_real = species_was_real,
     repeated_measures = repeated_measures
   )
 
@@ -3799,8 +3802,12 @@ detect_covstruct_terms <- function(formula) {
 ## repeated measures should distinguish replicates via `unit_obs`; set
 ## `repeated_measures = TRUE` only when duplicate keys are deliberate.
 .gllvmTMB_check_duplicate_observation_keys <- function(
-    data, unit, trait, unit_obs, repeated_measures = FALSE) {
+    data, unit, trait, unit_obs, species = NULL, species_was_real = FALSE,
+    repeated_measures = FALSE) {
   key_cols <- intersect(c(unit, trait, unit_obs), names(data))
+  if (isTRUE(species_was_real) && !is.null(species) && species %in% names(data)) {
+    key_cols <- unique(c(key_cols, species))
+  }
   if (length(key_cols) < 2L) return(invisible(NULL))
   dup <- duplicated(data[key_cols])
   if (!any(dup)) return(invisible(NULL))

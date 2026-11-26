@@ -135,11 +135,12 @@ the full unstructured block with \code{level = "spde_dep"} and \code{part = "dep
 These SPDE matrices are on the fitted field-covariance scale; the returned
 note records the marginal-scale conversion.
 
-Intercept-only \code{spatial_indep(0 + trait | coords)} returns a diagonal
-\code{Sigma} from \code{exp(-2 * log_tau_spde)} per trait (no cross-trait
-correlation) at \code{level = "spatial"} with \code{part = "total"}; the returned
-\code{note} states the SPDE parameter scale and cites marginal conversion by
-\code{kappa}.
+Intercept-only \code{spatial_indep(0 + trait | coords)} fits independent
+per-trait SPDE fields without a cross-trait \code{Sigma} matrix;
+\code{extract_Sigma(level = "spatial")} refuses and names the fitted
+\code{spatial_indep()} term, pointing to \code{fit$report$log_tau_spde} and
+\code{fit$report$kappa} for field scales (and \code{level = "spde_indep_slope"} for
+augmented \code{spatial_indep(1 + x | coords)} slopes).
 
 For an ordinary individual-level random-regression fit with
 \code{latent(1 + x | unit, d = K)}, \code{indep(1 + x | unit)}, or their long-form

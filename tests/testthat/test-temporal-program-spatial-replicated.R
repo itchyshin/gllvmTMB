@@ -76,25 +76,20 @@ test_that("replicated AR1 temporal_indep plus fixed spatial_indep is admitted", 
   expect_true(isTRUE(fit$use$spde)); expect_true(all(c("q_temporal", "omega_spde") %in% fit$random))
 })
 
-test_that("extract_Sigma(level = spatial) returns diagonal Sigma for spatial_indep intercept (#1934)", {
+test_that("extract_Sigma(level = spatial) refuses spatial_indep and names the report route (#1934)", {
   skip_if_not_installed("TMB"); skip_if_not_installed("fmesher")
   fx <- .temporal_spatial_rep_fixture()
   fit <- .temporal_spatial_rep_fit(fx)
   expect_true(isTRUE(fit$use$spatial_indep))
   expect_false(isTRUE(fit$use$spatial_latent))
-  es <- suppressMessages(
-    extract_Sigma(fit, level = "spatial", part = "total", link_residual = "none")
+  err <- expect_error(
+    extract_Sigma(fit, level = "spatial", part = "total", link_residual = "none"),
+    "spatial_indep"
   )
-  S <- es$Sigma
-  expect_equal(dim(S), c(fit$n_traits, fit$n_traits))
-  expect_equal(S, diag(diag(S)))
-  log_tau <- as.numeric(fit$report$log_tau_spde)
-  expect_equal(diag(S), exp(-2 * log_tau), tolerance = 1e-10)
-  expect_equal(es$R, diag(fit$n_traits))
-  es_legacy <- suppressMessages(
-    extract_Sigma(fit, level = "spde", part = "total", link_residual = "none")
-  )
-  expect_equal(unname(es_legacy$Sigma), unname(S))
+  msg <- cli::ansi_strip(conditionMessage(err))
+  expect_match(msg, "spatial_latent")
+  expect_match(msg, "log_tau_spde")
+  expect_match(msg, fixed = TRUE, "fit$report$kappa")
 })
 
 test_that("replicated temporal-spatial likelihood and gradient equal a dense additive oracle", {

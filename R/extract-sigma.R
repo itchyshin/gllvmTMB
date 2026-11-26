@@ -768,11 +768,12 @@ link_residual_per_trait <- function(fit) {
 #'   These SPDE matrices are on the fitted field-covariance scale; the returned
 #'   note records the marginal-scale conversion.
 #'
-#'   Intercept-only `spatial_indep(0 + trait | coords)` returns a diagonal
-#'   `Sigma` from `exp(-2 * log_tau_spde)` per trait (no cross-trait
-#'   correlation) at `level = "spatial"` with `part = "total"`; the returned
-#'   `note` states the SPDE parameter scale and cites marginal conversion by
-#'   `kappa`.
+#'   Intercept-only `spatial_indep(0 + trait | coords)` fits independent
+#'   per-trait SPDE fields without a cross-trait `Sigma` matrix;
+#'   `extract_Sigma(level = "spatial")` refuses and names the fitted
+#'   `spatial_indep()` term, pointing to `fit$report$log_tau_spde` and
+#'   `fit$report$kappa` for field scales (and `level = "spde_indep_slope"` for
+#'   augmented `spatial_indep(1 + x | coords)` slopes).
 #'
 #'   For an ordinary individual-level random-regression fit with
 #'   `latent(1 + x | unit, d = K)`, `indep(1 + x | unit)`, or their long-form
@@ -1742,48 +1743,30 @@ extract_Sigma <- function(
       !isTRUE(fit$use$spatial_latent)
     rho_indep <- identical(fit$source_strength$source,"spatial") &&
       isTRUE(fit$tmb_data$spde_lv_k==0L)
-    if (!isTRUE(fit$use$spatial_latent) && !rho_indep && !spde_indep_intercept) {
+    if (spde_indep_intercept && !rho_indep) {
       cli::cli_abort(c(
-        "Fit has no {.code spatial_latent()} or intercept-only {.code spatial_indep()} term -- nothing to extract at level {.val spde}.",
-        "i" = "Add {.code spatial_latent(0 + trait | coords, d = K)} for a shared low-rank spatial field, or {.code spatial_indep(0 + trait | coords)} for independent per-trait fields."
+        "Fit has {.fn spatial_indep} but not {.fn spatial_latent} -- nothing to extract at {.code level = \"spatial\"}.",
+        "i" = paste0(
+          "{.fn extract_Sigma} at {.code level = \"spatial\"} reports shared ",
+          "low-rank spatial trait covariance from {.fn spatial_latent} only. ",
+          "For intercept-only {.fn spatial_indep}, read per-trait field scales ",
+          "from {.code fit$report$log_tau_spde} and range from {.code fit$report$kappa}; ",
+          "for {.code spatial_indep(1 + x | coords)} slopes use ",
+          "{.code extract_Sigma(fit, level = \"spde_indep_slope\")}."
+        )
       ))
     }
-    L <- if (rho_indep || spde_indep_intercept) NULL else fit$report$Lambda_spde
+    if (!isTRUE(fit$use$spatial_latent) && !rho_indep) {
+      cli::cli_abort(
+        "Fit has no {.code spatial_latent()} term -- nothing to extract at level {.val spde}."
+      )
+    }
+    L <- if (rho_indep) NULL else fit$report$Lambda_spde
     if (rho_indep) {
       pars <- fit$tmb_obj$env$parList(par=fit$tmb_obj$env$last.par.best)
       S <- exp(-2*pars$log_tau_spde)
       names(S) <- trait_names
       notes <- c(notes,"Spatial trait covariance is on the legacy SPDE parameter scale; multiply its diagonal by source_strength$source_diagonal for fitted location variances.")
-    } else if (spde_indep_intercept) {
-      log_tau <- as.numeric(fit$report$log_tau_spde)
-      if (length(log_tau) != T || !all(is.finite(log_tau))) {
-        cli::cli_abort(
-          "Intercept-only {.code spatial_indep()} fit has no finite per-trait {.code log_tau_spde} in the report."
-        )
-      }
-      S <- exp(-2 * log_tau)
-      names(S) <- trait_names
-      kappa_s <- as.numeric(fit$report$kappa %||% fit$report$kappa_s)
-      kappa_note <- if (length(kappa_s) >= 1L && is.finite(kappa_s[1L])) {
-        sprintf(
-          paste0(
-            "Fitted kappa = %.4g; per-site marginal field variance per trait ",
-            "is exp(-2*log_tau_spde) / (4*pi*kappa^2) on the observation scale."
-          ),
-          kappa_s[1L]
-        )
-      } else {
-        "Per-site marginal field variance divides by 4*pi*kappa^2; kappa not available in the report."
-      }
-      notes <- c(
-        notes,
-        paste0(
-          "spatial_indep intercept-only: per-trait independent SPDE fields with ",
-          "no cross-trait covariance. Returned Sigma is diagonal on the legacy ",
-          "SPDE parameter scale (exp(-2*log_tau_spde) per trait). ",
-          kappa_note
-        )
-      )
     } else if (isTRUE(fit$use$spatial_latent_unique) &&
         !is.null(fit$report$sd_spde_unique)) {
       S <- as.numeric(fit$report$sd_spde_unique)^2

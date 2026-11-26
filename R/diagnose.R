@@ -10,7 +10,41 @@
 ## `converged` requires the optimiser's success code, a finite objective, a
 ## small unscaled maximum gradient, a positive-definite reported Hessian, and
 ## finite fixed-effect standard errors when `sdreport()` ran (26 Nov 2026).
+## It also requires the Newton step to be small in standard-error units:
+## max_i |(H^-1 g)_i| / SE_i <= 1e-3, with SE_i = sqrt((H^-1)_ii). A raw
+## gradient under 1e-2 can still be a large step on a flat parameter.
 .gllvmTMB_converged_gtol <- 1e-2
+.gllvmTMB_newton_se_tol <- 1e-3
+
+## Largest Newton step in standard-error units, max_i |(H^-1 g)_i| / SE_i.
+## `covariance` is the fixed-effect covariance H^-1 (TMB `cov.fixed`).
+## Returns NA when the step cannot be formed. Absolute value makes the
+## minimiser sign (delta = -H^-1 g) irrelevant.
+.gllvmTMB_newton_se_ratio <- function(gradient, covariance) {
+  g_names <- names(gradient)
+  g <- as.numeric(gradient)
+  if (!length(g) || any(!is.finite(g)) || is.null(covariance)) {
+    return(NA_real_)
+  }
+  Hinv <- as.matrix(covariance)
+  if (nrow(Hinv) != ncol(Hinv) || !all(is.finite(Hinv))) {
+    return(NA_real_)
+  }
+  if (!is.null(g_names) && !is.null(rownames(Hinv)) &&
+      length(g_names) == length(g) && all(nzchar(g_names)) &&
+      all(nzchar(rownames(Hinv)))) {
+    if (!setequal(g_names, rownames(Hinv))) return(NA_real_)
+    Hinv <- Hinv[g_names, g_names, drop = FALSE]
+  } else if (nrow(Hinv) != length(g)) {
+    return(NA_real_)
+  }
+  d <- diag(Hinv)
+  if (any(!is.finite(d)) || any(d <= 0)) return(NA_real_)
+  se <- sqrt(d)
+  step <- as.numeric(Hinv %*% g)
+  if (any(!is.finite(step))) return(NA_real_)
+  max(abs(step) / se)
+}
 
 ##' @keywords internal
 ##' @noRd
@@ -29,6 +63,11 @@
 }
 
 ## First match: not_converged > boundary > degenerate > converged (26 Nov 2026).
+## `newton_se_applicable` is TRUE only on the path that would otherwise be
+## `converged` (sdreport ran, Hessian PD, fixed-effect SEs finite). A ratio
+## above 1e-3, or a ratio that cannot be formed, is not converged. Non-PD
+## and non-finite-SE fits stay `degenerate` (or `boundary`) and are not
+## reclassified by this gate.
 .gllvmTMB_convergence_status <- function(
     optimizer_converged,
     obj_val,
@@ -36,7 +75,9 @@
     stationary_by_gradient,
     n_boundary,
     pd_hessian,
-    se_nonfinite
+    se_nonfinite,
+    newton_se_ratio = NA_real_,
+    newton_se_applicable = FALSE
 ) {
   if (!isTRUE(optimizer_converged) || !is.finite(obj_val) ||
       isTRUE(premature_termination) || !isTRUE(stationary_by_gradient)) {
@@ -47,6 +88,11 @@
   }
   if (identical(pd_hessian, FALSE) || isTRUE(se_nonfinite)) {
     return("degenerate")
+  }
+  if (isTRUE(newton_se_applicable) &&
+      (!is.finite(newton_se_ratio) ||
+       newton_se_ratio > .gllvmTMB_newton_se_tol)) {
+    return("not_converged")
   }
   "converged"
 }
@@ -149,6 +195,16 @@
   )
   boundary_flags <- .gllvmTMB_boundary_flags(object)
   boundary_params <- .gllvmTMB_boundary_params(boundary_flags)
+  ## Newton-SE is recorded when sdreport ran, the Hessian is PD, and
+  ## fixed-effect SEs are finite. Boundary is decided first, so a boundary
+  ## fit is not relabelled when the step is large.
+  newton_se_applicable <- isTRUE(sdreport_ok) && isTRUE(pd_hessian) &&
+    !isTRUE(se_nonfinite)
+  newton_se_ratio <- if (newton_se_applicable) {
+    .gllvmTMB_newton_se_ratio(grad, object$sd_report$cov.fixed)
+  } else {
+    NA_real_
+  }
   convergence_status <- .gllvmTMB_convergence_status(
     optimizer_converged = optimizer_converged,
     obj_val = obj_val,
@@ -156,7 +212,9 @@
     stationary_by_gradient = stationary_by_gradient,
     n_boundary = nrow(boundary_params),
     pd_hessian = pd_hessian,
-    se_nonfinite = se_nonfinite
+    se_nonfinite = se_nonfinite,
+    newton_se_ratio = newton_se_ratio,
+    newton_se_applicable = newton_se_applicable
   )
   converged <- identical(convergence_status, "converged")
 
@@ -174,6 +232,7 @@
       ridge_tau, names(object$tmb_obj$par)
     ),
     scaled_gradient = scaled_gradient,
+    newton_se_ratio = newton_se_ratio,
     stationary_by_scaled_gradient = stationary_by_scaled_gradient,
     stationary_by_gradient = stationary_by_gradient,
     optimizer_converged = optimizer_converged,

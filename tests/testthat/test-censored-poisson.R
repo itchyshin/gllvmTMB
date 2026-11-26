@@ -262,7 +262,7 @@ test_that("fitted() reports exp(eta) (the underlying uncensored-process mean)", 
     control = gllvmTMBcontrol(se = FALSE)
   )))
   f <- fitted(fit)
-  expect_equal(f$est, exp(fit$report$eta), tolerance = 1e-10)
+  expect_equal(f, exp(fit$report$eta), tolerance = 1e-10)
 })
 
 test_that("simulate() draws the latent Poisson and re-applies each row's own censoring limit", {

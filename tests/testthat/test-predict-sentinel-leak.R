@@ -15,7 +15,9 @@ test_that("#1406: no-species fit drops the placeholder species column", {
   p <- predict(fit)
   f <- fitted(fit)
   expect_identical(names(p), c("id", "trait", "est"))
-  expect_identical(names(f), c("id", "trait", "est"))
+  expect_type(f, "double")
+  expect_length(f, nrow(p))
+  expect_identical(f, p$est)
   expect_equal(nrow(p), nrow(iris2) * 4L)
 })
 
@@ -31,7 +33,7 @@ test_that("#1406: wide mixed-family fit drops placeholder and .family_wide_", {
   p <- predict(fit, type = "response")
   expect_false("species" %in% names(p))
   expect_false(any(grepl("family_wide_", names(p))))
-  expect_false(any(grepl("family_wide_", names(fitted(fit)))))
+  expect_identical(fitted(fit), p$est)
   expect_identical(names(p), c("car", "trait", "est"))
 })
 

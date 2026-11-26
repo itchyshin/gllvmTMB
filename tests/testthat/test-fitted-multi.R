@@ -79,9 +79,9 @@ test_that("#25 B2: fitted() on a gllvmTMB_multi fit matches predict(newdata = NU
 
   ft <- fitted(fit)
   expect_false(is.null(ft))
-  expect_s3_class(ft, "data.frame")
-  expect_equal(nrow(ft), nrow(pr))
-  expect_identical(ft$est, pr$est)
+  expect_type(ft, "double")
+  expect_length(ft, nrow(pr))
+  expect_identical(ft, pr$est)
 })
 
 test_that("#25 B2: fitted(type = ) dispatches link vs response like predict()", {
@@ -90,19 +90,19 @@ test_that("#25 B2: fitted(type = ) dispatches link vs response like predict()", 
 
   ft_link <- fitted(fit, type = "link")
   ft_resp <- fitted(fit, type = "response")
-  expect_identical(ft_link$est, predict(fit, newdata = NULL, type = "link")$est)
+  expect_identical(ft_link, predict(fit, newdata = NULL, type = "link")$est)
   expect_identical(
-    ft_resp$est,
+    ft_resp,
     predict(fit, newdata = NULL, type = "response")$est
   )
   ## Binomial link/response scales genuinely differ.
-  expect_false(isTRUE(all.equal(ft_link$est, ft_resp$est)))
+  expect_false(isTRUE(all.equal(ft_link, ft_resp)))
 })
 
 test_that("#25 B2: default type is \"response\", the fitted() convention", {
   skip_on_cran()
   fit <- .ftm_binomial_fit(seed = 603L)
-  expect_identical(fitted(fit)$est, fitted(fit, type = "response")$est)
+  expect_identical(fitted(fit), fitted(fit, type = "response"))
 })
 
 test_that("#25 B2 REPAIR: fitted(fit, se.fit = TRUE) forwards ... to predict()", {
@@ -110,14 +110,17 @@ test_that("#25 B2 REPAIR: fitted(fit, se.fit = TRUE) forwards ... to predict()",
   ## swallow `...`, so `se.fit` / `re_form` never reached predict(). Verified
   ## first (not assumed): `predict(fit, se.fit = TRUE)` adds an `se.fit`
   ## column (plus `se.fit.scale` / `se.fit.conditional` attributes) to the
-  ## same long data frame -- this test checks fitted() reproduces exactly
-  ## that, not a guessed column name.
+  ## long data frame -- fitted() returns a vector with those carried as
+  ## attributes on `se.fit`.
   skip_on_cran()
   fit <- .ftm_binomial_fit_se()
   pr <- predict(fit, newdata = NULL, type = "response", se.fit = TRUE)
   ft <- fitted(fit, type = "response", se.fit = TRUE)
-  expect_true("se.fit" %in% names(ft))
-  expect_identical(ft, pr)
+  expect_type(ft, "double")
+  expect_equal(ft, pr$est, check.attributes = FALSE)
+  expect_identical(attr(ft, "se.fit"), pr$se.fit)
+  expect_identical(attr(ft, "se.fit.scale"), attr(pr, "se.fit.scale"))
+  expect_identical(attr(ft, "se.fit.conditional"), attr(pr, "se.fit.conditional"))
 })
 
 test_that("#25 B2: fitted() on a multinomial fit routes through .predict_multinomial", {
@@ -125,7 +128,7 @@ test_that("#25 B2: fitted() on a multinomial fit routes through .predict_multino
   fit <- .ftm_multinomial_fit()
   ft <- fitted(fit)
   expect_false(is.null(ft))
-  expect_identical(ft, predict(fit, newdata = NULL, type = "response"))
+  expect_identical(ft, predict(fit, newdata = NULL, type = "response")$est)
 })
 
 test_that("#25 B2: fitted() exists for every engine class (method-parity contract)", {

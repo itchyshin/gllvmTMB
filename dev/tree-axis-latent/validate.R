@@ -107,9 +107,10 @@ wide_check <- function(l,w) {
        objective_relative_difference=objective,fitted_response_sd_difference=fitted)
 }
 .tree_axis_repair_public <- function(fit, model) {
-  fitted_out <- stats::fitted(fit)
-  if (!is.data.frame(fitted_out) || !"est" %in% names(fitted_out) || ncol(fitted_out) < 3L) {
-    stop("fitted() did not return the documented training-row data frame.")
+  fitted_vec <- stats::fitted(fit)
+  pred_out <- predict(fit, newdata = NULL, type = "response")
+  if (!is.numeric(fitted_vec) || length(fitted_vec) != nrow(pred_out)) {
+    stop("fitted() did not return a training-row numeric vector.")
   }
   sigma <- function(level) list(
     shared = suppressMessages(extract_Sigma(fit, level = level, part = "shared", link_residual = "none")$Sigma),
@@ -117,8 +118,8 @@ wide_check <- function(l,w) {
     total = suppressMessages(extract_Sigma(fit, level = level, part = "total", link_residual = "none")$Sigma)
   )
   out <- list(
-    fitted = as.numeric(fitted_out$est),
-    fitted_keys = paste(fitted_out[[1L]], fitted_out[[3L]], sep = "::")
+    fitted = as.numeric(fitted_vec),
+    fitted_keys = paste(pred_out[[1L]], pred_out[[3L]], sep = "::")
   )
   if (identical(model, "morphology")) {
     out$phy <- sigma("phy")

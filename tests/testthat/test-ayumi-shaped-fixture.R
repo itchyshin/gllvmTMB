@@ -57,11 +57,11 @@ test_that("#25: Ayumi-shaped fixture (p = 12, n = 60, d = 2, ridge on) is a cohe
   expect_true(isTRUE(fit$fit_health$gradient_is_penalised))
   expect_true(isTRUE(fit$fit_health$converged))
 
-  ## (3) B2: fitted() returns the long data.frame, one row per observation.
+  ## (3) B2: fitted() returns one numeric value per training row.
   ft <- fitted(fit)
   expect_false(is.null(ft))
-  expect_s3_class(ft, "data.frame")
-  expect_equal(nrow(ft), n * p)
+  expect_type(ft, "double")
+  expect_length(ft, n * p)
 
   ## (4) B1: every trait is single-trial Bernoulli, so the auto-Psi skip
   ## block maps every coordinate off -- the exact diag_B_skip case -- and

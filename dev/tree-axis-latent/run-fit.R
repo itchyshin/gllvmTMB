@@ -147,16 +147,17 @@ start_spec <- list(seed = 202608501L, init_jitter = 0.15)
 }
 
 .tree_axis_public_result <- function(fit, model) {
-  fitted_out <- stats::fitted(fit)
-  if (!is.data.frame(fitted_out) || !"est" %in% names(fitted_out) || ncol(fitted_out) < 3L) {
-    stop("fitted() did not return the documented training-row data frame.")
+  fitted_vec <- stats::fitted(fit)
+  pred_out <- predict(fit, newdata = NULL, type = "response")
+  if (!is.numeric(fitted_vec) || length(fitted_vec) != nrow(pred_out)) {
+    stop("fitted() did not return a training-row numeric vector.")
   }
   ## Positions are intentional: predict.gllvmTMB_multi() constructs unit,
   ## species, trait, est in that order.  Names can repeat when unit and species
   ## are both called `species`, so name matching is unsafe here.
   out <- list(
-    fitted = as.numeric(fitted_out$est),
-    fitted_keys = paste(fitted_out[[1L]], fitted_out[[3L]], sep = "::")
+    fitted = as.numeric(fitted_vec),
+    fitted_keys = paste(pred_out[[1L]], pred_out[[3L]], sep = "::")
   )
   if (identical(model, "morphology")) {
     out$phy <- .tree_axis_sigma_public(fit, "phy")

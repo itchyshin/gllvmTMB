@@ -4201,12 +4201,12 @@ predict.gllvmTMB_multi <- function(
 #' Fitted values from a fitted gllvmTMB model
 #'
 #' A thin wrapper over [predict.gllvmTMB_multi()] at the training rows
-#' (`newdata = NULL`). Returns the same long data frame `predict()` returns
-#' -- one row per training observation, carrying its unit/species/trait
-#' identifiers alongside the fitted value -- rather than a bare vector, so
-#' row identity against the original data is preserved. `...` is forwarded
-#' to `predict()` unchanged, so its other arguments (`se.fit`, `re_form`)
-#' work here too.
+#' (`newdata = NULL`). Returns the fitted values as a numeric vector in the
+#' same row order as the model's training data (so `as.numeric(fitted(fit))`
+#' works without reaching for `$est`). Row identifiers live on
+#' `predict(object, newdata = NULL, ...)` instead. `...` is forwarded to
+#' `predict()` unchanged, so its other arguments (`se.fit`, `re_form`) work
+#' here too.
 #'
 #' @param object A fit returned by [gllvmTMB()].
 #' @param type One of `"response"` (default, the `fitted()` convention) or
@@ -4214,15 +4214,28 @@ predict.gllvmTMB_multi <- function(
 #' @param ... Forwarded to [predict.gllvmTMB_multi()] (e.g. `se.fit`,
 #'   `re_form`); see its documentation for what each accepts.
 #'
-#' @return A data frame with the original row identifiers (unit, species,
-#'   trait columns) plus an `est` column on the requested scale -- identical
-#'   in shape to `predict(object, newdata = NULL, type = type, ...)`. **For a
-#'   `multinomial()` fit** this is `.predict_multinomial()`'s output: K rows
-#'   per observation (one per category, including the baseline), not one.
+#' @return A numeric vector of fitted values on the requested scale, one
+#'   element per training row in data order. When `se.fit = TRUE`, a
+#'   `se.fit` attribute carries the conditional standard errors from
+#'   `predict()`, with `se.fit.scale` and `se.fit.conditional` copied from
+#'   that call. **For a `multinomial()` fit** the vector follows
+#'   `.predict_multinomial()`'s row order (K values per observation on
+#'   `type = "response"`, K-1 on `type = "link"`).
 #' @export
 fitted.gllvmTMB_multi <- function(object, type = c("response", "link"), ...) {
   type <- match.arg(type)
-  predict(object, newdata = NULL, type = type, ...)
+  out <- predict(object, newdata = NULL, type = type, ...)
+  vals <- as.numeric(out[["est"]])
+  if ("se.fit" %in% names(out)) {
+    attr(vals, "se.fit") <- as.numeric(out[["se.fit"]])
+  }
+  for (nm in c("se.fit.scale", "se.fit.conditional")) {
+    a <- attr(out, nm)
+    if (!is.null(a)) {
+      attr(vals, nm) <- a
+    }
+  }
+  vals
 }
 
 #' Deviance of a fitted gllvmTMB model

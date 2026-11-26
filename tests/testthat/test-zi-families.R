@@ -481,7 +481,7 @@ test_that("fitted() applies (1 - zi) * mu for zi_poisson", {
   )))
   fv <- fitted(fit)
   mu <- exp(fit$report$eta[1])
-  expect_equal(fv$est[1], (1 - fit$report$zi[1]) * mu, tolerance = 1e-8)
+  expect_equal(fv[1], (1 - fit$report$zi[1]) * mu, tolerance = 1e-8)
 })
 
 ## ---------------------------------------------------------------------

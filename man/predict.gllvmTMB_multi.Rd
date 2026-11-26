@@ -61,7 +61,9 @@ random effects are being re-added, \code{predict()} stops and asks for
 that column or for \code{re_form = ~0}. A missing species column is not
 an unseen level: if \code{newdata} omits the fitted species column while
 phylogenetic random effects are being re-added, \code{predict()} stops and
-asks for that column or for \code{re_form = ~0}.
+asks for that column or for \code{re_form = ~0}. The same rule applies to
+the fitted \code{cluster2} column when \code{diag_cluster2} would be re-added
+(#1788).
 
 For AGHQ fits, conditional predictions use the latent modes at the
 fitted parameters. They are not averages over latent-score uncertainty.
@@ -96,8 +98,9 @@ fits, fits without an active \code{mi()} missing-covariate model, and fits with
 unit likelihood weights. A non-unit weighted objective has no certified
 prediction-standard-error route.}
 
-\item{...}{Unused. An argument passed here is ignored with a warning; in
-particular \code{re.form} (use \code{re_form}) and \code{se_fit} (use \code{se.fit}).}
+\item{...}{Additional arguments are ignored with a warning, except
+\code{re.form} which is accepted as an alias of \code{re_form} (lme4 / glmmTMB
+spelling). Near-miss \code{se_fit} (use \code{se.fit}) is warned and ignored.}
 }
 \value{
 A data frame with the original row identifiers plus an \code{est}

@@ -78,3 +78,23 @@ test_that("cbind binomial response rows are dropped when either component is NA"
     info = paste(msgs, collapse = " | ")
   )
 })
+
+test_that("bare missing = character is refused with miss_control guidance (#1912)", {
+  long <- expand.grid(
+    unit = factor(1:12),
+    trait = factor(paste0("sp", 1:3))
+  )
+  long$y <- stats::rnorm(nrow(long))
+
+  expect_error(
+    gllvmTMB::gllvmTMB(
+      y ~ 0 + trait + latent(0 + trait | unit, d = 1),
+      data = long,
+      unit = "unit",
+      trait = "trait",
+      missing = "include",
+      control = gllvmTMBcontrol(se = FALSE)
+    ),
+    regexp = "miss_control\\(response = [\"']include[\"']\\)"
+  )
+})

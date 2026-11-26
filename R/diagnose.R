@@ -7,10 +7,111 @@
 ## Conservative stationarity tolerance. The objective-scaled gradient remains a
 ## descriptive diagnostic, but it cannot by itself certify convergence because
 ## its value changes with arbitrary additive/replicate scaling of the objective.
-## `converged` therefore requires the optimiser's success code, a finite objective,
-## and a small unscaled maximum gradient. Hessian health remains a separate
-## inference diagnostic rather than part of this point-stationarity flag.
+## `converged` requires the optimiser's success code, a finite objective, a
+## small unscaled maximum gradient, a positive-definite reported Hessian, and
+## finite fixed-effect standard errors when `sdreport()` ran (26 Nov 2026).
+## It also requires the Newton step to be small in standard-error units:
+## max_i |(H^-1 g)_i| / SE_i <= 1e-3, with SE_i = sqrt((H^-1)_ii). A raw
+## gradient under 1e-2 can still be a large step on a flat parameter.
 .gllvmTMB_converged_gtol <- 1e-2
+.gllvmTMB_newton_se_tol <- 1e-3
+
+## Largest Newton step in standard-error units, max_i |(H^-1 g)_i| / SE_i.
+## `covariance` is the fixed-effect covariance H^-1 (TMB `cov.fixed`).
+## Returns NA when the step cannot be formed. Absolute value makes the
+## minimiser sign (delta = -H^-1 g) irrelevant.
+.gllvmTMB_newton_se_ratio <- function(gradient, covariance) {
+  g_names <- names(gradient)
+  g <- as.numeric(gradient)
+  if (!length(g) || any(!is.finite(g)) || is.null(covariance)) {
+    return(NA_real_)
+  }
+  Hinv <- as.matrix(covariance)
+  if (nrow(Hinv) != ncol(Hinv) || !all(is.finite(Hinv))) {
+    return(NA_real_)
+  }
+  if (!is.null(g_names) && !is.null(rownames(Hinv)) &&
+      length(g_names) == length(g) && all(nzchar(g_names)) &&
+      all(nzchar(rownames(Hinv)))) {
+    if (!setequal(g_names, rownames(Hinv))) return(NA_real_)
+    Hinv <- Hinv[g_names, g_names, drop = FALSE]
+  } else if (nrow(Hinv) != length(g)) {
+    return(NA_real_)
+  }
+  d <- diag(Hinv)
+  if (any(!is.finite(d)) || any(d <= 0)) return(NA_real_)
+  se <- sqrt(d)
+  step <- as.numeric(Hinv %*% g)
+  if (any(!is.finite(step))) return(NA_real_)
+  max(abs(step) / se)
+}
+
+##' @keywords internal
+##' @noRd
+.gllvmTMB_boundary_params <- function(flags) {
+  flags <- as.character(flags %||% character(0))
+  if (!length(flags)) {
+    return(data.frame(name = character(0), kind = character(0),
+                      stringsAsFactors = FALSE))
+  }
+  kind <- rep("other", length(flags))
+  name <- sub("^(near_zero_|boundary_)", "", flags)
+  kind[grepl("^near_zero_(sd|psi)", flags)] <- "sd"
+  kind[grepl("^near_zero_.*_loading$", flags)] <- "loading"
+  kind[grepl("^boundary_(phi|df|sigma)", flags)] <- "dispersion"
+  data.frame(name = name, kind = kind, stringsAsFactors = FALSE)
+}
+
+## First match: not_converged > boundary > degenerate > converged (26 Nov 2026).
+## `newton_se_applicable` is TRUE only on the path that would otherwise be
+## `converged` (sdreport ran, Hessian PD, fixed-effect SEs finite). A ratio
+## above 1e-3, or a ratio that cannot be formed, is not converged. Non-PD
+## and non-finite-SE fits stay `degenerate` (or `boundary`) and are not
+## reclassified by this gate.
+.gllvmTMB_convergence_status <- function(
+    optimizer_converged,
+    obj_val,
+    premature_termination,
+    stationary_by_gradient,
+    n_boundary,
+    pd_hessian,
+    se_nonfinite,
+    newton_se_ratio = NA_real_,
+    newton_se_applicable = FALSE
+) {
+  if (!isTRUE(optimizer_converged) || !is.finite(obj_val) ||
+      isTRUE(premature_termination) || !isTRUE(stationary_by_gradient)) {
+    return("not_converged")
+  }
+  if (n_boundary > 0L) {
+    return("boundary")
+  }
+  if (identical(pd_hessian, FALSE) || isTRUE(se_nonfinite)) {
+    return("degenerate")
+  }
+  if (isTRUE(newton_se_applicable) &&
+      (!is.finite(newton_se_ratio) ||
+       newton_se_ratio > .gllvmTMB_newton_se_tol)) {
+    return("not_converged")
+  }
+  "converged"
+}
+
+.gllvmTMB_warn_fit_health_convergence <- function(health) {
+  status <- health$convergence_status %||% "not_converged"
+  if (identical(status, "converged")) {
+    return(invisible(FALSE))
+  }
+  if (status %in% c("boundary", "degenerate")) {
+    cli::cli_warn(c(
+      "This fit is classified as {.val {status}} under the converged rule.",
+      "i" = "The optimiser may report code 0 while the Hessian or fixed-effect standard errors are not usable for Wald inference.",
+      ">" = "Inspect {.code fit$fit_health} and {.fn check_gllvmTMB} before Wald-based summaries."
+    ), class = "gllvmTMB_fit_health_not_converged")
+    return(invisible(TRUE))
+  }
+  invisible(FALSE)
+}
 
 .gllvmTMB_build_fit_health <- function(object) {
   if (!inherits(object, "gllvmTMB_multi")) {
@@ -80,10 +181,42 @@
   n_iter <- suppressWarnings(as.numeric(object$opt$iterations %||% NA_real_))
   premature_termination <- length(n_iter) == 1L && is.finite(n_iter) &&
     n_iter <= 2 && (!is.finite(obj_val) || abs(obj_val) > 1e12)
-  converged <- isTRUE(
-    optimizer_converged && is.finite(obj_val) && stationary_by_gradient &&
-      !premature_termination
+  pd_hessian <- if (
+    !is.null(object$sd_report) &&
+      !is.null(object$sd_report$pdHess)
+  ) {
+    isTRUE(object$sd_report$pdHess)
+  } else {
+    NA
+  }
+  sdreport_ok <- !is.null(object$sd_report)
+  se_nonfinite <- isTRUE(sdreport_ok) && (
+    length(se) == 0L || all(is.na(se)) || any(!is.finite(se))
   )
+  boundary_flags <- .gllvmTMB_boundary_flags(object)
+  boundary_params <- .gllvmTMB_boundary_params(boundary_flags)
+  ## Newton-SE is recorded when sdreport ran, the Hessian is PD, and
+  ## fixed-effect SEs are finite. Boundary is decided first, so a boundary
+  ## fit is not relabelled when the step is large.
+  newton_se_applicable <- isTRUE(sdreport_ok) && isTRUE(pd_hessian) &&
+    !isTRUE(se_nonfinite)
+  newton_se_ratio <- if (newton_se_applicable) {
+    .gllvmTMB_newton_se_ratio(grad, object$sd_report$cov.fixed)
+  } else {
+    NA_real_
+  }
+  convergence_status <- .gllvmTMB_convergence_status(
+    optimizer_converged = optimizer_converged,
+    obj_val = obj_val,
+    premature_termination = premature_termination,
+    stationary_by_gradient = stationary_by_gradient,
+    n_boundary = nrow(boundary_params),
+    pd_hessian = pd_hessian,
+    se_nonfinite = se_nonfinite,
+    newton_se_ratio = newton_se_ratio,
+    newton_se_applicable = newton_se_applicable
+  )
+  converged <- identical(convergence_status, "converged")
 
   list(
     optimizer = if (nrow(restart_history) > 0L) {
@@ -99,23 +232,20 @@
       ridge_tau, names(object$tmb_obj$par)
     ),
     scaled_gradient = scaled_gradient,
+    newton_se_ratio = newton_se_ratio,
     stationary_by_scaled_gradient = stationary_by_scaled_gradient,
     stationary_by_gradient = stationary_by_gradient,
     optimizer_converged = optimizer_converged,
+    convergence_status = convergence_status,
+    boundary_params = boundary_params,
+    se_nonfinite = se_nonfinite,
     converged = converged,
     premature_termination = premature_termination,
-    pd_hessian = if (
-      !is.null(object$sd_report) &&
-        !is.null(object$sd_report$pdHess)
-    ) {
-      isTRUE(object$sd_report$pdHess)
-    } else {
-      NA
-    },
-    sdreport_ok = !is.null(object$sd_report),
+    pd_hessian = pd_hessian,
+    sdreport_ok = sdreport_ok,
     sdreport_error = object$sdreport_error %||% NA_character_,
     max_fixed_se = max_se,
-    boundary_flags = .gllvmTMB_boundary_flags(object),
+    boundary_flags = boundary_flags,
     start_provenance = object$start_provenance %||% list(),
     selected_restart = selected_restart
   )

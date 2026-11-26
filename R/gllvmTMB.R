@@ -850,6 +850,20 @@ gllvmTMB <- function(
   estimator_missing <- missing(estimator)
   estimator <- match.arg(estimator)
 
+  reml_top_explicit <- !missing(REML)
+  reml_ctl_explicit <- isTRUE(control$REML_explicit)
+  if (reml_top_explicit && reml_ctl_explicit &&
+      !identical(isTRUE(REML), isTRUE(control$REML))) {
+    cli::cli_abort(c(
+      "{.arg REML} was supplied both to {.fn gllvmTMB} and to {.fn gllvmTMBcontrol} with different values.",
+      "x" = "{.fn gllvmTMB} has {.code REML = {REML}}; {.fn gllvmTMBcontrol} has {.code REML = {control$REML}}.",
+      ">" = "Pass {.arg REML} in only one place, or set both to the same value."
+    ), class = "gllvmTMB_reml_control_conflict")
+  }
+  if (!reml_top_explicit && reml_ctl_explicit) {
+    REML <- control$REML
+  }
+
   if (!is.logical(REML) || length(REML) != 1L || is.na(REML)) {
     cli::cli_abort(c(
       "{.arg REML} must be a single {.code TRUE} or {.code FALSE} value.",
@@ -2948,6 +2962,10 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #' @param allow_nongaussian_reml Permit `REML = TRUE` for non-Gaussian families.
 #'   Default `FALSE`; the restricted likelihood is defined by a Gaussian
 #'   marginalisation, so this is an escape hatch, not an endorsement.
+#' @param REML Same meaning as the top-level `REML` argument to `gllvmTMB()`.
+#'   Default `FALSE`. When `REML` is passed only here, it sets the fit route;
+#'   when both the top-level argument and this control field are supplied, they
+#'   must agree or fitting stops with an error.
 #' @param ... Reserved for future use. Currently ignored with a warning.
 #'
 #' @return A `gllvmTMBcontrol` list.
@@ -3203,6 +3221,7 @@ gllvmTMBcontrol <- function(
   laplace_warn_thresh = 2,
   laplace_auto_refit = TRUE,
   allow_nongaussian_reml = FALSE,
+  REML = FALSE,
   loading_ridge = NULL,
   fixed_effect_priors = NULL,
   kernel_psi_sd_prior = NULL,
@@ -3290,6 +3309,13 @@ gllvmTMBcontrol <- function(
   allow_nongaussian_reml <- .gllvmTMB_as_flag(
     allow_nongaussian_reml, "allow_nongaussian_reml"
   )
+  reml_explicit <- !missing(REML)
+  if (!is.logical(REML) || length(REML) != 1L || is.na(REML)) {
+    cli::cli_abort(c(
+      "{.arg REML} must be a single {.code TRUE} or {.code FALSE} value.",
+      ">" = "Pass {.code REML = TRUE} or {.code REML = FALSE} to {.fn gllvmTMBcontrol}."
+    ))
+  }
   aghq_iter_cap <- .gllvmTMB_as_count(aghq_iter_cap, "aghq_iter_cap")
   aghq_n_adapt <- .gllvmTMB_as_count(aghq_n_adapt, "aghq_n_adapt")
   aghq_escalate_patience <- .gllvmTMB_as_count(
@@ -3440,7 +3466,9 @@ gllvmTMBcontrol <- function(
     warn_runaway = warn_runaway,
     laplace_warn_thresh = laplace_warn_thresh,
     laplace_auto_refit = laplace_auto_refit,
-    allow_nongaussian_reml = allow_nongaussian_reml
+    allow_nongaussian_reml = allow_nongaussian_reml,
+    REML = REML,
+    REML_explicit = reml_explicit
   )
 }
 

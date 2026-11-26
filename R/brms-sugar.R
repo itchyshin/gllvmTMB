@@ -1309,6 +1309,134 @@ phylo_unique <- function(
   invisible(NULL)
 }
 
+## With `cluster` omitted, adopt one bare grouping from kernel / phylo /
+## animal keywords when they agree (#1752, #1765, #1766).
+.gllvmTMB_resolve_omitted_cluster_grouping <- function(formula, data, cluster, species) {
+  kernel_groups <- .gllvmTMB_kernel_bare_groups(formula)
+  phylo_groups <- .gllvmTMB_phylo_bare_groups(formula)
+  animal_groups <- .gllvmTMB_animal_bare_groups(formula)
+
+  source_specs <- list(
+    list(
+      label = "kernel",
+      df = kernel_groups,
+      class = "gllvmTMB_kernel_grouping",
+      multi = function(groups) {
+        c(
+          "The {.fn kernel_*} terms name more than one grouping column ({.val {groups}}), and {.arg cluster} was not given.",
+          "i" = "{.arg K} is aligned to one grouping column.",
+          ">" = "Pass {.arg cluster} equal to the column whose levels match {.code rownames(K)}. Different kernel groupings in one fit are not supported."
+        )
+      },
+      missing = function(fn, group) {
+        c(
+          cli::format_inline(
+            "{.fn {fn}} groups by {.field {group}}, which is not a column in {.arg data}."
+          ),
+          ">" = "Name the column whose levels match {.code rownames(K)}, or pass that column as {.arg cluster}."
+        )
+      }
+    ),
+    list(
+      label = "phylo",
+      df = phylo_groups,
+      class = "gllvmTMB_phylo_grouping",
+      multi = function(groups) {
+        c(
+          "The {.fn phylo_*} terms name more than one grouping column ({.val {groups}}), and {.arg cluster} was not given.",
+          ">" = "Pass {.arg cluster} equal to the column whose levels match the phylogenetic matrix."
+        )
+      },
+      missing = function(fn, group) {
+        c(
+          cli::format_inline(
+            "{.fn {fn}} groups by {.field {group}}, which is not a column in {.arg data}."
+          ),
+          ">" = "Name the column whose levels match the phylogenetic matrix, or pass that column as {.arg cluster}."
+        )
+      }
+    ),
+    list(
+      label = "animal",
+      df = animal_groups,
+      class = "gllvmTMB_animal_grouping",
+      multi = function(groups) {
+        c(
+          "The {.fn animal_*} terms name more than one grouping column ({.val {groups}}), and {.arg cluster} was not given.",
+          ">" = "Pass {.arg cluster} equal to the column whose levels match the relatedness matrix."
+        )
+      },
+      missing = function(fn, group) {
+        c(
+          cli::format_inline(
+            "{.fn {fn}} groups by {.field {group}}, which is not a column in {.arg data}."
+          ),
+          ">" = "Name the column whose levels match the relatedness matrix, or pass that column as {.arg cluster}."
+        )
+      }
+    )
+  )
+
+  sources <- list()
+  for (spec in source_specs) {
+    df <- spec$df
+    if (!nrow(df)) {
+      next
+    }
+    groups <- unique(df$group)
+    if (length(groups) > 1L) {
+      cli::cli_abort(spec$multi(groups), class = spec$class)
+    }
+    sources[[length(sources) + 1L]] <- list(
+      label = spec$label,
+      group = groups[[1L]],
+      fn = df$fn[[1L]],
+      class = spec$class,
+      missing = spec$missing
+    )
+  }
+
+  if (!length(sources)) {
+    return(list(cluster = cluster, species = species))
+  }
+
+  uniq_groups <- unique(vapply(sources, `[[`, character(1L), "group"))
+  if (length(uniq_groups) > 1L) {
+    bullets <- c(
+      "With {.arg cluster} omitted, keyword terms disagree on the grouping column."
+    )
+    for (s in sources) {
+      bullets <- c(
+        bullets,
+        "i" = cli::format_inline("{.fn {s$fn}} groups by {.field {s$group}}.")
+      )
+    }
+    bullets <- c(
+      bullets,
+      ">" = "Pass {.arg cluster} explicitly equal to the column shared by the matrices in the formula."
+    )
+    cli::cli_abort(bullets, class = "gllvmTMB_cluster_grouping")
+  }
+
+  group <- uniq_groups[[1L]]
+  if (group %in% names(data)) {
+    return(list(cluster = group, species = group))
+  }
+
+  kernel_hit <- vapply(sources, function(s) identical(s$label, "kernel"), logical(1L))
+  if (any(kernel_hit)) {
+    src <- sources[[which(kernel_hit)[1L]]]
+    cli::cli_abort(src$missing(src$fn, group), class = src$class)
+  }
+
+  if (!identical(group, "species")) {
+    src <- sources[[1L]]
+    cli::cli_abort(src$missing(src$fn, group), class = src$class)
+  }
+
+  list(cluster = cluster, species = species)
+}
+
 #' Per-trait independent spatial random fields: `spatial_unique(0 + trait | coords)`
 #'
 #' `r lifecycle::badge("deprecated")`

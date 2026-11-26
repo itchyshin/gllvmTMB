@@ -236,6 +236,21 @@ animal_indep <- function(formula, pedigree = NULL, A = NULL, Ainv = NULL,
   invisible(NULL)
 }
 
+## Grouping column named by an animal_* term when `cluster` is omitted (#1765).
+## `animal_slope()` is not included: its response-column form does not use
+## `cluster`.
+## @keywords internal
+## @noRd
+.gllvmTMB_animal_bare_groups <- function(formula) {
+  keywords <- c(
+    "animal_latent", "animal_unique", "animal_indep",
+    "animal_dep", "animal_scalar"
+  )
+  .gllvmTMB_keyword_bare_groups(
+    formula, keywords, c("animal_indep", "animal_dep")
+  )
+}
+
 #' Reduced-rank animal-model latent factors: `animal_latent(id, d = K)`
 #'
 #' Reduced-rank decomposition of the additive-genetic covariance

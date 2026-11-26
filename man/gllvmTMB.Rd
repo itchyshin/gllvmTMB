@@ -135,6 +135,13 @@ used so \code{K} is checked against it. A named \code{unit} argument is used eve
 when it is not written first, as in \code{kernel_indep(K = K, unit = g)}.
 An explicit \code{cluster} is unchanged,
 including the replicated kernel example that passes \code{cluster = "site"}.
+The same omitted-\code{cluster} rule adopts one bare grouping from
+\code{phylo_latent()}, \code{phylo_unique()}, \code{phylo_scalar()}, \code{phylo_indep()},
+\code{phylo_dep()}, \code{animal_latent()}, \code{animal_unique()}, \code{animal_scalar()},
+\code{animal_indep()}, or \code{animal_dep()} when that column is in \code{data} and is
+not the default name \code{species}. A missing \code{species} column keeps the
+existing placeholder message. Kernel, phylo, and animal keywords must
+name the same column when \code{cluster} is omitted.
 If supplied but no covariance keyword uses
 that column, \code{\link[=gllvmTMB]{gllvmTMB()}} warns; omit the argument or use the column in
 the intended covariance keyword.

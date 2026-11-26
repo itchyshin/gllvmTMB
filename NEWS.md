@@ -1,6 +1,10 @@
 # gllvmTMB 0.8.0
 
+<<<<<<< HEAD
+* `phylo_latent(taxon, ...)`, `phylo_unique(taxon)`, `phylo_scalar(taxon)`, `phylo_indep(0 + trait | taxon)`, and `phylo_dep(0 + trait | taxon)` now use `taxon` when `cluster` is omitted and that column is in the data. They used to build a placeholder `species` column and check the phylogenetic matrix against it. The default name `species`, including a missing `species` column, keeps the existing message. An explicit `cluster` is unchanged. The same rule applies to `animal_latent()`, `animal_unique()`, `animal_scalar()`, `animal_indep()`, and `animal_dep()`. Kernel, phylo, and animal keywords must name the same column when `cluster` is omitted (refs #1766, refs #1765).
+=======
 * `simulate()` now stops when the stored per-row binomial trial-count vector length does not match the model rows, and `engine = "julia"` fits refuse a `N` matrix that is not traits x units. Correctly sized trial counts are unchanged (refs #1865).
+>>>>>>> origin/main
 * `known_sigma_eps = 0` is now admitted for a narrowly defined native TMB Gaussian model with exactly two named `kernel_latent(..., unique = TRUE)` tiers, one observation per unit-trait cell, trait-specific intercepts, unit weights, and unpenalized ML with Laplace integration. The likelihood uses the supplied kernels without a diagonal floor and omits the observation-error covariance exactly. One-kernel, Julia, non-Gaussian, predictor, offset, prior, penalty, and non-unit-weight variants remain unsupported. Initial fixed-seed fits show substantial component-recovery error, so this route is experimental; interval calibration and broad recovery are not established.
 
 * `.eva_load_dll(rebuild = TRUE)` reuses an already-loaded EVA prototype DLL instead of unloading it while a live `MakeADFun` object still holds external pointers. Unloading had removed those pointers and could segfault the next evaluation (refs #1815).

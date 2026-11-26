@@ -149,10 +149,11 @@
 ## ever TRUE for the single-block `rr_B`-only fits this gap applies to, so
 ## no further structural check is needed.
 ##
-## `predict()` and conditional `simulate()` now reconstruct their own
-## predictors from the final stored modes. Other consumers of `report$eta`
-## must still account for this gap. The legacy warning helper remains below
-## for existing internal callers and its characterization tests.
+## `predict()` and conditional `simulate()` reconstruct the training-row
+## predictor from the final stored modes. After fitting, `gllvmTMB_multi_fit()`
+## rewrites the stored `fit$report$eta` onto that same conditional scale so
+## in-sample `predict()`, residuals, and other `report$eta` consumers agree
+## (#1925). A raw `obj$report()` on the AGHQ tape is still base-only.
 # Recover the conditional modes at the final AGHQ parameter estimate.  The
 # final quadrature tape stores them as units by axes; some newer fit objects
 # also carry the transposed form explicitly for ordination extractors.
@@ -175,6 +176,7 @@
 .aghq_conditional_training_eta <- function(object) {
   eta <- as.numeric(object$report$eta)
   if (!isTRUE(object$aghq$used)) return(eta)
+  if (isTRUE(object$aghq$report_eta_includes_z_B %||% FALSE)) return(eta)
   mode <- .aghq_conditional_modes(object)
   site <- object$tmb_data$site_id + 1L
   trait <- object$tmb_data$trait_id + 1L
@@ -188,6 +190,16 @@
                    class = "gllvmTMB_aghq_modes_unavailable")
   }
   eta + rowSums(loadings[trait, , drop = FALSE] * mode[site, , drop = FALSE])
+}
+
+## Align stored `report$eta` with the training-row conditional predictor that
+## `predict()` and `.aghq_conditional_training_eta()` use (#1925). Idempotent.
+.aghq_sync_report_training_eta <- function(fit) {
+  if (!isTRUE(fit$aghq$used)) return(fit)
+  if (isTRUE(fit$aghq$report_eta_includes_z_B %||% FALSE)) return(fit)
+  fit$report$eta <- .aghq_conditional_training_eta(fit)
+  fit$aghq$report_eta_includes_z_B <- TRUE
+  fit
 }
 
 .aghq_warn_re_gap <- function(object, fn_label) {

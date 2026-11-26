@@ -1989,6 +1989,7 @@ gllvmTMB <- function(
       ), .frequency = "once", .frequency_id = "gllvmTMB-multinomial-degeneracy")
     }
   }
+  .fit <- .aghq_sync_report_training_eta(.fit)
   .fit
 }
 

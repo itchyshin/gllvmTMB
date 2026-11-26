@@ -42,8 +42,11 @@ test_that("AGHQ conditional predictions use the final integration modes", {
   expect_equal(residuals(fit, seed = 2002), residuals(reference, seed = 2002))
   path <- tempfile(fileext = ".rds"); saveRDS(fit, path)
   expect_equal(predict(readRDS(path), type = "link")$est, expected, tolerance = 1e-7)
+  base_eta <- predict(fit, type = "link", re_form = ~0)$est
   fit$tmb_obj$env$data$aghq_mode <- NULL
   fit$aghq$z_B_mode <- NULL
+  fit$aghq$report_eta_includes_z_B <- FALSE
+  fit$report$eta <- base_eta
   expect_error(predict(fit, type = "link"), class = "gllvmTMB_aghq_modes_unavailable")
   expect_equal(predict(fit, type = "link", re_form = ~0)$est, fixed, tolerance = 1e-7)
 })

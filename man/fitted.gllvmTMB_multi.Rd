@@ -16,18 +16,17 @@
 \code{re_form}); see its documentation for what each accepts.}
 }
 \value{
-A data frame with the original row identifiers (unit, species,
-trait columns) plus an \code{est} column on the requested scale -- identical
-in shape to \code{predict(object, newdata = NULL, type = type, ...)}. \strong{For a
-\code{multinomial()} fit} this is \code{.predict_multinomial()}'s output: K rows
-per observation (one per category, including the baseline), not one.
+A numeric vector of length \code{\link[=nobs]{nobs()}} on the requested scale.
+When \code{se.fit = TRUE} is passed in \code{...}, the vector carries a \code{se.fit}
+attribute (and the same \verb{se.fit.*} attributes as \code{predict()}).
+\strong{For a \code{multinomial()} fit} this is the \code{est} column of
+\code{.predict_multinomial()} (K rows per observation).
 }
 \description{
 A thin wrapper over \code{\link[=predict.gllvmTMB_multi]{predict.gllvmTMB_multi()}} at the training rows
-(\code{newdata = NULL}). Returns the same long data frame \code{predict()} returns
--- one row per training observation, carrying its unit/species/trait
-identifiers alongside the fitted value -- rather than a bare vector, so
-row identity against the original data is preserved. \code{...} is forwarded
-to \code{predict()} unchanged, so its other arguments (\code{se.fit}, \code{re_form})
-work here too.
+(\code{newdata = NULL}). Returns a numeric vector of fitted values in the same
+order as \code{\link[=gllvmTMB]{gllvmTMB()}}'s model frame rows (length \code{\link[=nobs]{nobs()}}), matching the
+\code{stats::fitted()} contract for \code{as.numeric(fitted(fit))} and residual code.
+Call \code{\link[=predict]{predict()}} when you need row identifiers or standard errors. \code{...} is
+forwarded to \code{predict()} (e.g. \code{type}, \code{re_form}, \code{se.fit}).
 }

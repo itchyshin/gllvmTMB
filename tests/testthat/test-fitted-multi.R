@@ -3,8 +3,8 @@
 ## default `gllvmTMB_multi` fit, `fitted(fit)` silently returns NULL (there is
 ## no `object$fitted` slot for `fitted.default` to reach for, unlike the
 ## `gllvmTMB_va` case documented in R/va-methods.R). `fitted.gllvmTMB_multi()`
-## is a thin wrapper over `predict(object, newdata = NULL, type = ...)`,
-## default `type = "response"` (the `fitted()` convention).
+## returns a numeric vector in model-row order (`predict()$est`, default
+## `type = "response"`, #1919).
 
 .ftm_binomial_fit <- function(seed = 601L, n = 30L, p = 3L) {
   set.seed(seed)
@@ -74,14 +74,16 @@
 
 test_that("#25 B2: fitted() on a gllvmTMB_multi fit matches predict(newdata = NULL)", {
   skip_on_cran()
+  suppressPackageStartupMessages(library(gllvmTMB))
   fit <- .ftm_binomial_fit()
   pr <- predict(fit, newdata = NULL, type = "response")
 
   ft <- fitted(fit)
   expect_false(is.null(ft))
-  expect_s3_class(ft, "data.frame")
-  expect_equal(nrow(ft), nrow(pr))
-  expect_identical(ft$est, pr$est)
+  expect_type(ft, "double")
+  expect_equal(length(ft), length(pr$est))
+  expect_identical(ft, pr$est)
+  expect_equal(length(ft), nobs(fit))
 })
 
 test_that("#25 B2: fitted(type = ) dispatches link vs response like predict()", {
@@ -90,19 +92,19 @@ test_that("#25 B2: fitted(type = ) dispatches link vs response like predict()", 
 
   ft_link <- fitted(fit, type = "link")
   ft_resp <- fitted(fit, type = "response")
-  expect_identical(ft_link$est, predict(fit, newdata = NULL, type = "link")$est)
+  expect_identical(ft_link, predict(fit, newdata = NULL, type = "link")$est)
   expect_identical(
-    ft_resp$est,
+    ft_resp,
     predict(fit, newdata = NULL, type = "response")$est
   )
   ## Binomial link/response scales genuinely differ.
-  expect_false(isTRUE(all.equal(ft_link$est, ft_resp$est)))
+  expect_false(isTRUE(all.equal(ft_link, ft_resp)))
 })
 
 test_that("#25 B2: default type is \"response\", the fitted() convention", {
   skip_on_cran()
   fit <- .ftm_binomial_fit(seed = 603L)
-  expect_identical(fitted(fit)$est, fitted(fit, type = "response")$est)
+  expect_identical(fitted(fit), fitted(fit, type = "response"))
 })
 
 test_that("#25 B2 REPAIR: fitted(fit, se.fit = TRUE) forwards ... to predict()", {
@@ -116,8 +118,9 @@ test_that("#25 B2 REPAIR: fitted(fit, se.fit = TRUE) forwards ... to predict()",
   fit <- .ftm_binomial_fit_se()
   pr <- predict(fit, newdata = NULL, type = "response", se.fit = TRUE)
   ft <- fitted(fit, type = "response", se.fit = TRUE)
-  expect_true("se.fit" %in% names(ft))
-  expect_identical(ft, pr)
+  expect_type(ft, "double")
+  expect_equal(ft, pr$est)
+  expect_equal(attr(ft, "se.fit"), pr$se.fit)
 })
 
 test_that("#25 B2: fitted() on a multinomial fit routes through .predict_multinomial", {
@@ -125,7 +128,7 @@ test_that("#25 B2: fitted() on a multinomial fit routes through .predict_multino
   fit <- .ftm_multinomial_fit()
   ft <- fitted(fit)
   expect_false(is.null(ft))
-  expect_identical(ft, predict(fit, newdata = NULL, type = "response"))
+  expect_identical(ft, predict(fit, newdata = NULL, type = "response")$est)
 })
 
 test_that("#25 B2: fitted() exists for every engine class (method-parity contract)", {
@@ -133,9 +136,10 @@ test_that("#25 B2: fitted() exists for every engine class (method-parity contrac
   ## fitted() method; gllvmTMB_multi, the default engine, never did. This
   ## test is the guard against that recurrence -- every engine class must
   ## carry a fitted() method.
+  ns <- asNamespace("gllvmTMB")
   for (cls in c("gllvmTMB_multi", "gllvmTMB_va", "gllvmTMB_julia")) {
     expect_true(
-      exists(paste0("fitted.", cls)),
+      exists(paste0("fitted.", cls), where = ns, mode = "function", inherits = FALSE),
       info = paste("missing fitted() method for class", cls)
     )
   }
@@ -151,7 +155,7 @@ test_that("#25 B2: fitted() exists for every engine class (method-parity contrac
 
 test_that("#1118: deviance() exists for gllvmTMB_multi (method-parity contract)", {
   expect_true(
-    exists("deviance.gllvmTMB_multi"),
+    exists("deviance.gllvmTMB_multi", where = asNamespace("gllvmTMB"), mode = "function", inherits = FALSE),
     info = "missing deviance() method for class gllvmTMB_multi"
   )
 })

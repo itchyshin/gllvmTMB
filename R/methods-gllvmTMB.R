@@ -2080,6 +2080,14 @@ simulate.gllvmTMB_multi <- function(
   lids <- fit$tmb_data$link_id_vec
   tids <- fit$tmb_data$trait_id # 0-indexed in TMB
   n <- length(eta)
+  n_trials <- fit$tmb_data$n_trials # checked for length before draw (#1865)
+  if (!is.null(n_trials) && length(n_trials) != n) {
+    cli::cli_abort(c(
+      "The stored per-row trial-count vector length does not match the model rows.",
+      "i" = "Expected length {.val {n}}; got {.val {length(n_trials)}}.",
+      ">" = "Re-fit with a trial count for every row before calling {.fn simulate}."
+    ), class = "gllvmTMB_simulate_n_trials_length")
+  }
   y <- numeric(n)
 
   ## Pure fits retain one scalar. Joint Gaussian-lognormal fits carry a raw-
@@ -2097,7 +2105,6 @@ simulate.gllvmTMB_multi <- function(
   sigma_lognormal_delta <- fit$report$sigma_lognormal_delta # length n_traits
   phi_gamma_delta <- fit$report$phi_gamma_delta # length n_traits
   zi <- fit$report$zi # length n_traits (fid 17/18/19, Arc D)
-  n_trials <- fit$tmb_data$n_trials # length n; default 1 (Bernoulli) when not multi-trial
   cens_limit <- fit$tmb_data$cens_limit # length n; 0 = uncensored (fid 21, Arc E #1244; renumbered from 20)
 
   ## ordinal_probit (fid 14) cutpoint reconstruction -- the SAME convention
@@ -2977,6 +2984,52 @@ sanity_multi <- function(object, gradient_thresh = 1e-2, se_thresh = 100) {
   list(fid = fid_by[idx], lid = lid_by[idx])
 }
 
+#' SPDE mesh projector at `newdata` rows
+#'
+#' Rebuilds the row-to-mesh projector with `fmesher::fm_basis()` on the stored
+#' mesh -- the same call that built `A_st` in the first place (R/mesh.R) -- so
+#' training coordinates reproduce the fitted `A_proj` exactly, and new
+#' coordinates project off-mesh for free. Every SPDE tier re-added on the
+#' `newdata` path projects through this one function, so they share one
+#' projector and one outside-hull warning.
+#'
+#' Returns `NULL` when the rows cannot be projected (no mesh, coordinates
+#' absent from `newdata`), leaving the caller to report the omission.
+#'
+#' @keywords internal
+#' @noRd
+.gllvmTMB_spde_newdata_projector <- function(object, nd) {
+  mesh <- object$mesh
+  if (is.null(mesh) || is.null(mesh$mesh) || is.null(mesh$xy_cols)) return(NULL)
+  if (!all(mesh$xy_cols %in% names(nd))) return(NULL)
+  loc <- tryCatch(
+    .gllvm_mesh_coordinates(nd, mesh$xy_cols),
+    error = function(e) NULL
+  )
+  if (is.null(loc)) return(NULL)
+  A <- tryCatch(
+    fmesher::fm_basis(mesh$mesh, loc = loc),
+    error = function(e) NULL
+  )
+  if (is.null(A) || nrow(A) != nrow(nd)) return(NULL)
+
+  ## fmesher returns an all-zero basis row for a location outside the mesh
+  ## hull, so the field silently becomes 0 there -- indistinguishable from a
+  ## field that is genuinely near zero, and the reader has no way to tell a
+  ## blank patch of map from a cold one. `make_mesh()` rejects such rows at
+  ## fit time, so predict() must not be quietly more permissive than the fit.
+  row_mass <- Matrix::rowSums(A)
+  n_outside <- sum(!is.finite(row_mass) | abs(row_mass) < 1e-8)
+  if (n_outside > 0L) {
+    cli::cli_warn(c(
+      "{n_outside} {.arg newdata} row{?s} fall outside the mesh hull.",
+      "x" = "The spatial field is exactly 0 there -- not estimated, and not distinguishable from a field that is genuinely near zero.",
+      "i" = "Restrict {.arg newdata} to the meshed domain, or rebuild the mesh to cover it."
+    ), class = "gllvmTMB_predict_newdata_outside_mesh")
+  }
+  A
+}
+
 #' SPDE field contribution at `newdata` rows
 #'
 #' Mirrors the template's spatial block: the projected field is
@@ -3015,34 +3068,8 @@ sanity_multi <- function(object, gradient_thresh = 1e-2, se_thresh = 100) {
     effect <- .structured_rho_spatial_contribution(object)
     return(effect[cbind(ids,tr_id+1L)])
   }
-  mesh <- object$mesh
-  if (is.null(mesh) || is.null(mesh$mesh) || is.null(mesh$xy_cols)) return(NULL)
-  if (!all(mesh$xy_cols %in% names(nd))) return(NULL)
-  loc <- tryCatch(
-    .gllvm_mesh_coordinates(nd, mesh$xy_cols),
-    error = function(e) NULL
-  )
-  if (is.null(loc)) return(NULL)
-  A <- tryCatch(
-    fmesher::fm_basis(mesh$mesh, loc = loc),
-    error = function(e) NULL
-  )
-  if (is.null(A) || nrow(A) != nrow(nd)) return(NULL)
-
-  ## fmesher returns an all-zero basis row for a location outside the mesh
-  ## hull, so the field silently becomes 0 there -- indistinguishable from a
-  ## field that is genuinely near zero, and the reader has no way to tell a
-  ## blank patch of map from a cold one. `make_mesh()` rejects such rows at
-  ## fit time, so predict() must not be quietly more permissive than the fit.
-  row_mass <- Matrix::rowSums(A)
-  n_outside <- sum(!is.finite(row_mass) | abs(row_mass) < 1e-8)
-  if (n_outside > 0L) {
-    cli::cli_warn(c(
-      "{n_outside} {.arg newdata} row{?s} fall outside the mesh hull.",
-      "x" = "The spatial field is exactly 0 there -- not estimated, and not distinguishable from a field that is genuinely near zero.",
-      "i" = "Restrict {.arg newdata} to the meshed domain, or rebuild the mesh to cover it."
-    ), class = "gllvmTMB_predict_newdata_outside_mesh")
-  }
+  A <- .gllvmTMB_spde_newdata_projector(object, nd)
+  if (is.null(A)) return(NULL)
 
   par <- object$tmb_obj$env$last.par.best
   n_mesh <- ncol(A)
@@ -3073,6 +3100,75 @@ sanity_multi <- function(object, gradient_thresh = 1e-2, se_thresh = 100) {
   contrib
 }
 
+#' Base augmented SPDE slope contribution at `newdata` rows
+#'
+#' The `spde_slope` tier of `spatial_unique(1 + x | coords)`: one intercept
+#' field and one slope field on the covariate `x`, shared by all traits. The
+#' template states the layout of both blocks:
+#'
+#' * `omega_spde_aug` is `n_mesh x n_lhs_cols_spde`, column 0 the intercept
+#'   field and column 1 the slope field (src/gllvmTMB.cpp:1585);
+#' * `Z_spde_aug` is `n_obs x n_lhs_cols_spde`, column 0 ones and column 1 the
+#'   covariate (src/gllvmTMB.cpp:1093, built at R/fit-multi.R:5825-5828);
+#' * each field column is projected once,
+#'   `A_omega_aug(o, j) = (A_proj %*% omega_spde_aug[, j])(o)`
+#'   (src/gllvmTMB.cpp:3376-3391), and eta gets
+#'   `sum_j A_omega_aug(o, j) * Z_spde_aug(o, j)` (src/gllvmTMB.cpp:3486-3494).
+#'
+#' The sum below runs over `j` in the template's order, so training rows
+#' reproduce `report$eta` exactly.
+#'
+#' Only the two-column channel is rebuilt here. `spatial_dep(1 + x | coords)`
+#' and `spatial_indep(1 + x | coords)` raise the same `use_spde_slope` switch
+#' but carry `2 * n_traits` interleaved fields (`use_spde_dep_slope`), and the
+#' response-column slope rescales each projected field
+#' (`use_spatial_column_slope`). Those return `NULL`, as does a `newdata`
+#' without the covariate or the coordinates, leaving the caller to name the
+#' tier as omitted. A row whose covariate is `NA` gets an `NA` prediction.
+#'
+#' @keywords internal
+#' @noRd
+.gllvmTMB_spde_slope_newdata_contrib <- function(object, nd) {
+  td <- object$tmb_data
+  flag_on <- function(name) {
+    v <- td[[name]]
+    length(v) == 1L && !is.na(v) && as.integer(v) == 1L
+  }
+  if (!is.list(td) || !flag_on("use_spde_slope")) return(NULL)
+  if (flag_on("use_spde_dep_slope") || flag_on("use_spatial_column_slope")) {
+    return(NULL)
+  }
+  n_lhs <- as.integer(td$n_lhs_cols_spde %||% 0L)
+  if (!identical(n_lhs, 2L)) return(NULL)
+
+  ## The slope covariate is the one the fit read: `extra$slope_col` on the
+  ## augmented spde term (R/fit-multi.R:2286-2332).
+  is_aug <- vapply(object$covstructs %||% list(), function(cs) {
+    identical(cs$kind, "spde") &&
+      (isTRUE(cs$extra[[".spatial_unique_augmented"]]) ||
+         isTRUE(cs$extra[[".spatial_dep_augmented"]]))
+  }, logical(1))
+  if (sum(is_aug) != 1L) return(NULL)
+  x_col <- object$covstructs[[which(is_aug)]]$extra$slope_col
+  if (!is.character(x_col) || length(x_col) != 1L || is.na(x_col) ||
+        !x_col %in% names(nd)) {
+    return(NULL)
+  }
+
+  par <- object$tmb_obj$env$last.par.best
+  om <- par[names(par) == "omega_spde_aug"]
+  A <- .gllvmTMB_spde_newdata_projector(object, nd)
+  if (is.null(A) || length(om) != ncol(A) * n_lhs) return(NULL)
+
+  A_omega_aug <- as.matrix(A %*% matrix(om, nrow = ncol(A), ncol = n_lhs))
+  Z <- cbind(rep(1, nrow(nd)), as.numeric(nd[[x_col]]))
+  contrib <- numeric(nrow(nd))
+  for (j in seq_len(n_lhs)) {
+    contrib <- contrib + A_omega_aug[, j] * Z[, j]
+  }
+  contrib
+}
+
 #' The training fixed-effect design matrix, with column names
 #'
 #' `.gllvmTMB_predict_fixed_eta()` aligns coefficients by column name, so the
@@ -3091,6 +3187,88 @@ sanity_multi <- function(object, gradient_thresh = 1e-2, se_thresh = 100) {
   X <- as.matrix(X)
   if (is.null(colnames(X))) colnames(X) <- object$X_fix_names
   X
+}
+
+#' Reduced-rank SPDE slope contribution at `newdata` rows
+#'
+#' The `spde_latent_slope` tier of `spatial_latent(1 + x | coords, d = K)`:
+#' `K` shared spatial fields for the intercept and `K` for the slope on `x`,
+#' each set with its own trait loadings. The template states the layout of
+#' every block:
+#'
+#' * `g_spde_slope` is `n_mesh x d_spde_slope x n_lhs_cols_spde_lat`
+#'   (src/gllvmTMB.cpp:1604);
+#' * `Lambda_spde_slope` is reported as
+#'   `n_traits x d_spde_slope x n_lhs_cols_spde_lat` (src/gllvmTMB.cpp:3250);
+#' * `Z_spde_lat` is `n_obs x n_lhs_cols_spde_lat`, column 0 ones and column 1
+#'   the covariate (src/gllvmTMB.cpp:1116, built by
+#'   `.spde_latent_slope_design()`);
+#' * each field is projected once,
+#'   `A_g(o, f, k) = (A_proj %*% g_spde_slope[, f, k])(o)`
+#'   (src/gllvmTMB.cpp:3393-3408), and eta gets
+#'   `sum_k Z_spde_lat(o, k) * sum_f Lambda_spde_slope(t(o), f, k) * A_g(o, f, k)`
+#'   (src/gllvmTMB.cpp:3495-3507).
+#'
+#' The two sums below run in the template's order: over factors `f` inside,
+#' over design columns `k` outside.
+#'
+#' Returns `NULL` when the tier is not active or cannot be rebuilt (`newdata`
+#' without the covariate or the coordinates, or parameter blocks whose sizes do
+#' not match the layout above), leaving the caller to name the tier as omitted.
+#' A row whose covariate is `NA` gets an `NA` prediction.
+#'
+#' @keywords internal
+#' @noRd
+.gllvmTMB_spde_latent_slope_newdata_contrib <- function(object, nd, tr_id) {
+  td <- object$tmb_data
+  if (!is.list(td)) return(NULL)
+  flag <- td$use_spde_latent_slope
+  if (length(flag) != 1L || is.na(flag) || as.integer(flag) != 1L) return(NULL)
+  d <- as.integer(td$d_spde_slope %||% 0L)
+  n_lhs <- as.integer(td$n_lhs_cols_spde_lat %||% 0L)
+  n_traits <- as.integer(object$n_traits)
+  if (length(d) != 1L || is.na(d) || d < 1L || !identical(n_lhs, 2L)) {
+    return(NULL)
+  }
+
+  ## The slope covariate is the one the fit read: `extra$slope_col` on the
+  ## augmented spatial_latent term (R/fit-multi.R:2369-2445).
+  is_aug <- vapply(object$covstructs %||% list(), function(cs) {
+    identical(cs$kind, "spde") &&
+      isTRUE(cs$extra[[".spatial_latent_augmented"]])
+  }, logical(1))
+  if (sum(is_aug) != 1L) return(NULL)
+  x_col <- object$covstructs[[which(is_aug)]]$extra$slope_col
+  if (!is.character(x_col) || length(x_col) != 1L || is.na(x_col) ||
+        !x_col %in% names(nd)) {
+    return(NULL)
+  }
+
+  par <- object$tmb_obj$env$last.par.best
+  g <- par[names(par) == "g_spde_slope"]
+  lam <- object$report$Lambda_spde_slope
+  if (is.null(lam) || length(lam) != n_traits * d * n_lhs) return(NULL)
+  A <- .gllvmTMB_spde_newdata_projector(object, nd)
+  if (is.null(A) || length(g) != ncol(A) * d * n_lhs) return(NULL)
+
+  g <- array(g, dim = c(ncol(A), d, n_lhs))
+  lam <- array(as.numeric(lam), dim = c(n_traits, d, n_lhs))
+  Z <- cbind(rep(1, nrow(nd)), as.numeric(nd[[x_col]]))
+
+  contrib <- numeric(nrow(nd))
+  t1 <- tr_id + 1L
+  ok <- !is.na(t1) & t1 >= 1L & t1 <= n_traits
+  if (!any(ok)) return(contrib)
+  rows <- which(ok)
+  for (k in seq_len(n_lhs)) {
+    u <- numeric(length(rows))
+    for (f in seq_len(d)) {
+      A_g <- as.numeric(A %*% g[, f, k])
+      u <- u + lam[t1[rows], f, k] * A_g[rows]
+    }
+    contrib[rows] <- contrib[rows] + Z[rows, k] * u
+  }
+  contrib
 }
 
 #' Active random-effect tiers this predict path cannot re-add
@@ -3122,6 +3300,85 @@ sanity_multi <- function(object, gradient_thresh = 1e-2, se_thresh = 100) {
     length(v) == 1L && !is.na(v) && isTRUE(as.integer(v) == 1L)
   }, logical(1))
   sort(setdiff(sub("^use_", "", flags[is_on]), handled))
+}
+
+#' Per-trait augmented SPDE slope contribution at `newdata` rows
+#'
+#' The `spde_dep_slope` tier of `spatial_dep(1 + x | coords)` and
+#' `spatial_indep(1 + x | coords)`: every trait has its own intercept field
+#' and its own slope field on the covariate `x`. The engine runs it through
+#' the `spde_slope` eta block with a wider field matrix, so both switches are
+#' on together. The template states the layout:
+#'
+#' * `omega_spde_aug` is `n_mesh x n_lhs_cols_spde` with
+#'   `n_lhs_cols_spde = 2 * n_traits` (src/gllvmTMB.cpp:1585);
+#' * the columns are INTERLEAVED, `(alpha_t0, beta_t0, alpha_t1, beta_t1, ...)`,
+#'   and `Z_spde_aug` routes each row to its own trait's pair: for a row of
+#'   zero-based trait `t0`, column `2 * t0` holds 1 and column `2 * t0 + 1`
+#'   holds the covariate (src/gllvmTMB.cpp:1093, built at
+#'   R/fit-multi.R:5815-5823);
+#' * each field column is projected once,
+#'   `A_omega_aug(o, j) = (A_proj %*% omega_spde_aug[, j])(o)`
+#'   (src/gllvmTMB.cpp:3376-3391), and eta gets
+#'   `sum_j A_omega_aug(o, j) * Z_spde_aug(o, j)` (src/gllvmTMB.cpp:3486-3494).
+#'
+#' Every other column of `Z_spde_aug` is zero for the row, so the template's
+#' sum over `j` is the row's intercept field plus `x` times its slope field,
+#' in that order. That is what is formed below.
+#'
+#' Returns `NULL` when the tier is not active or cannot be rebuilt: `newdata`
+#' without the covariate or the coordinates, a field matrix that is not
+#' `2 * n_traits` wide, or the response-column slope
+#' (`use_spatial_column_slope`), which rescales each projected field. The
+#' caller then names the tier as omitted. A row whose covariate is `NA` gets
+#' an `NA` prediction.
+#'
+#' @keywords internal
+#' @noRd
+.gllvmTMB_spde_dep_slope_newdata_contrib <- function(object, nd, tr_id) {
+  td <- object$tmb_data
+  flag_on <- function(name) {
+    v <- td[[name]]
+    length(v) == 1L && !is.na(v) && as.integer(v) == 1L
+  }
+  if (!is.list(td) || !flag_on("use_spde_slope") ||
+        !flag_on("use_spde_dep_slope") ||
+        flag_on("use_spatial_column_slope")) {
+    return(NULL)
+  }
+  n_traits <- as.integer(object$n_traits)
+  n_lhs <- as.integer(td$n_lhs_cols_spde %||% 0L)
+  if (!identical(n_lhs, 2L * n_traits)) return(NULL)
+
+  ## The slope covariate is the one the fit read: `extra$slope_col` on the
+  ## augmented spde term (R/fit-multi.R:2286-2332).
+  is_aug <- vapply(object$covstructs %||% list(), function(cs) {
+    identical(cs$kind, "spde") &&
+      (isTRUE(cs$extra[[".spatial_unique_augmented"]]) ||
+         isTRUE(cs$extra[[".spatial_dep_augmented"]]))
+  }, logical(1))
+  if (sum(is_aug) != 1L) return(NULL)
+  x_col <- object$covstructs[[which(is_aug)]]$extra$slope_col
+  if (!is.character(x_col) || length(x_col) != 1L || is.na(x_col) ||
+        !x_col %in% names(nd)) {
+    return(NULL)
+  }
+
+  par <- object$tmb_obj$env$last.par.best
+  om <- par[names(par) == "omega_spde_aug"]
+  A <- .gllvmTMB_spde_newdata_projector(object, nd)
+  if (is.null(A) || length(om) != ncol(A) * n_lhs) return(NULL)
+
+  A_omega_aug <- as.matrix(A %*% matrix(om, nrow = ncol(A), ncol = n_lhs))
+  x <- as.numeric(nd[[x_col]])
+  contrib <- numeric(nrow(nd))
+  ok <- !is.na(tr_id) & tr_id >= 0L & tr_id < n_traits
+  if (!any(ok)) return(contrib)
+  rows <- which(ok)
+  t0 <- tr_id[rows]
+  contrib[rows] <- A_omega_aug[cbind(rows, 2L * t0 + 1L)] +
+    A_omega_aug[cbind(rows, 2L * t0 + 2L)] * x[rows]
+  contrib
 }
 
 
@@ -3641,6 +3898,59 @@ predict.gllvmTMB_multi <- function(
         }
       }
 
+      ## phylo_slope: the slope-only phylogenetic / pedigree random regression,
+      ## `phylo_slope(x | group)` or `animal_slope(x | group)` grouped on a
+      ## column other than the trait column. src/gllvmTMB.cpp documents the
+      ## block beside its DATA declarations and adds it as
+      ##   PARAMETER_VECTOR(b_phy_slope)   -- length n_aug_phy_slope
+      ##   eta(o) += b_phy_slope(phylo_slope_aug_id(o)) * x_phy_slope(o)
+      ## in the `else` arm of use_phylo_slope_correlated, so it is rebuilt only
+      ## when that flag is off. The intercept-plus-slope and response-column
+      ## routes raise use_phylo_slope too, but they live in b_phy_aug /
+      ## Z_phy_aug, are not rebuilt here, and stay in the warning below.
+      ##
+      ## The node of a group level is read off the training rows:
+      ## phylo_slope_aug_id is one node per level (R/fit-multi.R,
+      ## .resolve_phylo_slope_precision()), and extract_Sigma() resolves labels
+      ## the same way. That covers a tree with unobserved tips and internal
+      ## nodes without a second lookup. A level the fit never saw gets no
+      ## contribution, like the other group-indexed tiers. If `newdata` lacks
+      ## the grouping or the covariate column the tier is not re-added and the
+      ## warning below still names it.
+      td_ps <- object$tmb_data
+      if (isTRUE(as.integer(td_ps$use_phylo_slope) == 1L) &&
+            !isTRUE(as.integer(td_ps$use_phylo_slope_correlated) == 1L)) {
+        cs_ps <- Filter(
+          function(cs) identical(cs$kind, "phylo_slope"),
+          object$covstructs
+        )
+        b_ps <- par[names(par) == "b_phy_slope"]
+        node_train <- as.integer(td_ps$phylo_slope_aug_id)
+        if (length(cs_ps) == 1L && is.name(cs_ps[[1L]]$group) &&
+              length(b_ps) == td_ps$n_aug_phy_slope &&
+              length(node_train) == NROW(object$data)) {
+          g_col <- as.character(cs_ps[[1L]]$group)
+          x_col <- deparse(cs_ps[[1L]]$lhs)
+          if (all(c(g_col, x_col) %in% names(nd)) &&
+                g_col %in% names(object$data)) {
+            g_train <- as.character(object$data[[g_col]])
+            lv_ps <- unique(g_train)
+            node_lv <- node_train[match(lv_ps, g_train)]
+            ## Refuse to guess if the stored rows and nodes do not line up as
+            ## one node per level.
+            if (identical(node_lv[match(g_train, lv_ps)], node_train)) {
+              node <- node_lv[match(as.character(nd[[g_col]]), lv_ps)]
+              ok_ps <- !is.na(node)
+              if (any(ok_ps)) {
+                eta[ok_ps] <- eta[ok_ps] +
+                  b_ps[node[ok_ps] + 1L] * as.numeric(nd[[x_col]])[ok_ps]
+                added <- c(added, "phylo_slope")
+              }
+            }
+          }
+        }
+      }
+
       ## re_int: ordinary `(1 | group)` random intercepts.
       ## src/gllvmTMB.cpp:2609 -- eta(o) += u_re_int(re_int_offsets(term) + gid),
       ## where gid indexes the term's own grouping factor and the terms are
@@ -3674,6 +3984,19 @@ predict.gllvmTMB_multi <- function(
         if (hit) added <- c(added, "re_int")
       }
 
+      ## spde_dep_slope: the per-trait intercept and slope fields of
+      ## `spatial_dep(1 + x | coords)` / `spatial_indep(1 + x | coords)`
+      ## (#1138). The template adds them through its `use_spde_slope` block
+      ## (src/gllvmTMB.cpp:3486-3494), so both switches are accounted for.
+      ## Such a fit has no intercept-only SPDE field, so nothing is added
+      ## between this term and the ones above it.
+      spde_dep_slope_contrib <-
+        .gllvmTMB_spde_dep_slope_newdata_contrib(object, nd, tr_id)
+      if (!is.null(spde_dep_slope_contrib)) {
+        eta <- eta + spde_dep_slope_contrib
+        added <- c(added, "spde_slope", "spde_dep_slope")
+      }
+
       ## Spatial (SPDE) field. Before #1132 this tier was dropped in silence
       ## -- at training locations too -- while the branch below reported that
       ## random effects had been added.
@@ -3682,8 +4005,28 @@ predict.gllvmTMB_multi <- function(
         eta <- eta + spde_contrib
         added <- c(added, "spde")
       }
+      ## spde_slope: the intercept and slope fields of
+      ## `spatial_unique(1 + x | coords)` (#1138). The template adds this
+      ## block straight after the intercept-only field above
+      ## (src/gllvmTMB.cpp:3486-3494); the same order is kept here.
+      spde_slope_contrib <- .gllvmTMB_spde_slope_newdata_contrib(object, nd)
+      if (!is.null(spde_slope_contrib)) {
+        eta <- eta + spde_slope_contrib
+        added <- c(added, "spde_slope")
+      }
       ## `lv_B` carries no eta term of its own: it is the score mean, already
       ## inside U_B_total above, so it counts as handled whenever rr_B is.
+      ##
+      ## spde_latent_slope: the reduced-rank intercept and slope fields of
+      ## `spatial_latent(1 + x | coords, d = K)` (#1138). It is the last
+      ## spatial term the template adds (src/gllvmTMB.cpp:3495-3507), so it
+      ## stays the last one added here.
+      spde_latent_slope_contrib <-
+        .gllvmTMB_spde_latent_slope_newdata_contrib(object, nd, tr_id)
+      if (!is.null(spde_latent_slope_contrib)) {
+        eta <- eta + spde_latent_slope_contrib
+        added <- c(added, "spde_latent_slope")
+      }
       handled <- c(added, if (isTRUE(object$use$lv_B)) "lv_B")
       unhandled <- .gllvmTMB_predict_unhandled_re_tiers(object, handled)
       if (length(added)) {

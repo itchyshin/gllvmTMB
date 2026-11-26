@@ -3302,6 +3302,85 @@ sanity_multi <- function(object, gradient_thresh = 1e-2, se_thresh = 100) {
   sort(setdiff(sub("^use_", "", flags[is_on]), handled))
 }
 
+#' Per-trait augmented SPDE slope contribution at `newdata` rows
+#'
+#' The `spde_dep_slope` tier of `spatial_dep(1 + x | coords)` and
+#' `spatial_indep(1 + x | coords)`: every trait has its own intercept field
+#' and its own slope field on the covariate `x`. The engine runs it through
+#' the `spde_slope` eta block with a wider field matrix, so both switches are
+#' on together. The template states the layout:
+#'
+#' * `omega_spde_aug` is `n_mesh x n_lhs_cols_spde` with
+#'   `n_lhs_cols_spde = 2 * n_traits` (src/gllvmTMB.cpp:1585);
+#' * the columns are INTERLEAVED, `(alpha_t0, beta_t0, alpha_t1, beta_t1, ...)`,
+#'   and `Z_spde_aug` routes each row to its own trait's pair: for a row of
+#'   zero-based trait `t0`, column `2 * t0` holds 1 and column `2 * t0 + 1`
+#'   holds the covariate (src/gllvmTMB.cpp:1093, built at
+#'   R/fit-multi.R:5815-5823);
+#' * each field column is projected once,
+#'   `A_omega_aug(o, j) = (A_proj %*% omega_spde_aug[, j])(o)`
+#'   (src/gllvmTMB.cpp:3376-3391), and eta gets
+#'   `sum_j A_omega_aug(o, j) * Z_spde_aug(o, j)` (src/gllvmTMB.cpp:3486-3494).
+#'
+#' Every other column of `Z_spde_aug` is zero for the row, so the template's
+#' sum over `j` is the row's intercept field plus `x` times its slope field,
+#' in that order. That is what is formed below.
+#'
+#' Returns `NULL` when the tier is not active or cannot be rebuilt: `newdata`
+#' without the covariate or the coordinates, a field matrix that is not
+#' `2 * n_traits` wide, or the response-column slope
+#' (`use_spatial_column_slope`), which rescales each projected field. The
+#' caller then names the tier as omitted. A row whose covariate is `NA` gets
+#' an `NA` prediction.
+#'
+#' @keywords internal
+#' @noRd
+.gllvmTMB_spde_dep_slope_newdata_contrib <- function(object, nd, tr_id) {
+  td <- object$tmb_data
+  flag_on <- function(name) {
+    v <- td[[name]]
+    length(v) == 1L && !is.na(v) && as.integer(v) == 1L
+  }
+  if (!is.list(td) || !flag_on("use_spde_slope") ||
+        !flag_on("use_spde_dep_slope") ||
+        flag_on("use_spatial_column_slope")) {
+    return(NULL)
+  }
+  n_traits <- as.integer(object$n_traits)
+  n_lhs <- as.integer(td$n_lhs_cols_spde %||% 0L)
+  if (!identical(n_lhs, 2L * n_traits)) return(NULL)
+
+  ## The slope covariate is the one the fit read: `extra$slope_col` on the
+  ## augmented spde term (R/fit-multi.R:2286-2332).
+  is_aug <- vapply(object$covstructs %||% list(), function(cs) {
+    identical(cs$kind, "spde") &&
+      (isTRUE(cs$extra[[".spatial_unique_augmented"]]) ||
+         isTRUE(cs$extra[[".spatial_dep_augmented"]]))
+  }, logical(1))
+  if (sum(is_aug) != 1L) return(NULL)
+  x_col <- object$covstructs[[which(is_aug)]]$extra$slope_col
+  if (!is.character(x_col) || length(x_col) != 1L || is.na(x_col) ||
+        !x_col %in% names(nd)) {
+    return(NULL)
+  }
+
+  par <- object$tmb_obj$env$last.par.best
+  om <- par[names(par) == "omega_spde_aug"]
+  A <- .gllvmTMB_spde_newdata_projector(object, nd)
+  if (is.null(A) || length(om) != ncol(A) * n_lhs) return(NULL)
+
+  A_omega_aug <- as.matrix(A %*% matrix(om, nrow = ncol(A), ncol = n_lhs))
+  x <- as.numeric(nd[[x_col]])
+  contrib <- numeric(nrow(nd))
+  ok <- !is.na(tr_id) & tr_id >= 0L & tr_id < n_traits
+  if (!any(ok)) return(contrib)
+  rows <- which(ok)
+  t0 <- tr_id[rows]
+  contrib[rows] <- A_omega_aug[cbind(rows, 2L * t0 + 1L)] +
+    A_omega_aug[cbind(rows, 2L * t0 + 2L)] * x[rows]
+  contrib
+}
+
 
 ## #1406: internal sentinels that must never reach a user-facing data frame.
 ## `gllvmTMB()` fills the species/cluster column with the constant "placeholder"
@@ -3903,6 +3982,19 @@ predict.gllvmTMB_multi <- function(
           hit <- TRUE
         }
         if (hit) added <- c(added, "re_int")
+      }
+
+      ## spde_dep_slope: the per-trait intercept and slope fields of
+      ## `spatial_dep(1 + x | coords)` / `spatial_indep(1 + x | coords)`
+      ## (#1138). The template adds them through its `use_spde_slope` block
+      ## (src/gllvmTMB.cpp:3486-3494), so both switches are accounted for.
+      ## Such a fit has no intercept-only SPDE field, so nothing is added
+      ## between this term and the ones above it.
+      spde_dep_slope_contrib <-
+        .gllvmTMB_spde_dep_slope_newdata_contrib(object, nd, tr_id)
+      if (!is.null(spde_dep_slope_contrib)) {
+        eta <- eta + spde_dep_slope_contrib
+        added <- c(added, "spde_slope", "spde_dep_slope")
       }
 
       ## Spatial (SPDE) field. Before #1132 this tier was dropped in silence

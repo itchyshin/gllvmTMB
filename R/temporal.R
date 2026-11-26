@@ -106,6 +106,33 @@ temporal_latent <- function(formula, time, d = 1, structure = "ar1",
     replicate = substitute(replicate))
 }
 
+.temporal_check_covariate_na <- function(formula, data, temporal, trait_col) {
+  response <- all.vars(formula[[2L]])
+  exclude <- unique(c(
+    response,
+    trait_col,
+    temporal$series_col,
+    temporal$time_col,
+    temporal$replicate_col %||% character()
+  ))
+  covariates <- setdiff(all.vars(formula[[length(formula)]]), exclude)
+  covariates <- intersect(covariates, names(data))
+  for (col in covariates) {
+    na_idx <- which(is.na(data[[col]]))
+    if (length(na_idx)) {
+      i <- na_idx[[1L]]
+      series <- as.character(data[[temporal$series_col]][[i]])
+      time <- data[[temporal$time_col]][[i]]
+      .temporal_abort(c(
+        "Covariate {.field {col}} has missing values and cannot be used in a temporal fit.",
+        "i" = "First missing row {.val {i}}: series {.val {series}}, time {.val {time}}.",
+        ">" = "Remove those rows or fill {.field {col}} before fitting."
+      ), class = "gllvmTMB_temporal_missing_covariate")
+    }
+  }
+  invisible(NULL)
+}
+
 .parse_temporal_latent_formula <- function(formula, data, trait_col = "trait") {
   rhs <- formula[[length(formula)]]
   marker <- NULL

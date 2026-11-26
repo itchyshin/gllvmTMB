@@ -3502,8 +3502,9 @@ predict.gllvmTMB_multi <- function(
   type <- match.arg(type)
   .gllvmTMB_predict_warn_unused(list(...))
   if (isTRUE(object$temporal$active) && !is.null(newdata)) {
+    temporal_fn <- paste0("temporal_", object$temporal$mode)
     cli::cli_abort(c(
-      "{.fn predict} with {.arg newdata} is not yet available for {.fn temporal_latent} fits.",
+      "{.fn predict} with {.arg newdata} is not yet available for {.fn {temporal_fn}} fits.",
       "i" = "New rows need an explicitly reconstructed series--occasion score index.",
       ">" = "Use {.code predict(fit)} for the training rows or {.code re_form = ~0} for fixed-effects-only training predictions."
     ), class = "gllvmTMB_temporal_predict_newdata")

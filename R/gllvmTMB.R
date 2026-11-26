@@ -1486,14 +1486,15 @@ gllvmTMB <- function(
   temporal_capture <- .parse_temporal_latent_formula(formula, data, trait_col = trait)
   temporal_spec <- temporal_capture$spec
   if (isTRUE(temporal_spec$active)) {
+    temporal_fn <- paste0("temporal_", temporal_spec$mode)
     if (!identical(engine, "tmb") || isTRUE(REML) || !identical(estimator, "ml") ||
         !identical(family$family, "gaussian") || !identical(family$link, "identity")) {
-      cli::cli_abort(c("{.fn temporal_latent} currently requires the native Gaussian identity-link ML route.", ">" = "Use the Gaussian identity-link ML temporal workflow."))
+      cli::cli_abort(c("{.fn {temporal_fn}} currently requires the native Gaussian identity-link ML route.", ">" = "Use the Gaussian identity-link ML temporal workflow."))
     }
     if (!identical(control$integration %||% "laplace", "laplace") ||
         !isFALSE(control$aghq %||% FALSE)) {
       cli::cli_abort(c(
-        "{.fn temporal_latent} currently requires native TMB Laplace integration.",
+        "{.fn {temporal_fn}} currently requires native TMB Laplace integration.",
         "i" = "Variational integration and adaptive Gauss-Hermite quadrature have iid latent-score algorithms.",
         ">" = "Use {.code gllvmTMBcontrol(integration = \"laplace\", aghq = FALSE)}."
       ))
@@ -1502,7 +1503,7 @@ gllvmTMB <- function(
         !is.null(phylo_tree) || !is.null(column_coef_spec) ||
         !is.null(structured_rho_capture$spec)) {
       cli::cli_abort(c(
-        "{.fn temporal_latent} cannot be combined with another covariance provider in this version.",
+        "{.fn {temporal_fn}} cannot be combined with another covariance provider in this version.",
         ">" = "Use one temporal intercept block with fixed effects only."
       ))
     }

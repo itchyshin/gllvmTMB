@@ -45,6 +45,24 @@
   dat
 }
 
+test_that("non-Gaussian temporal_indep admission names temporal_indep not temporal_latent", {
+  set.seed(3)
+  dat <- expand.grid(
+    series = c("s1", "s2", "s3"),
+    occasion = 1:5,
+    trait = c("t1", "t2", "t3"),
+    stringsAsFactors = FALSE
+  )
+  dat$value <- stats::rpois(nrow(dat), lambda = 3)
+  pois_line <- .first_error_line(gllvmTMB(
+    value ~ 0 + trait + temporal_indep(0 + trait | series, time = occasion),
+    data = dat, unit = "series", family = poisson(), silent = TRUE
+  ))
+  expect_true(grepl("temporal_indep", pois_line, fixed = TRUE))
+  expect_true(grepl("Gaussian identity-link ML", pois_line, fixed = TRUE))
+  expect_false(grepl("temporal_latent", pois_line, fixed = TRUE))
+})
+
 test_that("two-trait temporal_indep and temporal_dep fits name the marker used", {
   dat <- .two_trait_panel()
   indep_line <- .first_error_line(gllvmTMB(

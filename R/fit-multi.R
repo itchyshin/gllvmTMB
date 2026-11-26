@@ -10889,6 +10889,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     fit$fit_health$min_random_curvature <-
       .gllvmTMB_min_random_curvature(fit$tmb_obj, fit$opt$par)
   }
+  .gllvmTMB_warn_fit_health_convergence(fit$fit_health)
   .gllvmTMB_warn_zi_nonconvergence(fit$fit_health, family_id_vec)
   if (structured_rho_estimated) {
     structured_rho$value <- as.numeric(stats::plogis(fit$opt$par[names(fit$opt$par)=="eta_structured_rho"]))

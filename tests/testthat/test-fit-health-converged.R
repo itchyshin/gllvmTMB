@@ -5,7 +5,7 @@
 ## remains separately available as a descriptive recovery-fixture diagnostic.
 ##
 ## A verdict that cannot fail proves nothing, so this battery must REJECT genuine
-## non-convergence as well as ACCEPT good fits (including benign non-PD ridges).
+## non-convergence as well as ACCEPT good fits with a PD Hessian and finite SEs.
 ## Every case carries a `truth` label established by the gradient + recovery, not
 ## by the optimiser's self-report.
 
@@ -27,7 +27,7 @@ test_that("verdict accepts a clean, well-identified fit (PD)", {
   expect_lt(fit$fit_health$scaled_gradient, 1e-3)
 })
 
-test_that("Hessian health remains separate from point convergence", {
+test_that("non-PD Hessian disqualifies converged even at a stationary optimum", {
   skip_on_cran()
   withr::local_options(gllvmTMB.quiet_grammar_notes = TRUE, lifecycle_verbosity = "quiet")
   set.seed(1)
@@ -36,26 +36,26 @@ test_that("Hessian health remains separate from point convergence", {
                     trait = factor(paste0("t", seq_len(T_))))
   df$value <- stats::rnorm(nrow(df)) + as.numeric(df$trait) * 0.3
   ## d = n_traits: the loadings are identified only up to rotation -> a flat ridge,
-  ## so pd_hessian is FALSE while the fit is at a genuine optimum (Sigma recovers).
-  fit <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
-    value ~ 0 + trait + latent(0 + trait | unit, d = 4),
-    data = df, unit = "unit", trait = "trait", family = gaussian()
-  )))
-  expect_identical(
-    fit$fit_health$converged,
-    isTRUE(fit$fit_health$optimizer_converged) &&
-      is.finite(fit$fit_health$objective) &&
-      isTRUE(fit$fit_health$stationary_by_gradient)
+  ## so pd_hessian is FALSE while the fit is at a genuine stationary point.
+  warned <- FALSE
+  fit <- withCallingHandlers(
+    suppressMessages(gllvmTMB::gllvmTMB(
+      value ~ 0 + trait + latent(0 + trait | unit, d = 4),
+      data = df, unit = "unit", trait = "trait", family = gaussian()
+    )),
+    warning = function(w) {
+      if (inherits(w, "gllvmTMB_fit_health_not_converged")) warned <<- TRUE
+      invokeRestart("muffleWarning")
+    }
   )
   ## pd_hessian on a near-zero rotation ridge is FD/BLAS noise: it reads FALSE on
-  ## some platforms (the case it "gets wrong") and PD on others (seen on ubuntu CI).
-  ## Only demonstrate the "pd_hessian disagrees" branch when the platform actually
-  ## produced the non-PD read; otherwise it is N/A -- converged is asserted above,
-  ## and asserting the noisy sign here would make the test depend on the very
-  ## platform noise the verdict exists to ignore.
+  ## some platforms and PD on others (seen on ubuntu CI).
   skip_if(isTRUE(fit$fit_health$pd_hessian),
           "Hessian read as PD on this platform; non-PD-ridge demonstration N/A.")
+  expect_true(warned)
   expect_false(isTRUE(fit$fit_health$pd_hessian))
+  expect_false(isTRUE(fit$fit_health$converged))
+  expect_identical(fit$fit_health$convergence_status, "degenerate")
 })
 
 test_that("verdict REJECTS genuine non-convergence (iteration-capped)", {

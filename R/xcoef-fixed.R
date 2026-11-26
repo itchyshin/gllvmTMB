@@ -72,3 +72,44 @@
   }
   status
 }
+
+## Map each row of `X_fix_names` / the tidy fixed table to the `which`
+## argument for `tmbprofile(..., name = "b_fix", which = )`, i.e. the index
+## among `b_fix` entries in `opt$par`. NA for aliased / mapped-out columns.
+## `confint()` and `vcov()` must share this alignment (#1959).
+.gllvmTMB_b_fix_profile_which <- function(fit) {
+  n <- length(fit$X_fix_names %||% character(0))
+  if (n == 0L) {
+    return(integer(0))
+  }
+  status <- .gllvmTMB_xcoef_status(fit)
+  free <- status != "fixed"
+  out <- rep(NA_integer_, n)
+  n_free <- sum(free)
+  if (n_free == 0L) {
+    return(out)
+  }
+  n_bfix <- sum(names(fit$opt$par) == "b_fix")
+  if (n_bfix != n_free) {
+    return(out)
+  }
+  out[free] <- seq_len(n_free)
+  out
+}
+
+## Wald standard error for one `opt$par` position from `sd_report$cov.fixed`.
+.gllvmTMB_sdreport_se_index <- function(fit, idx_par) {
+  cv <- fit$sd_report$cov.fixed
+  if (is.null(cv) || !is.matrix(cv)) {
+    return(NA_real_)
+  }
+  idx_par <- as.integer(idx_par)
+  if (length(idx_par) != 1L || idx_par < 1L || idx_par > nrow(cv)) {
+    return(NA_real_)
+  }
+  val <- unname(cv[idx_par, idx_par])
+  if (!is.finite(val) || val < 0) {
+    return(NA_real_)
+  }
+  sqrt(val)
+}

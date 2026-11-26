@@ -70,7 +70,7 @@ test_that("zeta interpolation leaves the non-crossing terminuses alone", {
   p <- seq(-8, 8, by = 0.25)
   asym <- gllvmTMB:::.profile_bounds(
     mk_prof(p, 100 + 0.6 * (1 - exp(-abs(p)))), 100, 0, crit)
-  expect_equal(asym$upper, Inf)
+  expect_true(is.na(asym$upper))
   expect_equal(asym$upper_status, "asymptotic")
 
   ## truncated: still climbing when it stops

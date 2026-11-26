@@ -242,10 +242,10 @@
     if (length(pos) == 0L) {
       status <- .profile_terminus_status(p_sub, v_sub, side)
       if (identical(status, "asymptotic")) {
-        return(list(
-          value = if (side == "lower") -Inf else Inf,
-          status = "asymptotic"
-        ))
+        ## Maintainer decision 2026-11-26: unbracketed profiles return NA with
+        ## a downstream warning, never +/- Inf (#1959; builds on confint guard
+        ## in PR #1932 / #1924).
+        return(list(value = NA_real_, status = "asymptotic"))
       }
       return(list(value = NA_real_, status = "truncated"))
     }

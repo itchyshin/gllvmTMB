@@ -1,7 +1,6 @@
-## predict(): a near-miss argument spelling in `...` must not vanish silently
-## (#1414). `re.form` (lme4/glmmTMB spelling) and `se_fit` used to be swallowed
-## by `...`, so `predict(fit, newdata, re.form = NA)` returned the conditional
-## predictor with no message. The correct spellings are `re_form` and `se.fit`.
+## predict(): near-miss argument spellings must not vanish silently (#1414).
+## `se_fit` used to be swallowed by `...`. `re.form` is now an alias of
+## `re_form` (#1911); `se.fit` remains the correct spelling for standard errors.
 
 .iris_long_1414 <- function() {
   long <- stats::reshape(
@@ -15,8 +14,9 @@
   long
 }
 
-test_that("#1414 predict() warns on re.form / se_fit and stays silent on re_form", {
+test_that("#1911 predict() accepts re.form as an alias of re_form; se_fit still warns", {
   skip_on_cran()
+  suppressPackageStartupMessages(library(gllvmTMB))
   fit <- suppressMessages(suppressWarnings(gllvmTMB(
     y ~ 0 + trait + latent(0 + trait | unit, d = 1),
     data = .iris_long_1414(), unit = "unit", trait = "trait", silent = TRUE
@@ -31,13 +31,12 @@ test_that("#1414 predict() warns on re.form / se_fit and stays silent on re_form
   expect_no_warning(predict(fit, newdata = nd, re_form = NA))
   expect_no_warning(predict(fit, newdata = nd))
 
-  ## The near-miss spellings warn, name the right argument, and change nothing.
-  expect_warning(
-    w <- predict(fit, newdata = nd, re.form = NA),
-    regexp = "re_form",
-    class = "gllvmTMB_predict_unused_arg"
-  )
-  expect_equal(w$est, full$est)
+  ## glmmTMB / lme4 spelling must change predictions like re_form = NA.
+  w <- predict(fit, newdata = nd, re.form = NA)
+  expect_equal(w$est, pop$est)
+  expect_no_warning(predict(fit, newdata = nd, re.form = NA))
+  w0 <- predict(fit, newdata = nd, re.form = ~0)
+  expect_equal(w0$est, pop$est)
   expect_warning(
     predict(fit, se_fit = TRUE),
     regexp = "se.fit",
@@ -49,9 +48,7 @@ test_that("#1414 predict() warns on re.form / se_fit and stays silent on re_form
     regexp = "level",
     class = "gllvmTMB_predict_unused_arg"
   )
-  ## fitted() forwards `...`, so the same warning fires there.
-  expect_warning(
-    fitted(fit, re.form = NA),
-    class = "gllvmTMB_predict_unused_arg"
-  )
+  ## fitted() forwards `...`; re.form reaches predict() as an alias.
+  expect_no_warning(ft_pop <- fitted(fit, re.form = NA))
+  expect_equal(ft_pop$est, pop$est)
 })

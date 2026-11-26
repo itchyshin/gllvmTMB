@@ -2880,15 +2880,16 @@ sanity_multi <- function(object, gradient_thresh = 1e-2, se_thresh = 100) {
 #' Warn about arguments that `predict()` received in `...` and ignored
 #'
 #' `predict.gllvmTMB_multi()` uses no argument from `...`, so anything there is
-#' dropped. The near-miss spellings `re.form` (lme4 / glmmTMB) and `se_fit` are
-#' the easy ones to hit and silently return a different quantity (#1414), so
-#' the warning names the argument to use instead.
+#' dropped. The near-miss spelling `se_fit` is the easy one to hit and
+#' silently return a different quantity (#1414), so the warning names the
+#' argument to use instead. `re.form` is accepted as an alias of `re_form`
+#' (#1911) and must be removed from `dots` before this runs.
 #' @noRd
 .gllvmTMB_predict_warn_unused <- function(dots) {
   if (length(dots) == 0L) return(invisible(NULL))
   nm <- names(dots)
   if (is.null(nm)) nm <- rep("", length(dots))
-  hint <- c(re.form = "re_form", se_fit = "se.fit")
+  hint <- c(se_fit = "se.fit")
   items <- ifelse(nzchar(nm), nm, "<unnamed>")
   bullets <- vapply(seq_along(items), function(i) {
     if (items[i] %in% names(hint)) {
@@ -3483,8 +3484,9 @@ sanity_multi <- function(object, gradient_thresh = 1e-2, se_thresh = 100) {
 #'   fits, fits without an active `mi()` missing-covariate model, and fits with
 #'   unit likelihood weights. A non-unit weighted objective has no certified
 #'   prediction-standard-error route.
-#' @param ... Unused. An argument passed here is ignored with a warning; in
-#'   particular `re.form` (use `re_form`) and `se_fit` (use `se.fit`).
+#' @param ... Additional arguments are ignored with a warning, except
+#'   `re.form` which is accepted as an alias of `re_form` (lme4 / glmmTMB
+#'   spelling). Near-miss `se_fit` (use `se.fit`) is warned and ignored.
 #'
 #' @return A data frame with the original row identifiers plus an `est`
 #'   column on the requested link or response scale, and (if
@@ -3500,7 +3502,12 @@ predict.gllvmTMB_multi <- function(
   ...
 ) {
   type <- match.arg(type)
-  .gllvmTMB_predict_warn_unused(list(...))
+  dots <- list(...)
+  if ("re.form" %in% names(dots)) {
+    re_form <- dots[["re.form"]]
+    dots <- dots[names(dots) != "re.form"]
+  }
+  .gllvmTMB_predict_warn_unused(dots)
   if (isTRUE(object$temporal$active) && !is.null(newdata)) {
     cli::cli_abort(c(
       "{.fn predict} with {.arg newdata} is not yet available for {.fn temporal_latent} fits.",

@@ -121,6 +121,32 @@ test_that("getLoadings(rotate = 'none') emits the informational message", {
   )
 })
 
+test_that("getLoadings(rotate = 'none') emits rotation hint at most once per level", {
+  set.seed(1)
+  sim <- simulate_unit_trait(
+    n_units = 25L, n_obs_per_unit = 2L, n_traits = 4L,
+    Lambda_B = matrix(0.5, 4, 2), psi_B = rep(0.2, 4)
+  )
+  fit <- gllvmTMB(
+    value ~ 0 + trait + latent(0 + trait | unit, d = 2, unique = TRUE),
+    data = sim$data, trait = "trait", unit = "unit"
+  )
+  msgs <- character()
+  withCallingHandlers(
+    {
+      getLoadings(fit, rotate = "none")
+      getLoadings(fit, rotate = "none")
+      extract_loadings(fit, rotate = "none")
+    },
+    message = function(m) {
+      msgs <<- c(msgs, conditionMessage(m))
+      invokeRestart("muffleMessage")
+    }
+  )
+  expect_length(msgs, 1L)
+  expect_true(isTRUE(attr(fit, ".rotation_hint_shown")$B))
+})
+
 test_that("getLoadings(rotate = 'varimax') does NOT emit the message", {
   set.seed(1)
   s <- simulate_site_trait(

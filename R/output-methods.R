@@ -84,6 +84,18 @@ getLoadings <- function(
         "*" = "see {.fn suggest_lambda_constraint} for a default {.arg lambda_constraint} matrix to pass to a refit.",
         "*" = "{.fn extract_Sigma_{level}} is rotation-invariant and does not need this."
       ))
+      shown_levels <- attr(fit, ".rotation_hint_shown") %||% list()
+      shown_levels[[level]] <- TRUE
+      fit_marked <- structure(fit, .rotation_hint_shown = shown_levels)
+      fit_sym <- sys.call()[[2L]]
+      if (is.name(fit_sym)) {
+        pf <- parent.frame()
+        nm <- as.character(fit_sym)
+        if (exists(nm, envir = pf, inherits = FALSE) &&
+            identical(get(nm, envir = pf, inherits = FALSE), fit)) {
+          assign(nm, fit_marked, envir = pf)
+        }
+      }
     }
   }
   ord <- extract_ordination(fit, level = .canonical_level_name(level))

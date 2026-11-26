@@ -475,7 +475,8 @@ pedigree_to_A <- function(pedigree) {
     cli::cli_abort(c(
       "{.arg pedigree} must be a data frame with at least 3 columns.",
       "i" = "Expected columns: {.field id}/{.field animal}, {.field sire}/{.field father}, {.field dam}/{.field mother}.",
-      "i" = "Got: {.code {paste(names(pedigree), collapse = ', ')}}."
+      "i" = "Got: {.code {paste(names(pedigree), collapse = ', ')}}.",
+      ">" = "Build a three-column data frame with one row per individual and use {.field id}, {.field sire}, and {.field dam} (or the {.field animal}/{.field father}/{.field mother} synonyms)."
     ))
   }
   ## MCMCglmm-style by-name column lookup with synonyms.
@@ -506,9 +507,10 @@ pedigree_to_A <- function(pedigree) {
 
   n <- length(ids)
   if (anyDuplicated(ids)) {
-    cli::cli_abort(
-      "{.arg pedigree$id} has duplicate IDs; each row must be a unique individual."
-    )
+    cli::cli_abort(c(
+      "{.arg pedigree$id} has duplicate IDs; each row must be a unique individual.",
+      ">" = "Give each individual one row and a unique {.field id}, or collapse duplicates before calling {.fn pedigree_to_A}."
+    ))
   }
 
   ## Sort pedigree so that every parent appears before its offspring.
@@ -649,7 +651,8 @@ pedigree_to_Ainv_sparse <- function(pedigree) {
     cli::cli_abort(c(
       "{.arg pedigree} must be a data frame with at least 3 columns.",
       "i" = "Expected columns: {.field id}/{.field animal}, {.field sire}/{.field father}, {.field dam}/{.field mother}.",
-      "i" = "Got: {.code {paste(names(pedigree), collapse = ', ')}}."
+      "i" = "Got: {.code {paste(names(pedigree), collapse = ', ')}}.",
+      ">" = "Build a three-column data frame with one row per individual and use {.field id}, {.field sire}, and {.field dam} (or the {.field animal}/{.field father}/{.field mother} synonyms)."
     ))
   }
   ## MCMCglmm-style by-name lookup (same convention as pedigree_to_A).

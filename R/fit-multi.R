@@ -107,16 +107,38 @@
   )
 }
 
+.auto_psi_skip_gate_desc <- function(binomial_labs = character(),
+                                    multinomial_labs = character(),
+                                    ordinal_labs = character()) {
+  n_cat <- sum(
+    c(length(binomial_labs) > 0L,
+      length(multinomial_labs) > 0L,
+      length(ordinal_labs) > 0L)
+  )
+  if (n_cat >= 2L) {
+    return("binary / categorical-contrast / single-observation ordinal")
+  }
+  if (length(multinomial_labs) > 0L) return("multinomial contrast")
+  if (length(binomial_labs) > 0L) return("single-trial binomial")
+  if (length(ordinal_labs) > 0L) return("single-observation ordinal")
+  "affected"
+}
+
 .auto_psi_skip_message <- function(binomial_labs = character(),
                                    multinomial_labs = character(),
                                    ordinal_labs = character()) {
   affected <- c(binomial_labs, multinomial_labs, ordinal_labs)
   n_affected <- length(affected)
   noun <- if (n_affected == 1L) "trait" else "traits"
+  gate_desc <- .auto_psi_skip_gate_desc(
+    binomial_labs = binomial_labs,
+    multinomial_labs = multinomial_labs,
+    ordinal_labs = ordinal_labs
+  )
   msg <- c(
     "i" = sprintf(
-      "Skipping the default between-unit {.field Psi} for %d binary / categorical-contrast / single-observation ordinal %s under the family-specific identifiability gate.",
-      n_affected, noun
+      "Skipping the default between-unit {.field Psi} for %d %s %s under the family-specific identifiability gate.",
+      n_affected, gate_desc, noun
     ),
     "i" = sprintf("Affected %s: %s.", noun, paste(affected, collapse = ", "))
   )
@@ -145,7 +167,11 @@
     )
   }
   c(msg,
-    "*" = "Mapped {.code theta_diag_B[t]} and the corresponding {.code s_B} row off."
+    "*" = paste0(
+      "The default between-unit {.field Psi} for the affected ",
+      if (n_affected == 1L) "trait is" else "traits are",
+      " not estimated."
+    )
   )
 }
 
@@ -8026,7 +8052,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
           "An explicit between-unit diagonal ({.fn indep} or {.fn diag}) is not identified for single-observation ordinal traits.",
           "i" = "Trait{?s} affected: {.val {ordinal_labs}}.",
           "i" = "One observation per (trait, unit) cannot separate that diagonal from the fixed threshold scale (1 for {.fn ordinal_probit}, pi^2/3 for {.fn ordinal_logit}).",
-          "*" = "Mapped {.code theta_diag_B[t]} and the corresponding {.code s_B} row off. Repeated observations of the same trait in a unit identify the term."
+          "*" = "The between-unit trait variance for the affected {cli::qty(length(ordinal_labs))}trait{?s} is not estimated. Repeated observations of the same trait in a unit identify the term."
         ))
       } else {
         cli::cli_inform(.auto_psi_skip_message(

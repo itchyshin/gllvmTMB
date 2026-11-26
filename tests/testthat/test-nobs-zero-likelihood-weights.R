@@ -1,3 +1,13 @@
+test_that("nobs() uses missing_data counts when tmb_data has no response (refs #1905)", {
+  mock <- structure(
+    list(
+      missing_data = list(counts = list(likelihood_rows = 42L))
+    ),
+    class = "gllvmTMB_multi"
+  )
+  expect_identical(stats::nobs(mock), 42L)
+})
+
 test_that("nobs() excludes zero likelihood-weight rows (refs #1905)", {
   skip_if_not_installed("gllvmTMB")
 

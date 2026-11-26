@@ -26,17 +26,27 @@
 }
 
 .gllvmTMB_nobs_likelihood_contributing <- function(object) {
-  iyo <- object$tmb_data$is_y_observed
-  wi <- object$tmb_data$weights_i
-  n_y <- length(object$tmb_data$y)
-  if (!is.null(iyo)) {
-    .gllvmTMB_likelihood_contributing_row_count(iyo, wi)
-  } else {
-    .gllvmTMB_likelihood_contributing_row_count(
+  td <- object$tmb_data
+  if (!is.null(td) && !is.null(td$y)) {
+    iyo <- td$is_y_observed
+    wi <- td$weights_i
+    n_y <- length(td$y)
+    if (!is.null(iyo)) {
+      return(.gllvmTMB_likelihood_contributing_row_count(iyo, wi))
+    }
+    return(.gllvmTMB_likelihood_contributing_row_count(
       rep(1L, n_y),
       wi
-    )
+    ))
   }
+  lr <- object$missing_data$counts$likelihood_rows
+  if (!is.null(lr)) {
+    return(as.integer(lr))
+  }
+  if (!is.null(td) && !is.null(td$y)) {
+    return(length(td$y))
+  }
+  0L
 }
 
 ## Shared weights-shape normalisation for the three public data-entry paths.

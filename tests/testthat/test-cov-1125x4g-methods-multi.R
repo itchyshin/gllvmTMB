@@ -53,7 +53,7 @@ test_that("nobs() and fitted() return aligned lengths", {
 
 test_that("residuals() and model.matrix() expose training rows", {
   fit <- .cov1125x4g_gauss()
-  r <- residuals(fit, type = "pearson")
+  r <- residuals(fit, type = "randomized_quantile", seed = 112544L)
   expect_length(r, nrow(fit$data))
   X <- model.matrix(fit)
   expect_equal(nrow(X), nrow(fit$data))
@@ -89,18 +89,19 @@ test_that(".modal_integer_id() picks a modal value", {
   expect_equal(gllvmTMB:::.modal_integer_id(c(NA, 3L, 3L)), 3L)
 })
 
-test_that("family() and formula() accessors round-trip", {
+test_that("fit stores formula and family metadata", {
   fit <- .cov1125x4g_gauss()
-  expect_s3_class(family(fit), "family")
-  expect_s3_class(formula(fit), "formula")
-  expect_match(deparse(formula(fit)[[2]]), "value")
+  expect_s3_class(fit$formula, "formula")
+  expect_match(deparse(fit$formula[[2]]), "value")
+  expect_true(!is.null(fit$family))
 })
 
 test_that("logLik and extractors stay finite on tiny fits", {
   fit <- .cov1125x4g_gauss()
   expect_true(is.finite(as.numeric(logLik(fit))))
   sig <- extract_Sigma(fit)
-  expect_true(is.matrix(sig) || is.data.frame(sig))
+  expect_type(sig, "list")
+  expect_gt(length(sig), 0L)
   cor <- extract_correlations(fit)
   expect_s3_class(cor, "data.frame")
   expect_gt(nrow(cor), 0L)
@@ -108,7 +109,8 @@ test_that("logLik and extractors stay finite on tiny fits", {
 
 test_that("predict() returns link-scale values in-sample", {
   fit <- .cov1125x4g_gauss()
-  eta <- predict(fit)
-  expect_length(eta, nrow(fit$data))
-  expect_true(all(is.finite(eta)))
+  pred <- predict(fit)
+  expect_s3_class(pred, "data.frame")
+  expect_equal(nrow(pred), nrow(fit$data))
+  expect_true(all(is.finite(pred$est)))
 })

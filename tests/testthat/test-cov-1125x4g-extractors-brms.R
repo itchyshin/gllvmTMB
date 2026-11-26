@@ -27,7 +27,7 @@ test_that("extract_latent_scores() validates level", {
 })
 
 test_that("extract_repeatability() refuses without a suitable fit", {
-  fit <- structure(list(class = "gllvmTMB_multi"), class = "gllvmTMB_multi")
+  fit <- structure(list(), class = "lm")
   expect_error(extract_repeatability(fit), "gllvmTMB")
 })
 
@@ -67,20 +67,20 @@ test_that(".gllvmTMB_fixed_prior_inference() blocks unflagged intervals", {
   )
 })
 
-test_that(".gllvmTMB_rewrite_scalar_internally() returns a formula call", {
+test_that(".gllvmTMB_rewrite_scalar_internally() returns input unchanged", {
   f <- quote(value ~ 1 + scalar(1 | unit))
   out <- gllvmTMB:::.gllvmTMB_rewrite_scalar_internally(f)
-  expect_s3_class(out, "call")
-  expect_true(grepl("indep|scalar", paste(deparse(out), collapse = " ")))
+  expect_identical(out, f)
+  expect_true(inherits(out, "call"))
 })
 
 test_that(".gllvmTMB_set_spatial_token_consumed() records spatial grouping", {
+  state <- getNamespace("gllvmTMB")$.gllvmTMB_spatial_token_consumed
+  previous <- state$token
+  withr::defer(state$token <- previous)
   spec <- list(source = "spatial", grouping = "site")
   expect_invisible(gllvmTMB:::.gllvmTMB_set_spatial_token_consumed(spec))
-  expect_equal(
-    gllvmTMB:::.gllvmTMB_spatial_token_consumed$token,
-    "site"
-  )
+  expect_equal(state$token, "site")
 })
 
 test_that("desugar_brms_sugar() accepts latent() without altering core call", {

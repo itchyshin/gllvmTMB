@@ -79,7 +79,9 @@ test_that(".gllvmTMB_mspl_S_diag() errors on short grids and zero variance", {
     "at least two units"
   )
   expect_error(
-    gllvmTMB:::.gllvmTMB_mspl_S_diag(c(5, 5), c(0L, 0L, 1L, 1L), c(0L, 0L, 1L, 1L)),
+    gllvmTMB:::.gllvmTMB_mspl_S_diag(
+      c(1, 2, 3), c(0L, 0L, 1L), c(0L, 1L, 0L)
+    ),
     "balanced"
   )
   expect_error(

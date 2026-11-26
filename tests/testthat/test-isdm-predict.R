@@ -198,7 +198,7 @@ test_that("#1132 defect 2: re_form is honoured in-sample, and for NA / numeric 0
   ## fitted() forwards ... to the same in-sample path (Ayumi #25, PR #1114),
   ## so its roxygen claim that re_form "works here too" is now true.
   expect_equal(
-    suppressMessages(fitted(fit, type = "link", re_form = ~0))$est,
+    suppressMessages(fitted(fit, type = "link", re_form = ~0)),
     zero$est
   )
 
@@ -521,8 +521,8 @@ test_that("#1133 item 3: the in-sample path carries the arm/source column", {
   expect_identical(names(out)[ncol(out)], "est")
   expect_identical(out$est, as.numeric(fit$report$eta))
 
-  ## fitted() wraps the same path, so it inherits the label.
-  expect_true(fam_var %in% names(suppressMessages(fitted(fit, type = "link"))))
+  ## fitted() returns the same numeric estimates in row order (#1919).
+  expect_identical(suppressMessages(fitted(fit, type = "link")), out$est)
 })
 
 test_that("#1133 item 3: a single-family fit's output shape is unchanged", {

@@ -16,17 +16,22 @@
 \code{re_form}); see its documentation for what each accepts.}
 }
 \value{
-A numeric vector of length \code{\link[=nobs]{nobs()}} on the requested scale.
-When \code{se.fit = TRUE} is passed in \code{...}, the vector carries a \code{se.fit}
+A numeric vector with one element per model row on the requested
+scale. When \code{se.fit = TRUE} is passed in \code{...}, the vector carries a \code{se.fit}
 attribute (and the same \verb{se.fit.*} attributes as \code{predict()}).
-\strong{For a \code{multinomial()} fit} this is the \code{est} column of
-\code{.predict_multinomial()} (K rows per observation).
 }
 \description{
 A thin wrapper over \code{\link[=predict.gllvmTMB_multi]{predict.gllvmTMB_multi()}} at the training rows
-(\code{newdata = NULL}). Returns a numeric vector of fitted values in the same
-order as \code{\link[=gllvmTMB]{gllvmTMB()}}'s model frame rows (length \code{\link[=nobs]{nobs()}}), matching the
-\code{stats::fitted()} contract for \code{as.numeric(fitted(fit))} and residual code.
-Call \code{\link[=predict]{predict()}} when you need row identifiers or standard errors. \code{...} is
-forwarded to \code{predict()} (e.g. \code{type}, \code{re_form}, \code{se.fit}).
+(\code{newdata = NULL}). Returns a numeric vector with one fitted value per
+\strong{model row}---each stacked long-format row the fitter uses---in the same
+order as \code{\link[=predict]{predict()}}'s \code{est} column, matching the \code{stats::fitted()} contract
+for \code{as.numeric(fitted(fit))} and residual code. That length is ordinarily
+\code{length(fit$tmb_data$y)} and need not equal \code{\link[=nobs]{nobs()}}: \code{\link[=nobs]{nobs()}} counts only
+likelihood-contributing response cells (for example rows with zero
+likelihood weight or masked under missing-data handling), while a
+\code{\link[=multinomial]{multinomial()}} trait expands every observation into K minus 1
+category-contrast pseudo-rows, each counted as its own model row. Call
+\code{\link[=predict]{predict()}} when you need row identifiers (\code{model_row}, \code{original_row}) or
+standard errors. \code{...} is forwarded to \code{predict()} (e.g. \code{type}, \code{re_form},
+\code{se.fit}).
 }

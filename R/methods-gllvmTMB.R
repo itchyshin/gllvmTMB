@@ -4201,11 +4201,18 @@ predict.gllvmTMB_multi <- function(
 #' Fitted values from a fitted gllvmTMB model
 #'
 #' A thin wrapper over [predict.gllvmTMB_multi()] at the training rows
-#' (`newdata = NULL`). Returns a numeric vector of fitted values in the same
-#' order as [gllvmTMB()]'s model frame rows (length [nobs()]), matching the
-#' `stats::fitted()` contract for `as.numeric(fitted(fit))` and residual code.
-#' Call [predict()] when you need row identifiers or standard errors. `...` is
-#' forwarded to `predict()` (e.g. `type`, `re_form`, `se.fit`).
+#' (`newdata = NULL`). Returns a numeric vector with one fitted value per
+#' **model row**---each stacked long-format row the fitter uses---in the same
+#' order as [predict()]'s `est` column, matching the `stats::fitted()` contract
+#' for `as.numeric(fitted(fit))` and residual code. That length is ordinarily
+#' `length(fit$tmb_data$y)` and need not equal [nobs()]: [nobs()] counts only
+#' likelihood-contributing response cells (for example rows with zero
+#' likelihood weight or masked under missing-data handling), while a
+#' [multinomial()] trait expands every observation into K minus 1
+#' category-contrast pseudo-rows, each counted as its own model row. Call
+#' [predict()] when you need row identifiers (`model_row`, `original_row`) or
+#' standard errors. `...` is forwarded to `predict()` (e.g. `type`, `re_form`,
+#' `se.fit`).
 #'
 #' @param object A fit returned by [gllvmTMB()].
 #' @param type One of `"response"` (default, the `fitted()` convention) or
@@ -4213,11 +4220,9 @@ predict.gllvmTMB_multi <- function(
 #' @param ... Forwarded to [predict.gllvmTMB_multi()] (e.g. `se.fit`,
 #'   `re_form`); see its documentation for what each accepts.
 #'
-#' @return A numeric vector of length [nobs()] on the requested scale.
-#'   When `se.fit = TRUE` is passed in `...`, the vector carries a `se.fit`
-#'   attribute (and the same `se.fit.*` attributes as `predict()`).
-#'   **For a `multinomial()` fit** this is the `est` column of
-#'   `.predict_multinomial()` (K rows per observation).
+#' @return A numeric vector with one element per model row on the requested
+#'   scale. When `se.fit = TRUE` is passed in `...`, the vector carries a
+#'   `se.fit` attribute (and the same `se.fit.*` attributes as `predict()`).
 #' @export
 fitted.gllvmTMB_multi <- function(object, type = c("response", "link"), ...) {
   type <- match.arg(type)

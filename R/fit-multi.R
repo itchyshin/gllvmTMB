@@ -10916,6 +10916,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     }
   }
   if (isTRUE(warn_tweedie_boundary)) .gllvmTMB_warn_tweedie_p_boundary(fit)
+  fit <- .aghq_sync_report_training_eta(fit)
   fit
 }
 

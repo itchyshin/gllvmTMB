@@ -849,6 +849,7 @@ gllvmTMB <- function(
 
   estimator_missing <- missing(estimator)
   estimator <- match.arg(estimator)
+  .gllvmTMB_assert_miss_control(missing)
 
   if (!is.logical(REML) || length(REML) != 1L || is.na(REML)) {
     cli::cli_abort(c(
@@ -3609,6 +3610,29 @@ gllvmTMBcontrol <- function(
 #' @seealso [gllvmTMB()] for the `missing =` argument; [gllvmTMBcontrol()] for
 #'   optimiser / initialisation control.
 #'
+.gllvmTMB_assert_miss_control <- function(missing) {
+  required <- c("response", "predictor", "engine")
+  ok <- is.list(missing) &&
+    !is.null(names(missing)) &&
+    all(required %in% names(missing))
+  if (ok) {
+    return(invisible(missing))
+  }
+  hint <- if (is.character(missing) && length(missing) == 1L && !is.na(missing)) {
+    c(
+      "i" = "Use {.code missing = miss_control(response = {.val {missing}})} rather than {.code missing = {.val {missing}}}."
+    )
+  } else {
+    c(
+      "i" = "For example, {.code missing = miss_control(response = \"include\")}."
+    )
+  }
+  cli::cli_abort(c(
+    "{.arg missing} must be the output of {.fn miss_control}.",
+    hint
+  ))
+}
+
 #' @export
 #' @examples
 #' miss_control()                          # defaults: drop / fail / laplace

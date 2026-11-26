@@ -8,10 +8,14 @@
 \usage{
 \method{coef}{gllvmTMB_multi}(object, ...)
 
-\method{vcov}{gllvmTMB_multi}(object, ...)
+\method{vcov}{gllvmTMB_multi}(object, corr = FALSE, ...)
 }
 \arguments{
 \item{object}{A fitted multivariate model returned by \code{\link[=gllvmTMB]{gllvmTMB()}}.}
+
+\item{corr}{If \code{TRUE}, return the correlation matrix of the fixed-effect
+estimates (\code{\link[stats]{cov2cor()}}) with the same names; if \code{FALSE} (default),
+return the Wald covariance matrix.}
 
 \item{...}{Ignored, present for S3 consistency.}
 }

@@ -187,6 +187,8 @@ test_that("predict(newdata =) on a temporal_latent-family fit points to the trai
   )
   msg <- rlang::cnd_message(err)
   expect_match(msg, "not yet available", fixed = TRUE)
+  expect_match(msg, "temporal_indep", fixed = TRUE)
+  expect_false(grepl("temporal_latent", msg, fixed = TRUE))
   expect_match(msg, "series--occasion score index", fixed = TRUE)
   expect_match(msg, "predict(fit)", fixed = TRUE)
   expect_match(msg, "re_form = ~0", fixed = TRUE)

@@ -1,3 +1,11 @@
+## Evaluate `weights =` from the call in `data`, matching glmmTMB / lme4 NSE.
+.gllvmTMB_eval_weights_call_arg <- function(mc, data, envir = parent.frame()) {
+  if (is.null(mc$weights)) {
+    return(NULL)
+  }
+  eval(mc$weights, data, envir)
+}
+
 ## Shared weights-shape normalisation for the three public data-entry paths.
 ##
 ## The engine always consumes a long-format per-observation vector. This

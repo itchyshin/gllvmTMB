@@ -267,6 +267,12 @@ screen_gllvmTMB <- function(
     }
   }
 
+  ## Resolve `weights = column` from `data` before any rewrite (same NSE as gllvmTMB).
+  mc <- match.call(expand.dots = FALSE)
+  if (!is.null(mc$weights)) {
+    weights <- .gllvmTMB_eval_weights_call_arg(mc, data, parent.frame())
+  }
+
   prep <- .screen_prepare_formula_data(
     formula = formula,
     data = data,

@@ -235,8 +235,9 @@
 #'   positive integer responses (y >= 1). The delta families fit one
 #'   log-dispersion of the *positive* component per trait
 #'   (sigma_lognormal or phi_gamma).
-#' @param weights Optional numeric vector of length `nrow(data)`. Family-
-#'   conditional semantics (lme4 / glmmTMB convention):
+#' @param weights Optional numeric vector of length `nrow(data)`, or an
+#'   expression evaluated in `data` (for example `weights = wt` when `wt` is a
+#'   column). Family-conditional semantics (lme4 / glmmTMB convention):
 #'   * For **non-binomial** families, `weights` is interpreted as per-
 #'     observation likelihood multipliers — each row's log-likelihood
 #'     contribution is multiplied by `weights[i]`. This matches the
@@ -1042,6 +1043,12 @@ gllvmTMB <- function(
   ## accepted with a one-shot soft deprecation message. See
   ## R/normalise-lambda-constraint.R.
   lambda_constraint <- .normalise_lambda_constraint_names(lambda_constraint)
+
+  ## Resolve `weights = column` from `data` before the formal is used (glmmTMB).
+  mc <- match.call(expand.dots = FALSE)
+  if (!is.null(mc$weights)) {
+    weights <- .gllvmTMB_eval_weights_call_arg(mc, data, parent.frame())
+  }
 
   ## ---- Design 08 Stage 2: traits(...) wide-format pre-pass --------------
   ## When the formula LHS is a `traits(...)` call expression, the user is

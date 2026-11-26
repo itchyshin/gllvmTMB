@@ -3110,7 +3110,22 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #' gllvmTMBcontrol(integration = "va", va_H = 61, va_eval_method = "gh")
 #'
 #' @export
-gllvmTMBcontrol <- function(
+gllvmTMBcontrol <- function(...) {
+  call <- match.call(expand.dots = TRUE)
+  if ("opt" %in% names(call[-1L])) {
+    cli::cli_abort(c(
+      "{.arg opt} is not an argument of {.fn gllvmTMBcontrol}.",
+      "i" = "Pass native optimiser settings through {.arg optArgs}
+            (for example {.code list(control = list(iter.max = 200, eval.max = 250))}).",
+      "i" = "Choose the solver with {.arg optimizer} ({.val nlminb} or {.val optim}).",
+      ">" = "Example: {.code gllvmTMBcontrol(optArgs = list(control = list(iter.max = 200, eval.max = 250)))}."
+    ), class = "gllvmTMB_control_opt_typo")
+  }
+  call[[1L]] <- quote(.gllvmTMBcontrol)
+  eval(call, parent.frame())
+}
+
+.gllvmTMBcontrol <- function(
   d_B = NULL,
   d_W = NULL,
   spde_mode = c("per_trait", "shared"),
@@ -3443,6 +3458,8 @@ gllvmTMBcontrol <- function(
     allow_nongaussian_reml = allow_nongaussian_reml
   )
 }
+
+formals(gllvmTMBcontrol) <- formals(.gllvmTMBcontrol)
 
 ## #1196 staged-rollout resolver for `unit` (2026-09-02 full-suite
 ## follow-up). `unit` has no default -- every caller must name the column

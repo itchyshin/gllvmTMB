@@ -818,6 +818,8 @@ gllvmTMB <- function(
 ) {
   # deprecated alias for `cluster`
 
+  .gllvmTMB_check_top_level_call_slots(data, trait, unit, unit_obs, cluster)
+
   ## ---- Resolve optional slot defaults ------------------------------------
   ## `unit_obs` and `cluster` are OPTIONAL grouping slots: most callers have
   ## no reason to supply them and should not have to invent columns just to
@@ -3458,6 +3460,47 @@ gllvmTMBcontrol <- function(
 ## does not exist. A future release will require explicit `unit` (NEWS).
 ##
 ## Returns the resolved `unit` string, or aborts naming `{.arg unit}`.
+.gllvmTMB_is_valid_name_arg <- function(x, allow_null = FALSE) {
+  if (allow_null && is.null(x)) {
+    return(TRUE)
+  }
+  is.character(x) && length(x) == 1L && !is.na(x)
+}
+
+## Catch covariance keywords or family objects passed as positional arguments
+## after the formula (common tutorial mistake). Without this, a family object
+## lands in {.arg unit_obs} and {.code unit_obs %in% names(data)} coerces a
+## length-12 logical vector (#1906).
+.gllvmTMB_check_top_level_call_slots <- function(data, trait, unit, unit_obs, cluster) {
+  bad <- !is.data.frame(data)
+  if (!.gllvmTMB_is_valid_name_arg(trait, allow_null = FALSE)) {
+    bad <- TRUE
+  }
+  if (!.gllvmTMB_is_valid_name_arg(unit, allow_null = TRUE)) {
+    bad <- TRUE
+  }
+  if (!.gllvmTMB_is_valid_name_arg(unit_obs, allow_null = TRUE)) {
+    bad <- TRUE
+  }
+  if (!.gllvmTMB_is_valid_name_arg(cluster, allow_null = TRUE)) {
+    bad <- TRUE
+  }
+  for (arg in list(trait = trait, unit = unit, unit_obs = unit_obs, cluster = cluster)) {
+    if (inherits(arg, "family")) {
+      bad <- TRUE
+    }
+  }
+  if (!bad) {
+    return(invisible(NULL))
+  }
+  cli::cli_abort(c(
+    "{.arg data} must be a {.cls data.frame}; covariance keywords belong on the formula right-hand side.",
+    "i" = "Pass {.code data = ...} as a named argument. Put {.code indep()}, {.code latent()}, {.code dep()}, and related keywords inside {.arg formula}, and {.code family = gaussian()} (or another family) as a named argument.",
+    "i" = "Expected call shape: {.code gllvmTMB(value ~ 0 + trait + latent(0 + trait | unit, d = K), data = df, unit = \"unit\", family = gaussian())}.",
+    ">" = "Move any positional terms after the formula onto the right-hand side of {.arg formula}."
+  ), class = "gllvmTMB_misplaced_covstruct")
+}
+
 .gllvmTMB_resolve_unit_staged <- function(unit, data) {
   if (!is.null(unit)) {
     return(unit)

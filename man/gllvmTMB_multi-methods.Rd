@@ -9,6 +9,9 @@
 \alias{print.summary.gllvmTMB_multi}
 \alias{logLik.gllvmTMB_multi}
 \alias{nobs.gllvmTMB_multi}
+\alias{model.frame.gllvmTMB_multi}
+\alias{terms.gllvmTMB_multi}
+\alias{model.matrix.gllvmTMB_multi}
 \title{Methods on a fitted gllvmTMB model}
 \usage{
 \method{AIC}{gllvmTMB_multi}(object, ..., k = 2)
@@ -24,6 +27,12 @@
 \method{logLik}{gllvmTMB_multi}(object, ...)
 
 \method{nobs}{gllvmTMB_multi}(object, ...)
+
+\method{model.frame}{gllvmTMB_multi}(formula, ...)
+
+\method{terms}{gllvmTMB_multi}(x, fixed.only = TRUE, terms = NULL, ...)
+
+\method{model.matrix}{gllvmTMB_multi}(object, ...)
 }
 \arguments{
 \item{...}{Currently unused.}
@@ -84,4 +93,12 @@ the observed-response cells. This equals
 row is observed, so it equals \code{length(fit$tmb_data$y)}; under
 \code{response = "include"} the masked rows are excluded. Original-row counts
 live in \code{fit$missing_data}, never in \code{nobs()}.
+
+\code{model.frame()}, \code{terms()}, and \code{model.matrix()} rebuild the fixed-effect
+design from \code{fit$formula} and \code{fit$data}, matching
+\code{model.frame(fit$formula, data = fit$data)} (and the corresponding \code{terms()}
+/ \code{model.matrix()} calls on that frame). They exist so generic post-fit code
+that calls \code{stats::model.frame(fit)} does not fall through to
+\code{model.frame.default()} and fail while evaluating the response LHS in the
+wrong environment.
 }

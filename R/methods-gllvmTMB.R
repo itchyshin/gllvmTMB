@@ -1521,6 +1521,58 @@ nobs.gllvmTMB_multi <- function(object, ...) {
   }
 }
 
+.gllvmTMB_fit_training_frame <- function(object, ...) {
+  if (is.null(object$formula) || is.null(object$data)) {
+    cli::cli_abort(c(
+      "Cannot rebuild the fixed-effect model frame from this fit.",
+      "x" = "The fitted object stores no formula or training data.",
+      "i" = "Refit with the current package version if this object predates those slots."
+    ), class = "gllvmTMB_training_frame_unavailable")
+  }
+  stats::model.frame(
+    object$formula,
+    data = object$data,
+    ...
+  )
+}
+
+#' @rdname gllvmTMB_multi-methods
+#' @details
+#' `model.frame()`, `terms()`, and `model.matrix()` rebuild the fixed-effect
+#' design from `fit$formula` and `fit$data`, matching
+#' `model.frame(fit$formula, data = fit$data)` (and the corresponding `terms()`
+#' / `model.matrix()` calls on that frame). They exist so generic post-fit code
+#' that calls `stats::model.frame(fit)` does not fall through to
+#' `model.frame.default()` and fail while evaluating the response LHS in the
+#' wrong environment.
+#' @exportS3Method stats::model.frame
+model.frame.gllvmTMB_multi <- function(formula, ...) {
+  .gllvmTMB_fit_training_frame(formula, ...)
+}
+
+#' @rdname gllvmTMB_multi-methods
+#' @exportS3Method stats::terms
+terms.gllvmTMB_multi <- function(x, fixed.only = TRUE, terms = NULL, ...) {
+  mf <- .gllvmTMB_fit_training_frame(x, ...)
+  stats::terms(mf, fixed.only = fixed.only, terms = terms, ...)
+}
+
+#' @rdname gllvmTMB_multi-methods
+#' @exportS3Method stats::model.matrix
+model.matrix.gllvmTMB_multi <- function(object, ...) {
+  mf <- .gllvmTMB_fit_training_frame(object, ...)
+  stats::model.matrix(stats::terms(mf), mf, ...)
+}
+
+#' @exportS3Method stats::model.frame
+model.frame.gllvmTMB_julia <- model.frame.gllvmTMB_multi
+
+#' @exportS3Method stats::terms
+terms.gllvmTMB_julia <- terms.gllvmTMB_multi
+
+#' @exportS3Method stats::model.matrix
+model.matrix.gllvmTMB_julia <- model.matrix.gllvmTMB_multi
+
 #' Tidy a fitted gllvmTMB model
 #'
 #' Returns a tibble (or data.frame) of either the fixed-effect coefficient

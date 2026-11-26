@@ -2665,6 +2665,21 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL, rho = 1) {
 ## byte-identical objectives (677.4103) and identical T x d_B Lambda_hat
 ## instead of 2T x d_B. Engine collapsed at fit time without warning.
 ##
+## Fail loud when a bare `indep()` / `dep()` call reaches the sugar rewriter
+## with no `lhs | group` formula (issue #1960): without this, `e[[2L]]` raises
+## an opaque base-R subscript error.
+.assert_covstruct_bar_arg <- function(fn, e, trait_col = "trait") {
+  if (!is.call(e) || length(e) >= 2L) {
+    return(invisible(NULL))
+  }
+  example <- paste0(fn, "(0 + ", trait_col, " | unit)")
+  cli::cli_abort(c(
+    "{.fn {fn}} requires a covariance specification.",
+    "i" = "You wrote {.code {fn}()} with no formula argument.",
+    ">" = "Use {.code {example}} (replace {.code unit} with your grouping column)."
+  ))
+}
+
 ## Contract: `e` is the user's call (e.g. `latent(<bar>, d = 1)`); `fn`
 ## is the keyword name. If the first arg of `e` is an lme4 bar with LHS
 ## anything other than `1` or `0 + trait`, abort with a Stage-3 redirect.
@@ -4921,6 +4936,7 @@ rewrite_canonical_aliases <- function(
       ## the printed label and lets fit-multi.R fire the indep+latent
       ## over-parameterisation guard.
       if (fn == "indep") {
+        .assert_covstruct_bar_arg(fn, e, trait_col)
         ## Stage 2.5: fail-loud against augmented LHS.
         .assert_no_augmented_lhs(fn, e, trait_col)
         extras <- list(.indep = TRUE)
@@ -5163,6 +5179,7 @@ rewrite_canonical_aliases <- function(
       ## marker that triggers the resolution. Mirrors the phylo_unique
       ## d = n_traits resolution pattern.
       if (fn == "dep") {
+        .assert_covstruct_bar_arg(fn, e, trait_col)
         ## Stage 2.5: fail-loud against augmented LHS.
         .assert_no_augmented_lhs(fn, e, trait_col)
         new_call <- as.call(c(

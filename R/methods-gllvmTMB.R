@@ -270,6 +270,31 @@ sigma.gllvmTMB_va <- sigma.gllvmTMB_multi
   nd
 }
 
+## Rows whose grouping factor levels are unseen in training are coerced to
+## `NA` for index lookup; echo the user's supplied labels back on output.
+.gllvmTMB_echo_newdata_allow_unseen <- function(out, newdata, allow_unseen) {
+  if (!length(allow_unseen) || !NROW(out)) {
+    return(out)
+  }
+  nd_raw <- as.data.frame(newdata)
+  for (nm in unique(allow_unseen)) {
+    if (!nm %in% names(out) || !nm %in% names(nd_raw)) {
+      next
+    }
+    raw <- as.character(nd_raw[[nm]])
+    out_lab <- as.character(out[[nm]])
+    restore <- !is.na(raw) & is.na(out_lab)
+    if (!any(restore)) {
+      next
+    }
+    if (is.factor(out[[nm]])) {
+      out[[nm]] <- out_lab
+    }
+    out[[nm]][restore] <- raw[restore]
+  }
+  out
+}
+
 .gllvmTMB_predict_fixed_eta <- function(fit, X_new) {
   train_cols <- fit$X_fix_names %||% character(0)
   bfix <- .gllvmTMB_b_fix_values(fit)
@@ -3639,12 +3664,13 @@ predict.gllvmTMB_multi <- function(
     ))
     fixed_vars <- all.vars(stats::delete.response(stats::terms(object$formula)))
     observation_only_vars <- setdiff(observation_vars, fixed_vars)
+    allow_unseen_cols <- stats::na.omit(c(
+      object$unit_col, object$species_col, observation_only_vars
+    ))
     nd <- .gllvmTMB_restore_newdata_factor_levels(
       newdata,
       object$data,
-      allow_unseen = stats::na.omit(c(
-        object$unit_col, object$species_col, observation_only_vars
-      )),
+      allow_unseen = allow_unseen_cols,
       typed_observation = observation_vars
     )
 
@@ -3728,6 +3754,18 @@ predict.gllvmTMB_multi <- function(
       } else {
         NA_integer_
       }
+      unit_ok <- !is.na(st_id) & st_id >= 0L & st_id < object$n_sites & !is.na(tr_id)
+      if (!is.null(unit_lbl) && nzchar(unit_lbl) &&
+            unit_lbl %in% names(observation_data) &&
+            (isTRUE(object$use$rr_B) || isTRUE(object$use$diag_B))) {
+        raw_unit <- as.character(observation_data[[unit_lbl]])
+        unit_unseen <- !is.na(raw_unit) & is.na(st_id)
+        if (any(unit_unseen)) {
+          cli::cli_inform(c(
+            "i" = "Row{?s} with unseen {.field {unit_lbl}} level{?s} use population-level (zero unit effect) predictions."
+          ))
+        }
+      }
       ## Add rr_B + diag_B if active
       if (object$use$rr_B) {
         ## When lv_B is active the `z_B` PARAMETER is only the zero-mean
@@ -3758,7 +3796,9 @@ predict.gllvmTMB_multi <- function(
             eta[i] <- eta[i] + sum(L_B[t + 1L, ] * z_B[, s + 1L])
           }
         }
-        added <- c(added, "rr_B")
+        if (any(unit_ok)) {
+          added <- c(added, "rr_B")
+        }
       }
       if (object$use$diag_B) {
         s_B <- if (isTRUE(object$integrated_gaussian_diag_B)) {
@@ -3777,7 +3817,9 @@ predict.gllvmTMB_multi <- function(
             eta[i] <- eta[i] + s_B[t + 1L, s + 1L]
           }
         }
-        added <- c(added, "diag_B")
+        if (any(unit_ok)) {
+          added <- c(added, "diag_B")
+        }
       }
       ## propto: per-species random effect, additive.
       ## The guard was `!is.na(sp_id[1])` -- row ONE only -- so a newdata
@@ -4027,7 +4069,17 @@ predict.gllvmTMB_multi <- function(
         eta <- eta + spde_latent_slope_contrib
         added <- c(added, "spde_latent_slope")
       }
-      handled <- c(added, if (isTRUE(object$use$lv_B)) "lv_B")
+      handled <- c(added)
+      if (length(unit_tiers) && !any(unit_ok) &&
+            !is.null(unit_lbl) && unit_lbl %in% names(nd)) {
+        ## Every row had an unseen unit level: tiers were intentionally skipped,
+        ## not omitted for lack of newdata support (#1946).
+        handled <- c(handled, unit_tiers)
+      }
+      if (isTRUE(object$use$lv_B) &&
+            (isTRUE(object$use$rr_B) || "rr_B" %in% handled)) {
+        handled <- c(handled, "lv_B")
+      }
       unhandled <- .gllvmTMB_predict_unhandled_re_tiers(object, handled)
       if (length(added)) {
         cli::cli_inform(c(
@@ -4044,6 +4096,9 @@ predict.gllvmTMB_multi <- function(
       }
     }
     out <- data.frame(nd, est = eta, stringsAsFactors = FALSE)
+    out <- .gllvmTMB_echo_newdata_allow_unseen(
+      out, newdata, allow_unseen_cols
+    )
   }
   if (type == "response") {
     ## Per-row inverse link (BUG-1 / issue #399). On a mixed-family fit each

@@ -1521,6 +1521,20 @@ nobs.gllvmTMB_multi <- function(object, ...) {
   }
 }
 
+#' @rdname gllvmTMB_multi-methods
+#' @details
+#' `df.residual()` returns `nobs(fit)` minus the parameter count stored on
+#' [logLik()] as attribute `"df"` (the same count `logLik.gllvmTMB_multi()`
+#' attaches from `length(fit$opt$par)` plus any REML fixed-effect name count).
+#' @exportS3Method stats::df.residual
+df.residual.gllvmTMB_multi <- function(object, ...) {
+  ll <- stats::logLik(object, ...)
+  as.numeric(stats::nobs(object) - attr(ll, "df"))
+}
+
+#' @exportS3Method stats::df.residual
+df.residual.gllvmTMB_julia <- df.residual.gllvmTMB_multi
+
 #' Tidy a fitted gllvmTMB model
 #'
 #' Returns a tibble (or data.frame) of either the fixed-effect coefficient

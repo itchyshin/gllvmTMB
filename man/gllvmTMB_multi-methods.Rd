@@ -9,6 +9,7 @@
 \alias{print.summary.gllvmTMB_multi}
 \alias{logLik.gllvmTMB_multi}
 \alias{nobs.gllvmTMB_multi}
+\alias{df.residual.gllvmTMB_multi}
 \title{Methods on a fitted gllvmTMB model}
 \usage{
 \method{AIC}{gllvmTMB_multi}(object, ..., k = 2)
@@ -24,6 +25,8 @@
 \method{logLik}{gllvmTMB_multi}(object, ...)
 
 \method{nobs}{gllvmTMB_multi}(object, ...)
+
+\method{df.residual}{gllvmTMB_multi}(object, ...)
 }
 \arguments{
 \item{...}{Currently unused.}
@@ -84,4 +87,8 @@ the observed-response cells. This equals
 row is observed, so it equals \code{length(fit$tmb_data$y)}; under
 \code{response = "include"} the masked rows are excluded. Original-row counts
 live in \code{fit$missing_data}, never in \code{nobs()}.
+
+\code{df.residual()} returns \code{nobs(fit)} minus the parameter count stored on
+\code{\link[=logLik]{logLik()}} as attribute \code{"df"} (the same count \code{logLik.gllvmTMB_multi()}
+attaches from \code{length(fit$opt$par)} plus any REML fixed-effect name count).
 }

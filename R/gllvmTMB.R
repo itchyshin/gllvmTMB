@@ -245,7 +245,11 @@
 #'     (`sqrt(p_si)`), inverse-variance weighting (`1 / var_i` for
 #'     heteroscedastic Gaussian fits), or to down-weight outliers.
 #'     Must be non-negative and finite; `weights[i] = 0` zeroes that
-#'     row's contribution to the joint NLL.
+#'     row's contribution to the joint NLL and excludes the row from
+#'     [nobs()].
+#'     These are observation / case weights (likelihood multipliers), not
+#'     **frequency weights** for expanding duplicate rows into a single
+#'     contribution.
 #'     Non-unit likelihood weights define a weighted estimating objective,
 #'     not an ordinary maximum-likelihood fit. The package retains point
 #'     estimates but refuses likelihood-based model-selection methods;

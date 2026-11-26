@@ -1,3 +1,54 @@
+## Likelihood-contributing row count: observed response cells with weight > 0.
+.gllvmTMB_likelihood_contributing_row_count <- function(
+    is_y_observed,
+    weights_i) {
+  n <- if (is.null(is_y_observed)) {
+    length(weights_i %||% numeric())
+  } else {
+    length(is_y_observed)
+  }
+  if (n == 0L) {
+    return(0L)
+  }
+  observed <- if (is.null(is_y_observed)) {
+    rep(TRUE, n)
+  } else {
+    is_y_observed == 1L
+  }
+  if (is.null(weights_i)) {
+    return(sum(observed))
+  }
+  wi <- as.numeric(weights_i)
+  if (length(wi) != n) {
+    return(sum(observed))
+  }
+  sum(observed & wi > 0)
+}
+
+.gllvmTMB_nobs_likelihood_contributing <- function(object) {
+  td <- object$tmb_data
+  if (!is.null(td) && !is.null(td$y)) {
+    iyo <- td$is_y_observed
+    wi <- td$weights_i
+    n_y <- length(td$y)
+    if (!is.null(iyo)) {
+      return(.gllvmTMB_likelihood_contributing_row_count(iyo, wi))
+    }
+    return(.gllvmTMB_likelihood_contributing_row_count(
+      rep(1L, n_y),
+      wi
+    ))
+  }
+  lr <- object$missing_data$counts$likelihood_rows
+  if (!is.null(lr)) {
+    return(as.integer(lr))
+  }
+  if (!is.null(td) && !is.null(td$y)) {
+    return(length(td$y))
+  }
+  0L
+}
+
 ## Shared weights-shape normalisation for the three public data-entry paths.
 ##
 ## The engine always consumes a long-format per-observation vector. This

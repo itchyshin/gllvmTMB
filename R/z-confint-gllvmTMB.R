@@ -24,6 +24,31 @@
 ##                                                   fixed effects + var
 ##                                                   components
 
+.confint_warn_unbounded <- function(out) {
+  if (is.null(out) || (!is.matrix(out) && !is.data.frame(out))) {
+    return(invisible(out))
+  }
+  mat <- as.matrix(out)
+  if (ncol(mat) < 2L || nrow(mat) < 1L) {
+    return(invisible(out))
+  }
+  low <- mat[, 1L, drop = TRUE]
+  high <- mat[, 2L, drop = TRUE]
+  unbounded <- (is.infinite(low) & low < 0) | (is.infinite(high) & high > 0) |
+    is.na(low) | is.na(high)
+  if (!any(unbounded, na.rm = TRUE)) {
+    return(invisible(out))
+  }
+  terms <- rownames(mat)
+  bad <- if (length(terms) == nrow(mat)) terms[unbounded] else seq_along(low)[unbounded]
+  cli::cli_warn(c(
+    "{.fn confint} returned unbounded or missing interval limits for {?term/ terms} {.val {bad}}.",
+    "i" = "This often reflects an unidentified or boundary parameter (for example an empty ordinal category or a profile limit at -Inf/Inf).",
+    ">" = "Do not treat these as calibrated Wald limits; inspect {.fn check_gllvmTMB} and {.fn tidy} before reporting inference."
+  ), class = "gllvmTMB_confint_unbounded")
+  invisible(out)
+}
+
 ## Internal helper: accepted sigma-type parm tokens.
 .sigma_parm_tokens <- function() {
   c(
@@ -1909,6 +1934,7 @@ confint.gllvmTMB_multi <- function(
     sprintf("%.1f %%", 100 * (1 - level) / 2),
     sprintf("%.1f %%", 100 * (1 + level) / 2)
   )
+  .confint_warn_unbounded(out)
   out
 }
 

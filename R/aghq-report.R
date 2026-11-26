@@ -107,6 +107,26 @@
   invisible(NULL)
 }
 
+## Warn when information criteria use a finite logLik from a non-converged fit.
+.gllvmTMB_check_fit_converged <- function(objs, fn_label = "AIC") {
+  is_fit <- vapply(objs, inherits, logical(1L), what = "gllvmTMB_multi")
+  if (!any(is_fit)) {
+    return(invisible(NULL))
+  }
+  not_ok <- vapply(objs[is_fit], function(f) {
+    !isTRUE((f$fit_health %||% .gllvmTMB_build_fit_health(f))$converged)
+  }, logical(1L))
+  if (!any(not_ok)) {
+    return(invisible(NULL))
+  }
+  cli::cli_warn(c(
+    "{fn_label}() uses {.fn logLik} from a fit that did not pass the converged rule.",
+    "i" = "The value is finite but the point is boundary, degenerate, or failed the gradient stationarity test.",
+    ">" = "Inspect {.code fit$fit_health$convergence_status} and {.fn check_gllvmTMB} before comparing models."
+  ), class = "gllvmTMB_ic_not_converged")
+  invisible(NULL)
+}
+
 .gllvmTMB_check_weighted_objective <- function(objs, fn_label) {
   is_fit <- vapply(objs, inherits, logical(1L), what = "gllvmTMB_multi")
   weighted <- vapply(objs[is_fit], function(f) {
@@ -284,6 +304,7 @@ AIC.gllvmTMB_multi <- function(object, ..., k = 2) {
   .gllvmTMB_check_weighted_objective(c(list(object), list(...)), "AIC")
   .aghq_check_engine_consistency(c(list(object), list(...)))
   .aghq_check_penalised(c(list(object), list(...)), "AIC")
+  .gllvmTMB_check_fit_converged(c(list(object), list(...)), "AIC")
   .gllvmTMB_check_reml_comparability(c(list(object), list(...)), "AIC")
   NextMethod()
 }
@@ -294,6 +315,7 @@ BIC.gllvmTMB_multi <- function(object, ...) {
   .gllvmTMB_check_weighted_objective(c(list(object), list(...)), "BIC")
   .aghq_check_engine_consistency(c(list(object), list(...)))
   .aghq_check_penalised(c(list(object), list(...)), "BIC")
+  .gllvmTMB_check_fit_converged(c(list(object), list(...)), "BIC")
   .gllvmTMB_check_reml_comparability(c(list(object), list(...)), "BIC")
   NextMethod()
 }

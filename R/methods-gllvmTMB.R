@@ -1433,6 +1433,16 @@ logLik.gllvmTMB_multi <- function(object, ...) {
     if (isTRUE(object$REML)) "REML" else "ML"
   attr(ll, "REML") <- isTRUE(object$REML)
   attr(ll, "at_maximum") <- TRUE
+  health <- object$fit_health %||% .gllvmTMB_build_fit_health(object)
+  if (!isTRUE(health$converged)) {
+    attr(ll, "at_maximum") <- FALSE
+    status <- health$convergence_status %||% "not_converged"
+    cli::cli_warn(c(
+      "{.fn logLik} is finite but this fit is not converged (status {.val {status}}).",
+      "i" = "The optimiser may report code 0 while a boundary or degenerate component makes the fit unsuitable for likelihood comparison.",
+      ">" = "Inspect {.code fit$fit_health} and {.fn check_gllvmTMB}; refit with simpler structure or more data before using AIC, BIC, or LRT."
+    ), class = "gllvmTMB_logLik_not_converged")
+  }
   ## Which integration engine produced this value (Arc 0 AGHQ). "Laplace" on
   ## a fit that predates AGHQ (fit$aghq is NULL) or explicitly used it
   ## (fit$aghq$used == FALSE); "AGHQ (k = ..., N nodes)" otherwise. AIC()/

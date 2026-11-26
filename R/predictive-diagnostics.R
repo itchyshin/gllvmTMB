@@ -240,7 +240,17 @@ residuals.gllvmTMB_multi <- function(
   ...
 ) {
   .gllvmTMB_validate_diagnostic_fit(object)
-  type <- match.arg(type)
+  allowed_types <- c("randomized_quantile", "simulation_rank")
+  if (length(type) == 1L && is.character(type) && nzchar(type)) {
+    if (is.na(pmatch(type, allowed_types, duplicates.ok = FALSE))) {
+      cli::cli_abort(c(
+        "{.arg type} = {.val {type}} is not supported by {.fn residuals} for a {.cls gllvmTMB_multi} fit.",
+        "i" = "Ordinary GLM-style residual types ({.val response}, {.val pearson}, {.val deviance}, and similar) are not defined for multivariate stacked-trait models.",
+        ">" = "Use {.val randomized_quantile} for exact family-CDF randomized-quantile residuals or {.val simulation_rank} for simulation-rank residuals; see {.fn residuals.gllvmTMB_multi}."
+      ))
+    }
+  }
+  type <- match.arg(type, allowed_types)
   scale <- match.arg(scale)
   if (identical(type, "randomized_quantile")) {
     out <- .gllvmTMB_exact_rq_residuals(

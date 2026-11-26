@@ -36,6 +36,7 @@ gllvmTMBcontrol(
   laplace_warn_thresh = 2,
   laplace_auto_refit = TRUE,
   allow_nongaussian_reml = FALSE,
+  REML = FALSE,
   loading_ridge = NULL,
   fixed_effect_priors = NULL,
   kernel_psi_sd_prior = NULL,
@@ -370,6 +371,11 @@ AGHQ fit, so use \code{laplace_auto_refit = FALSE} for it.}
 \item{allow_nongaussian_reml}{Permit \code{REML = TRUE} for non-Gaussian families.
 Default \code{FALSE}; the restricted likelihood is defined by a Gaussian
 marginalisation, so this is an escape hatch, not an endorsement.}
+
+\item{REML}{Same meaning as the top-level \code{REML} argument to \code{gllvmTMB()}.
+Default \code{FALSE}. When \code{REML} is passed only here, it sets the fit route;
+when both the top-level argument and this control field are supplied, they
+must agree or fitting stops with an error.}
 
 \item{loading_ridge}{Integration-neutral alias for \code{aghq_ridge}. Use this
 spelling to request the same loading MAP penalty on a Laplace fit without

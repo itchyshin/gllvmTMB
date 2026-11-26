@@ -169,6 +169,12 @@ ridge_path <- function(
   ## of one clear, immediate abort.
   unit <- .gllvmTMB_resolve_unit_staged(unit, data)
 
+  ## Resolve `weights = column` from `data` before nested gllvmTMB/screen paths.
+  mc <- match.call(expand.dots = FALSE)
+  if (!is.null(mc$weights)) {
+    weights <- .gllvmTMB_eval_weights_call_arg(mc, data, parent.frame())
+  }
+
   prep <- .screen_prepare_formula_data(
     formula = formula,
     data = data,

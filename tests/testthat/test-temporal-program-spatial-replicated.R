@@ -76,6 +76,22 @@ test_that("replicated AR1 temporal_indep plus fixed spatial_indep is admitted", 
   expect_true(isTRUE(fit$use$spde)); expect_true(all(c("q_temporal", "omega_spde") %in% fit$random))
 })
 
+test_that("extract_Sigma(level = spatial) refuses spatial_indep and names the report route (#1934)", {
+  skip_if_not_installed("TMB"); skip_if_not_installed("fmesher")
+  fx <- .temporal_spatial_rep_fixture()
+  fit <- .temporal_spatial_rep_fit(fx)
+  expect_true(isTRUE(fit$use$spatial_indep))
+  expect_false(isTRUE(fit$use$spatial_latent))
+  err <- expect_error(
+    extract_Sigma(fit, level = "spatial", part = "total", link_residual = "none"),
+    "spatial_indep"
+  )
+  msg <- cli::ansi_strip(conditionMessage(err))
+  expect_match(msg, "spatial_latent")
+  expect_match(msg, "log_tau_spde")
+  expect_match(msg, fixed = TRUE, "fit$report$kappa")
+})
+
 test_that("replicated temporal-spatial likelihood and gradient equal a dense additive oracle", {
   skip_if_not_installed("TMB"); skip_if_not_installed("fmesher")
   fx <- .temporal_spatial_rep_fixture(); fit <- .temporal_spatial_rep_fit(fx); fixed <- fit$opt$par

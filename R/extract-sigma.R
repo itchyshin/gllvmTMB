@@ -768,6 +768,13 @@ link_residual_per_trait <- function(fit) {
 #'   These SPDE matrices are on the fitted field-covariance scale; the returned
 #'   note records the marginal-scale conversion.
 #'
+#'   Intercept-only `spatial_indep(0 + trait | coords)` fits independent
+#'   per-trait SPDE fields without a cross-trait `Sigma` matrix;
+#'   `extract_Sigma(level = "spatial")` refuses and names the fitted
+#'   `spatial_indep()` term, pointing to `fit$report$log_tau_spde` and
+#'   `fit$report$kappa` for field scales (and `level = "spde_indep_slope"` for
+#'   augmented `spatial_indep(1 + x | coords)` slopes).
+#'
 #'   For an ordinary individual-level random-regression fit with
 #'   `latent(1 + x | unit, d = K)`, `indep(1 + x | unit)`, or their long-form
 #'   equivalents, call with `level = "unit_slope"`: the result is the augmented
@@ -1732,15 +1739,30 @@ extract_Sigma <- function(
       class = "gllvmTMB_Sigma_phy_slope"
     ))
   } else if (identical(level, "spde")) {
+    spde_indep_intercept <- isTRUE(fit$use$spatial_indep) &&
+      !isTRUE(fit$use$spatial_latent)
     rho_indep <- identical(fit$source_strength$source,"spatial") &&
       isTRUE(fit$tmb_data$spde_lv_k==0L)
+    if (spde_indep_intercept && !rho_indep) {
+      cli::cli_abort(c(
+        "Fit has {.fn spatial_indep} but not {.fn spatial_latent} -- nothing to extract at {.code level = \"spatial\"}.",
+        "i" = paste0(
+          "{.fn extract_Sigma} at {.code level = \"spatial\"} reports shared ",
+          "low-rank spatial trait covariance from {.fn spatial_latent} only. ",
+          "For intercept-only {.fn spatial_indep}, read per-trait field scales ",
+          "from {.code fit$report$log_tau_spde} and range from {.code fit$report$kappa}; ",
+          "for {.code spatial_indep(1 + x | coords)} slopes use ",
+          "{.code extract_Sigma(fit, level = \"spde_indep_slope\")}."
+        )
+      ))
+    }
     if (!isTRUE(fit$use$spatial_latent) && !rho_indep) {
       cli::cli_abort(
         "Fit has no {.code spatial_latent()} term -- nothing to extract at level {.val spde}."
       )
     }
-    L <- if(rho_indep) NULL else fit$report$Lambda_spde
-    if(rho_indep) {
+    L <- if (rho_indep) NULL else fit$report$Lambda_spde
+    if (rho_indep) {
       pars <- fit$tmb_obj$env$parList(par=fit$tmb_obj$env$last.par.best)
       S <- exp(-2*pars$log_tau_spde)
       names(S) <- trait_names

@@ -12,6 +12,141 @@
 ## inference diagnostic rather than part of this point-stationarity flag.
 .gllvmTMB_converged_gtol <- 1e-2
 
+## Default dispersion-ceiling thresholds (must match check_gllvmTMB() defaults).
+.gllvmTMB_dispersion_ceiling_thresh <- function() {
+  list(
+    phi_nbinom2 = 1e4,
+    phi_gamma = 1e8,
+    phi_truncnb2 = 1e4,
+    phi_nbinom1 = 1e4,
+    df_student = 1e3,
+    phi_betabinom = 1e4
+  )
+}
+
+## Per-trait dispersion / df at the numerical ceiling (same criteria as
+## check_gllvmTMB() boundary_phi_* rows).
+.gllvmTMB_dispersion_ceiling_flags <- function(object, thresh = NULL) {
+  thresh <- thresh %||% .gllvmTMB_dispersion_ceiling_thresh()
+  flags <- character(0)
+  trait_names <- .gllvmTMB_trait_names(object)
+  fid <- as.integer(object$tmb_data$family_id_vec %||% integer(0L))
+  tid <- as.integer(object$tmb_data$trait_id %||% integer(0L))
+
+  phi_nbinom2_report <- as.numeric(object$report$phi_nbinom2 %||% numeric(0L))
+  phi_traits <- if (length(fid) && length(tid) == length(fid)) {
+    sort(unique(tid[fid %in% c(5L, 18L)]))
+  } else {
+    integer(0L)
+  }
+  if (length(phi_traits) && length(phi_nbinom2_report) >= max(phi_traits) + 1L) {
+    for (t in phi_traits) {
+      phi_t <- phi_nbinom2_report[t + 1L]
+      if (!is.finite(phi_t) || phi_t >= thresh$phi_nbinom2) {
+        flags <- c(
+          flags,
+          paste0("boundary_phi_nbinom2_", .gllvmTMB_trait_label(trait_names, t + 1L))
+        )
+      }
+    }
+  }
+
+  gamma_shapes <- tryCatch(.gllvmTMB_gamma_shapes(object), error = function(e) numeric(0L))
+  for (nm in names(gamma_shapes)) {
+    k_t <- gamma_shapes[[nm]]
+    if (!is.finite(k_t) || k_t >= thresh$phi_gamma) {
+      flags <- c(flags, paste0("boundary_phi_gamma_", nm))
+    }
+  }
+
+  if (length(fid) && length(tid) == length(fid)) {
+    specs <- list(
+      list(fid = 11L, report = "phi_truncnb2", prefix = "boundary_phi_truncnb2_",
+           thresh = thresh$phi_truncnb2),
+      list(fid = 15L, report = "phi_nbinom1", prefix = "boundary_phi_nbinom1_",
+           thresh = thresh$phi_nbinom1),
+      list(fid = 9L, report = "df_student", prefix = "boundary_df_student_",
+           thresh = thresh$df_student),
+      list(fid = 8L, report = "phi_betabinom", prefix = "boundary_phi_betabinom_",
+           thresh = thresh$phi_betabinom)
+    )
+    for (sp in specs) {
+      vals <- as.numeric(object$report[[sp$report]] %||% numeric(0L))
+      traits <- sort(unique(tid[fid == sp$fid]))
+      if (!length(traits) || length(vals) < max(traits) + 1L) next
+      for (t in traits) {
+        v_t <- vals[t + 1L]
+        if (!is.finite(v_t) || v_t >= sp$thresh) {
+          flags <- c(
+            flags,
+            paste0(sp$prefix, .gllvmTMB_trait_label(trait_names, t + 1L))
+          )
+        }
+      }
+    }
+  }
+  unique(flags)
+}
+
+##' @keywords internal
+##' @noRd
+.gllvmTMB_boundary_params <- function(flags) {
+  flags <- as.character(flags %||% character(0))
+  if (!length(flags)) {
+    return(data.frame(name = character(0), kind = character(0),
+                      stringsAsFactors = FALSE))
+  }
+  kind <- rep("other", length(flags))
+  name <- sub("^(near_zero_|boundary_)", "", flags)
+  kind[grepl("^near_zero_(sd|psi)", flags)] <- "sd"
+  kind[grepl("^near_zero_.*_loading$", flags)] <- "loading"
+  kind[grepl("^boundary_(phi|df|sigma)", flags)] <- "dispersion"
+  data.frame(name = name, kind = kind, stringsAsFactors = FALSE)
+}
+
+## Latent random structure with a single grouping level cannot identify
+## between-unit variation (refs #1908).
+.gllvmTMB_structure_degenerate <- function(object) {
+  n_sites <- as.integer(object$n_sites %||% NA_integer_)
+  if (isTRUE(object$use$rr_B) && identical(n_sites, 1L)) {
+    return(TRUE)
+  }
+  n_obs <- as.integer(object$n_unit_obs %||% NA_integer_)
+  if (isTRUE(object$use$rr_W) && identical(n_obs, 1L)) {
+    return(TRUE)
+  }
+  FALSE
+}
+
+## Denormalised Laplace objective at an optimizer-reported minimum (refs #1914).
+.gllvmTMB_degenerate_objective <- function(obj_val) {
+  is.finite(obj_val) && obj_val <= .Machine$double.xmin
+}
+
+## First match: not_converged > boundary > degenerate > converged (26 Nov 2026).
+## Uses the existing 1e-2 raw-gradient stationarity gate only.
+.gllvmTMB_convergence_status <- function(
+    optimizer_converged,
+    obj_val,
+    premature_termination,
+    stationary_by_gradient,
+    n_boundary,
+    degenerate_objective,
+    structure_degenerate
+) {
+  if (!isTRUE(optimizer_converged) || !is.finite(obj_val) ||
+      isTRUE(premature_termination) || !isTRUE(stationary_by_gradient)) {
+    return("not_converged")
+  }
+  if (n_boundary > 0L) {
+    return("boundary")
+  }
+  if (isTRUE(degenerate_objective) || isTRUE(structure_degenerate)) {
+    return("degenerate")
+  }
+  "converged"
+}
+
 .gllvmTMB_build_fit_health <- function(object) {
   if (!inherits(object, "gllvmTMB_multi")) {
     .gllvmTMB_abort_not_multi_fit(object)
@@ -80,10 +215,23 @@
   n_iter <- suppressWarnings(as.numeric(object$opt$iterations %||% NA_real_))
   premature_termination <- length(n_iter) == 1L && is.finite(n_iter) &&
     n_iter <= 2 && (!is.finite(obj_val) || abs(obj_val) > 1e12)
-  converged <- isTRUE(
-    optimizer_converged && is.finite(obj_val) && stationary_by_gradient &&
-      !premature_termination
+  boundary_flags <- unique(c(
+    .gllvmTMB_boundary_flags(object),
+    .gllvmTMB_dispersion_ceiling_flags(object)
+  ))
+  boundary_params <- .gllvmTMB_boundary_params(boundary_flags)
+  degenerate_objective <- .gllvmTMB_degenerate_objective(obj_val)
+  structure_degenerate <- .gllvmTMB_structure_degenerate(object)
+  convergence_status <- .gllvmTMB_convergence_status(
+    optimizer_converged = optimizer_converged,
+    obj_val = obj_val,
+    premature_termination = premature_termination,
+    stationary_by_gradient = stationary_by_gradient,
+    n_boundary = nrow(boundary_params),
+    degenerate_objective = degenerate_objective,
+    structure_degenerate = structure_degenerate
   )
+  converged <- identical(convergence_status, "converged")
 
   list(
     optimizer = if (nrow(restart_history) > 0L) {
@@ -102,6 +250,10 @@
     stationary_by_scaled_gradient = stationary_by_scaled_gradient,
     stationary_by_gradient = stationary_by_gradient,
     optimizer_converged = optimizer_converged,
+    convergence_status = convergence_status,
+    boundary_params = boundary_params,
+    degenerate_objective = degenerate_objective,
+    structure_degenerate = structure_degenerate,
     converged = converged,
     premature_termination = premature_termination,
     pd_hessian = if (
@@ -115,7 +267,7 @@
     sdreport_ok = !is.null(object$sd_report),
     sdreport_error = object$sdreport_error %||% NA_character_,
     max_fixed_se = max_se,
-    boundary_flags = .gllvmTMB_boundary_flags(object),
+    boundary_flags = boundary_flags,
     start_provenance = object$start_provenance %||% list(),
     selected_restart = selected_restart
   )
@@ -1768,6 +1920,9 @@ check_gllvmTMB <- function(
   }
   is_mspl <- .gllvmTMB_is_mspl(object)
   health <- object$fit_health %||% .gllvmTMB_build_fit_health(object)
+  if (is.null(health$convergence_status)) {
+    health <- .gllvmTMB_build_fit_health(object)
+  }
   hessian_rank <- .gllvmTMB_hessian_rank(object)
   rows <- list(
     .gllvmTMB_check_row(
@@ -1781,6 +1936,28 @@ check_gllvmTMB <- function(
         health$message %||% "optimizer did not report clean convergence"
       },
       "try multiple starts, stronger starts, rescaling, or an alternative optimizer"
+    ),
+    .gllvmTMB_check_row(
+      "convergence_status",
+      if (identical(health$convergence_status, "converged")) "PASS" else "FAIL",
+      health$convergence_status %||% "unknown",
+      "converged",
+      if (identical(health$convergence_status, "converged")) {
+        "point estimate meets the converged rule (optimizer, gradient, no boundary or degeneracy)"
+      } else if (identical(health$convergence_status, "boundary")) {
+        "optimizer succeeded but a variance or dispersion parameter is on a bound"
+      } else if (identical(health$convergence_status, "degenerate")) {
+        "optimizer succeeded but the objective or grouping structure is degenerate"
+      } else if (identical(health$convergence_status, "not_converged")) {
+        "gradient or objective failed the stationarity rule"
+      } else {
+        "convergence status unavailable"
+      },
+      if (identical(health$convergence_status, "converged")) {
+        "proceed, but still inspect inference rows below"
+      } else {
+        "see fit$fit_health$convergence_status, boundary_params, and boundary/dispersion rows"
+      }
     ),
     .gllvmTMB_check_row(
       "max_gradient",

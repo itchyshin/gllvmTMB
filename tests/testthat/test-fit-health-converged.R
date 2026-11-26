@@ -43,9 +43,7 @@ test_that("Hessian health remains separate from point convergence", {
   )))
   expect_identical(
     fit$fit_health$converged,
-    isTRUE(fit$fit_health$optimizer_converged) &&
-      is.finite(fit$fit_health$objective) &&
-      isTRUE(fit$fit_health$stationary_by_gradient)
+    identical(fit$fit_health$convergence_status, "converged")
   )
   ## pd_hessian on a near-zero rotation ridge is FD/BLAS noise: it reads FALSE on
   ## some platforms (the case it "gets wrong") and PD on others (seen on ubuntu CI).

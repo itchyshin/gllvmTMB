@@ -154,22 +154,14 @@ test_that("spatial_indep() fits for multinomial (Slice 3 admission)", {
   expect_equal(length(log_tau), fit$n_traits)
   expect_true(all(is.finite(log_tau)))
 
-  ## KNOWN LIMITATION (task item 3, NOT fixed here -- pre-existing,
-  ## family-agnostic): extract_Sigma(level = "spatial") requires a
-  ## spatial_latent()-shaped term (fit$use$spatial_latent); a
-  ## spatial_indep()-ONLY fit has no Lambda_spde to assemble, so it aborts
-  ## with "Fit has no spatial_latent() term" -- the SAME gap exists for
-  ## every other family (e.g. ordinal_probit's spatial_indep cell in
-  ## test-matrix-ordinal-spatial.R reads fit$report$kappa/log_tau_spde
-  ## directly rather than through extract_Sigma(), for the same reason).
-  ## This is not a multinomial-specific bug and building a new diagonal-SPDE
-  ## extraction surface is out of this slice's scope.
-  err <- tryCatch(
-    gllvmTMB::extract_Sigma(fit, level = "spatial"),
-    error = function(e) e
-  )
-  expect_true(inherits(err, "error"))
-  expect_match(conditionMessage(err), "spatial_latent")
+  es <- suppressMessages(gllvmTMB::extract_Sigma(
+    fit, level = "spatial", part = "total", link_residual = "none"
+  ))
+  Smat <- es$Sigma
+  expect_true(is.matrix(Smat))
+  expect_equal(dim(Smat), c(fit$n_traits, fit$n_traits))
+  expect_equal(Smat, diag(diag(Smat)))
+  expect_equal(diag(Smat), exp(-2 * as.numeric(fit$report$log_tau_spde)), tolerance = 1e-9)
 })
 
 ## ---------------------------------------------------------------

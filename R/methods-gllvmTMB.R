@@ -1484,12 +1484,7 @@ logLik.gllvmTMB_multi <- function(object, ...) {
   ## response="include" the masked rows carry a sentinel y gated out of the
   ## likelihood and must not be counted (design 59 sec.4b: nobs stays
   ## likelihood-contributing; original-row counts live in fit$missing_data).
-  iyo <- object$tmb_data$is_y_observed
-  attr(ll, "nobs") <- if (is.null(iyo)) {
-    length(object$tmb_data$y)
-  } else {
-    sum(iyo == 1L)
-  }
+  attr(ll, "nobs") <- .gllvmTMB_nobs_likelihood_contributing(object)
   class(ll) <- "logLik"
   ll
 }
@@ -1497,28 +1492,17 @@ logLik.gllvmTMB_multi <- function(object, ...) {
 #' @rdname gllvmTMB_multi-methods
 #' @details
 #' `nobs()` returns the number of **likelihood-contributing** observations --
-#' the observed-response cells. This equals
+#' observed-response cells with positive likelihood weight. This equals
 #' `fit$missing_data$counts$likelihood_rows` and the `nobs` attribute of
-#' [logLik()]. Under the default `miss_control(response = "drop")` every fitted
-#' row is observed, so it equals `length(fit$tmb_data$y)`; under
+#' [logLik()]. Rows with `weights[i] = 0` are excluded. Under the default
+#' `miss_control(response = "drop")` every retained row is observed, so with
+#' unit weights it equals `length(fit$tmb_data$y)`; under
 #' `response = "include"` the masked rows are excluded. Original-row counts
-#' live in `fit$missing_data`, never in `nobs()`.
+#' live in `fit$missing_data`, never in `nobs()`. Likelihood `weights` are not
+#' frequency weights.
 #' @exportS3Method stats::nobs
 nobs.gllvmTMB_multi <- function(object, ...) {
-  ## Prefer the shared-contract count (drmTMB-aligned likelihood_rows) when the
-  ## missing-data slot is present; fall back to the is_y_observed mask, then to
-  ## length(y). All three agree by construction -- this just keeps nobs() and
-  ## logLik()'s nobs attribute consistent.
-  lr <- object$missing_data$counts$likelihood_rows
-  if (!is.null(lr)) {
-    return(as.integer(lr))
-  }
-  iyo <- object$tmb_data$is_y_observed
-  if (is.null(iyo)) {
-    length(object$tmb_data$y)
-  } else {
-    sum(iyo == 1L)
-  }
+  as.integer(.gllvmTMB_nobs_likelihood_contributing(object))
 }
 
 #' Tidy a fitted gllvmTMB model

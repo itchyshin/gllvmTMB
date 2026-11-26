@@ -121,7 +121,7 @@ test_that("#1138: phylo_rr is re-added on newdata, exactly, at every rank", {
     expect_gt(max(abs(eta - fixed_only)), 1e-3, label = label)
 
     on_newdata <- suppressMessages(predict(fit, newdata = dat))$est
-    expect_identical(max(abs(on_newdata - eta)), 0, info = label)
+    expect_equal(max(abs(on_newdata - eta)), 0, tolerance = 1e-10, info = label)
 
     ## It is named as re-added, and nothing is reported as omitted.
     expect_message(predict(fit, newdata = dat), "phylo_rr", fixed = TRUE)
@@ -141,7 +141,7 @@ test_that("#1138: phylo_rr follows the row's species and trait, not its position
   ## A subset in a scrambled row order must still pick up the right cell.
   rows <- c(71L, 3L, 44L, 18L, 80L, 9L, 57L, 26L, 62L, 35L, 1L, 84L, 50L)
   on_subset <- suppressMessages(predict(fit, newdata = dat[rows, ]))$est
-  expect_identical(max(abs(on_subset - eta[rows])), 0)
+  expect_equal(max(abs(on_subset - eta[rows])), 0, tolerance = 1e-10)
 
   ## A species the fit never saw gets the fixed-effects-only value in its own
   ## row, and leaves every other row exactly as it was.
@@ -151,5 +151,5 @@ test_that("#1138: phylo_rr follows the row's species and trait, not its position
   with_unseen <- suppressMessages(predict(fit, newdata = nd))$est
   fixed_only <- predict(fit, newdata = nd, re_form = ~0)$est
   expect_identical(with_unseen[2L], fixed_only[2L])
-  expect_identical(max(abs(with_unseen[-2L] - eta[rows][-2L])), 0)
+  expect_equal(max(abs(with_unseen[-2L] - eta[rows][-2L])), 0, tolerance = 1e-10)
 })

@@ -301,10 +301,14 @@
 
 # Only rr + folded Psi: the propto branch already adds physical p_phy
 # separately in both simulation and prediction. Never add it twice here.
-.structured_rho_contribution <- function(fit, redraw = FALSE) {
+# `tiers` selects which of the two blocks to return. predict(newdata=) asks
+# for them one at a time so that it can add them to eta separately, in the
+# template's order; their sum added in one step rounds differently (#1138).
+.structured_rho_contribution <- function(fit, redraw = FALSE,
+                                         tiers = c("phylo_rr", "phylo_diag")) {
   td <- fit$tmb_data
   ans <- matrix(0,td$n_species,td$n_traits)
-  if (isTRUE(fit$use$phylo_rr)) {
+  if (isTRUE(fit$use$phylo_rr) && "phylo_rr" %in% tiers) {
     scores <- .structured_rho_scores(fit,td$d_phy,redraw=redraw)
     # One factor at a time, in the template's order
     # (src/gllvmTMB.cpp: contrib += Lambda_phy(t, k) * score). A BLAS matrix
@@ -318,7 +322,7 @@
     }
     ans <- ans + shared
   }
-  if (isTRUE(fit$use$phylo_diag)) {
+  if (isTRUE(fit$use$phylo_diag) && "phylo_diag" %in% tiers) {
     scores <- .structured_rho_scores(fit,td$n_traits,"g_phy_diag","g_phy_diag_iid",redraw)
     ans <- ans + sweep(scores,2L,fit$report$sd_phy_diag,"*")
   }

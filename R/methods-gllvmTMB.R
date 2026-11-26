@@ -3801,13 +3801,24 @@ predict.gllvmTMB_multi <- function(
         }
         added <- c(added, "propto")
       }
+      ## phylo_rr, then phylo_diag: two separate additions, in the template's
+      ## order. src/gllvmTMB.cpp adds the shared block first
+      ## (eta(o) += sum_k Lambda_phy(t, k) * g_phy(species_aug_id(o), k)) and
+      ## the per-trait block second
+      ## (eta(o) += exp(log_sd_phy_diag(t)) * g_phy_diag(species_aug_id(o), t)).
+      ## Adding their sum in one step rounds differently, which left
+      ## predict(newdata = training rows) a few ulp off report$eta on every
+      ## fit carrying phylo_diag (#1138).
       if (isTRUE(object$use$phylo_rr) || isTRUE(object$use$phylo_diag)) {
-        effects <- .structured_rho_contribution(object)
         ok <- !is.na(sp_id) & sp_id >= 0 & sp_id < object$n_species & !is.na(tr_id)
         if (any(ok)) {
-          eta[ok] <- eta[ok] + effects[cbind(sp_id[ok]+1L,tr_id[ok]+1L)]
-          added <- c(added, if (isTRUE(object$use$phylo_rr)) "phylo_rr",
-            if (isTRUE(object$use$phylo_diag)) "phylo_diag")
+          cell <- cbind(sp_id[ok] + 1L, tr_id[ok] + 1L)
+          for (tier in c("phylo_rr", "phylo_diag")) {
+            if (!isTRUE(object$use[[tier]])) next
+            effects <- .structured_rho_contribution(object, tiers = tier)
+            eta[ok] <- eta[ok] + effects[cell]
+            added <- c(added, tier)
+          }
         }
       }
       ## diag_species: per-(trait, species) random intercept.
